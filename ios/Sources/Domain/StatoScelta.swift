@@ -48,22 +48,22 @@ enum StatoScelta: Equatable {
         return .salvata(salvataIl)
     }
 
-    /// La frase della riga di stato, uguale alla web.
+    /// La frase della riga di stato, uguale alla web (`formazione.stato_*` del catalogo comune).
     func titolo(adesso: Date = Date()) -> String {
         switch self {
         case .sconosciuto: return ""
-        case .consigliata: return "Stai vedendo la consigliata: non hai salvato una tua formazione."
-        case .altra: return "Stai vedendo un modulo o uno stile diverso dalla consigliata: non l'hai salvato."
-        case .bozza: return "Modifica a mano non ancora salvata"
+        case .consigliata: return Catalogo.Formazione.statoConsigliata
+        case .altra: return Catalogo.Formazione.statoAltra
+        case .bozza: return Catalogo.Formazione.statoMano
         case .salvata(let d):
-            return "La tua formazione è salvata" + (d.map { " (\(Self.momento($0, adesso: adesso)))" } ?? "")
+            return d.map { Catalogo.Formazione.statoSalvataQuando(quando: Self.momento($0, adesso: adesso)) }
+                ?? Catalogo.Formazione.statoSalvata
         case .modificata(let d):
-            return "Modifiche non salvate" + (d.map { " · salvata \(Self.momento($0, adesso: adesso, breve: true))" } ?? "")
-        case .nonValida: return "La formazione salvata non è più valida: rifalla o torna alla consigliata."
-        case .chiusa(let tua):
-            return "Giornata iniziata: la formazione è chiusa" + (tua ? " · vale quella che hai salvato" : "")
-        case .chiusaNonValida:
-            return "Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida"
+            return d.map { Catalogo.Formazione.statoModificataQuando(quando: Self.momento($0, adesso: adesso, breve: true)) }
+                ?? Catalogo.Formazione.statoModificata
+        case .nonValida: return Catalogo.Formazione.statoNonValida
+        case .chiusa(let tua): return tua ? Catalogo.Formazione.statoChiusaTua : Catalogo.Formazione.statoChiusa
+        case .chiusaNonValida: return Catalogo.Formazione.statoChiusaNonValida
         }
     }
 
@@ -151,23 +151,26 @@ enum StatoScelta: Equatable {
         return f
     }()
 
-    /// Come `tempo.giorno_0…6` della web, dalla domenica (`Calendar.weekday` parte da 1 = domenica).
-    private static let sigleGiorni = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"]
+    /// `tempo.giorno_0…6` del catalogo comune, dalla domenica (`Calendar.weekday` parte da 1 = domenica).
+    private static let sigleGiorni = [Catalogo.Tempo.giorno0, Catalogo.Tempo.giorno1, Catalogo.Tempo.giorno2, Catalogo.Tempo.giorno3,
+                                      Catalogo.Tempo.giorno4, Catalogo.Tempo.giorno5, Catalogo.Tempo.giorno6]
 
-    /// Quando è stata salvata, come `quandoSalvata` della web (ora italiana): «oggi alle 21:40», «ieri alle 09:05»,
-    /// «sab 31 alle 21:40». `breve` (per «Modifiche non salvate · salvata …»): oggi solo «alle 21:40».
+    /// Quando è stata salvata, come `quandoSalvata` della web (ora italiana, `formazione.alle` e `formazione.giorno_alle`):
+    /// «oggi alle 21:40», «ieri alle 09:05», «sab 31 alle 21:40». `breve` (per «Modifiche non salvate · salvata …»): oggi solo
+    /// «alle 21:40».
     static func momento(_ data: Date, adesso: Date = Date(), breve: Bool = false) -> String {
         var calendario = Calendar(identifier: .gregorian)
         calendario.timeZone = italia
-        let alle = "alle " + ora.string(from: data)
+        let orario = ora.string(from: data)
         let inizio = calendario.startOfDay(for: adesso)
         let giorni = calendario.dateComponents([.day], from: inizio, to: calendario.startOfDay(for: data)).day ?? 0
         switch giorni {
-        case 0: return breve ? alle : "oggi " + alle
-        case -1: return "ieri " + alle
+        case 0:
+            return breve ? Catalogo.Formazione.alle(ora: orario) : Catalogo.Formazione.giornoAlle(giorno: Catalogo.Tempo.oggi, ora: orario)
+        case -1: return Catalogo.Formazione.giornoAlle(giorno: Catalogo.Tempo.ieri, ora: orario)
         default:
             let sigla = sigleGiorni[min(max(calendario.component(.weekday, from: data) - 1, 0), 6)]
-            return "\(sigla) \(calendario.component(.day, from: data)) " + alle
+            return Catalogo.Formazione.giornoAlle(giorno: "\(sigla) \(calendario.component(.day, from: data))", ora: orario)
         }
     }
 }

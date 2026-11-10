@@ -152,21 +152,22 @@ struct ErroreVista: View {
     }
 
     /// Una funzione spenta (404 con il campo «funzione»): non è un guasto, quindi niente «Riprova». Si spiega e si indica dove riaccenderla.
+    /// Le parole sono quelle della carta della web (`dieta.*` del catalogo comune).
     private var funzioneSpenta: some View {
         ContentUnavailableView {
-            Label("Non disponibile", systemImage: "eye.slash")
+            Label(Catalogo.Dieta.nonDisponibile, systemImage: "eye.slash")
         } description: {
             Text(messaggio)
         } actions: {
             if let apri = apriImpostazioni {
                 Button { apri() } label: {
-                    Label(Catalogo.Shell.impostazioni, systemImage: "gearshape").frame(minHeight: Tema.areaTocco)
+                    Label(Catalogo.Dieta.apriImpostazioni, systemImage: "gearshape").frame(minHeight: Tema.areaTocco)
                 }
                 .pulsanteVetro(prominente: true)
-                .accessibilityHint("Apre le Impostazioni, dove si accende Mostra tutte le funzioni")
+                .accessibilityHint("Apre le Impostazioni, dove si accende \(Catalogo.Av.mostraTutte)")
             }
             Button { vaiASezione(.oggi) } label: {
-                Label("Torna a Oggi", systemImage: "calendar").frame(minHeight: Tema.areaTocco)
+                Label(Catalogo.Dieta.tornaOggi, systemImage: "calendar").frame(minHeight: Tema.areaTocco)
             }
             .pulsanteVetro()
         }

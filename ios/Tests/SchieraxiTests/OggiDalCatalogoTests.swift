@@ -100,7 +100,7 @@ struct OggiDalCatalogoTests {
         ("Sources/Presentation/Oggi/TestiOggi.swift", [
             "Catalogo.Oggi.tuaFormazione", "Catalogo.Oggi.tuaFormazioneScelta", "Catalogo.Oggi.novitaBanner(",
         ]),
-        ("Sources/Support/Design/Stati.swift", ["Catalogo.Comune.riprova", "Catalogo.Shell.impostazioni"]),
+        ("Sources/Support/Design/Stati.swift", ["Catalogo.Comune.riprova", "Catalogo.Dieta.apriImpostazioni"]),
         ("Sources/Support/PercheNumeroView.swift", ["Catalogo.Shell.chiudi"]),
     ])
     func vistaUsaIlCatalogo(percorso: String, costanti: [String]) throws {

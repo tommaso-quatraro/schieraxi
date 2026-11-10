@@ -20,18 +20,19 @@ extension Oggi {
     }
 }
 
-/// I testi dei rinvii, uguali alla web app (`oggi.rinvio_*`, `regole.rv_*` in testi.js), in un posto solo.
+/// I testi dei rinvii, uguali alla web app, dal catalogo comune (`oggi.rinvio_*`, `oggi.recupero_manca`, `regole.rinviate*`,
+/// `regole.rv_*`; in Swift `Catalogo.Oggi` e `Catalogo.Regole`, #556), in un posto solo.
 enum TestiRinvio {
-    static func titolo(_ quante: Int) -> String { quante > 1 ? "Partite rinviate" : "Partita rinviata" }
+    static func titolo(_ quante: Int) -> String { quante > 1 ? Catalogo.Oggi.rinvioTitoloN : Catalogo.Oggi.rinvioTitolo1 }
 
-    static let domanda = "Per questa giornata i loro giocatori"
+    static let domanda = Catalogo.Oggi.rinvioDomanda
 
     /// La voce del menu: «aspettano il recupero (conta il suo voto)»…
     static func nomeModo(_ modo: String?, voto: Double?) -> String {
         switch modo {
-        case ModoRinvio.aspetta: return "aspettano il recupero (conta il suo voto)"
-        case ModoRinvio.senzaVoto: return "restano senza voto (entra la riserva)"
-        case ModoRinvio.votoUfficio: return "prendono il voto d'ufficio (\(numero(voto ?? 6)))"
+        case ModoRinvio.aspetta: return Catalogo.Oggi.rinvioAspetta
+        case ModoRinvio.senzaVoto: return Catalogo.Oggi.rinvioSenzaVoto
+        case ModoRinvio.votoUfficio: return Catalogo.Oggi.rinvioUfficio(v: numero(voto ?? 6))
         default: return modo ?? ""
         }
     }
@@ -48,18 +49,19 @@ enum TestiRinvio {
     /// «recupero mer 18 nov 20:45» (la data come `quando` della web: «oggi 20:45», «dom 8 15:00», oltre la settimana con il
     /// mese) oppure «recupero da definire». `adesso` serve solo ai test.
     static func recupero(_ p: PartitaRinviata, adesso: Date = Date()) -> String {
-        guard Quando.data(p.data) != nil else { return "recupero da definire" }
-        return "recupero \(Quando.leggibile(p.data, adesso: adesso))"
+        guard Quando.data(p.data) != nil else { return Catalogo.Oggi.rinvioDaDefinire }
+        return Catalogo.Oggi.rinvioRecupero(quando: Quando.leggibile(p.data, adesso: adesso))
     }
 
     static func miei(_ s: SceltaRinvio) -> String? {
-        s.miei.isEmpty ? nil : "I tuoi giocatori coinvolti: \(s.miei.map(\.nome).joined(separator: ", "))"
+        s.miei.isEmpty ? nil : Catalogo.Oggi.rinvioMiei(nomi: s.miei.map(\.nome).joined(separator: ", "))
     }
 
-    /// La riga sotto il menu: regola della lega oppure scelta solo per questa giornata.
+    /// La riga sotto il menu: regola della lega oppure scelta solo per questa giornata. La frase della regola resta dell'iPhone:
+    /// la web (`oggi.rinvio_regola_lega`) dice «Impostazioni › Regole», ma le Regole stanno in Altro.
     static func nota(_ s: SceltaRinvio) -> String {
         if s.eccezione {
-            return "Scelta solo per questa giornata. Di solito la tua lega: \(nomeModo(s.predefinito, voto: s.votoUfficio))."
+            return Catalogo.Oggi.rinvioEccezione(regola: nomeModo(s.predefinito, voto: s.votoUfficio))
         }
         return "È la regola della tua lega (Altro › Regole). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata."
     }
@@ -68,31 +70,31 @@ enum TestiRinvio {
     /// niente. Le partite scritte come la carta del rinvio (`partita`), uguale alla web (`oggi.recupero_manca` con `partitaVs`, #310).
     static func recuperoManca(_ recuperi: [PartitaRinviata]) -> String? {
         let partite = recuperi.map { partita($0) }
-        return partite.isEmpty ? nil : "Manca il recupero di \(partite.joined(separator: ", ")): i punti possono ancora cambiare."
+        return partite.isEmpty ? nil : Catalogo.Oggi.recuperoManca(partite: partite.joined(separator: ", "))
     }
 
-    static let salvato = "Fatto: consigli aggiornati per questa giornata"
+    static let salvato = Catalogo.Oggi.rinvioSalvato
 
     // MARK: regole della lega
 
-    static let sezioneRegole = "Partite rinviate"
-    static let aiutoRegole = "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo da Oggi."
+    static let sezioneRegole = Catalogo.Regole.rinviate
+    static let aiutoRegole = Catalogo.Regole.rinviateAiuto
 
     /// L'etichetta corta nel selettore delle regole.
     static func etichetta(_ modo: String) -> String {
         switch modo {
-        case ModoRinvio.aspetta: return "Aspetta il recupero"
-        case ModoRinvio.senzaVoto: return "Senza voto"
-        case ModoRinvio.votoUfficio: return "Voto d'ufficio"
+        case ModoRinvio.aspetta: return Catalogo.Regole.rvAspetta
+        case ModoRinvio.senzaVoto: return Catalogo.Regole.rvSenzaVoto
+        case ModoRinvio.votoUfficio: return Catalogo.Regole.rvUfficio
         default: return modo
         }
     }
 
     static func spiega(_ modo: String) -> String {
         switch modo {
-        case ModoRinvio.senzaVoto: return "I giocatori restano senza voto: entra la riserva."
-        case ModoRinvio.votoUfficio: return "Tutti prendono lo stesso voto, senza bonus né malus."
-        default: return "Si aspetta il recupero e conta il voto preso lì: i giocatori restano schierabili."
+        case ModoRinvio.senzaVoto: return Catalogo.Regole.rvAiutoSenzaVoto
+        case ModoRinvio.votoUfficio: return Catalogo.Regole.rvAiutoVotoUfficio
+        default: return Catalogo.Regole.rvAiutoAspetta
         }
     }
 }

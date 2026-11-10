@@ -4,8 +4,8 @@ import Testing
 
 /// Oggi, riquadro «Partita rinviata», come la web (`cardRinvio` di app.js, #284): la partita come quelle del turno («UDI vs MIL»,
 /// prima la squadra di casa, mai «UDI–MIL») e la data del recupero come `quando` della web («recupero mer 18 nov 20:45»).
-/// Le frasi sono quelle del catalogo comune con la web (`Catalogo.Oggi`, #494): `TestiRinvio` le ha ancora scritte a mano e qui
-/// si confrontano. Dati inventati.
+/// Le frasi sono quelle del catalogo comune con la web (`Catalogo.Oggi`, #494): `TestiRinvio` le prende da lì (#556) e qui si
+/// confrontano. Dati inventati.
 @Suite("Carta del rinvio come la web")
 struct RinvioComeLaWebTests {
     /// Un momento fisso, ora italiana: giovedì 5 novembre 2026.

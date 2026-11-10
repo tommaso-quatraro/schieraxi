@@ -27,6 +27,7 @@ regole.con_prima_giornata
 regole.nome_della_lega
 regole.mia_lega
 regole.importa_leghe
+regole.leghe_apri_regolamento
 regole.riconosci_regole
 regole.incolla_prima_testo
 regole.non_riconosciuto_nessuna
@@ -76,3 +77,13 @@ regole.regole_salvate_consigli
 
 # Novità: l'etichetta delle versioni non ancora viste
 regole.nuovo
+
+# Partite rinviate: la sezione delle regole (TestiRinvio in Domain/PartiteRinviate.swift)
+regole.rinviate
+regole.rinviate_aiuto
+regole.rv_aspetta
+regole.rv_senza_voto
+regole.rv_ufficio
+regole.rv_aiuto_aspetta
+regole.rv_aiuto_senza_voto
+regole.rv_aiuto_voto_ufficio

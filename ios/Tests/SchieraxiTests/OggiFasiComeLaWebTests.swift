@@ -125,10 +125,18 @@ struct OggiFasiComeLaWebTests {
                 "senza scadenza la web non scrive la riga")
     }
 
+    @Test("Prossima giornata senza il numero (server strano): la stessa frase senza «Giornata N:» davanti, con la maiuscola")
+    func prossimaSenzaNumero() throws {
+        let adesso = try #require(Quando.data("2026-11-09 10:00"))
+        let p = ProssimaGiornata(scadenza: "2026-11-14 14:30", conProbabili: true)
+        #expect(TestiFase.prossima(p, adesso: adesso) == "La formazione si chiude sab 14 14:30. \(Catalogo.Oggi.prossimaPronta)")
+    }
+
     // MARK: parole fisse
 
-    /// `TestiFase` (in `Domain/FasiGiornata.swift`) ha ancora i testi scritti a mano: qui si confrontano con il catalogo.
-    /// Da fare e le partite del turno usano direttamente `Catalogo.Df` e `Catalogo.Live` (prova in `OggiDalCatalogoTests`).
+    /// `TestiFase` (in `Domain/FasiGiornata.swift`) prende i testi dal catalogo (#556; prova del sorgente in `RestiDalCatalogoTests`):
+    /// qui si confrontano i valori. Da fare e le partite del turno usano direttamente `Catalogo.Df` e `Catalogo.Live` (prova in
+    /// `OggiDalCatalogoTests`).
     @Test("Titoli e frasi fisse della giornata in corso, già iniziata e finita: quelle del catalogo", arguments: [
         (TestiFase.puntiFinora, Catalogo.Oggi.puntiFinora),
         (TestiFase.aFineGiornata, Catalogo.Oggi.aFineGiornata),

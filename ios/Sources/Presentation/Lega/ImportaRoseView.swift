@@ -64,7 +64,7 @@ struct ImportaExcelView: View {
             // l'esito dell'ultimo salvataggio, in cima (differenza ammessa con la web: docs/COERENZA-WEB-IPHONE.md)
             if let e = vm.esito { EsitoRoseSalvate(esito: e) }
             Section {
-                Text("Esporta le rose in Excel da Leghe (come fai di solito) e scegli il file qui: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti).")
+                Text(Catalogo.Lega.esportaRoseExcel)
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
                 Button { scegli = true } label: {
                     Label(Catalogo.Lega.scegliFileExcel, systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)

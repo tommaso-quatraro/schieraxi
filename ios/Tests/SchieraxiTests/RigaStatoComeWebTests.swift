@@ -25,10 +25,10 @@ struct RigaStatoComeWebTests {
     func fraseSalvataConOra() throws {
         let adesso = try data("2026-11-02T22:00:00")   // lunedì
         let oggi = try data("2026-11-02T21:40:00"), ieri = try data("2026-11-01T09:05:00"), sabato = try data("2026-10-31T21:40:00")
-        let attesoOggi = try Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(web("tempo.oggi"), "21:40"))
-        let attesoIeri = try Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(web("tempo.ieri"), "09:05"))
+        let attesoOggi = Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(Catalogo.Tempo.oggi, "21:40"))
+        let attesoIeri = Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(Catalogo.Tempo.ieri, "09:05"))
         // sabato 31 ottobre: «sab 31 alle 21:40», senza il mese
-        let attesoSabato = try Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(web("tempo.giorno_6") + " 31", "21:40"))
+        let attesoSabato = Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(Catalogo.Tempo.giorno6 + " 31", "21:40"))
         #expect(StatoScelta.salvata(oggi).titolo(adesso: adesso) == attesoOggi)
         #expect(StatoScelta.salvata(ieri).titolo(adesso: adesso) == attesoIeri)
         #expect(StatoScelta.salvata(sabato).titolo(adesso: adesso) == attesoSabato)
@@ -39,8 +39,8 @@ struct RigaStatoComeWebTests {
         let adesso = try data("2026-11-02T22:00:00")
         let oggi = try data("2026-11-02T21:40:00"), ieri = try data("2026-11-01T09:05:00"), sabato = try data("2026-10-31T21:40:00")
         let attesoOggi = Catalogo.Formazione.statoModificataQuando(quando: Catalogo.Formazione.alle(ora: "21:40"))
-        let attesoIeri = try Catalogo.Formazione.statoModificataQuando(quando: giornoAlle(web("tempo.ieri"), "09:05"))
-        let attesoSabato = try Catalogo.Formazione.statoModificataQuando(quando: giornoAlle(web("tempo.giorno_6") + " 31", "21:40"))
+        let attesoIeri = Catalogo.Formazione.statoModificataQuando(quando: giornoAlle(Catalogo.Tempo.ieri, "09:05"))
+        let attesoSabato = Catalogo.Formazione.statoModificataQuando(quando: giornoAlle(Catalogo.Tempo.giorno6 + " 31", "21:40"))
         #expect(StatoScelta.modificata(oggi).titolo(adesso: adesso) == attesoOggi)
         #expect(StatoScelta.modificata(ieri).titolo(adesso: adesso) == attesoIeri)
         #expect(StatoScelta.modificata(sabato).titolo(adesso: adesso) == attesoSabato)
@@ -271,13 +271,7 @@ struct RigaStatoComeWebTests {
 
     // MARK: aiuti
 
-    /// Le parole dei giorni della web (`tempo.oggi`, `tempo.ieri`, `tempo.giorno_6` di `testi.js`): il prefisso `tempo` non è
-    /// ancora nel catalogo dell'iPhone.
-    private func web(_ chiave: String) throws -> String {
-        try TestiWeb().italiano(chiave)
-    }
-
-    /// «oggi alle 21:40», «sab 31 alle 21:40» con `formazione.giorno_alle` del catalogo.
+    /// «oggi alle 21:40», «sab 31 alle 21:40» con `formazione.giorno_alle` e le parole dei giorni (`tempo.*`) del catalogo.
     private func giornoAlle(_ giorno: String, _ ora: String) -> String {
         Catalogo.Formazione.giornoAlle(giorno: giorno, ora: ora)
     }

@@ -76,6 +76,9 @@ extension Catalogo {
         /// `regole.importa_leghe`
         static let importaLeghe = "Importa da Leghe"
 
+        /// `regole.leghe_apri_regolamento`
+        static let legheApriRegolamento = "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli. Non cambia nulla finché non tocchi «Salva»."
+
         /// `regole.riconosci_regole`
         static let riconosciRegole = "Riconosci le regole"
 
@@ -222,5 +225,29 @@ extension Catalogo {
 
         /// `regole.nuovo`
         static let nuovo = "Nuovo"
+
+        /// `regole.rinviate`
+        static let rinviate = "Partite rinviate"
+
+        /// `regole.rinviate_aiuto`
+        static let rinviateAiuto = "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo da Oggi."
+
+        /// `regole.rv_aspetta`
+        static let rvAspetta = "Aspetta il recupero"
+
+        /// `regole.rv_senza_voto`
+        static let rvSenzaVoto = "Senza voto"
+
+        /// `regole.rv_ufficio`
+        static let rvUfficio = "Voto d'ufficio"
+
+        /// `regole.rv_aiuto_aspetta`
+        static let rvAiutoAspetta = "Si aspetta il recupero e conta il voto preso lì: i giocatori restano schierabili."
+
+        /// `regole.rv_aiuto_senza_voto`
+        static let rvAiutoSenzaVoto = "I giocatori restano senza voto: entra la riserva."
+
+        /// `regole.rv_aiuto_voto_ufficio`
+        static let rvAiutoVotoUfficio = "Tutti prendono lo stesso voto, senza bonus né malus."
     }
 }

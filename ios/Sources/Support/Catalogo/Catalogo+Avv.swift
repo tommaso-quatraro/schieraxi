@@ -56,5 +56,17 @@ extension Catalogo {
 
         /// `avv.ore_tranq_aiuto`
         static let oreTranqAiuto = "Niente avvisi nella fascia scelta: cambi e riepilogo arrivano appena finisce. Un promemoria che cade lì non viene mandato"
+
+        /// `avv.avevi_scelto_ore`
+        static let aveviSceltoOre = "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7)."
+
+        /// `avv.dalle`
+        static let dalle = "Dalle"
+
+        /// `avv.alle`
+        static let alle = "Alle"
+
+        /// `avv.manda_avviso_prova`
+        static let mandaAvvisoProva = "Manda un avviso di prova"
     }
 }

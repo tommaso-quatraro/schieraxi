@@ -4,7 +4,7 @@ import Testing
 
 /// A destra delle righe della Rosa di una squadra, come `valoreRosa` di app.js (#367) e come le righe della Formazione (#313):
 /// a partita iniziata niente più fantavoto atteso e «gioca N%». A partita finita con il voto il fantavoto preso con sotto
-/// «fantavoto» (`mercato.fantavoto`), altrimenti «–» da solo: lo stato è già nella pillola dell'etichetta. La partita rinviata
+/// «fantavoto» (`mercato.fantavoto`, dal catalogo comune), altrimenti «–» da solo: lo stato è già nella pillola dell'etichetta. La partita rinviata
 /// resta come prima della partita. VoiceOver dice le stesse cose. Dati inventati.
 @Suite("Righe della Rosa a partita iniziata: come la web")
 struct RosaPartitaIniziataTests {
@@ -58,7 +58,7 @@ struct RosaPartitaIniziataTests {
     ])
     func fantavotoPreso(campi: String) throws {
         let g = try rosa(campi)
-        let fantavoto = try TestiWeb().italiano("mercato.fantavoto")
+        let fantavoto = Catalogo.Mercato.fantavoto
         #expect(RigaRosa.numero(g) == "3,5")
         #expect(RigaRosa.sottoNumero(g) == fantavoto)
     }

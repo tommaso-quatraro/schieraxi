@@ -4,7 +4,7 @@ import Testing
 
 /// A destra delle righe dei giocatori (Formazione, Seguiti, Oggi), come `voceGiocatore` di app.js (#313): a partita iniziata
 /// niente più fantavoto atteso e «gioca N%». A partita finita con il voto il fantavoto preso con sotto «fantavoto»
-/// (`mercato.fantavoto`), altrimenti «–» da solo: lo stato è già nella pillola dell'etichetta. La partita rinviata resta come
+/// (`mercato.fantavoto`, dal catalogo comune), altrimenti «–» da solo: lo stato è già nella pillola dell'etichetta. La partita rinviata resta come
 /// prima della partita (la riga usa `esitoPartita`, non `esitoPedina`). VoiceOver dice le stesse cose. Dati inventati.
 @Suite("Righe dei giocatori a partita iniziata: come la web")
 struct RighePartitaIniziataTests {
@@ -50,7 +50,7 @@ struct RighePartitaIniziataTests {
     ])
     func fantavotoPreso(campi: String) throws {
         let g = try giocatore(campi)
-        let fantavoto = try TestiWeb().italiano("mercato.fantavoto")
+        let fantavoto = Catalogo.Mercato.fantavoto
         #expect(RigaGiocatore.numero(g) == "3,5")
         #expect(RigaGiocatore.sottoNumero(g) == fantavoto)
     }

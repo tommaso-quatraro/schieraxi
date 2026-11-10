@@ -1,6 +1,6 @@
 import Foundation
 
-/// I testi della pagina «Notifiche» e di «Avanzate» (Impostazioni), dal catalogo comune con la web (`imp.avvisi*`, `avv.*`).
+/// I testi della pagina «Notifiche» e di «Avanzate» (Impostazioni), dal catalogo comune con la web (`imp.avvisi*`, `avv.*`, `av.*`).
 /// Le righe d'aiuto, come sulla web, non finiscono con il punto. Logica pura: li prova `NotificheComeLaWebTests`.
 enum TestiImpostazioni {
     /// La voce nell'elenco delle Impostazioni e il titolo della pagina (`imp.avvisi`), con la riga sotto la voce (`imp.avvisi_sub`).
@@ -20,8 +20,7 @@ enum TestiImpostazioni {
     static let oreTranquille = Catalogo.Avv.oreTranq
     static let oreTranquilleAiuto = Catalogo.Avv.oreTranqAiuto
 
-    /// `av.mostra_tutte` e `av.mostra_tutte_spiega`: il prefisso `av` lo elenca Squadra e Altro (`ios/testi/av.txt`); finché
-    /// queste due chiavi non ci sono, i testi restano qui e `NotificheComeLaWebTests` li confronta con `testi.js`.
-    static let mostraTutte = "Mostra tutte le funzioni"
-    static let mostraTutteSpiega = "Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche il resto (risultati in diretta, confronto, seguiti, diario e altro). Vale solo per te."
+    /// «Mostra tutte le funzioni» (Avanzate) con la sua spiegazione: `av.mostra_tutte` e `av.mostra_tutte_spiega`.
+    static let mostraTutte = Catalogo.Av.mostraTutte
+    static let mostraTutteSpiega = Catalogo.Av.mostraTutteSpiega
 }

@@ -69,5 +69,8 @@ extension Catalogo {
 
         /// `mercato.annulla`
         static let annulla = "Annulla"
+
+        /// `mercato.fantavoto`
+        static let fantavoto = "fantavoto"
     }
 }

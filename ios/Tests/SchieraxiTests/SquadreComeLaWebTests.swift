@@ -4,8 +4,8 @@ import Testing
 
 /// Squadre e rose come la web (issue #441, parte di #167). Le parole vengono dal catalogo comune (chiavi `lega.*` e `scambio.*`,
 /// #496): «maglia» e mai «divisa», «Cambia il nome» e «Crediti residui» nella rosa, «Senza ruolo (da controllare)»,
-/// «Rose aggiornate il 6 novembre 2026». Le parole che l'iPhone non prende ancora dal catalogo (`shell.chiudi`, i plurali di
-/// `Formato`) si confrontano con `testi.js`. Qui si prova il testo; le schermate le fotografa il fotografo su `main`.
+/// «Rose aggiornate il 6 novembre 2026». I plurali di `Formato` (`sd.n_giocatori`, `lega.n_crediti`), che l'iPhone non prende dal
+/// catalogo, si confrontano con `testi.js`. Qui si prova il testo; le schermate le fotografa il fotografo su `main`.
 @MainActor
 @Suite("Squadre e rose come la web: parole, maglia, Cambia il nome e crediti (#441)")
 struct SquadreComeLaWebTests {
@@ -33,7 +33,7 @@ struct SquadreComeLaWebTests {
         #expect(ParoleSquadre.tuaSquadra == Catalogo.Lega.tuaSquadra)
         #expect(ParoleSquadre.toccaUnaSquadra == Catalogo.Lega.toccaUnaSquadra)
         #expect(ParoleSquadre.importaPrima == Catalogo.Lega.importaPrimaRose)
-        #expect(ParoleSquadre.chiudi == (try Self.pezzo("shell.chiudi")))
+        #expect(ParoleSquadre.chiudi == Catalogo.Shell.chiudi)
     }
 
     @Test("«24 giocatori · 12 crediti», con il singolare e senza i crediti se il server non li dà")

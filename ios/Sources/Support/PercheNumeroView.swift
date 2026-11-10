@@ -114,7 +114,7 @@ struct PercheNumeroSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                     if let apriScheda {
                         Button(action: apriScheda) {
-                            Label("Apri la scheda", systemImage: "person.text.rectangle").frame(maxWidth: .infinity, minHeight: 44)
+                            Label(Catalogo.Perche.apriScheda, systemImage: "person.text.rectangle").frame(maxWidth: .infinity, minHeight: 44)
                         }
                         .pulsanteVetro()
                         .keyboardShortcut(.defaultAction)

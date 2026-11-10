@@ -262,10 +262,13 @@ struct RegoleEditorView: View {
 
     private let ruoli = [("P", "portiere"), ("D", "difensore"), ("C", "centrocampista"), ("A", "attaccante")]
         .map { ($0.0, Catalogo.Regole.golDi(ruolo: $0.1)) }
-    private let bonus = [("assist", "Assist"), ("rigore_segnato", "Rigore segnato"), ("rigore_parato", Catalogo.Regole.rigoreParatoP),
-                         ("portiere_imbattuto", "Portiere imbattuto"), ("mvp", "Migliore in campo")]
-    private let malus = [("ammonizione", "Ammonizione"), ("espulsione", "Espulsione"), ("autogol", "Autogol"),
-                         ("rigore_sbagliato", "Rigore sbagliato"), ("gol_subito_portiere", "Gol subito (portiere)")]
+    // bonus e malus come `bonusRighe` e `malusRighe` della web (`bonus.*` del catalogo comune)
+    private let bonus = [("assist", Catalogo.Bonus.assist), ("rigore_segnato", Catalogo.Bonus.rigoreSegnato),
+                         ("rigore_parato", Catalogo.Regole.rigoreParatoP), ("portiere_imbattuto", Catalogo.Bonus.portiereImbattuto),
+                         ("mvp", Catalogo.Bonus.mvp)]
+    private let malus = [("ammonizione", Catalogo.Bonus.ammonizione), ("espulsione", Catalogo.Bonus.espulsione),
+                         ("autogol", Catalogo.Bonus.autogol), ("rigore_sbagliato", Catalogo.Bonus.rigoreSbagliato),
+                         ("gol_subito_portiere", Catalogo.Bonus.golSubitoPortiere)]
     private let nomiRuolo = ["P": "Portieri", "D": "Difensori", "C": "Centrocampisti", "A": "Attaccanti"]
 
     var body: some View {
@@ -355,7 +358,7 @@ struct RegoleEditorView: View {
 
     private var importa: some View {
         Section {
-            Text("Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli. Non cambia nulla finché non tocchi «Salva le regole».")
+            Text(Catalogo.Regole.legheApriRegolamento)
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
             TextEditor(text: $vm.testoRegolamento)
                 .frame(minHeight: 96)

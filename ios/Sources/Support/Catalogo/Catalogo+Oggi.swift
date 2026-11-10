@@ -200,5 +200,32 @@ extension Catalogo {
         static func rinvioMiei(nomi: String) -> String {
             "I tuoi giocatori coinvolti: \(nomi)"
         }
+
+        /// `oggi.rinvio_domanda`
+        static let rinvioDomanda = "Per questa giornata i loro giocatori"
+
+        /// `oggi.rinvio_aspetta`
+        static let rinvioAspetta = "aspettano il recupero (conta il suo voto)"
+
+        /// `oggi.rinvio_senza_voto`
+        static let rinvioSenzaVoto = "restano senza voto (entra la riserva)"
+
+        /// `oggi.rinvio_ufficio`
+        static func rinvioUfficio(v: String) -> String {
+            "prendono il voto d'ufficio (\(v))"
+        }
+
+        /// `oggi.rinvio_eccezione`
+        static func rinvioEccezione(regola: String) -> String {
+            "Scelta solo per questa giornata. Di solito la tua lega: \(regola)."
+        }
+
+        /// `oggi.rinvio_salvato`
+        static let rinvioSalvato = "Fatto: consigli aggiornati per questa giornata"
+
+        /// `oggi.recupero_manca`
+        static func recuperoManca(partite: String) -> String {
+            "Manca il recupero di \(partite): i punti possono ancora cambiare."
+        }
     }
 }

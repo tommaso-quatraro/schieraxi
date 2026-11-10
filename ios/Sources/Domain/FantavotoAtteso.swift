@@ -6,7 +6,8 @@ import Foundation
 /// Le parole del fantavoto atteso, uguali in ogni schermata.
 enum FantavotoAtteso {
     static let nome = "Fantavoto atteso"
-    static let definizione = "Il fantavoto atteso è quello che SchieraXI si aspetta da questo giocatore in questa partita, se gioca, con le regole della tua lega."
+    /// `perche.definizione` del catalogo comune con la web.
+    static let definizione = Catalogo.Perche.definizione
 
     /// «+1,1» o «−0,4» (con il vero segno meno), in fantavoti o punti. Sotto 0,05 due cifre, per non scrivere «+0,0».
     static func conSegno(_ valore: Double) -> String {
@@ -47,7 +48,8 @@ struct PercheNumero: Equatable {
         let voce: String
     }
 
-    static let titolo = "Perché questo numero"
+    /// `perche.titolo` del catalogo comune con la web.
+    static let titolo = Catalogo.Perche.titolo
     static let massimoMotivi = 3
 
     let righe: [Riga]
@@ -78,10 +80,11 @@ struct PercheNumero: Equatable {
         }
         if righe.isEmpty && media == nil { return nil }
         self.righe = righe
+        // le frasi della web (`perche.nessuno`, `perche.rispetto`); senza la media del ruolo una frase solo dell'iPhone
         if righe.isEmpty, let media {
-            nota = "Nessun motivo spicca: il numero è vicino a quello di un giocatore medio del suo ruolo, che ha \(Formato.punti(media))."
+            nota = Catalogo.Perche.nessuno(n: Formato.punti(media))
         } else if let media {
-            nota = "Un giocatore medio del suo ruolo ha \(Formato.punti(media)). Il resto sono differenze piccole."
+            nota = Catalogo.Perche.rispetto(n: Formato.punti(media))
         } else {
             nota = "I numeri sono le differenze rispetto a un giocatore medio del suo ruolo."
         }

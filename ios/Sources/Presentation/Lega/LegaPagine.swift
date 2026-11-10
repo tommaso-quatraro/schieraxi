@@ -230,6 +230,7 @@ enum PassiNuovaStagione {
 // MARK: - Aspetto
 
 /// Impostazioni > Aspetto: il tema (automatico, chiaro, scuro) e le animazioni. Le scelte stanno sul telefono (`@AppStorage`).
+/// Le parole del tema sono quelle della web (`asp.*` del catalogo comune); lingua e dimensione del testo sono solo della web.
 struct AspettoView: View {
     @AppStorage("tema") private var tema = "auto"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
@@ -240,17 +241,17 @@ struct AspettoView: View {
             List {
                 TitoloNellaPagina()
                 Section {
-                    Picker("Tema", selection: $tema) {
-                        Text("Automatico").tag("auto")
-                        Text("Chiaro").tag("chiaro")
-                        Text("Scuro").tag("scuro")
+                    Picker(Catalogo.Asp.tema, selection: $tema) {
+                        Text(Catalogo.Asp.temaAuto).tag("auto")
+                        Text(Catalogo.Asp.temaChiaro).tag("chiaro")
+                        Text(Catalogo.Asp.temaScuro).tag("scuro")
                     }
                     .pickerStyle(.segmented)
                     .sensoryFeedback(.selection, trigger: tema)
                 } header: {
-                    Text("Tema").foregroundStyle(Color.testoSecondario)
+                    Text(Catalogo.Asp.tema).foregroundStyle(Color.testoSecondario)
                 } footer: {
-                    Text("Automatico segue il chiaro e lo scuro di iPhone. La dimensione del testo si cambia in Impostazioni di iPhone > Schermo e luminosità > Dimensione del testo: l'app la segue.").foregroundStyle(Color.testoSecondario)
+                    Text(Catalogo.Asp.autoSpiega + " La dimensione del testo si cambia in Impostazioni di iPhone > Schermo e luminosità > Dimensione del testo: l'app la segue.").foregroundStyle(Color.testoSecondario)
                 }
                 Section {
                     Toggle("Animazioni ridotte", isOn: $animazioniRidotte).tint(Color.verde).frame(minHeight: 44)
@@ -258,7 +259,7 @@ struct AspettoView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .titoloPagina("Aspetto")
+        .titoloPagina(Catalogo.Imp.aspetto)
     }
 }
 

@@ -1,0 +1,8 @@
+# Impostazioni > Aspetto (AspettoView in Presentation/Lega/LegaPagine.swift) e il titolo «Quali avvisi» di Notifiche.
+# Lingua e Dimensione del testo sono solo della web (differenza ammessa). Poi: python script/testi.py --scrivi
+asp.tema
+asp.tema_auto
+asp.tema_chiaro
+asp.tema_scuro
+asp.auto_spiega
+asp.avvisi_titolo

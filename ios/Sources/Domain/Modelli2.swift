@@ -91,20 +91,20 @@ extension ImpostazioniAvvisi {
     }
 }
 
-/// Le scelte di «Avviso se il consiglio cambia» (stessi testi della web).
+/// Le scelte di «Avviso se il consiglio cambia» (stessi testi della web: `avv.prima*` del catalogo comune).
 enum AvvisoPrima {
-    static let titolo = "Avviso se il consiglio cambia"
-    static let aiuto = "Prima della scadenza, solo se le ultime notizie cambiano la formazione da schierare (per esempio un titolare non gioca): ti dice chi mettere. Al massimo due per giornata"
+    static let titolo = Catalogo.Avv.prima
+    static let aiuto = Catalogo.Avv.primaAiuto
     static let predefinito = 60
     static let valori = [0, 30, 60, 90]
 
     static func testo(_ minuti: Int) -> String {
         switch minuti {
-        case 0: return "Spento"
-        case 30: return "30 minuti prima"
-        case 60: return "1 ora prima"
-        case 90: return "1 ora e mezza prima"
-        default: return minuti > 0 ? "\(minuti) minuti prima" : "Spento"
+        case 0: return Catalogo.Avv.prima0
+        case 30: return Catalogo.Avv.prima30
+        case 60: return Catalogo.Avv.prima60
+        case 90: return Catalogo.Avv.prima90
+        default: return minuti > 0 ? "\(minuti) minuti prima" : Catalogo.Avv.prima0
         }
     }
 

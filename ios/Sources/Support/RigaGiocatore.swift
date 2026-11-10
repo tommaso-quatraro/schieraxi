@@ -119,7 +119,7 @@ struct RigaGiocatore: View {
     /// fantavoto preso; nil a partita iniziata senza voto, perché lo stato della partita lo dice già la pillola dell'etichetta.
     nonisolated static func sottoNumero(_ g: Giocatore) -> String? {
         guard let esito = g.esitoPartita else { return "gioca \(Formato.percento(g.pVoto))%" }
-        return esito.fv == nil ? nil : "fantavoto"
+        return esito.fv == nil ? nil : Catalogo.Mercato.fantavoto
     }
 
     /// Se il numero è un pulsante a sé che apre «Perché questo numero» (con i motivi del server). A partita iniziata no, come

@@ -3,7 +3,7 @@ import Testing
 import UIKit
 @testable import Schieraxi
 
-/// Frasi di Nuova stagione e di Avvisi uguali alla web (`fanta/web/testi.js`) e al vocabolario comune
+/// Frasi di Nuova stagione e di Avvisi uguali alla web (catalogo comune `fanta/testi/`, in Swift `Catalogo`) e al vocabolario comune
 /// (`docs/COERENZA-WEB-IPHONE.md`): «seguiti», mai «osservati»; niente parole inglesi come «background».
 @Suite("Parole come la web")
 @MainActor
@@ -23,9 +23,8 @@ struct ParoleComeLaWebTests {
     }
 
     @Test("Ore tranquille spente dal server: la frase della web (`avv.avevi_scelto_ore`)")
-    func oreTranquilleSpente() throws {
-        let web = try TestiWeb().italiano("avv.avevi_scelto_ore")
-        #expect(AvvisiServerView.testoOreTranquilleSpente == web)
+    func oreTranquilleSpente() {
+        #expect(AvvisiServerView.testoOreTranquilleSpente == Catalogo.Avv.aveviSceltoOre)
     }
 
     @Test("La riga dei controlli con l'app chiusa è in italiano")

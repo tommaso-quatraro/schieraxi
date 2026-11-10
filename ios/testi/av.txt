@@ -1,5 +1,8 @@
 # Testi della web (fanta/testi/av.json) che l'iPhone mostra: una chiave per riga.
 # Dopo una modifica: python script/testi.py --scrivi
-# (av.mostra_tutte e av.mostra_tutte_spiega stanno nelle Impostazioni: li elenca chi cura quella parte.)
 
 av.stato
+
+# Impostazioni > Avanzate: «Mostra tutte le funzioni» con la sua spiegazione (TestiImpostazioni)
+av.mostra_tutte
+av.mostra_tutte_spiega

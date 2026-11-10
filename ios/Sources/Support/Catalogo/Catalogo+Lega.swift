@@ -123,6 +123,9 @@ extension Catalogo {
         /// `lega.https`
         static let https = "https://…"
 
+        /// `lega.esporta_rose_excel`
+        static let esportaRoseExcel = "Esporta le rose in Excel da Leghe (come fai di solito) e scegli il file qui: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti)."
+
         /// `lega.scegli_file_excel`
         static let scegliFileExcel = "Scegli il file Excel"
 

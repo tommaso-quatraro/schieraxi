@@ -7,11 +7,12 @@ enum PaginaServer: String, CaseIterable {
     case termini
     case crediti
 
+    /// I nomi delle pagine come sulla web (`legale.*` del catalogo comune).
     var titolo: String {
         switch self {
-        case .privacy: return "Privacy"
-        case .termini: return "Termini d'uso"
-        case .crediti: return "Crediti e fonti"
+        case .privacy: return Catalogo.Legale.privacy
+        case .termini: return Catalogo.Legale.termini
+        case .crediti: return Catalogo.Legale.crediti
         }
     }
 

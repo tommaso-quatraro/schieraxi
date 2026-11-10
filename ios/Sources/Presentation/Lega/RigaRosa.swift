@@ -31,7 +31,7 @@ struct RigaRosa: View {
     nonisolated static func sottoNumero(_ g: GiocatoreRosa) -> String? {
         guard let p = g.previsione else { return g.id == nil ? "?" : Catalogo.Scambio.nonGioca }
         guard let esito = p.esitoPartita else { return "gioca \(Formato.percento(p.pVoto))%" }
-        return esito.fv == nil ? nil : "fantavoto"
+        return esito.fv == nil ? nil : Catalogo.Mercato.fantavoto
     }
 
     /// La frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono. A partita iniziata «fantavoto 3,5» come la
