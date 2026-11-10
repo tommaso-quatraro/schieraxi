@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.448",
+    "data": "2026-11-10T01:19:21",
+    "titolo": "Le ultime scritte dell'iPhone dalla stessa fonte della web",
+    "voci": [
+      "Sulla web nessun cambio visibile. Sull'iPhone e sull'iPad alcune scritte ora sono le stesse della web: per esempio «Prima le tue rose» quando la lega non ha ancora le rose e «Apri le impostazioni» quando una funzione è spenta."
+    ],
+    "tecnico": [
+      "Issue #556, lavoro A6 del piano 2026-11-08-ondata-2. fanta/testi: tolti l'a capo e gli spazi dentro regole.leghe_apri_regolamento e lega.esporta_rose_excel (it ed en); sulla web l'HTML li comprimeva già in uno spazio, quindi la pagina non cambia.",
+      "iPhone: chiavi nuove in ios/testi (dieta, perche, bonus, tempo, asp, av, avv, comune, rinvii, mercato.fantavoto); TestiFase, TestiRinvio, StatoScelta, AvvisoPrima, PaginaServer, Notifiche, Aspetto, ConfiguraLegaVista, RegoleEditor, ImportaRoseView, RigaGiocatore e RigaRosa usano Catalogo. Prova del sorgente: RestiDalCatalogoTests."
+    ]
+  },
+  {
     "versione": "1.447",
     "data": "2026-11-09T19:38:57",
     "titolo": "Avvisi puntuali anche se un telefono è lento a riceverli",
