@@ -127,7 +127,7 @@ extension Catalogo {
 
         /// `formazione.propone`
         static func propone(modulo: String) -> String {
-            "Propone il \(modulo)."
+            "propone il \(modulo)."
         }
 
         /// `formazione.modulo_fissato`

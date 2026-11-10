@@ -4,8 +4,8 @@
     "en": "Save this code."
   },
   "codice.a_cosa_serve": {
-    "it": "Ti serve per rientrare se dimentichi la password: salvalo.",
-    "en": "You need it to get back in if you forget your password: save it."
+    "it": "Ti serve per rientrare se dimentichi la password.",
+    "en": "You need it to get back in if you forget your password."
   },
   "codice.spiega": {
     "it": "Non viene mostrato di nuovo: copialo in un posto sicuro (per esempio nel gestore di password).",

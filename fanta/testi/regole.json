@@ -60,8 +60,8 @@
     "en": "Reading the text…"
   },
   "regole.leghe_apri_regolamento": {
-    "it": "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli. Non cambia nulla finché non tocchi «Salva».",
-    "en": "On Leghe open the competition rules, copy the text and paste it here: the app recognises the values and shows them before applying them. Nothing changes until you confirm."
+    "it": "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli. Non cambia nulla finché non tocchi «Salva le regole».",
+    "en": "On Leghe open the competition rules, copy the text and paste it here: the app recognises the values and shows them before applying them. Nothing changes until you tap «Save the rules»."
   },
   "regole.malus": {
     "it": "Malus",
@@ -176,8 +176,8 @@
     "en": "Defender {n} grade"
   },
   "regole.valori_applicati_controlla": {
-    "it": "Valori applicati: controlla e salva",
-    "en": "Values applied: check and save"
+    "it": "Valori applicati: controlla e tocca «Salva le regole»",
+    "en": "Values applied: check them and tap «Save the rules»"
   },
   "regole.voti_portiere_difensori": {
     "it": "Voti: portiere e 3 difensori",

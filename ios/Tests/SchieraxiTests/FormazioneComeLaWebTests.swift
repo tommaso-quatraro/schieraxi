@@ -58,9 +58,11 @@ struct FormazioneComeLaWebTests {
         #expect(Catalogo.Formazione.toccaConfronto.contains("⇄"))
     }
 
-    @Test("Stile: «Propone il 3-4-3.» con il modulo dello stile, «Modulo fissato a mano (…)» con un altro modulo")
+    @Test("Stile: «propone il 3-4-3.» con il modulo dello stile, «Modulo fissato a mano (…)» con un altro modulo")
     func fraseStile() {
         #expect(FormazioneView.fraseStile(proposto: "3-4-3", attivo: "3-4-3") == Catalogo.Formazione.propone(modulo: "3-4-3"))
+        #expect(FormazioneView.fraseStile(proposto: "3-4-3", attivo: "3-4-3") == "propone il 3-4-3.",
+                "dopo «Equilibrata:» la frase comincia con la minuscola (#557)")
         #expect(FormazioneView.fraseStile(proposto: "3-4-3", attivo: "4-4-2") == Catalogo.Formazione.moduloFissato(modulo: "3-4-3"),
                 "nella frase c'è il modulo dello stile, non quello scelto")
     }

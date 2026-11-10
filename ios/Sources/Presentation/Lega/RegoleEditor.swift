@@ -151,12 +151,13 @@ final class RegoleEditorViewModel: ViewModelBase {
     }
 
     /// Mette nei campi i valori riconosciuti. Non salva: lo fa l'utente con «Salva le regole», dopo aver controllato.
+    /// La frase dopo, come la web: `regole.valori_applicati_controlla` (#559).
     func applicaRiconosciute() {
         guard let r = riconoscimento, !r.modifiche.isEmpty else { return }
         valore = RegoleLogica.applica(r.modifiche, a: valore)
         fasce = RegoleLogica.fasce(valore)
         modificato = true
-        esito = "Valori applicati: controlla e tocca «Salva le regole»."
+        esito = Catalogo.Regole.valoriApplicatiControlla
         esitoRiuscito = true
         riconoscimento = nil
         Haptics.selezione()

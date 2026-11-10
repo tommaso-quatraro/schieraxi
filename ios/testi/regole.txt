@@ -36,6 +36,7 @@ regole.da_riga
 regole.non_riconosciute
 regole.applica_campi
 regole.controlla_valori_qui
+regole.valori_applicati_controlla
 regole.gol_di
 regole.altri_bonus
 regole.rigore_parato_p
