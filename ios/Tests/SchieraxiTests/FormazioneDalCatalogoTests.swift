@@ -65,12 +65,12 @@ struct FormazioneDalCatalogoTests {
     func ilControlloVede() {
         let codice = Self.senzaCommenti("""
         Text("Titolari")
-        Text("Propone il \\(modulo).")
+        Text("propone il \\(modulo).")
         messaggio = "Formazione copiata: incollala dove vuoi."
         // Text("Annulla modifiche") in un commento non conta
         """)
         let trovate = Self.frasi.flatMap(Self.daCercare).filter { codice.contains($0) }
-        #expect(trovate == ["\"Titolari\"", "\"Propone il ", Catalogo.Formazione.copiata])
+        #expect(trovate == ["\"Titolari\"", "\"propone il ", Catalogo.Formazione.copiata])
     }
 
     // MARK: dove l'iPhone diceva un'altra cosa, vince la web

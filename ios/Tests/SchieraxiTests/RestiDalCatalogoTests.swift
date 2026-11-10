@@ -101,8 +101,10 @@ struct RestiDalCatalogoTests {
                 Catalogo.Bonus.assist, Catalogo.Bonus.rigoreSegnato, Catalogo.Bonus.portiereImbattuto, Catalogo.Bonus.mvp,
                 Catalogo.Bonus.ammonizione, Catalogo.Bonus.espulsione, Catalogo.Bonus.autogol, Catalogo.Bonus.rigoreSbagliato,
                 Catalogo.Bonus.golSubitoPortiere, Catalogo.Regole.legheApriRegolamento,
+                Catalogo.Regole.controllaValoriQui, Catalogo.Regole.valoriApplicatiControlla,
              ],
-             usa: ["Catalogo.Bonus.assist", "Catalogo.Bonus.golSubitoPortiere", "Catalogo.Regole.legheApriRegolamento"]),
+             usa: ["Catalogo.Bonus.assist", "Catalogo.Bonus.golSubitoPortiere", "Catalogo.Regole.legheApriRegolamento",
+                   "Catalogo.Regole.controllaValoriQui", "Catalogo.Regole.valoriApplicatiControlla"]),
         Caso(file: "Sources/Presentation/Lega/ImportaRoseView.swift",
              testi: [Catalogo.Lega.esportaRoseExcel],
              usa: ["Catalogo.Lega.esportaRoseExcel"]),
@@ -134,6 +136,15 @@ struct RestiDalCatalogoTests {
         for costante in caso.usa {
             #expect(Self.usa(codice, costante), "\(caso.file) non usa \(costante)")
         }
+    }
+
+    @Test("Regole: i testi d'aiuto dell'importazione da Leghe nominano il pulsante «Salva le regole», mai «Salva» da solo (#559)",
+          arguments: [Catalogo.Regole.legheApriRegolamento, Catalogo.Regole.controllaValoriQui,
+                      Catalogo.Regole.valoriApplicatiControlla])
+    func aiutoRegoleNominaIlPulsante(testo: String) {
+        #expect(Catalogo.Regole.salvaRegole == "Salva le regole")
+        #expect(testo.contains("«\(Catalogo.Regole.salvaRegole)»"))
+        #expect(!testo.contains("«Salva»"))
     }
 
     @Test("Il controllo «usa» vuole il nome intero: «Catalogo.Avv.prima» non vale dentro «Catalogo.Avv.primaAiuto»")

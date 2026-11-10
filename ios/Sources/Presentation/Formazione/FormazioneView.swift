@@ -493,7 +493,7 @@ struct FormazioneView: View {
         }
     }
 
-    /// Come la web: «**Equilibrata**: Propone il 3-4-3.» o «Modulo fissato a mano (…)». Accanto a «Modifica a mano» se ci sta in
+    /// Come la web: «**Equilibrata**: propone il 3-4-3.» o «Modulo fissato a mano (…)». Accanto a «Modifica a mano» se ci sta in
     /// una riga, altrimenti sopra (la frase lunga o il testo grande non schiacciano il pulsante). «Modifica a mano» solo dove la web
     /// la offre (`StatoScelta.conModificaAMano`): con una scelta salvata e un altro modulo sullo schermo ci sono Salva e Annulla.
     @ViewBuilder

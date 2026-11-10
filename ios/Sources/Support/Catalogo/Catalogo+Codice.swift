@@ -7,7 +7,7 @@ extension Catalogo {
         static let titolo = "Il tuo codice di recupero"
 
         /// `codice.a_cosa_serve`
-        static let aCosaServe = "Ti serve per rientrare se dimentichi la password: salvalo."
+        static let aCosaServe = "Ti serve per rientrare se dimentichi la password."
 
         /// `codice.salva`
         static let salva = "Salva questo codice."

@@ -353,8 +353,8 @@
     "en": "Formation set by hand (the style suggests the {modulo}): tap the style to go back to its own."
   },
   "formazione.propone": {
-    "it": "Propone il {modulo}.",
-    "en": "It suggests the {modulo}."
+    "it": "propone il {modulo}.",
+    "en": "it suggests the {modulo}."
   },
   "formazione.stella_non_massimo": {
     "it": "Il {modulo} ha qualche decimo di punti attesi in più, ma con titolari meno sicuri: con lo stile «{stile}» il {consigliato} è la scelta più prudente.",

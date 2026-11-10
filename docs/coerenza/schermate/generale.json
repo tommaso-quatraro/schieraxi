@@ -48,10 +48,10 @@
     {
       "id": 64,
       "schermata": "Stati comuni, Aspetto e Regole: lega senza rose, funzione spenta, tema, importazione da Leghe",
-      "web": "senza rose «Prima le tue rose», «Importa le rose della tua lega: poi qui trovi i consigli per la tua squadra. Ci vuole un minuto.» e «Importa le rose» (`cartaSenzaRose`); funzione spenta «Non disponibile», «Torna a Oggi» e «Apri le impostazioni» (`cartaFunzioneSpenta`); Aspetto «Automatico segue il chiaro e lo scuro del dispositivo.»; Regole «… Non cambia nulla finché non tocchi «Salva».» (`regole.leghe_apri_regolamento`)",
+      "web": "senza rose «Prima le tue rose», «Importa le rose della tua lega: poi qui trovi i consigli per la tua squadra. Ci vuole un minuto.» e «Importa le rose» (`cartaSenzaRose`); funzione spenta «Non disponibile», «Torna a Oggi» e «Apri le impostazioni» (`cartaFunzioneSpenta`); Aspetto «Automatico segue il chiaro e lo scuro del dispositivo.»; Regole «… Non cambia nulla finché non tocchi «Salva le regole».» (`regole.leghe_apri_regolamento`, con il nome del pulsante dal #559: riga 65)",
       "iphone": "prima: senza rose «Manca la tua squadra» e «Mister, qui non ci sono ancora le rose. Incolla la pagina delle rose o scegli il file della lega …»; funzione spenta il pulsante «Impostazioni»; Aspetto «Automatico segue il chiaro e lo scuro di iPhone.»; Regole «… finché non tocchi «Salva le regole».» (`ConfiguraLegaView.swift`, `Stati.swift`, `LegaPagine.swift`, `RegoleEditor.swift`)",
       "forma": "web",
-      "chi": "fatto (#556): i testi vengono dal catalogo comune (`Catalogo.Comune`, `Catalogo.Dieta`, `Catalogo.Asp`, `Catalogo.Regole`), prova `RestiDalCatalogoTests`. Restano dell'iPhone il pulsante «Apri la web app nel browser» della lega senza rose e la riga sulla dimensione del testo in Aspetto",
+      "chi": "fatto (#556): i testi vengono dal catalogo comune (`Catalogo.Comune`, `Catalogo.Dieta`, `Catalogo.Asp`, `Catalogo.Regole`), prova `RestiDalCatalogoTests`. Restano dell'iPhone il pulsante «Apri la web app nel browser» della lega senza rose e la riga sulla dimensione del testo in Aspetto («… si cambia in Impostazioni > Schermo e luminosità > Dimensione del testo …», senza «di iPhone» dal #563, così vale anche sull'iPad)",
       "stato": "fatto"
     }
   ]

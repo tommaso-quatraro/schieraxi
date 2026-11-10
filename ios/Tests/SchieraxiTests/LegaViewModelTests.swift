@@ -229,7 +229,9 @@ final class LegaViewModelTests: XCTestCase {
         XCTAssertEqual(vm.valore.valore("bonus.rigore_parato")?.numero, 3)
         XCTAssertTrue(vm.modificato)
         XCTAssertNil(vm.riconoscimento)
-        XCTAssertEqual(vm.esito, "Valori applicati: controlla e tocca «Salva le regole».")
+        // la frase della web (`regole.valori_applicati_controlla`), con il nome del pulsante (#559)
+        XCTAssertEqual(vm.esito, Catalogo.Regole.valoriApplicatiControlla)
+        XCTAssertEqual(vm.esito, "Valori applicati: controlla e tocca «Salva le regole»")
     }
 
     // MARK: importazione, crediti, avvisi, movimenti, squadre

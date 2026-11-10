@@ -235,6 +235,11 @@ struct AspettoView: View {
     @AppStorage("tema") private var tema = "auto"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
 
+    /// Sotto il Tema: la frase della web e dove si cambia la dimensione del testo. «Impostazioni», non «Impostazioni di iPhone»:
+    /// la stessa frase vale sull'iPad (#563).
+    static let spiegaTema = Catalogo.Asp.autoSpiega
+        + " La dimensione del testo si cambia in Impostazioni > Schermo e luminosità > Dimensione del testo: l'app la segue."
+
     var body: some View {
         ZStack {
             Sfondo()
@@ -251,7 +256,7 @@ struct AspettoView: View {
                 } header: {
                     Text(Catalogo.Asp.tema).foregroundStyle(Color.testoSecondario)
                 } footer: {
-                    Text(Catalogo.Asp.autoSpiega + " La dimensione del testo si cambia in Impostazioni di iPhone > Schermo e luminosità > Dimensione del testo: l'app la segue.").foregroundStyle(Color.testoSecondario)
+                    Text(Self.spiegaTema).foregroundStyle(Color.testoSecondario)
                 }
                 Section {
                     Toggle("Animazioni ridotte", isOn: $animazioniRidotte).tint(Color.verde).frame(minHeight: 44)

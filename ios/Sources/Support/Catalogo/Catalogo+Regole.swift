@@ -77,7 +77,7 @@ extension Catalogo {
         static let importaLeghe = "Importa da Leghe"
 
         /// `regole.leghe_apri_regolamento`
-        static let legheApriRegolamento = "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli. Non cambia nulla finché non tocchi «Salva»."
+        static let legheApriRegolamento = "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli. Non cambia nulla finché non tocchi «Salva le regole»."
 
         /// `regole.riconosci_regole`
         static let riconosciRegole = "Riconosci le regole"
@@ -106,6 +106,9 @@ extension Catalogo {
 
         /// `regole.controlla_valori_qui`
         static let controllaValoriQui = "Controlla i valori qui sotto e tocca «Salva le regole» in fondo."
+
+        /// `regole.valori_applicati_controlla`
+        static let valoriApplicatiControlla = "Valori applicati: controlla e tocca «Salva le regole»"
 
         /// `regole.gol_di`
         static func golDi(ruolo: String) -> String {
