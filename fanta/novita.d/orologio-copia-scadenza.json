@@ -1,0 +1,1 @@
+{"titolo": "Server: copia automatica alla scadenza più affidabile", "voci": ["Nessun cambio visibile: la copia automatica della formazione alla scadenza usa sempre l'ora del suo giro."], "tecnico": ["copia_scadenza.copia_utente passa adesso a consigli.giornata_da_giocare; quattro test di tests/test_copia_scadenza.py non dipendono più dalla data vera."]}

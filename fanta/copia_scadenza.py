@@ -54,7 +54,7 @@ def copia_utente(ctx: Contesto, db, adesso: datetime, fatte: set[str]) -> str | 
         return None
     reg = regole.carica(ctx.regole)
     stagione = consigli.stagione_corrente()
-    g = consigli.giornata_da_giocare(db, stagione, reg)
+    g = consigli.giornata_da_giocare(db, stagione, reg, adesso)   # l'ora del giro, non l'orologio vero
     if g is None or not dovuta(adesso, avvisi.scadenza(avvisi.prima_partita(db, stagione, g), reg)):
         return None
     chiave = f"{ctx.utente_id}/{stagione}/{g}"
