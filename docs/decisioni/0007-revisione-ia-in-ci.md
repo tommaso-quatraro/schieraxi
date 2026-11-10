@@ -38,7 +38,7 @@ La revisione fatta dagli agenti prima della pull request a volte manca o è parz
   nome (niente `secrets: inherit`) e solo tramite `env`.
 
 ## Versioni
-- Azione fissata per commit: v1.0.266, commit `d535f5172dec02b204866b393d6b20b9b2aaf98d` del 31/10/2026 (più di una settimana prima).
+- Azione fissata per commit: v1.0.266, commit `d535f5172dec02b204866b393d6b20b9b2aaf98d` del 31/10/2026, adottata il 10/11 dopo i 7 giorni di attesa di Dependabot.
 - La versione di Claude Code è scritta nell'azione (ogni versione dell'azione ha la sua) e si installa con lo script ufficiale: fissare
   l'azione fissa anche Claude Code. `path_to_claude_code_executable` permetterebbe di usarne un'altra, ma l'azione avvisa che
   versioni diverse possono non funzionare: non lo usiamo. Bun (1.4.4) e `oven-sh/setup-bun` sono fissati dentro l'azione.

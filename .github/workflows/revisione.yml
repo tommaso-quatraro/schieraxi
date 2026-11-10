@@ -62,7 +62,7 @@ jobs:
           git diff --name-status --no-color HEAD^1 HEAD > .revisione-ia/file.txt
           echo "Diff: $(wc -l < .revisione-ia/diff.patch) righe, $(wc -l < .revisione-ia/file.txt) file"
 
-      # Versione fissata per commit (del 26/10/2026): fissa anche Claude Code (2.1.311, scritto nell'azione) e Bun (1.4.4).
+      # Versione fissata per commit (del 31/10/2026): fissa anche Claude Code (2.1.316, scritto nell'azione) e Bun (1.4.4).
       - name: Revisione con Claude Code
         id: claude
         if: steps.segreto.outputs.presente == 'true'
