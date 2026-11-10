@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.449",
+    "data": "2026-11-10T20:25:56",
+    "titolo": "Server: copia automatica alla scadenza più affidabile",
+    "voci": [
+      "Nessun cambio visibile: la copia automatica della formazione alla scadenza usa sempre l'ora del suo giro."
+    ],
+    "tecnico": [
+      "copia_scadenza.copia_utente passa adesso a consigli.giornata_da_giocare; quattro test di tests/test_copia_scadenza.py non dipendono più dalla data vera."
+    ]
+  },
+  {
     "versione": "1.448",
     "data": "2026-11-10T01:19:21",
     "titolo": "Le ultime scritte dell'iPhone dalla stessa fonte della web",
