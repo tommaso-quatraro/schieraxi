@@ -79,7 +79,7 @@ def test_ogni_azione_esterna_e_fissata_per_hash():
 # Le sole azioni di altri ammesse, con il commit esatto e il file dove si usano. Ognuna deve stare anche nell'elenco delle
 # azioni permesse del repository (Settings > Actions > General), insieme alle azioni che usa al suo interno
 # (claude-code-action usa oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6): vedi docs/decisioni/0007.
-AZIONI_DI_ALTRI = {"anthropics/claude-code-action@8041f1d17e0e7d2f2cfe35002962e9f26237c0bb": "revisione.yml"}
+AZIONI_DI_ALTRI = {"anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d": "revisione.yml"}
 
 
 def test_solo_azioni_di_github():

@@ -62,11 +62,11 @@ jobs:
           git diff --name-status --no-color HEAD^1 HEAD > .revisione-ia/file.txt
           echo "Diff: $(wc -l < .revisione-ia/diff.patch) righe, $(wc -l < .revisione-ia/file.txt) file"
 
-      # Versione fissata per commit (del 26/10/2026): fissa anche Claude Code (2.1.311, scritto nell'azione) e Bun (1.4.4).
+      # Versione fissata per commit (del 31/10/2026): fissa anche Claude Code (2.1.316, scritto nell'azione) e Bun (1.4.4).
       - name: Revisione con Claude Code
         id: claude
         if: steps.segreto.outputs.presente == 'true'
-        uses: anthropics/claude-code-action@8041f1d17e0e7d2f2cfe35002962e9f26237c0bb  # v1.0.263
+        uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d  # v1.0.266
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}   # token del job, permessi qui sopra: niente app di Claude, niente id-token
