@@ -1,6 +1,11 @@
 """Excel esportati dalla lega con altri fogli oltre alle rose (#543): listone, calendario e classifica non sono rose e si saltano
-in silenzio (niente squadre finte, niente avvisi); le rose dello stesso file si leggono come sempre.
+in silenzio (niente squadre finte, niente avvisi); le rose dello stesso file si leggono come sempre. Se ci sono solo quei fogli
+il messaggio dice quali; i messaggi d'errore dell'importazione arrivano interi all'app (#579).
 Squadre, persone e giocatori inventati; i file stanno in cartelle temporanee."""
+import ast
+import json
+from pathlib import Path
+
 import openpyxl
 import pytest
 
@@ -88,28 +93,32 @@ def _riassunto(squadre):
             for s in squadre}
 
 
-# ---------------------------------------------------------------- un foglio alla volta: nessuna squadra, nessun avviso
+ROSE_LETTE = {"Real Esempio": ([1, 3, 12, 7], 12), "FC Under": ([11, 4, 6, 8], 3)}
+
+
+# ---------------------------------------------------------------- un tipo di foglio alla volta, accanto alle rose
 def test_foglio_del_listone_si_salta(calciatori):
     """Centinaia di giocatori con le quotazioni, senza nomi di squadra in mezzo: prima diventavano una squadra sola (e con gli
     account l'importazione si fermava: più di 40 giocatori)."""
     tutti = calciatori + giocatori_inventati()
     avvisi = []
-    assert rose.estrai([("Tutti", foglio_listone(tutti))], Indice(tutti), avvisi=avvisi) == []
-    assert avvisi == []
+    squadre = rose.estrai([("Rose", ROSE), ("Tutti", foglio_listone(tutti))], Indice(tutti), avvisi=avvisi)
+    assert _riassunto(squadre) == ROSE_LETTE and avvisi == []
 
 
 def test_foglio_del_calendario_si_salta(indice):
     """Giornate e coppie di fantasquadre con i punteggi: prima ogni giornata diventava una squadra di «giocatori» non trovati."""
     avvisi = []
-    assert rose.estrai([("Calendario", CALENDARIO)], indice, avvisi=avvisi) == []
-    assert avvisi == []
+    squadre = rose.estrai([("Rose", ROSE), ("Calendario", CALENDARIO)], indice, avvisi=avvisi)
+    assert _riassunto(squadre) == ROSE_LETTE and avvisi == []
 
 
 def test_foglio_della_classifica_si_salta(indice):
-    """Fantasquadre con posizione e punti: prima il titolo diventava una squadra con le altre come «giocatori»."""
+    """Fantasquadre con posizione e punti: prima la prima squadra della classifica prendeva le altre come «giocatori», anche
+    la squadra vera con lo stesso nome nelle rose."""
     avvisi = []
-    assert rose.estrai([("Classifica", CLASSIFICA)], indice, avvisi=avvisi) == []
-    assert avvisi == []
+    squadre = rose.estrai([("Classifica", CLASSIFICA), ("Rose", ROSE)], indice, avvisi=avvisi)
+    assert _riassunto(squadre) == ROSE_LETTE and avvisi == []
 
 
 # ---------------------------------------------------------------- il file intero: solo le rose
@@ -119,7 +128,7 @@ def test_excel_con_rose_listone_calendario_e_classifica_legge_solo_le_rose(tmp_p
     tutti = calciatori + giocatori_inventati()
     avvisi = []
     squadre = rose.estrai(leggi(_excel_misto(tmp_path, calciatori)), Indice(tutti), avvisi=avvisi)
-    assert _riassunto(squadre) == {"Real Esempio": ([1, 3, 12, 7], 12), "FC Under": ([11, 4, 6, 8], 3)}
+    assert _riassunto(squadre) == ROSE_LETTE
     assert avvisi == []
 
 
@@ -165,3 +174,100 @@ def test_una_rosa_di_nomi_non_riconosciuti_resta_una_rosa(indice):
     righe = [["Real Esempio"], ["Ruolo", "Calciatore", "Costo"]] + [["D", f"Sconosciuto {chr(65 + k)}", 5 + k] for k in range(8)]
     squadre = rose.estrai([("Rose", righe)], indice)
     assert [(s.nome, len(s.righe)) for s in squadre] == [("Real Esempio", 8)]
+
+
+# costi sopra 17: con il listone di prova (codici 1-17) righe «nome, numero, numero» sembrerebbero l'esportazione «rosters»
+SCONOSCIUTI = [["Ugo Inventato", 21, 22], ["Leo Fittizio", 27, 29], ["Gino Immaginario", 35, 30], ["Pio Ipotetico", 23, 24],
+               ["Ivo Supposto", 45, 44], ["Ezio Presunto", 19, 20], ["Rino Teorico", 60, 58], ["Dino Figurato", 25, 26]]
+
+
+@pytest.mark.parametrize("fogli, nomi", [
+    ([("Rose", [["Real Esempio"], ["Calciatore", "Costo", "Quotazione"]] + SCONOSCIUTI)],    # squadre in colonna
+     [r[0] for r in SCONOSCIUTI]),
+    # un foglio per squadra: il nome è quello del foglio (il primo giocatore è nel listone, se no sarebbe preso per il nome)
+    ([("Real Esempio", [["Giocatore", "Prezzo", "Quotazione"], ["Sommer", 18, 20]] + SCONOSCIUTI)],
+     ["Sommer"] + [r[0] for r in SCONOSCIUTI]),
+], ids=["squadre-in-colonna", "un-foglio-per-squadra"])
+def test_rosa_senza_ruolo_con_nomi_sconosciuti_resta_una_rosa(indice, fogli, nomi):
+    """Nome, costo e quotazione, senza ruolo né squadra di Serie A, con nomi che il listone non conosce (per esteso): ogni riga
+    sembra quella di una classifica, ma l'intestazione da rosa (calciatore, giocatore, costo, prezzo) dice che è una rosa."""
+    squadre = rose.estrai(fogli, indice)
+    assert [(s.nome, [r.testo for r in s.righe]) for s in squadre] == [("Real Esempio", nomi)]
+
+
+# ---------------------------------------------------------------- solo fogli saltati: il messaggio dice quali e perché
+def test_solo_fogli_saltati_il_messaggio_dice_quali(calciatori):
+    tutti = calciatori + giocatori_inventati()
+    fogli = [("Calendario", CALENDARIO), ("Classifica", CLASSIFICA), ("Quotazioni", foglio_listone(tutti)), ("Vuoto", [])]
+    with pytest.raises(ValueError) as e:
+        rose.estrai(fogli, Indice(tutti))
+    assert str(e.value) == ("Nel file non ho trovato rose. Ho saltato i fogli che sono listone, calendario o classifica: "
+                            "«Calendario», «Classifica», «Quotazioni». Carica il file delle rose esportato dalla lega.")
+
+
+@pytest.mark.parametrize("testo, tipo", [
+    ("Pos,Squadra,Punti\n1,Alfa,30\n2,Beta,25\n3,Gamma,20\n", "una classifica"),
+    ("1ª giornata;;;\nAlfa;66;72;Beta\nGamma;70;61;Delta\n2ª giornata;;;\nAlfa;68;64;Gamma\nBeta;71;69;Delta\n", "un calendario"),
+], ids=["classifica", "calendario"])
+def test_un_csv_che_non_e_una_rosa_dice_cosa_sembra(indice, testo, tipo):
+    """Un CSV o un testo incollato non ha fogli: il messaggio dice che cosa sembra il file."""
+    with pytest.raises(ValueError) as e:
+        rose.estrai(rose.griglie_da_bytes(testo.encode()), indice)
+    assert str(e.value) == f"Il file sembra {tipo}, non le rose: carica il file delle rose esportato dalla lega."
+
+
+def test_excel_di_soli_fogli_non_rose_dalla_rotta_dice_quali(ambiente, tmp_path):  # noqa: F811
+    """Il messaggio arriva intero all'app (non quello generico «La richiesta non è valida»)."""
+    a, _ = nuovo_utente("utentea")
+    contenuto = _excel(tmp_path, {"Calendario": CALENDARIO, "Classifica": CLASSIFICA}).read_bytes()
+    r = a.post("/api/rose/file", files={"file": ("lega.xlsx", contenuto, "application/octet-stream")})
+    assert r.status_code == 400
+    assert r.json()["detail"] == ("Nel file non ho trovato rose. Ho saltato i fogli che sono listone, calendario o classifica: "
+                                  "«Calendario», «Classifica». Carica il file delle rose esportato dalla lega.")
+
+
+# ---------------------------------------------------------------- i messaggi arrivano interi (#579)
+def _limite_del_server() -> int:
+    """Quanti caratteri di un messaggio d'errore dell'importazione arrivano all'app: un messaggio lunghissimo, scritto da
+    rose.py, passato al gestore degli errori del server."""
+    try:
+        rose.decodifica(b"%PDF-1.4 finto")
+    except ValueError as e:
+        e.args = ("x" * 5000,)
+        risposta = server._errore_valore(None, e)
+    return len(json.loads(risposta.body)["detail"])
+
+
+def _messaggi_scritti(modulo) -> set[str]:
+    """I messaggi dei `raise ...("...")` di un modulo (le parti variabili delle f-string contano 9 caratteri)."""
+    albero = ast.parse(Path(modulo.__file__).read_text(encoding="utf-8"))
+    costanti = {n.targets[0].id: n.value for n in albero.body
+                if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)}
+
+    def testo(n):
+        if isinstance(n, ast.Name) and n.id in costanti:
+            return testo(costanti[n.id])
+        if isinstance(n, ast.Constant) and isinstance(n.value, str):
+            return n.value
+        if isinstance(n, ast.JoinedStr):
+            return "".join(v.value if isinstance(v, ast.Constant) else "x" * 9 for v in n.values)
+        return None
+    return {s for n in ast.walk(albero) if isinstance(n, ast.Raise) and isinstance(n.exc, ast.Call) and n.exc.args
+            if (s := testo(n.exc.args[0]))}
+
+
+def test_nessun_messaggio_dell_importazione_viene_tagliato(indice):
+    limite = _limite_del_server()
+    messaggi = _messaggi_scritti(rose) | _messaggi_scritti(importa_sicuro) | {rose.NESSUNA_ROSA}
+    assert rose.NESSUNA_ROSA in messaggi and len(messaggi) > 15
+    fogli = [(f"{k} Calendario con un nome lunghissimo", CALENDARIO) for k in range(rose.MAX_FOGLI + 3)]
+    with pytest.raises(ValueError) as e:                                   # il più lungo possibile: tanti fogli dai nomi lunghi
+        rose.estrai(fogli, indice)
+    messaggi.add(str(e.value))
+    assert {m: len(m) for m in messaggi if len(m) > limite} == {}
+
+
+def test_il_messaggio_senza_rose_arriva_intero(ambiente):  # noqa: F811
+    a, _ = nuovo_utente("utentea")
+    r = a.post("/api/rose/testo", json={"testo": "Data;Nota\n1 settembre;Asta di riparazione\n2 settembre;Mercato chiuso\n"})
+    assert r.status_code == 400 and r.json()["detail"] == rose.NESSUNA_ROSA

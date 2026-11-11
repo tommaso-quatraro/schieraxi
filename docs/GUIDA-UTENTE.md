@@ -61,7 +61,7 @@ Alla prima apertura SchieraXI ti guida in quattro passi brevi. Ogni passo si pu�
 Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le rilegge e ti chiede di ricontrollare; le scelte già fatte restano.
 
 Limiti: file fino a 5 MB, al massimo 20 squadre da 40 giocatori, 10 importazioni al giorno (controllare e poi salvare lo stesso file conta una volta). Se dice che non trova nessuna rosa, controlla di aver preso il file delle rose e non il calendario o la classifica.
-Se il file Excel della lega ha anche altri fogli (listone, calendario, classifica), SchieraXI li salta e legge solo le rose.
+Se il file Excel della lega ha anche altri fogli (listone, calendario, classifica), SchieraXI li salta e legge solo le rose; se ci sono solo quelli, il messaggio dice quali fogli ha saltato.
 
 Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo) va bene. Un codice sconosciuto compare tra i non trovati; se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone, in Lega, **Non riconosciuti**).
 
