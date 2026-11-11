@@ -121,6 +121,40 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "percorsi_veri: non sostituire i percorsi dei dati personali con quelli finti")
 
 
+DATI_DEL_REPOSITORY = Path(__file__).resolve().parent.parent / "dati"     # sul PC di chi usa l'app c'è l'archivio vero
+_dati_all_inizio: set[str] | None = None
+_dati_nuovi: list[str] = []
+
+
+def _voci_in_dati() -> set[str]:
+    if not DATI_DEL_REPOSITORY.is_dir():
+        return set()
+    return {"dati"} | {"dati/" + p.relative_to(DATI_DEL_REPOSITORY).as_posix() for p in DATI_DEL_REPOSITORY.rglob("*")}
+
+
+def pytest_sessionstart(session):
+    """Controllo a fine sessione (#582): nessun test scrive nella `dati/` del repository. Qui si annota cosa c'è all'inizio;
+    con pytest-xdist lo fa solo il processo principale, che guarda di nuovo quando tutti i test sono finiti."""
+    global _dati_all_inizio
+    if not hasattr(session.config, "workerinput"):
+        _dati_all_inizio = _voci_in_dati()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    if _dati_all_inizio is None:
+        return
+    _dati_nuovi[:] = sorted(_voci_in_dati() - _dati_all_inizio)
+    if _dati_nuovi and session.exitstatus == pytest.ExitCode.OK:
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+
+def pytest_terminal_summary(terminalreporter):
+    if _dati_nuovi:
+        terminalreporter.section("file nuovi nella dati/ del repository", red=True)
+        terminalreporter.write_line("Un test ha scritto qui invece che in una cartella temporanea (fixture dati_isolati o tmp_path): "
+                                    + ", ".join(_dati_nuovi), red=True)
+
+
 @pytest.fixture(autouse=True)
 def _dati_personali_in_cartella_finta(request, tmp_path, monkeypatch):
     """Scelte, osservati, diario e affidabilità non devono mai leggere i file veri di `dati/` (scelte importate, giornate vere):
