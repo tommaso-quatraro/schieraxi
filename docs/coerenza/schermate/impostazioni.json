@@ -39,10 +39,10 @@
     {
       "id": 66,
       "schermata": "Registrazione con l'invito e Primo avvio (#580)",
-      "web": "con il codice arrivato dal link «Codice d'invito già inserito: scegli un nome utente e una password.» (`spiegaRegistrazione`, `accesso.invito_inserito`); invito non valido, scaduto o già usato: il messaggio del server «Invito non valido, scaduto o già usato: chiedine uno nuovo a chi te l'ha mandato» e la password scritta resta (`svuotaPassword`); nel passo «Le rose» il pulsante «Scegli il file (Excel o CSV)» (`pav.scegli_file`); il primo avvio lasciato a metà si riprende all'apertura dell'app dal primo passo né fatto né saltato (`primoAvvioSeServe`, `paDaRiprendere`). In Squadra › Aggiorna le rose il pulsante dice ancora «Scegli il file Excel»",
+      "web": "con il codice arrivato dal link «Codice d'invito già inserito: scegli un nome utente e una password.» (`spiegaRegistrazione`, `accesso.invito_inserito`); invito non valido, scaduto o già usato: il messaggio del server «Invito non valido, scaduto o già usato: chiedine uno nuovo a chi te l'ha mandato» e la password scritta resta (`svuotaPassword`); nel passo «Le rose» il pulsante «Scegli il file (Excel o CSV)» (`pav.scegli_file`); il primo avvio cominciato prima di caricare le rose si riprende all'apertura dell'app dal passo «Le rose», se quel passo non è né fatto né saltato e mai dall'arrivo da Condividi (`primoAvvioSeServe`, `paDaRiprendere`); chiuso con la ✕ (o Esc, tocco fuori) i passi rimasti diventano saltati, come «Più tardi» sull'iPhone (`paOsservaChiusura`). In Squadra › Aggiorna le rose il pulsante dice ancora «Scegli il file Excel»",
       "iphone": "niente link d'invito (il codice si scrive a mano): la riga «già inserito» non serve; il messaggio dell'invito arriva dal server e la password resta già oggi; in Importa le rose il pulsante dice «Scegli il file Excel» (`Catalogo.Lega.scegliFileExcel`) ma accetta anche CSV; la configurazione guidata parte da sola solo se mai iniziata e senza rose (`PrimoAvvioLogica.daAvviare`): lasciata a metà non si riprende",
       "forma": "web",
-      "chi": "web fatto (#580); da allineare: «Scegli il file (Excel o CSV)» in Importa le rose (iPhone e Squadra › Aggiorna le rose della web) e la ripresa della configurazione guidata sull'iPhone",
+      "chi": "web fatto (#580); da allineare: «Scegli il file (Excel o CSV)» in Importa le rose (iPhone e Squadra › Aggiorna le rose della web, #594) e la ripresa della configurazione guidata sull'iPhone (#595)",
       "stato": "da-fare"
     }
   ]

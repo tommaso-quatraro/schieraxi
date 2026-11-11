@@ -105,28 +105,23 @@ def test_il_pulsante_del_file_dice_excel_o_csv():
 
 
 # ---- 4. riaperta dalla Home con il primo avvio lasciato a metà: riprende dal passo dove era ------------------------------
-PASSI = ["rose", "squadra", "tempi"]
-
-
-def da_riprendere(stato, gia=()):
-    codice = _funzione(PRIMO, "paDaRiprendere") + (
-        f"\nconsole.log(JSON.stringify(paDaRiprendere({json.dumps(PASSI)}, {json.dumps(stato)}, {json.dumps(list(gia))})));")
+# Si riprende da solo SOLO nel caso dell'issue: l'amico apre l'app (per esempio dalla Home, dopo averla installata) prima di
+# caricare le rose. Chi ha già le rose, chi ha chiuso la guida (con «Vai a Oggi» o con la ✕) o ha saltato le rose non la rivede da sola.
+def da_riprendere(stato):
+    codice = _funzione(PRIMO, "paDaRiprendere") + f"\nconsole.log(JSON.stringify(paDaRiprendere({json.dumps(stato)})));"
     return _node(codice)
 
 
-@pytest.mark.parametrize("stato, gia, atteso", [
-    (None, [], None),                                                                       # mai iniziato: lo apre l'altra regola
-    ({"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}, [], "rose"),         # appena registrato
-    ({"fatti": ["server", "accesso", "rose"], "saltati": [], "chiuso": False}, [], "squadra"),
-    ({"fatti": ["server", "accesso"], "saltati": ["rose"], "chiuso": False}, [], "squadra"),  # un passo saltato resta saltato
-    ({"fatti": ["server", "accesso", "rose", "squadra"], "saltati": [], "chiuso": False}, [], "tempi"),
-    ({"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}, ["rose", "squadra"], "tempi"),  # rose e squadra già fatte altrove
-    ({"fatti": ["server", "accesso", "rose", "squadra"], "saltati": ["tempi"], "chiuso": False}, [], None),  # niente di aperto
-    ({"fatti": ["server", "accesso", "rose", "squadra", "tempi"], "saltati": [], "chiuso": False}, [], None),
-    ({"fatti": ["server", "accesso"], "saltati": [], "chiuso": True}, [], None),           # chiuso con «Vai a Oggi»: mai più da solo
+@pytest.mark.parametrize("stato, atteso", [
+    (None, False),                                                                           # mai iniziato: lo apre l'altra regola
+    ({"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}, True),                # appena registrato
+    ({"fatti": ["server", "accesso", "rose"], "saltati": [], "chiuso": False}, False),       # resta «I tempi»: non da sola
+    ({"fatti": ["server", "accesso"], "saltati": ["rose"], "chiuso": False}, False),         # le rose le ha saltate lui
+    ({"fatti": ["server", "accesso"], "saltati": ["rose", "squadra", "tempi"], "chiuso": False}, False),  # chiusa con la ✕
+    ({"fatti": ["server", "accesso"], "saltati": [], "chiuso": True}, False),                # chiuso con «Vai a Oggi»
 ])
-def test_il_passo_da_cui_riprendere(stato, gia, atteso):
-    assert da_riprendere(stato, gia) == atteso
+def test_quando_si_riprende_da_solo(stato, atteso):
+    assert da_riprendere(stato) is atteso
 
 
 def _avvio(primo_avvio, squadre=(), mia=False, chiamate=1, onboarding="nessuno") -> dict:
@@ -159,9 +154,19 @@ def test_riaperta_con_il_primo_avvio_a_meta_lo_riprende():
     assert esito["scritte"] == []                         # lo stato salvato sul server resta com'era: si riprende, non si riparte
 
 
-def test_riprende_anche_con_le_rose_gia_caricate():
-    esito = _avvio({"fatti": ["server", "accesso", "rose"], "saltati": [], "chiuso": False}, squadre=[{"nome": "Real Esempio"}], mia=True)
-    assert esito["aperture"] == 1                         # resta il passo «I tempi della lega»
+def test_con_le_rose_non_riparte():
+    """Rose caricate (dalla guida o da Squadra › Aggiorna le rose) e un passo ancora aperto, per esempio «I tempi della lega»
+    che l'iPhone non ha: la guida non si riapre da sola a ogni apertura."""
+    a_meta = {"fatti": ["server", "accesso", "rose"], "saltati": [], "chiuso": False}
+    assert _avvio(a_meta, squadre=[{"nome": "Real Esempio"}], mia=True) == {"aperture": 0, "scritte": []}
+    mai_toccata = {"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}
+    assert _avvio(mai_toccata, squadre=[{"nome": "Real Esempio"}])["aperture"] == 0
+
+
+def test_chiusa_con_la_x_non_riparte():
+    # la ✕ segna saltati i passi rimasti (test qui sotto): alla prossima apertura, anche senza rose, la guida non torna
+    assert _avvio({"fatti": ["server", "accesso"], "saltati": ["rose", "squadra", "tempi"], "chiuso": False})["aperture"] == 0
+    assert _avvio({"fatti": ["server", "accesso"], "saltati": ["rose"], "chiuso": False})["aperture"] == 0
 
 
 def test_primo_avvio_chiuso_o_finito_non_si_riapre():
@@ -183,3 +188,47 @@ def test_si_riprende_una_volta_sola_per_apertura_dell_app():
     """L'avvio e Oggi senza rose lo chiedono tutti e due: si apre una volta; chiuso con la ✕, non torna a ogni visita di Oggi."""
     assert _avvio({"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}, chiamate=3)["aperture"] == 1
     assert _avvio(None, chiamate=2)["aperture"] == 1
+
+
+def test_aperta_da_condividi_non_apre_la_guida():
+    """Arrivo dal menu Condividi del telefono (stemma e maglia): la guida non prende il posto del foglio dell'immagine."""
+    assert 'if (typeof primoAvvioSeServe === "function" && !condivisa) primoAvvioSeServe();' in APP
+    assert APP.count("primoAvvioSeServe();") == 2           # l'avvio (non da Condividi) e Oggi senza rose
+
+
+# ---- chiusa senza finire (✕, Esc, tocco fuori, trascinata giù): i passi rimasti diventano saltati, come «Più tardi» sull'iPhone ----
+def _chiusura(fatti, saltati, guida_nel_foglio=True, nascosto=True) -> list:
+    """Il foglio con la guida si chiude: cosa viene salvato sul server (PUT di /api/primo-avvio)."""
+    codice = "\n".join([
+        TESTI,
+        "const esc = x => String(x); const avviso = () => {}; const stato = { account: true };",
+        "const foglio = { hidden: false };",
+        f"const $ = sel => (sel === '#foglio' ? foglio : sel === '#foglio-contenuto .pa-capo' ? ({json.dumps(guida_nel_foglio)} ? {{}} : null) : null);",
+        "let avvisa = null; class MutationObserver { constructor(fn) { avvisa = fn; } observe() {} }",
+        "const scritte = [];",
+        "async function api(percorso, opz = {}) { scritte.push(JSON.parse(opz.body)); return { primo_avvio: JSON.parse(opz.body) }; }",
+        PRIMO,
+        f"pa.stato = {{ fatti: {json.dumps(fatti)}, saltati: {json.dumps(saltati)}, chiuso: false }};",
+        "paOsservaChiusura(); paOsservaChiusura();",                      # una volta sola anche se la guida si ridisegna
+        "(async () => {",
+        f"  foglio.hidden = {json.dumps(nascosto)}; avvisa();",
+        "  await new Promise(r => setTimeout(r, 20));",
+        "  console.log(JSON.stringify(scritte));",
+        "})();",
+    ])
+    return _node(codice)
+
+
+def test_la_x_salta_i_passi_rimasti():
+    assert _chiusura(["server", "accesso"], []) == [{"saltati": ["rose", "squadra", "tempi"]}]
+    assert _chiusura(["server", "accesso", "rose"], ["squadra"]) == [{"saltati": ["squadra", "tempi"]}]
+
+
+def test_chiusa_a_guida_finita_o_con_un_altro_foglio_non_salva_niente():
+    assert _chiusura(["server", "accesso", "rose", "squadra"], ["tempi"]) == []     # «Tutto pronto»: niente di rimasto
+    assert _chiusura(["server", "accesso"], [], guida_nel_foglio=False) == []         # il foglio mostrava altro
+    assert _chiusura(["server", "accesso"], [], nascosto=False) == []                 # il foglio si è aperto, non chiuso
+
+
+def test_la_guida_osserva_la_chiusura_del_foglio():
+    assert "paOsservaChiusura();" in _funzione(PRIMO, "paDisegna")

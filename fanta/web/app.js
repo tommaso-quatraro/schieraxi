@@ -4868,7 +4868,8 @@ controllaAccesso().then(async entrato => {
       iniziale = "squadra";
     }
     vai(iniziale);
-    if (typeof primoAvvioSeServe === "function") primoAvvioSeServe();
+    // dal menu Condividi si apre il foglio di stemma e maglia: la guida non gli prende il posto
+    if (typeof primoAvvioSeServe === "function" && !condivisa) primoAvvioSeServe();
     if (condivisa === "1") apriStemmaMaglia(null, true);
     else if (condivisa === "no") avviso("Non ho potuto usare l'immagine condivisa: servono PNG, JPEG o WebP fino a 4 MB", 7000);
   });

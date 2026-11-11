@@ -59,7 +59,23 @@ function paProgresso() {
   }).join("")}</ol>`;
 }
 
+// Guida chiusa senza finire (✕, Esc, tocco fuori, foglio trascinato giù, un collegamento che porta altrove): i passi rimasti
+// diventano saltati, come «Più tardi» sull'iPhone. Così non si riapre da sola e «Da fare» propone di riprenderla.
+// Si guarda il foglio, non ogni modo di chiuderlo: quando si nasconde con la guida dentro.
+let paOsservatore = null;
+function paOsservaChiusura() {
+  const foglio = $("#foglio");
+  if (paOsservatore || !foglio || typeof MutationObserver !== "function") return;
+  paOsservatore = new MutationObserver(() => {
+    if (!foglio.hidden || !$("#foglio-contenuto .pa-capo")) return;
+    const rimasti = PA_PASSI.filter(p => !paFatto(p) && !paSaltato(p));
+    if (rimasti.length) paSalva({ saltati: [...new Set([...pa.stato.saltati, ...rimasti])] });
+  });
+  paOsservatore.observe(foglio, { attributes: true, attributeFilter: ["hidden"] });
+}
+
 function paDisegna() {
+  paOsservaChiusura();
   const p = pa.passo;
   if (!p) { paFine(); return; }
   const corpo = PA_SCHERMATE[p]();
@@ -296,17 +312,19 @@ async function paNonRiconosciuti() {
   });
 }
 
-// Il passo da cui riprendere il primo avvio lasciato a metà (#580): il primo né fatto né saltato, contando come fatti anche quelli
-// che si vedono già fatti (`gia`). null se non l'hai mai iniziato, se l'hai chiuso con «Vai a Oggi» o se non resta niente di aperto.
-function paDaRiprendere(passi, s, gia) {
-  if (!s || s.chiuso) return null;
-  const fatti = [...(s.fatti || []), ...gia], saltati = s.saltati || [];
-  return passi.find(p => !fatti.includes(p) && !saltati.includes(p)) || null;
+// Il primo avvio lasciato a metà si riprende da solo SOLO nel caso di #580: l'amico ha aperto l'app (per esempio dalla Home, dopo
+// averla installata) prima di caricare le rose. Serve che l'abbia cominciato e non l'abbia chiuso e che il passo «Le rose» non sia
+// né fatto né saltato (la ✕ salta i passi rimasti: paOsservaChiusura); che le rose non ci siano lo guarda paControllaAvvio. Chi ha
+// già le rose non la rivede da sola, anche con un passo aperto (per esempio «I tempi della lega», che l'iPhone non ha): la riapre da
+// Impostazioni o da «Da fare».
+function paDaRiprendere(s) {
+  return !!s && !s.chiuso && !(s.fatti || []).includes("rose") && !(s.saltati || []).includes("rose");
 }
 
-// All'apertura dell'app, una volta sola (lo chiedono sia l'avvio sia Oggi senza rose: chiuso con la ✕, non torna a ogni visita di Oggi):
-// - cominciato e lasciato a metà, anche nel browser prima di mettere l'app sulla Home o su un altro dispositivo: si riprende dal
-//   passo dove era, con lo stato che il server ricorda (#580);
+// All'apertura dell'app, una volta sola (lo chiedono sia l'avvio sia Oggi senza rose: non torna a ogni visita di Oggi), e mai
+// dall'arrivo da Condividi (lo decide l'avvio in app.js):
+// - cominciato prima di caricare le rose, anche nel browser prima di mettere l'app sulla Home o su un altro dispositivo: si
+//   riprende dalle rose, con lo stato che il server ricorda (#580);
 // - mai cominciato (né il primo avvio né la vecchia procedura) e senza rose: parte da solo; da quel momento il server ricorda che
 //   hai cominciato.
 let paControllo = null;
@@ -316,12 +334,12 @@ function primoAvvioSeServe() {
 }
 async function paControllaAvvio() {
   try {
+    if ((stato.squadre || []).length) return;             // con le rose la guida non parte né riprende da sola
     const r = await api("/api/primo-avvio");
     if (r.primo_avvio) {
-      if (paDaRiprendere(PA_PASSI, r.primo_avvio, paGiaFatti())) await apriPrimoAvvio();
+      if (paDaRiprendere(r.primo_avvio)) await apriPrimoAvvio();
       return;
     }
-    if ((stato.squadre || []).length) return;
     if (stato.account) {
       const o = await api("/api/onboarding");
       if (o.stato === "completato" || o.stato === "saltato") return;
