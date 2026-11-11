@@ -133,7 +133,7 @@ def test_registri_ruota_registro_non_usa_un_nome_di_lavoro_gia_presente(tmp_path
 def test_registri_file_di_blocco_aperti_senza_svuotarli():
     """I file di blocco stanno in ~/.cache, che scrive anche il servizio: si aprono in aggiunta (>>), che non svuota un file
     raggiunto attraverso un collegamento."""
-    for f in SCRIPT.glob("*.sh"):
+    for f in [*SCRIPT.glob("*.sh"), SCRIPT / "prova" / "esporta-archivio-prova.sh"]:     # questo gira con l'utente della produzione
         for riga in f.read_text(encoding="utf-8").splitlines():
             parti = riga.strip().split()
             if len(parti) >= 2 and parti[0] == "exec" and parti[1][:1].isdigit() and not parti[1].endswith(">&-"):
