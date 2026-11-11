@@ -2236,6 +2236,7 @@ def chiave_push():
 def iscrivi_push(dati: IscrizionePush, request: Request, ctx: Contesto = Depends(lega_corrente)):
     """Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy). Con gli account la sessione si
     ricontrolla subito prima di scrivere: se nel frattempo si è chiusa (cambio password, «Esci da tutti») non resta niente."""
+    limiti.iscrizione_push(ctx, dati.endpoint)       # tetto all'ora per utente (429): ogni iscrizione controlla il nome in rete
     ancora_valida = (lambda: rotte_account.identifica(request) is not None) if ctx.utente_id is not None else None
     try:
         return {"dispositivi": len(notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push, ancora_valida=ancora_valida))}

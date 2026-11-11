@@ -95,7 +95,8 @@ def iscrizioni(percorso: Path | None = None) -> list[dict]:
 
 TEMPO_DNS = 5.0                      # secondi al massimo per risolvere un nome
 DURATA_CACHE_DNS = 300               # 5 minuti: l'indirizzo controllato e quello usato per connettersi sono lo stesso
-_cache_dns: dict[str, tuple[float, list[str]]] = {}
+DURATA_CACHE_NEGATIVA = 120          # 2 minuti: un nome che non si è risolto (tempo finito o errore) risponde subito «no»
+_cache_dns: dict[str, tuple[float, list[str]]] = {}      # nome -> (quando, indirizzi); lista vuota = non risolto
 _blocco_dns = threading.Lock()
 _NOME_SITO = re.compile(r"^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+(xn--[a-z0-9-]{2,59}|[a-z]{2,24})$")
 
@@ -138,27 +139,37 @@ def _forma_endpoint(ep: str) -> str:
     return host
 
 
+def _ricorda(host: str, ora: float, trovati: list[str]) -> None:
+    with _blocco_dns:
+        if len(_cache_dns) > 200:
+            _cache_dns.clear()
+        _cache_dns[host] = (ora, list(trovati))
+
+
 def indirizzi_verificati(host: str) -> list[str]:
     """Gli indirizzi IP del sito, tutti pubblici (altrimenti ValueError). Il risultato resta 5 minuti: la connessione di invio usa
-    proprio questi, senza risolvere una seconda volta (contro il «DNS rebinding»)."""
+    proprio questi, senza risolvere una seconda volta (contro il «DNS rebinding»). Un nome che non si risolve (tempo finito o
+    errore) si ricorda per DURATA_CACHE_NEGATIVA secondi: nel frattempo la risposta è subito «no», senza aspettare di nuovo."""
     from .scarica_immagine import indirizzo_pubblico
     if indirizzo_pubblico(host):
         return [host]
     ora = time.monotonic()
     with _blocco_dns:
         voce = _cache_dns.get(host)
-        if voce and ora - voce[0] < DURATA_CACHE_DNS:
+        if voce and voce[1] and ora - voce[0] < DURATA_CACHE_DNS:
             return list(voce[1])
+        if voce and not voce[1] and ora - voce[0] < DURATA_CACHE_NEGATIVA:
+            raise ValueError("Nome non risolto")
     try:
         trovati = _risolvi_host(host)
-    except OSError:
-        raise ValueError("Nome non risolto") from None
-    if not trovati or not all(indirizzo_pubblico(i) for i in trovati):
+    except (OSError, ValueError):                    # ValueError: tempo finito (`_risolvi_host`)
+        trovati = []
+    if not trovati:
+        _ricorda(host, ora, [])
+        raise ValueError("Nome non risolto")
+    if not all(indirizzo_pubblico(i) for i in trovati):
         raise ValueError("Indirizzo non pubblico")
-    with _blocco_dns:
-        if len(_cache_dns) > 200:
-            _cache_dns.clear()
-        _cache_dns[host] = (ora, list(trovati))
+    _ricorda(host, ora, trovati)
     return list(trovati)
 
 
