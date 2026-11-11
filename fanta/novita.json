@@ -1,5 +1,31 @@
 [
   {
+    "versione": "1.458",
+    "data": "2026-11-11T23:32:58",
+    "titolo": "Ripristino dei dati e avvisi più robusti",
+    "voci": [
+      "Ripristino di una copia dei dati: controlli più stretti; se qualcosa non va un messaggio lo dice e non cambia niente.",
+      "Avvisi sul telefono: arrivano a tutti anche quando il server ha molto da fare."
+    ],
+    "tecnico": [
+      "Controlli più stretti sul ripristino del backup: impostazioni degli avvisi, rose e regole.",
+      "Il giro degli avvisi per utente ha un tempo massimo e un ordine a rotazione; la preparazione e i controlli di ogni utente stanno dentro la protezione per utente."
+    ]
+  },
+  {
+    "versione": "1.457",
+    "data": "2026-11-11T23:23:24",
+    "titolo": "Primo avvio: dopo «Torna indietro» si controlla il testo incollato",
+    "voci": [
+      "Web, primo avvio, passo delle rose: se scegli un file sbagliato e tocchi «Torna indietro», il file si dimentica e sparisce la scritta «File scelto». Se poi incolli il testo delle rose, «Controlla le rose» legge il testo invece di riprovare il file di prima."
+    ],
+    "tecnico": [
+      "primoavvio.js: paDimenticaFile svuota il campo file (value = \"\") e la scritta del nome; si chiama da annulla dell'anteprima («Torna indietro» e «Annulla») e quando si scrive nel riquadro del testo con un file ancora scelto (#578).",
+      "tests/test_primoavvio_web.py: il passo delle rose gira in node con un DOM finto (campo file che accetta solo la stringa vuota) e un'anteprima finta che ricorda cosa riceve.",
+      "prove/amico_nuovo/percorso.py: il passo file_sbagliato riconosce la frase «Non ho trovato rose nel file» di adesso (#577) oltre a «nessuna rosa»."
+    ]
+  },
+  {
     "versione": "1.456",
     "data": "2026-11-11T23:10:54",
     "titolo": "Server: controlli più stretti",

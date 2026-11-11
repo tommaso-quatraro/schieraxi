@@ -4,13 +4,13 @@ Serve quando si cambia server o si vuole una copia al sicuro. Non contiene chiav
 from __future__ import annotations
 
 import json
-import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
 from . import lega, regole
 from .percorsi import RADICE, scrivi_sicuro
+from .rose import MAX_TESTO_CELLA
 
 FORMATO = "schieraxi-backup"
 VERSIONE = 1
@@ -39,24 +39,56 @@ def _lista_o_dizionario(d: Any) -> None:
         raise ValueError("formato non riconosciuto")
 
 
+REGOLE_OLTRE_I_TETTI = ("Le regole di questo backup superano i limiti dell'app (per esempio troppi moduli o fasce del modificatore, "
+                        "oppure testi troppo lunghi) e non è stato cambiato niente: riporta le regole nei limiti dall'app e "
+                        "scarica un backup nuovo.")
+
+
 def _regole(d: Any) -> None:
-    """Le regole del backup si controllano come quelle già salvate (regole.carica): senza i tetti di misura, che valgono solo per
-    le regole scritte di nuovo dalle rotte (#480). Un backup fatto prima dei tetti si rimette com'è, con un avviso nel registro."""
-    r = regole.da_dict(d, misure=False)
-    if r.problemi_di_misura():
-        logging.getLogger("uvicorn.error").warning("Ripristino: regole del backup oltre i tetti di misura, rimesse come sono")
+    """Le regole del backup si controllano come quelle salvate dall'app, con i tetti di misura (#480), anche in un backup fatto
+    prima dei tetti: oltre i tetti `regole.RegoleTroppoGrandi` (il ripristino lo dice con REGOLE_OLTRE_I_TETTI e non scrive niente)."""
+    regole.da_dict(d)
+
+
+# Tetti dei testi delle rose del backup, come quelli dell'importazione: ogni cella letta da un file si accorcia a 200 caratteri
+# (rose.MAX_TESTO_CELLA), anche il nome di una squadra (la rinomina dall'app ne ammette 60, quindi sta dentro). L'avviso di un
+# giocatore lo scrive l'app (per esempio l'elenco dei giocatori con lo stesso nome): un tetto più largo.
+MAX_TESTO_ROSE = MAX_TESTO_CELLA
+MAX_AVVISO_ROSE = 2000
+
+
+def _corto(testo: str | None, tetto: int = MAX_TESTO_ROSE) -> bool:
+    return testo is None or len(testo) <= tetto
+
+
+def _rose(d: Any) -> None:
+    """Forma e tipi come il file delle rose (lega.da_dict), più i tetti di lunghezza dell'importazione."""
+    r = lega.da_dict(d)
+    giusti = (_corto(r.mia_squadra) and _corto(r.aggiornato)
+              and all(_corto(s.nome) and _corto(s.nome_importato) for s in r.squadre)
+              and all(_corto(g.nome) and _corto(g.ruolo) and _corto(g.squadra) and _corto(g.riconosciuto)
+                      and _corto(g.avviso, MAX_AVVISO_ROSE) for s in r.squadre for g in s.giocatori))
+    if not giusti:
+        raise ValueError("formato non riconosciuto")
+
+
+def _impostazioni_avvisi(d: Any) -> dict:
+    """Gli stessi valori ammessi dal salvataggio delle impostazioni; si scrive la versione ripulita (senza voci sconosciute)."""
+    from . import notifiche
+    return notifiche.impostazioni_da_ripristinare(d)
 
 
 FILE_SCELTE_BACKUP = "dati/scelte.json"     # le formazioni scelte, una voce per «stagione/giornata»
 
-# file salvati (percorso dentro il progetto) -> controllo del contenuto
-CONTROLLI: dict[str, Callable[[Any], None]] = {
+# file salvati (percorso dentro il progetto) -> controllo del contenuto. Il controllo alza un errore se il contenuto non va;
+# restituisce None (si scrive com'è) oppure il contenuto ripulito da scrivere al suo posto.
+CONTROLLI: dict[str, Callable[[Any], Any]] = {
     "lega/regole.json": _regole,
-    "lega/rose.json": lega.da_dict,
+    "lega/rose.json": _rose,
     "lega/movimenti.json": _lista_o_dizionario,
     "dati/scelte.json": _dizionario,
     "dati/osservati.json": _lista_di_interi,
-    "dati/avvisi-impostazioni.json": _dizionario,
+    "dati/avvisi-impostazioni.json": _impostazioni_avvisi,
 }
 
 
@@ -116,7 +148,7 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7) -> Path | None:
 
 
 def controlla(backup: Any) -> dict[str, Any]:
-    """Controlla il backup per intero senza toccare niente. Restituisce i file da ripristinare o alza ValueError."""
+    """Controlla il backup per intero senza toccare niente. Restituisce i file da ripristinare (ripuliti dove serve) o alza ValueError."""
     if not isinstance(backup, dict) or backup.get("formato") != FORMATO:
         raise ValueError("Questo non è un backup di SchieraXI")
     if not isinstance(backup.get("versione"), int) or backup["versione"] > VERSIONE:
@@ -124,14 +156,18 @@ def controlla(backup: Any) -> dict[str, Any]:
     file = backup.get("file")
     if not isinstance(file, dict) or not file:
         raise ValueError("Il backup è vuoto")
+    pulito: dict[str, Any] = {}
     for nome, contenuto in file.items():
         if nome not in CONTROLLI:
             raise ValueError(f"Il backup contiene un file che non conosco: {str(nome)[:60]}")
         try:
-            CONTROLLI[nome](contenuto)
+            nuovo = CONTROLLI[nome](contenuto)
+        except regole.RegoleTroppoGrandi:
+            raise ValueError(REGOLE_OLTRE_I_TETTI) from None
         except (ValueError, TypeError, KeyError, AttributeError, OverflowError):      # OverflowError: «Infinity» o 1e999 dove serve un intero
             raise ValueError(f"{nome} non è valido: controlla di aver scelto il file di backup giusto") from None
-    return file
+        pulito[nome] = contenuto if nuovo is None else nuovo
+    return pulito
 
 
 def ripristina(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] | None = None, copia_prima: Path | None = None,

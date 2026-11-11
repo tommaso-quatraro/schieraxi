@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import sqlite3
 import threading
@@ -128,7 +129,7 @@ def _json(percorso: Path) -> dict:
 def _ora(valore, predefinita: int) -> int:
     try:
         v = int(valore)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):      # OverflowError: un numero infinito (1e999 nel JSON)
         return predefinita
     return v if 0 <= v <= 23 else predefinita
 
@@ -139,7 +140,7 @@ def _minuti_avviso(valore, predefinito: int) -> int:
         return predefinito
     try:
         v = int(valore)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return predefinito
     return v if v in MINUTI_AVVISO else predefinito
 
@@ -179,6 +180,42 @@ def salva_impostazioni(nuove: dict, percorso: Path | None = None) -> dict:
         altri = {k: v for k, v in _json(percorso).items() if k in CAMPI_UTENTE}
         scrivi_sicuro(percorso, json.dumps(altri | ok))
     return ok
+
+
+def _intero(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _numeri_finiti(valore) -> bool:
+    """Vero se dentro `valore` (anche in liste e dizionari annidati) non c'è nessun numero infinito o NaN."""
+    da_vedere = [valore]
+    while da_vedere:
+        v = da_vedere.pop()
+        if isinstance(v, float) and not math.isfinite(v):
+            return False
+        if isinstance(v, dict):
+            da_vedere.extend(v.values())
+        elif isinstance(v, list):
+            da_vedere.extend(v)
+    return True
+
+
+def impostazioni_da_ripristinare(d) -> dict:
+    """Le impostazioni di un backup, con gli stessi valori ammessi dal salvataggio (`salva_impostazioni`): restano solo le voci
+    note (gli avvisi e CAMPI_UTENTE, che stato_utente ripulisce quando li legge); le altre si tolgono. Un valore che l'app non
+    salverebbe mai (tipo sbagliato, ora fuori dalla giornata, minuti non previsti, lingua sconosciuta, numero non finito) alza
+    ValueError: il ripristino allora non scrive niente."""
+    if not isinstance(d, dict):
+        raise ValueError("deve essere un elenco di voci")
+    tenute = {k: v for k, v in d.items() if k in IMPOSTAZIONI_PREDEFINITE or k in ORE_PREDEFINITE or k in CAMPI_UTENTE
+              or k in ("avviso_prima", "lingua")}
+    giusti = (all(isinstance(tenute[k], bool) for k in IMPOSTAZIONI_PREDEFINITE if k in tenute)
+              and all(_intero(tenute[k]) and 0 <= tenute[k] <= 23 for k in ORE_PREDEFINITE if k in tenute)
+              and ("avviso_prima" not in tenute or (_intero(tenute["avviso_prima"]) and tenute["avviso_prima"] in MINUTI_AVVISO))
+              and ("lingua" not in tenute or (isinstance(tenute["lingua"], str) and tenute["lingua"] in LINGUE)))
+    if not giusti or not _numeri_finiti(tenute):
+        raise ValueError("formato non riconosciuto")       # messaggio interno: il backup lo sostituisce con il suo
+    return tenute
 
 
 def in_silenzio(adesso: datetime, opzioni: dict) -> bool:

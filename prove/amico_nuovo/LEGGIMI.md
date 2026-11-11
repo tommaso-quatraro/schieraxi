@@ -73,7 +73,7 @@ mano (mai la password).
 | `registrazione` | nome `amico-<6 cifre>`, password a caso, casella di Privacy e Termini: compare il codice di recupero |
 | `recupero_salvato` | «Copia il codice», «Ho salvato il codice», «Entra nell'app»: si apre il primo avvio |
 | `installabile` | manifesto con nome, icone 192 e 512, schermo intero e `start_url`; `apple-touch-icon` e meta di Apple; aperta di nuovo (come dall'icona della Home) la pagina è controllata dal service worker e Chrome non ha motivi per non installarla (`Page.getInstallabilityErrors` vuoto) |
-| `file_sbagliato` | solo `--locale`: il calendario dà il messaggio «nessuna rosa» e con «Torna indietro» si può riprovare o saltare |
+| `file_sbagliato` | solo `--locale`: il calendario dà il messaggio «Non ho trovato rose nel file» (o quello di prima, «nessuna rosa») e con «Torna indietro» si può riprovare o saltare |
 | `rose` | l'anteprima mostra tutte e 10 le squadre d'esempio |
 | `squadra` | «Qual è la tua squadra?» → `Real Esempio`, i dubbi restano sulla prima proposta, «Conferma e salva» |
 | `tempi` | scadenza 10 minuti, prima giornata quella proposta, «Salva», poi «Tutto pronto» e «Vai a Oggi» |
