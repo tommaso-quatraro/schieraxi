@@ -1,6 +1,6 @@
 // Service worker: tiene in memoria la "scocca" dell'app (pagine, stile, icone) così si apre subito.
 // I dati (/api/...) arrivano sempre freschi dal server; se il server non risponde, l'app lo dice.
-const VERSIONE = "fanta-236";
+const VERSIONE = "fanta-237";
 const FILE = ["/", "/stile.css", "/app.js", "/impostazioni.js", "/dafare.js", "/primoavvio.js", "/anteprima.js", "/avatar.js", "/live.js", "/testi.js", "/manifest.webmanifest", "/icona.svg", "/icona-180.png", "/icona-192.png", "/caratteri/archivo.woff2"];
 
 // Pagina mostrata quando non c'è rete e nessuna copia salvata (si apre aprendo o ricaricando l'app).
@@ -43,7 +43,8 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.pathname.startsWith("/api/")) return;
-  if (url.searchParams.has("social") || url.searchParams.has("social_errore")) return;       // il ritorno da Google (codice monouso) non si salva nella cache
+  // il ritorno da Google (codice monouso) e i link d'invito (codice) non si salvano nella cache
+  if (url.searchParams.has("social") || url.searchParams.has("social_errore") || url.searchParams.has("invito")) return;
   // prima la rete (versione aggiornata); se non risponde entro 2,5 secondi o manca, la copia salvata
   const rete = fetch(e.request, { cache: "no-cache" }).then(r => {
     if (r.ok) {

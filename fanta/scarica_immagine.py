@@ -13,6 +13,7 @@ Le funzioni di rete (`risolvi`, `apri`) si possono sostituire: i test non toccan
 from __future__ import annotations
 
 import http.client
+import io
 import ipaddress
 import socket
 import ssl
@@ -98,23 +99,59 @@ class _Connessione(http.client.HTTPSConnection):
             raise
 
 
+class _LetturaEntro(io.RawIOBase):
+    """Il corpo della risposta letto entro una scadenza (`fine`, su `time.monotonic`): tempo totale ricontrollato prima di ogni
+    lettura dal socket, che riceve come tempo massimo quello che resta; a tempo finito si ferma."""
+
+    def __init__(self, file, sock):
+        super().__init__()
+        self._file, self._sock = file, sock
+        self.fine: float | None = None
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, b) -> int:
+        if self.fine is not None:
+            resta = self.fine - time.monotonic()
+            if resta <= 0:
+                raise TimeoutError("Tempo dello scaricamento finito")
+            if self._sock is not None:
+                self._sock.settimeout(resta)
+        return self._file.readinto1(b)          # una lettura sola: il tempo si ricontrolla prima della successiva
+
+    def close(self) -> None:
+        if not self.closed:
+            self._file.close()
+        super().close()
+
+
 class _Risposta:
-    def __init__(self, conn: _Connessione, risposta: http.client.HTTPResponse):
+    def __init__(self, conn: _Connessione, risposta: http.client.HTTPResponse, sock=None):
         self._conn, self._r = conn, risposta
         self.status = risposta.status
         self.headers = risposta.headers
+        self._lettura = None
+        if risposta.fp is not None:              # il corpo passa da qui: ogni lettura dal socket sta entro la scadenza
+            self._lettura = _LetturaEntro(risposta.fp, sock if sock is not None else conn.sock)
+            risposta.fp = io.BufferedReader(self._lettura)
 
     def read(self, n: int) -> bytes:
         return self._r.read(n)
 
     def leggi_entro(self, n: int, secondi: float) -> bytes:
         """Una sola lettura (al massimo `n` byte, senza aspettare di riempire il pezzo) che non attende oltre `secondi`."""
-        if self._conn.sock is not None:
+        if self._lettura is not None:
+            self._lettura.fine = time.monotonic() + max(0.5, secondi)
+        elif self._conn.sock is not None:
             self._conn.sock.settimeout(max(0.5, secondi))
         return self._r.read1(n)
 
     def close(self) -> None:
-        self._conn.close()
+        try:
+            self._r.close()                      # anche il socket passato alla risposta («Connection: close») si chiude subito
+        finally:
+            self._conn.close()
 
 
 def _tronca(conn: http.client.HTTPConnection) -> None:
@@ -136,7 +173,8 @@ def _apri(ip: str, host: str, porta: int, percorso: str, timeout: float) -> _Ris
     try:
         conn.request("GET", percorso, headers={"User-Agent": "SchieraXI/1 (immagine squadra)", "Accept": "image/png,image/jpeg,image/webp,*/*;q=0.5",
                                                "Accept-Encoding": "identity", "Connection": "close"})
-        return _Risposta(conn, conn.getresponse())
+        sock = conn.sock                     # con «Connection: close» getresponse() lo toglie alla connessione e lo passa alla risposta
+        return _Risposta(conn, conn.getresponse(), sock)
     except Exception:
         conn.close()
         raise
@@ -193,6 +231,8 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
                         pezzo = risposta.leggi_entro(PEZZO, fine - orologio())
                     else:
                         pezzo = risposta.read(PEZZO)
+                except TimeoutError:
+                    raise ValueError("Il sito è troppo lento: riprova più tardi") from None
                 except (OSError, http.client.HTTPException):
                     raise ValueError("Il sito ha interrotto il trasferimento: riprova più tardi") from None
                 if not pezzo:
