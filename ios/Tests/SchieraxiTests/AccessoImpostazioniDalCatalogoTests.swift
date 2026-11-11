@@ -28,7 +28,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         // account.*
         Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.cambiaPassword,
         Catalogo.Account.passwordAttuale, Catalogo.Account.ripetiPassword, Catalogo.Account.passwordDiverse,
-        Catalogo.Account.altriScollegati, Catalogo.Account.passwordCambiataOk, Catalogo.Account.laTuaPassword,
+        Catalogo.Account.altriScollegati, Catalogo.Account.passwordCambiataOk, Catalogo.Account.passwordCambiataCodice,
+        Catalogo.Account.laTuaPassword,
         Catalogo.Account.recupero, Catalogo.Account.recuperoSpiega, Catalogo.Account.nuovoCodice, Catalogo.Account.email,
         Catalogo.Account.emailSpiega, Catalogo.Account.emailNessuna, Catalogo.Account.emailNuova, Catalogo.Account.emailInvia,
         Catalogo.Account.emailInviato, Catalogo.Account.emailCodice, Catalogo.Account.emailConferma,
