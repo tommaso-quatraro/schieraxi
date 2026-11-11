@@ -24,6 +24,8 @@
   salute                          controlla che l'app risponda e che i dati siano freschi (usato sul server)
   sentinella [--minuti N] [--senza-invio]   rifà in sola lettura le risposte dell'app per ogni utente e controlla che tornino (usato sul server, ogni ora)
   sentinella --giri --dal ISO --al ISO   stampa in JSON i giri della sentinella fra due date con il fuso, senza fare il giro
+  ingresso --dal ISO [--al ISO]   minuti di ingresso degli account creati fra due date con il fuso, in sola lettura (usato sul
+                                  server; uscita 0 se tutti dentro in meno di 10 minuti, 1 se no, 2 se nessun account, 3 errore)
   riepilogo                       riepilogo a giornata finita: punti fatti, attesi e massimo possibile (usato sul server)
   avviso [--prova]                testo dell'avviso "formazione pronta", se è il momento (usato sul server)
   taratura-probabili [--prova | --spegni | --accendi]   ritara «gioca N%» con le probabili sulle giornate giocate e lo usa solo se
@@ -566,6 +568,22 @@ def cmd_sentinella(a) -> None:
         sys.exit(2)                       # per chi la lancia a mano: qualcosa che l'utente vede sbagliato
 
 
+def cmd_ingresso(a) -> None:
+    """Minuti di ingresso degli amici (#574): una riga per account creato nel periodo, senza nomi utente. Un errore (date,
+    database, file) esce con il suo codice, 3, non con l'1 di «non tutti in tempo» né con il 2 di «nessun account»."""
+    from datetime import datetime, timezone
+    from . import misura_ingresso
+    try:
+        if not a.dal:
+            raise ValueError("serve --dal: data e ora con il fuso, per esempio 2026-12-10T00:00:00+01:00")
+        al = _ora_con_fuso("--al", a.al) if a.al else datetime.now(timezone.utc)
+        codice = misura_ingresso.comando(_ora_con_fuso("--dal", a.dal), al)
+    except ValueError as e:
+        print(f"Errore: {e}", file=sys.stderr)
+        codice = misura_ingresso.ERRORE
+    sys.exit(codice)
+
+
 def cmd_avviso(a) -> None:
     """Stampa il testo dell'avviso "formazione pronta" se è il momento (e lo segna come mandato), altrimenti niente."""
     from datetime import datetime
@@ -897,6 +915,11 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--dal", help="con --giri: data e ora ISO con il fuso (per esempio 2026-11-15T20:00:00+01:00)")
     x.add_argument("--al", help="con --giri: data e ora ISO con il fuso (per esempio 2026-11-16T22:45:00Z)")
     x.set_defaults(f=cmd_sentinella)
+    x = sub.add_parser("ingresso", help="minuti di ingresso degli account nuovi, in sola lettura (0 tutti in meno di 10 minuti, "
+                                        "1 no, 2 nessun account, 3 errore: date, database o file che non si leggono)")
+    x.add_argument("--dal", help="obbligatoria: data e ora ISO con il fuso (per esempio 2026-12-10T00:00:00+01:00)")
+    x.add_argument("--al", help="data e ora ISO con il fuso (di norma adesso)")
+    x.set_defaults(f=cmd_ingresso)
     x = sub.add_parser("riepilogo", help="riepilogo a giornata finita")
     x.set_defaults(f=cmd_riepilogo)
     x = sub.add_parser("avviso", help="stampa l'avviso 'formazione pronta' se è il momento (per le notifiche)")
