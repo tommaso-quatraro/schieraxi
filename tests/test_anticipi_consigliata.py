@@ -219,3 +219,39 @@ def test_prima_che_l_anticipo_cominci_si_sposta_come_sempre(mondo):
     _formazione(mondo)
     mondo["adesso"] = MERCOLEDI_PRIMA
     assert 7 not in _tit(_formazione(mondo, _prev(GIU_E_INFORTUNATO)))
+
+
+# ---------------------------------------------------------------- l'ora data, non l'orologio vero (#571)
+# Gli avvisi chiedono la consigliata con l'ora del loro giro (`adesso`): scadenza passata e anticipi cominciati si contano da lì.
+# Qui l'orologio vero è `mondo["adesso"]`, messo di proposito in un altro momento.
+DOPO_LA_STAGIONE = datetime(2027, 3, 1, 12, 0)          # per l'orologio vero la formazione della giornata 9 è chiusa da mesi
+SQUADRA = lega.Rose([_squadra()], "Squadra Prova")
+
+
+def _dati_nuovi(mondo):
+    mondo["prev"], mondo["versione"] = _prev(GIU_E_INFORTUNATO), mondo["versione"] + "+"
+
+
+def test_con_l_ora_data_la_formazione_e_ancora_aperta(mondo):
+    assert _tit(consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MARTEDI)) == TITOLARI
+    mondo["adesso"] = DOPO_LA_STAGIONE
+    _dati_nuovi(mondo)
+    # alle 20 di mercoledì la formazione è aperta e l'anticipo non è cominciato: il 7 esce come sempre
+    assert 7 not in _tit(consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MERCOLEDI_PRIMA))
+
+
+def test_con_l_ora_data_l_anticipo_e_gia_cominciato(mondo):
+    consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MARTEDI)
+    _dati_nuovi(mondo)                                     # per l'orologio vero è ancora martedì: nessun anticipo cominciato
+    # giovedì l'anticipo è giocato: il 7 resta titolare, il 13 infortunato lascia il posto al 16
+    assert _tit(consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=GIOVEDI)) == {1, 4, 5, 6, 7, 12, 14, 15, 16, 20, 21}
+
+
+def test_valuta_confronta_con_la_consigliata_dell_ora_data(mondo):
+    consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MARTEDI)
+    mondo["adesso"] = DOPO_LA_STAGIONE
+    _dati_nuovi(mondo)
+    chiusa = consigli.formazione(mondo["db"], SOLO_442, SQUADRA)["punteggio_atteso"]      # orologio vero: resta quella di martedì
+    v = consigli.valuta(mondo["db"], SOLO_442, SQUADRA, sorted(TITOLARI), adesso=MERCOLEDI_PRIMA)
+    aperta = consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MERCOLEDI_PRIMA)["punteggio_atteso"]
+    assert aperta > chiusa and v["consigliata"] == aperta

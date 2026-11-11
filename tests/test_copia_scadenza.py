@@ -130,7 +130,7 @@ def test_la_copia_chiede_la_consigliata_della_giornata_del_giro(ambiente, monkey
     finta = consigli.formazione
     chieste = []
 
-    def formazione(db, regole, rose, nome_squadra=None, giornata=None, simulazioni=600):    # come quella vera: la giornata chiesta
+    def formazione(db, regole, rose, nome_squadra=None, giornata=None, simulazioni=600, adesso=None):    # come quella vera: la giornata chiesta
         chieste.append(giornata)
         return finta(db, regole, rose) | {"giornata": giornata}
     monkeypatch.setattr(consigli, "formazione", formazione)
