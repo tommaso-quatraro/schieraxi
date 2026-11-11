@@ -28,7 +28,7 @@ def test_la_giornata_si_calcola_davvero_con_l_ora_data():
     assert consigli.giornata_da_giocare(db, tc.ST, Regole(), datetime(2026, 11, 30, 12, 0)) is None   # a fine novembre è finita
 
 
-def test_formazione_pronta(mondo, registro, monkeypatch):
+def test_formazione_pronta(mondo, registro, monkeypatch):  # noqa: F811
     _giornata_vera(monkeypatch)
     nuovo("amico1", (1, "Castro"))
     esiti, errori = avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
@@ -37,7 +37,7 @@ def test_formazione_pronta(mondo, registro, monkeypatch):
     assert "Giornata 9 · 9ª di Serie A: la formazione è pronta" in registro.web[0][2]
 
 
-def test_cambi(mondo, registro, monkeypatch):
+def test_cambi(mondo, registro, monkeypatch):  # noqa: F811
     _giornata_vera(monkeypatch)
     nuovo("amico1", (1, "Castro"))
     avvisi_utenti.esegui("cambi", mondo.db, ADESSO)                    # primo controllo: solo memorizza
