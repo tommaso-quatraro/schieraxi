@@ -210,16 +210,20 @@ def test_segno_rimasto_da_prima_non_blocca_un_account_con_lo_stesso_numero(ambie
 
 
 def test_database_illeggibile_la_scrittura_non_va_avanti(ambiente):
+    """Account eliminato e database degli account rovinato: non si sa se l'account c'è ancora, quindi non si scrive, la
+    cartella non rinasce e lo si dice con un errore (non in silenzio, #542)."""
     c, uid = nuovo_utente("marco")
     elimina(c)
     (percorsi.cartella_account() / "account.sqlite").write_bytes(b"non sono un database" * 10)
-    percorsi.scrivi_sicuro(contesto.Contesto.per_utente(uid).scelte, "{}")
+    with pytest.raises(percorsi.DatabaseAccountNonRisponde):
+        percorsi.scrivi_sicuro(contesto.Contesto.per_utente(uid).scelte, "{}")
     assert not contesto.cartella_utente(uid).exists()
 
 
 def test_errore_del_database_non_cancella_la_cartella(ambiente, monkeypatch, caplog):
     """Segno rimasto da prima di un ripristino del database e database che per un momento non si apre: la scrittura non va
-    avanti, ma la cartella (forse di un utente vivo) resta com'è e l'errore resta nel registro del servizio, con il tipo."""
+    avanti e lo dice con un errore (prima si saltava in silenzio e chi chiamava rispondeva «salvato», #542), ma la cartella
+    (forse di un utente vivo) resta com'è e l'errore resta nel registro del servizio, con il tipo."""
     _, uid = nuovo_utente("marco")
     cartella = contesto.cartella_utente(uid)
     assert percorsi.segna_cancellato(uid)
@@ -230,11 +234,60 @@ def test_errore_del_database_non_cancella_la_cartella(ambiente, monkeypatch, cap
 
     with monkeypatch.context() as m, caplog.at_level(logging.ERROR):
         m.setattr(sqlite3, "connect", non_si_apre)
-        percorsi.scrivi_sicuro(cartella / "scelte.json", "{}")
-        push.scrivi_sicuro(cartella / "push.json", "[]")
+        with pytest.raises(percorsi.DatabaseAccountNonRisponde):
+            percorsi.scrivi_sicuro(cartella / "scelte.json", "{}")
+        with pytest.raises(percorsi.DatabaseAccountNonRisponde):
+            push.scrivi_sicuro(cartella / "push.json", "[]")
     assert albero(cartella) == prima
     assert any(r.levelno >= logging.ERROR and "OperationalError" in r.getMessage() and str(uid) in r.getMessage()
                for r in caplog.records)
+
+
+def sola_lettura_che_non_risponde(monkeypatch, buone: int = 0) -> list:
+    """Il database degli account non risponde solo a chi lo apre in sola lettura per guardare il segno di cancellazione
+    (`percorsi.scrittura_permessa`): l'accesso con la sessione, che lo apre normalmente, va come sempre. Le prime `buone`
+    aperture in sola lettura rispondono. Torna l'elenco delle aperture in sola lettura, per contarle."""
+    vero, aperture = sqlite3.connect, []
+
+    def connect(base, *a, **k):
+        if str(base).endswith("account.sqlite?mode=ro"):
+            aperture.append(base)
+            if len(aperture) > buone:
+                raise sqlite3.OperationalError("unable to open database file")
+        return vero(base, *a, **k)
+
+    monkeypatch.setattr(sqlite3, "connect", connect)
+    return aperture
+
+
+def test_salvataggio_con_il_database_degli_account_che_non_risponde_dice_riprova(ambiente, monkeypatch):
+    """#542: segno rimasto (per esempio dopo il ripristino del database degli account) e database che non risponde. Il
+    salvataggio di un utente vivo non va e l'app lo dice (503 con «riprova»), invece di rispondere «salvato» e perderlo."""
+    c, uid = nuovo_utente("marco")
+    assert percorsi.segna_cancellato(uid)
+    icona = contesto.Contesto.per_utente(uid).icona
+    prima = icona.read_bytes()
+    aperture = sola_lettura_che_non_risponde(monkeypatch)
+    r = c.put("/api/icona", json={"nome": "verde"})
+    assert r.status_code == 503, r.text
+    assert r.json() == {"detail": "Il server ha un problema con i suoi file: riprova più tardi. "
+                                  "Se succede ancora, avvisa chi gestisce l'app."}
+    assert r.headers["cache-control"] == "no-store"
+    assert "retry-after" not in r.headers            # niente nuovo tentativo da solo: lo decide chi usa l'app
+    assert aperture and icona.read_bytes() == prima  # l'errore viene dal controllo del segno, e il file è quello di prima
+
+
+@pytest.mark.parametrize("scrivi", [percorsi.scrivi_sicuro, push.scrivi_sicuro], ids=["percorsi", "push"])
+def test_database_che_smette_di_rispondere_dopo_la_scrittura_non_chiede_di_rifarla(ambiente, monkeypatch, scrivi):
+    """Il controllo DOPO la scrittura trova il database in errore: il file è già salvato, quindi niente errore «riprova»
+    (rifare un'aggiunta, per esempio un movimento di mercato, la scriverebbe due volte)."""
+    _, uid = nuovo_utente("marco")
+    assert percorsi.segna_cancellato(uid)
+    f = contesto.cartella_utente(uid) / "scelte.json"
+    aperture = sola_lettura_che_non_risponde(monkeypatch, buone=1)
+    scrivi(f, '{"a": 1}')
+    assert len(aperture) == 2                         # prima e dopo: il secondo controllo c'è stato e non ha risposto
+    assert f.read_text(encoding="utf-8") == '{"a": 1}'
 
 
 def test_segno_non_scritto_registrato(ambiente):
