@@ -1,6 +1,7 @@
 """Iscrizioni alle notifiche web: un tetto all'ora per utente e i nomi dei servizi che non si risolvono ricordati per qualche minuto.
 Mai la rete vera (il nome del servizio lo «risolve» una funzione finta), mai l'orologio vero per il tetto. Dati inventati."""
 import contextlib
+import threading
 import time
 from datetime import datetime
 
@@ -41,10 +42,84 @@ def test_push_iscrizioni_oltre_il_tetto_dell_ora_429(web):
     assert iscrivi(b, 0).status_code == 200                                         # il tetto è di ciascuno
 
 
-def test_push_la_stessa_iscrizione_ripetuta_conta_una_volta(web):
+def test_push_la_stessa_iscrizione_ripetuta_conta_ogni_volta(web):
     a = utente("utentea")
-    esiti = [iscrivi(a, 1).status_code for _ in range(limiti.MAX_ISCRIZIONI_PUSH_ORA + 3)]
-    assert esiti == [200] * len(esiti)
+    tetto = limiti.MAX_ISCRIZIONI_PUSH_ORA
+    assert [iscrivi(a, 1).status_code for _ in range(tetto + 1)] == [200] * tetto + [429]
+
+
+class RisolutoreFermo:
+    """Il nome del servizio «si risolve» solo quando il test lo lascia andare: conta chi è dentro e quanti insieme al massimo."""
+
+    def __init__(self):
+        self.via, self.blocco = threading.Event(), threading.Lock()
+        self.dentro, self.massimo, self.chiamate = 0, 0, 0
+
+    def __call__(self, host):
+        with self.blocco:
+            self.dentro += 1
+            self.chiamate += 1
+            self.massimo = max(self.massimo, self.dentro)
+        try:
+            self.via.wait(30)
+            return ["93.184.216.34"]
+        finally:
+            with self.blocco:
+                self.dentro -= 1
+
+
+def _aspetta(condizione, secondi=5.0) -> bool:
+    fine = time.monotonic() + secondi
+    while time.monotonic() < fine:
+        if condizione():
+            return True
+        time.sleep(0.01)
+    return condizione()
+
+
+def test_push_una_verifica_alla_volta_per_utente(web, monkeypatch):
+    fermo = RisolutoreFermo()
+    monkeypatch.setattr(push, "_risolvi_host", fermo)
+    a = utente("utentea")
+    esiti = []
+
+    def prova(i):
+        esiti.append(iscrivi(a, i).status_code)
+    primo = threading.Thread(target=prova, args=(0,))
+    altri = [threading.Thread(target=prova, args=(0 if i % 2 else i,)) for i in range(1, 7)]     # uguali e diverse
+    try:
+        primo.start()
+        assert _aspetta(lambda: fermo.dentro == 1)
+        for t in altri:
+            t.start()
+        assert _aspetta(lambda: len(esiti) == len(altri))                 # le altre rispondono subito, senza aspettare
+    finally:
+        fermo.via.set()
+        for t in [primo] + altri:
+            t.join(30)
+    assert fermo.chiamate == 1
+    assert sorted(esiti) == [200] + [429] * len(altri)
+
+
+def test_push_al_massimo_tre_verifiche_insieme_in_tutto_il_server(web, monkeypatch):
+    fermo = RisolutoreFermo()
+    monkeypatch.setattr(push, "_risolvi_host", fermo)
+    clienti = [utente(f"utente{i}") for i in range(6)]
+    esiti = []
+
+    def prova(i):
+        esiti.append(iscrivi(clienti[i], 100 + i).status_code)
+    fili = [threading.Thread(target=prova, args=(i,)) for i in range(len(clienti))]
+    try:
+        for t in fili:
+            t.start()
+        assert _aspetta(lambda: fermo.dentro == limiti.VERIFICHE_PUSH_INSIEME and len(esiti) == len(clienti) - limiti.VERIFICHE_PUSH_INSIEME)
+    finally:
+        fermo.via.set()
+        for t in fili:
+            t.join(30)
+    assert fermo.massimo == limiti.VERIFICHE_PUSH_INSIEME == 3
+    assert sorted(esiti) == [200] * 3 + [429] * 3
 
 
 def test_push_il_tetto_delle_iscrizioni_si_cambia_con_la_variabile(web, monkeypatch):
