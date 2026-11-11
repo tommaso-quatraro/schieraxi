@@ -88,7 +88,7 @@ def test_il_file_si_sceglie_con_il_pulsante_dell_app():
     html = _rose_html()
     campo = re.search(r"<input id=\"pa-file\"[^>]*>", html).group(0)
     assert 'type="file"' in campo and " hidden" in campo                  # il controllo del browser non si vede più
-    assert re.search(r'<button class="bottone secondario" id="pa-scegli-file" type="button">Scegli il file Excel</button>', html)
+    assert re.search(r'<button class="bottone secondario" id="pa-scegli-file" type="button">Scegli il file \(Excel o CSV\)</button>', html)   # #580
     assert re.search(r'<p class="debole piccolo" id="pa-file-nome" role="status"[^>]*></p>', html)   # il nome del file scelto
     src = codice_web.leggi("primoavvio.js")
     assert '$("#pa-scegli-file").addEventListener("click", () => $("#pa-file").click())' in src

@@ -28,7 +28,8 @@ Parole che vedrai spesso:
 
 ### Entrare
 
-1. Apri il **link d'invito** che ti ha mandato chi gestisce l'app: si apre la scheda **Registrati** con il codice già scritto. Senza link: apri **https://app.schieraxi.it**, scheda **Registrati**, e scrivi il **codice d'invito**.
+1. Apri il **link d'invito** che ti ha mandato chi gestisce l'app: si apre la scheda **Registrati** con il codice già scritto (lo dice la riga **Codice d'invito già inserito**). Senza link: apri **https://app.schieraxi.it**, scheda **Registrati**, e scrivi il **codice d'invito**.
+   Se l'invito è scaduto o qualcuno l'ha già usato, l'app lo dice: chiedine uno nuovo a chi te l'ha mandato. Quello che hai scritto, password compresa, resta.
 2. Scegli un **nome utente** (3-32 caratteri: lettere senza accenti, numeri, punto, trattino) e una **password** di almeno 10 caratteri.
 3. Spunta la casella (hai letto Privacy e Termini e hai almeno 14 anni) e tocca **Crea l'account**.
 4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password.
@@ -42,8 +43,9 @@ Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'emai
 ### Caricare la tua squadra
 
 Alla prima apertura SchieraXI ti guida in quattro passi brevi. Ogni passo si può **saltare**: resta in **Da fare** in Oggi.
+Se ti fermi prima di caricare le rose (per esempio per mettere l'app sulla schermata Home), alla prossima apertura dell'app la guida riprende dalle rose, anche da un altro telefono o computer. Se la chiudi con la ✕, i passi rimasti contano come saltati e la guida non si riapre da sola: la ritrovi toccando **Importa le rose** in Oggi (dopo le rose, i passi saltati sono in **Da fare**). Finita con **Vai a Oggi**, non si riapre più da sola.
 
-1. **Le rose.** Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla il testo o scegli il file e tocca **Controlla le rose**. Non si salva ancora niente.
+1. **Le rose.** Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla il testo e tocca **Controlla le rose**, oppure tocca **Scegli il file (Excel o CSV)**. Non si salva ancora niente.
    Per cominciare basta anche **solo la tua squadra**: formazione e consigli funzionano subito. Le rose degli altri servono per gli scambi e le aggiungi quando vuoi. Se vuoi solo guardare l'app, usa le **squadre di esempio**.
 2. **Controlla e conferma.** SchieraXI mostra cosa ha capito, squadra per squadra:
    - **da controllare** (arancione): nome simile a un altro o cognome doppio. Scegli quello giusto dal menu, cerca a mano con **Un altro: lo cerco io**, oppure **Toglilo dalla rosa**;
