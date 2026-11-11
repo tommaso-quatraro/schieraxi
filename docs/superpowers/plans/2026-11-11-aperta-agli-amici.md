@@ -12,8 +12,8 @@ amici e aprire ai primi amici veri solo quando tutte e due le cose sono a posto.
 **Architettura:** uno script Playwright ripetibile percorre l'ingresso come farebbe un amico, prima su un server locale e poi sulla
 prova; l'utente rifà lo stesso percorso sui telefoni veri con il cronometro; un comando del server misura, a cose fatte, quanti
 minuti ha impiegato ogni amico nuovo. In parallelo il coordinatore lancia la skill `security-audit` su un elenco chiuso di file;
-il rapporto resta sul PC, fuori dal repository. Gli ostacoli e i problemi diventano sotto-issue di #168; una «porta» con una lista
-di controlli decide l'apertura.
+il rapporto resta sul PC, fuori dal repository. Gli ostacoli diventano sotto-issue di #168; i problemi di sicurezza restano privati
+e arrivano su GitHub solo insieme alla loro correzione; una «porta» con una lista di controlli decide l'apertura.
 
 **Strumenti:** Python 3.12 (libreria standard; `openpyxl` già nei requisiti di sviluppo), Playwright della versione fissata in
 `.github/playwright-requisiti.txt` in un ambiente a parte, Chrome di sistema, skill `security-audit`, `gh`.
@@ -29,10 +29,10 @@ slitta, slitta il resto, ma la porta (P) non si apre per data, solo con i contro
 
 | Quando (previsto) | Squadra | Utente |
 |---|---|---|
-| G0, sab 28/11 | lancio di A1, A4 e S1 in parallelo | invito sulla prova per A2 (D11); risposta su D1 |
+| G0, sab 28/11 | lancio di A1, A4 e S1 in parallelo | primo invito sulla prova (D11, vale 7 giorni); risposta su D1 |
 | G0+1/+2, dom 29/11 - lun 30/11 | A1 unito, prima corsa A2 sulla prova, sotto-issue | lun 30/11: prova sul suo iPhone (A3a, 20 minuti) |
 | G0+2/+9, lun 30/11 - lun 7/12 | correzioni degli ostacoli e di sicurezza (S2, S3), Z | risposte su D2-D6, D8 (entro mar 1/12) |
-| G0+9/+10, lun 7/12 - mar 8/12 | seconda corsa A2, verifica dell'audit (S4), lista della porta | misura finale sui telefoni (A3b, 20 minuti) |
+| G0+9/+10, lun 7/12 - mar 8/12 | seconda corsa A2, verifica dell'audit (S4), lista della porta | secondo invito sulla prova (D11); misura finale sui telefoni (A3b, 20 minuti) |
 | G0+11, mer 9/12 | | ok all'apertura (D9) e inviti a 1-2 amici prima di una scadenza |
 | G0+12/+14, gio 10/12 - sab 12/12 | misura dal server (A4) e commento su #168 | gli amici entrano da soli; poi D10 |
 
@@ -75,7 +75,8 @@ Casi che la spec implica e che è facile lasciar scappare; ognuno ha la sua prov
    recupero salvato l'amico rientra da solo. Prova: passo `rientro` di A1.
 5. **Giornata già iniziata quando l'amico entra.** Atteso: Oggi dice «Questa giornata è già iniziata» e la Formazione è quella della
    prossima. Prova: una delle corse di A2 a giornata in corso.
-Uno in più, per A4: un primo avvio con passi saltati non conta come «dentro». Test `test_saltato_non_conta_come_dentro`.
+Due in più, per A4: un primo avvio con passi saltati non conta come «dentro» (`test_saltato_non_conta_come_dentro`); le squadre di
+esempio non contano come lega caricata, anche se il primo avvio segna `rose` fatto (`test_squadre_di_esempio_non_contano`).
 
 ---
 
@@ -83,13 +84,13 @@ Uno in più, per A4: un primo avvio con passi saltati non conta come «dentro».
 
 | Compito | Cosa | Agente e modello | Tetto | Può toccare | Non tocca |
 |---|---|---|---|---|---|
-| **A1** | percorso automatico «amico nuovo» | `collaudatore`, Opus high (con `isolation: "worktree"`) | server-web | `prove/amico_nuovo/**` (nuovo), `tests/test_amico_nuovo.py` (nuovo) | `fanta/**`, `prove/foto_web/**` (solo import), `MAPPA.md` |
+| **A1** (#573) | percorso automatico «amico nuovo» | `collaudatore`, Opus high (con `isolation: "worktree"`) | server-web | `prove/amico_nuovo/**` (nuovo), `tests/test_amico_nuovo.py` (nuovo) | `fanta/**`, `prove/foto_web/**` (solo import), `MAPPA.md` |
 | **A2** | corse sulla prova e sotto-issue | coordinatore (Opus) | nessuno | nessun file | il repository |
 | **A3** | telefoni veri con il cronometro | utente; coordinatore annota | nessuno | nessun file | il repository |
-| **A4** | misura dei minuti dal server | `sviluppatore-web`, Opus xhigh | server-web | `fanta/misura_ingresso.py` (nuovo), `fanta/__main__.py` (solo il comando `ingresso`), `tests/test_misura_ingresso.py` (nuovo), `fanta/novita.d/misura-ingresso.json` | `fanta/stato_utente.py`, `fanta/account.py`, `fanta/web/**`, `MAPPA.md` |
+| **A4** (#574) | misura dei minuti dal server | `sviluppatore-web`, Opus xhigh | server-web | `fanta/misura_ingresso.py` (nuovo), `fanta/__main__.py` (solo il comando `ingresso`), `tests/test_misura_ingresso.py` (nuovo), `fanta/novita.d/misura-ingresso.json` | `fanta/stato_utente.py`, `fanta/account.py`, `fanta/lega.py`, `fanta/onboarding.py` (solo import), `fanta/web/**`, `MAPPA.md` |
 | **S1** | audit di sicurezza | coordinatore, sessione principale (Opus), skill `security-audit` | nessuno | nessun file del repository; rapporto fuori | il repository, prova e produzione |
-| **S2** | smistamento e issue neutre | coordinatore | nessuno | issue | dettagli nel repository |
-| **S3** | correzioni | `sviluppatore-web`, Opus xhigh, uno per issue | server-web (P1 fuori bozza) | i file scritti nell'issue e nel brief | file di un'altra correzione in corso |
+| **S2** | smistamento, solo in privato | coordinatore | nessuno | `stato-coordinatore.md` (memoria privata) | GitHub, il repository |
+| **S3** | correzioni (issue neutra aperta insieme alla PR) | `sviluppatore-web`, Opus xhigh, uno per gruppo di voci | server-web (P1 fuori bozza) | i file scritti nel brief | file di un'altra correzione in corso |
 | **S4** | verifica dell'audit | coordinatore, skill `security-audit` | nessuno | nessun file | il repository |
 | **P** | porta: lista dei controlli | coordinatore; ok dell'utente | nessuno | commento su #168 | |
 | **C** | primi amici veri | utente; coordinatore misura con A4 | nessuno | commento su #168 | |
@@ -111,7 +112,8 @@ Ondate:
 - **G0:** A1, A4 (due agenti, nessun file in comune) e S1 (coordinatore). S1 legge il codice di `main` al commit di G0: le PR che
   si uniscono dopo le guarda S4.
 - **Dopo A1:** A2 e A3a.
-- **Dopo S2 e A2:** correzioni in parallelo, al massimo 4 PR server-web aperte, mai due agenti sugli stessi file. Prima le P1 (di
+- **Dopo S2 e A2:** correzioni in parallelo, al massimo 4 PR server-web aperte (le correzioni di sicurezza contano dal momento della
+  PR, S3.3), mai due agenti sugli stessi file. Prima le P1 (di
   sicurezza e degli ostacoli), poi le P2. Z quando A1 e A4 sono uniti.
 - **Fine:** seconda corsa A2, A3b, S4, P; poi C.
 
@@ -177,7 +179,7 @@ Ondate:
   `--locale --telefono iphone --larghezza 390 --formato rosters`. Atteso: uscita 0 e 13 passi `ok` in ognuna. Il collaudatore guarda
   2-3 schermate per corsa (nello scratchpad) e scrive nel rapporto i passi che un amico non capirebbe.
 - [ ] **A1.4** `prove/amico_nuovo/LEGGIMI.md` (come si lancia, variabili, cosa non si salva mai). Suite intera una volta. PR in bozza:
-  `Aree: prove/amico_nuovo, tests`, `Aspetto: nessuno`, nessuna novità (non tocca `fanta/`), `Parte di #168`.
+  `Aree: prove/amico_nuovo, tests`, `Aspetto: nessuno`, nessuna novità (non tocca `fanta/`), `Closes #573`.
 
 **Fatto quando:** test verdi; tre corse locali con uscita 0; PR unita.
 
@@ -188,13 +190,15 @@ Ondate:
   funzioni della prova (`FANTA_PROFILO_FUNZIONI=completo` nel suo servizio) e quelli della produzione sono uguali, oppure la
   differenza si annota e si legge il collaudo con quella [da verificare]; un invito sulla prova per più usi (D11):
   `sudo -u schieraxi-prova -H bash -c 'cd ~/app && .venv/bin/python -m fanta invito --etichetta amico-nuovo --usi 10'`. Il codice
-  va solo in `SCHIERAXI_INVITO` sul PC, mai in chat pubbliche, issue o file.
+  va solo in `SCHIERAXI_INVITO` sul PC, mai in chat pubbliche, issue o file. Un invito vale 7 giorni (`account.DURATA_INVITO`):
+  basta per A2.2 e A3a, non per A2.5 e A3b.
 - [ ] **A2.2 Quattro corse** con `--remoto`: `iphone 390 excel` e `android 360 testo`, una volta in settimana e una a giornata in corso
   (attenzione 5). Ogni corsa usa un posto dell'invito e toglie il suo account alla fine.
 - [ ] **A2.3** Il coordinatore guarda riepiloghi e schermate. Ogni passo non `ok`, ogni errore della console, ogni violazione grave e
   ogni frase che un amico non capirebbe diventa una sotto-issue (§4).
 - [ ] **A2.4** Commento su #168 che inizia con `## Esito A2`: passi ok e non ok per corsa, numeri delle sotto-issue. Niente indirizzi.
-- [ ] **A2.5 Seconda tornata** dopo le correzioni P1: le stesse quattro corse (o due, se la giornata non cade nella finestra).
+- [ ] **A2.5 Seconda tornata** dopo le correzioni P1: le stesse quattro corse (o due, se la giornata non cade nella finestra), con un
+  **secondo invito** creato come in A2.1 (il primo è scaduto o ha finito i posti); lo stesso invito serve anche ad A3b.
 
 **Fatto quando:** quattro corse fatte; ogni passo non ok ha la sua sotto-issue; commento su #168. Per la porta: seconda tornata con
 tutte le corse a uscita 0.
@@ -210,45 +214,60 @@ grande del telefono, l'esportazione delle rose da Leghe dal telefono.
   Poi: **due ordini** (registrarsi in Safari e poi installare; installare e poi registrarsi), l'app installata si apre a schermo
   intero e resta dentro, «Attiva» degli avvisi compare solo nell'app installata (la prova non manda avvisi: basta la richiesta del
   permesso), testo più grande al massimo (Impostazioni > Accessibilità > Schermo e dimensioni testo > Testo più grande) senza
-  frasi tagliate. In più, senza caricare
-  niente sulla prova: quanto ci vuole a esportare le rose da Leghe dal telefono (conta nei 10 minuti dell'amico).
+  frasi tagliate. In più, senza caricare niente sulla prova: quanto ci vuole a esportare le rose da Leghe dal telefono (conta nei
+  10 minuti dell'amico).
 - [ ] **A3.3** Android con Chrome, stessa lista (installazione da «Installa app»), se c'è un telefono (D4).
 - [ ] **A3.4** Il coordinatore scrive su #168 un commento `## Esito A3`: minuti per passo, ordine che funziona, ostacoli; poi le
   sotto-issue (§4).
-- [ ] **A3.5 A3b, lun 7/12 o mar 8/12, 20 minuti:** stessa prova dopo le correzioni, con una versione nuova arrivata sulla prova dopo
-  l'installazione (l'app installata la mostra alla riapertura, senza pagina bianca né versione vecchia).
+- [ ] **A3.5 A3b, lun 7/12 o mar 8/12, 20 minuti:** stessa prova dopo le correzioni, con un posto del secondo invito (A2.5), e con
+  una versione nuova arrivata sulla prova dopo l'installazione (l'app installata la mostra alla riapertura, senza pagina bianca né
+  versione vecchia). Si cronometra di nuovo anche l'esportazione delle rose da Leghe.
 
-**Fatto quando (per la porta):** A3b sull'iPhone in meno di 10 minuti dal link alla Formazione, senza aiuto; lo stesso su Android se
-c'è il telefono, altrimenti la parte Android si chiude con il primo amico Android in C (D4).
+**Fatto quando (per la porta):** in A3b la **somma** dei due tempi, esportazione delle rose da Leghe più il percorso dal link
+d'invito alla Formazione, resta sotto i 10 minuti sull'iPhone, senza aiuto; lo stesso su Android se c'è il telefono, altrimenti la
+parte Android si chiude con il primo amico Android in C (D4).
 
 ### A4. Misura dei minuti dal server
 
-Serve a misurare gli amici veri senza stargli accanto. Usa solo dati che ci sono già: `utenti.creato` (UTC con fuso) in
-`account.sqlite` e il `primo_avvio` dell'utente (`fatti`, `saltati`, `chiuso`, `aggiornato`), letto con
-`stato_utente.leggi_primo_avvio` da `<cartella_utenti>/<id>/avvisi-impostazioni.json` (la stessa cartella di `contesto.cartella_utente`).
-**Trappola:** `aggiornato` è scritto da `stato_utente._ora()` con `datetime.now()` senza fuso, cioè nell'ora del server.
+Serve a misurare gli amici veri senza stargli accanto. Usa solo dati che ci sono già, nella cartella dell'utente
+(`<cartella_utenti>/<id>/`, la stessa di `contesto.cartella_utente`):
+- `utenti.creato` (UTC con fuso) in `account.sqlite`: l'inizio;
+- le rose, `rose.json` letto con `lega.carica`: contano solo se ci sono e **non** sono le squadre di esempio
+  (`onboarding.e_demo(rose)` falso). Il primo avvio segna `rose` fatto anche con «Usa le squadre di esempio»
+  (`fanta/web/primoavvio.js`, bottone `#pa-esempi`), quindi `fatti` da solo non basta; l'ora è `rose.aggiornato`;
+- il `primo_avvio` (`fatti`, `saltati`, `chiuso`, `aggiornato`), letto con `stato_utente.leggi_primo_avvio` da
+  `avvisi-impostazioni.json`: serve `tempi` fra i `fatti`, con l'ora `aggiornato`.
+**Trappola:** `rose.aggiornato` (`lega.py`, `datetime.now()`) e `primo_avvio.aggiornato` (`stato_utente._ora()`) sono senza fuso,
+cioè nell'ora del server; `utenti.creato` invece è UTC con fuso.
 
 **Interfacce prodotte** (`fanta/misura_ingresso.py`):
-- `minuti_di_ingresso(creato: str, primo_avvio: dict | None, fuso_server: tzinfo) -> tuple[str, float | None]`: esito `"dentro"`
-  (`rose` e `tempi` fra i `fatti`) con i minuti da `creato` ad `aggiornato` letto nel `fuso_server`; `"non_finito"`; `"non_iniziato"`.
+- `minuti_di_ingresso(creato: str, rose: Rose | None, primo_avvio: dict | None, fuso_server: tzinfo) -> tuple[str, float | None]`:
+  - `"dentro"` con i minuti da `creato` al più tardi fra `rose.aggiornato` e `primo_avvio["aggiornato"]` (letti nel `fuso_server`),
+    se ci sono rose che non sono d'esempio e `tempi` è fra i `fatti`;
+  - `"solo_esempio"` (minuti `None`) se le rose sono quelle d'esempio;
+  - `"non_finito"` se mancano rose vere o `tempi`; `"non_iniziato"` se non ci sono né rose né primo avvio.
 - `misura(db: sqlite3.Connection, cartella_utenti: Path, dal: datetime, al: datetime, fuso_server: tzinfo) -> list[dict]`
   (`{"utente": id, "esito": …, "minuti": …}`, solo gli account creati fra `dal` e `al`).
 - Comando `python -m fanta ingresso --dal <ISO con fuso> [--al <ISO con fuso>]`: apre `account.sqlite` in sola lettura
-  (`mode=ro`), stampa una riga per account (`utente <id>: dentro in <m> minuti` o `non finito` o `non iniziato`, mai nomi
-  utente) e l'ultima riga `dentro in meno di 10 minuti: <n> su <m>`. Uscita 0 se tutti gli account del periodo sono dentro entro
-  10 minuti, 1 altrimenti, 2 se nel periodo non c'è nessun account. Si lancia sul server come `sentinella --giri`.
+  (`mode=ro`), stampa una riga per account (`utente <id>: dentro in <m> minuti`, `solo squadre di esempio`, `non finito` o
+  `non iniziato`, mai nomi utente) e l'ultima riga `dentro in meno di 10 minuti: <n> su <m>`. Uscita 0 se tutti gli account del
+  periodo sono dentro entro 10 minuti, 1 altrimenti, 2 se nel periodo non c'è nessun account. Si lancia sul server come
+  `sentinella --giri`.
 
 - [ ] **A4.1 Test rossi** in `tests/test_misura_ingresso.py` (orologio mai vero: tutte le ore nei dati):
-  `test_dentro_quando_rose_e_tempi_fatti` (`creato="2026-12-10T09:00:00+00:00"`, `aggiornato="2026-12-10T10:08:00"`, fuso
-  Europa/Roma in inverno → `("dentro", 8.0)`); `test_saltato_non_conta_come_dentro`; `test_non_iniziato`;
+  `test_dentro_quando_rose_e_tempi_fatti` (`creato="2026-12-10T09:00:00+00:00"`, rose non d'esempio con
+  `aggiornato="2026-12-10T10:06:00"`, primo avvio con `rose` e `tempi` fatti e `aggiornato="2026-12-10T10:08:00"`, fuso
+  Europa/Roma in inverno → `("dentro", 8.0)`); `test_squadre_di_esempio_non_contano` (rose con i nomi di `onboarding.SQUADRE_DEMO`,
+  `rose` e `tempi` fatti → `("solo_esempio", None)`); `test_saltato_non_conta_come_dentro`; `test_non_iniziato`;
   `test_solo_account_del_periodo`; `test_archivio_in_sola_lettura` (dopo `misura` il file ha lo stesso contenuto e una scrittura
   sulla connessione fallisce); `test_niente_nomi_utente_nell_uscita`; `test_codici_di_uscita` (tutti entro 10 → 0, uno a 12 → 1,
   nessuno → 2).
 - [ ] **A4.2 Codice** → verdi; suite intera una volta; `docs/API.md` non cambia (nessuna rotta).
 - [ ] **A4.3** `fanta/novita.d/misura-ingresso.json` con voci «nessun cambio visibile» come nelle PR di sola manutenzione, `tecnico`
-  con il comando. PR in bozza, `Aree: fanta, tests`, `Parte di #168`.
+  con il comando. PR in bozza, `Aree: fanta, tests`, `Closes #574`.
 
-**Fatto quando:** test verdi; PR unita; sul server locale con due account finti il comando stampa le due righe giuste.
+**Fatto quando:** test verdi, compreso `test_squadre_di_esempio_non_contano`; PR unita; sul server locale con due account finti
+(uno con rose importate, uno con le squadre di esempio) il comando stampa le due righe giuste.
 
 ### S1. Audit di sicurezza (coordinatore)
 
@@ -277,45 +296,52 @@ La richiesta di audit completo viene dalla spec (§7, decisa dal proprietario): 
 
 **Fatto quando:** corsa finita con i due controlli della skill superati, oppure `incomplete` con il motivo scritto; conteggi annotati.
 
-### S2. Smistamento e issue senza dettagli
+### S2. Smistamento, solo in privato
 
 Regola (gravità della skill: `critical`, `high`, `medium`, `low`, `informational`):
-- `critical` e `high` confermati: **bloccano la porta**. Issue `P1`.
+- `critical` e `high` confermati: **bloccano la porta**. Priorità `P1`.
 - `needs_validation` su accesso, inviti, isolamento fra utenti, token o file caricati: bloccano come un `high` finché non si chiariscono
   (fatto controllato dall'utente in sola lettura nella sessione `casa`, oppure un test locale in S3).
-- `medium`: issue `P2`, non blocca la prima ondata di amici; si chiude prima di invitarne altri.
+- `medium`: priorità `P2`, non blocca la prima ondata di amici; si chiude prima di invitarne altri.
 - `low` e `informational`: `P3` o niente, una scelta per voce.
 
-Issue pubblica, sempre neutra, una per causa (voci sugli stessi file insieme, così due correzioni non toccano gli stessi file):
-- titolo «Sicurezza: rafforzare <area>», con `<area>` fra: accesso, inviti, isolamento fra utenti, file caricati, avvisi, token,
-  web app, configurazione del server;
-- corpo: **Cosa** «rafforzare i controlli di <area> trovati dall'audit del <data>»; **Perché** «voce F-<n> del rapporto privato
-  dell'audit: i dettagli non si scrivono qui (repository pubblico)»; **Fatto quando** «la voce F-<n> risulta chiusa alla verifica
-  S4 del piano; test di regressione nella PR»; etichette di priorità e di area; «Parte di #168»;
-- mai: rotte, parametri, file e righe, condizioni, esempi d'attacco, parole sulla gravità oltre all'etichetta.
-I dettagli arrivano all'agente di S3 solo nel brief (chiamata dell'agente, non GitHub), con il percorso della voce in
-`FINDINGS-DETAIL.md` sul PC. Un problema `critical` sfruttabile senza account sulla produzione: prima si chiude la porta sul server
-(D7), poi la PR.
+**Nessuna issue pubblica prima della correzione.** Un'issue aperta su un difetto ancora nel codice pubblico, con la produzione accesa,
+dice a chiunque dove cercare (e va contro `SECURITY.md`, che chiede di non rendere pubblico un problema prima che sia sistemato).
+Finché la correzione non è pronta, le voci stanno SOLO in privato: il rapporto sul PC e `stato-coordinatore.md` del coordinatore
+(numero della voce, priorità, gruppo di file, stato; mai su GitHub). Le voci sugli stessi file si correggono insieme, così due
+correzioni non toccano gli stessi file. I dettagli arrivano all'agente di S3 solo nel brief (chiamata dell'agente, non GitHub), con
+il percorso della voce in `FINDINGS-DETAIL.md` sul PC. Un problema `critical` sfruttabile senza account sulla produzione: prima si
+chiude la porta sul server (D7), poi la correzione.
 
-- [ ] **S2.1** Issue create come sopra, agganciate a #168 (`gh api -X POST "repos/{owner}/{repo}/issues/168/sub_issues"
-  -F sub_issue_id=$(gh api "repos/{owner}/{repo}/issues/<N>" --jq .id)`, dalla cartella del repository) e messe sulla bacheca
-  (`gh project item-add 1 --owner "@me" --url <link>`).
+- [ ] **S2.1** In `stato-coordinatore.md` una riga per voce o gruppo: `F-<n>`, priorità, file da toccare, agente, stato.
 - [ ] **S2.2** Lista dei `needs_validation` per l'utente, in privato (chat o memoria), con il comando di sola lettura per ognuno.
 
-**Fatto quando:** ogni voce confermata o bloccante ha la sua issue neutra, o una scelta scritta in privato per le `low`.
+**Fatto quando:** ogni voce confermata o bloccante ha la sua riga privata con priorità e gruppo di file, o una scelta scritta in
+privato per le `low`; su GitHub ancora niente.
 
 ### S3. Correzioni di sicurezza
 
-- [ ] **S3.1** Un `sviluppatore-web` per issue, file disgiunti, brief da `/brief <N>` più il puntatore privato alla voce.
+- [ ] **S3.1** Un `sviluppatore-web` per gruppo di voci, file disgiunti. Il brief lo scrive il coordinatore dal modello
+  (`script/squadra/modello-brief.md`), senza issue, con il puntatore privato alla voce; l'agente lavora nella sua worktree e NON fa
+  push né PR.
 - [ ] **S3.2** Test di regressione prima del codice, visto rosso; nome che dice il comportamento atteso
   (`test_<area>_<comportamento>`), con l'ingresso minimo che serve, senza parole come «attacco».
-- [ ] **S3.3** Voci `P1`: la revisione si fa sul ramo locale PRIMA del push (coordinatore: `revisore`, `/code-review`,
-  `/security-review`); poi push e PR subito pronta, con descrizione e commit neutri (eccezione P1 di REGOLE §1), così il codice della
-  correzione resta pubblico solo per il tempo dei controlli. Se la correzione non è di poche righe, la PR si apre in bozza come
-  sempre, ma con la revisione già fatta prima del push, così la bozza dura pochi minuti. Voci `P2`: flusso normale in bozza.
+- [ ] **S3.3** La revisione si fa sul ramo locale PRIMA del push (coordinatore: `revisore`, `/code-review`, `/security-review`).
+  Poi, nello stesso giro, il coordinatore apre l'issue neutra, fa il push e apre la PR con `Closes #<issue>`:
+  - issue: titolo «Sicurezza: voce F-<n>» (senza area); corpo **Cosa** «correzione di una voce dell'audit di sicurezza del <data>»,
+    **Perché** «i dettagli restano nel rapporto privato (repository pubblico)», **Fatto quando** «PR di correzione unita con il suo
+    test di regressione; la voce risulta chiusa alla verifica S4»; etichetta di priorità e `server`; «Parte di #168»; agganciata a
+    #168 e messa sulla bacheca (`gh api -X POST "repos/{owner}/{repo}/issues/168/sub_issues" -F sub_issue_id=$(gh api
+    "repos/{owner}/{repo}/issues/<N>" --jq .id)` e `gh project item-add 1 --owner "@me" --url <link>`, dalla cartella del repository);
+  - PR: descrizione e commit neutri; voci `P1` di poche righe subito pronte (eccezione P1 di REGOLE §1), le altre in bozza con la
+    revisione già registrata, tolta dalla bozza appena partono i controlli;
+  - mai, né nell'issue né nella PR: rotte, parametri, file e righe, condizioni, esempi d'attacco, parole sulla gravità oltre
+    all'etichetta.
+  Così il difetto diventa pubblico solo insieme alla sua correzione, per il tempo dei controlli.
 - [ ] **S3.4** Novità con voci neutre (per esempio «Accesso e dati più protetti») se la PR tocca `fanta/`.
 
-**Fatto quando** (per issue): PR unita, test di regressione verde, voce F-<n> segnata «corretta» nel rapporto privato.
+**Fatto quando** (per gruppo): issue e PR aperte insieme, PR unita, test di regressione verde, voce F-<n> segnata «corretta» nel
+rapporto privato e in `stato-coordinatore.md`.
 
 ### S4. Verifica dell'audit
 
@@ -331,7 +357,8 @@ I dettagli arrivano all'agente di S3 solo nel brief (chiamata dell'agente, non G
 Il coordinatore apre la porta solo con tutti i punti veri, e li scrive in un commento `## Porta` su #168 (senza dettagli):
 1. S4 fatto.
 2. Seconda tornata di A2: tutte le corse con uscita 0.
-3. A3b: iPhone in meno di 10 minuti senza aiuto (Android come in D4).
+3. A3b: sull'iPhone esportazione delle rose da Leghe più percorso dal link alla Formazione sotto i 10 minuti, senza aiuto (Android
+   come in D4).
 4. Nessuna sotto-issue `P1` di #168 aperta.
 5. Ultimo collaudo automatico della prova verde (`collaudo-prova.yml`) e sentinella senza allarmi negli ultimi 2 giorni.
 6. Produzione controllata in sola lettura (sessione `casa`): `FANTA_MULTIUTENTE=1`, `FANTA_REGISTRAZIONE=invito`, `MAX_UTENTI`,
@@ -353,7 +380,12 @@ Il coordinatore apre la porta solo con tutti i punti veri, e li scrive in un com
 
 - [ ] Dopo l'unione di A1 e A4: in `MAPPA.md` una riga per `prove/amico_nuovo/` e una per `fanta/misura_ingresso.py` (comando
   `ingresso`); in `docs/METODO.md` una sezione «Ingresso degli amici (la misura di #168)» accanto a «Giornata senza errori»: cosa
-  misurano lo script e il comando, dove resta il rapporto dell'audit, regola delle issue neutre. PR di soli documenti, `pubblica-repo`.
+  misurano lo script e il comando, dove resta il rapporto dell'audit, regola delle issue neutre aperte insieme alla correzione. PR
+  di soli documenti, `pubblica-repo`.
+
+**Fatto quando:** PR unita; `MAPPA.md` nomina `prove/amico_nuovo/` e `fanta/misura_ingresso.py` (con il comando `ingresso`);
+`docs/METODO.md` ha la sezione con i due comandi, la soglia dei 10 minuti e la regola delle voci di sicurezza solo in privato fino
+alla PR di correzione; la ricerca di `pubblica-repo` sul diff non trova niente.
 
 ## 4. Ostacoli: modello della sotto-issue
 
@@ -366,16 +398,17 @@ amico non capisce, o un passo che da solo si mangia buona parte dei 10 minuti.
 - Priorità: `P1` se l'amico non può andare avanti da solo; `P2` se lo rallenta o lo confonde; `P3` il resto.
 - Una schermata cambiata: compito web e compito iOS nello stesso ramo, uno dopo l'altro, oppure issue «coerenza: …».
 - Se la correzione vorrebbe aggiungere, togliere o nascondere una funzione: si scrive la proposta nell'issue e decide l'utente.
-- Agganciata a #168 e messa sulla bacheca con i comandi di S2.1.
+- Agganciata a #168 e messa sulla bacheca con i comandi di S3.3.
 
 ## 5. Cosa serve dall'utente, tutto insieme
 
 | Quando (previsto) | Cosa | Tempo |
 |---|---|---|
-| sab 28/11 | invito sulla prova per A2 (D11) e risposta su cosa vedono gli amici (D1) | 5 minuti |
+| sab 28/11 | primo invito sulla prova (D11) e risposta su cosa vedono gli amici (D1) | 5 minuti |
 | lun 30/11 | A3a sul suo iPhone, con il file inventato e il cronometro | 20 minuti |
 | entro mar 1/12 | risposte su D2-D6 e D8 | 10 minuti |
 | se serve | ok a una chiusura temporanea sul server per un problema critico (D7) | al momento |
+| lun 7/12 | secondo invito sulla prova (D11), per A2.5 e A3b | 5 minuti |
 | lun 7/12 o mar 8/12 | A3b su iPhone (e Android, se c'è) | 20 minuti |
 | mer 9/12 | ok all'apertura (D9); inviti a 1-2 amici in produzione | 10 minuti |
 | gio 10/12 - sab 12/12 | non aiutare gli amici; ok al comando di misura sul server; poi D10 | 5 minuti |
@@ -404,7 +437,8 @@ amico non capisce, o un passo che da solo si mangia buona parte dei 10 minuti.
 - **D9. Ok all'apertura** quando la porta è verde.
 - **D10. Chiusura di #168** dopo C. Chiuderla sblocca le spese (spec §2, §9), che restano decisioni a parte. Proposta: chiudere quando
   almeno un amico è dentro in meno di 10 minuti da solo.
-- **D11. Invito sulla prova per A2.** Proposta: lo crea il coordinatore nella sessione `casa` con il comando di A2.1, con il tuo ok.
+- **D11. Inviti sulla prova per A2 e A3** (due: uno sab 28/11, uno lun 7/12, perché un invito vale 7 giorni). Proposta: li crea il
+  coordinatore nella sessione `casa` con il comando di A2.1, con il tuo ok.
 
 ## 7. Scelte mie
 
@@ -416,18 +450,22 @@ amico non capisce, o un passo che da solo si mangia buona parte dei 10 minuti.
 - Scelta mia: Chrome di sistema con l'emulazione di iPhone e Android, senza scaricare WebKit. Costo se sbagliata: una differenza di
   Safari passa; la prende A3.
 - Scelta mia: file delle rose costruiti al momento da `lega/esempio/rose.json` in tre formati, mai salvati. Costo: nessuno.
-- Scelta mia: la misura dei minuti usa solo dati che il server ha già (A4), senza un dato nuovo sugli utenti. Costo se sbagliata:
-  se l'amico riapre il primo avvio la misura viene più lunga del vero, cioè sbaglia a sfavore.
+- Scelta mia: la misura dei minuti usa solo dati che il server ha già (A4), senza un dato nuovo sugli utenti, e scarta le squadre di
+  esempio. Costo se sbagliata: se l'amico riapre il primo avvio o reimporta le rose lo stesso giorno, la misura viene più lunga del
+  vero, cioè sbaglia a sfavore.
 - Scelta mia: due corse A2 per telefono, in settimana e a giornata in corso. Costo: un posto dell'invito in più.
 - Scelta mia: audit con profilo `standard`, perimetro chiuso, commit fisso, tetto di 50 invocazioni. Costo se sbagliata: parti fuori
   perimetro non coperte (elencate in §8); la skill permette una corsa in più sul resto.
 - Scelta mia: i `needs_validation` su accesso, inviti, isolamento, token e file caricati bloccano come un `high`, perché la porta non
   deve diventare verde per omissione (decisione 0013). Costo: qualche giorno.
 - Scelta mia: `medium` non blocca la prima ondata di amici ma la seconda. Costo se sbagliata: un rischio limitato per 1-2 amici.
-- Scelta mia: per le correzioni `P1` di sicurezza la revisione si fa prima del push e la PR esce subito pronta. Costo: niente bozza;
-  resta la revisione IA dei controlli come secondo sguardo.
-- Scelta mia: issue di sicurezza con titolo e testo neutri e il solo numero della voce. Costo: chi legge l'issue non capisce il
-  problema (voluto).
+- Scelta mia: per le correzioni di sicurezza la revisione si fa sul ramo locale prima del push, e le `P1` di poche righe escono
+  subito pronte. Costo: niente bozza; resta la revisione IA dei controlli come secondo sguardo.
+- Scelta del coordinatore (revisione della PR #572): le voci dell'audit restano SOLO in privato (rapporto sul PC e
+  `stato-coordinatore.md`) fino alla correzione; l'issue neutra «Sicurezza: voce F-<n>», senza area, si apre insieme alla PR della
+  correzione, perché un'issue su un difetto ancora aperto nel codice pubblico, con la produzione accesa, dice dove cercare (e va
+  contro `SECURITY.md`). Costo: fino alla PR il lavoro di sicurezza non si vede su GitHub né sulla bacheca, e si segue solo dalla
+  memoria del coordinatore.
 - Scelta mia: `MAPPA.md` e `docs/METODO.md` in Z alla fine, perché A1 e A4 vanno insieme e `MAPPA.md` è un file comune. Costo: per
   qualche giorno la mappa non nomina i file nuovi.
 
