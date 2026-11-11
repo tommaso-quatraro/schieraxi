@@ -716,9 +716,18 @@ def test_tanti_scrypt_insieme_al_massimo_due_alla_volta(multiutente, monkeypatch
             with blocco:
                 insieme[0] -= 1
     monkeypatch.setattr(account.hashlib, "scrypt", conta)
-    fili = [threading.Thread(target=account.hash_password, args=(PASSWORD,)) for _ in range(10)]
+    esiti = []
+
+    def calcola():
+        try:
+            account.hash_password(PASSWORD)
+            esiti.append("fatto")
+        except account.ErroreAccount as e:              # oltre le attese ammesse (ATTESE_MASSIME): «riprova» subito
+            esiti.append(e.stato)
+    fili = [threading.Thread(target=calcola) for _ in range(10)]
     for f in fili:
         f.start()
     for f in fili:
         f.join(30)
     assert massimo[0] <= account.CALCOLI_INSIEME
+    assert len(esiti) == 10 and set(esiti) <= {"fatto", 429} and esiti.count("fatto") >= account.CALCOLI_INSIEME

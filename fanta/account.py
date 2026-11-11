@@ -469,12 +469,29 @@ def _memoria(n: int, r: int, p: int) -> int:
 
 
 _calcoli = threading.BoundedSemaphore(CALCOLI_INSIEME)
+ATTESE_MASSIME = 6                           # richieste che possono aspettare insieme un posto di scrypt: le altre ricevono subito 429
+_attese = 0
+_blocco_attese = threading.Lock()
+OCCUPATO = "Il server è molto occupato: riprova fra qualche secondo"
 
 
 def _scrypt(dati: bytes, sale: bytes, n: int, r: int, p: int, lunghezza: int) -> bytes:
-    """scrypt, al massimo CALCOLI_INSIEME alla volta: tante richieste insieme aspettano invece di esaurire la memoria."""
-    if not _calcoli.acquire(timeout=30):
-        raise ErroreAccount("Il server è molto occupato: riprova fra qualche secondo", 503, 5)
+    """scrypt, al massimo CALCOLI_INSIEME alla volta: tante richieste insieme aspettano invece di esaurire la memoria.
+    L'attesa occupa un thread condiviso con le altre rotte: possono aspettare al massimo ATTESE_MASSIME richieste alla volta,
+    le altre ricevono subito 429 «riprova» (come `_rallenta`)."""
+    global _attese
+    if not _calcoli.acquire(blocking=False):
+        with _blocco_attese:
+            if _attese >= ATTESE_MASSIME:
+                raise ErroreAccount(OCCUPATO, 429, 2)
+            _attese += 1
+        try:
+            preso = _calcoli.acquire(timeout=30)
+        finally:
+            with _blocco_attese:
+                _attese -= 1
+        if not preso:
+            raise ErroreAccount(OCCUPATO, 503, 5)
     try:
         return hashlib.scrypt(dati, salt=sale, n=n, r=r, p=p, maxmem=_memoria(n, r, p), dklen=lunghezza)
     finally:
@@ -1119,9 +1136,15 @@ def _accedi(db, nome_utente, password, ip, dispositivo, adesso, fidato=None) -> 
     nome = normalizza_nome(nome_utente)
     righe = _prenota_tentativo(db, "accesso", nome, ip, fidato)
     riga = db.execute("SELECT * FROM utenti WHERE nome_utente = ?", (nome,)).fetchone() if nome else None
-    salvato = riga["password_hash"] if riga else _hash_fittizio()
-    ok, da_ricalcolare = _verifica(password if isinstance(password, str) else "", salvato)
-    _pareggia(salvato)
+    try:
+        salvato = riga["password_hash"] if riga else _hash_fittizio()
+        ok, da_ricalcolare = _verifica(password if isinstance(password, str) else "", salvato)
+        _pareggia(salvato)
+    except ErroreAccount:
+        # Posti di scrypt pieni (429/503, prima di sapere se la password è giusta): non è un tentativo sbagliato. Come per il
+        # rallentamento pieno si tolgono i conteggi per indirizzo, per nome e dell'attesa crescente; resta quello globale.
+        limite.annulla(db, righe[1:])
+        raise
     if not (riga and ok):
         _fallimento("accesso", nome, ip)
         raise ErroreAccount(ACCESSO_SBAGLIATO, 401)
