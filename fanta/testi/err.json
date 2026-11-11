@@ -528,6 +528,30 @@
     "it": "Il CSV non è leggibile: ci sono virgolette aperte e mai chiuse oppure una cella enorme. Riesportalo da Excel come «CSV UTF-8».",
     "en": "The CSV cannot be read: there are quotation marks opened and never closed, or a huge cell. Export it again from Excel as “CSV UTF-8”."
   },
+  "err.rose_non_trovate": {
+    "it": "Non ho trovato rose nel file. Leggo l'esportazione «rosters» di Leghe (righe come «Real Esempio,7627,12», con «$,$,$» tra una squadra e l'altra) oppure un Excel, un CSV o un testo con il nome di ogni squadra e sotto i suoi calciatori (come «P;Sommer;10»).",
+    "en": "I found no rosters in the file. I read the Leghe “rosters” export (rows like “Real Esempio,7627,12”, with “$,$,$” between one team and the next) or an Excel, CSV or text file with the name of each team and its players below it (like “P;Sommer;10”)."
+  },
+  "err.fogli_saltati": {
+    "it": "Nel file non ho trovato rose. Ho saltato i fogli che sono listone, calendario o classifica: {1}. Carica il file delle rose esportato dalla lega.",
+    "en": "I found no rosters in the file. I skipped the sheets that are a player list, fixtures or standings: {1}. Upload the rosters file exported from your league."
+  },
+  "err.file_sembra": {
+    "it": "Il file sembra {1}, non le rose: carica il file delle rose esportato dalla lega.",
+    "en": "The file looks like {1}, not the rosters: upload the rosters file exported from your league."
+  },
+  "err.p_listone": {
+    "it": "un listone",
+    "en": "a player list"
+  },
+  "err.p_calendario": {
+    "it": "un calendario",
+    "en": "a fixture list"
+  },
+  "err.p_classifica": {
+    "it": "una classifica",
+    "en": "a standings table"
+  },
   "err.excel_rovinato": {
     "it": "File Excel non leggibile: è rovinato o protetto da password",
     "en": "The Excel file cannot be read: it is damaged or password-protected"

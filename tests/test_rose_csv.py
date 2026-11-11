@@ -295,8 +295,9 @@ def test_file_binari_hanno_un_messaggio_chiaro(dati, frammento):
 
 
 def test_csv_di_un_altro_tipo_da_un_messaggio_con_gli_esempi(indice):
-    classifica = "Pos,Squadra,Punti\n1,Alfa,30\n2,Beta,25\n3,Gamma,20\n"
-    lette = rose.estrai(rose.griglie_da_bytes(classifica.encode()), indice)
+    # (una classifica ha il suo messaggio: tests/test_rose_fogli_non_rose.py)
+    appunti = "Data;Nota\n1 settembre;Asta di riparazione\n2 settembre;Mercato chiuso\n3 settembre;Rose consegnate\n"
+    lette = rose.estrai(rose.griglie_da_bytes(appunti.encode()), indice)
     assert not any(r.esito.trovato for s in lette for r in s.righe)          # il server allora risponde con NESSUNA_ROSA
     for frammento in ("rosters", "$,$,$", "Real Esempio,7627,12", "P;Sommer;10"):
         assert frammento in rose.NESSUNA_ROSA

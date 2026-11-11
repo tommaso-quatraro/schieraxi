@@ -179,7 +179,8 @@ def test_lingua_scelta_e_rilevata_dal_browser():
 MODULI_SENZA_MESSAGGI = {"__main__.py", "testi_legali.py", "posta.py", "verifica.py", "verifica_pacchetti.py", "verifica_fonti.py",
                          "verifica_probabili_fonte2.py", "aggiorna.py", "contesto.py", "listone.py", "salute.py", "pianificatore.py",
                          "formazioni_lega.py", "foto.py", "rotte_foto.py", "fonti_attive.py",
-                         "registro_copia.py"}       # copia e ripristino del registro delle giornate: solo da terminale, sul server
+                         "registro_copia.py",       # copia e ripristino del registro delle giornate: solo da terminale, sul server
+                         "misura_ingresso.py"}      # minuti di ingresso degli amici (`python -m fanta ingresso`): solo da terminale, sul server
 # Messaggi che l'utente della web app non dovrebbe mai vedere (errori interni, cose per chi gestisce il server): niente traduzione.
 # L'elenco può solo accorciarsi: se un messaggio qui sotto viene tradotto o sparisce, il test chiede di toglierlo.
 MESSAGGI_SENZA_TRADUZIONE = {

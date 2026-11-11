@@ -65,7 +65,7 @@ def giro_dovuto(adesso: datetime, scadenza: datetime | None, fatti: set[str], pr
 def _scadenza(db, regole: Regole, adesso: datetime) -> tuple[str, datetime | None]:
     """(chiave della giornata, scadenza della formazione) per la prossima giornata della lega."""
     stagione = consigli.stagione_corrente()
-    giornata = consigli.giornata_da_giocare(db, stagione, regole)
+    giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)     # l'ora del controllo, non l'orologio vero
     if giornata is None:
         return "", None
     return f"{stagione}/{giornata}/{regole.scadenza_minuti}", avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
