@@ -88,13 +88,15 @@ def test_account_cambio_password_da_un_codice_di_recupero_nuovo(web):
     assert recupera(nuovo, "ancora-un-altra-pw-3").status_code == 200
 
 
-def test_account_esci_da_tutti_cambia_il_codice_di_recupero(web):
+def test_account_esci_da_tutti_senza_password_tiene_il_codice_di_recupero(web):
     registra(web)
-    vecchio = codice_generato_altrove(entra())
+    altro = entra()
+    attuale = codice_generato_altrove(altro)
     r = web.post("/api/account/esci-da-tutti")                      # come prima: senza corpo
     assert r.status_code == 200, r.text
-    assert "codice_recupero" not in r.json()                        # senza la password il codice nuovo non si mostra
-    assert recupera(vecchio).status_code == 403
+    assert "codice_recupero" not in r.json()
+    assert altro.get("/api/account/me").status_code == 401          # le sessioni si chiudono lo stesso
+    assert recupera(attuale).status_code == 200                     # senza password il codice di recupero non cambia
 
 
 def test_account_esci_da_tutti_con_la_password_mostra_il_codice_nuovo(web):

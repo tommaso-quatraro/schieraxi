@@ -274,7 +274,7 @@ def recupera_con_email(db: sqlite3.Connection, email_grezza, codice, nuova: str,
     adesso = _ora(adesso)
     account.valida_password(nuova)                           # prima del codice: una password debole non brucia il codice
     email = _email_o_none(email_grezza) or ""
-    with account.uno_alla_volta(ip):
+    with account.uno_alla_volta(ip), account.posto_per_il_calcolo():       # prima dei tetti: a fila piena non si conta niente
         return _recupera_con_email(db, email, codice, nuova, ip, adesso, tieni_push)
 
 
@@ -369,6 +369,11 @@ def iscrivi(db: sqlite3.Connection, nome_utente: str, password: str, email_grezz
     """Prima metà dell'iscrizione con email (modi `aperta` e `email`): controlla tutto, tiene nome e hash della password in attesa e
     manda il codice. L'account NON esiste ancora: nasce in `conferma_iscrizione`. Risposta uguale se l'indirizzo è già di un
     altro account (in quel caso la mail dice che l'account c'è già) o ha troppi invii."""
+    with account.posto_per_il_calcolo():                     # prima dei tetti: a fila piena non si conta niente
+        return _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accetto_termini)
+
+
+def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accetto_termini) -> dict:
     adesso = _ora(adesso)
     termini = account.controlla_termini(accetto_termini)
     modo = modo_registrazione()

@@ -6,8 +6,8 @@
     "Account: se hai collegato un'email ti arriva un avviso quando la password cambia."
   ],
   "tecnico": [
-    "Cambio password, recupero (codice, email, codice dell'amministratore) ed «Esci da tutti»: codice di recupero nuovo, iscrizioni push tolte tranne quella indicata da endpoint_push (campo facoltativo), avviso all'email verificata.",
-    "Esci da tutti: corpo facoltativo {password}; con la password giusta la risposta ha codice_recupero.",
+    "Cambio password e recupero (codice, email, codice dell'amministratore): codice di recupero nuovo, iscrizioni push tolte tranne quella indicata da endpoint_push (campo facoltativo), avviso all'email verificata.",
+    "Esci da tutti: toglie tutte le iscrizioni push; corpo facoltativo {password}: con la password giusta cambia anche il codice di recupero e la risposta ha codice_recupero.",
     "Controlli più stretti sulle richieste di account e notifiche."
   ]
 }
