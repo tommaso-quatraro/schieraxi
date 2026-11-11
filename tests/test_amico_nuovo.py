@@ -58,6 +58,15 @@ def test_formato_sconosciuto_rifiutato(tmp_path):
         _modulo().file_rose(ROSE_ESEMPIO, "pdf", tmp_path)
 
 
+def test_file_sbagliato_riconosce_la_frase_senza_rose_del_server():
+    # La frase vera del server (#577 l'ha accorciata: «Non ho trovato rose nel file…»), e quella di prima per un server remoto
+    # non ancora aggiornato: il passo «file_sbagliato» le riconosce entrambe; un altro errore no.
+    m = _modulo()
+    assert m.dice_nessuna_rosa(rose.NESSUNA_ROSA)
+    assert m.dice_nessuna_rosa("Non ho trovato nessuna rosa nel file. I formati che leggo sono: …")
+    assert not m.dice_nessuna_rosa("Il file è troppo grande")
+
+
 def test_riga_del_riepilogo():
     m = _modulo()
     assert m.riga("rose", 4.3, 3, 0, 0, "ok") == "rose secondi=4.3 tocchi=3 errori-console=0 gravi=0 esito=ok"
