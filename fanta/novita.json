@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.456",
+    "data": "2026-11-11T23:10:54",
+    "titolo": "Server: controlli più stretti",
+    "voci": [
+      "Web: protezioni più strette sui link d'invito.",
+      "Web, iPhone e iPad: lo scaricamento di stemmi e maglie da un indirizzo web si ferma sempre entro il tempo massimo.",
+      "Web, iPhone e iPad: la formazione consigliata che hai già visto resta ricordata anche quando il server è molto usato."
+    ],
+    "tecnico": [
+      "Registro delle richieste e cache della web: regole più strette sugli indirizzi della pagina principale.",
+      "Scaricamento delle immagini da indirizzo: tempo totale ricontrollato a ogni lettura.",
+      "Consigliate ricordate: una parte riservata a ciascun utente dentro il tetto del file (consigli.RISERVATE_UTENTE)."
+    ]
+  },
+  {
     "versione": "1.455",
     "data": "2026-11-11T22:56:34",
     "titolo": "Server: aggiornamenti e avvisi con l'ora del loro controllo",
