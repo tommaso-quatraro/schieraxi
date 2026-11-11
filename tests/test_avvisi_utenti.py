@@ -248,6 +248,21 @@ def test_avvisi_se_il_giro_si_ferma_su_un_utente_lui_passa_in_fondo(mondo, regis
     assert serviti == ["amico3", "amico1", "amico2"] and errori == {"amico1": "TimeoutError"}
 
 
+def test_avvisi_ordine_del_giro_non_salvato_lo_dice_nel_registro_una_volta(mondo, registro, monkeypatch, caplog):
+    """Se l'ordine del giro non si riesce a salvare gli avvisi partono lo stesso; nel registro una riga sola, con il solo tipo d'errore."""
+    nuovo("amico1", (1, "Castro"))
+    nuovo("amico2", (2, "Bonny"))
+
+    def rotto(percorso, testo):
+        raise PermissionError("negato: cartella-segreta")
+    monkeypatch.setattr(avvisi_utenti, "scrivi_sicuro", rotto)
+    with caplog.at_level("WARNING", logger="fanta.avvisi_utenti"):
+        esiti, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
+    assert set(esiti) == {"amico1", "amico2"} and errori == {}
+    righe = [r.getMessage() for r in caplog.records if "ordine" in r.getMessage()]
+    assert len(righe) == 1 and "PermissionError" in righe[0] and "segreta" not in caplog.text
+
+
 def test_avvisi_tempo_del_giro_dalle_variabili_del_server(monkeypatch):
     monkeypatch.delenv("FANTA_MAX_SECONDI_GIRO_PROMEMORIA", raising=False)
     monkeypatch.delenv("FANTA_MAX_SECONDI_GIRO_AVVISI", raising=False)

@@ -681,8 +681,8 @@
     "en": "{1} is not valid: check you chose the right backup file"
   },
   "err.backup_regole_oltre_i_tetti": {
-    "it": "Le regole di questo backup superano i limiti dell'app (per esempio troppi moduli o fasce del modificatore, oppure testi troppo lunghi): non è stato cambiato niente.",
-    "en": "The rules in this backup go beyond the app limits (for example too many formations or modifier bands, or texts that are too long): nothing was changed."
+    "it": "Le regole di questo backup superano i limiti dell'app (per esempio troppi moduli o fasce del modificatore, oppure testi troppo lunghi) e non è stato cambiato niente: riporta le regole nei limiti dall'app e scarica un backup nuovo.",
+    "en": "The rules in this backup go beyond the app limits (for example too many formations or modifier bands, or texts that are too long) and nothing was changed: bring the rules within the limits in the app and download a new backup."
   },
   "err.p_backup_grande": {
     "it": "Questo backup è troppo grande: controlla di aver scelto il file giusto.",

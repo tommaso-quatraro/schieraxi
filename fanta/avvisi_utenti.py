@@ -157,8 +157,9 @@ def _leggi_giro(file: Path, funzione: str) -> dict[str, int]:
     return {k: v for k, v in voce.items() if isinstance(k, str) and isinstance(v, int) and not isinstance(v, bool)}
 
 
-def _scrivi_giro(file: Path, funzione: str, serviti: dict[str, int]) -> None:
-    """Salva l'ordine del giro `funzione` lasciando com'è quello degli altri giri. Se non si riesce, gli avvisi partono lo stesso."""
+def _scrivi_giro(file: Path, funzione: str, serviti: dict[str, int]) -> bool:
+    """Salva l'ordine del giro `funzione` lasciando com'è quello degli altri giri. Falso se non si riesce (disco pieno, permessi):
+    lo dice il registro, con il solo tipo d'errore, e gli avvisi partono lo stesso."""
     try:
         try:
             tutto = json.loads(file.read_text(encoding="utf-8"))
@@ -166,8 +167,10 @@ def _scrivi_giro(file: Path, funzione: str, serviti: dict[str, int]) -> None:
             tutto = {}
         tutto = (tutto if isinstance(tutto, dict) else {}) | {funzione: serviti}
         scrivi_sicuro(file, json.dumps(tutto))
-    except OSError:
-        pass
+    except OSError as e:
+        LOG.warning("Avvisi (%s): ordine del giro non salvato (%s), si continua senza", funzione, type(e).__name__)
+        return False
+    return True
 
 
 def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None,
@@ -203,7 +206,8 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
         if file_giro:
             posizione += 1
             serviti[str(a.utente.id)] = posizione
-            _scrivi_giro(file_giro, funzione, serviti)
+            if not _scrivi_giro(file_giro, funzione, serviti):
+                file_giro = None                      # una riga sola nel registro: per questo giro non si riprova
         try:
             esiti[a.utente.nome_utente] = lavoro(a, db, regole.carica(a.ctx.regole), adesso)
         except Exception as e:  # noqa: BLE001 - un utente con dati strani non deve fermare gli avvisi degli altri

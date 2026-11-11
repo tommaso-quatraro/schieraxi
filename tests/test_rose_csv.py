@@ -57,6 +57,14 @@ def test_rosters_ridotto_due_squadre(ridotto, indice_file):
     assert squadre[1].righe[21].costo == 290                                       # costi alti: un solo valore, non spezzato
 
 
+def test_rosters_nome_squadra_lungo_si_accorcia_come_una_cella(ridotto, indice_file):
+    """Il nome della squadra può stare su più celle (ha delle virgole): unito, si accorcia come una cella sola, così le rose
+    importate rispettano sempre il tetto dei testi (anche quello del ripristino di un backup)."""
+    lungo = ",".join(["N" * 150] * 3)
+    squadre = leggi(ridotto.replace("Real Esempio", lungo).encode(), indice_file)
+    assert [s.nome for s in squadre] == [lungo[:rose.MAX_TESTO_CELLA], "Under Prova"]
+
+
 def test_rosters_nella_lega_senza_mia_squadra(ridotto, indice_file):
     nuove = lega.da_import(leggi(ridotto.encode(), indice_file))
     assert nuove.mia_squadra is None and [s.nome for s in nuove.squadre] == ["Real Esempio", "Under Prova"]

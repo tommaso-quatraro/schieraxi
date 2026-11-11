@@ -40,7 +40,8 @@ def _lista_o_dizionario(d: Any) -> None:
 
 
 REGOLE_OLTRE_I_TETTI = ("Le regole di questo backup superano i limiti dell'app (per esempio troppi moduli o fasce del modificatore, "
-                        "oppure testi troppo lunghi): non è stato cambiato niente.")
+                        "oppure testi troppo lunghi) e non è stato cambiato niente: riporta le regole nei limiti dall'app e "
+                        "scarica un backup nuovo.")
 
 
 def _regole(d: Any) -> None:
