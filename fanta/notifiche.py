@@ -318,7 +318,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
     if inizio is None or inizio <= adesso:
         return []                                  # la formazione si è già chiusa: i cambi non servono più
-    prev, giornata, con_probabili = consigli.previsioni(db, regole)
+    prev, giornata, con_probabili = consigli.previsioni(db, regole, giornata)     # la giornata del giro, non cercata di nuovo
     if not con_probabili:
         return []                                  # senza probabili non c'è niente da confrontare
     ids_oss = [i for i in osservati.leggi(file_osservati) if i not in ids]
@@ -335,7 +335,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         f, titolari = None, vecchio["titolari"]    # niente è cambiato: la formazione di prima vale ancora
     else:
         try:
-            f = consigli.formazione(db, regole, rose)
+            f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)
             titolari = sorted(int(x["id"]) for x in f["titolari"])
         except ValueError:                         # per esempio nessun portiere disponibile: l'avviso sui cambi serve proprio ora
             f, titolari = None, []
@@ -407,7 +407,7 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)     # la scadenza, non l'inizio della partita
     if inizio is None or inizio <= adesso:
         return []
-    prev, giornata, _ = consigli.previsioni(db, regole)
+    prev, giornata, _ = consigli.previsioni(db, regole, giornata)     # la giornata del giro, non cercata di nuovo
     r = cop.analizza(prev, regole, rose, opzioni.get("lingua", LINGUA_PREDEFINITA))          # il testo del reparto è già nella lingua dell'utente
     stato = _json(file_stato)
     gia = set(stato.get("copertura", []))
@@ -499,7 +499,7 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
         elif nome == "60":
             parti = [F("n.non_valida_tra_un_ora" if non_valida else "n.tra_un_ora", giornata=_giornata(giornata, regole), ora=ora_chiusura)]
             try:
-                f = consigli.formazione(db, regole, rose)
+                f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)
                 dubbi = [x["nome"] for x in f["titolari"] if x["titolarita"] != "titolare" or x["dubbio"]][:4]
                 parti.append(F("n.consigliato", modulo=f["modulo"], punti=float(f["punteggio_atteso"])))
                 if dubbi:
@@ -648,7 +648,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     scelta = scelte.leggi(stagione, giornata, file_scelte)
     if scelta:                                     # conta solo se si può ancora schierare: se no è come non averla salvata
         try:
-            prev, _, _ = consigli.previsioni(db, regole)
+            prev, _, _ = consigli.previsioni(db, regole, giornata)
         except ValueError:                         # senza previsioni non c'è nessun consiglio da confrontare
             return []
         scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
@@ -658,7 +658,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     if versione is not None and firma_giro == mio.get("valutato"):
         return []                                  # niente di nuovo dall'ultima volta: niente calcoli
     try:
-        f = consigli.formazione(db, regole, rose)
+        f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)     # la giornata e l'ora del giro
     except ValueError:
         return []
     ora = sorted(int(x["id"]) for x in f["titolari"])
@@ -671,7 +671,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
         salva()
         return []
     try:
-        v = consigli.valuta(db, regole, rose, rif)
+        v = consigli.valuta(db, regole, rose, rif, giornata=giornata, adesso=adesso)
     except ValueError:                             # il riferimento non è più valido (un giocatore non è più nella rosa)
         if not scelta:
             mio |= {"rif": ora, "valutato": firma_giro}
@@ -682,7 +682,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
         mio["valutato"] = firma_giro               # cambio piccolo: non vale un avviso
         salva()
         return []
-    prev, _, _ = consigli.previsioni(db, regole)
+    prev, _, _ = consigli.previsioni(db, regole, giornata)
     nomi = {int(x["id"]): x.get("nome") for x in f["titolari"]}
     entrano = [nomi[i] for i in ora if i not in rif]
     escono = [i for i in rif if i not in ora]

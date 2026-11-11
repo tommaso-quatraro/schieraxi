@@ -1,5 +1,34 @@
 [
   {
+    "versione": "1.455",
+    "data": "2026-11-11T22:56:34",
+    "titolo": "Server: aggiornamenti e avvisi con l'ora del loro controllo",
+    "voci": [
+      "Nessun cambio visibile: gli aggiornamenti del server e gli avvisi sul telefono contano la giornata e la scadenza sempre con l'ora del loro controllo."
+    ],
+    "tecnico": [
+      "libero.scadenza_vicina e pianificatore._scadenza passano adesso a consigli.giornata_da_giocare.",
+      "notifiche.cambi, copertura, promemoria e avviso_scadenza passano la giornata del giro a consigli.previsioni, formazione e valuta, e l'ora del giro (adesso) a formazione e valuta, invece di farle cercare di nuovo con l'orologio vero.",
+      "consigli.formazione e consigli.valuta accettano adesso (facoltativo, senza = ora vera): lo usano la ricerca della giornata, _chiusa e _anticipi_iniziati per la risposta. La consigliata si ricorda (_si_ricorda) solo se anche l'ora vera dice formazione aperta e gli stessi anticipi cominciati: un giro partito prima della scadenza non cambia quella già fissata.",
+      "tests/test_orologio_del_giro.py e tests/test_anticipi_consigliata.py: prove con date fisse passate e la giornata calcolata davvero (#571)."
+    ]
+  },
+  {
+    "versione": "1.454",
+    "data": "2026-11-11T22:47:44",
+    "titolo": "Rose da Excel: solo i fogli delle rose",
+    "voci": [
+      "Web e iPhone: se il file Excel della lega ha anche listone, calendario o classifica, SchieraXI salta quei fogli e legge solo le rose, senza squadre inventate né lo stop per troppi giocatori.",
+      "Se nel file non ci sono rose, il messaggio è più corto e arriva intero; se ci sono solo listone, calendario o classifica, dice quali fogli ha saltato."
+    ],
+    "tecnico": [
+      "rose.estrai legge ogni foglio a parte (squadre e avvisi del foglio) e lo unisce alle altre squadre solo se rose._foglio_non_rosa dà None; le squadre con lo stesso nome in più fogli si uniscono come prima (righe in coda, crediti dell'ultimo foglio).",
+      "Listone: in media più di 60 giocatori per squadra nel foglio. Calendario: almeno due righe con «giornata». Classifica: almeno 3 righe (e metà del foglio) con un nome e due o più numeri, senza ruolo né squadra di Serie A. Calendario e classifica solo con meno di un nome su quattro nel listone e senza intestazioni da rosa (calciatore, giocatore, costo, prezzo, crediti).",
+      "Solo fogli saltati: estrai alza ValueError con i nomi dei fogli (err.fogli_saltati) o, per CSV e testo, con che cosa sembra il file (err.file_sembra, err.p_listone/calendario/classifica). rose.NESSUNA_ROSA accorciato a meno di 300 caratteri (err.rose_non_trovate): prima il server lo tagliava a 500 (#579).",
+      "Nessun tetto di sicurezza cambiato (celle, tempo, uscita del lettore degli Excel). Prove in tests/test_rose_fogli_non_rose.py."
+    ]
+  },
+  {
     "versione": "1.453",
     "data": "2026-11-11T22:22:10",
     "titolo": "Server: misura dei minuti per entrare",

@@ -264,7 +264,7 @@ def _con_anticipo(m, monkeypatch, *ids):
     vecchia = da_fare.consigli.scheda_previsione
     monkeypatch.setattr(da_fare.consigli, "scheda_previsione",
                         lambda i, x: vecchia(i, x) | {"squadra": ANTICIPO if i in ids else "aaa"})
-    monkeypatch.setattr(da_fare.consigli, "_anticipi_iniziati", lambda db, st, g: (ANTICIPO,) if ids else ())
+    monkeypatch.setattr(da_fare.consigli, "_anticipi_iniziati", lambda db, st, g, adesso=None: (ANTICIPO,) if ids else ())
 
 
 def _dubbi(m):
