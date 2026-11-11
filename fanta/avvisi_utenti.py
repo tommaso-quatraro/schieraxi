@@ -7,22 +7,31 @@ e per ciascuno usa i SUOI file: rose, regole, impostazioni, osservati, scelte, i
 - Il canale ntfy è uno solo ed è del proprietario del server: gli utenti non ci passano mai. L'unica eccezione è un
   amministratore che ha acceso l'opzione dell'app nativa (come con l'interruttore spento).
 - Un errore con un utente non ferma gli altri.
+- Il giro ha un tempo massimo e un ordine a rotazione: chi resta fuori per il tempo finito passa per primo al giro dopo.
 - Lavoro pesante: i cambi confrontano prima gli stati dei giocatori (poco costoso) e ricalcolano la formazione solo se qualcosa è cambiato.
 """
 from __future__ import annotations
 
 import contextlib
+import json
+import logging
+import os
+import re
 import sqlite3
+import time
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Callable
 
-from . import account, avvisi, consigli, lega, notifiche, push, regole
+from . import account, avvisi, consigli, lega, notifiche, percorsi, push, regole
 from .account import Utente
 from .contesto import Contesto
 from .lega import Rose
+from .percorsi import scrivi_sicuro
 
 FUNZIONI = ("cambi", "promemoria", "riepilogo", "pronta")
+LOG = logging.getLogger(__name__)
 
 
 @dataclass
@@ -43,23 +52,33 @@ def ntfy_consentito(utente: Utente, opzioni: dict) -> bool:
     return utente.amministratore and bool(opzioni.get("app_nativa"))
 
 
+def _attivo(utente: Utente) -> Attivo | None:
+    """L'utente pronto per il giro, o None se non ha una squadra o un modo per ricevere gli avvisi."""
+    ctx = Contesto.per_utente(utente.id)
+    rose = lega.carica(ctx.rose)
+    if not rose or not rose.mia_squadra:
+        return None
+    opzioni = notifiche.impostazioni(ctx.impostazioni_avvisi)
+    ntfy = ntfy_consentito(utente, opzioni)
+    if push.iscrizioni(ctx.iscrizioni_push) or (ntfy and notifiche.canale()):
+        return Attivo(utente, ctx, rose, opzioni, ntfy)
+    return None
+
+
 def utenti_attivi() -> list[Attivo]:
-    """Chi ha una squadra e almeno un modo per ricevere gli avvisi."""
+    """Chi ha una squadra e almeno un modo per ricevere gli avvisi. Un utente con un file rovinato o strano per ora non riceve
+    avvisi, e non ferma gli altri."""
     with contextlib.closing(account.apri()) as db:
         elenco = [account.trova(db, r["id"]) for r in account.elenco(db)]
     attivi = []
     for utente in elenco:
-        ctx = Contesto.per_utente(utente.id)
         try:
-            rose = lega.carica(ctx.rose)
-        except ValueError:                                 # file rovinato: quell'utente per ora non riceve avvisi
+            a = _attivo(utente)
+        except Exception as e:  # noqa: BLE001 - un utente con dati strani non deve fermare gli avvisi degli altri
+            LOG.warning("Avvisi: utente %s saltato in questo giro (%s)", utente.id, type(e).__name__)      # niente nomi né contenuti
             continue
-        if not rose or not rose.mia_squadra:
-            continue
-        opzioni = notifiche.impostazioni(ctx.impostazioni_avvisi)
-        ntfy = ntfy_consentito(utente, opzioni)
-        if push.iscrizioni(ctx.iscrizioni_push) or (ntfy and notifiche.canale()):
-            attivi.append(Attivo(utente, ctx, rose, opzioni, ntfy))
+        if a is not None:
+            attivi.append(a)
     return attivi
 
 
@@ -110,16 +129,81 @@ def _pronta(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetim
 
 _LAVORI = {"cambi": _cambi, "promemoria": _promemoria, "riepilogo": _riepilogo, "pronta": _pronta}
 
+# ---------------------------------------------------------------- tempo e ordine del giro
+# Gli script del server fermano il comando dopo un tempo massimo (promemoria.sh, aggiorna.sh; le stesse variabili di
+# dati/ambiente.env). Il giro si ferma da solo un po' prima, fra un utente e l'altro, così salva l'ordine e non viene interrotto.
+TEMPO_SCRIPT = {"promemoria": ("FANTA_MAX_SECONDI_GIRO_PROMEMORIA", 480)}
+TEMPO_SCRIPT_ALTRI = ("FANTA_MAX_SECONDI_GIRO_AVVISI", 600)        # cambi, riepilogo, «formazione pronta»
+MARGINE_SECONDI = 120          # il lavoro di un utente può durare un po' (due invii lenti e un calcolo): resta questo margine
+FILE_GIRO = "avvisi-giro.json"  # nella cartella degli account: per ogni giro, l'ordine in cui gli utenti sono stati serviti
+
+
+def secondi_del_giro(funzione: str) -> float:
+    """Quanto può durare il giro di `funzione`: il tempo massimo dello script del server meno un margine (almeno la metà)."""
+    variabile, base = TEMPO_SCRIPT.get(funzione, TEMPO_SCRIPT_ALTRI)
+    testo = os.environ.get(variabile, "")
+    esterno = int(testo) if re.fullmatch(r"[1-9][0-9]{0,4}", testo) else base       # come gli script: un valore non valido vale quello di base
+    return max(esterno - MARGINE_SECONDI, esterno / 2)
+
+
+def _leggi_giro(file: Path, funzione: str) -> dict[str, int]:
+    """{numero dell'utente: posizione nell'ultimo servizio} del giro `funzione` (più alta = servito più di recente)."""
+    try:
+        voce = json.loads(file.read_text(encoding="utf-8")).get(funzione)
+    except (OSError, ValueError, AttributeError):
+        return {}
+    if not isinstance(voce, dict):
+        return {}
+    return {k: v for k, v in voce.items() if isinstance(k, str) and isinstance(v, int) and not isinstance(v, bool)}
+
+
+def _scrivi_giro(file: Path, funzione: str, serviti: dict[str, int]) -> None:
+    """Salva l'ordine del giro `funzione` lasciando com'è quello degli altri giri. Se non si riesce, gli avvisi partono lo stesso."""
+    try:
+        try:
+            tutto = json.loads(file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            tutto = {}
+        tutto = (tutto if isinstance(tutto, dict) else {}) | {funzione: serviti}
+        scrivi_sicuro(file, json.dumps(tutto))
+    except OSError:
+        pass
+
 
 def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None,
-           attivi: list[Attivo] | None = None) -> tuple[dict[str, list[str]], dict[str, str]]:
+           attivi: list[Attivo] | None = None, *, max_secondi: float | None = None,
+           orologio: Callable[[], float] = time.monotonic, file_giro: Path | None = None) -> tuple[dict[str, list[str]], dict[str, str]]:
     """Esegue `funzione` (una di FUNZIONI) per ogni utente attivo. Restituisce ({nome utente: righe mandate}, {nome utente: errore}).
-    Dell'errore si dice solo il tipo (niente dati personali nei log)."""
+    Dell'errore si dice solo il tipo (niente dati personali nei log).
+    Il giro dura al massimo `max_secondi` (di base `secondi_del_giro`): il tempo si guarda fra un utente e l'altro (almeno uno si
+    serve sempre); chi resta passa al giro dopo. L'ordine è a rotazione: prima chi è stato servito meno di recente (o mai), in fondo
+    chi è stato servito per ultimo. Ogni utente si segna come servito PRIMA del suo lavoro, così se il giro si ferma mentre lavora
+    per lui, al giro dopo va in fondo. L'ordine sta in `file_giro` (di base FILE_GIRO nella cartella degli account; con `attivi`
+    indicato da chi chiama, solo se si passa `file_giro`)."""
     lavoro = _LAVORI[funzione]
     adesso = adesso or datetime.now()
+    inizio = orologio()
+    limite = secondi_del_giro(funzione) if max_secondi is None else max_secondi
+    if attivi is None:
+        attivi = utenti_attivi()
+        file_giro = file_giro or percorsi.cartella_account() / FILE_GIRO
+    serviti: dict[str, int] = {}
+    ordinati = list(attivi)
+    if file_giro:
+        presenti = {str(a.utente.id) for a in attivi}
+        serviti = {k: v for k, v in _leggi_giro(file_giro, funzione).items() if k in presenti}
+        ordinati.sort(key=lambda a: serviti.get(str(a.utente.id), -1))      # sort è stabile: a pari merito, l'ordine di prima
+    posizione = max(serviti.values(), default=0)
     esiti: dict[str, list[str]] = {}
     errori: dict[str, str] = {}
-    for a in (utenti_attivi() if attivi is None else attivi):
+    for n, a in enumerate(ordinati):
+        if n and orologio() - inizio > limite:
+            LOG.warning("Avvisi (%s): tempo del giro finito, %d utenti al prossimo giro", funzione, len(ordinati) - n)
+            break
+        if file_giro:
+            posizione += 1
+            serviti[str(a.utente.id)] = posizione
+            _scrivi_giro(file_giro, funzione, serviti)
         try:
             esiti[a.utente.nome_utente] = lavoro(a, db, regole.carica(a.ctx.regole), adesso)
         except Exception as e:  # noqa: BLE001 - un utente con dati strani non deve fermare gli avvisi degli altri
