@@ -230,5 +230,28 @@ def test_chiusa_a_guida_finita_o_con_un_altro_foglio_non_salva_niente():
     assert _chiusura(["server", "accesso"], [], nascosto=False) == []                 # il foglio si è aperto, non chiuso
 
 
+def _fine(squadre) -> str:
+    """Il testo della schermata «Tutto pronto» con «Le rose» e «La tua squadra» saltate, con o senza rose caricate."""
+    codice = "\n".join([
+        TESTI,
+        "const esc = x => String(x); globalThis.window = {}; globalThis.document = { querySelectorAll: () => [] };",
+        f"const stato = {{ account: true, squadre: {json.dumps(squadre)} }};",
+        "const $ = () => ({ addEventListener() {}, remove() {} }); let html = ''; const apriFoglio = h => { html = h; };",
+        PRIMO,
+        "pa.stato = { fatti: ['server', 'accesso', 'tempi'], saltati: ['rose', 'squadra'], chiuso: false };",
+        "paFine(); console.log(JSON.stringify(html));",
+    ])
+    return _node(codice)
+
+
+def test_passi_saltati_senza_rose_si_ritrovano_con_importa_le_rose():
+    # senza rose «Da fare» non elenca i passi saltati (Oggi mostra solo il benvenuto con «Importa le rose»)
+    senza = _fine([])
+    assert "Hai saltato Le rose, La tua squadra: li ritrovi toccando «Importa le rose» in Oggi" in senza
+    assert "li trovi in «Da fare»" not in senza
+    con = _fine([{"nome": "Real Esempio"}])
+    assert "Hai saltato Le rose, La tua squadra: li trovi in «Da fare» in Oggi" in con
+
+
 def test_la_guida_osserva_la_chiusura_del_foglio():
     assert "paOsservaChiusura();" in _funzione(PRIMO, "paDisegna")

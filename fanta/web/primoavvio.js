@@ -60,7 +60,8 @@ function paProgresso() {
 }
 
 // Guida chiusa senza finire (✕, Esc, tocco fuori, foglio trascinato giù, un collegamento che porta altrove): i passi rimasti
-// diventano saltati, come «Più tardi» sull'iPhone. Così non si riapre da sola e «Da fare» propone di riprenderla.
+// diventano saltati, come «Più tardi» sull'iPhone. Così non si riapre da sola: si ritrova con «Importa le rose» di Oggi (dopo le
+// rose, in «Da fare»).
 // Si guarda il foglio, non ogni modo di chiuderlo: quando si nasconde con la guida dentro.
 let paOsservatore = null;
 function paOsservaChiusura() {
@@ -115,8 +116,10 @@ const paAvvisiPossibili = () => "serviceWorker" in navigator && "PushManager" in
 
 function paFine() {
   const saltati = PA_PASSI.filter(p => !paFatto(p));
+  // senza rose «Da fare» non elenca ancora i passi saltati: si ritrovano con «Importa le rose» di Oggi
+  const dove = (stato.squadre || []).length ? "pav.hai_saltato" : "pav.hai_saltato_senza_rose";
   apriFoglio(`<h2 class="pa-capo">${t("pav.tutto_pronto_mister")}</h2>${paProgresso()}
-    <p class="debole">${saltati.length ? t("pav.hai_saltato", { nomi: saltati.map(p => esc(PA_NOMI[p])).join(", ") }) : t("pav.hai_finito")}</p>
+    <p class="debole">${saltati.length ? t(dove, { nomi: saltati.map(p => esc(PA_NOMI[p])).join(", ") }) : t("pav.hai_finito")}</p>
     <p class="debole piccolo">${t("pav.il_resto")}</p>
     <div id="pa-msg" role="alert"></div>
     <div class="pulsanti"><button class="bottone" id="pa-chiudi">${t("pav.vai_oggi")}</button>
@@ -315,8 +318,8 @@ async function paNonRiconosciuti() {
 // Il primo avvio lasciato a metà si riprende da solo SOLO nel caso di #580: l'amico ha aperto l'app (per esempio dalla Home, dopo
 // averla installata) prima di caricare le rose. Serve che l'abbia cominciato e non l'abbia chiuso e che il passo «Le rose» non sia
 // né fatto né saltato (la ✕ salta i passi rimasti: paOsservaChiusura); che le rose non ci siano lo guarda paControllaAvvio. Chi ha
-// già le rose non la rivede da sola, anche con un passo aperto (per esempio «I tempi della lega», che l'iPhone non ha): la riapre da
-// Impostazioni o da «Da fare».
+// già le rose non la rivede da sola, anche con un passo aperto (per esempio «I tempi della lega», che l'iPhone non ha): i passi
+// saltati li ritrova in «Da fare».
 function paDaRiprendere(s) {
   return !!s && !s.chiuso && !(s.fatti || []).includes("rose") && !(s.saltati || []).includes("rose");
 }

@@ -136,6 +136,11 @@
     "it": "Hai saltato {nomi}: li trovi in «Da fare» in Oggi e puoi riprenderli quando vuoi da Impostazioni, sotto Informazioni.",
     "en": "You skipped {nomi}: you find them in «To do» in Today and you can pick them up whenever you like from Settings, under About."
   },
+  "pav.hai_saltato_senza_rose": {
+    "it": "Hai saltato {nomi}: li ritrovi toccando «Importa le rose» in Oggi (dopo le rose, in «Da fare»).",
+    "en": "You skipped {nomi}: you get them back by tapping «Import the rosters» in Today (after the rosters, in «To do»).",
+    "nota": "«Tutto pronto» senza rose caricate: «Da fare» non elenca ancora i passi saltati"
+  },
   "pav.hai_finito": {
     "it": "Hai finito la configurazione.",
     "en": "You have finished the setup."

@@ -43,7 +43,7 @@ Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'emai
 ### Caricare la tua squadra
 
 Alla prima apertura SchieraXI ti guida in quattro passi brevi. Ogni passo si può **saltare**: resta in **Da fare** in Oggi.
-Se ti fermi prima di caricare le rose (per esempio per mettere l'app sulla schermata Home), alla prossima apertura dell'app la guida riprende dalle rose, anche da un altro telefono o computer. Se la chiudi con la ✕, i passi rimasti contano come saltati: la guida non si riapre da sola e li ritrovi in **Da fare**. Finita con **Vai a Oggi**, non si riapre più da sola.
+Se ti fermi prima di caricare le rose (per esempio per mettere l'app sulla schermata Home), alla prossima apertura dell'app la guida riprende dalle rose, anche da un altro telefono o computer. Se la chiudi con la ✕, i passi rimasti contano come saltati e la guida non si riapre da sola: la ritrovi toccando **Importa le rose** in Oggi (dopo le rose, i passi saltati sono in **Da fare**). Finita con **Vai a Oggi**, non si riapre più da sola.
 
 1. **Le rose.** Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla il testo e tocca **Controlla le rose**, oppure tocca **Scegli il file (Excel o CSV)**. Non si salva ancora niente.
    Per cominciare basta anche **solo la tua squadra**: formazione e consigli funzionano subito. Le rose degli altri servono per gli scambi e le aggiungi quando vuoi. Se vuoi solo guardare l'app, usa le **squadre di esempio**.
