@@ -130,19 +130,23 @@ Da fare solo con un ok a parte del proprietario. Il recinto del servizio (drop-i
 fuori dal recinto. Il servizio scrive solo in queste cartelle (lette nel codice, novembre 2026):
 - `dati/` (archivio, account, cartelle degli utenti, cache, stati: `fanta/percorsi.py` e i moduli che usano `RADICE / "dati"`);
 - la cartella della lega, `lega/` o quella di `FANTA_LEGA` (regole, rose, movimenti, immagini: `fanta/server.py`, `fanta/immagini.py`);
-- `~/.cache/fantacalcio/` (il blocco condiviso con `aggiorna.sh`: `fanta/pianificatore.py`).
+- il solo file `~/.cache/fantacalcio/blocco` (il blocco condiviso con `aggiorna.sh`, che il servizio apre in scrittura:
+  `fanta/pianificatore.py`, `blocco_processo`). Il resto di `~/.cache` non serve al servizio.
 Il codice (`fanta/`) e `.venv` li legge e basta (senza permesso di scrittura Python non salva i file `.pyc`, e va bene così).
 
 1. Guarda il drop-in: `systemctl cat fantacalcio` (riga `ReadWritePaths=`), poi fanne una copia:
    `sudo cp /etc/systemd/system/fantacalcio.service.d/sicurezza.conf /etc/systemd/system/fantacalcio.service.d/sicurezza.conf.prima`.
-2. Con `sudoedit /etc/systemd/system/fantacalcio.service.d/sicurezza.conf` la riga diventa (una sola, percorsi assoluti; se
-   `FANTA_LEGA` punta altrove, quella cartella al posto di `lega`):
-   `ReadWritePaths=/home/<utente>/fantacalcio/dati /home/<utente>/fantacalcio/lega /home/<utente>/.cache/fantacalcio`
-3. `sudo systemctl daemon-reload && sudo systemctl restart fantacalcio`.
-4. Controlli: `systemctl show fantacalcio -p ReadWritePaths` mostra le tre cartelle; `curl -s -H "X-Fanta: 1"
+2. Il file del blocco deve esistere prima (di solito lo crea già `aggiorna.sh`): come `<utente>`,
+   `mkdir -p ~/.cache/fantacalcio && touch ~/.cache/fantacalcio/blocco`.
+3. Con `sudoedit /etc/systemd/system/fantacalcio.service.d/sicurezza.conf` la riga diventa (una sola, percorsi assoluti; se
+   `FANTA_LEGA` punta altrove, quella cartella al posto di `lega`). Il `-` davanti vuol dire «se manca, si salta»: senza, una
+   cartella o un file mancante in `ReadWritePaths=` impedisce al servizio di partire. `dati/` c'è sempre e resta senza `-`:
+   `ReadWritePaths=/home/<utente>/fantacalcio/dati -/home/<utente>/fantacalcio/lega -/home/<utente>/.cache/fantacalcio/blocco`
+4. `sudo systemctl daemon-reload && sudo systemctl restart fantacalcio`; `systemctl is-active fantacalcio` dà `active`.
+5. Controlli: `systemctl show fantacalcio -p ReadWritePaths` mostra i tre percorsi; `curl -s -H "X-Fanta: 1"
    http://127.0.0.1:8000/api/account/me` contiene `"multiutente":true`; nell'app una scelta salvata resta dopo aver ricaricato la
    pagina; dopo qualche minuto `journalctl -u fantacalcio --since "-15 min" | grep -ci "read-only"` dà `0`; come `<utente>`,
    `bash ~/fantacalcio/script/server/sentinella.sh --senza-invio` dà `0 rotture`.
-5. Per tornare indietro:
+6. Per tornare indietro:
    `sudo mv /etc/systemd/system/fantacalcio.service.d/sicurezza.conf.prima /etc/systemd/system/fantacalcio.service.d/sicurezza.conf`,
    poi `sudo systemctl daemon-reload && sudo systemctl restart fantacalcio`.

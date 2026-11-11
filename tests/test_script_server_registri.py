@@ -193,11 +193,17 @@ def test_registri_aggiorna_app_in_produzione_con_il_registro_collegato_non_scriv
     bersaglio = tmp_path / "bersaglio.txt"
     bersaglio.write_text("INTATTO", encoding="utf-8")
     _collega(bersaglio, app / "dati" / nome)
-    r = _lancia([BASH, (SCRIPT / "aggiorna-app.sh").as_posix()], env={**env, "SCHIERAXI_SRC": _msys(tmp_path / "manca")})
-    assert r.returncode == 1
-    assert "collegamento" in r.stderr
+    for _ in range(2):                                                      # due giri: un solo avviso
+        r = _lancia([BASH, (SCRIPT / "aggiorna-app.sh").as_posix()], env={**env, "SCHIERAXI_SRC": _msys(tmp_path / "manca")})
+        assert r.returncode == 1
+        assert "collegamento" in r.stderr
     assert bersaglio.read_text(encoding="utf-8") == "INTATTO"
-    assert not (tmp_path / "manca").exists() and not chiamate.exists()
+    assert not (tmp_path / "manca").exists()
+    avvisi = [c for c in chiamate.read_text(encoding="utf-8").splitlines() if "notifiche.invia" in c]
+    assert len(avvisi) == 1 and "aggiornamento fermo" in avvisi[0]          # l'avviso sul telefono, una volta sola
+    (app / "dati" / nome).unlink()                                          # tolto il collegamento, il segno sparisce
+    _lancia([BASH, (SCRIPT / "aggiorna-app.sh").as_posix()], env={**env, "SCHIERAXI_SRC": _msys(tmp_path / "manca")})
+    assert not (tmp_path / "casa" / ".cache" / "fantacalcio" / "avvisato-collegamento").exists()
 
 
 @con_bash

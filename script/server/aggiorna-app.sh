@@ -77,7 +77,24 @@ QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di 
 LOG="$DEST/dati/pubblicazione.log"
 # la cartella dati la scrive anche il servizio (produzione o prova): un collegamento simbolico al posto del log farebbe scrivere
 # questo script (che gira fuori dal recinto del servizio) da un'altra parte, per esempio sul codice. Non scrive e non installa niente.
-registri_sicuri "$LOG" "$LOG.tmp" || exit 1
+avvisa() {   # titolo, testo, priorita (usa il canale delle notifiche dell'app: web o ntfy)
+  [ "$ISTANZA" = prova ] && return 0     # la prova non avvisa: gli avvisi vanno al canale della produzione (se resta indietro, lo vede il collaudo)
+  ( cd "$DEST" && nice -n 10 .venv/bin/python -c "
+import sys
+from fanta import notifiche
+notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'package')" "$1" "$2" "$3" ) >/dev/null 2>&1
+}
+# Fermo per un collegamento: oltre al journal (registri.sh) un avviso sul telefono, una volta sola finche' il collegamento resta.
+# Il segno sta in ~/.cache come gli altri stati e si crea con noclobber (mai attraverso un collegamento gia' presente).
+SEGNO_COLLEGAMENTO="$STATO/avvisato-collegamento"
+if ! registri_sicuri "$LOG" "$LOG.tmp"; then
+  if [ "$PROVA" = 0 ] && [ -z "$ISTANZA" ] && mkdir -p "$STATO" && [ ! -L "$SEGNO_COLLEGAMENTO" ] && [ ! -e "$SEGNO_COLLEGAMENTO" ] \
+     && ( set -C; : > "$SEGNO_COLLEGAMENTO" ) 2>/dev/null; then
+    avvisa "SchieraXI: aggiornamento fermo" "Nella cartella dei dati c'e' un collegamento al posto del registro degli aggiornamenti: l'app non si aggiorna finche' non lo togli." 4
+  fi
+  exit 1
+fi
+[ "$PROVA" = 1 ] || rm -f "$SEGNO_COLLEGAMENTO"
 ERR="$LOG"; [ "${1:-}" = "--prova" ] && ERR=/dev/null
 REPO="${SCHIERAXI_REPO:-https://github.com/tommaso-quatraro/schieraxi.git}"
 CARTELLE="fanta tests script requirements.txt requirements-dev.txt"     # le sole cose che finiscono sul server
@@ -98,13 +115,6 @@ log() {
   if [ "$PROVA" = 1 ]; then echo "[prova] $*"; else echo "$(date '+%F %T') $*" >> "$LOG"; fi
   [ -n "$FIDATI" ] && echo "$*"
   return 0
-}
-avvisa() {   # titolo, testo, priorita (usa il canale delle notifiche dell'app: web o ntfy)
-  [ "$ISTANZA" = prova ] && return 0     # la prova non avvisa: gli avvisi vanno al canale della produzione (se resta indietro, lo vede il collaudo)
-  ( cd "$DEST" && nice -n 10 .venv/bin/python -c "
-import sys
-from fanta import notifiche
-notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'package')" "$1" "$2" "$3" ) >/dev/null 2>&1
 }
 fine() { [ "$PROVA" = 1 ] && return 0; ruota_registro "$LOG" 300 2>/dev/null; }
 
