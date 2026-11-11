@@ -312,7 +312,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     opzioni = opzioni if opzioni is not None else impostazioni()
     ids = _mia_rosa_ids(rose)
     stagione = consigli.stagione_corrente()
-    giornata = consigli.giornata_da_giocare(db, stagione, regole)
+    giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)     # l'ora del giro, non l'orologio vero
     if not ids or giornata is None:
         return []
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
@@ -401,7 +401,7 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     if not opzioni.get("copertura", True):
         return []
     stagione = consigli.stagione_corrente()
-    giornata = consigli.giornata_da_giocare(db, stagione, regole)      # la giornata della lega, come cambi e promemoria
+    giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)      # la giornata della lega, come cambi e promemoria
     if giornata is None:
         return []
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)     # la scadenza, non l'inizio della partita
@@ -469,7 +469,7 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
     adesso = adesso or datetime.now()
     opzioni = opzioni if opzioni is not None else impostazioni()
     stagione = consigli.stagione_corrente()
-    giornata = consigli.giornata_da_giocare(db, stagione, regole)
+    giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)     # l'ora del giro, non l'orologio vero
     if giornata is None:
         return []
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)     # la scadenza, non l'inizio della partita
@@ -617,7 +617,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     if not prima:
         return []
     stagione = consigli.stagione_corrente()
-    giornata = consigli.giornata_da_giocare(db, stagione, regole)
+    giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)     # l'ora del giro, non l'orologio vero
     if giornata is None:
         return []
     chiusura = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
@@ -780,7 +780,7 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     senza = [t.nome for t in tit if not gioca[t.id]]
     if senza:
         parti.append(F("n.senza_voto", nomi=", ".join(senza)))
-    prossima = consigli.giornata_da_giocare(db, stagione, regole)
+    prossima = consigli.giornata_da_giocare(db, stagione, regole, adesso)
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, prossima), regole) if prossima else None
     if inizio:
         parti.append(F("n.prossima", giornata=_giornata(prossima, regole), data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))

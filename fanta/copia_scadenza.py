@@ -60,7 +60,7 @@ def copia_utente(ctx: Contesto, db, adesso: datetime, fatte: set[str]) -> str | 
     chiave = f"{ctx.utente_id}/{stagione}/{g}"
     if chiave in fatte:
         return None
-    f = consigli.formazione(db, reg, rose)
+    f = consigli.formazione(db, reg, rose, giornata=g)            # la stessa giornata, non cercata di nuovo con l'orologio vero
     if f.get("giornata") != g:
         return None
     salva(f, stagione, ctx.scelte, ctx.diario)

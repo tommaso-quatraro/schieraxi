@@ -100,7 +100,7 @@ def _pronta(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetim
     if notifiche.in_silenzio(adesso, a.opzioni):
         return []
     stagione = consigli.stagione_corrente()
-    giornata = consigli.giornata_da_giocare(db, stagione, r)
+    giornata = consigli.giornata_da_giocare(db, stagione, r, adesso)     # l'ora del giro, non l'orologio vero
     avviso = avvisi.da_mandare(db, stagione, giornata, adesso, a.ctx.stato_avvisi, segna=False, regole=r)
     if avviso and a.manda(avviso["titolo"], avviso["testo"], 3, "soccer"):
         avvisi.segna(stagione, giornata, a.ctx.stato_avvisi)

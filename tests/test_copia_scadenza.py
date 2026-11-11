@@ -124,6 +124,21 @@ def test_calcolo_non_riuscito_si_riprova(ambiente, monkeypatch):
     assert copia_scadenza.giro(SCADENZA - timedelta(minutes=5), [ctx], _db(ambiente), fatte) == [f"1/{ST}/10"]
 
 
+def test_la_copia_chiede_la_consigliata_della_giornata_del_giro(ambiente, monkeypatch):
+    """La consigliata da copiare è quella della giornata trovata con l'ora del giro, chiesta per numero a `consigli.formazione`:
+    senza il numero, la formazione cercherebbe la giornata da sola, con l'orologio vero (#566)."""
+    finta = consigli.formazione
+    chieste = []
+
+    def formazione(db, regole, rose, nome_squadra=None, giornata=None, simulazioni=600):    # come quella vera: la giornata chiesta
+        chieste.append(giornata)
+        return finta(db, regole, rose) | {"giornata": giornata}
+    monkeypatch.setattr(consigli, "formazione", formazione)
+    ctx = _ctx(ambiente.tmp / "u1", ambiente, 1)
+    assert copia_scadenza.giro(SCADENZA - timedelta(minutes=5), [ctx], _db(ambiente), set()) == [f"1/{ST}/10"]
+    assert chieste == [10]
+
+
 def test_sorveglia_rispetta_l_interruttore(ambiente, monkeypatch):
     _con_giornata(monkeypatch)
     ctx = _ctx(ambiente.tmp / "u1", ambiente, 1)
