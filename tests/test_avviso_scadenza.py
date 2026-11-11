@@ -267,7 +267,7 @@ def test_cambi_zittiti_solo_per_la_notizia_che_l_avviso_conosceva(m, tmp_path):
 
 def test_piu_utenti_con_leghe_diverse(mondo, registro, monkeypatch):  # noqa: F811
     m = Finto(monkeypatch, mondo.db)
-    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r: 9)
+    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r, adesso=None: 9)
     a = nuovo("amico1", (1, "Ferraglia"))                                     # lega che chiude alla prima partita (18:30)
     b = nuovo("amico2", (2, "Lunardi"))                                  # lega che chiude un'ora prima (17:30)
     regole.salva(Regole(scadenza_minuti=60), b.regole)

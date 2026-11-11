@@ -174,7 +174,7 @@ def test_riepilogo_a_giornata_finita(tmp_path, monkeypatch):
     db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (1, ?, 8, '2026-10-20 18:00', 'a', 'b', 1)", (ST,))
     db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (2, ?, 9, '2026-10-28 18:30', 'a', 'b', 0)", (ST,))
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
+    # la prossima giornata (la 9) la calcola davvero prossima_giornata, con l'ora del riepilogo e non con l'orologio vero (#566)
     righe = [("P1", "P"), ("P2", "P")] + [(f"D{i}", "D") for i in range(5)] + [(f"C{i}", "C") for i in range(5)] + [(f"A{i}", "A") for i in range(4)]
     prev = pd.DataFrame([{"nome": n, "ruolo": r, "p_voto": 0.9, "mu": 6.5, "mu_voto": 6.0} for n, r in righe], index=range(1, len(righe) + 1))
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, giornata or 9, True))
