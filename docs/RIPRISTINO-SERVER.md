@@ -17,7 +17,7 @@ pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate i
 | `dati/chiave-impronte.key` (va insieme agli account) | `dati/diario.json` delle giornate chiuse dopo la copia | si ricostruisce: passo 6 |
 | `dati/utenti/<account>/` (regole, rose, scelte, diario, avvisi, immagini, backup) | `dati/vapid.json` (chiavi delle notifiche) | l'app ne crea di nuove da sola, ma ogni dispositivo deve **riattivare le notifiche** |
 | `lega/` (regole, rose, immagini) | `push.json` (iscrizioni alle notifiche) | come sopra |
-| `dati/scelte.json`, `diario.json`, `affidabilita.json`, ecc. | `dati/ambiente.env` (variabili del servizio, contiene segreti) | va riscritto: passo 3 |
+| `dati/scelte.json`, `diario.json`, `affidabilita.json`, ecc. | `/etc/schieraxi/fantacalcio.env` (variabili del servizio, contiene segreti; fuori dalla cartella dell'app) | va riscritto: passo 3 |
 | `dati/registro-giornate.json` (registro delle giornate: le tabelle `registro_*` dell'archivio, i numeri mostrati prima di ogni giornata; NON si ricostruiscono) | `dati/smtp.password` (password della casella email) | niente email finché non la riscrivi: passo 3 |
 | | `dati/avatar_tratti.json` (non è pubblico) | volti con la carnagione neutra |
 | | `~/.config/schieraxi/canale` (canale degli avvisi) | niente avvisi al gestore finché non lo rimetti |
@@ -31,8 +31,11 @@ pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate i
 2. **Dati**: `tar -xzf ~/dati-AAAA-MM-GG.tar.gz -C ~/fantacalcio` (crea `dati/` e `lega/`). Su Windows con il `tar` di Git serve
    `tar --force-local -xzf ...` (altrimenti il `C:` del percorso viene preso per un server).
    Controllo: `.venv/bin/python -c "import sqlite3; print(sqlite3.connect('dati/account.sqlite').execute('PRAGMA integrity_check').fetchone()[0])"` → `ok`.
-3. **`dati/ambiente.env`** (permessi 600), una riga `NOME=valore` per variabile. Senza le prime tre il servizio parte ma
-   **non è quello di produzione**:
+3. **Variabili del servizio** in `/etc/schieraxi/fantacalcio.env`, un file di root che il servizio legge ma non può scrivere
+   (cartella `750`, file `640`, proprietario `root`, gruppo quello dell'utente del servizio; comandi in «Spostare le variabili del
+   servizio», qui sotto). Mai nella cartella dell'app: `dati/` la scrive il servizio, e systemd legge quel file come root.
+   In una prova locale senza permessi di root va bene anche `dati/ambiente.env` (permessi 600): gli script lo leggono ancora, con
+   un avviso. Una riga `NOME=valore` per variabile. Senza le prime tre il servizio parte ma **non è quello di produzione**:
    - `FANTA_MULTIUTENTE=1` (obbligatoria: senza, l'app parte senza login);
    - `FANTA_FONTI_PREDEFINITO=1` (nel codice pubblico le fonti dei dati sono spente: senza, il passo 4 non scarica niente);
    - `FANTA_PROFILO_FUNZIONI=completo` (le funzioni di un server già in uso);
@@ -46,7 +49,8 @@ pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate i
      `(umask 077; IFS= read -rs -p "Password: " p; printf '%s\n' "$p" > dati/smtp.password; unset p)` (non si vede mentre la scrivi
      o la incolli). Senza, le email (codici di verifica e di recupero) non partono, il resto funziona.
    I valori non stanno nel repository. Per i comandi a mano (passi 4-7) le stesse variabili vanno caricate nella shell:
-   `. script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env` (legge il file senza eseguirlo; il servizio le prende da solo con il drop-in di systemd).
+   `. script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env` (legge il file senza eseguirlo, prima `/etc/schieraxi/fantacalcio.env`
+   e solo se manca `dati/ambiente.env`; il servizio le prende da solo con il drop-in di systemd, `script/server/ambiente.conf.esempio`).
 4. **Statistiche**: `.venv/bin/python -m fanta aggiorna` (circa 1,5 minuti, una cinquantina di richieste: si fa una volta sola).
 5. **Registro delle giornate** (i numeri mostrati prima di ogni giornata, che non si riscaricano):
    `.venv/bin/python -m fanta.registro_copia importa dati/registro-giornate.json` → `Registro rimesso in .../dati/fanta.sqlite:
@@ -72,11 +76,73 @@ pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate i
      e `curl -s -o /dev/null -w "%{http_code}" -H "X-Fanta: 1" http://127.0.0.1:8000/api/formazione` dà `401`;
    - accesso: per non usare password vere crea un account di prova con `.venv/bin/python -m fanta invito --etichetta prova --admin`
      e iscriviti con quel codice; da amministratore `GET /api/admin/utenti` deve elencare gli account della copia (più quello di prova). Poi elimina l'account di prova.
-8. **Sistema**: servizio systemd (`script/server/fantacalcio.service` più i drop-in del gestore), nginx, certificato, crontab
+8. **Sistema**: servizio systemd (`script/server/fantacalcio.service`, il drop-in delle variabili `script/server/ambiente.conf.esempio`
+   più quelli del gestore), nginx, certificato, crontab
    (`script/server/LEGGIMI.md`), chiave delle firme e canale degli avvisi in `~/.config/schieraxi/`.
+
+## Spostare le variabili del servizio
+
+Fino a novembre 2026 le variabili stavano in `dati/ambiente.env`, dentro la cartella che il servizio scrive. systemd legge quel file
+come root, prima del recinto del servizio, e segue i collegamenti simbolici: il posto giusto è un file di root che il servizio può
+solo leggere. Lo spostamento lo fa il gestore, a mano, una volta sola; `<utente>` è l'utente del servizio e `<gruppo>` il suo gruppo
+(di solito lo stesso nome). Si può fare prima o dopo l'aggiornamento degli script: finché il file vecchio resta (fino al passo 7),
+gli script di prima lo leggono ancora e quelli nuovi leggono il file nuovo.
+
+1. Guarda il drop-in di adesso: `systemctl cat fantacalcio`. Nel file `fantacalcio.service.d/ambiente.conf` ci devono essere solo
+   `EnvironmentFile=` e `UMask=0077`; se c'è altro, aggiungilo nel passo 5.
+2. Copia del drop-in di adesso, per tornare indietro:
+   `sudo cp /etc/systemd/system/fantacalcio.service.d/ambiente.conf /etc/systemd/system/fantacalcio.service.d/ambiente.conf.prima`.
+3. Cartella e file vuoto con i permessi giusti, poi il contenuto. Il file vecchio si legge come `<utente>` (mai come root: se al
+   suo posto ci fosse un collegamento simbolico, root leggerebbe quello a cui punta):
+   - `sudo install -d -m 750 -o root -g <gruppo> /etc/schieraxi`
+   - `sudo install -m 640 -o root -g <gruppo> /dev/null /etc/schieraxi/fantacalcio.env`
+   - `sudo -u <utente> cat /home/<utente>/fantacalcio/dati/ambiente.env | sudo tee /etc/schieraxi/fantacalcio.env >/dev/null`
+4. Controllo: `sudo -u <utente> diff /home/<utente>/fantacalcio/dati/ambiente.env /etc/schieraxi/fantacalcio.env && echo uguali`
+   e `sudo ls -l /etc/schieraxi` (`-rw-r----- root <gruppo> fantacalcio.env`).
+5. Il drop-in punta al file nuovo (lo stesso contenuto di `script/server/ambiente.conf.esempio`; senza `-` davanti al percorso, così
+   se il file manca il servizio non parte senza le sue variabili), poi si ricarica e si riavvia:
+   - `printf '[Service]\nEnvironmentFile=/etc/schieraxi/fantacalcio.env\nUMask=0077\n' | sudo tee /etc/systemd/system/fantacalcio.service.d/ambiente.conf >/dev/null`
+   - `sudo systemctl daemon-reload && sudo systemctl restart fantacalcio`
+6. Controlli: `systemctl show fantacalcio -p EnvironmentFiles` mostra solo `/etc/schieraxi/fantacalcio.env`;
+   `curl -s -H "X-Fanta: 1" http://127.0.0.1:8000/api/account/me` contiene `"multiutente":true`. Con gli script nuovi già
+   installati, come `<utente>`, `bash ~/fantacalcio/script/server/sentinella.sh --senza-invio` non stampa
+   `avviso: le variabili del servizio stanno ancora`.
+7. Solo quando gli script nuovi sono installati (`grep -c fantacalcio.env ~/fantacalcio/script/server/leggi-ambiente.sh` dà almeno
+   `1`) si toglie il file vecchio: come `<utente>`, `rm ~/fantacalcio/dati/ambiente.env`. Le modifiche alle variabili da qui in
+   poi: `sudoedit /etc/schieraxi/fantacalcio.env`, poi `sudo systemctl restart fantacalcio`.
+
+Per tornare indietro prima del passo 7:
+`sudo mv /etc/systemd/system/fantacalcio.service.d/ambiente.conf.prima /etc/systemd/system/fantacalcio.service.d/ambiente.conf`,
+poi `sudo systemctl daemon-reload && sudo systemctl restart fantacalcio`. Dopo il passo 7 serve prima riscrivere il file vecchio come
+`<utente>`:
+`sudo cat /etc/schieraxi/fantacalcio.env | sudo -u <utente> sh -c 'umask 077; cat > /home/<utente>/fantacalcio/dati/ambiente.env'`.
 
 ## Dopo il ripristino
 - Avvisa gli utenti di riattivare le notifiche (le chiavi `vapid.json` sono nuove).
 - Le sessioni e i token del widget della notte della copia tornano validi; chi ha cambiato password dopo la copia ritrova quella vecchia.
 - Una prova di ripristino come questa conviene ripeterla ogni tanto su una cartella usa e getta, e cancellarla subito dopo:
   la copia contiene dati personali veri.
+
+## Restringere le cartelle scrivibili dal servizio
+
+Da fare solo con un ok a parte del proprietario. Il recinto del servizio (drop-in `fantacalcio.service.d/sicurezza.conf`, riga
+`ReadWritePaths=`) deve lasciare scrivere solo le cartelle che servono: codice e `.venv` li eseguono anche gli script dei cron,
+fuori dal recinto. Il servizio scrive solo in queste cartelle (lette nel codice, novembre 2026):
+- `dati/` (archivio, account, cartelle degli utenti, cache, stati: `fanta/percorsi.py` e i moduli che usano `RADICE / "dati"`);
+- la cartella della lega, `lega/` o quella di `FANTA_LEGA` (regole, rose, movimenti, immagini: `fanta/server.py`, `fanta/immagini.py`);
+- `~/.cache/fantacalcio/` (il blocco condiviso con `aggiorna.sh`: `fanta/pianificatore.py`).
+Il codice (`fanta/`) e `.venv` li legge e basta (senza permesso di scrittura Python non salva i file `.pyc`, e va bene così).
+
+1. Guarda il drop-in: `systemctl cat fantacalcio` (riga `ReadWritePaths=`), poi fanne una copia:
+   `sudo cp /etc/systemd/system/fantacalcio.service.d/sicurezza.conf /etc/systemd/system/fantacalcio.service.d/sicurezza.conf.prima`.
+2. Con `sudoedit /etc/systemd/system/fantacalcio.service.d/sicurezza.conf` la riga diventa (una sola, percorsi assoluti; se
+   `FANTA_LEGA` punta altrove, quella cartella al posto di `lega`):
+   `ReadWritePaths=/home/<utente>/fantacalcio/dati /home/<utente>/fantacalcio/lega /home/<utente>/.cache/fantacalcio`
+3. `sudo systemctl daemon-reload && sudo systemctl restart fantacalcio`.
+4. Controlli: `systemctl show fantacalcio -p ReadWritePaths` mostra le tre cartelle; `curl -s -H "X-Fanta: 1"
+   http://127.0.0.1:8000/api/account/me` contiene `"multiutente":true`; nell'app una scelta salvata resta dopo aver ricaricato la
+   pagina; dopo qualche minuto `journalctl -u fantacalcio --since "-15 min" | grep -ci "read-only"` dà `0`; come `<utente>`,
+   `bash ~/fantacalcio/script/server/sentinella.sh --senza-invio` dà `0 rotture`.
+5. Per tornare indietro:
+   `sudo mv /etc/systemd/system/fantacalcio.service.d/sicurezza.conf.prima /etc/systemd/system/fantacalcio.service.d/sicurezza.conf`,
+   poi `sudo systemctl daemon-reload && sudo systemctl restart fantacalcio`.
