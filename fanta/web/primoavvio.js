@@ -135,6 +135,14 @@ async function paRegoleStandard() {
   } catch { /* le regole si vedono e si cambiano in Impostazioni */ }
 }
 
+// Il file scelto si dimentica (#578) con «Torna indietro» o «Annulla» dell'anteprima e quando si scrive nel riquadro del testo:
+// prima restava nel campo e «Controlla le rose» rimandava quello, non il testo incollato. Così si manda solo ciò che si vede.
+function paDimenticaFile() {
+  const campo = $("#pa-file"), nome = $("#pa-file-nome");
+  if (campo) campo.value = "";                     // un campo file accetta solo la stringa vuota: lo svuota
+  if (nome) nome.textContent = "";
+}
+
 // Le rose in due passi (anteprima.js): «Controlla le rose» mostra cosa ha capito l'app, con i dubbi e la tua squadra;
 // «Conferma e salva» salva tutto insieme. Con la tua squadra scelta qui, anche il passo «La tua squadra» è fatto.
 function paAnteprima() {
@@ -145,7 +153,7 @@ function paAnteprima() {
   $("#pa-msg").innerHTML = "";
   mostra(false);
   anteprimaRose($("#pa-anteprima"), file ? { file } : { testo }, {
-    annulla: () => { mostra(true); $("#pa-testo").focus(); },
+    annulla: () => { paDimenticaFile(); mostra(true); $("#pa-testo").focus(); },
     fatto: async (esito, mia) => {
       await paAggiornaRose();
       // una squadra basta per cominciare: solo un avviso gentile (gli scambi aspettano le rose degli altri)
@@ -202,6 +210,7 @@ const PA_SCHERMATE = {
         $("#pa-file-nome").textContent = file ? t("pav.file_scelto", { nome: file.name }) : "";
         if (file) { try { paAnteprima(); } catch (err) { paErrore(err); } }
       });
+      $("#pa-testo").addEventListener("input", () => { if ($("#pa-file").files.length) paDimenticaFile(); });
       const e = $("#pa-esempi");
       if (e) e.addEventListener("click", async () => {
         e.disabled = true;
