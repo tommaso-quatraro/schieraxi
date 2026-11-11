@@ -6,6 +6,7 @@ poi per ognuno risale fino al nome della fantasquadra. Funziona con:
 - tabelle con colonne ruolo / calciatore / squadra / costo;
 - testo incollato, con le colonne separate da tabulazioni o con un valore per riga.
 Quello che non è sicuro finisce negli avvisi, non viene indovinato in silenzio.
+I fogli che non sono rose (listone, calendario, classifica nello stesso Excel) si riconoscono e si saltano (`_non_e_una_rosa`).
 """
 from __future__ import annotations
 
@@ -321,8 +322,14 @@ def estrai(griglie: list[tuple[str, list[list]]], indice: Indice,
         if piene and sum(1 for r in piene if sum(1 for x in r if _testo(x)) == 1) / len(piene) > 0.8:
             griglia = _da_un_valore_per_riga(griglia, indice)
         celle = _Celle(griglia, indice)
+        lette: dict[str, SquadraLetta] = {}
+        avvisi_foglio: list[str] = []
         for c0, c1 in celle.blocchi():
-            _estrai_blocco(celle, c0, c1, nome_foglio, squadre, avvisi)
+            _estrai_blocco(celle, c0, c1, nome_foglio, lette, avvisi_foglio)
+        if _non_e_una_rosa(celle, lette):    # listone, calendario o classifica dello stesso Excel: si salta in silenzio
+            continue
+        avvisi += avvisi_foglio
+        _unisci(squadre, lette)
     elenco = [s for s in squadre.values() if s.righe]   # un titolo sopra le rose non è una squadra
     for s in elenco:
         if s.nome in da_codici:
@@ -334,6 +341,49 @@ def estrai(griglie: list[tuple[str, list[list]]], indice: Indice,
                 riga.esito = indice.cerca(riga.testo, riga.squadra, riga.ruolo)
     togli_doppioni(elenco, avvisi)
     return elenco
+
+
+# ---------- fogli dello stesso Excel che non sono rose (#543) ----------
+SOGLIA_LISTONE = 60          # giocatori per squadra, in media: più di qualunque rosa (con gli account al massimo 40)
+QUOTA_GIOCATORI = 0.25       # sotto questa quota di nomi del listone, i nomi del foglio sono di fantasquadre
+
+
+def _non_e_una_rosa(celle: _Celle, lette: dict[str, SquadraLetta]) -> bool:
+    """Vero per i fogli che l'esportazione della lega mette accanto alle rose (`lette`: le squadre trovate nel foglio):
+    - listone (o statistiche, svincolati): in media più di SOGLIA_LISTONE giocatori per squadra, cioè centinaia di nomi
+      senza i nomi delle squadre in mezzo;
+    - calendario: almeno due righe con la parola «giornata» e quasi nessun nome del listone (sono coppie di fantasquadre);
+    - classifica: almeno 3 righe, e almeno metà del foglio, fatte di un nome e di due o più numeri, senza ruolo né squadra
+      di Serie A, e quasi nessun nome del listone.
+    Una rosa ha sempre il ruolo o la squadra accanto ai nomi, oppure nomi che il listone conosce: resta una rosa."""
+    con_righe = [s for s in lette.values() if s.righe]
+    if con_righe and sum(len(s.righe) for s in con_righe) / len(con_righe) > SOGLIA_LISTONE:
+        return True
+    righe = [(r, [celle.tipo[r, c] for c in range(celle.larghezza)]) for r in range(len(celle.g))]
+    righe = [(r, tipi) for r, tipi in righe if any(t != "vuoto" for t in tipi)]
+    giocatori = sum(tipi.count("giocatore") for _, tipi in righe)
+    nomi = giocatori + sum(tipi.count("testo") for _, tipi in righe)
+    if not nomi or giocatori / nomi >= QUOTA_GIOCATORI:
+        return False
+    if sum(any("giornata" in normalizza(v).split() for v in celle.g[r]) for r, _ in righe) >= 2:
+        return True
+    classifica = sum(1 for _, t in righe if t.count("testo") + t.count("giocatore") == 1 and t.count("numero") >= 2
+                     and "ruolo" not in t and "squadra_a" not in t)
+    return classifica >= 3 and 2 * classifica >= len(righe)
+
+
+def _unisci(squadre: dict[str, SquadraLetta], lette: dict[str, SquadraLetta]) -> None:
+    """Le squadre di un foglio con quelle dei fogli prima: lo stesso nome è la stessa squadra (righe in coda; crediti e spesa
+    dall'ultimo foglio che li scrive)."""
+    for nome, s in lette.items():
+        gia = squadre.setdefault(nome, s)
+        if gia is s:
+            continue
+        gia.righe += s.righe
+        if s.crediti_residui is not None:
+            gia.crediti_residui = s.crediti_residui
+        if s.totale_speso is not None:
+            gia.totale_speso = s.totale_speso
 
 
 def togli_doppioni(squadre: list[SquadraLetta], avvisi: list[str]) -> None:
