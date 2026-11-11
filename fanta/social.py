@@ -521,14 +521,17 @@ def imposta_password(db: sqlite3.Connection, utente_id: int, password: str, sess
 
 # ---------------------------------------------------------------- log degli accessi
 class _SenzaQuery:
-    """Il ritorno di Google ha `code` e `state` nell'indirizzo: nel log degli accessi di uvicorn si scrive solo il percorso."""
+    """Indirizzi che portano codici (ritorno di Google con `code` e `state`, link d'invito, pagina principale): nel log degli
+    accessi di uvicorn si scrive solo il percorso."""
 
     def filter(self, record) -> bool:
         a = record.args
         if isinstance(a, tuple) and len(a) >= 3 and isinstance(a[2], str) and "?" in a[2]:
             percorso, _, query = a[2].partition("?")
-            # il ritorno di Google (code, state) e il redirect finale con il codice monouso (?social=, ?social_errore=)
-            if percorso.startswith("/api/account/social/") or re.search(r"(^|&)social(_errore)?=", query):
+            # il ritorno di Google (code, state), il redirect finale con il codice monouso (?social=, ?social_errore=) e i link
+            # d'invito (?invito=); la pagina principale mai con i parametri: la apre chi segue un link
+            if (percorso == "/" or percorso.startswith("/api/account/social/")
+                    or re.search(r"(^|&)(social(_errore)?|invito)=", query)):
                 record.args = a[:2] + (percorso,) + a[3:]
         return True
 
