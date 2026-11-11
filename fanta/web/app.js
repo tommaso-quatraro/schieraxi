@@ -4252,13 +4252,19 @@ const CAMPO_EMAIL = (id, facoltativa) => campoAccesso(id, facoltativa ? t("acces
   facoltativa ? t("accesso.email_facoltativa_aiuto") : "");
 const CAMPO_CODICE_EMAIL = (id) => campoAccesso(id, t("accesso.codice_email"), "text",
   'autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocapitalize="none" autocorrect="off" spellcheck="false" required');
+// La riga sopra i campi di «Registrati»: con il codice d'invito già scritto (arrivato dal link) non chiede di procurarselo (#580).
+function spiegaRegistrazione(modo, conInvito) {
+  if (modo === "aperta") return "accesso.serve_email";
+  if (modo === "email") return conInvito ? "accesso.invito_inserito_email" : "accesso.serve_invito_email";
+  return conInvito ? "accesso.invito_inserito" : "accesso.serve_invito";
+}
 // `extra.sub`: passo dentro la scheda (registra: "verifica"; recupero: "codice" | "email" | "email-codice"); `extra.email`: indirizzo del passo
 function campiAccesso(scheda, extra = {}) {
   const modo = stato.registrazione || "invito";
   if (scheda === "accedi") return CAMPO_NOME() + campoAccesso("ac-pw", t("accesso.password"), "password", `autocomplete="current-password" ${CAMPO_PW}`);
   if (scheda === "registra" && extra.sub === "verifica") return `<div class="debole piccolo">${t("accesso.verifica_spiega", { email: esc(extra.email || "") })}</div>`
     + CAMPO_CODICE_EMAIL("ac-codice-email");
-  if (scheda === "registra") return `<div class="debole piccolo">${modo === "aperta" ? t("accesso.serve_email") : modo === "email" ? t("accesso.serve_invito_email") : t("accesso.serve_invito")}</div>`
+  if (scheda === "registra") return `<div class="debole piccolo">${t(spiegaRegistrazione(modo, !!invitoSalvato()))}</div>`
     + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME()
     + (stato.emailAttiva === false && modo === "invito" ? "" : CAMPO_EMAIL("ac-email", modo === "invito"))
     + campoAccesso("ac-pw", t("accesso.password_10"), "password", `autocomplete="new-password" minlength="10" ${CAMPO_PW}`)
@@ -4276,6 +4282,13 @@ function testoInvio(scheda, sub) {
   if (scheda === "registra" && sub === "verifica") return t("accesso.invio_verifica");
   if (scheda === "recupero" && sub === "email") return t("accesso.invio_recupero_email");
   return t("accesso.invio_" + scheda);
+}
+
+// Dopo un errore la password si svuota solo se è stata rifiutata (accesso o codice sbagliato: 401/403). In «Registrati» mai: la
+// password è nuova e il rifiuto riguarda altro (invito non valido o già usato, registrazioni chiuse, #580). Un errore di compilazione
+// (400, 422), una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto.
+function svuotaPassword(scheda, codiceHttp) {
+  return scheda !== "registra" && (codiceHttp === 401 || codiceHttp === 403);
 }
 
 // La pagina di accesso copre tutto: finché non si entra, dell'app non si vede (e non si carica) niente.
@@ -4361,9 +4374,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
       const msg = document.createElement("div");
       msg.className = "errore"; msg.textContent = (e.message || t("accesso.errore_generico")) + attesa;
       if ($("#accesso-msg")) $("#accesso-msg").replaceChildren(msg);
-      // la password si svuota solo se è stata rifiutata (accesso o codice sbagliato: 401/403); un errore di compilazione (400, 422),
-      // una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto
-      if ($("#ac-pw") && (e.status === 401 || e.status === 403)) $("#ac-pw").value = "";
+      if ($("#ac-pw") && svuotaPassword(scheda, e.status)) $("#ac-pw").value = "";
       invia.disabled = false; invia.removeAttribute("aria-busy");
     } finally { inCorso = false; }
   });

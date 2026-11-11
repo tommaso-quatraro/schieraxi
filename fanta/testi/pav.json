@@ -31,6 +31,11 @@
     "it": "Oppure un file",
     "en": "Or a file"
   },
+  "pav.scegli_file": {
+    "it": "Scegli il file (Excel o CSV)",
+    "en": "Choose the file (Excel or CSV)",
+    "nota": "pulsante del passo «Le rose»: il selettore accetta Excel, CSV e testo"
+  },
   "pav.file_scelto": {
     "it": "File scelto: {nome}",
     "en": "Chosen file: {nome}"

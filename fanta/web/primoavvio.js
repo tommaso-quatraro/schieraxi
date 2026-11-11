@@ -2,7 +2,8 @@
 // Primo avvio: UN solo percorso breve (le rose o gli esempi; la squadra con le regole standard; i tempi della lega; fatto).
 // Ogni passo si può saltare.
 // A che punto sei resta sul server (GET e PUT /api/primo-avvio, vedi docs/API.md): si riprende da un altro dispositivo e si riapre
-// quando vuoi da Impostazioni > Informazioni. Si apre da solo una volta sola, se non hai ancora le rose e non hai già chiuso la vecchia procedura.
+// quando vuoi da Impostazioni > Informazioni. Si apre da solo una volta sola, se non hai ancora le rose e non hai già chiuso la vecchia procedura;
+// lasciato a metà, si riprende alla prossima apertura dell'app (primoAvvioSeServe).
 // Usa le funzioni di app.js (api, esc, avviso, apriFoglio...), caricato dopo questo file: si chiamano solo a pagina pronta.
 const PA_PASSI = ["rose", "squadra", "tempi"];
 const PA_NOMI = { rose: t("pav.n_rose"), squadra: t("pav.n_squadra"), tempi: t("pav.n_tempi") };
@@ -26,13 +27,14 @@ async function paSalva(campi) {
 const paSegnaFatto = p => paSalva({ fatti: [...new Set([...pa.stato.fatti, p])], saltati: pa.stato.saltati.filter(x => x !== p) });
 const paSalta = p => paSalva({ saltati: [...new Set([...pa.stato.saltati, p])] });
 
+// Cose che si vedono già fatte nei dati della lega (le rose ci sono, la tua squadra è scelta).
+const paGiaFatti = () => [...((stato.squadre || []).length ? ["rose"] : []), ...(miaSquadra() ? ["squadra"] : [])];
+
 // Cose che si vedono già fatte: il passo si segna da solo.
 async function paRileva() {
   await caricaInfo();
   await caricaSquadre(true);
-  const gia = [];
-  if ((stato.squadre || []).length) gia.push("rose");
-  if (miaSquadra()) gia.push("squadra");
+  const gia = paGiaFatti();
   const nuovi = gia.filter(p => !paFatto(p));
   if (nuovi.length || !pa.stato.fatti.includes("accesso")) {
     await paSalva({ fatti: [...new Set([...pa.stato.fatti, "server", "accesso", ...gia])], saltati: pa.stato.saltati.filter(p => !gia.includes(p)) });
@@ -187,7 +189,7 @@ const PA_SCHERMATE = {
     html: `<div id="pa-ingresso"><p class="debole">${t("pav.incolla_testo_delle")}</p>
       <textarea id="pa-testo" class="campo-testo" placeholder="${t("lega.incolla_qui_testo")}" maxlength="200000" aria-label="${t("pav.testo_delle_rose")}"></textarea>
       <p class="debole piccolo" style="margin:12px 0 0">${t("pav.oppure_file")}</p>
-      <div class="pulsanti"><button class="bottone secondario" id="pa-scegli-file" type="button">${t("lega.scegli_file_excel")}</button></div>
+      <div class="pulsanti"><button class="bottone secondario" id="pa-scegli-file" type="button">${t("pav.scegli_file")}</button></div>
       <p class="debole piccolo" id="pa-file-nome" role="status"></p>
       <input id="pa-file" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" hidden>
       ${stato.account ? `<div class="onb-blocco"><b>${t("onb.prova_con_una")}</b><p class="debole piccolo">${t("onb.quattro_squadre_inventate")}</p>
@@ -285,18 +287,37 @@ async function paNonRiconosciuti() {
   });
 }
 
-// All'avvio: se non hai ancora le rose e non hai mai iniziato (né il primo avvio né la vecchia procedura), parte da solo
-// (una volta: da quel momento il server ricorda che hai cominciato).
-async function primoAvvioSeServe() {
+// Il passo da cui riprendere il primo avvio lasciato a metà (#580): il primo né fatto né saltato, contando come fatti anche quelli
+// che si vedono già fatti (`gia`). null se non l'hai mai iniziato, se l'hai chiuso con «Vai a Oggi» o se non resta niente di aperto.
+function paDaRiprendere(passi, s, gia) {
+  if (!s || s.chiuso) return null;
+  const fatti = [...(s.fatti || []), ...gia], saltati = s.saltati || [];
+  return passi.find(p => !fatti.includes(p) && !saltati.includes(p)) || null;
+}
+
+// All'apertura dell'app, una volta sola (lo chiedono sia l'avvio sia Oggi senza rose: chiuso con la ✕, non torna a ogni visita di Oggi):
+// - cominciato e lasciato a metà, anche nel browser prima di mettere l'app sulla Home o su un altro dispositivo: si riprende dal
+//   passo dove era, con lo stato che il server ricorda (#580);
+// - mai cominciato (né il primo avvio né la vecchia procedura) e senza rose: parte da solo; da quel momento il server ricorda che
+//   hai cominciato.
+let paControllo = null;
+function primoAvvioSeServe() {
+  if (!paControllo) paControllo = paControllaAvvio();
+  return paControllo;
+}
+async function paControllaAvvio() {
   try {
-    if ((stato.squadre || []).length) return;
     const r = await api("/api/primo-avvio");
-    if (r.primo_avvio) return;
+    if (r.primo_avvio) {
+      if (paDaRiprendere(PA_PASSI, r.primo_avvio, paGiaFatti())) await apriPrimoAvvio();
+      return;
+    }
+    if ((stato.squadre || []).length) return;
     if (stato.account) {
       const o = await api("/api/onboarding");
       if (o.stato === "completato" || o.stato === "saltato") return;
     }
     await paSalva({ fatti: ["server", "accesso"] });
     apriPrimoAvvio();
-  } catch { /* il primo avvio è un di più: l'app funziona lo stesso */ }
+  } catch { paControllo = null; /* il primo avvio è un di più: l'app funziona lo stesso (si riprova alla prossima visita di Oggi) */ }
 }

@@ -204,8 +204,14 @@ def controllo_accesso(request: Request) -> JSONResponse | None:
     return None
 
 
+# Invito inesistente, scaduto, revocato o già usato (`account.INVITO_NON_VALIDO`, da registrazione, conferma dell'email e Google):
+# a chi si iscrive un messaggio solo, che non dice quale dei casi è ma dice cosa fare (#580).
+INVITO_DA_CHIEDERE = "Invito non valido, scaduto o già usato: chiedine uno nuovo a chi te l'ha mandato"
+
+
 def errore_account(_, e: ErroreAccount) -> JSONResponse:
-    corpo = ({"detail": e.messaggio} | ({"riprova_tra": e.riprova_tra} if e.riprova_tra else {})
+    messaggio = INVITO_DA_CHIEDERE if e.messaggio == account.INVITO_NON_VALIDO else e.messaggio
+    corpo = ({"detail": messaggio} | ({"riprova_tra": e.riprova_tra} if e.riprova_tra else {})
              | ({"codice": e.codice} if getattr(e, "codice", None) else {}))      # secondi: anche nel corpo, non solo in Retry-After
     return JSONResponse(status_code=e.stato, content=corpo,
                         headers={"Retry-After": str(e.riprova_tra)} if e.riprova_tra else None)

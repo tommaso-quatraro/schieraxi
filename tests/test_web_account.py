@@ -5,7 +5,7 @@ APP = codice_web.app()
 
 
 def test_la_password_resta_dopo_un_errore_di_compilazione():
-    assert 'e.status === 401 || e.status === 403)) $("#ac-pw").value' in APP      # solo se rifiutata
+    assert 'svuotaPassword(scheda, e.status)) $("#ac-pw").value' in APP              # solo se rifiutata (test_ingresso_amico_web.py)
     assert "e.status = 400; throw e; }" in APP                                      # casella non spuntata: errore locale
 
 

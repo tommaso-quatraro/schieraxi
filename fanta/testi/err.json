@@ -39,6 +39,10 @@
     "it": "Invito non valido o scaduto",
     "en": "Invitation invalid or expired"
   },
+  "err.invito_chiedi": {
+    "it": "Invito non valido, scaduto o già usato: chiedine uno nuovo a chi te l'ha mandato",
+    "en": "Invitation not valid, expired or already used: ask the person who sent it for a new one"
+  },
   "err.codice_scaduto": {
     "it": "Codice non valido o scaduto",
     "en": "Code invalid or expired"
