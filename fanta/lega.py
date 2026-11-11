@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import shutil
 from collections import Counter
@@ -159,22 +160,51 @@ def stagione_valida(testo: object) -> bool:
     return isinstance(testo, str) and _STAGIONE.fullmatch(testo) is not None
 
 
+def _testo_o_niente(v: object) -> bool:
+    return v is None or isinstance(v, str)
+
+
+def _numero_o_niente(v: object) -> bool:
+    return v is None or (isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v))
+
+
+def _codice(v: object) -> bool:
+    return v is None or (isinstance(v, int) and not isinstance(v, bool))
+
+
+# il tipo di ogni campo di un giocatore, come lo scrive l'app (i campi che mancano prendono il valore di base)
+_TIPI_GIOCATORE = {"id": _codice, "nome": lambda v: isinstance(v, str), "ruolo": _testo_o_niente, "squadra": _testo_o_niente,
+                   "costo": _numero_o_niente, "riconosciuto": lambda v: isinstance(v, str), "avviso": lambda v: isinstance(v, str)}
+
+
+def _giocatore(g: dict) -> GiocatoreRosa:
+    campi = {k: v for k, v in g.items() if k in _CAMPI_GIOCATORE}
+    if not all(_TIPI_GIOCATORE[k](v) for k, v in campi.items()):
+        raise TypeError("tipo sbagliato")
+    return GiocatoreRosa(**campi)
+
+
+def _squadra(s: dict) -> Squadra:
+    nome, giocatori, crediti, importato = s["nome"], s["giocatori"], s.get("crediti_residui"), s.get("nome_importato") or None
+    if not isinstance(nome, str) or not isinstance(giocatori, list) or not _numero_o_niente(crediti) or not _testo_o_niente(importato):
+        raise TypeError("tipo sbagliato")
+    return Squadra(nome, [_giocatore(g) for g in giocatori], crediti, importato)
+
+
 def da_dict(dati: dict) -> Rose:
     """Le rose dal loro formato su file (usato anche per controllare un backup prima di ripristinarlo).
-    I campi in più (scritti da una versione più nuova dell'app) si ignorano; una forma sbagliata dà un messaggio chiaro.
+    I campi in più (scritti da una versione più nuova dell'app) si ignorano; una forma sbagliata (anche un campo del tipo
+    sbagliato, per esempio un nome che non è un testo) dà un messaggio chiaro.
     `stagione` può mancare (rose di prima) ma, se c'è, è un nome di stagione come «2026-27»."""
     stagione = dati.get("stagione") if isinstance(dati, dict) else None
     if stagione not in (None, "") and not stagione_valida(stagione):
         raise ValueError(FORMA_SBAGLIATA)
     try:
-        return Rose(
-            squadre=[Squadra(s["nome"], [GiocatoreRosa(**{k: v for k, v in g.items() if k in _CAMPI_GIOCATORE})
-                                         for g in s["giocatori"]], s.get("crediti_residui"), s.get("nome_importato") or None)
-                     for s in dati["squadre"]],
-            mia_squadra=dati.get("mia_squadra"),
-            aggiornato=dati.get("aggiornato", ""),
-            stagione=stagione or "",
-        )
+        squadre, mia, aggiornato = dati["squadre"], dati.get("mia_squadra"), dati.get("aggiornato")
+        aggiornato = "" if aggiornato is None else aggiornato
+        if not isinstance(squadre, list) or not _testo_o_niente(mia) or not isinstance(aggiornato, str):
+            raise TypeError("tipo sbagliato")
+        return Rose(squadre=[_squadra(s) for s in squadre], mia_squadra=mia, aggiornato=aggiornato, stagione=stagione or "")
     except (KeyError, TypeError, AttributeError):
         raise ValueError(FORMA_SBAGLIATA) from None
 

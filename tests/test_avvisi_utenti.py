@@ -174,6 +174,115 @@ def test_un_utente_con_dati_rovinati_non_ferma_gli_altri(mondo, registro):
     assert "Castro" not in json.dumps(errori) and "Squadra" not in json.dumps(errori)       # del problema si dice solo il tipo
 
 
+def test_avvisi_utenti_attivi_un_utente_con_dati_strani_non_ferma_gli_altri(mondo, registro, monkeypatch):
+    """La preparazione di ogni utente (rose, impostazioni, iscrizioni) sta dentro il controllo per utente."""
+    a, _ = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
+    vera = notifiche.impostazioni
+
+    def impostazioni(percorso=None):
+        if percorso == a.impostazioni_avvisi:
+            raise RuntimeError("dati strani")
+        return vera(percorso)
+    monkeypatch.setattr(notifiche, "impostazioni", impostazioni)
+    assert [x.utente.nome_utente for x in avvisi_utenti.utenti_attivi()] == ["amico2"]
+
+
+class Lento:
+    """Un giro finto in cui ogni utente «costa» `secondi`: segna chi è stato servito, in ordine."""
+    def __init__(self, secondi: float):
+        self.t, self.secondi, self.serviti = 0.0, secondi, []
+
+    def orologio(self) -> float:
+        return self.t
+
+    def lavoro(self, a, db, r, adesso):
+        self.serviti.append(a.utente.nome_utente)
+        self.t += self.secondi
+        return []
+
+
+def test_avvisi_giro_a_tempo_e_a_rotazione(mondo, registro, monkeypatch):
+    """Il giro guarda il tempo fra un utente e l'altro: finito il tempo, chi resta passa per primo al giro dopo, e chi è stato
+    servito per ultimo va in fondo."""
+    for nome, g in (("amico1", (1, "Castro")), ("amico2", (2, "Bonny")), ("amico3", (1, "Castro"))):
+        nuovo(nome, g)
+    lento = Lento(100)
+    monkeypatch.setitem(avvisi_utenti._LAVORI, "promemoria", lento.lavoro)
+    esiti, errori = avvisi_utenti.esegui("promemoria", mondo.db, ADESSO, max_secondi=150, orologio=lento.orologio)
+    assert lento.serviti == ["amico1", "amico2"] and set(esiti) == {"amico1", "amico2"} and errori == {}
+    lento.serviti.clear()
+    avvisi_utenti.esegui("promemoria", mondo.db, ADESSO, max_secondi=150, orologio=lento.orologio)
+    assert lento.serviti == ["amico3", "amico1"]
+    lento.serviti.clear()
+    avvisi_utenti.esegui("promemoria", mondo.db, ADESSO, max_secondi=1000, orologio=lento.orologio)
+    assert lento.serviti == ["amico2", "amico3", "amico1"]
+    lento.serviti.clear()
+    monkeypatch.setitem(avvisi_utenti._LAVORI, "cambi", lento.lavoro)
+    avvisi_utenti.esegui("cambi", mondo.db, ADESSO, max_secondi=1000, orologio=lento.orologio)       # ogni giro ha il suo ordine
+    assert lento.serviti == ["amico1", "amico2", "amico3"]
+
+
+class Fermato(BaseException):
+    """Come il processo fermato dal tempo massimo dello script del server."""
+
+
+def test_avvisi_se_il_giro_si_ferma_su_un_utente_lui_passa_in_fondo(mondo, registro, monkeypatch):
+    """Un utente si segna come servito prima del suo lavoro: se il giro si ferma mentre lavora per lui, al giro dopo va in fondo
+    e non blocca più gli altri. Anche chi va in errore conta come servito."""
+    for nome, g in (("amico1", (1, "Castro")), ("amico2", (2, "Bonny")), ("amico3", (1, "Castro"))):
+        nuovo(nome, g)
+    serviti = []
+
+    def lavoro(a, db, r, adesso):
+        serviti.append(a.utente.nome_utente)
+        if a.utente.nome_utente == "amico2" and serviti == ["amico1", "amico2"]:
+            raise Fermato()
+        if a.utente.nome_utente == "amico1":
+            raise TimeoutError("lento")
+        return []
+    monkeypatch.setitem(avvisi_utenti._LAVORI, "cambi", lavoro)
+    with pytest.raises(Fermato):
+        avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
+    serviti.clear()
+    _, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
+    assert serviti == ["amico3", "amico1", "amico2"] and errori == {"amico1": "TimeoutError"}
+
+
+def test_avvisi_ordine_del_giro_non_salvato_lo_dice_nel_registro_una_volta(mondo, registro, monkeypatch, caplog):
+    """Se l'ordine del giro non si riesce a salvare gli avvisi partono lo stesso; nel registro una riga sola, con il solo tipo d'errore."""
+    nuovo("amico1", (1, "Castro"))
+    nuovo("amico2", (2, "Bonny"))
+
+    def rotto(percorso, testo):
+        raise PermissionError("negato: cartella-segreta")
+    monkeypatch.setattr(avvisi_utenti, "scrivi_sicuro", rotto)
+    with caplog.at_level("WARNING", logger="fanta.avvisi_utenti"):
+        esiti, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
+    assert set(esiti) == {"amico1", "amico2"} and errori == {}
+    righe = [r.getMessage() for r in caplog.records if "ordine" in r.getMessage()]
+    assert len(righe) == 1 and "PermissionError" in righe[0] and "segreta" not in caplog.text
+
+
+def test_avvisi_tempo_del_giro_dalle_variabili_del_server(monkeypatch):
+    monkeypatch.delenv("FANTA_MAX_SECONDI_GIRO_PROMEMORIA", raising=False)
+    monkeypatch.delenv("FANTA_MAX_SECONDI_GIRO_AVVISI", raising=False)
+    assert avvisi_utenti.secondi_del_giro("promemoria") < 480 and avvisi_utenti.secondi_del_giro("cambi") < 600
+    assert avvisi_utenti.secondi_del_giro("promemoria") >= 240
+    monkeypatch.setenv("FANTA_MAX_SECONDI_GIRO_PROMEMORIA", "300")
+    monkeypatch.setenv("FANTA_MAX_SECONDI_GIRO_AVVISI", "10m;x")                         # non valido: vale quello di base
+    assert 150 <= avvisi_utenti.secondi_del_giro("promemoria") < 300
+    assert avvisi_utenti.secondi_del_giro("riepilogo") == avvisi_utenti.secondi_del_giro("cambi") < 600
+    monkeypatch.setenv("FANTA_MAX_SECONDI_GIRO_AVVISI", "60")
+    assert 0 < avvisi_utenti.secondi_del_giro("pronta") < 60
+
+
+def test_avvisi_con_impostazioni_non_finite_di_un_utente_gli_altri_ricevono(mondo, registro):
+    a, _ = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
+    a.impostazioni_avvisi.write_text('{"silenzio_da": 1e999, "avviso_prima": 1e999}', encoding="utf-8")
+    esiti, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
+    assert errori == {} and set(esiti) == {"amico1", "amico2"}
+
+
 # ---------------------------------------------------------------- promemoria, riepilogo, formazione pronta
 def test_promemoria_per_utente_con_le_sue_impostazioni(mondo, registro):
     a, b = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
