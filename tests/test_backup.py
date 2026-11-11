@@ -178,7 +178,7 @@ def test_un_file_alla_volta_il_resto_resta(radice):
     assert json.loads((radice / "dati" / "scelte.json").read_text())["2025-26/9"]
 
 
-def test_indirizzi_del_server(radice, monkeypatch):
+def test_indirizzi_del_server(dati_isolati, radice, monkeypatch):
     monkeypatch.setattr(server, "RADICE", radice)
     client = TestClient(server.app, headers={"X-Fanta": "1"})
     r = client.get("/api/backup")
@@ -191,10 +191,8 @@ def test_indirizzi_del_server(radice, monkeypatch):
     assert TestClient(server.app).post("/api/backup/ripristina", json=b).status_code == 403
 
 
-def test_il_ripristino_rifiuta_rose_con_una_stagione_strana(radice, monkeypatch):
-    from fanta import archivio
+def test_il_ripristino_rifiuta_rose_con_una_stagione_strana(dati_isolati, radice, monkeypatch):
     monkeypatch.setattr(server, "RADICE", radice)
-    monkeypatch.setattr(server, "_db", lambda: archivio.apri(radice / "archivio-finto" / "fanta.sqlite"))
     client = TestClient(server.app, headers={"X-Fanta": "1"})
     b = client.get("/api/backup").json()
     prima = backup.crea(radice)["file"]
@@ -230,7 +228,7 @@ def test_copia_serale_senza_dati_non_scrive(tmp_path):
     assert backup.salva_copia(tmp_path) is None and not (tmp_path / "dati" / "backup").exists()
 
 
-def test_il_ripristino_non_cambia_le_formazioni_delle_giornate_chiuse(radice, monkeypatch):
+def test_il_ripristino_non_cambia_le_formazioni_delle_giornate_chiuse(dati_isolati, radice, monkeypatch):
     """Revisione 2/11: dopo la scadenza un backup con `scelte.json` modificato cambiava la scelta di una giornata chiusa
     (aggirava il 409 `formazione_chiusa`). Ora le giornate chiuse restano come sul server, le altre si ripristinano."""
     from fanta import archivio, consigli

@@ -12,7 +12,7 @@ CORPO = {"squadra": "Real Esempio", "tipo": "stemma", "url": "https://img.exampl
 
 
 @pytest.fixture
-def con_rose(tmp_path, monkeypatch, calciatori):
+def con_rose(dati_isolati, tmp_path, monkeypatch, calciatori):
     monkeypatch.setattr(server, "FILE_REGOLE", tmp_path / "regole.json")
     monkeypatch.setattr(server, "FILE_ROSE", tmp_path / "rose.json")
     monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))

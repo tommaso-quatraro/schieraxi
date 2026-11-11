@@ -111,7 +111,7 @@ def test_elimina_account_dice_come_fare():
     assert "elimina il mio account" in t and "impostazioni &gt; il tuo account" in t and "copie di sicurezza" in t
 
 
-def test_stato_ha_il_campo_sorgente(monkeypatch):
+def test_stato_ha_il_campo_sorgente(dati_isolati, monkeypatch):
     monkeypatch.setenv("FANTA_SORGENTE", "https://example.org/schieraxi")
     r = cliente().get("/api/stato")
     assert r.status_code == 200 and r.json()["sorgente"] == "https://example.org/schieraxi"
