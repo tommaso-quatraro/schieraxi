@@ -165,7 +165,7 @@ def test_valuta_formazione_scelta_a_mano(monkeypatch):
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     regole = Regole(moduli=["4-3-3", "4-4-2"], rosa={"P": 2, "D": 6, "C": 5, "A": 5})
     rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], "X", 1) for i in prev.index])], "Mia")
-    def consigliata(db, regole, rose, nome=None, giornata=None, simulazioni=600):
+    def consigliata(db, regole, rose, nome=None, giornata=None, simulazioni=600, adesso=None):
         from fanta import formazione as fz
         lista = [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]), float(prev.at[i, "mu"]),
                               float(prev.at[i, "mu_voto"])) for i in prev.index]

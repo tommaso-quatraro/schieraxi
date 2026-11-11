@@ -72,7 +72,7 @@ def scadenza_vicina(db, leghe: list[Regole], adesso: datetime) -> str | None:
             if chiave in viste:
                 continue
             viste.add(chiave)
-            giornata = consigli.giornata_da_giocare(db, stagione, r)
+            giornata = consigli.giornata_da_giocare(db, stagione, r, adesso)     # l'ora del controllo, non l'orologio vero
             scad = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), r) if giornata else None
         except Exception:  # noqa: BLE001 - una lega con dati strani non ferma il controllo delle altre
             continue
