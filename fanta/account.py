@@ -469,12 +469,42 @@ def _memoria(n: int, r: int, p: int) -> int:
 
 
 _calcoli = threading.BoundedSemaphore(CALCOLI_INSIEME)
+ATTESE_MASSIME = 20                          # richieste non note che possono aspettare insieme un posto di scrypt (oltre a chi calcola)
+_prenotati = 0                               # richieste non note che adesso hanno un posto in fila (vedi `posto_per_il_calcolo`)
+_blocco_prenotati = threading.Lock()
+_in_fila = threading.local()                 # questa richiesta (questo thread) ha già il suo posto: non si conta due volte
+OCCUPATO = "Il server è molto occupato: riprova fra qualche secondo"
+
+
+@contextlib.contextmanager
+def posto_per_il_calcolo(esente: bool = False):
+    """Un posto in fila per le richieste che faranno scrypt, preso PRIMA di contare qualunque tentativo (accesso, password attuale,
+    invito, recupero): la fila ha al massimo CALCOLI_INSIEME + ATTESE_MASSIME posti; a fila piena la risposta è subito 429
+    «riprova» e nessun contatore cresce (non è un tentativo). Così l'attesa non occupa tutti i thread condivisi con le altre rotte.
+    `esente`: chi è noto per quel nome (dispositivo fidato o indirizzo già visto) non ha il tetto e aspetta come prima.
+    Nella stessa richiesta il posto si prende una volta sola (le funzioni annidate non si contano due volte)."""
+    global _prenotati
+    if esente or getattr(_in_fila, "dentro", False):
+        yield
+        return
+    with _blocco_prenotati:
+        if _prenotati >= CALCOLI_INSIEME + ATTESE_MASSIME:
+            raise ErroreAccount(OCCUPATO, 429, 2)
+        _prenotati += 1
+    _in_fila.dentro = True
+    try:
+        yield
+    finally:
+        _in_fila.dentro = False
+        with _blocco_prenotati:
+            _prenotati -= 1
 
 
 def _scrypt(dati: bytes, sale: bytes, n: int, r: int, p: int, lunghezza: int) -> bytes:
-    """scrypt, al massimo CALCOLI_INSIEME alla volta: tante richieste insieme aspettano invece di esaurire la memoria."""
+    """scrypt, al massimo CALCOLI_INSIEME alla volta: tante richieste insieme aspettano invece di esaurire la memoria. Quante
+    richieste possono aspettare lo decide prima `posto_per_il_calcolo`."""
     if not _calcoli.acquire(timeout=30):
-        raise ErroreAccount("Il server è molto occupato: riprova fra qualche secondo", 503, 5)
+        raise ErroreAccount(OCCUPATO, 503, 5)
     try:
         return hashlib.scrypt(dati, salt=sale, n=n, r=r, p=p, maxmem=_memoria(n, r, p), dklen=lunghezza)
     finally:
@@ -1034,7 +1064,7 @@ def registra(db: sqlite3.Connection, nome_utente: str, password: str, invito: st
     Invito inesistente, scaduto o già usato: stesso messaggio. Nome già preso: lo si dice (serve a chi si iscrive), ma solo a chi
     ha un invito valido, e con un tetto di prove per invito e per indirizzo: non si possono provare i nomi in massa."""
     termini = controlla_termini(accetto_termini)
-    with uno_alla_volta(ip):
+    with uno_alla_volta(ip), posto_per_il_calcolo():          # prima dei tetti: a fila piena non si conta niente
         return _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termini)
 
 
@@ -1110,8 +1140,14 @@ def accedi(db: sqlite3.Connection, nome_utente: str, password: str, ip: str | No
 def accedi_ricordando(db: sqlite3.Connection, nome_utente: str, password: str, ip: str | None = None, dispositivo: str = "",
                       adesso: datetime | None = None, fidato: str | None = None) -> tuple[Utente, str, str]:
     """Come `accedi`, e in più restituisce il segreto del dispositivo fidato (salvato nella stessa transazione dell'accesso)."""
-    with uno_alla_volta(ip):
+    with uno_alla_volta(ip), posto_per_il_calcolo(esente=_noto_per(db, nome_utente, ip, fidato)):
         return _accedi(db, nome_utente, password, ip, dispositivo, adesso, fidato)
+
+
+def _noto_per(db: sqlite3.Connection, nome_utente, ip: str | None, dispositivo: str | None) -> bool:
+    """Chi chiede è noto per questo nome (dispositivo fidato o indirizzo già visto)? Allora non ha il tetto della fila dei calcoli."""
+    nome = normalizza_nome(nome_utente)
+    return bool(nome) and (_dispositivo_noto(db, nome, dispositivo) or _indirizzo_noto(db, nome, ip))
 
 
 def _accedi(db, nome_utente, password, ip, dispositivo, adesso, fidato=None) -> tuple[Utente, str, str]:
@@ -1119,9 +1155,15 @@ def _accedi(db, nome_utente, password, ip, dispositivo, adesso, fidato=None) -> 
     nome = normalizza_nome(nome_utente)
     righe = _prenota_tentativo(db, "accesso", nome, ip, fidato)
     riga = db.execute("SELECT * FROM utenti WHERE nome_utente = ?", (nome,)).fetchone() if nome else None
-    salvato = riga["password_hash"] if riga else _hash_fittizio()
-    ok, da_ricalcolare = _verifica(password if isinstance(password, str) else "", salvato)
-    _pareggia(salvato)
+    try:
+        salvato = riga["password_hash"] if riga else _hash_fittizio()
+        ok, da_ricalcolare = _verifica(password if isinstance(password, str) else "", salvato)
+        _pareggia(salvato)
+    except ErroreAccount:
+        # Posti di scrypt pieni (429/503, prima di sapere se la password è giusta): non è un tentativo sbagliato. Come per il
+        # rallentamento pieno si tolgono i conteggi per indirizzo, per nome e dell'attesa crescente; resta quello globale.
+        limite.annulla(db, righe[1:])
+        raise
     if not (riga and ok):
         _fallimento("accesso", nome, ip)
         raise ErroreAccount(ACCESSO_SBAGLIATO, 401)
@@ -1235,9 +1277,12 @@ def esci(db: sqlite3.Connection, token: str | None) -> None:
         db.commit()
 
 
-def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = None, scollega_social: bool = False) -> int:
+def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = None, scollega_social: bool = False,
+                  tieni_push: str | None = None) -> int:
     """Revoca tutte le sessioni dell'utente (tranne, se indicata, quella con questo token). Restituisce quante ne ha chiuse.
-    Senza `tranne` (esci da tutti, cambio password, recupero) si dimenticano anche i dispositivi e gli indirizzi fidati.
+    Senza `tranne` (esci da tutti, cambio password, recupero) si dimenticano anche i dispositivi e gli indirizzi fidati e si
+    tolgono le iscrizioni alle notifiche web, tranne quella del dispositivo che sta chiedendo (`tieni_push`, il suo indirizzo
+    di notifica, se lo manda): gli altri dispositivi le riattivano dopo il nuovo accesso.
     Con `scollega_social` (il pulsante «Esci da tutti» e il recupero della password: i casi in cui si sospetta che qualcuno sia entrato)
     si scollegano anche i Google collegati: chi ci è entrato avrebbe altrimenti una porta che la nuova password non chiude.
     Un account senza password (solo Google) li tiene: sarebbe chiuso fuori."""
@@ -1253,10 +1298,33 @@ def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = N
         db.execute("DELETE FROM identita_esterne WHERE utente_id = ? AND EXISTS "
                    "(SELECT 1 FROM utenti WHERE id = ? AND senza_password = 0)", (utente_id, utente_id))
     db.commit()
+    if not tranne:                       # dopo la revoca (vedi `push.iscrivi`, che ricontrolla la sessione prima di scrivere)
+        _togli_notifiche(utente_id, tieni_push)
     return cur.rowcount
 
 
+def _togli_notifiche(utente_id: int, tieni: str | None) -> None:
+    """Le iscrizioni alle notifiche web dell'utente (nella sua cartella), tutte tranne quella con l'indirizzo `tieni` se c'è.
+    Un errore di scrittura non si nasconde: arriva a chi ha chiesto (le sessioni sono già chiuse)."""
+    from . import contesto, push
+    push.tieni_solo(tieni if isinstance(tieni, str) else None, contesto.Contesto.per_utente(utente_id).iscrizioni_push)
+
+
+def _avvisa_password_cambiata(db: sqlite3.Connection, utente_id: int, adesso: datetime) -> None:
+    """All'email verificata dell'account, se c'è: la password è cambiata, controlla l'email collegata. Con la posta spenta non
+    parte niente e non c'è nessun errore (`posta.invia` non alza mai)."""
+    riga = db.execute("SELECT email FROM utenti WHERE id = ?", (utente_id,)).fetchone()
+    if riga is not None and riga["email"]:
+        from . import posta
+        posta.invia(posta.modello_password_cambiata(riga["email"], adesso.strftime("%d/%m/%Y %H:%M UTC")))
+
+
 def _controlla_password_attuale(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None = None) -> sqlite3.Row:
+    with posto_per_il_calcolo():                     # prima del tetto: a fila piena il tentativo non si conta
+        return _controlla_password(db, utente_id, attuale, sessione)
+
+
+def _controlla_password(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None) -> sqlite3.Row:
     limite.consuma(db, _chiave("password-attuale", utente_id), 10, ORA)
     riga = db.execute("SELECT * FROM utenti WHERE id = ?", (utente_id,)).fetchone()
     if riga is not None and riga["senza_password"]:      # entrato solo con Google: al posto della password vale la riconferma recente
@@ -1276,16 +1344,41 @@ def conferma_password(db: sqlite3.Connection, utente_id: int, password: str, ses
 
 
 def cambia_password(db: sqlite3.Connection, utente_id: int, attuale: str, nuova: str, token_corrente: str | None = None,
-                    dispositivo: str = "", adesso: datetime | None = None) -> str:
+                    dispositivo: str = "", adesso: datetime | None = None, tieni_push: str | None = None) -> tuple[str, str]:
     """Cambio con la password di adesso. TUTTE le sessioni si chiudono, anche questa (chi l'avesse rubata resta fuori), e se ne
-    apre una nuova al suo posto: restituisce il token nuovo (il web lo riceve come cookie, le app nella risposta)."""
-    riga = _controlla_password_attuale(db, utente_id, attuale)
-    valida_password(nuova, riga["nome_utente"])
-    db.execute("UPDATE utenti SET password_hash = ? WHERE id = ?", (hash_password(nuova), utente_id))
+    apre una nuova al suo posto. Anche il codice di recupero cambia (quello di prima non vale più) e restano solo le notifiche
+    di questo dispositivo (`tieni_push`). Restituisce (token nuovo, codice di recupero nuovo): il web
+    riceve il token come cookie, le app nella risposta; il codice si mostra una volta sola."""
+    adesso = _ora(adesso)
+    with posto_per_il_calcolo():                     # un posto solo per i due calcoli (password attuale e nuova)
+        riga = _controlla_password_attuale(db, utente_id, attuale)
+        valida_password(nuova, riga["nome_utente"])
+        password_hash = hash_password(nuova)
+    codice = nuovo_codice(20)
+    db.execute("UPDATE utenti SET password_hash = ?, recupero_hash = ? WHERE id = ?", (password_hash, _hash_codice(codice), utente_id))
     db.commit()
-    esci_da_tutti(db, utente_id)
+    esci_da_tutti(db, utente_id, tieni_push=tieni_push)
     evento("password_cambiata", nome=riga["nome_utente"])
-    return _apri_sessione(db, utente_id, dispositivo, _ora(adesso))
+    _avvisa_password_cambiata(db, utente_id, adesso)
+    return _apri_sessione(db, utente_id, dispositivo, adesso), codice
+
+
+def esci_da_tutti_i_dispositivi(db: sqlite3.Connection, utente_id: int, password: str | None = None,
+                                sessione: str | None = None) -> tuple[int, str | None]:
+    """Il pulsante «Esci da tutti»: chiude tutte le sessioni (anche questa), il widget, i dispositivi fidati, le notifiche web e i
+    Google collegati (a chi ha una password). Con la password giusta (per chi è solo Google: la riconferma recente), come per
+    «Genera un nuovo codice», cambia anche il codice di recupero e restituisce quello nuovo; senza password il codice di
+    recupero resta quello di prima. Password sbagliata: 403 e non si chiude niente.
+    Restituisce (sessioni chiuse, codice nuovo o None)."""
+    codice = None
+    if password is not None:
+        _controlla_password_attuale(db, utente_id, password, sessione)
+        codice = nuovo_codice(20)
+        db.execute("UPDATE utenti SET recupero_hash = ? WHERE id = ?", (_hash_codice(codice), utente_id))
+        db.commit()
+    chiuse = esci_da_tutti(db, utente_id, scollega_social=True)
+    evento("esci_da_tutti")
+    return chiuse, codice
 
 
 def rigenera_codice_recupero(db: sqlite3.Connection, utente_id: int, password: str, sessione: str | None = None) -> str:
@@ -1397,14 +1490,15 @@ def crea_reset(db: sqlite3.Connection, nome_utente: str, adesso: datetime | None
 
 
 def recupera(db: sqlite3.Connection, nome_utente: str, codice: str, nuova: str, ip: str | None = None,
-             adesso: datetime | None = None, fidato: str | None = None) -> str:
+             adesso: datetime | None = None, fidato: str | None = None, tieni_push: str | None = None) -> str:
     """Sceglie una nuova password con il codice di recupero o con un codice di reset dell'amministratore. Tutte le sessioni
-    si chiudono. Restituisce il NUOVO codice di recupero (il vecchio è usato), da mostrare una volta sola."""
-    with uno_alla_volta(ip):
-        return _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato)
+    si chiudono e restano solo le notifiche di questo dispositivo (`tieni_push`). Restituisce il NUOVO codice di recupero
+    (il vecchio è usato), da mostrare una volta sola."""
+    with uno_alla_volta(ip), posto_per_il_calcolo(esente=_noto_per(db, nome_utente, ip, fidato)):
+        return _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato, tieni_push)
 
 
-def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None) -> str:
+def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None, tieni_push=None) -> str:
     adesso = _ora(adesso)
     nome = normalizza_nome(nome_utente)
     righe = _prenota_tentativo(db, "recupero", nome, ip, fidato)
@@ -1438,6 +1532,7 @@ def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None) -> str:
         raise ErroreAccount("Nome utente o codice non validi", 403)
     db.commit()
     limite.azzera(db, _chiave("recupero", nome, ip or "-"))
-    esci_da_tutti(db, riga["id"], scollega_social=True)
+    esci_da_tutti(db, riga["id"], scollega_social=True, tieni_push=tieni_push)
     evento("recupero", nome=nome, ip=ip, via="reset" if buono_reset else "codice_di_recupero")
+    _avvisa_password_cambiata(db, riga["id"], adesso)
     return nuovo

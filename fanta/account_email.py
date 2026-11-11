@@ -268,16 +268,17 @@ def chiedi_recupero(db: sqlite3.Connection, email_grezza, ip: str | None = None,
 
 
 def recupera_con_email(db: sqlite3.Connection, email_grezza, codice, nuova: str, ip: str | None = None,
-                       adesso: datetime | None = None) -> str:
-    """Nuova password con il codice ricevuto per email. Chiude tutte le sessioni e restituisce il NUOVO codice di recupero."""
+                       adesso: datetime | None = None, tieni_push: str | None = None) -> str:
+    """Nuova password con il codice ricevuto per email. Chiude tutte le sessioni (restano solo le notifiche di questo
+    dispositivo, `tieni_push`) e restituisce il NUOVO codice di recupero."""
     adesso = _ora(adesso)
     account.valida_password(nuova)                           # prima del codice: una password debole non brucia il codice
     email = _email_o_none(email_grezza) or ""
-    with account.uno_alla_volta(ip):
-        return _recupera_con_email(db, email, codice, nuova, ip, adesso)
+    with account.uno_alla_volta(ip), account.posto_per_il_calcolo():       # prima dei tetti: a fila piena non si conta niente
+        return _recupera_con_email(db, email, codice, nuova, ip, adesso, tieni_push)
 
 
-def _recupera_con_email(db, email, codice, nuova, ip, adesso) -> str:
+def _recupera_con_email(db, email, codice, nuova, ip, adesso, tieni_push=None) -> str:
     righe = account._prenota_tentativo(db, "recupero", email or "-", ip)    # stessi limiti e attese del recupero normale
     if ip:
         limite.consuma(db, _chiave("email-prove-ip", ip), *PROVE_PER_IP)
@@ -295,8 +296,9 @@ def _recupera_con_email(db, email, codice, nuova, ip, adesso) -> str:
     if cambio.rowcount != 1:
         raise ErroreAccount("Email o codice non validi", 403)
     account._riuscito(db, [], "recupero", email or "-", ip)
-    account.esci_da_tutti(db, riga_utente["id"], scollega_social=True)
+    account.esci_da_tutti(db, riga_utente["id"], scollega_social=True, tieni_push=tieni_push)
     evento("recupero", nome=riga_utente["nome_utente"], ip=ip, via="email")
+    account._avvisa_password_cambiata(db, riga_utente["id"], adesso)
     return nuovo
 
 
@@ -367,6 +369,11 @@ def iscrivi(db: sqlite3.Connection, nome_utente: str, password: str, email_grezz
     """Prima metà dell'iscrizione con email (modi `aperta` e `email`): controlla tutto, tiene nome e hash della password in attesa e
     manda il codice. L'account NON esiste ancora: nasce in `conferma_iscrizione`. Risposta uguale se l'indirizzo è già di un
     altro account (in quel caso la mail dice che l'account c'è già) o ha troppi invii."""
+    with account.posto_per_il_calcolo():                     # prima dei tetti: a fila piena non si conta niente
+        return _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accetto_termini)
+
+
+def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accetto_termini) -> dict:
     adesso = _ora(adesso)
     termini = account.controlla_termini(accetto_termini)
     modo = modo_registrazione()

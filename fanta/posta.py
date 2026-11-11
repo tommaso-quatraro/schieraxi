@@ -1,4 +1,4 @@
-"""Invio delle email (verifica, recupero, avviso di accesso nuovo), dietro un'interfaccia sola: `invia(messaggio)`.
+"""Invio delle email (verifica, recupero, avvisi di accesso nuovo e di password cambiata), dietro un'interfaccia sola: `invia(messaggio)`.
 
 Il modo si sceglie con la variabile d'ambiente FANTA_MAIL (si legge a ogni invio):
 - `spento` (predefinito, anche per un valore sconosciuto): NON parte nessuna email e non si scrive niente.
@@ -265,6 +265,15 @@ def modello_gia_registrato(a: str) -> Messaggio:
                      "Ciao,\nqualcuno (forse tu) ha usato questo indirizzo email in SchieraXI, ma ha già un account.\n\n"
                      "Se sei tu e non ricordi la password, nella schermata di accesso scegli «Password dimenticata» e "
                      "scrivi questo indirizzo." + _firma())
+
+
+def modello_password_cambiata(a: str, quando: str) -> Messaggio:
+    return Messaggio(a, "SchieraXI: la password del tuo account è cambiata",
+                     f"Ciao,\nla password del tuo account SchieraXI è stata cambiata.\n\n    Quando: {quando}\n\n"
+                     "Tutti i dispositivi sono stati scollegati e il codice di recupero è stato sostituito con uno nuovo.\n"
+                     "Controlla anche che l'email collegata all'account sia la tua: la trovi in Impostazioni > Il tuo account.\n\n"
+                     "Se non sei stato tu, nella schermata di accesso scegli «Password dimenticata» e scrivi questo indirizzo: "
+                     "ti arriva un codice per scegliere una password nuova.")
 
 
 def modello_email_cambiata(a: str) -> Messaggio:

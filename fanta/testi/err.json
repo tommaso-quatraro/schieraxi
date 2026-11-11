@@ -604,6 +604,14 @@
     "it": "Sto già analizzando i tuoi scambi: aspetta la risposta e riprova.",
     "en": "I am already analysing your trades: wait for the reply and try again."
   },
+  "err.push_in_corso": {
+    "it": "Sto già attivando le notifiche per te: aspetta la risposta e riprova.",
+    "en": "I am already turning on notifications for you: wait for the answer and try again."
+  },
+  "err.push_altri": {
+    "it": "Il server sta attivando altre notifiche: riprova tra qualche secondo.",
+    "en": "The server is turning on other notifications: try again in a few seconds."
+  },
   "err.analisi_altri": {
     "it": "Il server sta analizzando altri scambi: riprova tra qualche secondo.",
     "en": "The server is analysing other trades: try again in a few seconds."
