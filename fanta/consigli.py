@@ -351,7 +351,7 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     if da_rivedere(migliore):
         f = calcolo.ottieni(chiave_stabile, lambda d: con_la_stabile(d, migliore), db, peso=calcolo.PESO_LEGGERO)
     if _si_ricorda(db, regole, stagione, giornata, prima, chiusa, iniziate, adesso):
-        _ricorda(impronta, f, stagione, giornata, prima)
+        _ricorda(impronta, f, stagione, giornata, prima, propria=s.nome == rose.mia_squadra)
     return f
 
 
@@ -431,9 +431,12 @@ NON_GIOCA = ("fuori", "improbabile")      # `titolarita`: infortunato, squalific
 # anche per i comandi lanciati a parte (avvisi, sentinella). Solo id di giocatori: la chiave è un'impronta, niente nomi.
 # Parte di ciascuno (#513): con gli account ogni voce ha anche `utenti` (id di chi l'ha vista); un utente ne tiene al massimo
 # `limiti.MAX_CONSIGLIATE_UTENTE`, oltre perde le sue più vecchie (una voce che serve anche ad altri resta per loro). Le voci
-# senza `utenti` (senza account, comandi) contano solo nel tetto di tutto il file.
+# senza `utenti` (senza account, comandi) contano solo nel tetto di tutto il file. Per quel tetto escono prima le più vecchie
+# fuori dalla parte riservata di ciascuno (`_riservate`: al massimo `RISERVATE_UTENTE` voci, prima la più recente della propria
+# squadra per ogni giornata, campo facoltativo `proprie`); quelle riservate solo se da sole lo superano.
 FILE_CONSIGLIATE = RADICE / "dati" / "consigliate.json"
 MAX_CONSIGLIATE = 1000                    # oltre, esce la più vecchia: ~250 byte l'una
+RISERVATE_UTENTE = 10                     # le ultime consigliate di ogni utente: escono per ultime dal tetto di tutto il file
 _blocco_consigliate = threading.Lock()
 _letto: tuple = (None, {})                # (firma del file, contenuto): si rilegge solo quando il file cambia
 
@@ -510,17 +513,57 @@ def _utenti(voce) -> list[int]:
     return _ids(voce, "utenti") or []
 
 
-def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict | None) -> None:
+def _quando(voce) -> str:
+    """Quando è stata ricordata `voce` (testo ISO: l'ordine dei testi è quello del tempo); "" se manca o è rovinata."""
+    return str(voce.get("quando", "")) if isinstance(voce, dict) else ""
+
+
+def _giornata(voce) -> tuple[str, str]:
+    """Stagione e giornata della consigliata ricordata `voce` (come testi: una voce rovinata non ferma niente)."""
+    return (str(voce.get("stagione")), str(voce.get("giornata"))) if isinstance(voce, dict) else ("", "")
+
+
+def _proprie(voce) -> list[int]:
+    """Gli id di chi ha visto `voce` come consigliata della propria squadra (sottoinsieme di `utenti`)."""
+    utenti = _utenti(voce)
+    return [u for u in _ids(voce, "proprie") or [] if u in utenti]
+
+
+def _riservate(tutte: dict) -> set[str]:
+    """La parte riservata di ciascun utente: al massimo `RISERVATE_UTENTE` voci, in quest'ordine: la più recente della propria
+    squadra per ogni giornata, poi la più recente di ogni giornata, poi le altre dalla più recente."""
+    di_ciascuno: dict[int, list[str]] = {}
+    for k in sorted(tutte, key=lambda k: _quando(tutte[k]), reverse=True):
+        for u in _utenti(tutte[k]):
+            di_ciascuno.setdefault(u, []).append(k)
+    riservate: set[str] = set()
+    for u, voci in di_ciascuno.items():                  # di ciascuno, dalla più recente
+        proprie_viste: set[tuple[str, str]] = set()
+        viste: set[tuple[str, str]] = set()
+        livello = {}
+        for k in voci:
+            g = _giornata(tutte[k])
+            if u in _proprie(tutte[k]) and g not in proprie_viste:
+                livello[k] = 0
+                proprie_viste.add(g)
+            else:
+                livello[k] = 1 if g not in viste else 2
+            viste.add(g)
+        riservate.update(sorted(voci, key=lambda k: livello[k])[:RISERVATE_UTENTE])     # stabile: poi dalla più recente
+    return riservate
+
+
+def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict | None, propria: bool = False) -> None:
     """Ricorda la consigliata mostrata (`da_ricordare`), solo se è cambiata o se chi chiede (`calcolo.utente_richiesta`, con gli
-    account) non l'aveva ancora vista. Rilegge il file subito prima di scrivere, con il blocco valido anche fra processi.
-    Un errore non ferma la risposta: si riprova alla prossima."""
+    account) non l'aveva ancora vista (con `propria`: non l'aveva ancora vista come la sua squadra, campo `proprie`). Rilegge il
+    file subito prima di scrivere, con il blocco valido anche fra processi. Un errore non ferma la risposta: si riprova alla prossima."""
     voce = da_ricordare(f, prima)
     if voce is None:
         return
     utente = calcolo.utente_richiesta.get()
     if (prima is not None and set(_ids(prima, "titolari") or []) == set(voce["titolari"]) and _ids(prima, "panchina") == voce["panchina"]
             and prima.get("modulo") == voce["modulo"] and _ids(prima, "non_giocano") == voce["non_giocano"]
-            and (utente is None or utente in _utenti(prima))):
+            and (utente is None or (utente in _utenti(prima) and (not propria or utente in _proprie(prima))))):
         return
     nuova = {"stagione": str(stagione), "giornata": int(giornata), **voce, "quando": _adesso().isoformat(timespec="seconds")}
     file = FILE_CONSIGLIATE
@@ -531,21 +574,30 @@ def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict |
             except (OSError, ValueError):
                 tutte = {}
             tutte = tutte if isinstance(tutte, dict) else {}
-            utenti = _utenti(tutte.get(impronta))
+            utenti, proprie = _utenti(tutte.get(impronta)), _proprie(tutte.get(impronta))
             if utente is not None and utente not in utenti:
                 utenti.append(utente)
-            tutte[impronta] = nuova | ({"utenti": utenti} if utenti else {})
-            per_eta = sorted((k for k in tutte if k != impronta),
-                             key=lambda k: str(tutte[k].get("quando", "")) if isinstance(tutte[k], dict) else "")
+            if propria and utente is not None and utente not in proprie:
+                proprie.append(utente)
+            tutte[impronta] = nuova | ({"utenti": utenti} if utenti else {}) | ({"proprie": proprie} if proprie else {})
+            per_eta = sorted((k for k in tutte if k != impronta), key=lambda k: _quando(tutte[k]))
             if utente is not None:                       # la parte di chi chiede: oltre, perde le sue più vecchie
                 mie = [k for k in per_eta if utente in _utenti(tutte[k])]
                 for vecchia in mie[:max(0, len(mie) + 1 - limiti.valore("MAX_CONSIGLIATE_UTENTE"))]:
                     altri = [u for u in _utenti(tutte[vecchia]) if u != utente]
                     if altri:
                         tutte[vecchia]["utenti"] = altri         # serve ancora ad altri utenti: resta per loro
+                        altre_proprie = [u for u in _proprie(tutte[vecchia]) if u != utente]
+                        if altre_proprie:
+                            tutte[vecchia]["proprie"] = altre_proprie
+                        else:
+                            tutte[vecchia].pop("proprie", None)
                     else:
                         tutte.pop(vecchia)
                 per_eta = [k for k in per_eta if k in tutte]
+            if len(tutte) > MAX_CONSIGLIATE:             # prima le più vecchie fuori dalla parte riservata di ciascuno
+                riservate = _riservate(tutte)
+                per_eta.sort(key=lambda k: k in riservate)       # ordinamento stabile: in ogni gruppo resta l'ordine di età
             for vecchia in per_eta[:max(0, len(tutte) - MAX_CONSIGLIATE)]:
                 tutte.pop(vecchia, None)
             scrivi_sicuro(file, json.dumps(tutte, ensure_ascii=False))

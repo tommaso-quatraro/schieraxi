@@ -43,7 +43,8 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.pathname.startsWith("/api/")) return;
-  if (url.searchParams.has("social") || url.searchParams.has("social_errore")) return;       // il ritorno da Google (codice monouso) non si salva nella cache
+  // il ritorno da Google (codice monouso) e i link d'invito (codice) non si salvano nella cache
+  if (url.searchParams.has("social") || url.searchParams.has("social_errore") || url.searchParams.has("invito")) return;
   // prima la rete (versione aggiornata); se non risponde entro 2,5 secondi o manca, la copia salvata
   const rete = fetch(e.request, { cache: "no-cache" }).then(r => {
     if (r.ok) {
