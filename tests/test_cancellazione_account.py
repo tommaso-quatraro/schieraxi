@@ -277,6 +277,40 @@ def test_salvataggio_con_il_database_degli_account_che_non_risponde_dice_riprova
     assert aperture and icona.read_bytes() == prima  # l'errore viene dal controllo del segno, e il file è quello di prima
 
 
+def test_scarica_i_tuoi_dati_esce_anche_con_il_database_degli_account_che_non_risponde(ambiente, monkeypatch):
+    """«Scarica i tuoi dati» deve consegnare il file anche con il database degli account illeggibile: la data dell'ultimo
+    backup (per «Da fare») è un di più, e se non si scrive il file esce lo stesso."""
+    c, uid = nuovo_utente("marco")
+    assert percorsi.segna_cancellato(uid)
+    aperture = sola_lettura_che_non_risponde(monkeypatch)
+    r = c.get("/api/backup")
+    assert r.status_code == 200, r.text
+    assert "attachment" in r.headers["content-disposition"]
+    assert aperture                                   # la data del backup ha provato a scriversi e il database non ha risposto
+    avvisi = contesto.Contesto.per_utente(uid).impostazioni_avvisi
+    assert not avvisi.exists() or "backup_il" not in json.loads(avvisi.read_text(encoding="utf-8"))
+
+
+def test_backup_notturno_va_avanti_se_la_copia_di_un_utente_non_si_scrive(ambiente, monkeypatch, caplog):
+    """`python -m fanta backup` con gli account: la copia di un utente che non si scrive (qui: segno rimasto e database degli
+    account che non risponde) non ferma le copie degli utenti dopo né quella del database degli account. L'errore resta nel
+    registro del servizio, con l'utente e il tipo, e il comando finisce con errore (lo vede chi controlla il servizio)."""
+    _, primo = nuovo_utente("marco")                  # numero più basso: è il primo del giro
+    _, secondo = nuovo_utente("luca")
+    for uid in (primo, secondo):
+        contesto.Contesto.per_utente(uid).scelte.write_text('{"x": 1}', encoding="utf-8")
+    assert percorsi.segna_cancellato(primo)
+    sola_lettura_che_non_risponde(monkeypatch)
+    with caplog.at_level(logging.ERROR), pytest.raises(SystemExit) as uscita:
+        main(["backup"])
+    assert uscita.value.code not in (0, None)
+    assert not list((contesto.cartella_utente(primo) / "backup").glob("schieraxi-backup-*.json"))
+    assert len(list((contesto.cartella_utente(secondo) / "backup").glob("schieraxi-backup-*.json"))) == 1
+    assert len(list((percorsi.cartella_account() / "backup").glob("account-*.sqlite"))) == 1
+    assert any(r.levelno >= logging.ERROR and str(primo) in r.getMessage() and "DatabaseAccountNonRisponde" in r.getMessage()
+               for r in caplog.records)
+
+
 @pytest.mark.parametrize("scrivi", [percorsi.scrivi_sicuro, push.scrivi_sicuro], ids=["percorsi", "push"])
 def test_database_che_smette_di_rispondere_dopo_la_scrittura_non_chiede_di_rifarla(ambiente, monkeypatch, scrivi):
     """Il controllo DOPO la scrittura trova il database in errore: il file è già salvato, quindi niente errore «riprova»

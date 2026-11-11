@@ -2475,7 +2475,7 @@ def scarica_backup(ctx: Contesto = Depends(lega_corrente)):
     nome = backup.nome_file(b["creato"])
     try:
         stato_utente.segna_backup(ctx.impostazioni_avvisi)         # serve a «Da fare» per ricordare il backup
-    except OSError:
+    except (OSError, percorsi.DatabaseAccountNonRisponde):         # un di più: il file dei dati esce lo stesso
         pass
     return JSONResponse(b, headers={"Content-Disposition": f'attachment; filename="{nome}"'})
 
