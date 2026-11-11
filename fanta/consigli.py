@@ -309,12 +309,15 @@ def _moduli(tutte: list) -> list[dict]:
 
 
 def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra: str | None = None,
-               giornata: int | None = None, simulazioni: int = 600) -> dict:
+               giornata: int | None = None, simulazioni: int = 600, adesso: datetime | None = None) -> dict:
+    """La formazione consigliata. `adesso`: l'ora con cui cercare la giornata e contare scadenza passata e anticipi cominciati nella
+    risposta (per chi l'ha già fissata, come il giro degli avvisi, e per le prove); senza, l'ora vera. Ricordare la consigliata invece
+    deve andare bene anche per l'ora vera (`_si_ricorda`)."""
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
         raise ValueError("Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose")
     stagione = stagione_corrente()
-    giornata = giornata or giornata_da_giocare(db, stagione, regole)
+    giornata = giornata or giornata_da_giocare(db, stagione, regole, adesso)
     if giornata is None:
         raise ValueError(SENZA_CALENDARIO)
     # La consigliata già mostrata per questa squadra e giornata (#335): resta finché la migliore non vale almeno SOGLIA_CAMBIO_PUNTI in
@@ -323,10 +326,10 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     impronta = _impronta(stagione, giornata, s, regole, simulazioni)
     prima = _consigliate().get(impronta)
     prima = prima if _ids(prima, "titolari") is not None else None          # voce rovinata: come se non ci fosse
-    chiusa = _chiusa(db, regole, stagione, giornata)
+    chiusa = _chiusa(db, regole, stagione, giornata, adesso)
     # Anticipi già cominciati (#368): con la formazione ancora aperta i loro giocatori restano dove sono nella consigliata di prima.
     # Dopo la scadenza resta già tutta; senza una consigliata di prima non c'è niente da tenere.
-    iniziate = () if chiusa or prima is None else _anticipi_iniziati(db, stagione, giornata)
+    iniziate = () if chiusa or prima is None else _anticipi_iniziati(db, stagione, giornata, adesso)
     # stessa squadra, rosa, giornata, regole e dati: stesso risultato (svuotata quando i dati cambiano). Anche i nomi della rosa:
     # quelli dei giocatori non riconosciuti (o senza previsione) finiscono nella risposta (`senza_dati`), e la memoria è di tutti.
     chiave = ("formazione", _versione(db), s.nome, tuple((g.id, g.nome) for g in s.giocatori), giornata, repr(regole),
@@ -347,9 +350,22 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     f = migliore = calcolo.ottieni(chiave, pronta, db, peso=calcolo.PESO_LEGGERO)
     if da_rivedere(migliore):
         f = calcolo.ottieni(chiave_stabile, lambda d: con_la_stabile(d, migliore), db, peso=calcolo.PESO_LEGGERO)
-    if prima is None or not chiusa:
+    if _si_ricorda(db, regole, stagione, giornata, prima, chiusa, iniziate, adesso):
         _ricorda(impronta, f, stagione, giornata, prima)
     return f
+
+
+def _si_ricorda(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, prima: dict | None, chiusa: bool,
+                iniziate: tuple[str, ...], adesso: datetime | None) -> bool:
+    """Se la consigliata appena calcolata si ricorda, cioè diventa quella mostrata da lì in poi: senza una di prima sempre, con una di
+    prima solo a formazione aperta. Con un'ora data (`adesso`, che il giro degli avvisi fissa al suo inizio) anche per l'ora vera la
+    formazione deve essere aperta, con gli stessi anticipi cominciati: la risposta segue l'ora data, ma un giro partito prima della
+    scadenza o di un anticipo non cambia mai la consigliata già fissata (#335, #368)."""
+    if prima is None:
+        return True
+    if chiusa:
+        return False
+    return adesso is None or (not _chiusa(db, regole, stagione, giornata) and _anticipi_iniziati(db, stagione, giornata) == iniziate)
 
 
 def _formazione_pronta(db, s, giornata, regole, simulazioni) -> dict:
@@ -537,11 +553,11 @@ def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict |
         LOG.warning("consigliata non ricordata (%s)", type(e).__name__)
 
 
-def _chiusa(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int) -> bool:
+def _chiusa(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, adesso: datetime | None = None) -> bool:
     """La formazione della giornata è chiusa (scadenza della lega passata): la regola di Oggi e della Formazione."""
     from . import fasi
     try:
-        return fasi.iniziata(db, regole, stagione, giornata, _adesso())
+        return fasi.iniziata(db, regole, stagione, giornata, adesso or _adesso())
     except sqlite3.Error:                 # archivio senza calendario: come una giornata ancora aperta
         return False
 
@@ -625,11 +641,11 @@ def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, d
 # Un anticipo (turno.py: da 36 ore a 7 giorni prima del gruppo principale) non fissa la scadenza: la formazione resta aperta, ma
 # nella lega chi gioca una partita già cominciata non si sposta più. Nella consigliata quei giocatori restano dove erano in quella
 # già mostrata (titolari, stesso posto in panchina, fuori); gli altri si spostano come sempre.
-def _anticipi_iniziati(db: sqlite3.Connection, stagione: str, giornata: int) -> tuple[str, ...]:
+def _anticipi_iniziati(db: sqlite3.Connection, stagione: str, giornata: int, adesso: datetime | None = None) -> tuple[str, ...]:
     """Le squadre di Serie A con un anticipo della giornata già cominciato o finito (calendario e orario), in ordine."""
     from . import fasi
     try:
-        return tuple(sorted(fasi.squadre_in_anticipo_iniziato(db, stagione, giornata, _adesso())))
+        return tuple(sorted(fasi.squadre_in_anticipo_iniziato(db, stagione, giornata, adesso or _adesso())))
     except sqlite3.Error:                 # archivio senza calendario: nessun anticipo
         return ()
 
@@ -696,12 +712,17 @@ class FormazioneNonValida(ValueError):
 
 
 def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[int], nome_squadra: str | None = None,
-           giornata: int | None = None, simulazioni: int = 600) -> dict:
+           giornata: int | None = None, simulazioni: int = 600, adesso: datetime | None = None) -> dict:
     """Quanto vale una formazione scelta a mano (11 titolari della rosa): punti attesi, oscillazione e differenza dalla consigliata
-    con lo stesso modulo. La panchina è scelta come sempre dal sistema. Usa le stesse simulazioni della formazione consigliata."""
+    con lo stesso modulo. La panchina è scelta come sempre dal sistema. Usa le stesse simulazioni della formazione consigliata.
+    `adesso`: l'ora con cui si chiede la consigliata (vedi `formazione`)."""
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
         raise ValueError("Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose")
+    if giornata is None and adesso is not None:     # con l'ora data la giornata si cerca con quella (senza: `previsioni`, ora vera)
+        giornata = giornata_da_giocare(db, stagione_corrente(), regole, adesso)
+        if giornata is None:
+            raise ValueError(SENZA_CALENDARIO)
     prev, giornata, _ = previsioni(db, regole, giornata)
     ids = [g.id for g in s.giocatori if g.id is not None and g.id in prev.index]
     rosa = {int(i): fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
@@ -717,7 +738,7 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
     val = fz.Valutatore(lista, regole, simulazioni)
     panchina = fz._panchina(lista, tit, regole)
     media, dev = val.statistiche(tit, panchina)[:2]
-    consigliata = formazione(db, regole, rose, nome_squadra, giornata, simulazioni)      # già in cache: non si ricalcola tutto a ogni tocco
+    consigliata = formazione(db, regole, rose, nome_squadra, giornata, simulazioni, adesso)      # già in cache: non si ricalcola tutto a ogni tocco
     stesso = next((x["punteggio_atteso"] for x in consigliata["moduli"] if x["modulo"] == modulo), None)
     fascia = incertezza.campi(media, dev)
     # brutta/eccezionale = gli estremi della fascia calibrata (10% e 90%), non quelli della simulazione (troppo stretti)
