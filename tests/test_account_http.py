@@ -152,6 +152,8 @@ def test_cambia_password_e_recupero(web):
     r = web.post("/api/account/cambia-password", json={"attuale": PASSWORD, "nuova": "nuova-password-lunga"})
     assert r.status_code == 200
     assert web.get("/api/account/me").status_code == 200 and altro.get("/api/account/me").status_code == 401   # cookie nuovo
+    assert r.json()["codice_recupero"] != codice                    # anche il codice di recupero cambia
+    codice = r.json()["codice_recupero"]
     anonimo = cliente()
     r = anonimo.post("/api/account/recupero", json={"nome_utente": "marco", "codice": codice, "nuova": "altra-password-lunga"})
     assert r.status_code == 200 and r.json()["codice_recupero"] != codice

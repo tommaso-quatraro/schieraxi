@@ -236,7 +236,8 @@ def test_cambia_password(db):
     _, t2 = account.accedi(db, "marco", PASSWORD, adesso=ADESSO)
     assert errore(account.cambia_password, db, utente.id, "sbagliata-sbagliata", "nuova-password-lunga", t1).stato == 403
     assert errore(account.cambia_password, db, utente.id, PASSWORD, "corta", t1).stato == 400
-    t3 = account.cambia_password(db, utente.id, PASSWORD, "nuova-password-lunga", t1, adesso=ADESSO)
+    t3, codice = account.cambia_password(db, utente.id, PASSWORD, "nuova-password-lunga", t1, adesso=ADESSO)
+    assert len(codice.replace("-", "")) == 20                           # e un codice di recupero nuovo
     assert account.utente_da_token(db, t3, ADESSO).id == utente.id      # questa riparte con un token nuovo
     assert account.utente_da_token(db, t1, ADESSO) is None              # quello di prima non vale più
     assert account.utente_da_token(db, t2, ADESSO) is None              # e le altre si chiudono

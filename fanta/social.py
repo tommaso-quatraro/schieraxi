@@ -541,9 +541,14 @@ def togli_query_dai_log() -> None:
     logging.getLogger("uvicorn.access").addFilter(_SenzaQuery())
 
 
+AVVISO_PROXY = ("Account accesi ma FANTA_PROXY non è 1: se il server sta dietro un proxy (per esempio nginx sullo stesso computer) "
+                "i limiti per indirizzo vedono l'indirizzo del proxy e non quello di chi chiede, quindi non distinguono gli utenti. "
+                "Imposta FANTA_PROXY=1 nelle variabili del servizio.")
+
+
 def avvisa_se_manca_il_proxy() -> None:
-    """Con Google attivo e senza FANTA_PROXY=1 l'indirizzo di chi chiama e' quello del proxy (o falsificabile): i tetti per indirizzo non valgono."""
-    if google_attivo() and os.environ.get("FANTA_PROXY", "").strip() != "1":
+    """All'avvio, con gli account accesi (o Google attivo) e senza FANTA_PROXY=1: un avviso chiaro nel registro del servizio.
+    Il server parte lo stesso (un server raggiunto direttamente, senza proxy, non ne ha bisogno)."""
+    if (account.multiutente() or google_attivo()) and os.environ.get("FANTA_PROXY", "").strip() != "1":
         import logging
-        logging.getLogger("uvicorn.error").warning(
-            "Accesso con Google attivo ma FANTA_PROXY non e' 1: i limiti per indirizzo si basano sull'indirizzo del proxy, non su quello dell'utente.")
+        logging.getLogger("uvicorn.error").warning(AVVISO_PROXY)

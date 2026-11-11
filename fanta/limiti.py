@@ -7,7 +7,8 @@
   ricordate (consigli.py) e azioni ripetibili che costano calcoli all'ora (`azione_pesante`);
 - importazione delle rose: lo stesso tetto di celle per ogni formato (lo applica importa_sicuro.py) e un tempo massimo per
   riconoscere i giocatori (`tempo_riconoscimento`, lo applica nomi.Indice);
-- avvisi: prove degli avvisi all'ora (`prova_avvisi`) e un tempo massimo per ogni invio a un servizio di notifica (lo applica push.py).
+- avvisi: prove degli avvisi all'ora (`prova_avvisi`), iscrizioni alle notifiche web all'ora (`iscrizione_push`) e un tempo massimo
+  per ogni invio a un servizio di notifica (lo applica push.py).
 Con l'interruttore spento (`ctx.utente_id` è None) nessuno di questi controlli fa niente: l'app resta quella di sempre. Fa eccezione
 il tempo massimo di un invio, che vale sempre: un servizio di notifica normale risponde in meno di un secondo.
 Ogni tetto nuovo è una costante qui sotto che si può cambiare sul server con FANTA_<nome della costante> (vedi `valore`).
@@ -48,6 +49,7 @@ MAX_SECONDI_RICONOSCIMENTO = 20      # secondi per riconoscere i giocatori di un
 # Avvisi (#515): un destinatario lento o tante prove di fila non rallentano gli altri.
 MAX_SECONDI_INVIO = 20               # secondi in tutto per mandare un avviso ai dispositivi di un utente (vedi push.invia)
 MAX_PROVE_AVVISI_ORA = 5             # prove degli avvisi all'ora per utente: ognuna manda davvero una notifica
+MAX_ISCRIZIONI_PUSH_ORA = 10         # iscrizioni alle notifiche web all'ora per utente: ognuna controlla il nome del servizio in rete
 
 # cosa si conta al giorno: (tetto, come si dice nel messaggio)
 AL_GIORNO = {"importazioni": (MAX_IMPORTAZIONI_AL_GIORNO, "importazioni di rose"),
@@ -94,6 +96,34 @@ def prova_avvisi(ctx) -> Prenotazione | None:
     """La prova degli avvisi (manda davvero una notifica a tutti i dispositivi dell'utente): al massimo MAX_PROVE_AVVISI_ORA
     all'ora per utente, poi 429 con Retry-After. Senza account non conta niente."""
     return prenota_ora(ctx, "prove_avvisi", massimo=valore("MAX_PROVE_AVVISI_ORA"))
+
+
+VERIFICHE_PUSH_INSIEME = 3           # in tutto il server, al massimo 3 iscrizioni alle notifiche che controllano il nome in rete
+_verifiche_push = threading.BoundedSemaphore(VERIFICHE_PUSH_INSIEME)
+_push_in_corso: set = set()          # utenti con un'iscrizione in corso (una alla volta)
+_blocco_push = threading.Lock()
+
+
+@contextlib.contextmanager
+def iscrizione_push(ctx):
+    """L'iscrizione di un dispositivo alle notifiche web (controlla in rete il nome del servizio, fino a qualche secondo): una alla
+    volta per utente e al massimo VERIFICHE_PUSH_INSIEME in tutto il server, altrimenti 429 subito (niente coda: la richiesta
+    non tiene occupato il server ad aspettare); poi al massimo MAX_ISCRIZIONI_PUSH_ORA all'ora per utente (429 con Retry-After),
+    contate tutte, anche se uguali. Senza account vale solo il limite di chi è in corso (utente «locale» e tetto del server)."""
+    utente = ctx.utente_id if ctx.utente_id is not None else "locale"
+    with _blocco_push:
+        if utente in _push_in_corso:
+            raise ErroreAccount("Sto già attivando le notifiche per te: aspetta la risposta e riprova.", 429, 3)
+        if not _verifiche_push.acquire(blocking=False):
+            raise ErroreAccount("Il server sta attivando altre notifiche: riprova tra qualche secondo.", 429, 3)
+        _push_in_corso.add(utente)
+    try:
+        prenota_ora(ctx, "iscrizioni_push", massimo=valore("MAX_ISCRIZIONI_PUSH_ORA"))
+        yield
+    finally:
+        with _blocco_push:
+            _push_in_corso.discard(utente)
+        _verifiche_push.release()
 
 
 def _orologio() -> float:

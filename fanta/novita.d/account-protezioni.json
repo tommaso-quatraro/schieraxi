@@ -1,0 +1,13 @@
+{
+  "titolo": "Account: protezioni più strette",
+  "voci": [
+    "Account: quando cambi la password ricevi subito un nuovo codice di recupero da salvare (web). Il codice di prima non vale più.",
+    "Account: dopo un cambio della password o un recupero le notifiche restano attive solo sul dispositivo da cui l'hai fatto; sugli altri si riattivano dopo il nuovo accesso.",
+    "Account: se hai collegato un'email ti arriva un avviso quando la password cambia."
+  ],
+  "tecnico": [
+    "Cambio password e recupero (codice, email, codice dell'amministratore): codice di recupero nuovo, iscrizioni push tolte tranne quella indicata da endpoint_push (campo facoltativo), avviso all'email verificata.",
+    "Esci da tutti: toglie tutte le iscrizioni push; corpo facoltativo {password}: con la password giusta cambia anche il codice di recupero e la risposta ha codice_recupero.",
+    "Controlli più stretti sulle richieste di account e notifiche."
+  ]
+}
