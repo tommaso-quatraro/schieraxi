@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -182,3 +183,124 @@ def test_senza_finestra_chrome_di_sistema_e_riuso_di_foto():
         assert f"foto.{nome}" in testo or f"{nome} = foto." in testo                # riusati, non copiati
     assert "def fuori_dal_repository" not in testo and "class ServerDiProva" not in testo
     assert "secrets.token_urlsafe(18)" in testo
+
+
+def test_freno_contro_la_produzione(tmp_path):
+    m = _modulo()
+    assert m.indirizzo_di_prova("https://prova.esempio.invalid")
+    assert m.indirizzo_di_prova("https://PROVA.esempio.invalid/")
+    for altrove in ("https://app.esempio.invalid", "https://esempio.invalid", "http://localhost:8000", "https://prova.",
+                    "https://miaprova.esempio.invalid", "non è un indirizzo", ""):
+        assert not m.indirizzo_di_prova(altrove), altrove
+    indirizzo = "https://app.esempio.invalid"
+    r = _lancia([str(tmp_path / "u"), "--remoto", "--a-secco"], {"SCHIERAXI_INVITO": "INVITO-9999", "SCHIERAXI_INDIRIZZO": indirizzo})
+    assert r.returncode == 2 and "prova." in r.stderr
+    assert "app.esempio.invalid" not in r.stdout + r.stderr and "INVITO-9999" not in r.stdout + r.stderr
+    assert not (tmp_path / "u").exists()                          # si ferma prima di preparare qualunque file
+
+
+class _Risposta:
+    def __init__(self, status):
+        self.status = status
+
+
+class _Richieste:
+    """Il `request` di Playwright, finto: l'accesso riesce solo con la password giusta; registra le chiamate."""
+
+    def __init__(self, giusta, elimina=200):
+        self.giusta, self.stato_elimina, self.chiamate = giusta, elimina, []
+
+    def post(self, indirizzo, data=None, headers=None, **k):
+        self.chiamate.append((indirizzo.rsplit("/", 1)[1], data.get("password")))
+        assert headers == {"X-Fanta": "1"}
+        if indirizzo.endswith("/accedi"):
+            return _Risposta(200 if data["password"] == self.giusta else 401)
+        return _Risposta(self.stato_elimina)
+
+
+def _giro_finto(password_usate):
+    return SimpleNamespace(nome="amico-123456", base_api="http://127.0.0.5:8005", password_usate=list(password_usate),
+                           creato=True)
+
+
+def test_pulizia_prova_tutte_le_password_del_giro():
+    m = _modulo()
+    richieste = _Richieste(giusta="prima-del-rientro")
+    assert m.pulisci(_giro_finto(["prima-del-rientro", "dopo-il-rientro"]), richieste)
+    assert richieste.chiamate == [("accedi", "dopo-il-rientro"), ("accedi", "prima-del-rientro"),
+                                  ("elimina", "prima-del-rientro")]
+
+
+def test_pulizia_non_scambia_un_accesso_rifiutato_per_cancellato():
+    m = _modulo()
+    assert not m.pulisci(_giro_finto(["a", "b"]), _Richieste(giusta="nessuna"))
+    assert not m.pulisci(_giro_finto(["a"]), _Richieste(giusta="a", elimina=500))
+
+
+def test_account_non_cancellato_avvisa_con_il_nome_senza_password(capsys):
+    m = _modulo()
+    g = _giro_finto(["password-segreta-1", "password-segreta-2"])
+    m.chiudi_account(g, _Richieste(giusta="nessuna"))
+    err = capsys.readouterr().err
+    assert "ATTENZIONE" in err and "amico-123456" in err and "password-segreta" not in err
+    g = _giro_finto(["password-segreta-1"])
+    m.chiudi_account(g, _Richieste(giusta="password-segreta-1"))
+    assert g.creato is False and capsys.readouterr().err == ""
+
+
+class _Pagina:
+    """Una pagina di Playwright finta: axe trova una violazione che riporta un segreto, la foto è un file finto."""
+
+    def __init__(self, segreto):
+        self.segreto = segreto
+
+    def on(self, *a):
+        pass
+
+    def set_default_timeout(self, *a):
+        pass
+
+    def wait_for_timeout(self, *a):
+        pass
+
+    def locator(self, selettore):
+        return selettore
+
+    def screenshot(self, path, **k):
+        Path(path).write_bytes(b"png")
+
+    def evaluate(self, codice, *argomenti):
+        if "typeof stato" in codice:
+            return False                                          # pagina d'accesso: niente attesa dell'app
+        if argomenti:                                             # LANCIA_AXE
+            return [{"id": "esempio", "impact": "minor", "help": "", "n": 1,
+                     "nodi": [{"target": "#ac-invito", "sommario": f"valore {self.segreto}"}]}]
+        return None
+
+
+def test_file_scritti_davvero_senza_segreti(tmp_path):
+    m = _modulo()
+    invito, password, recupero = "INVITO-ABCD-1234", "pw-segreta-di-prova-0001", "RECUP-ZZZZ-9999"
+    segreti = [invito]
+    g = m.Giro(SimpleNamespace(pages=[_Pagina(recupero)]), "http://localhost:8005", tmp_path, segreti)
+    g.password = password
+    g.segreto(password, recupero)
+
+    def passo(g):
+        g.nota(f"ho visto {invito} e {password}")
+        raise m.Bloccato(f"rifiutato il codice {recupero}")
+
+    r = g.fai(3, "rientro", passo)
+    assert r.endswith("esito=bloccato") and invito not in r
+    m.scrivi_dettagli(g, tmp_path)
+    log = tmp_path / "originale" / "server.log"
+    log.parent.mkdir()
+    log.write_text(f'GET /?invito={invito} HTTP/1.1" 200\nrecupero {recupero}\n', encoding="utf-8")
+    m.copia_registro(log, tmp_path, segreti)
+    scritti = {f.name: f.read_text(encoding="utf-8")
+               for f in (tmp_path / "dettagli.txt", tmp_path / "axe-03-rientro.json", tmp_path / "server.log")}
+    assert "invito=«nascosto»" in scritti["server.log"] and "rifiutato il codice «nascosto»" in scritti["dettagli.txt"]
+    for nome, testo in scritti.items():
+        for segreto in (invito, password, recupero):
+            assert segreto not in testo, (nome, segreto)
+    assert (tmp_path / "03-rientro.png").is_file()

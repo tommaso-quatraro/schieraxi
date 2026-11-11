@@ -48,9 +48,14 @@ set /p SCHIERAXI_INVITO=Invito:
 <cartella-temporanea>\pw-amico\Scripts\python.exe prove\amico_nuovo\percorso.py <cartella-dei-risultati> --remoto --telefono android --larghezza 360 --formato testo
 ```
 
-Se ne manca una lo script si ferma subito (uscita 2) dicendo quali servono, mai i valori. L'invito si consuma: per ogni corsa ne
-serve uno nuovo. L'account creato (`amico-<6 cifre>`) si elimina sempre alla fine; se l'eliminazione dall'app non riesce, lo script
-la rifà con l'API e, se non riesce nemmeno così, scrive il nome dell'account da eliminare a mano.
+Se ne manca una lo script si ferma subito (uscita 2) dicendo quali servono, mai i valori. Freno contro la produzione: con
+`--remoto` il nome del server deve cominciare con `prova.`, altrimenti lo script si ferma (uscita 2) senza toccare niente; non c'è
+un'opzione per scavalcarlo. L'invito si consuma: per ogni corsa ne serve uno nuovo.
+
+L'account creato (`amico-<6 cifre>`) si elimina sempre alla fine. Se l'eliminazione dall'app non riesce, o la corsa si ferma a
+metà (anche subito dopo il tocco su «Crea l'account»), lo script la rifà con l'API provando ogni password usata nel giro (prima e
+dopo il rientro). Se la cancellazione non risponde 200 scrive «ATTENZIONE» con il nome dell'account da controllare ed eliminare a
+mano (mai la password).
 
 ## Opzioni
 - `--telefono iphone|android`: emulazione di Chrome come `iPhone 13` o `Pixel 7` (tocco, schermo del telefono), profilo temporaneo.

@@ -226,6 +226,16 @@ def da_ambiente(ambiente=None) -> tuple[str, str] | None:
     return (indirizzo, invito) if indirizzo and invito else None
 
 
+def indirizzo_di_prova(indirizzo: str) -> bool:
+    """Freno contro la produzione: `--remoto` gira solo su un server il cui nome comincia con «prova.» (l'ambiente di
+    prova). Non c'è un'opzione per scavalcarlo: lo script crea e cancella account, e lì ci sono gli amici veri."""
+    try:
+        nome = (urlsplit(indirizzo).hostname or "").lower()
+    except ValueError:
+        return False
+    return nome.startswith("prova.") and len(nome) > len("prova.")
+
+
 def crea_invito(python: str, copia: Path, env: dict) -> str:
     """Un invito monouso nella copia del server (`python -m fanta invito`); il codice si legge dall'uscita e non si stampa."""
     r = subprocess.run([python, "-m", "fanta", "invito", "--etichetta", "amico-nuovo"], cwd=copia, env=env,
@@ -253,6 +263,7 @@ class Giro:
         self.dettagli: list[str] = []
         self.nome = f"amico-{secrets.randbelow(10 ** 6):06d}"
         self.password = secrets.token_urlsafe(18)
+        self.password_usate = [self.password]        # tutte, per la pulizia (prima e dopo il rientro)
         self.recupero = ""
         self.creato = False                          # l'account esiste: va cancellato alla fine
         self.da_chiudere: list = []                  # browser in più di un passo: si chiudono dopo foto e axe
@@ -412,11 +423,12 @@ def passo_registrazione(g: Giro) -> None:
     g.scrivi(p.locator("#ac-nome"), g.nome)
     g.scrivi(p.locator("#ac-pw"), g.password)
     g.tocca(p.locator("#ac-letto"))
+    g.creato = True                                  # da qui l'account può esistere sul server: alla fine va cancellato
     g.tocca(p.locator("#accesso-invia"))
     p.locator("#codice-una-volta, #accesso-msg .errore").first.wait_for(state="visible", timeout=30000)
     if not p.locator("#codice-una-volta").is_visible():
+        g.creato = False                             # il server l'ha rifiutata: nessun account
         raise Bloccato("registrazione rifiutata: " + p.locator("#accesso-msg").inner_text())
-    g.creato = True
     g.recupero = p.locator("#codice-una-volta").inner_text().strip()
     g.segreto(g.recupero)
     if not g.recupero:
@@ -603,6 +615,7 @@ def passo_rientro(g: Giro) -> None:
     if not p.locator("#codice-una-volta").is_visible():
         raise Bloccato("recupero rifiutato: " + p.locator("#accesso-msg").inner_text())
     g.password = nuova
+    g.password_usate.append(nuova)
     g.recupero = p.locator("#codice-una-volta").inner_text().strip()
     g.segreto(g.recupero)
     g.tocca(p.locator("#codice-salvato"))
@@ -653,17 +666,42 @@ def passo_elimina(g: Giro, richieste) -> None:
     g.creato = False
 
 
-def pulisci(g: Giro, richieste) -> bool:
-    """Ultima rete: se l'account esiste ancora (eliminazione dall'app non riuscita) lo si cancella con l'API."""
-    try:
-        r = richieste.post(g.base_api + "/api/account/accedi", data={"nome_utente": g.nome, "password": g.password},
-                           headers={"X-Fanta": "1"})
-        if r.status == 401:
-            return True
-        r = richieste.post(g.base_api + "/api/account/elimina", data={"password": g.password}, headers={"X-Fanta": "1"})
-        return r.status == 200
-    except Exception:                                # noqa: BLE001
-        return False
+def pulisci(g, richieste) -> bool:
+    """Ultima rete: l'account di prova si cancella con l'API (eliminazione dall'app non riuscita o mai arrivata). Si prova
+    ogni password usata nel giro, l'ultima per prima; vero solo se la cancellazione risponde 200. Un accesso rifiutato con
+    tutte non vuol dire «già cancellato» (password cambiata a metà, tetto di tentativi): è falso."""
+    for password in reversed(list(dict.fromkeys(g.password_usate))):
+        try:
+            r = richieste.post(g.base_api + "/api/account/accedi", data={"nome_utente": g.nome, "password": password},
+                               headers={"X-Fanta": "1"})
+            if r.status != 200:
+                continue
+            r = richieste.post(g.base_api + "/api/account/elimina", data={"password": password}, headers={"X-Fanta": "1"})
+            return r.status == 200
+        except Exception:                            # noqa: BLE001 - si prova la password seguente
+            continue
+    return False
+
+
+def chiudi_account(g, richieste) -> None:
+    """Se l'account di prova può esistere ancora lo si cancella; se non si riesce, un avviso con il nome (mai la password)."""
+    if g.creato and not pulisci(g, richieste):
+        print(f"ATTENZIONE: l'account di prova «{g.nome}» potrebbe esistere ancora: controlla ed eliminalo a mano.",
+              file=sys.stderr, flush=True)
+    else:
+        g.creato = False
+
+
+def scrivi_dettagli(g, uscita: Path) -> None:
+    """Le note del giro, ripassate dal filtro dei segreti (anche quelli scoperti dopo la nota)."""
+    (Path(uscita) / "dettagli.txt").write_text("".join(oscura(d, g.segreti) + "\n" for d in g.dettagli), encoding="utf-8")
+
+
+def copia_registro(log: Path, uscita: Path, segreti) -> None:
+    """Il registro del server di prova, senza i segreti (contiene gli indirizzi chiesti, anche quello dell'invito)."""
+    if Path(log).is_file():
+        (Path(uscita) / "server.log").write_text(oscura(Path(log).read_text(encoding="utf-8", errors="replace"), segreti),
+                                                 encoding="utf-8")
 
 
 def percorri(base: str, uscita: Path, telefono: str, larghezza: int, formato: str, file: Path, invito: str,
@@ -713,11 +751,13 @@ def percorri(base: str, uscita: Path, telefono: str, larghezza: int, formato: st
                 fatti[passo] = r.rsplit("esito=", 1)[1]
                 print(r, flush=True)
                 righe.append(r)
-            if g.creato and not pulisci(g, ctx.request):
-                print(f"ATTENZIONE: l'account di prova «{g.nome}» non è stato eliminato: eliminalo a mano.", file=sys.stderr)
         finally:
-            (uscita / "dettagli.txt").write_text("\n".join(g.dettagli) + "\n" if "g" in locals() else "", encoding="utf-8")
-            ctx.close()
+            try:
+                if g is not None:
+                    chiudi_account(g, ctx.request)
+                    scrivi_dettagli(g, uscita)
+            finally:
+                ctx.close()
     return righe
 
 
@@ -738,6 +778,10 @@ def main(argv=None) -> int:
     remoto = da_ambiente() if a.remoto else None
     if a.remoto and not remoto:
         print("--remoto: servono le variabili d'ambiente SCHIERAXI_INDIRIZZO e SCHIERAXI_INVITO", file=sys.stderr)
+        return 2
+    if remoto and not indirizzo_di_prova(remoto[0]):
+        print("--remoto: SCHIERAXI_INDIRIZZO deve essere l'ambiente di prova (nome che comincia con «prova.»): "
+              "lo script crea e cancella account e non gira altrove", file=sys.stderr)
         return 2
     uscita.mkdir(parents=True, exist_ok=True)
     file = prepara_rose(a.formato, uscita)
@@ -777,9 +821,7 @@ def main(argv=None) -> int:
 
             def copia_log():                         # il registro del server, senza i segreti, nella cartella dei risultati
                 server.ferma()
-                if log.is_file():
-                    (uscita / "server.log").write_text(oscura(log.read_text(encoding="utf-8", errors="replace"), segreti),
-                                                       encoding="utf-8")
+                copia_registro(log, uscita, segreti)
             pila.callback(copia_log)
         righe = percorri(base, uscita, a.telefono, a.larghezza, a.formato, file, invito, a.locale, sbagliato, host, segreti,
                          base_api)
