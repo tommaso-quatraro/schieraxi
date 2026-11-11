@@ -651,6 +651,30 @@ def _prepara_live() -> None:
         live.unico = leggi_live()
 
 
+def _controlla_un_utente(etichetta: str, ctx, db: sqlite3.Connection, r_regole, rose_, rotture: list[Rottura], stagione: str,
+                         adesso: datetime):
+    """Le risposte e i controlli di un utente; le rotte trovate si aggiungono a `rotture`. Restituisce il corpo di /api/live
+    se c'è (serve una volta sola per i controlli comuni)."""
+    squadra = rose_.squadra(rose_.mia_squadra or "") if rose_ else None
+    corpi, errori, scelta = risposte_utente(ctx, db)
+    g = (corpi.get("oggi") or {}).get("giornata")
+    for nome, (tipo, gravita) in sorted(errori.items()):
+        if gravita == "json":
+            rotture.append(Rottura("json_non_valido", etichetta, g, f"{nome.split(':')[0]}: {tipo} nel trasformarla in JSON"))
+        elif gravita == "rifiutata" and squadra is not None:     # senza la propria squadra il rifiuto è giusto (lo dice l'app)
+            rotture.append(Rottura("risposta_rifiutata", etichetta, g, f"{nome}: {tipo}"))
+        elif gravita == "errore":
+            rotture.append(Rottura("risposta_in_errore", etichetta, g, f"{nome}: {tipo}"))
+    if squadra is not None:
+        rosa = {x.id for x in squadra.giocatori if x.id is not None}
+        try:
+            rotture.extend(controlla_utente(etichetta, {k: v for k, v in corpi.items() if k != "scelta"},
+                                            r_regole, rosa, scelta, db, stagione, adesso))
+        except Exception as e:             # noqa: BLE001 - un controllo rotto si segnala e non ferma gli altri utenti
+            rotture.append(Rottura("risposta_in_errore", etichetta, g, f"sentinella: controllo non riuscito ({type(e).__name__})"))
+    return corpi.get("live")
+
+
 def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float = 15, stato: dict | None = None,
            contesti: list | None = None) -> dict:
     """Un giro completo: {rotture, controllati, rimandati, secondi, stagione}. Non scrive niente (per salvare: `registra`)."""
@@ -674,25 +698,13 @@ def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float
         except Exception as e:                 # noqa: BLE001 - file rovinati: l'app andrebbe in errore anche lei
             rotture.append(Rottura("risposta_in_errore", etichetta, None, f"regole o rose illeggibili ({type(e).__name__})"))
             continue
-        squadra = rose_.squadra(rose_.mia_squadra or "") if rose_ else None
-        corpi, errori, scelta = risposte_utente(ctx, db)
-        g = (corpi.get("oggi") or {}).get("giornata")
-        for nome, (tipo, gravita) in sorted(errori.items()):
-            if gravita == "json":
-                rotture.append(Rottura("json_non_valido", etichetta, g, f"{nome.split(':')[0]}: {tipo} nel trasformarla in JSON"))
-            elif gravita == "rifiutata" and squadra is not None:     # senza la propria squadra il rifiuto è giusto (lo dice l'app)
-                rotture.append(Rottura("risposta_rifiutata", etichetta, g, f"{nome}: {tipo}"))
-            elif gravita == "errore":
-                rotture.append(Rottura("risposta_in_errore", etichetta, g, f"{nome}: {tipo}"))
-        if live_corpo is None and "live" in corpi:
-            live_corpo = corpi["live"]
-        if squadra is not None:
-            rosa = {x.id for x in squadra.giocatori if x.id is not None}
-            try:
-                rotture.extend(controlla_utente(etichetta, {k: v for k, v in corpi.items() if k != "scelta"},
-                                                r_regole, rosa, scelta, db, stagione, adesso))
-            except Exception as e:             # noqa: BLE001 - un controllo rotto si segnala e non ferma gli altri utenti
-                rotture.append(Rottura("risposta_in_errore", etichetta, g, f"sentinella: controllo non riuscito ({type(e).__name__})"))
+        try:
+            live_utente = _controlla_un_utente(etichetta, ctx, db, r_regole, rose_, rotture, stagione, adesso)
+        except Exception as e:                 # noqa: BLE001 - un utente con dati strani si segnala e non ferma il giro degli altri
+            rotture.append(Rottura("risposta_in_errore", etichetta, None, f"sentinella: utente non controllato ({type(e).__name__})"))
+            continue
+        if live_corpo is None and live_utente is not None:
+            live_corpo = live_utente
     if live_corpo is None:
         try:
             live_corpo = _da_risposta(server.risultati_live(_richiesta_finta("/api/live")))
