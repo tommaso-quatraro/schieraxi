@@ -545,6 +545,10 @@ final class SessioneAccount: ObservableObject {
         }
     }
 
+    /// Il Keychain non ha salvato il token: si dice in Lega che l'accesso dura finché l'app resta aperta.
+    private static let avvisoKeychain =
+        "Non riesco a salvare l'accesso in modo sicuro su questo telefono: funziona finché l'app è aperta, poi dovrai accedere di nuovo."
+
     /// Salva il token ricevuto e passa a «connesso». I dati locali di una sessione precedente si cancellano.
     /// Un server ostile potrebbe mandare qualsiasi cosa: token, nome e codice si controllano prima di usarli.
     private func conferma(_ r: RispostaAccount) throws {
@@ -560,7 +564,7 @@ final class SessioneAccount: ObservableObject {
         memoria.removeObject(forKey: MigrazioneServer.chiaveSpostato)
         serverSpostato = false
         let alSicuro = archivio.salva(token, server: server.indirizzo)
-        avviso = alSicuro ? nil : "Non riesco a salvare l'accesso in modo sicuro su questo telefono: funziona finché l'app è aperta, poi dovrai accedere di nuovo."
+        avviso = alSicuro ? nil : Self.avvisoKeychain
         memoria.set(server.indirizzo, forKey: Self.chiaveIndirizzo)
         multiutente = true
         memoria.set(true, forKey: Self.chiaveMultiutente)
@@ -664,10 +668,34 @@ final class SessioneAccount: ObservableObject {
         chiudiLocale()
     }
 
-    func cambiaPassword(attuale: String, nuova: String) async throws {
+    /// Cambia la password. Il server chiude TUTTE le sessioni, anche questa, e ne apre una nuova: il token nuovo arriva nella
+    /// risposta e si tiene (senza, alla richiesta dopo si tornerebbe all'accesso). Cambia anche il codice di recupero (#589:
+    /// quello di prima non vale più): si restituisce il nuovo, da mostrare una volta sola come la web. nil = nessun codice
+    /// nella risposta (server più vecchio: vale ancora quello di prima). Un codice illeggibile: `rispostaIncompleta`.
+    @discardableResult
+    func cambiaPassword(attuale: String, nuova: String) async throws -> String? {
         try inizia()
         defer { inCorso = false }
-        _ = try await server.corpoJSON("POST", "/api/account/cambia-password", CorpoCambioPassword(attuale: attuale, nuova: nuova))
+        let tokenPrima = archivio.leggi(server: server.indirizzo)
+        let r: RispostaAccount = try await conTraduzione(seIllegibile: .rispostaIncompleta) {
+            try await server.posta("POST", "/api/account/cambia-password", CorpoCambioPassword(attuale: attuale, nuova: nuova))
+        }
+        tieniSessioneNuova(r.token, alPostoDi: tokenPrima)
+        guard let codice = r.codiceRecupero, !codice.isEmpty else { return nil }
+        guard Accesso.codiceRecuperoValido(codice) else { throw Errore.rispostaIncompleta }
+        return codice
+    }
+
+    /// Dopo il cambio della password: il token nuovo prende il posto di quello chiuso dal server, senza ricostruire le schermate
+    /// (è lo stesso utente). Si salta se nel frattempo è cambiato tutto (uscita, un altro accesso) o se il token non è valido.
+    /// Il server ha tolto anche il token del widget: se ne chiede uno nuovo.
+    private func tieniSessioneNuova(_ token: String?, alPostoDi prima: String?) {
+        guard let token, Accesso.tokenValido(token), utente != nil, archivio.leggi(server: server.indirizzo) == prima else { return }
+        let alSicuro = archivio.salva(token, server: server.indirizzo)
+        avviso = alSicuro ? nil : Self.avvisoKeychain
+        TokenWidget.pulisciLocale(indirizzo: server.indirizzo)
+        let s = server
+        Task { await TokenWidget.assicura(server: s) }
     }
 
     /// Un nuovo codice di recupero al posto del vecchio (serve la password).

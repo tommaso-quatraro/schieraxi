@@ -54,6 +54,12 @@ struct CambioPasswordCodiceTests {
         return Prova(sessione: sessione, archivio: archivio, server: server, pulizie: pulizie, memoria: memoria, nome: nome)
     }
 
+    /// Una risposta con questo codice e questo token, scritti come JSON vero (virgolette e caratteri strani compresi).
+    private func rispostaCon(codice: String, token: String) throws -> String {
+        let campi: [String: Any] = ["ok": true, "codice_recupero": codice, "token": token]
+        return String(decoding: try JSONSerialization.data(withJSONObject: campi), as: UTF8.self)
+    }
+
     @Test("Il codice nuovo della risposta arriva a chi mostra la schermata")
     func codiceNuovo() async throws {
         let p = try prova(risposta: rispostaCompleta)
@@ -92,8 +98,7 @@ struct CambioPasswordCodiceTests {
     @Test("Un codice che non è un codice non si mostra, ma la sessione nuova si tiene (la password è già cambiata)",
           arguments: ["<b>ciao</b>", "AAAAA BBBBB", String(repeating: "A", count: 101)])
     func codiceNonValido(codice: String) async throws {
-        let corpo = try JSONSerialization.data(withJSONObject: ["ok": true, "codice_recupero": codice, "token": "tok-nuovo-prova"])
-        let p = try prova(risposta: String(decoding: corpo, as: UTF8.self))
+        let p = try prova(risposta: rispostaCon(codice: codice, token: "tok-nuovo-prova"))
         defer { p.chiudi() }
         await #expect(throws: SessioneAccount.Errore.rispostaIncompleta) {
             try await p.sessione.cambiaPassword(attuale: "vecchia-prova-1", nuova: "nuova-prova-12")
@@ -104,8 +109,7 @@ struct CambioPasswordCodiceTests {
 
     @Test("Un token che non è un token non entra nel Keychain", arguments: ["", "con spazio", String(repeating: "t", count: 513)])
     func tokenNonValido(token: String) async throws {
-        let corpo = try JSONSerialization.data(withJSONObject: ["ok": true, "codice_recupero": "KKKKK-LLLLL-MMMMM", "token": token])
-        let p = try prova(risposta: String(decoding: corpo, as: UTF8.self))
+        let p = try prova(risposta: rispostaCon(codice: "KKKKK-LLLLL-MMMMM", token: token))
         defer { p.chiudi() }
         let codice = try await p.sessione.cambiaPassword(attuale: "vecchia-prova-1", nuova: "nuova-prova-12")
         #expect(codice == "KKKKK-LLLLL-MMMMM")

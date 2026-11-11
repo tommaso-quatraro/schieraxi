@@ -35,6 +35,9 @@ extension Catalogo {
         /// `account.password_cambiata_ok`
         static let passwordCambiataOk = "Password cambiata. Gli altri dispositivi sono stati scollegati."
 
+        /// `account.password_cambiata_codice`
+        static let passwordCambiataCodice = "Password cambiata. Gli altri dispositivi sono stati scollegati e il codice di recupero è nuovo: salvalo."
+
         /// `account.la_tua_password`
         static let laTuaPassword = "La tua password"
 

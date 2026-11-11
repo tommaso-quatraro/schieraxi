@@ -14,6 +14,12 @@ enum TestiAccount {
     static let passwordCambiataOk = Catalogo.Account.passwordCambiataOk
     static let laTuaPassword = Catalogo.Account.laTuaPassword
 
+    /// L'esito sotto «Il tuo account» dopo il cambio della password, come l'avviso della web: con il codice nuovo dice di
+    /// salvarlo (`account.password_cambiata_codice`), senza (server più vecchio) solo `account.password_cambiata_ok`.
+    static func esitoCambioPassword(codiceNuovo: Bool) -> String {
+        codiceNuovo ? Catalogo.Account.passwordCambiataCodice : Catalogo.Account.passwordCambiataOk
+    }
+
     static let recupero = Catalogo.Account.recupero
     static let recuperoSpiega = Catalogo.Account.recuperoSpiega
     static let nuovoCodice = Catalogo.Account.nuovoCodice

@@ -28,6 +28,15 @@
       "stato": "fatto"
     },
     {
+      "id": 67,
+      "schermata": "Il tuo account, Cambia la password: il nuovo codice di recupero",
+      "web": "dopo il cambio (dal #589 il server manda `codice_recupero` e quello di prima non vale più) il codice si mostra subito nella carta dell'account (`htmlCodiceUnaVolta`: «Ti serve per rientrare …», «Salva questo codice. Non viene mostrato di nuovo …», «Copia il codice») con l'avviso «Password cambiata. Gli altri dispositivi sono stati scollegati e il codice di recupero è nuovo: salvalo.» (`account.password_cambiata_codice`); senza codice (server più vecchio) «Password cambiata. Gli altri dispositivi sono stati scollegati.» (`collegaAccount`)",
+      "iphone": "prima: la risposta si scartava, il codice nuovo non si vedeva (e il token nuovo della sessione si perdeva: alla richiesta dopo l'app tornava all'accesso). Ora il foglio «Cambia la password» mostra il codice con la schermata del codice di recupero (titolo «Password cambiata», le stesse frasi `codice.*`, «Ho salvato il codice» prima di «Fatto») e sotto «Il tuo account» la stessa frase della web (`TestiAccount.esitoCambioPassword`); il token nuovo si tiene",
+      "forma": "web",
+      "chi": "**fatto** (#590, `CambioPasswordCodiceTests`)",
+      "stato": "fatto"
+    },
+    {
       "id": 63,
       "schermata": "Accesso, Il tuo account, Accessi (Google), codice di recupero, Primo avvio",
       "web": "le frasi di `accesso.*`, `account.*`, `social.*`, `codice.*` e `pav.*` (`mostraAccesso`, `schedaAccount`, `htmlAccessi`, `htmlCodiceUnaVolta`, `primoavvio.js`): «Google collegato: ora puoi entrare anche con Google.», «Google scollegato.», «Scollegare Google? Potrai entrare solo con la tua password.», «Password: impostata», «Account Google collegato: …» o «Google: non collegato», «Conferma con Google» con la sua spiegazione e «Confermato. Per 5 minuti puoi …», «Aggiungi una password», «Scrivi la tua password per collegare Google.»; il codice con «Il tuo codice di recupero», «Ti serve per rientrare …», «Salva questo codice. Non viene mostrato di nuovo …», «Copia il codice», «Ho salvato il codice»; «Primo avvio», «Salta», «Tutto pronto, Mister», «Hai finito la configurazione.», «Non sono riuscito a ricordare a che punto sei …», «Permesso negato: abilita gli avvisi …»",

@@ -120,7 +120,7 @@ private struct PresentaFogliAccount: ViewModifier {
     private func contenuto(_ foglio: FoglioAccount) -> some View {
         switch foglio {
         case .password:
-            FoglioCambiaPassword(nome: sessione.utente?.nomeUtente ?? "") { fogli.messaggio = TestiAccount.passwordCambiataOk }
+            FoglioCambiaPassword(nome: sessione.utente?.nomeUtente ?? "") { fogli.messaggio = $0 }
         case .codice:
             FoglioNuovoCodice()
         case .elimina:
@@ -238,16 +238,20 @@ struct RigaEsci: View {
     }
 }
 
-/// Cambia la password: quella di adesso e la nuova due volte («Ripeti la nuova password»), come la web.
+/// Cambia la password: quella di adesso e la nuova due volte («Ripeti la nuova password»), come la web. Dopo il cambio il server
+/// manda un codice di recupero nuovo (quello di prima non vale più): il foglio lo mostra una volta sola, come la web (#590).
 struct FoglioCambiaPassword: View {
     let nome: String
-    let fatto: () -> Void
+    /// L'esito da scrivere sotto «Il tuo account» (`TestiAccount.esitoCambioPassword`).
+    let fatto: (String) -> Void
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.dismiss) private var chiudi
     @State private var attuale = ""
     @State private var nuova = ""
     @State private var ripeti = ""
     @State private var errore: String?
+    /// Il codice di recupero nuovo arrivato con il cambio: finché c'è, il foglio mostra solo lui.
+    @State private var codice: String?
     @FocusState private var focus: Int?
 
     private var problema: String? {
@@ -260,57 +264,68 @@ struct FoglioCambiaPassword: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                SecureField(TestiAccount.passwordAttuale, text: $attuale)
-                    .textContentType(.password)
-                    .focused($focus, equals: 0)
-                    .submitLabel(.next)
-                    .onSubmit { focus = 1 }
-                    .frame(minHeight: Tema.areaTocco)
-            }
-            Section {
-                SecureField(TestiAccount.nuovaPassword, text: $nuova)
-                    .textContentType(.newPassword)
-                    .focused($focus, equals: 1)
-                    .submitLabel(.next)
-                    .onSubmit { focus = 2 }
-                    .frame(minHeight: Tema.areaTocco)
-                SecureField(TestiAccount.ripetiPassword, text: $ripeti)
-                    .textContentType(.newPassword)
-                    .focused($focus, equals: 2)
-                    // niente invio dal tasto Invio: la password forte suggerita da iOS o il portachiavi non devono mandare
-                    // il modulo da soli. Si cambia solo con il pulsante.
-                    .submitLabel(.done)
-                    .onSubmit { focus = nil }
-                    .frame(minHeight: Tema.areaTocco)
-            } footer: { Group {
-                VStack(alignment: .leading, spacing: 4) {
-                    if let problema { Text(problema).foregroundStyle(Color.attenzione) }
-                    if !ripeti.isEmpty && nuova != ripeti { Text(TestiAccount.passwordDiverse).foregroundStyle(Color.attenzione) }
-                    Text(TestiAccount.altriScollegati)
+        Group {
+            if let codice {
+                CodiceRecuperoView(codice: codice, titolo: TestiAccesso.passwordCambiata, testoPulsante: "Fatto") { chiudi() }
+            } else {
+                Form {
+                    Section {
+                        SecureField(TestiAccount.passwordAttuale, text: $attuale)
+                            .textContentType(.password)
+                            .focused($focus, equals: 0)
+                            .submitLabel(.next)
+                            .onSubmit { focus = 1 }
+                            .frame(minHeight: Tema.areaTocco)
+                    }
+                    Section {
+                        SecureField(TestiAccount.nuovaPassword, text: $nuova)
+                            .textContentType(.newPassword)
+                            .focused($focus, equals: 1)
+                            .submitLabel(.next)
+                            .onSubmit { focus = 2 }
+                            .frame(minHeight: Tema.areaTocco)
+                        SecureField(TestiAccount.ripetiPassword, text: $ripeti)
+                            .textContentType(.newPassword)
+                            .focused($focus, equals: 2)
+                            // niente invio dal tasto Invio: la password forte suggerita da iOS o il portachiavi non devono mandare
+                            // il modulo da soli. Si cambia solo con il pulsante.
+                            .submitLabel(.done)
+                            .onSubmit { focus = nil }
+                            .frame(minHeight: Tema.areaTocco)
+                    } footer: { Group {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if let problema { Text(problema).foregroundStyle(Color.attenzione) }
+                            if !ripeti.isEmpty && nuova != ripeti { Text(TestiAccount.passwordDiverse).foregroundStyle(Color.attenzione) }
+                            Text(TestiAccount.altriScollegati)
+                        }
+                    }.foregroundStyle(Color.testoSecondario) }
+                    if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
+                    Section {
+                        Button { Task { await invia() } } label: {
+                            Text(sessione.inCorso ? "Un attimo…" : TestiAccount.cambiaPassword).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                        }
+                        .disabled(!pronto || sessione.inCorso)
+                    }
                 }
-            }.foregroundStyle(Color.testoSecondario) }
-            if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
-            Section {
-                Button { Task { await invia() } } label: {
-                    Text(sessione.inCorso ? "Un attimo…" : TestiAccount.cambiaPassword).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-                }
-                .disabled(!pronto || sessione.inCorso)
             }
         }
         .navigationTitle(TestiAccount.cambiaPassword)
         .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { if codice == nil { Button("Annulla") { chiudi() } } }
+        }
+        // il codice si vede una volta sola: il foglio si chiude solo con «Fatto», dopo «Ho salvato il codice»
+        .interactiveDismissDisabled(codice != nil)
     }
 
     private func invia() async {
         guard pronto else { return }
         do {
-            try await sessione.cambiaPassword(attuale: attuale, nuova: nuova)
-            fatto()
-            chiudi()
+            let nuovo = try await sessione.cambiaPassword(attuale: attuale, nuova: nuova)
+            attuale = ""; nuova = ""; ripeti = ""
+            fatto(TestiAccount.esitoCambioPassword(codiceNuovo: nuovo != nil))
+            if let nuovo { codice = nuovo } else { chiudi() }
         } catch {
             errore = SchermataAccesso.testoErrore(error)
         }

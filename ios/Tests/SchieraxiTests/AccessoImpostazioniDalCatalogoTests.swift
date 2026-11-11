@@ -141,6 +141,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         ("Sources/Presentation/Accesso/AccountSezione.swift", [
             "Catalogo.Imp.account", "Catalogo.Account.esci", "Catalogo.Social.collegatoOk", "Catalogo.Social.scollegatoOk",
             "Catalogo.Shell.chiudi",
+            // dopo il cambio della password: il codice nuovo sotto «Password cambiata» e l'esito dal catalogo (#590)
+            "TestiAccesso.passwordCambiata", "TestiAccount.esitoCambioPassword(",
         ]),
         ("Sources/Presentation/Accesso/CodiceRecuperoView.swift", [
             "Catalogo.Codice.titolo", "Catalogo.Codice.aCosaServe", "Catalogo.Codice.salva", "Catalogo.Codice.spiega",
