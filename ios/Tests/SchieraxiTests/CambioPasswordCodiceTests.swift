@@ -19,7 +19,7 @@ private let rispostaCompleta =
 
 /// Quante volte la sessione ha svuotato i dati del telefono.
 @MainActor
-private final class Contatore {
+private final class ContatorePulizie {
     var volte = 0
 }
 
@@ -31,7 +31,7 @@ struct CambioPasswordCodiceTests {
         let sessione: SessioneAccount
         let archivio: MemoriaToken
         let server: ServerDiProva
-        let pulizie: Contatore
+        let pulizie: ContatorePulizie
         let memoria: UserDefaults
         let nome: String
 
@@ -49,7 +49,7 @@ struct CambioPasswordCodiceTests {
         }
         let archivio = MemoriaToken()
         archivio.salva("tok-vecchio", server: server.indirizzo)
-        let pulizie = Contatore()
+        let pulizie = ContatorePulizie()
         let sessione = SessioneAccount(server: server, archivio: archivio, memoria: memoria, pulisci: { pulizie.volte += 1 })
         return Prova(sessione: sessione, archivio: archivio, server: server, pulizie: pulizie, memoria: memoria, nome: nome)
     }
@@ -57,7 +57,7 @@ struct CambioPasswordCodiceTests {
     /// Una risposta con questo codice e questo token, scritti come JSON vero (virgolette e caratteri strani compresi).
     private func rispostaCon(codice: String, token: String) throws -> String {
         let campi: [String: Any] = ["ok": true, "codice_recupero": codice, "token": token]
-        return String(decoding: try JSONSerialization.data(withJSONObject: campi), as: UTF8.self)
+        return try String(decoding: JSONSerialization.data(withJSONObject: campi), as: UTF8.self)
     }
 
     @Test("Il codice nuovo della risposta arriva a chi mostra la schermata")
