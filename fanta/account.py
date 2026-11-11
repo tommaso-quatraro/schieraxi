@@ -1235,9 +1235,12 @@ def esci(db: sqlite3.Connection, token: str | None) -> None:
         db.commit()
 
 
-def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = None, scollega_social: bool = False) -> int:
+def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = None, scollega_social: bool = False,
+                  tieni_push: str | None = None) -> int:
     """Revoca tutte le sessioni dell'utente (tranne, se indicata, quella con questo token). Restituisce quante ne ha chiuse.
-    Senza `tranne` (esci da tutti, cambio password, recupero) si dimenticano anche i dispositivi e gli indirizzi fidati.
+    Senza `tranne` (esci da tutti, cambio password, recupero) si dimenticano anche i dispositivi e gli indirizzi fidati e si
+    tolgono le iscrizioni alle notifiche web, tranne quella del dispositivo che sta chiedendo (`tieni_push`, il suo indirizzo
+    di notifica, se lo manda): gli altri dispositivi le riattivano dopo il nuovo accesso.
     Con `scollega_social` (il pulsante «Esci da tutti» e il recupero della password: i casi in cui si sospetta che qualcuno sia entrato)
     si scollegano anche i Google collegati: chi ci è entrato avrebbe altrimenti una porta che la nuova password non chiude.
     Un account senza password (solo Google) li tiene: sarebbe chiuso fuori."""
@@ -1253,7 +1256,25 @@ def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = N
         db.execute("DELETE FROM identita_esterne WHERE utente_id = ? AND EXISTS "
                    "(SELECT 1 FROM utenti WHERE id = ? AND senza_password = 0)", (utente_id, utente_id))
     db.commit()
+    if not tranne:                       # dopo la revoca (vedi `push.iscrivi`, che ricontrolla la sessione prima di scrivere)
+        _togli_notifiche(utente_id, tieni_push)
     return cur.rowcount
+
+
+def _togli_notifiche(utente_id: int, tieni: str | None) -> None:
+    """Le iscrizioni alle notifiche web dell'utente (nella sua cartella), tutte tranne quella con l'indirizzo `tieni` se c'è.
+    Un errore di scrittura non si nasconde: arriva a chi ha chiesto (le sessioni sono già chiuse)."""
+    from . import contesto, push
+    push.tieni_solo(tieni if isinstance(tieni, str) else None, contesto.Contesto.per_utente(utente_id).iscrizioni_push)
+
+
+def _avvisa_password_cambiata(db: sqlite3.Connection, utente_id: int, adesso: datetime) -> None:
+    """All'email verificata dell'account, se c'è: la password è cambiata, controlla l'email collegata. Con la posta spenta non
+    parte niente e non c'è nessun errore (`posta.invia` non alza mai)."""
+    riga = db.execute("SELECT email FROM utenti WHERE id = ?", (utente_id,)).fetchone()
+    if riga is not None and riga["email"]:
+        from . import posta
+        posta.invia(posta.modello_password_cambiata(riga["email"], adesso.strftime("%d/%m/%Y %H:%M UTC")))
 
 
 def _controlla_password_attuale(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None = None) -> sqlite3.Row:
@@ -1276,16 +1297,39 @@ def conferma_password(db: sqlite3.Connection, utente_id: int, password: str, ses
 
 
 def cambia_password(db: sqlite3.Connection, utente_id: int, attuale: str, nuova: str, token_corrente: str | None = None,
-                    dispositivo: str = "", adesso: datetime | None = None) -> str:
+                    dispositivo: str = "", adesso: datetime | None = None, tieni_push: str | None = None) -> tuple[str, str]:
     """Cambio con la password di adesso. TUTTE le sessioni si chiudono, anche questa (chi l'avesse rubata resta fuori), e se ne
-    apre una nuova al suo posto: restituisce il token nuovo (il web lo riceve come cookie, le app nella risposta)."""
+    apre una nuova al suo posto. Anche il codice di recupero cambia (quello di prima non vale più) e restano solo le notifiche
+    di questo dispositivo (`tieni_push`). Restituisce (token nuovo, codice di recupero nuovo): il web
+    riceve il token come cookie, le app nella risposta; il codice si mostra una volta sola."""
+    adesso = _ora(adesso)
     riga = _controlla_password_attuale(db, utente_id, attuale)
     valida_password(nuova, riga["nome_utente"])
-    db.execute("UPDATE utenti SET password_hash = ? WHERE id = ?", (hash_password(nuova), utente_id))
+    codice = nuovo_codice(20)
+    db.execute("UPDATE utenti SET password_hash = ?, recupero_hash = ? WHERE id = ?", (hash_password(nuova), _hash_codice(codice), utente_id))
     db.commit()
-    esci_da_tutti(db, utente_id)
+    esci_da_tutti(db, utente_id, tieni_push=tieni_push)
     evento("password_cambiata", nome=riga["nome_utente"])
-    return _apri_sessione(db, utente_id, dispositivo, _ora(adesso))
+    _avvisa_password_cambiata(db, utente_id, adesso)
+    return _apri_sessione(db, utente_id, dispositivo, adesso), codice
+
+
+def esci_da_tutti_i_dispositivi(db: sqlite3.Connection, utente_id: int, password: str | None = None,
+                                sessione: str | None = None) -> tuple[int, str | None]:
+    """Il pulsante «Esci da tutti»: chiude tutte le sessioni (anche questa), il widget, i dispositivi fidati, le notifiche web e i
+    Google collegati (a chi ha una password), e cambia il codice di recupero (quello di prima non vale più).
+    Il codice nuovo si restituisce solo con la password giusta (per chi è solo Google: la riconferma recente), come per
+    «Genera un nuovo codice». Senza password il codice cambia lo stesso, senza mostrarlo (se ne genera uno nuovo con la
+    password da «Il tuo account»). Password sbagliata: 403 e non si chiude niente.
+    Restituisce (sessioni chiuse, codice nuovo o None)."""
+    if password is not None:
+        _controlla_password_attuale(db, utente_id, password, sessione)
+    codice = nuovo_codice(20)
+    db.execute("UPDATE utenti SET recupero_hash = ? WHERE id = ?", (_hash_codice(codice), utente_id))
+    db.commit()
+    chiuse = esci_da_tutti(db, utente_id, scollega_social=True)
+    evento("esci_da_tutti")
+    return chiuse, codice if password is not None else None
 
 
 def rigenera_codice_recupero(db: sqlite3.Connection, utente_id: int, password: str, sessione: str | None = None) -> str:
@@ -1397,14 +1441,15 @@ def crea_reset(db: sqlite3.Connection, nome_utente: str, adesso: datetime | None
 
 
 def recupera(db: sqlite3.Connection, nome_utente: str, codice: str, nuova: str, ip: str | None = None,
-             adesso: datetime | None = None, fidato: str | None = None) -> str:
+             adesso: datetime | None = None, fidato: str | None = None, tieni_push: str | None = None) -> str:
     """Sceglie una nuova password con il codice di recupero o con un codice di reset dell'amministratore. Tutte le sessioni
-    si chiudono. Restituisce il NUOVO codice di recupero (il vecchio è usato), da mostrare una volta sola."""
+    si chiudono e restano solo le notifiche di questo dispositivo (`tieni_push`). Restituisce il NUOVO codice di recupero
+    (il vecchio è usato), da mostrare una volta sola."""
     with uno_alla_volta(ip):
-        return _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato)
+        return _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato, tieni_push)
 
 
-def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None) -> str:
+def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None, tieni_push=None) -> str:
     adesso = _ora(adesso)
     nome = normalizza_nome(nome_utente)
     righe = _prenota_tentativo(db, "recupero", nome, ip, fidato)
@@ -1438,6 +1483,7 @@ def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None) -> str:
         raise ErroreAccount("Nome utente o codice non validi", 403)
     db.commit()
     limite.azzera(db, _chiave("recupero", nome, ip or "-"))
-    esci_da_tutti(db, riga["id"], scollega_social=True)
+    esci_da_tutti(db, riga["id"], scollega_social=True, tieni_push=tieni_push)
     evento("recupero", nome=nome, ip=ip, via="reset" if buono_reset else "codice_di_recupero")
+    _avvisa_password_cambiata(db, riga["id"], adesso)
     return nuovo

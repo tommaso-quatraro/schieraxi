@@ -105,16 +105,16 @@ Tutte le rotte sotto `/api/account/` rispondono `404` con `{"detail": "Gli accou
 | `POST /api/account/registra/conferma` | `{email, codice, iscrizione, nativo?}` | come `registra` (sessione aperta) |
 | `PUT /api/account/nome` | `{nome_utente}` | `{utente}`: solo maiuscole e minuscole cambiano |
 | `POST /api/account/esci` | — | `{ok: true}` |
-| `POST /api/account/esci-da-tutti` | — | `{sessioni_chiuse}` |
-| `POST /api/account/cambia-password` | `{attuale, nuova}` | `{multiutente, utente, ok: true}` + nuovo `token` se nativo |
+| `POST /api/account/esci-da-tutti` | facoltativo `{password?}` | `{sessioni_chiuse}`; chiude anche questa sessione, toglie tutte le iscrizioni alle notifiche web e cambia il codice di recupero (quello di prima non vale più). Con la `password` giusta (per chi è solo Google: vuota, vale la riconferma recente) la risposta ha anche `codice_recupero`, il nuovo codice da mostrare una volta; password sbagliata: `403` e non si chiude niente. Senza corpo: come prima, ma il codice cambia senza essere mostrato (dall'11/11/2026) |
+| `POST /api/account/cambia-password` | `{attuale, nuova, endpoint_push?}` | `{multiutente, utente, ok: true, codice_recupero}` + nuovo `token` se nativo. `codice_recupero` (dall'11/11/2026): il codice di recupero cambia insieme alla password e il nuovo si mostra subito, una volta sola (quello di prima non vale più). Le iscrizioni alle notifiche web si tolgono tutte tranne quella con l'indirizzo `endpoint_push` (facoltativo: l'indirizzo delle notifiche di questo dispositivo; non aggiunge mai un'iscrizione). Se l'account ha un'email verificata riceve un avviso «password cambiata» (con la posta spenta niente) |
 | `POST /api/account/codice-recupero` | `{password}` | `{codice_recupero}` (nuovo, sostituisce il vecchio) |
 | `POST /api/account/elimina` | `{password}` | `{ok: true}`: cancella account e dati |
-| `POST /api/account/recupero` | `{nome_utente, codice, nuova}` | `{ok, codice_recupero}` |
+| `POST /api/account/recupero` | `{nome_utente, codice, nuova, endpoint_push?}` | `{ok, codice_recupero}`. Come il cambio password: notifiche web solo per `endpoint_push` (se c'è) e avviso all'email verificata |
 | `POST /api/account/email` | `{email, password}` | risposta di verifica (stessa in ogni caso). Con la posta spenta sul server (`email_attiva: false`): `503` con `codice: "posta_spenta"`, niente email in attesa (dal 2/11/2026) |
 | `POST /api/account/email/conferma` | `{codice}` | `{ok, email}` |
 | `POST /api/account/email/togli` | `{password}` | `{ok}` |
 | `POST /api/account/recupero-email` | `{email}` | risposta identica se l'indirizzo esiste o no. Con la posta spenta: `503` `posta_spenta`, uguale per ogni indirizzo (dal 2/11/2026) |
-| `POST /api/account/recupero-email/conferma` | `{email, codice, nuova}` | `{ok, codice_recupero}` |
+| `POST /api/account/recupero-email/conferma` | `{email, codice, nuova, endpoint_push?}` | `{ok, codice_recupero}`. Come il cambio password: notifiche web solo per `endpoint_push` (se c'è) e avviso all'email verificata |
 | `POST /api/account/token-widget` | — | `{token, scade, etichetta: "widget"}`: il token si vede una volta sola |
 | `GET /api/account/token-widget` | — | `{presente: false}` oppure `{presente, valido, etichetta, creato, scade, ultimo_uso}` (mai il token) |
 | `DELETE /api/account/token-widget` | — | `{revocato: true/false}` |

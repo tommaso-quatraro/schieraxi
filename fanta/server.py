@@ -2233,9 +2233,14 @@ def chiave_push():
 
 
 @app.post("/api/push/iscrivi")
-def iscrivi_push(dati: IscrizionePush, ctx: Contesto = Depends(lega_corrente)):
-    """Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy)."""
-    return {"dispositivi": len(notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push))}
+def iscrivi_push(dati: IscrizionePush, request: Request, ctx: Contesto = Depends(lega_corrente)):
+    """Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy). Con gli account la sessione si
+    ricontrolla subito prima di scrivere: se nel frattempo si è chiusa (cambio password, «Esci da tutti») non resta niente."""
+    ancora_valida = (lambda: rotte_account.identifica(request) is not None) if ctx.utente_id is not None else None
+    try:
+        return {"dispositivi": len(notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push, ancora_valida=ancora_valida))}
+    except notifiche_web.NonPiuValida:
+        raise HTTPException(401, "Accesso richiesto") from None
 
 
 class DisiscrizionePush(BaseModel):

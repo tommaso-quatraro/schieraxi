@@ -4348,11 +4348,13 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         mostraAccesso(t("accesso.codice_inviato"), "recupero", { sub: "email-codice", email });
         return;
       } else if (extra.sub === "email-codice") {
-        const r = await manda("/api/account/recupero-email/conferma", { email: extra.email, codice: v("#ac-codice-email").trim(), nuova: v("#ac-pw") });
+        const ep = await endpointPushQui();
+        const r = await manda("/api/account/recupero-email/conferma", { email: extra.email, codice: v("#ac-codice-email").trim(), nuova: v("#ac-pw"), ...(ep ? { endpoint_push: ep } : {}) });
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta"));
         mostraCodiceAccesso(t("accesso.password_cambiata"), r.codice_recupero, t("accesso.vai_accesso"), () => mostraAccesso(t("accesso.password_cambiata_accedi")));
       } else {
-        const r = await manda("/api/account/recupero", { nome_utente: v("#ac-nome"), codice: v("#ac-codice"), nuova: v("#ac-pw") });
+        const ep = await endpointPushQui();
+        const r = await manda("/api/account/recupero", { nome_utente: v("#ac-nome"), codice: v("#ac-codice"), nuova: v("#ac-pw"), ...(ep ? { endpoint_push: ep } : {}) });
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta"));
         mostraCodiceAccesso(t("accesso.password_cambiata"), r.codice_recupero, t("accesso.vai_accesso"), () => mostraAccesso(t("accesso.password_cambiata_accedi")));
       }
@@ -4548,6 +4550,17 @@ function mostraCodiceAccesso(titolo, codice, continua, dopo) {
   $("#codice-continua").addEventListener("click", dopo);
 }
 
+// L'indirizzo delle notifiche web di questo dispositivo, o "" se non ci sono: dopo un cambio di password o un recupero il server
+// tiene solo questo e toglie le altre iscrizioni. Non aspetta il service worker: se non c'è, non ci sono nemmeno le notifiche.
+async function endpointPushQui() {
+  try {
+    if (!("serviceWorker" in navigator && "PushManager" in window)) return "";
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+    return sub && sub.endpoint ? sub.endpoint : "";
+  } catch { return ""; }
+}
+
 async function esciDa(percorso) {
   await lasciaNotifiche();
   try { await api(percorso, { method: "POST" }); } catch { /* se la sessione era già finita, va bene lo stesso */ }
@@ -4701,9 +4714,15 @@ function collegaAccount() {
       avviso(t("social.password_aggiunta"), 6000);
       return;
     }
-    await api("/api/account/cambia-password", { method: "POST", body: JSON.stringify({ attuale: valore("#acc-attuale"), nuova: valore("#acc-nuova") }) });
+    const corpo = { attuale: valore("#acc-attuale"), nuova: valore("#acc-nuova") };
+    const ep = await endpointPushQui();
+    if (ep) corpo.endpoint_push = ep;                                     // le notifiche di questo dispositivo restano, le altre si tolgono
+    const r = await api("/api/account/cambia-password", { method: "POST", body: JSON.stringify(corpo) });
     $("#acc-attuale").value = ""; $("#acc-nuova").value = ""; $("#acc-ripeti").value = "";
-    avviso(t("account.password_cambiata_ok"), 5000);
+    if (r && r.codice_recupero) {                                         // il codice di prima non vale più: si mostra subito quello nuovo
+      mostraCodice("#acc-esito-password", r.codice_recupero);
+      avviso(t("account.password_cambiata_codice"), 6000);
+    } else avviso(t("account.password_cambiata_ok"), 5000);
   }));
   if ($("#acc-nuovo-codice")) $("#acc-nuovo-codice").addEventListener("click", () => provaCosi(t("account.nuovo_codice_no"), async () => {
     if (!valore("#acc-pw-codice")) { avviso(t("account.email_serve_password")); return; }

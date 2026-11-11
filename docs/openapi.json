@@ -163,6 +163,18 @@
       "title": "Attuale",
       "type": "string"
      },
+     "endpoint_push": {
+      "anyOf": [
+       {
+        "maxLength": 600,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Endpoint Push"
+     },
      "nuova": {
       "maxLength": 500,
       "title": "Nuova",
@@ -447,6 +459,25 @@
      "giornata"
     ],
     "title": "EccezioneRinvio",
+    "type": "object"
+   },
+   "EsciDaTutti": {
+    "description": "Corpo facoltativo di «Esci da tutti» (i client di prima non lo mandano). Con la password (per chi è solo Google: vuota, vale\nla riconferma recente) la risposta ha il nuovo codice di recupero.",
+    "properties": {
+     "password": {
+      "anyOf": [
+       {
+        "maxLength": 500,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password"
+     }
+    },
+    "title": "EsciDaTutti",
     "type": "object"
    },
    "FormazioneScelta": {
@@ -886,6 +917,18 @@
       "title": "Codice",
       "type": "string"
      },
+     "endpoint_push": {
+      "anyOf": [
+       {
+        "maxLength": 600,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Endpoint Push"
+     },
      "nome_utente": {
       "maxLength": 100,
       "title": "Nome Utente",
@@ -916,6 +959,18 @@
       "maxLength": 300,
       "title": "Email",
       "type": "string"
+     },
+     "endpoint_push": {
+      "anyOf": [
+       {
+        "maxLength": 600,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Endpoint Push"
      },
      "nuova": {
       "maxLength": 500,
@@ -1306,7 +1361,7 @@
   },
   "/api/account/cambia-password": {
    "post": {
-    "description": "Tutte le sessioni si chiudono e questa riparte con un token nuovo (cookie per il web, nella risposta per le app native).",
+    "description": "Tutte le sessioni si chiudono e questa riparte con un token nuovo (cookie per il web, nella risposta per le app native).\nLa risposta ha anche il nuovo codice di recupero (il vecchio non vale più), da mostrare una volta sola.",
     "requestBody": {
      "content": {
       "application/json": {
@@ -1535,6 +1590,24 @@
   },
   "/api/account/esci-da-tutti": {
    "post": {
+    "description": "Chiude tutto (anche questa sessione) e cambia il codice di recupero; il codice nuovo torna solo con la password.",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/EsciDaTutti"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Dati"
+       }
+      }
+     }
+    },
     "responses": {
      "200": {
       "content": {
@@ -1543,6 +1616,16 @@
        }
       },
       "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
      }
     },
     "summary": "Esci Da Tutti"
@@ -3715,7 +3798,7 @@
   },
   "/api/push/iscrivi": {
    "post": {
-    "description": "Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy).",
+    "description": "Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy). Con gli account la sessione si\nricontrolla subito prima di scrivere: se nel frattempo si è chiusa (cambio password, «Esci da tutti») non resta niente.",
     "requestBody": {
      "content": {
       "application/json": {

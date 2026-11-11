@@ -111,6 +111,10 @@
     "it": "Password cambiata. Gli altri dispositivi sono stati scollegati.",
     "en": "Password changed. The other devices have been signed out."
   },
+  "account.password_cambiata_codice": {
+    "it": "Password cambiata. Gli altri dispositivi sono stati scollegati e il codice di recupero è nuovo: salvalo.",
+    "en": "Password changed. The other devices have been signed out and your recovery code is new: save it."
+  },
   "account.password_cambiata_no": {
     "it": "Non riesco a cambiare la password",
     "en": "I cannot change the password"
