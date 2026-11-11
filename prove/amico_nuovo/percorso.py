@@ -519,7 +519,7 @@ def passo_file_sbagliato(g: Giro, sbagliato: Path) -> None:
     if not (p.locator("#pa-testo").is_visible() and p.locator("#pa-salta").is_visible()):
         raise Bloccato("dopo «Torna indietro» non si può riprovare né saltare")
     if p.evaluate("() => { const f = document.querySelector('#pa-file'); return !!(f && f.files && f.files.length); }"):
-        g.nota("dopo «Torna indietro» il file sbagliato resta scelto: «Controlla le rose» con il testo incollato rilegge quel file")
+        raise Bloccato("dopo «Torna indietro» il file sbagliato resta scelto (#578)")
 
 
 def passo_rose(g: Giro, formato: str, file: Path) -> None:
