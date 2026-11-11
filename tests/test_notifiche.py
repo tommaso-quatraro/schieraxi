@@ -109,6 +109,16 @@ def test_impostazioni_e_stato_rovinato(tmp_path):
     assert notifiche.impostazioni(f)["cambi"] is True
 
 
+def test_notifiche_impostazioni_con_numeri_non_finiti_valgono_quelle_predefinite(tmp_path):
+    """1e999 nel JSON diventa un numero infinito: le ore e i minuti tornano ai valori di base, e si può salvare sopra."""
+    f = tmp_path / "i.json"
+    f.write_text('{"silenzio": true, "silenzio_da": 1e999, "silenzio_a": -1e999, "avviso_prima": 1e999}', encoding="utf-8")
+    opz = notifiche.impostazioni(f)
+    assert (opz["silenzio_da"], opz["silenzio_a"], opz["avviso_prima"]) == (23, 7, 60)
+    assert notifiche.ore_tranquille_spente(f) is False
+    assert notifiche.salva_impostazioni({"cambi": False}, f)["silenzio_da"] == 23
+
+
 def test_se_l_invio_fallisce_si_riprova_al_giro_dopo(tmp_path, monkeypatch):
     _finto(monkeypatch)
     esito = {"ok": False}

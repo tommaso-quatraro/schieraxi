@@ -423,6 +423,20 @@ def test_esegui_un_utente_alla_volta_con_il_tempo_contato(db, tmp_path, monkeypa
     assert esito["controllati"] == ["utente 4"] and esito["rimandati"] == 2
 
 
+def test_sentinella_un_utente_con_dati_strani_non_ferma_il_giro(db, tmp_path, monkeypatch):
+    """Tutto il lavoro di un utente (anche cercare la sua squadra) sta dentro il controllo per utente: con dati strani si segna
+    una rottura per lui e il giro va avanti con gli altri."""
+    m = _mondo()
+    ctx = {u: _contesto(tmp_path, u.replace(" ", "")) for u in ("utente 1", "utente 2")}
+    vera = lega.carica
+    monkeypatch.setattr(lega, "carica", lambda p: lega.Rose([], 1) if p == ctx["utente 1"].rose else vera(p))
+    monkeypatch.setattr(sentinella, "risposte_utente", lambda c, db: copy.deepcopy(({k: v for k, v in m.items()}, {}, None)))
+    monkeypatch.setattr(sentinella, "_prepara_live", lambda: None)
+    esito = sentinella.esegui(db, PRIMA, contesti=list(ctx.items()))
+    assert esito["controllati"] == ["utente 1", "utente 2"] and esito["rimandati"] == 0
+    assert {(r.utente, r.invariante) for r in esito["rotture"] if r.utente} == {("utente 1", "risposta_in_errore")}
+
+
 def test_con_gli_account_si_controlla_chi_ha_le_rose(multiutente, tmp_path):
     from fanta import account
     from fanta.contesto import Contesto

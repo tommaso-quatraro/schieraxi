@@ -446,10 +446,10 @@ def _e_separatore(riga: list[str]) -> bool:
 
 def _riga_rosters(riga: list[str]) -> tuple[str, int, int] | None:
     """(nome squadra, codice, costo) se la riga è «nome,codice,costo». Si legge da destra: le ultime due celle sono numeri e
-    il resto è il nome (che può contenere una virgola: «Under Prova»)."""
+    il resto è il nome (che può contenere una virgola: «Under Prova»). Unito, il nome si accorcia come una cella (MAX_TESTO_CELLA)."""
     if len(riga) < 3 or not (re.fullmatch(r"\d{1,9}", riga[-1]) and re.fullmatch(r"\d{1,9}", riga[-2])):
         return None
-    nome = ",".join(riga[:-2]).strip()
+    nome = ",".join(riga[:-2]).strip()[:MAX_TESTO_CELLA].strip()
     if not nome or nome == "$" or re.fullmatch(r"\d+", nome):
         return None
     return nome, int(riga[-2]), int(riga[-1])
