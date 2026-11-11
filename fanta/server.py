@@ -515,8 +515,15 @@ def _occupato(_, e: calcolo.Occupato):
     return JSONResponse(status_code=429, content={"detail": str(e)}, headers={"Retry-After": str(e.riprova_tra), "Cache-Control": "no-store"})
 
 
+def _account_non_verificato(_, e: percorsi.DatabaseAccountNonRisponde):
+    """Salvataggio non fatto perché il database degli account non risponde (#542): 503 «riprova», mai «salvato». Senza
+    Retry-After: l'app non rifà la richiesta da sola, lo decide chi la usa."""
+    return JSONResponse(status_code=503, content={"detail": percorsi.NON_VERIFICATO}, headers={"Cache-Control": "no-store"})
+
+
 app.add_exception_handler(calcolo.InCalcolo, _sto_calcolando)
 app.add_exception_handler(calcolo.Occupato, _occupato)
+app.add_exception_handler(percorsi.DatabaseAccountNonRisponde, _account_non_verificato)
 app.add_exception_handler(account.ErroreAccount, rotte_account.errore_account)
 app.add_exception_handler(RequestValidationError, _dati_non_validi)
 app.add_exception_handler(Exception, _errore_imprevisto)
@@ -2468,7 +2475,7 @@ def scarica_backup(ctx: Contesto = Depends(lega_corrente)):
     nome = backup.nome_file(b["creato"])
     try:
         stato_utente.segna_backup(ctx.impostazioni_avvisi)         # serve a «Da fare» per ricordare il backup
-    except OSError:
+    except (OSError, percorsi.DatabaseAccountNonRisponde):         # un di più: il file dei dati esce lo stesso
         pass
     return JSONResponse(b, headers={"Content-Disposition": f'attachment; filename="{nome}"'})
 

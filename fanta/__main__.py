@@ -511,19 +511,28 @@ def cmd_backup(a) -> None:
 
 
 def _backup_per_utente(tieni: int) -> None:
-    """Con gli account: una copia dei dati di ogni utente nella sua cartella (le ultime 3) e una del database degli account."""
+    """Con gli account: una copia dei dati di ogni utente nella sua cartella (le ultime 3) e una del database degli account.
+    La copia di un utente che non si scrive (disco, database degli account che non risponde) non ferma gli altri né la copia del
+    database: l'errore va nel registro del servizio e alla fine il comando esce con errore."""
     import contextlib
+    import logging
     from . import account, backup, percorsi
     from .contesto import Contesto
     with contextlib.closing(account.apri()) as db:
         ids = [u["id"] for u in account.elenco(db)]
-    fatte = 0
+    fatte, errori = 0, 0
     for i in ids:
         ctx = Contesto.per_utente(i)
-        if backup.salva_copia(cartella=ctx.cartella / "backup", tieni=min(tieni, 3), file_utente=ctx.file_backup):
-            fatte += 1
+        try:
+            if backup.salva_copia(cartella=ctx.cartella / "backup", tieni=min(tieni, 3), file_utente=ctx.file_backup):
+                fatte += 1
+        except (OSError, percorsi.DatabaseAccountNonRisponde) as e:
+            errori += 1
+            logging.getLogger(__name__).error("Backup dell'account %s non salvato (%s)", i, type(e).__name__)
     conti = backup.copia_account(percorsi.cartella_account() / "backup", percorsi.cartella_account() / "account.sqlite", tieni)
     print(f"copie salvate: {fatte} utenti su {len(ids)}; database degli account: {'copiato' if conti else 'niente da copiare'}")
+    if errori:
+        sys.exit(f"Errore: copia non salvata per {errori} utenti su {len(ids)} (il motivo è nel registro del servizio).")
 
 
 def cmd_salute(a) -> None:

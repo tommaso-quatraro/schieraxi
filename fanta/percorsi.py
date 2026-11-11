@@ -64,14 +64,26 @@ def segna_cancellato(utente_id: int) -> bool:
         return False
 
 
+NON_VERIFICATO = "Il server ha un problema con i suoi file: riprova più tardi. Se succede ancora, avvisa chi gestisce l'app."
+
+
+class DatabaseAccountNonRisponde(Exception):
+    """Una scrittura nella cartella di un utente con il segno di cancellazione, ma il database degli account non risponde: non si
+    sa se l'account c'è ancora, quindi non si è scritto niente. Il server la trasforma in 503 con il messaggio `NON_VERIFICATO`
+    (riprova): chi aveva chiesto di salvare lo sa, invece di sentirsi dire «salvato» (#542)."""
+
+    def __init__(self):
+        super().__init__(NON_VERIFICATO)
+
+
 def scrittura_permessa(percorso: Path) -> bool:
     """Da chiamare prima e dopo aver scritto `percorso`: vero se si può scrivere. Fuori dalle cartelle degli utenti, o per un
     account senza segno di cancellazione, sempre (per loro basta un controllo sul disco: il database si guarda solo se il segno c'è).
     - Il database degli account (in sola lettura) conferma che l'account non c'è più: falso, e la sua cartella, se è rinata per
       una scrittura partita prima, si toglie. Quello che non si riesce a togliere lo trova `python -m fanta cartelle-senza-account`.
     - C'è un account con quel numero: vero (segno rimasto da prima di un ripristino del database, numero tornato a un account nuovo).
-    - Il database non risponde: falso, ma non si cancella niente (potrebbe essere un utente vivo) e resta un errore con il tipo
-      nel registro del servizio."""
+    - Il database non risponde: `DatabaseAccountNonRisponde` (potrebbe essere un utente vivo: il suo salvataggio non si salta in
+      silenzio), non si cancella niente e resta un errore con il tipo nel registro del servizio."""
     utente = utente_della_cartella(percorso)
     if utente is None or not _segno(utente).exists():
         return True
@@ -82,12 +94,20 @@ def scrittura_permessa(percorso: Path) -> bool:
     except sqlite3.Error as e:
         logging.getLogger(__name__).error("Account %s con il segno di cancellazione, ma il database degli account non risponde (%s): "
                                           "%s non scritto o lasciato com'è, niente cancellato", utente, type(e).__name__, percorso.name)
-        return False
+        raise DatabaseAccountNonRisponde() from None
     if vivo:
         return True
     logging.getLogger(__name__).warning("Account %s eliminato: %s non salvato, la sua cartella si toglie", utente, percorso.name)
     shutil.rmtree(cartella_utenti() / str(utente), ignore_errors=True)
     return False
+
+
+def ricontrolla_dopo_la_scrittura(percorso: Path) -> None:
+    """Il controllo di `scrittura_permessa` rifatto dopo aver scritto: se l'account è stato eliminato nel frattempo, toglie
+    quello che è rinato. Il file però è già salvato: se il database non risponde non si dice «riprova» (rifare un'aggiunta la
+    scriverebbe due volte); l'errore resta nel registro del servizio."""
+    with contextlib.suppress(DatabaseAccountNonRisponde):
+        scrittura_permessa(percorso)
 
 
 def cartella_privata(cartella: Path) -> Path:
@@ -121,7 +141,8 @@ def dentro(cartella: Path, percorso: Path) -> bool:
 def scrivi_sicuro(percorso: Path, testo: str) -> None:
     """Scrive su un file temporaneo e poi lo rinomina: se qualcosa va storto, il file vecchio resta intatto.
     Nella cartella di un account eliminato non scrive (anche se il lavoro era partito prima dell'eliminazione): il segno si guarda
-    prima e di nuovo dopo, così la cartella non rinasce nemmeno se l'eliminazione arriva a metà scrittura."""
+    prima e di nuovo dopo, così la cartella non rinasce nemmeno se l'eliminazione arriva a metà scrittura. Se prima di scrivere
+    il database degli account non risponde: `DatabaseAccountNonRisponde`, niente scritto."""
     if not scrittura_permessa(percorso):
         return
     percorso.parent.mkdir(parents=True, exist_ok=True)
@@ -132,4 +153,4 @@ def scrivi_sicuro(percorso: Path, testo: str) -> None:
     except BaseException:
         tmp.unlink(missing_ok=True)       # disco pieno o altro: niente file a metà che occupano altro spazio
         raise
-    scrittura_permessa(percorso)      # eliminato mentre scrivevamo: si toglie quello che è rinato
+    ricontrolla_dopo_la_scrittura(percorso)      # eliminato mentre scrivevamo: si toglie quello che è rinato
