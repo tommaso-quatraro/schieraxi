@@ -378,6 +378,71 @@ def test_una_consigliata_usata_anche_da_un_altro_resta_per_lui(memoria):
     assert "stessa-lega" in consigli._consigliate()
 
 
+def test_consigliate_le_ultime_di_ogni_utente_restano_col_file_pieno(memoria, monkeypatch):
+    """Il file pieno di consigliate di altri utenti non fa dimenticare a nessuno le sue più recenti (la parte riservata,
+    `consigli.RISERVATE_UTENTE`): per il tetto di tutto il file escono prima le più vecchie fuori da quella parte."""
+    monkeypatch.setattr(consigli, "RISERVATE_UTENTE", 1, raising=False)
+    with da_utente(1):
+        ricorda("di-a")
+    for utente in (2, 3):
+        with da_utente(utente):
+            for i in range(3):
+                ricorda(f"di-{utente}-{i}")
+    tutte = consigli._consigliate()
+    assert "di-a" in tutte                                          # l'unica di A, la più vecchia del file, resta
+    assert {"di-2-2", "di-3-2"} <= set(tutte)                       # e l'ultima di ciascuno degli altri
+    assert len(tutte) == consigli.MAX_CONSIGLIATE
+
+
+def _riempi(utenti, quante):
+    """Altri utenti che mostrano ciascuno `quante` consigliate nuove: il file si riempie."""
+    for utente in utenti:
+        with da_utente(utente):
+            for i in range(quante):
+                ricorda(f"di-{utente}-{i}")
+
+
+def test_consigliate_la_propria_squadra_resta_dopo_tante_avversarie(memoria, monkeypatch):
+    """A guarda la sua formazione, poi quelle di tante avversarie della stessa giornata (la sua non si riscrive se non cambia):
+    col file pieno di voci di altri resta la sua."""
+    monkeypatch.setattr(consigli, "MAX_CONSIGLIATE", 12)
+    monkeypatch.setattr(limiti, "MAX_CONSIGLIATE_UTENTE", 100)
+    monkeypatch.setattr(consigli, "RISERVATE_UTENTE", 3)
+    with da_utente(1):
+        consigli._ricorda("mia", consigliata(), ST, GIORNATA, None, propria=True)
+        for i in range(5):
+            ricorda(f"avversaria-{i}")
+        consigli._ricorda("mia", consigliata(), ST, GIORNATA, consigli._consigliate()["mia"], propria=True)   # la rivede: uguale
+    _riempi((2, 3), 5)
+    tutte = consigli._consigliate()
+    assert "mia" in tutte and tutte["mia"]["proprie"] == [1]
+    assert "avversaria-4" in tutte                                  # e la più recente della giornata
+    assert len(tutte) == 12
+
+
+def test_consigliate_la_piu_recente_di_ogni_giornata_resta(memoria, monkeypatch):
+    monkeypatch.setattr(consigli, "MAX_CONSIGLIATE", 8)
+    monkeypatch.setattr(limiti, "MAX_CONSIGLIATE_UTENTE", 100)
+    monkeypatch.setattr(consigli, "RISERVATE_UTENTE", 2)
+    with da_utente(1):
+        consigli._ricorda("giornata-9", consigliata(), ST, GIORNATA, None)
+        for i in range(3):
+            consigli._ricorda(f"giornata-10-{i}", consigliata(), ST, GIORNATA + 1, None)
+    _riempi((2, 3), 3)
+    tutte = consigli._consigliate()
+    assert {"giornata-9", "giornata-10-2"} <= set(tutte)
+    assert not {"giornata-10-0", "giornata-10-1"} & set(tutte)
+
+
+def test_consigliate_il_tetto_del_file_vale_anche_con_tanti_utenti(memoria, monkeypatch):
+    """Con più utenti che posti, la parte riservata non fa crescere il file: escono le più vecchie."""
+    monkeypatch.setattr(consigli, "RISERVATE_UTENTE", 1, raising=False)
+    for utente in range(1, 9):
+        with da_utente(utente):
+            ricorda(f"di-{utente}")
+    assert sorted(consigli._consigliate()) == [f"di-{u}" for u in range(4, 9)]
+
+
 def test_senza_account_la_memoria_delle_consigliate_e_quella_di_sempre(memoria):
     for i in range(7):
         ricorda(f"locale-{i}")
