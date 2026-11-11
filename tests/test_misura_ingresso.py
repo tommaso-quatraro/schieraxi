@@ -5,7 +5,8 @@ Orologio mai vero: tutte le ore stanno nei dati. Account veri (`account.registra
 (`lega/esempio/`), fuso del server fissato a Europa/Roma (sul PC e in CI il fuso del sistema è diverso)."""
 import json
 import sqlite3
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -58,10 +59,16 @@ def test_dentro_quando_rose_e_tempi_fatti(creato, rose_alle, primo_alle, fuso, m
     assert minuti_di_ingresso(creato, _rose_vere(rose_alle), _primo(TUTTO, aggiornato=primo_alle), fuso) == ("dentro", minuti)
 
 
-def test_squadre_di_esempio_non_contano(calciatori):
-    """Il primo avvio segna `rose` fatto anche con «Usa le squadre di esempio»: la lega non è caricata."""
+@pytest.mark.parametrize("rinominate", [{}, {"Atletico Prova": "I Leoni di Quartiere"},
+                                         {nome: f"Squadra {i}" for i, nome in enumerate(onboarding.SQUADRE_DEMO)}])
+def test_squadre_di_esempio_non_contano(calciatori, rinominate):
+    """Il primo avvio segna `rose` fatto anche con «Usa le squadre di esempio»: la lega non è caricata. Nemmeno se l'amico
+    rinomina le squadre d'esempio (la rinomina lascia il nome di prima in `nome_importato`, come fa il server)."""
     rose = _rose_demo(calciatori, "2026-12-10T10:02:00")
     assert {s.nome for s in rose.squadre} == set(onboarding.SQUADRE_DEMO)
+    for s in rose.squadre:
+        if s.nome in rinominate:
+            s.nome_importato, s.nome = s.nome, rinominate[s.nome]
     assert minuti_di_ingresso("2026-12-10T09:00:00+00:00", rose, _primo(TUTTO), ROMA) == ("solo_esempio", None)
 
 
@@ -96,11 +103,23 @@ def test_dentro_senza_ore_utili_non_ha_minuti(rose_alle, primo_alle):
     assert esito == ("dentro", None)
 
 
-def test_fuso_del_server_segue_l_ora_legale():
-    """Il fuso del server vale per la data dell'ora letta (inverno e estate), non solo per l'ora di adesso."""
+@pytest.fixture
+def sistema_a_roma():
+    """Il fuso del sistema messo a Europa/Roma per il solo test (variabile TZ e time.tzset), poi rimesso com'era."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("TZ", "Europe/Rome")
+        time.tzset()
+        yield
+    time.tzset()
+
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="time.tzset c'è solo su Linux e macOS (in CI gira)")
+def test_fuso_del_server_segue_l_ora_legale(sistema_a_roma):
+    """Il fuso del server vale per la data dell'ora letta, non solo per adesso: a Roma +1 ora a gennaio e +2 a luglio
+    (uno scarto fisso, come quello di `datetime.now().astimezone()`, sbaglierebbe una delle due stagioni)."""
     fuso = misura_ingresso.fuso_del_server()
-    for ora in (datetime(2026, 1, 15, 12), datetime(2026, 7, 15, 12)):
-        assert ora.replace(tzinfo=fuso).utcoffset() == ora.astimezone().utcoffset()
+    assert datetime(2026, 1, 15, 12).replace(tzinfo=fuso).utcoffset() == timedelta(hours=1)
+    assert datetime(2026, 7, 15, 12).replace(tzinfo=fuso).utcoffset() == timedelta(hours=2)
 
 
 # ---------------------------------------------------------------- riassunto (righe e codice di uscita)
@@ -109,6 +128,9 @@ def test_fuso_del_server_segue_l_ora_legale():
      ["utente 1: dentro in 8 minuti", "utente 2: dentro in 9,5 minuti", "dentro in meno di 10 minuti: 2 su 2"], 0),
     ([{"utente": 3, "esito": "dentro", "minuti": 1.0}, {"utente": 4, "esito": "dentro", "minuti": 10.0}],
      ["utente 3: dentro in 1 minuto", "utente 4: dentro in 10 minuti", "dentro in meno di 10 minuti: 1 su 2"], 1),
+    # 9 minuti e 58 secondi: in tempo, quindi mai scritto «10 minuti» (si tronca, non si arrotonda)
+    ([{"utente": 9, "esito": "dentro", "minuti": 598 / 60}, {"utente": 10, "esito": "dentro", "minuti": 7 + 59 / 60}],
+     ["utente 9: dentro in 9,9 minuti", "utente 10: dentro in 7,9 minuti", "dentro in meno di 10 minuti: 2 su 2"], 0),
     ([{"utente": 5, "esito": "dentro", "minuti": None}],
      ["utente 5: dentro, minuti non misurabili", "dentro in meno di 10 minuti: 0 su 1"], 1),
     ([{"utente": 6, "esito": "solo_esempio", "minuti": None}, {"utente": 7, "esito": "non_finito", "minuti": None},
@@ -154,6 +176,15 @@ def _lancia(capsys, *argomenti) -> tuple:
     return uscita.value.code, capsys.readouterr().out.splitlines()
 
 
+def _errore(capsys, *argomenti) -> str:
+    """Un errore del comando: codice 3 (né «non tutti in tempo», 1, né «nessun account», 2), niente righe di misura, il motivo."""
+    with pytest.raises(SystemExit) as uscita:
+        main(["ingresso", *argomenti])
+    uscite = capsys.readouterr()
+    assert (uscita.value.code, uscite.out) == (3, "")
+    return uscite.err
+
+
 def test_solo_account_del_periodo(archivio):
     prima = _iscrivi(archivio, "prima", "2026-12-09T22:59:59+00:00")
     inizio = _iscrivi(archivio, "inizio", "2026-12-09T23:00:00+00:00")       # mezzanotte a Roma: dentro il periodo
@@ -164,6 +195,20 @@ def test_solo_account_del_periodo(archivio):
     assert (prima, inizio, meta, dopo) == (1, 2, 3, 4)
     righe = misura(archivio, percorsi.cartella_utenti(), datetime.fromisoformat(DAL), datetime.fromisoformat(AL), ROMA)
     assert righe == [{"utente": 2, "esito": "non_iniziato", "minuti": None}, {"utente": 3, "esito": "dentro", "minuti": 7.0}]
+
+
+def test_prima_gli_esempi_poi_le_rose_vere(archivio, calciatori):
+    """Squadre di esempio e tempi fatti alle 10:05, rose vere importate alle 10:09 (account delle 10:00 a Roma): conta l'ora
+    delle rose vere, anche se le squadre d'esempio restano accanto a quelle importate."""
+    utente = _iscrivi(archivio, "luca", "2026-12-10T09:00:00+00:00")
+    esempi = _rose_demo(calciatori, "2026-12-10T10:02:00")
+    _lega_di(utente, esempi, _primo(TUTTO, aggiornato="2026-12-10T10:05:00"))
+    periodo = (percorsi.cartella_utenti(), datetime.fromisoformat(DAL), datetime.fromisoformat(AL), ROMA)
+    assert misura(archivio, *periodo) == [{"utente": utente, "esito": "solo_esempio", "minuti": None}]
+    vere = _rose_vere("2026-12-10T10:09:00")
+    vere.squadre = esempi.squadre + vere.squadre
+    _lega_di(utente, vere)
+    assert misura(archivio, *periodo) == [{"utente": utente, "esito": "dentro", "minuti": 9.0}]
 
 
 def test_archivio_in_sola_lettura(archivio):
@@ -185,8 +230,7 @@ def test_archivio_in_sola_lettura(archivio):
 
 def test_archivio_che_manca_non_si_crea(multiutente, capsys):
     """Un errore (non «nessun account», che è il codice 2): sul server sbagliato la misura non deve sembrare vuota."""
-    codice, righe = _lancia(capsys, "--dal", DAL, "--al", AL)
-    assert codice not in (0, 2, None) and righe == []
+    assert "database degli account" in _errore(capsys, "--dal", DAL, "--al", AL)
     assert not (percorsi.cartella_account() / "account.sqlite").exists()
 
 
@@ -196,16 +240,13 @@ def test_file_che_non_si_leggono_danno_un_errore_chiaro(archivio, capsys):
     rose = percorsi.cartella_utenti() / str(utente) / "rose.json"
     rose.parent.mkdir(parents=True)
     rose.write_text('{"squadre": [', encoding="utf-8")                              # rose rovinate: si dice di chi
-    codice, righe = _lancia(capsys, "--dal", DAL, "--al", AL)
-    assert codice not in (0, 2, None) and f"utente {utente}:" in str(codice) and righe == []
+    assert f"utente {utente}:" in _errore(capsys, "--dal", DAL, "--al", AL)
     rose.unlink()
     rose.mkdir()                                                                   # c'è, ma non si legge come file
-    codice, righe = _lancia(capsys, "--dal", DAL, "--al", AL)
-    assert codice not in (0, 2, None) and righe == []
+    _errore(capsys, "--dal", DAL, "--al", AL)
     archivio.close()
     (percorsi.cartella_account() / "account.sqlite").write_bytes(b"non sono un database" * 100)
-    codice, righe = _lancia(capsys, "--dal", DAL, "--al", AL)
-    assert codice not in (0, 2, None) and righe == []
+    _errore(capsys, "--dal", DAL, "--al", AL)
 
 
 def test_niente_nomi_utente_nell_uscita(archivio, capsys, calciatori):
@@ -245,7 +286,7 @@ def test_date_senza_fuso_rifiutate(archivio, capsys):
         with pytest.raises(ValueError, match="fuso"):
             misura(archivio, percorsi.cartella_utenti(), dal, al, ROMA)
     for argomenti in (("--dal", "2026-12-10T00:00:00", "--al", AL), ("--dal", DAL, "--al", "2026-12-10T23:00:00")):
-        codice, righe = _lancia(capsys, *argomenti)
-        assert codice not in (0, None) and "fuso" in str(codice) and righe == []
-    codice, righe = _lancia(capsys, "--dal", AL, "--al", DAL)               # al prima di dal: errore, non «nessun account»
-    assert codice not in (0, 2, None) and righe == []
+        assert "fuso" in _errore(capsys, *argomenti)
+    _errore(capsys, "--dal", AL, "--al", DAL)                              # al prima di dal: errore, non «nessun account»
+    _errore(capsys, "--dal", "domani", "--al", AL)                         # data che non si legge
+    assert "--dal" in _errore(capsys, "--al", AL)                          # --dal manca: 3, non il 2 di argparse

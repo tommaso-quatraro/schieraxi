@@ -4,17 +4,19 @@ web e carica la sua lega in meno di 10 minuti»).
 Usa solo dati che il server ha già, in sola lettura, senza nessun dato nuovo sugli utenti:
 - l'inizio è `utenti.creato` di `account.sqlite` (UTC, con il fuso);
 - la lega è caricata quando ci sono rose vere (non le squadre di esempio del primo avvio, che segna `rose` fatto anche con
-  «Usa le squadre di esempio») e `tempi` è fra i passi fatti del primo avvio (`avvisi-impostazioni.json`, campo `primo_avvio`);
+  «Usa le squadre di esempio», nemmeno se rinominate) e `tempi` è fra i passi fatti del primo avvio (`avvisi-impostazioni.json`,
+  campo `primo_avvio`);
 - la fine è la più tarda fra `aggiornato` delle rose e `aggiornato` del primo avvio.
 Trappola: quelle due ore sono SENZA fuso, nell'ora del server (`datetime.now()` in `lega.py` e `stato_utente.py`); si leggono con
 `fuso_del_server`. Se l'amico riapre il primo avvio o reimporta le rose dopo, la misura viene più lunga del vero: sbaglia a sfavore.
 
 Comando: `python -m fanta ingresso --dal <ISO con fuso> [--al <ISO con fuso>]`, sul server (come `sentinella --giri`). Una riga per
 account, mai nomi utente; uscita 0 se tutti gli account del periodo sono dentro in meno di 10 minuti, 1 altrimenti, 2 se nel periodo
-non c'è nessun account.
+non c'è nessun account, 3 se la misura non si può fare (date sbagliate, database o file che non si leggono).
 """
 from __future__ import annotations
 
+import math
 import sqlite3
 from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
@@ -25,6 +27,7 @@ from .lega import Rose
 
 DENTRO, SOLO_ESEMPIO, NON_FINITO, NON_INIZIATO = "dentro", "solo_esempio", "non_finito", "non_iniziato"
 SOGLIA_MINUTI = 10
+ERRORE = 3                     # codice di uscita quando la misura non si può fare: diverso da 1 («non tutti in tempo») e da 2
 _FRASI = {SOLO_ESEMPIO: "solo squadre di esempio", NON_FINITO: "non finito", NON_INIZIATO: "non iniziato"}
 
 
@@ -58,12 +61,18 @@ def _ora(testo: object, fuso: tzinfo) -> datetime | None:
     return quando if quando.utcoffset() is not None else quando.replace(tzinfo=fuso)
 
 
+def _solo_esempio(rose: Rose | None) -> bool:
+    """Le squadre di esempio del primo avvio, anche rinominate: la rinomina lascia il nome di prima in `nome_importato`
+    (`onboarding.e_demo` guarda solo il nome di adesso, e un amico che rinomina «Atletico Prova» risulterebbe dentro)."""
+    return bool(rose and rose.squadre and {s.nome_importato or s.nome for s in rose.squadre} == set(onboarding.SQUADRE_DEMO))
+
+
 def minuti_di_ingresso(creato: str, rose: Rose | None, primo_avvio: dict | None, fuso_server: tzinfo) -> tuple[str, float | None]:
     """(esito, minuti). `dentro` con i minuti dalla creazione dell'account alla lega caricata (rose vere e `tempi` fatto);
     `solo_esempio` se le rose sono le squadre di esempio; `non_finito` se mancano rose vere o `tempi` (anche se saltati);
     `non_iniziato` se non ci sono né rose né primo avvio. Minuti None anche per `dentro` quando non c'è un'ora buona (nessuna
     ora salvata, o ore prima della creazione: orologio sbagliato): mai «entro 10 minuti» per omissione."""
-    if onboarding.e_demo(rose):
+    if _solo_esempio(rose):
         return SOLO_ESEMPIO, None
     vere = bool(rose and rose.squadre)
     if not vere and primo_avvio is None:
@@ -111,7 +120,8 @@ def apri_in_sola_lettura(percorso: Path) -> sqlite3.Connection:
 
 
 def _numero(minuti: float) -> str:
-    return f"{minuti:.1f}".replace(".", ",").removesuffix(",0")
+    """Troncato al decimo, mai arrotondato: 9 minuti e 58 secondi sono «9,9», non «10» (che non conta come in tempo)."""
+    return f"{math.floor(minuti * 10) / 10:.1f}".replace(".", ",").removesuffix(",0")
 
 
 def _riga(r: dict) -> str:
@@ -138,7 +148,9 @@ def riassunto(righe: list[dict]) -> tuple[list[str], int]:
 
 def comando(dal: datetime, al: datetime) -> int:
     """Il comando `ingresso`: stampa le righe e restituisce il codice di uscita. Database o file degli utenti che non si
-    leggono: errore con il motivo (ValueError), mai una misura a metà."""
+    leggono: errore con il motivo (ValueError, codice ERRORE per chi lo lancia), mai una misura a metà.
+    Unica eccezione: un `avvisi-impostazioni.json` rovinato vale «primo avvio mai iniziato» (`stato_utente.leggi_primo_avvio`
+    non distingue), quindi quell'account risulta «non finito» o «non iniziato» senza messaggio: la misura sbaglia a sfavore."""
     try:
         db = apri_in_sola_lettura(percorsi.cartella_account() / "account.sqlite")
         try:
