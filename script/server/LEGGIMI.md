@@ -19,6 +19,15 @@ I controlli di salute (`fanta/salute.py`, `controllo-salute.sh`) provano 3 volte
 
 La configurazione di sistema (nginx, systemd, fail2ban, ufw, crontab) non è nel repository: va preparata per il proprio server.
 
+Variabili del servizio: in `/etc/schieraxi/fantacalcio.env` (di root, `640`, gruppo dell'utente del servizio), date al servizio dal
+drop-in di `ambiente.conf.esempio` e lette dagli script con `leggi-ambiente.sh`, senza eseguirle. Il posto di prima,
+`dati/ambiente.env`, vale ancora con un avviso finché non lo si sposta: passi in `docs/RIPRISTINO-SERVER.md`, «Spostare le variabili
+del servizio».
+
+Registri: gli script dei cron girano fuori dal recinto del servizio ma scrivono i loro log in cartelle che scrive anche il servizio
+(`dati/`, `~/.cache`). Per questo usano `registri.sh`: se al posto di un log (o del suo file di lavoro) c'è un collegamento simbolico
+si fermano senza scrivere niente, ruotano i log con un file di lavoro sempre nuovo e cambiano i permessi solo dei log che sono file veri.
+
 ## Ambiente di prova
 
 Una seconda copia dell'app sullo stesso server, con dati inventati, che riceve ogni versione prima della produzione. Gira con un

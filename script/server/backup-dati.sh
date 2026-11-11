@@ -17,16 +17,19 @@ PY="${FANTA_PYTHON:-python3}"
 TIENI=14
 CACHE="${FANTA_CACHE:-$HOME/.cache/fantacalcio}"       # stato e log (per le prove si può cambiare)
 LOG="$CACHE/backup-dati.log"
+QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima del cd)
+. "$QUI/registri.sh" || exit 1          # registri senza collegamenti simbolici (registri.sh)
+registri_sicuri "$LOG" "$LOG.tmp" || exit 1     # ~/.cache la scrive anche il servizio
 cd "$RADICE" || exit 1
 mkdir -p "$DEST" "$CACHE"
 chmod 700 "$DEST"
-exec 6>"$CACHE/blocco-backup-dati"
+exec 6>>"$CACHE/blocco-backup-dati"
 flock -n 6 || exit 0
 umask 077     # le copie e i file temporanei sono leggibili solo dall'utente del server
 
 fallito() {
   { echo "=== $(date '+%F %T') $1"; } >> "$LOG"
-  tail -n 100 "$LOG" > "$LOG.tmp" && mv -f "$LOG.tmp" "$LOG"
+  ruota_registro "$LOG" 100
   exit 1
 }
 

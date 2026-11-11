@@ -322,10 +322,10 @@ def test_produzione_usa_lo_stesso_blocco_e_lo_stesso_clone_di_sito_e_controlli(t
     assert c["BLOCCO"] == f"{h}/.cache/fantacalcio/blocco-pubblicazione" and c["SRC"] == f"{h}/schieraxi-src"
     sito = (SERVER / "pubblica-sito.sh").read_text(encoding="utf-8")
     assert 'SRC="${SCHIERAXI_SRC:-$HOME/schieraxi-src}"' in sito
-    assert 'STATO="${FANTA_CACHE:-$HOME/.cache/fantacalcio}"' in sito and 'exec 6>"$STATO/blocco-pubblicazione"' in sito
+    assert 'STATO="${FANTA_CACHE:-$HOME/.cache/fantacalcio}"' in sito and 'exec 6>>"$STATO/blocco-pubblicazione"' in sito
     for nome in ("promemoria.sh", "sentinella.sh"):
-        assert 'exec 7>"$HOME/.cache/fantacalcio/blocco-pubblicazione"' in (SERVER / nome).read_text(encoding="utf-8"), nome
-    assert 'exec 7>"$BLOCCO"' in AGGIORNA.read_text(encoding="utf-8")
+        assert 'exec 7>>"$HOME/.cache/fantacalcio/blocco-pubblicazione"' in (SERVER / nome).read_text(encoding="utf-8"), nome
+    assert 'exec 7>>"$BLOCCO"' in AGGIORNA.read_text(encoding="utf-8")
 
 
 @con_bash

@@ -71,26 +71,25 @@ if [ "$ISTANZA" = prova ]; then
     echo "ambiente di prova non preparato ($DEST/.venv/bin/python manca): prima script/server/prova/prepara-prova.sh" >&2
     exit 0
   fi
-  # la cartella dati la scrive anche il servizio della prova: un collegamento simbolico al posto del log farebbe scrivere questo
-  # script (che gira fuori dal recinto del servizio) da un'altra parte, per esempio sul codice
-  for f in "$DEST/dati/pubblicazione.log" "$DEST/dati/pubblicazione.log.tmp"; do
-    if [ -L "$f" ]; then echo "$f e' un collegamento simbolico: non scrivo e non installo niente" >&2; exit 1; fi
-  done
 fi
+QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di ogni cd)
+. "$QUI/registri.sh" || exit 1
 LOG="$DEST/dati/pubblicazione.log"
+# la cartella dati la scrive anche il servizio (produzione o prova): un collegamento simbolico al posto del log farebbe scrivere
+# questo script (che gira fuori dal recinto del servizio) da un'altra parte, per esempio sul codice. Non scrive e non installa niente.
+registri_sicuri "$LOG" "$LOG.tmp" || exit 1
 ERR="$LOG"; [ "${1:-}" = "--prova" ] && ERR=/dev/null
 REPO="${SCHIERAXI_REPO:-https://github.com/tommaso-quatraro/schieraxi.git}"
 CARTELLE="fanta tests script requirements.txt requirements-dev.txt"     # le sole cose che finiscono sul server
-QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di ogni cd)
 . "$QUI/verifica-firme.sh"
 
 if [ "$PROVA" = 0 ]; then
   mkdir -p "$STATO" "$DEST/dati"
   # blocco-pubblicazione e' condiviso: pubblica-sito.sh lo prende per il suo git fetch sullo stesso clone e promemoria.sh (controllo di
   # salute) lo aspetta, cosi' non vede l'app "spenta" mentre questo script la riavvia. Si aspetta al massimo un minuto chi lo tiene.
-  exec 7>"$BLOCCO"
+  exec 7>>"$BLOCCO"
   flock -w "${SCHIERAXI_ATTESA_BLOCCO:-60}" 7 || { [ -n "$FIDATI" ] && echo "c'e' un aggiornamento in corso: riprova fra un minuto"; exit 0; }
-  exec 9>"$STATO/blocco"
+  exec 9>>"$STATO/blocco"
   flock -n 9 || { [ -n "$FIDATI" ] && echo "c'e' un aggiornamento in corso: riprova fra un minuto"; exit 0; }
   (umask 077; : >> "$LOG"); chmod 600 "$LOG"     # il log di pubblicazione lo legge solo l'utente del server
 fi
@@ -107,7 +106,7 @@ import sys
 from fanta import notifiche
 notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'package')" "$1" "$2" "$3" ) >/dev/null 2>&1
 }
-fine() { [ "$PROVA" = 1 ] && return 0; tail -n 300 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"; }
+fine() { [ "$PROVA" = 1 ] && return 0; ruota_registro "$LOG" 300 2>/dev/null; }
 
 if [ ! -d "$SRC/.git" ]; then
   if [ "$PROVA" = 1 ]; then log "manca la copia di GitHub in $SRC: la creerei da $REPO"; exit 0; fi

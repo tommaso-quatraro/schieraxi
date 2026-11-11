@@ -302,7 +302,7 @@ def _aggiorna(tmp_path, ferma="", ambiente_env=None):
 
 def _promemoria(tmp_path, ferma="", ambiente_env=None):
     app = tmp_path / "casa" / "fantacalcio"
-    for nome in ("promemoria.sh", "leggi-ambiente.sh"):
+    for nome in ("promemoria.sh", "leggi-ambiente.sh", "registri.sh"):
         _scrivi(app, f"script/server/{nome}", (SCRIPT / nome).read_text(encoding="utf-8").replace("\r\n", "\n"))
     if ambiente_env is not None:
         _scrivi(app, "dati/ambiente.env", ambiente_env)
