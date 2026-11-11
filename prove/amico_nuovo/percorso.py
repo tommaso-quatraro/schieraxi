@@ -498,6 +498,12 @@ def _primo_avvio_su(g: Giro, nome_passo: str) -> None:
         raise Bloccato(f"il primo avvio non è sul passo «{nome_passo}»")
 
 
+def dice_nessuna_rosa(messaggio: str) -> bool:
+    """Il messaggio dice che nel file non ci sono rose: la frase di adesso del server («Non ho trovato rose nel file», #577)
+    o quella di prima («nessuna rosa»), per un server remoto non ancora aggiornato."""
+    return bool(re.search(r"nessuna rosa|non ho trovato rose", messaggio, re.I))
+
+
 def passo_file_sbagliato(g: Giro, sbagliato: Path) -> None:
     p = g.pagina
     _primo_avvio_su(g, "Le rose")
@@ -507,7 +513,7 @@ def passo_file_sbagliato(g: Giro, sbagliato: Path) -> None:
         raise Bloccato("un calendario è stato preso per le rose")
     messaggio = p.locator("#pa-anteprima [role=alert]").inner_text()
     g.nota("messaggio: " + messaggio)
-    if "nessuna rosa" not in messaggio.lower():
+    if not dice_nessuna_rosa(messaggio):
         raise Bloccato("il messaggio non dice che nel file non ci sono rose")
     g.tocca(p.locator("#ar-indietro"))
     if not (p.locator("#pa-testo").is_visible() and p.locator("#pa-salta").is_visible()):
