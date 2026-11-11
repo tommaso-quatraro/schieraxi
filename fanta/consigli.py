@@ -310,13 +310,14 @@ def _moduli(tutte: list) -> list[dict]:
 
 def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra: str | None = None,
                giornata: int | None = None, simulazioni: int = 600, adesso: datetime | None = None) -> dict:
-    """La formazione consigliata. `adesso`: l'ora con cui contare scadenza passata e anticipi cominciati (per chi l'ha già fissata,
-    come il giro degli avvisi, e per le prove); senza, l'ora vera."""
+    """La formazione consigliata. `adesso`: l'ora con cui cercare la giornata e contare scadenza passata e anticipi cominciati nella
+    risposta (per chi l'ha già fissata, come il giro degli avvisi, e per le prove); senza, l'ora vera. Ricordare la consigliata invece
+    deve andare bene anche per l'ora vera (`_si_ricorda`)."""
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
         raise ValueError("Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose")
     stagione = stagione_corrente()
-    giornata = giornata or giornata_da_giocare(db, stagione, regole)
+    giornata = giornata or giornata_da_giocare(db, stagione, regole, adesso)
     if giornata is None:
         raise ValueError(SENZA_CALENDARIO)
     # La consigliata già mostrata per questa squadra e giornata (#335): resta finché la migliore non vale almeno SOGLIA_CAMBIO_PUNTI in
@@ -349,9 +350,22 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     f = migliore = calcolo.ottieni(chiave, pronta, db, peso=calcolo.PESO_LEGGERO)
     if da_rivedere(migliore):
         f = calcolo.ottieni(chiave_stabile, lambda d: con_la_stabile(d, migliore), db, peso=calcolo.PESO_LEGGERO)
-    if prima is None or not chiusa:
+    if _si_ricorda(db, regole, stagione, giornata, prima, chiusa, iniziate, adesso):
         _ricorda(impronta, f, stagione, giornata, prima)
     return f
+
+
+def _si_ricorda(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, prima: dict | None, chiusa: bool,
+                iniziate: tuple[str, ...], adesso: datetime | None) -> bool:
+    """Se la consigliata appena calcolata si ricorda, cioè diventa quella mostrata da lì in poi: senza una di prima sempre, con una di
+    prima solo a formazione aperta. Con un'ora data (`adesso`, che il giro degli avvisi fissa al suo inizio) anche per l'ora vera la
+    formazione deve essere aperta, con gli stessi anticipi cominciati: la risposta segue l'ora data, ma un giro partito prima della
+    scadenza o di un anticipo non cambia mai la consigliata già fissata (#335, #368)."""
+    if prima is None:
+        return True
+    if chiusa:
+        return False
+    return adesso is None or (not _chiusa(db, regole, stagione, giornata) and _anticipi_iniziati(db, stagione, giornata) == iniziate)
 
 
 def _formazione_pronta(db, s, giornata, regole, simulazioni) -> dict:
@@ -705,6 +719,10 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
         raise ValueError("Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose")
+    if giornata is None and adesso is not None:     # con l'ora data la giornata si cerca con quella (senza: `previsioni`, ora vera)
+        giornata = giornata_da_giocare(db, stagione_corrente(), regole, adesso)
+        if giornata is None:
+            raise ValueError(SENZA_CALENDARIO)
     prev, giornata, _ = previsioni(db, regole, giornata)
     ids = [g.id for g in s.giocatori if g.id is not None and g.id in prev.index]
     rosa = {int(i): fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
