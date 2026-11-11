@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.455",
+    "data": "2026-11-11T22:56:34",
+    "titolo": "Server: aggiornamenti e avvisi con l'ora del loro controllo",
+    "voci": [
+      "Nessun cambio visibile: gli aggiornamenti del server e gli avvisi sul telefono contano la giornata e la scadenza sempre con l'ora del loro controllo."
+    ],
+    "tecnico": [
+      "libero.scadenza_vicina e pianificatore._scadenza passano adesso a consigli.giornata_da_giocare.",
+      "notifiche.cambi, copertura, promemoria e avviso_scadenza passano la giornata del giro a consigli.previsioni, formazione e valuta, e l'ora del giro (adesso) a formazione e valuta, invece di farle cercare di nuovo con l'orologio vero.",
+      "consigli.formazione e consigli.valuta accettano adesso (facoltativo, senza = ora vera): lo usano la ricerca della giornata, _chiusa e _anticipi_iniziati per la risposta. La consigliata si ricorda (_si_ricorda) solo se anche l'ora vera dice formazione aperta e gli stessi anticipi cominciati: un giro partito prima della scadenza non cambia quella già fissata.",
+      "tests/test_orologio_del_giro.py e tests/test_anticipi_consigliata.py: prove con date fisse passate e la giornata calcolata davvero (#571)."
+    ]
+  },
+  {
     "versione": "1.454",
     "data": "2026-11-11T22:47:44",
     "titolo": "Rose da Excel: solo i fogli delle rose",
