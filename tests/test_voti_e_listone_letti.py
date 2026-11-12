@@ -119,6 +119,16 @@ def test_listone_non_letto_durante_l_aggiornamento_e_un_errore(tmp_path, monkeyp
         listone.carica(file_cache=f, severo=True)                       # per l'aggiornamento: l'errore si vede
 
 
+def test_per_l_app_la_copia_vecchia_vale_subito_senza_richieste(tmp_path, monkeypatch):
+    """Le rotte dell'app non aspettano il sito (con i tentativi di rete.scarica fino a 90 secondi): usano subito la copia che c'è.
+    La rinnova il passo dell'aggiornamento (severo)."""
+    f = tmp_path / "listone.json"
+    _cache(f, 30)
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    monkeypatch.setattr(listone.rete, "scarica", lambda *a, **k: pytest.fail("rete usata da una rotta dell'app"))
+    assert listone.carica(file_cache=f)[0][0].nome == "Finto A."
+
+
 def test_listone_fresco_non_fa_richieste_neanche_severo(tmp_path, monkeypatch):
     f = tmp_path / "listone.json"
     _cache(f, 2)

@@ -135,10 +135,11 @@ def carica(aggiorna: bool = False, max_eta: timedelta = timedelta(hours=24),
            file_cache: Path = FILE_CACHE, archivio_db: Path | None = None, severo: bool = False) -> tuple[list[Calciatore], str]:
     """Restituisce (calciatori, data di scaricamento). Usa la cache se è recente. Senza file e senza fonte (spenta o che non risponde)
     usa l'anagrafe già nell'archivio (`dall_archivio`), tranne quando si sta aggiornando (lì l'errore deve vedersi).
-    `severo` (il passo dell'aggiornamento): se la pagina non si scarica o non si legge è un errore, anche con una copia vecchia
-    (per l'app invece meglio il listone di ieri che niente). La pagina passa da `rete.scarica`: pausa e nuovi tentativi."""
+    `severo` (il passo dell'aggiornamento): una copia più vecchia di `max_eta` si rinnova e, se la pagina non si scarica o non si
+    legge, è un errore. Senza `severo` (le rotte dell'app) la copia che c'è vale subito, anche vecchia: nessuna attesa del sito
+    (con i tentativi di `rete.scarica` fino a 90 secondi); il sito si chiede solo senza nessuna copia, o con `aggiorna`."""
     cache = _leggi_cache(file_cache)
-    if cache and not aggiorna and datetime.now() - datetime.fromisoformat(cache[1]) < max_eta:
+    if cache and not aggiorna and (not severo or datetime.now() - datetime.fromisoformat(cache[1]) < max_eta):
         return cache
     if not fonti_attive.acceso("fantacalcio"):
         if cache:
