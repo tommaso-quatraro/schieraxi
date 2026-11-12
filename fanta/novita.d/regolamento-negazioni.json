@@ -1,0 +1,14 @@
+{
+  "titolo": "Regolamento incollato: le frasi con «non» si leggono per il verso giusto",
+  "voci": [
+    "Regole, «Riconosci le regole» sul regolamento incollato: frasi come «Cambio modulo: non è consentito», «Modificatore difesa: non è attivo» o «Il cambio di modulo non è mai ammesso» ora propongono «no» e non più «sì».",
+    "Una riga che toglie un modulo («Non è ammesso il modulo 5-4-1») non lo mette più fra i moduli ammessi: resta fra le righe non riconosciute, da controllare. «Panchina non libera» o «La panchina non è fissa» non propongono più un tipo di panchina sbagliato.",
+    "Quando una riga dice insieme «sì» e «no» per la stessa regola, l'app non propone niente e lascia la scelta a te."
+  ],
+  "tecnico": [
+    "regole_testo._negate: un «non» nega le parole di stato che seguono con in mezzo solo parole di passaggio (PASSAGGIO: «è», «sono», «mai», «si», «in nessun caso»...), in tempo lineare.",
+    "regole_testo._si_no (cambio modulo, modificatore attivo): decide sul pezzo della riga, fra virgole, punti, punti e virgola e parentesi, che nomina la regola; se dice solo il nome decidono i pezzi fatti solo di un sì o di un no («, non attivo»), altrimenti il nome da solo vale sì come prima. Tutte le parole di stato negate: no; negate e non negate, pezzi in disaccordo o un «non» senza parola di stato: nessuna proposta.",
+    "Moduli: qualsiasi «non» nella riga la lascia fra le non riconosciute (prima solo «non (sono) ammess|consent|valid»). Tipo di panchina (regole_testo._tipo_panchina): «non (è|sono) vincolata» vale libera; un tipo negato vale solo se la riga afferma l'altro, altrimenti nessuna proposta.",
+    "Client: nessun campo cambia nelle rotte /api/regole/riconosci e /api/onboarding/regole."
+  ]
+}
