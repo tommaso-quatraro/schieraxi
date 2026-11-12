@@ -138,9 +138,10 @@ prima della scadenza:
   squadra della pagina, con «Rimuovi» (che cancella l'immagine giusta) e «Da indirizzo web»;
 - Regole e scadenza: il regolamento incollato si salva con «Salva queste regole»; i singoli valori stanno dietro «Modifica i
   valori»; la scadenza si salva appena cambia; la frase sulla prima giornata parla di Giornate, non del Diario;
-- Avvisi: niente interruttori di prima, le ore tranquille con la loro fascia, e un cambio manda solo `silenzio`; mentre la web
-  aspetta il service worker il riquadro dice «Controllo gli avvisi…» con `aria-busy` e la riga sotto non si sposta quando
-  arriva la frase. Con le notifiche finte (service worker e permesso simulati nella pagina, rotte `/api/push/...` e
+- Avvisi: niente interruttori di prima, le ore tranquille con la loro fascia, e un cambio manda solo `silenzio`. Senza un
+  service worker registrato (il browser di prova) la frase che lo dice arriva subito, senza i 4 secondi di attesa; con una
+  registrazione finta in attivazione il riquadro dice «Controllo gli avvisi…» con `aria-busy` e la riga sotto non si sposta
+  quando arriva la frase. Con le notifiche finte (service worker e permesso simulati nella pagina, rotte `/api/push/...` e
   `/api/avvisi/prova` con risposte finte): la frase dell'interruttore dice che arrivano anche gli altri avvisi; accenderlo
   manda un avviso di prova e lo dice; se la prova non parte (429 o `inviato: false`) lo dice un avviso `role="status"` e
   l'interruttore resta acceso; con il permesso negato niente prova;
