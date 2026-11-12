@@ -8,7 +8,7 @@ import math
 import sqlite3
 from collections import Counter
 from datetime import datetime, timedelta
-from itertools import combinations
+from itertools import combinations, product
 
 from hypothesis import HealthCheck, example, given, settings
 from hypothesis import strategies as st
@@ -108,24 +108,20 @@ def test_la_formazione_migliore_usa_un_modulo_ammesso_e_rispetta_i_ruoli(caso, r
 
 @PROVE
 @given(rosa_e_regole(), st.sampled_from(fz.LIVELLI_RISCHIO), st.booleans())
-def test_nessun_titolare_sotto_il_20_per_cento_se_un_compagno_sicuro_costa_poco(caso, stile, ricerca):
+def test_nessun_titolare_sotto_il_20_per_cento_se_un_compagno_gioca(caso, stile, ricerca):
     """In ogni modulo e con ogni stile, un titolare che gioca meno del 20% resta solo se nessun compagno di ruolo fuori dagli 11
-    gioca al 50% o più, oppure se metterlo al suo posto costa almeno 0,3 punti attesi (#329)."""
+    gioca almeno il 20%, qualunque sia il costo in punti attesi (#329, regola decisa alla revisione di #612)."""
     rosa, r = caso
     _, _, peso, inclinazione, _ = stile
     val = fz.Valutatore(rosa, r, simulazioni=40)
     f = fz.migliore(rosa, r, simulazioni=40, ricerca=ricerca, peso=peso, valutatore=val, inclinazione=inclinazione)
     for x in f.tutte:
         ids = {g.id for g in x.titolari}
-        for i, t in enumerate(x.titolari):
+        for t in x.titolari:
             if t.p >= 0.2:
                 continue
-            for alt in rosa:
-                if alt.ruolo != t.ruolo or alt.id in ids or alt.p < 0.5:
-                    continue
-                prova = x.titolari[:i] + [alt] + x.titolari[i + 1:]
-                costo = val.atteso(x.titolari, x.panchina) - val.atteso(prova, fz._panchina(rosa, prova, r))
-                assert costo >= 0.3 - 1e-9, (t, alt, costo)
+            compagni = [alt for alt in rosa if alt.ruolo == t.ruolo and alt.id not in ids and alt.p >= 0.2]
+            assert not compagni, (x.modulo, t, compagni)
 
 
 # ---------------------------------------------------------------- sostituzioni
@@ -190,6 +186,34 @@ def test_il_calcolo_veloce_da_gli_stessi_punti_di_quello_semplice(caso):
         gioca = {g.id: bool(val.gioca[s, val.indice[g.id]]) for g in rosa}
         voto = {g.id: float(val.voti[s, val.indice[g.id]]) for g in rosa}
         assert math.isclose(veloci[s], fz.punteggio(f.titolari, f.panchina, gioca, fv, voto, r), abs_tol=1e-9)
+
+
+@PROVE
+@given(formazione_schierata(), st.data())
+def test_i_punti_attesi_sono_la_somma_di_tutti_i_casi_possibili(caso, data):
+    """#612: senza modificatore difesa i punti attesi del Valutatore non sono una stima: sono la somma, su tutti i casi di chi
+    prende voto, di probabilità per punti (`punteggio`, una formazione alla volta). Con ogni regola, modulo e panchina. Pochi
+    giocatori incerti, gli altri giocano di sicuro o di sicuro no: l'elenco dei casi resta corto."""
+    titolari, panchina, gioca, r = caso
+    r.modificatore_difesa.attivo = False
+    incerti = set(data.draw(st.lists(st.sampled_from([g.id for g in titolari + panchina]), max_size=8, unique=True)))
+
+    def con_p(g):
+        return g if g.id in incerti else fz.Giocatore(g.id, g.nome, g.ruolo, float(gioca[g.id]), g.mu, g.mu_voto)
+    titolari, panchina = [con_p(g) for g in titolari], [con_p(g) for g in panchina]
+    tutti = titolari + panchina
+    val = fz.Valutatore(tutti, r, simulazioni=20)
+    if val._media_esatta(titolari, panchina) is None:       # cambio di modulo con troppi casi: lì restano le simulazioni
+        return
+    fv = {g.id: g.mu for g in tutti}
+    voto = {g.id: g.mu_voto for g in tutti}
+    da_provare = [g for g in tutti if 0 < g.p < 1]
+    attesi = 0.0
+    for caso_voti in product((False, True), repeat=len(da_provare)):
+        chi = {g.id: g.p >= 1 for g in tutti} | {g.id: c for g, c in zip(da_provare, caso_voti)}
+        peso = math.prod(g.p if c else 1 - g.p for g, c in zip(da_provare, caso_voti))
+        attesi += peso * fz.punteggio(titolari, panchina, chi, fv, voto, r)
+    assert math.isclose(val.atteso(titolari, panchina), attesi, abs_tol=1e-6)
 
 
 # ---------------------------------------------------------------- turno e scadenza

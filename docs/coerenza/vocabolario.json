@@ -77,7 +77,7 @@
     },
     {
       "cosa": "Nota sotto il campo (Formazione)",
-      "forma": "Il perché delle scelte che sembrano storte (#356): una riga per titolare, «**Nome** · riga», con il testo del server (`perche_scelta` del modulo sullo schermo, chiavi `scelta.*`), per esempio «Preferito a Gallo: con lui la formazione fa più punti attesi (64,1 contro 63,9).» o «Titolare anche se incerto (gioca 35%): se non gioca entra Gallo dalla panchina, e insieme valgono di più.». Solo per la proposta del server: niente righe dopo «Modifica a mano» né a giornata iniziata.",
+      "forma": "Il perché delle scelte che sembrano storte (#356): una riga per titolare, «**Nome** · riga», con il testo del server (`perche_scelta` del modulo sullo schermo, chiavi `scelta.*`), per esempio «Preferito a Gallo: con lui la formazione fa più punti attesi (64,1 contro 63,9).» o «Titolare anche se incerto (gioca 35%): se non gioca, in panchina c'è Gallo che gioca quasi di sicuro, e insieme valgono di più.». Solo per la proposta del server: niente righe dopo «Modifica a mano» né a giornata iniziata.",
       "mai": "frasi scritte dal client; righe per i titolari che non sembrano storti; la nota anche sulla formazione modificata a mano"
     },
     {

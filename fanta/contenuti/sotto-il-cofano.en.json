@@ -187,21 +187,21 @@
     "formazione": {
       "titolo": "How the line-up is chosen",
       "paragrafi": [
-        "For every formation allowed by your league the system builds the best eleven and then tries to improve it by swapping a starter with the best left-out players of the same role, until it finds no more advantage. In the end it picks the formation with the best score.",
-        "\"Best\" does not only mean higher expected points: when they are equal (within 0.2-0.3 points) the line-up with the safest starters wins, that is, with less risk of a bad day. All line-ups are compared on the same simulations, for a fair comparison.",
+        "For every formation allowed by your league the system builds the best eleven and then tries to improve it by swapping a starter with the best left-out players of the same role, until it finds no more advantage. In the end it picks the formation with the most expected points.",
+        "\"Best\" means more expected points, counting those who come in from the bench too. That is why a starter may play less often than a team-mate who is left out: when he plays he is worth more, and when he does not the substitute comes in. A player who almost certainly does not play (less than 20%) gives way to a team-mate who plays at least 20% of the time, if the squad has one, whatever it costs in expected points.",
         "Every formation has its own best line-up, and you can see them all in the app with their expected points."
       ],
       "rimandi": ["Line-up", "Today"]
     },
     "simulazione": {
-      "titolo": "The simulation of substitutions",
+      "titolo": "Counting the substitutions",
       "paragrafi": [
-        "The expected points of a line-up are not the sum of the expected points of the eleven, because a starter without a rating is replaced from the bench and counts as the league decides. To account for this, 600 simulated matchdays are run (300 in the checks on the past, 200 in the app's automatic check). In every simulation each player gets a rating with his probability p, independently of the others, with a fixed seed (7) so the result is repeatable.",
-        "In every simulation the league rules apply: a missing player is replaced by the first on the bench, in order, who got a rating and has the same role. If the league allows changing formation, a player of another role can also come in, but only if the resulting formation is allowed (the choice is among those available, and with the \"by role\" bench the same role is tried first). Substitutions are at most those allowed by the league; goalkeepers are replaced only by goalkeepers; a starter without a replacement is worth zero, or the default rating if the league provides one.",
-        "The defence modifier is calculated in every simulation: if the goalkeeper and at least 4 defenders with a rating are on the pitch, the average rating of the goalkeeper and the 3 best defenders is taken and the bonus of the highest threshold reached is given. Ratings are needed and not just averages, because the bonus goes in steps: to every expected rating a random noise with deviation 0.6 is added.",
-        "The average over the simulations is taken (expected points), together with the standard deviation and the 10th and 90th percentile (bad day and exceptional day)."
+        "The expected points of a line-up are not the sum of the expected points of the eleven, because a starter without a rating is replaced from the bench and counts as the league decides. Each player gets a rating with his probability p, independently of the others: from this the probability that each substitute comes in is worked out, without drawing lots. The expected points are the sum of the expected fantasy scores of starters and substitutes, each weighted by the probability of counting. The count is exact: done again, it gives the same number.",
+        "The league rules apply in the count: a missing player is replaced by the first on the bench, in order, who got a rating and has the same role. If the league allows changing formation, a player of another role can also come in, but only if the resulting formation is allowed (the choice is among those available, and with the \"by role\" bench the same role is tried first). Substitutions are at most those allowed by the league; goalkeepers are replaced only by goalkeepers; a starter without a replacement is worth zero, or the default rating if the league provides one.",
+        "The defence modifier is still estimated with simulations: 600 simulated matchdays (300 in the checks on the past, 200 in the app's automatic check), with a fixed seed (7) so the result is repeatable. In every simulation, if the goalkeeper and at least 4 defenders with a rating are on the pitch, the average rating of the goalkeeper and the 3 best defenders is taken and the bonus of the highest threshold reached is given. Ratings are needed and not just averages, because the bonus goes in steps: to every expected rating a random noise with deviation 0.6 is added.",
+        "From the same simulations come the standard deviation and the 10th and 90th percentile (bad day and exceptional day), which the styles use. Two limits. With formation changes and a long bench (from 8-9 outfield substitutes up, depending on the substitutions allowed) there would be too many cases to count, and the expected points remain the average of the simulations. And in leagues with the defence modifier, between defenders or goalkeepers who are almost level the choice can still depend on the simulations."
       ],
-      "formula": "simulated score = Σ fantasy score of those who count (starters with a rating + substitutes who came in) + (uncovered × default rating) + defence modifier\nexpected points = average of the simulated scores",
+      "formula": "expected points = Σ (probability of a rating × expected fantasy score) of the starters + Σ (probability of coming in × expected fantasy score) of the substitutes\n+ (expected uncovered starters × default rating) + average defence modifier (from the simulations)",
       "esempio": {
         "titolo": "Defence modifier with the thresholds of the test league",
         "testo": "Goalkeeper 6.5 and defenders 6.5, 6.5, 6.0 and 6.0: average of the goalkeeper and the 3 best = (6.5 + 6.5 + 6.5 + 6.0) / 4 = 6.375, which exceeds the threshold 6.25 but not 6.5: bonus +1.5. The league thresholds are 6 = +1, 6.25 = +1.5, 6.5 = +2, 6.75 = +2.5, 7 = +3, 7.25 = +3.5."
@@ -211,27 +211,27 @@
       "titolo": "The bench: by role or free",
       "paragrafi": [
         "If the league fixes the bench places by role (for example 2 goalkeepers, 3 defenders, 3 midfielders, 3 forwards), the system puts on the bench the best of each role by expected points, as many as there are places. Otherwise it takes the best non-starters, with at least one goalkeeper if there is one.",
-        "The order matters because the first available player comes in first: with the \"by role\" bench the substitutes are sorted by role and then by value, with the \"free\" one by value. Trying different criteria to pick the bench gave no reason to change the current one."
+        "The order matters because the first available player comes in first. A substitute comes in only if he got a rating, and at that point what counts is how much he is worth when he plays: that is why the substitutes are sorted by expected fantasy score, not by expected points. With the \"by role\" bench the roles come first in the league's order and, within the role, whoever is worth more; with the \"free\" one whoever is worth more, of any role. Those who almost certainly do not play (less than 20%) come after the others. Measurement of 12/11/2026 on past matchdays (same starters and same substitutes, 537 cases): from +0.09 to +0.13 expected points per matchday compared with sorting by expected points, almost never worse (a hundredth at most)."
       ]
     },
     "stili": {
       "titolo": "Styles: risk and formation presets",
       "paragrafi": [
-        "A style is a way of choosing: from \"Very safe\" to \"Very risky\", passing through \"Balanced\", which is the recommended one. It changes two things together. The player profile: how much it matters to avoid the bad day or chase the exceptional one. And the formation preference: safe styles reward fuller defences, risky ones an extra forward.",
+        "A style is a way of choosing: from \"Very safe\" to \"Very risky\", passing through \"Balanced\", which is the recommended one: the line-up with the most expected points. The other styles change two things together. The player profile: how much it matters to avoid the bad day or chase the exceptional one. And the formation preference: safe styles reward fuller defences, risky ones an extra forward.",
         "Styles change the character of the choice, they do not magically earn points: in the measurement of 30/10/2026 on the league squads, no style (except \"Very safe\", which costs about a point per matchday) is distinguishable from \"Balanced\" beyond measurement noise."
       ],
       "formula": "choice score = expected points - down_weight × (expected points - bad day) + up_weight × (exceptional day - expected points)\n+ formation tilt: points for every defender and every forward beyond the 4-x-3",
       "esempio": {
-        "titolo": "Balanced with example numbers",
-        "testo": "Weight 0.15: a line-up with 70 expected points and a bad day at 64 (10th percentile) is worth 70 - 0.15 × 6 = 69.1 for the choice. One with 69.7 and a bad day at 67 is worth 69.7 - 0.15 × 2.7 = 69.3 and goes ahead."
+        "titolo": "Safe with example numbers",
+        "testo": "Weight 0.6: a line-up with 70 expected points and a bad day at 64 (10th percentile) is worth 70 - 0.6 × 6 = 66.4 for the choice. One with 69.7 and a bad day at 67 is worth 69.7 - 0.6 × 2.7 = 68.1 and goes ahead. For \"Balanced\" the weights are zero: the one with 70 wins."
       },
       "rimandi": ["Line-up > Style"]
     },
     "stili-misura": {
       "titolo": "Styles put to the test",
       "paragrafi": [
-        "Weights used: Very safe (1.5 down / 0 up, tilt 0.5 points per defender), Safe (0.6 / 0, 0.5), Balanced (0.15 / 0, 0), Risky (0 / 0.25, 0.5 per forward), Very risky (0 / 0.5, 0.5).",
-        "Measurement of 30/10/2026 (76 team-matchday cases, 100 simulations): Balanced 69.29 points per matchday. Safe +0.09 (standard error 0.09), Safe with tilt on defenders +0.18, Very safe -0.96 (0.44), Risky +0.32 (0.31), Very risky +0.26 (0.32). Below about ±0.3 with this sample it is noise.",
+        "Weights used: Very safe (1.5 down / 0 up, tilt 0.5 points per defender), Safe (0.6 / 0, 0.5), Balanced (0 / 0, 0: since 12/11/2026 it chooses by expected points only, before 0.15 / 0), Risky (0 / 0.25, 0.5 per forward), Very risky (0 / 0.5, 0.5).",
+        "Measurement of 30/10/2026 (76 team-matchday cases, 100 simulations), when \"Balanced\" still had the 0.15 weight: Balanced 69.29 points per matchday. Safe +0.09 (standard error 0.09), Safe with tilt on defenders +0.18, Very safe -0.96 (0.44), Risky +0.32 (0.31), Very risky +0.26 (0.32). Below about ±0.3 with this sample it is noise.",
         "Honest readings: moving the formation does not cost points beyond the noise; the advantage of the presets is in the profile, not in average points; with the current quality of the data the 4-3-3 remains the formation chosen most by all styles. To be measured again when the archive has more matchdays."
       ]
     },

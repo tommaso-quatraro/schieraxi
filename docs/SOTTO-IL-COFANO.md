@@ -26,7 +26,7 @@ I numeri di affidabilità sono misure vere fatte il 30/10/2026 sulle giornate gi
 10. [base] La probabilità di giocare e le probabili formazioni
 11. [nerd] Senza probabili: presenze recenti, coppe e calibrazione
 12. [base] Come si sceglie la formazione
-13. [nerd] La simulazione delle sostituzioni
+13. [nerd] Il conto delle sostituzioni
 14. [nerd] La panchina: per ruolo o libera
 15. [base] Gli stili: preset di rischio e di modulo
 16. [nerd] Gli stili alla prova
@@ -304,48 +304,48 @@ Codice: `fanta/modello.py:_presenze_recenti_varie`, `fanta/modello.py:p_senza_pr
 
 ## 12. Come si sceglie la formazione  [base]
 
-Per ogni modulo ammesso dalla tua lega il sistema compone i migliori undici e poi prova a migliorarli scambiando un titolare con i migliori esclusi dello stesso ruolo, finché non trova più vantaggi. Alla fine sceglie il modulo con il punteggio migliore.
+Per ogni modulo ammesso dalla tua lega il sistema compone i migliori undici e poi prova a migliorarli scambiando un titolare con i migliori esclusi dello stesso ruolo, finché non trova più vantaggi. Alla fine sceglie il modulo con più punti attesi.
 
-«Migliore» non vuol dire solo punti attesi più alti: a parità (entro 0,2-0,3 punti) vince la formazione con i titolari più sicuri, cioè con meno rischio di una brutta giornata. Tutte le formazioni sono confrontate sulle stesse simulazioni, per un confronto leale.
+«Migliore» vuol dire più punti attesi, contando anche chi entra dalla panchina. Per questo tra i titolari può esserci uno che gioca meno di un compagno escluso: quando gioca vale di più, e quando non gioca entra la riserva. Chi quasi certamente non gioca (meno del 20%) lascia invece il posto a un compagno che gioca almeno il 20%, se in rosa c'è, qualunque sia il costo in punti attesi.
 
 Ogni modulo ha la sua formazione migliore, e puoi vederli tutti nell'app con i punti attesi.
 
 Nell'app: Formazione; Oggi.
 
-Codice: `fanta/formazione.py:migliore`, `fanta/consigli.py:_calcola_formazione`
+Codice: `fanta/formazione.py:migliore`, `fanta/formazione.py:PESO_BASE`, `fanta/formazione.py:_senza_improbabili`, `fanta/consigli.py:_calcola_formazione`
 
-## 13. La simulazione delle sostituzioni  [nerd]
+## 13. Il conto delle sostituzioni  [nerd]
 
-I punti attesi di una formazione non sono la somma dei punti attesi degli undici, perché un titolare senza voto viene sostituito dalla panchina e conta come la lega decide. Per tenerne conto si fanno 600 giornate simulate (300 nelle verifiche sul passato, 200 nel controllo automatico dell'app). In ogni simulazione ogni giocatore prende voto con la sua probabilità p, in modo indipendente dagli altri, con un seme fisso (7) così il risultato è ripetibile.
+I punti attesi di una formazione non sono la somma dei punti attesi degli undici, perché un titolare senza voto viene sostituito dalla panchina e conta come la lega decide. Ogni giocatore prende voto con la sua probabilità p, in modo indipendente dagli altri: da qui si calcola, senza tirare a sorte, la probabilità che ogni riserva entri. I punti attesi sono la somma dei fantavoti attesi di titolari e riserve, ognuno pesato per la probabilità di andare a punteggio. Il conto è esatto: rifatto, dà lo stesso numero.
 
-In ogni simulazione si applicano le regole della lega: chi manca viene sostituito dal primo della panchina, nell'ordine, che ha preso voto e dello stesso ruolo. Se la lega ammette il cambio modulo, può entrare anche uno di un altro ruolo, ma solo se il modulo risultante è ammesso (la scelta è tra chi è disponibile, e con la panchina «per ruolo» prima si prova lo stesso ruolo). I cambi sono al massimo quelli consentiti dalla lega; i portieri si cambiano solo con portieri; un titolare senza sostituto vale zero, o il voto d'ufficio se la lega lo prevede.
+Nel conto valgono le regole della lega: chi manca viene sostituito dal primo della panchina, nell'ordine, che ha preso voto e dello stesso ruolo. Se la lega ammette il cambio modulo, può entrare anche uno di un altro ruolo, ma solo se il modulo risultante è ammesso (la scelta è tra chi è disponibile, e con la panchina «per ruolo» prima si prova lo stesso ruolo). I cambi sono al massimo quelli consentiti dalla lega; i portieri si cambiano solo con portieri; un titolare senza sostituto vale zero, o il voto d'ufficio se la lega lo prevede.
 
-Il modificatore difesa si calcola in ogni simulazione: se in campo ci sono portiere e almeno 4 difensori con voto, si fa la media del voto del portiere e dei 3 migliori difensori e si dà il bonus della soglia più alta raggiunta. Servono voti e non solo medie, perché il bonus va a scalini: a ogni voto in pagella atteso si somma un rumore casuale con deviazione 0,6.
+Il modificatore difesa si stima ancora con le simulazioni: 600 giornate simulate (300 nelle verifiche sul passato, 200 nel controllo automatico dell'app), con un seme fisso (7) così il risultato è ripetibile. In ogni simulazione, se in campo ci sono portiere e almeno 4 difensori con voto, si fa la media del voto del portiere e dei 3 migliori difensori e si dà il bonus della soglia più alta raggiunta. Servono voti e non solo medie, perché il bonus va a scalini: a ogni voto in pagella atteso si somma un rumore casuale con deviazione 0,6.
 
-Si prende la media sulle simulazioni (punti attesi), la deviazione standard e il 10° e il 90° percentile (brutta giornata e giornata eccezionale).
+Dalle stesse simulazioni vengono la deviazione standard e il 10° e il 90° percentile (brutta giornata e giornata eccezionale), che servono agli stili. Due limiti. Con il cambio di modulo e una panchina lunga (da 8-9 riserve di movimento in su, secondo i cambi ammessi) i casi da contare sarebbero troppi, e i punti attesi restano la media delle simulazioni. E nelle leghe con il modificatore difesa, tra difensori o portieri quasi pari la scelta può ancora dipendere dalle simulazioni.
 
 Formula:
 
 ```
-punteggio simulato = Σ fantavoto di chi va a punteggio (titolari con voto + riserve entrate) + (scoperti × voto d'ufficio) + modificatore difesa
-punti attesi = media dei punteggi simulati
+punti attesi = Σ (probabilità di voto × fantavoto atteso) dei titolari + Σ (probabilità di entrare × fantavoto atteso) delle riserve
++ (titolari scoperti attesi × voto d'ufficio) + modificatore difesa medio (dalle simulazioni)
 ```
 
 > **Modificatore difesa con le soglie della lega di prova** (numeri veri del modello). Portiere 6,5 e difensori 6,5, 6,5, 6,0 e 6,0: media di portiere e 3 migliori = (6,5 + 6,5 + 6,5 + 6,0) / 4 = 6,375, che supera la soglia 6,25 ma non 6,5: bonus +1,5. Le soglie della lega sono 6 = +1, 6,25 = +1,5, 6,5 = +2, 6,75 = +2,5, 7 = +3, 7,25 = +3,5.
 
-Codice: `fanta/formazione.py:Valutatore`, `fanta/formazione.py:chi_va_a_punteggio`, `fanta/formazione.py:Valutatore._sostituzioni`, `fanta/formazione.py:Valutatore._difesa`, `fanta/formazione.py:SCARTO_VOTO`, `fanta/punteggio.py:modificatore_difesa`, `fanta/affidabilita.py:calcola`
+Codice: `fanta/formazione.py:Valutatore`, `fanta/formazione.py:Valutatore._media_esatta`, `fanta/formazione.py:_ingressi_stesso_ruolo`, `fanta/formazione.py:_ingressi_con_cambio`, `fanta/formazione.py:MAX_CASI`, `fanta/formazione.py:chi_va_a_punteggio`, `fanta/formazione.py:Valutatore._difesa`, `fanta/formazione.py:SCARTO_VOTO`, `fanta/punteggio.py:modificatore_difesa`, `fanta/affidabilita.py:calcola`
 
 ## 14. La panchina: per ruolo o libera  [nerd]
 
 Se la lega fissa i posti di panchina per ruolo (per esempio 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti), il sistema porta in panchina i migliori di ogni ruolo per punti attesi, tanti quanti sono i posti. Altrimenti prende i migliori non titolari, con almeno un portiere se c'è.
 
-L'ordine conta perché il primo disponibile entra per primo: con la panchina «per ruolo» le riserve sono ordinate per ruolo e poi per valore, con la «libera» per valore. Provare criteri diversi per scegliere la panchina non ha dato motivi per cambiare quello attuale.
+L'ordine conta perché il primo disponibile entra per primo. Una riserva entra solo se ha preso voto, e a quel punto conta quanto vale quando gioca: per questo le riserve sono in ordine di fantavoto atteso, non di punti attesi. Con la panchina «per ruolo» prima i ruoli nell'ordine della lega e dentro il ruolo chi vale di più; con la «libera» chi vale di più, di ogni ruolo. Chi quasi certamente non gioca (meno del 20%) sta dopo gli altri. Misura del 12/11/2026 sulle giornate passate (stessi titolari e stesse riserve, 537 casi): da +0,09 a +0,13 punti attesi a giornata rispetto all'ordine per punti attesi, quasi mai peggio (al più un centesimo).
 
-Codice: `fanta/formazione.py:_panchina`, `fanta/regole.py:Panchina`, `docs/STILI.md`
+Codice: `fanta/formazione.py:_panchina`, `fanta/formazione.py:IMPROBABILE_SOTTO`, `fanta/regole.py:Panchina`, `docs/STILI.md`
 
 ## 15. Gli stili: preset di rischio e di modulo  [base]
 
-Uno stile è un modo di scegliere: dal «Molto sicura» al «Molto rischiosa», passando per «Equilibrata», che è la consigliata. Cambia due cose insieme. Il profilo dei giocatori: quanto pesa evitare la brutta giornata o inseguire la giornata eccezionale. E la preferenza di modulo: gli stili sicuri premiano le difese più folte, quelli rischiosi un attaccante in più.
+Uno stile è un modo di scegliere: dal «Molto sicura» al «Molto rischiosa», passando per «Equilibrata», che è la consigliata: la formazione con più punti attesi. Gli altri stili cambiano due cose insieme. Il profilo dei giocatori: quanto pesa evitare la brutta giornata o inseguire la giornata eccezionale. E la preferenza di modulo: gli stili sicuri premiano le difese più folte, quelli rischiosi un attaccante in più.
 
 Gli stili cambiano il carattere della scelta, non fanno magicamente guadagnare punti: nella misura del 30/10/2026 sulle rose della lega, nessuno stile (tranne il «Molto sicura», che costa circa un punto a giornata) si distingue dall'«Equilibrata» oltre il rumore di misura.
 
@@ -356,7 +356,7 @@ punteggio di scelta = punti attesi - peso_giù × (punti attesi - brutta giornat
 + inclinazione modulo: punti per ogni difensore e per ogni attaccante oltre il 4-x-3
 ```
 
-> **Equilibrata con numeri di esempio** (esempio di calcolo). Peso 0,15: una formazione con 70 punti attesi e brutta giornata a 64 (10° percentile) vale 70 - 0,15 × 6 = 69,1 per la scelta. Una da 69,7 con brutta giornata a 67 vale 69,7 - 0,15 × 2,7 = 69,3 e passa avanti.
+> **Sicura con numeri di esempio** (esempio di calcolo). Peso 0,6: una formazione con 70 punti attesi e brutta giornata a 64 (10° percentile) vale 70 - 0,6 × 6 = 66,4 per la scelta. Una da 69,7 con brutta giornata a 67 vale 69,7 - 0,6 × 2,7 = 68,1 e passa avanti. Per l'«Equilibrata» i pesi sono zero: vince quella da 70.
 
 Nell'app: Formazione > Stile.
 
@@ -364,9 +364,9 @@ Codice: `fanta/formazione.py:LIVELLI_RISCHIO`, `fanta/formazione.py:Valutatore.s
 
 ## 16. Gli stili alla prova  [nerd]
 
-Pesi usati: Molto sicura (1,5 giù / 0 su, inclinazione 0,5 punti per difensore), Sicura (0,6 / 0, 0,5), Equilibrata (0,15 / 0, 0), Rischiosa (0 / 0,25, 0,5 per attaccante), Molto rischiosa (0 / 0,5, 0,5).
+Pesi usati: Molto sicura (1,5 giù / 0 su, inclinazione 0,5 punti per difensore), Sicura (0,6 / 0, 0,5), Equilibrata (0 / 0, 0: dal 12/11/2026 sceglie solo per punti attesi, prima 0,15 / 0), Rischiosa (0 / 0,25, 0,5 per attaccante), Molto rischiosa (0 / 0,5, 0,5).
 
-Misura del 30/10/2026 (76 casi squadra-giornata, 100 simulazioni): Equilibrata 69,29 punti a giornata. Sicura +0,09 (errore standard 0,09), Sicura con inclinazione sui difensori +0,18, Molto sicura -0,96 (0,44), Rischiosa +0,32 (0,31), Molto rischiosa +0,26 (0,32). Sotto circa ±0,3 con questo campione è rumore.
+Misura del 30/10/2026 (76 casi squadra-giornata, 100 simulazioni), quando l'«Equilibrata» aveva ancora il peso 0,15: Equilibrata 69,29 punti a giornata. Sicura +0,09 (errore standard 0,09), Sicura con inclinazione sui difensori +0,18, Molto sicura -0,96 (0,44), Rischiosa +0,32 (0,31), Molto rischiosa +0,26 (0,32). Sotto circa ±0,3 con questo campione è rumore.
 
 Letture oneste: spostare il modulo non costa punti oltre il rumore; il vantaggio dei preset è nel profilo, non nei punti medi; con la qualità attuale dei dati il 4-3-3 resta il modulo più scelto da tutti gli stili. Da rimisurare quando l'archivio avrà più giornate.
 

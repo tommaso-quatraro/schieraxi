@@ -305,25 +305,26 @@ def scheda_previsione(i: int, x: pd.Series) -> dict:
     return s
 
 
-# Titolare poco sicuro con una riserva quasi sicura dello stesso ruolo: la scelta è giusta (se lui non gioca entra la riserva, e
+# Titolare poco sicuro con una riserva quasi sicura dello stesso ruolo: la scelta è giusta (se lui non gioca c'è la riserva, e
 # insieme valgono di più che la riserva da sola) ma a prima vista sembra un errore, quindi la si spiega. Soglie su `p_voto` (`Giocatore.p`).
 INCERTO_SOTTO = 0.5        # il titolare gioca meno di così...
-RISERVA_SOPRA = 0.8        # ...e la riserva che entrerebbe al suo posto più di così
+RISERVA_SOPRA = 0.8        # ...e la riserva che copre il suo posto più di così
 
 
 def incerti(titolari: list, panchina: list) -> list[dict]:
-    """I titolari incerti e la riserva che entra al loro posto: [{titolare, riserva}] (id). La riserva è la prima dello stesso
-    ruolo nell'ordine della panchina (come le sostituzioni, `formazione.chi_va_a_punteggio`), una sola per titolare: con due
-    incerti dello stesso ruolo il secondo prende la riserva dopo. Dal titolare più incerto."""
+    """I titolari incerti e la riserva sicura dello stesso ruolo: [{titolare, riserva}] (id), dal titolare più incerto. La riserva
+    è la prima del ruolo, nell'ordine della panchina, che gioca più di RISERVA_SOPRA, una sola per titolare (con due incerti dello
+    stesso ruolo il secondo prende la riserva sicura dopo); `riserva` = None se in panchina non ce n'è una.
+    Non è per forza chi entra per primo: la panchina è in ordine di fantavoto atteso (#612), quindi davanti può esserci un compagno
+    che vale di più e gioca meno spesso. Prima di #612 si guardava solo la prima riserva del ruolo, che era quasi sempre la più
+    sicura; con l'ordine nuovo la riga si perdeva per due titolari incerti su tre."""
     usate: set[int] = set()
     risultato = []
     for t in sorted((g for g in titolari if g.p < INCERTO_SOTTO), key=lambda g: g.p):
-        r = next((b for b in panchina if b.ruolo == t.ruolo and b.id not in usate), None)
-        if r is None:
-            continue
-        usate.add(r.id)
-        if r.p > RISERVA_SOPRA:
-            risultato.append({"titolare": int(t.id), "riserva": int(r.id)})
+        r = next((b for b in panchina if b.ruolo == t.ruolo and b.id not in usate and b.p > RISERVA_SOPRA), None)
+        if r is not None:
+            usate.add(r.id)
+        risultato.append({"titolare": int(t.id), "riserva": None if r is None else int(r.id)})
     return risultato
 
 
