@@ -211,5 +211,14 @@ extension Catalogo {
         static func recuperoManca(partite: String) -> String {
             "Manca il recupero di \(partite): i punti possono ancora cambiare."
         }
+
+        /// `oggi.infortunato`
+        static let infortunato = "Infortunato"
+
+        /// `oggi.squalificato`
+        static let squalificato = "Squalificato"
+
+        /// `oggi.diffidato_tipo`
+        static let diffidatoTipo = "Diffidato"
     }
 }

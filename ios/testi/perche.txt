@@ -1,5 +1,5 @@
-# «Perché questo numero» (PercheNumero in Domain/FantavotoAtteso.swift, PercheNumeroView in Support).
-# Poi: python script/testi.py --scrivi
+# «Perché questo numero» (PercheNumero in Domain/FantavotoAtteso.swift, BloccoPercheNumero in Support, dentro la scheda del
+# giocatore); «Apri la scheda» nel menu contestuale delle righe (RigaGiocatore). Poi: python script/testi.py --scrivi
 perche.titolo
 perche.definizione
 perche.rispetto

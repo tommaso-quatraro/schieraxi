@@ -17,5 +17,11 @@ extension Catalogo {
 
         /// `tit.st_rinviata`
         static let stRinviata = "Rinviata"
+
+        /// `tit.in_dubbio`
+        static let inDubbio = "In dubbio"
+
+        /// `tit.fuori`
+        static let fuori = "Fuori"
     }
 }
