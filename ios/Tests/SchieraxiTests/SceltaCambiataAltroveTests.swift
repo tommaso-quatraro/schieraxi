@@ -16,8 +16,6 @@ struct SceltaCambiataAltroveTests {
     enum Azione: CaseIterable, Sendable { case salva, tornaAllaConsigliata }
     /// Che cosa non risponde dopo il 412: tutto (rete caduta) o solo la lettura della scelta.
     enum Caduta: CaseIterable, Sendable { case tutto, soloLaScelta }
-    /// Che cosa ha toccato questo telefono prima di salvare (fuori dalla modifica a mano).
-    enum Tocco: CaseIterable, Sendable { case modulo, stile }
     /// Che cosa ha fatto l'altro dispositivo con la scelta salvata.
     enum AltroDispositivo: CaseIterable, Sendable { case cancellata, altraScelta }
 
@@ -76,20 +74,17 @@ struct SceltaCambiataAltroveTests {
         #expect(vm.statoScelta == .sconosciuto)
     }
 
-    // MARK: punti 2 e 4: 412 dopo un modulo o uno stile toccato
+    // MARK: punti 2 e 4: 412 dopo un modulo toccato
 
-    @Test("412 dopo un modulo o uno stile toccato (non a mano): stile e modulo tornano i consigliati, come la web che ricarica la pagina",
-          arguments: Tocco.allCases, AltroDispositivo.allCases)
-    func conflittoDopoUnTocco(tocco: Tocco, altro: AltroDispositivo) async throws {
+    @Test("412 dopo un modulo toccato (non a mano): il modulo torna quello consigliato, come la web che ricarica la pagina",
+          arguments: AltroDispositivo.allCases)
+    func conflittoDopoUnTocco(altro: AltroDispositivo) async throws {
         let (s, s2) = try dueScelte()
         let salvata = Scatola<String>()
         salvata.valore = scelta(s, "2026-11-02T21:40:00")
         let srv = try serverAltroDispositivo(salvata)
         let (vm, f) = try await caricata(srv)
-        switch tocco {
-        case .modulo: vm.scegliModulo(try moduloDaToccare(f, evitando: [s, s2]).modulo)
-        case .stile: vm.scegliStile(1)
-        }
+        vm.scegliModulo(try moduloDaToccare(f, evitando: [s, s2]).modulo)
         try #require(vm.manuale == nil, "fuori dalla modifica a mano")
         try #require(vm.statoScelta == .modificata(alle))
         switch altro {
@@ -100,8 +95,7 @@ struct SceltaCambiataAltroveTests {
         #expect(srv.quante("GET /api/formazione") == 2, "dopo il 412 si ricarica la formazione")
         #expect(srv.quante("GET /api/scelta") == 2, "e si rilegge la scelta")
         #expect(vm.messaggio == FormazioneViewModel.sceltaCambiata)
-        #expect(vm.rischio == 0, "lo stile consigliato della fixture")
-        #expect(vm.moduloScelto == nil, "il modulo proposto dallo stile")
+        #expect(vm.moduloScelto == nil, "il modulo proposto dallo stile equilibrato")
         switch altro {
         case .cancellata:
             #expect(vm.manuale == nil)
@@ -111,37 +105,6 @@ struct SceltaCambiataAltroveTests {
             #expect(Set(vm.manuale ?? []) == Set(s2), "in campo la scelta salvata dall'altro dispositivo")
             #expect(vm.statoScelta == .salvata(alleAltro))
         }
-    }
-
-    @Test("412 e rilettura che cambia lo stile consigliato: si accende quello nuovo, non quello di prima della rilettura")
-    func stileConsigliatoDellaRilettura() async throws {
-        let (s, s2) = try dueScelte()
-        var json = try #require(try JSONSerialization.jsonObject(with: try Fixture.dati("formazione")) as? [String: Any])
-        json["stile_consigliato"] = 1
-        let nuova = try JSONSerialization.data(withJSONObject: json)
-        let vecchia = try Fixture.dati("formazione")
-        let salvata = Scatola<String>()
-        salvata.valore = scelta(s, "2026-11-02T21:40:00")
-        let dopo412 = Scatola<Bool>()
-        let srv = ServerDiProva { metodo, percorso, corpo in
-            if metodo == "DELETE" || chiedeDiSalvare(corpo) {
-                dopo412.valore = true
-                throw ErroreApi.conflitto
-            }
-            if percorso.hasPrefix("/api/formazione/valuta") { return valutazioneFinta }
-            if percorso.hasPrefix("/api/scelta") { return Data((salvata.valore ?? "null").utf8) }
-            return dopo412.valore == true ? nuova : vecchia
-        }
-        let (vm, f) = try await caricata(srv)
-        try #require(f.stileConsigliato == nil, "prima della rilettura lo stile consigliato è lo 0 (campo assente)")
-        vm.scegliModulo(try moduloDaToccare(f, evitando: [s, s2]).modulo)
-        salvata.valore = nil                                   // l'altro dispositivo cancella la scelta
-        await vm.salvaQuesta(f)
-        #expect(vm.formazione?.stileConsigliato == 1, "la formazione riletta")
-        #expect(vm.rischio == 1, "lo stile consigliato della formazione riletta")
-        #expect(vm.moduloScelto == nil)
-        #expect(vm.statoScelta == .consigliata)
-        #expect(vm.messaggio == FormazioneViewModel.sceltaCambiata)
     }
 
     // MARK: punto 4: i pulsanti dopo un errore

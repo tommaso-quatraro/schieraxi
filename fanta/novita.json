@@ -1,5 +1,33 @@
 [
   {
+    "versione": "1.476",
+    "data": "2026-11-12T16:44:01",
+    "titolo": "iPhone e iPad più semplici: via le funzioni tolte dalla web",
+    "voci": [
+      "iPhone e iPad: restano Oggi, Formazione, scheda del giocatore, Diario, rose, regole, impostazioni e ricerca. Non ci sono più stili, confronto, scambi, cambi consigliati, seguiti, elenco dei giocatori, calendario, movimenti e crediti.",
+      "iPhone e iPad, Oggi: non ci sono più le partite del turno né l'avviso a ogni versione nuova. Le novità si leggono in Impostazioni, sotto Informazioni.",
+      "iPhone: i widget sono tre, Prossima giornata, Formazione e Da controllare. I collegamenti alle pagine tolte aprono la schermata più vicina che resta."
+    ],
+    "tecnico": [
+      "Catalogo dei testi (fanta/testi, testi.js rigenerato): tolte le 122 chiavi che non usa più nessuno, né la web né l'iPhone; via fanta/testi/live.json, rimasto vuoto. Resta formazione.stato_altro_modulo, che ora usa solo l'iPhone.",
+      "ios/: tolti Presentation/Scambi e Presentation/Confronto, le pagine di Mercato, Partite del turno, Movimenti e Crediti, gli otto widget fuori dal pacchetto con i loro pezzi, i modelli e i test relativi; la ricerca resta in Presentation/Mercato. Formazione usa il solo livello equilibrato di `livelli`. Nessuna rotta e nessun campo del server cambiano."
+    ]
+  },
+  {
+    "versione": "1.475",
+    "data": "2026-11-12T16:15:30",
+    "titolo": "Squalificati e diffidati dai cartellini che abbiamo già: regola pronta, non ancora in uso",
+    "voci": [
+      "Per chi usa l'app non cambia niente: squalificati e diffidati arrivano ancora solo dalla pagina delle probabili formazioni.",
+      "È pronta, ma non ancora in uso, la regola che li ricava dai cartellini dei voti quando quella pagina non è ancora uscita. Alla prima misura ha segnalato qualche squalificato che poi ha giocato: prima di usarla va misurata su più giornate."
+    ],
+    "tecnico": [
+      "Modulo nuovo fanta/squalifiche.py (`calcola`, che riceve l'ora `adesso`), che nessun altro modulo chiama: soglie delle ammonizioni e squalifica per espulsione dal Codice di giustizia sportiva (art. 9 commi 5 e 7, art. 19 comma 9, art. 21), partite in ordine di data, conto delle ammonizioni non usato dopo un'espulsione, partita non giocata considerata rinviata quando è cominciata da più di mezza giornata.",
+      "Misura sull'archivio (47 giornate): 164 segnalati, 1 falso (0,61%); per sola somma di ammonizioni 1 falso su 92 (1,09%), sopra la soglia dell'1%. I falsi misurati sono un minimo: chi è segnalato a torto e poi non gioca per altri motivi conta come giusto. Si rifà con prove/misura_squalifiche.py, che apre l'archivio in sola lettura e stampa solo numeri.",
+      "Nessun cambio al calcolo, alle risposte o ai controlli dei dati."
+    ]
+  },
+  {
     "versione": "1.474",
     "data": "2026-11-12T16:07:44",
     "titolo": "Una schermata sola per decidere chi schierare",

@@ -173,7 +173,6 @@ struct CartaRiepilogoGiornata: View {
     /// Partite rinviate ancora da recuperare: il menu «per questa giornata» (nil = niente menu, per esempio nelle anteprime).
     var rinvioInCorso = false
     var cambiaRinvio: (@MainActor (SceltaRinvio, String) async -> Void)? = nil
-    @Environment(\.funzioni) private var funzioni
     @EnvironmentObject private var nav: Navigazione
     @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 46
 
@@ -228,13 +227,11 @@ struct CartaRiepilogoGiornata: View {
         if let n = TestiFase.notaDiario(r) {
             Text(n).font(.footnote).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
         }
-        if funzioni.acceso(Funzione.diario) {
-            Button { nav.vai(a: .pagina(.diario)) } label: {
-                Label(TestiFase.apriDiario, systemImage: "book").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-            }
-            .pulsanteVetro()
-            .accessibilityHint("Mostra tutte le giornate giocate, con la formazione consigliata")
+        Button { nav.vai(a: .pagina(.diario)) } label: {
+            Label(TestiFase.apriDiario, systemImage: "book").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
         }
+        .pulsanteVetro()
+        .accessibilityHint("Mostra tutte le giornate giocate, con la formazione consigliata")
     }
 
     private func fatti(_ r: RiepilogoGiornata) -> some View {

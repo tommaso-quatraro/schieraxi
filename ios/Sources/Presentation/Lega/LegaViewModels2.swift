@@ -347,20 +347,6 @@ final class StagioneViewModel: ViewModelBase {
     }
 }
 
-/// Lo storico dei cambiamenti alle rose visti nelle importazioni.
-@MainActor
-final class MovimentiViewModel: ViewModelBase {
-    let caricatore: Caricatore<[Differenze]>
-
-    init(server: any ServerClient) {
-        caricatore = Caricatore<[Differenze]>("/api/movimenti?limite=30", server: server)
-        super.init()
-        osserva(caricatore)
-    }
-
-    func carica() async { await caricatore.ricarica() }
-}
-
 /// «Giocatori da sistemare»: i nomi delle rose che l'importazione non ha riconosciuto. Si cerca quello giusto nel listone e si abbina a mano.
 @MainActor
 final class DubbiRoseViewModel: ViewModelBase {

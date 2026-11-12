@@ -15,8 +15,8 @@
       "web": "«MIL vs INT»",
       "iphone": "«Milan – Inter» (anche in #17)",
       "forma": "web",
-      "chi": "**da decidere**: dal 12/11/2026 la web non ha più le Partite del turno (#615), l'iPhone sì. Prima: fatto (rassegna 6/11): `RigaPartitaView` («MIL vs INT», `PartiteDelTurnoView.swift`). Restano «2 tuoi titolari» e «Sospesa»: riga 51",
-      "stato": "da-decidere"
+      "chi": "**fatto** (#634): dal 12/11/2026 la web non ha più le Partite del turno (#615) e nemmeno l'iPhone. Prima: fatto (rassegna 6/11): `RigaPartitaView` («MIL vs INT», `PartiteDelTurnoView.swift`). Restano «2 tuoi titolari» e «Sospesa»: riga 51",
+      "stato": "fatto"
     },
     {
       "id": 16,
@@ -42,8 +42,8 @@
       "web": "«Novità della versione X» (dal 2/11/2026, senza ✨ né «tocca per vedere»: `STILE-SENZA-AI.md`)",
       "iphone": "«Novità nell'app (versione X): tocca per vedere» con le stelline",
       "forma": "web",
-      "chi": "**da decidere**: dal 12/11/2026 la web non ha più il banner delle novità (#615), l'iPhone sì. Prima: fatto sull'iPhone (#416): `TestiOggi.novita`, dal catalogo comune (`Catalogo.Oggi.novitaBanner`, #494)",
-      "stato": "da-decidere"
+      "chi": "**fatto** (#634): dal 12/11/2026 la web non ha più il banner delle novità (#615) e nemmeno l'iPhone. Prima: fatto sull'iPhone (#416): `TestiOggi.novita`, dal catalogo comune (`Catalogo.Oggi.novitaBanner`, #494)",
+      "stato": "fatto"
     },
     {
       "id": 19,
@@ -87,7 +87,7 @@
       "web": "parte dal titolo «Oggi», senza nome e slogan (il nome disegnato sta nella testata da 900 px); sotto il conto alla rovescia le cifre della formazione con «Apri la formazione» e le probabili, poi Partita rinviata, Da fare, novità; poi I tuoi migliori, Da controllare, Indisponibili, Diffidati, Partite del turno",
       "iphone": "uguale: niente nome né slogan, stesso ordine anche a giornata in corso (punti, chi va a punteggio, cambi dalla panchina) e finita (riepilogo, prossima formazione, poi Indisponibili e Diffidati); «Mancano le probabili» sotto «Apri la formazione»; Partite del turno sempre, anche con «Risultati in diretta» spenta (allora senza punteggio né minuto in diretta, decisione del 6/11/2026; una partita giocata ha l'ora e il risultato del calendario, `punteggioUfficiale` della web, e «Finita» solo se il calendario non ha ancora il risultato); titoli e frasi del catalogo comune («La tua formazione», la riga sotto Da controllare); punti attesi scritti subito giusti, senza salire da 0",
       "forma": "web (grafica B, spec del 5/11/2026, §9: l'azione principale nel primo schermo)",
-      "chi": "**da decidere**: dal 12/11/2026 la web non ha più la schermata Oggi: una sola schermata Formazione con giornata e scadenza, al massimo due decisioni, modulo, campo, stato della scelta e panchina (#616; già senza Partite del turno e banner delle novità, #615). L'iPhone ha ancora Oggi. Prima: web fatto (PR #415); iPhone fatto (#416): l'ordine sta in `SezioneOggi.ordine`, `OggiComeLaWebTests` lo confronta con `mostraOggi`; i testi vengono dal catalogo comune (`Catalogo.Oggi`, #494, `OggiDalCatalogoTests`)",
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più la schermata Oggi: una sola schermata Formazione con giornata e scadenza, al massimo due decisioni, modulo, campo, stato della scelta e panchina (#616). L'iPhone ha ancora Oggi. Partite del turno e banner delle novità non ci sono più né sulla web (#615) né sull'iPhone (#634). Prima: web fatto (PR #415); iPhone fatto (#416): l'ordine sta in `SezioneOggi.ordine`, `OggiComeLaWebTests` lo confronta con `mostraOggi`; i testi vengono dal catalogo comune (`Catalogo.Oggi`, #494, `OggiDalCatalogoTests`)",
       "stato": "da-decidere"
     },
     {
@@ -105,7 +105,7 @@
       "web": "Da fare con il numero accanto al titolo, «Urgente» scritto, «Altre 2 cose da fare», senza voci «✓ Tutto a posto, Mister. Nessuna azione utile oggi.» in ogni fase (`cardDaFare`); «2 tuoi titolari» accanto ai volti; «Sospesa» senza «LIVE»; niente invito nella testata, e sempre «maglia»",
       "iphone": "Da fare senza numero, la voce urgente solo dal colore dell'icona, il `motivo` sotto, «Altre 2 cose», senza voci «Nessuna azione utile oggi» solo prima della scadenza; solo i volti; «LIVE» e «Sospesa»; «Aggiungi la tua divisa» nella testata (`OggiView.swift`, `PartiteDelTurnoView.swift`)",
       "forma": "web",
-      "chi": "**da decidere**: dal 12/11/2026 la web non ha più la lista Da fare: al massimo due decisioni con un'azione in cima alla Formazione, senza numero né «Altre N cose da fare»; non sono decisioni le righe senza un cambio da fare, «non l'hai ancora salvata» e «dimmi se hai schierato la consigliata» (#616; già senza Partite del turno, #615). L'iPhone ha ancora Da fare. Prima: fatto (#436): Da fare, «2 tuoi titolari», «Sospesa» e «In aggiornamento» in `OggiView` e `PartiteDelTurnoView`, testi dal catalogo comune (`Catalogo.Df`, `Catalogo.Live`, `Catalogo.Oggi`, #494); niente invito alla maglia nella testata",
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più la lista Da fare: al massimo due decisioni con un'azione in cima alla Formazione, senza numero né «Altre N cose da fare»; non sono decisioni le righe senza un cambio da fare, «non l'hai ancora salvata» e «dimmi se hai schierato la consigliata» (#616). L'iPhone ha ancora Da fare, senza i consigli del cambio con uno svincolato e dello scambio; il reparto scoperto apre la rosa con «Vedi la rosa» (`DaFareVoce.tipiTolti`, `allaRosa`, #634). Le Partite del turno non ci sono più né sulla web (#615) né sull'iPhone (#634). Prima: fatto (#436): Da fare, «2 tuoi titolari», «Sospesa» e «In aggiornamento» in `OggiView` e `PartiteDelTurnoView`, testi dal catalogo comune (`Catalogo.Df`, `Catalogo.Live`, `Catalogo.Oggi`, #494); niente invito alla maglia nella testata",
       "stato": "da-decidere"
     },
     {

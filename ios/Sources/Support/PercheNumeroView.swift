@@ -94,7 +94,7 @@ struct PercheNumeroSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 14) {
-                        AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64, nome: g.nome, ruolo: g.ruolo)
+                        AvatarGiocatore(id: g.id, squadra: g.squadra, dimensione: 64, nome: g.nome, ruolo: g.ruolo)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(g.nome).font(.title2.bold()).accessibilityAddTraits(.isHeader)
                             Text(partita).font(.subheadline).foregroundStyle(Color.testoSecondario)

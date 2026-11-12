@@ -2,23 +2,23 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Altro > Nuova stagione: i passi dopo l'archivio sono quelli della web (`nuovaStagione` di `app.js`), senza l'asta
-/// (la pagina «Asta e riparazione» non c'è più sull'iPhone). «Aggiorna i dati» solo per chi amministra il server.
+/// Nuova stagione: i passi dopo l'archivio sono quelli della web (`apriNuovaStagione` di `app.js`), senza l'asta né i crediti
+/// delle squadre (le loro pagine non ci sono più sull'iPhone, #634). «Aggiorna i dati» solo per chi amministra il server.
 @Suite("Nuova stagione: i passi")
 struct PassiNuovaStagioneTests {
-    @Test("Chi amministra vede i quattro passi della web, numerati da 1 a 4")
-    func amministratoreQuattroPassi() {
+    @Test("Chi amministra vede i tre passi della web, numerati da 1 a 3")
+    func amministratoreTrePassi() {
         let passi = PassiNuovaStagione.elenco(amministratore: true)
-        #expect(passi.map(\.titolo) == ["Importa le nuove rose", "Controlla le regole", "Inserisci i crediti delle squadre", "Aggiorna i dati"])
-        #expect(passi.map(\.numero) == [1, 2, 3, 4])
-        #expect(passi.map(\.pagina) == [.importa, .regole, .crediti, .stato])
+        #expect(passi.map(\.titolo) == ["Importa le nuove rose", "Controlla le regole", "Aggiorna i dati"])
+        #expect(passi.map(\.numero) == [1, 2, 3])
+        #expect(passi.map(\.pagina) == [.importa, .regole, .stato])
     }
 
-    @Test("Senza amministratore niente «Aggiorna i dati»: tre passi, numerati da 1 a 3")
-    func senzaAmministratoreTrePassi() {
+    @Test("Senza amministratore niente «Aggiorna i dati»: due passi, numerati da 1 a 2")
+    func senzaAmministratoreDuePassi() {
         let passi = PassiNuovaStagione.elenco(amministratore: false)
-        #expect(passi.map(\.titolo) == ["Importa le nuove rose", "Controlla le regole", "Inserisci i crediti delle squadre"])
-        #expect(passi.map(\.numero) == [1, 2, 3])
+        #expect(passi.map(\.titolo) == ["Importa le nuove rose", "Controlla le regole"])
+        #expect(passi.map(\.numero) == [1, 2])
     }
 
     @Test("Il passo dell'asta non c'è", arguments: [true, false])
