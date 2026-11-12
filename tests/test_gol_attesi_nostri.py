@@ -205,6 +205,15 @@ def test_la_frase_rigorista_va_al_titolare_non_a_chi_ha_la_quota_piu_alta():
     assert "rigorista" in consigli.motivi(p.loc[2]) and "rigorista" not in consigli.motivi(p.loc[1])
 
 
+def test_se_il_compagno_che_gioca_calcia_meno_della_meta_la_frase_non_l_ha_nessuno():
+    """La frase si toglie più spesso di quanto si sposta, ed è quello che dice la voce di novità. Chi di solito calcia i rigori
+    parte dalla panchina (quota 0,70, gioca 30%) e il compagno che gioca ne calcia meno della metà (0,40, gioca 90%): il primo è
+    il compagno (0,36 contro 0,21), ma «rigorista» non lo ha nessuno dei due."""
+    righe = [_riga(1, "alfa", 0.70, 0.30, "panchina"), _riga(2, "alfa", 0.40, 0.90, "titolare")]
+    assert _primi(righe) == [2]
+    assert [consigli.rigorista(prima | dopo) for prima, dopo, _ in righe] == [False, False]
+
+
 def test_chi_non_gioca_quasi_mai_non_e_il_primo_rigorista_nemmeno_da_solo():
     """Revisione della pull request di #638 («un giocatore che gioca quasi mai non è il primo»). Chi gioca meno del 20% non è il
     primo nemmeno se è l'unico della squadra ad aver calciato rigori: non aveva nessuno con cui confrontarsi, e teneva la frase."""
