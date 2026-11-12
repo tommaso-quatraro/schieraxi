@@ -112,11 +112,19 @@ def test_cambio_squadra_il_conto_e_la_squalifica_seguono_il_giocatore():
 
 
 def test_inizio_stagione_il_conto_riparte_da_zero():
-    """Art. 19 comma 9: le ammonizioni che non hanno portato a una squalifica decadono a fine stagione."""
-    partite = calendario(38, stagione="2025-26", giorni=-364) + calendario(1)
-    carte = gialli(1, [35, 36, 37, 38], stagione="2025-26") + gialli(1, [1])
-    assert sq.calcola(carte, partite, ST, 2, {1: "alfa"}) == {}
-    assert sq.calcola([], partite, ST, 1, {1: "alfa"}) == {}
+    """Art. 19 comma 9: le ammonizioni che non hanno portato a una squalifica decadono a fine stagione. Quattro nelle prime
+    giornate della stagione prima e una alla 5 di questa: alla 6 né squalificato né diffidato. (Gialli della stagione prima
+    alle stesse giornate di quelli di questa: se si contassero, cadrebbero prima della partita chiesta.)"""
+    partite = calendario(38, stagione="2025-26", giorni=-364) + calendario(5)
+    carte = gialli(1, [1, 2, 3, 4], stagione="2025-26") + gialli(1, [5])
+    assert sq.calcola(carte, partite, ST, 6, {1: "alfa"}) == {}
+
+
+def test_le_partite_di_un_altra_stagione_non_scontano_la_squalifica():
+    """Quinta ammonizione alla 5 e partita della 6 rinviata: squalificato alla 7. Una partita giocata della stagione prima,
+    senza data (si confronta per numero di giornata: cade fra la 5 e la 7), non la sconta."""
+    partite = [partita(6, stagione="2025-26")] + calendario(5) + calendario(6, "gamma", "delta", giorni=1)
+    assert sq.calcola(gialli(1, [1, 2, 3, 4, 5]), partite, ST, 7, {1: "alfa"}) == {1: (True, False)}
 
 
 def test_contano_solo_cartellini_e_partite_di_prima_della_partita():
