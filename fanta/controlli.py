@@ -1,6 +1,8 @@
 """Controlli di coerenza dei dati scaricati (docs/archivio/PIANO-DATI.md, 4): dopo ogni aggiornamento si controlla che i numeri tornino
-(10 partite per giornata, voti presenti, xG dei giocatori contro quello della partita, 11 titolari per squadra). Il risultato sta nella tabella `controlli` (l'ultimo per stagione e controllo) e si vede nello
-«stato dei dati». Un controllo che non riesce non ferma niente: segnala soltanto.
+(10 partite per giornata, voti presenti, xG dei giocatori contro quello della partita, 11 titolari per squadra, gol dei voti e gol
+presi dai portieri contro il risultato). Il risultato sta nella tabella `controlli` (l'ultimo per stagione e controllo) e si vede nello
+«stato dei dati». Un controllo che non riesce non ferma niente: segnala soltanto. Quelli di `CONTANO_COME_ERRORI` contano anche tra
+gli errori della corsa.
 
 Esiti: "ok", "avviso" (qualcosa non torna, di solito una fonte da guardare), "errore" (dati sicuramente sbagliati).
 """
@@ -80,12 +82,58 @@ def titolari_per_squadra(db: sqlite3.Connection, stagione: str) -> Esito | None:
     return "ok", 0.0, f"giornata {ultima}: {len(conti)} squadre, tutte con {TITOLARI} titolari"
 
 
+def _partite_con_i_voti(db: sqlite3.Connection, stagione: str) -> list[tuple]:
+    """Le partite giocate con il risultato e i voti di tutte e due le squadre (quelle i cui voti non sono ancora arrivati non si
+    guardano): (giornata, casa, trasferta, gol casa, gol trasferta, gol casa nei voti, gol trasferta nei voti, gol presi dai
+    portieri di casa, gol presi dai portieri ospiti). Nei voti «gol» non ha i rigori (sono in `rig_segnati`) e le autoreti contano
+    per l'altra squadra."""
+    return db.execute("""
+        WITH s AS (SELECT giornata, squadra, SUM(COALESCE(gol, 0) + COALESCE(rig_segnati, 0)) AS fatti,
+                          SUM(COALESCE(autogol, 0)) AS autoreti,
+                          SUM(CASE WHEN ruolo = 'P' THEN COALESCE(gol_subiti, 0) ELSE 0 END) AS presi
+                   FROM voti WHERE stagione = ? GROUP BY giornata, squadra)
+        SELECT p.giornata, p.casa, p.trasferta, p.gol_casa, p.gol_trasferta,
+               c.fatti + t.autoreti, t.fatti + c.autoreti, c.presi, t.presi
+        FROM partite p JOIN s c ON c.giornata = p.giornata AND c.squadra = p.casa
+                       JOIN s t ON t.giornata = p.giornata AND t.squadra = p.trasferta
+        WHERE p.stagione = ? AND p.giocata = 1 AND p.gol_casa IS NOT NULL AND p.gol_trasferta IS NOT NULL
+        ORDER BY p.giornata, p.id""", (stagione, stagione)).fetchall()
+
+
+def _confronto(righe: list[tuple], storte: list[str], che_cosa: str, giuste: str) -> Esito | None:
+    if not righe:
+        return None
+    if storte:
+        return "errore", float(len(storte)), f"{len(storte)} partite su {len(righe)} con {che_cosa}: {', '.join(storte[:5])}"
+    return "ok", 0.0, f"{len(righe)} partite, {giuste}"
+
+
+def gol_dei_voti(db: sqlite3.Connection, stagione: str) -> Esito | None:
+    """I gol dei voti (gol, rigori segnati, autoreti dell'altra squadra) devono fare il risultato. Se non tornano, la pagina dei voti
+    è stata letta male (per esempio un titolo dei bonus cambiato): sui dati veri non è mai successo, quindi è un errore."""
+    righe = _partite_con_i_voti(db, stagione)
+    storte = [f"g{g} {c}-{t} {gc}-{gt} (nei voti {vc}-{vt})" for g, c, t, gc, gt, vc, vt, _, _ in righe if (gc, gt) != (vc, vt)]
+    return _confronto(righe, storte, "i gol dei voti diversi dal risultato", "gol dei voti uguali al risultato")
+
+
+def gol_subiti_portieri(db: sqlite3.Connection, stagione: str) -> Esito | None:
+    """I gol presi dai portieri di una squadra (anche due, con un cambio) devono essere i gol dell'altra squadra."""
+    righe = _partite_con_i_voti(db, stagione)
+    storte = [f"g{g} {c}-{t} {gc}-{gt} (portieri {pt}-{pc})" for g, c, t, gc, gt, _, _, pc, pt in righe if (pc, pt) != (gt, gc)]
+    return _confronto(righe, storte, "i gol presi dai portieri diversi dal risultato", "gol presi dai portieri uguali al risultato")
+
+
 CONTROLLI: dict[str, Callable[[sqlite3.Connection, str], Esito | None]] = {
     "partite_per_giornata": partite_per_giornata,
     "voti_per_giornata": voti_per_giornata,
     "somma_xg": somma_xg,
     "titolari_per_squadra": titolari_per_squadra,
+    "gol_dei_voti": gol_dei_voti,
+    "gol_subiti_portieri": gol_subiti_portieri,
 }
+# Controlli che sui dati veri danno sempre zero (misurato il 12/11/2026 su tutte le partite in archivio): un «errore» è un passo
+# dell'aggiornamento che ha scritto dati sbagliati, e la corsa lo conta tra i suoi errori (`aggiorna.Aggiornamento.controlli`).
+CONTANO_COME_ERRORI = frozenset({"gol_dei_voti", "gol_subiti_portieri"})
 
 
 def esegui(db: sqlite3.Connection, quando: str | None = None) -> list[dict]:

@@ -42,6 +42,10 @@ class Stagione:
         return Stagione(self.anno - quante)
 
 
+class VotiCalati(ValueError):
+    """La pagina dei voti di una giornata ha meno righe di quelle già salvate: non si salva (Aggiornamento._salva_voti)."""
+
+
 def _ora() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
@@ -123,14 +127,15 @@ class Aggiornamento:
 
     # ---------- passi ----------
     def listone(self) -> None:
-        calciatori, quando = listone.carica()
+        # severo: se la pagina non si legge il passo non riesce (prima: si usava la copia di ieri senza dirlo)
+        calciatori, quando = listone.carica(severo=True)
         self.db.execute("DELETE FROM calciatori")
         archivio.inserisci(self.db, "calciatori", [{**asdict(c), "aggiornato": quando} for c in calciatori])
         self.slug_noti = {c.squadra_slug for c in calciatori}
         archivio.inserisci(self.db, "quotazioni", [
             {"stagione": self.st.codice, "calciatore_id": c.id, "nome": c.nome, "ruolo": c.ruolo, "squadra": c.squadra_slug,
              "qi": c.quotazione_iniziale, "qa": c.quotazione, "fvm": c.fvm} for c in calciatori])
-        self.scrivi(f"  listone: {len(calciatori)} calciatori")
+        self.scrivi(f"  listone: {len(calciatori)} calciatori (scaricato {_ora_breve(quando)})")
 
     def quotazioni(self, stagione: Stagione) -> None:
         """Quotazioni di una stagione passata (una volta sola)."""
@@ -181,17 +186,25 @@ class Aggiornamento:
             con_partite = {r[0] for r in self.db.execute(
                 "SELECT giornata FROM partite WHERE stagione = ? GROUP BY giornata HAVING COUNT(*) = 10", (st.codice,))}
             giornate = [g for g in range(1, GIORNATE + 1) if g not in con_voti or g not in con_partite]
+        calate, scartate = [], 0
         for g in giornate:
             html = rete.scarica(fc.url_voti(st.codice, g)).text
-            righe = fc.leggi_voti(html, g)
+            righe, n = fc.leggi_voti_e_scarti(html, g)
+            scartate += n
             if st is not self.st:  # la pagina dei voti contiene anche le partite della giornata
                 partite = fc.leggi_calendario(html, g, st.codice)
                 if len(partite) != 10:
                     raise ValueError(f"voti {st.codice} giornata {g}: trovate {len(partite)} partite invece di 10")
                 self._salva_partite(partite, st)
-            self._salva_voti(st, g, righe)
+            try:
+                self._salva_voti(st, g, righe)
+            except VotiCalati as e:      # le altre giornate si salvano lo stesso; il passo poi non riesce, con il motivo
+                calate.append(str(e))
         self.scrivi(f"  voti {st.codice}: {len(giornate)} giornate scaricate"
-                    + (f" ({min(giornate)}-{max(giornate)})" if giornate else ""))
+                    + (f" ({min(giornate)}-{max(giornate)})" if giornate else "")
+                    + (f", {scartate} righe senza i tre voti scartate" if scartate else ""))
+        if calate:
+            raise VotiCalati("; ".join(calate))
 
     def _calendario_giornata(self, g: int) -> int:
         """Una richiesta: il calendario (orari, risultati, giocata) di una giornata della stagione in corso."""
@@ -203,6 +216,12 @@ class Aggiornamento:
         return self._salva_partite(partite, st)
 
     def _salva_voti(self, st: Stagione, g: int, righe: list[dict]) -> None:
+        """Riscrive i voti di una giornata, ma mai con meno righe di quelle salvate (`VotiCalati`, i voti di prima restano): una
+        pagina letta a metà o cambiata non cancella voti buoni. Pagina vuota senza voti salvati = voti non ancora usciti."""
+        prima = self.db.execute("SELECT COUNT(*) FROM voti WHERE stagione = ? AND giornata = ?", (st.codice, g)).fetchone()[0]
+        if len(righe) < prima:
+            raise VotiCalati(f"voti {st.codice} giornata {g}: la pagina ha {len(righe)} voti, prima erano {prima}: "
+                             "tenuti quelli di prima")
         if not righe:
             return
         self.db.execute("DELETE FROM voti WHERE stagione = ? AND giornata = ?", (st.codice, g))
@@ -214,7 +233,7 @@ class Aggiornamento:
         due richieste in tutto. Il calendario prima: i voti di una partita valgono quando il calendario la dà per giocata."""
         n = self._calendario_giornata(g)
         self.db.commit()
-        righe = fc.leggi_voti(rete.scarica(fc.url_voti(self.st.codice, g)).text, g)
+        righe, _ = fc.leggi_voti_e_scarti(rete.scarica(fc.url_voti(self.st.codice, g)).text, g)
         self._salva_voti(self.st, g, righe)
         self.scrivi(f"  risultati {self.st.codice} giornata {g}: {n} partite, {len(righe)} voti")
 
@@ -421,12 +440,15 @@ class Aggiornamento:
         return self.errori
 
     def controlli(self) -> None:
-        """Controlli di coerenza dei dati appena scaricati. Gli avvisi si mostrano ma non contano come passi falliti."""
+        """Controlli di coerenza dei dati appena scaricati. Gli avvisi si mostrano ma non contano come passi falliti; un «errore» dei
+        controlli che sui dati veri danno sempre zero (`controlli.CONTANO_COME_ERRORI`) conta tra gli errori della corsa."""
         risultati = controlli.esegui(self.db)
         storti = [r for r in risultati if r["esito"] != "ok"]
         self.scrivi(f"  controlli dei dati: {len(risultati) - len(storti)} ok, {len(storti)} da guardare")
         for r in storti:
             self.scrivi(f"  ! {r['stagione']} {r['nome']}: {r['dettaglio']}")
+            if r["nome"] in controlli.CONTANO_COME_ERRORI and r["esito"] == "errore":
+                self.errori.append(f"controlli: {r['nome']}: {r['dettaglio']}")
 
 
 def esegui(storico: bool = False, scrivi: Callable[[str], None] = print, stagioni_storiche: int = 1) -> list[str]:

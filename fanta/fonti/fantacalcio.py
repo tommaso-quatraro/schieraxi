@@ -103,13 +103,26 @@ _BONUS = {"Gol segnati": "gol", "Gol subiti": "gol_subiti", "Autoreti": "autogol
           "Player of the match": "mvp"}
 
 
+SCARTI_TOLLERATI = 2          # righe dei voti senza i tre voti e i tre fantavoti che si saltano senza fermare la pagina...
+QUOTA_SCARTI = 0.10           # ...e quota oltre la quale (se sono più di SCARTI_TOLLERATI) la pagina è cambiata: errore
+
+
 def leggi_voti(html: str, giornata: int) -> list[dict]:
+    """Le righe dei voti della giornata (vedi `leggi_voti_e_scarti`)."""
+    return leggi_voti_e_scarti(html, giornata)[0]
+
+
+def leggi_voti_e_scarti(html: str, giornata: int) -> tuple[list[dict], int]:
+    """(righe, scartate): una riga per giocatore; «scartate» = righe di giocatori senza i tre voti e i tre fantavoti, che prima si
+    saltavano in silenzio. Poche si saltano e si contano (le scrive l'aggiornamento); se sono più di SCARTI_TOLLERATI e oltre
+    QUOTA_SCARTI delle righe, la pagina è cambiata e si ferma con un errore (prima: giornata con meno voti, senza dirlo)."""
     s = BeautifulSoup(html, "lxml")
     titolo = s.title.get_text() if s.title else ""
     m = re.search(r"(\d+)\s*giornata", titolo)
     if m and int(m.group(1)) != giornata:
         raise ValueError(f"La pagina voti è della giornata {m.group(1)}, non della {giornata}")
     righe = []
+    scartate = 0
     for tabella in s.select("table.grades-table"):
         squadra = _slug_squadra(tabella.select_one("a.team-link"))
         for tr in tabella.select("tbody tr"):
@@ -123,6 +136,7 @@ def leggi_voti(html: str, giornata: int) -> list[dict]:
             voti = tr.select(".player-grade")
             fv = tr.select(".player-fanta-grade")
             if len(voti) != 3 or len(fv) != 3:
+                scartate += 1
                 continue
             bonus = {_BONUS[b["title"]]: _intero(b.get("data-value")) or 0 for b in tr.select(".player-bonus")
                      if b.get("title") in _BONUS}
@@ -138,7 +152,11 @@ def leggi_voti(html: str, giornata: int) -> list[dict]:
                 "ammonizioni": int("yellow-card" in classi), "espulsioni": int("red-card" in classi),
                 "subentrato": int("Subentrato" in icone), "sostituito": int("Sostituito" in icone),
             })
-    return righe
+    totale = len(righe) + scartate
+    if scartate > SCARTI_TOLLERATI and scartate > QUOTA_SCARTI * totale:
+        raise ValueError(f"voti giornata {giornata}: {scartate} righe su {totale} senza i tre voti e i tre fantavoti, "
+                         "la pagina forse è cambiata")
+    return righe, scartate
 
 
 # ---------------- probabili formazioni e indisponibili ----------------
