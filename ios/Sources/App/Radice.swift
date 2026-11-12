@@ -67,12 +67,23 @@ final class Navigazione: ObservableObject {
     /// «Collega il widget» (`schieraxi://widget/collega`, il tocco sul widget non collegato, o la configurazione guidata).
     @Published var collegaWidgetAperto = false
     /// La configurazione guidata («Primo avvio»): parte da sola senza rose, si riapre dalla lista «Da fare» di Oggi.
-    @Published var guidaAperta = false
+    @Published var guidaAperta = false {
+        // riaperta: la prossima chiusura torna a essere dell'utente
+        didSet { if guidaAperta { guidaChiusaDallApp = false } }
+    }
     /// Una pagina di Squadra o di Altro da aprire (da un indirizzo `schieraxi://` o da Oggi): la radice la apre nella scheda giusta.
     @Published var paginaDaAprire: PaginaLega?
     /// È arrivato un file o un'immagine da un'altra app (Condividi, «Apri con SchieraXI»): all'apertura la configurazione guidata
     /// non parte da sola, per non coprire l'importazione o la scelta dello stemma (come l'arrivo da Condividi della web).
+    /// Torna falso quando l'arrivo è finito (`controllaFineArrivo`) o si esce dall'account (`uscitoDallAccount`).
     private(set) var apertaDaFuori = false
+    /// La guida l'ha chiusa l'app e non l'utente (un file o un'immagine da fuori, la sessione cambiata): alla chiusura del
+    /// foglio i passi rimasti non diventano saltati.
+    private(set) var guidaChiusaDallApp = false
+    /// Il foglio della guida è sullo schermo: dalla comparsa alla fine della chiusura (`guidaComparsa`, `guidaSparita`).
+    private var guidaSulloSchermo = false
+    /// Un'immagine arrivata con la guida sullo schermo: il suo foglio si apre quando quello della guida è sparito, uno alla volta.
+    private var immagineInAttesa: ImmagineRicevuta?
 
     init() {
         if !Demo.attivo { sezione = Self.sezioneDiAvvio() }
@@ -86,14 +97,50 @@ final class Navigazione: ObservableObject {
     }
 
     /// Un file arrivato da fuori: si accetta solo se l'estensione è di quelle delle rose (il controllo vero è all'importazione).
+    /// Con la guida aperta, la guida si chiude (senza segnare saltati i passi) e lascia il posto all'importazione o allo stemma.
     func apriFile(_ url: URL) {
         guard url.isFileURL else { return }
         apertaDaFuori = true
+        chiudiGuidaDallApp()
         if Self.eImmagine(url) {
-            immagineRicevuta = ImmagineRicevuta(url: url)
+            let ricevuta = ImmagineRicevuta(url: url)
+            if guidaSulloSchermo { immagineInAttesa = ricevuta } else { immagineRicevuta = ricevuta }
         } else {
             fileDaImportare = url
         }
+    }
+
+    /// Chiude la guida senza che l'abbia scelto l'utente (un file da fuori, la sessione cambiata): i passi restano come erano.
+    func chiudiGuidaDallApp() {
+        guard guidaAperta || guidaSulloSchermo else { return }
+        guidaChiusaDallApp = true
+        guidaAperta = false
+    }
+
+    /// Il foglio della guida è comparso.
+    func guidaComparsa() {
+        guidaSulloSchermo = true
+    }
+
+    /// Il foglio della guida è sparito (chiusura finita): si apre l'immagine arrivata nel frattempo.
+    func guidaSparita() {
+        guidaSulloSchermo = false
+        guard let attesa = immagineInAttesa else { return }
+        immagineInAttesa = nil
+        immagineRicevuta = attesa
+    }
+
+    /// L'arrivo da fuori è finito quando il file è stato preso dall'importazione e la pagina «Aggiorna le rose» non è più aperta
+    /// (salvato o lasciato), e il foglio dello stemma è chiuso: da lì la guida può di nuovo partire da sola, a un nuovo accesso.
+    func controllaFineArrivo(importaAperta: Bool) {
+        guard apertaDaFuori, fileDaImportare == nil, immagineRicevuta == nil, immagineInAttesa == nil, !importaAperta else { return }
+        apertaDaFuori = false
+    }
+
+    /// Si è usciti dall'account (anche per la sessione scaduta): un arrivo da fuori già aperto non conta più, così al prossimo
+    /// accesso la guida può partire da sola. Un file o un'immagine ancora da aprire restano: si aprono dopo l'accesso.
+    func uscitoDallAccount() {
+        controllaFineArrivo(importaAperta: false)
     }
 
     /// Le immagini che si accettano per stemma e divisa (il controllo vero sul contenuto è al caricamento).
@@ -194,9 +241,16 @@ struct RadiceView: View {
                 .tint(Color.verde)
         }
         .onChange(of: nav.fileDaImportare) { _, nuovo in
-            if nuovo != nil { vaiAllImportazione() }
+            if nuovo != nil { vaiAllImportazione() } else { controllaFineArrivo() }
         }
         .onAppear { if nav.fileDaImportare != nil { vaiAllImportazione() } }
+        // l'arrivo da un'altra app finisce lasciando «Aggiorna le rose» o chiudendo il foglio dello stemma
+        .onChange(of: nav.immagineRicevuta) { _, nuova in
+            if nuova == nil { controllaFineArrivo() }
+        }
+        .onReceive(modello.lega.$percorsoSquadra) { percorso in
+            nav.controllaFineArrivo(importaAperta: percorso.contains(.importa))
+        }
         .task { await Aggiornamento.riprogrammaScadenza() }   // a ogni apertura
         .task { await tornaAllIconaPrincipale() }
         .task { await Immagini.condivise.caricaElenchi() }    // chi ha la foto, stemmi e maglie delle squadre
@@ -215,6 +269,10 @@ struct RadiceView: View {
 
     private func vaiAllImportazione() {
         nav.sezione = modello.lega.apri([.importa])
+    }
+
+    private func controllaFineArrivo() {
+        nav.controllaFineArrivo(importaAperta: modello.lega.percorsoSquadra.contains(.importa))
     }
 
     /// Una pagina chiesta da fuori (indirizzo `schieraxi://scambi`, «Da fare»): si apre nella scheda a cui appartiene.
