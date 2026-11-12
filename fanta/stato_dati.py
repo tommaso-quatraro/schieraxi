@@ -12,7 +12,7 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta
 
-from . import controlli, coppe, fonti_attive, modello, uso
+from . import archivio, controlli, coppe, fonti_attive, modello, uso
 
 try:                                              # senza foto.py (versione pubblica) le foto sono sempre zero
     from . import foto
@@ -160,6 +160,24 @@ def _registro_nostri(db: sqlite3.Connection) -> dict | None:
         return None
 
 
+def _quando_breve(quando: str | None, formato: str) -> str:
+    try:
+        return datetime.fromisoformat(str(quando)[:19]).strftime(formato)
+    except ValueError:
+        return str(quando)
+
+
+def _errori_passo(passo: dict, adesso: datetime) -> list[str]:
+    """L'errore di un passo dell'aggiornamento per «Stato dei dati» (una riga, accanto all'ora del suo ultimo successo). Fermo da più
+    di `archivio.PASSO_FERMO`: «Fermo da 3 giorni (non riesce dal …)», come la salute; se no «Non riuscito alle … del …»."""
+    if not passo.get("errore"):
+        return []
+    fermo = archivio.fermo_da(passo, adesso)
+    if fermo is not None and fermo > archivio.PASSO_FERMO:
+        return [f"Fermo da {archivio.durata_testo(fermo)} (non riesce dal {_quando_breve(passo['dal'], '%d/%m alle %H:%M')}): {passo['errore']}"]
+    return [f"Non riuscito alle {_quando_breve(passo['ultimo'], '%H:%M del %d/%m')}: {passo['errore']}"]
+
+
 GIRI_SENTINELLA = timedelta(days=7)      # in «Stato dei dati» i giri della sentinella dell'ultima settimana
 
 
@@ -183,12 +201,16 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
     (`taratura_probabili.riepilogo`; None se non si legge). `sentinella_giri`: i giri della sentinella dell'ultima settimana
     (None se non si leggono); `adesso` (senza fuso, di norma l'ora del server) serve solo a quello."""
     from . import indicatori_consiglio, registro_giornate      # qui dentro: importano consigli, che importa questo modulo
+    passi = {p["passo"]: p for p in archivio.passi(db)}
     agg = []
     for cosa, quando, dettaglio in db.execute("SELECT cosa, quando, dettaglio FROM aggiornamenti ORDER BY cosa"):
-        try:
-            errori = json.loads(dettaglio) if dettaglio and dettaglio.startswith("[") else []
-        except ValueError:
-            errori = []
+        if cosa in passi:                    # un passo dell'aggiornamento: `quando` è il suo ultimo successo
+            errori = _errori_passo(passi[cosa], adesso or datetime.now())
+        else:
+            try:
+                errori = json.loads(dettaglio) if dettaglio and dettaglio.startswith("[") else []
+            except ValueError:
+                errori = []
         agg.append({"cosa": cosa, "quando": quando, "errori": errori})
     partite = db.execute("SELECT COUNT(*), COALESCE(SUM(giocata), 0) FROM partite WHERE stagione = ?", (stagione,)).fetchone()
     probabili = db.execute("SELECT giornata, COUNT(*), MAX(rilevato) FROM probabili WHERE stagione = ? AND fonte = 'fantacalcio' "

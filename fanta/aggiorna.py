@@ -56,26 +56,67 @@ def _recente(db, cosa: str, durata: timedelta) -> bool:
     return u is not None and datetime.now() - u < durata
 
 
+def _ora_breve(quando: str | None) -> str:
+    """'2026-11-02T08:03:04' -> '02/11 alle 08:03' (per i messaggi d'errore)."""
+    try:
+        return datetime.fromisoformat(str(quando)[:19]).strftime("%d/%m alle %H:%M")
+    except ValueError:
+        return str(quando)
+
+
+def _da_quando(prima: dict | None) -> str:
+    """Coda dell'errore di un passo seguito: da quando non riesce (se non è la prima volta) e l'ultimo successo."""
+    if not prima:
+        return ""
+    parti = [f"non riesce dal {_ora_breve(prima['dal'])}"] if prima.get("dal") else []
+    parti.append(f"ultimo riuscito il {_ora_breve(prima['ultimo_successo'])}" if prima.get("ultimo_successo") else "mai riuscito")
+    return f" ({'; '.join(parti)})"
+
+
 class Aggiornamento:
     def __init__(self, db: sqlite3.Connection, stagione: Stagione, scrivi: Callable[[str], None] = print):
         self.db = db
         self.st = stagione
         self.scrivi = scrivi
         self.errori: list[str] = []
+        self.riusciti: list[str] = []
         self.slug_noti: set[str] = set()
 
     def _passo(self, nome: str, funzione, fonte: str | None = None) -> None:
-        """Esegue un passo; se una fonte non risponde, gli altri passi continuano. Se la fonte è spenta il passo si salta."""
+        """Esegue un passo; se una fonte non risponde, gli altri passi continuano. Se la fonte è spenta il passo si salta.
+        I passi seguiti (`archivio.PASSI`) scrivono il loro esito: ultimo successo, o errore con l'ora del primo fallimento di fila;
+        nell'errore della corsa c'è da quando il passo non riesce (così la riga generale non lo fa sembrare fresco)."""
         if fonte and not fonti_attive.acceso(fonte):
             self.scrivi(f"  - {nome}: saltato, {fonti_attive.FONTI[fonte][0]} è spenta")
+            self._segna_esito(nome, saltato=True)
             return
         try:
             funzione()
+            self._segna_esito(nome)
             self.db.commit()
+            self.riusciti.append(nome)
         except Exception as e:  # noqa: BLE001 - una fonte rotta non deve fermare le altre
             self.db.rollback()
-            self.errori.append(f"{nome}: {type(e).__name__}: {e}")
-            self.scrivi(f"  ! {nome}: non riuscito ({type(e).__name__}: {e})")
+            errore = f"{type(e).__name__}: {e}"
+            prima = self._segna_esito(nome, errore=errore)
+            self.errori.append(f"{nome}: {errore}{_da_quando(prima)}")
+            self.scrivi(f"  ! {nome}: non riuscito ({errore}){_da_quando(prima)}")
+
+    def _segna_esito(self, nome: str, errore: str | None = None, saltato: bool = False) -> dict | None:
+        """Esito del passo in `aggiornamenti` (`archivio.segna_passo`). Se l'archivio non lo accetta (occupato) si scrive nel registro
+        e si va avanti: il passo vero conta più del suo resoconto."""
+        try:
+            if saltato:
+                archivio.passo_saltato(self.db, nome)
+                self.db.commit()
+                return None
+            prima = archivio.segna_passo(self.db, nome, _ora(), errore)
+            if errore is not None:
+                self.db.commit()
+            return prima
+        except sqlite3.Error as e:
+            self.scrivi(f"  ! {nome}: esito del passo non salvato ({type(e).__name__})")
+            return None
 
     def slug(self, nome: str) -> str | None:
         return squadre.slug(nome, self.slug_noti)
@@ -251,7 +292,8 @@ class Aggiornamento:
 
     def understat(self, stagione: Stagione | None = None, dettaglio_partite: bool = True) -> None:
         st = stagione or self.st
-        partite, giocatori = us.leggi_lega(rete.scarica(us.url_lega(st.anno), headers=us.HEADERS).json())
+        # una pagina web al posto dei dati (manutenzione, blocco) ferma il passo qui, con un errore che lo dice: nessuna altra richiesta
+        partite, giocatori = us.leggi_lega(us.dati_json(rete.scarica(us.url_lega(st.anno), headers=us.HEADERS).content))
         if not partite:
             raise ValueError("Understat non ha restituito partite")
         archivio.inserisci(self.db, "understat_stagione", [
@@ -302,7 +344,8 @@ class Aggiornamento:
             for pid, casa, trasferta in self.db.execute(
                     "SELECT id, casa, trasferta FROM partite_understat WHERE stagione = ? AND giocata = 1 "
                     "AND (scaricata = 0 OR data >= ?)", (st.codice, recente)).fetchall():
-                righe = us.leggi_partita(rete.scarica(us.url_partita(pid), headers=us.HEADERS).json(), pid, casa, trasferta)
+                righe = us.leggi_partita(us.dati_json(rete.scarica(us.url_partita(pid), headers=us.HEADERS).content), pid, casa,
+                                         trasferta)
                 self.db.execute("DELETE FROM prestazioni WHERE understat_partita = ?", (pid,))
                 archivio.inserisci(self.db, "prestazioni", righe)
                 completa = len(righe) >= 22   # tabellino non ancora pronto: si riprova la prossima volta
@@ -357,6 +400,7 @@ class Aggiornamento:
             self._passo("dati extra", self.dati_extra, "footballdata")
         else:
             self.scrivi("  - dati extra: saltato, le fonti in ombra sono spente")
+            self._segna_esito("dati extra", saltato=True)
         if storico:
             for k in range(1, stagioni_storiche + 1):
                 precedente = self.st.precedente(k)
@@ -365,7 +409,14 @@ class Aggiornamento:
                 self._passo(f"dati extra {precedente.codice}", lambda p=precedente: self.dati_extra(p), "footballdata")
                 self._passo(f"quotazioni {precedente.codice}", lambda p=precedente: self.quotazioni(p), "fantacalcio")
         self._passo("controlli", self.controlli)
-        archivio.segna(self.db, "aggiornamento", _ora(), json.dumps(self.errori, ensure_ascii=False))
+        errori = json.dumps(self.errori, ensure_ascii=False)
+        if any(n != "controlli" for n in self.riusciti):
+            archivio.segna(self.db, "aggiornamento", _ora(), errori)
+        else:
+            # nessun passo ha portato dati: l'ora resta quella dell'ultimo aggiornamento con qualcosa di nuovo (così «I dati non si
+            # aggiornano» e la salute se ne accorgono), gli errori sono quelli di adesso
+            if not self.db.execute("UPDATE aggiornamenti SET dettaglio = ? WHERE cosa = 'aggiornamento'", (errori,)).rowcount:
+                archivio.segna(self.db, "aggiornamento", None, errori)
         self.db.commit()
         return self.errori
 
