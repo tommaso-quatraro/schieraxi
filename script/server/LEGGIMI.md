@@ -91,8 +91,10 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   oppure la variabile `SCHIERAXI_INTERVALLO_MINUTI` nella riga del crontab (vale più del file). Un valore non valido vale 60 e il
   registro lo dice. Il valore in uso va nel registro al primo giro e quando cambia:
   `grep "intervallo fra due installazioni" ~/fantacalcio/dati/pubblicazione.log | tail -n 1`.
-- **Urgenze**: l'etichetta `P1` (o `urgente`) sulla pull request, messa prima dell'unione. Il job `rilascia` guarda le etichette delle
-  pull request delle novità in attesa e, se una le ha, scrive nel commit di versione la riga `Rilascio: urgente`. Lo script la cerca,
+- **Urgenze**: l'etichetta `P1` (o `urgente`) sulla pull request o su un'issue che chiude con una riga «Closes #N», messa prima che
+  parta il job `rilascia`. Il job guarda le etichette delle pull request delle novità in attesa e delle issue delle loro righe di
+  chiusura (quelle che il job `unisci` scrive nel commit di unione) e, se una le ha, scrive nel commit di versione la riga
+  `Rilascio: urgente`; etichette che non si leggono danno un avviso nella corsa e nessun segno. Lo script la cerca,
   come riga intera, nei commit nuovi (dall'ultima versione installata) dopo la verifica delle firme e installa subito (nel registro:
   «versione urgente fra i commit nuovi»). Vale per le pull request con una voce di novità (quelle che toccano `fanta/`,
   `script/server/` o `requirements.txt`): le altre non hanno un commit di versione.

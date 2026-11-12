@@ -1,8 +1,8 @@
 """script/ci/assegna_versione.py: il segno «urgente» nel commit di versione (#635) e le PR delle novità in attesa.
 
 Il server installa le versioni nuove al massimo una volta ogni intervallo (script/server/aggiorna-app.sh), subito solo se fra i commit
-nuovi c'è la riga «Rilascio: urgente». La scrive il job rilascia con `--commit --urgente` quando una delle PR delle novità in attesa
-(`--pr-in-attesa`, dal titolo «... (#N)» del commit di unione) ha l'etichetta P1 o urgente.
+nuovi c'è la riga «Rilascio: urgente». La scrive il job rilascia con `--commit --urgente` quando una delle PR delle novità in attesa,
+o una issue che chiudono, ha l'etichetta P1 o urgente (`--pr-e-issue-in-attesa`, dal commit di unione).
 Si prova lo script vero, come lo lancia il job, in un repository git in una cartella temporanea."""
 import json
 import subprocess
@@ -49,14 +49,16 @@ def _lancia(repo, *argomenti):
                           text=True, encoding="utf-8", timeout=60)
 
 
-def test_pr_in_attesa_dal_titolo_del_commit_di_unione_senza_cambiare_niente(repo):
-    _unisci(repo, "Correzione dei voti (#12)", "voti")
-    _unisci(repo, "Solo documenti (#13)", **{"docs/x.md": "doc"})                 # nessuna novità: non conta
-    _unisci(repo, "Titolo con (#3) in mezzo (#15)", "titolo")
+def test_pr_e_issue_in_attesa_dal_commit_di_unione_senza_cambiare_niente(repo):
+    """Le PR dal titolo «... (#N)» del commit di unione; le issue dalle righe di chiusura che il job unisci mette nel corpo (solo
+    quelle che GitHub collega alla PR). Ognuna una volta sola, nell'ordine in cui sono entrate in main."""
+    _unisci(repo, "Correzione dei voti (#12)\n\nCloses #600\nFixes #601\n\nCo-authored-by: Qualcuno <q@example.com>", "voti")
+    _unisci(repo, "Solo documenti (#13)\n\nCloses #602", **{"docs/x.md": "doc"})  # nessuna novità: non conta
+    _unisci(repo, "Titolo con (#3) in mezzo (#15)\n\nresolves #600\nVedi anche closes #603 nel testo", "titolo")
     _unisci(repo, "commit spinto senza numero", "senza-numero")
-    r = _lancia(repo, "--pr-in-attesa")
+    r = _lancia(repo, "--pr-e-issue-in-attesa")
     assert r.returncode == 0, r.stderr
-    assert r.stdout.split() == ["12", "15"]
+    assert r.stdout.splitlines() == ["pr 12", "issue 600", "issue 601", "pr 15"]
     assert _git(repo, "status", "--porcelain") == ""                             # niente versioni assegnate, nessun file tolto
 
 
