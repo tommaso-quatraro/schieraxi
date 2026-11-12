@@ -109,6 +109,12 @@ def leggi(stagione: str, giornata: int, percorso: Path | None = None, anche_auto
     return v if anche_automatica or v.get("tipo") != TIPO_AUTOMATICA else None
 
 
+def _stessi_titolari(prima, titolari: list[int]) -> bool:
+    """La scelta di prima è dell'utente (non la copia automatica) e ha gli stessi 11 (l'ordine non conta)."""
+    return (isinstance(prima, dict) and prima.get("tipo") != TIPO_AUTOMATICA
+            and isinstance(prima.get("titolari"), list) and set(prima["titolari"]) == set(titolari))
+
+
 def _messa(prima, titolari: list[int], messa: bool | None, adesso: str) -> str | None:
     """Quando l'utente ha detto «L'ho messa» per questi titolari, o None se non l'ha detto. `messa` vero: adesso (o il momento di
     prima, se gli 11 sono gli stessi e l'aveva già detto); falso: mai; None (chi salva non dice niente, per esempio un client di
@@ -116,9 +122,7 @@ def _messa(prima, titolari: list[int], messa: bool | None, adesso: str) -> str |
     quella formazione; con un titolare diverso cade."""
     if messa is False:
         return None
-    stessi = (isinstance(prima, dict) and prima.get("tipo") != TIPO_AUTOMATICA and prima.get("messa") is True
-              and isinstance(prima.get("titolari"), list) and set(prima["titolari"]) == set(titolari))
-    if stessi:
+    if _stessi_titolari(prima, titolari) and prima.get("messa") is True:
         return prima.get("messa_il") or adesso
     return adesso if messa else None
 
@@ -129,18 +133,21 @@ def salva(stagione: str, giornata: int, titolari: list[int], modulo: str, percor
     (ha detto «ho schierato la consigliata»). `panchina` (facoltativa, per le giornate importate): gli id della panchina nell'ordine
     in cui l'hai schierata; senza, il Diario sceglie la panchina da solo. `era_consigliata`: gli 11 erano quelli della consigliata nel
     momento in cui li hai salvati («Salva questa»): «Da fare» allora non propone cambi (#333). Il campo si scrive solo se è vero e il
-    `tipo` resta «manuale», così il Diario e i client di prima non vedono differenze.
+    `tipo` resta «manuale», così il Diario e i client di prima non vedono differenze. Chi chiama lo ricalcola a ogni salvataggio sulla
+    consigliata di adesso: se gli 11 sono gli stessi della scelta di prima, che lo aveva, resta vero (la consigliata può essere
+    cambiata nel frattempo, la formazione salvata no: per esempio quando si mette o si toglie la spunta «L'ho messa»).
     `messa` («L'ho messa», #616): l'utente dice di aver messo questi 11 nell'app della lega. Nella voce diventa `messa: true` con
     `messa_il` (quando l'ha detto), scritti solo se vero. None = chi salva non dice niente: vedi `_messa`."""
     with _blocco:
         tutte = _tutte(percorso)
         adesso = datetime.now().isoformat(timespec="seconds")
         voce = {"titolari": [int(i) for i in titolari], "modulo": modulo, "salvata": adesso, "tipo": tipo}
-        if era_consigliata:
+        prima = tutte.get(f"{stagione}/{giornata}")
+        if era_consigliata or (_stessi_titolari(prima, voce["titolari"]) and prima.get("era_consigliata") is True):
             voce["era_consigliata"] = True
         if panchina:
             voce["panchina"] = [int(i) for i in panchina][:20]
-        messa_il = _messa(tutte.get(f"{stagione}/{giornata}"), voce["titolari"], messa, adesso)
+        messa_il = _messa(prima, voce["titolari"], messa, adesso)
         if messa_il:
             voce["messa"], voce["messa_il"] = True, messa_il
         tutte[f"{stagione}/{giornata}"] = voce

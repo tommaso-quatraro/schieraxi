@@ -60,6 +60,24 @@ def test_la_copia_automatica_non_e_una_formazione_messa(tmp_path):
     assert "messa" not in scelte.salva(STAGIONE, 9, TITOLARI, "4-3-3", f)
 
 
+def test_era_consigliata_resta_finche_gli_11_sono_gli_stessi(tmp_path):
+    """Salvo la consigliata al mattino, poi la consigliata cambia e metto la spunta: gli 11 sono gli stessi, quindi restano
+    «la consigliata che avevo salvato» (come la spunta in `_messa`). Con un titolare diverso il segno cade."""
+    f = tmp_path / "scelte.json"
+    assert scelte.salva(STAGIONE, 9, TITOLARI, "4-3-3", f, era_consigliata=True)["era_consigliata"] is True
+    dopo = scelte.salva(STAGIONE, 9, list(reversed(TITOLARI)), "4-3-3", f, era_consigliata=False, messa=True)     # l'ordine non conta
+    assert dopo.get("era_consigliata") is True and dopo["messa"] is True
+    assert scelte.salva(STAGIONE, 9, TITOLARI, "4-3-3", f, messa=False).get("era_consigliata") is True               # anche togliendo la spunta
+    assert "era_consigliata" not in scelte.salva(STAGIONE, 9, ALTRI, "4-3-3", f)
+    assert "era_consigliata" not in scelte.salva(STAGIONE, 9, TITOLARI, "4-3-3", f)                                  # tornare agli 11 di prima non lo rimette
+
+
+def test_era_consigliata_non_si_eredita_dalla_copia_automatica(tmp_path):
+    f = tmp_path / "scelte.json"
+    assert scelte.salva_automatica(STAGIONE, 9, TITOLARI, "4-3-3", f)
+    assert "era_consigliata" not in scelte.salva(STAGIONE, 9, TITOLARI, "4-3-3", f)
+
+
 # ---------------------------------------------------------------- le rotte
 @pytest.fixture
 def prova(ambiente, monkeypatch):  # noqa: F811 (la fixture importata arriva come parametro con lo stesso nome)
@@ -129,3 +147,18 @@ def test_la_spunta_deve_essere_vero_o_falso(prova):
     a, _ = prova
     assert _salva(a, TITOLARI, messa="forse").status_code == 422
     assert _scelta(a) is None
+
+
+def test_la_spunta_dopo_che_la_consigliata_e_cambiata_non_toglie_era_consigliata(prova, monkeypatch):
+    """La rotta ricalcola `era_consigliata` a ogni salvataggio (gli 11 sono la consigliata di adesso?): se gli 11 salvati non
+    cambiano, la risposta di prima resta. Senza, dopo la spunta la web direbbe «L'hai cambiata tu» e la decisione «La consigliata
+    è cambiata» sparirebbe."""
+    a, _ = prova
+    adesso = {"era": True}
+    monkeypatch.setattr(server.da_fare, "era_consigliata", lambda *args, **altro: adesso["era"])
+    assert _salva(a, TITOLARI).status_code == 200 and _scelta(a)["era_consigliata"] is True
+    adesso["era"] = False                                                 # la consigliata intanto è cambiata
+    assert _salva(a, TITOLARI, messa=True).status_code == 200
+    scelta = _scelta(a)
+    assert scelta["era_consigliata"] is True and scelta["messa"] is True
+    assert _salva(a, ALTRI).status_code == 200 and "era_consigliata" not in _scelta(a)
