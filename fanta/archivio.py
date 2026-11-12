@@ -263,11 +263,12 @@ def passi(db: sqlite3.Connection) -> list[dict]:
 
 
 def fermo_da(passo: dict, adesso: datetime) -> timedelta | None:
-    """Da quanto un passo che non riesce è fermo: dall'ultimo successo (o, se non è mai riuscito, dal primo errore). None se va."""
+    """Da quanto un passo che non riesce è fermo: dal primo errore di fila (non dall'ultimo successo: una fonte spenta apposta e
+    riaccesa dopo giorni non è «ferma da giorni» al primo errore). None se va."""
     if not passo.get("errore"):
         return None
     try:
-        dal = datetime.fromisoformat(str(passo["ultimo_successo"] or passo["dal"])[:19])
+        dal = datetime.fromisoformat(str(passo["dal"])[:19])
     except ValueError:
         return None
     return adesso - dal

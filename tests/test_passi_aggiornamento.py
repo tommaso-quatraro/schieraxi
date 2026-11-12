@@ -107,13 +107,26 @@ def test_la_riga_generale_avanza_se_un_passo_dei_dati_riesce(db, monkeypatch):
     assert quando == "2026-11-02T08:03:00" and any(e.startswith("Understat:") for e in json.loads(dettaglio))
 
 
-def test_passi_fermi_da_piu_di_24_ore(db, monkeypatch):
+def test_passi_fermi_da_piu_di_24_ore_dal_primo_errore(db, monkeypatch):
     _agg(db, monkeypatch, "2026-11-01T21:03:00")._passo("Understat", lambda: None)
     _agg(db, monkeypatch, "2026-11-02T08:03:00")._passo("Understat", _rotto)
     _agg(db, monkeypatch, "2026-11-02T08:03:00")._passo("voti", lambda: None)
-    assert archivio.passi_fermi(db, datetime(2026, 11, 2, 20, 0)) == []                   # 23 ore: non ancora
-    fermi = archivio.passi_fermi(db, datetime(2026, 11, 2, 22, 0))
+    assert archivio.passi_fermi(db, datetime(2026, 11, 3, 8, 0)) == []                    # 24 ore dal primo errore: non ancora
+    fermi = archivio.passi_fermi(db, datetime(2026, 11, 3, 9, 0))
     assert [(p["passo"], p["ultimo_successo"], p["dal"]) for p in fermi] == [("understat", "2026-11-01T21:03:00", "2026-11-02T08:03:00")]
+
+
+def test_una_fonte_riaccesa_non_e_subito_ferma(db, monkeypatch):
+    """Spenta apposta per 16 giorni e riaccesa: al primo errore non è «ferma da 16 giorni» (niente avviso subito); lo diventa solo
+    dopo 24 ore di errori di fila."""
+    _agg(db, monkeypatch, "2026-11-01T21:03:00")._passo("Understat", lambda: None)
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: False)
+    _agg(db, monkeypatch, "2026-11-02T08:03:00")._passo("Understat", _rotto, "understat")
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    _agg(db, monkeypatch, "2026-11-18T08:03:00")._passo("Understat", _rotto, "understat")
+    assert archivio.passi_fermi(db, datetime(2026, 11, 18, 9, 0)) == []
+    _agg(db, monkeypatch, "2026-11-19T08:03:00")._passo("Understat", _rotto, "understat")
+    assert [p["passo"] for p in archivio.passi_fermi(db, datetime(2026, 11, 19, 9, 0))] == ["understat"]
 
 
 def test_passo_mai_riuscito_fermo_dal_primo_errore(db, monkeypatch):
