@@ -15,7 +15,7 @@ Definizione: `LIVELLI_RISCHIO` in `fanta/formazione.py` (`id, nome, peso, inclin
 **Nota (12/11/2026, #612).** «Equilibrata» è la consigliata e sceglie la formazione con più punti attesi: il suo peso è zero (`PESO_BASE`). Prima toglieva 0,15 × (punti attesi − brutta giornata): una prudenza che costava qualche decimo e non comprava niente di misurabile (misura più sotto). Gli altri stili restano come sono: scelgono con il proprio punteggio (punti attesi meno una penale per la brutta giornata, o più un premio per quella eccezionale) e con la propria inclinazione del modulo, quindi possono mostrare meno punti attesi dell'«Equilibrata». Il numero mostrato è sempre quello della formazione scelta da quello stile.
 
 Due eccezioni al «massimo dei punti attesi», tutte e due volute:
-- un titolare che quasi certamente non gioca (meno del 20%) lascia il posto a un compagno di ruolo che gioca almeno il 50%, se costa meno di 0,3 punti attesi (#329, `_senza_improbabili`);
+- un titolare che quasi certamente non gioca (meno del 20%) lascia il posto a un compagno di ruolo che gioca almeno il 20%, se costa meno di 0,5 punti attesi (#329, `_senza_improbabili`; fino alla revisione di #612 serviva un compagno al 50% e il tetto era 0,3: con chi è improbabile in fondo alla panchina non bastava più, vedi sotto);
 - la ricerca prova, al posto di ogni titolare, i due migliori esclusi del ruolo per «gioca N% × fantavoto atteso». Provare anche i due con il fantavoto atteso più alto trova in media 0,04-0,08 punti attesi in più con la panchina lunga per ruolo, ma i punti veri non lo confermano e i titolari che giocano meno del 50% salgono da 0,3 a 0,7 per formazione: non si fa (misura in `formazione._candidati`).
 
 ## Punti attesi esatti (12/11/2026, #612)

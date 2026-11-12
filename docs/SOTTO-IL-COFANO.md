@@ -304,7 +304,7 @@ Codice: `fanta/modello.py:_presenze_recenti_varie`, `fanta/modello.py:p_senza_pr
 
 Per ogni modulo ammesso dalla tua lega il sistema compone i migliori undici e poi prova a migliorarli scambiando un titolare con i migliori esclusi dello stesso ruolo, finché non trova più vantaggi. Alla fine sceglie il modulo con più punti attesi.
 
-«Migliore» vuol dire più punti attesi, contando anche chi entra dalla panchina. Per questo tra i titolari può esserci uno che gioca meno di un compagno escluso: quando gioca vale di più, e quando non gioca entra la riserva. Chi quasi certamente non gioca (meno del 20%) lascia invece il posto a un compagno che gioca, se costa meno di 0,3 punti attesi.
+«Migliore» vuol dire più punti attesi, contando anche chi entra dalla panchina. Per questo tra i titolari può esserci uno che gioca meno di un compagno escluso: quando gioca vale di più, e quando non gioca entra la riserva. Chi quasi certamente non gioca (meno del 20%) lascia invece il posto a un compagno che gioca almeno il 20%, se costa meno di 0,5 punti attesi.
 
 Ogni modulo ha la sua formazione migliore, e puoi vederli tutti nell'app con i punti attesi.
 

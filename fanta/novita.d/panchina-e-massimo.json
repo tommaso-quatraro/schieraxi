@@ -2,14 +2,19 @@
   "titolo": "Formazione: consigliata con più punti attesi e panchina in ordine migliore",
   "voci": [
     "Web, iPhone e iPad: la formazione consigliata ora è quella con più punti attesi. Prima rinunciava a qualche decimo per avere titolari un po' più sicuri, senza che i punti veri ne guadagnassero. Chi preferisce meno rischi trova ancora gli stili «Sicura» e «Molto sicura».",
-    "Web, iPhone e iPad: la panchina consigliata mette davanti, in ogni ruolo, chi vale di più quando gioca. Una riserva entra solo se ha preso voto: a quel punto conta il suo fantavoto atteso, non quanto è probabile che giochi.",
-    "Web, iPhone e iPad: i punti attesi di una formazione sono un conto esatto e non più una stima: lo stesso calcolo rifatto dà lo stesso numero e gli stessi titolari. Nelle leghe con il modificatore difesa, tra difensori o portieri quasi pari la scelta può ancora cambiare di poco.",
-    "La formazione consigliata che hai già visto per questa giornata resta com'è, come sempre: cambia solo se la nuova vale almeno un punto in più."
+    "Web, iPhone e iPad: la panchina consigliata mette davanti, in ogni ruolo, chi vale di più quando gioca. Una riserva entra solo se ha preso voto: a quel punto conta il suo fantavoto atteso, non quanto è probabile che giochi. Chi quasi certamente non gioca sta in fondo.",
+    "L'ordine della panchina cambia subito, anche per la giornata che hai già aperto (da 2 a 7 posti, a seconda della squadra): se avevi già copiato la panchina nell'app della tua lega, ricontrollala. I titolari della consigliata che hai già visto restano quelli, come sempre: cambiano solo se la nuova formazione vale almeno un punto in più.",
+    "Web, iPhone e iPad: chi quasi certamente non gioca (meno del 20%) non è proposto titolare se un compagno dello stesso ruolo gioca almeno il 20%. Prima serviva un compagno che giocasse almeno il 50%.",
+    "Web, iPhone e iPad: sotto il campo, la riga di un titolare incerto nomina la riserva del suo ruolo che gioca quasi di sicuro, anche quando in panchina non è la prima. Se una riserva così non c'è, la riga lo dice.",
+    "Web, iPhone e iPad: i punti attesi di una formazione sono un conto esatto e non più una stima: lo stesso calcolo rifatto dà lo stesso numero e gli stessi titolari. Nelle leghe con il modificatore difesa, tra difensori o portieri quasi pari la scelta può ancora cambiare di poco."
   ],
   "tecnico": [
     "formazione.PESO_BASE = (0, 0): lo stile 0 («Equilibrata») sceglie per soli punti attesi; gli altri stili restano nell'API con i loro pesi. Descrizione dello stile 0 nel campo `descrizione` di `livelli` aggiornata (i testi di ripiego di web e iPhone sono ancora quelli vecchi).",
-    "formazione._panchina: per ruolo (ruolo, fantavoto atteso), libera per fantavoto atteso; chi va in panchina resta scelto per gioca x fantavoto.",
+    "formazione._panchina: per ruolo (ruolo, fantavoto atteso), libera per fantavoto atteso; chi gioca meno di IMPROBABILE_SOTTO in fondo; chi va in panchina resta scelto per gioca x fantavoto.",
+    "formazione._senza_improbabili: COMPAGNO_ALMENO = IMPROBABILE_SOTTO (0,2; prima 0,5) e COSTO_MASSIMO_CAMBIO = 0,5 (prima 0,3). Le frasi `confronto.titolare_che_gioca` e `scelta.titolare_che_gioca` seguono la stessa soglia.",
     "formazione.Valutatore: punti attesi esatti (`_media_esatta`): senza cambio di modulo reparto per reparto (`_ingressi_stesso_ruolo`), con il cambio di modulo tutti i casi (`_ingressi_con_cambio`, fino a MAX_CASI = 32768: oltre restano le simulazioni, per tutti i moduli insieme). Le simulazioni servono per modificatore difesa, oscillazione e stili, e si fanno solo quando servono.",
-    "Nessun cambio alle forme delle risposte: `punteggio_atteso` e `alternative` cambiano di qualche centesimo (non c'è più il rumore della simulazione)."
+    "consigli.incerti: una voce per ogni titolare sotto il 50%; `riserva` = la prima del ruolo, nell'ordine della panchina, che gioca più dell'80%, oppure `null` (prima: solo la prima riserva del ruolo, e nessuna voce se non era sicura). La web salta le voci con `riserva: null`; l'iPhone non legge il campo.",
+    "perche_scelta: frase `scelta.incerto` riscritta («se non gioca, in panchina c'è X che gioca quasi di sicuro…»), frase nuova `scelta.incerto_senza_riserva` con `altro: null` per l'incerto senza riserva sicura e senza un escluso con più punti attesi. Stesso testo per `formazione.incerto` del catalogo (foglio «Perché questo numero» della web).",
+    "`punteggio_atteso` e `alternative` cambiano di qualche centesimo (non c'è più il rumore della simulazione). Campi che ora possono essere `null`: `incerti[].riserva` e `perche_scelta[].altro` (web e iPhone li reggono già)."
   ]
 }
