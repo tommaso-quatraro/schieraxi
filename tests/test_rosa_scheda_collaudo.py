@@ -57,7 +57,7 @@ def test_scheda_senza_sigle_e_rosa_con_gioca():
     assert "valoreRosa(p, x)" in corpo                                                       # una sola percentuale, «gioca N%»
     valore = APP[APP.index("function valoreRosa"):APP.index("// ---------------------------------------------------------------- navigazione")]
     assert 't("giocatore.gioca", { p: perc(p.p_voto) })' in valore
-    scheda = APP[APP.index("async function apriGiocatore"):APP.index("async function osservatiIds")]
+    scheda = APP[APP.index("async function apriGiocatore"):APP.index("// Il posto in formazione a parole")]
     assert "motiviUtili(pr).filter(senzaPercentuale)" in scheda                               # niente doppioni delle caselle
 
 

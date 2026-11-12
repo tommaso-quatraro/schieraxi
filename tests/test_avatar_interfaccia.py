@@ -69,7 +69,6 @@ def test_l_interfaccia_usa_i_volti_e_niente_interruttore_foto():
     assert "Foto dei giocatori" not in js and 'seg("foto"' not in js
     assert "ritaglio senza sfondo" not in js and "iniziali(" not in js
     assert re.search(r"if \(r\.attive\)", js)                                # le foto solo se il server le attiva
-    assert "caricaSvg(svgAvatar(" in js                                      # anche l'immagine da condividere ha i volti
 
 
 def test_animazione_calma_con_riduci_movimento():

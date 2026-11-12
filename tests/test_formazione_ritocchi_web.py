@@ -54,14 +54,11 @@ def test_stato_della_scelta_dal_confronto_con_il_server():
 
 def test_rilettura_fallita_e_cambio_giornata_non_falsano_lo_stato():
     """Revisione della PR: rete assente nella rilettura = stato ignoto (nessuna riga, si riprova); la scelta riletta dopo «Salva»
-    non finisce su un'altra giornata. La legenda (grafica B, spec §8.10) sta subito dopo il campo, fuori dal campo: non copre più
-    le pedine e i lettori di schermo la trovano dopo di loro, dove si vede."""
+    non finisce su un'altra giornata."""
     corpo = APP[APP.index("const valutaManuale"):APP.index("const annullaRichieste")]
     assert "else if (silenzioso) { if (sc.chiave === chiaveSc) { sc.salvata = undefined; sc.letta = false; }" in corpo
     assert "const ancoraQui = () => n === sc.richiesta && sc.chiave === chiaveSc" in corpo
     assert corpo.index("if (!ancoraQui()) return false;                     // nel frattempo") < corpo.index("sc.salvata = riletta;")
-    assert re.search(r'<div class="campo"><i class="area-alta">.*?\.join\(""\)\}\s*</div>\s*\$\{legendaCampo\(\)\}', APP, re.S)
-    assert "order:" not in re.search(r"^\.legenda-campo \{([^}]*)\}", CSS, re.M).group(1)
 
 
 def test_scelta_non_valida_non_si_cancella_da_sola():
@@ -84,22 +81,11 @@ def test_pedina_per_i_lettori_di_schermo():
     casa, fuori = _node(base + funz + prova)
     assert casa == "Rossi, fantavoto atteso 6,8, gioca all'85 per cento, in casa contro il Napoli"
     assert fuori == "Bianchi, fantavoto atteso 6, gioca al 45 per cento, in trasferta contro la Juventus"
-    pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
+    pedina = APP[APP.index("function pedina("):APP.index("// Il numero della giornata, uguale")]
     # sigla scritta, con la lineetta nel colore sociale davanti (grafica B, spec §8.10): niente stemmi né riquadri colorati
     assert "${lineetta(x.avversario)}${sigla(x.avversario)}" in pedina and "distintivo(" not in pedina
     assert '${x.in_casa ? "vs" : "@"}' in pedina and "⚠ " in pedina and "dubbio" not in pedina      # niente pulsazione né anello del ruolo
     assert ".disco.P" not in CSS and ".disco.dubbio" not in CSS and "respira" not in CSS
-    assert 'memScrivi("legenda-campo", "1")' in APP and TESTI.count('"formazione.legenda_ok"') == 2
-
-
-def test_partite_del_turno_in_una_griglia_sola():
-    """Le righe con i tuoi titolari non si spostano: stesso rientro per tutte, punteggio nella sua colonna a destra."""
-    assert '<span class="pt">${esc(ptUff || "")}</span>' in APP and 'el.querySelector(".pt")' in APP     # vuota o col risultato ufficiale
-    regola_mia = re.search(r"^\.partita\.mia \{([^}]*)\}", CSS, re.M).group(1)
-    assert "padding" not in regola_mia and "box-shadow" not in regola_mia
-    # la colonna di «vs» è larga quanto la parola, uguale in ogni riga (issue #265: a 320 px la sigla «MON» perdeva 2 px)
-    assert "grid-template-columns: var(--col-ora) minmax(0, 1fr) auto minmax(0, 1fr) var(--col-pt)" in CSS
-    assert re.search(r"^\.partita \.pt \{[^}]*text-align: right", CSS, re.M)
 
 
 def test_il_nome_sta_nella_testata_non_dentro_oggi():
@@ -110,22 +96,6 @@ def test_il_nome_sta_nella_testata_non_dentro_oggi():
     assert '"marchio.slogan"' not in TESTI and '"marchio.nome_voce"' not in TESTI and '"marchio.slogan_voce"' not in TESTI
     html = (WEB / "index.html").read_text(encoding="utf-8")
     assert '<use href="#wm-c"/>' in html[html.index("<header"):html.index("</header>")]
-
-
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_stella_spiegata_solo_se_un_altro_modulo_ha_di_piu_con_stile_prudente():
-    funz = APP[APP.index("function stellaNonMassimo(l)"):APP.index("const stessiIds")]
-    codice = ("const esc=x=>String(x); const nomeStile=l=>l.nome; const t=(k,v)=>k+':'+JSON.stringify(v);" + funz
-              + "const m=(a,b)=>[{modulo:'3-4-3',punteggio_atteso:a},{modulo:'3-5-2',punteggio_atteso:b}];"
-              + "console.log(JSON.stringify([stellaNonMassimo({rischio:0,modulo:'3-4-3',nome:'Equilibrata',moduli:m(72.3,72.4)}),"
-              + "stellaNonMassimo({rischio:0,modulo:'3-4-3',nome:'Equilibrata',moduli:m(72.4,72.38)}),"
-              + "stellaNonMassimo({rischio:1,modulo:'3-4-3',nome:'Rischiosa',moduli:m(72.3,72.4)})]))")
-    r = subprocess.run([NODE, "-e", codice], capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    spiegata, pari, rischiosa = json.loads(r.stdout)
-    assert "formazione.stella_non_massimo" in spiegata and '"modulo":"3-5-2"' in spiegata and '"consigliato":"3-4-3"' in spiegata
-    assert pari == "" and rischiosa == ""                                 # a schermo uguali, o stile rischioso: niente frase
-    assert TESTI.count('"formazione.stella_non_massimo"') == 2
 
 
 def test_etichette_mai_piu_larghe_della_riga_e_colonne_pari_su_ipad_verticale():
@@ -145,19 +115,13 @@ def test_controlla_dei_dati_vecchi_apre_stato_dei_dati():
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 def test_altro_modulo_o_stile_non_e_la_consigliata():
-    """Collaudo del 2/11: con il 3-4-3 o lo stile «Rischiosa» la riga diceva «Stai vedendo la consigliata»."""
+    """Collaudo del 2/11: con un altro modulo la riga diceva «Stai vedendo la consigliata»."""
     funz = APP[APP.index("const stessiIds"):APP.index("// «oggi alle 21:40»")]
     undici = list(range(1, 12))
     r = _node(funz + f"console.log(JSON.stringify([statoScelta({undici}, null, false, false, true), statoScelta({undici}, null, true, false, true),"
               f"statoScelta({undici}, {{titolari: {undici}}}, false, false, true), statoScelta({undici}, null, false)]))")
     assert r == ["altra", "mano", "salvata", "consigliata"]
-    assert "const altra = !manuale && (l.rischio !== 0 || m.modulo !== l.modulo);" in APP
     assert TESTI.count('"formazione.stato_altra"') == 2 and 'altra: b("salva-questa"' in APP
-
-
-def test_torna_alla_consigliata_rimette_stile_e_modulo():
-    corpo = APP[APP.index('bottone("#torna-consigliata"'):APP.index('bottone("#copia"')]
-    assert "sc.manuale = null; sc.livello = 0; sc.modulo = null;" in corpo
 
 
 def test_le_risposte_ridisegnano_la_vista_piu_recente():
@@ -173,7 +137,7 @@ def test_le_risposte_ridisegnano_la_vista_piu_recente():
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 def test_avviso_gioca_sul_numero_che_si_legge_e_data_lontana_col_mese():
-    pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
+    pedina = APP[APP.index("function pedina("):APP.index("// Il numero della giornata, uguale")]
     assert "const p = Math.round((x.p_voto ?? 0) * 100) / 100;" in pedina
     assert _node("const p = Math.round(0.697 * 100) / 100; console.log(JSON.stringify(p < 0.7))") is False
     funz = APP[APP.index("function quando(s)"):APP.index("// ETag e If-Match")]

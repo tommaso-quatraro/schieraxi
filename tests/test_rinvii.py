@@ -383,7 +383,7 @@ def test_web_regole_e_risorsa():
     assert 'if (p === "/api/regole" || p === "/api/regole/rinvio") return "regole";' in APP     # stesso ETag delle regole
     assert 'r.partite_rinviate !== undefined ?' in APP                          # server vecchio: niente sezione
     assert 'nuove.partite_rinviate = $("#rinvio-modo .attivo").dataset.valore;' in APP
-    assert "${cardRinvio(o.rinvio)}" in APP and "collegaRinvio();" in APP
+    assert "cardRinvio(o.rinvio)" in APP and "collegaRinvio();" in APP
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node non installato")

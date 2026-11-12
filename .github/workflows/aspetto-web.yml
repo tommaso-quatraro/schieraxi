@@ -1,7 +1,7 @@
 name: Aspetto della web
 
 # Regressione visiva della web (issue #503, piano dell'ondata 2, lavoro D1). Per ora SOLO AVVISO: non blocca nessuna unione.
-# Le scene della web (11 scene a 390 e 1440 px, chiaro e scuro) si fotografano due volte nella stessa corsa, con lo stesso Chrome:
+# Le scene della web (9 scene a 390 e 1440 px, chiaro e scuro) si fotografano due volte nella stessa corsa, con lo stesso Chrome:
 # con il codice della PR e con quello di main (la base della PR). Niente immagini nel repository: il riferimento si aggiorna da
 # solo quando la PR si unisce. I dati sono le risposte registrate di ios/fotografie/vero-prima.json (nomi inventati), servite da
 # un server finto: nessun server vero, nessun segreto, nessuna rete oltre a PyPI per Playwright e Pillow.
@@ -16,6 +16,7 @@ on:
     paths:
       - "fanta/web/**"
       - "script/ci/aspetto_web.py"
+      - "script/ci/server_finto.py"
       - "ios/fotografie/**"
       - ".github/workflows/aspetto-web.yml"
       - ".github/playwright-requisiti.txt"

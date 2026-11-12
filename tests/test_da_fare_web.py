@@ -26,14 +26,14 @@ def test_i_file_sono_caricati_prima_di_app_e_serviti_anche_senza_accesso():
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="serve node")
-@pytest.mark.parametrize("nome", ["dafare.js", "primoavvio.js"])
+@pytest.mark.parametrize("nome", ["app.js", "impostazioni.js", "dafare.js", "primoavvio.js", "anteprima.js", "avatar.js", "testi.js", "sw.js"])
 def test_la_sintassi_e_valida(nome):
     r = subprocess.run(["node", "--check", str(WEB / nome)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
 
 
 def test_oggi_mostra_la_card_e_ne_collega_i_pulsanti():
-    assert "${cardDaFare(o.da_fare)}" in APP and "collegaDaFare(o.da_fare)" in APP
+    assert "cardDaFare(o.da_fare)" in APP and "collegaDaFare(o.da_fare)" in APP
     # dal 1/11/2026 la configurazione guidata si riprende solo dalla riga di «Da fare» (niente voce in Impostazioni)
     IMP = codice_web.leggi("impostazioni.js")
     assert "primoAvvioSeServe()" in APP and "apri-primo-avvio" not in APP and "apri-primo-avvio" not in IMP

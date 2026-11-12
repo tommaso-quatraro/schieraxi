@@ -79,32 +79,6 @@ def test_informazioni_privacy_termini_crediti_e_versione():
     assert 'rel="noopener"' in IMP and "queryLingua()" in IMP
 
 
-def test_altro_ogni_cosa_in_un_posto_solo():
-    voci = APP[APP.index("const VOCI_LEGA = ["):APP.index("\n];", APP.index("const VOCI_LEGA = ["))]
-    ids = re.findall(r'\{ id: "(\w+)", ambito: "altro"', voci)
-    assert ids == ["scambi", "diario", "regole", "movimenti", "crediti", "stagione", "novita"]
-    assert 'vai("impostazioni"' not in voci                                     # Impostazioni solo dall'ingranaggio
-    assert 'vai: o => vistaNovita(o)' in voci                                   # le novità stanno solo in Altro
-    assert 'classList.toggle("novita"' not in APP and 'classList.toggle("novita"' not in IMP     # niente pallino sull'ingranaggio
-
-
-def test_indirizzi_esistenti_continuano_a_funzionare():
-    assert 'const VISTE = ["oggi", "formazione", "squadra", "altro"]' in APP     # le quattro schede della dieta
-    assert 'v === "impostazioni"' in APP and 'get("gruppo")' in APP                         # ?vista=impostazioni&gruppo=avvisi
-    assert 'get("vista")' in APP and 'get("condivisa")' in APP
-    assert '[data-vai-novita]")) vaiLega("novita");' in APP                                # la riga delle novità in Oggi
-
-
-def test_le_scelte_tolte_dell_aspetto_si_cancellano():
-    assert 'const PREF_TOLTE = ["accento", "densita", "animazioni", "iniziale"];' in APP
-    assert "togliPrefVecchie();" in APP and 'pref("iniziale"' not in APP and 'pref("accento"' not in APP
-    aspetto = APP[APP.index("function schedaAspetto()"):APP.index("function collegaAspetto()")]
-    pos = [aspetto.index(x) for x in ("<h3>Lingua</h3>", "<h3>Tema</h3>", "<h3>Dimensione del testo</h3>")]
-    assert pos == sorted(pos)
-    for vecchio in ("Colore principale", "Densità", "Animazioni ridotte", "Sezione iniziale", "Icona dell'app"):
-        assert vecchio not in aspetto, vecchio
-
-
 def test_testi_senza_gergo_per_l_utente():
     testo = " ".join(re.findall(r">([^<>$`]+)<", IMP) + re.findall(r'avviso\("([^"]+)"', IMP))        # solo quello che si legge
     for parola in ("token", "Tailscale", "ntfy", "ALTAppGroups", "POST", "202", "403", "/api", "server"):
@@ -116,11 +90,3 @@ def test_tablet_a_due_colonne_e_bersagli_da_44_px():
     assert re.search(r"\.imp-indietro \{ min-height: 44px", CSS)
     assert 'aria-current' in IMP and 'aria: "Gruppi di impostazioni"' in IMP
     assert re.search(r"\.bottone-icona \{ width: 44px; height: 44px", CSS)
-
-
-def test_nomi_come_nell_app_per_iphone_vedi_etichette():
-    """I nomi di docs/ETICHETTE.md: quelli di iOS valgono ovunque."""
-    for nome in ("Cambi di formazione e probabili", "Promemoria 15 minuti prima", "Riepilogo a giornata finita", "Copia il testo", "Condividi come immagine"):
-        assert nome in APP, nome
-    for vecchio in ("Cambi nelle probabili", "Ultimo promemoria (15 minuti prima)", "Copia formazione", "Condividi immagine", "Quali avvisi ricevere", "Novità dell'app"):
-        assert vecchio not in APP and vecchio not in IMP, vecchio

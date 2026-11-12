@@ -15,8 +15,8 @@
       "web": "la voce si chiama «Notifiche» («Cosa ricevere sul telefono e quando»); righe d'aiuto sotto «Cambi di formazione e probabili», «Promemoria un'ora prima» e «Riepilogo a giornata finita»; ore tranquille «Niente avvisi nella fascia scelta: …»; Avanzate «vedi anche il resto» (`impostazioni.js`, `avvisiTelefono`, testi `imp.*`, `avv.*`, `av.*`)",
       "iphone": "«Notifiche» («Cosa ricevere sul telefono e quando»); righe d'aiuto sotto i tre interruttori; ore tranquille «Niente avvisi nella fascia scelta: …»; Avanzate «vedi anche il resto» (`TestiImpostazioni`, `NomeConAiuto`, `ImpostazioniView.swift`, `Gestione.swift`). Il permesso di iOS sta solo dentro la pagina. La sezione «Promemoria sul telefono» è solo dell'iPhone (promemoria del telefono): resta",
       "forma": "web",
-      "chi": "**fatto** (#439, `NotificheComeLaWebTests`)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più «Mostra tutte le funzioni» in Avanzate (#615), l'iPhone sì. Prima: **fatto** (#439, `NotificheComeLaWebTests`)",
+      "stato": "da-decidere"
     },
     {
       "id": 58,
@@ -24,8 +24,8 @@
       "web": "Lingua (italiano, inglese), Tema, Dimensione del testo (Normale, Grande, Molto grande) (`schedaAspetto`)",
       "iphone": "Tema e «Animazioni ridotte»; niente lingua (l'app è solo in italiano) né dimensione del testo (la prende da iOS) (`AspettoView` in `LegaPagine.swift`)",
       "forma": "differenza ammessa",
-      "chi": "decisa dal proprietario il 6/11/2026: tra le «Differenze ammesse» (riga «Impostazioni, Aspetto»)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più la dimensione del testo (#615), l'iPhone sì. Prima: decisa dal proprietario il 6/11/2026: tra le «Differenze ammesse» (riga «Impostazioni, Aspetto»)",
+      "stato": "da-decidere"
     },
     {
       "id": 67,

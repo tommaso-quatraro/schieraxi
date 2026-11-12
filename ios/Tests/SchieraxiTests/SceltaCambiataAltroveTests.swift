@@ -3,9 +3,9 @@ import Testing
 @testable import Schieraxi
 
 /// Formazione: la scelta cambiata da un altro dispositivo (412) e i pulsanti durante un salvataggio (#477, note della #475).
-/// Il riferimento è la web di oggi (`mostraFormazione` in `fanta/web/app.js`): dopo un 412 la pagina si ricarica, quindi stile e
-/// modulo ripartono da quelli consigliati; durante un salvataggio (`sc.occupato`) si spengono i pulsanti che salvano e «Annulla
-/// modifiche», mentre «Torna alla consigliata», i moduli e gli stili restano attivi.
+/// Il riferimento è la web del 12/11/2026 (`mostraFormazione` in `fanta/web/app.js`, che non si legge più): dopo un 412 la
+/// pagina si ricarica, quindi stile e modulo ripartono da quelli consigliati; durante un salvataggio (`sc.occupato`) si spengono
+/// i pulsanti che salvano e «Annulla modifiche», mentre «Torna alla consigliata», i moduli e gli stili restano attivi.
 @MainActor
 @Suite("Formazione: scelta cambiata altrove e pulsanti durante il salvataggio")
 struct SceltaCambiataAltroveTests {
@@ -176,25 +176,14 @@ struct SceltaCambiataAltroveTests {
 
     // MARK: punto 3: durante un salvataggio, come la web
 
+    /// Sulla web del 12/11/2026 i gestori di «Salva questa», «Salva le modifiche» e «Annulla modifiche» guardavano `sc.occupato`,
+    /// quello di «Torna alla consigliata» no; moduli e stili restavano attivi (sull'iPhone i chip non si spengono mai).
     @Test("Durante un salvataggio si spengono gli stessi pulsanti della web: Salva e «Annulla modifiche» sì, «Torna alla consigliata» no")
-    func pulsantiSpentiComeLaWeb() throws {
+    func pulsantiSpentiComeLaWeb() {
         #expect(!StatoScelta.Pulsante.torna.spentoSalvando, "«Torna alla consigliata» resta attivo")
         #expect(StatoScelta.Pulsante.salvaQuesta.spentoSalvando)
         #expect(StatoScelta.Pulsante.salva.spentoSalvando)
         #expect(StatoScelta.Pulsante.annulla.spentoSalvando)
-        let app = try FileWeb.app()
-        let comeIPhone: [String: StatoScelta.Pulsante] = ["salva-questa": .salvaQuesta, "salva-scelta": .salva,
-                                                          "annulla-modifiche": .annulla, "torna-consigliata": .torna]
-        for (id, pulsante) in comeIPhone {
-            let gestore = try gestoreWeb(app, id: id)
-            #expect(pulsante.spentoSalvando == gestore.contains("sc.occupato"),
-                    "#\(id): sulla web \(gestore.contains("sc.occupato") ? "spento" : "attivo") durante il salvataggio")
-        }
-        // moduli e stili: la web non guarda `sc.occupato` (sull'iPhone i chip non si spengono mai)
-        for chip in ["[data-modulo]", "[data-stile]"] {
-            let riga = try rigaWeb(app, contenente: "querySelectorAll(\"\(chip)\")")
-            #expect(!riga.contains("occupato"), "\(chip): sulla web resta attivo durante il salvataggio")
-        }
     }
 
     @Test("Durante un salvataggio un tocco su un modulo cambia la formazione sullo schermo, e la risposta che arriva dopo non la copre")
@@ -298,20 +287,6 @@ struct SceltaCambiataAltroveTests {
     /// Quanti salvataggi (valutazioni con `salva: true`) ha ricevuto il server.
     private func salvataggi(_ srv: ServerDiProva) -> Int {
         srv.corpiInviati(a: "POST /api/formazione/valuta").filter { chiedeDiSalvare($0) }.count
-    }
-
-    /// Il gestore di un pulsante della Formazione in app.js: da `bottone("#id"` fino al pulsante dopo.
-    private func gestoreWeb(_ app: String, id: String) throws -> String {
-        let inizio = try #require(app.range(of: "bottone(\"#\(id)\""), "manca il pulsante #\(id) in app.js")
-        let fine = app.range(of: "bottone(\"#", range: inizio.upperBound..<app.endIndex)?.lowerBound ?? app.endIndex
-        return String(app[inizio.lowerBound..<fine])
-    }
-
-    /// La riga di app.js che contiene `testo`.
-    private func rigaWeb(_ app: String, contenente testo: String) throws -> String {
-        let trovato = try #require(app.range(of: testo), "manca \(testo) in app.js")
-        let fine = app[trovato.upperBound...].firstIndex(of: "\n") ?? app.endIndex
-        return String(app[trovato.lowerBound..<fine])
     }
 
     private func caricata(_ s: ServerDiProva) async throws -> (FormazioneViewModel, Formazione) {

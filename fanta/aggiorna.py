@@ -18,7 +18,6 @@ from typing import Callable
 import requests
 
 from . import archivio, controlli, fonti_attive, funzioni, listone, rete, squadre
-from . import probabili_fonte2 as pf2
 from .fonti import fantacalcio as fc
 from .fonti import footballdata as fd
 from .fonti import understat as us
@@ -406,13 +405,6 @@ class Aggiornamento:
         quota = uguali / len(righe)
         return (prima, quota) if quota > SOGLIA_COPIA else None
 
-    def probabili_fonte2(self) -> None:
-        """Seconda fonte di probabili (feed Sosfanta) in modalità ombra: una richiesta ogni 30 minuti al massimo."""
-        calciatori = [listone.Calciatore(**{c: r[c] for c in r.keys() if c != "aggiornato"})
-                      for r in self.db.execute("SELECT * FROM calciatori")]
-        esito = pf2.raccogli(self.db, self.st.codice, calciatori, scrivi=self.scrivi)
-        self.scrivi(f"  probabili fonte 2: {esito['motivo']}" if esito["motivo"] else f"  probabili fonte 2: {esito['righe']} segnali nuovi")
-
     def understat(self, stagione: Stagione | None = None, dettaglio_partite: bool = True) -> None:
         st = stagione or self.st
         # una pagina web al posto dei dati (manutenzione, blocco) ferma il passo qui, con un errore che lo dice: nessuna altra richiesta
@@ -530,12 +522,8 @@ class Aggiornamento:
         self._passo("calendario", self.calendario, "fantacalcio")
         self._passo("voti", self.voti, "fantacalcio")
         self._passo("probabili", self.probabili, "fantacalcio")
-        if funzioni.acceso("fonti_ombra"):               # le due fonti «in ombra» servono solo a misurare il modello
-            self._passo("probabili fonte 2", self.probabili_fonte2, "sosfanta")
-        else:
-            self.scrivi("  - probabili fonte 2: saltato, le fonti in ombra sono spente")
         self._passo("Understat", self.understat, "understat")
-        if funzioni.acceso("fonti_ombra"):
+        if funzioni.acceso("fonti_ombra"):               # la fonte «in ombra» (football-data) serve solo a misurare il modello
             self._passo("dati extra", self.dati_extra, "footballdata")
         else:
             self.scrivi("  - dati extra: saltato, le fonti in ombra sono spente")

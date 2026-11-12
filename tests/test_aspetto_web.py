@@ -264,9 +264,9 @@ def test_server_finto_scenario_senza_risposte_e_errore(aw, tmp_path):
 
 # ------------------------------------------------------------------ scene
 def test_elenco_delle_scene(aw):
-    """Le schermate che la spec chiede di coprire: le quattro schede, scheda, confronto, diario, regole, scambi, impostazioni."""
-    assert list(aw.SCENE) == ["oggi", "formazione", "squadra", "rosa", "scheda", "confronto", "altro", "diario", "regole",
-                              "scambi", "impostazioni"]
+    """Le schermate da coprire: le quattro schede, la rosa, la scheda di un giocatore, diario, regole, impostazioni (Confronto e
+    Scambi non ci sono più, #615)."""
+    assert list(aw.SCENE) == ["oggi", "formazione", "squadra", "rosa", "scheda", "altro", "diario", "regole", "impostazioni"]
     for nome, scena in aw.SCENE.items():
         assert scena.indirizzo.startswith("/?vista="), nome
     assert aw.LARGHEZZE == (390, 1440) and aw.TEMI == ("chiaro", "scuro")
@@ -430,7 +430,8 @@ def test_workflow_solo_avviso_e_permessi_minimi():
 def test_workflow_parte_sulle_pr_che_toccano_la_web():
     testo = _testo_workflow()
     blocco = testo[testo.index("pull_request:"):testo.index("workflow_dispatch:")]
-    for percorso in ("fanta/web/**", "script/ci/aspetto_web.py", "ios/fotografie/**"):
+    # anche il server finto, che sta in un modulo suo (lo usano pure i test del browser)
+    for percorso in ("fanta/web/**", "script/ci/aspetto_web.py", "script/ci/server_finto.py", "ios/fotografie/**"):
         assert f'"{percorso}"' in blocco, percorso
 
 

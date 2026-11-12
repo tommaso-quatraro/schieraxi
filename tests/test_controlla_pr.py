@@ -256,6 +256,40 @@ def test_nessun_test_del_repository_legge_una_novita_per_nome():
     assert problemi == []
 
 
+# ---------------------------------------------------------------- base della PR (#620)
+
+def test_base_main_va_bene_e_base_sconosciuta_non_dice_niente():
+    assert pr.base("main") == ([], [])
+    assert pr.base("") == ([], []) and pr.base(None) == ([], [])      # variabile non passata (workflow di prima)
+
+
+@pytest.mark.parametrize("ramo", ["web-nel-browser-619", "Main", "main2", "release"])
+def test_base_diversa_da_main_e_un_problema(ramo):
+    problemi, avvisi = pr.base(ramo)
+    assert len(problemi) == 1 and avvisi == []
+    assert f"«{ramo}»" in problemi[0] and "main" in problemi[0] and "--base main" in problemi[0]
+
+
+def test_controlla_e_main_guardano_la_base(tmp_path, capsys):
+    problemi, _ = pr.controlla(BUONO, bozza=False, autore="persona", file_con_stato=[("M", "fanta/web/app.js")],
+                               cartella_tests=tmp_path, ramo_base="altro-ramo")
+    assert len(problemi) == 1 and "«altro-ramo»" in problemi[0]
+    # anche i bot: una PR impilata non si unisce su main in nessun caso
+    assert pr.controlla("", bozza=False, autore="dependabot[bot]", file_con_stato=[("M", "requirements.txt")],
+                        cartella_tests=tmp_path, ramo_base="altro-ramo")[0]
+    assert pr.main("persona", BUONO, "false", "M\tfanta/web/app.js\n", tmp_path, base="altro-ramo") == 1
+    assert "::error title=Base della PR::" in capsys.readouterr().out
+    assert pr.main("persona", BUONO, "false", "M\tfanta/web/app.js\n", tmp_path, base="main") == 0
+
+
+def test_il_job_ambito_passa_la_base_a_controlla_pr():
+    testo = (RADICE / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
+    ambito = testo[testo.index("\n  ambito:\n"):testo.index("\n  versione:\n")]
+    passo = ambito[ambito.index("- name: Descrizione, revisione, novità e test della PR"):]
+    passo = passo[:passo.index("run:")]
+    assert "BASE: ${{ github.base_ref }}" in passo
+
+
 # ---------------------------------------------------------------- tutto insieme e uscita
 
 def test_controlla_mette_insieme_i_quattro_controlli(tmp_path):

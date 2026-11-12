@@ -33,8 +33,8 @@ struct ModificaAManoModuliTests {
     }
 
     @Test("I pulsanti di ogni stato sono quelli di `rigaStatoScelta` in app.js, nello stesso ordine; «Modifica a mano» dove la web la mette")
-    func pulsantiComeLaWeb() throws {
-        let web = try pulsantiWeb()
+    func pulsantiComeLaWeb() {
+        let web = Self.pulsantiWeb
         // gli stati della web (`statoScelta` di app.js) e quelli dell'iPhone che li mostrano
         let stati: [String: [StatoScelta]] = [
             "consigliata": [.consigliata], "altra": [.altra], "salvata": [.salvata(alle)], "modificata": [.modificata(alle)],
@@ -330,22 +330,17 @@ struct ModificaAManoModuliTests {
     }
 
     /// I pulsanti di ogni stato in `rigaStatoScelta` di `fanta/web/app.js` (`const pulsanti = { stato: b("id", …) + … }`), con gli
-    /// id dei pulsanti nell'ordine della web.
-    private func pulsantiWeb() throws -> [String: [String]] {
-        let app = try FileWeb.app()
-        let inizio = try #require(app.range(of: "function rigaStatoScelta("), "manca `rigaStatoScelta` in app.js")
-        let blocco = try #require(app.range(of: "const pulsanti = {", range: inizio.upperBound..<app.endIndex), "manca la tabella dei pulsanti")
-        let fine = try #require(app.range(of: "}[st];", range: blocco.upperBound..<app.endIndex), "tabella dei pulsanti senza fine")
-        var tabella: [String: [String]] = [:]
-        for riga in app[blocco.upperBound..<fine.lowerBound].split(separator: "\n") {
-            let testo = riga.trimmingCharacters(in: .whitespaces)
-            guard let duePunti = testo.firstIndex(of: ":") else { continue }
-            let stato = String(testo[..<duePunti])
-            let ids = testo.components(separatedBy: "b(\"").dropFirst().compactMap { $0.split(separator: "\"").first.map(String.init) }
-            tabella[stato] = ids
-        }
-        return tabella
-    }
+    /// id dei pulsanti nell'ordine della web: una copia ferma del 12/11/2026, prima del rifacimento della web (il codice della web
+    /// non si legge più; l'app resta com'è finché il proprietario non decide).
+    private static let pulsantiWeb: [String: [String]] = [
+        "consigliata": ["salva-questa", "modifica"],
+        "altra": ["salva-questa", "modifica", "torna-consigliata"],
+        "salvata": ["torna-consigliata"],
+        "modificata": ["salva-scelta", "annulla-modifiche", "torna-consigliata"],
+        "mano": ["salva-scelta", "torna-consigliata"],
+        "non_valida": ["modifica", "torna-consigliata"],
+        "chiusa": [],
+    ]
 
     /// Due scelte salvate diverse dalla consigliata e tra loro: due moduli dello stile consigliato della fixture.
     private func dueScelte() throws -> (s: [Int], s2: [Int]) {

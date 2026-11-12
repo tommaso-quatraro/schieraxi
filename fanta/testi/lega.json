@@ -108,10 +108,6 @@
     "it": "{tipo} di {nome}",
     "en": "{tipo} of {nome}"
   },
-  "lega.ancora_nessun_movimento": {
-    "it": "Ancora nessun movimento: compare qui a ogni aggiornamento delle rose.",
-    "en": "No moves yet: they appear here at every roster update."
-  },
   "lega.apri_diario": {
     "it": "Apri il diario",
     "en": "Open the journal"
@@ -119,10 +115,6 @@
   "lega.archivia_riparti": {
     "it": "Archivia e riparti",
     "en": "Archive and start over"
-  },
-  "lega.carico_movimenti": {
-    "it": "Carico i movimenti…",
-    "en": "Loading the moves…"
   },
   "lega.carico_squadra": {
     "it": "Carico la squadra…",
@@ -139,10 +131,6 @@
   "lega.condividi": {
     "it": "Condividi",
     "en": "Share"
-  },
-  "lega.controllo_stagione": {
-    "it": "Controllo la stagione…",
-    "en": "Checking the season…"
   },
   "lega.cosa_cambiato": {
     "it": "Cosa è cambiato",
@@ -360,14 +348,6 @@
     "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Altro, Regole).",
     "en": ": bonuses, formations and credits can change from one year to the next (More, Rules)."
   },
-  "lega.inserisci_crediti": {
-    "it": "Inserisci i crediti",
-    "en": "Enter the credits"
-  },
-  "lega.delle_squadre_altro": {
-    "it": "delle squadre (Altro, Crediti delle squadre).",
-    "en": "of the teams (More, Team credits)."
-  },
   "lega.con_tasto_alto": {
     "it": "con il tasto in alto: calendario, listone e quotazioni nuovi.",
     "en": "with the top button: new calendar, player list and prices."
@@ -412,10 +392,6 @@
     "it": "Importate: {nomi} ({n} in tutto).",
     "en": "Imported: {nomi} ({n} in all)."
   },
-  "lega.crediti_numero": {
-    "it": "I crediti di {nome} devono essere un numero intero, anche 0",
-    "en": "The credits of {nome} must be a whole number, even 0"
-  },
   "lega.voce_miasquadra": {
     "it": "La mia squadra e rosa",
     "en": "My team and roster"
@@ -431,10 +407,6 @@
   "lega.aria_altro": {
     "it": "Altre voci",
     "en": "Other items"
-  },
-  "lega.stagione_in_corso": {
-    "it": "Le rose sono della stagione in corso ({s}): non c'è niente da fare. A fine campionato, quando le rose sono ancora quelle dell'anno prima, qui compare il pulsante per archiviarle e ripartire. Non si cancella niente.",
-    "en": "The rosters are from the current season ({s}): there is nothing to do. At the end of the league, when the rosters are still last year's, the button to archive them and start over appears here. Nothing is deleted."
   },
   "lega.nuova_stagione_n": {
     "it": "Nuova stagione {s}",

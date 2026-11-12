@@ -36,12 +36,9 @@ struct NovitaComeLaWebTests {
 
     // MARK: quante versioni e quali sono nuove
 
-    @Test("Le versioni subito visibili sono quante NOVITA_VISIBILI nella web")
-    func visibiliCometWeb() throws {
-        let app = try FileWeb.app()
-        let riga = try #require(app.split(whereSeparator: \.isNewline).first { $0.hasPrefix("const NOVITA_VISIBILI = ") })
-        let numero = riga.dropFirst("const NOVITA_VISIBILI = ".count).prefix { $0.isNumber }
-        #expect(ParoleNovita.visibili == Int(numero))
+    @Test("Le versioni subito visibili sono 10, come NOVITA_VISIBILI della web del 12/11/2026")
+    func visibiliComeLaWeb() {
+        #expect(ParoleNovita.visibili == 10)
     }
 
     @Test("Prima visita (nessuna versione vista): è «Nuovo» solo l'ultima")
@@ -79,18 +76,5 @@ struct NovitaComeLaWebTests {
         let elenco = Self.versioni(52)
         let visibili = ParoleNovita.quanteVisibili(totale: elenco.count, nuoveDa: ParoleNovita.nuoveDa(versioni: elenco, ultimaVista: elenco[0]))
         #expect(elenco.count - visibili == 42)
-    }
-}
-
-/// I file della web che alcune prove leggono (stesso modo di `TestiWeb`; l'elenco è in `ios/Tests/file-esterni.txt`).
-enum FileWeb {
-    static func app(file: String = #filePath) throws -> String {
-        var url = URL(fileURLWithPath: file)
-        for _ in 0..<4 { url.deleteLastPathComponent() }          // NovitaComeLaWebTests.swift, SchieraxiTests, Tests, ios
-        url.appendPathComponent("fanta/web/app.js")
-        guard let testo = try? String(contentsOf: url, encoding: .utf8) else {
-            throw TestiWeb.Errore(description: "non riesco a leggere fanta/web/app.js dal repository")
-        }
-        return testo
     }
 }

@@ -40,10 +40,6 @@
     "it": "Finora hai schierato gli stessi undici del consiglio.",
     "en": "So far you have fielded the same eleven as recommended."
   },
-  "avv.formazione_della_giornata": {
-    "it": "Formazione della giornata",
-    "en": "Matchday lineup"
-  },
   "avv.inizio_delle_ore": {
     "it": "Inizio delle ore tranquille",
     "en": "Start of quiet hours"
@@ -128,10 +124,6 @@
     "it": "Segno la tua formazione…",
     "en": "Noting your lineup…"
   },
-  "avv.tieni_premuto_sull": {
-    "it": "Tieni premuto sull'immagine per salvarla o condividerla.",
-    "en": "Press and hold the image to save or share it."
-  },
   "avv.tue_scelte": {
     "it": "Le tue scelte",
     "en": "Your choices"
@@ -139,18 +131,6 @@
   "avv.quot": {
     "it": "quotazione {n}",
     "en": "price {n}"
-  },
-  "avv.img_punti": {
-    "it": "{n} punti attesi",
-    "en": "{n} expected points"
-  },
-  "avv.img_numero": {
-    "it": "Il numero sotto il volto è il fantavoto atteso",
-    "en": "The number under the face is the expected fantasy score"
-  },
-  "avv.img_titolo": {
-    "it": "Formazione · {g}",
-    "en": "Lineup · {g}"
   },
   "avv.riga_scelta": {
     "it": "{n}: {scelto} invece di {cons}",
