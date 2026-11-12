@@ -47,12 +47,11 @@ extension Etichetta.Gravita {
 }
 
 /// Riga di un giocatore: volto, nome, partita, etichette e a destra il numero (fantavoto atteso e
-/// «gioca N%» prima della partita, fantavoto preso dopo: vedi `numero`). Con `apribile` un tocco apre la scheda del giocatore.
+/// «gioca N%» prima della partita, fantavoto preso dopo: vedi `numero`). Con `apribile` un tocco apre la scheda del giocatore,
+/// che dice anche «Perché questo numero» (come la web, #616: niente più un foglio a parte sul numero).
 struct RigaGiocatore: View {
     let g: Giocatore
     var apribile = false
-    /// Se c'è (Formazione) e il server manda i motivi, il numero è un pulsante a sé che apre «Perché questo numero».
-    var perche: ((Giocatore) -> Void)? = nil
     @Environment(\.apriGiocatore) private var apri
     @Environment(\.dynamicTypeSize) private var tagliaTesto
     @Environment(\.spazioZoom) private var zoom
@@ -112,12 +111,6 @@ struct RigaGiocatore: View {
         return esito.fv == nil ? nil : Catalogo.Mercato.fantavoto
     }
 
-    /// Se il numero è un pulsante a sé che apre «Perché questo numero» (con i motivi del server). A partita iniziata no, come
-    /// la web: i motivi spiegano il fantavoto atteso, che lì non si vede più.
-    nonisolated static func numeroConPerche(_ g: Giocatore) -> Bool {
-        g.assente != true && g.esitoPartita == nil && PercheNumero(g) != nil
-    }
-
     /// Frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono. A partita iniziata «fantavoto 3,5» come la
     /// pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette.
     nonisolated static func voce(_ g: Giocatore) -> String {
@@ -138,10 +131,8 @@ struct RigaGiocatore: View {
         return parti.joined(separator: ", ")
     }
 
-    private var puntiTesto: String { Self.testoPunti(g) }
     /// Lo stesso numero, per far scorrere le cifre quando cambia.
     private var puntiValore: Double { g.fvAtteso ?? g.puntiAttesi ?? 0 }
-    private var giocaPercento: Int { Formato.percento(g.pVoto) }
 
     private var nome: some View {
         HStack(spacing: 6) {
@@ -200,7 +191,7 @@ struct RigaGiocatore: View {
         AvatarGiocatore(id: g.id, squadra: g.squadra, dimensione: min(lato, 64), nome: g.nome, ruolo: g.ruolo)
     }
 
-    /// `conNumero` falso: il numero sta fuori, in un pulsante a sé (vedi `numeroPerche`).
+    /// `conNumero` falso: la riga senza il numero a destra.
     private func corpo(conNumero: Bool) -> some View {
         Group {
             if tagliaTesto.isAccessibilitySize {
@@ -233,71 +224,18 @@ struct RigaGiocatore: View {
 
     private var contenuto: some View { corpo(conNumero: true) }
 
-    /// Il numero come pulsante: fondo tenue del colore principale e una «i», così si capisce che si tocca.
-    private func numeroPerche(_ apriPerche: @escaping (Giocatore) -> Void) -> some View {
-        Button { apriPerche(g) } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                if tagliaTesto.isAccessibilitySize {
-                    Text(puntiTesto).font(.headline).monospacedDigit().numerico(puntiValore)
-                    Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(Color.testoSecondario)
-                } else {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(puntiValore)
-                        Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(Color.testoSecondario)
-                    }
-                }
-                Image(systemName: "info.circle").font(.caption.weight(.semibold)).foregroundStyle(Color.verde)
-            }
-            .padding(.horizontal, 8).padding(.vertical, 4)
-            .frame(minWidth: 44, minHeight: 44)
-            .background(Color.verde.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(StilePressione())
-        .hoverEffect(.highlight)
-        .accessibilityLabel("\(FantavotoAtteso.nome) di \(g.nome): \(puntiTesto), gioca al \(giocaPercento) per cento")
-        .accessibilityHint("Mostra perché questo numero")
-    }
-
     var body: some View {
-        if apribile, let apriPerche = perche, Self.numeroConPerche(g) {
-            // Due pulsanti affiancati (o il numero sotto, con il testo molto grande): la riga apre la scheda, il numero il perché.
-            Group {
-                if tagliaTesto.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 4) {
-                        rigaApribile(corpo(conNumero: false))
-                        numeroPerche(apriPerche).padding(.leading, min(lato, 64) + 12)
-                    }
-                } else {
-                    HStack(spacing: 8) {
-                        rigaApribile(corpo(conNumero: false))
-                        numeroPerche(apriPerche)
-                    }
-                }
-            }
-            .contextMenu {
-                Button { apri(g.id) } label: { Label("Apri la scheda", systemImage: "person.text.rectangle") }
-                Button { apriPerche(g) } label: { Label(PercheNumero.titolo, systemImage: "info.circle") }
-                Button { UIPasteboard.general.string = g.nome } label: { Label("Copia il nome", systemImage: "doc.on.doc") }
-            }
-        } else if apribile {
+        if apribile {
             Button { apri(g.id) } label: { contenuto.frame(minHeight: 44).contentShape(Rectangle()) }
                 .buttonStyle(StilePressione())
                 .origineZoom(g.id, zoom)
                 .contextMenu {
-                    Button { apri(g.id) } label: { Label("Apri la scheda", systemImage: "person.text.rectangle") }
+                    Button { apri(g.id) } label: { Label(Catalogo.Perche.apriScheda, systemImage: "person.text.rectangle") }
                     Button { UIPasteboard.general.string = g.nome } label: { Label("Copia il nome", systemImage: "doc.on.doc") }
                 }
                 .accessibilityHint("Apre la scheda del giocatore")
         } else {
             contenuto
         }
-    }
-
-    private func rigaApribile(_ vista: some View) -> some View {
-        Button { apri(g.id) } label: { vista.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle()) }
-            .buttonStyle(StilePressione())
-            .origineZoom(g.id, zoom)
-            .accessibilityHint("Apre la scheda del giocatore")
     }
 }

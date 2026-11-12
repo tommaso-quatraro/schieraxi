@@ -3,9 +3,6 @@ import SwiftUI
 /// Schermata Formazione: solo presentazione. Dati e logica sono in `FormazioneViewModel`.
 struct FormazioneView: View {
     @ObservedObject var vm: FormazioneViewModel
-    @State private var daSostituire: Giocatore?
-    /// Dopo «Apri la scheda» nel foglio «Perché questo numero»: la scheda si apre quando il foglio si è chiuso.
-    @State private var schedaDopoPerche: Int?
     @Environment(\.apriGiocatore) private var apriGiocatore
     @Namespace private var moduloNS
 
@@ -79,7 +76,7 @@ struct FormazioneView: View {
                             Carta("Panchina", simbolo: "chair.lounge.fill") {
                                 Text(Self.testoPanchina).font(.caption).foregroundStyle(Color.testoSecondario)
                                 ForEach(Array(v.panchina.enumerated()), id: \.element.id) { i, g in
-                                    RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true, perche: apriPerche) }
+                                    RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true) }
                                 }
                             }
                             .ingresso(5)
@@ -116,23 +113,13 @@ struct FormazioneView: View {
                 }
             }
             .ricercaGlobale()
-            .sheet(item: $daSostituire) { g in
+            // la scelta del sostituto: da «Sostituisci» nella scheda del giocatore o, in modifica a mano, dal tocco sulla riga
+            .sheet(item: $vm.daSostituire) { g in
                 if let f = vm.formazione {
                     SostituzioneSheet(uscente: g, candidati: vm.sostituti(di: g, f)) { nuovo in
-                        vm.sostituisci(g.id, con: nuovo)
-                        daSostituire = nil
+                        vm.sostituisciTitolare(g.id, con: nuovo)
+                        vm.daSostituire = nil
                     }
-                }
-            }
-            .sheet(item: $vm.percheAperto, onDismiss: {
-                if let id = schedaDopoPerche {
-                    schedaDopoPerche = nil
-                    apriGiocatore(id)
-                }
-            }) { g in
-                PercheNumeroSheet(g: g) {
-                    schedaDopoPerche = g.id
-                    vm.percheAperto = nil
                 }
             }
             .task { await vm.carica() }
@@ -154,11 +141,6 @@ struct FormazioneView: View {
             }
             .padding(.top, 2)
         }
-    }
-
-    /// Il tocco sul numero di un giocatore: apre «Perché questo numero» con i dati già caricati.
-    private var apriPerche: (Giocatore) -> Void {
-        { g in vm.percheAperto = g }
     }
 
     /// La riga in fondo alla Formazione: cosa sono i numeri (e, con un server che manda i motivi, che si possono toccare).
@@ -190,9 +172,9 @@ struct FormazioneView: View {
     private func rigaTitolare(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione, etichettaBallottaggio: Bool) -> some View {
         if vm.chiusa {
             // giornata chiusa: sola lettura (un tocco apre la scheda, niente sostituzioni)
-            RigaGiocatore(g: g, apribile: true, perche: apriPerche)
+            RigaGiocatore(g: g, apribile: true)
         } else if vm.manuale != nil && !vm.fermi.contains(g.id) {
-            Button { daSostituire = g } label: {
+            Button { vm.daSostituire = g } label: {
                 HStack { RigaGiocatore(g: g); Image(systemName: Self.simboloSostituisci).foregroundStyle(Color.verde).accessibilityHidden(true) }
                     .frame(minHeight: 44)
             }
@@ -200,7 +182,7 @@ struct FormazioneView: View {
             .accessibilityHint("Apre la scelta del giocatore che prende il suo posto")
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                RigaGiocatore(g: g, apribile: true, perche: apriPerche)
+                RigaGiocatore(g: g, apribile: true)
                 // in modifica a mano qui c'è solo chi è fermo (anticipo già cominciato, #373): come la web, niente ballottaggio
                 if vm.manuale == nil { ballottaggio(g, f, v, conEtichetta: etichettaBallottaggio) }
             }
@@ -259,7 +241,7 @@ struct FormazioneView: View {
             Carta {
                 DisclosureGroup(Catalogo.Formazione.fuoriDalla(n: "\(altri.count)")) {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(altri) { RigaGiocatore(g: $0, apribile: true, perche: apriPerche) }
+                        ForEach(altri) { RigaGiocatore(g: $0, apribile: true) }
                         if let senza = f.senzaDati, !senza.isEmpty {
                             Text(Catalogo.Formazione.senzaDati(nomi: senza.joined(separator: ", "))).font(.caption).foregroundStyle(Color.testoSecondario)
                         }
@@ -495,7 +477,7 @@ struct SostituzioneSheet: View {
                     }
                 }
             }
-            .navigationTitle("Sostituisci")
+            .navigationTitle(Catalogo.Formazione.sostituisci)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Annulla") { chiudi() } } }
         }
