@@ -42,10 +42,14 @@ struct OggiComeLaWebTests {
     @Test("In Oggi non ci sono più né il banner delle novità né le partite del turno", arguments: [FaseGiornata.prima, .inCorso, .finita])
     func senzaNovitaNePartite(fase: FaseGiornata) throws {
         for conGiornata in [true, false] {
-            let nomi = SezioneOggi.ordine(fase: fase, conGiornata: conGiornata).map { "\($0)" }
-            #expect(!nomi.contains("novita") && !nomi.contains("partite"), "\(fase): \(nomi)")
+            let nomi: [String] = SezioneOggi.ordine(fase: fase, conGiornata: conGiornata).map { String(describing: $0) }
+            #expect(!nomi.contains("novita"), "\(fase): \(nomi)")
+            #expect(!nomi.contains("partite"), "\(fase): \(nomi)")
         }
-        #expect(!SezioneOggi.allCases.map { "\($0)" }.contains { $0 == "novita" || $0 == "partite" })
+        // un'espressione sola con due chiusure dentro #expect non si compila («unable to type-check in reasonable time»)
+        let tutte: [String] = SezioneOggi.allCases.map { String(describing: $0) }
+        #expect(!tutte.contains("novita"))
+        #expect(!tutte.contains("partite"))
         let sorgente = try CodiceOggiIPhone.leggi("Sources/Presentation/Oggi/OggiView.swift")
         for tolto in ["PartiteDelTurnoView", "/api/live", "novitaBanner", "apriNovita"] {
             #expect(!sorgente.contains(tolto), "OggiView nomina ancora \(tolto)")
