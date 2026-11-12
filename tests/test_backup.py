@@ -137,6 +137,11 @@ def _movimento(**campi) -> list:
     pytest.param("lega/movimenti.json", _movimento(squadre_nuove="A"), id="movimenti-squadre-nuove-testo"),
     pytest.param("lega/movimenti.json", _movimento(quando=5), id="movimenti-data-numero"),
     pytest.param("lega/movimenti.json", _movimento() * (movimenti.MAX_STORICO + 1), id="movimenti-troppe-voci"),
+    pytest.param("lega/movimenti.json", _movimento(testo="t" * (backup.MAX_TESTO_MOVIMENTO + 1)), id="movimenti-testo-troppo-lungo"),
+    pytest.param("lega/movimenti.json", _movimento(tagliati=[{"squadra": "A", "giocatori": [{"id": None, "nome": "Rossi"}] * (
+        backup.MAX_GIOCATORI_MOVIMENTO + 1)}]), id="movimenti-troppi-giocatori-in-un-gruppo"),
+    pytest.param("lega/movimenti.json", _movimento(tagliati=[{"squadra": "A", "giocatori": [{"id": None, "nome": "R" * (
+        backup.MAX_TESTO_ROSE + 1)}]}]), id="movimenti-nome-troppo-lungo"),
     pytest.param("dati/osservati.json", [True], id="osservati-vero-falso"),
     pytest.param("dati/osservati.json", [1.5], id="osservati-non-interi"),
     pytest.param("dati/osservati.json", ["5"], id="osservati-testo"),
@@ -297,8 +302,8 @@ def test_backup_con_le_forme_scritte_dall_app_si_ripristina(radice, tmp_path_fac
 
 def test_il_ripristino_scrive_quanto_misura(radice):
     """Il ripristino dice a `spazio` quanti byte sta per scrivere (i file come andranno su disco), prima di scrivere qualsiasi cosa:
-    se `spazio` alza un errore non cambia niente. I file si scrivono compatti: non pesano più del backup."""
-    contenuto = _rose_con() | {"in_piu": _annidato(6) * 200}
+    se `spazio` alza un errore non cambia niente. I file si scrivono in forma compatta."""
+    contenuto = _rose_con()
     b = _solo("lega/rose.json", contenuto)
     prima = backup.crea(radice)
 
@@ -310,8 +315,8 @@ def test_il_ripristino_scrive_quanto_misura(radice):
     assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
     misurati = []
     backup.ripristina_esito(b, radice, spazio=misurati.append)
-    scritto = (radice / "lega" / "rose.json").stat().st_size
-    assert misurati == [scritto] and scritto <= len(json.dumps(contenuto))
+    file = radice / "lega" / "rose.json"
+    assert misurati == [file.stat().st_size] and file.read_text(encoding="utf-8") == json.dumps(contenuto, ensure_ascii=False)
 
 
 def test_un_file_alla_volta_il_resto_resta(radice):

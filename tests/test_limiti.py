@@ -340,6 +340,25 @@ def test_il_ripristino_misura_lo_spazio_su_quello_che_scrive(ambiente, monkeypat
     assert misure[-1] == scritti
 
 
+def test_il_ripristino_tiene_dei_movimenti_solo_le_parti_note(ambiente):
+    """Dello storico dei movimenti si rimettono solo le parti che scrive l'app (movimenti.registra); dopo un'importazione lo
+    storico si riscrive compatto."""
+    a, id_a = nuovo_utente("utentea")
+    assert importa(a).status_code == 200
+    copia = a.get("/api/backup").json()
+    rossi = {"id": 1, "nome": "Rossi", "ruolo": "D", "squadra": "ROM", "costo": 1}
+    voce = {"quando": "2026-11-01T10:00:00", "testo": "Mia lascia liberi: Rossi",
+            "tagliati": [{"squadra": "Mia", "giocatori": [rossi | {"in_piu": "x"}], "in_piu": 1}], "in_piu": [[[0] * 50]]}
+    copia["file"]["lega/movimenti.json"] = [voce]
+    assert a.post("/api/backup/ripristina", json=copia).status_code == 200
+    assert importa(a, "Mia\nP\tSommer\t10\nD\tBastoni\t5\n").status_code == 200       # registra un movimento nuovo
+    testo = next(contesto.cartella_utente(id_a).rglob("movimenti.json")).read_text(encoding="utf-8")
+    storico = json.loads(testo)
+    assert len(storico) == 2 and "in_piu" not in testo
+    assert storico[0] == {"quando": voce["quando"], "testo": voce["testo"], "tagliati": [{"squadra": "Mia", "giocatori": [rossi]}]}
+    assert testo == json.dumps(storico, ensure_ascii=False)
+
+
 # ---------------------------------------------------------------- spazio
 def riempi(utente_id: int, byte: int) -> None:
     cartella = contesto.cartella_utente(utente_id)

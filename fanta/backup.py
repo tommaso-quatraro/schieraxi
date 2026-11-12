@@ -29,6 +29,11 @@ MAX_PROFONDITA = 10
 MAX_GIOCATORI_SCELTA = MAX_GIOCATORI_SQUADRA
 # Lo storico dei movimenti ne tiene al massimo movimenti.MAX_STORICO (lo taglia movimenti.registra) e gli osservati sono al massimo
 # osservati.MASSIMO (osservati.aggiungi): un backup con di più non viene dall'app.
+# Una voce dei movimenti: in un gruppo (i giocatori di uno scambio, presi o lasciati da una squadra) al massimo una rosa intera, la
+# più grande che le regole ammettono (4 ruoli da regole.MAX_ROSA_PER_RUOLO); il riassunto di un'importazione che cambia tutte le
+# rose (20 squadre da 40 giocatori lasciati e presi, nomi veri sotto i 30 caratteri) resta sotto i 100 mila caratteri.
+MAX_GIOCATORI_MOVIMENTO = 4 * regole.MAX_ROSA_PER_RUOLO
+MAX_TESTO_MOVIMENTO = 100_000
 
 
 def nome_file(creato: str) -> str:
@@ -58,10 +63,6 @@ def _intero(v: Any) -> bool:
 
 def _numero_o_niente(v: Any) -> bool:
     return v is None or _intero(v) or (type(v) is float and math.isfinite(v))
-
-
-def _testo_o_niente(v: Any) -> bool:
-    return v is None or isinstance(v, str)
 
 
 def _codici(v: Any) -> bool:
@@ -102,46 +103,78 @@ def _scelte(d: Any) -> None:
             raise ValueError("formato non riconosciuto")
 
 
-def _giocatore_movimento(g: Any) -> bool:
-    return (isinstance(g, dict) and isinstance(g.get("nome"), str) and (g.get("id") is None or _intero(g["id"]))
-            and _testo_o_niente(g.get("ruolo")) and _testo_o_niente(g.get("squadra")) and _numero_o_niente(g.get("costo")))
+def _forma(giusta: bool) -> None:
+    if not giusta:
+        raise ValueError("formato non riconosciuto")
 
 
-def _giocatori_movimento(v: Any) -> bool:
-    return isinstance(v, list) and all(_giocatore_movimento(g) for g in v)
+def _breve(v: Any) -> bool:
+    return isinstance(v, str) and len(v) <= MAX_TESTO_ROSE
 
 
-def _scambio(s: Any) -> bool:
-    return (isinstance(s, dict) and isinstance(s.get("squadre"), list) and len(s["squadre"]) == 2
-            and all(isinstance(n, str) for n in s["squadre"]) and _giocatori_movimento(s.get("da_a"))
-            and _giocatori_movimento(s.get("da_b")))
+def _breve_o_niente(v: Any) -> bool:
+    return v is None or _breve(v)
 
 
-def _gruppo(s: Any) -> bool:
-    return isinstance(s, dict) and isinstance(s.get("squadra"), str) and _giocatori_movimento(s.get("giocatori"))
+def _solo(d: dict, chiavi: tuple[str, ...]) -> dict:
+    return {k: v for k, v in d.items() if k in chiavi}
 
 
-def _credito(c: Any) -> bool:
-    return (isinstance(c, dict) and isinstance(c.get("squadra"), str) and _numero_o_niente(c.get("prima"))
-            and _numero_o_niente(c.get("dopo")))
+def _giocatore_movimento(g: Any) -> dict:
+    """Le parti di movimenti._breve: codice, nome, ruolo, squadra di Serie A, costo."""
+    _forma(isinstance(g, dict) and _breve(g.get("nome")) and (g.get("id") is None or _intero(g["id"]))
+           and _breve_o_niente(g.get("ruolo")) and _breve_o_niente(g.get("squadra")) and _numero_o_niente(g.get("costo")))
+    return _solo(g, ("id", "nome", "ruolo", "squadra", "costo"))
+
+
+def _giocatori_movimento(v: Any) -> list[dict]:
+    _forma(isinstance(v, list) and len(v) <= MAX_GIOCATORI_MOVIMENTO)
+    return [_giocatore_movimento(g) for g in v]
+
+
+def _scambio(s: Any) -> dict:
+    _forma(isinstance(s, dict) and isinstance(s.get("squadre"), list) and len(s["squadre"]) == 2 and all(_breve(n) for n in s["squadre"]))
+    return {"squadre": list(s["squadre"]), "da_a": _giocatori_movimento(s.get("da_a")), "da_b": _giocatori_movimento(s.get("da_b"))}
+
+
+def _gruppo(s: Any) -> dict:
+    _forma(isinstance(s, dict) and _breve(s.get("squadra")))
+    return {"squadra": s["squadra"], "giocatori": _giocatori_movimento(s.get("giocatori"))}
+
+
+def _credito(c: Any) -> dict:
+    _forma(isinstance(c, dict) and _breve(c.get("squadra")) and _numero_o_niente(c.get("prima")) and _numero_o_niente(c.get("dopo")))
+    return _solo(c, ("squadra", "prima", "dopo"))
+
+
+def _nome_squadra(n: Any) -> str:
+    _forma(_breve(n))
+    return n
 
 
 _PARTI_MOVIMENTO = {"scambi": _scambio, "svincolati_presi": _gruppo, "tagliati": _gruppo, "crediti": _credito,
-                    "squadre_nuove": lambda n: isinstance(n, str), "squadre_tolte": lambda n: isinstance(n, str)}
+                    "squadre_nuove": _nome_squadra, "squadre_tolte": _nome_squadra}
 
 
-def _movimenti(d: Any) -> None:
+def _voce_movimento(m: Any) -> dict:
+    _forma(isinstance(m, dict) and _breve_o_niente(m.get("quando"))
+           and (m.get("testo") is None or (isinstance(m["testo"], str) and len(m["testo"]) <= MAX_TESTO_MOVIMENTO)))
+    voce = {}
+    for k, v in m.items():
+        if k in ("quando", "testo"):
+            voce[k] = v
+        elif k in _PARTI_MOVIMENTO:
+            _forma(v is None or isinstance(v, list))
+            voce[k] = None if v is None else [_PARTI_MOVIMENTO[k](x) for x in v]
+    return voce
+
+
+def _movimenti(d: Any) -> list[dict]:
     """Lo storico come lo scrive movimenti.registra: un elenco di voci (al massimo movimenti.MAX_STORICO), ognuna con data e testo
     e gli elenchi di scambi, svincolati presi, tagli, crediti e squadre nuove o tolte, ciascuno con la sua forma (la leggono l'avviso
-    «preso da poco» e l'app per iPhone)."""
-    if not isinstance(d, list) or len(d) > movimenti.MAX_STORICO:
-        raise ValueError("formato non riconosciuto")
-    for m in d:
-        giusta = (isinstance(m, dict) and _testo_o_niente(m.get("quando")) and _testo_o_niente(m.get("testo"))
-                  and all(m.get(k) is None or (isinstance(m[k], list) and all(ok(x) for x in m[k]))
-                          for k, ok in _PARTI_MOVIMENTO.items()))
-        if not giusta:
-            raise ValueError("formato non riconosciuto")
+    «preso da poco» e l'app per iPhone). Si scrive una copia con le sole parti che l'app scrive."""
+    _forma(isinstance(d, list) and len(d) <= movimenti.MAX_STORICO)
+    return [_voce_movimento(m) for m in d]
 
 
 REGOLE_OLTRE_I_TETTI = ("Le regole di questo backup superano i limiti dell'app (per esempio troppi moduli o fasce del modificatore, "
@@ -279,8 +312,8 @@ def controlla(backup: Any) -> dict[str, Any]:
 
 
 def _testi(file: dict[str, Any]) -> dict[str, str]:
-    """Il testo di ogni file come andrà su disco, compatto (senza rientri: un file non pesa più della sua parte del backup). Un
-    testo che non si può scrivere (un carattere spezzato) si scopre qui, prima di scrivere il primo file."""
+    """Il testo di ogni file come andrà su disco, in forma compatta. Un testo che non si può scrivere (un carattere spezzato) si
+    scopre qui, prima di scrivere il primo file."""
     testi = {}
     for nome, contenuto in file.items():
         testo = json.dumps(contenuto, ensure_ascii=False)
