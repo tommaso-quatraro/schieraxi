@@ -36,6 +36,17 @@ def _id(nome: str) -> int:
         return db.execute("SELECT id FROM utenti WHERE nome_utente = ?", (nome,)).fetchone()[0]
 
 
+# ---------------------------------------------------------------- nessun calcolo partito: niente «riprova fra 3 secondi»
+def test_senza_calcolo_partito_il_widget_riprova_fra_un_minuto(due_utenti, monkeypatch):
+    a, _ = due_utenti
+    calcolo.cache.clear()
+    _formazione_in_cache(monkeypatch, {"v": "dati-1"}, [])
+    c, h = widget(token_di(a))
+    r = c.get("/api/widget", headers=h)
+    assert r.status_code == 202 and r.json()["riprova_tra"] == calcolo.RIPROVA_SENZA_CALCOLO
+    assert r.headers["retry-after"] == str(calcolo.RIPROVA_SENZA_CALCOLO) and "calcolando" not in r.json()["detail"]
+
+
 # ---------------------------------------------------------------- chi guarda solo il widget
 def test_chi_guarda_solo_il_widget_lo_trova_pronto_dopo_un_aggiornamento(due_utenti, monkeypatch):
     """Anna non apre l'app da 8 giorni ma il suo widget chiede ogni ora: dopo un aggiornamento dei dati il riscaldamento prepara
