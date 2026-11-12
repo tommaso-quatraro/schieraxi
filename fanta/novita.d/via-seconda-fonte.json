@@ -2,10 +2,10 @@
   "titolo": "Una fonte di dati in meno: tolta la seconda fonte di probabili",
   "voci": [
     "Stato dei dati e pagine legali: non c'è più la seconda fonte di probabili formazioni, che si raccoglieva solo per misura e non era usata dai consigli.",
-    "Stato dei dati: spariscono le righe rimaste delle quote, tolte da tempo."
+    "Stato dei dati: spariscono le righe rimaste di funzioni tolte da tempo."
   ],
   "tecnico": [
     "Tolti fanta/fonti/sosfanta.py, fanta/probabili_fonte2.py, fanta/verifica_probabili_fonte2.py e la voce in verifica --fonti, il passo in aggiorna.esegui e nel giro delle probabili del pianificatore, l'interruttore sosfanta di fonti_attive, la voce in testi_legali.FONTI_TESTO, la chiave probabili_fonte2 di stato_dati.ombra, tests/test_probabili_fonte2.py e tests/dati/sosfanta_feed.xml; riga FANTA_FONTE_SOSFANTA=0 del servizio di prova.",
-    "archivio._toglie_tabella_dismessa all'avvio, una volta sola: DROP di quote, quote_giocatore, probabili_fonte2; DELETE delle righe aggiornamenti quote%, crediti-giocatore%, probabili-fonte2 e delle righe controlli somma_quote. La fonte footballdata resta."
+    "archivio._toglie_tabella_dismessa all'avvio, una volta sola: DROP delle tabelle di archivio.TABELLE_DISMESSE (con probabili_fonte2) e DELETE delle righe di aggiornamenti (AGGIORNAMENTI_DISMESSI) e controlli (CONTROLLI_DISMESSI) delle funzioni dismesse (decisione 0005). La fonte footballdata resta."
   ]
 }
