@@ -129,10 +129,34 @@ def test_senza_database_degli_account_nessun_allarme_e_niente_di_scritto(ambient
     assert not (percorsi.cartella_account() / "account.sqlite").exists()
 
 
-def test_database_degli_account_illeggibile_si_vede_e_il_giro_finisce(ambiente, db):
+def test_database_degli_account_illeggibile_il_giro_del_cron_non_muore_e_avvisa(ambiente, tmp_path):
+    """Come lo lancia il cron (`giro`, che non passa `contesti`): con il database degli account rovinato non si leggono né
+    l'elenco degli utenti né quello delle cartelle. Il giro non deve morire lasciando solo una traccia nel registro: finisce,
+    lo scrive in «Stato dei dati» e al secondo giro avvisa."""
     vivo = nuovo_account("utente1")
     cartella_rinata(vivo + 50)
     (percorsi.cartella_account() / "account.sqlite").write_bytes(b"non sono un database" * 10)
-    esito = sentinella.esegui(db, ADESSO, contesti=[])                # `contesti`: l'elenco degli utenti non passa dal database
-    assert trovate(esito) == [("risposta_in_errore", None, None)]     # un controllo che non riesce si segnala, non tace
-    assert "cartelle" in esito["rotture"][0].dettaglio and "DatabaseError" in esito["rotture"][0].dettaglio
+    stato, archivio_di_prova, mandati = tmp_path / "sentinella.json", tmp_path / "fanta.sqlite", []
+
+    def manda(titolo, testo):
+        mandati.append(testo)
+        return True
+
+    def giro(ore: int) -> dict:
+        return sentinella.giro(manda=manda, file_stato=stato, adesso=ADESSO + timedelta(hours=ore), scrivi=lambda s: None,
+                               db_percorso=archivio_di_prova)
+
+    esito = giro(0)
+    assert esito["controllati"] == [] and set(trovate(esito)) == {("risposta_in_errore", None, None)}
+    dettagli = [r.dettaglio for r in esito["rotture"]]
+    assert any("utenti" in d and "DatabaseError" in d for d in dettagli)        # l'elenco di chi controllare
+    assert any("cartelle" in d and "DatabaseError" in d for d in dettagli)      # il conto delle cartelle senza account
+    with contextlib.closing(archivio.apri(archivio_di_prova)) as db:
+        righe = righe_di_stato(db)
+    assert righe["sentinella_risposta_in_errore"]["esito"] == "errore" and righe["sentinella"]["esito"] == "errore"
+    assert "utenti" in righe["sentinella_risposta_in_errore"]["dettaglio"]
+    assert mandati == []                                              # un giro solo non basta, come per ogni altra rottura
+    giro(1)
+    assert len(mandati) == 1 and "risposta_in_errore" in mandati[0]
+    ultimo = json.loads(stato.read_text(encoding="utf-8"))["giri"][-1]
+    assert ultimo["rotte"] == ["risposta_in_errore"] and ultimo["inviato"] is True
