@@ -31,6 +31,11 @@ extension Catalogo {
             "La tua, la consigliata (\(modulo))"
         }
 
+        /// `diario.la_consigliata`
+        static func laConsigliata(modulo: String) -> String {
+            "La consigliata (\(modulo))"
+        }
+
         /// `diario.cosa_hai_schierato_titolo`
         static let cosaHaiSchieratoTitolo = "Cosa hai schierato"
 

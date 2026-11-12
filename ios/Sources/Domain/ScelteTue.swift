@@ -11,6 +11,10 @@ struct ScelteTue: Decodable {
     let percentualeTua: Double?
     let pochiDati: Bool?
     let perGiornata: [SceltaGiornata]?
+    /// La frase del server sulle giornate senza verdetto (#614): quante non entrano nel confronto perché la consigliata di allora
+    /// non era stata salvata, o che finora hai schierato gli stessi titolari della consigliata. Si mostra così com'è; null o
+    /// assente (server di prima) = niente da dire.
+    let nota: String?
 }
 
 struct SceltaGiornata: Decodable, Identifiable {
@@ -64,6 +68,11 @@ struct ScelteTueTesto: Equatable {
     let percentuale: Int?
     let puntiDifferenza: Double
     let righe: [RigaScelta]
+    /// La frase del server sulle giornate senza verdetto (`nota`), nil se non c'è.
+    let nota: String?
+
+    /// Nessuna giornata con un verdetto: la scheda ha solo la frase del server.
+    var soloNota: Bool { giornate == 0 }
 
     struct RigaScelta: Equatable, Identifiable {
         let id: String
@@ -77,16 +86,22 @@ struct ScelteTueTesto: Equatable {
 
     enum Esito: Equatable { case tua, consigliata, pari }
 
-    /// `nil` se il blocco manca o non ci sono giornate con scelte diverse: la scheda allora non si mostra.
+    /// `nil` se il blocco manca, oppure se non ci sono giornate con scelte diverse e il server non ha niente da dire (`nota`):
+    /// la scheda allora non si mostra. Senza giornate ma con la frase, la scheda ha solo quella (`soloNota`).
     init?(_ s: ScelteTue?) {
-        guard let s, let n = s.giornate, n > 0 else { return nil }
+        guard let s else { return nil }
+        let n = max(0, s.giornate ?? 0)
+        let frase = s.nota?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard n > 0 || !frase.isEmpty else { return nil }
+        nota = frase.isEmpty ? nil : frase
         giornate = n
         let t = max(0, s.meglioTua ?? 0)
         tua = t
         consigliata = max(0, s.meglioConsigliata ?? 0)
         pari = max(0, s.pari ?? 0)
         pochiDati = s.pochiDati ?? (n < Self.giornateMinime)
-        percentuale = s.percentualeTua.map { Int($0.rounded()) } ?? Int((Double(t) * 100 / Double(n)).rounded())
+        let calcolata: Int? = n > 0 ? Int((Double(t) * 100 / Double(n)).rounded()) : nil
+        percentuale = s.percentualeTua.map { Int($0.rounded()) } ?? calcolata
         puntiDifferenza = s.puntiDifferenza ?? 0
         righe = (s.perGiornata ?? []).map(Self.riga)
     }
@@ -135,8 +150,10 @@ struct ScelteTueTesto: Equatable {
         return percentuale.map { "Hai avuto ragione nel \($0)% delle giornate." } ?? ""
     }
 
-    /// La frase che legge VoiceOver per tutto il riepilogo.
+    /// La frase che legge VoiceOver per tutto il riepilogo, con la frase del server in fondo.
     var voceRiepilogo: String {
-        "Le tue scelte. In \(Formato.giornate(giornate)) con undici diversi dal consiglio: meglio tu \(Self.volte(tua)), meglio il consiglio \(Self.volte(consigliata)), pari \(Self.volte(pari)). \(frasePunti) \(fraseCommento)"
+        let fine = nota.map { " \($0)" } ?? ""
+        if soloNota { return "Le tue scelte." + fine }
+        return "Le tue scelte. In \(Formato.giornate(giornate)) con undici diversi dal consiglio: meglio tu \(Self.volte(tua)), meglio il consiglio \(Self.volte(consigliata)), pari \(Self.volte(pari)). \(frasePunti) \(fraseCommento)" + fine
     }
 }

@@ -142,17 +142,20 @@ struct PrecisioneDiario: Decodable, Equatable {
         var punti: Double?
         var mediaConsigliata: Double?
         var mediaTua: Double?
-        private enum Chiavi: String, CodingKey { case giornate, meglioConsigliata, meglioTua, pari, punti, mediaConsigliata, mediaTua }
+        /// La frase del server sulle giornate senza verdetto (#614), la stessa di «Le tue scelte»: dopo i numeri, o al loro posto
+        /// se non ci sono giornate da confrontare. Null o assente (server di prima) = niente da dire.
+        var nota: String?
+        private enum Chiavi: String, CodingKey { case giornate, meglioConsigliata, meglioTua, pari, punti, mediaConsigliata, mediaTua, nota }
         init(giornate: Int? = nil, meglioConsigliata: Int? = nil, meglioTua: Int? = nil, pari: Int? = nil, punti: Double? = nil,
-             mediaConsigliata: Double? = nil, mediaTua: Double? = nil) {
+             mediaConsigliata: Double? = nil, mediaTua: Double? = nil, nota: String? = nil) {
             self.giornate = giornate; self.meglioConsigliata = meglioConsigliata; self.meglioTua = meglioTua; self.pari = pari
-            self.punti = punti; self.mediaConsigliata = mediaConsigliata; self.mediaTua = mediaTua
+            self.punti = punti; self.mediaConsigliata = mediaConsigliata; self.mediaTua = mediaTua; self.nota = nota
         }
         init(from decoder: Decoder) throws {
             let k = try decoder.container(keyedBy: Chiavi.self)   // non è un oggetto: la voce si scarta
             giornate = interoQP(k, .giornate); meglioConsigliata = interoQP(k, .meglioConsigliata); meglioTua = interoQP(k, .meglioTua)
             pari = interoQP(k, .pari); punti = numeroQP(k, .punti)
-            mediaConsigliata = numeroQP(k, .mediaConsigliata); mediaTua = numeroQP(k, .mediaTua)
+            mediaConsigliata = numeroQP(k, .mediaConsigliata); mediaTua = numeroQP(k, .mediaTua); nota = testoQP(k, .nota)
         }
     }
 
@@ -352,8 +355,9 @@ struct TestoPrecisione: Equatable {
             gioca = Voce(numero: "–", etichetta: etiGioca, frase: vuoto)
         }
 
-        // 3. Consigliata contro la tua
+        // 3. Consigliata contro la tua, con la frase del server sulle giornate senza verdetto (#614) dopo i numeri o al loro posto
         let etiCf = "giornate in cui la consigliata ha fatto meglio della tua"
+        let notaCf = p.confronto?.nota?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if let cf = p.confronto, let g = cf.giornate, g > 0 {
             var frase = "Giornate in cui la consigliata ha fatto meglio della tua: \(cf.meglioConsigliata ?? 0) su \(g). Meglio la tua: \(cf.meglioTua ?? 0). Pari: \(cf.pari ?? 0)."
             if let punti = cf.punti {
@@ -365,10 +369,11 @@ struct TestoPrecisione: Equatable {
                     frase += " Con le tue scelte hai fatto \(v(-punti)) \(Self.uno(-punti) ? "punto" : "punti") in più della consigliata."
                 }
             }
+            if !notaCf.isEmpty { frase += " " + notaCf }
             confronto = Voce(numero: "\(cf.meglioConsigliata ?? 0) su \(g)", etichetta: etiCf, frase: frase)
         } else {
             confronto = Voce(numero: "–", etichetta: etiCf,
-                             frase: "Non sappiamo ancora cosa hai schierato: dillo qui sotto in ogni giornata, con «Ho schierato…».")
+                             frase: notaCf.isEmpty ? "Non sappiamo ancora cosa hai schierato: dillo qui sotto in ogni giornata, con «Ho schierato…»." : notaCf)
         }
 
         // 4. Punti della squadra (consigliata): previsti contro fatti
@@ -405,8 +410,9 @@ struct TestoPrecisione: Equatable {
             if let e = g.erroreFantavoto { r += "fantavoto: errore \(v(e)) · " }
             r += "squadra: \(v(g.attesi)) previsti, \(v(g.fatti)) fatti"
             if let tua = g.tua {
-                let d = g.differenza ?? 0
-                r += " · tua: \(v(tua)) (\(d > 0 ? "+" : d < 0 ? "−" : "")\(v(abs(d))))"
+                // senza la consigliata di allora il server non manda la differenza: i tuoi punti da soli, non «(0,0)» (come la web)
+                r += " · tua: \(v(tua))"
+                if let d = g.differenza { r += " (\(d > 0 ? "+" : d < 0 ? "−" : "")\(v(abs(d))))" }
             }
             return r
         }

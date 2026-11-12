@@ -24,7 +24,6 @@ struct TestiWeb {
     /// Chiave e testo italiano, come erano in `fanta/web/testi.js` il 12/11/2026.
     private static let testi: [String: String] = [
         "avv.diario_riga": "Giornata per giornata: la formazione che hai schierato contro la consigliata.",
-        "avv.per_ogni_giornata": "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI ti avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina la sceglie SchieraXI in entrambi i casi. SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la trovi qui, con in evidenza i giocatori che hai cambiato. Si aggiorna da solo dopo ogni giornata.",
         "confronto.fattore_voto": "Voto in pagella atteso",
         "diff.1": "Facile",
         "diff.2": "Abbordabile",

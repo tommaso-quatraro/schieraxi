@@ -30,7 +30,7 @@ struct RegistroGiornateTests {
         #expect(r.calibrazione == 0.1)
         #expect(r.copertura == 0.8)
         let soglie = try #require(r.soglie)
-        #expect(soglie.i1 == -0.03)
+        #expect(soglie.i1 == 0.01)
         #expect(soglie.i2Calibrazione == 0.05)
         #expect(soglie.i2Brier == 0.15)
         #expect(soglie.i3Minimo == 0.72)
@@ -57,7 +57,7 @@ struct RegistroGiornateTests {
     @Test("Media e soglia di ogni misura, scritte come la web")
     func dettagli() throws {
         let r = try registro()
-        #expect(ParoleRegistro.dettaglio(.fantavoto, di: r) == "−5,7% (deve stare a −3% o meno) · errore 1,00 contro 1,06")
+        #expect(ParoleRegistro.dettaglio(.fantavoto, di: r) == "−5,7% (deve stare a +1% o meno) · errore 1,00 contro 1,06")
         #expect(ParoleRegistro.dettaglio(.gioca, di: r) == "scarto 10 punti (al massimo 5) · punteggio di Brier 0,100 (al massimo 0,150)")
         #expect(ParoleRegistro.dettaglio(.fascia, di: r) == "80% (deve stare tra 72% e 88%)")
     }
@@ -156,7 +156,7 @@ struct RegistroGiornateTests {
     func righeComeLaWeb() throws {
         let web = try TestiWeb()
         let r = try registro()
-        #expect(Catalogo.Sd.regI1Riga(f: "1,06", m: "1,00", s: "−3%", v: "−5,7%") == ParoleRegistro.dettaglio(.fantavoto, di: r))
+        #expect(Catalogo.Sd.regI1Riga(f: "1,06", m: "1,00", s: "+1%", v: "−5,7%") == ParoleRegistro.dettaglio(.fantavoto, di: r))
         let dieci = try riempi(web.italiano("sd.reg_punti.other"), ["n": "10"])
         #expect(Catalogo.Sd.regI2Riga(b: "0,100", c: dieci, sb: "0,150", sc: "5") == ParoleRegistro.dettaglio(.gioca, di: r))
         let unPunto = try riempi(web.italiano("sd.reg_punti.one"), ["n": "1"])

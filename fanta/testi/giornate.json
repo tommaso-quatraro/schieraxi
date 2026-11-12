@@ -95,14 +95,6 @@
     "it": "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata.",
     "en": "No comparison with the recommended lineup here: the one shown before the deadline had not been saved."
   },
-  "giornate.fuori_confronto.one": {
-    "it": "1 giornata con la tua formazione non entra nel confronto: la consigliata mostrata prima della scadenza non era stata salvata.",
-    "en": "1 matchday with your lineup is left out of the comparison: the recommended lineup shown before the deadline had not been saved."
-  },
-  "giornate.fuori_confronto.other": {
-    "it": "{n} giornate con la tua formazione non entrano nel confronto: la consigliata mostrata prima della scadenza non era stata salvata.",
-    "en": "{n} matchdays with your lineup are left out of the comparison: the recommended lineup shown before the deadline had not been saved."
-  },
   "giornate.correggi": {
     "it": "Non è quello che ho schierato",
     "en": "That is not what I fielded"

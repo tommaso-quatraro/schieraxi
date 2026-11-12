@@ -923,5 +923,21 @@
   "frase.diario.serie_a_attesa.other": {
     "it": "Su tutta la Serie A servono ancora {n} giornate per dire quanto ci prendiamo.",
     "en": "Across the whole Serie A we need {n} more matchdays to tell how accurate we are."
+  },
+  "frase.diario.confronto_fuori.one": {
+    "it": "{n} giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+    "en": "{n} matchday is left out of the comparison: the recommended lineup of the time had not been saved."
+  },
+  "frase.diario.confronto_fuori.other": {
+    "it": "{n} giornate non entrano nel confronto: la consigliata di allora non era stata salvata.",
+    "en": "{n} matchdays are left out of the comparison: the recommended lineup of the time had not been saved."
+  },
+  "frase.diario.confronto_stessa": {
+    "it": "Finora hai schierato gli stessi undici della consigliata.",
+    "en": "So far you have fielded the same eleven as the recommended lineup."
+  },
+  "frase.diario.confronto_stessa_fuori": {
+    "it": "Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. {fuori}",
+    "en": "You fielded the same eleven as the recommended lineup in every matchday where it had been saved. {fuori}"
   }
 }

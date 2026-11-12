@@ -61,7 +61,7 @@ struct ConsiglioFormazioneTests {
         #expect(ParoleConsiglio.dettaglio(.stabilita, di: c)
                 == "1,5 a formazione, in media · per meno di 1 punto atteso, senza un titolare diventato fuori o improbabile: 1 (devono essere 0)")
         #expect(ParoleConsiglio.dettaglio(.chiGioca, di: c)
-                == "sotto il 20% o fuori: 8 · con un compagno di ruolo al 50% o più tra gli esclusi: 0 (devono essere 0)")
+                == "sotto il 20% o fuori: 8 · con un compagno di ruolo al 20% o più tra gli esclusi: 0 (devono essere 0)")
         #expect(ParoleConsiglio.dettaglio(.perche, di: c)
                 == "spiegate 16 su 16 (devono essere tutte) · titolari senza un motivo loro in «Perché questo numero»: 4,5% (al massimo 10%)")
     }
@@ -106,7 +106,7 @@ struct ConsiglioFormazioneTests {
         let c = try consiglio(#"{"finestra": 8, "giornate": 8, "voci": 8, "meno_s2": null, "meno_schierata": null, "cambi": null, "verdetto": true, "soglie": {"C1": 0.0, "C2": 0, "C3": 0, "C4_senza_motivo": 0.1}}"#)
         #expect(ParoleConsiglio.dettaglio(.valore, di: c) == "– punti a giornata (deve stare a 0 o più)")
         #expect(ParoleConsiglio.dettaglio(.chiGioca, di: c)
-                == "sotto il 20% o fuori: – · con un compagno di ruolo al 50% o più tra gli esclusi: – (devono essere 0)")
+                == "sotto il 20% o fuori: – · con un compagno di ruolo al 20% o più tra gli esclusi: – (devono essere 0)")
         #expect(ParoleConsiglio.punti(nil) == "–")
         #expect(ParoleConsiglio.punti(0.004) == "0,00")
         #expect(ParoleConsiglio.intero(nil) == "–")
