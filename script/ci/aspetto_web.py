@@ -56,7 +56,7 @@ SCENE: dict[str, Scena] = {
     "rosa": Scena("/?vista=squadra&rosa="),                                        # la rosa della mia squadra
     "scheda": Scena("/?vista=formazione", ("#contenuto [data-giocatore]",)),        # scheda del primo titolare
     "altro": Scena("/?vista=altro"),
-    "diario": Scena("/?vista=altro&voce=diario", ("#apri-diario",)),               # il foglio del diario, non solo la voce
+    "diario": Scena("/?vista=giornate"),                                            # la pagina Giornate, il Diario di prima (#617)
     "regole": Scena("/?vista=altro&voce=regole"),
     "impostazioni": Scena("/?vista=impostazioni"),
 }

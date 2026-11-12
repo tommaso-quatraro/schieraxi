@@ -112,6 +112,18 @@ prima della scadenza:
 - tablet e PC: campo a sinistra e panchina a destra a 768, 1024 e 1440 px; sul PC la scheda nel pannello a fianco, che
   si chiude se cambia il modulo; scheda ed elenco dei sostituti senza violazioni gravi di axe, chiaro e scuro.
 
+`test_giornate.py`, la pagina «Giornate» che ha preso il posto del Diario (#617):
+- si apre con un tocco dalla barra; gli indirizzi vecchi del Diario la aprono; «Com'è andata» della Formazione la apre
+  sulla giornata appena finita;
+- in cima la riga sulla precisione, con i numeri di prima dietro «Dettagli»; una riga per giornata dalla più recente con
+  punti fatti e attesi; al tocco gli 11 con fantavoto atteso (quello mostrato prima della scadenza, se c'è) e preso;
+- il confronto «tu contro la consigliata» solo dove `consigliata.origine` è `"mostrata"`: con la risposta del server di
+  oggi (campo assente) non c'è, con quella del server con #614 c'è solo nelle giornate giuste (risposte finte costruite
+  su quella registrata);
+- un solo pulsante di correzione, che fa scegliere gli 11 e li manda con la stagione; non c'è per una stagione passata;
+- errore con «Riprova», pagina vuota che dice perché; chiaro e scuro a 390 e 1440 px senza violazioni gravi; elenco a
+  sinistra e giornata a destra a 768 e 1440 px, gli 11 sotto la riga al telefono.
+
 ## Aggiungere un test di comportamento (dieci righe)
 Un file `tests/browser/test_<cosa>.py`. Il segno `browser` lo mette da solo `conftest.py` a ogni test di questa cartella:
 non serve scriverlo.

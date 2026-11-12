@@ -1,0 +1,118 @@
+{
+  "giornate.carico": {
+    "it": "Carico le giornate…",
+    "en": "Loading matchdays…"
+  },
+  "giornate.precisione": {
+    "it": "Finora il fantavoto atteso sbaglia in media di {e} punti a giocatore.",
+    "en": "So far the expected fantasy score is off by {e} points per player on average."
+  },
+  "giornate.dettagli": {
+    "it": "Dettagli",
+    "en": "Details"
+  },
+  "giornate.elenco": {
+    "it": "Giornate finite",
+    "en": "Finished matchdays"
+  },
+  "giornate.hai_consigliata": {
+    "it": "Hai schierato la consigliata.",
+    "en": "You fielded the recommended lineup."
+  },
+  "giornate.cambi.one": {
+    "it": "1 cambio tuo: {d} punti rispetto alla consigliata.",
+    "en": "1 change of yours: {d} points compared with the recommended lineup."
+  },
+  "giornate.cambi.other": {
+    "it": "{n} cambi tuoi: {d} punti rispetto alla consigliata.",
+    "en": "{n} changes of yours: {d} points compared with the recommended lineup."
+  },
+  "giornate.cambi_pari.one": {
+    "it": "1 cambio tuo: gli stessi punti della consigliata.",
+    "en": "1 change of yours: the same points as the recommended lineup."
+  },
+  "giornate.cambi_pari.other": {
+    "it": "{n} cambi tuoi: gli stessi punti della consigliata.",
+    "en": "{n} changes of yours: the same points as the recommended lineup."
+  },
+  "giornate.tua": {
+    "it": "La tua formazione.",
+    "en": "Your lineup."
+  },
+  "giornate.automatica": {
+    "it": "Non l'avevi cambiata: sono i punti della consigliata alla scadenza.",
+    "en": "You had not changed it: these are the points of the recommended lineup at the deadline."
+  },
+  "giornate.non_salvata": {
+    "it": "Formazione non salvata: sono i punti della consigliata.",
+    "en": "Lineup not saved: these are the points of the recommended lineup."
+  },
+  "giornate.formazione_tua": {
+    "it": "La tua formazione ({modulo})",
+    "en": "Your lineup ({modulo})"
+  },
+  "giornate.formazione_automatica": {
+    "it": "La consigliata alla scadenza ({modulo})",
+    "en": "The recommended lineup at the deadline ({modulo})"
+  },
+  "giornate.formazione_consigliata": {
+    "it": "La consigliata ({modulo})",
+    "en": "The recommended lineup ({modulo})"
+  },
+  "giornate.formazione_rifatta": {
+    "it": "La consigliata rifatta a giornata finita ({modulo})",
+    "en": "The recommended lineup rebuilt after the matchday ({modulo})"
+  },
+  "giornate.rifatta_nota": {
+    "it": "Quella mostrata prima della scadenza non era stata salvata: questa è rifatta con i dati di allora.",
+    "en": "The one shown before the deadline had not been saved: this one is rebuilt with the data of the time."
+  },
+  "giornate.tabella": {
+    "it": "Fantavoto atteso e fantavoto preso dei titolari",
+    "en": "Expected and actual fantasy score of the starters"
+  },
+  "giornate.col_giocatore": {
+    "it": "Giocatore",
+    "en": "Player"
+  },
+  "giornate.col_atteso": {
+    "it": "Atteso",
+    "en": "Expected"
+  },
+  "giornate.col_preso": {
+    "it": "Preso",
+    "en": "Actual"
+  },
+  "giornate.senza_voto": {
+    "it": "senza voto",
+    "en": "no score"
+  },
+  "giornate.al_posto": {
+    "it": "Al posto di {fuori} hai messo {dentro}.",
+    "en": "Instead of {fuori} you fielded {dentro}."
+  },
+  "giornate.senza_confronto": {
+    "it": "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata.",
+    "en": "No comparison with the recommended lineup here: the one shown before the deadline had not been saved."
+  },
+  "giornate.correggi": {
+    "it": "Non è quello che ho schierato",
+    "en": "That is not what I fielded"
+  },
+  "giornate.vuoto": {
+    "it": "Ancora niente: le giornate compaiono qui dopo la prima finita.",
+    "en": "Nothing yet: matchdays appear here after the first one ends."
+  },
+  "giornate.vuoto_squadra": {
+    "it": "Ancora niente: manca la tua squadra. Indicala in Squadra, alla voce {voce}.",
+    "en": "Nothing yet: your team is missing. Set it in Team, under {voce}."
+  },
+  "giornate.vuoto_giornate": {
+    "it": "Ancora niente: nella tua lega non è ancora finita nessuna giornata.",
+    "en": "Nothing yet: no matchday has ended in your league."
+  },
+  "giornate.vuoto_calcolo": {
+    "it": "Ancora niente: le giornate finite non sono ancora state calcolate. Succede da solo al prossimo aggiornamento dei dati.",
+    "en": "Nothing yet: the finished matchdays have not been calculated. It happens on its own at the next data update."
+  }
+}

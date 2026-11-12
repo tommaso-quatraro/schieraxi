@@ -123,7 +123,7 @@ struct DiarioView: View {
     static let comeSiLegge = Catalogo.Mercato.comeLegge
     static let perOgniGiornata = Catalogo.Avv.perOgniGiornata
 
-    /// L'etichetta dei punti della consigliata di una giornata, come `etichettaConsigliataDiario` della web (#614): segue
+    /// L'etichetta dei punti della consigliata di una giornata (#614; la web, con la pagina Giornate di #617, ne ha un'altra): segue
     /// `consigliata.origine`. «mostrata» = sono i punti della consigliata mostrata prima della scadenza; altrimenti è una
     /// ricostruzione: «Ricostruita oggi» se quella di allora c'è ma non si può più schierare, «Di SchieraXI» se non era stata
     /// registrata. Un server di prima non manda `origine`: restano le due etichette di sempre. `nil` senza consigliata.

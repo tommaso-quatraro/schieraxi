@@ -167,8 +167,8 @@ def _funzione(nome: str) -> str:
 
 
 def test_web_usa_il_campo_del_server_senza_innerhtml():
-    assert "cartaPrecisione(d.precisione)" in APP
-    corpo = _funzione("cartaPrecisione")
+    assert "dettagliPrecisione(p, " in APP                          # «Dettagli» della pagina Giornate (#617)
+    corpo = _funzione("dettagliPrecisione")
     assert "innerHTML" not in corpo and ".nome" not in corpo        # solo numeri dal server, niente testo libero
 
 
@@ -183,9 +183,10 @@ def test_web_disegna_la_carta_senza_buchi(lingua):
     al_percento = next(r for r in APP.splitlines() if r.startswith("const alPercento = "))
     prova = (TESTI + "\nconst virgola = x => (LINGUA === 'it' ? String(x).replace('.', ',') : String(x));\n" + al_percento + "\n"
              + _funzione("nomeGiornata") + next(r for r in APP.splitlines() if r.startswith("const elidiOrdinali = ")) + "\n"
-             + _funzione("cartaPrecisione") + f"""
+             + _funzione("dettagliPrecisione") + f"""
     LINGUA = "{lingua}";
-    console.log(JSON.stringify([cartaPrecisione({json.dumps(pieno)}), cartaPrecisione({json.dumps(poco)}), cartaPrecisione({{"giornate": 0}})]));
+    console.log(JSON.stringify([dettagliPrecisione({json.dumps(pieno)}, true), dettagliPrecisione({json.dumps(poco)}, true),
+                                dettagliPrecisione({{"giornate": 0}}, true)]));
     """)
     r = subprocess.run(["node", "-"], input=prova, capture_output=True, encoding="utf-8", timeout=30)
     assert r.returncode == 0, r.stderr

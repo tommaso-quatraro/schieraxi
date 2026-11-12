@@ -258,7 +258,7 @@ def test_la_testa_a_giornata_finita():
     html = _testa({"fase": "finita", "riepilogo": r, "prossima": {"scadenza": "2026-10-31 14:50"}})
     testo = _testo(html)
     assert testo.startswith("Giornata 7 · 10ª di Serie A: finita 68,5 punti (attesi 64,2) Com'è andata")
-    assert '<button class="bottone secondario" type="button" data-apri-diario="10">Com\'è andata</button>' in html
+    assert '<button class="bottone secondario" type="button" data-apri-giornata="10">Com\'è andata</button>' in html
     assert "Con la consigliata: 72,0 punti (66,1 attesi)." in testo
     assert testo.endswith("Giornata 8 · 11ª di Serie A Si chiude sab 31 14:50 fra 5 giorni 5 h")   # sotto, la prossima
     # con la consigliata schierata (o gli stessi punti) il confronto non si ripete

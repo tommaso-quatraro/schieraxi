@@ -33,7 +33,7 @@ def _riga(inizio: str) -> str:
 AMBIENTE = r"""
 const chiamate = [];
 const stato = { vista: "formazione", scelta: null, impDaUrl: null, legaTorna: null };
-const VOCI_LEGA = [{ id: "squadre", ambito: "squadra" }, { id: "importa", ambito: "squadra" }, { id: "diario", ambito: "altro" }, { id: "regole", ambito: "altro" }];
+const VOCI_LEGA = [{ id: "squadre", ambito: "squadra" }, { id: "importa", ambito: "squadra" }, { id: "prova", ambito: "altro" }, { id: "regole", ambito: "altro" }];
 const t = k => ({ "shell.impostazioni": "Impostazioni", "nav.formazione": "Formazione", "nav.squadra": "Squadra", "nav.altro": "Altro" }[k] || k);
 const esc = x => String(x ?? "");
 let largo = false; const legaLarga = () => largo;                // finestra da 1100 px (Squadra con menu e pagina affiancati)
@@ -171,9 +171,9 @@ def test_cambiare_schermata_chiude_il_pannello_affiancato():
 
 
 def test_tasti_slash_e_numeri_non_scattano_mentre_si_scrive():
-    """`/` porta nel campo della testata (o apre la ricerca dove il campo non si vede); 1-3 cambiano scheda (tante quante sono le
+    """`/` porta nel campo della testata (o apre la ricerca dove il campo non si vede); 1-4 cambiano scheda (tante quante sono le
     schede: un numero più alto non fa niente) e portano il focus sul titolo; dentro un campo di testo, con Ctrl/⌘/Alt o con il foglio
-    modale aperto non succede niente. Con il pannello affiancato (PR 9) la pagina resta attiva: 1-3, «,» e `/` funzionano come a
+    modale aperto non succede niente. Con il pannello affiancato (PR 9) la pagina resta attiva: 1-4, «,» e `/` funzionano come a
     pannello chiuso."""
     codice = "\n".join([
         "const chiamate = []; let campoVisibile = true; const foglio = { hidden: true }; let affiancato = false;",
@@ -192,7 +192,7 @@ def test_tasti_slash_e_numeri_non_scattano_mentre_si_scrive():
           slash: tasto("/"), slash_campo: tasto("/", { tagName: "INPUT" }), slash_area: tasto("/", { tagName: "TEXTAREA" }),
           slash_scrivibile: tasto("/", { tagName: "DIV", isContentEditable: true }),
           due: tasto("2"), due_campo: tasto("2", { tagName: "INPUT" }), due_ctrl: tasto("2", undefined, { ctrlKey: true }),
-          uno: tasto("1"), quattro: tasto("4"),
+          uno: tasto("1"), quattro: tasto("4"), cinque: tasto("5"),
         };
         foglio.hidden = false; esiti.due_foglio = tasto("2"); esiti.virgola_foglio = tasto(","); esiti.slash_foglio = tasto("/");
         affiancato = true; esiti.due_pannello = tasto("2"); esiti.virgola_pannello = tasto(","); esiti.slash_pannello = tasto("/");
@@ -209,8 +209,9 @@ def test_tasti_slash_e_numeri_non_scattano_mentre_si_scrive():
     for chiave in ("slash_campo", "slash_area", "slash_scrivibile", "due_campo", "due_ctrl", "due_foglio", "virgola_foglio"):
         assert e[chiave] == [[], False], chiave
     assert e["slash_foglio"] == [[["ricerca", ""]], True]                 # foglio modale: la ricerca prende il suo posto
-    assert e["uno"] == [[["vai", "formazione", True]], False] and e["due"] == [[["vai", "squadra", True]], False]
-    assert e["quattro"] == [[], False]                                   # le schede sono tre
+    assert e["uno"] == [[["vai", "formazione", True]], False] and e["due"] == [[["vai", "giornate", True]], False]
+    assert e["quattro"] == [[["vai", "altro", True]], False]
+    assert e["cinque"] == [[], False]                                    # le schede sono quattro (Giornate dal 12/11/2026, #617)
     assert e["due_pannello"] == e["due"] and e["virgola_pannello"] == [[["vai", "impostazioni", True]], False]
     assert e["slash_pannello"] == [[["focus-campo"]], True]
     assert e["slash_telefono"] == [[["ricerca", ""]], True]

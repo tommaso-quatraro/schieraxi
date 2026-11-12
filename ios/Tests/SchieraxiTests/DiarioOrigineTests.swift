@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Diario (#614): l'etichetta dei punti della consigliata segue `consigliata.origine`, come sulla web
-/// (`etichettaConsigliataDiario` di `fanta/web/app.js`, provata sulle stesse voci da `tests/test_diario_origine_web.py`).
+/// Diario (#614): l'etichetta dei punti della consigliata segue `consigliata.origine` (la web, con la pagina Giornate di #617,
+/// mostra il confronto solo con «mostrata»; `tests/test_diario_nota_web.py` controlla che la fixture abbia i campi del server).
 /// Con «mostrata» quei punti sono della consigliata che SchieraXI mostrava prima della scadenza, non di una ricostruzione: prima
 /// la riga diceva «Ricostruita oggi» ogni volta che c'era l'istantanea. Un server di prima non manda `origine`: resta com'era.
 /// La fixture `diario-origine.json` (dati inventati) ha le voci nelle due forme: giornate 11, 10 e 9 con `origine` (server

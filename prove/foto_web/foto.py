@@ -52,7 +52,7 @@ SCENE: dict[str, list[str]] = {
     "rosa": ["vistaRosa()"],
     "scheda": ["vai('formazione')", f"apriGiocatore({PRIMO_GIOCATORE})"],          # scheda del primo titolare
     "altro": ["vai('altro')"],
-    "diario": ["apriDiario()"],
+    "diario": ["vai('giornate')"],                                                   # la pagina Giornate, il Diario di prima (#617)
     "regole": ["vistaRegole()"],
     "impostazioni": ["vai('impostazioni')"],
 }

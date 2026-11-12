@@ -8,17 +8,9 @@
     "it": "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7).",
     "en": "You had chosen quiet hours starting and ending at the same hour: they are not valid, so I turned them off. Turn them on again choosing two different hours (for example from 23 to 7)."
   },
-  "avv.carico_diario": {
-    "it": "Carico il diario…",
-    "en": "Loading the journal…"
-  },
   "avv.dalle": {
     "it": "Dalle",
     "en": "From"
-  },
-  "avv.diario_delle_giornate": {
-    "it": "Diario delle giornate",
-    "en": "Matchday journal"
   },
   "avv.errore_fantamedia": {
     "it": "errore (da fantamedia)",
@@ -43,14 +35,6 @@
   "avv.manda_avviso_prova": {
     "it": "Manda un avviso di prova",
     "en": "Send a test alert"
-  },
-  "avv.meglio_consiglio": {
-    "it": "meglio il consiglio",
-    "en": "recommendation better"
-  },
-  "avv.meglio_tue": {
-    "it": "meglio le tue",
-    "en": "yours better"
   },
   "avv.modello_nbsp": {
     "it": "modello &nbsp;",
@@ -116,65 +100,9 @@
     "it": "Scrivi almeno due lettere.",
     "en": "Type at least two letters."
   },
-  "avv.tue_scelte": {
-    "it": "Le tue scelte",
-    "en": "Your choices"
-  },
   "avv.quot": {
     "it": "quotazione {n}",
     "en": "price {n}"
-  },
-  "avv.riga_scelta": {
-    "it": "{n}: {scelto} invece di {cons}",
-    "en": "{n}: {scelto} instead of {cons}"
-  },
-  "avv.tu_consiglio": {
-    "it": "Tu {tua}, consiglio {cons} ({d}).",
-    "en": "You {tua}, recommendation {cons} ({d})."
-  },
-  "avv.totale_pari": {
-    "it": "In totale i punti sono pari.",
-    "en": "In total the points are level."
-  },
-  "avv.totale_tue": {
-    "it": "In totale le tue scelte hanno fatto {n} punti in più del consiglio.",
-    "en": "In total your choices scored {n} points more than the recommendation."
-  },
-  "avv.totale_consiglio": {
-    "it": "In totale il consiglio ha fatto {n} punti in più delle tue scelte.",
-    "en": "In total the recommendation scored {n} points more than your choices."
-  },
-  "avv.n_diverse.one": {
-    "it": "In 1 giornata hai scelto undici diversi dal consiglio.",
-    "en": "In 1 matchday you chose an eleven different from the recommendation."
-  },
-  "avv.n_diverse.other": {
-    "it": "In {n} giornate hai scelto undici diversi dal consiglio.",
-    "en": "In {n} matchdays you chose an eleven different from the recommendation."
-  },
-  "avv.pochi_dati": {
-    "it": "Ancora pochi dati: servono almeno 8 giornate per dire qualcosa di solido.",
-    "en": "Still little data: at least 8 matchdays are needed to say anything solid."
-  },
-  "avv.piu_punti_tu": {
-    "it": "Hai avuto più punti tu nel {p}% di queste giornate.",
-    "en": "You scored more in {p}% of these matchdays."
-  },
-  "avv.altre_giornate.one": {
-    "it": "Altra 1 giornata",
-    "en": "1 more matchday"
-  },
-  "avv.altre_giornate.other": {
-    "it": "Altre {n} giornate",
-    "en": "{n} more matchdays"
-  },
-  "avv.attesi": {
-    "it": "attesi {n}",
-    "en": "expected {n}"
-  },
-  "avv.del_modello": {
-    "it": "Del modello ({modulo})",
-    "en": "The model's ({modulo})"
   },
   "avv.n_di_11": {
     "it": "{n} di 11",
