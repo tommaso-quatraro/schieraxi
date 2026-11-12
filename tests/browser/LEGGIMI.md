@@ -97,8 +97,8 @@ prima della scadenza:
   salvata altrove; se la scelta non si legge c'è un errore con «Riprova» e niente si può cambiare; rete caduta, rifiuto
   del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono;
 - tastiera: dopo il menu del modulo, la spunta, «Sostituisci» e «Torna alla consigliata» il fuoco resta su un comando;
-- al massimo due decisioni, solo quelle con un'azione, e il reparto scoperto non ne prende più di una; «Usa la
-  consigliata» prende quella nuova;
+- al massimo due decisioni, solo quelle con un'azione: prima le urgenti (fra loro prima quelle con un'azione vera), poi
+  le altre; il reparto scoperto non ne prende più di una; «Usa la consigliata» prende quella nuova;
 - quando il cambio non si può fare: chi gioca una partita già cominciata non ha «Sostituisci» e la scheda dice perché;
   un ritorno alla consigliata rifiutato lascia la formazione com'è e lo dice un avviso (`role="status"`); se la scadenza
   passa con la pagina aperta la schermata si rilegge;

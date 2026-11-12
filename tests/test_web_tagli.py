@@ -68,8 +68,8 @@ def test_le_decisioni_sono_solo_le_righe_con_un_azione_vera():
 
 
 def test_le_decisioni_sono_al_massimo_due_e_il_reparto_scoperto_non_nasconde_le_altre():
-    """Prima le righe con un'azione vera, nell'ordine del server; il reparto scoperto («Vedi la rosa») prende al massimo un posto,
-    e solo se ne resta uno: due righe di copertura nascondevano «rose da aggiornare» o un cambio da fare."""
+    """Senza righe urgenti: prima quelle con un'azione vera, nell'ordine del server; il reparto senza ricambi («Vedi la rosa»)
+    prende al massimo un posto, e solo se ne resta uno: due righe di copertura nascondevano «rose da aggiornare» o un cambio."""
     copertura_p, copertura_d = _voce("copertura:P", "copertura", "mercato"), _voce("copertura:D", "copertura", "mercato")
     rose, dati = _voce("rose-vecchie", "rose", "lega", "rose"), _voce("dati-vecchi", "server", "impostazioni", "avanzate")
     incerto = _voce("dubbio:1", "dubbio", "formazione")                                       # non chiede niente: non conta
@@ -80,6 +80,27 @@ def test_le_decisioni_sono_al_massimo_due_e_il_reparto_scoperto_non_nasconde_le_
     # `vale`: la Formazione toglie quelle che con la formazione in pagina non hanno più senso, e allora sale la successiva
     voci = [incerto, copertura_p, rose, dati]
     assert _con_dafare(voci, "dfDecisioni(voci, v => v.id !== 'rose-vecchie').map(v => v.id)") == ["dati-vecchi", "copertura:P"]
+
+
+def test_le_decisioni_urgenti_stanno_in_cima():
+    """Prima le righe urgenti (priorità 1), e fra loro prima quelle con un'azione vera; poi le non urgenti con un'azione; poi il
+    resto. Dentro ogni gruppo resta l'ordine del server. Un «nessun portiere» urgente restava nascosto da due righe meno importanti."""
+    urgente = lambda v: {**v, "priorita": 1}                                                  # noqa: E731
+    scoperto_p, scoperto_d = urgente(_voce("copertura:P", "copertura", "mercato")), urgente(_voce("copertura:D", "copertura", "mercato"))
+    rischio = _voce("copertura:C", "copertura", "mercato")                                    # reparto senza ricambi: non urgente
+    cambio = {**_voce("dubbio:1", "dubbio", "formazione", giocatore=1), "alternativa": {"id": 2, "nome": "Prova"}}
+    rose, dati = _voce("rose-vecchie", "rose", "lega", "rose"), _voce("dati-vecchi", "server", "impostazioni", "avanzate")
+    primo_avvio = {**_voce("primo-avvio", "primo_avvio", "impostazioni", "informazioni"), "priorita": 3}
+    assert _decisioni([scoperto_p, cambio, rose]) == ["copertura:P", "dubbio:1"]
+    assert _decisioni([scoperto_p, rose]) == ["copertura:P", "rose-vecchie"]
+    assert _decisioni([scoperto_p, dati, primo_avvio]) == ["copertura:P", "dati-vecchi"]
+    assert _decisioni([rose, dati, scoperto_p]) == ["copertura:P", "rose-vecchie"]            # conta l'urgenza, non il posto nella lista
+    assert _decisioni([scoperto_p, urgente(cambio), rose]) == ["dubbio:1", "copertura:P"]     # fra le urgenti prima quella con un'azione
+    assert _decisioni([scoperto_p, urgente(cambio), urgente(rose)]) == ["dubbio:1", "rose-vecchie"]
+    assert _decisioni([scoperto_p, scoperto_d]) == ["copertura:P"]                            # al massimo una riga sul reparto scoperto
+    assert _decisioni([scoperto_p, scoperto_d, rose]) == ["copertura:P", "rose-vecchie"]
+    assert _decisioni([rischio, scoperto_d, rose]) == ["copertura:D", "rose-vecchie"]         # delle due sul reparto resta quella urgente
+    assert _decisioni([cambio, rischio, rose]) == ["dubbio:1", "rose-vecchie"]
 
 
 def test_il_pulsante_di_una_decisione_dice_dove_porta():

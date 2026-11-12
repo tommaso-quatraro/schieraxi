@@ -741,19 +741,69 @@ def test_da_tastiera_spunta_torna_alla_consigliata_e_sostituisci_non_lasciano_il
     assert web.pagina.evaluate("() => !!document.activeElement.closest('main') && ['BUTTON', 'SELECT', 'INPUT'].includes(document.activeElement.tagName)")
 
 
-# ---------------------------------------------------------------- le decisioni: prima quelle con un'azione vera
-def test_il_reparto_scoperto_non_prende_tutti_e_due_i_posti_delle_decisioni(web):
+# ---------------------------------------------------------------- le decisioni: prima le urgenti, poi quelle con un'azione
+def _scoperto(ruolo: str, testo: str, priorita: int = 1) -> dict:
+    return {"id": f"copertura:{ruolo}", "tipo": "copertura", "priorita": priorita, "testo": testo,
+            "azione": "Cerca un rimpiazzo", "destinazione": {"scheda": "mercato", "sezione": None}}
+
+
+def _rose_da_aggiornare(priorita: int = 2) -> dict:
+    return {"id": "rose-vecchie", "tipo": "rose", "testo": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale.",
+            "priorita": priorita, "azione": "Aggiorna le rose", "destinazione": {"scheda": "lega", "sezione": "rose"}}
+
+
+def _dati_fermi() -> dict:
+    return {"id": "dati-vecchi", "tipo": "server", "testo": "I dati non si aggiornano da 3 giorni.", "priorita": 2,
+            "azione": "Controlla", "destinazione": {"scheda": "impostazioni", "sezione": "avanzate"}}
+
+
+def _cambio_da_fare(web, priorita: int = 2) -> dict:
+    """Un titolare in dubbio con un compagno di ruolo da mettere al suo posto: la decisione con «Sostituisci»."""
+    f = web.registrata("/api/formazione")
+    titolari = web.registrata("/api/scelta?giornata=9")["titolari"]
+    esce = next(f["schede"][str(i)] for i in titolari if f["schede"][str(i)]["ruolo"] == "C")
+    entra = next(x for x in f["schede"].values() if x["ruolo"] == "C" and x["id"] not in titolari)
+    return {"id": f"dubbio:{esce['id']}", "tipo": "dubbio", "testo": f"{esce['nome']} è in dubbio (45% di giocare). Meglio {entra['nome']}.",
+            "priorita": priorita, "azione": "Sostituisci", "destinazione": {"scheda": "formazione", "sezione": None, "giocatore": esce["id"]},
+            "giocatore": {"id": esce["id"], "nome": esce["nome"]},
+            "alternativa": {"id": entra["id"], "nome": entra["nome"], "ruolo": "C", "punti_attesi": esce["punti_attesi"] + 0.9}}
+
+
+NESSUN_PORTIERE = "Non hai nessun portiere disponibile per questa giornata."
+# Per ogni caso: le righe del server, e per le due decisioni attese un pezzo del testo e il pulsante con cui la riga finisce.
+CASI_DECISIONI = {
+    # due reparti scoperti e le rose: il reparto scoperto prende un posto solo, e quello urgente sta in cima
+    "due reparti scoperti urgenti e le rose": (
+        lambda web: [_scoperto("P", NESSUN_PORTIERE), _scoperto("D", "In difesa hai solo 2 giocatori disponibili."), _rose_da_aggiornare()],
+        [("nessun portiere", "Vedi la rosa"), ("aste e scambi", "Aggiorna le rose")]),
+    # «nessun portiere» è urgente, il cambio e le rose no: restava nascosto dietro a tutti e due
+    "nessun portiere urgente, un cambio e le rose non urgenti": (
+        lambda web: [_scoperto("P", NESSUN_PORTIERE), _cambio_da_fare(web), _rose_da_aggiornare()],
+        [("nessun portiere", "Vedi la rosa"), ("è in dubbio", "Sostituisci")]),
+    # conta l'urgenza, non il posto nella lista del server
+    "due righe non urgenti e, in fondo, nessun portiere urgente": (
+        lambda web: [_rose_da_aggiornare(), _dati_fermi(), _scoperto("P", NESSUN_PORTIERE)],
+        [("nessun portiere", "Vedi la rosa"), ("aste e scambi", "Aggiorna le rose")]),
+    # fra le urgenti prima quelle con un'azione: con due di loro il reparto scoperto non si vede
+    "due righe urgenti con un'azione e nessun portiere urgente": (
+        lambda web: [_scoperto("P", NESSUN_PORTIERE), _cambio_da_fare(web, priorita=1), _rose_da_aggiornare(priorita=1)],
+        [("è in dubbio", "Sostituisci"), ("aste e scambi", "Aggiorna le rose")]),
+    # niente di urgente: prima le righe con un'azione, il reparto senza ricambi solo se avanza un posto
+    "niente di urgente": (
+        lambda web: [_scoperto("D", "In difesa hai solo 3 giocatori disponibili.", priorita=2), _cambio_da_fare(web), _rose_da_aggiornare()],
+        [("è in dubbio", "Sostituisci"), ("aste e scambi", "Aggiorna le rose")]),
+}
+
+
+@pytest.mark.parametrize("caso", list(CASI_DECISIONI))
+def test_le_decisioni_urgenti_stanno_in_cima_e_il_reparto_scoperto_prende_un_posto_solo(web, caso):
+    """Prima le righe urgenti (fra loro prima quelle con un'azione), poi le non urgenti con un'azione, poi il resto: al massimo due,
+    e al massimo una sul reparto scoperto. Un «nessun portiere» urgente restava nascosto da due righe meno importanti."""
     solo(web, "prima")
-    scoperto = lambda ruolo, testo: {"id": f"copertura:{ruolo}", "tipo": "copertura", "priorita": 1, "testo": testo,   # noqa: E731
-                                     "azione": "Cerca un rimpiazzo", "destinazione": {"scheda": "mercato", "sezione": None}}
-    _con_da_fare(web, [
-        scoperto("P", "Non hai nessun portiere disponibile per questa giornata."),
-        scoperto("D", "In difesa hai solo 2 giocatori disponibili."),
-        {"id": "rose-vecchie", "tipo": "rose", "testo": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale.", "priorita": 2,
-         "azione": "Aggiorna le rose", "destinazione": {"scheda": "lega", "sezione": "rose"}},
-    ])
+    voci, attese = CASI_DECISIONI[caso]
+    _con_da_fare(web, voci(web))
     righe = [" ".join(r.split()) for r in _decisioni(web).all_inner_texts()]
-    assert len(righe) == 2, righe
-    assert righe[0].endswith("Aggiorna le rose"), righe                # prima la riga con un'azione vera
-    assert "nessun portiere" in righe[1] and righe[1].endswith("Vedi la rosa")   # poi una sola riga sul reparto scoperto
-    assert "In difesa" not in web.testo_principale()
+    assert len(righe) == len(attese), righe
+    for riga, (pezzo, pulsante) in zip(righe, attese):
+        assert pezzo in riga and riga.endswith(pulsante), righe
+    assert sum("Vedi la rosa" in r for r in righe) <= 1 and "In difesa" not in web.testo_principale()

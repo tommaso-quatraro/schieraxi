@@ -28,14 +28,18 @@ function dfVera(v) {
   if (v.tipo === "formazione") return dfConsigliataCambiata(v);
   return true;
 }
-// Le decisioni da mostrare: al massimo due. Prima le righe con un'azione vera, nell'ordine del server (dalla più urgente); il
-// reparto scoperto («Vedi la rosa») prende al massimo un posto, e solo se ne resta uno: due righe sue nascondevano «rose da
-// aggiornare», un cambio da fare o la consigliata cambiata. `vale(v)`: la riga ha ancora senso con la formazione che è in pagina
-// (un cambio già fatto non si propone più).
+// Le decisioni da mostrare: al massimo due. Prima le righe urgenti, e fra loro prima quelle con un'azione vera; poi le non urgenti
+// con un'azione vera; poi il resto. Dentro ogni gruppo resta l'ordine del server. Il reparto scoperto («Vedi la rosa», che porta
+// solo a guardare la rosa) prende al massimo un posto: due righe sue nascondevano «rose da aggiornare», un cambio da fare o la
+// consigliata cambiata; ma un «nessun portiere» urgente non resta più dietro a due righe meno importanti. `vale(v)`: la riga ha
+// ancora senso con la formazione che è in pagina (un cambio già fatto non si propone più).
 function dfDecisioni(voci, vale = () => true) {
   const vere = (Array.isArray(voci) ? voci : []).filter(v => dfVera(v) && vale(v));
-  const scoperto = vere.filter(v => v.tipo === "copertura");
-  return [...vere.filter(v => v.tipo !== "copertura"), ...scoperto.slice(0, 1)].slice(0, DF_DECISIONI);
+  const scoperto = v => v.tipo === "copertura", urgente = v => v.priorita === DF_URGENTE;
+  const gruppi = [v => urgente(v) && !scoperto(v), v => urgente(v) && scoperto(v), v => !urgente(v) && !scoperto(v), v => !urgente(v) && scoperto(v)];
+  const ordinate = gruppi.flatMap(g => vere.filter(g));
+  const unoScoperto = ordinate.find(scoperto);
+  return ordinate.filter(v => !scoperto(v) || v === unoScoperto).slice(0, DF_DECISIONI);
 }
 // La decisione, al tocco, scrive sul server (un cambio di titolare, «Usa la consigliata»): sulla copia del telefono resta spenta.
 const dfScrive = v => (v.tipo === "dubbio" && !!v.alternativa) || dfConsigliataCambiata(v);
