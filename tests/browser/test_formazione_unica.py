@@ -80,7 +80,7 @@ def test_il_vecchio_indirizzo_di_oggi_apre_la_formazione(web):
     assert web.pagina.url.endswith("/?vista=formazione")
     assert campo(web).count() == 11
     schede = [" ".join(v.split()) for v in web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link").all_inner_texts()]
-    assert schede == ["Formazione", "Squadra", "Altro"]
+    assert schede == ["Formazione", "Giornate", "Squadra", "Altro"]            # Giornate dal 12/11/2026 (#617)
 
 
 def test_un_account_senza_rose_vede_il_benvenuto_e_nessuna_richiesta_fallisce(web):
@@ -328,7 +328,7 @@ def test_a_giornata_finita_c_e_com_e_andata_e_sotto_la_formazione_della_prossima
     assert "finita" in testo and f"{riepilogo['punti_fatti']:.1f}".replace(".", ",") in testo and "attesi" in testo
     assert "Si chiude" in testo and principale(web).get_by_label("Modulo").count() == 1        # la prossima si può già preparare
     tocca(web, principale(web).get_by_role("button", name="Com'è andata"))
-    assert scheda(web).get_by_role("heading").first.is_visible()
+    assert principale(web).get_by_role("heading", level=1).inner_text().strip() == "Giornate"       # una pagina, non più un foglio (#617)
     assert not web.errori_console
 
 

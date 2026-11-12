@@ -2206,7 +2206,7 @@ const idGiornata = g => `${String(g.stagione ?? "").replace(/[^0-9-]/g, "")}-g${
 const giornate = { dati: null, aperte: new Set(), chiesta: null };
 // La formazione che conta per la giornata, come nel riepilogo della Formazione: la tua, la consigliata salvata da sola alla scadenza
 // se non avevi scelto, oppure la consigliata.
-const formazioneDi = g => (g.schierata ? { tipo: "tua", f: g.schierata } : g.automatica ? { tipo: "automatica", f: g.automatica } : { tipo: "consigliata", f: g.consigliata });
+const formazioneDi = g => (g.schierata ? { tipo: "tua", f: g.schierata } : g.automatica ? { tipo: "automatica", f: g.automatica } : { tipo: "consigliata", f: g.consigliata || {} });
 const conMostrata = g => !!g.consigliata && g.consigliata.origine === "mostrata";
 // La voce di `scelte_tue.per_giornata` (giornate con 11 diversi dai consigliati): nomi e differenza di punti li calcola il server.
 const sceltaDi = (d, g) => (((d.scelte_tue || {}).per_giornata) || []).find(x => x && x.stagione === g.stagione && Number(x.giornata) === Number(g.giornata)) || null;
