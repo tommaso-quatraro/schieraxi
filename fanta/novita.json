@@ -1,5 +1,34 @@
 [
   {
+    "versione": "1.473",
+    "data": "2026-11-12T15:54:29",
+    "titolo": "Server: il controllo di ogni ora trova i dati rimasti di un account eliminato",
+    "voci": [
+      "Server: il controllo automatico di ogni ora adesso si accorge se sul server sono rimasti dati di un account eliminato e lo segnala a chi gestisce l'app, in «Stato dei dati». Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "Issue #537 (da #516). sentinella.INVARIANTI ha cartella_senza_account, esito avviso: sono 22 invarianti. A ogni giro, con gli account accesi, sentinella.controlla_cartelle conta le cartelle utenti/<numero> senza account con contesto.cartelle_senza_account, sul database degli account aperto in sola lettura. Una sola rottura comune a tutti (senza utente né giornata) e nel dettaglio solo quante sono: quali, lo dice python -m fanta cartelle-senza-account. Account spenti, o database degli account che non c'è ancora: niente da contare.",
+      "Come le altre invarianti: riga sentinella_cartella_senza_account nei controlli di GET /api/stato-dati, avviso sul canale del proprietario dopo 2 giri di fila, nome in rotte nella storia dei giri. Un allarme confermato rende quindi rossa la «giornata senza errori» finché le cartelle non si tolgono (python -m fanta cartelle-senza-account --esegui).",
+      "Limite dell'avviso: è una sola rottura per tutte le cartelle e una rottura già avvisata non si riavvisa finché non è rimasta a posto per più di 24 ore (RICORDA_RISOLTE). Dopo un avviso, una cartella nuova nata prima di allora, o un conto che sale mentre l'allarme è aperto, non fanno partire un altro avviso per tutto il tempo in cui restano: si vedono in «Stato dei dati» (con il conto aggiornato) e in rotte.",
+      "Database degli account che non si legge: il giro del cron non muore più. Prima sentinella.esegui si fermava leggendo l'elenco degli utenti (nessuna riga in «Stato dei dati», nessun avviso, solo la traccia nel registro); ora segna risposta_in_errore con il tipo dell'errore, per l'elenco degli utenti e per il conto delle cartelle, prosegue senza utenti con i controlli comuni e avvisa al secondo giro. Anche la cartella degli utenti che non si legge segna risposta_in_errore. In questi casi la riga sentinella_cartella_senza_account resta «ok» come quelle delle altre invarianti non controllate: il guasto si legge in sentinella_risposta_in_errore. Test: tests/test_sentinella_cartelle.py."
+    ]
+  },
+  {
+    "versione": "1.472",
+    "data": "2026-11-12T15:44:27",
+    "titolo": "Rigorista: il motivo guarda anche quanto gioca",
+    "voci": [
+      "Web, iPhone e iPad: nella scheda il motivo «rigorista» non va più a chi quasi certamente non gioca (meno del 20%), come chi non è tra i convocati previsti, anche se è l'unico della squadra che calcia i rigori. Vale anche per i widget.",
+      "Non va più nemmeno a chi parte dalla panchina, quando è più probabile che il prossimo rigore lo calci un compagno che gioca. Il compagno lo riceve solo se di solito ne calcia almeno la metà; altrimenti nella squadra non lo ha nessuno.",
+      "Il fantavoto atteso dei giocatori resta quello di prima."
+    ],
+    "tecnico": [
+      "modello._segna_primo_rigorista: `primo_rigorista` è il giocatore della squadra con il prodotto più alto fra `p_voto` e `quota_rigori` (prima la sola `quota_rigori`), fra chi non è infortunato né squalificato e ha `p_voto` di almeno 0,2 (formazione.IMPROBABILE_SOTTO, il confine di «improbabile» di consigli.titolarita); con il prodotto a zero non lo è nessuno. `consigli.rigorista` non cambia: il motivo della scheda e `rigoristi` di /api/widget restano uno per squadra, con `quota_rigori` di almeno 0,5. Nessun cambio a mu, rigori attesi e forme delle risposte.",
+      "Misura del 12/11/2026 sul passato senza probabili (2025-26, 680 squadre-giornata): il motivo va a 415 giocatori invece di 492, più spesso tolto che passato a un compagno (77 volte contro 4); nessuno di loro gioca meno del 20% (prima 50) e ha poi preso voto il 79% (prima il 69%).",
+      "modello.con_prestazioni_dai_voti salta le partite già ricostruite (`understat_partita` uguale all'id della partita cambiato di segno): richiamata sui dati che ha già completato non aggiunge le stesse righe un'altra volta. In produzione la chiama solo `carica`, una volta: i numeri non cambiano."
+    ]
+  },
+  {
     "versione": "1.471",
     "data": "2026-11-12T15:12:05",
     "titolo": "Aggiornamenti raggruppati: meno interruzioni",
