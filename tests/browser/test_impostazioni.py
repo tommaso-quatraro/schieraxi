@@ -284,13 +284,27 @@ def _mia_con_stemma(web) -> str:
 
 
 def test_lo_stemma_sbagliato_si_toglie_da_la_mia_squadra(web):
-    """Uno stemma caricato per sbaglio si toglie da La mia squadra: «Stemma e maglia» apre il foglio con «Rimuovi»."""
+    """Uno stemma caricato per sbaglio si toglie da La mia squadra: «Stemma e maglia» apre il foglio con «Rimuovi». Il server finto
+    ricorda la cancellazione (dopo, /api/squadre dice che lo stemma non c'è più): la rosa sotto il foglio si ridisegna senza."""
     solo(web, "prima")
     nome = _mia_con_stemma(web)
-    tolte = []
-    web.pagina.on("request", lambda r: r.method == "DELETE" and urlsplit(r.url).path == "/api/squadre/immagine"
-                  and tolte.append(parse_qs(urlsplit(r.url).query)))
+    squadre, tolte = web.registrata("/api/squadre"), []
+
+    def immagine(rotta):
+        if rotta.request.method == "DELETE":
+            tolte.append(parse_qs(urlsplit(rotta.request.url).query))
+        rotta.fulfill(status=200, content_type="application/json", body='{"ok": true}')
+
+    def elenco(rotta):
+        for s in squadre:
+            s["immagini"] = {"stemma": s["mia"] and not tolte, "maglia": False}
+        rotta.fulfill(status=200, content_type="application/json", body=json.dumps(squadre))
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/squadre/immagine", immagine)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/squadre", elenco)
     web.apri("/?vista=impostazioni&gruppo=squadra")
+    stemma_in_pagina = principale(web).locator("img[alt='Stemma']")
+    assert stemma_in_pagina.count() == 1
     tocca(web, principale(web).get_by_role("button", name="Stemma e maglia"))
     foglio = web.pagina.get_by_role("dialog")
     assert foglio.get_by_role("combobox").input_value() == nome          # il foglio è sulla squadra della pagina
@@ -298,8 +312,10 @@ def test_lo_stemma_sbagliato_si_toglie_da_la_mia_squadra(web):
     assert rimuovi.count() == 1                                          # solo lo stemma è caricato
     rimuovi.click()
     web.pagina.locator("#avviso").filter(has_text="Stemma rimosso").wait_for(timeout=10000)
-    web.aspetta()                                                        # la rosa sotto il foglio si ridisegna
+    web.aspetta()
     assert tolte == [{"squadra": [nome], "tipo": ["stemma"]}]
+    assert foglio.get_by_role("button", name="Rimuovi").count() == 0     # il foglio si ridisegna: niente più da togliere
+    assert stemma_in_pagina.count() == 0, "la rosa sotto il foglio mostra ancora lo stemma tolto"
     assert foglio.is_visible() and titolo(web) == nome                   # il foglio resta aperto sulla rosa
     assert not web.errori_console and not web.richieste_fallite
 
