@@ -407,7 +407,7 @@ un'anteprima rifiutata per il tetto (`429`) non paga niente; in più al massimo 
 
 | Metodo e percorso | Parametri o corpo | Risposta principale |
 |---|---|---|
-| `GET /api/squadre/immagine` | `squadra`, `tipo` (`stemma` o `maglia`) | l'immagine (`404` se non c'è), con `Cache-Control: private` (dati personali). Dopo un'importazione si tolgono stemmi e maglie di squadre che non ci sono più: una squadra nuova con lo stesso nome non li eredita |
+| `GET /api/squadre/immagine` | `squadra`, `tipo` (`stemma` o `maglia`) | l'immagine (`404` se non c'è), con `Cache-Control: private, no-cache` (dati personali) ed `ETag`: il client la ricontrolla a ogni uso e con `If-None-Match` uguale riceve `304`, così uno stemma cambiato non resta vecchio. Dopo un'importazione si tolgono stemmi e maglie di squadre che non ci sono più: una squadra nuova con lo stesso nome non li eredita |
 | `POST /api/squadre/immagine` | `squadra`, `tipo`; file multipart `file` (X-Fanta) | carica da file. PNG, JPEG o WebP, massimo 4 MB, riconosciuti dal contenuto |
 | `POST /api/squadre/immagine/da-url` | `{squadra, tipo, url}` (X-Fanta) | scarica da un indirizzo `https` pubblico. Niente reti private, massimo 4 MB, 30 al giorno |
 | `DELETE /api/squadre/immagine` | `squadra`, `tipo` (X-Fanta) | toglie l'immagine (anche se non c'era: `200`) |
