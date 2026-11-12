@@ -161,6 +161,21 @@ def test_la_descrizione_si_legge_adesso_e_se_non_si_legge_non_si_unisce(tmp_path
 
 
 @serve_bash
+def test_senza_titolo_non_si_unisce(tmp_path):
+    """gh esce con 0 ma senza titolo: niente unione con il titolo « (#12)», un errore di GitHub e il passo rosso."""
+    fatte, usciti, testo, codice = _esegui(tmp_path, UNIONE, TITOLO="", CORPO="Closes #5", COLLEGATE="5")
+    assert codice != 0 and not [c for c in fatte if c[:2] == ["pr", "merge"]] and "numeri" not in usciti
+    assert "::error title=Unione::" in testo
+
+
+def test_i_commit_letti_sono_al_massimo_100_ed_e_scritto():
+    # gh pr view --json commits dà i primi 100 commit: oltre, le righe Co-authored-by dei successivi si perdono
+    passo = _passo(UNIONE)
+    commento = passo[:passo.index("if messaggi=$(gh pr view")].rstrip().splitlines()[-1]
+    assert commento.strip().startswith("#") and "100" in commento and "Co-authored-by" in commento
+
+
+@serve_bash
 @pytest.mark.parametrize("corpo, collegate, atteso, numeri", [
     # le forme che GitHub collega e che compaiono nei modelli
     ("- Closes #1\n* Fixes #2\nCloses: #3\n**Closes #4**\n**Resolves** #5\n  resolved #6\n", "1 2 3 4 5 6",
@@ -187,6 +202,7 @@ def test_blocchi_di_codice_rientri_e_commenti_non_chiudono(tmp_path):
     assert _corpo(argomenti) == "Closes #619" and usciti["numeri"].split() == ["619"]
     for n in ("20", "22", "30"):
         assert f"::warning title=Unione::#{n} sta in una riga di chiusura ma GitHub non la collega" in testo
+    assert "o non ancora collegata da GitHub: in quel caso chiudila a mano" in testo
     assert "::warning title=Unione::#21 compare con una parola di chiusura fuori da una riga" in testo
 
 

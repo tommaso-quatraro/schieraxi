@@ -385,6 +385,7 @@ jobs:
           dati=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title,body,closingIssuesReferences \
             --jq '.title, ([.closingIssuesReferences[] | select((.repository.owner.login + "/" + .repository.name) == env.GITHUB_REPOSITORY) | .number | tostring] | join(" ")), (.body // "")')
           titolo=$(printf '%s\n' "$dati" | sed -n 1p)
+          if [ -z "$titolo" ]; then echo "::error title=Unione::gh pr view non ha dato il titolo della PR: non unisco"; exit 1; fi
           collegate=$(printf '%s\n' "$dati" | sed -n 2p)
           corpo=$(printf '%s\n' "$dati" | sed 1,2d | tr -d '\r')
           parole='(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)'
@@ -398,7 +399,7 @@ jobs:
             case " $numeri " in *" $n "*) continue ;; esac
             case " $collegate " in
               *" $n "*) righe="$righe$riga"$'\n'; numeri="$numeri $n" ;;
-              *) echo "::warning title=Unione::#$n sta in una riga di chiusura ma GitHub non la collega alla PR (blocco di codice, commento o altro repository): non va nel commit e non si chiude" ;;
+              *) echo "::warning title=Unione::#$n sta in una riga di chiusura ma GitHub non la collega alla PR (blocco di codice, commento o altro repository, o non ancora collegata da GitHub: in quel caso chiudila a mano): non va nel commit e non si chiude" ;;
             esac
           done <<< "$candidate"
           for n in $(printf '%s\n' "$corpo" | grep -oiE "$parole$dopo" | grep -oE '[0-9]+$' | sort -un); do
@@ -407,6 +408,7 @@ jobs:
               *) echo "::warning title=Unione::#$n compare con una parola di chiusura fuori da una riga di chiusura: non va nel commit e non si chiude" ;;
             esac
           done
+          # gh pr view --json commits dà solo i primi 100 commit: oltre, le righe Co-authored-by dei successivi si perdono
           if messaggi=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json commits --jq '.commits[].messageBody'); then
             coautori=$(printf '%s\n' "$messaggi" | tr -d '\r' | grep -iE '^[[:space:]]*co-authored-by:[[:space:]]*[^[:space:]]' \
               | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' | awk '!visti[tolower($0)]++' || true)

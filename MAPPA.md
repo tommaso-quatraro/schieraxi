@@ -10,7 +10,8 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
 - `ios/`: app per iPhone e iPad (SwiftUI) e widget.
 - `sito/`: sito di presentazione, statico.
 - `lega/esempio/`: lega inventata per prove e test. La lega vera sta fuori dal repository (`FANTA_LEGA=<cartella>`).
-- `tests/`: test Python, un file per modulo; dati inventati in `tests/dati/`.
+- `tests/`: test Python, un file per modulo; dati inventati in `tests/dati/`. `tests/browser/`: la web in Chrome senza
+  finestra nelle tre fasi della giornata (job `browser`, si lanciano a parte: `tests/browser/LEGGIMI.md`).
 - `script/`: `server/` (cron e aggiornamento del server), `ci/` (controlli e rilascio), `squadra/` (comandi di chi coordina),
   `controlli/` (controllo prima del commit), `testi.py`, `coerenza.py`, `blocca_dipendenze.py`.
 - `prove/`: strumenti di misura e di collaudo che non girano in produzione.
@@ -47,7 +48,8 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
   `controllo-salute.sh`, `sentinella.sh`, `promemoria.sh`, `pubblica-sito.sh`, `verifica-firme.sh`, `prova/` (ambiente di
   prova). Guida: `script/server/LEGGIMI.md`.
 - `script/ci/`: `controlla_pr.py`, `controlla_ambito.py`, `controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`,
-  `aggiorna_openapi.py`, `aspetto_web.py` (confronto delle foto della web con `main`), `collaudo_prova.py`, `metriche.py`.
+  `aggiorna_openapi.py`, `aspetto_web.py` (confronto delle foto della web con `main`), `server_finto.py` (la web con le
+  risposte registrate, per foto e test del browser), `collaudo_prova.py`, `metriche.py`.
 - `script/squadra/`: `squadra.py <comando>` (`stato`, `brief`, `pr-pronta`, `attendi`, `foto`, `giro`, `pulisci`,
   `annulla-superate`, `giornata`), `aree.json`, `foto.json`, `modello-brief.md`, `LEGGIMI.md`.
 - `prove/`: `foto_web/foto.py` (foto e accessibilità della web), `amico_nuovo/percorso.py` (ingresso di un utente nuovo),
