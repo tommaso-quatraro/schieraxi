@@ -126,6 +126,7 @@ def _registri_in_cartella_finta(tmp_path, monkeypatch):
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "percorsi_veri: non sostituire i percorsi dei dati personali con quelli finti")
+    config.addinivalue_line("markers", "browser: test della web in Chrome senza finestra (tests/browser/LEGGIMI.md)")
 
 
 DATI_DEL_REPOSITORY = Path(__file__).resolve().parent.parent / "dati"     # sul PC di chi usa l'app c'è l'archivio vero

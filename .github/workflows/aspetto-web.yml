@@ -16,6 +16,7 @@ on:
     paths:
       - "fanta/web/**"
       - "script/ci/aspetto_web.py"
+      - "script/ci/server_finto.py"
       - "ios/fotografie/**"
       - ".github/workflows/aspetto-web.yml"
       - ".github/playwright-requisiti.txt"
