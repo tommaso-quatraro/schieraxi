@@ -37,7 +37,7 @@ def _scena(tmp_path, monkeypatch, stato="titolare", salva=True, tipo="manuale"):
     if salva:
         scelte.salva(ST, 9, TITOLARI, "4-4-2", fs, tipo)
     mandati = []
-    return fs, mandati, (lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True), prev
+    return fs, mandati, (lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True), prev
 
 
 def test_non_disturba_chi_ha_gia_schierato(tmp_path, monkeypatch):

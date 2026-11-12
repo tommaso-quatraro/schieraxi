@@ -18,7 +18,7 @@ import math
 import os
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
@@ -79,17 +79,20 @@ def canale() -> str | None:
 
 
 def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", ignora_silenzio: bool = False,
-          file_impostazioni: Path | None = None, file_iscrizioni: Path | None = None, ntfy: bool = True) -> bool:
+          file_impostazioni: Path | None = None, file_iscrizioni: Path | None = None, ntfy: bool = True,
+          vale_per: timedelta | None = None) -> bool:
     """Manda l'avviso: con le notifiche web attive su almeno un dispositivo si usano quelle; altrimenti (o se non arriva a nessuno) ntfy.
     Nelle ore tranquille non parte niente e restituisce False: cambi e riepilogo allora riprovano al giro dopo, fuori dalla fascia.
     I file sono quelli dell'utente (di norma quelli di sempre); `ntfy=False` per gli utenti con un account: il canale ntfy è uno
-    solo, del proprietario del server, e i nomi dei calciatori di un altro non devono finire lì."""
+    solo, del proprietario del server, e i nomi dei calciatori di un altro non devono finire lì.
+    `vale_per`: per gli avvisi sulla formazione, quanto manca alla scadenza: la notifica web non arriva dopo (`push.tempo_di_vita`)."""
     from . import push
     opzioni = impostazioni(file_impostazioni)
     if not ignora_silenzio and in_silenzio(datetime.now(), opzioni):
         return False
     titolo, testo = frasi.testo(titolo, opzioni["lingua"]), frasi.testo(testo, opzioni["lingua"])      # nella lingua scelta dall'utente
-    arrivato = bool(push.iscrizioni(file_iscrizioni)) and push.invia(titolo, testo, priorita, tag, file_iscrizioni) > 0
+    arrivato = bool(push.iscrizioni(file_iscrizioni)) and push.invia(titolo, testo, priorita, tag, file_iscrizioni,
+                                                                     vale_per=vale_per) > 0
     if not ntfy:
         return arrivato
     if opzioni.get("app_nativa"):
@@ -406,12 +409,14 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         visibili = righe[:MAX_RIGHE]
         if len(righe) > MAX_RIGHE:
             visibili.append(F("n.altre_novita", n=len(righe) - MAX_RIGHE))
-        if not manda(F("n.t_cambi"), frasi.elenco([_giornata(giornata, regole)] + visibili, sep="\n"), 4, "rotating_light"):
+        if not manda(F("n.t_cambi"), frasi.elenco([_giornata(giornata, regole)] + visibili, sep="\n"), 4, "rotating_light",
+                     vale_per=inizio - adesso):   # la notifica web non arriva dopo la scadenza
             return righe                           # invio fallito: lo stato resta quello vecchio e al prossimo giro si riprova
         cambi_mandato = True
     if singoli:
         testi = [F("n.frase_consiglio", frase=p["frase"], consiglio=p["consiglio"]) for p in singoli[:MAX_RIGHE]]
-        if not manda(F("n.t_cambio_pronto"), frasi.elenco(testi, sep="\n"), 4, "rotating_light"):   # il tocco apre la Formazione
+        if not manda(F("n.t_cambio_pronto"), frasi.elenco(testi, sep="\n"), 4, "rotating_light",   # il tocco apre la Formazione
+                     vale_per=inizio - adesso):
             if not cambi_mandato:
                 return righe                       # ore tranquille o invio fallito: si riprova al giro dopo
             pronti = [p for p in pronti if p not in singoli]     # l'avviso dei cambi è già partito: lo stato si salva (niente doppioni), il «cambio pronto» riprova
@@ -455,7 +460,7 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     scoperti = any(x["livello"] == cop.SCOPERTO for _, x in nuovi)
     titolo = F("n.t_reparto_scoperto") if scoperti else F("n.t_reparto_rischio")
     righe = [x["testo"] for _, x in nuovi]
-    if not manda(titolo, "\n".join(righe), 4 if scoperti else 3, "no_entry"):
+    if not manda(titolo, "\n".join(righe), 4 if scoperti else 3, "no_entry", vale_per=inizio - adesso):
         return righe                                   # ore tranquille o invio fallito: si riprova al giro dopo
     stato["copertura"] = (list(stato.get("copertura", [])) + [k for k, _ in nuovi])[-40:]
     scrivi_sicuro(file_stato, json.dumps(stato))
@@ -548,7 +553,8 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
         else:
             testo = F("n.non_valida_ultimi_minuti" if non_valida else "n.ultimi_minuti", giornata=_giornata(giornata, regole), ora=ora_chiusura)
             titolo = F("n.t_ultimi_minuti")
-        if manda(titolo, testo, priorita, "alarm_clock"):      # se l'invio fallisce si riprova al giro dopo, finché dura la finestra
+        # se l'invio fallisce si riprova al giro dopo, finché dura la finestra; la notifica web non arriva dopo la scadenza
+        if manda(titolo, testo, priorita, "alarm_clock", vale_per=inizio - adesso):
             mandati.append(chiave)
             inviati.append(testo)
     if inviati or saltati:
@@ -731,7 +737,8 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
         mio |= {"firme": firme, "valutato": firma_giro} | ({} if scelta else {"rif": ora, "valutato": f"{versione}|{','.join(map(str, ora))}"})
         salva()
         return []
-    if not manda(titolo, testo, 4, "rotating_light"):    # il tocco apre la Formazione; ore tranquille o invio fallito: si riprova
+    # il tocco apre la Formazione; ore tranquille o invio fallito: si riprova. La notifica web non arriva dopo la scadenza
+    if not manda(titolo, testo, 4, "rotating_light", vale_per=chiusura - adesso):
         return []
     mio |= {"mandati": int(mio.get("mandati", 0)) + 1, "firme": firme,
             "ultimo": adesso.isoformat(timespec="seconds"), "versione_inviato": versione, "valutato": firma_giro}
@@ -742,6 +749,47 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
 
 
 # ---------------------------------------------------------------- riepilogo a giornata finita
+RIEPILOGO_ENTRO = timedelta(days=6)        # dall'ultima partita giocata della giornata: più tardi il riepilogo non parte più
+
+
+def _da_riepilogare(db: sqlite3.Connection, stagione: str, regole: Regole, adesso: datetime, fatti: list[str]) -> list[int]:
+    """Le giornate di cui si può mandare il riepilogo, dalla più recente: finite per la lega (`rinvii.giornate_chiuse`, come Oggi e
+    il Diario: con «aspetta» dopo il recupero, con le altre regole a turno finito), giocate da meno di RIEPILOGO_ENTRO, con i voti
+    di ogni squadra che ha giocato (`fasi.voti_arrivati`, la regola di Oggi) e non ancora riepilogate. Prima contava solo la
+    giornata più alta con tutte le partite giocate: una giornata con un recupero non la era mai, e le bastavano 60 righe di voti (#649)."""
+    from . import fasi, rinvii
+    ultime = {int(g): fasi._data(d) for g, d in db.execute("SELECT giornata, MAX(data) FROM partite WHERE stagione = ? AND giocata = 1 "
+                                                           "AND data IS NOT NULL GROUP BY giornata", (stagione,))}
+    chiuse = [g for g in rinvii.giornate_chiuse(db, stagione, regole) if ultime.get(g) is not None]
+    return [g for g in sorted(chiuse, key=lambda g: ultime[g], reverse=True)
+            if f"{stagione}/{g}" not in fatti and timedelta(0) < adesso - ultime[g] <= RIEPILOGO_ENTRO
+            and fasi.voti_arrivati(db, stagione, g, regole)]
+
+
+def _con_la_regola_dei_rinvii(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, ids: list[int],
+                              fv: dict[int, float], voto: dict[int, float]) -> None:
+    """Chi aveva una partita fuori dal turno (rinviata, recuperata o no) conta come per la lega (`rinvii.voti_lega`, come il Diario e
+    il riepilogo di Oggi): con «senza voto» resta senza voto (entra la riserva), con il voto d'ufficio prende il voto fisso, con
+    «aspetta» il voto del recupero. Cambia `fv` e `voto` ({id: valore} di chi ha preso voto)."""
+    from . import fasi, rinvii
+    partite = [{"data": d, "casa": c, "trasferta": t} for d, c, t in
+               db.execute("SELECT data, casa, trasferta FROM partite WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
+    fuori = {s for p in rinvii.fuori_turno(partite) for s in (p["casa"], p["trasferta"]) if s}
+    if not fuori:
+        return
+    squadre = fasi.squadre_dei_giocatori(db, stagione, giornata, ids)
+    coinvolti = [i for i in ids if squadre.get(i) in fuori]
+    gioca = {i: i in fv for i in coinvolti}
+    fv_l, voto_l = {i: fv.get(i, 0.0) for i in coinvolti}, {i: voto.get(i, 0.0) for i in coinvolti}
+    rinvii.voti_lega(gioca, fv_l, voto_l, coinvolti, rinvii.regola(regole, stagione, giornata))
+    for i in coinvolti:
+        if gioca[i]:
+            fv[i], voto[i] = fv_l[i], voto_l[i]
+        else:
+            fv.pop(i, None)
+            voto.pop(i, None)
+
+
 def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_RIEPILOGO,
               manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_cambi: Path = FILE_STATO,
               file_scelte: Path | None = None, file_diario: Path | None = None) -> list[str]:
@@ -749,33 +797,38 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     modello e il massimo possibile con la tua rosa. Una volta per giornata.
     La formazione che avevi è quella di Oggi e del Diario (`fasi.schierata`): la tua scelta salvata, se si può schierare con la rosa;
     altrimenti la consigliata fissata alla scadenza (istantanea del Diario) o la sua copia automatica, con la sua panchina. Solo se
-    mancano entrambe resta l'ultima consigliata vista dall'avviso dei cambi (`file_cambi`), che può essere più vecchia."""
-    from datetime import timedelta
-    from . import consigli, diario, fasi, scelte, verifica
-    from . import formazione as fz
-    from .punteggio import COLONNA_VOTO, fantavoto
+    mancano entrambe resta l'ultima consigliata vista dall'avviso dei cambi (`file_cambi`), che può essere più vecchia.
+    Quale giornata e quando: `_da_riepilogare`, una per giro. Una giornata di cui non si può fare il riepilogo (formazione non nota,
+    un titolare non più in rosa) non ferma le altre: si prova la successiva (revisione della #678)."""
+    from . import consigli
     adesso = adesso or datetime.now()
     opzioni = opzioni if opzioni is not None else impostazioni()
     if not opzioni.get("riepilogo", True):
         return []
     stagione = consigli.stagione_corrente()
-    r = db.execute("SELECT giornata, MAX(data) FROM partite WHERE stagione = ? AND data IS NOT NULL GROUP BY giornata "
-                   "HAVING MIN(giocata) = 1 ORDER BY giornata DESC LIMIT 1", (stagione,)).fetchone()
-    if not r:
-        return []
-    giornata = r[0]
-    try:
-        ultima = datetime.fromisoformat(str(r[1])[:16].replace("T", " "))
-    except ValueError:
-        return []
-    chiave = f"{stagione}/{giornata}"
     stato = _json(file_stato)
     fatti = stato.setdefault("riepilogo", [])
-    if chiave in fatti or not timedelta(0) < adesso - ultima <= timedelta(days=6):
-        return []
+    for giornata in _da_riepilogare(db, stagione, regole, adesso, fatti):
+        testo = _testo_riepilogo(db, regole, rose, adesso, stagione, giornata, file_cambi, file_scelte, file_diario)
+        if testo is None:
+            continue
+        if manda(F("n.t_riepilogo"), testo, 3, "bar_chart"):
+            fatti.append(f"{stagione}/{giornata}")
+            stato["riepilogo"] = fatti[-20:]
+            scrivi_sicuro(file_stato, json.dumps(stato))
+        return [testo]
+    return []
+
+
+def _testo_riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime, stagione: str, giornata: int,
+                     file_cambi: Path, file_scelte: Path | None, file_diario: Path | None) -> frasi.Frase | None:
+    """Il testo del riepilogo di una giornata finita, o None se non si può fare (non si sa cosa avevi schierato, rosa cambiata).
+    Chi aveva la partita rinviata conta con la regola della lega (`_con_la_regola_dei_rinvii`)."""
+    from . import consigli, diario, fasi, scelte, verifica
+    from . import formazione as fz
+    from .punteggio import COLONNA_VOTO, fantavoto
+    chiave = f"{stagione}/{giornata}"
     righe_voti = [dict(x) for x in db.execute("SELECT * FROM voti WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
-    if len(righe_voti) < 60:
-        return []                                  # i voti non sono ancora arrivati
     # la stessa formazione di Oggi e del Diario (fasi.schierata): la regola unica della scelta con i ruoli della rosa (una scelta che
     # non vale non conta), poi la consigliata congelata alla scadenza e la copia automatica. Senza file indicati, quelli dell'utente unico
     sch = fasi.schierata(stagione, giornata, file_scelte or scelte.FILE_SCELTE, file_diario or diario.FILE,
@@ -787,22 +840,23 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     elif snap and snap.get("titolari"):            # ripiego: l'ultima consigliata vista dall'avviso dei cambi
         ids, panchina_ids, fonte = snap["titolari"], None, F("n.fonte_consigliata")
     else:
-        return []                                  # non so cosa avevi schierato
+        return None                                # non so cosa avevi schierato
     prev, _, _ = consigli.previsioni(db, regole, giornata)
     squadra = rose.squadra(rose.mia_squadra or "")
     if not squadra:
-        return []
+        return None
     lista = [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]), float(prev.at[i, "mu"]),
                           float(prev.at[i, "mu_voto"])) for i in (g.id for g in squadra.giocatori if g.id is not None) if i in prev.index]
     per_id = {g.id: g for g in lista}
     if any(i not in per_id for i in ids):
-        return []
+        return None
     fv_vero, voto_vero = {}, {}
     for v in righe_voti:
         i = int(v["calciatore_id"])
         fv = fantavoto(v, v["ruolo"], regole) if i in per_id else None
         if fv is not None:
             fv_vero[i], voto_vero[i] = fv, v[COLONNA_VOTO[regole.fonte_voto]]
+    _con_la_regola_dei_rinvii(db, regole, stagione, giornata, list(per_id), fv_vero, voto_vero)
     gioca = {g.id: g.id in fv_vero for g in lista}
     tit = [per_id[i] for i in ids]
     # la panchina che si conosce (congelata alla scadenza o schierata davvero), come il Diario; senza, la migliore possibile
@@ -821,9 +875,4 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, prossima), regole) if prossima else None
     if inizio:
         parti.append(F("n.prossima", giornata=_giornata(prossima, regole), data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))
-    testo = frasi.elenco(parti, sep=" ")
-    if manda(F("n.t_riepilogo"), testo, 3, "bar_chart"):
-        fatti.append(chiave)
-        stato["riepilogo"] = fatti[-20:]
-        scrivi_sicuro(file_stato, json.dumps(stato))
-    return [testo]
+    return frasi.elenco(parti, sep=" ")

@@ -141,6 +141,29 @@ def voti_giornata(db: sqlite3.Connection, stagione: str, giornata: int, ids: lis
     return righe, squadre
 
 
+def voti_arrivati(db: sqlite3.Connection, stagione: str, giornata: int, regole: Regole) -> bool:
+    """I voti della giornata sono arrivati: ogni squadra con una partita giocata della giornata (del turno o recuperata) ha i suoi
+    voti, la stessa regola dello stato «attesa_voti». Regola unica per il riepilogo di Oggi e per l'avviso di fine giornata (#649):
+    finché manca, niente totale. Falso se nessuna partita è giocata."""
+    giocate = {s for r in db.execute("SELECT casa, trasferta FROM partite WHERE stagione = ? AND giornata = ? AND giocata = 1",
+                                     (stagione, giornata)) for s in r if s}
+    return bool(giocate) and giocate <= voti_giornata(db, stagione, giornata, [], regole)[1]
+
+
+def squadre_dei_giocatori(db: sqlite3.Connection, stagione: str, giornata: int, ids) -> dict[int, str]:
+    """{id: squadra di Serie A come la scrivono calendario e voti, «atalanta»}: dalla riga dei voti della giornata, altrimenti dal
+    listone (tabella `calciatori`). Le rose hanno la sigla scritta dall'utente («ATA»), che con il calendario non si confronta:
+    così la partita rinviata di un giocatore si trova (#649)."""
+    ids = [int(i) for i in ids]
+    if not ids:
+        return {}
+    segni = ",".join("?" * len(ids))
+    out = {int(i): s for i, s in db.execute(f"SELECT id, squadra_slug FROM calciatori WHERE id IN ({segni})", ids) if s}
+    out |= {int(i): s for i, s in db.execute(f"SELECT calciatore_id, squadra FROM voti WHERE stagione = ? AND giornata = ? "
+                                             f"AND calciatore_id IN ({segni})", (stagione, giornata, *ids)) if s}
+    return out
+
+
 # ---------------------------------------------------------------- la giornata in diretta
 def _stato_giocatore(g: dict, partita: dict | None, riga_voti: dict | None, squadre_voti: set[str], regole: Regole
                      ) -> tuple[str, float | None]:
@@ -360,12 +383,17 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
         return None
     tit_ids, panc_ids, di = sch
     panc_ids = [i for i in (panc_ids or []) if i in info and i not in tit_ids]
+    if not voti_arrivati(db, stagione, giornata, regole):
+        return None                                   # una partita giocata senza i suoi voti: niente numeri inventati (#649)
     voti, squadre_voti = voti_giornata(db, stagione, giornata, tit_ids + panc_ids, regole)
-    if not squadre_voti:
-        return None                                   # voti non ancora scaricati: niente numeri inventati
-    partite = [{"casa": s, "trasferta": None, "stato": "finita"} for s in squadre_voti]
-    partite += [{"casa": p["casa"], "trasferta": p["trasferta"], "data": p["data"], "stato": "rinviata"} for p in mancano]
-    a = andamento([info[i] for i in tit_ids], [info[i] for i in panc_ids], partite, voti, squadre_voti, {}, set(), regole,
+    # le partite dal calendario della giornata e la squadra di ogni giocatore dall'archivio: le rose hanno la sigla (#649)
+    da_recuperare = {(p["casa"], p["trasferta"]) for p in mancano}
+    partite = [{"casa": c, "trasferta": t, "data": d, "stato": "finita" if g else "rinviata" if (c, t) in da_recuperare else "da_giocare"}
+               for d, c, t, g in db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ?",
+                                            (stagione, giornata))]
+    squadre = squadre_dei_giocatori(db, stagione, giornata, tit_ids + panc_ids)
+    giocatore = lambda i: info[i] | ({"squadra": squadre[i]} if i in squadre else {})     # noqa: E731
+    a = andamento([giocatore(i) for i in tit_ids], [giocatore(i) for i in panc_ids], partite, voti, squadre_voti, {}, set(), regole,
                   rinvio=r_rinvio)
     ist = (diario.carica(file_diario).get("istantanee") or {}).get(f"{stagione}/{giornata}") if file_diario else None
     atteso = ist.get("atteso") if isinstance(ist, dict) and di == "consigliata" else None

@@ -24,6 +24,7 @@ import re
 import threading
 import time
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 from .blocco import BloccoFile
@@ -33,6 +34,17 @@ FILE_VAPID = RADICE / "dati" / "vapid.json"
 FILE_ISCRIZIONI = RADICE / "dati" / "push.json"
 MASSIMO_DISPOSITIVI = 8
 CONTATTO = "mailto:schieraxi@users.noreply.github.com"      # richiesto dal protocollo (deve essere un mailto:): un recapito di chi manda le notifiche; qui uno neutro
+# Tempo di vita: per quanto il servizio delle notifiche tiene un avviso per un telefono spento o senza rete (#652). Riepilogo,
+# «formazione pronta» e gli altri aspettano il telefono qualche ora; gli avvisi sulla formazione (promemoria, cambi, «cambia la
+# formazione», reparto scoperto) mai oltre la scadenza: chi li manda dice quanto manca (`vale_per`).
+TEMPO_DI_VITA = 12 * 3600
+
+
+def tempo_di_vita(vale_per: timedelta | None = None) -> int:
+    """I secondi di vita di una notifica web: TEMPO_DI_VITA, o meno se l'avviso vale solo per `vale_per` (fino alla scadenza)."""
+    if vale_per is None:
+        return TEMPO_DI_VITA
+    return max(0, min(TEMPO_DI_VITA, int(vale_per.total_seconds())))
 
 
 def _riservato(percorso: Path) -> None:
@@ -416,10 +428,14 @@ def _annota(testo: str) -> None:
         pass
 
 
-def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", percorso: Path | None = None, file_chiavi: Path | None = None) -> int:
+def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", percorso: Path | None = None, file_chiavi: Path | None = None,
+          vale_per: timedelta | None = None) -> int:
     """Manda la notifica a tutti i dispositivi iscritti, tutti insieme, e restituisce quanti l'hanno ricevuta.
     Tempo massimo in tutto: `limiti.MAX_SECONDI_INVIO` (variabile FANTA_MAX_SECONDI_INVIO). Un dispositivo con un servizio lento non
-    fa aspettare gli altri; chi non ha risposto a tempo finito si lascia (una riga in push.log) e il giro degli avvisi va avanti."""
+    fa aspettare gli altri; chi non ha risposto a tempo finito si lascia (una riga in push.log) e il giro degli avvisi va avanti.
+    `tag` è quello di ntfy (dice dove porta il tocco, `sezione`); il tag della notifica web è diverso per ogni avviso: con lo stesso
+    tag il browser sostituirebbe l'avviso di prima, senza suono (#652). `vale_per`: quanto manca alla scadenza, per gli avvisi
+    sulla formazione (tempo di vita, `tempo_di_vita`)."""
     lista = iscrizioni(percorso)
     if not lista:
         return 0
@@ -427,11 +443,13 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
     from . import limiti
     from .notifiche import SEZIONE_PER_TAG
     privata = chiavi(file_chiavi)["privata"]
-    # `sezione` e `priorita` li usa l'app Android (ricevuta con UnifiedPush): il tocco apre la schermata giusta. Il web usa `url`:
-    # gli avvisi sulla formazione (cambi, «cambia la formazione», promemoria) aprono la Formazione, gli altri l'app com'è.
+    # Il messaggio lo legge solo il service worker della web (fanta/web/sw.js): `title`, `body`, `tag` (il tag della notifica, che
+    # qui cambia a ogni invio) e `url`, dove porta il tocco: gli avvisi sulla formazione (cambi, «cambia la formazione»,
+    # promemoria) aprono la Formazione, gli altri l'app com'è. `sezione` e `priorita` viaggiano nel messaggio ma oggi nessuno li legge.
     sezione = SEZIONE_PER_TAG.get(tag, "lega")
-    payload = json.dumps({"title": titolo, "body": testo, "tag": tag, "url": "/?vista=formazione" if sezione == "formazione" else "/",
-                          "sezione": sezione, "priorita": priorita})
+    payload = json.dumps({"title": titolo, "body": testo, "tag": f"{tag}-{uuid.uuid4().hex[:12]}",
+                          "url": "/?vista=formazione" if sezione == "formazione" else "/", "sezione": sezione, "priorita": priorita})
+    ttl = tempo_di_vita(vale_per)
     sessione = SessioneFissata(fine=_orologio() + limiti.valore("MAX_SECONDI_INVIO"))
 
     def a_uno(s: dict) -> tuple[str, str]:
@@ -441,7 +459,7 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
             if not indirizzo_consentito(s["endpoint"]):
                 return "ignorata", ""
             webpush(subscription_info=s, data=payload, vapid_private_key=privata, vapid_claims={"sub": CONTATTO},
-                    ttl=3600, headers={"Urgency": "high" if priorita >= 4 else "normal"}, timeout=15, requests_session=sessione)
+                    ttl=ttl, headers={"Urgency": "high" if priorita >= 4 else "normal"}, timeout=15, requests_session=sessione)
             return "consegnata", ""
         except WebPushException as e:
             codice = getattr(e.response, "status_code", None)

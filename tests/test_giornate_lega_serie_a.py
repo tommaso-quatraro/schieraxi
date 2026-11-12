@@ -115,7 +115,7 @@ def finto(monkeypatch):
 
 def test_promemoria_con_i_due_numeri(tmp_path, finto):
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True    # noqa: E731
     notifiche.promemoria(_db("2026-10-28 18:30"), LEGA_DA_4, ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "p.json", manda, {})
     notifiche.promemoria(_db("2026-10-28 18:30"), LEGA_DA_4, ROSE, datetime(2026, 10, 28, 18, 20), tmp_path / "p.json", manda, {})
     (_, un_ora), (_, ultimi) = mandati
@@ -127,7 +127,7 @@ def test_promemoria_con_i_due_numeri(tmp_path, finto):
 def test_titolare_a_rischio_con_i_due_numeri(tmp_path, finto, monkeypatch):
     monkeypatch.setattr(notifiche, "_gia_schierato", lambda *a, **k: ["Castro"])
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True    # noqa: E731
     notifiche.promemoria(_db("2026-10-28 18:30"), LEGA_DA_4, ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "p.json", manda, {})
     assert mandati[0][1] == ("Hai già schierato, ma Castro non è più sicuro come titolare. "
                              "Giornata 6 · 9ª di Serie A: la formazione si chiude alle 18:30, controlla.")
