@@ -57,7 +57,7 @@ class Parametri:
     giornate_presenze: int = 6
     # Quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_rigori_divisi`). In produzione dal
     # 12/11/2026 (#613): con la quota di prima i rigori attesi erano il 42% e il 25% dei veri nelle due stagioni, con questa
-    # (e il termine qui sotto) il 50% e il 48%.
+    # (e il termine qui sotto) il 51% e il 48%.
     rigori_squadra: bool = True
     # Rigori (pesati) messi in conto, nella quota di squadra, a un rigorista che ancora non si conosce: metà dei rigori li
     # calcia chi non ne aveva mai calciati. Misura del 12/11/2026 su 132 casi con quota sopra 0,2: senza questo termine chi
