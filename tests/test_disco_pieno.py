@@ -61,7 +61,7 @@ def _db(righe):
 
 def test_versione_cambia_anche_se_l_ora_torna_indietro():
     """25/10: alle 3:00 si torna alle 2:00. L'aggiornamento delle 2:10 (ora solare) viene dopo quello delle 2:50 (ora legale)."""
-    db = _db([("aggiornamento", "2026-10-25T02:50:00"), ("probabili fonte 2", "2026-10-25T02:50:30")])
+    db = _db([("aggiornamento", "2026-10-25T02:50:00"), ("probabili-rapido", "2026-10-25T02:50:30")])
     prima = consigli._versione(db)
     db.execute("INSERT OR REPLACE INTO aggiornamenti VALUES ('aggiornamento', '2026-10-25T02:10:00', '')")
     assert consigli._versione(db) != prima

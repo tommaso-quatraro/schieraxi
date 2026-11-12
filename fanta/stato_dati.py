@@ -139,13 +139,9 @@ def fattori(db: sqlite3.Connection, stagione: str) -> dict[str, float]:
 
 
 def ombra(db: sqlite3.Connection) -> dict:
-    """Fonti raccolte «in ombra» (il modello non le legge): righe in tabella e ultima raccolta."""
-    def conta(tabella: str, colonna_ora: str) -> dict:
-        n, ultima = db.execute(f"SELECT COUNT(*), MAX({colonna_ora}) FROM {tabella}").fetchone()
-        return {"righe": n, "ultima": ultima}
-    pf2 = conta("probabili_fonte2", "rilevato")
-    pf2["giornate"] = db.execute("SELECT COUNT(DISTINCT stagione || '/' || giornata) FROM probabili_fonte2").fetchone()[0]
-    return {"partite_extra": conta("partite_extra", "rilevato"), "probabili_fonte2": pf2}
+    """Fonti raccolte «in ombra» (il modello non le legge): righe in tabella e ultima raccolta. Oggi solo football-data."""
+    n, ultima = db.execute("SELECT COUNT(*), MAX(rilevato) FROM partite_extra").fetchone()
+    return {"partite_extra": {"righe": n, "ultima": ultima}}
 
 
 def _registro_nostri(db: sqlite3.Connection) -> dict | None:

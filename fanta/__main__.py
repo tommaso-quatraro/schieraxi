@@ -681,26 +681,16 @@ def cmd_verifica(a) -> None:
                       + ", ".join(f"{s} {e:.3f}" for s, e in n["errore_voto_stimato"].items()))
     if a.fonti:
         from . import verifica_fonti
-        from . import verifica_probabili_fonte2 as vf2
-        richieste = [x.strip() for x in a.fonti.split(",") if x.strip()] if a.fonti != "tutte" else None
-        con_fonte2 = richieste is None or vf2.NOME in richieste
-        varianti = verifica_fonti.VARIANTI if richieste is None else tuple(x for x in richieste if x != vf2.NOME)
-        if varianti:
-            try:
-                tab = verifica_fonti.confronto(d, r, modello.Parametri(), giornate, rose_ids, a.simulazioni, varianti)
-            except ValueError as e:
-                sys.exit(f"Errore: {e}")
-            print("\nFonti in ombra (variazione negativa = meglio della verifica normale; il modello NON è cambiato):")
-            print(tab.round(3).to_string(index=False))
-            print()
-            for v, testo in verifica_fonti.giudizio(tab).items():
-                print(f"  {v}: {testo}")
-        if con_fonte2:
-            esito = vf2.misura(db)
-            print("\nSeconda fonte di probabili (Sosfanta) contro quelle di Fantacalcio.it (variazione negativa = la fonte aiuta; il modello NON è cambiato):")
-            if len(esito["tabella"]):
-                print(esito["tabella"].round(3).to_string(index=False))
-            print(f"  {vf2.NOME}: {esito['verdetto']}")
+        varianti = verifica_fonti.VARIANTI if a.fonti == "tutte" else tuple(x.strip() for x in a.fonti.split(",") if x.strip())
+        try:
+            tab = verifica_fonti.confronto(d, r, modello.Parametri(), giornate, rose_ids, a.simulazioni, varianti)
+        except ValueError as e:
+            sys.exit(f"Errore: {e}")
+        print("\nFonti in ombra (variazione negativa = meglio della verifica normale; il modello NON è cambiato):")
+        print(tab.round(3).to_string(index=False))
+        print()
+        for v, testo in verifica_fonti.giudizio(tab).items():
+            print(f"  {v}: {testo}")
     if a.consiglio is not None:
         from . import consigli, verifica_consiglio
         print()
@@ -974,7 +964,7 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--dalla", type=int, default=5, help="prima giornata della stagione più vecchia")
     x.add_argument("--simulazioni", type=int, default=300)
     x.add_argument("--fonti", nargs="?", const="tutte", default=None,
-                   help="in più, prova le fonti in ombra (xg_fd, probabili_fonte2; senza valore tutte): lento, spento di default")
+                   help="in più, prova le fonti in ombra (xg_fd; senza valore tutte): lento, spento di default")
     x.add_argument("--pacchetti", nargs="?", const="tutti", default=None,
                    help="in più, misura quanto si perde con i dati di un solo fornitore (scenari separati da virgola; "
                         "senza valore tutti): lento, spento di default")

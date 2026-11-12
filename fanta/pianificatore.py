@@ -3,8 +3,7 @@
 Le consuete quattro volte al giorno restano quelle del server (cron, non toccato). Qui si aggiungono tre giri vicino alla
 scadenza della formazione: a 60, 30 e 15 minuti prima (la scadenza è la prima partita della giornata meno i minuti della regola
 `scadenza_minuti` della lega). Un thread controlla ogni minuto; quando un giro è dovuto:
-- scarica SOLO le probabili (una pagina di Fantacalcio.it) e, se è passata la sua pausa, la seconda fonte: una richiesta per fonte
-  alla volta, con la pausa di `rete.py`, mai a raffica;
+- scarica SOLO le probabili (una pagina di Fantacalcio.it), con la pausa di `rete.py`, mai a raffica;
 - segna l'aggiornamento (così il riscaldamento ricalcola formazione e mercato da solo) e subito dopo manda gli avvisi sui cambi.
 Non parte se: un aggiornamento completo è in corso (nel servizio o dal cron), le probabili sono state lette meno di 8 minuti fa,
 la scadenza è passata. Dopo un riavvio non rifà i giri già fatti (stato in `dati/pianificatore.json`). Se il servizio era fermo e
@@ -216,7 +215,7 @@ def blocco_processo() -> Iterator[bool]:
 
 
 def aggiorna_probabili(scrivi: Callable[[str], None] = lambda _: None) -> bool | None:
-    """Scarica le probabili (e la seconda fonte, che ha la sua pausa) e segna l'aggiornamento. True se le probabili sono arrivate,
+    """Scarica le probabili e segna l'aggiornamento. True se le probabili sono arrivate,
     None se l'aggiornamento del server (cron) sta girando: il blocco di file si tiene solo durante il download."""
     with blocco_processo() as libero:
         if not libero:
@@ -235,7 +234,6 @@ def _scarica_probabili(scrivi: Callable[[str], None]) -> bool:
         agg._passo("probabili", agg.probabili)                      # noqa: SLF001 - stesso passo dell'aggiornamento completo
         riuscito = not any(e.startswith("probabili:") for e in agg.errori)
         if riuscito:
-            agg._passo("probabili fonte 2", agg.probabili_fonte2, "sosfanta")   # noqa: SLF001
             archivio.segna(db, CHIAVE_ARCHIVIO, _ora())             # cambia la «versione» dei dati: il riscaldamento ricalcola
             db.commit()
         return riuscito
