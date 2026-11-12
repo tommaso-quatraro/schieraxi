@@ -1,7 +1,7 @@
 {
   "titolo": "Messaggio più chiaro per le rose lente e notifiche che non si perdono",
   "voci": [
-    "Web, iPhone e iPad: in Aggiorna le rose, se riconoscere i giocatori di un testo incollato o di un file CSV richiede troppo tempo, il messaggio ora dice proprio questo e consiglia di riprovare fra qualche minuto, invece di dire che il testo è troppo lungo anche quando è corto.",
+    "Web, iPhone e iPad: in Aggiorna le rose, se riconoscere i giocatori di un testo o di un CSV richiede troppo tempo, il messaggio lo dice e consiglia di riprovare fra qualche minuto.",
     "Notifiche: se attivi le notifiche su un dispositivo proprio mentre l'app toglie quelle di un dispositivo non più valido, la tua attivazione non va più persa."
   ],
   "tecnico": [
