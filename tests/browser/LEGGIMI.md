@@ -77,12 +77,28 @@ prima della scadenza:
 - i menu di Squadra e Altro hanno solo le voci che restano; gli indirizzi delle pagine tolte aprono la schermata più
   vicina; le novità stanno in Impostazioni > Informazioni (le ultime dieci, le altre a richiesta); «Nuova stagione» è un
   avviso che compare quando serve; la dimensione del testo salvata da una versione di prima non vale più;
-- Formazione senza stili, legenda, confronto e indice sui volti; Oggi senza partite del turno e banner, nelle tre fasi;
+- Formazione senza stili, legenda, confronto e indice sui volti, e senza partite del turno e banner, nelle tre fasi;
   girando per l'app non si chiedono le rotte delle funzioni tolte;
-- Da fare: via i consigli di mercato e di scambio; la riga del reparto scoperto resta e porta alla rosa;
+- le decisioni in cima alla Formazione: via i consigli di mercato e di scambio; la riga del reparto scoperto resta e
+  porta alla rosa;
 - i patti: una schermata che non si apre mostra un errore `role="alert"` e non resta in caricamento; le schermate sane
   non ne hanno; mentre una schermata carica `<main>` ha `aria-busy="true"`; nel riconoscimento delle rose gli avvisi
   arrivano in una regione `role="status"` già in pagina e un salvataggio fallito è un errore.
+
+`test_formazione_unica.py`, la schermata «Formazione» che ha preso il posto di Oggi e Formazione (#616):
+- nelle tre fasi, a 390×844 px, i nomi degli 11 stanno nel primo schermo; il vecchio indirizzo di Oggi apre la Formazione;
+- «gioca N%» si vede solo sotto l'80% e non ci sono etichette di titolarità; un tocco su un titolare apre la scheda con
+  «Sostituisci»; fra i sostituti chi gioca meno dell'80% lo dice;
+- salvataggio automatico: dopo una sostituzione o un altro modulo lo stato dice «L'hai cambiata tu» e la scelta è
+  salvata; «Torna alla consigliata» la toglie; la spunta «L'ho messa» resta dopo una ricarica;
+- al massimo due decisioni, solo quelle con un'azione; «Usa la consigliata» prende quella nuova;
+- quando il cambio non si può fare: chi gioca una partita già cominciata non ha «Sostituisci» e la scheda dice perché;
+  un ritorno alla consigliata rifiutato lascia la formazione com'è e lo dice un avviso (`role="status"`); se la scadenza
+  passa con la pagina aperta la schermata si rilegge;
+- a giornata in corso i punti finora e niente da cambiare; a giornata finita «Com'è andata», i recuperi che mancano e la
+  scelta sul rinvio, con sotto la formazione della prossima;
+- tablet e PC: campo a sinistra e panchina a destra a 768, 1024 e 1440 px; sul PC la scheda nel pannello a fianco, che
+  si chiude se cambia il modulo; scheda ed elenco dei sostituti senza violazioni gravi di axe, chiaro e scuro.
 
 ## Aggiungere un test di comportamento (dieci righe)
 Un file `tests/browser/test_<cosa>.py`. Il segno `browser` lo mette da solo `conftest.py` a ogni test di questa cartella:

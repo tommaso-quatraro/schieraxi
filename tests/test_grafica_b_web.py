@@ -794,8 +794,8 @@ def test_differenze_di_oggi_scritte_al_posto_giusto():
     riga = next((r for r in di_oggi.splitlines() if r.startswith("|") and "slogan" in r), "")
     assert "Oggi" in riga and "#416" in riga and "I tuoi migliori" in riga and "Apri la formazione" in riga, riga
     guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
-    oggi = guida[guida.index("### Oggi"):guida.index("### Formazione")]
-    assert "motto" not in oggi and "slogan" not in oggi
+    formazione = guida[guida.index("### Formazione"):guida.index("### Squadra")]      # dal 12/11/2026 la prima schermata è la Formazione (#616)
+    assert "motto" not in formazione and "slogan" not in formazione and "### Oggi" not in guida
 
 
 # ---------------------------------------------------------------- PR 8: Formazione
@@ -863,9 +863,10 @@ def test_differenza_ammessa_della_pedina_scritta():
     assert "sul campo il numero" in resta and "negli elenchi e nella scheda" in resta, resta
 
 
-def test_guida_ctrl_s_e_campo_della_formazione():
+def test_guida_salvataggio_automatico_e_campo_della_formazione():
     guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
-    assert "**Ctrl+S** (⌘+S sul Mac) salva la formazione quando c'è qualcosa da salvare" in guida
+    # dal 12/11/2026 (#616) ogni cambio si salva da solo: niente pulsante Salva né Ctrl+S
+    assert "Ctrl+S" not in guida and "Non c'è un pulsante Salva: ogni cambio" in guida
     formazione = guida[guida.index("### Formazione"):]
     assert "ⓘ" not in formazione and "pillola scura" not in formazione
 

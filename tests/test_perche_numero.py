@@ -219,7 +219,7 @@ def test_il_confronto_non_chiama_voto_atteso_il_voto_in_pagella():
 
 def test_la_definizione_unica_e_nella_guida():
     guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
-    assert "**Fantavoto atteso**" in guida and "se gioca" in guida and "gioca 85%" in guida
+    assert "**Fantavoto atteso**" in guida and "se gioca" in guida and "**gioca 65%**" in guida and "sotto l'80%" in guida
     assert "Perché questo numero" in guida and "Quanto ci abbiamo preso" in guida
 
 
