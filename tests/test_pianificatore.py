@@ -172,6 +172,21 @@ def test_il_blocco_di_file_si_tiene_solo_durante_il_download(monkeypatch):
     assert pianificatore.aggiorna_probabili() is None           # cron in corso: si rinuncia
 
 
+def test_il_giro_vicino_alla_scadenza_legge_solo_le_probabili(tmp_path, monkeypatch):
+    """Una pagina sola, quella delle probabili di Fantacalcio.it: la seconda fonte di probabili non c'è più (#609)."""
+    from types import SimpleNamespace
+
+    from fanta import aggiorna, archivio, fonti_attive
+    vero = archivio.apri
+    monkeypatch.setattr(archivio, "apri", lambda *a, **k: vero(tmp_path / "f.sqlite"))
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    passi = []
+    monkeypatch.setattr(aggiorna.Aggiornamento, "_passo", lambda self, nome, funzione, fonte=None: passi.append(nome))
+    monkeypatch.setattr(aggiorna.rete, "scarica", lambda *a, **k: SimpleNamespace(text=""))
+    assert pianificatore._scarica_probabili(lambda _: None) is True
+    assert passi == ["probabili"]
+
+
 def test_stato_salvato_anche_se_il_giro_va_in_errore(tmp_path, monkeypatch, caplog):
     s = Scena(monkeypatch)
     monkeypatch.setattr(pianificatore, "FILE_STATO", tmp_path / "pianificatore.json")

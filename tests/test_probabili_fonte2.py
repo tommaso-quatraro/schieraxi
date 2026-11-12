@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from fanta import archivio, nomi, probabili_fonte2 as pf2, stato_dati, verifica_probabili_fonte2 as vf2
+from fanta import archivio, nomi, probabili_fonte2 as pf2, stato_dati
 from fanta.fonti import sosfanta
 from fanta.listone import Calciatore
 
@@ -101,43 +101,6 @@ def test_senza_giornate_da_giocare_non_chiede_nulla(db):
 def _riga_fonte2(db, g, c, segnale, pub, ril):
     db.execute("INSERT INTO probabili_fonte2 VALUES ('2026-27', ?, 'sosfanta', ?, 'x', ?, NULL, ?, ?, ?, ?)",
                (g, c, {"fuori": 0, "titolare": 1}.get(segnale), segnale, f"https://x/{g}/{c}", pub, ril))
-
-
-def _ufficiale(db, g, c, stato, ril, perc=None):
-    db.execute("INSERT INTO probabili_storia (stagione, giornata, fonte, calciatore_id, stato, percentuale, in_dubbio, rilevato) "
-               "VALUES ('2026-27', ?, 'fantacalcio', ?, ?, ?, 0, ?)", (g, c, stato, perc, ril))
-
-
-def test_misura_accordo_anticipo_e_errore(db):
-    # giornata 9 giocata: 1 fuori (poi ufficiale infortunato 10 ore dopo, non ha giocato), 2 titolare (ufficiale titolare, ha giocato),
-    # 3 fuori ma l'ufficiale lo dava titolare e ha giocato (la fonte 2 sbaglia)
-    _riga_fonte2(db, 9, 1, "fuori", "2026-10-25T08:00:00", "2026-10-25T09:00:00")
-    _riga_fonte2(db, 9, 2, "titolare", "2026-10-25T08:00:00", "2026-10-25T09:00:00")
-    _riga_fonte2(db, 9, 3, "fuori", "2026-10-25T08:00:00", "2026-10-25T09:00:00")
-    _ufficiale(db, 9, 1, "titolare", "2026-10-25T08:30:00", 60)
-    _ufficiale(db, 9, 1, "infortunato", "2026-10-25T18:00:00")
-    _ufficiale(db, 9, 2, "titolare", "2026-10-25T08:30:00", 60)
-    _ufficiale(db, 9, 3, "titolare", "2026-10-25T08:30:00", 90)
-    db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, voto_red) VALUES ('2026-27', 9, 2, 6.0)")
-    db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, voto_red) VALUES ('2026-27', 9, 3, 6.0)")
-    d = vf2.misura_stagione(db, "2026-27")
-    assert (d["accordo"], d["contrasto"]) == (2, 1)
-    assert d["ore_anticipo"] == [10.0] and d["fuori_solo_fonte2"] == 1        # il 3 non e' mai diventato ufficiale
-    assert d["righe"] == 3 and d["brier_dopo"] != d["brier_prima"]
-    esito = vf2.misura(db)
-    assert len(esito["tabella"]) == 1 and "troppo pochi dati" in esito["verdetto"]
-
-
-def test_giudizio_una_stagione_solo_indicativo_e_regola_di_promozione():
-    import pandas as pd
-    una = pd.DataFrame([{"stagione": "2026-27", "righe_presenza": 100, "variazione_errore_pct": -3.0}])
-    assert "solo indicativo" in vf2.giudizio(una)
-    tre = pd.DataFrame([{"stagione": s, "righe_presenza": 100, "variazione_errore_pct": v}
-                        for s, v in (("2024-25", -2.0), ("2025-26", -1.0), ("2026-27", 0.5))])
-    assert vf2.giudizio(tre).startswith("PROMOSSA")
-    peggio = tre.assign(variazione_errore_pct=[0.2, -0.1, 0.3])
-    assert vf2.giudizio(peggio).startswith("non promossa")
-    assert "niente da misurare" in vf2.giudizio(pd.DataFrame())
 
 
 def test_stato_dati_mostra_la_fonte(db):
