@@ -292,6 +292,22 @@ def test_panchina_libera_in_ordine_di_fantavoto_atteso():
     assert len(panchina) == 7 and mu == sorted(mu, reverse=True)
 
 
+@pytest.mark.parametrize("tipo", ["per_ruolo", "libera"])
+def test_in_panchina_chi_quasi_certamente_non_gioca_sta_dietro_a_chi_gioca(tipo):
+    """Un infortunato (gioca 0%) e uno quasi fuori (gioca 10%) con il fantavoto atteso più alto di tutti: per i punti attesi
+    metterli davanti non costa niente o quasi, ma chi legge la panchina con un infortunato per primo la prende per un errore
+    (come per i titolari, #329). Stanno dopo chi gioca: dentro il loro ruolo se la panchina è per ruolo, in fondo se è libera."""
+    infortunato, quasi_fuori = 16, 34
+    rosa = _rosa_due_riserve() + [G(infortunato, "D", 0.0, 7.5), G(quasi_fuori, "A", 0.1, 9.0)]
+    r = imposta(Regole(), "panchina.tipo", f'"{tipo}"')
+    r.panchina.numero = 9
+    panchina = [g.id for g in fz._panchina(rosa, _titolari_442(rosa), r)]
+    if tipo == "per_ruolo":
+        assert panchina == [2, FORTE, SICURO, infortunato, 25, 24, 32, 33, quasi_fuori]
+    else:
+        assert panchina == [32, FORTE, 25, 33, SICURO, 24, 2, quasi_fuori, infortunato]
+
+
 def test_chi_sta_in_panchina_resta_scelto_per_gioca_per_fantavoto():
     """L'ordine cambia, la scelta di CHI va in panchina no: con un solo posto per i difensori ci va chi ha più «gioca N% x fantavoto»."""
     rosa = _rosa_due_riserve()
@@ -333,13 +349,167 @@ def test_livelli_di_rischio_sicura_o_rischiosa():
     assert bruttaa <= ma <= eccezionalea and bruttab <= mb <= eccezionaleb
 
 
-def test_spareggio_a_parita_vince_la_formazione_piu_sicura():
-    """Se uno è appena meglio in media (+0,1) ma gioca una volta su due, con il peso di base si schiera quello che gioca sempre."""
+def test_la_consigliata_sceglie_per_punti_attesi_la_prudenza_resta_agli_stili_sicuri():
+    """#612: uno appena meglio in media (+0,1) ma che gioca una volta su due. La consigliata («Equilibrata», peso di base) guarda
+    solo i punti attesi e lo schiera; chi vuole meno rischio di una brutta giornata sceglie lo stile «Sicura», che lo lascia fuori."""
     base, a, _ = _due_attaccanti_stessi_punti()
     b = G(33, "A", 0.5, 12.2)
     val = fz.Valutatore(base + [a, b], Regole(), 3000)
-    assert val.atteso(base + [b], []) > val.atteso(base + [a], []) - 0.3
-    assert val.scelta(base + [a], [], fz.PESO_BASE) > val.scelta(base + [b], [], fz.PESO_BASE)
+    assert val.atteso(base + [b], []) == pytest.approx(val.atteso(base + [a], []) + 0.1)
+    assert fz.PESO_BASE == (0.0, 0.0)
+    assert val.scelta(base + [b], [], fz.PESO_BASE) == val.atteso(base + [b], []) > val.scelta(base + [a], [], fz.PESO_BASE)
+    sicura = next(s[2] for s in fz.LIVELLI_RISCHIO if s[1] == "Sicura")
+    assert val.scelta(base + [a], [], sicura) > val.scelta(base + [b], [], sicura)
+
+
+# ---------------------------------------------------------------- punti attesi esatti, senza il rumore della simulazione (#612)
+def _tutti_i_casi(titolari, panchina, regole):
+    """Punti attesi contando uno per uno tutti i casi possibili di chi prende voto, con `fz.punteggio` (il calcolo semplice)."""
+    import itertools
+    incerti = [g for g in titolari + panchina if 0 < g.p < 1]
+    fv = {g.id: g.mu for g in titolari + panchina}
+    voto = {g.id: g.mu_voto for g in titolari + panchina}
+    totale = 0.0
+    for caso in itertools.product((False, True), repeat=len(incerti)):
+        gioca = {g.id: g.p >= 1 for g in titolari + panchina}
+        peso = 1.0
+        for g, c in zip(incerti, caso):
+            gioca[g.id] = c
+            peso *= g.p if c else 1 - g.p
+        totale += peso * fz.punteggio(titolari, panchina, gioca, fv, voto, regole)
+    return totale
+
+
+def _regole(tipo="libera", cambio_modulo=True, massimo=3, voto=None, numero=7):
+    r = Regole()
+    r.panchina.tipo, r.panchina.cambio_modulo, r.panchina.max_sostituzioni, r.panchina.numero = tipo, cambio_modulo, massimo, numero
+    r.voto_senza_sostituto = voto
+    return r
+
+
+@pytest.mark.parametrize("tipo", ["libera", "per_ruolo"])
+@pytest.mark.parametrize("cambio_modulo", [True, False])
+@pytest.mark.parametrize("massimo", [0, 1, 3, 5])
+def test_i_punti_attesi_sono_esatti(tipo, cambio_modulo, massimo):
+    """Senza modificatore difesa i punti attesi di una formazione sono quelli veri (tutti i casi contati uno per uno), non una
+    stima: non dipendono dal seme né dal numero di simulazioni."""
+    import numpy as np
+    rng = np.random.default_rng(612 + massimo)
+    for voto in (None, 4.0):
+        r = _regole(tipo, cambio_modulo, massimo, voto)
+        rosa = _rosa_casuale(rng, (3, 8, 8, 6))
+        titolari, panchina = _formazione_casuale(rng, rosa, int(rng.integers(0, 7)))
+        sicuri = set(rng.choice(11, 6, replace=False).tolist())          # pochi titolari incerti: l'elenco dei casi resta corto
+        titolari = [G(g.id, g.ruolo, 1.0 if k in sicuri else g.p, g.mu, g.mu_voto) for k, g in enumerate(titolari)]
+        veri = _tutti_i_casi(titolari, panchina, r)
+        for seme, simulazioni in ((7, 600), (8, 50)):
+            val = fz.Valutatore(titolari + panchina, r, simulazioni, seme=seme)
+            assert val.atteso(titolari, panchina) == pytest.approx(veri, abs=1e-6)
+
+
+def _formazione_a_posti_fissi(r, seme=11):
+    """Un 4-4-2 con un titolare incerto per reparto e la panchina a posti fissi delle regole `r`, da una rosa a caso."""
+    import numpy as np
+    rosa = _rosa_casuale(np.random.default_rng(seme), (3, 8, 8, 6))
+    titolari = [g for g in rosa if g.id in (1, 4, 5, 6, 7, 12, 13, 14, 15, 20, 21)]
+    titolari = [G(g.id, g.ruolo, g.p if g.id in (1, 4, 12, 20) else 1.0, g.mu, g.mu_voto) for g in titolari]
+    return titolari, fz._panchina(rosa, titolari, r)
+
+
+@pytest.mark.parametrize("tipo", ["per_ruolo", "libera"])
+def test_i_punti_attesi_esatti_con_due_portieri_di_riserva_e_il_cambio_di_modulo(tipo):
+    """Il portiere esce solo per un portiere (il primo di riserva con voto) e usa uno dei cambi: agli altri ne resta uno in meno."""
+    r = _regole(tipo, True, 2, 3.0, 8)
+    r.panchina.posti = {"P": 2, "D": 2, "C": 2, "A": 2}
+    titolari, panchina = _formazione_a_posti_fissi(r)
+    assert sorted(g.ruolo for g in panchina) == list("AACCDDPP")
+    val = fz.Valutatore(titolari + panchina, r, 100)
+    assert val.atteso(titolari, panchina) == pytest.approx(_tutti_i_casi(titolari, panchina, r), abs=1e-6)
+
+
+def test_i_punti_attesi_esatti_con_la_panchina_lunga_senza_cambio_di_modulo():
+    """11 in panchina a posti fissi e 5 cambi, senza cambio di modulo: il conto è esatto con ogni panchina."""
+    r = _regole("per_ruolo", False, 5, 3.0, 11)
+    r.panchina.posti = {"P": 2, "D": 3, "C": 3, "A": 3}
+    titolari, panchina = _formazione_a_posti_fissi(r)
+    panchina = [G(g.id, g.ruolo, float(k % 3 == 0) if k % 3 != 1 else g.p, g.mu, g.mu_voto) for k, g in enumerate(panchina)]
+    assert [g.ruolo for g in panchina] == list("PPDDDCCCAAA") and sum(0 < g.p < 1 for g in panchina) == 4
+    val = fz.Valutatore(titolari + panchina, r, 100)
+    assert val.atteso(titolari, panchina) == pytest.approx(_tutti_i_casi(titolari, panchina, r), abs=1e-6)
+
+
+def test_con_il_cambio_di_modulo_e_troppi_casi_restano_le_simulazioni_per_tutti_i_moduli():
+    """11 in panchina, 5 cambi e cambio di modulo: i casi da contare sono troppi (fz.MAX_CASI) e i punti attesi restano la
+    media delle simulazioni, come prima. Vale per tutti i moduli della lega insieme: formazioni a confronto non si valutano
+    una in un modo e una nell'altro."""
+    r = _regole("per_ruolo", True, 5, 3.0, 11)
+    r.panchina.posti = {"P": 2, "D": 3, "C": 3, "A": 3}
+    titolari, panchina = _formazione_a_posti_fissi(r)
+    val = fz.Valutatore(titolari + panchina, r, 200)
+    assert val.atteso(titolari, panchina) == pytest.approx(float(val._punti(titolari, panchina).mean()))
+    assert val._media_esatta(titolari, panchina) is None
+    # con 8 riserve di movimento il 5-4-1 da solo starebbe nel limite (ha meno casi), ma la lega ammette moduli che non ci
+    # stanno: simulazioni anche per lui
+    assert fz._quanti_casi((5, 4, 1), 5, 8) <= fz.MAX_CASI < fz._quanti_casi((4, 3, 3), 5, 8)
+    assert not val._si_conta((5, 4, 1), 8) and not val._si_conta((4, 3, 3), 8)
+    # con 7 riserve di movimento (8 in panchina con il portiere) il conto si fa per tutti i moduli
+    assert val._si_conta((4, 3, 3), 7) and val._si_conta((5, 4, 1), 7)
+
+
+@pytest.mark.parametrize("assetto", [dict(), dict(tipo="per_ruolo"), dict(tipo="per_ruolo", cambio_modulo=False, massimo=5),
+                                     dict(cambio_modulo=False, voto=4.0)])
+def test_la_scelta_non_dipende_dal_seme(assetto):
+    """#612: lo stesso calcolo rifatto con un altro seme (e con altre simulazioni) dà gli stessi 11, la stessa panchina e gli
+    stessi punti attesi. Rosa a caso con molti giocatori quasi pari: prima un altro seme cambiava un titolare 8 volte su 10."""
+    import numpy as np
+    rng = np.random.default_rng(3)
+    r = _regole(**assetto)
+    for _ in range(4):
+        rosa = [G(g.id, g.ruolo, g.p, 6.0 + (g.mu - 6.5) / 5, g.mu_voto) for g in _rosa_casuale(rng, (3, 8, 8, 6))]
+        scelte = [fz.migliore(rosa, r, n, valutatore=fz.Valutatore(rosa, r, n, seme=seme)) for seme, n in ((7, 600), (8, 600), (9, 150))]
+        for f in scelte[1:]:
+            assert [g.id for g in f.titolari] == [g.id for g in scelte[0].titolari]
+            assert [g.id for g in f.panchina] == [g.id for g in scelte[0].panchina]
+            assert f.atteso == pytest.approx(scelte[0].atteso, abs=1e-9)
+            assert [(x.modulo, pytest.approx(x.atteso, abs=1e-9)) for x in f.tutte] == [(x.modulo, x.atteso) for x in scelte[0].tutte]
+
+
+def _massimo_tra_le_valide(rosa, r, val) -> float:
+    """I punti attesi più alti fra tutte le formazioni valide della rosa: ogni scelta di 11 con un modulo ammesso, con la
+    panchina che sceglie il sistema."""
+    import itertools
+    per = {ruolo: [g for g in rosa if g.ruolo == ruolo] for ruolo in "PDCA"}
+    return max(val.atteso(list(p + d + c + a), fz._panchina(rosa, list(p + d + c + a), r))
+               for modulo in r.moduli for nd, nc, na in [map(int, modulo.split("-"))]
+               for p in itertools.combinations(per["P"], 1) for d in itertools.combinations(per["D"], nd)
+               for c in itertools.combinations(per["C"], nc) for a in itertools.combinations(per["A"], na))
+
+
+def test_la_consigliata_ha_il_massimo_dei_punti_attesi_tra_le_formazioni_valide():
+    """#612: provate tutte le formazioni valide di una rosa piccola, nessuna ha più punti attesi della consigliata. Tutti giocano
+    almeno il 20%: la regola del titolare improbabile (che rinuncia apposta a qualche decimo) qui non entra. Con le rose grandi
+    e la panchina lunga la ricerca prova solo i due migliori esclusi di ogni ruolo e può fermarsi qualche centesimo sotto il
+    massimo (misura e motivo in `formazione._candidati`)."""
+    import numpy as np
+    rng = np.random.default_rng(5)
+    r = Regole(moduli=["3-4-3", "4-3-3", "4-4-2"])
+    for _ in range(3):
+        rosa = _rosa_casuale(rng, (2, 5, 5, 4))
+        val = fz.Valutatore(rosa, r, 100)
+        assert fz.migliore(rosa, r, 100, valutatore=val).atteso == pytest.approx(_massimo_tra_le_valide(rosa, r, val), abs=1e-9)
+
+
+def test_la_consigliata_ha_il_massimo_anche_quando_costa_un_rischio():
+    """Senza cambi, tra chi gioca sempre e fa 6 e chi gioca una volta su due e fa 12,2 (6,1 di media) la consigliata prende il
+    secondo: è il massimo dei punti attesi. Prima sceglieva il primo, per prudenza."""
+    base, a, _ = _due_attaccanti_stessi_punti()
+    rosa = base + [a, G(33, "A", 0.5, 12.2)]
+    r = _regole(massimo=0)
+    r.moduli = ["4-3-3"]
+    val = fz.Valutatore(rosa, r, 600)
+    f = fz.migliore(rosa, r, 600, valutatore=val)
+    assert 33 in _titolari(f) and 32 not in _titolari(f)
+    assert f.atteso == pytest.approx(_massimo_tra_le_valide(rosa, r, val), abs=1e-9)
 
 
 # ---------------------------------------------------------------- Valutatore vettoriale = punteggio una simulazione alla volta
