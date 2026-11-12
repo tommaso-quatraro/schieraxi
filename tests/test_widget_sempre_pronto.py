@@ -4,7 +4,10 @@ import contextlib
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace as NS
 
-from fanta import account, calcolo, riscaldamento, server, widget as w
+import pytest
+
+from fanta import account, calcolo, consigli, lega, riscaldamento, server, widget as w
+from test_consigliata_stabile import ROSA, SOLO_442, _squadra, mondo  # noqa: F401  (fixture)
 from test_token_widget import _scheda, due_utenti, token_di, widget  # noqa: F401  (fixture)
 
 ADESSO = datetime(2026, 11, 12, 12, 0, tzinfo=timezone.utc)
@@ -67,3 +70,26 @@ def test_chi_guarda_solo_il_widget_lo_trova_pronto_dopo_un_aggiornamento(due_ute
     assert riscaldamento.scalda_tutti(server._contesto_locale, server._db, adesso=ADESSO) == 2
     assert anna in calcolati
     assert c.get("/api/widget", headers=h).status_code == 200
+
+
+# ---------------------------------------------------------------- rosa che non basta per una formazione
+def test_rosa_che_non_basta_si_ricorda_come_un_esito_e_il_widget_lo_legge(mondo, monkeypatch):
+    """Tre giocatori: «non si riesce a formare una squadra» è un esito di quei dati e di quella rosa, non un guasto. Si ricorda come
+    un risultato (non si ricalcola a ogni richiesta) e il token del widget lo legge invece di ricevere «sto calcolando» per sempre."""
+    tre = lega.Rose([_squadra(senza=[i for i, _, _ in ROSA if i not in (1, 4, 20)])], "Squadra Prova")
+    chiamate, vera = [], consigli._calcola_formazione
+    monkeypatch.setattr(consigli, "_calcola_formazione", lambda *a, **k: chiamate.append(1) or vera(*a, **k))
+    for _ in range(2):
+        with pytest.raises(consigli.FormazioneImpossibile, match="formare una squadra"):
+            consigli.formazione(mondo["db"], SOLO_442, tre)
+    assert chiamate == [1]                                            # la seconda volta dalla memoria
+    gettone = calcolo.solo_cache.set(True)                            # il widget
+    try:
+        with pytest.raises(consigli.FormazioneImpossibile):
+            consigli.formazione(mondo["db"], SOLO_442, tre)
+    finally:
+        calcolo.solo_cache.reset(gettone)
+    mondo["versione"] = "v2"                                          # dati nuovi: si riprova
+    with pytest.raises(consigli.FormazioneImpossibile):
+        consigli.formazione(mondo["db"], SOLO_442, tre)
+    assert chiamate == [1, 1]

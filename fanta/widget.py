@@ -61,8 +61,9 @@ def _opzionale(mancano: list[str], nome: str, funzione):
 
 
 def _tua_scelta(db, regole, rose, f: dict, giornata: int, file_scelte) -> dict | None:
-    """La formazione salvata dall'utente per la giornata (titolari, modulo, punti, panchina), o None se non c'è o non vale più."""
-    if not file_scelte:
+    """La formazione salvata dall'utente per la giornata (titolari, modulo, punti, panchina), o None se non c'è o non vale più.
+    Senza consigliata (rosa che non basta) None subito, come Oggi: `valuta` richiederebbe la consigliata (#651)."""
+    if not file_scelte or not f["titolari"]:
         return None
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
     if not scelta:
@@ -83,9 +84,10 @@ def _tua_scelta(db, regole, rose, f: dict, giornata: int, file_scelte) -> dict |
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, file_osservati, file_scelte=None,
                 live_partite: dict | None = None) -> dict:
     tratti = avatar.tutti()
-    o = gestione.oggi(db, regole, rose, file_scelte=file_scelte, file_diario=file_diario,   # il nucleo: può alzare InCalcolo (202)
-                      live_partite=live_partite)
-    f = consigli.formazione(db, regole, rose)
+    # il nucleo: può alzare InCalcolo (202). La consigliata si chiede UNA volta e la usa anche Oggi: l'errore di un calcolo in coda
+    # arriva una volta sola, e una seconda richiesta lo rimetteva in coda («sto calcolando» per sempre con una rosa che non basta, #651)
+    f = gestione.formazione_di_oggi(db, regole, rose)
+    o = gestione.oggi(db, regole, rose, file_scelte=file_scelte, file_diario=file_diario, live_partite=live_partite, formazione=f)
     prev, giornata, _ = consigli.previsioni(db, regole)
     consigliata = {"modulo": f["modulo"], "punti_attesi": f["punteggio_atteso"]}
     tua = _tua_scelta(db, regole, rose, f, giornata, file_scelte)

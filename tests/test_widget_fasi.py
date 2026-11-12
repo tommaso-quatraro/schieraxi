@@ -59,6 +59,29 @@ def test_tre_fasi_come_in_oggi(widget_vero):
     assert c["riepilogo"] == o["riepilogo"] and c["riepilogo"]["punti_fatti"] == 70.5 and c["prossima"] == o["prossima"]
 
 
+def test_rosa_che_non_basta_il_widget_risponde_senza_formazione(widget_vero, monkeypatch):
+    """#651: l'errore di un calcolo in coda arriva una volta sola; il widget chiedeva la formazione due volte (Oggi e poi lui) e la
+    seconda ripartiva in coda: «sto calcolando» a ogni richiesta. Ora la chiede una volta e, come Oggi, risponde senza formazione;
+    nemmeno la formazione salvata la richiede."""
+    from fanta import scelte
+    from test_fasi import PANCHINA, ST, TITOLARI
+    a, costruisci = widget_vero
+    consegnato = []
+
+    def formazione(*x, **k):
+        if consegnato:
+            raise calcolo.InCalcolo()                    # chiesta di nuovo: ripartirebbe in coda
+        consegnato.append(1)
+        raise ValueError("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata")
+    monkeypatch.setattr(consigli, "formazione", formazione)
+    monkeypatch.setattr(consigli, "valuta", lambda *x, **k: (_ for _ in ()).throw(calcolo.InCalcolo()))
+    scelte.salva(ST, 10, TITOLARI, "4-4-2", a.tmp / "scelte.json", panchina=PANCHINA)
+    c = costruisci(datetime(2026, 11, 6, 12, 0))
+    z = c["formazione"]
+    assert (z["modulo"], z["punti_attesi"], z["titolari"], z["panchina"]) == ("–", None, [], []) and "tua_scelta" not in z
+    assert c["squadra"] == "Mia" and c["rosa"] and not any(m["titolare"] for m in c["rosa"])
+
+
 def test_senza_fase_i_campi_mancano(due_utenti):
     a, _ = due_utenti
     c, h = widget(token_di(a))
