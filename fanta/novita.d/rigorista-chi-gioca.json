@@ -1,0 +1,11 @@
+{
+  "titolo": "Rigorista: il motivo va a chi gioca davvero",
+  "voci": [
+    "Web, iPhone e iPad: se in una squadra due giocatori calciano i rigori, il motivo «rigorista» nella scheda va a chi dei due gioca davvero, non a chi parte dalla panchina o non è convocato. Vale anche per i rigoristi nei widget.",
+    "Il fantavoto atteso dei giocatori resta quello di prima."
+  ],
+  "tecnico": [
+    "modello._segna_primo_rigorista: `primo_rigorista` è il giocatore della squadra con il prodotto più alto fra `p_voto` e `quota_rigori` (prima la sola `quota_rigori`), fra chi non è infortunato né squalificato; con il prodotto a zero non lo è nessuno. `consigli.rigorista` non cambia: il motivo della scheda e `rigoristi` di /api/widget restano uno per squadra. Nessun cambio a mu, rigori attesi e forme delle risposte.",
+    "modello.con_prestazioni_dai_voti salta le partite già ricostruite (`understat_partita` uguale all'id della partita cambiato di segno): richiamata sui dati che ha già completato non aggiunge le stesse righe un'altra volta. In produzione la chiama solo `carica`, una volta: i numeri non cambiano."
+  ]
+}
