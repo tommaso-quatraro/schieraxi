@@ -163,10 +163,11 @@ def _statistiche(pid, n):
              "uscito": 0} for i in range(n)]
 
 
-def _understat_rilegge(db, monkeypatch, prima: int | None, adesso: int):
-    """La partita 500 (casa-ospite, giocata due giorni fa, quindi da rileggere) con `prima` righe di statistiche salvate (None =
-    mai letta); la fonte ora ne dà `adesso`. Restituisce l'aggiornamento dopo il passo."""
-    monkeypatch.setattr(aggiorna, "_ora", lambda: "2026-11-12T08:03:00")
+def _understat_rilegge(db, monkeypatch, prima: int | None, adesso: int, ora: str = "2026-11-12T08:03:00"):
+    """La partita 500 (casa-ospite, giocata il 10/11: all'ora di partenza due giorni fa, quindi da rileggere) con `prima` righe di
+    statistiche salvate (None = mai letta); la fonte ora ne dà `adesso`. Restituisce l'aggiornamento dopo il passo e le partite
+    di cui ha letto il tabellino."""
+    monkeypatch.setattr(aggiorna, "_ora", lambda: ora)
     monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
     db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (1, ?, 11, '2026-11-10 20:45', "
                "'casa', 'ospite', 1)", (ST,))
@@ -179,11 +180,12 @@ def _understat_rilegge(db, monkeypatch, prima: int | None, adesso: int):
                "xg_casa": 1.2, "xg_trasferta": 0.4, "giocata": 1}
     monkeypatch.setattr(aggiorna.rete, "scarica", lambda *x, **k: SimpleNamespace(content=b"{}"))
     monkeypatch.setattr(aggiorna.us, "leggi_lega", lambda dati: ([dict(partita)], []))
-    monkeypatch.setattr(aggiorna.us, "leggi_partita", lambda dati, pid, casa, trasferta: _statistiche(pid, adesso))
+    lette = []
+    monkeypatch.setattr(aggiorna.us, "leggi_partita", lambda dati, pid, casa, trasferta: lette.append(pid) or _statistiche(pid, adesso))
     a = _agg(db)
     a.slug_noti = {"casa", "ospite"}
     a._passo("Understat", a.understat, "understat")
-    return a
+    return a, lette
 
 
 def _salvate(db):
@@ -195,7 +197,7 @@ def _salvate(db):
 def test_rilettura_delle_statistiche_con_meno_righe_tiene_quelle_di_prima_e_lo_dice(db, monkeypatch, adesso):
     """Le partite degli ultimi 4 giorni si rileggono a ogni aggiornamento. Una risposta valida ma senza tabellino (o più corta)
     cancellava le righe buone e il passo risultava riuscito: fino alla lettura buona dopo il modello usava le righe ricostruite."""
-    a = _understat_rilegge(db, monkeypatch, prima=25, adesso=adesso)
+    a, _ = _understat_rilegge(db, monkeypatch, prima=25, adesso=adesso)
     assert _salvate(db) == (25, 1)
     assert len(a.errori) == 1 and a.errori[0].startswith("Understat: ") and f"{adesso} righe, prima erano 25" in a.errori[0]
 
@@ -204,8 +206,30 @@ def test_rilettura_delle_statistiche_con_meno_righe_tiene_quelle_di_prima_e_lo_d
 def test_rilettura_delle_statistiche_con_almeno_le_righe_di_prima_le_sostituisce(db, monkeypatch, prima, adesso, attese):
     """Come prima: una lettura con almeno le righe di prima le sostituisce; alla prima lettura un tabellino non ancora completo
     (meno di 22 righe) si salva e si riprova la volta dopo, senza errore."""
-    a = _understat_rilegge(db, monkeypatch, prima=prima, adesso=adesso)
+    a, _ = _understat_rilegge(db, monkeypatch, prima=prima, adesso=adesso)
     assert _salvate(db) == attese and a.errori == []
+
+
+def test_dentro_i_4_giorni_anche_un_tabellino_incompleto_non_si_accorcia(db, monkeypatch):
+    a, lette = _understat_rilegge(db, monkeypatch, prima=10, adesso=9)
+    assert lette == [500] and _salvate(db) == (10, 0) and "9 righe, prima erano 10" in a.errori[0]
+
+
+@pytest.mark.parametrize("prima", [10, 25])
+def test_dopo_4_giorni_le_statistiche_salvate_non_si_rileggono_e_l_errore_finisce(db, monkeypatch, prima):
+    """Revisione della #669: una partita con il tabellino incompleto alla prima lettura (meno di 22 righe, da riprovare) si
+    rileggeva senza limite di tempo, e una rilettura più corta teneva il passo in errore per sempre, coprendo i guasti veri. Dopo
+    i 4 giorni le righe salvate restano come sono, complete o no: niente rilettura e niente errore."""
+    a, lette = _understat_rilegge(db, monkeypatch, prima=prima, adesso=prima - 1, ora="2026-12-02T08:03:00")   # 20 giorni dopo
+    assert lette == [] and a.errori == [] and _salvate(db) == (prima, int(prima >= 22))
+
+
+@pytest.mark.parametrize("prima", [None, 0])
+def test_una_partita_senza_statistiche_si_legge_anche_dopo_4_giorni(db, monkeypatch, prima):
+    """Le partite mancanti (mai lette, o lette senza tabellino) si leggono sempre, come prima: per esempio dopo giorni di server
+    fermo."""
+    a, lette = _understat_rilegge(db, monkeypatch, prima=prima, adesso=25, ora="2026-12-02T08:03:00")
+    assert lette == [500] and _salvate(db) == (25, 1) and a.errori == []
 
 
 # ---------------- righe dei voti scartate ----------------

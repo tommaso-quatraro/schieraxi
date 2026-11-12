@@ -466,11 +466,14 @@ class Aggiornamento:
         self.db.commit()
         nuove, calate = 0, []
         if dettaglio_partite:
-            # le partite mancanti, e quelle degli ultimi giorni (gli xG vengono rivisti dopo la partita)
+            # le partite mancanti (senza righe: mai lette o lette senza tabellino), e quelle degli ultimi giorni (gli xG vengono
+            # rivisti dopo la partita, e un tabellino incompleto si completa). Dopo i 4 giorni le righe salvate restano come sono:
+            # una rilettura più corta terrebbe il passo in errore per sempre, coprendo i guasti veri (revisione della #669)
             recente = (datetime.fromisoformat(_ora()) - timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S")
             for pid, casa, trasferta in self.db.execute(
-                    "SELECT id, casa, trasferta FROM partite_understat WHERE stagione = ? AND giocata = 1 "
-                    "AND (scaricata = 0 OR data >= ?)", (st.codice, recente)).fetchall():
+                    "SELECT id, casa, trasferta FROM partite_understat u WHERE stagione = ? AND giocata = 1 AND (data >= ? OR "
+                    "(scaricata = 0 AND NOT EXISTS (SELECT 1 FROM prestazioni p WHERE p.understat_partita = u.id)))",
+                    (st.codice, recente)).fetchall():
                 righe = us.leggi_partita(us.dati_json(rete.scarica(us.url_partita(pid), headers=us.HEADERS).content), pid, casa,
                                          trasferta)
                 prima = self.db.execute("SELECT COUNT(*) FROM prestazioni WHERE understat_partita = ?", (pid,)).fetchone()[0]
