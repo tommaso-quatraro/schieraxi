@@ -140,6 +140,26 @@ Gli script si prendono da `main`: un controllo nuovo vale dalla pull request dop
   `python script/squadra/squadra.py giornata --dal <ISO con fuso> --al <ISO con fuso> --sentinella <file>`.
   Uso e codici di uscita: `script/squadra/LEGGIMI.md`, «giornata».
 
+## Ingresso degli amici (la misura di #168)
+- Obiettivo #168: un amico invitato entra da solo dalla web e carica la sua lega in **meno di 10 minuti**. Due strumenti, uno per
+  trovare gli ostacoli e uno per misurare.
+- Lo **script** `prove/amico_nuovo/percorso.py` fa il percorso di un amico nuovo nel browser (dal link d'invito alla prima formazione,
+  poi rientro ed eliminazione dell'account) e per ogni passo scrive secondi, tocchi, errori della console e violazioni gravi di
+  accessibilità. Gira in locale o sull'ambiente di prova, mai sulla produzione: con `--remoto` si ferma se il nome del server non
+  comincia con `prova.`. Si usa per trovare gli ostacoli e per provare che una correzione li toglie. Istruzioni:
+  `prove/amico_nuovo/LEGGIMI.md`.
+- Il **comando** `python -m fanta ingresso --dal <ISO con fuso> [--al <ISO con fuso>]` misura gli amici veri: si lancia sul server,
+  in sola lettura, e per ogni account creato nel periodo dice quanti minuti sono passati dalla creazione alla lega caricata (rose
+  vere, non le squadre di esempio, e passo «tempi» del primo avvio fatto). Una riga per account, senza nomi. Uscita 0 se tutti sono
+  dentro in meno di 10 minuti, 1 se no, 2 se nel periodo non c'è nessun account, 3 se la misura non si può fare. Se l'amico rifà il
+  primo avvio o reimporta le rose, il tempo risulta più lungo del vero (la misura sbaglia a sfavore). Dettagli: `fanta/misura_ingresso.py`.
+- La soglia «meno di 10 minuti» è la **somma** dell'esportazione delle rose da Leghe sul telefono e del percorso dal link
+  d'invito alla Formazione. Il comando vede solo la seconda parte: l'esportazione da Leghe si cronometra a parte e si somma a mano.
+- Il rapporto del controllo di sicurezza resta solo sul PC del proprietario, fuori dal repository: mai qui, né in una issue, né in
+  una pull request.
+- Regola per i problemi di sicurezza trovati: restano in privato finché la correzione è pronta. La pull request della correzione e la
+  sua issue hanno titoli neutri che descrivono il cambiamento, senza numeri di voce né dettagli del problema.
+
 ## App per iPhone
 - Al massimo tre pull request iOS aperte insieme, su schermate diverse; i file comuni li cambia una pull request alla volta.
 - Le foto (`screenshot.yml`) le lancia una sola persona: al massimo 2 corse insieme, solo con Mac liberi (mai più di 5 job Mac

@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
-from fanta import account, percorsi, registro, server, social
+from fanta import account, percorsi, registro, rotte_account, server, social
 
 PASSWORD = "una-password-lunga-9"
 CLIENT_ID = "id-di-prova.apps.googleusercontent.com"
@@ -155,7 +155,8 @@ def test_iscrizione_su_invito_serve_il_codice_d_invito(scena):
     assert nuovo["serve_invito"] is True and nuovo["nome_suggerito"] == "mario"
     corpo = {"iscrizione": nuovo["iscrizione"], "nome_utente": "Mario", "accetto_termini": True}
     assert c.post("/api/account/social/completa", json=corpo).status_code == 403                           # senza invito
-    assert c.post("/api/account/social/completa", json=corpo | {"invito": "sbagliato"}).status_code == 403
+    sbagliato = c.post("/api/account/social/completa", json=corpo | {"invito": "sbagliato"})
+    assert sbagliato.status_code == 403 and sbagliato.json()["detail"] == rotte_account.INVITO_DA_CHIEDERE     # #580
     assert c.post("/api/account/social/completa", json=corpo | {"invito": invito(), "accetto_termini": False}).status_code == 400
     r = c.post("/api/account/social/completa", json=corpo | {"invito": invito()})
     assert r.status_code == 200 and r.json()["utente"]["nome_utente"] == "mario" and "codice_recupero" not in r.json()

@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from fanta import account, account_email, posta
+from fanta import account, account_email, posta, rotte_account
 
 from test_account_http import PASSWORD, cliente, invito
 from test_account_email import codice_di, ultimi
@@ -57,7 +57,7 @@ def test_predefinito_e_invito(monkeypatch):
 
 def test_invito_senza_invito_si_viene_respinti(web, posta_finta):
     r = iscrivi(web)
-    assert r.status_code == 403 and r.json()["detail"] == account.INVITO_NON_VALIDO and utenti() == [] and not posta_finta
+    assert r.status_code == 403 and r.json()["detail"] == rotte_account.INVITO_DA_CHIEDERE and utenti() == [] and not posta_finta
     ok = web.post("/api/account/registra", json={"nome_utente": "marco", "password": PASSWORD, "invito": invito()})
     assert ok.status_code == 200 and utenti() == ["marco"]
 
@@ -205,6 +205,7 @@ def test_email_serve_l_invito_e_l_email(web, posta_finta, monkeypatch):
     assert ok.status_code == 200 and utenti() == ["anna"]
     again = iscrivi(cliente(**{"X-Forwarded-For": "4.4.4.7"}), "bruno", "bruno@example.com", invito=codice_inv)
     assert again.status_code == 403                                                          # l'invito è stato usato alla conferma
+    assert again.json()["detail"] == rotte_account.INVITO_DA_CHIEDERE                        # chiedine uno nuovo (#580)
 
 
 def test_email_invito_sbagliato_conta_nei_limiti(web, monkeypatch):

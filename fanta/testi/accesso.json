@@ -59,6 +59,16 @@
     "it": "Ti serve un codice d'invito: chiedilo a chi ti ha invitato.",
     "en": "You need an invitation code: ask the person who invited you."
   },
+  "accesso.invito_inserito": {
+    "it": "Codice d'invito già inserito: scegli un nome utente e una password.",
+    "en": "Invitation code already filled in: choose a username and a password.",
+    "nota": "Registrati, con il codice arrivato dal link d'invito già scritto nel campo"
+  },
+  "accesso.invito_inserito_email": {
+    "it": "Codice d'invito già inserito. Serve anche un indirizzo email: ti mandiamo un codice per confermarlo.",
+    "en": "Invitation code already filled in. You also need an email address: we will send you a code to confirm it.",
+    "nota": "Registrati con email obbligatoria, con il codice arrivato dal link d'invito già scritto nel campo"
+  },
   "accesso.torna": {
     "it": "Torna all'accesso",
     "en": "Back to sign in"
