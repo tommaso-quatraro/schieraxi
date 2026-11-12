@@ -97,8 +97,8 @@
     "en": "the image to SchieraXI (if the app is installed on the Home Screen): above choose crest or shirt."
   },
   "lega.immagini_png_jpeg": {
-    "it": "Immagini PNG, JPEG o WebP, fino a 4 MB. Si vedono in Squadra, nell'intestazione e nella formazione.",
-    "en": "PNG, JPEG or WebP images, up to 4 MB. They show in Team, in the header and in the lineup."
+    "it": "Immagini PNG, JPEG o WebP, fino a 4 MB. Si vedono nella rosa della squadra; lo stemma anche nell'elenco delle squadre e in Giornate.",
+    "en": "PNG, JPEG or WebP images, up to 4 MB. They show in the team's roster; the crest also in the list of teams and in Matchdays."
   },
   "lega.importa_nuove_rose": {
     "it": "Importa le nuove rose",
