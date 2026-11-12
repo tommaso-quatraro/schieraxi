@@ -12,12 +12,13 @@ Case finte in cartelle temporanee, finti curl, date e flock: niente server vero,
 import contextlib
 import json
 import os
+import shutil
 import sqlite3
 import tarfile
 
 import pytest
 
-from test_script_server import BASH, _casa_aggiorna, _lancia, _lancia_backup_dati, _msys, _scrivi, _stub, con_bash
+from test_script_server import BASH, _casa_aggiorna, _lancia, _lancia_backup_dati, _msys, _rimuovi, _scrivi, _stub, con_bash
 
 ADESSO = 1_800_000_000          # secondi: l'orologio finto di `date +%s`
 ORA = 3600
@@ -70,7 +71,17 @@ def casa(tmp_path):
             esito.write_text(str(rc), encoding="utf-8")
             orologio.write_text(str(ADESSO + int(ora * ORA)), encoding="utf-8")
             prima = avvisi.read_text(encoding="utf-8").splitlines() if avvisi.exists() else []
-            r = _lancia([BASH, (app / "script" / "server" / "aggiorna.sh").as_posix()], env=env)
+            # se bash si pianta (vedi _lancia) casa e avvisi tornano com'erano prima del giro: il giro ripetuto conta una volta sola
+            foto = tmp_path / "foto-casa"
+            if foto.exists():
+                _rimuovi(foto)
+            shutil.copytree(tmp_path / "casa", foto)
+
+            def ripristina():
+                _rimuovi(tmp_path / "casa")
+                shutil.copytree(foto, tmp_path / "casa")
+                avvisi.write_text("".join(f"{riga}\n" for riga in prima), encoding="utf-8")
+            r = _lancia([BASH, (app / "script" / "server" / "aggiorna.sh").as_posix()], env=env, ripristina=ripristina)
             assert r.returncode == 0, r.stderr
             dopo = avvisi.read_text(encoding="utf-8").splitlines() if avvisi.exists() else []
             mandati = [json.loads(riga) for riga in dopo[len(prima):]]
