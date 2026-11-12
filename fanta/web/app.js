@@ -2489,15 +2489,22 @@ function chiaveInUint8(b64) {
 // Gli avvisi su questo dispositivo (Impostazioni > Avvisi, #618): un interruttore solo, che iscrive o toglie questo browser dalle
 // notifiche dell'app. Quali avvisi partono lo decide il server. Senza notifiche nel browser (iPhone senza l'app sulla Home, browser
 // senza service worker) al posto dell'interruttore una frase dice cosa fare. `dispositivi`: quanti ne ha l'utente (GET /api/avvisi).
-// Il riquadro nasce con «Controllo gli avvisi…» e aria-busy (avvisiTelefono): l'attesa del service worker arriva a 4 secondi.
+// Il riquadro nasce con «Controllo gli avvisi…» e aria-busy (avvisiTelefono). Il service worker si aspetta (al massimo 4 secondi) solo
+// se una registrazione c'è ed è in attivazione: senza registrazione non arriverà mai, e la frase va subito.
 const pushPossibile = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+// La registrazione chiesta all'avvio (in fondo al file): la sua promessa, che dà null se il browser la rifiuta. Resta null se l'app non
+// la chiede (indirizzo senza https che non è questo computer): allora si chiede al browser se ce n'è una.
+let registrazioneSW = null;
 async function notificheWeb(dispositivi) {
   const dove = $("#notifiche-web");
   if (!dove) return;
   const mostra = html => { dove.innerHTML = html; dove.classList.remove("avvisi-attesa"); dove.removeAttribute("aria-busy"); };
   const senza = () => mostra(`<p class="debole piccolo">${t("avv.notifiche_dell_app")}</p>`);
   if (!pushPossibile()) { senza(); return; }
-  // il service worker può non arrivare mai (navigazione privata, installazione fallita): senza, si dice che qui le notifiche non ci sono
+  const registrata = await (registrazioneSW || navigator.serviceWorker.getRegistration()).catch(() => null);
+  if (!document.body.contains(dove)) return;
+  if (!registrata) { senza(); return; }
+  // registrato ma può non attivarsi mai (installazione fallita): dopo 4 secondi si dice che qui le notifiche non ci sono
   const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 4000))]).catch(() => null);
   if (!document.body.contains(dove)) return;
   if (!reg) { senza(); return; }
@@ -3755,7 +3762,7 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     bottone.addEventListener("click", () => location.reload());
     barra.append(testo, bottone); document.body.appendChild(barra);
   });
-  navigator.serviceWorker.register("sw.js").catch(() => { /* senza: funziona lo stesso, solo non offline */ });
+  registrazioneSW = navigator.serviceWorker.register("sw.js").catch(() => null);   // senza: funziona lo stesso, solo non offline e senza notifiche
   // Tocco su un avviso con l'app già aperta: il service worker dice quale schermata aprire (per esempio la Formazione). Un nome di una
   // versione di prima (Squadra, Altro, Oggi) porta alla schermata che ne ha preso il posto (dove()).
   navigator.serviceWorker.addEventListener("message", e => {

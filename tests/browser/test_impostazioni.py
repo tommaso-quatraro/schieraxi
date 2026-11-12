@@ -437,10 +437,30 @@ def test_senza_notifiche_nel_browser_la_frase_dice_cosa_fare(web):
     assert sezione(web, "Avvisi").get_by_role("checkbox", name=re.compile("^Avvisi su questo dispositivo")).count() == 0
 
 
-def test_mentre_cerca_le_notifiche_il_riquadro_lo_dice_e_la_pagina_non_salta(web):
-    """Il browser di prova non ha il service worker: la web lo aspetta fino a 4 secondi. Intanto il posto dell'interruttore dice che
-    sta controllando (aria-busy), e quando arriva la frase la riga delle ore tranquille resta dov'era."""
+def test_senza_service_worker_registrato_gli_avvisi_non_aspettano(web):
+    """Il browser di prova non ha un service worker registrato: la sezione avvisi lo dice subito, senza aspettare i 4 secondi (che
+    restano solo per una registrazione in attivazione). Prima ogni apertura di Impostazioni costava 4 s, anche ai controlli."""
     solo(web, "prima")
+    web.pagina.goto(web.server.indirizzo + "/?vista=impostazioni", wait_until="load")
+    avvisi = sezione(web, "Avvisi")
+    avvisi.locator("label").filter(has_text="Ore tranquille").wait_for(timeout=10000)
+    avvisi.get_by_text(re.compile("Le notifiche dell'app non sono disponibili")).wait_for(timeout=1500)
+    assert avvisi.locator("[aria-busy=true]").count() == 0
+
+
+# Un service worker registrato ma ancora in attivazione: `ready` non arriva (la web lo aspetta al massimo 4 secondi).
+IN_ATTIVAZIONE = """(() => {
+  const reg = { active: null, installing: {}, pushManager: { getSubscription: async () => null } };
+  ServiceWorkerContainer.prototype.getRegistration = async () => reg;
+  Object.defineProperty(ServiceWorkerContainer.prototype, 'ready', { get: () => new Promise(() => {}) });
+})();"""
+
+
+def test_mentre_cerca_le_notifiche_il_riquadro_lo_dice_e_la_pagina_non_salta(web):
+    """Con un service worker registrato ma non ancora attivo la web lo aspetta fino a 4 secondi. Intanto il posto dell'interruttore
+    dice che sta controllando (aria-busy), e quando arriva la frase la riga delle ore tranquille resta dov'era."""
+    solo(web, "prima")
+    web.pagina.add_init_script(IN_ATTIVAZIONE)
     web.pagina.goto(web.server.indirizzo + "/?vista=impostazioni", wait_until="load")
     avvisi = sezione(web, "Avvisi")
     ore = avvisi.locator("label").filter(has_text="Ore tranquille")
@@ -454,14 +474,15 @@ def test_mentre_cerca_le_notifiche_il_riquadro_lo_dice_e_la_pagina_non_salta(web
     assert abs(ore.bounding_box()["y"] - prima) <= 2, f"la riga delle ore tranquille si è spostata: {prima} → {ore.bounding_box()['y']}"
 
 
-# Le notifiche del browser, finte (il browser di prova non ha il service worker): un service worker pronto, con un pushManager che
-# iscrive davvero solo per finta, e il permesso che risponde PERMESSO. Le rotte del server rispondono con `notifiche_finte`.
+# Le notifiche del browser, finte (il browser di prova non ha il service worker): un service worker registrato e pronto, con un
+# pushManager che iscrive solo per finta, e il permesso che risponde PERMESSO. Le rotte del server rispondono con `notifiche_finte`.
 NOTIFICHE_FINTE = """(() => {
-  const reg = { pushManager: {
+  const reg = { active: {}, pushManager: {
     getSubscription: async () => window.__iscrizione || null,
     subscribe: async () => (window.__iscrizione = { endpoint: 'https://push.example/prova',
       toJSON: () => ({ endpoint: 'https://push.example/prova', keys: { p256dh: 'a', auth: 'b' } }),
       unsubscribe: async () => { window.__iscrizione = null; return true; } }) } };
+  ServiceWorkerContainer.prototype.getRegistration = async () => reg;
   Object.defineProperty(ServiceWorkerContainer.prototype, 'ready', { get: () => Promise.resolve(reg) });
   Notification.requestPermission = async () => PERMESSO;
 })();"""
