@@ -79,7 +79,7 @@ def osserva(esegui: comune.Esegui, url: str | None, leggi_url: Callable[[str], s
     for o in s["obiettivi"]:
         voci[f"obiettivo:{o['numero']}"] = f"Obiettivo #{o['numero']} {o['titolo']}: {o['aperte']} sotto-issue aperte su {o['totali']}"
     for w in s["worktree"]:
-        if w["gruppo"] in ("da_togliere", "con_modifiche", "senza_pr", "sparita"):
+        if w["gruppo"] in ("da_togliere", "con_modifiche", "senza_pr", "sessione_app", "sparita"):
             nome = w["percorso"].rsplit("/", 1)[-1]
             voci[f"worktree:{nome}"] = f"Worktree {nome} ({w['ramo'] or 'staccata'}): {w['gruppo'].replace('_', ' ')}"
     rotte = guasti(esegui, s["pr"])

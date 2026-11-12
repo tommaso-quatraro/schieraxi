@@ -57,8 +57,9 @@ python script/squadra/squadra.py annulla-superate --esegui   # annulla davvero
 ```
 
 ## pulisci
-Le worktree di `.claude/worktrees/` in gruppi: da togliere (ramo unito e niente modifiche), con modifiche, senza PR, con PR
-aperta, bloccate da un agente, cartelle sparite (cancellate a mano: si tolgono dall'elenco con `git worktree prune`). Con `--esegui` toglie solo il primo gruppo: `git worktree remove` senza `--force`, poi il ramo
+Le worktree di `.claude/worktrees/` in gruppi: da togliere (ramo unito e niente modifiche), con modifiche, senza PR, sessioni
+dell'app, con PR aperta, bloccate da un agente, cartelle sparite (cancellate a mano: si tolgono dall'elenco con
+`git worktree prune`). Con `--esegui` toglie solo il primo gruppo: `git worktree remove` senza `--force`, poi il ramo
 locale. «Unito» vuole sempre una PR `MERGED`: con la stessa testa; oppure con la testa locale già dentro `origin/main`
 (dell'ultimo `git fetch`); oppure portata in pari con main da GitHub («Update branch»): la testa locale è un antenato di
 quella della PR (`compare/<testa PR>...<testa locale>` con `status` uguale a `behind` o `identical`; un errore vale «non unito»).
@@ -66,6 +67,12 @@ quella della PR (`compare/<testa PR>...<testa locale>` con `status` uguale a `be
 Una worktree con la testa già in `origin/main` ma senza PR unita (ramo senza commit propri, o staccata su un commit di main)
 non è «unita»: è anche lo stato di una sessione appena aperta e ancora al lavoro. Sta in «Senza PR» con la nota «nessun
 commit proprio» e si toglie a mano dopo aver chiesto.
+
+Le sessioni aperte dall'app lavorano in `.claude/worktrees/<nome>` sul ramo `claude/<nome>` e possono restare aperte anche
+dopo l'unione della loro PR. Una worktree con il ramo `claude/…` unito e senza modifiche non va in «da togliere» ma in
+«Sessioni dell'app»: `pulisci` non la toglie mai, `giro` la mostra, e si toglie a mano quando la sessione è chiusa. Limite:
+una sessione passata a un altro ramo non si riconosce più; se la PR di quel ramo è unita e non ci sono modifiche finisce
+in «da togliere». Per proteggerla: `git worktree lock <cartella>`.
 
 Poi i rami locali senza worktree (mai `main`, mai il ramo corrente): da togliere (PR unita e lavoro su main, come sopra), da
 chiedere (senza PR, PR chiusa, commit non uniti: non si toccano mai), con PR aperta. Con `--esegui` toglie solo i primi.

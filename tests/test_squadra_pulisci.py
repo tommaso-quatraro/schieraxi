@@ -81,6 +81,36 @@ def test_worktree_senza_commit_propri_con_pr_chiusa_non_si_toglie(capsys):
     assert "Senza PR (1)" in capsys.readouterr().out
 
 
+# #524 (facoltativo): le sessioni aperte dall'app lavorano in .claude/worktrees/<nome> sul ramo claude/<nome>. Anche a PR
+# unita la sessione può essere ancora aperta: la sua cartella non si toglie da sola.
+def _ramo_unito(ramo):
+    unita = [{"number": 50, "state": "MERGED", "headRefName": ramo, "headRefOid": "s1"}]
+    return una_worktree("sessione-finita", "s1", ramo, prs=unita)
+
+
+def test_sessione_dell_app_con_pr_unita_non_si_toglie(capsys):
+    f = _ramo_unito("claude/sessione-finita")
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert not f.lanciati("git worktree remove") and not f.lanciati("git branch")
+    righe = capsys.readouterr().out.splitlines()
+    assert [r for r in righe if r.startswith("Da togliere (0)")] and [r for r in righe if r.startswith("Sessioni dell'app (1)")]
+    assert [r for r in righe if "sessione-finita" in r and "PR #50 MERGED" in r]
+
+
+def test_sessione_dell_app_con_pr_unita_nel_json(capsys):
+    pulisci.main(_ramo_unito("claude/sessione-finita"), json_=True)
+    gruppi = json.loads(capsys.readouterr().out)["gruppi"]
+    assert gruppi["da_togliere"] == []
+    assert [w["ramo"] for w in gruppi["sessione_app"]] == ["claude/sessione-finita"]
+
+
+def test_un_ramo_che_non_comincia_per_claude_barra_si_toglie_come_gli_altri():
+    f = _ramo_unito("claudia-finita")
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert f.lanciati("git worktree remove") == [f"git worktree remove {WT}/sessione-finita"]
+    assert f.lanciati("git branch") == ["git branch -D claudia-finita"]
+
+
 def test_bloccate_e_con_modifiche_non_si_toccano_mai():
     f = finto()
     pulisci.main(f, esegui_davvero=True)

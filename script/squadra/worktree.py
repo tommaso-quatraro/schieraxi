@@ -7,6 +7,8 @@ Gruppi delle worktree:
 - con_modifiche: file cambiati non salvati in un commit, o commit fatti dopo l'unione della PR. Si chiede all'utente.
 - in_corso: la PR del ramo è aperta.
 - da_togliere: ramo unito e niente modifiche.
+- sessione_app: ramo unito e niente modifiche, ma il ramo è `claude/…`: è la worktree di una sessione aperta dall'app, che
+  può essere ancora in uso. Non si toglie mai da sola: si chiede, e si toglie a mano a sessione chiusa (#524).
 - senza_pr: niente PR aperta né unita. Anche quando la testa è già in origin/main: un ramo senza commit propri (o una
   worktree staccata su un commit di main) è lo stato di una sessione appena aperta, non di un lavoro finito (#524).
 
@@ -21,6 +23,7 @@ from __future__ import annotations
 import comune
 
 CARTELLA_WORKTREE = "/.claude/worktrees/"
+RAMO_SESSIONE = "claude/"                  # le sessioni aperte dall'app lavorano sul ramo claude/<nome della cartella>
 DISCENDENTE = ("behind", "identical")
 SQUASH = ("stessa_testa", "antenata")      # unione squash: il ramo si toglie con «git branch -D»
 UNITE = ("stessa_testa", "in_main", "antenata")
@@ -125,7 +128,7 @@ def raccogli(esegui: comune.Esegui, prs: dict[str, dict] | None = None) -> list[
         elif pr and pr["state"] == "OPEN":
             v["gruppo"] = "in_corso"
         elif v["unito"]:
-            v["gruppo"] = "da_togliere"
+            v["gruppo"] = "sessione_app" if v["ramo"].startswith(RAMO_SESSIONE) else "da_togliere"
         elif pr and pr["state"] == "MERGED":
             v["gruppo"] = "con_modifiche"
             v["motivo"] = MOTIVO_NON_VERIFICATO if v["unione"] == NON_VERIFICATO else MOTIVO_DOPO
