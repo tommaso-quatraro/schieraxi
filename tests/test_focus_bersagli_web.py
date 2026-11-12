@@ -114,9 +114,9 @@ def _codice_ferme(dopo: str, top_da_ferma: str = "76px") -> str:
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 def test_le_colonne_ferme_restano_ferme_solo_se_ci_stanno_nello_schermo():
-    """iPad verticale con il testo grande (768 e 820 px), telefono in orizzontale (844 × 390) e PC con la finestra bassa: la prima
-    colonna di Oggi, il campo della Formazione e l'elenco di Impostazioni restavano fermi in alto (sticky) anche se più alti dello
-    schermo, quindi il loro fondo («Apri la formazione», il portiere, «Aggiorna le rose») restava sotto la barra o fuori dallo
+    """iPad verticale con il testo grande (768 e 820 px), telefono in orizzontale (844 × 390) e PC con la finestra bassa: il campo
+    della Formazione, l'elenco di Impostazioni e il menu di Squadra restavano fermi in alto (sticky) anche se più alti dello
+    schermo, quindi il loro fondo (il portiere, la spunta «L'ho messa», «Aggiorna le rose») restava sotto la barra o fuori dallo
     schermo, con il Tab e anche scorrendo. app.js li lascia fermi solo se ci stanno; se no scorrono con la pagina (`non-ferma`)."""
     fuori = subprocess.run([NODE, "-"], input=_codice_ferme(
         "controllaFerme(); const a = tutti.map(x => [x.nome, x.classi.has('non-ferma')]);"
@@ -132,7 +132,7 @@ def test_le_colonne_ferme_restano_ferme_solo_se_ci_stanno_nello_schermo():
     # schermo più alto (o finestra allargata): tornano ferme
     assert r["b"] == [["campo", False], ["colonna", False], ["ingrandita", False], ["ferma no", False]]
     assert re.search(r"\n\.non-ferma \{ position: static !important; \}", SENZA_COMMENTI)
-    for selettore in (".colonne-oggi > .col:first-child", ".colonne-campo .campo-fermo", ".imp-elenco"):
+    for selettore in (".fz-campo .campo-fermo", ".imp-elenco", ".lega-menu"):
         assert selettore in re.search(r'const FERME = "([^"]+)"', APP).group(1), selettore
 
 
@@ -149,30 +149,6 @@ def test_le_colonne_ferme_non_oscillano_se_il_browser_da_top_auto():
     r = json.loads(fuori.stdout.strip().splitlines()[-1])
     # 350 + 76 + 16 = 442 > 400: non ci sta, e resta così (con «auto» preso per 0 sarebbe 366: ferma, poi no, poi ferma…)
     assert r == {"stati": [True, True, True, True], "tocchi": 1}
-
-
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_le_strisce_scorrevoli_portano_in_vista_la_voce_con_il_focus():
-    """Formazione a 390 e 768 px: con il tasto Tab il modulo «5-3-2» restava per metà fuori dalla sua striscia (Chrome fa scorrere la
-    striscia solo se la voce è tutta fuori). La striscia porta in vista la voce che prende il focus, con un margine che la tiene
-    fuori dal bordo sfumato."""
-    pezzo = APP[APP.index("function striscia(el)"):]
-    pezzo = pezzo[:pezzo.index("\n}\n") + 3]
-    codice = "\n".join([
-        "const ascolta = {}, chiamate = [];",
-        "const voce = { scrollIntoView: o => chiamate.push(o) };",
-        "const el = { dataset: {}, style: { setProperty() {} }, scrollLeft: 0, clientWidth: 300, scrollWidth: 700,",
-        "  querySelector: () => null, contains: x => x === voce, addEventListener: (tipo, f) => { ascolta[tipo] = f; } };",
-        pezzo,
-        "striscia(el);",
-        "ascolta.focusin({ target: { closest: s => (s === 'button' ? voce : null) } });",
-        "console.log(JSON.stringify(chiamate));",
-    ])
-    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout.strip().splitlines()[-1]) == [{"block": "nearest", "inline": "nearest"}]
-    for striscia in (".chips.scorri", ".segmenti.scorri"):
-        assert re.search(r"scroll-padding-inline: \d+px", _regole(striscia)), striscia
 
 
 # ---------------------------------------------------------------- #289: bersagli da 44 px e aria-pressed

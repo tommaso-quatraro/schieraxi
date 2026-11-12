@@ -1,0 +1,20 @@
+{
+  "titolo": "Una schermata sola per decidere chi schierare",
+  "voci": [
+    "Web: Oggi e Formazione sono diventate una schermata sola, Formazione. Si apre per prima e nel primo schermo del telefono trovi la giornata, quando si chiude e gli undici da schierare.",
+    "Sul campo ogni giocatore ha un numero solo, il fantavoto atteso se gioca. Quanto è probabile che giochi compare solo quando conta: sotto l'80%, in arancione o in rosso.",
+    "Non c'è più niente da salvare: una sostituzione o un altro modulo si salvano da soli. Sotto il campo leggi se è la consigliata o se l'hai cambiata tu, e con un tocco torni alla consigliata.",
+    "Un tocco su un giocatore apre la sua scheda: perché quel numero, gli ultimi voti e Sostituisci, con i punti attesi in più o in meno di ogni compagno.",
+    "Copia per l'app della lega copia la formazione da inserire; quando l'hai inserita, spunta L'ho messa.",
+    "In cima restano al massimo due cose da decidere, ognuna con il suo pulsante. A giornata in corso vedi i punti fatti finora, a giornata finita com'è andata e sotto la formazione della prossima.",
+    "Sul tablet e sul computer il campo sta a sinistra e la panchina a destra."
+  ],
+  "tecnico": [
+    "Scelta salvata: campo facoltativo `messa` (con `messa_il`), mandato con POST /api/formazione/valuta insieme a `salva` e restituito da GET /api/scelta. I client che non lo conoscono non cambiano.",
+    "Scelta salvata: `era_consigliata` resta com'era finché gli 11 sono gli stessi, anche se la consigliata nel frattempo è cambiata.",
+    "`da_fare` di GET /api/oggi: nelle voci `dubbio` senza cambio la riserva nominata è la prima del ruolo che gioca quasi di sicuro, come `incerti` della Formazione.",
+    "Web: `?vista=oggi` porta alla Formazione; la scena «oggi» non c'è più negli strumenti delle foto (aspetto_web.py, foto.py).",
+    "Web: dopo un 412 gli ETag ricordati non si dimenticano più (prima tutti): una modifica rifatta prima di aver riletto è rifiutata ancora, invece di partire senza If-Match. Sulla scelta la Formazione rilegge subito dal server, senza ricaricare la pagina.",
+    "L'app per iPhone e i widget non cambiano: nessun campo e nessuna rotta tolti o rinominati."
+  ]
+}

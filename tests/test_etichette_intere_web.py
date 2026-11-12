@@ -31,8 +31,7 @@ def _esegui(chiamata: str):
         testi,
         "LINGUA = 'it';",
         _pezzo("function esc(x)", "const sigla ="),
-        re.search(r"^const TITOLARITA = \{.*?\};$", APP, re.M | re.S).group(0),
-        _pezzo("const STATO_PARTITA =", "// Il tocco sul fantavoto atteso"),
+        _pezzo("const STATO_PARTITA =", "// Le regole riconosciute"),
         f"console.log(JSON.stringify({chiamata}));",
     ])
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
@@ -73,15 +72,6 @@ def test_il_testo_del_server_resta_protetto():
         '<span class="pezzo">&lt;b&gt;x&lt;/b&gt;&nbsp;·</span> <span class="pezzo">y</span>', "&lt;i&gt;"]
 
 
-@pytest.mark.skipif(not NODE, reason="serve node")
-def test_la_pillola_del_server_usa_i_pezzi():
-    """L'etichetta del server («In dubbio · gioca 55%») arriva intera nella pillola, divisa nei due pezzi."""
-    html = _esegui('pillTitolarita({etichetta: {codice: "dubbio", testo: "In dubbio · gioca 55%", tono: "attenzione"}})')
-    assert html == '<span class="etichetta arancio"><span class="pezzo">In dubbio&nbsp;·</span> <span class="pezzo">gioca 55%</span></span>'
-    # anche i motivi sotto il nome (note lunghe) passano dallo stesso testo
-    assert "testoEtichetta(traduciFrase(m.frase, m.testo))" in _pezzo("function etichetteGiocatore(x)", "const nomeClub")
-
-
 def test_nessuna_pillola_finisce_con_i_puntini():
     for selettori, corpo in _regole():
         if any(CLASSE.search(s) for s in selettori):
@@ -98,24 +88,3 @@ def test_la_pillola_va_a_capo_dentro_la_riga():
     assert "border-radius" not in base and "999" not in base and "r-pill" not in base
     pezzo = _regola(".etichetta .pezzo")
     assert "display: inline-block" in pezzo and "max-width: 100%" in pezzo
-
-
-def test_riga_stretta_della_formazione_numeri_sotto_il_nome():
-    """Telefono piccolo (320 px) o con il testo «Grande» o «Molto grande»: la colonna del nome di una riga della Formazione (accanto
-    ai numeri e al pulsante ✎) restava larga 10-75 px e le etichette si leggevano a pezzi, a volte una lettera per riga. Come l'iPhone
-    con il testo molto grande (RigaGiocatore): fantavoto atteso e «gioca N%» vanno sotto il nome, che con le etichette ha tutta la
-    larghezza."""
-    # grafica B (spec §8.4): ogni riga di un giocatore è un contenitore («riga»), le righe della Formazione comprese
-    assert "container: riga / inline-size" in _regola(".riga-gioc")
-    assert 'class="riga-gioc${azione ? " con-azione" : ""}"' in APP
-    blocco = re.search(r"@container riga \(max-width:\s*(\d+)px\)\s*\{\s*(\.con-azione \.voce-g\b.*?)\n\}", CSS, re.S)
-    assert blocco, "manca la riga stretta della Formazione (@container) in stile.css"
-    soglia, corpo = int(blocco.group(1)), blocco.group(2)
-    # quando la colonna del nome scenderebbe sotto i 90 px circa: la riga è larga circa 255 px a 320 px con il testo «Grande»
-    # (scatta) e 288 px a 320 px con il testo normale (resta com'è)
-    assert 260 <= soglia < 290
-    aree = re.search(r"\.con-azione \.voce-g \{[^}]*grid-template-areas:\s*([^;]+);", corpo).group(1)
-    righe = re.findall(r'"([^"]+)"', aree)
-    assert len(righe) == 2 and righe[0].split()[0] == "volto" and "testo" in righe[0] and "gioca" not in righe[0]
-    assert {"fv", "gioca"} <= set(righe[1].split())              # i numeri sotto il nome: il nome ha tutta la larghezza
-    assert re.search(r"\.con-azione \.voce-g > \.valore, \.con-azione \.voce-g > \.pv-g \{[^}]*justify-self: start", corpo)

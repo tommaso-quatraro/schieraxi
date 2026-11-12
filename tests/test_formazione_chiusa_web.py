@@ -17,60 +17,12 @@ TESTI = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 
 
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_giornata_iniziata_stato_chiusa_senza_pulsanti():
-    funz = APP[APP.index("const stessiIds"):APP.index("// «oggi alle 21:40»")]
-    undici = list(range(1, 12))
-    casi = [(None, False), ("NON_LETTA", False), ({"titolari": undici}, True), ({"titolari": undici[:10] + [99]}, True)]
-    righe = ",".join(f"statoScelta({json.dumps(undici)}, {'undefined' if s == 'NON_LETTA' else json.dumps(s)}, {str(man).lower()}, false, false, true)"
-                     for s, man in casi)
-    r = subprocess.run([NODE, "-e", funz + f"console.log(JSON.stringify([{righe}]))"], capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout) == ["chiusa"] * 4                       # anche prima di leggere la scelta e dopo una modifica
-    assert 'chiusa: "",' in APP                                          # nessun pulsante nella riga dello stato
-    assert "${st || chiusa ? \"\" : manuale ?" in APP                    # niente «Modifica a mano» nemmeno senza riga dello stato
-    assert "if (!base || !sc.manuale || f.iniziata) return;" in APP     # niente sostituzioni a mano
-    assert 'e.codice === "formazione_chiusa"' in APP                     # il 409 del server ridisegna la Formazione chiusa
-    for chiave in ("formazione.stato_chiusa", "formazione.stato_chiusa_tua", "err.formazione_chiusa"):
-        assert TESTI.count(f'"{chiave}"') == 2, chiave
-    assert '"err.formazione_chiusa": "' + server.FORMAZIONE_CHIUSA + '"' in TESTI     # il testo italiano è il messaggio del server
-
-
-def test_modifica_a_mano_non_salvata_chiede_prima_di_uscire():
-    assert 'window.addEventListener("beforeunload"' in APP
-    # anche con Indietro del browser (grafica B): se si resta, l'indirizzo torna quello della Formazione (test_grafica_b_web.py)
-    assert 'if (vista !== "formazione" && !lasciaFormazione()) {' in APP
-    assert 'confirm(t("formazione.esci_senza_salvare"))' in APP
-    assert 'sc.nonSalvata = !squadra && !chiusa && manuale && (st === "modificata" || (st === "mano" && !sc.manuale.uguale));' in APP
-    assert TESTI.count('"formazione.esci_senza_salvare"') == 2
-
-
-def test_titolari_incerti_spiegati():
-    assert 'id="nota-incerti"' in APP and 'id="perche-incerto"' in APP
-    assert "apriPerche(x, (inc[x.id] || {}).riga)" in APP
-    assert "if (sc.manuale || f.iniziata) return r;" in APP
-    assert TESTI.count('"formazione.incerto"') == 2
-    assert "{p}" in TESTI.split('"formazione.incerto": "')[1].split('"')[0]
-
-
 def test_data_dei_dati_intera_sui_telefoni():
     """In una riga sola la data dei dati si tagliava (390 px, anche in inglese a 430). Ora sta nella riga di stato sotto il titolo,
     in un pezzo suo che non si spezza a metà («dati del 26 ott 23:55»): se non ci sta va a capo intero, dopo il « · »."""
     assert "pezzi.map(p => `<span>${esc(p)}</span>`).join(\" · \")" in APP
     corpo = re.search(r"\n\.stato-pagina > span \{([^}]*)\}", CSS)
     assert corpo and "display: inline-block" in corpo.group(1) and "max-width: 100%" in corpo.group(1)
-
-
-def test_giornata_chiusa_niente_moduli_ne_stili():
-    assert '${chiusa ? "" : `<div class="etichetta-riga">${t("formazione.modulo")}</div>' in APP
-
-
-def test_righe_partita_come_sul_campo_e_note_a_capo():
-    assert "const partitaBreve = x =>" in APP and '${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}' in APP
-    assert "${sigla(x.squadra)} – ${sigla(x.avversario)}" not in APP
-    assert '${m.testo.length > 28 ? " lunga" : ""}' in APP
-    # la nota lunga prende tutta la riga; a capo ci va come ogni etichetta (test_etichette_intere_web.py)
-    assert ".voce > span { min-width: 0; }" in CSS and ".etichetta.lunga { flex: 1 1 100%; }" in CSS
 
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")

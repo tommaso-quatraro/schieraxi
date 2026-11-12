@@ -9,12 +9,13 @@ HTML = (server.WEB / "index.html").read_text(encoding="utf-8")
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 
 
-def test_la_barra_ha_quattro_voci_oggi_formazione_squadra_altro():
-    # grafica B: le voci sono collegamenti (Indietro del browser, Ctrl+clic); al telefono la barra in basso ha 4 colonne
-    assert re.findall(r'<a class="scheda" data-vista="(\w+)"', HTML) == ["oggi", "formazione", "squadra", "altro"]
-    assert re.findall(r'<span data-t="nav\.\w+">(\w+)</span>\s*</a>', HTML) == ["Oggi", "Formazione", "Squadra", "Altro"]
+def test_la_barra_ha_tre_voci_formazione_squadra_altro():
+    # grafica B: le voci sono collegamenti (Indietro del browser, Ctrl+clic). Dal 12/11/2026 (#616) Oggi e Formazione sono una
+    # schermata sola: tre voci, e al telefono la barra in basso ha una colonna uguale per ogni voce che c'è
+    assert re.findall(r'<a class="scheda" data-vista="(\w+)"', HTML) == ["formazione", "squadra", "altro"]
+    assert re.findall(r'<span data-t="nav\.\w+">(\w+)</span>\s*</a>', HTML) == ["Formazione", "Squadra", "Altro"]
     barra = re.search(r"\n\.schede \{([^}]*)\}", CSS).group(1)
-    assert "grid-template-columns: repeat(4, 1fr)" in barra
+    assert "grid-auto-flow: column" in barra and "grid-auto-columns: minmax(0, 1fr)" in barra
 
 
 def test_le_funzioni_si_leggono_all_avvio_e_una_chiave_che_manca_vale_acceso():

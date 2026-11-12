@@ -21,7 +21,7 @@ La web app è su **<https://app.schieraxi.it>**. Per ora si entra su invito.
 2. Scegli nome utente e password, tocca **Crea l'account** e salva il codice di recupero.
 3. Esporta le rose da Leghe (Excel, CSV o testo copiato) e caricale dall'app. Per cominciare basta anche solo la tua squadra.
 4. Imposta i tempi della lega: quando si chiude la formazione e da quale giornata è partita la lega.
-5. Prima di ogni giornata apri **Oggi**, leggi il consiglio e invia la formazione dove giochi.
+5. Prima di ogni giornata apri **Formazione**, leggi il consiglio e invia la formazione dove giochi.
 
 Si usa dal browser, su telefono e computer, e si può aggiungere alla schermata Home.
 Tutti i passi, schermata per schermata: [`docs/GUIDA-UTENTE.md`](docs/GUIDA-UTENTE.md).

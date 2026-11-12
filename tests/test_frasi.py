@@ -243,12 +243,15 @@ def test_avvisi_delle_rose_e_dell_anteprima_hanno_la_frase(calciatori):
 
 # ---------------------------------------------------------------- il codice del web che mostra le frasi (node)
 @CON_NODE
-def test_la_card_da_fare_in_inglese_e_in_italiano():
-    """`cardDaFare` (dafare.js) con voci vere del server: in inglese testo e pulsante tradotti dalla chiave, in italiano il testo del server."""
+def test_le_decisioni_in_inglese_e_in_italiano():
+    """Le decisioni in cima alla Formazione (`dfDecisioni` e `dfRiga`, dafare.js) con voci vere del server: in inglese testo e
+    pulsante tradotti dalla chiave, in italiano il testo del server. La riga «non l'hai ancora salvata» sulla web non è una
+    decisione (il salvataggio è automatico): resta fuori."""
     voci = [
         {"id": "dubbio:5", "tipo": "dubbio", "priorita": 2, "testo": str(F("dafare.dubbio_incerto_alt", nome="Rossi", p=55, alt="Adams A.")),
          "frase": F("dafare.dubbio_incerto_alt", nome="Rossi", p=55, alt="Adams A.").json(),
-         "azione": "Sostituisci", "azione_frase": F("dafare.az_sostituisci").json(), "destinazione": {"scheda": "formazione"}},
+         "azione": "Sostituisci", "azione_frase": F("dafare.az_sostituisci").json(), "destinazione": {"scheda": "formazione"},
+         "giocatore": {"id": 5, "nome": "Rossi"}, "alternativa": {"id": 9, "nome": "Adams A.", "ruolo": "C", "punti_attesi": 5.1}},
         {"id": "formazione:9", "tipo": "formazione", "priorita": 1, "testo": str(F("dafare.formazione_chiude", tempo=F("tempo.ore", n=2))),
          "frase": F("dafare.formazione_chiude", tempo=F("tempo.ore", n=2)).json(),
          "azione": "Apri la formazione", "azione_frase": F("dafare.az_formazione").json(), "destinazione": {"scheda": "formazione"}},
@@ -259,14 +262,14 @@ def test_la_card_da_fare_in_inglese_e_in_italiano():
     prova = TESTI_JS + 'const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");\n' + codice + f"""
     const voci = JSON.parse(String.raw`{json.dumps(voci, ensure_ascii=False)}`);
     const esito = {{}};
-    for (const lingua of ["en", "it"]) {{ LINGUA = lingua; esito[lingua] = cardDaFare(voci); }}
+    for (const lingua of ["en", "it"]) {{ LINGUA = lingua; esito[lingua] = dfDecisioni(voci).map((v, i) => dfRiga(v, i)).join(""); }}
     console.log(JSON.stringify(esito));
     """
     r = subprocess.run(["node", "-"], input=prova, capture_output=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     html = json.loads(r.stdout)
     assert "Rossi is in doubt (55% chance of playing). Better Adams A." in html["en"] and ">Replace<" in html["en"]
-    assert "The lineup closes in 2 hours and you have not saved it yet." in html["en"] and ">Open the lineup<" in html["en"]
+    assert "The lineup closes" not in html["en"] and "La formazione si chiude" not in html["it"]
     assert "Testo già nella lingua della richiesta" in html["en"]                    # senza frase resta com'è
     assert "Rossi è in dubbio (55% di giocare). Meglio Adams A." in html["it"] and ">Sostituisci<" in html["it"]
 
