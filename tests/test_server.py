@@ -381,6 +381,21 @@ def test_osservati_solo_giocatori_del_listone(client, tmp_path, monkeypatch, lis
     assert json.loads(file.read_text(encoding="utf-8")) == [5, 7]
     assert client.delete("/api/osservati/123456").status_code == 200    # togliere un codice inventato non è un errore
 
+
+def test_osservati_letti_senza_doppioni_e_al_massimo_il_tetto(tmp_path):
+    """Un file con doppioni o con più di osservati.MASSIMO codici (scritto da fuori dall'app) si legge come lo terrebbe l'app:
+    ogni codice una volta, gli ultimi MASSIMO (come osservati.aggiungi)."""
+    import json
+    from fanta import osservati
+    file = tmp_path / "oss.json"
+    file.write_text(json.dumps([7] * 1000 + list(range(1, 100))), encoding="utf-8")
+    letti = osservati.leggi(file)
+    assert letti == list(range(100 - osservati.MASSIMO, 100))
+    assert osservati.togli(99, file) == list(range(100 - osservati.MASSIMO, 99))
+    file.write_text("[5, Infinity]", encoding="utf-8")                 # file rovinato: l'elenco è vuoto, non un errore
+    assert osservati.leggi(file) == []
+
+
 def test_crediti_delle_squadre(client, tmp_path):
     from fanta import lega
     lega.salva(lega.Rose([lega.Squadra("Mia", []), lega.Squadra("Altra", [])], "Mia"), server.FILE_ROSE)

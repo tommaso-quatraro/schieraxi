@@ -15,12 +15,14 @@ _blocco = threading.Lock()          # leggere-modificare-scrivere una alla volta
 
 
 def leggi(percorso: Path | None = None) -> list[int]:
+    """L'elenco come lo tiene `aggiungi`: ogni codice una volta, al massimo gli ultimi MASSIMO (vale anche per un file scritto da fuori)."""
     try:
         d = json.loads((percorso or FILE_OSSERVATI).read_text(encoding="utf-8"))
         # un numero fuori misura (salvato da una versione vecchia) farebbe fallire ogni lettura dell'elenco: si salta
-        return [int(i) for i in d if 1 <= int(i) <= ID_MASSIMO] if isinstance(d, list) else []
-    except (OSError, ValueError, TypeError):
+        validi = [int(i) for i in d if 1 <= int(i) <= ID_MASSIMO] if isinstance(d, list) else []
+    except (OSError, ValueError, TypeError, OverflowError):      # OverflowError: «Infinity» nel file
         return []
+    return list(dict.fromkeys(validi))[-MASSIMO:]
 
 
 def nel_listone(db, ids: list[int]) -> set[int]:
