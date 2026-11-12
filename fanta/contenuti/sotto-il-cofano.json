@@ -438,7 +438,7 @@
         "Fantacalcio.it: listone dei calciatori (una volta al giorno), calendario, voti delle giornate (quelle giocate che mancano più quelle finite da meno di 4 giorni, perché le correzioni arrivano dopo) e probabili formazioni (a ogni aggiornamento).",
         "Understat: xG, xA, tiri, minuti e rigori calciati, partita per partita (totali a ogni aggiornamento, dettaglio delle partite giocate che mancano). È l'unica fonte di queste statistiche: se sparisse, ci sarebbe un piano B a pagamento ancora da decidere.",
         "football-data.co.uk: solo le statistiche di squadra (xG, tiri, angoli, cartellini) per le partite giocate e per le prossime (al massimo ogni 6 ore), conservate in ombra.",
-        "Sul server l'aggiornamento è programmato alle 8, 13, 17 e 21 di ogni giorno. Le richieste sono educate: una alla volta, almeno un secondo di pausa, fino a 3 tentativi, e non si riscarica quello che c'è già. I dati si possono sempre ricostruire da capo.",
+        "Sul server l'aggiornamento è programmato alle 8, 13, 17 e 21 di ogni giorno. Le richieste sono educate: una alla volta, almeno un secondo di pausa, fino a 3 tentativi, e non si riscarica quello che c'è già. Non tutto si può riscaricare (una fonte che chiude non ridà le stagioni passate): per questo ogni notte il server fa una copia dell'archivio.",
         "Le coppe europee (per il turnover) sono date inserite a mano e vanno aggiornate."
       ],
       "rimandi": [{"schermata": "stato-dati", "etichetta": "Stato dei dati"}],
@@ -487,7 +487,7 @@
       "titolo": "La tecnologia in breve",
       "livello": "base",
       "paragrafi": [
-        "Il cervello è in Python (pandas e numpy per i conti). Il server è FastAPI; l'archivio dei dati scaricati è un database SQLite in un file solo, che si può ricostruire da capo, mentre le tue cose (regole, rose, scelte, osservati, impostazioni) sono file JSON piccoli scritti in modo sicuro (prima su un file temporaneo, poi rinominato, così un guasto a metà non rovina quello vecchio).",
+        "Il cervello è in Python (pandas e numpy per i conti). Il server è FastAPI; l'archivio dei dati scaricati è un database SQLite in un file solo, con una copia ogni notte, mentre le tue cose (regole, rose, scelte, osservati, impostazioni) sono file JSON piccoli scritti in modo sicuro (prima su un file temporaneo, poi rinominato, così un guasto a metà non rovina quello vecchio).",
         "L'app web è una PWA (si installa sul telefono) fatta con HTML, CSS e JavaScript senza librerie né compilazione. L'app per iPhone è nativa, in SwiftUI; quella per Android è in Jetpack Compose con Material 3 (a uno stadio iniziale). Tutte parlano con lo stesso server: i testi e i numeri di questa pagina sono uguali ovunque.",
         "Il server può girare su un computer piccolo e economico. L'app si aggiorna da sola: ogni 10 minuti il server controlla GitHub, installa la versione nuova, riavvia il servizio, verifica che risponda e, se no, torna alla versione di prima. I test sono automatici (pytest, su GitHub a ogni modifica).",
         "Gli avvisi sul telefono (formazione pronta, cambi nelle probabili, riepilogo di giornata) rispettano le «ore tranquille» che imposti."

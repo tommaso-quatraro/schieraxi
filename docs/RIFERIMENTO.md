@@ -1,0 +1,287 @@
+# Riferimento: dettagli dei moduli e contratti
+
+Il dettaglio di ogni modulo, i contratti delle API, il modo con più utenti, le fonti e i punti delicati.
+È un documento da consultare con una ricerca (nome di un file, di una rotta o di un campo), non da leggere per intero.
+La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/`.
+
+## Comandi (Windows, dalla radice del repository)
+- Ambiente: `python -m venv .venv`, poi `.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt`.
+- Librerie: `requirements*.txt` hanno versioni fisse e hash e non si scrivono a mano. L'elenco sta in `requirements.in`, `requirements-dev.in` e `requirements-vincoli.in`; si rigenera con `.venv\Scripts\python.exe script\blocca_dipendenze.py`. Dependabot (`.github/dependabot.yml`) aggiorna solo le azioni di GitHub: le librerie Python le rigenererebbe con pip-compile.
+  Su macOS e Linux: `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
+- Test tutti: `.venv\Scripts\python.exe -m pytest -q`. Un file solo: `... -m pytest -q tests\test_rose_csv.py`.
+- Server locale: `.venv\Scripts\python.exe -m fanta server` (ascolta su 127.0.0.1:8000). Elenco comandi: `-m fanta --help`.
+- Modello: `-m fanta verifica` prima e dopo ogni modifica al modello. Scelta della formazione (`formazione.py`, consiglio):
+  anche `-m fanta verifica --consiglio` (C1-C4: valore contro una scelta semplice, stabilità, titolari che non giocano, perché).
+
+## Cartelle e file
+- `fanta/`: il server e la logica. «fanta» è il nome interno storico del pacchetto Python.
+  - Server: `server.py` (FastAPI, tutte le rotte `/api/...`, controllo `X-Fanta`, limiti), `rotte_account.py` (account e
+    amministrazione), `versioni.py` (ETag e If-Match), `calcolo.py` (coda dei calcoli pesanti, risposta 202, cache di
+    `MAX_RISULTATI` = 256 voci), `contesto.py` (percorsi personali per richiesta), `percorsi.py` (cartelle e scritture sicure),
+    `salute.py`, `stato_dati.py`.
+  - Modello: `modello.py` (fantavoto atteso `mu` e probabilità di voto `p_voto`), `formazione.py` (11 titolari più panchina;
+    livelli di rischio in `LIVELLI_RISCHIO`), `punteggio.py` (fantavoto con le regole della lega), `verifica.py` (backtest),
+    `verifica_consiglio.py` (misura in laboratorio del consiglio, indicatori C1-C4 di #166: `-m fanta verifica --consiglio`),
+    `indicatori_consiglio.py` (C1-C4 misurati davvero nel Diario a giornata finita sulla consigliata mostrata, con le funzioni di
+    `verifica_consiglio`; totali di tutti i Diari, medie su 8 giornate e avviso al proprietario dopo 2 giornate fuori soglia: comando
+    `affidabilita` del cron, file `dati/indicatori-consiglio.json`, campo `consiglio` di `GET /api/stato-dati`),
+    `nostri.py` (gol e assist attesi «nostri», L3b di #165: lo stesso modello con i soli dati di Fantacalcio.it, `dati` e
+    `parametri`; `gol_attesi` è l'unica definizione dei gol attesi con i rigori; `VERSIONE` si alza a ogni cambio di `parametri`
+    o della formula. Oggi serve solo a misurare: la produzione non cambia fino alla Fase G1 del piano
+    `docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md`), `verifica_pacchetti.py` (`-m fanta verifica --pacchetti`: scenari
+    di dati, gol attesi per fasce e conti attesi su veri di gol, rigori e assist),
+    `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
+    `consigli.py` (formazione e spiegazioni, usato da app e comandi; consigliata stabile, vedi «Contratti delle API»),
+    `perche_scelta.py` (il perché delle scelte che sembrano storte in una riga, campo `perche_scelta` dei moduli di `/api/formazione`,
+    con il conto del Confronto, #356), `scambi.py`, `scambi_multi.py` (scambi N contro M),
+    `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
+  - Registro delle giornate (#165): `registro_giornate.py`. Negli ultimi 10 minuti prima della prima partita salva i numeri
+    mostrati per tutta la Serie A (regole classiche, solo id e numeri); a giornata finita misura I1-I3, medie sulle ultime 8
+    giornate e avviso al proprietario (canale della sentinella) se una media resta fuori soglia per 2 giornate di fila. Giornata
+    non salvata quando inizia la prima partita = «persa»: riga con il motivo in breve (`persa`) e un avviso solo. Tabelle
+    `registro_giocatori` e `registro_giornate` dell'archivio: NON si ricostruiscono. Gira nel thread del pianificatore
+    (`pianificatore._registro`); `FANTA_REGISTRO_GIORNATE=0` lo spegne. Campo `registro` di `GET /api/stato-dati`.
+    Gol attesi «nostri» dal vivo (I4, Fase D del piano 2026-11-06-gol-attesi-nostri): `registro_nostri.py`, passi a sé del giro
+    del registro, sempre DOPO quelli dei mostrati. Salva i numeri `nostri.previsioni` degli stessi giocatori con `nostri.VERSIONE`,
+    a giornata finita li misura contro i mostrati (errore, punti sulle rose di I3, gol attesi per fasce) e avvisa il proprietario
+    quando 8 giornate della stessa versione reggono; nostri non salvati o misura non riuscita 3 volte = «persa». Tabelle `registro_nostri` e
+    `registro_i4` (tabelle a sé: gli archivi che ci sono le ricevono senza migrazione). Campo `registro_nostri` di `GET /api/stato-dati`.
+    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le tabelle `registro_*` (e `taratura_probabili`) in
+    `dati/registro-giornate.json` per la copia notturna (`script/server/backup-dati.sh`) e le rimette con
+    `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
+    Taratura di «gioca N%» con le probabili (#379, decisione `docs/decisioni/0009`): `taratura_probabili.py`, comando
+    `python -m fanta taratura-probabili [--prova | --spegni | --accendi]`, ultimo passo di `script/server/aggiorna.sh`. Legge solo
+    `registro_giocatori` (probabili di prima della scadenza), tara una regressione logistica sulla metà più vecchia delle giornate e la
+    prova sulla più recente contro la formula di adesso e i numeri mostrati; esito nella tabella `taratura_probabili`. Con almeno 8
+    giornate (3 di prova) la riga diventa `attiva` e il modello la usa (`taratura_probabili.attiva`, letta da
+    `consigli._calcola_previsioni` e `registro_nostri.previsioni_dal_vivo`): cambia solo «gioca N%» di chi è nelle probabili, non
+    minuti, gol e assist attesi né mu. Torna ai numeri di partenza (`ritirata`) se peggiora nelle 2+ giornate dopo la sua prova; nelle
+    24 ore prima della prima partita solo `rimandata`. Ogni cambio della riga attiva scrive `aggiornamenti` (`taratura-probabili`, le
+    previsioni si ricalcolano) e avvisa il proprietario. `--spegni` vale subito; `--accendi` fa ripartire la prova. Stato in
+    `GET /api/stato-dati`, campo `calibrazione.taratura`.
+  - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
+    `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
+    Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
+    (giornata in corso) e nel Diario; campo `rinvio` di `/api/oggi`, rotta `PUT /api/regole/rinvio`. Una partita rinviata non tiene
+    aperta la giornata (`fasi.fine_giornata`, `fasi.recuperi_mancanti`, `riepilogo.recuperi`). Test `tests/test_rinvii.py`.
+  - Dati della lega: `regole.py` (regole parametriche), `regole_testo.py`, `rose.py` (Excel, CSV, testo), `lega.py`,
+    `squadre.py`, `movimenti.py`, `scelte.py`, `formazioni_lega.py`, `osservati.py`, `listone.py`, `nomi.py` (riconoscimento
+    dei nomi tra fonti), `immagini.py`, `scarica_immagine.py` (solo indirizzi https pubblici, tetto 4 MB).
+  - Fonti: `fonti/` (`fantacalcio.py`, `understat.py`, `footballdata.py`, `sosfanta.py`: funzioni pure, provate su estratti
+    inventati in `tests/dati/`), `aggiorna.py` (riempie `dati/fanta.sqlite`), `archivio.py`, `rete.py` (si presenta come
+    `SchieraXI/<versione>`), `scheda.py`, `fonti_attive.py` (interruttori delle fonti).
+  - Risultati in diretta: `live.py` (un solo raccoglitore, cache in memoria e in `dati/live.json` che sopravvive ai riavvii; il risultato ufficiale vince). Rotta `GET /api/live`, vedi `docs/LIVE.md`. Risultati e voti la sera stessa: `pianificatore.giro_risultati`.
+  - Avvisi: `notifiche.py` (titolo e testo sono `Frase`: `invia` li scrive nella lingua `lingua` delle impostazioni degli avvisi; l'inglese sta in `frasi_avvisi.py`, chiavi `n.*`), `push.py` (Web Push), `avvisi.py`, `avvisi_utenti.py`, `pianificatore.py`, `riscaldamento.py`. Copia della consigliata alla scadenza per ogni utente (copia automatica in `scelte` mai sopra una scelta vera + istantanea del Diario, negli ultimi 10 minuti, una volta sola, anche senza aprire l'app; `FANTA_COPIA_SCADENZA=0` la spegne): `copia_scadenza.py`, thread del servizio.
+  - Account e posta: `account.py` (database sqlite, sessioni, inviti), `account_email.py`, `posta.py`, `social.py` (accesso
+    con Google), `onboarding.py`, `limiti.py`, `importa_sicuro.py`, `gestione.py`.
+  - Varie: `backup.py`, `controlli.py` (coerenza dei dati), `sentinella.py` (ogni ora: rifà in sola lettura le risposte di Oggi,
+    Formazione, Scelta, Diario, widget e Live per ogni utente e controlla le invarianti di `INVARIANTI`; esito nella tabella
+    `controlli`, avviso al proprietario alla prima rottura confermata; `script/server/sentinella.sh`; storia dei giri nel campo
+    `giri` di `dati/sentinella.json`, una voce `{quando, rotte, inviato}` per ogni giro del server tenuta 60 giorni, i giri a mano
+    `--senza-invio` esclusi: `python -m fanta sentinella --giri --dal <ISO con fuso> --al <ISO con fuso>` la stampa, campo
+    `sentinella_giri` di `GET /api/stato-dati`; la legge il comando `giornata` della squadra), `registro.py` (file di registro con rotazione), `testi_legali.py`
+    (pagine privacy, termini, crediti), `sotto_il_cofano.py`, `widget.py`, `da_fare.py`, `stato_utente.py`, `copertura.py`,
+    `avatar.py` (`GET /api/avatar`).
+- `fanta/web/`: la web app, HTML, CSS e JavaScript senza librerie né compilazione. File principali: `index.html`, `app.js`,
+  `impostazioni.js`, `dafare.js`, `primoavvio.js`, `anteprima.js`, `avatar.js`, `testi.js`, `stile.css`, `sw.js`, icone.
+  Dal 12/11/2026 (#615) la web non ha più stili, indice sul volto, legenda del campo, Confronto, Scambi, Cambi consigliati, Seguiti,
+  Elenco dei giocatori, Calendario, Movimenti, Crediti delle squadre, Partite del turno con la diretta, immagine da condividere,
+  banner delle novità e dimensione del testo: le rotte del server restano (le usa l'iPhone). Gli indirizzi di prima portano alla
+  schermata più vicina che resta (`schermataCheResta` in `app.js`); le Novità sono in Impostazioni > Informazioni.
+  Dopo una modifica il job `rilascia` alza `VERSIONE` in `fanta/web/sw.js`.
+  Grafica B «Distinta» (in vigore dal 6/11/2026, `docs/DESIGN.md`, «Web: grafica B»; spec e piano in `docs/superpowers/`): una sola
+  testata in `index.html` (nome disegnato, `nav` con le 4 schede come collegamenti `<a href="/?vista=…">`, ricerca, ingranaggio) che
+  al telefono diventa la barra in basso; `pagina(html, opz)` in `app.js` scrive titolo (`h1`) e riga di stato di ogni schermata;
+  `vai()` scrive la cronologia (Indietro del browser). Da 1200 px `apriFoglio(html, { affianco: true })` apre scheda,
+  sostituzione, «Perché questo numero» e ricerca nel pannello affiancato (non modale); le altre finestre restano il foglio modale.
+  Menu a sinistra: Impostazioni (`montaPannelli` in `impostazioni.js`, da 768 px), Squadra e Altro (`.lega-colonne`, da 1100 px).
+  Test dei controlli sul codice: `tests/test_grafica_b_web.py`; foto e axe: `prove/foto_web/foto.py`.
+- `fanta/web/caratteri/`: `archivo.woff2` (Archivo semi-stretto, cifre tabellari, per numeri e titoli) con la licenza `OFL.txt`
+  (SIL OFL 1.1). Pubblico anche con gli account accesi (`STATICI_PREFISSI`), tipo `font/woff2`, nella scocca offline di `sw.js`.
+  Si rifà con `script/carattere_web.py` (fontTools e brotli in un ambiente a parte); test `tests/test_carattere_web.py`.
+- `fanta/testi/<prefisso>.json`: il catalogo unico dei testi dell'interfaccia (decisione 0010), un file per prefisso della chiave
+  (`oggi.json` ha solo chiavi `oggi.*`), ogni voce con `it`, `en` e, se serve, `nota`. Testo nuovo o cambiato: qui, poi
+  `python script/testi.py --scrivi`, che rigenera il blocco dei dati di `fanta/web/testi.js` e i file Swift di
+  `ios/Sources/Support/Catalogo/` (`Catalogo.<Prefisso>.<nome>`, solo le chiavi che l'iPhone elenca in `ios/testi/<prefisso>.txt`).
+  `python script/testi.py --controlla` e `tests/test_catalogo_testi.py` falliscono con un file generato cambiato a mano, una chiave
+  nel file sbagliato, segnaposto diversi fra le lingue o un plurale senza la sua coppia.
+- `fanta/web/testi.js`: tutti i testi dell'interfaccia, in italiano e in inglese, con le stesse chiavi (`tests/test_testi.py`
+  lo controlla). L'oggetto `TESTI`, fra le righe-segno `// <catalogo>` e `// </catalogo>`, è generato dal catalogo
+  (non si scrive a mano); le funzioni (`t`, `tp`, `traduciErrore`, …) sono scritte a mano. Nel codice si usa solo `t("chiave")`. I messaggi del server restano in italiano (iOS e Android li leggono): gli errori il web li traduce con le chiavi `err.*` (il testo italiano della chiave È il messaggio del server; `tests/test_testi.py` lo controlla parola per parola e fa fallire un messaggio nuovo senza traduzione). Le frasi che cambiano con i dati (Da fare, motivi, «perché», probabili, avvisi delle rose...) sono `Frase` di `fanta/frasi.py`: testo italiano + `frase` con chiave e parametri accanto (`X_frase`, `X_frasi`; contratto in `docs/API.md`, «Frasi con chiave»); il web le traduce con `traduciFrase`/`testoDi`/`testiDi` da `frase.<chiave>`. Frase nuova = una voce in `CATALOGO` di `fanta/frasi.py` (italiano) e la voce `frase.<chiave>` in `fanta/testi/frase.json` (italiano identico e inglese), poi `python script/testi.py --scrivi`; `tests/test_frasi.py` controlla che combacino.
+- `fanta/contenuti/sotto-il-cofano.json`: testi di «Sotto il cofano», fonte unica per web e iPhone. Ogni affermazione ha il
+  suo punto di codice in `fonte_codice`.
+- `fanta/novita.json`: storia delle versioni (numero, data, titolo, voci). `fanta/novita.d/`: voci in attesa, un file per pull request.
+- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/` (tema e
+  installazione), `font/` (Archivo semi-stretto in woff2, licenza `OFL.txt` accanto), `sw.js` con `VERSIONE`. Niente script né stili
+  dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`). Grafica della web app «direzione B» (#355): fili al posto
+  delle carte, Archivo per titoli e numeri, niente gradienti né ombre; esempi con nomi e numeri inventati che tornano (i test li rifanno).
+  Il nome «SchieraXI» è in tracciati SVG: simboli `#wm` (grande) e `#wm-c` (compatto, l'unico mostrato, nella barra in alto) in cima a
+  ogni pagina. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
+  Test: `tests/test_sito.py`, `tests/test_sito_html.py`.
+- `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
+  Testi dal catalogo: `ios/testi/<prefisso>.txt` elenca le chiavi del catalogo che l'iPhone usa; `ios/Sources/Support/Catalogo/`
+  è generato da `python script/testi.py --scrivi` e non si scrive a mano (vedi `fanta/testi/` sopra).
+  Contratto dal vero: `ios/Tests/SchieraxiTests/ContrattoDalVeroTests.swift` legge le risposte di `ios/fotografie/vero-*.json` con i
+  modelli dell'app (sul Mac, in `ios / test`).
+  Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
+  Screenshot: workflow `screenshot.yml` (a mano o etichetta `screenshot` sulla pull request non in bozza). «Fotografie dal vero»: `gh workflow run screenshot.yml -f scatti=vero` (o etichetta `screenshot-vero`), tre Mac in parallelo (iPhone piccolo, iPhone grande, iPad) con gli scenari `ios/fotografie/vero-*.json`: risposte vere del server con rose e nomi INVENTATI, prima della scadenza, a giornata in corso e a giornata finita. Si rifanno con `prove/fotografie_dal_vero.py` (copia dei dati, orologio fermo, niente rete, controllo dei nomi veri con le parole vietate private).
+  iPhone da provare nel browser: workflow `ios-simulatore.yml` (solo a mano), app per il simulatore in demo come artifact `.zip` e, con il segreto `APPETIZE_TOKEN`, caricata su Appetize.io (variabile `APPETIZE_APP`). Istruzioni: `docs/PROVA-IPHONE-BROWSER.md`.
+- `lega/esempio/`: la lega inventata (10 squadre finte, regole d'esempio). La lega vera sta fuori dal repository e si indica
+  con la variabile `FANTA_LEGA=<cartella>`.
+- `dati/`: database, cache e chiavi locali. Non va in git.
+- `script/server/`: script del server (aggiornamento automatico, copie dei dati, promemoria, controllo di salute, sentinella).
+  `script/server/prova/`: l'ambiente di prova sullo stesso server (decisione 0012): servizio `schieraxi-prova.service`, esempio di
+  nginx con `prova.<dominio>` non indicizzato, preparazione (`prepara-prova.sh`), copia dell'archivio dei dati di calcio
+  (`copia_archivio.py`, `copia-archivio-prova.sh`, `esporta-archivio-prova.sh`). Passi, prove e ritorno indietro in
+  `script/server/prova/LEGGIMI.md`; `aggiorna-app.sh` la aggiorna con `SCHIERAXI_ISTANZA=prova`. Test `tests/test_prova_server.py`.
+- `script/ci/`: numero di versione e note di rilascio (`controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`);
+  `metriche.py`: metriche della squadra per settimana (versioni, tempo PR→unione, etichette `regressione`, `dall-utente`,
+  `fuori-piano`, coda iOS), solo lettura con `gh`: `python script/ci/metriche.py --settimane 4`.
+  `aspetto_web.py`: regressione visiva della web (decisione 0011), workflow `.github/workflows/aspetto-web.yml` sulle PR che toccano
+  `fanta/web/`, `ios/fotografie/` o lo script stesso: 9 scene a 390 e 1440 px, chiaro e scuro, scattate con il codice della PR e con quello di `main` nella stessa corsa,
+  dati da `ios/fotografie/vero-prima.json`; avvisa se cambia una scena non scritta nella riga `Aspetto:` della PR. Solo avviso. Test
+  `tests/test_aspetto_web.py`.
+  `collaudo_prova.py` con `.github/workflows/collaudo-prova.yml`: collaudo automatico dell'ambiente di prova (decisione 0012), ogni
+  20 minuti dopo un rilascio e ogni giorno alle 5:17 UTC; se non passa apre l'issue `P1` «Collaudo della prova: v<N> non passa» e la
+  corsa è rossa; se la prova resta indietro di oltre 40 minuti, issue «La prova non si aggiorna». Segreti `PROVA_URL`, `PROVA_UTENTE`,
+  `PROVA_PASSWORD` (senza: non fa niente). Test `tests/test_collaudo_prova.py`.
+- `script/squadra/`: comandi del coordinatore (`stato`, `attendi`, `annulla-superate`, `pulisci`, `brief`, `foto`, `giro`, `pr-pronta`,
+  `giornata`: dice se una giornata è passata senza errori, in `giornata.py`, decisione 0013) con `aree.json`, `foto.json`, `modello-brief.md`: `python script/squadra/squadra.py <comando> --help`, guida in `script/squadra/LEGGIMI.md`.
+- `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
+  `tests/codice_web.py`: il lettore unico del codice della web (`fanta/web/*.js`) per i test Python; nessun test legge da solo i file
+  `.js` di `fanta/web/` (`tests/test_codice_web.py` lo controlla).
+  `tests/contratto_ios.py`: il contratto iPhone-server senza Mac (decisione 0014): ogni campo dei modelli `Decodable` dell'iPhone deve
+  comparire come chiave in `fanta/`; test `tests/test_contratto_ios.py`, eccezioni con il motivo in `tests/dati/contratto_ios_eccezioni.json`.
+  `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
+- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335). `tara_forza_gol.py`: taratura della forza delle squadre dei gol attesi «nostri» (memoria, partite fittizie, livello recente del campionato; devianza di Poisson dei gol di squadra sul 2025-26, controllo sul 2026-27) e, con `--ruoli`, gol e assist veri su attesi per ruolo (Fase C del piano `2026-11-06-gol-attesi-nostri`). `foto_web/foto.py`: foto e axe della web senza finestra (Chrome di sistema, server di prova con la lega d'esempio avviato e fermato da solo, 9 scene a 390/768/1024/1440 px in chiaro e scuro, `riepilogo.txt` con violazioni gravi, scorrimento di lato ed errori della console; foto sempre fuori dal repository), istruzioni in `prove/foto_web/LEGGIMI.md`, test `tests/test_foto_web.py`.
+- `prove/web_comportamento/`: test di comportamento della web in un browser vero senza finestra (Chrome di sistema, Playwright in un
+  ambiente a parte, server finto con le risposte registrate delle tre fasi di `ios/fotografie/vero-*.json`): cosa compare e cosa
+  succede a un tocco, non il testo del sorgente. Senza Playwright si saltano. Istruzioni: `prove/web_comportamento/LEGGIMI.md`.
+  Quando i test del browser entreranno nei controlli (`tests/browser/`, #619) si spostano lì.
+- `prove/amico_nuovo/`: percorso automatico «amico nuovo» (#168): `percorso.py` fa nel browser, senza finestra, l'ingresso di un amico invitato (link d'invito, registrazione, rose, squadra, tempi, regole, prima formazione, rientro con il codice di recupero, eliminazione dell'account) e per ogni passo scrive secondi, tocchi, errori della console e violazioni gravi di accessibilità. Gira solo in locale (`--locale`, server di prova suo) o sull'ambiente di prova (`--remoto`: rifiuta ogni server il cui nome non comincia con `prova.`). Risultati sempre fuori dal repository. Istruzioni: `prove/amico_nuovo/LEGGIMI.md`.
+- `fanta/misura_ingresso.py`: quanti minuti ci mette un amico nuovo a caricare la sua lega (#574, misura di #168). Comando `python -m fanta ingresso --dal <ISO con fuso> [--al <ISO con fuso>]`, da lanciare sul server, in sola lettura, una riga per account senza nomi. Uscita 0 se tutti sono dentro in meno di 10 minuti, 1 se no, 2 se nel periodo non c'è nessun account, 3 se la misura non si può fare. Uso e limiti: `prove/amico_nuovo/LEGGIMI.md`, «La misura sugli amici veri».
+- `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
+  `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali; generato da `coerenza/`: dati per schermata, `script/coerenza.py --scrivi`), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora), `decisioni/` (decisioni di architettura, una per file, modello MADR in italiano),
+  `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`, `superpowers/specs/` e `superpowers/plans/` (spec e piani, in italiano).
+- `.claude/settings.json`: divieti fissi per Claude Code (`gh pr merge`, push su `main`, push forzato, `--no-verify`); spiegati in `CLAUDE.md`.
+- Radice: `README.md`, `CLAUDE.md`, `MAPPA.md`, `LICENSE` (AGPL-3.0), `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
+  `TRADEMARKS.md`, `THIRD-PARTY-NOTICES.md`, `requirements.txt`, `requirements-dev.txt`, `.env.example`.
+
+## Convenzioni
+- Testi in italiano semplice. Le regole della lega non stanno mai nel codice.
+- Quando cambi una schermata o una rotta: aggiorna `docs/GUIDA-UTENTE.md` o `docs/API.md` nella stessa pull request.
+- Scritture sicure: `percorsi.scrivi_sicuro` (file temporaneo e poi rinomina). Le risorse personali usano ETag.
+- Database degli account (`MIGRAZIONI` in `fanta/account.py`): una migrazione già rilasciata non si modifica mai. Ogni
+  cambio di struttura è una voce nuova in fondo. `tests/test_migrazioni.py` controlla lo schema.
+- Chiavi e segreti: solo in `.env` o in `dati/`, mai in git. `.env.example` mostra i nomi delle variabili, senza valori.
+
+## Versioni e rilascio
+- Pull request che tocca `fanta/`, `script/server/` o `requirements.txt`: serve `fanta/novita.d/<nome-breve>.json` senza numero.
+  Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
+- Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
+  controlli verdi. Una pull request in bozza non si unisce.
+- Job `pip-audit` (vulnerabilità note nelle librerie di `requirements.txt` e `requirements-dev.txt`, senza installarle; pip-audit e dipendenze da PyPI con hash in `.github/pip-audit-requisiti.txt`): fuori dai `needs` di `unisci`, rosso se trova qualcosa. Si corregge aggiornando la libreria con `script/blocca_dipendenze.py`.
+- Controllo del codice con ruff (solo controllo, niente riformattazione; regole in `ruff.toml`: `E9` sintassi, `F` errori sicuri): passo del job `test`, quindi blocca l'unione. ruff da PyPI con hash in `.github/ruff-requisiti.txt`. In locale: `ruff check fanta tests script prove`.
+- Job `ambito` (`script/ci/controlla_ambito.py`, preso da `main`): i file della pull request devono stare nelle aree della riga «Aree: …» della descrizione (modello in `.github/PULL_REQUEST_TEMPLATE.md`; issue con il modulo «Lavoro», `.github/ISSUE_TEMPLATE/lavoro.yml`). Esenti i bot e le pull request di soli documenti. Blocca l'unione.
+- Job `zizmor` (sicurezza dei workflow; zizmor da PyPI con hash in `.github/zizmor-requisiti.txt`): per ora solo avvisi, fuori dai `needs` di `unisci` (bloccante dopo #108). Azioni solo di GitHub e sempre per hash: le altre fanno fallire l'avvio dei controlli (`tests/test_workflow_controlli.py`); unica eccezione `anthropics/claude-code-action`, nell'elenco delle azioni permesse del repository.
+- Job `revisione-ia` (`.github/workflows/revisione.yml`, istruzioni in `.claude/skills/revisione-pr/SKILL.md`): revisione con Claude Code di ogni PR non in bozza; `unisci` la aspetta. Senza il segreto `CLAUDE_CODE_OAUTH_TOKEN` passa senza revisione. Decisione: `docs/decisioni/0007-revisione-ia-in-ci.md`.
+- Controllo esterno della salute: `.github/workflows/salute.yml` (ogni 30 minuti sui server di GitHub, a mano con «Run workflow»): chiede la salute dell'app e la pagina del sito, 3 tentativi a qualche minuto di distanza, poi apre l'issue `P1` «Server non raggiungibile» (o la commenta) e la chiude quando tutto risponde. Serve perché `script/server/controllo-salute.sh` gira sul server stesso e, se il server si spegne, tace.
+  Non usa segreti né azioni esterne; `issues: write` solo nel job che segnala.
+- Job `rilascia` (in fila, un alla volta, dopo `unisci`): dà il numero di versione dopo il più alto, data e ora dell'unione,
+  scrive la voce in `fanta/novita.json`, toglie il file da `fanta/novita.d/`, alza `VERSIONE` in `fanta/web/sw.js` se la
+  pull request ha toccato `fanta/web/`, fa un commit su `main` e crea la release.
+- Il server installa da `main` solo le cartelle che servono al server (`fanta`, `script/server`, `tests`, `requirements*.txt`).
+- E solo commit firmati da GitHub (unioni squash e commit di versione creato via API) e librerie con l'hash atteso: `script/server/verifica-firme.sh`, `script/server/LEGGIMI.md`. Regole del repository (protezione di `main`, controlli obbligatori): impostazioni di GitHub del proprietario.
+
+### Contratti delle release
+- `v<numero>` (server): release creata dal job `rilascia`, con le voci della versione come note. Sempre con `--latest=false`.
+- `build-<N>` (app per iPhone): file IPA non firmato per SideStore, creato dal workflow `ipa.yml`. È l'unica release marcata
+  «Latest». Il numero `N` cresce sempre e non torna indietro.
+- Sorgente per SideStore: `https://github.com/tommaso-quatraro/schieraxi/releases/latest/download/sorgente.json`. Punta alla
+  release «Latest», cioè all'ultima `build-<N>`. Non rinominare `ipa.yml`: il contatore è per file.
+- L'unione fatta con il token di GitHub non avvia i workflow `on: push`. Per questo il job `rilascia` lancia `ipa.yml`
+  da solo quando la pull request ha toccato `ios/`.
+
+## Contratti delle API
+Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non rompere i campi esistenti: aggiungerne si può.
+- Istantanea di tutte le rotte: `docs/openapi.json`, controllata da `tests/test_contratto_api.py`; si rifà con
+  `python script/ci/aggiorna_openapi.py` quando l'API cambia apposta (poi si controllano web e iPhone, `docs/METODO.md`).
+- Ogni richiesta diversa da GET e HEAD deve avere l'intestazione `X-Fanta: 1`, altrimenti 403. Corpo troppo grande: 413.
+- `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate), `registro_nostri`
+  (I4 dal vivo: numeri «nostri» contro mostrati; `null` se non si legge), `consiglio`
+  (C1-C4 del consiglio, totali dei Diari) e `calibrazione.taratura` (taratura di «gioca N%» con le probabili; `null` se non si
+  legge): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
+- `GET /api/diario`: ogni voce ha il campo facoltativo `consiglio` (C1-C4 di quella giornata) e `istantanea` ha `misure` (C3-C4);
+  forma in `docs/API.md`, «Indicatori del consiglio».
+- Errori: JSON `{"detail": "testo in italiano"}`.
+- 202 = «sto calcolando» (coda, solo in modo multiutente): il client riprova. 429 con `Retry-After` = limiti per utente.
+- Scelta della giornata: `GET /api/scelta` dà anche `salvata` (data e ora), `tipo` e, solo se vero, `era_consigliata` (gli 11 salvati erano la consigliata: «Da fare» allora non propone cambi e, se la consigliata cambia, lo dice con una voce sola, `da_fare._titolari`, #333); web e iPhone mostrano in Formazione lo stato della scelta confrontando gli 11 mostrati con quelli salvati. Formazione non valida in `POST /api/formazione/valuta`: `400` con `codice: "formazione_non_valida"` (`consigli.FormazioneNonValida`); i client non cancellano la scelta da soli.
+- Regola unica della scelta (dal 5/11/2026): `scelte.motivo_non_valida` (11 titolari diversi tra quelli della rosa che si possono schierare, un portiere, modulo ammesso dalla lega), con `scelte.che_vale` e `scelte.ruoli_schierabili` (prima della scadenza i giocatori con una previsione, come la Formazione; a giornata finita la rosa, come il Diario). Una scelta salvata che non la rispetta più (giocatore ceduto, modulo non ammesso) non conta e vale la consigliata, ovunque: Formazione, Oggi (anche in diretta e nel riepilogo), Diario, avvisi (promemoria, «cambia la formazione», «cambio pronto», riepilogo dopo la giornata) e Da fare. `GET /api/formazione` lo dice con `stato_scelta` (`nessuna`, `valida`, `non_valida`; facoltativo, solo per la tua squadra): a giornata chiusa la riga dello stato scrive «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» (con `valida`: «… · vale quella che hai salvato»). Test `tests/test_scelta_non_valida_chiusa.py` e `tests/test_scelta_non_valida_avvisi.py`.
+- Formazione chiusa (dal 2/11/2026): dopo la scadenza della lega `POST /api/formazione/valuta` con `salva` e `DELETE /api/scelta` rispondono 409 con `codice: "formazione_chiusa"`, per tutti (`server._formazione_chiusa`, regola `fasi.iniziata`). La copia automatica (`copia_scadenza.py`) scrive prima della scadenza e non passa dalle rotte.
+- Anticipi già cominciati (dal 5/11/2026, #373): con la formazione aperta `GET /api/formazione` ha il campo facoltativo `bloccati` (id di chi gioca una partita già cominciata, regola `consigli._anticipi_iniziati`, `scelte.bloccati`). Rispetto alla formazione che vale (scelta salvata se vale, altrimenti la consigliata) `POST /api/formazione/valuta` con `salva` e `DELETE /api/scelta` che li spostano rispondono 400 con `codice: "giocatore_bloccato"` (`scelte.GiocatoreBloccato`, `server._non_sposta_i_fermi`). Web e iPhone non li fanno sostituire; «Da fare» non propone cambi su di loro (`da_fare._dubbi`). Test `tests/test_anticipi_scelta.py`.
+- Titolari incerti con una riserva quasi sicura: lista `incerti` in ogni modulo di `/api/formazione` (`consigli.incerti`, soglie 50% e 80%).
+- Il perché della scelta (dal 5/11/2026, #356): lista facoltativa `perche_scelta` `[{titolare, altro, testo, frase}]` in ogni modulo di `/api/formazione` (`perche_scelta.py`), una riga per i titolari che sembrano una scelta storta e per gli incerti; web e iPhone la mostrano sotto il campo. Mai il contrario del Confronto sulla stessa coppia (`tests/test_perche_scelta.py`, su tutti gli stili e moduli).
+- Consigliata stabile (dal 5/11/2026, #335): `consigli.formazione` tiene la consigliata già calcolata per squadra, rosa, regole e giornata (file comune `dati/consigliate.json`, `consigli.FILE_CONSIGLIATE`, solo id sotto un'impronta, tetto `MAX_CONSIGLIATE`) e la cambia solo se la migliore vale almeno `consigli.SOGLIA_CAMBIO_PUNTI` (= `notifiche.SOGLIA_AVVISO_PUNTI`, 1 punto atteso) in più o se un suo titolare è uscito dalla rosa o è diventato fuori o improbabile (`consigli.stabile`; chi lo era già quando è stata mostrata sta in `non_giocano`); dopo la scadenza resta. Formazione, Oggi, widget, Da fare, avvisi, copia alla scadenza e sentinella passano tutti da lì. Test `tests/test_consigliata_stabile.py`; misura `prove/misura_stabilita.py`.
+- A giornata iniziata ogni scheda ha anche `fv_preso` (fantavoto preso, `fasi.schede_a_giornata_iniziata`): il web mostra quello al posto di «gioca N%» (`esitoPartita` in `app.js`).
+- ETag e If-Match su scelta, osservati, rose, regole e avvisi. Con un If-Match vecchio: 412. Senza If-Match si scrive come sempre.
+- Partite rinviate: `PUT /api/regole/rinvio` (eccezione per una giornata, stesso ETag delle regole), campo `rinvio` in
+  `/api/oggi` e nelle schede dei giocatori; contratto in `docs/API.md`, «Partite rinviate».
+- Account: rotte `/api/account/*`. Con `nativo: true` il token torna nel corpo (l'app per iPhone lo manda come
+  `Authorization: Bearer`). La web app usa il cookie `fanta_sessione`, HttpOnly.
+- Token del widget iPhone: `fw_...`, vale 90 giorni, creato con `POST /api/account/token-widget`. Apre solo `GET /api/oggi`,
+  `GET /api/widget` e `GET /api/live`. Ogni altra rotta risponde 403. Cambio password e «esci da tutti» lo revocano.
+- Giocatori: all'utente una sola percentuale sul giocare, «gioca N%» (`p_voto`); `percentuale` delle probabili non si mostra e
+  `titolarita` va a parole. Dopo la scadenza `GET /api/formazione` ha `iniziata: true`, `titolarita: null` e `stato_partita`
+  (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
+- Passaggio di stagione: `POST /api/nuova-stagione` risponde `{archivio, squadre, stagione}`; `archivio` è il nome della stagione archiviata (`"2026-27"`), non un percorso.
+- Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`. `analizza` e `da-testo` passano dallo stesso `limiti.analisi_scambio`.
+- Ogni parametro `giornata` delle rotte ha `ge=1, le=MAX_GIORNATA` (422, mai 500): `tests/test_giornata_limiti.py` trova da solo le rotte nuove.
+- Numero della giornata (dal 5/11/2026, #299): le risposte mandano `giornata` (Serie A) e `giornata_lega` (lega, `null` per le stagioni passate e prima che la lega parta); il testo «Giornata 8 · 11ª di Serie A» lo scrive una funzione sola per lato, `nomeGiornata` in `fanta/web/app.js` e `frasi.nome_giornata` sul server (avvisi, Da fare, testo per i Comandi). Forme in `docs/COERENZA-WEB-IPHONE.md`, «Giornata: le forme»; test `tests/test_giornate_lega_serie_a.py`.
+- Rose a colonne `ruolo;nome;club;prezzo`: formato di testo accettato dal server, nato per la lettura degli screenshot di Leghe
+  nell'app iPhone (tolta il 2/11/2026), resta per il testo incollato. Intestazione nella prima riga, una riga con una cella sola =
+  fantasquadra, `crediti;N`; a `POST /api/rose/anteprima` e `/api/rose/testo`; `rose._estrai_schermate`. Contratto in `docs/API.md`.
+
+## Modo multiutente (`FANTA_MULTIUTENTE=1`, obbligatorio su un server raggiungibile da altri)
+- Spento: nessun accesso, file in `lega/` e `dati/`; chi chiede ha i poteri dell'amministratore, quindi il server risponde
+  solo a richieste dirette da 127.0.0.1/::1 senza intestazioni di proxy (le altre: 403, avviso nel log all'avvio).
+- Acceso: senza sessione `/api/*` risponde 401 (tranne accesso, registrazione e recupero). Una cartella per utente in
+  `dati/utenti/<id>/`, database `dati/account.sqlite`.
+- L'id utente viene solo dalla sessione, mai da un parametro. Ogni rotta personale usa `contesto.py` e va coperta da
+  `tests/test_isolamento.py`.
+- Tetti per utente in `fanta/limiti.py`: importazioni di rose, ricerche di scambi (`FANTA_MAX_SCAMBI`), immagini da indirizzo web;
+  calcoli in coda e memoria dei risultati per utente, consigliate ricordate, azioni pesanti all'ora; importazione delle rose con lo
+  stesso tetto di celle per ogni formato (`MAX_CELLE_IMPORTAZIONE`) e un tempo massimo per riconoscere i giocatori
+  (`MAX_SECONDI_RICONOSCIMENTO`); avvisi con un tempo massimo per ogni invio (`MAX_SECONDI_INVIO`, vale sempre) e un tetto di prove
+  all'ora (`MAX_PROVE_AVVISI_ORA`). Ogni tetto nuovo si cambia sul server con `FANTA_<nome della costante>`.
+- Registrazione: `FANTA_REGISTRAZIONE=invito|email|aperta` (predefinito `invito`).
+- Posta: `FANTA_MAIL=spento|log|smtp|resend` (predefinito `spento`: nessun invio; `log` scrive in `dati/posta.log` solo che un
+  messaggio sarebbe partito, mai il codice). Con registrazione `aperta` o `email` servono `smtp` o `resend`.
+  SMTP (`fanta/posta.py`): `FANTA_SMTP_HOST`, `FANTA_SMTP_PORT` (465 = TLS subito, 587 = STARTTLS; mai in chiaro), `FANTA_SMTP_UTENTE`,
+  `FANTA_MAIL_DA` (stessa casella dell'utente, così SPF e DKIM tornano), password in un file a parte indicato da
+  `FANTA_SMTP_PASSWORD_FILE` (una riga, permessi 600: altrimenti non si usa; mai in `ambiente.env`). Tetto `FANTA_MAIL_MAX_ORA`
+  (predefinito 50 invii veri all'ora; oltre, `posta_tetto_ora` nel registro di sicurezza). Chi spedisce, nella Privacy: `FANTA_POSTA_FORNITORE`.
+- Registri: righe tenute 30 giorni, indirizzi accorciati (IPv4 senza l'ultimo numero, IPv6 solo /64).
+- Accesso con Google: spento (404) senza `FANTA_GOOGLE_CLIENT_ID` e `FANTA_GOOGLE_CLIENT_SECRET`.
+- Pagine legali (`testi_legali.py`): `FANTA_TITOLARE`, `FANTA_CONTATTO`, `FANTA_SORGENTE`, `FANTA_HOSTING`, `FANTA_BACKUP_GIORNI`,
+  `FANTA_REGISTRO_WEB_GIORNI` (senza: frasi generiche). `tests/test_legale.py` lega i testi al codice: se cambi cookie, durate, Google o widget, cambia la pagina,
+  la data «aggiornato» e `account.VERSIONE_TERMINI`.
+
+## Fonti dati
+- Ogni fonte ha un suo interruttore: `FANTA_FONTE_<NOME>=1`, oppure l'amministratore la accende da `dati/fonti.json`
+  (rotte `/api/admin/fonti`). Il predefinito sta in `fanta/fonti_attive.py`.
+- Le fonti in ombra si raccolgono e si conservano, ma il modello non le usa finché una misura non le promuove.
+- Le richieste sono poche, una alla volta e con pausa, e si salvano in cache.
+- Le foto dei calciatori non sono nel repository: i volti sono illustrazioni generate dal codice (`docs/AVATAR.md`).
+
+## Punti delicati
+- Nomi dei giocatori tra fonti diverse: `nomi.py`. Gli abbinamenti incerti non si devono prendere per buoni.
+  Un nome abbreviato è sicuro solo con ruolo E squadra uguali al listone; con uno dei due diverso mai. Misura: `tests/corpus_nomi.py`
+  (anche le varianti OCR, `genera_ocr`) e `prove/misura_nomi.py --vero` sul listone salvato in locale.
+- `dati/` non va mai in git né nei log. Il backup (`backup.py`) non contiene chiavi né iscrizioni alle notifiche.
+- Il ripristino del backup salva prima lo stato di prima in `dati/backup-prima-del-ripristino.json` e non cambia le scelte delle giornate già chiuse (`backup.unisci_scelte`, regola di `fasi.iniziata`).
+- Il ripristino del backup applica alle rose gli stessi tetti dell'importazione (`limiti.controlla_rose`). La `stagione` delle rose è vuota o `AAAA-AA` (`lega.stagione_valida`): fa da nome della cartella dell'archivio (`stagione.archivia_e_riparti`, che controlla anche `percorsi.dentro`). Un percorso costruito con un nome che viene dai dati si controlla con `percorsi.dentro` prima di scrivere.
+- Rifare tutto il servizio da una copia notturna (`backup-dati.sh`): `docs/RIPRISTINO-SERVER.md` (provato il 2/11/2026; cosa non c'è nella copia e cosa succede).
+- Ore tranquille (`silenzio`, `silenzio_da`, `silenzio_a`): bloccano l'invio degli avvisi. La prova le ignora.
+- Il tempo della lega (`scadenza_minuti`, `prima_giornata_lega`) sta nelle regole della lega, non nel codice.
+- Il modello non legge le quote dei bookmaker: non reintrodurle senza prima e dopo con `verifica`.
+- `fanta/avatar_tratti.json` non è nel repository: senza di lui tutti i volti hanno la carnagione neutra.

@@ -1606,7 +1606,7 @@ def test_documenti_della_grafica_b_in_vigore():
     assert "Fatto" in quindici, quindici
     stile = (RADICE / "docs" / "STILE-SENZA-AI.md").read_text(encoding="utf-8")
     assert "Grafica B della web" in stile[stile.index("## Prima e dopo"):stile.index("## Come si controlla")]
-    mappa = (RADICE / "MAPPA.md").read_text(encoding="utf-8")
+    mappa = (RADICE / "docs" / "RIFERIMENTO.md").read_text(encoding="utf-8")
     assert "Grafica B «Distinta» (in vigore" in mappa and "affianco: true" in mappa
 
 

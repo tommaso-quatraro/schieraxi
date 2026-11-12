@@ -8,29 +8,45 @@ statistiche 1,5 min, il resto meno di un minuto). Non sono compresi i passi di s
 quelli dipendono dal server e la loro configurazione non sta in questo repository.
 Il passo 5 (registro delle giornate) è provato il 5/11/2026 su una cartella di prova con dati inventati: copia notturna,
 pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate identiche, e il comando ripetuto non aggiunge niente.
+L'archivio delle statistiche nella copia (#607, novembre 2026) è provato con dati inventati da `tests/test_script_server_avvisi.py`:
+copia fatta con il servizio acceso (dati ancora nel file `-wal`), pacchetto estratto come al passo 2, archivio che si apre da solo
+con gli stessi dati, e il passo 5 che non aggiunge niente.
 
 ## Cosa c'è nella copia notturna e cosa no
 
 | Nella copia | NON nella copia | Cosa succede se manca |
 |---|---|---|
-| `dati/account.sqlite` (account, sessioni, inviti, token del widget) | `dati/fanta.sqlite` (statistiche) | si ricostruisce: passo 4 (il registro delle giornate che c'era dentro si rimette al passo 5) |
-| `dati/chiave-impronte.key` (va insieme agli account) | `dati/diario.json` delle giornate chiuse dopo la copia | si ricostruisce: passo 6 |
-| `dati/utenti/<account>/` (regole, rose, scelte, diario, avvisi, immagini, backup) | `dati/vapid.json` (chiavi delle notifiche) | l'app ne crea di nuove da sola, ma ogni dispositivo deve **riattivare le notifiche** |
-| `lega/` (regole, rose, immagini) | `push.json` (iscrizioni alle notifiche) | come sopra |
-| `dati/scelte.json`, `diario.json`, `affidabilita.json`, ecc. | `/etc/schieraxi/fantacalcio.env` (variabili del servizio, contiene segreti; fuori dalla cartella dell'app) | va riscritto: passo 3 |
-| `dati/registro-giornate.json` (registro delle giornate: le tabelle `registro_*` dell'archivio, i numeri mostrati prima di ogni giornata; NON si ricostruiscono) | `dati/smtp.password` (password della casella email) | niente email finché non la riscrivi: passo 3 |
-| | `dati/avatar_tratti.json` (non è pubblico) | volti con la carnagione neutra |
-| | `~/.config/schieraxi/canale` (canale degli avvisi) | niente avvisi al gestore finché non lo rimetti |
+| `dati/account.sqlite` (account, sessioni, inviti, token del widget) | `dati/diario.json` delle giornate chiuse dopo la copia | si ricostruisce: passo 6 |
+| `dati/chiave-impronte.key` (va insieme agli account) | `dati/vapid.json` (chiavi delle notifiche) | l'app ne crea di nuove da sola, ma ogni dispositivo deve **riattivare le notifiche** |
+| `dati/fanta.sqlite` (archivio delle statistiche, con il registro delle giornate; nelle copie da novembre 2026) | `push.json` (iscrizioni alle notifiche) | come sopra |
+| `dati/utenti/<account>/` (regole, rose, scelte, diario, avvisi, immagini, backup) | `/etc/schieraxi/fantacalcio.env` (variabili del servizio, contiene segreti; fuori dalla cartella dell'app) | va riscritto: passo 3 |
+| `lega/` (regole, rose, immagini) | `dati/smtp.password` (password della casella email) | niente email finché non la riscrivi: passo 3 |
+| `dati/scelte.json`, `diario.json`, `affidabilita.json`, ecc. | `dati/avatar_tratti.json` (non è pubblico) | volti con la carnagione neutra |
+| `dati/registro-giornate.json` (registro delle giornate: le tabelle `registro_*` dell'archivio, i numeri mostrati prima di ogni giornata; NON si ricostruiscono) | `~/.config/schieraxi/canale` (canale degli avvisi) | niente avvisi al gestore finché non lo rimetti |
 | | `~/.config/schieraxi/chiavi-firma.asc` | si ricopia da `script/server/chiavi/` (vedi `script/server/LEGGIMI.md`, «Accendere») |
 | | configurazione di sistema (nginx, systemd, fail2ban, ufw, crontab) | va tenuta dal gestore fuori da questo repository |
+| | le statistiche arrivate dopo la notte della copia | si scaricano: passo 4 |
+
+Le statistiche non si riscaricano tutte: una fonte che chiude o cambia non ridà le stagioni e le partite di prima. Per questo
+l'archivio sta nella copia, preso con l'API di backup di SQLite senza fermare il servizio (qualche MB, meno di un secondo).
+Le copie fatte prima di novembre 2026 non lo hanno: col passo 4 si riscarica quello che le fonti danno ancora.
+Una notte in cui la copia dell'archivio non riesce, il pacchetto si salva lo stesso senza `dati/fanta.sqlite`, con un avviso, e le
+copie di prima restano (quella notte non se ne toglie nessuna). In quel caso, al passo 2 estrai la copia più recente (account e
+utenti aggiornati), poi il solo archivio dalla più recente che lo contiene (si vede con `tar -tzf ~/dati-AAAA-MM-GG.tar.gz`):
+`tar -xzf ~/dati-AAAA-MM-GG.tar.gz -C ~/fantacalcio ./dati/fanta.sqlite`.
 
 ## Passi (utente del server, nella sua home)
 
 1. **Codice**: `git clone https://github.com/<proprietario>/schieraxi.git fantacalcio && cd fantacalcio`.
    Python come in produzione (3.12): `python3 -m venv .venv && .venv/bin/python -m pip install --require-hashes -r requirements.txt`.
-2. **Dati**: `tar -xzf ~/dati-AAAA-MM-GG.tar.gz -C ~/fantacalcio` (crea `dati/` e `lega/`). Su Windows con il `tar` di Git serve
+2. **Dati**: `tar -xzf ~/dati-AAAA-MM-GG.tar.gz -C ~/fantacalcio` (crea `dati/` e `lega/`; nelle copie da novembre 2026 anche
+   `dati/fanta.sqlite`, un file solo senza `-wal`). Su Windows con il `tar` di Git serve
    `tar --force-local -xzf ...` (altrimenti il `C:` del percorso viene preso per un server).
-   Controllo: `.venv/bin/python -c "import sqlite3; print(sqlite3.connect('dati/account.sqlite').execute('PRAGMA integrity_check').fetchone()[0])"` → `ok`.
+   Su una cartella nuova, come qui, non c'è altro. Se invece ripristini sopra una cartella già usata: prima ferma il servizio e
+   sposta via i file `-wal` e `-shm` accanto ai database (`dati/*.sqlite-wal`, `dati/*.sqlite-shm`), che sono dei database di prima
+   e rovinerebbero quelli della copia.
+   Controllo: `.venv/bin/python -c "import sqlite3; print(sqlite3.connect('dati/account.sqlite').execute('PRAGMA integrity_check').fetchone()[0])"` → `ok`,
+   e lo stesso con `dati/fanta.sqlite` e `PRAGMA quick_check` (se c'è) → `ok`.
 3. **Variabili del servizio** in `/etc/schieraxi/fantacalcio.env`, un file di root che il servizio legge ma non può scrivere
    (cartella `750`, file `640`, proprietario `root`, gruppo quello dell'utente del servizio; comandi in «Spostare le variabili del
    servizio», qui sotto). Mai nella cartella dell'app: `dati/` la scrive il servizio, e systemd legge quel file come root.
@@ -51,8 +67,12 @@ pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate i
    I valori non stanno nel repository. Per i comandi a mano (passi 4-7) le stesse variabili vanno caricate nella shell:
    `. script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env` (legge il file senza eseguirlo, prima `/etc/schieraxi/fantacalcio.env`
    e solo se manca `dati/ambiente.env`; il servizio le prende da solo con il drop-in di systemd, `script/server/ambiente.conf.esempio`).
-4. **Statistiche**: `.venv/bin/python -m fanta aggiorna` (circa 1,5 minuti, una cinquantina di richieste: si fa una volta sola).
-5. **Registro delle giornate** (i numeri mostrati prima di ogni giornata, che non si riscaricano):
+4. **Statistiche**: `.venv/bin/python -m fanta aggiorna`. Con `dati/fanta.sqlite` della copia (passo 2) scarica solo quello che
+   manca o che può essere cambiato dalla notte della copia. Senza (copie di prima di novembre 2026) lo riscarica tutto: circa
+   1,5 minuti, una cinquantina di richieste, e i dati storici che una fonte non dà più restano persi.
+5. **Registro delle giornate** (i numeri mostrati prima di ogni giornata, che non si riscaricano). Con l'archivio della copia
+   (passo 2) il registro c'è già e il comando qui sotto fa solo da controllo (`0 giornate, ... nuove`); rimette davvero le righe con
+   le copie di prima di novembre 2026, dopo il passo 4:
    `.venv/bin/python -m fanta.registro_copia importa dati/registro-giornate.json` → `Registro rimesso in .../dati/fanta.sqlite:
    N giornate, M righe di giocatori, K righe dei numeri nostri, J righe delle misure dei numeri nostri e T versioni della taratura
    di «gioca N%» nuove; 0 righe c'erano già e sono rimaste com'erano.` Aggiunge solo le righe che mancano e non tocca il resto
