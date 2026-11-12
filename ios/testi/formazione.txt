@@ -64,3 +64,6 @@ formazione.ultimi_voti
 formazione.sostituisci
 formazione.tutti_numeri
 formazione.questa_partita
+# «gioca al 62 per cento», «gioca all'85 per cento» per VoiceOver (CifreScheda), come la pedina della web
+formazione.voce_gioca
+formazione.voce_gioca_v

@@ -27,6 +27,11 @@ struct FormazioneDalCatalogoTests {
             Catalogo.Formazione.annullaModifiche, Catalogo.Formazione.tornaAllaConsigliata, Catalogo.Formazione.chiusa,
             Catalogo.Formazione.bloccati, Catalogo.Formazione.copiata,
             Catalogo.Formazione.salvataComeTua,
+            // la scheda del giocatore unica (#616)
+            Catalogo.Formazione.partitaCasa(avv: segno, quando: segno), Catalogo.Formazione.partitaFuori(avv: segno, quando: segno),
+            Catalogo.Formazione.seGioca, Catalogo.Formazione.percheTitolare, Catalogo.Formazione.incerto(p: segno, riserva: segno),
+            Catalogo.Formazione.ultimiVoti, Catalogo.Formazione.sostituisci, Catalogo.Formazione.tuttiNumeri,
+            Catalogo.Formazione.questaPartita,
         ]
     }
 

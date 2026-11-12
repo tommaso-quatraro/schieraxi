@@ -192,9 +192,9 @@ struct DemoFormazioneInCorsoTests {
         }
     }
 
-    @Test("Oggi, le righe dei giocatori, la scheda e «Perché questo numero» contano «oggi» e «ieri» con l'ora dell'app (`Orologio`), mai con quella del telefono",
+    @Test("Oggi, le righe dei giocatori e la partita della scheda contano «oggi» e «ieri» con l'ora dell'app (`Orologio`), mai con quella del telefono",
           arguments: ["Sources/Presentation/Oggi/OggiView.swift", "Sources/Support/RigaGiocatore.swift",
-                      "Sources/Presentation/Mercato/SchedaGiocatoreView.swift", "Sources/Support/PercheNumeroView.swift"])
+                      "Sources/Domain/LetturaScheda.swift"])
     func conLOrologioDellApp(percorso: String) throws {
         let codice = try sorgente(percorso)
         let chiamate = Self.chiamate("Quando.leggibile(", in: codice)

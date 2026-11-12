@@ -180,5 +180,15 @@ extension Catalogo {
 
         /// `formazione.questa_partita`
         static let questaPartita = "Questa partita"
+
+        /// `formazione.voce_gioca`
+        static func voceGioca(p: String) -> String {
+            "gioca al \(p) per cento"
+        }
+
+        /// `formazione.voce_gioca_v`
+        static func voceGiocaV(p: String) -> String {
+            "gioca all'\(p) per cento"
+        }
     }
 }
