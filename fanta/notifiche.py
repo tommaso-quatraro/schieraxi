@@ -752,20 +752,18 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
 RIEPILOGO_ENTRO = timedelta(days=6)        # dall'ultima partita giocata della giornata: più tardi il riepilogo non parte più
 
 
-def _da_riepilogare(db: sqlite3.Connection, stagione: str, regole: Regole, adesso: datetime, fatti: list[str]) -> int | None:
-    """La giornata di cui mandare il riepilogo, o None: la più recente fra quelle finite per la lega (`rinvii.giornate_chiuse`, come
-    Oggi e il Diario: con «aspetta» dopo il recupero, con le altre regole a turno finito), giocata da meno di RIEPILOGO_ENTRO, con i
-    voti di ogni squadra che ha giocato (`fasi.voti_arrivati`, la regola di Oggi) e non ancora riepilogata. Prima contava solo la
+def _da_riepilogare(db: sqlite3.Connection, stagione: str, regole: Regole, adesso: datetime, fatti: list[str]) -> list[int]:
+    """Le giornate di cui si può mandare il riepilogo, dalla più recente: finite per la lega (`rinvii.giornate_chiuse`, come Oggi e
+    il Diario: con «aspetta» dopo il recupero, con le altre regole a turno finito), giocate da meno di RIEPILOGO_ENTRO, con i voti
+    di ogni squadra che ha giocato (`fasi.voti_arrivati`, la regola di Oggi) e non ancora riepilogate. Prima contava solo la
     giornata più alta con tutte le partite giocate: una giornata con un recupero non la era mai, e le bastavano 60 righe di voti (#649)."""
     from . import fasi, rinvii
     ultime = {int(g): fasi._data(d) for g, d in db.execute("SELECT giornata, MAX(data) FROM partite WHERE stagione = ? AND giocata = 1 "
                                                            "AND data IS NOT NULL GROUP BY giornata", (stagione,))}
     chiuse = [g for g in rinvii.giornate_chiuse(db, stagione, regole) if ultime.get(g) is not None]
-    for g in sorted(chiuse, key=lambda g: ultime[g], reverse=True):
-        if f"{stagione}/{g}" not in fatti and timedelta(0) < adesso - ultime[g] <= RIEPILOGO_ENTRO \
-                and fasi.voti_arrivati(db, stagione, g, regole):
-            return g
-    return None
+    return [g for g in sorted(chiuse, key=lambda g: ultime[g], reverse=True)
+            if f"{stagione}/{g}" not in fatti and timedelta(0) < adesso - ultime[g] <= RIEPILOGO_ENTRO
+            and fasi.voti_arrivati(db, stagione, g, regole)]
 
 
 def _con_la_regola_dei_rinvii(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, ids: list[int],
@@ -800,10 +798,9 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     La formazione che avevi è quella di Oggi e del Diario (`fasi.schierata`): la tua scelta salvata, se si può schierare con la rosa;
     altrimenti la consigliata fissata alla scadenza (istantanea del Diario) o la sua copia automatica, con la sua panchina. Solo se
     mancano entrambe resta l'ultima consigliata vista dall'avviso dei cambi (`file_cambi`), che può essere più vecchia.
-    Quale giornata e quando: `_da_riepilogare`; chi aveva la partita rinviata conta con la regola della lega (`_con_la_regola_dei_rinvii`)."""
-    from . import consigli, diario, fasi, scelte, verifica
-    from . import formazione as fz
-    from .punteggio import COLONNA_VOTO, fantavoto
+    Quale giornata e quando: `_da_riepilogare`, una per giro. Una giornata di cui non si può fare il riepilogo (formazione non nota,
+    un titolare non più in rosa) non ferma le altre: si prova la successiva (revisione della #678)."""
+    from . import consigli
     adesso = adesso or datetime.now()
     opzioni = opzioni if opzioni is not None else impostazioni()
     if not opzioni.get("riepilogo", True):
@@ -811,9 +808,25 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     stagione = consigli.stagione_corrente()
     stato = _json(file_stato)
     fatti = stato.setdefault("riepilogo", [])
-    giornata = _da_riepilogare(db, stagione, regole, adesso, fatti)
-    if giornata is None:
-        return []
+    for giornata in _da_riepilogare(db, stagione, regole, adesso, fatti):
+        testo = _testo_riepilogo(db, regole, rose, adesso, stagione, giornata, file_cambi, file_scelte, file_diario)
+        if testo is None:
+            continue
+        if manda(F("n.t_riepilogo"), testo, 3, "bar_chart"):
+            fatti.append(f"{stagione}/{giornata}")
+            stato["riepilogo"] = fatti[-20:]
+            scrivi_sicuro(file_stato, json.dumps(stato))
+        return [testo]
+    return []
+
+
+def _testo_riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime, stagione: str, giornata: int,
+                     file_cambi: Path, file_scelte: Path | None, file_diario: Path | None) -> frasi.Frase | None:
+    """Il testo del riepilogo di una giornata finita, o None se non si può fare (non si sa cosa avevi schierato, rosa cambiata).
+    Chi aveva la partita rinviata conta con la regola della lega (`_con_la_regola_dei_rinvii`)."""
+    from . import consigli, diario, fasi, scelte, verifica
+    from . import formazione as fz
+    from .punteggio import COLONNA_VOTO, fantavoto
     chiave = f"{stagione}/{giornata}"
     righe_voti = [dict(x) for x in db.execute("SELECT * FROM voti WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
     # la stessa formazione di Oggi e del Diario (fasi.schierata): la regola unica della scelta con i ruoli della rosa (una scelta che
@@ -827,16 +840,16 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     elif snap and snap.get("titolari"):            # ripiego: l'ultima consigliata vista dall'avviso dei cambi
         ids, panchina_ids, fonte = snap["titolari"], None, F("n.fonte_consigliata")
     else:
-        return []                                  # non so cosa avevi schierato
+        return None                                # non so cosa avevi schierato
     prev, _, _ = consigli.previsioni(db, regole, giornata)
     squadra = rose.squadra(rose.mia_squadra or "")
     if not squadra:
-        return []
+        return None
     lista = [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]), float(prev.at[i, "mu"]),
                           float(prev.at[i, "mu_voto"])) for i in (g.id for g in squadra.giocatori if g.id is not None) if i in prev.index]
     per_id = {g.id: g for g in lista}
     if any(i not in per_id for i in ids):
-        return []
+        return None
     fv_vero, voto_vero = {}, {}
     for v in righe_voti:
         i = int(v["calciatore_id"])
@@ -862,9 +875,4 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, prossima), regole) if prossima else None
     if inizio:
         parti.append(F("n.prossima", giornata=_giornata(prossima, regole), data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))
-    testo = frasi.elenco(parti, sep=" ")
-    if manda(F("n.t_riepilogo"), testo, 3, "bar_chart"):
-        fatti.append(chiave)
-        stato["riepilogo"] = fatti[-20:]
-        scrivi_sicuro(file_stato, json.dumps(stato))
-    return [testo]
+    return frasi.elenco(parti, sep=" ")

@@ -49,12 +49,12 @@ BONUS = dict.fromkeys(("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagl
                        "espulsioni", "subentrato", "sostituito"), 0)        # come le righe vere: bonus e malus a zero, mai vuoti
 
 
-def _voti(db, miei, altri=None):
+def _voti(db, miei, altri=None, giornata=8):
     """I voti dei miei giocatori `miei` e di altri giocatori (non in rosa) delle squadre `altri` ({id: squadra})."""
-    righe = [{"stagione": ST, "giornata": 8, "calciatore_id": i, "nome": ROSA[i][0], "squadra": ROSA[i][2], "ruolo": ROSA[i][1],
+    righe = [{"stagione": ST, "giornata": giornata, "calciatore_id": i, "nome": ROSA[i][0], "squadra": ROSA[i][2], "ruolo": ROSA[i][1],
               "voto_red": VOTO[i]} | BONUS for i in miei]
-    righe += [{"stagione": ST, "giornata": 8, "calciatore_id": i, "nome": f"G{i}", "squadra": s, "ruolo": "C", "voto_red": 6.0} | BONUS
-              for i, s in (altri or {}).items()]
+    righe += [{"stagione": ST, "giornata": giornata, "calciatore_id": i, "nome": f"G{i}", "squadra": s, "ruolo": "C", "voto_red": 6.0}
+              | BONUS for i, s in (altri or {}).items()]
     archivio.inserisci(db, "voti", righe)
 
 
@@ -76,7 +76,7 @@ def mondo(tmp_path, monkeypatch):
     def oggi(db, regole=None):
         return fasi.blocco_riepilogo(db, regole or Regole(), rose, ST, 8, file_scelte, None)
     return type("M", (), {"riepilogo": staticmethod(riepilogo), "oggi": staticmethod(oggi), "mandati": mandati,
-                          "stato": tmp_path / "riepilogo.json"})
+                          "stato": tmp_path / "riepilogo.json", "scelte": file_scelte})
 
 
 def _punti(testo: str) -> str:
@@ -115,6 +115,30 @@ def test_con_aspetta_l_avviso_parte_dopo_il_recupero_anche_se_le_giornate_dopo_s
     _voti(db, [10], ATALANTA_PARMA)
     r = mondo.riepilogo(db, datetime(2026, 11, 13, 8, 0))
     assert len(r) == 1 and r[0].startswith("Giornata 8") and _punti(r[0]) == "69,0"
+
+
+def test_una_giornata_che_non_si_puo_riepilogare_non_ferma_le_altre(tmp_path, mondo):
+    """Revisione della #678: regola «aspetta», il recupero della giornata 8 si gioca martedì 27, la giornata 9 è finita domenica 25
+    con i voti. L'utente ha la formazione solo per la 9: della 8 non si sa cosa avesse schierato. La 8 è la più recente, ma senza
+    formazione non ha un riepilogo: si passa alla 9 invece di restare fermi per giorni."""
+    db = _archivio(tmp_path, recupero=("2026-10-27 20:45", 1))
+    _voti(db, list(VOTO), ALTRI | LUNEDI_ALTRI | ATALANTA_PARMA)
+    db.execute("UPDATE partite SET giocata = 1 WHERE giornata = 9")
+    _voti(db, [i for i, (_, _, s) in ROSA.items() if s in ("inter", "milan", "roma", "lazio")], ALTRI, giornata=9)
+    mondo.scelte.unlink()
+    scelte.salva(ST, 9, TITOLARI, "4-4-2", mondo.scelte, panchina=PANCHINA)
+    r = mondo.riepilogo(db, datetime(2026, 10, 28, 8, 0))
+    assert len(r) == 1 and r[0].startswith("Giornata 9")
+    assert mondo.riepilogo(db, datetime(2026, 10, 28, 13, 0)) == [] and len(mondo.mandati) == 1
+
+
+def test_il_massimo_conta_il_voto_d_ufficio_come_i_tuoi_punti(tmp_path, mondo):
+    """Il massimo possibile (con le regole della lega, #642) e i tuoi punti vedono lo stesso voto d'ufficio di chi ha la partita
+    rinviata: qui 9. I tuoi: 61 + 9 = 70; il massimo con la rosa: portiere 7, Dif12 7,5, Recupero 9 e otto da 6 = 71,5."""
+    db = _archivio(tmp_path, recupero=(None, 0))
+    _voti(db, [i for i in VOTO if i != 10], ALTRI | LUNEDI_ALTRI)
+    r = mondo.riepilogo(db, TURNO_FINITO, replace(Regole(), partite_rinviate="voto_ufficio", voto_ufficio_rinviate=9.0))
+    assert len(r) == 1 and _punti(r[0]) == "70,0" and "Il massimo possibile con la tua rosa era 71,5." in r[0]
 
 
 @pytest.mark.parametrize("modo, punti", [("senza_voto", 68.5), ("voto_ufficio", 67.0)])
