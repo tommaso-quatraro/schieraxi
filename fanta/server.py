@@ -60,14 +60,15 @@ FILE_NOVITA_EN = Path(__file__).parent / "contenuti" / "novita.en.json"
 
 @asynccontextmanager
 async def _ciclo(_):
-    # formazione e mercato pronti appena parte il servizio e dopo ogni aggiornamento dei dati (anche fatto da un altro processo)
+    # formazione e mercato pronti appena parte il servizio, dopo ogni aggiornamento dei dati (anche fatto da un altro processo) e quando
+    # passa una scadenza o comincia un anticipo (_da_sorvegliare)
     fermo = threading.Event()
     if not account.multiutente():                                        # senza account: solo richieste dirette da questo computer
         logging.getLogger("uvicorn.error").warning(rotte_account.AVVISO_SOLO_LOCALE)
     registro.accorcia_registro_richieste()                               # anche il registro delle richieste: mai l'indirizzo intero
     threading.Thread(target=registro.sorveglia, args=(fermo,), name="registri", daemon=True).start()     # righe oltre 30 giorni
     if riscaldamento.attivo():                                           # FANTA_RISCALDA=0 lo spegne
-        threading.Thread(target=riscaldamento.sorveglia, args=(lambda: _versione_dati(), lambda: _scalda(), fermo),
+        threading.Thread(target=riscaldamento.sorveglia, args=(lambda: _da_sorvegliare(), lambda: _scalda(), fermo),
                          kwargs={"ritardo": riscaldamento.ritardo_avvio()}, name="riscaldamento", daemon=True).start()
     threading.Thread(target=pianificatore.sorveglia, args=(fermo, _leghe_attive, _db, _aggiorna_leggero, _dopo_giro_leggero),
                      kwargs={"risultati": _risultati_leggeri},       # e risultati e voti la sera stessa, dopo le partite
@@ -598,6 +599,22 @@ def _versione_dati() -> str | None:
         return consigli._versione(db)
     finally:
         db.close()
+
+
+def _da_sorvegliare() -> tuple:
+    """Quello che il riscaldamento confronta ogni minuto: la versione dei dati e, per le leghe attive, giornata, scadenza passata e
+    anticipi cominciati, che cambiano con l'ora senza dati nuovi (riscaldamento.stato_giornate, #651). Se leghe o calendario non si
+    leggono, la sola versione dei dati, come prima."""
+    versione = _versione_dati()
+    try:
+        db = _db()
+        try:
+            giornate = riscaldamento.stato_giornate(db, _leghe_attive(), consigli._adesso())
+        finally:
+            db.close()
+    except Exception:  # noqa: BLE001 - è solo un'anticipazione: il giro dopo un aggiornamento dei dati resta come sempre
+        giornate = None
+    return versione, giornate
 
 
 def _novita() -> list[dict]:

@@ -106,6 +106,28 @@ def test_sorveglia_scalda_all_avvio_e_quando_cambia_la_versione():
     assert not t.is_alive()
 
 
+def test_sorveglia_ripassa_ogni_tanto_anche_senza_cambi():
+    """#651: un risultato uscito dalla memoria (cache piena) o un giro non riuscito non lasciano il widget senza dati fino al prossimo
+    aggiornamento: dopo `ripasso` secondi si scalda di nuovo (il tempo qui è finto)."""
+    t = {"ora": 0.0}
+    scaldati = []
+    fermo = threading.Event()
+    th = threading.Thread(daemon=True, target=riscaldamento.sorveglia, args=(lambda: "v", lambda: scaldati.append(t["ora"]), fermo, 0.02),
+                          kwargs={"ripasso": 900, "tempo": lambda: t["ora"]})
+    th.start()
+    try:
+        _aspetta(lambda: scaldati == [0.0])
+        t["ora"] = 899.0
+        time.sleep(0.15)
+        assert scaldati == [0.0]
+        t["ora"] = 900.0
+        _aspetta(lambda: scaldati == [0.0, 900.0])
+    finally:
+        fermo.set()
+        th.join(2)
+    assert riscaldamento.RIPASSO <= 15 * 60
+
+
 def test_interruttore_e_ritardo_dall_ambiente(monkeypatch):
     monkeypatch.delenv("FANTA_RISCALDA", raising=False)
     assert riscaldamento.attivo()
