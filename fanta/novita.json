@@ -1,5 +1,42 @@
 [
   {
+    "versione": "1.483",
+    "data": "2026-11-12T21:39:43",
+    "titolo": "Rose vere dopo le squadre di esempio, e file delle rose rovinato",
+    "voci": [
+      "Squadra, «Aggiorna le rose»: se prima avevi usato le squadre di esempio, caricando le tue rose le squadre inventate se ne vanno anche senza «Togli le squadre che non sono nel file». Niente più squadra finta proposta come la tua, giocatori «in più squadre» o leghe vere rifiutate perché le squadre sembrano troppe.",
+      "Vale anche se avevi cambiato il nome a una squadra di esempio. Le regole, la formazione salvata e i giocatori seguiti restano come li hai lasciati.",
+      "Se il file delle tue rose si è rovinato, importare di nuovo le rose, come dice il messaggio di errore, ora funziona: l'app tiene le squadre del file nuovo e te lo dice con un avviso."
+    ],
+    "tecnico": [
+      "server._rose_di_prima: anteprima e importazione partono da rose None (come la prima importazione) se le rose salvate sono solo le squadre di esempio (onboarding.e_demo) o se lega.carica dà ValueError (JSON rovinato, forma sbagliata, stagione scritta male). Così lega.da_import non tiene le squadre finte né la loro mia_squadra, niente movimenti registrati, limiti.controlla_rose conta solo le squadre del file.",
+      "File rovinato: _importa lo sposta in rose.json.rovinato (Path.replace) dopo tutti i controlli e prima di lega.salva(copia_di_riserva=True), così rose.json.bak resta la copia buona e un'importazione rifiutata non sposta niente; riga nel registro del server. L'avviso lega.ROSE_ROVINATE è il primo di `avvisi` nella risposta dell'importazione e dell'anteprima (che non scrive niente).",
+      "onboarding.e_demo guarda anche nome_importato (squadra di esempio rinominata): è il controllo unico per creare e togliere la demo, per l'importazione e per misura_ingresso (tolto misura_ingresso._solo_esempio, che faceva lo stesso).",
+      "Scelta: formazione salvata (scelte) e seguiti (osservati) non si toccano all'importazione, a differenza di DELETE /api/onboarding/demo.",
+      "Client: nessun campo cambia; docs/API.md descrive il comportamento."
+    ]
+  },
+  {
+    "versione": "1.482",
+    "data": "2026-11-12T21:05:41",
+    "titolo": "Tre schede: Formazione, Giornate, Impostazioni",
+    "voci": [
+      "Web: la barra ha tre schede, Formazione, Giornate e Impostazioni, più la lente per cercare un giocatore. Le schede Squadra e Altro non ci sono più.",
+      "Impostazioni è una pagina sola: Avvisi, La mia lega, Il tuo account, Aspetto, Informazioni. Gestione c'è solo per chi gestisce il server.",
+      "La mia lega raccoglie ciò che stava in Squadra e in Altro: Aggiorna le rose, La mia squadra con stemma e maglia, Regole e scadenza, Le altre squadre.",
+      "Regole e scadenza: in cima quando si chiude la formazione e da quale giornata parte la lega; poi il regolamento da incollare, che si salva con un tocco dopo aver visto cosa è stato riconosciuto. I singoli valori stanno dietro Modifica i valori.",
+      "Avvisi: un interruttore per questo dispositivo, che appena acceso manda un avviso di prova, e le ore tranquille. Gli altri interruttori degli avvisi non si mostrano più: le scelte di prima restano come sono.",
+      "Per chi gestisce il server, Aggiorna i dati sta in Impostazioni > Gestione, al posto delle frecce in alto.",
+      "I collegamenti salvati di Squadra e Altro aprono la voce nuova."
+    ],
+    "tecnico": [
+      "Web: `VISTE` = formazione, giornate, impostazioni. Le pagine di Impostazioni: `?vista=impostazioni&gruppo=rose|squadra|squadre|regole|account|informazioni|gestione`, la rosa di un'altra squadra con `&rosa=`. `dove()` in `app.js` traduce indirizzi, valori salvati, messaggi del service worker e destinazioni di `da_fare` di prima (`squadra`, `altro`, `lega`, `mercato`, `scambi`, `regole`, `rosa`, gruppi `avanzate`, `aspetto`, `avvisi`). Tolti l'ingranaggio e le frecce della testata.",
+      "Avvisi: la web manda solo `silenzio` (PUT /api/avvisi, campi mandati soltanto) e iscrive o toglie il dispositivo (`/api/push/iscrivi`, `/api/push/disiscrivi`); gli altri campi restano sul server. Nessuna rotta cambiata: l'iPhone non cambia.",
+      "Stato dei dati usa il campo `etichetta` di `aggiornamenti` e `controlli`. Schermata di accesso: gli avvisi in una regione `role=\"status\"`, gli errori con `role=\"alert\"`.",
+      "Frasi del server senza percorso di menu, giuste sulla web e sull'iPhone: «Indica la tua squadra in «La mia squadra»» (consigli.py, gestione.py, server.py) e «Nessuna rosa importata: importale con «Aggiorna le rose»». `fanta/diario.py` dice ancora «Squadra > Squadre e rose»: la sua traduzione resta nel catalogo (`err.indica_prima_squadra_diario`)."
+    ]
+  },
+  {
     "versione": "1.481",
     "data": "2026-11-12T20:36:11",
     "titolo": "Riepilogo della giornata e avvisi: numeri giusti e niente avvisi fuori tempo",

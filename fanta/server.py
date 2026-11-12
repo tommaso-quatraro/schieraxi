@@ -458,7 +458,7 @@ def _regole(ctx: Contesto) -> regole.Regole:
 def _rose(ctx: Contesto) -> lega.Rose:
     r = lega.carica(ctx.rose)
     if not r:
-        raise HTTPException(409, "Nessuna rosa importata: importale in Squadra > Aggiorna le rose")
+        raise HTTPException(409, "Nessuna rosa importata: importale con «Aggiorna le rose»")
     return r
 
 
@@ -1507,7 +1507,7 @@ def proposte_scambi(con: str | None = None, due: bool = False, fino_a: int | Non
     Gli scambi più grandi del 1 contro 1 si cercano con una squadra alla volta."""
     r_ose, r = _rose(ctx), _regole(ctx)
     if not r_ose.mia_squadra:
-        raise ValueError("Indica prima la tua squadra in Squadra > Squadre e rose")
+        raise ValueError("Indica prima la tua squadra in «La mia squadra»")
     if fino_a is not None and not 2 <= fino_a <= scambi_multi.MAX_PER_LATO:
         raise ValueError(f"fino_a deve essere un numero da 2 a {scambi_multi.MAX_PER_LATO}")
     if (due or fino_a) and not con:
@@ -1546,7 +1546,7 @@ def analizza_scambio(request: Request, con: str, do: str, ricevo: str, conguagli
     from . import scambi
     r_ose, r = _rose(ctx), _regole(ctx)
     if not r_ose.mia_squadra:
-        raise ValueError("Indica prima la tua squadra in Squadra > Squadre e rose")
+        raise ValueError("Indica prima la tua squadra in «La mia squadra»")
     da, a = _lista_id(do), _lista_id(ricevo)
     # tetto al minuto per utente e analisi contemporanee limitate (la stessa analisi ripetuta, come fa l'app sul 202, non conta)
     with limiti.analisi_scambio(ctx, (con, tuple(da), tuple(a), conguaglio, bool(completo))):
@@ -1597,7 +1597,7 @@ def scambio_da_testo(dati: OffertaTesto, request: Request, ctx: Contesto = Depen
     from . import scambi
     r_ose, r = _rose(ctx), _regole(ctx)
     if not r_ose.mia_squadra:
-        raise ValueError("Indica prima la tua squadra in Squadra > Squadre e rose")
+        raise ValueError("Indica prima la tua squadra in «La mia squadra»")
     trovati = scambi.riconosci_nel_testo(dati.testo[:4000], r_ose, r_ose.mia_squadra, dati.con)
     nomi_ = {g.id: g.nome for s in r_ose.squadre for g in s.giocatori if g.id is not None}
     risposta = {"con": trovati["con"], "do": [nomi_[i] for i in trovati["do"]], "ricevo": [nomi_[i] for i in trovati["ricevo"]],
@@ -1843,16 +1843,40 @@ def _leggi_rose(lette: _Riconosciute, correzioni: list[dict] | None = None, prim
     return squadre, avvisi
 
 
+def _rose_di_prima(ctx: Contesto) -> tuple[lega.Rose | None, bool]:
+    """(rose salvate da cui parte un'importazione o un'anteprima, file rovinato). Le rose sono None, come alla prima
+    importazione, se sono solo le squadre di esempio (non si mescolano con quelle vere: niente squadre finte che restano,
+    «la tua squadra» finta o giocatori «in più squadre») o se il file non si legge più: il messaggio di errore di ogni
+    schermata propone proprio di importare di nuovo le rose (lega.carica)."""
+    try:
+        prima = lega.carica(ctx.rose)
+    except ValueError:
+        return None, True
+    return (None if onboarding.e_demo(prima) else prima), False
+
+
+def _metti_da_parte(percorso: Path) -> None:
+    """Il file delle rose che non si legge va da parte (rose.json.rovinato) PRIMA di salvare le nuove: il salvataggio con la
+    copia di riserva lo copierebbe sopra rose.json.bak, che è la copia buona."""
+    da_parte = percorso.with_name(percorso.name + ".rovinato")
+    percorso.replace(da_parte)
+    logging.getLogger("uvicorn.error").warning("Importazione delle rose: il file delle rose non si leggeva, messo da parte in %s",
+                                               da_parte.name)
+
+
 def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto, correzioni: list[dict] | None = None,
              mia_squadra: str | None = None) -> dict:
     """Salva le rose già riconosciute (`_riconosci`). Da chiamare con il blocco delle rose preso."""
     r = _regole(ctx)
-    prima = lega.carica(ctx.rose)
+    prima, rovinate = _rose_di_prima(ctx)
     lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     anteprima_rose.scegli_mia(nuove, mia_squadra)              # facoltativa: la squadra dell'utente scelta nell'anteprima
     limiti.controlla_rose(ctx, nuove)                          # con gli account: al massimo 20 squadre da 40 giocatori
     nuove.stagione = consigli.stagione_corrente()
+    if rovinate:                                               # solo ora: un'importazione rifiutata non sposta niente
+        _metti_da_parte(ctx.rose)
+        avvisi.insert(0, lega.ROSE_ROVINATE)
     lega.salva(nuove, ctx.rose, copia_di_riserva=True)
     try:                                                       # stemmi e maglie di squadre tolte: una nuova con lo stesso nome non li eredita
         immagini.pulisci([s.nome for s in nuove.squadre], ctx.immagini)
@@ -1955,8 +1979,10 @@ def _anteprima(griglie, sostituisci_tutto: bool, correzioni: list[dict] | None, 
     """Come l'importazione ma senza scrivere niente: legge le rose salvate (per dire cosa cambierebbe) e basta."""
     etag = versioni.etag_file(ctx.rose)          # PRIMA di leggere le rose: se cambiano subito dopo, l'importazione darà 412
     r = _regole(ctx)
-    prima = lega.carica(ctx.rose)
+    prima, rovinate = _rose_di_prima(ctx)                          # come l'importazione, ma il file rovinato resta dov'è
     lette, avvisi = _leggi_rose(_riconosci(griglie, ctx, excel), correzioni, prima)
+    if rovinate:
+        avvisi.insert(0, lega.ROSE_ROVINATE)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     limiti.controlla_rose(ctx, nuove)                              # stessi tetti dell'importazione
     risposta = anteprima_rose.anteprima(lette, avvisi, r, prima, nuove)

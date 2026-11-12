@@ -7,10 +7,6 @@
     "it": "Altri bonus",
     "en": "Other bonuses"
   },
-  "regole.altro": {
-    "it": "Altro",
-    "en": "More"
-  },
   "regole.annulla_modifiche": {
     "it": "Annulla le modifiche",
     "en": "Undo the changes"
@@ -25,7 +21,12 @@
   },
   "regole.con_prima_giornata": {
     "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Diario e promemoria contano da lì.",
-    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Journal and reminders count from there."
+    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Journal and reminders count from there.",
+    "nota": "Solo per l'iPhone, che ha ancora il Diario: la web (Regole e scadenza, #618) usa regole.prima_giornata_conta"
+  },
+  "regole.prima_giornata_conta": {
+    "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Giornate e promemoria contano da lì.",
+    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Matchdays and reminders count from there."
   },
   "regole.controlla_valori_qui": {
     "it": "Controlla i valori qui sotto e tocca «Salva le regole» in fondo.",
@@ -118,10 +119,6 @@
   "regole.quelli_che_puoi": {
     "it": "Quelli che puoi schierare nella tua lega.",
     "en": "The ones you can field in your league."
-  },
-  "regole.regole_della_lega": {
-    "it": "Regole della lega: tocca una sezione per aprirla. Il nome si può cambiare qui sotto.",
-    "en": "League rules: tap a section to open it. The name can be changed below."
   },
   "regole.regole_salvate_consigli": {
     "it": "Regole salvate: i consigli ora le usano",
@@ -391,5 +388,29 @@
   "regole.rinviate_aiuto_formazione": {
     "it": "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo dalla Formazione.",
     "en": "What your league does with the players of a postponed match, even weeks later. You can change it for a single round from Lineup."
+  },
+  "regole.incolla_titolo": {
+    "it": "Incolla il regolamento",
+    "en": "Paste the rulebook"
+  },
+  "regole.incolla_spiega": {
+    "it": "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: prima di salvare ti mostro cosa ho riconosciuto.",
+    "en": "On Leghe open the competition rulebook, copy the text and paste it here: before saving I show you what I recognized."
+  },
+  "regole.salva_queste": {
+    "it": "Salva queste regole",
+    "en": "Save these rules"
+  },
+  "regole.modifica_valori": {
+    "it": "Modifica i valori",
+    "en": "Edit the values"
+  },
+  "regole.tempi_salvati": {
+    "it": "Salvato: promemoria e giornate usano i tempi nuovi",
+    "en": "Saved: reminders and matchdays use the new times"
+  },
+  "regole.aggiornamenti_titolo": {
+    "it": "Aggiornamenti dei dati",
+    "en": "Data updates"
   }
 }

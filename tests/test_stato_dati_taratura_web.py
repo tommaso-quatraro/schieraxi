@@ -277,6 +277,8 @@ def test_la_pagina_mostra_la_riga_sotto_i_gruppi_della_calibrazione():
 
 
 def test_negli_aggiornamenti_la_riga_della_taratura_ha_un_nome():
+    """Dal 12/11/2026 (#618) il nome di ogni riga lo scrive il server (campo `etichetta`): la web lo mostra e basta."""
+    from fanta import stato_dati
+    assert stato_dati.etichetta_aggiornamento(tp.CHIAVE) == "Taratura di «gioca N%»"
     corpo = APP[APP.index("async function apriStatoDati"):APP.index("// Aspetto: tema")]
-    assert f'"{tp.CHIAVE}": t("sd.f_taratura")' in corpo
-    assert '"sd.f_taratura": "Taratura di «gioca N%»"' in TESTI_JS
+    assert "esc(a.etichetta || a.cosa)" in corpo and "sd.f_" not in corpo

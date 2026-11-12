@@ -386,9 +386,9 @@ class Giro:
         self.pagina.locator("#avviso").filter(has_text=testo).wait_for(state="visible", timeout=limite_ms)
 
     def apri_account(self) -> None:
-        """Ingranaggio in testata > «Il tuo account»."""
+        """Impostazioni nella barra > «Il tuo account» (#618: prima era l'ingranaggio in testata)."""
         p = self.pagina
-        self.tocca(p.locator("#bottone-impostazioni"))
+        self.tocca(p.locator("a.scheda[data-vista='impostazioni']"))
         self.tocca(p.get_by_role("button", name=re.compile(r"^\s*Il tuo account")).or_(
             p.get_by_role("link", name=re.compile(r"^\s*Il tuo account"))))
         p.locator("#scheda-account").wait_for(state="visible")
@@ -590,15 +590,15 @@ def passo_tempi(g: Giro) -> None:
 
 
 def passo_regole(g: Giro) -> None:
+    """Impostazioni > Regole e scadenza (#618): il regolamento incollato si salva con un tocco dopo il riconoscimento (prima: Altro >
+    Regole, «Applica ai campi», poi «Salva le regole»)."""
     p = g.pagina
     g.chiudi_fogli()
-    g.tocca(p.locator("a.scheda[data-vista='altro']"))
-    g.tocca(p.locator("#contenuto").get_by_role("button", name=re.compile(r"^\s*Regole\b")).or_(
-        p.locator("#contenuto").get_by_role("link", name=re.compile(r"^\s*Regole\b"))))
+    g.tocca(p.locator("a.scheda[data-vista='impostazioni']"))
+    g.tocca(p.locator("#contenuto").get_by_role("button", name=re.compile(r"^\s*Regole e scadenza\b")))
     g.scrivi(p.locator("#testo-regole"), testo_regole_esempio())
     g.tocca(p.locator("#riconosci-regole"))
-    g.tocca(p.locator("#applica-regole"))
-    g.tocca(p.locator("#salva-regole"))
+    g.tocca(p.locator("#salva-riconosciute"))
     g.avviso("Regole salvate")
     r = g.api("/api/regole")
     if r.get("crediti_iniziali") != 500 or not (r.get("modificatore_difesa") or {}).get("attivo"):

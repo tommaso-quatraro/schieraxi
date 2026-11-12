@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 import pytest
 
-from fanta import account, contesto, onboarding, server
+from fanta import account, contesto, lega, onboarding, server
 from fanta.listone import Calciatore
 from fanta.regole import Regole
 
@@ -218,3 +218,112 @@ def test_dopo_la_demo_le_rose_vere_non_si_cancellano_ne_si_sostituiscono(ambient
     assert r.status_code == 200 and r.json()["demo"] is False and r.json()["passo"] == "tipo"
     assert albero(contesto.cartella_utente(id_di("utentea"))) == prima            # e non cancella niente
     assert [s["nome"] for s in a.get("/api/squadre").json()] == ["Mia", "Altra"]
+
+
+# ---------------------------------------------------------------- rose vere dopo le squadre di esempio (#650)
+IN_PIU_SQUADRE = "è in più squadre"
+
+
+def _rosa(nome: str, *giocatori: str) -> str:
+    """Una squadra come testo incollato: il ruolo è la prima lettera del nome finto («P00 Prova» è un portiere)."""
+    return f"{nome}\n" + "".join(f"{g[0]}\t{g}\t5\n" for g in giocatori)
+
+
+# giocatori che hanno anche le squadre di esempio (le quotazioni più alte del listone finto): prima finivano «in più squadre»
+VERE = (_rosa("Vera Uno", "P00 Prova", "D00 Prova", "C00 Prova", "A00 Prova")
+        + _rosa("Vera Due", "P01 Prova", "D01 Prova", "C01 Prova", "A01 Prova"))
+
+
+@pytest.fixture
+def con_esempi(ambiente, monkeypatch):
+    """Un utente nuovo che ha toccato «Usa le squadre di esempio»."""
+    monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (listone_grande(), "oggi"))
+    a, uid = nuovo_utente("utentea")
+    assert a.post("/api/onboarding/demo").status_code == 200
+    return a, contesto.Contesto.per_utente(uid)
+
+
+def _nomi(a) -> list[str]:
+    return [s["nome"] for s in a.get("/api/squadre").json()]
+
+
+def _in_piu_squadre(avvisi: list[str]) -> list[str]:
+    return [x for x in avvisi if IN_PIU_SQUADRE in x]
+
+
+def test_dopo_gli_esempi_restano_solo_le_squadre_del_file(con_esempi):
+    """Senza «Togli le squadre che non sono nel file» (come manda la web di base): le quattro squadre inventate se ne vanno,
+    nessuna è proposta come «la tua squadra», nessun giocatore vero risulta anche in una squadra finta."""
+    a, _ = con_esempi
+    r = a.post("/api/rose/anteprima", json={"testo": VERE})
+    assert r.status_code == 200, r.text
+    anteprima = r.json()
+    assert anteprima["totale_squadre"] == 2 and all(s["nuova"] for s in anteprima["squadre"])
+    assert anteprima["mia_squadra"] not in onboarding.SQUADRE_DEMO
+    assert _in_piu_squadre(anteprima["avvisi"]) == []
+    r = a.post("/api/rose/testo", json={"testo": VERE})
+    assert r.status_code == 200, r.text
+    importate = r.json()
+    assert importate["totale_squadre"] == 2 and importate["mia_squadra"] is None
+    assert _in_piu_squadre(importate["avvisi"]) == []
+    assert _nomi(a) == ["Vera Uno", "Vera Due"]
+    assert not any(s["mia"] for s in a.get("/api/squadre").json())
+
+
+def test_dopo_gli_esempi_la_sola_squadra_del_file_e_quella_proposta(con_esempi):
+    a, _ = con_esempi
+    testo = _rosa("Vera Uno", "P00 Prova", "D00 Prova")
+    r = a.post("/api/rose/anteprima", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    assert r.json()["mia_squadra"] == "Vera Uno" and r.json()["totale_squadre"] == 1
+    r = a.post("/api/rose/testo", json={"testo": testo, "mia_squadra": "Vera Uno"})
+    assert r.status_code == 200, r.text
+    assert _nomi(a) == ["Vera Uno"] and r.json()["mia_squadra"] == "Vera Uno"
+
+
+def test_dopo_gli_esempi_una_lega_da_17_squadre_si_importa(con_esempi):
+    """Prima: 4 squadre inventate + 17 vere = 21, oltre il tetto di 20 squadre."""
+    a, _ = con_esempi
+    testo = "".join(_rosa(f"Squadra {i}", f"D{i:02d} Prova") for i in range(17))
+    r = a.post("/api/rose/anteprima", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    r = a.post("/api/rose/testo", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    assert r.json()["totale_squadre"] == 17 and len(_nomi(a)) == 17
+
+
+def test_una_squadra_di_esempio_rinominata_resta_un_esempio(con_esempi):
+    a, ctx = con_esempi
+    assert a.put("/api/squadre/nome", json={"nome": "Atletico Prova", "nuovo": "I Leoni di Quartiere"}).status_code == 200
+    rose = lega.carica(ctx.rose)
+    assert "I Leoni di Quartiere" in {s.nome for s in rose.squadre} and onboarding.e_demo(rose)
+    r = a.post("/api/rose/testo", json={"testo": VERE})
+    assert r.status_code == 200, r.text
+    assert _nomi(a) == ["Vera Uno", "Vera Due"] and _in_piu_squadre(r.json()["avvisi"]) == []
+
+
+def test_togliere_gli_esempi_rinominati_li_toglie(con_esempi):
+    a, _ = con_esempi
+    assert a.put("/api/squadre/nome", json={"nome": "Real Esempio", "nuovo": "Gli Amici"}).status_code == 200
+    assert a.delete("/api/onboarding/demo").status_code == 200
+    assert a.get("/api/squadre").status_code == 409                     # nessuna rosa: si ricomincia
+
+
+def test_dopo_gli_esempi_regole_formazione_e_seguiti_salvati_non_cambiano(con_esempi):
+    """Una scelta salvata dall'utente non cambia mai da sola: l'importazione toglie solo le squadre di esempio."""
+    a, ctx = con_esempi
+    ctx.scelte.write_text('{"segno": "formazione salvata prima"}', encoding="utf-8")
+    ctx.osservati.write_text('{"segno": "seguiti salvati prima"}', encoding="utf-8")
+    prima = {f: f.read_bytes() for f in (ctx.regole, ctx.scelte, ctx.osservati)}
+    assert a.post("/api/rose/testo", json={"testo": VERE}).status_code == 200
+    assert {f: f.read_bytes() for f in prima} == prima
+
+
+def test_con_rose_vere_le_squadre_di_prima_e_la_mia_squadra_restano(ambiente):
+    """Il caso di sempre: rose vere, poi un file con una squadra sola, senza «Togli le squadre che non sono nel file»."""
+    a, _ = nuovo_utente("utentea")
+    assert a.post("/api/rose/testo", json={"testo": ROSE}).status_code == 200
+    assert a.put("/api/mia-squadra", json={"nome": "Mia"}).status_code == 200
+    r = a.post("/api/rose/testo", json={"testo": "Terza\nD\tBastoni\t5\n"})
+    assert r.status_code == 200, r.text
+    assert _nomi(a) == ["Mia", "Altra", "Terza"] and r.json()["mia_squadra"] == "Mia"

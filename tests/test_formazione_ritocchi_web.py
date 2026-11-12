@@ -33,4 +33,4 @@ def test_il_nome_sta_nella_testata_non_dentro_oggi():
 
 
 def test_controlla_dei_dati_vecchi_apre_stato_dei_dati():
-    assert 'if (v.id === "dati-vecchi" && typeof apriStatoDati === "function") { vai("impostazioni", "avanzate"); apriStatoDati(); return; }' in DAFARE
+    assert 'if (v.id === "dati-vecchi" && typeof apriStatoDati === "function") { vai("impostazioni", "gestione"); apriStatoDati(); return; }' in DAFARE

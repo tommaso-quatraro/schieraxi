@@ -39,8 +39,8 @@ RISPOSTE_IN_PIU = {"/api/avatar": {"versione": 3, "tratti": {}}}
 # - mentre una schermata carica, l'area principale (o il suo contenitore del caricamento) ha aria-busy="true" (la web lo
 #   mette dal 12/11/2026, #615; si guardano ancora anche le classi `caricamento` e `scheletro`);
 # - un errore mostrato all'utente ha role="alert" (la web di oggi usa anche la classe `errore`); un avviso normale ha
-#   role="status". Oggi la schermata di accesso mette in role="alert" anche gli avvisi (classe `attenzione`): quelli non
-#   contano come errori.
+#   role="status". Gli avvisi con la classe `attenzione` non contano come errori (fino al 12/11/2026, #618, la schermata di
+#   accesso li metteva in un role="alert").
 AREA_PRINCIPALE = "main, [role=main]"
 TESTO_PRINCIPALE = """(area) => { const m = document.querySelector(area);
   return m ? (m.innerText || '').trim() : ''; }"""

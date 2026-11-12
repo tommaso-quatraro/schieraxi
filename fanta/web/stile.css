@@ -160,8 +160,8 @@ b, strong { font-weight: 650; }
 
 /* ---------------------------------------------------------------- testata */
 /* Una testata sola (grafica B, spec §8.1). Al telefono non è ferma: nome disegnato e ricerca non si vedono, le schede sono la barra
-   in basso e i pulsanti (cerca, ingranaggio, aggiorna) stanno nell'angolo in alto a destra, sulla riga del titolo della schermata,
-   e scorrono via con la pagina. Da 900 px è la barra ferma in alto con tutto dentro («Schermi larghi»). */
+   in basso e la lente sta nell'angolo in alto a destra, sulla riga del titolo della schermata, e scorre via con la pagina. Da 900 px
+   è la barra ferma in alto con tutto dentro («Schermi larghi»). Impostazioni è una scheda della barra (#618): niente ingranaggio. */
 .testata { position: absolute; top: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
   padding: calc(env(safe-area-inset-top) + 8px) 16px 0 0; }
 /* «.marchio» da solo è il marchio animato dei caricamenti: qui sempre «.testata .marchio» */
@@ -177,10 +177,11 @@ b, strong { font-weight: 650; }
 main { padding: 8px 16px 0; padding-top: calc(env(safe-area-inset-top) + 8px); max-width: 1240px; margin: 0 auto; }
 
 /* ---------------------------------------------------------------- titolo della schermata e riga di stato (pagina() in app.js) */
-/* Un solo h1 per pagina: il nome della schermata, in Archivo. Al telefono accanto al titolo c'è il posto per i pulsanti della
-   testata (due, o tre per chi gestisce SchieraXI); sotto, la riga di stato: stemma, giornata, squadra, data dei dati. */
-.capo-pagina { --posto-bottoni: 100px; margin: 0 0 18px; }
-body:has(#bottone-aggiorna:not([hidden])) .capo-pagina { --posto-bottoni: 148px; }
+/* Un solo h1 per pagina: il nome della schermata, in Archivo. Al telefono accanto al titolo c'è il posto per la lente della testata;
+   sotto, la riga di stato: stemma, giornata, squadra, data dei dati. Le pagine dentro Impostazioni hanno sopra il titolo il pulsante
+   che torna indietro («‹ Impostazioni»), sulla riga della lente. */
+.capo-pagina { --posto-bottoni: 52px; margin: 0 0 18px; }
+.capo-pagina .imp-torna { min-height: 44px; padding: 6px 14px; margin: 0 var(--posto-bottoni) 10px 0; }
 main > .capo-pagina { animation: none; }                    /* il titolo resta fermo quando la schermata si ridisegna */
 #titolo-pagina { margin: 0; min-height: 44px; display: flex; align-items: center; padding-right: var(--posto-bottoni);
   font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; line-height: 1.1;
@@ -244,7 +245,7 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .azione-testo { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0 8px;
   border: 0; border-radius: var(--r-in); background: none; color: var(--azione); font-weight: 650; text-decoration: none; }
 .pulsanti { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-.bottone.indietro { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px !important; }   /* «‹ Squadra»: icona e parola, niente «←» nel testo */
+.bottone.indietro { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px !important; }   /* «‹ Impostazioni»: icona e parola, niente «←» nel testo */
 .interruttore { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: var(--t-corpo); }
 .interruttore { min-height: 44px; }
 .interruttore input[type="checkbox"], .spunta input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; width: 44px; height: 44px; margin: -9px; padding: 0;
@@ -280,11 +281,10 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 /* contrasto elevato di Windows: il browser toglie il fondo lime e l'ombra interna, la voce scelta prende un contorno vero */
 @media (forced-colors: active) {
   .segmenti button.attivo { outline: 2px solid Highlight; outline-offset: -2px; }
-  .lega-voce[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }   /* voce aperta del menu */
   /* moduli delle Regole scelti; regola appena cambiata da «Applica ai campi» (il fondo e la linea spariscono) */
   #moduli .chip.attiva, .riga-regola.evidenzia { outline: 2px solid Highlight; outline-offset: -2px; }
   /* gruppo aperto delle Impostazioni e passo attuale del primo avvio */
-  .imp-voce.attiva, .pa-passo.attuale { outline: 2px solid Highlight; outline-offset: -2px; }
+  .pa-passo.attuale { outline: 2px solid Highlight; outline-offset: -2px; }
 }
 
 details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 650; font-size: var(--t-card); padding: 4px 0; min-height: 44px; }
@@ -702,6 +702,11 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
   .interruttore-ios input:checked + i::after { background: HighlightText; }
   .interruttore-ios input:focus-visible + i { outline-color: CanvasText; }
 }
+/* Impostazioni > Avvisi mentre aspetta il service worker (fino a 4 s): la frase che arriva se le notifiche non ci sono tiene già il suo
+   posto, invisibile, e sopra c'è «Controllo gli avvisi…». Quando arriva, la riga delle ore tranquille resta dov'è. */
+.avvisi-attesa { position: relative; }
+.avvisi-attesa .riserva { visibility: hidden; }
+.avvisi-attesa .riserva + p { position: absolute; inset: 0 0 auto; margin: 0; }
 .fascia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 0; border-top: 1px solid var(--filo); }
 .fascia .coppia { display: flex; align-items: center; gap: 8px; }
 .fascia .rimuovi-fascia { margin-left: auto; }
@@ -745,8 +750,8 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 
 /* =====================================================================================================
    Schermi larghi (iPad in orizzontale, PC, ultrawide), da 900 px: una testata sola ferma in alto, alta 56 px, con il nome
-   disegnato (porta alla Formazione), le schede come linguette con una linea sotto quella attiva, la ricerca sempre aperta, l'ingranaggio
-   e «Aggiorna i dati» (grafica B, spec §5 C1 e §8.1). La pagina è una colonna larga al massimo 1240 px, centrata; le schermate che
+   disegnato (porta alla Formazione), le tre schede come linguette con una linea sotto quella attiva e la ricerca sempre aperta
+   (grafica B, spec §5 C1 e §8.1; #618). La pagina è una colonna larga al massimo 1240 px, centrata; le schermate che
    ne hanno bisogno si dividono da sole (Formazione, Impostazioni). Su iPhone non cambia niente.
    ===================================================================================================== */
 @media (min-width: 900px) {
@@ -761,7 +766,7 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
   .scheda.attiva::before { top: auto; bottom: -1px; left: 12px; right: 12px; border-radius: 3px 3px 0 0; }
   .cerca-testata { display: block; width: 280px; margin-left: auto; }
   #bottone-cerca { display: none; }
-  .capo-pagina, body:has(#bottone-aggiorna:not([hidden])) .capo-pagina { --posto-bottoni: 0px; }
+  .capo-pagina { --posto-bottoni: 0px; }
   .avviso { left: 24px; right: auto; bottom: 24px; margin: 0; }
   .salva-fisso { bottom: 24px; }
   main { padding: 28px 32px 0; }
@@ -972,73 +977,39 @@ body.senza-accesso .salta { display: none; }
 .sm-anteprima { height: 84px; width: auto; max-width: 40%; object-fit: contain; border-radius: 12px; }
 @media (min-width: 700px) { .sm-attesa .pulsanti { flex-wrap: wrap; } }
 
-/* ---- Impostazioni (ingranaggio in testata): elenco dei gruppi a sinistra, pagina a destra da 768 px; sul telefono una cosa alla volta ---- */
-.bottone-icona.attiva { color: var(--testo); box-shadow: inset 0 0 0 2px var(--azione); }
-.bottone-icona.novita { position: relative; }
-.bottone-icona.novita::after { content: ""; position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
-.imp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }   /* una colonna `auto` era larga quanto il contenuto più lungo: Notifiche scorreva di lato (issue #288) */
-.imp-elenco { padding: 0; margin: 0; }
-/* il gruppo aperto come la voce aperta del menu di Squadra e Altro (spec §9): il fondo del passaggio del mouse e una linea di 3 px a
-   sinistra nel colore delle azioni, non una tinta verde; con il contrasto elevato un contorno vero (in «controlli») */
-.imp-voce { padding-left: 12px; padding-right: 8px; border-radius: 0 var(--r-in) var(--r-in) 0; }
-.imp-voce.attiva { background: var(--superficie); box-shadow: inset 3px 0 0 var(--azione); }
-.imp-indietro { min-height: 44px; }
-.imp-titolo { font-size: var(--t-card); margin: 14px 0 12px; letter-spacing: -.01em; }
-.imp-titolo:focus { outline: none; }
-/* Dentro un gruppo, sezioni e righe al posto delle carte (spec §4.1 e §9): il titolo che apre una sezione (Lingua, Tema, Dimensione
-   del testo, Funzioni, Stato dei dati...) ha il filo spesso sotto, come le sezioni delle altre schermate; gli altri titoli dentro la
-   stessa sezione (gli strumenti dell'amministratore) restano piccoli. Le voci di Informazioni, la versione e le parti dell'account
-   sono righe con il filo sottile. Sul PC i controlli segmentati non si stendono su tutta la pagina. */
-.imp-pagina .carta > h3:first-child, #aspetto .carta > h3 { font-size: var(--t-card); font-weight: 650; color: var(--testo); margin: 0 0 8px; padding-bottom: 8px;
+/* ---- Impostazioni (#618): una scheda della barra. La pagina ha le sezioni (Avvisi, La mia lega, Aspetto) e le righe che aprono una
+   pagina loro (Il tuo account, Informazioni, Gestione); al telefono una colonna, da 768 px due colonne di sezioni (la seconda comincia
+   dove finisce la prima). Le pagine interne (Aggiorna le rose, La mia squadra, Il tuo account...) sono una colonna larga al massimo
+   720 px; Regole e scadenza ha le sue due colonne da 1100 px. Le righe come le voci degli altri elenchi: il nome, sotto una riga
+   piccola, la freccia a destra. ---- */
+.imp-griglia { min-width: 0; }
+.imp-voce { grid-template-columns: minmax(0, 1fr) auto; }
+.imp-voce .dettaglio { display: block; }
+#aspetto .imp-sotto:first-child { margin-top: 4px; }
+#aspetto .segmenti { max-width: 520px; margin-bottom: 8px; }
+.imp-colonna { max-width: 720px; }
+/* nelle pagine interne il titolo che apre una carta (gli strumenti di chi gestisce) ha il filo spesso sotto, come le sezioni; le parti
+   dell'account e la versione sono righe con il filo sottile */
+.imp-colonna .carta > h3:first-child { font-size: var(--t-card); font-weight: 650; color: var(--testo); margin: 0 0 8px; padding-bottom: 8px;
   border-bottom: 2px solid var(--testo); letter-spacing: -.01em; }
-#aspetto .carta > h3:not(:first-child) { margin-top: 24px; }
-.imp-pagina .elenco + .riga { min-height: 44px; border-top: 1px solid var(--filo); }
-.imp-pagina .carta > details { border-top: 1px solid var(--filo); }
-.imp-pagina .segmenti { max-width: 520px; }
-@media (max-width: 767px) {
-  .imp[data-aperto="1"] .imp-elenco { display: none; }
-  .imp[data-aperto="0"] .imp-pagina { display: none; }
-  .imp-voce { padding-left: 0; }                                    /* al telefono il menu è la pagina: le voci partono dal bordo */
-}
+.imp-colonna .elenco + .riga { min-height: 44px; border-top: 1px solid var(--filo); }
+.imp-colonna .carta > details { border-top: 1px solid var(--filo); }
+.imp-colonna p, .imp-colonna div.debole { max-width: 70ch; }      /* righe di testo al massimo 70 caratteri (spec C12) */
 @media (min-width: 768px) {
-  .imp { grid-template-columns: 280px minmax(0, 1fr); gap: 22px; align-items: start; }
-  .imp-elenco { position: sticky; top: calc(var(--alto-ferma) + 16px); }
-  .imp-indietro { display: none; }
-  .imp-titolo { margin-top: 0; }
+  .imp-griglia { columns: 2; column-gap: 32px; }
+  .imp-griglia > .carta { display: inline-block; width: 100%; vertical-align: top; }   /* una sezione non si spezza fra le due colonne */
 }
-/* ---- Squadra e Altro (spec grafica B §5 C10): il menu delle voci e la pagina scelta. Sotto i 1100 px una cosa alla volta (il menu,
-   oppure la pagina con «‹ Squadra»); da 1100 px il menu a sinistra, largo 280 px e fermo sotto la testata se ci sta nello schermo
-   (controllaFerme in app.js), e la pagina a destra. La voce aperta ha aria-current="page": il fondo del passaggio del mouse e una
-   linea di 3 px a sinistra nel colore delle azioni, come la linea sotto la scheda accesa in testata (non solo un colore). ---- */
-.lega-colonne { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
-.lega-menu, .lega-pagina { min-width: 0; }
-.lega-voce { grid-template-columns: minmax(0, 1fr) auto; padding-left: 12px; padding-right: 8px; border-radius: 0 var(--r-in) var(--r-in) 0; }   /* la linea a sinistra resta dritta */
-.lega-voce .dettaglio { display: block; }
-.lega-voce[aria-current="page"] { background: var(--superficie); box-shadow: inset 3px 0 0 var(--azione); }
-.lega-indietro { min-height: 44px; }
-.lega-titolo { font-size: var(--t-card); margin: 14px 0 12px; letter-spacing: -.01em; }
-.lega-titolo:focus { outline: none; }
+/* il foglio dal basso ha la maniglia ferma in alto (33 px): ciò che prende il focus o si porta in cima (il titolo della giornata nel
+   Diario riaperto, #448) si ferma sotto di lei, con 8 px di stacco. Da 1100 px il foglio sta di lato e la maniglia non c'è */
 @media (max-width: 1099.98px) {
-  .lega-colonne[data-aperto="1"] > .lega-menu { display: none; }
-  .lega-colonne[data-aperto="0"] > .lega-pagina { display: none; }
-  .lega-voce { padding-left: 0; }                                   /* al telefono il menu è la pagina: le voci partono dal bordo */
-  /* il foglio dal basso ha la maniglia ferma in alto (33 px): ciò che prende il focus o si porta in cima (il titolo della giornata nel
-     Diario riaperto, #448) si ferma sotto di lei, con 8 px di stacco. Da 1100 px il foglio sta di lato e la maniglia non c'è */
   .foglio-corpo { scroll-padding-top: 41px; }
 }
-@media (min-width: 1100px) {
-  .lega-colonne { grid-template-columns: 280px minmax(0, 1fr); gap: 24px; align-items: start; }
-  .lega-menu { position: sticky; top: calc(var(--alto-ferma) + 16px); }
-  .lega-indietro { display: none; }
-  .lega-titolo { margin-top: 0; }
-  .lega-pagina p, .lega-pagina div.debole { max-width: 70ch; }      /* righe di testo al massimo 70 caratteri (spec C12) */
-}
-/* ---- Lega: la mia squadra e regole a sezioni ---- */
-.mia-riga { display: flex; align-items: center; gap: 14px; margin: 4px 0 6px; }
-.mia-riga .stemma-lista, .mia-riga .iniziale-squadra { width: 56px; height: 56px; flex: none; }
-.maglia-lista { height: 56px; width: auto; max-width: 64px; object-fit: contain; flex: none; }
+/* ---- La mia squadra e le regole ---- */
+.rosa-pagina { max-width: 900px; }
 .riga-crediti { margin: 10px 0 4px; }
-
+/* «Modifica i valori» (Regole e scadenza): chiuso, una riga come le altre tendine; aperto, i valori in sezioni */
+.regole-valori { min-width: 0; }
+.regole-valori > summary { font-size: var(--t-card); border-bottom: 2px solid var(--testo); margin-bottom: 16px; }
 .regola-sez { padding-top: 6px; padding-bottom: 6px; }
 .regola-sez[open] > summary { margin-bottom: 8px; }
 
@@ -1119,7 +1090,7 @@ body.senza-accesso .salta { display: none; }
 /* =====================================================================================================
    PC e schermi larghi (da 1100 px): più cose in vista, meno scorrimento.
    - Formazione: due colonne da 768 px, il campo a sinistra e gli elenchi a destra (nella sua sezione).
-   - Impostazioni (da 768 px) e Squadra/Altro: il menu a sinistra e la pagina scelta a destra, in una colonna sola.
+   - Impostazioni (da 768 px): le sezioni in due colonne; Regole e scadenza con i valori a destra.
    - I dettagli (giocatore, diario, ricerca) si aprono in un foglio a destra, modale; da 1200 px quelli dei giocatori stanno nel
      pannello affiancato, che non copre la pagina (sotto, «Pannello affiancato»).
    Sul telefono e sul tablet fino a 1099 px non cambia niente (le regole sono tutte dentro le @media).
@@ -1134,7 +1105,6 @@ body.senza-accesso .salta { display: none; }
   .foglio:not([hidden]) .foglio-corpo { animation-name: sale-lato; }
   .foglio.chiude .foglio-corpo { animation-name: scende-lato; }
   .foglio-chiudi { width: 44px; height: 44px; top: 12px; right: 12px; }
-  .imp-pagina p, .imp-pagina div.debole { max-width: 70ch; }     /* righe di testo al massimo 70 caratteri (spec C12), come in Squadra e Altro */
 }
 /* Pannello affiancato, da 1200 px (spec §5 C5 e §8.11): scheda del giocatore, sostituzione di un titolare
    e risultati della ricerca (body.con-pannello, lo scrive apriFoglio in app.js) stanno in una colonna a destra, sotto la
@@ -1164,7 +1134,7 @@ body { container: pagina / inline-size; }
   /* testata: i pulsanti su una riga loro, sopra il titolo della schermata (accanto non c'era posto), e scorrono via con la pagina
      (fissa, con lo zoom, copriva un quarto dello schermo); il titolo prende tutta la riga */
   .testata { position: relative; justify-content: flex-end; padding: calc(env(safe-area-inset-top) + 4px) 8px 0; }
-  .capo-pagina, body:has(#bottone-aggiorna:not([hidden])) .capo-pagina { --posto-bottoni: 0px; }
+  .capo-pagina { --posto-bottoni: 0px; }
   /* barra in basso: solo le icone, più bassa; il nome della scheda resta ai lettori di schermo («Formazione» non ci stava in 40 px) */
   .schede { height: calc(48px + env(safe-area-inset-bottom)); }
   .scheda > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -1191,7 +1161,6 @@ body { container: pagina / inline-size; }
   /* controlli a segmenti: le voci vanno su due righe invece di sovrapporsi */
   .segmenti { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
   .segmenti button { flex: 1 1 auto; padding: 11px 8px; white-space: normal; }
-  .mia-riga { flex-wrap: wrap; gap: 8px; }
   .immagini-squadra { grid-template-columns: 1fr; }
   /* Formazione: i moduli vanno a capo (tutti in vista), il campo mette due pedine per fila */
   .campo { padding: 20px 4px; }

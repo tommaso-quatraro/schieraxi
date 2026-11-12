@@ -49,8 +49,8 @@ def test_testata_che_scorre_via_sopra_il_titolo_e_barra_con_le_sole_icone():
     b = _blocco(STRETTA)
     testata = _regola(b, ".testata")
     assert "position: relative" in testata and "justify-content: flex-end" in testata
-    posto = " ".join(_corpi(".capo-pagina", b) + _corpi("body:has(#bottone-aggiorna:not([hidden])) .capo-pagina", b))
-    assert posto.count("--posto-bottoni: 0px") >= 1 and len(_corpi("body:has(#bottone-aggiorna:not([hidden])) .capo-pagina", b)) == 1
+    posto = " ".join(_corpi(".capo-pagina", b))                    # dal 12/11/2026 (#618) in testata c'è solo la lente
+    assert posto.count("--posto-bottoni: 0px") >= 1
     assert "padding-right: var(--posto-bottoni)" in " ".join(_corpi("#titolo-pagina"))   # niente posto lasciato ai pulsanti accanto al titolo
     etichette = _regola(b, ".scheda > span")                                       # il nome della scheda resta ai lettori di schermo
     assert "clip: rect(0 0 0 0)" in etichette and "width: 1px" in etichette and "display: none" not in etichette
@@ -75,10 +75,9 @@ def test_formazione_il_campo_va_a_capo():
 
 
 def test_squadra_rose_e_calendario_non_si_tagliano():
-    """Sotto Squadra: la riga della tua squadra e stemma/maglia vanno a capo; i controlli a segmenti vanno su due righe invece di
-    sovrapporsi."""
+    """La mia squadra (Impostazioni, #618): stemma e maglia uno sotto l'altro; i controlli a segmenti vanno su due righe invece
+    di sovrapporsi."""
     b = _blocco(STRETTA)
-    assert "flex-wrap: wrap" in _regola(b, ".mia-riga")
     assert "grid-template-columns: 1fr" in _regola(b, ".immagini-squadra")
     assert "flex-wrap: wrap" in _regola(b, ".segmenti")
 
@@ -159,9 +158,11 @@ def test_il_conto_alla_rovescia_non_lascia_l_unita_da_sola():
 
 
 def test_le_impostazioni_non_scorrono_di_lato():
-    """Issue #288: Notifiche a 320 px con il testo «Molto grande» scorreva di lato (337 px contro 320): la griglia `.imp` aveva una
-    colonna `auto`, larga quanto il contenuto più lungo (261 px su 240). Con `minmax(0, 1fr)` resta larga quanto la pagina."""
-    assert "grid-template-columns: minmax(0, 1fr)" in _regola(CSS, ".imp")
+    """Issue #288: Notifiche a 320 px con il testo «Molto grande» scorreva di lato (337 px contro 320): la griglia delle Impostazioni
+    aveva una colonna larga quanto il contenuto più lungo. Dal 12/11/2026 (#618) la pagina è una colonna che non supera la pagina
+    (`min-width: 0`), e le due colonne di sezioni arrivano solo da 768 px."""
+    assert "min-width: 0" in _regola(CSS, ".imp-griglia")
+    assert re.search(r"@media \(min-width: 768px\) \{\s*\.imp-griglia \{ columns: 2;", CSS)
 
 
 def test_le_righe_delle_regole_vanno_a_capo_sotto_i_320_px():

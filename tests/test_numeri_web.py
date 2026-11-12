@@ -61,5 +61,5 @@ def test_selettore_degli_scambi_nascosto_resta_nascosto():
 
 def test_notifiche_senza_service_worker_non_restano_vuote():
     """Se il service worker non arriva mai, il blocco delle notifiche non resta vuoto ad aspettare."""
-    corpo = APP[APP.index("async function notificheWeb("):APP.index("const ORE_24")]
+    corpo = APP[APP.index("async function notificheWeb("):APP.index("async function avvisiTelefono(")]
     assert "Promise.race([navigator.serviceWorker.ready" in corpo and 't("avv.notifiche_dell_app")' in corpo
