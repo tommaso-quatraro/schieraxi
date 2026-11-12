@@ -187,12 +187,15 @@ def con_prestazioni_dai_voti(d: Dati) -> Dati:
     i voti, valgono le righe di `prestazioni_dai_voti`, con i gol su azione e gli assist veri al posto di xG e xA, riportati alla
     scala della fonte (XG_PER_GOL, XA_PER_ASSIST): più rumorosi, ma è l'informazione che c'è. L'id della partita è cambiato di
     segno (non si confonde con quelli della fonte).
-    Con tutte le statistiche al loro posto restituisce `d` com'è. Che manchino lo dice `controlli.partite_senza_statistiche`."""
+    Con tutte le statistiche al loro posto restituisce `d` com'è, e così se le partite che mancavano sono già ricostruite:
+    richiamata sui dati che ha già completato non aggiunge le stesse righe un'altra volta (#638). Che le statistiche manchino lo
+    dice `controlli.partite_senza_statistiche`."""
     giocate = d.partite[d.partite["giocata"] == 1]
     if giocate.empty or d.voti.empty:
         return d
     con = set(d.prestazioni["understat_partita"].dropna().unique()) if len(d.prestazioni) else set()
-    senza = giocate[~giocate["understat_id"].isin(con)]
+    # coperte: le partite con le statistiche della fonte e quelle già ricostruite (l'id della partita cambiato di segno)
+    senza = giocate[~giocate["understat_id"].isin(con) & ~(-giocate["id"]).isin(con)]
     if senza.empty:
         return d
     squadre = pd.concat([senza[["stagione", "giornata", c]].rename(columns={c: "squadra"}) for c in ("casa", "trasferta")])
