@@ -711,6 +711,9 @@ Il token del widget può leggere `/api/oggi` come prima, anche con questo parame
 Dal 12/11/2026 (#616) la web mostra queste voci come decisioni in cima alla Formazione: al massimo due, solo quelle con un'azione.
 Non mostra `svincolato`, `scambio`, `diario`, le voci `dubbio` senza `alternativa` né le voci `formazione` diverse da
 `consigliata:<giornata>` (sulla web il salvataggio è automatico). La risposta del server non cambia: gli altri client le ricevono tutte.
+Dal 12/11/2026 (#673) le decisioni le segna il server con il campo `decisione` (sotto), con la stessa regola: i client non la
+ricalcolano. L'iPhone lo usa dalla Formazione unica; la web per ora applica ancora la sua regola (`dfDecisioni` di `dafare.js`), che dà
+le stesse voci nello stesso ordine (`tests/test_da_fare_decisioni.py` ha i casi dei test nel browser).
 Nelle voci `dubbio` senza cambio («… resta titolare: se non gioca entra Y dalla panchina.») Y è la prima riserva del ruolo che gioca
 quasi di sicuro, la stessa di `incerti[].riserva` di `GET /api/formazione`; se non c'è, la frase non nomina nessuno e il campo
 `riserva` manca.
@@ -725,6 +728,7 @@ Ogni voce:
 | `priorita` | 1, 2, 3 | 1 alta (urgente, tinta di allarme), 2 media, 3 bassa. La lista è già ordinata per priorità |
 | `azione` | testo | etichetta del pulsante (es. «Sostituisci», «Aggiorna le rose») |
 | `destinazione` | oggetto | dove porta il pulsante, vedi sotto |
+| `decisione` | intero da 1, facoltativo | dal 12/11/2026 (#673): c'è solo sulle voci che chiedono di fare qualcosa, ed è il loro posto fra le decisioni in cima alla Formazione. Non l'hanno `svincolato`, `scambio`, `diario`, le voci `dubbio` senza `alternativa` e le voci `formazione` diverse da `consigliata:<giornata>`. Ordine: prima le voci con `priorita` 1 che non sono `copertura`, poi le `copertura` con `priorita` 1, poi le altre non `copertura`, poi le altre `copertura`; dentro ogni gruppo l'ordine della lista. Una sola voce `copertura` ha il campo (la prima in quest'ordine). I client mostrano le prime due, in ordine di `decisione`, che hanno ancora senso con la formazione in pagina (per esempio non un cambio già fatto); un client vecchio lo ignora |
 
 Altri campi per tipo (facoltativi): `dubbio`: `giocatore` {id, nome}; `alternativa` {id, nome, ruolo, punti_attesi} (il sostituto proposto, solo quando la voce propone il cambio: azione «Sostituisci»); `riserva` {id, nome} (dal 5/11/2026, solo quando la consigliata tiene il titolare: chi entra dalla panchina se lui non gioca; un client vecchio lo ignora);
 `svincolato`: `esce`, `entra` {id, nome}, `guadagno` (punti); `scambio`: `con` (squadra), `guadagno`; `rose`/`backup`/`server`: `giorni`;
