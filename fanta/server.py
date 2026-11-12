@@ -1396,7 +1396,7 @@ def widget(request: Request, ctx: Contesto = Depends(lega_corrente)):
     corpo["live"] = _live_per_widget()
     corpo["funzioni"] = widget_riassunto.funzioni_per_widget(stato_utente.leggi_mostra_tutte(ctx.impostazioni_avvisi))
     widget_riassunto.entro_il_peso(corpo)                 # rete di sicurezza sulla dimensione: i blocchi tolti vanno in `mancano`
-    etag = versioni.etag_dati(corpo)
+    etag = widget_riassunto.etag(corpo)                   # senza i campi che cambiano solo con l'orologio (#651)
     intestazioni = {"ETag": etag, "Cache-Control": "private, no-cache", "Vary": "Authorization, Cookie"}
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=intestazioni)

@@ -13,7 +13,7 @@ import json
 import sqlite3
 from datetime import datetime
 
-from . import avatar, calcolo, consigli, diario, funzioni, gestione, osservati, scelte
+from . import avatar, calcolo, consigli, diario, funzioni, gestione, osservati, scelte, versioni
 from .lega import Rose
 from .regole import Regole
 
@@ -172,6 +172,16 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     if mancano:
         corpo["mancano"] = mancano
     return corpo
+
+
+def etag(corpo: dict) -> str:
+    """L'ETag della risposta: cambia solo quando cambia qualcosa che il widget mostra (#651). Senza i campi che cambiano soltanto
+    con l'orologio e che il client ricava da altri campi: `ore_mancanti` (decimi d'ora, da `scadenza`) e `prossima.prepara_da`
+    (l'ora di adesso quando si può già preparare, altrimenti `scadenza` meno le ore delle probabili). Restano nel corpo."""
+    fermo = {k: v for k, v in corpo.items() if k != "ore_mancanti"}
+    if isinstance(fermo.get("prossima"), dict):
+        fermo["prossima"] = {k: v for k, v in fermo["prossima"].items() if k != "prepara_da"}
+    return versioni.etag_dati(fermo)
 
 
 def peso(corpo: dict) -> int:

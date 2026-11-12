@@ -50,6 +50,18 @@ def test_senza_calcolo_partito_il_widget_riprova_fra_un_minuto(due_utenti, monke
     assert r.headers["retry-after"] == str(calcolo.RIPROVA_SENZA_CALCOLO) and "calcolando" not in r.json()["detail"]
 
 
+# ---------------------------------------------------------------- ETag
+def test_stessi_dati_mezz_ora_dopo_il_widget_riceve_304(due_utenti, monkeypatch):
+    a, _ = due_utenti
+    ore = {"mancano": 30.0}
+    monkeypatch.setattr(w.gestione, "oggi", lambda *x, **k: OGGI | {"ore_mancanti": ore["mancano"]})
+    c, h = widget(token_di(a))
+    r = c.get("/api/widget", headers=h)
+    assert r.status_code == 200 and r.json()["ore_mancanti"] == 30.0
+    ore["mancano"] = 29.5                                              # mezz'ora dopo, niente di nuovo
+    assert c.get("/api/widget", headers=h | {"If-None-Match": r.headers["etag"]}).status_code == 304
+
+
 # ---------------------------------------------------------------- chi entra a giornata iniziata
 def test_il_widget_sa_quando_e_nato_l_account(due_utenti, monkeypatch):
     """Come /api/oggi, /api/widget passa a Oggi quando è nato l'account (con il token del widget e con la sessione)."""

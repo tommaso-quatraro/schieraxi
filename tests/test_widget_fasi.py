@@ -59,6 +59,19 @@ def test_tre_fasi_come_in_oggi(widget_vero):
     assert c["riepilogo"] == o["riepilogo"] and c["riepilogo"]["punti_fatti"] == 70.5 and c["prossima"] == o["prossima"]
 
 
+def test_l_etag_non_cambia_solo_perche_passa_il_tempo(widget_vero):
+    """#651: `ore_mancanti` (decimi d'ora) e `prossima.prepara_da` (l'ora di adesso quando si può già preparare) cambiano con
+    l'orologio e il client li ricava da `scadenza` e `con_probabili`: restano nel corpo ma non nell'ETag, che prima cambiava ogni
+    6 minuti. Cambia invece quando cambia qualcosa che il widget mostra (qui la fase)."""
+    a, costruisci = widget_vero
+    prima, dopo = costruisci(datetime(2026, 11, 6, 12, 0)), costruisci(datetime(2026, 11, 6, 12, 31))
+    assert prima["ore_mancanti"] != dopo["ore_mancanti"] and w.etag(prima) == w.etag(dopo)
+    _giornata_finita(a)
+    finita, piu_tardi = costruisci(datetime(2026, 11, 10, 10, 0)), costruisci(datetime(2026, 11, 10, 10, 30))
+    assert finita["prossima"]["prepara_da"] != piu_tardi["prossima"]["prepara_da"]
+    assert w.etag(finita) == w.etag(piu_tardi) != w.etag(prima)
+
+
 def test_chi_entra_a_giornata_iniziata_nel_widget_prepara_la_prossima(widget_vero):
     """#651: come /api/oggi, chi è entrato dopo la scadenza senza formazione non vede i punti di una formazione che non ha schierato
     (niente `in_corso`) ma `senza_formazione` e la `prossima` giornata da preparare."""
