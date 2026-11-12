@@ -1,5 +1,10 @@
 # Widget di SchieraXI: quali, in che misure, con quali dati
 
+I widget sono **tre**: Prossima giornata, Formazione consigliata, Da controllare. Gli altri otto (Chi gioca, Crediti e svincolo,
+Stato dei dati, Cruscotto, Punti attesi e fatti, Partite live, Giocatore seguito, Miglior scambio) non erano nel pacchetto e sono stati
+tolti il 12/11/2026 con le loro foto (#634). Più sotto le regole che parlano di loro descrivono testi e conti che restano in
+`Sources/Support/WidgetRiassunto.swift` (e nei suoi test) senza più un widget che li mostri: si tolgono in un lavoro a parte.
+
 Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limitato, sempre `If-None-Match`; 304 = dati uguali, 202 = il server sta calcolando e il widget tiene quelli di prima). La lega non usa il capitano e non ha una classifica della lega nei dati: niente widget per quelle due cose.
 
 | Widget | piccolo | medio | grande | extra large (iPad) | cerchio | rettangolo | riga | Motivo |
@@ -7,21 +12,13 @@ Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limi
 | Prossima giornata | si | si | no | no | si | si | si | conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»: una voce della timeline per ogni minuto in cui cambia, per l'ora che viene, senza ricaricare) e scadenza «oggi 05:30» / «ven 6 03:32»; grande ed extra large non aggiungerebbero dati |
 | Formazione consigliata | si | si (campo mini) | si (campo con cognomi) | si (campo + lista) | si | si | si | i volti sul campo sono il dato |
 | Da controllare | no | si | si | no | no | si | no | servono almeno 2-3 nomi per avere senso. Le parole sono l'`etichetta` degli avvisi del server, come Oggi e la Formazione («Improbabile», «Probabile panchina», «In dubbio · gioca 55%»); senza, quelle calcolate dal `tipo` |
-| Chi gioca (orari) | no | si | si | si (2 colonne) | no | si | si | serve un nome, un orario e un avversario. Riga (`RigaChiGioca`): a destra quando gioca, una volta sola e con il giorno come la web («oggi 18:30», «domani 18:30»; se non c'è posto, oggi «18:30»); sotto l'avversario e le parole («Diffidato», «Rigorista», «In dubbio · gioca 70%»), in arancione solo se c'è da guardare |
-| Crediti e svincolo | si | si | no | no | si | si | si | un numero e un suggerimento: grande sarebbe vuoto |
-| Stato dei dati | si | no | no | no | si | si | si | un'informazione sola (per la diagnosi) |
-| Cruscotto | no | no | si | si (2 colonne) | si | si | si | tutto prima di una giornata: scadenza viva, formazione, dubbi, scambio, svincolo, attesi e fatti, crediti; ogni blocco apre la sua schermata |
-| Punti attesi e fatti | si | si (grafico) | si (grafico e tabella) | no | si | si | si | dal diario: quanto hai fatto contro il previsto; serve a fidarsi delle previsioni |
-| Partite live | no | si | si | no | no | si | si | punteggio e minuto delle partite in corso con i tuoi titolari (volto e cognome); senza partite in gioco mostra le prossime. Aggiornamento ogni 2 minuti nelle finestre di gioco (iOS puo rimandare); dal campo `live` di /api/widget |
-| Giocatore seguito (scelta nelle impostazioni del widget) | si | si | no | no | si | si | si | un giocatore a tua scelta tra seguiti, rosa e titolari; «gioca N%» da `p_voto` come l'app (mai la percentuale delle probabili); se il server ha tolto i seguiti per il peso (`mancano`), «Apri l'app per vederli» |
-| Miglior scambio | si | si | si | no | no | si | si | solo se il server lo ha gia' in cache (apri Scambi nell'app); altrimenti dice di aprire l'app |
 
 Da fare: niente di fisso. Stile e modulo: il server non li mette in `/api/widget`.
 
 ## Fasi della giornata
 
 Campi facoltativi `fase`, `in_corso`, `riepilogo` (gli stessi di `GET /api/oggi`, contratto «fasi della giornata» nel repository del server), letti da `RiassuntoWidget.faseGiornata` e portati in `RiassuntoOggi` (`fase`, `puntiFatti`, `puntiFine`, `ancoraDaGiocare`, `giornataChiusa`; test in `WidgetFasiTests`).
-- `in_corso`: niente «Da controllare» (anche Formazione e Cruscotto non mostrano i dubbi); Prossima giornata mostra i punti fatti grandi, «circa X a fine giornata», gli attesi di prima e quanti devono ancora giocare; il tocco apre Oggi. Dopo la scadenza la giornata è **«Chiusa»** come sulla web (`oggi.chiusa`), mai «In corso»: conto alla rovescia, Prossima giornata, Da controllare («La formazione della giornata 8 si è chiusa oggi 14:50. I punti fatti sono in Oggi.»). «In corso» resta solo per le partite («Partite in corso»).
+- `in_corso`: niente «Da controllare» (anche Formazione non mostra i dubbi); Prossima giornata mostra i punti fatti grandi, «circa X a fine giornata», gli attesi di prima e quanti devono ancora giocare; il tocco apre Oggi. Dopo la scadenza la giornata è **«Chiusa»** come sulla web (`oggi.chiusa`), mai «In corso»: conto alla rovescia, Prossima giornata, Da controllare («La formazione della giornata 8 si è chiusa oggi 14:50. I punti fatti sono in Oggi.»). «In corso» resta solo per le partite («Partite in corso»).
 - `finita`: riepilogo della giornata chiusa (fatti contro attesi) e conto alla rovescia della prossima (`giornata` e `scadenza` sono già quelle della prossima); niente «Da controllare»: quel widget dice «Giornata 8 finita» (`oggi.giornata_finita` della web) e in testata la giornata finita, non la prossima.
 - Senza `fase` (server che non la manda): come prima. Con la fase ma senza i numeri (`in_corso: null`): conto alla rovescia di sempre, ma senza «Da controllare».
 - Foto: galleria con `-DATI in_corso` / `-DATI finita` (`LegaDemo.widget(fase:)`), giri `iphone_fasi` e `ipad_fasi` di `scripts/screenshot_widget.sh`.
@@ -30,9 +27,8 @@ Campi facoltativi `fase`, `in_corso`, `riepilogo` (gli stessi di `GET /api/oggi`
 
 La galleria dei widget (`AnteprimaWidget`) e la demo dell'app (`DatiDemo.swift`) leggono la stessa lega inventata,
 `Sources/Support/LegaDemo.swift` (compilato anche nella galleria, vedi `project.yml`): stessi nomi con gli accenti, stessa
-percentuale di chi è in dubbio, stessa scadenza, stessi orari, Diario, seguiti, scambio e svincolo (`DemoWidgetComeAppTests`).
-Dati possibili: prima della scadenza nessuna partita è in corso (le partite in diretta ci sono solo a giornata in corso: per questo
-il widget Live, con `-DATI pieni`, si fotografa a giornata in corso). Il widget senza collegamento non mostra testi tecnici: la
+percentuale di chi è in dubbio, stessa scadenza, stessi orari, Diario (`DemoWidgetComeAppTests`).
+Dati possibili: prima della scadenza nessuna partita è in corso. Il widget senza collegamento non mostra testi tecnici: la
 diagnostica sta nell'app (Impostazioni > Avanzate > Diagnostica widget).
 
 ## Testi che non entrano

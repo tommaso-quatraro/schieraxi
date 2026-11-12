@@ -61,8 +61,9 @@ final class FumoUITests: XCTestCase {
     func testFormazioneConCampoEModificaAMano() {
         vaiA("Formazione")
         attendi("Campo")
-        attendi("propone il", contiene: true)   // la frase dello stile della web (formazione.propone, #437, minuscola #557)
         attendi("Panchina")
+        // gli stili non ci sono più (#634): niente frase dello stile («Equilibrata: propone il 3-4-3.»)
+        XCTAssertFalse(elemento("propone il", contiene: true).exists, "in Formazione non c'è più la frase dello stile")
         tocca(app.buttons["Modifica a mano"], finchéCompare: app.buttons["Torna alla consigliata"], "«Modifica a mano» apre la modifica")
         attendi("Salva come mia scelta")
         tocca(app.buttons["Torna alla consigliata"], finchéCompare: app.buttons["Modifica a mano"],
@@ -72,39 +73,22 @@ final class FumoUITests: XCTestCase {
     func testSquadraConLeSuePagine() {
         vaiA("Squadra")
         attendi("Squadre e rose", contiene: true)
-        // le voci e l'ordine della web (VOCI_LEGA): «Aggiorna le rose» per ultima
-        for voce in ["Squadre e rose", "Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Calendario", "Aggiorna le rose"] {
-            attendiScorrendo(voce, contiene: true)
+        // le voci e l'ordine della web (VOCI_LEGA, #634): «Aggiorna le rose» per ultima
+        for voce in ["Squadre e rose", "Aggiorna le rose"] {
+            attendi(voce, contiene: true)
         }
-        tocca(elemento("Cambi consigliati", contiene: true), finchéCompare: elemento("Svincolati che migliorano la squadra"),
-              "«Cambi consigliati» apre i cambi")
-    }
-
-    func testElencoDeiGiocatoriDentroSquadra() {
-        vaiA("Squadra")
-        attendiScorrendo("Elenco dei giocatori", contiene: true)
-        tocca(elemento("Elenco dei giocatori", contiene: true), finchéCompare: elemento("Solo svincolati"), "«Elenco dei giocatori» apre l'elenco")
-    }
-
-    func testScambiConOffertaEAnalisi() {
-        vaiA("Altro")
-        tocca(elemento("Scambi", contiene: true), finchéCompare: app.buttons["Cerca scambi"], "le proposte si cercano con il pulsante")
-        for modo in ["Trova per me", "Costruisci", "Valuta un'offerta"] {
-            XCTAssertTrue(app.buttons[modo].waitForExistence(timeout: 10), "manca il modo «\(modo)»")
+        // le pagine tolte non hanno più una voce
+        for tolta in ["Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Calendario"] {
+            XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare in Squadra")
         }
-        attendi("Chi accetta più volentieri")
-        // il titolo del riquadro («Valuta un'offerta») è anche il nome del pulsante del modo: si aspetta la frase che lo spiega (testi.js)
-        tocca(app.buttons["Valuta un'offerta"], finchéCompare: elemento("Incolla il messaggio che hai ricevuto", contiene: true), "«Valuta un'offerta» mostra il riquadro dell'offerta")
-        // «Costruisci»: le due rose da cui scegliere («Dai   0 su 4»; prima si aspettava «Squadra», che c'è sempre nella barra in basso)
-        tocca(app.buttons["Costruisci"], finchéCompare: elemento("0 su 4", contiene: true), "«Costruisci» mostra la tua rosa da cui scegliere")
     }
 
-    /// Il rimedio di #212 funziona davvero: il primo tocco su «Scambi» si perde (non lo si manda all'app) e `tocca` deve
-    /// accorgersene e ritoccare finché compare «Cerca scambi». Senza il nuovo tocco questo test fallisce.
+    /// Il rimedio di #212 funziona davvero: il primo tocco sull'ingranaggio si perde (non lo si manda all'app) e `tocca` deve
+    /// accorgersene e ritoccare finché compare «Aspetto». Senza il nuovo tocco questo test fallisce.
     func testUnToccoPersoSiRitocca() {
         vaiA("Altro")
         var tocchi = 0
-        tocca(elemento("Scambi", contiene: true), finchéCompare: app.buttons["Cerca scambi"], "dopo un tocco perso si ritocca",
+        tocca(app.buttons["Impostazioni"], finchéCompare: elemento("Aspetto"), "dopo un tocco perso si ritocca",
               entro: 5, tap: { riga in
                   tocchi += 1
                   if tocchi > 1 { riga.tap() }   // il primo tocco «si perde»
@@ -114,10 +98,13 @@ final class FumoUITests: XCTestCase {
 
     func testAltroConLeSuePagine() {
         vaiA("Altro")
-        attendi("Scambi", contiene: true)
-        // le voci della web (VOCI_LEGA), «Nuova stagione» compresa
-        for voce in ["Scambi", "Diario delle giornate", "Regole", "Movimenti e storico", "Crediti delle squadre", "Nuova stagione", "Novità"] {
-            attendiScorrendo(voce, contiene: true)
+        // le voci della web (VOCI_LEGA, #634)
+        for voce in ["Diario delle giornate", "Regole"] {
+            attendi(voce, contiene: true)
+        }
+        // le pagine tolte non hanno più una voce; «Nuova stagione» compare da sola solo quando serve, le novità sono nelle Impostazioni
+        for tolta in ["Movimenti e storico", "Crediti delle squadre", "Nuova stagione", "Valuta un'offerta"] {
+            XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare in Altro")
         }
         // ogni voce in un posto solo: niente copia di sicurezza, niente rimando alle Impostazioni (c'è l'ingranaggio)
         XCTAssertFalse(elemento("Copia di sicurezza", contiene: true).exists)
@@ -130,12 +117,21 @@ final class FumoUITests: XCTestCase {
         tocca(app.buttons["Impostazioni"], finchéCompare: elemento("Aspetto"), "l'ingranaggio apre le Impostazioni")
         attendi("Notifiche", contiene: true)
         // le voci tolte non ci sono più
-        for tolta in ["Icona dell'app", "Sotto il cofano", "Copia di sicurezza", "Configurazione guidata", "Copia il codice per il widget"] {
+        for tolta in ["Icona dell'app", "Sotto il cofano", "Copia di sicurezza", "Configurazione guidata", "Copia il codice per il widget",
+                      "Mostra tutte le funzioni"] {
             XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare nelle Impostazioni")
         }
         tocca(elemento("Aspetto"), finchéCompare: elemento("Automatico"), "«Aspetto» apre tema e animazioni")
         attendiScorrendo("Animazioni ridotte", contiene: true)
         XCTAssertFalse(elemento("Colore principale").exists, "l'aspetto ha solo tema e animazioni")
+    }
+
+    /// Le novità non sono più una voce di Altro né un banner di Oggi: si leggono in Impostazioni > Informazioni (#634, come la web).
+    func testLeNovitaSiLeggonoNelleImpostazioni() {
+        vaiA("Altro")
+        XCTAssertFalse(elemento("Novità", contiene: true).exists, "«Novità» non è più una voce di Altro")
+        tocca(app.buttons["Impostazioni"], finchéCompare: elemento("Aspetto"), "l'ingranaggio apre le Impostazioni")
+        attendiScorrendo("Novità")
     }
 
     func testSchedaDiUnGiocatoreSiApreEDiChiude() {

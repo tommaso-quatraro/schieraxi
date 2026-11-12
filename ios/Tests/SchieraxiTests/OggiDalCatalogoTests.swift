@@ -15,18 +15,17 @@ struct OggiDalCatalogoTests {
         Catalogo.Oggi.benvenutoSchieraxi, Catalogo.Oggi.perCominciareImporta, Catalogo.Oggi.chiusa,
         Catalogo.Oggi.preparo, Catalogo.Oggi.tuaFormazione, Catalogo.Oggi.tuaFormazioneScelta, Catalogo.Oggi.puntiAttesi,
         Catalogo.Oggi.apriFormazione, Catalogo.Oggi.mancanoProbabiliFormazioni, Catalogo.Oggi.tuoiMiglioriDella,
-        Catalogo.Oggi.daControllare, Catalogo.Oggi.giocatoriFormazioneCon, Catalogo.Oggi.diffidati, Catalogo.Oggi.partiteDelTurno,
-        Catalogo.Oggi.dataDaDefinire, Catalogo.Oggi.partitaInCorso,
+        Catalogo.Oggi.daControllare, Catalogo.Oggi.giocatoriFormazioneCon, Catalogo.Oggi.diffidati,
+        Catalogo.Oggi.dataDaDefinire,
         Catalogo.Df.daFare, Catalogo.Df.urgente, Catalogo.Df.tuttoPostoMister, Catalogo.Df.nonNienteSbrigare, Catalogo.Df.apri,
-        Catalogo.Live.aggiornamento, Catalogo.Live.intervallo, Catalogo.Live.finita, Catalogo.Live.rinviata, Catalogo.Live.sospesa,
         Catalogo.Comune.importaRose, Catalogo.Comune.riprova, Catalogo.Shell.impostazioni, Catalogo.Shell.chiudi, Catalogo.Nav.oggi,
     ]
 
     /// Le frasi con un valore dentro (segnaposto o numero): il valore si scrive «§» (o 7 per i plurali) e restano le parti fisse.
     static let frasiConValori: [String] = [
         Catalogo.Oggi.chiusaDettaglio(quando: "§"), Catalogo.Oggi.siChiude(min: "§", quando: "§"),
-        Catalogo.Oggi.primaPartita(quando: "§"), Catalogo.Oggi.novitaBanner(versione: "§"), Catalogo.Oggi.indisponibili(n: "§"),
-        Catalogo.Oggi.nTitolari(1), Catalogo.Oggi.nTitolari(7), Catalogo.Df.altre(1), Catalogo.Df.altre(7),
+        Catalogo.Oggi.primaPartita(quando: "§"), Catalogo.Oggi.indisponibili(n: "§"),
+        Catalogo.Df.altre(1), Catalogo.Df.altre(7),
     ]
 
     /// Le parti fisse di una frase (almeno 6 caratteri senza spazi ai lati: le più corte potrebbero stare in tutt'altro codice).
@@ -86,21 +85,17 @@ struct OggiDalCatalogoTests {
             "Catalogo.Oggi.dataDaDefinire", "Text(Catalogo.Oggi.chiusa)", "Catalogo.Oggi.siChiude(", "Catalogo.Oggi.primaPartita(",
             "Catalogo.Oggi.chiusaDettaglio(", "Catalogo.Oggi.preparo", "Catalogo.Nav.oggi", "Catalogo.Df.daFare",
             "Catalogo.Df.urgente", "Catalogo.Df.altre(", "Catalogo.Df.tuttoPostoMister", "Catalogo.Df.nonNienteSbrigare",
-            "Catalogo.Df.apri", "Catalogo.Oggi.daControllare", "Catalogo.Oggi.giocatoriFormazioneCon", "Catalogo.Oggi.indisponibili(",
+            "Catalogo.Oggi.daControllare", "Catalogo.Oggi.giocatoriFormazioneCon", "Catalogo.Oggi.indisponibili(",
             "Catalogo.Oggi.diffidati", "Catalogo.Oggi.tuoiMiglioriDella",
         ]),
         ("Sources/Presentation/Oggi/CartaFormazioneOggi.swift", [
             "Catalogo.Oggi.apriFormazione", "Catalogo.Oggi.mancanoProbabiliFormazioni", "Catalogo.Oggi.puntiAttesi",
         ]),
-        ("Sources/Presentation/Oggi/PartiteDelTurnoView.swift", [
-            "Catalogo.Oggi.partiteDelTurno", "Catalogo.Live.intervallo", "Catalogo.Live.sospesa", "Catalogo.Live.finita",
-            "Catalogo.Live.rinviata", "Catalogo.Oggi.partitaInCorso", "Catalogo.Oggi.nTitolari(", "Catalogo.Live.aggiornamento",
-        ]),
-        ("Sources/Presentation/Oggi/OggiViewModel.swift", ["Catalogo.Oggi.dataDaDefinire"]),
         ("Sources/Presentation/Oggi/TestiOggi.swift", [
-            "Catalogo.Oggi.tuaFormazione", "Catalogo.Oggi.tuaFormazioneScelta", "Catalogo.Oggi.novitaBanner(",
+            "Catalogo.Oggi.tuaFormazione", "Catalogo.Oggi.tuaFormazioneScelta",
         ]),
-        ("Sources/Support/Design/Stati.swift", ["Catalogo.Comune.riprova", "Catalogo.Dieta.apriImpostazioni"]),
+        ("Sources/Presentation/Oggi/DaFare.swift", ["Catalogo.Lega.vediRosa", "Catalogo.Df.apri"]),
+        ("Sources/Support/Design/Stati.swift", ["Catalogo.Comune.riprova", "Catalogo.Dieta.tornaOggi"]),
         ("Sources/Support/PercheNumeroView.swift", ["Catalogo.Shell.chiudi"]),
     ])
     func vistaUsaIlCatalogo(percorso: String, costanti: [String]) throws {
@@ -116,14 +111,6 @@ struct OggiDalCatalogoTests {
     func titoloFormazione() {
         #expect(TestiOggi.titoloFormazione(tuaScelta: false) == Catalogo.Oggi.tuaFormazione)
         #expect(TestiOggi.titoloFormazione(tuaScelta: true) == Catalogo.Oggi.tuaFormazioneScelta)
-    }
-
-    /// La web scrive il banner in grassetto con `<b>`; l'iPhone mette il grassetto con SwiftUI e toglie i segni.
-    @Test("Il banner delle novità: la frase del catalogo senza i segni del grassetto della web")
-    func bannerSenzaSegni() {
-        #expect(TestiOggi.novita("1.427") == "Novità della versione 1.427")
-        #expect(Catalogo.Oggi.novitaBanner(versione: "1.427").contains("Novità della versione 1.427"))
-        #expect(!TestiOggi.novita("1.427").contains("<"))
     }
 
     @MainActor

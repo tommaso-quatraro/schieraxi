@@ -262,12 +262,6 @@ enum LegaDemo {
         p.costo > 0 ? p.costo : 4 + p.id % 20
     }
 
-    /// Il rimborso di uno svincolo, come il server: la quota delle regole del prezzo pagato, arrotondata come `round` di Python
-    /// (a metà si va al pari: 16,5 → 16).
-    static func rimborso(_ p: CalciatoreDemo) -> Int {
-        Int((Double(costo(p)) * rimborsoSvincolo).rounded(.toNearestOrEven))
-    }
-
     /// Chi tira i rigori nella mia rosa (il server lo ricava da `rigori_attesi`): Çalvaroğlu, che nelle partite in diretta ne segna uno.
     static let rigoristi: Set<Int> = [113]
 

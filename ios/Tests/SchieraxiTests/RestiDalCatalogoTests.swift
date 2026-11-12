@@ -24,8 +24,8 @@ struct RestiDalCatalogoTests {
 
     static let casi: [Caso] = [
         Caso(file: "Sources/Support/Design/Stati.swift",
-             testi: [Catalogo.Dieta.nonDisponibile, Catalogo.Dieta.tornaOggi, Catalogo.Dieta.apriImpostazioni],
-             usa: ["Catalogo.Dieta.nonDisponibile", "Catalogo.Dieta.tornaOggi", "Catalogo.Dieta.apriImpostazioni"]),
+             testi: [Catalogo.Dieta.nonDisponibile, Catalogo.Dieta.tornaOggi],
+             usa: ["Catalogo.Dieta.nonDisponibile", "Catalogo.Dieta.tornaOggi"]),
         Caso(file: "Sources/Support/PercheNumeroView.swift",
              testi: [Catalogo.Perche.apriScheda, Catalogo.Perche.titolo, Catalogo.Perche.definizione],
              usa: ["Catalogo.Perche.apriScheda"]),
@@ -90,9 +90,6 @@ struct RestiDalCatalogoTests {
              testi: [Catalogo.Asp.tema, Catalogo.Asp.temaAuto, Catalogo.Asp.temaChiaro, Catalogo.Asp.temaScuro, Catalogo.Imp.aspetto],
              frasi: [Catalogo.Asp.autoSpiega],
              usa: ["Catalogo.Asp.tema", "Catalogo.Asp.temaAuto", "Catalogo.Asp.autoSpiega", "Catalogo.Imp.aspetto"]),
-        Caso(file: "Sources/Presentation/Lega/TestiImpostazioni.swift",
-             testi: [Catalogo.Av.mostraTutte, Catalogo.Av.mostraTutteSpiega],
-             usa: ["Catalogo.Av.mostraTutte", "Catalogo.Av.mostraTutteSpiega"]),
         Caso(file: "Sources/Presentation/Accesso/ConfiguraLegaView.swift",
              testi: [Catalogo.Comune.primaRose, Catalogo.Comune.importaSpiega],
              usa: ["Catalogo.Comune.primaRose", "Catalogo.Comune.importaSpiega", "Catalogo.Comune.importaRose"]),

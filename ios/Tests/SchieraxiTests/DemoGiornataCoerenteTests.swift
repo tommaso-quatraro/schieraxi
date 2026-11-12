@@ -130,33 +130,6 @@ struct DemoGiornataCoerenteTests {
         }
     }
 
-    // MARK: - Confronto nella formazione (#392)
-
-    @Test("Confronto nella formazione: tra parentesi la differenza dei due numeri scritti, con «−» o «+», mai il trattino",
-          arguments: zip([120, 121, 113, 104, 101], [123, 125, 117, 105, 102]))
-    func differenzaDeiNumeriScritti(titolare: Int, altro: Int) async throws {
-        let s = try demo("oggi")
-        let f = try await leggi("/api/formazione", da: s, come: Formazione.self)
-        let c = try await leggi("/api/confronto?a=\(titolare)&b=\(altro)&livello=0&modulo=\(f.modulo)", da: s, come: Confronto.self)
-        let testo = try #require(c.formazione?.testo, "\(titolare) e \(altro): manca il riquadro «Nella formazione»")
-        // `confronto.esito_meglio` ed `esito_peggio` di fanta/frasi.py: i due punteggi e, tra parentesi, invertita − attuale
-        let meglio = #/vale ([0-9]+,[0-9]) punti attesi; con i due invertiti ([0-9]+,[0-9]) \(([^)]*)\)/#
-        let peggio = #/varrebbe ([0-9]+,[0-9]) invece di ([0-9]+,[0-9]) \(([^)]*)\)/#
-        let numeri: (attuale: Substring, invertita: Substring, scritta: Substring)
-        if let m = testo.firstMatch(of: meglio) {
-            numeri = (m.1, m.2, m.3)
-        } else if let m = testo.firstMatch(of: peggio) {
-            numeri = (m.2, m.1, m.3)
-        } else {
-            #expect(testo.contains("valgono praticamente lo stesso"), "«\(testo)»: manca l'esito con i due punteggi")
-            return
-        }
-        func valore(_ s: Substring) throws -> Double { try #require(Double(s.replacingOccurrences(of: ",", with: ".")), "«\(s)» non è un numero") }
-        let attesa = Formato.conSegno(try valore(numeri.invertita) - valore(numeri.attuale))
-        #expect(String(numeri.scritta) == attesa, "«\(testo)»: \(numeri.invertita) − \(numeri.attuale) si scrive «\(attesa)», non «\(numeri.scritta)»")
-        #expect(!testo.contains("(-"), "«\(testo)»: un trattino al posto del meno")
-    }
-
     // MARK: - Recupero di una partita rinviata
 
     @Test("Il recupero della partita rinviata è a un orario da partita, dopo il turno, in un giorno in cui le due squadre non giocano",

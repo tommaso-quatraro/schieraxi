@@ -12,40 +12,30 @@ struct FormazioneDalCatalogoTests {
     /// Il segno al posto dei valori nelle frasi con segnaposto: divide la frase nei suoi pezzi fissi.
     private static let segno = "\u{1}"
 
-    /// La prima frase di `formazione.numero_sulla_maglia` («Negli elenchi il numero sul volto è l'indice: …»), con il suo punto:
-    /// è quella che la legenda in fondo alla Formazione ha in comune con la web.
-    private static var primaFraseIndice: String {
-        let testo = Catalogo.Formazione.numeroSullaMaglia
-        guard let fine = testo.range(of: ". ") else { return testo }
-        return String(testo[..<fine.lowerBound]) + "."
-    }
-
-    /// Le frasi del catalogo che mostrano le viste della Formazione (con il segno al posto dei valori). Resta fuori
-    /// `formazione.confronta_aria` («Confronta {nome} con un altro»): il suo inizio è anche in frasi del Confronto che non sono sue.
+    /// Le frasi del catalogo che mostrano le viste della Formazione (con il segno al posto dei valori).
     private static var frasi: [String] {
         [
             Catalogo.Formazione.calcolo, Catalogo.Formazione.puntiAttesi, Catalogo.Formazione.mancanoProbabiliFormazioni,
             Catalogo.Formazione.staiGuardandoFormazione, Catalogo.Formazione.tornaAllaTua, Catalogo.Formazione.titolari,
-            Catalogo.Formazione.toccaSostituire, Catalogo.Formazione.toccaConfronto, Catalogo.Formazione.ballottaggioAlternativeVic,
+            Catalogo.Formazione.toccaSostituire, Catalogo.Formazione.ballottaggioAlternativeVic,
             Catalogo.Formazione.quasiPari, Catalogo.Formazione.questOrdineEntra, Catalogo.Formazione.fuoriDalla(n: segno),
-            Catalogo.Formazione.senzaDati(nomi: segno), primaFraseIndice, Catalogo.Formazione.legendaApri,
-            Catalogo.Formazione.copiaFormazione, Catalogo.Formazione.condividiImmagine, Catalogo.Formazione.modificaMano,
-            Catalogo.Formazione.modificataMano, Catalogo.Formazione.propone(modulo: segno),
-            Catalogo.Formazione.moduloFissato(modulo: segno), Catalogo.Formazione.rispetto(d: segno, n: segno),
+            Catalogo.Formazione.senzaDati(nomi: segno),
+            Catalogo.Formazione.copiaFormazione, Catalogo.Formazione.modificaMano,
+            Catalogo.Formazione.rispetto(d: segno, n: segno),
             Catalogo.Formazione.salvaComeMia, Catalogo.Formazione.salvaModifiche, Catalogo.Formazione.giocatoriDelloStesso,
             Catalogo.Formazione.nessunAltroGiocatore, Catalogo.Formazione.alPostoDi(nome: segno), Catalogo.Formazione.salvaQuesta,
             Catalogo.Formazione.annullaModifiche, Catalogo.Formazione.tornaAllaConsigliata, Catalogo.Formazione.chiusa,
-            Catalogo.Formazione.bloccati, Catalogo.Formazione.copiata, Catalogo.Formazione.nonRiescoCreare,
+            Catalogo.Formazione.bloccati, Catalogo.Formazione.copiata,
             Catalogo.Formazione.salvataComeTua,
         ]
     }
 
     // MARK: niente copie a mano
 
-    @Test("Nessun sorgente della Formazione, del Confronto e della scheda riscrive a mano una frase del catalogo")
+    @Test("Nessun sorgente della Formazione e della scheda riscrive a mano una frase del catalogo")
     func nienteFrasiAMano() throws {
         let file = try Self.sorgenti()
-        try #require(file.count >= 10, "non trovo i sorgenti delle schermate: \(file.map(\.lastPathComponent))")
+        try #require(file.count >= 6, "non trovo i sorgenti delle schermate: \(file.map(\.lastPathComponent))")
         // se la scheda del giocatore cambia cartella il controllo non deve saltarla in silenzio
         try #require(file.filter { $0.lastPathComponent.hasPrefix("SchedaGiocatore") }.count == 2,
                      "non trovo i due sorgenti della scheda del giocatore in Mercato/: \(file.map(\.lastPathComponent))")
@@ -65,12 +55,12 @@ struct FormazioneDalCatalogoTests {
     func ilControlloVede() {
         let codice = Self.senzaCommenti("""
         Text("Titolari")
-        Text("propone il \\(modulo).")
+        Text("Al posto di \\(nome)")
         messaggio = "Formazione copiata: incollala dove vuoi."
         // Text("Annulla modifiche") in un commento non conta
         """)
         let trovate = Self.frasi.flatMap(Self.daCercare).filter { codice.contains($0) }
-        #expect(trovate == ["\"Titolari\"", "\"propone il ", Catalogo.Formazione.copiata])
+        #expect(trovate == ["\"Titolari\"", "\"Al posto di ", Catalogo.Formazione.copiata])
     }
 
     // MARK: dove l'iPhone diceva un'altra cosa, vince la web
@@ -98,13 +88,6 @@ struct FormazioneDalCatalogoTests {
         #expect(FormazioneView.testoSquadraVista("Gli Amici") == Catalogo.Formazione.staiGuardandoFormazione + " Gli Amici.")
     }
 
-    @Test("La legenda in fondo prende dal catalogo la frase sull'indice, una volta sola", arguments: [true, false])
-    func legenda(conPerche: Bool) {
-        let legenda = FormazioneView.legenda(conPerche: conPerche)
-        #expect(legenda.hasSuffix(Self.primaFraseIndice))
-        #expect(legenda.components(separatedBy: Self.primaFraseIndice).count == 2)
-    }
-
     // MARK: aiuti
 
     /// Cosa cercare nel codice per una frase: senza segnaposto il letterale intero fra virgolette e, se è lunga (20 caratteri o
@@ -123,8 +106,8 @@ struct FormazioneDalCatalogoTests {
     private static let ios = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
-    /// I sorgenti della Formazione (`Formazione/`), del Confronto (`Confronto/`) e della scheda del giocatore, che sta in
-    /// `Mercato/` (`SchedaGiocatoreView.swift`, `SchedaGiocatoreViewModel.swift`): delle altre viste di `Mercato/` nessuna.
+    /// I sorgenti della Formazione (`Formazione/`) e della scheda del giocatore, che sta in `Mercato/`
+    /// (`SchedaGiocatoreView.swift`, `SchedaGiocatoreViewModel.swift`): delle altre viste di `Mercato/` nessuna.
     private static func sorgenti() throws -> [URL] {
         let presentazione = ios.appendingPathComponent("Sources/Presentation", isDirectory: true)
         func swift(_ cartella: String, _ tiene: (String) -> Bool = { _ in true }) throws -> [URL] {
@@ -132,7 +115,7 @@ struct FormazioneDalCatalogoTests {
                                                         includingPropertiesForKeys: nil)
                 .filter { $0.pathExtension == "swift" && tiene($0.lastPathComponent) }
         }
-        return try (swift("Formazione") + swift("Confronto") + swift("Mercato") { $0.hasPrefix("SchedaGiocatore") })
+        return try (swift("Formazione") + swift("Mercato") { $0.hasPrefix("SchedaGiocatore") })
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 

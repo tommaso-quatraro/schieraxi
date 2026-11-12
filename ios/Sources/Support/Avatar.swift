@@ -7,12 +7,6 @@ extension Color {
         Scanner(string: esadecimale).scanHexInt64(&n)
         self.init(red: Double((n >> 16) & 0xff) / 255, green: Double((n >> 8) & 0xff) / 255, blue: Double(n & 0xff) / 255)
     }
-
-    /// Colore dell'indice 0-100: alto verde, medio arancio, basso rosso (come gli anelli della web app). Sono i colori semantici
-    /// (scuri sul chiaro, chiari sullo scuro): il numero sopra, in `Color.testoSuAccento`, resta sopra 4,5:1.
-    static func indice(_ valore: Double) -> Color {
-        valore >= 70 ? Color.verde : valore >= 40 ? Color.attenzione : Color.malus
-    }
 }
 
 /// La sagoma di una maglietta (le stesse coordinate della web app, su un quadrato 40 x 40).
@@ -72,64 +66,31 @@ struct MagliaView: View {
 
 /// L'avatar di un giocatore, UGUALE PER TUTTI: il volto illustrato generato dal suo codice (`AvatarVolto`, specifica in
 /// docs/AVATAR.md del repository web: stesso id, stesso volto su web, iOS e Android), nel cerchio con i colori della squadra.
-/// Niente foto e niente rete. Con `indice` (0-100) ha attorno l'anello dell'indice e, se `conNumero`, il numero in un cartellino.
+/// Niente foto e niente rete.
 /// I portieri (`ruolo` P) hanno la maglia grigia e i guanti. Per VoiceOver è nascosto: il significato sta già nel testo della riga.
 struct AvatarGiocatore: View {
     let id: Int?
     let squadra: String?
-    var indice: Double? = nil
     var dimensione: CGFloat = 46
-    var conNumero = true
     /// Non serve più al disegno (prima per le iniziali): resta per non cambiare i punti di chiamata.
     var nome: String? = nil
     var ruolo: String? = nil
-    /// L'anello si riempie da zero quando l'avatar compare. Con «Ridurre movimento» compare con una dissolvenza.
-    @State private var anello: Double = 0
     @State private var comparso = false
     @Environment(\.accessibilityReduceMotion) private var ridotto
     /// I tratti di tutti i giocatori (versione 2): quando arrivano i volti si ridisegnano.
     @ObservedObject private var tratti = DepositoTratti.condiviso
-    /// 1 a misura normale; cresce con il testo grande (Dynamic Type), fino a 1,4 volte.
-    @ScaledMetric(relativeTo: .caption2) private var scalaTesto: CGFloat = 1
-
-    private var spessore: CGFloat { max(2.5, dimensione / 16) }
-    private var frazione: Double { min(1, max(0, (indice ?? 0) / 100)) }
 
     var body: some View {
-        ZStack {
-            if let indice {
-                Circle().stroke(Color.primary.opacity(0.12), lineWidth: spessore)
-                Circle()
-                    .trim(from: 0, to: CGFloat(anello))
-                    .stroke(Color.indice(indice), style: StrokeStyle(lineWidth: spessore, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+        AvatarVolto(id: id ?? 0, squadra: squadra, portiere: ruolo?.uppercased() == "P", tratti: id.flatMap { tratti.tratti(per: $0) })
+            // ingresso breve con molla (scala da .86 a 1); con «Ridurre movimento» solo dissolvenza
+            .scaleEffect(comparso || ridotto ? 1 : 0.86)
+            .opacity(comparso ? 1 : 0)
+            .frame(width: dimensione, height: dimensione)
+            .task { await DepositoTratti.condiviso.caricaSeServe() }
+            .onAppear {
+                withAnimation(ridotto ? .easeInOut(duration: 0.3) : .spring(duration: 0.4, bounce: 0.15)) { comparso = true }
             }
-            AvatarVolto(id: id ?? 0, squadra: squadra, portiere: ruolo?.uppercased() == "P", tratti: id.flatMap { tratti.tratti(per: $0) })
-                .padding(indice == nil ? 0 : spessore + 1.5)
-                // ingresso breve con molla (scala da .86 a 1); con «Ridurre movimento» solo dissolvenza
-                .scaleEffect(comparso || ridotto ? 1 : 0.86)
-                .opacity(comparso ? 1 : 0)
-        }
-        .frame(width: dimensione, height: dimensione)
-        .overlay(alignment: .bottomTrailing) {
-            if conNumero, let indice {
-                Text("\(Formato.intero(indice))")
-                    .font(.system(size: max(9, dimensione * 0.24) * min(scalaTesto, 1.4), weight: .heavy, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(Color.testoSuAccento)
-                    .padding(.horizontal, 4)
-                    .background(Color.indice(indice), in: Capsule())
-                    .overlay(Capsule().strokeBorder(Color.black.opacity(0.25), lineWidth: 0.5))
-                    .offset(x: dimensione * 0.1, y: dimensione * 0.1)
-            }
-        }
-        .task { await DepositoTratti.condiviso.caricaSeServe() }
-        .onAppear {
-            withAnimation(.smooth(duration: 0.9)) { anello = frazione }
-            withAnimation(ridotto ? .easeInOut(duration: 0.3) : .spring(duration: 0.4, bounce: 0.15)) { comparso = true }
-        }
-        .onChange(of: indice) { _, _ in withAnimation(Tema.morbida) { anello = frazione } }
-        .accessibilityHidden(true)
+            .accessibilityHidden(true)
     }
 
     /// Le iniziali del cognome (due lettere): «Leonel Marténi» → «MA», «Di Corvara» → «DI», «Pelayo» → «PE».

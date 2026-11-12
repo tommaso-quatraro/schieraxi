@@ -165,24 +165,6 @@ struct DueNumeriGiornataTests {
                 "server senza `giornata_lega`: solo Serie A")
     }
 
-    @Test("Confronto, titolo (#302): i due numeri dal server; senza `giornata_lega` solo Serie A")
-    func confronto() throws {
-        let c: Confronto = try Decodifica.decodifica(Data(#"{"giornata": 11, "giornata_lega": 8, "giocatori": [], "fattori": []}"#.utf8))
-        #expect(c.titolo == "Giornata 8 · 11ª di Serie A")
-        let vecchio: Confronto = try Fixture.decodifica("confronto")
-        #expect(vecchio.titolo == "9ª giornata di Serie A", "la fixture viene da un server senza `giornata_lega`")
-        let senza: Confronto = try Decodifica.decodifica(Data(#"{"giornata": null, "giocatori": [], "fattori": []}"#.utf8))
-        #expect(senza.titolo == nil)
-    }
-
-    @MainActor
-    @Test("Confronto, sotto il nome (#302): «INT vs ROM» in casa, «INT @ ROM» in trasferta, come la web (`partitaRiga`)")
-    func confrontoPartita() throws {
-        #expect(ColonnaDuello.partita(try giocatore(#""squadra": "inter", "avversario": "roma", "in_casa": true"#)) == "INT vs ROM")
-        #expect(ColonnaDuello.partita(try giocatore(#""squadra": "inter", "avversario": "roma", "in_casa": false"#)) == "INT @ ROM")
-        #expect(ColonnaDuello.partita(try giocatore(#""squadra": "inter""#)) == "INT", "senza avversario solo la sigla")
-    }
-
     @Test("Diario, «Quanto ci abbiamo preso»: VoiceOver legge i due numeri della giornata")
     func diarioVoce() throws {
         let v: VoceDiario = try Decodifica.decodifica(Data(#"""

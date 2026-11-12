@@ -77,13 +77,6 @@ enum Demo {
                 senzaRose.errori = ["/api/oggi": "Nessuna rosa importata", "/api/formazione": "Nessuna rosa importata", "/api/stato": "Nessuna rosa importata"]
                 return senzaRose
             }
-            if schermata == "scambi-una-rosa" {
-                // C'è solo la mia rosa: Scambi spiega che servono le rose degli altri.
-                var unaRosa = FinteServer.demo
-                unaRosa.indirizzoFinto = "https://finto-una-rosa.invalid"
-                unaRosa.risposte["/api/squadre"] = DemoAnteprimaRose.unaSquadra
-                return unaRosa
-            }
             // Errori dell'accesso, per le fotografie: rete assente, troppi tentativi, un server che risponde HTML invece del JSON.
             var errore = FinteServer.demo
             switch accesso {
@@ -143,10 +136,10 @@ extension Demo {
         }
     }
 
-    /// La foto `formazione-modificata` (#463): un modulo dello stile in uso con undici diversi dalla scelta salvata. Toccato, la
-    /// riga dice «Modifiche non salvate» con «Salva le modifiche», «Annulla modifiche» e «Torna alla consigliata».
-    static func moduloDaToccare(_ f: Formazione, rischio: Int, salvati: [Int]?) -> String? {
-        guard let salvati, let livello = f.livelli?.first(where: { $0.rischio == rischio }) ?? f.livelli?.first else { return nil }
+    /// La foto `formazione-modificata` (#463): un modulo con undici diversi dalla scelta salvata. Toccato, la riga dice
+    /// «Modifiche non salvate» con «Salva le modifiche», «Annulla modifiche» e «Torna alla consigliata».
+    static func moduloDaToccare(_ livello: LivelloRischio?, salvati: [Int]?) -> String? {
+        guard let salvati, let livello else { return nil }
         return livello.moduli.first { Set($0.titolari) != Set(salvati) }?.modulo
     }
 
@@ -170,8 +163,8 @@ extension Demo {
         case "collega-widget":
             // «Collega il widget», in attesa del tocco su «Collega» (in demo il tocco dice «Codice copiato» senza toccare gli appunti)
             nav.collegaWidgetAperto = true
-        case "impostazioni", "impostazioni-crediti", "impostazioni-avanzate", "impostazioni-aspetto":
-            // le Impostazioni (le pagine «Crediti e fonti», «Avanzate» e «Aspetto» le apre da sola ImpostazioniView)
+        case "impostazioni", "impostazioni-crediti", "impostazioni-avanzate", "impostazioni-aspetto", "impostazioni-novita":
+            // le Impostazioni (le pagine «Crediti e fonti», «Avanzate», «Aspetto» e «Novità» le apre da sola ImpostazioniView)
             nav.impostazioniAperte = true
 
         case "formazione", "formazione-salvata", "formazione-chiusa":
@@ -190,17 +183,9 @@ extension Demo {
                 let vm = modello.formazione
                 await vm.carica()
                 try? await Task.sleep(nanoseconds: 400_000_000)
-                if let f = vm.formazione, let modulo = moduloDaToccare(f, rischio: vm.rischio, salvati: vm.salvati) { vm.scegliModulo(modulo) }
+                if let f = vm.formazione, let modulo = moduloDaToccare(vm.livello(f), salvati: vm.salvati) { vm.scegliModulo(modulo) }
             }
 
-        case "formazione-confronto", "confronto", "confronto-fondo":
-            nav.sezione = .formazione
-            Task {
-                await modello.formazione.carica()
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                let coppia = ScenarioVero.attuale?.confronto ?? (120, 123)
-                modello.formazione.confrontoAperto = .coppia(coppia.0, coppia.1)
-            }
         case "formazione-perche":
             // «Perché questo numero» di un titolare (meglio uno in dubbio: si vede anche «gioca N%»)
             nav.sezione = .formazione
@@ -212,52 +197,11 @@ extension Demo {
                 let inDubbio = conMotivi.first { PercheNumero($0)?.righe.contains { $0.verso == .avviso } == true }
                 modello.formazione.percheAperto = inDubbio ?? conMotivi.first
             }
-        case "formazione-immagine":
-            nav.sezione = .formazione
-            Task {
-                await modello.formazione.carica()
-                try? await Task.sleep(nanoseconds: 1_500_000_000)   // il tempo di caricare le foto
-                if let f = modello.formazione.formazione { modello.formazione.preparaImmagine(f) }
-            }
 
-        case "mercato", "mercato-consigliati":
-            apriLega(nav, modello, [.cambi])
         case "squadra":
             nav.sezione = .squadra
-        case "mercato-classifica":
-            apriLega(nav, modello, [.elenco])
-        case "mercato-calendario":
-            apriLega(nav, modello, [.calendario])
-        case "mercato-osservati":
-            apriLega(nav, modello, [.seguiti])
-        case "mercato-cerca":
-            apriLega(nav, modello, [.elenco])
-            modello.mercato.testoRicerca = "ma"
         case "giocatore":
             nav.vai(a: .giocatore(ScenarioVero.attuale?.giocatore ?? 203))
-
-        case "scambi", "scambi-una-rosa":
-            apriLega(nav, modello, [.scambi])
-        case "scambi-dettaglio":
-            apriLega(nav, modello, [.scambi])
-            Task {
-                await modello.scambi.caricaProposte()
-                try? await Task.sleep(nanoseconds: 800_000_000)
-                modello.scambi.selezionata = modello.scambi.proposte.dato?.proposte.first(where: { $0.`do`.count > 1 })
-                    ?? modello.scambi.proposte.dato?.proposte.first
-            }
-        case "scambi-offerta":
-            apriLega(nav, modello, [.scambi])
-            modello.scambi.modo = .valuta
-            modello.scambi.testoOfferta = ScenarioVero.attuale?.offerta ?? "Ciao! Ti do Vlasenic e tu mi dai Lumbaku, ci stai?"
-            Task {
-                try? await Task.sleep(nanoseconds: 600_000_000)
-                await modello.scambi.valutaOfferta()
-            }
-        case "scambi-analizza":
-            // «Costruisci» è la schermata di analisi (dentro la pagina Scambi di Altro)
-            apriLega(nav, modello, [.scambi])
-            modello.scambi.modo = .costruisci
 
         case "lega":
             nav.sezione = .altro
@@ -269,14 +213,10 @@ extension Demo {
             apriLega(nav, modello, [.regole])
         case "lega-stato":
             apriLega(nav, modello, [.stato])
-        case "lega-crediti":
-            apriLega(nav, modello, [.crediti])
         case "lega-avvisi":
             apriLega(nav, modello, [.avvisi])
         case "lega-diario":
             apriLega(nav, modello, [.diario])
-        case "lega-novita":
-            apriLega(nav, modello, [.novita])
         case "lega-importa", "lega-importa-salvate", "lega-importa-salvate-ok":
             apriLega(nav, modello, [.importa])
         case "lega-importa-csv":
@@ -286,8 +226,6 @@ extension Demo {
             try? Data(csv.utf8).write(to: url)
             apriLega(nav, modello, [.importa])
             nav.fileDaImportare = url
-        case "lega-movimenti":
-            apriLega(nav, modello, [.movimenti])
         case "lega-stagione":
             apriLega(nav, modello, [.stagione])
         case "ricerca":
@@ -305,9 +243,9 @@ extension Demo {
 /// Solo per le fotografie (`-DEMO_SCHERMATA marchio`): il marchio di SchieraXI fermo, in quattro momenti del movimento,
 /// il segnaposto di caricamento e uno stato vuoto, sul fondo chiaro o scuro del sistema.
 struct ProvaMarchio: View {
-    /// Lo stato vuoto di prova, con le parole della pagina Seguiti dell'app («seguito», «Segui»: #303).
-    static let titoloVuoto = "Nessun giocatore seguito"
-    static let descrizioneVuoto = "Apri la scheda di un giocatore e tocca «Segui»."
+    /// Lo stato vuoto di prova, con le parole della ricerca di un giocatore.
+    static let titoloVuoto = "Cerca un giocatore"
+    static let descrizioneVuoto = "Scrivi almeno due lettere del nome."
 
     var body: some View {
         ZStack {
@@ -323,7 +261,7 @@ struct ProvaMarchio: View {
                         }
                         MarchioConNome(lato: 60)
                     }
-                    Carta { VistaVuota(titolo: Self.titoloVuoto, icona: "star", descrizione: Self.descrizioneVuoto) }
+                    Carta { VistaVuota(titolo: Self.titoloVuoto, icona: "magnifyingglass", descrizione: Self.descrizioneVuoto) }
                 }
                 .padding(Tema.margine)
             }

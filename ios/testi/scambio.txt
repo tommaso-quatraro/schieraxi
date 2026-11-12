@@ -2,46 +2,7 @@
 # Dopo una modifica: python script/testi.py --scrivi
 
 # Scambi: i tre modi e «Trova per me» (TestiScambi)
-scambio.cosa_vuoi_fare
-scambio.trova_per
 scambio.costruisci
-scambio.valuta_offerta
-scambio.scambi_cui_guadagnate
-scambio.con_quale_squadra
-scambio.tutte_squadre
-scambio.quanti_giocatori_per
-scambio.uno_contro_uno
-scambio.fino_a_2
-scambio.fino_a_3
-scambio.fino_a_4
-scambio.per_gli_scambi
-scambio.cerca_scambi
-scambio.cerco_gli_scambi
-scambio.nessuno_scambio_che
-scambio.servono_altre
-
-# Scambi: proposte, «Valuta un'offerta» e giudizio
-scambio.con
-scambio.copia_bozza_del
-scambio.chi_accetta_piu
-scambio.squadre_che_guadagnano
-scambio.n_scambi
-scambio.migliora
-scambio.archivio
-scambio.gli_ultimi_scambi
-scambio.incolla_messaggio_che
-scambio.messaggio_dell_offerta
-scambio.valuta_offerta_2
-scambio.incolla_prima_messaggio
-scambio.leggo_messaggio
-scambio.riga_con
-scambio.ambigui
-scambio.non_trovato_giocatori
-scambio.scegli_mano_costruisci
-scambio.vedi_giudizio_completo
-scambio.impatto_sulla_tua
-scambio.conta_anche_resto
-scambio.in_totale
 
 # Squadre e rose: stemma, maglia e la rosa di una squadra (ParoleSquadre, RigaRosa)
 scambio.stemma

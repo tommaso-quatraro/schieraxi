@@ -81,91 +81,7 @@ final class DominioTests: XCTestCase {
 
     // MARK: confronto
 
-    func testConfrontoSchieratoEVincitore() throws {
-        var c: Confronto = try Fixture.decodifica("confronto")
-        XCTAssertEqual(c.vincitore?.nome, "Foselli")
-        XCTAssertNil(c.schierato, "tutti e due titolari: non c'è chi schierare")
-        XCTAssertTrue(c.fattoriVisibili.contains { $0.chiave == "giocare" })
-        XCTAssertGreaterThanOrEqual(c.massimoEffetto, 0.3)
-        XCTAssertEqual(Confronto.verso(0.25), 1)
-        XCTAssertEqual(Confronto.verso(-0.25), -1)
-        XCTAssertEqual(Confronto.verso(0.01), 0)
-        // uno titolare e l'altro in panchina: si schiera il titolare
-        let json = String(decoding: try Fixture.dati("confronto"), as: UTF8.self).replacingOccurrences(of: "\"posto_b\":\"titolare\"", with: "\"posto_b\":\"panchina\"")
-        c = try Decodifica.decodifica(Data(json.utf8))
-        XCTAssertEqual(c.schierato?.nome, "Foselli")
-    }
-
-    @MainActor
-    func testPercorsoDelConfronto() {
-        XCTAssertEqual(ConfrontoViewModel.percorso(a: 1, b: 2, contesto: nil), "/api/confronto?a=1&b=2")
-        let c = ContestoConfronto(livello: -1, modulo: "4-3-3", squadra: "Gli Amici")
-        XCTAssertEqual(ConfrontoViewModel.percorso(a: 1, b: 2, contesto: c), "/api/confronto?a=1&b=2&livello=-1&modulo=4-3-3&squadra=Gli%20Amici")
-    }
-
     // MARK: scambi
-
-    private func proposta(mio: Double, loro: Double) throws -> PropostaScambio {
-        let json = """
-        {"mia": "Io", "altra": "Loro", "do": [{"id": 1, "nome": "Barucci", "ruolo": "D", "squadra": "COM"}, {"id": 2, "nome": "Rugini", "ruolo": "C", "squadra": "BOL"}],
-         "ricevo": [{"id": 3, "nome": "Mangoni", "ruolo": "D", "squadra": "MON"}], "guadagno_mio": \(mio), "guadagno_loro": \(loro)}
-        """
-        return try Decodifica.decodifica(Data(json.utf8))
-    }
-
-    func testBozzaDelMessaggio() throws {
-        let diversa = ScambiLogica.bozza(try proposta(mio: 3, loro: 0.6))
-        XCTAssertEqual(diversa, "Ciao! Ti propongo uno scambio: io ti do Barucci e Rugini, tu mi dai Mangoni. Secondo i miei calcoli conviene a tutti e due (tu +0,6 punti attesi in stagione, io +3,0). Che ne dici?")
-        let pari = ScambiLogica.bozza(try proposta(mio: 1.2, loro: 0.9))
-        XCTAssertTrue(pari.contains("più o meno uguale"), pari)
-    }
-
-    func testGiudizi() throws {
-        XCTAssertEqual(ScambiLogica.giudizioOfferta(try proposta(mio: 1, loro: 1)), "Conviene a tutti e due: accettalo.")
-        XCTAssertEqual(ScambiLogica.giudizioOfferta(try proposta(mio: 1, loro: 0.1)), "Ti conviene: accettalo (a loro un po' meno).")
-        XCTAssertEqual(ScambiLogica.giudizioOfferta(try proposta(mio: 0.1, loro: 1)), "Cambia poco: decidi tu.")
-        XCTAssertEqual(ScambiLogica.giudizioOfferta(try proposta(mio: -2, loro: 1)), "Non ti conviene: rifiuta o chiedi di più.")
-        XCTAssertEqual(ScambiLogica.giudizioAnalisi(try proposta(mio: 1, loro: 1)), "Conviene a tutti e due: proponilo.")
-        XCTAssertEqual(ScambiLogica.giudizioAnalisi(try proposta(mio: 1, loro: 0.1)), "Conviene a te ma non a loro: difficile che accettino.")
-        XCTAssertEqual(ScambiLogica.giudizioAnalisi(try proposta(mio: 0.2, loro: 1)), "Cambia poco: non vale la pena.")
-        XCTAssertEqual(ScambiLogica.giudizioAnalisi(try proposta(mio: -1, loro: 1)), "Non ti conviene.")
-    }
-
-    func testSquadrePropenseDallaClassifica() throws {
-        let p: ProposteScambi = try Fixture.decodifica("proposte")
-        let elenco = ScambiLogica.squadrePropense(p.proposte)
-        // nelle proposte vere ci sono tre squadre: Lambda Rossa (3 scambi, media 1,64), Pianeta Verde (0,67), Jolly Bianca (1,96)
-        XCTAssertEqual(elenco.count, 3)
-        XCTAssertEqual(elenco.map(\.nome), ["Jolly Bianca", "Lambda Rossa", "Pianeta Verde"], "dalla media più alta")
-        XCTAssertEqual(elenco.map(\.scambi), [1, 3, 1])
-        XCTAssertEqual(elenco[1].media, (0.59 + 0.53 + 3.8) / 3, accuracy: 0.001)
-        // con una sola squadra non serve una classifica
-        XCTAssertTrue(ScambiLogica.squadrePropense(Array(p.proposte.filter { $0.altra == "Jolly Bianca" })).isEmpty)
-    }
-
-    func testArchivioDegliScambiAnalizzati() throws {
-        let memoria = try XCTUnwrap(UserDefaults(suiteName: "prova-archivio-\(UUID().uuidString)"))
-        XCTAssertTrue(ArchivioScambi.leggi(memoria).isEmpty)
-        let uno = try proposta(mio: 1, loro: 1)
-        ArchivioScambi.registra(uno, quando: Date(timeIntervalSince1970: 1_000_000), memoria)
-        // lo stesso scambio non si duplica: si sposta in cima
-        ArchivioScambi.registra(uno, quando: Date(timeIntervalSince1970: 2_000_000), memoria)
-        var elenco = ArchivioScambi.leggi(memoria)
-        XCTAssertEqual(elenco.count, 1)
-        XCTAssertEqual(elenco[0].dai, ["Barucci", "Rugini"])
-        XCTAssertEqual(elenco[0].ricevo, ["Mangoni"])
-        XCTAssertEqual(elenco[0].quando.timeIntervalSince1970, 2_000_000, accuracy: 1)
-        // si tengono gli ultimi 20
-        for i in 0..<25 {
-            let json = "{\"mia\": \"Io\", \"altra\": \"Squadra \(i)\", \"do\": [{\"id\": 1, \"nome\": \"A\", \"ruolo\": \"D\"}], \"ricevo\": [{\"id\": 2, \"nome\": \"B\", \"ruolo\": \"D\"}], \"guadagno_mio\": 1, \"guadagno_loro\": 1}"
-            ArchivioScambi.registra(try Decodifica.decodifica(Data(json.utf8)), memoria)
-        }
-        elenco = ArchivioScambi.leggi(memoria)
-        XCTAssertEqual(elenco.count, ArchivioScambi.massimo)
-        XCTAssertEqual(elenco.first?.con, "Squadra 24")
-        ArchivioScambi.svuota(memoria)
-        XCTAssertTrue(ArchivioScambi.leggi(memoria).isEmpty)
-    }
 
     // MARK: regole
 
@@ -248,7 +164,7 @@ final class DominioTests: XCTestCase {
         XCTAssertEqual(vai("schieraxi://mercato"), .sezione(.squadra), "Mercato è diventato Squadra")
         XCTAssertEqual(vai("schieraxi://squadra"), .sezione(.squadra))
         XCTAssertEqual(vai("schieraxi://altro"), .sezione(.altro))
-        XCTAssertEqual(vai("schieraxi://scambi"), .pagina(.scambi), "Scambi è una pagina di Altro")
+        XCTAssertEqual(vai("schieraxi://scambi"), .sezione(.altro), "Scambi non c'è più (#634): si apre Altro, la scheda in cui stava")
         XCTAssertEqual(vai("schieraxi://lega"), .sezione(.altro))
         XCTAssertEqual(vai("SCHIERAXI://Lega"), .sezione(.altro), "maiuscole e minuscole non contano")
         XCTAssertEqual(vai("schieraxi://giocatore/203"), .giocatore(203))
@@ -283,16 +199,6 @@ final class DominioTests: XCTestCase {
         XCTAssertEqual(ColoriSquadra.esadecimali("inter").0, "0a58a8")
         XCTAssertEqual(ColoriSquadra.esadecimali("sconosciuta").0, "6b7280", "grigio")
         XCTAssertEqual(ColoriSquadra.tabella.count, ColoriSquadra.sigle.count)
-    }
-
-    @MainActor
-    func testRaggruppamentoDellePartitePerGiorno() throws {
-        let o: Oggi = try Fixture.decodifica("oggi")
-        let giorni = OggiViewModel.raggruppa(o.partite ?? [])
-        XCTAssertEqual(giorni.reduce(0) { $0 + $1.partite.count }, 10)
-        XCTAssertGreaterThanOrEqual(giorni.count, 2)
-        XCTAssertTrue(giorni[0].titolo.lowercased().hasPrefix("marted"), giorni[0].titolo)
-        XCTAssertEqual(Set(giorni.map(\.titolo)).count, giorni.count, "ogni giorno compare una volta sola")
     }
 }
 

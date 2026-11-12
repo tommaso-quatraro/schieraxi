@@ -71,44 +71,6 @@ struct DifferenzeView: View {
     }
 }
 
-/// Lo storico dei cambiamenti alle rose, dal più recente.
-struct MovimentiView: View {
-    @StateObject private var vm: MovimentiViewModel
-
-    init(server: any ServerClient) {
-        _vm = StateObject(wrappedValue: MovimentiViewModel(server: server))
-    }
-
-    var body: some View {
-        ZStack {
-            Sfondo()
-            List {
-                TitoloNellaPagina()
-                if let elenco = vm.caricatore.dato {
-                    if elenco.isEmpty {
-                        VistaVuota(titolo: "Nessun movimento", icona: "arrow.left.arrow.right",
-                                   descrizione: "Quando importi di nuovo le rose, qui compaiono scambi, svincolati presi, tagli e crediti cambiati.")
-                    }
-                    ForEach(elenco) { m in
-                        Section(titolo: Quando.leggibile((m.quando ?? "").replacingOccurrences(of: "T", with: " "))) {
-                            DifferenzeView(differenze: m)
-                        }
-                    }
-                } else if let e = vm.caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                } else {
-                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
-                }
-            }
-            .scrollContentBackground(.hidden)
-        }
-        .titoloPagina("Movimenti")
-        .ricercaGlobale()
-        .refreshable { await vm.carica() }
-        .task { await vm.carica() }
-    }
-}
-
 // MARK: - Passaggio di stagione
 
 /// Le frasi del passaggio di stagione, come la web (`lega.rose_ancora_quelle` del catalogo): i giocatori seguiti si chiamano «seguiti».
@@ -217,7 +179,6 @@ enum PassiNuovaStagione {
         var passi: [(titolo: String, dettaglio: String, pagina: PaginaLega)] = [
             (Catalogo.Lega.importaNuoveRose, "Con l'Excel di Leghe, da «Aggiorna le rose».", .importa),
             (Catalogo.Lega.controllaRegole, "Bonus, moduli e crediti possono cambiare da un anno all'altro.", .regole),
-            ("Inserisci i crediti delle squadre", "Servono al mercato per dirti se un cambio è fattibile.", .crediti),
         ]
         // Aggiornare i dati spetta a chi amministra il server (come sulla web): agli altri il server risponderebbe «Solo per l'amministratore».
         if amministratore {

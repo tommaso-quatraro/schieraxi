@@ -5,10 +5,8 @@ import SwiftUI
 @main
 struct PacchettoWidget: WidgetBundle {
     var body: some Widget {
-        // Tre widget per chi usa l'app (Prossima giornata, Formazione, Da controllare). Gli altri restano nel codice ma fuori dal pacchetto:
-        // il widget non può leggere le funzioni accese (nessun dato condiviso con l'app, il suo token vale solo per Oggi e per il riassunto),
-        // quindi non può nascondere da solo quelli di una funzione spenta (Cruscotto, Partite live, Chi gioca, Giocatore seguito,
-        // Punti attesi e fatti, Miglior scambio, Crediti, Stato dei dati).
+        // I tre widget di SchieraXI: Prossima giornata, Formazione, Da controllare. Gli altri otto, già fuori dal pacchetto, sono
+        // stati tolti il 12/11/2026 (#634).
         WidgetOggi()
         WidgetFormazione()
         WidgetDubbi()

@@ -578,32 +578,6 @@ final class ErroriDelServerTests: XCTestCase {
 /// Le proposte di scambio si cercano solo su richiesta e gli stessi parametri si ricordano.
 @MainActor
 final class RicercheDiScambiTests: XCTestCase {
-    func testLeProposteNonSiRilanciaDaSole() async {
-        let s = ServerDiProva { _, percorso, _ in
-            if percorso.hasPrefix("/api/scambi/proposte") { return Data(#"{"proposte": []}"#.utf8) }
-            throw ErroreApi.server("niente")
-        }
-        let vm = ScambiViewModel(server: s)
-        NotificationCenter.default.post(name: .aggiornaTutto, object: nil)   // «Aggiorna», importazione rose, ecc.
-        try? await Task.sleep(nanoseconds: 300_000_000)
-        XCTAssertEqual(s.quante("/api/scambi/proposte"), 0, "il comando Aggiorna non lancia ricerche che il server conta")
-        await vm.caricaProposte()
-        XCTAssertEqual(s.quante("/api/scambi/proposte"), 1)
-        await vm.caricaProposte()
-        await vm.caricaProposte()
-        XCTAssertEqual(s.quante("/api/scambi/proposte"), 1, "stessi parametri, di poco fa: si mostrano quelli trovati")
-        await vm.caricaProposte(forza: true)
-        XCTAssertEqual(s.quante("/api/scambi/proposte"), 2, "il tira-per-aggiornare e' una richiesta esplicita")
-    }
-
-    func testCambiandoParametriSiCercaDiNuovo() async {
-        let s = ServerDiProva { _, _, _ in Data(#"{"proposte": []}"#.utf8) }
-        let vm = ScambiViewModel(server: s)
-        await vm.caricaProposte()
-        vm.con = "Real Madrink"
-        await vm.caricaProposte()
-        XCTAssertEqual(s.quante("/api/scambi/proposte"), 2)
-    }
 }
 
 /// Nome visualizzato dell'utente e plurali.

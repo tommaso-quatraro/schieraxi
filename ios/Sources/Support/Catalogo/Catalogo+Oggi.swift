@@ -50,11 +50,6 @@ extension Catalogo {
         /// `oggi.mancano_probabili_formazioni`
         static let mancanoProbabiliFormazioni = "Mancano le probabili formazioni di questa giornata: i consigli usano le presenze recenti."
 
-        /// `oggi.novita_banner`
-        static func novitaBanner(versione: String) -> String {
-            "<b>Novità della versione \(versione)</b>"
-        }
-
         /// `oggi.tuoi_migliori_della`
         static let tuoiMiglioriDella = "I tuoi migliori della giornata"
 
@@ -72,19 +67,8 @@ extension Catalogo {
         /// `oggi.diffidati`
         static let diffidati = "Diffidati"
 
-        /// `oggi.partite_del_turno`
-        static let partiteDelTurno = "Partite del turno"
-
         /// `oggi.data_da_definire`
         static let dataDaDefinire = "Data da definire"
-
-        /// `oggi.partita_in_corso`
-        static let partitaInCorso = "In corso"
-
-        /// `oggi.n_titolari.one`, `oggi.n_titolari.other`
-        static func nTitolari(_ n: Int) -> String {
-            n == 1 ? "\(n) tuo titolare" : "\(n) tuoi titolari"
-        }
 
         /// `oggi.punti_finora`
         static let puntiFinora = "Punti fatti finora"

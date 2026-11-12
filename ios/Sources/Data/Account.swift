@@ -1,6 +1,5 @@
 import SwiftUI
 import UserNotifications
-import CoreSpotlight
 import WidgetKit
 
 // Account del server con più utenti (modalità «multiutente»). Con il server di sempre (un solo utente) `/api/account/me`
@@ -230,10 +229,10 @@ enum DatiLocali {
         VersioniRisorse.condivise.azzera()
         dimenticaIlWidget()
         let memoria = UserDefaults.standard
-        for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto"] { memoria.removeObject(forKey: chiave) }
-        ArchivioScambi.svuota(memoria)
+        for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto"] + OpzioniTolte.chiaviFunzioni {
+            memoria.removeObject(forKey: chiave)
+        }
         if !Demo.attivo {
-            CSSearchableIndex.default().deleteAllSearchableItems { _ in }
             let centro = UNUserNotificationCenter.current()
             centro.removeAllPendingNotificationRequests()
             centro.removeAllDeliveredNotifications()

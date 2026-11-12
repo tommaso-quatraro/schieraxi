@@ -271,20 +271,7 @@ final class LegaViewModelTests: XCTestCase {
         XCTAssertEqual(vm.errore, "Nessuna rosa trovata")
     }
 
-    func testMovimenti() async throws {
-        let s = ServerDiProva { _, _, _ in
-            Data(#"[{"quando": "2026-10-26T19:19:33", "scambi": [{"squadre": ["A", "B"], "da_a": [{"id": 1, "nome": "X"}], "da_b": []}], "svincolati_presi": [], "tagliati": [], "crediti": [{"squadra": "A", "prima": 30, "dopo": 22}], "testo": "Passaggio da A a B: X"}]"#.utf8)
-        }
-        let vm = MovimentiViewModel(server: s)
-        await vm.carica()
-        let m = try XCTUnwrap(vm.caricatore.dato?.first)
-        XCTAssertEqual(m.scambi?.first?.squadre, ["A", "B"])
-        XCTAssertEqual(m.scambi?.first?.daA.first?.nome, "X")
-        XCTAssertEqual(m.crediti?.first?.dopo, 22)
-        XCTAssertEqual(s.quante("GET /api/movimenti?limite=30"), 1)
-    }
-
-    func testMiaSquadraECrediti() async throws {
+    func testMiaSquadra() async throws {
         let s = ServerDiProva.conFixture(["/api/squadre": "squadre"])
         let squadre = SquadreViewModel(server: s)
         await squadre.carica()
@@ -293,16 +280,6 @@ final class LegaViewModelTests: XCTestCase {
         let corpo = String(decoding: try XCTUnwrap(s.corpiInviati(a: "PUT /api/mia-squadra").last), as: UTF8.self)
         XCTAssertEqual(corpo, "{\"nome\":\"Borgo Alto\"}")
         XCTAssertEqual(s.quante("GET /api/squadre"), 2, "dopo la scelta l'elenco si ricarica")
-
-        let crediti = CreditiViewModel(server: s)
-        await crediti.carica()
-        crediti.valori["Borgo Alto"] = "120"
-        crediti.valori["Altra"] = "boh"   // non è un numero: non si manda
-        await crediti.salva()
-        let c = String(decoding: try XCTUnwrap(s.corpiInviati(a: "PUT /api/crediti").last), as: UTF8.self)
-        XCTAssertTrue(c.contains("\"Borgo Alto\":120"), c)
-        XCTAssertFalse(c.contains("Altra"), c)
-        XCTAssertEqual(crediti.messaggio, Catalogo.Lega.creditiSalvati)
     }
 
     func testAvvisiConAppNativa() async throws {

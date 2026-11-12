@@ -1,6 +1,6 @@
 import Foundation
 
-/// I testi della pagina «Notifiche» e di «Avanzate» (Impostazioni), dal catalogo comune con la web (`imp.avvisi*`, `avv.*`, `av.*`).
+/// I testi della pagina «Notifiche» (Impostazioni), dal catalogo comune con la web (`imp.avvisi*`, `avv.*`).
 /// Le righe d'aiuto, come sulla web, non finiscono con il punto. Logica pura: li prova `NotificheComeLaWebTests`.
 enum TestiImpostazioni {
     /// La voce nell'elenco delle Impostazioni e il titolo della pagina (`imp.avvisi`), con la riga sotto la voce (`imp.avvisi_sub`).
@@ -19,8 +19,4 @@ enum TestiImpostazioni {
     static let nativa = Catalogo.Avv.nativa
     static let oreTranquille = Catalogo.Avv.oreTranq
     static let oreTranquilleAiuto = Catalogo.Avv.oreTranqAiuto
-
-    /// «Mostra tutte le funzioni» (Avanzate) con la sua spiegazione: `av.mostra_tutte` e `av.mostra_tutte_spiega`.
-    static let mostraTutte = Catalogo.Av.mostraTutte
-    static let mostraTutteSpiega = Catalogo.Av.mostraTutteSpiega
 }

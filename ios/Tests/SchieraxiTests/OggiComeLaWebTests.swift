@@ -15,26 +15,41 @@ struct OggiComeLaWebTests {
 
     // MARK: ordine delle sezioni
 
-    @Test("Prima della scadenza: conto, formazione, rinvio, Da fare, novità, migliori, Da controllare, indisponibili, diffidati, partite")
+    @Test("Prima della scadenza: conto, formazione, rinvio, Da fare, migliori, Da controllare, indisponibili, diffidati")
     func ordinePrima() {
         #expect(SezioneOggi.ordine(fase: .prima, conGiornata: true) == [
-            .benvenuto, .conto, .formazione, .rinvio, .daFare, .novita,
-            .suggerimento, .migliori, .daControllare, .indisponibili, .diffidati, .partite,
+            .benvenuto, .conto, .formazione, .rinvio, .daFare,
+            .suggerimento, .migliori, .daControllare, .indisponibili, .diffidati,
         ])
     }
 
-    @Test("Giornata in corso: conto, una carta sola con punti, chi va a punteggio e cambi (#436), rinvio, Da fare, novità, partite")
+    @Test("Giornata in corso: conto, una carta sola con punti, chi va a punteggio e cambi (#436), rinvio, Da fare")
     func ordineInCorso() {
         #expect(SezioneOggi.ordine(fase: .inCorso, conGiornata: true) == [
-            .benvenuto, .conto, .inCorso, .rinvio, .daFare, .novita, .partite,
+            .benvenuto, .conto, .inCorso, .rinvio, .daFare,
         ])
     }
 
-    @Test("Giornata finita: conto, riepilogo, formazione della prossima, rinvio, Da fare, novità, indisponibili, diffidati, partite")
+    @Test("Giornata finita: conto, riepilogo, formazione della prossima, rinvio, Da fare, indisponibili, diffidati")
     func ordineFinita() {
         #expect(SezioneOggi.ordine(fase: .finita, conGiornata: true) == [
-            .benvenuto, .conto, .riepilogo, .formazione, .rinvio, .daFare, .novita, .indisponibili, .diffidati, .partite,
+            .benvenuto, .conto, .riepilogo, .formazione, .rinvio, .daFare, .indisponibili, .diffidati,
         ])
+    }
+
+    /// Dal 12/11/2026 (#634, come la web): il banner delle novità e «Partite del turno» con la diretta non ci sono più, in
+    /// nessuna fase. Le novità si leggono in Impostazioni > Informazioni.
+    @Test("In Oggi non ci sono più né il banner delle novità né le partite del turno", arguments: [FaseGiornata.prima, .inCorso, .finita])
+    func senzaNovitaNePartite(fase: FaseGiornata) throws {
+        for conGiornata in [true, false] {
+            let nomi = SezioneOggi.ordine(fase: fase, conGiornata: conGiornata).map { "\($0)" }
+            #expect(!nomi.contains("novita") && !nomi.contains("partite"), "\(fase): \(nomi)")
+        }
+        #expect(!SezioneOggi.allCases.map { "\($0)" }.contains { $0 == "novita" || $0 == "partite" })
+        let sorgente = try CodiceOggiIPhone.leggi("Sources/Presentation/Oggi/OggiView.swift")
+        for tolto in ["PartiteDelTurnoView", "/api/live", "novitaBanner", "apriNovita"] {
+            #expect(!sorgente.contains(tolto), "OggiView nomina ancora \(tolto)")
+        }
     }
 
     @Test("Senza giornata: al posto del conto la frase «Nessuna giornata», e niente formazione")
@@ -106,53 +121,7 @@ struct OggiComeLaWebTests {
         }
     }
 
-    // MARK: partite del turno
-
-    /// Decisione dell'utente (6/11/2026): Partite del turno si vede sempre, come sulla web (`mostraOggi` la scrive senza
-    /// condizioni). «Risultati in diretta» spenta toglie solo i risultati in diretta (punteggio, minuto, eventi), non le partite.
-    @Test("Partite del turno c'è sempre: in OggiView la sezione non dipende da «Risultati in diretta»")
-    func partiteSempre() throws {
-        let sorgente = try CodiceOggiIPhone.leggi("Sources/Presentation/Oggi/OggiView.swift")
-        let caso = try #require(sorgente.range(of: "case .partite:"), "OggiView non ha più la sezione delle partite")
-        // il corpo del caso: fino alla fine della funzione `sezione` (la graffa a 4 spazi)
-        let resto = sorgente[caso.upperBound...]
-        let fine = try #require(resto.range(of: "\n    }"), "non trovo la fine di OggiView.sezione")
-        let corpo = resto[..<fine.lowerBound]
-        #expect(!corpo.contains("Funzione.live"), "Partite del turno nascosta con «Risultati in diretta» spenta: \(corpo)")
-        #expect(!corpo.contains("if "), "Partite del turno sotto una condizione: \(corpo)")
-    }
-
-    @MainActor
-    @Test("«Risultati in diretta» spenta: le partite restano con giorno e ora, senza punteggio né minuto")
-    func partiteSenzaDiretta() async throws {
-        let corpoLive = #"{"fonte": "espn", "in_corso": 1, "partite": [{"casa": "inter", "trasferta": "roma", "stato": "primo_tempo", "minuto": "5'", "gol_casa": 1, "gol_trasferta": 0}]}"#
-        let corpoOggi = #"{"giornata": 9, "partite": [{"casa": "inter", "trasferta": "roma", "data": "2026-10-31 15:00", "giocata": false}]}"#
-        let server = ServerDiProva { _, percorso, _ in
-            Data((percorso.hasPrefix("/api/live") ? corpoLive : corpoOggi).utf8)
-        }
-        let vm = OggiViewModel(server: server, conPromemoria: false)
-        await vm.carica()
-        await vm.live.ricarica()          // risultati rimasti in memoria da quando la funzione era accesa
-        let partita = try #require(vm.oggi?.partite?.first)
-        #expect(vm.dalVivo(partita)?.minuto == "5'", "con la funzione accesa il minuto c'è")
-
-        vm.liveAcceso = false
-        #expect(vm.risultatiLive == nil, "spenta: nessun risultato in diretta")
-        #expect(vm.dalVivo(partita) == nil, "spenta: niente punteggio né minuto sulla riga")
-        let giorni = vm.partitePerGiorno
-        #expect(giorni.flatMap(\.partite).count == 1, "la partita resta")
-        #expect(giorni.first?.titolo != "Data da definire", "con il suo giorno")
-    }
-
     // MARK: parole
-
-    /// Titoli e frasi di Oggi vengono dal catalogo comune con la web (`Catalogo.Oggi`, `Catalogo.Df`, #494): la prova è
-    /// `OggiDalCatalogoTests`. Qui resta quello che il catalogo non dice: il banner senza «tocca per vedere» (STILE-SENZA-AI.md).
-    @Test("Il banner delle novità dice «Novità della versione 1.427», senza «tocca per vedere»")
-    func bannerNovita() {
-        #expect(TestiOggi.novita("1.427") == "Novità della versione 1.427")
-        #expect(!TestiOggi.novita("1.427").contains("tocca"))
-    }
 
     @Test("«Mancano le probabili» solo prima della scadenza e solo se mancano davvero, come la web", arguments: [
         CasoProbabili(fase: .prima, conProbabili: false, atteso: true),

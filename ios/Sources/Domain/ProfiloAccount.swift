@@ -32,8 +32,11 @@ enum ProfiloAccount {
 
 /// Le scelte dell'aspetto che l'app non offre più (colore principale, densità, sezione iniziale): si tolgono dal telefono
 /// una volta, così chi le aveva cambiate torna ai valori normali e non resta bloccato su una scelta che non può più vedere.
+/// Con loro i dati tenuti sul telefono dalle funzioni tolte il 12/11/2026 (#634).
 enum OpzioniTolte {
-    static let chiavi = ["accento", "densita", "sezioneAvvio"]
+    /// L'archivio degli scambi analizzati e «legenda del campo già vista»: le loro schermate non ci sono più.
+    static let chiaviFunzioni = ["archivioScambi", "legendaCampoVista"]
+    static let chiavi = ["accento", "densita", "sezioneAvvio"] + chiaviFunzioni
 
     static func pulisci(_ memoria: UserDefaults = .standard) {
         for chiave in chiavi where memoria.object(forKey: chiave) != nil {

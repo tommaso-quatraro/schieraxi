@@ -49,7 +49,9 @@ struct DemoScadenzaPossibileTests {
     private func controllaInCorso(telefono: Date, dove: String) throws {
         let server = try demoInCorso(telefono)
         let oggi = try leggi("/api/oggi", da: server, come: Oggi.self)
-        let live = try leggi("/api/live", da: server, come: LiveWidget.self)
+        // le partite in diretta della demo: quelle del riassunto del widget (l'app non le chiede più, #634)
+        let live = try #require(RiassuntoWidget.leggi(LegaDemo.widget(adesso: telefono, fase: .inCorso))?.live,
+                                "il widget in corso non ha le partite in diretta")
         #expect(oggi.faseGiornata == .inCorso)
         let adesso = try momento(live, dove)
         #expect(adesso <= telefono, "\(dove): la demo vive alle \(live.aggiornatoIl ?? ""), nel futuro del telefono")
@@ -157,7 +159,9 @@ struct DemoScadenzaPossibileTests {
         try controllaInCorso(telefono: telefono, dove: caso.telefono)
         let server = try demoInCorso(telefono)
         let oggi = try leggi("/api/oggi", da: server, come: Oggi.self)
-        let live = try leggi("/api/live", da: server, come: LiveWidget.self)
+        // le partite in diretta della demo: quelle del riassunto del widget (l'app non le chiede più, #634)
+        let live = try #require(RiassuntoWidget.leggi(LegaDemo.widget(adesso: telefono, fase: .inCorso))?.live,
+                                "il widget in corso non ha le partite in diretta")
         #expect(String((live.aggiornatoIl ?? "").prefix(16)) == caso.momento)
         #expect(oggi.inizio == caso.inizio)
         #expect(oggi.scadenza == caso.scadenza)
