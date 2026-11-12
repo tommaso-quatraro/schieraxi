@@ -52,8 +52,10 @@ def casa(tmp_path):
     uscita, esito, orologio = tmp_path / "uscita.txt", tmp_path / "esito.txt", tmp_path / "orologio.txt"
     app, bin_, _ = _casa_aggiorna(tmp_path, f'if [ "$*" = "-m fanta aggiorna" ]; then cat "{_msys(uscita)}"; '
                                             f'exit "$(cat "{_msys(esito)}")"; fi\nexit 0')
-    avvisi = tmp_path / "avvisi.txt"
-    _stub(bin_, "curl", f'while [ $# -gt 0 ]; do [ "$1" = "-d" ] && printf "%s\\n" "$2" >> "{_msys(avvisi)}"; shift; done\nexit 0')
+    avvisi, curl_giu = tmp_path / "avvisi.txt", tmp_path / "curl-giu"
+    # curl finto: annota il JSON mandato; se c'è il file curl-giu fa come il servizio degli avvisi che non risponde (niente annotato)
+    _stub(bin_, "curl", f'[ -e "{_msys(curl_giu)}" ] && exit 7\n'
+                        f'while [ $# -gt 0 ]; do [ "$1" = "-d" ] && printf "%s\\n" "$2" >> "{_msys(avvisi)}"; shift; done\nexit 0')
     _stub(bin_, "date", f'if [ "${{1:-}}" = "+%s" ]; then cat "{_msys(orologio)}"; exit 0; fi\nexec /usr/bin/date "$@"')
     _scrivi(tmp_path, "canale", "canale-di-prova")
     env = {**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "HOME": _msys(tmp_path / "casa"),
@@ -91,6 +93,13 @@ def casa(tmp_path):
         def log(self):
             return (app / "dati" / "aggiorna.log").read_text(encoding="utf-8")
 
+        def avvisi_giu(self, giu=True):
+            """Il servizio degli avvisi non risponde (giu=True) o torna."""
+            if giu:
+                curl_giu.write_text("", encoding="utf-8")
+            else:
+                curl_giu.unlink(missing_ok=True)
+
     return Casa()
 
 
@@ -120,11 +129,42 @@ def test_una_fonte_rotta_da_tanti_giri_non_copre_il_guasto_di_un_altra(casa):
 
 
 @con_bash
-def test_lo_stesso_guasto_avvisa_al_massimo_una_volta_ogni_24_ore(casa):
-    esiti = {ora: casa.giro(rotti={"voti"}, ora=ora) for ora in (0, 4, 9, 13, 24, 27.9, 28, 32)}
-    assert esiti == {0: [], 4: [_rotto("voti", 2)], 9: [], 13: [], 24: [], 27.9: [],
-                     28: [_rotto("voti", 7)],             # 24 ore dopo l'avviso di prima
-                     32: []}
+def test_lo_stesso_guasto_avvisa_una_volta_sola_finche_dura(casa):
+    """Un avviso al secondo giro di fila, poi niente finché il passo non torna: il promemoria di ogni giorno per un passo fermo da
+    oltre 24 ore lo manda il controllo di salute del server (fanta/salute.py), non questo script."""
+    esiti = {ora: casa.giro(rotti={"voti"}, ora=ora) for ora in (0, 4, 9, 13, 24, 27, 32, 48, 72)}
+    assert esiti == {0: [], 4: [_rotto("voti", 2)], 9: [], 13: [], 24: [], 27: [], 32: [], 48: [], 72: []}
+    assert casa.giro(ora=76) == [_di_nuovo("voti")]
+    assert casa.giro(rotti={"voti"}, ora=80) == [] and casa.giro(rotti={"voti"}, ora=84) == [_rotto("voti", 2)]   # guasto nuovo
+
+
+@con_bash
+def test_rete_giu_un_solo_avviso_con_tutti_i_passi_e_uno_solo_quando_tornano(casa):
+    tutti = set(PASSI_FINTI)
+    assert casa.giro(rotti=tutti, ora=0) == []
+    assert casa.giro(rotti=tutti, ora=4) == [
+        "Aggiornamento dati, non riescono: «Understat» (2 giri di fila), «calendario» (2 giri di fila), «listone» (2 giri di fila), "
+        "«probabili» (2 giri di fila), «voti» (2 giri di fila)."]
+    assert casa.giro(rotti={"voti"}, ora=9) == \
+        ["Aggiornamento dati, funzionano di nuovo: «Understat», «calendario», «listone», «probabili»."]
+    assert [p.name for p in casa.passi.iterdir()] == ["voti"]
+
+
+@con_bash
+def test_avviso_che_non_parte_si_riprova_al_giro_dopo(casa):
+    """Il tempo dell'ultimo avviso si segna solo se l'avviso è partito; lo stato di un passo tornato si toglie solo dopo che
+    «funziona di nuovo» è partito."""
+    casa.giro(rotti={"probabili"}, ora=0)
+    casa.avvisi_giu()
+    assert casa.giro(rotti={"probabili"}, ora=4) == []                   # il servizio degli avvisi non risponde
+    casa.avvisi_giu(False)
+    assert casa.giro(rotti={"probabili"}, ora=9) == [_rotto("probabili", 3)]
+    casa.avvisi_giu()
+    assert casa.giro(ora=13) == []
+    assert (casa.passi / "probabili").exists()                            # «funziona di nuovo» non è partito: lo stato resta
+    casa.avvisi_giu(False)
+    assert casa.giro(ora=17) == [_di_nuovo("probabili")]
+    assert not list(casa.passi.iterdir())
 
 
 @con_bash
@@ -210,9 +250,36 @@ def test_backup_dati_mette_l_archivio_nella_copia_e_il_ripristino_lo_rimette(tmp
     assert esito["registro_giornate"] == (0, 1)
 
 
+def test_i_testi_non_dicono_piu_che_l_archivio_si_ricostruisce_sempre():
+    """L'archivio sta nella copia notturna proprio perché non tutto si riscarica: i testi per l'utente (Sotto il cofano, italiano e
+    inglese, documento compreso) e i commenti del codice non devono dire il contrario."""
+    from pathlib import Path
+    radice = Path(__file__).resolve().parent.parent
+    vietate = {"fanta/contenuti/sotto-il-cofano.json": ("ricostruire da capo",),
+               "docs/SOTTO-IL-COFANO.md": ("ricostruire da capo",),
+               "fanta/contenuti/sotto-il-cofano.en.json": ("rebuilt from scratch",),
+               "fanta/registro_copia.py": ("le statistiche si riscaricano",),
+               "script/server/backup-dati.sh": ("si riscarica con",),
+               "docs/RIPRISTINO-SERVER.md": ("si riscarica con",)}
+    for nome, frasi in vietate.items():
+        testo = (radice / nome).read_text(encoding="utf-8")
+        for frase in frasi:
+            assert frase not in testo, f"{nome}: «{frase}»"
+    for nome in ("fanta/contenuti/sotto-il-cofano.json", "docs/SOTTO-IL-COFANO.md"):
+        assert "copia dell'archivio" in (radice / nome).read_text(encoding="utf-8"), nome
+    assert "copy of the archive" in (radice / "fanta/contenuti/sotto-il-cofano.en.json").read_text(encoding="utf-8")
+
+
+def _nomi_nel_pacchetto(pacchetto):
+    with tarfile.open(pacchetto) as t:
+        return t.getnames()
+
+
 @con_bash
-def test_backup_dati_se_la_copia_dell_archivio_non_riesce_niente_pacchetto(tmp_path):
-    """Come per il registro: niente copia quella notte (e niente rotazione: restano le copie di prima), una riga nel registro."""
+def test_backup_dati_se_la_copia_dell_archivio_non_riesce_salva_il_resto_tiene_le_copie_e_avvisa(tmp_path):
+    """Se non riesce solo la copia dell'archivio, gli account, le cartelle degli utenti e il registro si salvano lo stesso; quella
+    notte niente rotazione (restano le copie di prima, con l'archivio) e un avviso, al massimo uno al giorno. Quando la copia torna
+    completa: rotazione normale e un avviso «di nuovo»."""
     import sys
     app = tmp_path / "app"
     _scrivi(app, "dati/scelte.json", "SCELTE")
@@ -222,7 +289,29 @@ def test_backup_dati_se_la_copia_dell_archivio_non_riesce_niente_pacchetto(tmp_p
     # il Python vero, tranne la copia dell'archivio (python -c ... dati/fanta.sqlite), che non riesce
     _stub(bin_, "python-finto", 'case "$*" in "-c "*dati/fanta.sqlite*) echo "disco pieno" >&2; exit 1;; esac\n'
                                 f'exec "{_msys(sys.executable)}" "$@"')
-    r, dest, cache = _lancia_backup_dati(tmp_path, app, python="python-finto")
-    assert r.returncode == 1
-    assert not list(dest.glob("dati-*.tar.gz"))
+    avvisi = tmp_path / "avvisi.txt"
+    _stub(bin_, "curl", f'while [ $# -gt 0 ]; do [ "$1" = "-d" ] && printf "%s\\n" "$2" >> "{_msys(avvisi)}"; shift; done\nexit 0')
+    _scrivi(tmp_path, "canale", "canale-di-prova")
+    dest = tmp_path / "copie"
+    vecchie = [dest / f"dati-2000-01-{g:02d}.tar.gz" for g in range(1, 16)]       # 15 copie di prima: più delle 14 che si tengono
+    for v in vecchie:
+        _scrivi(dest, v.name, "copia di prima")
+    mandati = lambda: [json.loads(r)["message"] for r in avvisi.read_text(encoding="utf-8").splitlines()] if avvisi.exists() else []  # noqa: E731
+
+    r, _, cache = _lancia_backup_dati(tmp_path, app, python="python-finto", canale=tmp_path / "canale")
+    assert r.returncode == 0, r.stderr
+    [pacchetto] = set(dest.glob("dati-*.tar.gz")) - set(vecchie)
+    nomi = _nomi_nel_pacchetto(pacchetto)
+    assert "./dati/scelte.json" in nomi and "./dati/registro-giornate.json" in nomi
+    assert not [n for n in nomi if "fanta.sqlite" in n]
+    assert all(v.exists() for v in vecchie)                                   # quella notte niente rotazione
     assert "copia dell'archivio delle statistiche non riuscita: disco pieno" in (cache / "backup-dati.log").read_text(encoding="utf-8")
+    assert len(mandati()) == 1 and "archivio delle statistiche" in mandati()[0]
+    # di nuovo lo stesso giorno: niente secondo avviso
+    assert _lancia_backup_dati(tmp_path, app, python="python-finto", canale=tmp_path / "canale")[0].returncode == 0
+    assert len(mandati()) == 1 and all(v.exists() for v in vecchie)
+    # la copia torna completa: archivio dentro, rotazione alle ultime 14, avviso «di nuovo»
+    assert _lancia_backup_dati(tmp_path, app, canale=tmp_path / "canale")[0].returncode == 0
+    assert "./dati/fanta.sqlite" in _nomi_nel_pacchetto(pacchetto)
+    assert len(list(dest.glob("dati-*.tar.gz"))) == 14
+    assert len(mandati()) == 2 and "di nuovo" in mandati()[1]

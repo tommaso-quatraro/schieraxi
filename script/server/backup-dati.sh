@@ -34,6 +34,20 @@ fallito() {
   exit 1
 }
 
+# Avvisi al gestore (solo per la copia dell'archivio, vedi 3b): canale ntfy come aggiorna.sh, in ~/.config/schieraxi/canale (o nel file
+# di SCHIERAXI_CANALE). Al massimo uno al giorno (meno un'ora di tolleranza: il cron parte ogni notte alla stessa ora).
+GIORNO=86400
+TOLLERANZA=3600
+SEGNO_ARCHIVIO="$CACHE/avvisato-copia-archivio"     # ora (secondi) dell'ultimo avviso «copia senza l'archivio»
+avvisa() {   # testo; esce con 0 solo se l'avviso è partito
+  local canale
+  canale=$(tr -d ' \r\n' < "${SCHIERAXI_CANALE:-$HOME/.config/schieraxi/canale}" 2>/dev/null)
+  [ -n "$canale" ] || return 1
+  curl -fsS -m 20 -H 'Content-Type: application/json' \
+    -d "{\"topic\":\"$canale\",\"title\":\"SchieraXI: copia notturna\",\"message\":\"$1\",\"priority\":4,\"tags\":[\"floppy_disk\"]}" \
+    https://ntfy.sh >/dev/null 2>&1
+}
+
 oggi=$(date +%F)
 out="$DEST/dati-$oggi.tar.gz"
 tmp=$(mktemp -d "$DEST/.tmp-XXXXXX") || fallito "non riesco a creare la cartella temporanea"
@@ -79,8 +93,12 @@ fi
 # 3b. Archivio delle statistiche (qualche MB): copia coerente con l'API di backup di SQLite, come per gli account, aperto in sola
 #     lettura (mode=ro: non lo cambia mai) e senza fermare il servizio (in modo WAL chi legge non blocca chi scrive; la copia prende
 #     anche i dati confermati ancora nel file -wal). La copia esce dal modo WAL (un file solo, che si apre senza file di appoggio) e si
-#     controlla (quick_check). Se non riesce, niente copia stanotte, come sopra. Ripristino: docs/RIPRISTINO-SERVER.md, passo 2.
+#     controlla (quick_check). Ripristino: docs/RIPRISTINO-SERVER.md, passo 2.
+#     Se non riesce, il resto si salva lo stesso (account, utenti e registro non aspettano l'archivio), ma quella notte niente rotazione:
+#     restano le copie di prima, con l'archivio. Più un avviso, al massimo uno al giorno, e uno quando la copia torna completa.
+archivio=""                           # ok | non-riuscito (vuoto: l'archivio non c'è, per esempio su un server appena installato)
 if [ -f dati/fanta.sqlite ]; then
+  archivio=ok
   if ! errore=$($PY -c '
 import sqlite3, sys
 from pathlib import Path
@@ -91,7 +109,11 @@ d.execute("PRAGMA journal_mode = DELETE")
 esito = d.execute("PRAGMA quick_check").fetchone()[0]; d.close()
 sys.exit(0 if esito == "ok" else "controllo della copia: " + esito)
 ' dati/fanta.sqlite "$stage/dati/fanta.sqlite" 2>&1 >/dev/null); then
-    fallito "copia dell'archivio delle statistiche non riuscita: $(printf '%s\n' "$errore" | tail -n 1)"
+    archivio=non-riuscito
+    rm -f -- "$stage/dati/fanta.sqlite" "$stage/dati/fanta.sqlite-journal" "$stage/dati/fanta.sqlite-wal" "$stage/dati/fanta.sqlite-shm"
+    echo "=== $(date '+%F %T') copia dell'archivio delle statistiche non riuscita: $(printf '%s\n' "$errore" | tail -n 1)" \
+         "(copia salvata senza l'archivio, copie di prima tenute)" >> "$LOG"
+    ruota_registro "$LOG" 100
   fi
 fi
 
@@ -105,10 +127,24 @@ fi
 chmod 600 "$tmp/nuovo.tar.gz"
 mv -f "$tmp/nuovo.tar.gz" "$out" || fallito "non riesco a salvare $out"
 
-# 6. Rotazione: restano le ultime $TIENI copie (i nomi con la data si ordinano da soli).
-ls -1 "$DEST"/dati-????-??-??.tar.gz 2>/dev/null | sort | head -n -"$TIENI" | while IFS= read -r vecchia; do
-  rm -f -- "$vecchia"
-done
+# 6. Rotazione: restano le ultime $TIENI copie (i nomi con la data si ordinano da soli). Non con una copia senza l'archivio (3b).
+if [ "$archivio" != non-riuscito ]; then
+  ls -1 "$DEST"/dati-????-??-??.tar.gz 2>/dev/null | sort | head -n -"$TIENI" | while IFS= read -r vecchia; do
+    rm -f -- "$vecchia"
+  done
+fi
+
+# 7. Avvisi sull'archivio (3b), dopo che la copia è salvata. L'ora si segna e il segno si toglie solo se l'avviso è partito.
+if [ "$archivio" = non-riuscito ]; then
+  ultimo=$(cat "$SEGNO_ARCHIVIO" 2>/dev/null); [[ $ultimo =~ ^[0-9]{1,12}$ ]] || ultimo=0
+  adesso=$(date +%s)
+  if [ ! -L "$SEGNO_ARCHIVIO" ] && [ $(( adesso - ultimo )) -ge $(( GIORNO - TOLLERANZA )) ] \
+     && avvisa "La copia di stanotte non contiene l'archivio delle statistiche (motivo in backup-dati.log): le copie di prima restano."; then
+    echo "$adesso" > "$SEGNO_ARCHIVIO"
+  fi
+elif [ "$archivio" = ok ] && [ -f "$SEGNO_ARCHIVIO" ] && [ ! -L "$SEGNO_ARCHIVIO" ]; then
+  avvisa "La copia notturna contiene di nuovo l'archivio delle statistiche." && rm -f -- "$SEGNO_ARCHIVIO"
+fi
 
 date '+%F %T' > "$CACHE/ultimo-backup-dati"
 exit 0

@@ -30,6 +30,10 @@ con gli stessi dati, e il passo 5 che non aggiunge niente.
 Le statistiche non si riscaricano tutte: una fonte che chiude o cambia non ridà le stagioni e le partite di prima. Per questo
 l'archivio sta nella copia, preso con l'API di backup di SQLite senza fermare il servizio (qualche MB, meno di un secondo).
 Le copie fatte prima di novembre 2026 non lo hanno: col passo 4 si riscarica quello che le fonti danno ancora.
+Una notte in cui la copia dell'archivio non riesce, il pacchetto si salva lo stesso senza `dati/fanta.sqlite`, con un avviso, e le
+copie di prima restano (quella notte non se ne toglie nessuna). In quel caso, al passo 2 estrai la copia più recente (account e
+utenti aggiornati), poi il solo archivio dalla più recente che lo contiene (si vede con `tar -tzf ~/dati-AAAA-MM-GG.tar.gz`):
+`tar -xzf ~/dati-AAAA-MM-GG.tar.gz -C ~/fantacalcio ./dati/fanta.sqlite`.
 
 ## Passi (utente del server, nella sua home)
 

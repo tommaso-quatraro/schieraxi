@@ -3,8 +3,9 @@
 #   Dal crontab dell'utente del server:  0 8,13,17,21 * * * /bin/bash $HOME/fantacalcio/script/server/aggiorna.sh >/dev/null 2>&1
 # - Priorita' bassa (nice), così gli altri servizi del server non rallentano.
 # - Guasti contati per passo dell'aggiornamento (listone, calendario, voti, probabili, Understat...), un file per passo rotto in
-#   ~/.cache/fantacalcio/passi/: avviso con il nome del passo alla seconda volta di fila, poi al massimo uno ogni 24 ore finché
-#   dura, e «funziona di nuovo» quando torna. Così una fonte rotta da giorni non nasconde il guasto di un'altra (#607).
+#   ~/.cache/fantacalcio/passi/: un avviso con il nome del passo alla seconda volta di fila (uno solo per giro, con tutti i passi),
+#   e «funziona di nuovo» quando torna. Così una fonte rotta da giorni non nasconde il guasto di un'altra (#607). Il promemoria
+#   di ogni giorno per un passo fermo lo manda il controllo di salute del server, non questo script.
 # - "Formazione pronta": quando manca meno di 30 ore alla prossima giornata (una volta sola per giornata).
 # - Canale ntfy: nome in ~/.config/schieraxi/canale (o nel file indicato da SCHIERAXI_CANALE). Messaggi generici, passano da ntfy.sh.
 # - Log: ~/fantacalcio/dati/aggiorna.log (si tengono le ultime 2000 righe).
@@ -20,9 +21,8 @@ cd "$HOME/fantacalcio" || exit 1
 mkdir -p dati "$HOME/.cache/fantacalcio"
 LOG=dati/aggiorna.log
 registri_sicuri "$LOG" "$LOG.tmp" || exit 1
-PASSI="$HOME/.cache/fantacalcio/passi"     # un file per passo che non riesce: «giri di fila, ora dell'ultimo avviso (secondi), nome»
+PASSI="$HOME/.cache/fantacalcio/passi"     # un file per passo che non riesce: «giri di fila, ora dell'avviso (secondi, 0 = no), nome»
 INTERO="aggiornamento"                      # il guasto di tutto il comando (fermo prima della fine, o senza un passo con il nome)
-GIORNO=86400                                # secondi fra due avvisi per lo stesso guasto
 umask 077     # i log e i file nuovi di dati/ (indirizzi, iscrizioni) sono leggibili solo dall'utente del server
 permessi_registri dati
 canale=$(tr -d ' \r\n' < "${SCHIERAXI_CANALE:-$HOME/.config/schieraxi/canale}" 2>/dev/null)
@@ -34,25 +34,48 @@ avvisa() {   # titolo, testo
     https://ntfy.sh >/dev/null
 }
 
-testo_passo() {   # nome, rotto|a-posto, giri di fila: il testo dell'avviso
-  if [ "$1" = "$INTERO" ]; then
-    if [ "$2" = rotto ]; then echo "Aggiornamento dati non riuscito da $3 giri di fila: dettagli in dati/aggiorna.log."
-    else echo "Aggiornamento dati di nuovo riuscito."; fi
-  elif [ "$2" = rotto ]; then echo "Aggiornamento dati: «$1» non riesce da $3 giri di fila."
-  else echo "Aggiornamento dati: «$1» funziona di nuovo."; fi
+testo_rotti() {   # righe «giri nome» dei passi da segnalare in questo giro: il testo di UN avviso
+  local giri nome elenco="" quanti=0 primo="" primi_giri=""
+  while read -r giri nome; do
+    [ -n "$nome" ] || continue
+    quanti=$(( quanti + 1 )); primo=$nome; primi_giri=$giri
+    [ "$nome" = "$INTERO" ] && nome="aggiornamento intero"
+    elenco="${elenco:+$elenco, }«$nome» ($giri giri di fila)"
+  done <<< "$1"
+  if [ "$quanti" -gt 1 ]; then echo "Aggiornamento dati, non riescono: $elenco."
+  elif [ "$primo" = "$INTERO" ]; then echo "Aggiornamento dati non riuscito da $primi_giri giri di fila: dettagli in dati/aggiorna.log."
+  else echo "Aggiornamento dati: «$primo» non riesce da $primi_giri giri di fila."; fi
+}
+
+testo_tornati() {   # nomi dei passi tornati (uno per riga): il testo di UN avviso
+  local nome elenco="" quanti=0 primo=""
+  while read -r nome; do
+    [ -n "$nome" ] || continue
+    quanti=$(( quanti + 1 )); primo=$nome
+    [ "$nome" = "$INTERO" ] && nome="aggiornamento intero"
+    elenco="${elenco:+$elenco, }«$nome»"
+  done <<< "$1"
+  if [ "$quanti" -gt 1 ]; then echo "Aggiornamento dati, funzionano di nuovo: $elenco."
+  elif [ "$primo" = "$INTERO" ]; then echo "Aggiornamento dati di nuovo riuscito."
+  else echo "Aggiornamento dati: «$primo» funziona di nuovo."; fi
 }
 
 # Guasti per passo, dalle righe di questo giro nel registro. fanta/aggiorna.py scrive «  ! <passo>: non riuscito (...)» per un passo
 # fallito, «  - <passo>: saltato, ...» per una fonte spenta e «Fatto: ...» in fondo. Senza «Fatto:» (e con un'uscita di errore) il
 # comando si è fermato prima della fine: è un guasto di tutto l'aggiornamento e non dice niente degli altri passi, che restano come
 # sono. Il nome del passo viene dall'uscita: tiene solo lettere, cifre, spazi e trattini (fa da nome del file di stato e va nel JSON
-# dell'avviso), al massimo 20 passi per giro.
+# dell'avviso), al massimo 20 passi per giro. Un passo rotto si segnala UNA volta, alla seconda volta di fila, poi si tace finché
+# non torna: il promemoria di ogni giorno per un passo fermo da oltre 24 ore lo manda il controllo di salute (fanta/salute.py).
+# Un solo avviso per giro con tutti i passi da segnalare (rete giù = un avviso, non sei) e uno solo per quelli tornati. L'ora
+# dell'avviso si segna solo se l'avviso è partito, e il file di un passo tornato si toglie solo dopo che «funziona di nuovo» è
+# partito: se il servizio degli avvisi non risponde, si riprova al giro dopo.
 controlla_passi() {   # uscita del comando, righe del registro prima del giro
-  local giro rotti finito=0 adesso f n ultimo nome resto
+  local giro rotti finito=0 adesso f n ultimo nome resto tornati="" da_avvisare="" i
+  local -a file_tornati=() av_file=() av_n=() av_nome=()
   { mkdir -p "$PASSI" && [ ! -L "$PASSI" ]; } || return 0
   giro=$(tail -n +"$(( $2 + 1 ))" "$LOG")
   rotti=$(printf '%s\n' "$giro" | sed -n 's/^  ! \([^:]\{1,60\}\): non riuscito (.*/\1/p' | tr -cd 'A-Za-z0-9 \n-' \
-          | sed 's/^ *//; s/ *$//' | grep -v '^$' | sort -u | head -n 20)
+          | sed 's/^ *//; s/ *$//' | grep -v '^$' | LC_ALL=C sort -u | head -n 20)
   if [ "$1" -eq 0 ] || printf '%s\n' "$giro" | grep -q '^Fatto: '; then finito=1; fi
   if [ "$1" -ne 0 ] && { [ "$finito" = 0 ] || [ -z "$rotti" ]; }; then
     rotti=$(printf '%s\n%s\n' "$rotti" "$INTERO" | grep -v '^$')
@@ -68,12 +91,19 @@ controlla_passi() {   # uscita del comando, righe del registro prima del giro
       printf '%s\n' "$rotti" | grep -qxF -- "$nome" && continue
       if printf '%s\n' "$giro" | grep -qF -- "  - $nome: saltato"; then
         echo "passo «$nome»: spento, non si controlla più" >> "$LOG"
+        rm -f -- "$f"
       else
         echo "passo «$nome»: di nuovo a posto (giri non riusciti di fila: $n)" >> "$LOG"
-        if [[ $ultimo =~ ^[1-9][0-9]*$ ]]; then avvisa "Fantacalcio" "$(testo_passo "$nome" a-posto)"; fi    # solo se era stato segnalato
+        if [[ $ultimo =~ ^[1-9][0-9]*$ ]]; then          # era stato segnalato: il file si toglie dopo l'avviso
+          tornati="$tornati$nome"$'\n'; file_tornati+=("$f")
+        else
+          rm -f -- "$f"
+        fi
       fi
-      rm -f -- "$f"
     done
+    if [ ${#file_tornati[@]} -gt 0 ] && avvisa "Fantacalcio" "$(testo_tornati "$(printf '%s' "$tornati" | LC_ALL=C sort)")"; then
+      rm -f -- "${file_tornati[@]}"
+    fi
   fi
   while IFS= read -r nome; do
     [ -n "$nome" ] || continue
@@ -85,12 +115,14 @@ controlla_passi() {   # uscita del comando, righe del registro prima del giro
     [[ $ultimo =~ ^[0-9]{1,12}$ ]] || ultimo=0
     n=$(( n + 1 ))
     echo "passo «$nome»: non riuscito (giri di fila: $n)" >> "$LOG"
-    if [ "$n" -ge 2 ] && [ $(( adesso - ultimo )) -ge "$GIORNO" ]; then
-      avvisa "Fantacalcio" "$(testo_passo "$nome" rotto "$n")"
-      ultimo=$adesso
-    fi
     echo "$n $ultimo $nome" > "$f"
+    if [ "$n" -ge 2 ] && [ "$ultimo" = 0 ]; then         # una volta sola per guasto (mai segnalato finora)
+      da_avvisare="$da_avvisare$n $nome"$'\n'; av_file+=("$f"); av_n+=("$n"); av_nome+=("$nome")
+    fi
   done <<< "$rotti"
+  if [ ${#av_file[@]} -gt 0 ] && avvisa "Fantacalcio" "$(testo_rotti "$da_avvisare")"; then
+    for i in "${!av_file[@]}"; do echo "${av_n[$i]} $adesso ${av_nome[$i]}" > "${av_file[$i]}"; done
+  fi
   return 0
 }
 

@@ -891,9 +891,10 @@ def test_backup_dati_copia_lega_e_dati_senza_chiavi_e_non_modifica_l_originale(t
     assert not any(n.endswith("push.json") or n.endswith("vapid.json") for n in nomi)
 
 
-def _lancia_backup_dati(tmp_path, app, python=None):
+def _lancia_backup_dati(tmp_path, app, python=None, canale=None):
     """backup-dati.sh su una cartella finta. PYTHONPATH: il pacchetto `fanta` viene da questo repository (sul server sta nella
-    cartella dell'app, da cui lo script parte). `python`: un Python finto al posto di quello di sistema."""
+    cartella dell'app, da cui lo script parte). `python`: un Python finto al posto di quello di sistema. `canale`: il file con il
+    canale degli avvisi (di solito uno che non c'è: nessuna prova manda avvisi veri)."""
     bin_ = tmp_path / "bin"
     bin_.mkdir(exist_ok=True)
     _stub(bin_, "flock", "exit 0")
@@ -901,7 +902,7 @@ def _lancia_backup_dati(tmp_path, app, python=None):
     r = _lancia([BASH, (SCRIPT / "backup-dati.sh").as_posix()],
                 env={**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "FANTA_RADICE": _msys(app),
                      "FANTA_BACKUP_DIR": _msys(dest), "FANTA_CACHE": _msys(cache), "FANTA_PYTHON": python or sys.executable,
-                     "PYTHONPATH": str(RADICE)},
+                     "PYTHONPATH": str(RADICE), "SCHIERAXI_CANALE": _msys(canale or tmp_path / "nessun-canale")},
                 ripristina=lambda: [shutil.rmtree(d, ignore_errors=True) for d in (dest, cache)])
     return r, dest, cache
 
@@ -1062,6 +1063,43 @@ def test_cartella_del_server_mancante_nel_repository_non_installa(server):
     assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2          # non si riprova a ogni giro
     assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
     _lega_e_dati_intatti(s)
+    assert len(s.avvisi()) == 1 and "senza tutte le cartelle del server" in s.avvisi()[0]       # versione rifiutata: avviso
+
+
+@con_bash
+def test_copia_dei_file_che_non_riesce_avvisa_una_volta_e_poi_dice_che_e_tornata(server):
+    """#607: senza l'avviso «aggiornato», un guasto che ferma gli aggiornamenti deve farsi vedere. Disco pieno: la copia dei file
+    della versione nuova non riesce a ogni giro. Avviso al primo giro, nessuno al secondo, «di nuovo a posto» alla prima
+    installazione riuscita."""
+    s = server
+    _stub(s.bin, "tar", 'case "${1:-}" in -x) exit 1;; esac\nexec /usr/bin/tar "$@"')       # git archive | tar -x non riesce
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    assert s.esegui("aggiorna-app.sh").returncode == 1
+    assert "copia dei file non riuscita" in s.log() and s.ultimo() == s.c1
+    assert len(s.avvisi()) == 1 and "disco pieno" in s.avvisi()[0]
+    assert s.esegui("aggiorna-app.sh").returncode == 1
+    assert len(s.avvisi()) == 1                                                    # lo stesso guasto: niente secondo avviso
+    (s.bin / "tar").unlink()
+    assert s.esegui("aggiorna-app.sh").returncode == 0 and s.ultimo() == c2
+    assert len(s.avvisi()) == 2 and "di nuovo a posto" in s.avvisi()[1]
+    assert "di nuovo a posto" in s.log() and not list(s.stato.glob("guasto-*"))
+
+
+@con_bash
+def test_github_che_non_risponde_avvisa_al_terzo_giro_e_poi_dice_che_e_tornato(server, tmp_path):
+    s = server
+    clone = s.casa / "schieraxi-src"
+    origine = _git(clone, "remote", "get-url", "origin")
+    _git(clone, "remote", "set-url", "origin", (tmp_path / "non-esiste").as_posix())
+    for _ in range(2):                                                             # una volta o due capita: niente avviso
+        assert s.esegui("aggiorna-app.sh").returncode == 0 and s.avvisi() == []
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert len(s.avvisi()) == 1 and "GitHub" in s.avvisi()[0]
+    assert s.esegui("aggiorna-app.sh").returncode == 0 and len(s.avvisi()) == 1
+    _git(clone, "remote", "set-url", "origin", origine)
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert len(s.avvisi()) == 2 and "di nuovo a posto" in s.avvisi()[1]
+    assert not list(s.stato.glob("guasto-*"))
 
 
 @con_bash
