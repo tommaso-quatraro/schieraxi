@@ -286,4 +286,53 @@ struct ArrivoConGuidaApertaTests {
         #expect(nav.immagineRicevuta == nil)
         #expect(!nav.guidaChiusaDallApp)
     }
+
+    @Test("Un'immagine tra l'apertura della guida e la comparsa del suo foglio aspetta anche lei")
+    func immaginePrimaDellaComparsa() {
+        let nav = Navigazione()
+        nav.guidaAperta = true             // il foglio non è ancora comparso
+        nav.apriFile(stemma)
+        #expect(!nav.guidaAperta)
+        #expect(nav.immagineRicevuta == nil, "il foglio della guida può essere ancora in arrivo")
+        nav.guidaSparita()
+        #expect(nav.immagineRicevuta?.url == stemma)
+    }
+
+    @Test("Chiusa dall'app, la guida non conta più come sullo schermo: senza la scomparsa del foglio, l'immagine dopo si apre subito")
+    func chiusaDallAppSenzaScomparsa() {
+        let nav = Navigazione()
+        nav.guidaAperta = true
+        nav.guidaComparsa()
+        nav.chiudiGuidaDallApp()           // per esempio la sessione cambiata; `guidaSparita` non arriva
+        nav.apriFile(stemma)
+        #expect(nav.immagineRicevuta?.url == stemma)
+    }
+
+    @Test("Un'immagine in attesa si apre comunque se la scomparsa del foglio della guida non arriva")
+    func attesaSenzaScomparsa() async {
+        let nav = Navigazione()
+        nav.attesaFoglio = .milliseconds(10)
+        nav.guidaAperta = true
+        nav.guidaComparsa()
+        nav.apriFile(stemma)
+        #expect(nav.immagineRicevuta == nil)
+        let limite = ContinuousClock.now + .seconds(3)
+        while nav.immagineRicevuta == nil, ContinuousClock.now < limite {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(nav.immagineRicevuta?.url == stemma)
+    }
+
+    @Test("La guida si stava già chiudendo per scelta dell'utente: un'immagine arrivata intanto aspetta, la scelta resta sua")
+    func chiusuraDellUtenteInCorso() {
+        let nav = Navigazione()
+        nav.guidaAperta = true
+        nav.guidaComparsa()
+        nav.guidaAperta = false            // trascinata giù: il foglio si sta chiudendo
+        nav.apriFile(stemma)
+        #expect(!nav.guidaChiusaDallApp, "i passi rimasti diventano saltati come per «Più tardi»")
+        #expect(nav.immagineRicevuta == nil)
+        nav.guidaSparita()
+        #expect(nav.immagineRicevuta?.url == stemma)
+    }
 }
