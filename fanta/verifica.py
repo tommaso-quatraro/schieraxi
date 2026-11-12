@@ -313,7 +313,10 @@ def riepilogo_sorte(t: pd.DataFrame, giri: int = 4000, seme: int = 5) -> dict[st
 
 def stampa_riepilogo(t: pd.DataFrame, scrivi=print) -> None:
     """Il riepilogo per stagione di `python -m fanta verifica`: errori (radice della media dei quadrati) del modello e degli
-    avversari, punti sulle rose date e, se ci sono, sulle rose a sorte con l'intervallo."""
+    avversari, punti sulle rose date e, se ci sono, sulle rose a sorte con l'intervallo. Senza giornate verificate lo dice."""
+    if t.empty or "stagione" not in t:
+        scrivi("Nessuna giornata verificata: per le giornate scelte mancano le partite giocate con i voti o le previsioni.")
+        return
     t = t.copy()
     nomi = {"rmse_modello": "quadratico_modello", "rmse_fantamedia": "quadratico_fantamedia", "rmse_ruolo": "quadratico_ruolo",
             "rmse_fantamedia_stagione": "quadratico_fantamedia_stagione"}

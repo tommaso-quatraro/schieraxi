@@ -174,3 +174,50 @@ def test_affidabilita_porta_gli_avversari_onesti_e_le_rose_a_sorte(finto, monkey
     import json
     json.dumps(r)                              # tutto si scrive nel file dell'affidabilità
 
+
+def test_d_estate_la_prova_non_si_rifa_a_ogni_giro(monkeypatch, tmp_path):
+    """D'estate la stagione in corso non ha giornate finite e la prova usa le ultime della precedente: si rifà solo quando ne
+    finisce una nuova. Prima la chiave guardava solo la stagione in corso e la prova (con 20 rose a sorte in più per giornata)
+    ripartiva a ogni giro del cron (revisione di #642)."""
+    from fanta import affidabilita, archivio, consigli
+    db = archivio.apri(tmp_path / "a.sqlite")
+    for g in range(30, 39):
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, '2027-05-01 18:00', "
+                   "'a', 'b', 1)", (g, S2, g))
+    db.commit()
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: "2027-28")
+    monkeypatch.setattr(consigli, "dati", lambda db: None)
+    prove = []
+
+    def finta(d, regole, par, giornate, **k):
+        prove.append(list(giornate))
+        return pd.DataFrame([{"stagione": s, "giornata": g, "quadratico_modello": 2.0, "quadratico_fantamedia": 2.1} for s, g in giornate])
+    monkeypatch.setattr(verifica, "verifica", finta)
+    f = tmp_path / "affidabilita.json"
+    assert [affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f) for _ in range(3)] == [True, False, False]
+    assert len(prove) == 1 and prove[0][-1] == (S2, 38) and affidabilita.carica(f)["ultima"] == f"{S2}/38"
+    # finisce la prima giornata della stagione nuova: si rifà, una volta
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (99, '2027-28', 1, "
+               "'2027-08-22 18:00', 'a', 'b', 1)")
+    db.commit()
+    assert [affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f) for _ in range(2)] == [True, False]
+    assert len(prove) == 2 and prove[1][-1] == ("2027-28", 1)
+
+
+# ---------------------------------------------------------------- il comando su un archivio vuoto
+def test_riepilogo_senza_giornate_verificate_lo_dice():
+    righe = []
+    verifica.stampa_riepilogo(pd.DataFrame(), scrivi=righe.append)
+    assert len(righe) == 1 and righe[0].startswith("Nessuna giornata verificata")
+
+
+def test_verifica_su_un_archivio_vuoto_esce_con_un_messaggio(monkeypatch, tmp_path):
+    """`python -m fanta verifica` con l'archivio vuoto: prima una traccia (KeyError 'stagione'), ora un messaggio e l'uscita."""
+    from fanta import __main__ as cli
+    from fanta import archivio
+    vuoto = archivio.apri(tmp_path / "vuoto.sqlite")
+    monkeypatch.setattr(archivio, "apri", lambda *a, **k: vuoto)
+    with pytest.raises(SystemExit) as uscita:
+        cli.main(["verifica"])
+    assert isinstance(uscita.value.code, str) and "nessuna giornata giocata" in uscita.value.code
+

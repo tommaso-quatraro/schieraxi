@@ -648,6 +648,8 @@ def cmd_verifica(a) -> None:
         giocate = sorted(d.partite.loc[(d.partite["stagione"] == st) & (d.partite["giocata"] == 1), "giornata"].unique())
         inizio = a.dalla if st == d.stagioni[0] else 2
         giornate += [(st, int(g)) for g in giocate if g >= inizio]
+    if not giornate:
+        sys.exit("Errore: nell'archivio non c'è nessuna giornata giocata da verificare. Prima: python -m fanta aggiorna")
     r_ose = lega.carica(FILE_ROSE)
     rose_ids = [[g.id for g in s.giocatori if g.id] for s in r_ose.squadre] if r_ose else None
     print(f"Verifica su {len(giornate)} giornate" + (f" e {len(rose_ids)} rose" if rose_ids else ""))

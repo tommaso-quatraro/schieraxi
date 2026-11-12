@@ -56,17 +56,29 @@ def _arr(x):
     return None if x is None else round(x, 1)
 
 
-def calcola(db: sqlite3.Connection, regole: Regole, rose: Rose | None, simulazioni: int = 200) -> dict:
+def giornate_della_prova(db: sqlite3.Connection) -> list[tuple[str, int]]:
+    """Le giornate su cui si fa la prova: le ultime MASSIMO_GIORNATE concluse della stagione in corso, completate con le ultime
+    della precedente se sono meno di MINIMO_GIORNATE (d'estate, prima della prima giornata, sono tutte della precedente)."""
     stagione = consigli.stagione_corrente()
     precedente = f"{int(stagione[:4]) - 1}-{stagione[2:4]}"
     elenco = [(stagione, g) for g in giornate_concluse(db, stagione)[-MASSIMO_GIORNATE:]]
     if len(elenco) < MINIMO_GIORNATE:
         elenco = [(precedente, g) for g in giornate_concluse(db, precedente)[-(MASSIMO_GIORNATE - len(elenco)):]] + elenco
+    return elenco
+
+
+def _chiave(elenco: list[tuple[str, int]]) -> str | None:
+    """L'ultima giornata della prova, «stagione/giornata» (None senza giornate): dice se ne è finita una nuova."""
+    return f"{elenco[-1][0]}/{elenco[-1][1]}" if elenco else None
+
+
+def calcola(db: sqlite3.Connection, regole: Regole, rose: Rose | None, simulazioni: int = 200) -> dict:
+    elenco = giornate_della_prova(db)
     liste = [[g.id for g in s.giocatori if g.id is not None] for s in rose.squadre] if rose else None
     df = verifica.verifica(consigli.dati(db), regole, modello.Parametri(), elenco, rose=liste, simulazioni=simulazioni, scrivi=None,
                            sintetiche=verifica.ROSE_A_SORTE)
     righe = [{k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in r.items()} for r in df.to_dict("records")]
-    ultima = f"{elenco[-1][0]}/{elenco[-1][1]}" if elenco else None
+    ultima = _chiave(elenco)
     riassunto = sintesi(righe)
     # i punti su rose estratte a sorte, tutte le giornate insieme: le poche rose della lega non distinguono mezzo punto
     sorte = verifica.riepilogo_sorte(df.assign(stagione="tutte")).get("tutte") if len(df) else None
@@ -77,10 +89,10 @@ def calcola(db: sqlite3.Connection, regole: Regole, rose: Rose | None, simulazio
 
 def aggiorna_se_serve(db: sqlite3.Connection, regole: Regole, rose: Rose | None, forza: bool = False,
                       percorso: Path | None = None, simulazioni: int = 200) -> bool:
-    """Rifà la prova solo se dall'ultima volta è finita una giornata nuova. True se ha ricalcolato."""
-    stagione = consigli.stagione_corrente()
-    conc = giornate_concluse(db, stagione)
-    chiave = f"{stagione}/{conc[-1]}" if conc else None
+    """Rifà la prova solo se dall'ultima volta è finita una giornata nuova. True se ha ricalcolato. La giornata da confrontare è
+    l'ultima della prova (`giornate_della_prova`), non l'ultima della stagione in corso: d'estate quella non c'è e la prova
+    ripartiva a ogni giro del cron."""
+    chiave = _chiave(giornate_della_prova(db))
     vecchio = carica(percorso)
     if not forza and vecchio.get("ultima") == chiave and vecchio.get("righe"):
         return False
