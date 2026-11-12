@@ -82,7 +82,7 @@ def test_prima_di_8_giornate_medie_soglie_e_quante_ne_servono(tmp_path):
     assert "Media delle ultime 3 giornate misurate." in pezzi
     for nome in (I1, I2, I3):
         assert _dopo(pezzi, nome) == "servono ancora 5 giornate"
-    assert _dopo(pezzi, "servono ancora 5 giornate") == "−5,7% (deve stare a −3% o meno) · errore 1,00 contro 1,06"
+    assert _dopo(pezzi, "servono ancora 5 giornate") == "−5,7% (deve stare a +1% o meno) · errore 1,00 contro 1,06"
     assert "scarto 10 punti (al massimo 5) · punteggio di Brier 0,100 (al massimo 0,150)" in pezzi
     assert "80% (deve stare tra 72% e 88%)" in pezzi
     assert "Giornate perse" not in pezzi

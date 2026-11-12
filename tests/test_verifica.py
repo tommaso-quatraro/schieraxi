@@ -152,3 +152,25 @@ def test_punti_su_rose_a_sorte_con_intervallo_a_gruppi_di_giornata(finto):
     # senza rose a sorte la verifica è quella di sempre e il riepilogo è vuoto
     senza = verifica.verifica(d, Regole(), Parametri(), giornate, simulazioni=30, scrivi=None)
     assert "sorte_casi" not in senza.columns and verifica.riepilogo_sorte(senza) == {}
+
+
+# ---------------------------------------------------------------- affidabilità («Quanto è affidabile il modello»)
+def test_affidabilita_porta_gli_avversari_onesti_e_le_rose_a_sorte(finto, monkeypatch, tmp_path):
+    from fanta import affidabilita, archivio, consigli
+    voti = [_voto(st, g, i, 5.0 + (i * g) % 4) for st in (S1, S2) for g in range(1, 7) for i in range(1, 26)]
+    d = _dati(voti)
+    db = archivio.apri(tmp_path / "a.sqlite")
+    for g in range(1, 7):
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, '2026-09-01 18:00', "
+                   "'a', 'b', 1)", (100 + g, S2, g))
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: S2)
+    monkeypatch.setattr(consigli, "dati", lambda db: d)
+    monkeypatch.setattr(verifica, "ROSE_A_SORTE", 3)
+    r = affidabilita.calcola(db, Regole(), None, simulazioni=30)
+    s = r["sintesi"]
+    assert s["giornate"] == 6 and {"errore_modello", "errore_fantamedia", "errore_ruolo", "errore_fantamedia_stagione"} <= set(s)
+    assert s["rose_a_sorte"]["casi"] == 18 and s["rose_a_sorte"]["basso"] <= s["rose_a_sorte"]["differenza"] <= s["rose_a_sorte"]["alto"]
+    assert "sorte_modello" in r["righe"][0]
+    import json
+    json.dumps(r)                              # tutto si scrive nel file dell'affidabilità
+

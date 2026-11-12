@@ -101,7 +101,22 @@ def test_salva_i_numeri_mostrati_una_volta_sola(giornata10):
 def test_fantamedia_solo_con_le_giornate_di_prima(giornata10):
     db = giornata10
     _voto(db, 10, 101, "Alfa", "P", 9.0)                                       # la giornata stessa non conta
-    assert rg.fantamedie(db, ST, 10, Regole()) == {101: 6.25, 102: 7.0}
+    assert rg.fantamedie_tirate(db, ST, 10, Regole()) == ({101: 6.25, 102: 7.0}, {"P": 6.25, "D": 7.0})
+
+
+def test_fantamedia_tirata_verso_il_ruolo_con_tutta_la_storia(giornata10):
+    """L'avversario onesto di I1 (#614): tutti i voti di prima, anche della stagione scorsa, e 10 presenze fittizie alla media
+    del ruolo. Chi non ha voti vale la media del ruolo; un ruolo senza voti vale 6."""
+    db = giornata10
+    _voto(db, 9, 107, "Delta", "D", 5.0)                                       # difensori: 7 e 5, media 6
+    campi = "stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red"
+    db.execute(f"INSERT INTO voti ({campi}) VALUES ('2025-26', 38, 102, 'finto102', 'Gamma', 'D', 9.0)")   # stagione scorsa: conta
+    tirate, ruoli = rg.fantamedie_tirate(db, ST, 10, Regole())
+    assert ruoli == {"P": 6.25, "D": pytest.approx(7.0)}                       # (7 + 5 + 9) / 3
+    assert tirate[102] == pytest.approx((7 + 9 + 10 * 7.0) / 12, abs=1e-3) and tirate[107] == pytest.approx((5 + 10 * 7.0) / 11, abs=1e-3)
+    assert rg.avversario(tirate, ruoli, 102, "D") == tirate[102]
+    assert rg.avversario(tirate, ruoli, 999, "D") == pytest.approx(7.0)        # mai visto: la media del ruolo
+    assert rg.avversario(tirate, ruoli, 999, "C") == 6.0                       # ruolo senza voti
 
 
 def test_salva_solo_negli_ultimi_dieci_minuti_prima_della_prima_partita(giornata10, tmp_path, monkeypatch):
@@ -160,9 +175,32 @@ def test_misura_errore_brier_e_fasce_a_mano(finita):
     assert fasce[1] == [1, 0.15, 1] and fasce[0] == [1, 0.05, 0] and fasce[5] == [0, 0, 0]
 
 
-def test_senza_fantamedia_vale_sei(finita):
+def test_senza_voti_vale_la_media_del_ruolo_e_sei_se_il_ruolo_non_ne_ha(finita):
     m = rg.misura_giornata(finita, ST, 10)
     assert m["sq_fantamedia"] == pytest.approx(2.25 ** 2 + 3.0 ** 2 + 0.5 ** 2)  # (6,25-4)² + (7-10)² + (6-5,5)²
+    salvate = {r[0]: r[1] for r in finita.execute("SELECT calciatore_id, fantamedia FROM registro_giocatori")}
+    assert salvate[101] == 6.25 and salvate[104] == 6.0                         # nel registro resta l'avversario di allora
+
+
+def test_la_misura_usa_l_avversario_di_adesso_non_il_numero_salvato(finita):
+    """Le righe salvate prima di #614 hanno la fantamedia di allora (della sola stagione, vuota senza voti): la misura la
+    ricalcola dall'archivio, così tutte le giornate si misurano contro lo stesso avversario."""
+    finita.execute("UPDATE registro_giocatori SET fantamedia = 9.9 WHERE calciatore_id = 101")
+    finita.execute("UPDATE registro_giocatori SET fantamedia = NULL WHERE calciatore_id = 104")
+    m = rg.misura_giornata(finita, ST, 10)
+    assert m["sq_fantamedia"] == pytest.approx(2.25 ** 2 + 3.0 ** 2 + 0.5 ** 2)
+
+
+def test_le_giornate_misurate_con_l_avversario_di_prima_si_rimisurano_una_volta(finita):
+    db = finita
+    rg.registra_misura(db, ST, 10, rg.misura_giornata(db, ST, 10), ORA(9, 12))
+    giusto = db.execute("SELECT sq_fantamedia FROM registro_giornate WHERE giornata = 10").fetchone()[0]
+    assert rg.rimisura_avversario(db, ORA(13, 9)) == []                         # già misurata contro l'avversario di adesso
+    db.execute("UPDATE registro_giornate SET sq_fantamedia = 99.0 WHERE giornata = 10")       # come una misura di prima di #614
+    assert rg.rimisura_avversario(db, ORA(13, 9)) == [(ST, 10)]
+    riga = db.execute("SELECT sq_fantamedia, misurato FROM registro_giornate WHERE giornata = 10").fetchone()
+    assert riga[0] == pytest.approx(giusto) and riga[1] == "2026-11-13T09:00:00"
+    assert rg.rimisura_avversario(db, ORA(13, 10)) == []
 
 
 def test_partita_rinviata_non_tiene_aperta_la_giornata(finita):
@@ -239,6 +277,18 @@ def test_medie_sommano_le_giornate_della_finestra():
     assert m["calibrazione"] == 0.125                                           # (4 × |0,925 - 0,75| + 4 × |0,175 - 0,25|) / 8
     assert m["copertura"] == 0.85                                               # 17 su 20
     assert rg.medie([])["giornate"] == 0 and rg.medie([])["i1"] is None
+
+
+def test_soglia_i1_contro_la_fantamedia_tirata():
+    """Contro un avversario onesto il modello vince di poco (circa l'1%): I1 regge finché non sbaglia più dell'1% in più."""
+    assert rg.SOGLIE["I1"] == 0.01
+    base = {"voti": 100, "presenze": 100, "brier_somma": 10.0, "fasce": _fasce(), "fascia_casi": 20, "fascia_dentro": 16}
+    pari = rg.medie([{**base, "sq_modello": 100.0, "sq_fantamedia": 100.0}] * 8)
+    assert pari["i1"] == 0.0 and pari["regge"]["I1"] is True
+    peggio = rg.medie([{**base, "sq_modello": 104.1, "sq_fantamedia": 100.0}] * 8)      # +2% di errore
+    assert peggio["i1"] == 0.02 and peggio["regge"]["I1"] is False and "I1" in peggio["fuori"]
+    _, testo = rg.testo_avviso(["I1"], peggio)
+    assert "2% sopra" in testo and "fantamedia tirata verso il ruolo" in testo and "più dell'1%" in testo
 
 
 def test_nessun_verdetto_prima_di_otto_giornate():
