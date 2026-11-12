@@ -77,8 +77,10 @@ final class FumoUITests: XCTestCase {
         for voce in ["Squadre e rose", "Aggiorna le rose"] {
             attendi(voce, contiene: true)
         }
-        // le pagine tolte non hanno più una voce
-        for tolta in ["Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Calendario"] {
+        // le pagine tolte non hanno più una voce. «Calendario» qui non si cerca: la parola c'è comunque a video (con ogni
+        // probabilità è il nome che l'accessibilità dà all'icona della scheda Oggi, il simbolo «calendar», nella barra in basso) e
+        // il controllo falliva senza una voce di menu. Che la voce non ci sia lo prova `MenuLegaComeLaWebTests.nienteVociTolte`
+        for tolta in ["Cambi consigliati", "Seguiti", "Elenco dei giocatori"] {
             XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare in Squadra")
         }
     }
