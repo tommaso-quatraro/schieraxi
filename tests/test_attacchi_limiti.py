@@ -87,12 +87,19 @@ def test_un_accesso_riuscito_non_consuma_i_limiti(web, monkeypatch):
         assert da("5.5.5.5").post("/api/account/accedi", json={"nome_utente": "marco", "password": PASSWORD}).status_code == 200
 
 
-def test_raffica_sul_codice_email_al_massimo_cinque_prove(web, posta_finta):
-    """prova5: 39 codici sbagliati e quello giusto per ultimo, tutti insieme (IPv6 diversi). Prima: 8 prove, giusto accettato."""
+def test_raffica_sul_codice_email_al_massimo_cinque_prove(web, posta_finta, multiutente):
+    """prova5: 39 codici sbagliati e quello giusto per ultimo, tutti insieme (IPv6 diversi). Prima: 8 prove, giusto accettato.
+    Ogni giro prova un codice nuovo: passa un'ora (al massimo 3 email all'ora allo stesso indirizzo, e la verifica è la prima)
+    e il codice si legge dall'email arrivata in quel giro, non dall'ultima: se il giusto vince, dopo c'è l'avviso «password
+    cambiata», che non ha codice."""
     utente_con_email(posta_finta=posta_finta)
     for giro in range(3):
+        multiutente.t += account.ORA + 1
+        gia = len(ultimi(posta_finta, "marco@example.com"))
         da(f"9.9.{giro}.9").post("/api/account/recupero-email", json={"email": "marco@example.com"})
-        giusto = codice_di(ultimi(posta_finta, "marco@example.com")[-1])
+        arrivate = ultimi(posta_finta, "marco@example.com")[gia:]
+        assert len(arrivate) == 1, [m.oggetto for m in arrivate]            # il codice di questo giro
+        giusto = codice_di(arrivate[0])
         prove = [f"{(int(giusto) + k + 1) % 10 ** 6:06d}" for k in range(39)] + [giusto]
         esiti = in_parallelo(lambda i: da(f"2001:db8:{giro}:{i}::1").post(  # noqa: B023 in_parallelo finisce prima del giro dopo
             "/api/account/recupero-email/conferma",

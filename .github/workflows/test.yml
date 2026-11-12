@@ -125,8 +125,8 @@ jobs:
   # pytest in un ambiente a parte, versioni e hash fissati in .github/browser-requisiti.txt. BROWSER_OBBLIGATORIO=1: senza
   # Playwright o senza Chrome i test falliscono invece di saltare (qui un test saltato sarebbe un verde finto).
   # Guida: tests/browser/LEGGIMI.md.
-  # Per ora SOLO AVVISO: fuori dai «needs» di «unisci». Diventa bloccante quando la web nuova è unita: «browser» nei needs di
-  # «unisci» e «needs.browser.result == 'success'» nella sua condizione (nelle PR il job non si salta mai: basta questo).
+  # BLOCCA L'UNIONE: «unisci» lo aspetta e lo vuole riuscito. Nelle PR il job non si salta mai (se la PR non tocca la web
+  # salta solo i passi e resta verde), quindi una PR che non c'entra non resta ferma.
   browser:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
     runs-on: ubuntu-latest
@@ -349,7 +349,7 @@ jobs:
   # Unione automatica (squash, ramo cancellato) solo per le PR del proprietario, non in bozza, con i controlli verdi
   # (iOS: verde, oppure saltato perché la PR non tocca ios/; revisione IA e ambito verdi). Mai per Dependabot e mai per le PR da fork.
   unisci:
-    needs: [test, script-server, versione, cambi, ios, revisione-ia, ambito]
+    needs: [test, script-server, versione, cambi, ios, revisione-ia, ambito, browser]
     if: >-
       !cancelled() &&
       github.event_name == 'pull_request' && !github.event.pull_request.draft &&
@@ -359,6 +359,7 @@ jobs:
       needs.test.result == 'success' && needs.script-server.result == 'success' &&
       needs.versione.result == 'success' && needs.cambi.result == 'success' &&
       needs.revisione-ia.result == 'success' && needs.ambito.result == 'success' &&
+      needs.browser.result == 'success' &&
       (needs.ios.result == 'success' || (needs.ios.result == 'skipped' && needs.cambi.outputs.ios == 'false'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
