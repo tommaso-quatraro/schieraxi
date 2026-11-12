@@ -313,3 +313,109 @@ def test_file_scritti_davvero_senza_segreti(tmp_path):
         for segreto in (invito, password, recupero):
             assert segreto not in testo, (nome, segreto)
     assert (tmp_path / "03-rientro.png").is_file()
+
+
+# ---- #598: nel passo `installabile` la nota «primo avvio aperto / NON aperto» guardava appena l'app era pronta, ma il foglio
+# del primo avvio si apre dopo (prima la risposta del server sullo stato della guida): la foto dello stesso passo lo mostrava aperto.
+class _Nodo:
+    """Un elemento della pagina finta: il foglio del primo avvio (`.pa-capo`) compare quando l'orologio arriva al ritardo."""
+
+    def __init__(self, pagina, selettore):
+        self.pagina, self.selettore = pagina, selettore
+
+    @property
+    def first(self):
+        return self
+
+    def _quando(self):
+        return self.pagina.ritardo_ms if ".pa-capo" in self.selettore else 0       # None = non compare mai
+
+    def count(self):
+        quando = self._quando()
+        return int(quando is not None and self.pagina.adesso_ms >= quando)
+
+    def is_visible(self):
+        return bool(self.count())
+
+    def wait_for(self, state="visible", timeout=None):
+        assert state == "visible"
+        limite = self.pagina.adesso_ms + (self.pagina.limite_ms if timeout is None else timeout)
+        quando = self._quando()
+        if quando is not None and quando <= limite:
+            self.pagina.adesso_ms = max(self.pagina.adesso_ms, quando)
+            return
+        self.pagina.adesso_ms = limite
+        raise TimeoutError(f"Timeout {timeout}ms exceeded.")             # lo stesso nome dell'errore di Playwright
+
+    def inner_text(self):
+        return "Benvenuto in SchieraXI"
+
+
+class _PaginaLenta:
+    """La web aperta dalla Home, finta e con un orologio suo (niente attese vere): service worker e app pronti subito, il
+    foglio del primo avvio dopo `ritardo_ms` (None = mai)."""
+
+    def __init__(self, ritardo_ms):
+        self.ritardo_ms, self.adesso_ms, self.limite_ms = ritardo_ms, 0, 30000
+
+    def on(self, *a):
+        pass
+
+    def set_default_timeout(self, ms):
+        self.limite_ms = ms
+
+    def goto(self, *a, **k):
+        pass
+
+    def wait_for_function(self, *a, **k):
+        pass
+
+    def wait_for_timeout(self, ms):
+        self.adesso_ms += ms
+
+    def locator(self, selettore):
+        return _Nodo(self, selettore)
+
+    def evaluate(self, codice, *a):
+        if "manifest" in codice:
+            return {"name": "SchieraXI", "display": "standalone", "start_url": "/",
+                    "icons": [{"sizes": "192x192"}, {"sizes": "512x512"}]}
+        return {"icona": 200, "capace": "yes", "titolo": "SchieraXI"}
+
+
+class _Contesto:
+    def __init__(self, nuova):
+        self.pages, self.nuova = [_PaginaLenta(None)], nuova
+
+    def new_page(self):
+        return self.nuova
+
+    def new_cdp_session(self, pagina):
+        return SimpleNamespace(send=lambda *a: {"installabilityErrors": []})
+
+
+def _installabile(tmp_path, ritardo_ms):
+    m = _modulo()
+    nuova = _PaginaLenta(ritardo_ms)
+    g = m.Giro(_Contesto(nuova), "http://localhost:8005", tmp_path, [])
+    g.passo = "installabile"
+    m.passo_installabile(g)
+    nota = [d for d in g.dettagli if "primo avvio" in d]
+    assert len(nota) == 1, g.dettagli
+    return nota[0], nuova.adesso_ms
+
+
+def test_installabile_aspetta_il_primo_avvio_che_si_apre_dopo_l_app(tmp_path):
+    nota, _ = _installabile(tmp_path, ritardo_ms=1500)
+    assert "primo avvio aperto" in nota and "NON aperto" not in nota
+
+
+def test_installabile_dice_non_aperto_solo_dopo_il_tempo_massimo(tmp_path):
+    nota, atteso_ms = _installabile(tmp_path, ritardo_ms=None)
+    assert "primo avvio NON aperto" in nota
+    assert 5000 <= atteso_ms <= 30000                    # ha aspettato, ma non all'infinito
+
+
+def test_installabile_con_il_primo_avvio_gia_aperto_non_aspetta(tmp_path):
+    nota, atteso_ms = _installabile(tmp_path, ritardo_ms=0)
+    assert "primo avvio aperto" in nota and atteso_ms == 0

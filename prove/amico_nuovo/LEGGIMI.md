@@ -95,7 +95,9 @@ si rifiuta di scrivere dentro il repository o, da una worktree, dentro la cartel
 <passo> secondi=<s> tocchi=<n> errori-console=<n> gravi=<n> esito=<ok|bloccato|errore:<tipo>>
 ```
 
-- `dettagli.txt`: il motivo di ogni passo non ok, i messaggi visti (file sbagliato, invito usato), il riassunto dell'anteprima;
+- `dettagli.txt`: il motivo di ogni passo non ok, i messaggi visti (file sbagliato, invito usato), il riassunto dell'anteprima,
+  e se la web aperta di nuovo nel passo `installabile` riprende il primo avvio (aspetta il foglio fino a 10 secondi: si apre
+  dopo l'app);
 - `<nn>-<passo>.png`: la schermata alla fine di ogni passo, con i campi del codice d'invito e del codice di recupero coperti;
 - `axe-<nn>-<passo>.json`: le violazioni di axe (regole WCAG 2.0, 2.1 e 2.2, livelli A e AA) sulla schermata di fine passo;
 - i file delle rose (`rose.txt`, `rosters.csv` o `rose.xlsx`) e, in locale, `calendario.csv` e `server.log`.
