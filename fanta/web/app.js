@@ -2255,9 +2255,9 @@ function cartaScelteTue(st, v) {
     <div class="stat-fila"><div><b>${st.meglio_tua}</b><span>${t("avv.meglio_tue")}</span></div><div><b>${st.meglio_consigliata}</b><span>${t("avv.meglio_consiglio")}</span></div>
       <div><b>${st.pari}</b><span>${t("mercato.pari")}</span></div></div>
     <div>${totale} ${st.pochi_dati ? t("avv.pochi_dati") : t("avv.piu_punti_tu", { p: st.percentuale_tua })}</div>
+    ${rigaNota}
     <ul class="elenco-scelte">${prime.map(riga).join("")}</ul>
-    ${altre.length ? `<details><summary>${tp("avv.altre_giornate", altre.length)}</summary><ul class="elenco-scelte">${altre.map(riga).join("")}</ul></details>` : ""}
-    ${rigaNota}</div>`;
+    ${altre.length ? `<details><summary>${tp("avv.altre_giornate", altre.length)}</summary><ul class="elenco-scelte">${altre.map(riga).join("")}</ul></details>` : ""}</div>`;
 }
 
 // Diario delle giornate: formazione schierata contro consigliata, con i punti attesi e quelli fatti.

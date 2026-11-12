@@ -26,3 +26,6 @@ avv.avevi_scelto_ore
 avv.dalle
 avv.alle
 avv.manda_avviso_prova
+
+# Il Diario: la spiegazione dentro «Come si legge» (DiarioView.perOgniGiornata)
+avv.per_ogni_giornata

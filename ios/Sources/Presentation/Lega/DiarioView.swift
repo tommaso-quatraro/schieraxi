@@ -118,9 +118,10 @@ struct DiarioView: View {
 
     /// I testi in cima al Diario, uguali alla web (`avv.diario_riga`, `mercato.come_legge` e `avv.per_ogni_giornata` di `testi.js`):
     /// una riga sempre visibile e la spiegazione lunga nella parte richiudibile «Come si legge», chiusa all'apertura come sulla web.
+    /// La spiegazione viene dal catalogo (#614: dice della consigliata mostrata e delle giornate che non entrano nel confronto).
     static let rigaIntro = "Giornata per giornata: la formazione che hai schierato contro la consigliata."
     static let comeSiLegge = Catalogo.Mercato.comeLegge
-    static let perOgniGiornata = "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI ti avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina la sceglie SchieraXI in entrambi i casi. SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la trovi qui, con in evidenza i giocatori che hai cambiato. Si aggiorna da solo dopo ogni giornata."
+    static let perOgniGiornata = Catalogo.Avv.perOgniGiornata
 
     /// L'etichetta dei punti della consigliata di una giornata, come `etichettaConsigliataDiario` della web (#614): segue
     /// `consigliata.origine`. «mostrata» = sono i punti della consigliata mostrata prima della scadenza; altrimenti è una

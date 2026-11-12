@@ -103,6 +103,22 @@ def test_senza_niente_di_schierato_resta_la_frase_di_prima_e_niente_scelte():
     assert NON_SAPPIAMO["it"] in _testo(qp) and st == ""
 
 
+# ---------------------------------------------------------------- la stessa risposta nei test dell'iPhone (DiarioNotaTests.swift)
+FIXTURE_IOS = codice_web.WEB.parent.parent / "ios" / "Tests" / "Fixtures" / "diario-nota.json"
+
+
+def _risposte() -> dict:
+    """Per ogni caso la risposta di `GET /api/diario` (solo i due blocchi che servono), come la scrive il server."""
+    return {"casi": {nome: {"giornate": [], "scelte_tue": diario.scelte_tue(voci), "precisione": precisione.riassunto(voci)}
+                     for nome, voci in CASI.items()}}
+
+
+def test_la_fixture_dell_iphone_e_la_risposta_del_server():
+    """`ios/Tests/Fixtures/diario-nota.json` è quello che il server scrive oggi per i tre casi (dati inventati). Se cambia, si
+    rifà scrivendo `_risposte()` nel file (JSON, `indent=1`)."""
+    assert json.loads(FIXTURE_IOS.read_text(encoding="utf-8")) == _risposte()
+
+
 def test_un_server_di_prima_senza_la_frase_non_rompe_le_carte():
     """Un server che non manda `nota`: «Le tue scelte» senza giornate non si mostra, il confronto dice la frase di sempre."""
     qp, st = _node("""
