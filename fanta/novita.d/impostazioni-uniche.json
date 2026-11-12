@@ -13,6 +13,6 @@
     "Web: `VISTE` = formazione, giornate, impostazioni. Le pagine di Impostazioni: `?vista=impostazioni&gruppo=rose|squadra|squadre|regole|account|informazioni|gestione`, la rosa di un'altra squadra con `&rosa=`. `dove()` in `app.js` traduce indirizzi, valori salvati, messaggi del service worker e destinazioni di `da_fare` di prima (`squadra`, `altro`, `lega`, `mercato`, `scambi`, `regole`, `rosa`, gruppi `avanzate`, `aspetto`, `avvisi`). Tolti l'ingranaggio e le frecce della testata.",
     "Avvisi: la web manda solo `silenzio` (PUT /api/avvisi, campi mandati soltanto) e iscrive o toglie il dispositivo (`/api/push/iscrivi`, `/api/push/disiscrivi`); gli altri campi restano sul server. Nessuna rotta cambiata: l'iPhone non cambia.",
     "Stato dei dati usa il campo `etichetta` di `aggiornamenti` e `controlli`. Schermata di accesso: gli avvisi in una regione `role=\"status\"`, gli errori con `role=\"alert\"`.",
-    "Frasi del server: «Indica la tua squadra in Impostazioni > La mia squadra» (consigli.py, gestione.py, server.py). `fanta/diario.py` dice ancora «Squadra > Squadre e rose»: la sua traduzione resta nel catalogo (`err.indica_prima_squadra_diario`)."
+    "Frasi del server senza percorso di menu, giuste sulla web e sull'iPhone: «Indica la tua squadra in «La mia squadra»» (consigli.py, gestione.py, server.py) e «Nessuna rosa importata: importale con «Aggiorna le rose»». `fanta/diario.py` dice ancora «Squadra > Squadre e rose»: la sua traduzione resta nel catalogo (`err.indica_prima_squadra_diario`)."
   ]
 }
