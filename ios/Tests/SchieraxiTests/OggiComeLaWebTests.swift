@@ -7,8 +7,9 @@ import UIKit
 /// Oggi come la web (#416, parte di #167). Con la grafica B (#415) la web parte dalla giornata con il conto alla rovescia, senza il
 /// nome SchieraXI e lo slogan, e ha un ordine nuovo: la formazione con «Apri la formazione» subito sotto il conto, poi Partita
 /// rinviata, Da fare e novità; poi I tuoi migliori, Da controllare, Indisponibili, Diffidati e Partite del turno.
-/// L'ordine dell'iPhone sta in un posto solo (`SezioneOggi.ordine`, che la schermata percorre) e qui si confronta con l'ordine in cui
-/// `mostraOggi` di `fanta/web/app.js` scrive le sezioni: una sezione spostata su un lato solo fa fallire il test.
+/// L'ordine dell'iPhone sta in un posto solo (`SezioneOggi.ordine`, che la schermata percorre) e qui si confronta, fase per fase,
+/// con quello che `mostraOggi` della web scriveva il 12/11/2026. Dal rifacimento della web (spec `2026-11-12-revisione-generale-design`)
+/// il codice della web non si legge più: l'app resta com'è finché il proprietario non decide.
 @Suite("Oggi come la web: niente nome in cima, sezioni nell'ordine della web (#416)")
 struct OggiComeLaWebTests {
 
@@ -46,52 +47,11 @@ struct OggiComeLaWebTests {
         }
     }
 
-    @Test("Ogni fase ha le sezioni nell'ordine in cui la web le scrive in mostraOggi", arguments: [FaseGiornata.prima, .inCorso, .finita])
-    func ordineComeLaWeb(fase: FaseGiornata) throws {
-        let web = try OggiWeb()
-        let sezioni = SezioneOggi.ordine(fase: fase, conGiornata: true)
-        let posizioni = try sezioni.compactMap(OggiWeb.segno).map { try web.posizione($0) }
-        #expect(!posizioni.isEmpty)
-        #expect(posizioni == posizioni.sorted(), "ordine dell'iPhone \(sezioni) diverso da quello della web")
-    }
-
-    /// L'ordine da solo non basta: una sezione tolta su un lato solo lascerebbe giusto l'ordine delle altre. Qui l'insieme delle
-    /// sezioni di ogni fase si confronta con quello che la web mostra, letto dalle condizioni di `mostraOggi`.
-    @Test("Ogni segno delle sezioni della web c'è davvero in mostraOggi")
-    func segniNellaWeb() throws {
-        let web = try OggiWeb()
-        let segni = SezioneOggi.allCases.compactMap(OggiWeb.segno)
-        #expect(!segni.isEmpty)
-        let mancanti = segni.filter { web.mostraOggi.range(of: $0) == nil }
-        #expect(mancanti.isEmpty, "in mostraOggi di fanta/web/app.js mancano \(mancanti): aggiorna OggiWeb.segno")
-    }
-
-    @Test("Ogni fase ha le stesse sezioni della web, né una in più né una in meno", arguments: [FaseGiornata.prima, .inCorso, .finita])
-    func stesseSezioniDellaWeb(fase: FaseGiornata) throws {
-        let web = try OggiWeb()
-        let attese = try web.sezioni(fase: fase)
-        let iPhone = Set(SezioneOggi.ordine(fase: fase, conGiornata: true).compactMap(OggiWeb.comeSullaWeb))
-        #expect(iPhone == attese, "in più sull'iPhone: \(iPhone.subtracting(attese)); mancano sull'iPhone: \(attese.subtracting(iPhone))")
-    }
-
-    /// La web ha una carta sola, senza titolo (`cardInCorso`): cifre, chi deve ancora giocare, chi va a punteggio, poi i cambi
-    /// dalla panchina. Sull'iPhone è la sola sezione `.inCorso` (`CartaGiornataInCorso`), con le parti nello stesso ordine.
-    @Test("Giornata in corso: una carta sola, prima chi va a punteggio, poi i cambi dalla panchina, come la carta della web")
-    func inCorsoComeLaWeb() throws {
-        let web = try OggiWeb()
-        let righe = try #require(web.cardInCorso.range(of: "a_punteggio"), "cardInCorso non ha più le righe di chi va a punteggio")
-        let cambi = try #require(web.cardInCorso.range(of: "\"oggi.cambi_panchina\""), "cardInCorso non ha più i cambi dalla panchina")
-        #expect(righe.lowerBound < cambi.lowerBound)
-        #expect(!web.cardInCorso.contains("<h2>"), "la carta della web non ha titolo")
-        let sezioni = SezioneOggi.ordine(fase: .inCorso, conGiornata: true)
-        #expect(sezioni.filter { OggiWeb.segno($0) == OggiWeb.segno(.inCorso) } == [.inCorso], "sull'iPhone la carta è una sola")
-    }
-
     // MARK: testa della schermata
 
     @Test("In cima a Oggi niente nome SchieraXI né slogan: si parte dalla giornata con il conto alla rovescia")
     func nienteNomeNeSlogan() throws {
-        let sorgente = try OggiWeb.sorgenteIPhone("ios/Sources/Presentation/Oggi/OggiView.swift")
+        let sorgente = try CodiceOggiIPhone.leggi("Sources/Presentation/Oggi/OggiView.swift")
         #expect(!sorgente.contains("WordmarkSchieraXI"), "OggiView disegna ancora il nome SchieraXI")
         #expect(!sorgente.contains("SloganSchieraXI"), "OggiView mostra ancora lo slogan")
         #expect(!sorgente.contains("Schierali"))
@@ -107,11 +67,11 @@ struct OggiComeLaWebTests {
     /// La web faceva salire i punti attesi da 0 (`animaNumero`) e una foto o una scheda in secondo piano restava a metà
     /// («8,9» in Oggi, «65,5» in Formazione, #415). `NumeroCheSale` dell'iPhone fa lo stesso: parte da 0 a ogni comparsa.
     @Test("In Oggi i numeri si scrivono subito giusti: niente NumeroCheSale, che parte da 0", arguments: [
-        "ios/Sources/Presentation/Oggi/OggiView.swift",
-        "ios/Sources/Presentation/Oggi/FasiGiornataView.swift",
+        "Sources/Presentation/Oggi/OggiView.swift",
+        "Sources/Presentation/Oggi/FasiGiornataView.swift",
     ])
     func nienteNumeriCheSalgono(file: String) throws {
-        let sorgente = try OggiWeb.sorgenteIPhone(file)
+        let sorgente = try CodiceOggiIPhone.leggi(file)
         #expect(!sorgente.contains("NumeroCheSale"))
     }
 
@@ -152,7 +112,7 @@ struct OggiComeLaWebTests {
     /// condizioni). «Risultati in diretta» spenta toglie solo i risultati in diretta (punteggio, minuto, eventi), non le partite.
     @Test("Partite del turno c'è sempre: in OggiView la sezione non dipende da «Risultati in diretta»")
     func partiteSempre() throws {
-        let sorgente = try OggiWeb.sorgenteIPhone("ios/Sources/Presentation/Oggi/OggiView.swift")
+        let sorgente = try CodiceOggiIPhone.leggi("Sources/Presentation/Oggi/OggiView.swift")
         let caso = try #require(sorgente.range(of: "case .partite:"), "OggiView non ha più la sezione delle partite")
         // il corpo del caso: fino alla fine della funzione `sezione` (la graffa a 4 spazi)
         let resto = sorgente[caso.upperBound...]
@@ -214,117 +174,18 @@ struct OggiComeLaWebTests {
     }
 }
 
-/// Il codice di Oggi della web (`fanta/web/app.js`), letto dal repository come `TestiWeb` e `VociLegaWeb`.
-private struct OggiWeb {
+/// I file dell'app che alcune prove di Oggi leggono come testo (percorso dalla cartella `ios/`).
+private enum CodiceOggiIPhone {
     struct Errore: Error, CustomStringConvertible {
         let description: String
     }
 
-    let mostraOggi: String
-    let cardInCorso: String
-
-    init(file: String = #filePath) throws {
-        let app = try Self.leggi("fanta/web/app.js", file: file)
-        mostraOggi = try Self.funzione("mostraOggi(o, opz = {})", in: app)
-        cardInCorso = try Self.funzione("cardInCorso(c, f)", in: app)
-    }
-
-    /// Dove la web scrive una sezione: il segno che la riconosce nel codice di `mostraOggi`. Nil per le sezioni solo dell'iPhone
-    /// (il benvenuto della web è un'altra funzione, `mostraOggiSenzaRose`; la frase senza giornata e il suggerimento non ci sono).
-    /// La carta della giornata in corso è, sui due lati, una sola (`cardInCorso`, #436).
-    static func segno(_ sezione: SezioneOggi) -> String? {
-        switch sezione {
-        case .benvenuto, .senzaGiornata, .suggerimento: return nil
-        case .conto: return "class=\"conto-oggi"
-        case .riepilogo: return "cardRiepilogo("
-        case .inCorso: return "cardInCorso("
-        case .formazione: return "class=\"formazione-oggi\""
-        case .rinvio: return "cardRinvio("
-        case .daFare: return "cardDaFare("
-        case .novita: return "banner-novita"
-        case .migliori: return "\"oggi.tuoi_migliori_della\""
-        case .daControllare: return "\"oggi.da_controllare\""
-        case .indisponibili: return "\"oggi.indisponibili\""
-        case .diffidati: return "\"oggi.diffidati\""
-        case .partite: return "\"oggi.partite_del_turno\""
-        }
-    }
-
-    /// La sezione come la conta la web: nil per quelle solo dell'iPhone; le tre della giornata in corso sono una sola.
-    static func comeSullaWeb(_ sezione: SezioneOggi) -> SezioneOggi? {
-        guard let s = segno(sezione) else { return nil }
-        return s == segno(.inCorso) ? .inCorso : sezione
-    }
-
-    /// Le sezioni che la web mostra in una fase (con una giornata in calendario e i dati della giornata in corso).
-    /// Le quattro liste di consigli e avvisi le svuota il codice di `mostraOggi` (`const migliori = inCorso || finita ? [] : …`):
-    /// le loro fasi si leggono da lì. Le altre condizioni stanno nel markup: riepilogo solo a giornata finita (`finita ? cardRiepilogo`),
-    /// giornata in corso solo nella sua fase (`inCorso ? … cardInCorso`), formazione tranne a giornata in corso con i suoi dati
-    /// (`inCorso && (o.in_corso || o.senza_formazione) ? ""`); conto, rinvio, Da fare, novità e partite sempre.
-    func sezioni(fase: FaseGiornata) throws -> Set<SezioneOggi> {
-        var sezioni: Set<SezioneOggi> = [.conto, .rinvio, .daFare, .novita, .partite]
-        switch fase {
-        case .prima: sezioni.insert(.formazione)
-        case .inCorso: sezioni.insert(.inCorso)
-        case .finita: sezioni.formUnion([SezioneOggi.riepilogo, .formazione])
-        }
-        let liste: [(String, SezioneOggi)] = [("inFormazione", .daControllare), ("migliori", .migliori),
-                                              ("indisponibili", .indisponibili), ("altri", .diffidati)]
-        for (variabile, sezione) in liste {
-            let vuote = try fasiVuote(variabile)
-            if !vuote.contains(fase) { sezioni.insert(sezione) }
-        }
-        return sezioni
-    }
-
-    /// Le fasi in cui `mostraOggi` svuota una lista: `const migliori = inCorso || finita ? [] : o.migliori;` → in corso e finita.
-    func fasiVuote(_ variabile: String) throws -> Set<FaseGiornata> {
-        guard let inizio = mostraOggi.range(of: "const \(variabile) = ") else {
-            throw Errore(description: "in mostraOggi non trovo «const \(variabile) = …»: aggiorna OggiWeb.sezioni")
-        }
-        let riga = String(mostraOggi[inizio.upperBound...].prefix { $0 != "\n" })
-        guard let fine = riga.range(of: " ? [] :") else {
-            throw Errore(description: "la riga di «\(variabile)» non ha più la forma «condizione ? [] : …»: \(riga)")
-        }
-        var fasi: Set<FaseGiornata> = []
-        for parola in riga[..<fine.lowerBound].components(separatedBy: "||") {
-            switch parola.trimmingCharacters(in: .whitespaces) {
-            case "inCorso": fasi.insert(.inCorso)
-            case "finita": fasi.insert(.finita)
-            default: throw Errore(description: "condizione di «\(variabile)» che il test non sa leggere: \(riga)")
-            }
-        }
-        return fasi
-    }
-
-    /// La posizione (in caratteri) del primo segno nel codice di `mostraOggi`.
-    func posizione(_ segno: String) throws -> Int {
-        guard let r = mostraOggi.range(of: segno) else {
-            throw Errore(description: "in mostraOggi di fanta/web/app.js non trovo «\(segno)»: aggiorna OggiWeb.segno")
-        }
-        return mostraOggi.distance(from: mostraOggi.startIndex, to: r.lowerBound)
-    }
-
-    /// Un file dell'app, per i controlli sul codice di Oggi (percorso dalla radice del repository).
-    static func sorgenteIPhone(_ percorso: String, file: String = #filePath) throws -> String {
-        try leggi(percorso, file: file)
-    }
-
-    private static func leggi(_ percorso: String, file: String) throws -> String {
-        var radice = URL(fileURLWithPath: file)
-        for _ in 0..<4 { radice.deleteLastPathComponent() }          // OggiComeLaWebTests.swift, SchieraxiTests, Tests, ios
-        guard let testo = try? String(contentsOf: radice.appendingPathComponent(percorso), encoding: .utf8) else {
-            throw Errore(description: "non riesco a leggere \(percorso) dal repository")
+    static func leggi(_ percorso: String, file: String = #filePath) throws -> String {
+        var ios = URL(fileURLWithPath: file)
+        for _ in 0..<3 { ios.deleteLastPathComponent() }          // OggiComeLaWebTests.swift, SchieraxiTests, Tests
+        guard let testo = try? String(contentsOf: ios.appendingPathComponent(percorso), encoding: .utf8) else {
+            throw Errore(description: "non riesco a leggere ios/\(percorso) dal repository")
         }
         return testo
-    }
-
-    /// Il corpo di una funzione di primo livello di app.js: da «function nome(…) {» alla riga «}» che la chiude.
-    private static func funzione(_ firma: String, in app: String) throws -> String {
-        guard let inizio = app.range(of: "\nfunction \(firma) {"),
-              let fine = app.range(of: "\n}\n", range: inizio.upperBound..<app.endIndex) else {
-            throw Errore(description: "in fanta/web/app.js non trovo «function \(firma) { … }»")
-        }
-        return String(app[inizio.upperBound..<fine.lowerBound])
     }
 }

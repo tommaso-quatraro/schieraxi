@@ -2,7 +2,7 @@
 # Se una pull request cambia uno di questi file, i test iOS devono ripartire: lo fanno il job «cambi» di test.yml
 # e il segno «già verde» di ios.yml, che leggono questo elenco. Il controllo tests/test_ios_file_esterni.py fallisce
 # se un test iOS legge un file del repository che non è qui (e se qui c'è un file che nessun test legge).
+# Mai i file della web (fanta/web/): dal 12/11/2026 la web si rifà per conto suo e l'app resta com'è, quindi i test iOS non la
+# leggono più (un testo della web che serve a una prova si copia fermo in TestiWeb.swift).
 fanta/frasi.py
-fanta/web/testi.js
 fanta/funzioni.py
-fanta/web/app.js
