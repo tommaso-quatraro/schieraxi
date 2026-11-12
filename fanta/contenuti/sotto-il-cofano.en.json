@@ -334,7 +334,7 @@
         "Fantacalcio.it: list of players (once a day), fixtures, ratings of the matchdays (the played ones that are missing plus those finished less than 4 days ago, because corrections arrive later) and probable line-ups (at every update).",
         "Understat: xG, xA, shots, minutes and penalties taken, match by match (totals at every update, detail of the played matches that are missing). It is the only source of these statistics: if it disappeared, there would be a paid plan B still to be decided.",
         "football-data.co.uk: only team statistics (xG, shots, corners, cards) for the matches played and for the next ones (at most every 6 hours), kept in shadow.",
-        "On the server the update is scheduled at 8, 13, 17 and 21 every day. Requests are polite: one at a time, at least a second of pause, up to 3 attempts, and what is already there is not downloaded again. The data can always be rebuilt from scratch.",
+        "On the server the update is scheduled at 8, 13, 17 and 21 every day. Requests are polite: one at a time, at least a second of pause, up to 3 attempts, and what is already there is not downloaded again. Not everything can be downloaded again (a source that closes does not give back past seasons): that is why every night the server makes a copy of the archive.",
         "The European cups (for rotation) are dates entered by hand and must be updated."
       ],
       "rimandi": ["Data status"]
@@ -371,7 +371,7 @@
     "tecnologia": {
       "titolo": "The technology in brief",
       "paragrafi": [
-        "The brain is in Python (pandas and numpy for the calculations). The server is FastAPI; the archive of downloaded data is a SQLite database in a single file, which can be rebuilt from scratch, while your things (rules, squads, choices, observations, settings) are small JSON files written safely (first to a temporary file, then renamed, so a failure halfway does not ruin the old one).",
+        "The brain is in Python (pandas and numpy for the calculations). The server is FastAPI; the archive of downloaded data is a SQLite database in a single file, copied every night, while your things (rules, squads, choices, observations, settings) are small JSON files written safely (first to a temporary file, then renamed, so a failure halfway does not ruin the old one).",
         "The web app is a PWA (it installs on the phone) made with HTML, CSS and JavaScript with no libraries or build step. The iPhone app is native, in SwiftUI; the Android one is in Jetpack Compose with Material 3 (at an early stage). They all talk to the same server: the texts and numbers on this page are the same everywhere.",
         "The server can run on a small, cheap computer. The app updates itself: every 10 minutes the server checks GitHub, installs the new version, restarts the service, checks that it responds and, if not, goes back to the previous version. Tests are automatic (pytest, on GitHub at every change).",
         "Phone alerts (line-up ready, changes in the probable line-ups, matchday summary) respect the \"quiet hours\" you set."

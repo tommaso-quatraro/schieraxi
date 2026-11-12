@@ -530,7 +530,7 @@ Understat: xG, xA, tiri, minuti e rigori calciati, partita per partita (totali a
 
 football-data.co.uk: solo le statistiche di squadra (xG, tiri, angoli, cartellini) per le partite giocate e per le prossime (al massimo ogni 6 ore), conservate in ombra.
 
-Sul server l'aggiornamento è programmato alle 8, 13, 17 e 21 di ogni giorno. Le richieste sono educate: una alla volta, almeno un secondo di pausa, fino a 3 tentativi, e non si riscarica quello che c'è già. I dati si possono sempre ricostruire da capo.
+Sul server l'aggiornamento è programmato alle 8, 13, 17 e 21 di ogni giorno. Le richieste sono educate: una alla volta, almeno un secondo di pausa, fino a 3 tentativi, e non si riscarica quello che c'è già. Non tutto si può riscaricare (una fonte che chiude non ridà le stagioni passate): per questo ogni notte il server fa una copia dell'archivio.
 
 Le coppe europee (per il turnover) sono date inserite a mano e vanno aggiornate.
 
@@ -585,7 +585,7 @@ Codice: `docs/AVATAR.md`, `fanta/avatar.py:di`, `fanta/web/avatar.js`
 
 ## 31. La tecnologia in breve  [base]
 
-Il cervello è in Python (pandas e numpy per i conti). Il server è FastAPI; l'archivio dei dati scaricati è un database SQLite in un file solo, che si può ricostruire da capo, mentre le tue cose (regole, rose, scelte, osservati, impostazioni) sono file JSON piccoli scritti in modo sicuro (prima su un file temporaneo, poi rinominato, così un guasto a metà non rovina quello vecchio).
+Il cervello è in Python (pandas e numpy per i conti). Il server è FastAPI; l'archivio dei dati scaricati è un database SQLite in un file solo, con una copia ogni notte, mentre le tue cose (regole, rose, scelte, osservati, impostazioni) sono file JSON piccoli scritti in modo sicuro (prima su un file temporaneo, poi rinominato, così un guasto a metà non rovina quello vecchio).
 
 L'app web è una PWA (si installa sul telefono) fatta con HTML, CSS e JavaScript senza librerie né compilazione. L'app per iPhone è nativa, in SwiftUI; quella per Android è in Jetpack Compose con Material 3 (a uno stadio iniziale). Tutte parlano con lo stesso server: i testi e i numeri di questa pagina sono uguali ovunque.
 

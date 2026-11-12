@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import difflib
+import json
 import re
 from collections import defaultdict
 
@@ -10,6 +11,36 @@ from ..nomi import normalizza
 
 BASE = "https://understat.com"
 HEADERS = {"X-Requested-With": "XMLHttpRequest"}
+
+
+class RispostaNonDati(ValueError):
+    """Understat ha risposto, ma non con i dati: una pagina web (manutenzione, blocco dei programmi, indirizzo cambiato) o un testo
+    che non si legge. Non è un guasto da riprovare subito: il passo si ferma e riprova al giro dopo."""
+
+
+def _pulito(testo: str, quanti: int) -> str:
+    """Testo della fonte da mettere in un messaggio: spazi normali, niente caratteri di controllo, al massimo `quanti` caratteri."""
+    return "".join(c for c in " ".join(testo.split()) if c.isprintable())[:quanti]
+
+
+def dati_json(contenuto: bytes | str) -> dict:
+    """Il JSON di una risposta di Understat (byte in UTF-8, come vuole lo standard JSON). Una pagina web o un testo al posto dei
+    dati danno `RispostaNonDati` con un messaggio che dice cosa è arrivato (prima: «JSONDecodeError: Expecting value»)."""
+    testo = (contenuto.decode("utf-8-sig", errors="replace") if isinstance(contenuto, bytes) else contenuto).strip()
+    if not testo:
+        raise RispostaNonDati("Understat ha risposto con una pagina vuota al posto dei dati")
+    if testo.startswith("<"):
+        titolo = re.search(r"<title[^>]*>(.*?)</title>", testo, re.IGNORECASE | re.DOTALL)
+        titolo = _pulito(titolo.group(1), 80) if titolo else ""
+        raise RispostaNonDati("Understat ha risposto con una pagina web al posto dei dati" + (f" (titolo «{titolo}»)" if titolo else "")
+                              + ": il sito è fermo o ha cambiato indirizzo")
+    try:
+        dati = json.loads(testo)
+    except ValueError:
+        raise RispostaNonDati(f"Understat ha risposto con dati che non si leggono (inizio: «{_pulito(testo, 40)}»)") from None
+    if not isinstance(dati, dict):
+        raise RispostaNonDati("Understat ha risposto con dati di una forma diversa dal solito")
+    return dati
 
 
 def url_lega(anno_inizio: int) -> str:

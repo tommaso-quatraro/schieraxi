@@ -2,7 +2,8 @@
 
 La calibrazione confronta, per ogni gruppo di giocatori delle probabili formazioni (titolare al 90%, in panchina al 30%...),
 quanti hanno davvero preso voto con la probabilità che il modello aveva stimato. Serve a capire se i numeri di partenza
-(modello._p_da_probabili) vanno corretti: si compila da sola man mano che le giornate vengono giocate.
+(modello._p_da_probabili) vanno corretti: si compila da sola man mano che le giornate vengono giocate, solo con le probabili lette
+prima delle partite. I numeri della pagina sono quelli che usa il modello (stessa funzione, `taratura_e_fattori`).
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta
 
-from . import controlli, coppe, fonti_attive, modello, uso
+from . import archivio, controlli, coppe, fonti_attive, modello, uso
 
 try:                                              # senza foto.py (versione pubblica) le foto sono sempre zero
     from . import foto
@@ -27,8 +28,8 @@ def calibrazione(db: sqlite3.Connection, stagione: str) -> dict:
     """{"giornate": quante giornate hanno probabili e partite giocate, "gruppi": [{gruppo, n, osservato, previsto}]}.
     "osservato" = quota di giocatori che hanno preso voto; "previsto" = media della probabilità stimata dal modello.
     Con una riga attiva della taratura di «gioca N%» (`taratura_probabili.attiva`) i gruppi si fanno sulle probabili salvate prima
-    della scadenza (registro delle giornate) e il «previsto» usa la riga attiva; senza (o se il registro non si legge), sulla
-    tabella `probabili`, come sempre."""
+    della scadenza (registro delle giornate) e il «previsto» usa la riga attiva; senza (o se il registro non si legge), sull'ultima
+    lettura delle probabili di prima di ogni partita (`probabili_storia`, `_letture_prima_delle_partite`)."""
     return _con_taratura(db, stagione)[1]
 
 
@@ -56,13 +57,39 @@ def _con_taratura(db: sqlite3.Connection, stagione: str) -> tuple[dict | None, d
         return None, _calibrazione_probabili(db, stagione), True
 
 
+def _letture_prima_delle_partite(db: sqlite3.Connection, stagione: str) -> list[tuple]:
+    """(giornata, stato, percentuale, in dubbio, ha preso voto) dei giocatori delle partite giocate, presi dall'ultima lettura delle
+    probabili di PRIMA del calcio d'inizio della loro partita (`probabili_storia`, copie della giornata prima escluse). Non la tabella
+    `probabili`: tiene l'ultima lettura della giornata, che a partite finite è la formazione vera e farebbe sembrare le probabili
+    perfette. Partite senza una lettura di prima: non contano. Una richiesta per partita sull'indice `probabili_storia_letture`."""
+    partite = db.execute("SELECT id, giornata, REPLACE(data, ' ', 'T') FROM partite WHERE stagione = ? AND giocata = 1 "
+                         "AND data IS NOT NULL", (stagione,)).fetchall()
+    per_lettura: dict[tuple[int, str], set[int]] = {}
+    for pid, giornata, inizio in partite:
+        r = db.execute("SELECT MAX(rilevato) FROM probabili_storia WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio' "
+                       "AND copia = 0 AND rilevato < ?", (stagione, giornata, inizio)).fetchone()
+        if r and r[0]:
+            per_lettura.setdefault((giornata, r[0]), set()).add(pid)
+    righe = []
+    for (giornata, rilevato), pids in per_lettura.items():
+        for pid, stato, perc, dubbio, preso in db.execute(
+                "SELECT s.partita_id, s.stato, s.percentuale, s.in_dubbio, v.voto_red IS NOT NULL FROM probabili_storia s "
+                "LEFT JOIN voti v ON v.stagione = s.stagione AND v.giornata = s.giornata AND v.calciatore_id = s.calciatore_id "
+                "WHERE s.stagione = ? AND s.giornata = ? AND s.fonte = 'fantacalcio' AND s.copia = 0 AND s.rilevato = ?",
+                (stagione, giornata, rilevato)):
+            if pid in pids:
+                righe.append((giornata, stato, perc, dubbio, preso))
+    return righe
+
+
 def _calibrazione_probabili(db: sqlite3.Connection, stagione: str) -> dict:
-    """La calibrazione di sempre, sulla tabella `probabili` (ultima lettura della giornata) e con i numeri di partenza."""
-    righe = db.execute(
-        "SELECT p.giornata, p.stato, p.percentuale, p.in_dubbio, v.voto_red IS NOT NULL "
-        "FROM probabili p JOIN partite g ON g.id = p.partita_id AND g.giocata = 1 "
-        "LEFT JOIN voti v ON v.stagione = p.stagione AND v.giornata = p.giornata AND v.calciatore_id = p.calciatore_id "
-        "WHERE p.stagione = ? AND p.fonte = 'fantacalcio'", (stagione,)).fetchall()
+    """La calibrazione di sempre, con i numeri di partenza, sulle letture di prima di ogni partita (`_letture_prima_delle_partite`).
+    `giornate` = giornate misurabili (con almeno una partita così): sotto MIN_GIORNATE `fattori_da` non corregge niente."""
+    try:
+        righe = _letture_prima_delle_partite(db, stagione)
+    except sqlite3.Error as e:          # per esempio archivio non ancora con la colonna `copia`: nessuna correzione, mai un errore
+        LOG.warning("stato dei dati: letture delle probabili non lette (%s), nessuna correzione di «gioca N%%»", type(e).__name__)
+        righe = []
     gruppi = []
     for nome, stato, da, a in GRUPPI:
         scelti = [r for r in righe if r[1] == stato and r[2] is not None and da <= r[2] < a]
@@ -133,6 +160,52 @@ def _registro_nostri(db: sqlite3.Connection) -> dict | None:
         return None
 
 
+# Il nome di ogni riga di `aggiornamenti` per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui)
+ETICHETTE_AGGIORNAMENTI = {
+    "aggiornamento": "Aggiornamento generale",
+    "listone": "Listone e quotazioni",
+    "calendario": "Calendario",
+    "voti": "Voti e bonus",
+    "probabili": "Probabili formazioni",
+    "understat": "Statistiche avanzate",
+    "dati-extra": "Statistiche di squadra",
+    "controlli": "Controlli sui dati",
+    "probabili-rapido": "Probabili vicino alla scadenza",
+    "risultati-rapido": "Risultati la sera stessa",
+    "taratura-probabili": "Taratura di «gioca N%»",
+}
+ETICHETTE_PER_STAGIONE = {"calendario": "Calendario completo", "dati-extra": "Statistiche di squadra"}   # «calendario 2026-27»
+
+
+def etichetta_aggiornamento(cosa: str) -> str:
+    """Il nome leggibile di una riga di `aggiornamenti`; una chiave sconosciuta almeno senza trattini e con la maiuscola."""
+    if cosa in ETICHETTE_AGGIORNAMENTI:
+        return ETICHETTE_AGGIORNAMENTI[cosa]
+    base, _, resto = cosa.partition(" ")
+    if base in ETICHETTE_PER_STAGIONE and resto:
+        return f"{ETICHETTE_PER_STAGIONE[base]} {resto}"
+    testo = cosa.replace("-", " ").replace("_", " ").strip()
+    return testo[:1].upper() + testo[1:]
+
+
+def _quando_breve(quando: str | None, formato: str) -> str:
+    try:
+        return datetime.fromisoformat(str(quando)[:19]).strftime(formato)
+    except ValueError:
+        return str(quando)
+
+
+def _errori_passo(passo: dict, adesso: datetime) -> list[str]:
+    """L'errore di un passo dell'aggiornamento per «Stato dei dati» (una riga, accanto all'ora del suo ultimo successo). Fermo da più
+    di `archivio.PASSO_FERMO`: «Fermo da 3 giorni (non riesce dal …)», come la salute; se no «Non riuscito alle … del …»."""
+    if not passo.get("errore"):
+        return []
+    fermo = archivio.fermo_da(passo, adesso)
+    if fermo is not None and fermo > archivio.PASSO_FERMO:
+        return [f"Fermo da {archivio.durata_testo(fermo)} (non riesce dal {_quando_breve(passo['dal'], '%d/%m alle %H:%M')}): {passo['errore']}"]
+    return [f"Non riuscito alle {_quando_breve(passo['ultimo'], '%H:%M del %d/%m')}: {passo['errore']}"]
+
+
 GIRI_SENTINELLA = timedelta(days=7)      # in «Stato dei dati» i giri della sentinella dell'ultima settimana
 
 
@@ -156,13 +229,17 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
     (`taratura_probabili.riepilogo`; None se non si legge). `sentinella_giri`: i giri della sentinella dell'ultima settimana
     (None se non si leggono); `adesso` (senza fuso, di norma l'ora del server) serve solo a quello."""
     from . import indicatori_consiglio, registro_giornate      # qui dentro: importano consigli, che importa questo modulo
+    passi = {p["passo"]: p for p in archivio.passi(db)}
     agg = []
     for cosa, quando, dettaglio in db.execute("SELECT cosa, quando, dettaglio FROM aggiornamenti ORDER BY cosa"):
-        try:
-            errori = json.loads(dettaglio) if dettaglio and dettaglio.startswith("[") else []
-        except ValueError:
-            errori = []
-        agg.append({"cosa": cosa, "quando": quando, "errori": errori})
+        if cosa in passi:                    # un passo dell'aggiornamento: `quando` è il suo ultimo successo
+            errori = _errori_passo(passi[cosa], adesso or datetime.now())
+        else:
+            try:
+                errori = json.loads(dettaglio) if dettaglio and dettaglio.startswith("[") else []
+            except ValueError:
+                errori = []
+        agg.append({"cosa": cosa, "quando": quando, "errori": errori, "etichetta": etichetta_aggiornamento(cosa)})
     partite = db.execute("SELECT COUNT(*), COALESCE(SUM(giocata), 0) FROM partite WHERE stagione = ?", (stagione,)).fetchone()
     probabili = db.execute("SELECT giornata, COUNT(*), MAX(rilevato) FROM probabili WHERE stagione = ? AND fonte = 'fantacalcio' "
                            "GROUP BY giornata ORDER BY giornata", (stagione,)).fetchall()
@@ -172,7 +249,7 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
         "partite": {"totali": partite[0], "giocate": partite[1]},
         "voti": db.execute("SELECT COUNT(*) FROM voti WHERE stagione = ?", (stagione,)).fetchone()[0],
         "probabili": [{"giornata": g, "giocatori": n, "rilevato": q} for g, n, q in probabili],
-        "controlli": controlli.leggi(db, stagione),
+        "controlli": [{**c, "etichetta": controlli.etichetta(c["nome"])} for c in controlli.leggi(db, stagione)],
         "ombra": ombra(db),
         "foto": len(foto.disponibili()) if foto else 0,
         "fonti": fonti_attive.stato(),

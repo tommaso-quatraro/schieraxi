@@ -5,7 +5,9 @@ Ogni giocatore è identificato dal codice di Fantacalcio.it (calciatore_id); le 
 """
 from __future__ import annotations
 
+import json
 import sqlite3
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from .percorsi import RADICE
@@ -66,10 +68,13 @@ CREATE TABLE IF NOT EXISTS probabili (
     PRIMARY KEY (stagione, giornata, fonte, calciatore_id)
 );
 -- ogni rilevazione delle probabili, con l'ora (solo si aggiunge, non si cancella): serve a vedere come cambiano
--- le probabili avvicinandosi alla partita e a tarare il modello. Stesse colonne di "probabili".
+-- le probabili avvicinandosi alla partita e a tarare il modello. Le colonne di "probabili" più `copia`: 1 = lettura uguale
+-- all'ultima della giornata prima (la pagina ha già il numero nuovo ma non le formazioni nuove), tenuta qui e mai in "probabili".
+-- La colonna negli archivi che hanno già la tabella la aggiunge `_aggiorna_schema`.
 CREATE TABLE IF NOT EXISTS probabili_storia (
     stagione TEXT, giornata INTEGER, fonte TEXT, calciatore_id INTEGER, squadra TEXT, partita_id INTEGER,
     stato TEXT, percentuale REAL, in_dubbio INTEGER, diffidato INTEGER, nota TEXT, rilevato TEXT,
+    copia INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (stagione, giornata, fonte, calciatore_id, rilevato)
 );
 -- colonne in più di football-data.co.uk (xG di squadra, tiri, angoli, falli, cartellini): MODALITÀ OMBRA,
@@ -101,6 +106,13 @@ CREATE TABLE IF NOT EXISTS controlli (
     PRIMARY KEY (stagione, nome)
 );
 CREATE TABLE IF NOT EXISTS aggiornamenti (cosa TEXT PRIMARY KEY, quando TEXT, dettaglio TEXT);
+-- letture dei voti di una giornata con meno righe di quelle salvate (aggiorna._salva_voti): la stessa pagina più corta letta `volte`
+-- volte di fila, dal `dal`. Un calo piccolo si accetta dopo qualche lettura uguale, uno grande resta bloccato. Tabella a sé: gli
+-- archivi che ci sono la ricevono senza migrazione.
+CREATE TABLE IF NOT EXISTS voti_calati (
+    stagione TEXT, giornata INTEGER, righe INTEGER, prima INTEGER, volte INTEGER, dal TEXT,
+    PRIMARY KEY (stagione, giornata)
+);
 -- registro delle giornate (fanta/registro_giornate.py): i numeri MOSTRATI poco prima della prima partita, per ogni giocatore della
 -- Serie A, con le regole classiche. Solo id e numeri, niente dati personali. NON si ricostruisce: una giornata persa è persa.
 CREATE TABLE IF NOT EXISTS registro_giocatori (
@@ -164,6 +176,19 @@ def _toglie_tabella_dismessa(db: sqlite3.Connection) -> None:
             db.rollback()
 
 
+def _aggiorna_schema(db: sqlite3.Connection) -> None:
+    """Colonne nuove in tabelle che negli archivi ci sono già (`CREATE TABLE IF NOT EXISTS` non le aggiunge): una volta sola,
+    senza toccare i dati. Poi l'indice che serve a trovare l'ultima lettura delle probabili prima di un'ora (`stato_dati`)."""
+    try:
+        colonne = {r[1] for r in db.execute("PRAGMA table_info(probabili_storia)")}
+        if "copia" not in colonne:
+            db.execute("ALTER TABLE probabili_storia ADD COLUMN copia INTEGER NOT NULL DEFAULT 0")
+        db.execute("CREATE INDEX IF NOT EXISTS probabili_storia_letture ON probabili_storia (stagione, giornata, fonte, copia, rilevato)")
+        db.commit()
+    except sqlite3.OperationalError:     # archivio occupato, o un altro processo ha appena aggiunto la colonna: si riprova alla prossima
+        db.rollback()
+
+
 def apri(percorso: Path = FILE) -> sqlite3.Connection:
     percorso.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(percorso, timeout=30)   # attende se un altro processo (es. l'aggiornamento automatico) sta scrivendo
@@ -172,6 +197,7 @@ def apri(percorso: Path = FILE) -> sqlite3.Connection:
     db.execute("PRAGMA synchronous = NORMAL")    # in WAL è sicuro; l'archivio si ricostruisce comunque, e ogni conferma non aspetta il disco
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA)
+    _aggiorna_schema(db)
     _toglie_tabella_dismessa(db)
     return db
 
@@ -186,5 +212,91 @@ def inserisci(db: sqlite3.Connection, tabella: str, righe: list[dict]) -> int:
     return len(righe)
 
 
-def segna(db: sqlite3.Connection, cosa: str, quando: str, dettaglio: str = "") -> None:
+def segna(db: sqlite3.Connection, cosa: str, quando: str | None, dettaglio: str = "") -> None:
     db.execute("INSERT OR REPLACE INTO aggiornamenti VALUES (?, ?, ?)", (cosa, quando, dettaglio))
+
+
+# ---------------- passi dell'aggiornamento (#608) ----------------
+# I passi di ogni aggiornamento che hanno una riga loro in `aggiornamenti` (cosa = nome del passo in minuscolo con i trattini,
+# `cosa_passo`: «listone», «voti», «probabili», «understat», «calendario», «dati-extra»). `quando` = ultimo successo (NULL = mai);
+# `dettaglio` vuoto se l'ultima prova è andata, altrimenti JSON {"errore", "dal" (primo fallimento di fila), "ultimo"}.
+PASSI = ("listone", "calendario", "voti", "probabili", "understat", "dati-extra", "controlli")
+PASSO_FERMO = timedelta(hours=24)        # un passo che non riesce da più di così si segnala per nome (salute, Stato dei dati)
+
+
+def cosa_passo(nome: str) -> str:
+    """La chiave in `aggiornamenti` del passo `nome` («Understat» -> «understat», «dati extra» -> «dati-extra», la riga che c'era già)."""
+    return nome.strip().lower().replace(" ", "-")
+
+
+def _errore_passo(dettaglio: str | None) -> dict | None:
+    """Il dettaglio di un passo che non riesce ({"errore", "dal", "ultimo"}); None se l'ultima prova è andata o non si legge."""
+    if not dettaglio or not dettaglio.startswith("{"):
+        return None
+    try:
+        d = json.loads(dettaglio)
+    except ValueError:
+        return None
+    return d if isinstance(d, dict) and isinstance(d.get("errore"), str) and isinstance(d.get("dal"), str) else None
+
+
+def segna_passo(db: sqlite3.Connection, nome: str, quando: str, errore: str | None = None) -> dict | None:
+    """Esito di un passo seguito (gli altri non scrivono niente). Riuscito: `quando` diventa l'ultimo successo. Non riuscito: l'ultimo
+    successo resta quello di prima e si scrive l'errore, con l'ora del primo fallimento di fila. Restituisce lo stato del passo
+    PRIMA di questa prova ({"ultimo_successo", "dal"}; None se il passo non è seguito)."""
+    cosa = cosa_passo(nome)
+    if cosa not in PASSI:
+        return None
+    r = db.execute("SELECT quando, dettaglio FROM aggiornamenti WHERE cosa = ?", (cosa,)).fetchone()
+    prima = {"ultimo_successo": r[0] if r else None, "dal": (_errore_passo(r[1]) or {}).get("dal") if r else None}
+    if errore is None:
+        segna(db, cosa, quando)
+    else:
+        dettaglio = {"errore": errore[:500], "dal": prima["dal"] or quando, "ultimo": quando}
+        segna(db, cosa, prima["ultimo_successo"], json.dumps(dettaglio, ensure_ascii=False))
+    return prima
+
+
+def passo_saltato(db: sqlite3.Connection, nome: str) -> None:
+    """Passo saltato apposta (fonte spenta): non è un guasto, l'errore di prima si toglie (l'ultimo successo resta)."""
+    if cosa_passo(nome) in PASSI:
+        db.execute("UPDATE aggiornamenti SET dettaglio = '' WHERE cosa = ? AND dettaglio <> ''", (cosa_passo(nome),))
+
+
+def passi(db: sqlite3.Connection) -> list[dict]:
+    """I passi seguiti che hanno una riga: [{passo, ultimo_successo, errore, dal, ultimo}] (errore, dal e ultimo None se va)."""
+    segnaposto = ", ".join("?" * len(PASSI))
+    risultato = []
+    for cosa, quando, dettaglio in db.execute(f"SELECT cosa, quando, dettaglio FROM aggiornamenti WHERE cosa IN ({segnaposto})", PASSI):
+        e = _errore_passo(dettaglio) or {}
+        risultato.append({"passo": cosa, "ultimo_successo": quando, "errore": e.get("errore"), "dal": e.get("dal"),
+                          "ultimo": e.get("ultimo")})
+    return sorted(risultato, key=lambda p: PASSI.index(p["passo"]))
+
+
+def fermo_da(passo: dict, adesso: datetime) -> timedelta | None:
+    """Da quanto un passo che non riesce è fermo: dal primo errore di fila (non dall'ultimo successo: una fonte spenta apposta e
+    riaccesa dopo giorni non è «ferma da giorni» al primo errore). None se va."""
+    if not passo.get("errore"):
+        return None
+    try:
+        dal = datetime.fromisoformat(str(passo["dal"])[:19])
+    except ValueError:
+        return None
+    return adesso - dal
+
+
+def durata_testo(d: timedelta) -> str:
+    """'26 ore' fino a due giorni, poi '3 giorni' (salute e Stato dei dati dicono uguale da quanto è fermo un passo)."""
+    ore = int(d.total_seconds() // 3600)
+    return f"{ore} ore" if ore < 48 else f"{ore // 24} giorni"
+
+
+def passi_fermi(db: sqlite3.Connection, adesso: datetime, soglia: timedelta = PASSO_FERMO) -> list[dict]:
+    """I passi che non riescono e sono fermi da più di `soglia` (vedi `fermo_da`), con `fermo` = da quanto."""
+    fermi = []
+    for p in passi(db):
+        durata = fermo_da(p, adesso)
+        if durata is not None and durata > soglia:
+            fermi.append({**p, "fermo": durata})
+    return fermi
