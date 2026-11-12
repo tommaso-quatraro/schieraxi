@@ -708,10 +708,15 @@ def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float
     adesso = adesso or datetime.now()
     stagione = consigli.stagione_corrente()
     _prepara_live()
-    contesti = _contesti() if contesti is None else contesti
+    rotture: list[Rottura] = []
+    if contesti is None:
+        try:
+            contesti = _contesti()
+        except Exception as e:                 # noqa: BLE001 - elenco degli utenti che non si legge: si deve vedere, e il giro non muore
+            rotture.append(Rottura("risposta_in_errore", None, None, f"sentinella: elenco degli utenti non letto ({type(e).__name__})"))
+            contesti = []
     ultimi = (stato or {}).get("utenti") or {}
     contesti = sorted(contesti, key=lambda c: ultimi.get(c[0], ""))          # prima chi è stato controllato meno di recente
-    rotture: list[Rottura] = []
     controllati: list[str] = []
     live_corpo = None
     for etichetta, ctx in contesti:
