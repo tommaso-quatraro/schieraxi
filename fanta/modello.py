@@ -30,6 +30,16 @@ from .regole import RUOLI, Regole
 
 PASSO_STAGIONE = 50          # distanza "in giornate" tra l'inizio di una stagione e la successiva (38 + pausa estiva)
 XG_RIGORE = 0.76             # xG che Understat assegna a un rigore
+# Gol attesi (xG) e assist attesi (xA) che la fonte conta in media per ogni gol su azione e per ogni assist veri. Servono alle
+# righe ricostruite dai voti (`con_prestazioni_dai_voti`): lì xG e xA non ci sono e si usano gol e assist veri, ma quelli della
+# fonte sono più alti. Ricavati dall'archivio (12/11/2026), su tutti i giocatori con le statistiche vere: somma degli xG su
+# azione divisa per i gol su azione 1,22 nel 2025-26, 1,13 nelle prime 10 giornate del 2026-27, 1,19 in tutto (1.319 su 1.104);
+# somma degli xA divisa per gli assist 1,24, 1,13 e 1,21 (1.006 su 832). Senza questi fattori, con la fonte ferma gol e assist
+# attesi scendono giornata dopo giornata (revisione di #613). Misura a 8 giornate di fonte ferma, gol attesi su veri nelle due
+# stagioni: 0,92 e 0,82 senza, 1,03 e 0,94 con (1,02 e 0,89 con la fonte che funziona); assist 0,89 e 0,85 senza, 0,93 e 0,89
+# con (0,96 e 0,88). L'errore del fantavoto atteso non cambia (meno di 0,05%).
+XG_PER_GOL = 1.2
+XA_PER_ASSIST = 1.2
 # Quanto della retta quotazione -> voto si usa per il voto di partenza (1 = tutta). Misura del 2/11/2026: con la retta intera
 # il voto dei giocatori da 15 crediti in su era sopravvalutato (0,06-0,15) in tutte e due le stagioni; con metà l'errore
 # scende in entrambe (verifica prima e dopo nella PR). Gol e assist usano ancora la retta intera.
@@ -174,8 +184,9 @@ def con_prestazioni_dai_voti(d: Dati) -> Dati:
     """`d` con le statistiche ricostruite dai voti per le partite giocate che non ne hanno (#613). Gol e assist attesi, minuti e
     rigori vengono dalle statistiche per partita di una fonte esterna: quando per una partita non arrivano (fonte ferma o in
     ritardo) il modello la ignorerebbe e invecchierebbe di una giornata alla volta, senza dirlo. Per quelle partite, se ci sono
-    i voti, valgono le righe di `prestazioni_dai_voti`, con i gol su azione e gli assist veri al posto di xG e xA (più
-    rumorosi, ma è l'informazione che c'è) e l'id della partita cambiato di segno (non si confonde con quelli della fonte).
+    i voti, valgono le righe di `prestazioni_dai_voti`, con i gol su azione e gli assist veri al posto di xG e xA, riportati alla
+    scala della fonte (XG_PER_GOL, XA_PER_ASSIST): più rumorosi, ma è l'informazione che c'è. L'id della partita è cambiato di
+    segno (non si confonde con quelli della fonte).
     Con tutte le statistiche al loro posto restituisce `d` com'è. Che manchino lo dice `controlli.partite_senza_statistiche`."""
     giocate = d.partite[d.partite["giocata"] == 1]
     if giocate.empty or d.voti.empty:
@@ -190,8 +201,8 @@ def con_prestazioni_dai_voti(d: Dati) -> Dati:
         return d
     pr = prestazioni_dai_voti(voti, senza)
     pr["understat_partita"] = -pr["understat_partita"]
-    pr["xg"] = pr["gol"] - pr["rigori_segnati"] + XG_RIGORE * pr["rigori_calciati"]
-    pr["xa"] = pr["assist"]
+    pr["xg"] = XG_PER_GOL * (pr["gol"] - pr["rigori_segnati"]) + XG_RIGORE * pr["rigori_calciati"]
+    pr["xa"] = XA_PER_ASSIST * pr["assist"]
     return replace(d, prestazioni=pd.concat([d.prestazioni, pr], ignore_index=True))
 
 
@@ -633,7 +644,25 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
             "data_partita": data_partita.get(partita),
         }
         righe.append((prima, dopo, per_mu))
+    _segna_primo_rigorista(righe)
     return righe, forza.rigori_partita
+
+
+def _segna_primo_rigorista(righe: list) -> None:
+    """Mette in ogni riga `primo_rigorista`: vero per il giocatore con la quota dei rigori più alta della sua squadra fra chi non
+    è infortunato né squalificato (a pari quota il primo dell'elenco), falso per gli altri. Serve a «rigorista» (`consigli.rigorista`),
+    che è uno solo per squadra. La quota è «se gioca lui», con i compagni pesati per le loro presenze: fra chi è in campo la somma
+    supera 1 nel 2-5% delle squadre-partita e due compagni possono averla tutti e due sopra la metà. Normalizzarla dentro la
+    squadra toglie rigori attesi (da 0,51 e 0,48 dei veri a 0,43 e 0,39, misura del 12/11/2026): la quota resta com'è."""
+    primi: dict[str, dict] = {}
+    for prima, dopo, _ in righe:
+        dopo["primo_rigorista"] = False
+        if dopo["stato"] in ("infortunato", "squalificato") or not dopo["quota_rigori"] > 0:
+            continue
+        if prima["squadra"] not in primi or dopo["quota_rigori"] > primi[prima["squadra"]]["quota_rigori"]:
+            primi[prima["squadra"]] = dopo
+    for dopo in primi.values():
+        dopo["primo_rigorista"] = True
 
 
 # Probabilità di prendere voto dalle probabili formazioni di Fantacalcio.it.

@@ -72,6 +72,9 @@ def test_rigorista_una_regola_sola_per_la_scheda_e_per_il_widget():
     assert [consigli.rigorista(x) for x in casi] == [True, True, False, False, False, False, False, True]
     for x in casi:
         assert ("rigorista" in consigli.motivi(x)) == consigli.rigorista(x)
+    # uno solo per squadra: chi non è il primo rigorista della sua squadra non lo è, anche con la quota sopra la metà
+    assert not consigli.rigorista(_giocatore(quota_rigori=0.6, primo_rigorista=False))
+    assert consigli.rigorista(_giocatore(quota_rigori=0.6, primo_rigorista=True))
 
 
 def test_infortunato_niente_consigli_sulla_partita():

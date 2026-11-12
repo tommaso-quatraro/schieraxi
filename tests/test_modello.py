@@ -211,7 +211,9 @@ def test_partita_senza_statistiche_si_usano_le_righe_ricostruite_dai_voti():
     assert len(nuove) == 6 and set(nuove["understat_partita"]) == {-3, -4}             # le partite 3 e 4, 3 giocatori l'una
     bomber = nuove[nuove["calciatore_id"] == 1].iloc[0]
     assert (bomber["minuti"], bomber["gol"], bomber["rigori_calciati"], bomber["rigori_squadra"]) == (90, 4, 1, 1)
-    assert bomber["xg"] == pytest.approx(3 + modello.XG_RIGORE) and bomber["xa"] == 0   # al posto degli xG: i gol e gli assist veri
+    # al posto degli xG i gol su azione veri, riportati alla scala della fonte (che ne conta di più dei gol), più i rigori
+    assert modello.XG_PER_GOL == 1.2 and bomber["xg"] == pytest.approx(3 * 1.2 + modello.XG_RIGORE) and bomber["xa"] == 0
+    assert modello.XA_PER_ASSIST == 1.2 and (nuove["xa"] == 1.2 * nuove["assist"]).all()
 
 
 def test_con_le_statistiche_le_righe_ricostruite_non_si_aggiungono():
