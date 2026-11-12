@@ -1,14 +1,14 @@
 {
-  "_leggimi": "Aree del repository per i comandi di script/squadra (LEGGIMI.md). Per ogni file vince la PRIMA area con un percorso che corrisponde: le aree più strette vanno prima. Nei percorsi «**» vale qualunque cosa (anche «/»), «*» e «?» non attraversano «/». Gruppo = tetto delle PR aperte (REGOLE §1); le aree neutre non cambiano il gruppo. Etichetta = etichetta delle issue che porta a quest'area nel brief.",
+  "_leggimi": "Aree del repository per i comandi di script/squadra (LEGGIMI.md). Per ogni file vince la PRIMA area con un percorso che corrisponde: le aree più strette vanno prima. Nei percorsi «**» vale qualunque cosa (anche «/»), «*» e «?» non attraversano «/». Gruppo = tetto delle PR aperte (perché: docs/METODO.md, «Lavoro in parallelo»); le aree neutre non cambiano il gruppo. Etichetta = etichetta delle issue che porta a quest'area nel brief.",
   "aree": [
     {"nome": "web", "percorsi": ["fanta/web/**"], "agente": "sviluppatore-web"},
     {"nome": "server", "percorsi": ["fanta/**", "script/server/**", "requirements*"], "agente": "sviluppatore-web"},
     {"nome": "ios", "percorsi": ["ios/**"], "agente": "sviluppatore-ios"},
     {"nome": "sito", "percorsi": ["sito/**"], "agente": "sviluppatore-web"},
-    {"nome": "ci", "percorsi": [".github/**", "script/ci/**", "script/controlli/**", "script/squadra/**"], "agente": "rilascio"},
-    {"nome": "docs", "percorsi": ["docs/**", "*.md"], "agente": "documentatore"},
+    {"nome": "ci", "percorsi": [".github/**", "script/ci/**", "script/controlli/**", "script/squadra/**"], "agente": "sviluppatore-web"},
+    {"nome": "docs", "percorsi": ["docs/**", "*.md"], "agente": "sviluppatore-web"},
     {"nome": "test", "percorsi": ["tests/**"], "agente": "collaudatore"},
-    {"nome": "altro", "percorsi": ["**"], "agente": "sviluppatore"}
+    {"nome": "altro", "percorsi": ["**"], "agente": "sviluppatore-web"}
   ],
   "gruppi": {
     "server-web": {"aree": ["server", "web", "sito", "ci", "altro"], "tetto": 4},
