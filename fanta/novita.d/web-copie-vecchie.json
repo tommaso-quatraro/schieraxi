@@ -1,0 +1,13 @@
+{
+  "titolo": "App installata: sempre una versione intera, anche mentre il server riparte",
+  "voci": [
+    "Dopo un aggiornamento l'app installata si apre tutta con la versione che hai, mai metà vecchia e metà nuova (con la rete lenta capitava): la versione nuova arriva toccando «Ricarica» nella barra in basso.",
+    "Se apri l'app mentre il server riparte vedi la Formazione con gli ultimi dati salvati e «Riprova», non una pagina d'errore; senza rete Privacy, Termini e Crediti dicono «Nessuna connessione».",
+    "Uno stemma o una maglia appena cambiati restano quelli nuovi anche riaprendo l'app; se sullo stesso browser entra un altro account, vede i suoi."
+  ],
+  "tecnico": [
+    "sw.js: la scocca (FILE, e «/» con qualunque query) viene sempre dalla cache della VERSIONE attiva (dallaScocca); un file che manca si chiede alla rete e si salva. Le altre pagine restano prima-la-rete con 2,5 secondi (primaLaRete): con 502, 503 o 504 danno la copia salvata se c'è; senza rete e senza copia la pagina «Nessuna connessione» (503), non più la scocca dell'app.",
+    "GET /api/squadre/immagine: Cache-Control «private, no-cache» (era «private, max-age=3600») con ETag dallo SHA-256 del contenuto e 304 se If-None-Match coincide. In inglese If-None-Match si toglie prima della rotta: _note_in_inglese ora risponde 304 anche per le risposte non JSON con l'ETag uguale.",
+    "Test: tests/browser/test_web_installata.py (fixture installata con Proxy davanti al server finto: rilascio finto con file lenti, 502, rete assente), tests/test_sw_web.py, tests/test_server.py, tests/test_isolamento.py (due account, stessa squadra)."
+  ]
+}

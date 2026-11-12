@@ -278,6 +278,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | Cosa vedi | Cosa fare |
 |---|---|
 | «Server non raggiungibile» | Controlla la connessione, poi tocca **Riprova** (o ricarica la pagina). |
+| «Aggiornamento pronto – Ricarica» in basso | È uscita una versione nuova dell'app: tocca **Ricarica** per usarla. Fino ad allora resta tutta la versione di prima. |
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
 | «Troppi tentativi» | Aspetta il tempo indicato e riprova. |
