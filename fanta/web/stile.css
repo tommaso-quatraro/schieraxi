@@ -348,6 +348,9 @@ details[open] > summary { margin-bottom: 8px; }
    «⚠ gioca N%» sul campo e il contatore di «Da fare». */
 .etichetta { display: inline-block; font-size: var(--t-sec); padding: 0; background: none; border: 0; color: var(--eti-verde); font-weight: 550; line-height: 1.35; max-width: 100%; overflow-wrap: break-word; }
 .etichetta .pezzo { display: inline-block; max-width: 100%; }
+/* la nota che spiega lo stato («contusione al ginocchio, in forte dubbio»): in una riga sua, sotto le parole */
+.etichetta.nota-stato { flex: 1 1 100%; font-weight: 400; }
+.scheda-nota { margin: 6px 0 0; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.35; }
 .etichetta.rossa { color: var(--eti-rosso); }
 .etichetta.arancio { color: var(--eti-arancio); }
 .etichetta.neutra { color: var(--testo-2); }

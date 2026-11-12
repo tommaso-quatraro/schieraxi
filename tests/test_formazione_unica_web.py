@@ -101,6 +101,29 @@ def test_lo_stato_a_parole_e_niente_gioca_per_chi_non_gioca_di_sicuro():
     assert s_vecchio["testo"] == "Squalificato" and "gioca" not in _visibile(p_vecchio)
 
 
+def test_la_nota_delle_probabili_spiega_lo_stato_nelle_righe_e_nella_scheda():
+    """«contusione al ginocchio, in forte dubbio»: il motivo di «In dubbio» o di «Infortunato» (campo `nota` della scheda). Si legge
+    nella riga, sotto lo stato, e nella scheda del giocatore; non sulla pedina (non c'è spazio) e non per chi non ha uno stato."""
+    nota = "contusione al ginocchio, in forte dubbio <dal 1'>"
+    dubbio = _giocatore(p_voto=0.19, nota=nota, etichetta={"codice": "in_dubbio", "testo": "In dubbio · gioca 19%", "tono": "attenzione"})
+    fermo = _giocatore(p_voto=0.0, nota="lombalgia, out a Roma", stato="infortunato",
+                       etichetta={"codice": "infortunato", "testo": "Infortunato", "tono": "negativo"})
+    sano = _giocatore(nota="rientra dalla squalifica")                    # nessuno stato da spiegare: la riga resta pulita
+    r_dubbio, r_fermo, r_sano, pedina = _esegui(
+        f"(g => [...g.map(x => etichetteGiocatore(x)), pedina(g[0])])({json.dumps([dubbio, fermo, sano])})", STATI, COGNOME, RIGHE)
+    assert _testo(r_dubbio) == "In dubbio contusione al ginocchio, in forte dubbio &lt;dal 1&#39;&gt;"
+    assert '<span class="etichetta neutra nota-stato">' in r_dubbio and "<dal" not in r_dubbio       # testo della fonte: sempre con esc()
+    assert _testo(r_fermo) == "Infortunato lombalgia, out a Roma"
+    assert r_sano == ""
+    assert "contusione" not in pedina
+    scheda = _scheda(dubbio)
+    assert '<p class="scheda-nota">contusione al ginocchio, in forte dubbio &lt;dal 1&#39;&gt;</p>' in scheda
+    assert scheda.index('class="cifre-oggi cifre-scheda"') < scheda.index('class="scheda-nota"') < scheda.index('id="scheda-voti"')
+    assert "scheda-nota" not in _scheda(_giocatore())                     # senza nota niente riga vuota
+    in_corso = dubbio | {"stato_partita": "in_corso", "etichetta": {"codice": "in_corso", "testo": "Partita in corso", "tono": "positivo"}}
+    assert "scheda-nota" not in _scheda(in_corso, sostituibile=False)      # a partita cominciata la nota di prima non serve più
+
+
 def test_a_partita_cominciata_sulla_pedina_il_voto_preso_o_lo_stato():
     preso = _giocatore(stato_partita="fatto", fv_preso=7.5, etichetta={"codice": "voto", "testo": "Ha giocato", "tono": "positivo"})
     arrivo = _giocatore(stato_partita="attesa_voti", etichetta={"codice": "voto_in_arrivo", "testo": "Voto in arrivo", "tono": "neutro"})

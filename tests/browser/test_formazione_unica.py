@@ -127,6 +127,22 @@ def test_un_tocco_su_un_titolare_apre_la_scheda_con_sostituisci(web):
         assert tolta not in testo, tolta
 
 
+def test_la_nota_che_spiega_lo_stato_si_legge_nella_riga_e_nella_scheda(web):
+    """«In dubbio» da solo non dice perché: sotto c'è la nota delle probabili, nella riga della panchina e nella scheda."""
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    web.apri("/")
+    f = web.registrata("/api/formazione")
+    panchina = [f["schede"][str(i)] for i in next(m for m in f["moduli"] if m["modulo"] == f["modulo"])["panchina"]]
+    incerto = next((x for x in panchina if (x.get("etichetta") or {}).get("codice") == "in_dubbio" and x.get("nota")), None)
+    assert incerto, "nello scenario registrato nessuna riserva è in dubbio con una nota: il test non proverebbe niente"
+    riga = principale(web).get_by_role("listitem").filter(has_text=incerto["nome"]).first
+    testo = " ".join(riga.inner_text().split())
+    assert "In dubbio" in testo and incerto["nota"] in testo
+    tocca(web, riga.get_by_role("button"))
+    assert incerto["nota"] in " ".join(scheda(web).inner_text().split())
+
+
 # ---------------------------------------------------------------- salvataggio automatico e stato della scelta
 def test_dopo_una_sostituzione_lo_stato_dice_che_l_hai_cambiata_tu_ed_e_salvata(web):
     solo(web, "prima")

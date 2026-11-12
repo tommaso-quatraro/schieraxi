@@ -114,7 +114,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 - **Copia per l'app della lega**: copia la formazione come testo (modulo, titolari per ruolo, panchina in ordine), da tenere sotto mano mentre la inserisci su Leghe;
 - **L'ho messa**: la spunti quando hai inserito la formazione nell'app della lega. Da quel momento quegli 11 sono la tua scelta e non cambiano da soli: se dopo la consigliata cambia, la riga dello stato dice «La consigliata è cambiata da quando l'hai salvata…» e decidi tu se prenderla. Se cambi gli 11, la spunta si toglie: la rimetti quando hai aggiornato anche l'app della lega.
 
-Sotto ci sono quanto sono fresche le **probabili formazioni** (se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare), la **Panchina** nell'ordine in cui entra, i **Non schierati** e gli **Infortunati e squalificati** (chiusi: si aprono con un tocco). Negli elenchi, sotto il nome di ogni giocatore c'è la sua partita, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Le note lunghe vanno a capo dentro la riga.
+Sotto ci sono quanto sono fresche le **probabili formazioni** (se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare), la **Panchina** nell'ordine in cui entra, i **Non schierati** e gli **Infortunati e squalificati** (chiusi: si aprono con un tocco). Negli elenchi, sotto il nome di ogni giocatore c'è la sua partita, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Chi è in dubbio, infortunato o squalificato ha sotto anche la nota che dice perché (per esempio «lombalgia, out a Roma»), che va a capo dentro la riga.
 
 Sul tablet e sul PC le colonne sono due: a sinistra il campo con modulo, stato e pulsanti (resta fermo mentre scorri, se ci sta nello schermo), a destra la panchina e gli altri elenchi.
 
@@ -125,7 +125,7 @@ Altri due stati della riga sotto il campo:
 
 **La scheda del giocatore.** Un tocco su un giocatore, sul campo o in un elenco, apre la sua scheda. È una sola e ha, in ordine:
 
-- il **fantavoto atteso, se gioca**, e accanto **gioca N%** (con lo stato a parole, se c'è);
+- il **fantavoto atteso, se gioca**, e accanto **gioca N%** (con lo stato a parole, se c'è, e sotto la nota che lo spiega);
 - **Perché è titolare**, quando la scelta può sembrare strana (vedi sotto);
 - **Perché questo numero**;
 - gli **ultimi voti**;

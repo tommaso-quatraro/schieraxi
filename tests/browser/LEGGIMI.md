@@ -88,7 +88,8 @@ prima della scadenza:
 `test_formazione_unica.py`, la schermata «Formazione» che ha preso il posto di Oggi e Formazione (#616):
 - nelle tre fasi, a 390×844 px, i nomi degli 11 stanno nel primo schermo; il vecchio indirizzo di Oggi apre la Formazione;
 - «gioca N%» si vede solo sotto l'80% e non ci sono etichette di titolarità; un tocco su un titolare apre la scheda con
-  «Sostituisci»; fra i sostituti chi gioca meno dell'80% lo dice;
+  «Sostituisci»; fra i sostituti chi gioca meno dell'80% lo dice; la nota che spiega «In dubbio» si legge nella riga e
+  nella scheda; un account senza rose vede il benvenuto senza richieste fallite;
 - salvataggio automatico: dopo una sostituzione o un altro modulo lo stato dice «L'hai cambiata tu» e la scelta è
   salvata; «Torna alla consigliata» la toglie; la spunta «L'ho messa» resta dopo una ricarica;
 - al massimo due decisioni, solo quelle con un'azione; «Usa la consigliata» prende quella nuova;

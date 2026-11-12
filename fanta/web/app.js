@@ -382,12 +382,18 @@ function parolaStato(x) {
 }
 // Non gioca di sicuro (infortunato, squalificato, fuori): la parola basta, «gioca 0%» non serve.
 const nonGiocaDiSicuro = stato => !!stato && stato.classe === "rossa";
-// Le parole sotto il nome in una riga: lo stato prima della partita, com'è andata dopo («Voto in arrivo», «Senza voto»), «Diffidato».
-function etichetteGiocatore(x) {
+// La nota delle probabili su chi rischia di non esserci («contusione al ginocchio, in forte dubbio dal 1'»): il motivo dello stato
+// a parole. È testo della fonte, scritto com'è. Vuota per chi non ha uno stato da spiegare e a partita cominciata.
+const notaStato = (x, stato) => (stato && typeof x.nota === "string" && x.nota.trim() ? x.nota.trim() : "");
+// Le parole sotto il nome in una riga: lo stato prima della partita, com'è andata dopo («Voto in arrivo», «Senza voto»), «Diffidato»
+// e, in una riga sua, la nota che spiega lo stato. `inPiu`: altre etichette, prima della nota (già pronte per l'HTML).
+function etichetteGiocatore(x, inPiu = "") {
   const esito = esitoPartita(x), stato = esito ? null : parolaStato(x);
   const parola = esito && esito.fv == null ? `<span class="etichetta ${etichettaPronta(x) ? classeTono(x.etichetta) : STATO_PARTITA[x.stato_partita][1]}">${esc(esito.testo)}</span>`
     : stato ? `<span class="etichetta ${stato.classe}">${esc(stato.testo)}</span>` : "";
-  return parola + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "");
+  const nota = notaStato(x, stato);
+  return parola + inPiu + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "")
+    + (nota ? `<span class="etichetta neutra nota-stato">${esc(nota)}</span>` : "");
 }
 
 // Il nome del club per i lettori di schermo («il Napoli»); la luminosità di un colore per il contrasto della lineetta (lineetta()).
@@ -1278,7 +1284,7 @@ function bloccoPerche(x) {
 }
 
 // La scheda del giocatore (#616): una sola, al posto di scheda, «Perché questo numero» e sostituzione. In alto ciò che serve per
-// decidere: il fantavoto atteso (se gioca), «gioca N%» con lo stato a parole, perché è titolare, i motivi del numero, gli ultimi voti
+// decidere: il fantavoto atteso (se gioca), «gioca N%» con lo stato a parole e la nota che lo spiega, perché è titolare, i motivi del numero, gli ultimi voti
 // e, per un titolare della tua formazione ancora aperta, «Sostituisci» (se gioca un anticipo già cominciato, la riga che dice che non
 // si sposta più). Tutto il resto (probabilità, stagione, occasioni, prossime partite) sta dietro «Tutti i numeri».
 // `c`: {id, nome, ruolo, squadra, squadra_slug}; `pr`: la sua previsione per la giornata (la scheda della Formazione o `previsione`
@@ -1291,6 +1297,7 @@ function htmlScheda(c, pr, fz) {
   const perche = fz && pr ? fz.perche(Number(c.id)) : "";
   // a partita cominciata «gioca N%» non serve più: fuori anche dai motivi
   const prSenzaGioca = pr && esito && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
+  const nota = pr ? notaStato(pr, stato) : "";
   const partita = pr && pr.avversario ? t(pr.in_casa ? "formazione.partita_casa" : "formazione.partita_fuori", { avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) }) : "";
   const cifre = !pr ? `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`
     : `<div class="cifre-oggi cifre-scheda">
@@ -1309,6 +1316,7 @@ function htmlScheda(c, pr, fz) {
         ${partita ? `<div class="debole">${partita}</div>` : ""}</div>
     </div>
     ${cifre}
+    ${nota ? `<p class="scheda-nota">${esc(nota)}</p>` : ""}
     ${perche ? `<div class="scheda-pezzo" id="perche-titolare"><h3>${t("formazione.perche_titolare")}</h3><p>${perche}</p></div>` : ""}
     ${pr && !finitaP ? bloccoPerche(prSenzaGioca) : ""}
     <div class="scheda-pezzo" id="scheda-voti" aria-busy="true"><h3>${t("formazione.ultimi_voti")}</h3><div class="debole piccolo">${t("comune.carico")}</div></div>
@@ -1402,7 +1410,7 @@ function apriSostituzione(id) {
     return `<li class="riga-gioc"><button class="voce voce-g" data-entra="${x.id}">${volto(x)}
       <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
         <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra), postoInFormazione(x.id)])}</span>
-        <span class="etichette">${etichetteGiocatore(x)}${giocaPoco(x)}</span></span>
+        <span class="etichette">${etichetteGiocatore(x, giocaPoco(x))}</span></span>
       <span class="valore"><b class="${d > 0.04 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_rispetto", { nome: esc(base.nome) })}</span></span>
       <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
   };
