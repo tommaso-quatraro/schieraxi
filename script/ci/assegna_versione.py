@@ -14,6 +14,9 @@ sono entrati in main:
 - toglie il file da `fanta/novita.d/`;
 - se quella PR ha toccato `fanta/web/` senza alzare `VERSIONE` in `fanta/web/sw.js`, la alza di 1 (una volta sola per giro).
 Con --commit fa anche il commit (il push lo fa il job). Stampa le versioni nuove, una per riga (niente = nulla da fare).
+Con --urgente il commit ha anche la riga «Rilascio: urgente»: il server installa subito, senza aspettare l'intervallo fra due
+installazioni (script/server/aggiorna-app.sh, #635). Il job la chiede quando una delle PR delle novità in attesa ha l'etichetta P1
+o urgente; quelle PR le stampa --pr-in-attesa (numeri dal titolo «... (#N)» del commit di unione, senza cambiare niente).
 Solo libreria standard: gira nei controlli di GitHub e sul server (Python 3.11).
 """
 from __future__ import annotations
@@ -33,6 +36,8 @@ WEB = "fanta/web/"
 NOME_FILE = re.compile(r"[a-z0-9][a-z0-9-]{0,60}\.json")
 RIGA_VERSIONE = re.compile(r'^(const VERSIONE = "fanta-)(\d+)(";)', re.M)
 DATA = re.compile(r"\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?")
+RIGA_URGENTE = "Rilascio: urgente"          # la cerca, come riga intera, script/server/aggiorna-app.sh
+PR_NEL_TITOLO = re.compile(r"\(#(\d+)\)\s*$")     # il job unisci scrive il titolo del commit come «Titolo della PR (#N)»
 # parole da tecnici nelle voci per l'utente: solo un avviso, non blocca
 TECNICO = [(re.compile(r"/api/"), "indirizzo /api/"), (re.compile(r"\b(GET|POST|PUT|DELETE|PATCH|HTTP)\b"), "metodo o sigla HTTP"),
            (re.compile(r"(?<![\d,.])[1-5]\d\d(?![\d,]|\.\d)"), "numero di tre cifre (codice di risposta?)"),
@@ -164,12 +169,28 @@ def in_attesa() -> list[tuple[str, dict, str, bool]]:
     return [t[1:] for t in trovati]
 
 
+def pr_in_attesa() -> list[int]:
+    """Numeri delle PR che hanno portato le novità in attesa, dal titolo del commit che ha aggiunto il file («... (#N)»).
+    Un file aggiunto da un commit senza numero non conta."""
+    numeri = []
+    for percorso, *_ in in_attesa():
+        m = PR_NEL_TITOLO.search(git("log", "-1", "--diff-filter=A", "--format=%s", "--", percorso).strip())
+        if m and int(m.group(1)) not in numeri:
+            numeri.append(int(m.group(1)))
+    return numeri
+
+
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--commit", action="store_true", help="fa anche il commit (senza push)")
+    parser.add_argument("--urgente", action="store_true", help=f"con --commit: aggiunge la riga «{RIGA_URGENTE}» al messaggio")
+    parser.add_argument("--pr-in-attesa", action="store_true", help="stampa solo i numeri delle PR delle novità in attesa")
     args = parser.parse_args()
     try:
+        if args.pr_in_attesa:
+            print("\n".join(str(n) for n in pr_in_attesa()))
+            return 0
         attesa = in_attesa()
         if not attesa:
             print("Nessuna novità in attesa in fanta/novita.d.", file=sys.stderr)
@@ -186,7 +207,10 @@ def main() -> int:
             git("rm", "-q", *[p for p, *_ in attesa])
             git("add", *da_aggiungere)
             titoli = "; ".join(d["titolo"] for _, d, _, _ in attesa)
-            git("commit", "-q", "-m", f"Versione {', '.join(versioni)}: {titoli}"[:200])
+            messaggio = f"Versione {', '.join(versioni)}: {titoli}"[:200]
+            if args.urgente:
+                messaggio += f"\n\n{RIGA_URGENTE}"
+            git("commit", "-q", "-m", messaggio)
         else:
             for p, *_ in attesa:
                 Path(p).unlink()
