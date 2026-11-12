@@ -12,6 +12,8 @@ import sqlite3
 from datetime import datetime
 from typing import Callable
 
+from . import fonti_attive
+
 PARTITE_PER_GIORNATA = 10
 MIN_VOTI_GIORNATA = 180          # in una giornata finita ne arrivano circa 280
 SOGLIA_XG = 1.0                  # differenza massima tra l'xG della partita e la somma di quello dei giocatori
@@ -126,7 +128,11 @@ def gol_subiti_portieri(db: sqlite3.Connection, stagione: str) -> Esito | None:
 def partite_senza_statistiche(db: sqlite3.Connection, stagione: str) -> Esito | None:
     """Le partite giocate che hanno già i voti devono avere anche le statistiche per partita (minuti, xG, rigori calciati). Se
     mancano, la fonte è ferma o in ritardo: per quelle partite il modello usa le righe ricostruite dai voti, senza xG
-    (`modello.con_prestazioni_dai_voti`, #613). Una partita senza voti non conta: è appena finita."""
+    (`modello.con_prestazioni_dai_voti`, #613). Una partita senza voti non conta: è appena finita.
+    Con la fonte spenta apposta (le fonti sono spente di default) il controllo non si applica: le righe vengono dai voti per
+    scelta, e un avviso a ogni giro non direbbe niente."""
+    if not fonti_attive.acceso("understat"):
+        return None
     righe = db.execute("""
         SELECT p.giornata, COUNT(*),
                SUM(NOT EXISTS (SELECT 1 FROM prestazioni pr WHERE pr.understat_partita = p.understat_id))
