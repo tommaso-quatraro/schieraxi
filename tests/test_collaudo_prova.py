@@ -81,18 +81,18 @@ def riga():
 
 
 def test_esito_tutto_a_posto(cp, riga):
-    riepilogo = riga("oggi", 390, "chiaro", 0, False, 0) + "\n" + riga("oggi", 1440, "scuro", 0, False, 0) + "\n"
+    riepilogo = riga("formazione", 390, "chiaro", 0, False, 0) + "\n" + riga("formazione", 1440, "scuro", 0, False, 0) + "\n"
     assert cp.esito(riepilogo) == (True, [])
 
 
 def test_esito_con_errori_della_console_gravi_scorrimento_e_scene_rotte(cp, riga):
     # la riga di una scena che non si apre la scrive fotografa() senza una funzione apposta: qui come la scrive lei
-    riepilogo = (riga("oggi", 390, "chiaro", 0, False, 2) + "\n" + riga("rosa", 390, "scuro", 3, True, 0) + "\n"
+    riepilogo = (riga("formazione", 390, "chiaro", 0, False, 2) + "\n" + riga("rosa", 390, "scuro", 3, True, 0) + "\n"
                  "scheda 1440 chiaro errore=TimeoutError: Timeout 20000ms exceeded at https://prova.esempio.invalid/x\n")
     ok, problemi = cp.esito(riepilogo)
     assert ok is False
     testo = "\n".join(problemi)
-    assert "oggi 390 chiaro" in testo and "2 errori della console" in testo
+    assert "formazione 390 chiaro" in testo and "2 errori della console" in testo
     assert "rosa 390 scuro" in testo and "3 violazioni gravi" in testo and "scorre di lato" in testo
     assert "scheda 1440 chiaro" in testo and "TimeoutError" in testo
     assert "https://" not in testo and "esempio.invalid" not in testo      # l'issue è pubblica: niente indirizzi
@@ -106,7 +106,7 @@ def test_esito_riepilogo_vuoto_non_passa(cp):
 @pytest.mark.parametrize("chiave", ["gravi", "scorrimento-di-lato", "errori-console"])
 def test_esito_chiave_mancante_e_un_problema(cp, riga, chiave):
     """Una misura che manca non vale «zero errori»: se foto.py cambia formato, il collaudo non passa invece di tacere."""
-    buona = riga("oggi", 390, "chiaro", 0, False, 0)
+    buona = riga("formazione", 390, "chiaro", 0, False, 0)
     monca = " ".join(p for p in buona.split() if not p.startswith(chiave + "="))
     assert monca != buona
     ok, problemi = cp.esito(monca + "\n")
@@ -116,8 +116,8 @@ def test_esito_chiave_mancante_e_un_problema(cp, riga, chiave):
 def test_nessun_testo_fra_i_job_contiene_la_parola_dell_utente(cp, riga, tmp_path, monkeypatch):
     """GitHub scarta le uscite di un job che contengono un segreto: «collaudo» è il nome dell'account (PROVA_UTENTE). Nessun
     testo che passa fra i job (esito, dettaglio) può contenerlo, sennò l'issue P1 resta senza dettagli."""
-    casi = ["", riga("oggi", 390, "chiaro", 2, True, 3) + "\n", "scheda 390 chiaro errore=Error: x\n",
-            " ".join(riga("oggi", 390, "chiaro", 0, False, 0).split()[:4]) + "\n"]
+    casi = ["", riga("formazione", 390, "chiaro", 2, True, 3) + "\n", "scheda 390 chiaro errore=Error: x\n",
+            " ".join(riga("formazione", 390, "chiaro", 0, False, 0).split()[:4]) + "\n"]
     for riepilogo in casi:
         assert all("collaudo" not in p.lower() for p in cp.esito(riepilogo)[1]), riepilogo
     uscita = tmp_path / "uscita.txt"
@@ -269,7 +269,7 @@ def test_a_mano_si_collauda_anche_una_versione_gia_collaudata(cp, tmp_path, monk
 def test_comando_esito_scrive_il_risultato_mascherato(cp, tmp_path, monkeypatch):
     cartella = tmp_path / "collaudo"
     cartella.mkdir()
-    (cartella / "riepilogo.txt").write_text("oggi 390 chiaro errore=Error: net::ERR at prova.esempio.invalid\n", encoding="utf-8")
+    (cartella / "riepilogo.txt").write_text("formazione 390 chiaro errore=Error: net::ERR at prova.esempio.invalid\n", encoding="utf-8")
     uscita = tmp_path / "uscita.txt"
     monkeypatch.setenv("GITHUB_OUTPUT", str(uscita))
     monkeypatch.setenv("PROVA_URL", "https://prova.esempio.invalid")
@@ -290,7 +290,7 @@ def test_comando_esito_senza_riepilogo_non_passa(cp, tmp_path, monkeypatch):
 def test_artifact_solo_se_il_collaudo_e_partito(cp, riga, tmp_path, monkeypatch):
     """Senza riepilogo (Playwright non si installa, prova spenta) la versione non è stata collaudata: niente artifact
     «collaudo-v<N>», così la corsa dopo riprova. Lo dice l'uscita `fatto`, usata nell'`if:` del caricamento."""
-    for nome, riepilogo, atteso in (("vuota", None, "fatto=false"), ("misurata", riga("oggi", 390, "chiaro", 0, False, 0), "fatto=true")):
+    for nome, riepilogo, atteso in (("vuota", None, "fatto=false"), ("misurata", riga("formazione", 390, "chiaro", 0, False, 0), "fatto=true")):
         cartella = tmp_path / nome
         cartella.mkdir()
         if riepilogo is not None:
@@ -506,7 +506,7 @@ def _segnala(cp, monkeypatch, aperte, **ambiente):
     gh = _GitHubFinto(aperte)
     monkeypatch.setattr(cp, "_gh", gh)
     valori = {"DECISIONE": "collauda", "VERSIONE": "1.442", "PROVA": "1.442", "MINUTI": "30", "OK": "false",
-              "DETTAGLIO": "oggi 390 chiaro: 2 errori della console; rosa 390 scuro: la pagina scorre di lato",
+              "DETTAGLIO": "formazione 390 chiaro: 2 errori della console; rosa 390 scuro: la pagina scorre di lato",
               "CORSA": "https://github.invalid/corsa/1"}
     valori.update(ambiente)
     for nome, valore in valori.items():
@@ -521,7 +521,7 @@ def test_segnala_collaudo_rosso_apre_una_issue_p1(cp, monkeypatch):
     assert crea[crea.index("--title") + 1] == "Collaudo della prova: v1.442 non passa"
     assert "P1" in crea and "ci" in crea
     corpo = crea[crea.index("--body") + 1]
-    assert "- oggi 390 chiaro: 2 errori della console\n- rosa 390 scuro" in corpo and "https://github.invalid/corsa/1" in corpo
+    assert "- formazione 390 chiaro: 2 errori della console\n- rosa 390 scuro" in corpo and "https://github.invalid/corsa/1" in corpo
     assert not gh.fatte("comment") and not gh.fatte("close")        # l'issue di un'altra versione resta com'è
 
 
