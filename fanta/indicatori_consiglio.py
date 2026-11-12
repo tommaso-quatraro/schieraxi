@@ -44,8 +44,9 @@ MOSTRATE = 38                   # giornate tenute e mostrate in «Stato dei dati
 # proprio al massimo il 10%
 SOGLIE = {"C1": 0.0, "C2": 0, "C3": 0, "C4_senza_motivo": vc.MAX_SENZA_MOTIVO}
 # Gli indicatori che mandano l'avviso. C1 no (#614): su 8 giornate di poche rose la differenza in punti esce dalla soglia per
-# caso (misura del 12/11/2026 su 97 casi: +1,1 punti con un errore standard di 0,4; con 10 formazioni a giornata l'errore
-# standard di una finestra è più grande della differenza). Resta come numero; i punti si giudicano sulle rose a sorte di `verifica`.
+# caso. Misura in laboratorio del 12/11/2026: +1,0 punti sulla scelta semplice con un errore standard di 0,4 su 97 formazioni;
+# una finestra di 8 giornate con le formazioni di pochi utenti ne ha poche decine, e lì l'errore standard è intorno al punto,
+# quanto la differenza. C1 resta come numero; i punti si giudicano sulle rose estratte a sorte di `verifica`.
 AVVISANO = ("C2", "C3", "C4")
 
 

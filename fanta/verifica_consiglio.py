@@ -3,8 +3,9 @@
 È il «prima e dopo» dei lavori sul consiglio (proposta in docs/superpowers/specs/2026-11-05-consiglio-giusto-proposta.md,
 §2 e §3 L0). Misura soltanto: non cambia nessun numero dell'app. Due parti:
 A. le giornate già giocate della stagione, come `verifica` (per ogni giornata solo i dati di prima, senza probabili): punti veri
-   della consigliata contro S1 (fantamedia con il «gioca N%» del modello, la scelta semplice di `verifica`), S2 (fantamedia tra
-   chi ha preso voto la giornata prima, senza modello: quello che farebbe chi non ha l'app) e il senno di poi;
+   della consigliata contro S1 (fantamedia della stagione con il «gioca N%» del modello: era la scelta semplice di `verifica`,
+   che da #614 usa la fantamedia tirata verso il ruolo), S2 (fantamedia tra chi ha preso voto la giornata prima, senza modello:
+   quello che farebbe chi non ha l'app) e il senno di poi (con le regole della lega, `verifica._perfetta`);
 B. una giornata con le probabili, per la strada vera dell'app (`consigli.formazione`): titolari che non giocano, scelte che
    sembrano storte, «perché questo numero» senza un motivo del giocatore.
 In tutte e due la stabilità: la scelta rifatta con un altro seme della simulazione (stessi dati) e con un piccolo ritocco dei
@@ -365,7 +366,7 @@ def rapporto(m: dict, scrivi=print) -> None:
     e = esiti(m)
     scrivi(f"Consiglio di formazione: misura in laboratorio (indicatori C1-C4 di #166; {m.get('simulazioni', SIMULAZIONI)} "
            "simulazioni come l'app, semi fissi: sugli stessi dati dà sempre gli stessi numeri)")
-    scrivi("  S1 = fantamedia con il «gioca N%» del modello (la scelta semplice della verifica); S2 = fantamedia tra chi ha "
+    scrivi("  S1 = fantamedia della stagione con il «gioca N%» del modello; S2 = fantamedia tra chi ha "
            "preso voto la giornata prima, senza modello (quello che farebbe chi non ha l'app).")
     if a["casi"]:
         g = a["giornate"]
