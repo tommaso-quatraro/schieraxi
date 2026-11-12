@@ -165,11 +165,12 @@ def _strumento():
 
 
 def _archivio_di_prova(tmp_path):
-    """Sei giornate giocate di alfa-beta. Presenze e cartellini:
+    """Sei giornate giocate di alfa-beta; gamma-delta ha giocato anche la 7, alfa-beta no (rinviata). Presenze e cartellini:
     1: giallo dalla 1 alla 5, alla 6 non c'è (squalificato vero);    2: rosso alla 5, alla 6 è in campo (falso);
-    3: giallo dalla 1 alla 4, sempre in campo (diffidato);            4: giallo dalla 2 alla 6 (squalificato alla 7)."""
+    3: giallo dalla 1 alla 4, sempre in campo (diffidato);            4: giallo dalla 2 alla 6 (squalificato alla 7, non giocata)."""
     db = archivio.apri(tmp_path / "prova.sqlite")
-    archivio.inserisci(db, "partite", [{"id": g, **partita(g, data=quando(g), giocata=g <= 6)} for g in range(1, 39)])
+    archivio.inserisci(db, "partite", [{"id": g, **partita(g, data=quando(g), giocata=g <= 6)} for g in range(1, 39)]
+                       + [{"id": 100 + g, **partita(g, "gamma", "delta", quando(g), g <= 7)} for g in range(1, 39)])
     presenze = {1: range(1, 6), 2: range(1, 7), 3: range(1, 7), 4: range(1, 7)}
     gialli_di = {1: {1, 2, 3, 4, 5}, 2: set(), 3: {1, 2, 3, 4}, 4: {2, 3, 4, 5, 6}}
     archivio.inserisci(db, "voti", [
@@ -181,10 +182,11 @@ def _archivio_di_prova(tmp_path):
 
 
 def test_misura_conta_segnalati_e_falsi_dal_tabellino(tmp_path):
+    """Il 4, squalificato per la 7 che alfa non ha giocato, non è né giusto né falso: si conta a parte."""
     db = _archivio_di_prova(tmp_path)
     assert _strumento().misura(db, ST) == {
-        "giornate": 5, "segnalati": 2, "falsi": 1,
-        "per_espulsione": 1, "falsi_per_espulsione": 1, "per_somma": 1, "falsi_per_somma": 0}
+        "giornate": 6, "segnalati": 2, "falsi": 1,
+        "per_espulsione": 1, "falsi_per_espulsione": 1, "per_somma": 1, "falsi_per_somma": 0, "non_giocate": 1}
 
 
 def test_misura_confronta_con_l_elenco_della_fonte(tmp_path):

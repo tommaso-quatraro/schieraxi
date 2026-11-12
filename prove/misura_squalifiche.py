@@ -1,7 +1,9 @@
 r"""Quanto è giusta la regola di fanta/squalifiche.py (#640), misurata sull'archivio locale.
 
 Per ogni giornata già giocata si calcola chi risulta squalificato usando solo le partite di prima, poi si guarda se quel
-giocatore è nel tabellino della partita: se c'è, la segnalazione era falsa. Dove l'archivio ha l'elenco della fonte (tabella
+giocatore è nel tabellino della partita: se c'è, la segnalazione era falsa (se la squadra quella partita non l'ha giocata, il
+segnalato si conta a parte). Il tasso dei falsi è un minimo: chi è segnalato a torto ma poi non gioca per un altro motivo
+(infortunio, scelta dell'allenatore) conta come giusto. Dove l'archivio ha l'elenco della fonte (tabella
 `probabili`, l'ultima lettura della giornata) si confrontano anche squalificati e diffidati con quell'elenco.
 La squadra di un giocatore è quella della sua ultima riga dei voti prima della partita.
 
@@ -45,7 +47,8 @@ def _squadre(voti: list[dict], partite: list[dict], giornata: int) -> dict[int, 
 
 def misura(db: sqlite3.Connection, stagione: str) -> dict[str, int]:
     """Sulle giornate giocate dalla seconda in poi: quanti segnalati come squalificati (per espulsione, per somma di
-    ammonizioni) e quanti di loro erano poi nel tabellino della partita (falsi)."""
+    ammonizioni) e quanti di loro erano poi nel tabellino della partita (falsi). Chi è segnalato per una partita che la sua
+    squadra non ha giocato (rinviata) non è né giusto né falso: si conta a parte, in `non_giocate`."""
     partite = _righe(db, "partite", _PARTITE, stagione)
     voti = _righe(db, "voti", _VOTI, stagione)
     rossi = [v for v in voti if v["espulsioni"]]
@@ -55,13 +58,16 @@ def misura(db: sqlite3.Connection, stagione: str) -> dict[str, int]:
         nel_tabellino.setdefault(v["giornata"], set()).add(v["calciatore_id"])
     ultima = max((g for (g, _), fatta in giocata.items() if fatta), default=0)
     conti = dict.fromkeys(("giornate", "segnalati", "falsi", "per_espulsione", "falsi_per_espulsione", "per_somma",
-                           "falsi_per_somma"), 0)
+                           "falsi_per_somma", "non_giocate"), 0)
     for g in range(2, ultima + 1):
         conti["giornate"] += 1
         squadre = _squadre(voti, partite, g)
         per_rosso = squalifiche.calcola(rossi, partite, stagione, g, squadre)
         for cid, stato in squalifiche.calcola(voti, partite, stagione, g, squadre).items():
-            if not stato.squalificato or not giocata.get((g, squadre[cid])):
+            if not stato.squalificato:
+                continue
+            if not giocata.get((g, squadre[cid])):
+                conti["non_giocate"] += 1
                 continue
             motivo = "per_espulsione" if cid in per_rosso else "per_somma"
             falso = cid in nel_tabellino.get(g, set())
