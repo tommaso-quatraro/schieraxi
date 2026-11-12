@@ -207,6 +207,12 @@ def con_prestazioni_dai_voti(d: Dati) -> Dati:
     pr["understat_partita"] = -pr["understat_partita"]
     pr["xg"] = XG_PER_GOL * (pr["gol"] - pr["rigori_segnati"]) + XG_RIGORE * pr["rigori_calciati"]
     pr["xa"] = XA_PER_ASSIST * pr["assist"]
+    if d.prestazioni.empty:
+        # nessuna statistica per partita (fonte spenta, come di default): solo le righe ricostruite, con le colonne in più della
+        # tabella vuote. Unite alla tabella vuota letta dall'archivio, che ha le colonne senza tipo, con pandas 3 restavano testo
+        # e dalla quarta giornata il calcolo si fermava con un errore (D57)
+        altre = [c for c in d.prestazioni.columns if c not in pr.columns]
+        return replace(d, prestazioni=pr.reindex(columns=[*pr.columns, *altre]))
     return replace(d, prestazioni=pd.concat([d.prestazioni, pr], ignore_index=True))
 
 
@@ -768,11 +774,16 @@ def _presenze_recenti_varie(d: Dati, V: pd.DataFrame, col_voto: str, g: pd.DataF
     """Come `_presenze_recenti` per più parametri insieme (la parte comune si prepara una volta sola), con operazioni su tabelle
     intere invece di un ciclo per giocatore. Per ogni giocatore valgono le ultime partite della squadra (al massimo
     `giornate_presenze`) dal suo arrivo in quella squadra; la più recente pesa 1, le precedenti `decadimento_presenze` alla potenza
-    della distanza (i pesi dipendono solo dalla posizione nella finestra della squadra, non dall'arrivo del giocatore)."""
+    della distanza (i pesi dipendono solo dalla posizione nella finestra della squadra, non dall'arrivo del giocatore).
+    Una partita giocata in cui la squadra non ha ancora nessun voto (voti non ancora usciti, passo dei voti non riuscito) per lei
+    non conta finché i voti non arrivano: non è un'assenza di tutti i suoi giocatori (#658)."""
     giocate = d.partite[prima_di(d.partite, data0) & (d.partite["giocata"] == 1)]
     lungo = pd.concat([
         pd.DataFrame({"slug": giocate[c].to_numpy(), "st": giocate["stagione"].to_numpy(), "gi": giocate["giornata"].to_numpy(),
                       "da": giocate["data"].to_numpy()}) for c in ("casa", "trasferta")], ignore_index=True)
+    squadre_con_voti = V.loc[V[col_voto].notna(), ["squadra", "stagione", "giornata"]].drop_duplicates()
+    squadre_con_voti.columns = ["slug", "st", "gi"]
+    lungo = lungo.merge(squadre_con_voti, on=["slug", "st", "gi"])
     lungo = lungo.sort_values(["slug", "da", "st", "gi"], kind="stable", ignore_index=True)
     con_voto = V.loc[V[col_voto].notna(), ["calciatore_id", "stagione", "giornata"]].drop_duplicates()
     con_voto.columns = ["cid", "st", "gi"]

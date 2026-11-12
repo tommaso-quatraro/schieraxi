@@ -15,7 +15,6 @@ from typing import Callable
 from . import fonti_attive
 
 PARTITE_PER_GIORNATA = 10
-MIN_VOTI_GIORNATA = 180          # in una giornata finita ne arrivano circa 280
 SOGLIA_XG = 1.0                  # differenza massima tra l'xG della partita e la somma di quello dei giocatori
 QUOTA_TOLLERATA = 0.02           # fino al 2% di righe fuori misura è rumore delle fonti, oltre è un avviso
 TITOLARI = 11
@@ -38,18 +37,30 @@ def partite_per_giornata(db: sqlite3.Connection, stagione: str) -> Esito | None:
     return "ok", 0.0, f"{len(righe)} giornate, tutte con {PARTITE_PER_GIORNATA} partite"
 
 
+def squadre_senza_voti(db: sqlite3.Connection, stagione: str) -> dict[int, int]:
+    """{giornata: quante squadre} delle partite giocate che in quella giornata non hanno nessun voto: voti non ancora usciti, o
+    arrivati a metà (#658). Le giornate in cui ogni squadra ha i voti non ci sono."""
+    return {g: int(n) for g, n in db.execute("""
+        WITH con AS (SELECT DISTINCT giornata, squadra FROM voti WHERE stagione = ? AND voto_red IS NOT NULL),
+             squadre AS (SELECT giornata, casa AS squadra FROM partite WHERE stagione = ? AND giocata = 1
+                         UNION ALL SELECT giornata, trasferta FROM partite WHERE stagione = ? AND giocata = 1)
+        SELECT s.giornata, COUNT(*) FROM squadre s LEFT JOIN con c ON c.giornata = s.giornata AND c.squadra = s.squadra
+        WHERE c.squadra IS NULL GROUP BY s.giornata ORDER BY s.giornata""", (stagione, stagione, stagione))}
+
+
 def voti_per_giornata(db: sqlite3.Connection, stagione: str) -> Esito | None:
-    """Le giornate finite devono avere i voti (almeno MIN_VOTI_GIORNATA giocatori con voto)."""
+    """Nelle giornate finite ogni squadra deve avere i voti. Si guardano le squadre senza nessun voto, non il totale delle righe:
+    con almeno 180 righe il controllo diceva «ok» già con 7 partite su 10 (#658)."""
     finite = [g for g, in db.execute("SELECT giornata FROM partite WHERE stagione = ? GROUP BY giornata "
                                      "HAVING COUNT(*) = ? AND SUM(giocata) = COUNT(*)", (stagione, PARTITE_PER_GIORNATA))]
     if not finite:
         return None
-    con_voto = dict(db.execute("SELECT giornata, SUM(voto_red IS NOT NULL) FROM voti WHERE stagione = ? GROUP BY giornata",
-                               (stagione,)).fetchall())
-    poche = [g for g in finite if (con_voto.get(g) or 0) < MIN_VOTI_GIORNATA]
+    senza = squadre_senza_voti(db, stagione)
+    poche = [(g, senza[g]) for g in finite if g in senza]
     if poche:
-        return "avviso", float(len(poche)), f"giornate finite con pochi voti: {', '.join(f'g{g}' for g in poche[:8])}"
-    return "ok", 0.0, f"{len(finite)} giornate finite, tutte con i voti"
+        elenco = ", ".join(f"g{g} ({n} {'squadra' if n == 1 else 'squadre'})" for g, n in poche[:8])
+        return "avviso", float(len(poche)), f"giornate finite con squadre senza voti: {elenco}"
+    return "ok", 0.0, f"{len(finite)} giornate finite, tutte con i voti di ogni squadra"
 
 
 def somma_xg(db: sqlite3.Connection, stagione: str) -> Esito | None:

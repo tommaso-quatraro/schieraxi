@@ -35,10 +35,27 @@ def test_giornate_complete_e_incomplete(db):
 def test_voti_mancanti_in_giornata_finita(db):
     _giornata(db, 1)
     _giornata(db, 2, giocata=0)                   # non finita: non si controlla
-    assert _esiti(db)["voti_per_giornata"]["esito"] == "avviso"
-    for i in range(200):
-        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, voto_red) VALUES (?, 1, ?, 6.0)", (ST, i))
+    e = _esiti(db)["voti_per_giornata"]
+    assert e["esito"] == "avviso" and "g1 (20 squadre)" in e["dettaglio"] and "g2" not in e["dettaglio"]
+    for i in range(10):                                           # ogni squadra con i voti (anche uno solo basta)
+        for sq in (f"c{i}", f"t{i}"):
+            db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, squadra, voto_red) VALUES (?, 1, ?, ?, 6.0)",
+                       (ST, 10 * i + (sq[0] == "t"), sq))
     assert _esiti(db)["voti_per_giornata"]["esito"] == "ok"
+
+
+def test_giornata_finita_con_squadre_senza_voti_non_e_ok(db):
+    """#658: il controllo guardava il totale delle righe (almeno 180) e diceva «ok» già con 7 partite su 10. Guarda le squadre delle
+    partite giocate che non hanno nessun voto."""
+    _giornata(db, 1)
+    for i in range(10):
+        for sq in (f"c{i}", f"t{i}"):
+            if i < 7:                                             # 14 squadre su 20 con 14 voti: 196 righe
+                for j in range(14):
+                    db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, squadra, voto_red) VALUES (?, 1, ?, ?, 6.0)",
+                               (ST, 1000 * i + 100 * (sq[0] == "t") + j, sq))
+    e = _esiti(db)["voti_per_giornata"]
+    assert e["esito"] == "avviso" and e["valore"] == 1.0 and "g1 (6 squadre)" in e["dettaglio"]
 
 
 def test_somma_xg(db):
