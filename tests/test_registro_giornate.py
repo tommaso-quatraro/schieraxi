@@ -196,11 +196,69 @@ def test_le_giornate_misurate_con_l_avversario_di_prima_si_rimisurano_una_volta(
     rg.registra_misura(db, ST, 10, rg.misura_giornata(db, ST, 10), ORA(9, 12))
     giusto = db.execute("SELECT sq_fantamedia FROM registro_giornate WHERE giornata = 10").fetchone()[0]
     assert rg.rimisura_avversario(db, ORA(13, 9)) == []                         # già misurata contro l'avversario di adesso
-    db.execute("UPDATE registro_giornate SET sq_fantamedia = 99.0 WHERE giornata = 10")       # come una misura di prima di #614
+    db.execute("UPDATE registro_giornate SET sq_fantamedia = 99.0, avversario = NULL WHERE giornata = 10")   # misura di prima di #614
     assert rg.rimisura_avversario(db, ORA(13, 9)) == [(ST, 10)]
     riga = db.execute("SELECT sq_fantamedia, misurato FROM registro_giornate WHERE giornata = 10").fetchone()
     assert riga[0] == pytest.approx(giusto) and riga[1] == "2026-11-13T09:00:00"
     assert rg.rimisura_avversario(db, ORA(13, 10)) == []
+
+
+def _conta_misure(monkeypatch) -> list:
+    """Le giornate per cui si rifà la misura (`misura_giornata`, il calcolo lungo: circa 0,6 s a giornata con i dati veri)."""
+    calcoli, vera = [], rg.misura_giornata
+    monkeypatch.setattr(rg, "misura_giornata", lambda db, stagione, giornata: calcoli.append((stagione, giornata)) or vera(db, stagione, giornata))
+    return calcoli
+
+
+def test_la_rimisura_tocca_solo_le_giornate_senza_il_segno(finita, monkeypatch):
+    """Ogni giornata misurata porta nell'archivio il segno dell'avversario di I1 (`avversario`): la rimisura rifà il calcolo solo
+    per quelle senza, cioè misurate prima di #614. Prima rifaceva la misura di tutte le giornate a ogni avvio del servizio, solo
+    per confrontare un numero (revisione di #642)."""
+    db = finita
+    rg.registra_misura(db, ST, 10, rg.misura_giornata(db, ST, 10), ORA(9, 12))
+    assert db.execute("SELECT avversario FROM registro_giornate WHERE giornata = 10").fetchone()[0] == rg.AVVERSARIO
+    calcoli = _conta_misure(monkeypatch)
+    assert rg.rimisura_avversario(db, ORA(13, 9)) == [] and calcoli == []           # col segno: niente calcolo
+    db.execute("UPDATE registro_giornate SET sq_fantamedia = 99.0, avversario = NULL WHERE giornata = 10")   # misurata prima di #614
+    assert rg.rimisura_avversario(db, ORA(13, 9)) == [(ST, 10)] and calcoli == [(ST, 10)]
+    assert rg.rimisura_avversario(db, ORA(13, 10)) == [] and len(calcoli) == 1      # una volta sola
+    # senza segno ma già con il numero di adesso: si mette il segno e la misura (con i suoi avvisi) resta com'è
+    db.execute("UPDATE registro_giornate SET avversario = NULL WHERE giornata = 10")
+    prima = dict(db.execute("SELECT * FROM registro_giornate WHERE giornata = 10").fetchone())
+    assert rg.rimisura_avversario(db, ORA(14, 9)) == []
+    assert dict(db.execute("SELECT * FROM registro_giornate WHERE giornata = 10").fetchone()) == prima | {"avversario": rg.AVVERSARIO}
+
+
+def test_il_giro_rimisura_le_giornate_di_prima_una_volta_sola(finita, monkeypatch):
+    """Il passo «misura contro l'avversario di adesso» del giro (ogni minuto): la giornata misurata prima di #614 si rimisura al
+    primo giro e mai più, anche con il servizio riavviato, perché il segno sta nell'archivio e non in memoria."""
+    db = finita
+    rg.registra_misura(db, ST, 10, rg.misura_giornata(db, ST, 10), ORA(9, 12))
+    giusto = db.execute("SELECT sq_fantamedia FROM registro_giornate WHERE giornata = 10").fetchone()[0]
+    db.execute("UPDATE registro_giornate SET sq_fantamedia = 99.0, avversario = NULL WHERE giornata = 10")
+    db.commit()
+    calcoli = _conta_misure(monkeypatch)
+    rg.giro(ORA(13, 9), db, manda=lambda titolo, testo: True)
+    assert calcoli == [(ST, 10)]
+    assert db.execute("SELECT sq_fantamedia FROM registro_giornate WHERE giornata = 10").fetchone()[0] == pytest.approx(giusto)
+    rg.giro(ORA(13, 10), db, manda=lambda titolo, testo: True)
+    assert calcoli == [(ST, 10)]
+
+
+def test_archivio_con_il_registro_di_prima_riceve_la_colonna_del_segno(tmp_path):
+    """Un archivio che ha già `registro_giornate` (senza la colonna `avversario`) la riceve all'apertura, senza perdere le misure:
+    le giornate di prima restano senza segno, quindi si rimisurano una volta."""
+    vecchio = sqlite3.connect(tmp_path / "v.sqlite")
+    vecchio.execute("CREATE TABLE registro_giornate (stagione TEXT, giornata INTEGER, salvato TEXT, giocatori INTEGER, con_probabili "
+                    "INTEGER, misurato TEXT, voti INTEGER, sq_modello REAL, sq_fantamedia REAL, presenze INTEGER, brier_somma REAL, "
+                    "fasce TEXT, fascia_casi INTEGER, fascia_dentro INTEGER, fuori TEXT, da_avvisare TEXT, avvisati TEXT, persa TEXT, "
+                    "PRIMARY KEY (stagione, giornata))")
+    vecchio.execute("INSERT INTO registro_giornate (stagione, giornata, misurato, presenze, sq_fantamedia) "
+                    "VALUES (?, 10, '2026-11-09T12:00:00', 4, 99.0)", (ST,))
+    vecchio.commit()
+    vecchio.close()
+    db = archivio.apri(tmp_path / "v.sqlite")
+    assert tuple(db.execute("SELECT sq_fantamedia, avversario FROM registro_giornate WHERE giornata = 10").fetchone()) == (99.0, None)
 
 
 def test_partita_rinviata_non_tiene_aperta_la_giornata(finita):

@@ -54,6 +54,9 @@ MOSTRATE = 38                           # righe per giornata in «Stato dei dati
 # fantavoto atteso non deve superare di più dell'1% quello della fantamedia tirata;
 # I2 «gioca N%» con errore di calibrazione al massimo 5 punti e Brier al massimo 0,15; I3 punti veri nella fascia tra 72% e 88%
 SOGLIE = {"I1": 0.01, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88}
+# il segno dell'avversario di I1 in ogni giornata misurata (`registro_giornate.avversario` nell'archivio): la fantamedia tirata verso
+# il ruolo di #614. Le giornate senza segno sono state misurate prima e si rimisurano una volta (`rimisura_avversario`)
+AVVERSARIO = "fantamedia_tirata"
 LOG = logging.getLogger(__name__)
 BONUS_E_MALUS = ("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagliati", "rig_parati", "assist", "mvp", "ammonizioni",
                  "espulsioni")
@@ -422,14 +425,14 @@ def registra_misura(db: sqlite3.Connection, stagione: str, giornata: int, m: dic
     da avvisare = fuori soglia adesso E nella giornata misurata prima, e non già avvisati mentre restavano fuori."""
     chiave = (stagione, int(giornata))
     if m is None:
-        db.execute("UPDATE registro_giornate SET misurato = ?, voti = 0, presenze = 0, fuori = '[]', da_avvisare = '[]', avvisati = '[]' "
-                   "WHERE stagione = ? AND giornata = ?", (adesso.isoformat(timespec="seconds"), *chiave))
+        db.execute("UPDATE registro_giornate SET misurato = ?, voti = 0, presenze = 0, fuori = '[]', da_avvisare = '[]', avvisati = '[]', "
+                   "avversario = ? WHERE stagione = ? AND giornata = ?", (adesso.isoformat(timespec="seconds"), AVVERSARIO, *chiave))
         db.commit()
         return []
     db.execute("UPDATE registro_giornate SET misurato = ?, voti = ?, sq_modello = ?, sq_fantamedia = ?, presenze = ?, brier_somma = ?, "
-               "fasce = ?, fascia_casi = ?, fascia_dentro = ? WHERE stagione = ? AND giornata = ?",
+               "fasce = ?, fascia_casi = ?, fascia_dentro = ?, avversario = ? WHERE stagione = ? AND giornata = ?",
                (adesso.isoformat(timespec="seconds"), m["voti"], m["sq_modello"], m["sq_fantamedia"], m["presenze"], m["brier_somma"],
-                json.dumps(m["fasce"]), m["fascia_casi"], m["fascia_dentro"], *chiave))
+                json.dumps(m["fasce"]), m["fascia_casi"], m["fascia_dentro"], AVVERSARIO, *chiave))
     finestra = _misurate(db, chiave, FINESTRA + 1)
     fuori = medie(finestra[-FINESTRA:])["fuori"]
     prima = finestra[-2] if len(finestra) >= 2 else {}
@@ -468,27 +471,23 @@ def chiudi_giornate(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str,
 
 def rimisura_avversario(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str, int]]:
     """Le giornate misurate quando l'avversario di I1 era la fantamedia della sola stagione (prima di #614) si rimisurano contro
-    quello di adesso: senza, per otto giornate la media mescolerebbe due avversari. Si riconoscono dal numero (`sq_fantamedia`
-    diverso da quello che dà la misura di adesso), quindi rifarlo non cambia niente. Restituisce quelle rifatte."""
+    quello di adesso: senza, per otto giornate la media mescolerebbe due avversari. Si riconoscono dal segno nell'archivio
+    (`avversario` diverso da AVVERSARIO, NULL per quelle di prima): una volta rimisurate lo hanno, e ai giri dopo la ricerca non
+    trova niente senza rifare nessun calcolo, anche dopo un riavvio del servizio. Se il numero non cambia si scrive solo il
+    segno: la misura e i suoi avvisi restano com'erano. Restituisce quelle rifatte."""
     fatte = []
     for r in _righe(db.execute("SELECT stagione, giornata, sq_fantamedia FROM registro_giornate WHERE misurato IS NOT NULL "
-                               "AND presenze > 0 ORDER BY stagione, giornata")):
+                               "AND presenze > 0 AND (avversario IS NULL OR avversario != ?) ORDER BY stagione, giornata",
+                               (AVVERSARIO,))):
         m = misura_giornata(db, r["stagione"], r["giornata"])
         if m is not None and abs(m["sq_fantamedia"] - float(r["sq_fantamedia"] or 0.0)) > 1e-3:
             registra_misura(db, r["stagione"], r["giornata"], m, adesso)
             fatte.append((r["stagione"], int(r["giornata"])))
+        else:
+            db.execute("UPDATE registro_giornate SET avversario = ? WHERE stagione = ? AND giornata = ?",
+                       (AVVERSARIO, r["stagione"], r["giornata"]))
+            db.commit()
     return fatte
-
-
-_avversario_rimisurato = False
-
-
-def _rimisura_una_volta(db: sqlite3.Connection, adesso: datetime) -> None:
-    """Una volta per avvio del servizio (`giro` gira ogni minuto): dopo l'aggiornamento a #614 rimette a posto le giornate vecchie."""
-    global _avversario_rimisurato
-    if not _avversario_rimisurato:
-        rimisura_avversario(db, adesso)
-        _avversario_rimisurato = True
 
 
 # ---------------------------------------------------------------- avviso al proprietario (come la sentinella)
@@ -571,7 +570,7 @@ def giro(adesso: datetime, db: sqlite3.Connection, manda: Callable[[str, str], b
              ("controllo delle giornate perse", lambda: segna_perse(db, adesso)),
              ("controllo delle giornate perse dei numeri nostri", lambda: rn().segna_perse(db, adesso)),
              ("misura", lambda: chiudi_giornate(db, adesso)), ("misura dei numeri nostri", lambda: rn().chiudi_giornate(db, adesso)),
-             ("misura contro l'avversario di adesso", lambda: _rimisura_una_volta(db, adesso)),
+             ("misura contro l'avversario di adesso", lambda: rimisura_avversario(db, adesso)),
              ("avviso", lambda: avvisa(db, invia)), ("avviso delle giornate perse", lambda: avvisa_perse(db, invia)),
              ("avviso dei numeri nostri", lambda: rn().avvisa(db, invia)),
              ("avviso delle giornate perse dei numeri nostri", lambda: rn().avvisa_perse(db, invia)))
