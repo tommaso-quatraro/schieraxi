@@ -506,9 +506,11 @@ def salva_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None, g
 
 def scrivi_schierata(voce: dict, scelti: list[int], giornata: int, tipo: str, file_diario: Path | None = None,
                      file_scelte: Path | None = None) -> None:
-    """Il pezzo veloce: salva la scelta e la voce già calcolata."""
+    """Il pezzo veloce: salva la scelta e la voce già calcolata. «L'ho messa» lo decide `scelte.salva` (resta finché i titolari
+    sono quelli di prima): la voce lo prende dalla scelta appena salvata."""
     stagione = consigli.stagione_corrente()
-    scelte.salva(stagione, giornata, scelti, voce["schierata"]["modulo"], file_scelte, tipo=tipo)
+    salvata = scelte.salva(stagione, giornata, scelti, voce["schierata"]["modulo"], file_scelte, tipo=tipo)
+    voce["schierata"]["confermata"] = schierata_confermata(salvata)
     _scrivi(file_diario, voci={f"{stagione}/{giornata}": voce})
 
 

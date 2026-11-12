@@ -338,6 +338,24 @@ def test_il_diario_legge_l_ho_messa_dal_file_delle_scelte(vero):
     assert [(v["giornata"], v["schierata"]["confermata"]) for v in voci] == [(2, None), (1, True)]
 
 
+@pytest.mark.parametrize("tipo, titolari, messa", [
+    ("manuale", CON_IL_25[::-1], True),          # «Correggi a mano» con gli stessi titolari: resta messa
+    ("consigliata", None, True),                 # «Ho schierato la consigliata» (l'istantanea ha gli stessi titolari)
+    ("manuale", MOSTRATI, None),                 # un titolare diverso: nell'app della lega c'è un'altra formazione
+])
+def test_ho_schierato_tiene_l_ho_messa_con_gli_stessi_titolari(vero, tipo, titolari, messa):
+    """«L'ho messa» resta nella scelta salvata finché i titolari sono gli stessi (`scelte.salva`): la voce del Diario scritta da
+    «Ho schierato…» o «Correggi a mano» lo deve dire anche lei, non `null` (revisione di #642)."""
+    diario.salva_istantanea(_formazione_finta(giornata=1, ids=CON_IL_25), ST, vero.file)
+    vero.scelte.write_text(json.dumps({f"{ST}/1": {"titolari": CON_IL_25, "modulo": "3-4-3", "salvata": "2026-08-31T18:00:00",
+                                                   "tipo": "manuale", "messa": True, "messa_il": "2026-08-31T18:05:00"}}),
+                           encoding="utf-8")
+    voce = _salva(vero, 1, tipo, titolari)
+    assert voce["schierata"]["confermata"] is messa
+    assert diario.carica(vero.file)["giornate"][f"{ST}/1"]["schierata"]["confermata"] is messa
+    assert _LEGGI_VERO(ST, 1, vero.scelte).get("messa") is messa
+
+
 def test_il_diario_distingue_automatica_e_schierata(vero):
     scelti = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]
     _scelte.salva_automatica(ST, 1, scelti, "3-4-3", vero.scelte)
