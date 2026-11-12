@@ -29,9 +29,10 @@ def _funzione(testo, nome):
 
 def test_una_sola_nav_nella_testata_con_le_schede_come_collegamenti():
     assert HTML.count("<nav") == 1 and HTML.index("<nav") < HTML.index("</header>")
-    for v in ("formazione", "squadra", "altro"):
+    for v in ("formazione", "giornate", "impostazioni"):                # tre schede dal 12/11/2026 (#617, #618)
         assert f'<a class="scheda" data-vista="{v}" href="/?vista={v}"' in HTML
-    assert 'data-vista="oggi"' not in HTML                           # Oggi e Formazione sono una schermata sola (#616)
+    for tolta in ("oggi", "squadra", "altro"):                       # Oggi e Formazione sono una schermata sola (#616)
+        assert f'data-vista="{tolta}"' not in HTML
 
 
 def test_testata_senza_h1_e_nome_disegnato_uguale_al_sito():
@@ -67,12 +68,12 @@ def test_niente_pillola_verticale_ne_lente_sul_pc():
 
 
 def test_le_colonne_ferme_stanno_sotto_la_testata_ferma():
-    """Da 900 px la testata resta ferma in alto: le colonne ferme (campo della Formazione, Impostazioni, menu) partono sotto di lei
-    (`--alto-ferma`); sotto i 900 px la testata scorre via e le colonne stanno a un filo dal bordo."""
+    """Da 900 px la testata resta ferma in alto: le colonne ferme (campo della Formazione, giornata scelta in Giornate) partono sotto
+    di lei (`--alto-ferma`); sotto i 900 px la testata scorre via e le colonne stanno a un filo dal bordo."""
     assert re.search(r"\n:root \{[^}]*--alto-ferma: 0px", CSS)
     assert re.search(r"@media \(min-width: 900px\) \{[^@]*--alto-ferma: var\(--alto-testata, 56px\)", CSS)
     assert "top: 76px" not in CSS
-    assert CSS.count("top: calc(var(--alto-ferma) + 16px)") >= 3
+    assert CSS.count("top: calc(var(--alto-ferma) + 16px)") >= 2
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
@@ -92,32 +93,32 @@ def test_clic_su_una_scheda_ctrl_cmd_maiusc_e_clic_centrale_li_decide_il_browser
 
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_indirizzo_di_ogni_schermata():
-    """L'indirizzo che va nella cronologia: le schede, le voci di Squadra e Altro, la rosa di una squadra, le Impostazioni con il
-    gruppo. Sono gli stessi indirizzi che l'app sa già aprire all'avvio (`?vista=`, `&voce=`, `&rosa=`, `&gruppo=`)."""
-    corpo = re.search(r"\nconst indirizzoVista = [^\n]*\n", APP).group(0)
+    """L'indirizzo che va nella cronologia: le schede, le pagine di Impostazioni (`&gruppo=`) e la rosa di un'altra squadra
+    (`&rosa=`, #618). Sono gli stessi indirizzi che l'app sa già aprire all'avvio."""
+    corpo = APP[APP.index("const indirizzoVista = "):APP.index("let indirizzoMostrato = ")]
     codice = corpo + """
-    console.log(JSON.stringify([indirizzoVista("oggi"), indirizzoVista("formazione"), indirizzoVista("altro", null, "regole"),
-      indirizzoVista("impostazioni", "avvisi"), indirizzoVista("impostazioni"), indirizzoVista("squadra", "x", "squadre", "Real Esempio")]));
+    console.log(JSON.stringify([indirizzoVista("formazione"), indirizzoVista("giornate", "x"), indirizzoVista("impostazioni", "regole"),
+      indirizzoVista("impostazioni"), indirizzoVista("impostazioni", "squadre", "Real Esempio"), indirizzoVista("impostazioni", "rose", "x")]));
     """
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout) == ["/?vista=oggi", "/?vista=formazione", "/?vista=altro&voce=regole",
-                                    "/?vista=impostazioni&gruppo=avvisi", "/?vista=impostazioni", "/?vista=squadra&rosa=Real+Esempio"]
+    assert json.loads(r.stdout) == ["/?vista=formazione", "/?vista=giornate", "/?vista=impostazioni&gruppo=regole", "/?vista=impostazioni",
+                                    "/?vista=impostazioni&gruppo=squadre&rosa=Real+Esempio", "/?vista=impostazioni&gruppo=rose"]
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_un_indirizzo_strano_non_trova_niente_e_oggi_vale_la_formazione():
     """`?vista=` arriva dall'indirizzo (anche con Indietro): un nome che non è una schermata non deve trovare niente, nemmeno
-    le proprietà di ogni oggetto JavaScript («__proto__», «constructor»), che prima rompevano la pagina. «oggi», il nome di
-    prima, vale la Formazione (#616)."""
+    le proprietà di ogni oggetto JavaScript («__proto__», «constructor»), che prima rompevano la pagina. I nomi di prima («oggi»,
+    «squadra», «altro»...) non sono schede: li porta alla schermata giusta dove() (tests/test_web_tagli.py)."""
     pezzo = APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")]
     riga = re.search(r"\nconst SCHEDA_DI = [^\n]*\n", APP).group(0)
     codice = pezzo + riga + """
-    console.log(JSON.stringify(["oggi", "mercato", "scambi", "lega", "__proto__", "constructor", "toString", "x", null].map(SCHEDA_DI)));
+    console.log(JSON.stringify(["formazione", "giornate", "impostazioni", "oggi", "squadra", "altro", "__proto__", "constructor", "toString", null].map(SCHEDA_DI)));
     """
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout) == ["formazione", "squadra", "altro", "altro", None, None, None, None, None]
+    assert json.loads(r.stdout) == ["formazione", "giornate", "impostazioni", None, None, None, None, None, None, None]
 
 
 def test_la_ricerca_dalla_testata_non_perde_le_lettere():
@@ -134,20 +135,21 @@ def test_la_ricerca_dalla_testata_non_perde_le_lettere():
 
 def test_ogni_schermata_ha_il_suo_titolo_h1_e_la_riga_di_stato():
     corpo = _funzione(APP, "pagina")
-    assert 'class="capo-pagina"' in corpo and '<h1 id="titolo-pagina"' in corpo and 'class="stato-pagina"' in corpo
+    assert 'class="capo-pagina' in corpo and '<h1 id="titolo-pagina"' in corpo and 'class="stato-pagina"' in corpo
     assert 't("nav." + ' in corpo and "opz.titolo" in corpo
     assert "nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata)" in _funzione(APP, "caricaInfo")   # giornata della lega (#306)
     assert "titolo:" in _funzione(APP, "vistaRosa")              # la rosa di una squadra: il suo titolo, non quello della scheda
 
 
 def test_pagina_e_l_unico_punto_che_scrive_le_schermate():
-    """Spec §10: Regole, il caricamento e il componente a pannelli (Squadra, Altro, Impostazioni) passano da
-    `pagina()`, così ogni schermata ha il titolo in cima. Impostazioni ha il suo titolo e niente riga di stato."""
-    for nome in ("vistaRegole", "caricamento"):
+    """Spec §10: Regole, il caricamento, le pagine di Impostazioni (#618) passano da `pagina()`, così ogni schermata ha il titolo
+    in cima. Impostazioni e le sue pagine hanno il loro titolo e niente riga di stato."""
+    for nome in ("vistaRegole", "caricamento", "vistaImportaRose", "vistaAltreSquadre", "vistaRosa"):
         corpo = _funzione(APP, nome)
         assert "pagina(" in corpo and "contenuto.innerHTML =" not in corpo, nome
-    assert "pagina(" in _funzione(IMP, "montaPannelli") and "contenuto.innerHTML" not in _funzione(IMP, "montaPannelli")
-    assert 'titolo: t("shell.impostazioni"), stato: false' in IMP
+    for nome in ("paginaImpostazioni", "paginaAccount", "paginaInformazioni", "paginaGestione"):
+        corpo = _funzione(IMP, nome)
+        assert "pagina(" in corpo and "stato: false" in corpo and "contenuto.innerHTML" not in corpo, nome
     assert "opz.stato === false" in _funzione(APP, "pagina")
 
 
@@ -162,9 +164,9 @@ def test_titolo_e_riga_di_stato_dai_dati_scritti_senza_html():
     assert "aggiornaRigaStato()" in _funzione(APP, "caricaSquadre")         # lo stemma arriva dopo: la riga si riscrive
 
 
-def test_il_banner_della_nuova_stagione_va_sotto_il_titolo():
-    corpo = _funzione(APP, "bannerNuovaStagione")
-    assert '$(".capo-pagina", contenuto)' in corpo and ".after(c)" in corpo
+def test_il_banner_della_nuova_stagione_va_in_cima_a_la_mia_lega():
+    corpo = _funzione(APP, "bannerNuovaStagione")                 # dal 12/11/2026 (#618) in Impostazioni > La mia lega
+    assert '$("#imp-lega .elenco")' in corpo and "dove.prepend(" in corpo
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
@@ -354,7 +356,7 @@ def test_nessuna_regola_rimette_il_riquadro_a_una_sezione():
     """Spec §4.1 e §8.3: niente scatole, lo spazio e i fili fanno i gruppi. In nessuna larghezza, densità o tema una regola dà di
     nuovo fondo, bordo, ombra o angoli tondi a una sezione, nemmeno con la classe che le sta accanto («carta proposta-r»,
     «carta vuoto»...). Resta un blocco solo la proposta di uno scambio."""
-    assert {"hero", "regola-sez", "imp-elenco"} <= set(CON_LA_CARTA)
+    assert {"regola-sez", "imp-sezione", "imp-colonna"} <= set(CON_LA_CARTA)          # Impostazioni (#618)
     assert not _scatole(SEZIONE, BLOCCHI_AMMESSI)
 
 
@@ -791,7 +793,7 @@ def test_differenze_di_oggi_scritte_al_posto_giusto():
     riga = next((r for r in di_oggi.splitlines() if r.startswith("|") and "slogan" in r), "")
     assert "Oggi" in riga and "#416" in riga and "I tuoi migliori" in riga and "Apri la formazione" in riga, riga
     guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
-    formazione = guida[guida.index("### Formazione"):guida.index("### Squadra")]      # dal 12/11/2026 la prima schermata è la Formazione (#616)
+    formazione = guida[guida.index("### Formazione"):guida.index("### La mia lega")]  # dal 12/11/2026 la prima schermata è la Formazione (#616)
     assert "motto" not in formazione and "slogan" not in formazione and "### Oggi" not in guida
 
 
@@ -1192,23 +1194,21 @@ def test_accesso_senza_entrata_che_non_risponde_a_un_gesto():
 
 
 def test_impostazioni_con_sezioni_e_righe():
-    """Spec §9: stessa struttura di oggi (gruppi a sinistra da 768 px) con sezioni e righe al posto delle carte. Il gruppo aperto
-    come la voce aperta di Squadra e Altro: il fondo del passaggio del mouse e la linea di 3 px nel colore delle azioni, non una tinta
-    verde; con il contrasto elevato un contorno vero. Dentro un gruppo i titoli sono titoli di sezione (filo spesso sotto) e gli
-    interruttori righe separate dal filo sottile."""
-    voce = _corpo(".imp-voce.attiva")
-    assert "background: var(--superficie)" in voce and "box-shadow: inset 3px 0 0 var(--azione)" in voce and "color-mix" not in voce
-    assert ".imp-voce.attiva" in _colori_forzati()
-    assert re.search(r"\n\.imp-pagina \.carta > h3:first-child, #aspetto \.carta > h3 \{[^}]*border-bottom: 2px solid var\(--testo\)",
-                     SENZA_COMMENTI)
+    """Spec §9, con le Impostazioni uniche (#618): sezioni e righe al posto delle carte. Le righe che aprono una pagina sono voci
+    degli elenchi (il nome, sotto la riga piccola, la freccia); i titoli che aprono una carta nelle pagine interne sono titoli di
+    sezione (filo spesso sotto) e gli interruttori righe separate dal filo sottile."""
+    voce = _corpo(".imp-voce")
+    assert "grid-template-columns: minmax(0, 1fr) auto" in voce
+    assert "display: block" in _corpo(".imp-voce .dettaglio")
+    assert re.search(r"\n\.imp-colonna \.carta > h3:first-child \{[^}]*border-bottom: 2px solid var\(--testo\)", SENZA_COMMENTI)
     assert re.search(r"\n\.interruttore-ios \+ \.interruttore-ios[^{]*\{[^}]*border-top: 1px solid var\(--filo\)", SENZA_COMMENTI)
     # con il contrasto elevato gli interruttori spariti (pista e cursore senza fondo): colori di sistema, in un blocco che sta DOPO
     # le regole normali (a parità di selettore vincerebbero loro; visto nelle foto con i colori forzati)
     forzati = SENZA_COMMENTI.index("@media (forced-colors: active) {\n  .interruttore-ios i { forced-color-adjust: none;")
     assert forzati > SENZA_COMMENTI.index(".interruttore-ios input:checked + i { background: var(--azione); }")
     assert ".interruttore-ios input:checked + i { background: Highlight;" in SENZA_COMMENTI[forzati:]
-    # sul PC la scelta di lingua, tema e testo non si stende su tutta la pagina (come i modi degli Scambi)
-    assert re.search(r"\n\.imp-pagina \.segmenti \{[^}]*max-width: \d+px", SENZA_COMMENTI)
+    # sul PC la scelta di tema e lingua non si stende su tutta la pagina (come i modi degli Scambi)
+    assert re.search(r"\n#aspetto \.segmenti \{[^}]*max-width: \d+px", SENZA_COMMENTI)
 
 
 def test_primo_avvio_come_distinta():

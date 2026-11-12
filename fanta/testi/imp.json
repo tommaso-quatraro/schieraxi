@@ -3,17 +3,9 @@
     "it": "Il tuo account",
     "en": "Your account"
   },
-  "imp.account_sub": {
-    "it": "Nome, email, Google, password, uscita",
-    "en": "Name, email, Google, password, sign out"
-  },
   "imp.aspetto": {
     "it": "Aspetto",
     "en": "Appearance"
-  },
-  "imp.aspetto_sub": {
-    "it": "Lingua e tema",
-    "en": "Language and theme"
   },
   "imp.avvisi": {
     "it": "Notifiche",
@@ -35,12 +27,56 @@
     "it": "Avanzate",
     "en": "Advanced"
   },
-  "imp.avanzate_sub": {
-    "it": "Solo per chi gestisce SchieraXI",
-    "en": "Only for whoever runs SchieraXI"
+  "imp.sez_avvisi": {
+    "it": "Avvisi",
+    "en": "Alerts"
   },
-  "imp.gruppi_aria": {
-    "it": "Gruppi di impostazioni",
-    "en": "Settings groups"
+  "imp.avvisi_qui": {
+    "it": "Avvisi su questo dispositivo",
+    "en": "Alerts on this device"
+  },
+  "imp.avvisi_qui_aiuto": {
+    "it": "Il promemoria della scadenza, i cambi della formazione consigliata e gli altri avvisi, se non li avevi spenti",
+    "en": "The deadline reminder, changes to the suggested lineup and the other alerts, unless you had turned them off"
+  },
+  "imp.avvisi_controllo": {
+    "it": "Controllo gli avvisi di questo dispositivo…",
+    "en": "Checking the alerts on this device…"
+  },
+  "imp.ore_tranquille_aiuto": {
+    "it": "Niente avvisi dalle {da} alle {a}",
+    "en": "No alerts from {da} to {a}"
+  },
+  "imp.lega": {
+    "it": "La mia lega",
+    "en": "My league"
+  },
+  "imp.regole": {
+    "it": "Regole e scadenza",
+    "en": "Rules and deadline"
+  },
+  "imp.regole_sub": {
+    "it": "Punteggi, moduli e quando si chiude la formazione",
+    "en": "Scoring, formations and when the lineup closes"
+  },
+  "imp.mia_squadra_nessuna": {
+    "it": "Non l'hai ancora scelta",
+    "en": "Not chosen yet"
+  },
+  "imp.altre_squadre": {
+    "it": "Le altre squadre",
+    "en": "The other teams"
+  },
+  "imp.gestione": {
+    "it": "Gestione",
+    "en": "Management"
+  },
+  "imp.gestione_sub": {
+    "it": "Inviti, utenti, stato e aggiornamento dei dati",
+    "en": "Invites, users, data status and update"
+  },
+  "imp.aggiorna_spiega": {
+    "it": "Scarica adesso listone, voti e probabili formazioni dalle fonti accese. Di solito succede da solo.",
+    "en": "Downloads the player list, ratings and probable lineups from the enabled sources now. It usually happens on its own."
   }
 }

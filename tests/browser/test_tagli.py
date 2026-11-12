@@ -36,42 +36,47 @@ def tocca(web, bersaglio) -> None:
     web.aspetta()
 
 
-def voci_del_menu(web) -> list[str]:
-    """Il testo delle voci del menu di Squadra o di Altro, una per pulsante (nome e spiegazione)."""
-    return [" ".join(v.split()) for v in principale(web).get_by_role("navigation").get_by_role("button").all_inner_texts()]
+def voci_di_impostazioni(web) -> list[str]:
+    """Il testo delle righe di Impostazioni che aprono una pagina, una per pulsante (nome e spiegazione). Fino al 12/11/2026
+    (#618) erano i menu di Squadra e di Altro."""
+    return [" ".join(v.split()) for v in principale(web).locator(".imp-voce").all_inner_texts()]
 
 
 def avvisi_di_errore(web):
     return principale(web).locator('[role="alert"]')
 
 
-def test_squadra_e_altro_hanno_solo_le_voci_che_restano(web):
+def test_impostazioni_ha_solo_le_voci_che_restano(web):
+    """Le voci tolte il 12/11/2026 (#615) non tornano con le Impostazioni nuove (#618): La mia lega ha le rose, la mia squadra, le
+    regole e le altre squadre; il Diario è la pagina Giornate, nella barra (#617)."""
     solo(web, "prima")
-    web.apri("/?vista=squadra")
-    voci = voci_del_menu(web)
-    assert len(voci) == 2 and voci[0].startswith("Squadre e rose") and voci[1].startswith("Aggiorna le rose"), voci
-    web.apri("/?vista=altro")
-    voci = voci_del_menu(web)
-    assert len(voci) == 1 and voci[0].startswith("Regole"), voci          # il Diario è la pagina Giornate, nella barra (#617)
+    web.apri("/?vista=impostazioni")
+    voci = voci_di_impostazioni(web)
+    for nome in ("Aggiorna le rose", "La mia squadra", "Regole e scadenza", "Le altre squadre", "Informazioni"):
+        assert any(v.startswith(nome) for v in voci), (nome, voci)
+    for tolta in ("Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Calendario", "Scambi", "Movimenti", "Crediti delle squadre",
+                  "Nuova stagione", "Diario"):
+        assert not any(v.startswith(tolta) for v in voci), (tolta, voci)
 
 
-@pytest.mark.parametrize("vecchio, atteso, nuovo", [
-    ("/?vista=mercato", "Squadra", "/?vista=squadra"),                          # Cambi consigliati
-    ("/?vista=mercato&scheda=osservati", "Squadra", "/?vista=squadra"),         # Seguiti
-    ("/?vista=mercato&scheda=giocatori", "Squadra", "/?vista=squadra"),         # Elenco dei giocatori
-    ("/?vista=mercato&scheda=calendario", "Squadra", "/?vista=squadra"),
-    ("/?vista=squadra&voce=consigli", "Squadra", "/?vista=squadra"),
-    ("/?vista=scambi", "Altro", "/?vista=altro"),
-    ("/?vista=altro&voce=movimenti", "Altro", "/?vista=altro"),
-    ("/?vista=altro&voce=crediti", "Altro", "/?vista=altro"),
-    ("/?vista=altro&voce=stagione", "Altro", "/?vista=altro"),
+@pytest.mark.parametrize("vecchio", [
+    "/?vista=mercato",                                                          # Cambi consigliati
+    "/?vista=mercato&scheda=osservati",                                         # Seguiti
+    "/?vista=mercato&scheda=giocatori",                                         # Elenco dei giocatori
+    "/?vista=mercato&scheda=calendario",
+    "/?vista=squadra&voce=consigli",
+    "/?vista=scambi",
+    "/?vista=altro&voce=movimenti",
+    "/?vista=altro&voce=crediti",
+    "/?vista=altro&voce=stagione",
 ])
-def test_un_indirizzo_di_una_pagina_tolta_apre_il_menu_della_sua_scheda(web, vecchio, atteso, nuovo):
+def test_un_indirizzo_di_una_pagina_tolta_apre_impostazioni(web, vecchio):
+    """Le pagine tolte il 12/11/2026 (#615) stavano in Squadra e in Altro, che dal #618 sono Impostazioni: il loro indirizzo apre lì."""
     solo(web, "prima")
     web.apri(vecchio)
-    assert titolo(web) == atteso
-    assert principale(web).get_by_role("navigation").is_visible()       # al telefono: il menu, non una pagina vuota
-    assert web.pagina.url.endswith(nuovo)                               # l'indirizzo non resta quello della pagina tolta
+    assert titolo(web) == "Impostazioni"
+    assert principale(web).get_by_role("region", name="La mia lega").is_visible()     # non una pagina vuota
+    assert web.pagina.url.endswith("/?vista=impostazioni")              # l'indirizzo non resta quello della pagina tolta
     assert not web.errori_mostrati()
 
 
@@ -79,8 +84,7 @@ def test_l_indirizzo_delle_novita_apre_informazioni_con_le_ultime_versioni(web):
     solo(web, "prima")
     web.risposta("/api/novita", NOVITA)
     web.apri("/?vista=altro&voce=novita")
-    assert titolo(web) == "Impostazioni"
-    assert principale(web).get_by_role("heading", name="Informazioni", exact=True).is_visible()
+    assert titolo(web) == "Informazioni"
     testo = web.testo_principale()
     assert "Una novità di prova" in testo and "Versione 9.2" in testo and "Una cosa cambiata" in testo
     assert "La novità di ieri" in testo and "Privacy" in testo          # le pagine legali restano sopra
@@ -165,7 +169,7 @@ def test_le_decisioni_non_propongono_cambi_di_mercato_ne_scambi(web):
     assert "Le rose non si aggiornano" in testo and "Prendi Esempio" not in testo and "scambio possibile" not in testo
     assert principale(web).get_by_role("list", name="Da fare").get_by_role("listitem").count() == 1
     tocca(web, principale(web).get_by_role("button", name="Aggiorna le rose"))
-    assert titolo(web) == "Squadra" and principale(web).get_by_role("heading", name="Aggiorna le rose", exact=True).is_visible()
+    assert titolo(web) == "Aggiorna le rose" and web.pagina.url.endswith("/?vista=impostazioni&gruppo=rose")     # #618
 
 
 def test_il_reparto_scoperto_resta_fra_le_decisioni_e_porta_alla_rosa(web):
@@ -183,7 +187,7 @@ def test_il_reparto_scoperto_resta_fra_le_decisioni_e_porta_alla_rosa(web):
     assert principale(web).get_by_role("button", name="Cerca un rimpiazzo").count() == 0
     tocca(web, principale(web).get_by_role("button", name="Vedi la rosa"))
     assert titolo(web) == web.registrata("/api/rosa")["nome"] and "Portieri" in web.testo_principale()      # la rosa della mia squadra
-    assert "vista=squadra" in web.pagina.url and "rosa=" in web.pagina.url
+    assert web.pagina.url.endswith("/?vista=impostazioni&gruppo=squadra")         # La mia squadra, in Impostazioni (#618)
     assert not web.errori_mostrati() and not web.errori_console
 
 
@@ -199,7 +203,7 @@ def test_nuova_stagione_compare_come_avviso_quando_serve(web):
     web.apri("/?vista=altro")
     avviso = principale(web).get_by_role("button", name=re.compile("Nuova stagione 2027-28"))
     avviso.wait_for(timeout=10000)
-    assert not any("Nuova stagione" in v for v in voci_del_menu(web))
+    assert not any(v.startswith("Nuova stagione") for v in voci_di_impostazioni(web))     # un avviso, non una voce
     tocca(web, avviso)
     assert web.pagina.get_by_role("dialog").get_by_role("button", name="Archivia e riparti").is_visible()
 

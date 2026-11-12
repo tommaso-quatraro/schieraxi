@@ -1,10 +1,11 @@
 """Server dell'app: regole e importazione rose, su file temporanei (la lega vera non viene toccata)."""
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
 from fanta import server
 from fanta.regole import Regole
-import codice_web
 
 
 @pytest.fixture
@@ -24,10 +25,22 @@ def test_richiesta_interrotta_dal_browser_non_e_un_errore(client, monkeypatch, c
     assert "Traceback" not in capsys.readouterr().err
 
 
-def test_messaggio_senza_rose_dice_dove_importarle():
-    testi = codice_web.leggi("testi.js")
-    assert "sezione Lega" not in testi
-    assert "Squadra > Aggiorna le rose" in testi
+def test_senza_rose_il_messaggio_dice_cosa_toccare_senza_un_percorso_di_menu(client):
+    """Senza rose il server rimanda ad «Aggiorna le rose», senza un percorso di menu: la frase arriva uguale alla web e all'iPhone,
+    che hanno menu diversi (#618). Comincia sempre con «Nessuna rosa importata»: web e iPhone la riconoscono da lì."""
+    r = client.get("/api/rosa")
+    assert r.status_code == 409
+    testo = r.json()["detail"]
+    assert testo.startswith("Nessuna rosa importata") and "«Aggiorna le rose»" in testo and ">" not in testo, testo
+
+
+def test_senza_la_mia_squadra_il_messaggio_non_ha_un_percorso_di_menu(client, tmp_path):
+    (tmp_path / "rose.json").write_text(json.dumps({"squadre": [{"nome": "Squadra Uno", "giocatori": []}], "mia_squadra": None}),
+                                        encoding="utf-8")
+    r = client.get("/api/scambi/proposte")
+    assert r.status_code == 400
+    testo = r.json()["detail"]
+    assert "«La mia squadra»" in testo and ">" not in testo, testo
 
 
 def test_pagina_e_file_dell_app(client):

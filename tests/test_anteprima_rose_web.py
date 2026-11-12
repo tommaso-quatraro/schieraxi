@@ -90,7 +90,7 @@ def test_il_file_e_caricato_prima_dei_suoi_utenti_ed_e_pubblico():
 def test_si_salva_solo_dopo_l_anteprima_con_le_scelte_e_l_etag():
     # le due parti che importano passano dall'anteprima, non chiamano più direttamente l'importazione
     assert "anteprimaRose(" in APP and "anteprimaRose(" in PRIMO
-    assert '"/api/rose/testo"' not in APP.split("const collega = {")[1].split("squadre: () =>")[0]
+    assert '"/api/rose/testo"' not in APP.split("function vistaImportaRose()")[1].split("async function vistaAltreSquadre")[0]
     assert '"/api/rose/file"' not in PRIMO and '"/api/rose/testo"' not in PRIMO
     for pezzo in ('"/api/rose/anteprima"', "/api/rose/anteprima/file", '"/api/rose/testo"', "/api/rose/file",
                   "ifMatch: st.etag", "senzaRicarica: true", "correzioni", "mia_squadra", "e.status === 412"):

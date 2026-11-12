@@ -124,51 +124,94 @@ def test_le_decisioni_tengono_una_riga_senza_destinazione_e_scartano_quelle_senz
     assert _decisioni(voci) == ["senza-destinazione"]
 
 
-def _schermata(vista, voce=None):
-    """`schermataCheResta` di app.js con le voci di Squadra e Altro di oggi: {vista, voce, gruppo}."""
+def _dove(q: dict, account=None, altrui=True):
+    """`dove` di app.js (#618): la schermata di un indirizzo, anche di una versione di prima. `account`: None (server senza account),
+    "utente" o "amministratore"; `altrui`: le rose degli altri si vedono. La mia squadra è «Mia Esempio»."""
     js = codice_web.app()
-    funzione = re.search(r"^function schermataCheResta\(.*?^}", js, re.S | re.M)
-    assert funzione, "manca schermataCheResta in app.js"
-    voci = [{"id": "squadre", "ambito": "squadra"}, {"id": "importa", "ambito": "squadra"}, {"id": "regole", "ambito": "altro"}]
-    codice = (f'const VISTE = ["formazione", "giornate", "squadra", "altro"];\n{funzione.group(0)}\n'
-              f"const r = schermataCheResta({json.dumps(vista)}, {json.dumps(voce)}, {json.dumps(voci)});\n"
-              "console.log(JSON.stringify({ vista: r.vista, voce: r.voce ?? null, gruppo: r.gruppo ?? null }));")
+    pezzo = js[js.index("const PAGINE_IMP = "):js.index("// opz.daCronologia")]
+    codice = "\n".join([
+        f"const stato = {{ account: {json.dumps({'ruolo': account} if account else None)}, squadre: [{{ nome: 'Mia Esempio', mia: true }}, {{ nome: 'Altra Prova' }}] }};",
+        "const miaSquadra = () => stato.squadre.find(s => s.mia);",
+        f"const funz = id => id !== 'squadre_altrui' || {json.dumps(altrui)};",
+        "const soloAmministratore = () => !stato.account || stato.account.ruolo === 'amministratore';",
+        pezzo,
+        f"const r = dove({json.dumps(q)});",
+        "console.log(JSON.stringify({ vista: r.vista, gruppo: r.gruppo ?? null, rosa: r.rosa ?? null, sezione: r.sezione ?? null }));",
+    ])
     return _node(codice)
 
 
-@pytest.mark.parametrize("vista, voce, attesa", [
-    # le pagine di Squadra tolte: Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario
-    ("mercato", None, {"vista": "squadra", "voce": None, "gruppo": None}),
-    ("mercato", "calendario", {"vista": "squadra", "voce": None, "gruppo": None}),
-    ("squadra", "osservati", {"vista": "squadra", "voce": None, "gruppo": None}),
-    # Scambi, Movimenti, Crediti e Nuova stagione: Altro
-    ("scambi", None, {"vista": "altro", "voce": None, "gruppo": None}),
-    ("altro", "movimenti", {"vista": "altro", "voce": None, "gruppo": None}),
-    ("altro", "crediti", {"vista": "altro", "voce": None, "gruppo": None}),
-    ("altro", "stagione", {"vista": "altro", "voce": None, "gruppo": None}),
-    ("lega", "crediti", {"vista": "altro", "voce": None, "gruppo": None}),
+def _imp(gruppo=None, rosa=None, sezione=None):
+    return {"vista": "impostazioni", "gruppo": gruppo, "rosa": rosa, "sezione": sezione}
+
+
+FORMAZIONE = {"vista": "formazione", "gruppo": None, "rosa": None, "sezione": None}
+GIORNATE = {"vista": "giornate", "gruppo": None, "rosa": None, "sezione": None}
+
+
+@pytest.mark.parametrize("q, attesa", [
+    # le pagine tolte il 12/11/2026 (#615) stavano in Squadra e in Altro, che dal #618 sono Impostazioni
+    ({"vista": "mercato"}, _imp(sezione="lega")),                                   # Cambi consigliati, Seguiti, Elenco, Calendario
+    ({"vista": "mercato", "voce": "calendario"}, _imp(sezione="lega")),
+    ({"vista": "squadra", "voce": "osservati"}, _imp(sezione="lega")),
+    ({"vista": "scambi"}, _imp()),
+    ({"vista": "altro", "voce": "movimenti"}, _imp()),
+    ({"vista": "altro", "voce": "crediti"}, _imp()),
+    ({"vista": "altro", "voce": "stagione"}, _imp()),
+    ({"vista": "lega", "voce": "crediti"}, _imp()),
     # le novità si leggono in Impostazioni > Informazioni
-    ("altro", "novita", {"vista": "impostazioni", "voce": None, "gruppo": "informazioni"}),
-    ("lega", "novita", {"vista": "impostazioni", "voce": None, "gruppo": "informazioni"}),
+    ({"vista": "altro", "voce": "novita"}, _imp("informazioni")),
+    ({"vista": "lega", "voce": "novita"}, _imp("informazioni")),
 ])
-def test_un_indirizzo_di_una_pagina_tolta_apre_la_schermata_piu_vicina(vista, voce, attesa):
-    assert _schermata(vista, voce) == attesa
+def test_un_indirizzo_di_una_pagina_tolta_apre_impostazioni(q, attesa):
+    assert _dove(q) == attesa
 
 
-@pytest.mark.parametrize("vista, voce, attesa", [
-    ("oggi", None, {"vista": "formazione", "voce": None, "gruppo": None}),           # Oggi è diventata la Formazione (#616)
-    ("formazione", None, {"vista": "formazione", "voce": None, "gruppo": None}),
-    ("squadra", "importa", {"vista": "squadra", "voce": "importa", "gruppo": None}),
-    ("altro", "regole", {"vista": "altro", "voce": "regole", "gruppo": None}),
-    ("lega", "regole", {"vista": "altro", "voce": "regole", "gruppo": None}),         # «lega» è il nome vecchio di Squadra e Altro
-    ("giornate", None, {"vista": "giornate", "voce": None, "gruppo": None}),         # il Diario come pagina (#617)
-    ("altro", "diario", {"vista": "giornate", "voce": None, "gruppo": None}),        # l'indirizzo del Diario di prima apre Giornate
-    ("lega", "diario", {"vista": "giornate", "voce": None, "gruppo": None}),
-    ("lega", "importa", {"vista": "squadra", "voce": "importa", "gruppo": None}),
-    ("impostazioni", None, {"vista": "impostazioni", "voce": None, "gruppo": None}),
-    ("altro", "importa", {"vista": "altro", "voce": None, "gruppo": None}),           # la voce è di un'altra scheda: il menu
-    ("__proto__", None, {"vista": "formazione", "voce": None, "gruppo": None}),       # un nome che non c'è porta alla Formazione
-    (None, None, {"vista": "formazione", "voce": None, "gruppo": None}),
+@pytest.mark.parametrize("q, attesa", [
+    ({"vista": "oggi"}, FORMAZIONE),                                               # Oggi è diventata la Formazione (#616)
+    ({"vista": "formazione"}, FORMAZIONE),
+    ({"vista": "giornate"}, GIORNATE),                                             # il Diario come pagina (#617)
+    ({"vista": "diario"}, GIORNATE),
+    ({"vista": "altro", "voce": "diario"}, GIORNATE),
+    ({"vista": "lega", "voce": "diario"}, GIORNATE),
+    # Squadra e Altro (#618): i menu sono Impostazioni, le voci le sue pagine
+    ({"vista": "squadra"}, _imp(sezione="lega")),
+    ({"vista": "altro"}, _imp()),
+    ({"vista": "lega"}, _imp()),
+    ({"vista": "squadra", "voce": "importa"}, _imp("rose")),
+    ({"vista": "lega", "voce": "importa"}, _imp("rose")),
+    ({"vista": "altro", "voce": "importa"}, _imp("rose")),
+    ({"vista": "squadra", "voce": "squadre"}, _imp("squadre")),
+    ({"vista": "altro", "voce": "regole"}, _imp("regole")),
+    ({"vista": "lega", "voce": "regole"}, _imp("regole")),
+    ({"vista": "regole"}, _imp("regole")),
+    ({"vista": "rosa"}, _imp("squadra")),
+    ({"vista": "squadra", "rosa": ""}, _imp("squadra")),                           # la rosa senza nome è la mia
+    ({"vista": "squadra", "rosa": "Mia Esempio"}, _imp("squadra")),
+    ({"vista": "squadra", "rosa": "Altra Prova"}, _imp("squadre", rosa="Altra Prova")),
+    # i gruppi delle Impostazioni di prima (#449)
+    ({"vista": "impostazioni"}, _imp()),
+    ({"vista": "impostazioni", "gruppo": "avvisi"}, _imp(sezione="avvisi")),
+    ({"vista": "impostazioni", "gruppo": "aspetto"}, _imp(sezione="aspetto")),
+    ({"vista": "impostazioni", "gruppo": "informazioni"}, _imp("informazioni")),
+    ({"vista": "impostazioni", "gruppo": "avanzate"}, _imp("gestione")),           # server senza account: si gestisce
+    ({"vista": "impostazioni", "gruppo": "account"}, _imp()),                      # senza account la pagina non c'è
+    ({"vista": "impostazioni", "gruppo": "squadre", "rosa": "Altra Prova"}, _imp("squadre", rosa="Altra Prova")),
+    ({"vista": "impostazioni", "gruppo": "__proto__"}, _imp()),
+    # un nome che non c'è porta alla Formazione
+    ({"vista": "__proto__"}, FORMAZIONE),
+    ({"vista": "constructor", "voce": "importa"}, FORMAZIONE),
+    ({}, FORMAZIONE),
 ])
-def test_gli_indirizzi_delle_schermate_che_restano_non_cambiano(vista, voce, attesa):
-    assert _schermata(vista, voce) == attesa
+def test_ogni_indirizzo_porta_alla_schermata_giusta(q, attesa):
+    assert _dove(q) == attesa
+
+
+def test_le_pagine_che_chi_usa_l_app_non_ha_portano_a_impostazioni():
+    assert _dove({"vista": "impostazioni", "gruppo": "account"}, account="utente") == _imp("account")
+    assert _dove({"vista": "impostazioni", "gruppo": "gestione"}, account="utente") == _imp()
+    assert _dove({"vista": "impostazioni", "gruppo": "avanzate"}, account="utente") == _imp()
+    assert _dove({"vista": "impostazioni", "gruppo": "gestione"}, account="amministratore") == _imp("gestione")
+    # senza le rose degli altri: niente «Le altre squadre», la rosa di un'altra squadra porta alla mia
+    assert _dove({"vista": "squadra", "voce": "squadre"}, altrui=False) == _imp("squadra")
+    assert _dove({"vista": "squadra", "rosa": "Altra Prova"}, altrui=False) == _imp("squadra")

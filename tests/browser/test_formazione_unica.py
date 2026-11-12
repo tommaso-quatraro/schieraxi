@@ -80,7 +80,7 @@ def test_il_vecchio_indirizzo_di_oggi_apre_la_formazione(web):
     assert web.pagina.url.endswith("/?vista=formazione")
     assert campo(web).count() == 11
     schede = [" ".join(v.split()) for v in web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link").all_inner_texts()]
-    assert schede == ["Formazione", "Giornate", "Squadra", "Altro"]            # Giornate dal 12/11/2026 (#617)
+    assert schede == ["Formazione", "Giornate", "Impostazioni"]                # Giornate (#617) e Impostazioni (#618) dal 12/11/2026
 
 
 def test_un_account_senza_rose_vede_il_benvenuto_e_nessuna_richiesta_fallisce(web):

@@ -11,10 +11,6 @@
     "it": "contro",
     "en": "for"
   },
-  "scambio.squadra": {
-    "it": "Squadra",
-    "en": "Team"
-  },
   "scambio.crediti_residui": {
     "it": "Crediti residui",
     "en": "Credits left"
@@ -194,10 +190,6 @@
   "scambio.rose_aggiornate": {
     "it": "Rose aggiornate il {data}",
     "en": "Rosters updated on {data}"
-  },
-  "scambio.caricamento_no": {
-    "it": "Caricamento non riuscito",
-    "en": "Upload failed"
   },
   "scambio.stemma_aggiornato": {
     "it": "Stemma aggiornato",
