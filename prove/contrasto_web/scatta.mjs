@@ -24,7 +24,7 @@ const SCENE = {
   oggi: "vai('oggi')",
   formazione: "vai('formazione')",
   rosa: "vistaRosa()",
-  diario: "apriDiario()",
+  diario: "vai('giornate')",
   impostazioni: "vai('impostazioni')",
 };
 const scene = (scenePar || Object.keys(SCENE).join(",")).split(",");
