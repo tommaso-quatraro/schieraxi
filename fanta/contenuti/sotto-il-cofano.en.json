@@ -188,7 +188,7 @@
       "titolo": "How the line-up is chosen",
       "paragrafi": [
         "For every formation allowed by your league the system builds the best eleven and then tries to improve it by swapping a starter with the best left-out players of the same role, until it finds no more advantage. In the end it picks the formation with the most expected points.",
-        "\"Best\" means more expected points, counting those who come in from the bench too. That is why a starter may play less often than a team-mate who is left out: when he plays he is worth more, and when he does not the substitute comes in. A player who almost certainly does not play (less than 20%) gives way to a team-mate who plays at least 20% of the time, if it costs less than 0.5 expected points.",
+        "\"Best\" means more expected points, counting those who come in from the bench too. That is why a starter may play less often than a team-mate who is left out: when he plays he is worth more, and when he does not the substitute comes in. A player who almost certainly does not play (less than 20%) gives way to a team-mate who plays at least 20% of the time, if the squad has one, whatever it costs in expected points.",
         "Every formation has its own best line-up, and you can see them all in the app with their expected points."
       ],
       "rimandi": ["Line-up", "Today"]

@@ -41,17 +41,16 @@ LIVELLI_RISCHIO = [
 ]
 MODULO_NEUTRO = (4, 3)     # difensori e attaccanti del modulo da cui si misura l'inclinazione di uno stile
 # Nessun titolare che non gioca (#329). Per i numeri un titolare improbabile con una riserva sicura dietro vale quasi quanto la
-# riserva titolare (se lui non gioca, entra lei); per chi legge il consiglio è un errore. Dopo la ricerca, un titolare che prende
-# voto meno di IMPROBABILE_SOTTO (chi è infortunato o squalificato ha quasi 0) lascia il posto al miglior compagno di ruolo che lo
-# prende almeno COMPAGNO_ALMENO, se il cambio costa meno di COSTO_MASSIMO_CAMBIO punti attesi. Non sono regole della lega: valgono
-# per ogni lega e ogni stile. La soglia è quella di «improbabile» di consigli.titolarita.
-# Dalla revisione di #612 basta un compagno che non è improbabile (prima doveva giocare almeno il 50%) e il tetto è 0,5 (prima 0,3):
-# in panchina chi è improbabile sta in fondo (`_panchina`), quindi da titolare vale qualche centesimo in più che da riserva e la
-# ricerca lo sceglie più spesso. Con tre portieri al 4%, 22% e 92% restava titolare quello al 4% (il 92% costava più del tetto, il
-# 22% non si provava); con uno al 19% e uno al 95% il cambio costava 0,32.
+# riserva titolare (se lui non gioca, entra lei); per chi legge il consiglio è un errore. Regola di prodotto: chi prende voto meno
+# di IMPROBABILE_SOTTO (chi è infortunato o squalificato ha quasi 0) non è mai proposto titolare se in rosa c'è un compagno di
+# ruolo che si può schierare e lo prende almeno COMPAGNO_ALMENO, qualunque sia il costo in punti attesi. Non è una regola della
+# lega: vale per ogni lega e ogni stile. La soglia è quella di «improbabile» di consigli.titolarita.
+# Fino alla revisione di #612 serviva un compagno al 50% e il cambio doveva costare meno di 0,3 punti attesi. Con chi è
+# improbabile in fondo alla panchina (`_panchina`) non bastava più: da titolare vale qualche centesimo in più che da riserva e
+# la ricerca lo sceglie più spesso. Con tre portieri al 4%, 22% e 92% restava titolare quello al 4% (il 92% costava più del
+# tetto, il 22% non si provava). Il tetto è stato tolto: con 0,5, con 1 o senza, sulle giornate misurate la scelta è la stessa.
 IMPROBABILE_SOTTO = 0.2
 COMPAGNO_ALMENO = IMPROBABILE_SOTTO
-COSTO_MASSIMO_CAMBIO = 0.5
 
 
 @dataclass(frozen=True)
@@ -743,14 +742,14 @@ def _per_valore(rosa: list[Giocatore]) -> list[Giocatore]:
 def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per_ruolo: dict[str, list[Giocatore]],
                        panchina_di, val: Valutatore, peso: tuple[float, float],
                        fissi: Collection[int] = ()) -> tuple[list[Giocatore], list[Giocatore]]:
-    """Toglie dagli 11 chi gioca meno di IMPROBABILE_SOTTO, se un compagno di ruolo che gioca almeno COMPAGNO_ALMENO costa meno di
-    COSTO_MASSIMO_CAMBIO punti attesi. Tra i compagni che si possono mettere vince il migliore per lo stile (`peso`), come nella
-    ricerca. Si parte dal titolare meno probabile e dopo ogni cambio si ricomincia: alla fine nessun improbabile rimasto ha un
-    compagno così (ogni cambio toglie un improbabile, quindi i giri finiscono). Chi sta in `fissi` resta dov'è."""
+    """Toglie dagli 11 chi gioca meno di IMPROBABILE_SOTTO, se fuori dagli 11 c'è un compagno di ruolo che gioca almeno
+    COMPAGNO_ALMENO, qualunque sia il costo in punti attesi. Tra i compagni che si possono mettere vince il migliore per lo stile
+    (`peso`), come nella ricerca. Si parte dal titolare meno probabile e dopo ogni cambio si ricomincia: alla fine nessun
+    improbabile rimasto ha un compagno così (ogni cambio toglie un improbabile, quindi i giri finiscono). Chi sta in `fissi`
+    resta dov'è; chi non si può schierare non è in `per_ruolo` (lo lascia fuori chi chiama `migliore`)."""
     cambiato = True
     while cambiato:
         cambiato = False
-        atteso = val.atteso(titolari, panchina)
         ids = {x.id for x in titolari}
         for i, t in sorted(enumerate(titolari), key=lambda c: c[1].p):
             if t.p >= IMPROBABILE_SOTTO:
@@ -763,8 +762,6 @@ def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per
                     continue
                 prova = titolari[:i] + [alt] + titolari[i + 1:]
                 pp = panchina_di(prova)
-                if atteso - val.atteso(prova, pp) >= COSTO_MASSIMO_CAMBIO:
-                    continue
                 v = val.scelta(prova, pp, peso)
                 if meglio is None or v > meglio[2] + 1e-9:
                     meglio = (prova, pp, v)
@@ -785,7 +782,7 @@ def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, rice
     `inclinazione` = (punti per ogni difensore, punti per ogni attaccante) oltre il 4-?-3 neutro: sposta la scelta del MODULO
     (non dei giocatori) verso le difese folte o gli attacchi folti; (0, 0) = solo punti attesi.
     In ogni modulo, dopo la ricerca (anche senza), un titolare che quasi certamente non gioca lascia il posto a un compagno che
-    gioca, se costa poco (`_senza_improbabili`).
+    gioca, se c'è (`_senza_improbabili`).
     Giocatori che non si possono più spostare (anticipo già cominciato, consigli.py): chi sta in `fissi` resta titolare, la panchina
     la sceglie `scegli_panchina` e chi non deve diventare titolare si lascia fuori da `rosa` (allora `valutatore`, fatto sulla rosa
     intera, serve). Senza questi due il calcolo è quello di sempre."""
