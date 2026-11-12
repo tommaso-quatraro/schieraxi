@@ -45,6 +45,7 @@ import importlib.util
 import json
 import sys
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
 from . import lega, listone, movimenti, nomi, regole, rose
@@ -507,12 +508,12 @@ def _affidabilita_pubblica(file: str | None) -> None:
 def cmd_backup(a) -> None:
     from . import account, backup
     if account.multiutente():
-        return _backup_per_utente(a.tieni)
+        return _backup_per_utente(a.tieni, datetime.now())
     file = backup.salva_copia(tieni=a.tieni)
     print(f"copia salvata: {file}" if file else "niente da salvare")
 
 
-def _backup_per_utente(tieni: int) -> None:
+def _backup_per_utente(tieni: int, adesso: datetime) -> None:
     """Con gli account: una copia dei dati di ogni utente nella sua cartella (le ultime 3) e una del database degli account.
     La copia di un utente che non si scrive (disco, database degli account che non risponde) non ferma gli altri né la copia del
     database: l'errore va nel registro del servizio e alla fine il comando esce con errore."""
@@ -531,7 +532,8 @@ def _backup_per_utente(tieni: int) -> None:
         except (OSError, percorsi.DatabaseAccountNonRisponde) as e:
             errori += 1
             logging.getLogger(__name__).error("Backup dell'account %s non salvato (%s)", i, type(e).__name__)
-    conti = backup.copia_account(percorsi.cartella_account() / "backup", percorsi.cartella_account() / "account.sqlite", tieni)
+    conti = backup.copia_account(percorsi.cartella_account() / "backup", percorsi.cartella_account() / "account.sqlite", tieni,
+                                 adesso=adesso)
     print(f"copie salvate: {fatte} utenti su {len(ids)}; database degli account: {'copiato' if conti else 'niente da copiare'}")
     if errori:
         sys.exit(f"Errore: copia non salvata per {errori} utenti su {len(ids)} (il motivo è nel registro del servizio).")

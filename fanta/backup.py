@@ -263,14 +263,15 @@ def salva_copia(radice: Path = RADICE, cartella: Path | None = None, tieni: int 
     return destinazione
 
 
-def copia_account(cartella: Path, origine: Path, tieni: int = 7) -> Path | None:
+def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: datetime) -> Path | None:
     """Con gli account: una copia del database degli utenti (account.sqlite) con l'API di backup di SQLite, che è sicura anche
-    mentre il server lo usa. Una al giorno, ne tiene `tieni`. Contiene gli hash delle password: il file lo legge solo chi lo ha creato."""
+    mentre il server lo usa. Una al giorno (`adesso` dà il nome), ne tiene `tieni`. Contiene gli hash delle password: il file lo
+    legge solo chi lo ha creato."""
     import sqlite3
     if not origine.exists():
         return None
     cartella.mkdir(parents=True, exist_ok=True)
-    destinazione = cartella / f"account-{datetime.now():%Y-%m-%d}.sqlite"
+    destinazione = cartella / f"account-{adesso:%Y-%m-%d}.sqlite"
     sorgente, copia = sqlite3.connect(origine), sqlite3.connect(destinazione)
     try:
         sorgente.backup(copia)
