@@ -181,7 +181,8 @@ Cosa offre la fixture `web`:
 - `web.testo_principale()`, `web.in_caricamento()`, `web.errori_mostrati()`, `web.scorre_di_lato()`,
   `web.violazioni_gravi()`;
 - `web.fase`: `prima`, `in-corso` o `finita` (per un test che vale per una fase sola:
-  `if web.fase != "prima": pytest.skip("solo prima della scadenza")`).
+  `if web.fase != "prima": pytest.skip("solo prima della scadenza")`). La scheda di Chrome si apre al primo uso di
+  `web.pagina` (o di `apri`, `risposta`, `memoria`): il salto va scritto prima, così un test saltato non la apre (#680).
 
 Regole:
 - si prova un comportamento che l'utente vede, non il testo di `app.js`; gli elementi si cercano per ruolo ed etichetta

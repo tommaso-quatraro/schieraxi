@@ -158,8 +158,54 @@ def test_lo_scenario_completo_aggiunge_solo_le_rotte_che_mancano(appoggio, tmp_p
     assert json.loads((registrati / "vero-finita.json").read_text(encoding="utf-8"))["risposte"] == {"/api/oggi": {}}
 
 
+class _ChromeFinto:
+    """Chrome finto per la fixture «web»: tiene le schede aperte (contesti) e dice se sono state chiuse."""
+    def __init__(self):
+        self.contesti = []
+
+    def new_context(self, **opzioni):
+        ctx = SimpleNamespace(opzioni=opzioni, chiuso=False, ora=None, pagine=[])
+        ctx.clock = SimpleNamespace(set_fixed_time=lambda t: setattr(ctx, "ora", t))
+        ctx.close = lambda: setattr(ctx, "chiuso", True)
+
+        def nuova_pagina():
+            pagina = SimpleNamespace(eventi=[], evaluate=lambda codice, *argomenti: 1_800_000_000_000)
+            pagina.on = lambda evento, funzione: pagina.eventi.append(evento)
+            ctx.pagine.append(pagina)
+            return pagina
+        ctx.new_page = nuova_pagina
+        self.contesti.append(ctx)
+        return ctx
+
+
+def test_un_test_saltato_per_la_fase_non_apre_una_scheda_di_chrome(appoggio):
+    """Issue #680: più di metà dei test si salta perché vale per un'altra fase (`solo(web, "prima")`), e il salto legge solo
+    `web.fase`. La scheda di Chrome (contesto, pagina, orologio) si apre alla prima richiesta di `web.pagina`, non prima."""
+    chrome = _ChromeFinto()
+    fixture = appoggio.web.__wrapped__(chrome, appoggio.ServerFase("in-corso", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
+    w = next(fixture)
+    assert w.fase == "in-corso" and w.richieste == [] and w.errori_console == [] and w.richieste_fallite == []
+    with pytest.raises(StopIteration):
+        next(fixture)
+    assert chrome.contesti == []
+
+
+def test_la_scheda_si_apre_una_volta_alla_prima_richiesta_e_si_chiude_alla_fine(appoggio):
+    chrome = _ChromeFinto()
+    fixture = appoggio.web.__wrapped__(chrome, appoggio.ServerFase("prima", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
+    w = next(fixture)
+    assert w.pagina is w.pagina and len(chrome.contesti) == 1
+    ctx = chrome.contesti[0]
+    assert ctx.pagine == [w.pagina] and not ctx.chiuso
+    assert ctx.ora == 1_800_000_000 and ctx.opzioni["service_workers"] == "block" and ctx.opzioni["locale"] == "it-IT"
+    assert set(w.pagina.eventi) == {"console", "pageerror", "request", "requestfailed", "response"}
+    with pytest.raises(StopIteration):
+        next(fixture)
+    assert ctx.chiuso
+
+
 def test_una_richiesta_annullata_non_e_fallita(appoggio):
-    w = appoggio.Web(pagina=None, server=appoggio.ServerFase("prima", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
+    w = appoggio.Web(server=appoggio.ServerFase("prima", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
     for guasto in ("net::ERR_ABORTED", "net::ERR_CONNECTION_REFUSED", None):
         appoggio._richiesta_non_arrivata(w, SimpleNamespace(method="GET", url="http://127.0.0.30:8000/api/oggi?x=1",
                                                             failure=guasto))
