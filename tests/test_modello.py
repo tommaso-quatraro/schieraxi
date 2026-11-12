@@ -267,6 +267,57 @@ def test_carica_mette_le_righe_ricostruite(tmp_path):
         (1, "alfa", 90.0, 2, -7), (2, "beta", 19.0, 0, -7)]
 
 
+def _archivio_senza_statistiche(percorso, giocate: int):
+    """Un archivio come quello di chi ha acceso solo i voti (la fonte delle statistiche per partita è spenta di default): tabella
+    `prestazioni` vuota, `giocate` giornate con i voti, 4 squadre con 4 giocatori per ruolo (16 per ruolo in tutto, tutti con la
+    quotazione) sempre in campo 90 minuti."""
+    from fanta import archivio
+    db = archivio.apri(percorso)
+    squadre = ("alfa", "beta", "gamma", "delta")
+    rosa = [(100 * s + 10 * r + k, f"{sq}-{ruolo}{k}", ruolo, sq)
+            for s, sq in enumerate(squadre, 1) for r, ruolo in enumerate("PDCA") for k in range(4)]
+    for cid, nome, ruolo, sq in rosa:
+        db.execute("INSERT INTO calciatori (id, nome, ruolo, squadra, squadra_slug, quotazione) VALUES (?, ?, ?, ?, ?, ?)",
+                   (cid, nome, ruolo, sq[:3].upper(), sq, 5 + cid % 23))
+        db.execute("INSERT INTO quotazioni (stagione, calciatore_id, nome, ruolo, squadra, qi) VALUES (?, ?, ?, ?, ?, ?)",
+                   (ST, cid, nome, ruolo, sq, 5 + cid % 23))
+    for g in range(1, giocate + 2):
+        coppie = (("alfa", "beta"), ("gamma", "delta")) if g % 2 else (("alfa", "gamma"), ("beta", "delta"))
+        for k, (casa, trasf) in enumerate(coppie):
+            fatta = g <= giocate
+            db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, gol_casa, gol_trasferta, giocata) "
+                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (10 * g + k, ST, g, f"2026-09-{g:02d} 1{5 + k}:00", casa, trasf,
+                                                              (g + k) % 3 if fatta else None, g % 2 if fatta else None, int(fatta)))
+            if not fatta:
+                continue
+            for cid, nome, ruolo, sq in rosa:
+                if sq in (casa, trasf):
+                    db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, "
+                               "autogol, rig_segnati, rig_sbagliati, rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, "
+                               "sostituito) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, 0, 0, 0, 0, 0)",
+                               (ST, g, cid, nome, sq, ruolo, 5.5 + (cid + g) % 3 * 0.5, int(ruolo == "A" and (cid + g) % 4 == 0),
+                                int(ruolo == "C" and (cid + g) % 5 == 0)))
+    db.commit()
+    return db
+
+
+@pytest.mark.parametrize("giocate", [3, 4, 6])
+def test_senza_nessuna_statistica_per_partita_le_previsioni_ci_sono(tmp_path, giocate):
+    """D57, regressione della #613: con la tabella `prestazioni` vuota le righe ricostruite dai voti si univano a una tabella letta da
+    SQLite con le colonne senza tipo; con pandas 3 restavano testo e dalla quarta giornata (ruoli con 15 giocatori che hanno almeno 3
+    partite pesate) le previsioni si fermavano con un errore: Oggi, Formazione, widget e avvisi in errore per chi installa da zero."""
+    db = _archivio_senza_statistiche(tmp_path / "t.sqlite", giocate)
+    assert db.execute("SELECT COUNT(*) FROM prestazioni").fetchone()[0] == 0
+    d = modello.carica(db)
+    db.close()
+    p = modello.previsioni(d, ST, giocate + 1, Regole(), giocatori=d.calciatori)
+    assert len(p) == 64 and p["mu"].notna().all() and p["atteso"].notna().all()
+    assert p["minuti"].min() > 80                                     # i minuti vengono dalle righe ricostruite (sempre 90)
+    assert len(d.prestazioni) == 64 * giocate and (d.prestazioni["understat_partita"] < 0).all()     # tutti, ogni giornata
+    for c in ("minuti", "gol", "assist", "rigori_calciati", "rigori_segnati", "rigori_squadra", "xg", "xa", "t"):
+        assert pd.api.types.is_numeric_dtype(d.prestazioni[c]), c
+
+
 # ---------------------------------------------------------------- livello dei gol della stagione (#613)
 # I gol attesi delle squadre partono da `base`, che ha la memoria lunga e, dove ci sono, gli xG della fonte (più alti dei gol
 # veri). Il livello li riporta ai gol veri della stagione in corso, tirati verso `base` con K giornate fittizie. Vale per i gol

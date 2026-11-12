@@ -207,6 +207,12 @@ def con_prestazioni_dai_voti(d: Dati) -> Dati:
     pr["understat_partita"] = -pr["understat_partita"]
     pr["xg"] = XG_PER_GOL * (pr["gol"] - pr["rigori_segnati"]) + XG_RIGORE * pr["rigori_calciati"]
     pr["xa"] = XA_PER_ASSIST * pr["assist"]
+    if d.prestazioni.empty:
+        # nessuna statistica per partita (fonte spenta, come di default): solo le righe ricostruite, con le colonne in più della
+        # tabella vuote. Unite alla tabella vuota letta dall'archivio, che ha le colonne senza tipo, con pandas 3 restavano testo
+        # e dalla quarta giornata il calcolo si fermava con un errore (D57)
+        altre = [c for c in d.prestazioni.columns if c not in pr.columns]
+        return replace(d, prestazioni=pr.reindex(columns=[*pr.columns, *altre]))
     return replace(d, prestazioni=pd.concat([d.prestazioni, pr], ignore_index=True))
 
 
