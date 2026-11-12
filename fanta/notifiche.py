@@ -18,7 +18,7 @@ import math
 import os
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
@@ -79,17 +79,20 @@ def canale() -> str | None:
 
 
 def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", ignora_silenzio: bool = False,
-          file_impostazioni: Path | None = None, file_iscrizioni: Path | None = None, ntfy: bool = True) -> bool:
+          file_impostazioni: Path | None = None, file_iscrizioni: Path | None = None, ntfy: bool = True,
+          vale_per: timedelta | None = None) -> bool:
     """Manda l'avviso: con le notifiche web attive su almeno un dispositivo si usano quelle; altrimenti (o se non arriva a nessuno) ntfy.
     Nelle ore tranquille non parte niente e restituisce False: cambi e riepilogo allora riprovano al giro dopo, fuori dalla fascia.
     I file sono quelli dell'utente (di norma quelli di sempre); `ntfy=False` per gli utenti con un account: il canale ntfy è uno
-    solo, del proprietario del server, e i nomi dei calciatori di un altro non devono finire lì."""
+    solo, del proprietario del server, e i nomi dei calciatori di un altro non devono finire lì.
+    `vale_per`: per gli avvisi sulla formazione, quanto manca alla scadenza: la notifica web non arriva dopo (`push.tempo_di_vita`)."""
     from . import push
     opzioni = impostazioni(file_impostazioni)
     if not ignora_silenzio and in_silenzio(datetime.now(), opzioni):
         return False
     titolo, testo = frasi.testo(titolo, opzioni["lingua"]), frasi.testo(testo, opzioni["lingua"])      # nella lingua scelta dall'utente
-    arrivato = bool(push.iscrizioni(file_iscrizioni)) and push.invia(titolo, testo, priorita, tag, file_iscrizioni) > 0
+    arrivato = bool(push.iscrizioni(file_iscrizioni)) and push.invia(titolo, testo, priorita, tag, file_iscrizioni,
+                                                                     vale_per=vale_per) > 0
     if not ntfy:
         return arrivato
     if opzioni.get("app_nativa"):
@@ -406,12 +409,14 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         visibili = righe[:MAX_RIGHE]
         if len(righe) > MAX_RIGHE:
             visibili.append(F("n.altre_novita", n=len(righe) - MAX_RIGHE))
-        if not manda(F("n.t_cambi"), frasi.elenco([_giornata(giornata, regole)] + visibili, sep="\n"), 4, "rotating_light"):
+        if not manda(F("n.t_cambi"), frasi.elenco([_giornata(giornata, regole)] + visibili, sep="\n"), 4, "rotating_light",
+                     vale_per=inizio - adesso):   # la notifica web non arriva dopo la scadenza
             return righe                           # invio fallito: lo stato resta quello vecchio e al prossimo giro si riprova
         cambi_mandato = True
     if singoli:
         testi = [F("n.frase_consiglio", frase=p["frase"], consiglio=p["consiglio"]) for p in singoli[:MAX_RIGHE]]
-        if not manda(F("n.t_cambio_pronto"), frasi.elenco(testi, sep="\n"), 4, "rotating_light"):   # il tocco apre la Formazione
+        if not manda(F("n.t_cambio_pronto"), frasi.elenco(testi, sep="\n"), 4, "rotating_light",   # il tocco apre la Formazione
+                     vale_per=inizio - adesso):
             if not cambi_mandato:
                 return righe                       # ore tranquille o invio fallito: si riprova al giro dopo
             pronti = [p for p in pronti if p not in singoli]     # l'avviso dei cambi è già partito: lo stato si salva (niente doppioni), il «cambio pronto» riprova
@@ -455,7 +460,7 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     scoperti = any(x["livello"] == cop.SCOPERTO for _, x in nuovi)
     titolo = F("n.t_reparto_scoperto") if scoperti else F("n.t_reparto_rischio")
     righe = [x["testo"] for _, x in nuovi]
-    if not manda(titolo, "\n".join(righe), 4 if scoperti else 3, "no_entry"):
+    if not manda(titolo, "\n".join(righe), 4 if scoperti else 3, "no_entry", vale_per=inizio - adesso):
         return righe                                   # ore tranquille o invio fallito: si riprova al giro dopo
     stato["copertura"] = (list(stato.get("copertura", [])) + [k for k, _ in nuovi])[-40:]
     scrivi_sicuro(file_stato, json.dumps(stato))
@@ -548,7 +553,8 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
         else:
             testo = F("n.non_valida_ultimi_minuti" if non_valida else "n.ultimi_minuti", giornata=_giornata(giornata, regole), ora=ora_chiusura)
             titolo = F("n.t_ultimi_minuti")
-        if manda(titolo, testo, priorita, "alarm_clock"):      # se l'invio fallisce si riprova al giro dopo, finché dura la finestra
+        # se l'invio fallisce si riprova al giro dopo, finché dura la finestra; la notifica web non arriva dopo la scadenza
+        if manda(titolo, testo, priorita, "alarm_clock", vale_per=inizio - adesso):
             mandati.append(chiave)
             inviati.append(testo)
     if inviati or saltati:
@@ -731,7 +737,8 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
         mio |= {"firme": firme, "valutato": firma_giro} | ({} if scelta else {"rif": ora, "valutato": f"{versione}|{','.join(map(str, ora))}"})
         salva()
         return []
-    if not manda(titolo, testo, 4, "rotating_light"):    # il tocco apre la Formazione; ore tranquille o invio fallito: si riprova
+    # il tocco apre la Formazione; ore tranquille o invio fallito: si riprova. La notifica web non arriva dopo la scadenza
+    if not manda(titolo, testo, 4, "rotating_light", vale_per=chiusura - adesso):
         return []
     mio |= {"mandati": int(mio.get("mandati", 0)) + 1, "firme": firme,
             "ultimo": adesso.isoformat(timespec="seconds"), "versione_inviato": versione, "valutato": firma_giro}

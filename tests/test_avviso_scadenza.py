@@ -83,7 +83,7 @@ def _cambi_ha_visto(file_cambi, titolari):
 
 def _giro(m, tmp_path, quando, opz=None, file_scelte=None):
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo, priorita, tag)) or True   # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo, priorita, tag)) or True   # noqa: E731
     opz = {"avviso_prima": 60} if opz is None else opz
     righe = notifiche.avviso_scadenza(m.db, Regole(), ROSE, quando, tmp_path / "prom.json", manda, opz,
                                       file_scelte or tmp_path / "scelte.json", tmp_path / "cambi.json")
@@ -185,13 +185,13 @@ def test_dopo_l_avviso_il_promemoria_della_stessa_finestra_non_fa_il_doppione(m,
 
 def _cambi(m, tmp_path, quando, opz, mandati):
     """Il vecchio avviso «cambi nelle probabili» (stesso file di stato che legge l'avviso «cambia la formazione»)."""
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True   # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True   # noqa: E731
     return notifiche.cambi(m.db, Regole(), ROSE, quando, tmp_path / "cambi.json", manda, opz, tmp_path / "oss.json",
                            file_scelte=tmp_path / "scelte.json", file_promemoria=tmp_path / "prom.json")
 
 
 def _avviso(m, tmp_path, quando, opz, mandati):
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True   # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True   # noqa: E731
     return notifiche.avviso_scadenza(m.db, Regole(), ROSE, quando, tmp_path / "prom.json", manda, opz, tmp_path / "scelte.json",
                                      tmp_path / "cambi.json")
 

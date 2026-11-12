@@ -143,7 +143,7 @@ def _scena(monkeypatch, spec):
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(consigli, "previsioni", lambda db, r, g=None: (prev, 9, True))
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo, tag)) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo, tag)) or True    # noqa: E731
     return rose, mandati, manda
 
 

@@ -61,7 +61,7 @@ ROSE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(1, "Castro", "A", "ROM
 def test_promemoria_un_ora_e_un_quarto_d_ora_una_volta_sola(tmp_path, monkeypatch):
     _finto(monkeypatch, titolari=("Castro", "Bonny"), dubbi=("Castro",))
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo, priorita)) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo, priorita)) or True    # noqa: E731
     f, db = tmp_path / "n.json", _db("2026-10-28 18:30")
     opz = {"cambi": True, "promemoria_60": True, "promemoria_15": True}
     assert notifiche.promemoria(db, Regole(), ROSE, datetime(2026, 10, 28, 12, 0), f, manda, opz) == []        # troppo presto
@@ -85,7 +85,7 @@ def test_promemoria_rispetta_le_impostazioni(tmp_path, monkeypatch):
 def test_cambi_la_prima_volta_non_avvisa_poi_si(tmp_path, monkeypatch):
     _finto(monkeypatch, titolari=("Castro",))
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
     prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1])
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     f, db, adesso = tmp_path / "n.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
@@ -123,7 +123,7 @@ def test_se_l_invio_fallisce_si_riprova_al_giro_dopo(tmp_path, monkeypatch):
     _finto(monkeypatch)
     esito = {"ok": False}
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or esito["ok"]    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or esito["ok"]    # noqa: E731
     opz = {"cambi": True, "promemoria_60": True, "promemoria_15": True}
     f, db = tmp_path / "p.json", _db("2026-10-28 18:30")
     adesso = datetime(2026, 10, 28, 17, 35)
@@ -151,7 +151,7 @@ def test_cambi_senza_formazione_possibile_avvisa_lo_stesso(tmp_path, monkeypatch
     prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1])
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
     f, db, adesso = tmp_path / "c.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
     notifiche.cambi(db, Regole(), ROSE, adesso, f, manda)
     prev.loc[1, "stato"] = "infortunato"
@@ -225,7 +225,7 @@ def test_osservati_avvisano_con_la_stella(tmp_path, monkeypatch):
     fo = tmp_path / "oss.json"
     assert osservati.aggiungi(77, fo) == [77] and osservati.aggiungi(77, fo) == [77] and osservati.leggi(fo) == [77]
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
     f, db, adesso = tmp_path / "n.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
     notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, file_osservati=fo)
     prev.loc[77, "stato"] = "infortunato"
@@ -261,10 +261,12 @@ def test_notifiche_web_chiavi_iscrizioni_e_invio(tmp_path, monkeypatch):
     monkeypatch.setattr("pywebpush.webpush", finto)
     assert push.invia("Titolo", "Testo", 4, percorso=f, file_chiavi=tmp_path / "v.json") == 1
     assert mandate == [("https://web.push.apple.com/abc", "Titolo", "high", push.CONTATTO)]
-    # l'app Android legge `sezione` (dove porta il tocco) e `priorita`; il web continua a usare title/body/tag/url
-    assert corpi[0] == {"title": "Titolo", "body": "Testo", "tag": "soccer", "url": "/", "sezione": "lega", "priorita": 4}
+    # l'app Android legge `sezione` (dove porta il tocco) e `priorita`; il web continua a usare title/body/tag/url (il tag web è
+    # diverso per ogni avviso, #652: tests/test_notifiche_web_tag_durata.py)
+    assert {k: v for k, v in corpi[0].items() if k != "tag"} == {"title": "Titolo", "body": "Testo", "url": "/", "sezione": "lega",
+                                                                 "priorita": 4}
     assert push.invia("Cambi", "x", 4, "rotating_light", percorso=f, file_chiavi=tmp_path / "v.json") == 1
-    assert corpi[1]["sezione"] == "formazione" and corpi[1]["tag"] == "rotating_light"
+    assert corpi[1]["sezione"] == "formazione"
     assert corpi[1]["url"] == "/?vista=formazione"                       # il tocco sulla notifica web apre la Formazione
     import pywebpush
 

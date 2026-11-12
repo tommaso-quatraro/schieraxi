@@ -34,7 +34,7 @@ CHIUSURA = "2026-10-28 18:30"                                   # la formazione 
 
 def _registro():
     mandati = []
-    return mandati, lambda titolo, testo, priorita=3, tag="x": mandati.append((str(titolo), str(testo))) or True   # noqa: E731
+    return mandati, lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((str(titolo), str(testo))) or True   # noqa: E731
 
 
 def _prima_della_scadenza(monkeypatch, consigliata=TITOLARI) -> pd.DataFrame:

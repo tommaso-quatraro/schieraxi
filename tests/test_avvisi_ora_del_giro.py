@@ -58,7 +58,7 @@ def test_promemoria(tmp_path, monkeypatch):
     _finto(monkeypatch)
     _giornata_vera(monkeypatch)
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
     opz = {"cambi": True, "promemoria_60": True, "promemoria_15": True}
     righe = notifiche.promemoria(_db("2026-10-28 18:30"), Regole(), ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "p.json", manda, opz)
     assert len(righe) == 1 and mandati == righe and "18:30" in righe[0]                 # 55 minuti prima: quello dell'ora

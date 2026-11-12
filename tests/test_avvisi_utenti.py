@@ -342,6 +342,16 @@ def test_formazione_pronta_mai_a_formazione_chiusa(mondo, registro, monkeypatch)
     assert registro.web == [] and registro.ntfy == []
 
 
+def test_formazione_pronta_non_arriva_dopo_la_scadenza(mondo, registro, monkeypatch):
+    """#652: un telefono spento dalle 8 riceve «la formazione è pronta» quando si riaccende, ma non dopo la scadenza (18:30)."""
+    from datetime import timedelta
+    durate = []
+    monkeypatch.setattr(push, "invia", lambda titolo, testo, priorita, tag, percorso=None, **k: durate.append(k.get("vale_per")) or 1)
+    nuovo("amico1", (1, "Castro"))
+    avvisi_utenti.esegui("pronta", mondo.db, PRONTA)                     # il 28 alle 8:00
+    assert durate == [timedelta(hours=10, minutes=30)]
+
+
 def test_riepilogo_usa_le_opzioni_di_ciascuno(mondo, registro):
     a = nuovo("amico1", (1, "Castro"))
     notifiche.salva_impostazioni({"riepilogo": False}, a.impostazioni_avvisi)
