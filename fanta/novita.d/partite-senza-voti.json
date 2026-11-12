@@ -2,7 +2,7 @@
   "titolo": "Partite giocate ma senza voti: niente più «gioca» che crolla",
   "voci": [
     "Web, iPhone e iPad: quando una partita è finita ma i suoi voti non sono ancora arrivati, «gioca N%» dei giocatori delle due squadre resta quello di prima della partita. Prima la partita contava come se nessuno avesse giocato e un titolare fisso poteva scendere da «gioca 90%» a meno del 60% fino all'arrivo dei voti.",
-    "Per chi installa SchieraXI da zero sul proprio server, con accesa la sola fonte dei voti: dalla quarta giornata le schermate Oggi e Formazione, i widget e gli avvisi si fermavano con un errore. Ora i numeri ci sono.",
+    "Per chi installa SchieraXI da zero sul proprio server, con accesa la sola fonte dei voti: dalla quarta giornata la schermata Formazione, i widget e gli avvisi si fermavano con un errore. Ora i numeri ci sono.",
     "Per chi amministra il server: una giornata con i voti arrivati solo in parte si riscarica anche dopo qualche giorno, e nello stato dei dati il controllo dei voti avvisa quando una squadra non ne ha nessuno. Se la fonte delle statistiche risponde senza il tabellino di una partita, le statistiche già salvate restano e l'aggiornamento lo segnala come errore."
   ],
   "tecnico": [
