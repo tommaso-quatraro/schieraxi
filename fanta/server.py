@@ -2242,6 +2242,8 @@ def iscrivi_push(dati: IscrizionePush, request: Request, ctx: Contesto = Depends
             return {"dispositivi": len(notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push, ancora_valida=ancora_valida))}
         except notifiche_web.NonPiuValida:
             raise HTTPException(401, "Accesso richiesto") from None
+        except notifiche_web.Occupato as e:          # file tenuto da un altro processo: 503 «riprova», niente scritto
+            raise HTTPException(503, str(e)) from None
 
 
 class DisiscrizionePush(BaseModel):
@@ -2250,7 +2252,10 @@ class DisiscrizionePush(BaseModel):
 
 @app.post("/api/push/disiscrivi")
 def disiscrivi_push(dati: DisiscrizionePush, ctx: Contesto = Depends(lega_corrente)):
-    return {"dispositivi": len(notifiche_web.togli(dati.endpoint, ctx.iscrizioni_push))}
+    try:
+        return {"dispositivi": len(notifiche_web.togli(dati.endpoint, ctx.iscrizioni_push))}
+    except notifiche_web.Occupato as e:              # file tenuto da un altro processo: 503 «riprova», niente tolto
+        raise HTTPException(503, str(e)) from None
 
 
 @app.get("/api/movimenti")

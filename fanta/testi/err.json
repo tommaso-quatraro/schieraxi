@@ -368,6 +368,10 @@
     "it": "Un'altra operazione sulle rose è ancora in corso: riprova fra qualche secondo",
     "en": "Another operation on the rosters is still running: try again in a few seconds"
   },
+  "err.notifiche_occupate": {
+    "it": "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo",
+    "en": "Another operation on the notifications is still running: try again in a few seconds"
+  },
   "err.scambio_altra_squadra": {
     "it": "Scegli un'altra squadra: non puoi scambiare con te stesso",
     "en": "Choose another team: you cannot trade with yourself"

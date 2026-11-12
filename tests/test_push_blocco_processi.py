@@ -16,14 +16,15 @@ from pathlib import Path
 
 import pytest
 
-from fanta import contesto, push
+from fanta import contesto, percorsi, push
 from fanta.blocco import BloccoFile
 
-from test_cancellazione_account import ambiente, elimina, nuovo_utente  # noqa: F401 (fixture e aiuti per gli account)
+from test_cancellazione_account import ambiente, elimina, nuovo_utente, sola_lettura_che_non_risponde  # noqa: F401 (fixture e aiuti)
 
 RADICE = Path(__file__).resolve().parent.parent
 CHIAVI = {"p256dh": "P" * 40, "auth": "A" * 20}
 A, B, C, D = ({"endpoint": f"https://8.8.8.8/push/{n}", "keys": CHIAVI} for n in "abcd")
+OCCUPATO = "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo"
 
 # Il secondo processo: fa l'operazione chiesta, ma subito dopo aver letto push.json scrive «letto» e aspetta il «via».
 FIGLIO = r"""
@@ -127,5 +128,34 @@ def test_iscrizioni_dopo_la_cancellazione_non_ricreano_la_cartella(ambiente):  #
     with pytest.raises(push.NonPiuValida):           # la sessione si è chiusa mentre si controllava il nome: niente scritto
         push.iscrivi(A, ctx.iscrizioni_push, ancora_valida=lambda: False)
     assert not ctx.cartella.exists()
-    push.iscrivi(A, ctx.iscrizioni_push)             # senza controllo della sessione: la cartella non resta lo stesso
+    with pytest.raises(push.NonPiuValida):           # anche senza controllo della sessione: l'account non c'è più
+        push.iscrivi(A, ctx.iscrizioni_push)
     assert not ctx.cartella.exists()
+
+
+def test_iscrizione_di_un_account_eliminato_col_database_che_non_risponde_non_lascia_la_cartella(ambiente, monkeypatch):  # noqa: F811
+    """Account eliminato e database degli account che non risponde: non si sa se l'account c'è, quindi «riprova» e niente
+    scritto, nemmeno il file del blocco in una cartella rinata."""
+    c, uid = nuovo_utente("marco")
+    ctx = contesto.Contesto.per_utente(uid)
+    elimina(c)
+    sola_lettura_che_non_risponde(monkeypatch)
+    with pytest.raises(percorsi.DatabaseAccountNonRisponde):
+        push.iscrivi(A, ctx.iscrizioni_push)
+    assert not ctx.cartella.exists()
+
+
+def test_iscrizioni_col_file_occupato_rispondono_riprova(ambiente, monkeypatch):  # noqa: F811
+    """push.json tenuto da un altro processo oltre il tempo massimo: attivare o spegnere le notifiche risponde «riprova» (503)
+    con una frase chiara, non con l'errore generico del server, e non scrive niente."""
+    c, uid = nuovo_utente("marco")
+    file = contesto.Contesto.per_utente(uid).iscrizioni_push
+    monkeypatch.setattr(push, "ATTESA_BLOCCO", 0, raising=False)
+    with BloccoFile(file.with_name("push.json.lock")):           # come se lo tenesse il processo dei promemoria
+        r = c.post("/api/push/iscrivi", json=A)
+        assert r.status_code == 503 and r.json()["detail"] == OCCUPATO
+        r = c.post("/api/push/disiscrivi", json={"endpoint": A["endpoint"]})
+        assert r.status_code == 503 and r.json()["detail"] == OCCUPATO
+    assert indirizzi(file) == []
+    assert c.post("/api/push/iscrivi", json=A).status_code == 200            # libero: entra
+    assert indirizzi(file) == [A["endpoint"]]

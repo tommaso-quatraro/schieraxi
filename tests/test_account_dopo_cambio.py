@@ -5,7 +5,8 @@ import re
 
 import pytest
 
-from fanta import account, contesto, posta, push
+from fanta import account, contesto, posta, push, registro
+from fanta.blocco import BloccoFile
 
 from test_account_http import PASSWORD, cliente, invito
 
@@ -190,6 +191,42 @@ def test_account_le_notifiche_degli_altri_utenti_restano(web):
     suo = iscrivi(luca, "luca")
     assert cambia(web).status_code == 200
     assert notifiche_di(uid_luca) == [suo]
+
+
+def test_account_cambio_password_col_file_delle_notifiche_occupato_va_a_buon_fine(web, monkeypatch):
+    """Il file delle notifiche è tenuto da un altro processo oltre il tempo massimo (#547): la password è già cambiata, quindi
+    la risposta resta quella giusta, con il codice nuovo. Si riprova una volta; se è ancora occupato le notifiche restano e
+    lo dice una riga nel registro di sicurezza (la vede chi gestisce l'app)."""
+    uid = registra(web)["utente"]["id"]
+    iscrivi(web, "telefono")
+    iscrivi(entra(), "altro")
+    file = contesto.Contesto.per_utente(uid).iscrizioni_push
+    monkeypatch.setattr(push, "ATTESA_BLOCCO", 0)
+    with BloccoFile(file.with_name("push.json.lock")):           # come se lo tenesse il processo dei promemoria
+        r = cambia(web)
+    assert r.status_code == 200, r.text
+    assert codice_valido(r.json()["codice_recupero"])
+    assert len(notifiche_di(uid)) == 2
+    eventi = [e for e in registro.ultimi(registro.FILE_SICUREZZA) if e["tipo"] == "notifiche_non_tolte"]
+    assert len(eventi) == 1 and eventi[0]["utente"] == str(uid)
+    entra(password=NUOVA)                                         # la password nuova vale davvero
+
+
+def test_account_cambio_password_riprova_una_volta_a_togliere_le_notifiche(web, monkeypatch):
+    uid = registra(web)["utente"]["id"]
+    iscrivi(web, "telefono")
+    iscrivi(entra(), "altro")
+    vera, chiamate = push.tieni_solo, []
+
+    def occupato_la_prima_volta(*a, **k):
+        chiamate.append(1)
+        if len(chiamate) == 1:
+            raise push.Occupato()
+        return vera(*a, **k)
+    monkeypatch.setattr(push, "tieni_solo", occupato_la_prima_volta)
+    assert cambia(web).status_code == 200
+    assert notifiche_di(uid) == [] and len(chiamate) == 2
+    assert not [e for e in registro.ultimi(registro.FILE_SICUREZZA) if e["tipo"] == "notifiche_non_tolte"]
 
 
 def test_push_iscrizione_di_una_sessione_chiusa_nel_frattempo_non_resta(web, monkeypatch):

@@ -310,7 +310,16 @@ def _valida(sub: dict) -> dict:
 
 
 _blocco_iscrizioni = threading.Lock()          # leggere-modificare-scrivere una alla volta: due iscrizioni insieme non si perdono
-ATTESA_BLOCCO = 10.0                           # secondi: leggere e riscrivere push.json dura millisecondi; oltre, TimeoutError
+ATTESA_BLOCCO = 10.0                           # secondi: leggere e riscrivere push.json dura millisecondi; oltre, Occupato
+OCCUPATO = "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo"
+
+
+class Occupato(TimeoutError):
+    """push.json tenuto da un altro processo oltre ATTESA_BLOCCO secondi: niente letto né scritto, si può riprovare. Le rotte
+    delle iscrizioni la trasformano in 503 con il messaggio OCCUPATO."""
+
+    def __init__(self):
+        super().__init__(OCCUPATO)
 
 
 @contextlib.contextmanager
@@ -318,27 +327,34 @@ def _scrittura_iscrizioni(percorso: Path, crea_cartella: bool = True):
     """Leggere-modificare-scrivere `percorso` uno alla volta: i thread di questo processo (`_blocco_iscrizioni`) e gli altri
     processi (il server che iscrive, i promemoria che tolgono le scadute), con il blocco su file `push.json.lock` accanto
     (#547). Dà vero; dà falso, senza bloccare niente, se la cartella non c'è e `crea_cartella` è falso: non c'è niente da
-    togliere, e la cartella di un account eliminato non rinasce per il file del blocco. Oltre ATTESA_BLOCCO secondi: TimeoutError."""
+    togliere, e la cartella di un account eliminato non rinasce per il file del blocco. Oltre ATTESA_BLOCCO secondi: Occupato."""
     with _blocco_iscrizioni, contextlib.ExitStack() as pila:
         try:
             pila.enter_context(BloccoFile(percorso.with_name(percorso.name + ".lock"), ATTESA_BLOCCO, crea_cartella=crea_cartella))
             preso = True
         except FileNotFoundError:                  # solo con crea_cartella falso: la cartella non c'è
             preso = False
+        except TimeoutError:
+            raise Occupato() from None
         yield preso
 
 
 class NonPiuValida(Exception):
-    """Chi chiedeva l'iscrizione non vale più (sessione chiusa mentre si controllava il nome del servizio): niente scritto."""
+    """Chi chiedeva l'iscrizione non vale più (sessione chiusa mentre si controllava il nome del servizio, account eliminato):
+    niente scritto."""
 
 
 def iscrivi(sub: dict, percorso: Path | None = None, ancora_valida=None) -> list[dict]:
     """Aggiunge l'iscrizione (gli ultimi MASSIMO_DISPOSITIVI restano). `ancora_valida`: se c'è, si richiama dentro il blocco, subito
     prima di scrivere; se dice no (per esempio la sessione si è chiusa mentre si controllava il nome) non si scrive niente e
     alza NonPiuValida. Chi toglie le iscrizioni (`tieni_solo`) prende lo stesso blocco: o arriva prima e il controllo dice no,
-    o arriva dopo e toglie anche questa. Lo stesso blocco vale tra processi (`_scrittura_iscrizioni`)."""
+    o arriva dopo e toglie anche questa. Lo stesso blocco vale tra processi (`_scrittura_iscrizioni`).
+    Account eliminato: NonPiuValida prima di prendere il blocco, così il suo file non fa rinascere la cartella; se il database
+    degli account non risponde, `percorsi.DatabaseAccountNonRisponde` (riprova). File occupato: Occupato."""
     nuova = _valida(sub)                       # (rete) fuori dal blocco
     p = percorso or FILE_ISCRIZIONI
+    if not scrittura_permessa(p):
+        raise NonPiuValida()
     try:
         with _scrittura_iscrizioni(p):
             if ancora_valida is not None and not ancora_valida():
@@ -347,14 +363,15 @@ def iscrivi(sub: dict, percorso: Path | None = None, ancora_valida=None) -> list
             lista = lista[-MASSIMO_DISPOSITIVI:]
             scrivi_sicuro(p, json.dumps(lista))
     finally:
-        ricontrolla_dopo_la_scrittura(p)       # account eliminato nel frattempo: anche la cartella rinata per il blocco se ne va
+        ricontrolla_dopo_la_scrittura(p)       # eliminato tra il controllo e il blocco: anche la cartella rinata se ne va
     return lista
 
 
 def tieni_solo(endpoint: str | None, percorso: Path | None = None) -> list[dict]:
     """Toglie tutte le iscrizioni tranne quella con questo indirizzo, se c'è (None o vuoto: le toglie tutte). Non ne aggiunge mai.
     Si usa dopo un cambio di password, un recupero o «Esci da tutti»: restano solo le notifiche del dispositivo che l'ha chiesto.
-    Se non c'è niente da togliere non scrive (e non crea il file)."""
+    Se non c'è niente da togliere non scrive (e non crea il file); se manca la cartella non la crea, nemmeno per il file del
+    blocco. Sotto lo stesso blocco di `iscrivi`, anche tra processi; file occupato oltre ATTESA_BLOCCO secondi: Occupato."""
     p = percorso or FILE_ISCRIZIONI
     with _scrittura_iscrizioni(p, crea_cartella=False) as aperto:
         if not aperto:
@@ -367,7 +384,8 @@ def tieni_solo(endpoint: str | None, percorso: Path | None = None) -> list[dict]
 
 
 def togli(endpoint: str, percorso: Path | None = None) -> list[dict]:
-    """Toglie l'iscrizione con questo indirizzo. Senza la cartella del file non c'è niente da togliere: non la crea."""
+    """Toglie l'iscrizione con questo indirizzo. Senza la cartella del file non c'è niente da togliere: non la crea.
+    File occupato oltre ATTESA_BLOCCO secondi: Occupato."""
     p = percorso or FILE_ISCRIZIONI
     with _scrittura_iscrizioni(p, crea_cartella=False) as aperto:
         if not aperto:
@@ -454,6 +472,6 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
     for ep in scadute:
         try:
             togli(ep, percorso)
-        except TimeoutError:                           # push.json tenuto da un altro processo: si toglie al prossimo invio
+        except Occupato:                               # push.json tenuto da un altro processo: si toglie al prossimo invio
             _annota(f"Iscrizione scaduta non tolta (file occupato): {maschera(ep)}")
     return consegnate
