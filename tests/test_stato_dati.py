@@ -12,8 +12,9 @@ def test_calibrazione_confronta_probabili_e_chi_ha_giocato(tmp_path):
     db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (2, ?, 2, '2026-09-08 18:00', 'a', 'b', 0)", (ST,))
     giocatori = [(1, "titolare", 95, 1), (2, "titolare", 95, 1), (3, "titolare", 95, 0), (4, "panchina", 30, 0), (5, "panchina", 30, 1)]
     for i, stato, perc, ha_giocato in giocatori:
-        db.execute("INSERT INTO probabili (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, in_dubbio, diffidato) "
-                   "VALUES (?, 1, 'fantacalcio', ?, 'a', 1, ?, ?, 0, 0)", (ST, i, stato, perc))
+        for tabella, ora in (("probabili", None), ("probabili_storia", "2026-09-01T12:00:00")):   # lettura di prima della partita
+            db.execute(f"INSERT INTO {tabella} (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
+                       "in_dubbio, diffidato, rilevato) VALUES (?, 1, 'fantacalcio', ?, 'a', 1, ?, ?, 0, 0, ?)", (ST, i, stato, perc, ora))
         if ha_giocato:
             db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red) VALUES (?, 1, ?, 'x', 'a', 'C', 6.0)", (ST, i))
     db.execute("INSERT INTO probabili (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, in_dubbio, diffidato) "
@@ -28,6 +29,63 @@ def test_calibrazione_confronta_probabili_e_chi_ha_giocato(tmp_path):
     assert vuoto["n"] == 0 and vuoto["osservato"] is None
     r = stato_dati.riepilogo(db, ST)
     assert r["partite"] == {"totali": 2, "giocate": 1} and r["probabili"][0]["giornata"] == 1 and r["calibrazione"]["giornate"] == 1
+
+
+def _lettura(db, giornata, ora, righe, copia=0, tabella="probabili_storia"):
+    """righe: (giocatore, partita, stato, percentuale)."""
+    for cid, pid, stato, perc in righe:
+        db.execute(f"INSERT INTO {tabella} (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, in_dubbio, "
+                   "diffidato, rilevato" + (", copia" if tabella == "probabili_storia" else "") + ") VALUES (?, ?, 'fantacalcio', ?, 'a', "
+                   "?, ?, ?, 0, 0, ?" + (", ?" if tabella == "probabili_storia" else "") + ")",
+                   (ST, giornata, cid, pid, stato, perc, ora) + ((copia,) if tabella == "probabili_storia" else ()))
+
+
+def test_calibrazione_solo_dall_ultima_lettura_prima_di_ogni_partita(tmp_path):
+    """Per ogni partita conta l'ultima lettura delle probabili di PRIMA del suo calcio d'inizio (#608): non quella rimasta in
+    `probabili` (a partita finita è la formazione vera), non quelle di dopo l'inizio, non le copie della giornata prima."""
+    db = archivio.apri(tmp_path / "t.sqlite")
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (1, ?, 1, '2026-09-01 15:00', 'a', 'b', 1)", (ST,))
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (2, ?, 1, '2026-09-01 20:45', 'c', 'd', 1)", (ST,))
+    prima = [(1, 1, "titolare", 95), (2, 1, "titolare", 95), (3, 1, "titolare", 95), (4, 2, "titolare", 95), (5, 2, "titolare", 95)]
+    _lettura(db, 1, "2026-09-01T08:00:00", prima)
+    # tra le due partite: per la prima è già tardi, per la seconda è l'ultima prima dell'inizio
+    _lettura(db, 1, "2026-09-01T18:00:00", [(1, 1, "panchina", 10), (2, 1, "panchina", 10), (3, 1, "panchina", 10),
+                                            (4, 2, "panchina", 30), (5, 2, "panchina", 30)])
+    _lettura(db, 1, "2026-09-01T19:00:00", [(4, 2, "titolare", 95), (5, 2, "titolare", 95)], copia=1)      # copia: non conta
+    _lettura(db, 1, "2026-09-01T23:00:00", [(c, p, "panchina", 5) for c, p, _, _ in prima])                 # dopo le partite
+    _lettura(db, 1, "2026-09-01T23:00:00", [(c, p, "panchina", 5) for c, p, _, _ in prima], tabella="probabili")
+    for cid in (1, 2, 4):
+        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red) VALUES (?, 1, ?, 'x', 'a', 'C', 6.0)", (ST, cid))
+    c = stato_dati.calibrazione(db, ST)
+    gruppi = {g["gruppo"]: g for g in c["gruppi"]}
+    assert c["giornate"] == 1
+    assert (gruppi["Titolare 90-100%"]["n"], gruppi["Titolare 90-100%"]["osservato"]) == (3, round(2 / 3, 3))
+    assert (gruppi["Panchina 20-49%"]["n"], gruppi["Panchina 20-49%"]["osservato"]) == (2, 0.5)
+    assert gruppi["Panchina sotto 20%"]["n"] == 0
+    db.close()
+
+
+def test_sotto_le_giornate_misurabili_nessuna_correzione(tmp_path):
+    """Tante giornate in `probabili` (lette dopo le partite) ma solo 2 con letture di prima: nessuna correzione, e «Stato dei dati»
+    mostra gli stessi numeri che usa il modello (`taratura_e_fattori`)."""
+    db = archivio.apri(tmp_path / "t.sqlite")
+    for g in range(1, 6):
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, ?, 'a', 'b', 1)",
+                   (g, ST, g, f"2026-09-{g:02d} 15:00"))
+        righe = [(100 * g + i, g, "titolare", 95) for i in range(40)]
+        _lettura(db, g, f"2026-09-{g:02d}T23:00:00", righe, tabella="probabili")                     # dopo: tutti hanno giocato
+        if g <= 2:
+            _lettura(db, g, f"2026-09-{g:02d}T12:00:00", righe)
+        for cid, _, _, _ in righe:
+            db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red) VALUES (?, ?, ?, 'x', 'a', 'C', 6.0)",
+                       (ST, g, cid))
+    c = stato_dati.calibrazione(db, ST)
+    assert c["giornate"] == 2
+    assert stato_dati.fattori(db, ST) == {}
+    r = stato_dati.riepilogo(db, ST)
+    assert r["calibrazione"]["fattori"] == {} and r["calibrazione"]["giornate"] == 2
+    assert stato_dati.taratura_e_fattori(db, ST) == (None, {}, False)
+    db.close()
 
 
 def test_stato_dati_ha_il_registro_delle_giornate(tmp_path):

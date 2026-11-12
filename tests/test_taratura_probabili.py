@@ -981,17 +981,18 @@ def test_nostri_dal_vivo_con_lo_stesso_gioca(db, monkeypatch):
 
 def test_calibrazione_con_la_attiva_legge_il_registro(db):
     """Con una riga attiva la correzione per gruppi si fa sulle probabili salvate prima della scadenza (registro) e con il «gioca N%»
-    della riga attiva; le letture di dopo la scadenza nella tabella `probabili` non contano più. Senza, com'è oggi."""
+    della riga attiva; le letture della storia delle probabili non contano più. Senza, com'è oggi (storia, ultima lettura di prima
+    della partita: #608)."""
     from fanta import stato_dati
     _genera(db, range(1, 7))
-    for g in range(1, 7):                    # letture di dopo la scadenza che dicono altro: tutti i titolari della Squadra00 al 10%
+    for g in range(1, 7):                    # letture della storia che dicono altro: tutti i titolari della Squadra00 al 10%
         for cid in range(11):
-            db.execute("INSERT INTO probabili (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
-                       "in_dubbio, diffidato) VALUES (?, ?, 'fantacalcio', ?, 'squadra00', ?, 'panchina', 10, 0, 0)",
-                       (ST, g, cid, 1000 * g))
+            db.execute("INSERT INTO probabili_storia (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
+                       "in_dubbio, diffidato, rilevato) VALUES (?, ?, 'fantacalcio', ?, 'squadra00', ?, 'panchina', 10, 0, 0, ?)",
+                       (ST, g, cid, 1000 * g, f"2026-11-{g:02d}T14:00:00"))
     db.commit()
     senza = stato_dati.calibrazione(db, ST)
-    assert next(x for x in senza["gruppi"] if x["gruppo"] == "Panchina sotto 20%")["n"] == 66       # oggi: legge `probabili`
+    assert next(x for x in senza["gruppi"] if x["gruppo"] == "Panchina sotto 20%")["n"] == 66       # oggi: legge la storia
     _metti_attiva(db)
     con = stato_dati.calibrazione(db, ST)
     r = tp.righe(db)
@@ -1012,15 +1013,15 @@ def _registro_rotto(db):
 
 def test_calibrazione_con_la_attiva_e_il_registro_illeggibile(db, monkeypatch, caplog):
     """Riga attiva ma registro che non si legge: numeri di partenza per tutto, cioè niente taratura e la calibrazione di sempre
-    (tabella `probabili`), mai la formula tarata senza la sua correzione per gruppi (combinazione mai misurata). Nel log il tipo
-    d'errore, mai il messaggio."""
+    (storia delle probabili, ultima lettura di prima della partita), mai la formula tarata senza la sua correzione per gruppi
+    (combinazione mai misurata). Nel log il tipo d'errore, mai il messaggio."""
     from fanta import stato_dati
     _genera(db, range(1, 7))
     for g in range(1, 7):
         for cid in range(11):
-            db.execute("INSERT INTO probabili (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
-                       "in_dubbio, diffidato) VALUES (?, ?, 'fantacalcio', ?, 'squadra00', ?, 'titolare', 95, 0, 0)",
-                       (ST, g, cid, 1000 * g))
+            db.execute("INSERT INTO probabili_storia (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
+                       "in_dubbio, diffidato, rilevato) VALUES (?, ?, 'fantacalcio', ?, 'squadra00', ?, 'titolare', 95, 0, 0, ?)",
+                       (ST, g, cid, 1000 * g, f"2026-11-{g:02d}T14:00:00"))
     db.commit()
     classica = stato_dati.calibrazione(db, ST)
     assert classica["giornate"] == 6
