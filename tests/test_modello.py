@@ -339,9 +339,10 @@ def _archivio_senza_statistiche(percorso, giocate: int):
 
 @pytest.mark.parametrize("giocate", [3, 4, 6])
 def test_senza_nessuna_statistica_per_partita_le_previsioni_ci_sono(tmp_path, giocate):
-    """D57, regressione della #613: con la tabella `prestazioni` vuota le righe ricostruite dai voti si univano a una tabella letta da
-    SQLite con le colonne senza tipo; con pandas 3 restavano testo e dalla quarta giornata (ruoli con 15 giocatori che hanno almeno 3
-    partite pesate) le previsioni si fermavano con un errore: Oggi, Formazione, widget e avvisi in errore per chi installa da zero."""
+    """D57, regressione della pull request #633: con la tabella `prestazioni` vuota le righe ricostruite dai voti si univano a una
+    tabella letta da SQLite con le colonne senza tipo; con pandas 3 restavano testo e dalla quarta giornata (ruoli con 15 giocatori
+    che hanno almeno 3 partite pesate) le previsioni si fermavano con un errore: Oggi, Formazione, widget e avvisi in errore per
+    chi installa da zero."""
     db = _archivio_senza_statistiche(tmp_path / "t.sqlite", giocate)
     assert db.execute("SELECT COUNT(*) FROM prestazioni").fetchone()[0] == 0
     d = modello.carica(db)
