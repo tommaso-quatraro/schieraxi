@@ -10,6 +10,9 @@
 #      simile). Dettagli e casi limite in script/server/LEGGIMI.md;
 #   2. se NON sono cambiate le cartelle del server (fanta, tests, script, requirements*) segna la versione come vista e si ferma:
 #      le modifiche a ios/, sito/, docs/ non riavviano l'app e non mandano avvisi;
+#   2b. installazioni raggruppate (#635): rimanda durante le partite e nell'ora prima di una scadenza, e se l'ultima installazione
+#      riuscita e' di meno di un intervallo fa (predefinito 60 minuti, 0 = subito; SCHIERAXI_INTERVALLO_MINUTI o il file
+#      ~/.config/schieraxi/intervallo-minuti). Subito le versioni segnate urgenti dal job rilascia (vedi «Rilasci raggruppati» sotto);
 #   3. altrimenti salva una copia della versione attuale (per tornare indietro) e copia la nuova in ~/fantacalcio
 #      (codice e script: mai lega/, dati/ e fanta/avatar_tratti.json, mai CLAUDE.md);
 #   4. se cambia requirements.txt prepara un ambiente Python nuovo (solo versioni e hash di requirements.txt: pip --require-hashes)
@@ -45,6 +48,7 @@ case "${1:-}" in
   --fidati) FIDATI="${2:-}"; [ -n "$FIDATI" ] || { echo "uso: $0 --fidati COMMIT (di solito: origin/main dopo averlo controllato)"; exit 2; } ;;
   --configurazione) CONFIGURAZIONE=1 ;;
 esac
+INIZIO=$(date +%s)     # l'ora d'inizio del giro, in secondi: conta per l'intervallo fra due installazioni (#635)
 SRC="${SCHIERAXI_SRC:-$HOME/schieraxi-src}"     # cartella della copia di GitHub (per le prove si puo cambiare)
 ISTANZA="${SCHIERAXI_ISTANZA:-}"
 case "$ISTANZA" in
@@ -64,6 +68,23 @@ esac
 # pubblica-sito.sh, promemoria.sh e sentinella.sh. La prova ha la sua casa, quindi clone suo e blocco suo: niente in comune.
 BLOCCO="$STATO/blocco-pubblicazione"
 CHIAVI="${SCHIERAXI_CHIAVI:-$CHIAVI_DI_SOLITO}"     # chiavi fidate per le firme: FUORI dal repository (e, per la prova, fuori dalla sua casa)
+# Intervallo minimo fra due installazioni riuscite, in minuti (#635): variabile SCHIERAXI_INTERVALLO_MINUTI, altrimenti il file
+# ~/.config/schieraxi/intervallo-minuti (un numero), altrimenti 60. Da 0 (ogni versione subito, come prima) a 1440: un altro valore
+# vale 60 e lo si dice nel registro. L'ambiente di prova installa sempre subito: serve al collaudo automatico.
+if [ "$ISTANZA" = prova ]; then
+  INTERVALLO=0; DA_DOVE="ambiente di prova: ogni versione subito"
+else
+  FILE_INTERVALLO="$HOME/.config/schieraxi/intervallo-minuti"
+  if [ -n "${SCHIERAXI_INTERVALLO_MINUTI:-}" ]; then INTERVALLO=$SCHIERAXI_INTERVALLO_MINUTI; DA_DOVE=SCHIERAXI_INTERVALLO_MINUTI
+  elif [ -f "$FILE_INTERVALLO" ]; then INTERVALLO=$(tr -d ' \r\n' < "$FILE_INTERVALLO" 2>/dev/null); DA_DOVE=$FILE_INTERVALLO
+  else INTERVALLO=60; DA_DOVE=predefinito; fi
+  if [[ $INTERVALLO =~ ^[0-9]{1,4}$ ]] && [ $(( 10#$INTERVALLO )) -le 1440 ]; then
+    INTERVALLO=$(( 10#$INTERVALLO ))
+  else
+    DA_DOVE="valore non valido in $DA_DOVE: '${INTERVALLO:0:20}', vale il predefinito"; INTERVALLO=60
+  fi
+fi
+RIGA_URGENTE="Rilascio: urgente"     # la scrive il job rilascia nel commit di versione (script/ci/assegna_versione.py, RIGA_URGENTE)
 if [ "$CONFIGURAZIONE" = 1 ]; then
   printf 'DEST=%s\nSTATO=%s\nSERVIZIO=%s\nPORTA=%s\nATTENDE_PARTITE=%s\nSRC=%s\nBLOCCO=%s\nCHIAVI=%s\n' \
     "$DEST" "$STATO" "$SERVIZIO" "$PORTA" "$ATTENDE_PARTITE" "$SRC" "$BLOCCO" "$CHIAVI"
@@ -187,11 +208,35 @@ if [ -n "$FIDATI" ]; then
   log "fidato a mano ${fidato:0:7}: da qui in poi ogni commit nuovo di main deve essere firmato; l'installazione la fa il prossimo giro"
   fine; exit 0
 fi
+# L'intervallo in uso nel registro: al primo giro e quando cambia (stato in intervallo-letto)
+DESCRIZIONE_INTERVALLO="intervallo fra due installazioni: $INTERVALLO minuti ($DA_DOVE)"
+if [ "$PROVA" = 1 ]; then
+  log "$DESCRIZIONE_INTERVALLO"
+elif [ "$(cat "$STATO/intervallo-letto" 2>/dev/null)" != "$DESCRIZIONE_INTERVALLO" ]; then
+  log "$DESCRIZIONE_INTERVALLO"
+  echo "$DESCRIZIONE_INTERVALLO" > "$STATO/intervallo-letto"
+fi
 ultimo=$(cat "$STATO/ultimo-rilascio" 2>/dev/null)
 if [ "$nuovo" = "$ultimo" ] || [ "$nuovo" = "$(cat "$STATO/rifiutato" 2>/dev/null)" ]; then
   [ "$PROVA" = 1 ] && log "niente di nuovo: ${nuovo:0:7} e' gia' visto"
   exit 0
 fi
+# Versione rifiutata con altre sotto, arrivate prima e non ancora installate (con il raggruppamento capita piu' spesso, #635): non si
+# installano da sole, perche' un ripiego automatico su una versione mai provata potrebbe alternare due versioni rotte con un riavvio a
+# ogni giro. Entrano con la prossima versione buona (o con --fidati, per le firme). L'avviso del rifiuto lo dice, contando le versioni
+# vere: i commit di versione del job rilascia («Versione 1.2: ...») fra l'ultima installata e quella rifiutata, esclusa (non i commit
+# di soli documenti).
+anche_prima() {
+  local n
+  { [ -n "$ultimo" ] && git cat-file -e "$ultimo^{commit}" 2>/dev/null && git cat-file -e "$nuovo^1" 2>/dev/null; } || return 0
+  n=$(git log --first-parent --format=%s "$ultimo..$nuovo^1" 2>/dev/null | grep -cE '^Versione [0-9]+\.[0-9]+[,:]')
+  if [ "$n" = 1 ]; then
+    printf ' Anche la versione arrivata prima, in attesa, non è installata: entra con la prossima versione buona.'
+  elif [[ $n =~ ^[0-9]+$ ]] && [ "$n" -gt 1 ]; then
+    printf ' Anche le %s versioni arrivate prima, in attesa, non sono installate: entrano con la prossima versione buona.' "$n"
+  fi
+  return 0
+}
 # Firme: dall'ultimo commit verificato (o, la prima volta, dall'ultimo installato) fino a quello nuovo, tutti firmati da una chiave fidata
 if [ -s "$CHIAVI" ]; then
   base=$(cat "$STATO/verificato" 2>/dev/null)
@@ -200,7 +245,7 @@ if [ -s "$CHIAVI" ]; then
     log "versione ${nuovo:0:7} NON installata: $MOTIVO_FIRMA"
     if [ "$PROVA" = 0 ]; then
       echo "$nuovo" > "$STATO/rifiutato"
-      avvisa "SchieraXI: aggiornamento bloccato" "Su GitHub c'è una versione senza la firma attesa: non l'ho installata. Motivo in dati/pubblicazione.log." 4
+      avvisa "SchieraXI: aggiornamento bloccato" "Su GitHub c'è una versione senza la firma attesa: non l'ho installata.$(anche_prima) Motivo in dati/pubblicazione.log. Se dopo il controllo va bene: aggiorna-app.sh --fidati origin/main (script/server/LEGGIMI.md, «Casi limite»)." 4
     fi
     fine; exit 1
   fi
@@ -227,7 +272,7 @@ for c in $CARTELLE; do git cat-file -e "$nuovo:$c" 2>/dev/null || mancanti="$man
 if [ -n "$mancanti" ]; then
   log "la versione ${nuovo:0:7} non contiene:$mancanti : non installo"
   [ "$PROVA" = 1 ] || echo "$nuovo" > "$STATO/rifiutato"
-  guasto cartelle "Su GitHub c'è una versione senza tutte le cartelle del server: non l'ho installata."
+  guasto cartelle "Su GitHub c'è una versione senza tutte le cartelle del server: non l'ho installata.$(anche_prima)"
   fine; exit 1
 fi
 
@@ -243,16 +288,50 @@ if [ "$cambiato" = 0 ]; then
   fine; exit 0
 fi
 
+# Installazione forzata, a mano: SCHIERAXI_INSTALLA_SUBITO=1 oppure il file installa-subito (si cancella da solo dopo l'uso, qui sotto)
+installa_subito=0
+if [ "${SCHIERAXI_INSTALLA_SUBITO:-0}" = 1 ] || [ -e "$STATO/installa-subito" ]; then installa_subito=1; fi
+
+# Unione arrivata, commit di versione non ancora (#635): il job rilascia lo crea 10-20 secondi dopo l'unione. Se in main c'e' ancora
+# una novita' senza numero (fanta/novita.d/*.json) si aspetta il giro dopo: l'unione da sola avrebbe numero di versione e novita'
+# vecchi fino all'installazione seguente (con il raggruppamento, fino a un'ora). Al massimo mezz'ora, contata dal primo giro che ha
+# aspettato (stato in attesa-versione: l'ora di quel giro, in secondi), non dall'ora dei commit: un'unione nuova non la fa ripartire.
+# Poi (job rilascia fermo?) si installa lo stesso, con un avviso; «di nuovo a posto» quando main non ha piu' novita' senza numero.
+# L'installazione forzata non aspetta. Lo stato si toglie dopo l'installazione o quando le novita' senza numero non ci sono piu'.
+if [ "$installa_subito" = 0 ] && [[ $INIZIO =~ ^[0-9]{1,12}$ ]] \
+   && git ls-tree --name-only "$nuovo" fanta/novita.d/ 2>/dev/null | grep -q '\.json$'; then
+  inizio_attesa=$(cat "$STATO/attesa-versione" 2>/dev/null)
+  if ! [[ $inizio_attesa =~ ^[0-9]{1,12}$ ]] || [ $(( 10#$inizio_attesa )) -gt $(( 10#$INIZIO )) ]; then
+    inizio_attesa=$INIZIO                      # primo giro che aspetta (o stato rovinato, o orologio tornato indietro)
+    if [ "$PROVA" = 0 ]; then
+      echo "$INIZIO" > "$STATO/attesa-versione"
+      log "versione ${nuovo:0:7} senza ancora il commit di versione del job rilascia (novita' in attesa): aspetto, al massimo mezz'ora"
+    fi
+  fi
+  attesi=$(( 10#$INIZIO - 10#$inizio_attesa ))
+  if [ "$attesi" -lt 1800 ]; then
+    [ "$PROVA" = 1 ] && log "aspetterei il commit di versione del job rilascia per ${nuovo:0:7} (in attesa da $(( attesi / 60 )) minuti)"
+    fine; exit 0
+  fi
+  log "il commit di versione del job rilascia non e' arrivato in $(( attesi / 60 )) minuti (job fermo?): installo lo stesso ${nuovo:0:7}"
+  guasto rilascia "Da mezz'ora il commit di versione non arriva (job rilascia fermo?): installo le versioni senza il loro numero."
+elif [ "$PROVA" = 0 ] && ! git ls-tree --name-only "$nuovo" fanta/novita.d/ 2>/dev/null | grep -q '\.json$'; then
+  rm -f "$STATO/attesa-versione"
+  risolto rilascia
+fi
+
 # Mai durante una partita di Serie A ne' nell'ora prima della scadenza della formazione di una lega: il riavvio interromperebbe i
 # risultati in diretta e i giri delle probabili. Decide la versione installata (python -m fanta momento-libero, fanta/libero.py):
 # 3 = occupato (si rimanda al primo giro libero, una riga nel log per versione); qualunque altro esito (0, comando che non c'e'
 # ancora, errore, tempo scaduto) = si installa: un controllo guasto non deve fermare gli aggiornamenti.
 # Emergenza: SCHIERAXI_INSTALLA_SUBITO=1 oppure il file ~/.cache/fantacalcio/installa-subito (si cancella da solo dopo l'uso).
 # L'ambiente di prova non aspetta (ATTENDE_PARTITE=0): nessun utente vero lo usa e deve avere ogni versione prima della produzione.
+forzata=0
 if [ "$ATTENDE_PARTITE" = 0 ]; then
   :
-elif [ "${SCHIERAXI_INSTALLA_SUBITO:-0}" = 1 ] || [ -e "$STATO/installa-subito" ]; then
-  log "installazione forzata di ${nuovo:0:7}: non controllo partite e scadenze"
+elif [ "$installa_subito" = 1 ]; then
+  log "installazione forzata di ${nuovo:0:7}: non controllo commit di versione, partite, scadenze e intervallo fra due installazioni"
+  forzata=1
   [ "$PROVA" = 1 ] || rm -f "$STATO/installa-subito" "$STATO/rimandata"
 else
   motivo=$(cd "$DEST" && . "$QUI/leggi-ambiente.sh" && leggi_ambiente dati/ambiente.env &&
@@ -271,6 +350,43 @@ else
     log "fine del rimando: momento libero"
     rm -f "$STATO/rimandata"
   fi
+fi
+
+# Rilasci raggruppati (#635): fra due installazioni riuscite almeno INTERVALLO minuti. Prima si rimanda (una riga nel registro per
+# versione, stato in raggruppata); alla scadenza si installa l'ultima versione di main, in un colpo solo. Conta l'inizio del giro
+# dell'ultima installazione riuscita (ultima-installazione, in secondi): un'installazione non riuscita non lo cambia. Un minuto di
+# margine: i giri del cron non partono tutti allo stesso secondo. Si somma al rimando per le partite qui sopra. Subito, senza aspettare:
+# - una versione urgente: fra i commit nuovi (dall'ultimo installato, linea principale) c'e' la riga intera «Rilascio: urgente», che
+#   il job rilascia mette nel commit di versione quando una PR ha l'etichetta P1 o urgente. Si legge qui, dopo la verifica delle firme;
+# - l'installazione forzata (qui sopra) e l'ambiente di prova (INTERVALLO 0);
+# - nessuna installazione registrata (la prima volta) o l'orologio del server indietro rispetto all'ultima (non si aspetta per sempre).
+aspetta=0
+ultima_installazione=$(cat "$STATO/ultima-installazione" 2>/dev/null)
+if [ "$INTERVALLO" -gt 0 ] && [ "$forzata" = 0 ] && [[ $ultima_installazione =~ ^[0-9]{1,12}$ ]] && [[ $INIZIO =~ ^[0-9]{1,12}$ ]]; then
+  trascorsi=$(( 10#$INIZIO - 10#$ultima_installazione ))     # 10#: uno zero davanti non vuol dire base otto
+  if [ "$trascorsi" -lt 0 ]; then
+    log "l'orologio del server e' indietro rispetto all'ultima installazione: non aspetto l'intervallo"
+  elif [ "$trascorsi" -lt $(( INTERVALLO * 60 - 60 )) ]; then
+    aspetta=1
+  fi
+fi
+if [ "$aspetta" = 1 ] && [ -n "$ultimo" ] && git cat-file -e "$ultimo^{commit}" 2>/dev/null \
+   && git log --first-parent --format=%B "$ultimo..$nuovo" | tr -d '\r' | grep -qxF "$RIGA_URGENTE"; then
+  log "versione urgente fra i commit nuovi: installo ${nuovo:0:7} subito, senza aspettare l'intervallo"
+  aspetta=0
+fi
+if [ "$aspetta" = 1 ]; then
+  if [ "$PROVA" = 1 ]; then
+    log "rimanderei ${nuovo:0:7}: installazioni raggruppate, l'ultima $(( trascorsi / 60 )) minuti fa (intervallo $INTERVALLO minuti)"
+  elif [ "$(cat "$STATO/raggruppata" 2>/dev/null)" != "$nuovo" ]; then
+    log "raggruppata: ultima installazione $(( trascorsi / 60 )) minuti fa, intervallo $INTERVALLO minuti; installo ${nuovo:0:7} (o la versione piu' nuova di allora) fra circa $(( INTERVALLO - trascorsi / 60 )) minuti"
+    echo "$nuovo" > "$STATO/raggruppata"
+  fi
+  fine; exit 0
+fi
+if [ "$PROVA" = 0 ] && [ -e "$STATO/raggruppata" ]; then
+  log "fine del raggruppamento"
+  rm -f "$STATO/raggruppata"
 fi
 
 if [ "$PROVA" = 1 ]; then
@@ -337,7 +453,7 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
       log "librerie NON installate per la ${tentativi}a volta di fila: rinuncio a ${nuovo:0:7} (resta la versione di prima)"
       echo "$nuovo" > "$STATO/rifiutato"
       rm -f "$STATO/librerie-fallite"
-      avvisa "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima. Dettagli in dati/pubblicazione.log." 4
+      avvisa "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima.$(anche_prima) Dettagli in dati/pubblicazione.log." 4
     else
       log "librerie NON installate (rete, PyPI, hash diverso?): resta la versione di prima, riprovo al prossimo giro (tentativo $tentativi)"
       [ "$tentativi" = 1 ] && avvisa "SchieraXI: aggiornamento rimandato" "Le librerie della versione nuova non si sono installate: riprovo fra 10 minuti." 3
@@ -357,6 +473,8 @@ done
 
 if [ "$risponde" = 1 ]; then
   echo "$nuovo" > "$STATO/ultimo-rilascio"
+  echo "$INIZIO" > "$STATO/ultima-installazione"     # da qui parte l'intervallo fra due installazioni (#635)
+  rm -f "$STATO/attesa-versione"
   versione=$(cd "$DEST" && .venv/bin/python -c "import json; print(json.load(open('fanta/novita.json', encoding='utf-8'))[0]['versione'])" 2>/dev/null)
   # solo la riga nel registro, niente avviso: con tante versioni al giorno gli avvisi veri (fallita, rifiutata, tornata indietro) si
   # perdevano tra quelli di routine (#607)
@@ -372,7 +490,7 @@ else
   sudo systemctl restart "$SERVIZIO"
   echo "$nuovo" > "$STATO/rifiutato"
   sleep "${SCHIERAXI_PAUSA_DOPO_RITORNO:-5}"
-  avvisa "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima. Dettagli in dati/pubblicazione.log." 4
+  avvisa "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima.$(anche_prima) Dettagli in dati/pubblicazione.log." 4
 fi
 fine
 exit 0
