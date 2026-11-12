@@ -6,18 +6,25 @@
 const DF_VISIBILI = 4;                                   // le altre stanno in «Altre cose da fare»
 const DF_URGENTE = 1;
 
+// Cambi consigliati («mercato») e Scambi sono stati tolti dalla web il 12/11/2026 (#615); il server manda ancora le sue righe come
+// prima (le usa l'iPhone). Una riga che resta ma portava lì (il reparto scoperto: «Cerca un rimpiazzo») sulla web apre la rosa della
+// propria squadra, e il pulsante lo dice.
+const DF_SCHEDE_TOLTE = ["mercato", "scambi"];
+const dfAllaRosa = v => DF_SCHEDE_TOLTE.includes((v.destinazione || {}).scheda);
+
 function dfRiga(v, i) {
   const urgente = v.priorita === DF_URGENTE;
+  const azione = dfAllaRosa(v) ? t("lega.vedi_rosa") : v.azione ? testoDi(v, "azione") : t("df.apri");
   return `<li class="df-riga${urgente ? " urgente" : ""}">
     <span class="df-testo">${urgente ? `<span class="df-etichetta">${t("df.urgente")}</span> ` : ""}${esc(testoDi(v))}</span>
-    <button class="azione-testo df-azione" type="button" data-df="${i}">${esc(v.azione ? testoDi(v, "azione") : t("df.apri"))}</button></li>`;
+    <button class="azione-testo df-azione" type="button" data-df="${i}">${esc(azione)}</button></li>`;
 }
 
-// Le righe da mostrare: quelle con un testo, senza i consigli delle funzioni tolte dalla web il 12/11/2026 (#615). Il server li manda
-// ancora (li usa l'iPhone): portavano a Cambi consigliati («mercato») o a Scambi, che qui non ci sono più.
-const DF_SCHEDE_TOLTE = ["mercato", "scambi"];
+// Le righe da mostrare: quelle con un testo, senza i due consigli delle funzioni tolte (il cambio con uno svincolato e lo scambio).
+// Si guarda il TIPO della riga, non dove porta: il reparto scoperto porta anche lui a «mercato», ma è un avviso da non perdere.
+const DF_TIPI_TOLTI = ["svincolato", "scambio"];
 function dfValide(voci) {
-  return (Array.isArray(voci) ? voci : []).filter(v => v && typeof v.testo === "string" && !DF_SCHEDE_TOLTE.includes((v.destinazione || {}).scheda));
+  return (Array.isArray(voci) ? voci : []).filter(v => v && typeof v.testo === "string" && !DF_TIPI_TOLTI.includes(v.tipo));
 }
 
 function cardDaFare(voci) {
@@ -53,6 +60,7 @@ function dfApri(v) {
   if (v.id === "dati-vecchi" && typeof apriStatoDati === "function") { vai("impostazioni", "avanzate"); apriStatoDati(); return; }
   if (v.tipo === "diario" && Number.isInteger(v.giornata) && typeof schieraDaOggi === "function") { schieraDaOggi(v.giornata); return; }
   if (v.tipo === "diario" && typeof apriDiario === "function") { apriDiario(); return; }
+  if (dfAllaRosa(v)) { stato.legaTorna = null; stato.rosaTorna = ""; vai("squadra"); return; }      // la rosa della mia squadra (rosa senza nome)
   const DF_IMP = { avanzate: "avanzate" };                               // sezioni che stanno in Impostazioni
   if (d.scheda === "impostazioni" || DF_IMP[d.sezione]) { vai("impostazioni", DF_IMP[d.sezione] || d.sezione); return; }
   const scheda = SCHEDA_DI(d.scheda) ? d.scheda : "lega";            // «lega» è il nome vecchio delle voci di Squadra e Altro

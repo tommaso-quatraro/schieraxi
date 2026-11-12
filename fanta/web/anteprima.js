@@ -148,13 +148,19 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
       ${mia}
       <div class="ar-squadre">${squadreHtml}</div>
       ${differenze}
-      <div id="ar-msg">${messaggio ? `<div class="attenzione" role="status">${esc(messaggio)}</div>` : ""}</div>
+      <div id="ar-msg" role="status"></div>
       <div class="pulsanti"><button class="bottone" type="button" id="ar-salva">${t("ar.conferma")}</button>
         <button class="bottone secondario" type="button" id="ar-annulla">${t("ar.annulla")}</button></div>
     </div>`;
     collega();
     $("#ar-titolo", dove).focus({ preventScroll: false });
+    if (messaggio) setTimeout(() => dici(`<div class="attenzione">${esc(messaggio)}</div>`), 100);
   };
+
+  // Il riquadro dei messaggi (#ar-msg) è una regione role="status" che resta in pagina: un lettore di schermo legge ciò che ci
+  // viene scritto DOPO, non una regione che nasce già con il suo testo. Per questo nasce vuoto e il messaggio di apertura arriva
+  // un attimo dopo. Qui vanno gli avvisi; un errore vero ci entra con il suo role="alert" (errore()).
+  const dici = html => { const m = $("#ar-msg", dove); if (m) m.innerHTML = html; };
 
   const collegaRiga = li => {
     const i = Number(li.dataset.i), { s, g } = st.righe[i], k = arChiave(s.nome, g.testo);
@@ -217,7 +223,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
     // «lo cerco io» senza aver toccato un risultato: si salverebbe la proposta di prima senza che l'utente lo sappia
     const aMeta = st.righe.findIndex(({ s, g }) => st.scelte.get(arChiave(s.nome, g.testo)) === AR_CERCA);
     if (aMeta >= 0) {
-      msg.innerHTML = `<div class="attenzione">${t("ar.cerca_incompleta", { nome: esc(st.righe[aMeta].g.testo) })}</div>`;
+      dici(`<div class="attenzione">${t("ar.cerca_incompleta", { nome: esc(st.righe[aMeta].g.testo) })}</div>`);
       const campo = $(`#ar-cerca-${aMeta}`, dove);
       if (campo) campo.focus();
       return;

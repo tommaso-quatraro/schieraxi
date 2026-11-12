@@ -10,7 +10,8 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
 - `ios/`: app per iPhone e iPad (SwiftUI) e widget.
 - `sito/`: sito di presentazione, statico.
 - `lega/esempio/`: lega inventata per prove e test. La lega vera sta fuori dal repository (`FANTA_LEGA=<cartella>`).
-- `tests/`: test Python, un file per modulo; dati inventati in `tests/dati/`.
+- `tests/`: test Python, un file per modulo; dati inventati in `tests/dati/`. `tests/browser/`: la web provata in Chrome vero
+  (si lanciano a parte, guida in `tests/browser/LEGGIMI.md`).
 - `script/`: `server/` (cron e aggiornamento del server), `ci/` (controlli e rilascio), `squadra/` (comandi di chi coordina),
   `controlli/` (controllo prima del commit), `testi.py`, `coerenza.py`, `blocca_dipendenze.py`.
 - `prove/`: strumenti di misura e di collaudo che non girano in produzione.
@@ -48,9 +49,8 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
   `aggiorna_openapi.py`, `aspetto_web.py` (confronto delle foto della web con `main`), `collaudo_prova.py`, `metriche.py`.
 - `script/squadra/`: `squadra.py <comando>` (`stato`, `brief`, `pr-pronta`, `attendi`, `foto`, `giro`, `pulisci`,
   `annulla-superate`, `giornata`), `aree.json`, `foto.json`, `modello-brief.md`, `LEGGIMI.md`.
-- `prove/`: `foto_web/foto.py` (foto e accessibilità della web), `web_comportamento/` (test della web in un browser vero),
-  `amico_nuovo/percorso.py` (ingresso di un utente nuovo), `fotografie_dal_vero.py` (scenari per le foto dell'iPhone),
-  misure e tarature del modello.
+- `prove/`: `foto_web/foto.py` (foto e accessibilità della web), `amico_nuovo/percorso.py` (ingresso di un utente nuovo),
+  `fotografie_dal_vero.py` (scenari per le foto dell'iPhone), misure e tarature del modello.
 
 ## `docs/`
 - Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`.

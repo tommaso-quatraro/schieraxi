@@ -1,8 +1,8 @@
 """Web senza le funzioni tolte il 12/11/2026 (#615): cosa succede a ciò che puntava a una schermata che non c'è più.
 
-Si esegue il codice vero della web con Node (niente ricerca di testo nel sorgente): le righe di «Da fare» che portavano a
-Cambi consigliati o a Scambi non si mostrano, e un indirizzo vecchio apre la schermata più vicina che resta.
-Le schermate si provano nel browser: prove/web_comportamento/.
+Si esegue il codice vero della web con Node (niente ricerca di testo nel sorgente): i consigli di «Da fare» delle funzioni tolte
+(cambio con uno svincolato, scambio) non si mostrano, e un indirizzo vecchio apre la schermata più vicina che resta.
+Le schermate si provano nel browser: tests/browser/test_tagli.py.
 """
 import json
 import re
@@ -23,17 +23,24 @@ def _node(codice: str):
     return json.loads(out.stdout)
 
 
-def _da_fare(voci: list[dict]) -> list[str]:
-    """Gli id delle righe che la carta «Da fare» mostra, con `dafare.js` caricato per intero."""
+def _con_dafare(voci: list[dict], espressione: str):
+    """Il valore di un'espressione JavaScript su `voci`, con `dafare.js` caricato per intero. I testi sono le loro chiavi
+    (`t` finta): il pulsante di una riga si riconosce dalla chiave del suo testo."""
     sorgente = codice_web.leggi("dafare.js")
     codice = f"""
       const vm = require("vm");
       const ctx = {{ t: k => k, tp: (k, n) => k + ":" + n, esc: x => String(x), testoDi: (v, c) => (c ? v[c] : v.testo) }};
       vm.createContext(ctx);
-      vm.runInContext({json.dumps(sorgente)} + "\\n;globalThis.fuori = dfValide(" + {json.dumps(json.dumps(voci))} + ").map(v => v.id);", ctx);
+      vm.runInContext({json.dumps(sorgente)} + "\\n;globalThis.voci = " + {json.dumps(json.dumps(voci))} + ";globalThis.fuori = "
+                      + {json.dumps(espressione)} + ";", ctx);
       console.log(JSON.stringify(ctx.fuori));
     """
     return _node(codice)
+
+
+def _da_fare(voci: list[dict]) -> list[str]:
+    """Gli id delle righe che la carta «Da fare» mostra."""
+    return _con_dafare(voci, "dfValide(voci).map(v => v.id)")
 
 
 def _voce(id: str, tipo: str, scheda: str, sezione: str | None = None, **extra) -> dict:
@@ -41,15 +48,33 @@ def _voce(id: str, tipo: str, scheda: str, sezione: str | None = None, **extra) 
             "destinazione": {"scheda": scheda, "sezione": sezione, **extra}}
 
 
-def test_da_fare_non_mostra_le_righe_delle_funzioni_tolte():
+def test_da_fare_non_mostra_i_consigli_delle_funzioni_tolte():
+    """Via solo il cambio con uno svincolato e lo scambio (si guarda il tipo della riga). Il reparto scoperto porta anche lui a
+    «mercato» ma è un avviso da non perdere: resta."""
     voci = [_voce("dubbio:1", "dubbio", "formazione", giocatore=1),
             _voce("svincolato:7", "svincolato", "mercato", giocatore=7),
             _voce("scambio:Atletico Prova", "scambio", "scambi"),
-            _voce("copertura:D", "copertura", "mercato"),
+            _voce("copertura:P", "copertura", "mercato"),
+            _voce("copertura:moduli", "copertura", "formazione"),
             _voce("rose-vecchie", "rose", "lega", "rose"),
             _voce("diario:5", "diario", "lega", "diario", giornata=5),
             _voce("dati-vecchi", "dati", "impostazioni", "avanzate")]
-    assert _da_fare(voci) == ["dubbio:1", "rose-vecchie", "diario:5", "dati-vecchi"]
+    assert _da_fare(voci) == ["dubbio:1", "copertura:P", "copertura:moduli", "rose-vecchie", "diario:5", "dati-vecchi"]
+
+
+def test_con_il_solo_reparto_scoperto_da_fare_non_dice_tutto_a_posto():
+    """Il difetto visto in revisione: con la sola riga «Non hai nessun portiere disponibile» Oggi diceva «Tutto a posto, Mister»."""
+    carta = _con_dafare([_voce("copertura:P", "copertura", "mercato")], "cardDaFare(voci)")
+    assert "testo di copertura:P" in carta and "df.tutto_posto_mister" not in carta
+
+
+def test_il_pulsante_del_reparto_scoperto_porta_alla_rosa_e_lo_dice():
+    """«Cerca un rimpiazzo» apriva Cambi consigliati, che sulla web non c'è più: il pulsante dice «Vedi la rosa»; le altre righe
+    tengono il testo del server."""
+    voci = [{**_voce("copertura:P", "copertura", "mercato"), "azione": "Cerca un rimpiazzo"}, _voce("dubbio:1", "dubbio", "formazione")]
+    carta = _con_dafare(voci, "cardDaFare(voci)")
+    pulsanti = re.findall(r'data-df="(\d+)">([^<]*)<', carta)
+    assert pulsanti == [("0", "lega.vedi_rosa"), ("1", "Apri")]
 
 
 def test_da_fare_tiene_una_riga_senza_destinazione_e_scarta_quelle_senza_testo():

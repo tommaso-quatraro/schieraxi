@@ -200,11 +200,12 @@ function marchio(dim = 48, muove = false) {
   return `<svg class="marchio${muove ? " muove" : ""}" width="${dim}" height="${dim}" viewBox="0 0 120 120" role="img" aria-label="SchieraXI"><g class="punti">${punti}</g><circle class="capitano" cx="60" cy="50" r="9"/></svg>`;
 }
 
-// Il titolo della schermata c'è già mentre carica (opz come pagina(): di norma il nome della scheda).
+// Il titolo della schermata c'è già mentre carica (opz come pagina(): di norma il nome della scheda). Finché carica l'area
+// principale ha aria-busy="true" (lo dice ai lettori di schermo e ai test del browser): lo toglie la pagina() che arriva dopo.
 function caricamento(testo = t("comune.calcolo_in_corso"), opz = {}) {
   pagina(`<div class="caricamento">${marchio(54, true)}${esc(testo)}</div>
     <div class="scheletro carta"><i></i><i></i><i class="corta"></i></div>
-    <div class="scheletro carta"><i></i><i class="corta"></i></div>`, opz);
+    <div class="scheletro carta"><i></i><i class="corta"></i></div>`, { ...opz, carica: true });
 }
 // «1 giornata», «2 giornate»: il plurale giusto per un numero
 const nPl = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
@@ -249,9 +250,11 @@ function svuotaCache() {
 }
 // Scrive la pagina: in cima il titolo della schermata (l'unico h1) e la riga di stato, poi il contenuto (grafica B, spec §8.2 e §10).
 // opz.titolo: il titolo (di norma il nome della scheda accesa); opz.stato === false: niente riga di stato.
-// Se i dati arrivano da copia salvata aggiunge la nota, se sostituisce non rifà l'entrata.
+// Se i dati arrivano da copia salvata aggiunge la nota, se sostituisce non rifà l'entrata. opz.carica: è la schermata di attesa
+// di caricamento() (aria-busy="true" sull'area principale); ogni altra pagina, anche quella di un errore, lo toglie.
 function pagina(html, opz = {}) {
   const conFocus = !!document.activeElement && document.activeElement.id === "titolo-pagina";   // il titolo aveva il focus: lo ritrova ridisegnato
+  if (opz.carica) contenuto.setAttribute("aria-busy", "true"); else contenuto.removeAttribute("aria-busy");
   contenuto.classList.toggle("ridisegna", !!opz.sostituisce);
   const scheda = SCHEDA_DI(stato.vista);
   const titolo = opz.titolo || (scheda ? t("nav." + scheda) : "SchieraXI");
@@ -2521,6 +2524,7 @@ async function avvisiTelefono() {
       catch (e) { avviso(e.message, 6000); }
     });
   } catch (e) { if (document.body.contains(dove)) dove.innerHTML = `<h2>${t("asp.avvisi_titolo")}</h2>${errore(e)}`; }
+  finally { dove.removeAttribute("aria-busy"); }                           // ha finito di caricare, bene o male
 }
 
 // ---------------------------------------------------------------- stemma e maglia (Lega)
@@ -3241,7 +3245,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") === "invito" || stato.emailAttiva === false ? "codice" : "email" };
   stato.account = null;
   document.body.classList.add("senza-accesso");
-  contenuto.innerHTML = "";
+  contenuto.innerHTML = ""; contenuto.removeAttribute("aria-busy");
   let el = $("#accesso");
   const primaVolta = !el;
   if (!el) {

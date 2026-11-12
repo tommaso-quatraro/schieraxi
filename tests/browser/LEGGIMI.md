@@ -23,16 +23,18 @@ I test non conoscono le schermate: si appoggiano a tre regole che ogni versione 
   con l'area principale vuota è rotta, anche se la testata c'è.
 - **Mentre una schermata carica, l'area principale (o il suo contenitore del caricamento) ha `aria-busy="true"`**, e lo
   toglie quando ha finito. I test aspettano al massimo 10 secondi che nell'area principale non ci sia più nessun
-  `aria-busy="true"`, poi falliscono («ferma sul caricamento»). La web di oggi non ha ancora l'attributo: si riconosce il
-  suo caricamento dalle classi `caricamento` e `scheletro` (la rotella e le righe grigie di `caricamento()` in `app.js`).
+  `aria-busy="true"`, poi falliscono («ferma sul caricamento»). La web lo mette dal 12/11/2026 (#615): sull'area principale
+  con `caricamento()` di `app.js` (lo toglie la `pagina()` che arriva dopo, anche quella di un errore) e sui riquadri che si
+  riempiono dopo. Il controllo guarda ancora anche le classi `caricamento` e `scheletro` (la rotella e le righe grigie).
 - **Un errore mostrato all'utente ha `role="alert"`** (lo legge subito anche chi usa un lettore di schermo); un avviso
   normale ha `role="status"`. Un elemento `role="alert"` con del testo, visibile nell'area principale, fa fallire i test
   della prima schermata. La web di oggi scrive gli errori anche con la classe `errore`, che vale lo stesso. Un contenitore
   `role="alert"` vuoto, pronto per un messaggio, va bene.
 
-Cosa nota della web di oggi: la schermata di accesso e il riconoscimento delle rose mettono dentro `role="alert"` anche
-avvisi che non sono errori (classe `attenzione`). Il controllo non li conta come errori; nella web rifatta quegli avvisi
-passano a `role="status"`.
+Cosa nota della web di oggi: la schermata di accesso mette dentro `role="alert"` anche avvisi che non sono errori (classe
+`attenzione`). Il controllo non li conta come errori; nella web rifatta quegli avvisi passano a `role="status"`. Il
+riconoscimento delle rose lo fa già (#615): il riquadro dei suoi messaggi è una regione `role="status"` che resta in
+pagina, e l'avviso ci viene scritto dopo (un lettore di schermo non legge una regione che nasce già con il suo testo).
 
 ## Quando girano
 - **Nelle pull request**: job `browser` dei controlli (`.github/workflows/test.yml`), quando la PR tocca `fanta/web/`,
@@ -70,6 +72,18 @@ Poi, dalla radice del repository (anche da una worktree), circa un minuto:
 - nessuna violazione grave (`critical` o `serious`) di axe, regole WCAG 2.0, 2.1 e 2.2 livelli A e AA
   (`tests/strumenti/axe/`).
 
+`test_tagli.py`, la web senza le funzioni tolte il 12/11/2026 (#615). I test che non dipendono dalla fase girano solo
+prima della scadenza:
+- i menu di Squadra e Altro hanno solo le voci che restano; gli indirizzi delle pagine tolte aprono la schermata più
+  vicina; le novità stanno in Impostazioni > Informazioni (le ultime dieci, le altre a richiesta); «Nuova stagione» è un
+  avviso che compare quando serve; la dimensione del testo salvata da una versione di prima non vale più;
+- Formazione senza stili, legenda, confronto e indice sui volti; Oggi senza partite del turno e banner, nelle tre fasi;
+  girando per l'app non si chiedono le rotte delle funzioni tolte;
+- Da fare: via i consigli di mercato e di scambio; la riga del reparto scoperto resta e porta alla rosa;
+- i patti: una schermata che non si apre mostra un errore `role="alert"` e non resta in caricamento; le schermate sane
+  non ne hanno; mentre una schermata carica `<main>` ha `aria-busy="true"`; nel riconoscimento delle rose gli avvisi
+  arrivano in una regione `role="status"` già in pagina e un salvataggio fallito è un errore.
+
 ## Aggiungere un test di comportamento (dieci righe)
 Un file `tests/browser/test_<cosa>.py`. Il segno `browser` lo mette da solo `conftest.py` a ogni test di questa cartella:
 non serve scriverlo.
@@ -93,7 +107,12 @@ Cosa offre la fixture `web`:
   300 ms, al massimo 3 s; animazioni portate alla fine). Un'attesa scaduta non ferma il test: lo dicono i controlli dopo;
 - `web.pagina`: la pagina di Playwright, per cliccare e leggere (`web.pagina.get_by_role("button", name="…").click()`);
   dopo un clic, `web.aspetta()`;
-- `web.errori_console`, `web.richieste_fallite`: liste che si riempiono da sole;
+- `web.errori_console`, `web.richieste_fallite`, `web.richieste` (le `/api/...` chieste, percorso e query): liste che si
+  riempiono da sole;
+- `web.risposta(rotta, corpo, stato=200)`, prima di `apri` o di un clic: quella rotta risponde con `corpo` (JSON) e
+  `stato` al posto della risposta registrata, per un dato che lo scenario non ha o per una rotta che fallisce.
+  `web.registrata(rotta)` dà la risposta registrata come oggetto, per cambiarne un pezzo;
+- `web.memoria({"chiave": "valore"})`, prima di `apri`: valori già salvati nel browser da una versione di prima;
 - `web.testo_principale()`, `web.in_caricamento()`, `web.errori_mostrati()`, `web.scorre_di_lato()`,
   `web.violazioni_gravi()`;
 - `web.fase`: `prima`, `in-corso` o `finita` (per un test che vale per una fase sola:

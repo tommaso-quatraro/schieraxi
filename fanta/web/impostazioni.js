@@ -113,17 +113,19 @@ async function mostraNovita(dove) {
     const altre = $("#novita-altre");
     if (altre) altre.addEventListener("click", () => { $("#novita-altre-riga").outerHTML = elenco.slice(NOVITA_VISIBILI).map(carta).join(""); });
   } catch (e) { if (document.body.contains(dove)) dove.innerHTML = errore(e); }
+  finally { dove.removeAttribute("aria-busy"); }
 }
 
+// I riquadri che si riempiono dopo (avvisi sul telefono, novità) hanno aria-busy="true" finché caricano: lo toglie chi li riempie.
 const CORPI_IMP = {
   account: () => schedaAccount(),
   aspetto: () => schedaAspetto(),
-  avvisi: () => `<div class="carta" id="avvisi-telefono"><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>`,
+  avvisi: () => `<div class="carta" id="avvisi-telefono" aria-busy="true"><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>`,
   informazioni: () => {
     const v = stato.info && stato.info.versione;
     return `<div class="carta"><ul class="elenco">${voceLegale("privacy", "legale.privacy")}${voceLegale("termini", "legale.termini")}${voceLegale("crediti", "legale.crediti")}${voceSorgente()}</ul>
       <div class="riga"><span>${t("info.versione")}</span><b>${v ? esc(v) : "–"}</b></div></div>
-      <div class="carta"><h3>${t("info.novita")}</h3><div id="novita-elenco"><div class="caricamento">${t("novita.carico")}</div></div></div>`;
+      <div class="carta"><h3>${t("info.novita")}</h3><div id="novita-elenco" aria-busy="true"><div class="caricamento">${t("novita.carico")}</div></div></div>`;
   },
   avanzate: () => `<div class="carta"><h3>${t("av.stato")}</h3>
       <div class="debole piccolo">${t("av.stato_spiega")}</div>
