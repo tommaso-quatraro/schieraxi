@@ -1,5 +1,38 @@
 [
   {
+    "versione": "1.466",
+    "data": "2026-11-12T10:11:47",
+    "titolo": "Dati che dicono il vero: probabili vecchie riconosciute, guasti delle fonti che si vedono",
+    "voci": [
+      "Web, iPhone e iPad: il mattino dopo una giornata le probabili rimaste quelle della giornata finita non contano come nuove: niente «Probabili aggiornate» né avvisi di cambi sbagliati.",
+      "Stato dei dati: ogni fonte mostra con un nome chiaro l'ora del suo ultimo aggiornamento riuscito; la correzione di «gioca N%» usa solo le probabili lette prima delle partite.",
+      "Chi gestisce il server riceve un promemoria al giorno con il nome della fonte ferma da più di un giorno, e i voti di una giornata non vengono più sostituiti da letture incomplete."
+    ],
+    "tecnico": [
+      "aggiorna.probabili: lettura uguale per oltre il 95% (stato, percentuale, in dubbio) all'ultima lettura accettata della giornata prima, finché la giornata non ha probabili accettate = copia: solo in probabili_storia con copia = 1, mai in probabili. Colonna copia e indice probabili_storia_letture aggiunti agli archivi esistenti (PRAGMA table_info + ALTER TABLE in archivio._aggiorna_schema).",
+      "stato_dati._calibrazione_probabili: per ogni partita giocata l'ultima lettura di probabili_storia prima del calcio d'inizio, copie escluse; giornate = giornate misurabili; sotto MIN_GIORNATE (3) fattori vuoti. Stessa funzione per la pagina e per consigli/registro_nostri (taratura_e_fattori).",
+      "aggiornamenti: righe dei passi seguiti (archivio.PASSI: listone, calendario, voti, probabili, understat, dati-extra, controlli) con quando = ultimo successo e dettaglio JSON {errore, dal, ultimo}; fermo = da più di 24 ore dal primo errore di fila (archivio.passi_fermi); salute.controlla avvisa «passo:<nome>» ogni 24 ore. Dentro esegui le ore nuove si scrivono a fine giro con la riga generale: consigli._versione cambia una volta per aggiornamento (prima 8 con i passi finti). La riga aggiornamento non avanza se nessun passo dei dati riesce.",
+      "Stato dei dati: campo facoltativo etichetta in ogni voce di aggiornamenti e controlli (nome leggibile dal server). football-data: una sola riga dati-extra; il limite delle 6 ore da partite_extra.rilevato.",
+      "D'estate (stagione in archivio non ancora iniziata, o pagina della stagione precedente): probabili di partite di un'altra stagione, calendario che mostra l'altra stagione; giornata lontana più di 96 ore senza titolari, Understat senza partite e file di football-data «non trovato» prima della prima partita giocata = passo riuscito senza dati.",
+      "Understat: fonti.understat.dati_json dà RispostaNonDati (con il titolo della pagina) quando arriva HTML o testo al posto del JSON; il passo si ferma alla prima richiesta.",
+      "controlli: gol_dei_voti e gol_subiti_portieri (CONTANO_COME_ERRORI, zero su tutte le 490 partite in archivio il 12/11). aggiorna._salva_voti: una lettura con meno righe non sostituisce i voti (VotiCalati); fino a 2 righe in meno si accetta dopo 3 letture uguali di fila (tabella voti_calati, scritto nel registro), oltre resta bloccata. fantacalcio.leggi_voti_e_scarti conta le righe saltate (errore oltre 2 e il 10%). listone.carica(severo=True) nel passo dell'aggiornamento attraverso rete.scarica; le rotte dell'app usano subito la copia che c'è."
+    ]
+  },
+  {
+    "versione": "1.465",
+    "data": "2026-11-12T09:43:19",
+    "titolo": "Server: avvisi più utili e copia notturna completa",
+    "voci": [
+      "Server: chi gestisce il server riceve meno avvisi e più chiari: quali fonti di dati non rispondono (un messaggio solo) e quando tornano; niente avviso a ogni versione installata, ma uno se gli aggiornamenti si fermano.",
+      "Server: la copia di ogni notte contiene anche l'archivio delle statistiche, così un ripristino non perde i dati che una fonte non dà più. In Sotto il cofano ora si spiega che non tutti i dati si possono riscaricare."
+    ],
+    "tecnico": [
+      "script/server/aggiorna.sh: stato per passo di «fanta aggiorna» in ~/.cache/fantacalcio/passi/<passo> («giri di fila, ultimo avviso in secondi, nome»), letto dalle righe «  ! <passo>: non riuscito (» del giro; un solo avviso ntfy per giro con i passi alla seconda volta di fila, una volta sola per guasto (il promemoria di ogni giorno lo manda il controllo di salute del server), uno solo per i passi tornati se erano stati segnalati; ora dell'avviso segnata e file tolto solo se curl riesce; senza «Fatto:» e con uscita diversa da zero conta il guasto «aggiornamento» e gli altri passi restano com'erano; una fonte «saltata» si toglie senza avviso. Il vecchio contatore unico ~/.cache/fantacalcio/errori si toglie (#607).",
+      "script/server/aggiorna-app.sh: tolto l'avviso «SchieraXI aggiornato» dopo un'installazione riuscita (resta la riga in dati/pubblicazione.log). Funzioni guasto/risolto: avviso con il motivo per clone o fetch non riusciti (dalla terza volta di fila), copia di GitHub senza ramo main, versione senza cartelle del server, git archive | tar non riuscito, scambio degli ambienti non riuscito; al massimo uno al giorno per motivo (stato in ~/.cache/fantacalcio/guasto-<motivo>), «di nuovo a posto» al primo fetch riuscito (rete) o alla prima installazione riuscita. avvisa esce con 0 solo se notifiche.invia ha mandato.",
+      "script/server/backup-dati.sh: dati/fanta.sqlite nel pacchetto notturno, con l'API di backup di SQLite dall'archivio aperto in sola lettura (mode=ro), copia in journal_mode DELETE e PRAGMA quick_check. Se non riesce solo quella copia: pacchetto senza l'archivio, niente rotazione quella notte, avviso ntfy al massimo uno al giorno (~/.cache/fantacalcio/avvisato-copia-archivio) e uno quando torna completa. docs/RIPRISTINO-SERVER.md (passi 2, 4 e 5), fanta/registro_copia.py (docstring), Sotto il cofano (italiano, inglese, docs/SOTTO-IL-COFANO.md) aggiornati."
+    ]
+  },
+  {
     "versione": "1.464",
     "data": "2026-11-12T07:59:54",
     "titolo": "Server: script di manutenzione più prudenti",

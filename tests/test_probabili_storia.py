@@ -48,11 +48,12 @@ def test_ogni_rilevazione_resta_con_la_sua_ora_e_probabili_tiene_l_ultima(db, mo
 
 
 def test_colonne_uguali(tmp_path):
+    """Le colonne di `probabili`, più il segno `copia` delle letture copiate dalla giornata prima (#608)."""
     d = archivio.apri(tmp_path / "c.sqlite")
     try:
         a = [r[1] for r in d.execute("PRAGMA table_info(probabili)")]
         b = [r[1] for r in d.execute("PRAGMA table_info(probabili_storia)")]
-        assert a == b
+        assert a + ["copia"] == b
     finally:
         d.close()
 
