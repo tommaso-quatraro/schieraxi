@@ -2185,11 +2185,12 @@ function cartaPrecisione(p) {
   const gFrase = gp ? `${gi.fonte === "ricostruiti" ? t("diario.qp_gioca_ric", gArg) : t("diario.qp_gioca", gArg)}${giudizioFascia(gp)}
       <details class="qp-dettagli"><summary>${t("diario.qp_gioca_tutte")}</summary><ul class="qp-fasce">${gi.gruppi.map(g => `<li>${t("diario.qp_gioca_fascia", { da: n(g.da), a: n(g.a) >= 100 ? 100 : n(g.a) - 1, d: n(g.detto), g: n(g.giocato) })} <span class="debole">(${tp("diario.qp_giocatori", n(g.giocatori))}${g.pochi ? ", " + t("diario.qp_pochi_casi") : ""})</span></li>`).join("")}</ul></details>`
     : t("diario.qp_fv_vuoto");
-  // 3. consigliata contro la tua
+  // 3. consigliata contro la tua. `nota`: la frase del server sulle giornate senza verdetto (#614), dopo i numeri o al loro posto
   const cf = p.confronto || {};
   const punti = n(cf.punti);
-  const cfFrase = cf.giornate ? `${t("diario.qp_cf", { k: n(cf.meglio_consigliata), n: n(cf.giornate), tua: n(cf.meglio_tua), pari: n(cf.pari) })} ${punti === 0 ? t("diario.qp_cf_pari") : punti > 0 ? tp("diario.qp_cf_piu", punti, { e: v(punti) }) : tp("diario.qp_cf_meno", -punti, { e: v(-punti) })}`
-    : t("diario.qp_cf_vuoto");
+  const cfNota = testoDi(cf, "nota");
+  const cfFrase = cf.giornate ? `${t("diario.qp_cf", { k: n(cf.meglio_consigliata), n: n(cf.giornate), tua: n(cf.meglio_tua), pari: n(cf.pari) })} ${punti === 0 ? t("diario.qp_cf_pari") : punti > 0 ? tp("diario.qp_cf_piu", punti, { e: v(punti) }) : tp("diario.qp_cf_meno", -punti, { e: v(-punti) })}${cfNota ? " " + esc(cfNota) : ""}`
+    : cfNota ? esc(cfNota) : t("diario.qp_cf_vuoto");
   // 4. punti della squadra (consigliata): previsti contro fatti
   const sq = p.squadra;
   const sqFrase = sq ? t("diario.qp_sq", { a: v(sq.punti_medi_attesi), f: v(sq.punti_medi_fatti), k: n(sq.dentro_fascia), n: n(sq.con_fascia ?? sq.giornate), d: Math.round((n(sq.fascia_dichiarata) || 80) / 10) }) : t("diario.qp_fv_vuoto");
@@ -2208,8 +2209,10 @@ function cartaPrecisione(p) {
       <div class="debole piccolo">${t("diario.qp_grafico_leg")}</div>`;
   }
   const righe = [...pg].reverse().map(g => {
+    // senza la consigliata di allora il server non manda la differenza (null): i tuoi punti da soli, non «(0,0)»
     const d = n(g.differenza);
-    const tua = n(g.tua) != null ? " · " + t("diario.qp_riga_tua", { t: v(g.tua), d: (d > 0 ? "+" : d < 0 ? "−" : "") + v(Math.abs(d ?? 0)) }) : "";
+    const tua = n(g.tua) == null ? "" : " · " + (d == null ? t("diario.qp_riga_tua_sola", { t: v(g.tua) })
+      : t("diario.qp_riga_tua", { t: v(g.tua), d: (d > 0 ? "+" : d < 0 ? "−" : "") + v(Math.abs(d)) }));
     return `<li><b>${nomeG(g)}</b> · <span class="debole">${n(g.errore_fantavoto) != null ? t("diario.qp_riga_fv", { e: v(g.errore_fantavoto) }) + " · " : ""}${t("diario.qp_riga_sq", { a: v(g.attesi), f: v(g.fatti) })}${tua}</span></li>`;
   }).join("");
   const primo = pg.length ? nomeG(pg[0]) : null, ultimo = pg.length ? nomeG(pg[pg.length - 1]) : null;
@@ -2233,9 +2236,13 @@ function cartaPrecisione(p) {
 }
 
 // Diario > «Quando hai scelto diversamente»: nelle giornate in cui i tuoi undici non erano quelli consigliati, chi ha fatto più punti.
-function cartaScelteTue(st, sintesi, v) {
-  if (!st || !sintesi || !sintesi.giornate) return "";
-  if (!st.giornate) return `<div class="carta scelte-tue"><h2>${t("avv.tue_scelte")}</h2><div class="debole piccolo">${t("avv.finora_hai_schierato")}</div></div>`;
+// `nota`: la frase del server sulle giornate senza verdetto (#614: senza la consigliata di allora, o con gli stessi titolari),
+// sotto i numeri; senza giornate con un verdetto la carta ha solo quella. Niente giornate e niente frase: niente carta.
+function cartaScelteTue(st, v) {
+  if (!st) return "";
+  const nota = testoDi(st, "nota");
+  const rigaNota = nota ? `<div class="debole piccolo">${esc(nota)}</div>` : "";
+  if (!st.giornate) return nota ? `<div class="carta scelte-tue"><h2>${t("avv.tue_scelte")}</h2>${rigaNota}</div>` : "";
   const segno = x => (x > 0 ? "+" : x < 0 ? "−" : "") + v(Math.abs(x));
     const dueNomi = l => l.map(esc).join(", ");
   const riga = g => `<li>${t("avv.riga_scelta", { n: `<b>${nomeGiornata(g.giornata_lega, g.giornata)}</b>`, scelto: dueNomi(g.hai_scelto), cons: dueNomi(g.consigliava) })}
@@ -2249,7 +2256,8 @@ function cartaScelteTue(st, sintesi, v) {
       <div><b>${st.pari}</b><span>${t("mercato.pari")}</span></div></div>
     <div>${totale} ${st.pochi_dati ? t("avv.pochi_dati") : t("avv.piu_punti_tu", { p: st.percentuale_tua })}</div>
     <ul class="elenco-scelte">${prime.map(riga).join("")}</ul>
-    ${altre.length ? `<details><summary>${tp("avv.altre_giornate", altre.length)}</summary><ul class="elenco-scelte">${altre.map(riga).join("")}</ul></details>` : ""}</div>`;
+    ${altre.length ? `<details><summary>${tp("avv.altre_giornate", altre.length)}</summary><ul class="elenco-scelte">${altre.map(riga).join("")}</ul></details>` : ""}
+    ${rigaNota}</div>`;
 }
 
 // Diario delle giornate: formazione schierata contro consigliata, con i punti attesi e quelli fatti.
@@ -2269,7 +2277,7 @@ async function apriDiario(giornata, stagione) {
   try {
     const d = await api("/api/diario");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
-    const v = x => num(x, 1), s = d.sintesi;          // punti sempre con un decimale: «48,0», non «48»
+    const v = x => num(x, 1);                         // punti sempre con un decimale: «48,0», non «48»
     const ORDINE_RUOLI = { P: 0, D: 1, C: 2, A: 3 };
     // Un elenco di titolari per ruolo; chi non c'è nell'altra formazione è evidenziato. Dentro il nome solo testo (esc).
     const elencoFormazione = (titolari, altri, panchina) => `<ul class="diario-lista">${[...titolari].sort((a, b) => (ORDINE_RUOLI[a.ruolo] ?? 9) - (ORDINE_RUOLI[b.ruolo] ?? 9))
@@ -2318,7 +2326,7 @@ async function apriDiario(giornata, stagione) {
       <div class="debole piccolo">${t("avv.diario_riga")}</div>
       <details class="come-diario"><summary>${t("mercato.come_legge")}</summary><div class="debole piccolo">${t("avv.per_ogni_giornata")}</div></details>
       ${cartaPrecisione(d.precisione)}
-      ${cartaScelteTue(d.scelte_tue, s, v)}
+      ${cartaScelteTue(d.scelte_tue, v)}
       ${righe || `<div class="carta" style="margin-top:12px"><div class="debole">${t("diario.vuoto_" + d.motivo_vuoto) !== "diario.vuoto_" + d.motivo_vuoto ? t("diario.vuoto_" + d.motivo_vuoto) : t("diario.vuoto")}</div></div>`}`);
     const voceDi = id => d.giornate.find(x => idVoceDiario(x) === id);
     const daMostrare = giornata == null ? null : d.giornate.find(x => Number(x.giornata) === Number(giornata) && (stagione == null || x.stagione === stagione));

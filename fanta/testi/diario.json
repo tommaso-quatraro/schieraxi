@@ -244,6 +244,10 @@
     "it": "tua: {t} ({d})",
     "en": "yours: {t} ({d})"
   },
+  "diario.qp_riga_tua_sola": {
+    "it": "tua: {t}",
+    "en": "yours: {t}"
+  },
   "diario.qp_ricostruiti.one": {
     "it": "In 1 giornata su {t} i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati.",
     "en": "In 1 matchday out of {t} the player numbers are rebuilt from the data available beforehand: the ones shown back then were not saved."
