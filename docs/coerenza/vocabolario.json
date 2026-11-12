@@ -12,7 +12,7 @@
     },
     {
       "cosa": "Probabilità di giocare",
-      "forma": "«gioca 92%», l'unica percentuale sul giocare. Sul campo, sotto il 70%, «⚠ gioca 45%» in una pillola arancio. A partita iniziata non si mostra più. Partita rinviata: sulla pedina «Rinviata» al posto di «gioca N%», prima e dopo la scadenza.",
+      "forma": "«gioca 92%», l'unica percentuale sul giocare. Sotto l'80% arancio, sotto il 50% rosso, decisi sul numero che si legge (79,6% è «80%»): la stessa soglia per campo, righe e scheda (`SOGLIA_GIOCA` e `SOGLIA_BASSA` della web, `SogliaGioca` dell'iPhone, legate da `tests/test_soglia_gioca_web_iphone.py`). A partita iniziata non si mostra più. Partita rinviata: sulla pedina «Rinviata» al posto di «gioca N%», prima e dopo la scadenza.",
       "mai": "«92%» da solo, «Titolare 85%», «Dubbio (55%)», «⚠ gioca 50%» per una partita rinviata"
     },
     {

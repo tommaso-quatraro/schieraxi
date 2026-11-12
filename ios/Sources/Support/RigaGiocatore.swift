@@ -111,6 +111,15 @@ struct RigaGiocatore: View {
         return esito.fv == nil ? nil : Catalogo.Mercato.fantavoto
     }
 
+    /// Il colore di «gioca N%» sotto il numero, con la soglia unica della scheda e della pedina (`SogliaGioca`, come `numeriRiga`
+    /// della web): arancio fra 50 e 79, rosso sotto 50. nil (grigio) dall'80%, a partita iniziata, per un assente e per chi non
+    /// gioca di sicuro (infortunato, squalificato, fuori: lo dice la parola). Vale per ogni riga, anche fra i sostituti.
+    nonisolated static func livelloGioca(_ g: Giocatore) -> SogliaGioca.Livello? {
+        guard g.esitoPartita == nil, g.assente != true, ParolaStato(g)?.nonGiocaDiSicuro != true else { return nil }
+        let livello = SogliaGioca.livello(g.pVoto)
+        return livello == .sicuro ? nil : livello
+    }
+
     /// Frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono. A partita iniziata «fantavoto 3,5» come la
     /// pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette.
     nonisolated static func voce(_ g: Giocatore) -> String {
@@ -164,13 +173,22 @@ struct RigaGiocatore: View {
             // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
             HStack(spacing: 8) {
                 cifra(.headline, solo: sotto == nil)
-                if let sotto { Text(sotto).font(.caption).foregroundStyle(Color.testoSecondario) }
+                if let sotto { Text(sotto).font(.caption).foregroundStyle(coloreSotto) }
             }
         } else {
             VStack(alignment: .trailing, spacing: 2) {
                 cifra(.title3.weight(.bold), solo: sotto == nil)
-                if let sotto { Text(sotto).font(.caption2).foregroundStyle(Color.testoSecondario) }
+                if let sotto { Text(sotto).font(.caption2).foregroundStyle(coloreSotto) }
             }
+        }
+    }
+
+    /// «gioca N%» arancio o rosso sotto l'80% (`livelloGioca`), altrimenti grigio come «fantavoto».
+    private var coloreSotto: Color {
+        switch Self.livelloGioca(g) {
+        case .medio?: return .attenzione
+        case .basso?: return .malus
+        default: return .testoSecondario
         }
     }
 
