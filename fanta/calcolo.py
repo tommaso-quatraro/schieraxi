@@ -38,10 +38,12 @@ PESO_LEGGERO = 0.25                # le voci di un solo utente (formazione, merc
 MAX_IN_CODA = 256                  # calcoli in attesa o in corso, in tutto: oltre, Occupato. Una voce in coda costa pochi byte: con 16, 200 utenti che aprono l'app insieme ricevevano 179 errori
 RIPROVA_TRA = 3                    # secondi: ogni quanto l'app riprova mentre si calcola
 RIPROVA_MAX = 10                   # con tanti calcoli in coda l'app riprova meno spesso (ogni 8 in coda, un secondo in più): meno richieste a vuoto mentre il processore lavora
+RIPROVA_SENZA_CALCOLO = 60         # secondi: sola cache (il widget) e nessuno sta calcolando quel risultato: lo prepara il riscaldamento del servizio (riscaldamento.py), non fra 3 secondi
 DURATA_ERRORE = 120                # secondi: quanto si ricorda un calcolo fallito (per dire l'errore a chi riprova)
 
 in_coda: contextvars.ContextVar[bool] = contextvars.ContextVar("calcolo_in_coda", default=False)
-# «solo cache»: chi chiede (il widget) può leggere i risultati già pronti ma non fa partire nessun calcolo: se manca, InCalcolo (202)
+# «solo cache»: chi chiede (il widget) può leggere i risultati già pronti ma non fa partire nessun calcolo: se manca, InCalcolo (202),
+# o NonPronto (202 con un'attesa più lunga) se nessuno lo sta calcolando
 solo_cache: contextvars.ContextVar[bool] = contextvars.ContextVar("calcolo_solo_cache", default=False)
 # chi chiede (id dell'utente, solo con gli account): lo mette il server per ogni richiesta, il thread della coda per il suo calcolo
 utente_richiesta: contextvars.ContextVar[int | None] = contextvars.ContextVar("calcolo_utente", default=None)
@@ -52,6 +54,15 @@ class InCalcolo(Exception):
 
     def __init__(self, riprova_tra: int = RIPROVA_TRA):
         super().__init__("Sto calcolando: ci vuole qualche secondo")
+        self.riprova_tra = riprova_tra
+
+
+class NonPronto(InCalcolo):
+    """Sola cache (il token del widget): il risultato non c'è e nessuno lo sta calcolando. Resta un 202 come «sto calcolando» (i
+    client non cambiano), ma senza promettere qualche secondo: lo prepara il riscaldamento del servizio (#651)."""
+
+    def __init__(self, riprova_tra: int = RIPROVA_SENZA_CALCOLO):
+        Exception.__init__(self, "I dati non sono ancora pronti: il server li prepara da solo nei prossimi minuti")
         self.riprova_tra = riprova_tra
 
 
@@ -201,7 +212,9 @@ def ottieni(chiave, calcola: Callable[[sqlite3.Connection], T], db: sqlite3.Conn
     if valore is not MANCA:
         return valore
     if solo_cache.get():
-        raise InCalcolo()
+        with _blocco:
+            in_lavorazione = chiave in _in_corso or chiave in _accodati
+        raise InCalcolo(_riprova()) if in_lavorazione else NonPronto()
     if in_coda.get():
         percorso = _percorso_db(db)
         if percorso is not None:

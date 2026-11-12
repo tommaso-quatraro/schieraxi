@@ -1,0 +1,20 @@
+{
+  "titolo": "Widget dell'iPhone: dati nuovi anche se non apri l'app",
+  "voci": [
+    "Il widget riceve i dati nuovi anche se non apri l'app da più di una settimana: prima, dopo ogni aggiornamento dei dati, restava ai dati vecchi finché non aprivi l'app.",
+    "Alla scadenza della formazione e quando comincia un anticipo il server prepara subito i dati del widget, invece di aspettare i risultati delle partite: il widget li trova al suo prossimo aggiornamento.",
+    "Se i dati del widget non sono pronti, il server li prepara da solo, di solito entro pochi minuti: il widget non resta più fermo ai dati vecchi in attesa che tu apra l'app.",
+    "Con una rosa che non basta per fare una formazione il widget riceve gli stessi dati della schermata Oggi, con la formazione vuota, invece di restare senza dati.",
+    "Il widget scarica di meno: se non è cambiato niente di quello che mostra, il server non rimanda tutto."
+  ],
+  "tecnico": [
+    "riscaldamento.contesti_da_scaldare: conta anche chi ha usato il token del widget negli ultimi 7 giorni (token_widget.ultimo_uso, token non scaduto), stesso tetto MAX_UTENTI, in ordine di ultimo uso.",
+    "riscaldamento.sorveglia confronta server._da_sorvegliare = (versione dei dati, riscaldamento.stato_giornate): per ogni lega attiva giornata da giocare, formazione chiusa e anticipi cominciati, le parti della chiave della consigliata tenuta che cambiano con l'ora. In più un giro ogni RIPASSO (15 minuti) anche senza cambi, per i risultati usciti dalla cache o non riusciti.",
+    "server._da_sorvegliare: le regole di un utente che non si leggono non fermano le altre leghe; ogni guasto (regole, utenti o calendario non letti) va nel registro del servizio con il tipo dell'errore e il numero dell'utente, una riga quando compare.",
+    "calcolo: con solo_cache (token del widget) e nessun calcolo in corso per quella chiave, NonPronto (sottoclasse di InCalcolo): 202 con riprova_tra 60 invece di 3 e un detail diverso. Con un calcolo in corso come prima.",
+    "consigli.FormazioneImpossibile (ValueError): «Non si riesce a formare una squadra» si ricorda nella cache come esito ({IMPOSSIBILE: messaggio}); il token del widget lo legge, /api/formazione risponde sempre 400 invece di alternare 400 e 202.",
+    "widget.costruisci: chiede la consigliata una volta (gestione.formazione_di_oggi) e la passa a gestione.oggi (nuovo parametro facoltativo `formazione`); riceve `dal` (nascita dell'account) dalla rotta come /api/oggi; CAMPI_FASE con `senza_formazione`: per chi è entrato a giornata iniziata niente `in_corso`, c'è `prossima`. Il widget dell'iPhone non legge ancora i due campi (issue #687): fino ad allora mostra la formazione chiusa della giornata iniziata.",
+    "ETag di /api/widget (widget.etag) senza ore_mancanti e prossima.prepara_da, che restano nel corpo.",
+    "Client: /api/widget ha un campo facoltativo in più, `senza_formazione`; nessun campo tolto o rinominato. Il widget dell'iPhone tratta già 202 come prima (tiene i dati di prima)."
+  ]
+}

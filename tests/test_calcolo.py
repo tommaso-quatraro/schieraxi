@@ -218,6 +218,40 @@ def test_in_coda_un_errore_arriva_a_chi_riprova(db_file):
         calcolo.ottieni("k", rotto, db_file)
 
 
+def _sola_cache(chiave, db):
+    """Come il token del widget: legge solo la cache, non fa partire calcoli."""
+    gettone = calcolo.solo_cache.set(True)
+    try:
+        return calcolo.ottieni(chiave, lambda d: "calcolato dal widget", db)
+    finally:
+        calcolo.solo_cache.reset(gettone)
+
+
+def test_sola_cache_senza_calcolo_partito_non_dice_riprova_tra_tre_secondi(db_file):
+    """#651: con il token del widget nessun calcolo parte. Se nessuno sta calcolando quel risultato, il 202 non promette «qualche
+    secondo»: chiede di riprovare fra un minuto (lo prepara il riscaldamento del servizio)."""
+    with pytest.raises(calcolo.InCalcolo) as e:
+        _sola_cache("k", db_file)
+    assert e.value.riprova_tra == calcolo.RIPROVA_SENZA_CALCOLO and calcolo.RIPROVA_SENZA_CALCOLO > calcolo.RIPROVA_MAX
+    assert "calcolando" not in str(e.value) and "pronti" in str(e.value)
+    assert calcolo.in_corso() == 0                                   # e davvero niente è partito
+
+
+def test_sola_cache_mentre_qualcuno_calcola_lo_stesso_risultato_riprova_presto(db_file):
+    calcolo.in_coda.set(True)
+    via = threading.Event()
+    with pytest.raises(calcolo.InCalcolo):
+        calcolo.ottieni("k", lambda d: via.wait(10), db_file)          # lo chiede l'app con la sessione: parte in coda
+    try:
+        with pytest.raises(calcolo.InCalcolo) as e:
+            _sola_cache("k", db_file)
+        assert e.value.riprova_tra == calcolo.RIPROVA_TRA and "calcolando" in str(e.value)
+    finally:
+        via.set()
+        attendi_fine()
+    assert _sola_cache("k", db_file) is True                           # finito: il widget lo legge dalla cache
+
+
 def test_in_coda_con_un_archivio_in_memoria_si_calcola_subito():
     calcolo.in_coda.set(True)
     assert calcolo.ottieni("k", lambda d: 7, sqlite3.connect(":memory:")) == 7

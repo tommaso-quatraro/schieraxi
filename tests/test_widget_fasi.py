@@ -59,6 +59,54 @@ def test_tre_fasi_come_in_oggi(widget_vero):
     assert c["riepilogo"] == o["riepilogo"] and c["riepilogo"]["punti_fatti"] == 70.5 and c["prossima"] == o["prossima"]
 
 
+def test_l_etag_non_cambia_solo_perche_passa_il_tempo(widget_vero):
+    """#651: `ore_mancanti` (decimi d'ora) e `prossima.prepara_da` (l'ora di adesso quando si può già preparare) cambiano con
+    l'orologio e il client li ricava da `scadenza` e `con_probabili`: restano nel corpo ma non nell'ETag, che prima cambiava ogni
+    6 minuti. Cambia invece quando cambia qualcosa che il widget mostra (qui la fase)."""
+    a, costruisci = widget_vero
+    prima, dopo = costruisci(datetime(2026, 11, 6, 12, 0)), costruisci(datetime(2026, 11, 6, 12, 31))
+    assert prima["ore_mancanti"] != dopo["ore_mancanti"] and w.etag(prima) == w.etag(dopo)
+    _giornata_finita(a)
+    finita, piu_tardi = costruisci(datetime(2026, 11, 10, 10, 0)), costruisci(datetime(2026, 11, 10, 10, 30))
+    assert finita["prossima"]["prepara_da"] != piu_tardi["prossima"]["prepara_da"]
+    assert w.etag(finita) == w.etag(piu_tardi) != w.etag(prima)
+
+
+def test_chi_entra_a_giornata_iniziata_nel_widget_prepara_la_prossima(widget_vero):
+    """#651: come /api/oggi, chi è entrato dopo la scadenza senza formazione non vede i punti di una formazione che non ha schierato
+    (niente `in_corso`) ma `senza_formazione` e la `prossima` giornata da preparare."""
+    a, costruisci = widget_vero
+    adesso, nato = datetime(2026, 11, 8, 21, 30), datetime(2026, 11, 8, 18, 0)
+    c, o = costruisci(adesso, dal=nato), _oggi(a, adesso, dal=nato)
+    assert c["fase"] == "in_corso" and "in_corso" not in c and c["senza_formazione"] is True
+    assert c["prossima"] == o["prossima"] and c["prossima"]["giornata"] == 11
+    c = costruisci(adesso, dal=datetime(2026, 11, 1, 10, 0))          # c'era già prima della scadenza: la giornata in diretta
+    assert c["in_corso"]["formazione_di"] == "consigliata" and "senza_formazione" not in c and "prossima" not in c
+
+
+def test_rosa_che_non_basta_il_widget_risponde_senza_formazione(widget_vero, monkeypatch):
+    """#651: l'errore di un calcolo in coda arriva una volta sola; il widget chiedeva la formazione due volte (Oggi e poi lui) e la
+    seconda ripartiva in coda: «sto calcolando» a ogni richiesta. Ora la chiede una volta e, come Oggi, risponde senza formazione;
+    nemmeno la formazione salvata la richiede."""
+    from fanta import scelte
+    from test_fasi import PANCHINA, ST, TITOLARI
+    a, costruisci = widget_vero
+    consegnato = []
+
+    def formazione(*x, **k):
+        if consegnato:
+            raise calcolo.InCalcolo()                    # chiesta di nuovo: ripartirebbe in coda
+        consegnato.append(1)
+        raise ValueError("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata")
+    monkeypatch.setattr(consigli, "formazione", formazione)
+    monkeypatch.setattr(consigli, "valuta", lambda *x, **k: (_ for _ in ()).throw(calcolo.InCalcolo()))
+    scelte.salva(ST, 10, TITOLARI, "4-4-2", a.tmp / "scelte.json", panchina=PANCHINA)
+    c = costruisci(datetime(2026, 11, 6, 12, 0))
+    z = c["formazione"]
+    assert (z["modulo"], z["punti_attesi"], z["titolari"], z["panchina"]) == ("–", None, [], []) and "tua_scelta" not in z
+    assert c["squadra"] == "Mia" and c["rosa"] and not any(m["titolare"] for m in c["rosa"])
+
+
 def test_senza_fase_i_campi_mancano(due_utenti):
     a, _ = due_utenti
     c, h = widget(token_di(a))

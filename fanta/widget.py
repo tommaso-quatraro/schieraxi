@@ -11,16 +11,18 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime
 
-from . import avatar, calcolo, consigli, diario, funzioni, gestione, osservati, scelte
+from . import avatar, calcolo, consigli, diario, funzioni, gestione, osservati, scelte, versioni
 from .lega import Rose
 from .regole import Regole
 
 MAX_AVVISI = 6
 MAX_OSSERVATI = 8
 MAX_DIARIO = 5
-# la fase della giornata e i suoi blocchi: stessi nomi e stessa forma di /api/oggi (calcolati da gestione.oggi -> fasi.aggiungi)
-CAMPI_FASE = ("fase", "in_corso", "riepilogo", "prossima")
+# la fase della giornata e i suoi blocchi: stessi nomi e stessa forma di /api/oggi (calcolati da gestione.oggi -> fasi.aggiungi);
+# `senza_formazione` (#651): chi è entrato a giornata iniziata senza formazione, al posto di `in_corso` (niente punti finti)
+CAMPI_FASE = ("fase", "in_corso", "riepilogo", "prossima", "senza_formazione")
 # tranne questi elenchi di `in_corso`: il widget mostra solo i numeri della giornata (punti fatti, previsti, chi deve giocare);
 # giocatore per giocatore e cambi dalla panchina restano in /api/oggi (sono ~5 kB a giornata in corso)
 SENZA_IN_CORSO = ("giocatori", "sostituzioni")
@@ -61,8 +63,9 @@ def _opzionale(mancano: list[str], nome: str, funzione):
 
 
 def _tua_scelta(db, regole, rose, f: dict, giornata: int, file_scelte) -> dict | None:
-    """La formazione salvata dall'utente per la giornata (titolari, modulo, punti, panchina), o None se non c'è o non vale più."""
-    if not file_scelte:
+    """La formazione salvata dall'utente per la giornata (titolari, modulo, punti, panchina), o None se non c'è o non vale più.
+    Senza consigliata (rosa che non basta) None subito, come Oggi: `valuta` richiederebbe la consigliata (#651)."""
+    if not file_scelte or not f["titolari"]:
         return None
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
     if not scelta:
@@ -81,11 +84,15 @@ def _tua_scelta(db, regole, rose, f: dict, giornata: int, file_scelte) -> dict |
 
 
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, file_osservati, file_scelte=None,
-                live_partite: dict | None = None) -> dict:
+                live_partite: dict | None = None, dal: datetime | None = None) -> dict:
+    """`dal` (facoltativo): quando è nato l'account, come in /api/oggi: chi è entrato a giornata iniziata senza formazione ha
+    `senza_formazione` e la `prossima` giornata invece dei punti di una formazione che non ha schierato (#651)."""
     tratti = avatar.tutti()
-    o = gestione.oggi(db, regole, rose, file_scelte=file_scelte, file_diario=file_diario,   # il nucleo: può alzare InCalcolo (202)
-                      live_partite=live_partite)
-    f = consigli.formazione(db, regole, rose)
+    # il nucleo: può alzare InCalcolo (202). La consigliata si chiede UNA volta e la usa anche Oggi: l'errore di un calcolo in coda
+    # arriva una volta sola, e una seconda richiesta lo rimetteva in coda («sto calcolando» per sempre con una rosa che non basta, #651)
+    f = gestione.formazione_di_oggi(db, regole, rose)
+    o = gestione.oggi(db, regole, rose, file_scelte=file_scelte, file_diario=file_diario, live_partite=live_partite, dal=dal,
+                      formazione=f)
     prev, giornata, _ = consigli.previsioni(db, regole)
     consigliata = {"modulo": f["modulo"], "punti_attesi": f["punteggio_atteso"]}
     tua = _tua_scelta(db, regole, rose, f, giornata, file_scelte)
@@ -165,6 +172,16 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     if mancano:
         corpo["mancano"] = mancano
     return corpo
+
+
+def etag(corpo: dict) -> str:
+    """L'ETag della risposta: cambia solo quando cambia qualcosa che il widget mostra (#651). Senza i campi che cambiano soltanto
+    con l'orologio e che il client ricava da altri campi: `ore_mancanti` (decimi d'ora, da `scadenza`) e `prossima.prepara_da`
+    (l'ora di adesso quando si può già preparare, altrimenti `scadenza` meno le ore delle probabili). Restano nel corpo."""
+    fermo = {k: v for k, v in corpo.items() if k != "ore_mancanti"}
+    if isinstance(fermo.get("prossima"), dict):
+        fermo["prossima"] = {k: v for k, v in fermo["prossima"].items() if k != "prepara_da"}
+    return versioni.etag_dati(fermo)
 
 
 def peso(corpo: dict) -> int:
