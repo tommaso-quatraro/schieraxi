@@ -7,6 +7,10 @@
     "it": "Oggi",
     "en": "Today"
   },
+  "nav.giornate": {
+    "it": "Giornate",
+    "en": "Matchdays"
+  },
   "nav.formazione": {
     "it": "Formazione",
     "en": "Lineup"

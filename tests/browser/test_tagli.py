@@ -52,7 +52,7 @@ def test_squadra_e_altro_hanno_solo_le_voci_che_restano(web):
     assert len(voci) == 2 and voci[0].startswith("Squadre e rose") and voci[1].startswith("Aggiorna le rose"), voci
     web.apri("/?vista=altro")
     voci = voci_del_menu(web)
-    assert len(voci) == 2 and voci[0].startswith("Diario delle giornate") and voci[1].startswith("Regole"), voci
+    assert len(voci) == 1 and voci[0].startswith("Regole"), voci          # il Diario è la pagina Giornate, nella barra (#617)
 
 
 @pytest.mark.parametrize("vecchio, atteso, nuovo", [
@@ -216,7 +216,7 @@ def test_girando_per_l_app_non_si_chiedono_le_rotte_delle_funzioni_tolte(web):
 
 # ---------------------------------------------------------------- i patti: errori con role="alert", caricamento con aria-busy
 
-SCHERMATE = ["/?vista=oggi", "/?vista=formazione", "/?vista=squadra", "/?vista=squadra&rosa=", "/?vista=altro", "/?vista=altro&voce=diario",
+SCHERMATE = ["/?vista=oggi", "/?vista=formazione", "/?vista=giornate", "/?vista=squadra", "/?vista=squadra&rosa=", "/?vista=altro", "/?vista=altro&voce=diario",
              "/?vista=altro&voce=regole", "/?vista=impostazioni", "/?vista=impostazioni&gruppo=informazioni"]
 
 

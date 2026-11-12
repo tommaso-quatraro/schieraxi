@@ -39,11 +39,6 @@ def test_frase_gioca_ricostruita_usa_al_percento():
     assert "alPercento(" in APP
 
 
-def test_punti_del_diario_sempre_con_un_decimale():
-    corpo = APP[APP.index("async function apriDiario("):APP.index("async function correggiDiario(")]
-    assert "const v = x => num(x, 1)" in corpo
-
-
 def test_quanto_ci_abbiamo_preso_senza_carte_dentro_la_carta():
     """docs/STILE-SENZA-AI.md, pavimento 7: dentro una carta righe e spazio, mai un'altra carta. I quattro numeri di «Quanto ci
     abbiamo preso» erano riquadri con fondo, bordo e angoli tondi dentro la carta."""

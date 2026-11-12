@@ -725,8 +725,6 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 .immagine-squadra .vuota { height: 84px; display: grid; align-items: center; color: var(--testo-2); font-size: var(--t-sec); }
 
 /* ---- novità (in fondo a Impostazioni > Informazioni) ---- */
-/* Diario: una riga in testa, la spiegazione lunga dietro «Come si legge» (docs/STILE-SENZA-AI.md) */
-.come-diario > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .novita-voci { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: var(--t-corpo); }
 .novita-pagina { max-width: 70ch; }      /* una colonna da leggere, righe al massimo 70 caratteri anche sul PC (spec C12) */
 .novita-versione { padding: 12px 0; }      /* una versione sotto l'altra, con il filo sottile in mezzo: righe, non carte */
@@ -1045,16 +1043,12 @@ body.senza-accesso .salta { display: none; }
 .regola-sez[open] > summary { margin-bottom: 8px; }
 
 
-.scelte-tue { margin-top: 12px; }
-.scelte-tue .stat-fila { margin: 10px 0; }
-/* Diario > «Quanto ci abbiamo preso»: 4 numeri con la loro frase (2 colonne da 560 px in su), barre dell'andamento */
+/* Giornate > «Dettagli» della precisione: i numeri con la loro frase (2 colonne da 560 px in su), barre dell'andamento */
 .qp { margin-top: 12px; }
 .qp-pochi { margin: 10px 0 0; }
 .qp-griglia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 24px; margin: 12px 0; }
 @media (min-width: 560px) {
   .qp-griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .diario-conf.una .diario-lista { columns: 2; column-gap: 24px; display: block; }      /* la consigliata da sola: gli 11 su due colonne */
-  .diario-conf.una .diario-lista li { break-inside: avoid; }
 }
 .qp-voce { min-width: 0; padding: 12px 0 4px; border-top: 1px solid var(--filo); }          /* righe, non carte dentro la carta (STILE-SENZA-AI) */
 .qp-num { display: block; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
@@ -1069,28 +1063,58 @@ body.senza-accesso .salta { display: none; }
 .qp-barra { fill: color-mix(in srgb, var(--verde) 70%, transparent); }
 .qp-val, .qp-g { fill: var(--testo-2); font-size: var(--t-eti); font-variant-numeric: tabular-nums; }
 .qp-nota { margin-top: 8px; }
-.diario-conf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0; }
-.diario-conf.una { grid-template-columns: minmax(0, 1fr); }
-.diario-col { min-width: 0; padding: 8px 0 0; border-top: 1px solid var(--filo); }      /* le due formazioni affiancate: colonne, non riquadri */
-.diario-col h3 { margin: 0 0 4px; font-size: var(--t-sec); }
-.diario-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; font-size: var(--t-sec); }
-.diario-lista li { overflow-wrap: anywhere; padding: 2px 6px; border-radius: 8px; border-left: 3px solid transparent; }
-.diario-lista li.diario-diverso { font-weight: 700; border-left-color: var(--arancio); }      /* chi non c'è nell'altra: grassetto e filo arancio, senza tinta */
-/* i punti fatti e «attesi N» di ogni giornata in due colonne della stessa larghezza (spec §9, «numeri in colonna») */
-.diario-punti { display: grid; grid-template-columns: minmax(0, 1fr) 4.2em 6.5em; column-gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--filo); font-size: var(--t-corpo); }
-.dp-fatti { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.1; }
-.dp-attesi { font-size: var(--t-eti); color: var(--testo-2); font-variant-numeric: tabular-nums; text-align: right; }
-.azioni-diario { margin-bottom: 12px; }        /* i pulsanti non toccano il filo della riga dei punti */
-/* pagina sotto i 360 px (telefoni piccoli, zoom): accanto alle due colonne dei numeri il nome della formazione andava su 3-4 righe;
-   il nome sta su una riga sua, i punti fatti e «attesi N» sotto, a destra */
-@container pagina (max-width: 359.98px) {
-  .diario-punti { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
-  .diario-punti > span:first-child { grid-column: 1 / -1; }
+/* ---- Giornate (#617): il Diario come pagina. In cima la riga sulla precisione con «Dettagli»; poi una riga per giornata: il nome e,
+   sotto, di chi sono i punti (o i cambi tuoi e quanto sono valsi); a destra i punti fatti, grandi, e gli attesi. Al telefono gli 11 si
+   aprono sotto la riga; da 768 px l'elenco sta a sinistra e la giornata scelta a destra, ferma sotto la testata se ci sta nello
+   schermo (controllaFerme in app.js). Righe e fili, non carte (STILE-SENZA-AI). ---- */
+.gn-testa { margin: -12px 0 12px; }
+.gn-precisione { margin: 0; font-size: var(--t-corpo); line-height: 1.4; max-width: 60ch; }
+.gn-dettagli > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
+.gn-dettagli .qp { margin-top: 0; }
+.gn-elenco { list-style: none; margin: 0; padding: 0; min-width: 0; border-top: 1px solid var(--filo); }
+.gn-voce { border-bottom: 1px solid var(--filo); }
+/* la riga è il pulsante: nome e stato a sinistra, punti a destra, la freccia della tendina in fondo */
+.gn-riga { display: grid; grid-template-columns: minmax(0, 1fr) auto 14px; gap: 2px 14px; align-items: center; width: 100%; min-height: 56px; padding: 10px 0;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.gn-riga::after { content: ""; justify-self: end; width: 8px; height: 8px; margin: -4px 2px 0 0; border-right: 2px solid var(--testo-2); border-bottom: 2px solid var(--testo-2);
+  transform: rotate(45deg); transition: transform .3s var(--molla); }
+.gn-riga[aria-expanded="true"]::after { transform: rotate(225deg); margin-top: 4px; }
+.gn-sx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gn-nome { font-size: var(--t-corpo); font-weight: 650; line-height: 1.3; }
+.gn-stagione { font-size: var(--t-sec); font-weight: 400; color: var(--testo-2); }
+.gn-stato { font-size: var(--t-sec); color: var(--testo-2); line-height: 1.35; }
+.gn-dx { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.gn-num { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.gn-attesi { font-size: var(--t-eti); color: var(--testo-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* gli 11: il nome, poi atteso e preso in due colonne della stessa larghezza; il voto preso è il dato principale */
+.gn-dettaglio { padding: 2px 0 16px; }
+.gn-titolo { margin: 0 0 4px; font-size: var(--t-sec); font-weight: 650; color: var(--testo-2); }
+.gn-tabella { width: 100%; border-collapse: collapse; font-size: var(--t-corpo); font-variant-numeric: tabular-nums; }
+.gn-tabella th, .gn-tabella td { padding: 7px 0; border-top: 1px solid var(--filo); font-weight: 400; text-align: right; vertical-align: baseline; }
+.gn-tabella th:first-child { text-align: left; overflow-wrap: anywhere; }
+.gn-tabella thead th { padding: 4px 0; border-top: 0; font-size: var(--t-eti); font-weight: 550; color: var(--testo-2); }
+.gn-tabella th + th, .gn-tabella td { width: 5.5em; padding-left: 12px; }
+.gn-tabella td + td { font-family: var(--font-numeri); font-weight: 600; }
+.gn-tabella td.gn-senza { font-family: inherit; font-size: var(--t-sec); font-weight: 400; color: var(--testo-2); white-space: nowrap; }
+.gn-cambi { margin: 12px 0 0; font-size: var(--t-corpo); line-height: 1.4; max-width: 60ch; }
+.gn-nota { margin: 4px 0 8px; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.4; max-width: 60ch; }
+.gn-dettaglio .pulsanti { margin-top: 12px; }
+.gn-vuoto { margin: 0; }
+@media (min-width: 768px) {
+  .gn { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "testa testa" "elenco lato"; column-gap: 32px; align-items: start; }
+  .gn-testa { grid-area: testa; } .gn-elenco { grid-area: elenco; }
+  .gn-lato { grid-area: lato; min-width: 0; position: sticky; top: calc(var(--alto-ferma) + 16px); }
+  /* la giornata scelta: il fondo del passaggio del mouse e la linea a sinistra nel colore delle azioni, come la voce aperta di Altro */
+  .gn-riga { padding-left: 12px; padding-right: 8px; border-radius: 0 var(--r-in) var(--r-in) 0; }
+  .gn-riga[aria-expanded="true"] { background: var(--superficie); box-shadow: inset 3px 0 0 var(--azione); }
+  .gn-riga::after, .gn-riga[aria-expanded="true"]::after { transform: rotate(-45deg); margin-top: 0; }      /* si apre a destra */
+  .gn-dettaglio { padding-top: 0; }
+  .gn-titolo { padding-bottom: 8px; border-bottom: 2px solid var(--testo); font-size: var(--t-card); color: var(--testo); }
+  .gn-tabella thead th { padding-top: 8px; }
 }
-.diario-ruolo { display: inline-block; min-width: 1.2em; color: var(--testo-2); font-size: var(--t-eti); }
-.diario-panchina { margin-top: 8px; }
-.elenco-scelte { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
-.elenco-scelte li { line-height: 1.4; }
+@media (min-width: 1024px) { .gn { grid-template-columns: minmax(0, 420px) minmax(0, 620px); } }       /* gli 11: i numeri non finiscono lontani dai nomi */
+@media (min-width: 768px) and (hover: hover) { .gn-riga:hover { background: var(--superficie); } }
+@media (forced-colors: active) { .gn-riga[aria-expanded="true"] { outline: 2px solid Highlight; outline-offset: -2px; } }
 
 /* =====================================================================================================
    PC e schermi larghi (da 1100 px): più cose in vista, meno scorrimento.

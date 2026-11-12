@@ -37,14 +37,14 @@ Con un server già acceso: `foto.py http://127.0.0.NN:80NN <cartella-delle-foto>
 Opzioni: `--scene formazione,scheda` (di norma tutte), `--larghezze 390,768,1024,1440`, `--temi chiaro,scuro`, `--lingua it|en`,
 `--accesso`, `--solo-misure` (sotto).
 Scene: `formazione` (dal 12/11/2026 è anche la prima schermata: la scena «oggi» non c'è più), `squadra`, `rosa`, `scheda`
-(scheda del primo titolare), `altro`, `diario`, `regole`, `impostazioni`. Tutte le scene, a 4 larghezze e 2 temi, sono 64
+(scheda del primo titolare), `altro`, `diario` (dal 12/11/2026 la pagina Giornate), `regole`, `impostazioni`. Tutte le scene, a 4 larghezze e 2 temi, sono 64
 foto: circa 10 minuti.
 
 ## Cosa scrive
 Per ogni scena, larghezza e tema:
 - `<scena>-<larghezza>-<tema>.png`: la pagina intera. Le barre ferme (la barra in basso) compaiono dove stavano nella prima
-  schermata, non in fondo: è il modo in cui Chrome fotografa la pagina intera. Con un foglio aperto (`scheda`,
-  `diario`) il foglio scorre da sé: si fotografa a pezzi della grandezza dello schermo, con 80 px ripetuti tra un pezzo e
+  schermata, non in fondo: è il modo in cui Chrome fotografa la pagina intera. Con un foglio aperto (`scheda`)
+  il foglio scorre da sé: si fotografa a pezzi della grandezza dello schermo, con 80 px ripetuti tra un pezzo e
   l'altro (`<nome>.png`, `<nome>-2.png`, …, al massimo 8);
 - `axe-<scena>-<larghezza>-<tema>.json`: le violazioni di axe (`tests/strumenti/axe/axe.min.js`, regole WCAG 2.0, 2.1 e 2.2,
   livelli A e AA), con fino a 5 elementi per regola;

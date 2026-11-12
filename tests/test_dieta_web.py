@@ -11,9 +11,9 @@ CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 
 def test_la_barra_ha_tre_voci_formazione_squadra_altro():
     # grafica B: le voci sono collegamenti (Indietro del browser, Ctrl+clic). Dal 12/11/2026 (#616) Oggi e Formazione sono una
-    # schermata sola: tre voci, e al telefono la barra in basso ha una colonna uguale per ogni voce che c'è
-    assert re.findall(r'<a class="scheda" data-vista="(\w+)"', HTML) == ["formazione", "squadra", "altro"]
-    assert re.findall(r'<span data-t="nav\.\w+">(\w+)</span>\s*</a>', HTML) == ["Formazione", "Squadra", "Altro"]
+    # schermata sola; dal 12/11/2026 (#617) c'è anche Giornate: quattro voci, e al telefono la barra in basso ha una colonna uguale per ogni voce che c'è
+    assert re.findall(r'<a class="scheda" data-vista="(\w+)"', HTML) == ["formazione", "giornate", "squadra", "altro"]
+    assert re.findall(r'<span data-t="nav\.\w+">(\w+)</span>\s*</a>', HTML) == ["Formazione", "Giornate", "Squadra", "Altro"]
     barra = re.search(r"\n\.schede \{([^}]*)\}", CSS).group(1)
     assert "grid-auto-flow: column" in barra and "grid-auto-columns: minmax(0, 1fr)" in barra
 

@@ -3,10 +3,6 @@
     "it": "Non avevi salvato la tua formazione per questa giornata.",
     "en": "You had not saved your lineup for this matchday."
   },
-  "diario.automatica": {
-    "it": "Copia salvata in automatico prima della scadenza ({modulo})",
-    "en": "Copy saved automatically before the deadline ({modulo})"
-  },
   "diario.tua": {
     "it": "La tua ({modulo})",
     "en": "Yours ({modulo})"
@@ -18,30 +14,6 @@
   "diario.salvata": {
     "it": "Salvato: ho segnato che hai schierato la consigliata",
     "en": "Saved: I noted that you fielded the recommended lineup"
-  },
-  "diario.consigliava": {
-    "it": "Cosa consigliava SchieraXI ({modulo})",
-    "en": "What SchieraXI recommended ({modulo})"
-  },
-  "diario.consigliava_il": {
-    "it": "Calcolata il {quando}",
-    "en": "Calculated on {quando}"
-  },
-  "diario.non_registrata": {
-    "it": "Consigliata non registrata: qui sotto c'è quella che il modello rifà oggi con i dati di allora.",
-    "en": "Recommendation not recorded: below is the one the model rebuilds today with the data of the time."
-  },
-  "diario.ricostruita": {
-    "it": "Ricostruita oggi ({modulo})",
-    "en": "Rebuilt today ({modulo})"
-  },
-  "diario.hai_schierato": {
-    "it": "Cosa hai schierato ({modulo})",
-    "en": "What you fielded ({modulo})"
-  },
-  "diario.panchina": {
-    "it": "Panchina",
-    "en": "Bench"
   },
   "diario.ho_schierato_questa": {
     "it": "Ho schierato la consigliata",
@@ -66,18 +38,6 @@
   "diario.salvata_manuale": {
     "it": "Salvato: ho segnato i tuoi undici della giornata",
     "en": "Saved: I noted your eleven for the matchday"
-  },
-  "diario.cambiato": {
-    "it": "Hai cambiato {n}: {nomi}",
-    "en": "You changed {n}: {nomi}"
-  },
-  "diario.cambiato_nomi": {
-    "it": "{dentro} al posto di {fuori}",
-    "en": "{dentro} instead of {fuori}"
-  },
-  "diario.uguale": {
-    "it": "Hai schierato gli stessi 11 consigliati.",
-    "en": "You fielded the same 11 as recommended."
   },
   "diario.af_titolo": {
     "it": "Quanto ci abbiamo preso",
@@ -203,10 +163,6 @@
     "it": "In tutto, gli stessi punti.",
     "en": "Overall, the same points."
   },
-  "diario.qp_cf_vuoto": {
-    "it": "Non sappiamo ancora cosa hai schierato: dillo qui sotto in ogni giornata, con «Ho schierato…».",
-    "en": "We don't know yet what you fielded: tell us below for each matchday, with “I fielded…”."
-  },
   "diario.qp_sq_eti": {
     "it": "punti di scarto medio sulla squadra",
     "en": "points of average gap on the team"
@@ -235,10 +191,6 @@
     "it": "squadra: {a} previsti, {f} fatti",
     "en": "team: {a} expected, {f} scored"
   },
-  "diario.qp_riga_tua": {
-    "it": "tua: {t} ({d})",
-    "en": "yours: {t} ({d})"
-  },
   "diario.qp_ricostruiti.one": {
     "it": "In 1 giornata su {t} i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati.",
     "en": "In 1 matchday out of {t} the player numbers are rebuilt from the data available beforehand: the ones shown back then were not saved."
@@ -246,33 +198,5 @@
   "diario.qp_ricostruiti.other": {
     "it": "In {n} giornate su {t} i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati.",
     "en": "In {n} matchdays out of {t} the player numbers are rebuilt from the data available beforehand: the ones shown back then were not saved."
-  },
-  "diario.af_dentro": {
-    "it": "Previsti tra {a} e {b}: azzeccata",
-    "en": "Forecast between {a} and {b}: on target"
-  },
-  "diario.af_sotto_fascia": {
-    "it": "Previsti tra {a} e {b}: meno del previsto ({d})",
-    "en": "Forecast between {a} and {b}: fewer than forecast ({d})"
-  },
-  "diario.af_sopra_fascia": {
-    "it": "Previsti tra {a} e {b}: più del previsto ({d})",
-    "en": "Forecast between {a} and {b}: more than forecast ({d})"
-  },
-  "diario.vuoto": {
-    "it": "Ancora vuoto: il diario si riempie dopo la prima giornata finita.",
-    "en": "Still empty: the journal fills up after the first finished matchday."
-  },
-  "diario.vuoto_squadra": {
-    "it": "Ancora vuoto: manca la tua squadra. Indicala in Squadra, alla voce Squadre e rose, e il diario si riempie.",
-    "en": "Still empty: your team is missing. Choose it in League, in your roster, and the journal fills up."
-  },
-  "diario.vuoto_giornate": {
-    "it": "Ancora vuoto: nella tua lega non è ancora finita nessuna giornata.",
-    "en": "Still empty: no matchday has finished yet in your league."
-  },
-  "diario.vuoto_calcolo": {
-    "it": "Ancora vuoto: la tua squadra c'è, ma le giornate finite non sono ancora state calcolate. Succede da solo al prossimo aggiornamento dei dati.",
-    "en": "Still empty: your team is there, but the finished matchdays have not been calculated yet. It happens by itself at the next data update."
   }
 }
