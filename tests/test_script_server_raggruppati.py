@@ -199,3 +199,73 @@ def test_installazione_forzata_non_aspetta_l_intervallo(s):
     (s.stato / "installa-subito").write_text("", encoding="utf-8")
     s.giro(10)
     assert s.riavvii() == 2 and s.ultimo() == c3 and not (s.stato / "installa-subito").exists()
+
+
+@con_bash
+@pytest.mark.parametrize(("salvata", "subito"), [("ieri, forse\n", True), (f"0{ORA_ZERO}\n", False)])
+def test_ora_salvata_illeggibile_o_con_lo_zero_davanti(s, salvata, subito):
+    """Un'ora dell'ultima installazione illeggibile vale come nessuna (subito). Con uno zero davanti è la stessa ora: bash la
+    leggerebbe in base otto, con un errore, e installerebbe subito invece di raggruppare."""
+    _scrivi(s.stato, "ultima-installazione", salvata)
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.giro(10)
+    assert (s.riavvii() == 1) is subito and (s.ultimo() == c2) is subito
+
+
+@con_bash
+def test_versione_urgente_durante_una_partita_resta_rimandata(s):
+    _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.giro(0)
+    c3 = _commit(s.lavoro, URGENTE, **{"fanta/__init__.py": "V3"})
+    s.esito_libero.write_text("3", encoding="utf-8")                       # partita in corso: l'urgenza salta solo l'intervallo
+    s.giro(10)
+    assert s.riavvii() == 1 and s.codice() == "V2"
+    s.esito_libero.write_text("0", encoding="utf-8")
+    s.giro(20)                                                              # l'ora non è passata, ma è urgente
+    assert s.riavvii() == 2 and s.ultimo() == c3
+
+
+@con_bash
+def test_ultima_versione_rifiutata_con_una_buona_sotto_resta_fuori_e_l_avviso_lo_dice(s):
+    """Scelta (#635): se l'ultima versione viene rifiutata, quelle buone raggruppate sotto non si installano da sole (un ripiego
+    automatico su una versione non provata potrebbe alternare due versioni rotte, con un riavvio ogni 10 minuti). L'avviso del
+    rifiuto lo dice; entrano con la prossima versione buona."""
+    _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.giro(0)
+    _commit(s.lavoro, "codice 3, buona", **{"fanta/__init__.py": "V3"})
+    s.giro(10)                                                              # raggruppata
+    _commit(s.lavoro, "codice 4, non parte", **{"fanta/__init__.py": "V4"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    s.giro(60)                                                              # si installa la 4, non risponde: si torna alla 2
+    s.codice_curl.write_text("200", encoding="utf-8")
+    assert s.codice() == "V2" and "arrivate prima" in s.avvisi()[-1]
+    s.giro(130)
+    assert s.codice() == "V2" and s.riavvii() == 3
+    c5 = _commit(s.lavoro, "codice 5, correzione", **{"fanta/__init__.py": "V5"})
+    s.giro(140)
+    assert s.ultimo() == c5 and s.codice() == "V5" and s.riavvii() == 4
+
+
+@con_bash
+def test_unione_senza_ancora_il_commit_di_versione_aspetta_il_giro_dopo(s, monkeypatch):
+    """Il job rilascia crea il commit di versione 10-20 secondi dopo l'unione. Un giro che cade in mezzo non installa l'unione da
+    sola (numero di versione e novità vecchi, con il raggruppamento per un'ora): aspetta il giro dopo."""
+    monkeypatch.setenv("GIT_COMMITTER_DATE", f"@{ORA_ZERO + 10 * 60} +0000")            # l'ora di GitHub per i due commit
+    _commit(s.lavoro, "Correzione (#50)", **{"fanta/__init__.py": "V2", "fanta/novita.d/correzione.json": "{}"})
+    s.giro(10)
+    assert s.riavvii() == 0 and _righe(s, "commit di versione")
+    (s.lavoro / "fanta" / "novita.d" / "correzione.json").unlink()
+    c3 = _commit(s.lavoro, "Versione 1.6: Correzione", **{"fanta/novita.json": "[]"})
+    s.giro(20)
+    assert s.riavvii() == 1 and s.ultimo() == c3
+
+
+@con_bash
+def test_commit_di_versione_che_non_arriva_non_ferma_gli_aggiornamenti(s, monkeypatch):
+    """Job rilascia fermo: la novità resta in attesa su main. Dopo mezz'ora si installa lo stesso, con una riga nel registro."""
+    monkeypatch.setenv("GIT_COMMITTER_DATE", f"@{ORA_ZERO + 10 * 60} +0000")
+    c2 = _commit(s.lavoro, "Correzione (#50)", **{"fanta/__init__.py": "V2", "fanta/novita.d/correzione.json": "{}"})
+    s.giro(20)
+    assert s.riavvii() == 0
+    s.giro(50)
+    assert s.riavvii() == 1 and s.ultimo() == c2 and _righe(s, "installo lo stesso")

@@ -221,6 +221,17 @@ if [ "$nuovo" = "$ultimo" ] || [ "$nuovo" = "$(cat "$STATO/rifiutato" 2>/dev/nul
   [ "$PROVA" = 1 ] && log "niente di nuovo: ${nuovo:0:7} e' gia' visto"
   exit 0
 fi
+# Versione rifiutata con altre sotto, arrivate prima e non ancora installate (con il raggruppamento capita piu' spesso, #635): non si
+# installano da sole, perche' un ripiego automatico su una versione mai provata potrebbe alternare due versioni rotte con un riavvio a
+# ogni giro. Entrano con la prossima versione buona (o con --fidati, per le firme). L'avviso del rifiuto lo dice.
+anche_prima() {
+  local n
+  { [ -n "$ultimo" ] && git cat-file -e "$ultimo^{commit}" 2>/dev/null; } || return 0
+  n=$(git rev-list --first-parent --count "$ultimo..$nuovo" 2>/dev/null) || return 0
+  [[ $n =~ ^[0-9]+$ ]] && [ "$n" -gt 1 ] \
+    && printf ' Anche le versioni arrivate prima, in attesa, non sono installate: entrano con la prossima versione buona.'
+  return 0
+}
 # Firme: dall'ultimo commit verificato (o, la prima volta, dall'ultimo installato) fino a quello nuovo, tutti firmati da una chiave fidata
 if [ -s "$CHIAVI" ]; then
   base=$(cat "$STATO/verificato" 2>/dev/null)
@@ -229,7 +240,7 @@ if [ -s "$CHIAVI" ]; then
     log "versione ${nuovo:0:7} NON installata: $MOTIVO_FIRMA"
     if [ "$PROVA" = 0 ]; then
       echo "$nuovo" > "$STATO/rifiutato"
-      avvisa "SchieraXI: aggiornamento bloccato" "Su GitHub c'è una versione senza la firma attesa: non l'ho installata. Motivo in dati/pubblicazione.log." 4
+      avvisa "SchieraXI: aggiornamento bloccato" "Su GitHub c'è una versione senza la firma attesa: non l'ho installata.$(anche_prima) Motivo in dati/pubblicazione.log." 4
     fi
     fine; exit 1
   fi
@@ -256,7 +267,7 @@ for c in $CARTELLE; do git cat-file -e "$nuovo:$c" 2>/dev/null || mancanti="$man
 if [ -n "$mancanti" ]; then
   log "la versione ${nuovo:0:7} non contiene:$mancanti : non installo"
   [ "$PROVA" = 1 ] || echo "$nuovo" > "$STATO/rifiutato"
-  guasto cartelle "Su GitHub c'è una versione senza tutte le cartelle del server: non l'ho installata."
+  guasto cartelle "Su GitHub c'è una versione senza tutte le cartelle del server: non l'ho installata.$(anche_prima)"
   fine; exit 1
 fi
 
@@ -270,6 +281,20 @@ if [ "$cambiato" = 0 ]; then
   log "versione ${nuovo:0:7}: cambiano solo cose che non riguardano il server (ios, sito, docs...): non installo"
   [ "$PROVA" = 1 ] || echo "$nuovo" > "$STATO/ultimo-rilascio"
   fine; exit 0
+fi
+
+# Unione arrivata, commit di versione non ancora (#635): il job rilascia lo crea 10-20 secondi dopo l'unione. Se in main c'e' ancora
+# una novita' senza numero (fanta/novita.d/*.json) e il commit in testa ha meno di mezz'ora, si aspetta il giro dopo: l'unione da sola
+# avrebbe numero di versione e novita' vecchi fino all'installazione seguente (con il raggruppamento, fino a un'ora). Oltre la mezz'ora
+# (job rilascia fermo?) si installa lo stesso: una novita' rimasta li' non deve fermare gli aggiornamenti.
+if git ls-tree --name-only "$nuovo" fanta/novita.d/ 2>/dev/null | grep -q '\.json$'; then
+  quando=$(git log -1 --format=%ct "$nuovo" 2>/dev/null)
+  if [[ $quando =~ ^[0-9]{1,12}$ ]] && [[ $INIZIO =~ ^[0-9]{1,12}$ ]] && [ $(( 10#$INIZIO - 10#$quando )) -ge -300 ] \
+     && [ $(( 10#$INIZIO - 10#$quando )) -lt 1800 ]; then
+    log "versione ${nuovo:0:7} senza ancora il commit di versione del job rilascia (novita' in attesa): aspetto il giro dopo"
+    fine; exit 0
+  fi
+  log "in main c'e' una novita' senza numero di versione da oltre mezz'ora (job rilascia fermo?): installo lo stesso ${nuovo:0:7}"
 fi
 
 # Mai durante una partita di Serie A ne' nell'ora prima della scadenza della formazione di una lega: il riavvio interromperebbe i
@@ -315,7 +340,7 @@ fi
 aspetta=0
 ultima_installazione=$(cat "$STATO/ultima-installazione" 2>/dev/null)
 if [ "$INTERVALLO" -gt 0 ] && [ "$forzata" = 0 ] && [[ $ultima_installazione =~ ^[0-9]{1,12}$ ]] && [[ $INIZIO =~ ^[0-9]{1,12}$ ]]; then
-  trascorsi=$(( INIZIO - ultima_installazione ))
+  trascorsi=$(( 10#$INIZIO - 10#$ultima_installazione ))     # 10#: uno zero davanti non vuol dire base otto
   if [ "$trascorsi" -lt 0 ]; then
     log "l'orologio del server e' indietro rispetto all'ultima installazione: non aspetto l'intervallo"
   elif [ "$trascorsi" -lt $(( INTERVALLO * 60 - 60 )) ]; then
@@ -405,7 +430,7 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
       log "librerie NON installate per la ${tentativi}a volta di fila: rinuncio a ${nuovo:0:7} (resta la versione di prima)"
       echo "$nuovo" > "$STATO/rifiutato"
       rm -f "$STATO/librerie-fallite"
-      avvisa "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima. Dettagli in dati/pubblicazione.log." 4
+      avvisa "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima.$(anche_prima) Dettagli in dati/pubblicazione.log." 4
     else
       log "librerie NON installate (rete, PyPI, hash diverso?): resta la versione di prima, riprovo al prossimo giro (tentativo $tentativi)"
       [ "$tentativi" = 1 ] && avvisa "SchieraXI: aggiornamento rimandato" "Le librerie della versione nuova non si sono installate: riprovo fra 10 minuti." 3
@@ -441,7 +466,7 @@ else
   sudo systemctl restart "$SERVIZIO"
   echo "$nuovo" > "$STATO/rifiutato"
   sleep "${SCHIERAXI_PAUSA_DOPO_RITORNO:-5}"
-  avvisa "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima. Dettagli in dati/pubblicazione.log." 4
+  avvisa "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima.$(anche_prima) Dettagli in dati/pubblicazione.log." 4
 fi
 fine
 exit 0

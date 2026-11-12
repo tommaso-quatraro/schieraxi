@@ -97,6 +97,15 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   «versione urgente fra i commit nuovi»). Vale per le pull request con una voce di novità (quelle che toccano `fanta/`,
   `script/server/` o `requirements.txt`): le altre non hanno un commit di versione.
 - **Subito, a mano**: `touch ~/.cache/fantacalcio/installa-subito` salta l'intervallo e il rimando per le partite (vedi sopra).
+- **Unione senza ancora il commit di versione**: il job `rilascia` crea il commit «Versione …» 10-20 secondi dopo l'unione. Se un giro
+  cade in mezzo (in `main` c'è ancora un file in `fanta/novita.d/` e il commit in testa ha meno di mezz'ora) si aspetta il giro dopo,
+  invece di installare l'unione con numero di versione e novità vecchi. Oltre la mezz'ora (job `rilascia` fermo) si installa lo stesso,
+  con una riga nel registro.
+- **L'ultima versione rifiutata non lascia passare quelle sotto**: se la versione da installare viene rifiutata (firma, cartelle,
+  librerie, ritorno alla versione di prima), le versioni buone arrivate prima e raggruppate con lei restano fuori anche loro. Non si
+  installano da sole: un ripiego automatico su una versione mai provata potrebbe alternare due versioni rotte, con un riavvio a ogni
+  giro. L'avviso del rifiuto lo dice («Anche le versioni arrivate prima, in attesa, non sono installate»); entrano con la prossima
+  versione buona (una pull request che corregge o toglie quella rotta) oppure, per una firma, con `--fidati` dopo il controllo.
 - Stato in `~/.cache/fantacalcio/`: `ultima-installazione` (ora d'inizio del giro dell'ultima installazione riuscita, in secondi),
   `raggruppata` (la versione rimandata), `intervallo-letto`. Senza `ultima-installazione` (la prima volta) si installa subito; se
   l'orologio del server è indietro rispetto a quell'ora non si aspetta (una riga nel registro).
