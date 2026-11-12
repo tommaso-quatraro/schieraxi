@@ -1,0 +1,11 @@
+{
+  "titolo": "Messaggio più chiaro per le rose lente e notifiche che non si perdono",
+  "voci": [
+    "Web, iPhone e iPad: in Aggiorna le rose, se riconoscere i giocatori di un testo incollato o di un file CSV richiede troppo tempo, il messaggio ora dice proprio questo e consiglia di riprovare fra qualche minuto, invece di dire che il testo è troppo lungo anche quando è corto.",
+    "Notifiche: se attivi le notifiche su un dispositivo proprio mentre l'app toglie quelle di un dispositivo non più valido, la tua attivazione non va più persa."
+  ],
+  "tecnico": [
+    "Riconoscimento oltre limiti.MAX_SECONDI_RICONOSCIMENTO per testo e CSV: importa_sicuro.RICONOSCIMENTO_LUNGO (chiave err.riconoscimento_lungo, tradotta dalla web); l'Excel tiene PESANTE. importa_sicuro.troppo_pesante diventa riconoscimento_lungo (#541).",
+    "push.json: iscrivi, togli e tieni_solo leggono e scrivono sotto un blocco su file push.json.lock (blocco.BloccoFile, Linux e Windows) oltre al blocco del processo; attesa massima push.ATTESA_BLOCCO (10 s), poi TimeoutError (in invia l'iscrizione scaduta resta per il giro dopo, con una riga in push.log). togli e tieni_solo senza la cartella non la creano (BloccoFile(crea_cartella=False)); iscrivi ricontrolla la cancellazione dell'account dopo il blocco (#547)."
+  ]
+}
