@@ -12,8 +12,7 @@ import pytest
 from fanta import account, backup, percorsi
 
 ADESSO = datetime(2026, 11, 12, 3, 30)          # il giro serale (cron delle 3:30)
-SERALE = "account-????-??-??.sqlite"
-COPIA = re.compile(r"account-\d{4}-\d{2}-\d{2}\.sqlite")
+SERALE = re.compile(r"account-\d{4}-\d{2}-\d{2}\.sqlite")      # account-AAAA-MM-GG.sqlite
 
 
 def _origine(tmp_path):
@@ -39,7 +38,7 @@ def test_le_copie_di_migrazione_non_tolgono_posto_alle_serali(tmp_path, migrazio
         _data(copia, ADESSO - timedelta(days=1))
     scritta = backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
     assert scritta == cartella / "account-2026-11-12.sqlite" and scritta.exists()
-    serali = sorted(p.name for p in cartella.glob(SERALE))
+    serali = sorted(p.name for p in cartella.iterdir() if SERALE.fullmatch(p.name))
     assert serali == [f"account-2026-11-0{g}.sqlite" for g in range(2, 8)] + ["account-2026-11-12.sqlite"]
     assert len(list(cartella.glob("account-prima-della-migrazione-*.sqlite"))) == migrazioni    # recenti: restano
 
@@ -49,7 +48,7 @@ def _nomi(copia) -> list[str]:
         return [r[0] for r in db.execute("SELECT nome_utente FROM utenti")]
 
 
-def _database_vecchio(con: str = "via"):
+def _database_vecchio():
     """Un database degli account fermo alla migrazione 5, con un utente: aprirlo fa nascere la copia di prima."""
     percorso = percorsi.cartella_account() / "account.sqlite"
     percorso.parent.mkdir(parents=True, exist_ok=True)
@@ -57,7 +56,7 @@ def _database_vecchio(con: str = "via"):
         for m in account.MIGRAZIONI[:5]:
             db.executescript(m)
         db.execute("PRAGMA user_version = 5")
-        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES (?, 'x', 'y', 'z')", (con,))
+        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('via', 'x', 'y', 'z')")
         db.commit()
     return percorso
 
@@ -79,7 +78,7 @@ def test_la_copia_di_migrazione_di_un_account_eliminato_scade(multiutente):
     backup.copia_account(cartella, percorso, adesso=creata + timedelta(days=giorni, hours=1))
     assert not copia.exists()
     rimaste = sorted(cartella.glob("account-*.sqlite"))
-    assert rimaste and all(COPIA.fullmatch(p.name) for p in rimaste)  # restano solo le serali, senza di lui
+    assert rimaste and all(SERALE.fullmatch(p.name) for p in rimaste)  # restano solo le serali, senza di lui
     assert all("via" not in _nomi(p) for p in rimaste)
 
 
