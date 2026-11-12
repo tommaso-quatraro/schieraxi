@@ -76,10 +76,11 @@ def test_worktree_classificate_nei_gruppi():
     assert voci["agent-2"]["gruppo"] == "con_modifiche"
     assert voci["agent-3"]["gruppo"] == "senza_pr"
     assert voci["agent-4"]["gruppo"] == "bloccata"
-    assert voci["agent-5"]["gruppo"] == "da_togliere" and voci["agent-5"]["ramo"] is None
+    # #524: testa in main ma nessuna PR unita. Niente dice che il lavoro è finito: può essere una sessione appena aperta.
+    assert voci["agent-5"]["gruppo"] == "senza_pr" and voci["agent-5"]["ramo"] is None
     assert voci["agent-6"]["gruppo"] == "in_corso" and voci["agent-6"]["pr"] == 12
     assert voci["agent-7"]["gruppo"] == "con_modifiche"            # commit dopo l'unione: non si perde nulla
-    assert voci["agent-1"]["unito"] and not voci["agent-3"]["unito"]
+    assert voci["agent-1"]["unito"] and not voci["agent-3"]["unito"] and not voci["agent-5"]["unito"]
 
 
 def test_bloccata_non_si_guarda_neppure_dentro():

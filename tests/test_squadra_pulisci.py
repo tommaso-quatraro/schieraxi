@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from test_squadra_comune import Finto
 from test_squadra_stato import WT, risposte_worktree
 
@@ -18,28 +19,97 @@ def finto(**extra):
     return Finto(r)
 
 
+def una_worktree(nome, testa, ramo, prs=(), in_main=False):
+    """La cartella principale su main (testa «aaa») e una sola worktree degli agenti, senza modifiche. `ramo` None = staccata."""
+    porcelain = (f"worktree C:/repo\nHEAD aaa\nbranch refs/heads/main\n\n"
+                 f"worktree {WT}/{nome}\nHEAD {testa}\n" + (f"branch refs/heads/{ramo}\n" if ramo else "detached\n"))
+    return Finto({
+        "git worktree list --porcelain": porcelain,
+        "gh pr list --state all": list(prs),
+        f"git -C {WT}/{nome} status --porcelain": "",
+        "git merge-base --is-ancestor": comune.Risposta(0 if in_main else 1, "", ""),
+        "git for-each-ref": "main aaa\n" + (f"{ramo} {testa}\n" if ramo else ""),
+        "git rev-parse --abbrev-ref HEAD": "main\n",
+        "git worktree remove": "", "git branch -D": "", "git branch -d": "",
+    })
+
+
 def test_prova_non_toglie_niente(capsys):
     f = finto()
     assert pulisci.main(f) == 0
     assert not f.lanciati("git worktree remove") and not f.lanciati("git branch")
     testo = capsys.readouterr().out
-    assert "Da togliere (2)" in testo and "Con modifiche (2)" in testo and "Senza PR (1)" in testo
+    assert "Da togliere (1)" in testo and "Con modifiche (2)" in testo and "Senza PR (2)" in testo
     assert "PROVA" in testo and "--esegui" in testo
 
 
 def test_esegui_toglie_solo_le_unite_e_pulite():
     f = finto()
     assert pulisci.main(f, esegui_davvero=True) == 0
-    assert f.lanciati("git worktree remove") == [f"git worktree remove {WT}/agent-1", f"git worktree remove {WT}/agent-5"]
-    # mai --force; il ramo unito con la stessa testa della PR si toglie con -D (unione squash), la staccata non ha ramo
+    assert f.lanciati("git worktree remove") == [f"git worktree remove {WT}/agent-1"]
+    # mai --force; il ramo unito con la stessa testa della PR si toglie con -D (unione squash)
     assert not [c for c in f.chiamate if "--force" in c]
     assert f.lanciati("git branch") == ["git branch -D unito-pulito"]
 
 
-def test_ramo_gia_in_main_si_toglie_con_d_minuscola():
-    f = finto(**{"git merge-base --is-ancestor h3 origin/main": comune.Risposta(0, "", "")})
-    pulisci.main(f, esegui_davvero=True)
-    assert "git branch -d senza-pr" in f.lanciati("git branch")
+def test_ramo_con_pr_unita_e_testa_gia_in_main_si_toglie_con_d_minuscola():
+    unita = [{"number": 14, "state": "MERGED", "headRefName": "gia-in-main", "headRefOid": "altra"}]
+    f = una_worktree("agent-8", "h8", "gia-in-main", prs=unita, in_main=True)
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert f.lanciati("git worktree remove") == [f"git worktree remove {WT}/agent-8"]
+    assert f.lanciati("git branch") == ["git branch -d gia-in-main"]
+
+
+# #524: una sessione appena aperta lavora su un ramo senza commit propri. La sua testa è in main, ma niente è stato unito:
+# con --esegui la cartella spariva mentre la sessione la usava.
+@pytest.mark.parametrize("ramo", ["claude/sessione-nuova", "lavoro-nuovo", None])
+def test_worktree_senza_commit_propri_e_senza_pr_si_chiede_e_non_si_toglie(ramo, capsys):
+    f = una_worktree("sessione-nuova", "aaa", ramo, in_main=True)
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert not f.lanciati("git worktree remove") and not f.lanciati("git branch")
+    righe = capsys.readouterr().out.splitlines()
+    assert [r for r in righe if r.startswith("Da togliere (0)")] and [r for r in righe if r.startswith("Senza PR (1)")]
+    [riga] = [r for r in righe if "sessione-nuova" in r]
+    assert "nessun commit proprio" in riga                     # chi legge l'elenco capisce perché non è «da togliere»
+
+
+def test_worktree_senza_commit_propri_con_pr_chiusa_non_si_toglie(capsys):
+    chiusa = [{"number": 40, "state": "CLOSED", "headRefName": "lavoro-lasciato", "headRefOid": "vecchia"}]
+    f = una_worktree("agent-9", "aaa", "lavoro-lasciato", prs=chiusa, in_main=True)
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert not f.lanciati("git worktree remove") and not f.lanciati("git branch")
+    assert "Senza PR (1)" in capsys.readouterr().out
+
+
+# #524 (facoltativo): le sessioni aperte dall'app lavorano in .claude/worktrees/<nome> sul ramo claude/<nome>. Anche a PR
+# unita la sessione può essere ancora aperta: la sua cartella non si toglie da sola.
+def _ramo_unito(ramo):
+    unita = [{"number": 50, "state": "MERGED", "headRefName": ramo, "headRefOid": "s1"}]
+    return una_worktree("sessione-finita", "s1", ramo, prs=unita)
+
+
+def test_sessione_dell_app_con_pr_unita_non_si_toglie(capsys):
+    f = _ramo_unito("claude/sessione-finita")
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert not f.lanciati("git worktree remove") and not f.lanciati("git branch")
+    righe = capsys.readouterr().out.splitlines()
+    assert [r for r in righe if r.startswith("Da togliere (0)")] and [r for r in righe if r.startswith("Sessioni dell'app (1)")]
+    assert [r for r in righe if "sessione-finita" in r and "PR #50 MERGED" in r]
+
+
+def test_sessione_dell_app_con_pr_unita_nel_json(capsys):
+    pulisci.main(_ramo_unito("claude/sessione-finita"), json_=True)
+    gruppi = json.loads(capsys.readouterr().out)["gruppi"]
+    assert gruppi["da_togliere"] == []
+    assert [w["ramo"] for w in gruppi["sessione_app"]] == ["claude/sessione-finita"]
+
+
+def test_un_ramo_che_non_comincia_per_claude_barra_si_toglie_come_gli_altri():
+    # Il confine è la barra: «claude-md-…» comincia per «claude» ma è un ramo come gli altri, non quello di una sessione.
+    f = _ramo_unito("claude-md-finita")
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert f.lanciati("git worktree remove") == [f"git worktree remove {WT}/sessione-finita"]
+    assert f.lanciati("git branch") == ["git branch -D claude-md-finita"]
 
 
 def test_bloccate_e_con_modifiche_non_si_toccano_mai():
@@ -61,7 +131,8 @@ def test_json(capsys):
     pulisci.main(finto(), json_=True)
     dati = json.loads(capsys.readouterr().out)
     assert dati["prova"] is True
-    assert sorted(w["percorso"].rsplit("/", 1)[1] for w in dati["gruppi"]["da_togliere"]) == ["agent-1", "agent-5"]
+    assert sorted(w["percorso"].rsplit("/", 1)[1] for w in dati["gruppi"]["da_togliere"]) == ["agent-1"]
+    assert sorted(w["percorso"].rsplit("/", 1)[1] for w in dati["gruppi"]["senza_pr"]) == ["agent-3", "agent-5"]
 
 
 def test_cartelle_sparite_suggeriscono_prune(capsys):
