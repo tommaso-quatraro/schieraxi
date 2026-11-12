@@ -154,7 +154,7 @@ def test_due_utenti_ognuno_il_suo_mostra_tutte(multiutente, dati_isolati):
     assert a.get("/api/live").status_code == 200 and b.get("/api/live").status_code == 200
 
 
-def test_fonti_ombra_spente_saltano_i_due_passi_di_misura(tmp_path, monkeypatch):
+def test_fonti_ombra_spente_saltano_il_passo_di_misura(tmp_path, monkeypatch):
     from fanta import aggiorna, archivio
 
     class Finto(aggiorna.Aggiornamento):
@@ -169,7 +169,6 @@ def test_fonti_ombra_spente_saltano_i_due_passi_di_misura(tmp_path, monkeypatch)
         def voti(self, stagione=None): pass
         def understat(self, stagione=None, dettaglio_partite=True): pass
         def quotazioni(self, stagione): pass
-        def probabili_fonte2(self): self.eseguiti.append("fonte2")
         def dati_extra(self, stagione=None): self.eseguiti.append("extra")
 
     db = archivio.apri(tmp_path / "t.sqlite")
@@ -177,11 +176,12 @@ def test_fonti_ombra_spente_saltano_i_due_passi_di_misura(tmp_path, monkeypatch)
         righe = []
         a = Finto(db, righe)
         a.esegui()
-        assert a.eseguiti == ["fonte2", "extra"]                 # acceso (privato): come prima
+        assert a.eseguiti == ["extra"]                           # acceso (privato): l'unica fonte in ombra, football-data
+        assert not any("probabili" in r and "saltato" in r for r in righe)
         monkeypatch.setenv("FANTA_FUNZIONE_FONTI_OMBRA", "0")
         righe = []
         a = Finto(db, righe)
         a.esegui()
-        assert a.eseguiti == [] and sum("saltato" in r for r in righe) == 2
+        assert a.eseguiti == [] and sum("saltato" in r for r in righe) == 1
     finally:
         db.close()

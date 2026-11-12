@@ -173,7 +173,7 @@ def test_il_blocco_di_file_si_tiene_solo_durante_il_download(monkeypatch):
 
 
 def test_il_giro_vicino_alla_scadenza_legge_solo_le_probabili(tmp_path, monkeypatch):
-    """Una pagina sola, quella delle probabili di Fantacalcio.it: la seconda fonte di probabili non c'è più (#609)."""
+    """Una pagina sola, quella delle probabili di Fantacalcio.it (#609)."""
     from types import SimpleNamespace
 
     from fanta import aggiorna, archivio, fonti_attive
