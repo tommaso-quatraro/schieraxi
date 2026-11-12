@@ -28,20 +28,27 @@ function dfVera(v) {
   if (v.tipo === "formazione") return dfConsigliataCambiata(v);
   return true;
 }
-// Le decisioni da mostrare, nell'ordine del server (dalla più urgente): al massimo due. `vale(v)`: la riga ha ancora senso con la
-// formazione che è in pagina (un cambio già fatto non si propone più).
+// Le decisioni da mostrare: al massimo due. Prima le righe con un'azione vera, nell'ordine del server (dalla più urgente); il
+// reparto scoperto («Vedi la rosa») prende al massimo un posto, e solo se ne resta uno: due righe sue nascondevano «rose da
+// aggiornare», un cambio da fare o la consigliata cambiata. `vale(v)`: la riga ha ancora senso con la formazione che è in pagina
+// (un cambio già fatto non si propone più).
 function dfDecisioni(voci, vale = () => true) {
-  return (Array.isArray(voci) ? voci : []).filter(v => dfVera(v) && vale(v)).slice(0, DF_DECISIONI);
+  const vere = (Array.isArray(voci) ? voci : []).filter(v => dfVera(v) && vale(v));
+  const scoperto = vere.filter(v => v.tipo === "copertura");
+  return [...vere.filter(v => v.tipo !== "copertura"), ...scoperto.slice(0, 1)].slice(0, DF_DECISIONI);
 }
+// La decisione, al tocco, scrive sul server (un cambio di titolare, «Usa la consigliata»): sulla copia del telefono resta spenta.
+const dfScrive = v => (v.tipo === "dubbio" && !!v.alternativa) || dfConsigliataCambiata(v);
 
 // Una decisione: il testo del server, la sua azione a destra nel colore delle azioni (grafica B, spec C9: niente pulsanti a contorno
 // in fila; quella urgente la dice la parola «Urgente»). `nota` (già pronta per l'HTML): i punti attesi in più del cambio proposto.
-function dfRiga(v, i, nota = "") {
+// `sola`: la schermata è di sola lettura, i pulsanti che scrivono sono spenti (restano al loro posto).
+function dfRiga(v, i, nota = "", sola = false) {
   const urgente = v.priorita === DF_URGENTE;
   const azione = dfAllaRosa(v) ? t("lega.vedi_rosa") : dfConsigliataCambiata(v) ? t("formazione.usa_consigliata") : esc(v.azione ? testoDi(v, "azione") : t("df.apri"));
   return `<li class="df-riga${urgente ? " urgente" : ""}">
     <span class="df-testo">${urgente ? `<span class="df-etichetta">${t("df.urgente")}</span> ` : ""}${esc(testoDi(v))}${nota ? ` <b class="df-nota">${nota}</b>` : ""}</span>
-    <button class="azione-testo df-azione" type="button" data-df="${i}">${azione}</button></li>`;
+    <button class="azione-testo df-azione" type="button" data-df="${i}"${dfScrive(v) ? ` data-scrive${sola ? " disabled" : ""}` : ""}>${azione}</button></li>`;
 }
 
 // Dove si trova, dentro Squadra o Altro, il punto indicato dalla voce (se la schermata cambia e non si trova, si resta in cima a Lega).

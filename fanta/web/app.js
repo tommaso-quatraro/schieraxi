@@ -277,11 +277,13 @@ function aggiornaRigaStato() {
   document.querySelectorAll(".stato-pagina").forEach(e => { e.innerHTML = rigaStato(); });
 }
 // `percorso`: l'indirizzo da chiedere, oppure una funzione che legge più cose insieme e le restituisce (la Formazione).
+// `mostra` può restituire `{ pronta() }`: si chiama quando i dati nuovi sono uguali alla copia già in pagina (la Formazione tiene
+// spenti i comandi che scrivono finché non lo sa).
 async function caricaConCache(chiave, percorso, mostra, testo) {
   const mia = nuovaRichiesta();
-  let salvata = leggiCache(chiave);
+  let salvata = leggiCache(chiave), vista = null;
   if (salvata) {
-    try { mostra(salvata.dati, { daCache: salvata.quando }); }
+    try { vista = mostra(salvata.dati, { daCache: salvata.quando }); }
     catch { rimuoviCache(chiave); salvata = null; caricamento(testo); }     // copia rovinata o di una versione vecchia
   } else caricamento(testo);
   try {
@@ -289,7 +291,7 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
     if (!ancoraValida(mia)) return;
     salvaCache(chiave, dati);
     if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) mostra(dati, { sostituisce: !!salvata });
-    else { const b = $("#nota-cache"); if (b) b.remove(); }
+    else { const b = $("#nota-cache"); if (b) b.remove(); if (vista && typeof vista.pronta === "function") vista.pronta(); }
   } catch (e) {
     if (!ancoraValida(mia)) return;
     if (salvata) {
@@ -825,7 +827,7 @@ function collegaRinvio() {
         salvato = sel.value;
         svuotaCache();
         avviso(t("oggi.rinvio_salvato"));
-        vistaFormazione();
+        rileggiFormazione();
       } catch (e) { avviso(e.message, 8000); sel.value = salvato; mostra(); sel.disabled = false; }   // resta la scelta salvata
     });
   });
@@ -882,6 +884,22 @@ function percheTitolare(m, id, scheda) {
   return a && b ? t("formazione.incerto", { p: perc(a.p_voto), riserva: esc(b.nome) }) : "";
 }
 
+// Dove rimettere il fuoco dopo che la Formazione si è ridisegnata: lo stesso comando, ritrovato nella pagina nuova. null = il fuoco
+// non era nella schermata (non lo si sposta); "" = era su qualcosa che non si ritrova per nome.
+function fuocoDi(e) {
+  if (!e || !contenuto.contains(e) || e.id === "titolo-pagina") return null;
+  if (e.id) return "#" + e.id;
+  if (e.dataset.df !== undefined) return `#decisioni [data-df="${Number(e.dataset.df)}"]`;
+  if (e.dataset.giocatore) return `#contenuto [data-giocatore="${Number(e.dataset.giocatore)}"]`;
+  return e.matches("select.rinvio-modo") ? "select.rinvio-modo" : "";
+}
+// Rilegge la Formazione dal server tenendo il posto del fuoco (dopo un salvataggio arrivato a schermata già ridisegnata, la scelta
+// sul rinvio, la scadenza passata con la pagina aperta).
+function rileggiFormazione() {
+  stato.fuocoFormazione = fuocoDi(document.activeElement);
+  vistaFormazione();
+}
+
 // Anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (campo `bloccati` di GET /api/formazione;
 // manca senza anticipi cominciati e con un server vecchio). Il server rifiuta comunque un salvataggio che ne sposta uno.
 const giocatoriFermi = f => new Set((Array.isArray(f && f.bloccati) ? f.bloccati : []).map(Number));
@@ -912,8 +930,9 @@ function vistaFormazione() {
 
 // Tutto ciò che serve alla schermata, in una volta: la giornata (/api/oggi), la formazione, la scelta salvata e, se gli 11 salvati non
 // sono quelli di un modulo già calcolato, la loro valutazione. Così la schermata si disegna una volta sola, già con la formazione
-// giusta (prima compariva la consigliata e poi, un attimo dopo, la tua). `scelta`: null = niente di salvato; manca = non letta (rete):
-// allora la riga dello stato e la spunta non si mostrano.
+// giusta (prima compariva la consigliata e poi, un attimo dopo, la tua). `scelta`: null = niente di salvato; manca, con
+// `scelta_non_letta`, = non letta (o non valutata): allora la schermata lo dice e non fa cambiare niente, perché un salvataggio
+// scriverebbe sopra una scelta che non si è vista.
 async function caricaGiornata() {
   // Account nuovo, senza rose (lo dice /api/stato, letto all'avvio): /api/formazione risponderebbe 409 e il browser lo scriverebbe fra
   // gli errori, quindi si chiede solo /api/oggi, che dà il benvenuto. Se le rose nel frattempo ci sono, la formazione si chiede dopo.
@@ -926,11 +945,11 @@ async function caricaGiornata() {
   try {
     const s = await api(`/api/scelta?giornata=${f.giornata}`);
     b.scelta = s && Array.isArray(s.titolari) ? s : null;
-  } catch { return b; }
+  } catch { b.scelta_non_letta = true; return b; }
   const inCorso = o.fase === "in_corso" && o.in_corso;      // a giornata in corso la formazione che vale la dice /api/oggi
   if (b.scelta && f.stato_scelta !== "non_valida" && !inCorso && !moduloDi(f, b.scelta.titolari)) {
     try { b.valutata = await api("/api/formazione/valuta", { method: "POST", body: JSON.stringify({ titolari: b.scelta.titolari, giornata: f.giornata, salva: false }) }); }
-    catch (e) { if (e.codice === "formazione_non_valida") b.non_valida = true; else delete b.scelta; }
+    catch (e) { if (e.codice === "formazione_non_valida") b.non_valida = true; else { delete b.scelta; b.scelta_non_letta = true; } }
   }
   return b;
 }
@@ -992,8 +1011,12 @@ function mostraFormazione(b, squadra, opz = {}) {
   };
   const chiusa = !!f.iniziata || !!live;
   const mia = !squadra;
-  const sc = stato.scelta = { chiave: `${squadra || "mia"}/${f.giornata}`, salvata: mia ? b.scelta : undefined,
-    nonValida: mia && (!!b.non_valida || f.stato_scelta === "non_valida"), manuale: null, richiesta: 0, occupato: false };
+  // `sola`: i comandi che scrivono sono spenti. Vale per la copia tenuta sul telefono, mostrata subito all'apertura, finché non
+  // arrivano i dati nuovi (un tocco lì salvava, e i dati in arrivo ridisegnavano la pagina senza il cambio), e per la scelta non letta.
+  const nonLetta = mia && (b.scelta_non_letta === true || b.scelta === undefined);
+  const sc = stato.scelta = { chiave: `${squadra || "mia"}/${f.giornata}`, salvata: mia && !nonLetta ? b.scelta : undefined,
+    nonValida: mia && (!!b.non_valida || f.stato_scelta === "non_valida"), manuale: null, richiesta: 0, occupato: false,
+    nonLetta, copia: !!opz.daCache, sola: mia && (!!opz.daCache || nonLetta), fuoco: null };
   // la formazione di partenza: gli 11 salvati, se valgono e non sono proprio quelli della consigliata
   if (mia && sc.salvata && !sc.nonValida && !live) {
     const m = moduloDi(f, sc.salvata.titolari);
@@ -1006,17 +1029,23 @@ function mostraFormazione(b, squadra, opz = {}) {
   const diversi = m => m.titolari.filter(id => !consigliato.titolari.includes(id)).length;      // quanti titolari non sono quelli della consigliata
   const qui = n => n === sc.richiesta && stato.scelta === sc && document.body.contains($("#campo-formazione"));
   // dopo un salvataggio la copia sul telefono di questa schermata è già vecchia: la si aggiorna, così tornando qui non si rivede quella di prima
+  // Il salvataggio è riuscito ma la schermata nel frattempo è stata ridisegnata (riaperta, o lasciata): la copia sul telefono è
+  // vecchia e, se si è ancora nella Formazione, in pagina c'è altro. Si rilegge dal server: mai una scelta salvata che non si vede.
+  const altrove = n => {
+    rimuoviCache("giornata");
+    if (n === sc.richiesta && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista) rileggiFormazione();
+  };
   const ricorda = valutata => { if (mia) salvaCache("giornata", { ...b, scelta: sc.salvata, valutata: valutata || undefined, non_valida: false, f: { ...f, stato_scelta: sc.salvata ? "valida" : "nessuna" } }); };
 
   // Cambia gli 11 (una sostituzione, un altro modulo, la spunta «L'ho messa»): il server li valuta e li salva subito. Una richiesta
   // alla volta: se nel frattempo ne parte un'altra, la risposta di prima si ignora. `messa`: vero o falso dalla spunta; senza, resta
   // com'era finché gli 11 sono gli stessi (la stessa regola del server, scelte.salva).
-  const salvaTitolari = async (ids, messa) => {
+  const salvaTitolari = async (ids, messa, fuoco = null) => {
     const n = ++sc.richiesta;
     sc.occupato = true;
     try {
       const r = await api("/api/formazione/valuta", { method: "POST", body: JSON.stringify({ titolari: ids, giornata: f.giornata, salva: true, ...(messa === undefined ? {} : { messa }) }) });
-      if (!qui(n)) return false;
+      if (!qui(n)) { altrove(n); return false; }
       const stessi = !!sc.salvata && stessiIds(ids, sc.salvata.titolari.map(Number));
       const eraConsigliata = stessiIds(ids, consigliato.titolari) || (stessi && sc.salvata.era_consigliata === true);
       sc.salvata = { titolari: ids, modulo: r.modulo, ...(eraConsigliata ? { era_consigliata: true } : {}), ...((messa ?? (stessi && sc.salvata.messa === true)) ? { messa: true } : {}) };
@@ -1024,12 +1053,14 @@ function mostraFormazione(b, squadra, opz = {}) {
       const m = moduloDi(f, ids);
       sc.manuale = m === consigliato ? null : m || { modulo: r.modulo, titolari: ids, panchina: r.panchina, punteggio_atteso: r.punteggio_atteso, dev: r.dev, intervallo: r.intervallo };
       ricorda(m ? null : r);
+      if (fuoco) sc.fuoco = fuoco;
       disegna(true);
       return true;
     } catch (e) {
+      if (e.status === 412) { avviso(e.message, 5000); return false; }      // cambiata su un altro dispositivo: api() ricarica la pagina con i dati di là
       if (!qui(n)) return false;
       avviso(e.message, 5000);
-      if (e.codice === "formazione_chiusa") vistaFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
+      if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
       return false;
     } finally { if (n === sc.richiesta) sc.occupato = false; }
   };
@@ -1040,31 +1071,35 @@ function mostraFormazione(b, squadra, opz = {}) {
     sc.occupato = true;
     try {
       if (sc.salvata !== null) await api(`/api/scelta?giornata=${f.giornata}`, { method: "DELETE" });
-      if (!qui(n)) return;
+      if (!qui(n)) { altrove(n); return; }
       sc.manuale = null; sc.salvata = null; sc.nonValida = false;
       ricorda();
       disegna(true);
     } catch (e) {
+      if (e.status === 412) { avviso(e.message, 5000); return; }
       if (!qui(n)) return;
       avviso(e.message, 5000);                              // per esempio la consigliata sposterebbe chi gioca un anticipo già cominciato (#373)
-      if (e.codice === "formazione_chiusa") vistaFormazione(); else disegna(true);
+      if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);
     } finally { if (n === sc.richiesta) sc.occupato = false; }
   };
   const libero = () => { if (sc.occupato) avviso(t("formazione.sto_ancora_ricalcolando")); return !sc.occupato; };
   // Un titolare esce e al suo posto entra un altro dello stesso ruolo (dalla scheda del giocatore o da una decisione in cima).
   const sostituisci = (esce, entra) => {
     const m = corrente();
-    if (chiusa || !mia || !m.titolari.includes(esce) || m.titolari.includes(entra) || fermi.has(esce) || fermi.has(entra)) return false;
+    if (chiusa || !mia || sc.sola || !m.titolari.includes(esce) || m.titolari.includes(entra) || fermi.has(esce) || fermi.has(entra)) return false;
     if (!libero()) return true;
-    salvaTitolari(m.titolari.map(id => id === esce ? entra : id));
+    salvaTitolari(m.titolari.map(id => id === esce ? entra : id), undefined, `#campo-formazione [data-giocatore="${Number(entra)}"]`);   // dopo, il fuoco su chi è entrato
     return true;
   };
 
   // La riga dello stato sotto il campo: due stati («è la consigliata», «l'hai cambiata tu») più «chiusa» e «non più valida».
   const rigaStato = m => {
+    // la scelta non si è letta: lo si dice (un errore, con «Riprova»); sulla copia del telefono no, i dati nuovi stanno arrivando
+    if (mia && sc.nonLetta && !chiusa) return sc.copia ? "" : `<div class="scelta-non-letta">${errore({ message: t("formazione.scelta_non_letta") })}
+      <div class="pulsanti"><button class="bottone secondario" type="button" data-riprova>${t("comune.riprova")}</button></div></div>`;
     if (!mia || sc.salvata === undefined) return "";
     const riga = (classe, testo, azione = "") => `<div class="stato-scelta ${classe}" id="stato-scelta"><p role="status">${testo}</p>${azione}</div>`;
-    const torna = `<button class="azione-testo" type="button" id="torna-consigliata">${t("formazione.torna_alla_consigliata")}</button>`;
+    const torna = `<button class="azione-testo" type="button" id="torna-consigliata" data-scrive${sc.sola ? " disabled" : ""}>${t("formazione.torna_alla_consigliata")}</button>`;
     if (chiusa) return riga("chiusa", t(sc.nonValida ? "formazione.stato_chiusa_non_valida" : sc.salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"));
     if (sc.nonValida) return riga("non_valida", t("formazione.stato_non_valida_ora"), torna);
     const n = diversi(m);
@@ -1079,6 +1114,10 @@ function mostraFormazione(b, squadra, opz = {}) {
   const disegna = (mantieniScroll = false) => {
     chiudiSostituzione();                                   // i candidati aperti erano quelli della formazione di prima
     const y0 = window.scrollY;
+    // il fuoco dopo il ridisegno: dove l'ha chiesto chi ha fatto il cambio, altrimenti sullo stesso comando di prima
+    const fuoco = sc.fuoco ?? stato.fuocoFormazione ?? fuocoDi(document.activeElement);
+    sc.fuoco = null; stato.fuocoFormazione = null;
+    const spento = sc.sola ? " disabled" : "";
     const m = corrente();
     const titolari = m.titolari.map(scheda).filter(Boolean), panchina = m.panchina.map(scheda).filter(Boolean);
     const scelti = new Set([...m.titolari, ...m.panchina]);
@@ -1090,6 +1129,7 @@ function mostraFormazione(b, squadra, opz = {}) {
     // per la scheda del giocatore e la sostituzione: la formazione in pagina e cosa ci si può fare
     // `fermo`: un titolare che gioca un anticipo già cominciato; al posto di «Sostituisci» la scheda dice perché non si sposta
     stato.formaz = { f, modulo: m, scheda, perche: id => (sc.manuale || chiusa ? "" : percheTitolare(m, id, scheda)),
+      pronta: () => !sc.sola,
       sostituibile: id => mia && !chiusa && m.titolari.includes(id) && !fermi.has(id),
       fermo: id => mia && !chiusa && m.titolari.includes(id) && fermi.has(id), sostituisci };
     // le decisioni che hanno ancora senso con la formazione in pagina: un cambio già fatto non si propone più, e «la consigliata è
@@ -1114,11 +1154,11 @@ function mostraFormazione(b, squadra, opz = {}) {
           <button class="azione-testo" type="button" id="torna-mia">${t("formazione.torna_alla_tua")}</button></div>` : ""}
         ${testaGiornata(squadra ? null : o, f)}
       </div>
-      ${decisioni.length ? `<ul class="fz-decisioni" id="decisioni" aria-label="${t("df.da_fare")}">${decisioni.map((v, i) => dfRiga(v, i, guadagno(v))).join("")}</ul>` : ""}
+      ${decisioni.length ? `<ul class="fz-decisioni" id="decisioni" aria-label="${t("df.da_fare")}">${decisioni.map((v, i) => dfRiga(v, i, guadagno(v), sc.sola)).join("")}</ul>` : ""}
       <div class="fz-campo"><div class="campo-fermo">
         ${live ? "" : `<div class="riga-modulo">
           ${chiusa ? `<span class="modulo-fisso">${esc(m.modulo)}</span>` : `<label class="menu-scelta menu-modulo"><span class="solo-lettori">${t("formazione.modulo")}</span>
-            <span class="menu-scelta-testo" aria-hidden="true">${esc(m.modulo)}</span><select id="modulo">${moduli.map(opzione).join("")}</select></label>`}
+            <span class="menu-scelta-testo" aria-hidden="true">${esc(m.modulo)}</span><select id="modulo" data-scrive${spento}>${moduli.map(opzione).join("")}</select></label>`}
           <div class="punti-attesi"><span><b id="punti-attesi">${num(m.punteggio_atteso)}</b> ${t("formazione.punti_attesi")}</span>${diSolito ? `<span class="debole piccolo" id="di-solito">${esc(diSolito)}</span>` : ""}</div>
         </div>`}
         <div class="campo" id="campo-formazione"><i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
@@ -1126,8 +1166,8 @@ function mostraFormazione(b, squadra, opz = {}) {
         </div>
         ${rigaStato(m)}
         ${mia && !chiusa ? `<div class="azioni-formazione">
-          <button class="bottone secondario" type="button" id="copia">${t("formazione.copia_lega")}</button>
-          ${sc.salvata === undefined ? "" : `<label class="spunta"><input type="checkbox" id="messa" ${sc.salvata && sc.salvata.messa ? "checked" : ""} ${sc.nonValida ? "disabled" : ""}><span>${t("formazione.messa")}</span></label>`}
+          <button class="bottone secondario" type="button" id="copia"${sc.nonLetta ? " disabled" : ""}>${t("formazione.copia_lega")}</button>
+          <label class="spunta"><input type="checkbox" id="messa" ${sc.salvata && sc.salvata.messa ? "checked" : ""}${sc.nonValida ? " disabled" : ` data-scrive${spento}`}><span>${t("formazione.messa")}</span></label>
         </div>` : ""}
         ${chiusa || f.con_probabili ? "" : `<div class="attenzione" role="status" id="senza-probabili">${t("formazione.mancano_probabili_formazioni")}</div>`}
         ${probabili}
@@ -1147,7 +1187,7 @@ function mostraFormazione(b, squadra, opz = {}) {
     const sel = $("#modulo");
     if (sel) sel.addEventListener("change", () => {
       const scelto = l.moduli.find(x => x.modulo === sel.value);
-      if (!scelto || !libero()) { disegna(true); return; }
+      if (!scelto || sc.sola || !libero()) { disegna(true); return; }
       if (!mia) { sc.manuale = scelto === consigliato ? null : scelto; disegna(true); }
       else if (scelto === consigliato) tornaConsigliata();
       else salvaTitolari([...scelto.titolari]);
@@ -1155,25 +1195,33 @@ function mostraFormazione(b, squadra, opz = {}) {
     document.querySelectorAll("#decisioni [data-df]").forEach(el => el.addEventListener("click", () => {
       const v = decisioni[Number(el.dataset.df)];
       if (!v) return;
+      if (sc.sola && dfScrive(v)) return;
       if (v.tipo === "dubbio" && v.alternativa && v.giocatore && sostituisci(Number(v.giocatore.id), Number(v.alternativa.id))) return;
       if (v.tipo === "dubbio" && v.giocatore) { apriGiocatore(Number(v.giocatore.id)); return; }      // il cambio non si può più fare da qui: la sua scheda
       if (dfConsigliataCambiata(v)) { if (libero()) tornaConsigliata(); return; }
       dfApri(v);
     }));
-    bottone("#torna-consigliata", () => { if (libero()) tornaConsigliata(); });
+    bottone("#torna-consigliata", () => { if (!sc.sola && libero()) tornaConsigliata(); });
     bottone("#copia", async () => avviso(await copiaTesto(testoFormazione(f, m, scheda)) ? t("formazione.copiata_lega") : t("formazione.non_copio")));
     const messa = $("#messa");
     if (messa) messa.addEventListener("change", () => {
-      if (!libero()) { messa.checked = !messa.checked; return; }
-      // tolta la spunta su una formazione che è ancora la consigliata: non resta fissata, torna a seguire la consigliata
-      if (!messa.checked && sc.salvata && !diversi(m)) tornaConsigliata();
-      else salvaTitolari(m.titolari.map(Number), messa.checked);
+      if (sc.sola || !libero()) { messa.checked = !messa.checked; return; }
+      // messa o tolta, la spunta salva gli 11 in pagina: una scelta salvata (anche da un altro dispositivo) non si cancella da sola,
+      // si toglie solo con «Torna alla consigliata»
+      salvaTitolari(m.titolari.map(Number), messa.checked);
     });
     bottone("#torna-mia", () => { stato.squadraVista = null; vistaFormazione(); });
     collegaRinvio();
     const diario = $("[data-apri-diario]");
     if (diario) diario.addEventListener("click", () => apriDiario(Number(diario.dataset.apriDiario) || undefined));
     if (mantieniScroll) window.scrollTo(0, y0);
+    // la scheda di un giocatore rimasta aperta: il suo «Sostituisci» segue lo stato della schermata
+    document.querySelectorAll("#foglio-contenuto [data-sostituisci]").forEach(e => { e.disabled = sc.sola; });
+    if (fuoco !== null) {                                   // mai sul vuoto: lo stesso comando, o il più vicino che c'è
+      const dove = (fuoco ? [fuoco, "#copia", "#modulo", "#titolo-pagina"] : ["#titolo-pagina"]).map(s => $(s)).find(e => e && !e.disabled);
+      // con il foglio modale ancora in chiusura la pagina sotto non prende il fuoco: glielo dà il foglio quando ha finito (sbloccaSfondo)
+      if (dove && sfondoBloccato) focusPrima = dove; else if (dove) dove.focus({ preventScroll: true });
+    }
   };
 
   disegna(false);
@@ -1187,6 +1235,15 @@ function mostraFormazione(b, squadra, opz = {}) {
       el.textContent = ct.manca; chiude.textContent = ct.chiude;
     }, 30000);
   }
+  // Per caricaConCache: i dati nuovi sono uguali alla copia in pagina, i comandi spenti si accendono dove sono (niente ridisegno).
+  // Se la scelta non era stata letta nemmeno stavolta, ora lo si dice.
+  return { pronta() {
+    if (stato.scelta !== sc || !sc.sola) return;
+    sc.copia = false;
+    if (sc.nonLetta) { disegna(true); return; }
+    sc.sola = false;
+    document.querySelectorAll("#contenuto [data-scrive], #foglio-contenuto [data-sostituisci]").forEach(e => { e.disabled = false; });
+  } };
 }
 
 async function datiCalendario() {
@@ -1320,7 +1377,7 @@ function htmlScheda(c, pr, fz) {
     ${perche ? `<div class="scheda-pezzo" id="perche-titolare"><h3>${t("formazione.perche_titolare")}</h3><p>${perche}</p></div>` : ""}
     ${pr && !finitaP ? bloccoPerche(prSenzaGioca) : ""}
     <div class="scheda-pezzo" id="scheda-voti" aria-busy="true"><h3>${t("formazione.ultimi_voti")}</h3><div class="debole piccolo">${t("comune.carico")}</div></div>
-    ${fz && fz.sostituibile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-sostituisci="${Number(c.id)}">${t("formazione.sostituisci")}</button></div>`
+    ${fz && fz.sostituibile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-sostituisci="${Number(c.id)}"${fz.pronta() ? "" : " disabled"}>${t("formazione.sostituisci")}</button></div>`
       : fz && fz.fermo(Number(c.id)) ? `<p class="debole piccolo" id="scheda-fermo">${t("formazione.bloccati")}</p>` : ""}
     <details class="scheda-numeri" id="scheda-numeri"><summary>${t("formazione.tutti_numeri")}</summary>
       <div id="scheda-numeri-corpo" aria-busy="true"><div class="debole piccolo">${t("comune.carico")}</div></div></details>`;
@@ -1396,7 +1453,7 @@ async function apriGiocatore(id) {
 // i punti attesi in più o in meno rispetto a lui: è già il confronto, in una riga. Un tocco fa il cambio, che si salva da solo.
 function apriSostituzione(id) {
   const fz = stato.vista === "formazione" ? stato.formaz : null, base = fz && fz.scheda(id);
-  if (!base || !fz.sostituibile(Number(id))) return;
+  if (!base || !fz.sostituibile(Number(id)) || !fz.pronta()) return;
   ultimaScheda++;                                                         // una scheda ancora in arrivo non prende il posto dell'elenco
   const candidati = sostituti(fz.f, base, new Set(fz.modulo.titolari)).map(x => fz.scheda(x.id));
   // sotto il nome anche «gioca N%», se è sotto l'80%: spiega un numero grande basso per chi, quando gioca, vale quanto il titolare

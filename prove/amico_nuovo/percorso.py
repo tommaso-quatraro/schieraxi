@@ -611,7 +611,8 @@ def passo_formazione(g: Giro) -> None:
     p = g.pagina
     g.chiudi_fogli()
     g.tocca(p.locator("a.scheda[data-vista='formazione']"))
-    p.locator("label.spunta, .fz.chiusa").first.wait_for(state="visible", timeout=90000)
+    # la spunta accesa: all'apertura c'è la copia tenuta sul telefono, di sola lettura finché non arrivano i dati nuovi
+    p.locator("#messa:enabled, .fz.chiusa").first.wait_for(state="visible", timeout=90000)
     if not p.locator("label.spunta").count():
         raise Bloccato("la formazione è già chiusa: non si può più dire «L'ho messa»")
     sul_campo = p.locator("#campo-formazione .pedina").count()

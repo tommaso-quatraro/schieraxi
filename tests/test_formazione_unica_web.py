@@ -164,8 +164,9 @@ SCHEDA = "\n".join(["const volto = () => ''; const NOME_RUOLO_1 = { P: 'Portiere
 CALCIATORE = {"id": 7, "nome": "Rossi L.", "ruolo": "C", "squadra": "Genoa", "squadra_slug": "genoa"}
 
 
-def _scheda(pr, sostituibile=True, perche="", lingua="it", fermo=False) -> str:
-    fz = f"{{ perche: () => {json.dumps(perche)}, sostituibile: () => {json.dumps(sostituibile)}, fermo: () => {json.dumps(fermo)} }}"
+def _scheda(pr, sostituibile=True, perche="", lingua="it", fermo=False, pronta=True) -> str:
+    fz = (f"{{ perche: () => {json.dumps(perche)}, sostituibile: () => {json.dumps(sostituibile)}, fermo: () => {json.dumps(fermo)}, "
+          f"pronta: () => {json.dumps(pronta)} }}")
     return _esegui(f"htmlScheda({json.dumps(CALCIATORE)}, {json.dumps(pr)}, {fz})", STATI, SCHEDA, lingua=lingua)
 
 
@@ -196,6 +197,8 @@ def test_la_scheda_di_chi_non_si_puo_sostituire_non_ha_il_pulsante():
     panchina = _scheda(_giocatore(), sostituibile=False)
     assert "data-sostituisci" not in panchina and "non si può più spostare" not in panchina
     # un titolare che gioca un anticipo già cominciato: al posto del pulsante, perché non si sposta (#373)
+    # sulla copia tenuta sul telefono (dati nuovi in arrivo) il pulsante c'è ma è spento: resta al suo posto
+    assert '<button class="bottone" type="button" data-sostituisci="7" disabled>Sostituisci</button>' in _scheda(_giocatore(), pronta=False)
     fermo = _scheda(_giocatore(), sostituibile=False, fermo=True)
     assert "data-sostituisci" not in fermo
     assert '<p class="debole piccolo" id="scheda-fermo">Chi gioca in una partita già cominciata non si può più spostare.</p>' in fermo

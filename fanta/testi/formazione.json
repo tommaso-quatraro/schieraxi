@@ -402,5 +402,9 @@
   "formazione.sost_spiega": {
     "it": "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi in più o in meno rispetto a {nome}.",
     "en": "Same role, from your roster. The big number is the expected points more or less than {nome}."
+  },
+  "formazione.scelta_non_letta": {
+    "it": "Non riesco a leggere la formazione che hai salvato: finché non la leggo non si può cambiare niente.",
+    "en": "I can't read your saved lineup: nothing can be changed until I can."
   }
 }

@@ -167,7 +167,7 @@ const sel = { value: "aspetta", disabled: false, dataset: { giornata: "8", stagi
 document.querySelectorAll = s => s === "select.rinvio-modo" ? [sel] : [];
 const chiamate = [], avvisi = []; let fallisci = false, ridisegni = 0;
 async function api(p, o) { chiamate.push([p, JSON.parse(o.body)]); if (fallisci) throw new Error("Non riesco a salvare la scelta."); return {}; }
-const svuotaCache = () => {}, avviso = m => avvisi.push(m), vistaFormazione = () => { ridisegni++; };
+const svuotaCache = () => {}, avviso = m => avvisi.push(m), rileggiFormazione = () => { ridisegni++; };     // rilegge e tiene il fuoco sul menu
 (async () => {
   collegaRinvio();
   const visto = [];

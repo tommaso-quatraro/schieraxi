@@ -112,9 +112,11 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 - il **campo** con gli 11 titolari. Ogni giocatore è un disco bianco con il suo fantavoto atteso e sotto il cognome («Rossi», senza l'iniziale). Nient'altro, se gioca quasi di sicuro: «gioca N%» compare solo sotto l'80% (arancione fra 50 e 79, rosso sotto 50, con un anello dello stesso colore attorno al disco), e lo stato a parole solo per chi è **in dubbio**, **infortunato** o **squalificato**. L'avversario e l'ora della partita sono nella sua scheda;
 - lo **stato della tua scelta**, in una riga: «È la consigliata.» oppure «L'hai cambiata tu: 1 titolare diverso dalla consigliata (−0,4 punti attesi).», con **Torna alla consigliata**. Non c'è un pulsante Salva: ogni cambio (una sostituzione, un altro modulo) si salva da solo e resta uguale anche ricaricando o su un altro dispositivo. Finché non cambi niente vale la consigliata, che si aggiorna da sola fino alla scadenza;
 - **Copia per l'app della lega**: copia la formazione come testo (modulo, titolari per ruolo, panchina in ordine), da tenere sotto mano mentre la inserisci su Leghe;
-- **L'ho messa**: la spunti quando hai inserito la formazione nell'app della lega. Da quel momento quegli 11 sono la tua scelta e non cambiano da soli: se dopo la consigliata cambia, la riga dello stato dice «La consigliata è cambiata da quando l'hai salvata…» e decidi tu se prenderla. Se cambi gli 11, la spunta si toglie: la rimetti quando hai aggiornato anche l'app della lega.
+- **L'ho messa**: la spunti quando hai inserito la formazione nell'app della lega. Da quel momento quegli 11 sono la tua scelta e non cambiano da soli: se dopo la consigliata cambia, la riga dello stato dice «La consigliata è cambiata da quando l'hai salvata…» e decidi tu se prenderla. Se cambi gli 11, la spunta si toglie: la rimetti quando hai aggiornato anche l'app della lega. Togliere la spunta non cancella la formazione salvata: per tornare a seguire la consigliata c'è **Torna alla consigliata**.
 
 Sotto ci sono quanto sono fresche le **probabili formazioni** (se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare), la **Panchina** nell'ordine in cui entra, i **Non schierati** e gli **Infortunati e squalificati** (chiusi: si aprono con un tocco). Negli elenchi, sotto il nome di ogni giocatore c'è la sua partita, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Chi è in dubbio, infortunato o squalificato ha sotto anche la nota che dice perché (per esempio «lombalgia, out a Roma»), che va a capo dentro la riga.
+
+Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono: finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde.
 
 Sul tablet e sul PC le colonne sono due: a sinistra il campo con modulo, stato e pulsanti (resta fermo mentre scorri, se ci sta nello schermo), a destra la panchina e gli altri elenchi.
 
@@ -275,6 +277,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Troppi tentativi» | Aspetta il tempo indicato e riprova. |
 | «Accesso richiesto» | La sessione è scaduta: entra di nuovo. |
 | «Nessuna rosa importata» | Importa le rose (sezione 2). |
+| «Non riesco a leggere la formazione che hai salvato» | Tocca **Riprova**. Finché non si legge, la Formazione non fa cambiare niente: così la tua scelta non viene sovrascritta. |
 | «Serve l'accesso» sul widget | Apri l'app sull'iPhone ed entra. |
 | Dati che non sembrano aggiornati | Tocca le frecce. Se non cambia, chiedi a chi gestisce l'app di controllare lo **Stato dei dati**. |
 | File delle rose rovinato | L'app lo dice e spiega come rimediare: riesporta le rose da Leghe e riprova. |

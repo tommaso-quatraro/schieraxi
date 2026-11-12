@@ -11,6 +11,7 @@
   ],
   "tecnico": [
     "Scelta salvata: campo facoltativo `messa` (con `messa_il`), mandato con POST /api/formazione/valuta insieme a `salva` e restituito da GET /api/scelta. I client che non lo conoscono non cambiano.",
+    "Scelta salvata: `era_consigliata` resta com'era finché gli 11 sono gli stessi, anche se la consigliata nel frattempo è cambiata.",
     "`da_fare` di GET /api/oggi: nelle voci `dubbio` senza cambio la riserva nominata è la prima del ruolo che gioca quasi di sicuro, come `incerti` della Formazione.",
     "Web: `?vista=oggi` porta alla Formazione; la scena «oggi» non c'è più negli strumenti delle foto (aspetto_web.py, foto.py).",
     "L'app per iPhone e i widget non cambiano: nessun campo e nessuna rotta tolti o rinominati."

@@ -225,9 +225,9 @@ def test_la_spunta_l_ho_messa_resta_dopo_una_ricarica(web):
     web.apri("/")
     casella = principale(web).get_by_role("checkbox", name="L'ho messa")
     assert casella.is_checked() and stato(web) == "È la consigliata."
-    casella.uncheck()                                                 # tolta su una formazione che è ancora la consigliata: non resta fissata
+    casella.uncheck()                                                 # tolta: la scelta resta (si toglie solo con «Torna alla consigliata»)
     web.aspetta()
-    assert salvata["scelta"] is None
+    assert salvata["scelta"] and len(salvata["scelta"]["titolari"]) == 11 and "messa" not in salvata["scelta"]
     web.pagina.evaluate("localStorage.clear()")
     web.apri("/")
     assert not principale(web).get_by_role("checkbox", name="L'ho messa").is_checked()
@@ -483,3 +483,277 @@ def test_la_scheda_e_l_elenco_dei_sostituti_non_hanno_violazioni_gravi(web, tema
     gravi = web.violazioni_gravi()
     assert not gravi, f"sostituti, {tema}: {[(v['id'], v['nodi'][:2]) for v in gravi]}"
     assert not web.scorre_di_lato()
+
+
+# ---------------------------------------------------------------- revisione della #637: ciò che si salva è ciò che si vede
+# Il server finto non salva: dove serve, il test fa la parte del server e tiene lui la scelta della giornata.
+RITARDA = """(() => { const vera = window.fetch;
+  window.fetch = (u, o) => { let ms = 0;
+    try { const p = new URL(u, location.href).pathname; ms = (JSON.parse(sessionStorage.getItem("ritardi") || "null") || {})[p] || 0; } catch (e) {}
+    return ms ? new Promise(ok => setTimeout(ok, ms)).then(() => vera(u, o)) : vera(u, o); }; })()"""
+
+
+def server_con_memoria(web, iniziale):
+    """La scelta della giornata tenuta in memoria come farebbe il server: la spunta e `era_consigliata` restano finché gli 11 sono
+    gli stessi. `mem["oggi"]`: un'altra risposta di /api/oggi; `mem["rifiuto"]`: (stato, corpo) con cui rifiutare un salvataggio."""
+    mem = {"scelta": iniziale, "oggi": None, "rifiuto": None}
+    js = "application/json"
+
+    def scelta(route):
+        if route.request.method == "DELETE":
+            mem["scelta"] = None
+            return route.fulfill(status=200, content_type=js, body='{"ok": true}')
+        return route.fulfill(status=200, content_type=js, body=json.dumps(mem["scelta"]))
+
+    def valuta(route):
+        corpo = json.loads(route.request.post_data)
+        if corpo.get("salva") and mem["rifiuto"]:
+            return route.fulfill(status=mem["rifiuto"][0], content_type=js, body=json.dumps(mem["rifiuto"][1]))
+        if corpo.get("salva"):
+            prima = mem["scelta"] or {}
+            stessi = sorted(prima.get("titolari") or []) == sorted(corpo["titolari"])
+            nuova = {"titolari": corpo["titolari"], "modulo": "4-3-3", "salvata": "2026-10-27T15:10:00", "tipo": "manuale"}
+            if stessi and prima.get("era_consigliata"):
+                nuova["era_consigliata"] = True
+            if corpo.get("messa") is True or (corpo.get("messa") is None and stessi and prima.get("messa")):
+                nuova.update(messa=True, messa_il="2026-10-27T15:10:00")
+            mem["scelta"] = nuova
+        route.fulfill(status=200, content_type=js, body=json.dumps(web.registrata("/api/formazione/valuta")))
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/scelta", scelta)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione/valuta", valuta)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/oggi",
+                     lambda r: r.fulfill(status=200, content_type=js, body=json.dumps(mem["oggi"] or web.registrata("/api/oggi"))))
+    return mem
+
+
+def _ritardi(web, ritardi: dict) -> None:
+    web.pagina.evaluate("(r) => sessionStorage.setItem('ritardi', JSON.stringify(r))", ritardi)
+
+
+def _aspetta(locatore, **cosa):
+    """Attese di Playwright su un elemento: `attivo=True`, `testo="…"`."""
+    from playwright.sync_api import expect
+    if "attivo" in cosa:
+        (expect(locatore).to_be_enabled if cosa["attivo"] else expect(locatore).to_be_disabled)(timeout=10000)
+    if "testo" in cosa:
+        expect(locatore).to_contain_text(cosa["testo"], timeout=10000)
+
+
+def _altro_modulo(web):
+    f = web.registrata("/api/formazione")
+    return next(m for m in f["moduli"] if m["modulo"] != f["modulo"])
+
+
+def _ha_il_fuoco(locatore) -> bool:
+    return locatore.evaluate("e => e === document.activeElement")
+
+
+def test_la_copia_mostrata_subito_si_legge_ma_non_si_cambia_finche_non_arrivano_i_dati(web):
+    """All'apertura compare subito la copia tenuta sul telefono. Un tocco lì salvava sul server, ma i dati nuovi in arrivo
+    ridisegnavano la pagina senza il cambio: la copia è di sola lettura, con i comandi al loro posto ma spenti."""
+    solo(web, "prima")
+    web.pagina.add_init_script(RITARDA)
+    mem = server_con_memoria(web, None)
+    web.apri("/")
+    assert stato(web) == "È la consigliata."
+    mem["oggi"] = {**web.registrata("/api/oggi"), "ore_mancanti": web.registrata("/api/oggi")["ore_mancanti"] - 0.1}   # passano sei minuti
+    _ritardi(web, {"/api/formazione": 1500})
+    scritte = scritture(web)
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="commit")
+    web.pagina.wait_for_selector("#campo-formazione")
+    menu, casella = principale(web).get_by_label("Modulo"), principale(web).get_by_role("checkbox", name="L'ho messa")
+    assert menu.is_visible() and casella.is_visible(), "i comandi restano al loro posto"
+    assert menu.is_disabled() and casella.is_disabled(), "sulla copia i comandi che scrivono sono spenti"
+    campo(web).nth(3).click()                                          # la scheda si apre, ma da lì non si sostituisce
+    assert scheda(web).get_by_role("button", name="Sostituisci").is_disabled()
+    web.pagina.keyboard.press("Escape")
+    _aspetta(menu, attivo=True)                                        # arrivano i dati nuovi
+    assert principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled() and not scritte
+    altro = _altro_modulo(web)
+    _ritardi(web, {})
+    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    web.aspetta()
+    assert stato(web).startswith("L'hai cambiata tu") and sorted(mem["scelta"]["titolari"]) == sorted(altro["titolari"])
+
+
+def test_un_salvataggio_che_torna_dopo_che_la_schermata_si_e_ridisegnata_si_rilegge(web):
+    """Mai una scelta salvata che la pagina non mostra: se la risposta arriva quando la schermata è già stata ridisegnata (qui
+    un tocco sulla scheda «Formazione» a salvataggio in volo), si rilegge dal server."""
+    solo(web, "prima")
+    web.pagina.add_init_script(RITARDA)
+    mem = server_con_memoria(web, None)
+    web.apri("/")
+    altro = _altro_modulo(web)
+    _ritardi(web, {"/api/formazione/valuta": 1500})
+    lette = web.richieste.count("/api/formazione")
+    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Formazione").click()
+    _aspetta(principale(web).locator("#stato-scelta"), testo="L'hai cambiata tu")
+    web.aspetta()
+    assert sorted(mem["scelta"]["titolari"]) == sorted(altro["titolari"])
+    assert principale(web).get_by_label("Modulo").input_value() == altro["modulo"]
+    assert web.richieste.count("/api/formazione") >= lette + 2, "la schermata non è stata riletta dopo il salvataggio"
+    assert not web.errori_mostrati() and not web.errori_console
+
+
+def test_togliere_la_spunta_non_cancella_una_scelta_salvata_altrove(web):
+    """Gli 11 salvati (per esempio dall'iPhone) sono quelli della consigliata: mettere e togliere la spunta non cancella la
+    scelta. Una scelta salvata non cambia mai da sola: si toglie solo con «Torna alla consigliata»."""
+    solo(web, "prima")
+    f = web.registrata("/api/formazione")
+    c = next(m for m in f["moduli"] if m["modulo"] == f["modulo"])
+    mem = server_con_memoria(web, {"titolari": c["titolari"], "modulo": c["modulo"], "salvata": "2026-10-27T09:00:00", "tipo": "manuale",
+                                   "era_consigliata": True})
+    web.apri("/")
+    assert stato(web) == "È la consigliata."
+    scritte = scritture(web)
+    casella = principale(web).get_by_role("checkbox", name="L'ho messa")
+    casella.check()
+    web.aspetta()
+    assert mem["scelta"]["messa"] is True
+    principale(web).get_by_role("checkbox", name="L'ho messa").uncheck()
+    web.aspetta()
+    assert mem["scelta"] and sorted(mem["scelta"]["titolari"]) == sorted(c["titolari"]) and "messa" not in mem["scelta"]
+    assert mem["scelta"].get("era_consigliata") is True
+    assert [(m, p, corpo["messa"]) for m, p, corpo in scritte] == [("POST", "/api/formazione/valuta", True), ("POST", "/api/formazione/valuta", False)]
+    assert not principale(web).get_by_role("checkbox", name="L'ho messa").is_checked() and stato(web) == "È la consigliata."
+
+
+@pytest.mark.parametrize("rotta", ["/api/scelta", "/api/formazione/valuta"])
+def test_se_la_scelta_salvata_non_si_legge_la_pagina_lo_dice_e_non_fa_cambiare_niente(web, rotta):
+    """La scelta (o i suoi punti) non arriva: prima la pagina mostrava la consigliata con i comandi attivi, e un cambio di modulo
+    sovrascriveva la scelta non letta. Ora c'è un errore con «Riprova» e i comandi che scrivono sono spenti."""
+    solo(web, "prima")
+    guasto = {"acceso": True}
+
+    def rompi(route):
+        if guasto["acceso"]:
+            return route.fulfill(status=500, content_type="application/json", body='{"detail": "Errore interno"}')
+        route.fallback()
+
+    web.pagina.route(lambda u: urlsplit(u).path == rotta, rompi)
+    web.apri("/")                                                     # nello scenario registrato c'è una scelta fatta a mano
+    assert campo(web).count() == 11 and web.errori_mostrati(), "manca l'errore che dice che la scelta non è stata letta"
+    assert principale(web).locator("#stato-scelta").count() == 0       # niente «È la consigliata.»: non si sa
+    assert principale(web).get_by_label("Modulo").is_disabled()
+    assert principale(web).get_by_role("checkbox", name="L'ho messa").is_disabled()
+    assert principale(web).get_by_role("button", name="Copia per l'app della lega").is_disabled()   # non si copia una formazione che forse non è la tua
+    scritte = scritture(web)
+    campo(web).nth(3).click()
+    assert scheda(web).get_by_role("button", name="Sostituisci").is_disabled()
+    web.pagina.keyboard.press("Escape")
+    assert not scritte
+    guasto["acceso"] = False
+    tocca(web, principale(web).get_by_role("button", name="Riprova"))
+    assert stato(web).startswith("L'hai cambiata tu") and not web.errori_mostrati()
+    assert principale(web).get_by_label("Modulo").is_enabled()
+
+
+@pytest.mark.parametrize("rifiuto, frase", [
+    (None, "Non riesco a collegarmi"),
+    ((400, {"detail": "La formazione non è valida: controlla i titolari.", "codice": "formazione_non_valida"}), "La formazione non è valida"),
+])
+def test_un_salvataggio_non_riuscito_lascia_la_formazione_com_era_e_lo_dice(web, rifiuto, frase):
+    """Rete caduta o rifiuto del server su una sostituzione: un avviso dice cosa è successo e in pagina resta ciò che è salvato."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    web.apri("/")
+    prima = nomi_sul_campo(web)
+    if rifiuto:
+        mem["rifiuto"] = rifiuto
+    else:
+        web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione/valuta", lambda r: r.abort())
+    tocca(web, campo(web).nth(3))
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    tocca(web, scheda(web).get_by_role("listitem").first.get_by_role("button"))
+    avviso = web.pagina.get_by_role("status").filter(has_text=frase)
+    assert avviso.count() == 1 and avviso.first.is_visible()
+    assert nomi_sul_campo(web) == prima and stato(web) == "È la consigliata." and mem["scelta"] is None
+    assert principale(web).get_by_label("Modulo").input_value() == web.registrata("/api/formazione")["modulo"]
+    assert not web.errori_mostrati()
+
+
+def test_se_la_scelta_e_cambiata_su_un_altro_dispositivo_la_pagina_lo_dice_e_la_rilegge(web):
+    """412: nel frattempo un altro dispositivo ha salvato una formazione diversa. Il cambio non si fa, un avviso lo dice e la
+    pagina si ricarica con quella che c'è sul server."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    web.apri("/")
+    altro = _altro_modulo(web)
+    mem["rifiuto"] = (412, {"detail": "Questi dati sono stati cambiati da un altro dispositivo."})
+    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    avviso = web.pagina.get_by_role("status").filter(has_text="cambiati da un altro dispositivo")
+    _aspetta(avviso.first, testo="cambiati da un altro dispositivo")
+    mem["rifiuto"] = None
+    mem["scelta"] = {"titolari": altro["titolari"], "modulo": altro["modulo"], "salvata": "2026-10-27T15:09:00", "tipo": "manuale"}   # quella dell'altro
+    _aspetta(principale(web).locator("#stato-scelta"), testo="L'hai cambiata tu")
+    assert principale(web).get_by_label("Modulo").input_value() == altro["modulo"]
+
+
+# ---------------------------------------------------------------- tastiera: dopo un comando il fuoco non si perde
+def test_da_tastiera_il_menu_del_modulo_tiene_il_fuoco_dopo_ogni_scelta(web):
+    solo(web, "prima")
+    server_con_memoria(web, None)
+    web.apri("/", larghezza=PC)
+    scritte = scritture(web)
+    principale(web).get_by_label("Modulo").focus()
+    web.pagina.keyboard.press("ArrowDown")
+    web.aspetta()
+    assert len(scritte) == 1 and _ha_il_fuoco(principale(web).get_by_label("Modulo")), "dopo la prima freccia il fuoco non è sul menu"
+    primo = principale(web).get_by_label("Modulo").input_value()
+    web.pagina.keyboard.press("ArrowDown")
+    web.aspetta()
+    assert len(scritte) == 2 and principale(web).get_by_label("Modulo").input_value() != primo
+    assert _ha_il_fuoco(principale(web).get_by_label("Modulo"))
+
+
+def test_da_tastiera_spunta_torna_alla_consigliata_e_sostituisci_non_lasciano_il_fuoco_nel_vuoto(web):
+    solo(web, "prima")
+    server_con_memoria(web, None)
+    web.apri("/")
+    nel_vuoto = "() => !document.activeElement || document.activeElement === document.body"
+    casella = principale(web).get_by_role("checkbox", name="L'ho messa")
+    casella.focus()
+    web.pagina.keyboard.press("Space")
+    web.aspetta()
+    assert _ha_il_fuoco(principale(web).get_by_role("checkbox", name="L'ho messa")) and principale(web).get_by_role("checkbox", name="L'ho messa").is_checked()
+    # una sostituzione, tutta da tastiera: dopo, il fuoco è sul campo, su chi è entrato
+    prima = nomi_sul_campo(web)
+    campo(web).nth(3).focus()
+    web.pagina.keyboard.press("Enter")
+    web.aspetta()
+    scheda(web).get_by_role("button", name="Sostituisci").focus()
+    web.pagina.keyboard.press("Enter")
+    web.aspetta()
+    scheda(web).get_by_role("listitem").first.get_by_role("button").focus()
+    web.pagina.keyboard.press("Enter")
+    web.aspetta()
+    entrato = (set(nomi_sul_campo(web)) - set(prima)).pop()
+    assert not web.pagina.evaluate(nel_vuoto)
+    assert entrato in web.pagina.evaluate("() => document.activeElement.innerText") and web.pagina.evaluate("() => !!document.activeElement.closest('#campo-formazione')")
+    # «Torna alla consigliata» sparisce dopo l'uso: il fuoco passa al comando accanto, non al vuoto
+    torna = principale(web).get_by_role("button", name="Torna alla consigliata")
+    torna.focus()
+    web.pagina.keyboard.press("Enter")
+    web.aspetta()
+    assert stato(web) == "È la consigliata." and not web.pagina.evaluate(nel_vuoto)
+    assert web.pagina.evaluate("() => !!document.activeElement.closest('main') && ['BUTTON', 'SELECT', 'INPUT'].includes(document.activeElement.tagName)")
+
+
+# ---------------------------------------------------------------- le decisioni: prima quelle con un'azione vera
+def test_il_reparto_scoperto_non_prende_tutti_e_due_i_posti_delle_decisioni(web):
+    solo(web, "prima")
+    scoperto = lambda ruolo, testo: {"id": f"copertura:{ruolo}", "tipo": "copertura", "priorita": 1, "testo": testo,   # noqa: E731
+                                     "azione": "Cerca un rimpiazzo", "destinazione": {"scheda": "mercato", "sezione": None}}
+    _con_da_fare(web, [
+        scoperto("P", "Non hai nessun portiere disponibile per questa giornata."),
+        scoperto("D", "In difesa hai solo 2 giocatori disponibili."),
+        {"id": "rose-vecchie", "tipo": "rose", "testo": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale.", "priorita": 2,
+         "azione": "Aggiorna le rose", "destinazione": {"scheda": "lega", "sezione": "rose"}},
+    ])
+    righe = [" ".join(r.split()) for r in _decisioni(web).all_inner_texts()]
+    assert len(righe) == 2, righe
+    assert righe[0].endswith("Aggiorna le rose"), righe                # prima la riga con un'azione vera
+    assert "nessun portiere" in righe[1] and righe[1].endswith("Vedi la rosa")   # poi una sola riga sul reparto scoperto
+    assert "In difesa" not in web.testo_principale()

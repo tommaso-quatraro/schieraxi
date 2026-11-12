@@ -67,13 +67,19 @@ def test_le_decisioni_sono_solo_le_righe_con_un_azione_vera():
         assert una(resta) == [resta["id"]]
 
 
-def test_le_decisioni_sono_al_massimo_due_nell_ordine_del_server():
-    voci = [_voce("dubbio:1", "dubbio", "formazione"),                                        # non chiede niente: non conta
-            _voce("copertura:P", "copertura", "mercato"), _voce("rose-vecchie", "rose", "lega", "rose"),
-            _voce("dati-vecchi", "server", "impostazioni", "avanzate")]
-    assert _decisioni(voci) == ["copertura:P", "rose-vecchie"]
+def test_le_decisioni_sono_al_massimo_due_e_il_reparto_scoperto_non_nasconde_le_altre():
+    """Prima le righe con un'azione vera, nell'ordine del server; il reparto scoperto («Vedi la rosa») prende al massimo un posto,
+    e solo se ne resta uno: due righe di copertura nascondevano «rose da aggiornare» o un cambio da fare."""
+    copertura_p, copertura_d = _voce("copertura:P", "copertura", "mercato"), _voce("copertura:D", "copertura", "mercato")
+    rose, dati = _voce("rose-vecchie", "rose", "lega", "rose"), _voce("dati-vecchi", "server", "impostazioni", "avanzate")
+    incerto = _voce("dubbio:1", "dubbio", "formazione")                                       # non chiede niente: non conta
+    assert _decisioni([incerto, copertura_p, copertura_d, rose]) == ["rose-vecchie", "copertura:P"]
+    assert _decisioni([copertura_p, copertura_d]) == ["copertura:P"]
+    assert _decisioni([copertura_p, rose, dati]) == ["rose-vecchie", "dati-vecchi"]
+    assert _decisioni([copertura_p, rose]) == ["rose-vecchie", "copertura:P"]
     # `vale`: la Formazione toglie quelle che con la formazione in pagina non hanno più senso, e allora sale la successiva
-    assert _con_dafare(voci, "dfDecisioni(voci, v => v.id !== 'copertura:P').map(v => v.id)") == ["rose-vecchie", "dati-vecchi"]
+    voci = [incerto, copertura_p, rose, dati]
+    assert _con_dafare(voci, "dfDecisioni(voci, v => v.id !== 'rose-vecchie').map(v => v.id)") == ["dati-vecchi", "copertura:P"]
 
 
 def test_il_pulsante_di_una_decisione_dice_dove_porta():
@@ -82,9 +88,14 @@ def test_il_pulsante_di_una_decisione_dice_dove_porta():
     voci = [{**_voce("copertura:P", "copertura", "mercato"), "azione": "Cerca un rimpiazzo"}, _voce("consigliata:9", "formazione", "formazione"),
             {**_voce("dubbio:1", "dubbio", "formazione"), "azione": "Sostituisci"}]
     righe = _con_dafare(voci, "voci.map((v, i) => dfRiga(v, i, i === 2 ? '+0,9 punti.' : ''))")
-    pulsanti = [re.search(r'data-df="(\d+)">([^<]*)<', r).groups() for r in righe]
+    pulsanti = [re.search(r'data-df="(\d+)"[^>]*>([^<]*)<', r).groups() for r in righe]
     assert pulsanti == [("0", "lega.vedi_rosa"), ("1", "formazione.usa_consigliata"), ("2", "Sostituisci")]
     assert "+0,9 punti." in righe[2] and "punti" not in righe[0]
+    # sulla copia tenuta sul telefono i pulsanti che scrivono sul server sono spenti (restano al loro posto); gli altri no
+    cambio = {**_voce("dubbio:2", "dubbio", "formazione", giocatore=1), "alternativa": {"id": 2, "nome": "Prova"}}
+    spente = _con_dafare([voci[0], voci[1], cambio], "voci.map((v, i) => dfRiga(v, i, '', true))")
+    assert ["disabled" in r for r in spente] == [False, True, True]
+    assert all("disabled" not in r for r in righe) and ["data-scrive" in r for r in righe] == [False, True, False]
 
 
 def test_le_decisioni_tengono_una_riga_senza_destinazione_e_scartano_quelle_senza_testo():

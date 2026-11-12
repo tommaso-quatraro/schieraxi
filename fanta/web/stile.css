@@ -413,6 +413,11 @@ details[open] > summary { margin-bottom: 8px; }
 .stato-scelta .azione-testo { margin-left: auto; margin-right: -8px; }      /* a destra, sul filo della colonna, anche quando va a capo sotto la frase */
 .azioni-formazione { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0 16px; }
 .azioni-formazione .bottone { min-height: 44px; padding: 8px 14px; }
+/* sulla copia tenuta sul telefono (o con la scelta non letta) i comandi che scrivono restano al loro posto, spenti */
+.menu-scelta:has(select:disabled), .spunta:has(input:disabled) { opacity: .55; cursor: default; }
+.df-azione:disabled, #torna-consigliata:disabled { opacity: .55; cursor: default; }
+.scelta-non-letta { margin: 10px 0 0; }
+.scelta-non-letta .pulsanti { margin-top: 8px; }
 .spunta { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: var(--t-corpo); font-weight: 600; cursor: pointer; }
 .fz-campo > .campo-fermo > .attenzione { margin: 0 0 12px; }
 /* a formazione chiusa sotto il campo non ci sono pulsanti: uno spazio prima della panchina (al telefono, in una colonna) */

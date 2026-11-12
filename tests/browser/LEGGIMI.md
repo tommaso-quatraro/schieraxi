@@ -92,7 +92,13 @@ prima della scadenza:
   nella scheda; un account senza rose vede il benvenuto senza richieste fallite;
 - salvataggio automatico: dopo una sostituzione o un altro modulo lo stato dice «L'hai cambiata tu» e la scelta è
   salvata; «Torna alla consigliata» la toglie; la spunta «L'ho messa» resta dopo una ricarica;
-- al massimo due decisioni, solo quelle con un'azione; «Usa la consigliata» prende quella nuova;
+- ciò che si salva è ciò che si vede: la copia mostrata subito all'apertura è di sola lettura finché non arrivano i dati
+  nuovi; un salvataggio che torna a schermata già ridisegnata fa rileggere; togliere la spunta non cancella una scelta
+  salvata altrove; se la scelta non si legge c'è un errore con «Riprova» e niente si può cambiare; rete caduta, rifiuto
+  del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono;
+- tastiera: dopo il menu del modulo, la spunta, «Sostituisci» e «Torna alla consigliata» il fuoco resta su un comando;
+- al massimo due decisioni, solo quelle con un'azione, e il reparto scoperto non ne prende più di una; «Usa la
+  consigliata» prende quella nuova;
 - quando il cambio non si può fare: chi gioca una partita già cominciata non ha «Sostituisci» e la scheda dice perché;
   un ritorno alla consigliata rifiutato lascia la formazione com'è e lo dice un avviso (`role="status"`); se la scadenza
   passa con la pagina aperta la schermata si rilegge;
