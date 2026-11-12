@@ -70,6 +70,9 @@ final class Navigazione: ObservableObject {
     @Published var guidaAperta = false
     /// Una pagina di Squadra o di Altro da aprire (da un indirizzo `schieraxi://` o da Oggi): la radice la apre nella scheda giusta.
     @Published var paginaDaAprire: PaginaLega?
+    /// È arrivato un file o un'immagine da un'altra app (Condividi, «Apri con SchieraXI»): all'apertura la configurazione guidata
+    /// non parte da sola, per non coprire l'importazione o la scelta dello stemma (come l'arrivo da Condividi della web).
+    private(set) var apertaDaFuori = false
 
     init() {
         if !Demo.attivo { sezione = Self.sezioneDiAvvio() }
@@ -85,6 +88,7 @@ final class Navigazione: ObservableObject {
     /// Un file arrivato da fuori: si accetta solo se l'estensione è di quelle delle rose (il controllo vero è all'importazione).
     func apriFile(_ url: URL) {
         guard url.isFileURL else { return }
+        apertaDaFuori = true
         if Self.eImmagine(url) {
             immagineRicevuta = ImmagineRicevuta(url: url)
         } else {

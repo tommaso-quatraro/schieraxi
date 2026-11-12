@@ -2,7 +2,8 @@ import SwiftUI
 
 /// La configurazione guidata («Primo avvio», come si chiama sulla web): un passo alla volta, tutti saltabili, con un riepilogo
 /// alla fine. I passi sono quelli dell'iPhone (la web ne ha altri): titolo, «Salta» e il riepilogo hanno le parole della web.
-/// Parte da sola se la lega non ha ancora le rose (e dalla lista «Da fare» di Oggi). Salta i passi già fatti.
+/// Parte da sola se la lega non ha ancora le rose e non è mai stata iniziata, o si riprende se era stata lasciata prima delle rose
+/// (anche sulla web), come la web (#595); si apre anche dalla lista «Da fare» di Oggi. Salta i passi già fatti.
 struct ConfigurazioneGuidataView: View {
     @StateObject private var vm: ConfigurazioneGuidataViewModel
     /// Cosa fare quando un passo porta in un'altra schermata (la guida si chiude prima).
@@ -62,6 +63,8 @@ struct ConfigurazioneGuidataView: View {
             .task { await vm.carica() }
         }
         .tint(Color.verde)
+        // trascinata giù (o un tocco fuori sull'iPad) senza «Più tardi»: vale come «Più tardi», come la ✕ della web
+        .onDisappear { Task { await vm.chiusa() } }
     }
 
     // MARK: un passo

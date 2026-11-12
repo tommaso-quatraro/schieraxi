@@ -47,7 +47,6 @@ lega.https
 
 # Aggiorna le rose
 lega.esporta_rose_excel
-lega.scegli_file_excel
 lega.non_hai_file
 lega.incolla_qui_testo
 lega.togli_squadre_che

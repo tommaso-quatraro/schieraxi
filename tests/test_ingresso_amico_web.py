@@ -104,6 +104,17 @@ def test_il_pulsante_del_file_dice_excel_o_csv():
     assert ".xlsx" in accetta and ".csv" in accetta
 
 
+def test_aggiorna_le_rose_ha_lo_stesso_pulsante_del_primo_avvio():
+    """Squadra › Aggiorna le rose (#594): anche lì il selettore accetta Excel, CSV e testo, e il pulsante lo dice con le parole del
+    primo avvio (stessa chiave del catalogo, la usa anche l'iPhone in Importa le rose)."""
+    etichetta = re.search(r'<label class="bottone" for="file-rose">\$\{t\("([\w.]+)"\)\}</label>', APP)
+    assert etichetta, "pulsante di #file-rose non trovato in app.js"
+    assert etichetta.group(1) == "pav.scegli_file"
+    assert _node(TESTI + f"\nconsole.log(JSON.stringify(t({json.dumps(etichetta.group(1))})));") == "Scegli il file (Excel o CSV)"
+    accetta = re.search(r'<input id="file-rose" type="file" accept="([^"]*)"', APP).group(1)
+    assert ".xlsx" in accetta and ".csv" in accetta
+
+
 # ---- 4. riaperta dalla Home con il primo avvio lasciato a metà: riprende dal passo dove era ------------------------------
 # Si riprende da solo SOLO nel caso dell'issue: l'amico apre l'app (per esempio dalla Home, dopo averla installata) prima di
 # caricare le rose. Chi ha già le rose, chi ha chiuso la guida (con «Vai a Oggi» o con la ✕) o ha saltato le rose non la rivede da sola.

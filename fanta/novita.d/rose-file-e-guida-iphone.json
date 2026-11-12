@@ -1,0 +1,11 @@
+{
+  "titolo": "Aggiorna le rose e configurazione guidata più chiare",
+  "voci": [
+    "Web, iPhone e iPad: in Aggiorna le rose il pulsante dice «Scegli il file (Excel o CSV)», come nel primo avvio, perché va bene anche un file CSV.",
+    "iPhone e iPad: la configurazione guidata lasciata prima delle rose, anche nel browser, riprende da «Carica le rose» alla prossima apertura. Chiusa con «Più tardi» o trascinata giù non torna da sola."
+  ],
+  "tecnico": [
+    "Una chiave sola per il pulsante del file: pav.scegli_file in app.js (#file-rose) e in ImportaRoseView (Catalogo.Pav.scegliFile); tolta lega.scegli_file_excel (#594).",
+    "iPhone: PrimoAvvioLogica.daRiprendere con la regola di paDaRiprendere della web; devePartire non apre la guida se l'app si è aperta con un file o un'immagine da un'altra app (Navigazione.apertaDaFuori, come !condivisa della web); il foglio chiuso trascinandolo giù chiama ConfigurazioneGuidataViewModel.chiusa, che vale come «Più tardi» (#595)."
+  ]
+}

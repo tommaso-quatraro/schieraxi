@@ -3669,7 +3669,7 @@ async function vistaLega(ambito = "altro") {
   const corpi = {
     importa: () => `<div class="carta">
       <div class="debole piccolo">${t("lega.esporta_rose_excel")}</div>
-      <div class="pulsanti"><label class="bottone" for="file-rose">${t("lega.scegli_file_excel")}</label></div>
+      <div class="pulsanti"><label class="bottone" for="file-rose">${t("pav.scegli_file")}</label></div>
       <details style="margin-top:14px"><summary style="font-size:var(--t-corpo)">${t("lega.con_tocco_dal")}</summary>
         <div class="debole piccolo">${t("lega.una_volta_sola")}</div>
         <ol class="guida">
