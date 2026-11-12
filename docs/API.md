@@ -3,7 +3,7 @@
 Questo documento descrive le rotte HTTP che usano i client: la web app (`fanta/web/`), l'app iOS (`ios/`) e il widget iOS.
 Descrive solo il contratto, cioè cosa mandare e cosa si riceve. Il codice è la fonte di verità: le rotte stanno in `fanta/server.py` (rotte generali) e `fanta/rotte_account.py` (account e amministrazione).
 
-Per cambiare un'API, leggi prima la regola in `MAPPA.md` («Contratti delle API»): non si rompono i campi esistenti, si possono aggiungere.
+Per cambiare un'API, leggi prima la regola in `docs/RIFERIMENTO.md` («Contratti delle API»): non si rompono i campi esistenti, si possono aggiungere.
 
 Sigle usate qui:
 
@@ -464,7 +464,7 @@ Nessun client deve contenere indirizzi del server, chiavi o password nel codice.
 # API di SchieraXI: contratti per i client (web, iOS, Android)
 
 Le regole generali (intestazione `X-Fanta: 1` sulle scritture, errori `{"detail": "..."}`, 202 «sto calcolando», 429, ETag) e l'elenco di tutte le rotte
-stanno in `MAPPA.md`, sezione «Contratti delle API». Qui i contratti nuovi o più delicati, uno per sezione. Regola per tutti i client:
+stanno in `docs/RIFERIMENTO.md`, sezione «Contratti delle API». Qui i contratti nuovi o più delicati, uno per sezione. Regola per tutti i client:
 si possono aggiungere campi, non togliere né cambiare quelli esistenti; un client ignora i campi che non conosce.
 
 ## GET /api/avatar: tratti dei volti, contratto versione 3

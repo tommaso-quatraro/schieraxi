@@ -112,3 +112,13 @@ Indirizzo del server (con `--remoto`), codice d'invito, password e codici di rec
 file. Restano solo in memoria durante la corsa; ogni testo scritto (dettagli, axe, registro del server) passa prima da un filtro
 che li sostituisce con «nascosto», e nelle foto i campi che li mostrano sono coperti. Le password sono a caso
 (`secrets.token_urlsafe(18)`), mai credenziali vere.
+
+## La misura sugli amici veri
+Lo script qui sopra trova gli ostacoli; la misura vera si fa sul server, in sola lettura:
+`python -m fanta ingresso --dal <ISO con fuso> [--al <ISO con fuso>]`. Per ogni account creato nel periodo dice quanti minuti
+sono passati dalla creazione alla lega caricata (rose vere, non le squadre di esempio, e passo «tempi» del primo avvio fatto).
+Una riga per account, senza nomi. Uscita 0 se tutti sono dentro in meno di 10 minuti, 1 se no, 2 se nel periodo non c'è
+nessun account, 3 se la misura non si può fare.
+- La soglia «meno di 10 minuti» è la somma dell'esportazione delle rose dall'app della lega e del percorso dal link d'invito
+  alla Formazione. Il comando vede solo la seconda parte: l'esportazione si cronometra a parte e si somma a mano.
+- Se l'amico rifà il primo avvio o reimporta le rose, il tempo risulta più lungo del vero (la misura sbaglia a sfavore).
