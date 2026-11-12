@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.471",
+    "data": "2026-11-12T15:12:05",
+    "titolo": "Aggiornamenti raggruppati: meno interruzioni",
+    "voci": [
+      "Le versioni nuove dell'app si possono installare insieme, al massimo una volta all'ora: meno momenti in cui l'app si riavvia e meno aggiornamenti della web installata sul telefono.",
+      "Le correzioni urgenti arrivano subito, senza aspettare."
+    ],
+    "tecnico": [
+      "aggiorna-app.sh: fra due installazioni riuscite almeno un intervallo (predefinito 60 minuti; SCHIERAXI_INTERVALLO_MINUTI o ~/.config/schieraxi/intervallo-minuti, 0 = come prima), poi l'ultima versione in un colpo solo. Subito: versione urgente, installazione forzata, ambiente di prova, prima volta, orologio indietro.",
+      "Job rilascia: riga «Rilascio: urgente» nel commit di versione se una PR delle novità in attesa, o una issue che chiude, ha l'etichetta P1 o urgente (assegna_versione.py --pr-e-issue-in-attesa e --urgente); permessi pull-requests: read e issues: read.",
+      "aggiorna-app.sh aspetta il commit di versione se in main c'è ancora una novità senza numero (al massimo mezz'ora dal primo giro che aspetta, poi installa con un avviso; l'installazione forzata non aspetta); una versione rifiutata con commit di versione sotto lo dice nell'avviso.",
+      "giro.py dice in quanto arriva in produzione una PR unita (#635)."
+    ]
+  },
+  {
     "versione": "1.470",
     "data": "2026-11-12T13:47:04",
     "titolo": "Fantavoto atteso: partite senza statistiche, rigoristi e portieri",
