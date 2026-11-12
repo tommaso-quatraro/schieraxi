@@ -122,7 +122,7 @@
     },
     {
       "cosa": "Sezioni e menu",
-      "forma": "Nomi e ordine di `VOCI_LEGA` (`fanta/web/app.js`). Squadra: Squadre e rose, Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Aggiorna le rose. Altro: Scambi, Diario delle giornate, Regole, Movimenti e storico, Crediti delle squadre, Nuova stagione, Novità.",
+      "forma": "Dal 12/11/2026 (#618) la barra della web ha Formazione, Giornate, Impostazioni (`fanta/web/index.html`). Impostazioni, in quest'ordine: Avvisi, La mia lega (Aggiorna le rose, La mia squadra, Regole e scadenza, Le altre squadre), Il tuo account, Aspetto, Informazioni, Gestione (`fanta/web/impostazioni.js`). Prima: le schede Squadra e Altro con le voci di `VOCI_LEGA`.",
       "mai": "voci in un altro ordine, voci in più su un lato solo"
     },
     {

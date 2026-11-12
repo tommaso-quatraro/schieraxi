@@ -1,5 +1,79 @@
 [
   {
+    "versione": "1.484",
+    "data": "2026-11-12T22:14:46",
+    "titolo": "Regolamento incollato: le frasi con «non» si leggono per il verso giusto",
+    "voci": [
+      "Regole, «Riconosci le regole» sul regolamento incollato: frasi come «Cambio modulo: non è consentito», «Modificatore difesa: non è attivo» o «Il cambio di modulo non è mai ammesso» ora propongono «no» e non più «sì». Anche «disabilitato» e «OFF» valgono «no».",
+      "Una frase che dice quando scatta il cambio modulo («avviene quando non è possibile sostituire il titolare nel ruolo») resta «sì».",
+      "Una riga che toglie un modulo («Non è ammesso il modulo 5-4-1», «no 5-4-1») non lo mette più fra i moduli ammessi: resta fra le righe non riconosciute, da controllare. «Panchina non libera» o «La panchina non è fissa» non propongono più un tipo di panchina sbagliato.",
+      "Quando una riga dice insieme «sì» e «no» per la stessa regola, l'app non propone niente e lascia la scelta a te."
+    ],
+    "tecnico": [
+      "regole_testo._negate: un «non» nega le parole di stato che seguono con in mezzo solo parole di passaggio (PASSAGGIO: «è», «sono», «mai», «si», «in nessun caso»...), in tempo lineare.",
+      "regole_testo._si_no (cambio modulo, modificatore attivo): decide sul pezzo della riga, fra virgole, punti, punti e virgola e parentesi, che nomina la regola; se dice solo il nome decidono i pezzi fatti solo di un sì o di un no («, non attivo»), altrimenti il nome da solo vale sì come prima. Tutte le parole di stato negate: no; negate e non negate, pezzi in disaccordo o un «non» senza parola di stato: nessuna proposta.",
+      "regole_testo._senza_condizione: da «se», «quando», «qualora», «purché», «in caso»... alla fine del pezzo c'è una condizione; un suo «non», a qualsiasi distanza, non conta e la regola si legge da ciò che viene prima. Nessuna proposta se c'è un «non» prima della condizione (un no che vale solo in quel caso: «non si applica se il portiere non gioca»), se la regola sta dentro la condizione («in caso di cambio modulo non ...»), se la condizione ha un «no», o con «se non» usato come «tranne» («non è consentito se non quando...», «vietato se non per infortunio»).",
+      "Parole del no: «OFF», «disabilitato» per cambio modulo e modificatore, «vietato» anche per il modificatore; «non è vietato» (un no negato) non propone niente. Il modificatore si legge solo dal pezzo che nomina insieme modificatore e difesa.",
+      "Moduli: un «non», «no», «salvo», «eccezione», «meno», «senza» nella riga la lascia fra le non riconosciute (prima solo «non (sono) ammess|consent|valid»). Tipo di panchina (regole_testo._tipo_panchina): «non (è|sono mai) vincolata» vale libera; un tipo negato vale solo se la riga afferma l'altro; una riga con tutti e due i tipi, con «no» o con «OFF» non propone niente; «liberamente» non è «libera».",
+      "Client: nessun campo cambia nelle rotte /api/regole/riconosci e /api/onboarding/regole."
+    ]
+  },
+  {
+    "versione": "1.483",
+    "data": "2026-11-12T21:39:43",
+    "titolo": "Rose vere dopo le squadre di esempio, e file delle rose rovinato",
+    "voci": [
+      "Squadra, «Aggiorna le rose»: se prima avevi usato le squadre di esempio, caricando le tue rose le squadre inventate se ne vanno anche senza «Togli le squadre che non sono nel file». Niente più squadra finta proposta come la tua, giocatori «in più squadre» o leghe vere rifiutate perché le squadre sembrano troppe.",
+      "Vale anche se avevi cambiato il nome a una squadra di esempio. Le regole, la formazione salvata e i giocatori seguiti restano come li hai lasciati.",
+      "Se il file delle tue rose si è rovinato, importare di nuovo le rose, come dice il messaggio di errore, ora funziona: l'app tiene le squadre del file nuovo e te lo dice con un avviso."
+    ],
+    "tecnico": [
+      "server._rose_di_prima: anteprima e importazione partono da rose None (come la prima importazione) se le rose salvate sono solo le squadre di esempio (onboarding.e_demo) o se lega.carica dà ValueError (JSON rovinato, forma sbagliata, stagione scritta male). Così lega.da_import non tiene le squadre finte né la loro mia_squadra, niente movimenti registrati, limiti.controlla_rose conta solo le squadre del file.",
+      "File rovinato: _importa lo sposta in rose.json.rovinato (Path.replace) dopo tutti i controlli e prima di lega.salva(copia_di_riserva=True), così rose.json.bak resta la copia buona e un'importazione rifiutata non sposta niente; riga nel registro del server. L'avviso lega.ROSE_ROVINATE è il primo di `avvisi` nella risposta dell'importazione e dell'anteprima (che non scrive niente).",
+      "onboarding.e_demo guarda anche nome_importato (squadra di esempio rinominata): è il controllo unico per creare e togliere la demo, per l'importazione e per misura_ingresso (tolto misura_ingresso._solo_esempio, che faceva lo stesso).",
+      "Scelta: formazione salvata (scelte) e seguiti (osservati) non si toccano all'importazione, a differenza di DELETE /api/onboarding/demo.",
+      "Client: nessun campo cambia; docs/API.md descrive il comportamento."
+    ]
+  },
+  {
+    "versione": "1.482",
+    "data": "2026-11-12T21:05:41",
+    "titolo": "Tre schede: Formazione, Giornate, Impostazioni",
+    "voci": [
+      "Web: la barra ha tre schede, Formazione, Giornate e Impostazioni, più la lente per cercare un giocatore. Le schede Squadra e Altro non ci sono più.",
+      "Impostazioni è una pagina sola: Avvisi, La mia lega, Il tuo account, Aspetto, Informazioni. Gestione c'è solo per chi gestisce il server.",
+      "La mia lega raccoglie ciò che stava in Squadra e in Altro: Aggiorna le rose, La mia squadra con stemma e maglia, Regole e scadenza, Le altre squadre.",
+      "Regole e scadenza: in cima quando si chiude la formazione e da quale giornata parte la lega; poi il regolamento da incollare, che si salva con un tocco dopo aver visto cosa è stato riconosciuto. I singoli valori stanno dietro Modifica i valori.",
+      "Avvisi: un interruttore per questo dispositivo, che appena acceso manda un avviso di prova, e le ore tranquille. Gli altri interruttori degli avvisi non si mostrano più: le scelte di prima restano come sono.",
+      "Per chi gestisce il server, Aggiorna i dati sta in Impostazioni > Gestione, al posto delle frecce in alto.",
+      "I collegamenti salvati di Squadra e Altro aprono la voce nuova."
+    ],
+    "tecnico": [
+      "Web: `VISTE` = formazione, giornate, impostazioni. Le pagine di Impostazioni: `?vista=impostazioni&gruppo=rose|squadra|squadre|regole|account|informazioni|gestione`, la rosa di un'altra squadra con `&rosa=`. `dove()` in `app.js` traduce indirizzi, valori salvati, messaggi del service worker e destinazioni di `da_fare` di prima (`squadra`, `altro`, `lega`, `mercato`, `scambi`, `regole`, `rosa`, gruppi `avanzate`, `aspetto`, `avvisi`). Tolti l'ingranaggio e le frecce della testata.",
+      "Avvisi: la web manda solo `silenzio` (PUT /api/avvisi, campi mandati soltanto) e iscrive o toglie il dispositivo (`/api/push/iscrivi`, `/api/push/disiscrivi`); gli altri campi restano sul server. Nessuna rotta cambiata: l'iPhone non cambia.",
+      "Stato dei dati usa il campo `etichetta` di `aggiornamenti` e `controlli`. Schermata di accesso: gli avvisi in una regione `role=\"status\"`, gli errori con `role=\"alert\"`.",
+      "Frasi del server senza percorso di menu, giuste sulla web e sull'iPhone: «Indica la tua squadra in «La mia squadra»» (consigli.py, gestione.py, server.py) e «Nessuna rosa importata: importale con «Aggiorna le rose»». `fanta/diario.py` dice ancora «Squadra > Squadre e rose»: la sua traduzione resta nel catalogo (`err.indica_prima_squadra_diario`)."
+    ]
+  },
+  {
+    "versione": "1.481",
+    "data": "2026-11-12T20:36:11",
+    "titolo": "Riepilogo della giornata e avvisi: numeri giusti e niente avvisi fuori tempo",
+    "voci": [
+      "Oggi, a giornata finita: il totale compare quando ci sono i voti di tutte le partite, e chi ha la partita rinviata non viene sostituito se la lega aspetta il recupero.",
+      "L'avviso di fine giornata dice lo stesso numero di Oggi e arriva anche per la giornata con una partita rinviata.",
+      "Avvisi: «la formazione è pronta» mai a formazione chiusa; due avvisi di fila restano tutti e due; a telefono spento arrivano anche ore dopo, ma quelli sulla formazione mai dopo la chiusura."
+    ],
+    "tecnico": [
+      "fasi.voti_arrivati: regola unica «ogni squadra con una partita giocata della giornata ha i voti», usata da fasi.blocco_riepilogo (riepilogo null finché manca) e da notifiche.riepilogo (al posto di «almeno 60 righe di voti»).",
+      "fasi.blocco_riepilogo prende le partite dal calendario della giornata e la squadra di ogni giocatore da fasi.squadre_dei_giocatori (riga dei voti della giornata, poi calciatori.squadra_slug): le rose hanno la sigla, calendario e voti il nome lungo.",
+      "notifiche.riepilogo: le giornate candidate le dà _da_riepilogare (rinvii.giornate_chiuse non ancora in `riepilogo`, entro 6 giorni dall'ultima partita giocata, con fasi.voti_arrivati, dalla più recente) e si prova la prima di cui _testo_riepilogo sa fare il testo (una giornata senza formazione nota non ferma le altre); chi aveva una partita fuori dal turno conta con rinvii.voti_lega (_con_la_regola_dei_rinvii), come il Diario.",
+      "avvisi.da_mandare: None se la scadenza della giornata (scadenza(prima_partita)) è passata; restituisce anche `scadenza`. Vale per il giro per utente e per il comando `avviso`.",
+      "push.invia: il campo `tag` del messaggio Web Push è il tag di ntfy più un codice casuale, diverso a ogni invio (il service worker lo passa a showNotification); `url`, `sezione` e `priorita` non cambiano. Tempo di vita (`ttl`): push.TEMPO_DI_VITA = 12 ore, o quanto manca alla scadenza (`vale_per`, nuovo argomento facoltativo di push.invia e notifiche.invia) per promemoria, cambi, cambio pronto, «cambia la formazione», reparto scoperto e «formazione pronta». Prima 1 ora per tutti.",
+      "Client: nessun campo nuovo, tolto o rinominato nelle rotte. Il `tag` del messaggio Web Push lo legge solo fanta/web/sw.js, come tag della notifica: web e iPhone non devono fare niente."
+    ]
+  },
+  {
     "versione": "1.480",
     "data": "2026-11-12T19:32:40",
     "titolo": "Diario e misure: il confronto è con la consigliata che avevi davanti",

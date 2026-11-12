@@ -3,7 +3,7 @@
 // 1) l'anteprima legge il testo o il file SENZA salvare e dice, squadra per squadra, chi è riconosciuto, chi è da controllare (con le
 //    alternative) e chi non è stato trovato; l'utente sceglie i dubbi e la sua squadra;
 // 2) «Conferma e salva» manda lo stesso contenuto con le scelte (`correzioni`), `mia_squadra` e If-Match = l'ETag dell'anteprima.
-// La usano Squadra > Aggiorna le rose (app.js) e il primo avvio (primoavvio.js). Usa api, esc, errore, svuotaCache... di app.js:
+// La usano Impostazioni > Aggiorna le rose (app.js) e il primo avvio (primoavvio.js). Usa api, esc, errore, svuotaCache... di app.js:
 // si chiama solo a pagina pronta.
 
 const AR_TOGLI = "togli", AR_CERCA = "cerca";

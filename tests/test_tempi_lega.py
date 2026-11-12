@@ -84,7 +84,7 @@ def _scena(monkeypatch):
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 10)
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {"modulo": "4-3-3", "punteggio_atteso": 70.0, "titolari": []})
     mandati = []
-    return mandati, lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True
+    return mandati, lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True
 
 
 def test_promemoria_conta_dalla_scadenza_non_dalla_partita(tmp_path, monkeypatch):

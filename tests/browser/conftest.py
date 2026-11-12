@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -39,8 +40,8 @@ RISPOSTE_IN_PIU = {"/api/avatar": {"versione": 3, "tratti": {}}}
 # - mentre una schermata carica, l'area principale (o il suo contenitore del caricamento) ha aria-busy="true" (la web lo
 #   mette dal 12/11/2026, #615; si guardano ancora anche le classi `caricamento` e `scheletro`);
 # - un errore mostrato all'utente ha role="alert" (la web di oggi usa anche la classe `errore`); un avviso normale ha
-#   role="status". Oggi la schermata di accesso mette in role="alert" anche gli avvisi (classe `attenzione`): quelli non
-#   contano come errori.
+#   role="status". Gli avvisi con la classe `attenzione` non contano come errori (fino al 12/11/2026, #618, la schermata di
+#   accesso li metteva in un role="alert").
 AREA_PRINCIPALE = "main, [role=main]"
 TESTO_PRINCIPALE = """(area) => { const m = document.querySelector(area);
   return m ? (m.innerText || '').trim() : ''; }"""
@@ -163,12 +164,22 @@ def server_fase(request, tmp_path_factory):
 @dataclass
 class Web:
     """Una scheda di Chrome sulla web di una fase. Raccoglie da sola gli errori della console (anche quelli del codice) e le
-    richieste fallite (risposta 4xx o 5xx, o richiesta che non arriva): i test li leggono dopo `apri`."""
-    pagina: object
+    richieste fallite (risposta 4xx o 5xx, o richiesta che non arriva): i test li leggono dopo `apri`.
+    La scheda si apre alla prima richiesta di `pagina` (con `apre_scheda`): un test che vale per un'altra fase si salta
+    leggendo solo `fase`, senza aprirla (issue #680: più di metà dei test)."""
     server: ServerFase
+    apre_scheda: Callable[[Web], object] | None = None
     errori_console: list[str] = field(default_factory=list)
     richieste_fallite: list[str] = field(default_factory=list)
     richieste: list[str] = field(default_factory=list)          # le /api/... chieste dalla pagina (percorso e query), in ordine
+    _pagina: object = field(default=None, repr=False)
+
+    @property
+    def pagina(self):
+        """La pagina di Playwright; la prima volta apre la scheda."""
+        if self._pagina is None and self.apre_scheda is not None:
+            self._pagina = self.apre_scheda(self)
+        return self._pagina
 
     @property
     def fase(self) -> str:
@@ -265,14 +276,16 @@ def _richiesta_non_arrivata(w: Web, richiesta) -> None:
 @pytest.fixture
 def web(chrome, server_fase):
     """Una scheda nuova (nessun dato salvato da un test prima) sulla web di una fase, con l'orologio fermo su «adesso» dello
-    scenario, in italiano, ora italiana, movimento ridotto, service worker bloccato."""
-    ctx = chrome.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1, locale="it-IT",
-                             timezone_id=FUSO, service_workers="block", reduced_motion="reduce")
-    try:
+    scenario, in italiano, ora italiana, movimento ridotto, service worker bloccato. Si apre al primo uso di `web.pagina`."""
+    contesti = []
+
+    def apre_scheda(w: Web):
+        ctx = chrome.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1, locale="it-IT",
+                                 timezone_id=FUSO, service_workers="block", reduced_motion="reduce")
+        contesti.append(ctx)
         pagina = ctx.new_page()
         istante = pagina.evaluate("(s) => new Date(s).getTime()", server_fase.adesso)     # letto con il fuso italiano
         ctx.clock.set_fixed_time(istante / 1000)
-        w = Web(pagina, server_fase)
         pagina.on("console", lambda m: m.type == "error" and w.errori_console.append(
             f"{m.text} ({_breve(m.location.get('url') or '')})"))
         pagina.on("pageerror", lambda e: w.errori_console.append(f"errore nel codice: {e}"))
@@ -280,6 +293,10 @@ def web(chrome, server_fase):
         pagina.on("requestfailed", lambda r: _richiesta_non_arrivata(w, r))
         pagina.on("response", lambda r: r.status >= 400 and w.richieste_fallite.append(
             f"{r.request.method} {_breve(r.url)}: risposta {r.status}"))
-        yield w
+        return pagina
+
+    try:
+        yield Web(server_fase, apre_scheda)
     finally:
-        ctx.close()
+        for ctx in contesti:
+            ctx.close()

@@ -1,5 +1,6 @@
-"""Impostazioni (ingranaggio in testata) e Altro ripuliti: controlli statici su app.js, impostazioni.js, index.html, stile.css.
-Decisioni del 1/11/2026, uguali all'app per iPhone: poche voci, ogni cosa in un posto solo, niente strumenti tecnici per l'utente normale."""
+"""Impostazioni ripulite: controlli statici su app.js, impostazioni.js, index.html, stile.css. Decisioni del 1/11/2026: poche voci,
+ogni cosa in un posto solo, niente strumenti tecnici per l'utente normale. Dal 12/11/2026 (#618) Impostazioni è una scheda della
+barra con una pagina sola: barra, sezioni, pagine e indirizzi si provano nel browser (tests/browser/test_impostazioni.py)."""
 import re
 
 from fanta import server
@@ -14,24 +15,10 @@ CSS = (WEB / "stile.css").read_text(encoding="utf-8")
 SW = codice_web.leggi("sw.js")
 
 
-def _gruppi():
-    return re.findall(r'\{ id: "(\w+)", nome: "([^"]+)"', IMP)
-
-
-def test_ingranaggio_in_testata_accanto_alla_lente_e_script_caricato():
-    assert HTML.index('id="bottone-cerca"') < HTML.index('id="bottone-impostazioni"') < HTML.index('id="bottone-aggiorna"')
-    assert re.search(r'id="bottone-impostazioni"[^>]*aria-label="Impostazioni"', HTML)
+def test_script_delle_impostazioni_caricato_dopo_l_app_e_in_copia():
     assert HTML.index('src="app.js"') < HTML.index('src="impostazioni.js"')
     assert "/impostazioni.js" in SW
     assert '"/impostazioni.js"' in (WEB.parent / "rotte_account.py").read_text(encoding="utf-8")
-
-
-def test_solo_i_gruppi_essenziali_e_avanzate_solo_per_chi_gestisce():
-    assert [n for _, n in _gruppi()] == ["Il tuo account", "Aspetto", "Notifiche", "Informazioni", "Avanzate"]
-    for id_, _ in _gruppi():                                     # ogni gruppo sa disegnarsi e collegarsi
-        assert re.search(rf"\b{id_}: \(\) =>", IMP), id_
-    assert re.search(r'id: "avanzate",[^\n]*visibile: \(\) => soloAmministratore\(\)', IMP)
-    assert re.search(r'id: "account",[^\n]*visibile: \(\) => !!stato\.account', IMP)
 
 
 def test_niente_strumenti_tecnici_per_l_utente():
@@ -68,12 +55,12 @@ def test_account_un_solo_nome_e_solo_le_voci_utili():
         assert vecchio not in acc and vecchio not in APP, vecchio
     for resta in ('id="acc-email"', 'id="acc-accessi"', 'id="acc-cambia"', 'id="acc-elimina"', 'id="acc-esci"'):
         assert resta in acc, resta
-    assert "scheda-admin" not in acc                                            # l'amministrazione sta in Avanzate
+    assert "scheda-admin" not in acc                                            # l'amministrazione sta in Gestione
     assert "schedaAmministratore()" in IMP and "collegaAmministratore();" in IMP
 
 
 def test_informazioni_privacy_termini_crediti_e_versione():
-    info = IMP[IMP.index("  informazioni: () => {"):IMP.index("  avanzate: () =>")]
+    info = IMP[IMP.index("function paginaInformazioni()"):IMP.index("function paginaGestione()")]
     pos = [info.index(x) for x in ('"privacy"', '"termini"', '"crediti"', "Versione")]
     assert pos == sorted(pos)
     assert 'rel="noopener"' in IMP and "queryLingua()" in IMP
@@ -85,8 +72,6 @@ def test_testi_senza_gergo_per_l_utente():
         assert parola not in testo, parola
 
 
-def test_tablet_a_due_colonne_e_bersagli_da_44_px():
-    assert re.search(r"@media \(min-width: 768px\) \{\s*\.imp \{ grid-template-columns: 280px", CSS)
-    assert re.search(r"\.imp-indietro \{ min-height: 44px", CSS)
-    assert 'aria-current' in IMP and 'aria: "Gruppi di impostazioni"' in IMP
+def test_bersagli_da_44_px():
+    assert re.search(r"\.capo-pagina \.imp-torna \{ min-height: 44px", CSS)                  # «‹ Impostazioni» delle pagine interne
     assert re.search(r"\.bottone-icona \{ width: 44px; height: 44px", CSS)

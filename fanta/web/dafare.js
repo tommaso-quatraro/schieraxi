@@ -55,36 +55,21 @@ function dfRiga(v, i, nota = "", sola = false) {
     <button class="azione-testo df-azione" type="button" data-df="${i}"${dfScrive(v) ? ` data-scrive${sola ? " disabled" : ""}` : ""}>${azione}</button></li>`;
 }
 
-// Dove si trova, dentro Squadra o Altro, il punto indicato dalla voce (se la schermata cambia e non si trova, si resta in cima a Lega).
-const DF_PUNTI = { rose: ["#testo-rose", "#file-rose"] };
-function dfPortaA(sezione) {
-  const cerca = () => {
-    for (const sel of DF_PUNTI[sezione] || []) {
-      const el = document.querySelector(sel);
-      if (el) { (el.closest(".carta") || el).scrollIntoView({ block: "start", behavior: "smooth" }); return true; }
-    }
-    return false;
-  };
-  let prove = 0;
-  const riprova = () => { if (!cerca() && ++prove < 8) setTimeout(riprova, 250); };      // Lega si disegna dopo aver caricato i dati
-  setTimeout(riprova, 250);
-}
-
 // L'azione di una decisione che porta in un'altra schermata (le rose, le impostazioni, il primo avvio). Il cambio di un titolare e
-// «Usa la consigliata» li fa la Formazione, che ha la formazione in pagina (mostraFormazione in app.js).
+// «Usa la consigliata» li fa la Formazione, che ha la formazione in pagina (mostraFormazione in app.js). Le destinazioni le scrive il
+// server con i nomi di prima (scheda «lega», «impostazioni»; sezione «rose», «regole», «avanzate»...): dove() di app.js le porta alla
+// pagina che ne ha preso il posto in Impostazioni (#618).
+const DF_SEZIONI = { rose: "importa", regole: "regole", squadre: "squadre" };      // le voci di Lega di prima
 function dfApri(v) {
   const d = v.destinazione || {};
   if (v.tipo === "primo_avvio") { if (typeof apriPrimoAvvio === "function") apriPrimoAvvio(); return; }
-  // «I dati non si aggiornano da N giorni» → «Controlla»: direttamente Stato dei dati (sotto Impostazioni > Avanzate), non la pagina che lo contiene
-  if (v.id === "dati-vecchi" && typeof apriStatoDati === "function") { vai("impostazioni", "avanzate"); apriStatoDati(); return; }
-  if (dfAllaRosa(v)) { stato.legaTorna = null; stato.rosaTorna = ""; vai("squadra"); return; }      // la rosa della mia squadra (rosa senza nome)
-  const DF_IMP = { avanzate: "avanzate" };                               // sezioni che stanno in Impostazioni
-  if (d.scheda === "impostazioni" || DF_IMP[d.sezione]) { vai("impostazioni", DF_IMP[d.sezione] || d.sezione); return; }
+  // «I dati non si aggiornano da N giorni» → «Controlla»: direttamente Stato dei dati (sotto Impostazioni > Gestione), non la pagina che lo contiene
+  if (v.id === "dati-vecchi" && typeof apriStatoDati === "function") { vai("impostazioni", "gestione"); apriStatoDati(); return; }
+  if (dfAllaRosa(v)) { vai("impostazioni", "squadra", { focoTitolo: true }); return; }      // la rosa della mia squadra
   // il Diario è la pagina Giornate (#617), aperta sulla giornata della voce
   if (d.sezione === "diario" && typeof vaiGiornate === "function") { vaiGiornate(d.giornata ?? v.giornata); return; }
-  const scheda = SCHEDA_DI(d.scheda) ? d.scheda : "lega";            // «lega» è il nome vecchio delle voci di Squadra e Altro
-  const VOCE_LEGA = { rose: "importa", regole: "regole", squadre: "squadre" };     // la voce di Lega che si apre da sola
-  if (scheda === "lega" && VOCE_LEGA[d.sezione]) stato.legaTorna = VOCE_LEGA[d.sezione];
-  vai(scheda);
-  if (scheda === "lega" && d.sezione) dfPortaA(d.sezione);
+  if (d.scheda === "impostazioni") { vai("impostazioni", d.sezione || undefined, { focoTitolo: true }); return; }
+  if (d.scheda === "formazione") { vai("formazione", undefined, { focoTitolo: true }); return; }
+  const sezione = typeof d.sezione === "string" && Object.hasOwn(DF_SEZIONI, d.sezione) ? DF_SEZIONI[d.sezione] : undefined;
+  vai(d.scheda || "lega", undefined, { voce: sezione, focoTitolo: true });
 }

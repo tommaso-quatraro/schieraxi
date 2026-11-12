@@ -29,11 +29,19 @@ PARTITE = [(10, "2026-11-07 15:00", "inter", "milan"), (10, "2026-11-08 20:45", 
            (11, "2026-11-15 20:45", "milan", "napoli")]
 # voti della partita del sabato: Dif3 senza voto (non è entrato); Att10 un gol
 VOTI = {1: (6.0, 0), 2: (6.5, 0), 3: (None, 0), 6: (7.0, 0), 10: (6.5, 1), 12: (6.0, 0), 14: (None, 0)}
+# voti delle partite di domenica (roma-lazio) e lunedì (napoli-juve): Cen9, infortunato, senza voto; Att11 un gol
+VOTI_DOMENICA = {4: (6.0, 0), 7: (6.5, 0), 11: (7.0, 1)}
+VOTI_LUNEDI = {5: (5.5, 0), 8: (6.0, 0), 9: (None, 0), 13: (6.0, 0)}
 
 
 def _fv(i):
-    v, gol = VOTI[i]
+    v, gol = (VOTI | VOTI_DOMENICA | VOTI_LUNEDI)[i]
     return fantavoto({"voto_red": v, "gol": gol}, ROSA[i][1], REGOLE)
+
+
+def _voti(a, voti: dict) -> None:
+    archivio.inserisci(a.db, "voti", [{"stagione": ST, "giornata": 10, "calciatore_id": i, "nome": ROSA[i][0], "squadra": ROSA[i][2],
+                                       "ruolo": ROSA[i][1], "voto_red": v, "gol": g} for i, (v, g) in voti.items()])
 
 
 @pytest.fixture
@@ -47,8 +55,8 @@ def ambiente(tmp_path, monkeypatch):
                                             "gol_casa": None, "gol_trasferta": None, "giocata": int(n in stato["giocate"]),
                                             "understat_id": None} for n, (g, d, c, t) in enumerate(PARTITE)])
     stato["carica"] = carica
-    archivio.inserisci(db, "voti", [{"stagione": ST, "giornata": 10, "calciatore_id": i, "nome": ROSA[i][0], "squadra": ROSA[i][2],
-                                     "ruolo": ROSA[i][1], "voto_red": v, "gol": g} for i, (v, g) in VOTI.items()])
+    a = NS(db=db, stato=stato, tmp=tmp_path)
+    _voti(a, VOTI)
     prev = pd.DataFrame([{"id": i, "nome": n, "ruolo": r, "squadra": s, "atteso": a, "stato": st, "p_voto": 0.9, "mu": a + 0.5,
                           "mu_voto": 6.0, "dubbio": False, "diffidato": False} for i, (n, r, s, a, st) in ROSA.items()]).set_index("id")
     scheda = lambda i: {"id": i, "nome": ROSA[i][0], "ruolo": ROSA[i][1], "squadra": ROSA[i][2], "punti_attesi": ROSA[i][3]}
@@ -60,7 +68,8 @@ def ambiente(tmp_path, monkeypatch):
         "punteggio_atteso": 70.0, "squadra": "Mia"})
     rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, n, r, s, 1) for i, (n, r, s, _, _) in ROSA.items()])], "Mia")
     carica()
-    return NS(db=db, stato=stato, rose=rose, tmp=tmp_path)
+    a.rose = rose
+    return a
 
 
 def _oggi(a, adesso, **k):
@@ -192,10 +201,13 @@ def test_in_corso_niente_consigli_su_chi_schierare(ambiente, monkeypatch):
 
 
 # ---------------------------------------------------------------- (c) giornata finita
-def _giornata_finita(a):
+def _giornata_finita(a, voti=(VOTI_DOMENICA, VOTI_LUNEDI)):
+    """Le tre partite della giornata 10 giocate e, di base, con i voti di tutte (quelli del sabato ci sono già)."""
     a.stato["giornata"] = 11
     a.stato["giocate"] = {0, 1, 2}
     a.stato["carica"]()
+    for v in voti:
+        _voti(a, v)
 
 
 def test_giornata_finita_riepilogo_dal_diario_e_prossima(ambiente):
@@ -223,9 +235,26 @@ def test_giornata_finita_senza_diario_usa_i_voti(ambiente, monkeypatch):
     o = _oggi(ambiente, datetime(2026, 11, 10, 10, 0))
     r = o["riepilogo"]
     assert r["nel_diario"] is False and r["formazione_di"] == "tua" and r["consigliata"] is None
-    # nell'archivio finto solo la partita del sabato ha i voti: vanno a punteggio quelli con il voto, Dif12 al posto di Dif3
-    assert r["punti_fatti"] == pytest.approx(round(sum(_fv(i) for i in (1, 2, 6, 10, 12)), 1))
+    # tutte le partite hanno i voti: Dif12 al posto di Dif3 (senza voto), Cen13 al posto di Cen9 (infortunato, senza voto).
+    # Prima il test passava con i soli voti del sabato, cioè con un totale a metà (#649)
+    assert r["punti_fatti"] == pytest.approx(round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1))
     assert o["prossima"]["prepara_da"] == "2026-11-11 15:00" and o["prossima"]["con_probabili"] is False
+
+
+def test_giornata_finita_con_i_voti_a_meta_niente_totale(ambiente, monkeypatch):
+    """#649: lunedì sera napoli-juve è segnata giocata ma i suoi voti non sono ancora usciti. Prima Oggi faceva entrare le riserve al
+    posto di Dif5, Cen8 e Cen9 e dava un totale che sembrava definitivo (e senza recuperi da aspettare). Ora niente totale finché
+    ogni squadra che ha giocato non ha i voti; arrivati quelli, il numero giusto."""
+    _giornata_finita(ambiente, voti=(VOTI_DOMENICA,))
+    prev, _, _ = consigli.previsioni(None, REGOLE)
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 11, False))
+    from fanta import scelte
+    scelte.salva(ST, 10, TITOLARI, "4-4-2", ambiente.tmp / "scelte.json", panchina=PANCHINA)
+    o = _oggi(ambiente, datetime(2026, 11, 9, 23, 0))                  # lunedì, 25 minuti dopo la fine stimata della partita
+    assert o["fase"] == "finita" and o["riepilogo"] is None
+    _voti(ambiente, VOTI_LUNEDI)                                        # i voti del lunedì arrivano col giro di mezzanotte
+    r = _oggi(ambiente, datetime(2026, 11, 10, 0, 50))["riepilogo"]
+    assert r["punti_fatti"] == pytest.approx(round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1))
 
 
 def test_oggi_non_si_rompe_se_le_fasi_falliscono(ambiente, monkeypatch):

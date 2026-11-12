@@ -31,16 +31,18 @@ I test non conoscono le schermate: si appoggiano a tre regole che ogni versione 
   della prima schermata. La web di oggi scrive gli errori anche con la classe `errore`, che vale lo stesso. Un contenitore
   `role="alert"` vuoto, pronto per un messaggio, va bene.
 
-Cosa nota della web di oggi: la schermata di accesso mette dentro `role="alert"` anche avvisi che non sono errori (classe
-`attenzione`). Il controllo non li conta come errori; nella web rifatta quegli avvisi passano a `role="status"`. Il
-riconoscimento delle rose lo fa già (#615): il riquadro dei suoi messaggi è una regione `role="status"` che resta in
-pagina, e l'avviso ci viene scritto dopo (un lettore di schermo non legge una regione che nasce già con il suo testo).
+Gli avvisi stanno in una regione `role="status"` che resta in pagina, e ci vengono scritti dopo (un lettore di schermo non
+legge una regione che nasce già con il suo testo): così il riconoscimento delle rose (#615) e, dal 12/11/2026 (#618), la
+schermata di accesso, dove prima anche gli avvisi (classe `attenzione`) stavano in un `role="alert"`; gli errori dell'accesso
+hanno il loro `role="alert"`. Il controllo non conta ancora come errori gli elementi con la classe `attenzione`.
 
 ## Quando girano
 - **Nelle pull request**: job `browser` dei controlli (`.github/workflows/test.yml`), quando la PR tocca `fanta/web/`,
   `fanta/testi/`, `tests/browser/`, `tests/strumenti/axe/`, `ios/fotografie/`, `script/ci/server_finto.py`,
   `.github/browser-requisiti.txt` o `test.yml` (anche spostando un file da lì). Blocca l'unione: `unisci` lo aspetta e
-  lo vuole riuscito (se la PR non tocca la web il job salta i passi e resta verde).
+  lo vuole riuscito (se la PR non tocca la web il job salta i passi e resta verde). Il job ha un tetto di 10 minuti: i test
+  girano in 4 processi (`pytest-xdist`, `-n 4 --dist worksteal`, #680), ognuno con il suo Chrome e i suoi server finti, e
+  il registro del job elenca i dieci test più lenti (`--durations=10`).
 - **A mano su un ramo**: `gh workflow run test.yml --ref <ramo>` (girano tutti i controlli, questo compreso).
 - **Nella suite normale no**: senza `-m browser` si saltano. Si saltano anche se mancano Playwright o Chrome; nel job dei
   controlli (variabile `BROWSER_OBBLIGATORIO=1`) invece falliscono, perché lì un test saltato sarebbe un verde finto.
@@ -74,9 +76,9 @@ Poi, dalla radice del repository (anche da una worktree), circa un minuto:
 
 `test_tagli.py`, la web senza le funzioni tolte il 12/11/2026 (#615). I test che non dipendono dalla fase girano solo
 prima della scadenza:
-- i menu di Squadra e Altro hanno solo le voci che restano; gli indirizzi delle pagine tolte aprono la schermata più
-  vicina; le novità stanno in Impostazioni > Informazioni (le ultime dieci, le altre a richiesta); «Nuova stagione» è un
-  avviso che compare quando serve; la dimensione del testo salvata da una versione di prima non vale più;
+- Impostazioni ha solo le voci che restano (dal #618 Squadra e Altro sono Impostazioni); gli indirizzi delle pagine tolte
+  aprono Impostazioni; le novità stanno in Impostazioni > Informazioni (le ultime dieci, le altre a richiesta); «Nuova
+  stagione» è un avviso che compare quando serve; la dimensione del testo salvata da una versione di prima non vale più;
 - Formazione senza stili, legenda, confronto e indice sui volti, e senza partite del turno e banner, nelle tre fasi;
   girando per l'app non si chiedono le rotte delle funzioni tolte;
 - le decisioni in cima alla Formazione: via i consigli di mercato e di scambio; la riga del reparto scoperto resta e
@@ -124,6 +126,29 @@ prima della scadenza:
 - errore con «Riprova», pagina vuota che dice perché; chiaro e scuro a 390 e 1440 px senza violazioni gravi; elenco a
   sinistra e giornata a destra a 768 e 1440 px, gli 11 sotto la riga al telefono.
 
+`test_impostazioni.py`, la barra a tre voci e le Impostazioni uniche (#618). Girano solo prima della scadenza:
+- la barra ha Formazione, Giornate e Impostazioni più la ricerca, a 390 e 1440 px, e niente ingranaggio; Impostazioni si apre
+  con un tocco e ha le sezioni Avvisi, La mia lega, Aspetto;
+- un utente normale (account non amministratore) vede al massimo dieci controlli (i pulsanti di un gruppo, come il tema,
+  contano una volta) e non vede Gestione, neanche con il suo indirizzo; chi gestisce il server la apre, con «Aggiorna i dati»;
+- ogni indirizzo di prima apre la voce giusta e l'indirizzo diventa quello nuovo: Squadra, Altro, Lega, Mercato, Scambi,
+  i gruppi delle Impostazioni (Avvisi, Aspetto, Avanzate, Informazioni, Account), le voci (Aggiorna le rose, Squadre e
+  rose, Regole, Novità), la rosa mia e di un'altra squadra; una scheda salvata da una versione di prima (Squadra, Altro,
+  Oggi...) apre la Formazione; Indietro e «‹ Impostazioni» tornano dove si era;
+- La mia lega porta alla mia squadra (con stemma, maglia e «Non è la tua squadra?») e alle altre; senza le rose degli altri
+  «Le altre squadre» non c'è; «Nuova stagione» compare lì quando serve; «Stemma e maglia» della rosa apre il foglio sulla
+  squadra della pagina, con «Rimuovi» (che cancella l'immagine giusta) e «Da indirizzo web»;
+- Regole e scadenza: il regolamento incollato si salva con «Salva queste regole»; i singoli valori stanno dietro «Modifica i
+  valori»; la scadenza si salva appena cambia; la frase sulla prima giornata parla di Giornate, non del Diario;
+- Avvisi: niente interruttori di prima, le ore tranquille con la loro fascia, e un cambio manda solo `silenzio`. Senza un
+  service worker registrato (il browser di prova) la frase che lo dice arriva subito, senza i 4 secondi di attesa; con una
+  registrazione finta in attivazione il riquadro dice «Controllo gli avvisi…» con `aria-busy` e la riga sotto non si sposta
+  quando arriva la frase. Con le notifiche finte (service worker e permesso simulati nella pagina, rotte `/api/push/...` e
+  `/api/avvisi/prova` con risposte finte): la frase dell'interruttore dice che arrivano anche gli altri avvisi; accenderlo
+  manda un avviso di prova e lo dice; se la prova non parte (429 o `inviato: false`) lo dice un avviso `role="status"` e
+  l'interruttore resta acceso; con il permesso negato niente prova;
+- Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore.
+
 ## Aggiungere un test di comportamento (dieci righe)
 Un file `tests/browser/test_<cosa>.py`. Il segno `browser` lo mette da solo `conftest.py` a ogni test di questa cartella:
 non serve scriverlo.
@@ -156,13 +181,16 @@ Cosa offre la fixture `web`:
 - `web.testo_principale()`, `web.in_caricamento()`, `web.errori_mostrati()`, `web.scorre_di_lato()`,
   `web.violazioni_gravi()`;
 - `web.fase`: `prima`, `in-corso` o `finita` (per un test che vale per una fase sola:
-  `if web.fase != "prima": pytest.skip("solo prima della scadenza")`).
+  `if web.fase != "prima": pytest.skip("solo prima della scadenza")`). La scheda di Chrome si apre al primo uso di
+  `web.pagina` (o di `apri`, `risposta`, `memoria`): il salto va scritto prima, così un test saltato non la apre (#680).
 
 Regole:
 - si prova un comportamento che l'utente vede, non il testo di `app.js`; gli elementi si cercano per ruolo ed etichetta
   (`get_by_role`, `get_by_label`), che sono anche ciò che legge chi usa un lettore di schermo;
 - il server finto non salva niente: ogni metodo (anche un salvataggio) riceve la risposta registrata per quell'indirizzo;
-- niente orologio vero e niente attese a tempo fisso: `web.aspetta()`.
+- niente orologio vero e niente attese a tempo fisso: `web.aspetta()`;
+- ogni test regge da solo: con `-n` i test girano in processi diversi e in un ordine qualsiasi, quindi niente dati lasciati
+  da un test per quello dopo, niente file scritti fuori da `tmp_path` e niente porte fisse.
 
 ## Una rotta che manca nello scenario
 Il server finto risponde 404 a una rotta che non ha registrata, e il test delle richieste fallite lo dice

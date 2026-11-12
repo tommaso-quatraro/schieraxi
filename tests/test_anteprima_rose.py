@@ -399,3 +399,49 @@ def test_senza_account_l_anteprima_funziona_e_non_salva(dati_isolati, calciatori
     assert r.status_code == 200, r.text
     assert r.json()["da_controllare"] == 2
     assert [p for p in dati_isolati.rglob("*") if p.is_file()] == []
+
+
+# ---------------------------------------------------------------- file delle rose rovinato (#650)
+def _tronca(testo: str) -> str:
+    return testo[: len(testo) // 2]
+
+
+def _stagione_scritta_male(testo: str) -> str:
+    return json.dumps(json.loads(testo) | {"stagione": "2026/27"})
+
+
+@pytest.mark.parametrize("rovina", [_tronca, _stagione_scritta_male])
+def test_file_delle_rose_rovinato_si_rimedia_importando(ambiente, rovina):
+    """Il messaggio di errore dice «importa di nuovo le rose»: anteprima e importazione funzionano, il file rovinato resta da
+    parte e la copia di riserva di prima non cambia."""
+    a, uid = nuovo_utente("utentea")
+    file_rose = contesto.Contesto.per_utente(uid).rose
+    riserva = file_rose.with_name("rose.json.bak")
+    assert importa(a, "Prima\nP\tSommer\t10\n").status_code == 200
+    assert importa(a, "Mia\nP\tSommer\t10\nAltra\nA\tKean\t30\n").status_code == 200
+    copia_buona = riserva.read_bytes()
+    rovinato = rovina(file_rose.read_text(encoding="utf-8"))
+    file_rose.write_text(rovinato, encoding="utf-8")
+    assert a.get("/api/squadre").status_code == 400                       # ogni schermata lo dice
+    testo = "Nuova\nD\tBastoni\t5\n"
+    r = a.post("/api/rose/anteprima", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    assert r.json()["totale_squadre"] == 1 and lega.ROSE_ROVINATE in r.json()["avvisi"]
+    assert file_rose.read_text(encoding="utf-8") == rovinato                # l'anteprima non scrive niente
+    r = importa(a, testo)
+    assert r.status_code == 200, r.text
+    assert lega.ROSE_ROVINATE in r.json()["avvisi"] and r.json()["totale_squadre"] == 1
+    assert [s["nome"] for s in a.get("/api/squadre").json()] == ["Nuova"]
+    assert riserva.read_bytes() == copia_buona                             # la copia buona di prima resta
+    assert file_rose.with_name("rose.json.rovinato").read_text(encoding="utf-8") == rovinato
+
+
+def test_importazione_rifiutata_non_sposta_il_file_rovinato(ambiente):
+    """Se l'importazione non va a buon fine (qui la squadra scelta non c'è nel file) il file resta dov'era."""
+    a, uid = nuovo_utente("utentea")
+    file_rose = contesto.Contesto.per_utente(uid).rose
+    assert importa(a).status_code == 200
+    file_rose.write_text('{"squadre": [', encoding="utf-8")
+    r = a.post("/api/rose/testo", json={"testo": "Nuova\nD\tBastoni\t5\n", "mia_squadra": "Non c'è"})
+    assert r.status_code == 400, r.text
+    assert file_rose.read_text(encoding="utf-8") == '{"squadre": [' and not file_rose.with_name("rose.json.rovinato").exists()

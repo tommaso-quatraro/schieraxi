@@ -89,6 +89,16 @@ def test_il_job_browser_installa_l_ambiente_fissato_e_non_salta_i_test():
     assert j.count("if: steps.decidi.outputs.serve == 'true'") == 3
 
 
+def test_i_test_del_browser_girano_in_parallelo():
+    """Issue #680: in fila i test superavano il tetto di 10 minuti. Con pytest-xdist girano in più processi, ognuno con il
+    suo Chrome e i suoi server finti (le fixture di sessione sono per processo), così il passo resta lontano dal tetto."""
+    comando = re.search(r"-m pytest (.*)", _senza_commenti(_job("browser"))).group(1)
+    processi = re.search(r"(?:^|\s)-n (\d+)(?:\s|'|$)", comando)
+    assert processi, f"il comando dei test non chiede più processi (-n N): {comando}"
+    assert 2 <= int(processi.group(1)) <= 4, "i server di GitHub dei repository pubblici hanno 4 processori"
+    assert "--dist worksteal" in comando, "test lunghi e corti: chi finisce prima prende i test rimasti agli altri"
+
+
 def _librerie(testo: str) -> dict[str, tuple[str, set[str]]]:
     """{nome minuscolo: (versione, hash)} di un file di requisiti con «nome==versione [; condizione] \\» e righe --hash."""
     voci = {}
@@ -102,7 +112,7 @@ def test_requisiti_del_browser_fissati_e_uguali_agli_altri_ambienti():
     requisiti = REQUISITI.read_text(encoding="utf-8")
     voci = _librerie(requisiti)
     assert len(voci) == len(re.findall(r"^[A-Za-z0-9_.-]+==", requisiti, re.M)), "ogni libreria con i suoi hash"
-    assert {"playwright", "pytest", "greenlet", "pyee", "pluggy"} <= set(voci)
+    assert {"playwright", "pytest", "greenlet", "pyee", "pluggy", "pytest-xdist", "execnet"} <= set(voci)
     # Playwright come nell'ambiente della regressione visiva; pytest come nei requisiti dei test
     playwright = _librerie((RADICE / ".github" / "playwright-requisiti.txt").read_text(encoding="utf-8"))
     sviluppo = _librerie((RADICE / "requirements-dev.txt").read_text(encoding="utf-8"))
@@ -148,8 +158,54 @@ def test_lo_scenario_completo_aggiunge_solo_le_rotte_che_mancano(appoggio, tmp_p
     assert json.loads((registrati / "vero-finita.json").read_text(encoding="utf-8"))["risposte"] == {"/api/oggi": {}}
 
 
+class _ChromeFinto:
+    """Chrome finto per la fixture «web»: tiene le schede aperte (contesti) e dice se sono state chiuse."""
+    def __init__(self):
+        self.contesti = []
+
+    def new_context(self, **opzioni):
+        ctx = SimpleNamespace(opzioni=opzioni, chiuso=False, ora=None, pagine=[])
+        ctx.clock = SimpleNamespace(set_fixed_time=lambda t: setattr(ctx, "ora", t))
+        ctx.close = lambda: setattr(ctx, "chiuso", True)
+
+        def nuova_pagina():
+            pagina = SimpleNamespace(eventi=[], evaluate=lambda codice, *argomenti: 1_800_000_000_000)
+            pagina.on = lambda evento, funzione: pagina.eventi.append(evento)
+            ctx.pagine.append(pagina)
+            return pagina
+        ctx.new_page = nuova_pagina
+        self.contesti.append(ctx)
+        return ctx
+
+
+def test_un_test_saltato_per_la_fase_non_apre_una_scheda_di_chrome(appoggio):
+    """Issue #680: più di metà dei test si salta perché vale per un'altra fase (`solo(web, "prima")`), e il salto legge solo
+    `web.fase`. La scheda di Chrome (contesto, pagina, orologio) si apre alla prima richiesta di `web.pagina`, non prima."""
+    chrome = _ChromeFinto()
+    fixture = appoggio.web.__wrapped__(chrome, appoggio.ServerFase("in-corso", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
+    w = next(fixture)
+    assert w.fase == "in-corso" and w.richieste == [] and w.errori_console == [] and w.richieste_fallite == []
+    with pytest.raises(StopIteration):
+        next(fixture)
+    assert chrome.contesti == []
+
+
+def test_la_scheda_si_apre_una_volta_alla_prima_richiesta_e_si_chiude_alla_fine(appoggio):
+    chrome = _ChromeFinto()
+    fixture = appoggio.web.__wrapped__(chrome, appoggio.ServerFase("prima", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
+    w = next(fixture)
+    assert w.pagina is w.pagina and len(chrome.contesti) == 1
+    ctx = chrome.contesti[0]
+    assert ctx.pagine == [w.pagina] and not ctx.chiuso
+    assert ctx.ora == 1_800_000_000 and ctx.opzioni["service_workers"] == "block" and ctx.opzioni["locale"] == "it-IT"
+    assert set(w.pagina.eventi) == {"console", "pageerror", "request", "requestfailed", "response"}
+    with pytest.raises(StopIteration):
+        next(fixture)
+    assert ctx.chiuso
+
+
 def test_una_richiesta_annullata_non_e_fallita(appoggio):
-    w = appoggio.Web(pagina=None, server=appoggio.ServerFase("prima", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
+    w = appoggio.Web(server=appoggio.ServerFase("prima", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
     for guasto in ("net::ERR_ABORTED", "net::ERR_CONNECTION_REFUSED", None):
         appoggio._richiesta_non_arrivata(w, SimpleNamespace(method="GET", url="http://127.0.0.30:8000/api/oggi?x=1",
                                                             failure=guasto))

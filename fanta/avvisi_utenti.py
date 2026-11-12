@@ -121,7 +121,8 @@ def _pronta(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetim
     stagione = consigli.stagione_corrente()
     giornata = consigli.giornata_da_giocare(db, stagione, r, adesso)     # l'ora del giro, non l'orologio vero
     avviso = avvisi.da_mandare(db, stagione, giornata, adesso, a.ctx.stato_avvisi, segna=False, regole=r)
-    if avviso and a.manda(avviso["titolo"], avviso["testo"], 3, "soccer"):
+    # la notifica web aspetta il telefono spento, ma non oltre la scadenza (#652)
+    if avviso and a.manda(avviso["titolo"], avviso["testo"], 3, "soccer", vale_per=avviso["scadenza"] - adesso):
         avvisi.segna(stagione, giornata, a.ctx.stato_avvisi)
         return [avviso["testo"]]
     return []

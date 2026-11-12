@@ -55,7 +55,7 @@ class Calcoli:
 
 def _registro():
     mandati = []
-    return mandati, lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True
+    return mandati, lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True
 
 
 # ---------------------------------------------------------------- momento libero e pianificatore

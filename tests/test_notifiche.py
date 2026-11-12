@@ -61,7 +61,7 @@ ROSE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(1, "Castro", "A", "ROM
 def test_promemoria_un_ora_e_un_quarto_d_ora_una_volta_sola(tmp_path, monkeypatch):
     _finto(monkeypatch, titolari=("Castro", "Bonny"), dubbi=("Castro",))
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo, priorita)) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo, priorita)) or True    # noqa: E731
     f, db = tmp_path / "n.json", _db("2026-10-28 18:30")
     opz = {"cambi": True, "promemoria_60": True, "promemoria_15": True}
     assert notifiche.promemoria(db, Regole(), ROSE, datetime(2026, 10, 28, 12, 0), f, manda, opz) == []        # troppo presto
@@ -85,7 +85,7 @@ def test_promemoria_rispetta_le_impostazioni(tmp_path, monkeypatch):
 def test_cambi_la_prima_volta_non_avvisa_poi_si(tmp_path, monkeypatch):
     _finto(monkeypatch, titolari=("Castro",))
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
     prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1])
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     f, db, adesso = tmp_path / "n.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
@@ -123,7 +123,7 @@ def test_se_l_invio_fallisce_si_riprova_al_giro_dopo(tmp_path, monkeypatch):
     _finto(monkeypatch)
     esito = {"ok": False}
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or esito["ok"]    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or esito["ok"]    # noqa: E731
     opz = {"cambi": True, "promemoria_60": True, "promemoria_15": True}
     f, db = tmp_path / "p.json", _db("2026-10-28 18:30")
     adesso = datetime(2026, 10, 28, 17, 35)
@@ -151,7 +151,7 @@ def test_cambi_senza_formazione_possibile_avvisa_lo_stesso(tmp_path, monkeypatch
     prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1])
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
     f, db, adesso = tmp_path / "c.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
     notifiche.cambi(db, Regole(), ROSE, adesso, f, manda)
     prev.loc[1, "stato"] = "infortunato"
@@ -189,12 +189,12 @@ def test_riepilogo_a_giornata_finita(tmp_path, monkeypatch):
     prev = pd.DataFrame([{"nome": n, "ruolo": r, "p_voto": 0.9, "mu": 6.5, "mu_voto": 6.0} for n, r in righe], index=range(1, len(righe) + 1))
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, giornata or 9, True))
     rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], "X", 1) for i in prev.index])], "Mia")
-    # voti di 70 giocatori (la giornata è arrivata): i nostri hanno voto 6, l'attaccante A0 (id 13) ha segnato
+    # voti di 70 giocatori delle due squadre (la giornata è arrivata): i nostri hanno voto 6, l'attaccante A0 (id 13) ha segnato
     for i in range(1, 71):
         ruolo = prev.at[i, "ruolo"] if i in prev.index else "C"
         db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, autogol, rig_segnati, rig_sbagliati, "
-                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', 'a', ?, 6.0, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
-                   (ST, i, ruolo, 1 if i == 13 else 0))
+                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', ?, ?, 6.0, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
+                   (ST, i, "ab"[i % 2], ruolo, 1 if i == 13 else 0))
     titolari = [1, 3, 4, 5, 6, 8, 9, 10, 13, 14, 15]
     scelte.salva(ST, 8, titolari, "4-3-3", tmp_path / "scelte.json")
     mandati = []
@@ -250,8 +250,8 @@ def test_riepilogo_il_massimo_con_le_regole_della_lega_e_mai_sotto_i_tuoi_punti(
     for i in (i for i in range(1, 71) if i not in senza_voto):       # l'attaccante 13 segna: fantavoto voto + 3
         ruolo = prev.at[i, "ruolo"] if i in prev.index else "C"
         db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, autogol, rig_segnati, rig_sbagliati, "
-                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', 'a', ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
-                   (ST, i, ruolo, voto, 1 if i == 13 else 0))
+                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
+                   (ST, i, "ab"[i % 2], ruolo, voto, 1 if i == 13 else 0))         # voti delle due squadre che hanno giocato
     scelte.salva(ST, 8, [1, 3, 4, 5, 8, 9, 10, 11, 13, 14, 15], "3-4-3", tmp_path / "scelte.json")
     manda = lambda titolo, testo, priorita=3, tag="x": True    # noqa: E731
     r = notifiche.riepilogo(db, regole, rose, datetime(2026, 10, 21, 8, 0), tmp_path / "r.json", manda, {"riepilogo": True},
@@ -268,7 +268,7 @@ def test_osservati_avvisano_con_la_stella(tmp_path, monkeypatch):
     fo = tmp_path / "oss.json"
     assert osservati.aggiungi(77, fo) == [77] and osservati.aggiungi(77, fo) == [77] and osservati.leggi(fo) == [77]
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append(testo) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
     f, db, adesso = tmp_path / "n.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
     notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, file_osservati=fo)
     prev.loc[77, "stato"] = "infortunato"
@@ -304,10 +304,12 @@ def test_notifiche_web_chiavi_iscrizioni_e_invio(tmp_path, monkeypatch):
     monkeypatch.setattr("pywebpush.webpush", finto)
     assert push.invia("Titolo", "Testo", 4, percorso=f, file_chiavi=tmp_path / "v.json") == 1
     assert mandate == [("https://web.push.apple.com/abc", "Titolo", "high", push.CONTATTO)]
-    # l'app Android legge `sezione` (dove porta il tocco) e `priorita`; il web continua a usare title/body/tag/url
-    assert corpi[0] == {"title": "Titolo", "body": "Testo", "tag": "soccer", "url": "/", "sezione": "lega", "priorita": 4}
+    # il service worker della web (fanta/web/sw.js) usa title/body/tag/url (il tag è diverso per ogni avviso, #652:
+    # tests/test_notifiche_web_tag_durata.py); `sezione` e `priorita` viaggiano nel messaggio
+    assert {k: v for k, v in corpi[0].items() if k != "tag"} == {"title": "Titolo", "body": "Testo", "url": "/", "sezione": "lega",
+                                                                 "priorita": 4}
     assert push.invia("Cambi", "x", 4, "rotating_light", percorso=f, file_chiavi=tmp_path / "v.json") == 1
-    assert corpi[1]["sezione"] == "formazione" and corpi[1]["tag"] == "rotating_light"
+    assert corpi[1]["sezione"] == "formazione"
     assert corpi[1]["url"] == "/?vista=formazione"                       # il tocco sulla notifica web apre la Formazione
     import pywebpush
 

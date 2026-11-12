@@ -25,15 +25,10 @@ NODE = shutil.which("node")
 
 def test_hidden_vince_sulle_classi_con_display():
     assert re.search(r"^\[hidden\] \{ display: none !important; \}$", CSS, re.M)
-    corpo = APP[APP.index("async function avvisiTelefono"):APP.index("// ---------------------------------------------------------------- stemma e maglia")]
-    assert 'id="av-fascia"' in corpo and '${o.silenzio ? "" : "hidden"}' in corpo      # la fascia usa proprio `hidden`
 
 
-def test_ore_tranquille_rifiutate_tornano_a_quelle_salvate():
-    corpo = APP[APP.index("async function avvisiTelefono"):APP.index("// ---------------------------------------------------------------- stemma e maglia")]
-    rifiuto = corpo[corpo.index('avviso(t("avv.ore_tranquille_non"), 6000);'):]
-    assert rifiuto.index('$("#av_da").value = String(o.silenzio_da); $("#av_a").value = String(o.silenzio_a);') < rifiuto.index("return;")
-    assert "if (r && r.impostazioni) Object.assign(o, r.impostazioni);" in corpo        # «o» resta l'ultima fascia salvata
+# Dal 12/11/2026 (#618) le ore tranquille sono un interruttore con la fascia già scelta (niente «Dalle/Alle» sulla web): che un
+# rifiuto del server lasci l'interruttore com'era lo prova tests/browser/test_impostazioni.py.
 
 
 def test_nuovo_codice_di_recupero_chiede_la_password_prima():
@@ -53,7 +48,7 @@ def test_codice_sorgente_nelle_informazioni_nelle_due_lingue():
 
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_voce_del_codice_sorgente_solo_con_un_indirizzo_https():
-    pezzo = IMP[IMP.index("const voceSorgente"):IMP.index("const CORPI_IMP")]
+    pezzo = IMP[IMP.index("const voceSorgente"):IMP.index("function paginaInformazioni")]
     codice = "\n".join([
         "const t = k => k; const esc = s => String(s).replace(/[&<>\"']/g, c => '&#' + c.charCodeAt(0) + ';'); const stato = {};",
         pezzo,

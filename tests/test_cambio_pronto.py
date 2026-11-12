@@ -46,7 +46,7 @@ def _scena(monkeypatch, stato="infortunato", con_alternativa=True):
         voce["alternativa"] = {"id": 2, "nome": "Bonny", "ruolo": "A", "punti_attesi": 6.2}
     monkeypatch.setattr(da_fare, "_dubbi", lambda *a, **k: [voce])
     mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo, tag)) or True    # noqa: E731
+    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo, tag)) or True    # noqa: E731
     return prev, mandati, manda
 
 
@@ -104,7 +104,7 @@ def test_se_parte_l_avviso_dei_cambi_e_fallisce_il_cambio_pronto_i_cambi_non_si_
     notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")          # primo controllo: memorizza
     prev.loc[2, "stato"] = "infortunato"                                                          # cambio per Bonny (avviso dei cambi)
     dubbi.append(voce_castro)                                                                     # e un cambio pronto che non c'entra con quella riga
-    solo_cambi = lambda titolo, testo, priorita=3, tag="x": (mandati.append(titolo) or True) if "cambio pronto" not in titolo else False     # noqa: E731
+    solo_cambi = lambda titolo, testo, priorita=3, tag="x", **k: (mandati.append(titolo) or True) if "cambio pronto" not in titolo else False     # noqa: E731
     notifiche.cambi(db, Regole(), ROSE, ADESSO, f, solo_cambi, file_scelte=tmp_path / "s.json")
     assert len(mandati) == 1 and "cambi nelle probabili" in mandati[0]
     notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")         # al giro dopo: solo il cambio pronto
@@ -138,7 +138,7 @@ def _scena_vera(monkeypatch, stato, consigliata, panchina):
                                                                      "dubbio": bool(x["dubbio"]), "p_voto": float(x["p_voto"]),
                                                                      "punti_attesi": float(x["atteso"])})
     mandati = []
-    return mandati, lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True     # noqa: E731
+    return mandati, lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True     # noqa: E731
 
 
 def test_cambio_pronto_con_il_vero_dubbi_quando_la_consigliata_lo_toglie(tmp_path, monkeypatch):
