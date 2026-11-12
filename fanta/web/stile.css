@@ -702,6 +702,11 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
   .interruttore-ios input:checked + i::after { background: HighlightText; }
   .interruttore-ios input:focus-visible + i { outline-color: CanvasText; }
 }
+/* Impostazioni > Avvisi mentre aspetta il service worker (fino a 4 s): la frase che arriva se le notifiche non ci sono tiene già il suo
+   posto, invisibile, e sopra c'è «Controllo gli avvisi…». Quando arriva, la riga delle ore tranquille resta dov'è. */
+.avvisi-attesa { position: relative; }
+.avvisi-attesa .riserva { visibility: hidden; }
+.avvisi-attesa .riserva + p { position: absolute; inset: 0 0 auto; margin: 0; }
 .fascia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 0; border-top: 1px solid var(--filo); }
 .fascia .coppia { display: flex; align-items: center; gap: 8px; }
 .fascia .rimuovi-fascia { margin-left: auto; }

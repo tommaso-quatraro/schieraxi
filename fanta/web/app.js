@@ -2487,11 +2487,13 @@ function chiaveInUint8(b64) {
 // Gli avvisi su questo dispositivo (Impostazioni > Avvisi, #618): un interruttore solo, che iscrive o toglie questo browser dalle
 // notifiche dell'app. Quali avvisi partono lo decide il server. Senza notifiche nel browser (iPhone senza l'app sulla Home, browser
 // senza service worker) al posto dell'interruttore una frase dice cosa fare. `dispositivi`: quanti ne ha l'utente (GET /api/avvisi).
+// Il riquadro nasce con «Controllo gli avvisi…» e aria-busy (avvisiTelefono): l'attesa del service worker arriva a 4 secondi.
 const pushPossibile = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 async function notificheWeb(dispositivi) {
   const dove = $("#notifiche-web");
   if (!dove) return;
-  const senza = () => { dove.innerHTML = `<p class="debole piccolo">${t("avv.notifiche_dell_app")}</p>`; };
+  const mostra = html => { dove.innerHTML = html; dove.classList.remove("avvisi-attesa"); dove.removeAttribute("aria-busy"); };
+  const senza = () => mostra(`<p class="debole piccolo">${t("avv.notifiche_dell_app")}</p>`);
   if (!pushPossibile()) { senza(); return; }
   // il service worker può non arrivare mai (navigazione privata, installazione fallita): senza, si dice che qui le notifiche non ci sono
   const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 4000))]).catch(() => null);
@@ -2512,14 +2514,24 @@ async function notificheWeb(dispositivi) {
     dispositivi = (await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) })).dispositivi;
     sub = null;
   };
-  dove.innerHTML = interruttore("av_qui", t("imp.avvisi_qui"), !!sub, t("imp.avvisi_qui_aiuto"));
+  // appena acceso, un avviso di prova (la rotta ha un tetto all'ora): si vede subito se arrivano davvero, e se no lo si dice
+  const prova = async () => {
+    try {
+      const r = await api("/api/avvisi/prova", { method: "POST" });
+      avviso(t(r.inviato ? "avv.notifiche_attivate_qui" : "avv.prova_non_partita"), 7000);
+    } catch (e) { avviso(`${t("avv.prova_non_partita")} ${e.message || ""}`.trim(), 8000); }
+  };
+  mostra(interruttore("av_qui", t("imp.avvisi_qui"), !!sub, t("imp.avvisi_qui_aiuto")));
   const scelta = $("#av_qui");
   scelta.addEventListener("change", async () => {
     const acceso = scelta.checked;
     scelta.disabled = true;
-    try { if (acceso) await accendi(); else await spegni(); avviso(t(acceso ? "avv.notifiche_attivate_qui" : "avv.notifiche_disattivate_questo"), 5000); }
-    catch (e) { scelta.checked = !acceso; avviso(e.message || t(acceso ? "avv.non_attivo" : "avv.non_disattivo"), 6000); }
+    try {
+      if (!acceso) { await spegni(); avviso(t("avv.notifiche_disattivate_questo"), 5000); return; }
+      await accendi();
+    } catch (e) { scelta.checked = !acceso; avviso(e.message || t(acceso ? "avv.non_attivo" : "avv.non_disattivo"), 6000); return; }
     finally { scelta.disabled = false; }
+    await prova();
   });
 }
 
@@ -2534,7 +2546,8 @@ async function avvisiTelefono() {
     if (!document.body.contains(dove)) return;
     const o = a.impostazioni;
     dove.innerHTML = `${a.ore_tranquille_spente ? `<div class="piccolo" role="status" style="margin:8px 0;font-weight:600">${t("avv.avevi_scelto_ore")}</div>` : ""}
-      <div id="notifiche-web"></div>
+      <div id="notifiche-web" class="avvisi-attesa" aria-busy="true"><p class="debole piccolo riserva" aria-hidden="true">${t("avv.notifiche_dell_app")}</p>
+        <p class="debole piccolo">${t("imp.avvisi_controllo")}</p></div>
       ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, t("imp.ore_tranquille_aiuto", { da: Number(o.silenzio_da), a: Number(o.silenzio_a) }))}`;
     notificheWeb(a.dispositivi);
     const ore = $("#av_silenzio");

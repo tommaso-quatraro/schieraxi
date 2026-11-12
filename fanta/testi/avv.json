@@ -201,7 +201,11 @@
     "en": "No alerts in the chosen range: changes and summary arrive as soon as it ends. A reminder that falls in it is not sent"
   },
   "avv.notifiche_attivate_qui": {
-    "it": "Avvisi attivi su questo dispositivo",
-    "en": "Alerts are on for this device"
+    "it": "Avvisi attivi su questo dispositivo: ti ho mandato un avviso di prova",
+    "en": "Alerts are on for this device: I sent you a test alert"
+  },
+  "avv.prova_non_partita": {
+    "it": "Avvisi attivi su questo dispositivo, ma l'avviso di prova non è partito.",
+    "en": "Alerts are on for this device, but the test alert did not go out."
   }
 }

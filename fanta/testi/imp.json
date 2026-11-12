@@ -36,8 +36,12 @@
     "en": "Alerts on this device"
   },
   "imp.avvisi_qui_aiuto": {
-    "it": "Il promemoria della scadenza e i cambi della formazione consigliata",
-    "en": "The deadline reminder and changes to the suggested lineup"
+    "it": "Il promemoria della scadenza, i cambi della formazione consigliata e gli altri avvisi, se non li avevi spenti",
+    "en": "The deadline reminder, changes to the suggested lineup and the other alerts, unless you had turned them off"
+  },
+  "imp.avvisi_controllo": {
+    "it": "Controllo gli avvisi di questo dispositivo…",
+    "en": "Checking the alerts on this device…"
   },
   "imp.ore_tranquille_aiuto": {
     "it": "Niente avvisi dalle {da} alle {a}",
