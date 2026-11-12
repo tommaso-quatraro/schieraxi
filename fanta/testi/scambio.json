@@ -191,10 +191,6 @@
     "it": "Rose aggiornate il {data}",
     "en": "Rosters updated on {data}"
   },
-  "scambio.caricamento_no": {
-    "it": "Caricamento non riuscito",
-    "en": "Upload failed"
-  },
   "scambio.stemma_aggiornato": {
     "it": "Stemma aggiornato",
     "en": "Crest updated"

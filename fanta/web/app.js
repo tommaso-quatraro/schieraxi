@@ -1733,7 +1733,8 @@ function htmlDifferenze(d) {
 
 // La rosa di una squadra, pagina di Impostazioni (#618). `nome` vuoto: la mia («La mia squadra», ?gruppo=squadra), con la scelta di qual
 // è la mia («Non è la tua squadra?»); un nome: un'altra squadra (?gruppo=squadre&rosa=…), sotto «Le altre squadre», con la sua
-// formazione consigliata. Nome, crediti, stemma e maglia si cambiano qui. L'indirizzo lo scrive vai().
+// formazione consigliata. Nome e crediti si cambiano qui; stemma e maglia nel loro foglio (apriStemmaMaglia), con «Rimuovi» e l'indirizzo
+// web. L'indirizzo lo scrive vai().
 const sceltaMiaSquadra = (squadre = stato.squadre || []) => `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${squadre.map(x =>
   `<option value="${esc(x.nome)}" ${x.mia ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>`;
 function collegaSceltaMia() {
@@ -1794,11 +1795,10 @@ async function vistaRosa(nome) {
           <button class="bottone secondario" id="salva-crediti-squadra" type="button">${t("scambio.salva")}</button></span></div>
         <div class="immagini-squadra">
           ${["stemma", "maglia"].map(tipo => { const s = squadre.find(x => x.nome === r.nome); const c = s && s.immagini && s.immagini[tipo]; return `<div class="immagine-squadra">
-            ${c ? `<img src="${urlImg(r.nome, tipo)}" alt="${t(NOME_IMMAGINE[tipo])}">` : `<span class="vuota">${t(NOME_IMMAGINE[tipo])}</span>`}
-            <label class="bottone secondario" for="img-${tipo}" style="padding:5px 12px;min-height:44px;font-size:var(--t-sec)">${t(c ? "scambio.cambia_tipo" : "scambio.carica_tipo", { tipo: t(NOME_IMMAGINE[tipo]).toLowerCase() })}</label>
-            <input id="img-${tipo}" data-tipo="${tipo}" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>`; }).join("")}
+            ${c ? `<img src="${urlImg(r.nome, tipo)}" alt="${t(NOME_IMMAGINE[tipo])}">` : `<span class="vuota">${t(NOME_IMMAGINE[tipo])}</span>`}</div>`; }).join("")}
         </div>
-        ${r.mia ? "" : `<div class="pulsanti"><button class="bottone" type="button" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button></div>`}
+        <div class="pulsanti"><button class="bottone secondario" type="button" id="apri-stemma-maglia">${t("lega.stemma_maglia")}</button>
+          ${r.mia ? "" : `<button class="bottone" type="button" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" })}</div>
@@ -1825,22 +1825,8 @@ async function vistaRosa(nome) {
       try { await api("/api/crediti", { method: "PUT", body: JSON.stringify({ crediti: { [r.nome]: Number(testo) } }) }); svuotaCache(); caricaSquadre(); avviso(t("scambio.crediti_salvati")); }
       catch (e) { avviso(e.message, 5000); }
     });
-    document.querySelectorAll(".immagini-squadra input[type=file]").forEach(inp => inp.addEventListener("change", async () => {
-      const file = inp.files[0];
-      inp.value = "";
-      if (!file) return;
-      const dati = new FormData();
-      dati.append("file", file);
-      try {
-        const risposta = await fetch(`/api/squadre/immagine?squadra=${encodeURIComponent(r.nome)}&tipo=${inp.dataset.tipo}`, { method: "POST", body: dati, headers: { "X-Fanta": "1" } });
-        const esito = await risposta.json().catch(() => ({}));
-        if (!risposta.ok) throw new Error(traduciErrore(esito.detail) || t("scambio.caricamento_no"));
-        stato.vImg = Date.now();
-        await caricaSquadre();
-        avviso(t(inp.dataset.tipo === "stemma" ? "scambio.stemma_aggiornato" : "scambio.maglia_aggiornata"));
-        vaiQui();
-      } catch (e) { avviso(e.message, 6000); }
-    }));
+    // stemma e maglia nel foglio di sempre (da file, da un indirizzo web, Rimuovi), aperto su questa squadra
+    $("#apri-stemma-maglia").addEventListener("click", () => apriStemmaMaglia(r.nome));
   } catch (e) {
     if (ancoraValida(mia)) pagina(erroreVista(e), { titolo: nome || miaS.nome, stato: false, indietro });
   }
@@ -2588,6 +2574,7 @@ async function apriStemmaMaglia(nome, inAttesa = false) {
     if (ricarica) await caricaSquadre();
     avviso(testo);
     disegna();
+    if (stato.vista === "impostazioni" && $(".rosa-pagina")) vaiQui();    // aperto da una rosa: sotto il foglio le immagini nuove
   };
   const disegna = () => {
     squadre = stato.squadre || squadre;

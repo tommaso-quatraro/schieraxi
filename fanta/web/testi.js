@@ -1469,7 +1469,6 @@ const TESTI = {
     "scambio.cambia_tipo": "Cambia {tipo}",
     "scambio.carica_tipo": "Carica {tipo}",
     "scambio.rose_aggiornate": "Rose aggiornate il {data}",
-    "scambio.caricamento_no": "Caricamento non riuscito",
     "scambio.stemma_aggiornato": "Stemma aggiornato",
     "scambio.maglia_aggiornata": "Maglia aggiornata",
 
@@ -3103,7 +3102,6 @@ const TESTI = {
     "scambio.cambia_tipo": "Change {tipo}",
     "scambio.carica_tipo": "Upload {tipo}",
     "scambio.rose_aggiornate": "Rosters updated on {data}",
-    "scambio.caricamento_no": "Upload failed",
     "scambio.stemma_aggiornato": "Crest updated",
     "scambio.maglia_aggiornata": "Shirt updated",
 

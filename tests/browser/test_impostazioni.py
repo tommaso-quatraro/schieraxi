@@ -8,7 +8,7 @@ della giornata girano solo prima della scadenza (`solo`).
 """
 import json
 import re
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -272,6 +272,54 @@ def test_la_mia_lega_porta_alla_mia_squadra_e_alle_altre(web):
     assert not web.errori_mostrati() and not web.errori_console and not web.richieste_fallite
 
 
+def _mia_con_stemma(web) -> str:
+    """La mia squadra con lo stemma già caricato (la maglia no); dà il suo nome. Le immagini rispondono con un corpo finto: niente
+    404 per l'anteprima, e la cancellazione riesce."""
+    squadre = web.registrata("/api/squadre")
+    mia = next(s for s in squadre if s["mia"])
+    mia["immagini"] = {"stemma": True, "maglia": False}
+    web.risposta("/api/squadre", squadre)
+    web.risposta("/api/squadre/immagine", {"ok": True})
+    return mia["nome"]
+
+
+def test_lo_stemma_sbagliato_si_toglie_da_la_mia_squadra(web):
+    """Uno stemma caricato per sbaglio si toglie da La mia squadra: «Stemma e maglia» apre il foglio con «Rimuovi»."""
+    solo(web, "prima")
+    nome = _mia_con_stemma(web)
+    tolte = []
+    web.pagina.on("request", lambda r: r.method == "DELETE" and urlsplit(r.url).path == "/api/squadre/immagine"
+                  and tolte.append(parse_qs(urlsplit(r.url).query)))
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    tocca(web, principale(web).get_by_role("button", name="Stemma e maglia"))
+    foglio = web.pagina.get_by_role("dialog")
+    assert foglio.get_by_role("combobox").input_value() == nome          # il foglio è sulla squadra della pagina
+    rimuovi = foglio.get_by_role("button", name="Rimuovi")
+    assert rimuovi.count() == 1                                          # solo lo stemma è caricato
+    rimuovi.click()
+    web.pagina.locator("#avviso").filter(has_text="Stemma rimosso").wait_for(timeout=10000)
+    assert tolte == [{"squadra": [nome], "tipo": ["stemma"]}]
+    assert not web.errori_console and not web.richieste_fallite
+
+
+def test_lo_stemma_si_prende_anche_da_un_indirizzo_web(web):
+    """Con «Immagini da indirizzo web» acceso (lo scenario registrato ce l'ha) il foglio di La mia squadra lo offre."""
+    solo(web, "prima")
+    _mia_con_stemma(web)
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    tocca(web, principale(web).get_by_role("button", name="Stemma e maglia"))
+    foglio = web.pagina.get_by_role("dialog")
+    assert foglio.get_by_role("button", name="Da indirizzo web").count() == 2           # stemma e maglia
+    assert foglio.locator("label", has_text="Da file o foto").count() == 2           # l'etichetta del campo del file
+
+
+def test_un_altra_squadra_apre_il_foglio_sul_suo_nome(web):
+    solo(web, "prima")
+    web.apri("/?vista=impostazioni&gruppo=squadre&rosa=Real%20Esempio")
+    tocca(web, principale(web).get_by_role("button", name="Stemma e maglia"))
+    assert web.pagina.get_by_role("dialog").get_by_role("combobox").input_value() == "Real Esempio"
+
+
 def test_senza_le_rose_degli_altri_non_c_e_le_altre_squadre(web):
     solo(web, "prima")
     f = web.registrata("/api/funzioni")
@@ -328,6 +376,14 @@ def test_i_singoli_valori_stanno_dietro_modifica_i_valori(web):
     assert punteggi.is_visible()
 
 
+def test_regole_e_scadenza_parla_di_giornate_non_del_diario(web):
+    """La frase sotto la prima giornata nomina le pagine che ci sono: il Diario è diventato Giornate (#617)."""
+    solo(web, "prima")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    testo = web.testo_principale()
+    assert "Diario" not in testo and "Giornate" in testo, testo[:400]
+
+
 def test_la_scadenza_si_cambia_e_si_salva_subito(web):
     solo(web, "prima")
     salvate = _scritture(web, "/api/regole")
@@ -361,6 +417,100 @@ def test_senza_notifiche_nel_browser_la_frase_dice_cosa_fare(web):
     frase = sezione(web, "Avvisi").get_by_text(re.compile("Le notifiche dell'app non sono disponibili su questo dispositivo"))
     frase.wait_for(timeout=10000)
     assert sezione(web, "Avvisi").get_by_role("checkbox", name=re.compile("^Avvisi su questo dispositivo")).count() == 0
+
+
+def test_mentre_cerca_le_notifiche_il_riquadro_lo_dice_e_la_pagina_non_salta(web):
+    """Il browser di prova non ha il service worker: la web lo aspetta fino a 4 secondi. Intanto il posto dell'interruttore dice che
+    sta controllando (aria-busy), e quando arriva la frase la riga delle ore tranquille resta dov'era."""
+    solo(web, "prima")
+    web.pagina.goto(web.server.indirizzo + "/?vista=impostazioni", wait_until="load")
+    avvisi = sezione(web, "Avvisi")
+    ore = avvisi.locator("label").filter(has_text="Ore tranquille")
+    ore.wait_for(timeout=10000)
+    attesa = avvisi.locator("[aria-busy=true]")
+    assert attesa.count() == 1, "mentre aspetta il service worker il riquadro non dice che sta caricando"
+    assert "Controllo gli avvisi" in attesa.inner_text()
+    prima = ore.bounding_box()["y"]
+    avvisi.get_by_text(re.compile("Le notifiche dell'app non sono disponibili")).wait_for(timeout=10000)
+    assert avvisi.locator("[aria-busy=true]").count() == 0
+    assert abs(ore.bounding_box()["y"] - prima) <= 2, f"la riga delle ore tranquille si è spostata: {prima} → {ore.bounding_box()['y']}"
+
+
+# Le notifiche del browser, finte (il browser di prova non ha il service worker): un service worker pronto, con un pushManager che
+# iscrive davvero solo per finta, e il permesso che risponde PERMESSO. Le rotte del server rispondono con `notifiche_finte`.
+NOTIFICHE_FINTE = """(() => {
+  const reg = { pushManager: {
+    getSubscription: async () => window.__iscrizione || null,
+    subscribe: async () => (window.__iscrizione = { endpoint: 'https://push.example/prova',
+      toJSON: () => ({ endpoint: 'https://push.example/prova', keys: { p256dh: 'a', auth: 'b' } }),
+      unsubscribe: async () => { window.__iscrizione = null; return true; } }) } };
+  Object.defineProperty(ServiceWorkerContainer.prototype, 'ready', { get: () => Promise.resolve(reg) });
+  Notification.requestPermission = async () => PERMESSO;
+})();"""
+
+
+def notifiche_finte(web, permesso="granted", prova=({"inviato": True}, 200)) -> list:
+    """Prima di `apri`. Dà l'elenco delle richieste di avviso di prova, che si riempie man mano."""
+    web.pagina.add_init_script(NOTIFICHE_FINTE.replace("PERMESSO", json.dumps(permesso)))
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/avvisi/prova", prova[0], stato=prova[1])
+    return _scritture(web, "/api/avvisi/prova")
+
+
+QUI = re.compile("^Avvisi su questo dispositivo")
+
+
+def interruttore_qui(web):
+    return sezione(web, "Avvisi").get_by_role("checkbox", name=QUI)
+
+
+def riga_qui(web):
+    """L'etichetta dell'interruttore (nome e frase sotto), che si tocca."""
+    return sezione(web, "Avvisi").locator("label").filter(has=web.pagina.get_by_role("checkbox", name=QUI))
+
+
+def accendi_qui(web) -> None:
+    riga_qui(web).click()
+
+
+def test_la_frase_dell_interruttore_dice_che_arrivano_anche_gli_altri_avvisi(web):
+    """Il server manda ancora gli avvisi secondo le scelte di prima (promemoria, cambi, riepilogo, reparto scoperto): la frase sotto
+    l'interruttore non promette solo il promemoria e i cambi (la riduzione a due è l'issue #676)."""
+    solo(web, "prima")
+    notifiche_finte(web)
+    web.apri("/?vista=impostazioni")
+    frase = riga_qui(web).inner_text()
+    assert "gli altri avvisi" in frase, frase
+
+
+def test_accendere_gli_avvisi_manda_un_avviso_di_prova(web):
+    solo(web, "prima")
+    prove = notifiche_finte(web)
+    web.apri("/?vista=impostazioni")
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    assert len(prove) == 1 and interruttore_qui(web).is_checked()
+
+
+@pytest.mark.parametrize("prova", [({"detail": "Hai fatto troppe richieste in quest'ora. Riprova tra 40 minuti."}, 429),
+                                   ({"inviato": False}, 200)])
+def test_se_l_avviso_di_prova_non_parte_lo_dice_e_gli_avvisi_restano_accesi(web, prova):
+    solo(web, "prima")
+    notifiche_finte(web, prova=prova)
+    web.apri("/?vista=impostazioni")
+    accendi_qui(web)
+    web.pagina.locator("#avviso[role=status]").filter(has_text="l'avviso di prova non è partito").wait_for(timeout=10000)
+    assert interruttore_qui(web).is_checked()                            # l'iscrizione è riuscita: resta accesa
+
+
+def test_con_il_permesso_negato_niente_avviso_di_prova(web):
+    solo(web, "prima")
+    prove = notifiche_finte(web, permesso="denied")
+    web.apri("/?vista=impostazioni")
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="Permesso negato").wait_for(timeout=10000)
+    assert prove == [] and not interruttore_qui(web).is_checked()
 
 
 def test_le_ore_tranquille_rifiutate_dal_server_tornano_come_erano(web):
