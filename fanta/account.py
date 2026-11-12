@@ -29,6 +29,7 @@ import collections
 import contextlib
 import hashlib
 import hmac
+import logging
 import math
 import os
 import re
@@ -1305,9 +1306,20 @@ def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = N
 
 def _togli_notifiche(utente_id: int, tieni: str | None) -> None:
     """Le iscrizioni alle notifiche web dell'utente (nella sua cartella), tutte tranne quella con l'indirizzo `tieni` se c'è.
-    Un errore di scrittura non si nasconde: arriva a chi ha chiesto (le sessioni sono già chiuse)."""
+    Un errore di scrittura non si nasconde: arriva a chi ha chiesto (le sessioni sono già chiuse). Il file tenuto da un altro
+    processo (`push.Occupato`) invece non fa fallire il cambio di password già fatto: si riprova una volta, poi le iscrizioni
+    restano e lo dice una riga nel registro di sicurezza e in quello del servizio (#547)."""
     from . import contesto, push
-    push.tieni_solo(tieni if isinstance(tieni, str) else None, contesto.Contesto.per_utente(utente_id).iscrizioni_push)
+    file = contesto.Contesto.per_utente(utente_id).iscrizioni_push
+    for _ in range(2):
+        try:
+            push.tieni_solo(tieni if isinstance(tieni, str) else None, file)
+            return
+        except push.Occupato:
+            continue
+    logging.getLogger(__name__).error("Account %s: notifiche web dei dispositivi usciti non tolte (file occupato da un altro "
+                                      "processo)", utente_id)
+    evento("notifiche_non_tolte", utente=int(utente_id))
 
 
 def _avvisa_password_cambiata(db: sqlite3.Connection, utente_id: int, adesso: datetime) -> None:

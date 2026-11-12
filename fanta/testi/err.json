@@ -368,6 +368,10 @@
     "it": "Un'altra operazione sulle rose è ancora in corso: riprova fra qualche secondo",
     "en": "Another operation on the rosters is still running: try again in a few seconds"
   },
+  "err.notifiche_occupate": {
+    "it": "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo",
+    "en": "Another operation on the notifications is still running: try again in a few seconds"
+  },
   "err.scambio_altra_squadra": {
     "it": "Scegli un'altra squadra: non puoi scambiare con te stesso",
     "en": "Choose another team: you cannot trade with yourself"
@@ -459,6 +463,10 @@
   "err.testo_lungo": {
     "it": "Il testo è troppo lungo (massimo {1} mila caratteri): incolla solo le rose",
     "en": "The text is too long (at most {1} thousand characters): paste only the rosters"
+  },
+  "err.riconoscimento_lungo": {
+    "it": "Il riconoscimento dei giocatori ha richiesto troppo tempo: riprova fra qualche minuto e, se succede ancora, lascia solo le rose",
+    "en": "Recognising the players took too long: try again in a few minutes and, if it happens again, keep only the rosters"
   },
   "err.regolamento_lungo": {
     "it": "Il regolamento è troppo lungo (al massimo {1} mila caratteri): incolla solo la parte con bonus, malus, moduli e panchina.",
