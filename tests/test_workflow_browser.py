@@ -36,12 +36,14 @@ def _filtro() -> re.Pattern:
     return re.compile(m.group(1))
 
 
-def test_il_job_browser_e_solo_un_avviso():
-    """All'inizio fuori dai «needs» di «unisci»: diventa bloccante quando la web nuova è unita."""
+def test_il_job_browser_blocca_l_unione():
+    """Una schermata rotta non si unisce: «unisci» aspetta «browser» e lo vuole riuscito. Il job parte in ogni pull
+    request (se la PR non tocca la web salta i passi e resta verde), quindi «riuscito» vale per tutte."""
     unisci = _job("unisci")
     needs = re.search(r"^    needs:\s*\[([^\]]*)\]", unisci, re.M).group(1)
-    assert "browser" not in [n.strip() for n in needs.split(",")]
-    assert "needs.browser" not in unisci
+    assert "browser" in [n.strip() for n in needs.split(",")]
+    assert "needs.browser.result == 'success'" in unisci
+    assert not re.search(r"^    if:.*draft", _job("browser"), re.M), "se saltasse in bozza o altrove, «unisci» non partirebbe più"
 
 
 def test_il_job_browser_gira_nelle_pr_e_a_mano_su_un_ramo_non_su_main():

@@ -39,8 +39,8 @@ pagina, e l'avviso ci viene scritto dopo (un lettore di schermo non legge una re
 ## Quando girano
 - **Nelle pull request**: job `browser` dei controlli (`.github/workflows/test.yml`), quando la PR tocca `fanta/web/`,
   `fanta/testi/`, `tests/browser/`, `tests/strumenti/axe/`, `ios/fotografie/`, `script/ci/server_finto.py`,
-  `.github/browser-requisiti.txt` o `test.yml` (anche spostando un file da lì). Per ora è solo un avviso (fuori dai
-  `needs` di `unisci`).
+  `.github/browser-requisiti.txt` o `test.yml` (anche spostando un file da lì). Blocca l'unione: `unisci` lo aspetta e
+  lo vuole riuscito (se la PR non tocca la web il job salta i passi e resta verde).
 - **A mano su un ramo**: `gh workflow run test.yml --ref <ramo>` (girano tutti i controlli, questo compreso).
 - **Nella suite normale no**: senza `-m browser` si saltano. Si saltano anche se mancano Playwright o Chrome; nel job dei
   controlli (variabile `BROWSER_OBBLIGATORIO=1`) invece falliscono, perché lì un test saltato sarebbe un verde finto.

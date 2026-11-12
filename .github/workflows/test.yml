@@ -349,7 +349,7 @@ jobs:
   # Unione automatica (squash, ramo cancellato) solo per le PR del proprietario, non in bozza, con i controlli verdi
   # (iOS: verde, oppure saltato perché la PR non tocca ios/; revisione IA e ambito verdi). Mai per Dependabot e mai per le PR da fork.
   unisci:
-    needs: [test, script-server, versione, cambi, ios, revisione-ia, ambito]
+    needs: [test, script-server, versione, cambi, ios, revisione-ia, ambito, browser]
     if: >-
       !cancelled() &&
       github.event_name == 'pull_request' && !github.event.pull_request.draft &&
@@ -359,6 +359,7 @@ jobs:
       needs.test.result == 'success' && needs.script-server.result == 'success' &&
       needs.versione.result == 'success' && needs.cambi.result == 'success' &&
       needs.revisione-ia.result == 'success' && needs.ambito.result == 'success' &&
+      needs.browser.result == 'success' &&
       (needs.ios.result == 'success' || (needs.ios.result == 'skipped' && needs.cambi.outputs.ios == 'false'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
