@@ -526,6 +526,7 @@
       "items": {
        "type": "integer"
       },
+      "maxItems": 40,
       "title": "Titolari",
       "type": "array"
      }
@@ -1171,6 +1172,7 @@
         "items": {
          "type": "integer"
         },
+        "maxItems": 40,
         "type": "array"
        },
        {

@@ -1,45 +1,7 @@
 import Foundation
 
-// Altre risposte del server, usate solo dall'app (il widget non le compila): confronto, affidabilità, regole riconosciute, stagione...
+// Altre risposte del server, usate solo dall'app (il widget non le compila): affidabilità, regole riconosciute, stagione...
 // Come per gli altri modelli, quasi tutto è opzionale: un campo mancante non deve rompere la schermata.
-
-// MARK: - Confronto tra due giocatori
-
-/// Una causa del confronto («Probabilità di giocare», «Voto in pagella atteso»...): quanto pesa, in punti attesi, a favore di A (positivo) o di B.
-struct FattoreConfronto: Decodable, Identifiable, Equatable {
-    let chiave: String
-    let etichetta: String
-    let a: Double?
-    let b: Double?
-    let effetto: Double
-    let percentuale: Bool?
-    var id: String { chiave }
-}
-
-/// Se i due sono in una formazione: dove stanno e cosa cambierebbe a invertirli.
-struct ConfrontoFormazione: Decodable, Equatable {
-    let modulo: String?
-    let postoA: String?
-    let postoB: String?
-    let differenza: Double?
-    let testo: String?
-}
-
-struct Confronto: Decodable {
-    let giornata: Int?
-    /// Il numero della giornata nella lega (facoltativo: `null` prima che la lega parta, assente nei server vecchi).
-    let giornataLega: Int?
-    let giocatori: [Giocatore]
-    /// L'id del giocatore consigliato.
-    let consigliato: Int?
-    let margine: Double?
-    let fattori: [FattoreConfronto]
-    let perche: String?
-    let formazione: ConfrontoFormazione?
-
-    /// Il titolo del duello, come la web (`mercato.chi_schierare`): «Giornata 8 · 11ª di Serie A» (#299, #302); nil senza giornata.
-    var titolo: String? { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } }
-}
 
 // MARK: - Prova del modello
 
@@ -94,22 +56,6 @@ struct StatoStagione: Decodable, Equatable {
     let rose: String?
     /// true quando le rose sono di una stagione finita: si può archiviare e ripartire.
     let nuova: Bool?
-}
-
-// MARK: - Offerta ricevuta a parole
-
-struct RichiestaOfferta: Encodable {
-    let testo: String
-    let con: String?
-}
-
-/// Cosa ha capito il server dal messaggio incollato: con chi, cosa dai, cosa ricevi e (se ha trovato tutto) l'analisi.
-struct OffertaRiconosciuta: Decodable {
-    let con: String?
-    let `do`: [String]
-    let ricevo: [String]
-    let ambigui: [String]?
-    let analisi: PropostaScambio?
 }
 
 // MARK: - Aggiornamento dei dati, icona, foto

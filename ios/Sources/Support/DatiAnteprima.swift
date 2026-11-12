@@ -14,18 +14,6 @@ extension FinteServer {
          "giocatori": [{"id": 1, "nome": "Leonel Marteni", "ruolo": "A", "squadra": "inter", "costo": 80},
                        {"id": 2, "nome": "Giocatore senza ruolo", "ruolo": null, "squadra": "ignota", "costo": 1}]}
         """,
-        "/api/scambi/proposte": """
-        {"giornate": [11, 12],
-         "proposte": [{"mia": "La mia squadra", "altra": "Altra squadra",
-                       "do": [{"id": 7, "nome": "Mario Rossi", "ruolo": "D", "squadra": "roma"}],
-                       "ricevo": [{"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio"}],
-                       "guadagno_mio": 2.4, "guadagno_loro": 1.1, "per_giornata_mio": [1.2, 1.2], "per_giornata_loro": [0.5, 0.6], "giornate": [11, 12]}]}
-        """,
-        "/api/mercato": """
-        {"squadra": "La mia squadra", "svincolati": 118, "crediti_residui": 12,
-         "proposte": [{"esce": {"id": 7, "nome": "Mario Rossi", "ruolo": "D", "squadra": "roma"},
-                       "entra": {"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio"}, "guadagno": 3.2, "rimborso": 4}]}
-        """,
         "/api/classifica": """
         {"giornata": 11, "giocatori": [{"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio", "avversario": "genoa", "in_casa": true,
                                          "p_voto": 0.88, "punti_attesi": 6.2},
@@ -35,10 +23,6 @@ extension FinteServer {
         {"giornate": [11, 12], "squadre": [{"squadra": "inter", "media": 2.1, "partite": [
             {"giornata": 11, "avversario": "roma", "in_casa": true, "difficolta": 2},
             {"giornata": 12, "avversario": "milan", "in_casa": false, "difficolta": 4}]}]}
-        """,
-        "/api/osservati": """
-        {"giornata": 11, "giocatori": [{"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio", "p_voto": 0.88, "punti_attesi": 6.2},
-                                        {"id": 13, "nome": "Gino Neri", "ruolo": "C", "squadra": "parma", "proprietario": "Altra squadra", "assente": true}]}
         """,
         "/api/giocatori": """
         [{"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio"}]

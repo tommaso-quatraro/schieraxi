@@ -42,26 +42,18 @@ final class FotografieDalVeroTests: XCTestCase {
             }
             prova(Oggi.self, "/api/oggi")
             prova(Formazione.self, "/api/formazione")
-            prova(LiveWidget.self, "/api/live")
             prova(InfoServer.self, "/api/stato")
             prova(StatoDati.self, "/api/stato-dati")
             prova(StatoStagione.self, "/api/stagione")
-            prova(Mercato.self, "/api/mercato")
             prova(ElencoGiocatori.self, "/api/classifica?limite=60&liberi=true")
-            prova(ElencoGiocatori.self, "/api/osservati")
             prova(Calendario.self, "/api/calendario")
-            prova(ProposteScambi.self, "/api/scambi/proposte")
             prova(DiarioRisposta.self, "/api/diario")
             prova(Rosa.self, "/api/rosa")
             prova([SquadraLega].self, "/api/squadre")
-            prova([Differenze].self, "/api/movimenti?limite=30")
             prova(Affidabilita.self, "/api/affidabilita")
             prova(StatoAvvisi.self, "/api/avvisi", snake: false)
             prova(RispostaFunzioni.self, "/api/funzioni", snake: false)
             prova([GiocatoreBreve].self, "/api/giocatori")
-            if s.risposte["/api/confronto"] != nil { prova(Confronto.self, "/api/confronto") }
-            if s.risposte["/api/scambi/analizza"] != nil { prova(PropostaScambio.self, "/api/scambi/analizza") }
-            if s.risposte["/api/scambi/da-testo"] != nil { prova(OffertaRiconosciuta.self, "/api/scambi/da-testo") }
             for chiave in s.risposte.keys.sorted() {
                 if chiave.hasPrefix("/api/giocatore/") { prova(SchedaGiocatore.self, chiave) }
                 if chiave.hasPrefix("/api/rosa?squadra=") { prova(Rosa.self, chiave) }
@@ -70,12 +62,11 @@ final class FotografieDalVeroTests: XCTestCase {
         }
     }
 
-    /// Le schermate che in demo aprono un giocatore, una squadra o un confronto trovano davvero la risposta.
+    /// Le schermate che in demo aprono un giocatore o una squadra trovano davvero la risposta.
     func testLeScelteDellaDemoHannoLaLoroRisposta() throws {
         for (nome, s) in try scenari() {
             if let g = s.giocatore { XCTAssertNotNil(s.risposte["/api/giocatore/\(g)"], "\(nome): manca la scheda del giocatore \(g)") }
             if let r = s.rosaAltra { XCTAssertNotNil(s.risposte["/api/rosa?squadra=" + IndirizzoServer.codifica(r)], "\(nome): manca la rosa da mostrare") }
-            XCTAssertNotNil(s.confronto, "\(nome): manca la coppia del confronto")
         }
     }
 

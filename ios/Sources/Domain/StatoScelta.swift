@@ -8,7 +8,7 @@ enum StatoScelta: Equatable {
     case sconosciuto
     /// Nessuna scelta salvata: si vede la consigliata.
     case consigliata
-    /// Nessuna scelta salvata e si vede un altro stile o un altro modulo: non è la consigliata (web: «altra»).
+    /// Nessuna scelta salvata e si vede un altro modulo: non è la consigliata (web: «altra»).
     case altra
     /// Una modifica a mano mai salvata (web: «mano»).
     case bozza
@@ -29,13 +29,13 @@ enum StatoScelta: Equatable {
     /// - Parameters:
     ///   - letta: la scelta della giornata è stata letta dal server (anche «nessuna»).
     ///   - salvati: i titolari salvati (nil = nessuna scelta salvata).
-    ///   - manuale: i titolari della modifica a mano (nil = si vede la consigliata, o uno stile o un modulo).
-    ///   - mostrati: senza modifica a mano, i titolari dello stile e del modulo sullo schermo (nil = non si sa). Con una scelta
+    ///   - manuale: i titolari della modifica a mano (nil = si vede la consigliata o un altro modulo).
+    ///   - mostrati: senza modifica a mano, i titolari del modulo sullo schermo (nil = non si sa). Con una scelta
     ///     salvata dicono se è «salvata» o se ci sono modifiche, come la web che confronta gli undici mostrati.
     ///   - chiusa: la giornata è chiusa (viene prima di tutto il resto, come sulla web).
     ///   - nonValida: la scelta salvata non vale più (lo dice il server con `formazione_non_valida` o, a giornata chiusa, con
     ///     `stato_scelta`; o non è nella rosa).
-    ///   - altra: senza modifica a mano si vede un altro stile o un altro modulo.
+    ///   - altra: senza modifica a mano si vede un altro modulo.
     /// L'ordine dei titolari non conta.
     static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, mostrati: [Int]? = nil, chiusa: Bool = false,
                         nonValida: Bool = false, altra: Bool = false) -> StatoScelta {
@@ -53,7 +53,7 @@ enum StatoScelta: Equatable {
         switch self {
         case .sconosciuto: return ""
         case .consigliata: return Catalogo.Formazione.statoConsigliata
-        case .altra: return Catalogo.Formazione.statoAltra
+        case .altra: return Catalogo.Formazione.statoAltroModulo
         case .bozza: return Catalogo.Formazione.statoMano
         case .salvata(let d):
             return d.map { Catalogo.Formazione.statoSalvataQuando(quando: Self.momento($0, adesso: adesso)) }
@@ -116,7 +116,7 @@ enum StatoScelta: Equatable {
 
     /// I pulsanti della riga, nell'ordine di `rigaStatoScelta` della web (#463): dipendono dallo stato, non dalla modifica a mano,
     /// così con una scelta salvata e un altro modulo sullo schermo ci sono «Salva le modifiche» e «Annulla modifiche».
-    /// «Modifica a mano» sull'iPhone sta accanto alla frase dello stile: vedi `conModificaAMano`.
+    /// «Modifica a mano» sull'iPhone sta sopra i moduli: vedi `conModificaAMano`.
     var pulsanti: [Pulsante] {
         switch self {
         case .consigliata: return [.salvaQuesta]
@@ -129,9 +129,9 @@ enum StatoScelta: Equatable {
         }
     }
 
-    /// «Modifica a mano» dove la web la offre: nella riga con la consigliata, un altro stile o modulo e la scelta che non vale più,
-    /// e quando la riga non c'è (un'altra squadra, scelta non ancora letta). Con una scelta salvata no: la si cambia dal modulo,
-    /// dallo stile o, in modifica a mano, dai titolari.
+    /// «Modifica a mano» dove la web la offre: nella riga con la consigliata, un altro modulo e la scelta che non vale più,
+    /// e quando la riga non c'è (un'altra squadra, scelta non ancora letta). Con una scelta salvata no: la si cambia dal modulo
+    /// o, in modifica a mano, dai titolari.
     var conModificaAMano: Bool {
         switch self {
         case .sconosciuto, .consigliata, .altra, .nonValida: return true

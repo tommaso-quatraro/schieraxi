@@ -8,16 +8,11 @@ import Testing
 /// I pulsanti dipendono dallo stato della scelta, come `rigaStatoScelta` della web: con una scelta salvata e un'altra formazione
 /// sullo schermo la riga dice «Modifiche non salvate» con «Salva le modifiche», «Annulla modifiche» e «Torna alla consigliata».
 @MainActor
-@Suite("Modifica a mano: moduli e stili come la web")
+@Suite("Modifica a mano: moduli come la web")
 struct ModificaAManoModuliTests {
     private var alle: Date? { Quando.data("2026-11-02T21:40:00") }
 
     // MARK: frasi e pulsanti
-
-    @Test("In modifica a mano, al posto della frase dello stile, «Modificata a mano. Tocca un modulo o uno stile …» della web")
-    func fraseModificataAMano() {
-        #expect(FormazioneView.testoModificataAMano == Catalogo.Formazione.modificataMano)
-    }
 
     @Test("I pulsanti hanno le parole della web (catalogo comune)", arguments: [
         ("formazione.salva_questa", Catalogo.Formazione.salvaQuesta),
@@ -73,28 +68,6 @@ struct ModificaAManoModuliTests {
 
     // MARK: schermata
 
-    @Test("Senza scelta salvata: in modifica a mano un tocco su uno stile torna alla sua proposta, senza cancellare niente")
-    func stileEsceDallaModificaAMano() async throws {
-        let srv = try server(scelta: nil)
-        let (vm, f) = try await caricata(srv)
-        vm.iniziaModificaManuale(f)
-        #expect(vm.statoScelta == .bozza)
-        vm.scegliStile(1)
-        #expect(vm.manuale == nil, "fuori dalla modifica a mano")
-        #expect(vm.rischio == 1)
-        #expect(vm.moduloScelto == nil)
-        let rischiosa = try #require(f.livelli?.first { $0.rischio == 1 })
-        let proposto = try #require(rischiosa.moduli.first { $0.modulo == rischiosa.modulo })
-        #expect(vm.vista(f).titolari.map(\.id) == proposto.titolari)
-        #expect(vm.statoScelta == .altra)
-        // di nuovo a mano, poi lo stile consigliato: è la consigliata
-        vm.iniziaModificaManuale(f)
-        vm.scegliStile(0)
-        #expect(vm.manuale == nil)
-        #expect(vm.statoScelta == .consigliata)
-        #expect(srv.quante("DELETE /api/scelta") == 0, "non c'è niente da togliere")
-    }
-
     @Test("Senza scelta salvata: in modifica a mano un tocco su un modulo torna a quel modulo dello stile")
     func moduloEsceDallaModificaAMano() async throws {
         let (vm, f) = try await caricata(try server(scelta: nil))
@@ -132,8 +105,8 @@ struct ModificaAManoModuliTests {
     @Test("«Annulla modifiche» fuori dalla modifica a mano rimette gli undici salvati")
     func annullaFuoriDallaModificaAMano() async throws {
         let salvata = try consigliata()
-        let (vm, _) = try await caricata(try server(scelta: salvata))
-        vm.scegliStile(1)
+        let (vm, f) = try await caricata(try server(scelta: salvata))
+        vm.scegliModulo(try moduli(f).altro.modulo)
         #expect(vm.statoScelta == .modificata(alle))
         vm.annullaModifiche()
         #expect(Set(vm.manuale ?? []) == Set(salvata))
@@ -169,11 +142,11 @@ struct ModificaAManoModuliTests {
         #expect(vm.statoScelta == .modificata(alle))
     }
 
-    @Test("A giornata chiusa un tocco su uno stile non toglie la formazione che vale")
+    @Test("A giornata chiusa un tocco su un modulo non toglie la formazione che vale")
     func chiusaLaFormazioneResta() async throws {
-        let (vm, _) = try await caricata(try server(scelta: try consigliata(), iniziata: true))
+        let (vm, f) = try await caricata(try server(scelta: try consigliata(), iniziata: true))
         let prima = try #require(vm.manuale)
-        vm.scegliStile(1)
+        vm.scegliModulo(try moduli(f).altro.modulo)
         #expect(vm.manuale == prima)
     }
 
@@ -270,7 +243,7 @@ struct ModificaAManoModuliTests {
             Issue.record("la demo parte dalla scelta salvata: \(vm.statoScelta)")
             return
         }
-        let modulo = try #require(Demo.moduloDaToccare(f, rischio: vm.rischio, salvati: vm.salvati), "nessun modulo da toccare")
+        let modulo = try #require(Demo.moduloDaToccare(vm.livello(f), salvati: vm.salvati), "nessun modulo da toccare")
         vm.scegliModulo(modulo)
         guard case .modificata = vm.statoScelta else {
             Issue.record("dopo il tocco la riga dice «Modifiche non salvate»: \(vm.statoScelta)")

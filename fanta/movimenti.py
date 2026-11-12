@@ -103,7 +103,7 @@ def registra(percorso: Path, diff: dict, quando: datetime | None = None) -> None
     storico.append({"quando": (quando or datetime.now()).isoformat(timespec="seconds"),
                     **{k: diff[k] for k in ("scambi", "svincolati_presi", "tagliati", "crediti", "squadre_nuove", "squadre_tolte", "testo")
                        if k in diff}})
-    scrivi_sicuro(percorso, json.dumps(storico[-MAX_STORICO:], ensure_ascii=False, indent=1))
+    scrivi_sicuro(percorso, json.dumps(storico[-MAX_STORICO:], ensure_ascii=False))
 
 
 def leggi(percorso: Path, ultimi: int | None = None) -> list[dict]:

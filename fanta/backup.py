@@ -4,12 +4,15 @@ Serve quando si cambia server o si vuole una copia al sicuro. Non contiene chiav
 from __future__ import annotations
 
 import json
+import math
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from . import lega, regole
-from .percorsi import RADICE, scrivi_sicuro
+from . import lega, movimenti, osservati, regole, scelte
+from .limiti import MAX_GIOCATORI_SQUADRA
+from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
 from .rose import MAX_TESTO_CELLA
 
 FORMATO = "schieraxi-backup"
@@ -17,16 +20,55 @@ VERSIONE = 1
 COPIA_PRIMA = Path("dati") / "backup-prima-del-ripristino.json"      # lo stato di prima, per tornare indietro
 PREFISSO_FILE = "schieraxi-backup"         # nome del file che si scarica e della copia serale
 
+# Tetti del ripristino (oltre: il file non è valido e non si scrive niente).
+# Il file più annidato che l'app scrive è lo storico dei movimenti (elenco > voce > scambi > scambio > giocatori > giocatore:
+# 6 livelli); 10 lascia margine ai campi che una versione più nuova potrebbe aggiungere.
+MAX_PROFONDITA = 10
+# Titolari e panchina di una scelta: mai più dei giocatori di una rosa (la più grande ammessa ne ha 40); una lega vera ne usa 11
+# più la panchina.
+MAX_GIOCATORI_SCELTA = MAX_GIOCATORI_SQUADRA
+# Lo storico dei movimenti ne tiene al massimo movimenti.MAX_STORICO (lo taglia movimenti.registra) e gli osservati sono al massimo
+# osservati.MASSIMO (osservati.aggiungi): un backup con di più non viene dall'app.
+# Una voce dei movimenti: in un gruppo (i giocatori di uno scambio, presi o lasciati da una squadra) al massimo una rosa intera, la
+# più grande che le regole ammettono (4 ruoli da regole.MAX_ROSA_PER_RUOLO); il riassunto di un'importazione che cambia tutte le
+# rose (20 squadre da 40 giocatori lasciati e presi, nomi veri sotto i 30 caratteri) resta sotto i 100 mila caratteri.
+MAX_GIOCATORI_MOVIMENTO = 4 * regole.MAX_ROSA_PER_RUOLO
+MAX_TESTO_MOVIMENTO = 100_000
+
 
 def nome_file(creato: str) -> str:
     """Nome del file di backup per una data ISO (`creato`)."""
     return f"{PREFISSO_FILE}-{creato[:10]}.json"
 
 
-def _lista_di_interi(d: Any) -> None:
-    if not isinstance(d, list):
-        raise ValueError("deve essere una lista")
-    [int(i) for i in d]
+def _non_valido(nome: str) -> str:
+    return f"{nome} non è valido: controlla di aver scelto il file di backup giusto"
+
+
+def _troppo_annidato(d: Any, massimo: int = MAX_PROFONDITA) -> bool:
+    """Vero se `d` ha liste o dizionari uno dentro l'altro per più di `massimo` livelli (`d` stesso è il primo). Senza ricorsione."""
+    pila = [(d, 1)] if isinstance(d, (list, dict)) else []
+    while pila:
+        x, livello = pila.pop()
+        if livello > massimo:
+            return True
+        figli = x.values() if isinstance(x, dict) else x
+        pila.extend((v, livello + 1) for v in figli if isinstance(v, (list, dict)))
+    return False
+
+
+def _intero(v: Any) -> bool:
+    return type(v) is int                     # non True/False, non 1.0, non «1»
+
+
+def _numero_o_niente(v: Any) -> bool:
+    return v is None or _intero(v) or (type(v) is float and math.isfinite(v))
+
+
+def _codici(v: Any) -> bool:
+    """Un elenco di codici di giocatori, come i titolari salvati dall'app."""
+    return (isinstance(v, list) and len(v) <= MAX_GIOCATORI_SCELTA
+            and all(_intero(i) and 1 <= i <= osservati.ID_MASSIMO for i in v))
 
 
 def _dizionario(d: Any) -> None:
@@ -34,9 +76,105 @@ def _dizionario(d: Any) -> None:
         raise ValueError("deve essere un elenco di voci")
 
 
-def _lista_o_dizionario(d: Any) -> None:
-    if not isinstance(d, (list, dict)):
+def _osservati(d: Any) -> list[int]:
+    """Codici interi; come nella lettura dell'elenco (osservati.leggi) i doppioni e i numeri che non possono essere giocatori si
+    tolgono. Più di osservati.MASSIMO giocatori diversi: non valido. Si scrive l'elenco ripulito."""
+    if not isinstance(d, list):
+        raise ValueError("deve essere una lista")
+    tenuti = list(dict.fromkeys(i for i in d if _intero(i) and 1 <= i <= osservati.ID_MASSIMO))
+    if len(tenuti) > osservati.MASSIMO or not all(_intero(i) for i in d):
+        raise ValueError("formato non riconosciuto")         # messaggi interni: `controlla` li sostituisce con il suo
+    return tenuti
+
+
+_CHIAVE_SCELTA = re.compile(r"([0-9]{4}-[0-9]{2})/([0-9]{1,3})")      # «stagione/giornata», come la scrive scelte.salva
+
+
+def _scelte(d: Any) -> None:
+    """Le voci come le scrive scelte.salva: chiave «stagione/giornata», titolari (e panchina, se c'è) elenchi di codici di
+    giocatori, modulo, tipo e data testi brevi. Gli altri campi (di una versione più nuova) restano com'erano."""
+    _dizionario(d)
+    for chiave, voce in d.items():
+        giusta = _CHIAVE_SCELTA.fullmatch(chiave)
+        if not (giusta and int(giusta.group(2)) >= 1 and isinstance(voce, dict) and _codici(voce.get("titolari"))
+                and ("panchina" not in voce or _codici(voce["panchina"]))
+                and all(k not in voce or (isinstance(voce[k], str) and len(voce[k]) <= MAX_TESTO_ROSE)
+                        for k in ("modulo", "tipo", "salvata"))):
+            raise ValueError("formato non riconosciuto")
+
+
+def _forma(giusta: bool) -> None:
+    if not giusta:
         raise ValueError("formato non riconosciuto")
+
+
+def _breve(v: Any) -> bool:
+    return isinstance(v, str) and len(v) <= MAX_TESTO_ROSE
+
+
+def _breve_o_niente(v: Any) -> bool:
+    return v is None or _breve(v)
+
+
+def _solo(d: dict, chiavi: tuple[str, ...]) -> dict:
+    return {k: v for k, v in d.items() if k in chiavi}
+
+
+def _giocatore_movimento(g: Any) -> dict:
+    """Le parti di movimenti._breve: codice, nome, ruolo, squadra di Serie A, costo."""
+    _forma(isinstance(g, dict) and _breve(g.get("nome")) and (g.get("id") is None or _intero(g["id"]))
+           and _breve_o_niente(g.get("ruolo")) and _breve_o_niente(g.get("squadra")) and _numero_o_niente(g.get("costo")))
+    return _solo(g, ("id", "nome", "ruolo", "squadra", "costo"))
+
+
+def _giocatori_movimento(v: Any) -> list[dict]:
+    _forma(isinstance(v, list) and len(v) <= MAX_GIOCATORI_MOVIMENTO)
+    return [_giocatore_movimento(g) for g in v]
+
+
+def _scambio(s: Any) -> dict:
+    _forma(isinstance(s, dict) and isinstance(s.get("squadre"), list) and len(s["squadre"]) == 2 and all(_breve(n) for n in s["squadre"]))
+    return {"squadre": list(s["squadre"]), "da_a": _giocatori_movimento(s.get("da_a")), "da_b": _giocatori_movimento(s.get("da_b"))}
+
+
+def _gruppo(s: Any) -> dict:
+    _forma(isinstance(s, dict) and _breve(s.get("squadra")))
+    return {"squadra": s["squadra"], "giocatori": _giocatori_movimento(s.get("giocatori"))}
+
+
+def _credito(c: Any) -> dict:
+    _forma(isinstance(c, dict) and _breve(c.get("squadra")) and _numero_o_niente(c.get("prima")) and _numero_o_niente(c.get("dopo")))
+    return _solo(c, ("squadra", "prima", "dopo"))
+
+
+def _nome_squadra(n: Any) -> str:
+    _forma(_breve(n))
+    return n
+
+
+_PARTI_MOVIMENTO = {"scambi": _scambio, "svincolati_presi": _gruppo, "tagliati": _gruppo, "crediti": _credito,
+                    "squadre_nuove": _nome_squadra, "squadre_tolte": _nome_squadra}
+
+
+def _voce_movimento(m: Any) -> dict:
+    _forma(isinstance(m, dict) and _breve_o_niente(m.get("quando"))
+           and (m.get("testo") is None or (isinstance(m["testo"], str) and len(m["testo"]) <= MAX_TESTO_MOVIMENTO)))
+    voce = {}
+    for k, v in m.items():
+        if k in ("quando", "testo"):
+            voce[k] = v
+        elif k in _PARTI_MOVIMENTO:
+            _forma(v is None or isinstance(v, list))
+            voce[k] = None if v is None else [_PARTI_MOVIMENTO[k](x) for x in v]
+    return voce
+
+
+def _movimenti(d: Any) -> list[dict]:
+    """Lo storico come lo scrive movimenti.registra: un elenco di voci (al massimo movimenti.MAX_STORICO), ognuna con data e testo
+    e gli elenchi di scambi, svincolati presi, tagli, crediti e squadre nuove o tolte, ciascuno con la sua forma (la leggono l'avviso
+    «preso da poco» e l'app per iPhone). Si scrive una copia con le sole parti che l'app scrive."""
+    _forma(isinstance(d, list) and len(d) <= movimenti.MAX_STORICO)
+    return [_voce_movimento(m) for m in d]
 
 
 REGOLE_OLTRE_I_TETTI = ("Le regole di questo backup superano i limiti dell'app (per esempio troppi moduli o fasce del modificatore, "
@@ -81,13 +219,14 @@ def _impostazioni_avvisi(d: Any) -> dict:
 FILE_SCELTE_BACKUP = "dati/scelte.json"     # le formazioni scelte, una voce per «stagione/giornata»
 
 # file salvati (percorso dentro il progetto) -> controllo del contenuto. Il controllo alza un errore se il contenuto non va;
-# restituisce None (si scrive com'è) oppure il contenuto ripulito da scrivere al suo posto.
+# restituisce None (si scrive com'è) oppure il contenuto ripulito da scrivere al suo posto. Prima, per ogni file: non più di
+# MAX_PROFONDITA livelli (vedi `controlla`).
 CONTROLLI: dict[str, Callable[[Any], Any]] = {
     "lega/regole.json": _regole,
     "lega/rose.json": _rose,
-    "lega/movimenti.json": _lista_o_dizionario,
-    "dati/scelte.json": _dizionario,
-    "dati/osservati.json": _lista_di_interi,
+    "lega/movimenti.json": _movimenti,
+    "dati/scelte.json": _scelte,
+    "dati/osservati.json": _osservati,
     "dati/avvisi-impostazioni.json": _impostazioni_avvisi,
 }
 
@@ -161,13 +300,35 @@ def controlla(backup: Any) -> dict[str, Any]:
         if nome not in CONTROLLI:
             raise ValueError(f"Il backup contiene un file che non conosco: {str(nome)[:60]}")
         try:
+            if _troppo_annidato(contenuto):
+                raise ValueError("troppo annidato")
             nuovo = CONTROLLI[nome](contenuto)
         except regole.RegoleTroppoGrandi:
             raise ValueError(REGOLE_OLTRE_I_TETTI) from None
         except (ValueError, TypeError, KeyError, AttributeError, OverflowError):      # OverflowError: «Infinity» o 1e999 dove serve un intero
-            raise ValueError(f"{nome} non è valido: controlla di aver scelto il file di backup giusto") from None
+            raise ValueError(_non_valido(nome)) from None
         pulito[nome] = contenuto if nuovo is None else nuovo
     return pulito
+
+
+def _testi(file: dict[str, Any]) -> dict[str, str]:
+    """Il testo di ogni file come andrà su disco, in forma compatta. Un testo che non si può scrivere (un carattere spezzato) si
+    scopre qui, prima di scrivere il primo file."""
+    testi = {}
+    for nome, contenuto in file.items():
+        testo = json.dumps(contenuto, ensure_ascii=False)
+        try:
+            testo.encode("utf-8")
+        except UnicodeEncodeError:
+            raise ValueError(_non_valido(nome)) from None
+        testi[nome] = testo
+    return testi
+
+
+def _ultime_giornate(tutte: dict) -> dict:
+    """Le scelte delle ultime scelte.MAX_GIORNATE giornate, come le tiene scelte.salva."""
+    vecchie = set(chiavi_vecchie(tutte, scelte.MAX_GIORNATE))
+    return {k: v for k, v in tutte.items() if k not in vecchie}
 
 
 def ripristina(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] | None = None, copia_prima: Path | None = None,
@@ -177,28 +338,37 @@ def ripristina(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] 
 
 
 def ripristina_esito(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] | None = None, copia_prima: Path | None = None,
-                     chiusa: Callable[[str], bool] | None = None, controlla_rose: Callable[[lega.Rose], None] | None = None) -> dict:
+                     chiusa: Callable[[str], bool] | None = None, controlla_rose: Callable[[lega.Rose], None] | None = None,
+                     spazio: Callable[[int], None] | None = None) -> dict:
     """Rimette i dati del backup. Prima controlla tutto: se qualcosa non va non cambia niente. I file che il backup
     non ha restano com'erano. Lo stato di prima si salva in dati/backup-prima-del-ripristino.json.
     `chiusa(chiave)` dice se la giornata di una voce di `scelte` («stagione/giornata») è già chiusa: quelle voci restano come sono
     sul server (un backup non deve aggirare la scadenza). `controlla_rose(rose)` applica alle rose del backup gli stessi tetti
-    dell'importazione (con gli account: `limiti.controlla_rose`), prima di scrivere qualsiasi file. Restituisce {ripristinati,
-    scelte_chiuse_tenute: vero se il backup avrebbe cambiato almeno una formazione di una giornata chiusa}."""
+    dell'importazione (con gli account: `limiti.controlla_rose`), prima di scrivere qualsiasi file. `spazio(byte)` riceve quanto
+    pesano i file che si stanno per scrivere (con gli account: `limiti.controlla_spazio`) e può fermare tutto alzando un errore.
+    Le scelte tengono le ultime scelte.MAX_GIORNATE giornate. Restituisce {ripristinati, scelte_chiuse_tenute: vero se il backup
+    avrebbe cambiato almeno una formazione di una giornata chiusa}."""
     file = controlla(backup)
     if controlla_rose is not None and "lega/rose.json" in file:
         controlla_rose(lega.da_dict(file["lega/rose.json"]))
     dove = _percorsi(radice, file_utente)
-    scrivi_sicuro(copia_prima or radice / COPIA_PRIMA, json.dumps(crea(radice, file_utente), ensure_ascii=False))
     tenute = False
-    if chiusa is not None and FILE_SCELTE_BACKUP in file:
-        try:
-            attuali = json.loads(dove[FILE_SCELTE_BACKUP].read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            attuali = {}
+    if FILE_SCELTE_BACKUP in file:
         file = dict(file)
-        file[FILE_SCELTE_BACKUP], tenute = unisci_scelte(file[FILE_SCELTE_BACKUP], attuali if isinstance(attuali, dict) else {}, chiusa)
-    for nome, contenuto in file.items():
-        scrivi_sicuro(dove[nome], json.dumps(contenuto, ensure_ascii=False, indent=2))
+        if chiusa is not None:
+            try:
+                attuali = json.loads(dove[FILE_SCELTE_BACKUP].read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                attuali = {}
+            file[FILE_SCELTE_BACKUP], tenute = unisci_scelte(file[FILE_SCELTE_BACKUP], attuali if isinstance(attuali, dict) else {},
+                                                             chiusa)
+        file[FILE_SCELTE_BACKUP] = _ultime_giornate(file[FILE_SCELTE_BACKUP])
+    testi = _testi(file)
+    if spazio is not None:
+        spazio(sum(len(t.encode("utf-8")) for t in testi.values()))
+    scrivi_sicuro(copia_prima or radice / COPIA_PRIMA, json.dumps(crea(radice, file_utente), ensure_ascii=False))
+    for nome, testo in testi.items():
+        scrivi_sicuro(dove[nome], testo)
     return {"ripristinati": sorted(file), "scelte_chiuse_tenute": tenute}
 
 

@@ -8,6 +8,7 @@ from fanta import modello
 from fanta.regole import Regole, imposta
 
 ST = "2026-27"
+NAN = float("nan")
 
 
 def _dati(voti_extra=()):
@@ -117,6 +118,41 @@ def test_recupero_giocato_dopo_non_e_usato():
         df.loc[df["giornata"] == 2, "data"] = "2026-10-30 15:00"
     con, senza = _p(d), _p(_dati())
     assert con.at[1, "presenze_pesate"] < senza.at[1, "presenze_pesate"]
+
+
+def _con_la_giornata_6(d, giocata_la_5: bool, voti_della_5=()):
+    """`_dati` con la giornata 5 giocata (1-1) o no, questi voti della 5 (nessuno: non ancora arrivati) e la 6 da giocare."""
+    p = d.partite
+    if giocata_la_5:
+        p.loc[p["giornata"] == 5, ["gol_casa", "gol_trasferta", "giocata"]] = [1, 1, 1]
+    sesta = {"id": 6, "stagione": ST, "giornata": 6, "data": "2026-09-06 15:00", "casa": "alfa", "trasferta": "beta",
+             "gol_casa": NAN, "gol_trasferta": NAN, "giocata": 0, "xg_casa": NAN, "xg_trasferta": NAN, "understat_id": 106, "t": 6}
+    d.partite = pd.concat([p, pd.DataFrame([sesta])], ignore_index=True)
+    if voti_della_5:
+        d.voti = pd.concat([d.voti, pd.DataFrame(list(voti_della_5))], ignore_index=True)
+    return d
+
+
+def _voto_della_5(cid, nome, ruolo, squadra):
+    return {"stagione": ST, "giornata": 5, "calciatore_id": cid, "nome": nome, "squadra": squadra, "ruolo": ruolo, "voto_red": 6.0,
+            "fv_red": 0, "voto_stat": 6, "fv_stat": 0, "voto_ita": 6, "fv_ita": 0, "gol": 0, "gol_subiti": 0, "autogol": 0,
+            "rig_segnati": 0, "rig_sbagliati": 0, "rig_parati": 0, "assist": 0, "mvp": 0, "ammonizioni": 0, "espulsioni": 0,
+            "subentrato": 0, "sostituito": 0, "data": "2026-09-05 15:00", "t": 5}
+
+
+def test_partita_giocata_senza_voti_non_e_un_assenza():
+    """#658: il calendario dà la partita per giocata prima che escano i voti (o il passo dei voti non riesce). Le presenze recenti la
+    contavano, la più pesante, come un'assenza di tutti i giocatori delle due squadre: «gioca N%» crollava fino all'arrivo dei voti.
+    Ora una squadra senza nessun voto in quella giornata non la conta: lo stesso «gioca N%» di prima della partita."""
+    prima = _p(_con_la_giornata_6(_dati(), giocata_la_5=False), giornata=6)
+    senza_voti = _p(_con_la_giornata_6(_dati(), giocata_la_5=True), giornata=6)
+    for cid in (1, 2, 3):
+        assert senza_voti.at[cid, "p_voto"] == prima.at[cid, "p_voto"], cid
+        assert senza_voti.at[cid, "presenze_pesate"] == prima.at[cid, "presenze_pesate"], cid
+    # con i voti arrivati per una squadra sola: per quella conta (il Bomber è rimasto fuori), per l'altra no
+    meta = _p(_con_la_giornata_6(_dati(), True, [_voto_della_5(9, "Riserva", "A", "alfa")]), giornata=6)
+    assert meta.at[1, "p_voto"] < prima.at[1, "p_voto"] - 0.05
+    assert (meta.at[2, "p_voto"], meta.at[3, "p_voto"]) == (prima.at[2, "p_voto"], prima.at[3, "p_voto"])
 
 
 def test_forza_squadre_senza_quote():
@@ -265,6 +301,58 @@ def test_carica_mette_le_righe_ricostruite(tmp_path):
     db.close()
     assert sorted(zip(p["calciatore_id"], p["squadra"], p["minuti"], p["gol"], p["understat_partita"])) == [
         (1, "alfa", 90.0, 2, -7), (2, "beta", 19.0, 0, -7)]
+
+
+def _archivio_senza_statistiche(percorso, giocate: int):
+    """Un archivio come quello di chi ha acceso solo i voti (la fonte delle statistiche per partita è spenta di default): tabella
+    `prestazioni` vuota, `giocate` giornate con i voti, 4 squadre con 4 giocatori per ruolo (16 per ruolo in tutto, tutti con la
+    quotazione) sempre in campo 90 minuti."""
+    from fanta import archivio
+    db = archivio.apri(percorso)
+    squadre = ("alfa", "beta", "gamma", "delta")
+    rosa = [(100 * s + 10 * r + k, f"{sq}-{ruolo}{k}", ruolo, sq)
+            for s, sq in enumerate(squadre, 1) for r, ruolo in enumerate("PDCA") for k in range(4)]
+    for cid, nome, ruolo, sq in rosa:
+        db.execute("INSERT INTO calciatori (id, nome, ruolo, squadra, squadra_slug, quotazione) VALUES (?, ?, ?, ?, ?, ?)",
+                   (cid, nome, ruolo, sq[:3].upper(), sq, 5 + cid % 23))
+        db.execute("INSERT INTO quotazioni (stagione, calciatore_id, nome, ruolo, squadra, qi) VALUES (?, ?, ?, ?, ?, ?)",
+                   (ST, cid, nome, ruolo, sq, 5 + cid % 23))
+    for g in range(1, giocate + 2):
+        coppie = (("alfa", "beta"), ("gamma", "delta")) if g % 2 else (("alfa", "gamma"), ("beta", "delta"))
+        for k, (casa, trasf) in enumerate(coppie):
+            fatta = g <= giocate
+            db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, gol_casa, gol_trasferta, giocata) "
+                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (10 * g + k, ST, g, f"2026-09-{g:02d} 1{5 + k}:00", casa, trasf,
+                                                              (g + k) % 3 if fatta else None, g % 2 if fatta else None, int(fatta)))
+            if not fatta:
+                continue
+            for cid, nome, ruolo, sq in rosa:
+                if sq in (casa, trasf):
+                    db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, "
+                               "autogol, rig_segnati, rig_sbagliati, rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, "
+                               "sostituito) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, 0, 0, 0, 0, 0)",
+                               (ST, g, cid, nome, sq, ruolo, 5.5 + (cid + g) % 3 * 0.5, int(ruolo == "A" and (cid + g) % 4 == 0),
+                                int(ruolo == "C" and (cid + g) % 5 == 0)))
+    db.commit()
+    return db
+
+
+@pytest.mark.parametrize("giocate", [3, 4, 6])
+def test_senza_nessuna_statistica_per_partita_le_previsioni_ci_sono(tmp_path, giocate):
+    """D57, regressione della pull request #633: con la tabella `prestazioni` vuota le righe ricostruite dai voti si univano a una
+    tabella letta da SQLite con le colonne senza tipo; con pandas 3 restavano testo e dalla quarta giornata (ruoli con 15 giocatori
+    che hanno almeno 3 partite pesate) le previsioni si fermavano con un errore: Oggi, Formazione, widget e avvisi in errore per
+    chi installa da zero."""
+    db = _archivio_senza_statistiche(tmp_path / "t.sqlite", giocate)
+    assert db.execute("SELECT COUNT(*) FROM prestazioni").fetchone()[0] == 0
+    d = modello.carica(db)
+    db.close()
+    p = modello.previsioni(d, ST, giocate + 1, Regole(), giocatori=d.calciatori)
+    assert len(p) == 64 and p["mu"].notna().all() and p["atteso"].notna().all()
+    assert p["minuti"].min() > 80                                     # i minuti vengono dalle righe ricostruite (sempre 90)
+    assert len(d.prestazioni) == 64 * giocate and (d.prestazioni["understat_partita"] < 0).all()     # tutti, ogni giornata
+    for c in ("minuti", "gol", "assist", "rigori_calciati", "rigori_segnati", "rigori_squadra", "xg", "xa", "t"):
+        assert pd.api.types.is_numeric_dtype(d.prestazioni[c]), c
 
 
 # ---------------------------------------------------------------- livello dei gol della stagione (#613)

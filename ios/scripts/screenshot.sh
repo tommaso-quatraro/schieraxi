@@ -23,30 +23,28 @@ mkdir -p "$USCITA"
 source "$(dirname "$0")/avvisi.sh"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
-TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-fondo formazione-salvata formazione-modificata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
-       mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati
-       mercato-cerca giocatore giocatore-fondo ricerca
-       scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
-       squadra squadra-fondo guida confronto-fondo marchio lega-diario-fondo
-       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-crediti lega-avvisi lega-diario lega-novita
-       lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
+TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-fondo formazione-salvata formazione-modificata formazione-chiusa formazione-manuale formazione-perche
+       giocatore giocatore-fondo ricerca
+       squadra squadra-fondo guida marchio lega-diario-fondo
+       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-avvisi lega-diario impostazioni-novita
+       lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
-PER_CHIARO=(oggi formazione formazione-confronto formazione-perche formazione-immagine mercato-consigliati mercato-classifica
-            scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
-PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
-PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-salvata formazione-modificata formazione-confronto mercato-consigliati mercato-calendario
-                  mercato-osservati scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
+PER_CHIARO=(oggi formazione formazione-perche
+            lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
+PRINCIPALI=(oggi formazione squadra lega giocatore)
+PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-salvata formazione-modificata
+                  lega lega-squadre lega-regole lega-stato
                   impostazioni-aspetto giocatore giocatore-fondo)
-PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto formazione-perche mercato-consigliati mercato-classifica
-          mercato-calendario mercato-osservati giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
+PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-perche
+          giocatore giocatore-fondo
           lega lega-squadre lega-rosa lega-regole lega-avvisi lega-diario impostazioni-aspetto)
 
 # SCATTI=veloce (predefinito dei push su main): solo le schermate principali, per controllare in pochi minuti.
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
 SCATTI="${SCATTI:-completo}"
 if [ "$SCATTI" = "veloce" ]; then
-  TUTTE=(oggi oggi-in-corso oggi-in-corso-fondo oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-perche giocatore lega-diario lega-regole-fondo mercato-classifica impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
+  TUTTE=(oggi oggi-in-corso oggi-in-corso-fondo oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-perche giocatore lega-diario lega-regole-fondo impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
   PER_CHIARO=(oggi oggi-in-corso oggi-finita oggi-rinvio formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
   PER_TESTO_GRANDE=(accesso-accedi oggi-in-corso)
   PRINCIPALI=(oggi lega)
@@ -234,10 +232,9 @@ riepilogo() {
 FOTOGRAFIE="${FOTOGRAFIE:-fotografie}"
 VERO_SCENARI=(vero-prima vero-in-corso vero-finita)
 # prima della scadenza: tutte le schermate che mostrano i dati della lega
-VERO_TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto formazione-perche squadra squadra-fondo
-            mercato-consigliati mercato-classifica mercato-calendario mercato-osservati mercato-cerca
-            giocatore giocatore-fondo ricerca scambi scambi-fondo scambi-dettaglio scambi-offerta scambi-analizza
-            lega lega-squadre lega-rosa lega-regole lega-stato lega-crediti lega-diario lega-diario-fondo lega-movimenti lega-stagione)
+VERO_TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-perche squadra squadra-fondo
+            giocatore giocatore-fondo ricerca
+            lega lega-squadre lega-rosa lega-regole lega-stato lega-diario lega-diario-fondo lega-stagione)
 # giornata in corso e giornata finita: le schermate che cambiano con il momento
 VERO_FASE=(oggi oggi-fondo formazione formazione-fondo squadra giocatore lega-diario)
 
@@ -325,14 +322,14 @@ if [ "$SCATTI" = "collaudo" ]; then
   giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large "${TUTTE[@]}"
   ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
   RADDRIZZA=1
-  giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione formazione-perche squadra mercato-consigliati giocatore lega lega-diario impostazioni accesso-accedi
+  giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione formazione-perche squadra giocatore lega lega-diario impostazioni accesso-accedi
   RADDRIZZA=0
   ARGOMENTI_EXTRA=()
 elif [ "$SCATTI" != "veloce" ]; then
   giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione giocatore lega
   ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
   RADDRIZZA=1
-  giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione mercato-consigliati
+  giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione
   RADDRIZZA=0
   ARGOMENTI_EXTRA=()
 fi
@@ -380,8 +377,8 @@ elif [ "$SCATTI" = "collaudo" ]; then
   giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${TUTTE[@]}"
   giro "$UDID_IPAD" ipad_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large "${TUTTE[@]}"
 else
-  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto scambi-offerta impostazioni-aspetto
-  giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
+  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" impostazioni-aspetto
+  giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione lega
 fi
 
 # Orizzontale: su iPad l'app non può forzare la rotazione (multitasking), quindi si ruota il simulatore con la tastiera
@@ -401,8 +398,8 @@ elif [ "$SCATTI" = "collaudo" ]; then
   giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${TUTTE[@]}"
   giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large "${TUTTE[@]}"
 else
-  giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${PRINCIPALI[@]}" formazione-manuale mercato-calendario lega-squadre
-  giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi formazione mercato-classifica lega
+  giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${PRINCIPALI[@]}" formazione-manuale lega-squadre
+  giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi formazione lega
 fi
 RADDRIZZA=0
 

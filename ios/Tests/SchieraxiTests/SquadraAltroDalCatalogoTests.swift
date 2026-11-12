@@ -2,21 +2,21 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Squadra, Altro e Scambi prendono i testi dal catalogo comune con la web (#496, lavoro A4 dell'ondata 2): le chiavi elencate in
+/// Squadra e Altro prendono i testi dal catalogo comune con la web (#496, lavoro A4 dell'ondata 2): le chiavi elencate in
 /// `ios/testi/` diventano i file generati `Support/Catalogo/Catalogo+*.swift`, e i file dell'area li usano invece di riscriverli.
 /// Qui si legge il sorgente: nessun testo del catalogo è scritto di nuovo tra virgolette. Una frase copiata a mano tornerebbe a
 /// cambiare su un lato solo. I file si leggono dalla cartella `ios/` del repository.
 @Suite("Squadra e Altro: le parole vengono dal catalogo")
 struct SquadraAltroDalCatalogoTests {
     /// I file generati dei prefissi di quest'area (da `ios/Sources/Support/Catalogo/`).
-    static let generati = ["Aggiorna", "Ar", "Av", "Diario", "Lega", "Mercato", "Novita", "Regole", "Scambi", "Scambio", "Sd"]
+    static let generati = ["Aggiorna", "Ar", "Av", "Diario", "Lega", "Mercato", "Novita", "Regole", "Scambio", "Sd"]
         .map { "Catalogo+\($0).swift" }
 
     /// I file con le sole parole dell'area (da `ios/Sources/Presentation/`): nessun testo del catalogo, nemmeno corto.
     static let fileDeiTesti = [
-        "Scambi/TestiScambi.swift", "Lega/TestiRegole.swift", "Lega/ParoleSquadre.swift", "Lega/VoceMenuLega.swift",
+        "Lega/TestiRegole.swift", "Lega/ParoleSquadre.swift", "Lega/VoceMenuLega.swift",
         "Lega/ParoleRegistro.swift", "Lega/ParoleRegistro+Taratura.swift", "Lega/ParoleNostri.swift", "Lega/ParoleConsiglio.swift",
-        "Lega/ParoleNovita.swift", "Mercato/ParoleSeguiti.swift",
+        "Lega/ParoleNovita.swift",
     ]
 
     /// Le viste e i modelli dell'area che mostrano testi del catalogo: nessuna frase del catalogo (le parole corte come «Salva» o
@@ -25,7 +25,7 @@ struct SquadraAltroDalCatalogoTests {
         "Lega/RegoleEditor.swift", "Lega/ImportaRoseView.swift", "Lega/DiarioView.swift", "Lega/FormazioneManualeDiarioView.swift",
         "Lega/EsitoRoseSalvate.swift", "Lega/Gestione.swift", "Lega/LegaPagine.swift", "Lega/LegaExtra.swift", "Lega/LegaView.swift",
         "Lega/LegaViewModels.swift", "Lega/LegaViewModels2.swift", "Lega/RigaRosa.swift", "Lega/QuantoCiAbbiamoPresoView.swift",
-        "Mercato/MercatoView.swift", "Mercato/CartaCambio.swift", "Scambi/ScambiView.swift", "Scambi/VersoConguaglio.swift",
+        "Mercato/RigaElencoGiocatore.swift", "Mercato/DatiRigaElenco.swift", "Mercato/RicercaGiocatoreView.swift",
     ]
 
     /// Una frase del catalogo con almeno tanti caratteri fissi non si trova per caso in un altro testo.

@@ -133,7 +133,7 @@ final class VersioniEConflittiTests: XCTestCase {
         XCTAssertEqual(VersioniRisorse.risorsa(per: "/api/regole"), "regole")
         XCTAssertEqual(VersioniRisorse.risorsa(per: "/api/avvisi"), "avvisi")
         XCTAssertNil(VersioniRisorse.risorsa(per: "/api/avvisi/prova"))
-        XCTAssertEqual(VersioniRisorse.risorsa(per: "/api/osservati/12"), "osservati")
+        XCTAssertNil(VersioniRisorse.risorsa(per: "/api/osservati/12"), "i seguiti non ci sono più (#634): nessuna risorsa")
         for p in ["/api/squadre", "/api/crediti", "/api/mia-squadra", "/api/rose/testo", "/api/squadre?x=1"] {
             XCTAssertEqual(VersioniRisorse.risorsa(per: p), "rose", p)
         }

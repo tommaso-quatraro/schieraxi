@@ -988,7 +988,7 @@ def test_calibrazione_con_la_attiva_legge_il_registro(db):
     for g in range(1, 7):                    # letture della storia che dicono altro: tutti i titolari della Squadra00 al 10%
         for cid in range(11):
             db.execute("INSERT INTO probabili_storia (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
-                       "in_dubbio, diffidato, rilevato) VALUES (?, ?, 'fantacalcio', ?, 'squadra00', ?, 'panchina', 10, 0, 0, ?)",
+                       "in_dubbio, diffidato, rilevato) VALUES (?, ?, 'fantacalcio', ?, 'Squadra00', ?, 'panchina', 10, 0, 0, ?)",
                        (ST, g, cid, 1000 * g, f"2026-11-{g:02d}T14:00:00"))
     db.commit()
     senza = stato_dati.calibrazione(db, ST)
@@ -1020,7 +1020,7 @@ def test_calibrazione_con_la_attiva_e_il_registro_illeggibile(db, monkeypatch, c
     for g in range(1, 7):
         for cid in range(11):
             db.execute("INSERT INTO probabili_storia (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
-                       "in_dubbio, diffidato, rilevato) VALUES (?, ?, 'fantacalcio', ?, 'squadra00', ?, 'titolare', 95, 0, 0, ?)",
+                       "in_dubbio, diffidato, rilevato) VALUES (?, ?, 'fantacalcio', ?, 'Squadra00', ?, 'titolare', 95, 0, 0, ?)",
                        (ST, g, cid, 1000 * g, f"2026-11-{g:02d}T14:00:00"))
     db.commit()
     classica = stato_dati.calibrazione(db, ST)
