@@ -336,11 +336,15 @@ ROVINATO = ("Il database degli account (account.sqlite) non si riesce a leggere:
 
 def _copia_prima_di_migrare(db: sqlite3.Connection, percorso: Path, versione: int) -> None:
     """Copia di sicurezza del file prima di cambiarne la struttura (cartella `backup` accanto al file). Se la copia non riesce
-    non si migra: meglio un errore che dati senza rete."""
+    non si migra: meglio un errore che dati senza rete. Nasce leggibile solo dal proprietario (600) come le copie serali, anche
+    senza l'umask del servizio: dentro ci sono nomi, email e impronte delle password. Scade nel giro serale
+    (backup.GIORNI_COPIE_MIGRAZIONE)."""
     cartella = percorso.parent / "backup"
     cartella.mkdir(parents=True, exist_ok=True)
     destinazione = cartella / f"{percorso.stem}-prima-della-migrazione-{versione}.sqlite"
-    if destinazione.exists():
+    try:
+        os.close(os.open(destinazione, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
+    except FileExistsError:
         return
     copia = sqlite3.connect(destinazione)
     try:

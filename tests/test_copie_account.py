@@ -49,17 +49,23 @@ def _nomi(copia) -> list[str]:
         return [r[0] for r in db.execute("SELECT nome_utente FROM utenti")]
 
 
-def test_la_copia_di_migrazione_di_un_account_eliminato_scade(multiutente):
-    """Un utente c'è quando il server si aggiorna con una migrazione (nasce la copia di prima), poi elimina l'account: il suo nome
-    resta solo nella copia, e la copia sparisce al primo giro serale dopo backup.GIORNI_COPIE_MIGRAZIONE giorni."""
+def _database_vecchio(con: str = "via"):
+    """Un database degli account fermo alla migrazione 5, con un utente: aprirlo fa nascere la copia di prima."""
     percorso = percorsi.cartella_account() / "account.sqlite"
     percorso.parent.mkdir(parents=True, exist_ok=True)
     with contextlib.closing(sqlite3.connect(percorso)) as db:
         for m in account.MIGRAZIONI[:5]:
             db.executescript(m)
         db.execute("PRAGMA user_version = 5")
-        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('via', 'x', 'y', 'z')")
+        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES (?, 'x', 'y', 'z')", (con,))
         db.commit()
+    return percorso
+
+
+def test_la_copia_di_migrazione_di_un_account_eliminato_scade(multiutente):
+    """Un utente c'è quando il server si aggiorna con una migrazione (nasce la copia di prima), poi elimina l'account: il suo nome
+    resta solo nella copia, e la copia sparisce al primo giro serale dopo backup.GIORNI_COPIE_MIGRAZIONE giorni."""
+    percorso = _database_vecchio()
     with contextlib.closing(account.apri()) as db:                   # l'aggiornamento: migrazioni e copia di prima
         account.elimina(db, db.execute("SELECT id FROM utenti WHERE nome_utente = 'via'").fetchone()[0])
     cartella = percorso.parent / "backup"
@@ -75,6 +81,20 @@ def test_la_copia_di_migrazione_di_un_account_eliminato_scade(multiutente):
     rimaste = sorted(cartella.glob("account-*.sqlite"))
     assert rimaste and all(COPIA.fullmatch(p.name) for p in rimaste)  # restano solo le serali, senza di lui
     assert all("via" not in _nomi(p) for p in rimaste)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="i permessi dei file si provano solo su Linux e macOS")
+def test_la_copia_di_migrazione_nasce_leggibile_solo_dal_proprietario(multiutente):
+    """Anche se il processo non ha l'umask stretta del servizio (per esempio un comando lanciato a mano), la copia con nomi,
+    email e impronte delle password nasce come le serali: lettura e scrittura solo per il proprietario."""
+    _database_vecchio()
+    prima = os.umask(0o022)
+    try:
+        account.apri().close()
+    finally:
+        os.umask(prima)
+    copia = percorsi.cartella_account() / "backup" / "account-prima-della-migrazione-5.sqlite"
+    assert oct(copia.stat().st_mode & 0o777) == oct(0o600)
 
 
 def test_le_copie_serali_non_scadono_per_eta(tmp_path):
