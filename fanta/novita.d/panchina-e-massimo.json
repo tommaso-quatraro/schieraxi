@@ -1,0 +1,15 @@
+{
+  "titolo": "Formazione: consigliata con più punti attesi e panchina in ordine migliore",
+  "voci": [
+    "Web, iPhone e iPad: la formazione consigliata ora è quella con più punti attesi. Prima rinunciava a qualche decimo per avere titolari un po' più sicuri, senza che i punti veri ne guadagnassero. Chi preferisce meno rischi trova ancora gli stili «Sicura» e «Molto sicura».",
+    "Web, iPhone e iPad: la panchina consigliata mette davanti, in ogni ruolo, chi vale di più quando gioca. Una riserva entra solo se ha preso voto: a quel punto conta il suo fantavoto atteso, non quanto è probabile che giochi.",
+    "Web, iPhone e iPad: i punti attesi di una formazione sono un conto esatto e non più una stima: lo stesso calcolo rifatto dà lo stesso numero e gli stessi titolari. Nelle leghe con il modificatore difesa, tra difensori o portieri quasi pari la scelta può ancora cambiare di poco.",
+    "La formazione consigliata che hai già visto per questa giornata resta com'è, come sempre: cambia solo se la nuova vale almeno un punto in più."
+  ],
+  "tecnico": [
+    "formazione.PESO_BASE = (0, 0): lo stile 0 («Equilibrata») sceglie per soli punti attesi; gli altri stili restano nell'API con i loro pesi. Descrizione dello stile 0 nel campo `descrizione` di `livelli` aggiornata (i testi di ripiego di web e iPhone sono ancora quelli vecchi).",
+    "formazione._panchina: per ruolo (ruolo, fantavoto atteso), libera per fantavoto atteso; chi va in panchina resta scelto per gioca x fantavoto.",
+    "formazione.Valutatore: punti attesi esatti (`_media_esatta`): senza cambio di modulo reparto per reparto (`_ingressi_stesso_ruolo`), con il cambio di modulo tutti i casi (`_ingressi_con_cambio`, fino a MAX_CASI = 32768: oltre restano le simulazioni, per tutti i moduli insieme). Le simulazioni servono per modificatore difesa, oscillazione e stili, e si fanno solo quando servono.",
+    "Nessun cambio alle forme delle risposte: `punteggio_atteso` e `alternative` cambiano di qualche centesimo (non c'è più il rumore della simulazione)."
+  ]
+}
