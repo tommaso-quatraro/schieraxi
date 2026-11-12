@@ -12,8 +12,8 @@
     "en": "Appearance"
   },
   "imp.aspetto_sub": {
-    "it": "Lingua, tema e dimensione del testo",
-    "en": "Language, theme and text size"
+    "it": "Lingua e tema",
+    "en": "Language and theme"
   },
   "imp.avvisi": {
     "it": "Notifiche",
@@ -28,8 +28,8 @@
     "en": "About"
   },
   "imp.informazioni_sub": {
-    "it": "Privacy, termini, crediti e versione",
-    "en": "Privacy, terms, credits and version"
+    "it": "Novità, privacy, termini, crediti e versione",
+    "en": "What's new, privacy, terms, credits and version"
   },
   "imp.avanzate": {
     "it": "Avanzate",

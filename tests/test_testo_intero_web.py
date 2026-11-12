@@ -100,42 +100,7 @@ def test_le_pedine_si_stringono_dentro_il_campo_anche_con_cinque_per_fila():
     assert "hyphens: auto" in cinque and "-webkit-hyphens: auto" in cinque
 
 
-def test_il_pulsante_della_legenda_non_copre_il_portiere():
-    """Chiusa la legenda, il pulsante «ⓘ Cosa vuol dire» (largo circa 145 px) stava in basso a destra sopra il campo e copriva
-    «gioca 92%» e «vs BOL» del portiere a 320 px, e con il testo grande anche a 390, 768 e 1440 px. Dalla grafica B (spec §8.10)
-    «Cosa vuol dire» e la legenda stanno sotto il campo, fuori: a nessuna larghezza possono coprire una pedina."""
-    assert not re.search(r"@container campo[^{]*\{[^@]*\.info-campo", SENZA_COMMENTI)
-    pulsante = _regole(GLOBALE, ".info-campo")
-    assert "position: absolute" not in pulsante and "min-height: 44px" in pulsante
-    formazione = APP[APP.index("function mostraFormazione("):]
-    campo = formazione[formazione.index('<div class="campo">'):]
-    campo = campo[:campo.index("</div>")]
-    assert "legendaCampo()" not in campo and "info-campo" not in campo
-
-
 # ---------------------------------------------------------------- partite del turno
-
-def test_sigle_delle_partite_intere_a_320_px():
-    """A 320 px la riga di una partita è larga quanto la sua sezione: 320 − 2 × 16 di pagina − bordo e rientro della sezione (con la
-    carta di prima 2 × 1 e 2 × 14: 258 px; dalla grafica B la sezione non ha né bordo né rientro). Le colonne fisse (ora, «vs»,
-    risultato e gli spazi) lasciavano 36 px a ogni sigla: «MON» ne chiede 38 (Segoe UI, 15 px seminero). Ora la colonna di «vs» è
-    larga quanto la parola (uguale in ogni riga, quindi le colonne restano allineate) e la sigla ha almeno 2,8 em."""
-    em = 15                                                                    # --t-corpo, il carattere della riga
-    sezione = _regole(GLOBALE, ".carta")
-    bordo = float(re.search(r"(?<![\w-])border\s*:\s*([\d.]+)(?:px)?[\s;]", sezione).group(1))
-    larga = 320 - 2 * _riempimento_x(_regole(GLOBALE, "main")) - 2 * bordo - 2 * _riempimento_x(sezione)
-    assert larga >= 258
-    turno, partita = _regole(GLOBALE, ".partite-turno"), _regole(GLOBALE, ".partita")
-    variabili = dict(re.findall(r"(--col-[\w-]+)\s*:\s*([\d.]+)em", turno))
-    colonne = re.search(r"grid-template-columns\s*:\s*(.+?);", partita).group(1)
-    colonne = re.sub(r"var\((--col-[\w-]+)\)", lambda m: variabili[m.group(1)] + "em", colonne)
-    tracce = re.findall(r"minmax\([^)]*\)|\S+", colonne)
-    assert len(tracce) == 5 and tracce[1] == tracce[3] == "minmax(0, 1fr)", tracce
-    vs = 13 if tracce[2] == "auto" else float(tracce[2].removesuffix("em")) * em   # «vs» a 12 px: circa 12 px, 13 per stare larghi
-    fisse = float(tracce[0].removesuffix("em")) * em + vs + float(tracce[4].removesuffix("em")) * em + 4 * _px(partita, "column-gap")
-    sigla = (larga - fisse) / 2
-    assert sigla >= 2.8 * em, f"a ogni sigla restano {sigla:.1f} px"
-
 
 # ---------------------------------------------------------------- menu del rinvio
 
@@ -222,22 +187,3 @@ const svuotaCache = () => {}, avviso = m => avvisi.push(m), vistaOggi = () => { 
                          ["Fatto: consigli aggiornati per questa giornata", "Non riesco a salvare la scelta."]]
     assert r["chiamate"] == [["/api/regole/rinvio", {"giornata": 8, "modo": "senza_voto", "stagione": "2026-27"}],
                              ["/api/regole/rinvio", {"giornata": 8, "modo": "voto_ufficio", "stagione": "2026-27"}]]
-
-
-# ---------------------------------------------------------------- calendario
-
-def test_calendario_senza_intestazione_vuota():
-    """La cella d'angolo (sopra le sigle, accanto a G10, G11…) era un <th> vuoto: axe `empty-table-header`. Ora è una cella
-    normale vuota; le sigle delle squadre sono le intestazioni delle righe e G10, G11… quelle delle colonne, così il lettore di
-    schermo dice squadra e giornata di ogni cella."""
-    tabella = _pezzo('<table class="tabella-cal">', "</table>")
-    assert "<th></th>" not in tabella
-    assert "<thead><tr><td></td>" in tabella
-    # «G11» a vista, «11ª giornata di Serie A» per il lettore di schermo (#299)
-    assert '<th scope="col"><span aria-hidden="true">G${Number(g)}</span><span class="solo-lettori">${nomeGiornata(null, g)}</span></th>' in tabella
-    assert '<th scope="row">${sigla(s.squadra)}</th>' in tabella
-    # lo stile della prima colonna segue le celle nuove
-    assert ".tabella-cal td:first-child" not in SENZA_COMMENTI
-    sigle = _regole(GLOBALE, '.tabella-cal th[scope="row"]')
-    assert "white-space: nowrap" in sigle and "text-align: left" in sigle
-    assert '.tabella-cal tr.mia th[scope="row"]::before' in SENZA_COMMENTI

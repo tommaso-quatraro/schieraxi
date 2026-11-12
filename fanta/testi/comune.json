@@ -31,10 +31,6 @@
     "it": "Calcolo in corso…",
     "en": "Calculating…"
   },
-  "comune.indice_aria": {
-    "it": "Indice {n} su 100: 100 = il migliore del ruolo questa giornata",
-    "en": "Index {n} of 100: 100 = the best in the role this matchday"
-  },
   "comune.aggiornamento_pronto": {
     "it": "Aggiornamento pronto",
     "en": "Update ready"
@@ -102,9 +98,5 @@
   "comune.attesa_ore": {
     "it": "circa {n} ore",
     "en": "about {n} hours"
-  },
-  "comune.non_copio": {
-    "it": "Non riesco a copiare",
-    "en": "I cannot copy"
   }
 }

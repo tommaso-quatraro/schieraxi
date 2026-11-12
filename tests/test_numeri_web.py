@@ -36,10 +36,6 @@ def test_segno_meno_tipografico_e_niente_segno_sullo_zero(lingua):
     assert json.loads(r.stdout) == [x.replace(",", dec) for x in attesi]
 
 
-def test_scambi_un_decimale_come_nella_spiegazione():
-    assert "${segno(x, 1)}</span>`;" in _funzione("segnoSc")
-
-
 def test_pulsanti_delle_fonti_sono_bottoni_dell_app():
     assert '<button class="bottone secondario piccolo" data-fonte=' in APP
     assert '<button class="secondario' not in APP

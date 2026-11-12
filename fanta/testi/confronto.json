@@ -1,31 +1,6 @@
 {
-  "confronto.fattore_giocare": {
-    "it": "Probabilità di giocare",
-    "en": "Chance of playing",
-    "nota": "---- [etichette del confronto] ----"
-  },
   "confronto.fattore_voto": {
     "it": "Voto in pagella atteso",
     "en": "Expected match rating"
-  },
-  "confronto.fattore_gol": {
-    "it": "Gol attesi",
-    "en": "Expected goals"
-  },
-  "confronto.fattore_assist": {
-    "it": "Assist attesi",
-    "en": "Expected assists"
-  },
-  "confronto.fattore_rigori": {
-    "it": "Rigori",
-    "en": "Penalties"
-  },
-  "confronto.fattore_porta": {
-    "it": "Porta (gol subiti, imbattibilità)",
-    "en": "Goalkeeping (goals conceded, clean sheets)"
-  },
-  "confronto.fattore_altro": {
-    "it": "Cartellini e altro",
-    "en": "Cards and other"
   }
 }

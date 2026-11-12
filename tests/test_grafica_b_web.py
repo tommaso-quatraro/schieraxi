@@ -91,17 +91,17 @@ def test_clic_su_una_scheda_ctrl_cmd_maiusc_e_clic_centrale_li_decide_il_browser
 
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_indirizzo_di_ogni_schermata():
-    """L'indirizzo che va nella cronologia: le schede, le pagine di Squadra con la loro sezione, le Impostazioni con il gruppo.
-    Sono gli stessi indirizzi che l'app sa già aprire all'avvio (`?vista=`, `&scheda=`, `&gruppo=`)."""
+    """L'indirizzo che va nella cronologia: le schede, le voci di Squadra e Altro, la rosa di una squadra, le Impostazioni con il
+    gruppo. Sono gli stessi indirizzi che l'app sa già aprire all'avvio (`?vista=`, `&voce=`, `&rosa=`, `&gruppo=`)."""
     corpo = re.search(r"\nconst indirizzoVista = [^\n]*\n", APP).group(0)
     codice = corpo + """
-    console.log(JSON.stringify([indirizzoVista("oggi"), indirizzoVista("formazione"), indirizzoVista("mercato", null, "osservati"),
-      indirizzoVista("impostazioni", "avvisi"), indirizzoVista("impostazioni"), indirizzoVista("scambi", "x", "y")]));
+    console.log(JSON.stringify([indirizzoVista("oggi"), indirizzoVista("formazione"), indirizzoVista("altro", null, "regole"),
+      indirizzoVista("impostazioni", "avvisi"), indirizzoVista("impostazioni"), indirizzoVista("squadra", "x", "squadre", "Real Esempio")]));
     """
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout) == ["/?vista=oggi", "/?vista=formazione", "/?vista=mercato&scheda=osservati",
-                                    "/?vista=impostazioni&gruppo=avvisi", "/?vista=impostazioni", "/?vista=scambi"]
+    assert json.loads(r.stdout) == ["/?vista=oggi", "/?vista=formazione", "/?vista=altro&voce=regole",
+                                    "/?vista=impostazioni&gruppo=avvisi", "/?vista=impostazioni", "/?vista=squadra&rosa=Real+Esempio"]
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
@@ -147,14 +147,13 @@ def test_ogni_schermata_ha_il_suo_titolo_h1_e_la_riga_di_stato():
     assert 'class="capo-pagina"' in corpo and '<h1 id="titolo-pagina"' in corpo and 'class="stato-pagina"' in corpo
     assert 't("nav." + ' in corpo and "opz.titolo" in corpo
     assert "nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata)" in _funzione(APP, "caricaInfo")   # giornata della lega (#306)
-    for nome in ("vistaNovita", "vistaRosa"):                  # pagine dentro Altro e Squadra: il loro titolo, non quello della scheda
-        assert "titolo:" in _funzione(APP, nome), nome
+    assert "titolo:" in _funzione(APP, "vistaRosa")              # la rosa di una squadra: il suo titolo, non quello della scheda
 
 
 def test_pagina_e_l_unico_punto_che_scrive_le_schermate():
-    """Spec §10: Mercato, Scambi, Regole, il caricamento e il componente a pannelli (Squadra, Altro, Impostazioni) passano da
+    """Spec §10: Regole, il caricamento e il componente a pannelli (Squadra, Altro, Impostazioni) passano da
     `pagina()`, così ogni schermata ha il titolo in cima. Impostazioni ha il suo titolo e niente riga di stato."""
-    for nome in ("vistaMercato", "vistaScambi", "vistaRegole", "caricamento"):
+    for nome in ("vistaRegole", "caricamento"):
         corpo = _funzione(APP, nome)
         assert "pagina(" in corpo and "contenuto.innerHTML =" not in corpo, nome
     assert "pagina(" in _funzione(IMP, "montaPannelli") and "contenuto.innerHTML" not in _funzione(IMP, "montaPannelli")
@@ -223,7 +222,7 @@ def test_scala_della_grafica_b():
 
 
 def test_numeri_grandi_e_valori_in_archivo_con_le_cifre_in_colonna():
-    for selettore in (".grande", ".enorme", ".voce .valore b", ".partita .pt"):
+    for selettore in (".grande", ".enorme", ".voce .valore b"):
         corpo = re.search(r"\n" + re.escape(selettore) + r" \{([^}]*)\}", CSS)
         assert corpo and "font-family: var(--font-numeri)" in corpo.group(1), selettore
         assert "font-variant-numeric: tabular-nums" in corpo.group(1), selettore          # cifre in colonna anche con il ripiego
@@ -365,7 +364,7 @@ def test_nessuna_regola_rimette_il_riquadro_a_una_sezione():
     """Spec §4.1 e §8.3: niente scatole, lo spazio e i fili fanno i gruppi. In nessuna larghezza, densità o tema una regola dà di
     nuovo fondo, bordo, ombra o angoli tondi a una sezione, nemmeno con la classe che le sta accanto («carta proposta-r»,
     «carta vuoto»...). Resta un blocco solo la proposta di uno scambio."""
-    assert {"hero", "proposta-r", "vuoto", "regola-sez", "imp-elenco"} <= set(CON_LA_CARTA)
+    assert {"hero", "regola-sez", "imp-elenco"} <= set(CON_LA_CARTA)
     assert not _scatole(SEZIONE, BLOCCHI_AMMESSI)
 
 
@@ -394,7 +393,6 @@ def test_il_filo_del_titolo_sta_sotto_tutta_la_riga_se_il_titolo_ha_qualcosa_acc
     """Nel Diario (la stagione) e nelle Novità («Nuovo») il titolo della sezione sta in una riga con qualcosa a destra: il filo
     spesso va sotto tutta la riga, non solo sotto le parole del titolo (visto nelle foto del Diario a 390 e 1440 px)."""
     assert '<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2' in APP
-    assert '<div class="carta"><div class="riga"><h2' in APP
     assert "border-bottom: 2px solid var(--testo)" in _corpo(".carta > .riga:first-child:has(> h2)")
     titolo = _corpo(".carta > .riga:first-child > h2")
     assert "border-bottom: 0" in titolo and "padding-bottom: 0" in titolo
@@ -411,13 +409,6 @@ def test_dentro_le_sezioni_numeri_e_colonne_senza_riquadri():
         assert not scatola, (selettore, scatola)
     for selettore in (".stat-fila > div", ".statistiche div", ".diario-col"):
         assert "border-top: 1px solid var(--filo)" in _corpo(selettore), selettore
-
-
-def test_la_proposta_di_scambio_resta_un_blocco_con_il_filo():
-    """Spec §8.3: l'unico posto dove un riquadro raggruppa davvero qualcosa che si muove insieme (chi dai, chi ricevi, il verdetto)."""
-    regola = re.search(r"\n\.carta\.scambio \{([^}]*)\}", CSS).group(1)
-    assert "border: 1px solid var(--filo)" in regola and "border-radius: var(--r-card)" in regola and "padding: 16px" in regola
-    assert 'class="carta scambio"' in APP
 
 
 # ---------------------------------------------------------------- 5.2 pulsanti, controlli di scelta, focus e passaggio del mouse
@@ -565,18 +556,15 @@ def test_avvisi_con_filo_a_sinistra_nel_colore_del_significato():
 
 
 def test_avvisi_ed_errori_senza_riquadro_con_il_testo_pieno():
-    """Spec §8.12-8.13: un avviso è una riga con il filo di 3 px a sinistra nel colore del significato (rosso errore, arancio dubbio,
-    verde per il verdetto buono di uno scambio) e il testo nel colore del testo: l'errore non è più tutto rosso su un fondo rosa.
-    Niente fondo, bordo intorno né angoli, in nessuna variante; lo stato vuoto è una riga grigia allineata a sinistra. Il filo si vede
+    """Spec §8.12-8.13: un avviso è una riga con il filo di 3 px a sinistra nel colore del significato (rosso errore, arancio dubbio)
+    e il testo nel colore del testo: l'errore non è più tutto rosso su un fondo rosa.
+    Niente fondo, bordo intorno né angoli, in nessuna variante. Il filo si vede
     sul fondo della pagina (almeno 3:1) in chiaro e in scuro, ma non è l'unico segno: la frase dice già cosa succede."""
     from tests.test_design_web import _colore, _contrasto_rgb, _temi
     assert not _scatole(AVVISI)
     assert "color: var(--testo)" in _corpo(".errore") and "color: var(--rosso)" not in _corpo(".errore")
-    for classe, colore in ((".verdetto.ok", "--verde"), (".verdetto.attenzione-lieve", "--arancio"), (".verdetto.no", "--rosso"),
-                           (".nota-incerto", "--arancio")):
-        assert f"border-left-color: var({colore})" in _corpo(classe) or f"border-left: 3px solid var({colore})" in _corpo(classe), classe
-    vuoto = _corpo(".vuoto")
-    assert "color: var(--testo-2)" in vuoto and "text-align: center" not in vuoto
+    classe, colore = ".nota-incerto", "--arancio"
+    assert f"border-left-color: var({colore})" in _corpo(classe) or f"border-left: 3px solid var({colore})" in _corpo(classe), classe
     for tema, v in _temi().items():
         for colore in ("--rosso", "--arancio", "--verde"):
             assert _contrasto_rgb(_colore(v[colore])[0], _colore(v["--sfondo"])[0]) >= 3, (tema, colore)
@@ -594,13 +582,6 @@ def test_il_messaggio_che_passa_e_pieno_e_si_stacca_dalla_pagina():
         assert _contrasto_rgb(_colore(v["--sfondo"])[0], _colore(v["--testo"])[0]) >= 4.5, tema
     assert "anello" not in _corpo(".avviso:not([hidden])")
     assert "anello-rosso" not in SENZA_COMMENTI
-
-
-def test_novita_della_versione_una_riga_con_il_filo():
-    """Spec §9 (Oggi): il banner delle novità diventa una riga con il filo sopra e sotto («Novità della versione 1.402»), alta 44 px."""
-    corpo = _corpo(".banner-novita")
-    assert all(x in corpo for x in ("border: 0", "border-top: 1px solid var(--filo)", "border-bottom: 1px solid var(--filo)",
-                                    "min-height: 44px", "background: none"))
 
 
 def test_novita_delle_sezioni():
@@ -661,7 +642,7 @@ def test_riga_del_giocatore_prima_e_dopo_la_partita():
       voceGiocatore({{...{g}, stato_partita: "fatto", fv_preso: 7, etichetta: {{codice: "voto", testo: "Ha giocato", tono: "positivo"}}}}),
       voceGiocatore({{...{g}, stato_partita: "in_corso", etichetta: {{codice: "in_corso", testo: "Partita in corso", tono: "positivo"}}}})]""")
     testo = _testo_riga(prima)
-    assert testo.startswith("57 D Rossi L. NAP vs LAZ")                     # indice sul volto, lettera del ruolo, nome, partita
+    assert testo.startswith("D Rossi L. NAP vs LAZ")                        # lettera del ruolo, nome, partita: nessun numero sul volto
     assert "sab 31 20:45" in testo and "Probabile titolare" in testo and testo.endswith("gioca 85% Fantavoto atteso 6,8")
     assert '<span class="pv-g">gioca 85%</span>' in prima                   # grigio sopra il 70%...
     assert '<span class="pv-g basso">gioca 55%</span>' in dubbio            # ...arancio e in grassetto sotto
@@ -716,11 +697,9 @@ def test_la_griglia_della_riga_e_dell_intestazione_ha_lo_stesso_carattere():
 
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_la_riga_della_partita_va_a_capo_tra_i_pezzi():
-    """A 390 px «INT vs COM · dom 8 18:00 · Real Esempio» andava a capo dentro il nome della squadra («Real» sopra, «Esempio» sotto).
-    Ogni pezzo è un blocco intero, con il «·» attaccato al pezzo prima: si va a capo tra i pezzi."""
-    riga = _esegui_righe(f"voceGiocatore({json.dumps(GIOCATORE)}, null, false, false, 'Real Esempio')")
-    assert '<span class="nb">Real Esempio</span>' in riga
-    assert re.search(r'<span class="nb">NAP <span aria-hidden="true">vs LAZ</span>.*? · sab 31 20:45 ·</span> <span class="nb">', riga)
+    """A 390 px la riga sotto il nome andava a capo dentro un pezzo. Ogni pezzo è un blocco intero: si va a capo tra i pezzi."""
+    riga = _esegui_righe(f"voceGiocatore({json.dumps(GIOCATORE)})")
+    assert re.search(r'<span class="nb">NAP <span aria-hidden="true">vs LAZ</span>.*? · sab 31 20:45</span>', riga)
     assert re.search(r"\.voce-g \.dettaglio \.nb \{[^}]*display: inline-block; max-width: 100%", CSS)
 
 
@@ -756,13 +735,6 @@ def test_intestazione_delle_colonne_nascosta_ai_lettori_e_colonne_pari():
     assert ".avatar-anello.alto" not in CSS and "conic-gradient" not in _corpo(".avatar-anello")   # niente anello colorato per l'indice
 
 
-def test_l_indice_resta_un_numero_neutro_sul_volto():
-    """Spec §8.4: l'indice (0-100) resta come numero piccolo sul volto, nei colori del testo e della pagina (mai sotto i 12 px)."""
-    badge = _corpo(".badge-indice")
-    assert "background: var(--sfondo)" in badge and "color: var(--testo)" in badge and "font-size: var(--t-eti)" in badge
-    assert not re.search(r"\.badge-indice \{[^}]*color: #fff", CSS)          # il bianco serviva sul pallino colorato
-
-
 def test_le_colonne_dei_numeri_stanno_nello_stesso_posto_in_ogni_riga():
     """Spec C8: «gioca N%» e il fantavoto atteso nelle stesse colonne, larghe uguali, in ogni riga e nell'intestazione; sotto i 680 px
     di riga i due numeri uno sopra l'altro (come l'iPhone), da 680 px una riga sola con la colonna «Partita»."""
@@ -773,7 +745,6 @@ def test_le_colonne_dei_numeri_stanno_nello_stesso_posto_in_ogni_riga():
     assert re.search(r"\.voce-g \{[^}]*var\(--col-gioca\) var\(--col-fv\)", larga.group(1))
     assert re.search(r"\.voce-g > \.testo-g \{ display: contents; \}", larga.group(1))
     assert "container: riga / inline-size" in _corpo(".riga-gioc, .intestazione-colonne")
-    assert '<ul class="elenco posto-azione">${fuori.map' in APP         # «Fuori» lascia il posto del ⇄: colonne come Titolari e Panchina
 
 
 def test_formazione_titolari_panchina_e_fuori_in_una_colonna_sul_pc():
@@ -794,8 +765,8 @@ def test_il_campo_che_scorre_con_la_pagina_tiene_dentro_le_sue_linee():
 
 
 def test_azione_della_riga_scritta_senza_cerchio():
-    """Spec C9 e §8.7: «⇄» e «✎» sono icone da 44 px nel colore delle azioni, nella riga a destra, senza il cerchio a contorno."""
-    mini = _corpo(".confronta-mini")
+    """Spec C9 e §8.7: «✎» è un'icona da 44 px nel colore delle azioni, nella riga a destra, senza il cerchio a contorno."""
+    mini = _corpo(".azione-riga")
     assert "width: 44px; height: 44px" in mini and "border: 0" in mini and "color: var(--azione)" in mini
     assert "border-radius: 50%" not in mini
 
@@ -875,23 +846,6 @@ def test_conto_alla_rovescia_grande_senza_riquadro_e_sempre_intero():
     maglia = _corpo(".maglia-hero")
     assert "position: absolute" not in maglia and "animation" not in maglia      # dritta e ferma: si muove solo ciò che risponde a un gesto
     assert ".con-maglia .enorme" not in CSS and "padding-right: 132px" not in CSS
-
-
-def test_oggi_nell_ordine_della_distinta():
-    """Spec §9 e piano, PR 7: a sinistra (al telefono prima) il conto alla rovescia, le cifre della formazione con «Apri la formazione»
-    subito sotto (nel primo schermo), poi Partita rinviata e Da fare; a destra I tuoi migliori, Da controllare, Indisponibili (chiuso),
-    Diffidati e Partite del turno. Le probabili stanno con la formazione, come sull'iPhone."""
-    corpo = _funzione(APP, "mostraOggi")
-    sinistra, destra = corpo.split('</div><div class="col">')
-    ordine = ['id="conto"', 'id="oggi-punti"', 't("oggi.apri_formazione")', 'id="probabili-fresche"', "${cardRinvio(o.rinvio)}",
-              "${cardDaFare(o.da_fare)}"]
-    posti = [sinistra.index(x) for x in ordine]
-    assert posti == sorted(posti), ordine
-    ordine = ['t("oggi.tuoi_migliori_della")', 't("oggi.da_controllare")', 't("oggi.indisponibili"', 't("oggi.diffidati")',
-              't("oggi.partite_del_turno")']
-    posti = [destra.index(x) for x in ordine]
-    assert posti == sorted(posti), ordine
-    assert '<details><summary>${t("oggi.indisponibili"' in destra and "<details open" not in destra      # Indisponibili chiuso
 
 
 def test_cifre_affiancate_separate_da_un_filo():
@@ -992,13 +946,6 @@ def test_pedina_con_il_numero_nel_disco_e_la_lineetta_del_club():
     assert "avatar(" not in corpo and "avatar-pedina" not in CSS
 
 
-def test_la_legenda_non_copre_il_campo():
-    corpo = _funzione(APP, "mostraFormazione")
-    assert "${legendaCampo()}" in corpo and '<div class="campo">${legendaCampo()}' not in corpo   # oggi sta dentro il campo
-    assert not re.search(r"\.legenda-campo \{[^}]*order: 1", CSS)
-    assert "distintivo(" not in _funzione(APP, "legendaCampo")             # anche la spiegazione usa la lineetta
-
-
 def test_campo_ed_elenco_affiancati_e_salva_sempre_in_vista():
     assert re.search(r"@media \(min-width: 900px\) \{[^@]*\.colonne-campo[^{]*\{ grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\)", CSS)
     assert re.search(r"\.stato-scelta\.modificata, \.stato-scelta\.mano \{[^}]*position: sticky; top: var\(--alto-ferma\)", CSS)
@@ -1030,18 +977,6 @@ def test_campo_piatto_raggio_12_e_disco_da_44_px():
     assert "respira" not in CSS and ".pedina .maglia" not in CSS
 
 
-def test_cosa_vuol_dire_e_un_collegamento_sotto_il_campo():
-    """Spec §8.10: la legenda non sta più sopra il campo; «Cosa vuol dire» è un collegamento (testo nel colore delle azioni) sotto il
-    campo che apre la spiegazione lì sotto. Gli esempi della spiegazione sono disegnati come sul campo (sul verde)."""
-    corpo = _funzione(APP, "mostraFormazione")
-    assert corpo.index('<div class="campo">') < corpo.index("${legendaCampo()}")
-    legenda = _funzione(APP, "legendaCampo")
-    assert 'class="info-campo azione-testo"' in legenda and "ⓘ" not in legenda
-    assert '<span class="disco">${num(6.8)}</span>' in legenda and 'lineetta("napoli")' in legenda
-    assert "position: absolute" not in _corpo(".info-campo")
-    assert "background: var(--campo)" in _corpo(".leg-esempio")
-
-
 def test_il_campo_resta_fermo_accanto_all_elenco_e_non_copre_niente():
     """Issue #382: a 1440 px il campo copriva le prime righe delle spiegazioni sotto di lui. Causa: da 1400 px il campo passava da
     `sticky` a `relative` e teneva il suo `top` (72 px): scendeva di 72 px sopra le righe sotto. Lo stesso con `.campo.non-ferma`.
@@ -1058,8 +993,8 @@ def test_il_campo_resta_fermo_accanto_all_elenco_e_non_copre_niente():
     assert re.search(r"\.colonne-campo \.campo-fermo \{[^}]*position: sticky; top: calc\(var\(--alto-ferma\) \+ 16px\)", larga)
     corpo = _funzione(APP, "mostraFormazione")
     assert '<div class="zona-campo"><div class="campo-fermo">' in corpo
-    # al telefono il campo viene dopo Modulo, Stile e i pulsanti e prima dei Titolari (spec §9); sul PC sta nella colonna di sinistra
-    posti = [corpo.index(x) for x in ('id="punti-attesi"', "rigaStatoScelta(", 't("formazione.modulo")', 't("formazione.stile")',
+    # al telefono il campo viene dopo il modulo e i pulsanti e prima dei Titolari (spec §9); sul PC sta nella colonna di sinistra
+    posti = [corpo.index(x) for x in ('id="punti-attesi"', "rigaStatoScelta(", 't("formazione.modulo")',
                                       'class="zona-campo"', 't("formazione.titolari")', 't("scambi.panchina")')]
     assert posti == sorted(posti)
 
@@ -1169,15 +1104,6 @@ console.log(JSON.stringify(esiti));""",
         [False, "120px"], [True, "0px"], [True, "0px"], 0, [False, "320px"], [False, "0px"], [None, "0px"]]
 
 
-def test_descrizione_dello_stile_in_una_riga_con_come_si_legge():
-    """Spec §1 (un paragrafo di 4 righe prima del campo) e §9: sotto Stile una riga di nota; la descrizione lunga si apre con «Come si
-    legge». Dopo «Modifica a mano» la riga dice come tornare alla consigliata, senza niente da aprire."""
-    corpo = _funzione(APP, "mostraFormazione")
-    nota = corpo[corpo.index('id="descrizione-stile"'):corpo.index('<div class="pulsanti')]
-    assert '<details class="come">' in nota and 't("mercato.come_legge")' in nota and "descrizioneStile(l)" in nota
-    assert 't("formazione.modificata_mano")' in nota
-
-
 def test_cifre_della_formazione_affiancate_con_il_filo():
     corpo = _funzione(APP, "mostraFormazione")
     assert 'class="cifre-oggi cifre-formazione"' in corpo and 'style="text-align:right"' not in corpo
@@ -1244,7 +1170,7 @@ def test_guida_ctrl_s_e_campo_della_formazione():
     guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
     assert "**Ctrl+S** (⌘+S sul Mac) salva la formazione quando c'è qualcosa da salvare" in guida
     formazione = guida[guida.index("### Formazione"):]
-    assert "ⓘ" not in formazione and "pillola scura" not in formazione and "Cosa vuol dire" in formazione
+    assert "ⓘ" not in formazione and "pillola scura" not in formazione
 
 
 def test_novita_della_formazione():
@@ -1254,9 +1180,9 @@ def test_novita_della_formazione():
 
 # ---------------------------------------------------------------- PR 9: pannello affiancato, scheda del giocatore, ricerca
 def test_pannello_affiancato_solo_per_i_dettagli_dei_giocatori():
-    """Spec C5 e §10: scheda, confronto, scelta per il confronto, sostituzione di un titolare, «Perché questo numero» e ricerca
+    """Spec C5 e §10: scheda, sostituzione di un titolare, «Perché questo numero» e ricerca
     chiedono il pannello affiancato; da 1200 px la pagina si stringe di quanto è largo il pannello (400-520 px)."""
-    for nome in ("apriGiocatore", "apriScelta", "apriConfronto", "apriPerche", "apriRicerca"):
+    for nome in ("apriGiocatore", "apriPerche", "apriRicerca"):
         assert "affianco: true" in _funzione(APP, nome), nome
     assert "affianco: true" in _funzione(APP, "mostraFormazione")          # la sostituzione di un titolare
     apri = _funzione(APP, "apriFoglio") + _funzione(APP, "modoFoglio")
@@ -1266,8 +1192,7 @@ def test_pannello_affiancato_solo_per_i_dettagli_dei_giocatori():
 
 
 def test_le_altre_finestre_restano_modali():
-    """Primo avvio, immagine da condividere, diario e novità restano fogli modali anche sul PC (spec C5)."""
-    assert "affianco" not in _funzione(APP, "condividiImmagine")
+    """Primo avvio e diario restano fogli modali anche sul PC (spec C5)."""
     assert "affianco" not in codice_web.leggi("primoavvio.js")
     assert "affianco" not in _funzione(APP, "apriDiario")
 

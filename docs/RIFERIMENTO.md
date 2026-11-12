@@ -83,12 +83,16 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
     (pagine privacy, termini, crediti), `sotto_il_cofano.py`, `widget.py`, `da_fare.py`, `stato_utente.py`, `copertura.py`,
     `avatar.py` (`GET /api/avatar`).
 - `fanta/web/`: la web app, HTML, CSS e JavaScript senza librerie né compilazione. File principali: `index.html`, `app.js`,
-  `impostazioni.js`, `dafare.js`, `primoavvio.js`, `live.js`, `avatar.js`, `testi.js`, `stile.css`, `sw.js`, icone.
+  `impostazioni.js`, `dafare.js`, `primoavvio.js`, `anteprima.js`, `avatar.js`, `testi.js`, `stile.css`, `sw.js`, icone.
+  Dal 12/11/2026 (#615) la web non ha più stili, indice sul volto, legenda del campo, Confronto, Scambi, Cambi consigliati, Seguiti,
+  Elenco dei giocatori, Calendario, Movimenti, Crediti delle squadre, Partite del turno con la diretta, immagine da condividere,
+  banner delle novità e dimensione del testo: le rotte del server restano (le usa l'iPhone). Gli indirizzi di prima portano alla
+  schermata più vicina che resta (`schermataCheResta` in `app.js`); le Novità sono in Impostazioni > Informazioni.
   Dopo una modifica il job `rilascia` alza `VERSIONE` in `fanta/web/sw.js`.
   Grafica B «Distinta» (in vigore dal 6/11/2026, `docs/DESIGN.md`, «Web: grafica B»; spec e piano in `docs/superpowers/`): una sola
   testata in `index.html` (nome disegnato, `nav` con le 4 schede come collegamenti `<a href="/?vista=…">`, ricerca, ingranaggio) che
   al telefono diventa la barra in basso; `pagina(html, opz)` in `app.js` scrive titolo (`h1`) e riga di stato di ogni schermata;
-  `vai()` scrive la cronologia (Indietro del browser). Da 1200 px `apriFoglio(html, { affianco: true })` apre scheda, confronto,
+  `vai()` scrive la cronologia (Indietro del browser). Da 1200 px `apriFoglio(html, { affianco: true })` apre scheda,
   sostituzione, «Perché questo numero» e ricerca nel pannello affiancato (non modale); le altre finestre restano il foglio modale.
   Menu a sinistra: Impostazioni (`montaPannelli` in `impostazioni.js`, da 768 px), Squadra e Altro (`.lega-colonne`, da 1100 px).
   Test dei controlli sul codice: `tests/test_grafica_b_web.py`; foto e axe: `prove/foto_web/foto.py`.
@@ -134,7 +138,7 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   `metriche.py`: metriche della squadra per settimana (versioni, tempo PR→unione, etichette `regressione`, `dall-utente`,
   `fuori-piano`, coda iOS), solo lettura con `gh`: `python script/ci/metriche.py --settimane 4`.
   `aspetto_web.py`: regressione visiva della web (decisione 0011), workflow `.github/workflows/aspetto-web.yml` sulle PR che toccano
-  `fanta/web/`, `ios/fotografie/` o lo script stesso: 11 scene a 390 e 1440 px, chiaro e scuro, scattate con il codice della PR e con quello di `main` nella stessa corsa,
+  `fanta/web/`, `ios/fotografie/` o lo script stesso: 9 scene a 390 e 1440 px, chiaro e scuro, scattate con il codice della PR e con quello di `main` nella stessa corsa,
   dati da `ios/fotografie/vero-prima.json`; avvisa se cambia una scena non scritta nella riga `Aspetto:` della PR. Solo avviso. Test
   `tests/test_aspetto_web.py`.
   `collaudo_prova.py` con `.github/workflows/collaudo-prova.yml`: collaudo automatico dell'ambiente di prova (decisione 0012), ogni
@@ -149,7 +153,13 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   `tests/contratto_ios.py`: il contratto iPhone-server senza Mac (decisione 0014): ogni campo dei modelli `Decodable` dell'iPhone deve
   comparire come chiave in `fanta/`; test `tests/test_contratto_ios.py`, eccezioni con il motivo in `tests/dati/contratto_ios_eccezioni.json`.
   `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
-- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335). `tara_forza_gol.py`: taratura della forza delle squadre dei gol attesi «nostri» (memoria, partite fittizie, livello recente del campionato; devianza di Poisson dei gol di squadra sul 2025-26, controllo sul 2026-27) e, con `--ruoli`, gol e assist veri su attesi per ruolo (Fase C del piano `2026-11-06-gol-attesi-nostri`). `foto_web/foto.py`: foto e axe della web senza finestra (Chrome di sistema, server di prova con la lega d'esempio avviato e fermato da solo, 12 scene a 390/768/1024/1440 px in chiaro e scuro, `riepilogo.txt` con violazioni gravi, scorrimento di lato ed errori della console; foto sempre fuori dal repository), istruzioni in `prove/foto_web/LEGGIMI.md`, test `tests/test_foto_web.py`.
+- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335). `tara_forza_gol.py`: taratura della forza delle squadre dei gol attesi «nostri» (memoria, partite fittizie, livello recente del campionato; devianza di Poisson dei gol di squadra sul 2025-26, controllo sul 2026-27) e, con `--ruoli`, gol e assist veri su attesi per ruolo (Fase C del piano `2026-11-06-gol-attesi-nostri`). `foto_web/foto.py`: foto e axe della web senza finestra (Chrome di sistema, server di prova con la lega d'esempio avviato e fermato da solo, 9 scene a 390/768/1024/1440 px in chiaro e scuro, `riepilogo.txt` con violazioni gravi, scorrimento di lato ed errori della console; foto sempre fuori dal repository), istruzioni in `prove/foto_web/LEGGIMI.md`, test `tests/test_foto_web.py`.
+- `tests/browser/`: test di comportamento della web in un browser vero senza finestra (Chrome di sistema, Playwright in un
+  ambiente a parte, server finto di `script/ci/server_finto.py` con le risposte registrate delle tre fasi di
+  `ios/fotografie/vero-*.json`): cosa compare e cosa succede a un tocco, non il testo del sorgente. Job `browser` di `test.yml`;
+  nella suite normale si saltano (`-m browser`). `test_prima_schermata.py`: la prima schermata nelle tre fasi;
+  `test_tagli.py`: la web senza le funzioni tolte (#615) e i tre patti (errore = `role="alert"`, avviso = `role="status"`,
+  caricamento = `aria-busy`). Guida: `tests/browser/LEGGIMI.md`.
 - `prove/amico_nuovo/`: percorso automatico «amico nuovo» (#168): `percorso.py` fa nel browser, senza finestra, l'ingresso di un amico invitato (link d'invito, registrazione, rose, squadra, tempi, regole, prima formazione, rientro con il codice di recupero, eliminazione dell'account) e per ogni passo scrive secondi, tocchi, errori della console e violazioni gravi di accessibilità. Gira solo in locale (`--locale`, server di prova suo) o sull'ambiente di prova (`--remoto`: rifiuta ogni server il cui nome non comincia con `prova.`). Risultati sempre fuori dal repository. Istruzioni: `prove/amico_nuovo/LEGGIMI.md`.
 - `fanta/misura_ingresso.py`: quanti minuti ci mette un amico nuovo a caricare la sua lega (#574, misura di #168). Comando `python -m fanta ingresso --dal <ISO con fuso> [--al <ISO con fuso>]`, da lanciare sul server, in sola lettura, una riga per account senza nomi. Uscita 0 se tutti sono dentro in meno di 10 minuti, 1 se no, 2 se nel periodo non c'è nessun account, 3 se la misura non si può fare. Uso e limiti: `prove/amico_nuovo/LEGGIMI.md`, «La misura sugli amici veri».
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,

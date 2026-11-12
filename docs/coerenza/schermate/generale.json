@@ -42,8 +42,8 @@
       "web": "«Crediti salvati», «Dati aggiornati», «Aggiornamento dei dati avviato: ci vuole circa un minuto», «Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco», «Incolla prima il testo del regolamento», «Regole salvate: i consigli ora le usano» e le righe d'aiuto delle Regole senza punto finale; «Tutto è salvato nell'archivio.»; «Da indirizzo web»; «Ultimi aggiornamenti»; «Carico il calendario…»; «Cerco gli svincolati migliori…»; per VoiceOver «Chi è «Rossi» (Squadra)?» e «Cerca il giocatore giusto per «Rossi»»",
       "iphone": "le stesse frasi con il punto finale; «Tutto è salvato nell'archivio del server.»; «Da un indirizzo web»; «Ultimi aggiornamenti dei dati»; «Guardo il calendario…»; «Cerco gli svincolati…»; «Chi è «Rossi» di Squadra?», «Cerca il giocatore giusto per Rossi»",
       "forma": "web",
-      "chi": "fatto (#496): i testi di Squadra, Altro e Scambi vengono dal catalogo comune (`Catalogo.*` generati da `ios/testi/`); `SquadraAltroDalCatalogoTests` controlla che non siano riscritti a mano",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più Scambi, Crediti delle squadre, Cambi consigliati e Calendario (#615), l'iPhone sì. Prima: fatto (#496): i testi di Squadra, Altro e Scambi vengono dal catalogo comune (`Catalogo.*` generati da `ios/testi/`); `SquadraAltroDalCatalogoTests` controlla che non siano riscritti a mano",
+      "stato": "da-decidere"
     },
     {
       "id": 64,
@@ -51,8 +51,8 @@
       "web": "senza rose «Prima le tue rose», «Importa le rose della tua lega: poi qui trovi i consigli per la tua squadra. Ci vuole un minuto.» e «Importa le rose» (`cartaSenzaRose`); funzione spenta «Non disponibile», «Torna a Oggi» e «Apri le impostazioni» (`cartaFunzioneSpenta`); Aspetto «Automatico segue il chiaro e lo scuro del dispositivo.»; Regole «… Non cambia nulla finché non tocchi «Salva le regole».» (`regole.leghe_apri_regolamento`, con il nome del pulsante dal #559: riga 65)",
       "iphone": "prima: senza rose «Manca la tua squadra» e «Mister, qui non ci sono ancora le rose. Incolla la pagina delle rose o scegli il file della lega …»; funzione spenta il pulsante «Impostazioni»; Aspetto «Automatico segue il chiaro e lo scuro di iPhone.»; Regole «… finché non tocchi «Salva le regole».» (`ConfiguraLegaView.swift`, `Stati.swift`, `LegaPagine.swift`, `RegoleEditor.swift`)",
       "forma": "web",
-      "chi": "fatto (#556): i testi vengono dal catalogo comune (`Catalogo.Comune`, `Catalogo.Dieta`, `Catalogo.Asp`, `Catalogo.Regole`), prova `RestiDalCatalogoTests`. Restano dell'iPhone il pulsante «Apri la web app nel browser» della lega senza rose e la riga sulla dimensione del testo in Aspetto («… si cambia in Impostazioni > Schermo e luminosità > Dimensione del testo …», senza «di iPhone» dal #563, così vale anche sull'iPad)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più il pulsante «Apri le impostazioni» della funzione spenta (#615), l'iPhone sì. Prima: fatto (#556): i testi vengono dal catalogo comune (`Catalogo.Comune`, `Catalogo.Dieta`, `Catalogo.Asp`, `Catalogo.Regole`), prova `RestiDalCatalogoTests`. Restano dell'iPhone il pulsante «Apri la web app nel browser» della lega senza rose e la riga sulla dimensione del testo in Aspetto («… si cambia in Impostazioni > Schermo e luminosità > Dimensione del testo …», senza «di iPhone» dal #563, così vale anche sull'iPad)",
+      "stato": "da-decidere"
     }
   ]
 }

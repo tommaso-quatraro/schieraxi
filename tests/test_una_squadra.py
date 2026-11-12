@@ -1,5 +1,5 @@
 """Si comincia anche con la sola propria rosa (decisione del 2/11/2026, piano «Ingresso facile» S4): niente blocco «almeno due
-squadre», solo un avviso gentile; scambi e mercato non vanno in errore e il web mostra uno stato vuoto chiaro. Dati finti."""
+squadre», solo un avviso gentile; scambi e mercato non vanno in errore. Dati finti."""
 import dataclasses
 import json
 import sqlite3
@@ -11,11 +11,6 @@ from fanta import calcolo, consigli, lega, onboarding, server
 from fanta.regole import Regole
 
 from test_scambi import REGOLE, _rose, _valori, TAB
-import codice_web
-
-WEB = server.WEB
-APP = codice_web.app()
-PRIMO = codice_web.leggi("primoavvio.js")
 
 
 def _sola(rose: lega.Rose) -> lega.Rose:
@@ -67,12 +62,3 @@ def test_l_anteprima_di_una_sola_squadra_avvisa_con_gentilezza(client, monkeypat
     monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (listone_finto(range(1000, 1003)), "oggi"))
     a = client.post("/api/rose/anteprima", json={"testo": "Mia\nP\tGiocatore 1000\t1\n", "sostituisci_tutto": True}).json()
     assert a["totale_squadre"] == 1 and lega.UNA_SQUADRA in a["avvisi"] and a["mia_squadra"] == "Mia"
-
-
-def test_il_web_non_blocca_e_spiega_cosa_manca():
-    assert "servono_almeno_due" not in PRIMO and "totale_squadre < 2" not in PRIMO
-    assert 'totale_squadre === 1) avviso(t("srv.una_sola_squadra")' in PRIMO
-    # Scambi: con la sola tua rosa uno stato vuoto con il pulsante per aggiungere le altre (niente elenchi vuoti)
-    assert 'squadre.length && !altre.length' in APP and 't("scambio.servono_altre")' in APP and 'vaiLega("importa")' in APP
-    # Cambi consigliati: chi non è tuo risulta libero, ma potrebbe essere di un altro
-    assert '(stato.squadre || []).length === 1 ? `<div class="attenzione">${t("mercato.senza_altre")}' in APP

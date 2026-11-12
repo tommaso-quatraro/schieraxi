@@ -18,21 +18,5 @@
   "live.sospesa": {
     "it": "Sospesa",
     "en": "Suspended"
-  },
-  "live.autogol": {
-    "it": "autogol",
-    "en": "own goal"
-  },
-  "live.rigore": {
-    "it": "rig.",
-    "en": "pen."
-  },
-  "live.rigore_sbagliato": {
-    "it": "rig. sbagliato",
-    "en": "missed pen."
-  },
-  "live.assist": {
-    "it": "ass. {nome}",
-    "en": "assist {nome}"
   }
 }

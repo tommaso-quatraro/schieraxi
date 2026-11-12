@@ -36,7 +36,7 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
 
 ## `fanta/web/`: la web app
 `index.html` (testata e contenitore), `app.js` (schermate e navigazione), `impostazioni.js`, `dafare.js`, `primoavvio.js`,
-`live.js`, `avatar.js`, `anteprima.js`, `legale.js`, `testi.js` (generato dal catalogo, più le funzioni `t`, `tp`), `stile.css`,
+`avatar.js`, `anteprima.js`, `legale.js`, `testi.js` (generato dal catalogo, più le funzioni `t`, `tp`), `stile.css`,
 `sw.js` (service worker), `caratteri/`, icone.
 
 ## `ios/`

@@ -29,9 +29,9 @@ Tutti i passi, schermata per schermata: [`docs/GUIDA-UTENTE.md`](docs/GUIDA-UTEN
 ## Cosa fa
 - Ogni giornata propone gli 11 titolari, il modulo e la panchina, con il motivo di ogni scelta in una riga.
 - Mostra per ogni giocatore il fantavoto atteso e la probabilità che giochi, con una fascia di incertezza.
-- Aiuta con gli scambi e avvisa se cambia qualcosa (infortuni, probabili formazioni, scadenza).
+- Avvisa se cambia qualcosa (infortuni, probabili formazioni, scadenza).
 - Nel Diario confronta la formazione schierata con quella consigliata, a giornata finita.
-- Mostra i risultati in diretta durante la giornata.
+- Durante la giornata mostra i punti fatti finora e quelli attesi a fine giornata.
 
 È una guida, non una garanzia: sono stime. Non fa l'asta e non schiera la squadra al posto tuo.
 Come ragiona il modello, con numeri e limiti: [`docs/SOTTO-IL-COFANO.md`](docs/SOTTO-IL-COFANO.md).

@@ -24,12 +24,6 @@ def _funzione(nome):
     return riga.group(0)
 
 
-def test_confronto_titolo_con_la_giornata_della_lega():
-    # dal 5/11/2026 (#299) lega e Serie A insieme: «Chi schierare? Giornata 7 · 10ª di Serie A»
-    assert 't("mercato.chi_schierare", { g: nomeGiornata(c.giornata_lega, c.giornata) })' in APP
-    assert 't("mercato.chi_schierare", { n: c.giornata })' not in APP
-
-
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 def test_al_percento_con_l_apostrofo_come_sull_iphone():
     codice = (_funzione("alPercento")
@@ -50,14 +44,6 @@ def test_punti_del_diario_sempre_con_un_decimale():
     assert "const v = x => num(x, 1)" in corpo
 
 
-def test_confronto_etichetta_di_posto_dalla_risposta_del_server():
-    """«Titolare» / «Panchina N» sotto i due giocatori viene da `formazione.posto_a/posto_b` di /api/confronto (la stessa formazione
-    del titolo «Schiera X»), non dalla formazione aperta nella scheda Formazione, che può essere una scelta fatta a mano."""
-    corpo = APP[APP.index("async function apriConfronto("):APP.index("// ---------------------------------------------------------------- pannello")]
-    assert "postoInFormazione(" not in corpo and "inTitolari(" not in corpo
-    assert "fo.posto_a" in corpo and "posto(g)" in corpo
-
-
 def test_quanto_ci_abbiamo_preso_senza_carte_dentro_la_carta():
     """docs/STILE-SENZA-AI.md, pavimento 7: dentro una carta righe e spazio, mai un'altra carta. I quattro numeri di «Quanto ci
     abbiamo preso» erano riquadri con fondo, bordo e angoli tondi dentro la carta."""
@@ -65,11 +51,3 @@ def test_quanto_ci_abbiamo_preso_senza_carte_dentro_la_carta():
     regola = re.search(r"^\.qp-voce \{([^}]*)\}", css, re.M).group(1)
     assert "background" not in regola and "border-radius" not in regola and "border:" not in regola
     assert "border-top" in regola
-
-
-def test_confronto_ragiona_sulla_giornata_che_si_vede_in_formazione():
-    """Dopo la scadenza Formazione mostra la giornata successiva: il Confronto deve chiedere QUELLA, non la giornata in corso."""
-    inizio = APP.index("async function apriConfronto(")
-    corpo = APP[inizio:APP.index("\n}\n", inizio)]
-    assert re.search(r"const contesto = stato\.formaz \? `[^`]*&giornata=\$\{Number\(stato\.formaz\.f\.giornata\)\}", corpo), corpo[:600]
-    assert "/api/confronto?a=${a}&b=${b}${contesto}" in corpo      # senza formazione aperta il server sceglie da solo

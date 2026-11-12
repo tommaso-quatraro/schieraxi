@@ -84,12 +84,6 @@ def test_valore_della_rosa_prima_e_dopo_la_partita():
 
 
 def test_scheda_niente_stato_doppio_a_partita_finita():
-    scheda = _pezzo("async function apriGiocatore", "async function osservatiIds")
+    scheda = _pezzo("async function apriGiocatore", "// Il posto in formazione a parole")
     assert "const statoInGrande = finitaP && !(votoGiornata && votoGiornata.fv != null)" in scheda
     assert "${pr && !statoInGrande ? pillTitolarita(pr) : \"\"}" in scheda
-
-
-@pytest.mark.skipif(not NODE, reason="serve node")
-def test_legenda_del_campo_nella_lingua_scelta():
-    assert '<span class="disco">${num(6.8)}</span>' in APP and '<span class="disco">6,8</span>' not in APP
-    assert _esegui("num(6.8)", "en") == "6.8" and _esegui("num(6.8)", "it") == "6,8"

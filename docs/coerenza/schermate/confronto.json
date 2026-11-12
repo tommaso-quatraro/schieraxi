@@ -6,8 +6,8 @@
       "web": "–",
       "iphone": "«Giornata 10» (Serie A)",
       "forma": "sezione «Giornata: le forme»",
-      "chi": "fatto (rassegna 6/11): la carta in cima ha per titolo `Confronto.titolo` = `TempiLega.etichetta` (`Domain/Modelli3.swift`), «Chi schierare?» sta nella barra; sulla web «Chi schierare? Giornata 8 · 11ª di Serie A» nel titolo del foglio",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più il Confronto (#615), l'iPhone sì. Prima: fatto (rassegna 6/11): la carta in cima ha per titolo `Confronto.titolo` = `TempiLega.etichetta` (`Domain/Modelli3.swift`), «Chi schierare?» sta nella barra; sulla web «Chi schierare? Giornata 8 · 11ª di Serie A» nel titolo del foglio",
+      "stato": "da-decidere"
     },
     {
       "id": 32,
@@ -15,8 +15,8 @@
       "web": "«Titolare», «Panchina 2», «Non schierato» e l'etichetta del server",
       "iphone": "«Titolare», «Panchina 2», «Fuori»",
       "forma": "web",
-      "chi": "fatto sull'iPhone (#295)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più il Confronto (#615), l'iPhone sì. Prima: fatto sull'iPhone (#295)",
+      "stato": "da-decidere"
     },
     {
       "id": 33,
@@ -24,8 +24,8 @@
       "web": "«−1,12»",
       "iphone": "«-1,12» (`Formato.decimali`)",
       "forma": "web",
-      "chi": "fatto sull'iPhone (#295)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più il Confronto (#615), l'iPhone sì. Prima: fatto sull'iPhone (#295)",
+      "stato": "da-decidere"
     },
     {
       "id": 40,
@@ -33,8 +33,8 @@
       "web": "«Atteso ponderato (con la probabilità di giocare)», «Quando gioca» a parole, «vs COM», «Normale»",
       "iphone": "«Punti attesi», «Parte titolare 75%», «COM casa», «Media»",
       "forma": "web (`apriConfronto`)",
-      "chi": "fatto sull'iPhone (#293)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più il Confronto (#615), l'iPhone sì. Prima: fatto sull'iPhone (#293)",
+      "stato": "da-decidere"
     },
     {
       "id": 42,
@@ -42,8 +42,8 @@
       "web": "posto sotto il nome («Titolare», «Panchina 2», «Non schierato»)",
       "iphone": "niente posto",
       "forma": "web",
-      "chi": "fatto sull'iPhone (#311): pillola verde per «Titolare», grigia per gli altri, letta da VoiceOver; la partita «INT vs ROM» è la #302",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più il Confronto (#615), l'iPhone sì. Prima: fatto sull'iPhone (#311): pillola verde per «Titolare», grigia per gli altri, letta da VoiceOver; la partita «INT vs ROM» è la #302",
+      "stato": "da-decidere"
     }
   ]
 }

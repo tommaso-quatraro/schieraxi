@@ -1,9 +1,4 @@
 {
-  "scambio.quot": {
-    "it": "quotazione {n}",
-    "en": "price {n}",
-    "nota": "---- [scambi] ----"
-  },
   "scambio.non_gioca": {
     "it": "non gioca",
     "en": "not playing"
@@ -84,10 +79,6 @@
     "it": "Messaggio dell'offerta",
     "en": "Offer message"
   },
-  "scambio.rowe_politano_dai": {
-    "it": "Es. Ti do Rowe e Politano, mi dai De Bruyne?",
-    "en": "E.g. I give you Rowe and Politano, you give me De Bruyne?"
-  },
   "scambio.valuta_offerta_2": {
     "it": "Valuta l'offerta",
     "en": "Evaluate the offer"
@@ -103,10 +94,6 @@
   "scambio.nessuno_scambio_che": {
     "it": "Nessuno scambio che convenga a tutti e due.",
     "en": "No trade that suits both of you."
-  },
-  "scambio.nascondi_giudizio": {
-    "it": "Nascondi il giudizio",
-    "en": "Hide the verdict"
   },
   "scambio.incolla_prima_messaggio": {
     "it": "Incolla prima il messaggio",
@@ -272,22 +259,6 @@
     "it": "migliora i {reparto} di {p}%",
     "en": "improves the {reparto} by {p}%"
   },
-  "scambio.tu_loro_stagione": {
-    "it": "Tu {mio} · loro {loro} punti in stagione",
-    "en": "You {mio} · them {loro} points over the season"
-  },
-  "scambio.prossime.one": {
-    "it": "Prossima giornata",
-    "en": "Next matchday"
-  },
-  "scambio.prossime.other": {
-    "it": "Prossime {n} giornate",
-    "en": "Next {n} matchdays"
-  },
-  "scambio.tu_loro": {
-    "it": "tu {mio} · loro {loro}",
-    "en": "you {mio} · them {loro}"
-  },
   "scambio.in_totale.one": {
     "it": "In totale (prossima giornata)",
     "en": "In total (next matchday)"
@@ -299,10 +270,6 @@
   "scambio.archivio": {
     "it": "Archivio ({n})",
     "en": "Archive ({n})"
-  },
-  "scambio.con_minuscolo": {
-    "it": "con",
-    "en": "with"
   },
   "scambio.costruisci": {
     "it": "Costruisci",
@@ -323,22 +290,6 @@
   "scambio.fino_a_4": {
     "it": "Fino a 4",
     "en": "Up to 4"
-  },
-  "scambio.carico_squadre": {
-    "it": "Carico le squadre…",
-    "en": "Loading the teams…"
-  },
-  "scambio.ricerche_finite": {
-    "it": "Le ricerche di oggi sono finite: si azzerano a mezzanotte.",
-    "en": "Today's searches are used up: they reset at midnight."
-  },
-  "scambio.ricerche_restano.one": {
-    "it": "Ne resta 1 oggi.",
-    "en": "1 left today."
-  },
-  "scambio.ricerche_restano.other": {
-    "it": "Ne restano {n} oggi.",
-    "en": "{n} left today."
   },
   "scambio.riga_con": {
     "it": "Con",
