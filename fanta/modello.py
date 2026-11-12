@@ -56,18 +56,25 @@ class Parametri:
     decadimento_presenze: float = 0.75
     giornate_presenze: int = 6
     # Quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_rigori_divisi`). In produzione dal
-    # 12/11/2026 (#613): con la quota di prima i rigori attesi erano il 42% e il 25% dei veri nelle due stagioni, con questa il 65%.
+    # 12/11/2026 (#613): con la quota di prima i rigori attesi erano il 42% e il 25% dei veri nelle due stagioni, con questa
+    # (e il termine qui sotto) il 50% e il 48%.
     rigori_squadra: bool = True
     # Rigori (pesati) messi in conto, nella quota di squadra, a un rigorista che ancora non si conosce: metà dei rigori li
     # calcia chi non ne aveva mai calciati. Misura del 12/11/2026 su 132 casi con quota sopra 0,2: senza questo termine chi
     # aveva quota 0,95 calciava il 60% dei rigori della squadra e chi aveva 0,64 il 50%; con 0,5 chi ha 0,64 ne calcia il 57%
     # e chi ha 0,34 il 37%. I numeri «nostri» restano senza (`nostri.parametri`).
     rigori_di_un_altro: float = 0.5
+    # Medie del ruolo (gol, assist, xG, xA, minuti) con i pesi dei giocatori (vedi `_pezzi`): la stima di partenza di chi ha
+    # pochi dati segue la stagione in corso. In produzione dal 12/11/2026 (#613).
+    medie_ruolo_pesate: bool = True
+    # Livello dei gol della stagione (vedi `forza_squadre`): giornate fittizie che tirano verso 1 il rapporto fra i gol veri
+    # della stagione e i gol «di base» delle squadre. Vale per i gol delle squadre (gol subiti e porta inviolata dei portieri),
+    # non per gol e assist dei giocatori. None = spento (i numeri «nostri», che hanno `decadimento_base`).
+    k_livello: float | None = 5.0
     # Correzioni dei gol attesi «nostri» (piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md): spente di default,
     # le accende `nostri.parametri`.
     minuti_con_voto: bool = False     # minuti, tassi per 90' e medie del ruolo dalle sole presenze con voto (vedi `_pezzi`)
     decadimento_base: float | None = None   # memoria del livello recente del campionato (vedi `forza_squadre`); None = niente livello
-    medie_ruolo_pesate: bool = False  # medie del ruolo (gol, assist, xG, xA, minuti) con i pesi dei giocatori (vedi `_pezzi`)
 
 
 # ---------------------------------------------------------------- dati
@@ -225,18 +232,30 @@ class Forza:
     attacco: dict[str, float]
     difesa: dict[str, float]     # > 1 = subisce più della media
     rigori_partita: float        # rigori calciati per squadra a partita
-    livello: float = 1.0         # gol recenti del campionato rispetto a `base` (Parametri.decadimento_base)
+    livello: float = 1.0         # gol recenti del campionato rispetto a `base` (Parametri.decadimento_base): squadre e giocatori
+    livello_stagione: float = 1.0   # gol della stagione rispetto a `base` (Parametri.k_livello): solo i gol delle squadre
 
     def gol_attesi(self, casa: str, trasferta: str) -> tuple[float, float]:
         a, d = self.attacco, self.difesa
-        lc = self.base * a.get(casa, 0.85) * d.get(trasferta, 1.15) * self.casa * self.livello
-        lt = self.base * a.get(trasferta, 0.85) * d.get(casa, 1.15) / self.casa * self.livello
+        livello = self.livello * self.livello_stagione
+        lc = self.base * a.get(casa, 0.85) * d.get(trasferta, 1.15) * self.casa * livello
+        lt = self.base * a.get(trasferta, 0.85) * d.get(casa, 1.15) / self.casa * livello
         return lc, lt
 
 
 # Livello recente del campionato (Parametri.decadimento_base): gol a squadra a partita delle ultime giornate rispetto a `base`,
 # che ha la memoria lunga delle squadre. Misura del 6/11/2026 (piano 2026-11-06-gol-attesi-nostri, §1): nel 2026-27 si segna il
 # 24% in più e la forza delle squadre non lo vedeva. Limiti per non inseguire poche giornate strane.
+# È dei numeri «nostri»: ha la memoria corta (una giornata da sola ha ±17% di rumore) e arriva anche ai gol dei giocatori, i cui
+# tassi seguono già la stagione: lì corregge troppo (analisi del 12/11/2026).
+#
+# Livello della stagione (Parametri.k_livello, in produzione dal 12/11/2026, #613): gol veri a squadra a partita della stagione
+# in corso rispetto a `base`, tirati verso `base` con K giornate fittizie. `base` mescola gli xG della fonte (più alti dei gol
+# veri: nel 2025-26 i gol attesi delle squadre erano il 107% dei veri) e la stagione prima (dove si segnava meno: nel 2026-27
+# erano il 92%). Misura del 12/11/2026 con K = 5: gol attesi delle squadre su veri 0,99 e 0,94; scarto del fantavoto atteso
+# dei portieri da -0,12 a 0,00 e da +0,13 a +0,09; errore del fantavoto atteso fermo (-0,02% e +0,02%, dentro il rumore).
+# Vale solo per i gol delle squadre: per gol e assist dei giocatori lo scarto non è di livello (attaccanti e difensori sono
+# già sopra i gol veri, i centrocampisti sotto) e con le probabili i gol attesi sono già al 105% della media della stagione.
 LIVELLO_MIN = 0.8
 LIVELLO_MAX = 1.25
 
@@ -282,14 +301,23 @@ def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazi
     p = d.prestazioni[prima_di(d.prestazioni, data0)]
     partite_squadra = p.groupby(["understat_partita", "squadra"]).ngroups
     rigori = float(p["rigori_calciati"].sum() / partite_squadra) if partite_squadra else 0.25
-    # livello recente: dopo attacco e difesa, che altrimenti lo riassorbirebbero (sono stimati intorno a `base`)
+    # livelli: dopo attacco e difesa, che altrimenti li riassorbirebbero (sono stimati intorno a `base`)
+    livello_stagione = 1.0
+    if par.k_livello is not None and base > 0:
+        della_stagione = m[m["stagione"] == stagione]
+        calendario = d.partite[d.partite["stagione"] == stagione]
+        fittizie = par.k_livello * len(set(calendario["casa"]) | set(calendario["trasferta"]))     # squadre-partita di K giornate
+        giocate = 2 * len(della_stagione)
+        if giocate + fittizie > 0:
+            gol = float(della_stagione["gol_casa"].sum() + della_stagione["gol_trasferta"].sum())
+            livello_stagione = float(np.clip((gol + fittizie * base) / (giocate + fittizie) / base, LIVELLO_MIN, LIVELLO_MAX))
     livello = 1.0
     if par.decadimento_base is not None:
         wr = _pesi(m["t"], m["stagione"], t0, stagione, replace(pp, decadimento=par.decadimento_base))
         base_recente = float(np.sum(wr * (gc + gt)) / (2 * np.sum(wr)))
         livello = float(np.clip(base_recente / base, LIVELLO_MIN, LIVELLO_MAX)) if base > 0 else 1.0
     return Forza(base, casa, {s: float(att[i]) for s, i in indice.items()},
-                 {s: float(dif[i]) for s, i in indice.items()}, rigori, livello)
+                 {s: float(dif[i]) for s, i in indice.items()}, rigori, livello, livello_stagione)
 
 
 # ---------------------------------------------------------------- giocatori
@@ -554,8 +582,9 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
         prior_a = partenza(r, "tasso_ass", x["qi"], par.peso_xa * mr["xa90"] + (1 - par.peso_xa) * mr["ass90"])
         gol90 = (gol_tasso + par.k_90 * prior_g) / (min90 + par.k_90)
         ass90 = (ass_tasso + par.k_90 * prior_a) / (min90 + par.k_90)
-        # la partita rispetto al solito: gol attesi oggi / gol medi della squadra
-        media_sq = forza.base * forza.attacco.get(x["squadra_slug"], 0.85)
+        # la partita rispetto al solito: gol attesi oggi / gol medi della squadra (tutti e due con il livello della stagione,
+        # che così non arriva a gol, assist e rigori del giocatore: vedi LIVELLO_MIN)
+        media_sq = forza.base * forza.attacco.get(x["squadra_slug"], 0.85) * forza.livello_stagione
         fattore = float(np.clip(l_sq / media_sq, 0.5, 2.0)) if media_sq > 0 else 1.0
         quota90 = min(minuti, 90) / 90
         e_gol = gol90 * quota90 * fattore

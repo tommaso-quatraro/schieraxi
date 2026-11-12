@@ -1,4 +1,6 @@
 """Modello: niente dati dal futuro, regole della lega rispettate, probabili formazioni usate."""
+from dataclasses import replace
+
 import pandas as pd
 import pytest
 
@@ -240,3 +242,74 @@ def test_carica_mette_le_righe_ricostruite(tmp_path):
     db.close()
     assert sorted(zip(p["calciatore_id"], p["squadra"], p["minuti"], p["gol"], p["understat_partita"])) == [
         (1, "alfa", 90.0, 2, -7), (2, "beta", 19.0, 0, -7)]
+
+
+# ---------------------------------------------------------------- livello dei gol della stagione (#613)
+# I gol attesi delle squadre partono da `base`, che ha la memoria lunga e, dove ci sono, gli xG della fonte (più alti dei gol
+# veri). Il livello li riporta ai gol veri della stagione in corso, tirati verso `base` con K giornate fittizie. Vale per i gol
+# delle squadre (gol subiti e porta inviolata dei portieri), non per gol e assist dei giocatori.
+def _dati_con_risultato(gol: int) -> modello.Dati:
+    """Le 4 giornate giocate finite `gol`-`gol` (xG della fonte come in `_dati`: 1,2 in casa e 1,0 fuori)."""
+    d = _dati()
+    giocate = d.partite["giocata"] == 1
+    d.partite.loc[giocate, ["gol_casa", "gol_trasferta"]] = gol
+    return d
+
+
+def test_livello_della_stagione_tirato_verso_uno_con_le_giornate_fittizie():
+    d = _dati_con_risultato(2)
+    par = modello.Parametri(k_livello=5.0)
+    acceso, spento = modello.forza_squadre(d, ST, 5, par), modello.forza_squadre(d, ST, 5, replace(par, k_livello=None))
+    # 4 partite = 8 squadre-partita con 16 gol; il campionato ha 2 squadre, quindi 5 giornate fittizie = 10 squadre-partita
+    atteso = (16 + 10 * spento.base) / (8 + 10) / spento.base
+    assert 1 < atteso < 2 / spento.base                                 # verso i gol veri della stagione, non fino in fondo
+    assert acceso.livello_stagione == pytest.approx(atteso) and spento.livello_stagione == 1.0
+    for a, b in zip(acceso.gol_attesi("alfa", "beta"), spento.gol_attesi("alfa", "beta")):
+        assert a == pytest.approx(b * atteso)
+    # il resto della forza delle squadre è quello di prima
+    assert (acceso.base, acceso.casa, acceso.attacco, acceso.difesa, acceso.livello) == (
+        spento.base, spento.casa, spento.attacco, spento.difesa, spento.livello)
+    # più giornate fittizie: più vicino a 1
+    lento = modello.forza_squadre(d, ST, 5, replace(par, k_livello=20.0)).livello_stagione
+    assert 1 < lento < atteso
+
+
+def test_livello_della_stagione_sotto_uno_se_si_segna_meno_degli_xg():
+    """Risultati 1-1 con 1,2 e 1,0 xG: i gol attesi di base stanno sopra i gol veri (misto di xG e gol), il livello li abbassa."""
+    f = modello.forza_squadre(_dati(), ST, 5, modello.Parametri(k_livello=5.0))
+    assert f.base > 1 and f.livello_stagione == pytest.approx((8 + 10 * f.base) / 18 / f.base) and f.livello_stagione < 1
+
+
+@pytest.mark.parametrize("gol, atteso", [(9, modello.LIVELLO_MAX), (0, modello.LIVELLO_MIN)])
+def test_livello_della_stagione_limitato(gol, atteso):
+    assert modello.forza_squadre(_dati_con_risultato(gol), ST, 5, modello.Parametri(k_livello=1.0)).livello_stagione == atteso
+
+
+def test_livello_della_stagione_senza_partite_e_senza_dati_dal_futuro():
+    par = modello.Parametri(k_livello=5.0)
+    assert modello.forza_squadre(_dati(), ST, 1, par).livello_stagione == 1.0          # nessuna partita giocata prima
+    oggi = modello.forza_squadre(_dati_con_risultato(3), ST, 4, par)
+    futuro = _dati_con_risultato(3)
+    futuro.partite.loc[futuro.partite["giornata"] >= 4, ["gol_casa", "gol_trasferta", "giocata"]] = [9, 9, 1]
+    assert modello.forza_squadre(futuro, ST, 4, par) == oggi
+
+
+def test_il_livello_della_stagione_vale_per_le_squadre_non_per_gol_e_assist_dei_giocatori():
+    """Applicato una volta sola: i gol attesi delle due squadre salgono (e con loro i gol subiti attesi del portiere), ma la
+    «partita rispetto al solito» dei giocatori resta com'era, quindi gol, assist e rigori attesi non cambiano."""
+    d = _dati_con_risultato(3)
+    acceso, spento = (modello.previsioni(d, ST, 5, Regole(), modello.Parametri(k_livello=k)).set_index("id") for k in (5.0, None))
+    livello = modello.forza_squadre(d, ST, 5, modello.Parametri(k_livello=5.0)).livello_stagione
+    assert livello > 1.2
+    for c in ("gol_squadra", "gol_avversario"):
+        assert (acceso[c] / spento[c]).tolist() == pytest.approx([livello] * len(acceso), abs=0.01)
+    for c in ("fattore", "e_gol", "e_assist", "e_rigori", "p_voto", "minuti"):
+        assert acceso[c].tolist() == spento[c].tolist(), c
+    assert acceso.at[2, "mu"] < spento.at[2, "mu"] - 0.1                # il portiere (id 2) subisce più gol attesi
+    assert acceso.at[2, "p_imbattuto"] < spento.at[2, "p_imbattuto"]
+
+
+def test_in_produzione_livello_della_stagione_e_medie_del_ruolo_pesate():
+    par = modello.Parametri()
+    assert par.k_livello == 5.0 and par.medie_ruolo_pesate and par.decadimento_base is None
+

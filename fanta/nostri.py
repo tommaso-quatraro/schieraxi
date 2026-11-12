@@ -55,9 +55,10 @@ FORZA = {"decadimento_squadre": 0.99, "k_squadre": 8.0, "decadimento_base": 0.85
 def parametri(par: Parametri | None = None) -> Parametri:
     """I parametri dei nostri: quelli dati (o i predefiniti) senza xG e xA, perché i nostri non li hanno, e con le correzioni
     tarate sui gol veri: rigori con memoria lunga divisi nella squadra e minuti dalle sole presenze con voto (Fase B del
-    piano), forza delle squadre di `FORZA` con il livello recente del campionato e medie del ruolo pesate (Fase C)."""
+    piano), forza delle squadre di `FORZA` con il livello recente del campionato e medie del ruolo pesate (Fase C). Il livello
+    della stagione della produzione (`Parametri.k_livello`, #613) resta spento: i nostri hanno già il loro."""
     return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0, rigori_squadra=True, rigori_di_un_altro=0.0,
-                   minuti_con_voto=True, medie_ruolo_pesate=True, **FORZA)
+                   minuti_con_voto=True, medie_ruolo_pesate=True, k_livello=None, **FORZA)
 
 
 def gol_attesi(prev: pd.DataFrame, par: Parametri) -> pd.Series:

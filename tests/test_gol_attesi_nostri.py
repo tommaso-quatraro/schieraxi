@@ -13,9 +13,11 @@ from fanta.regole import Regole
 S1, S2 = "2025-26", "2026-27"
 GIOCATE = [(S1, g) for g in range(1, 9)] + [(S2, g) for g in range(1, 11)]   # 8 giornate della stagione prima, 10 della nuova
 PROSSIMA = (S2, 11)                                                           # la giornata da prevedere
-# come i nostri prima delle correzioni: niente xG e xA, e la quota dei rigori di prima (in produzione fino a #613); accesa,
-# la quota di squadra qui è quella dei nostri, senza i rigori messi in conto a un rigorista sconosciuto
-NOSTRI = Parametri(peso_xg=0.0, peso_xa=0.0, rigori_squadra=False, rigori_di_un_altro=0.0)
+# come i nostri prima delle correzioni: niente xG e xA, la quota dei rigori di prima, le medie del ruolo senza pesi e nessun
+# livello (in produzione fino a #613); accesa, la quota di squadra qui è quella dei nostri, senza i rigori messi in conto a un
+# rigorista sconosciuto
+NOSTRI = Parametri(peso_xg=0.0, peso_xa=0.0, rigori_squadra=False, rigori_di_un_altro=0.0, medie_ruolo_pesate=False,
+                   k_livello=None)
 
 # id: (nome, ruolo, squadra). Chi non ha eventi gioca 90' con voto 6 in ogni giornata giocata, tranne la Riserva (mai in campo);
 # la Spalla segna un gol su azione ogni 3 giornate, la Punta ogni 2.
