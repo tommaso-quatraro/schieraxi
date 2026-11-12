@@ -380,9 +380,8 @@ def test_tra_una_sezione_e_l_altra_lo_spazio():
 
 
 def test_il_filo_del_titolo_sta_sotto_tutta_la_riga_se_il_titolo_ha_qualcosa_accanto():
-    """Nel Diario (la stagione) e nelle Novità («Nuovo») il titolo della sezione sta in una riga con qualcosa a destra: il filo
-    spesso va sotto tutta la riga, non solo sotto le parole del titolo (visto nelle foto del Diario a 390 e 1440 px)."""
-    assert '<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2' in APP
+    """Nelle Novità («Nuovo») il titolo della sezione sta in una riga con qualcosa a destra: il filo spesso va sotto tutta la riga,
+    non solo sotto le parole del titolo (visto nelle foto del Diario a 390 e 1440 px, che dal 12/11/2026 è la pagina Giornate)."""
     assert "border-bottom: 2px solid var(--testo)" in _corpo(".carta > .riga:first-child:has(> h2)")
     titolo = _corpo(".carta > .riga:first-child > h2")
     assert "border-bottom: 0" in titolo and "padding-bottom: 0" in titolo
@@ -392,12 +391,12 @@ def test_dentro_le_sezioni_numeri_e_colonne_senza_riquadri():
     """Spec §8.6 e §9 (scheda): i numeri stanno senza scatola, separati da un filo. Le cifre affiancate della scheda (probabilità,
     statistiche), le due colonne del Diario e l'effetto di ogni motivo del «Perché questo numero» erano riquadri o pillole dentro la
     carta; tolta la carta restavano le sole scatole della pagina."""
-    for selettore in (".stat-fila > div", ".statistiche div", ".diario-col", ".perche-effetto"):
+    for selettore in (".stat-fila > div", ".statistiche div", ".perche-effetto"):
         corpo = _corpo(selettore)
         scatola = [f"{n}: {v}" for n, v in _proprieta(corpo, "background", "border", "border-radius", "box-shadow")
                    if v not in ("none", "0", "transparent")]
         assert not scatola, (selettore, scatola)
-    for selettore in (".stat-fila > div", ".statistiche div", ".diario-col"):
+    for selettore in (".stat-fila > div", ".statistiche div"):
         assert "border-top: 1px solid var(--filo)" in _corpo(selettore), selettore
 
 
@@ -889,9 +888,9 @@ def test_pannello_affiancato_solo_per_i_dettagli_dei_giocatori():
 
 
 def test_le_altre_finestre_restano_modali():
-    """Primo avvio e diario restano fogli modali anche sul PC (spec C5)."""
+    """Primo avvio e la correzione di una giornata («Non è quello che ho schierato», #617) restano fogli modali anche sul PC (spec C5)."""
     assert "affianco" not in codice_web.leggi("primoavvio.js")
-    assert "affianco" not in _funzione(APP, "apriDiario")
+    assert "affianco" not in _funzione(APP, "correggiGiornata")
 
 
 def test_il_pannello_sta_sotto_la_testata_senza_velo_e_con_il_filo_a_sinistra():

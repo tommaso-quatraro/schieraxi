@@ -8,7 +8,6 @@ import shutil
 import subprocess
 
 import pytest
-from test_diario_stagione_web import DOM, ORA, ROSA, TESTI, _pezzo, _voce
 from test_grafica_b_web import AMBIENTE_PANNELLO, _codice_pannello
 from test_navigazione_web import AMBIENTE, _da_a, _funzione, _riga
 
@@ -31,7 +30,7 @@ def _node(codice: str):
 # ---------------------------------------------------------------- #449: Indietro dentro Squadra, Altro e Impostazioni
 
 # le voci di Squadra e Altro nel banco di prova sono quelle di AMBIENTE (VOCI_LEGA: Squadre e rose e Aggiorna le rose in Squadra,
-# Diario e Regole in Altro); vistaLega, come quella vera, usa (e consuma) la voce e la rosa chieste: il disegno le registra
+# una voce finta, «prova», e Regole in Altro); vistaLega, come quella vera, usa (e consuma) la voce e la rosa chieste: il disegno le registra
 AMBIENTE_LEGA = AMBIENTE.replace(
     'const vistaLega = a => chiamate.push(["disegna", a]),',
     'const vistaLega = a => { chiamate.push(["disegna", a, stato.legaTorna ?? null, stato.rosaTorna ?? null]); stato.legaTorna = null; '
@@ -101,22 +100,23 @@ def test_indietro_dalla_voce_e_dalla_rosa_torna_al_passo_di_prima_sotto_i_1100_p
 
 @serve_node
 def test_da_1100_px_regole_e_novita_tornano_alla_voce_di_altro():
-    """1440 px: Altro apre accanto al menu il Diario (l'indirizzo si corregge, niente voce in più); Regole è una pagina sua con una
-    voce nuova: Indietro torna ad Altro con il Diario, poi alla Formazione. La scheda «Altro» con una voce di Altro aperta accanto al menu
+    """1440 px: Altro apre accanto al menu una sua voce (l'indirizzo si corregge, niente voce in più); Regole è una pagina sua con una
+    voce nuova: Indietro torna ad Altro con quella voce, poi alla Formazione. Dal 12/11/2026 (#617) in Altro c'è solo Regole: la voce
+    accanto al menu è quella finta del banco di prova («prova», test_navigazione_web.AMBIENTE), per provare il meccanismo. La scheda «Altro» con una voce di Altro aperta accanto al menu
     non aggiunge voci (la pagina riaprirebbe la stessa); da Regole sì, perché Regole è un'altra pagina."""
     e = _cronologia("""
     const esiti = {};
-    largo = true; vai("formazione"); vai("altro"); indirizzoLega("altro", false, "diario"); esiti.altro = foto();
+    largo = true; vai("formazione"); vai("altro"); indirizzoLega("altro", false, "prova"); esiti.altro = foto();
     scriviIndirizzo({ vista: "altro", voce: "regole", pagina: true }, true); esiti.regole = { ...foto(), ...sotto() };
     history.back(); esiti.indietro = { ...foto(), ...sotto() };
     vai("altro"); esiti.scheda_altro = foto();
     history.forward(); chiamate.splice(0); vai("altro"); esiti.scheda_da_regole = foto();
     console.log(JSON.stringify(esiti));
     """)
-    assert e["altro"]["indirizzo"] == "/?vista=altro&voce=diario" and e["altro"]["voci"] == 2
+    assert e["altro"]["indirizzo"] == "/?vista=altro&voce=prova" and e["altro"]["voci"] == 2
     assert e["regole"]["indirizzo"] == "/?vista=altro&voce=regole" and e["regole"]["voci"] == 3
-    assert e["regole"]["da"] == "/?vista=altro&voce=diario"
-    assert e["indietro"]["indirizzo"] == "/?vista=altro&voce=diario" and ["disegna", "altro", "diario", None] in e["indietro"]["chiamate"]
+    assert e["regole"]["da"] == "/?vista=altro&voce=prova"
+    assert e["indietro"]["indirizzo"] == "/?vista=altro&voce=prova" and ["disegna", "altro", "prova", None] in e["indietro"]["chiamate"]
     assert e["scheda_altro"]["voci"] == 3 and not any(c[0] == "push" for c in e["scheda_altro"]["chiamate"])
     assert ["push", "/?vista=altro"] in e["scheda_da_regole"]["chiamate"]
 
@@ -245,62 +245,6 @@ def test_foglio_modale_che_cambia_contenuto_porta_il_focus_sul_titolo():
     """]))
     assert e == {"carico": "chiudi", "arriva": "titolo:Rossi", "ricarico": "chiudi", "diario": "titolo:Diario delle giornate",
                  "correggi": "titolo:Cosa hai schierato", "ricerca": "campo", "chiuso": "riga1", "primo": "chiudi"}
-
-
-# il DOM finto del Diario (test_diario_stagione_web.py) con il focus: la carta di una giornata ha il suo titolo h2, il foglio
-# (.foglio-corpo) dice cosa c'è dentro e apriFoglio, come quello vero (#448), mette il focus sul titolo in cima al foglio, oppure
-# lo lascia fuori se nel frattempo si è andati altrove nella pagina (`fuoriDalFoglio`)
-DOM_FOCUS = (DOM
-             .replace("querySelector() { return null; } };",
-                      'querySelector(s) { return s === "h2" ? (this.h2 ||= titolo("h2 " + this.id)) : null; } };')
-             .replace("function apriFoglio(html) { foglio.html = html; elementi = {}; trovati = {}; }",
-                      "function apriFoglio(html) { foglio.html = html; elementi = {}; trovati = {}; "
-                      "document.activeElement = fuoriDalFoglio ? fuori : inCima; }")
-             .replace('querySelector(sel) { return sel === "#foglio" ? foglio :',
-                      'querySelector(sel) { return sel === ".foglio-corpo" ? corpoFoglio : sel === "#foglio" ? foglio :')
-             + r"""
-const focati = [];
-const titolo = nome => ({ nome, tabIndex: 0, focus(o) { document.activeElement = this; focati.push([nome, this.tabIndex, !!(o && o.preventScroll)]); } });
-const inCima = titolo("titolo in cima"), fuori = titolo("pagina");
-let fuoriDalFoglio = false;
-const corpoFoglio = { contains: x => !!x && x !== fuori };
-""")
-assert DOM_FOCUS.count("titolo(") >= 2 and "corpoFoglio :" in DOM_FOCUS and "fuoriDalFoglio ? fuori" in DOM_FOCUS
-
-
-@serve_node
-def test_il_diario_riaperto_su_una_giornata_porta_li_il_focus():
-    """Dopo «Ho schierato la consigliata», «Salva» o «Annulla» il Diario si riapre scorso sulla giornata appena segnata: il focus
-    (document.activeElement) va sul titolo di quella giornata, non su quello in cima al foglio (il Tab dopo riportava il foglio
-    all'inizio). Il Diario aperto senza giornata lo lascia in cima; se il focus è altrove nella pagina non si sposta."""
-    diario = {"giornate": [_voce(ORA, 10), _voce(ORA, 9)]}
-    codice = "\n".join([
-        TESTI,
-        re.search(r"^const \$ = .*$", APP, re.M).group(0),
-        _pezzo("function esc(x)", "const perc ="),
-        re.search(r"^const segno = .*$", APP, re.M).group(0),
-        re.search(r"^const NOMI_RUOLO = .*$", APP, re.M).group(0),
-        re.search(r"^const ruoloSigla = .*$", APP, re.M).group(0),
-        re.search(r"^const badgeRuolo = .*$", APP, re.M).group(0),
-        re.search(r"^function nomeGiornata\(.*?^\}$", APP, re.M | re.S).group(0),
-        DOM_FOCUS,
-        f"const ROSA = {json.dumps(ROSA)}; DIARIO = {json.dumps(diario)};",
-        _pezzo("// Diario delle giornate: formazione schierata", "// Prova del modello sulle ultime giornate giocate"),
-        """(async () => {
-          const esiti = {}, chi = () => document.activeElement && document.activeElement.nome;
-          await apriDiario(9); esiti.giornata = [chi(), focati.splice(0)];
-          await apriDiario(); esiti.senza = [chi(), focati.splice(0)];
-          await clicca(foglio.querySelectorAll("[data-schierata]")[0]); esiti.schierata = [chi(), focati.splice(0)];
-          fuoriDalFoglio = true; await apriDiario(9); esiti.fuori = [chi(), focati.splice(0)];
-          console.log(JSON.stringify(esiti));
-        })().catch(e => { console.error(e.stack || e); process.exit(1); });""",
-    ])
-    e = _node(codice)
-    g9, g10 = "h2 diario-2026-27-g9", "h2 diario-2026-27-g10"
-    assert e["giornata"] == [g9, [[g9, -1, True]]]                  # il titolo della giornata, senza far scorrere di nuovo il foglio
-    assert e["senza"] == ["titolo in cima", []]
-    assert e["schierata"] == [g10, [[g10, -1, True]]]               # «Ho schierato la consigliata» sulla giornata 10
-    assert e["fuori"] == ["pagina", []]
 
 
 def test_il_titolo_della_giornata_con_il_focus_non_finisce_sotto_la_maniglia():

@@ -47,11 +47,6 @@ def test_scheda_giocatore_senza_sigle_xg_xa_nella_riga_del_rendimento():
 
 
 # ---------------------------------------------------------------- collaudo di regressione del 2/11/2026
-def test_diario_scarto_dalla_fascia_arrotondato():
-    """Prima: «Previsti tra 67,5 e 83,2: più del previsto (+1,7999999999999972)» (sottrazione nel client senza arrotondare)."""
-    assert "const meno = x => segno(x, 1);" in APP
-
-
 def test_rosa_data_dell_aggiornamento_in_italiano():
     """Prima: «Rose aggiornate il 2026-11-02»."""
     assert '(r.aggiornato || "").slice(0, 10)' not in APP

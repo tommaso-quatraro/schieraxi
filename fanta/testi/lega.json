@@ -108,10 +108,6 @@
     "it": "{tipo} di {nome}",
     "en": "{tipo} of {nome}"
   },
-  "lega.apri_diario": {
-    "it": "Apri il diario",
-    "en": "Open the journal"
-  },
   "lega.archivia_riparti": {
     "it": "Archivia e riparti",
     "en": "Archive and start over"
@@ -247,10 +243,6 @@
   "lega.oppure_copia_indirizzo": {
     "it": "Oppure copia l'indirizzo dell'immagine (deve essere pubblico, cioè aprirsi anche senza accedere) e incollalo qui.",
     "en": "Or copy the image address (it must be public, that is it must open without signing in) and paste it here."
-  },
-  "lega.per_ogni_giornata": {
-    "it": "Per ogni giornata finita: la formazione che hai schierato contro quella consigliata, i punti attesi e quelli fatti.",
-    "en": "For every finished matchday: the lineup you fielded against the recommended one, the expected points and the points scored."
   },
   "lega.poi_usa": {
     "it": ": poi usa",

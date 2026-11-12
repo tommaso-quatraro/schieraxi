@@ -108,9 +108,8 @@ def _schermata(vista, voce=None):
     js = codice_web.app()
     funzione = re.search(r"^function schermataCheResta\(.*?^}", js, re.S | re.M)
     assert funzione, "manca schermataCheResta in app.js"
-    voci = [{"id": "squadre", "ambito": "squadra"}, {"id": "importa", "ambito": "squadra"},
-            {"id": "diario", "ambito": "altro"}, {"id": "regole", "ambito": "altro"}]
-    codice = (f'const VISTE = ["formazione", "squadra", "altro"];\n{funzione.group(0)}\n'
+    voci = [{"id": "squadre", "ambito": "squadra"}, {"id": "importa", "ambito": "squadra"}, {"id": "regole", "ambito": "altro"}]
+    codice = (f'const VISTE = ["formazione", "giornate", "squadra", "altro"];\n{funzione.group(0)}\n'
               f"const r = schermataCheResta({json.dumps(vista)}, {json.dumps(voce)}, {json.dumps(voci)});\n"
               "console.log(JSON.stringify({ vista: r.vista, voce: r.voce ?? null, gruppo: r.gruppo ?? null }));")
     return _node(codice)
@@ -140,7 +139,10 @@ def test_un_indirizzo_di_una_pagina_tolta_apre_la_schermata_piu_vicina(vista, vo
     ("formazione", None, {"vista": "formazione", "voce": None, "gruppo": None}),
     ("squadra", "importa", {"vista": "squadra", "voce": "importa", "gruppo": None}),
     ("altro", "regole", {"vista": "altro", "voce": "regole", "gruppo": None}),
-    ("lega", "diario", {"vista": "altro", "voce": "diario", "gruppo": None}),         # «lega» è il nome vecchio di Squadra e Altro
+    ("lega", "regole", {"vista": "altro", "voce": "regole", "gruppo": None}),         # «lega» è il nome vecchio di Squadra e Altro
+    ("giornate", None, {"vista": "giornate", "voce": None, "gruppo": None}),         # il Diario come pagina (#617)
+    ("altro", "diario", {"vista": "giornate", "voce": None, "gruppo": None}),        # l'indirizzo del Diario di prima apre Giornate
+    ("lega", "diario", {"vista": "giornate", "voce": None, "gruppo": None}),
     ("lega", "importa", {"vista": "squadra", "voce": "importa", "gruppo": None}),
     ("impostazioni", None, {"vista": "impostazioni", "voce": None, "gruppo": None}),
     ("altro", "importa", {"vista": "altro", "voce": None, "gruppo": None}),           # la voce è di un'altra scheda: il menu

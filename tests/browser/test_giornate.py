@@ -309,6 +309,8 @@ def test_la_correzione_fa_scegliere_gli_11_e_li_manda_con_la_stagione(web):
     assert not foglio.is_visible() and titolo(web) == "Giornate"                # torna alla pagina, con la giornata aperta
     assert riga(web, nome_di(g)).get_attribute("aria-expanded") == "true"
     assert web.richieste.count("/api/diario") >= 2                              # la pagina rilegge le giornate
+    fuoco = web.pagina.evaluate("document.activeElement && (document.activeElement.innerText || '')")
+    assert fuoco.startswith(nome_di(g)), fuoco                                  # chiuso il foglio, il fuoco è sulla sua riga
     assert not web.errori_mostrati()
 
 
