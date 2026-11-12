@@ -68,7 +68,7 @@ def test_probabili_di_partite_che_non_conosciamo_restano_un_errore(db, monkeypat
 
 
 def test_giornata_lontana_senza_probabili_non_e_un_guasto(db, monkeypatch):
-    """Ad agosto la pagina ha già la giornata 1 ma senza formazioni: con la prima partita fra più di 2 giorni è normale."""
+    """Ad agosto la pagina ha già la giornata 1 ma senza formazioni: con la prima partita fra più di 4 giorni è normale."""
     _partita(db, 4001, NUOVA, 1, "2027-08-22 18:30")
     _pagina(monkeypatch, *_probabili(1, 4001, titolari=0))
     a, righe = _agg(db, monkeypatch, ora="2027-08-15T08:03:00")
@@ -78,7 +78,7 @@ def test_giornata_lontana_senza_probabili_non_e_un_guasto(db, monkeypatch):
 
 
 def test_giornata_vicina_senza_probabili_e_un_errore(db, monkeypatch):
-    """A meno di 2 giorni dalla prima partita una pagina senza titolari non è normale (pagina cambiata?): resta un errore."""
+    """A meno di 4 giorni dalla prima partita una pagina senza titolari non è normale (pagina cambiata?): resta un errore."""
     _partita(db, 4001, NUOVA, 1, "2027-08-22 18:30")
     _pagina(monkeypatch, *_probabili(1, 4001, titolari=0))
     a, _ = _agg(db, monkeypatch, ora="2027-08-21T08:03:00")
@@ -96,6 +96,37 @@ def test_a_luglio_il_calendario_della_stagione_vecchia_non_e_un_guasto(db, monke
     assert a.errori == [] and chiamate == [fc.url_calendario(1)]
     assert db.execute("SELECT COUNT(*) FROM partite").fetchone()[0] == 0
     assert any(f"stagione {VECCHIA}" in r for r in righe)
+
+
+def test_in_stagione_un_calendario_con_un_altra_stagione_e_un_errore(db, monkeypatch):
+    """A stagione iniziata «un'altra stagione» nei collegamenti non è l'estate ma un cambio del sito (qui «2026-2027» al posto di
+    «2026-27»): calendario, risultati e voti si fermerebbero senza avviso. Errore del passo."""
+    for g in range(1, 12):
+        _partita(db, 2600 + g, VECCHIA, g, f"2026-10-{g:02d} 15:00", giocata=1)
+    html = (DATI / "calendario_1.html").read_text(encoding="utf-8").replace("/2026-27/", "/2026-2027/")
+    monkeypatch.setattr(aggiorna.rete, "scarica", lambda *a, **k: SimpleNamespace(text=html))
+    a, _ = _agg(db, monkeypatch, ora="2026-11-12T08:03:00", anno=2026)
+    a._passo("calendario", a.calendario, "fantacalcio")
+    assert a.errori and "calendario: ValueError: giornata 1: trovate 0 partite" in a.errori[0]
+
+
+def test_in_stagione_le_probabili_di_una_stagione_vecchia_sono_un_errore(db, monkeypatch):
+    """Solo la stagione appena finita, o una stagione nuova non ancora iniziata, giustifica una pagina di un'altra stagione."""
+    _partita(db, 2401, "2024-25", 38, "2025-05-25 20:45", giocata=1)
+    _partita(db, 2601, VECCHIA, 1, "2026-08-23 18:30", giocata=1)
+    _pagina(monkeypatch, *_probabili(38, 2401))
+    a, _ = _agg(db, monkeypatch, ora="2026-11-12T08:03:00", anno=2026)
+    a._passo("probabili", a.probabili, "fantacalcio")
+    assert a.errori and "le probabili non corrispondono" in a.errori[0]
+
+
+def test_tre_giorni_prima_senza_titolari_e_un_errore(db, monkeypatch):
+    """Le probabili escono 3-4 giorni prima: a 72 ore dalla prima partita una pagina senza titolari è un guasto (soglia 96 ore)."""
+    _partita(db, 4001, NUOVA, 1, "2027-08-22 18:30")
+    _pagina(monkeypatch, *_probabili(1, 4001, titolari=0))
+    a, _ = _agg(db, monkeypatch, ora="2027-08-19T18:30:00")
+    a._passo("probabili", a.probabili, "fantacalcio")
+    assert a.errori and "pagina probabili non riconosciuta" in a.errori[0]
 
 
 def test_calendario_senza_partite_riconoscibili_resta_un_errore(db, monkeypatch):

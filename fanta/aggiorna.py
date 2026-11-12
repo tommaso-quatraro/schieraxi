@@ -26,7 +26,8 @@ from .fonti import understat as us
 GIORNATE = 38
 MAX_STAGIONI_STORICHE = 6     # tetto: ogni stagione in più sono circa 420 richieste (10-15 minuti)
 SOGLIA_COPIA = 0.95           # probabili uguali oltre questa quota alla giornata prima = copia (Aggiornamento._copia_della_giornata_prima)
-ORE_SENZA_PROBABILI = 48      # una giornata senza formazioni è normale se la prima partita è più lontana di così; più vicina è un errore
+ORE_SENZA_PROBABILI = 96      # una giornata senza formazioni è normale se la prima partita è più lontana di così; più vicina è un errore
+#                               (le probabili escono 3-4 giorni prima: così il guasto si vede prima delle ultime 24 ore)
 CALO_ACCETTABILE = 2          # voti in meno di quelli salvati che possono essere una correzione della redazione...
 LETTURE_UGUALI = 3            # ...e si accettano dopo tante letture uguali di fila (Aggiornamento._accetta_calo_o_ferma)
 
@@ -251,7 +252,7 @@ class Aggiornamento:
         st = self.st
         html = rete.scarica(fc.url_calendario(g)).text
         partite = fc.leggi_calendario(html, g, st.codice)
-        if not partite and (altre := fc.stagioni_nel_calendario(html) - {st.codice}):
+        if not partite and self._altra_stagione_ammessa(altre := fc.stagioni_nel_calendario(html) - {st.codice}):
             raise AltraStagione(f"il sito mostra ancora la stagione {', '.join(sorted(altre))}")
         if len(partite) != 10:
             raise ValueError(f"giornata {g}: trovate {len(partite)} partite della stagione {st.codice} "
@@ -261,6 +262,12 @@ class Aggiornamento:
     def _stagione_iniziata(self, st: Stagione) -> bool:
         """Almeno una partita della stagione già giocata, secondo il calendario in archivio."""
         return self.db.execute("SELECT 1 FROM partite WHERE stagione = ? AND giocata = 1 LIMIT 1", (st.codice,)).fetchone() is not None
+
+    def _altra_stagione_ammessa(self, altre: set[str] | list[str]) -> bool:
+        """Una pagina che mostra un'altra stagione è l'estate (passo riuscito senza dati) solo se la stagione in corso non è ancora
+        iniziata o se quella mostrata è proprio la precedente. Altrimenti (in stagione, una stagione qualunque o scritta in un altro
+        modo, per esempio «2026-2027») è un cambio del sito: errore del passo, se no calendario, risultati e voti si fermano zitti."""
+        return bool(altre) and (not self._stagione_iniziata(self.st) or set(altre) == {self.st.precedente().codice})
 
     def _salva_voti(self, st: Stagione, g: int, righe: list[dict]) -> None:
         """Riscrive i voti di una giornata, ma non con meno righe di quelle salvate (`VotiCalati`, i voti di prima restano): una
@@ -332,7 +339,7 @@ class Aggiornamento:
                                               (self.st.codice, giornata))}
         if partite and not partite <= note:
             altre = self._stagioni_delle_partite(partite)
-            if altre:                      # d'estate la pagina mostra ancora la stagione finita: niente da salvare, nessun guasto
+            if self._altra_stagione_ammessa(altre):     # d'estate la pagina mostra ancora la stagione finita: niente da salvare
                 self.scrivi(f"  probabili: la pagina è ancora della stagione {', '.join(altre)} (giornata {giornata}), "
                             "niente da salvare")
                 return
