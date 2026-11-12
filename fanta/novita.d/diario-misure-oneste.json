@@ -1,0 +1,18 @@
+{
+  "titolo": "Diario e misure: il confronto è con la consigliata che avevi davanti",
+  "voci": [
+    "Web, iPhone e iPad: nel Diario il confronto tra la tua formazione e la consigliata si fa con la consigliata mostrata prima della scadenza, con i punti attesi di allora. Le giornate di cui non è stata salvata non entrano nel conto.",
+    "Web, iPhone e iPad: nel Diario, la riga «su tutta la Serie A» confronta il fantavoto atteso con una fantamedia fatta meglio: chi ha pochi voti è avvicinato alla media del suo ruolo. Il vantaggio che leggi è più piccolo, ed è quello vero.",
+    "Avviso di fine giornata: il «massimo possibile» conta anche il modificatore della difesa, se la tua lega lo usa.",
+    "Per chi amministra il server: in Stato dei dati le prove del modello usano lo stesso confronto, e tra le misure del consiglio di formazione i punti restano un numero e non mandano più avvisi."
+  ],
+  "tecnico": [
+    "diario: `consigliata` è l'istantanea mostrata prima della scadenza (`origine: \"mostrata\"`, con `atteso` di allora) se si può ancora schierare, altrimenti la ricostruita (`origine: \"ricostruita\"`), che sta sempre anche in `ricostruita`. `sintesi`, `scelte_tue`, `affidabilita`, `atteso_vs_fatto` e `precisione.confronto` contano solo le giornate con la mostrata; campi nuovi `senza_consigliata_mostrata`, `senza_istantanea`, `riferimento: \"ricostruita\"`, `per_giornata[].consigliata`. Le voci di prima con l'istantanea si rifanno una volta.",
+    "diario: `schierata.confermata` legge `messa` della scelta salvata (`diario.CAMPO_NELLA_LEGA`, la spunta «L'ho messa» di #616); senza il campo resta `null` e non cambia niente.",
+    "verifica: `avversari` (fantamedia tirata verso il ruolo con 10 presenze fittizie, numero fisso per ruolo); la fantamedia della sola stagione resta come `quadratico_fantamedia_stagione`. `_perfetta` conta il modificatore della difesa e non sta sotto una formazione valutata (anche in `notifiche.riepilogo` e in `verifica_consiglio`). `python -m fanta verifica` misura i punti anche su 20 rose estratte a sorte per giornata, con l'intervallo ricampionando le giornate (`riepilogo_sorte`).",
+    "registro_giornate: l'avversario di I1 è la fantamedia tirata (`fantamedie_tirate`), `SOGLIE[\"I1\"]` = 0,01 (prima −0,03), `rimisura_avversario` una volta all'avvio. affidabilita: in `sintesi` `errore_fantamedia` e `punti_fantamedia` sono della tirata; campi nuovi `errore_ruolo`, `errore_fantamedia_stagione`, `rose_a_sorte`.",
+    "indicatori_consiglio: `AVVISANO` = C2, C3, C4. C1 resta in `consiglio` di /api/stato-dati con numero, soglia e `regge`, ma non entra in `avvisati`. C3 conta un compagno dal 20% (`verifica_consiglio.COMPAGNO_DA` = `formazione.COMPAGNO_ALMENO`). Testi `sd.cons_c3_riga` e `sd.reg_i1`.",
+    "Misura del 12/11/2026 su 44 giornate: errore del modello 1,431 e 1,616 (2025-26, 2026-27), fantamedia tirata 1,450 e 1,624, numero fisso per ruolo 1,462 e 1,656, fantamedia della sola stagione 1,502 e 1,828. Rose a sorte: consigliata meno fantamedia +0,56 [+0,28; +0,85] e +0,70 [−0,13; +1,48] punti a giornata.",
+    "Client: nessun campo tolto o rinominato. Web e iPhone scrivono ancora «Ricostruita oggi» sopra i punti di `consigliata` quando c'è `istantanea`: l'etichetta deve seguire `consigliata.origine` (docs/API.md, «Diario: la consigliata mostrata»)."
+  ]
+}

@@ -10,7 +10,7 @@ SchieraXI non indovina il futuro: stima, per ogni giocatore e per ogni giornata,
 
 Le sezioni «base» si leggono in un minuto ciascuna. Quelle «nerd» hanno formule, parametri e piccoli esempi con numeri veri, calcolati con il modello e con le regole della lega usata per le prove (bonus gol 3, assist 1, ammonizione -0,5, modificatore difesa a soglie).
 
-I numeri di affidabilità sono misure vere fatte il 30/10/2026 sulle giornate già giocate (2025-26 dalla giornata 5 e 2026-27 fino alla giornata 8) con le rose della lega di prova. Nell'app si aggiornano da soli nella schermata Stato dei dati.
+I numeri di affidabilità sono misure vere fatte il 30/10/2026 sulle giornate già giocate (2025-26 dalla giornata 5 e 2026-27 fino alla giornata 8) con le rose della lega di prova; il confronto con la fantamedia è stato rifatto il 12/11/2026 (2026-27 fino alla giornata 11). Nell'app si aggiornano da soli nella schermata Stato dei dati.
 
 ## Indice
 
@@ -53,7 +53,7 @@ I numeri di affidabilità sono misure vere fatte il 30/10/2026 sulle giornate gi
 
 Data: 2026-10-30. python -m fanta verifica e python -m fanta oracolo, regole e rose della lega del repository, 300 simulazioni per formazione, archivio con le stagioni 2025-26 (38 giornate) e 2026-27 (8 giornate giocate).
 
-Misura di una data precisa su un campione piccolo: serve per capire l'ordine di grandezza, non per promettere punti. I valori marcati «app» sono la prova automatica che l'app rifà da sola dopo ogni giornata finita (ultime 8 giornate, file affidabilità del 28/10/2026).
+Misura di una data precisa su un campione piccolo: serve per capire l'ordine di grandezza, non per promettere punti. I valori marcati «app» sono la prova automatica che l'app rifà da sola dopo ogni giornata finita (ultime 8 giornate, file affidabilità del 28/10/2026). In questa tabella la fantamedia è ancora quella della sola stagione e il massimo possibile non conta il modificatore della difesa: il confronto rifatto il 12/11/2026 con una fantamedia fatta meglio è nella sezione «Quanto è affidabile?».
 
 | Misura | Valore | Unità |
 |---|---|---|
@@ -61,18 +61,18 @@ Misura di una data precisa su un campione piccolo: serve per capire l'ordine di 
 | Casi squadra-giornata con rosa sufficiente (almeno 20 giocatori presenti) (`backtest.casi_rosa`) | 93 | casi |
 | Errore del modello sul fantavoto di chi ha giocato (radice dell'errore quadratico medio) (`backtest.errore_modello`) | 1,46 | punti |
 | Errore del modello, stagione 2025-26 (34 giornate) (`backtest.errore_modello_2025_26`) | 1,43 | punti |
-| Errore di una stima «da fantamedia», stagione 2025-26 (`backtest.errore_fantamedia_2025_26`) | 1,5 | punti |
+| Errore della fantamedia della sola stagione (6 a chi non ha voti), 2025-26 (`backtest.errore_fantamedia_2025_26`) | 1,5 | punti |
 | Errore del modello, stagione 2026-27 (7 giornate) (`backtest.errore_modello_2026_27`) | 1,61 | punti |
-| Errore di una stima «da fantamedia», stagione 2026-27 (`backtest.errore_fantamedia_2026_27`) | 1,84 | punti |
+| Errore della fantamedia della sola stagione (6 a chi non ha voti), 2026-27 (`backtest.errore_fantamedia_2026_27`) | 1,84 | punti |
 | Punteggio di Brier delle probabilità di giocare (0 = perfetto, 0,25 = dire sempre 50%) (`backtest.brier`) | 0,157 |  |
 | Punti veri a giornata con la formazione consigliata (`backtest.punti_modello`) | 68,6 | punti |
-| Massimo possibile col senno di poi (stessa rosa, stessi giorni) (`backtest.punti_perfetta`) | 71,8 | punti |
+| Massimo possibile col senno di poi, senza il modificatore della difesa (stessa rosa, stessi giorni) (`backtest.punti_perfetta`) | 71,8 | punti |
 | Punti con la consigliata, 2025-26 (`backtest.punti_modello_2025_26`) | 67,1 | punti |
-| Punti scegliendo da fantamedia, 2025-26 (`backtest.punti_fantamedia_2025_26`) | 66,5 | punti |
-| Massimo possibile, 2025-26 (`backtest.punti_perfetta_2025_26`) | 69,0 | punti |
+| Punti scegliendo con la fantamedia della sola stagione, 2025-26 (`backtest.punti_fantamedia_2025_26`) | 66,5 | punti |
+| Massimo possibile senza il modificatore della difesa, 2025-26 (`backtest.punti_perfetta_2025_26`) | 69,0 | punti |
 | Punti con la consigliata, 2026-27 (`backtest.punti_modello_2026_27`) | 71,9 | punti |
-| Punti scegliendo da fantamedia, 2026-27 (`backtest.punti_fantamedia_2026_27`) | 71,3 | punti |
-| Massimo possibile, 2026-27 (`backtest.punti_perfetta_2026_27`) | 77,9 | punti |
+| Punti scegliendo con la fantamedia della sola stagione, 2026-27 (`backtest.punti_fantamedia_2026_27`) | 71,3 | punti |
+| Massimo possibile senza il modificatore della difesa, 2026-27 (`backtest.punti_perfetta_2026_27`) | 77,9 | punti |
 | Guadagno se si sapesse in anticipo chi prende voto (`oracolo.presenze`) | 0,68 | punti a giornata |
 | Guadagno se si sapessero i gol veri della squadra (`oracolo.gol_squadra`) | 1,35 | punti a giornata |
 | Guadagno se si sapesse il rigorista vero (`oracolo.rigorista`) | 0,02 | punti a giornata |
@@ -469,25 +469,25 @@ Codice: `fanta/asta.py:piano`, `fanta/asta.py:piano_riparazione`, `fanta/asta.py
 
 ## 23. Quanto è affidabile? La prova sul passato  [base]
 
-Per sapere se il modello vale qualcosa lo si rifà girare sulle giornate già giocate, giornata per giornata, dandogli soltanto ciò che si sapeva prima di ognuna. Poi si confronta con quello che è successo e con una scelta semplice «da fantamedia» (chi ha la media più alta).
+Per sapere se il modello vale qualcosa lo si rifà girare sulle giornate già giocate, giornata per giornata, dandogli soltanto ciò che si sapeva prima di ognuna. Poi si confronta con quello che è successo e con due stime semplici del fantavoto: la fantamedia del giocatore, avvicinata alla media del suo ruolo quando ha pochi voti, e un numero fisso per ruolo, uguale per tutti.
 
-Il 30/10/2026, su 41 giornate e 10 rose: il modello sbaglia il fantavoto di chi gioca di circa 1,46 punti (errore tipico). Una stima «da fantamedia» sbaglia di più: 1,50 contro 1,43 del modello nel 2025-26 e 1,84 contro 1,61 nel 2026-27. La formazione consigliata ha fatto 68,6 punti a giornata contro un massimo possibile col senno di poi di 71,8.
+Misura del 12/11/2026, su 44 giornate. Sul fantavoto di chi gioca il modello sbaglia di circa 1,5 punti (errore tipico): 1,431 nel 2025-26 e 1,616 nel 2026-27. La fantamedia avvicinata al ruolo sbaglia 1,450 e 1,624: il modello fa meglio dell'1,3% e dello 0,5%. Un numero fisso per ruolo sbaglia 1,462 e 1,656: il modello fa meglio del 2,1% e del 2,4%. Fino all'11/11/2026 il confronto era con la fantamedia della sola stagione in corso, con 6 a chi non aveva ancora voti: è una stima che sbaglia più di un numero fisso per ruolo (1,502 e 1,828), e contro quella il vantaggio del modello sembrava tra il 5% e il 12%.
 
-Si legge così: il modello batte la scelta semplice, ma di poco sui punti della formazione (qualche decimo, che con un campione piccolo non si distingue dal caso) e con più margine sull'errore del fantavoto. Il margine con il massimo possibile esiste anche perché nessuno conosce in anticipo chi segna.
+Sui punti della formazione le rose di una lega sono troppo poche per distinguere mezzo punto: la misura si fa su venti rose estratte a sorte per ogni giornata. La consigliata fa più punti della formazione scelta con la fantamedia: +0,56 a giornata nel 2025-26 (tra +0,28 e +0,85, su 680 rose) e +0,70 nel 2026-27 (tra −0,13 e +1,48, su 200 rose: le giornate sono ancora poche e l'intervallo comprende lo zero). Sulle rose della lega di prova la consigliata ha fatto 67,4 e 72,2 punti a giornata contro un massimo possibile col senno di poi di 70,1 e 79,1, contato con le regole della lega. Quel margine esiste anche perché nessuno conosce in anticipo chi segna.
 
-Numeri misurati (2026-10-30): Giornate provate: **41** giornate; Casi squadra-giornata con rosa sufficiente (almeno 20 giocatori presenti): **93** casi; Errore del modello sul fantavoto di chi ha giocato (radice dell'errore quadratico medio): **1,46** punti; Errore del modello, stagione 2025-26 (34 giornate): **1,43** punti; Errore di una stima «da fantamedia», stagione 2025-26: **1,5** punti; Errore del modello, stagione 2026-27 (7 giornate): **1,61** punti; Errore di una stima «da fantamedia», stagione 2026-27: **1,84** punti; Punteggio di Brier delle probabilità di giocare (0 = perfetto, 0,25 = dire sempre 50%): **0,157**; Punti veri a giornata con la formazione consigliata: **68,6** punti; Massimo possibile col senno di poi (stessa rosa, stessi giorni): **71,8** punti; Punti con la consigliata, 2025-26: **67,1** punti; Punti scegliendo da fantamedia, 2025-26: **66,5** punti; Massimo possibile, 2025-26: **69,0** punti; Punti con la consigliata, 2026-27: **71,9** punti; Punti scegliendo da fantamedia, 2026-27: **71,3** punti; Massimo possibile, 2026-27: **77,9** punti; App: errore del modello nelle ultime 8 giornate: **1,6** punti; App: errore da fantamedia nelle ultime 8 giornate: **1,82** punti; App: punti con la consigliata nelle ultime 8 giornate: **71,7** punti; App: punti da fantamedia nelle ultime 8 giornate: **70,6** punti; App: massimo possibile nelle ultime 8 giornate: **77,8** punti
+Numeri misurati (2026-10-30): Giornate provate: **41** giornate; Casi squadra-giornata con rosa sufficiente (almeno 20 giocatori presenti): **93** casi; Errore del modello sul fantavoto di chi ha giocato (radice dell'errore quadratico medio): **1,46** punti; Errore del modello, stagione 2025-26 (34 giornate): **1,43** punti; Errore della fantamedia della sola stagione (6 a chi non ha voti), 2025-26: **1,5** punti; Errore del modello, stagione 2026-27 (7 giornate): **1,61** punti; Errore della fantamedia della sola stagione (6 a chi non ha voti), 2026-27: **1,84** punti; Punteggio di Brier delle probabilità di giocare (0 = perfetto, 0,25 = dire sempre 50%): **0,157**; Punti veri a giornata con la formazione consigliata: **68,6** punti; Massimo possibile col senno di poi, senza il modificatore della difesa (stessa rosa, stessi giorni): **71,8** punti; Punti con la consigliata, 2025-26: **67,1** punti; Punti scegliendo con la fantamedia della sola stagione, 2025-26: **66,5** punti; Massimo possibile senza il modificatore della difesa, 2025-26: **69,0** punti; Punti con la consigliata, 2026-27: **71,9** punti; Punti scegliendo con la fantamedia della sola stagione, 2026-27: **71,3** punti; Massimo possibile senza il modificatore della difesa, 2026-27: **77,9** punti; App: errore del modello nelle ultime 8 giornate: **1,6** punti; App: errore da fantamedia nelle ultime 8 giornate: **1,82** punti; App: punti con la consigliata nelle ultime 8 giornate: **71,7** punti; App: punti da fantamedia nelle ultime 8 giornate: **70,6** punti; App: massimo possibile nelle ultime 8 giornate: **77,8** punti
 
 Nell'app: Stato dei dati (numeri aggiornati dell'app); Diario.
 
-Codice: `fanta/verifica.py:verifica`, `fanta/verifica.py:verifica_giornata`, `fanta/affidabilita.py:calcola`, `fanta/affidabilita.py:sintesi`
+Codice: `fanta/verifica.py:verifica`, `fanta/verifica.py:verifica_giornata`, `fanta/verifica.py:avversari`, `fanta/verifica.py:riepilogo_sorte`, `fanta/affidabilita.py:calcola`, `fanta/affidabilita.py:sintesi`
 
 ## 24. Le misure: errore, Brier e punti  [nerd]
 
-Errore sul fantavoto: per chi ha davvero preso voto si confronta il mu previsto con il fantavoto vero calcolato con le regole della lega. La misura principale è la radice della media dei quadrati degli errori (RMSE), perché il mu è un valore medio e gli errori grandi pesano di più; si riporta anche l'errore assoluto medio (0,93 nel 2025-26, 1,03 nel 2026-27). Il confronto è con un'ipotetica scelta «da fantamedia»: la media dei fantavoti della stagione, 6 se non ha voti.
+Errore sul fantavoto: per chi ha davvero preso voto si confronta il mu previsto con il fantavoto vero calcolato con le regole della lega. La misura principale è la radice della media dei quadrati degli errori (RMSE), perché il mu è un valore medio e gli errori grandi pesano di più; si riporta anche l'errore assoluto medio (0,93 nel 2025-26, 1,03 nel 2026-27). Il confronto è con due stime semplici. La prima è la fantamedia tirata verso il ruolo: la media di tutti i fantavoti del giocatore prima della giornata, anche delle stagioni passate, mescolata con 10 presenze fittizie alla media del suo ruolo (chi non ha voti vale la media del ruolo). La seconda è un numero fisso per ruolo: la media di tutti i fantavoti di quel ruolo. La fantamedia della sola stagione in corso, con 6 a chi non ha voti, era il confronto di prima: la verifica la stampa ancora, solo come numero.
 
 Brier delle presenze: media dei quadrati della differenza tra la probabilità di giocare prevista (0-1) e quello che è successo (1 ha preso voto, 0 no). 0 è perfetto; dire sempre 50% darebbe 0,25. Nella prova passata vale 0,157 (0,161 nel 2025-26, 0,140 nel 2026-27).
 
-Punti delle formazioni: per ogni rosa della lega e ogni giornata si scelgono due formazioni, la consigliata e quella «da fantamedia» (stesse probabilità di giocare, mu sostituito dalla fantamedia: il confronto misura quindi la qualità del mu, non della p). Si calcolano i punti veri con le sostituzioni reali. La «perfetta» è il massimo col senno di poi: i migliori fantavoti veri nel modulo migliore, senza modificatore difesa. È un tetto teorico che nessuno può toccare.
+Punti delle formazioni: per ogni rosa della lega e ogni giornata si scelgono due formazioni, la consigliata e quella «da fantamedia» (stesse probabilità di giocare, mu sostituito dalla fantamedia tirata verso il ruolo: il confronto misura quindi la qualità del mu, non della p). Si calcolano i punti veri con le sostituzioni reali. Le rose di una lega sono poche, quindi lo stesso conto si fa su 20 rose estratte a sorte per giornata (3 portieri, 8 difensori, 8 centrocampisti e 6 attaccanti, tra chi ha almeno il 30% di probabilità di giocare); l'intervallo al 95% della differenza si calcola ricampionando le giornate intere, perché le rose della stessa giornata non sono indipendenti. La «perfetta» è il massimo col senno di poi con le regole della lega: i migliori fantavoti veri nel modulo migliore, più il modificatore della difesa dove la lega lo usa (si provano tutti i gruppi di difensori e ogni portiere). È un tetto teorico che nessuno può toccare.
 
 Attenzione a due cose. Nelle giornate passate non abbiamo le probabili formazioni, quindi la p è ricavata dalle presenze recenti: nella prova il modello è più debole che dal vivo. E le rose sono quelle di oggi applicate al passato: contano solo le rose che in quella giornata hanno almeno 20 giocatori presenti (93 casi su 410 possibili, quindi molti meno di quanti sembrerebbero).
 
@@ -500,7 +500,7 @@ Brier = media( (p prevista - preso voto)^2 )
 
 Numeri misurati (2026-10-30): Errore del modello sul fantavoto di chi ha giocato (radice dell'errore quadratico medio): **1,46** punti; Punteggio di Brier delle probabilità di giocare (0 = perfetto, 0,25 = dire sempre 50%): **0,157**
 
-Codice: `fanta/verifica.py:verifica_giornata`, `fanta/verifica.py:_fantamedia`, `fanta/verifica.py:_perfetta`, `fanta/verifica.py:MIN_GIOCATORI_ROSA`, `fanta/affidabilita.py:sintesi`
+Codice: `fanta/verifica.py:verifica_giornata`, `fanta/verifica.py:avversari`, `fanta/verifica.py:_fantamedia`, `fanta/verifica.py:_casi_sintetici`, `fanta/verifica.py:riepilogo_sorte`, `fanta/verifica.py:_perfetta`, `fanta/verifica.py:MIN_GIOCATORI_ROSA`, `fanta/affidabilita.py:sintesi`
 
 ## 25. L'esperimento «oracolo»: quanto vale sapere in anticipo  [nerd]
 
@@ -516,13 +516,13 @@ Codice: `fanta/verifica.py:guadagno_oracoli`, `fanta/verifica.py:dati_oracolo`, 
 
 ## 26. Il diario: la tua scelta contro la consigliata  [base]
 
-Per ogni giornata finita il diario mette a confronto la formazione che hai schierato e quella che il sistema avrebbe consigliato, con i punti attesi e quelli fatti. Il sistema rifà la scelta con i soli dati che c'erano prima della giornata, ma con la rosa di oggi (le rose passate non si conservano), e la panchina è quella scelta dal sistema anche per la tua.
+Per ogni giornata finita il diario mette a confronto la formazione che hai schierato e la consigliata che avevi davanti prima della scadenza, con i punti attesi mostrati allora e quelli fatti. Dove quella consigliata non è stata salvata (le giornate di prima, o un suo giocatore non è più nella tua rosa) il diario mette al suo posto la scelta che il sistema rifà a giornata finita, con i soli dati che c'erano prima della giornata e con la rosa di oggi (le rose passate non si conservano), senza le probabili formazioni: serve a misurare il modello e non entra nel conto di chi ha fatto meglio. La panchina della tua formazione la sceglie il sistema.
 
 Con poche giornate è solo un racconto: l'oscillazione dei punti è molto più grande della differenza tra le due scelte.
 
 Nell'app: Diario.
 
-Codice: `fanta/diario.py:calcola_giornata`, `fanta/diario.py:sintesi`
+Codice: `fanta/diario.py:calcola_giornata`, `fanta/diario.py:_mostrata`, `fanta/diario.py:sintesi`
 
 ## 27. Da dove arrivano i dati e ogni quanto  [base]
 
@@ -654,7 +654,7 @@ Codice: `fanta/formazione.py:Valutatore`, `fanta/formazione.py:SCARTO_VOTO`, `fa
 - **Restringimento (shrinkage)**: Mescolare una stima con una stima di partenza (la media del ruolo o quella legata alla quotazione): evita che pochi dati diano valori esagerati.
 - **Quotazione iniziale**: Prezzo del giocatore a inizio stagione, fissato prima del campionato: riassume le attese degli esperti e serve da punto di partenza per i giocatori con poche partite.
 - **Voto in pagella atteso**: La parte del fantavoto atteso che viene dal voto, senza bonus e malus.
-- **Fantamedia**: Media dei fantavoti di un giocatore. È la scelta semplice con cui si confronta il modello.
+- **Fantamedia**: Media dei fantavoti di un giocatore. È la stima semplice con cui si confronta il modello: nel confronto, chi ha pochi voti è avvicinato alla media del suo ruolo.
 - **Simulazione (Monte Carlo)**: Ripetere centinaia di volte una giornata finta, estraendo a sorte chi gioca, per vedere la media e la variabilità dei punti.
 - **Percentile**: Il 10° percentile è il valore sotto cui cade il 10% delle giornate simulate (brutta giornata); il 90° è quello sopra cui sta il 10% (giornata eccezionale).
 - **Modificatore difesa**: Bonus di squadra che dipende dalla media del voto del portiere e dei tre migliori difensori, a scalini decisi dalla lega.
