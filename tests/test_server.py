@@ -396,6 +396,18 @@ def test_osservati_letti_senza_doppioni_e_al_massimo_il_tetto(tmp_path):
     assert osservati.leggi(file) == []
 
 
+@pytest.mark.parametrize("percorso, corpo", [
+    ("/api/formazione/valuta", {"salva": False}),
+    ("/api/diario/schierata", {"giornata": 1, "tipo": "manuale"}),
+])
+def test_titolari_al_massimo_quanti_una_rosa(client, percorso, corpo):
+    """I titolari mandati dall'app non sono mai più dei giocatori di una rosa (limiti.MAX_GIOCATORI_SQUADRA): oltre, 422 subito."""
+    from fanta import limiti
+    troppi = list(range(1, limiti.MAX_GIOCATORI_SQUADRA + 2))
+    assert client.post(percorso, json=corpo | {"titolari": troppi}).status_code == 422
+    assert client.post(percorso, json=corpo | {"titolari": troppi[:-1]}).status_code != 422
+
+
 def test_crediti_delle_squadre(client, tmp_path):
     from fanta import lega
     lega.salva(lega.Rose([lega.Squadra("Mia", []), lega.Squadra("Altra", [])], "Mia"), server.FILE_ROSE)
