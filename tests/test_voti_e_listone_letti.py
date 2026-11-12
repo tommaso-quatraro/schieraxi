@@ -155,6 +155,59 @@ def test_giornata_con_i_voti_a_meta_si_riscarica_anche_dopo_4_giorni(db, monkeyp
     assert _agg(db)._giornate_voti_da_scaricare() == [10, 11]
 
 
+# ---------------- statistiche per partita rilette (#658) ----------------
+def _statistiche(pid, n):
+    return [{"understat_partita": pid, "understat_giocatore": pid * 100 + i, "squadra": "casa" if i % 2 else "ospite", "posizione": "",
+             "minuti": 90, "gol": 0, "autogol": 0, "tiri": 1, "xg": 0.1, "xa": 0.05, "assist": 0, "passaggi_chiave": 0, "xg_chain": 0.0,
+             "xg_buildup": 0.0, "gialli": 0, "rossi": 0, "rigori_calciati": 0, "rigori_segnati": 0, "punizioni": 0, "entrato": 0,
+             "uscito": 0} for i in range(n)]
+
+
+def _understat_rilegge(db, monkeypatch, prima: int | None, adesso: int):
+    """La partita 500 (casa-ospite, giocata due giorni fa, quindi da rileggere) con `prima` righe di statistiche salvate (None =
+    mai letta); la fonte ora ne dà `adesso`. Restituisce l'aggiornamento dopo il passo."""
+    monkeypatch.setattr(aggiorna, "_ora", lambda: "2026-11-12T08:03:00")
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (1, ?, 11, '2026-11-10 20:45', "
+               "'casa', 'ospite', 1)", (ST,))
+    if prima is not None:
+        db.execute("INSERT INTO partite_understat (id, stagione, data, casa, trasferta, giocata, scaricata) VALUES (500, ?, "
+                   "'2026-11-10 20:45:00', 'casa', 'ospite', 1, ?)", (ST, int(prima >= 22)))
+        archivio.inserisci(db, "prestazioni", _statistiche(500, prima))
+    db.commit()
+    partita = {"id": 500, "data": "2026-11-10 20:45:00", "casa": "Casa", "trasferta": "Ospite", "gol_casa": 1, "gol_trasferta": 0,
+               "xg_casa": 1.2, "xg_trasferta": 0.4, "giocata": 1}
+    monkeypatch.setattr(aggiorna.rete, "scarica", lambda *x, **k: SimpleNamespace(content=b"{}"))
+    monkeypatch.setattr(aggiorna.us, "leggi_lega", lambda dati: ([dict(partita)], []))
+    monkeypatch.setattr(aggiorna.us, "leggi_partita", lambda dati, pid, casa, trasferta: _statistiche(pid, adesso))
+    a = _agg(db)
+    a.slug_noti = {"casa", "ospite"}
+    a._passo("Understat", a.understat, "understat")
+    return a
+
+
+def _salvate(db):
+    righe = db.execute("SELECT COUNT(*) FROM prestazioni WHERE understat_partita = 500").fetchone()[0]
+    return righe, db.execute("SELECT scaricata FROM partite_understat WHERE id = 500").fetchone()[0]
+
+
+@pytest.mark.parametrize("adesso", [0, 21, 24])
+def test_rilettura_delle_statistiche_con_meno_righe_tiene_quelle_di_prima_e_lo_dice(db, monkeypatch, adesso):
+    """Le partite degli ultimi 4 giorni si rileggono a ogni aggiornamento. Una risposta valida ma senza tabellino (o più corta)
+    cancellava le righe buone e il passo risultava riuscito: fino alla lettura buona dopo il modello usava le righe ricostruite."""
+    a = _understat_rilegge(db, monkeypatch, prima=25, adesso=adesso)
+    assert _salvate(db) == (25, 1)
+    assert len(a.errori) == 1 and a.errori[0].startswith("Understat: ") and f"{adesso} righe, prima erano 25" in a.errori[0]
+
+
+@pytest.mark.parametrize("prima, adesso, attese", [(25, 25, (25, 1)), (25, 27, (27, 1)), (None, 10, (10, 0)), (10, 23, (23, 1))])
+def test_rilettura_delle_statistiche_con_almeno_le_righe_di_prima_le_sostituisce(db, monkeypatch, prima, adesso, attese):
+    """Come prima: una lettura con almeno le righe di prima le sostituisce; alla prima lettura un tabellino non ancora completo
+    (meno di 22 righe) si salva e si riprova la volta dopo, senza errore."""
+    a = _understat_rilegge(db, monkeypatch, prima=prima, adesso=adesso)
+    assert _salvate(db) == attese and a.errori == []
+
+
 # ---------------- righe dei voti scartate ----------------
 def test_righe_dei_voti_senza_i_tre_voti_si_contano():
     righe, scartate = fc.leggi_voti_e_scarti(VOTI_8, 8)
