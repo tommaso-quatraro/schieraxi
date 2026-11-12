@@ -58,7 +58,7 @@ def test_dopo_un_rilascio_con_la_rete_debole_la_pagina_ha_una_versione_sola(inst
     installata.proxy.lenti = {"/app.js": 4, "/testi.js": 4}          # i due file grossi oltre i 2,5 secondi
     pagina = installata.scheda("/?da=app")                          # l'app riaperta dalla schermata Home
     versioni = pagina.evaluate(VERSIONI)
-    assert len(set(versioni.values())) == 1, f"la pagina mescola file di due versioni: {versioni}"
+    assert set(versioni.values()) == {"v1"}, f"la pagina non è tutta della versione salvata, mescola file di due versioni: {versioni}"
     assert pagina.evaluate(TESTO_NUOVO) != "prova.nuova", "un testo nuovo compare come chiave: codice nuovo con il catalogo vecchio"
     # la versione nuova arriva con il service worker nuovo: la barra «Ricarica» la apre, tutta intera
     pagina.evaluate("() => navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => null)")
