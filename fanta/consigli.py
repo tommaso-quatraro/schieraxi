@@ -646,6 +646,11 @@ def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict |
         LOG.warning("consigliata non ricordata (%s)", type(e).__name__)
 
 
+def numeri_ricordati() -> set[int]:
+    """I numeri degli account che compaiono nelle consigliate ricordate (`utenti` e `proprie`)."""
+    return {u for voce in _consigliate().values() for u in _utenti(voce) + (_ids(voce, "proprie") or [])}
+
+
 def togli_utenti(numeri: Collection[int]) -> int:
     """Account eliminati (#653): toglie i loro numeri da tutte le consigliate ricordate (`utenti` e `proprie`); una voce che resta
     senza nessuno si cancella. Le voci che non hanno mai avuto un account (senza account, comandi) restano: non sono di nessuno.

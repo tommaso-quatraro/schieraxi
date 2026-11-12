@@ -383,6 +383,23 @@ def test_consigliate_che_non_si_riscrivono_errore_registrato(ambiente, ora_fissa
     assert any(r.levelno >= logging.ERROR and str(uid) in r.getMessage() and "consigliate" in r.getMessage() for r in caplog.records)
 
 
+def test_cartelle_senza_account_toglie_i_numeri_rimasti_nelle_consigliate(ambiente, ora_fissa, capsys):
+    """Un numero rimasto nelle consigliate (account eliminato prima di #653, o pulizia non riuscita): il comando lo dice e lo
+    toglie solo con --esegui. Quelli degli account vivi restano."""
+    _, vivo = nuovo_utente("marco")
+    via = vivo + 50                                                  # un account che non c'è più, senza cartella
+    ricorda(via, "di-chi-se-ne-e-andato", propria=True)
+    ricorda(vivo, "del-vivo", propria=True)
+    prima = consigli.FILE_CONSIGLIATE.read_bytes()
+    main(["cartelle-senza-account"])
+    uscita = capsys.readouterr().out
+    assert str(via) in uscita and righe_elencate(uscita) == set()    # nessuna cartella: solo il numero
+    assert consigli.FILE_CONSIGLIATE.read_bytes() == prima           # senza --esegui non tocca niente
+    main(["cartelle-senza-account", "--esegui"])
+    assert numeri_nelle_consigliate() == {vivo}
+    assert "di-chi-se-ne-e-andato" not in json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
+
+
 def test_segno_non_scritto_registrato(ambiente):
     c, uid = nuovo_utente("marco")
     (percorsi.cartella_account() / "cancellati").write_text("", encoding="utf-8")    # un file al posto della cartella dei segni

@@ -36,7 +36,8 @@
   utente-ruolo --utente NOME --ruolo admin|normale   promuove o declassa un account (non lascia il server senza amministratori)
   importa-per-conto-di --utente NOME FILE     importa le rose di un amico che lo ha chiesto, nel suo archivio (multiutente)
   multiutente-migra --utente NOME [--forza]   COPIA la lega di oggi (lega/ e i file personali di dati/) nella cartella di un account
-  cartelle-senza-account [--esegui]   elenca le cartelle di dati rimaste senza account (una cancellazione non finita); con --esegui le cancella
+  cartelle-senza-account [--esegui]   elenca le cartelle di dati rimaste senza account (una cancellazione non finita) e i numeri di
+                                      account eliminati rimasti nelle consigliate già mostrate; con --esegui li cancella
 """
 from __future__ import annotations
 
@@ -804,35 +805,52 @@ def cmd_migra(a) -> None:
 
 
 def cmd_cartelle_senza_account(a) -> None:
-    """Le cartelle di dati rimaste senza account (una cancellazione non finita). Senza --esegui le elenca e basta; con --esegui
-    le cancella. Se il database degli account manca o non ha nessun account, non cancella niente: sembrerebbero tutte senza account."""
+    """Le cartelle di dati rimaste senza account (una cancellazione non finita) e i numeri di account eliminati rimasti nelle
+    consigliate già mostrate (file comune a tutti: account eliminati prima di #653 o pulizia non riuscita). Senza --esegui li
+    elenca e basta; con --esegui cancella le cartelle e toglie i numeri. Se il database degli account manca o non ha nessun
+    account, non cancella niente: sembrerebbero tutti senza account."""
     import contextlib
-    from . import account, contesto, percorsi
+    from . import account, consigli, contesto, percorsi
     file = percorsi.cartella_account() / "account.sqlite"
     if not file.is_file():
         sys.exit(f"Il database degli account non c'è ({file}): non so quali cartelle hanno un account. Non ho cancellato niente.")
+    ricordati = consigli.numeri_ricordati()         # prima il file e poi il database: chi si iscrive nel frattempo non è fra questi
     try:
         with contextlib.closing(account.apri(file)) as db:
             orfane = contesto.cartelle_senza_account(db)
-            quanti = db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0]
+            vivi = {r[0] for r in db.execute("SELECT id FROM utenti")}
     except account.ErroreAccount as e:
         sys.exit(f"Errore: {e.messaggio}")
-    if not orfane:
+    numeri = sorted(ricordati - vivi)
+    if not orfane and not numeri:
         print("Nessuna cartella senza account.")
         return
-    print(f"Cartelle senza account: {len(orfane)}")
-    for numero in orfane:
-        print(f"  {contesto.cartella_utente(numero)}")
+    if orfane:
+        print(f"Cartelle senza account: {len(orfane)}")
+        for numero in orfane:
+            print(f"  {contesto.cartella_utente(numero)}")
+    if numeri:
+        print(f"Account eliminati ancora nelle consigliate già mostrate: {', '.join(map(str, numeri))}")
     if not a.esegui:
-        print("Non ho toccato niente. Per cancellarle: python -m fanta cartelle-senza-account --esegui")
+        print("Non ho toccato niente. Per cancellare: python -m fanta cartelle-senza-account --esegui")
         return
-    if quanti == 0:
+    if not vivi:
         sys.exit("Il database degli account non ha nessun account (forse è stato ricreato). Non ho cancellato niente.")
-    rimaste = [numero for numero in orfane if not contesto.elimina_cartella(numero)]
-    print(f"Cancellate: {len(orfane) - len(rimaste)}")
-    if rimaste:
-        sys.exit(f"Non riesco a cancellare del tutto {len(rimaste)} cartelle (file in uso o permessi): "
-                 "il motivo è nel registro del servizio. Riprova più tardi.")
+    errori = []
+    if orfane:
+        rimaste = [numero for numero in orfane if not contesto.elimina_cartella(numero)]
+        print(f"Cancellate: {len(orfane) - len(rimaste)}")
+        if rimaste:
+            errori.append(f"Non riesco a cancellare del tutto {len(rimaste)} cartelle (file in uso o permessi): "
+                          "il motivo è nel registro del servizio.")
+    if numeri:
+        try:
+            consigli.togli_utenti(numeri)
+            print(f"Numeri tolti dalle consigliate già mostrate: {len(numeri)}")
+        except OSError as e:
+            errori.append(f"Non riesco a togliere i numeri dalle consigliate già mostrate ({type(e).__name__}).")
+    if errori:
+        sys.exit(" ".join(errori) + " Riprova più tardi.")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -940,7 +958,7 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--utente", required=True, help="nome utente dell'account (già registrato)")
     x.add_argument("--forza", action="store_true", help="sovrascrive i dati già presenti nella cartella dell'account")
     x.set_defaults(f=cmd_migra)
-    x = sub.add_parser("cartelle-senza-account", help="elenca le cartelle di dati rimaste senza account; con --esegui le cancella (multiutente)")
+    x = sub.add_parser("cartelle-senza-account", help="elenca le cartelle di dati rimaste senza account e i loro numeri nelle consigliate; con --esegui li cancella (multiutente)")
     x.add_argument("--esegui", action="store_true", help="cancella le cartelle elencate (senza: elenca e basta)")
     x.set_defaults(f=cmd_cartelle_senza_account)
     x = sub.add_parser("formazione", help="formazione consigliata per la prossima giornata")
