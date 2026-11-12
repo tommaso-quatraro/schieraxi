@@ -106,6 +106,13 @@ CREATE TABLE IF NOT EXISTS controlli (
     PRIMARY KEY (stagione, nome)
 );
 CREATE TABLE IF NOT EXISTS aggiornamenti (cosa TEXT PRIMARY KEY, quando TEXT, dettaglio TEXT);
+-- letture dei voti di una giornata con meno righe di quelle salvate (aggiorna._salva_voti): la stessa pagina più corta letta `volte`
+-- volte di fila, dal `dal`. Un calo piccolo si accetta dopo qualche lettura uguale, uno grande resta bloccato. Tabella a sé: gli
+-- archivi che ci sono la ricevono senza migrazione.
+CREATE TABLE IF NOT EXISTS voti_calati (
+    stagione TEXT, giornata INTEGER, righe INTEGER, prima INTEGER, volte INTEGER, dal TEXT,
+    PRIMARY KEY (stagione, giornata)
+);
 -- registro delle giornate (fanta/registro_giornate.py): i numeri MOSTRATI poco prima della prima partita, per ogni giocatore della
 -- Serie A, con le regole classiche. Solo id e numeri, niente dati personali. NON si ricostruisce: una giornata persa è persa.
 CREATE TABLE IF NOT EXISTS registro_giocatori (

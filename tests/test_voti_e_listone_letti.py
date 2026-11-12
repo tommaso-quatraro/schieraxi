@@ -82,6 +82,54 @@ def test_il_passo_voti_salva_le_altre_giornate_e_poi_dice_quella_calata(db, monk
     assert _salvati(db, 10) == 30 and _salvati(db, 11) == 35
 
 
+def _leggi_righe(a, n, volte=1):
+    """`volte` letture della giornata 11 con `n` righe; restituisce i messaggi d'errore (None = salvata)."""
+    esiti = []
+    for _ in range(volte):
+        try:
+            a._salva_voti(a.st, 11, _righe(n))
+            esiti.append(None)
+        except aggiorna.VotiCalati as e:
+            esiti.append(str(e))
+    return esiti
+
+
+def test_una_riga_tolta_dalla_redazione_si_accetta_dopo_3_letture_uguali(db):
+    righe = []
+    a = aggiorna.Aggiornamento(db, aggiorna.Stagione(2026), scrivi=righe.append)
+    a._salva_voti(a.st, 11, _righe(30))
+    esiti = _leggi_righe(a, 29, volte=3)
+    assert esiti[0] and esiti[1] and esiti[2] is None                         # le prime due no, la terza uguale sì
+    assert "lettura 2 di 3" in esiti[1]
+    assert _salvati(db) == 29
+    assert any("accettata la pagina con 29 voti (prima 30) dopo 3 letture uguali" in r for r in righe)   # nel registro
+    assert db.execute("SELECT COUNT(*) FROM voti_calati").fetchone()[0] == 0
+
+
+def test_letture_diverse_ricominciano_il_conto(db):
+    a = _agg(db)
+    a._salva_voti(a.st, 11, _righe(30))
+    assert all(_leggi_righe(a, 29, 2)) and all(_leggi_righe(a, 28, 2)) and all(_leggi_righe(a, 29, 2))
+    assert _salvati(db) == 30
+
+
+def test_un_calo_grande_resta_bloccato_e_si_vede(db):
+    a = _agg(db)
+    a._salva_voti(a.st, 11, _righe(30))
+    esiti = _leggi_righe(a, 20, volte=6)
+    assert all(esiti) and _salvati(db) == 30
+    assert "lettura 6" in esiti[-1] and "troppi per accettarla da sola" in esiti[-1]
+
+
+def test_il_conto_delle_letture_resta_anche_se_il_passo_non_riesce(db):
+    """Il passo voti che non riesce annulla le sue scritture (rollback): il conto delle letture uguali deve restare."""
+    a = _agg(db)
+    a._salva_voti(a.st, 11, _righe(30))
+    for _ in range(3):
+        a._passo("voti", lambda: a._salva_voti(a.st, 11, _righe(29)))
+    assert _salvati(db) == 29
+
+
 # ---------------- righe dei voti scartate ----------------
 def test_righe_dei_voti_senza_i_tre_voti_si_contano():
     righe, scartate = fc.leggi_voti_e_scarti(VOTI_8, 8)

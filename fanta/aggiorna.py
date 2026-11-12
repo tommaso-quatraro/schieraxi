@@ -27,6 +27,8 @@ GIORNATE = 38
 MAX_STAGIONI_STORICHE = 6     # tetto: ogni stagione in più sono circa 420 richieste (10-15 minuti)
 SOGLIA_COPIA = 0.95           # probabili uguali oltre questa quota alla giornata prima = copia (Aggiornamento._copia_della_giornata_prima)
 ORE_SENZA_PROBABILI = 48      # una giornata senza formazioni è normale se la prima partita è più lontana di così; più vicina è un errore
+CALO_ACCETTABILE = 2          # voti in meno di quelli salvati che possono essere una correzione della redazione...
+LETTURE_UGUALI = 3            # ...e si accettano dopo tante letture uguali di fila (Aggiornamento._accetta_calo_o_ferma)
 
 
 class Stagione:
@@ -261,17 +263,39 @@ class Aggiornamento:
         return self.db.execute("SELECT 1 FROM partite WHERE stagione = ? AND giocata = 1 LIMIT 1", (st.codice,)).fetchone() is not None
 
     def _salva_voti(self, st: Stagione, g: int, righe: list[dict]) -> None:
-        """Riscrive i voti di una giornata, ma mai con meno righe di quelle salvate (`VotiCalati`, i voti di prima restano): una
-        pagina letta a metà o cambiata non cancella voti buoni. Pagina vuota senza voti salvati = voti non ancora usciti."""
+        """Riscrive i voti di una giornata, ma non con meno righe di quelle salvate (`VotiCalati`, i voti di prima restano): una
+        pagina letta a metà o cambiata non cancella voti buoni. Una correzione vera della redazione (fino a CALO_ACCETTABILE righe
+        in meno) si accetta quando la stessa pagina più corta arriva LETTURE_UGUALI volte di fila, e si scrive nel registro; un calo
+        più grande resta bloccato e il passo voti non riesce (errore visibile, salute dopo 24 ore). Pagina vuota senza voti salvati =
+        voti non ancora usciti."""
         prima = self.db.execute("SELECT COUNT(*) FROM voti WHERE stagione = ? AND giornata = ?", (st.codice, g)).fetchone()[0]
         if len(righe) < prima:
-            raise VotiCalati(f"voti {st.codice} giornata {g}: la pagina ha {len(righe)} voti, prima erano {prima}: "
-                             "tenuti quelli di prima")
+            self._accetta_calo_o_ferma(st, g, len(righe), prima)      # alza VotiCalati se il calo non si accetta
+        self.db.execute("DELETE FROM voti_calati WHERE stagione = ? AND giornata = ?", (st.codice, g))
         if not righe:
             return
         self.db.execute("DELETE FROM voti WHERE stagione = ? AND giornata = ?", (st.codice, g))
         archivio.inserisci(self.db, "voti", [{**r, "stagione": st.codice} for r in righe])
         self.db.commit()
+
+    def _accetta_calo_o_ferma(self, st: Stagione, g: int, righe: int, prima: int) -> None:
+        """Una pagina dei voti con meno righe di quelle salvate: conta le letture uguali di fila (`voti_calati`, confermato subito,
+        così il conto resta anche se il passo poi non riesce) e alza `VotiCalati` finché il calo non si accetta."""
+        r = self.db.execute("SELECT righe, volte, dal FROM voti_calati WHERE stagione = ? AND giornata = ?", (st.codice, g)).fetchone()
+        stessa = r is not None and r[0] == righe
+        volte = (r[1] + 1) if stessa else 1
+        piccolo = righe > 0 and prima - righe <= CALO_ACCETTABILE
+        if piccolo and volte >= LETTURE_UGUALI:
+            self.scrivi(f"  voti {st.codice} giornata {g}: accettata la pagina con {righe} voti (prima {prima}) "
+                        f"dopo {volte} letture uguali")
+            return
+        self.db.execute("INSERT OR REPLACE INTO voti_calati VALUES (?, ?, ?, ?, ?, ?)",
+                        (st.codice, g, righe, prima, volte, r[2] if stessa else _ora()))
+        self.db.commit()
+        motivo = (f"lettura {volte} di {LETTURE_UGUALI}" if piccolo
+                  else f"lettura {volte}, {prima - righe} in meno: troppi per accettarla da sola")
+        raise VotiCalati(f"voti {st.codice} giornata {g}: la pagina ha {righe} voti, prima erano {prima}: tenuti quelli di prima "
+                         f"({motivo})")
 
     def risultati_giornata(self, g: int) -> None:
         """Il giro leggero dopo le partite (pianificatore.py): solo risultati e voti di UNA giornata della stagione in corso,
