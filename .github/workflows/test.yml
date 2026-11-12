@@ -460,6 +460,7 @@ jobs:
     permissions:
       contents: write          # commit del bot su main e release
       actions: write           # lancia ipa.yml (solo se ios/ è cambiata)
+      pull-requests: read      # etichette delle PR delle novità in attesa (versione urgente, #635)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -469,6 +470,9 @@ jobs:
       - name: Numero di versione alle novità in attesa (commit del bot su main, creato e FIRMATO da GitHub via API)
         # Niente git push: il server installa solo commit firmati (script/server/verifica-firme.sh). Il commit fatto in locale
         # da assegna_versione.py lo ricrea GitHub (createCommitOnBranch, firmato con la sua chiave) solo se main e' ancora quello.
+        # Se una PR delle novità in attesa ha l'etichetta P1 o urgente, il commit ha la riga «Rilascio: urgente» e il server la
+        # installa subito invece di raggrupparla (#635). Tutte le PR in attesa, non solo questa: un «rilascia» in attesa può essere
+        # scavalcato da quello della PR dopo, che dà il numero a tutte le novità.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -478,7 +482,13 @@ jobs:
           for tentativo in 1 2 3 4 5; do
             git fetch -q origin main
             git reset -q --hard origin/main
-            python3 -I -s script/ci/assegna_versione.py --commit > versioni.txt || exit 1
+            urgente=""
+            for pr in $(python3 -I -s script/ci/assegna_versione.py --pr-in-attesa); do
+              etichette=$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name') \
+                || { echo "::warning title=Rilascio::non leggo le etichette della PR #$pr: se era urgente, il server la installa con le altre"; continue; }
+              if printf '%s\n' "$etichette" | grep -qxE 'P1|urgente'; then urgente=1; echo "PR #$pr urgente: versione segnata urgente"; fi
+            done
+            python3 -I -s script/ci/assegna_versione.py --commit ${urgente:+--urgente} > versioni.txt || exit 1
             [ -s versioni.txt ] || { echo "Nessuna novità in attesa"; exit 0; }
             python3 -I -s script/ci/commit_firmato.py origin/main HEAD > corpo.json || exit 1
             oid=$(gh api graphql --input corpo.json --jq '.data.createCommitOnBranch.commit.oid' 2>errore.txt) || oid=""

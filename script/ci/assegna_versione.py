@@ -181,7 +181,7 @@ def pr_in_attesa() -> list[int]:
 
 
 def main() -> int:
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", newline="\n")     # righe lette da bash: niente \r, anche su Windows
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--commit", action="store_true", help="fa anche il commit (senza push)")
     parser.add_argument("--urgente", action="store_true", help=f"con --commit: aggiunge la riga «{RIGA_URGENTE}» al messaggio")
