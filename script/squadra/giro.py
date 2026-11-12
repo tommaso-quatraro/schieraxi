@@ -1,6 +1,7 @@
 """`giro`: la procedura fissa del coordinatore in un comando. Fa `stato`, cerca le PR in conflitto e le corse fallite per
 guasto d'infrastruttura, le corse superate (`annulla-superate`), le worktree da pulire (`pulisci`, SEMPRE solo prova) e, se la
-variabile d'ambiente SCHIERAXI_URL c'è, la versione in produzione (letta da /sw.js, pubblico; l'indirizzo non si stampa).
+variabile d'ambiente SCHIERAXI_URL c'è, la versione in produzione (letta da /sw.js, pubblico; l'indirizzo non si stampa) con il
+tempo in cui arriva una versione unita (il server raggruppa le installazioni, #635).
 Confronta con il giro di prima (.superpowers/squadra/giro.json, fuori da git) e stampa SOLO ciò che è cambiato.
 
 Con --esegui: rilancia una volta sola le corse con guasto d'infrastruttura (`gh run rerun <id> --failed`) e annulla le corse
@@ -24,6 +25,10 @@ import stato
 
 CARTELLA_STATO = comune.RADICE / ".superpowers" / "squadra"
 UNIBILE = {"MERGEABLE": "unibile", "CONFLICTING": "IN CONFLITTO con main", "UNKNOWN": "unibile da calcolare"}
+# Il server raggruppa le installazioni (#635, script/server/aggiorna-app.sh): con l'intervallo predefinito di 60 minuti più il giro
+# del cron, una PR unita arriva entro circa 70 minuti; prima di allora «non è ancora arrivata» non è un guasto.
+ATTESA_PRODUZIONE = ("una PR unita arriva entro circa 70 minuti (installazioni raggruppate), le urgenti entro 10; "
+                     "durante le partite e nell'ora prima di una scadenza si aspetta di più")
 
 
 def prepara_cartella() -> Path:
@@ -89,7 +94,7 @@ def osserva(esegui: comune.Esegui, url: str | None, leggi_url: Callable[[str], s
     for c in superate:
         voci[f"superata:{c['id']}"] = f"Corsa superata {c['id']} {c['workflow']} ramo {c['ramo']} (commit {c['commit']})"
     if url:
-        voci["produzione"] = f"Produzione: {versione_produzione(url, leggi_url)}"
+        voci["produzione"] = f"Produzione: {versione_produzione(url, leggi_url)} ({ATTESA_PRODUZIONE})"
     return voci, rotte, superate
 
 
