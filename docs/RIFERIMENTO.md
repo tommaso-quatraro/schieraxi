@@ -171,7 +171,12 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
 - Pull request che tocca `fanta/`, `script/server/` o `requirements.txt`: serve `fanta/novita.d/<nome-breve>.json` senza numero.
   Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
 - Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
-  controlli verdi. Una pull request in bozza non si unisce.
+  controlli verdi. Una pull request in bozza non si unisce. Titolo e corpo del commit li scrive `unisci`, letti subito prima
+  dell'unione: titolo della pull request con `(#N)`; nel corpo le righe di chiusura della descrizione (a inizio riga) delle
+  issue che GitHub collega alla pull request, poi le righe `Co-authored-by` dei commit. Si chiudono solo quelle issue.
+- Job `ambito`, in più: una pull request con base diversa da `main` è rossa (niente rami impilati, `controlla_pr.py`, anche
+  in `pr-pronta`); oltre 600 righe cambiate, senza test e file generati, un avviso che non blocca
+  (`controlla_ambito.py --dimensione`).
 - Job `pip-audit` (vulnerabilità note nelle librerie di `requirements.txt` e `requirements-dev.txt`, senza installarle; pip-audit e dipendenze da PyPI con hash in `.github/pip-audit-requisiti.txt`): fuori dai `needs` di `unisci`, rosso se trova qualcosa. Si corregge aggiornando la libreria con `script/blocca_dipendenze.py`.
 - Controllo del codice con ruff (solo controllo, niente riformattazione; regole in `ruff.toml`: `E9` sintassi, `F` errori sicuri): passo del job `test`, quindi blocca l'unione. ruff da PyPI con hash in `.github/ruff-requisiti.txt`. In locale: `ruff check fanta tests script prove`.
 - Job `ambito` (`script/ci/controlla_ambito.py`, preso da `main`): i file della pull request devono stare nelle aree della riga «Aree: …» della descrizione (modello in `.github/PULL_REQUEST_TEMPLATE.md`; issue con il modulo «Lavoro», `.github/ISSUE_TEMPLATE/lavoro.yml`). Esenti i bot e le pull request di soli documenti. Blocca l'unione.
