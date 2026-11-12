@@ -26,7 +26,6 @@ CAMPI_FASE = ("fase", "in_corso", "riepilogo", "prossima")
 SENZA_IN_CORSO = ("giocatori", "sostituzioni")
 MAX_BYTE = 18000              # tetto di sicurezza della risposta (il server toglie le parti facoltative se lo supera)
 TAGLI_PESO = ("scambio", "osservati")    # cosa si toglie sopra MAX_BYTE, in quest'ordine (il nome finisce in `mancano`)
-SOGLIA_RIGORISTA = 0.15       # la stessa del testo «rigorista» nelle schede
 # le sole funzioni che interessano ai widget (il token del widget non può leggere /api/funzioni)
 FUNZIONI_WIDGET = ("live", "diario", "scambi_trova", "seguiti", "widget_extra")
 
@@ -102,7 +101,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
         x = consigli.scheda_previsione(g.id, prev.loc[g.id])
         mia.append(_g(x, tratti, "avversario", "in_casa", "data_partita", "stato", "percentuale", "dubbio", "diffidato", "punti_attesi",
                       "p_voto")                      # «gioca N%» come in Oggi; facoltativo: senza p_voto il campo manca
-                   | {"titolare": g.id in titolari, "rigorista": x["rigori_attesi"] >= SOGLIA_RIGORISTA})
+                   | {"titolare": g.id in titolari, "rigorista": consigli.rigorista(prev.loc[g.id])})      # la regola della scheda
     mia.sort(key=lambda m: (m["data_partita"] is None, m["data_partita"] or "", m["nome"]))
     fuori = [m for m in mia if m["stato"] in ("infortunato", "squalificato")]
 

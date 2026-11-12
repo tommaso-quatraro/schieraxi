@@ -1,4 +1,6 @@
 """Modello: niente dati dal futuro, regole della lega rispettate, probabili formazioni usate."""
+from dataclasses import replace
+
 import pandas as pd
 import pytest
 
@@ -163,3 +165,153 @@ def test_pezzi_condivisi_fra_leghe_stessi_numeri():
         for par in (modello.Parametri(), modello.Parametri(k_voto=10.0), modello.Parametri(k_voto=30.0), modello.Parametri(k_90=8.0)):
             modello.previsioni(d, ST, g, Regole(), par)
     assert len(d._pezzi) <= modello.MAX_PEZZI
+
+
+# ---------------------------------------------------------------- rigori dalla quota di squadra (#613)
+def test_rigori_dalla_quota_di_squadra_anche_in_produzione():
+    """La quota dei rigori è quella «di squadra» a memoria lunga (prima un termine fisso la schiacciava: i rigori attesi erano
+    un quarto dei veri), e la previsione la riporta: serve alla frase «rigorista»."""
+    assert modello.Parametri().rigori_squadra
+    p = _p(_dati())
+    # il Bomber ha calciato tutti e 4 i rigori della sua squadra (pesati 0,98 a giornata): 3,81 / (3,81 + 0,5 di un rigorista che
+    # ancora non si conosce)
+    lungo = sum(0.98 ** k for k in range(1, 5))
+    assert p.at[1, "quota_rigori"] == pytest.approx(lungo / (lungo + 0.5), abs=1e-3) and p.at[3, "quota_rigori"] == 0.0
+    rigori_partita = modello.forza_squadre(_dati(), ST, 5, modello.Parametri()).rigori_partita
+    assert p.at[1, "e_rigori"] == pytest.approx(p.at[1, "quota_rigori"] * rigori_partita * p.at[1, "fattore"], abs=2e-3)
+    tutta =modello.previsioni(_dati(), ST, 5, Regole(), modello.Parametri(rigori_di_un_altro=0.0)).set_index("id")
+    assert tutta.at[1, "quota_rigori"] == 1.0                    # senza quel termine tutta la quota è sua
+
+
+# ---------------------------------------------------------------- partite senza statistiche (#613)
+def _senza_statistiche(d, giornate):
+    """Gli stessi dati come se la fonte delle statistiche per partita si fosse fermata prima di queste giornate."""
+    via = d.prestazioni["giornata"].isin(giornate)
+    partite = d.partite.copy()
+    partite.loc[partite["giornata"].isin(giornate), ["xg_casa", "xg_trasferta"]] = None
+    return modello.Dati(d.stagioni, d.voti, d.prestazioni[~via].copy(), partite, d.calciatori, d.quotazioni, d.extra)
+
+
+def _con_tre_gol_nelle_ultime(d):
+    """Nelle giornate 3 e 4 il Bomber segna 3 gol su azione (nei voti) invece di 1; le statistiche non lo sanno."""
+    d.voti.loc[(d.voti["calciatore_id"] == 1) & (d.voti["giornata"] >= 3), "gol"] = 3
+    return d
+
+
+def test_partita_senza_statistiche_si_usano_le_righe_ricostruite_dai_voti():
+    """La fonte delle statistiche si ferma dopo la giornata 2. Senza ripiego il modello ignora le giornate 3 e 4 (i 3 gol a
+    partita del Bomber non contano); con le righe ricostruite dai voti i suoi gol attesi salgono."""
+    fermo = _senza_statistiche(_con_tre_gol_nelle_ultime(_dati()), (3, 4))
+    senza = _p(fermo)
+    ricostruiti = modello.con_prestazioni_dai_voti(fermo)
+    con = _p(ricostruiti)
+    assert con.at[1, "e_gol"] > senza.at[1, "e_gol"] + 0.1
+    assert con.at[1, "e_rigori"] > 0 and con.at[1, "minuti"] == pytest.approx(90.0)
+    nuove = ricostruiti.prestazioni[ricostruiti.prestazioni["giornata"] >= 3]
+    assert len(nuove) == 6 and set(nuove["understat_partita"]) == {-3, -4}             # le partite 3 e 4, 3 giocatori l'una
+    bomber = nuove[nuove["calciatore_id"] == 1].iloc[0]
+    assert (bomber["minuti"], bomber["gol"], bomber["rigori_calciati"], bomber["rigori_squadra"]) == (90, 4, 1, 1)
+    # al posto degli xG i gol su azione veri, riportati alla scala della fonte (che ne conta di più dei gol), più i rigori
+    assert modello.XG_PER_GOL == 1.2 and bomber["xg"] == pytest.approx(3 * 1.2 + modello.XG_RIGORE) and bomber["xa"] == 0
+    assert modello.XA_PER_ASSIST == 1.2 and (nuove["xa"] == 1.2 * nuove["assist"]).all()
+
+
+def test_con_le_statistiche_le_righe_ricostruite_non_si_aggiungono():
+    d = _dati()
+    stessi = modello.con_prestazioni_dai_voti(d)
+    assert len(stessi.prestazioni) == len(d.prestazioni)
+    pd.testing.assert_frame_equal(_p(stessi), _p(_dati()))
+
+
+def test_partita_senza_statistiche_e_senza_voti_resta_fuori():
+    """Una partita giocata di cui non sono ancora arrivati né statistiche né voti: non c'è niente da ricostruire."""
+    d = _senza_statistiche(_dati(), (4,))
+    d.voti = d.voti[d.voti["giornata"] < 4].copy()
+    assert modello.con_prestazioni_dai_voti(d).prestazioni["giornata"].max() == 3
+
+
+def test_carica_mette_le_righe_ricostruite(tmp_path):
+    """Dall'archivio: una partita giocata con i voti ma senza statistiche arriva al modello con le righe ricostruite."""
+    from fanta import archivio
+    db = archivio.apri(tmp_path / "t.sqlite")
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, gol_casa, gol_trasferta, giocata) "
+               "VALUES (7, ?, 1, '2026-09-01 15:00', 'alfa', 'beta', 2, 0, 1)", (ST,))
+    for cid, sq, gol, sub in ((1, "alfa", 2, 0), (2, "beta", 0, 1)):
+        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, rig_segnati, "
+                   "rig_sbagliati, assist, subentrato, sostituito) VALUES (?, 1, ?, ?, ?, 'A', 6.5, ?, 0, 0, 0, ?, 0)",
+                   (ST, cid, f"g{cid}", sq, gol, sub))
+    p = modello.carica(db).prestazioni
+    db.close()
+    assert sorted(zip(p["calciatore_id"], p["squadra"], p["minuti"], p["gol"], p["understat_partita"])) == [
+        (1, "alfa", 90.0, 2, -7), (2, "beta", 19.0, 0, -7)]
+
+
+# ---------------------------------------------------------------- livello dei gol della stagione (#613)
+# I gol attesi delle squadre partono da `base`, che ha la memoria lunga e, dove ci sono, gli xG della fonte (più alti dei gol
+# veri). Il livello li riporta ai gol veri della stagione in corso, tirati verso `base` con K giornate fittizie. Vale per i gol
+# delle squadre (gol subiti e porta inviolata dei portieri), non per gol e assist dei giocatori.
+def _dati_con_risultato(gol: int) -> modello.Dati:
+    """Le 4 giornate giocate finite `gol`-`gol` (xG della fonte come in `_dati`: 1,2 in casa e 1,0 fuori)."""
+    d = _dati()
+    giocate = d.partite["giocata"] == 1
+    d.partite.loc[giocate, ["gol_casa", "gol_trasferta"]] = gol
+    return d
+
+
+def test_livello_della_stagione_tirato_verso_uno_con_le_giornate_fittizie():
+    d = _dati_con_risultato(2)
+    par = modello.Parametri(k_livello=5.0)
+    acceso, spento = modello.forza_squadre(d, ST, 5, par), modello.forza_squadre(d, ST, 5, replace(par, k_livello=None))
+    # 4 partite = 8 squadre-partita con 16 gol; il campionato ha 2 squadre, quindi 5 giornate fittizie = 10 squadre-partita
+    atteso = (16 + 10 * spento.base) / (8 + 10) / spento.base
+    assert 1 < atteso < 2 / spento.base                                 # verso i gol veri della stagione, non fino in fondo
+    assert acceso.livello_stagione == pytest.approx(atteso) and spento.livello_stagione == 1.0
+    for a, b in zip(acceso.gol_attesi("alfa", "beta"), spento.gol_attesi("alfa", "beta")):
+        assert a == pytest.approx(b * atteso)
+    # il resto della forza delle squadre è quello di prima
+    assert (acceso.base, acceso.casa, acceso.attacco, acceso.difesa, acceso.livello) == (
+        spento.base, spento.casa, spento.attacco, spento.difesa, spento.livello)
+    # più giornate fittizie: più vicino a 1
+    lento = modello.forza_squadre(d, ST, 5, replace(par, k_livello=20.0)).livello_stagione
+    assert 1 < lento < atteso
+
+
+def test_livello_della_stagione_sotto_uno_se_si_segna_meno_degli_xg():
+    """Risultati 1-1 con 1,2 e 1,0 xG: i gol attesi di base stanno sopra i gol veri (misto di xG e gol), il livello li abbassa."""
+    f = modello.forza_squadre(_dati(), ST, 5, modello.Parametri(k_livello=5.0))
+    assert f.base > 1 and f.livello_stagione == pytest.approx((8 + 10 * f.base) / 18 / f.base) and f.livello_stagione < 1
+
+
+@pytest.mark.parametrize("gol, atteso", [(9, modello.LIVELLO_MAX), (0, modello.LIVELLO_MIN)])
+def test_livello_della_stagione_limitato(gol, atteso):
+    assert modello.forza_squadre(_dati_con_risultato(gol), ST, 5, modello.Parametri(k_livello=1.0)).livello_stagione == atteso
+
+
+def test_livello_della_stagione_senza_partite_e_senza_dati_dal_futuro():
+    par = modello.Parametri(k_livello=5.0)
+    assert modello.forza_squadre(_dati(), ST, 1, par).livello_stagione == 1.0          # nessuna partita giocata prima
+    oggi = modello.forza_squadre(_dati_con_risultato(3), ST, 4, par)
+    futuro = _dati_con_risultato(3)
+    futuro.partite.loc[futuro.partite["giornata"] >= 4, ["gol_casa", "gol_trasferta", "giocata"]] = [9, 9, 1]
+    assert modello.forza_squadre(futuro, ST, 4, par) == oggi
+
+
+def test_il_livello_della_stagione_vale_per_le_squadre_non_per_gol_e_assist_dei_giocatori():
+    """Applicato una volta sola: i gol attesi delle due squadre salgono (e con loro i gol subiti attesi del portiere), ma la
+    «partita rispetto al solito» dei giocatori resta com'era, quindi gol, assist e rigori attesi non cambiano."""
+    d = _dati_con_risultato(3)
+    acceso, spento = (modello.previsioni(d, ST, 5, Regole(), modello.Parametri(k_livello=k)).set_index("id") for k in (5.0, None))
+    livello = modello.forza_squadre(d, ST, 5, modello.Parametri(k_livello=5.0)).livello_stagione
+    assert livello > 1.2
+    for c in ("gol_squadra", "gol_avversario"):
+        assert (acceso[c] / spento[c]).tolist() == pytest.approx([livello] * len(acceso), abs=0.01)
+    for c in ("fattore", "e_gol", "e_assist", "e_rigori", "p_voto", "minuti"):
+        assert acceso[c].tolist() == spento[c].tolist(), c
+    assert acceso.at[2, "mu"] < spento.at[2, "mu"] - 0.1                # il portiere (id 2) subisce più gol attesi
+    assert acceso.at[2, "p_imbattuto"] < spento.at[2, "p_imbattuto"]
+
+
+def test_in_produzione_livello_della_stagione_e_medie_del_ruolo_pesate():
+    par = modello.Parametri()
+    assert par.k_livello == 5.0 and par.medie_ruolo_pesate and par.decadimento_base is None
+

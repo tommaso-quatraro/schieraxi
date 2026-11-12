@@ -128,7 +128,7 @@
       "livello": "nerd",
       "paragrafi": [
         "Con poche partite una media è inaffidabile: un attaccante con un gol in una presenza non ha «un gol a partita». Per questo ogni stima è mescolata con una stima di partenza come se il giocatore avesse già giocato un certo numero di partite fittizie: 20 presenze per il voto (k_voto), 16 partite intere da 90 minuti per gol e assist (k_90), 10 per i cartellini, 20 per gli autogol, 6 partite per la forza delle squadre. Più il giocatore ha giocato, meno conta la stima di partenza.",
-        "La stima di partenza non è per forza la media del ruolo. Per i giocatori con poche partite il modello usa la quotazione iniziale di inizio stagione, fissata prima del campionato e quindi senza informazioni dal futuro. Per ogni ruolo calcola, sui dati già giocati, la retta che lega quotazione a voto, gol e assist ogni 90 minuti (servono almeno 15 giocatori con dati sufficienti) e vi fa partire i nuovi: un bomber appena arrivato parte da una stima da bomber, non da attaccante medio. Per gol e assist la stima è comunque tenuta tra un quarto e quattro volte la media del ruolo. Per il voto si usa solo metà della retta (a metà strada tra la media del ruolo e la retta): con la retta intera il voto dei giocatori più cari veniva sopravvalutato di circa un decimo, in tutte e due le stagioni provate (misura del 2/11/2026).",
+        "La stima di partenza non è per forza la media del ruolo. Per i giocatori con poche partite il modello usa la quotazione iniziale di inizio stagione, fissata prima del campionato e quindi senza informazioni dal futuro. Per ogni ruolo calcola, sui dati già giocati, la retta che lega quotazione a voto, gol e assist ogni 90 minuti (servono almeno 15 giocatori con dati sufficienti) e vi fa partire i nuovi: un bomber appena arrivato parte da una stima da bomber, non da attaccante medio. Per gol e assist la stima è comunque tenuta tra un quarto e quattro volte la media del ruolo. Per il voto si usa solo metà della retta (a metà strada tra la media del ruolo e la retta): con la retta intera il voto dei giocatori più cari veniva sopravvalutato di circa un decimo, in tutte e due le stagioni provate (misura del 2/11/2026). La media del ruolo si calcola con gli stessi pesi nel tempo dei giocatori (le partite recenti contano di più, la stagione scorsa la metà), quindi segue la stagione in corso.",
         "I valori dei parametri sono stati tarati il 26/10/2026 sulla stagione 2025-26 (giornate 5-38) minimizzando l'errore quadratico, e poi controllati sul 2026-27."
       ],
       "formula": "stima = (Σ peso × osservazioni + k × valore di partenza) / (Σ peso + k)",
@@ -146,10 +146,10 @@
       "paragrafi": [
         "L'xG (gol attesi) è la probabilità che un tiro diventi gol, stimata da dove e come è partito; l'xA fa lo stesso per l'ultimo passaggio. Sono più stabili dei gol veri, che sono rari e dipendono molto dalla fortuna. Il modello usa solo l'xG per i gol (peso_xg = 1,0, senza i rigori: un rigore vale 0,76 xG e viene tolto) e per gli assist mescola il 30% di xA e il 70% di assist veri (peso_xa = 0,3).",
         "Il tasso del giocatore (gol e assist ogni 90 minuti, con pesi nel tempo e restringimento) viene moltiplicato per la quota di partita che giocherà (minuti attesi diviso 90, al massimo 1) e per il «fattore partita»: i gol attesi della squadra in questa partita diviso i suoi gol attesi normali, tenuto tra 0,5 e 2.",
-        "Per i rigori conta la quota di rigori della squadra che il giocatore ha calciato (rigori suoi / rigori della squadra + 0,5) per i rigori attesi per partita (media del campionato, 0,13 nella prova fatta il 30/10/2026). Ogni rigore è segnato con probabilità 0,78 (conversione_rigori) e sbagliato con 0,22.",
+        "Per i rigori conta la quota dei rigori della squadra che il giocatore calcia. Si contano i rigori che ha calciato, con la memoria lunga (un rigore è raro: chi li calciava l'anno scorso resta il rigorista anche se quest'anno la squadra non ne ha ancora avuti), e si dividono per quelli di tutti i compagni di oggi più mezzo rigore messo in conto a un rigorista che ancora non si conosce: metà dei rigori li calcia chi non ne aveva mai calciati. La quota si moltiplica per i rigori attesi per partita (media del campionato, 0,13 nella prova fatta il 30/10/2026). Ogni rigore è segnato con probabilità 0,78 (conversione_rigori) e sbagliato con 0,22. Chi calcia almeno metà dei rigori della sua squadra ha il motivo «rigorista» nella sua scheda, uno solo per squadra (prima non usciva mai: chiedeva 0,15 rigori attesi a partita, e nessuno ci arriva). Misura del 12/11/2026: con la quota di prima (memoria corta) i rigori attesi erano il 42% e il 25% dei veri nelle due stagioni, ora il 51% e il 48%; di più non si può con questi dati, proprio perché metà dei rigori li calcia un giocatore senza precedenti.",
         "La probabilità di «almeno un gol» si ottiene da una distribuzione di Poisson (quella degli eventi rari e indipendenti): 1 meno e alla meno il numero di gol attesi, rigori compresi. La stessa cosa per gli assist."
       ],
-      "formula": "gol attesi = tasso gol/90' × min(minuti,90)/90 × fattore partita\nP(almeno un gol) = 1 - e^-(gol attesi + 0,78 × rigori attesi)\nrigori attesi = quota rigorista × rigori squadra a partita × fattore partita × min(1, minuti/75)",
+      "formula": "gol attesi = tasso gol/90' × min(minuti,90)/90 × fattore partita\nP(almeno un gol) = 1 - e^-(gol attesi + 0,78 × rigori attesi)\nrigori attesi = quota rigorista × rigori squadra a partita × fattore partita × min(1, minuti/75)\nquota rigorista = rigori suoi / (rigori suoi + rigori dei compagni di oggi + 0,5)",
       "esempio": {
         "titolo": "Un caso vero: Ramos G. (Milan-Udinese, giornata 8 del 2026-27)",
         "testo": "Gol attesi 0,498 e rigori attesi 0,100. La probabilità di segnare è 1 - e^-(0,498 + 0,78 × 0,100) = 43,8%, come mostra l'app. In punti: 0,498 × 3 + 0,100 × (0,78 × 3 - 0,22 × 3) = 1,49 + 0,17.",
@@ -164,10 +164,10 @@
       "livello": "nerd",
       "paragrafi": [
         "Ogni squadra ha un indice d'attacco e uno di difesa (1 = nella media, sopra 1 l'attacco segna di più o la difesa subisce di più) e c'è un fattore campo (chi gioca in casa segna di più). Si calcolano insieme dalle partite già giocate: così una squadra che ha incontrato avversari forti non viene penalizzata. Si parte da gol e xG (60% xG, 40% gol veri), le partite recenti contano di più (peso 0,98 per giornata, la stagione scorsa pesa 0,8) e chi ha poche partite viene tirato verso la media (come 3 partite fittizie).",
-        "I gol attesi si ottengono moltiplicando: base del campionato × attacco di una squadra × difesa dell'altra × fattore campo (diviso, per chi gioca fuori).",
+        "I gol attesi si ottengono moltiplicando: base del campionato × attacco di una squadra × difesa dell'altra × fattore campo (diviso, per chi gioca fuori) × livello della stagione. Il livello riporta la base ai gol veri della stagione in corso: la base mescola gli xG della fonte, che sono più alti dei gol veri, e la stagione scorsa, in cui si segnava meno. È il rapporto fra i gol veri della stagione e la base, tirato verso 1 con 5 giornate fittizie e tenuto fra 0,8 e 1,25. Misura del 12/11/2026: i gol attesi delle squadre erano il 107% dei veri nel 2025-26 e il 92% nel 2026-27, ora il 99% e il 94%. Il livello vale per i gol delle squadre, cioè per i gol subiti e la porta inviolata dei portieri; non entra nei gol e negli assist dei giocatori, dove lo scarto non è di livello (i centrocampisti segnano più del previsto, attaccanti e difensori no).",
         "La forza delle squadre viene solo da gol e xG: nessun'altra fonte entra nel calcolo. Misurato su 41 giornate passate, l'errore sul fantavoto è 1,424 e 1,594 (due stagioni)."
       ],
-      "formula": "gol casa = base × attacco(casa) × difesa(trasferta) × fattore campo",
+      "formula": "gol casa = base × attacco(casa) × difesa(trasferta) × fattore campo × livello della stagione\nlivello della stagione = (gol veri della stagione + 5 giornate × base) / (squadre-partita giocate + 5 giornate) / base",
       "fonte_codice": ["fanta/modello.py:forza_squadre", "fanta/modello.py:Forza.gol_attesi", "fanta/modello.py:Parametri"]
     },
     {
@@ -239,30 +239,30 @@
       "titolo": "Come si sceglie la formazione",
       "livello": "base",
       "paragrafi": [
-        "Per ogni modulo ammesso dalla tua lega il sistema compone i migliori undici e poi prova a migliorarli scambiando un titolare con i migliori esclusi dello stesso ruolo, finché non trova più vantaggi. Alla fine sceglie il modulo con il punteggio migliore.",
-        "«Migliore» non vuol dire solo punti attesi più alti: a parità (entro 0,2-0,3 punti) vince la formazione con i titolari più sicuri, cioè con meno rischio di una brutta giornata. Tutte le formazioni sono confrontate sulle stesse simulazioni, per un confronto leale.",
+        "Per ogni modulo ammesso dalla tua lega il sistema compone i migliori undici e poi prova a migliorarli scambiando un titolare con i migliori esclusi dello stesso ruolo, finché non trova più vantaggi. Alla fine sceglie il modulo con più punti attesi.",
+        "«Migliore» vuol dire più punti attesi, contando anche chi entra dalla panchina. Per questo tra i titolari può esserci uno che gioca meno di un compagno escluso: quando gioca vale di più, e quando non gioca entra la riserva. Chi quasi certamente non gioca (meno del 20%) lascia invece il posto a un compagno che gioca almeno il 20%, se in rosa c'è, qualunque sia il costo in punti attesi.",
         "Ogni modulo ha la sua formazione migliore, e puoi vederli tutti nell'app con i punti attesi."
       ],
       "rimandi": [{"schermata": "formazione", "etichetta": "Formazione"}, {"schermata": "oggi", "etichetta": "Oggi"}],
-      "fonte_codice": ["fanta/formazione.py:migliore", "fanta/consigli.py:_calcola_formazione"]
+      "fonte_codice": ["fanta/formazione.py:migliore", "fanta/formazione.py:PESO_BASE", "fanta/formazione.py:_senza_improbabili", "fanta/consigli.py:_calcola_formazione"]
     },
     {
       "id": "simulazione",
-      "titolo": "La simulazione delle sostituzioni",
+      "titolo": "Il conto delle sostituzioni",
       "livello": "nerd",
       "paragrafi": [
-        "I punti attesi di una formazione non sono la somma dei punti attesi degli undici, perché un titolare senza voto viene sostituito dalla panchina e conta come la lega decide. Per tenerne conto si fanno 600 giornate simulate (300 nelle verifiche sul passato, 200 nel controllo automatico dell'app). In ogni simulazione ogni giocatore prende voto con la sua probabilità p, in modo indipendente dagli altri, con un seme fisso (7) così il risultato è ripetibile.",
-        "In ogni simulazione si applicano le regole della lega: chi manca viene sostituito dal primo della panchina, nell'ordine, che ha preso voto e dello stesso ruolo. Se la lega ammette il cambio modulo, può entrare anche uno di un altro ruolo, ma solo se il modulo risultante è ammesso (la scelta è tra chi è disponibile, e con la panchina «per ruolo» prima si prova lo stesso ruolo). I cambi sono al massimo quelli consentiti dalla lega; i portieri si cambiano solo con portieri; un titolare senza sostituto vale zero, o il voto d'ufficio se la lega lo prevede.",
-        "Il modificatore difesa si calcola in ogni simulazione: se in campo ci sono portiere e almeno 4 difensori con voto, si fa la media del voto del portiere e dei 3 migliori difensori e si dà il bonus della soglia più alta raggiunta. Servono voti e non solo medie, perché il bonus va a scalini: a ogni voto in pagella atteso si somma un rumore casuale con deviazione 0,6.",
-        "Si prende la media sulle simulazioni (punti attesi), la deviazione standard e il 10° e il 90° percentile (brutta giornata e giornata eccezionale)."
+        "I punti attesi di una formazione non sono la somma dei punti attesi degli undici, perché un titolare senza voto viene sostituito dalla panchina e conta come la lega decide. Ogni giocatore prende voto con la sua probabilità p, in modo indipendente dagli altri: da qui si calcola, senza tirare a sorte, la probabilità che ogni riserva entri. I punti attesi sono la somma dei fantavoti attesi di titolari e riserve, ognuno pesato per la probabilità di andare a punteggio. Il conto è esatto: rifatto, dà lo stesso numero.",
+        "Nel conto valgono le regole della lega: chi manca viene sostituito dal primo della panchina, nell'ordine, che ha preso voto e dello stesso ruolo. Se la lega ammette il cambio modulo, può entrare anche uno di un altro ruolo, ma solo se il modulo risultante è ammesso (la scelta è tra chi è disponibile, e con la panchina «per ruolo» prima si prova lo stesso ruolo). I cambi sono al massimo quelli consentiti dalla lega; i portieri si cambiano solo con portieri; un titolare senza sostituto vale zero, o il voto d'ufficio se la lega lo prevede.",
+        "Il modificatore difesa si stima ancora con le simulazioni: 600 giornate simulate (300 nelle verifiche sul passato, 200 nel controllo automatico dell'app), con un seme fisso (7) così il risultato è ripetibile. In ogni simulazione, se in campo ci sono portiere e almeno 4 difensori con voto, si fa la media del voto del portiere e dei 3 migliori difensori e si dà il bonus della soglia più alta raggiunta. Servono voti e non solo medie, perché il bonus va a scalini: a ogni voto in pagella atteso si somma un rumore casuale con deviazione 0,6.",
+        "Dalle stesse simulazioni vengono la deviazione standard e il 10° e il 90° percentile (brutta giornata e giornata eccezionale), che servono agli stili. Due limiti. Con il cambio di modulo e una panchina lunga (da 8-9 riserve di movimento in su, secondo i cambi ammessi) i casi da contare sarebbero troppi, e i punti attesi restano la media delle simulazioni. E nelle leghe con il modificatore difesa, tra difensori o portieri quasi pari la scelta può ancora dipendere dalle simulazioni."
       ],
-      "formula": "punteggio simulato = Σ fantavoto di chi va a punteggio (titolari con voto + riserve entrate) + (scoperti × voto d'ufficio) + modificatore difesa\npunti attesi = media dei punteggi simulati",
+      "formula": "punti attesi = Σ (probabilità di voto × fantavoto atteso) dei titolari + Σ (probabilità di entrare × fantavoto atteso) delle riserve\n+ (titolari scoperti attesi × voto d'ufficio) + modificatore difesa medio (dalle simulazioni)",
       "esempio": {
         "titolo": "Modificatore difesa con le soglie della lega di prova",
         "testo": "Portiere 6,5 e difensori 6,5, 6,5, 6,0 e 6,0: media di portiere e 3 migliori = (6,5 + 6,5 + 6,5 + 6,0) / 4 = 6,375, che supera la soglia 6,25 ma non 6,5: bonus +1,5. Le soglie della lega sono 6 = +1, 6,25 = +1,5, 6,5 = +2, 6,75 = +2,5, 7 = +3, 7,25 = +3,5.",
         "origine": "vero"
       },
-      "fonte_codice": ["fanta/formazione.py:Valutatore", "fanta/formazione.py:chi_va_a_punteggio", "fanta/formazione.py:Valutatore._sostituzioni", "fanta/formazione.py:Valutatore._difesa", "fanta/formazione.py:SCARTO_VOTO", "fanta/punteggio.py:modificatore_difesa", "fanta/affidabilita.py:calcola"]
+      "fonte_codice": ["fanta/formazione.py:Valutatore", "fanta/formazione.py:Valutatore._media_esatta", "fanta/formazione.py:_ingressi_stesso_ruolo", "fanta/formazione.py:_ingressi_con_cambio", "fanta/formazione.py:MAX_CASI", "fanta/formazione.py:chi_va_a_punteggio", "fanta/formazione.py:Valutatore._difesa", "fanta/formazione.py:SCARTO_VOTO", "fanta/punteggio.py:modificatore_difesa", "fanta/affidabilita.py:calcola"]
     },
     {
       "id": "panchina",
@@ -270,22 +270,22 @@
       "livello": "nerd",
       "paragrafi": [
         "Se la lega fissa i posti di panchina per ruolo (per esempio 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti), il sistema porta in panchina i migliori di ogni ruolo per punti attesi, tanti quanti sono i posti. Altrimenti prende i migliori non titolari, con almeno un portiere se c'è.",
-        "L'ordine conta perché il primo disponibile entra per primo: con la panchina «per ruolo» le riserve sono ordinate per ruolo e poi per valore, con la «libera» per valore. Provare criteri diversi per scegliere la panchina non ha dato motivi per cambiare quello attuale."
+        "L'ordine conta perché il primo disponibile entra per primo. Una riserva entra solo se ha preso voto, e a quel punto conta quanto vale quando gioca: per questo le riserve sono in ordine di fantavoto atteso, non di punti attesi. Con la panchina «per ruolo» prima i ruoli nell'ordine della lega e dentro il ruolo chi vale di più; con la «libera» chi vale di più, di ogni ruolo. Chi quasi certamente non gioca (meno del 20%) sta dopo gli altri. Misura del 12/11/2026 sulle giornate passate (stessi titolari e stesse riserve, 537 casi): da +0,09 a +0,13 punti attesi a giornata rispetto all'ordine per punti attesi, quasi mai peggio (al più un centesimo)."
       ],
-      "fonte_codice": ["fanta/formazione.py:_panchina", "fanta/regole.py:Panchina", "docs/STILI.md"]
+      "fonte_codice": ["fanta/formazione.py:_panchina", "fanta/formazione.py:IMPROBABILE_SOTTO", "fanta/regole.py:Panchina", "docs/STILI.md"]
     },
     {
       "id": "stili",
       "titolo": "Gli stili: preset di rischio e di modulo",
       "livello": "base",
       "paragrafi": [
-        "Uno stile è un modo di scegliere: dal «Molto sicura» al «Molto rischiosa», passando per «Equilibrata», che è la consigliata. Cambia due cose insieme. Il profilo dei giocatori: quanto pesa evitare la brutta giornata o inseguire la giornata eccezionale. E la preferenza di modulo: gli stili sicuri premiano le difese più folte, quelli rischiosi un attaccante in più.",
+        "Uno stile è un modo di scegliere: dal «Molto sicura» al «Molto rischiosa», passando per «Equilibrata», che è la consigliata: la formazione con più punti attesi. Gli altri stili cambiano due cose insieme. Il profilo dei giocatori: quanto pesa evitare la brutta giornata o inseguire la giornata eccezionale. E la preferenza di modulo: gli stili sicuri premiano le difese più folte, quelli rischiosi un attaccante in più.",
         "Gli stili cambiano il carattere della scelta, non fanno magicamente guadagnare punti: nella misura del 30/10/2026 sulle rose della lega, nessuno stile (tranne il «Molto sicura», che costa circa un punto a giornata) si distingue dall'«Equilibrata» oltre il rumore di misura."
       ],
       "formula": "punteggio di scelta = punti attesi - peso_giù × (punti attesi - brutta giornata) + peso_su × (giornata eccezionale - punti attesi)\n+ inclinazione modulo: punti per ogni difensore e per ogni attaccante oltre il 4-x-3",
       "esempio": {
-        "titolo": "Equilibrata con numeri di esempio",
-        "testo": "Peso 0,15: una formazione con 70 punti attesi e brutta giornata a 64 (10° percentile) vale 70 - 0,15 × 6 = 69,1 per la scelta. Una da 69,7 con brutta giornata a 67 vale 69,7 - 0,15 × 2,7 = 69,3 e passa avanti.",
+        "titolo": "Sicura con numeri di esempio",
+        "testo": "Peso 0,6: una formazione con 70 punti attesi e brutta giornata a 64 (10° percentile) vale 70 - 0,6 × 6 = 66,4 per la scelta. Una da 69,7 con brutta giornata a 67 vale 69,7 - 0,6 × 2,7 = 68,1 e passa avanti. Per l'«Equilibrata» i pesi sono zero: vince quella da 70.",
         "origine": "di calcolo"
       },
       "numeri": [],
@@ -297,8 +297,8 @@
       "titolo": "Gli stili alla prova",
       "livello": "nerd",
       "paragrafi": [
-        "Pesi usati: Molto sicura (1,5 giù / 0 su, inclinazione 0,5 punti per difensore), Sicura (0,6 / 0, 0,5), Equilibrata (0,15 / 0, 0), Rischiosa (0 / 0,25, 0,5 per attaccante), Molto rischiosa (0 / 0,5, 0,5).",
-        "Misura del 30/10/2026 (76 casi squadra-giornata, 100 simulazioni): Equilibrata 69,29 punti a giornata. Sicura +0,09 (errore standard 0,09), Sicura con inclinazione sui difensori +0,18, Molto sicura -0,96 (0,44), Rischiosa +0,32 (0,31), Molto rischiosa +0,26 (0,32). Sotto circa ±0,3 con questo campione è rumore.",
+        "Pesi usati: Molto sicura (1,5 giù / 0 su, inclinazione 0,5 punti per difensore), Sicura (0,6 / 0, 0,5), Equilibrata (0 / 0, 0: dal 12/11/2026 sceglie solo per punti attesi, prima 0,15 / 0), Rischiosa (0 / 0,25, 0,5 per attaccante), Molto rischiosa (0 / 0,5, 0,5).",
+        "Misura del 30/10/2026 (76 casi squadra-giornata, 100 simulazioni), quando l'«Equilibrata» aveva ancora il peso 0,15: Equilibrata 69,29 punti a giornata. Sicura +0,09 (errore standard 0,09), Sicura con inclinazione sui difensori +0,18, Molto sicura -0,96 (0,44), Rischiosa +0,32 (0,31), Molto rischiosa +0,26 (0,32). Sotto circa ±0,3 con questo campione è rumore.",
         "Letture oneste: spostare il modulo non costa punti oltre il rumore; il vantaggio dei preset è nel profilo, non nei punti medi; con la qualità attuale dei dati il 4-3-3 resta il modulo più scelto da tutti gli stili. Da rimisurare quando l'archivio avrà più giornate."
       ],
       "fonte_codice": ["fanta/formazione.py:LIVELLI_RISCHIO", "docs/STILI.md"]
@@ -436,7 +436,7 @@
       "livello": "base",
       "paragrafi": [
         "Fantacalcio.it: listone dei calciatori (una volta al giorno), calendario, voti delle giornate (quelle giocate che mancano più quelle finite da meno di 4 giorni, perché le correzioni arrivano dopo) e probabili formazioni (a ogni aggiornamento).",
-        "Understat: xG, xA, tiri, minuti e rigori calciati, partita per partita (totali a ogni aggiornamento, dettaglio delle partite giocate che mancano). È l'unica fonte di queste statistiche: se sparisse, ci sarebbe un piano B a pagamento ancora da decidere.",
+        "Understat: xG, xA, tiri, minuti e rigori calciati, partita per partita (totali a ogni aggiornamento, dettaglio delle partite giocate che mancano). È l'unica fonte di queste statistiche: se sparisse, ci sarebbe un piano B a pagamento ancora da decidere. Se per una partita giocata non arrivano (è successo dal 1° novembre 2026), il modello non la ignora: ricostruisce le righe dai voti, con gol, assist, rigori e minuti stimati (90 per chi gioca tutta la partita, 71 per chi esce, 19 per chi entra); per quelle partite al posto di xG e xA valgono i gol su azione e gli assist veri moltiplicati per 1,2 (tanti ne conta in media la fonte per ogni gol e per ogni assist vero), e un controllo dei dati lo segnala. Misura del 12/11/2026, togliendo apposta le statistiche delle ultime giornate: con una fonte ferma da 8 giornate, rispetto a ignorare quelle partite, l'errore del fantavoto atteso va da -0,5% a +0,2% secondo la stagione e i gol attesi restano al livello di prima (1,03 e 0,94 dei veri, contro 1,02 e 0,89 con la fonte che funziona; ignorando le partite scendevano a 0,83).",
         "football-data.co.uk: solo le statistiche di squadra (xG, tiri, angoli, cartellini) per le partite giocate e per le prossime (al massimo ogni 6 ore), conservate in ombra.",
         "Sul server l'aggiornamento è programmato alle 8, 13, 17 e 21 di ogni giorno. Le richieste sono educate: una alla volta, almeno un secondo di pausa, fino a 3 tentativi, e non si riscarica quello che c'è già. Non tutto si può riscaricare (una fonte che chiude non ridà le stagioni passate): per questo ogni notte il server fa una copia dell'archivio.",
         "Le coppe europee (per il turnover) sono date inserite a mano e vanno aggiornate."

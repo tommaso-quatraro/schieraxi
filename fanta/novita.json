@@ -1,5 +1,45 @@
 [
   {
+    "versione": "1.470",
+    "data": "2026-11-12T13:47:04",
+    "titolo": "Fantavoto atteso: partite senza statistiche, rigoristi e portieri",
+    "voci": [
+      "Web, iPhone e iPad: il fantavoto atteso non invecchia più quando mancano le statistiche di una partita. Se la fonte è ferma, per le partite già giocate si usano gol, assist, rigori e minuti ricavati dai voti.",
+      "Web, iPhone e iPad: i rigori pesano di più nel fantavoto atteso di chi li calcia, che resta il rigorista anche se da un po' la squadra non ne ha avuti. Nella scheda del giocatore torna il motivo breve «rigorista», che prima non usciva mai: uno per squadra. Lo stesso elenco vale per i widget.",
+      "Web, iPhone e iPad: il fantavoto atteso dei portieri segue quanti gol si segnano in questa stagione: prima i gol subiti attesi erano troppi nella scorsa stagione e troppo pochi in questa.",
+      "Per chi amministra il server: nello stato dei dati un controllo nuovo avvisa se una partita giocata ha i voti ma non le statistiche."
+    ],
+    "tecnico": [
+      "modello.carica aggiunge, per le partite giocate senza righe in `prestazioni`, le righe ricostruite dai voti (`con_prestazioni_dai_voti`: `understat_partita` negativo, xG = 1,2 x gol su azione + 0,76 per rigore calciato, xA = 1,2 x assist: XG_PER_GOL e XA_PER_ASSIST, la scala della fonte). `prestazioni_dai_voti` e `minuti_stimati` passano da nostri.py a modello.py (nostri li riusa).",
+      "controlli.partite_senza_statistiche: avviso (non errore) con il numero di partite per giornata; non si applica se la fonte delle statistiche è spenta.",
+      "Parametri.rigori_squadra = True e campo nuovo `rigori_di_un_altro` (0,5; 0 nei numeri «nostri»). La previsione ha la colonna nuova `quota_rigori`; regola unica `consigli.rigorista` per il motivo della scheda e per `rigoristi` di /api/widget: `quota_rigori` >= 0,5 (QUOTA_RIGORISTA) e `primo_rigorista` (uno per squadra, fra chi non è infortunato né squalificato); prima `e_rigori` >= 0,15, che non si raggiungeva mai.",
+      "Parametri.medie_ruolo_pesate = True. Campo nuovo `k_livello` (5 giornate fittizie; None nei «nostri»): `Forza.livello_stagione` moltiplica i gol attesi delle squadre e il «solito» della squadra, quindi `fattore`, gol, assist e rigori attesi dei giocatori non cambiano.",
+      "I numeri «nostri» restano identici. Nessun cambio alle forme delle risposte."
+    ]
+  },
+  {
+    "versione": "1.469",
+    "data": "2026-11-12T12:44:21",
+    "titolo": "Formazione: consigliata con più punti attesi e panchina in ordine migliore",
+    "voci": [
+      "Web, iPhone e iPad: la formazione consigliata ora è quella con più punti attesi. Prima rinunciava a qualche decimo per avere titolari un po' più sicuri, senza che i punti veri ne guadagnassero. Sull'iPhone e sull'iPad chi preferisce meno rischi trova ancora gli stili «Sicura» e «Molto sicura».",
+      "Web, iPhone e iPad: la panchina consigliata mette davanti, in ogni ruolo, chi vale di più quando gioca. Una riserva entra solo se ha preso voto: a quel punto conta il suo fantavoto atteso, non quanto è probabile che giochi. Chi quasi certamente non gioca sta in fondo.",
+      "L'ordine della panchina cambia subito, anche per la giornata che hai già aperto (da 2 a 7 posti, a seconda della squadra): se avevi già copiato la panchina nell'app della tua lega, ricontrollala. I titolari della consigliata che hai già visto restano quelli, come sempre: cambiano solo se la nuova formazione vale almeno un punto in più.",
+      "Web, iPhone e iPad: chi quasi certamente non gioca (meno del 20%) non è mai proposto titolare se in rosa c'è un compagno dello stesso ruolo che si può schierare e gioca almeno il 20%. Prima serviva un compagno che giocasse almeno il 50%, e solo se il cambio costava poco.",
+      "Web, iPhone e iPad: sotto il campo, la riga di un titolare incerto nomina la riserva del suo ruolo che gioca quasi di sicuro, anche quando in panchina non è la prima. Se una riserva così non c'è, la riga lo dice.",
+      "Web, iPhone e iPad: i punti attesi di una formazione sono un conto esatto e non più una stima: lo stesso calcolo rifatto dà lo stesso numero e gli stessi titolari. Nelle leghe con il modificatore difesa, tra difensori o portieri quasi pari la scelta può ancora cambiare di poco."
+    ],
+    "tecnico": [
+      "formazione.PESO_BASE = (0, 0): lo stile 0 («Equilibrata») sceglie per soli punti attesi; gli altri stili restano nell'API con i loro pesi. Descrizione dello stile 0 nel campo `descrizione` di `livelli` aggiornata (i testi di ripiego di web e iPhone sono ancora quelli vecchi).",
+      "formazione._panchina: per ruolo (ruolo, fantavoto atteso), libera per fantavoto atteso; chi gioca meno di IMPROBABILE_SOTTO in fondo; chi va in panchina resta scelto per gioca x fantavoto.",
+      "formazione._senza_improbabili: COMPAGNO_ALMENO = IMPROBABILE_SOTTO (0,2; prima 0,5) e niente più tetto di costo (COSTO_MASSIMO_CAMBIO, che era 0,3, è tolto). Le frasi `confronto.titolare_che_gioca` e `scelta.titolare_che_gioca` seguono la stessa soglia.",
+      "formazione.Valutatore: punti attesi esatti (`_media_esatta`): senza cambio di modulo reparto per reparto (`_ingressi_stesso_ruolo`), con il cambio di modulo tutti i casi (`_ingressi_con_cambio`, fino a MAX_CASI = 32768: oltre restano le simulazioni, per tutti i moduli insieme). Le simulazioni servono per modificatore difesa, oscillazione e stili, e si fanno solo quando servono.",
+      "consigli.incerti: una voce per ogni titolare sotto il 50%; `riserva` = la prima del ruolo, nell'ordine della panchina, che gioca più dell'80%, oppure `null` (prima: solo la prima riserva del ruolo, e nessuna voce se non era sicura). La web salta le voci con `riserva: null`; l'iPhone non legge il campo.",
+      "perche_scelta: frase `scelta.incerto` riscritta («se non gioca, in panchina c'è X che gioca quasi di sicuro…»), frase nuova `scelta.incerto_senza_riserva` con `altro: null` per l'incerto senza riserva sicura e senza un escluso con più punti attesi. Stesso testo per `formazione.incerto` del catalogo (foglio «Perché questo numero» della web).",
+      "`punteggio_atteso` e `alternative` cambiano di qualche centesimo (non c'è più il rumore della simulazione). Campi che ora possono essere `null`: `incerti[].riserva` e `perche_scelta[].altro` (web e iPhone li reggono già)."
+    ]
+  },
+  {
     "versione": "1.468",
     "data": "2026-11-12T11:25:06",
     "titolo": "Web più semplice: via le funzioni che complicavano",

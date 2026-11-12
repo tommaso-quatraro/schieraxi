@@ -12,6 +12,8 @@ import sqlite3
 from datetime import datetime
 from typing import Callable
 
+from . import fonti_attive
+
 PARTITE_PER_GIORNATA = 10
 MIN_VOTI_GIORNATA = 180          # in una giornata finita ne arrivano circa 280
 SOGLIA_XG = 1.0                  # differenza massima tra l'xG della partita e la somma di quello dei giocatori
@@ -123,6 +125,34 @@ def gol_subiti_portieri(db: sqlite3.Connection, stagione: str) -> Esito | None:
     return _confronto(righe, storte, "i gol presi dai portieri diversi dal risultato", "gol presi dai portieri uguali al risultato")
 
 
+def partite_senza_statistiche(db: sqlite3.Connection, stagione: str) -> Esito | None:
+    """Le partite giocate che hanno già i voti devono avere anche le statistiche per partita (minuti, xG, rigori calciati). Se
+    mancano, la fonte è ferma o in ritardo: per quelle partite il modello usa le righe ricostruite dai voti, senza xG
+    (`modello.con_prestazioni_dai_voti`, #613). Una partita senza voti non conta: è appena finita.
+    Con la fonte spenta apposta (le fonti sono spente di default) il controllo non si applica: le righe vengono dai voti per
+    scelta, e un avviso a ogni giro non direbbe niente."""
+    if not fonti_attive.acceso("understat"):
+        return None
+    righe = db.execute("""
+        SELECT p.giornata, COUNT(*),
+               SUM(NOT EXISTS (SELECT 1 FROM prestazioni pr WHERE pr.understat_partita = p.understat_id))
+        FROM partite p
+        WHERE p.stagione = ? AND p.giocata = 1
+          AND EXISTS (SELECT 1 FROM voti v WHERE v.stagione = p.stagione AND v.giornata = p.giornata
+                      AND v.squadra IN (p.casa, p.trasferta))
+        GROUP BY p.giornata ORDER BY p.giornata""", (stagione,)).fetchall()
+    if not righe:
+        return None
+    senza = [(g, int(n)) for g, _, n in righe if n]
+    partite = sum(n for _, n, _ in righe)
+    if senza:
+        quante = sum(n for _, n in senza)
+        elenco = ", ".join(f"g{g}: {n}" for g, n in senza[-8:])
+        return "avviso", float(quante), (f"{_percento(quante, partite)} partite giocate senza statistiche ({elenco}): "
+                                         "gol, assist e minuti attesi lì vengono dai voti")
+    return "ok", 0.0, f"{partite} partite giocate, tutte con le statistiche"
+
+
 CONTROLLI: dict[str, Callable[[sqlite3.Connection, str], Esito | None]] = {
     "partite_per_giornata": partite_per_giornata,
     "voti_per_giornata": voti_per_giornata,
@@ -130,6 +160,7 @@ CONTROLLI: dict[str, Callable[[sqlite3.Connection, str], Esito | None]] = {
     "titolari_per_squadra": titolari_per_squadra,
     "gol_dei_voti": gol_dei_voti,
     "gol_subiti_portieri": gol_subiti_portieri,
+    "partite_senza_statistiche": partite_senza_statistiche,
 }
 # Il nome di ogni controllo per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui, i client le mostrano)
 ETICHETTE = {
@@ -139,6 +170,7 @@ ETICHETTE = {
     "titolari_per_squadra": "11 titolari per squadra",
     "gol_dei_voti": "Gol dei voti uguali al risultato",
     "gol_subiti_portieri": "Gol presi dai portieri uguali al risultato",
+    "partite_senza_statistiche": "Statistiche delle partite giocate",
     "sentinella": "Sentinella: risposte dell'app",
 }
 

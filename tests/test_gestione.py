@@ -51,6 +51,32 @@ def test_motivi_senza_percentuali_sul_giocare():
             assert not any(f"{perc:.0f}%" in x for x in m), m
 
 
+def test_rigorista_e_chi_calcia_piu_della_meta_dei_rigori_della_squadra():
+    """#613: la frase «rigorista» guardava i rigori attesi a partita (soglia 0,15), che nessuno raggiungeva mai: una squadra ne
+    calcia circa 0,14 a partita. Ora guarda la quota dei rigori della squadra che va al giocatore, se gioca."""
+    assert "rigorista" in consigli.motivi(_giocatore(stato="titolare", quota_rigori=0.8, e_rigori=0.10))
+    assert "rigorista" in consigli.motivi(_giocatore(quota_rigori=0.5, e_rigori=0.06))
+    assert "rigorista" not in consigli.motivi(_giocatore(quota_rigori=0.45, e_rigori=0.30))      # ne calcia meno della metà
+    assert "rigorista" not in consigli.motivi(_giocatore(e_rigori=0.30))                         # previsione senza la quota
+    assert consigli.motivi(_giocatore(stato="squalificato", quota_rigori=0.9)) == ["squalificato"]
+
+
+def test_rigorista_una_regola_sola_per_la_scheda_e_per_il_widget():
+    """Revisione di #613: la scheda guardava la quota dei rigori, il widget ancora i rigori attesi (mai sopra 0,15). Una funzione
+    sola, `consigli.rigorista`: il motivo della scheda c'è se e solo se lei dice sì. Chi è fuori o non gioca in questa giornata
+    non lo è (la scheda non gli dice niente sui rigori)."""
+    casi = [_giocatore(stato="titolare", quota_rigori=0.8, e_rigori=0.10), _giocatore(quota_rigori=0.5, e_rigori=0.06),
+            _giocatore(quota_rigori=0.45, e_rigori=0.30), _giocatore(e_rigori=0.30),
+            _giocatore(stato="squalificato", quota_rigori=0.9), _giocatore(stato="infortunato", quota_rigori=0.9),
+            _giocatore(quota_rigori=0.9, rinvio="senza_voto", mu=6.0), _giocatore(stato="panchina", quota_rigori=0.7)]
+    assert [consigli.rigorista(x) for x in casi] == [True, True, False, False, False, False, False, True]
+    for x in casi:
+        assert ("rigorista" in consigli.motivi(x)) == consigli.rigorista(x)
+    # uno solo per squadra: chi non è il primo rigorista della sua squadra non lo è, anche con la quota sopra la metà
+    assert not consigli.rigorista(_giocatore(quota_rigori=0.6, primo_rigorista=False))
+    assert consigli.rigorista(_giocatore(quota_rigori=0.6, primo_rigorista=True))
+
+
 def test_infortunato_niente_consigli_sulla_partita():
     """Collaudo 2/11/2026: un infortunato aveva ancora «gol atteso 68%» e «partita favorevole» (oggi «49% di segnare»)."""
     for stato in ("infortunato", "squalificato"):

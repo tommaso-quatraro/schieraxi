@@ -613,8 +613,12 @@
     "en": "Starting instead of {altro}, who will almost certainly not play ({p}% chance of playing)."
   },
   "frase.scelta.incerto": {
-    "it": "Titolare anche se incerto (gioca {p}%): se non gioca entra {riserva} dalla panchina, e insieme valgono di più.",
-    "en": "Starting even though uncertain (plays {p}%): if he doesn't play, {riserva} comes on from the bench, and together they are worth more."
+    "it": "Titolare anche se incerto (gioca {p}%): se non gioca, in panchina c'è {riserva} che gioca quasi di sicuro, e insieme valgono di più.",
+    "en": "Starting even though uncertain (plays {p}%): if he doesn't play, {riserva} is on the bench and almost certainly plays, and together they are worth more."
+  },
+  "frase.scelta.incerto_senza_riserva": {
+    "it": "Titolare anche se incerto (gioca {p}%): in panchina nessuno del suo ruolo gioca quasi di sicuro.",
+    "en": "Starting even though uncertain (plays {p}%): nobody in his role on the bench is almost certain to play."
   },
   "frase.scelta.piu_punti": {
     "it": "Preferito a {altro}: con lui la formazione fa più punti attesi ({attuale} contro {invertita}).",

@@ -1,8 +1,9 @@
 """Il perché della scelta in una riga (#356, lavoro L3 di #166).
 
 A volte la consigliata sembra storta: un titolare ha meno punti attesi di un escluso dello stesso ruolo (in panchina o fuori). Per
-quei titolari, e per i titolari incerti con una riserva sicura (`consigli.incerti`, che avevano già la loro nota), il server scrive il
-motivo vero della scelta in una riga, come `Frase`. Gli altri titolari non hanno riga: il loro perché sta al tocco sul giocatore.
+quei titolari, e per i titolari incerti (`consigli.incerti`: con la riserva sicura avevano già la loro nota; senza, la riga dice
+che in panchina non c'è), il server scrive il motivo vero della scelta in una riga, come `Frase`. Gli altri titolari non hanno riga:
+il loro perché sta al tocco sul giocatore.
 
 Il conto è quello del Confronto (`consigli._in_formazione`): la formazione com'è contro la stessa con i due scambiati di posto e la
 panchina rifatta dal sistema, sulle stesse simulazioni, e la riga non dice mai il contrario del Confronto. I motivi, in quest'ordine:
@@ -10,13 +11,15 @@ panchina rifatta dal sistema, sulle stesse simulazioni, e la riga non dice mai i
 se scambiarli varrebbe di più (il Confronto dice «invertendoli varrebbe di più»): solo con la consigliata già mostrata e tenuta
 (#335) una riga, perché il cambio vale meno della soglia; altrimenti nessuna riga (meglio niente che una scusa: succede con gli
 stili prudenti o rischiosi e con un modulo diverso da quello proposto, che costano punti apposta);
-2. titolare anche se incerto: se non gioca entra la riserva, e insieme valgono di più;
+2. titolare anche se incerto: se non gioca, in panchina c'è una riserva che gioca quasi di sicuro, e insieme valgono di più;
 3. con lui la formazione fa più punti attesi;
 se le due formazioni valgono lo stesso (come per il Confronto, o con lo stesso numero a schermo):
 4. gioca più sicuro dell'altro;
 5. ha il fantavoto atteso (quello «se gioca») più alto;
 6. il primo motivo proprio a favore del suo «perché questo numero»;
 7. con l'uno o con l'altro la formazione vale quasi lo stesso.
+Un titolare incerto senza una riserva sicura e senza un escluso con più punti attesi ha la riga che lo dice (`senza_riserva`):
+non nomina nessuno e non ha un conto.
 
 Campo `perche_scelta` di ogni modulo della risposta di `GET /api/formazione`: [{titolare, altro, testo, frase}] (contratto in
 docs/API.md). Non cambia nessun numero né nessuna scelta.
@@ -75,6 +78,11 @@ def motivo(t: fz.Giocatore, altro: fz.Giocatore, attuale: float, invertita: floa
     return F("scelta.pari", altro=altro.nome, attuale=attuale, invertita=invertita)
 
 
+def senza_riserva(t: fz.Giocatore) -> Frase:
+    """La riga di un titolare incerto che in panchina non ha una riserva sicura del suo ruolo."""
+    return F("scelta.incerto_senza_riserva", p=percento(t.p))
+
+
 def conto(val: fz.Valutatore, rosa: list[fz.Giocatore], titolari: list[fz.Giocatore], panchina: list[fz.Giocatore],
           titolare: fz.Giocatore, altro: fz.Giocatore, regole) -> tuple[float, float]:
     """(punti attesi della formazione com'è, punti attesi con `altro` al posto di `titolare` e la panchina rifatta dal sistema):
@@ -88,7 +96,8 @@ def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.
     """Le righe di un modulo (`titolari`, `panchina`, `incerti` come in `consigli._moduli`), nell'ordine dei titolari.
     Scelta storta = un escluso dello stesso ruolo ha più punti attesi (`punti_attesi` delle schede, il numero che vede l'utente;
     senza, «gioca» per fantavoto atteso): l'altro è quello che ne ha di più. Per un titolare incerto l'altro è la sua riserva, quella
-    che la riga nomina: il conto (e il Confronto) è sempre sulla coppia della riga."""
+    che la riga nomina: il conto (e il Confronto) è sempre sulla coppia della riga. Un incerto senza riserva sicura e senza un
+    escluso più forte ha la riga `senza_riserva`, con `altro` = None."""
     per_id = {g.id: g for g in rosa}
     ids = [int(i) for i in m.get("titolari") or []]
     panchina_ids = [int(i) for i in m.get("panchina") or []]
@@ -98,7 +107,7 @@ def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.
     scelti = set(ids) | set(panchina_ids)
     # gli esclusi: prima la panchina nel suo ordine, poi gli altri della rosa (a pari punti vince il primo)
     esclusi = panchina_ids + [g.id for g in rosa if g.id not in scelti]
-    riserve = {int(x["titolare"]): int(x["riserva"]) for x in m.get("incerti") or []}
+    riserve = {int(x["titolare"]): x.get("riserva") for x in m.get("incerti") or []}      # None = nessuna riserva sicura
 
     def punti(i: int) -> float:
         v = (schede.get(str(i)) or {}).get("punti_attesi")
@@ -108,6 +117,9 @@ def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.
         rivali = [i for i in esclusi if per_id[i].ruolo == t.ruolo and punti(i) > punti(t.id)]
         riserva = per_id.get(riserve.get(t.id))
         if not rivali and riserva is None:
+            if t.id in riserve:           # incerto, nessuno da cui farsi coprire e nessuno con più punti: lo si dice
+                frase = senza_riserva(t)
+                righe.append({"titolare": t.id, "altro": None, "testo": frase, "frase": frase.json()})
             continue
         altro = riserva if riserva is not None else per_id[max(rivali, key=punti)]
         attuale, invertita = conto(val, rosa, titolari, panchina, t, altro, regole)
