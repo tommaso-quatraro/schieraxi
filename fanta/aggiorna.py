@@ -15,6 +15,8 @@ from dataclasses import asdict
 from datetime import date, datetime, timedelta
 from typing import Callable
 
+import requests
+
 from . import archivio, controlli, fonti_attive, funzioni, listone, rete, squadre
 from . import probabili_fonte2 as pf2
 from .fonti import fantacalcio as fc
@@ -24,6 +26,7 @@ from .fonti import understat as us
 GIORNATE = 38
 MAX_STAGIONI_STORICHE = 6     # tetto: ogni stagione in più sono circa 420 richieste (10-15 minuti)
 SOGLIA_COPIA = 0.95           # probabili uguali oltre questa quota alla giornata prima = copia (Aggiornamento._copia_della_giornata_prima)
+ORE_SENZA_PROBABILI = 48      # una giornata senza formazioni è normale se la prima partita è più lontana di così; più vicina è un errore
 
 
 class Stagione:
@@ -40,6 +43,10 @@ class Stagione:
 
     def precedente(self, quante: int = 1) -> "Stagione":
         return Stagione(self.anno - quante)
+
+
+class AltraStagione(ValueError):
+    """La pagina mostra ancora (o già) un'altra stagione: d'estate è normale, il passo riesce senza dati (vedi `calendario`)."""
 
 
 class VotiCalati(ValueError):
@@ -198,7 +205,11 @@ class Aggiornamento:
                 (st.codice, limite))]
         totale = 0
         for g in giornate:
-            totale += self._calendario_giornata(g)
+            try:
+                totale += self._calendario_giornata(g)
+            except AltraStagione as e:  # d'estate: niente da aggiornare, una richiesta sola, nessun guasto
+                self.scrivi(f"  calendario {st.codice}: {e}, niente da aggiornare")
+                return
             self.db.commit()            # una giornata alla volta: il cron e il server non restano bloccati ad aspettare
         if len(giornate) == GIORNATE:
             self._segna(cosa, _ora())
@@ -236,11 +247,18 @@ class Aggiornamento:
     def _calendario_giornata(self, g: int) -> int:
         """Una richiesta: il calendario (orari, risultati, giocata) di una giornata della stagione in corso."""
         st = self.st
-        partite = fc.leggi_calendario(rete.scarica(fc.url_calendario(g)).text, g, st.codice)
+        html = rete.scarica(fc.url_calendario(g)).text
+        partite = fc.leggi_calendario(html, g, st.codice)
+        if not partite and (altre := fc.stagioni_nel_calendario(html) - {st.codice}):
+            raise AltraStagione(f"il sito mostra ancora la stagione {', '.join(sorted(altre))}")
         if len(partite) != 10:
             raise ValueError(f"giornata {g}: trovate {len(partite)} partite della stagione {st.codice} "
                              "invece di 10 (a cavallo dell'estate il sito può mostrare l'altra stagione)")
         return self._salva_partite(partite, st)
+
+    def _stagione_iniziata(self, st: Stagione) -> bool:
+        """Almeno una partita della stagione già giocata, secondo il calendario in archivio."""
+        return self.db.execute("SELECT 1 FROM partite WHERE stagione = ? AND giocata = 1 LIMIT 1", (st.codice,)).fetchone() is not None
 
     def _salva_voti(self, st: Stagione, g: int, righe: list[dict]) -> None:
         """Riscrive i voti di una giornata, ma mai con meno righe di quelle salvate (`VotiCalati`, i voti di prima restano): una
@@ -281,14 +299,26 @@ class Aggiornamento:
         giornata, righe = fc.leggi_probabili(rete.scarica(fc.URL_PROBABILI).text)
         partite = {r["partita_id"] for r in righe}
         titolari = sum(r["stato"] == "titolare" for r in righe)
-        if giornata is None or not partite or titolari < 20 * len(partite):
-            raise ValueError(f"pagina probabili non riconosciuta (giornata {giornata}, {len(partite)} partite, "
-                             f"{titolari} titolari)")
+        non_riconosciuta = (f"pagina probabili non riconosciuta (giornata {giornata}, {len(partite)} partite, "
+                            f"{titolari} titolari)")
+        if giornata is None:
+            raise ValueError(non_riconosciuta)
         # le partite devono essere di questa stagione e di quella giornata (a luglio il sito mostra ancora maggio)
         note = {r[0] for r in self.db.execute("SELECT id FROM partite WHERE stagione = ? AND giornata = ?",
                                               (self.st.codice, giornata))}
-        if not partite <= note:
+        if partite and not partite <= note:
+            altre = self._stagioni_delle_partite(partite)
+            if altre:                      # d'estate la pagina mostra ancora la stagione finita: niente da salvare, nessun guasto
+                self.scrivi(f"  probabili: la pagina è ancora della stagione {', '.join(altre)} (giornata {giornata}), "
+                            "niente da salvare")
+                return
             raise ValueError(f"le probabili non corrispondono alla giornata {giornata} della stagione {self.st.codice}")
+        if titolari < 20 * max(1, len(partite)):
+            if self._ore_alla_giornata(giornata) > ORE_SENZA_PROBABILI:
+                # giornata lontana senza formazioni (per esempio la prima, ad agosto): normale, la giornata resta senza probabili
+                self.scrivi(f"  probabili giornata {giornata}: non ancora uscite ({titolari} titolari), niente da salvare")
+                return
+            raise ValueError(non_riconosciuta)   # vicino alle partite una pagina senza titolari non è normale
         quando = _ora()
         nuove = [{**r, "stagione": self.st.codice, "giornata": giornata, "fonte": "fantacalcio", "rilevato": quando}
                  for r in righe]
@@ -308,6 +338,22 @@ class Aggiornamento:
         archivio.inserisci(self.db, "probabili_storia", nuove)     # in più: la rilevazione resta anche dopo la prossima
         conta = {s: sum(r["stato"] == s for r in righe) for s in ("titolare", "panchina", "infortunato", "squalificato")}
         self.scrivi(f"  probabili giornata {giornata}: {conta}")
+
+    def _stagioni_delle_partite(self, partite: set[int]) -> list[str]:
+        """Le altre stagioni a cui appartengono TUTTE queste partite secondo l'archivio ([] se anche una sola non si conosce)."""
+        segnaposto = ", ".join("?" * len(partite))
+        righe = self.db.execute(f"SELECT id, stagione FROM partite WHERE id IN ({segnaposto}) AND stagione <> ?",
+                                (*partite, self.st.codice)).fetchall()
+        return sorted({r[1] for r in righe}) if {r[0] for r in righe} == partite else []
+
+    def _ore_alla_giornata(self, giornata: int) -> float:
+        """Ore da adesso alla prima partita della giornata (stagione in corso); -inf se la giornata non è in calendario."""
+        r = self.db.execute("SELECT MIN(data) FROM partite WHERE stagione = ? AND giornata = ?", (self.st.codice, giornata)).fetchone()
+        try:
+            inizio = datetime.fromisoformat(str(r[0]).replace(" ", "T")[:16]) if r and r[0] else None
+        except ValueError:
+            inizio = None
+        return float("-inf") if inizio is None else (inizio - datetime.fromisoformat(_ora())).total_seconds() / 3600
 
     def _copia_della_giornata_prima(self, giornata: int, righe: list[dict]) -> tuple[int, float] | None:
         """(giornata prima, quota di righe uguali) se la lettura è una copia della giornata prima, altrimenti None.
@@ -341,6 +387,9 @@ class Aggiornamento:
         # una pagina web al posto dei dati (manutenzione, blocco) ferma il passo qui, con un errore che lo dice: nessuna altra richiesta
         partite, giocatori = us.leggi_lega(us.dati_json(rete.scarica(us.url_lega(st.anno), headers=us.HEADERS).content))
         if not partite:
+            if not self._stagione_iniziata(st):     # d'estate la stagione nuova può non esserci ancora: niente da leggere
+                self.scrivi(f"  Understat {st.codice}: stagione non ancora iniziata, niente da leggere")
+                return
             raise ValueError("Understat non ha restituito partite")
         archivio.inserisci(self.db, "understat_stagione", [
             {**{k: v for k, v in g.items() if k != "nome"}, "stagione": st.codice} for g in giocatori])
@@ -420,7 +469,15 @@ class Aggiornamento:
             urls = (fd.url_stagione(st.fd),)
         extra = []
         for url in urls:
-            extra += fd.leggi_extra(rete.scarica(url).content.decode("utf-8-sig", errors="replace"), self.slug)
+            try:
+                risposta = rete.scarica(url)
+            except requests.HTTPError as e:
+                # il file di una stagione esce dopo le prime partite: prima di allora «non trovato» è normale
+                if url != fd.url_stagione(st.fd) or getattr(e.response, "status_code", None) != 404 or self._stagione_iniziata(st):
+                    raise
+                self.scrivi(f"  dati extra di squadra {st.codice}: file della stagione non ancora uscito")
+                continue
+            extra += fd.leggi_extra(risposta.content.decode("utf-8-sig", errors="replace"), self.slug)
         quando = _ora()
         archivio.inserisci(self.db, "partite_extra", [{**r, "stagione": st.codice, "rilevato": quando} for r in extra])
         if st is not self.st:

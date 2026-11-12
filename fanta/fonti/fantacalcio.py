@@ -97,6 +97,14 @@ def leggi_calendario(html: str, giornata: int, stagione: str) -> list[dict]:
     return partite
 
 
+def stagioni_nel_calendario(html: str) -> set[str]:
+    """Le stagioni delle partite che la pagina del calendario mostra (es. {'2026-27'}): d'estate il sito mostra ancora quella
+    vecchia, e `leggi_calendario` per la stagione nuova non trova niente. Insieme vuoto = nessuna partita riconoscibile."""
+    s = BeautifulSoup(html, "lxml")
+    return {m.group(1) for a in s.select("li.match .match-pill a.match-score")
+            if (m := re.search(r"/calendario/\d+/([^/]+)/", a.get("href", "")))}
+
+
 # ---------------- voti ----------------
 _BONUS = {"Gol segnati": "gol", "Gol subiti": "gol_subiti", "Autoreti": "autogol", "Rigori segnati": "rig_segnati",
           "Rigori sbagliati": "rig_sbagliati", "Rigori parati": "rig_parati", "Assist": "assist",
