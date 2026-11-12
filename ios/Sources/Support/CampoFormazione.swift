@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Una «pedina» sul campo, da leggere senza legenda: il volto (fondo con i colori della SUA squadra) con il fantavoto atteso in una
-/// pillola scura, il cognome, «gioca 85%» (sotto l'80% pillola arancio con l'icona di avviso, sotto il 50% rossa, con la soglia
-/// della scheda e della web, `SogliaGioca`; a partita iniziata il fantavoto
-/// preso o lo stato della partita, «Rinviata» per una partita rinviata: `EsitoPedina`) e l'avversario («vs NAP» in casa,
-/// «@ NAP» in trasferta) con un distintivo nei colori sociali. Niente anelli colorati con un significato nascosto. Testi in `LetturaPedina`.
+/// Una «pedina» sul campo, come `pedina` della web (#616, #673) con in più il volto (decisione 2 del proprietario): il volto (fondo
+/// con i colori della SUA squadra) con il fantavoto atteso in una pillola scura (a partita finita quello preso), il cognome, «gioca
+/// N%» solo sotto l'80% (pillola arancio con l'icona di avviso, rossa sotto il 50%, `SogliaGioca`), lo stato a parole («In dubbio»,
+/// «Infortunato» in rosso), a partita cominciata il suo stato, a formazione chiusa quando gioca chi deve ancora giocare. Niente
+/// avversario: sta nella scheda. Testi e frase per VoiceOver in `LetturaPedina.contenuto`.
 struct PedinaCampo: View {
     let g: Giocatore
     var diametro: CGFloat = 44
@@ -25,25 +25,22 @@ struct PedinaCampo: View {
     }
 
     private var pedina: some View {
-        VStack(spacing: 2) {
+        let c = LetturaPedina.contenuto(g, adesso: Orologio.adesso())
+        return VStack(spacing: 2) {
             AvatarGiocatore(id: g.id, squadra: g.squadra, dimensione: diametro, nome: g.nome, ruolo: g.ruolo)
                 .overlay(alignment: .bottom) {
-                    PillolaFantavoto(valore: g.fvAtteso, diametro: diametro).offset(y: 8)
+                    PillolaFantavoto(valore: c.valore, diametro: diametro).offset(y: 8)
                 }
                 .padding(.bottom, 8)
             // intero e a capo, mai rimpicciolito (12 punti al minimo): vedi `CognomePedina`
             CognomePedina(nome: g.nomeCorto)
-            // a partita iniziata o rinviata l'esito al posto di «gioca N%», come la web (`EsitoPedina`, #283 #284)
-            if let esito = g.esitoPedina {
-                RigaGioca(testo: esito, incerto: false)
-            } else if let gioca = LetturaPedina.gioca(g.pVoto) {
-                RigaGioca(testo: gioca, incerto: LetturaPedina.incerto(g.pVoto), basso: LetturaPedina.livello(g.pVoto) == .basso)
+            ForEach(Array(c.pezzi.enumerated()), id: \.offset) { _, pezzo in
+                RigaGioca(testo: pezzo.testo, incerto: pezzo.tono != .parola, basso: pezzo.tono == .basso)
             }
-            RigaAvversario(avversario: g.avversario, inCasa: g.inCasa)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(g.vocePedina)
+        .accessibilityLabel(c.voce)
     }
 }
 
@@ -95,52 +92,6 @@ struct RigaGioca: View {
         .dynamicTypeSize(...DynamicTypeSize.xLarge)   // tetto più basso: sotto il cognome, nella stessa larghezza
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// «vs [NAP]» in casa, «@ [NAP]» in trasferta. Il distintivo ha i colori sociali e la sigla: mai lo stemma ufficiale.
-/// Se la pedina è stretta «vs» va sopra la sigla, come la web: niente testo rimpicciolito.
-struct RigaAvversario: View {
-    let avversario: String?
-    let inCasa: Bool?
-
-    var body: some View {
-        if let avversario, !avversario.isEmpty {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 3) {
-                    prefisso
-                    DistintivoSquadra(squadra: avversario)
-                }
-                VStack(spacing: 1) {
-                    prefisso
-                    DistintivoSquadra(squadra: avversario)
-                }
-            }
-            .dynamicTypeSize(...DynamicTypeSize.xLarge)
-        }
-    }
-
-    @ViewBuilder private var prefisso: some View {
-        if let prefisso = LetturaPedina.prefisso(inCasa: inCasa) {
-            Text(prefisso).font(.caption2.weight(.bold)).foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.5), radius: 1)
-        }
-    }
-}
-
-/// La sigla di tre lettere di una squadra di Serie A nei suoi colori (fondo il primo colore, bordo il secondo, testo scuro o chiaro
-/// secondo il contrasto). Sostituisce gli stemmi ufficiali, che sono marchi registrati.
-struct DistintivoSquadra: View {
-    let squadra: String?
-
-    var body: some View {
-        let colori = ColoriSquadra.esadecimali(squadra)
-        Text(ColoriSquadra.sigla(squadra))
-            .font(.caption2.weight(.heavy)).monospaced()
-            .foregroundStyle(LetturaPedina.testoScuro(suEsadecimale: colori.0) ? Color.black : Color.white)
-            .padding(.horizontal, 4).padding(.vertical, 1)
-            .background(Color(esadecimale: colori.0), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Color(esadecimale: colori.1), lineWidth: 1))
     }
 }
 

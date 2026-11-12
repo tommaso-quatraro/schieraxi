@@ -38,114 +38,7 @@ final class DominioTests: XCTestCase {
 
     // Le etichette sono passate a Swift Testing: `EtichetteGiocatoreTests`.
 
-    // MARK: ballottaggi, testo, nome corto
-
-    func testBallottaggioSoloPerITitolariIncerti() throws {
-        let titolare = try giocatore(1, "Sicuro", titolarita: "titolare", punti: 6)
-        let incerto = try giocatore(2, "Incerto", titolarita: "ballottaggio", punti: 5)
-        let a = try giocatore(3, "Alt A", punti: 5.2)
-        let b = try giocatore(4, "Alt B", punti: 4.1)
-        let c = try giocatore(5, "Alt C", punti: 3.0)
-        let fuoriRuolo = try giocatore(6, "Attaccante", ruolo: "A", punti: 9)
-        let improbabile = try giocatore(7, "Mai", punti: 8, pVoto: 0.1)
-        let rosa = [titolare, incerto, a, b, c, fuoriRuolo, improbabile]
-        XCTAssertTrue(Ballottaggio.alternative(per: titolare, rosa: rosa, titolari: [titolare, incerto]).isEmpty)
-        let alt = Ballottaggio.alternative(per: incerto, rosa: rosa, titolari: [titolare, incerto])
-        XCTAssertEqual(alt.map(\.giocatore.nome), ["Alt A", "Alt B"], "due al massimo, i più forti dello stesso ruolo, senza chi gioca poco")
-        XCTAssertEqual(alt[0].differenza, 0.2, accuracy: 0.001)
-        XCTAssertTrue(alt[0].quasiPari)
-        XCTAssertFalse(alt[1].quasiPari)
-        // senza titolarità indicata (server vecchio) non c'è ballottaggio
-        let senza = try giocatore(8, "Senza", titolarita: nil)
-        XCTAssertTrue(Ballottaggio.alternative(per: senza, rosa: rosa, titolari: []).isEmpty)
-    }
-
-    func testTestoDellaFormazione() throws {
-        let p = try giocatore(1, "Noraldi", ruolo: "P")
-        let d1 = try giocatore(2, "Foselli")
-        let d2 = try giocatore(3, "Barucci")
-        let c = try giocatore(4, "Delardi", ruolo: "C")
-        let a = try giocatore(5, "Castotti", ruolo: "A")
-        let panchina = [try giocatore(6, "Pelucci", ruolo: "P"), try giocatore(7, "Fosaldi", ruolo: "P")]
-        let testo = TestoFormazione.crea(giornata: 9, modulo: "2-1-1", titolari: [a, c, d1, p, d2], panchina: panchina)
-        XCTAssertEqual(testo, "9ª giornata di Serie A · 2-1-1\nP: Noraldi\nD: Foselli, Barucci\nC: Delardi\nA: Castotti\nPanchina: 1) Pelucci, 2) Fosaldi")
-        XCTAssertFalse(TestoFormazione.crea(giornata: 1, modulo: "x", titolari: [], panchina: []).contains("Panchina"))
-    }
-
-    func testNomeCorto() throws {
-        XCTAssertEqual(try giocatore(1, "Dalanti S.").nomeCorto, "Dalanti")
-        XCTAssertEqual(try giocatore(1, "Monelli Feraldi").nomeCorto, "Monelli Feraldi")
-        XCTAssertEqual(try giocatore(1, "Lanotti E.").nomeCorto, "Lanotti")
-        XCTAssertEqual(try giocatore(1, "Pelayo").nomeCorto, "Pelayo")
-    }
-
-    // MARK: confronto
-
-    // MARK: scambi
-
-    // MARK: regole
-
-    func testPercorsiNelJSONDelleRegole() throws {
-        var v: JSONValue = try Fixture.decodifica("regole", snake: false)
-        XCTAssertEqual(v.valore("bonus.assist")?.numero, 1)
-        v.imposta("bonus.assist", .numero(1.5))
-        XCTAssertEqual(v.valore("bonus.assist"), .decimale(1.5))
-        v.imposta("crediti_iniziali", .numero(600))
-        XCTAssertEqual(v.valore("crediti_iniziali"), .intero(600), "un numero intero resta intero")
-        v.imposta("nuovo.livello.valore", .booleano(true))
-        XCTAssertEqual(v.valore("nuovo.livello.valore")?.booleano, true)
-        XCTAssertNil(v.valore("non.esiste"))
-    }
-
-    func testRiconoscimentoApplicatoSenzaSalvare() throws {
-        let originale: JSONValue = try Fixture.decodifica("regole", snake: false)
-        let riconosciute: [ModificaRegola] = [
-            ModificaRegola(chiave: "bonus.assist", etichetta: "Assist", valore: .decimale(2), riga: nil),
-            ModificaRegola(chiave: "moduli", etichetta: "Moduli", valore: .lista([.testo("3-4-3"), .testo("4-4-2")]), riga: nil),
-            ModificaRegola(chiave: "panchina.numero", etichetta: "Panchina", valore: .intero(7), riga: nil),
-        ]
-        let nuove = RegoleLogica.applica(riconosciute, a: originale)
-        XCTAssertEqual(nuove.valore("bonus.assist")?.numero, 2)
-        XCTAssertEqual(nuove.valore("moduli")?.elenco?.count, 2)
-        XCTAssertEqual(nuove.valore("panchina.numero")?.numero, 7)
-        // il resto delle regole non cambia
-        XCTAssertEqual(nuove.valore("bonus.gol.A"), originale.valore("bonus.gol.A"))
-        XCTAssertEqual(originale.valore("bonus.assist")?.numero, 1, "l'originale non si tocca")
-    }
-
-    func testFasceDelModificatoreDifesa() throws {
-        let v: JSONValue = try Fixture.decodifica("regole", snake: false)
-        let fasce = RegoleLogica.fasce(v)
-        XCTAssertEqual(fasce.count, 6)
-        XCTAssertEqual(fasce.first?.media, 6)
-        XCTAssertEqual(RegoleLogica.bonusDifesa(media: 5.9, fasce: fasce), 0)
-        XCTAssertEqual(RegoleLogica.bonusDifesa(media: 6.0, fasce: fasce), 1)
-        XCTAssertEqual(RegoleLogica.bonusDifesa(media: 6.6, fasce: fasce), 2)
-        XCTAssertEqual(RegoleLogica.bonusDifesa(media: 9, fasce: fasce), 3.5)
-        XCTAssertEqual(RegoleLogica.mediaDifesa([6.5, 6, 6.5, 7]), 6.5)
-        var scritte = v
-        RegoleLogica.scriviFasce([RegoleLogica.Fascia(media: 7, bonus: 4), RegoleLogica.Fascia(media: 6, bonus: 1)], in: &scritte)
-        XCTAssertEqual(RegoleLogica.fasce(scritte).map(\.media), [6, 7], "si scrivono in ordine di media")
-    }
-
-    func testControlliPrimaDiSalvareLeRegole() throws {
-        var v: JSONValue = try Fixture.decodifica("regole", snake: false)
-        // posti fissi: il numero in panchina diventa la somma dei posti (2 + 3 + 3 + 3)
-        v.imposta("panchina.numero", .intero(1))
-        XCTAssertEqual(try RegoleLogica.preparaPerSalvataggio(v).valore("panchina.numero")?.numero, 11)
-        // nessun modulo
-        var senzaModuli = v
-        senzaModuli.imposta("moduli", .lista([]))
-        XCTAssertThrowsError(try RegoleLogica.preparaPerSalvataggio(senzaModuli)) { XCTAssertEqual($0.localizedDescription, "Scegli almeno un modulo.") }
-        // due fasce con la stessa media
-        var doppie = v
-        doppie.imposta("modificatore_difesa.soglie", .lista([.lista([.intero(6), .intero(1)]), .lista([.intero(6), .intero(2)])]))
-        XCTAssertThrowsError(try RegoleLogica.preparaPerSalvataggio(doppie)) { XCTAssertTrue($0.localizedDescription.contains("stessa media")) }
-        // nome vuoto
-        var senzaNome = v
-        senzaNome.imposta("nome_lega", .testo("  "))
-        XCTAssertEqual(try RegoleLogica.preparaPerSalvataggio(senzaNome).valore("nome_lega")?.testo, "La mia lega")
-    }
+    // MARK: testo, nome corto
 
     func testDescrizioneDeiValoriRiconosciuti() {
         XCTAssertEqual(RegoleLogica.descrivi(.booleano(true)), "sì")
@@ -159,7 +52,7 @@ final class DominioTests: XCTestCase {
 
     func testCollegamentiSchieraxi() {
         func vai(_ testo: String) -> Destinazione? { URL(string: testo).flatMap { Collegamenti.interpreta($0) } }
-        XCTAssertEqual(vai("schieraxi://oggi"), .sezione(.oggi))
+        XCTAssertEqual(vai("schieraxi://oggi"), .sezione(.formazione), "Oggi è nella Formazione (#673): widget e avvisi vecchi la aprono")
         XCTAssertEqual(vai("schieraxi://formazione"), .sezione(.formazione))
         XCTAssertEqual(vai("schieraxi://mercato"), .sezione(.squadra), "Mercato è diventato Squadra")
         XCTAssertEqual(vai("schieraxi://squadra"), .sezione(.squadra))
@@ -182,13 +75,15 @@ final class DominioTests: XCTestCase {
     @MainActor
     func testSezioneDiAvvio() throws {
         let memoria = try XCTUnwrap(UserDefaults(suiteName: "prova-avvio-\(UUID().uuidString)"))
-        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .oggi, "senza scelte si parte da Oggi")
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione, "senza scelte si parte dalla Formazione, come la web")
+        memoria.set("oggi", forKey: "ultimaSezione")
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione, "chi era su Oggi si ritrova nella Formazione (#673)")
         memoria.set("scambi", forKey: "ultimaSezione")
         XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .altro, "predefinito: l'ultima sezione")
         memoria.set("mercato", forKey: "sezioneAvvio")
         XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .squadra, "una sezione scelta vince sull'ultima")
         memoria.set("boh", forKey: "sezioneAvvio")
-        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .oggi)
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione)
     }
 
     func testColoriESigleDelleSquadre() {

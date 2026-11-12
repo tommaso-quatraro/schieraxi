@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// Logica della schermata Oggi: carica la giornata, chiede il permesso per le notifiche e riprogramma i promemoria.
+/// I dati della giornata (`GET /api/oggi`) per la Formazione unica (#673): testa per fase, decisioni in cima, partite rinviate.
+/// Dopo ogni lettura fresca chiede il permesso per le notifiche (una volta) e passa la giornata a `Aggiornamento.elabora`, che
+/// riprogramma i promemoria e aggiorna i widget: prima lo faceva la scheda Oggi, ora la Formazione (`OggiPerWidgetTests`).
 @MainActor
 final class OggiViewModel: ViewModelBase {
     let caricatore: Caricatore<Oggi>
@@ -27,18 +29,11 @@ final class OggiViewModel: ViewModelBase {
     var errore: String? { caricatore.errore }
     var datiSalvati: Date? { caricatore.datiSalvati }
 
-    /// Avvisi che riguardano giocatori della formazione.
-    var daControllare: [Avviso] { (oggi?.avvisi ?? []).filter { $0.inFormazione == true } }
-    /// Altri indisponibili della rosa (infortunati e squalificati).
-    var indisponibili: [Avviso] { (oggi?.avvisi ?? []).filter { $0.inFormazione != true && ["infortunato", "squalificato"].contains($0.tipo ?? "") } }
-    /// Altri diffidati della rosa.
-    var diffidati: [Avviso] { (oggi?.avvisi ?? []).filter { $0.inFormazione != true && $0.tipo == "diffidato" } }
-
-    /// Ogni quanto si rilegge Oggi durante la giornata (i voti escono a fine partita: non serve di più).
+    /// Ogni quanto si rilegge la giornata mentre si gioca (i voti escono a fine partita: non serve di più).
     static let ripassoGiornata: TimeInterval = 300
 
-    /// Fase `in_corso`: rilegge Oggi ogni 5 minuti (punti fatti, cambi), finché la schermata è visibile e la giornata è in corso.
-    /// Solo la lettura: niente promemoria né permessi. La vista annulla il lavoro quando sparisce.
+    /// Fase `in_corso`: rilegge la giornata ogni 5 minuti (punti fatti, cambi), finché la Formazione è visibile e la giornata è in
+    /// corso. Solo la lettura: niente promemoria né permessi. La vista annulla il lavoro quando sparisce.
     func seguiGiornata() async {
         while !Task.isCancelled {
             do { try await Task.sleep(nanoseconds: UInt64(Self.ripassoGiornata * 1_000_000_000)) } catch { return }

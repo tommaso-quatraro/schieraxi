@@ -1,7 +1,8 @@
 import Foundation
 
-/// Come si legge una pedina del campo, a parole: «gioca 85%», «vs NAP» (in casa) / «@ NAP» (in trasferta), e la frase per VoiceOver.
-/// Logica pura (provata in `LetturaPedinaTests`); il disegno è in `Support/CampoFormazione.swift`.
+/// Come si legge una pedina del campo, a parole, come la web (#616): il fantavoto atteso, «gioca N%» solo sotto l'80%, lo stato a
+/// parole, e la frase per VoiceOver (`contenuto`). Logica pura (provata in `PedinaComeLaWebTests`); il disegno è in
+/// `Support/CampoFormazione.swift`.
 enum LetturaPedina {
     /// Quanto è probabile che giochi, con la soglia unica di `SogliaGioca` (#673): la stessa della scheda, delle righe e della
     /// web (sotto l'80% arancio, sotto il 50% rosso, sul numero che si legge). nil senza probabilità.
@@ -38,20 +39,69 @@ enum LetturaPedina {
         return s.prefix(1).uppercased() + s.dropFirst().lowercased()
     }
 
-    /// La frase completa per VoiceOver: «Rossi, difensore, fantavoto atteso 6,5, gioca all'85 per cento, avversario Napoli, in casa».
-    /// Con `esito` (partita iniziata o rinviata, `Giocatore.esitoPedina`) l'esito al posto di «gioca al N per cento», come la web.
-    static func voce(nome: String, ruolo: String, fvAtteso: Double?, pVoto: Double?, avversario: String?, inCasa: Bool?,
-                     esito: String? = nil) -> String {
-        var parti = [nome, ruolo, "fantavoto atteso \(Formato.punti(fvAtteso))"]
-        if let esito {
-            parti.append(esito)
-        } else if let pVoto {
-            parti.append("gioca al \(Formato.percento(pVoto)) per cento" + (incerto(pVoto) ? ", non è sicuro di giocare" : ""))
+    /// Un pezzo di testo sotto il cognome della pedina e come si mostra.
+    struct Pezzo: Equatable, Sendable {
+        enum Tono: Equatable, Sendable {
+            /// «gioca N%» fra 50 e 79: pillola arancio.
+            case medio
+            /// «gioca N%» sotto 50, o uno stato che dice che non gioca («Infortunato»): pillola rossa.
+            case basso
+            /// Una parola senza pillola: «In dubbio», lo stato della partita, quando gioca.
+            case parola
         }
-        if let avv = nomeSquadra(avversario) {
-            parti.append("avversario \(avv)" + (inCasa == true ? ", in casa" : inCasa == false ? ", in trasferta" : ""))
+        let testo: String
+        let tono: Tono
+    }
+
+    /// Cosa mostra la pedina, come `pedina` di app.js (#616): nel disco il fantavoto atteso (a partita finita quello preso), sotto il
+    /// cognome «gioca N%» solo sotto l'80%, lo stato a parole («In dubbio», «Infortunato», «Squalificato», «Fuori», «Rinviata»), a
+    /// partita cominciata il suo stato finché non c'è il voto, a formazione chiusa quando gioca chi deve ancora giocare. Niente
+    /// avversario: sta nella scheda, a un tocco. `adesso`: per «oggi», «domani» della data.
+    struct Contenuto: Equatable {
+        /// Il numero nel disco.
+        let valore: Double?
+        let pezzi: [Pezzo]
+        /// La frase per VoiceOver, come `vocePedina` della web: «Rossi, fantavoto atteso 6,8, gioca al 45 per cento, In dubbio».
+        let voce: String
+    }
+
+    static func contenuto(_ g: Giocatore, adesso: Date = Date()) -> Contenuto {
+        let partita = Self.esito(g)
+        let stato: ParolaStato? = partita == nil ? ParolaStato(g) : nil
+        let preso: Double? = partita?.fv
+        let attesa: String? = preso == nil ? partita?.testo : nil              // cominciata, senza voto (o rinviata): lo stato
+        let daGiocare = partita == nil && g.statoPartita == "da_giocare"       // formazione chiusa, la sua partita non è cominciata
+        let gioca = partita == nil && !daGiocare && !(stato?.nonGiocaDiSicuro ?? false) && SogliaGioca.daMostrare(g.pVoto)
+        let quando: String? = daGiocare ? Quando.data(g.dataPartita).map { Quando.relativa($0, adesso: adesso) } : nil
+        var pezzi: [Pezzo] = []
+        if gioca {
+            pezzi.append(Pezzo(testo: "gioca \(Formato.percento(SogliaGioca.letta(g.pVoto)))%",
+                               tono: SogliaGioca.livello(g.pVoto) == .basso ? .basso : .medio))
         }
-        return parti.joined(separator: ", ")
+        if let stato { pezzi.append(Pezzo(testo: stato.testo, tono: stato.nonGiocaDiSicuro ? .basso : .parola)) }
+        if let attesa { pezzi.append(Pezzo(testo: attesa, tono: .parola)) }
+        if let quando { pezzi.append(Pezzo(testo: quando, tono: .parola)) }
+        // la frase per VoiceOver: le stesse cose che si vedono
+        var frase: [String] = [g.nome, preso != nil ? (partita?.testo ?? "") : Catalogo.Formazione.voceFv(fv: Formato.punti(g.fvAtteso))]
+        if let attesa { frase.append(attesa) }
+        if gioca { frase.append(voceGioca(Formato.percento(g.pVoto))) }
+        if let stato { frase.append(stato.testo) }
+        if let quando { frase.append(quando) }
+        return Contenuto(valore: preso ?? g.fvAtteso, pezzi: pezzi, voce: frase.filter { !$0.isEmpty }.joined(separator: ", "))
+    }
+
+    /// La partita al posto di «gioca N%» (`esitoPedina` della web): a partita cominciata il fantavoto preso (`fv`) o lo stato; prima,
+    /// la partita rinviata. nil se la partita non è cominciata e non è rinviata.
+    static func esito(_ g: Giocatore) -> (fv: Double?, testo: String?)? {
+        if let partita = g.esitoPartita { return (partita.fv, partita.testo) }
+        guard let rinviata = g.esitoPedina else { return nil }
+        return (nil, rinviata)
+    }
+
+    /// «gioca al 62 per cento», «gioca all'85 per cento» (`formazione.voce_gioca`, `formazione.voce_gioca_v`).
+    static func voceGioca(_ percento: Int) -> String {
+        let vocale = percento == 1 || percento == 8 || percento == 11 || (80...89).contains(percento)
+        return vocale ? Catalogo.Formazione.voceGiocaV(p: String(percento)) : Catalogo.Formazione.voceGioca(p: String(percento))
     }
 
     /// Il trattino morbido (U+00AD): non si vede, dice al testo dove può andare a capo dentro una parola e lì disegna «-».

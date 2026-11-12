@@ -150,7 +150,7 @@ struct ErroreVista: View {
         }
     }
 
-    /// Una funzione spenta (404 con il campo «funzione»): non è un guasto, quindi niente «Riprova». Si spiega e si torna a Oggi.
+    /// Una funzione spenta (404 con il campo «funzione»): non è un guasto, quindi niente «Riprova». Si spiega e si torna alla Formazione, come la web.
     /// Le parole sono quelle della carta della web (`dieta.*` del catalogo comune).
     private var funzioneSpenta: some View {
         ContentUnavailableView {
@@ -158,8 +158,8 @@ struct ErroreVista: View {
         } description: {
             Text(messaggio)
         } actions: {
-            Button { vaiASezione(.oggi) } label: {
-                Label(Catalogo.Dieta.tornaOggi, systemImage: "calendar").frame(minHeight: Tema.areaTocco)
+            Button { vaiASezione(.formazione) } label: {
+                Label(Catalogo.Dieta.tornaFormazione, systemImage: "sportscourt").frame(minHeight: Tema.areaTocco)
             }
             .pulsanteVetro(prominente: true)
         }

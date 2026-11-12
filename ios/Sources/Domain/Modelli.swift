@@ -384,8 +384,15 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
     let destinazione: DestinazioneDaFare?
     /// Perché te lo consiglia, in una frase breve (facoltativo).
     let motivo: String?
+    /// Il posto fra le decisioni in cima alla Formazione (1, 2, …), solo sulle voci che chiedono di fare qualcosa: lo segna il
+    /// server (#673, `docs/API.md`). Facoltativo: un server vecchio non lo manda, e allora in cima non c'è niente.
+    var decisione: Int? = nil
+    /// Il titolare di cui parla una voce `dubbio` (facoltativo).
+    var giocatore: PersonaDaFare? = nil
+    /// Il sostituto proposto da una voce `dubbio` (azione «Sostituisci»), con i suoi punti attesi (facoltativo).
+    var alternativa: AlternativaDaFare? = nil
 
-    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione, motivo }
+    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione, motivo, decisione, giocatore, alternativa }
 
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
@@ -399,12 +406,32 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
         azione = try? k.decodeIfPresent(String.self, forKey: .azione)
         destinazione = try? k.decodeIfPresent(DestinazioneDaFare.self, forKey: .destinazione)
         motivo = (try? k.decodeIfPresent(String.self, forKey: .motivo)) ?? nil
+        // tolleranti: un valore con una forma strana vale «niente», la voce resta
+        decisione = (try? k.decodeIfPresent(Int.self, forKey: .decisione)) ?? nil
+        giocatore = (try? k.decodeIfPresent(PersonaDaFare.self, forKey: .giocatore)) ?? nil
+        alternativa = (try? k.decodeIfPresent(AlternativaDaFare.self, forKey: .alternativa)) ?? nil
     }
 
-    init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil, motivo: String? = nil) {
+    init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil,
+         motivo: String? = nil, decisione: Int? = nil, giocatore: PersonaDaFare? = nil, alternativa: AlternativaDaFare? = nil) {
         self.motivo = motivo
         self.id = id; self.tipo = tipo; self.testo = testo; self.priorita = priorita; self.azione = azione; self.destinazione = destinazione
+        self.decisione = decisione; self.giocatore = giocatore; self.alternativa = alternativa
     }
+}
+
+/// Un giocatore nominato da una voce di «Da fare» (`giocatore`): id e nome.
+struct PersonaDaFare: Decodable, Equatable {
+    let id: Int
+    let nome: String
+}
+
+/// Il sostituto proposto da una voce `dubbio` (`alternativa`): id, nome, ruolo e punti attesi.
+struct AlternativaDaFare: Decodable, Equatable {
+    let id: Int
+    let nome: String
+    var ruolo: String? = nil
+    var puntiAttesi: Double? = nil
 }
 
 struct DestinazioneDaFare: Decodable, Equatable {
@@ -488,6 +515,10 @@ struct Formazione: Decodable {
     /// Con la formazione ancora aperta, gli id di chi gioca un anticipo già cominciato (#373): nella lega non si spostano più.
     /// Facoltativo: manca senza anticipi cominciati e con un server vecchio.
     let bloccati: [Int]?
+    /// Per chi è arrivato a giornata già cominciata senza una formazione: la risposta è della giornata dopo e questi due numeri
+    /// dicono quella che non si può più schierare (`giornata_saltata`, `giornata_saltata_lega`). Facoltativi.
+    let giornataSaltata: Int?
+    let giornataSaltataLega: Int?
 }
 
 struct VoceNovita: Decodable, Identifiable {
