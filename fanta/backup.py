@@ -78,11 +78,11 @@ def _dizionario(d: Any) -> None:
 def _osservati(d: Any) -> list[int]:
     """Codici interi; come nella lettura dell'elenco (osservati.leggi) i doppioni e i numeri che non possono essere giocatori si
     tolgono. Più di osservati.MASSIMO giocatori diversi: non valido. Si scrive l'elenco ripulito."""
-    if not isinstance(d, list) or not all(_intero(i) for i in d):
-        raise ValueError("deve essere un elenco di codici")
-    tenuti = list(dict.fromkeys(i for i in d if 1 <= i <= osservati.ID_MASSIMO))
-    if len(tenuti) > osservati.MASSIMO:
-        raise ValueError("troppi giocatori")
+    if not isinstance(d, list):
+        raise ValueError("deve essere una lista")
+    tenuti = list(dict.fromkeys(i for i in d if _intero(i) and 1 <= i <= osservati.ID_MASSIMO))
+    if len(tenuti) > osservati.MASSIMO or not all(_intero(i) for i in d):
+        raise ValueError("formato non riconosciuto")         # messaggi interni: `controlla` li sostituisce con il suo
     return tenuti
 
 
