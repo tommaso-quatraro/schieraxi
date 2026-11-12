@@ -577,6 +577,78 @@ def test_la_copia_mostrata_subito_si_legge_ma_non_si_cambia_finche_non_arrivano_
     assert stato(web).startswith("L'hai cambiata tu") and sorted(mem["scelta"]["titolari"]) == sorted(altro["titolari"])
 
 
+def _apri_sulla_copia_senza_rete(web) -> dict:
+    """Riapre la pagina con la copia già sul telefono e /api/oggi che non arriva, come con la rete caduta. Restituisce
+    l'interruttore: `caduta["si"] = False` e la rete è tornata."""
+    web.apri("/")
+    caduta = {"si": True}
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/oggi", lambda r: r.abort() if caduta["si"] else r.fallback())
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="commit")
+    web.pagina.wait_for_selector("#campo-formazione")
+    _aspetta(principale(web).get_by_text("Non riesco a collegarmi"), testo="questi sono gli ultimi dati salvati")
+    return caduta
+
+
+def _la_rete_torna(web) -> None:
+    """Il browser segnala che la rete è tornata (evento `online` vero: la scheda va fuori linea e ci torna)."""
+    web.pagina.context.set_offline(True)
+    web.pagina.context.set_offline(False)
+
+
+def test_se_i_dati_nuovi_non_arrivano_la_copia_dice_perche_non_si_cambia_e_ha_riprova(web):
+    """Rete caduta all'apertura: resta la copia tenuta sul telefono con i comandi spenti. La nota diceva solo «questi sono gli
+    ultimi dati salvati»: ora dice anche perché non si può cambiare niente, e c'è «Riprova»."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    caduta = _apri_sulla_copia_senza_rete(web)
+    menu, casella = principale(web).get_by_label("Modulo"), principale(web).get_by_role("checkbox", name="L'ho messa")
+    assert campo(web).count() == 11 and menu.is_disabled() and casella.is_disabled()
+    assert "la formazione non si può cambiare" in " ".join(web.testo_principale().split())
+    riprova = principale(web).get_by_role("button", name="Riprova")
+    assert riprova.count() == 1 and riprova.is_visible()
+    assert not web.scorre_di_lato()
+    caduta["si"] = False
+    tocca(web, riprova)
+    assert principale(web).get_by_label("Modulo").is_enabled() and principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
+    assert "Non riesco a collegarmi" not in web.testo_principale() and principale(web).get_by_role("button", name="Riprova").count() == 0
+    assert not web.pagina.evaluate("() => !document.activeElement || document.activeElement === document.body"), "dopo «Riprova» il fuoco è nel vuoto"
+    altro = _altro_modulo(web)
+    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    web.aspetta()
+    assert stato(web).startswith("L'hai cambiata tu") and sorted(mem["scelta"]["titolari"]) == sorted(altro["titolari"])
+
+
+def test_quando_la_rete_torna_la_copia_si_aggiorna_da_sola_e_i_comandi_si_riaccendono(web):
+    solo(web, "prima")
+    server_con_memoria(web, None)
+    caduta = _apri_sulla_copia_senza_rete(web)
+    assert principale(web).get_by_label("Modulo").is_disabled()
+    caduta["si"] = False
+    _la_rete_torna(web)                                                # nessun tocco: la pagina riprova da sola
+    _aspetta(principale(web).get_by_label("Modulo"), attivo=True)
+    web.aspetta()
+    assert principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
+    assert "Non riesco a collegarmi" not in web.testo_principale() and principale(web).get_by_role("button", name="Riprova").count() == 0
+    assert stato(web) == "È la consigliata." and not web.errori_mostrati()
+
+
+def test_al_ritorno_della_rete_la_copia_riprova_una_volta_sola(web):
+    """Il browser dice che la rete è tornata ma il server ancora non si raggiunge: una riprova, non una serie. Resta «Riprova»."""
+    solo(web, "prima")
+    server_con_memoria(web, None)
+    _apri_sulla_copia_senza_rete(web)
+    chieste = web.richieste.count("/api/oggi")
+    with web.pagina.expect_request(lambda r: urlsplit(r.url).path == "/api/oggi", timeout=10000):
+        _la_rete_torna(web)
+    web.aspetta()
+    assert web.richieste.count("/api/oggi") == chieste + 1
+    _la_rete_torna(web)
+    web.aspetta()
+    assert web.richieste.count("/api/oggi") == chieste + 1, "al secondo segnale la pagina ha riprovato ancora"
+    assert principale(web).get_by_label("Modulo").is_disabled()
+    assert principale(web).get_by_role("button", name="Riprova").is_visible() and "Non riesco a collegarmi" in web.testo_principale()
+
+
 def test_un_salvataggio_che_torna_dopo_che_la_schermata_si_e_ridisegnata_si_rilegge(web):
     """Mai una scelta salvata che la pagina non mostra: se la risposta arriva quando la schermata è già stata ridisegnata (qui
     un tocco sulla scheda «Formazione» a salvataggio in volo), si rilegge dal server."""

@@ -406,5 +406,9 @@
   "formazione.scelta_non_letta": {
     "it": "Non riesco a leggere la formazione che hai salvato: finché non la leggo non si può cambiare niente.",
     "en": "I can't read your saved lineup: nothing can be changed until I can."
+  },
+  "formazione.copia_ferma": {
+    "it": "Finché non arrivano quelli nuovi la formazione non si può cambiare.",
+    "en": "Until fresh data arrive the lineup can't be changed."
   }
 }

@@ -741,6 +741,7 @@ const TESTI = {
     "formazione.fv_atteso_breve": "atteso {fv}",
     "formazione.sost_spiega": "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi in più o in meno rispetto a {nome}.",
     "formazione.scelta_non_letta": "Non riesco a leggere la formazione che hai salvato: finché non la leggo non si può cambiare niente.",
+    "formazione.copia_ferma": "Finché non arrivano quelli nuovi la formazione non si può cambiare.",
 
     "frase.tempo.meno_di_un_ora": "meno di un'ora",
     "frase.tempo.ore.one": "{n} ora",
@@ -2524,6 +2525,7 @@ const TESTI = {
     "formazione.fv_atteso_breve": "expected {fv}",
     "formazione.sost_spiega": "Same role, from your roster. The big number is the expected points more or less than {nome}.",
     "formazione.scelta_non_letta": "I can't read your saved lineup: nothing can be changed until I can.",
+    "formazione.copia_ferma": "Until fresh data arrive the lineup can't be changed.",
 
     "frase.tempo.meno_di_un_ora": "less than an hour",
     "frase.tempo.ore.one": "{n} hour",

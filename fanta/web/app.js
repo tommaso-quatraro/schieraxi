@@ -276,31 +276,51 @@ function rigaStato() {
 function aggiornaRigaStato() {
   document.querySelectorAll(".stato-pagina").forEach(e => { e.innerHTML = rigaStato(); });
 }
+// La riprova che aspetta il ritorno della rete (evento `online` del browser): una per volta, e parte una volta sola.
+let riprovaOnline = null;
+function alRitornoDellaRete(riprova) {
+  if (riprovaOnline) window.removeEventListener("online", riprovaOnline);
+  riprovaOnline = riprova;
+  if (riprova) window.addEventListener("online", riprova, { once: true });
+}
 // `percorso`: l'indirizzo da chiedere, oppure una funzione che legge più cose insieme e le restituisce (la Formazione).
-// `mostra` può restituire `{ pronta() }`: si chiama quando i dati nuovi sono uguali alla copia già in pagina (la Formazione tiene
-// spenti i comandi che scrivono finché non lo sa).
+// `mostra` può restituire `{ pronta(), sola() }`. `pronta()` si chiama quando i dati nuovi sono uguali alla copia già in pagina (la
+// Formazione tiene spenti i comandi che scrivono finché non lo sa); `sola()` dice se quei comandi sono spenti.
+// Se i dati nuovi non arrivano resta la copia: la nota dice perché non si può cambiare niente e ha «Riprova»; se è caduta la rete,
+// quando il browser dice che è tornata si riprova da soli, una volta.
 async function caricaConCache(chiave, percorso, mostra, testo) {
   const mia = nuovaRichiesta();
+  alRitornoDellaRete(null);
   let salvata = leggiCache(chiave), vista = null;
   if (salvata) {
     try { vista = mostra(salvata.dati, { daCache: salvata.quando }); }
     catch { rimuoviCache(chiave); salvata = null; caricamento(testo); }     // copia rovinata o di una versione vecchia
   } else caricamento(testo);
-  try {
-    const dati = typeof percorso === "function" ? await percorso() : await api(percorso);
-    if (!ancoraValida(mia)) return;
-    salvaCache(chiave, dati);
-    if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) mostra(dati, { sostituisce: !!salvata });
-    else { const b = $("#nota-cache"); if (b) b.remove(); if (vista && typeof vista.pronta === "function") vista.pronta(); }
-  } catch (e) {
-    if (!ancoraValida(mia)) return;
-    if (salvata) {
+  const leggi = async daSola => {                                           // `daSola`: è la riprova partita al ritorno della rete
+    try {
+      const dati = typeof percorso === "function" ? await percorso() : await api(percorso);
+      if (!ancoraValida(mia)) return;
+      salvaCache(chiave, dati);
+      if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata }); return; }
       const b = $("#nota-cache");
-      if (b) b.textContent = e.rete ? t("comune.cache_offline") : t("comune.cache_errore", { errore: e.message });
-      return;
+      if (b && b.contains(document.activeElement)) $("#titolo-pagina").focus({ preventScroll: true });   // il fuoco era su «Riprova», che sparisce
+      if (b) b.remove();
+      if (vista && typeof vista.pronta === "function") vista.pronta();
+    } catch (e) {
+      if (!ancoraValida(mia)) return;
+      if (salvata) {
+        const b = $("#nota-cache");
+        if (!b) return;
+        const ferma = !!vista && typeof vista.sola === "function" && vista.sola();
+        b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : t("comune.cache_errore", { errore: esc(e.message) })}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
+          <button class="azione-testo" type="button" data-riprova>${t("comune.riprova")}</button>`;
+        if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
+        return;
+      }
+      pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : ""));
     }
-    pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : ""));
-  }
+  };
+  await leggi(false);
 }
 
 // ---------------------------------------------------------------- pezzi grafici riusati
@@ -1236,8 +1256,8 @@ function mostraFormazione(b, squadra, opz = {}) {
     }, 30000);
   }
   // Per caricaConCache: i dati nuovi sono uguali alla copia in pagina, i comandi spenti si accendono dove sono (niente ridisegno).
-  // Se la scelta non era stata letta nemmeno stavolta, ora lo si dice.
-  return { pronta() {
+  // Se la scelta non era stata letta nemmeno stavolta, ora lo si dice. `sola()`: i comandi che scrivono sono spenti.
+  return { sola: () => stato.scelta === sc && sc.sola, pronta() {
     if (stato.scelta !== sc || !sc.sola) return;
     sc.copia = false;
     if (sc.nonLetta) { disegna(true); return; }

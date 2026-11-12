@@ -93,7 +93,8 @@ prima della scadenza:
 - salvataggio automatico: dopo una sostituzione o un altro modulo lo stato dice «L'hai cambiata tu» e la scelta è
   salvata; «Torna alla consigliata» la toglie; la spunta «L'ho messa» resta dopo una ricarica;
 - ciò che si salva è ciò che si vede: la copia mostrata subito all'apertura è di sola lettura finché non arrivano i dati
-  nuovi; un salvataggio che torna a schermata già ridisegnata fa rileggere; togliere la spunta non cancella una scelta
+  nuovi; se non arrivano (rete caduta) la nota dice perché non si può cambiare e ha «Riprova», e quando il browser segnala
+  che la rete è tornata la pagina riprova da sola, una volta; un salvataggio che torna a schermata già ridisegnata fa rileggere; togliere la spunta non cancella una scelta
   salvata altrove; se la scelta non si legge c'è un errore con «Riprova» e niente si può cambiare; rete caduta, rifiuto
   del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono;
 - tastiera: dopo il menu del modulo, la spunta, «Sostituisci» e «Torna alla consigliata» il fuoco resta su un comando;
