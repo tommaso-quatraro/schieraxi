@@ -6,8 +6,8 @@
       "web": "«Lo segui: ti avviso se cambia qualcosa», «Non lo segui più», senza seguiti «Nessun giocatore seguito.» (vocabolario «Giocatori seguiti»)",
       "iphone": "come la web: «Lo segui: ti avviso se cambia qualcosa», «Non lo segui più», senza seguiti solo «Nessun giocatore seguito.» (`ParoleSeguiti`, `SchedaGiocatoreViewModel.swift`, `MercatoView.swift`)",
       "forma": "web",
-      "chi": "fatto sull'iPhone (#441): `SeguitiComeLaWebTests`. Resta diverso: `ProvaMarchio` (`Support/Demo.swift`, scena solo per le foto del marchio) ha ancora la vecchia riga dei Seguiti vuoti",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più i Seguiti (#615), l'iPhone sì. Prima: fatto sull'iPhone (#441): `SeguitiComeLaWebTests`. Resta diverso: `ProvaMarchio` (`Support/Demo.swift`, scena solo per le foto del marchio) ha ancora la vecchia riga dei Seguiti vuoti",
+      "stato": "da-decidere"
     }
   ]
 }

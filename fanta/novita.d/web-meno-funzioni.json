@@ -1,0 +1,19 @@
+{
+  "titolo": "Web più semplice: via le funzioni che complicavano",
+  "voci": [
+    "Web: restano Oggi, Formazione, la scheda del giocatore, il Diario, le rose, le regole e le impostazioni. Non ci sono più Scambi, Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Movimenti e Crediti delle squadre; per trovare un giocatore c'è la ricerca in alto.",
+    "Web, Formazione: un solo stile (quello equilibrato) e niente legenda sotto il campo, numero sul volto o confronto a barre. «Copia il testo» è un pulsante in vista, non più dentro «Altro».",
+    "Web, Oggi: non ci sono più le partite del turno con i risultati in diretta né l'avviso a ogni versione nuova. Le novità si leggono in Impostazioni, sotto Informazioni.",
+    "Web: i crediti di una squadra si scrivono nella sua rosa. «Nuova stagione» non è più una voce di menu: compare da sola quando serve.",
+    "Web, Impostazioni: la dimensione del testo non si sceglie più qui. Vale quella del telefono o lo zoom del browser.",
+    "Web: i collegamenti e i segnalibri alle pagine tolte aprono la schermata più vicina che resta.",
+    "L'app per iPhone e i widget non cambiano."
+  ],
+  "tecnico": [
+    "fanta/web/app.js da 4.984 a circa 3.920 righe; tolto fanta/web/live.js; stile.css senza le regole delle parti tolte; catalogo dei testi senza le chiavi che non usa più nessuno (restano quelle dell'iPhone, ios/testi/).",
+    "schermataCheResta (app.js) porta gli indirizzi vecchi (?vista=mercato, ?vista=scambi, &voce=crediti…) alla schermata che resta; dfValide (dafare.js) non mostra i due consigli di «Da fare» delle funzioni tolte (tipo svincolato e scambio); la riga del reparto scoperto resta e sulla web il suo pulsante apre la rosa della propria squadra.",
+    "Patti con i test del browser (tests/browser/LEGGIMI.md): un errore mostrato ha role=\"alert\" (errore/erroreVista), un avviso role=\"status\" (nel riconoscimento delle rose il riquadro dei messaggi è una regione che resta in pagina), mentre una schermata carica l'area principale ha aria-busy=\"true\".",
+    "Nessuna rotta e nessun campo del server tolti: le usano ancora l'iPhone e i widget. Dalla web non si chiamano più /api/live, /api/mercato, /api/osservati, /api/scambi/*, /api/confronto, /api/classifica, /api/movimenti.",
+    "Test: cancellati quelli che cercavano testo nel sorgente delle parti tolte; nuovi test di comportamento con Node (tests/test_web_tagli.py) e nel browser senza finestra (tests/browser/test_tagli.py)."
+  ]
+}

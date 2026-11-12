@@ -43,7 +43,7 @@ def _testo(html: str) -> str:
 
 # ---------------------------------------------------------------- #281: il posto in formazione
 def _posto() -> str:
-    return _pezzo("// Il posto in formazione a parole", "const inTitolari")
+    return _pezzo("// Il posto in formazione a parole", "// ---------------------------------------------------------------- pannello")
 
 
 def test_posto_in_formazione_con_parole_proprie():
@@ -55,31 +55,17 @@ def test_posto_in_formazione_con_parole_proprie():
     assert not set(it) & set(titolarita)                       # mai le parole della titolarità
 
 
-def test_scelta_del_confronto_giocatore_al_2_percento():
-    """Lerri gioca al 2% ed è titolare nella formazione che stai guardando: la scelta diceva «Probabile titolare»."""
+def test_posto_del_giocatore_al_2_percento():
+    """Lerri gioca al 2% ed è titolare nella formazione che stai guardando: il posto dice «Titolare», non «Probabile titolare»."""
     stato = ("const stato = {formaz: {modulo: {titolari: [10], panchina: [12, 13]}, f: {schede: {'10': {}, '12': {}, '13': {}, '99': {}}}}};")
     assert _esegui("[10, 13, 99, 5].map(postoInFormazione)", stato, _posto()) == ["Titolare", "Panchina 2", "Non schierato", ""]
-    riga = _pezzo("function apriScelta(id)", "async function apriConfronto")
-    # accanto al posto, l'etichetta di stato del server (la stessa della Formazione: «Improbabile» per Lerri)
-    assert '<span class="etichette">${pillTitolarita(x)}<span class="etichetta ${inTitolari(x.id) ? "" : "neutra"}">${postoInFormazione(x.id)}</span></span>' in riga
 
 
-def test_confronto_e_sostituzione_usano_le_parole_del_posto():
-    confronto = _pezzo("async function apriConfronto", "// ---------------------------------------------------------------- pannello")
-    assert "const posto = g => testoPosto(codicePosto(g));" in confronto
+def test_la_sostituzione_usa_le_parole_del_posto():
     sostituzione = _pezzo("function apriSostituzione(id)", "Object.assign(sc,")
     assert '${postoInFormazione(x.id) || testoPosto("fuori")}' in sostituzione
-    for blocco in (confronto, sostituzione, _posto()):
+    for blocco in (sostituzione, _posto()):
         assert 't("tit.titolare")' not in blocco and 't("tit.fuori")' not in blocco
-
-
-def test_numeri_negativi_del_confronto_con_il_meno_vero():
-    """«Merlo -1,12» e «-1,32 Stoli» nelle barre del Confronto (porta, cartellini): il meno tipografico, mai il trattino."""
-    assert _esegui("[numMeno(-1.12, 2), numMeno(1.32, 2), numMeno(-0.001, 2), numMeno(null, 2), numMeno(-0.4)]", _riga("numMeno")) \
-        == ["−1,12", "1,32", "0,00", "–", "−0,4"]
-    assert _esegui("numMeno(-1.12, 2)", _riga("numMeno"), lingua="en") == "−1.12"
-    confronto = _pezzo("async function apriConfronto", "// ---------------------------------------------------------------- pannello")
-    assert "const valore = (f, v) => f.percentuale ? perc(v) : numMeno(v, 2);" in confronto
 
 
 # ---------------------------------------------------------------- #284: partita rinviata
@@ -87,7 +73,7 @@ STUB_PEDINA = ("const attrPerche = () => ''; const lineetta = () => ''; const si
                "const cognome = x => x.nome; const nomeClub = s => s; const perc = x => `${Math.round((x || 0) * 100)}%`;")
 PEDINA = "\n".join([re.search(r"^const TITOLARITA = \{.*?\};$", APP, re.M | re.S).group(0),
                     _pezzo("const STATO_PARTITA =", "// Il tocco sul fantavoto atteso"),
-                    _pezzo("const ARTICOLI_CLUB", "// Legenda del campo")])
+                    _pezzo("const ARTICOLI_CLUB", "// Il numero della giornata, uguale")])
 
 
 def test_pedina_di_una_partita_rinviata_dice_rinviata():

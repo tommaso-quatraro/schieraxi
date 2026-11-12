@@ -72,7 +72,7 @@ def test_sigla_della_squadra_sul_campo_scritta_in_bianco_con_la_lineetta():
     for squadra, html in _node(codice):
         assert 'class="lineetta"' in html and 'aria-hidden="true"' in html and "--ct" not in html, (squadra, html)
     assert "distintivo(" not in APP and ".dist " not in CSS and ".dist {" not in CSS
-    pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
+    pedina = APP[APP.index("function pedina("):APP.index("// Il numero della giornata, uguale")]
     assert "${lineetta(x.avversario)}${sigla(x.avversario)}" in pedina
     assert re.search(r"\.pedina \.avv[^{]*\{[^}]*color: #fff", CSS)
 
@@ -81,7 +81,7 @@ def test_pedina_nome_accessibile_dal_contenuto_con_il_testo_che_si_vede():
     """Le pedine avevano un aria-label («Rossi L., fantavoto atteso 6,8, …») diverso dal testo visibile («6,8 Rossi gioca 85%
     vs NAP»): chi usa il controllo vocale dice quello che vede (WCAG 2.5.3). Ora il pulsante prende il nome dal contenuto: le
     abbreviazioni visibili sono nascoste ai lettori di schermo e accanto c'è la frase intera, come «vs PAR» nelle righe (vsAt)."""
-    pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
+    pedina = APP[APP.index("function pedina("):APP.index("// Il numero della giornata, uguale")]
     apertura = re.search(r'<button class="pedina"[^>]*>', pedina).group(0)
     assert "aria-label" not in apertura
     assert '<span class="solo-lettori">${esc(vocePedina(x, esito))}</span>' in pedina      # esito = esitoPedina(x) (#284)

@@ -6,8 +6,8 @@
       "web": "«Costruisci uno scambio», «Valuta lo scambio», «Giocatori in rosa dopo lo scambio», «Formazione migliore (prossime N giornate)»",
       "iphone": "«Analizza», «Valuta l'offerta», «Rose dopo lo scambio», «Tua formazione migliore»",
       "forma": "web",
-      "chi": "**fatto** (#438): `TestiScambi` (`Presentation/Scambi/TestiScambi.swift`) con i testi del catalogo (`Catalogo.Scambi`, `Catalogo.Scambio`, #496), test `ScambiComeLaWebTests`. **Resta diverso**: il segnaposto d'esempio dell'offerta (nomi inventati sull'iPhone); il contatore delle ricerche («Ne restano 3 oggi su 20» contro «Ne restano 3 oggi.», `LimiteRicerche.testo`); «Crediti residui» e gli avvisi «Non hai abbastanza crediti» (solo web); la ricerca dentro le rose (solo web); il disegno dell'esito (la web ha verdetto, «Perché» e tabella «Prima e dopo»; l'iPhone ha le sue schede con «Valore dei crediti per te», «Netto per te (con i crediti)», «Le rose restano valide», «Giornata per giornata», «Esito»)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più gli Scambi (#615), l'iPhone sì. Prima: **fatto** (#438): `TestiScambi` (`Presentation/Scambi/TestiScambi.swift`) con i testi del catalogo (`Catalogo.Scambi`, `Catalogo.Scambio`, #496), test `ScambiComeLaWebTests`. **Resta diverso**: il segnaposto d'esempio dell'offerta (nomi inventati sull'iPhone); il contatore delle ricerche («Ne restano 3 oggi su 20» contro «Ne restano 3 oggi.», `LimiteRicerche.testo`); «Crediti residui» e gli avvisi «Non hai abbastanza crediti» (solo web); la ricerca dentro le rose (solo web); il disegno dell'esito (la web ha verdetto, «Perché» e tabella «Prima e dopo»; l'iPhone ha le sue schede con «Valore dei crediti per te», «Netto per te (con i crediti)», «Le rose restano valide», «Giornata per giornata», «Esito»)",
+      "stato": "da-decidere"
     }
   ]
 }

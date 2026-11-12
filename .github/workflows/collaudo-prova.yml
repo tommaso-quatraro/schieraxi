@@ -114,7 +114,7 @@ jobs:
         run: >-
           "$RUNNER_TEMP/pw/bin/python" -I -s prove/foto_web/foto.py "$PROVA_URL" "$RUNNER_TEMP/collaudo"
           --accesso --solo-misure --larghezze 390,1440 --temi chiaro,scuro
-          --scene oggi,formazione,squadra,elenco,rosa,scheda,confronto,altro,diario,regole,scambi,impostazioni
+          --scene oggi,formazione,squadra,rosa,scheda,altro,diario,regole,impostazioni
       - id: esito
         name: Esito dal riepilogo
         if: ${{ !cancelled() }}

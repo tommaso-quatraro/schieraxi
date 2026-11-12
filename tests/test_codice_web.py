@@ -46,7 +46,7 @@ def test_leggi_da_il_testo_del_file_e_per_app_js_il_codice_unito():
 
 def test_script_classici_nell_ordine_della_pagina():
     nomi = [p.name for p in codice_web.script_classici()]
-    assert nomi == ["testi.js", "avatar.js", "live.js", "dafare.js", "anteprima.js", "primoavvio.js", "impostazioni.js"]
+    assert nomi == ["testi.js", "avatar.js", "dafare.js", "anteprima.js", "primoavvio.js", "impostazioni.js"]
     assert all(p.parent == WEB for p in codice_web.script_classici())
 
 

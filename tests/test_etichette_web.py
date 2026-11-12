@@ -19,7 +19,6 @@ def _esegui(chiamata: str):
     pezzi = [re.search(r"^const TITOLARITA = \{.*?\};$", APP, re.M | re.S).group(0)]
     inizio = APP.index("// A parole e senza numero")
     pezzi.append(APP[inizio:APP.index("// Il tocco sul fantavoto atteso")])
-    pezzi.append(re.search(r"^const partenzaAParole = .*$", APP, re.M).group(0))
     codice = f"{testi}\n" + "\n".join(pezzi) + f"\nconsole.log(JSON.stringify({chiamata}));"
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
@@ -40,10 +39,6 @@ def test_a_giornata_iniziata_lo_stato_della_partita():
     assert testi == ["Ha giocato", "Senza voto", "Voto in arrivo", "Partita in corso", "Da giocare", "Rinviata"]
     # niente etichetta se il server non sa lo stato; un valore sconosciuto non passa nell'HTML
     assert _esegui('[pillTitolarita({titolarita: null}), pillTitolarita({titolarita: null, stato_partita: "<b>"})]') == ["", ""]
-
-
-def test_quanto_parte_titolare_a_parole():
-    assert _esegui("[0.9, 0.5, 0.1, null].map(partenzaAParole)") == ["quasi sempre titolare", "a volte titolare", "di solito entra dopo", "–"]
 
 
 def test_a_formazione_chiusa_niente_alternative():

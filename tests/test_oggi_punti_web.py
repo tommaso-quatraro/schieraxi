@@ -44,7 +44,7 @@ const menoMovimento = () => false;
 const testoConto = () => ({ grande: "1 giorno", piccolo: "" }); const nomeGiornata = () => "Giornata 8";
 const miaSquadra = () => null; const parseData = () => null; const quando = vuoto;
 const LiveSchieraxi = { punteggioUfficiale: vuoto, chiave: vuoto }; const urlImg = vuoto; const fraseFascia = vuoto;
-const cardRiepilogo = vuoto, cardSenzaFormazione = vuoto, cardInCorso = vuoto, cardRinvio = vuoto, cardDaFare = vuoto;
+const cardRiepilogo = vuoto, cardSenzaFormazione = vuoto, cardInCorso = vuoto, cardRinvio = vuoto, cardDaFare = vuoto, dfValide = () => [];
 const novitaDaVedere = () => false; const stato = {};
 const intestazioneColonne = vuoto, voceGiocatore = vuoto, rigaAvviso = vuoto, collegaDaFare = vuoto, collegaRinvio = vuoto;
 const funz = () => false; const avviaLive = vuoto; let timerConto = null; globalThis.setInterval = () => 0;""",

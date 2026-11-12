@@ -77,10 +77,10 @@ def test_la_voce_aperta_si_riconosce_anche_senza_il_colore():
 
 
 def test_con_il_contrasto_elevato_la_scelta_resta_visibile():
-    """Revisione della #431: con il contrasto elevato di Windows il browser toglie fondi e ombre interne; il ruolo scelto nell'Elenco
-    (bordo 0) e la voce aperta del menu non avevano più nessun segno. Prendono un contorno vero, come `.segmenti button.attivo`."""
+    """Revisione della #431: con il contrasto elevato di Windows il browser toglie fondi e ombre interne; la voce aperta del menu
+    non aveva più nessun segno. Prende un contorno vero, come `.segmenti button.attivo`."""
     blocco = _blocco("@media (forced-colors: active) {")
-    assert '.chips.filtri .chip.attiva, .lega-voce[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }' in blocco
+    assert '.lega-voce[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }' in blocco
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
@@ -129,68 +129,36 @@ console.log(JSON.stringify([menuLega(voci, "osservati", "Voci della squadra"), m
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
-def test_le_pagine_di_mercato_si_aprono_accanto_al_menu_solo_da_1100_px():
-    """Da 1100 px Cambi consigliati, Seguiti, Elenco dei giocatori e Calendario si aprono a destra del menu, che resta in vista;
-    sotto i 1100 px portano alla loro pagina, come oggi. Le voci di Altro che portano altrove (Scambi, Regole, Novità) non cambiano."""
-    codice = "\n".join([
-        _riga("const TAB_MERCATO = "), _riga("const nellaPagina = "),
-        """const vai = () => {};
-const prove = [[{ id: "squadre" }, true], [{ id: "squadre" }, false], [{ id: "osservati", vai }, true], [{ id: "osservati", vai }, false],
-  [{ id: "calendario", vai }, true], [{ id: "giocatori", vai }, true], [{ id: "consigli", vai }, true], [{ id: "scambi", vai }, true],
-  [{ id: "regole", vai }, true], [{ id: "diario" }, false]];
-console.log(JSON.stringify(prove.map(([v, largo]) => nellaPagina(v, largo))));""",
-    ])
-    assert _node(codice) == [True, True, True, False, True, True, True, False, False, True]
-
-
-def test_mercato_da_1100_px_si_apre_dentro_squadra():
-    """Un collegamento a una pagina di Mercato (?vista=mercato&scheda=calendario, «Confronta» dalla scheda, Indietro) da 1100 px
-    apre Squadra con quella voce a destra; sotto i 1100 px la pagina di Mercato con le sue quattro sezioni, come oggi."""
-    corpo = _funzione("vistaMercato")
-    assert 'if (legaLarga()) { stato.legaTorna = stato.mercatoTab; return vistaLega("squadra"); }' in corpo
-    assert 'class="segmenti" id="mercato-tab"' in corpo
-    lega = _funzione("vistaLega")
-    assert '<div id="mercato-corpo"></div>' in lega and "caricaMercato();" in lega
-    assert "chiudiPannelloAffiancato();" in lega              # il pannello del giocatore si chiude con la pagina da cui è nato
-    assert "indirizzoLega(" in lega
-    # tornando alla lista dopo il confronto, l'elenco si ridisegna anche quando è aperto accanto al menu
-    assert 'if (stato.vista === "mercato" && stato.mercatoTab === "giocatori") caricaMercato();' in APP
-
-
-@pytest.mark.skipif(not NODE, reason="serve node")
 def test_la_voce_aperta_accanto_al_menu_scrive_il_suo_indirizzo():
-    """Da Seguiti a Calendario con un clic: l'indirizzo diventa quello del Calendario (Indietro torna a Seguiti, un ricaricamento
-    riapre il Calendario); la stessa voce non aggiunge voci alla cronologia; tornare a «Squadre e rose» riporta
-    ?vista=squadra&voce=squadre. Dal collaudo #449 anche le voci di Squadra e Altro hanno la voce nell'indirizzo (prima
-    ?vista=squadra per tutte, e Indietro da «Aggiorna le rose» usciva da Squadra): da «Squadre e rose» ad «Aggiorna le rose» è
-    una voce nuova. La voce sta anche nello stato della cronologia."""
+    """Da «Squadre e rose» ad «Aggiorna le rose» con un clic: l'indirizzo diventa quello della voce nuova (Indietro torna alla
+    voce di prima, un ricaricamento riapre questa); la stessa voce non aggiunge voci alla cronologia. Dal collaudo #449 le voci di
+    Squadra e Altro hanno la voce nell'indirizzo (prima ?vista=squadra per tutte, e Indietro da «Aggiorna le rose» usciva da
+    Squadra). La voce sta anche nello stato della cronologia."""
     codice = "\n".join([
         "const stato = { vista: \"squadra\" }; const chiamate = [];",
         "const location = { pathname: \"/\", search: \"?vista=squadra\" };",
         "const vaiA = u => { const x = new URL(u, \"http://x\"); location.pathname = x.pathname; location.search = x.search; };",
-        "const history = { state: null, pushState(s, _, u) { chiamate.push([\"push\", u, s.vista, s.scheda, s.voce]); vaiA(u); this.state = s; },"
-        " replaceState(s, _, u) { chiamate.push([\"replace\", u, s.vista, s.scheda, s.voce]); vaiA(u); this.state = s; } };",
+        "const history = { state: null, pushState(s, _, u) { chiamate.push([\"push\", u, s.vista, s.voce]); vaiA(u); this.state = s; },"
+        " replaceState(s, _, u) { chiamate.push([\"replace\", u, s.vista, s.voce]); vaiA(u); this.state = s; } };",
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
         _funzione("scriviIndirizzo"), _funzione("indirizzoLega"),
-        """indirizzoLega("squadra", null, false, "squadre");
-indirizzoLega("mercato", "osservati", true, "osservati");
-indirizzoLega("mercato", "calendario", true, "calendario");
-indirizzoLega("mercato", "calendario", true, "calendario");
-indirizzoLega("squadra", null, true, "squadre");
-indirizzoLega("squadra", null, true, "importa");
+        """indirizzoLega("squadra", false, "squadre");
+indirizzoLega("squadra", true, "importa");
+indirizzoLega("squadra", true, "importa");
+indirizzoLega("squadra", true, "squadre");
+indirizzoLega("altro", true, "diario");
 console.log(JSON.stringify({ chiamate, vista: stato.vista, mostrato: indirizzoMostrato }));""",
     ])
     r = _node(codice)
-    assert r["chiamate"] == [["replace", "/?vista=squadra&voce=squadre", "squadra", None, "squadre"],
-                             ["push", "/?vista=mercato&scheda=osservati", "mercato", "osservati", "osservati"],
-                             ["push", "/?vista=mercato&scheda=calendario", "mercato", "calendario", "calendario"],
-                             ["replace", "/?vista=mercato&scheda=calendario", "mercato", "calendario", "calendario"],
-                             ["push", "/?vista=squadra&voce=squadre", "squadra", None, "squadre"],
-                             ["push", "/?vista=squadra&voce=importa", "squadra", None, "importa"]]
-    assert r["vista"] == "squadra" and r["mostrato"] == "/?vista=squadra&voce=importa"
+    assert r["chiamate"] == [["replace", "/?vista=squadra&voce=squadre", "squadra", "squadre"],
+                             ["push", "/?vista=squadra&voce=importa", "squadra", "importa"],
+                             ["replace", "/?vista=squadra&voce=importa", "squadra", "importa"],
+                             ["push", "/?vista=squadra&voce=squadre", "squadra", "squadre"],
+                             ["push", "/?vista=altro&voce=diario", "altro", "diario"]]
+    assert r["vista"] == "altro" and r["mostrato"] == "/?vista=altro&voce=diario"
     popstate = APP[APP.index('window.addEventListener("popstate"'):]
     assert 'stato.legaTorna = typeof v.voce === "string" ? v.voce : null;' in popstate[:popstate.index("\n});\n")]
-    assert "indirizzoLega(mercato ? \"mercato\" : ambito, mercato ? id : null, sposta, id);" in _funzione("vistaLega")
+    assert "indirizzoLega(ambito, sposta, id);" in _funzione("vistaLega")
 
 
 def test_la_rosa_di_una_squadra_ha_il_menu_di_squadra_accanto():
@@ -211,11 +179,7 @@ def test_il_menu_si_riempie_quando_la_finestra_si_allarga():
 
 def test_intestazione_dell_elenco_ferma_sotto_la_testata():
     assert re.search(r"\.intestazione-colonne\.ferma \{[^}]*position: sticky; top: var\(--alto-ferma\)", CSS)
-    assert "intestazioneColonne({ partita: true, ferma: true })" in APP       # Elenco dei giocatori e rosa di una squadra
-    assert "intestazioneColonne({ partita: true, ferma: true })" in _funzione("vistaRosa")
-    # nell'Elenco la riga sotto il nome dice squadra, quotazione e proprietario, non la partita: niente «Partita» sopra
-    corpo = APP[APP.index("function tabGiocatori"):APP.index("// ---------------------------------------------------------------- scheda giocatore")]
-    assert "intestazioneColonne({ partita: false, ferma: true })" in corpo
+    assert "intestazioneColonne({ partita: true, ferma: true })" in _funzione("vistaRosa")       # la rosa di una squadra
 
 
 def test_il_focus_non_finisce_sotto_l_intestazione_ferma():
@@ -257,27 +221,6 @@ console.log(JSON.stringify(esiti));""",
 
 # ---------------------------------------------------------------- §9: filtri dell'Elenco in una riga, Calendario tabella
 
-def test_filtri_dell_elenco_in_una_riga_sopra_l_elenco():
-    """Spec §9: i filtri dell'Elenco in una riga (ricerca, ruolo come controllo segmentato, «solo svincolati») sopra l'elenco,
-    che così prende tutta la larghezza della pagina (la riga larga dei giocatori scatta da 680 px). Non è più una colonna ferma."""
-    assert "grid-template-columns: 320px" not in CSS and ".giocatori-pagina .filtri-giocatori" not in CSS
-    assert ".filtri-giocatori" not in re.search(r'const FERME = "([^"]+)"', APP).group(1)
-    larga = _blocco("@media (min-width: 900px) {")
-    assert re.search(r"\.filtri-giocatori \{[^}]*display: flex; flex-wrap: wrap;", larga)
-    # il ruolo come controllo segmentato: un bordo solo, le voci separate da un filo, la scelta in lime con il bordo scuro
-    assert re.search(r"\n\.chips\.filtri \{[^}]*gap: 0;[^}]*border: 1px solid var\(--bordo-campo\)", CSS)
-    assert re.search(r"\n\.chips\.filtri \.chip \+ \.chip \{[^}]*border-left: 1px solid var\(--filo\)", CSS)
-
-
-def test_cambi_consigliati_righe_vicine_e_seguiti_a_tutta_larghezza():
-    """Da 900 px una sezione (`.carta`) ha 32 px sotto: le righe dei Cambi consigliati (`carta proposta-r`) li prendevano e tra una
-    riga e l'altra restava un buco più alto della riga di testo. Le righe stanno vicine, separate dal filo. Nella griglia di Mercato
-    solo i Cambi consigliati vanno in colonne: l'elenco dei Seguiti restava largo mezza pagina e senza la colonna «Partita»."""
-    assert re.search(r"\n\.griglia-proposte > \.proposta-r \{ margin-bottom: 0; \}", CSS)
-    larga = _blocco("@media (min-width: 768px) {")
-    assert "#mercato-corpo > :not(.griglia-proposte) { grid-column: 1 / -1; }" in larga
-
-
 def test_stemma_e_maglia_senza_riquadri_ne_ombre():
     """Nella rosa di una squadra stemma e maglia stavano in due riquadri bordati, con l'ombra sotto l'immagine; nelle liste lo stemma
     aveva l'ombra. Grafica B (spec §11): niente riquadri per ogni blocco, niente ombre; come la maglia in Oggi, dritta e senza ombra."""
@@ -305,8 +248,3 @@ def test_anteprima_delle_rose_a_sezioni_con_i_dubbi_come_avvisi():
     assert "border-left: 3px solid var(--arancio)" in dubbio and "background" not in dubbio and "border-radius" not in dubbio
     assert "border-left-color: var(--rosso)" in corpo(".ar-dubbio:has(.etichetta.rossa)")
     assert "background" not in corpo(".ar-dubbio:has(.etichetta.rossa)")
-
-
-def test_il_calendario_resta_una_tabella_con_le_celle_colorate():
-    corpo = APP[APP.index("async function tabCalendario"):APP.index("// Ricerca dei giocatori")]
-    assert '<table class="tabella-cal">' in corpo and 'class="cella d${p.difficolta}"' in corpo

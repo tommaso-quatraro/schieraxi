@@ -60,7 +60,7 @@ def _node(codice: str):
 # ---------------------------------------------------------------- compito 11.1 del piano
 
 def test_numeri_di_altro_nel_carattere_dei_numeri_e_regole_da_44_px():
-    for selettore in (r"\.qp-num", r"\.guadagno", r"\.fv-fatto"):         # Diario, Scambi, Oggi in corso
+    for selettore in (r"\.qp-num", r"\.fv-fatto"):                        # Diario, Oggi in corso
         assert re.search(selettore + r" \{[^}]*font-family: var\(--font-numeri\)", CSS), selettore
     assert re.search(r"\.stepper button \{ width: 44px", CSS)              # i «−/+» delle regole restano da 44 px
     assert not re.search(r"\.riga-regola\.evidenzia \{[^}]*color-mix\(in srgb, var\(--verde\)", CSS)   # evidenziata con --superficie, non tinta
@@ -149,44 +149,10 @@ def test_ruolo_come_lettera_grigia_negli_scambi_nel_diario_e_nella_ricerca():
 
 # ---------------------------------------------------------------- Scambi
 
-def test_proposta_con_le_due_azioni_in_una_riga_e_nomi_mai_tagliati():
-    corpo = _funzione("cartaScambio")
-    assert 'function cartaScambio(s, extra = "", azione = "")' in corpo     # parametro nuovo in fondo, facoltativo
-    assert re.search(r'<div class="pulsanti azioni-scambio">.*data-bozza=.*\$\{azione\}</div>', corpo, re.S)
-    scambi = _funzione("vistaScambi")
-    assert re.search(r'cartaScambio\(s, `<div class="dettaglio-scambio" id="dettaglio-\$\{i\}" aria-live="polite"></div>`,\s*'
-                     r'`<button class="bottone secondario" data-dettaglio="\$\{i\}" aria-expanded="false">', scambi)
-    for corpo in _regole(".proposta button.nome-g"):
-        assert "ellipsis" not in corpo and "nowrap" not in corpo            # nomi lunghi a capo, mai «…» (piano, «Attenzione» 1)
-    assert "font-family: var(--font-numeri)" in "".join(_regole(".guadagno-grande .guadagno"))
-
-
-def test_chi_accetta_e_impatto_sui_reparti_come_righe_con_i_numeri_in_colonna():
-    assert 'class="riga propensa"' in _funzione("squadrePropense")
-    assert "font-family: var(--font-numeri)" in "".join(_regole(".propensa > b"))
-    assert "border-top: 1px solid var(--filo)" in "".join(_regole(".propensa"))
-    assert "font-family: var(--font-numeri)" in "".join(_regole(".reparto > b"))
-    assert "border-top: 1px solid var(--filo)" in "".join(_regole(".reparto + .reparto"))
-    assert 'class="riga reparto-totale"' in _funzione("impattoReparti")       # il totale come le righe sopra
-    assert "font-family: var(--font-numeri)" in "".join(_regole(".reparto-totale > b"))
-    assert "font-family: var(--font-numeri)" in "".join(_regole(".confronto .riga-confronto > b"))
-
-
-def test_conguaglio_e_fasce_non_escono_dalla_pagina_strettissima():
-    """Zoom al 200% su un telefono da 390 px (195 px): il conguaglio di Costruisci (Ricevo | Pago, minimo 190 px, e il campo da
-    130 px) faceva scorrere la pagina di lato; le fasce del modificatore uscivano di 2 px. Sotto i 320 px vanno a capo."""
+def test_le_fasce_non_escono_dalla_pagina_strettissima():
+    """Zoom al 200% su un telefono da 390 px (195 px): le fasce del modificatore uscivano di 2 px. Sotto i 320 px vanno a capo."""
     stretta = _blocco("@container pagina (max-width: 319.98px) {")
-    assert re.search(r"\.riga-conguaglio \.segmenti \{[^}]*min-width: 0;[^}]*flex: 1 1 100%", stretta)
-    assert re.search(r"\.riga-conguaglio \.campo-testo \{[^}]*flex: 1 1 100%", stretta)
     assert re.search(r"\.fascia \.coppia \{[^}]*flex-wrap: wrap", stretta)
-
-
-def test_scelte_degli_scambi_senza_fondi_colorati():
-    _senza_fondo(".scelto-chip")
-    _senza_fondo(".scelte")
-    assert "border: 1px solid var(--bordo-campo)" in "".join(_regole(".scelto-chip"))
-    assert "background: var(--superficie)" in "".join(_regole(".voce-scelta.scelta"))
-    assert "color-mix(in srgb, var(--verde)" not in "".join(_regole(".voce-scelta.scelta"))
 
 
 # ---------------------------------------------------------------- Regole: righe con «−/+» a destra, due colonne sul PC
@@ -219,10 +185,10 @@ def test_regole_righe_con_il_filo_e_prova_senza_riquadro():
 
 
 def test_segni_visibili_anche_con_il_contrasto_elevato():
-    """Contrasto elevato di Windows: il browser toglie fondi e ombre. La voce scelta delle misure e dei moduli e la regola appena
+    """Contrasto elevato di Windows: il browser toglie fondi e ombre. I moduli scelti nelle Regole e la regola appena
     cambiata dall'importazione prendono un contorno vero."""
     forzati = _blocco("@media (forced-colors: active) {")
-    for selettore in (".chips.misure .chip.attiva", "#moduli .chip.attiva", ".riga-regola.evidenzia"):
+    for selettore in ("#moduli .chip.attiva", ".riga-regola.evidenzia"):
         assert re.search(re.escape(selettore) + r"[^{]*\{[^}]*outline: 2px solid Highlight", forzati), selettore
 
 
@@ -232,17 +198,3 @@ def test_movimenti_con_il_segno_colorato_senza_quadratino():
     for selettore in (".icona-mov", ".icona-mov.su", ".icona-mov.giu", ".movimento.ok .icona-mov"):
         _senza_fondo(selettore)
     assert "border-top: 1px solid var(--filo)" in "".join(_regole(".movimento + .movimento"))
-
-
-def test_crediti_in_colonne_di_righe_con_il_numero_a_destra():
-    lega = _funzione("vistaLega")
-    assert '<div class="crediti-righe">${squadre.map(' in lega
-    assert re.search(r"\.crediti-righe \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(min\(300px, 100%\), 1fr\)\)", CSS)   # mai più larga della pagina (zoom al 200%)
-    assert "border-top: 1px solid var(--filo)" in "".join(_regole(".crediti-righe .riga-crediti"))
-    assert "font-family: var(--font-numeri)" in "".join(_regole(".cred-squadra"))
-
-
-def test_novita_in_una_colonna_da_leggere():
-    """Spec C12: righe di testo al massimo 70 caratteri. Sul PC le novità erano larghe quanto la pagina (oltre 150 caratteri)."""
-    assert '<div class="novita-pagina">' in _funzione("vistaNovita")
-    assert "max-width: 70ch" in "".join(_regole(".novita-pagina"))

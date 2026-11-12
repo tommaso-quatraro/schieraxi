@@ -252,8 +252,8 @@ def test_la_card_da_fare_in_inglese_e_in_italiano():
         {"id": "formazione:9", "tipo": "formazione", "priorita": 1, "testo": str(F("dafare.formazione_chiude", tempo=F("tempo.ore", n=2))),
          "frase": F("dafare.formazione_chiude", tempo=F("tempo.ore", n=2)).json(),
          "azione": "Apri la formazione", "azione_frase": F("dafare.az_formazione").json(), "destinazione": {"scheda": "formazione"}},
-        {"id": "copertura:A", "tipo": "copertura", "priorita": 2, "testo": "Testo già nella lingua della richiesta", "azione": "Cerca un rimpiazzo",
-         "destinazione": {"scheda": "mercato"}},                                                                                    # voce senza frase (server vecchio)
+        {"id": "rose-vecchie", "tipo": "rose", "priorita": 2, "testo": "Testo già nella lingua della richiesta", "azione": "Aggiorna le rose",
+         "destinazione": {"scheda": "lega", "sezione": "rose"}},                                                                                    # voce senza frase (server vecchio)
     ]
     codice = codice_web.leggi("dafare.js")
     prova = TESTI_JS + 'const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");\n' + codice + f"""
@@ -278,11 +278,8 @@ def test_il_web_mostra_le_frasi_tradotte_nei_punti_giusti():
     dafare = codice_web.leggi("dafare.js")
     for pezzo in ('testoEtichetta(traduciFrase(m.frase, m.testo))',                  # motivi sotto il nome (etichette e scheda): esc dentro testoEtichetta
                   'esc(testoDi(o.probabili))', 'esc(testoDi(o.probabili, "avviso"))',     # probabili di Oggi
-                  'esc(testoDi(p, "motivo"))',                                          # consigli di mercato
                   'esc(testoDi(m))',                                                     # «Perché questo numero»
-                  'testoDi(c, "perche")', 'testoDi(fo)',                                 # ballottaggio
-                  'testiDi(g, "motivi").map(esc)', 'testiDi(r, "avvisi").map(esc)',      # motivi del confronto e avvisi della rosa
-                  'esc(etichettaFattore(f))'):
+                  'testiDi(r, "avvisi").map(esc)'):                                     # avvisi della rosa
         assert pezzo in app, pezzo
     assert 'esc(testoDi(g, "avviso"))' in anteprima and "traduciFrase(a.frase, a.testo)" in anteprima
     assert 'esc(testoDi(v))' in dafare and 'esc(v.azione ? testoDi(v, "azione")' in dafare
