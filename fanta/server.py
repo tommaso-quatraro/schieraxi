@@ -601,20 +601,42 @@ def _versione_dati() -> str | None:
         db.close()
 
 
+_guasti_visti: frozenset = frozenset()     # i guasti del riscaldamento già scritti nel registro (una riga quando compaiono)
+
+
 def _da_sorvegliare() -> tuple:
     """Quello che il riscaldamento confronta ogni minuto: la versione dei dati e, per le leghe attive, giornata, scadenza passata e
-    anticipi cominciati, che cambiano con l'ora senza dati nuovi (riscaldamento.stato_giornate, #651). Se leghe o calendario non si
-    leggono, la sola versione dei dati, come prima."""
-    versione = _versione_dati()
+    anticipi cominciati, che cambiano con l'ora senza dati nuovi (riscaldamento.stato_giornate, #651). Le regole di un utente che non
+    si leggono non fermano le altre leghe; se non si leggono utenti o calendario resta la sola versione dei dati, come prima. Ogni
+    guasto va nel registro del servizio con il tipo dell'errore e il numero dell'utente (`_registra_guasti`)."""
+    versione, giornate, guasti = _versione_dati(), None, set()
     try:
+        leghe = []
+        for ctx in riscaldamento.contesti_da_scaldare(_contesto_locale):
+            try:
+                leghe.append(_regole(ctx))
+            except Exception as e:  # noqa: BLE001 - le altre leghe contano lo stesso; il guasto va nel registro
+                chi = "senza account" if ctx.utente_id is None else f"utente {ctx.utente_id}"
+                guasti.add(f"regole non lette ({chi}, {type(e).__name__}): per questa lega niente giro alla scadenza né all'inizio "
+                           "di un anticipo")
         db = _db()
         try:
-            giornate = riscaldamento.stato_giornate(db, _leghe_attive(), consigli._adesso())
+            giornate = riscaldamento.stato_giornate(db, leghe, consigli._adesso())
         finally:
             db.close()
-    except Exception:  # noqa: BLE001 - è solo un'anticipazione: il giro dopo un aggiornamento dei dati resta come sempre
-        giornate = None
+    except Exception as e:  # noqa: BLE001 - resta il giro dopo un aggiornamento dei dati; il guasto va nel registro
+        guasti.add(f"utenti o calendario non letti ({type(e).__name__}): niente giro alla scadenza né all'inizio di un anticipo")
+    _registra_guasti(guasti)
     return versione, giornate
+
+
+def _registra_guasti(guasti: set[str]) -> None:
+    """Scrive nel registro del servizio i guasti nuovi del riscaldamento, una riga ciascuno: un guasto che dura non si ripete ogni
+    minuto; uno sparito si dimentica, e se torna si riscrive. Mai nomi né testi degli errori (possono contenere dati): tipo e numero."""
+    global _guasti_visti
+    for g in sorted(guasti - _guasti_visti):
+        logging.getLogger("uvicorn.error").warning("Riscaldamento: %s", g)
+    _guasti_visti = frozenset(guasti)
 
 
 def _novita() -> list[dict]:

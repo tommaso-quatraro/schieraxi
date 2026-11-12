@@ -2,7 +2,9 @@
 ripartiva solo quando cambiavano i dati: il widget, che legge solo la cache, riceveva 202 fino al giro dei risultati. Ora il valore
 che il riscaldamento confronta comprende anche giornata, scadenza passata e anticipi cominciati delle leghe attive. Ore fissate,
 calendario e rosa inventati (quelli di test_anticipi_consigliata: anticipo mercoledì 20:45, formazione chiusa sabato alle 15:00)."""
+import logging
 from datetime import datetime, timedelta
+from types import SimpleNamespace as NS
 
 import pytest
 
@@ -50,20 +52,54 @@ class _SenzaChiudere:
         pass
 
 
+def _server_sull_archivio_finto(mondo, monkeypatch, regole_di=lambda ctx: SOLO_442) -> None:  # noqa: F811  (lo stato della fixture)
+    """Il server legge l'archivio finto e due utenti attivi (7 e 8); `regole_di` dà le regole di ciascuno. Nessun guasto già scritto."""
+    monkeypatch.setattr(server, "_db", lambda: _SenzaChiudere(mondo["db"]))
+    monkeypatch.setattr(server, "_versione_dati", lambda: "stessi-dati")
+    monkeypatch.setattr(riscaldamento, "contesti_da_scaldare", lambda locale, adesso=None: [NS(utente_id=7), NS(utente_id=8)])
+    monkeypatch.setattr(server, "_regole", regole_di)
+    monkeypatch.setattr(server, "_guasti_visti", frozenset())
+
+
 def test_il_server_fa_ripartire_il_riscaldamento_anche_senza_dati_nuovi(mondo, monkeypatch):  # noqa: F811  (fixture)
     """Il valore che il riscaldamento del servizio confronta ogni minuto cambia quando comincia l'anticipo e quando passa la scadenza,
     con la stessa versione dei dati; prima era la sola versione dei dati."""
-    monkeypatch.setattr(server, "_db", lambda: _SenzaChiudere(mondo["db"]))
-    monkeypatch.setattr(server, "_versione_dati", lambda: "stessi-dati")
-    monkeypatch.setattr(server, "_leghe_attive", lambda: [SOLO_442])
+    _server_sull_archivio_finto(mondo, monkeypatch)
     visti = []
     for adesso in (MARTEDI, MERCOLEDI_PRIMA, GIOVEDI, SABATO_PRIMA, SABATO_DOPO):
         mondo["adesso"] = adesso
         visti.append(server._da_sorvegliare())
     assert all(v[0] == "stessi-dati" for v in visti)
     assert visti[0] == visti[1] != visti[2] == visti[3] != visti[4]
-    monkeypatch.setattr(server, "_leghe_attive", lambda: 1 / 0)       # leghe illeggibili: resta la versione dei dati, come prima
-    assert server._da_sorvegliare() == ("stessi-dati", None)
+
+
+def _righe(caplog) -> list[str]:
+    return [r.getMessage() for r in caplog.records if r.getMessage().startswith("Riscaldamento:")]
+
+
+def test_regole_illeggibili_di_un_utente_si_vedono_nel_registro(mondo, monkeypatch, caplog):  # noqa: F811  (fixture)
+    """Guasti visibili: se le regole di un utente non si leggono, le altre leghe contano lo stesso e nel registro c'è una riga con
+    il tipo dell'errore e il numero dell'utente (mai il nome né il testo dell'errore), una volta finché dura, non a ogni minuto."""
+    def regole_di(ctx):
+        if ctx.utente_id == 8:
+            raise ValueError("testo rovinato del file")
+        return SOLO_442
+    _server_sull_archivio_finto(mondo, monkeypatch, regole_di)
+    mondo["adesso"] = GIOVEDI
+    with caplog.at_level(logging.WARNING, logger="uvicorn.error"):
+        v = server._da_sorvegliare()
+        server._da_sorvegliare()
+    assert v == ("stessi-dati", riscaldamento.stato_giornate(mondo["db"], [SOLO_442], GIOVEDI))
+    righe = _righe(caplog)
+    assert len(righe) == 1 and "utente 8" in righe[0] and "ValueError" in righe[0] and "rovinato" not in righe[0]
+
+
+def test_senza_utenti_o_calendario_resta_la_versione_dei_dati_e_si_scrive_nel_registro(mondo, monkeypatch, caplog):  # noqa: F811
+    _server_sull_archivio_finto(mondo, monkeypatch)
+    monkeypatch.setattr(riscaldamento, "contesti_da_scaldare", lambda locale, adesso=None: 1 / 0)    # database degli account illeggibile
+    with caplog.at_level(logging.WARNING, logger="uvicorn.error"):
+        assert server._da_sorvegliare() == ("stessi-dati", None)
+    assert len(_righe(caplog)) == 1 and "ZeroDivisionError" in _righe(caplog)[0]
 
 
 @pytest.mark.parametrize("cambio, adesso", [("anticipo", GIOVEDI), ("scadenza", SABATO_DOPO)])
