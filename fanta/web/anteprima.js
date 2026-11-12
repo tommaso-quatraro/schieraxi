@@ -75,7 +75,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
     dove.innerHTML = `<div class="ar-attesa" role="status">${marchio(34, true)}<span>${t("ar.leggo")}</span></div>`;
     try { st.ris = await anteprima(); }
     catch (e) {
-      dove.innerHTML = `<div role="alert">${errore(e)}</div><div class="pulsanti"><button class="bottone secondario" type="button" id="ar-indietro">${t("ar.indietro")}</button></div>`;
+      dove.innerHTML = `${errore(e)}<div class="pulsanti"><button class="bottone secondario" type="button" id="ar-indietro">${t("ar.indietro")}</button></div>`;
       $("#ar-indietro", dove).addEventListener("click", () => { dove.innerHTML = ""; if (opz.annulla) opz.annulla(); });
       $("#ar-indietro", dove).focus();
       return;
@@ -148,7 +148,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
       ${mia}
       <div class="ar-squadre">${squadreHtml}</div>
       ${differenze}
-      <div id="ar-msg" role="alert">${messaggio ? `<div class="attenzione">${esc(messaggio)}</div>` : ""}</div>
+      <div id="ar-msg">${messaggio ? `<div class="attenzione" role="status">${esc(messaggio)}</div>` : ""}</div>
       <div class="pulsanti"><button class="bottone" type="button" id="ar-salva">${t("ar.conferma")}</button>
         <button class="bottone secondario" type="button" id="ar-annulla">${t("ar.annulla")}</button></div>
     </div>`;

@@ -32,12 +32,11 @@ def _riga(inizio: str) -> str:
 
 AMBIENTE = r"""
 const chiamate = [];
-const stato = { vista: "oggi", scelta: null, mercatoTab: "consigli", impDaUrl: null, legaTorna: null };
+const stato = { vista: "oggi", scelta: null, impDaUrl: null, legaTorna: null };
+const VOCI_LEGA = [{ id: "squadre", ambito: "squadra" }, { id: "importa", ambito: "squadra" }, { id: "diario", ambito: "altro" }, { id: "regole", ambito: "altro" }];
 const t = k => ({ "shell.impostazioni": "Impostazioni", "nav.oggi": "Oggi", "nav.formazione": "Formazione", "nav.squadra": "Squadra", "nav.altro": "Altro" }[k] || k);
 const esc = x => String(x ?? "");
-const ambitoVoce = () => "altro";
 let largo = false; const legaLarga = () => largo;                // finestra da 1100 px (Squadra con menu e pagina affiancati)
-const schedaMercato = s => s;
 const classi = () => { const s = new Set(); return { toggle(c, si) { if (si === undefined ? !s.has(c) : si) s.add(c); else s.delete(c); }, contains: c => s.has(c), add: c => s.add(c), remove: c => s.delete(c) }; };
 const elemento = (vista, id = "") => { const attr = {}; return { id, dataset: { vista }, classList: classi(), attr, setAttribute(k, v) { attr[k] = String(v); }, removeAttribute(k) { delete attr[k]; } }; };
 const schede = ["oggi", "formazione", "squadra", "altro"].map(v => elemento(v));
@@ -49,9 +48,9 @@ const $ = s => ({ "#bottone-impostazioni": ingranaggio, "#titolo-pagina": titolo
 const localStorage = { setItem() {} };
 const window = { scrollTo() {}, ascolta: {}, addEventListener(n, f) { window.ascolta[n] = f; } };
 const contenuto = { classList: classi(), dataset: {} };
-let timerConto = null; const clearInterval = () => {}; const fermaLive = () => { chiamate.push(["ferma-diretta"]); }; let regoleAC = null;
+let timerConto = null; const clearInterval = () => {}; let regoleAC = null;
 const disegna = nome => () => chiamate.push(["disegna", nome]);
-const vistaOggi = disegna("oggi"), vistaFormazione = disegna("formazione"), vistaMercato = disegna("mercato"), vistaScambi = disegna("scambi");
+const vistaOggi = disegna("oggi"), vistaFormazione = disegna("formazione");
 const vistaLega = a => chiamate.push(["disegna", a]), vistaImpostazioni = g => chiamate.push(["disegna", "impostazioni", g || null]);
 const chiudiFoglio = () => chiamate.push(["chiudi-foglio"]);
 const chiudiPannelloAffiancato = () => chiamate.push(["chiudi-pannello"]);
@@ -79,7 +78,8 @@ def _esegui(scena: str):
         AMBIENTE,
         APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")], _riga("const SCHEDA_DI = "),
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
-        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "), _funzione("vai"),
+        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "),
+        _funzione("schermataCheResta"), _funzione("vai"),
         _da_a('window.addEventListener("popstate"', "\n});\n"),
         scena,
     ])
@@ -120,7 +120,7 @@ def test_indietro_e_avanti_tornano_alle_schermate_di_prima_con_la_scheda_accesa(
 def test_le_schermate_si_disegnano_da_una_mappa_con_i_soli_nomi_ammessi():
     """CodeQL (js/unvalidated-dynamic-method-call, #396): il nome della schermata arriva anche dall'indirizzo (?vista=, Indietro);
     prima si chiamava `oggetto[vista]()`. Ora una Map con i soli nomi ammessi: un nome strano, anche «__proto__» o «constructor»,
-    porta a Oggi e non chiama altro."""
+    porta a Oggi e non chiama altro. «mercato» e «scambi» (pagine tolte il 12/11/2026, #615) portano a Squadra e ad Altro."""
     assert "[vista]()" not in APP
     esiti = _esegui("""
     const esiti = [];
@@ -133,28 +133,9 @@ def test_le_schermate_si_disegnano_da_una_mappa_con_i_soli_nomi_ammessi():
     for esito in esiti[:5]:
         disegni = [c for c in esito["chiamate"] if c[0] == "disegna"]
         assert disegni == [["disegna", "oggi"]] and esito["vista"] == "oggi" and esito["accesa"] == ["oggi"], esito
-    assert ["disegna", "mercato"] in esiti[5]["chiamate"] and esiti[5]["accesa"] == ["squadra"]
-    assert ["disegna", "scambi"] in esiti[6]["chiamate"] and esiti[6]["accesa"] == ["altro"]
+    assert ["disegna", "squadra"] in esiti[5]["chiamate"] and esiti[5]["accesa"] == ["squadra"] and esiti[5]["indirizzo"] == "/?vista=squadra"
+    assert ["disegna", "altro"] in esiti[6]["chiamate"] and esiti[6]["accesa"] == ["altro"] and esiti[6]["indirizzo"] == "/?vista=altro"
     assert [c for c in esiti[7]["chiamate"] if c[0] == "disegna"] == [["disegna", "oggi"]] and esiti[7]["vista"] == "oggi"
-
-
-def test_da_1100_px_squadra_e_le_sue_pagine_di_mercato_sono_una_schermata_sola():
-    """Revisione della #431: a 1440 px con il Calendario aperto accanto al menu (?vista=mercato&scheda=calendario), la scheda
-    «Squadra» o il tasto 3 aggiungevano una voce ?vista=squadra, che la pagina riportava subito al Calendario: due voci uguali, e
-    Indietro non faceva niente. Da 1100 px Squadra e Mercato sono la stessa schermata: si corregge la voce, non se ne aggiunge una.
-    Sotto i 1100 px sono due pagine, come prima."""
-    larga, stretta, da_formazione = _esegui("""
-    const esiti = [];
-    largo = true; vai("oggi"); vai("mercato"); chiamate.splice(0);
-    vai("squadra"); esiti.push(foto());
-    largo = false; vai("mercato"); chiamate.splice(0); vai("squadra"); esiti.push(foto());
-    largo = true; vai("formazione"); chiamate.splice(0); vai("squadra"); esiti.push(foto());
-    console.log(JSON.stringify(esiti));
-    """)
-    assert ["replace", "/?vista=squadra"] in larga["chiamate"] and not any(c[0] == "push" for c in larga["chiamate"])
-    assert larga["voci"] == 2 and larga["accesa"] == ["squadra"]                       # oggi, poi Squadra (prima mercato)
-    assert ["push", "/?vista=squadra"] in stretta["chiamate"]
-    assert ["push", "/?vista=squadra"] in da_formazione["chiamate"]                    # da un'altra schermata: una voce nuova
 
 
 def test_il_link_vai_al_contenuto_non_ridisegna_la_schermata():

@@ -14,7 +14,6 @@ SchieraXI è un aiuto per il fantacalcio, accanto all'app Leghe Fantacalcio. Non
 - **Consiglia la formazione**: 11 titolari, modulo e ordine della panchina.
 - **Tiene d'occhio** infortuni, squalifiche e probabili formazioni.
 - **Ti dice cosa sbrigare** (lista **Da fare** in Oggi).
-- **Propone scambi** e ti dice se un'offerta che ti arriva conviene.
 - **Ti avvisa sul telefono**, anche prima della scadenza se la formazione da schierare è cambiata.
 - **Ricorda cosa è successo**: il Diario confronta ciò che hai schierato con ciò che consigliava e dice quanto ci ha preso.
 
@@ -46,7 +45,7 @@ Alla prima apertura SchieraXI ti guida in quattro passi brevi. Ogni passo si pu�
 Se ti fermi prima di caricare le rose (per esempio per mettere l'app sulla schermata Home), alla prossima apertura dell'app la guida riprende dalle rose, anche da un altro telefono o computer. Se la chiudi con la ✕, i passi rimasti contano come saltati e la guida non si riapre da sola: la ritrovi toccando **Importa le rose** in Oggi (dopo le rose, i passi saltati sono in **Da fare**). Finita con **Vai a Oggi**, non si riapre più da sola.
 
 1. **Le rose.** Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla il testo e tocca **Controlla le rose**, oppure tocca **Scegli il file (Excel o CSV)**. Non si salva ancora niente.
-   Per cominciare basta anche **solo la tua squadra**: formazione e consigli funzionano subito. Le rose degli altri servono per gli scambi e le aggiungi quando vuoi. Se vuoi solo guardare l'app, usa le **squadre di esempio**.
+   Per cominciare basta anche **solo la tua squadra**: formazione e consigli funzionano subito. Le rose degli altri servono per guardare le altre squadre e le aggiungi quando vuoi. Se vuoi solo guardare l'app, usa le **squadre di esempio**.
 2. **Controlla e conferma.** SchieraXI mostra cosa ha capito, squadra per squadra:
    - **da controllare** (arancione): nome simile a un altro o cognome doppio. Scegli quello giusto dal menu, cerca a mano con **Un altro: lo cerco io**, oppure **Toglilo dalla rosa**;
    - **non trovati** (rosso): se qualcuno gli somiglia lo trovi già nel menu; altrimenti cercalo, toglilo o lascialo per ora «non riconosciuto»;
@@ -81,15 +80,15 @@ Se ti invitano in una lega che gioca già da un po':
 
 ### Le schede in basso
 
-**Oggi**, **Formazione**, **Squadra**, **Altro**. In cima a ogni schermata c'è il suo titolo e, sotto, la giornata, la tua squadra e l'ora dei dati. In alto a destra: la **lente** (cerca un giocatore), l'**ingranaggio** (Impostazioni) e le **frecce** (ricaricano i dati). Toccando un giocatore si apre la sua scheda: previsione, forma recente, statistiche, **☆ Segui** per seguirlo (diventa **★ Seguito**; lo trovi in **Seguiti**).
+**Oggi**, **Formazione**, **Squadra**, **Altro**. In cima a ogni schermata c'è il suo titolo e, sotto, la giornata, la tua squadra e l'ora dei dati. In alto a destra: la **lente** (cerca un giocatore), l'**ingranaggio** (Impostazioni) e le **frecce** (ricaricano i dati). Toccando un giocatore si apre la sua scheda: previsione, forma recente, statistiche.
 
 Su uno schermo largo (computer, iPad in orizzontale) le schede stanno in alto, accanto al nome SchieraXI, con il campo **Cerca un giocatore** sempre aperto: scrivi e si apre la ricerca. Con Ctrl+clic (⌘+clic sul Mac) una scheda si apre in un'altra scheda del browser, per confrontare due schermate.
 
-Su uno schermo molto largo (computer con la finestra ampia) la scheda di un giocatore si apre in un pannello a destra, accanto alla pagina, senza coprirla: la pagina si stringe e si usa come sempre. Un clic su un altro giocatore cambia il pannello, così scorri i titolari uno dopo l'altro; **✕** o **Esc** lo chiudono. Nello stesso pannello si aprono il confronto tra due giocatori, la scelta di chi mettere al posto di un titolare e **Perché questo numero**. La ricerca in alto mostra i risultati nel pannello mentre scrivi; **Invio** apre il primo, la freccia **↓** porta ai risultati (**↑** sul primo torna al campo). Con la finestra più stretta la scheda resta il pannello di sempre, sopra la pagina.
+Su uno schermo molto largo (computer con la finestra ampia) la scheda di un giocatore si apre in un pannello a destra, accanto alla pagina, senza coprirla: la pagina si stringe e si usa come sempre. Un clic su un altro giocatore cambia il pannello, così scorri i titolari uno dopo l'altro; **✕** o **Esc** lo chiudono. Nello stesso pannello si aprono la scelta di chi mettere al posto di un titolare e **Perché questo numero**. La ricerca in alto mostra i risultati nel pannello mentre scrivi; **Invio** apre il primo, la freccia **↓** porta ai risultati (**↑** sul primo torna al campo). Con la finestra più stretta la scheda resta il pannello di sempre, sopra la pagina.
 
 Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Nella Formazione **Ctrl+S** (⌘+S sul Mac) salva la formazione quando c'è qualcosa da salvare. Il tasto Indietro del browser torna alla schermata di prima.
 
-Con lo zoom del browser molto alto (per esempio 200% sul telefono) o con il testo **Molto grande** su un telefono piccolo, le schermate si dispongono in una colonna: la testata scorre via con la pagina, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due giocatori per fila.
+Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate si dispongono in una colonna: la testata scorre via con la pagina, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due giocatori per fila.
 
 ## 3. Ogni settimana
 
@@ -105,32 +104,31 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) o con il test
   - **«La consigliata è cambiata da quando l'hai salvata: rivedila»**: una riga sola, con chi entra e chi esce (fino a tre cambi; con di più, quanti sono) e il pulsante **Apri la formazione**. Se uno dei tuoi titolari salvati è infortunato o squalificato, la riga lo dice per primo ed è **Urgente**. La formazione salvata resta com'è finché non la cambi tu (per prendere la nuova: **Torna alla consigliata**, poi **Salva questa**). Con una formazione fatta a mano i cambi rispetto alla consigliata restano.
   - **Formazione salvata non più valida**: conta come non salvata. Da fare guarda la consigliata e ti ricorda che quella che hai salvato non è più valida.
   - **Aggiorna le rose**: compare solo dopo le aste e durante le finestre di scambio, e solo se da allora non le hai aggiornate: «È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della giornata N». Le aste di partenza vanno dal 1° al 21 settembre e dal 1° al 21 febbraio; le finestre di scambio sono le soste del campionato. Chi gestisce il server può scrivere le date vere della tua lega nelle regole. Sparisce quando aggiorni le rose o quando si chiude la formazione della prima giornata della lega dopo;
-- **I tuoi migliori** (fantavoto atteso e «gioca N%»), **Da controllare** (i tuoi titolari che rischiano di non giocare, con la stessa parola della Formazione: **In dubbio** solo se lo dicono le probabili, altrimenti per esempio **Improbabile** o **Probabile panchina**), **Indisponibili** (chiuso: si apre con un tocco) e **Diffidati**;
-- **Partite del turno**, con i risultati in diretta (gol, rigori, espulsioni; una partita già cominciata dice **In corso** anche senza la diretta; una partita rinviata dice **Rinviata**; quelle senza una data nuova stanno in fondo). A sinistra l'ora o lo stato, al centro le squadre, a destra il risultato. Le partite con i tuoi titolari hanno il fondo verde chiaro e una barretta a sinistra.
+- **I tuoi migliori** (fantavoto atteso e «gioca N%»), **Da controllare** (i tuoi titolari che rischiano di non giocare, con la stessa parola della Formazione: **In dubbio** solo se lo dicono le probabili, altrimenti per esempio **Improbabile** o **Probabile panchina**), **Indisponibili** (chiuso: si apre con un tocco) e **Diffidati**.
 
 Se una partita della giornata è **anticipata** di qualche giorno, la scadenza resta quella del resto della giornata: puoi ancora cambiare la formazione, e i giocatori dell'anticipo mostrano già com'è andata la loro partita. Quando l'anticipo è cominciato, la formazione consigliata lascia dove sono i suoi giocatori (titolari, panchina o fuori): gli altri si spostano come al solito. Anche nella tua formazione, come nella lega, non si spostano più: chi era titolare nella formazione che vale (la tua, se l'hai salvata, altrimenti la consigliata) resta titolare, e chi non lo era non entra. In **Modifica a mano** non li puoi sostituire né far entrare, e se provi a salvare una formazione che li sposta SchieraXI te lo dice: «Rossi gioca in una partita già cominciata: non si può più spostare.»
 
-Se una partita della giornata è **rinviata**, in Oggi compare la sezione **Partita rinviata**: quali partite (come nelle Partite del turno, «UDI vs MIL»), la data del recupero (se c'è già) e i tuoi giocatori coinvolti. Sul campo della Formazione i loro giocatori dicono **Rinviata** al posto di «gioca N%». Sotto, il menu **Per questa giornata i loro giocatori**: *aspettano il recupero* (conta il voto del recupero, restano schierabili), *restano senza voto* (entra la riserva) o *prendono il voto d'ufficio*. Di solito vale la regola della tua lega (Impostazioni › Regole › Partite rinviate); se per una giornata la lega decide diversamente, cambiala qui: vale solo per quella giornata e i consigli si aggiornano subito. Nella scheda del giocatore il primo motivo spiega cosa succede.
+Se una partita della giornata è **rinviata**, in Oggi compare la sezione **Partita rinviata**: quali partite («UDI vs MIL»), la data del recupero (se c'è già) e i tuoi giocatori coinvolti. Sul campo della Formazione i loro giocatori dicono **Rinviata** al posto di «gioca N%». Sotto, il menu **Per questa giornata i loro giocatori**: *aspettano il recupero* (conta il voto del recupero, restano schierabili), *restano senza voto* (entra la riserva) o *prendono il voto d'ufficio*. Di solito vale la regola della tua lega (Impostazioni › Regole › Partite rinviate); se per una giornata la lega decide diversamente, cambiala qui: vale solo per quella giornata e i consigli si aggiornano subito. Nella scheda del giocatore il primo motivo spiega cosa succede.
 
-I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una frase. SchieraXI non propone cambi per differenze minime né ti fa svincolare un titolare utile.
+I consigli sui titolari in dubbio sono al massimo tre e ognuno dice il perché in una frase. SchieraXI non propone cambi per differenze minime.
 
 ### Formazione
 
-Sul PC e sul tablet il campo sta a sinistra e resta fermo mentre scorri l'elenco a destra (se ci sta nello schermo); al telefono viene dopo Modulo e Stile, prima dei Titolari. In cima ci sono il modulo e i punti attesi, con la fascia «tra 55 e 76».
+Sul PC e sul tablet il campo sta a sinistra e resta fermo mentre scorri l'elenco a destra (se ci sta nello schermo); al telefono viene dopo il Modulo, prima dei Titolari. In cima ci sono il modulo e i punti attesi, con la fascia «tra 55 e 76».
 
 - Sotto, **lo stato della tua scelta** per la giornata (lo sa il server, quindi resta uguale anche ricaricando o su un altro dispositivo). Quando c'è qualcosa da salvare la riga resta in alto mentre scorri, con il suo pulsante **Salva** sempre in vista; sul PC **Ctrl+S** (⌘+S sul Mac) fa lo stesso:
   - ○ «Stai vedendo la consigliata: non hai salvato una tua formazione.» Con **Salva questa** la tieni come tua scelta;
-  - ○ «Stai vedendo un modulo o uno stile diverso dalla consigliata: non l'hai salvato.» Hai toccato un altro modulo o un altro stile: **Salva questa** lo tiene come tua scelta;
+  - ○ «Stai vedendo un altro modulo, non quello consigliato: non l'hai salvato.» Hai toccato un altro modulo: **Salva questa** lo tiene come tua scelta;
   - ✓ «La tua formazione è salvata (oggi alle 21:40)»: è la tua scelta per la giornata;
   - ● «Modifiche non salvate»: hai cambiato qualcosa dopo aver salvato. **Salva le modifiche** o **Annulla modifiche**;
   - ● «Modifica a mano non ancora salvata»: tocca **Salva come mia scelta**;
   - ! «La formazione salvata non è più valida»: per esempio un giocatore non è più nella rosa, o il modulo non è più ammesso nella tua lega. Rifalla o torna alla consigliata. Finché non la rifai vale la consigliata, anche per Oggi, Da fare, il Diario e gli avvisi;
-  - ■ «Giornata iniziata: la formazione è chiusa»: è passata la scadenza della tua lega. Non ci sono più **Modifica a mano**, **Salva**, **Torna alla consigliata** né i pulsanti di modulo e stile. Se avevi salvato una tua formazione, la riga dice anche quale vale: «· vale quella che hai salvato» (la vedi sul campo) oppure «· vale la consigliata, la tua non è più valida» (sul campo c'è la consigliata, e la usano anche Oggi, il riepilogo e il Diario). Al posto di «gioca 85%» vedi com'è andata: il fantavoto preso, «Voto in arrivo» o «Senza voto».
-  **Torna alla consigliata** toglie la tua scelta e rimette modulo e stile consigliati.
+  - ■ «Giornata iniziata: la formazione è chiusa»: è passata la scadenza della tua lega. Non ci sono più **Modifica a mano**, **Salva**, **Torna alla consigliata** né i pulsanti del modulo. Se avevi salvato una tua formazione, la riga dice anche quale vale: «· vale quella che hai salvato» (la vedi sul campo) oppure «· vale la consigliata, la tua non è più valida» (sul campo c'è la consigliata, e la usano anche Oggi, il riepilogo e il Diario). Al posto di «gioca 85%» vedi com'è andata: il fantavoto preso, «Voto in arrivo» o «Senza voto».
+  **Torna alla consigliata** toglie la tua scelta e rimette il modulo consigliato.
   Se hai cambiato la formazione a mano e non l'hai salvata, prima di cambiare sezione o di ricaricare la pagina SchieraXI te lo chiede.
-- **Modulo** (la stella ★ è il consigliato) e **Stile** (sotto). Sotto Stile una riga dice quale modulo propone lo stile; **Come si legge** apre la sua descrizione.
+- **Modulo**: la stella ★ è il consigliato. Lo stile è uno solo, quello equilibrato (prima se ne potevano scegliere cinque: le prove sulle giornate passate non dicevano che uno facesse più punti).
 - **Consigliata stabile**: la formazione consigliata già mostrata per la giornata cambia solo se la nuova vale almeno 1 punto atteso in più, o se un suo titolare esce dalla rosa, si infortuna, viene squalificato o non gioca più (meno del 20%). Per questo non cambia a ogni ritocco dei dati. Dopo la scadenza resta com'è.
-- **Titolari** sul campo. Ogni giocatore è un disco bianco con il suo fantavoto atteso (toccalo per vedere **Perché questo numero**); sotto il disco il nome, «gioca 85%» (la probabilità che giochi; sotto il 70% diventa arancio con ⚠ e il disco ha un anello arancio) e l'avversario: «vs NAP» se gioca in casa, «@ NAP» se gioca fuori, con una lineetta nel colore della squadra. Sull'iPhone al posto del disco c'è il volto. La prima volta sotto il campo c'è la spiegazione dei segni: **Ho capito** la chiude, **Cosa vuol dire** la riapre. ⇄ mostra perché SchieraXI ha scelto un giocatore invece di un altro.
+- **Titolari** sul campo. Ogni giocatore è un disco bianco con il suo fantavoto atteso (toccalo per vedere **Perché questo numero**); sotto il disco il nome, «gioca 85%» (la probabilità che giochi; sotto il 70% diventa arancio con ⚠ e il disco ha un anello arancio) e l'avversario: «vs NAP» se gioca in casa, «@ NAP» se gioca fuori, con una lineetta nel colore della squadra. Sull'iPhone al posto del disco c'è il volto.
 - **Il perché della scelta, sotto il campo**: a volte la consigliata mette titolare un giocatore che ha meno punti attesi di uno lasciato in panchina o fuori, dello stesso ruolo. Sembra un errore, quindi sotto il campo una riga per ognuno di questi titolari dice il motivo, sulla web e sull'iPhone (gli altri titolari non hanno riga: il loro perché lo vedi toccandoli). I motivi possibili:
   - «Titolare al posto di Gallo, che quasi certamente non gioca (8% di giocare).»
   - **Titolare anche se incerto**: un giocatore che gioca poco (per esempio al 35%) titolare e uno quasi sicuro dello stesso ruolo in panchina. Se il primo non gioca entra il secondo, e insieme valgono di più («Titolare anche se incerto (gioca 35%): se non gioca entra Gallo dalla panchina, e insieme valgono di più.»). Vale quando il titolare gioca meno del 50% e la riserva più dell'80%, e lo ripete il **Perché questo numero** di quel giocatore.
@@ -138,49 +136,32 @@ Sul PC e sul tablet il campo sta a sinistra e resta fermo mentre scorri l'elenco
   - A pari punti: «gioca più sicuro di Gallo (90% contro 80%)» oppure «ha il fantavoto atteso più alto di Gallo (6,1 contro 5,9)»; altrimenti un suo punto forte («Preferito a Gallo: rigorista.») o «Alla pari con Gallo: con l'uno o con l'altro la formazione vale quasi lo stesso».
   - Se la consigliata già mostrata è rimasta perché la nuova valeva meno di 1 punto in più: «Con Gallo al suo posto la formazione farebbe 60,4 invece di 60,0: per meno di 1 punto la consigliata già mostrata non cambia.»
 
-  I numeri sono gli stessi del confronto (⇄) tra i due. Le righe valgono per il modulo e lo stile sullo schermo; non dopo **Modifica a mano** né a giornata iniziata.
-  Chi invece quasi certamente non gioca (meno del 20%, o infortunato, o squalificato) la consigliata lo mette titolare solo se nessun compagno dello stesso ruolo gioca almeno al 50%, oppure se il cambio costerebbe 0,3 punti attesi o più. Vale per ogni stile, e quindi anche per Oggi, il Diario, il widget e gli avvisi. Il confronto (⇄) tra i due lo dice («… quasi certamente non gioca») e scrive quanti punti attesi costa il cambio.
+  Le righe valgono per il modulo sullo schermo; non dopo **Modifica a mano** né a giornata iniziata.
+  Chi invece quasi certamente non gioca (meno del 20%, o infortunato, o squalificato) la consigliata lo mette titolare solo se nessun compagno dello stesso ruolo gioca almeno al 50%, oppure se il cambio costerebbe 0,3 punti attesi o più. Vale anche per Oggi, il Diario, il widget e gli avvisi.
 - Sotto il nome, la partita come sul campo, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Le note lunghe, per esempio un infortunio, vanno a capo dentro la riga. Sul campo c'è solo il cognome («Rossi», senza l'iniziale).
-- Ogni giornata ha **due numeri**, come su Leghe: «Giornata 7 · 10ª di Serie A» vuol dire giornata 7 della **tua lega**, che è la 10ª di Serie A (in alto, in Oggi, in Formazione, nel Diario, nella scheda, nel confronto, nell'immagine da condividere e negli avvisi). Se la lega è partita con il campionato i due numeri sono uguali. Per le stagioni passate e nel calendario c'è solo la Serie A: «10ª giornata di Serie A». Dove non c'è spazio (per esempio in un widget piccolo), solo «Giornata 8».
+- Ogni giornata ha **due numeri**, come su Leghe: «Giornata 7 · 10ª di Serie A» vuol dire giornata 7 della **tua lega**, che è la 10ª di Serie A (in alto, in Oggi, in Formazione, nel Diario, nella scheda e negli avvisi). Se la lega è partita con il campionato i due numeri sono uguali. Per le stagioni passate c'è solo la Serie A: «10ª giornata di Serie A». Dove non c'è spazio (per esempio in un widget piccolo), solo «Giornata 8».
 - **Panchina** nell'ordine in cui entrano.
-- **Chi schierare?** (dalla scheda di un giocatore, **Confronta**): due giocatori a confronto per la giornata della tua lega. In verde c'è quello da schierare, lo stesso del titolo «Schiera …»: se la consigliata ne tiene titolare uno solo, è lui, anche quando l'altro da solo vale qualche punto in più (per esempio un titolare incerto con una riserva sicura che entra al suo posto). Sotto ogni nome, **Titolare**, **Panchina N** o **Non schierato** nella consigliata. Nell'elenco per scegliere con chi confrontare, accanto al posto c'è lo stato del giocatore, lo stesso della Formazione (per esempio **Improbabile** per chi gioca al 2%).
-- **Modifica a mano** (✎): cambi un titolare con un altro della rosa e i punti si ricalcolano. Chi gioca in un anticipo già cominciato ha ⇄ al posto di ✎ e non compare fra i sostituti: sotto i titolari una riga dice «Chi gioca in una partita già cominciata non si può più spostare.»
-- **Copia il testo** e **Condividi come immagine**.
-
-Gli stili vanno dal più prudente al più rischioso: **Molto sicura**, **Sicura**, **Equilibrata** (di partenza, quella consigliata), **Rischiosa**, **Molto rischiosa**. Cambiano il carattere della scelta, non i punti medi: le prove sulle giornate passate non dicono che uno stile faccia più punti.
+- Sotto un titolare **in ballottaggio** ci sono i due compagni di ruolo più vicini, con la differenza in punti («Rossi +0,8»): toccandone uno apri la sua scheda.
+- **Modifica a mano** (✎): cambi un titolare con un altro della rosa e i punti si ricalcolano. Chi gioca in un anticipo già cominciato non ha ✎ e non compare fra i sostituti: sotto i titolari una riga dice «Chi gioca in una partita già cominciata non si può più spostare.»
+- **Copia il testo**: copia la formazione come testo, da incollare dove vuoi (per esempio nel gruppo della lega).
 
 ### Squadra
 
 - **Squadre e rose**: la tua squadra (si cambia con «Non è la tua squadra?»), **Stemma e maglia**, **Vedi la rosa**; tocca un'altra squadra per vedere rosa e formazione.
   Nella rosa di una squadra, **Cambia il nome** corregge il nome (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono. Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra.
-- **Cambi consigliati**: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Compaiono solo cambi sensati, con il perché in una frase. Ogni riga dice chi entra e al posto di chi, i punti in più nelle prossime giornate e, su una riga sotto, i crediti che ti restano con il rimborso e il costo del cambio (sempre scritti, anche sul telefono); a destra, grandi, i punti in più in stagione. Con i crediti inseriti vedi solo quelli che puoi permetterti. Se hai caricato solo la tua squadra, un avviso ricorda che qualche svincolato potrebbe essere già di un altro.
-- **Seguiti**: i giocatori che segui (pulsante **☆ Segui** nella scheda). Ti avvisa se si infortunano o tornano disponibili. Dopo la scadenza, come nella Rosa, ognuno mostra com'è la sua partita («Partita in corso», «Voto in arrivo»...).
-- **Elenco dei giocatori** (filtri per ruolo, solo svincolati, ricerca per nome) e **Calendario** con la difficoltà: in ogni casella «vs MIL» (in casa) o «@ MIL» (in trasferta).
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
 
-Su uno schermo largo (computer con la finestra ampia) le voci di Squadra restano a sinistra e la voce scelta si apre a destra: da **Seguiti** al **Calendario** basta un clic, senza tornare indietro. Riaprendo Squadra trovi la voce dell'ultima volta. Il menu resta accanto anche nella rosa di una squadra. Con la finestra più stretta si vede una cosa alla volta e **‹ Squadra** riporta alle voci. Lo stesso vale per le voci di **Altro**.
-Nell'**Elenco dei giocatori** e nella rosa di una squadra i nomi delle colonne («Partita», «Fantavoto atteso») restano in vista in alto mentre scorri.
-
-### Scambi (Altro > Scambi)
-
-- **Trova per me**: SchieraXI cerca scambi che convengono a tutte e due le squadre. La ricerca parte solo quando tocchi il pulsante. Restano per oggi un certo numero di ricerche («Ne restano N oggi»); si azzerano a mezzanotte.
-- **Costruisci**: da 1 a 4 giocatori per parte, anche in numero diverso, con eventuale conguaglio in crediti (**Ricevo** o **Pago**). Poi **Valuta lo scambio**.
-  Se chi paga non ha abbastanza crediti, lo scambio risulta «non si può fare» e il conguaglio non entra nel giudizio (niente punti né crediti sotto zero).
-- **Valuta un'offerta**: incolli il messaggio dell'altro allenatore e SchieraXI dice se conviene.
-
-Ogni proposta sta in un riquadro: chi dai a sinistra, chi ricevi a destra, sotto i punti in più in stagione per te e per l'altro (grandi) e, sulla stessa riga, **Copia bozza del messaggio** e **Vedi il giudizio completo**. Su uno schermo largo le scelte stanno a sinistra e il risultato a destra.
-
-Servono le rose delle altre squadre: se hai caricato solo la tua, qui trovi un messaggio con il pulsante **Aggiorna le rose**. Serve anche aver indicato la tua squadra.
+Su uno schermo largo (computer con la finestra ampia) le voci di Squadra restano a sinistra e la voce scelta si apre a destra: da **Squadre e rose** ad **Aggiorna le rose** basta un clic, senza tornare indietro. Riaprendo Squadra trovi la voce dell'ultima volta. Il menu resta accanto anche nella rosa di una squadra. Con la finestra più stretta si vede una cosa alla volta e **‹ Squadra** riporta alle voci. Lo stesso vale per le voci di **Altro**.
+Nella rosa di una squadra i nomi delle colonne («Partita», «Fantavoto atteso») restano in vista in alto mentre scorri.
 
 ### Altro
 
 - **Regole** (si aprono subito): punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare; con **Applica ai campi** le righe cambiate restano evidenziate per un attimo. Su uno schermo largo il regolamento da incollare sta a sinistra e le regole a destra, così vedi insieme cosa ha riconosciuto e i valori che cambia. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6).
-- **Movimenti e storico**: scambi, svincolati e tagli a ogni aggiornamento delle rose.
-- **Crediti delle squadre**: non sono nel file di Leghe; li scrivi qui (una riga per squadra, su due colonne se lo schermo è largo) e tocchi **Salva i crediti**. Finché non salvi, sopra il pulsante leggi «Ci sono crediti scritti e non ancora salvati».
-- **Nuova stagione**: a fine campionato archivia le rose e riparte, senza cancellare niente.
-- **Novità**: le ultime dieci versioni, le altre con **Mostra le versioni precedenti**.
+- **Diario delle giornate**: vedi la sezione 5.
 
-Alcune funzioni (risultati in diretta, confronto, seguiti, elenco giocatori, Diario, Novità, squadre degli altri) possono essere nascoste da chi gestisce il server. Se ne apri una nascosta, SchieraXI dice che non è disponibile.
+I **crediti** di una squadra si scrivono nella sua rosa (**Squadra > Squadre e rose**, poi la squadra). Le **Novità** si leggono in **Impostazioni > Informazioni**. A fine campionato, quando le rose sono ancora quelle dell'anno prima, in cima a Squadra e ad Altro compare l'avviso **Nuova stagione**: un tocco apre il pulsante che archivia le rose e riparte, senza cancellare niente.
+
+Le rose delle altre squadre possono essere nascoste da chi gestisce il server: allora in Squadra vedi solo la tua.
 
 ## 4. Durante la giornata
 
@@ -241,10 +222,10 @@ Al telefono tocca un gruppo per aprirlo; **Impostazioni** (con la freccia, in al
 | Gruppo | Cosa contiene |
 |---|---|
 | Il tuo account | nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci** |
-| Aspetto | lingua (italiano o inglese), tema (automatico, chiaro, scuro), dimensione del testo |
+| Aspetto | lingua (italiano o inglese), tema (automatico, chiaro, scuro). La dimensione del testo è quella del telefono o dello zoom del browser |
 | Notifiche | quali avvisi ricevere e ore tranquille (sezione 4) |
-| Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente (licenza AGPL-3.0, se il server lo indica), versione |
-| Avanzate | solo per chi gestisce il server: **Mostra tutte le funzioni**, **Stato dei dati**, inviti, utenti, errori |
+| Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente (licenza AGPL-3.0, se il server lo indica), versione e **Novità**: le ultime dieci versioni, le altre con **Mostra le versioni precedenti** |
+| Avanzate | solo per chi gestisce il server: **Stato dei dati**, inviti, utenti, errori |
 
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, seguiti, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi > Salva su File**.
 - **Stato dei dati > Registro delle giornate** (solo per chi gestisce il server): prima di ogni giornata l'app salva i numeri che mostra per tutta la Serie A e, a giornata finita, li confronta con com'è andata. Per tre misure (errore del fantavoto atteso contro la fantamedia, «gioca N%» contro chi ha giocato davvero, punti veri dentro la fascia «8 volte su 10») c'è la media delle ultime giornate misurate, la soglia e se **regge** o **non regge**; finché le giornate misurate sono meno di 8 c'è scritto quante ne servono ancora. Sotto, le **Giornate perse**: quelle non salvate prima della prima partita, con il motivo.

@@ -60,11 +60,9 @@ def test_righe_dei_giocatori_impilate_e_partite_su_due_righe():
     b = _blocco(STRETTA)
     # grafica B (spec §8.4): volto e numeri sopra, nome, partita ed etichette sotto a tutta larghezza
     assert 'grid-template-areas: "volto fv" "volto gioca" "testo testo"' in _regola(b, ".voce-g")
-    assert '"testo testo" "fv gioca"' in _regola(b, ".con-confronto .voce-g")                          # con ⇄ in alto: i numeri sotto il nome
-    assert "padding-right: 0" in _regola(b, ".elenco li.con-confronto .voce-g, .elenco.posto-azione .voce-g")   # niente colonna vuota per ⇄
-    assert "top:" in _regola(b, ".elenco li.con-confronto .confronta-mini")
-    assert "grid-column: 1 / 3" in _regola(b, ".partita .ora")                                          # ora sopra, squadre sotto
-    assert "grid-row: 2" in _regola(b, ".partita .sq.casa")
+    assert '"testo testo" "fv gioca"' in _regola(b, ".con-azione .voce-g")                             # con ✎ in alto: i numeri sotto il nome
+    assert "padding-right: 0" in _regola(b, ".elenco li.con-azione .voce-g, .elenco.posto-azione .voce-g")   # niente colonna vuota per ✎
+    assert "top:" in _regola(b, ".elenco li.con-azione .azione-riga")
     assert "flex-wrap: wrap" in _regola(b, ".riga")
     # Oggi a giornata in corso: il fantavoto preso o lo stato («In dubbio · gioca 40%») va sotto il nome, non fuori dalla carta
     assert "grid-row: 2" in _regola(b, ".avviso-riga > :nth-child(3)")
@@ -77,32 +75,26 @@ def test_righe_dei_giocatori_impilate_e_partite_su_due_righe():
 def test_formazione_chip_e_campo_vanno_a_capo():
     b = _blocco(STRETTA)
     chips = _regola(b, ".chips.scorri")
-    assert "flex-wrap: wrap" in chips and "mask-image: none" in chips                  # tutti i moduli e gli stili in vista, senza scorrere di lato
+    assert "flex-wrap: wrap" in chips and "mask-image: none" in chips                  # tutti i moduli in vista, senza scorrere di lato
     assert "flex-wrap: wrap" in _regola(b, ".linea")
     assert "flex: 0 1 64px" in _regola(b, ".pedina")                                # due pedine per fila
     # cognome intero, mai «Zosaba Nd…»: dal #265 vale a ogni larghezza (tests/test_testo_intero_web.py), non solo qui
-    assert "grid-template-columns: 1fr" in _regola(b, ".legenda-campo li")
 
 
 def test_squadra_rose_e_calendario_non_si_tagliano():
-    """Sotto Squadra: la riga della tua squadra e stemma/maglia vanno a capo; le sezioni di Mercato vanno su due righe invece di
-    sovrapporsi; il calendario è una tabella (due dimensioni, ammessa da WCAG): scorre di lato dentro il suo riquadro, che si
-    raggiunge anche con la tastiera, invece di restare tagliato dalla carta."""
+    """Sotto Squadra: la riga della tua squadra e stemma/maglia vanno a capo; i controlli a segmenti vanno su due righe invece di
+    sovrapporsi."""
     b = _blocco(STRETTA)
     assert "flex-wrap: wrap" in _regola(b, ".mia-riga")
     assert "grid-template-columns: 1fr" in _regola(b, ".immagini-squadra")
     assert "flex-wrap: wrap" in _regola(b, ".segmenti, .segmenti.scorri")
-    app = codice_web.app()
-    assert '<div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal">' in app
-    assert re.search(r"\n\.scorri-tabella \{[^}]*overflow-x: auto", CSS)
 
 
-def test_scheda_e_confronto_del_giocatore_in_colonna():
-    """Il foglio che si apre toccando un giocatore (scheda, ⇄ confronto): a 160 px il volto grande accanto al nome spingeva il
-    nome fuori e il foglio scorreva di lato."""
+def test_scheda_del_giocatore_in_colonna():
+    """Il foglio che si apre toccando un giocatore: a 160 px il volto grande accanto al nome spingeva il nome fuori e il foglio
+    scorreva di lato."""
     b = _blocco(STRETTA)
     assert "grid-template-columns: 1fr" in _regola(b, ".intestazione-scheda")
-    assert "grid-template-columns: 1fr" in _regola(b, ".duello")
     assert "padding-left: 8px" in _regola(b, ".foglio-corpo")
     # dentro la scheda: probabilità (segna, assist…), «Perché questo numero», prossime partite e forma andavano oltre la carta
     assert "repeat(2, minmax(0, 1fr))" in _regola(b, ".stat-fila, .stat-fila.quattro, .statistiche")
@@ -192,19 +184,6 @@ def test_la_maglia_lascia_posto_al_conto_alla_rovescia_sui_telefoni_stretti():
     assert "grid-template-columns: minmax(0, 1fr)" in _regola(senza, ".conto-oggi.con-maglia")
     sotto_360 = _blocco("@container pagina (max-width: 359.98px) {")                       # la regola dei 132 px a destra non serve più
     assert ".maglia-hero" not in sotto_360 and ".conto-oggi" not in sotto_360               # (sotto i 360 px resta solo il Diario, PR 11)
-
-
-def test_cambi_consigliati_in_colonna_sotto_i_320_px_e_nomi_mai_tagliati():
-    """Issue #287: a 320 px con il testo «Grande» e «Molto grande» la carta del cambio restava su tre colonne: il nome tagliato
-    («Ram…») e la colonna del testo larga ~80 px, una parola per riga. Sotto i 320 px utili volto e guadagno stanno sopra, nome e
-    dettagli sotto a tutta larghezza, come le righe dei giocatori. A ogni larghezza il nome lungo va a capo invece dei puntini."""
-    b = _blocco(STRETTA)
-    assert "grid-template-columns: auto minmax(0, 1fr)" in _regola(b, ".proposta-r")
-    testo = _regola(b, ".proposta-r > .pr-testo")
-    assert "grid-row: 2" in testo and "grid-column: 1 / -1" in testo
-    assert "grid-row: 1" in _regola(b, ".proposta-r > .pr-num")
-    nome = " ".join(_corpi(".proposta-r button.nome-g"))
-    assert "ellipsis" not in nome and "nowrap" not in nome and "overflow-wrap: break-word" in nome
 
 
 def test_le_impostazioni_non_scorrono_di_lato():

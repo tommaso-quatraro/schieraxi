@@ -63,10 +63,6 @@
     "it": "In corso",
     "en": "In progress"
   },
-  "oggi.tuoi_titolari": {
-    "it": "I tuoi titolari: {nomi}",
-    "en": "Your starters: {nomi}"
-  },
   "oggi.n_titolari.one": {
     "it": "{n} tuo titolare",
     "en": "{n} of your starters"
@@ -123,37 +119,9 @@
     "it": "Partite del turno",
     "en": "Matches of the round"
   },
-  "oggi.nessuna_partita_calendario": {
-    "it": "Nessuna partita in calendario",
-    "en": "No matches on the calendar"
-  },
-  "oggi.annuncio_gol": {
-    "it": "Gol: {casa} {gc}, {trasf} {gt}.",
-    "en": "Goal: {casa} {gc}, {trasf} {gt}."
-  },
-  "oggi.risultati_agg": {
-    "it": "Risultati aggiornati alle {ora}",
-    "en": "Results updated at {ora}"
-  },
   "oggi.ev_gol": {
     "it": "Gol",
     "en": "Goal"
-  },
-  "oggi.ev_rigore": {
-    "it": "Rigore",
-    "en": "Penalty"
-  },
-  "oggi.ev_autogol": {
-    "it": "Autogol",
-    "en": "Own goal"
-  },
-  "oggi.ev_rigore_sbagliato": {
-    "it": "Rigore sbagliato",
-    "en": "Missed penalty"
-  },
-  "oggi.ev_rosso": {
-    "it": "Espulso",
-    "en": "Sent off"
   },
   "oggi.punti_finora": {
     "it": "Punti fatti finora",

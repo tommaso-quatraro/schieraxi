@@ -11,10 +11,26 @@ from fanta import server, testi_legali
 import codice_web
 
 TESTI_JS = codice_web.leggi("testi.js")
-FILE_WEB = ["app.js", "impostazioni.js", "primoavvio.js", "anteprima.js", "dafare.js", "live.js", "avatar.js"]
+FILE_WEB = ["app.js", "impostazioni.js", "primoavvio.js", "anteprima.js", "dafare.js", "avatar.js"]
 CODICE_JS = "\n".join(codice_web.leggi(n) for n in FILE_WEB) + TESTI_JS[TESTI_JS.index("const LINGUE"):]
 # Chiavi scelte al volo (t("prefisso." + qualcosa)): il prefisso basta a tenerle vive.
-PREFISSI_DINAMICI = ("err.", "srv.", "frase.", "confronto.fattore_", "regola.et.", "formazione.stile_", "tempo.giorno_", "lingua.", "asp.col_", "asp.testo_", "asp.tema_", "nav.")
+PREFISSI_DINAMICI = ("err.", "srv.", "frase.", "regola.et.", "tempo.giorno_", "lingua.", "asp.tema_", "nav.")
+IOS = server.WEB.parent.parent / "ios"
+
+
+def _usate_dall_iphone() -> tuple[set, str]:
+    """Il catalogo dei testi è uno solo per web e iPhone: una chiave che la web non usa più resta viva finché la usa l'iPhone.
+    Torna le chiavi dei suoi elenchi (`ios/testi/*.txt`, da cui nascono i file Swift del catalogo; un plurale vale per la coppia)
+    e il codice Swift scritto a mano, dove una chiave può comparire fra virgolette (le prove che leggono un testo da testi.js)."""
+    elenchi = set()
+    for percorso in (IOS / "testi").glob("*.txt"):
+        for riga in percorso.read_text(encoding="utf-8-sig").splitlines():
+            chiave = riga.split("#", 1)[0].strip()
+            if chiave:
+                elenchi.add(chiave.removesuffix(".one").removesuffix(".other"))
+    swift = "\n".join(p.read_text(encoding="utf-8", errors="replace") for p in IOS.rglob("*.swift")
+                      if "Support/Catalogo/" not in p.as_posix())           # i file generati dal catalogo non contano
+    return elenchi, swift
 
 
 def _dizionario(lingua: str = "it") -> dict:
@@ -45,11 +61,15 @@ def test_chiavi_usate_nel_codice_esistono():
 
 
 def test_nessuna_chiave_dimenticata():
-    """Una chiave nel dizionario che nessuno usa è un testo morto da togliere."""
+    """Una chiave nel dizionario che nessuno usa è un testo morto da togliere. «Nessuno» = né la web né l'iPhone: dal 12/11/2026
+    (#615) la web ha meno schermate dell'iPhone, e i testi che usa solo lui restano nel catalogo finché li usa."""
     d = _dizionario()
     usate = _usate()
     prefissi = tuple(k for k in usate if k.endswith("_")) + PREFISSI_DINAMICI
-    morte = sorted(k for k in d if k not in usate and not k.startswith(prefissi) and f'"{k}"' not in CODICE_JS)
+    elenchi_iphone, swift = _usate_dall_iphone()
+    base = lambda k: k.removesuffix(".one").removesuffix(".other")
+    dell_iphone = lambda k: base(k) in elenchi_iphone or f'"{k}"' in swift or f'"{base(k)}"' in swift
+    morte = sorted(k for k in d if k not in usate and not k.startswith(prefissi) and f'"{k}"' not in CODICE_JS and not dell_iphone(k))
     assert not morte, morte
 
 

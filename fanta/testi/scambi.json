@@ -19,29 +19,9 @@
     "it": "Ricevi",
     "en": "Receive"
   },
-  "scambi.cerca_mia": {
-    "it": "Cerca nella tua rosa",
-    "en": "Search your roster"
-  },
-  "scambi.cerca_loro": {
-    "it": "Cerca nella rosa di {squadra}",
-    "en": "Search {squadra}'s roster"
-  },
-  "scambi.nessun_risultato": {
-    "it": "Nessun giocatore con questo nome",
-    "en": "No player with this name"
-  },
-  "scambi.nessuno_scelto": {
-    "it": "Nessuno scelto",
-    "en": "Nobody chosen"
-  },
   "scambi.scelti": {
     "it": "{n} su {max}",
     "en": "{n} of {max}"
-  },
-  "scambi.togli": {
-    "it": "Togli {nome}",
-    "en": "Remove {nome}"
   },
   "scambi.massimo": {
     "it": "Al massimo {max} giocatori per parte",
@@ -67,22 +47,6 @@
     "it": "Quanti crediti",
     "en": "How many credits"
   },
-  "scambi.crediti_residui": {
-    "it": "Crediti residui: tu {mio}, {altra} {loro}",
-    "en": "Credits left: you {mio}, {altra} {loro}"
-  },
-  "scambi.non_indicati": {
-    "it": "non indicati",
-    "en": "not entered"
-  },
-  "scambi.fondi_pochi": {
-    "it": "Non hai abbastanza crediti: ne hai {mio}",
-    "en": "You do not have enough credits: you have {mio}"
-  },
-  "scambi.fondi_pochi_loro": {
-    "it": "{altra} non ha abbastanza crediti: ne ha {loro}",
-    "en": "{altra} does not have enough credits: they have {loro}"
-  },
   "scambi.conguaglio_numero": {
     "it": "Scrivi i crediti con un numero intero, per esempio 30",
     "en": "Enter the credits as a whole number, for example 30"
@@ -90,10 +54,6 @@
   "scambi.analizza": {
     "it": "Valuta lo scambio",
     "en": "Evaluate the trade"
-  },
-  "scambi.scegli_entrambi": {
-    "it": "Scegli almeno un giocatore da dare e uno da ricevere",
-    "en": "Choose at least one player to give and one to receive"
   },
   "scambi.calcolo": {
     "it": "Calcolo…",
@@ -103,41 +63,9 @@
     "it": "{n} contro {m}",
     "en": "{n} for {m}"
   },
-  "scambi.chi_entrambi": {
-    "it": "Conviene a entrambi",
-    "en": "Good for both"
-  },
-  "scambi.chi_te": {
-    "it": "Conviene a te",
-    "en": "Good for you"
-  },
-  "scambi.chi_lui": {
-    "it": "Conviene a lui",
-    "en": "Good for them"
-  },
-  "scambi.chi_poco": {
-    "it": "Cambia poco",
-    "en": "Little changes"
-  },
-  "scambi.chi_nessuno": {
-    "it": "Non conviene",
-    "en": "Not worth it"
-  },
   "scambi.chi_non_valido": {
     "it": "Così non si può fare",
     "en": "It cannot be done like this"
-  },
-  "scambi.perche": {
-    "it": "Perché",
-    "en": "Why"
-  },
-  "scambi.problemi": {
-    "it": "Da sistemare",
-    "en": "To fix"
-  },
-  "scambi.confronto": {
-    "it": "Prima e dopo",
-    "en": "Before and after"
   },
   "scambi.formazione_migliore": {
     "it": "Formazione migliore (prossime {n} giornate)",
@@ -155,10 +83,6 @@
     "it": "Punti attesi in stagione",
     "en": "Expected points over the season"
   },
-  "scambi.con_crediti": {
-    "it": "Contando i crediti",
-    "en": "Counting the credits"
-  },
   "scambi.tu": {
     "it": "Tu",
     "en": "You"
@@ -167,32 +91,8 @@
     "it": "Giocatori in rosa dopo lo scambio",
     "en": "Players on the roster after the trade"
   },
-  "scambi.rosa_ok": {
-    "it": "valida",
-    "en": "valid"
-  },
-  "scambi.rosa_no": {
-    "it": "da sistemare",
-    "en": "to fix"
-  },
   "scambi.crediti_titolo": {
     "it": "Crediti",
     "en": "Credits"
-  },
-  "scambi.crediti_prima_dopo": {
-    "it": "{nome}: {prima} → {dopo}",
-    "en": "{nome}: {prima} → {dopo}"
-  },
-  "scambi.crediti_valore": {
-    "it": "Un credito vale circa {tasso} punti (stima dal mercato svincolati)",
-    "en": "One credit is worth about {tasso} points (estimate from the free-agent market)"
-  },
-  "scambi.crediti_senza_stima": {
-    "it": "Non riesco a stimare quanto valgono i crediti in punti: non li ho contati nel giudizio.",
-    "en": "I cannot estimate how many points the credits are worth: I did not count them in the verdict."
-  },
-  "scambi.per_giornata": {
-    "it": "Per giornata (tu)",
-    "en": "Per matchday (you)"
   }
 }

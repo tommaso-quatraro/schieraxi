@@ -13,9 +13,16 @@ function dfRiga(v, i) {
     <button class="azione-testo df-azione" type="button" data-df="${i}">${esc(v.azione ? testoDi(v, "azione") : t("df.apri"))}</button></li>`;
 }
 
+// Le righe da mostrare: quelle con un testo, senza i consigli delle funzioni tolte dalla web il 12/11/2026 (#615). Il server li manda
+// ancora (li usa l'iPhone): portavano a Cambi consigliati («mercato») o a Scambi, che qui non ci sono più.
+const DF_SCHEDE_TOLTE = ["mercato", "scambi"];
+function dfValide(voci) {
+  return (Array.isArray(voci) ? voci : []).filter(v => v && typeof v.testo === "string" && !DF_SCHEDE_TOLTE.includes((v.destinazione || {}).scheda));
+}
+
 function cardDaFare(voci) {
   if (!Array.isArray(voci)) return "";                  // server vecchio: nessun campo, nessuna card
-  const valide = voci.filter(v => v && typeof v.testo === "string");
+  const valide = dfValide(voci);
   if (!valide.length) return `<div class="carta df-vuoto" role="status">✓ <b>${t("df.tutto_posto_mister")}</b> ${t("df.non_niente_sbrigare")}</div>`;
   const primi = valide.slice(0, DF_VISIBILI), altri = valide.slice(DF_VISIBILI);
   return `<div class="carta df-carta"><h2>${t("df.da_fare")} <span class="df-conto">${valide.length}</span></h2>
@@ -46,18 +53,17 @@ function dfApri(v) {
   if (v.id === "dati-vecchi" && typeof apriStatoDati === "function") { vai("impostazioni", "avanzate"); apriStatoDati(); return; }
   if (v.tipo === "diario" && Number.isInteger(v.giornata) && typeof schieraDaOggi === "function") { schieraDaOggi(v.giornata); return; }
   if (v.tipo === "diario" && typeof apriDiario === "function") { apriDiario(); return; }
-  if (d.giocatore && d.scheda === "mercato") { apriGiocatore(Number(d.giocatore)); return; }
   const DF_IMP = { avanzate: "avanzate" };                               // sezioni che stanno in Impostazioni
   if (d.scheda === "impostazioni" || DF_IMP[d.sezione]) { vai("impostazioni", DF_IMP[d.sezione] || d.sezione); return; }
-  const scheda = SCHEDA_DI(d.scheda) ? d.scheda : "lega";            // «mercato», «scambi» e «lega» sono pagine dentro Squadra e Altro
-  const VOCE_LEGA = { rose: "importa", diario: "diario", regole: "regole", crediti: "crediti", stagione: "stagione", movimenti: "movimenti", squadre: "squadre" };     // la voce di Lega che si apre da sola
+  const scheda = SCHEDA_DI(d.scheda) ? d.scheda : "lega";            // «lega» è il nome vecchio delle voci di Squadra e Altro
+  const VOCE_LEGA = { rose: "importa", diario: "diario", regole: "regole", squadre: "squadre" };     // la voce di Lega che si apre da sola
   if (scheda === "lega" && VOCE_LEGA[d.sezione]) stato.legaTorna = VOCE_LEGA[d.sezione];
   vai(scheda);
   if (scheda === "lega" && d.sezione) dfPortaA(d.sezione);
 }
 
 function collegaDaFare(voci) {
-  const valide = (Array.isArray(voci) ? voci : []).filter(v => v && typeof v.testo === "string");
+  const valide = dfValide(voci);
   document.querySelectorAll("[data-df]").forEach(b => b.addEventListener("click", () => {
     const v = valide[Number(b.dataset.df)];
     if (v) dfApri(v);

@@ -9,7 +9,7 @@ import codice_web
 WEB = Path(server.__file__).parent / "web"
 APP = codice_web.app()
 TESTI = codice_web.leggi("testi.js")
-SCHEDA = APP[APP.index("async function apriGiocatore"):APP.index("async function osservatiIds")]
+SCHEDA = APP[APP.index("async function apriGiocatore"):APP.index("// Il posto in formazione a parole")]
 
 
 def test_stati_iniziati_e_finiti_sono_quelli_del_server():

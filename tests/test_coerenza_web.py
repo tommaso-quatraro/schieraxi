@@ -22,9 +22,8 @@ def _testo(blocco: str, chiave: str) -> str:
 
 def test_giornata_della_lega_dappertutto():
     """Il numero della giornata: dal 5/11/2026 (#299) lega e Serie A insieme, «Giornata 8 · 11ª di Serie A», sempre da `nomeGiornata`.
-    I controlli di ogni schermata stanno in tests/test_giornate_lega_serie_a.py; qui resta il nome del file dell'immagine."""
+    I controlli di ogni schermata stanno in tests/test_giornate_lega_serie_a.py."""
     assert "function nomeGiornata(lega, serieA) {" in APP
-    assert "formazione-giornata-${f.giornata_lega || f.giornata}.png" in APP  # immagine da condividere: nome del file corto
 
 
 def test_partita_nelle_righe_e_nelle_celle():
@@ -34,7 +33,7 @@ def test_partita_nelle_righe_e_nelle_celle():
     # per i lettori di schermo la frase intera, «in trasferta contro Genoa», dentro vsAt; mai «GEN fuori» (#453)
     assert APP.count('t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv: nomeClub(x.avversario) })') == 1
     assert "giocatore.casa" not in APP and "giocatore.fuori" not in APP
-    assert APP.count('<span class="cella d${p.difficolta}">${vsAt(p)}</span>') == 2           # calendario e prossime partite
+    assert APP.count('<span class="cella d${p.difficolta}">${vsAt(p)}</span>') == 1           # le prossime partite, nella scheda
     assert "${sigla(x.squadra)} – ${sigla(x.avversario)}" not in APP
 
 
@@ -58,17 +57,8 @@ def test_sul_campo_il_cognome_senza_iniziale():
                        capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout) == ["Rossi", "Carlos Augusto", "Martinez", "Zambo Anguissa", "De Ketelaere", "Chalobah", "Gonzalez"]
-    pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
+    pedina = APP[APP.index("function pedina("):APP.index("// Il numero della giornata, uguale")]
     assert "${esc(cognome(x))}" in pedina
-
-
-def test_seguiti_un_solo_nome():
-    for blocco in (IT, EN):
-        valori = re.findall(r'"(?:mercato|lega)\.[a-z_.]*osserv[a-z_.]*": "([^"]*)"', blocco)
-        assert valori and not [v for v in valori if re.search(r"(?i)osserv|watch", v)], valori
-    assert _testo(IT, "mercato.osserva") == "☆ Segui" and _testo(IT, "mercato.osservato") == "★ Seguito"
-    assert _testo(IT, "lega.voce_osservati") == "Seguiti"                   # menu e sezioni di Squadra (#458: stessa chiave)
-    assert _testo(EN, "mercato.osserva") == "☆ Follow" and _testo(EN, "lega.voce_osservati") == "Following"
 
 
 def test_plurale_del_bonus_nelle_regole():
@@ -77,9 +67,7 @@ def test_plurale_del_bonus_nelle_regole():
     assert 'tp("regole.media_bonus", Math.abs(b),' in APP          # 1 = «punto», 3,5 = «punti» (Intl.PluralRules), senza arrotondare
 
 
-def test_crediti_non_salvati_e_ripeti_password_come_iphone():
-    assert _testo(IT, "lega.crediti_non_salvati") == "Ci sono crediti scritti e non ancora salvati."
-    assert 'id="crediti-non-salvati" role="status" hidden' in APP and 'c.addEventListener("input", segnaModifiche)' in APP
+def test_ripeti_password_come_iphone():
     assert _testo(IT, "account.ripeti_password") == "Ripeti la nuova password"
     assert _testo(IT, "account.password_diverse") == "Le due password non coincidono."
     assert 'campo("acc-ripeti", t("account.ripeti_password")' in APP

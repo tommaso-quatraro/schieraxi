@@ -1,6 +1,6 @@
 """Squadra, Altro e primo avvio: dopo un salvataggio la web usa i dati nuovi (collaudo 7 del 2/11/2026).
 
-1. Ogni rotta del server che controlla l'If-Match delle rose (o delle regole, degli osservati, degli avvisi) deve essere
+1. Ogni rotta del server che controlla l'If-Match delle rose (o delle regole, degli avvisi) deve essere
    riconosciuta da `risorsaDi` di app.js, altrimenti la web non aggiorna l'ETag dopo la scrittura e la scrittura seguente
    risponde 412 «cambiati da un altro dispositivo» (successo nel primo avvio: «Giocatori da sistemare», poi «Questa è la mia»).
    `risorsaDi` si legge dal file e si prova con node.
@@ -23,8 +23,8 @@ SERVER = (server.WEB.parent / "server.py").read_text(encoding="utf-8")
 NODE = shutil.which("node")
 
 # quale ETag controlla la rotta (testo nel corpo della funzione) -> risorsa di app.js
-RISORSE = {"versioni.etag_file(ctx.rose)": "rose", "versioni.etag_file(ctx.regole)": "regole",
-           "versioni.etag_file(ctx.osservati)": "osservati", "_etag_avvisi(ctx)": "avvisi"}
+# (i giocatori seguiti non sono più nella web, #615: la loro rotta la usa solo l'iPhone)
+RISORSE = {"versioni.etag_file(ctx.rose)": "rose", "versioni.etag_file(ctx.regole)": "regole", "_etag_avvisi(ctx)": "avvisi"}
 
 
 def _rotte_con_if_match():
@@ -73,12 +73,11 @@ def test_dopo_un_salvataggio_i_pannelli_rileggono_le_squadre():
     assert m, "manca rileggiSquadre in vistaLega"
     # la pagina si ridisegna solo se è ancora quella aperta (non se nel frattempo si è passati a un'altra voce)
     assert 'squadre = await api("/api/squadre")' in m.group(1) and "if (voce && stato.legaVoce[ambito] === voce) apri(voce, false);" in m.group(1)
-    # la mia squadra scelta, i crediti salvati, le rose importate: dopo ognuno si rileggono le squadre
+    # la mia squadra scelta, le rose importate: dopo ognuno si rileggono le squadre
     collega = lega[lega.index("const collega = {"):lega.index("const voci = vociLega(ambito)")]
-    assert collega.count("rileggiSquadre(") >= 3
-    for blocco in ('"/api/mia-squadra"', '"/api/crediti"'):
-        dopo = collega[collega.index(blocco):]
-        assert "rileggiSquadre(" in dopo[:dopo.index("catch")]
+    assert collega.count("rileggiSquadre(") >= 2
+    dopo = collega[collega.index('"/api/mia-squadra"'):]
+    assert "rileggiSquadre(" in dopo[:dopo.index("catch")]
 
 
 def test_primo_avvio_toglie_il_giocatore_sistemato_dal_conto():

@@ -8,7 +8,7 @@ Uso (workflow «Aspetto della web», .github/workflows/aspetto-web.yml; in local
 
 Per ognuna delle due copie un server finto (solo libreria standard) serve `fanta/web/` e risponde alle `/api/...` con le risposte
 registrate dello scenario (nomi inventati, le stesse delle foto dell'iPhone). Chrome di sistema senza finestra fotografa le scene
-(11 scene x 2 larghezze x 2 temi) con l'orologio fermo sul momento della registrazione; poi si confrontano le foto.
+(9 scene x 2 larghezze x 2 temi) con l'orologio fermo sul momento della registrazione; poi si confrontano le foto.
 Una scena è diversa se più dello 0,1% dei pixel cambia di oltre 16/255 su un canale, o se cambia la misura della pagina. Una
 scena diversa si fotografa di nuovo su main: se cambia da sola è instabile (non è colpa della PR) e va in INSTABILI col motivo.
 
@@ -41,7 +41,7 @@ TOLLERANZA = 16          # su 255, per canale: sotto questa differenza un pixel 
 SOGLIA = 0.001           # quota di pixel diversi oltre la quale la scena è diversa (0,1%)
 ROSSO = (220, 0, 0)
 FUSO = "Europe/Rome"     # il momento dello scenario («adesso») è l'ora italiana, come per il server
-PEZZI_FOGLIO = 8         # tetto ai pezzi di un foglio che scorre (scheda, confronto, diario)
+PEZZI_FOGLIO = 8         # tetto ai pezzi di un foglio che scorre (scheda, diario)
 SOVRAPPOSIZIONE = 80     # px ripetuti fra un pezzo del foglio e il successivo
 MAX_CORPO_RICHIESTA = 1_000_000
 
@@ -60,11 +60,9 @@ SCENE: dict[str, Scena] = {
     "squadra": Scena("/?vista=squadra"),
     "rosa": Scena("/?vista=squadra&rosa="),                                        # la rosa della mia squadra
     "scheda": Scena("/?vista=formazione", ("#contenuto [data-giocatore]",)),        # scheda del primo titolare
-    "confronto": Scena("/?vista=formazione", ("#contenuto [data-confronta]", "#foglio [data-scegli-confronto]")),
     "altro": Scena("/?vista=altro"),
     "diario": Scena("/?vista=altro&voce=diario", ("#apri-diario",)),               # il foglio del diario, non solo la voce
     "regole": Scena("/?vista=altro&voce=regole"),
-    "scambi": Scena("/?vista=scambi"),
     "impostazioni": Scena("/?vista=impostazioni"),
 }
 # Scene che cambiano da sole (stessa pagina, foto diverse): scattate e mostrate, ma non contano. Nome -> motivo, finché la

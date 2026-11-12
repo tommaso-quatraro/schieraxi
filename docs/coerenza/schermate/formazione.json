@@ -6,8 +6,8 @@
       "web": "«Giornata 10 · la tua scelta» (`f.giornata`)",
       "iphone": "«Giornata 7 di lega (Serie A 10)»",
       "forma": "sezione «Giornata: le forme»",
-      "chi": "fatto (rassegna 6/11): web `nomeGiornata`; iPhone `TempiLega.didascalia` con `NomeGiornata.intero` (`FormazioneView.intestazione`), `TestoFormazione.crea` e il titolo dell'immagine «Formazione · …» (`FormazioneViewModel`), #312. «· la tua scelta» con #437 (riga 52)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più l'immagine da condividere (#615), l'iPhone sì. Prima: fatto (rassegna 6/11): web `nomeGiornata`; iPhone `TempiLega.didascalia` con `NomeGiornata.intero` (`FormazioneView.intestazione`), `TestoFormazione.crea` e il titolo dell'immagine «Formazione · …» (`FormazioneViewModel`), #312. «· la tua scelta» con #437 (riga 52)",
+      "stato": "da-decidere"
     },
     {
       "id": 9,
@@ -60,8 +60,8 @@
       "web": "intestazione «… · la tua scelta»; «Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono.»; «Entra il primo che può sostituire chi resta senza voto.»; «In ballottaggio con»; «Equilibrata: propone il 3-4-3.» (minuscola dopo i due punti, #557), «Modulo fissato a mano …», «Modificata a mano …»; «Tocca ✎ per sostituire un titolare …» o «Tocca ⇄ per confrontarlo …»; nella sostituzione «Giocatori dello stesso ruolo della tua rosa …» (testi `formazione.*`)",
       "iphone": "con la tua scelta solo la giornata; «Probabili formazioni non ancora uscite: uso le presenze recenti.»; «In quest'ordine: entra il primo …»; «Ballottaggio · alternative vicine»; «Modulo proposto: 3-4-3»; «Tocca un titolare per sostituirlo …», ⇄ anche per sostituire (`FormazioneView.swift`, `TempiLega.didascalia`)",
       "forma": "web",
-      "chi": "fatto con #437 e #463 (PR #475): in modifica a mano stili e moduli restano (nessuno acceso) con «Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata.»; un tocco torna alla loro proposta senza cancellare la scelta salvata; Salva, Annulla e Torna nella riga dello stato come `rigaStatoScelta`. A giornata chiusa l'iPhone resta in sola lettura. Prova: `FormazioneComeLaWebTests`, `ModificaAManoModuliTests`",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più gli stili e il confronto ⇄ (#615), l'iPhone sì. Prima: fatto con #437 e #463 (PR #475): in modifica a mano stili e moduli restano (nessuno acceso) con «Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata.»; un tocco torna alla loro proposta senza cancellare la scelta salvata; Salva, Annulla e Torna nella riga dello stato come `rigaStatoScelta`. A giornata chiusa l'iPhone resta in sola lettura. Prova: `FormazioneComeLaWebTests`, `ModificaAManoModuliTests`",
+      "stato": "da-decidere"
     },
     {
       "id": 61,
@@ -69,8 +69,8 @@
       "web": "mentre carica «Calcolo la formazione migliore…»; «Formazione copiata: incollala dove vuoi» e «Non riesco a creare l'immagine» senza punto finale; «Stai guardando la formazione di Gli Amici.»; ⇄ letto «Confronta Rossi con un altro»; dopo il salvataggio «Salvata come tua scelta» (testi `formazione.*`)",
       "iphone": "«Scelgo gli undici…»; le due frasi con il punto finale; «Stai guardando la formazione di Gli Amici» senza punto; VoiceOver «Confronta Rossi con un altro della rosa» e «Formazione salvata»",
       "forma": "web (catalogo `fanta/testi/formazione.json`)",
-      "chi": "fatto con #495: l'iPhone prende queste frasi, e le altre della Formazione elencate in `ios/testi/formazione.txt`, da `Catalogo.Formazione` (generato da `script/testi.py`). Prova: `FormazioneDalCatalogoTests`",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più l'immagine da condividere e il confronto ⇄ (#615), l'iPhone sì. Prima: fatto con #495: l'iPhone prende queste frasi, e le altre della Formazione elencate in `ios/testi/formazione.txt`, da `Catalogo.Formazione` (generato da `script/testi.py`). Prova: `FormazioneDalCatalogoTests`",
+      "stato": "da-decidere"
     }
   ]
 }
