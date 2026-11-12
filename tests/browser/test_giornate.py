@@ -143,7 +143,7 @@ def test_giornate_si_apre_con_un_tocco_dalla_barra(web):
     assert not web.errori_mostrati() and not web.errori_console and not web.richieste_fallite
 
 
-@pytest.mark.parametrize("vecchio", ["/?vista=altro&voce=diario", "/?vista=lega&voce=diario"])
+@pytest.mark.parametrize("vecchio", ["/?vista=altro&voce=diario", "/?vista=lega&voce=diario", "/?vista=diario"])   # l'ultimo dal #618
 def test_l_indirizzo_vecchio_del_diario_apre_giornate(web, vecchio):
     solo(web, "prima")
     web.apri(vecchio)

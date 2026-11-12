@@ -9,23 +9,25 @@ APP = espandi(codice_web.app())
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 
 
-def _lega():
-    inizio = APP.index("async function vistaLega(")
+def _altre_squadre():
+    """Impostazioni > Le altre squadre (#618: prima era la voce «Squadre e rose» di Squadra)."""
+    inizio = APP.index("async function vistaAltreSquadre(")
     return APP[inizio:APP.index("\n}\n", inizio)]
 
 
 def test_plurali_corretti_nelle_squadre():
-    lega = _lega()
+    lega = _altre_squadre()
     assert 'tp("sd.n_giocatori", x.giocatori)' in lega and 'tp("lega.n_crediti", x.crediti_residui)' in lega
     assert "${s.giocatori} giocatori" not in APP and "crediti_residui} crediti" not in APP
 
 
 def test_regole_a_sezioni_ripiegabili_con_il_nome_vero_della_lega():
     inizio = APP.index("async function vistaRegole(")
-    regole = APP[inizio:APP.index('<div class="salva-fisso" hidden><button class="bottone" id="salva-regole">')]
+    regole = APP[inizio:APP.index('<div class="salva-fisso" hidden><button class="bottone" id="salva-regole"')]
     assert len(re.findall(r'<details class="carta regola-sez"', regole)) == 7 and regole.count("</details>") >= 7          # 7 = con «Partite rinviate»
-    assert "<h2 style=\"margin-top:14px\">${esc(r.nome_lega)}</h2>" in regole
+    assert 'id="nome_lega" value="${esc(r.nome_lega)}"' in regole                 # il nome si cambia dentro «Modifica i valori» (#618)
     assert regole.count('<details class="carta regola-sez" open>') == 1           # solo la prima è aperta
+    assert regole.count('<details class="regole-valori">') == 1                   # tutte dietro «Modifica i valori»
 
 
 def test_l_asta_non_compare_piu():

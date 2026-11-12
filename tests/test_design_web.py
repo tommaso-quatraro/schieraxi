@@ -56,7 +56,7 @@ def test_scorciatoia_virgola_per_le_impostazioni():
 def test_stile_ha_le_parentesi_graffe_in_pari():
     # una } mancante nasconde nel @media tutto quello che viene dopo
     assert CSS.count("{") == CSS.count("}")
-    assert re.search(r"\n\}\n/\* ---- Lega: la mia squadra", CSS)
+    assert re.search(r"\}\s*\n/\* ---- La mia squadra e le regole", CSS)        # il blocco prima (Impostazioni, #618) è chiuso
 
 
 def test_barra_in_basso_con_fondo_pieno_e_spazio_riservato():

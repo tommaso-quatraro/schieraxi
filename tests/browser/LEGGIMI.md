@@ -74,9 +74,9 @@ Poi, dalla radice del repository (anche da una worktree), circa un minuto:
 
 `test_tagli.py`, la web senza le funzioni tolte il 12/11/2026 (#615). I test che non dipendono dalla fase girano solo
 prima della scadenza:
-- i menu di Squadra e Altro hanno solo le voci che restano; gli indirizzi delle pagine tolte aprono la schermata più
-  vicina; le novità stanno in Impostazioni > Informazioni (le ultime dieci, le altre a richiesta); «Nuova stagione» è un
-  avviso che compare quando serve; la dimensione del testo salvata da una versione di prima non vale più;
+- Impostazioni ha solo le voci che restano (dal #618 Squadra e Altro sono Impostazioni); gli indirizzi delle pagine tolte
+  aprono Impostazioni; le novità stanno in Impostazioni > Informazioni (le ultime dieci, le altre a richiesta); «Nuova
+  stagione» è un avviso che compare quando serve; la dimensione del testo salvata da una versione di prima non vale più;
 - Formazione senza stili, legenda, confronto e indice sui volti, e senza partite del turno e banner, nelle tre fasi;
   girando per l'app non si chiedono le rotte delle funzioni tolte;
 - le decisioni in cima alla Formazione: via i consigli di mercato e di scambio; la riga del reparto scoperto resta e

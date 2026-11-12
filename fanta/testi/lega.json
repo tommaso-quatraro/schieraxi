@@ -204,10 +204,6 @@
     "it": "Squadra salvata",
     "en": "Team saved"
   },
-  "lega.squadre_rose": {
-    "it": "Squadre e rose",
-    "en": "Teams and rosters"
-  },
   "lega.stemma_maglia": {
     "it": "Stemma e maglia",
     "en": "Crest and shirt"
@@ -240,10 +236,6 @@
     "it": "Usa come stemma",
     "en": "Use as crest"
   },
-  "lega.vai_squadra": {
-    "it": "Vai a Squadra",
-    "en": "Go to Team"
-  },
   "lega.vedi_rosa": {
     "it": "Vedi la rosa",
     "en": "See the roster"
@@ -255,10 +247,6 @@
   "lega.bonus_moduli_crediti": {
     "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Impostazioni, Regole e scadenza).",
     "en": ": bonuses, formations and credits can change from one year to the next (Settings, Rules and deadline)."
-  },
-  "lega.con_tasto_alto": {
-    "it": "con il tasto in alto: calendario, listone e quotazioni nuovi.",
-    "en": "with the top button: new calendar, player list and prices."
   },
   "lega.indirizzo_aria": {
     "it": "Indirizzo web dell'immagine, {tipo}",
@@ -307,14 +295,6 @@
   "lega.voce_miasquadra_sub": {
     "it": "La tua squadra e i suoi giocatori",
     "en": "Your team and its players"
-  },
-  "lega.aria_squadra": {
-    "it": "Voci della squadra",
-    "en": "Team items"
-  },
-  "lega.aria_altro": {
-    "it": "Altre voci",
-    "en": "Other items"
   },
   "lega.nuova_stagione_n": {
     "it": "Nuova stagione {s}",

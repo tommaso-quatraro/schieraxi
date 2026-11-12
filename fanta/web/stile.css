@@ -996,7 +996,9 @@ body.senza-accesso .salta { display: none; }
 }
 /* il foglio dal basso ha la maniglia ferma in alto (33 px): ciò che prende il focus o si porta in cima (il titolo della giornata nel
    Diario riaperto, #448) si ferma sotto di lei, con 8 px di stacco. Da 1100 px il foglio sta di lato e la maniglia non c'è */
-@media (max-width: 1099.98px) { .foglio-corpo { scroll-padding-top: 41px; } }
+@media (max-width: 1099.98px) {
+  .foglio-corpo { scroll-padding-top: 41px; }
+}
 /* ---- La mia squadra e le regole ---- */
 .rosa-pagina { max-width: 900px; }
 .riga-crediti { margin: 10px 0 4px; }

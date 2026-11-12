@@ -7,10 +7,6 @@
     "it": "Altri bonus",
     "en": "Other bonuses"
   },
-  "regole.altro": {
-    "it": "Altro",
-    "en": "More"
-  },
   "regole.annulla_modifiche": {
     "it": "Annulla le modifiche",
     "en": "Undo the changes"
@@ -118,10 +114,6 @@
   "regole.quelli_che_puoi": {
     "it": "Quelli che puoi schierare nella tua lega.",
     "en": "The ones you can field in your league."
-  },
-  "regole.regole_della_lega": {
-    "it": "Regole della lega: tocca una sezione per aprirla. Il nome si può cambiare qui sotto.",
-    "en": "League rules: tap a section to open it. The name can be changed below."
   },
   "regole.regole_salvate_consigli": {
     "it": "Regole salvate: i consigli ora le usano",

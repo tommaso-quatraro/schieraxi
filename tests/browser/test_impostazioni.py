@@ -8,6 +8,7 @@ della giornata girano solo prima della scadenza (`solo`).
 """
 import json
 import re
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -351,6 +352,30 @@ def test_avvisi_un_interruttore_e_le_ore_tranquille_senza_altri_controlli(web):
     ore.check()
     web.aspetta()
     assert salvate and salvate[-1] == {"silenzio": True}                 # solo ciò che si è cambiato: il resto resta com'è
+
+
+def test_senza_notifiche_nel_browser_la_frase_dice_cosa_fare(web):
+    """Il browser di prova non ha il service worker: al posto dell'interruttore una frase (non un riquadro vuoto che aspetta)."""
+    solo(web, "prima")
+    web.apri("/?vista=impostazioni")
+    frase = sezione(web, "Avvisi").get_by_text(re.compile("Le notifiche dell'app non sono disponibili su questo dispositivo"))
+    frase.wait_for(timeout=10000)
+    assert sezione(web, "Avvisi").get_by_role("checkbox", name=re.compile("^Avvisi su questo dispositivo")).count() == 0
+
+
+def test_le_ore_tranquille_rifiutate_dal_server_tornano_come_erano(web):
+    solo(web, "prima")
+    registrata = json.dumps(web.registrata("/api/avvisi"))
+    rifiuto = json.dumps({"detail": "Le ore tranquille non possono iniziare e finire alla stessa ora: scegli due ore diverse "
+                                    "(per esempio dalle 23 alle 7) oppure spegni l'interruttore"})
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/avvisi", lambda r: r.fulfill(
+        status=422 if r.request.method == "PUT" else 200, content_type="application/json", body=rifiuto if r.request.method == "PUT" else registrata))
+    web.apri("/?vista=impostazioni")
+    ore = sezione(web, "Avvisi").get_by_role("checkbox", name=re.compile("^Ore tranquille"))
+    assert not ore.is_checked()
+    sezione(web, "Avvisi").locator("label").filter(has_text="Ore tranquille").click()
+    web.pagina.locator("#avviso").filter(has_text="Le ore tranquille non possono").wait_for(timeout=10000)
+    assert not ore.is_checked()                                          # resta scritto ciò che vale sul server
 
 
 # ---------------------------------------------------------------- Stato dei dati: le etichette del server
