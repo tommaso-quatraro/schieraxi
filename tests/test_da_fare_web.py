@@ -32,23 +32,6 @@ def test_la_sintassi_e_valida(nome):
     assert r.returncode == 0, r.stderr
 
 
-def test_oggi_mostra_la_card_e_ne_collega_i_pulsanti():
-    assert "cardDaFare(o.da_fare)" in APP and "collegaDaFare(o.da_fare)" in APP
-    # dal 1/11/2026 la configurazione guidata si riprende solo dalla riga di «Da fare» (niente voce in Impostazioni)
-    IMP = codice_web.leggi("impostazioni.js")
-    assert "primoAvvioSeServe()" in APP and "apri-primo-avvio" not in APP and "apri-primo-avvio" not in IMP
-    assert 'v.tipo === "primo_avvio"' in DAFARE and "apriPrimoAvvio()" in DAFARE
-
-
-def test_i_testi_del_server_passano_da_esc():
-    for dato in ("v.testo", "v.azione"):
-        assert f"esc({dato}" in DAFARE or "esc(testoDi(v" in DAFARE, dato          # il testo può passare dalla traduzione (testoDi), sempre dentro esc()
-    corpo_riga = DAFARE[DAFARE.index("function dfRiga"):DAFARE.index("function cardDaFare")]
-    assert "${v." not in corpo_riga.replace("${esc(", "")
-    # nel primo avvio ogni dato dinamico (nomi di squadre, passi) è protetto
-    assert "esc(s.nome)" in PRIMO and "esc(PA_NOMI[p])" in PRIMO and "esc(e.message || e)" in PRIMO
-
-
 def test_un_solo_percorso_breve_e_saltabile():
     assert 'const PA_PASSI = ["rose", "squadra", "tempi"]' in PRIMO      # breve: rose, squadra, tempi della lega (2/11/2026)
     assert not (WEB / "onboarding.js").exists() and "onboarding.js" not in (WEB / "index.html").read_text(encoding="utf-8")

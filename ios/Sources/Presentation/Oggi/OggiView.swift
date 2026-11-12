@@ -6,14 +6,11 @@ struct OggiView: View {
     @ObservedObject var vm: OggiViewModel
     @Environment(\.apriGiocatore) private var apri
     @Environment(\.vaiASezione) private var vaiASezione
-    @Environment(\.apriNovita) private var apriNovita
-    @Environment(\.funzioni) private var funzioni
+    @Environment(\.apriRosaDi) private var apriRosaDi
     @Environment(\.apriImpostazioni) private var apriImpostazioni
     @EnvironmentObject private var nav: Navigazione
     @EnvironmentObject private var sessione: SessioneAccount
     @ObservedObject private var immagini = Immagini.condivise
-    /// L'ultima versione delle novità che l'utente ha guardato (la scrive la pagina Novità).
-    @AppStorage("novitaVista") private var novitaVista = ""
     @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 46
     @ScaledMetric(relativeTo: .body) private var latoIcona: CGFloat = 24
     @Environment(\.dynamicTypeSize) private var dimensioneTesto
@@ -50,28 +47,13 @@ struct OggiView: View {
                     }
                 }
                 .demoInFondo()
-                .refreshable {
-                    await vm.carica()
-                    if funzioni.acceso(Funzione.live) { await vm.live.ricarica() }
-                }
+                .refreshable { await vm.carica() }
                 .avvisoDatiSalvati(vm.caricatore)
                 .bordiMorbidi()
             }
             .navigationTitle(Catalogo.Nav.oggi)
             .ricercaGlobale()
             .task { await vm.carica() }
-            // Prima installazione (o dopo l'uscita dall'account): non c'è niente di «nuovo» da vedere, si segna la versione attuale senza riga.
-            .onChange(of: vm.info.dato?.versione, initial: true) { _, v in
-                if novitaVista.isEmpty, let v, !v.isEmpty, v != "?" { novitaVista = v }
-            }
-            // «Risultati in diretta» spenta: Partite del turno resta, senza punteggio né minuto in diretta.
-            .onChange(of: funzioni.acceso(Funzione.live), initial: true) { _, acceso in vm.liveAcceso = acceso }
-            // Risultati in diretta: solo con la schermata visibile e l'app in primo piano (il lavoro si annulla da solo quando
-            // la schermata sparisce) e riparte quando arriva la giornata o cambia.
-            .task(id: "\(fase == .active)-\(vm.oggi?.giornata ?? 0)-\(funzioni.acceso(Funzione.live))") {
-                guard fase == .active, funzioni.acceso(Funzione.live) else { return }   // «Risultati in diretta» spenta: non si chiede nulla al server
-                await vm.seguiLive()
-            }
             // Durante la giornata i punti cambiano quando escono i voti: Oggi si rilegge da solo ogni tanto, solo con la schermata visibile.
             .task(id: "\(fase == .active)-\(vm.oggi?.faseGiornata.rawValue ?? "")") {
                 guard fase == .active, vm.oggi?.faseGiornata == .inCorso else { return }
@@ -116,15 +98,11 @@ struct OggiView: View {
         case .formazione: CartaFormazioneOggi(oggi: oggi)
         case .rinvio: partiteRinviate(oggi)
         case .daFare: daFare(oggi)
-        case .novita: novita
         case .suggerimento: suggerimento
         case .migliori: migliori(oggi)
         case .daControllare: daControllare
         case .indisponibili: indisponibili
         case .diffidati: diffidati
-        case .partite:
-            // sempre, come la web (decisione del 6/11): con «Risultati in diretta» spenta senza i risultati in diretta (vm.liveAcceso)
-            partite
         }
     }
 
@@ -267,33 +245,6 @@ struct OggiView: View {
         Catalogo.Oggi.chiusaDettaglio(quando: Quando.leggibile(oggi.chiusura, adesso: adesso))
     }
 
-    // MARK: novità
-
-    @ViewBuilder
-    private var novita: some View {
-        if funzioni.acceso(Funzione.novita), let versione = vm.novitaDaVedere(ultimaVista: novitaVista) {
-            Button { apriNovita() } label: {
-                HStack(spacing: 10) {
-                    // Come la web: «Novità della versione X» in grassetto, senza stelline né «tocca per vedere» (STILE-SENZA-AI.md).
-                    Text(TestiOggi.novita(versione))
-                        .font(.subheadline)
-                        .bold()
-                        .multilineTextAlignment(.leading)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
-                }
-                .foregroundStyle(Color.verde)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: Tema.areaTocco)
-                .padding(.horizontal, 14)
-                .background(Color.verde.opacity(0.14), in: RoundedRectangle(cornerRadius: Tema.raggioScheda, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .combine)
-            .accessibilityHint("Apre l'elenco delle novità")
-        }
-    }
-
     // MARK: formazione e avvisi
 
     /// «Da fare», come `cardDaFare` della web (#436): il titolo con il numero delle voci, le prime 4 una per riga con il suo
@@ -301,7 +252,7 @@ struct OggiView: View {
     /// oggi.»; un server vecchio senza il campo non mostra niente.
     @ViewBuilder
     private func daFare(_ oggi: Oggi) -> some View {
-        let cose = oggi.cose(funzioni: funzioni, tecniche: sessione.puoAmministrare)
+        let cose = oggi.cose(tecniche: sessione.puoAmministrare)
         if !cose.isEmpty {
             let primi = Array(cose.prefix(TestiOggi.daFareVisibili))
             let altri = Array(cose.dropFirst(TestiOggi.daFareVisibili))
@@ -388,7 +339,7 @@ struct OggiView: View {
     @ViewBuilder
     private func pulsanteDaFare(_ c: DaFareVoce) -> some View {
         if let d = c.destinazione?.destinazione {
-            Button(c.azione ?? Catalogo.Df.apri) { vaiA(d, tipo: c.tipo) }
+            Button(c.testoPulsante) { vaiA(d, voce: c) }
                 .font(.subheadline.weight(.semibold))
                 .buttonStyle(.bordered)
                 .tint(Color.verde)
@@ -396,9 +347,14 @@ struct OggiView: View {
         }
     }
 
-    /// Apre la destinazione di una cosa da fare.
-    private func vaiA(_ d: Destinazione, tipo: String? = nil) {
-        if tipo == "rose", case .sezione = d { nav.vai(a: .pagina(.importa)) }   // «rose vecchie»: l'importazione sta in Squadra
+    /// Apre la destinazione di una cosa da fare. Una riga che portava a una pagina tolta (`allaRosa`) apre la rosa della mia
+    /// squadra, come la web; senza il nome della squadra, la scheda Squadra.
+    private func vaiA(_ d: Destinazione, voce: DaFareVoce) {
+        let tipo = voce.tipo
+        if voce.allaRosa {
+            if let nome = vm.oggi?.formazione?.squadra, let apriRosaDi { apriRosaDi(nome) } else { vaiASezione(.squadra) }
+        }
+        else if tipo == "rose", case .sezione = d { nav.vai(a: .pagina(.importa)) }   // «rose vecchie»: l'importazione sta in Squadra
         else if case .sezione(let s) = d { vaiASezione(s) }
         else if case .pagina = d { nav.vai(a: d) }
         else if case .giocatore(let id) = d { apri(id) }
@@ -412,8 +368,6 @@ struct OggiView: View {
         switch tipo {
         case "dubbio": return "exclamationmark.triangle"
         case "formazione": return "sportscourt"
-        case "svincolato": return "arrow.triangle.swap"
-        case "scambio": return "arrow.left.arrow.right"
         case "rose": return "doc.badge.plus"
         case "certificato": return "clock.badge.exclamationmark"
         case "diario": return "book"
@@ -512,8 +466,6 @@ struct OggiView: View {
             }
         }
     }
-
-    private var partite: some View { PartiteDelTurnoView(vm: vm) }
 }
 
 #Preview("Oggi") {

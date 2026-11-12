@@ -59,7 +59,7 @@ struct RighePartitaIniziataTests {
     func voceConVoto() throws {
         let g = try giocatore(#""stato_partita": "fatto", "fv_preso": 3.5, "etichetta": {"codice": "voto", "testo": "Ha giocato", "tono": "positivo"}"#)
         let preso = try TestiWeb().italiano("formazione.fv_preso").replacingOccurrences(of: "{fv}", with: "3,5")
-        #expect(RigaGiocatore.voce(g) == "Paolo Esempio, centrocampista, Genoa, in casa contro Como, \(preso), indice 58 su 100, ha giocato")
+        #expect(RigaGiocatore.voce(g) == "Paolo Esempio, centrocampista, Genoa, in casa contro Como, \(preso), ha giocato")
     }
 
     // MARK: partita iniziata senza voto: «–» da solo
@@ -84,7 +84,7 @@ struct RighePartitaIniziataTests {
     @Test("VoiceOver a partita in corso: lo stato dalla pillola, il trattino non si legge")
     func voceInCorso() throws {
         let g = try giocatore(#""stato_partita": "in_corso", "etichetta": {"codice": "in_corso", "testo": "Partita in corso", "tono": "positivo"}"#)
-        #expect(RigaGiocatore.voce(g) == "Paolo Esempio, centrocampista, Genoa, in casa contro Como, indice 58 su 100, partita in corso")
+        #expect(RigaGiocatore.voce(g) == "Paolo Esempio, centrocampista, Genoa, in casa contro Como, partita in corso")
     }
 
     // MARK: «Perché questo numero»

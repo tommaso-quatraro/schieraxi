@@ -1,13 +1,4 @@
 {
-  "formazione.indicativo": {
-    "it": " (indicativo)",
-    "en": " (rough)",
-    "nota": "---- [formazione] ----"
-  },
-  "formazione.volte_su": {
-    "it": "{x} volte su {y}",
-    "en": "{x} times out of {y}"
-  },
   "formazione.calcolo": {
     "it": "Calcolo la formazione migliore…",
     "en": "Working out the best lineup…"
@@ -23,10 +14,6 @@
   "formazione.salvata_come_tua": {
     "it": "Salvata come tua scelta",
     "en": "Saved as your choice"
-  },
-  "formazione.consigliato": {
-    "it": "Consigliato",
-    "en": "Recommended"
   },
   "formazione.stai_guardando_formazione": {
     "it": "Stai guardando la formazione di",
@@ -72,10 +59,6 @@
     "it": "Copia il testo",
     "en": "Copy the text"
   },
-  "formazione.condividi_immagine": {
-    "it": "Condividi come immagine",
-    "en": "Share as image"
-  },
   "formazione.titolari": {
     "it": "Titolari",
     "en": "Starters"
@@ -83,14 +66,6 @@
   "formazione.quest_ordine_entra": {
     "it": "Entra il primo che può sostituire chi resta senza voto.",
     "en": "The first one who can replace a player without a vote comes on."
-  },
-  "formazione.numero_sulla_maglia": {
-    "it": "Negli elenchi il numero sul volto è l'indice: 100 = il migliore del suo ruolo questa giornata. Tocca il fantavoto atteso per vedere perché è quello.",
-    "en": "In the lists the number on the face is the index: 100 = the best of his position this matchday. Tap the expected fantasy score to see why it is what it is."
-  },
-  "formazione.non_riesco_creare": {
-    "it": "Non riesco a creare l'immagine",
-    "en": "I cannot create the image"
   },
   "formazione.sto_ancora_ricalcolando": {
     "it": "Sto ancora ricalcolando: un attimo",
@@ -104,41 +79,9 @@
     "it": "Nessun altro giocatore di questo ruolo in rosa.",
     "en": "No other player in this position in your roster."
   },
-  "formazione.sostituisci_aria": {
-    "it": "Sostituisci {nome} con un altro",
-    "en": "Replace {nome} with another player"
-  },
-  "formazione.sostituisci_con": {
-    "it": "Sostituisci con un altro della rosa",
-    "en": "Replace with another from the roster"
-  },
-  "formazione.confronta_aria": {
-    "it": "Confronta {nome} con un altro",
-    "en": "Compare {nome} with another player"
-  },
   "formazione.oscilla": {
     "it": "oscilla di ±{n}",
     "en": "swings by ±{n}"
-  },
-  "formazione.fascia_nota": {
-    "it": "8 volte su 10: misurato sulle giornate passate",
-    "en": "8 times out of 10: measured on past matchdays"
-  },
-  "formazione.fascia_nota_ind": {
-    "it": "8 volte su 10, stima indicativa: misurato sulle giornate passate",
-    "en": "8 times out of 10, rough estimate: measured on past matchdays"
-  },
-  "formazione.fascia_riga": {
-    "it": "8 volte su 10",
-    "en": "8 times out of 10"
-  },
-  "formazione.fascia_riga_ind": {
-    "it": "8 volte su 10 (indicativo)",
-    "en": "8 times out of 10 (rough)"
-  },
-  "formazione.tra": {
-    "it": "tra {a} e {b}",
-    "en": "between {a} and {b}"
   },
   "formazione.la_tua_scelta": {
     "it": "la tua scelta",
@@ -164,10 +107,6 @@
     "it": "in trasferta contro {avv}",
     "en": "away against {avv}"
   },
-  "formazione.legenda_apri": {
-    "it": "Cosa vuol dire",
-    "en": "What it means"
-  },
   "formazione.alle": {
     "it": "alle {ora}",
     "en": "at {ora}"
@@ -180,14 +119,10 @@
     "it": "Stai vedendo la consigliata: non hai salvato una tua formazione.",
     "en": "You are seeing the recommended lineup: you have not saved one of your own."
   },
-  "formazione.stato_altra": {
-    "it": "Stai vedendo un modulo o uno stile diverso dalla consigliata: non l'hai salvato.",
-    "en": "You are seeing a formation or style other than the recommended one: not saved."
-  },
   "formazione.stato_altro_modulo": {
     "it": "Stai vedendo un altro modulo, non quello consigliato: non l'hai salvato.",
     "en": "You are seeing a formation other than the recommended one: not saved.",
-    "nota": "solo web, dal 12/11/2026 (#615): la web ha un solo stile; l'iPhone usa ancora formazione.stato_altra"
+    "nota": "solo iPhone, dal 12/11/2026 (#634, #637): la web non ha più questa riga di stato"
   },
   "formazione.stato_salvata": {
     "it": "La tua formazione è salvata",
@@ -233,10 +168,6 @@
     "it": "fantavoto {fv}",
     "en": "fantasy score {fv}"
   },
-  "formazione.esci_senza_salvare": {
-    "it": "Hai cambiato la formazione a mano ma non l'hai salvata. Vuoi uscire lo stesso? Le modifiche andranno perse.",
-    "en": "You changed the lineup by hand but haven't saved it. Leave anyway? The changes will be lost."
-  },
   "formazione.salva_questa": {
     "it": "Salva questa",
     "en": "Save this one"
@@ -244,10 +175,6 @@
   "formazione.salva_modifiche": {
     "it": "Salva le modifiche",
     "en": "Save changes"
-  },
-  "formazione.salva_tasto": {
-    "it": "Da tastiera: {tasto}",
-    "en": "Keyboard: {tasto}"
   },
   "formazione.annulla_modifiche": {
     "it": "Annulla modifiche",
@@ -265,25 +192,9 @@
     "it": "{d} rispetto alla consigliata con lo stesso modulo ({n}).",
     "en": "{d} compared with the recommended lineup in the same formation ({n})."
   },
-  "formazione.modificata_mano": {
-    "it": "Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata.",
-    "en": "Edited by hand. Tap a formation or a style to go back to the recommended one."
-  },
-  "formazione.modulo_fissato": {
-    "it": "Modulo fissato a mano (lo stile propone il {modulo}): tocca lo stile per tornare al suo.",
-    "en": "Formation set by hand (the style suggests the {modulo}): tap the style to go back to its own."
-  },
-  "formazione.propone": {
-    "it": "propone il {modulo}.",
-    "en": "it suggests the {modulo}."
-  },
   "formazione.tocca_sostituire": {
     "it": "Tocca ✎ per sostituire un titolare: i punti attesi si ricalcolano.",
     "en": "Tap ✎ to replace a starter: the expected points are recalculated."
-  },
-  "formazione.tocca_confronto": {
-    "it": "Tocca ⇄ per confrontarlo con un altro della rosa.",
-    "en": "Tap ⇄ to compare him with another player in the roster."
   },
   "formazione.bloccati": {
     "it": "Chi gioca in una partita già cominciata non si può più spostare.",
@@ -305,12 +216,164 @@
     "it": "Non riesco a copiare: tieni premuto sul testo",
     "en": "I cannot copy: press and hold on the text"
   },
-  "formazione.punti_da_solo": {
-    "it": "{d} punti da solo",
-    "en": "{d} points on his own"
-  },
   "formazione.al_posto_di": {
     "it": "Al posto di {nome}",
     "en": "Instead of {nome}"
+  },
+  "formazione.chiusa_breve": {
+    "it": "Formazione chiusa",
+    "en": "Lineup closed"
+  },
+  "formazione.si_chiude": {
+    "it": "Si chiude {quando}",
+    "en": "Closes {quando}"
+  },
+  "formazione.fra": {
+    "it": "fra {tempo}",
+    "en": "in {tempo}"
+  },
+  "formazione.in_corso": {
+    "it": "in corso",
+    "en": "in progress"
+  },
+  "formazione.punti_finora": {
+    "it": "punti finora",
+    "en": "points so far"
+  },
+  "formazione.circa_fine": {
+    "it": "circa {n} a fine giornata",
+    "en": "about {n} at the end of the round"
+  },
+  "formazione.punti_e_attesi": {
+    "it": "punti (attesi {n})",
+    "en": "points ({n} expected)"
+  },
+  "formazione.punti": {
+    "it": "punti",
+    "en": "points"
+  },
+  "formazione.come_andata": {
+    "it": "Com'è andata",
+    "en": "How it went"
+  },
+  "formazione.di_solito": {
+    "it": "di solito fra {a} e {b}",
+    "en": "usually between {a} and {b}"
+  },
+  "formazione.opzione_consigliato": {
+    "it": "{modulo} · {punti} punti · consigliato",
+    "en": "{modulo} · {punti} points · recommended"
+  },
+  "formazione.opzione_modulo": {
+    "it": "{modulo} · {punti} punti",
+    "en": "{modulo} · {punti} points"
+  },
+  "formazione.stato_e_consigliata": {
+    "it": "È la consigliata.",
+    "en": "This is the recommended lineup."
+  },
+  "formazione.stato_cambiata.one": {
+    "it": "L'hai cambiata tu: {n} titolare diverso dalla consigliata{d}.",
+    "en": "You changed it: {n} starter differs from the recommended lineup{d}."
+  },
+  "formazione.stato_cambiata.other": {
+    "it": "L'hai cambiata tu: {n} titolari diversi dalla consigliata{d}.",
+    "en": "You changed it: {n} starters differ from the recommended lineup{d}."
+  },
+  "formazione.stato_superata.one": {
+    "it": "La consigliata è cambiata da quando l'hai salvata: {n} titolare diverso{d}.",
+    "en": "The recommended lineup changed since you saved it: {n} starter differs{d}."
+  },
+  "formazione.stato_superata.other": {
+    "it": "La consigliata è cambiata da quando l'hai salvata: {n} titolari diversi{d}.",
+    "en": "The recommended lineup changed since you saved it: {n} starters differ{d}."
+  },
+  "formazione.stato_non_valida_ora": {
+    "it": "La formazione che avevi salvato non è più valida: vale la consigliata.",
+    "en": "The lineup you saved is no longer valid: the recommended one applies."
+  },
+  "formazione.usa_consigliata": {
+    "it": "Usa la consigliata",
+    "en": "Use the recommended lineup"
+  },
+  "formazione.copia_lega": {
+    "it": "Copia per l'app della lega",
+    "en": "Copy for the league app"
+  },
+  "formazione.copiata_lega": {
+    "it": "Formazione copiata: ora mettila nell'app della lega",
+    "en": "Lineup copied: now enter it in your league app"
+  },
+  "formazione.messa": {
+    "it": "L'ho messa",
+    "en": "I've entered it"
+  },
+  "formazione.non_schierati": {
+    "it": "Non schierati ({n})",
+    "en": "Not in the lineup ({n})"
+  },
+  "formazione.indisponibili": {
+    "it": "Infortunati e squalificati ({n})",
+    "en": "Injured and suspended ({n})"
+  },
+  "formazione.decisione_punti": {
+    "it": "{d} punti attesi.",
+    "en": "{d} expected points."
+  },
+  "formazione.stato_punti": {
+    "it": "{d} punti attesi",
+    "en": "{d} expected points"
+  },
+  "formazione.partita_casa": {
+    "it": "In casa contro {avv} · {quando}",
+    "en": "At home against {avv} · {quando}"
+  },
+  "formazione.partita_fuori": {
+    "it": "In trasferta contro {avv} · {quando}",
+    "en": "Away against {avv} · {quando}"
+  },
+  "formazione.se_gioca": {
+    "it": "se gioca",
+    "en": "if he plays"
+  },
+  "formazione.perche_titolare": {
+    "it": "Perché è titolare",
+    "en": "Why he starts"
+  },
+  "formazione.ultimi_voti": {
+    "it": "Ultimi voti",
+    "en": "Latest grades"
+  },
+  "formazione.sostituisci": {
+    "it": "Sostituisci",
+    "en": "Replace"
+  },
+  "formazione.tutti_numeri": {
+    "it": "Tutti i numeri",
+    "en": "All the numbers"
+  },
+  "formazione.questa_partita": {
+    "it": "Questa partita",
+    "en": "This match"
+  },
+  "formazione.punti_rispetto": {
+    "it": "punti attesi rispetto a {nome}",
+    "en": "expected points compared with {nome}"
+  },
+  "formazione.fv_atteso_breve": {
+    "it": "atteso {fv}",
+    "en": "expected {fv}"
+  },
+  "formazione.sost_spiega": {
+    "it": "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi in più o in meno rispetto a {nome}.",
+    "en": "Same role, from your roster. The big number is the expected points more or less than {nome}."
+  },
+  "formazione.scelta_non_letta": {
+    "it": "Non riesco a leggere la formazione che hai salvato: finché non la leggo non si può cambiare niente.",
+    "en": "I can't read your saved lineup: nothing can be changed until I can."
+  },
+  "formazione.copia_ferma": {
+    "it": "Finché non arrivano quelli nuovi la formazione non si può cambiare.",
+    "en": "Until fresh data arrive the lineup can't be changed."
   }
 }

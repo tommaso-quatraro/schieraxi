@@ -76,20 +76,8 @@ final class ModelliTests: XCTestCase {
         XCTAssertEqual(vicario.nome, "Noraldi")
         XCTAssertEqual(vicario.ruolo, "P")
         XCTAssertEqual(vicario.titolarita, "titolare")
-        XCTAssertEqual(vicario.indice, 100)
         XCTAssertNotNil(vicario.portaInviolata)
         XCTAssertEqual(vicario.motivi?.first, "titolare al 90%")
-    }
-
-    func testMercato() throws {
-        let m: Mercato = try Fixture.decodifica("mercato")
-        XCTAssertEqual(m.proposte.count, 10)
-        XCTAssertEqual(m.svincolati, 353)
-        XCTAssertNil(m.creditiResidui)
-        XCTAssertEqual(m.rimborsoIpotizzato, 0.5)
-        XCTAssertEqual(m.proposte.first?.esce.nome, "Norese G.")
-        XCTAssertEqual(m.proposte.first?.giornate?.count, 5)
-        XCTAssertNil(m.proposte.first?.creditiDopo)
     }
 
     func testClassifica() throws {
@@ -99,21 +87,6 @@ final class ModelliTests: XCTestCase {
         XCTAssertEqual(c.giocatori.first?.nome, "Malvi")
         XCTAssertEqual(c.giocatori.first?.quotazione, 35)
         XCTAssertNotNil(c.giocatori.first?.proprietario)
-    }
-
-    func testProposteDiScambio() throws {
-        let p: ProposteScambi = try Fixture.decodifica("proposte")
-        XCTAssertEqual(p.proposte.count, 5)
-        XCTAssertEqual(p.giornate, [9, 10, 11, 12, 13])
-        let prima = try XCTUnwrap(p.proposte.first)
-        XCTAssertEqual(prima.altra, "Lambda Rossa")
-        XCTAssertEqual(prima.`do`.first?.nome, "Barucci")
-        XCTAssertEqual(prima.ricevo.first?.nome, "Mangoni")
-        XCTAssertEqual(prima.guadagnoMio, 1.87, accuracy: 0.001)
-        XCTAssertEqual(prima.perGiornataMio?.count, 5)
-        // «reparti» è vuoto nelle proposte e non deve rompere la decodifica
-        XCTAssertNil(prima.reparti?.mio)
-        XCTAssertEqual(prima.quotazioneDo, 13)
     }
 
     func testRosa() throws {
@@ -174,18 +147,6 @@ final class ModelliTests: XCTestCase {
         XCTAssertEqual(s.proprietario, "FC Sotto 10,5")
     }
 
-    func testConfronto() throws {
-        let c: Confronto = try Fixture.decodifica("confronto")
-        XCTAssertEqual(c.giornata, 9)
-        XCTAssertEqual(c.giocatori.count, 2)
-        XCTAssertEqual(c.consigliato, 4510)
-        XCTAssertEqual(c.fattori.count, 6)
-        XCTAssertEqual(c.fattori.first?.chiave, "giocare")
-        XCTAssertEqual(c.fattori.first?.percentuale, true)
-        XCTAssertEqual(c.formazione?.postoA, "titolare")
-        XCTAssertEqual(c.formazione?.modulo, "4-3-3")
-    }
-
     func testAffidabilita() throws {
         let a: Affidabilita = try Fixture.decodifica("affidabilita")
         XCTAssertEqual(a.righe?.count, 8)
@@ -200,16 +161,6 @@ final class ModelliTests: XCTestCase {
         XCTAssertEqual(r.modifiche.first?.chiave, "bonus.rigore_parato")
         XCTAssertEqual(r.modifiche.first?.valore.numero, 3)
         XCTAssertEqual(r.nonRiconosciute ?? [], [])
-    }
-
-    func testOffertaDaTesto() throws {
-        let o: OffertaRiconosciuta = try Fixture.decodifica("da-testo")
-        XCTAssertEqual(o.con, "Lambda Rossa")
-        XCTAssertEqual(o.`do`, ["Barucci"])
-        XCTAssertEqual(o.ricevo, ["Mangoni"])
-        XCTAssertEqual(o.ambigui ?? [], [])
-        XCTAssertEqual(o.analisi?.reparti?.mio?["D"], 12.1)
-        XCTAssertEqual(o.analisi?.percentualeMio, 0.2)
     }
 
     func testAvvisiStagioneNovitaCalendario() throws {
@@ -233,7 +184,6 @@ final class ModelliTests: XCTestCase {
         let json = #"{"id": 1, "nome": "Prova", "ruolo": "A"}"#
         let g: Giocatore = try Decodifica.decodifica(Data(json.utf8))
         XCTAssertEqual(g.nome, "Prova")
-        XCTAssertNil(g.indice)
         XCTAssertTrue(g.etichette.isEmpty)
         // risposta senza «formazione» e senza «avvisi»
         let o: Oggi = try Decodifica.decodifica(Data(#"{"giornata": 3}"#.utf8))

@@ -26,12 +26,6 @@ struct DemoWidgetComeAppTests {
                      "il riassunto dei widget della demo non si legge")
     }
 
-    private func live(_ dati: [String: Any]) throws -> LiveWidget {
-        let d = JSONDecoder()
-        d.keyDecodingStrategy = .convertFromSnakeCase
-        return try d.decode(LiveWidget.self, from: try JSONSerialization.data(withJSONObject: dati))
-    }
-
     private func elenco(_ d: [String: Any], _ chiave: String) throws -> [[String: Any]] {
         try #require(d[chiave] as? [[String: Any]], "manca «\(chiave)»")
     }
@@ -95,29 +89,24 @@ struct DemoWidgetComeAppTests {
         #expect(f.nomeNumeroTitolari.first == FantavotoAtteso.nome)
     }
 
-    @Test("Prima della scadenza nessuna partita è in corso, né nel widget né nell'app; gli orari sono quelli di Oggi")
+    @Test("Prima della scadenza nessuna partita è in corso nel widget; gli orari sono quelli di Oggi")
     func primaDellaScadenza() throws {
-        let liveApp = try live(try app("/api/live"))
         let orari = try elenco(try app("/api/oggi"), "partite").map { "\($0["casa"] as? String ?? "")-\($0["trasferta"] as? String ?? ""): \($0["data"] as? String ?? "")" }
         let w = try widget()
         let inizio = try #require(w.inizio)
         #expect(inizio > Self.adesso)
         #expect(w.partiteInGioco.isEmpty)
         #expect(!w.partiteLive.isEmpty)
-        #expect(liveApp.partite?.contains(where: \.inGioco) == false)
         #expect((w.live?.partite ?? []).map { "\($0.id): \($0.data ?? "")" } == orari)
     }
 
-    @Test("Giornata in corso: scadenza passata, le stesse partite e gli stessi punti dell'app")
+    @Test("Giornata in corso: scadenza passata e gli stessi punti dell'app")
     func giornataInCorso() throws {
-        let partiteApp = try live(try app("/api/live", schermata: "oggi-in-corso")).partite ?? []
         let inCorso = try #require(try app("/api/oggi", schermata: "oggi-in-corso")["in_corso"] as? [String: Any])
         let w = try widget(.inCorso)
         let inizio = try #require(w.inizio)
         #expect(inizio < Self.adesso)
         #expect(!w.partiteInGioco.isEmpty)
-        #expect((w.live?.partite ?? []).map { "\($0.id) \($0.stato ?? "") \($0.punteggio)" }
-                == partiteApp.map { "\($0.id) \($0.stato ?? "") \($0.punteggio)" })
         #expect(Formato.punti(w.faseGiornata.inCorso?.puntiFatti) == punti(inCorso["punti_fatti"]))
         #expect(Formato.punti(w.faseGiornata.inCorso?.puntiPrevisti) == punti(inCorso["punti_previsti"]))
     }
@@ -141,26 +130,6 @@ struct DemoWidgetComeAppTests {
         }
         let w = try widget()
         #expect(w.giornateGiocate.map { "G\($0.numero): \(Formato.punti($0.attesi)) → \(Formato.punti($0.fatti))" } == attese)
-    }
-
-    @Test("Seguiti, crediti, scambio e svincolo del widget sono quelli dell'app")
-    func restoComeLApp() throws {
-        let seguiti = try elenco(try app("/api/osservati"), "giocatori").compactMap { $0["id"] as? Int }
-        let mercato = try app("/api/mercato")
-        let svincolo = try #require(try elenco(mercato, "proposte").first)
-        let scambio = try #require(try elenco(try app("/api/scambi/proposte"), "proposte").first)
-        let dai = (scambio["do"] as? [[String: Any]])?.compactMap { $0["id"] as? Int }
-        let ricevi = (scambio["ricevo"] as? [[String: Any]])?.compactMap { $0["id"] as? Int }
-        let w = try widget()
-        #expect(w.osservati?.map(\.id) == seguiti)
-        #expect(w.creditiResidui == mercato["crediti_residui"] as? Double)
-        #expect(w.svincolato?.entra?.id == (svincolo["entra"] as? [String: Any])?["id"] as? Int)
-        #expect(w.svincolato?.esce?.id == (svincolo["esce"] as? [String: Any])?["id"] as? Int)
-        #expect(Formato.punti(w.svincolato?.guadagno) == punti(svincolo["guadagno"]))
-        #expect(w.scambio?.altra == scambio["altra"] as? String)
-        #expect(Formato.punti(w.scambio?.guadagnoMio) == punti(scambio["guadagno_mio"]))
-        #expect(w.scambio?.`do`?.compactMap(\.id) == dai)
-        #expect(w.scambio?.ricevo?.compactMap(\.id) == ricevi)
     }
 
     @Test("Un server senza scambio e svincolo: lo dice in «mancano», il resto c'è")

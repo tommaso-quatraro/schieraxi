@@ -53,8 +53,9 @@ def _testo_web(chiave: str) -> tuple[str, str]:
 
 
 def test_stesse_parole_della_web():
-    """Il vocabolario è quello di testi.js: se una parola cambia sulla web, questo test lo dice."""
-    web = {"titolare": "tit.titolare", "ballottaggio": "tit.ballottaggio", "panchina": "tit.panchina", "improbabile": "tit.improbabile",
+    """Il vocabolario è quello di testi.js: se una parola cambia sulla web, questo test lo dice. «Probabile titolare» non è più nel
+    catalogo: dal 12/11/2026 (#616) la web non mostra le etichette di titolarità e l'iPhone ha quella parola nel suo codice."""
+    web = {"ballottaggio": "tit.ballottaggio", "panchina": "tit.panchina", "improbabile": "tit.improbabile",
            "fuori": "tit.fuori", "voto": "tit.st_fatto", "senza_voto": "tit.st_senza_voto", "voto_in_arrivo": "tit.st_attesa_voti",
            "in_corso": "tit.st_in_corso", "da_giocare": "tit.st_da_giocare", "rinviata": "tit.st_rinviata",
            "infortunato": "oggi.infortunato", "squalificato": "oggi.squalificato", "diffidato": "oggi.diffidato_tipo"}

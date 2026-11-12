@@ -1,47 +1,27 @@
 import SwiftUI
 
-/// Scheda di un giocatore (sheet): previsione, prossime partite, forma e grafico dei voti, statistiche, «Osserva» e confronti.
+/// Scheda di un giocatore (sheet): previsione, prossime partite, forma e grafico dei voti, statistiche.
 struct GiocatoreSheet: View {
     let id: Int
     let server: any ServerClient
-    let contesto: ContestoConfronto?
-    @State private var percorso: [PassoScheda] = []
     @Environment(\.dismiss) private var chiudi
 
-    init(id: Int, server: any ServerClient, contesto: ContestoConfronto? = nil) {
-        self.id = id
-        self.server = server
-        self.contesto = contesto
-    }
-
     var body: some View {
-        NavigationStack(path: $percorso) {
-            GiocatoreCorpo(id: id, server: server, percorso: $percorso)
+        NavigationStack {
+            GiocatoreCorpo(id: id, server: server)
                 .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } } }
-                .destinazioniGiocatore(percorso: $percorso, server: server, contesto: contesto)
+                .destinazioniGiocatore(server: server)
         }
     }
 }
 
 extension View {
-    /// Le pagine che si aprono dentro un `NavigationStack` di giocatori: scheda, confronto, scelta dell'altro giocatore.
-    func destinazioniGiocatore(percorso: Binding<[PassoScheda]>, server: any ServerClient, contesto: ContestoConfronto?) -> some View {
+    /// Le pagine che si aprono dentro un `NavigationStack` di giocatori: la scheda di un giocatore (dai risultati della ricerca).
+    func destinazioniGiocatore(server: any ServerClient) -> some View {
         navigationDestination(for: PassoScheda.self) { passo in
             switch passo {
             case .scheda(let id):
-                GiocatoreCorpo(id: id, server: server, percorso: percorso)
-            case .confronto(let a, let b):
-                ConfrontoView(a: a, b: b, contesto: contesto, server: server)
-            case .sceltaDallaRosa(let id):
-                SceltaDallaRosaView(id: id, server: server) { altro in
-                    percorso.wrappedValue.removeLast()
-                    percorso.wrappedValue.append(.confronto(a: id, b: altro))
-                }
-            case .sceltaAltro(let id):
-                RicercaGiocatoreView(titolo: "Confronta con…", server: server) { altro in
-                    percorso.wrappedValue.removeLast()
-                    percorso.wrappedValue.append(.confronto(a: id, b: altro))
-                }
+                GiocatoreCorpo(id: id, server: server)
             }
         }
     }
@@ -50,14 +30,10 @@ extension View {
 struct GiocatoreCorpo: View {
     let id: Int
     @StateObject private var vm: SchedaGiocatoreViewModel
-    @Binding var percorso: [PassoScheda]
-    @Environment(\.dynamicTypeSize) private var tagliaTesto
-    @Environment(\.funzioni) private var funzioni
 
-    init(id: Int, server: any ServerClient, percorso: Binding<[PassoScheda]>) {
+    init(id: Int, server: any ServerClient) {
         self.id = id
         _vm = StateObject(wrappedValue: SchedaGiocatoreViewModel(id: id, server: server))
-        _percorso = percorso
     }
 
     var body: some View {
@@ -77,7 +53,6 @@ struct GiocatoreCorpo: View {
                         forma(s).ingresso(3)
                         rendimento(s)
                         statistiche(s)
-                        azioni(s)
                     } else if let e = vm.caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await vm.carica() } }
                     } else {
@@ -107,15 +82,11 @@ struct GiocatoreCorpo: View {
         let tinta = Color(esadecimale: ColoriSquadra.esadecimali(squadra).0)
         return VStack(spacing: 14) {
             FilaAdattiva(spazio: 16) {
-                AvatarGiocatore(id: c.id, squadra: squadra, indice: p?.indice, dimensione: 96, nome: c.nome, ruolo: c.ruolo)
+                AvatarGiocatore(id: c.id, squadra: squadra, dimensione: 96, nome: c.nome, ruolo: c.ruolo)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(c.nome).font(.title.bold()).accessibilityAddTraits(.isHeader)
                     ruoloESquadra(ruolo: c.ruolo, squadra: c.squadra)
                     Text("Quotazione \(Formato.intero(c.quotazione))").font(.caption).foregroundStyle(Color.testoSecondario)
-                    if let indice = p?.indice {
-                        // il numero sull'anello della foto: senza questa riga non si capiva cosa fosse
-                        Text("Indice \(Formato.intero(indice)) su 100 (100 = il migliore del ruolo)").font(.caption).foregroundStyle(Color.testoSecondario)
-                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -348,36 +319,6 @@ struct GiocatoreCorpo: View {
                 .padding(.top, 8)
             }
             .tint(Color.testoSecondario)
-        }
-    }
-
-    // MARK: azioni
-
-    private func azioni(_ s: SchedaGiocatore) -> some View {
-        Carta {
-            if funzioni.acceso(Funzione.seguiti) {
-                Button { Task { await vm.alternaOsservato() } } label: {
-                    Label(vm.osservato == true ? "Seguito" : "Segui", systemImage: vm.osservato == true ? "star.fill" : "star")
-                        .contentTransition(.symbolEffect(.replace))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .pulsanteVetro(prominente: true)
-                .sensoryFeedback(.success, trigger: vm.osservato)
-                .accessibilityHint(vm.osservato == true ? "Smette di seguire il giocatore" : "Segue il giocatore: lo trovi in Squadra > Seguiti")
-            }
-            if funzioni.acceso(Funzione.confronto) && funzioni.acceso(Funzione.elencoGiocatori) {
-                Button { percorso.append(.sceltaAltro(s.calciatore.id)) } label: {
-                    Label("Confronta con un altro", systemImage: "arrow.left.arrow.right").frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .pulsanteVetro()
-            }
-            if vm.inFormazione && funzioni.acceso(Funzione.confronto) {
-                Button { percorso.append(.sceltaDallaRosa(s.calciatore.id)) } label: {
-                    Label("Confronta con la mia rosa", systemImage: "person.2").frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .pulsanteVetro()
-            }
-            if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
     }
 }

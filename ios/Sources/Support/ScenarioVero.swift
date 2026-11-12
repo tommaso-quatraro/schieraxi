@@ -25,16 +25,14 @@ struct ScenarioVero {
     /// Cosa aprire nelle schermate che in demo scelgono un giocatore, una squadra o un testo.
     struct Scelte: Decodable {
         let giocatore: Int?
-        let confronto: [Int]?
         let foto: [Int]?
         let cerca: String?
         let miaSquadra: String?
         let rosaAltra: String?
         let stemmi: [String]?
-        let offerta: String?
 
         enum CodingKeys: String, CodingKey {
-            case giocatore, confronto, foto, cerca, stemmi, offerta
+            case giocatore, foto, cerca, stemmi
             case miaSquadra = "mia_squadra"
             case rosaAltra = "rosa_altra"
         }
@@ -46,11 +44,6 @@ struct ScenarioVero {
     var risposte: [String: String] { file.risposte ?? [:] }
     var giocatore: Int? { file.demo?.giocatore }
     var rosaAltra: String? { file.demo?.rosaAltra }
-    var offerta: String? { file.demo?.offerta }
-    var confronto: (Int, Int)? {
-        guard let c = file.demo?.confronto, c.count == 2 else { return nil }
-        return (c[0], c[1])
-    }
 
     /// Solo lettere minuscole, cifre e trattini: il nome diventa parte di un percorso.
     static func nomeValido(_ nome: String) -> Bool {

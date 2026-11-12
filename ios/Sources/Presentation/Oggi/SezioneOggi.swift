@@ -1,6 +1,6 @@
 /// Le sezioni di Oggi, dall'alto in basso, nell'ordine della web (`mostraOggi` di `fanta/web/app.js`, grafica B, #416):
 /// la giornata con il conto alla rovescia, poi la formazione con «Apri la formazione» (l'azione principale nel primo schermo),
-/// Partita rinviata, Da fare e novità; poi I tuoi migliori, Da controllare, Indisponibili, Diffidati e Partite del turno.
+/// Partita rinviata e Da fare; poi I tuoi migliori, Da controllare, Indisponibili e Diffidati.
 /// Niente nome né slogan in cima. Ogni sezione si nasconde da sola se non ha niente da mostrare.
 /// Sull'iPad le sezioni vanno in colonne (`Colonne`) sempre in quest'ordine di lettura.
 /// La prova è `OggiComeLaWebTests`, che confronta quest'ordine con il codice della web.
@@ -21,15 +21,12 @@ enum SezioneOggi: Hashable, Sendable, CaseIterable {
     /// Partita rinviata.
     case rinvio
     case daFare
-    /// Il banner «Novità della versione …».
-    case novita
     /// Il suggerimento «tocca un giocatore» (solo iPhone), prima del primo elenco di giocatori.
     case suggerimento
     case migliori
     case daControllare
     case indisponibili
     case diffidati
-    case partite
 
     /// Le sezioni di una fase, in ordine. Come la web: prima della scadenza consigli e avvisi; a giornata in corso i punti e chi
     /// gioca, niente consigli né avvisi; a giornata finita il riepilogo, la prossima formazione, indisponibili e diffidati.
@@ -38,17 +35,16 @@ enum SezioneOggi: Hashable, Sendable, CaseIterable {
         switch fase {
         case .prima:
             if conGiornata { sezioni.append(.formazione) }
-            sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare, .novita])
+            sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare])
             sezioni.append(contentsOf: [SezioneOggi.suggerimento, .migliori, .daControllare, .indisponibili, .diffidati])
         case .inCorso:
             // una carta sola, come la web: punti, poi chi va a punteggio, poi i cambi dalla panchina
-            sezioni.append(contentsOf: [SezioneOggi.inCorso, .rinvio, .daFare, .novita])
+            sezioni.append(contentsOf: [SezioneOggi.inCorso, .rinvio, .daFare])
         case .finita:
             sezioni.append(.riepilogo)
             if conGiornata { sezioni.append(.formazione) }
-            sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare, .novita, .indisponibili, .diffidati])
+            sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare, .indisponibili, .diffidati])
         }
-        sezioni.append(.partite)
         return sezioni
     }
 

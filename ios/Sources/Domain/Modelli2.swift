@@ -171,10 +171,3 @@ struct CreditiSquadre: Encodable {
 struct NomeSquadra: Encodable {
     let nome: String
 }
-
-struct SquadraCrediti: Decodable, Identifiable {
-    let nome: String
-    let mia: Bool?
-    let creditiResidui: Double?
-    var id: String { nome }
-}

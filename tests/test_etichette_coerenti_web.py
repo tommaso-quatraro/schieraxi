@@ -1,9 +1,8 @@
 """Etichette coerenti nel web (#281, #284), dal collaudo per #167 con la lega inventata:
-- il posto in formazione (scelta del confronto, Confronto, sostituzione) si legge «Titolare», «Panchina N», «Non schierato», mai con
-  le parole della titolarità («Probabile titolare» per un giocatore al 2%, «Fuori»); la scelta mostra anche l'etichetta del server;
-- nel Confronto i numeri negativi hanno il meno tipografico «−1,12», non il trattino;
-- la pedina di una partita rinviata dice «Rinviata» al posto di «⚠ gioca 50%»; la carta del rinvio scrive «UDI vs MIL», e così
-  anche la riga dei recuperi che mancano nel riepilogo della giornata finita (#310).
+- il posto in formazione (nella sostituzione) si legge «Titolare», «Panchina N», «Non schierato», mai con le parole della
+  titolarità («Probabile titolare» per un giocatore al 2%, «Fuori»);
+- la pedina di una partita rinviata dice «Rinviata» al posto di «gioca 50%»; la carta del rinvio scrive «UDI vs MIL», e così
+  anche la riga dei recuperi che mancano in testa alla Formazione a giornata finita (#310).
 Funzioni di app.js provate con node."""
 import json
 import re
@@ -62,18 +61,17 @@ def test_posto_del_giocatore_al_2_percento():
 
 
 def test_la_sostituzione_usa_le_parole_del_posto():
-    sostituzione = _pezzo("function apriSostituzione(id)", "Object.assign(sc,")
-    assert '${postoInFormazione(x.id) || testoPosto("fuori")}' in sostituzione
+    sostituzione = _pezzo("function apriSostituzione(id)", "// Il posto in formazione a parole")
+    assert "postoInFormazione(x.id)" in sostituzione
     for blocco in (sostituzione, _posto()):
         assert 't("tit.titolare")' not in blocco and 't("tit.fuori")' not in blocco
 
 
 # ---------------------------------------------------------------- #284: partita rinviata
-STUB_PEDINA = ("const attrPerche = () => ''; const lineetta = () => ''; const sigla = s => s;"
-               "const cognome = x => x.nome; const nomeClub = s => s; const perc = x => `${Math.round((x || 0) * 100)}%`;")
-PEDINA = "\n".join([re.search(r"^const TITOLARITA = \{.*?\};$", APP, re.M | re.S).group(0),
-                    _pezzo("const STATO_PARTITA =", "// Il tocco sul fantavoto atteso"),
-                    _pezzo("const ARTICOLI_CLUB", "// Il numero della giornata, uguale")])
+STUB_PEDINA = ("const cognome = x => x.nome; const perc = x => `${Math.round((x || 0) * 100)}%`; const quando = s => String(s);")
+PEDINA = "\n".join([_pezzo("const STATO_PARTITA =", "// Le regole riconosciute"),
+                    _pezzo("// Lo stato di un giocatore, dal codice", "// Il nome del club"),
+                    _pezzo("const SOGLIA_GIOCA", "// Il numero della giornata, uguale")])
 
 
 def test_pedina_di_una_partita_rinviata_dice_rinviata():
@@ -81,7 +79,7 @@ def test_pedina_di_una_partita_rinviata_dice_rinviata():
                 "titolarita": None, "stato_partita": "rinviata", "etichetta": {"codice": "rinviata", "testo": "Rinviata", "tono": "attenzione"}}
     html = _esegui(f"pedina({json.dumps(rinviata)})", STUB_PEDINA, PEDINA)
     visibile = _testo(html)                     # anche la frase per i lettori di schermo dice «Rinviata», non «gioca al 50 per cento»
-    assert "Rinviata" in visibile and "gioca" not in visibile and "⚠" not in visibile
+    assert "Rinviata" in visibile and "gioca" not in visibile
     # prima della scadenza (campo `rinvio`) e con un server vecchio senza etichetta: lo stesso
     prima = rinviata | {"stato_partita": None, "titolarita": "titolare", "rinvio": "aspetta"}
     vecchio = {k: v for k, v in rinviata.items() if k != "etichetta"}
@@ -89,7 +87,7 @@ def test_pedina_di_una_partita_rinviata_dice_rinviata():
     assert esiti == ["Rinviata", "Rinviata"]
     # una partita che si gioca resta «gioca N%»
     gioca = {"id": 8, "nome": "Rossi", "p_voto": 0.5, "fv_atteso": 6.0, "avversario": "roma", "in_casa": False, "titolarita": "ballottaggio"}
-    assert "⚠ gioca 50%" in _testo(_esegui(f"pedina({json.dumps(gioca)})", STUB_PEDINA, PEDINA))
+    assert "gioca 50%" in _testo(_esegui(f"pedina({json.dumps(gioca)})", STUB_PEDINA, PEDINA))
 
 
 def test_carta_del_rinvio_scrive_le_squadre_come_le_partite_del_turno():
@@ -102,14 +100,16 @@ def test_carta_del_rinvio_scrive_le_squadre_come_le_partite_del_turno():
 
 
 def test_recuperi_che_mancano_scritti_come_la_carta_del_rinvio():
-    """Riepilogo della giornata finita: «Manca il recupero di UDI vs MIL, ATA vs PAR: …», non «UDI–MIL» (#310)."""
+    """La giornata finita, in testa alla Formazione: «Manca il recupero di UDI vs MIL, ATA vs PAR: …», non «UDI–MIL» (#310)."""
     r = {"giornata": 10, "giornata_lega": 7, "formazione_di": "tua", "nel_diario": True, "punti_fatti": 61,
          "recuperi": [{"casa": "udinese", "trasferta": "milan", "data": None}, {"casa": "atalanta", "trasferta": "parma", "data": "2026-11-25 20:45"}]}
     blocco = "\n".join([_pezzo("const SIGLE =", "const NOMI_DIFF"), _riga("sigla"), _pezzo("function parseData(s)", "// ETag e If-Match"),
-                        _pezzo("const MODI_RINVIO", "function collegaRinvio"), _pezzo("function nomeGiornata(", "// «la 8ª»"),
-                        _pezzo("function cardRiepilogo(", "// Partite rinviate della giornata")])
-    html = _esegui(f"cardRiepilogo({json.dumps(r)}, null)", blocco)
+                        _pezzo("const MODI_RINVIO", "function collegaRinvio"), _pezzo("function nomeGiornata(", "// La partita in una riga"),
+                        _pezzo("const scadenzaDi = ", "// Account nuovo, senza rose"), _pezzo("function testaGiornata(", "// A giornata in corso: i cambi")])
+    # la testa a giornata finita: com'è andata (con i recuperi che mancano) e sotto la prossima, che qui non ha ancora una data
+    chiamata = f"testaGiornata({{fase: 'finita', riepilogo: {json.dumps(r)}}}, {{giornata: 11, giornata_lega: 8}})"
+    html = _esegui(chiamata, blocco)
     assert "Manca il recupero di UDI vs MIL, ATA vs PAR: i punti possono ancora cambiare." in _testo(html)
     assert "–" not in _testo(html)
-    en = _esegui(f"cardRiepilogo({json.dumps(r)}, null)", blocco, lingua="en")
+    en = _esegui(chiamata, blocco, lingua="en")
     assert "The make-up game UDI vs MIL, ATA vs PAR is still to be played" in _testo(en)

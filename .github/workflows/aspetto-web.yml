@@ -5,7 +5,7 @@ name: Aspetto della web
 # con il codice della PR e con quello di main (la base della PR). Niente immagini nel repository: il riferimento si aggiorna da
 # solo quando la PR si unisce. I dati sono le risposte registrate di ios/fotografie/vero-prima.json (nomi inventati), servite da
 # un server finto: nessun server vero, nessun segreto, nessuna rete oltre a PyPI per Playwright e Pillow.
-# La PR dichiara le scene che cambiano con la riga «Aspetto: oggi, formazione» (o «Aspetto: nessuno») nella descrizione.
+# La PR dichiara le scene che cambiano con la riga «Aspetto: formazione, scheda» (o «Aspetto: nessuno») nella descrizione.
 # Esito nel riassunto della corsa e in un avviso; le immagini delle scene diverse (main, PR, differenza) nell'artifact
 # «aspetto-web» (7 giorni). Il passo del confronto ha continue-on-error: la corsa resta verde anche con differenze non
 # dichiarate, così non ferma «pr-pronta» né l'unione. Diventa bloccante dopo una decina di corse senza falsi allarmi (D2).

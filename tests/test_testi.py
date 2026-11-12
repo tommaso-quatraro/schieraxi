@@ -150,7 +150,7 @@ def test_script_caricati_prima_dell_app_e_pubblici():
 
 def test_index_ha_le_parti_fisse_traducibili():
     html = (server.WEB / "index.html").read_text(encoding="utf-8")
-    for chiave in ("nav.oggi", "nav.formazione", "nav.squadra", "nav.altro", "nav.sezioni", "shell.salta", "shell.cerca",
+    for chiave in ("nav.formazione", "nav.squadra", "nav.altro", "nav.sezioni", "shell.salta", "shell.cerca",
                    "shell.impostazioni", "shell.aggiorna", "shell.dettagli", "shell.chiudi"):
         assert f'"{chiave}"' in html, chiave
 

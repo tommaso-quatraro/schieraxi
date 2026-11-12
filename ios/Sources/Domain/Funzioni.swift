@@ -1,37 +1,26 @@
 import SwiftUI
 
-/// La «dieta delle funzioni»: il server dice quali funzioni sono accese per chi chiede (`GET /api/funzioni`) e l'app nasconde
-/// schermate e pulsanti di quelle spente. Una funzione che il server non nomina vale «accesa»; se il server non risponde
-/// (o è vecchio) si vede tutto, come prima.
+/// Le funzioni che il server può spegnere (`GET /api/funzioni`): l'app nasconde schermate e pulsanti di quelle spente. Una funzione
+/// che il server non nomina vale «accesa»; se il server non risponde (o è vecchio) si vede tutto.
+/// Dal 12/11/2026 (#634) l'app guarda solo queste due, come la web: le altre funzioni dell'elenco del server non hanno più una
+/// schermata, e il Diario si vede sempre.
 enum Funzione {
-    static let stiliRidotti = "stili_ridotti"
-    static let confronto = "confronto"
-    static let elencoGiocatori = "elenco_giocatori"
-    static let seguiti = "seguiti"
-    static let diario = "diario"
+    /// Rose e crediti delle altre squadre della lega.
     static let squadreAltrui = "squadre_altrui"
-    static let novita = "novita"
-    static let live = "live"
-    static let scambiTrova = "scambi_trova"
-    static let scambiCostruisci = "scambi_costruisci"
+    /// Stemma e maglia da un indirizzo web (lo scarica il server: se l'amministratore la spegne è spenta per tutti).
     static let immaginiWeb = "immagini_web"
-    /// Crediti di tutte le squadre: il server la tiene spenta di norma, quindi serve che la accenda.
-    static let crediti = "crediti"
-    /// Movimenti e storico: se il server non la nomina (versione vecchia) vale acceso.
-    static let movimenti = "movimenti"
 }
 
-/// Cosa è acceso e se l'utente ha chiesto «Mostra tutte le funzioni». Valore semplice: sta nell'ambiente di SwiftUI
-/// (`\.funzioni`), così ogni schermata lo legge senza dipendere da un oggetto (anteprime e test vedono tutto acceso).
+/// Cosa è acceso. Valore semplice: sta nell'ambiente di SwiftUI (`\.funzioni`), così ogni schermata lo legge senza dipendere da
+/// un oggetto (anteprime e test vedono tutto acceso).
 struct StatoFunzioni: Equatable, Sendable {
     var scelte: [String: Bool] = [:]
-    var mostraTutte = false
 
     static let tutteAccese = StatoFunzioni()
 
-    /// Una chiave che manca vale «acceso». Con «Mostra tutte» il server manda già tutto `true`: qui si controlla comunque.
+    /// Una chiave che manca vale «acceso».
     func acceso(_ id: String) -> Bool {
-        mostraTutte || scelte[id] != false
+        scelte[id] != false
     }
 
     /// Dopo un 404 con il campo `funzione`: da qui in poi la schermata la nasconde (come fa la web app).
@@ -42,28 +31,16 @@ struct StatoFunzioni: Equatable, Sendable {
     }
 }
 
-/// La risposta di `GET` e `PUT /api/funzioni`: `{"funzioni": {"live": true, ...}, "mostra_tutte": false}`.
-/// Tutti i campi sono facoltativi (un server diverso non deve rompere l'app). Si legge con `snake: false`: le chiavi
-/// del dizionario (`stili_ridotti`) non devono essere trasformate.
+/// La risposta di `GET /api/funzioni`: `{"funzioni": {"squadre_altrui": true, ...}, "mostra_tutte": false}`.
+/// Il campo è facoltativo (un server diverso non deve rompere l'app). Si legge con `snake: false`: le chiavi del dizionario
+/// (`squadre_altrui`) non devono essere trasformate. «Mostra tutte le funzioni» non si sceglie più dall'app (#634): chi l'aveva
+/// accesa riceve dal server le funzioni già accese, e basta quello.
 struct RispostaFunzioni: Decodable, Equatable {
     var funzioni: [String: Bool]?
-    var mostraTutte: Bool?
-
-    enum CodingKeys: String, CodingKey {
-        case funzioni
-        case mostraTutte = "mostra_tutte"
-    }
 
     var stato: StatoFunzioni {
-        StatoFunzioni(scelte: funzioni ?? [:], mostraTutte: mostraTutte ?? false)
+        StatoFunzioni(scelte: funzioni ?? [:])
     }
-}
-
-/// Il corpo di `PUT /api/funzioni`.
-struct CorpoMostraTutte: Encodable {
-    let mostraTutte: Bool
-
-    enum CodingKeys: String, CodingKey { case mostraTutte = "mostra_tutte" }
 }
 
 extension Notification.Name {

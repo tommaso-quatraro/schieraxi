@@ -42,17 +42,4 @@ struct AnteprimaComeDemoTests {
         #expect(Formato.punti(attesi) == Formato.punti(attesiApp))
         #expect(Formato.punti(fatti) == Formato.punti(fattiApp))
     }
-
-    @Test("Giornata in corso: le partite del widget hanno il giorno e l'ora delle partite in diretta dell'app")
-    func orariInCorso() throws {
-        let partite = try #require(try app("/api/live", schermata: "oggi-in-corso")["partite"] as? [[String: Any]])
-        let attese = try partite.map { p -> String in
-            let data = try #require(p["data"] as? String, "una partita dell'app senza data")
-            return "\(p["casa"] as? String ?? "")-\(p["trasferta"] as? String ?? ""): \(data)"
-        }
-        #expect(!attese.isEmpty, "l'app in corso non ha partite")
-        let nelWidget = try #require(try widget(.inCorso).live?.partite, "il widget in corso non ha le partite live")
-        #expect(!nelWidget.isEmpty)
-        #expect(nelWidget.map { "\($0.id): \($0.data ?? "")" } == attese)
-    }
 }

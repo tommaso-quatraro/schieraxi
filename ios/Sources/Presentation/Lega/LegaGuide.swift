@@ -104,7 +104,7 @@ struct NotificheNtfySezione: View {
             Text(Collegamenti.esempioNtfy)
                 .font(.system(.footnote, design: .monospaced))
                 .textSelection(.enabled)
-            Text("Altre destinazioni: oggi, formazione, mercato, scambi, lega, e giocatore/<numero> per la scheda di un giocatore.")
+            Text("Altre destinazioni: oggi, formazione, squadra, altro, e giocatore/<numero> per la scheda di un giocatore.")
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
         }
     }

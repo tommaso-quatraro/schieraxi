@@ -6,9 +6,6 @@ extension Catalogo {
         /// `dieta.non_disponibile`
         static let nonDisponibile = "Non disponibile"
 
-        /// `dieta.apri_impostazioni`
-        static let apriImpostazioni = "Apri le impostazioni"
-
         /// `dieta.torna_oggi`
         static let tornaOggi = "Torna a Oggi"
     }

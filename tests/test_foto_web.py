@@ -62,7 +62,7 @@ def test_da_una_worktree_rifiuta_anche_la_cartella_principale(tmp_path, monkeypa
 
 def test_le_scene_principali_ci_sono_tutte():
     m = _modulo()
-    assert list(m.SCENE) == ["oggi", "formazione", "squadra", "rosa", "scheda", "altro", "diario", "regole", "impostazioni"]
+    assert list(m.SCENE) == ["formazione", "squadra", "rosa", "scheda", "altro", "diario", "regole", "impostazioni"]   # senza «oggi» (#616)
 
 
 def test_argomenti_con_e_senza_indirizzo():
@@ -71,9 +71,9 @@ def test_argomenti_con_e_senza_indirizzo():
     assert a.indirizzo is None and a.cartella == "C:/fuori/foto"          # senza indirizzo avvia lui il server di prova
     assert a.larghezze == [390, 768, 1024, 1440] and a.temi == ["chiaro", "scuro"] and a.lingua == "it"
     assert a.scene == list(m.SCENE)
-    a = m.leggi_argomenti(["http://127.0.0.31:8031", "C:/fuori/foto", "--scene", "oggi,scheda", "--larghezze", "390",
+    a = m.leggi_argomenti(["http://127.0.0.31:8031", "C:/fuori/foto", "--scene", "formazione,scheda", "--larghezze", "390",
                            "--temi", "scuro", "--lingua", "en"])
-    assert (a.indirizzo, a.scene, a.larghezze, a.temi, a.lingua) == ("http://127.0.0.31:8031", ["oggi", "scheda"], [390], ["scuro"], "en")
+    assert (a.indirizzo, a.scene, a.larghezze, a.temi, a.lingua) == ("http://127.0.0.31:8031", ["formazione", "scheda"], [390], ["scuro"], "en")
     for sbagliati in (["x", "--scene", "nessuna"], ["x", "--temi", "rosa"], ["x", "--larghezze", "tanta"], ["a", "b", "c"]):
         with pytest.raises(SystemExit):
             m.leggi_argomenti(sbagliati)
@@ -84,7 +84,7 @@ def test_riga_del_riepilogo_e_violazioni_gravi():
     violazioni = [{"id": "color-contrast", "impact": "serious"}, {"id": "aria", "impact": "critical"},
                   {"id": "region", "impact": "moderate"}, {"id": "x", "impact": None}]
     assert m.gravi(violazioni) == 2
-    assert m.riga_riepilogo("oggi", 390, "chiaro", 2, True, 0) == "oggi 390 chiaro gravi=2 scorrimento-di-lato=sì errori-console=0"
+    assert m.riga_riepilogo("formazione", 390, "chiaro", 2, True, 0) == "formazione 390 chiaro gravi=2 scorrimento-di-lato=sì errori-console=0"
     assert m.riga_riepilogo("scheda", 1440, "scuro", 0, False, 3) == "scheda 1440 scuro gravi=0 scorrimento-di-lato=no errori-console=3"
 
 
@@ -324,7 +324,7 @@ def test_axe_misura_ad_animazioni_finite(tmp_path, monkeypatch):
     assert "getAnimations()" in m.FINISCI_ANIMAZIONI and "finish()" in m.FINISCI_ANIMAZIONI
     assert "Infinity" in m.FINISCI_ANIMAZIONI                 # quelle senza fine (rotelle) no: finish() darebbe errore
     pagina = _playwright_finto(monkeypatch, m, _Richieste())
-    m.main(["http://127.0.0.31:8031", str(tmp_path / "foto"), "--solo-misure", "--scene", "oggi", "--larghezze", "390", "--temi", "chiaro"])
+    m.main(["http://127.0.0.31:8031", str(tmp_path / "foto"), "--solo-misure", "--scene", "formazione", "--larghezze", "390", "--temi", "chiaro"])
     assert m.FINISCI_ANIMAZIONI in pagina.codici
     assert pagina.codici.index(m.FINISCI_ANIMAZIONI) < pagina.codici.index(m.LANCIA_AXE)
     assert pagina.codici.index(m.FINISCI_ANIMAZIONI) < pagina.codici.index(m.SCORRE_DI_LATO)
@@ -339,7 +339,7 @@ def test_accesso_dalle_variabili_mai_stampato(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("SCHIERAXI_UTENTE", "collaudo-finto")
     monkeypatch.setenv("SCHIERAXI_PASSWORD", "password-finta-123")
     uscita = tmp_path / "foto"
-    m.main(["http://127.0.0.31:8031", str(uscita), "--accesso", "--scene", "oggi", "--larghezze", "390", "--temi", "chiaro"])
+    m.main(["http://127.0.0.31:8031", str(uscita), "--accesso", "--scene", "formazione", "--larghezze", "390", "--temi", "chiaro"])
     assert richieste.chiamate == [("http://127.0.0.31:8031/api/account/accedi",
                                    {"nome_utente": "collaudo-finto", "password": "password-finta-123"})]
     scritto = capsys.readouterr()
@@ -348,7 +348,7 @@ def test_accesso_dalle_variabili_mai_stampato(tmp_path, monkeypatch, capsys):
     # accesso rifiutato: si ferma, e nemmeno l'errore dice la password
     _playwright_finto(monkeypatch, m, _Richieste(status=401))
     with pytest.raises(SystemExit) as e:
-        m.main(["http://127.0.0.31:8031", str(tmp_path / "foto2"), "--accesso", "--scene", "oggi", "--larghezze", "390"])
+        m.main(["http://127.0.0.31:8031", str(tmp_path / "foto2"), "--accesso", "--scene", "formazione", "--larghezze", "390"])
     assert "401" in str(e.value) and "password-finta-123" not in str(e.value)
     # variabili mancanti: si ferma prima di aprire il browser e dice quali servono
     monkeypatch.delenv("SCHIERAXI_PASSWORD")
@@ -361,12 +361,12 @@ def test_solo_misure_senza_png(tmp_path, monkeypatch):
     m = _modulo()
     _playwright_finto(monkeypatch, m, _Richieste())
     uscita = tmp_path / "foto"
-    codice = m.main(["http://127.0.0.31:8031", str(uscita), "--solo-misure", "--scene", "oggi,altro", "--larghezze", "390,1440",
+    codice = m.main(["http://127.0.0.31:8031", str(uscita), "--solo-misure", "--scene", "formazione,altro", "--larghezze", "390,1440",
                      "--temi", "chiaro"])
     assert codice == 0
     assert not list(uscita.glob("*.png"))
     assert (uscita / "riepilogo.txt").read_text(encoding="utf-8").count("gravi=0") == 4
     assert len(list(uscita.glob("axe-*.json"))) == 4
     # senza l'opzione le foto ci sono (il finto le scrive davvero)
-    m.main(["http://127.0.0.31:8031", str(tmp_path / "con"), "--scene", "oggi", "--larghezze", "390", "--temi", "chiaro"])
-    assert [p.name for p in (tmp_path / "con").glob("*.png")] == ["oggi-390-chiaro.png"]
+    m.main(["http://127.0.0.31:8031", str(tmp_path / "con"), "--scene", "formazione", "--larghezze", "390", "--temi", "chiaro"])
+    assert [p.name for p in (tmp_path / "con").glob("*.png")] == ["formazione-390-chiaro.png"]

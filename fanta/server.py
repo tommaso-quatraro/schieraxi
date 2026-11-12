@@ -865,6 +865,7 @@ class FormazioneScelta(BaseModel):
     squadra: str | None = None
     giornata: int | None = Field(None, ge=1, le=MAX_GIORNATA)
     salva: bool = False
+    messa: bool | None = None       # «L'ho messa» (#616), solo con `salva`: vero o falso la scrive, senza resta com'era (scelte.salva)
 
 
 def _etag_scelta(ctx: Contesto, giornata: int) -> str:
@@ -938,7 +939,8 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
             with versioni.blocco("scelte"):
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
                 _non_sposta_i_fermi(ctx, regole_, fermi, dati.titolari)
-                scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era)
+                scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era,
+                             messa=dati.messa)
                 response.headers["ETag"] = _etag_scelta(ctx, r["giornata"])
         return r
     finally:

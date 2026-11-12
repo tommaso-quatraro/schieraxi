@@ -4,7 +4,7 @@ import XCTest
 extension XCTestCase {
     /// Tocca `tocco` e aspetta `atteso`, un elemento che compare solo per effetto del tocco (la pagina d'arrivo, il riquadro
     /// della voce scelta). Sul simulatore carico di GitHub un tocco a volte non arriva all'app: l'app resta dov'era e un test che
-    /// tocca una volta sola fallisce senza un difetto vero (#212: tocco su «Scambi» in Altro e «Cerca scambi» mai comparso;
+    /// tocca una volta sola fallisce senza un difetto vero (#212: tocco su una voce di Altro e la sua pagina mai comparsa;
     /// prima i pulsanti delle schede di AccessoUITests, 1/11/2026). Si controlla l'effetto e, se manca, si ritocca: al massimo
     /// 3 tocchi, aspettando `secondi` dopo ognuno; dopo il primo si ritocca solo se `tocco` c'è ancora e si può toccare (se la
     /// pagina è già cambiata non si tocca altro). Se `atteso` non compare mai, il test fallisce con `messaggio`.

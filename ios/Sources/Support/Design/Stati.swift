@@ -138,7 +138,6 @@ struct ErroreVista: View {
     let riprova: () -> Void
     @State private var tentativi = 0
     @Environment(\.accessibilityReduceMotion) private var ridotto
-    @Environment(\.apriImpostazioni) private var apriImpostazioni
     @Environment(\.vaiASezione) private var vaiASezione
 
     var body: some View {
@@ -151,7 +150,7 @@ struct ErroreVista: View {
         }
     }
 
-    /// Una funzione spenta (404 con il campo «funzione»): non è un guasto, quindi niente «Riprova». Si spiega e si indica dove riaccenderla.
+    /// Una funzione spenta (404 con il campo «funzione»): non è un guasto, quindi niente «Riprova». Si spiega e si torna a Oggi.
     /// Le parole sono quelle della carta della web (`dieta.*` del catalogo comune).
     private var funzioneSpenta: some View {
         ContentUnavailableView {
@@ -159,17 +158,10 @@ struct ErroreVista: View {
         } description: {
             Text(messaggio)
         } actions: {
-            if let apri = apriImpostazioni {
-                Button { apri() } label: {
-                    Label(Catalogo.Dieta.apriImpostazioni, systemImage: "gearshape").frame(minHeight: Tema.areaTocco)
-                }
-                .pulsanteVetro(prominente: true)
-                .accessibilityHint("Apre le Impostazioni, dove si accende \(Catalogo.Av.mostraTutte)")
-            }
             Button { vaiASezione(.oggi) } label: {
                 Label(Catalogo.Dieta.tornaOggi, systemImage: "calendar").frame(minHeight: Tema.areaTocco)
             }
-            .pulsanteVetro()
+            .pulsanteVetro(prominente: true)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)

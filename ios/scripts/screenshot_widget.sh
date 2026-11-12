@@ -1,6 +1,7 @@
 #!/bin/bash
 # Fotografa i widget nel simulatore (lanciato da .github/workflows/screenshot.yml).
-# L'app di anteprima (target AnteprimaWidget) mostra i widget con dati finti: -GALLERIA <widget>[-blocco], -DATI pieni|parziali|vuoto|in_corso|finita.
+# L'app di anteprima (target AnteprimaWidget) mostra i tre widget (oggi, formazione, dubbi) con dati finti:
+# -GALLERIA <widget>[-blocco], -DATI pieni|vuoto|in_corso|finita.
 # Uso: scripts/screenshot_widget.sh <AnteprimaWidget.app per il simulatore> <cartella dei PNG>
 APP="${1:?manca il percorso di AnteprimaWidget.app}"
 USCITA="${2:-screenshot-widget}"
@@ -54,36 +55,37 @@ avvia() {
   xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
   xcrun simctl uninstall "$udid" "$ID_APP" >/dev/null 2>&1
   xcrun simctl install "$udid" "$APP"
-  xcrun simctl launch "$udid" "$ID_APP" -GALLERIA cruscotto >/dev/null
+  xcrun simctl launch "$udid" "$ID_APP" -GALLERIA oggi >/dev/null
   sleep 8
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   avvisi_attendi "$udid"
 }
 
-TUTTI=(cruscotto cruscotto-blocco live live-blocco osservato osservato-blocco formazione formazione-blocco punti punti-blocco scambio scambio-blocco oggi dubbi rosa crediti crediti-blocco stato-blocco)
+# I tre widget del pacchetto (Prossima giornata, Formazione, Da controllare), sulla Home e sulla schermata di blocco.
+TUTTI=(oggi oggi-blocco formazione formazione-blocco dubbi dubbi-blocco)
 
 IFS=$'\t' read -r UDID_IPHONE NOME_IPHONE IOS_IPHONE <<< "$(scegli iphone)"
 echo "iPhone: $NOME_IPHONE ($IOS_IPHONE)"
 avvia "$UDID_IPHONE"
-giro "$UDID_IPHONE" iphone_scuro dark 600 "${TUTTI[@]}" cruscotto:parziali cruscotto:vuoto punti:parziali scambio:parziali
-giro "$UDID_IPHONE" iphone_chiaro light 600 cruscotto formazione punti scambio oggi osservato
+giro "$UDID_IPHONE" iphone_scuro dark 600 "${TUTTI[@]}"
+giro "$UDID_IPHONE" iphone_chiaro light 600 oggi formazione dubbi
 # Fasi della giornata (in corso e appena finita): Prossima giornata mostra i punti, Da controllare non conta i dubbi.
 giro "$UDID_IPHONE" iphone_fasi dark 600 oggi:in_corso oggi-blocco:in_corso dubbi:in_corso oggi:finita oggi-blocco:finita dubbi:finita formazione:in_corso
 giro "$UDID_IPHONE" iphone_fasi_chiaro light 600 oggi:in_corso oggi:finita
 # Stato vuoto (nessun dato dal server) e testo molto grande (impostazione di accessibilita'): niente deve tagliarsi o sovrapporsi.
-giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto punti:vuoto formazione-blocco:vuoto punti-blocco:vuoto oggi:vuoto
-DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione punti oggi crediti dubbi formazione-blocco punti-blocco
-giro "$UDID_IPHONE" iphone_accentato dark 600 cruscotto:pieni+accentato formazione:pieni+accentato oggi:pieni+accentato osservato:pieni+accentato cruscotto-blocco:pieni+vivido
+giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto formazione-blocco:vuoto oggi:vuoto dubbi:vuoto
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione oggi dubbi formazione-blocco oggi-blocco
+giro "$UDID_IPHONE" iphone_accentato dark 600 formazione:pieni+accentato oggi:pieni+accentato dubbi:pieni+accentato oggi-blocco:pieni+vivido
 avvisi_ferma
 xcrun simctl shutdown "$UDID_IPHONE" >/dev/null 2>&1
 
 IFS=$'\t' read -r UDID_IPAD NOME_IPAD IOS_IPAD <<< "$(scegli ipad)"
 echo "iPad: $NOME_IPAD ($IOS_IPAD)"
 avvia "$UDID_IPAD"
-giro "$UDID_IPAD" ipad_scuro_verticale dark 800 cruscotto formazione punti scambio oggi rosa crediti stato-blocco cruscotto:parziali
-giro "$UDID_IPAD" ipad_chiaro_verticale light 800 cruscotto formazione
+giro "$UDID_IPAD" ipad_scuro_verticale dark 800 oggi formazione dubbi
+giro "$UDID_IPAD" ipad_chiaro_verticale light 800 oggi formazione
 giro "$UDID_IPAD" ipad_fasi dark 800 oggi:in_corso oggi:finita dubbi:in_corso
-DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_testo_grande dark 800 formazione punti
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_testo_grande dark 800 formazione oggi
 
 # Orizzontale: si ruota il simulatore con la tastiera (puo' non funzionare sul Mac di GitHub: in quel caso le foto restano verticali).
 open -a Simulator --args -CurrentDeviceUDID "$UDID_IPAD" >/dev/null 2>&1
@@ -92,7 +94,7 @@ osascript -e 'tell application "Simulator" to activate' 2>&1
 sleep 2
 osascript -e 'tell application "System Events" to key code 123 using command down' 2>&1
 sleep 3
-giro "$UDID_IPAD" ipad_scuro_orizzontale dark 800 cruscotto formazione punti
+giro "$UDID_IPAD" ipad_scuro_orizzontale dark 800 oggi formazione
 for f in "$USCITA"/ipad_scuro_orizzontale_*.png; do sips -r 270 "$f" >/dev/null 2>&1; done
 avvisi_ferma
 xcrun simctl shutdown "$UDID_IPAD" >/dev/null 2>&1

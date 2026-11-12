@@ -3,9 +3,9 @@ import Testing
 @testable import Schieraxi
 
 // Issue #439. «Notifiche» (Impostazioni) e «Avanzate» dell'iPhone dicono le stesse parole della web: nome e riga sotto della voce
-// (`imp.avvisi`, `imp.avvisi_sub`), titoli e righe d'aiuto degli interruttori (`avv.*`), la spiegazione di «Mostra tutte le
-// funzioni» (`av.mostra_tutte*`). Le righe d'aiuto della web non finiscono con il punto. Dal #497 `imp.*` e `avv.*` vengono dal
-// catalogo comune (`Catalogo.Imp`, `Catalogo.Avv`), dal #556 anche `av.mostra_tutte*` (`Catalogo.Av`).
+// (`imp.avvisi`, `imp.avvisi_sub`), titoli e righe d'aiuto degli interruttori (`avv.*`). Le righe d'aiuto della web non
+// finiscono con il punto. Dal #497 `imp.*` e `avv.*` vengono dal catalogo comune (`Catalogo.Imp`, `Catalogo.Avv`).
+// «Mostra tutte le funzioni» non c'è più (#634).
 
 /// Le coppie (testo del catalogo, testo dell'iPhone) dei titoli degli interruttori e della scelta «Avviso se il consiglio cambia».
 private let titoli: [(String, String)] = [
@@ -54,17 +54,5 @@ struct NotificheComeLaWebTests {
     func sceltePrima() {
         let attese = [Catalogo.Avv.prima0, Catalogo.Avv.prima30, Catalogo.Avv.prima60, Catalogo.Avv.prima90]
         #expect(AvvisoPrima.valori.map(AvvisoPrima.testo) == attese)
-    }
-
-    @Test("«Mostra tutte le funzioni» e la sua spiegazione sono quelle del catalogo comune (`av.mostra_tutte*`)")
-    func mostraTutte() {
-        #expect(TestiImpostazioni.mostraTutte == Catalogo.Av.mostraTutte)
-        #expect(TestiImpostazioni.mostraTutteSpiega == Catalogo.Av.mostraTutteSpiega)
-    }
-
-    @Test("«Mostra tutte le funzioni» spiega che si vede «il resto», non «tutto il resto»")
-    func mostraTutteIlResto() {
-        #expect(TestiImpostazioni.mostraTutteSpiega.contains("vedi anche il resto ("))
-        #expect(!TestiImpostazioni.mostraTutteSpiega.contains("tutto il resto"))
     }
 }

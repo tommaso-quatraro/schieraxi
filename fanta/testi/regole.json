@@ -387,5 +387,9 @@
   "regole.mia_lega": {
     "it": "La mia lega",
     "en": "My league"
+  },
+  "regole.rinviate_aiuto_formazione": {
+    "it": "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo dalla Formazione.",
+    "en": "What your league does with the players of a postponed match, even weeks later. You can change it for a single round from Lineup."
   }
 }
