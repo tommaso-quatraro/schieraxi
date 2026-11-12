@@ -16,6 +16,8 @@
 #      e lo scambia con quello in uso solo se tutto e' andato; se pip non riesce resta tutto com'era e riprova ai giri dopo
 #      (alla terza volta di fila rinuncia e avvisa); poi riavvia SOLO il servizio fantacalcio e controlla che risponda;
 #   5. se non risponde torna alla versione di prima (codice e librerie), non riprova la stessa versione e manda un avviso sul telefono.
+# Avvisi sul telefono solo quando qualcosa non va (versione rifiutata, librerie che non si installano, ritorno alla versione di prima,
+# chiave delle firme mancante): un'installazione riuscita resta solo nel registro dati/pubblicazione.log.
 # Non parte mentre gira l'aggiornamento dei dati (stesso blocco di aggiorna.sh): ritenta al giro dopo.
 # Mentre lavora tiene ~/.cache/fantacalcio/blocco-pubblicazione: lo usano anche pubblica-sito.sh (stesso clone) e promemoria.sh (salute).
 # Opzione --prova: dice cosa farebbe e non scrive niente in ~/fantacalcio e in ~/.cache/fantacalcio (non copia, non riavvia).
@@ -308,8 +310,9 @@ done
 if [ "$risponde" = 1 ]; then
   echo "$nuovo" > "$STATO/ultimo-rilascio"
   versione=$(cd "$DEST" && .venv/bin/python -c "import json; print(json.load(open('fanta/novita.json', encoding='utf-8'))[0]['versione'])" 2>/dev/null)
+  # solo la riga nel registro, niente avviso: con tante versioni al giorno gli avvisi veri (fallita, rifiutata, tornata indietro) si
+  # perdevano tra quelli di routine (#607)
   log "installata ${nuovo:0:7} (versione $versione): il servizio risponde"
-  avvisa "SchieraXI aggiornato" "Ora c'è la versione $versione." 2
 else
   log "il servizio NON risponde con ${nuovo:0:7} (ultimo codice HTTP: ${codice:-nessuno}): torno alla versione di prima"
   tar xzf "$copia" -C "$DEST"

@@ -389,6 +389,8 @@ def test_se_cambia_il_codice_installa_riavvia_e_non_tocca_lega_e_dati(server):
     assert not (s.app / "ios").exists() and not (s.app / "sito").exists() and not (s.app / "docs").exists()
     _lega_e_dati_intatti(s)
     assert "installata" in (s.app / "dati" / "pubblicazione.log").read_text(encoding="utf-8")
+    assert s.avvisi() == []                 # un'installazione riuscita resta solo nel registro (#607: con tante versioni al giorno
+                                            # gli avvisi veri si perdevano)
 
 
 @con_bash
@@ -848,6 +850,7 @@ def test_servizio_che_non_risponde_torna_alla_versione_di_prima(server):
     assert s.riavvii() == 2                                       # riavvio con la nuova + riavvio dopo il ritorno
     assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
     _lega_e_dati_intatti(s)
+    assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]      # il ritorno indietro avvisa sempre
 
 
 @con_bash
@@ -888,25 +891,26 @@ def test_backup_dati_copia_lega_e_dati_senza_chiavi_e_non_modifica_l_originale(t
     assert not any(n.endswith("push.json") or n.endswith("vapid.json") for n in nomi)
 
 
-def _lancia_backup_dati(tmp_path, app):
+def _lancia_backup_dati(tmp_path, app, python=None):
     """backup-dati.sh su una cartella finta. PYTHONPATH: il pacchetto `fanta` viene da questo repository (sul server sta nella
-    cartella dell'app, da cui lo script parte)."""
+    cartella dell'app, da cui lo script parte). `python`: un Python finto al posto di quello di sistema."""
     bin_ = tmp_path / "bin"
     bin_.mkdir(exist_ok=True)
     _stub(bin_, "flock", "exit 0")
     dest, cache = tmp_path / "copie", tmp_path / "cache"
     r = _lancia([BASH, (SCRIPT / "backup-dati.sh").as_posix()],
                 env={**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "FANTA_RADICE": _msys(app),
-                     "FANTA_BACKUP_DIR": _msys(dest), "FANTA_CACHE": _msys(cache), "FANTA_PYTHON": sys.executable,
+                     "FANTA_BACKUP_DIR": _msys(dest), "FANTA_CACHE": _msys(cache), "FANTA_PYTHON": python or sys.executable,
                      "PYTHONPATH": str(RADICE)},
                 ripristina=lambda: [shutil.rmtree(d, ignore_errors=True) for d in (dest, cache)])
     return r, dest, cache
 
 
 @con_bash
-def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso_e_non_l_archivio(tmp_path):
+def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso(tmp_path):
     """Il registro delle giornate (#343) non si ricostruisce: va nella copia, preso in modo coerente mentre il servizio tiene aperto
-    l'archivio (dati confermati ancora nel file -wal). L'archivio intero invece resta fuori (si rifà con `aggiorna`)."""
+    l'archivio (dati confermati ancora nel file -wal). Dal #607 c'è anche l'archivio intero (tests/test_script_server_avvisi.py):
+    il file del registro resta, per le copie di prima e per rimetterlo in un archivio rifatto da zero."""
     import contextlib
     import sqlite3
     from fanta import archivio, registro_copia
@@ -927,7 +931,7 @@ def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso_e_non_l_
     assert len(pacchetti) == 1
     with tarfile.open(pacchetti[0]) as t:
         nomi = t.getnames()
-        assert not any("fanta.sqlite" in n for n in nomi)
+        assert [n for n in nomi if "fanta.sqlite" in n] == ["./dati/fanta.sqlite"]              # l'archivio, senza file -wal
         registro = [n for n in nomi if n.endswith("dati/registro-giornate.json")]
         assert len(registro) == 1, nomi
         estratto = tmp_path / "registro-giornate.json"

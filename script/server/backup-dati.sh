@@ -3,9 +3,10 @@
 # che non si rigenerano: account (account.sqlite, copiato con l'API di backup di SQLite), cartelle degli utenti,
 # lega/ (regole, rose, movimenti, immagini), scelte, osservati, impostazioni degli avvisi, icona, diario, affidabilità,
 # formazioni delle altre squadre, calendario della lega, stato del pianificatore, chiave delle impronte (chiave-impronte.key, 600),
-# registro delle giornate (le tabelle registro_* dell'archivio, esportate in dati/registro-giornate.json: non si ricostruiscono).
-# NON copia: chiavi (vapid.json), il file di configurazione dell'ambiente, iscrizioni alle notifiche (push.json), cache, backup già fatti,
-# l'archivio delle statistiche (fanta.sqlite: si riscarica con `python -m fanta aggiorna`).
+# registro delle giornate (le tabelle registro_* dell'archivio, esportate in dati/registro-giornate.json: non si ricostruiscono),
+# archivio delle statistiche (fanta.sqlite, copiato con l'API di backup di SQLite: non tutto si riscarica, una fonte che non risponde
+# più non ridà i suoi dati storici).
+# NON copia: chiavi (vapid.json), il file di configurazione dell'ambiente, iscrizioni alle notifiche (push.json), cache, backup già fatti.
 # Tiene le ultime 14 copie. Portarle anche fuori dal server (altro computer o altro disco).
 # Non si installa da solo: serve la riga nel crontab dell'utente del server (ok dell'utente), per esempio:
 #   45 3 * * * /bin/bash $HOME/fantacalcio/script/server/backup-dati.sh >/dev/null 2>&1
@@ -72,6 +73,25 @@ fi
 if [ -f dati/fanta.sqlite ]; then
   if ! errore=$($PY -m fanta.registro_copia esporta --archivio dati/fanta.sqlite "$stage/dati/registro-giornate.json" 2>&1 >/dev/null); then
     fallito "copia del registro delle giornate non riuscita: $errore"
+  fi
+fi
+
+# 3b. Archivio delle statistiche (qualche MB): copia coerente con l'API di backup di SQLite, come per gli account, aperto in sola
+#     lettura (mode=ro: non lo cambia mai) e senza fermare il servizio (in modo WAL chi legge non blocca chi scrive; la copia prende
+#     anche i dati confermati ancora nel file -wal). La copia esce dal modo WAL (un file solo, che si apre senza file di appoggio) e si
+#     controlla (quick_check). Se non riesce, niente copia stanotte, come sopra. Ripristino: docs/RIPRISTINO-SERVER.md, passo 2.
+if [ -f dati/fanta.sqlite ]; then
+  if ! errore=$($PY -c '
+import sqlite3, sys
+from pathlib import Path
+s = sqlite3.connect(Path(sys.argv[1]).resolve().as_uri() + "?mode=ro", uri=True, timeout=60)
+d = sqlite3.connect(sys.argv[2])
+s.backup(d); s.close()
+d.execute("PRAGMA journal_mode = DELETE")
+esito = d.execute("PRAGMA quick_check").fetchone()[0]; d.close()
+sys.exit(0 if esito == "ok" else "controllo della copia: " + esito)
+' dati/fanta.sqlite "$stage/dati/fanta.sqlite" 2>&1 >/dev/null); then
+    fallito "copia dell'archivio delle statistiche non riuscita: $(printf '%s\n' "$errore" | tail -n 1)"
   fi
 fi
 

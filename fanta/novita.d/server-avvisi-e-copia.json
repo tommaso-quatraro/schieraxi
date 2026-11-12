@@ -1,0 +1,12 @@
+{
+  "titolo": "Server: avvisi più utili e copia notturna completa",
+  "voci": [
+    "Server: chi gestisce il server riceve meno avvisi e più chiari: il nome della fonte di dati che non risponde, al massimo uno al giorno finché dura, e un avviso quando torna; niente più avviso a ogni versione installata.",
+    "Server: la copia di ogni notte contiene anche l'archivio delle statistiche, così un ripristino non perde i dati che una fonte non dà più."
+  ],
+  "tecnico": [
+    "script/server/aggiorna.sh: stato per passo di «fanta aggiorna» in ~/.cache/fantacalcio/passi/<passo> («giri di fila, ultimo avviso in secondi, nome»), letto dalle righe «  ! <passo>: non riuscito (» del giro; avviso ntfy alla seconda volta di fila, poi al massimo ogni 24 ore; «funziona di nuovo» se era stato segnalato; senza «Fatto:» e con uscita diversa da zero conta il guasto «aggiornamento» e gli altri passi restano com'erano; una fonte «saltata» si toglie senza avviso. Il vecchio contatore unico ~/.cache/fantacalcio/errori si toglie (#607).",
+    "script/server/aggiorna-app.sh: tolto l'avviso «SchieraXI aggiornato» dopo un'installazione riuscita (resta la riga in dati/pubblicazione.log); restano gli avvisi di versione rifiutata, librerie non installate, ritorno alla versione di prima, chiave mancante.",
+    "script/server/backup-dati.sh: dati/fanta.sqlite nel pacchetto notturno, con l'API di backup di SQLite dall'archivio aperto in sola lettura (mode=ro), copia in journal_mode DELETE e PRAGMA quick_check; se non riesce niente pacchetto quella notte. docs/RIPRISTINO-SERVER.md aggiornato (passi 2, 4 e 5)."
+  ]
+}

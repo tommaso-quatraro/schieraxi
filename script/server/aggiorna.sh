@@ -2,7 +2,9 @@
 # aggiorna.sh - Sul server: scarica i dati nuovi per l'app Fanta e avvisa l'iPhone con ntfy.
 #   Dal crontab dell'utente del server:  0 8,13,17,21 * * * /bin/bash $HOME/fantacalcio/script/server/aggiorna.sh >/dev/null 2>&1
 # - Priorita' bassa (nice), così gli altri servizi del server non rallentano.
-# - Se l'aggiornamento fallisce 2 volte di fila: un solo avviso ("Fantacalcio: aggiornamento dati non riuscito").
+# - Guasti contati per passo dell'aggiornamento (listone, calendario, voti, probabili, Understat...), un file per passo rotto in
+#   ~/.cache/fantacalcio/passi/: avviso con il nome del passo alla seconda volta di fila, poi al massimo uno ogni 24 ore finché
+#   dura, e «funziona di nuovo» quando torna. Così una fonte rotta da giorni non nasconde il guasto di un'altra (#607).
 # - "Formazione pronta": quando manca meno di 30 ore alla prossima giornata (una volta sola per giornata).
 # - Canale ntfy: nome in ~/.config/schieraxi/canale (o nel file indicato da SCHIERAXI_CANALE). Messaggi generici, passano da ntfy.sh.
 # - Log: ~/fantacalcio/dati/aggiorna.log (si tengono le ultime 2000 righe).
@@ -18,7 +20,9 @@ cd "$HOME/fantacalcio" || exit 1
 mkdir -p dati "$HOME/.cache/fantacalcio"
 LOG=dati/aggiorna.log
 registri_sicuri "$LOG" "$LOG.tmp" || exit 1
-STATO="$HOME/.cache/fantacalcio/errori"
+PASSI="$HOME/.cache/fantacalcio/passi"     # un file per passo che non riesce: «giri di fila, ora dell'ultimo avviso (secondi), nome»
+INTERO="aggiornamento"                      # il guasto di tutto il comando (fermo prima della fine, o senza un passo con il nome)
+GIORNO=86400                                # secondi fra due avvisi per lo stesso guasto
 umask 077     # i log e i file nuovi di dati/ (indirizzi, iscrizioni) sono leggibili solo dall'utente del server
 permessi_registri dati
 canale=$(tr -d ' \r\n' < "${SCHIERAXI_CANALE:-$HOME/.config/schieraxi/canale}" 2>/dev/null)
@@ -30,17 +34,74 @@ avvisa() {   # titolo, testo
     https://ntfy.sh >/dev/null
 }
 
+testo_passo() {   # nome, rotto|a-posto, giri di fila: il testo dell'avviso
+  if [ "$1" = "$INTERO" ]; then
+    if [ "$2" = rotto ]; then echo "Aggiornamento dati non riuscito da $3 giri di fila: dettagli in dati/aggiorna.log."
+    else echo "Aggiornamento dati di nuovo riuscito."; fi
+  elif [ "$2" = rotto ]; then echo "Aggiornamento dati: «$1» non riesce da $3 giri di fila."
+  else echo "Aggiornamento dati: «$1» funziona di nuovo."; fi
+}
+
+# Guasti per passo, dalle righe di questo giro nel registro. fanta/aggiorna.py scrive «  ! <passo>: non riuscito (...)» per un passo
+# fallito, «  - <passo>: saltato, ...» per una fonte spenta e «Fatto: ...» in fondo. Senza «Fatto:» (e con un'uscita di errore) il
+# comando si è fermato prima della fine: è un guasto di tutto l'aggiornamento e non dice niente degli altri passi, che restano come
+# sono. Il nome del passo viene dall'uscita: tiene solo lettere, cifre, spazi e trattini (fa da nome del file di stato e va nel JSON
+# dell'avviso), al massimo 20 passi per giro.
+controlla_passi() {   # uscita del comando, righe del registro prima del giro
+  local giro rotti finito=0 adesso f n ultimo nome resto
+  { mkdir -p "$PASSI" && [ ! -L "$PASSI" ]; } || return 0
+  giro=$(tail -n +"$(( $2 + 1 ))" "$LOG")
+  rotti=$(printf '%s\n' "$giro" | sed -n 's/^  ! \([^:]\{1,60\}\): non riuscito (.*/\1/p' | tr -cd 'A-Za-z0-9 \n-' \
+          | sed 's/^ *//; s/ *$//' | grep -v '^$' | sort -u | head -n 20)
+  if [ "$1" -eq 0 ] || printf '%s\n' "$giro" | grep -q '^Fatto: '; then finito=1; fi
+  if [ "$1" -ne 0 ] && { [ "$finito" = 0 ] || [ -z "$rotti" ]; }; then
+    rotti=$(printf '%s\n%s\n' "$rotti" "$INTERO" | grep -v '^$')
+    finito=0                          # degli altri passi questo giro non dice niente: restano come sono
+  fi
+  adesso=$(date +%s)
+  if [ "$finito" = 1 ]; then          # il giro è arrivato in fondo: i passi che non sono rotti stavolta sono tornati (o spenti)
+    for f in "$PASSI"/*; do
+      { [ -f "$f" ] && [ ! -L "$f" ]; } || continue
+      n=0; ultimo=0; nome=""
+      read -r n ultimo nome < "$f"
+      [ -n "$nome" ] || nome=$(basename "$f")
+      printf '%s\n' "$rotti" | grep -qxF -- "$nome" && continue
+      if printf '%s\n' "$giro" | grep -qF -- "  - $nome: saltato"; then
+        echo "passo «$nome»: spento, non si controlla più" >> "$LOG"
+      else
+        echo "passo «$nome»: di nuovo a posto (giri non riusciti di fila: $n)" >> "$LOG"
+        if [[ $ultimo =~ ^[1-9][0-9]*$ ]]; then avvisa "Fantacalcio" "$(testo_passo "$nome" a-posto)"; fi    # solo se era stato segnalato
+      fi
+      rm -f -- "$f"
+    done
+  fi
+  while IFS= read -r nome; do
+    [ -n "$nome" ] || continue
+    f="$PASSI/${nome// /-}"
+    [ -L "$f" ] && continue
+    n=0; ultimo=0
+    if [ -f "$f" ]; then read -r n ultimo resto < "$f"; fi
+    [[ $n =~ ^[0-9]{1,9}$ ]] || n=0
+    [[ $ultimo =~ ^[0-9]{1,12}$ ]] || ultimo=0
+    n=$(( n + 1 ))
+    echo "passo «$nome»: non riuscito (giri di fila: $n)" >> "$LOG"
+    if [ "$n" -ge 2 ] && [ $(( adesso - ultimo )) -ge "$GIORNO" ]; then
+      avvisa "Fantacalcio" "$(testo_passo "$nome" rotto "$n")"
+      ultimo=$adesso
+    fi
+    echo "$n $ultimo $nome" > "$f"
+  done <<< "$rotti"
+  return 0
+}
+
 exec 9>>"$HOME/.cache/fantacalcio/blocco"
 flock -n 9 || exit 0          # un altro aggiornamento e' gia' in corso
+rm -f "$HOME/.cache/fantacalcio/errori"     # il contatore unico di prima (fino a novembre 2026): non serve più
 
 echo "=== $(date '+%F %T')" >> "$LOG"
-if nice -n 10 .venv/bin/python -m fanta aggiorna >> "$LOG" 2>&1; then
-  rm -f "$STATO"
-else
-  n=$(( $(cat "$STATO" 2>/dev/null || echo 0) + 1 ))
-  echo "$n" > "$STATO"
-  [ "$n" -eq 2 ] && avvisa "Fantacalcio" "Aggiornamento dati non riuscito per due volte di fila."
-fi
+righe_prima=$(wc -l < "$LOG")
+nice -n 10 .venv/bin/python -m fanta aggiorna >> "$LOG" 2>&1
+controlla_passi $? "$righe_prima"
 
 # (la formazione e il mercato in memoria li prepara il servizio da solo: controlla i dati ogni minuto e,
 # appena sono cambiati, li calcola in anticipo. Funziona anche con gli account e non serve nessuna richiesta da qui.)
