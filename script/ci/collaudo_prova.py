@@ -34,7 +34,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
-RITARDO_MINUTI = 40          # oltre questo tempo dalla release, una prova senza la versione nuova è «in ritardo»
+# Oltre questo tempo dalla release, una prova senza la versione nuova è «in ritardo». Vale perché la prova installa ogni versione
+# subito: le installazioni raggruppate della produzione (al massimo una all'ora, #635) non valgono per SCHIERAXI_ISTANZA=prova
+# (tests/test_prova_server.py). Se un giorno la prova raggruppasse, questa soglia va alzata oltre l'intervallo.
+RITARDO_MINUTI = 40
 RIPETI_ORE = 20              # oltre questo tempo dall'ultimo collaudo, la versione in vigore si collauda di nuovo (#549)
 ESITI = ("spento", "aspetta", "collauda", "salta", "in-ritardo")
 MISURE = ("gravi", "scorrimento-di-lato", "errori-console")      # le chiavi di ogni riga di riepilogo.txt (foto.riga_riepilogo)

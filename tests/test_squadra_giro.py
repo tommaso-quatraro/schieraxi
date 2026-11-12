@@ -131,6 +131,9 @@ def test_versione_in_produzione_solo_se_c_e_l_indirizzo(tmp_path, capsys):
     lancia(tmp_path / "b", url="https://server.example")
     testo = capsys.readouterr().out
     assert "produzione: fanta-230" in testo.lower() and "server.example" not in testo     # l'indirizzo non si stampa
+    # #635: il server raggruppa le installazioni; chi coordina non deve dire «non arriva» dopo dieci minuti
+    [riga] = [r for r in testo.splitlines() if "Produzione:" in r]
+    assert "70 minuti" in riga and "urgent" in riga and "partite" in riga
 
 
 def test_produzione_non_raggiungibile_lo_dice(tmp_path, capsys):
