@@ -16,7 +16,7 @@ SABATO_DOPO = datetime(2026, 11, 7, 15, 1)
 UN_ORA_PRIMA = Regole(moduli=["4-4-2"], scadenza_minuti=60)          # un'altra lega: si chiude alle 14:00
 
 
-def _widget(mondo) -> dict:
+def _widget(mondo) -> dict:  # noqa: F811  (lo stato della fixture)
     """La consigliata come la chiede il token del widget: solo dalla cache, mai un calcolo."""
     gettone = calcolo.solo_cache.set(True)
     try:
@@ -25,7 +25,7 @@ def _widget(mondo) -> dict:
         calcolo.solo_cache.reset(gettone)
 
 
-def test_lo_stato_delle_giornate_cambia_con_l_anticipo_e_con_la_scadenza(mondo):
+def test_lo_stato_delle_giornate_cambia_con_l_anticipo_e_con_la_scadenza(mondo):  # noqa: F811  (fixture)
     stato = lambda adesso, leghe=(SOLO_442,): riscaldamento.stato_giornate(mondo["db"], leghe, adesso)  # noqa: E731
     assert stato(MARTEDI) == stato(MERCOLEDI_PRIMA)                    # niente di nuovo: nessun giro in più
     assert stato(GIOVEDI) != stato(MERCOLEDI_PRIMA)                    # l'anticipo di mercoledì è cominciato
@@ -50,7 +50,7 @@ class _SenzaChiudere:
         pass
 
 
-def test_il_server_fa_ripartire_il_riscaldamento_anche_senza_dati_nuovi(mondo, monkeypatch):
+def test_il_server_fa_ripartire_il_riscaldamento_anche_senza_dati_nuovi(mondo, monkeypatch):  # noqa: F811  (fixture)
     """Il valore che il riscaldamento del servizio confronta ogni minuto cambia quando comincia l'anticipo e quando passa la scadenza,
     con la stessa versione dei dati; prima era la sola versione dei dati."""
     monkeypatch.setattr(server, "_db", lambda: _SenzaChiudere(mondo["db"]))
@@ -67,7 +67,7 @@ def test_il_server_fa_ripartire_il_riscaldamento_anche_senza_dati_nuovi(mondo, m
 
 
 @pytest.mark.parametrize("cambio, adesso", [("anticipo", GIOVEDI), ("scadenza", SABATO_DOPO)])
-def test_dopo_il_giro_del_riscaldamento_il_widget_trova_la_consigliata_tenuta(mondo, cambio, adesso):
+def test_dopo_il_giro_del_riscaldamento_il_widget_trova_la_consigliata_tenuta(mondo, cambio, adesso):  # noqa: F811  (fixture)
     """La consigliata mostrata martedì resta dopo un ritocco delle probabili (tenuta). Quando comincia l'anticipo o passa la scadenza
     la sua chiave cambia: il widget non la trova finché il riscaldamento non riparte; dopo il giro la trova."""
     _formazione(mondo)                                                 # mostrata (e ricordata) martedì

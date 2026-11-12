@@ -40,7 +40,7 @@ def _id(nome: str) -> int:
 
 
 # ---------------------------------------------------------------- nessun calcolo partito: niente «riprova fra 3 secondi»
-def test_senza_calcolo_partito_il_widget_riprova_fra_un_minuto(due_utenti, monkeypatch):
+def test_senza_calcolo_partito_il_widget_riprova_fra_un_minuto(due_utenti, monkeypatch):  # noqa: F811  (fixture)
     a, _ = due_utenti
     calcolo.cache.clear()
     _formazione_in_cache(monkeypatch, {"v": "dati-1"}, [])
@@ -51,7 +51,7 @@ def test_senza_calcolo_partito_il_widget_riprova_fra_un_minuto(due_utenti, monke
 
 
 # ---------------------------------------------------------------- ETag
-def test_stessi_dati_mezz_ora_dopo_il_widget_riceve_304(due_utenti, monkeypatch):
+def test_stessi_dati_mezz_ora_dopo_il_widget_riceve_304(due_utenti, monkeypatch):  # noqa: F811  (fixture)
     a, _ = due_utenti
     ore = {"mancano": 30.0}
     monkeypatch.setattr(w.gestione, "oggi", lambda *x, **k: OGGI | {"ore_mancanti": ore["mancano"]})
@@ -63,7 +63,7 @@ def test_stessi_dati_mezz_ora_dopo_il_widget_riceve_304(due_utenti, monkeypatch)
 
 
 # ---------------------------------------------------------------- chi entra a giornata iniziata
-def test_il_widget_sa_quando_e_nato_l_account(due_utenti, monkeypatch):
+def test_il_widget_sa_quando_e_nato_l_account(due_utenti, monkeypatch):  # noqa: F811  (fixture)
     """Come /api/oggi, /api/widget passa a Oggi quando è nato l'account (con il token del widget e con la sessione)."""
     a, _ = due_utenti
     visti = []
@@ -76,7 +76,7 @@ def test_il_widget_sa_quando_e_nato_l_account(due_utenti, monkeypatch):
 
 
 # ---------------------------------------------------------------- chi guarda solo il widget
-def test_chi_guarda_solo_il_widget_lo_trova_pronto_dopo_un_aggiornamento(due_utenti, monkeypatch):
+def test_chi_guarda_solo_il_widget_lo_trova_pronto_dopo_un_aggiornamento(due_utenti, monkeypatch):  # noqa: F811  (fixture)
     """Anna non apre l'app da 8 giorni ma il suo widget chiede ogni ora: dopo un aggiornamento dei dati il riscaldamento prepara
     anche lei, e il widget riceve 200 invece di «sto calcolando» senza fine."""
     a, _ = due_utenti
@@ -98,7 +98,7 @@ def test_chi_guarda_solo_il_widget_lo_trova_pronto_dopo_un_aggiornamento(due_ute
 
 
 # ---------------------------------------------------------------- rosa che non basta per una formazione
-def test_rosa_che_non_basta_si_ricorda_come_un_esito_e_il_widget_lo_legge(mondo, monkeypatch):
+def test_rosa_che_non_basta_si_ricorda_come_un_esito_e_il_widget_lo_legge(mondo, monkeypatch):  # noqa: F811  (fixture)
     """Tre giocatori: «non si riesce a formare una squadra» è un esito di quei dati e di quella rosa, non un guasto. Si ricorda come
     un risultato (non si ricalcola a ogni richiesta) e il token del widget lo legge invece di ricevere «sto calcolando» per sempre."""
     tre = lega.Rose([_squadra(senza=[i for i, _, _ in ROSA if i not in (1, 4, 20)])], "Squadra Prova")
