@@ -42,9 +42,11 @@ STATO_MODIFICATORE = (r"attiv|previst|utilizz|applic|abilitat|consent|ammess|val
 NO_CAMBIO_MODULO = r"\bno\b|\boff\b|disattiv|disabilit|vietat"
 NO_MODIFICATORE = r"\bno\b|\boff\b|disattiv|disabilit|vietat|assent|nessun"
 NO_NEGATO = r"vietat|disattiv|disabilit"
-# Un «non» poco dopo «se», «quando»... sta in una condizione («cambio modulo quando non è possibile sostituire nel ruolo»):
-# dice quando scatta la regola, non la spegne.
-CONDIZIONE_NEGATA = rf"\b(?:se|quando|qualora|purche|in caso|nel caso|a meno che|salvo che|ogni volta che)(?:{SEP}\w{{1,20}}){{0,4}}{SEP}non\b"
+# Da «se», «quando»... alla fine del pezzo c'è una condizione: un suo «non» («cambio modulo quando non è possibile sostituire
+# nel ruolo») dice quando scatta la regola, non la spegne (regole_testo._senza_condizione).
+CONDIZIONE = r"\b(?:se|quando|qualora|purche|in caso|nel caso|a meno che|salvo che|ogni volta che)\b"
+# «se non» come «tranne» («non è consentito se non quando manca un sostituto»): la regola vale solo in parte, non si propone
+SE_NON_TRANNE = rf"\bse{SEP}non{SEP}(?:quando|qualora|in|nel|nei|per|dopo|con)\b"
 CAMBIO_MODULO = r"cambio (?:di )?modulo|cambi di modulo"
 PANCHINA_LIBERA = r"\blibera\b|senza vincol|nessun vincolo|qualsiasi ruolo"     # «liberamente» non è «libera»
 PANCHINA_PER_RUOLO = rf"per ruolo|fissa|vincolat{SUFFISSO} (?:al|dal) ruolo|ruoli? fiss"
@@ -111,6 +113,8 @@ def _si_no(riga: str, soggetto: Callable[[str], bool], stato: str, no: str) -> b
     un no («Modificatore difesa, non attivo»); se non ce ne sono, il nome da solo vale sì, come un titolo («Modificatore
     difesa»). Dubbi: un «sì» e un «non» per la stessa regola, o un «non» senza la parola che nega.
     """
+    if re.search(SE_NON_TRANNE, riga):
+        return None
     pezzi = re.split(r"[,;.()]", riga)
     valori = {_detto(_senza_condizione(p, soggetto, no), stato, no) for p in ([p for p in pezzi if soggetto(p)] or [riga])}
     valori.discard(NIENTE)
@@ -121,14 +125,20 @@ def _si_no(riga: str, soggetto: Callable[[str], bool], stato: str, no: str) -> b
 
 
 def _senza_condizione(pezzo: str, soggetto: Callable[[str], bool], no: str) -> str | None:
-    """Il pezzo senza la condizione con un «non» che lo chiude («il cambio modulo avviene quando non è possibile sostituire
-    nel ruolo»: conta «il cambio modulo avviene»). None, dubbio, se la regola sta dentro la condizione («in caso di cambio
-    modulo non sono consentite più di 3 sostituzioni») o se la condizione ha un «no» («si applica se...? No»)."""
-    m = re.search(CONDIZIONE_NEGATA, pezzo)
+    """Il pezzo senza la condizione, da «se», «quando»... alla fine, quando c'entra un «non». Un «non» nella condizione, a
+    qualsiasi distanza, dice quando scatta la regola («il cambio modulo avviene quando il titolare non può essere sostituito»:
+    conta «il cambio modulo avviene»). None, dubbio: un «non» prima della condizione (un no che vale solo in quel caso: «non
+    si applica se il portiere non gioca»), la regola dentro la condizione («in caso di cambio modulo non sono consentite più di
+    3 sostituzioni») o un «no» nella condizione («si applica se...? No»). Senza «non» il pezzo si legge tutto, come sempre."""
+    m = re.search(CONDIZIONE, pezzo)
     if not m:
         return pezzo
-    prima = pezzo[:m.start()]
-    return prima if soggetto(prima) and not re.search(no, pezzo[m.start():]) else None
+    prima, condizione = pezzo[:m.start()], pezzo[m.start():]
+    if re.search(r"\bnon\b", prima):
+        return None
+    if not re.search(r"\bnon\b", condizione):
+        return pezzo
+    return prima if soggetto(prima) and not re.search(no, condizione) else None
 
 
 def _detto(testo: str | None, stato: str, no: str) -> bool | None | str:

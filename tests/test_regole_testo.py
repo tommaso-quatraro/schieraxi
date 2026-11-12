@@ -258,7 +258,21 @@ CONDIZIONI = {
     "Cambio modulo consentito se il titolare non può essere sostituito nel ruolo": True,
     "Il cambio modulo si applica solo se non è possibile sostituire nel ruolo": True,
     "Cambio modulo consentito quando un titolare non viene utilizzato": True,
-    "Il cambio modulo non è consentito quando non ci sono riserve": False,
+    # il «non» della condizione a qualsiasi distanza da «se» o «quando»
+    "Il cambio modulo avviene se il titolare rimasto senza voto non può essere sostituito": True,
+    "Il cambio modulo avviene quando il giocatore titolare senza voto in pagella non può essere sostituito nel ruolo": True,
+    "Cambio modulo automatico se il titolare del ruolo scoperto non può essere sostituito": True,
+    "Il cambio modulo è consentito se il titolare non gioca e se non c'è un sostituto": True,
+    # un «no» che vale solo in una condizione («non si applica se...») non spegne la regola: nessuna proposta
+    "Il cambio modulo non è consentito quando non ci sono riserve": None,
+    "Il modificatore difesa non si applica se il portiere non gioca": None,
+    "Il modificatore difesa non si applica se in campo ci sono meno di 4 difensori": None,
+    "Modificatore difesa: non è attivo quando la difesa non è a 4": None,
+    # «se non» come «tranne»
+    "Il cambio modulo non è consentito se non quando manca un sostituto del ruolo": None,
+    "Il cambio modulo non è previsto, se non per il portiere": None,
+    "Cambio modulo vietato se non per infortunio": None,
+    "Il modificatore della difesa, se non diversamente stabilito, non si applica": False,
     "In caso di cambio modulo non sono consentite più di 3 sostituzioni": None,
     "Se il titolare non gioca il cambio modulo non è consentito": None,
     "Modificatore della difesa attivo quando non si usa la difesa a 3": True,
