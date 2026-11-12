@@ -50,9 +50,7 @@ def _esegui(dopo: str):
         TESTI, "LINGUA = 'it'; const SIGLE = {};",
         _pezzo("function esc(x)", "// Numero con il segno"),                # esc, sigla, num, perc
         re.search(r"^const segno = .*$", APP, re.M).group(0),
-        _pezzo("const codiceStile", "// Sul campo solo il cognome"),
-        _pezzo("function fraseFascia(m)", "// La ★ sta sul modulo"),
-        _pezzo("function stellaNonMassimo(l)", "// Il perché della scelta in una riga"),
+        _pezzo("function fraseFascia(m)", "// Il perché della scelta in una riga"),
         _pezzo("function righePercheScelta(m, scheda)", "// Stato della scelta della giornata"),
         _pezzo("function statoScelta(", "// «oggi alle 21:40»"),
         _pezzo("const giocatoriFermi", "function mostraFormazione("),

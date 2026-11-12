@@ -102,20 +102,20 @@ def test_la_pillola_va_a_capo_dentro_la_riga():
 
 def test_riga_stretta_della_formazione_numeri_sotto_il_nome():
     """Telefono piccolo (320 px) o con il testo «Grande» o «Molto grande»: la colonna del nome di una riga della Formazione (accanto
-    ai numeri e al pulsante ⇄) restava larga 10-75 px e le etichette si leggevano a pezzi, a volte una lettera per riga. Come l'iPhone
+    ai numeri e al pulsante ✎) restava larga 10-75 px e le etichette si leggevano a pezzi, a volte una lettera per riga. Come l'iPhone
     con il testo molto grande (RigaGiocatore): fantavoto atteso e «gioca N%» vanno sotto il nome, che con le etichette ha tutta la
     larghezza."""
     # grafica B (spec §8.4): ogni riga di un giocatore è un contenitore («riga»), le righe della Formazione comprese
     assert "container: riga / inline-size" in _regola(".riga-gioc")
-    assert 'class="riga-gioc${conConfronto ? " con-confronto" : ""}"' in APP
-    blocco = re.search(r"@container riga \(max-width:\s*(\d+)px\)\s*\{\s*(\.con-confronto \.voce-g\b.*?)\n\}", CSS, re.S)
+    assert 'class="riga-gioc${azione ? " con-azione" : ""}"' in APP
+    blocco = re.search(r"@container riga \(max-width:\s*(\d+)px\)\s*\{\s*(\.con-azione \.voce-g\b.*?)\n\}", CSS, re.S)
     assert blocco, "manca la riga stretta della Formazione (@container) in stile.css"
     soglia, corpo = int(blocco.group(1)), blocco.group(2)
     # quando la colonna del nome scenderebbe sotto i 90 px circa: la riga è larga circa 255 px a 320 px con il testo «Grande»
     # (scatta) e 288 px a 320 px con il testo normale (resta com'è)
     assert 260 <= soglia < 290
-    aree = re.search(r"\.con-confronto \.voce-g \{[^}]*grid-template-areas:\s*([^;]+);", corpo).group(1)
+    aree = re.search(r"\.con-azione \.voce-g \{[^}]*grid-template-areas:\s*([^;]+);", corpo).group(1)
     righe = re.findall(r'"([^"]+)"', aree)
     assert len(righe) == 2 and righe[0].split()[0] == "volto" and "testo" in righe[0] and "gioca" not in righe[0]
     assert {"fv", "gioca"} <= set(righe[1].split())              # i numeri sotto il nome: il nome ha tutta la larghezza
-    assert re.search(r"\.con-confronto \.voce-g > \.valore, \.con-confronto \.voce-g > \.pv-g \{[^}]*justify-self: start", corpo)
+    assert re.search(r"\.con-azione \.voce-g > \.valore, \.con-azione \.voce-g > \.pv-g \{[^}]*justify-self: start", corpo)

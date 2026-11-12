@@ -40,9 +40,8 @@ def test_niente_aloni_luminosi():
 
 
 def test_etichette_senza_maiuscole_spaziate():
-    # unica eccezione: la prima lettera di «sab 31» / «ieri» nei titoli dei giorni
     maiuscole = re.findall(r"([^{}\n]*)\{[^}]*text-transform: uppercase", CSS)
-    assert [m.strip() for m in maiuscole] == [".giorno-titolo::first-letter"]
+    assert [m.strip() for m in maiuscole] == []
 
 
 def test_niente_transition_all_e_niente_cascata_di_entrate():

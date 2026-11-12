@@ -30,7 +30,7 @@ PUBBLICI_API = {"/api/account/accedi", "/api/account/registra", "/api/account/re
                 "/api/salute"}
 # il minimo statico per mostrare la pagina di accesso (nessun dato di nessuno): pagina, codice dell'app, icone, robots
 STATICI = {"/", "/sw.js", "/manifest.webmanifest", "/app.js", "/impostazioni.js", "/dafare.js", "/primoavvio.js", "/anteprima.js", "/stile.css", "/robots.txt", "/icona.svg",
-            "/privacy", "/termini", "/crediti", "/elimina-account", "/legale.js", "/testi.js", "/avatar.js", "/live.js"}
+            "/privacy", "/termini", "/crediti", "/elimina-account", "/legale.js", "/testi.js", "/avatar.js"}
 STATICI_PREFISSI = ("/icone/", "/.well-known/", "/caratteri/")     # caratteri: la pagina d'accesso li usa prima della sessione
 _ICONA = re.compile(r"^/icona-(maskable-)?\d+\.png$")
 # immagini del manifest (schermate mostrate all'installazione): le chiede il browser senza sessione

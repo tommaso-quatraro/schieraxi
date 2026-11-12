@@ -19,13 +19,12 @@ IOS = server.WEB.parent.parent / "ios/Sources"                              # l'
 
 def test_aree_di_tocco_da_44px_anche_in_densita_compatta():
     assert not re.search(r'data-densita="compatta"\] \.chip \{[^}]*min-height: (?:[0-3]\d|4[0-3])px', CSS)
-    assert re.search(r"\.proposta-r button\.nome-g \{ padding: 13px 4px; margin: -13px -4px; \}", CSS)
     imp = codice_web.leggi("impostazioni.js")
     assert 'class="voce voce-link"' in imp                                   # privacy, termini e crediti sono voci intere da toccare
-    # ✕ dei fogli, ⇄ della formazione e caselle: 44 px veri, senza aree invisibili intorno
+    # ✕ dei fogli, ✎ della formazione e caselle: 44 px veri, senza aree invisibili intorno
     assert re.search(r"\.foglio-chiudi \{[^}]*width: 44px; height: 44px", CSS) and "foglio-chiudi::after" not in CSS
-    assert re.search(r"\.confronta-mini \{[^}]*width: 44px; height: 44px", CSS) and "confronta-mini::after" not in CSS
-    assert re.search(r'\.interruttore input\[type="checkbox"\], \.scelte input\[type="checkbox"\] \{[^}]*width: 44px; height: 44px; margin: -9px', CSS)
+    assert re.search(r"\.azione-riga \{[^}]*width: 44px; height: 44px", CSS) and "azione-riga::after" not in CSS
+    assert re.search(r'\.interruttore input\[type="checkbox"\] \{[^}]*width: 44px; height: 44px; margin: -9px', CSS)
 
 def test_accesso_e_primo_avvio_centrati():
     # il margine di .carta spingeva la scheda d'accesso in basso. Grafica B (spec §9): il modulo non è più una carta, ha auto su
@@ -79,61 +78,11 @@ def test_densita_sempre_compatta():
     assert re.search(r'data-densita="compatta"\] \.chip \{[^}]*min-height: 44px', CSS)
 
 
-def test_mercato_ha_quattro_voci_a_tutta_larghezza():
-    """Da 6 a 4 schede: un controllo segmentato a tutta larghezza, senza voci tagliate."""
-    assert 'class="segmenti" id="mercato-tab"' in APP
-    voci = re.search(r"const TAB_MERCATO = (\[.*?\]);", APP).group(1)
-    assert voci.count('["') == 4 and "Asta" not in voci
-    assert re.search(r"\.segmenti button \{[^}]*flex: 1; min-width: 0; min-height: 44px", CSS)
-
-
-def test_card_introduttive_compatte_con_spiegazione_chiusa():
-    assert "const introCompatta = " in APP
-    corpo = APP[APP.index("const introCompatta"):APP.index("async function tabConsigli")]
-    assert "<details" in corpo and " open" not in corpo        # la spiegazione lunga è chiusa di default
-    consigli = APP[APP.index("async function tabConsigli"):APP.index("async function datiCalendario")]
-    assert "introCompatta(" in consigli and "<h2>Svincolati che migliorano" not in consigli
-
-
-def test_formazione_controlli_compatti_una_riga_e_un_solo_pulsante_primario():
-    blocco = APP[APP.index('<div class="etichetta-riga">${t("formazione.modulo")}</div>'):APP.index('<div class="campo">')]          # la legenda del campo viene subito dopo
-    assert blocco.count('class="chips scorri" data-striscia') == 2          # moduli e stili: una riga che scorre
-    assert 'id="modifica"' in blocco and 'class="bottone" id="modifica"' in blocco
-    assert 'class="altre-azioni"' in blocco and 'id="copia"' in blocco and 'id="condividi"' in blocco
-    assert re.search(r"\.chips\.scorri \{[^}]*flex-wrap: nowrap", CSS)
-
-
 def test_la_scelta_attiva_e_lime_con_testo_scuro():
     assert re.search(r"\.chip\.attiva \{[^}]*var\(--capitano\)[^}]*var\(--capitano-testo\)", CSS)
     assert "--capitano-testo: #1a2600" in CSS
     # grafica B (spec §7.1): il lime chiaro da solo sta a 2,8:1 dal bianco, la scelta ha anche il bordo del colore del testo
     assert re.search(r"\.chip\.attiva \{[^}]*border: 2px solid var\(--testo\)", CSS)
-
-
-def test_proposta_di_mercato_ha_il_guadagno_in_evidenza_e_nomi_protetti():
-    consigli = APP[APP.index("async function tabConsigli"):APP.index("async function datiCalendario")]
-    assert 'class="pr-num"' in consigli and "esc(p.entra.nome)" in consigli and "esc(p.esce.nome)" in consigli
-    assert re.search(r"\.pr-num b \{[^}]*font-size: var\(--t-titolo\)", CSS)
-    # il nome grande quanto quello delle righe dei giocatori (grafica B, spec §7.3 e §8.4: nomi dei giocatori a 15 px)
-    assert re.search(r"\.proposta-r button\.nome-g \{[^}]*font-size: var\(--t-corpo\)", CSS)
-    assert re.search(r"\.voce-g \.nome \{[^}]*font-size: var\(--t-corpo\)", CSS)
-
-
-def test_rimborso_e_costo_dei_cambi_si_vedono_senza_mouse():
-    """Sul telefono non c'è il passaggio del mouse: rimborso e costo stanno nel testo, mai in un `title`.
-    Tre pezzi («crediti dopo», «rimborso», «costo») che a 390 px vanno a capo interi, senza spezzarsi in mezzo."""
-    consigli = APP[APP.index("const soldiDelCambio"):APP.index("async function datiCalendario")]      # l'aiutante e la schermata
-    assert "title=" not in consigli and "${soldiDelCambio(p)}" in consigli
-    for chiave in ("crediti_dopo", "rimborso_n", "costo_n"):
-        assert f't("mercato.{chiave}"' in consigli, chiave
-    assert "r: p.rimborso" in consigli and "c: p.entra.quotazione" in consigli
-    assert re.search(r"\.pr-sec \.nb \{[^}]*display: inline-block; max-width: 100%", CSS)    # intero se ci sta, a capo dentro solo se è più largo della riga
-    testi = codice_web.leggi("testi.js")
-    it, en = testi.split("\n  en: {", 1)
-    for blocco, voci in ((it, ("crediti dopo {dopo}{no}", "rimborso {r}", "costo {c}")), (en, ("credits after {dopo}{no}", "refund {r}", "cost {c}"))):
-        for chiave, testo in zip(("crediti_dopo", "rimborso_n", "costo_n"), voci):
-            assert f'"mercato.{chiave}": "{testo}"' in blocco, chiave
-    assert "mercato.rimborso_meno_costo" not in testi and "mercato.crediti_dettaglio" not in testi
 
 
 def test_scala_tipografica_a_sette_livelli_nessun_testo_sotto_12_px():
@@ -147,7 +96,6 @@ def test_scala_tipografica_a_sette_livelli_nessun_testo_sotto_12_px():
 
 def test_bersagli_di_tocco_44_px_e_date_di_stato_dati_come_altrove():
     assert re.search(r"\.stepper button \{ width: 44px", CSS)               # i «−/+» delle regole
-    assert re.search(r"\.proposta-r button\.nome-g \{ padding: 13px 4px; margin: -13px -4px", CSS)
     assert 'class="debole piccolo piede-legale"' not in APP and 'voceLegale("privacy"' in IMP_JS   # Privacy e Termini: voci intere in Impostazioni > Informazioni, un posto solo
     assert "esc(quando(a.quando))" in APP and "esc(quando(p.rilevato))" in APP       # «ieri 18:30», non «2026-10-26 23:55»
 
@@ -161,24 +109,6 @@ def test_colori_semantici_come_su_ios():
     # colore delle azioni: nello scuro uguale all'iPhone; nel chiaro verde bosco solo sulla web (spec grafica B §18, scelta 1b),
     # l'iPhone resta oliva #526600
     assert "--azione: #3ddc97" in scuro and "--azione: #0b6b3a" in chiaro and "#526600" not in CSS
-
-
-def test_grigio_secondario_unico_niente_opacita_sul_testo_e_stessi_valori_di_ios():
-    """Un solo grigio per i testi secondari: le righe «finita» e «rinviata» passano a --testo-2 invece di sbiadire con l'opacità
-    (a .55 il grigio scendeva a ~2:1 in chiaro); l'immagine da condividere usa lo stesso grigio del tema scuro."""
-    assert not re.search(r"\.partita(?:\.\w+)*\s*(?:\.\w+\s*)*\{[^}]*opacity\s*:", CSS)
-    assert not re.search(r"\.ar-dubbio\.tolto\s*\{[^}]*opacity", CSS)
-    assert re.search(r"\.partita\.giocata \.sq \{ color: var\(--testo-2\)", CSS) and re.search(r"\.partita\.rinviata \.sq \{ color: var\(--testo-2\)", CSS)
-    assert "#9db4a5" not in APP and APP.count('"#bccdc2"') == 2
-    ios = (server.WEB.parent.parent / "ios/Sources/Support/Design/Tema.swift")
-    if ios.exists():                                                         # nella copia pubblica c'è anche l'app iPhone: i due valori devono coincidere
-        tema = ios.read_text(encoding="utf-8").lower()
-        assert "secondarioscuro: uint32 = 0xbccdc2" in tema and "secondariochiaro: uint32 = 0x46564d" in tema
-
-
-def test_nomi_piccoli_del_mercato_hanno_area_di_tocco_larga_44px():
-    regola = re.search(r"\.proposta-r button\.nome-g\.piccolo \{([^}]*)\}", CSS).group(1)
-    assert "min-width: 44px" in regola and "padding: 13px 10px" in regola and "margin: -13px -10px" in regola
 
 
 def _lum(esa):
@@ -358,22 +288,6 @@ def test_etichette_dei_giocatori_almeno_4_5_su_ogni_fondo_in_chiaro_e_scuro():
                 c = _contrasto_rgb(_colore(v[scritta])[0], fondo)
                 if c < 4.5:
                     sotto.append(f"{tema} {nome} su {dove}: {c:.2f}")
-    assert not sotto, sotto
-
-
-def test_etichetta_del_giocatore_scelto_nel_confronto_almeno_4_5():
-    """Rilievo di axe (PR #381): nel Confronto a 390 e 768 px, in chiaro, «Titolare» sotto il giocatore consigliato stava a 4,14:1.
-    L'etichetta verde sta sopra la tinta verde dello scelto, sul foglio. Sotto i due giocatori ci sono solo l'etichetta verde
-    («Titolare») e la neutra."""
-    quota = int(re.search(r"\.duello-giocatore\.scelto \{[^}]*background: color-mix\(in srgb, var\(--verde\) (\d+)%, transparent\)",
-                          CSS).group(1)) / 100
-    sotto = []
-    for tema, v in _temi().items():
-        scelto = _sopra(_colore(v["--verde"])[0], quota, _fondi_delle_pillole(v)["foglio della scheda"])
-        for nome in ("verde", "neutra"):
-            c = _contrasto_rgb(_colore(v[_etichette()[nome]])[0], scelto)
-            if c < 4.5:
-                sotto.append(f"{tema} {nome}: {c:.2f}")
     assert not sotto, sotto
 
 

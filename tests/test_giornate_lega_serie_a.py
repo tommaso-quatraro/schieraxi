@@ -177,7 +177,7 @@ def test_ogni_giornata_della_web_passa_da_nome_giornata():
     """Nessun «Giornata N» scritto a mano: l'unico `testata.giornata` sta dentro nomeGiornata, nessun ripiego `giornata_lega || giornata`."""
     corpo = _funzione_js("nomeGiornata")
     assert APP.count('t("testata.giornata"') == corpo.count('t("testata.giornata"') == 1
-    resto = APP.replace(corpo, "").replace("formazione-giornata-${f.giornata_lega || f.giornata}.png", "")     # il nome del file resta corto
+    resto = APP.replace(corpo, "")
     assert not re.search(r"(?<!prima_)giornata_lega\)?\s*(\|\||\?\?)", resto)     # `prima_giornata_lega` è una regola, non una giornata
     usi = {
         "testata": "nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata)",
@@ -186,22 +186,19 @@ def test_ogni_giornata_della_web_passa_da_nome_giornata():
         "Oggi, finita": 't("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })',
         "Formazione, saltata": "g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata)",
         "Formazione, testo e intestazione": "${nomeGiornata(f.giornata_lega, f.giornata)} · ",
-        "immagine, titolo della condivisione": 't("avv.img_titolo", { g: nomeGiornata(f.giornata_lega, f.giornata) })',
         "scheda": "{ g: nomeGiornata(pr.giornata_lega, pr.giornata), avv:",
-        "Confronto": 't("mercato.chi_schierare", { g: nomeGiornata(c.giornata_lega, c.giornata) })',
         "Diario": '<h2 style="margin:0">${nomeGiornata(g.giornata_lega, g.giornata)}</h2>',
         "Diario, correggi": 't("diario.correggi_spiega", { g: nomeGiornata(g.giornata_lega, g.giornata) })',
         "Diario, scelte diverse": "<b>${nomeGiornata(g.giornata_lega, g.giornata)}</b>",
         "Diario, quanto ci abbiamo preso": "const nomeG = g => nomeGiornata(g.giornata_lega, g.giornata);",
         "Diario, righe giornata per giornata": "<li><b>${nomeG(g)}</b> · <span",
         "stato dei dati": "<span>${nomeGiornata(null, p.giornata)}</span>",
-        "calendario": '<span aria-hidden="true">G${Number(g)}</span><span class="solo-lettori">${nomeGiornata(null, g)}</span>',
         "grafico dei voti": "${nomeGiornata(null, v.giornata)}",
         "registro, giornate perse": 't("sd.reg_giornata", { s: esc(g.stagione), g: nomeGiornata(null, g.giornata) })',
     }
     mancano = [dove for dove, codice in usi.items() if codice not in APP]
     assert mancano == [], mancano
-    assert APP.count("${nomeGiornata(f.giornata_lega, f.giornata)} · ") == 3     # testo da condividere, intestazione, immagine
+    assert APP.count("${nomeGiornata(f.giornata_lega, f.giornata)} · ") == 2     # testo da copiare, intestazione
 
 
 def test_testi_con_la_giornata_intera():
@@ -216,10 +213,8 @@ def test_testi_con_la_giornata_intera():
         "formazione.per_la_prossima": "{g}: è già iniziata. Questa è la formazione per la {m}.",
         "mercato.partita_casa": "{g} · in casa contro {avv} · {quando}",
         "mercato.partita_fuori": "{g} · in trasferta contro {avv} · {quando}",
-        "mercato.chi_schierare": "Chi schierare? {g}",
         "diario.correggi_spiega": "{g}: tocca i giocatori che hai schierato. Servono 11 titolari.",
         "diario.qp_su.other": "Calcolato su {n} giornate, dalla {da} alla {a}.",
-        "avv.img_titolo": "Formazione · {g}",
         "avv.giornate_da_a": "dalla {a}ª alla {b}ª giornata di Serie A",
         "sd.reg_giornata": "{g} · {s}",
     }

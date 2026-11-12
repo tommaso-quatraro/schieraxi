@@ -217,8 +217,8 @@ def test_web_chi_e_bloccato_non_esce_e_non_entra():
 
 
 def test_web_formazione_usa_i_bloccati():
-    """Nella modifica a mano un titolare bloccato ha il ⇄ del confronto al posto del ✎, e una riga dice perché."""
-    assert "voceGiocatore(x, null, true, modificabile && !fermi.has(x.id))" in APP
+    """Nella modifica a mano un titolare bloccato non ha il ✎ (resta solo il suo posto, per le colonne), e una riga dice perché."""
+    assert 'voceGiocatore(x, null, !modificabile ? "" : fermi.has(x.id) ? "posto" : "sostituisci")' in APP
     assert 'modificabile && fermi.size ? `<div class="debole piccolo">${t("formazione.bloccati")}</div>` : ""' in APP
     assert "sostituti(f, base, dentro)" in APP
 
@@ -227,10 +227,10 @@ def _torna_alla_consigliata(codice: str | None) -> dict:
     """Il gestore vero di «Torna alla consigliata» (app.js), eseguito con node: la DELETE risponde con l'errore `codice` (None =
     riesce). Le funzioni intorno sono finte e annotano cosa succede."""
     inizio = APP.index('bottone("#torna-consigliata", ') + len('bottone("#torna-consigliata", ')
-    gestore = APP[inizio:APP.index("collegaLegenda();", inizio)].rstrip().removesuffix(");")
+    gestore = APP[inizio:APP.index('bottone("#copia"', inizio)].rstrip().removesuffix(");")
     prova = f"""
     const registro = [];
-    const sc = {{ salvata: {{ titolari: [1, 2, 3] }}, manuale: null, livello: 1, modulo: "3-4-3", nonValida: false }};
+    const sc = {{ salvata: {{ titolari: [1, 2, 3] }}, manuale: null, modulo: "3-4-3", nonValida: false }};
     const f = {{ giornata: {GIORNATA} }}, squadra = null;
     const annullaRichieste = () => registro.push("annulla");
     const disegna = () => registro.push(sc.manuale ? "disegna la tua" : "disegna la consigliata");

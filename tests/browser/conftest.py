@@ -17,7 +17,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 import pytest
 
@@ -36,11 +36,11 @@ RISPOSTE_IN_PIU = {"/api/avatar": {"versione": 3, "tratti": {}}}
 
 # Patti con ogni versione della web (tests/browser/LEGGIMI.md), senza selettori di una schermata:
 # - il contenuto della schermata sta nell'area principale, `<main>` (o un elemento con role="main");
-# - mentre una schermata carica, l'area principale (o il suo contenitore del caricamento) ha aria-busy="true" (la web di
-#   oggi non lo ha ancora: si riconosce il suo caricamento dalle classi `caricamento` e `scheletro`);
+# - mentre una schermata carica, l'area principale (o il suo contenitore del caricamento) ha aria-busy="true" (la web lo
+#   mette dal 12/11/2026, #615; si guardano ancora anche le classi `caricamento` e `scheletro`);
 # - un errore mostrato all'utente ha role="alert" (la web di oggi usa anche la classe `errore`); un avviso normale ha
-#   role="status". Oggi accesso e riconoscimento delle rose mettono in role="alert" anche gli avvisi (classe `attenzione`):
-#   quelli non contano come errori.
+#   role="status". Oggi la schermata di accesso mette in role="alert" anche gli avvisi (classe `attenzione`): quelli non
+#   contano come errori.
 AREA_PRINCIPALE = "main, [role=main]"
 TESTO_PRINCIPALE = """(area) => { const m = document.querySelector(area);
   return m ? (m.innerText || '').trim() : ''; }"""
@@ -168,10 +168,36 @@ class Web:
     server: ServerFase
     errori_console: list[str] = field(default_factory=list)
     richieste_fallite: list[str] = field(default_factory=list)
+    richieste: list[str] = field(default_factory=list)          # le /api/... chieste dalla pagina (percorso e query), in ordine
 
     @property
     def fase(self) -> str:
         return self.server.fase
+
+    def risposta(self, rotta: str, corpo, stato: int = 200) -> None:
+        """Prima di `apri` (o di un clic): da qui la rotta risponde con `corpo` (un oggetto JSON) e `stato`, al posto della
+        risposta registrata. `rotta` si scrive come nello scenario: con la query («/api/scelta?giornata=9») vale per
+        quell'indirizzo, senza («/api/oggi») per ogni query. Serve per un dato che lo scenario non ha o per una rotta che
+        fallisce (`stato=500`). La richiesta non arriva al server finto: risponde il browser."""
+        testo = json.dumps(corpo, ensure_ascii=False)
+
+        def e_la_rotta(indirizzo: str) -> bool:
+            parti = urlsplit(indirizzo)
+            return rotta in (unquote(parti.path + ("?" + parti.query if parti.query else "")), unquote(parti.path))
+
+        self.pagina.route(e_la_rotta, lambda r: r.fulfill(status=stato, content_type="application/json; charset=utf-8", body=testo))
+
+    def registrata(self, rotta: str):
+        """La risposta registrata di una rotta in questa fase, come oggetto: per cambiarne un pezzo e ridarla con `risposta`."""
+        testo = json.loads((SCENARI / FASI[self.fase]).read_text(encoding="utf-8"))["risposte"][rotta]
+        return json.loads(testo) if isinstance(testo, str) else testo
+
+    def memoria(self, valori: dict[str, str]) -> None:
+        """Prima di `apri`: valori già salvati nel browser (localStorage), come li ha lasciati una versione di prima della web.
+        Si scrivono una volta sola, alla prima pagina della scheda: dopo resta ciò che scrive l'app."""
+        scrivi = "".join(f"localStorage.setItem({json.dumps(k)}, {json.dumps(v)}); " for k, v in valori.items())
+        self.pagina.add_init_script("try { if (!sessionStorage.getItem('memoria-di-prova')) { "
+                                    "sessionStorage.setItem('memoria-di-prova', '1'); " + scrivi + "} } catch (e) {}")
 
     def apri(self, percorso: str = "/", larghezza: int = 390, tema: str = "chiaro") -> None:
         """Apre un indirizzo della web alla larghezza e nel tema dati e aspetta che la pagina sia ferma."""
@@ -250,6 +276,7 @@ def web(chrome, server_fase):
         pagina.on("console", lambda m: m.type == "error" and w.errori_console.append(
             f"{m.text} ({_breve(m.location.get('url') or '')})"))
         pagina.on("pageerror", lambda e: w.errori_console.append(f"errore nel codice: {e}"))
+        pagina.on("request", lambda r: urlsplit(r.url).path.startswith("/api/") and w.richieste.append(_breve(r.url)))
         pagina.on("requestfailed", lambda r: _richiesta_non_arrivata(w, r))
         pagina.on("response", lambda r: r.status >= 400 and w.richieste_fallite.append(
             f"{r.request.method} {_breve(r.url)}: risposta {r.status}"))

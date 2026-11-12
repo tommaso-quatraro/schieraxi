@@ -45,24 +45,15 @@ REGOLE_AXE = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]
 # Ogni scena è una lista di passi (JavaScript lanciato nella pagina); dopo ogni passo si aspetta che il caricamento finisca.
 # I nomi delle funzioni sono quelli di fanta/web/app.js: se cambiano, la scena dà errore nel riepilogo invece di una foto sbagliata.
 PRIMO_GIOCATORE = "Number(document.querySelector('#contenuto [data-giocatore]').dataset.giocatore)"
-DUE_GIOCATORI = ("[...new Set([...document.querySelectorAll('#contenuto [data-giocatore]')]"
-                 ".map(e => Number(e.dataset.giocatore)))].slice(0, 2)")
 SCENE: dict[str, list[str]] = {
     "oggi": ["vai('oggi')"],
     "formazione": ["vai('formazione')"],
     "squadra": ["vai('squadra')"],
-    "elenco": ["vaiMercato('giocatori')"],                          # Squadra > Elenco dei giocatori
     "rosa": ["vistaRosa()"],
-    # Squadra > Seguiti: nella copia dei dati non si segue nessuno; si seguono i primi quattro della rosa (la schermata di attesa
-    # resta finché le richieste non finiscono, così la foto non parte prima)
-    "seguiti": ["vai('formazione')", "caricamento(); Promise.all(Object.keys(stato.formaz.f.schede).slice(0, 4)"
-                ".map(id => api('/api/osservati/' + id, { method: 'PUT' }))).finally(() => vaiMercato('osservati'))"],
     "scheda": ["vai('formazione')", f"apriGiocatore({PRIMO_GIOCATORE})"],          # scheda del primo titolare
-    "confronto": ["vai('formazione')", f"apriConfronto(...{DUE_GIOCATORI})"],      # i primi due titolari a confronto
     "altro": ["vai('altro')"],
     "diario": ["apriDiario()"],
     "regole": ["vistaRegole()"],
-    "scambi": ["vai('scambi')"],
     "impostazioni": ["vai('impostazioni')"],
 }
 PRONTA = """() => typeof vai === 'function' && !!document.querySelector('#contenuto')
@@ -154,7 +145,7 @@ def gravi(violazioni: list[dict]) -> int:
 
 
 def posizioni_foglio(altezza_contenuto: int, altezza_visibile: int) -> list[int]:
-    """Dove far scorrere il foglio aperto (scheda, confronto, diario) per fotografarlo tutto, a pezzi che si sovrappongono."""
+    """Dove far scorrere il foglio aperto (scheda, diario) per fotografarlo tutto, a pezzi che si sovrappongono."""
     fondo = max(0, altezza_contenuto - altezza_visibile)
     passo = max(1, altezza_visibile - SOVRAPPOSIZIONE)
     pos = list(range(0, fondo, passo))[:PEZZI_FOGLIO - 1] + [fondo]

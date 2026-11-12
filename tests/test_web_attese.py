@@ -16,12 +16,6 @@ def test_la_durata_sopra_l_ora_e_in_ore():
     assert limiti._durata(3601) == "circa 1 ora" and limiti._durata(5 * 3600 + 700) == "circa 5 ore"
 
 
-def test_il_contatore_non_dice_finite_per_l_attesa_breve():
-    # prima: ogni 429 segnava «ricerche finite»; ora si rilegge il contatore vero dal server
-    assert "mostraContatore({ restano: 0 })" not in APP
-    assert 'api("/api/scambi/limite").then(mostraContatore)' in APP
-
-
 @pytest.mark.skipif(shutil.which("node") is None, reason="serve node")
 def test_attesa_testo():
     testi = codice_web.leggi("testi.js")

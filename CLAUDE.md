@@ -52,7 +52,7 @@ una pull request, non lo si aggira.
 | Niente `gh pr merge`, push su `main`, push forzato, `--no-verify` | `.claude/settings.json` (copre le forme abituali dei comandi, non ogni modo di scriverli) e le regole di GitHub |
 | Descrizione della PR: riga `Aree:`, «Cosa cambia», «Perché», «Come l'ho provato», «Revisione» | job `ambito` (modello: `.github/PULL_REQUEST_TEMPLATE.md`) |
 | Una voce di novità se la PR tocca `fanta/`, `script/server/` o `requirements.txt` | job `versione` (formato in `.claude/rules/server.md`) |
-| Test, ruff, azioni dei workflow fissate e solo di GitHub, revisione IA: bloccano l'unione | workflow `test.yml` e `revisione.yml` |
+| Test, ruff, la web provata in un browser vero, azioni dei workflow fissate e solo di GitHub, revisione IA: bloccano l'unione | workflow `test.yml` (job `test`, `browser`) e `revisione.yml` |
 | Sicurezza dei workflow (`zizmor`), librerie vulnerabili (`pip-audit`), CodeQL: segnalano, non bloccano | vanno guardati: qui il controllo vero resta la revisione |
 | Compilazione e test dell'app iPhone se cambia `ios/` | job `ios / test` |
 | File generati mai scritti a mano (testi, coerenza web-iPhone, `docs/openapi.json`) | i loro test: l'errore dice quale script rilanciare |

@@ -1,6 +1,5 @@
 """Collaudo finale della grafica B (#354), gruppo «navigazione e focus»: #448 (focus nel foglio che cambia contenuto), #449
-(Indietro del browser dentro Squadra, Altro e Impostazioni), #450 (titolo del Confronto sotto la ✕), #458 (sezioni di Squadra
-con i nomi e l'ordine del menu). Codice vero di app.js e impostazioni.js con node e una cronologia finta che si comporta come
+(Indietro del browser dentro Squadra, Altro e Impostazioni), #450 (titolo del foglio sotto la ✕). Codice vero di app.js e impostazioni.js con node e una cronologia finta che si comporta come
 quella del browser (banco di prova di test_navigazione_web.py e del pannello di test_grafica_b_web.py); le prove nel browser vero
 (Chrome senza finestra) sono nella descrizione della pull request."""
 import json
@@ -31,14 +30,13 @@ def _node(codice: str):
 
 # ---------------------------------------------------------------- #449: Indietro dentro Squadra, Altro e Impostazioni
 
-# le voci di Squadra e Altro nel banco di prova: Squadre e rose e Aggiorna le rose stanno in Squadra, il resto in Altro
-# e vistaLega, come quella vera, usa (e consuma) la voce e la rosa chieste: il disegno le registra
-AMBIENTE_LEGA = AMBIENTE.replace('const ambitoVoce = () => "altro";',
-                                 'const ambitoVoce = id => (["squadre", "importa"].includes(id) ? "squadra" : "altro");').replace(
+# le voci di Squadra e Altro nel banco di prova sono quelle di AMBIENTE (VOCI_LEGA: Squadre e rose e Aggiorna le rose in Squadra,
+# Diario e Regole in Altro); vistaLega, come quella vera, usa (e consuma) la voce e la rosa chieste: il disegno le registra
+AMBIENTE_LEGA = AMBIENTE.replace(
     'const vistaLega = a => chiamate.push(["disegna", a]),',
     'const vistaLega = a => { chiamate.push(["disegna", a, stato.legaTorna ?? null, stato.rosaTorna ?? null]); stato.legaTorna = null; '
     'stato.rosaTorna = null; },')
-assert AMBIENTE_LEGA.count("ambitoVoce = id") == 1 and AMBIENTE_LEGA.count("stato.rosaTorna = null; }") == 1
+assert AMBIENTE_LEGA.count("stato.rosaTorna = null; }") == 1
 
 
 def _cronologia(scena: str):
@@ -47,7 +45,8 @@ def _cronologia(scena: str):
         "const sotto = () => ({ voce: stato.legaTorna ?? null, rosa: stato.rosaTorna ?? null, da: (history.state || {}).da ?? null });",
         APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")], _riga("const SCHEDA_DI = "),
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
-        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "), _funzione("vai"),
+        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "),
+        _funzione("schermataCheResta"), _funzione("vai"),
         _da_a('window.addEventListener("popstate"', "\n});\n"),
         _funzione("scriviIndirizzo"), _funzione("indirizzoLega"), _funzione("tornaIndietro"), _funzione("tornaAllaSezione"),
         _riga("function vaiLega("),
@@ -62,11 +61,11 @@ def test_ogni_pagina_di_squadra_e_altro_ha_il_suo_indirizzo():
     nell'indirizzo. Un nome di squadra con l'apostrofo o gli spazi si scrive come lo scrive il browser (stesso indirizzo dopo)."""
     corpo = _riga("const indirizzoVista = ")
     r = _node(corpo + """
-    console.log(JSON.stringify([indirizzoVista("squadra", null, null, "squadre"), indirizzoVista("altro", null, null, "regole"),
-      indirizzoVista("squadra", null, null, "squadre", "Dell'Orto FC"), indirizzoVista("squadra", null, null, null, ""),
-      indirizzoVista("oggi", null, null, "squadre"), indirizzoVista("mercato", null, "osservati", "osservati")]));""")
+    console.log(JSON.stringify([indirizzoVista("squadra", null, "squadre"), indirizzoVista("altro", null, "regole"),
+      indirizzoVista("squadra", null, "squadre", "Dell'Orto FC"), indirizzoVista("squadra", null, null, ""),
+      indirizzoVista("oggi", null, "squadre")]));""")
     assert r == ["/?vista=squadra&voce=squadre", "/?vista=altro&voce=regole", "/?vista=squadra&rosa=Dell%27Orto+FC",
-                 "/?vista=squadra&rosa=", "/?vista=oggi", "/?vista=mercato&scheda=osservati"]
+                 "/?vista=squadra&rosa=", "/?vista=oggi"]
 
 
 @serve_node
@@ -77,7 +76,7 @@ def test_indietro_dalla_voce_e_dalla_rosa_torna_al_passo_di_prima_sotto_i_1100_p
     e = _cronologia("""
     const esiti = {};
     vai("oggi"); vai("squadra"); chiamate.splice(0);
-    indirizzoLega("squadra", null, true, "squadre"); esiti.voce = { ...foto(), ...sotto() };            // clic su «Squadre e rose»
+    indirizzoLega("squadra", true, "squadre"); esiti.voce = { ...foto(), ...sotto() };                  // clic su «Squadre e rose»
     scriviIndirizzo({ vista: "squadra", voce: "squadre", rosa: "Real Esempio", pagina: true }, true);   // clic su una squadra
     esiti.rosa = { ...foto(), ...sotto() };
     history.back(); esiti.indietro1 = { ...foto(), ...sotto() };
@@ -107,7 +106,7 @@ def test_da_1100_px_regole_e_novita_tornano_alla_voce_di_altro():
     non aggiunge voci (la pagina riaprirebbe la stessa); da Regole sì, perché Regole è un'altra pagina."""
     e = _cronologia("""
     const esiti = {};
-    largo = true; vai("oggi"); vai("altro"); indirizzoLega("altro", null, false, "diario"); esiti.altro = foto();
+    largo = true; vai("oggi"); vai("altro"); indirizzoLega("altro", false, "diario"); esiti.altro = foto();
     scriviIndirizzo({ vista: "altro", voce: "regole", pagina: true }, true); esiti.regole = { ...foto(), ...sotto() };
     history.back(); esiti.indietro = { ...foto(), ...sotto() };
     vai("altro"); esiti.scheda_altro = foto();
@@ -124,16 +123,16 @@ def test_da_1100_px_regole_e_novita_tornano_alla_voce_di_altro():
 
 @serve_node
 def test_i_pulsanti_indietro_dell_app_non_lasciano_voci_morte():
-    """«‹ Squadra» della rosa e «‹ Altro» di Regole e Novità: aperte con un clic dalla loro sezione sono Indietro del browser (la voce
+    """«‹ Squadra» della rosa e «‹ Altro» di Regole: aperte con un clic dalla loro sezione sono Indietro del browser (la voce
     di prima è la sezione), così Indietro dopo non riporta alla stessa pagina. Aperte da un indirizzo (nessuna voce di prima nella
     sezione) la sezione prende il posto della pagina: nessuna voce in più."""
     e = _cronologia("""
     const esiti = {};
-    vai("oggi"); vai("squadra"); indirizzoLega("squadra", null, true, "squadre");
+    vai("oggi"); vai("squadra"); indirizzoLega("squadra", true, "squadre");
     scriviIndirizzo({ vista: "squadra", voce: "squadre", rosa: "Real Esempio", pagina: true }, true); chiamate.splice(0);
     tornaAllaSezione("squadre"); esiti.rosa_da_clic = { ...foto(), ...sotto() };
-    vai("altro"); scriviIndirizzo({ vista: "altro", voce: "novita", pagina: true }, true); chiamate.splice(0);
-    tornaAllaSezione("altro"); esiti.novita_da_clic = { ...foto(), ...sotto() };
+    vai("altro"); scriviIndirizzo({ vista: "altro", voce: "regole", pagina: true }, true); chiamate.splice(0);
+    tornaAllaSezione("altro"); esiti.regole_da_clic = { ...foto(), ...sotto() };
     // Regole aperta da un indirizzo (o da «Da fare»): la voce di prima non è Altro
     vai("oggi"); stato.legaTorna = "regole"; vai("altro"); scriviIndirizzo({ vista: "altro", voce: "regole", pagina: true }, false);
     const quante = foto().voci;
@@ -143,7 +142,7 @@ def test_i_pulsanti_indietro_dell_app_non_lasciano_voci_morte():
     r = e["rosa_da_clic"]
     assert r["indirizzo"] == "/?vista=squadra&voce=squadre" and r["voci"] == 4 and r["pos"] == 2
     assert not any(c[0] in ("push", "replace") for c in r["chiamate"]) and ["disegna", "squadra", "squadre", None] in r["chiamate"]
-    n = e["novita_da_clic"]
+    n = e["regole_da_clic"]
     assert n["indirizzo"] == "/?vista=altro" and n["pos"] == n["voci"] - 2
     d = e["regole_da_indirizzo"]
     assert d["indirizzo"] == "/?vista=altro" and d["voci"] == d["prima"] and ["disegna", "altro", None, None] in d["chiamate"]
@@ -179,7 +178,8 @@ def test_impostazioni_ogni_gruppo_ha_la_sua_voce():
         AMBIENTE_LEGA,
         APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")], _riga("const SCHEDA_DI = "),
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
-        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "), _funzione("vai"),
+        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "),
+        _funzione("schermataCheResta"), _funzione("vai"),
         _da_a('window.addEventListener("popstate"', "\n});\n"),
         _funzione("scriviIndirizzo"), _funzione("tornaIndietro"),
         IMP[IMP.index("function indirizzoImp("):IMP.index("\n}\n", IMP.index("function indirizzoImp(")) + 3],
@@ -203,15 +203,15 @@ def test_impostazioni_ogni_gruppo_ha_la_sua_voce():
 
 
 def test_i_pulsanti_e_le_pagine_usano_la_cronologia():
-    """I pezzi che scrivono la cronologia sono quelli provati sopra: la voce aperta accanto al menu, Regole, Novità, la rosa, i
+    """I pezzi che scrivono la cronologia sono quelli provati sopra: la voce aperta accanto al menu, Regole, la rosa, i
     gruppi delle Impostazioni e i loro pulsanti «‹»."""
     lega = _funzione("vistaLega")
     assert "tornaIndietro(" in lega and 'id="lega-indietro"' in lega
     assert "stato.rosaTorna" in lega
-    for nome, segno in (("vistaRegole", 'voce: "regole"'), ("vistaNovita", 'voce: "novita"'), ("vistaRosa", "rosa: ")):
+    for nome, segno in (("vistaRegole", 'voce: "regole"'), ("vistaRosa", "rosa: ")):
         corpo = _funzione(nome)
         assert "scriviIndirizzo(" in corpo and segno in corpo and "pagina: true" in corpo, nome
-    assert 'data-indietro="altro"' in _funzione("vistaRegole") and 'data-indietro="altro"' in _funzione("vistaNovita")
+    assert 'data-indietro="altro"' in _funzione("vistaRegole")
     assert 'data-indietro="squadre"' in _funzione("vistaRosa")
     assert 'closest("[data-indietro]")' in APP
     assert "cfg.indirizzo(" in IMP and "cfg.lista(" in IMP
@@ -328,14 +328,3 @@ def test_il_primo_titolo_del_foglio_va_a_capo_prima_della_x():
     x = re.search(r"\n\.foglio-chiudi \{[^}]*top: 14px; right: (\d+)px;[^}]*width: (\d+)px", CSS)
     destra, larga = int(x.group(1)), int(x.group(2))
     assert int(m.group(1)) >= destra + larga - 8 + 4                     # riempimento più piccolo del foglio: 8 px; 4 px di stacco
-
-
-# ---------------------------------------------------------------- #458: sezioni di Squadra come il menu
-
-def test_le_sezioni_di_squadra_hanno_i_nomi_e_l_ordine_del_menu():
-    """Sotto i 1100 px le pagine di Squadra (Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario) hanno in cima la fila delle
-    quattro sezioni: diceva «Consigliati · Giocatori · Seguiti · Calendario», con nomi diversi e Seguiti/Giocatori al contrario del
-    menu. Stessi nomi (le stesse chiavi di testi.js) e stesso ordine di VOCI_LEGA (docs/COERENZA-WEB-IPHONE.md, «Sezioni e menu»)."""
-    menu = re.findall(r'\{ id: "(\w+)", ambito: "squadra",[^\n]*?nome: t\("([\w.]+)"\)[^\n]*vaiMercato\(', APP)
-    sezioni = re.findall(r'\["(\w+)", "([\w.]+)"\]', re.search(r"const TAB_MERCATO = (\[[^\n]*\]);", APP).group(1))
-    assert len(menu) == 4 and sezioni == menu
