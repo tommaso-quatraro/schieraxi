@@ -8,21 +8,24 @@
 # Variabili per le prove: SCHIERAXI_SITO_DIR (dove si pubblica), SCHIERAXI_SRC (clone), SCHIERAXI_SENZA_FETCH=1.
 #   Dal crontab dell'utente del server:  */5 * * * * /bin/bash $HOME/fantacalcio/script/server/pubblica-sito.sh >/dev/null 2>&1
 set -u
+QUI=$(cd "$(dirname "$0")" && pwd)
+. "$QUI/registri.sh" || exit 1          # registri senza collegamenti simbolici (registri.sh)
 SRC="${SCHIERAXI_SRC:-$HOME/schieraxi-src}"
 SITO="${SCHIERAXI_SITO_DIR:-/var/www/schieraxi-sito}"
 STATO="${FANTA_CACHE:-$HOME/.cache/fantacalcio}"
 mkdir -p "$STATO"
-exec 5>"$STATO/blocco-sito"
+exec 5>>"$STATO/blocco-sito"
 flock -n 5 || exit 0
 LOG="$STATO/pubblica-sito.log"
-log() { echo "$(date '+%F %T') $*" >> "$LOG"; tail -n 200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"; }
+registri_sicuri "$LOG" "$LOG.tmp" || exit 1     # ~/.cache la scrive anche il servizio
+log() { echo "$(date '+%F %T') $*" >> "$LOG"; ruota_registro "$LOG" 200; }
 
 export GIT_TERMINAL_PROMPT=0
 cd "$SRC" 2>/dev/null || { log "manca il clone $SRC"; exit 1; }
 # Il clone e' lo stesso di aggiorna-app.sh, che parte nello stesso minuto: due git fetch insieme si bloccano a vicenda (i "git fetch
 # non riuscito" del 1/11). Si usa il suo stesso blocco (attesa massima 2 minuti, poi si riprova al giro dopo senza scrivere niente)
 # e, per gli errori di rete veri, il fetch si riprova una seconda volta dopo 10 secondi.
-exec 6>"$STATO/blocco-pubblicazione"
+exec 6>>"$STATO/blocco-pubblicazione"
 flock -w "${SCHIERAXI_ATTESA_BLOCCO:-120}" 6 || exit 0
 if [ "${SCHIERAXI_SENZA_FETCH:-0}" != 1 ]; then
   # ogni fetch ha un tempo massimo: se la rete si pianta non si tiene il blocco condiviso per sempre

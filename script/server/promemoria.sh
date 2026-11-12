@@ -4,17 +4,21 @@
 #   Dal crontab dell'utente del server:  */10 * * * * /bin/bash $HOME/fantacalcio/script/server/promemoria.sh >/dev/null 2>&1
 set -u
 export PYTHONUTF8=1     # il server può avere la lingua it_IT (Latin-1): i testi con accenti restano giusti
+QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima del cd)
+. "$QUI/registri.sh" || exit 1          # registri senza collegamenti simbolici (registri.sh)
 cd "$HOME/fantacalcio" || exit 1
-# Se c'è dati/ambiente.env (le variabili del servizio, per esempio FANTA_MULTIUTENTE=1) le legge riga per riga, senza eseguirlo
+# Le variabili del servizio (per esempio FANTA_MULTIUTENTE=1), da /etc/schieraxi/fantacalcio.env o, finché non è spostato, da
+# dati/ambiente.env (con un avviso): le legge riga per riga, senza eseguirle
 # (solo CHIAVE=valore per FANTA_* e MAX_UTENTI, vedi leggi-ambiente.sh): senza il file non cambia niente.
 . script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env
 mkdir -p dati "$HOME/.cache/fantacalcio"
-exec 8>"$HOME/.cache/fantacalcio/blocco-promemoria"
+registri_sicuri dati/promemoria.log dati/promemoria.log.tmp || exit 1
+exec 8>>"$HOME/.cache/fantacalcio/blocco-promemoria"
 flock -n 8 || exit 0
 umask 077     # i log e i file nuovi di dati/ (indirizzi, iscrizioni) sono leggibili solo dall'utente del server
-chmod 600 dati/*.log 2>/dev/null
+permessi_registri dati
 # giro dei promemoria: al massimo 8 minuti (meno dei 10 fra un giro e l'altro), cosi' un servizio di notifica lento non lo tiene
-# fermo fino al giro dopo. Si cambia con FANTA_MAX_SECONDI_GIRO_PROMEMORIA in dati/ambiente.env (secondi; un valore non valido vale 480).
+# fermo fino al giro dopo. Si cambia con FANTA_MAX_SECONDI_GIRO_PROMEMORIA nelle variabili del servizio (secondi; un valore non valido vale 480).
 giro=${FANTA_MAX_SECONDI_GIRO_PROMEMORIA:-480}; [[ $giro =~ ^[1-9][0-9]{0,4}$ ]] || giro=480
 out=$(nice -n 10 timeout "$giro" .venv/bin/python -m fanta promemoria 2>&1)
 if [ $? -eq 124 ]; then
@@ -24,7 +28,7 @@ fi
 # controllo di salute dell'app: avvisa sul telefono se non risponde o se i dati non si aggiornano. Prima aspetta che aggiorna-app.sh
 # abbia finito (blocco condiviso): mentre installa riavvia l'app e per qualche secondo non risponde (falsi allarmi del 1/11).
 # Se l'installazione dura piu' di 3 minuti il controllo salta questo giro. Il controllo stesso riprova 3 volte (fanta/salute.py).
-exec 7>"$HOME/.cache/fantacalcio/blocco-pubblicazione"
+exec 7>>"$HOME/.cache/fantacalcio/blocco-pubblicazione"
 SALTI="$HOME/.cache/fantacalcio/salute-saltata"          # quante volte di fila il controllo e' saltato per il blocco
 if flock -s -w "${SCHIERAXI_ATTESA_BLOCCO:-180}" 7; then
   out="$out$(nice -n 10 .venv/bin/python -m fanta salute 2>&1)"
@@ -46,6 +50,6 @@ fi
 exec 7>&-
 if [ -n "$out" ]; then
   { echo "=== $(date '+%F %T')"; echo "$out"; } >> dati/promemoria.log
-  tail -n 300 dati/promemoria.log > dati/promemoria.log.tmp && mv dati/promemoria.log.tmp dati/promemoria.log
+  ruota_registro dati/promemoria.log 300
 fi
 exit 0

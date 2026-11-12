@@ -8,18 +8,22 @@
 # Log: ~/fantacalcio/dati/sentinella.log (ultime 3000 righe). Stato degli avvisi: dati/sentinella.json.
 set -u
 export PYTHONUTF8=1     # il server può avere la lingua it_IT (Latin-1): i testi con accenti restano giusti
+QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima del cd)
+. "$QUI/registri.sh" || exit 1          # registri senza collegamenti simbolici (registri.sh)
 cd "$HOME/fantacalcio" || exit 1
-# Se c'è dati/ambiente.env (le variabili del servizio, per esempio FANTA_MULTIUTENTE=1) le legge riga per riga, senza eseguirlo
+# Le variabili del servizio (per esempio FANTA_MULTIUTENTE=1), da /etc/schieraxi/fantacalcio.env o, finché non è spostato, da
+# dati/ambiente.env (con un avviso): le legge riga per riga, senza eseguirle
 # (solo CHIAVE=valore per FANTA_* e MAX_UTENTI, vedi leggi-ambiente.sh): senza il file non cambia niente.
 . script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env
 mkdir -p dati "$HOME/.cache/fantacalcio"
 umask 077     # log e stato leggibili solo dall'utente del server
 LOG=dati/sentinella.log
-exec 8>"$HOME/.cache/fantacalcio/blocco-sentinella"
+registri_sicuri "$LOG" "$LOG.tmp" || exit 1
+exec 8>>"$HOME/.cache/fantacalcio/blocco-sentinella"
 flock -n 8 || exit 0                     # il giro di prima non ha ancora finito
 # Non durante un aggiornamento dell'app (aggiorna-app.sh tiene il blocco mentre installa e riavvia): si aspettano al massimo 3 minuti,
 # poi si salta il giro. Il blocco resta preso (condiviso) per tutto il giro, così il servizio non si riavvia a meta' controllo.
-exec 7>"$HOME/.cache/fantacalcio/blocco-pubblicazione"
+exec 7>>"$HOME/.cache/fantacalcio/blocco-pubblicazione"
 flock -s -w "${SCHIERAXI_ATTESA_BLOCCO:-180}" 7 || { echo "$(date '+%F %T') saltata: aggiornamento dell'app in corso" >> "$LOG"; exit 0; }
 echo "=== $(date '+%F %T')" >> "$LOG"
 if [ $# -gt 0 ]; then                    # a mano (per esempio --senza-invio): anche sullo schermo
@@ -27,5 +31,5 @@ if [ $# -gt 0 ]; then                    # a mano (per esempio --senza-invio): a
 else
   nice -n 15 timeout 1200 .venv/bin/python -m fanta sentinella --minuti "${SENTINELLA_MINUTI:-10}" >> "$LOG" 2>&1
 fi
-tail -n 3000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+ruota_registro "$LOG" 3000
 exit 0

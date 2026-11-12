@@ -24,6 +24,13 @@ def _senza_pianificatore(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _senza_variabili_del_servizio(monkeypatch):
+    """Gli script del server leggono prima il file di root delle variabili (script/server/leggi-ambiente.sh): nei test punta a un
+    percorso che non c'e', così su una macchina che ha il file vero le prove non leggono le variabili vere."""
+    monkeypatch.setenv("SCHIERAXI_AMBIENTE", "/nessun-percorso/schieraxi/fantacalcio.env")
+
+
+@pytest.fixture(autouse=True)
 def _dns_push_finto(monkeypatch):
     """Le iscrizioni push controllano il nome del servizio: nei test niente rete vera, ogni nome vale un indirizzo pubblico."""
     from fanta import push

@@ -1307,7 +1307,7 @@ def test_in_prova_dice_che_rimanderebbe(server):
 def _casa_aggiorna(tmp_path, python):
     """Una «casa» del server con aggiorna.sh, un finto Python (scrive i suoi argomenti in `chiamate`) e un finto flock."""
     app = tmp_path / "casa" / "fantacalcio"
-    for nome in ("aggiorna.sh", "leggi-ambiente.sh"):
+    for nome in ("aggiorna.sh", "leggi-ambiente.sh", "registri.sh"):
         _scrivi(app, f"script/server/{nome}", (SCRIPT / nome).read_text(encoding="utf-8").replace("\r\n", "\n"))
     (app / ".venv" / "bin").mkdir(parents=True)
     chiamate = tmp_path / "chiamate.txt"

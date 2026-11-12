@@ -8,15 +8,19 @@
 # - Log: ~/fantacalcio/dati/aggiorna.log (si tengono le ultime 2000 righe).
 set -u
 export PYTHONUTF8=1     # il server può avere la lingua it_IT (Latin-1): senza questo il testo dell'avviso uscirebbe con gli accenti sbagliati
+QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima del cd)
+. "$QUI/registri.sh" || exit 1          # registri senza collegamenti simbolici (registri.sh)
 cd "$HOME/fantacalcio" || exit 1
-# Se c'è dati/ambiente.env (le variabili del servizio, per esempio FANTA_MULTIUTENTE=1) le legge riga per riga, senza eseguirlo
+# Le variabili del servizio (per esempio FANTA_MULTIUTENTE=1), da /etc/schieraxi/fantacalcio.env o, finché non è spostato, da
+# dati/ambiente.env (con un avviso): le legge riga per riga, senza eseguirle
 # (solo CHIAVE=valore per FANTA_* e MAX_UTENTI, vedi leggi-ambiente.sh): senza il file non cambia niente.
 . script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env
 mkdir -p dati "$HOME/.cache/fantacalcio"
 LOG=dati/aggiorna.log
+registri_sicuri "$LOG" "$LOG.tmp" || exit 1
 STATO="$HOME/.cache/fantacalcio/errori"
 umask 077     # i log e i file nuovi di dati/ (indirizzi, iscrizioni) sono leggibili solo dall'utente del server
-chmod 600 dati/*.log 2>/dev/null
+permessi_registri dati
 canale=$(tr -d ' \r\n' < "${SCHIERAXI_CANALE:-$HOME/.config/schieraxi/canale}" 2>/dev/null)
 
 avvisa() {   # titolo, testo
@@ -26,7 +30,7 @@ avvisa() {   # titolo, testo
     https://ntfy.sh >/dev/null
 }
 
-exec 9>"$HOME/.cache/fantacalcio/blocco"
+exec 9>>"$HOME/.cache/fantacalcio/blocco"
 flock -n 9 || exit 0          # un altro aggiornamento e' gia' in corso
 
 echo "=== $(date '+%F %T')" >> "$LOG"
@@ -42,7 +46,7 @@ fi
 # appena sono cambiati, li calcola in anticipo. Funziona anche con gli account e non serve nessuna richiesta da qui.)
 
 # giri degli avvisi (cambi, riepilogo, «formazione pronta»): ognuno al massimo 10 minuti, cosi' un servizio di notifica lento non
-# ferma il resto dello script. Si cambia con FANTA_MAX_SECONDI_GIRO_AVVISI in dati/ambiente.env (secondi; un valore non valido vale 600).
+# ferma il resto dello script. Si cambia con FANTA_MAX_SECONDI_GIRO_AVVISI nelle variabili del servizio (secondi; un valore non valido vale 600).
 giro=${FANTA_MAX_SECONDI_GIRO_AVVISI:-600}; [[ $giro =~ ^[1-9][0-9]{0,4}$ ]] || giro=600
 fermato() {   # comando, uscita: con 124 (tempo finito, vedi timeout) lo scrive nel log
   [ "$2" -eq 124 ] && echo "$1: fermato dopo $giro secondi (tempo massimo del giro)" >> "$LOG"
@@ -61,7 +65,7 @@ testo=$(nice -n 10 timeout "$giro" .venv/bin/python -m fanta avviso 2>>"$LOG") |
 
 # ritagli dei volti dei calciatori: fino a 80 per giro e al massimo 6 minuti, sempre sotto le 30 richieste al minuto del servizio
 # (le altre arrivano ai giri successivi). In fondo, cosi' non ritardano formazione e avviso.
-# Spento di norma (l'app usa i volti illustrati, nessuna foto): per riaccenderlo FANTA_FOTO=1 in dati/ambiente.env.
+# Spento di norma (l'app usa i volti illustrati, nessuna foto): per riaccenderlo FANTA_FOTO=1 nelle variabili del servizio.
 if [ "${FANTA_FOTO:-0}" = "1" ]; then
   nice -n 10 .venv/bin/python -m fanta foto --max 80 --minuti 6 >> "$LOG" 2>&1
 fi
@@ -71,5 +75,5 @@ fi
 # 5 minuti, cosi' un errore o un blocco non ferma lo script e non ritarda dati, formazione e avvisi
 nice -n 15 timeout 300 .venv/bin/python -m fanta taratura-probabili >> "$LOG" 2>&1 || echo "taratura-probabili: non riuscita (uscita $?)" >> "$LOG"
 
-tail -n 2000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+ruota_registro "$LOG" 2000
 exit 0

@@ -114,7 +114,7 @@ def test_ambiente_env_non_esegue_comandi(tmp_path):
                      'printf "%s|" "$FANTA_MULTIUTENTE" "$FANTA_X" "$FANTA_Y" "$FANTA_Z" "$FANTA_REGISTRAZIONE" "$PATH" '
                      '"${LD_PRELOAD:-}" "$FANTA_W" "$MAX_UTENTI"\n', encoding="utf-8")
     uscita = subprocess.run([BASH, str(prova)], capture_output=True, text=True, timeout=20,
-                            env={"PATH": os.environ["PATH"], "HOME": "/casa"})
+                            env={"PATH": os.environ["PATH"], "HOME": "/casa", "SCHIERAXI_AMBIENTE": "/nessun-percorso/fantacalcio.env"})
     assert uscita.returncode == 0, uscita.stderr
     valori = uscita.stdout.split("|")
     assert not preso.exists()                                 # nessun comando eseguito

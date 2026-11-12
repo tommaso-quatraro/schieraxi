@@ -1,0 +1,12 @@
+# Esempio di drop-in systemd per le variabili del servizio SchieraXI (fantacalcio.service).
+# Si copia in /etc/systemd/system/fantacalcio.service.d/ambiente.conf (di root), poi:  sudo systemctl daemon-reload
+# Passi completi, con lo spostamento dal posto di prima: docs/RIPRISTINO-SERVER.md, «Spostare le variabili del servizio».
+#
+# systemd legge l'EnvironmentFile come root, prima del recinto del servizio, e segue i collegamenti simbolici: il file deve stare
+# dove il servizio NON scrive. Quindi /etc/schieraxi/fantacalcio.env (cartella 750 root:<gruppo del servizio>, file 640
+# root:<gruppo del servizio>), mai nella cartella dell'app (dati/), nella casa dell'utente o in ~/.cache.
+# Lo stesso file lo leggono gli script dei cron (script/server/leggi-ambiente.sh), senza eseguirlo.
+# Senza il "-" davanti al percorso: se il file manca il servizio non parte, invece di partire senza le sue variabili.
+[Service]
+EnvironmentFile=/etc/schieraxi/fantacalcio.env
+UMask=0077

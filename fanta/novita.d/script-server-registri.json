@@ -1,0 +1,1 @@
+{"titolo": "Server: script di manutenzione più prudenti", "voci": ["Server: gli script di manutenzione notturni e periodici sono più prudenti con i file che scrivono."], "tecnico": ["Script del server: funzione comune per scrivere e ruotare i registri, file di blocco aperti in aggiunta, variabili del servizio lette prima da un file di sistema, guida di ripristino aggiornata."]}

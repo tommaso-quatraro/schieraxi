@@ -34,7 +34,7 @@ if [ "$PROVA" = 1 ]; then
 fi
 
 mkdir -p "$STATO"
-exec 6>"$STATO/blocco-esporta-prova"
+exec 6>>"$STATO/blocco-esporta-prova"
 flock -n 6 || exit 0                      # la copia di prima non ha ancora finito
 umask 027                                 # la copia: leggibile dal gruppo della cartella di scambio, da nessun altro
 out=$(nice -n 19 "$PY" "$QUI/copia_archivio.py" "$ORIGINE" "$COPIA" 2>&1)
