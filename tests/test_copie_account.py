@@ -3,6 +3,7 @@ scadono dopo backup.GIORNI_COPIE_MIGRAZIONE giorni e nascono leggibili solo dal 
 Cartelle temporanee, account inventati, l'ora sempre passata come argomento (niente orologio vero)."""
 import contextlib
 import os
+import re
 import sqlite3
 from datetime import datetime, timedelta
 
@@ -12,6 +13,7 @@ from fanta import account, backup, percorsi
 
 ADESSO = datetime(2026, 11, 12, 3, 30)          # il giro serale (cron delle 3:30)
 SERALE = "account-????-??-??.sqlite"
+COPIA = re.compile(r"account-\d{4}-\d{2}-\d{2}\.sqlite")
 
 
 def _origine(tmp_path):
@@ -40,3 +42,47 @@ def test_le_copie_di_migrazione_non_tolgono_posto_alle_serali(tmp_path, migrazio
     serali = sorted(p.name for p in cartella.glob(SERALE))
     assert serali == [f"account-2026-11-0{g}.sqlite" for g in range(2, 8)] + ["account-2026-11-12.sqlite"]
     assert len(list(cartella.glob("account-prima-della-migrazione-*.sqlite"))) == migrazioni    # recenti: restano
+
+
+def _nomi(copia) -> list[str]:
+    with contextlib.closing(sqlite3.connect(copia)) as db:
+        return [r[0] for r in db.execute("SELECT nome_utente FROM utenti")]
+
+
+def test_la_copia_di_migrazione_di_un_account_eliminato_scade(multiutente):
+    """Un utente c'è quando il server si aggiorna con una migrazione (nasce la copia di prima), poi elimina l'account: il suo nome
+    resta solo nella copia, e la copia sparisce al primo giro serale dopo backup.GIORNI_COPIE_MIGRAZIONE giorni."""
+    percorso = percorsi.cartella_account() / "account.sqlite"
+    percorso.parent.mkdir(parents=True, exist_ok=True)
+    with contextlib.closing(sqlite3.connect(percorso)) as db:
+        for m in account.MIGRAZIONI[:5]:
+            db.executescript(m)
+        db.execute("PRAGMA user_version = 5")
+        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('via', 'x', 'y', 'z')")
+        db.commit()
+    with contextlib.closing(account.apri()) as db:                   # l'aggiornamento: migrazioni e copia di prima
+        account.elimina(db, db.execute("SELECT id FROM utenti WHERE nome_utente = 'via'").fetchone()[0])
+    cartella = percorso.parent / "backup"
+    copia = cartella / "account-prima-della-migrazione-5.sqlite"
+    assert _nomi(copia) == ["via"]
+    creata = datetime(2026, 11, 1, 10, 0)
+    _data(copia, creata)
+    giorni = backup.GIORNI_COPIE_MIGRAZIONE
+    backup.copia_account(cartella, percorso, adesso=creata + timedelta(days=giorni - 1))
+    assert copia.exists()                                            # ancora giovane: resta (serve se la migrazione è andata storta)
+    backup.copia_account(cartella, percorso, adesso=creata + timedelta(days=giorni, hours=1))
+    assert not copia.exists()
+    rimaste = sorted(cartella.glob("account-*.sqlite"))
+    assert rimaste and all(COPIA.fullmatch(p.name) for p in rimaste)  # restano solo le serali, senza di lui
+    assert all("via" not in _nomi(p) for p in rimaste)
+
+
+def test_le_copie_serali_non_scadono_per_eta(tmp_path):
+    """Le serali le regola solo il loro numero (`tieni`): una vecchia resta se rientra fra le ultime `tieni`."""
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    vecchia = cartella / "account-2026-01-01.sqlite"
+    vecchia.write_bytes(b"serale")
+    _data(vecchia, datetime(2026, 1, 1, 3, 30))
+    backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
+    assert vecchia.exists()
