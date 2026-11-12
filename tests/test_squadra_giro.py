@@ -6,7 +6,7 @@ import json
 
 from test_squadra_annulla import chiave_api, come_api
 from test_squadra_comune import Finto
-from test_squadra_stato import ADESSO, risposte_stato
+from test_squadra_stato import ADESSO, WT, risposte_stato
 
 import comune
 import giro
@@ -89,6 +89,18 @@ def test_due_giri_diversi_stampano_solo_il_cambiamento(tmp_path, capsys):
     assert not any("#22" in r for r in righe)                            # non è cambiata: non si ripete
 
 
+def test_sessione_dell_app_con_il_ramo_unito_resta_in_vista(tmp_path, capsys):
+    # #524: `pulisci` non la toglie più da sola; il giro la mostra lo stesso, perché qualcuno prima o poi la tolga a mano
+    r = risposte()
+    r["git worktree list --porcelain"] += f"\nworktree {WT}/sessione-finita\nHEAD s1\nbranch refs/heads/claude/sessione-finita\n"
+    r["gh pr list --state all"] = r["gh pr list --state all"] + [
+        {"number": 50, "state": "MERGED", "headRefName": "claude/sessione-finita", "headRefOid": "s1"}]
+    r[f"git -C {WT}/sessione-finita status --porcelain"] = ""
+    lancia(tmp_path, r)
+    [riga] = [x for x in capsys.readouterr().out.splitlines() if "sessione-finita" in x]
+    assert "sessione app" in riga and "da togliere" not in riga
+
+
 def test_di_default_non_rilancia_ne_annulla(tmp_path):
     _, f = lancia(tmp_path)
     assert not f.lanciati("gh run rerun") and not f.lanciati("gh run cancel")
@@ -119,6 +131,9 @@ def test_versione_in_produzione_solo_se_c_e_l_indirizzo(tmp_path, capsys):
     lancia(tmp_path / "b", url="https://server.example")
     testo = capsys.readouterr().out
     assert "produzione: fanta-230" in testo.lower() and "server.example" not in testo     # l'indirizzo non si stampa
+    # #635: il server raggruppa le installazioni; chi coordina non deve dire «non arriva» dopo dieci minuti
+    [riga] = [r for r in testo.splitlines() if "Produzione:" in r]
+    assert "70 minuti" in riga and "urgent" in riga and "partite" in riga
 
 
 def test_produzione_non_raggiungibile_lo_dice(tmp_path, capsys):

@@ -4,14 +4,14 @@ Si lanciano dal crontab dell'utente del server. Il servizio systemd è `fantacal
 
 | Script | Quando | Cosa fa |
 |---|---|---|
-| `aggiorna-app.sh` | ogni 10 min | installa `main` se cambiano `fanta`, `tests`, `script`, `requirements*` (mai `lega/`, `dati/`, `fanta/avatar_tratti.json`, `CLAUDE.md`), solo se i commit nuovi sono firmati (vedi sotto) e con le librerie bloccate dagli hash. `--prova`: dice cosa farebbe e non scrive. `--fidati COMMIT`: punto di partenza controllato a mano. Un'installazione riuscita sta solo nel registro `dati/pubblicazione.log`; avvisi sul telefono solo se qualcosa non va: versione rifiutata, librerie che non si installano, ritorno alla versione di prima, chiave delle firme mancante, e i guasti che prima restavano nel solo registro (GitHub che non risponde da tre giri, copia di GitHub senza il ramo `main`, versione senza tutte le cartelle, file della versione nuova che non si copiano, ambienti Python che non si scambiano), al massimo uno al giorno per motivo, con «di nuovo a posto» quando passa. Stato in `~/.cache/fantacalcio/guasto-<motivo>` |
+| `aggiorna-app.sh` | ogni 10 min | installa `main` se cambiano `fanta`, `tests`, `script`, `requirements*` (mai `lega/`, `dati/`, `fanta/avatar_tratti.json`, `CLAUDE.md`), al massimo una volta ogni intervallo (predefinito 60 minuti, subito le urgenti: vedi «Rilasci raggruppati»), solo se i commit nuovi sono firmati (vedi sotto) e con le librerie bloccate dagli hash. `--prova`: dice cosa farebbe e non scrive. `--fidati COMMIT`: punto di partenza controllato a mano. Un'installazione riuscita sta solo nel registro `dati/pubblicazione.log`; avvisi sul telefono solo se qualcosa non va: versione rifiutata, librerie che non si installano, ritorno alla versione di prima, chiave delle firme mancante, e i guasti che prima restavano nel solo registro (GitHub che non risponde da tre giri, copia di GitHub senza il ramo `main`, versione senza tutte le cartelle, file della versione nuova che non si copiano, ambienti Python che non si scambiano), al massimo uno al giorno per motivo, con «di nuovo a posto» quando passa. Stato in `~/.cache/fantacalcio/guasto-<motivo>` |
 | `pubblica-sito.sh` | ogni 5 min | tiene la cartella del sito (`/var/www/schieraxi-sito`) uguale a `sito/` di `main` |
 | `aggiorna.sh` | 8, 13, 17, 21 | aggiorna i dati e manda gli avvisi. Guasti contati per passo dell'aggiornamento (listone, calendario, voti, probabili, Understat...): un avviso con il nome del passo alla seconda volta di fila, una volta sola finché dura, e «funziona di nuovo» quando torna; un solo avviso per giro con tutti i passi rotti, e uno solo per quelli tornati; se il servizio degli avvisi non risponde si riprova al giro dopo; un comando fermo prima della fine conta come guasto di tutto l'aggiornamento; una fonte spenta a mano si toglie senza avviso. Stato: un file per passo rotto in `~/.cache/fantacalcio/passi/` (giri di fila, ora dell'ultimo avviso, nome), una riga che comincia con «passo» nel log per ogni passo rotto o tornato. Ultimo passo: `python -m fanta taratura-probabili` (#379, `docs/decisioni/0009`: ritara «gioca N%» con le probabili sulle giornate giocate, lo accende da 8 giornate se sbaglia meno e torna ai numeri di partenza se peggiora; mai cambi nelle 24 ore prima della prima partita; avviso al proprietario a ogni cambio e dopo 3 giri falliti di fila; calcolo vero con una giornata nuova o dopo una riga pronta, rimandata o riaccesa; `nice -n 15`, al massimo 5 minuti, un errore va nel log e non ferma lo script). A mano: `.venv/bin/python -m fanta taratura-probabili --prova` (stampa i numeri, non scrive niente), `--spegni` (torna subito ai numeri di partenza e non ritara più) e `--accendi` (dopo `--spegni`: la prova riparte al giro dopo) |
 | `promemoria.sh` | ogni 10 min | promemoria prima della scadenza e controllo di salute dell'app |
 | `backup-dati.sh` | ogni notte | copia dei dati che non si rigenerano, compreso l'archivio delle statistiche `dati/fanta.sqlite` (API di backup di SQLite, a servizio acceso); ultime 14. Se non riesce solo la copia dell'archivio, il pacchetto si salva senza, quella notte non si tolgono le copie vecchie e parte un avviso (al massimo uno al giorno). Ripristino: `docs/RIPRISTINO-SERVER.md` |
 | `backup-serale.sh` | ogni notte | copia di regole, rose, scelte (ultime 7) |
 | `controllo-salute.sh` | ogni 5 min | app viva, dati freschi, disco, memoria, certificato; avvisi con ntfy |
-| `sentinella.sh` | ogni ora (al minuto 37) | rifà in sola lettura le risposte vere dell'app per ogni utente (Oggi, Formazione, Scelta, Diario, widget, Live) e controlla 21 invarianti (`fanta/sentinella.py`); esito in «Stato dei dati», un avviso ntfy solo alla prima rottura confermata (2 giri), con «utente N» e mai nomi. Prova a mano: `bash ~/fantacalcio/script/server/sentinella.sh --senza-invio`. Log `dati/sentinella.log`, stato `dati/sentinella.json`. Tiene il blocco `blocco-pubblicazione` (condiviso) mentre gira: un aggiornamento dell'app aspetta il giro dopo |
+| `sentinella.sh` | ogni ora (al minuto 37) | rifà in sola lettura le risposte vere dell'app per ogni utente (Oggi, Formazione, Scelta, Diario, widget, Live) e controlla 22 invarianti (`fanta/sentinella.py`), comprese le cartelle di dati rimaste senza account; esito in «Stato dei dati», un avviso ntfy solo alla prima rottura confermata (2 giri), con «utente N» e mai nomi. Prova a mano: `bash ~/fantacalcio/script/server/sentinella.sh --senza-invio`. Log `dati/sentinella.log`, stato `dati/sentinella.json`. Tiene il blocco `blocco-pubblicazione` (condiviso) mentre gira: un aggiornamento dell'app aspetta il giro dopo |
 
 Chi avvisa di cosa (canale degli avvisi del gestore):
 - `aggiorna.sh`: un passo dei dati che non riesce, una volta sola alla seconda volta di fila, e quando torna; il promemoria di ogni giorno per un passo fermo da oltre 24 ore lo manda il controllo di salute del server (`fanta/salute.py`).
@@ -69,6 +69,51 @@ Installare una versione nuova riavvia il servizio. Per questo `aggiorna-app.sh` 
 Emergenza (correzione urgente durante una partita): `touch ~/.cache/fantacalcio/installa-subito` (installa al prossimo giro e il
 file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`. Nel log:
 «installazione forzata». Per vedere cosa direbbe adesso: `cd ~/fantacalcio && .venv/bin/python -m fanta momento-libero`.
+
+## Rilasci raggruppati: al massimo un'installazione all'ora
+
+Le pull request si uniscono e hanno il loro numero di versione subito (job `rilascia`), ma ogni installazione riavvia il servizio e
+aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
+- Fra due installazioni riuscite passa almeno un **intervallo**, 60 minuti di predefinito. Prima la versione nuova si rimanda (nel
+  registro una riga sola per versione: «raggruppata: … installo … fra circa N minuti»); allo scadere si installa l'ultima versione di
+  `main`, tutte insieme («fine del raggruppamento»). Un'installazione non riuscita (librerie, ritorno alla versione di prima) non fa
+  ripartire l'intervallo. Si somma al rimando per le partite: si installa al primo giro libero dopo l'intervallo.
+- **Tempi**: una pull request unita arriva in produzione entro circa 70 minuti (l'intervallo più il giro di 10 minuti); le urgenti, e
+  tutte con l'intervallo a 0, entro 10 minuti; più tardi durante le partite e nell'ora prima di una scadenza. L'ambiente di prova le
+  riceve tutte subito: serve al collaudo automatico.
+- **Regolare l'intervallo**, sul server e senza toccare il repository: un numero di minuti da 0 a 1440 nel file
+  `~/.config/schieraxi/intervallo-minuti`
+  ```
+  echo 0 > ~/.config/schieraxi/intervallo-minuti       # ogni versione subito, come prima
+  echo 60 > ~/.config/schieraxi/intervallo-minuti      # al massimo una all'ora
+  rm ~/.config/schieraxi/intervallo-minuti             # di nuovo il predefinito (60)
+  ```
+  oppure la variabile `SCHIERAXI_INTERVALLO_MINUTI` nella riga del crontab (vale più del file). Un valore non valido vale 60 e il
+  registro lo dice. Il valore in uso va nel registro al primo giro e quando cambia:
+  `grep "intervallo fra due installazioni" ~/fantacalcio/dati/pubblicazione.log | tail -n 1`.
+- **Urgenze**: l'etichetta `P1` (o `urgente`) sulla pull request o su un'issue che chiude con una riga «Closes #N», messa prima che
+  parta il job `rilascia`. Il job guarda le etichette delle pull request delle novità in attesa e delle issue delle loro righe di
+  chiusura (quelle che il job `unisci` scrive nel commit di unione) e, se una le ha, scrive nel commit di versione la riga
+  `Rilascio: urgente`; etichette che non si leggono danno un avviso nella corsa e nessun segno. Lo script la cerca,
+  come riga intera, nei commit nuovi (dall'ultima versione installata) dopo la verifica delle firme e installa subito (nel registro:
+  «versione urgente fra i commit nuovi»). Vale per le pull request con una voce di novità (quelle che toccano `fanta/`,
+  `script/server/` o `requirements.txt`): le altre non hanno un commit di versione.
+- **Subito, a mano**: `touch ~/.cache/fantacalcio/installa-subito` salta l'intervallo e il rimando per le partite (vedi sopra).
+- **Unione senza ancora il commit di versione**: il job `rilascia` crea il commit «Versione …» 10-20 secondi dopo l'unione. Se un giro
+  cade in mezzo (in `main` c'è ancora un file in `fanta/novita.d/`) si aspetta il giro dopo, invece di installare l'unione con numero
+  di versione e novità vecchi. Al massimo mezz'ora, contata dal primo giro che ha aspettato (stato in `attesa-versione`), non dall'ora
+  dei commit: le unioni che arrivano nel frattempo non la fanno ripartire. Poi (job `rilascia` fermo) si installa lo stesso, con una
+  riga nel registro e un avviso «aggiornamento non riuscito», e «di nuovo a posto» quando il commit di versione arriva.
+  L'installazione forzata (`installa-subito`) non aspetta.
+- **L'ultima versione rifiutata non lascia passare quelle sotto**: se la versione da installare viene rifiutata (firma, cartelle,
+  librerie, ritorno alla versione di prima), le versioni buone arrivate prima e raggruppate con lei restano fuori anche loro. Non si
+  installano da sole: un ripiego automatico su una versione mai provata potrebbe alternare due versioni rotte, con un riavvio a ogni
+  giro. L'avviso del rifiuto lo dice quando sotto ci sono commit di versione («Anche la versione arrivata prima, in attesa, non è
+  installata»; i commit di soli documenti non contano); entrano con la prossima versione buona (una pull request che corregge o toglie
+  quella rotta) oppure, per una firma, con `--fidati origin/main` dopo il controllo (l'avviso lo nomina).
+- Stato in `~/.cache/fantacalcio/`: `ultima-installazione` (ora d'inizio del giro dell'ultima installazione riuscita, in secondi),
+  `raggruppata` (la versione rimandata), `intervallo-letto`, `attesa-versione` (ora del primo giro che aspetta il commit di versione). Senza `ultima-installazione` (la prima volta) si installa subito; se
+  l'orologio del server è indietro rispetto a quell'ora non si aspetta (una riga nel registro).
 
 ## Aggiornamenti sicuri: firme dei commit e librerie bloccate
 

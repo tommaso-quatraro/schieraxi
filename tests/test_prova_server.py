@@ -390,6 +390,23 @@ def test_prova_installa_solo_nelle_sue_cartelle_senza_aspettare_le_partite_e_sen
 
 
 @con_bash
+def test_prova_installa_ogni_versione_subito_anche_con_l_intervallo(server):
+    """#635: la produzione raggruppa le installazioni (al massimo una ogni intervallo); la prova no, serve al collaudo automatico,
+    che apre «La prova non si aggiorna» dopo 40 minuti. Neanche con la variabile dell'intervallo accesa."""
+    s = server
+    s.prova_installata(s.c1)
+    env = {**s.env_prova, "SCHIERAXI_ISTANZA": "prova", "SCHIERAXI_SENZA_FIRME": "1", "SCHIERAXI_INTERVALLO_MINUTI": "60"}
+    r = _lancia([BASH, AGGIORNA.as_posix()], env)
+    assert r.returncode == 0, r.stderr
+    c3 = _commit(s.github, "tre", **{"fanta/__init__.py": "V3"})
+    r = _lancia([BASH, AGGIORNA.as_posix()], env)                  # pochi secondi dopo l'installazione di c2
+    assert r.returncode == 0, r.stderr
+    assert (s.stato_prova / "ultimo-rilascio").read_text(encoding="utf-8").strip() == c3
+    assert (s.prova / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V3"
+    assert s.registro().count("restart schieraxi-prova") == 2
+
+
+@con_bash
 def test_prova_non_preparata_non_crea_niente(server):
     r = _aggiorna_prova(server)
     assert r.returncode == 0, r.stderr
