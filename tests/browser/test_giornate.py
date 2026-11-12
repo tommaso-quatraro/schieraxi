@@ -380,16 +380,17 @@ def test_senza_giornate_finite_la_pagina_lo_dice_senza_errori(web):
     assert not web.errori_mostrati() and not web.in_caricamento() and righe(web).count() == 0
 
 
-@pytest.mark.parametrize("altrui, voce", [(True, "Squadre e rose"), (False, "La mia squadra e rosa")])
-def test_senza_la_tua_squadra_la_pagina_dice_la_voce_con_il_suo_nome(web, altrui, voce):
-    """Senza le rose degli altri la voce di Squadra si chiama «La mia squadra e rosa»: l'aiuto dice quel nome."""
+@pytest.mark.parametrize("altrui", [True, False])
+def test_senza_la_tua_squadra_la_pagina_dice_dove_sceglierla(web, altrui):
+    """La tua squadra si sceglie in Impostazioni, alla voce «La mia squadra» (#618: prima era la scheda Squadra, con un nome della
+    voce diverso secondo le rose degli altri); l'aiuto dice quel nome, con le rose degli altri e senza."""
     solo(web, "prima")
     f = web.registrata("/api/funzioni")
     f["funzioni"]["squadre_altrui"] = altrui
     web.risposta("/api/funzioni", f)
     web.risposta("/api/diario", diario_vuoto("squadra"))
     web.apri(GIORNATE)
-    assert f"in Squadra, alla voce {voce}." in " ".join(web.testo_principale().split())
+    assert "in Impostazioni, alla voce La mia squadra." in " ".join(web.testo_principale().split())
 
 
 # ---------------------------------------------------------------- la copia del telefono e i ridisegni

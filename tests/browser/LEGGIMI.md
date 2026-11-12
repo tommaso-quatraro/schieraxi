@@ -31,10 +31,10 @@ I test non conoscono le schermate: si appoggiano a tre regole che ogni versione 
   della prima schermata. La web di oggi scrive gli errori anche con la classe `errore`, che vale lo stesso. Un contenitore
   `role="alert"` vuoto, pronto per un messaggio, va bene.
 
-Cosa nota della web di oggi: la schermata di accesso mette dentro `role="alert"` anche avvisi che non sono errori (classe
-`attenzione`). Il controllo non li conta come errori; nella web rifatta quegli avvisi passano a `role="status"`. Il
-riconoscimento delle rose lo fa già (#615): il riquadro dei suoi messaggi è una regione `role="status"` che resta in
-pagina, e l'avviso ci viene scritto dopo (un lettore di schermo non legge una regione che nasce già con il suo testo).
+Gli avvisi stanno in una regione `role="status"` che resta in pagina, e ci vengono scritti dopo (un lettore di schermo non
+legge una regione che nasce già con il suo testo): così il riconoscimento delle rose (#615) e, dal 12/11/2026 (#618), la
+schermata di accesso, dove prima anche gli avvisi (classe `attenzione`) stavano in un `role="alert"`; gli errori dell'accesso
+hanno il loro `role="alert"`. Il controllo non conta ancora come errori gli elementi con la classe `attenzione`.
 
 ## Quando girano
 - **Nelle pull request**: job `browser` dei controlli (`.github/workflows/test.yml`), quando la PR tocca `fanta/web/`,
@@ -123,6 +123,22 @@ prima della scadenza:
 - un solo pulsante di correzione, che fa scegliere gli 11 e li manda con la stagione; non c'è per una stagione passata;
 - errore con «Riprova», pagina vuota che dice perché; chiaro e scuro a 390 e 1440 px senza violazioni gravi; elenco a
   sinistra e giornata a destra a 768 e 1440 px, gli 11 sotto la riga al telefono.
+
+`test_impostazioni.py`, la barra a tre voci e le Impostazioni uniche (#618). Girano solo prima della scadenza:
+- la barra ha Formazione, Giornate e Impostazioni più la ricerca, a 390 e 1440 px, e niente ingranaggio; Impostazioni si apre
+  con un tocco e ha le sezioni Avvisi, La mia lega, Aspetto;
+- un utente normale (account non amministratore) vede al massimo dieci controlli (i pulsanti di un gruppo, come il tema,
+  contano una volta) e non vede Gestione, neanche con il suo indirizzo; chi gestisce il server la apre, con «Aggiorna i dati»;
+- ogni indirizzo di prima apre la voce giusta e l'indirizzo diventa quello nuovo: Squadra, Altro, Lega, Mercato, Scambi,
+  i gruppi delle Impostazioni (Avvisi, Aspetto, Avanzate, Informazioni, Account), le voci (Aggiorna le rose, Squadre e
+  rose, Regole, Novità), la rosa mia e di un'altra squadra; una scheda salvata da una versione di prima (Squadra, Altro,
+  Oggi...) apre la Formazione; Indietro e «‹ Impostazioni» tornano dove si era;
+- La mia lega porta alla mia squadra (con stemma, maglia e «Non è la tua squadra?») e alle altre; senza le rose degli altri
+  «Le altre squadre» non c'è; «Nuova stagione» compare lì quando serve;
+- Regole e scadenza: il regolamento incollato si salva con «Salva queste regole»; i singoli valori stanno dietro «Modifica i
+  valori»; la scadenza si salva appena cambia;
+- Avvisi: niente interruttori di prima, le ore tranquille con la loro fascia, e un cambio manda solo `silenzio`;
+- Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore.
 
 ## Aggiungere un test di comportamento (dieci righe)
 Un file `tests/browser/test_<cosa>.py`. Il segno `browser` lo mette da solo `conftest.py` a ogni test di questa cartella:

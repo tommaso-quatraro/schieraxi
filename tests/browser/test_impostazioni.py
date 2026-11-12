@@ -171,6 +171,7 @@ def test_un_indirizzo_di_prima_apre_impostazioni(web, vecchio, nuovo, atteso):
 ])
 def test_un_indirizzo_di_prima_apre_la_sua_pagina(web, vecchio, nuovo, atteso):
     solo(web, "prima")
+    web.risposta("/api/novita", [])                                      # Informazioni le chiede: lo scenario registrato non le ha
     web.apri(vecchio)
     assert titolo(web) == atteso
     assert web.pagina.url.endswith(nuovo), web.pagina.url

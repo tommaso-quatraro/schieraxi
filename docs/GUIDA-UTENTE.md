@@ -38,7 +38,7 @@ Parole che vedrai spesso:
 
 Per entrare ancora: nome utente e password, poi **Entra nell'app**. Se compare **Continua con Google**, puoi usarlo senza password. Se hai già un account con la stessa email, entra come sempre e collega Google da **Impostazioni > Il tuo account > Accessi**.
 
-Per chi gestisce l'app: **Impostazioni > Avanzate > Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**); sotto c'è anche il codice, per chi usa l'app per iPhone.
+Per chi gestisce l'app: **Impostazioni > Gestione > Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**); sotto c'è anche il codice, per chi usa l'app per iPhone.
 
 Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'email collegata ti arriva un codice a 6 cifre; altrimenti usi il codice di recupero. Se chi gestisce il server ha spento l'invio delle email, l'app lo dice e propone solo il codice di recupero (e in **Il tuo account** non si può collegare un'email). Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
@@ -59,7 +59,7 @@ Se ti fermi prima di caricare le rose (per esempio per mettere l'app sulla scher
    Il conto in alto («N da controllare») scende man mano che scegli o togli i giocatori in dubbio. Su un computer le squadre stanno affiancate.
    In alto scegli **Qual è la tua squadra?** (se aggiungi solo le rose degli altri, c'è anche la tua, già scelta). Sotto, **Cosa cambia rispetto a ora** elenca squadre aggiunte o tolte, scambi, svincolati presi, tagli e crediti.
    Un giocatore scritto due volte nella stessa rosa resta una volta sola, e te lo dice. Poi **Conferma e salva** (oppure **Annulla**: non si salva niente).
-3. **I tempi della lega.** Due domande: quando si chiude la formazione (all'inizio della prima partita o qualche minuto prima) e da quale giornata di Serie A è partita la lega. Servono perché promemoria e numeri delle giornate siano giusti; le trovi nelle impostazioni della tua lega su Leghe e le cambi quando vuoi in **Altro > Regole**, sezione **Tempi della lega**.
+3. **I tempi della lega.** Due domande: quando si chiude la formazione (all'inizio della prima partita o qualche minuto prima) e da quale giornata di Serie A è partita la lega. Servono perché promemoria e numeri delle giornate siano giusti; le trovi nelle impostazioni della tua lega su Leghe e le cambi quando vuoi in **Impostazioni > Regole e scadenza**, in cima.
 4. **Tutto pronto.** Puoi attivare gli avvisi e andare alla Formazione.
 
 Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le rilegge e ti chiede di ricontrollare; le scelte già fatte restano.
@@ -69,7 +69,7 @@ Se il file Excel della lega ha anche altri fogli (listone, calendario, classific
 
 Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo) va bene. Un codice sconosciuto compare tra i non trovati; se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone, in Lega, **Non riconosciuti**).
 
-Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Squadra > Aggiorna le rose**.
+Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Impostazioni > Aggiorna le rose**.
 
 ### Per chi entra in una lega già avviata
 
@@ -83,13 +83,13 @@ Se ti invitano in una lega che gioca già da un po':
 
 ### Le schede in basso
 
-**Formazione**, **Giornate**, **Squadra**, **Altro**. In cima a ogni schermata c'è il suo titolo; in Giornate, Squadra e Altro, sotto, la giornata, la tua squadra e l'ora dei dati. In alto a destra: la **lente** (cerca un giocatore), l'**ingranaggio** (Impostazioni) e le **frecce** (ricaricano i dati). Toccando un giocatore si apre la sua scheda.
+**Formazione**, **Giornate**, **Impostazioni**. In cima a ogni schermata c'è il suo titolo; in Formazione e Giornate, sotto, la giornata, la tua squadra e l'ora dei dati. In alto a destra la **lente** cerca un giocatore. Toccando un giocatore si apre la sua scheda. Le schede **Squadra** e **Altro** di prima non ci sono più: rose, squadre e regole stanno in **Impostazioni > La mia lega**, e i loro indirizzi salvati portano lì.
 
 Su uno schermo largo (computer, iPad in orizzontale) le schede stanno in alto, accanto al nome SchieraXI, con il campo **Cerca un giocatore** sempre aperto: scrivi e si apre la ricerca. Con Ctrl+clic (⌘+clic sul Mac) una scheda si apre in un'altra scheda del browser, per confrontare due schermate.
 
 Su uno schermo molto largo (computer con la finestra ampia) la scheda di un giocatore si apre in un pannello a destra, accanto alla pagina, senza coprirla: la pagina si stringe e si usa come sempre. Un clic su un altro giocatore cambia il pannello, così scorri i titolari uno dopo l'altro; **✕** o **Esc** lo chiudono. Nello stesso pannello si apre la scelta di chi mettere al posto di un titolare. La ricerca in alto mostra i risultati nel pannello mentre scrivi; **Invio** apre il primo, la freccia **↓** porta ai risultati (**↑** sul primo torna al campo). Con la finestra più stretta la scheda resta il pannello di sempre, sopra la pagina.
 
-Da tastiera: **1**-**3** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima. Un indirizzo salvato della vecchia schermata Oggi apre la Formazione.
+Da tastiera: **1**-**3** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima. Un indirizzo salvato della vecchia schermata Oggi apre la Formazione. L'app si riapre sull'ultima schermata fra Formazione e Giornate.
 
 Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate si dispongono in una colonna: la testata scorre via con la pagina, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due giocatori per fila.
 
@@ -149,24 +149,19 @@ Altre cose da sapere:
 - **Panchina** nell'ordine in cui entrano. In ogni ruolo viene prima chi vale di più quando gioca (il fantavoto atteso), anche se gioca meno spesso: una riserva entra solo se ha preso voto. Chi quasi certamente non gioca (meno del 20%) sta dopo gli altri.
 - Ogni giornata ha **due numeri**, come su Leghe: «Giornata 7 · 10ª di Serie A» vuol dire giornata 7 della **tua lega**, che è la 10ª di Serie A (in Formazione, in Giornate e negli avvisi). Se la lega è partita con il campionato i due numeri sono uguali. Per le stagioni passate c'è solo la Serie A: «10ª giornata di Serie A». Dove non c'è spazio (per esempio in un widget piccolo), solo «Giornata 8».
 - Se una partita della giornata è **anticipata** di qualche giorno, la scadenza resta quella del resto della giornata: puoi ancora cambiare la formazione, e i giocatori dell'anticipo mostrano già com'è andata la loro partita. Quando l'anticipo è cominciato, la formazione consigliata lascia dove sono i suoi giocatori (titolari, panchina o fuori): gli altri si spostano come al solito. Anche nella tua formazione, come nella lega, non si spostano più: chi era titolare nella formazione che vale (la tua, se l'hai cambiata, altrimenti la consigliata) resta titolare, e chi non lo era non entra. La scheda di un titolare dell'anticipo non ha **Sostituisci** e dice «Chi gioca in una partita già cominciata non si può più spostare.»; gli altri non compaiono fra i sostituti. Se un cambio li sposterebbe lo stesso, SchieraXI te lo dice: «Rossi gioca in una partita già cominciata: non si può più spostare.»
-- Se una partita della giornata è **rinviata**, sotto gli elenchi compare **Partita rinviata**: quali partite («UDI vs MIL»), la data del recupero (se c'è già) e i tuoi giocatori coinvolti. Sul campo i loro giocatori dicono **Rinviata** al posto di «gioca N%». Sotto, il menu **Per questa giornata i loro giocatori**: *aspettano il recupero* (conta il voto del recupero, restano schierabili), *restano senza voto* (entra la riserva) o *prendono il voto d'ufficio*. Di solito vale la regola della tua lega (Altro › Regole › Partite rinviate); se per una giornata la lega decide diversamente, cambiala qui: vale solo per quella giornata e i consigli si aggiornano subito. Nella scheda del giocatore il primo motivo spiega cosa succede.
+- Se una partita della giornata è **rinviata**, sotto gli elenchi compare **Partita rinviata**: quali partite («UDI vs MIL»), la data del recupero (se c'è già) e i tuoi giocatori coinvolti. Sul campo i loro giocatori dicono **Rinviata** al posto di «gioca N%». Sotto, il menu **Per questa giornata i loro giocatori**: *aspettano il recupero* (conta il voto del recupero, restano schierabili), *restano senza voto* (entra la riserva) o *prendono il voto d'ufficio*. Di solito vale la regola della tua lega (Impostazioni › Regole e scadenza › Modifica i valori › Partite rinviate); se per una giornata la lega decide diversamente, cambiala qui: vale solo per quella giornata e i consigli si aggiornano subito. Nella scheda del giocatore il primo motivo spiega cosa succede.
 
-### Squadra
+### La mia lega (in Impostazioni)
 
-- **Squadre e rose**: la tua squadra (si cambia con «Non è la tua squadra?»), **Stemma e maglia**, **Vedi la rosa**; tocca un'altra squadra per vedere rosa e formazione.
-  Nella rosa di una squadra, **Cambia il nome** corregge il nome (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono. Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra.
+Rose, squadre e regole stanno nella sezione **La mia lega** di Impostazioni (sezione 6). Ogni voce apre la sua pagina; **‹ Impostazioni**, in alto, torna indietro.
+
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
+- **La mia squadra** (accanto c'è il suo nome): la rosa della tua squadra, con **Stemma** e **Maglia** da caricare e i crediti. Se non è la tua, **Non è la tua squadra?** la cambia.
+  Nella rosa di una squadra, **Cambia il nome** corregge il nome (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono. Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra.
+- **Regole e scadenza**: in cima le due domande del primo avvio, **Quando si chiude la formazione?** e **Da quale giornata di Serie A è partita la lega?**: si salvano appena le cambi. Sotto, **Incolla il regolamento**: incolli il testo del regolamento di Leghe, tocchi **Riconosci le regole**, controlli cosa ha capito SchieraXI e tocchi **Salva queste regole**. I singoli valori (punteggi, modificatore difesa, moduli, panchina, partite rinviate, rosa e crediti, nome della lega) stanno dietro **Modifica i valori**, con **Salva le regole** in fondo. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6). Su uno schermo largo i tempi e il regolamento stanno a sinistra e i valori a destra.
+- **Le altre squadre**: l'elenco della lega; un tocco apre la rosa di una squadra e, da lì, la sua formazione consigliata. Le rose delle altre squadre possono essere nascoste da chi gestisce il server: allora la voce non c'è.
 
-Su uno schermo largo (computer con la finestra ampia) le voci di Squadra restano a sinistra e la voce scelta si apre a destra: da **Squadre e rose** ad **Aggiorna le rose** basta un clic, senza tornare indietro. Riaprendo Squadra trovi la voce dell'ultima volta. Il menu resta accanto anche nella rosa di una squadra. Con la finestra più stretta si vede una cosa alla volta e **‹ Squadra** riporta alle voci. Lo stesso vale per le voci di **Altro**.
-Nella rosa di una squadra i nomi delle colonne («Partita», «Fantavoto atteso») restano in vista in alto mentre scorri.
-
-### Altro
-
-- **Regole** (si aprono subito): punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare; con **Applica ai campi** le righe cambiate restano evidenziate per un attimo. Su uno schermo largo il regolamento da incollare sta a sinistra e le regole a destra, così vedi insieme cosa ha riconosciuto e i valori che cambia. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6).
-
-I **crediti** di una squadra si scrivono nella sua rosa (**Squadra > Squadre e rose**, poi la squadra). Le **Novità** si leggono in **Impostazioni > Informazioni**. A fine campionato, quando le rose sono ancora quelle dell'anno prima, in cima a Squadra e ad Altro compare l'avviso **Nuova stagione**: un tocco apre il pulsante che archivia le rose e riparte, senza cancellare niente.
-
-Le rose delle altre squadre possono essere nascoste da chi gestisce il server: allora in Squadra vedi solo la tua.
+Nella rosa di una squadra i nomi delle colonne («Partita», «Fantavoto atteso») restano in vista in alto mentre scorri. I **crediti** di una squadra si scrivono nella sua rosa. A fine campionato, quando le rose sono ancora quelle dell'anno prima, in cima a **La mia lega** compare l'avviso **Nuova stagione**: un tocco apre il pulsante che archivia le rose e riparte, senza cancellare niente.
 
 ## 4. Durante la giornata
 
@@ -177,13 +172,15 @@ La **Formazione** resta la stessa schermata; cambia la testa, con la fase della 
   Se sei entrato in SchieraXI quando la giornata era già iniziata e non hai una formazione per lei, non vedi punti: in testa leggi che quella giornata è già iniziata e che la formazione è quella della prossima, con la sua scadenza.
 - **Giornata finita** (per due giorni): in testa com'è andata, per esempio «Giornata 7 · 10ª di Serie A: finita», con i punti fatti e quelli attesi e il pulsante **Com'è andata**, che apre la pagina **Giornate** su quella giornata. Se hai schierato una formazione tua e la consigliata ha fatto punti diversi, una riga dice quanti. Se non hai una formazione tua, o quella salvata non è più valida, contano i punti della consigliata: SchieraXI se la segna da solo pochi minuti prima della scadenza, anche se non hai aperto l'app. Una partita rinviata non tiene aperta la giornata: se la tua lega aspetta il recupero, una riga lo dice («Manca il recupero di…: i punti possono ancora cambiare»). Sotto c'è già la formazione della prossima giornata, con la sua scadenza: la puoi preparare subito.
 
-### Avvisi sul telefono (Impostazioni > Notifiche)
+### Avvisi sul telefono (Impostazioni > Avvisi)
+
+Nella web app gli avvisi si accendono e si spengono con un interruttore solo, **Avvisi su questo dispositivo**, più le **Ore tranquille** (di solito dalle 23 alle 7). Quali avvisi partono lo decide il server; le scelte fatte con le versioni di prima o con l'app per iPhone (per esempio il promemoria di un quarto d'ora prima) restano come sono.
 
 Ti scrivono quando:
 
 - la **formazione consigliata cambia**;
 - **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni (solo se anche la formazione consigliata lo toglie, come nelle decisioni in cima alla Formazione);
-- **il consiglio cambia vicino alla scadenza** (voce **Avviso se il consiglio cambia**: 30 minuti, 1 ora o 1 ora e mezza prima, oppure Spento; di base 1 ora). Se le ultime probabili o un infortunio cambiano la formazione da schierare, ti arriva il motivo in una frase, per esempio «Castoldi è infortunato: metti Bonvicini e passa al 3-4-3 (+1,8 punti attesi)». Arriva solo se vale almeno un punto atteso, al massimo due volte per giornata, mai nelle ore tranquille. In quel periodo sostituisce gli avvisi sui cambi delle probabili dei tuoi giocatori, così la stessa notizia non arriva due volte;
+- **il consiglio cambia vicino alla scadenza** (di base da 1 ora prima; nell'app per iPhone si sceglie anche 30 minuti, 1 ora e mezza o Spento). Se le ultime probabili o un infortunio cambiano la formazione da schierare, ti arriva il motivo in una frase, per esempio «Castoldi è infortunato: metti Bonvicini e passa al 3-4-3 (+1,8 punti attesi)». Arriva solo se vale almeno un punto atteso, al massimo due volte per giornata, mai nelle ore tranquille. In quel periodo sostituisce gli avvisi sui cambi delle probabili dei tuoi giocatori, così la stessa notizia non arriva due volte;
 - **un'ora e un quarto d'ora prima** della scadenza della formazione (non arrivano se hai una formazione salvata, cioè se l'hai cambiata tu o hai spuntato **L'ho messa**, a meno che un tuo titolare sia diventato indisponibile);
 - **reparto scoperto**: troppo pochi giocatori disponibili in un reparto;
 - il **riepilogo** della giornata, con i punti della formazione che avevi: la tua se l'hai salvata e vale ancora, altrimenti la consigliata come l'aveva fissata SchieraXI alla scadenza, la stessa che vedi in Formazione e in Giornate.
@@ -192,11 +189,11 @@ Una formazione salvata non più valida (per esempio con un giocatore ceduto) per
 
 Gli avvisi dicono le cose a parole (per esempio «ora probabile titolare», senza percentuali) e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
 
-Attivazione: nella web app, sezione **Notifiche di questa app**, tocca **Attiva**; **Manda un avviso di prova** controlla che funzioni. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente). **Ore tranquille**: scegli una fascia (per esempio dalle 23 alle 7) in cui non arriva niente; ciò che cade lì arriva dopo.
+Attivazione: nella web app, **Impostazioni > Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo.
 
 Nell'app per iPhone e iPad (Impostazioni > Notifiche) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
-Se le notifiche smettono di arrivare dopo un cambio di chiave del server: **Disattiva**, poi **Attiva** nella stessa sezione.
+Se le notifiche smettono di arrivare dopo un cambio di chiave del server: spegni e riaccendi **Avvisi su questo dispositivo**.
 
 ### Widget sull'iPhone
 
@@ -226,18 +223,21 @@ Se gli 11 non sono quelli che hai schierato davvero nell'app della lega, tocca *
 
   Sotto c'è l'andamento giornata per giornata. Con meno di 8 giornate un avviso dice che i dati sono ancora pochi e i numeri possono cambiare molto. Le giornate passate prima che l'app registrasse i suoi numeri sono ricostruite con i soli dati di allora, e c'è scritto.
 
-## 6. Impostazioni (l'ingranaggio)
+## 6. Impostazioni
 
-Al telefono tocca un gruppo per aprirlo; **Impostazioni** (con la freccia, in alto) torna all'elenco. Su uno schermo più largo
-(tablet, computer) i gruppi stanno a sinistra e quello aperto si vede a destra; il gruppo aperto ha una linea colorata a sinistra.
+**Impostazioni** è la terza scheda della barra. È una pagina sola: le cose da scegliere stanno lì, e le righe con la freccia aprono una
+pagina loro, con **‹ Impostazioni** in alto per tornare. Su uno schermo più largo (tablet, computer) le sezioni stanno in due colonne.
 
-| Gruppo | Cosa contiene |
+| Sezione | Cosa contiene |
 |---|---|
-| Il tuo account | nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci** |
-| Aspetto | lingua (italiano o inglese), tema (automatico, chiaro, scuro). La dimensione del testo è quella del telefono o dello zoom del browser |
-| Notifiche | quali avvisi ricevere e ore tranquille (sezione 4) |
+| Avvisi | **Avvisi su questo dispositivo** (acceso o spento) e **Ore tranquille** (sezione 4) |
+| La mia lega | **Aggiorna le rose**, **La mia squadra**, **Regole e scadenza**, **Le altre squadre** (sezione 3, «La mia lega») |
+| Il tuo account | solo con gli account: nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci** |
+| Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). La dimensione del testo è quella del telefono o dello zoom del browser |
 | Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente (licenza AGPL-3.0, se il server lo indica), versione e **Novità**: le ultime dieci versioni, le altre con **Mostra le versioni precedenti** |
-| Avanzate | solo per chi gestisce il server: **Stato dei dati**, inviti, utenti, errori |
+| Gestione | solo per chi gestisce il server: **Aggiorna i dati** (scarica subito dalle fonti; di solito il server lo fa da solo), **Stato dei dati**, inviti, codici per chi ha perso la password, utenti, errori. Sul server senza account anche **Avvisi anche per l'app nativa** |
+
+Gli indirizzi di prima (le schede Squadra e Altro, i gruppi delle impostazioni come Notifiche e Avanzate) aprono la voce che ne ha preso il posto.
 
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, seguiti, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi > Salva su File**.
 - **Stato dei dati > Registro delle giornate** (solo per chi gestisce il server): prima di ogni giornata l'app salva i numeri che mostra per tutta la Serie A e, a giornata finita, li confronta con com'è andata. Per tre misure (errore del fantavoto atteso contro la fantamedia, «gioca N%» contro chi ha giocato davvero, punti veri dentro la fascia «8 volte su 10») c'è la media delle ultime giornate misurate, la soglia e se **regge** o **non regge**; finché le giornate misurate sono meno di 8 c'è scritto quante ne servono ancora. Sotto, le **Giornate perse**: quelle non salvate prima della prima partita, con il motivo.
@@ -245,7 +245,7 @@ Al telefono tocca un gruppo per aprirlo; **Impostazioni** (con la freccia, in al
 - **Stato dei dati > Consiglio di formazione** (solo per chi gestisce il server): dopo ogni giornata l'app misura la formazione consigliata che mostrava prima della scadenza, sommando i Diari di tutti. Quattro misure: punti in più della consigliata rispetto alla scelta semplice (quella di chi non ha l'app: schiera chi ha preso voto la giornata prima e ha la fantamedia più alta) e rispetto alla formazione schierata, quando è diversa; cambi della consigliata nelle 24 ore prima della scadenza; titolari che rischiano di non giocare mentre un compagno di ruolo gioca; scelte strane senza un motivo detto. Per ognuna la media delle ultime giornate, la soglia e se **regge** o **non regge**; finché le giornate sono meno di 8 c'è scritto quante ne servono ancora.
 - **Stato dei dati > Quanto ci azzecca il modello > Taratura con le probabili** (solo per chi gestisce il server): la riga sotto i gruppi dice a che punto è la taratura di «gioca N%» con le probabili formazioni. **In attesa**: quante giornate giocate con le probabili salvate prima della prima partita ci sono, su quante ne servono per la prima prova. **Attiva**: da quando, quale versione e, sulle ultime giornate di prova, il punteggio di Brier contro quello della formula di prima e lo scarto in punti. **Non attiva**: perché (per esempio «non sbaglia meno dei numeri di partenza», o «la prova passa, si accende con 8 giornate»). **Spenta a mano**. Negli **Ultimi aggiornamenti** dei dati la riga **Taratura di «gioca N%»** ha l'ora dell'ultimo cambio.
 - **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
-- **Stemma e maglia**: da **Squadra > La mia squadra e rosa > Stemma e maglia** (con le squadre degli altri accese la voce si chiama **Squadre e rose**). Scegli la squadra, poi stemma o maglia, poi carica l'immagine da file o foto (PNG, JPEG o WebP, massimo 4 MB). Da un indirizzo web (solo `https://`) o dal menu Condividi si può solo se chi gestisce l'app ha acceso **Immagini da indirizzo web**. Carica solo immagini della tua squadra; **Rimuovi** la toglie.
+- **Stemma e maglia**: da **Impostazioni > La mia squadra**, con **Carica stemma** e **Carica maglia** (le altre squadre dalla loro rosa, in **Le altre squadre**). Dal menu Condividi del telefono si apre il foglio **Stemma e maglia**: scegli la squadra, poi stemma o maglia (PNG, JPEG o WebP, massimo 4 MB). Da un indirizzo web (solo `https://`) o dal menu Condividi si può solo se chi gestisce l'app ha acceso **Immagini da indirizzo web**. Carica solo immagini della tua squadra; **Rimuovi** la toglie.
 
 ### Installare SchieraXI dal browser
 
@@ -265,7 +265,7 @@ Sulla schermata Home, a schermo intero, senza store:
 
 **Perché la formazione è diversa da ieri?** Sono cambiate probabili, infortuni o squalifiche. Se l'hai cambiata tu o hai spuntato **L'ho messa**, la tua non cambia da sola.
 
-**Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Altro › Regole e, per una sola giornata, da **Partita rinviata** in fondo alla Formazione. Anche Giornate conta i punti di quella giornata con la stessa regola.
+**Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Impostazioni › Regole e scadenza › Modifica i valori e, per una sola giornata, da **Partita rinviata** in fondo alla Formazione. Anche Giornate conta i punti di quella giornata con la stessa regola.
 
 **Più telefoni?** Sì, con lo stesso account. Se un altro telefono ha cambiato i dati, l'app te lo dice e ricarica.
 
@@ -277,7 +277,7 @@ Sulla schermata Home, a schermo intero, senza store:
 
 | Cosa vedi | Cosa fare |
 |---|---|
-| «Server non raggiungibile» | Controlla la connessione, poi tocca le frecce in alto. |
+| «Server non raggiungibile» | Controlla la connessione, poi tocca **Riprova** (o ricarica la pagina). |
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
 | «Troppi tentativi» | Aspetta il tempo indicato e riprova. |
@@ -285,7 +285,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Nessuna rosa importata» | Importa le rose (sezione 2). |
 | «Non riesco a leggere la formazione che hai salvato» | Tocca **Riprova**. Finché non si legge, la Formazione non fa cambiare niente: così la tua scelta non viene sovrascritta. |
 | «Serve l'accesso» sul widget | Apri l'app sull'iPhone ed entra. |
-| Dati che non sembrano aggiornati | Tocca le frecce. Se non cambia, chiedi a chi gestisce l'app di controllare lo **Stato dei dati**. |
+| Dati che non sembrano aggiornati | Ricarica la pagina. Se non cambia, chiedi a chi gestisce l'app di controllare **Impostazioni > Gestione > Stato dei dati**. |
 | File delle rose rovinato | L'app lo dice e spiega come rimediare: riesporta le rose da Leghe e riprova. |
 
 Se l'errore non è in lista, annota cosa stavi facendo e a che ora, e scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
