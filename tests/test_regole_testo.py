@@ -108,6 +108,146 @@ def test_posti_della_panchina_dal_testo():
     assert v["panchina.posti"] == {"P": 2, "D": 3, "C": 3, "A": 3} and v["panchina.numero"] == 11
 
 
+# ---------------------------------------------------------------- negazioni con parole in mezzo (#655)
+# Frasi inventate, scritte nei modi in cui si trovano nei regolamenti: «non» con «è», «sono», «mai», «si» in mezzo.
+CAMBIO_MODULO_NEGATO = [
+    "Cambio modulo: non è consentito",
+    "Il cambio di modulo non è ammesso",
+    "Le sostituzioni sono al massimo 5 e non è consentito il cambio modulo",
+    "Non è consentito il cambio modulo",
+    "Cambi di modulo: non sono ammessi",
+    "Cambi di modulo non sono consentiti",
+    "Cambio modulo: non previsto",
+    "Cambio modulo: non possibile",
+    "Cambio modulo: non utilizzato",
+    "Cambio modulo non permesso",
+    "Cambio modulo non attivo",
+    "Il cambio di modulo non è mai consentito",
+    "Il cambio modulo non viene applicato",
+    "Il cambio modulo non può essere attivato",
+    "Cambio modulo: non si può",
+    "Cambio di modulo: non e' consentito",
+    "CAMBIO MODULO: NON È AMMESSO",
+    "Non è consentito, in nessun caso, il cambio modulo",
+]
+
+
+@pytest.mark.parametrize("riga", CAMBIO_MODULO_NEGATO)
+def test_cambio_modulo_negato_anche_con_parole_in_mezzo(riga):
+    assert _per_chiave(regole_testo.interpreta(riga))["panchina.cambio_modulo"] is False
+
+
+MODIFICATORE_NEGATO = [
+    "Modificatore difesa: non è attivo",
+    "Il modificatore difesa non è previsto",
+    "I modificatori di difesa non sono attivi",
+    "Modificatore di difesa non utilizzato",
+    "Modificatore difesa: non viene applicato",
+    "Il modificatore della difesa non si applica",
+    "Modificatore difesa: non è in uso",
+    "Il modificatore difesa non è stato attivato",
+    "Modificatore difesa: non c'è",
+    "Modificatore difesa, non attivo",
+]
+
+
+@pytest.mark.parametrize("riga", MODIFICATORE_NEGATO)
+def test_modificatore_negato_anche_con_parole_in_mezzo(riga):
+    assert _per_chiave(regole_testo.interpreta(riga))["modificatore_difesa.attivo"] is False
+
+
+MODULI_NEGATI = [
+    "Non è ammesso il modulo 5-4-1",
+    "Il modulo 5-4-1 non è consentito",
+    "Il modulo 3-3-4 non è utilizzabile",
+    "Formazione con modulo 4-4-2 non permessa",
+    "Il 5-4-1 non va bene come modulo",
+    "Moduli: 3-4-3, 4-4-2, 4-3-3 (il 5-4-1 non si può usare)",
+    "I moduli 5-4-1 e 3-3-4 non sono validi",
+]
+
+
+@pytest.mark.parametrize("riga", MODULI_NEGATI)
+def test_moduli_con_un_non_restano_da_controllare(riga):
+    r = regole_testo.interpreta(riga)
+    assert "moduli" not in _per_chiave(r)
+    assert r["non_riconosciute"] == [riga]
+
+
+PANCHINA_NEGATA = [
+    "Panchina non libera",
+    "Panchina: non è libera",
+    "Panchina di 7 giocatori, non libera",
+    "Panchina non per ruolo",
+    "La panchina non è fissa",
+    "Le riserve non sono libere",
+]
+
+
+@pytest.mark.parametrize("riga", PANCHINA_NEGATA)
+def test_tipo_di_panchina_negato_non_si_riconosce(riga):
+    assert "panchina.tipo" not in _per_chiave(regole_testo.interpreta(riga))
+
+
+@pytest.mark.parametrize("riga", ["La panchina non è vincolata al ruolo", "Panchina: le riserve non sono vincolate al ruolo"])
+def test_panchina_non_vincolata_al_ruolo_anche_con_il_verbo_e_libera(riga):
+    assert _per_chiave(regole_testo.interpreta(riga))["panchina.tipo"] == "libera"
+
+
+@pytest.mark.parametrize("riga, chiave", [
+    ("Le riserve non sono ammesse oltre la terza e il cambio modulo è consentito", "panchina.cambio_modulo"),
+    ("Il cambio modulo non è, in nessun caso, consentito", "panchina.cambio_modulo"),
+    ("Cambio modulo: non", "panchina.cambio_modulo"),
+    ("Cambio modulo: non attivo; cambio modulo consentito in coppa", "panchina.cambio_modulo"),
+    ("Modificatore difesa: non in questa lega", "modificatore_difesa.attivo"),
+])
+def test_riga_dubbia_non_propone_niente(riga, chiave):
+    """Un «sì» e un «non» per la stessa regola, o un «non» senza la parola che nega: la riga non si riconosce."""
+    assert chiave not in _per_chiave(regole_testo.interpreta(riga))
+
+
+# Frasi che si leggevano già bene: la correzione delle negazioni non le cambia.
+COME_PRIMA = {
+    "Cambio modulo: non consentito": {"panchina.cambio_modulo": False},
+    "Cambio modulo consentito": {"panchina.cambio_modulo": True},
+    "Il cambio modulo è consentito": {"panchina.cambio_modulo": True},
+    "Cambio modulo: sì": {"panchina.cambio_modulo": True},
+    "Cambio modulo: no": {"panchina.cambio_modulo": False},
+    "Cambio modulo vietato": {"panchina.cambio_modulo": False},
+    "Cambio modulo disattivato": {"panchina.cambio_modulo": False},
+    "Cambio modulo consentito se il titolare non ha un sostituto nel suo ruolo": {"panchina.cambio_modulo": True},
+    "Il cambio modulo è consentito solo se non si superano le 3 sostituzioni":
+        {"panchina.max_sostituzioni": 3, "panchina.cambio_modulo": True},
+    "Non sono consentite più di 3 sostituzioni, cambio modulo consentito":
+        {"panchina.max_sostituzioni": 3, "panchina.cambio_modulo": True},
+    "Le riserve non sono ammesse oltre la terza; cambio modulo consentito": {"panchina.cambio_modulo": True},
+    "Modificatore difesa": {"modificatore_difesa.attivo": True},
+    "Modificatore difesa attivo": {"modificatore_difesa.attivo": True},
+    "Modificatore difesa: non attivo": {"modificatore_difesa.attivo": False},
+    "Modificatore della difesa: non previsto": {"modificatore_difesa.attivo": False},
+    "Modificatore difesa: no": {"modificatore_difesa.attivo": False},
+    "Nessun modificatore difesa": {"modificatore_difesa.attivo": False},
+    "Modificatore difesa: assente": {"modificatore_difesa.attivo": False},
+    "Modificatore difesa disattivato": {"modificatore_difesa.attivo": False},
+    "Modificatore difesa (non conta il portiere)": {"modificatore_difesa.attivo": True},
+    "Modificatore difesa (non si applica al portiere)": {"modificatore_difesa.attivo": True},
+    "Il modificatore della difesa, le riserve non sono consentite": {"modificatore_difesa.attivo": True},
+    "Modificatore difesa attivo, non conta il portiere": {"modificatore_difesa.attivo": True},
+    "Moduli ammessi: 3-4-3, 4-4-2": {"moduli": ["3-4-3", "4-4-2"]},
+    "Moduli ammessi: 343, 352, 433, 442": {"moduli": ["3-4-3", "3-5-2", "4-3-3", "4-4-2"]},
+    "Panchina non vincolata al ruolo": {"panchina.tipo": "libera"},
+    "Panchina: 7 riserve, non vincolate al ruolo": {"panchina.numero": 7, "panchina.tipo": "libera"},
+    "Panchina libera: se un titolare non gioca entra la prima riserva disponibile": {"panchina.tipo": "libera"},
+    "Panchina per ruolo: se un titolare non gioca entra la prima riserva del suo ruolo": {"panchina.tipo": "per_ruolo"},
+    "Riserve non libere: entrano per ruolo": {"panchina.tipo": "per_ruolo"},
+}
+
+
+@pytest.mark.parametrize("riga", sorted(COME_PRIMA))
+def test_frasi_che_si_leggevano_bene_restano_uguali(riga):
+    assert _per_chiave(regole_testo.interpreta(riga)) == COME_PRIMA[riga]
+
+
 # ---------------------------------------------------------------- testi costruiti male: la lettura resta veloce
 N = 10_000
 # Una riga di circa N caratteri per ogni forma che faceva lavorare le espressioni regolari in tempo quadratico (lunghe file di spazi,
@@ -129,6 +269,12 @@ CATTIVI = {
     "cifre prima della panchina": "panchina x" + "1" * N + "x",
     "segni e spazi": "assist " + "- " * (N // 2),
     "lettere che si allungano": "gol: " + "ﷺ" * (N // 2),
+    "parola non ripetuta": "cambio modulo " + "non " * (N // 4),
+    "negazioni ripetute": "modificatore difesa " + "non e consentito " * (N // 17),
+    "negazioni di panchina ripetute": "panchina " + "non e libera, " * (N // 14),
+    "spazi dopo non": "panchina libera, cambio modulo non" + " " * N + "x",
+    "cambio modulo in tanti pezzi": "cambio modulo, " * (N // 15) + "non e consentito",
+    "modificatore in tanti pezzi": "modificatore difesa; " * (N // 21) + "attivo",
 }
 
 

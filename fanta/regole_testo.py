@@ -26,6 +26,22 @@ RUOLI = {"portier": "P", "difensor": "D", "centrocamp": "C", "attaccant": "A"}
 NOMI_PLURALE = {"P": "portieri", "D": "difensori", "C": "centrocampisti", "A": "attaccanti"}
 NOMI_SINGOLARE = {"P": "portiere", "D": "difensore", "C": "centrocampista", "A": "attaccante"}
 
+# Negazioni. Un «non» nega le parole che lo seguono quando in mezzo ci sono solo parole di passaggio: «non è consentito»,
+# «non sono mai stati previsti», «non si può», «non è, in nessun caso, ammesso». Tutto in tempo lineare: tratti brevi e limitati.
+PASSAGGIO = (r"e|sono|viene|vengono|verra|verranno|sara|saranno|risulta|risultano|essere|stato|stata|stati|state|mai|piu"
+             r"|ancora|affatto|assolutamente|in|alcun|alcuna|nessun|modo|caso|si|ci|lo|la|li|le|il|i|gli|un|una|ne"
+             r"|puo|possono|potra")
+SEP = r"[\s',]{1,4}"
+# Le parole che dicono se una regola sì/no c'è: il loro «non» la spegne.
+STATO_CAMBIO_MODULO = (r"consent|ammess|ammett|permess|permett|possibil|previst|utilizz|abilitat|attiv|applic|concess|valid"
+                       r"|puo|us(?:a|o|at)")
+STATO_MODIFICATORE = (r"attiv|previst|utilizz|applic|abilitat|consent|ammess|valid|vigore|present|esist|c'e"
+                      r"|us(?:a|o|at)")
+CAMBIO_MODULO = r"cambio (?:di )?modulo|cambi di modulo"
+PANCHINA_LIBERA = r"libera|senza vincol|nessun vincolo|qualsiasi ruolo"
+PANCHINA_PER_RUOLO = rf"per ruolo|fissa|vincolat{SUFFISSO} (?:al|dal) ruolo|ruoli? fiss"
+NIENTE = "niente"                        # un pezzo di riga che nomina una regola sì/no senza dire se c'è
+
 # (chiave, etichetta, schemi, segno) in ordine: le regole più specifiche prima. segno: +1 bonus, -1 malus.
 BONUS = [
     ("bonus.rigore_parato", "Rigore parato", [rf"rigor{SUFFISSO} parat"], 1),
@@ -68,6 +84,61 @@ def _primo_numero(testo: str) -> float | None:
     return _valore(m.group()) if m else None
 
 
+def _negate(testo: str, parole: str) -> tuple[int, int]:
+    """Quante volte le parole compaiono nel testo e quante di queste sono negate da un «non» (vedi PASSAGGIO)."""
+    parola = re.compile(rf"\b(?:{parole})")
+    tutte = {m.start() for m in parola.finditer(testo)}
+    negate: set[int] = set()
+    for m in re.finditer(rf"\bnon(?:{SEP}(?:(?:{PASSAGGIO})\b|(?:{parole})\w{{0,20}})){{0,5}}", testo):
+        negate |= {p.start() for p in parola.finditer(testo, m.start(), m.end())}
+    return len(tutte), len(negate & tutte)
+
+
+def _si_no(riga: str, soggetto: str, stato: str, no: str) -> bool | None:
+    """Valore di una regola sì/no (cambio modulo, modificatore difesa), None se la riga è dubbia e quindi non si riconosce.
+
+    Conta il pezzo della riga (fra virgole, punti, punti e virgola, parentesi) che nomina la regola, così un «non» detto di
+    altro («non sono consentite più di 3 sostituzioni, cambio modulo consentito») non la spegne. Se quel pezzo dice solo il
+    nome, decidono i pezzi fatti solo di un sì o di un no («Modificatore difesa, non attivo»); se non ce ne sono, il nome da
+    solo vale sì, come un titolo («Modificatore difesa»). Dubbi: un «sì» e un «non» per la stessa regola, o un «non» senza
+    la parola che nega.
+    """
+    pezzi = re.split(r"[,;.()]", riga)
+    valori = {_detto(p, stato, no) for p in pezzi if re.search(soggetto, p)} - {NIENTE}
+    if not valori:
+        predicato = rf"\W*(?:non(?:{SEP}(?:{PASSAGGIO})\b){{0,5}}{SEP})?(?:{stato}|{no})\w{{0,20}}\W*"
+        valori = {_detto(p, stato, no) for p in pezzi if re.fullmatch(predicato, p)} or {True}
+    return valori.pop() if len(valori) == 1 else None
+
+
+def _detto(testo: str, stato: str, no: str) -> bool | None | str:
+    """Cosa dice il testo della regola: True, False, None se è dubbio, NIENTE se non dice niente."""
+    tutte, negate = _negate(testo, stato)
+    if negate:
+        return False if negate == tutte else None
+    if re.search(no, testo):
+        return False
+    if tutte:
+        return True
+    return None if re.search(r"\bnon\b", testo) else NIENTE
+
+
+def _tipo_panchina(riga: str) -> str | None:
+    """«libera», «per_ruolo» o None. «non (è) vincolata» vuol dire libera; un tipo negato («non libera», «non è fissa») vale
+    solo se la riga dice l'altro («riserve non libere: entrano per ruolo»), altrimenti la riga non si riconosce."""
+    testo = re.sub(rf"\bnon{SEP}(?:(?:e|sono){SEP})?vincolat{SUFFISSO}", "libera", riga)
+    libera, per_ruolo = re.search(PANCHINA_LIBERA, testo), re.search(PANCHINA_PER_RUOLO, testo)
+    libera_negata = _negate(testo, r"liber|qualsiasi ruolo")[1]
+    ruolo_negato = _negate(testo, r"per ruolo|fiss|vincolat")[1]
+    if libera_negata or ruolo_negato:
+        if libera_negata and not ruolo_negato and per_ruolo:
+            return "per_ruolo"
+        if ruolo_negato and not libera_negata and libera:
+            return "libera"
+        return None
+    return "libera" if libera else "per_ruolo" if per_ruolo else None
+
+
 class TestoTroppoLungo(ValueError):
     """Il regolamento incollato supera i tetti: il messaggio è una frase per chi usa l'app (il server risponde 422)."""
     stato = 422
@@ -101,8 +172,9 @@ def interpreta(testo: str) -> dict:
         # ---- modificatore difesa: titolo, "attivo", difensori minimi, fasce
         if "modificator" in riga and "difes" in riga:
             in_modificatore = True
-            imposta("modificatore_difesa.attivo", "Modificatore difesa attivo",
-                    not re.search(r"non attiv|disattiv|\bno\b|assent|nessun|non previst", riga), n)
+            attivo = _si_no(riga, r"modificator", STATO_MODIFICATORE, r"disattiv|\bno\b|assent|nessun")
+            if attivo is not None:
+                imposta("modificatore_difesa.attivo", "Modificatore difesa attivo", attivo, n)
             continue
         if in_modificatore:
             m = re.search(rf"difensor{SUFFISSO}\s*(?:minim{SUFFISSO}|almeno)\D{{0,6}}\b([3-6])\b(?![.,]\d)"
@@ -146,7 +218,8 @@ def interpreta(testo: str) -> dict:
         if trovato:
             continue
         # ---- moduli, panchina, rosa, crediti
-        if re.search(r"modul|formazion", riga) and not re.search(r"non (?:sono )?(?:ammess|consent|valid)|esclus|vietat|tranne|eccetto", riga):
+        # un «non» in una riga di moduli può togliere un modulo dall'elenco («il 5-4-1 non è ammesso»): la riga resta da controllare
+        if re.search(r"modul|formazion", riga) and not re.search(r"\bnon\b|esclus|vietat|tranne|eccetto", riga):
             trovati = {f"{a}-{b}-{c}" for a, b, c in re.findall(r"\b([2-5])\s*-\s*([1-6])\s*-\s*([0-6])\b", riga)}
             trovati |= {f"{t[0]}-{t[1]}-{t[2]}" for t in re.findall(r"\b([2-5][1-6][0-6])\b", riga)}
             trovati = {m for m in trovati if sum(map(int, m.split("-"))) == 10}
@@ -166,18 +239,16 @@ def interpreta(testo: str) -> dict:
             if (nm := re.search(rf"(?:panchin{SUFFISSO}|riserv{SUFFISSO})\D{{0,25}}(\d+)|(?<!\d)(\d+)\s*(?:panchin|riserv)", riga)) \
                     and (numero := _intero(nm.group(1) or nm.group(2))) is not None:
                 imposta("panchina.numero", "Giocatori in panchina", numero, n)
-            if re.search(r"libera|senza vincol|non vincolat|nessun vincolo|qualsiasi ruolo", riga):
-                imposta("panchina.tipo", "Ordine dei cambi", "libera", n)
-            elif re.search(rf"per ruolo|fissa|vincolat{SUFFISSO} (?:al|dal) ruolo|ruoli? fiss", riga):
-                imposta("panchina.tipo", "Ordine dei cambi", "per_ruolo", n)
+            if tipo := _tipo_panchina(riga):
+                imposta("panchina.tipo", "Ordine dei cambi", tipo, n)
         if re.search(r"sostituzion|cambi", riga) \
                 and (ns := re.search(rf"(?:massim{SUFFISSO}|max|consentit{SUFFISSO}|fino a|al massimo)\D{{0,15}}(\d+)"
                                      r"|(?<!\d)(\d+)\s*(?:sostituzion|cambi)", riga)) \
                 and (numero := _intero(ns.group(1) or ns.group(2))) is not None:
             imposta("panchina.max_sostituzioni", "Sostituzioni massime", numero, n)
-        if re.search(r"cambio (?:di )?modulo|cambi di modulo", riga):
-            imposta("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni",
-                    not re.search(r"non (?:consent|ammess)|\bno\b|disattiv|vietat", riga), n)
+        if re.search(CAMBIO_MODULO, riga) \
+                and (cambio := _si_no(riga, CAMBIO_MODULO, STATO_CAMBIO_MODULO, r"\bno\b|disattiv|vietat")) is not None:
+            imposta("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", cambio, n)
         if re.search(r"credit", riga) and re.search(r"inizial|a disposizione|parte con|budget", riga) and not re.search(r"residu|giornata|speso", riga) \
                 and (nc := re.search(r"\d+", riga)) and (numero := _intero(nc.group())) is not None:
             imposta("crediti_iniziali", "Crediti iniziali", numero, n)
