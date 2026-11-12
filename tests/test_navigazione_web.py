@@ -239,7 +239,9 @@ def test_pagina_scrive_il_titolo_della_finestra_e_tiene_il_focus_sul_titolo():
         "const chiamate = []; const stato = { vista: 'mercato' };",
         "const t = k => ({ 'nav.squadra': 'Squadra' }[k] || k); const esc = x => String(x ?? '').replace(/</g, '&lt;');",
         "const rigaStato = () => ''; const fDataOra = () => '';",
-        "let html = ''; const contenuto = { classList: { toggle() {} }, set innerHTML(v) { html = v; } };",
+        "let html = ''; const attributi = {};",
+        "const contenuto = { classList: { toggle() {} }, set innerHTML(v) { html = v; },",
+        "  setAttribute(n, v) { attributi[n] = v; }, removeAttribute(n) { delete attributi[n]; } };",
         "const document = { title: '', activeElement: null };",
         "const $ = s => (s === '#titolo-pagina' ? { focus(o) { chiamate.push(['focus-titolo', !!(o && o.preventScroll)]); } } : null);",
         APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")], _riga("const SCHEDA_DI = "),
@@ -249,11 +251,15 @@ def test_pagina_scrive_il_titolo_della_finestra_e_tiene_il_focus_sul_titolo():
         pagina("<p>x</p>"); esiti.push([document.title, html.includes('tabindex="-1"'), chiamate.splice(0)]);
         document.activeElement = { id: "titolo-pagina" };
         pagina("<p>y</p>", { titolo: "Real <Esempio>" }); esiti.push([document.title, html.includes("Real &lt;Esempio>"), chiamate.splice(0)]);
-        console.log(JSON.stringify(esiti));
+        const occupata = [];                              // aria-busy dell'area principale: solo mentre carica
+        pagina("<p>carico</p>", { carica: true }); occupata.push(attributi["aria-busy"] ?? null);
+        pagina("<p>pronta</p>"); occupata.push(attributi["aria-busy"] ?? null);
+        console.log(JSON.stringify([...esiti, occupata]));
         """,
     ])
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
-    (t1, tab, c1), (t2, sicuro, c2) = json.loads(r.stdout.strip().splitlines()[-1])
+    (t1, tab, c1), (t2, sicuro, c2), occupata = json.loads(r.stdout.strip().splitlines()[-1])
     assert t1 == "Squadra · SchieraXI" and tab and c1 == []
     assert t2 == "Real <Esempio> · SchieraXI" and sicuro and c2 == [["focus-titolo", True]]
+    assert occupata == ["true", None]                # la schermata di attesa lo mette, la pagina che arriva dopo lo toglie

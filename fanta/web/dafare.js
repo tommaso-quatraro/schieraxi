@@ -14,10 +14,10 @@ const dfAllaRosa = v => DF_SCHEDE_TOLTE.includes((v.destinazione || {}).scheda);
 
 function dfRiga(v, i) {
   const urgente = v.priorita === DF_URGENTE;
-  const azione = dfAllaRosa(v) ? t("lega.vedi_rosa") : v.azione ? testoDi(v, "azione") : t("df.apri");
+  const azione = dfAllaRosa(v) ? t("lega.vedi_rosa") : esc(v.azione ? testoDi(v, "azione") : t("df.apri"));
   return `<li class="df-riga${urgente ? " urgente" : ""}">
     <span class="df-testo">${urgente ? `<span class="df-etichetta">${t("df.urgente")}</span> ` : ""}${esc(testoDi(v))}</span>
-    <button class="azione-testo df-azione" type="button" data-df="${i}">${esc(azione)}</button></li>`;
+    <button class="azione-testo df-azione" type="button" data-df="${i}">${azione}</button></li>`;
 }
 
 // Le righe da mostrare: quelle con un testo, senza i due consigli delle funzioni tolte (il cambio con uno svincolato e lo scambio).
