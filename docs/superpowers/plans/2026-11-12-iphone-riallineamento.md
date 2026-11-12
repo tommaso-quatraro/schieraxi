@@ -15,8 +15,8 @@
   l'iPhone legge deve esistere nel server, altrimenti `tests/test_contratto_ios.py` è rosso.
 - **Testi:** chiavi in `ios/testi/<prefisso>.txt` (quelle non più usate si tolgono), poi `python script/testi.py --scrivi`; mai
   una frase della web riscritta a mano; i test confrontano con `Catalogo.…` e non leggono `fanta/web/` (`ios/Tests/file-esterni.txt`).
-- **Numeri e stati dal server.** Dove la web applica una regola sua sulla risposta (decisioni, titolari diversi dalla consigliata,
-  soglia di «gioca N%»), l'iPhone applica la stessa, in `Domain/`, con un test su dati inventati; nessun numero nuovo.
+- **Numeri e stati dal server.** Le decisioni in cima le segna il server (decisione 1, §6). Dove la web applica ancora una regola
+  sua (titolari diversi dalla consigliata, soglia di «gioca N%»), l'iPhone fa lo stesso in `Domain/`, con un test su dati inventati.
 - **iOS 18 minimo:** `Tab(role: .search)` e `sidebarAdaptable` ci sono; su iOS lo stile `.checkbox` del `Toggle` non c'è (spunta
   «L'ho messa» = `Toggle` normale o pulsante con `checkmark.circle`); niente `Table` per la tabella delle Giornate (sul telefono
   mostra una colonna sola): `Grid`. Liquid Glass solo dietro `#available(iOS 26, *)` come oggi (`Support/Design/Vetro`).
@@ -60,12 +60,15 @@ usato da scheda, pedina e sostituti. Dalla Formazione la scheda si apre subito c
 **Passo 1b, Formazione unica** (ramo `iphone-formazione-unica`). `FormazioneView` prende la testa per fase, le decisioni e le
 partite rinviate (vista spostata da `Oggi/`); i dati di `/api/oggi` restano in `OggiViewModel`, che continua a chiamare
 `Aggiornamento.elabora` dopo ogni lettura fresca (widget e promemoria). Il conto si aggiorna ogni 30 secondi (`TimelineView`),
-in corso si rilegge ogni 5 minuti (`seguiGiornata`). Decisioni: la regola di `dfVera`/`dfDecisioni` in `Domain/Decisioni.swift`
-(al massimo due; prima le urgenti con un'azione, un solo reparto scoperto, via `svincolato`, `scambio`, `diario`, i dubbi senza
-alternativa e «non l'hai salvata»; una riga vale finché ha senso con la formazione in pagina), «Urgente», «+0,9 punti
-attesi.», «Sostituisci» fa il cambio, «Usa la consigliata», «Vedi la rosa», il primo avvio apre la guida. Modulo: `Menu` con i
-moduli del livello consigliato; a giornata chiusa il modulo fisso. Pedina: resta il volto (differenza ammessa «Pedina sul
-campo»), con fantavoto e cognome, «gioca N%» solo sotto l'80%, stato a parole, niente «vs NAP». Riga dello stato: cinque stati
+in corso si rilegge ogni 5 minuti (`seguiGiornata`). Decisioni (§6, 1): un campo facoltativo del server sulle voci di
+`da_fare` di `GET /api/oggi`, per esempio `decisione` con il posto (1, 2, …), calcolato in `fanta/da_fare.py` con la regola di
+oggi della web (`dfVera`, `dfDecisioni`: via `svincolato`, `scambio`, `diario`, dubbi senza alternativa, «non l'hai salvata»; prima
+le urgenti con un'azione; un solo reparto scoperto), con test, `docs/API.md`, voce di novità e, se costa poco, `dafare.js` che lo
+legge al posto della sua regola; se costa troppo, un passo server a parte prima della 1b. L'app mostra le prime due ancora sensate
+con la formazione in pagina (come `vale` della web): «Urgente», «+0,9 punti attesi.», «Sostituisci» fa il cambio, «Usa la
+consigliata», «Vedi la rosa», il primo avvio apre la guida. Modulo: `Menu` con i moduli del livello consigliato; a giornata
+chiusa fisso. Pedina (§6, 2): resta il volto, sotto gli stessi numeri e testi della web (fantavoto, cognome, «gioca N%» solo sotto
+l'80%, stato a parole), niente «vs NAP»; si aggiorna la differenza ammessa «Pedina sul campo». Riga dello stato: cinque stati
 come la web (consigliata, cambiata, superata, non più valida, chiusa con le sue tre frasi); scelta non letta: errore con
 «Riprova» e comandi spenti. Salvataggio automatico: ogni cambio degli 11 (modulo, «Sostituisci», decisione, spunta) è
 `POST /api/formazione/valuta` con `salva: true` e If-Match (`scelta:<giornata>` di `Data/Versioni.swift`), «Torna alla
@@ -77,20 +80,19 @@ colonne (campo a sinistra; decisioni, panchina ed elenchi a destra), in ordine d
 **Si tolgono:** la scheda Oggi e tutta `Presentation/Oggi/` tranne ciò che si sposta; migliori, «Da controllare», diffidati e
 indisponibili come elenchi; Salva, «Annulla modifiche», «Modifica a mano», `SostituzioneSheet`, ballottaggi, nota del perché
 sotto il campo, `PulsanteRigaStato`; `Domain/Ballottaggio` se nessuno lo usa più.
-**Testi:** `Catalogo.Formazione` (stato_e_consigliata, stato_cambiata, stato_superata, stato_punti, stato_non_valida_ora,
-stato_chiusa*, torna_alla_consigliata, copia_lega, copiata_lega, non_copio, messa, opzione_consigliato, opzione_modulo,
-di_solito, oscilla, si_chiude, fra, chiusa_breve, in_corso, punti_finora, circa_fine, punti_e_attesi, punti, come_andata,
-per_la_prossima, decisione_punti, usa_consigliata, quest_ordine_entra, non_schierati, indisponibili, senza_dati,
-mancano_probabili_formazioni, sto_ancora_ricalcolando, scelta_non_letta, copia_ferma, sostituisci, al_posto_di, sost_spiega,
-punti_rispetto, fv_atteso_breve, nessun_altro_giocatore, bloccati, perche_titolare, ultimi_voti, tutti_numeri, questa_partita,
-se_gioca, partita_casa, partita_fuori, voce_*), `Catalogo.Oggi` (giornata_finita, con_consigliata, recupero_manca,
-ancora_da_giocare, tutti_giocato, gia_iniziata_testo, cambi_panchina, cambio_*, nessun_sostituto, benvenuto, rinvio_*),
-`Catalogo.Df` (urgente, da_fare, apri), `Catalogo.Lega.vediRosa`, `Catalogo.Tit`, `giocatore.gioca`, `scambi.panchina`.
-**Rotte e campi:** `GET /api/oggi`, `GET /api/formazione`, `GET /api/scelta` (in più `messa`, `messa_il`), `POST
-/api/formazione/valuta` (in più `messa`), `DELETE /api/scelta`, `PUT /api/regole/rinvio`, `GET /api/giocatore/<id>`.
+**Testi:** `Catalogo.Formazione`: stato_* (cinque stati e chiusa), torna_alla_consigliata, copia_lega, copiata_lega, non_copio,
+messa, opzione_*, di_solito, oscilla, si_chiude, fra, chiusa_breve, in_corso, punti_finora, circa_fine, punti_e_attesi, punti,
+come_andata, per_la_prossima, decisione_punti, usa_consigliata, quest_ordine_entra, non_schierati, indisponibili, senza_dati,
+mancano_probabili_formazioni, sto_ancora_ricalcolando, scelta_non_letta, copia_ferma, la scheda e la sostituzione (sostituisci,
+al_posto_di, sost_spiega, punti_rispetto, fv_atteso_breve, bloccati, perche_titolare, ultimi_voti, tutti_numeri, se_gioca,
+partita_*), voce_*; `Catalogo.Oggi` (giornata_finita, con_consigliata, recupero_manca, ancora_da_giocare, tutti_giocato,
+gia_iniziata_testo, cambi_panchina, cambio_*, benvenuto, rinvio_*); `Catalogo.Df`, `Lega.vediRosa`, `Tit`, `giocatore.gioca`.
+**Rotte e campi:** `GET /api/oggi` (in più il campo delle decisioni), `GET /api/formazione`, `GET /api/scelta` (in più `messa`,
+`messa_il`), `POST /api/formazione/valuta` (in più `messa`), `DELETE /api/scelta`, `PUT /api/regole/rinvio`, `GET /api/giocatore/<id>`.
 **Widget e collegamenti:** `Sezione.da("oggi")` porta alla Formazione: valgono così `schieraxi://oggi` dei widget già sulla Home,
 il tocco sugli avvisi ntfy (`bar_chart`) e le destinazioni di `da_fare`. Il codice dei widget non cambia.
-**Test:** `DecisioniTests`, `StatoSceltaTests` riscritto (cinque stati, plurali, punti con `Formato.conSegno`),
+**Test:** del server sul campo delle decisioni (pytest, con la regola di oggi della web), `DecisioniTests` (le prime due ancora
+sensate), `StatoSceltaTests` riscritto (cinque stati, plurali, punti con `Formato.conSegno`),
 `SalvataggioAutomaticoTests` (`ServerDiProva`: `salva` e `messa` nel corpo, If-Match, 412, 409, risposte fuori ordine, copia del
 telefono senza comandi), `TestaFormazioneTests` (tre fasi, arrivo a giornata iniziata, senza rose), `SogliaGiocaTests`,
 `TestoCopiaTests`, la lettura di `/api/oggi` che chiama ancora `Aggiornamento.elabora`, la scheda (ordine, partita senza giornata).
@@ -143,12 +145,13 @@ Impostazioni dall'ingranaggio (`ImpostazioniView`, `AccountSezione`, `TestiImpos
 (`Gestione.swift`), `RegoleEditor`, lente e ingranaggio in ogni barra (`Mercato/RicercaGlobale`).
 **Cambia** (ramo `iphone-impostazioni-barra`). `Sezione` = formazione, giornate, impostazioni; la ricerca è
 `Tab(role: .search)` con `.searchable` (sull'iPad nella barra laterale); Cmd+1…3. `ImpostazioniView` diventa la radice della terza
-scheda con un `NavigationStack`; `PaginaImpostazioni` prende le pagine di `PaginaLega`. Avvisi: «Avvisi su questo dispositivo» (sul
-telefono: permesso di iOS, promemoria locali e avviso del consiglio cambiato) e «Ore tranquille» (`PUT /api/avvisi` con il solo
+scheda con un `NavigationStack`; `PaginaImpostazioni` prende le pagine di `PaginaLega`. Avvisi (§6, 4): un interruttore unico,
+«Avvisi su questo dispositivo», come la web: accende o spegne il permesso di iOS e i promemoria locali che l'app ha già (nessuno
+nuovo finché non è fatta la #676, che decide sul server quali avvisi arrivano); poi «Ore tranquille» (`PUT /api/avvisi` con il solo
 `silenzio`); gli altri interruttori restano sul server come sono. Gestione = le Avanzate di oggi (server, aggiorna i dati, stato
 dei dati, diagnostica del widget, certificato, SideStore, ntfy). Restano solo dell'iPhone, come differenze ammesse: «Animazioni
-ridotte», la riga del widget, «C'è una versione nuova», la prova con dati di esempio. Ricerca: righe come la web (ruolo, nome,
-club, quotazione), se il proprietario conferma (domanda 3).
+ridotte», la riga del widget, «C'è una versione nuova», la prova con dati di esempio. Ricerca (§6, 3): righe come la web (ruolo,
+nome, club, quotazione da `/api/giocatori`); via fantavoto atteso, «gioca N%» e `PrevisioniRicerca` (lo scarico dell'elenco largo).
 **Si tolgono:** schede Squadra e Altro, `LegaView`, `VoceMenuLega`, `RigaVoceMenuLega`, ingranaggio e foglio delle Impostazioni,
 lente nelle barre, gli interruttori per singolo avviso e «Avviso se il consiglio cambia».
 **Testi:** `Catalogo.Imp` (sez_avvisi, avvisi_qui, avvisi_qui_aiuto, ore_tranquille_aiuto, lega, regole, regole_sub,
@@ -170,31 +173,28 @@ impostazioni-gestione ricerca`; via `squadra*`, `lega`, `lega-avvisi`.
 
 | Passo | Ramo | Prima serve | Quando è finito |
 |---|---|---|---|
-| 1a | `iphone-scheda-unica` | domanda 2 | scheda come la web; corsa verde; foto `giocatore` guardate |
-| 1b | `iphone-formazione-unica` | 1a unito; domanda 1 | barra Formazione, Squadra, Altro; Oggi non c'è più; foto sul ramo |
+| 1a | `iphone-scheda-unica` | piano unito (lo lancia chi coordina) | scheda come la web; corsa verde; foto `giocatore` guardate |
+| 1b | `iphone-formazione-unica` | 1a unito; campo delle decisioni qui (`Aree:` anche `fanta`, `tests`) o in un passo server prima | barra Formazione, Squadra, Altro; Oggi non c'è più; foto sul ramo |
 | 2 | `iphone-giornate` | 1b unito; #642 unita (o eccezione motivata in `tests/dati/contratto_ios_eccezioni.json`) | barra a quattro come la web di #671; Diario tolto da Altro |
-| 3 | `iphone-impostazioni-barra` | 2 unito; #675 unita; domande 3 e 4 | barra a tre più la ricerca; Squadra e Altro tolte |
+| 3 | `iphone-impostazioni-barra` | 2 unito; #675 unita | barra a tre più la ricerca; Squadra e Altro tolte |
 
-Ogni stato intermedio è un'app completa che si può installare. Se la 1b supera circa 2.500 righe cambiate, si separa prima la
-logica (`Domain/Decisioni`, stato a cinque, salvataggio automatico con i test) senza cambiare le viste. Dopo il passo 3, un giro a
-parte (area widget) per guardare i testi dei widget («la tua scelta», etichette di titolarità) con la nuova regola.
+Ogni stato intermedio è un'app completa che si può installare. Se la 1b supera circa 2.500 righe cambiate, prima la logica (stato a
+cinque, salvataggio automatico, con i test) senza le viste. Dopo il passo 3, un giro widget a parte sui loro testi («la tua scelta»).
 
 ## 5. Rischi
-- **SideStore:** identificativo, App Group, schema `schieraxi://`, lavoro in background e nome dell'IPA non cambiano;
-  `project.yml` non si tocca (i file nuovi in `Sources/` entrano da soli). L'app si aggiorna al posto e tiene accesso e dati.
-- **App Group e widget:** oggi i widget ricevono la giornata da `OggiViewModel` → `Aggiornamento.elabora`. Togliendo la vista Oggi
-  la chiamata deve restare (test nel passo 1b), altrimenti widget e promemoria restano alla lettura in background.
+- **SideStore:** identificativo, App Group, schema, lavoro in background, nome dell'IPA e `project.yml` non cambiano: si aggiorna al posto.
+- **Widget e promemoria:** oggi passano da `OggiViewModel` → `Aggiornamento.elabora`; resta anche senza la vista Oggi (test nella 1b).
 - **Stato salvato:** `ultimaSezione` vecchia; chiavi `AppStorage` e suggerimenti TipKit delle viste tolte (in `OpzioniTolte.chiavi`);
   copie in `Caches/api` lette con i modelli nuovi (campi facoltativi); la copia mostrata all'apertura non deve poter scrivere.
 - **Salvataggio automatico:** provare un modulo salva una scelta, e con una scelta salvata il server non manda i promemoria di
   un'ora e di un quarto d'ora (nota della #637, issue di chi coordina). Due dispositivi: If-Match e 412 già nel client, da provare.
-- **Contratto con il server:** `origine` e `senza_istantanea` esistono solo con la #642; `tests/test_contratto_ios.py` lo vede.
+- **Contratto con il server:** `origine` e `senza_istantanea` esistono solo con la #642 (`tests/test_contratto_ios.py` lo vede). Il
+  campo delle decisioni esce sul server all'unione della 1b, prima della nuova IPA: web e iPhone vecchi lo ignorano.
 - **Mac:** quattro pull request grandi; corse raggruppate, la completa e le foto solo a fine ramo.
 
-## 6. Domande per il proprietario
-1. Decisioni in cima: copiare sull'iPhone la regola della web (`dfDecisioni`) o chiedere al server di segnare le decisioni in
-   `da_fare` con un campo facoltativo, così la regola è una sola? Consiglio: il campo del server, prima della 1b.
-2. Pedina sul campo: il volto resta (differenza ammessa di oggi) con il contenuto della web, o il disco con il numero? Consiglio: volto.
-3. Ricerca: righe come la web (ruolo, nome, club, quotazione), senza fantavoto atteso, «gioca N%» e lo scarico dell'elenco largo?
-4. «Avvisi su questo dispositivo» sull'iPhone vuol dire permesso di iOS, promemoria locali e avviso del consiglio cambiato, solo sul
-   telefono. Va bene?
+## 6. Decisioni del proprietario (12/11, risposte sulla #677)
+1. **Decisioni in cima:** le segna un campo del server, come i consigli (i client non ricalcolano). Si aggiunge nel passo 1b, con il
+   suo test e la web che lo usa al posto della sua regola se costa poco; altrimenti un passo server a parte prima della 1b.
+2. **Pedina:** sul campo resta il volto, con sotto gli stessi numeri e testi della web.
+3. **Ricerca:** come la web (ruolo, nome, club, quotazione).
+4. **Avvisi:** un interruttore unico come la web; quali avvisi arrivano lo decide il server (#676), fino ad allora niente promemoria nuovi.
