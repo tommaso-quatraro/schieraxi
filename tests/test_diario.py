@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from fanta import archivio, consigli, diario, lega
+from fanta import archivio, consigli, diario, lega, precisione
 from fanta.regole import Regole
 
 ST = "2026-27"
@@ -196,6 +196,58 @@ def test_le_voci_di_prima_si_rifanno_una_volta_se_c_e_l_istantanea(finto):
     # la 2 non ha l'istantanea: resta com'era, e chi la legge sa che è ricostruita
     assert voci[2]["consigliata"]["origine"] == "ricostruita" and voci[2]["ricostruita"]["titolari"] == voci[2]["consigliata"]["titolari"]
     assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 0
+
+
+def _mostrata_con_panchina(finto, giornata=1):
+    """La consigliata mostrata con il 25 e la panchina 22, 24, 23. L'attaccante 20 non prende voto e il 22 prende 10: con la
+    panchina mostrata allora entra il 22, con quella che sceglie il sistema a giornata finita entra il 24 (6)."""
+    v = finto.dati.voti
+    finto.dati.voti = v[~((v["giornata"] == giornata) & (v["calciatore_id"] == 20))].copy()
+    finto.dati.voti.loc[finto.dati.voti["calciatore_id"] == 22, "voto_red"] = 10.0
+    f = _formazione_finta(giornata=giornata, ids=CON_IL_25)
+    f["panchina"] = [{"id": i, "nome": f"G{i}", "ruolo": "A"} for i in (22, 24, 23)]
+    diario.salva_istantanea(f, ST, finto.file)
+    return diario.carica(finto.file)["istantanee"][f"{ST}/{giornata}"]
+
+
+NUMERI = ("reale", "atteso", "dev_simulata", "intervallo")
+
+
+@pytest.mark.parametrize("chi", ["consigliata", "manuale", "automatica"])
+def test_gli_stessi_titolari_della_mostrata_sono_la_mostrata(finto, chi):
+    """Hai schierato proprio la consigliata mostrata (stessi undici, senza una tua panchina), oppure l'ha fatto la copia automatica
+    alla scadenza: la tua formazione È la consigliata, con la panchina e i punti attesi mostrati allora. Prima la tua aveva la
+    panchina e gli attesi rifatti a giornata finita e il Diario dava 4 punti di verdetto fra due formazioni uguali (revisione di #642)."""
+    ist = _mostrata_con_panchina(finto)
+    scelta = {"titolari": CON_IL_25[::-1], "tipo": chi}                                   # l'ordine dei titolari non conta
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), None if chi == "automatica" else scelta,
+                                simulazioni=50, automatica=scelta if chi == "automatica" else None, istantanea=ist)
+    c = v["consigliata"]
+    assert c["origine"] == "mostrata" and (c["reale"], c["atteso"]) == (73.0, 71.5)        # entra il 22 della panchina mostrata
+    tua = v["automatica"] if chi == "automatica" else v["schierata"]
+    assert {k: tua[k] for k in NUMERI} == {k: c[k] for k in NUMERI}
+    if chi != "automatica":
+        assert diario.sintesi([v]) == {"giornate": 0, "senza_consigliata_mostrata": 0}       # niente verdetto fra due uguali
+        assert precisione.riassunto([v])["confronto"]["giornate"] == 0
+
+
+def test_gli_stessi_titolari_con_una_panchina_tua_tengono_i_loro_punti(finto):
+    """Con una panchina tua (giornate importate) la formazione schierata è un'altra: i suoi punti restano i suoi."""
+    ist = _mostrata_con_panchina(finto)
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)),
+                                {"titolari": CON_IL_25, "panchina": [24, 22, 23]}, simulazioni=50, istantanea=ist)
+    assert (v["schierata"]["reale"], v["consigliata"]["reale"]) == (69.0, 73.0)            # con la tua panchina entrava il 24
+
+
+def test_gli_stessi_titolari_non_entrano_nel_verdetto():
+    """`sintesi` e il confronto di «Quanto ci abbiamo preso» saltano le giornate con gli stessi undici della consigliata mostrata,
+    come già «Le tue scelte»: fra due formazioni uguali non c'è chi ha ragione."""
+    stessi = _voce(2, [1, 2, 3], [1, 2, 3], 69.0, 73.0)          # stessi undici con punti diversi (per esempio una tua panchina)
+    diversi = _voce(1, [1, 2, 9], [1, 2, 3], 70.0, 66.0)
+    s = diario.sintesi([stessi, diversi])
+    assert (s["giornate"], s["meglio_tua"], s["meglio_consigliata"], s["punti_schierata"], s["punti_consigliata"]) == (1, 1, 0, 70.0, 66.0)
+    c = precisione.riassunto([stessi, diversi])["confronto"]
+    assert (c["giornate"], c["meglio_tua"], c["meglio_consigliata"], c["punti"]) == (1, 1, 0, -4.0)
 
 
 def test_la_schierata_dice_se_e_stata_messa_nell_app_della_lega(finto):

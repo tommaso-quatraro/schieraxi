@@ -1,5 +1,6 @@
 """Il diario delle giornate: per ogni giornata finita, la formazione che hai schierato (la tua scelta salvata) contro la consigliata,
-con i punti attesi e quelli fatti. La panchina è quella che sceglie il sistema, anche per la tua.
+con i punti attesi e quelli fatti. La panchina è quella che sceglie il sistema, anche per la tua, tranne quando hai schierato gli
+stessi undici della consigliata mostrata: allora la tua è quella formazione, con la sua panchina e i suoi punti attesi.
 La consigliata del confronto è quella MOSTRATA prima della scadenza (l'istantanea, `salva_istantanea`), con i punti attesi mostrati
 allora (#614): `consigliata.origine` = "mostrata". Dove l'istantanea non c'è, o non si può più schierare con la rosa di oggi,
 `consigliata` è la ricostruita ("ricostruita") e il Diario non dà un verdetto (`sintesi`, `scelte_tue`, `affidabilita`).
@@ -185,6 +186,29 @@ def _mostrata(istantanea: dict | None, riga_di) -> dict | None:
     return riga | {"origine": "mostrata"}
 
 
+def _come_la_mostrata(riga: dict | None, sc: dict | None, consigliata: dict, istantanea: dict | None) -> dict | None:
+    """La riga di una formazione dell'utente (schierata o copia automatica) con gli stessi undici della consigliata MOSTRATA e
+    senza una panchina sua (o con la stessa panchina mostrata): è quella formazione, quindi ne prende la panchina e i punti attesi
+    mostrati allora. Altrimenti la riga resta com'è. Senza questo la stessa formazione aveva due numeri, la panchina e gli attesi
+    rifatti a giornata finita da una parte e quelli mostrati dall'altra, e il Diario dava un verdetto fra due uguali."""
+    if riga is None or consigliata.get("origine") != "mostrata" or set(_ids(riga["titolari"])) != set(_ids(consigliata["titolari"])):
+        return riga
+    propria = [int(i) for i in (sc or {}).get("panchina") or []]
+    if propria and propria != _ids((istantanea or {}).get("panchina")):
+        return riga
+    return riga | {k: consigliata[k] for k in ("atteso", "reale", "dev_simulata", "intervallo") if k in consigliata}
+
+
+def _stessa_formazione(voce: dict) -> bool:
+    """Vero se la formazione schierata ha gli stessi undici della consigliata della voce (l'ordine non conta). Senza i titolari
+    non si sa: falso."""
+    s, c = voce.get("schierata"), voce.get("consigliata")
+    if not isinstance(s, dict) or not isinstance(c, dict):
+        return False
+    tua = set(_ids(s.get("titolari")))
+    return bool(tua) and tua == set(_ids(c.get("titolari")))
+
+
 def _con_mostrata(voce: dict) -> bool:
     """Vero se la consigliata della voce è quella mostrata prima della scadenza: solo allora il confronto dà un verdetto."""
     c = voce.get("consigliata")
@@ -321,11 +345,12 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             return _riga(tit, val.statistiche(tit, panchina), fz.punteggio(tit, panchina, gioca, fv, voto, regole))
         return None
     voce["consigliata"] = _mostrata(istantanea, riga_di) or ricostruita
-    voce["schierata"] = riga_di(scelta)
+    voce["schierata"] = _come_la_mostrata(riga_di(scelta), scelta, voce["consigliata"], istantanea)
     if voce["schierata"]:
         voce["schierata"]["tipo"] = (scelta or {}).get("tipo") or "manuale"        # «manuale» o «consigliata»; i file vecchi non hanno il campo
         voce["schierata"]["confermata"] = schierata_confermata(scelta)             # messa nell'app della lega? None = non si sa
-    voce["automatica"] = riga_di(automatica)      # la consigliata salvata dal programma prima della scadenza, se l'utente non ha scelto
+    # la consigliata salvata dal programma prima della scadenza, se l'utente non ha scelto
+    voce["automatica"] = _come_la_mostrata(riga_di(automatica), automatica, voce["consigliata"], istantanea)
     if indicatori:
         try:
             voce["consiglio"] = _consiglio(voce, riga_di, istantanea, cambi, d, stagione, giornata, regole, (lista, gioca, fv, voto),
@@ -534,20 +559,22 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
 
 
 def sintesi(voci: list[dict]) -> dict:
-    """Sulle giornate in cui hai schierato una tua formazione e c'è la consigliata mostrata prima della scadenza: punti medi fatti
-    con la tua e con la consigliata. `senza_consigliata_mostrata` = le giornate con la tua formazione lasciate fuori perché la
-    consigliata di allora non c'è (il confronto con una ricostruita non sarebbe con quello che avevi davanti)."""
+    """Sulle giornate in cui hai schierato undici diversi dalla consigliata mostrata prima della scadenza: punti medi fatti con la
+    tua e con la consigliata. Le giornate con gli stessi undici non contano, come in `scelte_tue`: fra due formazioni uguali non
+    c'è un verdetto. `senza_consigliata_mostrata` = le giornate con la tua formazione lasciate fuori perché la consigliata di
+    allora non c'è (il confronto con una ricostruita non sarebbe con quello che avevi davanti)."""
     tue = [v for v in voci if v.get("schierata")]
-    con = [v for v in tue if _con_mostrata(v)]
+    mostrate = [v for v in tue if _con_mostrata(v)]
+    con = [v for v in mostrate if not _stessa_formazione(v)]
     if not con:
-        return {"giornate": 0, "senza_consigliata_mostrata": len(tue)}
+        return {"giornate": 0, "senza_consigliata_mostrata": len(tue) - len(mostrate)}
     media = lambda f: round(sum(f(v) for v in con) / len(con), 1)      # noqa: E731
     return {"giornate": len(con), "punti_schierata": media(lambda v: v["schierata"]["reale"]),
             "punti_consigliata": media(lambda v: v["consigliata"]["reale"]),
             "attesi_schierata": media(lambda v: v["schierata"]["atteso"]),
             "meglio_tua": sum(1 for v in con if v["schierata"]["reale"] > v["consigliata"]["reale"]),
             "meglio_consigliata": sum(1 for v in con if v["schierata"]["reale"] < v["consigliata"]["reale"]),
-            "senza_consigliata_mostrata": len(tue) - len(con)}
+            "senza_consigliata_mostrata": len(tue) - len(mostrate)}
 
 
 POCHI_DATI = 8          # sotto questo numero di giornate la percentuale è troppo instabile: i client dicono «ancora pochi dati»
