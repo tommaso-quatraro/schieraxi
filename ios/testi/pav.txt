@@ -7,3 +7,5 @@ pav.tutto_pronto_mister
 pav.hai_finito
 pav.non_sono_riuscito
 pav.permesso_negato_abilita
+# Il pulsante del file di Importa le rose (ImportaRoseView), come il passo «Le rose» della web e Squadra › Aggiorna le rose.
+pav.scegli_file

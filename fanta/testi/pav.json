@@ -34,7 +34,7 @@
   "pav.scegli_file": {
     "it": "Scegli il file (Excel o CSV)",
     "en": "Choose the file (Excel or CSV)",
-    "nota": "pulsante del passo «Le rose»: il selettore accetta Excel, CSV e testo"
+    "nota": "pulsante del file nel passo «Le rose» e in Aggiorna le rose (web e iPhone): il selettore accetta Excel, CSV e testo"
   },
   "pav.file_scelto": {
     "it": "File scelto: {nome}",

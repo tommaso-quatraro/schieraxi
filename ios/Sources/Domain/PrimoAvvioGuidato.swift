@@ -124,10 +124,21 @@ enum PrimoAvvioLogica {
     /// Quanti passi al massimo il server accetta in una lista.
     static let massimoVoci = 12
 
-    /// Si avvia da solo solo se non l'ha mai iniziato E mancano le rose (chi ha già la lega non lo vede mai).
+    /// All'apertura dell'app si apre da sola solo se mancano le rose (chi ha già la lega non la vede mai da sola), come
+    /// `primoAvvioSeServe` della web: parte se non è mai stata iniziata, si riprende se è da riprendere (`daRiprendere`).
     static func daAvviare(_ risposta: PrimoAvvioRisposta?, roseImportate: Bool?) -> Bool {
-        guard let risposta, risposta.primoAvvio == nil else { return false }
-        return roseImportate == false
+        guard let risposta, roseImportate == false else { return false }
+        guard let avanzamento = risposta.primoAvvio else { return true }
+        return daRiprendere(avanzamento)
+    }
+
+    /// Cominciata (anche sulla web o su un altro dispositivo) e lasciata prima delle rose: non chiusa, passo «rose» né fatto né
+    /// saltato. Stessa regola di `paDaRiprendere` della web. «Più tardi» (e la ✕ della web) segna saltati i passi rimasti, rose
+    /// comprese: così chi la chiude non la rivede da sola.
+    static func daRiprendere(_ avanzamento: AvanzamentoPrimoAvvio?) -> Bool {
+        guard let avanzamento else { return false }
+        let rose = PassoGuidato.rose.nomeServer
+        return !avanzamento.chiuso && !avanzamento.fatti.contains(rose) && !avanzamento.saltati.contains(rose)
     }
 
     /// I passi fatti: quelli ricordati dal server più quelli che i dati della lega mostrano già fatti.

@@ -47,6 +47,8 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
 
     private let server: any ServerClient
     private var passiServer: [String] = []
+    /// «Più tardi», un passo che porta altrove o «Fine» hanno già salvato come si è usciti: la chiusura del foglio non risalva.
+    private var lasciata = false
 
     init(server: any ServerClient) {
         self.server = server
@@ -99,11 +101,14 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
         return s
     }
 
-    /// All'apertura dell'app: parte da sola solo se non l'ha mai iniziato E mancano le rose.
-    static func devePartire(server: any ServerClient) async -> Bool {
-        guard let risposta: PrimoAvvioRisposta = try? await server.get("/api/primo-avvio") else { return false }
+    /// All'apertura dell'app, senza rose: parte se non è mai stata iniziata, si riprende se era stata lasciata prima delle rose
+    /// (`PrimoAvvioLogica.daAvviare`). Mai se l'app è stata aperta con un file o un'immagine da un'altra app (Condividi, «Apri con»):
+    /// la guida non prende il posto di quella schermata. `apertaDaFuori` si guarda anche dopo le risposte del server, perché il
+    /// file può arrivare mentre si aspettano.
+    static func devePartire(server: any ServerClient, apertaDaFuori: () -> Bool = { false }) async -> Bool {
+        guard !apertaDaFuori(), let risposta: PrimoAvvioRisposta = try? await server.get("/api/primo-avvio") else { return false }
         let lega: StatoLega? = try? await server.get("/api/stato")
-        return PrimoAvvioLogica.daAvviare(risposta, roseImportate: lega?.roseImportate)
+        return !apertaDaFuori() && PrimoAvvioLogica.daAvviare(risposta, roseImportate: lega?.roseImportate)
     }
 
     // MARK: azioni
@@ -133,15 +138,26 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
         }
     }
 
-    /// Si esce a metà (X, oppure un passo che porta in un'altra schermata): i passi non fatti restano da riprendere.
+    /// Si esce a metà («Più tardi», oppure un passo che porta in un'altra schermata): i passi non fatti diventano saltati, così la
+    /// guida non si riapre da sola (come la ✕ della web); si ritrovano in «Da fare» di Oggi.
     func piuTardi() async {
+        lasciata = true
         let restanti = Set(passi.filter { esito($0) != .fatto })
         await salva(fatti: [], saltati: restanti, chiuso: false)
     }
 
     /// Fine del percorso: non si riapre più da solo.
     func termina() async {
+        lasciata = true
         await salva(fatti: [], saltati: [], chiuso: true)
+    }
+
+    /// Il foglio si è chiuso: se è stato trascinato giù (o toccato fuori sull'iPad) senza «Più tardi» né «Fine», vale come
+    /// «Più tardi», come la web quando si chiude la guida con la ✕ (`paOsservaChiusura`). A guida finita (riepilogo) o prima
+    /// che sia pronta non si salva niente.
+    func chiusa() async {
+        guard !lasciata, fase == .pronta, !eRiepilogo else { return }
+        await piuTardi()
     }
 
     private func avanza() { indice = min(indice + 1, passi.count) }

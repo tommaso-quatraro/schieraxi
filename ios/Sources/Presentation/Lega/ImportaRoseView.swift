@@ -67,7 +67,7 @@ struct ImportaExcelView: View {
                 Text(Catalogo.Lega.esportaRoseExcel)
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
                 Button { scegli = true } label: {
-                    Label(Catalogo.Lega.scegliFileExcel, systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                    Label(Catalogo.Pav.scegliFile, systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
                 }
                 .disabled(vm.inCorso)
                 Text("Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.")

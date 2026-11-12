@@ -85,12 +85,16 @@ struct ContenitoreApp: View {
             .task { await avviaGuidaSeServe() }
     }
 
-    /// Una sola volta all'apertura: se la lega non ha le rose e la guida non è mai stata iniziata, parte da sola.
+    /// Una sola volta all'apertura, come `primoAvvioSeServe` della web: se la lega non ha le rose la guida parte da sola (mai
+    /// iniziata) o si riprende (lasciata prima delle rose, anche sulla web). Mai se l'app è stata aperta con un file o un'immagine
+    /// da un'altra app.
     private func avviaGuidaSeServe() async {
         guard !Demo.attivo else { return }
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         if Task.isCancelled { return }
-        if await ConfigurazioneGuidataViewModel.devePartire(server: modello.server) { nav.guidaAperta = true }
+        if await ConfigurazioneGuidataViewModel.devePartire(server: modello.server, apertaDaFuori: { nav.apertaDaFuori }) {
+            nav.guidaAperta = true
+        }
     }
 
     /// Un passo della guida porta in un'altra schermata (la guida si è già chiusa).
