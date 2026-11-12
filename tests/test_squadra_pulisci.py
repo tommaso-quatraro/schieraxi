@@ -105,10 +105,11 @@ def test_sessione_dell_app_con_pr_unita_nel_json(capsys):
 
 
 def test_un_ramo_che_non_comincia_per_claude_barra_si_toglie_come_gli_altri():
-    f = _ramo_unito("claudia-finita")
+    # Il confine è la barra: «claude-md-…» comincia per «claude» ma è un ramo come gli altri, non quello di una sessione.
+    f = _ramo_unito("claude-md-finita")
     assert pulisci.main(f, esegui_davvero=True) == 0
     assert f.lanciati("git worktree remove") == [f"git worktree remove {WT}/sessione-finita"]
-    assert f.lanciati("git branch") == ["git branch -D claudia-finita"]
+    assert f.lanciati("git branch") == ["git branch -D claude-md-finita"]
 
 
 def test_bloccate_e_con_modifiche_non_si_toccano_mai():
