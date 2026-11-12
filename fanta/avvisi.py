@@ -79,8 +79,13 @@ def segna(stagione: str, giornata: int, file_stato: Path = FILE_STATO) -> None:
 def da_mandare(db: sqlite3.Connection, stagione: str, giornata: int | None, adesso: datetime,
                file_stato: Path = FILE_STATO, segna: bool = True, regole: Regole | None = None) -> dict | None:
     """{"titolo", "testo"} se è il momento di avvisare per la prossima giornata, altrimenti None. Con le `regole` il testo dice
-    anche la giornata della lega («Giornata 6 · 9ª di Serie A: …»); senza, solo quella di Serie A."""
+    anche la giornata della lega («Giornata 6 · 9ª di Serie A: …»); senza, solo quella di Serie A.
+    Mai a formazione chiusa: dopo la scadenza (la regola di cambi e promemoria) niente avviso, anche se la prima partita è già
+    segnata giocata e la finestra delle 30 ore, misurata dalla prima partita ancora da giocare, sembrerebbe aperta (#652)."""
     if giornata is None:
+        return None
+    chiusura = scadenza(prima_partita(db, stagione, giornata), regole)
+    if chiusura is None or chiusura <= adesso:
         return None
     inizio = inizio_giornata(db, stagione, giornata)
     if inizio is None or not (timedelta(0) < inizio - adesso <= ANTICIPO):

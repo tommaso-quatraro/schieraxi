@@ -322,6 +322,26 @@ def test_formazione_pronta_nelle_ore_tranquille_e_se_l_invio_fallisce_si_riprova
     assert registro.web == [1] and a.stato_avvisi.exists()
 
 
+def test_formazione_pronta_mai_a_formazione_chiusa(mondo, registro, monkeypatch):
+    """#652: la prima partita (28 alle 18:30) è già giocata, la seconda si gioca la sera dopo. Chi si iscrive la mattina del 29 non
+    riceve «la formazione è pronta»: né dal giro per utente né dal comando `avviso` (che con gli account fa lo stesso giro)."""
+    from fanta import archivio
+    mondo.db.execute("UPDATE partite SET giocata = 1 WHERE data = '2026-10-28 18:30'")
+    a = nuovo("amico1", (1, "Castro"))
+    mattina_dopo = datetime(2026, 10, 29, 8, 0)
+    esiti, errori = avvisi_utenti.esegui("pronta", mondo.db, mattina_dopo)
+    assert errori == {} and esiti == {"amico1": []} and registro.web == [] and not a.stato_avvisi.exists()
+
+    class AllaMattinaDopo(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return mattina_dopo
+    monkeypatch.setattr(avvisi_utenti, "datetime", AllaMattinaDopo)
+    monkeypatch.setattr(archivio, "apri", lambda *x: mondo.db)
+    cli.cmd_avviso(type("A", (), {"prova": False})())
+    assert registro.web == [] and registro.ntfy == []
+
+
 def test_riepilogo_usa_le_opzioni_di_ciascuno(mondo, registro):
     a = nuovo("amico1", (1, "Castro"))
     notifiche.salva_impostazioni({"riepilogo": False}, a.impostazioni_avvisi)

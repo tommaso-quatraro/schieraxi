@@ -34,3 +34,22 @@ def test_non_avvisa_a_giornata_iniziata_o_senza_dati(tmp_path):
     assert avvisi.da_mandare(db, ST, 30, datetime(2026, 10, 27, 20, 0), f) is None
     f.write_text("non è json", encoding="utf-8")                     # file di stato rovinato: si riparte
     assert avvisi.da_mandare(db, ST, 9, datetime(2026, 10, 27, 20, 0), f)
+
+
+def test_niente_formazione_pronta_dopo_la_scadenza_anche_con_la_prima_partita_gia_giocata(tmp_path):
+    """#652: la prima partita del turno è già segnata giocata e la seconda si gioca fra 12 ore. La formazione si è chiusa con la
+    prima partita: a chi non ha ancora ricevuto l'avviso (stato vuoto: account nuovo, notifiche accese tardi) non parte niente.
+    Prima la finestra delle 30 ore ripartiva dalla prima partita non giocata e l'avviso arrivava a formazione chiusa."""
+    db, f = _db(), tmp_path / "avvisi.json"
+    db.execute("UPDATE partite SET giocata = 1 WHERE giornata = 9 AND data = '2026-10-28 18:30'")
+    assert avvisi.da_mandare(db, ST, 9, datetime(2026, 10, 29, 8, 0), f) is None
+    assert not f.exists()                                             # e non si segna niente
+
+
+def test_niente_formazione_pronta_fra_la_scadenza_della_lega_e_la_prima_partita(tmp_path):
+    """Con la scadenza della lega 30 minuti prima della prima partita, 10 minuti prima del calcio d'inizio la formazione è già chiusa."""
+    from fanta.regole import Regole
+    db, f = _db(), tmp_path / "avvisi.json"
+    regole = Regole(scadenza_minuti=30)
+    assert avvisi.da_mandare(db, ST, 9, datetime(2026, 10, 28, 18, 20), f, regole=regole) is None
+    assert avvisi.da_mandare(db, ST, 9, datetime(2026, 10, 28, 17, 50), f, regole=regole)        # 10 minuti prima della scadenza: sì
