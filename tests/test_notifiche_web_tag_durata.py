@@ -36,7 +36,7 @@ def test_due_avvisi_dello_stesso_giro_hanno_tag_web_diversi(servizio):
     assert servizio.manda("SchieraXI · cambi nelle probabili", "Castro: ora infortunato", 4, "rotating_light")
     primo, secondo = (x["corpo"] for x in servizio.inviati)
     assert primo["tag"] != secondo["tag"]
-    # il tocco porta sempre alla Formazione: lo dicono `url` (web) e `sezione` (Android), che non cambiano
+    # il tocco porta sempre alla Formazione: lo dice `url`, che il service worker (fanta/web/sw.js) usa e che non cambia
     assert (primo["url"], primo["sezione"]) == (secondo["url"], secondo["sezione"]) == ("/?vista=formazione", "formazione")
 
 
@@ -68,6 +68,18 @@ def test_i_cambi_nelle_probabili_valgono_fino_alla_scadenza(monkeypatch, tmp_pat
     prev.loc[1, "stato"] = "infortunato"
     assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, {"cambi": True})
     assert inviati and all(k == {"vale_per": timedelta(hours=2, minutes=30)} for k in inviati)
+
+
+def test_il_cambio_pronto_vale_fino_alla_scadenza(monkeypatch, tmp_path):
+    """Castro è infortunato fin dal primo controllo: parte da solo «cambio pronto» (meglio Bonny), due ore e mezza prima della scadenza."""
+    from test_cambio_pronto import ROSE as ROSA_CAMBIO, _db as db_cambio, _scena
+    _scena(monkeypatch)
+    inviati, manda = _registro()
+    titoli = []
+    registra = lambda titolo, *a, **k: titoli.append(str(titolo)) or manda(titolo, *a, **k)     # noqa: E731
+    assert notifiche.cambi(db_cambio(), Regole(), ROSA_CAMBIO, datetime(2026, 10, 28, 16, 0), tmp_path / "n.json", registra,
+                           {"cambi": True}, file_scelte=tmp_path / "s.json")
+    assert titoli == ["SchieraXI · cambio pronto"] and inviati == [{"vale_per": timedelta(hours=2, minutes=30)}]
 
 
 def test_cambia_la_formazione_vale_fino_alla_scadenza(monkeypatch, tmp_path):

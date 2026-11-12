@@ -8,9 +8,9 @@
   "tecnico": [
     "fasi.voti_arrivati: regola unica «ogni squadra con una partita giocata della giornata ha i voti», usata da fasi.blocco_riepilogo (riepilogo null finché manca) e da notifiche.riepilogo (al posto di «almeno 60 righe di voti»).",
     "fasi.blocco_riepilogo prende le partite dal calendario della giornata e la squadra di ogni giocatore da fasi.squadre_dei_giocatori (riga dei voti della giornata, poi calciatori.squadra_slug): le rose hanno la sigla, calendario e voti il nome lungo.",
-    "notifiche.riepilogo: la giornata la sceglie _da_riepilogare (rinvii.giornate_chiuse non ancora in `riepilogo`, la più recente, entro 6 giorni dall'ultima partita giocata, con fasi.voti_arrivati); chi aveva una partita fuori dal turno conta con rinvii.voti_lega (_con_la_regola_dei_rinvii), come il Diario.",
+    "notifiche.riepilogo: le giornate candidate le dà _da_riepilogare (rinvii.giornate_chiuse non ancora in `riepilogo`, entro 6 giorni dall'ultima partita giocata, con fasi.voti_arrivati, dalla più recente) e si prova la prima di cui _testo_riepilogo sa fare il testo (una giornata senza formazione nota non ferma le altre); chi aveva una partita fuori dal turno conta con rinvii.voti_lega (_con_la_regola_dei_rinvii), come il Diario.",
     "avvisi.da_mandare: None se la scadenza della giornata (scadenza(prima_partita)) è passata; restituisce anche `scadenza`. Vale per il giro per utente e per il comando `avviso`.",
     "push.invia: il campo `tag` del messaggio Web Push è il tag di ntfy più un codice casuale, diverso a ogni invio (il service worker lo passa a showNotification); `url`, `sezione` e `priorita` non cambiano. Tempo di vita (`ttl`): push.TEMPO_DI_VITA = 12 ore, o quanto manca alla scadenza (`vale_per`, nuovo argomento facoltativo di push.invia e notifiche.invia) per promemoria, cambi, cambio pronto, «cambia la formazione», reparto scoperto e «formazione pronta». Prima 1 ora per tutti.",
-    "Client: nessun campo nuovo, tolto o rinominato nelle rotte. Chi leggeva il `tag` del messaggio Web Push come nome dell'avviso deve usare `sezione` (l'app Android lo fa già); web e iPhone non devono fare niente."
+    "Client: nessun campo nuovo, tolto o rinominato nelle rotte. Il `tag` del messaggio Web Push lo legge solo fanta/web/sw.js, come tag della notifica: web e iPhone non devono fare niente."
   ]
 }

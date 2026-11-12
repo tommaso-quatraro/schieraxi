@@ -443,8 +443,9 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
     from . import limiti
     from .notifiche import SEZIONE_PER_TAG
     privata = chiavi(file_chiavi)["privata"]
-    # `sezione` e `priorita` li usa l'app Android (ricevuta con UnifiedPush): il tocco apre la schermata giusta. Il web usa `url`:
-    # gli avvisi sulla formazione (cambi, «cambia la formazione», promemoria) aprono la Formazione, gli altri l'app com'è.
+    # Il messaggio lo legge solo il service worker della web (fanta/web/sw.js): `title`, `body`, `tag` (il tag della notifica, che
+    # qui cambia a ogni invio) e `url`, dove porta il tocco: gli avvisi sulla formazione (cambi, «cambia la formazione»,
+    # promemoria) aprono la Formazione, gli altri l'app com'è. `sezione` e `priorita` viaggiano nel messaggio ma oggi nessuno li legge.
     sezione = SEZIONE_PER_TAG.get(tag, "lega")
     payload = json.dumps({"title": titolo, "body": testo, "tag": f"{tag}-{uuid.uuid4().hex[:12]}",
                           "url": "/?vista=formazione" if sezione == "formazione" else "/", "sezione": sezione, "priorita": priorita})
