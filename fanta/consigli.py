@@ -646,6 +646,46 @@ def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict |
         LOG.warning("consigliata non ricordata (%s)", type(e).__name__)
 
 
+def togli_utenti(numeri: Collection[int]) -> int:
+    """Account eliminati (#653): toglie i loro numeri da tutte le consigliate ricordate (`utenti` e `proprie`); una voce che resta
+    senza nessuno si cancella. Le voci che non hanno mai avuto un account (senza account, comandi) restano: non sono di nessuno.
+    Stesso blocco di `_ricorda`, valido anche fra processi. Restituisce quante voci sono cambiate o tolte. Un errore di disco o un
+    blocco che non arriva (OSError) passa a chi chiama: l'account è già eliminato, e chi chiama lo deve far vedere."""
+    via = {int(n) for n in numeri}
+    file = FILE_CONSIGLIATE
+    if not via or not file.exists():
+        return 0
+    with _blocco_consigliate, BloccoFile(file.with_name(file.name + ".lock")):
+        try:
+            tutte = json.loads(file.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return 0
+        except ValueError:
+            return 0                                 # rovinato: non c'è niente da leggere (il prossimo `_ricorda` lo riscrive)
+        if not isinstance(tutte, dict):
+            return 0
+        cambiate = 0
+        for k in list(tutte):
+            voce = tutte[k]
+            utenti = _utenti(voce)
+            if not via & set(utenti + (_ids(voce, "proprie") or [])):
+                continue
+            cambiate += 1
+            rimasti = [u for u in utenti if u not in via]
+            if not rimasti:
+                del tutte[k]
+                continue
+            proprie = [u for u in _proprie(voce) if u not in via]
+            voce["utenti"] = rimasti
+            if proprie:
+                voce["proprie"] = proprie
+            else:
+                voce.pop("proprie", None)
+        if cambiate:
+            scrivi_sicuro(file, json.dumps(tutte, ensure_ascii=False))
+        return cambiate
+
+
 def _chiusa(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, adesso: datetime | None = None) -> bool:
     """La formazione della giornata è chiusa (scadenza della lega passata): la regola di Oggi e della Formazione."""
     from . import fasi
