@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Una «pedina» sul campo, da leggere senza legenda: il volto (fondo con i colori della SUA squadra) con il fantavoto atteso in una
-/// pillola scura, il cognome, «gioca 85%» (sotto il 70%: pillola arancio con l'icona di avviso; a partita iniziata il fantavoto
+/// pillola scura, il cognome, «gioca 85%» (sotto l'80% pillola arancio con l'icona di avviso, sotto il 50% rossa, con la soglia
+/// della scheda e della web, `SogliaGioca`; a partita iniziata il fantavoto
 /// preso o lo stato della partita, «Rinviata» per una partita rinviata: `EsitoPedina`) e l'avversario («vs NAP» in casa,
 /// «@ NAP» in trasferta) con un distintivo nei colori sociali. Niente anelli colorati con un significato nascosto. Testi in `LetturaPedina`.
 struct PedinaCampo: View {
@@ -36,7 +37,7 @@ struct PedinaCampo: View {
             if let esito = g.esitoPedina {
                 RigaGioca(testo: esito, incerto: false)
             } else if let gioca = LetturaPedina.gioca(g.pVoto) {
-                RigaGioca(testo: gioca, incerto: LetturaPedina.incerto(g.pVoto))
+                RigaGioca(testo: gioca, incerto: LetturaPedina.incerto(g.pVoto), basso: LetturaPedina.livello(g.pVoto) == .basso)
             }
             RigaAvversario(avversario: g.avversario, inCasa: g.inCasa)
         }
@@ -64,11 +65,14 @@ struct PillolaFantavoto: View {
     }
 }
 
-/// «gioca 85%»: bianco se è quasi sicuro di giocare; sotto il 70% pillola arancio con l'icona di avviso (non solo il colore).
-/// Se la pedina è stretta va a capo tra le parole («⚠ gioca» sopra «45%»), come la web: il carattere non si rimpicciolisce.
+/// «gioca 85%»: bianco se è quasi sicuro di giocare; sotto l'80% pillola arancio con l'icona di avviso (non solo il colore), sotto
+/// il 50% rossa (`basso`), come la web. Se la pedina è stretta va a capo tra le parole («⚠ gioca» sopra «45%»), come la web: il
+/// carattere non si rimpicciolisce.
 struct RigaGioca: View {
     let testo: String
     let incerto: Bool
+    /// Sotto il 50%: la pillola è rossa invece che arancio.
+    var basso = false
 
     var body: some View {
         Group {
@@ -77,9 +81,10 @@ struct RigaGioca: View {
                 Text("\(Image(systemName: "exclamationmark.triangle.fill")) \(testo)")
                     .foregroundStyle(.black)
                     .padding(.horizontal, 5).padding(.vertical, 1)
-                    // arancio fisso (quello del tema scuro): il prato è scuro anche nel tema chiaro, e il nero sopra si legge bene.
-                    // Su una riga è una capsula (il raggio supera metà altezza e si ferma lì); su due righe angoli tondi, come la web.
-                    .background(Color(red: 1.0, green: 0.69, blue: 0.29), in: .rect(cornerRadius: 8))
+                    // arancio e rosso fissi (quelli del tema scuro): il prato è scuro anche nel tema chiaro, e il nero sopra si
+                    // legge bene. Su una riga è una capsula (il raggio supera metà altezza e si ferma lì); su due righe angoli tondi.
+                    .background(basso ? Color(red: 1.0, green: 0.42, blue: 0.37) : Color(red: 1.0, green: 0.69, blue: 0.29),
+                                in: .rect(cornerRadius: 8))
             } else {
                 Text(testo)
                     .foregroundStyle(.white.opacity(0.95))   // sul prato a 0,8 il contrasto non bastava (controllo di accessibilità)

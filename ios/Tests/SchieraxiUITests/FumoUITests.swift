@@ -137,11 +137,12 @@ final class FumoUITests: XCTestCase {
     }
 
     func testSchedaDiUnGiocatoreSiApreEDiChiude() {
-        // un tocco su una riga di Oggi apre la scheda (foglio) con la previsione, la forma e il grafico dei voti
+        // un tocco su una riga di Oggi apre la scheda (foglio) unica, come la web (#616): gli ultimi voti e, chiusi,
+        // «Tutti i numeri»
         let riga = app.buttons.matching(NSPredicate(format: "label CONTAINS 'fantavoto atteso'")).firstMatch
         XCTAssertTrue(riga.waitForExistence(timeout: 30), "serve almeno una riga di giocatore in Oggi")
-        tocca(riga, finchéCompare: elemento("Prossima partita"), "un tocco sulla riga apre la scheda del giocatore")
-        attendi("Forma")
+        tocca(riga, finchéCompare: elemento("Ultimi voti"), "un tocco sulla riga apre la scheda del giocatore")
+        attendiScorrendo("Tutti i numeri")
         let chiudi = app.buttons["Chiudi"]
         XCTAssertTrue(chiudi.waitForExistence(timeout: 10))
         chiudi.tap()

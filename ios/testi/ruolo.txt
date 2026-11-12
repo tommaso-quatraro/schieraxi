@@ -1,0 +1,6 @@
+# Il ruolo per intero sotto il nome nella scheda del giocatore («Attaccante · Genoa», Domain/LetturaScheda), come
+# NOME_RUOLO_1 della web. Poi: python script/testi.py --scrivi
+ruolo.P_1
+ruolo.D_1
+ruolo.C_1
+ruolo.A_1

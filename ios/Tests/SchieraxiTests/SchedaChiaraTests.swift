@@ -11,13 +11,14 @@ final class SchedaChiaraTests: XCTestCase {
 
     func testRisultatoAttesoComeSulWeb() throws {
         let g = try giocatore(#""squadra": "genoa", "avversario": "como", "gol_squadra": 2.08, "gol_avversario": 1,"#)
-        XCTAssertEqual(GiocatoreCorpo.risultatoAtteso(g), "Risultato atteso 2,1–1,0", "una cifra decimale e il trattino lungo, come il web")
-        XCTAssertEqual(GiocatoreCorpo.voceRisultatoAtteso(g, squadra: "GENOA"), "Risultato atteso: Genoa 2,1, Como 1,0")
+        XCTAssertEqual(LetturaScheda.risultatoAtteso(g), Catalogo.Mercato.golAttesi(a: "2,1", b: "1,0"),
+                       "una cifra decimale e il trattino lungo, con le parole della web (`mercato.gol_attesi`)")
+        XCTAssertEqual(LetturaScheda.voceRisultatoAtteso(g, squadra: "GENOA"), "Risultato atteso: Genoa 2,1, Como 1,0")
         let senzaNomi = try giocatore(#""gol_squadra": 1.8, "gol_avversario": 1.2,"#)
-        XCTAssertEqual(GiocatoreCorpo.risultatoAtteso(senzaNomi), "Risultato atteso 1,8–1,2")
-        XCTAssertEqual(GiocatoreCorpo.voceRisultatoAtteso(senzaNomi, squadra: nil), "Risultato atteso: 1,8 a 1,2")
-        XCTAssertNil(GiocatoreCorpo.risultatoAtteso(try giocatore(#""gol_squadra": 1.8,"#)), "con un numero solo non si mostra")
-        XCTAssertNil(GiocatoreCorpo.risultatoAtteso(try giocatore("")))
+        XCTAssertEqual(LetturaScheda.risultatoAtteso(senzaNomi), Catalogo.Mercato.golAttesi(a: "1,8", b: "1,2"))
+        XCTAssertEqual(LetturaScheda.voceRisultatoAtteso(senzaNomi, squadra: nil), "Risultato atteso: 1,8 a 1,2")
+        XCTAssertNil(LetturaScheda.risultatoAtteso(try giocatore(#""gol_squadra": 1.8,"#)), "con un numero solo non si mostra")
+        XCTAssertNil(LetturaScheda.risultatoAtteso(try giocatore("")))
     }
 
     func testLaRigaDellElencoComeLaWeb() throws {

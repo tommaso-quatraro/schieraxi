@@ -29,9 +29,11 @@ final class StatoSceltaTests: XCTestCase {
     func testLaPedinaSiLeggeAParole() {
         XCTAssertEqual(LetturaPedina.gioca(0.85), "gioca 85%")
         XCTAssertNil(LetturaPedina.gioca(nil))
+        // la soglia della web e della scheda (`SogliaGioca`, #673): sotto l'80% sul numero che si legge
         XCTAssertTrue(LetturaPedina.incerto(0.45))
-        XCTAssertTrue(LetturaPedina.incerto(0.69))
-        XCTAssertFalse(LetturaPedina.incerto(0.70))
+        XCTAssertTrue(LetturaPedina.incerto(0.79))
+        XCTAssertFalse(LetturaPedina.incerto(0.80))
+        XCTAssertFalse(LetturaPedina.incerto(0.796), "si legge «80%»")
         XCTAssertFalse(LetturaPedina.incerto(nil), "senza probabilità niente avviso")
         XCTAssertEqual(LetturaPedina.prefisso(inCasa: true), "vs")
         XCTAssertEqual(LetturaPedina.prefisso(inCasa: false), "@")

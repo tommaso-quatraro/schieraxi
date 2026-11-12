@@ -52,3 +52,18 @@ formazione.chiusa
 formazione.bloccati
 formazione.copiata
 formazione.salvata_come_tua
+
+# Scheda del giocatore, una sola come la web (#616): SchedaGiocatoreView, CifreScheda, TuttiINumeri, Domain/LetturaScheda,
+# Domain/PercheTitolare; «Sostituisci» anche come titolo del foglio della sostituzione (FormazioneView)
+formazione.partita_casa
+formazione.partita_fuori
+formazione.se_gioca
+formazione.perche_titolare
+formazione.incerto
+formazione.ultimi_voti
+formazione.sostituisci
+formazione.tutti_numeri
+formazione.questa_partita
+# «gioca al 62 per cento», «gioca all'85 per cento» per VoiceOver (CifreScheda), come la pedina della web
+formazione.voce_gioca
+formazione.voce_gioca_v

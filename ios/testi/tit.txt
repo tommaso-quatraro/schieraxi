@@ -8,3 +8,7 @@ tit.st_senza_voto
 tit.st_attesa_voti
 tit.st_in_corso
 tit.st_rinviata
+
+# Scheda del giocatore: lo stato a parole prima della partita (Domain/ParolaStato, come PAROLE_STATO della web)
+tit.in_dubbio
+tit.fuori

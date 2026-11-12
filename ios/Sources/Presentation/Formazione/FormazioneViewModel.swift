@@ -34,8 +34,11 @@ final class FormazioneViewModel: ViewModelBase {
     @Published var messaggio: String?
     /// Nome di un'altra squadra della lega, se se ne sta guardando la formazione consigliata (nil = la mia).
     @Published var squadraVista: String?
-    /// Il giocatore di cui si guarda «Perché questo numero» (tocco sul fantavoto atteso).
-    @Published var percheAperto: Giocatore?
+    /// Il titolare di cui si sceglie il sostituto (foglio della sostituzione): da «Sostituisci» nella scheda del giocatore o,
+    /// in modifica a mano, dal tocco sulla riga.
+    @Published var daSostituire: Giocatore?
+    /// «Sostituisci» toccato nella scheda: la scelta del sostituto si apre quando il foglio della scheda è sparito.
+    private var sostituzioneInAttesa: Int?
 
     /// La scelta della giornata è stata letta dal server (anche «nessuna»): solo allora la riga di stato dice qualcosa.
     @Published private(set) var sceltaLetta = false
@@ -138,10 +141,11 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Chi può prendere il posto di `uscente` nella modifica a mano, come `sostituti` della web: stesso ruolo, non già titolare e non
     /// fermo, il migliore per punti attesi in cima. Nessuno se `uscente` stesso è fermo.
+    /// Fuori dalla modifica a mano (dalla scheda del giocatore) i titolari sono gli undici sullo schermo.
     func sostituti(di uscente: Giocatore, _ f: Formazione) -> [Giocatore] {
         let fermi = Set(f.bloccati ?? [])
         guard !fermi.contains(uscente.id) else { return [] }
-        let titolari = Set(manuale ?? [])
+        let titolari = Set(manuale ?? vista(f).titolari.map(\.id))
         return (f.schede ?? [:]).values
             .filter { $0.ruolo == uscente.ruolo && !titolari.contains($0.id) && !fermi.contains($0.id) }
             .sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }
@@ -319,6 +323,66 @@ final class FormazioneViewModel: ViewModelBase {
             guard let id = r.titolare, let g = schede[String(id)], let testo = r.testo, !testo.isEmpty else { return nil }
             return RigaScelta(id: g.id, nome: g.nome, testo: testo)
         }
+    }
+
+    // MARK: scheda del giocatore (come `stato.formaz` della web, #616)
+
+    /// La scheda di un giocatore aperta da qui: la previsione già letta, il perché del titolare e cosa ci si può fare. nil se la
+    /// Formazione non ha quel giocatore (allora la scheda aspetta il server).
+    func contestoScheda(_ id: Int) -> ContestoScheda? {
+        guard let f = formazione,
+              let g = f.schede?[String(id)] ?? (f.titolari + f.panchina).first(where: { $0.id == id }) else { return nil }
+        return ContestoScheda(previsione: g, perche: percheTitolare(id), sostituibile: sostituibile(id), fermo: fermo(id))
+    }
+
+    /// «Perché è titolare» (`PercheTitolare`): solo con la consigliata sullo schermo e a formazione aperta, come la web (dopo un
+    /// cambio, con un altro modulo o a giornata chiusa non si dice).
+    func percheTitolare(_ id: Int) -> String? {
+        guard !chiusa, let f = formazione, let schede = f.schede, let livello = self.livello(f),
+              let consigliata = livello.moduli.first(where: { $0.modulo == livello.modulo }) ?? livello.moduli.first,
+              Set(vista(f).titolari.map(\.id)) == Set(consigliata.titolari) else { return nil }
+        return PercheTitolare.testo(consigliata, id: id, schede: schede)
+    }
+
+    /// Un titolare della tua formazione ancora aperta, sullo schermo: nella scheda «Sostituisci».
+    func sostituibile(_ id: Int) -> Bool {
+        titolareTuo(id) && !fermi.contains(id)
+    }
+
+    /// Un titolare della tua formazione che gioca un anticipo già cominciato: nella scheda la frase di `formazione.bloccati`.
+    func fermo(_ id: Int) -> Bool {
+        titolareTuo(id) && fermi.contains(id)
+    }
+
+    private func titolareTuo(_ id: Int) -> Bool {
+        guard squadraVista == nil, !chiusa, let f = formazione else { return false }
+        return vista(f).titolari.contains { $0.id == id }
+    }
+
+    /// «Sostituisci» nella scheda: il foglio della scheda si chiude e la scelta del sostituto parte quando è sparito
+    /// (`apriSostituzioneInAttesa`).
+    func chiediSostituzione(_ id: Int) {
+        sostituzioneInAttesa = id
+    }
+
+    /// Chiamata quando il foglio della scheda è sparito: apre la scelta del sostituto chiesta con «Sostituisci», se quel
+    /// titolare si può ancora sostituire.
+    func apriSostituzioneInAttesa() {
+        guard let id = sostituzioneInAttesa else { return }
+        sostituzioneInAttesa = nil
+        guard sostituibile(id), let g = formazione?.schede?[String(id)] else { return }
+        daSostituire = g
+    }
+
+    /// Sostituisce un titolare degli undici sullo schermo: fuori dalla modifica a mano ci entra partendo da quegli undici (la riga
+    /// dello stato dice che la formazione è cambiata e si salva con «Salva»). Mai a giornata chiusa, mai un giocatore fermo, mai
+    /// un titolare al posto di un altro.
+    func sostituisciTitolare(_ vecchio: Int, con nuovo: Int) {
+        guard let f = formazione, !chiusa, !fermi.contains(vecchio), !fermi.contains(nuovo) else { return }
+        let titolari = manuale ?? vista(f).titolari.map(\.id)
+        guard titolari.contains(vecchio), !titolari.contains(nuovo) else { return }
+        if manuale == nil { manuale = titolari }
+        sostituisci(vecchio, con: nuovo)
     }
 
     /// Chi è fuori dalla formazione mostrata, dal più forte (punti attesi).

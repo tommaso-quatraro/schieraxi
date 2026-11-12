@@ -6,8 +6,6 @@ import Foundation
 /// Le parole del fantavoto atteso, uguali in ogni schermata.
 enum FantavotoAtteso {
     static let nome = "Fantavoto atteso"
-    /// `perche.definizione` del catalogo comune con la web.
-    static let definizione = Catalogo.Perche.definizione
 
     /// «+1,1» o «−0,4» (con il vero segno meno), in fantavoti o punti. Sotto 0,05 due cifre, per non scrivere «+0,0».
     static func conSegno(_ valore: Double) -> String {
