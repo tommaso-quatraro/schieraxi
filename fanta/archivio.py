@@ -66,10 +66,13 @@ CREATE TABLE IF NOT EXISTS probabili (
     PRIMARY KEY (stagione, giornata, fonte, calciatore_id)
 );
 -- ogni rilevazione delle probabili, con l'ora (solo si aggiunge, non si cancella): serve a vedere come cambiano
--- le probabili avvicinandosi alla partita e a tarare il modello. Stesse colonne di "probabili".
+-- le probabili avvicinandosi alla partita e a tarare il modello. Le colonne di "probabili" più `copia`: 1 = lettura uguale
+-- all'ultima della giornata prima (la pagina ha già il numero nuovo ma non le formazioni nuove), tenuta qui e mai in "probabili".
+-- La colonna negli archivi che hanno già la tabella la aggiunge `_aggiorna_schema`.
 CREATE TABLE IF NOT EXISTS probabili_storia (
     stagione TEXT, giornata INTEGER, fonte TEXT, calciatore_id INTEGER, squadra TEXT, partita_id INTEGER,
     stato TEXT, percentuale REAL, in_dubbio INTEGER, diffidato INTEGER, nota TEXT, rilevato TEXT,
+    copia INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (stagione, giornata, fonte, calciatore_id, rilevato)
 );
 -- colonne in più di football-data.co.uk (xG di squadra, tiri, angoli, falli, cartellini): MODALITÀ OMBRA,
@@ -164,6 +167,19 @@ def _toglie_tabella_dismessa(db: sqlite3.Connection) -> None:
             db.rollback()
 
 
+def _aggiorna_schema(db: sqlite3.Connection) -> None:
+    """Colonne nuove in tabelle che negli archivi ci sono già (`CREATE TABLE IF NOT EXISTS` non le aggiunge): una volta sola,
+    senza toccare i dati. Poi l'indice che serve a trovare l'ultima lettura delle probabili prima di un'ora (`stato_dati`)."""
+    try:
+        colonne = {r[1] for r in db.execute("PRAGMA table_info(probabili_storia)")}
+        if "copia" not in colonne:
+            db.execute("ALTER TABLE probabili_storia ADD COLUMN copia INTEGER NOT NULL DEFAULT 0")
+        db.execute("CREATE INDEX IF NOT EXISTS probabili_storia_letture ON probabili_storia (stagione, giornata, fonte, copia, rilevato)")
+        db.commit()
+    except sqlite3.OperationalError:     # archivio occupato, o un altro processo ha appena aggiunto la colonna: si riprova alla prossima
+        db.rollback()
+
+
 def apri(percorso: Path = FILE) -> sqlite3.Connection:
     percorso.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(percorso, timeout=30)   # attende se un altro processo (es. l'aggiornamento automatico) sta scrivendo
@@ -172,6 +188,7 @@ def apri(percorso: Path = FILE) -> sqlite3.Connection:
     db.execute("PRAGMA synchronous = NORMAL")    # in WAL è sicuro; l'archivio si ricostruisce comunque, e ogni conferma non aspetta il disco
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA)
+    _aggiorna_schema(db)
     _toglie_tabella_dismessa(db)
     return db
 

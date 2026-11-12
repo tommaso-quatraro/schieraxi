@@ -23,6 +23,7 @@ from .fonti import understat as us
 
 GIORNATE = 38
 MAX_STAGIONI_STORICHE = 6     # tetto: ogni stagione in più sono circa 420 richieste (10-15 minuti)
+SOGLIA_COPIA = 0.95           # probabili uguali oltre questa quota alla giornata prima = copia (Aggiornamento._copia_della_giornata_prima)
 
 
 class Stagione:
@@ -202,16 +203,44 @@ class Aggiornamento:
         if not partite <= note:
             raise ValueError(f"le probabili non corrispondono alla giornata {giornata} della stagione {self.st.codice}")
         quando = _ora()
+        nuove = [{**r, "stagione": self.st.codice, "giornata": giornata, "fonte": "fantacalcio", "rilevato": quando}
+                 for r in righe]
+        copia = self._copia_della_giornata_prima(giornata, righe)
+        if copia:
+            # la pagina ha il numero della giornata nuova ma le formazioni di quella finita: resta nella storia con il segno e
+            # basta. Per il resto dell'app la giornata è ancora senza probabili (presenze recenti, nessun avviso di cambi)
+            archivio.inserisci(self.db, "probabili_storia", [{**r, "copia": 1} for r in nuove])
+            self.scrivi(f"  probabili giornata {giornata}: copia della giornata {copia[0]} (uguali {copia[1]:.0%}), "
+                        "non ancora uscite: non usate")
+            return
         # per ogni giornata si tiene l'ultima rilevazione (servono a verificare quanto erano giuste);
         # chi legge deve sempre filtrare per giornata
         self.db.execute("DELETE FROM probabili WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio'",
                         (self.st.codice, giornata))
-        nuove = [{**r, "stagione": self.st.codice, "giornata": giornata, "fonte": "fantacalcio", "rilevato": quando}
-                 for r in righe]
         archivio.inserisci(self.db, "probabili", nuove)
         archivio.inserisci(self.db, "probabili_storia", nuove)     # in più: la rilevazione resta anche dopo la prossima
         conta = {s: sum(r["stato"] == s for r in righe) for s in ("titolare", "panchina", "infortunato", "squalificato")}
         self.scrivi(f"  probabili giornata {giornata}: {conta}")
+
+    def _copia_della_giornata_prima(self, giornata: int, righe: list[dict]) -> tuple[int, float] | None:
+        """(giornata prima, quota di righe uguali) se la lettura è una copia della giornata prima, altrimenti None.
+        Copia = la giornata non ha ancora probabili accettate e più di SOGLIA_COPIA delle righe (stato, percentuale, in dubbio
+        per giocatore) sono uguali all'ultima lettura accettata della giornata prima. Misurato sull'archivio vero: le copie sono
+        uguali al 99-100%, la prima lettura vera di una giornata al 40% circa."""
+        st = self.st.codice
+        if self.db.execute("SELECT 1 FROM probabili WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio' LIMIT 1",
+                           (st, giornata)).fetchone():
+            return None                          # la giornata ha già probabili vere: le letture dopo valgono sempre
+        prima = self.db.execute("SELECT MAX(giornata) FROM probabili WHERE stagione = ? AND giornata < ? AND fonte = 'fantacalcio'",
+                                (st, giornata)).fetchone()[0]
+        if prima is None or not righe:
+            return None
+        vecchie = {r[0]: (r[1], r[2], r[3] or 0) for r in self.db.execute(
+            "SELECT calciatore_id, stato, percentuale, in_dubbio FROM probabili WHERE stagione = ? AND giornata = ? "
+            "AND fonte = 'fantacalcio'", (st, prima))}
+        uguali = sum(vecchie.get(r["calciatore_id"]) == (r["stato"], r["percentuale"], r["in_dubbio"] or 0) for r in righe)
+        quota = uguali / len(righe)
+        return (prima, quota) if quota > SOGLIA_COPIA else None
 
     def probabili_fonte2(self) -> None:
         """Seconda fonte di probabili (feed Sosfanta) in modalità ombra: una richiesta ogni 30 minuti al massimo."""
