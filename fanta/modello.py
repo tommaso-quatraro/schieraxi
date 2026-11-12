@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from . import coppe
+from .formazione import IMPROBABILE_SOTTO
 from .punteggio import COLONNA_VOTO
 from .regole import RUOLI, Regole
 
@@ -653,17 +654,21 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
 
 def _segna_primo_rigorista(righe: list) -> None:
     """Mette in ogni riga `primo_rigorista`: vero per il giocatore che nella sua squadra ha più probabilità di calciare il
-    prossimo rigore, falso per gli altri. Conta «gioca» (`p_voto`) per la quota dei rigori se gioca (`quota_rigori`), fra chi non
-    è infortunato né squalificato; a pari merito il primo dell'elenco, e chi ha il prodotto a zero non lo è. Serve a «rigorista»
-    (`consigli.rigorista`), che è uno solo per squadra.
+    prossimo rigore, falso per gli altri. Conta «gioca» (`p_voto`) per la quota dei rigori se gioca (`quota_rigori`), fra chi può
+    giocare: non è infortunato né squalificato e gioca almeno IMPROBABILE_SOTTO. A pari merito vale il primo dell'elenco, e chi
+    ha il prodotto a zero non lo è. Serve a «rigorista» (`consigli.rigorista`), che è uno solo per squadra.
     La sola quota non basta (#638): è «se gioca lui», con i compagni pesati per le loro presenze, quindi chi gioca poco può
     averla più alta del titolare che ha calciato l'ultimo rigore, e la frase andava a lui. Fra chi è in campo la somma delle
     quote supera 1 nel 2-5% delle squadre-partita e due compagni possono averla tutti e due sopra la metà. Normalizzarla dentro
-    la squadra toglie rigori attesi (da 0,51 e 0,48 dei veri a 0,43 e 0,39, misura del 12/11/2026): la quota resta com'è."""
+    la squadra toglie rigori attesi (da 0,51 e 0,48 dei veri a 0,43 e 0,39, misura del 12/11/2026): la quota resta com'è.
+    Nemmeno il prodotto basta: chi è l'unico della squadra ad aver calciato rigori non ha nessuno con cui confrontarsi, e la
+    scheda gli diceva insieme «non tra i convocati previsti» e «rigorista». Per questo chi gioca meno di IMPROBABILE_SOTTO resta
+    fuori dal confronto: è il confine di «improbabile» di `consigli.titolarita`. Se resta fuori lui, il primo è il migliore dei
+    compagni che giocano; se nessuno di loro ha mai calciato rigori, in quella squadra non lo è nessuno."""
     primi: dict[str, tuple[float, dict]] = {}
     for prima, dopo, _ in righe:
         dopo["primo_rigorista"] = False
-        if dopo["stato"] in ("infortunato", "squalificato"):
+        if dopo["stato"] in ("infortunato", "squalificato") or prima["p_voto"] < IMPROBABILE_SOTTO:
             continue
         calcia = prima["p_voto"] * dopo["quota_rigori"]
         if calcia > 0 and (prima["squadra"] not in primi or calcia > primi[prima["squadra"]][0]):

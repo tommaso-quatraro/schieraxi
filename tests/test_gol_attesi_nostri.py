@@ -205,6 +205,36 @@ def test_la_frase_rigorista_va_al_titolare_non_a_chi_ha_la_quota_piu_alta():
     assert "rigorista" in consigli.motivi(p.loc[2]) and "rigorista" not in consigli.motivi(p.loc[1])
 
 
+def test_chi_non_gioca_quasi_mai_non_e_il_primo_rigorista_nemmeno_da_solo():
+    """Revisione della pull request di #638 («un giocatore che gioca quasi mai non è il primo»). Chi gioca meno del 20% non è il
+    primo nemmeno se è l'unico della squadra ad aver calciato rigori: non aveva nessuno con cui confrontarsi, e teneva la frase."""
+    assert _primi([_riga(1, "alfa", 0.9, 0.02, "non_citato")]) == []
+    # se un compagno gioca, il primo è lui anche con «gioca» per quota più basso: 0,9 × 0,1 = 0,09 contro 0,15 × 0,9 = 0,135
+    assert _primi([_riga(2, "beta", 0.9, 0.15, "panchina"), _riga(3, "beta", 0.1, 0.9, "titolare")]) == [3]
+
+
+def test_il_confine_di_chi_non_gioca_quasi_mai_e_quello_di_improbabile():
+    """Un confine solo: chi la scheda chiama «improbabile» (`consigli.titolarita`, meno del 20%) non è il primo; dal 20% in su sì."""
+    for gioca in (0.0, 0.02, 0.1, 0.199, 0.2, 0.3, 0.9):
+        improbabile = consigli.titolarita({"stato": None, "p_voto": gioca, "quota_titolare": 0.5}) == "improbabile"
+        assert (_primi([_riga(1, "alfa", 0.9, gioca)]) == []) is improbabile, gioca
+
+
+def test_il_non_convocato_non_ha_la_frase_rigorista_anche_se_e_l_unico_che_li_calcia():
+    """Dalle previsioni alla frase. Il Rigorista (1) ha calciato tutti i rigori di alfa, ma le probabili di alfa non lo citano:
+    «gioca» 2%. La scheda diceva insieme «non tra i convocati previsti» e «rigorista»."""
+    probabili = pd.DataFrame([{"calciatore_id": cid, "squadra": sq, "stato": "titolare", "percentuale": 90.0, "nota": None,
+                               "in_dubbio": 0, "diffidato": 0} for cid, sq in ((2, "alfa"), (3, "alfa"), (4, "beta"), (5, "beta"))])
+    d = _dati(_rigori(1, (2, 4, 6, 8)))
+    p = modello.previsioni(d, *PROSSIMA, Regole(), Parametri(), probabili=probabili, giocatori=d.calciatori).set_index("id")
+    assert p.at[1, "stato"] == "non_citato" and p.at[1, "quota_rigori"] >= consigli.QUOTA_RIGORISTA
+    assert consigli.titolarita(p.loc[1]) == "improbabile"
+    assert not p["primo_rigorista"].any()                 # in alfa non ne ha mai calciati nessun altro: il primo non c'è
+    assert not consigli.rigorista(p.loc[1])
+    motivi = consigli.motivi(p.loc[1])
+    assert "non tra i convocati previsti" in motivi and "rigorista" not in motivi
+
+
 # ---------------------------------------------------------------- B2: minuti attesi «se prende voto»
 def _riserva_a_meta() -> dict:
     """La Riserva nelle giornate 3-10 della nuova stagione: 4 presenze con voto a 90' (un gol nella 5ª) e 4 senza voto a 10',
