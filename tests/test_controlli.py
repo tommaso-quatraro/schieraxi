@@ -88,6 +88,49 @@ def test_nello_stato_dei_dati(db):
     assert any(c["nome"] == "partite_per_giornata" and c["esito"] == "ok" for c in r["controlli"])
 
 
+def _partita_con_voti(db, pid=900, gol=(2, 1), giornata=11):
+    """Casa 2 - 1 ospite: il primo gol di casa su azione, il secondo un'autorete dell'ospite; il gol dell'ospite su rigore. Due
+    portieri di casa (cambio) che insieme ne prendono 1, il portiere ospite ne prende 2."""
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, gol_casa, gol_trasferta, giocata) "
+               "VALUES (?, ?, ?, '2026-11-08 15:00', 'casa', 'ospite', ?, ?, 1)", (pid, ST, giornata, *gol))
+    voti = [(1, "casa", "A", 1, 0, 0, 0), (2, "casa", "P", 0, 1, 0, 0), (3, "casa", "P", 0, 0, 0, 0),
+            (4, "ospite", "D", 0, 0, 1, 0), (5, "ospite", "A", 0, 0, 0, 1), (6, "ospite", "P", 0, 2, 0, 0)]
+    for cid, sq, ruolo, g, subiti, autogol, rigori in voti:
+        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, autogol, "
+                   "rig_segnati) VALUES (?, ?, ?, 'x', ?, ?, 6.0, ?, ?, ?, ?)", (ST, giornata, cid, sq, ruolo, g, subiti, autogol, rigori))
+
+
+def test_gol_dei_voti_uguali_al_risultato(db):
+    _partita_con_voti(db)
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, gol_casa, gol_trasferta, giocata) "
+               "VALUES (901, ?, 11, '2026-11-08 18:00', 'x', 'y', 3, 0, 1)", (ST,))          # voti non ancora arrivati: non conta
+    e = _esiti(db)["gol_dei_voti"]
+    assert (e["esito"], e["valore"]) == ("ok", 0.0) and "1 partite" in e["dettaglio"]
+    db.execute("UPDATE voti SET gol = 0 WHERE calciatore_id = 1")                               # un gol perso dalla pagina
+    e = _esiti(db)["gol_dei_voti"]
+    assert (e["esito"], e["valore"]) == ("errore", 1.0) and "g11 casa-ospite 2-1 (nei voti 1-1)" in e["dettaglio"]
+
+
+def test_gol_subiti_dei_portieri_uguali_al_risultato(db):
+    _partita_con_voti(db)
+    e = _esiti(db)["gol_subiti_portieri"]
+    assert (e["esito"], e["valore"]) == ("ok", 0.0)
+    db.execute("UPDATE voti SET gol_subiti = 0 WHERE calciatore_id = 6")
+    e = _esiti(db)["gol_subiti_portieri"]
+    assert (e["esito"], e["valore"]) == ("errore", 1.0) and "g11 casa-ospite 2-1 (portieri 0-1)" in e["dettaglio"]
+
+
+def test_i_controlli_nuovi_contano_come_errori_della_corsa(db):
+    """Sui dati veri di oggi danno zero: un valore diverso è un errore del passo che ha scritto i dati, e la corsa lo conta (riga
+    generale, registro, salute). Quelli di prima restano solo da guardare (test sopra)."""
+    from fanta import aggiorna
+    _partita_con_voti(db)
+    db.execute("UPDATE voti SET gol = 0 WHERE calciatore_id = 1")
+    a = aggiorna.Aggiornamento(db, aggiorna.Stagione(2026), scrivi=lambda _: None)
+    a._passo("controlli", a.controlli)
+    assert len(a.errori) == 1 and a.errori[0].startswith("controlli: gol_dei_voti: 1 partite su 1")
+
+
 def test_passo_dell_aggiornamento_scrive_e_non_conta_come_errore(db):
     from fanta import aggiorna
     _giornata(db, 1, n=9)                                        # giornata storta: errore dei dati, ma non passo fallito
