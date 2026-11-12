@@ -46,14 +46,19 @@ def bassa_priorita() -> None:
 
 
 def contesti_da_scaldare(contesto_locale: Callable[[], Contesto], adesso=None) -> list[Contesto]:
-    """Utente unico senza account; con gli account, chi ha usato l'app negli ultimi 7 giorni (i più recenti per primi)."""
+    """Utente unico senza account; con gli account, chi ha usato l'app o il widget negli ultimi 7 giorni (i più recenti per primi).
+    Il widget conta (#651): il suo token non fa partire calcoli, quindi chi guarda solo il widget trova i dati solo se si preparano qui."""
     if not account.multiutente():
         return [contesto_locale()]
-    limite = account._testo(account._ora(adesso) - ATTIVO_DA)
+    ora = account._ora(adesso)
+    limite = account._testo(ora - ATTIVO_DA)
     db = account.apri()
     try:
-        righe = db.execute("SELECT utente_id FROM sessioni WHERE revocata = 0 AND ultimo_uso >= ? "
-                           "GROUP BY utente_id ORDER BY MAX(ultimo_uso) DESC LIMIT ?", (limite, MAX_UTENTI)).fetchall()
+        righe = db.execute("SELECT utente_id FROM ("
+                           "SELECT utente_id, ultimo_uso FROM sessioni WHERE revocata = 0 AND ultimo_uso >= ? "
+                           "UNION ALL SELECT utente_id, ultimo_uso FROM token_widget WHERE ultimo_uso >= ? AND scade > ?"
+                           ") GROUP BY utente_id ORDER BY MAX(ultimo_uso) DESC LIMIT ?",
+                           (limite, limite, account._testo(ora), MAX_UTENTI)).fetchall()
     finally:
         db.close()
     return [Contesto.per_utente(r[0]) for r in righe]
@@ -77,11 +82,12 @@ def scalda_contesto(ctx: Contesto, db) -> bool:
     return True
 
 
-def scalda_tutti(contesto_locale: Callable[[], Contesto], apri_db: Callable[[], object]) -> int:
-    """Scalda tutti gli utenti da scaldare. Un errore (rose mancanti, calendario non ancora uscito) non ferma gli altri."""
+def scalda_tutti(contesto_locale: Callable[[], Contesto], apri_db: Callable[[], object], adesso=None) -> int:
+    """Scalda tutti gli utenti da scaldare. Un errore (rose mancanti, calendario non ancora uscito) non ferma gli altri.
+    `adesso`: l'ora con cui contare chi è attivo (per le prove); senza, l'ora vera."""
     fatti = 0
     try:
-        contesti = contesti_da_scaldare(contesto_locale)
+        contesti = contesti_da_scaldare(contesto_locale, adesso)
     except Exception:  # noqa: BLE001 - è solo un'anticipazione
         return 0
     for i, ctx in enumerate(contesti):

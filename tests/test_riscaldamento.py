@@ -31,6 +31,26 @@ def test_con_gli_account_solo_chi_ha_usato_l_app_da_poco(multiutente):
     assert vecchio not in [c.utente_id for c in contesti]
 
 
+ADESSO = datetime(2026, 11, 12, 12, 0, tzinfo=timezone.utc)
+
+
+def test_conta_anche_chi_usa_solo_il_widget(multiutente):
+    """#651: chi non apre l'app da 8 giorni ma ha il widget (token usato da poco) si prepara come gli altri, prima dei meno recenti;
+    un token usato più di 7 giorni fa, o scaduto, non conta."""
+    solo_widget = _utente("solowidget", ADESSO - timedelta(days=8))
+    recente = _utente("recente", ADESSO - timedelta(days=1))
+    vecchio = _utente("vecchio", ADESSO - timedelta(days=20))
+    scaduto = _utente("scaduto", ADESSO - timedelta(days=30))
+    with contextlib.closing(account.apri()) as db:
+        account.crea_token_widget(db, solo_widget, ADESSO - timedelta(days=60))
+        db.execute("UPDATE token_widget SET ultimo_uso = ? WHERE utente_id = ?", (account._testo(ADESSO - timedelta(hours=2)), solo_widget))
+        account.crea_token_widget(db, vecchio, ADESSO - timedelta(days=8))           # widget fermo da 8 giorni
+        account.crea_token_widget(db, scaduto, ADESSO - timedelta(days=91))
+        db.execute("UPDATE token_widget SET ultimo_uso = ? WHERE utente_id = ?", (account._testo(ADESSO - timedelta(hours=1)), scaduto))
+        db.commit()
+    assert [c.utente_id for c in riscaldamento.contesti_da_scaldare(lambda: None, ADESSO)] == [solo_widget, recente]
+
+
 def test_non_piu_di_max_utenti(multiutente, monkeypatch):
     monkeypatch.setattr(riscaldamento, "MAX_UTENTI", 4)       # il tetto vero è più alto: qui basta vedere che si rispetta
     adesso = datetime.now(timezone.utc)
@@ -42,7 +62,7 @@ def test_non_piu_di_max_utenti(multiutente, monkeypatch):
 def test_scalda_tutti_continua_dopo_un_errore(monkeypatch):
     visti = []
     ctx = [Contesto.per_utente(1), Contesto.per_utente(2), Contesto.per_utente(3)]
-    monkeypatch.setattr(riscaldamento, "contesti_da_scaldare", lambda locale: ctx)
+    monkeypatch.setattr(riscaldamento, "contesti_da_scaldare", lambda locale, adesso=None: ctx)
     monkeypatch.setattr(riscaldamento, "PAUSA", 0)
 
     class Db:
