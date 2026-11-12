@@ -61,18 +61,12 @@ def _ora(testo: object, fuso: tzinfo) -> datetime | None:
     return quando if quando.utcoffset() is not None else quando.replace(tzinfo=fuso)
 
 
-def _solo_esempio(rose: Rose | None) -> bool:
-    """Le squadre di esempio del primo avvio, anche rinominate: la rinomina lascia il nome di prima in `nome_importato`
-    (`onboarding.e_demo` guarda solo il nome di adesso, e un amico che rinomina «Atletico Prova» risulterebbe dentro)."""
-    return bool(rose and rose.squadre and {s.nome_importato or s.nome for s in rose.squadre} == set(onboarding.SQUADRE_DEMO))
-
-
 def minuti_di_ingresso(creato: str, rose: Rose | None, primo_avvio: dict | None, fuso_server: tzinfo) -> tuple[str, float | None]:
     """(esito, minuti). `dentro` con i minuti dalla creazione dell'account alla lega caricata (rose vere e `tempi` fatto);
     `solo_esempio` se le rose sono le squadre di esempio; `non_finito` se mancano rose vere o `tempi` (anche se saltati);
     `non_iniziato` se non ci sono né rose né primo avvio. Minuti None anche per `dentro` quando non c'è un'ora buona (nessuna
     ora salvata, o ore prima della creazione: orologio sbagliato): mai «entro 10 minuti» per omissione."""
-    if _solo_esempio(rose):
+    if onboarding.e_demo(rose):                  # le squadre di esempio, anche rinominate
         return SOLO_ESEMPIO, None
     vere = bool(rose and rose.squadre)
     if not vere and primo_avvio is None:
