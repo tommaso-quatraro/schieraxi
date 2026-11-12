@@ -202,20 +202,31 @@ def test_giornata_aperta_se_manca_una_partita_del_turno_e_recupero_giocato(tmp_p
     assert fasi.fine_giornata(db, ST, 9) is None
 
 
-@pytest.mark.parametrize("modo, punti, recuperi", [("aspetta", 9 * 6 + 7, 1), ("senza_voto", 9 * 6 + 7 + 6, 0),
-                                                   ("voto_ufficio", 9 * 6 + 7 + 6, 0)])
-def test_riepilogo_con_il_recupero_da_giocare(tmp_path, monkeypatch, modo, punti, recuperi):
+SIGLE = {"inter": "INT", "roma": "ROM", "atalanta": "ATA"}
+
+
+# 9 voti da 6 e il portiere con 7 (porta inviolata) = 61; la riserva (7,5) entra solo con «senza voto»; il voto d'ufficio vale 6
+@pytest.mark.parametrize("modo, punti, recuperi", [("aspetta", 61.0, 1), ("senza_voto", 68.5, 0), ("voto_ufficio", 67.0, 0)])
+def test_riepilogo_con_il_recupero_da_giocare(tmp_path, modo, punti, recuperi):
+    """Rose vere con le sigle, come le importa l'utente («ATA»), mentre calendario e voti usano il nome lungo («atalanta»): la
+    squadra di ogni giocatore viene dall'archivio. Prima il riepilogo non trovava la partita rinviata di Rinviato e faceva entrare
+    la riserva anche con «aspetta» o con il voto d'ufficio (#649); il test sostituiva `_info_rosa` e non lo vedeva."""
+    from fanta import lega, scelte
     db, _ = _db_giornata(tmp_path)
-    info = {g["id"]: g for g in TIT + PANC}
-    archivio.inserisci(db, "voti", [{"stagione": ST, "giornata": 9, "calciatore_id": i, "nome": info[i]["nome"],
-                                     "squadra": info[i]["squadra"], "ruolo": info[i]["ruolo"], "voto_red": 6.0, "gol": 0}
-                                    for i in VOTI])
     tit = [dict(g, squadra="atalanta") if g["id"] == 10 else g for g in TIT]        # Rinviato gioca la partita rinviata
-    info[10] = tit[9]
-    monkeypatch.setattr(fasi, "_info_rosa", lambda rose, prev: info)
-    monkeypatch.setattr(fasi, "schierata", lambda *a, **k: ([g["id"] for g in tit], [12], "tua"))
-    r = fasi.blocco_riepilogo(db, replace(Regole(), partite_rinviate=modo), None, ST, 9, None, None)
-    assert r["punti_fatti"] == punti and len(r["recuperi"]) == recuperi           # senza voto: entra la riserva (6)
+    giocatori = tit + PANC
+    archivio.inserisci(db, "calciatori", [{"id": g["id"], "nome": g["nome"], "ruolo": g["ruolo"], "squadra": SIGLE[g["squadra"]],
+                                           "squadra_slug": g["squadra"]} for g in giocatori])
+    voto = lambda i, sq, v=6.0: {"stagione": ST, "giornata": 9, "calciatore_id": i, "nome": f"G{i}", "squadra": sq, "ruolo": "C",   # noqa: E731
+                                 "voto_red": v, "gol": 0}
+    righe = [voto(g["id"], g["squadra"], 7.5 if g["id"] == 12 else 6.0) | {"ruolo": g["ruolo"]} for g in giocatori if g["id"] in VOTI]
+    righe += [voto(100 + n, sq) for n, sq in enumerate(("milan", "roma", "lazio", "napoli", "juve"))]   # tutte le partite giocate
+    archivio.inserisci(db, "voti", righe)
+    rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(g["id"], g["nome"], g["ruolo"], SIGLE[g["squadra"]]) for g in giocatori])],
+                     "Mia")
+    scelte.salva(ST, 9, [g["id"] for g in tit], "4-4-2", tmp_path / "scelte.json", panchina=[12])
+    r = fasi.blocco_riepilogo(db, replace(Regole(), partite_rinviate=modo), rose, ST, 9, tmp_path / "scelte.json", None)
+    assert r["formazione_di"] == "tua" and r["punti_fatti"] == punti and len(r["recuperi"]) == recuperi
     if recuperi:
         assert r["recuperi"][0]["casa"] == "atalanta"
 
