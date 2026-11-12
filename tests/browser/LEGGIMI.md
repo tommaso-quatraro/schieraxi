@@ -134,10 +134,16 @@ prima della scadenza:
   rose, Regole, Novità), la rosa mia e di un'altra squadra; una scheda salvata da una versione di prima (Squadra, Altro,
   Oggi...) apre la Formazione; Indietro e «‹ Impostazioni» tornano dove si era;
 - La mia lega porta alla mia squadra (con stemma, maglia e «Non è la tua squadra?») e alle altre; senza le rose degli altri
-  «Le altre squadre» non c'è; «Nuova stagione» compare lì quando serve;
+  «Le altre squadre» non c'è; «Nuova stagione» compare lì quando serve; «Stemma e maglia» della rosa apre il foglio sulla
+  squadra della pagina, con «Rimuovi» (che cancella l'immagine giusta) e «Da indirizzo web»;
 - Regole e scadenza: il regolamento incollato si salva con «Salva queste regole»; i singoli valori stanno dietro «Modifica i
-  valori»; la scadenza si salva appena cambia;
-- Avvisi: niente interruttori di prima, le ore tranquille con la loro fascia, e un cambio manda solo `silenzio`;
+  valori»; la scadenza si salva appena cambia; la frase sulla prima giornata parla di Giornate, non del Diario;
+- Avvisi: niente interruttori di prima, le ore tranquille con la loro fascia, e un cambio manda solo `silenzio`; mentre la web
+  aspetta il service worker il riquadro dice «Controllo gli avvisi…» con `aria-busy` e la riga sotto non si sposta quando
+  arriva la frase. Con le notifiche finte (service worker e permesso simulati nella pagina, rotte `/api/push/...` e
+  `/api/avvisi/prova` con risposte finte): la frase dell'interruttore dice che arrivano anche gli altri avvisi; accenderlo
+  manda un avviso di prova e lo dice; se la prova non parte (429 o `inviato: false`) lo dice un avviso `role="status"` e
+  l'interruttore resta acceso; con il permesso negato niente prova;
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore.
 
 ## Aggiungere un test di comportamento (dieci righe)
