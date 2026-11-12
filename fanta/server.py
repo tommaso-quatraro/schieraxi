@@ -861,7 +861,7 @@ def _copia_automatica(db, ctx: Contesto, f: dict) -> None:
 
 
 class FormazioneScelta(BaseModel):
-    titolari: list[int]
+    titolari: list[int] = Field(max_length=limiti.MAX_GIOCATORI_SQUADRA)      # mai più di una rosa (una formazione ne ha 11)
     squadra: str | None = None
     giornata: int | None = Field(None, ge=1, le=MAX_GIORNATA)
     salva: bool = False
@@ -1119,7 +1119,7 @@ def leggi_affidabilita(ctx: Contesto = Depends(lega_corrente)):
 class SchierataDiario(BaseModel):
     giornata: int = Field(ge=1, le=MAX_GIORNATA)
     tipo: str                               # "consigliata" | "manuale"
-    titolari: list[int] | None = None       # per "manuale": gli 11 titolari
+    titolari: list[int] | None = Field(None, max_length=limiti.MAX_GIOCATORI_SQUADRA)      # per "manuale": gli 11 titolari
     modulo: str | None = None               # facoltativo: il modulo si ricava dai titolari
     stagione: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")      # quella della voce; senza (client vecchi): la stagione in corso
 
@@ -2528,12 +2528,14 @@ def _giornata_chiusa_per(ctx: Contesto):
 def ripristina_backup(dati: dict, ctx: Contesto = Depends(lega_corrente)):
     """Rimette i dati di un backup. Controlla tutto prima: se qualcosa non va non cambia niente. Le formazioni delle giornate
     già chiuse restano quelle del server (il backup non aggira la scadenza, come POST /api/formazione/valuta e DELETE /api/scelta)."""
-    limiti.controlla_spazio(ctx, len(json.dumps(dati)), "Questo backup è troppo grande: controlla di aver scelto il file giusto.")
+    troppo = "Questo backup è troppo grande: controlla di aver scelto il file giusto."
+    limiti.controlla_spazio(ctx, len(json.dumps(dati)), troppo)          # subito, prima dei controlli
     chiusa, db = _giornata_chiusa_per(ctx)
     try:
         with versioni.blocco("scelte"):
             esito = backup.ripristina_esito(dati, RADICE, ctx.file_backup, ctx.copia_prima, chiusa,
-                                            lambda rose: limiti.controlla_rose(ctx, rose))     # stessi tetti dell'importazione
+                                            lambda rose: limiti.controlla_rose(ctx, rose),      # stessi tetti dell'importazione
+                                            spazio=lambda byte: limiti.controlla_spazio(ctx, byte, troppo))    # il peso vero dei file da scrivere
     finally:
         db.close()
     tenute = esito["scelte_chiuse_tenute"]

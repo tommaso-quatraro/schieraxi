@@ -1,13 +1,10 @@
 import SwiftUI
 
-/// Le schede Squadra e Altro (la «dieta delle funzioni»): un elenco di voci, ognuna una pagina. Voci, ordine, testi e condizioni
-/// sono quelli della web (`VoceMenuLega`, da `VOCI_LEGA` di `fanta/web/app.js`). Account, aspetto e avvisi stanno solo nelle
-/// Impostazioni (l'ingranaggio in testata): ogni voce in un posto solo.
-/// Le voci di una funzione spenta (`GET /api/funzioni`) non si vedono. Logica in `LegaViewModel`, `MercatoViewModel` e `ScambiViewModel`.
+/// Le schede Squadra e Altro: un elenco di voci, ognuna una pagina. Voci, ordine e testi sono quelli della web (`VoceMenuLega`,
+/// da `VOCI_LEGA` di `fanta/web/app.js`). Account, aspetto, avvisi e novità stanno solo nelle Impostazioni (l'ingranaggio in
+/// testata): ogni voce in un posto solo. Logica in `LegaViewModel`.
 struct LegaView: View {
     @ObservedObject var vm: LegaViewModel
-    let mercato: MercatoViewModel
-    let scambi: ScambiViewModel
     /// `.squadra` o `.altro`: quali voci mostra.
     var ambito: Sezione = .altro
     @Environment(\.funzioni) private var funzioni
@@ -53,14 +50,14 @@ struct LegaView: View {
         }
         // Sull'iPad la colonna di destra non resta vuota («Scegli una voce»): si apre la prima voce utile della scheda.
         .onAppear {
-            if percorso.wrappedValue.isEmpty { percorso.wrappedValue = [ambito == .squadra ? .squadre : .scambi] }
+            if percorso.wrappedValue.isEmpty { percorso.wrappedValue = [ambito == .squadra ? .squadre : .diario] }
         }
     }
 
     private var testoVuoto: String {
         ambito == .squadra
-            ? "La tua squadra, i cambi consigliati e le rose si aprono qui."
-            : "Gli scambi, le regole e lo storico della tua lega si aprono qui."
+            ? "La tua squadra e le rose si aprono qui."
+            : "Il diario delle giornate e le regole della tua lega si aprono qui."
     }
 
     private var voceScelta: Binding<PaginaLega?> {
@@ -82,12 +79,9 @@ struct LegaView: View {
 
     private var elenco: some View {
         List(selection: classe == .regular ? voceScelta : nil) {
-            if ambito == .squadra {
-                sezioneSquadra
-            } else {
-                if vm.nuovaStagione { bannerStagione }
-                sezioneAltro
-            }
+            // come la web: l'avviso della nuova stagione in cima a Squadra e ad Altro, solo quando serve
+            if vm.nuovaStagione { bannerStagione }
+            if ambito == .squadra { sezioneSquadra } else { sezioneAltro }
         }
         .scrollContentBackground(.hidden)
         .contentMargins(.bottom, 24, for: .scrollContent)
@@ -107,18 +101,10 @@ struct LegaView: View {
         case .squadre: SquadreView(server: vm.server)
         case .rosa(let nome): RosaView(nome: nome, server: vm.server)
         case .regole: RegoleEditorView(server: vm.server)
-        case .crediti: CreditiView(server: vm.server)
         case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
-        case .novita: NovitaView(server: vm.server)
-        case .movimenti: MovimentiView(server: vm.server)
         case .stagione: StagioneView(server: vm.server)
         case .diario: DiarioView(server: vm.server)
-        case .cambi: PaginaMercato(vm: mercato, titolo: Catalogo.Lega.voceConsigli) { ConsigliatiView(vm: mercato) }
-        case .seguiti: PaginaMercato(vm: mercato, titolo: Catalogo.Lega.voceOsservati) { OsservatiView(vm: mercato) }
-        case .elenco: PaginaMercato(vm: mercato, titolo: Catalogo.Lega.voceGiocatori) { GiocatoriView(vm: mercato, ricerca: mercato.ricerca) }
-        case .calendario: PaginaMercato(vm: mercato, titolo: Catalogo.Lega.voceCalendario) { CalendarioView(vm: mercato) }
-        case .scambi: ScambiView(vm: scambi, incorporata: true)
         }
     }
 
@@ -137,8 +123,7 @@ struct LegaView: View {
         }
     }
 
-    /// Squadra: le voci di `VOCI_LEGA` della web (la mia squadra e le rose, i cambi consigliati, i seguiti, l'elenco dei giocatori,
-    /// il calendario, per ultima l'importazione delle rose).
+    /// Squadra: le voci di `VOCI_LEGA` della web (la mia squadra e le rose, poi l'importazione delle rose).
     private var sezioneSquadra: some View {
         Section {
             // la pagina come identità della riga: è anche il valore della selezione nelle colonne dell'iPad
@@ -146,8 +131,7 @@ struct LegaView: View {
         }
     }
 
-    /// Altro: le voci di `VOCI_LEGA` della web. «Nuova stagione» c'è sempre, come sulla web; quando le rose sono di un anno passato
-    /// c'è in più il riquadro in cima.
+    /// Altro: le voci di `VOCI_LEGA` della web (il diario e le regole).
     private var sezioneAltro: some View {
         Section {
             ForEach(VoceMenuLega.voci(.altro, funzioni: funzioni), id: \.pagina) { RigaVoceMenuLega(voce: $0) }
@@ -155,36 +139,10 @@ struct LegaView: View {
     }
 }
 
-/// Una pagina che prima stava in Mercato (cambi consigliati, seguiti, elenco, calendario): sfondo, titolo e la scheda del giocatore che sale dal basso.
-struct PaginaMercato<Contenuto: View>: View {
-    @ObservedObject var vm: MercatoViewModel
-    let titolo: String
-    @ViewBuilder var contenuto: () -> Contenuto
-    @Environment(\.spazioZoom) private var zoom
-
-    var body: some View {
-        ZStack {
-            Sfondo()
-            contenuto()
-        }
-        // titolo grande come le altre pagine: in piccolo, accanto a lente e ingranaggio, sull'iPhone SE diventava «Elenco dei gioc…».
-        // Con il testo grande va intero nella pagina (TitoloNellaPagina nelle pagine di MercatoView).
-        .titoloPagina(titolo)
-        .ricercaGlobale()
-        .sheet(item: $vm.schedaAperta) { g in
-            GiocatoreSheet(id: g.id, server: vm.server)
-                .arrivoZoom(g.id, zoom)
-                .presentationDragIndicator(.visible)
-        }
-    }
-}
-
 #Preview("Squadra") {
-    LegaView(vm: LegaViewModel(server: FinteServer.esempio), mercato: MercatoViewModel(server: FinteServer.esempio),
-             scambi: ScambiViewModel(server: FinteServer.esempio), ambito: .squadra)
+    LegaView(vm: LegaViewModel(server: FinteServer.esempio), ambito: .squadra)
 }
 
 #Preview("Altro") {
-    LegaView(vm: LegaViewModel(server: FinteServer.esempio), mercato: MercatoViewModel(server: FinteServer.esempio),
-             scambi: ScambiViewModel(server: FinteServer.esempio), ambito: .altro)
+    LegaView(vm: LegaViewModel(server: FinteServer.esempio), ambito: .altro)
 }

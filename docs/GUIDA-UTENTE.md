@@ -197,7 +197,7 @@ Se le notifiche smettono di arrivare dopo un cambio di chiave del server: spegni
 
 ### Widget sull'iPhone
 
-Il widget è il riquadro sulla Home o sulla schermata di blocco. Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se non si collega, in **Impostazioni** dell'app c'è **Collegamento manuale**. Se dice «Serve l'accesso», apri l'app ed entra. Su Android non ci sono widget.
+Il widget è il riquadro sulla Home o sulla schermata di blocco. Sono tre: **Prossima giornata**, **Formazione** e **Da controllare**. Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se non si collega, in **Impostazioni** dell'app c'è **Collegamento manuale**. Se dice «Serve l'accesso», apri l'app ed entra. Su Android non ci sono widget.
 
 ## 5. Dopo la giornata: Giornate
 

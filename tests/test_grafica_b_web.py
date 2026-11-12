@@ -745,12 +745,10 @@ def test_nome_del_giocatore_nelle_righe_a_15_px_e_numero_a_20():
     assert "font-size: var(--t-valore)" in _corpo(".voce .valore b")
 
 
-def test_la_frase_sotto_i_titolari_parla_del_numero_sul_volto():
-    """Senza l'anello colorato la frase che spiega l'indice non può più parlare di un anello (in italiano e in inglese)."""
-    testi = codice_web.leggi("testi.js")
-    frasi = re.findall(r'"formazione\.numero_sulla_maglia": "([^"]+)"', testi)
-    assert len(frasi) == 2 and all("anello" not in f and "ring" not in f for f in frasi), frasi
-    assert "il numero sul volto è l'indice" in frasi[0] and "the number on the face is the index" in frasi[1]
+def test_la_frase_dell_indice_non_c_e_piu():
+    """L'indice 0-100 sul volto è stato tolto dalla web (#615) e dall'iPhone (#634): la frase che lo spiegava
+    (`formazione.numero_sulla_maglia`) non sta più nel catalogo dei testi."""
+    assert "formazione.numero_sulla_maglia" not in codice_web.leggi("testi.js")
 
 
 def test_differenza_ammessa_della_lineetta_scritta():

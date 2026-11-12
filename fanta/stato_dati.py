@@ -61,7 +61,9 @@ def _letture_prima_delle_partite(db: sqlite3.Connection, stagione: str) -> list[
     """(giornata, stato, percentuale, in dubbio, ha preso voto) dei giocatori delle partite giocate, presi dall'ultima lettura delle
     probabili di PRIMA del calcio d'inizio della loro partita (`probabili_storia`, copie della giornata prima escluse). Non la tabella
     `probabili`: tiene l'ultima lettura della giornata, che a partite finite è la formazione vera e farebbe sembrare le probabili
-    perfette. Partite senza una lettura di prima: non contano. Una richiesta per partita sull'indice `probabili_storia_letture`."""
+    perfette. Partite senza una lettura di prima: non contano. Una richiesta per partita sull'indice `probabili_storia_letture`.
+    Non contano nemmeno i giocatori di una squadra che in quella giornata non ha ancora nessun voto (voti non ancora usciti, passo
+    dei voti non riuscito): sembrerebbero tutti rimasti fuori (#658)."""
     partite = db.execute("SELECT id, giornata, REPLACE(data, ' ', 'T') FROM partite WHERE stagione = ? AND giocata = 1 "
                          "AND data IS NOT NULL", (stagione,)).fetchall()
     per_lettura: dict[tuple[int, str], set[int]] = {}
@@ -70,14 +72,16 @@ def _letture_prima_delle_partite(db: sqlite3.Connection, stagione: str) -> list[
                        "AND copia = 0 AND rilevato < ?", (stagione, giornata, inizio)).fetchone()
         if r and r[0]:
             per_lettura.setdefault((giornata, r[0]), set()).add(pid)
+    con_voti = {(g, sq) for g, sq in db.execute("SELECT DISTINCT giornata, squadra FROM voti WHERE stagione = ? "
+                                                "AND voto_red IS NOT NULL", (stagione,))}
     righe = []
     for (giornata, rilevato), pids in per_lettura.items():
-        for pid, stato, perc, dubbio, preso in db.execute(
-                "SELECT s.partita_id, s.stato, s.percentuale, s.in_dubbio, v.voto_red IS NOT NULL FROM probabili_storia s "
+        for pid, squadra, stato, perc, dubbio, preso in db.execute(
+                "SELECT s.partita_id, s.squadra, s.stato, s.percentuale, s.in_dubbio, v.voto_red IS NOT NULL FROM probabili_storia s "
                 "LEFT JOIN voti v ON v.stagione = s.stagione AND v.giornata = s.giornata AND v.calciatore_id = s.calciatore_id "
                 "WHERE s.stagione = ? AND s.giornata = ? AND s.fonte = 'fantacalcio' AND s.copia = 0 AND s.rilevato = ?",
                 (stagione, giornata, rilevato)):
-            if pid in pids:
+            if pid in pids and (giornata, squadra) in con_voti:
                 righe.append((giornata, stato, perc, dubbio, preso))
     return righe
 

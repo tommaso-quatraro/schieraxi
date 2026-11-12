@@ -32,7 +32,6 @@ extension FinteServer {
                                                                   : "https://finto-formazione-chiusa.invalid"
         case "oggi-finita":
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
-            server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
         case "formazione-salvata", "formazione-modificata":
             // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»); Oggi dice lo stesso
@@ -47,7 +46,6 @@ extension FinteServer {
             server.indirizzoFinto = "https://finto-partita-rinviata.invalid"
         case "oggi-finita-recupero":
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso, recupero: true)
-            server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
             server.indirizzoFinto = "https://finto-recupero-da-giocare.invalid"
         default:
             return nil
@@ -72,8 +70,6 @@ private typealias Calciatore = CalciatoreDemo
 private typealias DatiDemo = LegaDemo
 
 private extension LegaDemo {
-    /// Le giornate degli scambi: le stesse del calendario.
-    static var giornate: [Int] { giornateProssime }
 
     /// I crediti residui di ogni squadra, gli stessi in Squadre e nella sua rosa: AC Pigra ne ha 22 dopo aver preso Krslić
     /// (Movimenti), Real Madrink 30 come nel conguaglio dello scambio.
@@ -290,10 +286,12 @@ private extension LegaDemo {
         let panchinaJSON = bench.map { giocatore(calciatore($0), adesso: adesso, fase: fase) }
         // i punti della consigliata: la stessa fonte di Oggi, della valutazione e dei widget (#390)
         let attesi = attesiGiornata
-        // gli stili come li manda il server (nomi e descrizioni di LIVELLI_RISCHIO): Sicura, Equilibrata (consigliata), Rischiosa
+        // gli stili come li manda ancora il server (LIVELLI_RISCHIO): Sicura, Equilibrata (la consigliata, l'unica che l'app mostra,
+        // #634), Rischiosa
+        let nomiStili = [-1: "Sicura", 0: "Equilibrata", 1: "Rischiosa"]
         var livelli: [[String: Any]] = []
         for r in [-1, 0, 1] {
-            let nome = StileFormazione.nomi[r] ?? ""
+            let nome = nomiStili[r] ?? ""
             let extra = Double(r) * 0.6
             var elenco: [[String: Any]] = []
             for m in moduli {
@@ -301,7 +299,7 @@ private extension LegaDemo {
                 elenco.append(["modulo": m.nome, "punteggio_atteso": punti, "titolari": m.titolari, "panchina": panchina(per: m.titolari),
                                "dev": 4.2, "intervallo": fascia(punti)])
             }
-            livelli.append(["rischio": r, "stile": r, "nome": nome, "descrizione": StileFormazione.descrizione(r),
+            livelli.append(["rischio": r, "stile": r, "nome": nome,
                             "modulo": base.nome, "punteggio_atteso": attesi + extra, "moduli": elenco,
                             "intervallo": fascia(attesi + extra)])
         }
@@ -436,10 +434,25 @@ private extension LegaDemo {
     // Testi e pulsanti sono quelli di `fanta/frasi.py` (chiavi `dafare.*`), riempiti con i dati della demo;
     // `DemoDaFareTests` li confronta con il catalogo del server.
 
+    /// I bonus delle regole della demo (`bonus` di `/api/regole`).
+    static let bonus = (gol: 3.0, assist: 1.0, rigoreSegnato: 3.0, rigoreSbagliato: -3.0, golSubito: -1.0, imbattuto: 1.0)
+    /// Quante sostituzioni ammette la lega della demo (`panchina.max_sostituzioni` delle regole).
+    static let maxSostituzioni = 5
+
+    /// Chi schierare tra due giocatori, come `da_schierare` di fanta/consigli.py: se la formazione del sistema (`titolari`; nil = non
+    /// si sa) ne schiera uno solo è lui, anche con meno punti attesi da solo; altrimenti chi ha più punti attesi (#305).
+    static func daSchierare(_ a: Calciatore, _ b: Calciatore, titolari: [Int]?) -> Calciatore {
+        if let titolari {
+            let dentro = [a, b].filter { titolari.contains($0.id) }
+            if dentro.count == 1, let solo = dentro.first { return solo }
+        }
+        return a.puntiAttesi >= b.puntiAttesi ? a : b
+    }
+
     /// Marténi, titolare in dubbio, come `_dubbi` di fanta/da_fare.py (#268): il cambio («Meglio Y», «Sostituisci») si propone solo
-    /// se la consigliata lo fa, con la regola di «consigliato» del confronto (`daSchierare`); se la consigliata tiene il titolare, la
-    /// voce dice chi entra dalla panchina se lui non gioca (la prima riserva del suo ruolo) e apre la formazione. Nella demo la
-    /// consigliata tiene Marténi: Oggi dice la stessa cosa di «Chi schierare?» (#305). La percentuale è il suo «gioca».
+    /// se la consigliata lo fa (`daSchierare`); se la consigliata tiene il titolare, la voce dice chi entra dalla panchina se lui
+    /// non gioca (la prima riserva del suo ruolo) e apre la formazione. Nella demo la consigliata tiene Marténi (#305). La
+    /// percentuale è il suo «gioca».
     static var voceDubbio: [String: Any] {
         let x = calciatore(120)
         let titolari = moduli[0].titolari
@@ -466,7 +479,8 @@ private extension LegaDemo {
         return voce
     }
 
-    /// Il primo cambio di `mercato()`: Retalli (libero) al posto di Vlasenić, 3,4 punti in più.
+    /// Il consiglio del cambio con uno svincolato, che il server manda ancora (Retalli, libero, al posto di Vlasenić, 3,4 punti in
+    /// più): dal 12/11/2026 (#634) l'app non lo mostra. Resta per provarlo.
     static var voceSvincolato: [String: Any] {
         let v = svincoloMigliore
         return ["id": "svincolato-\(v.entra)", "tipo": "svincolato",
@@ -538,7 +552,6 @@ private extension LegaDemo {
         let mia = rosa(nomeMia, mia: true, adesso: m, fase: .inCorso)
         var r: [String: String] = [
             "/api/oggi": oggiInCorso(adesso: m),
-            "/api/live": live(adesso: m, giornataInCorso: true),
             "/api/formazione": formazione(fase: .inCorso, adesso: m),
             "/api/scelta": sceltaSalvata(adesso: scadenza(adesso: m, fase: .inCorso)),
             "/api/rosa": mia,
@@ -606,32 +619,7 @@ private extension LegaDemo {
         return json(o)
     }
 
-    // MARK: - Risultati in diretta
-
-    /// Le partite del turno in diretta, le stesse del widget (`LegaDemo.liveDemo`): prima della scadenza tutte da giocare, con gli
-    /// orari di Oggi; con `giornataInCorso` come nella fotografia `oggi-in-corso` (Inter-Roma finita, due partite in gioco).
-    static func live(adesso: Date, giornataInCorso: Bool = false) -> String {
-        json(liveDemo(adesso: adesso, fase: giornataInCorso ? .inCorso : .prima))
-    }
-
-    // MARK: - Mercato
-
-    /// I Cambi consigliati con i conti del server (`mercato` di fanta/gestione.py): rimborso = quota delle regole del prezzo
-    /// pagato, crediti dopo = crediti + rimborso − quotazione di chi entra, dal cambio che rende di più.
-    static func mercato() -> String {
-        // il primo è il miglior svincolo, lo stesso del widget e di «Da fare»
-        let v = svincoloMigliore
-        let cambi: [(esce: Int, entra: Int, guadagno: Double)] = [
-            (v.esce, v.entra, v.guadagno), (119, 205, 1.9), (118, 210, 2.2), (109, 215, 2.6), (110, 209, 1.2), (103, 206, 0.8),
-        ]
-        let proposte: [[String: Any]] = cambi.sorted { $0.guadagno > $1.guadagno }.map { c -> [String: Any] in
-            let resa = rimborso(calciatore(c.esce))
-            let dopo = creditiResidui + resa - quotazione(calciatore(c.entra))
-            return ["esce": breve(c.esce), "entra": breve(c.entra), "guadagno": c.guadagno, "breve": c.guadagno * 0.4,
-                    "rimborso": resa, "crediti_dopo": dopo, "fattibile": dopo >= 0]
-        }
-        return json(["squadra": nomeMia, "svincolati": 118, "crediti_residui": creditiResidui, "proposte": proposte])
-    }
+    // MARK: - Elenco dei giocatori (per i risultati della ricerca)
 
     /// L'elenco dei giocatori della giornata (`/api/classifica`) come il server: chi ha almeno il 20% di giocare, dal più atteso,
     /// con il ruolo e «solo svincolati» chiesti e la squadra della lega di chi non è libero.
@@ -641,62 +629,6 @@ private extension LegaDemo {
         if soloLiberi { elenco = elenco.filter { fantasquadra(di: $0.id) == nil } }
         let ordinati = elenco.sorted { $0.puntiAttesi > $1.puntiAttesi }.prefix(max(1, min(limite, 800)))
         return json(["giornata": giornata, "giocatori": ordinati.map { giocatore($0, adesso: adesso, conProprietario: true) }])
-    }
-
-    static func osservati(adesso: Date) -> String {
-        // gli stessi seguiti del widget, nello stesso ordine
-        let elenco = idOsservati.map { giocatore(osservato($0), adesso: adesso, conProprietario: true) }
-        return json(["giornata": giornata, "giocatori": elenco])
-    }
-
-    // MARK: - Scambi
-
-    static func proposta(altra: String, dai: [Int], ricevi: [Int], mio: Double, loro: Double) -> [String: Any] {
-        let n = Double(giornate.count)
-        let mioPer = giornate.enumerated().map { (mio / n) + (Double($0.offset % 2) - 0.5) * 0.2 }
-        let loroPer = giornate.enumerated().map { (loro / n) + (Double($0.offset % 3) - 1.0) * 0.1 }
-        return ["mia": nomeMia, "altra": altra, "do": dai.map { breve($0) }, "ricevo": ricevi.map { breve($0) },
-                "guadagno_mio": mio, "guadagno_loro": loro, "per_giornata_mio": mioPer, "per_giornata_loro": loroPer,
-                "breve_mio": mio * 0.5, "breve_loro": loro * 0.5, "giornate": giornate]
-    }
-
-    /// Il miglior scambio, lo stesso del widget.
-    static var propostaMigliore: [String: Any] {
-        let s = scambioMigliore
-        return proposta(altra: s.altra, dai: s.dai, ricevi: s.ricevi, mio: s.mio, loro: s.loro)
-    }
-
-    /// Le proposte di scambio: chi ricevo sta nella rosa dell'altra squadra (`altriPerSquadra`).
-    static func scambi() -> String {
-        let proposte: [[String: Any]] = [
-            propostaMigliore,
-            proposta(altra: "Gli Amici del Bar Sport Centrale", dai: [110, 119], ricevi: [323, 308], mio: 3.1, loro: 0.6),
-            proposta(altra: "Dinamo Pizza", dai: [116], ricevi: [322], mio: 1.8, loro: 0.9),
-            proposta(altra: "Atletico Divano", dai: [125], ricevi: [336], mio: 1.2, loro: 1.0),
-            proposta(altra: "Borgo Rossi United", dai: [111], ricevi: [312], mio: 0.7, loro: 0.4),
-        ]
-        return json(["giornate": giornate, "proposte": proposte])
-    }
-
-    static func analisi() -> String {
-        var p = propostaMigliore
-        // l'analisi completa (scambi N contro M con conguaglio): rose valide, crediti, valore e giudizio
-        p["completo"] = true
-        p["valido"] = true
-        p["problemi"] = [String]()
-        p["rose"] = ["mio": ["squadra": nomeMia, "valida": true, "problemi": [String](), "modulo": "3-4-3"],
-                     "loro": ["squadra": "Real Madrink", "valida": true, "problemi": [String](), "modulo": "4-3-3"]]
-        p["valore_rosa"] = ["mio": ["prima": 64.5, "dopo": 66.9, "variazione": 2.4, "percentuale": 3.7],
-                            "loro": ["prima": 61.0, "dopo": 62.1, "variazione": 1.1, "percentuale": 1.8]]
-        p["panchina"] = ["mio": ["prima": 8.0, "dopo": 8.3, "variazione": 0.3], "loro": ["prima": 7.5, "dopo": 7.4, "variazione": -0.1]]
-        p["conguaglio"] = ["crediti": 5, "valido": true, "residui": ["mio": 12, "loro": 30], "dopo": ["mio": 17, "loro": 25],
-                           "chi_paga": "loro", "tasso_mio": 0.12, "tasso_loro": 0.1, "valore_mio": 0.6, "valore_loro": -0.5]
-        p["netto_mio"] = 3.0
-        p["netto_loro"] = 0.6
-        p["giudizio"] = ["chi": "entrambi", "testo": "Conviene a tutti e due: proponilo.", "soglia": 0.5,
-                         "spiegazione": ["Per te la formazione migliore passa da 64,5 a 66,9 punti attesi.",
-                                         "Con 5 crediti ricevuti il netto per te è +3,0."]]
-        return json(p)
     }
 
     // MARK: - Lega
@@ -833,7 +765,7 @@ private extension LegaDemo {
     static func regole() -> String {
         json([
             "nome_lega": "Lega degli amici", "fonte_voto": "redazione",
-            // i bonus che servono al confronto e il rimborso dei Cambi consigliati vengono dalle stesse costanti (`bonus`, `rimborsoSvincolo`)
+            // bonus e rimborso vengono dalle costanti della lega della demo (`bonus`, `rimborsoSvincolo`)
             "bonus": ["gol": ["P": bonus.gol, "D": bonus.gol, "C": bonus.gol, "A": bonus.gol], "rigore_segnato": bonus.rigoreSegnato,
                       "assist": bonus.assist, "rigore_parato": 3.0, "rigore_sbagliato": bonus.rigoreSbagliato, "autogol": -2.0,
                       "gol_subito_portiere": bonus.golSubito, "portiere_imbattuto": bonus.imbattuto,
@@ -861,9 +793,9 @@ private extension LegaDemo {
 
     static func novita() -> String {
         json([
-            ["versione": "1.9", "data": "2026-10-20", "titolo": "Scambi più veloci",
-             "voci": ["Gli scambi 2 contro 2 si calcolano in metà tempo.", "Il calendario mostra la difficoltà per cinque giornate.",
-                      "Corretto il conteggio dei crediti dopo uno svincolo."]],
+            ["versione": "1.9", "data": "2026-10-20", "titolo": "Formazione più chiara",
+             "voci": ["Sotto il campo una riga spiega le scelte che sembrano strane.", "La scheda del giocatore mostra le prossime cinque partite.",
+                      "Corretto il conto dei punti attesi con un titolare in dubbio."]],
             ["versione": "1.8", "data": "2026-10-05", "titolo": "Copia di sicurezza e icona",
              "voci": ["La copia di sicurezza notturna comprende anche le chiavi degli avvisi.", "Nuova icona dell'app."]],
             ["versione": "1.7", "data": "2026-09-21", "titolo": "Probabili formazioni",
@@ -974,17 +906,7 @@ private extension LegaDemo {
               "file": ["dati/osservati.json": [9001, 9002]]])
     }
 
-    // MARK: - Confronto, prova del modello, movimenti, stagione
-
-    /// «Chi schierare?» (`/api/confronto?a=…&b=…&modulo=…`): i due giocatori come in Formazione; scelta, cause, frase e posto
-    /// nella formazione calcolati dagli stessi numeri come fa il server (`confrontoCalcolato`, in DemoConfronto.swift).
-    static func confronto(_ a: Calciatore, _ b: Calciatore, modulo: String?, adesso: Date) -> String {
-        var d = confrontoCalcolato(a, b, modulo: modulo)
-        d["giornata"] = giornata
-        d["giornata_lega"] = giornataLega
-        d["giocatori"] = [giocatore(a, adesso: adesso), giocatore(b, adesso: adesso)]
-        return json(d)
-    }
+    // MARK: - Prova del modello, stagione
 
     static func affidabilita() -> String {
         var righe: [[String: Any]] = []
@@ -997,31 +919,9 @@ private extension LegaDemo {
                      "sintesi": ["giornate": 8, "errore_modello": 1.6, "errore_fantamedia": 1.82, "punti_modello": 71.7, "punti_fantamedia": 70.6, "punti_perfetta": 77.8]])
     }
 
-    static func movimenti() -> String {
-        func g(_ id: Int, _ nome: String, _ ruolo: String, _ squadra: String) -> [String: Any] { ["id": id, "nome": nome, "ruolo": ruolo, "squadra": squadra, "costo": 10] }
-        return json([
-            ["quando": "2026-10-26T19:19:33",
-             "scambi": [["squadre": ["Real Madrink", "Dinamo Pizza"], "da_a": [g(325, "Kaan Yurdız", "A", "juventus")], "da_b": [g(321, "Sandy McTarran", "C", "napoli")]]],
-             "svincolati_presi": [["squadra": "AC Pigra", "giocatori": [g(204, "Nenad Krslić", "A", "lecce")]]],
-             "tagliati": [["squadra": "Inter Nos", "giocatori": [g(215, "Gilberto Mancarini", "D", "roma")]]],
-             "crediti": [["squadra": "AC Pigra", "prima": 30, "dopo": 22]],
-             "testo": "Scambio Real Madrink / Dinamo Pizza: Kaan Yurdız ⇄ Sandy McTarran"] as [String: Any],
-            ["quando": "2026-10-19T08:02:10",
-             "scambi": [[String: Any]](), "svincolati_presi": [["squadra": "Schiera FC", "giocatori": [g(113, "Hamit Çalvaroğlu", "C", "inter")]]],
-             "tagliati": [[String: Any]](), "crediti": [[String: Any]](), "testo": "Schiera FC prende dagli svincolati: Hamit Çalvaroğlu"] as [String: Any],
-        ] as [[String: Any]])
-    }
-
     static func stagione() -> String {
         let nuova = Demo.schermata == "lega-stagione"
         return json(["corrente": nuova ? "2027-28" : "2026-27", "rose": "2026-27", "nuova": nuova])
-    }
-
-    static func offerta() -> String {
-        json(["con": "Real Madrink", "do": ["Darko Vlasenić"], "ricevo": ["Rolando Lumbaku"], "ambigui": [String](),
-              "analisi": propostaMigliore
-                  .merging(["reparti": ["mio": ["P": 0.0, "D": 0.0, "C": 0.0, "A": 6.2], "loro": ["P": 0.0, "D": 0.0, "C": 1.1, "A": -2.0]],
-                            "percentuale_mio": 1.4, "quotazione_do": 14, "quotazione_ricevo": 18]) { $1 }])
     }
 
     static func importa() -> String {
@@ -1038,7 +938,7 @@ private extension LegaDemo {
 
     // MARK: - Risposte che dipendono dalla domanda
 
-    /// Le risposte che cambiano con la domanda (`?q=`, `?a=&b=`, `?liberi=`): ricerca, confronto ed elenco dei giocatori, calcolati
+    /// Le risposte che cambiano con la domanda (`?q=`, `?liberi=`): ricerca ed elenco dei giocatori, calcolati
     /// dalla lega come fa il server. Passano dal gancio `binari` del server finto, l'unico che riceve l'indirizzo intero: le risposte
     /// di testo si scelgono per prefisso e non vedono la domanda. Nil per gli altri indirizzi.
     static func calcolata(_ percorso: String, adesso: Date) -> Data? {
@@ -1052,10 +952,6 @@ private extension LegaDemo {
         switch indirizzo.path {
         case "/api/giocatori":
             testo = json(cerca(domanda["q"] ?? "", limite: limite ?? 15).map { breve($0.id) })
-        case "/api/confronto":
-            guard let a = tutti.first(where: { $0.id == Int(domanda["a"] ?? "") }),
-                  let b = tutti.first(where: { $0.id == Int(domanda["b"] ?? "") }) else { return nil }
-            testo = confronto(a, b, modulo: domanda["modulo"], adesso: adesso)
         case "/api/classifica":
             let soloLiberi = ["true", "1"].contains(domanda["liberi"]?.lowercased() ?? "")
             testo = classifica(liberi: soloLiberi, ruolo: domanda["ruolo"], limite: limite ?? 60, adesso: adesso)
@@ -1081,18 +977,13 @@ private extension LegaDemo {
             "/api/stato-dati": statoDati(adesso: adesso),
             "/api/squadre": squadre(),
             "/api/rosa": rosa(nomeMia, mia: true, adesso: adesso),
-            "/api/scambi/proposte": scambi(),
-            "/api/scambi/analizza": analisi(),
-            "/api/mercato": mercato(),
             "/api/calendario": json(calendario(adesso: adesso)),
-            "/api/osservati": osservati(adesso: adesso),
             "/api/formazione/testo": "Giornata \(giornata) - 3-4-3 (\(Formato.punti(punteggio(moduli[0].titolari))) punti attesi)",
             "/api/formazione/valuta": valutazione(),
             "/api/scelta": "null",   // nessuna scelta salvata: si vede la consigliata
             "/api/formazione": formazione(adesso: adesso),
             "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]]),
             "/api/oggi": oggi(adesso: adesso),
-            "/api/live": live(adesso: adesso),
             "/api/regole": regole(),
             "/api/avvisi": avvisi(),
             "/api/diario": diario(),
@@ -1100,9 +991,7 @@ private extension LegaDemo {
             "/api/novita": novita(),
             "/api/foto-disponibili": json(["ids": Array(DemoImmagini.idConFoto).sorted()]),
             "/api/affidabilita": affidabilita(),
-            "/api/movimenti": movimenti(),
             "/api/stagione": stagione(),
-            "/api/scambi/da-testo": offerta(),
             "/api/regole/riconosci": riconosci(),
             "/api/rose/testo": importa(),
             "/api/rose/file": importa(),

@@ -59,22 +59,6 @@
     "it": "Data da definire",
     "en": "Date to be confirmed"
   },
-  "oggi.partita_in_corso": {
-    "it": "In corso",
-    "en": "In progress"
-  },
-  "oggi.n_titolari.one": {
-    "it": "{n} tuo titolare",
-    "en": "{n} of your starters"
-  },
-  "oggi.n_titolari.other": {
-    "it": "{n} tuoi titolari",
-    "en": "{n} of your starters"
-  },
-  "oggi.novita_banner": {
-    "it": "<b>Novità della versione {versione}</b>",
-    "en": "<b>What's new in version {versione}</b>"
-  },
   "oggi.mancano_probabili_formazioni": {
     "it": "Mancano le probabili formazioni di questa giornata: i consigli usano le presenze recenti.",
     "en": "The probable lineups for this matchday are missing: the advice uses recent appearances."
@@ -114,10 +98,6 @@
   "oggi.diffidati": {
     "it": "Diffidati",
     "en": "Booking risk"
-  },
-  "oggi.partite_del_turno": {
-    "it": "Partite del turno",
-    "en": "Matches of the round"
   },
   "oggi.ev_gol": {
     "it": "Gol",

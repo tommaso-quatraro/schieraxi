@@ -130,6 +130,108 @@ def test_il_conto_delle_letture_resta_anche_se_il_passo_non_riesce(db):
     assert _salvati(db) == 29
 
 
+# ---------------- giornate con i voti a metà (#658) ----------------
+def _giornata_giocata(db, giornata, data, squadre_con_voti):
+    """10 partite giocate il `data` (c0-t0 ... c9-t9); 14 voti per ognuna delle prime `squadre_con_voti` squadre, le altre senza."""
+    squadre = []
+    for i in range(10):
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, ?, ?, ?, 1)",
+                   (giornata * 100 + i, ST, giornata, data, f"c{i}", f"t{i}"))
+        squadre += [f"c{i}", f"t{i}"]
+    for k, sq in enumerate(squadre[:squadre_con_voti]):
+        for j in range(14):
+            db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red) VALUES (?, ?, ?, 'x', ?, 'C', 6.0)",
+                       (ST, giornata, giornata * 10000 + k * 100 + j, sq))
+
+
+def test_giornata_con_i_voti_a_meta_si_riscarica_anche_dopo_4_giorni(db, monkeypatch):
+    """I voti di una giornata arrivano a metà, poi la fonte non si legge per più di 4 giorni: la giornata ha già dei voti, tutte
+    le partite giocate e l'ultima è vecchia, e non si riscaricava più (i giocatori delle altre partite restavano senza voto per
+    sempre). Si riscarica finché una squadra di una partita giocata non ha nessun voto; una giornata completa no."""
+    monkeypatch.setattr(aggiorna, "_ora", lambda: "2026-11-12T08:03:00")
+    _giornata_giocata(db, 9, "2026-10-31 15:00", 20)
+    _giornata_giocata(db, 10, "2026-11-07 15:00", 14)            # 14 squadre su 20 con i voti, ultima partita 5 giorni fa
+    _giornata_giocata(db, 11, "2026-11-11 15:00", 20)            # finita da meno di 4 giorni: le correzioni arrivano dopo
+    assert _agg(db)._giornate_voti_da_scaricare() == [10, 11]
+
+
+# ---------------- statistiche per partita rilette (#658) ----------------
+def _statistiche(pid, n):
+    return [{"understat_partita": pid, "understat_giocatore": pid * 100 + i, "squadra": "casa" if i % 2 else "ospite", "posizione": "",
+             "minuti": 90, "gol": 0, "autogol": 0, "tiri": 1, "xg": 0.1, "xa": 0.05, "assist": 0, "passaggi_chiave": 0, "xg_chain": 0.0,
+             "xg_buildup": 0.0, "gialli": 0, "rossi": 0, "rigori_calciati": 0, "rigori_segnati": 0, "punizioni": 0, "entrato": 0,
+             "uscito": 0} for i in range(n)]
+
+
+def _understat_rilegge(db, monkeypatch, prima: int | None, adesso: int, ora: str = "2026-11-12T08:03:00"):
+    """La partita 500 (casa-ospite, giocata il 10/11: all'ora di partenza due giorni fa, quindi da rileggere) con `prima` righe di
+    statistiche salvate (None = mai letta); la fonte ora ne dà `adesso`. Restituisce l'aggiornamento dopo il passo e le partite
+    di cui ha letto il tabellino."""
+    monkeypatch.setattr(aggiorna, "_ora", lambda: ora)
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (1, ?, 11, '2026-11-10 20:45', "
+               "'casa', 'ospite', 1)", (ST,))
+    if prima is not None:
+        db.execute("INSERT INTO partite_understat (id, stagione, data, casa, trasferta, giocata, scaricata) VALUES (500, ?, "
+                   "'2026-11-10 20:45:00', 'casa', 'ospite', 1, ?)", (ST, int(prima >= 22)))
+        archivio.inserisci(db, "prestazioni", _statistiche(500, prima))
+    db.commit()
+    partita = {"id": 500, "data": "2026-11-10 20:45:00", "casa": "Casa", "trasferta": "Ospite", "gol_casa": 1, "gol_trasferta": 0,
+               "xg_casa": 1.2, "xg_trasferta": 0.4, "giocata": 1}
+    monkeypatch.setattr(aggiorna.rete, "scarica", lambda *x, **k: SimpleNamespace(content=b"{}"))
+    monkeypatch.setattr(aggiorna.us, "leggi_lega", lambda dati: ([dict(partita)], []))
+    lette = []
+    monkeypatch.setattr(aggiorna.us, "leggi_partita", lambda dati, pid, casa, trasferta: lette.append(pid) or _statistiche(pid, adesso))
+    a = _agg(db)
+    a.slug_noti = {"casa", "ospite"}
+    a._passo("Understat", a.understat, "understat")
+    return a, lette
+
+
+def _salvate(db):
+    righe = db.execute("SELECT COUNT(*) FROM prestazioni WHERE understat_partita = 500").fetchone()[0]
+    return righe, db.execute("SELECT scaricata FROM partite_understat WHERE id = 500").fetchone()[0]
+
+
+@pytest.mark.parametrize("adesso", [0, 21, 24])
+def test_rilettura_delle_statistiche_con_meno_righe_tiene_quelle_di_prima_e_lo_dice(db, monkeypatch, adesso):
+    """Le partite degli ultimi 4 giorni si rileggono a ogni aggiornamento. Una risposta valida ma senza tabellino (o più corta)
+    cancellava le righe buone e il passo risultava riuscito: fino alla lettura buona dopo il modello usava le righe ricostruite."""
+    a, _ = _understat_rilegge(db, monkeypatch, prima=25, adesso=adesso)
+    assert _salvate(db) == (25, 1)
+    assert len(a.errori) == 1 and a.errori[0].startswith("Understat: ") and f"{adesso} righe, prima erano 25" in a.errori[0]
+
+
+@pytest.mark.parametrize("prima, adesso, attese", [(25, 25, (25, 1)), (25, 27, (27, 1)), (None, 10, (10, 0)), (10, 23, (23, 1))])
+def test_rilettura_delle_statistiche_con_almeno_le_righe_di_prima_le_sostituisce(db, monkeypatch, prima, adesso, attese):
+    """Come prima: una lettura con almeno le righe di prima le sostituisce; alla prima lettura un tabellino non ancora completo
+    (meno di 22 righe) si salva e si riprova la volta dopo, senza errore."""
+    a, _ = _understat_rilegge(db, monkeypatch, prima=prima, adesso=adesso)
+    assert _salvate(db) == attese and a.errori == []
+
+
+def test_dentro_i_4_giorni_anche_un_tabellino_incompleto_non_si_accorcia(db, monkeypatch):
+    a, lette = _understat_rilegge(db, monkeypatch, prima=10, adesso=9)
+    assert lette == [500] and _salvate(db) == (10, 0) and "9 righe, prima erano 10" in a.errori[0]
+
+
+@pytest.mark.parametrize("prima", [10, 25])
+def test_dopo_4_giorni_le_statistiche_salvate_non_si_rileggono_e_l_errore_finisce(db, monkeypatch, prima):
+    """Revisione della #669: una partita con il tabellino incompleto alla prima lettura (meno di 22 righe, da riprovare) si
+    rileggeva senza limite di tempo, e una rilettura più corta teneva il passo in errore per sempre, coprendo i guasti veri. Dopo
+    i 4 giorni le righe salvate restano come sono, complete o no: niente rilettura e niente errore."""
+    a, lette = _understat_rilegge(db, monkeypatch, prima=prima, adesso=prima - 1, ora="2026-12-02T08:03:00")   # 20 giorni dopo
+    assert lette == [] and a.errori == [] and _salvate(db) == (prima, int(prima >= 22))
+
+
+@pytest.mark.parametrize("prima", [None, 0])
+def test_una_partita_senza_statistiche_si_legge_anche_dopo_4_giorni(db, monkeypatch, prima):
+    """Le partite mancanti (mai lette, o lette senza tabellino) si leggono sempre, come prima: per esempio dopo giorni di server
+    fermo."""
+    a, lette = _understat_rilegge(db, monkeypatch, prima=prima, adesso=25, ora="2026-12-02T08:03:00")
+    assert lette == [500] and _salvate(db) == (25, 1) and a.errori == []
+
+
 # ---------------- righe dei voti scartate ----------------
 def test_righe_dei_voti_senza_i_tre_voti_si_contano():
     righe, scartate = fc.leggi_voti_e_scarti(VOTI_8, 8)

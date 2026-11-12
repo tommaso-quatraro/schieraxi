@@ -5,4 +5,3 @@
 # Mai i file della web (fanta/web/): dal 12/11/2026 la web si rifà per conto suo e l'app resta com'è, quindi i test iOS non la
 # leggono più (un testo della web che serve a una prova si copia fermo in TestiWeb.swift).
 fanta/frasi.py
-fanta/funzioni.py

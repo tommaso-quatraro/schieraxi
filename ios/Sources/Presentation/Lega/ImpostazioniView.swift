@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Le pagine che si aprono dalle Impostazioni.
 enum PaginaImpostazioni: Hashable {
-    case aspetto, avvisi, stato, crediti, avanzate, cambiaServer
+    case aspetto, avvisi, stato, crediti, novita, avanzate, cambiaServer
 }
 
 private struct ApriRosaDiChiave: EnvironmentKey {
@@ -29,11 +29,11 @@ extension EnvironmentValues {
     }
 }
 
-/// Impostazioni: l'account (con «Esci» in fondo, come sulla web), l'app (aspetto e avvisi) e le informazioni. Solo l'essenziale: la lega (scambi, regole,
-/// storico, novità) sta in Altro. Chi amministra il server ha in più «Avanzate». Si apre come foglio dall'ingranaggio in testata.
+/// Impostazioni: l'account (con «Esci» in fondo, come sulla web), l'app (aspetto e avvisi) e le informazioni, con le novità.
+/// Solo l'essenziale: la lega (rose, diario, regole) sta in Squadra e in Altro. Chi amministra il server ha in più «Avanzate».
+/// Si apre come foglio dall'ingranaggio in testata.
 struct ImpostazioniView: View {
     @ObservedObject var vm: LegaViewModel
-    @ObservedObject var funzioni: ArchivioFunzioni
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.dismiss) private var chiudi
     @State private var percorso: [PaginaImpostazioni] = []
@@ -71,6 +71,7 @@ struct ImpostazioniView: View {
                 if Demo.schermata == "impostazioni-crediti", percorso.isEmpty { percorso = [.crediti] }
                 if Demo.schermata == "impostazioni-avanzate", percorso.isEmpty { percorso = [.avanzate] }
                 if Demo.schermata == "impostazioni-aspetto", percorso.isEmpty { percorso = [.aspetto] }
+                if Demo.schermata == "impostazioni-novita", percorso.isEmpty { percorso = [.novita] }
             }
         }
         .fogliAccount(fogli)   // fuori dalla List: i dati dell'account che arrivano non chiudono più i fogli
@@ -85,6 +86,7 @@ struct ImpostazioniView: View {
         case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .crediti: CreditiEFontiView()
+        case .novita: NovitaView(server: vm.server)
         case .avanzate: paginaAvanzate
         case .cambiaServer: PaginaCambiaServer(dopoProva: { await vm.info.ricarica() })
         }
@@ -128,10 +130,13 @@ struct ImpostazioniView: View {
         }
     }
 
-    /// Privacy, termini, crediti e la versione, come sulla web. Le novità stanno in Altro.
+    /// Privacy, termini, crediti, le novità e la versione, come sulla web (dal 12/11/2026 le novità si leggono qui, #634).
     private var sezioneInformazioni: some View {
         Section(titolo: Catalogo.Imp.informazioni) {
             RigheLegali(server: vm.server)
+            NavigationLink(value: PaginaImpostazioni.novita) {
+                Label(Catalogo.Lega.voceNovita, systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44)
+            }
             RigaValore(titolo: "Versione", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
         }
     }
@@ -155,18 +160,9 @@ struct ImpostazioniView: View {
         List {
             if !ProvaEsempio.attiva { sezioneCollegamento }
             Section {
-                Toggle(isOn: Binding(get: { funzioni.stato.mostraTutte }, set: { v in Task { await funzioni.impostaMostraTutte(v) } })) {
-                    Text(TestiImpostazioni.mostraTutte)
-                }
-                .tint(Color.verde)
-                .frame(minHeight: 44)
-                .disabled(funzioni.inSalvataggio)
-                if let e = funzioni.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
                 NavigationLink(value: PaginaImpostazioni.stato) { Label("Stato dei dati", systemImage: "externaldrive").labelStyle(.voce(.gray)).frame(minHeight: 44) }
                 AggiornaDatiSezione(vm: vm.aggiornamento)
                 if let v = vm.info.dato?.versione { RigaValore(titolo: "Versione del server", valore: v) }
-            } footer: {
-                Text(TestiImpostazioni.mostraTutteSpiega).foregroundStyle(Color.testoSecondario)
             }
             DiagnosticaWidgetSezione()
             CertificatoSezione()
@@ -181,6 +177,6 @@ struct ImpostazioniView: View {
 }
 
 #Preview("Impostazioni") {
-    ImpostazioniView(vm: LegaViewModel(server: FinteServer.esempio), funzioni: ArchivioFunzioni(server: FinteServer.esempio))
+    ImpostazioniView(vm: LegaViewModel(server: FinteServer.esempio))
         .environmentObject(Navigazione())
 }

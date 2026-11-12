@@ -85,21 +85,11 @@ final class SchedaChiaraTests: XCTestCase {
         XCTAssertTrue(try giocatore(#""stato_partita": "strano","#).etichette.isEmpty, "uno stato sconosciuto non si mostra")
     }
 
-    func testLaLegendaDellElencoSpiegaAnelloEPercentuale() {
-        XCTAssertTrue(ClassificaView.legendaBreve.contains("fantavoto atteso"))
-        XCTAssertLessThanOrEqual(ClassificaView.legendaBreve.count, 50, "sopra l'elenco una riga sola")
-        XCTAssertTrue(ClassificaView.legenda.contains("indice"))
-        XCTAssertTrue(ClassificaView.legenda.contains("gioca"))
-    }
-
     func testLaSchedaCaricaTuttoInsieme() async throws {
-        let s = ServerDiProva.conFixture(["/api/giocatore/": "giocatore", "/api/calendario": "calendario",
-                                          "/api/osservati": "osservati", "/api/formazione": "formazione"])
+        let s = ServerDiProva.conFixture(["/api/giocatore/": "giocatore", "/api/calendario": "calendario"])
         let vm = SchedaGiocatoreViewModel(id: 1, server: s)
         await vm.carica()
         XCTAssertNotNil(vm.caricatore.dato)
         XCTAssertNotNil(vm.calendario.dato)
-        XCTAssertNotNil(vm.formazione.dato)
-        XCTAssertNotNil(vm.osservato)
     }
 }

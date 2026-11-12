@@ -55,110 +55,6 @@ struct DemoCoerenteTests {
         #expect(oggi.migliori?.map(\.id) == Array(attesi))
     }
 
-    @Test("Confronto: le cause sommate danno la differenza dei punti attesi e la frase dice chi è avanti, con i numeri delle barre",
-          arguments: zip([120, 121, 113], [123, 125, 117]))
-    func confrontoComeLeBarre(a: Int, b: Int) async throws {
-        let f = try await leggi("/api/formazione", come: Formazione.self)
-        let c = try await leggi("/api/confronto?a=\(a)&b=\(b)&livello=0&modulo=\(f.modulo)", come: Confronto.self)
-        #expect(c.giocatori.map(\.id) == [a, b], "il confronto è tra i due giocatori chiesti")
-        try #require(c.giocatori.count == 2)
-        // gli stessi numeri della Formazione
-        for g in c.giocatori {
-            let s = try #require(f.schede?[String(g.id)], "\(g.nome) non è nelle schede della Formazione")
-            #expect(g.puntiAttesi == s.puntiAttesi, "\(g.nome): punti attesi diversi dalla Formazione")
-            #expect(g.pVoto == s.pVoto, "\(g.nome): gioca diverso dalla Formazione")
-            #expect(g.fvAtteso == s.fvAtteso, "\(g.nome): fantavoto atteso diverso dalla Formazione")
-        }
-        let differenza = try #require(c.differenzaPunti)
-        let somma = c.fattori.map(\.effetto).reduce(0, +)
-        #expect(abs(somma - differenza) < 0.02, "le barre sommano \(somma), la differenza dei punti attesi è \(differenza)")
-        let x = c.giocatori[0], y = c.giocatori[1]
-        let avanti = differenza > 0 ? x : y, dietro = differenza > 0 ? y : x
-        let perche = try #require(c.perche)
-        #expect(perche.hasPrefix("\(avanti.nome) è avanti di \(Formato.punti(abs(differenza))) punti attesi su \(dietro.nome)"),
-                "«\(perche)»: avanti c'è \(avanti.nome)")
-        if perche.contains("gioca di più") {
-            #expect(perche.contains("gioca di più (\(Formato.percento(avanti.pVoto))% contro \(Formato.percento(dietro.pVoto))%"),
-                    "«\(perche)»: le percentuali non sono quelle dei due")
-        }
-        #expect(!perche.contains("ha più probabilità di giocare"), "frase fissa: «\(perche)»")
-    }
-
-    @Test("Confronto nella formazione: titolare e panchina come in Formazione; Oggi dice la stessa cosa del confronto (#305)")
-    func confrontoComeFormazioneEOggi() async throws {
-        let f = try await leggi("/api/formazione", come: Formazione.self)
-        let oggi = try await leggi("/api/oggi", come: Oggi.self)
-        // Marténi (titolare in dubbio) e Lemão (in panchina): la coppia della foto `formazione-confronto` e del «Da fare» di Oggi
-        let marteni = try #require(f.titolari.first { $0.id == 120 }, "Marténi non è titolare nella Formazione della demo")
-        let n = try #require(f.panchina.firstIndex { $0.id == 123 }, "Lemão non è in panchina nella Formazione della demo") + 1
-        let c = try await leggi("/api/confronto?a=120&b=123&livello=0&modulo=\(f.modulo)", come: Confronto.self)
-        try #require(c.giocatori.count == 2)
-        let formazione = try #require(c.formazione, "manca il riquadro «Nella formazione»")
-        #expect(formazione.modulo == f.modulo)
-        #expect(formazione.postoA == "titolare")
-        #expect(formazione.postoB == "panchina \(n)")
-        // come il server: si schiera il titolare della formazione, e il testo dice perché
-        #expect(c.consigliato == 120)
-        #expect(c.schierato?.id == 120)
-        let testo = formazione.testo ?? ""
-        let nonGioca = 100 - Formato.percento(marteni.pVoto)
-        #expect(testo.hasPrefix("Il sistema schiera \(marteni.nome) come titolare."), "«\(testo)»")
-        #expect(testo.contains("Se \(marteni.nome) non prende voto (\(nonGioca)% di probabilità), al suo posto può entrare Renato Lemão (panchina \(n))."),
-                "«\(testo)»")
-        // «Da fare» di Oggi segue la regola del confronto (`_dubbi` di fanta/da_fare.py, #268): il confronto schiera Marténi, quindi
-        // Oggi non propone il cambio ma dice chi entra dalla panchina se lui non gioca (la prima riserva del suo ruolo) e apre la formazione
-        let riserva = try #require(f.panchina.first { $0.ruolo == marteni.ruolo }, "in panchina non c'è nessuno del ruolo di Marténi")
-        let voce = try #require(oggi.daFare?.first { $0.tipo == "dubbio" }, "nella demo manca il dubbio di Oggi")
-        #expect(voce.testo == "\(marteni.nome) è in dubbio (\(Formato.percento(marteni.pVoto))% di giocare) ma resta titolare: se non gioca entra \(riserva.nome) dalla panchina.")
-        #expect(!voce.testo.contains("Meglio"), "Oggi propone un cambio che il confronto non fa: «\(voce.testo)»")
-        #expect(voce.azione == "Apri la formazione")
-        #expect(voce.destinazione?.link == "schieraxi://formazione")
-    }
-
-    // MARK: - Crediti
-
-    @Test("Cambi consigliati: crediti dopo = crediti + rimborso − costo, e il rimborso è la quota delle regole del prezzo pagato")
-    func creditiDopo() async throws {
-        let m = try await leggi("/api/mercato", come: Mercato.self)
-        let rosa = try await leggi("/api/rosa", come: Rosa.self)
-        let regole = try await oggetto("/api/regole")
-        let quota = try #require(regole["rimborso_svincolo"] as? Double)
-        let crediti = try #require(m.creditiResidui)
-        try #require(!m.proposte.isEmpty, "nella demo non ci sono cambi consigliati")
-        for p in m.proposte {
-            let costo = try #require(rosa.giocatori.first { $0.id == p.esce.id }?.costo, "\(p.esce.nome) non è nella rosa")
-            let rimborso = try #require(p.rimborso, "\(p.esce.nome): manca il rimborso")
-            #expect(rimborso == (costo * quota).rounded(.toNearestOrEven), "\(p.esce.nome): pagato \(costo), rimborso \(rimborso)")
-            let costoEntra = try #require(p.entra.quotazione)
-            #expect(p.creditiDopo == crediti + rimborso - costoEntra,
-                    "\(p.entra.nome): \(crediti) + \(rimborso) − \(costoEntra) non fa \(p.creditiDopo ?? -1)")
-            #expect(p.fattibile == ((p.creditiDopo ?? -1) >= 0))
-        }
-        #expect(m.proposte.map(\.guadagno) == m.proposte.map(\.guadagno).sorted(by: >), "i cambi vanno dal più conveniente")
-    }
-
-    // MARK: - Seguiti e orari
-
-    @Test("Seguiti: il giocatore del widget «Giocatore seguito» è tra i Seguiti dell'app, con lo stesso fantavoto atteso")
-    func seguitiComeIlWidget() async throws {
-        let app = try await leggi("/api/osservati", come: ElencoGiocatori.self).giocatori
-        let w = try widget()
-        let nelWidget = w.osservati ?? []
-        #expect(nelWidget.map(\.id) == app.map(\.id), "i seguiti del widget non sono quelli dell'app")
-        // la galleria dei widget mostra Marténi (`AnteprimaWidget/DatiGalleria.swift`, `scelto: 120`): dev'essere un seguito
-        #expect(app.contains { $0.id == 120 }, "Marténi è nel widget «Giocatore seguito» ma non tra i Seguiti dell'app")
-        #expect(nelWidget.contains { $0.id == 120 })
-        for g in app {
-            let s = try #require(nelWidget.first { $0.id == g.id }, "\(g.nome) non è tra i seguiti del widget")
-            #expect(s.fvAtteso == g.fvAtteso, "\(g.nome): fantavoto atteso diverso tra widget e app")
-            #expect(s.pVoto == g.pVoto, "\(g.nome): gioca diverso tra widget e app")
-            #expect((s.dubbio ?? false) == (g.dubbio ?? false), "\(g.nome): in dubbio solo da una parte")
-        }
-        let scelto = try #require(w.osservato(120))
-        #expect(scelto.rigaVotoAtteso?.first == "Fantavoto atteso \(Formato.punti(scelto.fvAtteso))")
-        #expect(scelto.statoOGioca == "In dubbio · gioca 62%")
-    }
-
     @Test("Ogni giocatore ha l'orario della partita della sua squadra, lo stesso di Oggi")
     func orariComeOggi() async throws {
         let oggi = try await leggi("/api/oggi", come: Oggi.self)
@@ -168,16 +64,11 @@ struct DemoCoerenteTests {
             ora[p.trasferta] = p.data
         }
         try #require(Set(ora.values).count > 1, "nella demo tutte le partite hanno lo stesso orario")
-        let seguiti = try await leggi("/api/osservati", come: ElencoGiocatori.self).giocatori
         let f = try await leggi("/api/formazione", come: Formazione.self)
         let scheda = try await leggi("/api/giocatore/203", come: SchedaGiocatore.self)
         let previsione = try #require(scheda.previsione, "la scheda di Retalli non ha la previsione")
-        for g in seguiti + f.titolari + f.panchina + [previsione] {
+        for g in f.titolari + f.panchina + [previsione] {
             #expect(g.dataPartita == ora[g.squadra ?? ""], "\(g.nome) (\(g.squadra ?? "?")): \(g.dataPartita ?? "–") invece di \(ora[g.squadra ?? ""] ?? "–")")
-        }
-        // il widget scrive le stesse ore dei Seguiti dell'app
-        for s in try widget().osservati ?? [] {
-            #expect(s.dataPartita == seguiti.first { $0.id == s.id }?.dataPartita, "\(s.nome): ora diversa tra widget e app")
         }
     }
 
@@ -276,7 +167,7 @@ struct DemoCoerenteTests {
         return rose
     }
 
-    @Test("Rose: ogni giocatore in una rosa sola, la stessa che scrive l'Elenco; i posti delle regole; gli scambi con chi li ha")
+    @Test("Rose: ogni giocatore in una rosa sola, la stessa che scrive l'elenco della ricerca; i posti delle regole")
     func roseSenzaDoppioni() async throws {
         let squadre = try await leggi("/api/squadre", come: [SquadraLega].self)
         let rose = try await roseDellaLega()
@@ -305,51 +196,6 @@ struct DemoCoerenteTests {
         for id in [301, 302, 204, 203] {
             let scheda = try await leggi("/api/giocatore/\(id)", come: SchedaGiocatore.self)
             #expect(scheda.proprietario == diChi[id], "\(scheda.calciatore.nome): la scheda dice «\(scheda.proprietario ?? "svincolato")»")
-        }
-        // gli scambi proposti: do dalla mia rosa, ricevo dalla rosa dell'altra squadra
-        let scambi = try await leggi("/api/scambi/proposte", come: ProposteScambi.self).proposte
-        for p in scambi {
-            for g in p.`do` { #expect(diChi[g.id] == LegaDemo.nomeMia, "scambio con \(p.altra): do \(g.nome), che è di \(diChi[g.id] ?? "nessuno")") }
-            for g in p.ricevo { #expect(diChi[g.id] == p.altra, "scambio con \(p.altra): ricevo \(g.nome), che è di \(diChi[g.id] ?? "nessuno")") }
-        }
-    }
-
-    @Test("Movimenti: chi è stato preso è nella rosa di chi l'ha preso e non è svincolato; chi è stato tagliato è libero; i crediti dopo")
-    func movimentiComeLeRose() async throws {
-        let movimenti = try await leggi("/api/movimenti?limite=30", come: [Differenze].self)
-        let rose = try await roseDellaLega()
-        let squadre = try await leggi("/api/squadre", come: [SquadraLega].self)
-        let elenco = try await leggi("/api/classifica?liberi=false&limite=800", come: ElencoGiocatori.self).giocatori
-        let liberi = Set(try await leggi("/api/classifica?liberi=true&limite=800", come: ElencoGiocatori.self).giocatori.map(\.id))
-        // dal movimento più vecchio al più nuovo: dove deve stare ogni giocatore nominato, e i crediti di ogni squadra
-        var squadraDi: [Int: String] = [:]
-        var tagliati: Set<Int> = []
-        var crediti: [String: Double] = [:]
-        for m in movimenti.sorted(by: { ($0.quando ?? "") < ($1.quando ?? "") }) {
-            func prende(_ id: Int?, _ squadra: String) { guard let id else { return }; squadraDi[id] = squadra; tagliati.remove(id) }
-            for s in m.scambi ?? [] where s.squadre.count == 2 {
-                for g in s.daA { prende(g.id, s.squadre[1]) }
-                for g in s.daB { prende(g.id, s.squadre[0]) }
-            }
-            for gruppo in m.svincolatiPresi ?? [] { for g in gruppo.giocatori { prende(g.id, gruppo.squadra) } }
-            for gruppo in m.tagliati ?? [] {
-                for g in gruppo.giocatori { if let id = g.id { squadraDi[id] = nil; tagliati.insert(id) } }
-            }
-            for c in m.crediti ?? [] { crediti[c.squadra] = c.dopo }
-        }
-        try #require(!squadraDi.isEmpty, "nella demo non ci sono movimenti")
-        for (id, squadra) in squadraDi {
-            let nome = LegaDemo.calciatore(id).nome
-            let rosa = try #require(rose[squadra], "\(squadra) non è una squadra della lega")
-            #expect(rosa.giocatori.contains { $0.id == id }, "Movimenti: \(nome) va a \(squadra), ma non è nella sua rosa")
-            #expect(!liberi.contains(id), "Movimenti: \(nome) va a \(squadra), ma l'Elenco lo dà svincolato")
-            #expect(elenco.first { $0.id == id }?.proprietario == squadra, "Movimenti: \(nome) va a \(squadra), l'Elenco dice altro")
-        }
-        for id in tagliati {
-            #expect(!rose.values.contains { $0.giocatori.contains { $0.id == id } }, "\(LegaDemo.calciatore(id).nome) è stato tagliato ma è in una rosa")
-        }
-        for s in squadre {
-            if let dopo = crediti[s.nome] { #expect(s.creditiResidui == dopo, "\(s.nome): dopo i movimenti ha \(dopo) crediti, Squadre dice altro") }
         }
     }
 
@@ -423,9 +269,10 @@ struct DemoCoerenteTests {
     // MARK: - Marchio (#303)
 
     @MainActor
-    @Test("La foto del marchio: lo stato vuoto con le parole della pagina Seguiti («seguito», «Segui»)")
-    func marchioConISeguiti() {
-        #expect(ProvaMarchio.titoloVuoto == "Nessun giocatore seguito")
-        #expect(ProvaMarchio.descrizioneVuoto == "Apri la scheda di un giocatore e tocca «Segui».")
+    @Test("La foto del marchio: lo stato vuoto con le parole della ricerca (i Seguiti non ci sono più, #634)")
+    func marchioSenzaISeguiti() {
+        #expect(ProvaMarchio.titoloVuoto == "Cerca un giocatore")
+        #expect(ProvaMarchio.descrizioneVuoto == "Scrivi almeno due lettere del nome.")
+        #expect(!(ProvaMarchio.titoloVuoto + ProvaMarchio.descrizioneVuoto).localizedCaseInsensitiveContains("segui"))
     }
 }

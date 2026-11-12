@@ -122,14 +122,10 @@ struct TitoloPaginaTests {
             let conTitolo = testo.components(separatedBy: ".titoloPagina(").count - 1
             guard conTitolo > 0 else { continue }
             pagine += conTitolo
-            // PaginaMercato (LegaView) mostra le pagine di MercatoView: il titolo nella pagina sta lì.
-            let contenuto = file.lastPathComponent == "LegaView.swift"
-                ? Self.radice.appendingPathComponent("Sources/Presentation/Mercato/MercatoView.swift")
-                : file
-            let nellaPagina = try String(contentsOf: contenuto, encoding: .utf8).components(separatedBy: "TitoloNellaPagina()").count - 1
+            let nellaPagina = testo.components(separatedBy: "TitoloNellaPagina()").count - 1
             if nellaPagina < conTitolo { mancanti.append("\(file.lastPathComponent): \(conTitolo) titoli, \(nellaPagina) nella pagina") }
         }
-        #expect(pagine >= 12, "Le pagine di Lega e Impostazioni con il titolo grande sono almeno 12, trovate \(pagine)")
+        #expect(pagine >= 10, "Le pagine di Lega e Impostazioni con il titolo grande sono almeno 10, trovate \(pagine)")
         #expect(mancanti.isEmpty, "Titolo che con il testo grande sparisce dalla pagina: \(mancanti)")
     }
 

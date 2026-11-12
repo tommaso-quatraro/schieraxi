@@ -2,7 +2,8 @@
 
 - listone: una volta al giorno
 - calendario: tutto se manca o ha più di 7 giorni, altrimenti solo le giornate in corso
-- voti: le giornate giocate che mancano, più quelle finite da meno di 4 giorni (le correzioni arrivano dopo)
+- voti: le giornate giocate che mancano o con squadre ancora senza voti, più quelle finite da meno di 4 giorni (le correzioni
+  arrivano dopo)
 - probabili formazioni: a ogni aggiornamento
 - Understat: totali di stagione a ogni aggiornamento, dettaglio delle partite giocate che mancano
 - dati extra di squadra (football-data): al massimo ogni 6 ore
@@ -53,6 +54,10 @@ class AltraStagione(ValueError):
 
 class VotiCalati(ValueError):
     """La pagina dei voti di una giornata ha meno righe di quelle già salvate: non si salva (Aggiornamento._salva_voti)."""
+
+
+class StatisticheCalate(ValueError):
+    """La rilettura delle statistiche di una partita ha meno righe di quelle già salvate: restano quelle (Aggiornamento.understat)."""
 
 
 def _ora() -> str:
@@ -313,15 +318,19 @@ class Aggiornamento:
         self.scrivi(f"  risultati {self.st.codice} giornata {g}: {n} partite, {len(righe)} voti")
 
     def _giornate_voti_da_scaricare(self) -> list[int]:
+        """Le giornate con partite giocate senza voti, quelle con partite ancora da giocare, quelle finite da meno di 4 giorni (le
+        correzioni arrivano dopo) e quelle in cui una squadra di una partita giocata non ha nessun voto: i voti arrivati a metà,
+        con la fonte poi ferma per giorni, si riprendono al ritorno (#658)."""
         presenti = {r[0] for r in self.db.execute("SELECT DISTINCT giornata FROM voti WHERE stagione = ?", (self.st.codice,))}
-        recente = (datetime.now() - timedelta(days=4)).strftime("%Y-%m-%d %H:%M")
+        a_meta = controlli.squadre_senza_voti(self.db, self.st.codice)
+        recente = (datetime.fromisoformat(_ora()) - timedelta(days=4)).strftime("%Y-%m-%d %H:%M")
         giornate = []
         for g, giocate, ultima in self.db.execute(
                 "SELECT giornata, SUM(giocata), MAX(data) FROM partite WHERE stagione = ? GROUP BY giornata",
                 (self.st.codice,)):
             if not giocate:
                 continue
-            if g not in presenti or giocate < 10 or (ultima or "") >= recente:
+            if g not in presenti or giocate < 10 or (ultima or "") >= recente or g in a_meta:
                 giornate.append(g)
         return giornate
 
@@ -455,15 +464,23 @@ class Aggiornamento:
             self.db.execute("UPDATE partite SET understat_id = ? WHERE stagione = ? AND casa = ? AND trasferta = ?",
                             (p["id"], st.codice, casa, trasferta))
         self.db.commit()
-        nuove = 0
+        nuove, calate = 0, []
         if dettaglio_partite:
-            # le partite mancanti, e quelle degli ultimi giorni (gli xG vengono rivisti dopo la partita)
-            recente = (datetime.now() - timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S")
+            # le partite mancanti (senza righe: mai lette o lette senza tabellino), e quelle degli ultimi giorni (gli xG vengono
+            # rivisti dopo la partita, e un tabellino incompleto si completa). Dopo i 4 giorni le righe salvate restano come sono:
+            # una rilettura più corta terrebbe il passo in errore per sempre, coprendo i guasti veri (revisione della #669)
+            recente = (datetime.fromisoformat(_ora()) - timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S")
             for pid, casa, trasferta in self.db.execute(
-                    "SELECT id, casa, trasferta FROM partite_understat WHERE stagione = ? AND giocata = 1 "
-                    "AND (scaricata = 0 OR data >= ?)", (st.codice, recente)).fetchall():
+                    "SELECT id, casa, trasferta FROM partite_understat u WHERE stagione = ? AND giocata = 1 AND (data >= ? OR "
+                    "(scaricata = 0 AND NOT EXISTS (SELECT 1 FROM prestazioni p WHERE p.understat_partita = u.id)))",
+                    (st.codice, recente)).fetchall():
                 righe = us.leggi_partita(us.dati_json(rete.scarica(us.url_partita(pid), headers=us.HEADERS).content), pid, casa,
                                          trasferta)
+                prima = self.db.execute("SELECT COUNT(*) FROM prestazioni WHERE understat_partita = ?", (pid,)).fetchone()[0]
+                if len(righe) < prima:
+                    # una rilettura senza tabellino (o più corta) non cancella le righe buone: restano, e il passo non riesce (#658)
+                    calate.append(f"partita {pid} ({casa}-{trasferta}): la rilettura ha {len(righe)} righe, prima erano {prima}")
+                    continue
                 self.db.execute("DELETE FROM prestazioni WHERE understat_partita = ?", (pid,))
                 archivio.inserisci(self.db, "prestazioni", righe)
                 completa = len(righe) >= 22   # tabellino non ancora pronto: si riprova la prossima volta
@@ -474,6 +491,8 @@ class Aggiornamento:
                     and g["understat_giocatore"] not in abbinati)
         self.scrivi(f"  Understat {st.codice}: {len(giocatori)} giocatori ({senza} con minuti non abbinati), "
                     f"{nuove} partite scaricate in dettaglio")
+        if calate:
+            raise StatisticheCalate(f"statistiche {st.codice}: " + "; ".join(calate) + ": tenute quelle di prima")
 
     def dati_extra(self, stagione: Stagione | None = None) -> None:
         """Statistiche di squadra di football-data.co.uk (solo misure, il modello non le legge). Stagione in corso al massimo ogni

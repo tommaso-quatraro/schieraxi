@@ -211,7 +211,7 @@ struct AnteprimaRoseVista: View {
             .pickerStyle(.menu)
             .tint(Color.verde)
             .frame(minHeight: Tema.areaTocco)
-            Text("I consigli di formazione e di scambio sono per lei.").font(.caption).foregroundStyle(Color.testoSecondario)
+            Text("La formazione consigliata è per lei.").font(.caption).foregroundStyle(Color.testoSecondario)
         }
     }
 
