@@ -7,9 +7,15 @@ struct TuttiINumeri: View {
     let scheda: SchedaGiocatore
     let prossime: [PartitaCalendario]
 
+    @Environment(\.dynamicTypeSize) private var taglia
+
     private var previsione: Giocatore? { scheda.previsione }
     private var portiere: Bool { scheda.calciatore.ruolo == "P" }
-    private let griglia = [GridItem(.adaptive(minimum: 96), spacing: 10)]
+    /// Le tessere: con il testo molto grande una per riga, perché tre affiancate tagliavano le etichette con «…» (foto del
+    /// collaudo con il testo al massimo).
+    private var griglia: [GridItem] {
+        taglia.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 96), spacing: 10)]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -37,8 +43,10 @@ struct TuttiINumeri: View {
         Text(testo).font(.subheadline.bold()).accessibilityAddTraits(.isHeader)
     }
 
+    /// Una riga piccola sotto i numeri; con il testo grande il «·» resta in fondo alla riga prima.
     private func nota(_ testo: String) -> some View {
-        Text(testo).font(.caption).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
+        Text(TestoACapo.puntoInFondo(testo)).font(.caption).foregroundStyle(Color.testoSecondario)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: questa partita e prossime
@@ -60,19 +68,27 @@ struct TuttiINumeri: View {
                 if !motivi.isEmpty {
                     PilloleEtichette(etichette: motivi.map { Etichetta(testo: $0.primaMaiuscola, tono: .neutro) })
                 }
-                FilaTessere {
-                    if portiere {
-                        TesseraDato(valore: percento(p.portaInviolata), etichetta: Catalogo.Mercato.portaInviolata)
-                        TesseraDato(valore: Formato.decimali(p.golAvversario), etichetta: Catalogo.Mercato.golSubitiAttesi)
-                        TesseraDato(valore: percento(p.pGiallo), etichetta: Catalogo.Mercato.giallo)
-                    } else {
-                        TesseraDato(valore: percento(p.pGol), etichetta: Catalogo.Mercato.segna)
-                        TesseraDato(valore: percento(p.pAssist), etichetta: Catalogo.Mercato.assist)
-                        TesseraDato(valore: percento(p.pGiallo), etichetta: Catalogo.Mercato.giallo)
-                        TesseraDato(valore: percento(p.pRosso), etichetta: Catalogo.Mercato.rosso)
-                    }
+                if taglia.isAccessibilitySize {
+                    LazyVGrid(columns: griglia, spacing: 12) { tesserePartita(p) }
+                } else {
+                    FilaTessere { tesserePartita(p) }
                 }
             }
+        }
+    }
+
+    /// Segna, assist, giallo e rosso; per un portiere porta inviolata, gol che può subire e giallo.
+    @ViewBuilder
+    private func tesserePartita(_ p: Giocatore) -> some View {
+        if portiere {
+            TesseraDato(valore: percento(p.portaInviolata), etichetta: Catalogo.Mercato.portaInviolata)
+            TesseraDato(valore: Formato.decimali(p.golAvversario), etichetta: Catalogo.Mercato.golSubitiAttesi)
+            TesseraDato(valore: percento(p.pGiallo), etichetta: Catalogo.Mercato.giallo)
+        } else {
+            TesseraDato(valore: percento(p.pGol), etichetta: Catalogo.Mercato.segna)
+            TesseraDato(valore: percento(p.pAssist), etichetta: Catalogo.Mercato.assist)
+            TesseraDato(valore: percento(p.pGiallo), etichetta: Catalogo.Mercato.giallo)
+            TesseraDato(valore: percento(p.pRosso), etichetta: Catalogo.Mercato.rosso)
         }
     }
 

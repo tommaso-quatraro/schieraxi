@@ -109,7 +109,7 @@ struct GiocatoreCorpo: View {
                         .accessibilityAddTraits(.isHeader)
                     ruoloEClub(t)
                     if let p = t.previsione, let partita = LetturaScheda.partita(p, adesso: Orologio.adesso()) {
-                        Text(partita).font(.subheadline).foregroundStyle(Color.testoSecondario)
+                        Text(TestoACapo.puntoInFondo(partita)).font(.subheadline).foregroundStyle(Color.testoSecondario)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -128,7 +128,7 @@ struct GiocatoreCorpo: View {
     /// «Attaccante · Genoa» e, per un diffidato, la pillola arancio accanto (sotto, se non ci sta).
     @ViewBuilder
     private func ruoloEClub(_ t: TestaScheda) -> some View {
-        let testo = Text(LetturaScheda.ruoloEClub(ruolo: t.ruolo, club: t.club))
+        let testo = Text(TestoACapo.puntoInFondo(LetturaScheda.ruoloEClub(ruolo: t.ruolo, club: t.club)))
             .font(.subheadline).foregroundStyle(Color.testoSecondario)
         if t.previsione?.diffidato == true {
             let diffidato = PillolaEtichetta(etichetta: Etichetta(testo: Catalogo.Oggi.diffidatoTipo, tono: .attenzione))

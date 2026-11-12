@@ -23,6 +23,13 @@ struct SchedaGiocatoreComeLaWebTests {
         #expect(LetturaScheda.ruoloEClub(ruolo: "X", club: "Como") == "X · Como", "un ruolo sconosciuto si scrive com'è")
     }
 
+    @Test("Con il testo grande il «·» resta in fondo alla riga prima (mai «· Inter» a capo), come `pezziRiga` della web")
+    func puntoInFondo() {
+        #expect(TestoACapo.puntoInFondo("Attaccante · Inter") == "Attaccante\u{00A0}· Inter")
+        #expect(TestoACapo.puntoInFondo("2400' · 11 gol · 4 assist") == "2400'\u{00A0}· 11 gol\u{00A0}· 4 assist")
+        #expect(TestoACapo.puntoInFondo("Attaccante") == "Attaccante")
+    }
+
     @Test("La partita senza la giornata: «In casa contro Como · …», «In trasferta contro Hellas Verona · …»")
     func partita() throws {
         let adesso = try #require(Quando.data("2026-10-30T12:00"))
