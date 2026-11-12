@@ -16,6 +16,9 @@
 #      e lo scambia con quello in uso solo se tutto e' andato; se pip non riesce resta tutto com'era e riprova ai giri dopo
 #      (alla terza volta di fila rinuncia e avvisa); poi riavvia SOLO il servizio fantacalcio e controlla che risponda;
 #   5. se non risponde torna alla versione di prima (codice e librerie), non riprova la stessa versione e manda un avviso sul telefono.
+# Avvisi sul telefono solo quando qualcosa non va (versione rifiutata, librerie che non si installano, ritorno alla versione di prima,
+# chiave delle firme mancante, GitHub che non risponde da tre giri, copia di GitHub o file della versione nuova che non si copiano:
+# vedi guasto, al massimo uno al giorno per motivo): un'installazione riuscita resta solo nel registro dati/pubblicazione.log.
 # Non parte mentre gira l'aggiornamento dei dati (stesso blocco di aggiorna.sh): ritenta al giro dopo.
 # Mentre lavora tiene ~/.cache/fantacalcio/blocco-pubblicazione: lo usano anche pubblica-sito.sh (stesso clone) e promemoria.sh (salute).
 # Opzione --prova: dice cosa farebbe e non scrive niente in ~/fantacalcio e in ~/.cache/fantacalcio (non copia, non riavvia).
@@ -77,12 +80,12 @@ QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di 
 LOG="$DEST/dati/pubblicazione.log"
 # la cartella dati la scrive anche il servizio (produzione o prova): un collegamento simbolico al posto del log farebbe scrivere
 # questo script (che gira fuori dal recinto del servizio) da un'altra parte, per esempio sul codice. Non scrive e non installa niente.
-avvisa() {   # titolo, testo, priorita (usa il canale delle notifiche dell'app: web o ntfy)
+avvisa() {   # titolo, testo, priorita (usa il canale delle notifiche dell'app: web o ntfy); esce con 0 solo se l'avviso e' partito
   [ "$ISTANZA" = prova ] && return 0     # la prova non avvisa: gli avvisi vanno al canale della produzione (se resta indietro, lo vede il collaudo)
   ( cd "$DEST" && nice -n 10 .venv/bin/python -c "
 import sys
 from fanta import notifiche
-notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'package')" "$1" "$2" "$3" ) >/dev/null 2>&1
+sys.exit(0 if notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'package') else 1)" "$1" "$2" "$3" ) >/dev/null 2>&1
 }
 # Fermo per un collegamento: oltre al journal (registri.sh) un avviso sul telefono, una volta sola finche' il collegamento resta.
 # Il segno sta in ~/.cache come gli altri stati e si crea con noclobber (mai attraverso un collegamento gia' presente).
@@ -118,20 +121,63 @@ log() {
 }
 fine() { [ "$PROVA" = 1 ] && return 0; ruota_registro "$LOG" 300 2>/dev/null; }
 
+# Guasti che fermano gli aggiornamenti senza un avviso loro (rete, copia di GitHub, versione senza le cartelle, file della versione
+# nuova, ambienti Python): oltre alla riga nel registro, un avviso con il motivo, al massimo uno al giorno per motivo (meno un'ora di
+# tolleranza), e «di nuovo a posto» quando passa, solo se era stato segnalato (#607). Stato in $STATO/guasto-<motivo>: «volte di fila,
+# ora dell'ultimo avviso in secondi»; l'ora si segna e il file si toglie solo se l'avviso e' partito. La rete si segnala alla terza
+# volta di fila: un fetch andato male una volta non e' un guasto.
+GIORNO=86400
+TOLLERANZA=3600
+guasto() {   # motivo, testo dell'avviso, volte di fila prima dell'avviso (di solito 1)
+  [ "$PROVA" = 1 ] && return 0
+  local f="$STATO/guasto-$1" n=0 ultimo=0 resto adesso
+  { mkdir -p "$STATO" && [ ! -L "$f" ]; } || return 0
+  if [ -f "$f" ]; then read -r n ultimo resto < "$f"; fi
+  [[ $n =~ ^[0-9]{1,9}$ ]] || n=0
+  [[ $ultimo =~ ^[0-9]{1,12}$ ]] || ultimo=0
+  n=$(( n + 1 )); adesso=$(date +%s)
+  if [ "$n" -ge "${3:-1}" ] && [ $(( adesso - ultimo )) -ge $(( GIORNO - TOLLERANZA )) ] \
+     && avvisa "SchieraXI: aggiornamento non riuscito" "$2 Dettagli in dati/pubblicazione.log." 4; then
+    ultimo=$adesso
+  fi
+  echo "$n $ultimo" > "$f"
+}
+risolto() {   # motivi tornati a posto
+  [ "$PROVA" = 1 ] && return 0
+  local m f n ultimo resto segnalati=""
+  local -a file=()
+  for m in "$@"; do
+    f="$STATO/guasto-$m"
+    { [ -f "$f" ] && [ ! -L "$f" ]; } || continue
+    n=0; ultimo=0; read -r n ultimo resto < "$f"
+    file+=("$f")
+    if [[ $ultimo =~ ^[1-9][0-9]*$ ]]; then segnalati="${segnalati:+$segnalati, }$m"; fi
+  done
+  [ ${#file[@]} -gt 0 ] || return 0
+  if [ -n "$segnalati" ]; then
+    log "di nuovo a posto: $segnalati"
+    avvisa "SchieraXI: aggiornamenti di nuovo a posto" "Gli aggiornamenti automatici funzionano di nuovo." 3 || return 0
+  fi
+  rm -f -- "${file[@]}"
+}
+TESTO_RETE="Da tre giri di fila non riesco a scaricare da GitHub (rete?): le versioni nuove non arrivano."
+
 if [ ! -d "$SRC/.git" ]; then
   if [ "$PROVA" = 1 ]; then log "manca la copia di GitHub in $SRC: la creerei da $REPO"; exit 0; fi
   timeout -k 5 "${SCHIERAXI_TIMEOUT_GIT:-120}" git clone -q "$REPO" "$SRC" 2>>"$ERR"; rc=$?
-  [ "$rc" = 124 ] && { log "git clone interrotto dopo ${SCHIERAXI_TIMEOUT_GIT:-120}s: la rete e' bloccata, riprovo al prossimo giro"; fine; exit 1; }
-  [ "$rc" = 0 ] || { log "clone da GitHub non riuscito (rete?)"; fine; exit 1; }
+  [ "$rc" = 124 ] && { log "git clone interrotto dopo ${SCHIERAXI_TIMEOUT_GIT:-120}s: la rete e' bloccata, riprovo al prossimo giro"; guasto rete "$TESTO_RETE" 3; fine; exit 1; }
+  [ "$rc" = 0 ] || { log "clone da GitHub non riuscito (rete?)"; guasto rete "$TESTO_RETE" 3; fine; exit 1; }
 fi
-cd "$SRC" || { log "manca la copia di GitHub in $SRC"; exit 1; }
+cd "$SRC" || { log "manca la copia di GitHub in $SRC"; guasto copia-github "Manca la copia di GitHub sul server: le versioni nuove non arrivano."; exit 1; }
 timeout -k 5 "${SCHIERAXI_TIMEOUT_GIT:-120}" git fetch -q origin main 2>>"$ERR"; rc=$?
-[ "$rc" = 124 ] && { log "git fetch interrotto dopo ${SCHIERAXI_TIMEOUT_GIT:-120}s: la rete e' bloccata, riprovo al prossimo giro"; fine; exit 0; }
-[ "$rc" = 0 ] || { log "git fetch non riuscito (rete?)"; fine; exit 0; }
+[ "$rc" = 124 ] && { log "git fetch interrotto dopo ${SCHIERAXI_TIMEOUT_GIT:-120}s: la rete e' bloccata, riprovo al prossimo giro"; guasto rete "$TESTO_RETE" 3; fine; exit 0; }
+[ "$rc" = 0 ] || { log "git fetch non riuscito (rete?)"; guasto rete "$TESTO_RETE" 3; fine; exit 0; }
 # Il ramo con il nome intero, letto con show-ref --verify che non cerca altri nomi: con rev-parse (anche col nome intero, se il ramo
 # manca) git proverebbe altri posti e un tag con lo stesso nome prenderebbe il suo posto
 nuovo=$(git show-ref --verify -s refs/remotes/origin/main 2>/dev/null) && nuovo=$(git rev-parse -q --verify "$nuovo^{commit}") \
-  || { log "il ramo origin/main non esiste nel clone $SRC: non installo"; fine; exit 1; }
+  || { log "il ramo origin/main non esiste nel clone $SRC: non installo"
+       guasto copia-github "Nella copia di GitHub sul server manca il ramo main: le versioni nuove non arrivano."; fine; exit 1; }
+risolto rete copia-github          # GitHub risponde e il ramo c'e'
 if [ -n "$FIDATI" ]; then
   quale="$FIDATI"; [ "$FIDATI" = origin/main ] && quale="$nuovo"     # "--fidati origin/main" vuol dire il ramo, anche qui
   fidato=$(git rev-parse -q --verify "$quale^{commit}") && git merge-base --is-ancestor "$fidato" "$nuovo" \
@@ -181,6 +227,7 @@ for c in $CARTELLE; do git cat-file -e "$nuovo:$c" 2>/dev/null || mancanti="$man
 if [ -n "$mancanti" ]; then
   log "la versione ${nuovo:0:7} non contiene:$mancanti : non installo"
   [ "$PROVA" = 1 ] || echo "$nuovo" > "$STATO/rifiutato"
+  guasto cartelle "Su GitHub c'è una versione senza tutte le cartelle del server: non l'ho installata."
   fine; exit 1
 fi
 
@@ -246,7 +293,8 @@ vecchi_req=$(md5sum "$DEST/requirements.txt" 2>/dev/null | cut -d' ' -f1)
 prova=$(mktemp -d)
 # shellcheck disable=SC2086
 if ! git archive "$nuovo" $CARTELLE | tar -x -C "$prova"; then
-  log "copia dei file non riuscita"; rm -rf "$prova"; fine; exit 1
+  log "copia dei file non riuscita"; rm -rf "$prova"
+  guasto copia-file "Non riesco a copiare i file della versione nuova (disco pieno?): resta quella di prima."; fine; exit 1
 fi
 # Il file dei tratti dei volti vive solo sul server: se c'e' gia', resta quello (anche se il repository non lo ha piu')
 if [ -f "$DEST/fanta/avatar_tratti.json" ]; then
@@ -272,7 +320,9 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
     rm -f "$STATO/librerie-fallite"
     rm -rf "$DEST/.venv.precedente"
     mv "$DEST/.venv" "$DEST/.venv.precedente" && mv "$DEST/.venv.nuova" "$DEST/.venv" && venv_cambiata=1
-    [ "$venv_cambiata" = 1 ] || { log "scambio degli ambienti Python non riuscito: controlla $DEST/.venv"; fine; exit 1; }
+    [ "$venv_cambiata" = 1 ] || { log "scambio degli ambienti Python non riuscito: controlla $DEST/.venv"
+                                  guasto ambienti "Non riesco a scambiare gli ambienti Python della versione nuova: va controllato il server."
+                                  fine; exit 1; }
   else
     # il servizio non e' stato riavviato e il suo ambiente non e' stato toccato: si rimettono solo i file della versione di prima
     rm -rf "$DEST/.venv.nuova"
@@ -308,8 +358,10 @@ done
 if [ "$risponde" = 1 ]; then
   echo "$nuovo" > "$STATO/ultimo-rilascio"
   versione=$(cd "$DEST" && .venv/bin/python -c "import json; print(json.load(open('fanta/novita.json', encoding='utf-8'))[0]['versione'])" 2>/dev/null)
+  # solo la riga nel registro, niente avviso: con tante versioni al giorno gli avvisi veri (fallita, rifiutata, tornata indietro) si
+  # perdevano tra quelli di routine (#607)
   log "installata ${nuovo:0:7} (versione $versione): il servizio risponde"
-  avvisa "SchieraXI aggiornato" "Ora c'è la versione $versione." 2
+  risolto cartelle copia-file ambienti           # «di nuovo a posto» se un guasto dell'installazione era stato segnalato
 else
   log "il servizio NON risponde con ${nuovo:0:7} (ultimo codice HTTP: ${codice:-nessuno}): torno alla versione di prima"
   tar xzf "$copia" -C "$DEST"

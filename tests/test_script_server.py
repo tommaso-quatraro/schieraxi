@@ -389,6 +389,8 @@ def test_se_cambia_il_codice_installa_riavvia_e_non_tocca_lega_e_dati(server):
     assert not (s.app / "ios").exists() and not (s.app / "sito").exists() and not (s.app / "docs").exists()
     _lega_e_dati_intatti(s)
     assert "installata" in (s.app / "dati" / "pubblicazione.log").read_text(encoding="utf-8")
+    assert s.avvisi() == []                 # un'installazione riuscita resta solo nel registro (#607: con tante versioni al giorno
+                                            # gli avvisi veri si perdevano)
 
 
 @con_bash
@@ -848,6 +850,7 @@ def test_servizio_che_non_risponde_torna_alla_versione_di_prima(server):
     assert s.riavvii() == 2                                       # riavvio con la nuova + riavvio dopo il ritorno
     assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
     _lega_e_dati_intatti(s)
+    assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]      # il ritorno indietro avvisa sempre
 
 
 @con_bash
@@ -888,25 +891,27 @@ def test_backup_dati_copia_lega_e_dati_senza_chiavi_e_non_modifica_l_originale(t
     assert not any(n.endswith("push.json") or n.endswith("vapid.json") for n in nomi)
 
 
-def _lancia_backup_dati(tmp_path, app):
+def _lancia_backup_dati(tmp_path, app, python=None, canale=None):
     """backup-dati.sh su una cartella finta. PYTHONPATH: il pacchetto `fanta` viene da questo repository (sul server sta nella
-    cartella dell'app, da cui lo script parte)."""
+    cartella dell'app, da cui lo script parte). `python`: un Python finto al posto di quello di sistema. `canale`: il file con il
+    canale degli avvisi (di solito uno che non c'è: nessuna prova manda avvisi veri)."""
     bin_ = tmp_path / "bin"
     bin_.mkdir(exist_ok=True)
     _stub(bin_, "flock", "exit 0")
     dest, cache = tmp_path / "copie", tmp_path / "cache"
     r = _lancia([BASH, (SCRIPT / "backup-dati.sh").as_posix()],
                 env={**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "FANTA_RADICE": _msys(app),
-                     "FANTA_BACKUP_DIR": _msys(dest), "FANTA_CACHE": _msys(cache), "FANTA_PYTHON": sys.executable,
-                     "PYTHONPATH": str(RADICE)},
+                     "FANTA_BACKUP_DIR": _msys(dest), "FANTA_CACHE": _msys(cache), "FANTA_PYTHON": python or sys.executable,
+                     "PYTHONPATH": str(RADICE), "SCHIERAXI_CANALE": _msys(canale or tmp_path / "nessun-canale")},
                 ripristina=lambda: [shutil.rmtree(d, ignore_errors=True) for d in (dest, cache)])
     return r, dest, cache
 
 
 @con_bash
-def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso_e_non_l_archivio(tmp_path):
+def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso(tmp_path):
     """Il registro delle giornate (#343) non si ricostruisce: va nella copia, preso in modo coerente mentre il servizio tiene aperto
-    l'archivio (dati confermati ancora nel file -wal). L'archivio intero invece resta fuori (si rifà con `aggiorna`)."""
+    l'archivio (dati confermati ancora nel file -wal). Dal #607 c'è anche l'archivio intero (tests/test_script_server_avvisi.py):
+    il file del registro resta, per le copie di prima e per rimetterlo in un archivio rifatto da zero."""
     import contextlib
     import sqlite3
     from fanta import archivio, registro_copia
@@ -927,7 +932,7 @@ def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso_e_non_l_
     assert len(pacchetti) == 1
     with tarfile.open(pacchetti[0]) as t:
         nomi = t.getnames()
-        assert not any("fanta.sqlite" in n for n in nomi)
+        assert [n for n in nomi if "fanta.sqlite" in n] == ["./dati/fanta.sqlite"]              # l'archivio, senza file -wal
         registro = [n for n in nomi if n.endswith("dati/registro-giornate.json")]
         assert len(registro) == 1, nomi
         estratto = tmp_path / "registro-giornate.json"
@@ -1058,6 +1063,43 @@ def test_cartella_del_server_mancante_nel_repository_non_installa(server):
     assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2          # non si riprova a ogni giro
     assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
     _lega_e_dati_intatti(s)
+    assert len(s.avvisi()) == 1 and "senza tutte le cartelle del server" in s.avvisi()[0]       # versione rifiutata: avviso
+
+
+@con_bash
+def test_copia_dei_file_che_non_riesce_avvisa_una_volta_e_poi_dice_che_e_tornata(server):
+    """#607: senza l'avviso «aggiornato», un guasto che ferma gli aggiornamenti deve farsi vedere. Disco pieno: la copia dei file
+    della versione nuova non riesce a ogni giro. Avviso al primo giro, nessuno al secondo, «di nuovo a posto» alla prima
+    installazione riuscita."""
+    s = server
+    _stub(s.bin, "tar", 'case "${1:-}" in -x) exit 1;; esac\nexec /usr/bin/tar "$@"')       # git archive | tar -x non riesce
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    assert s.esegui("aggiorna-app.sh").returncode == 1
+    assert "copia dei file non riuscita" in s.log() and s.ultimo() == s.c1
+    assert len(s.avvisi()) == 1 and "disco pieno" in s.avvisi()[0]
+    assert s.esegui("aggiorna-app.sh").returncode == 1
+    assert len(s.avvisi()) == 1                                                    # lo stesso guasto: niente secondo avviso
+    (s.bin / "tar").unlink()
+    assert s.esegui("aggiorna-app.sh").returncode == 0 and s.ultimo() == c2
+    assert len(s.avvisi()) == 2 and "di nuovo a posto" in s.avvisi()[1]
+    assert "di nuovo a posto" in s.log() and not list(s.stato.glob("guasto-*"))
+
+
+@con_bash
+def test_github_che_non_risponde_avvisa_al_terzo_giro_e_poi_dice_che_e_tornato(server, tmp_path):
+    s = server
+    clone = s.casa / "schieraxi-src"
+    origine = _git(clone, "remote", "get-url", "origin")
+    _git(clone, "remote", "set-url", "origin", (tmp_path / "non-esiste").as_posix())
+    for _ in range(2):                                                             # una volta o due capita: niente avviso
+        assert s.esegui("aggiorna-app.sh").returncode == 0 and s.avvisi() == []
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert len(s.avvisi()) == 1 and "GitHub" in s.avvisi()[0]
+    assert s.esegui("aggiorna-app.sh").returncode == 0 and len(s.avvisi()) == 1
+    _git(clone, "remote", "set-url", "origin", origine)
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert len(s.avvisi()) == 2 and "di nuovo a posto" in s.avvisi()[1]
+    assert not list(s.stato.glob("guasto-*"))
 
 
 @con_bash
