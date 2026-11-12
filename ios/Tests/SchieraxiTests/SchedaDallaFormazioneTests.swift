@@ -74,6 +74,10 @@ struct SchedaDallaFormazioneTests {
     func altraSquadra() async throws {
         let (vm, _) = try await caricata()
         vm.vediSquadra("Gli Amici")
+        await vm.carica()                                   // la formazione dell'altra squadra (nella prova, gli stessi dati)
+        let c = try #require(vm.contestoScheda(Self.attaccante))
+        #expect(c.perche == Self.frase, "il perché del titolare vale anche per la consigliata di un'altra squadra")
+        #expect(!c.sostituibile && !c.fermo)
         #expect(!vm.sostituibile(Self.attaccante))
         #expect(!vm.fermo(Self.fermo))
     }

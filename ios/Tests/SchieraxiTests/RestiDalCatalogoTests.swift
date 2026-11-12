@@ -69,7 +69,7 @@ struct RestiDalCatalogoTests {
         Caso(file: "Sources/Domain/FantavotoAtteso.swift",
              testi: [Catalogo.Perche.titolo, Catalogo.Perche.definizione],
              frasi: [Catalogo.Perche.rispetto(n: "§"), Catalogo.Perche.nessuno(n: "§")],
-             usa: ["Catalogo.Perche.titolo", "Catalogo.Perche.definizione", "Catalogo.Perche.rispetto(", "Catalogo.Perche.nessuno("]),
+             usa: ["Catalogo.Perche.titolo", "Catalogo.Perche.rispetto(", "Catalogo.Perche.nessuno("]),
         Caso(file: "Sources/Domain/FasiGiornata.swift",
              testi: [
                 Catalogo.Oggi.puntiFinora, Catalogo.Oggi.aFineGiornata, Catalogo.Oggi.dallaPanchina, Catalogo.Oggi.cambiPanchina,

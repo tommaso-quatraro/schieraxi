@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Schieraxi
 
@@ -38,5 +39,50 @@ struct SogliaGiocaTests {
     func letta() {
         #expect(SogliaGioca.letta(0.796) == 0.8)
         #expect(SogliaGioca.letta(0.621) == 0.62)
+    }
+
+    // MARK: pedina e righe (sostituti compresi) con la stessa soglia della scheda
+
+    @Test("Un titolare al 75%: avviso sul campo e arancio nella scheda; al 45% rosso; a 79,6% nessun avviso")
+    func pedina() {
+        #expect(LetturaPedina.incerto(0.75))
+        #expect(LetturaPedina.livello(0.75) == .medio)
+        #expect(LetturaPedina.livello(0.45) == .basso)
+        #expect(!LetturaPedina.incerto(0.796), "si legge «80%»")
+        #expect(LetturaPedina.livello(0.92) == .sicuro)
+        #expect(LetturaPedina.livello(nil) == nil, "senza probabilità niente avviso")
+        #expect(!LetturaPedina.incerto(nil))
+    }
+
+    /// Un giocatore inventato con questa probabilità di giocare (e altri campi, `extra` comincia con «, »).
+    private func giocatore(_ p: Double, _ extra: String = "") throws -> Giocatore {
+        try Decodifica.decodifica(Data(#"{"id": 9, "nome": "Paolo Esempio", "ruolo": "C", "fv_atteso": 6.4, "p_voto": \#(p)\#(extra)}"#.utf8))
+    }
+
+    @Test("Scheda, pedina e righe dicono la stessa cosa per la stessa probabilità",
+          arguments: [0.95, 0.8, 0.796, 0.79, 0.75, 0.62, 0.5, 0.497, 0.45, 0.1])
+    func stessaSogliaOvunque(p: Double) throws {
+        let g = try giocatore(p)
+        let attesa = SogliaGioca.livello(p)
+        guard case .cifre(_, .gioca(_, let scheda, _)?) = LetturaScheda.cifre(g) else {
+            Issue.record("la scheda non mostra «gioca N%» per \(p)")
+            return
+        }
+        #expect(scheda == attesa)
+        #expect(LetturaPedina.livello(p) == attesa)
+        #expect(LetturaPedina.incerto(p) == (attesa != .sicuro))
+        #expect(RigaGiocatore.livelloGioca(g) == (attesa == .sicuro ? nil : attesa), "riga (anche fra i sostituti) per \(p)")
+    }
+
+    @Test("Nelle righe niente colore a partita iniziata, per un assente e per chi non gioca di sicuro (lo dice la parola)")
+    func righeSenzaColore() throws {
+        let inCorso = try giocatore(0.4, #", "stato_partita": "in_corso""#)
+        let assente = try giocatore(0.0, #", "assente": true"#)
+        let infortunato = try giocatore(0.0, #", "stato": "infortunato""#)
+        let dubbio = try giocatore(0.4, #", "dubbio": true"#)
+        #expect(RigaGiocatore.livelloGioca(inCorso) == nil)
+        #expect(RigaGiocatore.livelloGioca(assente) == nil)
+        #expect(RigaGiocatore.livelloGioca(infortunato) == nil)
+        #expect(RigaGiocatore.livelloGioca(dubbio) == .basso, "in dubbio non è sicuro di non giocare: il numero resta rosso")
     }
 }
