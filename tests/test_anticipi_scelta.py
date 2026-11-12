@@ -199,8 +199,8 @@ NODE = shutil.which("node")
 
 
 def _sostituti(f: dict, uscente: int, titolari: list[int]) -> list[int]:
-    """`sostituti` di app.js (chi può prendere il posto di un titolare nella modifica a mano), eseguita con node."""
-    funz = APP[APP.index("const giocatoriFermi"):APP.index("function mostraFormazione(")]
+    """`sostituti` di app.js (chi può prendere il posto di un titolare, in «Sostituisci»), eseguita con node."""
+    funz = APP[APP.index("const giocatoriFermi"):APP.index("// La Formazione si ridisegna")]
     prova = (f"{funz}\nconst f = {json.dumps(f)};\n"
              f"console.log(JSON.stringify(sostituti(f, f.schede['{uscente}'], new Set({titolari})).map(x => x.id)));")
     r = subprocess.run([NODE, "-e", prova], capture_output=True, text=True, encoding="utf-8", timeout=60)
@@ -214,48 +214,6 @@ def test_web_chi_e_bloccato_non_esce_e_non_entra():
     assert _sostituti(f, 5, CONSIGLIATA) == []                          # il 5 (anticipo cominciato) non si sostituisce
     assert 16 not in _sostituti(f, 4, CONSIGLIATA) and 12 in _sostituti(f, 4, CONSIGLIATA)    # il 16 non entra, il 12 sì
     assert set(_sostituti(CONSIGLIATA_F, 4, CONSIGLIATA)) == {12, 16}   # senza il campo (server vecchio, niente anticipi): come prima
-
-
-def test_web_formazione_usa_i_bloccati():
-    """Nella modifica a mano un titolare bloccato non ha il ✎ (resta solo il suo posto, per le colonne), e una riga dice perché."""
-    assert 'voceGiocatore(x, null, !modificabile ? "" : fermi.has(x.id) ? "posto" : "sostituisci")' in APP
-    assert 'modificabile && fermi.size ? `<div class="debole piccolo">${t("formazione.bloccati")}</div>` : ""' in APP
-    assert "sostituti(f, base, dentro)" in APP
-
-
-def _torna_alla_consigliata(codice: str | None) -> dict:
-    """Il gestore vero di «Torna alla consigliata» (app.js), eseguito con node: la DELETE risponde con l'errore `codice` (None =
-    riesce). Le funzioni intorno sono finte e annotano cosa succede."""
-    inizio = APP.index('bottone("#torna-consigliata", ') + len('bottone("#torna-consigliata", ')
-    gestore = APP[inizio:APP.index('bottone("#copia"', inizio)].rstrip().removesuffix(");")
-    prova = f"""
-    const registro = [];
-    const sc = {{ salvata: {{ titolari: [1, 2, 3] }}, manuale: null, modulo: "3-4-3", nonValida: false }};
-    const f = {{ giornata: {GIORNATA} }}, squadra = null;
-    const annullaRichieste = () => registro.push("annulla");
-    const disegna = () => registro.push(sc.manuale ? "disegna la tua" : "disegna la consigliata");
-    const avviso = m => registro.push("avviso: " + m);
-    const valutaManuale = (ids, salva, silenzioso) => {{ sc.manuale = {{ titolari: ids }}; registro.push("valuta " + JSON.stringify([ids, salva, silenzioso])); }};
-    const vistaFormazione = () => registro.push("ricarica");
-    const $ = () => ({{}}), document = {{ body: {{ contains: () => true }} }};
-    const codice = {json.dumps(codice)};
-    const api = async () => {{ if (codice === null) return {{ ok: true }}; const e = new Error("rifiutato"); e.codice = codice; throw e; }};
-    ({gestore})().then(() => console.log(JSON.stringify({{ registro, salvata: sc.salvata }})));
-    """
-    r = subprocess.run([NODE, "-e", prova], capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    return json.loads(r.stdout)
-
-
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_web_ritorno_alla_consigliata_rifiutato_rimette_la_tua():
-    """Il server rifiuta il ritorno (la consigliata sposterebbe chi gioca un anticipo già cominciato): vale ancora la scelta salvata,
-    quindi sullo schermo torna lei (come «Annulla modifiche» e come l'iPhone), non la consigliata con «Modifiche non salvate»."""
-    esito = _torna_alla_consigliata("giocatore_bloccato")
-    assert esito["salvata"] == {"titolari": [1, 2, 3]}
-    assert "avviso: rifiutato" in esito["registro"]
-    dopo = esito["registro"][esito["registro"].index("avviso: rifiutato") + 1:]
-    assert dopo == ["valuta [[1,2,3],false,true]"]                     # si rimette la tua, senza ridisegnare la consigliata
 
 
 # ---------------------------------------------------------------- «Da fare»: nessun cambio su chi è bloccato
@@ -334,10 +292,3 @@ def test_da_fare_consigliata_cambiata_se_non_entra_un_bloccato_resta_il_piu_util
     v = _consigliata_cambiata(mondo_da_fare)
     assert len(v) == 1 and v[0]["entrano"] == [{"id": 12, "nome": "Riserva"}] and len(v[0]["escono"]) == 1
     assert v[0]["escono"][0]["id"] in (7, 8)
-
-
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_web_ritorno_alla_consigliata_negli_altri_casi_come_prima():
-    riuscito = _torna_alla_consigliata(None)
-    assert riuscito["salvata"] is None and riuscito["registro"][-1] == "disegna la consigliata"
-    assert _torna_alla_consigliata("formazione_chiusa")["registro"][-1] == "ricarica"

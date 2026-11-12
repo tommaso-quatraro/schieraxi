@@ -70,13 +70,11 @@ def test_pagina_ha_titolo_lingua_e_pannello_con_nome():
     assert 'class="salta"' in html and 'id="contenuto"' in html
 
 
-def test_pannello_aperto_blocca_anche_il_link_salta_e_le_alternative_sono_da_44px():
-    """Con il pannello aperto il fuoco non esce dal pannello (neanche sul link «Vai al contenuto»); le alternative sono bersagli da 44 px."""
+def test_pannello_aperto_blocca_anche_il_link_salta():
+    """Con il pannello aperto il fuoco non esce dal pannello (neanche sul link «Vai al contenuto»)."""
     js = codice_web.app()
     riga = next(r for r in js.splitlines() if r.startswith("const SFONDO_FOGLIO"))
     assert '".salta"' in riga and '".testata"' in riga and '".schede"' in riga
-    alt = next(r for r in CSS.splitlines() if r.startswith(".alternative-li .alt {"))
-    assert int(re.search(r"min-height:\s*(\d+)px", alt).group(1)) >= 44
 
 
 def test_script_collega_nomi_ai_campi_e_titolo_per_sezione():

@@ -5,6 +5,11 @@ sensate (le «invarianti»). Così i difetti li trova il server, non chi usa l'a
   `/api/formazione`, `/api/scelta`, `/api/diario`, `/api/widget` e `/api/live`, senza passare dalla rete e senza scrivere niente:
   `/api/formazione` si legge con `consigli.formazione` (la rotta salverebbe la copia automatica della consigliata), i risultati in
   diretta dalla copia su file della cache del servizio (`dati/live.json`, se c'è), come li vede l'utente.
+- Con gli account conta anche le cartelle `utenti/<numero>` rimaste senza account (`cartella_senza_account`, un avviso): dice solo
+  quante sono; quali, lo dice `python -m fanta cartelle-senza-account`. È una sola rottura per tutte le cartelle: per la regola
+  degli avvisi qui sotto, una cartella in più dopo un avviso si vede in «Stato dei dati» ma non ne fa partire un altro.
+- Se l'elenco degli utenti o quello delle cartelle non si legge (database degli account rovinato) il giro non muore: lo segna come
+  `risposta_in_errore` e fa gli altri controlli.
 - Esito nella tabella `controlli` (una riga `sentinella_<invariante>` per invariante, più `sentinella` col riassunto): si vede in
   «Stato dei dati». I dettagli non hanno mai nomi (né di persone, né di squadre della lega, né di giocatori): solo «utente N»,
   giornata, campo e numeri (al massimo le squadre di Serie A).
@@ -74,6 +79,7 @@ INVARIANTI: dict[str, tuple[str, str]] = {
     "diario_incoerente": ("errore", "il diario ha solo giornate finite, una volta sola, con 11 titolari"),
     "diario_mancante": ("avviso", "una giornata finita con i voti da più di 36 ore è nel diario"),
     "widget_troppo_grande": ("avviso", "il riassunto del widget sta sotto i 20 kB"),
+    "cartella_senza_account": ("avviso", "ogni cartella di dati degli utenti ha il suo account"),
 }
 
 
@@ -554,6 +560,28 @@ def controlla_comuni(db: sqlite3.Connection, stagione: str, adesso: datetime, li
     return out
 
 
+# ---------------------------------------------------------------- cartelle di dati rimaste senza account
+def controlla_cartelle() -> list[Rottura]:
+    """Con gli account: quante cartelle `utenti/<numero>` non hanno più il loro account (`contesto.cartelle_senza_account`): una
+    cancellazione non finita, o una scrittura che non passa da `scrivi_sicuro` e ne ricrea una dopo. Solo il conto: i numeri degli
+    account non entrano nel dettaglio. Database degli account in sola lettura; se non c'è ancora (nessuno è mai entrato) non c'è
+    niente da contare, come per `_contesti`."""
+    from . import account, contesto
+    file = percorsi.cartella_account() / "account.sqlite"
+    if not account.multiutente() or not file.exists():
+        return []
+    adb = sqlite3.connect(f"{file.resolve().as_uri()}?mode=ro", uri=True, timeout=30)
+    try:
+        n = len(contesto.cartelle_senza_account(adb))
+    finally:
+        adb.close()
+    if not n:
+        return []
+    quante = "1 cartella" if n == 1 else f"{n} cartelle"
+    return [Rottura("cartella_senza_account", None, None,
+                    f"{quante} di dati senza account (le elenca: python -m fanta cartelle-senza-account)")]
+
+
 # ---------------------------------------------------------------- le risposte vere (stesse funzioni delle rotte, niente rete)
 def _richiesta_finta(percorso: str):
     """Una GET senza cookie né token: serve alle funzioni delle rotte che leggono intestazioni (lingua, amministratore)."""
@@ -683,10 +711,15 @@ def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float
     adesso = adesso or datetime.now()
     stagione = consigli.stagione_corrente()
     _prepara_live()
-    contesti = _contesti() if contesti is None else contesti
+    rotture: list[Rottura] = []
+    if contesti is None:
+        try:
+            contesti = _contesti()
+        except Exception as e:                 # noqa: BLE001 - elenco degli utenti che non si legge: si deve vedere, e il giro non muore
+            rotture.append(Rottura("risposta_in_errore", None, None, f"sentinella: elenco degli utenti non letto ({type(e).__name__})"))
+            contesti = []
     ultimi = (stato or {}).get("utenti") or {}
     contesti = sorted(contesti, key=lambda c: ultimi.get(c[0], ""))          # prima chi è stato controllato meno di recente
-    rotture: list[Rottura] = []
     controllati: list[str] = []
     live_corpo = None
     for etichetta, ctx in contesti:
@@ -714,6 +747,10 @@ def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float
         rotture.extend(controlla_comuni(db, stagione, adesso, live_corpo))
     except Exception as e:                     # noqa: BLE001
         rotture.append(Rottura("risposta_in_errore", None, None, f"sentinella: controlli comuni non riusciti ({type(e).__name__})"))
+    try:
+        rotture.extend(controlla_cartelle())
+    except Exception as e:                     # noqa: BLE001 - cartelle o database degli account che non si leggono: si deve vedere
+        rotture.append(Rottura("risposta_in_errore", None, None, f"sentinella: cartelle senza account non contate ({type(e).__name__})"))
     viste, uniche = set(), []
     for r in rotture:
         if (r.chiave, r.dettaglio) not in viste:

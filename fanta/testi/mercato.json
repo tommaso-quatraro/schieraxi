@@ -91,10 +91,6 @@
     "it": "punti a partita",
     "en": "points per match"
   },
-  "mercato.tutte_statistiche": {
-    "it": "Tutte le statistiche",
-    "en": "All statistics"
-  },
   "mercato.stagione": {
     "it": "Stagione",
     "en": "Season"
@@ -194,14 +190,6 @@
   "mercato.rosso": {
     "it": "rosso",
     "en": "red"
-  },
-  "mercato.partita_casa": {
-    "it": "{g} · in casa contro {avv} · {quando}",
-    "en": "{g} · at home against {avv} · {quando}"
-  },
-  "mercato.partita_fuori": {
-    "it": "{g} · in trasferta contro {avv} · {quando}",
-    "en": "{g} · away against {avv} · {quando}"
   },
   "mercato.gol_attesi": {
     "it": "risultato atteso {a}–{b}",
