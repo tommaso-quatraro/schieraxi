@@ -67,7 +67,7 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   - Dati della lega: `regole.py` (regole parametriche), `regole_testo.py`, `rose.py` (Excel, CSV, testo), `lega.py`,
     `squadre.py`, `movimenti.py`, `scelte.py`, `formazioni_lega.py`, `osservati.py`, `listone.py`, `nomi.py` (riconoscimento
     dei nomi tra fonti), `immagini.py`, `scarica_immagine.py` (solo indirizzi https pubblici, tetto 4 MB).
-  - Fonti: `fonti/` (`fantacalcio.py`, `understat.py`, `footballdata.py`, `sosfanta.py`: funzioni pure, provate su estratti
+  - Fonti: `fonti/` (`fantacalcio.py`, `understat.py`, `footballdata.py`: funzioni pure, provate su estratti
     inventati in `tests/dati/`), `aggiorna.py` (riempie `dati/fanta.sqlite`), `archivio.py`, `rete.py` (si presenta come
     `SchieraXI/<versione>`), `scheda.py`, `fonti_attive.py` (interruttori delle fonti).
   - Risultati in diretta: `live.py` (un solo raccoglitore, cache in memoria e in `dati/live.json` che sopravvive ai riavvii; il risultato ufficiale vince). Rotta `GET /api/live`, vedi `docs/LIVE.md`. Risultati e voti la sera stessa: `pianificatore.giro_risultati`.
