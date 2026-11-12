@@ -36,19 +36,29 @@ RISPOSTE_IN_PIU = {"/api/avatar": {"versione": 3, "tratti": {}}}
 
 # Patti con ogni versione della web (tests/browser/LEGGIMI.md), senza selettori di una schermata:
 # - il contenuto della schermata sta nell'area principale, `<main>` (o un elemento con role="main");
-# - un errore mostrato all'utente ha role="alert" (la web di oggi usa anche la classe `errore`).
+# - mentre una schermata carica, l'area principale (o il suo contenitore del caricamento) ha aria-busy="true" (la web di
+#   oggi non lo ha ancora: si riconosce il suo caricamento dalle classi `caricamento` e `scheletro`);
+# - un errore mostrato all'utente ha role="alert" (la web di oggi usa anche la classe `errore`); un avviso normale ha
+#   role="status". Oggi accesso e riconoscimento delle rose mettono in role="alert" anche gli avvisi (classe `attenzione`):
+#   quelli non contano come errori.
 AREA_PRINCIPALE = "main, [role=main]"
 TESTO_PRINCIPALE = """(area) => { const m = document.querySelector(area);
   return m ? (m.innerText || '').trim() : ''; }"""
-AREA_CON_TESTO = f"(area) => ({TESTO_PRINCIPALE})(area).length > 0"
+IN_CARICAMENTO = """(area) => { const m = document.querySelector(area);
+  if (!m) return false;
+  if (m.getAttribute('aria-busy') === 'true') return true;
+  return [...m.querySelectorAll('[aria-busy=true], .caricamento, .scheletro')].some(e => e.getClientRects().length > 0); }"""
+PRONTA = f"(area) => ({TESTO_PRINCIPALE})(area).length > 0 && !({IN_CARICAMENTO})(area)"
 ERRORI_MOSTRATI = """(area) => { const m = document.querySelector(area);
   if (!m) return [];
   const visto = e => e.getClientRects().length > 0 && (e.innerText || '').trim();
-  const trovati = [...m.querySelectorAll('[role=alert], .errore')].filter(visto);
+  const avviso = e => e.matches('.attenzione')
+    || (!!e.querySelector('.attenzione') && !e.matches('.errore') && !e.querySelector('.errore'));
+  const trovati = [...m.querySelectorAll('[role=alert], .errore')].filter(e => visto(e) && !avviso(e));
   return trovati.filter(e => !trovati.some(a => a !== e && a.contains(e)))
     .map(e => e.innerText.trim().replace(/\\s+/g, ' ').slice(0, 200)); }"""
-# Attesa: prima un segnale preciso (area principale con testo, al massimo 10 s), poi la rete ferma (al massimo 2 s) e il DOM
-# fermo per 300 ms (al massimo 3 s). Una richiesta che resta aperta costa così pochi secondi, non venti.
+# Attesa: prima un segnale preciso (area principale con testo e senza caricamento, al massimo 10 s), poi la rete ferma (al
+# massimo 2 s) e il DOM fermo per 300 ms (al massimo 3 s). Una richiesta che resta aperta costa così pochi secondi.
 LIMITE_AREA_MS, LIMITE_RETE_MS = 10000, 2000
 DOM_FERMO = """() => new Promise(fatto => {
   let ultimo = performance.now();
@@ -171,17 +181,20 @@ class Web:
         self.aspetta()
 
     def aspetta(self) -> None:
-        """Dopo l'apertura, un clic o un cambio: area principale con testo, rete ferma, DOM fermo, animazioni portate alla
-        fine. Un'attesa scaduta non ferma il test: lo dicono i controlli dopo (per esempio «area principale vuota»)."""
+        """Dopo l'apertura, un clic o un cambio: area principale con testo e senza caricamento, rete ferma, DOM fermo,
+        animazioni portate alla fine. Un'attesa scaduta non ferma il test: lo dicono i controlli dopo (per esempio
+        «ferma sul caricamento»); in quel caso non si aspetta anche la rete."""
         from playwright.sync_api import TimeoutError as AttesaScaduta
         try:
-            self.pagina.wait_for_function(AREA_CON_TESTO, arg=AREA_PRINCIPALE, timeout=LIMITE_AREA_MS)
+            self.pagina.wait_for_function(PRONTA, arg=AREA_PRINCIPALE, timeout=LIMITE_AREA_MS)
+            pronta = True
         except AttesaScaduta:
-            pass
-        try:
-            self.pagina.wait_for_load_state("networkidle", timeout=LIMITE_RETE_MS)
-        except AttesaScaduta:                # una richiesta che resta aperta: il DOM fermo basta
-            pass
+            pronta = False
+        if pronta:
+            try:
+                self.pagina.wait_for_load_state("networkidle", timeout=LIMITE_RETE_MS)
+            except AttesaScaduta:            # una richiesta che resta aperta: il DOM fermo basta
+                pass
         self.pagina.evaluate(DOM_FERMO)
         self.pagina.evaluate(FINISCI_ANIMAZIONI)
 
@@ -189,9 +202,14 @@ class Web:
         """Il testo dell'area principale (`<main>` o role="main"); vuoto se l'area non c'è."""
         return self.pagina.evaluate(TESTO_PRINCIPALE, AREA_PRINCIPALE)
 
+    def in_caricamento(self) -> bool:
+        """L'area principale sta ancora caricando: aria-busy="true" (o, nella web di oggi, le classi `caricamento` e
+        `scheletro`) visibile."""
+        return self.pagina.evaluate(IN_CARICAMENTO, AREA_PRINCIPALE)
+
     def errori_mostrati(self) -> list[str]:
         """I messaggi d'errore visibili nell'area principale: elementi con role="alert" (o, nella web di oggi, con la classe
-        `errore`) che hanno del testo."""
+        `errore`) che hanno del testo; non gli avvisi con la classe `attenzione`."""
         return self.pagina.evaluate(ERRORI_MOSTRATI, AREA_PRINCIPALE)
 
     def scorre_di_lato(self) -> bool:

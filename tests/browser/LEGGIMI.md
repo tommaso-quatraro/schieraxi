@@ -17,14 +17,22 @@ giornata:
 L'orologio della pagina è fermo sul momento dello scenario (`adesso`), in italiano e con l'ora italiana; ogni test parte
 da una scheda nuova (nessun dato salvato da un test prima).
 
-## Due patti con ogni versione della web
-I test non conoscono le schermate: si appoggiano a due regole che ogni versione della web rispetta.
+## Tre patti con ogni versione della web
+I test non conoscono le schermate: si appoggiano a tre regole che ogni versione della web rispetta.
 - **Il contenuto della schermata sta nell'area principale**: `<main>` (o un elemento con `role="main"`). Una schermata
   con l'area principale vuota è rotta, anche se la testata c'è.
-- **Un errore mostrato all'utente ha `role="alert"`** (lo legge subito anche chi usa un lettore di schermo). Un elemento
-  `role="alert"` con del testo, visibile nell'area principale, fa fallire i test della prima schermata. La web di oggi
-  scrive gli errori anche con la classe `errore`, che vale lo stesso. Un contenitore `role="alert"` vuoto, pronto per un
-  messaggio, va bene.
+- **Mentre una schermata carica, l'area principale (o il suo contenitore del caricamento) ha `aria-busy="true"`**, e lo
+  toglie quando ha finito. I test aspettano al massimo 10 secondi che nell'area principale non ci sia più nessun
+  `aria-busy="true"`, poi falliscono («ferma sul caricamento»). La web di oggi non ha ancora l'attributo: si riconosce il
+  suo caricamento dalle classi `caricamento` e `scheletro` (la rotella e le righe grigie di `caricamento()` in `app.js`).
+- **Un errore mostrato all'utente ha `role="alert"`** (lo legge subito anche chi usa un lettore di schermo); un avviso
+  normale ha `role="status"`. Un elemento `role="alert"` con del testo, visibile nell'area principale, fa fallire i test
+  della prima schermata. La web di oggi scrive gli errori anche con la classe `errore`, che vale lo stesso. Un contenitore
+  `role="alert"` vuoto, pronto per un messaggio, va bene.
+
+Cosa nota della web di oggi: la schermata di accesso e il riconoscimento delle rose mettono dentro `role="alert"` anche
+avvisi che non sono errori (classe `attenzione`). Il controllo non li conta come errori; nella web rifatta quegli avvisi
+passano a `role="status"`.
 
 ## Quando girano
 - **Nelle pull request**: job `browser` dei controlli (`.github/workflows/test.yml`), quando la PR tocca `fanta/web/`,
@@ -55,8 +63,8 @@ Poi, dalla radice del repository (anche da una worktree), circa un minuto:
 
 ## Cosa controllano oggi
 `test_prima_schermata.py`, in ognuna delle tre fasi, a 390 e 1440 px, tema chiaro e scuro:
-- la prima schermata ha del testo nell'area principale, non mostra errori (`role="alert"`) e non scrive errori nella
-  console (né errori del codice);
+- la prima schermata ha del testo nell'area principale, non è ferma sul caricamento (`aria-busy`), non mostra errori
+  (`role="alert"`) e non scrive errori nella console (né errori del codice);
 - nessuna richiesta fallita (risposta 4xx o 5xx, o richiesta che non arriva; una richiesta annullata non conta);
 - a 390 px la pagina non è più larga dello schermo (niente scorrimento di lato);
 - nessuna violazione grave (`critical` o `serious`) di axe, regole WCAG 2.0, 2.1 e 2.2 livelli A e AA
@@ -81,12 +89,13 @@ def test_la_vista_si_apre_pulita(web, vista):
 
 Cosa offre la fixture `web`:
 - `web.apri(percorso, larghezza=390, tema="chiaro")`: apre un indirizzo e aspetta che la pagina sia pronta (area
-  principale con del testo, al massimo 10 s; poi rete ferma, al massimo 2 s; poi DOM fermo per 300 ms, al massimo 3 s;
-  animazioni portate alla fine). Un'attesa scaduta non ferma il test: lo dicono i controlli dopo;
+  principale con del testo e senza caricamento, al massimo 10 s; poi rete ferma, al massimo 2 s; poi DOM fermo per
+  300 ms, al massimo 3 s; animazioni portate alla fine). Un'attesa scaduta non ferma il test: lo dicono i controlli dopo;
 - `web.pagina`: la pagina di Playwright, per cliccare e leggere (`web.pagina.get_by_role("button", name="…").click()`);
   dopo un clic, `web.aspetta()`;
 - `web.errori_console`, `web.richieste_fallite`: liste che si riempiono da sole;
-- `web.testo_principale()`, `web.errori_mostrati()`, `web.scorre_di_lato()`, `web.violazioni_gravi()`;
+- `web.testo_principale()`, `web.in_caricamento()`, `web.errori_mostrati()`, `web.scorre_di_lato()`,
+  `web.violazioni_gravi()`;
 - `web.fase`: `prima`, `in-corso` o `finita` (per un test che vale per una fase sola:
   `if web.fase != "prima": pytest.skip("solo prima della scadenza")`).
 
