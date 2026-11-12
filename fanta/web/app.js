@@ -1,10 +1,10 @@
 "use strict";
 // App SchieraXI: JavaScript semplice, senza librerie. Parla con il server Python (fanta/server.py).
-// Sezioni: Formazione, Squadra, Altro. La scheda di un giocatore è un pannello che sale dal basso.
+// Sezioni: Formazione, Giornate, Squadra, Altro. La scheda di un giocatore è un pannello che sale dal basso.
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const contenuto = $("#contenuto");
-const VISTE = ["formazione", "squadra", "altro"];
+const VISTE = ["formazione", "giornate", "squadra", "altro"];
 // Nomi vecchi che arrivano ancora da indirizzi, scorciatoie e avvisi: «oggi» è diventata la Formazione (una schermata sola, #616);
 // «mercato» (Cambi consigliati, Seguiti, Elenco, Calendario) e «scambi» sono pagine tolte il 12/11/2026 (#615), «lega» è il nome di
 // prima delle voci di Squadra e Altro. Portano alla scheda in cui stavano (schermataCheResta).
@@ -560,14 +560,16 @@ let regoleAC = null;      // gestori della schermata regole: si staccano quando 
 
 // Chi disegna ogni schermata: una mappa con i soli nomi ammessi. Il nome arriva anche dall'indirizzo (?vista=, Indietro): niente
 // chiamate per nome su un oggetto («__proto__», «constructor»...); un nome che non c'è porta alla Formazione.
-const DISEGNO_VISTE = new Map([["formazione", () => vistaFormazione()], ["squadra", () => vistaLega("squadra")], ["altro", () => vistaLega("altro")]]);
+const DISEGNO_VISTE = new Map([["formazione", () => vistaFormazione()], ["giornate", () => vistaGiornate()], ["squadra", () => vistaLega("squadra")], ["altro", () => vistaLega("altro")]]);
 // La schermata che resta per un indirizzo, una scorciatoia o un avviso: {vista, voce, gruppo}. «oggi» è la Formazione (#616). Le pagine
 // tolte il 12/11/2026 (#615) portano alla più vicina: «mercato» (Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario) a Squadra, «scambi» ad Altro, una
 // voce che non c'è più (Movimenti, Crediti, Nuova stagione) al menu della sua scheda, le Novità a Impostazioni > Informazioni.
+// Il Diario, che era una voce di Altro, è la pagina Giornate (#617): il suo indirizzo di prima la apre.
 // «lega» è il nome di prima delle voci di Squadra e Altro: vale la scheda della voce. `voci`: le voci di oggi ({id, ambito}).
 function schermataCheResta(vista, voce, voci = VOCI_LEGA) {
   if (vista === "impostazioni") return { vista, voce: null };
   if (voce === "novita" && ["altro", "lega"].includes(vista)) return { vista: "impostazioni", voce: null, gruppo: "informazioni" };
+  if (voce === "diario" && ["altro", "lega"].includes(vista)) return { vista: "giornate", voce: null };
   if (vista === "mercato") return { vista: "squadra", voce: null };
   if (vista === "scambi") return { vista: "altro", voce: null };
   const v = voci.find(x => x.id === voce);
@@ -576,7 +578,7 @@ function schermataCheResta(vista, voce, voci = VOCI_LEGA) {
   return { vista: VISTE.includes(vista) ? vista : "formazione", voce: null };
 }
 // opz.daCronologia: si arriva da Indietro o Avanti del browser (l'indirizzo è già quello giusto: non si scrive di nuovo).
-// opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-3, Indietro): il focus va sul titolo della schermata,
+// opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-4, Indietro): il focus va sul titolo della schermata,
 // così il lettore di schermo dice dove si è arrivati e il Tab riparte dal contenuto.
 // opz.sostituisci: la schermata prende il posto della voce di adesso nella cronologia («‹ Altro» di una pagina aperta da un indirizzo,
 // una voce di Squadra che porta subito a un'altra pagina): Indietro non torna a una voce che riaprirebbe la stessa cosa.
@@ -977,7 +979,7 @@ function testaGiornata(o, f) {
     return `<div class="tg-finita" id="oggi-riepilogo"><div>
         <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
         <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
-        <button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
+        <button class="bottone secondario" type="button" data-apri-giornata="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
       ${tua && r.consigliata && r.consigliata.punti_fatti !== r.punti_fatti ? `<p class="tg-sotto">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
       ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
       <div class="tg-prossima">${giornata}${chiusura}</div>`;
@@ -1212,8 +1214,8 @@ function mostraFormazione(b, squadra, opz = {}) {
     });
     bottone("#torna-mia", () => { stato.squadraVista = null; vistaFormazione(); });
     collegaRinvio();
-    const diario = $("[data-apri-diario]");
-    if (diario) diario.addEventListener("click", () => apriDiario(Number(diario.dataset.apriDiario) || undefined));
+    const comeAndata = $("[data-apri-giornata]");       // «Com'è andata»: la pagina Giornate, aperta sulla giornata appena finita
+    if (comeAndata) comeAndata.addEventListener("click", () => vaiGiornate(Number(comeAndata.dataset.apriGiornata) || undefined));
     if (mantieniScroll) window.scrollTo(0, y0);
     // la scheda di un giocatore rimasta aperta: il suo «Sostituisci» segue lo stato della schermata
     document.querySelectorAll("#foglio-contenuto [data-sostituisci]").forEach(e => { e.disabled = sc.sola; });
@@ -1655,7 +1657,7 @@ document.addEventListener("keydown", ev => {
     const c = $("#campo-cerca");
     if (c && c.getClientRects().length && !foglioModale()) c.focus(); else apriRicerca();              // sul PC il campo della testata
   }
-  else if (/^[1-9]$/.test(ev.key) && Number(ev.key) <= VISTE.length && !foglioModale()) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-3 cambiano sezione
+  else if (/^[1-9]$/.test(ev.key) && Number(ev.key) <= VISTE.length && !foglioModale()) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
   else if (ev.key === "," && !foglioModale()) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
 });
 // ---------------------------------------------------------------- lega: squadre, rose, regole
@@ -2116,10 +2118,12 @@ $("#campo-cerca").addEventListener("keydown", ev => {
 
 // Numeri con la virgola in italiano, con il punto nelle altre lingue.
 const virgola = x => (LINGUA === "it" ? String(x).replace(".", ",") : String(x));
-// Diario > «Quanto ci abbiamo preso» (campo `precisione` di /api/diario, fanta/precisione.py): quattro numeri con una frase,
+// Giornate > «Dettagli» della riga sulla precisione (campo `precisione` di /api/diario, fanta/precisione.py): i numeri con una frase,
 // l'andamento giornata per giornata e l'avviso se i dati sono pochi. Tutto viene dal server; si mostra anche quando va male.
 // Numeri dal server (passati da Number) e, per la riga su tutta la Serie A, una frase del server passata da esc(); niente innerHTML.
-function cartaPrecisione(p) {
+// `conConfronto`: la voce «consigliata contro la tua» si mostra solo se c'è almeno una giornata con la consigliata mostrata prima
+// della scadenza (#614): con il server di prima il confronto era con una formazione rifatta dopo, e non si mostra.
+function dettagliPrecisione(p, conConfronto) {
   if (!p || !p.giornate) return "";
   const n = x => (x == null || !isFinite(Number(x)) ? null : Number(x));
   const v = x => (n(x) == null ? "–" : virgola(n(x).toFixed(1)));
@@ -2145,7 +2149,7 @@ function cartaPrecisione(p) {
   const cf = p.confronto || {};
   const punti = n(cf.punti);
   const cfFrase = cf.giornate ? `${t("diario.qp_cf", { k: n(cf.meglio_consigliata), n: n(cf.giornate), tua: n(cf.meglio_tua), pari: n(cf.pari) })} ${punti === 0 ? t("diario.qp_cf_pari") : punti > 0 ? tp("diario.qp_cf_piu", punti, { e: v(punti) }) : tp("diario.qp_cf_meno", -punti, { e: v(-punti) })}`
-    : t("diario.qp_cf_vuoto");
+    : "";
   // 4. punti della squadra (consigliata): previsti contro fatti
   const sq = p.squadra;
   const sqFrase = sq ? t("diario.qp_sq", { a: v(sq.punti_medi_attesi), f: v(sq.punti_medi_fatti), k: n(sq.dentro_fascia), n: n(sq.con_fascia ?? sq.giornate), d: Math.round((n(sq.fascia_dichiarata) || 80) / 10) }) : t("diario.qp_fv_vuoto");
@@ -2163,23 +2167,20 @@ function cartaPrecisione(p) {
     grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("diario.qp_grafico_aria")}" class="qp-grafico">${barre}</svg>
       <div class="debole piccolo">${t("diario.qp_grafico_leg")}</div>`;
   }
-  const righe = [...pg].reverse().map(g => {
-    const d = n(g.differenza);
-    const tua = n(g.tua) != null ? " · " + t("diario.qp_riga_tua", { t: v(g.tua), d: (d > 0 ? "+" : d < 0 ? "−" : "") + v(Math.abs(d ?? 0)) }) : "";
-    return `<li><b>${nomeG(g)}</b> · <span class="debole">${n(g.errore_fantavoto) != null ? t("diario.qp_riga_fv", { e: v(g.errore_fantavoto) }) + " · " : ""}${t("diario.qp_riga_sq", { a: v(g.attesi), f: v(g.fatti) })}${tua}</span></li>`;
-  }).join("");
+  // giornata per giornata solo l'errore e i punti della consigliata: quanto ha fatto la tua lo dice la riga di ogni giornata
+  const righe = [...pg].reverse().map(g => `<li><b>${nomeG(g)}</b> · <span class="debole">${n(g.errore_fantavoto) != null ? t("diario.qp_riga_fv", { e: v(g.errore_fantavoto) }) + " · " : ""}${t("diario.qp_riga_sq", { a: v(g.attesi), f: v(g.fatti) })}</span></li>`).join("");
   const primo = pg.length ? nomeG(pg[0]) : null, ultimo = pg.length ? nomeG(pg[pg.length - 1]) : null;
   const ric = n((p.fonti || {}).ricostruiti) || 0;
   // la riga su tutta la Serie A (registro delle giornate, #374): frase del server, la stessa che mostra l'iPhone
   const sa = p.serie_a && typeof p.serie_a.testo === "string" && p.serie_a.testo.trim() ? testoDi(p.serie_a) : "";
   const serieA = sa ? `<div class="qp-frase qp-serie-a">${esc(sa)}</div>` : "";
-  return `<div class="carta qp"><h2>${t("diario.af_titolo")}</h2>
+  return `<div class="qp">
     <div class="debole piccolo">${t("diario.qp_intro")} ${elidiOrdinali(tp("diario.qp_su", n(p.giornate), { da: primo, a: ultimo }))}</div>
-    ${p.pochi_dati ? `<div class="attenzione qp-pochi" role="status">${t("diario.qp_pochi", { n: n(p.giornate_minime) || 8 })}</div>` : ""}
+    ${p.pochi_dati ? `<div class="attenzione qp-pochi">${t("diario.qp_pochi", { n: n(p.giornate_minime) || 8 })}</div>` : ""}
     <div class="qp-griglia">
       ${voce(fv ? v(fv.errore_medio) : "–", t("diario.qp_fv_eti"), fvFrase)}
       ${voce(gp ? t("diario.qp_su_dieci", { k: suDieci(gp.giocato) }) : "–", t("diario.qp_gioca_eti"), gFrase, gp && n(gp.giocato) < n(gp.detto) - 10 ? "attenzione-testo" : "")}
-      ${voce(cf.giornate ? t("diario.qp_k_su_n", { k: n(cf.meglio_consigliata), n: n(cf.giornate) }) : "–", t("diario.qp_cf_eti"), cfFrase)}
+      ${conConfronto && cf.giornate ? voce(t("diario.qp_k_su_n", { k: n(cf.meglio_consigliata), n: n(cf.giornate) }), t("diario.qp_cf_eti"), cfFrase) : ""}
       ${voce(sq ? v(sq.scarto_medio) : "–", t("diario.qp_sq_eti"), sqFrase)}
     </div>
     ${serieA}
@@ -2576,14 +2577,14 @@ async function apriStemmaMaglia(nome, inAttesa = false) {
 
 // Squadra e Altro: un menu di voci con la pagina accanto (stesso componente delle Impostazioni). `ambito` dice in quale scheda sta la
 // voce; `vai` è una voce che porta a un'altra pagina invece di aprirsi accanto al menu.
-// Dal 12/11/2026 (#615) restano quattro voci: Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Scambi, Movimenti, Crediti
+// Restano tre voci. Dal 12/11/2026 (#615) Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Scambi, Movimenti, Crediti
 // e Novità non ci sono più (le Novità si leggono in Impostazioni > Informazioni); «Nuova stagione» compare da sola quando serve.
+// Il Diario è la pagina Giornate, nella barra (#617).
 // `vai(o)`: `o.nuova` = clic nel menu (Regole scrive una voce nuova nella cronologia, #449); `o.sostituisci` = la voce è stata
 // chiesta da un indirizzo o da un collegamento e la pagina prende il posto della voce di adesso (niente voce che riporta qui).
 const VOCI_LEGA = [
   { id: "squadre", ambito: "squadra", nome: t("lega.voce_squadre"), sub: t("lega.voce_squadre_sub") },
   { id: "importa", ambito: "squadra", nome: t("lega.voce_importa"), sub: t("lega.voce_importa_sub") },
-  { id: "diario", ambito: "altro", nome: t("lega.voce_diario"), sub: t("lega.voce_diario_sub") },
   { id: "regole", ambito: "altro", nome: t("lega.voce_regole"), sub: t("lega.voce_regole_sub"), vai: o => vistaRegole(o) },
 ];
 const NOME_AMBITO = { squadra: t("nav.squadra"), altro: t("nav.altro") };
@@ -2685,8 +2686,6 @@ async function vistaLega(ambito = "altro") {
         <span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul>
       <div class="debole piccolo" style="margin-top:8px">${t("lega.tocca_una_squadra")}</div></div>`}`
       : `<div class="carta"><div class="debole">${t("lega.importa_prima_rose")}</div></div>`; },
-    diario: () => `<div class="carta"><div class="debole piccolo">${t("lega.per_ogni_giornata")}</div>
-      <div class="pulsanti"><button class="bottone" id="apri-diario" type="button">${t("lega.apri_diario")}</button></div></div>`,
   };
 
   const aggiornaSquadre = () => { caricaInfo(); caricaSquadre(); };
@@ -2731,7 +2730,6 @@ async function vistaLega(ambito = "altro") {
         catch (e) { avviso(e.message); }
       });
     },
-    diario: () => $("#apri-diario").addEventListener("click", () => apriDiario()),
   };
 
   const voci = vociLega(ambito);
