@@ -449,7 +449,9 @@ def _tabella_moduli(regole: Regole) -> np.ndarray:
 
 def _panchina(rosa: list[Giocatore], titolari: list[Giocatore], regole: Regole,
               ordinati: list[Giocatore] | None = None) -> list[Giocatore]:
-    """I migliori non titolari (almeno un portiere se c'è), in ordine: per ruolo oppure per valore.
+    """I migliori non titolari per valore (gioca N% x fantavoto atteso; almeno un portiere se c'è), messi in ordine di fantavoto
+    atteso: una riserva entra solo se ha preso voto, e a quel punto conta quanto vale se gioca (#612). Panchina per ruolo: prima
+    i ruoli nell'ordine della lega (P, D, C, A), dentro il ruolo chi vale di più; panchina libera: chi vale di più, di ogni ruolo.
     `ordinati` (facoltativo) = la rosa già ordinata con `_per_valore`, per non riordinarla a ogni chiamata."""
     ids = {t.id for t in titolari}
     resto = [g for g in (ordinati if ordinati is not None else _per_valore(rosa)) if g.id not in ids]
@@ -461,10 +463,11 @@ def _panchina(rosa: list[Giocatore], titolari: list[Giocatore], regole: Regole,
         portieri = [g for g in resto if g.ruolo == "P"][:1]
         altri = [g for g in resto if g.id not in {p.id for p in portieri}]
         scelti = (portieri + altri)[:n]
+    # a pari fantavoto atteso resta davanti chi ha più valore (ordinamento stabile: `scelti` è già in ordine di valore nel ruolo)
     if regole.panchina.tipo == "per_ruolo":
-        return sorted(scelti, key=lambda g: (ORDINE_RUOLO[g.ruolo], -g.valore))
-    # libera: prima i più utili; il portiere di riserva dopo i giocatori di movimento con valore maggiore
-    return sorted(scelti, key=lambda g: -g.valore)
+        return sorted(scelti, key=lambda g: (ORDINE_RUOLO[g.ruolo], -g.mu))
+    # libera: il posto del portiere di riserva non conta (entra solo per il portiere, e nessun altro può entrare al suo posto)
+    return sorted(scelti, key=lambda g: -g.mu)
 
 
 def _per_valore(rosa: list[Giocatore]) -> list[Giocatore]:

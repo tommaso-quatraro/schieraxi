@@ -247,6 +247,73 @@ def test_panchina_a_posti_fissi_per_ruolo():
     assert len(_panchina(rosa, titolari, r)) == 11 and r.problemi() == []
 
 
+# ---------------------------------------------------------------- ordine della panchina (#612)
+# Una riserva entra solo se ha preso voto: a quel punto conta quanto vale se gioca (il fantavoto atteso), non «gioca N% x fantavoto».
+def _rosa_due_riserve():
+    """4-4-2 obbligato (tutti i titolari sicuri tranne un difensore) e due difensori di riserva: SICURO gioca quasi sempre e vale
+    poco, FORTE gioca meno ma vale di più. Per «gioca N% x fantavoto» SICURO sta davanti (5,7 contro 4,2); per fantavoto atteso FORTE."""
+    return ([G(1, "P", 1, 6), G(2, "P", 0.5, 5)] + [G(10 + i, "D", 1, 6.5) for i in range(3)] + [G(13, "D", 0.5, 6.5)]
+            + [G(SICURO, "D", 0.95, 6.0), G(FORTE, "D", 0.6, 7.0)]
+            + [G(20 + i, "C", 1, 7) for i in range(4)] + [G(24, "C", 0.9, 5.5), G(25, "C", 0.4, 6.5)]
+            + [G(30, "A", 1, 8), G(31, "A", 1, 8), G(32, "A", 0.3, 7.5), G(33, "A", 0.9, 6.2)])
+
+
+SICURO, FORTE = 14, 15
+
+
+def _titolari_442(rosa):
+    return [g for g in rosa if g.id in (1, 10, 11, 12, 13, 20, 21, 22, 23, 30, 31)]
+
+
+def test_panchina_per_ruolo_dentro_il_ruolo_in_ordine_di_fantavoto_atteso():
+    rosa = _rosa_due_riserve()
+    r = imposta(Regole(), "panchina.tipo", '"per_ruolo"')
+    panchina = fz._panchina(rosa, _titolari_442(rosa), r)
+    assert [g.ruolo for g in panchina] == sorted((g.ruolo for g in panchina), key="PDCA".index)   # tra i ruoli: P, D, C, A
+    for ruolo in "PDCA":
+        mu = [g.mu for g in panchina if g.ruolo == ruolo]
+        assert mu == sorted(mu, reverse=True), ruolo                                              # dentro il ruolo: chi vale di più
+    assert [g.id for g in panchina if g.ruolo == "D"] == [FORTE, SICURO]
+
+
+def test_panchina_a_posti_fissi_dentro_il_ruolo_in_ordine_di_fantavoto_atteso():
+    rosa = _rosa_due_riserve()
+    r = Regole()
+    r.panchina.numero, r.panchina.posti, r.panchina.tipo = 7, {"P": 1, "D": 2, "C": 2, "A": 2}, "per_ruolo"
+    panchina = fz._panchina(rosa, _titolari_442(rosa), r)
+    assert [g.id for g in panchina] == [2, FORTE, SICURO, 25, 24, 32, 33]
+
+
+def test_panchina_libera_in_ordine_di_fantavoto_atteso():
+    """Panchina libera: entra il primo con voto che può entrare, di qualunque ruolo. Davanti chi vale di più quando gioca."""
+    rosa = _rosa_due_riserve()
+    panchina = fz._panchina(rosa, _titolari_442(rosa), Regole())
+    mu = [g.mu for g in panchina]
+    assert len(panchina) == 7 and mu == sorted(mu, reverse=True)
+
+
+def test_chi_sta_in_panchina_resta_scelto_per_gioca_per_fantavoto():
+    """L'ordine cambia, la scelta di CHI va in panchina no: con un solo posto per i difensori ci va chi ha più «gioca N% x fantavoto»."""
+    rosa = _rosa_due_riserve()
+    r = Regole()
+    r.panchina.numero, r.panchina.posti, r.panchina.tipo = 4, {"P": 1, "D": 1, "C": 1, "A": 1}, "per_ruolo"
+    assert [g.id for g in fz._panchina(rosa, _titolari_442(rosa), r)] == [2, SICURO, 24, 33]
+
+
+@pytest.mark.parametrize("tipo", ["per_ruolo", "libera"])
+def test_la_panchina_in_ordine_di_fantavoto_atteso_vale_di_piu(tipo):
+    """Stessi titolari e stesse riserve: con FORTE davanti a SICURO i punti attesi salgono (quando hanno voto tutti e due entra
+    quello che vale di più; quando ne ha uno solo entra lui comunque)."""
+    rosa = _rosa_due_riserve()
+    r = imposta(Regole(), "panchina.tipo", f'"{tipo}"')
+    titolari = _titolari_442(rosa)
+    panchina = fz._panchina(rosa, titolari, r)
+    per_valore = sorted(panchina, key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore) if tipo == "per_ruolo" else -g.valore)
+    assert [g.id for g in per_valore] != [g.id for g in panchina]
+    val = fz.Valutatore(rosa, r, 600)
+    assert val.atteso(titolari, panchina) > val.atteso(titolari, per_valore) + 0.05
+
+
 def _due_attaccanti_stessi_punti():
     """Formazioni uguali tranne un attaccante: A gioca sempre e fa 6; B gioca una volta su due e quando gioca fa 12 (stessa media)."""
     base = [G(1, "P", 1, 6)] + [G(10 + i, "D", 1, 6) for i in range(4)] + [G(20 + i, "C", 1, 6.5) for i in range(3)] + [G(30, "A", 1, 8), G(31, "A", 1, 8)]
