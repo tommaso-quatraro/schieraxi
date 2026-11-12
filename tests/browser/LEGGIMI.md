@@ -131,7 +131,7 @@ Il server finto risponde 404 a una rotta che non ha registrata, e il test delle 
 apposta (come `/api/avatar`, che viene dalle foto vere dei calciatori), la sua risposta «senza dati» del server vero va in
 `RISPOSTE_IN_PIU` di `conftest.py`.
 
-## Renderli bloccanti
-Quando la web nuova è unita, in `test.yml`: `browser` nei `needs` del job `unisci` e `needs.browser.result == 'success'`
-nella sua condizione. Nelle PR il job non si salta mai (se la PR non tocca la web salta solo i passi e resta verde), quindi
-non serve altro.
+## Sono bloccanti
+In `test.yml` `browser` sta nei `needs` del job `unisci`, con `needs.browser.result == 'success'` nella sua condizione.
+Nelle PR il job non si salta mai (se la PR non tocca la web salta solo i passi e resta verde). Su `main` non gira: se due
+pull request verdi da sole rompono insieme una schermata, lo vede la pull request successiva che tocca la web.

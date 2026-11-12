@@ -39,7 +39,7 @@ def _filtro() -> re.Pattern:
 def test_il_job_browser_blocca_l_unione():
     """Una schermata rotta non si unisce: «unisci» aspetta «browser» e lo vuole riuscito. Il job parte in ogni pull
     request (se la PR non tocca la web salta i passi e resta verde), quindi «riuscito» vale per tutte."""
-    unisci = _job("unisci")
+    unisci = _senza_commenti(_job("unisci"))
     needs = re.search(r"^    needs:\s*\[([^\]]*)\]", unisci, re.M).group(1)
     assert "browser" in [n.strip() for n in needs.split(",")]
     assert "needs.browser.result == 'success'" in unisci

@@ -125,8 +125,8 @@ jobs:
   # pytest in un ambiente a parte, versioni e hash fissati in .github/browser-requisiti.txt. BROWSER_OBBLIGATORIO=1: senza
   # Playwright o senza Chrome i test falliscono invece di saltare (qui un test saltato sarebbe un verde finto).
   # Guida: tests/browser/LEGGIMI.md.
-  # Per ora SOLO AVVISO: fuori dai «needs» di «unisci». Diventa bloccante quando la web nuova è unita: «browser» nei needs di
-  # «unisci» e «needs.browser.result == 'success'» nella sua condizione (nelle PR il job non si salta mai: basta questo).
+  # BLOCCA L'UNIONE: «unisci» lo aspetta e lo vuole riuscito. Nelle PR il job non si salta mai (se la PR non tocca la web
+  # salta solo i passi e resta verde), quindi una PR che non c'entra non resta ferma.
   browser:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
     runs-on: ubuntu-latest
