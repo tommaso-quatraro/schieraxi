@@ -6,8 +6,8 @@
       "web": "titolo della carta = titolo della versione, sotto «Versione 1.432 · data»; «Nuovo» sulle versioni non ancora viste; prime 10, poi «Mostra le 42 versioni precedenti» (`vistaNovita`)",
       "iphone": "come la web: titolo della versione, sotto «Versione 1.432 · data», «Nuovo», prime 10, poi «Mostra le 42 versioni precedenti» (`NovitaView` in `LegaExtra.swift`, regole in `ParoleNovita`)",
       "forma": "web",
-      "chi": "**da decidere**: dal 12/11/2026 la web non ha più la pagina Novità (le novità sono in Impostazioni > Informazioni, senza «Nuovo») (#615), l'iPhone sì. Prima: fatto sull'iPhone (#441): frasi dal catalogo dei testi (`Catalogo.Novita`, #496), `NovitaComeLaWebTests` confronta la regola con `app.js`",
-      "stato": "da-decidere"
+      "chi": "**fatto** (#634): dal 12/11/2026 le novità si leggono in Impostazioni > Informazioni sulla web (#615) e sull'iPhone; non sono più una voce di Altro né un banner di Oggi. **Resta diverso**: sulla web l'elenco sta dentro Informazioni, senza «Nuovo»; sull'iPhone la riga «Novità» di Informazioni apre la pagina di prima (`NovitaView`), con «Nuovo» sulle versioni non ancora viste. Prima: fatto sull'iPhone (#441): frasi dal catalogo dei testi (`Catalogo.Novita`, #496), `NovitaComeLaWebTests` confronta la regola con `app.js`",
+      "stato": "fatto"
     }
   ]
 }
