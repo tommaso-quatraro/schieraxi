@@ -4,6 +4,7 @@ import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
+import pandas as pd
 import pytest
 
 from fanta import account, server
@@ -18,13 +19,21 @@ OGGI = {"giornata": 9, "giornata_lega": 6, "inizio": "2026-11-01 18:00", "ore_ma
 def _scheda(i, **extra):  # squadra: come nelle schede vere
     return {"id": i, "nome": f"g{i}", "ruolo": "C", "squadra": "inter", "avversario": "XXX", "in_casa": True, "data_partita": "2026-11-01 18:00",
             "stato": "titolare", "percentuale": 90.0, "dubbio": False, "diffidato": i == 3, "punti_attesi": 6.0, "p_voto": 0.9,
-            "voto_atteso": 6.2, "rigori_attesi": 0.3 if i == 1 else 0.0} | extra
+            "voto_atteso": 6.2, "rigori_attesi": 0.1 if i == 1 else 0.0} | extra      # anche il rigorista sta sotto 0,15 rigori attesi
+
+
+def _previsioni_finte():
+    """Le righe delle previsioni che servono a `consigli.rigorista` e a `consigli.motivi`: il giocatore 1 calcia l'80% dei rigori
+    della squadra, il 2 il 90% ma è squalificato, il 4 il 55%, il 5 il 45%."""
+    quote = {1: 0.8, 2: 0.9, 4: 0.55, 5: 0.45}
+    return pd.DataFrame([{"id": i, "stato": "squalificato" if i == 2 else "titolare", "percentuale": 90.0, "nota": None, "ruolo": "C",
+                          "quota_rigori": quote.get(i, 0.0), "e_rigori": 0.1 * quote.get(i, 0.0), "e_gol": 0.1, "p_imbattuto": 0.0,
+                          "gol_squadra": 1.3, "gol_avversario": 1.3} for i in range(1, 15)]).set_index("id")
 
 
 @pytest.fixture
 def due_utenti(multiutente, dati_isolati, monkeypatch):
     from types import SimpleNamespace as NS
-    import pandas as pd
     from fanta import calcolo, widget as w
     def nuovo_db():
         db = sqlite3.connect(":memory:")
@@ -39,7 +48,7 @@ def due_utenti(multiutente, dati_isolati, monkeypatch):
     monkeypatch.setattr(w.consigli, "formazione", lambda db, regole, rose, *a, **k: {
         "squadra": "Real Esempio", "modulo": "3-4-3", "punteggio_atteso": 71.5,
         "titolari": [_scheda(i) for i in range(1, 12)], "panchina": [_scheda(i) for i in range(12, 15)]})
-    monkeypatch.setattr(w.consigli, "previsioni", lambda db, regole, *a: (pd.DataFrame(index=list(range(1, 15))), 9, True))
+    monkeypatch.setattr(w.consigli, "previsioni", lambda db, regole, *a: (_previsioni_finte(), 9, True))
     monkeypatch.setattr(w.consigli, "scheda_previsione", lambda i, x: _scheda(i))
     monkeypatch.setattr(w.avatar, "tutti", lambda: {1: {"carnagione": 2}})
     monkeypatch.setattr(w.consigli, "proposte_scambi", lambda *a, **k: (_ for _ in ()).throw(calcolo.InCalcolo()))
@@ -100,7 +109,10 @@ def test_il_token_legge_oggi_e_widget(due_utenti):
     assert corpo["giornata_lega"] == 6      # facoltativo: senza regola o fuori lega vale null
     assert len(corpo["formazione"]["titolari"]) == 11 and corpo["formazione"]["titolari"][0]["avatar"] == {"carnagione": 2}
     assert corpo["avvisi"][0]["tipo"] == "dubbio" and corpo["avvisi"][0]["id"] == 2
-    assert corpo["crediti_residui"] == 12 and corpo["rigoristi"] == [1] and corpo["diffidati"] == [3] and corpo["scadenza"] == "2026-11-01 18:00"
+    assert corpo["crediti_residui"] == 12 and corpo["rigoristi"] == [1, 4] and corpo["diffidati"] == [3] and corpo["scadenza"] == "2026-11-01 18:00"
+    # i rigoristi del widget sono quelli a cui la scheda dà il motivo «rigorista»: stessa regola, sulle stesse righe (#613)
+    prev = _previsioni_finte()
+    assert corpo["rigoristi"] == [i for i in prev.index if "rigorista" in modulo_widget.consigli.motivi(prev.loc[i])]
     assert corpo["svincolato"]["entra"]["id"] == 40 and "scambio" not in corpo and corpo["mancano"] == ["scambio"]    # in cache solo lo svincolato
     assert corpo["formazione"]["titolari"][0]["squadra"] == "inter" and corpo["rosa"][0]["squadra"] == "inter"     # il club, per evidenziare le partite
     assert "capitano" not in corpo and "classifica" not in corpo
