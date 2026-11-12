@@ -8,7 +8,10 @@ con le variabili d'ambiente AUTORE (login di chi ha aperto la PR) e CORPO (descr
   NON sono documenti `.claude/`, `.github/` e i `CLAUDE.md`: funzione `solo_documenti`, usata anche da controlla_pr.py).
 Bloccante: se esce con 1 il job «ambito» è rosso e «unisci» non parte.
 Esce con 1 e scrive gli errori (formato di GitHub Actions) se la riga manca o un file sta fuori. Il testo della PR arriva
-solo come variabile d'ambiente: non passa mai dentro un comando."""
+solo come variabile d'ambiente: non passa mai dentro un comando.
+
+Con `--dimensione` (#620) legge invece `git diff --numstat` e avvisa, senza mai bloccare, se la PR cambia più di 600 righe
+senza contare test e file generati (NON_CONTANO)."""
 from __future__ import annotations
 
 import fnmatch
@@ -62,6 +65,50 @@ def esente(autore: str, file: list[str]) -> bool:
     return solo_documenti(file)
 
 
+# ---------------------------------------------------------------- dimensione (#620): solo un avviso
+SOGLIA_RIGHE = 600
+# Non contano: i test e i file generati da uno script (non li scrive una persona, e chi rivede non li legge riga per riga).
+NON_CONTANO = ("tests/*", "ios/Tests/*", "fanta/web/testi.js", "ios/Sources/Support/Catalogo/*", "ios/fotografie/*",
+               "docs/COERENZA-WEB-IPHONE.md", "docs/SOTTO-IL-COFANO.md", "docs/openapi.json", "THIRD-PARTY-NOTICES.md",
+               "requirements.txt", "requirements-dev.txt", "fanta/novita.json")
+
+
+def _percorso_nuovo(campo: str) -> str:
+    """Il percorso dopo un rinomina di `git diff --numstat` («a/{x => y}/b» o «x => y»); gli altri come sono."""
+    m = re.fullmatch(r"(.*)\{(.*) => (.*)\}(.*)", campo)
+    if m:
+        return re.sub(r"/{2,}", "/", m.group(1) + m.group(3) + m.group(4)).lstrip("/")
+    return campo.split(" => ", 1)[1] if " => " in campo else campo
+
+
+def righe_cambiate(numstat: str) -> tuple[int, list[str]]:
+    """Righe aggiunte più tolte (righe di `git diff --numstat`), senza i file di NON_CONTANO; e i file contati, in ordine.
+    I file binari («-» al posto dei numeri) non hanno righe e non si contano."""
+    totale, contati = 0, []
+    for riga in (numstat or "").splitlines():
+        parti = riga.split("\t", 2)
+        if len(parti) != 3:
+            continue
+        file = _percorso_nuovo(parti[2].strip())
+        if any(fnmatch.fnmatchcase(file, schema) for schema in NON_CONTANO):
+            continue
+        if parti[0].isdigit() and parti[1].isdigit():
+            totale += int(parti[0]) + int(parti[1])
+            contati.append(file)
+    return totale, contati
+
+
+def dimensione(numstat: str) -> int:
+    """Avviso di GitHub Actions se la PR cambia più di SOGLIA_RIGHE righe (senza test e file generati). Esce sempre con 0."""
+    righe, _ = righe_cambiate(numstat)
+    if righe > SOGLIA_RIGHE:
+        print(f"::warning title=Dimensione::La PR cambia {righe} righe (senza test e file generati), oltre {SOGLIA_RIGHE}: "
+              "una PR più piccola si rivede meglio. Se non si può dividere, scrivi il perché nella descrizione.")
+    else:
+        print(f"Dimensione: {righe} righe cambiate (senza test e file generati), entro {SOGLIA_RIGHE}.")
+    return 0
+
+
 def main(autore: str, corpo: str, file: list[str]) -> int:
     file = [f.strip() for f in file if f.strip()]
     if esente(autore, file):
@@ -83,4 +130,7 @@ def main(autore: str, corpo: str, file: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if sys.argv[1:] == ["--dimensione"]:
+        sys.exit(dimensione(sys.stdin.read()))
     sys.exit(main(os.environ.get("AUTORE", ""), os.environ.get("CORPO", ""), sys.stdin.read().splitlines()))

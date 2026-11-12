@@ -113,7 +113,7 @@ def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza:
            controlli_ambito=None) -> tuple[dict, list[str], list[str], dict | None]:
     """(pr, motivi, avvisi, ripartenza): `ripartenza` non è None quando è rosso solo l'«ambito» della descrizione vecchia."""
     pr = comune.chiama_json(esegui, ["gh", "pr", "view", str(numero), "--json",
-                                     "number,state,isDraft,mergeable,mergeStateStatus,headRefOid,body,author"])
+                                     "number,state,isDraft,mergeable,mergeStateStatus,headRefOid,body,author,baseRefName"])
     motivi: list[str] = []
     avvisi: list[str] = []
     ambito_vecchio = False
@@ -150,8 +150,9 @@ def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza:
     else:
         with tempfile.TemporaryDirectory(prefix="pr-pronta-test-") as cartella:
             _test_della_pr(esegui, testa, file, Path(cartella))
+            # con la base: una PR impilata (base diversa da main) si ferma qui, non solo nel job «ambito» (#620)
             problemi, avvisi_pr = controlli_pr.controlla(pr.get("body") or "", False, (pr.get("author") or {}).get("login", ""),
-                                                         file, str(Path(cartella) / "tests"))
+                                                         file, str(Path(cartella) / "tests"), ramo_base=pr.get("baseRefName"))
         motivi += problemi
         avvisi += avvisi_pr
         if not problemi and _solo_ambito_vecchio(esegui, non_verdi, pr, [voce[-1] for voce in file], controlli_ambito):

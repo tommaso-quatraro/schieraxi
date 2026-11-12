@@ -7,9 +7,10 @@ name: Screenshot
 #   insieme all'app; nelle altre seguono l'app nello stesso job, sullo stesso simulatore già acceso (un Mac solo).
 #   Circa 20 minuti: parte solo quando serve (ingresso «widget»: auto = nella corsa «completo», o se dall'ultima foto dei widget
 #   dello stesso ramo sono cambiati i file che l'anteprima compila, FILE_WIDGET; se non si sa, parte; si = sempre; no = mai).
-# Il Mac parte SOLO: a mano (Actions o `gh workflow run screenshot.yml --ref <ramo>`), oppure su una pull request che tocca ios/ e
-# ha l'etichetta «screenshot» (`gh pr edit <N> --add-label screenshot`). Senza etichetta le PR non prenotano il Mac
-# (i Mac gratuiti sono pochi e i test iOS hanno la precedenza).
+# Il Mac parte SOLO: a mano (Actions o `gh workflow run screenshot.yml --ref <ramo>`), oppure quando si mette l'etichetta
+# «screenshot» a una pull request che tocca ios/ (`gh pr edit <N> --add-label screenshot`). La corsa stessa parte solo così
+# (#620): un push non la fa partire; per rifare le foto dopo un push si toglie e si rimette l'etichetta, o si lancia a mano.
+# (I Mac gratuiti sono pochi e i test iOS hanno la precedenza.)
 # Le foto stanno negli artifact «screenshot-app» e «screenshot-widget» (14 giorni). Non crea release. Non blocca l'unione.
 # «Fotografie dal vero» (scatti = vero, o etichetta «screenshot-vero» sulla PR): risposte vere del server con rose e nomi inventati
 # (ios/fotografie/, vedi ios/Sources/Support/ScenarioVero.swift) in tre momenti della giornata, chiaro e scuro, testo grande
@@ -42,8 +43,9 @@ on:
         type: choice
         options: [auto, si, no]
         default: auto
+  # solo quando si mette un'etichetta: «quando» guarda se è «screenshot» o «screenshot-vero» (con un'altra, niente Mac)
   pull_request:
-    types: [opened, reopened, synchronize, labeled]
+    types: [labeled]
     paths: ["ios/**", ".github/workflows/screenshot.yml"]
 
 # Al massimo DUE corse di foto insieme in tutto il repository, in fila, e mai più di 5 job Mac (il limite del piano gratuito:
@@ -53,7 +55,7 @@ on:
 # aspetta. Se aspetta solo i Mac, dopo 45 minuti parte comunque (con una riga nel registro): senza limite, i test iOS delle
 # altre corse la tenevano ferma per ore (#403). Le altre attese (2 corse al massimo, corsa davanti che non ha deciso) non hanno limite.
 # La fila non usa i gruppi di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
-# Gruppo di concorrenza della PR solo per le foto a ogni push (etichetta «screenshot»): un push nuovo annulla la corsa vecchia
+# Gruppo di concorrenza della PR solo per le foto dell'etichetta «screenshot»: rimettere l'etichetta annulla la corsa vecchia
 # della stessa PR. Tutto il resto ha un gruppo suo (run_id) e non annulla né è annullato: corse a mano e su main, le foto dal
 # vero (etichetta «screenshot-vero», partono solo quando si mette l'etichetta), le altre etichette, le PR senza «screenshot».
 concurrency:

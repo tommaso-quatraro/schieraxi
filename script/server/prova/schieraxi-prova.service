@@ -52,7 +52,6 @@ Environment=FANTA_FONTE_FANTACALCIO=0
 Environment=FANTA_FONTE_UNDERSTAT=0
 Environment=FANTA_FONTE_FOOTBALLDATA=0
 Environment=FANTA_FONTE_ESPN=0
-Environment=FANTA_FONTE_SOSFANTA=0
 Environment=FANTA_FONTE_FOTO=0
 # risorse: la prova cede sempre il passo alla produzione
 Nice=19

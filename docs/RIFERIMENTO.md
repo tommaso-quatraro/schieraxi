@@ -67,7 +67,7 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   - Dati della lega: `regole.py` (regole parametriche), `regole_testo.py`, `rose.py` (Excel, CSV, testo), `lega.py`,
     `squadre.py`, `movimenti.py`, `scelte.py`, `formazioni_lega.py`, `osservati.py`, `listone.py`, `nomi.py` (riconoscimento
     dei nomi tra fonti), `immagini.py`, `scarica_immagine.py` (solo indirizzi https pubblici, tetto 4 MB).
-  - Fonti: `fonti/` (`fantacalcio.py`, `understat.py`, `footballdata.py`, `sosfanta.py`: funzioni pure, provate su estratti
+  - Fonti: `fonti/` (`fantacalcio.py`, `understat.py`, `footballdata.py`: funzioni pure, provate su estratti
     inventati in `tests/dati/`), `aggiorna.py` (riempie `dati/fanta.sqlite`), `archivio.py`, `rete.py` (si presenta come
     `SchieraXI/<versione>`), `scheda.py`, `fonti_attive.py` (interruttori delle fonti).
   - Risultati in diretta: `live.py` (un solo raccoglitore, cache in memoria e in `dati/live.json` che sopravvive ai riavvii; il risultato ufficiale vince). Rotta `GET /api/live`, vedi `docs/LIVE.md`. Risultati e voti la sera stessa: `pianificatore.giro_risultati`.
@@ -119,7 +119,7 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   è generato da `python script/testi.py --scrivi` e non si scrive a mano (vedi `fanta/testi/` sopra).
   Contratto dal vero: `ios/Tests/SchieraxiTests/ContrattoDalVeroTests.swift` legge le risposte di `ios/fotografie/vero-*.json` con i
   modelli dell'app (sul Mac, in `ios / test`).
-  Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
+  Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`: solo file del server; dal 12/11/2026 i test iOS non leggono la web, i suoi testi che servono sono copiati fermi in `TestiWeb.swift`, quindi una modifica a `fanta/web/` non fa partire i Mac) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
   Screenshot: workflow `screenshot.yml` (a mano o etichetta `screenshot` sulla pull request non in bozza). «Fotografie dal vero»: `gh workflow run screenshot.yml -f scatti=vero` (o etichetta `screenshot-vero`), tre Mac in parallelo (iPhone piccolo, iPhone grande, iPad) con gli scenari `ios/fotografie/vero-*.json`: risposte vere del server con rose e nomi INVENTATI, prima della scadenza, a giornata in corso e a giornata finita. Si rifanno con `prove/fotografie_dal_vero.py` (copia dei dati, orologio fermo, niente rete, controllo dei nomi veri con le parole vietate private).
   iPhone da provare nel browser: workflow `ios-simulatore.yml` (solo a mano), app per il simulatore in demo come artifact `.zip` e, con il segreto `APPETIZE_TOKEN`, caricata su Appetize.io (variabile `APPETIZE_APP`). Istruzioni: `docs/PROVA-IPHONE-BROWSER.md`.
 - `lega/esempio/`: la lega inventata (10 squadre finte, regole d'esempio). La lega vera sta fuori dal repository e si indica
@@ -171,7 +171,12 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
 - Pull request che tocca `fanta/`, `script/server/` o `requirements.txt`: serve `fanta/novita.d/<nome-breve>.json` senza numero.
   Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
 - Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
-  controlli verdi. Una pull request in bozza non si unisce.
+  controlli verdi. Una pull request in bozza non si unisce. Titolo e corpo del commit li scrive `unisci`, letti subito prima
+  dell'unione: titolo della pull request con `(#N)`; nel corpo le righe di chiusura della descrizione (a inizio riga) delle
+  issue che GitHub collega alla pull request, poi le righe `Co-authored-by` dei commit. Si chiudono solo quelle issue.
+- Job `ambito`, in più: una pull request con base diversa da `main` è rossa (niente rami impilati, `controlla_pr.py`, anche
+  in `pr-pronta`); oltre 600 righe cambiate, senza test e file generati, un avviso che non blocca
+  (`controlla_ambito.py --dimensione`).
 - Job `pip-audit` (vulnerabilità note nelle librerie di `requirements.txt` e `requirements-dev.txt`, senza installarle; pip-audit e dipendenze da PyPI con hash in `.github/pip-audit-requisiti.txt`): fuori dai `needs` di `unisci`, rosso se trova qualcosa. Si corregge aggiornando la libreria con `script/blocca_dipendenze.py`.
 - Controllo del codice con ruff (solo controllo, niente riformattazione; regole in `ruff.toml`: `E9` sintassi, `F` errori sicuri): passo del job `test`, quindi blocca l'unione. ruff da PyPI con hash in `.github/ruff-requisiti.txt`. In locale: `ruff check fanta tests script prove`.
 - Job `ambito` (`script/ci/controlla_ambito.py`, preso da `main`): i file della pull request devono stare nelle aree della riga «Aree: …» della descrizione (modello in `.github/PULL_REQUEST_TEMPLATE.md`; issue con il modulo «Lavoro», `.github/ISSUE_TEMPLATE/lavoro.yml`). Esenti i bot e le pull request di soli documenti. Blocca l'unione.

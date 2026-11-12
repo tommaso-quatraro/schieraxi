@@ -351,8 +351,8 @@
     "ombra": {
       "titolo": "Sources in shadow mode and how they are promoted",
       "paragrafi": [
-        "\"In shadow\" means: the data is collected and kept, but the model does not read it. It serves to understand, with a measurement, whether it would be worth anything before trusting it. Today there are two sources in shadow: the extra columns of football-data.co.uk (team xG, shots, shots on target) and a second source of probable line-ups.",
-        "The tests are launched with verifica --fonti (one variant: football-data team xG in place of Understat's; plus the second source of probable line-ups).",
+        "\"In shadow\" means: the data is collected and kept, but the model does not read it. It serves to understand, with a measurement, whether it would be worth anything before trusting it. Today there is one source in shadow: the extra columns of football-data.co.uk (team xG, shots, shots on target).",
+        "The tests are launched with verifica --fonti (one variant: football-data team xG in place of Understat's).",
         "Promotion rule: a source enters the model only if the error on ratings falls by at least 0.5% and the improvement is there in at least 2 of the last 3 measured seasons. For the data plan an improvement of 1% in the Brier of appearances is also needed and, on line-up points, +0.3 per matchday over at least 100 matchdays. With only one season of data the result is \"indicative only\", it is not promoted. The decision is taken by a person looking at the numbers: the model does not change on its own.",
         "Status on 30/10/2026: no source has been promoted. On the development computer the table of the extra columns is empty (0 matches with the new data), so the test says \"nothing to measure\"; the real collection counts are on the server and can be read in Data status."
       ],

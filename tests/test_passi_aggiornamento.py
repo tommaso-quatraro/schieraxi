@@ -84,7 +84,7 @@ def _tutti(monkeypatch, riusciti: set[str]):
     """esegui() con passi finti: quelli in `riusciti` vanno, gli altri si rompono."""
     monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
     monkeypatch.setattr(funzioni, "acceso", lambda nome: True)
-    for metodo in ("listone", "calendario", "voti", "probabili", "probabili_fonte2", "understat", "dati_extra", "controlli"):
+    for metodo in ("listone", "calendario", "voti", "probabili", "understat", "dati_extra", "controlli"):
         monkeypatch.setattr(aggiorna.Aggiornamento, metodo,
                             (lambda self: None) if metodo in riusciti else (lambda self: _rotto()))
 
@@ -130,14 +130,13 @@ def test_un_aggiornamento_cambia_la_versione_dei_dati_una_volta_sola(tmp_path, m
     try:
         archivio.segna(d, "aggiornamento", "2026-11-01T21:03:00", "[]")
         d.commit()
-        _tutti(monkeypatch, {"listone", "calendario", "voti", "probabili", "probabili_fonte2", "understat", "dati_extra",
-                             "controlli"})
+        _tutti(monkeypatch, {"listone", "calendario", "voti", "probabili", "understat", "dati_extra", "controlli"})
         for ora in ("2026-11-02T08:03:00", "2026-11-02T13:03:00"):
             prima, d.versioni = consigli._versione(d), []
             _agg(d, monkeypatch, ora).esegui()
             assert _cambi_di_versione(d.versioni, prima) == 1, ora
         # un passo che non riesce non cambia la versione (i dati sono quelli di prima): solo la riga generale a fine giro
-        _tutti(monkeypatch, {"listone", "calendario", "voti", "probabili_fonte2", "understat", "dati_extra", "controlli"})
+        _tutti(monkeypatch, {"listone", "calendario", "voti", "understat", "dati_extra", "controlli"})
         prima, d.versioni = consigli._versione(d), []
         _agg(d, monkeypatch, "2026-11-02T17:03:00").esegui()
         assert _cambi_di_versione(d.versioni, prima) == 1

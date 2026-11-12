@@ -61,6 +61,20 @@ def _file_widget() -> str:
 
 # ------------------------------------------------------------------------------------------------- struttura dei job
 
+def test_le_foto_partono_solo_a_mano_o_con_l_etichetta():
+    """#620: prima la corsa partiva a ogni push di ogni PR che tocca ios/, quasi sempre per non fare niente. Ora solo a mano
+    (workflow_dispatch) o quando si mette un'etichetta (il job «quando» guarda se è «screenshot» o «screenshot-vero»)."""
+    on = _blocco(_testo(), "on", 0)
+    assert re.search(r"^  workflow_dispatch:", on, re.M)
+    pr = _blocco(on, "pull_request", 2)
+    tipi = re.search(r"^    types:\s*\[([^\]]*)\]", pr, re.M)
+    assert tipi and [t.strip() for t in tipi.group(1).split(",")] == ["labeled"]
+    assert not re.search(r"^  (push|schedule):", on, re.M)
+    assert "pull_request" + "_target" not in on            # in due pezzi: il controllo dei residui cerca la parola intera
+    passo = _comandi(_passo(_job("quando"), "Serve il Mac?"))
+    assert '"$ETICHETTA_NUOVA" = "screenshot"' in passo and '"$ETICHETTA_NUOVA" = "screenshot-vero"' in passo
+
+
 def test_app_e_widget_in_due_job_mac_che_partono_insieme_solo_nelle_corse_lunghe():
     # corsa veloce misurata (#271): sul Mac a parte i widget riaccendevano da zero il simulatore (8,9 min) e la corsa non si
     # accorciava; quindi due Mac solo con «completo» o «tutti», altrimenti i widget seguono l'app sullo stesso simulatore
