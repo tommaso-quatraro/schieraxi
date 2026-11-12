@@ -352,8 +352,12 @@
     "en": "Injured and suspended ({n})"
   },
   "formazione.decisione_punti": {
-    "it": "{d} punti.",
-    "en": "{d} points."
+    "it": "{d} punti attesi.",
+    "en": "{d} expected points."
+  },
+  "formazione.stato_punti": {
+    "it": "{d} punti attesi",
+    "en": "{d} expected points"
   },
   "formazione.partita_casa": {
     "it": "In casa contro {avv} · {quando}",

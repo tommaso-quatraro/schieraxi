@@ -381,7 +381,7 @@ details[open] > summary { margin-bottom: 8px; }
 .tg-nota { margin-bottom: 4px; }
 /* i punti fatti (in corso, finita): il numero in Archivo, il resto piccolo accanto */
 .tg-numero { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; }
-.tg-finita { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tg-finita { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; }
 .tg-finita .bottone { flex: none; min-height: 44px; padding: 8px 14px; }
 .tg-prossima { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--filo); }
 .fz-testa > .attenzione.piccolo { margin: 8px 0 0; }
@@ -412,6 +412,8 @@ details[open] > summary { margin-bottom: 8px; }
 .azioni-formazione .bottone { min-height: 44px; padding: 8px 14px; }
 .spunta { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: var(--t-corpo); font-weight: 600; cursor: pointer; }
 .fz-campo > .campo-fermo > .attenzione { margin: 0 0 12px; }
+/* a formazione chiusa sotto il campo non ci sono pulsanti: uno spazio prima della panchina (al telefono, in una colonna) */
+.fz.chiusa .fz-campo { margin-bottom: 20px; }
 .probabili-fresche { margin: 0 0 12px; }
 /* Le cifre della scheda del giocatore (fantavoto atteso | gioca N%): numeri senza scatola, affiancati e separati da un filo verticale */
 .cifre-oggi { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; }
@@ -429,6 +431,8 @@ details[open] > summary { margin-bottom: 8px; }
   .fz-campo { min-width: 0; align-self: stretch; }
   .fz-campo .campo-fermo { position: sticky; top: calc(var(--alto-ferma) + 16px); }
   .fz-decisioni { margin-bottom: 20px; }
+  .tg-finita { justify-content: flex-start; }               /* «Com'è andata» accanto ai punti, non in fondo alla riga */
+  .rinvio-scelta .menu-scelta { max-width: 420px; }
 }
 @media (min-width: 1024px) { .fz { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); column-gap: 32px; } }
 /* Formazione, riquadro «Partita rinviata»: quali partite, i miei coinvolti e cosa vale per questa giornata */

@@ -1059,7 +1059,9 @@ function mostraFormazione(b, squadra, opz = {}) {
     if (sc.nonValida) return riga("non_valida", t("formazione.stato_non_valida_ora"), torna);
     const n = diversi(m);
     if (!n) return riga("consigliata", t("formazione.stato_e_consigliata"));
-    const d = Number.isFinite(m.punteggio_atteso) && Number.isFinite(consigliato.punteggio_atteso) ? ` (${segno(m.punteggio_atteso - consigliato.punteggio_atteso, 1)})` : "";
+    // «(−0,4 punti attesi)»: quanto vale la tua rispetto alla consigliata, con il nome del numero
+    const d = Number.isFinite(m.punteggio_atteso) && Number.isFinite(consigliato.punteggio_atteso)
+      ? ` (${t("formazione.stato_punti", { d: segno(m.punteggio_atteso - consigliato.punteggio_atteso, 1) })})` : "";
     // era la consigliata quando l'hai salvata (o messa) ed è lei a essere cambiata dopo, oppure l'hai cambiata tu
     return riga("cambiata", sc.salvata && sc.salvata.era_consigliata ? tp("formazione.stato_superata", n, { d }) : tp("formazione.stato_cambiata", n, { d }), torna);
   };
@@ -1385,12 +1387,18 @@ function apriSostituzione(id) {
   if (!base || !fz.sostituibile(Number(id))) return;
   ultimaScheda++;                                                         // una scheda ancora in arrivo non prende il posto dell'elenco
   const candidati = sostituti(fz.f, base, new Set(fz.modulo.titolari)).map(x => fz.scheda(x.id));
+  // sotto il nome anche «gioca N%», se è sotto l'80%: spiega un numero grande basso per chi, quando gioca, vale quanto il titolare
+  const giocaPoco = x => {
+    const q = giocaLetto(x);
+    return !esitoPartita(x) && !nonGiocaDiSicuro(parolaStato(x)) && q < SOGLIA_GIOCA
+      ? `<span class="etichetta ${classeGioca(q) === "basso" ? "rossa" : "arancio"}">${t("giocatore.gioca", { p: perc(q) })}</span>` : "";
+  };
   const riga = x => {
     const d = x.punti_attesi - base.punti_attesi;
     return `<li class="riga-gioc"><button class="voce voce-g" data-entra="${x.id}">${volto(x)}
       <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
         <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra), postoInFormazione(x.id)])}</span>
-        <span class="etichette">${etichetteGiocatore(x)}</span></span>
+        <span class="etichette">${etichetteGiocatore(x)}${giocaPoco(x)}</span></span>
       <span class="valore"><b class="${d > 0.04 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_rispetto", { nome: esc(base.nome) })}</span></span>
       <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
   };

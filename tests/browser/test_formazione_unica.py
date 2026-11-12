@@ -6,6 +6,7 @@ salvataggio è automatico. Si guarda ciò che vede e fa chi usa l'app; il server
 memoria (la spunta che resta dopo una ricarica) il test tiene lui la scelta salvata e risponde al posto del server.
 """
 import json
+import re
 from urllib.parse import urlsplit
 
 import pytest
@@ -135,7 +136,8 @@ def test_dopo_una_sostituzione_lo_stato_dice_che_l_hai_cambiata_tu_ed_e_salvata(
 def test_torna_alla_consigliata_toglie_la_scelta_salvata(web):
     solo(web, "prima")
     web.apri("/")                                                     # nello scenario registrato c'è una scelta fatta a mano
-    assert stato(web).startswith("L'hai cambiata tu")
+    # quanto vale la differenza si dice con il suo nome: «(−0,1 punti attesi)», non un numero da solo
+    assert re.fullmatch(r"L'hai cambiata tu: 1 titolare diverso dalla consigliata \([+−]?\d+,\d punti attesi\)\. Torna alla consigliata", stato(web)), stato(web)
     scritte = scritture(web)
     tocca(web, principale(web).get_by_role("button", name="Torna alla consigliata"))
     assert stato(web) == "È la consigliata."
@@ -241,7 +243,7 @@ def test_al_massimo_due_decisioni_e_solo_quelle_con_un_azione(web):
     ])
     righe = [" ".join(r.split()) for r in _decisioni(web).all_inner_texts()]
     assert len(righe) == 2, righe
-    assert righe[0].startswith(f"{esce['nome']} è in dubbio") and "+0,9 punti" in righe[0] and righe[0].endswith("Sostituisci")
+    assert righe[0].startswith(f"{esce['nome']} è in dubbio") and "+0,9 punti attesi." in righe[0] and righe[0].endswith("Sostituisci")
     assert righe[1].endswith("Aggiorna le rose")
     testo = web.testo_principale()
     assert "resta titolare" not in testo and "non l'hai ancora salvata" not in testo and "dimmi se hai schierato" not in testo
@@ -322,6 +324,25 @@ def test_sul_pc_la_scheda_si_apre_nel_pannello_a_fianco(web):
     assert scheda(web).get_attribute("aria-modal") != "true"
     tocca(web, campo(web).nth(1))                                     # la pagina accanto resta attiva: un altro giocatore cambia il pannello
     assert nomi_sul_campo(web)[1].split()[0] in scheda(web).get_by_role("heading").first.inner_text()
+
+
+def test_fra_i_sostituti_chi_gioca_meno_dell_80_per_cento_lo_dice(web):
+    """Il numero grande di un sostituto sono i punti attesi in più o in meno: se è basso perché gioca poco, la riga lo dice."""
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    web.apri("/")
+    f = web.registrata("/api/formazione")
+    consigliato = next(m for m in f["moduli"] if m["modulo"] == f["modulo"])
+    fermi = ("infortunato", "squalificato", "fuori")
+    riserve = [x for x in f["schede"].values() if x["id"] not in consigliato["titolari"] and (x.get("etichetta") or {}).get("codice") not in fermi]
+    letto = lambda x: int(x["p_voto"] * 100 + 0.5)                             # noqa: E731 («gioca N%» come si legge)
+    incerta, sicura = next((a, b) for a in riserve for b in riserve if a["ruolo"] == b["ruolo"] and letto(a) < 80 <= letto(b))
+    titolare = next(f["schede"][str(i)] for i in consigliato["titolari"] if f["schede"][str(i)]["ruolo"] == incerta["ruolo"])
+    tocca(web, campo(web).filter(has_text=titolare["nome"]).first)
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    riga = lambda x: " ".join(scheda(web).get_by_role("listitem").filter(has_text=x["nome"]).first.inner_text().split())   # noqa: E731
+    assert f"gioca {letto(incerta)}%" in riga(incerta), riga(incerta)
+    assert "gioca" not in riga(sicura), riga(sicura)
 
 
 def test_sul_pc_cambiando_modulo_l_elenco_dei_sostituti_aperto_si_chiude(web):
