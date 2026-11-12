@@ -577,6 +577,78 @@ def test_la_copia_mostrata_subito_si_legge_ma_non_si_cambia_finche_non_arrivano_
     assert stato(web).startswith("L'hai cambiata tu") and sorted(mem["scelta"]["titolari"]) == sorted(altro["titolari"])
 
 
+def _apri_sulla_copia_senza_rete(web) -> dict:
+    """Riapre la pagina con la copia già sul telefono e /api/oggi che non arriva, come con la rete caduta. Restituisce
+    l'interruttore: `caduta["si"] = False` e la rete è tornata."""
+    web.apri("/")
+    caduta = {"si": True}
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/oggi", lambda r: r.abort() if caduta["si"] else r.fallback())
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="commit")
+    web.pagina.wait_for_selector("#campo-formazione")
+    _aspetta(principale(web).get_by_text("Non riesco a collegarmi"), testo="questi sono gli ultimi dati salvati")
+    return caduta
+
+
+def _la_rete_torna(web) -> None:
+    """Il browser segnala che la rete è tornata (evento `online` vero: la scheda va fuori linea e ci torna)."""
+    web.pagina.context.set_offline(True)
+    web.pagina.context.set_offline(False)
+
+
+def test_se_i_dati_nuovi_non_arrivano_la_copia_dice_perche_non_si_cambia_e_ha_riprova(web):
+    """Rete caduta all'apertura: resta la copia tenuta sul telefono con i comandi spenti. La nota diceva solo «questi sono gli
+    ultimi dati salvati»: ora dice anche perché non si può cambiare niente, e c'è «Riprova»."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    caduta = _apri_sulla_copia_senza_rete(web)
+    menu, casella = principale(web).get_by_label("Modulo"), principale(web).get_by_role("checkbox", name="L'ho messa")
+    assert campo(web).count() == 11 and menu.is_disabled() and casella.is_disabled()
+    assert "la formazione non si può cambiare" in " ".join(web.testo_principale().split())
+    riprova = principale(web).get_by_role("button", name="Riprova")
+    assert riprova.count() == 1 and riprova.is_visible()
+    assert not web.scorre_di_lato()
+    caduta["si"] = False
+    tocca(web, riprova)
+    assert principale(web).get_by_label("Modulo").is_enabled() and principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
+    assert "Non riesco a collegarmi" not in web.testo_principale() and principale(web).get_by_role("button", name="Riprova").count() == 0
+    assert not web.pagina.evaluate("() => !document.activeElement || document.activeElement === document.body"), "dopo «Riprova» il fuoco è nel vuoto"
+    altro = _altro_modulo(web)
+    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    web.aspetta()
+    assert stato(web).startswith("L'hai cambiata tu") and sorted(mem["scelta"]["titolari"]) == sorted(altro["titolari"])
+
+
+def test_quando_la_rete_torna_la_copia_si_aggiorna_da_sola_e_i_comandi_si_riaccendono(web):
+    solo(web, "prima")
+    server_con_memoria(web, None)
+    caduta = _apri_sulla_copia_senza_rete(web)
+    assert principale(web).get_by_label("Modulo").is_disabled()
+    caduta["si"] = False
+    _la_rete_torna(web)                                                # nessun tocco: la pagina riprova da sola
+    _aspetta(principale(web).get_by_label("Modulo"), attivo=True)
+    web.aspetta()
+    assert principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
+    assert "Non riesco a collegarmi" not in web.testo_principale() and principale(web).get_by_role("button", name="Riprova").count() == 0
+    assert stato(web) == "È la consigliata." and not web.errori_mostrati()
+
+
+def test_al_ritorno_della_rete_la_copia_riprova_una_volta_sola(web):
+    """Il browser dice che la rete è tornata ma il server ancora non si raggiunge: una riprova, non una serie. Resta «Riprova»."""
+    solo(web, "prima")
+    server_con_memoria(web, None)
+    _apri_sulla_copia_senza_rete(web)
+    chieste = web.richieste.count("/api/oggi")
+    with web.pagina.expect_request(lambda r: urlsplit(r.url).path == "/api/oggi", timeout=10000):
+        _la_rete_torna(web)
+    web.aspetta()
+    assert web.richieste.count("/api/oggi") == chieste + 1
+    _la_rete_torna(web)
+    web.aspetta()
+    assert web.richieste.count("/api/oggi") == chieste + 1, "al secondo segnale la pagina ha riprovato ancora"
+    assert principale(web).get_by_label("Modulo").is_disabled()
+    assert principale(web).get_by_role("button", name="Riprova").is_visible() and "Non riesco a collegarmi" in web.testo_principale()
+
+
 def test_un_salvataggio_che_torna_dopo_che_la_schermata_si_e_ridisegnata_si_rilegge(web):
     """Mai una scelta salvata che la pagina non mostra: se la risposta arriva quando la schermata è già stata ridisegnata (qui
     un tocco sulla scheda «Formazione» a salvataggio in volo), si rilegge dal server."""
@@ -595,6 +667,82 @@ def test_un_salvataggio_che_torna_dopo_che_la_schermata_si_e_ridisegnata_si_rile
     assert principale(web).get_by_label("Modulo").input_value() == altro["modulo"]
     assert web.richieste.count("/api/formazione") >= lette + 2, "la schermata non è stata riletta dopo il salvataggio"
     assert not web.errori_mostrati() and not web.errori_console
+
+
+def _trattieni_i_salvataggi(web) -> list:
+    """Da qui i salvataggi restano in volo finché il test non li lascia andare (`.fallback()`: risponde il server del test) o
+    non li fa fallire (`.abort()`). Restituisce l'elenco di quelli fermi."""
+    fermi = []
+
+    def ferma(route):
+        if json.loads(route.request.post_data).get("salva"):
+            fermi.append(route)
+        else:
+            route.fallback()
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione/valuta", ferma)
+    return fermi
+
+
+def _rileggi_a_salvataggio_in_volo(web, mem=None):
+    """Un altro modulo (il salvataggio resta in volo), poi un tocco sulla scheda «Formazione»: la pagina si rilegge dal server,
+    che del cambio non sa ancora niente. Con `mem` i dati riletti sono diversi dalla copia sul telefono (passano sei minuti): la
+    pagina si ridisegna da capo. Restituisce i salvataggi fermi e il modulo scelto."""
+    altro = _altro_modulo(web)
+    fermi = _trattieni_i_salvataggi(web)
+    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    if mem:
+        mem["oggi"] = {**web.registrata("/api/oggi"), "ore_mancanti": web.registrata("/api/oggi")["ore_mancanti"] - 0.1}
+    with web.pagina.expect_response(lambda r: urlsplit(r.url).path == "/api/scelta"):
+        web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Formazione").click()
+    from playwright.sync_api import expect
+    expect(principale(web).get_by_text("aggiorno…")).to_have_count(0, timeout=10000)     # i dati riletti sono in pagina
+    assert stato(web) == "È la consigliata." and len(fermi) == 1
+    return fermi, altro
+
+
+@pytest.mark.parametrize("dati_riletti", ["uguali alla copia", "diversi dalla copia"])
+def test_a_salvataggio_in_volo_la_pagina_riletta_resta_spenta_e_il_cambio_non_si_perde(web, dati_riletti):
+    """Difetto visto in revisione: la pagina riletta a salvataggio in volo mostrava ancora «È la consigliata.» con i comandi
+    accesi; la spunta messa lì partiva dopo il primo salvataggio con gli 11 di prima, e il cambio di modulo era perso. Finché
+    una scrittura sulla scelta è in corso i comandi restano spenti, anche dopo una rilettura."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    web.apri("/")
+    scritte = scritture(web)
+    fermi, altro = _rileggi_a_salvataggio_in_volo(web, mem if dati_riletti == "diversi dalla copia" else None)
+    menu, casella = principale(web).get_by_label("Modulo"), principale(web).get_by_role("checkbox", name="L'ho messa")
+    spenti = menu.is_disabled() and casella.is_disabled()
+    if casella.is_enabled():
+        casella.check()                                                # il secondo salvataggio, che scriveva sopra il primo
+    while fermi:
+        fermi.pop(0).fallback()                                        # il salvataggio arriva al server
+        web.aspetta()
+    assert sorted(mem["scelta"]["titolari"]) == sorted(altro["titolari"]), "il cambio di modulo è andato perso"
+    assert spenti, "a salvataggio in volo la pagina riletta aveva i comandi accesi"
+    assert len(scritte) == 1, scritte
+    assert principale(web).get_by_label("Modulo").input_value() == altro["modulo"] and stato(web).startswith("L'hai cambiata tu")
+    assert principale(web).get_by_label("Modulo").is_enabled() and principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
+    assert not web.errori_mostrati() and not web.errori_console
+
+
+def test_se_il_salvataggio_in_volo_non_riesce_la_pagina_riletta_lo_dice_e_si_riaccende(web):
+    """Il salvataggio partito dalla schermata di prima fallisce (rete caduta) quando la pagina è già stata riletta: un avviso lo
+    dice, in pagina resta ciò che è salvato e i comandi tornano accesi."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    web.apri("/")
+    fermi, _ = _rileggi_a_salvataggio_in_volo(web)
+    assert principale(web).get_by_label("Modulo").is_disabled()
+    fermi.pop(0).abort()
+    avviso = web.pagina.get_by_role("status").filter(has_text="Non riesco a collegarmi")
+    _aspetta(avviso.first, testo="Non riesco a collegarmi")
+    _aspetta(principale(web).get_by_label("Modulo"), attivo=True)
+    web.aspetta()
+    assert principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
+    assert stato(web) == "È la consigliata." and mem["scelta"] is None
+    assert principale(web).get_by_label("Modulo").input_value() == web.registrata("/api/formazione")["modulo"]
+    assert not web.errori_mostrati()
 
 
 def test_togliere_la_spunta_non_cancella_una_scelta_salvata_altrove(web):
@@ -674,21 +822,127 @@ def test_un_salvataggio_non_riuscito_lascia_la_formazione_com_era_e_lo_dice(web,
     assert not web.errori_mostrati()
 
 
-def test_se_la_scelta_e_cambiata_su_un_altro_dispositivo_la_pagina_lo_dice_e_la_rilegge(web):
-    """412: nel frattempo un altro dispositivo ha salvato una formazione diversa. Il cambio non si fa, un avviso lo dice e la
-    pagina si ricarica con quella che c'è sul server."""
+CONFLITTO = {"detail": "Questi dati sono stati cambiati da un altro dispositivo. Ho ricaricato la versione nuova: controlla e rifai la modifica."}
+
+
+def server_con_etag(web, iniziale):
+    """Fa la parte del server vero sulla scelta della giornata, ETag compreso: ogni lettura dà l'ETag di adesso; una scrittura
+    con un If-Match vecchio è rifiutata (412), una senza If-Match è accettata, anche sopra ciò che ha salvato un altro
+    dispositivo. `srv["cambia"](scelta)`: un altro dispositivo salva; `srv["if_match"]`: l'If-Match di ogni scrittura arrivata;
+    con `srv["trattieni"]` le letture restano in volo in `srv["ferme"]` finché il test non risponde con `srv["leggi"](route)`."""
+    srv = {"scelta": iniziale, "versione": 0, "if_match": [], "trattieni": False, "ferme": []}
+    js = "application/json"
+
+    def etag() -> str:
+        return f'"v{srv["versione"]}"'
+
+    def cambia(nuova) -> None:
+        srv["scelta"], srv["versione"] = nuova, srv["versione"] + 1
+
+    def rifiutata(route) -> bool:
+        voluto = route.request.headers.get("if-match")
+        srv["if_match"].append(voluto)
+        if voluto is None or voluto == etag():
+            return False
+        route.fulfill(status=412, content_type=js, headers={"ETag": etag()}, body=json.dumps(CONFLITTO))
+        return True
+
+    def leggi(route) -> None:
+        route.fulfill(status=200, content_type=js, headers={"ETag": etag()}, body=json.dumps(srv["scelta"]))
+
+    def scelta(route):
+        if route.request.method == "DELETE":
+            if not rifiutata(route):
+                cambia(None)
+                route.fulfill(status=200, content_type=js, headers={"ETag": etag()}, body='{"ok": true}')
+        elif srv["trattieni"]:
+            srv["ferme"].append(route)
+        else:
+            leggi(route)
+
+    def valuta(route):
+        corpo = json.loads(route.request.post_data)
+        if not corpo.get("salva"):
+            return route.fallback()
+        if not rifiutata(route):
+            cambia({"titolari": corpo["titolari"], "modulo": "4-3-3", "salvata": "2026-10-27T15:10:00", "tipo": "manuale",
+                    **({"messa": True, "messa_il": "2026-10-27T15:10:00"} if corpo.get("messa") else {})})
+            route.fulfill(status=200, content_type=js, headers={"ETag": etag()}, body=json.dumps(web.registrata("/api/formazione/valuta")))
+
+    srv["cambia"], srv["leggi"] = cambia, leggi
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/scelta", scelta)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione/valuta", valuta)
+    return srv
+
+
+def _comandi_accesi(web) -> list[str]:
+    """I comandi che scrivono sulla scelta e che in questo momento si possono usare."""
+    comandi = {"menu del modulo": principale(web).get_by_label("Modulo"), "spunta": principale(web).get_by_role("checkbox", name="L'ho messa"),
+               "torna alla consigliata": principale(web).get_by_role("button", name="Torna alla consigliata")}
+    return [nome for nome, c in comandi.items() if c.count() and c.is_enabled()]
+
+
+@pytest.mark.parametrize("comando", ["la spunta", "torna alla consigliata"])
+def test_dopo_un_412_i_comandi_restano_spenti_finche_la_pagina_non_ha_riletto_e_la_modifica_rifatta_ha_if_match(web, comando):
+    """412: nel frattempo un altro dispositivo ha salvato una formazione diversa. Difetto visto in revisione: l'avviso diceva
+    «ho ricaricato» ma la ricarica arrivava 2,5 secondi dopo; intanto i comandi erano accesi, la spunta restava segnata, e una
+    modifica rifatta subito partiva senza If-Match e scriveva sopra la formazione dell'altro dispositivo. Ora i comandi si
+    spengono subito, la pagina rilegge, e solo allora l'avviso dice di rifare la modifica."""
     solo(web, "prima")
-    mem = server_con_memoria(web, None)
-    web.apri("/")
+    f = web.registrata("/api/formazione")
     altro = _altro_modulo(web)
-    mem["rifiuto"] = (412, {"detail": "Questi dati sono stati cambiati da un altro dispositivo."})
-    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    terzo = next(m for m in f["moduli"] if m["modulo"] not in (f["modulo"], altro["modulo"]))
+    mia = {"titolari": altro["titolari"], "modulo": altro["modulo"], "salvata": "2026-10-27T09:00:00", "tipo": "manuale"}
+    srv = server_con_etag(web, mia if comando == "torna alla consigliata" else None)
+    web.apri("/")
+    srv["cambia"]({"titolari": terzo["titolari"], "modulo": terzo["modulo"], "salvata": "2026-10-27T15:09:00", "tipo": "manuale"})   # dall'altro dispositivo
+    srv["trattieni"] = True                                            # la rilettura resta in volo: si guarda la pagina nel frattempo
+    tocco = (principale(web).get_by_role("checkbox", name="L'ho messa") if comando == "la spunta"
+             else principale(web).get_by_role("button", name="Torna alla consigliata"))
+    with web.pagina.expect_request(lambda r: r.method == "GET" and urlsplit(r.url).path == "/api/scelta", timeout=10000):
+        tocco.click()
     avviso = web.pagina.get_by_role("status").filter(has_text="cambiati da un altro dispositivo")
-    _aspetta(avviso.first, testo="cambiati da un altro dispositivo")
-    mem["rifiuto"] = None
-    mem["scelta"] = {"titolari": altro["titolari"], "modulo": altro["modulo"], "salvata": "2026-10-27T15:09:00", "tipo": "manuale"}   # quella dell'altro
-    _aspetta(principale(web).locator("#stato-scelta"), testo="L'hai cambiata tu")
-    assert principale(web).get_by_label("Modulo").input_value() == altro["modulo"]
+    _aspetta(avviso.first, testo="Sto ricaricando")
+    assert "rifai la modifica" not in avviso.first.inner_text(), "l'avviso dice di rifare la modifica prima che la pagina abbia riletto"
+    assert not _comandi_accesi(web), "dopo il 412 ci sono comandi accesi prima della rilettura"
+    srv["trattieni"] = False
+    for lettura in srv["ferme"]:
+        srv["leggi"](lettura)
+    _aspetta(avviso.first, testo="controlla e rifai la modifica")
+    web.aspetta()
+    assert stato(web).startswith("L'hai cambiata tu") and principale(web).get_by_label("Modulo").input_value() == terzo["modulo"]
+    casella = principale(web).get_by_role("checkbox", name="L'ho messa")
+    assert not casella.is_checked() and casella.is_enabled()           # in pagina c'è ciò che è salvato, non il tocco non riuscito
+    assert _ha_il_fuoco(casella if comando == "la spunta" else principale(web).get_by_role("button", name="Torna alla consigliata")), "il fuoco non è tornato sul comando"
+    if comando == "la spunta":                                         # la modifica rifatta: parte con l'ETag appena riletto
+        casella.check()
+        web.aspetta()
+        assert sorted(srv["scelta"]["titolari"]) == sorted(terzo["titolari"]) and srv["scelta"]["messa"] is True
+    else:
+        tocca(web, principale(web).get_by_role("button", name="Torna alla consigliata"))
+        assert srv["scelta"] is None and stato(web) == "È la consigliata."
+    assert srv["if_match"] == ['"v0"', '"v1"'], srv["if_match"]        # la prima rifiutata, la seconda con l'ETag riletto
+    assert not web.errori_mostrati()
+
+
+def test_un_412_su_altri_dati_non_toglie_l_if_match_alle_scritture_sulla_scelta(web):
+    """Nessuna scrittura sulla scelta parte senza If-Match. Un 412 su un'altra cosa (qui la regola sul rinvio, cambiata da un
+    altro dispositivo) faceva dimenticare tutti gli ETag: fino alla ricarica, 2,5 secondi dopo, un tocco sulla spunta partiva
+    senza If-Match e avrebbe scritto sopra una formazione salvata altrove."""
+    solo(web, "prima")
+    srv = server_con_etag(web, None)
+    oggi = web.registrata("/api/oggi")
+    web.risposta("/api/oggi", {**oggi, "rinvio": {"giornata": oggi["giornata"], "stagione": "2026-27", "modo": "aspetta",
+                                                  "modi": ["aspetta", "senza_voto", "voto_ufficio"], "voto_ufficio": 6, "predefinito": "aspetta",
+                                                  "eccezione": False, "partite": [{"casa": "udinese", "trasferta": "milan", "data": None}]}})
+    web.risposta("/api/regole/rinvio", CONFLITTO, stato=412)
+    web.apri("/")
+    principale(web).get_by_label("Per questa giornata i loro giocatori").select_option("senza_voto")
+    _aspetta(web.pagina.get_by_role("status").filter(has_text="cambiati da un altro dispositivo").first, testo="cambiati da un altro dispositivo")
+    with web.pagina.expect_request(lambda r: r.method == "POST" and urlsplit(r.url).path == "/api/formazione/valuta", timeout=10000):
+        principale(web).get_by_role("checkbox", name="L'ho messa").click()
+    web.aspetta()
+    assert srv["if_match"] == ['"v0"'], srv["if_match"]
 
 
 # ---------------------------------------------------------------- tastiera: dopo un comando il fuoco non si perde
@@ -741,19 +995,69 @@ def test_da_tastiera_spunta_torna_alla_consigliata_e_sostituisci_non_lasciano_il
     assert web.pagina.evaluate("() => !!document.activeElement.closest('main') && ['BUTTON', 'SELECT', 'INPUT'].includes(document.activeElement.tagName)")
 
 
-# ---------------------------------------------------------------- le decisioni: prima quelle con un'azione vera
-def test_il_reparto_scoperto_non_prende_tutti_e_due_i_posti_delle_decisioni(web):
+# ---------------------------------------------------------------- le decisioni: prima le urgenti, poi quelle con un'azione
+def _scoperto(ruolo: str, testo: str, priorita: int = 1) -> dict:
+    return {"id": f"copertura:{ruolo}", "tipo": "copertura", "priorita": priorita, "testo": testo,
+            "azione": "Cerca un rimpiazzo", "destinazione": {"scheda": "mercato", "sezione": None}}
+
+
+def _rose_da_aggiornare(priorita: int = 2) -> dict:
+    return {"id": "rose-vecchie", "tipo": "rose", "testo": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale.",
+            "priorita": priorita, "azione": "Aggiorna le rose", "destinazione": {"scheda": "lega", "sezione": "rose"}}
+
+
+def _dati_fermi() -> dict:
+    return {"id": "dati-vecchi", "tipo": "server", "testo": "I dati non si aggiornano da 3 giorni.", "priorita": 2,
+            "azione": "Controlla", "destinazione": {"scheda": "impostazioni", "sezione": "avanzate"}}
+
+
+def _cambio_da_fare(web, priorita: int = 2) -> dict:
+    """Un titolare in dubbio con un compagno di ruolo da mettere al suo posto: la decisione con «Sostituisci»."""
+    f = web.registrata("/api/formazione")
+    titolari = web.registrata("/api/scelta?giornata=9")["titolari"]
+    esce = next(f["schede"][str(i)] for i in titolari if f["schede"][str(i)]["ruolo"] == "C")
+    entra = next(x for x in f["schede"].values() if x["ruolo"] == "C" and x["id"] not in titolari)
+    return {"id": f"dubbio:{esce['id']}", "tipo": "dubbio", "testo": f"{esce['nome']} è in dubbio (45% di giocare). Meglio {entra['nome']}.",
+            "priorita": priorita, "azione": "Sostituisci", "destinazione": {"scheda": "formazione", "sezione": None, "giocatore": esce["id"]},
+            "giocatore": {"id": esce["id"], "nome": esce["nome"]},
+            "alternativa": {"id": entra["id"], "nome": entra["nome"], "ruolo": "C", "punti_attesi": esce["punti_attesi"] + 0.9}}
+
+
+NESSUN_PORTIERE = "Non hai nessun portiere disponibile per questa giornata."
+# Per ogni caso: le righe del server, e per le due decisioni attese un pezzo del testo e il pulsante con cui la riga finisce.
+CASI_DECISIONI = {
+    # due reparti scoperti e le rose: il reparto scoperto prende un posto solo, e quello urgente sta in cima
+    "due reparti scoperti urgenti e le rose": (
+        lambda web: [_scoperto("P", NESSUN_PORTIERE), _scoperto("D", "In difesa hai solo 2 giocatori disponibili."), _rose_da_aggiornare()],
+        [("nessun portiere", "Vedi la rosa"), ("aste e scambi", "Aggiorna le rose")]),
+    # «nessun portiere» è urgente, il cambio e le rose no: restava nascosto dietro a tutti e due
+    "nessun portiere urgente, un cambio e le rose non urgenti": (
+        lambda web: [_scoperto("P", NESSUN_PORTIERE), _cambio_da_fare(web), _rose_da_aggiornare()],
+        [("nessun portiere", "Vedi la rosa"), ("è in dubbio", "Sostituisci")]),
+    # conta l'urgenza, non il posto nella lista del server
+    "due righe non urgenti e, in fondo, nessun portiere urgente": (
+        lambda web: [_rose_da_aggiornare(), _dati_fermi(), _scoperto("P", NESSUN_PORTIERE)],
+        [("nessun portiere", "Vedi la rosa"), ("aste e scambi", "Aggiorna le rose")]),
+    # fra le urgenti prima quelle con un'azione: con due di loro il reparto scoperto non si vede
+    "due righe urgenti con un'azione e nessun portiere urgente": (
+        lambda web: [_scoperto("P", NESSUN_PORTIERE), _cambio_da_fare(web, priorita=1), _rose_da_aggiornare(priorita=1)],
+        [("è in dubbio", "Sostituisci"), ("aste e scambi", "Aggiorna le rose")]),
+    # niente di urgente: prima le righe con un'azione, il reparto senza ricambi solo se avanza un posto
+    "niente di urgente": (
+        lambda web: [_scoperto("D", "In difesa hai solo 3 giocatori disponibili.", priorita=2), _cambio_da_fare(web), _rose_da_aggiornare()],
+        [("è in dubbio", "Sostituisci"), ("aste e scambi", "Aggiorna le rose")]),
+}
+
+
+@pytest.mark.parametrize("caso", list(CASI_DECISIONI))
+def test_le_decisioni_urgenti_stanno_in_cima_e_il_reparto_scoperto_prende_un_posto_solo(web, caso):
+    """Prima le righe urgenti (fra loro prima quelle con un'azione), poi le non urgenti con un'azione, poi il resto: al massimo due,
+    e al massimo una sul reparto scoperto. Un «nessun portiere» urgente restava nascosto da due righe meno importanti."""
     solo(web, "prima")
-    scoperto = lambda ruolo, testo: {"id": f"copertura:{ruolo}", "tipo": "copertura", "priorita": 1, "testo": testo,   # noqa: E731
-                                     "azione": "Cerca un rimpiazzo", "destinazione": {"scheda": "mercato", "sezione": None}}
-    _con_da_fare(web, [
-        scoperto("P", "Non hai nessun portiere disponibile per questa giornata."),
-        scoperto("D", "In difesa hai solo 2 giocatori disponibili."),
-        {"id": "rose-vecchie", "tipo": "rose", "testo": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale.", "priorita": 2,
-         "azione": "Aggiorna le rose", "destinazione": {"scheda": "lega", "sezione": "rose"}},
-    ])
+    voci, attese = CASI_DECISIONI[caso]
+    _con_da_fare(web, voci(web))
     righe = [" ".join(r.split()) for r in _decisioni(web).all_inner_texts()]
-    assert len(righe) == 2, righe
-    assert righe[0].endswith("Aggiorna le rose"), righe                # prima la riga con un'azione vera
-    assert "nessun portiere" in righe[1] and righe[1].endswith("Vedi la rosa")   # poi una sola riga sul reparto scoperto
-    assert "In difesa" not in web.testo_principale()
+    assert len(righe) == len(attese), righe
+    for riga, (pezzo, pulsante) in zip(righe, attese):
+        assert pezzo in riga and riga.endswith(pulsante), righe
+    assert sum("Vedi la rosa" in r for r in righe) <= 1 and "In difesa" not in web.testo_principale()

@@ -282,6 +282,7 @@ const TESTI = {
     "comune.rete_no": "Non riesco a collegarmi: controlla internet e riprova",
     "comune.calcolo_lungo": "Il calcolo sta durando più del previsto: riprova tra poco.",
     "comune.cambiato_altrove": "Questi dati sono stati cambiati da un altro dispositivo.",
+    "comune.cambiato_ricarico": "Questi dati sono stati cambiati da un altro dispositivo. Sto ricaricando la versione nuova…",
     "comune.errore_server": "Qualcosa non ha funzionato da parte nostra: riprova tra poco",
     "comune.errore_n": "Qualcosa non ha funzionato: riprova",
     "comune.calcolo_in_corso": "Calcolo in corso…",
@@ -703,6 +704,7 @@ const TESTI = {
     "formazione.fv_atteso_breve": "atteso {fv}",
     "formazione.sost_spiega": "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi in più o in meno rispetto a {nome}.",
     "formazione.scelta_non_letta": "Non riesco a leggere la formazione che hai salvato: finché non la leggo non si può cambiare niente.",
+    "formazione.copia_ferma": "Finché non arrivano quelli nuovi la formazione non si può cambiare.",
 
     "frase.tempo.meno_di_un_ora": "meno di un'ora",
     "frase.tempo.ore.one": "{n} ora",
@@ -2057,6 +2059,7 @@ const TESTI = {
     "comune.rete_no": "I cannot connect: check your internet and try again",
     "comune.calcolo_lungo": "The calculation is taking longer than expected: try again shortly.",
     "comune.cambiato_altrove": "This data was changed from another device.",
+    "comune.cambiato_ricarico": "This data was changed from another device. I am reloading the new version…",
     "comune.errore_server": "Something went wrong on our side: try again shortly",
     "comune.errore_n": "Something went wrong: try again",
     "comune.calcolo_in_corso": "Calculating…",
@@ -2478,6 +2481,7 @@ const TESTI = {
     "formazione.fv_atteso_breve": "expected {fv}",
     "formazione.sost_spiega": "Same role, from your roster. The big number is the expected points more or less than {nome}.",
     "formazione.scelta_non_letta": "I can't read your saved lineup: nothing can be changed until I can.",
+    "formazione.copia_ferma": "Until fresh data arrive the lineup can't be changed.",
 
     "frase.tempo.meno_di_un_ora": "less than an hour",
     "frase.tempo.ore.one": "{n} hour",

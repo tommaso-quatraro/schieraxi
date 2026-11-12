@@ -5,8 +5,12 @@ Con --esegui toglie SOLO:
   locale (`git branch -d`, oppure `-D` quando la PR è unita con squash e la testa del ramo è quella della PR o un suo antenato);
 - i rami locali «da togliere»: PR del ramo unita e lavoro già su main (stessa testa della PR, testa antenata di quella della
   PR, o testa dentro origin/main).
-Le worktree bloccate da un agente, quelle con modifiche e quelle senza PR non si toccano mai. I rami locali senza PR, con PR
-chiusa o con commit non uniti si elencano «da chiedere» e non si toccano; mai `main`, mai il ramo corrente.
+Le worktree bloccate da un agente, quelle con modifiche e quelle senza PR non si toccano mai. «Unito» vuole una PR unita: una
+worktree con la testa già in main ma senza PR unita (ramo senza commit propri, o staccata) è anche lo stato di una sessione
+appena aperta e sta in «Senza PR» (#524). Le worktree delle sessioni dell'app (ramo `claude/…`) non si tolgono mai da sole,
+neppure a PR unita: la sessione può essere ancora aperta; stanno in «Sessioni dell'app».
+I rami locali senza PR, con PR chiusa o con commit non uniti si elencano «da chiedere» e non si toccano; mai `main`, mai il
+ramo corrente.
 Codici di uscita: 0 fatto; 1 errore di gh o git, o una rimozione non riuscita."""
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ import worktree
 TITOLI = [("da_togliere", "Da togliere", "ramo unito, niente modifiche"),
           ("con_modifiche", "Con modifiche", "da chiedere all'utente"),
           ("senza_pr", "Senza PR", "niente PR aperta né unita: da chiedere"),
+          ("sessione_app", "Sessioni dell'app", "ramo claude/… unito, niente modifiche: si tolgono a mano, a sessione chiusa"),
           ("in_corso", "Con PR aperta", "lavoro in corso"),
           ("bloccata", "Bloccate", "un agente le sta usando"),
           ("sparita", "Cartelle sparite", "per toglierle dall'elenco di git: «git worktree prune»")]

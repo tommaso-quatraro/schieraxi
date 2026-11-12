@@ -116,7 +116,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
 Sotto ci sono quanto sono fresche le **probabili formazioni** (se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare), la **Panchina** nell'ordine in cui entra, i **Non schierati** e gli **Infortunati e squalificati** (chiusi: si aprono con un tocco). Negli elenchi, sotto il nome di ogni giocatore c'è la sua partita, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Chi è in dubbio, infortunato o squalificato ha sotto anche la nota che dice perché (per esempio «lombalgia, out a Roma»), che va a capo dentro la riga.
 
-Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono: finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde.
+Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono: finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde. Se i dati aggiornati non arrivano (per esempio senza rete) una riga in alto lo dice, con **Riprova**; quando la rete torna l'app riprova da sola.
 
 Sul tablet e sul PC le colonne sono due: a sinistra il campo con modulo, stato e pulsanti (resta fermo mentre scorri, se ci sta nello schermo), a destra la panchina e gli altri elenchi.
 

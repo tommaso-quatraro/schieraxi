@@ -223,6 +223,27 @@ def test_con_le_statistiche_le_righe_ricostruite_non_si_aggiungono():
     pd.testing.assert_frame_equal(_p(stessi), _p(_dati()))
 
 
+def test_le_righe_ricostruite_non_raddoppiano_se_la_funzione_gira_due_volte():
+    """#638: richiamata sui dati che ha già completato, aggiungeva un'altra volta le stesse righe. Riconosceva le partite
+    coperte dall'identificativo della fonte, e le righe ricostruite hanno quello della partita cambiato di segno."""
+    una = modello.con_prestazioni_dai_voti(_senza_statistiche(_dati(), (3, 4)))
+    due = modello.con_prestazioni_dai_voti(una)
+    assert len(una.prestazioni) == 12          # giornate 1 e 2 dalla fonte, 3 e 4 ricostruite: 3 giocatori a partita
+    pd.testing.assert_frame_equal(due.prestazioni, una.prestazioni)
+
+
+def test_le_righe_ricostruite_si_aggiungono_solo_per_le_partite_che_mancano_ancora():
+    """Alla prima chiamata i voti della giornata 4 non ci sono ancora; quando arrivano si ricostruisce solo quella."""
+    d = _senza_statistiche(_dati(), (3, 4))
+    voti_della_4 = d.voti[d.voti["giornata"] == 4]
+    d.voti = d.voti[d.voti["giornata"] < 4].copy()
+    prima = modello.con_prestazioni_dai_voti(d)
+    assert sorted(prima.prestazioni["understat_partita"]) == [-3] * 3 + [101] * 3 + [102] * 3
+    prima.voti = pd.concat([prima.voti, voti_della_4], ignore_index=True)
+    poi = modello.con_prestazioni_dai_voti(prima)
+    assert sorted(poi.prestazioni["understat_partita"]) == [-4] * 3 + [-3] * 3 + [101] * 3 + [102] * 3
+
+
 def test_partita_senza_statistiche_e_senza_voti_resta_fuori():
     """Una partita giocata di cui non sono ancora arrivati né statistiche né voti: non c'è niente da ricostruire."""
     d = _senza_statistiche(_dati(), (4,))

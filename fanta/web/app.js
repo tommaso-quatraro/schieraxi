@@ -74,6 +74,8 @@ function quando(s) {
 // ETag e If-Match: il server dà a ogni risorsa personale (regole, rose, scelta di una giornata, avvisi) un ETag. L'app
 // lo ricorda e lo rimanda in If-Match quando scrive: se nel frattempo un altro dispositivo ha cambiato la stessa cosa il server
 // risponde 412, l'app lo dice e si ricarica con i dati nuovi. Le scritture sulla stessa risorsa partono una alla volta.
+// Dopo un 412 gli ETag ricordati restano come sono: quello della risorsa cambiata è vecchio, e finché non la si rilegge una
+// modifica rifatta è rifiutata ancora; senza If-Match il server l'accetterebbe, sopra ciò che è stato salvato dall'altro dispositivo.
 const etagDi = {};            // risorsa -> ultimo ETag visto
 const codaScritture = {};     // risorsa -> promessa dell'ultima scrittura (la prossima aspetta)
 const scrittureInCorso = {};  // risorsa -> quante scritture sono in volo
@@ -90,6 +92,9 @@ function risorsaDi(percorso, opzioni) {
   return null;
 }
 function nuovoCollegamento() { for (const k of Object.keys(etagDi)) delete etagDi[k]; }
+// C'è una scrittura in volo sulla scelta di questa giornata (un salvataggio, «Torna alla consigliata»). Lo sa api(), non la
+// schermata: la Formazione si ridisegna da capo a ogni lettura, e una scrittura partita dalla schermata di prima è ancora in corso.
+const scritturaSuScelta = giornata => (scrittureInCorso[`scelta:${giornata}`] || 0) > 0;
 
 // Il server con gli account non fa aspettare la richiesta durante un calcolo lungo: risponde 202 «sto calcolando» e l'app
 // riprova da sola ogni pochi secondi, con il marchio che si muove in un angolo (fino a circa due minuti).
@@ -141,7 +146,6 @@ async function api(percorso, opzioni = {}) {
         continue;
       }
       if (r.status === 412) {                           // un altro dispositivo ha cambiato questi dati: si riparte da quelli nuovi
-        nuovoCollegamento();
         if (typeof svuotaCache === "function") svuotaCache();
         if (!senzaRicarica) setTimeout(() => location.reload(), 2500);
         const e = new Error(traduciErrore((dati && dati.detail) || "") || t("comune.cambiato_altrove")); e.originale = (dati && dati.detail) || ""; e.status = 412; throw e;
@@ -276,31 +280,53 @@ function rigaStato() {
 function aggiornaRigaStato() {
   document.querySelectorAll(".stato-pagina").forEach(e => { e.innerHTML = rigaStato(); });
 }
+// La riprova che aspetta il ritorno della rete (evento `online` del browser): una per volta, e parte una volta sola.
+let riprovaOnline = null;
+function alRitornoDellaRete(riprova) {
+  if (riprovaOnline) window.removeEventListener("online", riprovaOnline);
+  riprovaOnline = riprova;
+  if (riprova) window.addEventListener("online", riprova, { once: true });
+}
 // `percorso`: l'indirizzo da chiedere, oppure una funzione che legge più cose insieme e le restituisce (la Formazione).
-// `mostra` può restituire `{ pronta() }`: si chiama quando i dati nuovi sono uguali alla copia già in pagina (la Formazione tiene
-// spenti i comandi che scrivono finché non lo sa).
+// `mostra` può restituire `{ pronta(), sola() }`. `pronta()` si chiama quando i dati nuovi sono uguali alla copia già in pagina (la
+// Formazione tiene spenti i comandi che scrivono finché non lo sa); `sola()` dice se quei comandi sono spenti.
+// Se i dati nuovi non arrivano resta la copia: la nota dice perché non si può cambiare niente e ha «Riprova»; se è caduta la rete,
+// quando il browser dice che è tornata si riprova da soli, una volta. Restituisce se i dati nuovi sono arrivati in pagina.
 async function caricaConCache(chiave, percorso, mostra, testo) {
   const mia = nuovaRichiesta();
+  alRitornoDellaRete(null);
   let salvata = leggiCache(chiave), vista = null;
   if (salvata) {
     try { vista = mostra(salvata.dati, { daCache: salvata.quando }); }
     catch { rimuoviCache(chiave); salvata = null; caricamento(testo); }     // copia rovinata o di una versione vecchia
   } else caricamento(testo);
-  try {
-    const dati = typeof percorso === "function" ? await percorso() : await api(percorso);
-    if (!ancoraValida(mia)) return;
-    salvaCache(chiave, dati);
-    if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) mostra(dati, { sostituisce: !!salvata });
-    else { const b = $("#nota-cache"); if (b) b.remove(); if (vista && typeof vista.pronta === "function") vista.pronta(); }
-  } catch (e) {
-    if (!ancoraValida(mia)) return;
-    if (salvata) {
+  const leggi = async daSola => {                                           // `daSola`: è la riprova partita al ritorno della rete
+    try {
+      const dati = typeof percorso === "function" ? await percorso() : await api(percorso);
+      if (!ancoraValida(mia)) return false;
+      salvaCache(chiave, dati);
+      if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata }); return true; }
       const b = $("#nota-cache");
-      if (b) b.textContent = e.rete ? t("comune.cache_offline") : t("comune.cache_errore", { errore: e.message });
-      return;
+      if (b && b.contains(document.activeElement)) $("#titolo-pagina").focus({ preventScroll: true });   // il fuoco era su «Riprova», che sparisce
+      if (b) b.remove();
+      if (vista && typeof vista.pronta === "function") vista.pronta();
+      return true;
+    } catch (e) {
+      if (!ancoraValida(mia)) return false;
+      if (salvata) {
+        const b = $("#nota-cache");
+        if (!b) return false;
+        const ferma = !!vista && typeof vista.sola === "function" && vista.sola();
+        b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : t("comune.cache_errore", { errore: esc(e.message) })}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
+          <button class="azione-testo" type="button" data-riprova>${t("comune.riprova")}</button>`;
+        if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
+        return false;
+      }
+      pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : ""));
+      return false;
     }
-    pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : ""));
-  }
+  };
+  return leggi(false);
 }
 
 // ---------------------------------------------------------------- pezzi grafici riusati
@@ -896,10 +922,10 @@ function fuocoDi(e) {
   return e.matches("select.rinvio-modo") ? "select.rinvio-modo" : "";
 }
 // Rilegge la Formazione dal server tenendo il posto del fuoco (dopo un salvataggio arrivato a schermata già ridisegnata, la scelta
-// sul rinvio, la scadenza passata con la pagina aperta).
+// sul rinvio, la scadenza passata con la pagina aperta, un 412). Restituisce una promessa: vero se i dati riletti sono in pagina.
 function rileggiFormazione() {
   stato.fuocoFormazione = fuocoDi(document.activeElement);
-  vistaFormazione();
+  return vistaFormazione();
 }
 
 // Anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (campo `bloccati` di GET /api/formazione;
@@ -923,11 +949,10 @@ function chiudiSostituzione() {
 function vistaFormazione() {
   const squadra = stato.squadraVista;
   if (squadra) {                                            // la formazione di un'altra squadra della lega: si guarda e basta
-    caricaConCache("formazione-" + squadra, async () => ({ o: null, f: await api(`/api/formazione?squadra=${encodeURIComponent(squadra)}`) }),
+    return caricaConCache("formazione-" + squadra, async () => ({ o: null, f: await api(`/api/formazione?squadra=${encodeURIComponent(squadra)}`) }),
       (b, opz) => mostraFormazione(b, squadra, opz), t("formazione.calcolo"));
-    return;
   }
-  caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"));
+  return caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"));
 }
 
 // Tutto ciò che serve alla schermata, in una volta: la giornata (/api/oggi), la formazione, la scelta salvata e, se gli 11 salvati non
@@ -1014,11 +1039,15 @@ function mostraFormazione(b, squadra, opz = {}) {
   const chiusa = !!f.iniziata || !!live;
   const mia = !squadra;
   // `sola`: i comandi che scrivono sono spenti. Vale per la copia tenuta sul telefono, mostrata subito all'apertura, finché non
-  // arrivano i dati nuovi (un tocco lì salvava, e i dati in arrivo ridisegnavano la pagina senza il cambio), e per la scelta non letta.
+  // arrivano i dati nuovi (un tocco lì salvava, e i dati in arrivo ridisegnavano la pagina senza il cambio), per la scelta non letta,
+  // e finché è in volo una scrittura partita dalla schermata di prima (un altro modulo, poi un tocco su «Formazione»): la pagina
+  // riletta non la mostra ancora, e un cambio fatto lì le scriverebbe sopra. Quando quella scrittura torna, la schermata si rilegge.
   const nonLetta = mia && (b.scelta_non_letta === true || b.scelta === undefined);
   const sc = stato.scelta = { chiave: `${squadra || "mia"}/${f.giornata}`, salvata: mia && !nonLetta ? b.scelta : undefined,
     nonValida: mia && (!!b.non_valida || f.stato_scelta === "non_valida"), manuale: null, richiesta: 0, occupato: false,
-    nonLetta, copia: !!opz.daCache, sola: mia && (!!opz.daCache || nonLetta), fuoco: null };
+    nonLetta, copia: !!opz.daCache, sola: false, fuoco: null };
+  const spenti = () => mia && (sc.copia || sc.nonLetta || (!sc.occupato && scritturaSuScelta(f.giornata)));
+  sc.sola = spenti();
   // la formazione di partenza: gli 11 salvati, se valgono e non sono proprio quelli della consigliata
   if (mia && sc.salvata && !sc.nonValida && !live) {
     const m = moduloDi(f, sc.salvata.titolari);
@@ -1031,13 +1060,26 @@ function mostraFormazione(b, squadra, opz = {}) {
   const diversi = m => m.titolari.filter(id => !consigliato.titolari.includes(id)).length;      // quanti titolari non sono quelli della consigliata
   const qui = n => n === sc.richiesta && stato.scelta === sc && document.body.contains($("#campo-formazione"));
   // dopo un salvataggio la copia sul telefono di questa schermata è già vecchia: la si aggiorna, così tornando qui non si rivede quella di prima
-  // Il salvataggio è riuscito ma la schermata nel frattempo è stata ridisegnata (riaperta, o lasciata): la copia sul telefono è
-  // vecchia e, se si è ancora nella Formazione, in pagina c'è altro. Si rilegge dal server: mai una scelta salvata che non si vede.
+  // La scrittura è tornata (riuscita o no) ma la schermata nel frattempo è stata ridisegnata (riaperta, o lasciata): la copia sul
+  // telefono è vecchia e, se si è ancora nella Formazione, in pagina c'è altro, con i comandi spenti finché la scrittura era in
+  // volo. Si rilegge dal server: mai una scelta salvata che non si vede. Restituisce se ha riletto.
   const altrove = n => {
     rimuoviCache("giornata");
-    if (n === sc.richiesta && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista) rileggiFormazione();
+    const rilegge = n === sc.richiesta && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista;
+    if (rilegge) rileggiFormazione();
+    return rilegge;
   };
   const ricorda = valutata => { if (mia) salvaCache("giornata", { ...b, scelta: sc.salvata, valutata: valutata || undefined, non_valida: false, f: { ...f, stato_scelta: sc.salvata ? "valida" : "nessuna" } }); };
+  // 412: nel frattempo la scelta è stata cambiata su un altro dispositivo, e la scrittura non è stata fatta. La schermata si
+  // rilegge subito dal server (niente ricarica della pagina dopo 2,5 secondi: fino ad allora i comandi restavano accesi su una
+  // formazione che non era più quella salvata): torna al caricamento, quindi senza comandi, e l'avviso dice che sta ricaricando;
+  // solo a dati riletti, con i comandi di nuovo accesi, dice di controllare e rifare la modifica (la frase del server). Lasciata
+  // la Formazione dice solo che i dati sono cambiati: si rileggono tornandoci.
+  const cambiataAltrove = async e => {
+    if (stato.vista !== "formazione" || stato.squadraVista) { avviso(t("comune.cambiato_altrove"), 5000); return; }
+    avviso(t("comune.cambiato_ricarico"), 8000);
+    if (await rileggiFormazione() && stato.scelta && !stato.scelta.sola) avviso(e.message, 8000);
+  };
 
   // Cambia gli 11 (una sostituzione, un altro modulo, la spunta «L'ho messa»): il server li valuta e li salva subito. Una richiesta
   // alla volta: se nel frattempo ne parte un'altra, la risposta di prima si ignora. `messa`: vero o falso dalla spunta; senza, resta
@@ -1046,7 +1088,8 @@ function mostraFormazione(b, squadra, opz = {}) {
     const n = ++sc.richiesta;
     sc.occupato = true;
     try {
-      const r = await api("/api/formazione/valuta", { method: "POST", body: JSON.stringify({ titolari: ids, giornata: f.giornata, salva: true, ...(messa === undefined ? {} : { messa }) }) });
+      const r = await api("/api/formazione/valuta", { method: "POST", senzaRicarica: true,
+        body: JSON.stringify({ titolari: ids, giornata: f.giornata, salva: true, ...(messa === undefined ? {} : { messa }) }) });
       if (!qui(n)) { altrove(n); return false; }
       const stessi = !!sc.salvata && stessiIds(ids, sc.salvata.titolari.map(Number));
       const eraConsigliata = stessiIds(ids, consigliato.titolari) || (stessi && sc.salvata.era_consigliata === true);
@@ -1059,8 +1102,8 @@ function mostraFormazione(b, squadra, opz = {}) {
       disegna(true);
       return true;
     } catch (e) {
-      if (e.status === 412) { avviso(e.message, 5000); return false; }      // cambiata su un altro dispositivo: api() ricarica la pagina con i dati di là
-      if (!qui(n)) return false;
+      if (e.status === 412) { cambiataAltrove(e); return false; }
+      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return false; }      // la pagina riletta nel frattempo: lo si dice lì
       avviso(e.message, 5000);
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
       return false;
@@ -1072,14 +1115,14 @@ function mostraFormazione(b, squadra, opz = {}) {
     const n = ++sc.richiesta;
     sc.occupato = true;
     try {
-      if (sc.salvata !== null) await api(`/api/scelta?giornata=${f.giornata}`, { method: "DELETE" });
+      if (sc.salvata !== null) await api(`/api/scelta?giornata=${f.giornata}`, { method: "DELETE", senzaRicarica: true });
       if (!qui(n)) { altrove(n); return; }
       sc.manuale = null; sc.salvata = null; sc.nonValida = false;
       ricorda();
       disegna(true);
     } catch (e) {
-      if (e.status === 412) { avviso(e.message, 5000); return; }
-      if (!qui(n)) return;
+      if (e.status === 412) { cambiataAltrove(e); return; }
+      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return; }
       avviso(e.message, 5000);                              // per esempio la consigliata sposterebbe chi gioca un anticipo già cominciato (#373)
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);
     } finally { if (n === sc.richiesta) sc.occupato = false; }
@@ -1238,11 +1281,12 @@ function mostraFormazione(b, squadra, opz = {}) {
     }, 30000);
   }
   // Per caricaConCache: i dati nuovi sono uguali alla copia in pagina, i comandi spenti si accendono dove sono (niente ridisegno).
-  // Se la scelta non era stata letta nemmeno stavolta, ora lo si dice.
-  return { pronta() {
+  // Se la scelta non era stata letta nemmeno stavolta, ora lo si dice. `sola()`: i comandi che scrivono sono spenti.
+  return { sola: () => stato.scelta === sc && sc.sola, pronta() {
     if (stato.scelta !== sc || !sc.sola) return;
     sc.copia = false;
     if (sc.nonLetta) { disegna(true); return; }
+    if (spenti()) return;                                   // una scrittura è ancora in volo: quando torna la schermata si rilegge
     sc.sola = false;
     document.querySelectorAll("#contenuto [data-scrive], #foglio-contenuto [data-sostituisci]").forEach(e => { e.disabled = false; });
   } };
