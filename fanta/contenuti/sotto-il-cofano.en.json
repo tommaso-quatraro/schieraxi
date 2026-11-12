@@ -343,7 +343,7 @@
       "titolo": "Clean data: names, checks and risks of the sources",
       "paragrafi": [
         "The player code of Fantacalcio.it is the key to everything. The other sources write names differently (\"Laurientè\", \"Lauriente\", \"Esposito Se.\", \"N'Dicka\"): a matching module removes accents, dots and apostrophes and matches by team and similarity. The safe matches (same team) are kept, those by similarity are redone every time: they are the places where an error hides best.",
-        "After every update, consistency checks run: 10 matches per matchday, at least 180 ratings per finished matchday, the sum of the players' xG close to that of the match (maximum gap 1), 11 starters per team. Up to 2% of out-of-range rows is source noise, beyond that it is a warning, and everything can be seen in Data status.",
+        "After every update, consistency checks run: 10 matches per matchday, ratings for every team in finished matchdays, the sum of the players' xG close to that of the match (maximum gap 1), 11 starters per team. Up to 2% of out-of-range rows is source noise, beyond that it is a warning, and everything can be seen in Data status.",
         "Honest risk: Understat is the only source of xG, xA and penalties and Fantacalcio.it the one of ratings and probable line-ups. Their terms are not designed for use by a program: for personal use the risk is low, but it must be rethought before opening the app to many people (permissions, alternative sources)."
       ],
       "rimandi": ["Data status > Checks"]

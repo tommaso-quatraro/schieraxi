@@ -1,0 +1,15 @@
+{
+  "titolo": "Partite giocate ma senza voti: niente più «gioca» che crolla",
+  "voci": [
+    "Web, iPhone e iPad: quando una partita è finita ma i suoi voti non sono ancora arrivati, «gioca N%» dei giocatori delle due squadre resta quello di prima della partita. Prima la partita contava come se nessuno avesse giocato e un titolare fisso poteva scendere da «gioca 90%» a meno del 60% fino all'arrivo dei voti.",
+    "Per chi installa SchieraXI da zero sul proprio server, con accesa la sola fonte dei voti: dalla quarta giornata le schermate Oggi e Formazione, i widget e gli avvisi si fermavano con un errore. Ora i numeri ci sono.",
+    "Per chi amministra il server: una giornata con i voti arrivati solo in parte si riscarica anche dopo qualche giorno, e nello stato dei dati il controllo dei voti avvisa quando una squadra non ne ha nessuno. Se la fonte delle statistiche risponde senza il tabellino di una partita, le statistiche già salvate restano e l'aggiornamento lo segnala come errore."
+  ],
+  "tecnico": [
+    "modello.con_prestazioni_dai_voti: con `prestazioni` vuota restituisce le sole righe ricostruite (con le altre colonne della tabella vuote) invece di unirle alla tabella letta da SQLite, che ha le colonne di tipo object: con pandas 3 restavano object e `np.polyfit(..., w=np.sqrt(peso))` in `_pezzi` alzava TypeError appena un ruolo aveva 15 giocatori con almeno 3 partite pesate (D57, regressione della #613).",
+    "modello._presenze_recenti_varie: le partite giocate in cui la squadra non ha nessun voto (colonna del voto della lega) non entrano nella finestra delle presenze di quella squadra. stato_dati._letture_prima_delle_partite: stesse partite escluse dalla calibrazione delle probabili, per squadra (`probabili_storia.squadra`, voto_red).",
+    "controlli.squadre_senza_voti (nuova): {giornata: squadre delle partite giocate senza nessun voto}. La usano aggiorna._giornate_voti_da_scaricare (giornata da riscaricare anche dopo 4 giorni) e controlli.voti_per_giornata, che non guarda più il totale delle righe (MIN_VOTI_GIORNATA = 180 tolto): dettaglio «giornate finite con squadre senza voti: g10 (6 squadre)».",
+    "aggiorna.understat: se la rilettura di una partita ha meno righe di quelle salvate, le righe restano (niente DELETE) e a fine passo `StatisticheCalate` con le partite. La prima lettura con meno di 22 righe si salva come prima (scaricata = 0, si riprova). I 4 giorni di voti e statistiche si contano da aggiorna._ora().",
+    "Verifica sull'archivio di sviluppo: numeri identici prima e dopo (nessuna partita giocata senza voti). Nessun cambio alle forme delle risposte."
+  ]
+}
