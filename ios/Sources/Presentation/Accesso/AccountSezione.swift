@@ -313,10 +313,13 @@ struct FoglioCambiaPassword: View {
         .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { if codice == nil { Button("Annulla") { chiudi() } } }
+            ToolbarItem(placement: .cancellationAction) {
+                if codice == nil && !sessione.inCorso { Button("Annulla") { chiudi() } }
+            }
         }
-        // il codice si vede una volta sola: il foglio si chiude solo con «Fatto», dopo «Ho salvato il codice»
-        .interactiveDismissDisabled(codice != nil)
+        // il codice si vede una volta sola: il foglio si chiude solo con «Fatto», dopo «Ho salvato il codice». Mentre la richiesta
+        // è in corso non si chiude: il codice nuovo non deve arrivare in un foglio già chiuso
+        .interactiveDismissDisabled(codice != nil || sessione.inCorso)
     }
 
     private func invia() async {
@@ -369,9 +372,12 @@ struct FoglioNuovoCodice: View {
         .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { if codice == nil { Button("Annulla") { chiudi() } } }
+            ToolbarItem(placement: .cancellationAction) {
+                if codice == nil && !sessione.inCorso { Button("Annulla") { chiudi() } }
+            }
         }
-        .interactiveDismissDisabled(codice != nil)
+        // come «Cambia la password»: niente chiusura con la richiesta in corso (il codice nuovo vale già) né prima di «Fatto»
+        .interactiveDismissDisabled(codice != nil || sessione.inCorso)
     }
 
     private func crea() async {

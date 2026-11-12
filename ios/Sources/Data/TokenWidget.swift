@@ -8,12 +8,35 @@ enum TokenWidget {
     private static let chiaveScadenza = "tokenWidgetScade"
     nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.daLancio ? MemoriaToken() : KeychainToken(servizio: servizio)
 
+    /// Dove stanno il token del widget e le copie per il widget. `sistema`: il Keychain, il file del gruppo e il Keychain condiviso
+    /// veri, letti al momento della chiamata. I test ne passano di finti, così non scrivono mai nei file veri.
+    struct Luoghi {
+        var archivio: any ArchivioToken
+        /// La scadenza del token e la copia del widget fuori dal gruppo.
+        var memoria: UserDefaults
+        /// La cartella del gruppo (nil = il gruppo non c'è).
+        var cartella: () -> URL?
+        /// Il Keychain condiviso con il widget (`PortachiaviCondiviso`).
+        var portachiavi: any ArchivioCollegamento
+        /// Ripassa al widget indirizzo e token (`Accesso.sincronizzaConIlWidget`).
+        var sincronizza: () -> Void
+
+        static var sistema: Luoghi {
+            Luoghi(archivio: TokenWidget.archivio, memoria: .standard, cartella: { Condiviso.cartella() },
+                   portachiavi: PortachiaviCondiviso.archivio, sincronizza: { _ = Accesso.sincronizzaConIlWidget() })
+        }
+    }
+
     /// Un token del widget accettabile: comincia per `fw_`, breve e di caratteri semplici (un server ostile potrebbe mandare altro).
     static func valido(_ testo: String) -> Bool {
         testo.hasPrefix("fw_") && testo.utf8.count >= 12 && Accesso.tokenValido(testo)
     }
 
     static func leggi(server indirizzo: String) -> String? {
+        leggi(server: indirizzo, in: archivio)
+    }
+
+    private static func leggi(server indirizzo: String, in archivio: any ArchivioToken) -> String? {
         guard let t = archivio.leggi(server: indirizzo), valido(t) else { return nil }
         return t
     }
@@ -51,41 +74,90 @@ enum TokenWidget {
         let scade: String?
     }
 
+    /// I luoghi veri, con la scadenza in `memoria` (i test vecchi ne passano una loro).
+    private static func sistema(memoria: UserDefaults) -> Luoghi {
+        var luoghi = Luoghi.sistema
+        luoghi.memoria = memoria
+        return luoghi
+    }
+
     /// Con una sessione valida: si assicura che il widget abbia il suo token (lo chiede se manca o sta per scadere) e lo mette nel
     /// file condiviso. Con un server senza account (nessuna sessione) non fa niente. Mai un errore all'utente: il widget ha il suo ripiego.
     static func assicura(server: any ServerClient, memoria: UserDefaults = .standard) async {
+        await assicura(server: server, luoghi: sistema(memoria: memoria), sessione: Accesso.archivio)
+    }
+
+    /// Come sopra, con i luoghi e l'archivio della sessione di chi chiede. Il token arriva dopo un'attesa: se nel frattempo la
+    /// sessione è cambiata (uscita, un altro accesso) o il lavoro è stato annullato, non si tiene. Revocarlo non si può (la sessione
+    /// che l'ha chiesto non c'è più): resta sul server senza che nessuno lo abbia, finché non lo sostituisce il prossimo token
+    /// dello stesso utente (il server ne tiene uno solo) o non scade.
+    static func assicura(server: any ServerClient, luoghi: Luoghi, sessione: any ArchivioToken) async {
         if Demo.attivo { return }
         let indirizzo = server.indirizzo
-        let esistente = leggi(server: indirizzo)
-        let scade = memoria.string(forKey: chiaveScadenza + "|" + indirizzo)
+        let esistente = leggi(server: indirizzo, in: luoghi.archivio)
+        let scade = luoghi.memoria.string(forKey: chiaveScadenza + "|" + indirizzo)
         if daRinnovare(token: esistente, scade: scade) {
+            let impronta = sessione.leggi(server: indirizzo)
             guard let dati = try? await server.corpoJSON("POST", "/api/account/token-widget", [String: String]()),
                   let r: Risposta = try? Decodifica.decodifica(dati), let nuovo = r.token, valido(nuovo) else { return }
-            archivio.salva(nuovo, server: indirizzo)
-            memoria.set(r.scade ?? "", forKey: chiaveScadenza + "|" + indirizzo)
+            guard !Task.isCancelled, sessione.leggi(server: indirizzo) == impronta else { return }
+            luoghi.archivio.salva(nuovo, server: indirizzo)
+            luoghi.memoria.set(r.scade ?? "", forKey: chiaveScadenza + "|" + indirizzo)
         }
-        Accesso.sincronizzaConIlWidget()
+        luoghi.sincronizza()
     }
 
     /// All'uscita: il server toglie il token (serve ancora la sessione, quindi PRIMA di chiuderla) e il telefono lo dimentica.
     static func revoca(server: any ServerClient, memoria: UserDefaults = .standard) async {
+        await revoca(server: server, luoghi: sistema(memoria: memoria))
+    }
+
+    static func revoca(server: any ServerClient, luoghi: Luoghi) async {
         if Demo.attivo { return }
         _ = try? await server.richiesta("DELETE", "/api/account/token-widget", corpo: nil)
-        pulisciLocale(indirizzo: server.indirizzo, memoria: memoria)
+        pulisciLocale(indirizzo: server.indirizzo, luoghi: luoghi)
     }
 
     /// Via il token dal telefono (Keychain e file condiviso), senza chiamare il server (sessione già finita o server cambiato).
     static func pulisciLocale(indirizzo: String, memoria: UserDefaults = .standard) {
-        archivio.cancella(server: indirizzo)
-        MemoriaWidget.dimentica()
-        memoria.removeObject(forKey: chiaveScadenza + "|" + indirizzo)
-        Condiviso.aggiorna {
+        pulisciLocale(indirizzo: indirizzo, luoghi: sistema(memoria: memoria))
+    }
+
+    /// Uscita o cambio di server: via il token e tutto quello che il widget ha di questo account (riassunto e copie).
+    static func pulisciLocale(indirizzo: String, luoghi: Luoghi) {
+        luoghi.archivio.cancella(server: indirizzo)
+        let cartella = luoghi.cartella()
+        MemoriaWidget.dimentica(cartella: cartella, memoria: luoghi.memoria)
+        luoghi.memoria.removeObject(forKey: chiaveScadenza + "|" + indirizzo)
+        Condiviso.aggiorna(cartella: cartella) {
             if $0.tokenPerIndirizzo == indirizzo {
                 $0.token = nil
                 $0.tokenPerIndirizzo = nil
                 $0.riassunto = nil
             }
         }
-        if PortachiaviCondiviso.leggi()?.i == indirizzo { PortachiaviCondiviso.cancella() }
+        if collegamento(in: luoghi.portachiavi)?.i == indirizzo { luoghi.portachiavi.cancella() }
+    }
+
+    /// Il server ha revocato il token del widget ma l'account è lo stesso (cambio della password): via solo il token e la sua
+    /// scadenza, dal Keychain, dal file del gruppo e dal Keychain condiviso. Riassunto e copie del widget restano.
+    static func dimenticaToken(indirizzo: String, luoghi: Luoghi) {
+        luoghi.archivio.cancella(server: indirizzo)
+        luoghi.memoria.removeObject(forKey: chiaveScadenza + "|" + indirizzo)
+        Condiviso.aggiorna(cartella: luoghi.cartella()) {
+            if $0.tokenPerIndirizzo == indirizzo {
+                $0.token = nil
+                $0.tokenPerIndirizzo = nil
+            }
+        }
+        // nel Keychain condiviso indirizzo e token stanno insieme: si toglie l'elemento, l'indirizzo lo ripassa `sincronizza`
+        if let c = collegamento(in: luoghi.portachiavi), c.i == indirizzo, c.t != nil { luoghi.portachiavi.cancella() }
+    }
+
+    /// Indirizzo e token nel Keychain condiviso, letti come `PortachiaviCondiviso.leggi` ma da un archivio dato (i test ne passano uno finto).
+    private static func collegamento(in portachiavi: any ArchivioCollegamento) -> CodiceWidget.Contenuto? {
+        guard let dati = portachiavi.leggi(), dati.count <= 4000,
+              let c = try? JSONDecoder().decode(CodiceWidget.Contenuto.self, from: dati), !c.i.isEmpty else { return nil }
+        return c
     }
 }

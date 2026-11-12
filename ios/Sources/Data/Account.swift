@@ -302,6 +302,11 @@ final class SessioneAccount: ObservableObject {
     private let archivio: any ArchivioToken
     private let memoria: UserDefaults
     private let pulisci: @MainActor () -> Void
+    /// Dove sta il token del widget: nil = i luoghi veri (letti a ogni uso); i test ne passano di finti.
+    private let widget: TokenWidget.Luoghi?
+    private var luoghiWidget: TokenWidget.Luoghi { widget ?? .sistema }
+    /// La richiesta del token del widget dopo il cambio della password: all'uscita si annulla.
+    private(set) var rinnovoWidget: Task<Void, Never>?
     private var osservatore: NSObjectProtocol?
 
     private static let chiaveMultiutente = "account.multiutente"
@@ -312,15 +317,18 @@ final class SessioneAccount: ObservableObject {
     init(server: any ServerClient = ServerCorrente.condiviso,
          archivio: any ArchivioToken = Accesso.archivio,
          memoria: UserDefaults = .standard,
-         pulisci: @escaping @MainActor () -> Void = { DatiLocali.svuota() }) {
+         pulisci: @escaping @MainActor () -> Void = { DatiLocali.svuota() },
+         widget: TokenWidget.Luoghi? = nil) {
         self.server = server
         self.archivio = archivio
         self.memoria = memoria
         self.pulisci = pulisci
+        self.widget = widget
         // Aggiornando da una versione vecchia può restare l'indirizzo di un server che non c'è più: si passa al predefinito
         // e si butta la sessione di quello vecchio, prima di tutto il resto.
         if let vecchio = MigrazioneServer.migraSubito(memoria) {
-            Self.lasciaServerVecchio(vecchio, nuovo: server.indirizzo, archivio: archivio, memoria: memoria, pulisci: pulisci)
+            Self.lasciaServerVecchio(vecchio, nuovo: server.indirizzo, archivio: archivio, memoria: memoria, pulisci: pulisci,
+                                     widget: widget ?? .sistema)
         }
         var iniziale = Self.statoIniziale(server: server.indirizzo, archivio: archivio, memoria: memoria)
         let spostato = memoria.bool(forKey: MigrazioneServer.chiaveSpostato)
@@ -410,8 +418,8 @@ final class SessioneAccount: ObservableObject {
                     if accessi != nuoviAccessi { accessi = nuoviAccessi }
                     imposta(.connesso(u))
                     // il widget ha il suo token a scopo limitato (mai quello della sessione)
-                    let s = server
-                    Task { await TokenWidget.assicura(server: s) }
+                    let s = server, w = luoghiWidget, a = archivio
+                    Task { await TokenWidget.assicura(server: s, luoghi: w, sessione: a) }
                 } else { imposta(.daAccedere) }
             } else {
                 archivio.cancella(server: server.indirizzo)
@@ -431,7 +439,7 @@ final class SessioneAccount: ObservableObject {
         // Un altro server: il token del vecchio non deve MAI essere mandato al nuovo. Si butta, con i dati locali del vecchio.
         let attuale = server.indirizzo
         if let vecchio = memoria.string(forKey: Self.chiaveIndirizzo), vecchio != attuale {
-            Self.lasciaServerVecchio(vecchio, nuovo: attuale, archivio: archivio, memoria: memoria, pulisci: pulisci)
+            Self.lasciaServerVecchio(vecchio, nuovo: attuale, archivio: archivio, memoria: memoria, pulisci: pulisci, widget: luoghiWidget)
             codiceDaMostrare = nil
             avviso = nil
         }
@@ -446,9 +454,9 @@ final class SessioneAccount: ObservableObject {
     /// Si lascia un server: il suo token, i dati salvati e l'utente ricordato si buttano. Se è uno spostamento automatico
     /// (`MigrazioneServer`) si resta «con gli account», così si parte dalla schermata Accedi.
     @MainActor private static func lasciaServerVecchio(_ vecchio: String, nuovo: String, archivio: any ArchivioToken, memoria: UserDefaults,
-                                            pulisci: @MainActor () -> Void) {
+                                            pulisci: @MainActor () -> Void, widget: TokenWidget.Luoghi) {
         archivio.cancella(server: vecchio)
-        TokenWidget.pulisciLocale(indirizzo: vecchio)
+        TokenWidget.pulisciLocale(indirizzo: vecchio, luoghi: widget)
         pulisci()
         memoria.removeObject(forKey: chiaveUtente)
         memoria.removeObject(forKey: chiaveMultiutente)
@@ -514,8 +522,10 @@ final class SessioneAccount: ObservableObject {
 
     /// Chiude l'accesso SOLO sul telefono: butta il token, svuota i dati locali, mostra la schermata di accesso.
     private func chiudiLocale() {
+        rinnovoWidget?.cancel()
+        rinnovoWidget = nil
         archivio.cancella(server: server.indirizzo)
-        TokenWidget.pulisciLocale(indirizzo: server.indirizzo)
+        TokenWidget.pulisciLocale(indirizzo: server.indirizzo, luoghi: luoghiWidget)
         pulisci()
         multiutente = true
         memoria.set(true, forKey: Self.chiaveMultiutente)
@@ -571,8 +581,8 @@ final class SessioneAccount: ObservableObject {
         if let dati = try? JSONEncoder().encode(utente) { memoria.set(dati, forKey: Self.chiaveUtente) }
         stato = .connesso(utente)
         generazione += 1
-        let s = server
-        Task { await TokenWidget.assicura(server: s) }
+        let s = server, w = luoghiWidget, a = archivio
+        Task { await TokenWidget.assicura(server: s, luoghi: w, sessione: a) }
     }
 
     func accedi(nomeUtente: String, password: String) async throws {
@@ -663,7 +673,8 @@ final class SessioneAccount: ObservableObject {
         // Uscire non si rifiuta mai, nemmeno se c'è un'altra richiesta in corso: la richiesta al server è facoltativa.
         inCorso = true
         defer { inCorso = false }
-        await TokenWidget.revoca(server: server)   // serve ancora la sessione: prima di chiuderla
+        rinnovoWidget?.cancel()   // un token del widget che arriva adesso non si tiene
+        await TokenWidget.revoca(server: server, luoghi: luoghiWidget)   // serve ancora la sessione: prima di chiuderla
         _ = try? await server.corpoJSON("POST", "/api/account/esci", [String: String]())
         chiudiLocale()
     }
@@ -688,14 +699,15 @@ final class SessioneAccount: ObservableObject {
 
     /// Dopo il cambio della password: il token nuovo prende il posto di quello chiuso dal server, senza ricostruire le schermate
     /// (è lo stesso utente). Si salta se nel frattempo è cambiato tutto (uscita, un altro accesso) o se il token non è valido.
-    /// Il server ha tolto anche il token del widget: se ne chiede uno nuovo.
+    /// Il server ha tolto anche il token del widget: via solo quello (riassunto e copie del widget restano) e se ne chiede uno nuovo.
     private func tieniSessioneNuova(_ token: String?, alPostoDi prima: String?) {
         guard let token, Accesso.tokenValido(token), utente != nil, archivio.leggi(server: server.indirizzo) == prima else { return }
         let alSicuro = archivio.salva(token, server: server.indirizzo)
         avviso = alSicuro ? nil : Self.avvisoKeychain
-        TokenWidget.pulisciLocale(indirizzo: server.indirizzo)
-        let s = server
-        Task { await TokenWidget.assicura(server: s) }
+        let w = luoghiWidget, s = server, a = archivio
+        TokenWidget.dimenticaToken(indirizzo: s.indirizzo, luoghi: w)
+        rinnovoWidget?.cancel()
+        rinnovoWidget = Task { await TokenWidget.assicura(server: s, luoghi: w, sessione: a) }
     }
 
     /// Un nuovo codice di recupero al posto del vecchio (serve la password).
