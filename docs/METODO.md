@@ -18,7 +18,8 @@ prima, chi rivede, come si passa il lavoro, come si misura.
 | Un difetto visto dall'utente, o un lavoro che chiede una decisione | Issue con «cosa», «perché», «fatto quando» |
 | Tre o più pull request, o più aree insieme (server, web, iPhone) | Spec e piano in `docs/superpowers/specs/` e `plans/`, uniti con una pull request di soli documenti prima del codice |
 
-Nei piani e nei documenti si scrive «chiuderà #N»: «Closes #N» chiude l'issue all'unione.
+Una riga «Closes #N» chiude l'issue all'unione solo se sta nella descrizione della pull request, a inizio riga (job
+`unisci`): nei piani, nei documenti e nei messaggi dei commit non chiude niente.
 
 ## Lavoro in parallelo
 - Un agente per area di file, ognuno nella sua worktree; mai due sugli stessi file. Il brief dice quali file può toccare e

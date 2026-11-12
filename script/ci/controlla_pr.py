@@ -1,9 +1,10 @@
-"""Controlli della PR che prima si facevano a occhio: descrizione, revisione registrata, novità solo della PR, test che
-leggono una novità per nome. Bloccanti: se uno trova un problema il job «ambito» è rosso e «unisci» non parte.
+"""Controlli della PR che prima si facevano a occhio: base `main`, descrizione, revisione registrata, novità solo della PR,
+test che leggono una novità per nome. Bloccanti: se uno trova un problema il job «ambito» è rosso e «unisci» non parte.
 
 Uso (job «ambito» di test.yml):  git diff --name-status HEAD^1 HEAD | python script/ci/controlla_pr.py [cartella dei test]
-con le variabili d'ambiente AUTORE (login di chi ha aperto la PR), CORPO (descrizione della PR) e BOZZA («true» se è in
-bozza). Il testo della PR arriva solo come variabile d'ambiente: non passa mai dentro un comando.
+con le variabili d'ambiente AUTORE (login di chi ha aperto la PR), CORPO (descrizione della PR), BOZZA («true» se è in
+bozza) e BASE (il ramo verso cui va la PR). Il testo della PR arriva solo come variabile d'ambiente: non passa mai dentro un
+comando.
 Esce con 0 se non ci sono problemi (gli avvisi non bloccano), con 1 se ce n'è almeno uno.
 
 Funzioni pure, da importare anche altrove (`script/squadra/pr_pronta.py`) per percorso con importlib. Ognuna restituisce
@@ -27,8 +28,10 @@ una coppia `(problemi, avvisi)`: due liste di frasi in italiano; i problemi bloc
   Limiti noti (non li trova): `os.path.join(…)`, `.joinpath(…)`, la cartella messa prima in una variabile
   (`D = RADICE / "fanta" / "novita.d"` e poi `D / "x.json"`), nomi costruiti con `+`, `%` o `.format`, letture fatte
   da una funzione che riceve il nome come argomento.
-- `controlla(corpo, bozza, autore, file_con_stato, cartella_tests) -> (problemi, avvisi)`: i quattro insieme; le PR dei bot
-  sono esenti anche dalla descrizione.
+- `base(ramo) -> (problemi, avvisi)`: la PR va verso `main` (niente rami impilati, #620). Ramo vuoto (variabile non
+  passata): niente da dire.
+- `controlla(corpo, bozza, autore, file_con_stato, cartella_tests, ramo_base=None) -> (problemi, avvisi)`: tutti insieme;
+  le PR dei bot sono esenti dalla descrizione, non dalla base.
 - `leggi_name_status(testo) -> list[tuple]` e `percorsi(file_con_stato) -> list[str]`: aiuti per l'uscita di git."""
 from __future__ import annotations
 
@@ -251,17 +254,25 @@ def test_per_nome(cartella_tests) -> Esito:
     return problemi, avvisi
 
 
-def controlla(corpo: str | None, bozza: bool, autore: str, file_con_stato, cartella_tests) -> Esito:
+def base(ramo: str | None) -> Esito:
+    if not ramo or ramo == "main":
+        return [], []
+    return [f"la PR va verso «{ramo}»: le PR vanno sempre verso main (niente rami impilati: si unirebbe in quel ramo e non "
+            "uscirebbe mai). Cambia la base con «gh pr edit <N> --base main»"], []
+
+
+def controlla(corpo: str | None, bozza: bool, autore: str, file_con_stato, cartella_tests, ramo_base: str | None = None) -> Esito:
     problemi, avvisi = [], []
-    for p, a in _tutti(corpo, bozza, autore, file_con_stato, cartella_tests).values():
+    for p, a in _tutti(corpo, bozza, autore, file_con_stato, cartella_tests, ramo_base).values():
         problemi += p
         avvisi += a
     return problemi, avvisi
 
 
-def _tutti(corpo, bozza, autore, file_con_stato, cartella_tests) -> dict[str, Esito]:
+def _tutti(corpo, bozza, autore, file_con_stato, cartella_tests, ramo_base=None) -> dict[str, Esito]:
     file_con_stato = list(file_con_stato)
     return {
+        "Base della PR": base(ramo_base),
         "Descrizione della PR": ([], []) if _bot(autore) else descrizione(corpo),
         "Revisione": revisione(corpo, bozza, autore, percorsi(file_con_stato)),
         "Novità": novita(file_con_stato),
@@ -275,8 +286,9 @@ def _una_riga(testo: str) -> str:
     return " ".join(str(testo).split())
 
 
-def main(autore: str, corpo: str, bozza: str, name_status: str, cartella_tests) -> int:
-    esiti = _tutti(corpo, (bozza or "").strip().lower() == "true", autore, leggi_name_status(name_status), cartella_tests)
+def main(autore: str, corpo: str, bozza: str, name_status: str, cartella_tests, base: str = "") -> int:
+    esiti = _tutti(corpo, (bozza or "").strip().lower() == "true", autore, leggi_name_status(name_status), cartella_tests,
+                   (base or "").strip())
     totale = 0
     for titolo, (problemi, avvisi) in esiti.items():
         for p in problemi:
@@ -295,4 +307,4 @@ def main(autore: str, corpo: str, bozza: str, name_status: str, cartella_tests) 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main(os.environ.get("AUTORE", ""), os.environ.get("CORPO", ""), os.environ.get("BOZZA", ""),
-                  sys.stdin.read(), sys.argv[1] if len(sys.argv) > 1 else "tests"))
+                  sys.stdin.read(), sys.argv[1] if len(sys.argv) > 1 else "tests", os.environ.get("BASE", "")))
