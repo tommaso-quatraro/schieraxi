@@ -51,6 +51,30 @@ def test_avversari_numero_fisso_per_ruolo_e_fantamedia_tirata(finto):
     assert verifica._fantamedia(d, S2, 2, Regole()).to_dict() == {4: 5.0, 5: 6.0, 20: 7.0}
 
 
+def test_gli_avversari_non_vedono_i_voti_della_giornata_stessa(finto):
+    """La giornata da prevedere non è fra i dati dell'avversario: i suoi voti sono la risposta. Con «fino alla giornata
+    compresa» il 6 (mai visto prima) avrebbe una fantamedia e il ruolo dei centrocampisti un voto in più."""
+    d = _dati([_voto(S2, 1, 4, 6.0), _voto(S2, 2, 4, 10.0), _voto(S2, 2, 6, 9.0), _voto(S2, 2, 12, 9.0)])
+    tirata, ruolo = verifica.avversari(d, S2, 2, Regole())
+    assert ruolo == {"D": 6.0} and list(tirata.index) == [4] and tirata[4] == pytest.approx(6.0)
+
+
+def test_la_formazione_da_fantamedia_si_sceglie_con_la_fantamedia_tirata(finto, monkeypatch):
+    """Sulle rose della lega la formazione «da fantamedia» (l'avversario dei punti) si sceglie con la fantamedia tirata verso il
+    ruolo, chi non ha voti con la media del ruolo: non con la fantamedia della sola stagione (6 a chi non ha voti)."""
+    voti = [_voto(S1, g, i, 4.0 + (i % 5)) for g in range(1, 7) for i in range(1, 26) if i % 4]     # chi ha l'id multiplo di 4 mai
+    voti += [_voto(S2, 1, i, 9.0 - (i % 5)) for i in range(1, 26) if i % 4]                          # in questa stagione al contrario
+    voti += [_voto(S2, 2, i, 6.0) for i in range(1, 26)]
+    d = _dati(voti)
+    scelte, vera = [], fz.migliore
+    monkeypatch.setattr(fz, "migliore", lambda rosa, *a, **k: scelte.append({g.id: g.mu for g in rosa}) or vera(rosa, *a, **k))
+    verifica.verifica_giornata(d, S2, 2, Regole(), Parametri(), rose=[list(range(1, 26))], simulazioni=20)
+    tirata, ruolo = verifica.avversari(d, S2, 2, Regole())
+    attese = {i: float(tirata[i]) if i in tirata.index else ruolo[RUOLI[i - 1]] for i in range(1, 26)}
+    assert len(scelte) == 2 and scelte[1] == pytest.approx(attese)                   # la seconda scelta è quella «da fantamedia»
+    assert scelte[1] != pytest.approx({i: verifica._fantamedia(d, S2, 2, Regole()).get(i, 6.0) for i in range(1, 26)})
+
+
 def test_verifica_misura_il_modello_contro_gli_avversari_onesti(finto):
     voti = [_voto(S1, g, i, 6.0 + (i % 3) * 0.5) for g in range(1, 7) for i in range(1, 26)]
     voti += [_voto(S2, g, i, 6.0 + (i % 3) * 0.5) for g in range(1, 3) for i in range(1, 26)]
@@ -135,6 +159,23 @@ def test_nella_verifica_il_massimo_non_sta_sotto_la_consigliata(finto):
     voti = [_voto(S2, g, i, 6.0 + (i % 4) * 0.5) for g in (1, 2) for i in range(1, 26)]
     e = verifica.verifica_giornata(_dati(voti), S2, 2, r, Parametri(), rose=[list(range(1, 26))], simulazioni=30)
     assert e.formazioni["perfetta"] >= max(e.formazioni["modello"], e.formazioni["fantamedia"])
+
+
+def test_con_il_voto_d_ufficio_il_massimo_sale_alla_formazione_con_i_buchi(finto):
+    """Il caso in cui il conto del massimo (solo chi ha preso voto) sta davvero sotto una formazione: voto d'ufficio 6 a chi non
+    ha voto né sostituto, niente cambi, e gli undici con il voto hanno preso tutti 3. Le formazioni scelte prima (fantavoto atteso
+    più alto, id alti) hanno molti buchi e fanno più di 33: il massimo mostrato è il loro, sulle rose della lega e su quelle a sorte."""
+    r = imposta(Regole(), "panchina.max_sostituzioni", "0")
+    r.voto_senza_sostituto = 6.0
+    con_voto = [1, 4, 5, 6, 7, 12, 13, 14, 15, 20, 21]                                # un 4-4-2 con voto, gli id bassi
+    voti = [_voto(S2, 1, i, 6.0) for i in range(1, 26)] + [_voto(S2, 2, i, 3.0) for i in con_voto]
+    e = verifica.verifica_giornata(_dati(voti), S2, 2, r, Parametri(), rose=[list(range(1, 26))], simulazioni=30,
+                                   sintetiche=2, sorte=True)
+    assert verifica._perfetta(_rosa(), {i: 3.0 for i in con_voto}, r) == 33.0
+    f = e.formazioni
+    assert max(f["modello"], f["fantamedia"]) > 33.0
+    assert f["perfetta"] == pytest.approx(max(f["modello"], f["fantamedia"]))
+    assert e.sorte and all(massimo == pytest.approx(max(reale, semplice)) and massimo > 33.0 for reale, semplice, massimo in e.sorte)
 
 
 # ---------------------------------------------------------------- punti su rose a sorte
