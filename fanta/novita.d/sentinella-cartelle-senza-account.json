@@ -1,0 +1,11 @@
+{
+  "titolo": "Server: il controllo di ogni ora trova i dati rimasti di un account eliminato",
+  "voci": [
+    "Server: il controllo automatico di ogni ora adesso si accorge se sul server sono rimasti dati di un account eliminato e lo segnala a chi gestisce l'app, in «Stato dei dati». Per chi usa l'app non cambia niente."
+  ],
+  "tecnico": [
+    "Issue #537 (da #516). sentinella.INVARIANTI ha cartella_senza_account, esito avviso: sono 22 invarianti. A ogni giro, con gli account accesi, sentinella.controlla_cartelle conta le cartelle utenti/<numero> senza account con contesto.cartelle_senza_account, sul database degli account aperto in sola lettura. Una sola rottura comune a tutti (senza utente né giornata) e nel dettaglio solo quante sono: quali, lo dice python -m fanta cartelle-senza-account. Account spenti, o database degli account che non c'è ancora: niente da contare.",
+    "Come le altre invarianti: riga sentinella_cartella_senza_account nei controlli di GET /api/stato-dati, avviso sul canale del proprietario dopo 2 giri di fila, nome in rotte nella storia dei giri. Un allarme confermato rende quindi rossa la «giornata senza errori» finché le cartelle non si tolgono (python -m fanta cartelle-senza-account --esegui).",
+    "Se il conto non riesce (cartella degli utenti o database degli account che non si leggono) il giro prosegue e segna risposta_in_errore con il tipo dell'errore, come per gli altri controlli che non riescono. Test: tests/test_sentinella_cartelle.py."
+  ]
+}
