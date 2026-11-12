@@ -203,7 +203,8 @@ def _numero(v) -> float:
 
 def rigorista(x) -> bool:
     """Vero se, quando gioca, calcia almeno QUOTA_RIGORISTA dei rigori della sua squadra (`quota_rigori` della previsione `x`) ed
-    è il primo della squadra fra chi può giocare (`primo_rigorista`; senza la colonna vale la sola quota): uno per squadra.
+    è il primo della squadra, cioè quello che con più probabilità calcia il prossimo rigore contando anche quanto gioca
+    (`primo_rigorista`, vedi `modello._segna_primo_rigorista`; senza la colonna vale la sola quota): uno per squadra.
     È la regola unica di «rigorista»: il motivo della scheda (`motivi`) e l'elenco `rigoristi` di `/api/widget` passano di qui.
     Chi è infortunato o squalificato, o ha la partita rinviata senza voto, non lo è: la scheda non gli dice niente sui rigori."""
     if x.get("stato") in FUORI or _rinvio(x) in ("senza_voto", "voto_ufficio"):

@@ -649,19 +649,23 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
 
 
 def _segna_primo_rigorista(righe: list) -> None:
-    """Mette in ogni riga `primo_rigorista`: vero per il giocatore con la quota dei rigori più alta della sua squadra fra chi non
-    è infortunato né squalificato (a pari quota il primo dell'elenco), falso per gli altri. Serve a «rigorista» (`consigli.rigorista`),
-    che è uno solo per squadra. La quota è «se gioca lui», con i compagni pesati per le loro presenze: fra chi è in campo la somma
-    supera 1 nel 2-5% delle squadre-partita e due compagni possono averla tutti e due sopra la metà. Normalizzarla dentro la
-    squadra toglie rigori attesi (da 0,51 e 0,48 dei veri a 0,43 e 0,39, misura del 12/11/2026): la quota resta com'è."""
-    primi: dict[str, dict] = {}
+    """Mette in ogni riga `primo_rigorista`: vero per il giocatore che nella sua squadra ha più probabilità di calciare il
+    prossimo rigore, falso per gli altri. Conta «gioca» (`p_voto`) per la quota dei rigori se gioca (`quota_rigori`), fra chi non
+    è infortunato né squalificato; a pari merito il primo dell'elenco, e chi ha il prodotto a zero non lo è. Serve a «rigorista»
+    (`consigli.rigorista`), che è uno solo per squadra.
+    La sola quota non basta (#638): è «se gioca lui», con i compagni pesati per le loro presenze, quindi chi gioca poco può
+    averla più alta del titolare che ha calciato l'ultimo rigore, e la frase andava a lui. Fra chi è in campo la somma delle
+    quote supera 1 nel 2-5% delle squadre-partita e due compagni possono averla tutti e due sopra la metà. Normalizzarla dentro
+    la squadra toglie rigori attesi (da 0,51 e 0,48 dei veri a 0,43 e 0,39, misura del 12/11/2026): la quota resta com'è."""
+    primi: dict[str, tuple[float, dict]] = {}
     for prima, dopo, _ in righe:
         dopo["primo_rigorista"] = False
-        if dopo["stato"] in ("infortunato", "squalificato") or not dopo["quota_rigori"] > 0:
+        if dopo["stato"] in ("infortunato", "squalificato"):
             continue
-        if prima["squadra"] not in primi or dopo["quota_rigori"] > primi[prima["squadra"]]["quota_rigori"]:
-            primi[prima["squadra"]] = dopo
-    for dopo in primi.values():
+        calcia = prima["p_voto"] * dopo["quota_rigori"]
+        if calcia > 0 and (prima["squadra"] not in primi or calcia > primi[prima["squadra"]][0]):
+            primi[prima["squadra"]] = (calcia, dopo)
+    for _, dopo in primi.values():
         dopo["primo_rigorista"] = True
 
 
