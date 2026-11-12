@@ -14,5 +14,8 @@ extension Catalogo {
 
         /// `comune.importa_spiega`
         static let importaSpiega = "Importa le rose della tua lega: poi qui trovi i consigli per la tua squadra. Ci vuole un minuto."
+
+        /// `comune.carico`
+        static let carico = "Carico…"
     }
 }

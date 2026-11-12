@@ -1,6 +1,8 @@
-# «Perché questo numero» (PercheNumero in Domain/FantavotoAtteso.swift, PercheNumeroView in Support).
-# Poi: python script/testi.py --scrivi
+# «Perché questo numero» (PercheNumero in Domain/FantavotoAtteso.swift, BloccoPercheNumero in Support, dentro la scheda del
+# giocatore); «Apri la scheda» nel menu contestuale delle righe (RigaGiocatore). Poi: python script/testi.py --scrivi
 perche.titolo
+# `perche.definizione` non la mostra più nessuno (né la web né l'iPhone, #616): resta elencata solo perché toglierla qui la
+# lascerebbe morta nel catalogo comune, che si cambia con una pull request che tocca fanta/ (con la sua voce di novità).
 perche.definizione
 perche.rispetto
 perche.nessuno

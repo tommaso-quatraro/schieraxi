@@ -426,7 +426,17 @@ struct OpzioneModulo: Decodable, Identifiable {
     let intervallo: IntervalloPunti?
     /// Il perché delle scelte che sembrano storte, una riga per titolare (#356). Facoltativo (server vecchio).
     let percheScelta: [PercheScelta]?
+    /// I titolari incerti con la loro riserva sicura (dal 2/11/2026): il ripiego di «Perché è titolare» nella scheda quando
+    /// `perche_scelta` manca. Facoltativo (server vecchio).
+    let incerti: [Incerto]?
     var id: String { modulo }
+}
+
+/// Un titolare incerto e la riserva dello stesso ruolo che gioca quasi di sicuro (`incerti` del modulo, `consigli.incerti` del
+/// server). `riserva` è nil se in panchina non ce n'è una: allora non si dice niente.
+struct Incerto: Decodable {
+    let titolare: Int?
+    let riserva: Int?
 }
 
 /// Una riga del perché della scelta (`perche_scelta` del modulo, `fanta/perche_scelta.py`): un titolare con meno punti attesi di

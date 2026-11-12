@@ -10,4 +10,10 @@ enum TestoACapo {
             .map { $0.replacingOccurrences(of: " ", with: "\u{00A0}") }
             .joined(separator: separatore)
     }
+
+    /// Frasi più lunghe («Attaccante · Inter», «In casa contro Como · sab 31 20:45»): vanno a capo anche dentro i pezzi, ma il
+    /// «·» resta in fondo alla riga prima, come `pezziRiga` della web (lo spazio davanti non va a capo): mai «· Inter» a capo.
+    static func puntoInFondo(_ testo: String) -> String {
+        testo.replacingOccurrences(of: separatore, with: "\u{00A0}· ")
+    }
 }

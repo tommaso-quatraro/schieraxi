@@ -171,9 +171,10 @@ final class Navigazione: ObservableObject {
         ["png", "jpg", "jpeg", "heic", "heif", "webp"].contains(url.pathExtension.lowercased())
     }
 
-    func apriScheda(_ id: Int) {
+    /// `contesto`: la scheda si apre dalla Formazione, con la previsione già letta e «Sostituisci» (come la web).
+    func apriScheda(_ id: Int, contesto: ContestoScheda? = nil) {
         Suggerimenti.schedaAperta()
-        scheda = IdGiocatore(id: id)
+        scheda = IdGiocatore(id: id, contesto: contesto)
     }
 
     /// Apre una sezione o la scheda di un giocatore (da Spotlight o da un indirizzo schieraxi://).
@@ -254,11 +255,15 @@ struct RadiceView: View {
             ImmagineRicevutaView(ricevuta: r, server: modello.server)
                 .tint(Color.verde)
         }
-        .sheet(item: $nav.scheda) { g in
-            GiocatoreSheet(id: g.id, server: modello.server)
-                .navigationTransition(.zoom(sourceID: g.id, in: zoom))
-                .presentationDragIndicator(.visible)
-                .tint(Color.verde)
+        // «Sostituisci» nella scheda chiude il foglio: la scelta del sostituto si apre quando è sparito (un foglio alla volta)
+        .sheet(item: $nav.scheda, onDismiss: { modello.formazione.apriSostituzioneInAttesa() }) { g in
+            GiocatoreSheet(id: g.id, server: modello.server, contesto: g.contesto) {
+                modello.formazione.chiediSostituzione(g.id)
+                nav.scheda = nil
+            }
+            .navigationTransition(.zoom(sourceID: g.id, in: zoom))
+            .presentationDragIndicator(.visible)
+            .tint(Color.verde)
         }
         .onChange(of: nav.fileDaImportare) { _, nuovo in
             if nuovo != nil { vaiAllImportazione() } else { controllaFineArrivo() }
@@ -306,7 +311,10 @@ struct RadiceView: View {
     private func vista(_ s: Sezione) -> some View {
         switch s {
         case .oggi: OggiView(vm: modello.oggi)
-        case .formazione: FormazioneView(vm: modello.formazione)
+        case .formazione:
+            // dalla Formazione la scheda si apre subito con la previsione già letta, il perché del titolare e «Sostituisci»
+            FormazioneView(vm: modello.formazione)
+                .environment(\.apriGiocatore) { id in nav.apriScheda(id, contesto: modello.formazione.contestoScheda(id)) }
         case .squadra: LegaView(vm: modello.lega, ambito: .squadra)
         case .altro: LegaView(vm: modello.lega, ambito: .altro)
         }

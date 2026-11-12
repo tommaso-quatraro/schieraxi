@@ -48,7 +48,7 @@
     {
       "titolo": "Pedina sul campo",
       "precisazione": "(Formazione)",
-      "testo": "sulla web la pedina è il numero nel disco, senza volto: un disco bianco da 44 px con il fantavoto atteso, sotto il cognome, «gioca 85%» (o lo stato a partita iniziata, «Rinviata») e «vs NAP» / «@ NAP» con la lineetta del colore sociale; sotto il 70% un anello arancio attorno al disco e «⚠ gioca 57%» nella pillola arancio. Sull'iPhone la pedina ha il volto, con il fantavoto nella pillola scura e la sigla nei colori sociali. Il contenuto è uguale: fantavoto, cognome, «gioca N%» o stato, avversario, e la frase per i lettori di schermo.",
+      "testo": "sulla web la pedina è il numero nel disco, senza volto: un disco bianco da 44 px con il fantavoto atteso, sotto il cognome, «gioca 85%» (o lo stato a partita iniziata, «Rinviata») e «vs NAP» / «@ NAP» con la lineetta del colore sociale; dal 12/11/2026 (#616) «gioca N%» solo sotto l'80%, arancio fra 50 e 79 e rosso sotto 50, con l'anello dello stesso colore attorno al disco. Sull'iPhone la pedina ha il volto, con il fantavoto nella pillola scura e la sigla nei colori sociali; «gioca N%» c'è per tutti (fino alla Formazione unica, #673 passo 1b), sotto l'80% nella pillola arancio con ⚠ e sotto il 50% in quella rossa, con la stessa soglia della web (`SogliaGioca`). Il contenuto è uguale: fantavoto, cognome, «gioca N%» o stato, avversario, e la frase per i lettori di schermo.",
       "motivo": "scelta 2 del proprietario nella spec della grafica B (5/11/2026, §8.10): sulla web il numero è la pedina e i volti stanno negli elenchi e nella scheda. La legenda della web sta sotto il campo e si riapre con «Cosa vuol dire» (sull'iPhone la prima volta è una scheda sopra il campo, poi «Cosa vuol dire» sotto); testi uguali."
     },
     {
@@ -70,9 +70,9 @@
       "motivo": "grafica B della web (spec del 5/11/2026, §5 C7 e C10), da una voce all'altra con un clic. Nomi e ordine delle voci sono quelli di `VOCI_LEGA`, uguali sui due lati."
     },
     {
-      "titolo": "«gioca N%» nelle righe sotto il 70%",
-      "testo": "sulla web arancio e in grassetto (accanto c'è l'etichetta a parole), sull'iPhone grigio come gli altri.",
-      "motivo": "grafica B della web (§8.4). Parole e numero uguali."
+      "titolo": "«gioca N%» nelle righe",
+      "testo": "sulla web solo sotto l'80%, arancio fra 50 e 79 e rosso sotto 50, in grassetto (accanto c'è l'etichetta a parole); sull'iPhone c'è per tutti, grigio dall'80% e sotto con gli stessi colori e la stessa soglia (`SogliaGioca`, anche fra i sostituti), non in grassetto.",
+      "motivo": "grafica B della web (§8.4); dall'80% in su l'iPhone lo toglie con la Formazione unica (#673, passo 1b). Parole, numero, colori e soglia uguali."
     },
     {
       "titolo": "Pagina strettissima",

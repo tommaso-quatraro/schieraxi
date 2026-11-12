@@ -5,3 +5,6 @@ comune.riprova
 # Lega senza rose (ConfiguraLegaVista): titolo e frase della carta della web
 comune.prima_rose
 comune.importa_spiega
+
+# Scheda del giocatore: mentre arrivano gli ultimi voti e «Tutti i numeri» (SchedaGiocatoreView)
+comune.carico

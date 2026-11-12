@@ -42,7 +42,7 @@ struct OggiDalCatalogoTests {
             .filter { $0.hasSuffix(".swift") }
             .sorted()
             .map { "Sources/Presentation/Oggi/\($0)" }
-        return oggi + ["Sources/Support/Design/Stati.swift", "Sources/Support/PercheNumeroView.swift"]
+        return oggi + ["Sources/Support/Design/Stati.swift", "Sources/Presentation/Mercato/SchedaGiocatoreView.swift"]
     }
 
     @Test("Nei file di Oggi e nei pulsanti comuni nessun testo del catalogo è scritto a mano")
@@ -96,7 +96,7 @@ struct OggiDalCatalogoTests {
         ]),
         ("Sources/Presentation/Oggi/DaFare.swift", ["Catalogo.Lega.vediRosa", "Catalogo.Df.apri"]),
         ("Sources/Support/Design/Stati.swift", ["Catalogo.Comune.riprova", "Catalogo.Dieta.tornaOggi"]),
-        ("Sources/Support/PercheNumeroView.swift", ["Catalogo.Shell.chiudi"]),
+        ("Sources/Presentation/Mercato/SchedaGiocatoreView.swift", ["Catalogo.Shell.chiudi"]),
     ])
     func vistaUsaIlCatalogo(percorso: String, costanti: [String]) throws {
         let codice = try SorgenteDiOggi.codice(percorso)

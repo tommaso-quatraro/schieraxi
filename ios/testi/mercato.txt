@@ -10,3 +10,55 @@ mercato.annulla
 
 # Righe dei giocatori e della rosa a partita finita: «fantavoto» sotto il voto preso (RigaGiocatore, RigaRosa)
 mercato.fantavoto
+
+# Scheda del giocatore (SchedaGiocatoreView, CifreScheda, TuttiINumeri, Domain/LetturaScheda): le parole di `htmlScheda` e
+# `riempiScheda` della web
+mercato.carico_scheda
+mercato.fantavoto_atteso
+mercato.gioca
+mercato.nessuna_previsione_per
+mercato.nessuna_presenza_questa
+mercato.sv
+mercato.svincolato
+mercato.quot
+mercato.gol_attesi
+mercato.porta_inviolata
+mercato.gol_subiti_attesi
+mercato.giallo
+mercato.segna
+mercato.assist
+mercato.rosso
+mercato.prossime_partite
+mercato.colori_verde_partita
+mercato.forma
+mercato.andamento
+mercato.pochi_dati
+mercato.in_crescita
+mercato.in_calo
+mercato.stabile
+mercato.voto_fantavoto_per
+mercato.rende_sopra_sotto
+mercato.punti_partita
+mercato.rendimento_riga
+mercato.rend_cala
+mercato.rend_sblocca
+mercato.rend_linea
+mercato.stagione
+mercato.presenze
+mercato.media_voto
+mercato.fantamedia
+mercato.gol_rig
+mercato.gialli_rossi
+mercato.gol_subiti
+mercato.rigori_parati
+mercato.statistiche_avanzate
+mercato.gol_attesi_tot
+mercato.assist_attesi_tot
+mercato.minuti
+mercato.xg_90
+mercato.xa_90
+mercato.tiri_90
+mercato.rigori_calciati
+mercato.passaggi_chiave
+mercato.punizioni
+mercato.stagione_prec

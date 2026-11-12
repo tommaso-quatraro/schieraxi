@@ -22,9 +22,6 @@ struct RighePartitaIniziataTests {
         try TestiWeb().italiano("giocatore.gioca").replacingOccurrences(of: "{p}", with: "72%")
     }
 
-    /// Un motivo di «Perché questo numero», così il numero potrebbe essere un pulsante a sé.
-    private static let perche = #""perche_numero": [{"chiave": "partita", "testo": "partita facile in casa", "effetto": 0.3}]"#
-
     // MARK: prima della partita, e partita rinviata: fantavoto atteso e «gioca N%»
 
     @Test("Prima della partita e con la partita rinviata: fantavoto atteso e «gioca 72%», come la web", arguments: [
@@ -85,17 +82,5 @@ struct RighePartitaIniziataTests {
     func voceInCorso() throws {
         let g = try giocatore(#""stato_partita": "in_corso", "etichetta": {"codice": "in_corso", "testo": "Partita in corso", "tono": "positivo"}"#)
         #expect(RigaGiocatore.voce(g) == "Paolo Esempio, centrocampista, Genoa, in casa contro Como, partita in corso")
-    }
-
-    // MARK: «Perché questo numero»
-
-    @Test("A partita iniziata il numero non apre «Perché questo numero»: spiega il fantavoto atteso, che non si vede più")
-    func perche() throws {
-        let prima = try giocatore(Self.perche)
-        #expect(RigaGiocatore.numeroConPerche(prima))
-        let finita = try giocatore(#""stato_partita": "fatto", "fv_preso": 3.5, \#(Self.perche)"#)
-        #expect(!RigaGiocatore.numeroConPerche(finita))
-        let inCorso = try giocatore(#""stato_partita": "in_corso", \#(Self.perche)"#)
-        #expect(!RigaGiocatore.numeroConPerche(inCorso))
     }
 }

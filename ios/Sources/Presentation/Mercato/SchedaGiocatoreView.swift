@@ -1,15 +1,26 @@
 import SwiftUI
 
-/// Scheda di un giocatore (sheet): previsione, prossime partite, forma e grafico dei voti, statistiche.
+/// La scheda di un giocatore (foglio), una sola come la web (#616, `htmlScheda` di app.js). In alto ciò che serve per decidere:
+/// volto, nome, «Ruolo · club», la partita, il fantavoto atteso «se gioca» con «gioca N%» e lo stato a parole, la nota della
+/// fonte, «Perché è titolare», «Perché questo numero», gli ultimi voti e, per un titolare della tua formazione ancora aperta,
+/// «Sostituisci». Il resto sta in «Tutti i numeri», chiuso. Dalla Formazione si apre subito con la previsione già letta
+/// (`ContestoScheda`); gli ultimi voti e «Tutti i numeri» arrivano con `/api/giocatore`.
 struct GiocatoreSheet: View {
     let id: Int
     let server: any ServerClient
+    var contesto: ContestoScheda? = nil
+    /// «Sostituisci»: chi apre il foglio lo chiude e poi apre la scelta del sostituto.
+    var sostituisci: (() -> Void)? = nil
     @Environment(\.dismiss) private var chiudi
 
     var body: some View {
         NavigationStack {
-            GiocatoreCorpo(id: id, server: server)
-                .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } } }
+            GiocatoreCorpo(id: id, server: server, contesto: contesto, sostituisci: sostituisci)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(Catalogo.Shell.chiudi) { chiudi() }.keyboardShortcut(.cancelAction)
+                    }
+                }
                 .destinazioniGiocatore(server: server)
         }
     }
@@ -29,11 +40,23 @@ extension View {
 
 struct GiocatoreCorpo: View {
     let id: Int
+    let contesto: ContestoScheda?
+    let sostituisci: (() -> Void)?
     @StateObject private var vm: SchedaGiocatoreViewModel
+    /// «Tutti i numeri» parte chiuso; solo nella foto `giocatore-fondo` (demo con `-DEMO_FONDO`) è aperto, per vederlo.
+    @State private var numeriAperti = Demo.attivo && Demo.argomento("DEMO_FONDO") != nil
 
-    init(id: Int, server: any ServerClient) {
+    init(id: Int, server: any ServerClient, contesto: ContestoScheda? = nil, sostituisci: (() -> Void)? = nil) {
         self.id = id
+        self.contesto = contesto
+        self.sostituisci = sostituisci
         _vm = StateObject(wrappedValue: SchedaGiocatoreViewModel(id: id, server: server))
+    }
+
+    /// Intestazione e previsione: dalla Formazione subito, altrimenti dalla scheda del server.
+    private var testa: TestaScheda? {
+        if let contesto { return TestaScheda(previsione: contesto.previsione) }
+        return vm.caricatore.dato.map { TestaScheda(scheda: $0) }
     }
 
     var body: some View {
@@ -41,22 +64,23 @@ struct GiocatoreCorpo: View {
             Sfondo()
             ScrollView {
                 Colonne(spazio: 14) {
-                    if let s = vm.caricatore.dato {
-                        intestazione(s).ingresso(0)
-                        if let p = s.previsione {
-                            previsione(p, ruolo: s.calciatore.ruolo, squadra: s.calciatore.squadra).ingresso(1)
-                            perche(p)
-                        } else {
-                            senzaPrevisione
+                    if let t = testa {
+                        cartaTesta(t)
+                        if let perche = contesto?.perche {
+                            Carta(Catalogo.Formazione.percheTitolare) {
+                                Text(perche).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                            }
                         }
-                        prossime.ingresso(2)
-                        forma(s).ingresso(3)
-                        rendimento(s)
-                        statistiche(s)
+                        if let p = t.previsione, let motivi = LetturaScheda.perche(p) {
+                            Carta(PercheNumero.titolo) { BloccoPercheNumero(perche: motivi) }
+                        }
+                        cartaUltimiVoti
+                        azioneFormazione
+                        cartaTuttiINumeri
                     } else if let e = vm.caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await vm.carica() } }
                     } else {
-                        Scheletro(schede: 3, righe: 2, testo: "Apro la scheda…")
+                        Scheletro(schede: 3, righe: 2, testo: Catalogo.Mercato.caricoScheda)
                     }
                 }
                 .padding(16)
@@ -67,258 +91,141 @@ struct GiocatoreCorpo: View {
             .avvisoDatiSalvati(vm.caricatore)
             .bordiMorbidi()
         }
-        // Il nome si legge una volta sola, grande, nell'intestazione (prima c'era anche nella barra in alto).
+        // Il nome si legge una volta sola, grande, nell'intestazione.
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task { await vm.carica() }
     }
 
-    // MARK: intestazione e previsione
+    // MARK: intestazione e cifre
 
-    private func intestazione(_ s: SchedaGiocatore) -> some View {
-        let c = s.calciatore
-        let p = s.previsione
-        let squadra = c.squadraSlug ?? p?.squadra
-        let tinta = Color(esadecimale: ColoriSquadra.esadecimali(squadra).0)
-        return VStack(spacing: 14) {
-            FilaAdattiva(spazio: 16) {
-                AvatarGiocatore(id: c.id, squadra: squadra, dimensione: 96, nome: c.nome, ruolo: c.ruolo)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(c.nome).font(.title.bold()).accessibilityAddTraits(.isHeader)
-                    ruoloESquadra(ruolo: c.ruolo, squadra: c.squadra)
-                    Text("Quotazione \(Formato.intero(c.quotazione))").font(.caption).foregroundStyle(Color.testoSecondario)
+    private func cartaTesta(_ t: TestaScheda) -> some View {
+        Carta {
+            FilaAdattiva(spazio: 14) {
+                AvatarGiocatore(id: t.id, squadra: t.slug, dimensione: 84, nome: t.nome, ruolo: t.ruolo)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(t.nome).font(.title2.bold())
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    ruoloEClub(t)
+                    if let p = t.previsione, let partita = LetturaScheda.partita(p, adesso: Orologio.adesso()) {
+                        Text(TestoACapo.puntoInFondo(partita)).font(.subheadline).foregroundStyle(Color.testoSecondario)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 6) { etichette(s, p) }
-                VStack(alignment: .leading, spacing: 6) { etichette(s, p) }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(LinearGradient(colors: [tinta.opacity(0.42), tinta.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .background(Color.sfondoScheda, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-        }
-    }
-
-    /// «Attaccante · Genoa» su una riga; se non ci sta (testo grande, nomi lunghi) la squadra va sotto, intera e senza «·»:
-    /// prima andava a capo da solo «· Genoa».
-    private func ruoloESquadra(ruolo: String, squadra: String?) -> some View {
-        let ruoloTesto = nomeRuolo(ruolo).primaMaiuscola
-        let squadraTesto = (squadra ?? "").capitalized
-        let badge = BadgeRuolo(ruolo: ruolo, piccolo: true)
-        return ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) {
-                badge
-                Text(squadraTesto.isEmpty ? ruoloTesto : "\(ruoloTesto) · \(squadraTesto)").fixedSize()
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) { badge; Text(ruoloTesto) }
-                if !squadraTesto.isEmpty { Text(squadraTesto) }
-            }
-        }
-        .font(.subheadline).foregroundStyle(Color.testoSecondario)
-    }
-
-    @ViewBuilder
-    private func etichette(_ s: SchedaGiocatore, _ p: Giocatore?) -> some View {
-        Capsula(testo: s.proprietario ?? "Svincolato", colore: s.proprietario == nil ? .orange : Color.verde)
-        if let p {
-            ForEach(Array(p.etichette.prefix(3).enumerated()), id: \.offset) { _, e in
-                Capsula(testo: e.testo, colore: e.tono.colore)   // «Probabile titolare» verde come la web (#242)
-            }
-        }
-    }
-
-    private var senzaPrevisione: some View {
-        Carta {
-            Label("Nessuna previsione per la prossima giornata.", systemImage: "info.circle").font(.subheadline).foregroundStyle(Color.testoSecondario)
-        }
-    }
-
-    /// «Giornata 8 · 11ª di Serie A · in trasferta contro Milan · sab 31 20:45»: la giornata con i due numeri, come la web (#299).
-    /// Con un server che non manda `giornata_lega`: «11ª giornata di Serie A · …». `voce`: la stessa frase per VoiceOver, con le
-    /// virgole al posto di «·».
-    static func descrizionePartita(_ p: Giocatore, voce: Bool = false) -> String {
-        let nome = p.giornata.map { NomeGiornata(serieA: $0, lega: p.giornataLega) }
-        var pezzi = [nome.map { voce ? $0.voce : $0.intero }].compactMap { $0 }
-        pezzi.append((p.inCasa == true ? "in casa" : "in trasferta") + " contro " + (p.avversario ?? "").capitalized)
-        // «oggi», «ieri» dall'ora dell'app (`Orologio`), come Oggi e le righe: nella demo in corso il momento della demo (#424)
-        if let data = p.dataPartita { pezzi.append(Quando.leggibile(data, adesso: Orologio.adesso())) }
-        return pezzi.joined(separator: voce ? ", " : " · ")
-    }
-
-    private func previsione(_ p: Giocatore, ruolo: String, squadra: String?) -> some View {
-        Carta("Prossima partita", simbolo: "soccerball") {
-            Text(Self.descrizionePartita(p)).font(.subheadline).foregroundStyle(Color.testoSecondario)
-                .accessibilityLabel(Self.descrizionePartita(p, voce: true))
-            NumeroFantavotoScheda(p: p)
-            BarraPercentuale(valore: p.pVoto ?? 0)
-            HStack {
-                PillDifficolta(difficolta: p.difficolta, conPartita: true)
-                Spacer()
-                if let risultato = Self.risultatoAtteso(p) {
-                    Text(risultato).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
-                        .accessibilityLabel(Self.voceRisultatoAtteso(p, squadra: squadra) ?? risultato)
-                }
-            }
-            FilaTessere {
-                if ruolo == "P" {
-                    TesseraDato(valore: "\(Formato.percento(p.portaInviolata))%", etichetta: "porta inviolata")
-                    TesseraDato(valore: Formato.decimali(p.golAvversario), etichetta: "gol subiti attesi")
-                    TesseraDato(valore: "\(Formato.percento(p.pGiallo))%", etichetta: "giallo")
-                } else {
-                    TesseraDato(valore: "\(Formato.percento(p.pGol))%", etichetta: "segna")
-                    TesseraDato(valore: "\(Formato.percento(p.pAssist))%", etichetta: "assist")
-                    TesseraDato(valore: "\(Formato.percento(p.pGiallo))%", etichetta: "giallo")
-                    TesseraDato(valore: "\(Formato.percento(p.pRosso))%", etichetta: "rosso")
-                }
-            }
-        }
-    }
-
-    /// «Risultato atteso 2,1–1,0»: gol attesi della sua squadra, poi quelli dell'avversario (come il web, `mercato.gol_attesi`).
-    /// Senza uno dei due numeri non si mostra.
-    static func risultatoAtteso(_ p: Giocatore) -> String? {
-        guard let a = p.golSquadra, let b = p.golAvversario, a.isFinite, b.isFinite else { return nil }
-        return "Risultato atteso \(Formato.decimali(a))–\(Formato.decimali(b))"
-    }
-
-    /// Per VoiceOver, con i nomi delle squadre: «Risultato atteso: Genoa 2,1, Como 1,0».
-    static func voceRisultatoAtteso(_ p: Giocatore, squadra: String?) -> String? {
-        guard let a = p.golSquadra, let b = p.golAvversario, a.isFinite, b.isFinite else { return nil }
-        let mia = (squadra ?? p.squadra ?? "").capitalized
-        let loro = (p.avversario ?? "").capitalized
-        guard !mia.isEmpty, !loro.isEmpty else { return "Risultato atteso: \(Formato.decimali(a)) a \(Formato.decimali(b))" }
-        return "Risultato atteso: \(mia) \(Formato.decimali(a)), \(loro) \(Formato.decimali(b))"
-    }
-
-    /// «Perché questo numero»: i motivi del fantavoto atteso (solo se il server li manda) e la definizione.
-    @ViewBuilder
-    private func perche(_ p: Giocatore) -> some View {
-        if let motivi = PercheNumero(p) {
-            Carta(PercheNumero.titolo, simbolo: "list.bullet.rectangle") {
-                BloccoPercheNumero(perche: motivi)
-                Text(FantavotoAtteso.definizione)
-                    .font(.caption).foregroundStyle(Color.testoSecondario)
+            Divider().padding(.vertical, 2)
+            CifreScheda(cifre: LetturaScheda.cifre(t.previsione))
+            if let p = t.previsione, let nota = LetturaScheda.nota(p) {
+                Text(nota).font(.footnote).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .ingresso(1)
         }
     }
 
+    /// «Attaccante · Genoa» e, per un diffidato, la pillola arancio accanto (sotto, se non ci sta).
     @ViewBuilder
-    private var prossime: some View {
-        if !vm.prossime.isEmpty {
-            Carta("Prossime partite", simbolo: "calendar") {
-                ProssimePartite(partite: vm.prossime)
-                Text("Verde: partita facile. Rosso: partita dura.").font(.caption).foregroundStyle(Color.testoSecondario)
+    private func ruoloEClub(_ t: TestaScheda) -> some View {
+        let testo = Text(TestoACapo.puntoInFondo(LetturaScheda.ruoloEClub(ruolo: t.ruolo, club: t.club)))
+            .font(.subheadline).foregroundStyle(Color.testoSecondario)
+        if t.previsione?.diffidato == true {
+            let diffidato = PillolaEtichetta(etichetta: Etichetta(testo: Catalogo.Oggi.diffidatoTipo, tono: .attenzione))
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) { testo.fixedSize(); diffidato }
+                VStack(alignment: .leading, spacing: 4) { testo.fixedSize(horizontal: false, vertical: true); diffidato }
             }
+        } else {
+            testo.fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    // MARK: forma, rendimento, statistiche
+    // MARK: ultimi voti, «Sostituisci», tutti i numeri
 
-    @ViewBuilder
-    private func forma(_ s: SchedaGiocatore) -> some View {
-        Carta("Forma", simbolo: "chart.line.uptrend.xyaxis") {
-            if let forma = Forma.calcola(s.voti ?? []) {
-                HStack {
+    /// Le ultime cinque giornate in pallini, come la web; mentre arriva la scheda del server «Carico…», se non arriva il motivo.
+    private var cartaUltimiVoti: some View {
+        Carta(Catalogo.Formazione.ultimiVoti) {
+            if let s = vm.caricatore.dato {
+                if let forma = Forma.calcola(s.voti ?? []) {
                     HStack(spacing: 6) {
-                        ForEach(Array(forma.ultime.enumerated()), id: \.element.id) { i, v in
-                            pallino(v).ingresso(i + 2)
-                        }
+                        ForEach(forma.ultime) { pallino($0) }
                     }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 0) {
-                        Text("Andamento").font(.caption2).foregroundStyle(Color.testoSecondario)
-                        Text("\(forma.andamento.freccia) \(forma.andamento.rawValue)").font(.subheadline.bold())
-                            .foregroundStyle(forma.andamento == .crescita ? Color.verde : forma.andamento == .calo ? Color.malus : .primary)
-                    }
-                    .accessibilityElement(children: .combine)
+                } else {
+                    Text(Catalogo.Mercato.nessunaPresenzaQuesta).font(.subheadline).foregroundStyle(Color.testoSecondario)
                 }
-                GraficoVoti(voti: s.voti ?? [])
             } else {
-                Text("Nessuna presenza in questa stagione.").font(.subheadline).foregroundStyle(Color.testoSecondario)
+                attesa
             }
+        }
+    }
+
+    @ViewBuilder
+    private var attesa: some View {
+        if let e = vm.caricatore.errore {
+            Text(e).font(.footnote).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text(Catalogo.Comune.carico).font(.footnote).foregroundStyle(Color.testoSecondario)
         }
     }
 
     private func pallino(_ v: VotoGiornata) -> some View {
         let colore: Color = v.fv == nil ? Color.testoSecondario : (v.fv ?? 0) >= 7 ? Color.verde : (v.fv ?? 0) >= 6 ? Color.attenzione : Color.malus
-        let etichetta = v.fv == nil ? "senza voto" : "fantavoto " + Formato.decimali(v.fv ?? 0)
-        return Text(v.fv.map { Formato.decimali($0) } ?? "sv")
-            .font(.caption2.bold()).monospacedDigit()
+        let etichetta = v.fv.map { Catalogo.Mercato.fantavoto + " " + Formato.decimali($0) } ?? Catalogo.Mercato.sv
+        return Text(v.fv.map { Formato.decimali($0) } ?? Catalogo.Mercato.sv)
+            .font(.caption.bold()).monospacedDigit()
             .foregroundStyle(Color.testoSuAccento)
-            .frame(minWidth: 34, minHeight: 28)
+            .frame(minWidth: 40, minHeight: 32)
             .background(colore, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .accessibilityLabel("\(TempiLega.serieA(v.giornata)): \(etichetta)")
     }
 
+    /// Per un titolare della tua formazione ancora aperta «Sostituisci»; per uno che gioca un anticipo già cominciato la frase
+    /// della web (`formazione.bloccati`).
     @ViewBuilder
-    private func rendimento(_ s: SchedaGiocatore) -> some View {
-        if let r = s.rendimento, let sovra = r.sovraRendimento {
-            Carta("Rende sopra o sotto le occasioni?", simbolo: "scope") {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(Formato.conSegno(sovra, cifre: 2)).font(.title.bold()).monospacedDigit()
-                        .foregroundStyle(sovra > 0.3 ? Color.verde : sovra < -0.3 ? Color.malus : .primary)
-                    Text("punti a partita").font(.caption).foregroundStyle(Color.testoSecondario)
-                }
-                .accessibilityElement(children: .combine)
-                Text("Gol \(Formato.conSegno(r.golMenoXg ?? 0)) rispetto ai gol attesi · assist \(Formato.conSegno(r.assistMenoXa ?? 0)) rispetto agli assist attesi. "
-                     + (sovra > 0.3 ? "Sta segnando più di quanto crea: è probabile che cali."
-                        : sovra < -0.3 ? "Crea più di quanto segna: è probabile che si sblocchi." : "In linea con le occasioni che ha."))
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+    private var azioneFormazione: some View {
+        if let contesto, contesto.sostituibile, let sostituisci {
+            Button(action: sostituisci) {
+                Label(Catalogo.Formazione.sostituisci, systemImage: "arrow.left.arrow.right")
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
+            .pulsanteVetro(prominente: true)
+        } else if contesto?.fermo == true {
+            Text(Catalogo.Formazione.bloccati).font(.footnote).foregroundStyle(Color.testoSecondario)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private func statistiche(_ s: SchedaGiocatore) -> some View {
+    private var cartaTuttiINumeri: some View {
         Carta {
-            DisclosureGroup("Tutte le statistiche") {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let st = s.stagione {
-                        Text("Stagione").font(.subheadline.bold())
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 12) {
-                            TesseraDato(valore: "\(Formato.intero(st.presenze))/\(Formato.intero(st.giornateGiocateSerieA))", etichetta: "presenze")
-                            TesseraDato(valore: Formato.decimali(st.mediaVoto ?? 0, cifre: 2), etichetta: "media voto")
-                            TesseraDato(valore: Formato.decimali(st.fantamedia ?? 0, cifre: 2), etichetta: "fantamedia")
-                            TesseraDato(valore: "\(Formato.intero(st.gol) + Formato.intero(st.rigSegnati))", etichetta: "gol (\(Formato.intero(st.rigSegnati)) rig.)")
-                            TesseraDato(valore: "\(Formato.intero(st.assist))", etichetta: "assist")
-                            TesseraDato(valore: "\(Formato.intero(st.ammonizioni))/\(Formato.intero(st.espulsioni))", etichetta: "gialli/rossi")
-                            if s.calciatore.ruolo == "P" {
-                                TesseraDato(valore: "\(Formato.intero(st.golSubiti))", etichetta: "gol subiti")
-                                TesseraDato(valore: "\(Formato.intero(st.rigParati))", etichetta: "rigori parati")
-                            }
-                        }
-                    }
-                    if let a = s.avanzate, (a.minuti ?? 0) > 0 {
-                        Text("Statistiche avanzate").font(.subheadline.bold())
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 12) {
-                            TesseraDato(valore: Formato.decimali(a.xg ?? 0, cifre: 2), etichetta: "gol attesi")
-                            TesseraDato(valore: Formato.decimali(a.xa ?? 0, cifre: 2), etichetta: "assist attesi")
-                            TesseraDato(valore: "\(Formato.intero(a.minuti))'", etichetta: "minuti")
-                            TesseraDato(valore: Formato.decimali(a.per90?.xg ?? 0, cifre: 2), etichetta: "gol attesi ogni 90'")
-                            TesseraDato(valore: Formato.decimali(a.per90?.xa ?? 0, cifre: 2), etichetta: "assist attesi ogni 90'")
-                            TesseraDato(valore: Formato.decimali(a.per90?.tiri ?? 0), etichetta: "tiri ogni 90'")
-                            TesseraDato(valore: "\(Formato.intero(a.rigoriCalciati))", etichetta: "rigori calciati")
-                            TesseraDato(valore: "\(Formato.intero(a.passaggiChiave))", etichetta: "passaggi chiave")
-                            TesseraDato(valore: "\(Formato.intero(a.punizioni))", etichetta: "punizioni tirate")
-                        }
-                        ForEach(a.stagioniPrecedenti ?? []) { p in
-                            Text("Stagione \(p.stagione): \(Formato.intero(p.minuti))' · \(Formato.intero(p.gol)) gol (\(Formato.decimali(p.xg ?? 0)) attesi) · \(Formato.intero(p.assist)) assist (\(Formato.decimali(p.xa ?? 0)) attesi)")
-                                .font(.caption).foregroundStyle(Color.testoSecondario)
-                        }
+            DisclosureGroup(isExpanded: $numeriAperti) {
+                Group {
+                    if let s = vm.caricatore.dato {
+                        TuttiINumeri(scheda: s, prossime: vm.prossime)
+                    } else {
+                        attesa
                     }
                 }
                 .padding(.top, 8)
+            } label: {
+                Text(Catalogo.Formazione.tuttiNumeri).font(.headline).foregroundStyle(.primary)
             }
             .tint(Color.testoSecondario)
         }
+    }
+}
+
+#Preview("Scheda dalla Formazione") {
+    let json = """
+    {"id": 7, "nome": "Leonel Marténi", "ruolo": "A", "squadra": "inter", "avversario": "como", "in_casa": true,
+     "data_partita": "2026-10-31T20:45:00", "p_voto": 0.62, "fv_atteso": 7.9, "dubbio": true, "diffidato": true,
+     "nota": "affaticamento, si decide domani", "fv_atteso_medio_ruolo": 6.9,
+     "perche_numero": [{"chiave": "gioca", "testo": "gioca il 62%: dubbio", "effetto": null},
+                       {"chiave": "gol", "testo": "segna più della media del ruolo", "effetto": 0.9}]}
+    """
+    if let g: Giocatore = try? Decodifica.decodifica(Data(json.utf8)) {
+        GiocatoreSheet(id: g.id, server: FinteServer.esempio,
+                       contesto: ContestoScheda(previsione: g, perche: "Preferito a Rossi: vale di più.", sostituibile: true),
+                       sostituisci: {})
     }
 }

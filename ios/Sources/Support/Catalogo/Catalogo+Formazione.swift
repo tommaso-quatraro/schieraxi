@@ -147,5 +147,48 @@ extension Catalogo {
 
         /// `formazione.salvata_come_tua`
         static let salvataComeTua = "Salvata come tua scelta"
+
+        /// `formazione.partita_casa`
+        static func partitaCasa(avv: String, quando: String) -> String {
+            "In casa contro \(avv) · \(quando)"
+        }
+
+        /// `formazione.partita_fuori`
+        static func partitaFuori(avv: String, quando: String) -> String {
+            "In trasferta contro \(avv) · \(quando)"
+        }
+
+        /// `formazione.se_gioca`
+        static let seGioca = "se gioca"
+
+        /// `formazione.perche_titolare`
+        static let percheTitolare = "Perché è titolare"
+
+        /// `formazione.incerto`
+        static func incerto(p: String, riserva: String) -> String {
+            "Titolare anche se incerto (gioca \(p)): se non gioca, in panchina c'è \(riserva) che gioca quasi di sicuro, e insieme valgono di più."
+        }
+
+        /// `formazione.ultimi_voti`
+        static let ultimiVoti = "Ultimi voti"
+
+        /// `formazione.sostituisci`
+        static let sostituisci = "Sostituisci"
+
+        /// `formazione.tutti_numeri`
+        static let tuttiNumeri = "Tutti i numeri"
+
+        /// `formazione.questa_partita`
+        static let questaPartita = "Questa partita"
+
+        /// `formazione.voce_gioca`
+        static func voceGioca(p: String) -> String {
+            "gioca al \(p) per cento"
+        }
+
+        /// `formazione.voce_gioca_v`
+        static func voceGiocaV(p: String) -> String {
+            "gioca all'\(p) per cento"
+        }
     }
 }

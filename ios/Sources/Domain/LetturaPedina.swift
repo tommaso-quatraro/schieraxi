@@ -3,12 +3,17 @@ import Foundation
 /// Come si legge una pedina del campo, a parole: «gioca 85%», «vs NAP» (in casa) / «@ NAP» (in trasferta), e la frase per VoiceOver.
 /// Logica pura (provata in `LetturaPedinaTests`); il disegno è in `Support/CampoFormazione.swift`.
 enum LetturaPedina {
-    /// Sotto questa probabilità di giocare la pedina avvisa (icona e colore): la stessa soglia delle barre della web app.
-    static let sogliaIncerto = 0.7
+    /// Quanto è probabile che giochi, con la soglia unica di `SogliaGioca` (#673): la stessa della scheda, delle righe e della
+    /// web (sotto l'80% arancio, sotto il 50% rosso, sul numero che si legge). nil senza probabilità.
+    static func livello(_ pVoto: Double?) -> SogliaGioca.Livello? {
+        guard let pVoto else { return nil }
+        return SogliaGioca.livello(pVoto)
+    }
 
+    /// Sotto l'80% la pedina avvisa (icona e colore), come la scheda; senza probabilità no.
     static func incerto(_ pVoto: Double?) -> Bool {
         guard let pVoto else { return false }
-        return pVoto < sogliaIncerto
+        return SogliaGioca.daMostrare(pVoto)
     }
 
     /// «gioca 85%» (nil se il server non manda la probabilità).

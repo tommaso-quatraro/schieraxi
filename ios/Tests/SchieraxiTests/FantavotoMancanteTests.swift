@@ -3,7 +3,7 @@ import Testing
 import UIKit
 @testable import Schieraxi
 
-/// Scheda del giocatore e foglio «Perché questo numero» quando il server non manda il fantavoto atteso (issue #262):
+/// Scheda del giocatore quando il server non manda il fantavoto atteso (issue #262):
 /// scrivevano «0,0» (`fvAtteso ?? 0`), mentre la web e gli elenchi dei giocatori (#251) scrivono «–». Uno zero vero resta «0,0».
 /// Si disegna con `ImageRenderer`: «–» è più stretto di «0,0», e la vista senza numero non deve essere uguale a quella con lo zero.
 /// Dati inventati.
@@ -49,24 +49,14 @@ struct FantavotoMancanteTests {
     }
 
     @MainActor
-    @Test("Foglio «Perché questo numero»: senza fantavoto non scrive «0,0»")
-    func foglio() throws {
-        let senza = try Self.giocatore(fantavoto: "null")
-        let zero = try Self.giocatore(fantavoto: "0")
-        try #require(senza.fvAtteso == nil)
-        try #require(zero.fvAtteso == 0)
-        let conSenza = try #require(Self.immagine(NumeroFantavotoGrande(g: senza), larghezza: 358)?.pngData())
-        let conZero = try #require(Self.immagine(NumeroFantavotoGrande(g: zero), larghezza: 358)?.pngData())
-        #expect(conSenza != conZero, "senza numero il foglio è disegnato come con lo zero: scrive «0,0»")
-    }
-
-    @MainActor
     @Test("Scheda del giocatore: senza fantavoto non scrive «0,0»")
     func scheda() throws {
         let senza = try Self.giocatore(fantavoto: "null")
         let zero = try Self.giocatore(fantavoto: "0")
-        let conSenza = try #require(Self.immagine(NumeroFantavotoScheda(p: senza), larghezza: 358)?.pngData())
-        let conZero = try #require(Self.immagine(NumeroFantavotoScheda(p: zero), larghezza: 358)?.pngData())
+        try #require(senza.fvAtteso == nil)
+        try #require(zero.fvAtteso == 0)
+        let conSenza = try #require(Self.immagine(CifreScheda(cifre: LetturaScheda.cifre(senza)), larghezza: 358)?.pngData())
+        let conZero = try #require(Self.immagine(CifreScheda(cifre: LetturaScheda.cifre(zero)), larghezza: 358)?.pngData())
         #expect(conSenza != conZero, "senza numero la scheda è disegnata come con lo zero: scrive «0,0»")
     }
 }

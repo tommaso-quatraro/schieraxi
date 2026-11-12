@@ -154,15 +154,13 @@ struct DueNumeriGiornataTests {
         try Decodifica.decodifica(Data(#"{"id": 7, "nome": "Retalli", "ruolo": "A", \#(extra)}"#.utf8))
     }
 
-    @MainActor
-    @Test("Scheda, prossima partita: «Giornata 8 · 11ª di Serie A · in casa contro Como»")
+    @Test("Scheda, prossima partita: senza la giornata, come la web dal 12/11/2026 (#616): «In casa contro Como · …»")
     func scheda() throws {
         let g = try giocatore(#""giornata": 11, "giornata_lega": 8, "avversario": "como", "in_casa": true"#)
-        #expect(GiocatoreCorpo.descrizionePartita(g) == "Giornata 8 · 11ª di Serie A · in casa contro Como")
-        #expect(GiocatoreCorpo.descrizionePartita(g, voce: true) == "Giornata 8, 11ª di Serie A, in casa contro Como")
+        let adesso = Date()
+        #expect(LetturaScheda.partita(g, adesso: adesso) == Catalogo.Formazione.partitaCasa(avv: "Como", quando: "–"))
         let vecchio = try giocatore(#""giornata": 11, "avversario": "milan", "in_casa": false"#)
-        #expect(GiocatoreCorpo.descrizionePartita(vecchio) == "11ª giornata di Serie A · in trasferta contro Milan",
-                "server senza `giornata_lega`: solo Serie A")
+        #expect(LetturaScheda.partita(vecchio, adesso: adesso) == Catalogo.Formazione.partitaFuori(avv: "Milan", quando: "–"))
     }
 
     @Test("Diario, «Quanto ci abbiamo preso»: VoiceOver legge i due numeri della giornata")
