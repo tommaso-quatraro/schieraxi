@@ -28,9 +28,11 @@ exec 6>>"$CACHE/blocco-backup-dati"
 flock -n 6 || exit 0
 umask 077     # le copie e i file temporanei sono leggibili solo dall'utente del server
 
-fallito() {
+fallito() {   # riga per il registro, motivo breve per l'avviso (senza percorsi né dati: passa da ntfy.sh)
   { echo "=== $(date '+%F %T') $1"; } >> "$LOG"
   ruota_registro "$LOG" 100
+  # quella notte niente pacchetto: un avviso (il cron gira una volta a notte, quindi al massimo uno al giorno; avvisa è più sotto)
+  avvisa "Copia notturna non riuscita: niente pacchetto stanotte (${2:-motivo nel registro}). Dettagli in backup-dati.log."
   exit 1
 }
 
@@ -50,7 +52,7 @@ avvisa() {   # testo; esce con 0 solo se l'avviso è partito
 
 oggi=$(date +%F)
 out="$DEST/dati-$oggi.tar.gz"
-tmp=$(mktemp -d "$DEST/.tmp-XXXXXX") || fallito "non riesco a creare la cartella temporanea"
+tmp=$(mktemp -d "$DEST/.tmp-XXXXXX") || fallito "non riesco a creare la cartella temporanea" "cartella temporanea"
 trap 'rm -rf "$tmp"' EXIT
 stage="$tmp/copia"
 mkdir -p "$stage/dati"
@@ -77,7 +79,7 @@ s.backup(d); d.close(); s.close()
 c = sqlite3.connect(sys.argv[2]); esito = c.execute("PRAGMA integrity_check").fetchone()[0]; c.close()
 sys.exit(0 if esito == "ok" else 1)
 ' dati/account.sqlite "$stage/dati/account.sqlite"; then
-    fallito "copia del database degli account non riuscita (integrità)"
+    fallito "copia del database degli account non riuscita (integrità)" "database degli account"
   fi
 fi
 
@@ -86,7 +88,7 @@ fi
 #    nemmeno la rotazione e restano le copie vecchie con il registro buono. Ripristino: docs/RIPRISTINO-SERVER.md.
 if [ -f dati/fanta.sqlite ]; then
   if ! errore=$($PY -m fanta.registro_copia esporta --archivio dati/fanta.sqlite "$stage/dati/registro-giornate.json" 2>&1 >/dev/null); then
-    fallito "copia del registro delle giornate non riuscita: $errore"
+    fallito "copia del registro delle giornate non riuscita: $errore" "registro delle giornate"
   fi
 fi
 
@@ -122,10 +124,10 @@ find "$stage" \( -name push.json -o -name '*.tmp' \) -delete
 
 # 5. Pacchetto nella stessa cartella (così lo spostamento finale è atomico), poi controllo che si possa leggere.
 if ! tar -czf "$tmp/nuovo.tar.gz" -C "$stage" . || ! tar -tzf "$tmp/nuovo.tar.gz" >/dev/null; then
-  fallito "pacchetto non riuscito"
+  fallito "pacchetto non riuscito" "pacchetto"
 fi
 chmod 600 "$tmp/nuovo.tar.gz"
-mv -f "$tmp/nuovo.tar.gz" "$out" || fallito "non riesco a salvare $out"
+mv -f "$tmp/nuovo.tar.gz" "$out" || fallito "non riesco a salvare $out" "salvataggio del pacchetto"
 
 # 6. Rotazione: restano le ultime $TIENI copie (i nomi con la data si ordinano da soli). Non con una copia senza l'archivio (3b).
 if [ "$archivio" != non-riuscito ]; then

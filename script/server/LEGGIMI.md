@@ -15,7 +15,7 @@ Si lanciano dal crontab dell'utente del server. Il servizio systemd è `fantacal
 
 Chi avvisa di cosa (canale degli avvisi del gestore):
 - `aggiorna.sh`: un passo dei dati che non riesce, una volta sola alla seconda volta di fila, e quando torna; il promemoria di ogni giorno per un passo fermo da oltre 24 ore lo manda il controllo di salute del server (`fanta/salute.py`).
-- `aggiorna-app.sh` e `backup-dati.sh`: aggiornamenti dell'app fermi e copia notturna senza l'archivio, al massimo un avviso al giorno per motivo (nessun altro li ripete), e quando tornano a posto.
+- `aggiorna-app.sh` e `backup-dati.sh`: aggiornamenti dell'app fermi, copia notturna senza l'archivio o non riuscita del tutto, al massimo un avviso al giorno per motivo (nessun altro li ripete), e quando tornano a posto.
 
 `aggiorna-app.sh`, `pubblica-sito.sh` e il controllo di salute di `promemoria.sh` condividono il blocco
 `~/.cache/fantacalcio/blocco-pubblicazione`: un solo `git fetch` alla volta sul clone e nessun allarme mentre l'app si riavvia.

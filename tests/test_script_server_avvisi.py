@@ -270,6 +270,26 @@ def test_i_testi_non_dicono_piu_che_l_archivio_si_ricostruisce_sempre():
     assert "copy of the archive" in (radice / "fanta/contenuti/sotto-il-cofano.en.json").read_text(encoding="utf-8")
 
 
+@con_bash
+def test_backup_dati_senza_pacchetto_avvisa_con_il_motivo_breve(tmp_path):
+    """Copia degli account, registro delle giornate o pacchetto che non riescono: quella notte nessun pacchetto, e un avviso con il
+    motivo breve (il cron gira una volta a notte). Niente percorsi nel testo: passa da ntfy.sh."""
+    app = tmp_path / "app"
+    _scrivi(app, "dati/scelte.json", "SCELTE")
+    (app / "dati" / "fanta.sqlite").write_bytes(b"non sono un database " * 300)       # il registro non si legge
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    avvisi = tmp_path / "avvisi.txt"
+    _stub(bin_, "curl", f'while [ $# -gt 0 ]; do [ "$1" = "-d" ] && printf "%s\\n" "$2" >> "{_msys(avvisi)}"; shift; done\nexit 0')
+    _scrivi(tmp_path, "canale", "canale-di-prova")
+    r, dest, _ = _lancia_backup_dati(tmp_path, app, canale=tmp_path / "canale")
+    assert r.returncode == 1 and not list(dest.glob("dati-*.tar.gz"))
+    [mandato] = [json.loads(riga) for riga in avvisi.read_text(encoding="utf-8").splitlines()]
+    assert mandato["topic"] == "canale-di-prova"
+    assert mandato["message"] == "Copia notturna non riuscita: niente pacchetto stanotte (registro delle giornate). " \
+                                 "Dettagli in backup-dati.log."
+
+
 def _nomi_nel_pacchetto(pacchetto):
     with tarfile.open(pacchetto) as t:
         return t.getnames()
