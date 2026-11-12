@@ -33,7 +33,8 @@ Cosa i nostri dati non dicono:
   6), e quelle scontate in una gara ufficiale che non è nel nostro calendario (art. 19 comma 6): non si vedono.
 
 Misura del 12/11/2026 sull'archivio (2025-26 intero e 2026-27 fino alla giornata 11, 47 giornate): per ogni giornata, chi
-risulta squalificato usando solo le partite di prima, e se poi è nel tabellino di quella partita (allora è un falso).
+risulta squalificato usando solo le partite di prima, e se poi è nel tabellino di quella partita (allora è un falso). Fatta
+prima che la regola ricevesse l'ora; con l'ora, sull'archivio fino alla giornata 8 del 2026-27, i numeri non cambiano.
 - 164 segnalati, 1 falso (0,61%). Per espulsione 72 segnalati, nessun falso; per somma di ammonizioni 92 (88 alla quinta,
   4 alla decima), 1 falso: 1,09%, sopra la soglia dell'1%. Lo 0,61% di tutti i segnalati è più basso solo perché ci sono
   dentro le espulsioni. Le soglie oltre la decima non si sono mai viste;
