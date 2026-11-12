@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime
 
 from . import avatar, calcolo, consigli, diario, funzioni, gestione, osservati, scelte
 from .lega import Rose
@@ -19,8 +20,9 @@ from .regole import Regole
 MAX_AVVISI = 6
 MAX_OSSERVATI = 8
 MAX_DIARIO = 5
-# la fase della giornata e i suoi blocchi: stessi nomi e stessa forma di /api/oggi (calcolati da gestione.oggi -> fasi.aggiungi)
-CAMPI_FASE = ("fase", "in_corso", "riepilogo", "prossima")
+# la fase della giornata e i suoi blocchi: stessi nomi e stessa forma di /api/oggi (calcolati da gestione.oggi -> fasi.aggiungi);
+# `senza_formazione` (#651): chi è entrato a giornata iniziata senza formazione, al posto di `in_corso` (niente punti finti)
+CAMPI_FASE = ("fase", "in_corso", "riepilogo", "prossima", "senza_formazione")
 # tranne questi elenchi di `in_corso`: il widget mostra solo i numeri della giornata (punti fatti, previsti, chi deve giocare);
 # giocatore per giocatore e cambi dalla panchina restano in /api/oggi (sono ~5 kB a giornata in corso)
 SENZA_IN_CORSO = ("giocatori", "sostituzioni")
@@ -82,12 +84,15 @@ def _tua_scelta(db, regole, rose, f: dict, giornata: int, file_scelte) -> dict |
 
 
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, file_osservati, file_scelte=None,
-                live_partite: dict | None = None) -> dict:
+                live_partite: dict | None = None, dal: datetime | None = None) -> dict:
+    """`dal` (facoltativo): quando è nato l'account, come in /api/oggi: chi è entrato a giornata iniziata senza formazione ha
+    `senza_formazione` e la `prossima` giornata invece dei punti di una formazione che non ha schierato (#651)."""
     tratti = avatar.tutti()
     # il nucleo: può alzare InCalcolo (202). La consigliata si chiede UNA volta e la usa anche Oggi: l'errore di un calcolo in coda
     # arriva una volta sola, e una seconda richiesta lo rimetteva in coda («sto calcolando» per sempre con una rosa che non basta, #651)
     f = gestione.formazione_di_oggi(db, regole, rose)
-    o = gestione.oggi(db, regole, rose, file_scelte=file_scelte, file_diario=file_diario, live_partite=live_partite, formazione=f)
+    o = gestione.oggi(db, regole, rose, file_scelte=file_scelte, file_diario=file_diario, live_partite=live_partite, dal=dal,
+                      formazione=f)
     prev, giornata, _ = consigli.previsioni(db, regole)
     consigliata = {"modulo": f["modulo"], "punti_attesi": f["punteggio_atteso"]}
     tua = _tua_scelta(db, regole, rose, f, giornata, file_scelte)

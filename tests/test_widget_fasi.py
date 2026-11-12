@@ -59,6 +59,18 @@ def test_tre_fasi_come_in_oggi(widget_vero):
     assert c["riepilogo"] == o["riepilogo"] and c["riepilogo"]["punti_fatti"] == 70.5 and c["prossima"] == o["prossima"]
 
 
+def test_chi_entra_a_giornata_iniziata_nel_widget_prepara_la_prossima(widget_vero):
+    """#651: come /api/oggi, chi è entrato dopo la scadenza senza formazione non vede i punti di una formazione che non ha schierato
+    (niente `in_corso`) ma `senza_formazione` e la `prossima` giornata da preparare."""
+    a, costruisci = widget_vero
+    adesso, nato = datetime(2026, 11, 8, 21, 30), datetime(2026, 11, 8, 18, 0)
+    c, o = costruisci(adesso, dal=nato), _oggi(a, adesso, dal=nato)
+    assert c["fase"] == "in_corso" and "in_corso" not in c and c["senza_formazione"] is True
+    assert c["prossima"] == o["prossima"] and c["prossima"]["giornata"] == 11
+    c = costruisci(adesso, dal=datetime(2026, 11, 1, 10, 0))          # c'era già prima della scadenza: la giornata in diretta
+    assert c["in_corso"]["formazione_di"] == "consigliata" and "senza_formazione" not in c and "prossima" not in c
+
+
 def test_rosa_che_non_basta_il_widget_risponde_senza_formazione(widget_vero, monkeypatch):
     """#651: l'errore di un calcolo in coda arriva una volta sola; il widget chiedeva la formazione due volte (Oggi e poi lui) e la
     seconda ripartiva in coda: «sto calcolando» a ogni richiesta. Ora la chiede una volta e, come Oggi, risponde senza formazione;

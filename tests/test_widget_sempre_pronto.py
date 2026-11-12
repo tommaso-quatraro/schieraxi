@@ -8,7 +8,7 @@ import pytest
 
 from fanta import account, calcolo, consigli, lega, riscaldamento, server, widget as w
 from test_consigliata_stabile import ROSA, SOLO_442, _squadra, mondo  # noqa: F401  (fixture)
-from test_token_widget import _scheda, due_utenti, token_di, widget  # noqa: F401  (fixture)
+from test_token_widget import OGGI, _scheda, due_utenti, token_di, widget  # noqa: F401  (fixture)
 
 ADESSO = datetime(2026, 11, 12, 12, 0, tzinfo=timezone.utc)
 SQUADRA = NS(nome="Real Esempio", crediti_residui=12, giocatori=[NS(id=i) for i in range(1, 15)])
@@ -48,6 +48,19 @@ def test_senza_calcolo_partito_il_widget_riprova_fra_un_minuto(due_utenti, monke
     r = c.get("/api/widget", headers=h)
     assert r.status_code == 202 and r.json()["riprova_tra"] == calcolo.RIPROVA_SENZA_CALCOLO
     assert r.headers["retry-after"] == str(calcolo.RIPROVA_SENZA_CALCOLO) and "calcolando" not in r.json()["detail"]
+
+
+# ---------------------------------------------------------------- chi entra a giornata iniziata
+def test_il_widget_sa_quando_e_nato_l_account(due_utenti, monkeypatch):
+    """Come /api/oggi, /api/widget passa a Oggi quando è nato l'account (con il token del widget e con la sessione)."""
+    a, _ = due_utenti
+    visti = []
+    monkeypatch.setattr(w.gestione, "oggi", lambda *x, **k: visti.append(k.get("dal")) or OGGI)
+    c, h = widget(token_di(a))
+    assert c.get("/api/widget", headers=h).status_code == 200 and a.get("/api/widget").status_code == 200
+    with contextlib.closing(account.apri()) as db:
+        creato = db.execute("SELECT creato FROM utenti WHERE nome_utente = 'anna'").fetchone()[0]
+    assert visti[0] is not None and visti == [server._ora_locale(creato)] * 2
 
 
 # ---------------------------------------------------------------- chi guarda solo il widget

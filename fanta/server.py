@@ -1383,10 +1383,14 @@ def risultati_live(request: Request):
 def widget(request: Request, ctx: Contesto = Depends(lega_corrente)):
     """Tutto per i widget dell'iPhone in una chiamata (vedi `widget.py`; apribile anche con il token del widget). Risposta piccola
     (< 20 kB) con ETag: se non è cambiato niente, `If-None-Match` ottiene 304. Se i calcoli del nucleo non sono pronti: 202."""
+    try:
+        dal = _ora_locale(rotte_account.utente_corrente(request).creato)     # chi entra a giornata iniziata, come /api/oggi (#651)
+    except HTTPException:
+        dal = None
     db = _db()
     try:
         corpo = widget_riassunto.costruisci(db, _regole(ctx), _rose(ctx), ctx.diario, ctx.osservati, file_scelte=ctx.scelte,
-                                            live_partite=_stati_live())
+                                            live_partite=_stati_live(), dal=dal)
     finally:
         db.close()
     corpo["live"] = _live_per_widget()
