@@ -97,7 +97,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
 ### Formazione
 
-È la schermata che si apre per prima e risponde a una domanda sola: chi schiero. Al telefono, dall'alto in basso, senza scorrere:
+È la schermata che si apre per prima e risponde a una domanda sola: chi schiero. Al telefono, dall'alto in basso (fino al campo con gli 11 sta tutto nel primo schermo):
 
 - la **giornata** e **quando si chiude** la formazione («Si chiude oggi 18:20», con accanto quanto manca);
 - le **decisioni**, se ce ne sono: al massimo due righe, la più urgente per prima, ognuna con il suo pulsante. Ci sono solo le cose che chiedono di fare qualcosa:
