@@ -52,7 +52,7 @@ function dfRiga(v, i, nota = "", sola = false) {
 }
 
 // Dove si trova, dentro Squadra o Altro, il punto indicato dalla voce (se la schermata cambia e non si trova, si resta in cima a Lega).
-const DF_PUNTI = { rose: ["#testo-rose", "#file-rose"], diario: ["#apri-diario"] };
+const DF_PUNTI = { rose: ["#testo-rose", "#file-rose"] };
 function dfPortaA(sezione) {
   const cerca = () => {
     for (const sel of DF_PUNTI[sezione] || []) {
@@ -76,8 +76,10 @@ function dfApri(v) {
   if (dfAllaRosa(v)) { stato.legaTorna = null; stato.rosaTorna = ""; vai("squadra"); return; }      // la rosa della mia squadra (rosa senza nome)
   const DF_IMP = { avanzate: "avanzate" };                               // sezioni che stanno in Impostazioni
   if (d.scheda === "impostazioni" || DF_IMP[d.sezione]) { vai("impostazioni", DF_IMP[d.sezione] || d.sezione); return; }
+  // il Diario è la pagina Giornate (#617), aperta sulla giornata della voce
+  if (d.sezione === "diario" && typeof vaiGiornate === "function") { vaiGiornate(d.giornata ?? v.giornata); return; }
   const scheda = SCHEDA_DI(d.scheda) ? d.scheda : "lega";            // «lega» è il nome vecchio delle voci di Squadra e Altro
-  const VOCE_LEGA = { rose: "importa", diario: "diario", regole: "regole", squadre: "squadre" };     // la voce di Lega che si apre da sola
+  const VOCE_LEGA = { rose: "importa", regole: "regole", squadre: "squadre" };     // la voce di Lega che si apre da sola
   if (scheda === "lega" && VOCE_LEGA[d.sezione]) stato.legaTorna = VOCE_LEGA[d.sezione];
   vai(scheda);
   if (scheda === "lega" && d.sezione) dfPortaA(d.sezione);

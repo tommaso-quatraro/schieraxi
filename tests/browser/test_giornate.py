@@ -36,8 +36,9 @@ def tocca(web, bersaglio) -> None:
 
 
 def righe(web):
-    """Le righe delle giornate: ognuna è un pulsante che apre i suoi 11."""
-    return principale(web).get_by_role("button", name=re.compile(r"^Giornata \d+"))
+    """Le righe delle giornate: nell'elenco «Giornate finite», ognuna è un pulsante che apre e chiude i suoi 11 (aria-expanded).
+    Il nome comincia con quello della giornata: «Giornata 5» nella stagione in corso, «30ª giornata di Serie A» in una passata."""
+    return principale(web).get_by_role("list", name="Giornate finite").locator("button[aria-expanded]")
 
 
 def nomi_righe(web) -> list[str]:
@@ -230,7 +231,7 @@ def test_il_fantavoto_atteso_e_quello_mostrato_prima_della_scadenza_se_c_e(web):
 
 
 # ---------------------------------------------------------------- tu contro la consigliata: solo con quella mostrata
-PAROLE_DEL_CONFRONTO = ("rispetto alla consigliata", "cambi tuoi", "cambio tuo", "Hai schierato la consigliata", "al posto della consigliata",
+PAROLE_DEL_CONFRONTO = ("rispetto alla consigliata", "cambi tuoi", "cambio tuo", "Hai schierato la consigliata", "hai messo",
                         "ha fatto meglio della tua")
 
 
@@ -264,9 +265,10 @@ def test_con_la_consigliata_mostrata_la_riga_dice_i_cambi_e_quanto_sono_valsi(we
     assert not any(p in senza for p in PAROLE_DEL_CONFRONTO) and "La tua formazione" in senza, senza
     tocca(web, riga(web, nome_di(g0)))
     cosa = " ".join(dettaglio(web, nome_di(g0)).inner_text().split())
-    assert "Tu al posto della consigliata:" in cosa and all(nome in cosa for nome in dentro), cosa
+    assert "Al posto di" in cosa and "hai messo" in cosa and all(nome in cosa for nome in dentro), cosa
     tocca(web, riga(web, nome_di(g2)))
-    assert "al posto della consigliata" not in dettaglio(web, nome_di(g2)).inner_text()
+    senza = dettaglio(web, nome_di(g2)).inner_text()
+    assert "hai messo" not in senza and "Qui il confronto con la consigliata non c'è" in senza, senza
     assert not web.errori_mostrati() and not web.errori_console
 
 

@@ -2122,7 +2122,8 @@ const virgola = x => (LINGUA === "it" ? String(x).replace(".", ",") : String(x))
 // l'andamento giornata per giornata e l'avviso se i dati sono pochi. Tutto viene dal server; si mostra anche quando va male.
 // Numeri dal server (passati da Number) e, per la riga su tutta la Serie A, una frase del server passata da esc(); niente innerHTML.
 // `conConfronto`: la voce «consigliata contro la tua» si mostra solo se c'è almeno una giornata con la consigliata mostrata prima
-// della scadenza (#614): con il server di prima il confronto era con una formazione rifatta dopo, e non si mostra.
+// della scadenza (#614): con il server di prima il confronto era con una formazione rifatta dopo, e non si mostra. Il server con #614
+// dice anche quante giornate con la tua formazione restano fuori dal confronto (`confronto.senza_istantanea`): lo si scrive in fondo.
 function dettagliPrecisione(p, conConfronto) {
   if (!p || !p.giornate) return "";
   const n = x => (x == null || !isFinite(Number(x)) ? null : Number(x));
@@ -2186,134 +2187,163 @@ function dettagliPrecisione(p, conConfronto) {
     ${serieA}
     ${grafico}
     ${righe ? `<details class="qp-dettagli"><summary>${t("diario.qp_andamento")}</summary><ul class="qp-giornate">${righe}</ul></details>` : ""}
-    ${ric ? `<div class="debole piccolo qp-nota">${tp("diario.qp_ricostruiti", ric, { t: n(p.giornate) })}</div>` : ""}</div>`;
+    ${ric ? `<div class="debole piccolo qp-nota">${tp("diario.qp_ricostruiti", ric, { t: n(p.giornate) })}</div>` : ""}
+    ${n(cf.senza_istantanea) ? `<div class="debole piccolo qp-nota">${tp("giornate.fuori_confronto", n(cf.senza_istantanea))}</div>` : ""}</div>`;
 }
 
-// Diario > «Quando hai scelto diversamente»: nelle giornate in cui i tuoi undici non erano quelli consigliati, chi ha fatto più punti.
-function cartaScelteTue(st, sintesi, v) {
-  if (!st || !sintesi || !sintesi.giornate) return "";
-  if (!st.giornate) return `<div class="carta scelte-tue"><h2>${t("avv.tue_scelte")}</h2><div class="debole piccolo">${t("avv.finora_hai_schierato")}</div></div>`;
-  const segno = x => (x > 0 ? "+" : x < 0 ? "−" : "") + v(Math.abs(x));
-    const dueNomi = l => l.map(esc).join(", ");
-  const riga = g => `<li>${t("avv.riga_scelta", { n: `<b>${nomeGiornata(g.giornata_lega, g.giornata)}</b>`, scelto: dueNomi(g.hai_scelto), cons: dueNomi(g.consigliava) })}
-      <span class="debole piccolo">${t("avv.tu_consiglio", { tua: v(g.punti_tua), cons: v(g.punti_consigliata), d: segno(g.differenza) })}</span></li>`;
-  const punti = st.punti_differenza;
-  const totale = punti === 0 ? t("avv.totale_pari") : punti > 0 ? t("avv.totale_tue", { n: v(punti) }) : t("avv.totale_consiglio", { n: v(-punti) });
-  const prime = st.per_giornata.slice(0, 5), altre = st.per_giornata.slice(5);
-  return `<div class="carta scelte-tue"><h2>${t("avv.tue_scelte")}</h2>
-    <div class="debole piccolo">${tp("avv.n_diverse", st.giornate)}</div>
-    <div class="stat-fila"><div><b>${st.meglio_tua}</b><span>${t("avv.meglio_tue")}</span></div><div><b>${st.meglio_consigliata}</b><span>${t("avv.meglio_consiglio")}</span></div>
-      <div><b>${st.pari}</b><span>${t("mercato.pari")}</span></div></div>
-    <div>${totale} ${st.pochi_dati ? t("avv.pochi_dati") : t("avv.piu_punti_tu", { p: st.percentuale_tua })}</div>
-    <ul class="elenco-scelte">${prime.map(riga).join("")}</ul>
-    ${altre.length ? `<details><summary>${tp("avv.altre_giornate", altre.length)}</summary><ul class="elenco-scelte">${altre.map(riga).join("")}</ul></details>` : ""}</div>`;
+// ---------------------------------------------------------------- Giornate (#617): il Diario come pagina della barra
+// Una riga per giornata finita, dalla più recente: i punti fatti e attesi della formazione che conta e, al tocco, gli 11 con il fantavoto
+// atteso e quello preso. Il confronto «tu contro la consigliata» c'è solo dove la consigliata è quella mostrata prima della scadenza
+// (`consigliata.origine === "mostrata"`, #614): il server di prima non manda `origine`, la sua consigliata è sempre rifatta a giornata
+// finita, e lì il confronto non si mostra. Numeri, nomi e frasi vengono da /api/diario: la pagina sceglie cosa mostrare, non calcola.
+// Al telefono gli 11 si aprono sotto la riga (anche più giornate insieme); da 768 px l'elenco sta a sinistra e la giornata scelta a
+// destra, una alla volta, con la più recente già aperta.
+const GIORNATE_LARGHE = matchMedia("(min-width: 768px)");
+// Una giornata è stagione + numero: con due stagioni la giornata 10 c'è due volte (#176). Nell'id solo cifre e trattini.
+const idGiornata = g => `${String(g.stagione ?? "").replace(/[^0-9-]/g, "")}-g${Number(g.giornata)}`;
+// `dati`: l'ultima risposta in pagina; `aperte`: gli id delle giornate aperte; `chiesta`: il numero della giornata da aprire
+// («Com'è andata» della Formazione, una voce di «Da fare»), che vale finché non arriva una risposta che la contiene.
+const giornate = { dati: null, aperte: new Set(), chiesta: null };
+// La formazione che conta per la giornata, come nel riepilogo della Formazione: la tua, la consigliata salvata da sola alla scadenza
+// se non avevi scelto, oppure la consigliata.
+const formazioneDi = g => (g.schierata ? { tipo: "tua", f: g.schierata } : g.automatica ? { tipo: "automatica", f: g.automatica } : { tipo: "consigliata", f: g.consigliata });
+const conMostrata = g => !!g.consigliata && g.consigliata.origine === "mostrata";
+// La voce di `scelte_tue.per_giornata` (giornate con 11 diversi dai consigliati): nomi e differenza di punti li calcola il server.
+const sceltaDi = (d, g) => (((d.scelte_tue || {}).per_giornata) || []).find(x => x && x.stagione === g.stagione && Number(x.giornata) === Number(g.giornata)) || null;
+const voceGiornata = id => ((giornate.dati || {}).giornate || []).find(g => idGiornata(g) === id) || null;
+
+function vaiGiornate(giornata) {
+  giornate.chiesta = giornata == null || !Number(giornata) ? null : Number(giornata);
+  vai("giornate", undefined, { focoTitolo: true });
+}
+function vistaGiornate() {
+  if (giornate.chiesta == null) giornate.aperte.clear();              // si riparte con le righe chiuse (da 768 px: la più recente)
+  caricaConCache("giornate", "/api/diario", mostraGiornate, t("giornate.carico"));
 }
 
-// Diario delle giornate: formazione schierata contro consigliata, con i punti attesi e quelli fatti.
-// Una voce è stagione + giornata: con due stagioni nel diario la giornata 10 c'è due volte (#176). Nell'id solo cifre e trattini.
-const idVoceDiario = g => `diario-${String(g.stagione ?? "").replace(/[^0-9-]/g, "")}-g${Number(g.giornata)}`;
-// «Ho schierato…» per una voce del diario: sempre con la sua stagione (il server rifiuta quelle passate, senza scrivere sulla giornata di quest'anno)
+// Sotto la riga: hai schierato la consigliata, o quanti cambi tuoi e quanto sono valsi (solo con la consigliata mostrata); altrimenti
+// di chi sono i punti.
+function statoGiornata(d, g) {
+  const { tipo } = formazioneDi(g);
+  if (tipo === "tua" && conMostrata(g)) {
+    const s = sceltaDi(d, g);
+    if (!s) return t("giornate.hai_consigliata");
+    const n = Array.isArray(s.hai_scelto) ? s.hai_scelto.length : 0, diff = Number(s.differenza);
+    if (n && isFinite(diff)) return diff === 0 ? tp("giornate.cambi_pari", n) : tp("giornate.cambi", n, { d: segno(diff) });
+  }
+  return t(tipo === "tua" ? "giornate.tua" : tipo === "automatica" ? "giornate.automatica" : "giornate.non_salvata");
+}
+
+// Gli 11 della giornata con il fantavoto atteso e quello preso, cosa hai cambiato rispetto alla consigliata e la correzione.
+// L'atteso è quello mostrato prima della scadenza, se c'è (`istantanea`, titolari e panchina); se no quello rifatto con i soli dati di
+// prima (`giocatori`). Preso: `giocatori[].fv`, «senza voto» se non l'ha preso. Nomi dal server, passati da esc().
+function dettaglioGiornata(d, g, stagioni) {
+  const id = idGiornata(g), { tipo, f } = formazioneDi(g), mostrata = conMostrata(g), origine = (g.consigliata || {}).origine;
+  const nome = nomeGiornata(g.giornata_lega, g.giornata) + (stagioni ? ` · ${esc(g.stagione)}` : "");
+  const modulo = esc(f.modulo || "");
+  const titolo = tipo === "tua" ? t("giornate.formazione_tua", { modulo }) : tipo === "automatica" ? t("giornate.formazione_automatica", { modulo })
+    : t(mostrata ? "giornate.formazione_consigliata" : "giornate.formazione_rifatta", { modulo });
+  const ist = g.istantanea || {};
+  const mostrati = new Map([...(ist.titolari || []), ...(ist.panchina || [])].filter(x => x && x.fv_atteso != null).map(x => [x.id, x.fv_atteso]));
+  const numeri = new Map((Array.isArray(g.giocatori) ? g.giocatori : []).map(x => [x.id, x]));
+  const righe = (f.titolari || []).map(x => {
+    const n = numeri.get(x.id), atteso = mostrati.has(x.id) ? mostrati.get(x.id) : n ? n.fv_atteso : null;
+    const senza = !!n && n.fv == null;
+    return `<tr><th scope="row">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</th><td>${num(atteso)}</td><td${senza ? ' class="gn-senza"' : ""}>${senza ? t("giornate.senza_voto") : num(n ? n.fv : null)}</td></tr>`;
+  }).join("");
+  const s = tipo === "tua" && mostrata ? sceltaDi(d, g) : null;
+  const cambi = s && Array.isArray(s.hai_scelto) && s.hai_scelto.length
+    ? `<p class="gn-cambi">${t("giornate.al_posto", { dentro: esc(s.hai_scelto.join(", ")), fuori: esc((s.consigliava || []).join(", ")) })}</p>`
+    : tipo === "tua" && origine === "ricostruita" ? `<p class="gn-nota">${t("giornate.senza_confronto")}</p>` : "";
+  const nota = tipo === "consigliata" && origine === "ricostruita" ? `<p class="gn-nota">${t("giornate.rifatta_nota")}</p>` : "";
+  const correggi = g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" type="button" data-correggi="${id}">${t("giornate.correggi")}</button></div>`;
+  return `<section class="gn-dettaglio" id="gn-d-${id}" aria-label="${nome}">
+    <h2 class="gn-titolo">${titolo}</h2>${nota}
+    <table class="gn-tabella"><caption class="solo-lettori">${t("giornate.tabella")}</caption>
+      <thead><tr><th scope="col">${t("giornate.col_giocatore")}</th><th scope="col">${t("giornate.col_atteso")}</th><th scope="col">${t("giornate.col_preso")}</th></tr></thead>
+      <tbody>${righe}</tbody></table>
+    ${cambi}${correggi}</section>`;
+}
+
+// In cima una riga sola sulla precisione (`precisione.fantavoto.errore_medio`) con i dettagli a richiesta; poi una riga per giornata.
+function mostraGiornate(d, opz = {}) {
+  const voci = Array.isArray(d.giornate) ? d.giornate : [];
+  giornate.dati = d;
+  if (giornate.chiesta != null) {
+    const g = voci.find(x => Number(x.giornata) === giornate.chiesta);      // dalla più recente: la stagione in corso
+    if (g) giornate.aperte = new Set([idGiornata(g)]);
+    if (g || !opz.daCache) giornate.chiesta = null;                         // la copia del telefono può non averla ancora
+  }
+  const largo = GIORNATE_LARGHE.matches, ids = voci.map(idGiornata);
+  if (largo) { const scelta = ids.find(i => giornate.aperte.has(i)) || ids[0]; giornate.aperte = new Set(scelta ? [scelta] : []); }
+  const stagioni = new Set(voci.map(g => g.stagione)).size > 1;
+  const p = d.precisione || {}, fv = p.fantavoto;
+  const errore = fv && fv.errore_medio != null && isFinite(Number(fv.errore_medio)) ? num(Number(fv.errore_medio)) : null;
+  const dettagli = dettagliPrecisione(p, voci.some(conMostrata));
+  const testa = errore || dettagli ? `<div class="gn-testa">${errore ? `<p class="gn-precisione">${t("giornate.precisione", { e: errore })}</p>` : ""}
+    ${dettagli ? `<details class="gn-dettagli"><summary>${errore ? t("giornate.dettagli") : t("diario.af_titolo")}</summary>${dettagli}</details>` : ""}</div>` : "";
+  const riga = g => {
+    const id = idGiornata(g), aperta = giornate.aperte.has(id), { f } = formazioneDi(g);
+    return `<li class="gn-voce"><button class="gn-riga" type="button" id="gn-r-${id}" data-giornata="${id}" aria-expanded="${aperta}"${aperta ? ` aria-controls="gn-d-${id}"` : ""}>
+        <span class="gn-sx"><span class="gn-nome">${nomeGiornata(g.giornata_lega, g.giornata)}${stagioni ? ` <span class="gn-stagione">${esc(g.stagione)}</span>` : ""}</span>
+          <span class="gn-stato">${statoGiornata(d, g)}</span></span>
+        <span class="gn-dx"><b class="gn-num">${num(f.reale)}</b> <span class="gn-attesi">${f.atteso != null ? t("formazione.punti_e_attesi", { n: num(f.atteso) }) : t("formazione.punti")}</span></span>
+      </button>${!largo && aperta ? dettaglioGiornata(d, g, stagioni) : ""}</li>`;
+  };
+  const vuoto = { squadra: t("giornate.vuoto_squadra"), giornate: t("giornate.vuoto_giornate"), calcolo: t("giornate.vuoto_calcolo") }[d.motivo_vuoto] || t("giornate.vuoto");
+  const lato = largo ? `<div class="gn-lato">${voci.filter(g => giornate.aperte.has(idGiornata(g))).map(g => dettaglioGiornata(d, g, stagioni)).join("")}</div>` : "";
+  const fuoco = document.activeElement && document.activeElement.closest && document.activeElement.closest(".gn-riga");
+  pagina(voci.length ? `<div class="gn">${testa}<ul class="gn-elenco" aria-label="${t("giornate.elenco")}">${voci.map(riga).join("")}</ul>${lato}</div>`
+    : `${testa}<p class="debole gn-vuoto">${vuoto}</p>`, opz);
+  const radice = $(".gn", contenuto);
+  if (radice) radice.addEventListener("click", ev => {
+    const r = ev.target.closest(".gn-riga");
+    if (r) { apriChiudiGiornata(r.dataset.giornata); return; }
+    const c = ev.target.closest("[data-correggi]"), g = c && voceGiornata(c.dataset.correggi);
+    if (g) correggiGiornata(g);
+  });
+  if (fuoco) { const b = document.getElementById(fuoco.id); if (b) b.focus({ preventScroll: true }); }   // ridisegno (dati nuovi, finestra più larga)
+}
+
+// Un tocco su una riga: al telefono apre o chiude i suoi 11 sotto di lei; da 768 px la sceglie e i suoi 11 vanno a destra. La riga resta
+// com'è (il focus non si perde): cambiano aria-expanded e il dettaglio.
+function apriChiudiGiornata(id) {
+  const d = giornate.dati, g = voceGiornata(id), b = document.getElementById(`gn-r-${id}`);
+  if (!d || !g || !b) return;
+  const stagioni = new Set(d.giornate.map(x => x.stagione)).size > 1;
+  const segna = (riga, aperta) => {
+    riga.setAttribute("aria-expanded", String(aperta));
+    if (aperta) riga.setAttribute("aria-controls", `gn-d-${riga.dataset.giornata}`); else riga.removeAttribute("aria-controls");
+  };
+  if (GIORNATE_LARGHE.matches) {
+    giornate.aperte = new Set([id]);
+    contenuto.querySelectorAll(".gn-riga").forEach(r => segna(r, r.dataset.giornata === id));
+    const lato = $(".gn-lato", contenuto);
+    if (lato) lato.innerHTML = dettaglioGiornata(d, g, stagioni);
+    return;
+  }
+  const aperta = !giornate.aperte.has(id);
+  if (aperta) { giornate.aperte.add(id); b.insertAdjacentHTML("afterend", dettaglioGiornata(d, g, stagioni)); }
+  else { giornate.aperte.delete(id); const z = document.getElementById(`gn-d-${id}`); if (z) z.remove(); }
+  segna(b, aperta);
+}
+// La finestra passa i 768 px: la pagina si ridisegna con l'altra disposizione (la giornata aperta resta aperta).
+GIORNATE_LARGHE.addEventListener("change", () => { if (stato.vista === "giornate" && giornate.dati && $(".gn", contenuto)) mostraGiornate(giornate.dati, { sostituisce: true }); });
+
+// «Non è quello che ho schierato»: scegli a mano gli 11 che hai schierato in una giornata finita. Si parte dagli 11 della riga; il
+// server controlla che siano 11 della tua rosa con un modulo valido. La correzione porta sempre la stagione della giornata (il server
+// rifiuta quelle passate, senza scrivere sulla giornata di quest'anno).
 const corpoSchierata = (g, tipo, titolari) => JSON.stringify({ giornata: Number(g.giornata), tipo, ...(titolari ? { titolari } : {}), stagione: g.stagione });
-
-// `giornata` (e `stagione`, se c'è): la voce da mostrare. Senza stagione vale la più recente con quel numero («Com'è andata» della Formazione parla della stagione in corso).
-async function apriDiario(giornata, stagione) {
-  apriFoglio(`<div class="caricamento">${t("avv.carico_diario")}</div>`);
-  const numero = ++ultimaScheda;
-  try {
-    const d = await api("/api/diario");
-    if (numero !== ultimaScheda || $("#foglio").hidden) return;
-    const v = x => num(x, 1), s = d.sintesi;          // punti sempre con un decimale: «48,0», non «48»
-    const ORDINE_RUOLI = { P: 0, D: 1, C: 2, A: 3 };
-    // Un elenco di titolari per ruolo; chi non c'è nell'altra formazione è evidenziato. Dentro il nome solo testo (esc).
-    const elencoFormazione = (titolari, altri, panchina) => `<ul class="diario-lista">${[...titolari].sort((a, b) => (ORDINE_RUOLI[a.ruolo] ?? 9) - (ORDINE_RUOLI[b.ruolo] ?? 9))
-      .map(p => `<li${altri && !altri.has(p.id) ? ' class="diario-diverso"' : ""}><span class="diario-ruolo">${esc(p.ruolo)}</span> ${esc(p.nome)}</li>`).join("")}</ul>
-      ${panchina && panchina.length ? `<div class="debole piccolo diario-panchina">${t("diario.panchina")}: ${panchina.map(p => esc(p.nome)).join(", ")}</div>` : ""}`;
-    const quandoCalcolata = c => { const d = new Date(c); return isNaN(d) ? "" : fDataOra(d); };
-    // la riga «previsti tra X e Y» di ogni giornata; il riassunto «Quanto ci abbiamo preso» sta in cartaPrecisione (dati dal server)
-    const meno = x => segno(x, 1);                     // fatti meno estremo della fascia: arrotondato (prima «+1,7999999999999972»)
-    const rigaFascia = g => {
-      const r = g.atteso_vs_fatto;
-      if (!r || !r.intervallo) return "";
-      const a = v(r.intervallo.basso), b = v(r.intervallo.alto);
-      const testo = r.nella_fascia ? t("diario.af_dentro", { a, b })
-        : r.fatti < r.intervallo.basso ? t("diario.af_sotto_fascia", { a, b, d: meno(r.fatti - r.intervallo.basso) }) : t("diario.af_sopra_fascia", { a, b, d: meno(r.fatti - r.intervallo.alto) });
-      return `<div class="debole piccolo af-fascia ${r.nella_fascia ? "dentro" : "fuori"}">${testo}</div>`;
-    };
-    // i punti fatti e «attesi N» in due colonne della stessa larghezza in ogni riga e in ogni giornata (spec grafica B §9)
-    const righePunti = (etichetta, r) => `<div class="diario-punti"><span>${etichetta}</span><b class="dp-fatti">${v(r.reale)}</b><span class="dp-attesi">${t("avv.attesi", { n: v(r.atteso) })}</span></div>`;
-    // un solo pulsante pieno nel Diario (spec §8.7): «Ho schierato la consigliata» della giornata più recente da salvare; nelle altre il bordo
-    const primaDaSalvare = d.giornate.find(g => !g.schierata && g.modificabile !== false);
-    const azioni = g => g.modificabile === false ? "" : `<div class="pulsanti azioni-diario">${g.schierata ? ""
-      : `<button class="${g === primaDaSalvare ? "bottone" : "bottone secondario"}" data-schierata="${idVoceDiario(g)}">${t("diario.ho_schierato_questa")}</button>`}<button class="bottone secondario" data-correggi="${idVoceDiario(g)}">${g.schierata ? t("diario.correggi") : t("diario.ho_schierato_altra")}</button></div>`;
-    const confronto = g => {
-      const ist = g.istantanea, cons = ist || g.consigliata;                      // la consigliata di allora, o (se non registrata) la ricostruzione di oggi
-      const idCons = new Set(cons.titolari.map(p => p.id));
-      const idTue = g.schierata ? new Set(g.schierata.titolari.map(p => p.id)) : null;
-      const titoloCons = ist ? t("diario.consigliava", { modulo: esc(ist.modulo) }) : t("diario.ricostruita", { modulo: esc(cons.modulo) });
-      const sotto = ist ? `<div class="debole piccolo">${t("diario.consigliava_il", { quando: esc(quandoCalcolata(ist.calcolata)) })}${ist.stile ? " · " + esc(ist.stile) : ""}</div>` : `<div class="debole piccolo">${t("diario.non_registrata")}</div>`;
-      const colCons = `<div class="diario-col"><h3>${titoloCons}</h3>${sotto}${elencoFormazione(cons.titolari, idTue, ist && ist.panchina)}</div>`;
-      if (!g.schierata) return `<div class="diario-conf una">${colCons}</div>`;
-      const fuori = g.schierata.titolari.filter(p => !idCons.has(p.id)).map(p => p.nome), dentro = cons.titolari.filter(p => !idTue.has(p.id)).map(p => p.nome);
-      const colTue = `<div class="diario-col"><h3>${t("diario.hai_schierato", { modulo: esc(g.schierata.modulo) })}</h3>${elencoFormazione(g.schierata.titolari, idCons)}</div>`;
-      return `<div class="diario-conf">${colCons}${colTue}</div>
-        <div class="debole piccolo">${fuori.length ? t("diario.cambiato", { n: fuori.length, nomi: t("diario.cambiato_nomi", { dentro: esc(fuori.join(", ")), fuori: esc(dentro.join(", ")) }) }) : t("diario.uguale")}</div>`;
-    };
-    // «Ho schierato…» e «Correggi» solo se la voce si può ancora cambiare (stagione in corso; un server vecchio senza il campo: sì)
-    const righe = d.giornate.map(g => `<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2 style="margin:0">${nomeGiornata(g.giornata_lega, g.giornata)}</h2><span class="debole piccolo">${esc(g.stagione)}</span></div>
-      ${g.schierata ? "" : `<div class="debole piccolo">${t("diario.non_salvata")}</div>`}
-      ${confronto(g)}
-      ${azioni(g)}
-      ${g.schierata ? righePunti(g.schierata.tipo === "consigliata" ? t("diario.tua_consigliata", { modulo: esc(g.schierata.modulo) }) : t("diario.tua", { modulo: esc(g.schierata.modulo) }), g.schierata)
-        : g.automatica ? righePunti(t("diario.automatica", { modulo: esc(g.automatica.modulo) }), g.automatica) : ""}
-      ${righePunti(g.istantanea ? t("diario.ricostruita", { modulo: esc(g.consigliata.modulo) }) : t("avv.del_modello", { modulo: esc(g.consigliata.modulo) }), g.consigliata)}
-      ${rigaFascia(g)}</div>`).join("");
-    apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("avv.diario_delle_giornate")}</h2>
-      <div class="debole piccolo">${t("avv.diario_riga")}</div>
-      <details class="come-diario"><summary>${t("mercato.come_legge")}</summary><div class="debole piccolo">${t("avv.per_ogni_giornata")}</div></details>
-      ${cartaPrecisione(d.precisione)}
-      ${cartaScelteTue(d.scelte_tue, s, v)}
-      ${righe || `<div class="carta" style="margin-top:12px"><div class="debole">${t("diario.vuoto_" + d.motivo_vuoto) !== "diario.vuoto_" + d.motivo_vuoto ? t("diario.vuoto_" + d.motivo_vuoto) : t("diario.vuoto")}</div></div>`}`);
-    const voceDi = id => d.giornate.find(x => idVoceDiario(x) === id);
-    const daMostrare = giornata == null ? null : d.giornate.find(x => Number(x.giornata) === Number(giornata) && (stagione == null || x.stagione === stagione));
-    if (daMostrare) {
-      const el = document.getElementById(idVoceDiario(daMostrare));
-      if (el) {
-        el.scrollIntoView({ block: "start" });
-        // il focus (che apriFoglio ha messo sul titolo in cima, #448) va sul titolo della giornata appena segnata: il Tab riparte da lì
-        const h = el.querySelector("h2"), corpo = $(".foglio-corpo");
-        if (h && corpo && corpo.contains(document.activeElement)) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
-      }
-    }
-    $("#foglio").querySelectorAll("[data-correggi]").forEach(bt => bt.addEventListener("click", () => {
-      const g = voceDi(bt.dataset.correggi);
-      if (g) correggiDiario(g);
-    }));
-    $("#foglio").querySelectorAll("[data-schierata]").forEach(b => b.addEventListener("click", async () => {
-      const g = voceDi(b.dataset.schierata);
-      if (!g) return;
-      b.disabled = true;
-      try {
-        await api("/api/diario/schierata", { method: "POST", body: corpoSchierata(g, "consigliata") });
-        avviso(t("diario.salvata"));
-        apriDiario(g.giornata, g.stagione);
-      } catch (e) { b.disabled = false; avviso(e.message, 6000); }
-    }));
-  } catch (e) { if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e)); }
-}
-
-// Diario: scegli a mano gli undici che hai schierato in una giornata finita (come sull'iPhone). Si parte da quelli già salvati o, in mancanza, dalla consigliata;
-// il server controlla che siano undici della tua rosa con un modulo valido.
-async function correggiDiario(g) {
+async function correggiGiornata(g) {
   apriFoglio(`<div class="caricamento">${t("scambio.carico_rosa")}</div>`);
   const numero = ++ultimaScheda;
   try {
     const r = await api("/api/rosa");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
-    const iniziali = new Set((((g.schierata || g.consigliata) || {}).titolari || []).map(p => p.id));
-    const reparti = ["P", "D", "C", "A"].map(r => [r, NOMI_RUOLO[r]]);
-    const gruppi = reparti.map(([ruolo, nome]) => {
+    const iniziali = new Set((formazioneDi(g).f.titolari || []).map(p => p.id));
+    const gruppi = ["P", "D", "C", "A"].map(ruolo => {
       const giocatori = r.giocatori.filter(x => x.ruolo === ruolo && x.id);
-      return giocatori.length ? `<h3>${nome}</h3>${giocatori.map(x => `<label class="interruttore"><span>${badgeRuolo(x.ruolo, true)}${esc(x.nome)} <span class="debole piccolo">${sigla(x.squadra)}</span></span>
+      return giocatori.length ? `<h3>${NOMI_RUOLO[ruolo]}</h3>${giocatori.map(x => `<label class="interruttore"><span>${badgeRuolo(x.ruolo, true)}${esc(x.nome)} <span class="debole piccolo">${sigla(x.squadra)}</span></span>
         <input type="checkbox" data-scelto="${Number(x.id)}" ${iniziali.has(x.id) ? "checked" : ""}></label>`).join("")}` : "";
     }).join("");
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("diario.cosa_hai_schierato_titolo")}</h2>
@@ -2330,18 +2360,32 @@ async function correggiDiario(g) {
     };
     caselle().forEach(c => c.addEventListener("change", aggiorna));
     aggiorna();
-    $("#diario-annulla").addEventListener("click", () => apriDiario(g.giornata, g.stagione));
+    $("#diario-annulla").addEventListener("click", () => chiudiFoglio());          // il focus torna al pulsante della correzione
     $("#diario-salva").addEventListener("click", async () => {
       const titolari = caselle().filter(c => c.checked).map(c => Number(c.dataset.scelto));
       if (titolari.length !== 11) return;
       $("#diario-salva").disabled = true;
-      try {
-        await api("/api/diario/schierata", { method: "POST", body: corpoSchierata(g, "manuale", titolari) });
-        avviso(t("diario.salvata_manuale"));
-        apriDiario(g.giornata, g.stagione);
-      } catch (e) { $("#diario-salva").disabled = false; avviso(e.message, 6000); }
+      try { await api("/api/diario/schierata", { method: "POST", body: corpoSchierata(g, "manuale", titolari) }); }
+      catch (e) { $("#diario-salva").disabled = false; avviso(e.message, 6000); return; }
+      await rileggiGiornate(g);
+      chiudiFoglio();
+      avviso(t("diario.salvata_manuale"));
     });
   } catch (e) { if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e)); }
+}
+// Dopo una correzione la pagina rilegge le giornate, con quella corretta aperta; chiuso il foglio, il focus va sulla sua riga.
+async function rileggiGiornate(g) {
+  const id = idGiornata(g);
+  giornate.aperte = new Set([id]);
+  giornate.chiesta = null;
+  if (stato.vista !== "giornate") return;
+  try {
+    const d = await api("/api/diario");
+    salvaCache("giornate", d);
+    if (stato.vista === "giornate") mostraGiornate(d, { sostituisce: true });
+  } catch { if (stato.vista === "giornate") vistaGiornate(); }              // come all'apertura: l'errore con «Riprova»
+  const riga = document.getElementById(`gn-r-${id}`);
+  if (riga) focusPrima = riga;
 }
 
 // Prova del modello sulle ultime giornate giocate: errore sui fantavoti e punti delle formazioni, con il confronto "da fantamedia".
@@ -3818,10 +3862,11 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   misura();
 })();
 
-// Colonne ferme in alto su tablet e PC (il campo della Formazione, l'elenco di Impostazioni, il menu di Squadra e Altro): restano
-// ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, la spunta «L'ho messa») restava sotto la barra o fuori
-// dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
-const FERME = ".fz-campo .campo-fermo, .imp-elenco, .lega-menu";
+// Colonne ferme in alto su tablet e PC (il campo della Formazione, l'elenco di Impostazioni, il menu di Squadra e Altro, la giornata
+// scelta in Giornate): restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, la spunta «L'ho messa»)
+// restava sotto la barra o fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con
+// la finestra bassa (#280).
+const FERME = ".fz-campo .campo-fermo, .imp-elenco, .lega-menu, .gn-lato";
 const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
 function controllaFerme() {
   const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è

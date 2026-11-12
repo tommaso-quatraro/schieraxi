@@ -40,19 +40,19 @@
     "en": "Your lineup."
   },
   "giornate.automatica": {
-    "it": "Valeva la consigliata: non l'avevi cambiata.",
-    "en": "The recommended lineup counted: you had not changed it."
+    "it": "Non l'avevi cambiata: sono i punti della consigliata alla scadenza.",
+    "en": "You had not changed it: these are the points of the recommended lineup at the deadline."
   },
   "giornate.non_salvata": {
     "it": "Formazione non salvata: sono i punti della consigliata.",
-    "en": "Lineup not saved: these are the points of the recommended one."
+    "en": "Lineup not saved: these are the points of the recommended lineup."
   },
   "giornate.formazione_tua": {
     "it": "La tua formazione ({modulo})",
     "en": "Your lineup ({modulo})"
   },
   "giornate.formazione_automatica": {
-    "it": "La consigliata della scadenza ({modulo})",
+    "it": "La consigliata alla scadenza ({modulo})",
     "en": "The recommended lineup at the deadline ({modulo})"
   },
   "giornate.formazione_consigliata": {
@@ -88,12 +88,20 @@
     "en": "no score"
   },
   "giornate.al_posto": {
-    "it": "Tu al posto della consigliata: {dentro} invece di {fuori}.",
-    "en": "You instead of the recommended lineup: {dentro} rather than {fuori}."
+    "it": "Al posto di {fuori} hai messo {dentro}.",
+    "en": "Instead of {fuori} you fielded {dentro}."
   },
   "giornate.senza_confronto": {
     "it": "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata.",
     "en": "No comparison with the recommended lineup here: the one shown before the deadline had not been saved."
+  },
+  "giornate.fuori_confronto.one": {
+    "it": "1 giornata con la tua formazione non entra nel confronto: la consigliata mostrata prima della scadenza non era stata salvata.",
+    "en": "1 matchday with your lineup is left out of the comparison: the recommended lineup shown before the deadline had not been saved."
+  },
+  "giornate.fuori_confronto.other": {
+    "it": "{n} giornate con la tua formazione non entrano nel confronto: la consigliata mostrata prima della scadenza non era stata salvata.",
+    "en": "{n} matchdays with your lineup are left out of the comparison: the recommended lineup shown before the deadline had not been saved."
   },
   "giornate.correggi": {
     "it": "Non è quello che ho schierato",
@@ -105,7 +113,7 @@
   },
   "giornate.vuoto_squadra": {
     "it": "Ancora niente: manca la tua squadra. Indicala in Squadra, alla voce Squadre e rose.",
-    "en": "Nothing yet: your team is missing. Set it in Team, under Teams and squads."
+    "en": "Nothing yet: your team is missing. Set it in Team, under Teams and rosters."
   },
   "giornate.vuoto_giornate": {
     "it": "Ancora niente: nella tua lega non è ancora finita nessuna giornata.",
