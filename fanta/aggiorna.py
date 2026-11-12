@@ -85,18 +85,26 @@ class Aggiornamento:
         self.errori: list[str] = []
         self.riusciti: list[str] = []
         self.slug_noti: set[str] = set()
+        # righe di `aggiornamenti` con un'ora nuova da scrivere a fine giro: dentro `esegui` si scrivono tutte insieme alla riga
+        # generale, così la «versione» dei dati (consigli._versione, che guarda le ore di quelle righe) cambia una volta sola per
+        # aggiornamento e il riscaldamento ricalcola una volta. None = fuori da `esegui` (giri del pianificatore): subito.
+        self._a_fine: list[tuple[str, str, str | None]] | None = None
 
     def _passo(self, nome: str, funzione, fonte: str | None = None) -> None:
         """Esegue un passo; se una fonte non risponde, gli altri passi continuano. Se la fonte è spenta il passo si salta.
-        I passi seguiti (`archivio.PASSI`) scrivono il loro esito: ultimo successo, o errore con l'ora del primo fallimento di fila;
-        nell'errore della corsa c'è da quando il passo non riesce (così la riga generale non lo fa sembrare fresco)."""
+        I passi seguiti (`archivio.PASSI`) scrivono il loro esito: ultimo successo (a fine giro, vedi `_a_fine`), o errore con l'ora
+        del primo fallimento di fila; nell'errore della corsa c'è da quando il passo non riesce (così la riga generale non lo fa
+        sembrare fresco). Un errore cambia solo il dettaglio della riga, non la sua ora: la versione dei dati non cambia."""
         if fonte and not fonti_attive.acceso(fonte):
             self.scrivi(f"  - {nome}: saltato, {fonti_attive.FONTI[fonte][0]} è spenta")
             self._segna_esito(nome, saltato=True)
             return
         try:
             funzione()
-            self._segna_esito(nome)
+            if self._a_fine is None:
+                self._segna_esito(nome)
+            else:
+                self._a_fine.append(("passo", nome, _ora()))
             self.db.commit()
             self.riusciti.append(nome)
         except Exception as e:  # noqa: BLE001 - una fonte rotta non deve fermare le altre
@@ -121,6 +129,25 @@ class Aggiornamento:
         except sqlite3.Error as e:
             self.scrivi(f"  ! {nome}: esito del passo non salvato ({type(e).__name__})")
             return None
+
+    def _segna(self, cosa: str, quando: str) -> None:
+        """Una riga di `aggiornamenti` con un'ora nuova: a fine giro dentro `esegui`, subito fuori."""
+        if self._a_fine is None:
+            archivio.segna(self.db, cosa, quando)
+        else:
+            self._a_fine.append(("riga", cosa, quando))
+
+    def _scrivi_a_fine(self) -> None:
+        """Le righe tenute da parte durante il giro (`_a_fine`), nella stessa conferma della riga generale."""
+        righe, self._a_fine = self._a_fine or [], None
+        for tipo, cosa, quando in righe:
+            try:
+                if tipo == "passo":
+                    archivio.segna_passo(self.db, cosa, quando)
+                else:
+                    archivio.segna(self.db, cosa, quando)
+            except sqlite3.Error as e:
+                self.scrivi(f"  ! {cosa}: esito del passo non salvato ({type(e).__name__})")
 
     def slug(self, nome: str) -> str | None:
         return squadre.slug(nome, self.slug_noti)
@@ -174,7 +201,7 @@ class Aggiornamento:
             totale += self._calendario_giornata(g)
             self.db.commit()            # una giornata alla volta: il cron e il server non restano bloccati ad aspettare
         if len(giornate) == GIORNATE:
-            archivio.segna(self.db, cosa, _ora())
+            self._segna(cosa, _ora())
         self.scrivi(f"  calendario {st.codice}: {totale} partite aggiornate ({len(giornate)} giornate)")
 
     def voti(self, stagione: Stagione | None = None) -> None:
@@ -377,10 +404,13 @@ class Aggiornamento:
                     f"{nuove} partite scaricate in dettaglio")
 
     def dati_extra(self, stagione: Stagione | None = None) -> None:
-        """Statistiche di squadra di football-data.co.uk (solo misure, il modello non le legge)."""
+        """Statistiche di squadra di football-data.co.uk (solo misure, il modello non le legge). Stagione in corso al massimo ogni
+        6 ore: l'ora dell'ultima lettura è quella delle righe salvate (la riga «dati-extra» di `aggiornamenti` è l'esito del passo,
+        `archivio.PASSI`); una stagione passata una volta sola."""
         st = stagione or self.st
         if st is self.st:
-            if _recente(self.db, "dati-extra", timedelta(hours=6)):
+            r = self.db.execute("SELECT MAX(rilevato) FROM partite_extra WHERE stagione = ?", (st.codice,)).fetchone()
+            if r and r[0] and datetime.fromisoformat(_ora()) - datetime.fromisoformat(str(r[0])[:19]) < timedelta(hours=6):
                 self.scrivi("  dati extra di squadra: già aggiornati di recente")
                 return
             urls = (fd.url_stagione(st.fd), fd.URL_PROSSIME)
@@ -393,7 +423,8 @@ class Aggiornamento:
             extra += fd.leggi_extra(rete.scarica(url).content.decode("utf-8-sig", errors="replace"), self.slug)
         quando = _ora()
         archivio.inserisci(self.db, "partite_extra", [{**r, "stagione": st.codice, "rilevato": quando} for r in extra])
-        archivio.segna(self.db, "dati-extra" if st is self.st else f"dati-extra {st.codice}", quando)
+        if st is not self.st:
+            self._segna(f"dati-extra {st.codice}", quando)
         self.scrivi(f"  dati extra di squadra {st.codice}: {len(extra)} partite")
 
     # ---------- tutto ----------
@@ -402,6 +433,7 @@ class Aggiornamento:
         stagioni_storiche: quante, dalla più recente (1 = solo la scorsa, come sempre)."""
         if not 1 <= stagioni_storiche <= MAX_STAGIONI_STORICHE:
             raise ValueError(f"stagioni storiche: da 1 a {MAX_STAGIONI_STORICHE}")
+        self._a_fine = []                   # le ore nuove di `aggiornamenti` a fine giro, tutte insieme (vedi __init__)
         self._passo("listone", self.listone, "fantacalcio")
         if not self.slug_noti:
             self.slug_noti = {r[0] for r in self.db.execute("SELECT DISTINCT squadra_slug FROM calciatori")}
@@ -428,6 +460,7 @@ class Aggiornamento:
                 self._passo(f"dati extra {precedente.codice}", lambda p=precedente: self.dati_extra(p), "footballdata")
                 self._passo(f"quotazioni {precedente.codice}", lambda p=precedente: self.quotazioni(p), "fantacalcio")
         self._passo("controlli", self.controlli)
+        self._scrivi_a_fine()
         errori = json.dumps(self.errori, ensure_ascii=False)
         if any(n != "controlli" for n in self.riusciti):
             archivio.segna(self.db, "aggiornamento", _ora(), errori)

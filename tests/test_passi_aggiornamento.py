@@ -2,12 +2,13 @@
 freschi i dati di un passo che non riesce, la salute avvisa per nome del passo fermo da più di 24 ore, una pagina web al posto dei
 dati dà un errore leggibile. Archivi temporanei, dati inventati, nessuna richiesta in rete."""
 import json
+import sqlite3
 from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
 
-from fanta import aggiorna, archivio, fonti_attive, funzioni, salute, stato_dati
+from fanta import aggiorna, archivio, consigli, fonti_attive, funzioni, salute, stato_dati
 from fanta.fonti import understat as us
 
 ST = "2026-27"
@@ -105,6 +106,60 @@ def test_la_riga_generale_avanza_se_un_passo_dei_dati_riesce(db, monkeypatch):
     _agg(db, monkeypatch, "2026-11-02T08:03:00").esegui()
     quando, dettaglio = db.execute("SELECT quando, dettaglio FROM aggiornamenti WHERE cosa = 'aggiornamento'").fetchone()
     assert quando == "2026-11-02T08:03:00" and any(e.startswith("Understat:") for e in json.loads(dettaglio))
+
+
+class _ContaVersioni(sqlite3.Connection):
+    """Archivio che dopo ogni conferma annota la «versione» dei dati (`consigli._versione`): quando cambia, il riscaldamento ricalcola
+    formazioni e mercato."""
+
+    def commit(self):
+        super().commit()
+        self.versioni.append(consigli._versione(self))
+
+
+def _cambi_di_versione(versioni: list, prima) -> int:
+    return sum(1 for a, b in zip([prima, *versioni], versioni) if a != b)
+
+
+def test_un_aggiornamento_cambia_la_versione_dei_dati_una_volta_sola(tmp_path, monkeypatch):
+    f = tmp_path / "t.sqlite"
+    archivio.apri(f).close()
+    d = sqlite3.connect(f, factory=_ContaVersioni)
+    d.row_factory = sqlite3.Row
+    d.versioni = []
+    try:
+        archivio.segna(d, "aggiornamento", "2026-11-01T21:03:00", "[]")
+        d.commit()
+        _tutti(monkeypatch, {"listone", "calendario", "voti", "probabili", "probabili_fonte2", "understat", "dati_extra",
+                             "controlli"})
+        for ora in ("2026-11-02T08:03:00", "2026-11-02T13:03:00"):
+            prima, d.versioni = consigli._versione(d), []
+            _agg(d, monkeypatch, ora).esegui()
+            assert _cambi_di_versione(d.versioni, prima) == 1, ora
+        # un passo che non riesce non cambia la versione (i dati sono quelli di prima): solo la riga generale a fine giro
+        _tutti(monkeypatch, {"listone", "calendario", "voti", "probabili_fonte2", "understat", "dati_extra", "controlli"})
+        prima, d.versioni = consigli._versione(d), []
+        _agg(d, monkeypatch, "2026-11-02T17:03:00").esegui()
+        assert _cambi_di_versione(d.versioni, prima) == 1
+    finally:
+        d.close()
+
+
+def test_dati_extra_una_riga_sola_e_al_massimo_ogni_6_ore(db, monkeypatch):
+    """Una sola riga per football-data in «Stato dei dati» («dati-extra», l'esito del passo; prima c'erano «dati extra» e «dati-extra»);
+    il limite delle 6 ore si legge dall'ora delle righe salvate."""
+    from pathlib import Path
+    csv = (Path(__file__).parent / "dati" / "football_data_extra.csv").read_bytes()
+    chiamate = []
+    monkeypatch.setattr(aggiorna.rete, "scarica", lambda url, *a, **k: chiamate.append(url) or SimpleNamespace(content=csv))
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    for ora, attese in (("2026-11-02T08:03:00", 2), ("2026-11-02T13:03:00", 2), ("2026-11-02T17:03:00", 4)):
+        a = _agg(db, monkeypatch, ora)
+        a.slug_noti = {"como", "sassuolo", "milan", "pisa"}
+        a._passo("dati extra", a.dati_extra, "footballdata")
+        assert len(chiamate) == attese, ora
+    assert [r[0] for r in db.execute("SELECT cosa FROM aggiornamenti")] == ["dati-extra"]
+    assert _riga(db, "dati-extra") == ("2026-11-02T17:03:00", None)
 
 
 def test_passi_fermi_da_piu_di_24_ore_dal_primo_errore(db, monkeypatch):

@@ -210,11 +210,16 @@ def segna(db: sqlite3.Connection, cosa: str, quando: str | None, dettaglio: str 
 
 
 # ---------------- passi dell'aggiornamento (#608) ----------------
-# I passi di ogni aggiornamento che hanno una riga loro in `aggiornamenti` (cosa = nome del passo in minuscolo, come le chiavi che
-# web e iPhone traducono già: «listone», «voti», «probabili», «understat», «calendario»). `quando` = ultimo successo (NULL = mai);
+# I passi di ogni aggiornamento che hanno una riga loro in `aggiornamenti` (cosa = nome del passo in minuscolo con i trattini,
+# `cosa_passo`: «listone», «voti», «probabili», «understat», «calendario», «dati-extra»). `quando` = ultimo successo (NULL = mai);
 # `dettaglio` vuoto se l'ultima prova è andata, altrimenti JSON {"errore", "dal" (primo fallimento di fila), "ultimo"}.
-PASSI = ("listone", "calendario", "voti", "probabili", "understat", "dati extra", "controlli")
+PASSI = ("listone", "calendario", "voti", "probabili", "understat", "dati-extra", "controlli")
 PASSO_FERMO = timedelta(hours=24)        # un passo che non riesce da più di così si segnala per nome (salute, Stato dei dati)
+
+
+def cosa_passo(nome: str) -> str:
+    """La chiave in `aggiornamenti` del passo `nome` («Understat» -> «understat», «dati extra» -> «dati-extra», la riga che c'era già)."""
+    return nome.strip().lower().replace(" ", "-")
 
 
 def _errore_passo(dettaglio: str | None) -> dict | None:
@@ -232,7 +237,7 @@ def segna_passo(db: sqlite3.Connection, nome: str, quando: str, errore: str | No
     """Esito di un passo seguito (gli altri non scrivono niente). Riuscito: `quando` diventa l'ultimo successo. Non riuscito: l'ultimo
     successo resta quello di prima e si scrive l'errore, con l'ora del primo fallimento di fila. Restituisce lo stato del passo
     PRIMA di questa prova ({"ultimo_successo", "dal"}; None se il passo non è seguito)."""
-    cosa = nome.lower()
+    cosa = cosa_passo(nome)
     if cosa not in PASSI:
         return None
     r = db.execute("SELECT quando, dettaglio FROM aggiornamenti WHERE cosa = ?", (cosa,)).fetchone()
@@ -247,8 +252,8 @@ def segna_passo(db: sqlite3.Connection, nome: str, quando: str, errore: str | No
 
 def passo_saltato(db: sqlite3.Connection, nome: str) -> None:
     """Passo saltato apposta (fonte spenta): non è un guasto, l'errore di prima si toglie (l'ultimo successo resta)."""
-    if nome.lower() in PASSI:
-        db.execute("UPDATE aggiornamenti SET dettaglio = '' WHERE cosa = ? AND dettaglio <> ''", (nome.lower(),))
+    if cosa_passo(nome) in PASSI:
+        db.execute("UPDATE aggiornamenti SET dettaglio = '' WHERE cosa = ? AND dettaglio <> ''", (cosa_passo(nome),))
 
 
 def passi(db: sqlite3.Connection) -> list[dict]:
