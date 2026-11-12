@@ -70,6 +70,9 @@ extension Catalogo {
         /// `oggi.data_da_definire`
         static let dataDaDefinire = "Data da definire"
 
+        /// `oggi.calendario_no`
+        static let calendarioNo = "Calendario non disponibile"
+
         /// `oggi.punti_finora`
         static let puntiFinora = "Punti fatti finora"
 

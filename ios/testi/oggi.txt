@@ -25,6 +25,7 @@ oggi.diffidati
 
 # Il conto alla rovescia senza una data (OggiView)
 oggi.data_da_definire
+oggi.calendario_no
 
 # Giornata in corso, finita e «già iniziata» (TestiFase in Domain/FasiGiornata.swift)
 oggi.punti_finora

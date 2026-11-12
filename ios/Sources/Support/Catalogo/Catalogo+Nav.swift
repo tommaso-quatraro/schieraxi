@@ -3,7 +3,7 @@
 
 extension Catalogo {
     enum Nav {
-        /// `nav.oggi`
-        static let oggi = "Oggi"
+        /// `nav.formazione`
+        static let formazione = "Formazione"
     }
 }

@@ -1,2 +1,3 @@
 # Nomi delle sezioni. Poi: python script/testi.py --scrivi
-nav.oggi
+# la Formazione unica (#673), al posto di Oggi
+nav.formazione
