@@ -94,7 +94,9 @@ prima della scadenza:
   salvata; «Torna alla consigliata» la toglie; la spunta «L'ho messa» resta dopo una ricarica;
 - ciò che si salva è ciò che si vede: la copia mostrata subito all'apertura è di sola lettura finché non arrivano i dati
   nuovi; se non arrivano (rete caduta) la nota dice perché non si può cambiare e ha «Riprova», e quando il browser segnala
-  che la rete è tornata la pagina riprova da sola, una volta; un salvataggio che torna a schermata già ridisegnata fa rileggere; togliere la spunta non cancella una scelta
+  che la rete è tornata la pagina riprova da sola, una volta; un salvataggio che torna a schermata già ridisegnata fa rileggere,
+  e finché è in volo la pagina riletta ha i comandi spenti (un cambio fatto lì gli scriveva sopra); se quel salvataggio non
+  riesce un avviso lo dice e i comandi si riaccendono; togliere la spunta non cancella una scelta
   salvata altrove; se la scelta non si legge c'è un errore con «Riprova» e niente si può cambiare; rete caduta, rifiuto
   del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono;
 - tastiera: dopo il menu del modulo, la spunta, «Sostituisci» e «Torna alla consigliata» il fuoco resta su un comando;

@@ -669,6 +669,82 @@ def test_un_salvataggio_che_torna_dopo_che_la_schermata_si_e_ridisegnata_si_rile
     assert not web.errori_mostrati() and not web.errori_console
 
 
+def _trattieni_i_salvataggi(web) -> list:
+    """Da qui i salvataggi restano in volo finché il test non li lascia andare (`.fallback()`: risponde il server del test) o
+    non li fa fallire (`.abort()`). Restituisce l'elenco di quelli fermi."""
+    fermi = []
+
+    def ferma(route):
+        if json.loads(route.request.post_data).get("salva"):
+            fermi.append(route)
+        else:
+            route.fallback()
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione/valuta", ferma)
+    return fermi
+
+
+def _rileggi_a_salvataggio_in_volo(web, mem=None):
+    """Un altro modulo (il salvataggio resta in volo), poi un tocco sulla scheda «Formazione»: la pagina si rilegge dal server,
+    che del cambio non sa ancora niente. Con `mem` i dati riletti sono diversi dalla copia sul telefono (passano sei minuti): la
+    pagina si ridisegna da capo. Restituisce i salvataggi fermi e il modulo scelto."""
+    altro = _altro_modulo(web)
+    fermi = _trattieni_i_salvataggi(web)
+    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    if mem:
+        mem["oggi"] = {**web.registrata("/api/oggi"), "ore_mancanti": web.registrata("/api/oggi")["ore_mancanti"] - 0.1}
+    with web.pagina.expect_response(lambda r: urlsplit(r.url).path == "/api/scelta"):
+        web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Formazione").click()
+    from playwright.sync_api import expect
+    expect(principale(web).get_by_text("aggiorno…")).to_have_count(0, timeout=10000)     # i dati riletti sono in pagina
+    assert stato(web) == "È la consigliata." and len(fermi) == 1
+    return fermi, altro
+
+
+@pytest.mark.parametrize("dati_riletti", ["uguali alla copia", "diversi dalla copia"])
+def test_a_salvataggio_in_volo_la_pagina_riletta_resta_spenta_e_il_cambio_non_si_perde(web, dati_riletti):
+    """Difetto visto in revisione: la pagina riletta a salvataggio in volo mostrava ancora «È la consigliata.» con i comandi
+    accesi; la spunta messa lì partiva dopo il primo salvataggio con gli 11 di prima, e il cambio di modulo era perso. Finché
+    una scrittura sulla scelta è in corso i comandi restano spenti, anche dopo una rilettura."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    web.apri("/")
+    scritte = scritture(web)
+    fermi, altro = _rileggi_a_salvataggio_in_volo(web, mem if dati_riletti == "diversi dalla copia" else None)
+    menu, casella = principale(web).get_by_label("Modulo"), principale(web).get_by_role("checkbox", name="L'ho messa")
+    spenti = menu.is_disabled() and casella.is_disabled()
+    if casella.is_enabled():
+        casella.check()                                                # il secondo salvataggio, che scriveva sopra il primo
+    while fermi:
+        fermi.pop(0).fallback()                                        # il salvataggio arriva al server
+        web.aspetta()
+    assert sorted(mem["scelta"]["titolari"]) == sorted(altro["titolari"]), "il cambio di modulo è andato perso"
+    assert spenti, "a salvataggio in volo la pagina riletta aveva i comandi accesi"
+    assert len(scritte) == 1, scritte
+    assert principale(web).get_by_label("Modulo").input_value() == altro["modulo"] and stato(web).startswith("L'hai cambiata tu")
+    assert principale(web).get_by_label("Modulo").is_enabled() and principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
+    assert not web.errori_mostrati() and not web.errori_console
+
+
+def test_se_il_salvataggio_in_volo_non_riesce_la_pagina_riletta_lo_dice_e_si_riaccende(web):
+    """Il salvataggio partito dalla schermata di prima fallisce (rete caduta) quando la pagina è già stata riletta: un avviso lo
+    dice, in pagina resta ciò che è salvato e i comandi tornano accesi."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    web.apri("/")
+    fermi, _ = _rileggi_a_salvataggio_in_volo(web)
+    assert principale(web).get_by_label("Modulo").is_disabled()
+    fermi.pop(0).abort()
+    avviso = web.pagina.get_by_role("status").filter(has_text="Non riesco a collegarmi")
+    _aspetta(avviso.first, testo="Non riesco a collegarmi")
+    _aspetta(principale(web).get_by_label("Modulo"), attivo=True)
+    web.aspetta()
+    assert principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
+    assert stato(web) == "È la consigliata." and mem["scelta"] is None
+    assert principale(web).get_by_label("Modulo").input_value() == web.registrata("/api/formazione")["modulo"]
+    assert not web.errori_mostrati()
+
+
 def test_togliere_la_spunta_non_cancella_una_scelta_salvata_altrove(web):
     """Gli 11 salvati (per esempio dall'iPhone) sono quelli della consigliata: mettere e togliere la spunta non cancella la
     scelta. Una scelta salvata non cambia mai da sola: si toglie solo con «Torna alla consigliata»."""

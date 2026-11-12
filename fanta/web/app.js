@@ -90,6 +90,9 @@ function risorsaDi(percorso, opzioni) {
   return null;
 }
 function nuovoCollegamento() { for (const k of Object.keys(etagDi)) delete etagDi[k]; }
+// C'è una scrittura in volo sulla scelta di questa giornata (un salvataggio, «Torna alla consigliata»). Lo sa api(), non la
+// schermata: la Formazione si ridisegna da capo a ogni lettura, e una scrittura partita dalla schermata di prima è ancora in corso.
+const scritturaSuScelta = giornata => (scrittureInCorso[`scelta:${giornata}`] || 0) > 0;
 
 // Il server con gli account non fa aspettare la richiesta durante un calcolo lungo: risponde 202 «sto calcolando» e l'app
 // riprova da sola ogni pochi secondi, con il marchio che si muove in un angolo (fino a circa due minuti).
@@ -1032,11 +1035,15 @@ function mostraFormazione(b, squadra, opz = {}) {
   const chiusa = !!f.iniziata || !!live;
   const mia = !squadra;
   // `sola`: i comandi che scrivono sono spenti. Vale per la copia tenuta sul telefono, mostrata subito all'apertura, finché non
-  // arrivano i dati nuovi (un tocco lì salvava, e i dati in arrivo ridisegnavano la pagina senza il cambio), e per la scelta non letta.
+  // arrivano i dati nuovi (un tocco lì salvava, e i dati in arrivo ridisegnavano la pagina senza il cambio), per la scelta non letta,
+  // e finché è in volo una scrittura partita dalla schermata di prima (un altro modulo, poi un tocco su «Formazione»): la pagina
+  // riletta non la mostra ancora, e un cambio fatto lì le scriverebbe sopra. Quando quella scrittura torna, la schermata si rilegge.
   const nonLetta = mia && (b.scelta_non_letta === true || b.scelta === undefined);
   const sc = stato.scelta = { chiave: `${squadra || "mia"}/${f.giornata}`, salvata: mia && !nonLetta ? b.scelta : undefined,
     nonValida: mia && (!!b.non_valida || f.stato_scelta === "non_valida"), manuale: null, richiesta: 0, occupato: false,
-    nonLetta, copia: !!opz.daCache, sola: mia && (!!opz.daCache || nonLetta), fuoco: null };
+    nonLetta, copia: !!opz.daCache, sola: false, fuoco: null };
+  const spenti = () => mia && (sc.copia || sc.nonLetta || (!sc.occupato && scritturaSuScelta(f.giornata)));
+  sc.sola = spenti();
   // la formazione di partenza: gli 11 salvati, se valgono e non sono proprio quelli della consigliata
   if (mia && sc.salvata && !sc.nonValida && !live) {
     const m = moduloDi(f, sc.salvata.titolari);
@@ -1049,11 +1056,14 @@ function mostraFormazione(b, squadra, opz = {}) {
   const diversi = m => m.titolari.filter(id => !consigliato.titolari.includes(id)).length;      // quanti titolari non sono quelli della consigliata
   const qui = n => n === sc.richiesta && stato.scelta === sc && document.body.contains($("#campo-formazione"));
   // dopo un salvataggio la copia sul telefono di questa schermata è già vecchia: la si aggiorna, così tornando qui non si rivede quella di prima
-  // Il salvataggio è riuscito ma la schermata nel frattempo è stata ridisegnata (riaperta, o lasciata): la copia sul telefono è
-  // vecchia e, se si è ancora nella Formazione, in pagina c'è altro. Si rilegge dal server: mai una scelta salvata che non si vede.
+  // La scrittura è tornata (riuscita o no) ma la schermata nel frattempo è stata ridisegnata (riaperta, o lasciata): la copia sul
+  // telefono è vecchia e, se si è ancora nella Formazione, in pagina c'è altro, con i comandi spenti finché la scrittura era in
+  // volo. Si rilegge dal server: mai una scelta salvata che non si vede. Restituisce se ha riletto.
   const altrove = n => {
     rimuoviCache("giornata");
-    if (n === sc.richiesta && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista) rileggiFormazione();
+    const rilegge = n === sc.richiesta && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista;
+    if (rilegge) rileggiFormazione();
+    return rilegge;
   };
   const ricorda = valutata => { if (mia) salvaCache("giornata", { ...b, scelta: sc.salvata, valutata: valutata || undefined, non_valida: false, f: { ...f, stato_scelta: sc.salvata ? "valida" : "nessuna" } }); };
 
@@ -1078,7 +1088,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       return true;
     } catch (e) {
       if (e.status === 412) { avviso(e.message, 5000); return false; }      // cambiata su un altro dispositivo: api() ricarica la pagina con i dati di là
-      if (!qui(n)) return false;
+      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return false; }      // la pagina riletta nel frattempo: lo si dice lì
       avviso(e.message, 5000);
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
       return false;
@@ -1097,7 +1107,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       disegna(true);
     } catch (e) {
       if (e.status === 412) { avviso(e.message, 5000); return; }
-      if (!qui(n)) return;
+      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return; }
       avviso(e.message, 5000);                              // per esempio la consigliata sposterebbe chi gioca un anticipo già cominciato (#373)
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);
     } finally { if (n === sc.richiesta) sc.occupato = false; }
@@ -1261,6 +1271,7 @@ function mostraFormazione(b, squadra, opz = {}) {
     if (stato.scelta !== sc || !sc.sola) return;
     sc.copia = false;
     if (sc.nonLetta) { disegna(true); return; }
+    if (spenti()) return;                                   // una scrittura è ancora in volo: quando torna la schermata si rilegge
     sc.sola = false;
     document.querySelectorAll("#contenuto [data-scrive], #foglio-contenuto [data-sostituisci]").forEach(e => { e.disabled = false; });
   } };
