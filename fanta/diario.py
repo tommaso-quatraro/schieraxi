@@ -36,10 +36,11 @@ FILE = RADICE / "dati" / "diario.json"
 MASSIMO_GIORNATE = 12
 SIMULAZIONI = 300
 MAX_ISTANTANEE = 60
-# La web sta aggiungendo alla scelta salvata un campo che dice «ho messo la formazione nell'app della lega» (#616). Quando è su
-# `main` il suo nome va scritto QUI: da allora `schierata_confermata` dice se la scelta salvata è quella schierata davvero e ogni
-# voce lo porta in `schierata.confermata`, al posto della domanda fatta dopo. Finché è None non si sa, e il Diario fa come prima.
-CAMPO_NELLA_LEGA: str | None = None
+# «L'ho messa» (#616): il campo della scelta salvata che dice «ho messo questi 11 nell'app della lega». `scelte.salva` lo scrive
+# solo quando è vero (`messa: true`, con `messa_il`) e lo fa cadere se gli 11 cambiano. È l'unico punto dove il Diario lo legge:
+# `schierata_confermata` dice se la scelta salvata è quella schierata davvero e ogni voce lo porta in `schierata.confermata`.
+# Una scelta senza il campo (salvata prima di #616, o senza la spunta) vale None: non si sa, e il Diario fa come prima.
+CAMPO_NELLA_LEGA: str | None = "messa"
 _blocco = threading.Lock()
 LOG = logging.getLogger(__name__)
 
@@ -160,8 +161,9 @@ def _riga(titolari: list[fz.Giocatore], stat: tuple, reale: float) -> dict:
 
 
 def schierata_confermata(scelta: dict | None) -> bool | None:
-    """Se la scelta salvata dice che l'utente l'ha messa nell'app della lega: True o False; None se non si sa (il campo non c'è
-    ancora, vedi `CAMPO_NELLA_LEGA`, o la scelta è stata salvata prima che esistesse)."""
+    """Se la scelta salvata dice che l'utente l'ha messa nell'app della lega (`CAMPO_NELLA_LEGA`): True; None se non si sa (la
+    scelta non ha il campo: salvata prima che esistesse, o senza la spunta «L'ho messa»). False solo se il campo c'è ed è falso,
+    cosa che `scelte.salva` oggi non scrive."""
     if not isinstance(scelta, dict) or CAMPO_NELLA_LEGA is None or CAMPO_NELLA_LEGA not in scelta:
         return None
     return bool(scelta[CAMPO_NELLA_LEGA])

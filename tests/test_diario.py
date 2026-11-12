@@ -198,18 +198,21 @@ def test_le_voci_di_prima_si_rifanno_una_volta_se_c_e_l_istantanea(finto):
     assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 0
 
 
-def test_la_schierata_dice_se_e_stata_messa_nell_app_della_lega(finto, monkeypatch):
-    """Il campo della scelta salvata che dice «l'ho messa nell'app della lega» (#616) non è ancora su main: il punto dove
-    leggerlo è `diario.CAMPO_NELLA_LEGA`. Finché manca non si sa (None) e il Diario fa come prima."""
-    assert diario.CAMPO_NELLA_LEGA is None and diario.schierata_confermata(_scelta(MOSTRATI)) is None
-    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), _scelta(MOSTRATI), simulazioni=50)
+def test_la_schierata_dice_se_e_stata_messa_nell_app_della_lega(finto):
+    """«L'ho messa» (#616): la scelta salvata porta `messa: true` e `messa_il` solo quando l'utente ha detto di aver messo quegli
+    11 nell'app della lega (`scelte.salva`; se gli 11 cambiano il campo cade). Il Diario lo legge da `diario.CAMPO_NELLA_LEGA`.
+    Senza il campo non si sa (None) e il Diario fa come prima: sono le scelte salvate prima di #616, o senza la spunta."""
+    assert diario.CAMPO_NELLA_LEGA == "messa"
+    senza = _scelta(MOSTRATI)
+    messa = {**senza, "tipo": "manuale", "salvata": "2026-11-12T18:00:00", "messa": True, "messa_il": "2026-11-12T18:05:00"}
+    assert diario.schierata_confermata(None) is None and diario.schierata_confermata(senza) is None
+    assert diario.schierata_confermata(messa) is True
+    assert diario.schierata_confermata({**senza, "messa": False}) is False             # se mai fosse scritto: ha detto di no
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), senza, simulazioni=50)
     assert v["schierata"]["confermata"] is None
-    monkeypatch.setattr(diario, "CAMPO_NELLA_LEGA", "campo_di_prova")
-    assert diario.schierata_confermata(_scelta(MOSTRATI)) is None                      # scelta salvata senza il campo
-    assert diario.schierata_confermata({**_scelta(MOSTRATI), "campo_di_prova": False}) is False
-    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)),
-                                {**_scelta(MOSTRATI), "campo_di_prova": True}, simulazioni=50)
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), messa, simulazioni=50)
     assert v["schierata"]["confermata"] is True
+    assert v["schierata"]["tipo"] == "manuale" and v["schierata"]["reale"] == 66.0     # il resto della voce è quello di sempre
 
 
 # ---------------------------------------------------------------- «Ho schierato la consigliata» e copia automatica
@@ -271,6 +274,16 @@ def test_la_copia_automatica_non_e_una_scelta_dell_utente(vero):
     _scelte.salva(ST, 1, list(range(1, 12)), "4-4-2", vero.scelte)                    # l'utente sceglie
     assert _scelte.salva_automatica(ST, 1, list(range(2, 13)), "4-4-2", vero.scelte) is False          # mai sopra una scelta vera
     assert _LEGGI_VERO(ST, 1, vero.scelte)["tipo"] == "manuale"
+
+
+def test_il_diario_legge_l_ho_messa_dal_file_delle_scelte(vero):
+    """Dal file delle scelte alla voce del Diario: nella giornata 1 l'utente aveva detto «L'ho messa», nella 2 no."""
+    scelta = {"titolari": CON_IL_25, "modulo": "3-4-3", "salvata": "2026-08-31T18:00:00", "tipo": "manuale"}
+    vero.scelte.write_text(json.dumps({f"{ST}/1": scelta | {"messa": True, "messa_il": "2026-08-31T18:05:00"}, f"{ST}/2": scelta}),
+                           encoding="utf-8")
+    assert diario.aggiorna(vero.db, Regole(), vero.rose, vero.file, simulazioni=50, file_scelte=vero.scelte) == 2
+    voci = diario.elenco(vero.file)["giornate"]
+    assert [(v["giornata"], v["schierata"]["confermata"]) for v in voci] == [(2, None), (1, True)]
 
 
 def test_il_diario_distingue_automatica_e_schierata(vero):
