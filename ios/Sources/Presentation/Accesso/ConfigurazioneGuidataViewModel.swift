@@ -49,6 +49,9 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     private var passiServer: [String] = []
     /// «Più tardi», un passo che porta altrove o «Fine» hanno già salvato come si è usciti: la chiusura del foglio non risalva.
     private var lasciata = false
+    /// Il server da cui è stata letta la guida: se nel frattempo è cambiato (Impostazioni > Server, spostamento automatico),
+    /// alla chiusura non si scrive niente.
+    private var indirizzoLetto: String?
 
     init(server: any ServerClient) {
         self.server = server
@@ -70,9 +73,11 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     func carica() async {
         fase = .carica
         do {
+            let indirizzo = server.indirizzo
             let risposta: PrimoAvvioRisposta = try await server.get("/api/primo-avvio")
             avanzamento = risposta.primoAvvio
             passiServer = risposta.passi
+            indirizzoLetto = indirizzo
         } catch {
             fase = .errore(error.localizedDescription)
             return
@@ -102,13 +107,20 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     }
 
     /// All'apertura dell'app, senza rose: parte se non è mai stata iniziata, si riprende se era stata lasciata prima delle rose
-    /// (`PrimoAvvioLogica.daAvviare`). Mai se l'app è stata aperta con un file o un'immagine da un'altra app (Condividi, «Apri con»):
-    /// la guida non prende il posto di quella schermata. `apertaDaFuori` si guarda anche dopo le risposte del server, perché il
-    /// file può arrivare mentre si aspettano.
-    static func devePartire(server: any ServerClient, apertaDaFuori: () -> Bool = { false }) async -> Bool {
+    /// (`PrimoAvvioLogica.daAvviare`). Mai iniziata e con gli account (`conAccount`), prima si guarda la vecchia procedura
+    /// (`GET /api/onboarding`) come `paControllaAvvio` della web: completata o saltata non parte, e se non risponde nemmeno (si
+    /// riprova alla prossima apertura). Mai se l'app è stata aperta con un file o un'immagine da un'altra app (Condividi, «Apri
+    /// con»): la guida non prende il posto di quella schermata. `apertaDaFuori` si guarda anche dopo le risposte del server,
+    /// perché il file può arrivare mentre si aspettano.
+    static func devePartire(server: any ServerClient, conAccount: Bool = false, apertaDaFuori: () -> Bool = { false }) async -> Bool {
         guard !apertaDaFuori(), let risposta: PrimoAvvioRisposta = try? await server.get("/api/primo-avvio") else { return false }
         let lega: StatoLega? = try? await server.get("/api/stato")
-        return !apertaDaFuori() && PrimoAvvioLogica.daAvviare(risposta, roseImportate: lega?.roseImportate)
+        var procedura: ProceduraVecchia?
+        if conAccount, risposta.primoAvvio == nil, lega?.roseImportate == false {
+            guard let vecchia: ProceduraVecchia = try? await server.get("/api/onboarding") else { return false }
+            procedura = vecchia
+        }
+        return !apertaDaFuori() && PrimoAvvioLogica.daAvviare(risposta, roseImportate: lega?.roseImportate, procedura: procedura)
     }
 
     // MARK: azioni
@@ -153,10 +165,11 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     }
 
     /// Il foglio si è chiuso: se è stato trascinato giù (o toccato fuori sull'iPad) senza «Più tardi» né «Fine», vale come
-    /// «Più tardi», come la web quando si chiude la guida con la ✕ (`paOsservaChiusura`). A guida finita (riepilogo) o prima
-    /// che sia pronta non si salva niente.
-    func chiusa() async {
-        guard !lasciata, fase == .pronta, !eRiepilogo else { return }
+    /// «Più tardi», come la web quando si chiude la guida con la ✕ (`paOsservaChiusura`). Non si salva niente a guida finita
+    /// (riepilogo), prima che sia pronta, se l'ha chiusa l'app e non l'utente (`dallApp`: sessione finita, un file arrivato da
+    /// fuori) o se nel frattempo è cambiato il server: i passi restano come erano.
+    func chiusa(dallApp: Bool = false) async {
+        guard !dallApp, !lasciata, fase == .pronta, !eRiepilogo, server.indirizzo == indirizzoLetto else { return }
         await piuTardi()
     }
 

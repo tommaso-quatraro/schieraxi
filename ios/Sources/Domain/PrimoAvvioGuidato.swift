@@ -42,6 +42,23 @@ struct PrimoAvvioRisposta: Decodable, Equatable {
     }
 }
 
+/// La vecchia procedura guidata degli account (`GET /api/onboarding`, solo con gli account): conta solo com'è finita.
+struct ProceduraVecchia: Decodable, Equatable {
+    var stato: String?
+
+    init(stato: String? = nil) { self.stato = stato }
+
+    private enum Chiavi: String, CodingKey { case stato }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        stato = (try? k.decodeIfPresent(String.self, forKey: .stato)) ?? nil
+    }
+
+    /// Completata o saltata: chi l'ha già fatta (o lasciata) non rivede la guida da sola, come la web (`paControllaAvvio`).
+    var finita: Bool { stato == "completato" || stato == "saltato" }
+}
+
 /// `PUT /api/primo-avvio`.
 struct CorpoPrimoAvvio: Codable, Equatable {
     var fatti: [String]
@@ -125,10 +142,11 @@ enum PrimoAvvioLogica {
     static let massimoVoci = 12
 
     /// All'apertura dell'app si apre da sola solo se mancano le rose (chi ha già la lega non la vede mai da sola), come
-    /// `primoAvvioSeServe` della web: parte se non è mai stata iniziata, si riprende se è da riprendere (`daRiprendere`).
-    static func daAvviare(_ risposta: PrimoAvvioRisposta?, roseImportate: Bool?) -> Bool {
+    /// `primoAvvioSeServe` della web: si riprende se è da riprendere (`daRiprendere`); se non è mai stata iniziata parte, tranne
+    /// quando la vecchia procedura degli account (`procedura`, nil senza account) è già completata o saltata.
+    static func daAvviare(_ risposta: PrimoAvvioRisposta?, roseImportate: Bool?, procedura: ProceduraVecchia? = nil) -> Bool {
         guard let risposta, roseImportate == false else { return false }
-        guard let avanzamento = risposta.primoAvvio else { return true }
+        guard let avanzamento = risposta.primoAvvio else { return !(procedura?.finita ?? false) }
         return daRiprendere(avanzamento)
     }
 
