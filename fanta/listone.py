@@ -11,10 +11,9 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import requests
 from bs4 import BeautifulSoup
 
-from . import fonti_attive
+from . import fonti_attive, rete
 from .percorsi import CACHE, scrivi_sicuro
 from .rete import UA as _AGENTE
 
@@ -133,11 +132,14 @@ def nomi_completi(percorso: Path | None = None) -> dict[int, str]:
 
 
 def carica(aggiorna: bool = False, max_eta: timedelta = timedelta(hours=24),
-           file_cache: Path = FILE_CACHE, archivio_db: Path | None = None) -> tuple[list[Calciatore], str]:
+           file_cache: Path = FILE_CACHE, archivio_db: Path | None = None, severo: bool = False) -> tuple[list[Calciatore], str]:
     """Restituisce (calciatori, data di scaricamento). Usa la cache se è recente. Senza file e senza fonte (spenta o che non risponde)
-    usa l'anagrafe già nell'archivio (`dall_archivio`), tranne quando si sta aggiornando (lì l'errore deve vedersi)."""
+    usa l'anagrafe già nell'archivio (`dall_archivio`), tranne quando si sta aggiornando (lì l'errore deve vedersi).
+    `severo` (il passo dell'aggiornamento): una copia più vecchia di `max_eta` si rinnova e, se la pagina non si scarica o non si
+    legge, è un errore. Senza `severo` (le rotte dell'app) la copia che c'è vale subito, anche vecchia: nessuna attesa del sito
+    (con i tentativi di `rete.scarica` fino a 90 secondi); il sito si chiede solo senza nessuna copia, o con `aggiorna`."""
     cache = _leggi_cache(file_cache)
-    if cache and not aggiorna and datetime.now() - datetime.fromisoformat(cache[1]) < max_eta:
+    if cache and not aggiorna and (not severo or datetime.now() - datetime.fromisoformat(cache[1]) < max_eta):
         return cache
     if not fonti_attive.acceso("fantacalcio"):
         if cache:
@@ -147,10 +149,10 @@ def carica(aggiorna: bool = False, max_eta: timedelta = timedelta(hours=24),
             return riserva                    # né file né fonte: l'anagrafe già nell'archivio (esempi e importazioni funzionano)
         fonti_attive.richiedi("fantacalcio")
     try:
-        r = requests.get(URL, headers=UA, timeout=30)
-        r.raise_for_status()
-        calciatori = analizza_html(r.text)
+        calciatori = analizza_html(rete.scarica(URL).text)
     except Exception:
+        if severo:
+            raise
         if cache:  # meglio un listone di ieri che niente
             return cache
         riserva = None if aggiorna else dall_archivio(archivio_db)
