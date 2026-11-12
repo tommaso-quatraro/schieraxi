@@ -2526,12 +2526,14 @@ def _giornata_chiusa_per(ctx: Contesto):
 def ripristina_backup(dati: dict, ctx: Contesto = Depends(lega_corrente)):
     """Rimette i dati di un backup. Controlla tutto prima: se qualcosa non va non cambia niente. Le formazioni delle giornate
     già chiuse restano quelle del server (il backup non aggira la scadenza, come POST /api/formazione/valuta e DELETE /api/scelta)."""
-    limiti.controlla_spazio(ctx, len(json.dumps(dati)), "Questo backup è troppo grande: controlla di aver scelto il file giusto.")
+    troppo = "Questo backup è troppo grande: controlla di aver scelto il file giusto."
+    limiti.controlla_spazio(ctx, len(json.dumps(dati)), troppo)          # subito, prima dei controlli
     chiusa, db = _giornata_chiusa_per(ctx)
     try:
         with versioni.blocco("scelte"):
             esito = backup.ripristina_esito(dati, RADICE, ctx.file_backup, ctx.copia_prima, chiusa,
-                                            lambda rose: limiti.controlla_rose(ctx, rose))     # stessi tetti dell'importazione
+                                            lambda rose: limiti.controlla_rose(ctx, rose),      # stessi tetti dell'importazione
+                                            spazio=lambda byte: limiti.controlla_spazio(ctx, byte, troppo))    # il peso vero dei file da scrivere
     finally:
         db.close()
     tenute = esito["scelte_chiuse_tenute"]

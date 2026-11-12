@@ -1,6 +1,7 @@
 """Limiti per utente (importazioni, scambi, spazio, dimensione della lega): solo con gli account accesi, e solo per chi li supera.
 Tutto su cartelle temporanee e dati finti (vedi le fixture multiutente e dati_isolati)."""
 import contextlib
+import json
 from datetime import datetime, timedelta
 
 import pytest
@@ -286,6 +287,57 @@ def test_il_ripristino_del_backup_al_tetto_va(ambiente):
     r = a.post("/api/backup/ripristina", json=copia)
     assert r.status_code == 200 and "lega/rose.json" in r.json()["ripristinati"]
     assert len(a.get("/api/squadre").json()) == limiti.MAX_SQUADRE
+
+
+def _annidato(livelli: int):
+    d: list = [0]
+    for _ in range(livelli - 1):
+        d = [d]
+    return d
+
+
+def _file_utente(cartella) -> dict:
+    return {p.relative_to(cartella).as_posix(): p.read_bytes() for p in cartella.rglob("*") if p.is_file()}
+
+
+@pytest.mark.parametrize("nome, contenuto", [
+    pytest.param("dati/scelte.json", {f"x{i}": _annidato(50) for i in range(3)}, id="scelte-annidate"),
+    pytest.param("lega/movimenti.json", [_annidato(50)], id="movimenti-annidati"),
+    pytest.param("lega/movimenti.json", [1, 2, 3], id="movimenti-numeri"),
+    pytest.param("lega/rose.json", _rose_nel_backup(1, 1) | {"mia_squadra": "Squadra 0\ud800"}, id="rose-testo-spezzato"),
+])
+def test_il_ripristino_con_dati_di_forma_sbagliata_risponde_400_e_non_scrive_niente(ambiente, nome, contenuto):
+    a, id_a = nuovo_utente("utentea")
+    assert importa(a).status_code == 200
+    copia = a.get("/api/backup").json()
+    cartella = contesto.cartella_utente(id_a)
+    prima = _file_utente(cartella)
+    copia["file"]["dati/osservati.json"] = [1, 2]                   # un file buono prima di quello sbagliato: non si scrive nemmeno lui
+    copia["file"][nome] = contenuto
+    corpo = json.dumps(copia)                     # i caratteri fuori dall'ASCII come \uXXXX, anche quelli spezzati
+    r = a.post("/api/backup/ripristina", content=corpo, headers={"Content-Type": "application/json"})
+    assert r.status_code == 400 and r.json()["detail"] == f"{nome} non è valido: controlla di aver scelto il file di backup giusto"
+    assert _file_utente(cartella) == prima                                    # niente scritto, nemmeno la copia di prima
+
+
+def test_il_ripristino_misura_lo_spazio_su_quello_che_scrive(ambiente, monkeypatch):
+    """Lo spazio si controlla anche sul peso vero dei file che il ripristino scrive, prima di scriverli."""
+    a, id_a = nuovo_utente("utentea")
+    assert importa(a).status_code == 200
+    copia = a.get("/api/backup").json()
+    copia["file"]["dati/osservati.json"] = [1, 2]
+    misure = []
+    vera = limiti.controlla_spazio
+
+    def misura(ctx, in_arrivo=0, consiglio=""):
+        misure.append(in_arrivo)
+        return vera(ctx, in_arrivo, consiglio)
+    monkeypatch.setattr(limiti, "controlla_spazio", misura)
+    r = a.post("/api/backup/ripristina", json=copia)
+    assert r.status_code == 200
+    cartella = contesto.cartella_utente(id_a)
+    scritti = sum((cartella / nome.rsplit("/", 1)[1]).stat().st_size for nome in r.json()["ripristinati"])
+    assert misure[-1] == scritti
 
 
 # ---------------------------------------------------------------- spazio
