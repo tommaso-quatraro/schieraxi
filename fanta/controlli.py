@@ -131,6 +131,28 @@ CONTROLLI: dict[str, Callable[[sqlite3.Connection, str], Esito | None]] = {
     "gol_dei_voti": gol_dei_voti,
     "gol_subiti_portieri": gol_subiti_portieri,
 }
+# Il nome di ogni controllo per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui, i client le mostrano)
+ETICHETTE = {
+    "partite_per_giornata": "10 partite per giornata",
+    "voti_per_giornata": "Voti nelle giornate finite",
+    "somma_xg": "Gol attesi dei giocatori e della partita",
+    "titolari_per_squadra": "11 titolari per squadra",
+    "gol_dei_voti": "Gol dei voti uguali al risultato",
+    "gol_subiti_portieri": "Gol presi dai portieri uguali al risultato",
+    "sentinella": "Sentinella: risposte dell'app",
+}
+
+
+def etichetta(nome: str) -> str:
+    """Il nome leggibile di un controllo; le righe della sentinella («sentinella_<invariante>») con il nome dell'invariante."""
+    if nome in ETICHETTE:
+        return ETICHETTE[nome]
+    if nome.startswith("sentinella_"):
+        return "Sentinella: " + nome.removeprefix("sentinella_").replace("_", " ")
+    testo = nome.replace("_", " ").replace("-", " ").strip()
+    return testo[:1].upper() + testo[1:]
+
+
 # Controlli che sui dati veri danno sempre zero (misurato il 12/11/2026 su tutte le partite in archivio): un «errore» è un passo
 # dell'aggiornamento che ha scritto dati sbagliati, e la corsa lo conta tra i suoi errori (`aggiorna.Aggiornamento.controlli`).
 CONTANO_COME_ERRORI = frozenset({"gol_dei_voti", "gol_subiti_portieri"})

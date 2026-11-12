@@ -219,6 +219,30 @@ def test_stato_dei_dati_mostra_il_passo_fermo_con_l_ora_vera(db, monkeypatch):
     assert voce["errori"] == ["Non riuscito alle 08:03 del 02/11: ValueError: pagina strana"]
 
 
+def test_stato_dei_dati_ha_un_nome_leggibile_per_ogni_riga_e_ogni_controllo(db, monkeypatch):
+    """Le etichette nascono sul server (campo `etichetta`): i client non mostrano più chiavi grezze come «dati-extra» o
+    «gol_dei_voti»."""
+    from fanta import controlli
+    for cosa in ("aggiornamento", "listone", "calendario", "voti", "probabili", "understat", "dati-extra", "controlli",
+                 "calendario 2026-27", "dati-extra 2025-26", "probabili-rapido", "risultati-rapido", "taratura-probabili",
+                 "cosa-mai-vista"):
+        archivio.segna(db, cosa, "2026-11-02T08:03:00")
+    for nome in list(controlli.CONTROLLI) + ["sentinella", "sentinella_voti_mancanti"]:
+        db.execute("INSERT INTO controlli VALUES (?, ?, 'ok', 0, 'x', '2026-11-02T08:03:00')", (ST, nome))
+    r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 2, 9, 0))
+    etichette = {a["cosa"]: a["etichetta"] for a in r["aggiornamenti"]}
+    assert etichette["dati-extra"] == "Statistiche di squadra" and etichette["understat"] == "Statistiche avanzate"
+    assert etichette["calendario 2026-27"] == "Calendario completo 2026-27"
+    assert etichette["dati-extra 2025-26"] == "Statistiche di squadra 2025-26"
+    assert etichette["cosa-mai-vista"] == "Cosa mai vista"                       # chiave sconosciuta: almeno leggibile
+    nomi = {c["nome"]: c["etichetta"] for c in r["controlli"]}
+    assert nomi["gol_dei_voti"] == "Gol dei voti uguali al risultato"
+    assert nomi["gol_subiti_portieri"] == "Gol presi dai portieri uguali al risultato"
+    assert nomi["sentinella_voti_mancanti"] == "Sentinella: voti mancanti"
+    for testo in [*etichette.values(), *nomi.values()]:
+        assert testo and "_" not in testo and testo[0].isupper() or testo[0].isdigit(), testo
+
+
 # ---------------- una pagina web al posto dei dati ----------------
 MANUTENZIONE = b"<!DOCTYPE html>\n<html><head><title>  Sito in\nmanutenzione </title></head><body>Torniamo presto</body></html>"
 

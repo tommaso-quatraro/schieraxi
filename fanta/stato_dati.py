@@ -160,6 +160,34 @@ def _registro_nostri(db: sqlite3.Connection) -> dict | None:
         return None
 
 
+# Il nome di ogni riga di `aggiornamenti` per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui)
+ETICHETTE_AGGIORNAMENTI = {
+    "aggiornamento": "Aggiornamento generale",
+    "listone": "Listone e quotazioni",
+    "calendario": "Calendario",
+    "voti": "Voti e bonus",
+    "probabili": "Probabili formazioni",
+    "understat": "Statistiche avanzate",
+    "dati-extra": "Statistiche di squadra",
+    "controlli": "Controlli sui dati",
+    "probabili-rapido": "Probabili vicino alla scadenza",
+    "risultati-rapido": "Risultati la sera stessa",
+    "taratura-probabili": "Taratura di «gioca N%»",
+}
+ETICHETTE_PER_STAGIONE = {"calendario": "Calendario completo", "dati-extra": "Statistiche di squadra"}   # «calendario 2026-27»
+
+
+def etichetta_aggiornamento(cosa: str) -> str:
+    """Il nome leggibile di una riga di `aggiornamenti`; una chiave sconosciuta almeno senza trattini e con la maiuscola."""
+    if cosa in ETICHETTE_AGGIORNAMENTI:
+        return ETICHETTE_AGGIORNAMENTI[cosa]
+    base, _, resto = cosa.partition(" ")
+    if base in ETICHETTE_PER_STAGIONE and resto:
+        return f"{ETICHETTE_PER_STAGIONE[base]} {resto}"
+    testo = cosa.replace("-", " ").replace("_", " ").strip()
+    return testo[:1].upper() + testo[1:]
+
+
 def _quando_breve(quando: str | None, formato: str) -> str:
     try:
         return datetime.fromisoformat(str(quando)[:19]).strftime(formato)
@@ -211,7 +239,7 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
                 errori = json.loads(dettaglio) if dettaglio and dettaglio.startswith("[") else []
             except ValueError:
                 errori = []
-        agg.append({"cosa": cosa, "quando": quando, "errori": errori})
+        agg.append({"cosa": cosa, "quando": quando, "errori": errori, "etichetta": etichetta_aggiornamento(cosa)})
     partite = db.execute("SELECT COUNT(*), COALESCE(SUM(giocata), 0) FROM partite WHERE stagione = ?", (stagione,)).fetchone()
     probabili = db.execute("SELECT giornata, COUNT(*), MAX(rilevato) FROM probabili WHERE stagione = ? AND fonte = 'fantacalcio' "
                            "GROUP BY giornata ORDER BY giornata", (stagione,)).fetchall()
@@ -221,7 +249,7 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
         "partite": {"totali": partite[0], "giocate": partite[1]},
         "voti": db.execute("SELECT COUNT(*) FROM voti WHERE stagione = ?", (stagione,)).fetchone()[0],
         "probabili": [{"giornata": g, "giocatori": n, "rilevato": q} for g, n, q in probabili],
-        "controlli": controlli.leggi(db, stagione),
+        "controlli": [{**c, "etichetta": controlli.etichetta(c["nome"])} for c in controlli.leggi(db, stagione)],
         "ombra": ombra(db),
         "foto": len(foto.disponibili()) if foto else 0,
         "fonti": fonti_attive.stato(),
