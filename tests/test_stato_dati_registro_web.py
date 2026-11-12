@@ -21,7 +21,7 @@ ST = "2026-27"
 # scarto di 10 punti tra «gioca N%» e chi ha giocato, punti veri dentro la fascia 16 volte su 20 (80%)
 MISURA = {"voti": 2, "sq_modello": 2.0, "sq_fantamedia": 2.25, "presenze": 4, "brier_somma": 0.4,
           "fasce": [[2, 0.3, 0]] + [[0, 0.0, 0]] * 8 + [[2, 1.9, 2]], "fascia_casi": 20, "fascia_dentro": 16}
-I1 = "Errore del fantavoto atteso contro la fantamedia"
+I1 = "Errore del fantavoto atteso contro la fantamedia avvicinata alla media del ruolo"      # l'avversario onesto di #614
 I2 = "«Gioca N%» contro chi ha giocato davvero"
 I3 = "Punti veri dentro la fascia «8 volte su 10»"
 PERSA = {9: registro_giornate.SENZA_TENTATIVI}
