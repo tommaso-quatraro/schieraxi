@@ -1076,8 +1076,10 @@ function mostraFormazione(b, squadra, opz = {}) {
     const linee = { P: [], D: [], C: [], A: [] };
     titolari.forEach(x => (linee[x.ruolo] || linee.A).push(x));
     // per la scheda del giocatore e la sostituzione: la formazione in pagina e cosa ci si può fare
+    // `fermo`: un titolare che gioca un anticipo già cominciato; al posto di «Sostituisci» la scheda dice perché non si sposta
     stato.formaz = { f, modulo: m, scheda, perche: id => (sc.manuale || chiusa ? "" : percheTitolare(m, id, scheda)),
-      sostituibile: id => mia && !chiusa && m.titolari.includes(id) && !fermi.has(id), sostituisci };
+      sostituibile: id => mia && !chiusa && m.titolari.includes(id) && !fermi.has(id),
+      fermo: id => mia && !chiusa && m.titolari.includes(id) && fermi.has(id), sostituisci };
     // le decisioni che hanno ancora senso con la formazione in pagina: un cambio già fatto non si propone più, e «la consigliata è
     // cambiata» vale finché c'è una tua scelta salvata diversa da lei
     const vale = v => v.tipo === "dubbio" ? !chiusa && !!v.giocatore && m.titolari.includes(Number(v.giocatore.id)) && !m.titolari.includes(Number(v.alternativa.id))
@@ -1271,8 +1273,8 @@ function bloccoPerche(x) {
 
 // La scheda del giocatore (#616): una sola, al posto di scheda, «Perché questo numero» e sostituzione. In alto ciò che serve per
 // decidere: il fantavoto atteso (se gioca), «gioca N%» con lo stato a parole, perché è titolare, i motivi del numero, gli ultimi voti
-// e, per un titolare della tua formazione ancora aperta, «Sostituisci». Tutto il resto (probabilità, stagione, occasioni, prossime
-// partite) sta dietro «Tutti i numeri».
+// e, per un titolare della tua formazione ancora aperta, «Sostituisci» (se gioca un anticipo già cominciato, la riga che dice che non
+// si sposta più). Tutto il resto (probabilità, stagione, occasioni, prossime partite) sta dietro «Tutti i numeri».
 // `c`: {id, nome, ruolo, squadra, squadra_slug}; `pr`: la sua previsione per la giornata (la scheda della Formazione o `previsione`
 // di /api/giocatore), null se non c'è; `fz`: la Formazione in pagina (stato.formaz), se la scheda si apre da lì.
 function htmlScheda(c, pr, fz) {
@@ -1304,7 +1306,8 @@ function htmlScheda(c, pr, fz) {
     ${perche ? `<div class="scheda-pezzo" id="perche-titolare"><h3>${t("formazione.perche_titolare")}</h3><p>${perche}</p></div>` : ""}
     ${pr && !finitaP ? bloccoPerche(prSenzaGioca) : ""}
     <div class="scheda-pezzo" id="scheda-voti" aria-busy="true"><h3>${t("formazione.ultimi_voti")}</h3><div class="debole piccolo">${t("comune.carico")}</div></div>
-    ${fz && fz.sostituibile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-sostituisci="${Number(c.id)}">${t("formazione.sostituisci")}</button></div>` : ""}
+    ${fz && fz.sostituibile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-sostituisci="${Number(c.id)}">${t("formazione.sostituisci")}</button></div>`
+      : fz && fz.fermo(Number(c.id)) ? `<p class="debole piccolo" id="scheda-fermo">${t("formazione.bloccati")}</p>` : ""}
     <details class="scheda-numeri" id="scheda-numeri"><summary>${t("formazione.tutti_numeri")}</summary>
       <div id="scheda-numeri-corpo" aria-busy="true"><div class="debole piccolo">${t("comune.carico")}</div></div></details>`;
 }

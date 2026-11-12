@@ -140,8 +140,8 @@ SCHEDA = "\n".join(["const volto = () => ''; const NOME_RUOLO_1 = { P: 'Portiere
 CALCIATORE = {"id": 7, "nome": "Rossi L.", "ruolo": "C", "squadra": "Genoa", "squadra_slug": "genoa"}
 
 
-def _scheda(pr, sostituibile=True, perche="", lingua="it") -> str:
-    fz = f"{{ perche: () => {json.dumps(perche)}, sostituibile: () => {json.dumps(sostituibile)} }}"
+def _scheda(pr, sostituibile=True, perche="", lingua="it", fermo=False) -> str:
+    fz = f"{{ perche: () => {json.dumps(perche)}, sostituibile: () => {json.dumps(sostituibile)}, fermo: () => {json.dumps(fermo)} }}"
     return _esegui(f"htmlScheda({json.dumps(CALCIATORE)}, {json.dumps(pr)}, {fz})", STATI, SCHEDA, lingua=lingua)
 
 
@@ -169,7 +169,12 @@ def test_la_scheda_prima_della_partita():
 
 def test_la_scheda_di_chi_non_si_puo_sostituire_non_ha_il_pulsante():
     """Chi gioca un anticipo già cominciato, chi non è titolare, la formazione chiusa o di un'altra squadra: niente «Sostituisci»."""
-    assert "data-sostituisci" not in _scheda(_giocatore(), sostituibile=False)
+    panchina = _scheda(_giocatore(), sostituibile=False)
+    assert "data-sostituisci" not in panchina and "non si può più spostare" not in panchina
+    # un titolare che gioca un anticipo già cominciato: al posto del pulsante, perché non si sposta (#373)
+    fermo = _scheda(_giocatore(), sostituibile=False, fermo=True)
+    assert "data-sostituisci" not in fermo
+    assert '<p class="debole piccolo" id="scheda-fermo">Chi gioca in una partita già cominciata non si può più spostare.</p>' in fermo
     senza_formazione = _esegui(f"htmlScheda({json.dumps(CALCIATORE)}, {json.dumps(_giocatore())}, null)", STATI, SCHEDA)
     assert "data-sostituisci" not in senza_formazione and 'id="perche-titolare"' not in senza_formazione   # dalla ricerca o dalla rosa
     senza_previsione = _esegui(f"htmlScheda({json.dumps(CALCIATORE)}, null, null)", STATI, SCHEDA)

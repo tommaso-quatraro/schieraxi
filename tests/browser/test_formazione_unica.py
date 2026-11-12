@@ -322,3 +322,113 @@ def test_sul_pc_la_scheda_si_apre_nel_pannello_a_fianco(web):
     assert scheda(web).get_attribute("aria-modal") != "true"
     tocca(web, campo(web).nth(1))                                     # la pagina accanto resta attiva: un altro giocatore cambia il pannello
     assert nomi_sul_campo(web)[1].split()[0] in scheda(web).get_by_role("heading").first.inner_text()
+
+
+def test_sul_pc_cambiando_modulo_l_elenco_dei_sostituti_aperto_si_chiude(web):
+    """Con il pannello a fianco la pagina resta attiva: i candidati aperti erano quelli della formazione di prima."""
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    web.apri("/", larghezza=PC)
+    f = web.registrata("/api/formazione")
+    tocca(web, campo(web).nth(3))
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    assert "Al posto di" in scheda(web).get_by_role("heading").first.inner_text()
+    principale(web).get_by_label("Modulo").select_option(next(m["modulo"] for m in f["moduli"] if m["modulo"] != f["modulo"]))
+    web.aspetta()
+    assert scheda(web).count() == 0
+    assert stato(web).startswith("L'hai cambiata tu")
+
+
+# ---------------------------------------------------------------- quando il cambio non si può fare
+def _con_due_fermi(web):
+    """La consigliata con due giocatori di un anticipo già cominciato (campo `bloccati`): un titolare e una riserva. Torna il
+    titolare fermo, la riserva ferma e un titolare libero dello stesso ruolo della riserva."""
+    f = web.registrata("/api/formazione")
+    consigliato = next(m for m in f["moduli"] if m["modulo"] == f["modulo"])
+    titolari = [f["schede"][str(i)] for i in consigliato["titolari"]]
+    riserva = next(x for x in (f["schede"][str(i)] for i in consigliato["panchina"]) if x["ruolo"] != "P")
+    libero = next(x for x in titolari if x["ruolo"] == riserva["ruolo"])
+    titolare = next(x for x in titolari if x["id"] != libero["id"] and x["ruolo"] != "P")
+    web.risposta("/api/formazione", {**f, "bloccati": [titolare["id"], riserva["id"]]})
+    web.risposta("/api/scelta?giornata=9", None)
+    return titolare, riserva, libero
+
+
+def test_chi_gioca_una_partita_gia_cominciata_non_si_sostituisce_e_la_scheda_dice_perche(web):
+    solo(web, "prima")
+    titolare, riserva, libero = _con_due_fermi(web)
+    web.apri("/")
+    tocca(web, campo(web).filter(has_text=titolare["nome"]).first)
+    assert titolare["nome"] in scheda(web).get_by_role("heading").first.inner_text()
+    assert scheda(web).get_by_role("button", name="Sostituisci").count() == 0
+    assert "non si può più spostare" in scheda(web).inner_text()
+    web.pagina.keyboard.press("Escape")
+    # un compagno libero si sostituisce, ma la riserva ferma non è fra chi può entrare
+    tocca(web, campo(web).filter(has_text=libero["nome"]).first)
+    assert "non si può più spostare" not in scheda(web).inner_text()
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    assert "Al posto di" in scheda(web).get_by_role("heading").first.inner_text()
+    assert riserva["nome"] not in scheda(web).inner_text()
+
+
+def test_se_il_server_rifiuta_il_ritorno_alla_consigliata_la_formazione_resta_e_un_avviso_lo_dice(web):
+    solo(web, "prima")
+    web.apri("/")                                                     # nello scenario registrato c'è una scelta fatta a mano
+    prima, stato_prima = nomi_sul_campo(web), stato(web)
+    web.risposta("/api/scelta?giornata=9", {"detail": "Esempio E. gioca in una partita già cominciata: non si può più spostare.",
+                                            "codice": "giocatore_bloccato"}, stato=400)
+    tocca(web, principale(web).get_by_role("button", name="Torna alla consigliata"))
+    avviso = web.pagina.get_by_role("status").filter(has_text="non si può più spostare")
+    assert avviso.count() == 1 and avviso.first.is_visible()
+    assert nomi_sul_campo(web) == prima and stato(web) == stato_prima
+    assert principale(web).get_by_role("button", name="Torna alla consigliata").is_visible()
+    assert not web.errori_mostrati()
+
+
+def test_se_la_scadenza_passa_con_la_pagina_aperta_il_cambio_non_si_fa_e_la_schermata_si_rilegge(web):
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    web.apri("/")
+    prima = nomi_sul_campo(web)
+    web.risposta("/api/formazione/valuta", {"detail": "La giornata è già iniziata: la formazione non si può più cambiare.",
+                                            "codice": "formazione_chiusa"}, stato=409)
+    lette = web.richieste.count("/api/formazione")
+    tocca(web, campo(web).nth(3))
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    tocca(web, scheda(web).get_by_role("listitem").first.get_by_role("button"))
+    avviso = web.pagina.get_by_role("status").filter(has_text="non si può più cambiare")
+    assert avviso.count() == 1 and avviso.first.is_visible()
+    assert nomi_sul_campo(web) == prima and stato(web) == "È la consigliata."
+    assert web.richieste.count("/api/formazione") == lette + 1, "dopo il rifiuto la formazione non è stata riletta dal server"
+
+
+def test_a_giornata_finita_con_un_recupero_che_manca_lo_dice_e_si_sceglie_cosa_vale(web):
+    solo(web, "finita")
+    oggi = web.registrata("/api/oggi")
+    giornata = oggi["riepilogo"]["giornata"]
+    rinvio = {"giornata": giornata, "stagione": "2026-27", "modo": "aspetta", "modi": ["aspetta", "senza_voto", "voto_ufficio"],
+              "voto_ufficio": 6, "predefinito": "aspetta", "eccezione": False}
+    web.risposta("/api/oggi", {**oggi, "riepilogo": {**oggi["riepilogo"], "rinvio": rinvio,
+                                                     "recuperi": [{"casa": "udinese", "trasferta": "milan", "data": None}]}})
+    web.risposta("/api/regole/rinvio", {"ok": True})
+    web.apri("/")
+    assert "Manca il recupero di UDI vs MIL" in web.testo_principale()
+    scritte = scritture(web)
+    principale(web).get_by_label("Per questa giornata i loro giocatori").select_option("senza_voto")
+    web.aspetta()
+    assert scritte == [("PUT", "/api/regole/rinvio", {"giornata": giornata, "modo": "senza_voto", "stagione": "2026-27"})]
+    assert not web.errori_mostrati() and not web.errori_console
+
+
+# ---------------------------------------------------------------- accessibilità della scheda e dei sostituti
+@pytest.mark.parametrize("tema", ["chiaro", "scuro"])
+def test_la_scheda_e_l_elenco_dei_sostituti_non_hanno_violazioni_gravi(web, tema):
+    solo(web, "prima")
+    web.apri("/", tema=tema)
+    tocca(web, campo(web).nth(3))
+    gravi = web.violazioni_gravi()
+    assert not gravi, f"scheda, {tema}: {[(v['id'], v['nodi'][:2]) for v in gravi]}"
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    gravi = web.violazioni_gravi()
+    assert not gravi, f"sostituti, {tema}: {[(v['id'], v['nodi'][:2]) for v in gravi]}"
+    assert not web.scorre_di_lato()
