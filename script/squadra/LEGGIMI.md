@@ -117,7 +117,7 @@ python script/squadra/squadra.py pr-pronta 123 --esegui   # gh pr ready
 
 ## giornata
 Dice se una giornata è passata senza errori: è la misura che chiude #167 (decisione `docs/decisioni/0013`, `docs/METODO.md`,
-«Giornata senza errori»). Sola lettura. La finestra va dalla scadenza della lega a due giorni dopo l'inizio dell'ultima partita;
+«Le misure»). Sola lettura. La finestra va dalla scadenza della lega a due giorni dopo l'inizio dell'ultima partita;
 `--dal` e `--al` sono date ISO con il fuso (`2026-11-15T13:50:00+01:00` o `…Z`) e il comando si lancia a finestra finita.
 
 Raccoglie con `gh` le corse di `test.yml` su `main` e di `collaudo-prova.yml`, le issue nuove della finestra e quelle con i titoli

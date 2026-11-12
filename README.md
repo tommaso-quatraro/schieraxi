@@ -84,7 +84,7 @@ come `SchieraXI/<versione>`. Sul server pubblico le fonti le gestisce chi cura i
 **Test.** Installa anche `requirements-dev.txt`, poi: `.venv\Scripts\python.exe -m pytest -q`.
 
 **Dove sta cosa e come si lavora.**
-- `MAPPA.md`: le cartelle, i comandi e i contratti.
+- `MAPPA.md`: dove sta ogni cosa. `docs/RIFERIMENTO.md`: dettagli dei moduli e contratti.
 - `CLAUDE.md`: le regole del repository e il flusso di lavoro.
 - `docs/METODO.md`: il metodo di lavoro.
 - `CONTRIBUTING.md`: come proporre una modifica (apri prima una issue, fai passi piccoli, niente dati personali).
