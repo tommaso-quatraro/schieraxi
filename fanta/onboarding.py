@@ -102,8 +102,10 @@ def crea_demo(calciatori: list[Calciatore], r: regole.Regole) -> Rose:
 
 
 def e_demo(rose: Rose | None) -> bool:
-    """Queste rose sono ancora quelle della lega demo (stessi nomi di squadra inventati)? Se l'utente ha importato le sue, no."""
-    return bool(rose and rose.squadre and {s.nome for s in rose.squadre} == set(SQUADRE_DEMO))
+    """Queste rose sono ancora solo le squadre di esempio, anche rinominate (la rinomina lascia il nome di prima in
+    `nome_importato`)? Se l'utente ha importato le sue, no. Un solo controllo per creare e togliere la demo, per l'importazione
+    delle rose vere (che toglie gli esempi) e per la misura dell'ingresso."""
+    return bool(rose and rose.squadre and {s.nome_importato or s.nome for s in rose.squadre} == set(SQUADRE_DEMO))
 
 
 # ---------------------------------------------------------------- controlli finali
