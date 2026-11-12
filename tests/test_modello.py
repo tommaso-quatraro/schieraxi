@@ -163,3 +163,64 @@ def test_pezzi_condivisi_fra_leghe_stessi_numeri():
         for par in (modello.Parametri(), modello.Parametri(k_voto=10.0), modello.Parametri(k_voto=30.0), modello.Parametri(k_90=8.0)):
             modello.previsioni(d, ST, g, Regole(), par)
     assert len(d._pezzi) <= modello.MAX_PEZZI
+
+
+# ---------------------------------------------------------------- partite senza statistiche (#613)
+def _senza_statistiche(d, giornate):
+    """Gli stessi dati come se la fonte delle statistiche per partita si fosse fermata prima di queste giornate."""
+    via = d.prestazioni["giornata"].isin(giornate)
+    partite = d.partite.copy()
+    partite.loc[partite["giornata"].isin(giornate), ["xg_casa", "xg_trasferta"]] = None
+    return modello.Dati(d.stagioni, d.voti, d.prestazioni[~via].copy(), partite, d.calciatori, d.quotazioni, d.extra)
+
+
+def _con_tre_gol_nelle_ultime(d):
+    """Nelle giornate 3 e 4 il Bomber segna 3 gol su azione (nei voti) invece di 1; le statistiche non lo sanno."""
+    d.voti.loc[(d.voti["calciatore_id"] == 1) & (d.voti["giornata"] >= 3), "gol"] = 3
+    return d
+
+
+def test_partita_senza_statistiche_si_usano_le_righe_ricostruite_dai_voti():
+    """La fonte delle statistiche si ferma dopo la giornata 2. Senza ripiego il modello ignora le giornate 3 e 4 (i 3 gol a
+    partita del Bomber non contano); con le righe ricostruite dai voti i suoi gol attesi salgono."""
+    fermo = _senza_statistiche(_con_tre_gol_nelle_ultime(_dati()), (3, 4))
+    senza = _p(fermo)
+    ricostruiti = modello.con_prestazioni_dai_voti(fermo)
+    con = _p(ricostruiti)
+    assert con.at[1, "e_gol"] > senza.at[1, "e_gol"] + 0.1
+    assert con.at[1, "e_rigori"] > 0 and con.at[1, "minuti"] == pytest.approx(90.0)
+    nuove = ricostruiti.prestazioni[ricostruiti.prestazioni["giornata"] >= 3]
+    assert len(nuove) == 6 and set(nuove["understat_partita"]) == {-3, -4}             # le partite 3 e 4, 3 giocatori l'una
+    bomber = nuove[nuove["calciatore_id"] == 1].iloc[0]
+    assert (bomber["minuti"], bomber["gol"], bomber["rigori_calciati"], bomber["rigori_squadra"]) == (90, 4, 1, 1)
+    assert bomber["xg"] == pytest.approx(3 + modello.XG_RIGORE) and bomber["xa"] == 0   # al posto degli xG: i gol e gli assist veri
+
+
+def test_con_le_statistiche_le_righe_ricostruite_non_si_aggiungono():
+    d = _dati()
+    stessi = modello.con_prestazioni_dai_voti(d)
+    assert len(stessi.prestazioni) == len(d.prestazioni)
+    pd.testing.assert_frame_equal(_p(stessi), _p(_dati()))
+
+
+def test_partita_senza_statistiche_e_senza_voti_resta_fuori():
+    """Una partita giocata di cui non sono ancora arrivati né statistiche né voti: non c'è niente da ricostruire."""
+    d = _senza_statistiche(_dati(), (4,))
+    d.voti = d.voti[d.voti["giornata"] < 4].copy()
+    assert modello.con_prestazioni_dai_voti(d).prestazioni["giornata"].max() == 3
+
+
+def test_carica_mette_le_righe_ricostruite(tmp_path):
+    """Dall'archivio: una partita giocata con i voti ma senza statistiche arriva al modello con le righe ricostruite."""
+    from fanta import archivio
+    db = archivio.apri(tmp_path / "t.sqlite")
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, gol_casa, gol_trasferta, giocata) "
+               "VALUES (7, ?, 1, '2026-09-01 15:00', 'alfa', 'beta', 2, 0, 1)", (ST,))
+    for cid, sq, gol, sub in ((1, "alfa", 2, 0), (2, "beta", 0, 1)):
+        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, rig_segnati, "
+                   "rig_sbagliati, assist, subentrato, sostituito) VALUES (?, 1, ?, ?, ?, 'A', 6.5, ?, 0, 0, 0, ?, 0)",
+                   (ST, cid, f"g{cid}", sq, gol, sub))
+    p = modello.carica(db).prestazioni
+    db.close()
+    assert sorted(zip(p["calciatore_id"], p["squadra"], p["minuti"], p["gol"], p["understat_partita"])) == [
+        (1, "alfa", 90.0, 2, -7), (2, "beta", 19.0, 0, -7)]

@@ -122,7 +122,63 @@ def carica(db: sqlite3.Connection) -> Dati:
     # rigori calciati dalla squadra in ogni partita (per la quota del rigorista)
     rig = prestazioni.groupby(["understat_partita", "squadra"])["rigori_calciati"].sum().rename("rigori_squadra")
     d.prestazioni = prestazioni.join(rig, on=["understat_partita", "squadra"])
-    return d
+    return con_prestazioni_dai_voti(d)
+
+
+# Minuti giocati per presenza, da «entrato» e «uscito» dei voti di Fantacalcio.it (che non dà i minuti), per
+# (subentrato, sostituito). Medie dei minuti veri di Understat sull'archivio di sviluppo (2025-26 e 2026-27, circa 14.400
+# presenze, misura del 5/11/2026): 89,7 · 70,9 · 19,0 · 30,3 (quest'ultima su 29 casi soltanto).
+MINUTI_STIMATI = {(0, 0): 90.0, (0, 1): 71.0, (1, 0): 19.0, (1, 1): 30.0}
+
+
+def minuti_stimati(voti: pd.DataFrame) -> pd.Series:
+    """Minuti stimati di ogni riga dei voti (vedi `MINUTI_STIMATI`); un dato mancante vale «no»."""
+    sub, sos = (pd.to_numeric(voti[c], errors="coerce").fillna(0).astype(int).clip(0, 1) for c in ("subentrato", "sostituito"))
+    return pd.Series([MINUTI_STIMATI[(a, b)] for a, b in zip(sub, sos)], index=voti.index, dtype=float)
+
+
+def prestazioni_dai_voti(voti: pd.DataFrame, partite: pd.DataFrame) -> pd.DataFrame:
+    """Le statistiche per partita ricostruite dai voti di Fantacalcio.it, una riga per presenza (anche chi resta senza voto):
+    minuti stimati da entrato e uscito, rigori calciati = segnati + sbagliati, gol con i rigori (come Understat; nei voti «gol»
+    li esclude), senza xG e xA. `understat_partita` è l'id della partita di Fantacalcio.it (`partite.id`); `rigori_squadra` i
+    rigori calciati dalla squadra nella partita. Le usano i numeri «nostri» (`nostri.dati`, tutte le partite) e il ripiego per
+    le partite senza statistiche (`con_prestazioni_dai_voti`)."""
+    v = voti
+    num = lambda c: pd.to_numeric(v[c], errors="coerce").fillna(0)  # noqa: E731
+    pr = pd.DataFrame({"stagione": v["stagione"], "giornata": v["giornata"], "data": v["data"], "t": v["t"],
+                       "squadra": v["squadra"], "calciatore_id": v["calciatore_id"], "minuti": minuti_stimati(v),
+                       "gol": num("gol") + num("rig_segnati"), "assist": num("assist"), "rigori_segnati": num("rig_segnati"),
+                       "rigori_calciati": num("rig_segnati") + num("rig_sbagliati"), "xg": np.nan, "xa": np.nan})
+    partita = pd.concat([partite[["stagione", "giornata", c, "id"]].rename(columns={c: "squadra", "id": "understat_partita"})
+                         for c in ("casa", "trasferta")]).drop_duplicates(["stagione", "giornata", "squadra"])
+    pr = pr.merge(partita, on=["stagione", "giornata", "squadra"], how="left")
+    rig = pr.groupby(["understat_partita", "squadra"])["rigori_calciati"].sum().rename("rigori_squadra")
+    return pr.join(rig, on=["understat_partita", "squadra"])
+
+
+def con_prestazioni_dai_voti(d: Dati) -> Dati:
+    """`d` con le statistiche ricostruite dai voti per le partite giocate che non ne hanno (#613). Gol e assist attesi, minuti e
+    rigori vengono dalle statistiche per partita di una fonte esterna: quando per una partita non arrivano (fonte ferma o in
+    ritardo) il modello la ignorerebbe e invecchierebbe di una giornata alla volta, senza dirlo. Per quelle partite, se ci sono
+    i voti, valgono le righe di `prestazioni_dai_voti`, con i gol su azione e gli assist veri al posto di xG e xA (più
+    rumorosi, ma è l'informazione che c'è) e l'id della partita cambiato di segno (non si confonde con quelli della fonte).
+    Con tutte le statistiche al loro posto restituisce `d` com'è. Che manchino lo dice `controlli.partite_senza_statistiche`."""
+    giocate = d.partite[d.partite["giocata"] == 1]
+    if giocate.empty or d.voti.empty:
+        return d
+    con = set(d.prestazioni["understat_partita"].dropna().unique()) if len(d.prestazioni) else set()
+    senza = giocate[~giocate["understat_id"].isin(con)]
+    if senza.empty:
+        return d
+    squadre = pd.concat([senza[["stagione", "giornata", c]].rename(columns={c: "squadra"}) for c in ("casa", "trasferta")])
+    voti = d.voti.merge(squadre.drop_duplicates(), on=["stagione", "giornata", "squadra"])
+    if voti.empty:
+        return d
+    pr = prestazioni_dai_voti(voti, senza)
+    pr["understat_partita"] = -pr["understat_partita"]
+    pr["xg"] = pr["gol"] - pr["rigori_segnati"] + XG_RIGORE * pr["rigori_calciati"]
+    pr["xa"] = pr["assist"]
+    return replace(d, prestazioni=pd.concat([d.prestazioni, pr], ignore_index=True))
 
 
 def _pesi(t: pd.Series, stagione_t: pd.Series, t0: int, stagione0: str, par: Parametri) -> np.ndarray:
