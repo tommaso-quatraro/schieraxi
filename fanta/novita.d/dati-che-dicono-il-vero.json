@@ -1,15 +1,14 @@
 {
   "titolo": "Dati che dicono il vero: probabili vecchie riconosciute, guasti delle fonti che si vedono",
   "voci": [
-    "Web, iPhone e iPad: la mattina dopo una giornata, quando le probabili formazioni della giornata nuova sono ancora quelle della giornata finita, l'app non le prende per nuove: la giornata resta «senza probabili» (formazione dalle presenze recenti), l'ora «Probabili aggiornate» non cambia e non partono avvisi di cambi sbagliati.",
-    "Stato dei dati: la correzione di «gioca N%» si impara solo dalle probabili lette prima di ogni partita; con meno di 3 giornate così non corregge niente.",
-    "Stato dei dati: ogni fonte ha l'ora del suo ultimo aggiornamento riuscito e, se non riesce, da quando; chi gestisce il server riceve un avviso con il nome della fonte ferma da più di un giorno, ripetuto ogni giorno finché dura.",
-    "Stato dei dati: due controlli nuovi sui voti (gol dei voti e gol presi dai portieri uguali al risultato); i voti di una giornata non vengono mai sostituiti da una lettura con meno voti."
+    "Web, iPhone e iPad: il mattino dopo una giornata le probabili rimaste quelle della giornata finita non contano come nuove: niente «Probabili aggiornate» né avvisi di cambi sbagliati.",
+    "Stato dei dati: ogni fonte mostra l'ora del suo ultimo aggiornamento riuscito; la correzione di «gioca N%» usa solo le probabili lette prima delle partite.",
+    "Chi gestisce il server riceve un avviso con il nome della fonte ferma da più di un giorno, e i voti non vengono più sostituiti da letture con meno voti."
   ],
   "tecnico": [
     "aggiorna.probabili: lettura uguale per oltre il 95% (stato, percentuale, in dubbio) all'ultima lettura accettata della giornata prima, finché la giornata non ha probabili accettate = copia: solo in probabili_storia con copia = 1, mai in probabili. Colonna copia e indice probabili_storia_letture aggiunti agli archivi esistenti (PRAGMA table_info + ALTER TABLE in archivio._aggiorna_schema).",
     "stato_dati._calibrazione_probabili: per ogni partita giocata l'ultima lettura di probabili_storia prima del calcio d'inizio, copie escluse; giornate = giornate misurabili; sotto MIN_GIORNATE (3) fattori vuoti. Stessa funzione per la pagina e per consigli/registro_nostri (taratura_e_fattori).",
-    "aggiornamenti: righe dei passi seguiti (archivio.PASSI: listone, calendario, voti, probabili, understat, dati extra, controlli) con quando = ultimo successo e dettaglio JSON {errore, dal, ultimo}; archivio.passi_fermi (oltre 24 ore); la riga aggiornamento non avanza se nessun passo ha portato dati; salute.controlla avvisa «passo:<nome>» ogni 24 ore.",
+    "aggiornamenti: righe dei passi seguiti (archivio.PASSI: listone, calendario, voti, probabili, understat, dati extra, controlli) con quando = ultimo successo e dettaglio JSON {errore, dal, ultimo}; archivio.passi_fermi (oltre 24 ore); la riga aggiornamento non avanza se nessun passo dei dati (tutti tranne controlli) riesce; salute.controlla avvisa «passo:<nome>» ogni 24 ore.",
     "Understat: fonti.understat.dati_json dà RispostaNonDati (con il titolo della pagina) quando arriva HTML o testo al posto del JSON; il passo si ferma alla prima richiesta.",
     "controlli: gol_dei_voti e gol_subiti_portieri (CONTANO_COME_ERRORI, zero su tutte le 490 partite in archivio il 12/11); aggiorna._salva_voti rifiuta una lettura con meno righe (VotiCalati); fantacalcio.leggi_voti_e_scarti conta le righe saltate (errore oltre 2 e il 10%); listone.carica(severo=True) nel passo dell'aggiornamento e listone attraverso rete.scarica."
   ]

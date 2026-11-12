@@ -88,7 +88,7 @@ def _tutti(monkeypatch, riusciti: set[str]):
                             (lambda self: None) if metodo in riusciti else (lambda self: _rotto()))
 
 
-def test_la_riga_generale_non_avanza_se_non_e_arrivato_niente(db, monkeypatch):
+def test_la_riga_generale_non_avanza_se_nessun_passo_dei_dati_riesce(db, monkeypatch):
     archivio.segna(db, "aggiornamento", "2026-11-01T21:03:00", "[]")
     db.commit()
     _tutti(monkeypatch, {"controlli"})
@@ -98,7 +98,7 @@ def test_la_riga_generale_non_avanza_se_non_e_arrivato_niente(db, monkeypatch):
     assert json.loads(dettaglio) == errori and len(errori) >= 5
 
 
-def test_la_riga_generale_avanza_quando_arriva_qualcosa(db, monkeypatch):
+def test_la_riga_generale_avanza_se_un_passo_dei_dati_riesce(db, monkeypatch):
     archivio.segna(db, "aggiornamento", "2026-11-01T21:03:00", "[]")
     db.commit()
     _tutti(monkeypatch, {"probabili", "controlli"})

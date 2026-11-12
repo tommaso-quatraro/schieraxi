@@ -432,8 +432,8 @@ class Aggiornamento:
         if any(n != "controlli" for n in self.riusciti):
             archivio.segna(self.db, "aggiornamento", _ora(), errori)
         else:
-            # nessun passo ha portato dati: l'ora resta quella dell'ultimo aggiornamento con qualcosa di nuovo (così «I dati non si
-            # aggiornano» e la salute se ne accorgono), gli errori sono quelli di adesso
+            # nessun passo dei dati è riuscito: l'ora resta quella dell'ultimo aggiornamento riuscito almeno in parte (così «I dati non
+            # si aggiornano» e la salute se ne accorgono), gli errori sono quelli di adesso
             if not self.db.execute("UPDATE aggiornamenti SET dettaglio = ? WHERE cosa = 'aggiornamento'", (errori,)).rowcount:
                 archivio.segna(self.db, "aggiornamento", None, errori)
         self.db.commit()
