@@ -648,18 +648,13 @@ def cmd_verifica(a) -> None:
         giocate = sorted(d.partite.loc[(d.partite["stagione"] == st) & (d.partite["giocata"] == 1), "giornata"].unique())
         inizio = a.dalla if st == d.stagioni[0] else 2
         giornate += [(st, int(g)) for g in giocate if g >= inizio]
+    if not giornate:
+        sys.exit("Errore: nell'archivio non c'è nessuna giornata giocata da verificare. Prima: python -m fanta aggiorna")
     r_ose = lega.carica(FILE_ROSE)
     rose_ids = [[g.id for g in s.giocatori if g.id] for s in r_ose.squadre] if r_ose else None
     print(f"Verifica su {len(giornate)} giornate" + (f" e {len(rose_ids)} rose" if rose_ids else ""))
-    t = verifica.verifica(d, r, modello.Parametri(), giornate, rose_ids, a.simulazioni)
-    print("\nRiepilogo per stagione (rmse = errore quadratico medio, la misura principale):")
-    t["rmse_modello"], t["rmse_fantamedia"] = t["quadratico_modello"], t["quadratico_fantamedia"]
-    colonne = [c for c in ("rmse_modello", "rmse_fantamedia", "errore_modello", "errore_fantamedia", "brier",
-                           "punti_modello", "punti_fantamedia", "punti_perfetta") if c in t]
-    riepilogo = t.groupby("stagione")[colonne].mean()
-    for c in ("rmse_modello", "rmse_fantamedia"):
-        riepilogo[c] = riepilogo[c] ** 0.5          # radice della media dei quadrati
-    print(riepilogo.round(3).to_string())
+    t = verifica.verifica(d, r, modello.Parametri(), giornate, rose_ids, a.simulazioni, sintetiche=verifica.ROSE_A_SORTE)
+    verifica.stampa_riepilogo(t)
     if a.incertezza:
         from . import incertezza
         print("\nIncertezza dei punti attesi (fascia 10-90%: dovrebbe contenere circa l'80% dei punti fatti):")

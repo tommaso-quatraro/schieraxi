@@ -2166,8 +2166,9 @@ const virgola = x => (LINGUA === "it" ? String(x).replace(".", ",") : String(x))
 // l'andamento giornata per giornata e l'avviso se i dati sono pochi. Tutto viene dal server; si mostra anche quando va male.
 // Numeri dal server (passati da Number) e, per la riga su tutta la Serie A, una frase del server passata da esc(); niente innerHTML.
 // `conConfronto`: la voce «consigliata contro la tua» si mostra solo se c'è almeno una giornata con la consigliata mostrata prima
-// della scadenza (#614): con il server di prima il confronto era con una formazione rifatta dopo, e non si mostra. Il server con #614
-// dice anche quante giornate con la tua formazione restano fuori dal confronto (`confronto.senza_istantanea`): lo si scrive in fondo.
+// della scadenza (#614): con il server di prima il confronto era con una formazione rifatta dopo, e non si mostra. Le giornate con la
+// tua formazione che non hanno un verdetto (senza la consigliata di allora, o con i suoi stessi titolari) le dice la frase del server
+// `confronto.nota` (la stessa che l'iPhone mostra in «Le tue scelte»): la si scrive in fondo, così com'è (tradotta con `nota_frase`).
 function dettagliPrecisione(p, conConfronto) {
   if (!p || !p.giornate) return "";
   const n = x => (x == null || !isFinite(Number(x)) ? null : Number(x));
@@ -2192,6 +2193,7 @@ function dettagliPrecisione(p, conConfronto) {
     : t("diario.qp_fv_vuoto");
   // 3. consigliata contro la tua
   const cf = p.confronto || {};
+  const cfNota = testoDi(cf, "nota");                  // la frase del server sulle giornate senza verdetto (#614); vuota se non c'è
   const punti = n(cf.punti);
   const cfFrase = cf.giornate ? `${t("diario.qp_cf", { k: n(cf.meglio_consigliata), n: n(cf.giornate), tua: n(cf.meglio_tua), pari: n(cf.pari) })} ${punti === 0 ? t("diario.qp_cf_pari") : punti > 0 ? tp("diario.qp_cf_piu", punti, { e: v(punti) }) : tp("diario.qp_cf_meno", -punti, { e: v(-punti) })}`
     : "";
@@ -2232,7 +2234,7 @@ function dettagliPrecisione(p, conConfronto) {
     ${grafico}
     ${righe ? `<details class="qp-dettagli"><summary>${t("diario.qp_andamento")}</summary><ul class="qp-giornate">${righe}</ul></details>` : ""}
     ${ric ? `<div class="debole piccolo qp-nota">${tp("diario.qp_ricostruiti", ric, { t: n(p.giornate) })}</div>` : ""}
-    ${n(cf.senza_istantanea) ? `<div class="debole piccolo qp-nota">${tp("giornate.fuori_confronto", n(cf.senza_istantanea))}</div>` : ""}</div>`;
+    ${cfNota ? `<div class="debole piccolo qp-nota">${esc(cfNota)}</div>` : ""}</div>`;
 }
 
 // ---------------------------------------------------------------- Giornate (#617): il Diario come pagina della barra

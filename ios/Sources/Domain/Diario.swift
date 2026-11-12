@@ -19,7 +19,8 @@ struct VoceDiario: Decodable, Identifiable {
     let giornata: Int?
     /// Il numero della giornata nella lega (facoltativo; `null` se la lega non ha una prima giornata diversa).
     let giornataLega: Int?
-    /// La ricostruzione di oggi con i dati di allora (porta i punti fatti).
+    /// La consigliata con i punti fatti: quella mostrata prima della scadenza, se c'è (`origine` «mostrata», #614), altrimenti la
+    /// ricostruzione di oggi con i dati di allora (`origine` «ricostruita», o assente da un server di prima).
     let consigliata: FormazioneDiario?
     let schierata: FormazioneDiario?
     /// Facoltativo: la formazione che SchieraXI consigliava davvero prima della giornata. `null` o assente = non registrata.
@@ -89,6 +90,9 @@ struct FormazioneDiario: Decodable {
     let titolari: [TitolareDiario]?
     /// «consigliata» se hai segnato con un tocco di aver schierato la consigliata.
     let tipo: String?
+    /// Solo nella `consigliata` della voce (#614): «mostrata» = è la formazione mostrata prima della scadenza, con i suoi punti;
+    /// «ricostruita» = rifatta a giornata finita. Un server di prima non lo manda: vale come «ricostruita».
+    let origine: String?
 }
 
 struct TitolareDiario: Decodable {
