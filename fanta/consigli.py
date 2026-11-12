@@ -201,6 +201,15 @@ def _numero(v) -> float:
     return 0.0 if np.isnan(n) else n
 
 
+def rigorista(x) -> bool:
+    """Vero se, quando gioca, calcia almeno QUOTA_RIGORISTA dei rigori della sua squadra (`quota_rigori` della previsione `x`).
+    È la regola unica di «rigorista»: il motivo della scheda (`motivi`) e l'elenco `rigoristi` di `/api/widget` passano di qui.
+    Chi è infortunato o squalificato, o ha la partita rinviata senza voto, non lo è: la scheda non gli dice niente sui rigori."""
+    if x.get("stato") in FUORI or _rinvio(x) in ("senza_voto", "voto_ufficio"):
+        return False
+    return _numero(x.get("quota_rigori")) >= QUOTA_RIGORISTA
+
+
 def titolarita(x: pd.Series) -> str:
     """Etichetta semplice, a parole (senza numero): quanto è sicuro che giochi. L'unico numero mostrato è «gioca N%» (`p_voto`);
     chi le probabili danno titolare e ha `p_voto` alto è titolare anche se finora è partito spesso dalla panchina."""
@@ -236,7 +245,7 @@ def motivi(x: pd.Series) -> list[str]:
         m.append(str(x["nota"]))
     if stato in FUORI:
         return m
-    if _numero(x.get("quota_rigori")) >= QUOTA_RIGORISTA:
+    if rigorista(x):
         m.append(F("motivo.rigorista"))
     if x["ruolo"] == "P":
         m.append(F("motivo.porta_inviolata", p=round(float(x["p_imbattuto"]) * 100)))

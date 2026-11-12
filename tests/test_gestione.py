@@ -61,6 +61,19 @@ def test_rigorista_e_chi_calcia_piu_della_meta_dei_rigori_della_squadra():
     assert consigli.motivi(_giocatore(stato="squalificato", quota_rigori=0.9)) == ["squalificato"]
 
 
+def test_rigorista_una_regola_sola_per_la_scheda_e_per_il_widget():
+    """Revisione di #613: la scheda guardava la quota dei rigori, il widget ancora i rigori attesi (mai sopra 0,15). Una funzione
+    sola, `consigli.rigorista`: il motivo della scheda c'è se e solo se lei dice sì. Chi è fuori o non gioca in questa giornata
+    non lo è (la scheda non gli dice niente sui rigori)."""
+    casi = [_giocatore(stato="titolare", quota_rigori=0.8, e_rigori=0.10), _giocatore(quota_rigori=0.5, e_rigori=0.06),
+            _giocatore(quota_rigori=0.45, e_rigori=0.30), _giocatore(e_rigori=0.30),
+            _giocatore(stato="squalificato", quota_rigori=0.9), _giocatore(stato="infortunato", quota_rigori=0.9),
+            _giocatore(quota_rigori=0.9, rinvio="senza_voto", mu=6.0), _giocatore(stato="panchina", quota_rigori=0.7)]
+    assert [consigli.rigorista(x) for x in casi] == [True, True, False, False, False, False, False, True]
+    for x in casi:
+        assert ("rigorista" in consigli.motivi(x)) == consigli.rigorista(x)
+
+
 def test_infortunato_niente_consigli_sulla_partita():
     """Collaudo 2/11/2026: un infortunato aveva ancora «gol atteso 68%» e «partita favorevole» (oggi «49% di segnare»)."""
     for stato in ("infortunato", "squalificato"):
