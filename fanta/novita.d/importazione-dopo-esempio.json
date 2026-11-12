@@ -1,0 +1,15 @@
+{
+  "titolo": "Rose vere dopo le squadre di esempio, e file delle rose rovinato",
+  "voci": [
+    "Squadra, «Aggiorna le rose»: se prima avevi usato le squadre di esempio, caricando le tue rose le squadre inventate se ne vanno anche senza «Togli le squadre che non sono nel file». Niente più squadra finta proposta come la tua, giocatori «in più squadre» o leghe vere rifiutate perché le squadre sembrano troppe.",
+    "Vale anche se avevi cambiato il nome a una squadra di esempio. Le regole, la formazione salvata e i giocatori seguiti restano come li hai lasciati.",
+    "Se il file delle tue rose si è rovinato, importare di nuovo le rose, come dice il messaggio di errore, ora funziona: l'app tiene le squadre del file nuovo e te lo dice con un avviso."
+  ],
+  "tecnico": [
+    "server._rose_di_prima: anteprima e importazione partono da rose None (come la prima importazione) se le rose salvate sono solo le squadre di esempio (onboarding.e_demo) o se lega.carica dà ValueError (JSON rovinato, forma sbagliata, stagione scritta male). Così lega.da_import non tiene le squadre finte né la loro mia_squadra, niente movimenti registrati, limiti.controlla_rose conta solo le squadre del file.",
+    "File rovinato: _importa lo sposta in rose.json.rovinato (Path.replace) dopo tutti i controlli e prima di lega.salva(copia_di_riserva=True), così rose.json.bak resta la copia buona e un'importazione rifiutata non sposta niente; riga nel registro del server. L'avviso lega.ROSE_ROVINATE è il primo di `avvisi` nella risposta dell'importazione e dell'anteprima (che non scrive niente).",
+    "onboarding.e_demo guarda anche nome_importato (squadra di esempio rinominata): è il controllo unico per creare e togliere la demo, per l'importazione e per misura_ingresso (tolto misura_ingresso._solo_esempio, che faceva lo stesso).",
+    "Scelta: formazione salvata (scelte) e seguiti (osservati) non si toccano all'importazione, a differenza di DELETE /api/onboarding/demo.",
+    "Client: nessun campo cambia; docs/API.md descrive il comportamento."
+  ]
+}
