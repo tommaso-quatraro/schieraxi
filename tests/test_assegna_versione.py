@@ -36,6 +36,9 @@ def _unisci(repo, titolo, nome=None, **file):
 @pytest.fixture
 def repo(tmp_path):
     _git(tmp_path, "init", "-q", "-b", "main")
+    # lo script fa il suo commit senza le opzioni di _git: sul runner di GitHub non c'è un'identità globale
+    for chiave, valore in (("user.name", "t"), ("user.email", "t@example.com"), ("commit.gpgsign", "false")):
+        _git(tmp_path, "config", chiave, valore)
     _unisci(tmp_path, "base", **{"fanta/novita.json": json.dumps([{"versione": "1.4", "data": "2026-11-01T10:00:00",
                                                                      "titolo": "Prima", "voci": ["x"]}]) + "\n"})
     return tmp_path
