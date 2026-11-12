@@ -189,12 +189,12 @@ def test_riepilogo_a_giornata_finita(tmp_path, monkeypatch):
     prev = pd.DataFrame([{"nome": n, "ruolo": r, "p_voto": 0.9, "mu": 6.5, "mu_voto": 6.0} for n, r in righe], index=range(1, len(righe) + 1))
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, giornata or 9, True))
     rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], "X", 1) for i in prev.index])], "Mia")
-    # voti di 70 giocatori (la giornata è arrivata): i nostri hanno voto 6, l'attaccante A0 (id 13) ha segnato
+    # voti di 70 giocatori delle due squadre (la giornata è arrivata): i nostri hanno voto 6, l'attaccante A0 (id 13) ha segnato
     for i in range(1, 71):
         ruolo = prev.at[i, "ruolo"] if i in prev.index else "C"
         db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, autogol, rig_segnati, rig_sbagliati, "
-                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', 'a', ?, 6.0, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
-                   (ST, i, ruolo, 1 if i == 13 else 0))
+                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', ?, ?, 6.0, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
+                   (ST, i, "ab"[i % 2], ruolo, 1 if i == 13 else 0))
     titolari = [1, 3, 4, 5, 6, 8, 9, 10, 13, 14, 15]
     scelte.salva(ST, 8, titolari, "4-3-3", tmp_path / "scelte.json")
     mandati = []

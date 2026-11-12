@@ -749,6 +749,49 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
 
 
 # ---------------------------------------------------------------- riepilogo a giornata finita
+RIEPILOGO_ENTRO = timedelta(days=6)        # dall'ultima partita giocata della giornata: più tardi il riepilogo non parte più
+
+
+def _da_riepilogare(db: sqlite3.Connection, stagione: str, regole: Regole, adesso: datetime, fatti: list[str]) -> int | None:
+    """La giornata di cui mandare il riepilogo, o None: la più recente fra quelle finite per la lega (`rinvii.giornate_chiuse`, come
+    Oggi e il Diario: con «aspetta» dopo il recupero, con le altre regole a turno finito), giocata da meno di RIEPILOGO_ENTRO, con i
+    voti di ogni squadra che ha giocato (`fasi.voti_arrivati`, la regola di Oggi) e non ancora riepilogata. Prima contava solo la
+    giornata più alta con tutte le partite giocate: una giornata con un recupero non la era mai, e le bastavano 60 righe di voti (#649)."""
+    from . import fasi, rinvii
+    ultime = {int(g): fasi._data(d) for g, d in db.execute("SELECT giornata, MAX(data) FROM partite WHERE stagione = ? AND giocata = 1 "
+                                                           "AND data IS NOT NULL GROUP BY giornata", (stagione,))}
+    chiuse = [g for g in rinvii.giornate_chiuse(db, stagione, regole) if ultime.get(g) is not None]
+    for g in sorted(chiuse, key=lambda g: ultime[g], reverse=True):
+        if f"{stagione}/{g}" not in fatti and timedelta(0) < adesso - ultime[g] <= RIEPILOGO_ENTRO \
+                and fasi.voti_arrivati(db, stagione, g, regole):
+            return g
+    return None
+
+
+def _con_la_regola_dei_rinvii(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, ids: list[int],
+                              fv: dict[int, float], voto: dict[int, float]) -> None:
+    """Chi aveva una partita fuori dal turno (rinviata, recuperata o no) conta come per la lega (`rinvii.voti_lega`, come il Diario e
+    il riepilogo di Oggi): con «senza voto» resta senza voto (entra la riserva), con il voto d'ufficio prende il voto fisso, con
+    «aspetta» il voto del recupero. Cambia `fv` e `voto` ({id: valore} di chi ha preso voto)."""
+    from . import fasi, rinvii
+    partite = [{"data": d, "casa": c, "trasferta": t} for d, c, t in
+               db.execute("SELECT data, casa, trasferta FROM partite WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
+    fuori = {s for p in rinvii.fuori_turno(partite) for s in (p["casa"], p["trasferta"]) if s}
+    if not fuori:
+        return
+    squadre = fasi.squadre_dei_giocatori(db, stagione, giornata, ids)
+    coinvolti = [i for i in ids if squadre.get(i) in fuori]
+    gioca = {i: i in fv for i in coinvolti}
+    fv_l, voto_l = {i: fv.get(i, 0.0) for i in coinvolti}, {i: voto.get(i, 0.0) for i in coinvolti}
+    rinvii.voti_lega(gioca, fv_l, voto_l, coinvolti, rinvii.regola(regole, stagione, giornata))
+    for i in coinvolti:
+        if gioca[i]:
+            fv[i], voto[i] = fv_l[i], voto_l[i]
+        else:
+            fv.pop(i, None)
+            voto.pop(i, None)
+
+
 def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_RIEPILOGO,
               manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_cambi: Path = FILE_STATO,
               file_scelte: Path | None = None, file_diario: Path | None = None) -> list[str]:
@@ -756,8 +799,8 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     modello e il massimo possibile con la tua rosa. Una volta per giornata.
     La formazione che avevi è quella di Oggi e del Diario (`fasi.schierata`): la tua scelta salvata, se si può schierare con la rosa;
     altrimenti la consigliata fissata alla scadenza (istantanea del Diario) o la sua copia automatica, con la sua panchina. Solo se
-    mancano entrambe resta l'ultima consigliata vista dall'avviso dei cambi (`file_cambi`), che può essere più vecchia."""
-    from datetime import timedelta
+    mancano entrambe resta l'ultima consigliata vista dall'avviso dei cambi (`file_cambi`), che può essere più vecchia.
+    Quale giornata e quando: `_da_riepilogare`; chi aveva la partita rinviata conta con la regola della lega (`_con_la_regola_dei_rinvii`)."""
     from . import consigli, diario, fasi, scelte, verifica
     from . import formazione as fz
     from .punteggio import COLONNA_VOTO, fantavoto
@@ -766,23 +809,13 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     if not opzioni.get("riepilogo", True):
         return []
     stagione = consigli.stagione_corrente()
-    r = db.execute("SELECT giornata, MAX(data) FROM partite WHERE stagione = ? AND data IS NOT NULL GROUP BY giornata "
-                   "HAVING MIN(giocata) = 1 ORDER BY giornata DESC LIMIT 1", (stagione,)).fetchone()
-    if not r:
-        return []
-    giornata = r[0]
-    try:
-        ultima = datetime.fromisoformat(str(r[1])[:16].replace("T", " "))
-    except ValueError:
-        return []
-    chiave = f"{stagione}/{giornata}"
     stato = _json(file_stato)
     fatti = stato.setdefault("riepilogo", [])
-    if chiave in fatti or not timedelta(0) < adesso - ultima <= timedelta(days=6):
+    giornata = _da_riepilogare(db, stagione, regole, adesso, fatti)
+    if giornata is None:
         return []
+    chiave = f"{stagione}/{giornata}"
     righe_voti = [dict(x) for x in db.execute("SELECT * FROM voti WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
-    if len(righe_voti) < 60:
-        return []                                  # i voti non sono ancora arrivati
     # la stessa formazione di Oggi e del Diario (fasi.schierata): la regola unica della scelta con i ruoli della rosa (una scelta che
     # non vale non conta), poi la consigliata congelata alla scadenza e la copia automatica. Senza file indicati, quelli dell'utente unico
     sch = fasi.schierata(stagione, giornata, file_scelte or scelte.FILE_SCELTE, file_diario or diario.FILE,
@@ -810,6 +843,7 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
         fv = fantavoto(v, v["ruolo"], regole) if i in per_id else None
         if fv is not None:
             fv_vero[i], voto_vero[i] = fv, v[COLONNA_VOTO[regole.fonte_voto]]
+    _con_la_regola_dei_rinvii(db, regole, stagione, giornata, list(per_id), fv_vero, voto_vero)
     gioca = {g.id: g.id in fv_vero for g in lista}
     tit = [per_id[i] for i in ids]
     # la panchina che si conosce (congelata alla scadenza o schierata davvero), come il Diario; senza, la migliore possibile
