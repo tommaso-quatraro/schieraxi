@@ -102,18 +102,19 @@ def _confronto(voci: list[dict]) -> dict:
     consigliata ha fatto di più, di meno, uguale; `punti` = somma di (consigliata - tua): positivo = seguendo sempre la consigliata
     avresti fatto più punti. Le giornate con gli stessi undici non contano (come «Le tue scelte»). `senza_istantanea` = le
     giornate con la tua formazione lasciate fuori perché la consigliata di allora non c'è (quella ricostruita dopo non è ciò che
-    avevi davanti)."""
+    avevi davanti); `stessi_titolari` = quelle con gli stessi titolari della consigliata mostrata; `nota` e `nota_frase` = la frase
+    su queste giornate, la stessa di «Le tue scelte» (`diario.nota_confronto`)."""
     con = [v for v in voci if isinstance(v.get("schierata"), dict) and isinstance(v.get("consigliata"), dict)
            and _numero(v["schierata"].get("reale")) is not None and _numero(v["consigliata"].get("reale")) is not None]
     mostrate = [v for v in con if _mostrata(v)]
     righe = [(v["consigliata"]["reale"], v["schierata"]["reale"]) for v in mostrate if not diario._stessa_formazione(v)]
+    n, senza, stessi = len(righe), len(con) - len(mostrate), len(mostrate) - len(righe)
+    fuori = {"senza_istantanea": senza, "stessi_titolari": stessi} | diario.nota_confronto(n, stessi, senza)
     if not righe:
-        return {"giornate": 0, "senza_istantanea": len(con) - len(mostrate)}
-    n = len(righe)
+        return {"giornate": 0} | fuori
     return {"giornate": n, "meglio_consigliata": sum(1 for c, s in righe if c > s), "meglio_tua": sum(1 for c, s in righe if c < s),
             "pari": sum(1 for c, s in righe if c == s), "punti": round(sum(c - s for c, s in righe), 1),
-            "media_consigliata": round(sum(c for c, _ in righe) / n, 1), "media_tua": round(sum(s for _, s in righe) / n, 1),
-            "senza_istantanea": len(con) - len(mostrate)}
+            "media_consigliata": round(sum(c for c, _ in righe) / n, 1), "media_tua": round(sum(s for _, s in righe) / n, 1)} | fuori
 
 
 def _mostrata(voce: dict) -> bool:

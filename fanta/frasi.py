@@ -274,6 +274,12 @@ CATALOGO: dict[str, str] = {
     "diario.serie_a_gioca": "quando diciamo «gioca {p}%», ha giocato {k} volte su 10",
     "diario.serie_a_attesa.one": "Su tutta la Serie A serve ancora {n} giornata per dire quanto ci prendiamo.",
     "diario.serie_a_attesa.other": "Su tutta la Serie A servono ancora {n} giornate per dire quanto ci prendiamo.",
+    # Diario, «Le tue scelte» e «Quanto ci abbiamo preso»: le giornate con la tua formazione che non hanno un verdetto (#614,
+    # diario.nota_confronto). {fuori} = una `diario.confronto_fuori`
+    "diario.confronto_fuori.one": "{n} giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+    "diario.confronto_fuori.other": "{n} giornate non entrano nel confronto: la consigliata di allora non era stata salvata.",
+    "diario.confronto_stessa": "Finora hai schierato gli stessi undici della consigliata.",
+    "diario.confronto_stessa_fuori": "Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. {fuori}",
 }
 
 

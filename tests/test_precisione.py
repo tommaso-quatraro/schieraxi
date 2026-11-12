@@ -61,7 +61,8 @@ def test_consigliata_contro_la_tua_e_squadra():
     voci = [_voce(4, [], reale=70, tua=65), _voce(5, [], reale=60, tua=66.5), _voce(6, [], reale=70, tua=70), _voce(7, [], reale=80)]
     r = precisione.riassunto(voci)
     assert r["confronto"] == {"giornate": 3, "meglio_consigliata": 1, "meglio_tua": 1, "pari": 1, "punti": -1.5,
-                              "media_consigliata": 66.7, "media_tua": 67.2, "senza_istantanea": 0}
+                              "media_consigliata": 66.7, "media_tua": 67.2, "senza_istantanea": 0, "stessi_titolari": 0,
+                              "nota": None, "nota_frase": None}
     assert [x["differenza"] for x in r["per_giornata"]] == [5.0, -6.5, 0.0, None]
     assert r["squadra"]["giornate"] == 4 and r["squadra"]["con_fascia"] == 4 and r["squadra"]["dentro_fascia"] == 2      # 60 e 80 fuori da 62-78
     assert r["fantavoto"] is None and r["gioca"] is None and r["fonti"] == {"mostrati": 0, "ricostruiti": 0}
@@ -73,11 +74,14 @@ def test_senza_la_consigliata_mostrata_niente_confronto():
     voci = [_voce(4, [], reale=70, tua=65), _voce(5, [], reale=60, tua=66.5, origine="ricostruita")]
     r = precisione.riassunto(voci)
     assert r["confronto"] == {"giornate": 1, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 0, "punti": 5.0,
-                              "media_consigliata": 70.0, "media_tua": 65.0, "senza_istantanea": 1}
+                              "media_consigliata": 70.0, "media_tua": 65.0, "senza_istantanea": 1, "stessi_titolari": 0,
+                              "nota": "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+                              "nota_frase": {"chiave": "diario.confronto_fuori", "param": {"n": 1}}}
     assert [(x["consigliata"], x["differenza"]) for x in r["per_giornata"]] == [("mostrata", 5.0), ("ricostruita", None)]
     assert r["squadra"]["giornate"] == 1
     soli = precisione.riassunto([_voce(5, [], reale=60, tua=66.5, origine="ricostruita")])
-    assert soli["confronto"] == {"giornate": 0, "senza_istantanea": 1} and soli["squadra"] is None
+    assert soli["confronto"] == {"giornate": 0, "senza_istantanea": 1, "stessi_titolari": 0, "nota": "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+                                 "nota_frase": {"chiave": "diario.confronto_fuori", "param": {"n": 1}}} and soli["squadra"] is None
 
 
 def test_brutti_numeri_si_vedono_lo_stesso():

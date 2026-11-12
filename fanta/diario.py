@@ -26,6 +26,7 @@ from . import indicatori_consiglio as ic
 from . import verifica_consiglio as vc
 from . import formazione as fz
 from .blocco import BloccoFile
+from .frasi import F
 from .lega import Rose
 from .modello import Dati, Parametri, previsioni
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
@@ -585,18 +586,20 @@ POCHI_DATI = 8          # sotto questo numero di giornate la percentuale è trop
 def scelte_tue(voci: list[dict]) -> dict:
     """Le giornate in cui hai schierato undici diversi da quelli consigliati: chi aveva ragione (punti fatti con la tua formazione
     contro quella consigliata). `differenza` = tua - consigliata (positiva: avevi ragione tu). Le voci vanno dalla più recente.
-    Conta solo la consigliata mostrata prima della scadenza: `senza_istantanea` = le giornate con undici diversi dalla ricostruita
-    per cui la consigliata di allora non c'è, e che quindi non hanno un verdetto."""
-    giornate, senza = [], 0
+    Conta solo la consigliata mostrata prima della scadenza: `senza_istantanea` = le giornate con la tua formazione per cui la
+    consigliata di allora non c'è, e che quindi non hanno un verdetto; `stessi_titolari` = quelle con gli stessi titolari della
+    consigliata mostrata. `nota` (con `nota_frase`) = la frase su quelle giornate (`nota_confronto`), null se non c'è niente da dire."""
+    giornate, senza, stessi = [], 0, 0
     for v in voci:
         s, c = v.get("schierata"), v.get("consigliata")
         if not s or not c or not s.get("titolari") or not c.get("titolari"):
             continue
         tue, loro = {t["id"] for t in s["titolari"]}, {t["id"] for t in c["titolari"]}
-        if tue == loro:
-            continue
         if not _con_mostrata(v):
             senza += 1
+            continue
+        if tue == loro:
+            stessi += 1
             continue
         diff = round(s["reale"] - c["reale"], 1)
         giornate.append({"stagione": v["stagione"], "giornata": v["giornata"], "giornata_lega": v.get("giornata_lega"),
@@ -605,14 +608,28 @@ def scelte_tue(voci: list[dict]) -> dict:
                          "punti_tua": s["reale"], "punti_consigliata": c["reale"], "differenza": diff,
                          "esito": "tua" if diff > 0 else "consigliata" if diff < 0 else "pari"})
     n = len(giornate)
+    fuori = {"senza_istantanea": senza, "stessi_titolari": stessi} | nota_confronto(n, stessi, senza)
     if not n:
-        return {"giornate": 0, "pochi_dati": True, "per_giornata": [], "senza_istantanea": senza}
+        return {"giornate": 0, "pochi_dati": True, "per_giornata": []} | fuori
     meglio_tua = sum(1 for g in giornate if g["esito"] == "tua")
     return {"giornate": n, "meglio_tua": meglio_tua, "meglio_consigliata": sum(1 for g in giornate if g["esito"] == "consigliata"),
             "pari": sum(1 for g in giornate if g["esito"] == "pari"),
             "punti_differenza": round(sum(g["differenza"] for g in giornate), 1),
-            "percentuale_tua": round(100 * meglio_tua / n), "pochi_dati": n < POCHI_DATI, "per_giornata": giornate,
-            "senza_istantanea": senza}
+            "percentuale_tua": round(100 * meglio_tua / n), "pochi_dati": n < POCHI_DATI, "per_giornata": giornate} | fuori
+
+
+def nota_confronto(giornate: int, stessi: int, senza: int) -> dict:
+    """La frase sulle giornate con la tua formazione che non hanno un verdetto, per «Le tue scelte» (`scelte_tue`) e per il confronto
+    di «Quanto ci abbiamo preso» (`precisione._confronto`): la scrive il server, web e iPhone la mostrano così com'è.
+    `giornate` = quelle con un verdetto, `stessi` = con gli stessi titolari della consigliata mostrata, `senza` = senza la consigliata
+    mostrata (non era stata salvata). {"nota": testo, "nota_frase": {chiave, param}}; tutti e due null se non c'è niente da dire
+    (nessuna giornata segnata, oppure tutte con un verdetto)."""
+    fuori = F("diario.confronto_fuori", n=senza) if senza else None
+    if giornate or not stessi:
+        frase = fuori
+    else:
+        frase = F("diario.confronto_stessa_fuori", fuori=fuori) if fuori else F("diario.confronto_stessa")
+    return {"nota": str(frase) if frase else None, "nota_frase": frase.json() if frase else None}
 
 
 COPERTURA_MINIMA = 0.6          # sotto questa quota di giornate dentro la fascia (dichiarata: 8 su 10) il periodo è «andato peggio del previsto»

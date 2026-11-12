@@ -103,7 +103,8 @@ def test_file_mancante_o_rovinato(tmp_path):
     (tmp_path / "x.json").write_text("{rotto")
     assert diario.elenco(tmp_path / "x.json") == {"giornate": [], "sintesi": {"giornate": 0, "senza_consigliata_mostrata": 0},
                                                   "scelte_tue": {"giornate": 0, "pochi_dati": True, "per_giornata": [],
-                                                                 "senza_istantanea": 0},
+                                                                 "senza_istantanea": 0, "stessi_titolari": 0, "nota": None,
+                                                                 "nota_frase": None},
                                                   "affidabilita": {"giornate": 0, "giudizio": "pochi_dati", "pochi_dati": True,
                                                                    "giornate_minime": diario.POCHI_DATI, "senza_istantanea": 0}}
 
@@ -168,7 +169,9 @@ def test_senza_istantanea_il_diario_lo_dice_e_non_da_il_verdetto(finto):
     v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), _scelta(MOSTRATI), simulazioni=50)
     assert v["consigliata"]["origine"] == "ricostruita" and v["ricostruita"] == v["consigliata"]
     assert v["schierata"]["reale"] == 66.0 and v["consigliata"]["reale"] == 69.0       # i numeri ci sono, il verdetto no
-    assert diario.scelte_tue([v]) == {"giornate": 0, "pochi_dati": True, "per_giornata": [], "senza_istantanea": 1}
+    assert diario.scelte_tue([v]) == {"giornate": 0, "pochi_dati": True, "per_giornata": [], "senza_istantanea": 1, "stessi_titolari": 0,
+                                      "nota": "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+                                      "nota_frase": {"chiave": "diario.confronto_fuori", "param": {"n": 1}}}
     assert diario.sintesi([v]) == {"giornate": 0, "senza_consigliata_mostrata": 1}
     assert diario.atteso_vs_fatto(v)["riferimento"] == "ricostruita"
     aff = diario.affidabilita([v])
@@ -248,6 +251,61 @@ def test_gli_stessi_titolari_non_entrano_nel_verdetto():
     assert (s["giornate"], s["meglio_tua"], s["meglio_consigliata"], s["punti_schierata"], s["punti_consigliata"]) == (1, 1, 0, 70.0, 66.0)
     c = precisione.riassunto([stessi, diversi])["confronto"]
     assert (c["giornate"], c["meglio_tua"], c["meglio_consigliata"], c["punti"]) == (1, 1, 0, -4.0)
+
+
+# ---------------------------------------------------------------- la frase sulle giornate senza verdetto la scrive il server
+FUORI = "la consigliata di allora non era stata salvata."
+
+
+def _senza_mostrata(g, tue, loro=(1, 2, 3)):
+    """Una giornata con la tua formazione ma senza la consigliata mostrata: la consigliata della voce è la ricostruita."""
+    v = _voce(g, list(tue), list(loro), 66.0, 69.0)
+    v["consigliata"]["origine"] = "ricostruita"
+    return v
+
+
+def _note(voci):
+    """La frase di «Le tue scelte» e quella del confronto di «Quanto ci abbiamo preso», con i loro conti."""
+    st, cf = diario.scelte_tue(voci), precisione.riassunto(voci)["confronto"]
+    assert (st["nota"], st["nota_frase"]) == (cf["nota"], cf["nota_frase"])              # stessa frase nei due riquadri
+    assert (st["senza_istantanea"], st["stessi_titolari"]) == (cf["senza_istantanea"], cf["stessi_titolari"])
+    return st
+
+
+def test_giornate_segnate_senza_la_consigliata_di_allora():
+    """Le giornate segnate ma senza la consigliata di allora (quasi tutte, finché il server non salva l'istantanea): il server
+    dice quante non entrano nel confronto. Prima web e iPhone scrivevano «Non sappiamo ancora cosa hai schierato», o
+    nascondevano «Le tue scelte» (revisione di #642). Conta anche «Ho schierato la consigliata» senza istantanea (stessi
+    titolari della ricostruita): la consigliata di allora non la conosciamo."""
+    st = _note([_senza_mostrata(2, [1, 2, 9]), _senza_mostrata(1, [1, 2, 3])])
+    assert (st["giornate"], st["senza_istantanea"], st["stessi_titolari"]) == (0, 2, 0)
+    assert st["nota"] == "2 giornate non entrano nel confronto: " + FUORI
+    assert st["nota_frase"] == {"chiave": "diario.confronto_fuori", "param": {"n": 2}}
+    assert _note([_senza_mostrata(1, [1, 2, 9])])["nota"] == "1 giornata non entra nel confronto: " + FUORI
+
+
+def test_con_una_sola_giornata_confrontabile_uguale_non_si_dice_finora_sempre_uguale():
+    """Una giornata con la consigliata mostrata e gli stessi titolari, cinque diverse senza la consigliata di allora: non è vero che
+    «finora» hai schierato sempre la consigliata. Senza giornate lasciate fuori, invece, sì."""
+    voci = [_voce(6, [1, 2, 3], [1, 2, 3], 70.0, 70.0)] + [_senza_mostrata(g, [1, 2, 9]) for g in range(1, 6)]
+    st = _note(voci)
+    assert (st["giornate"], st["senza_istantanea"], st["stessi_titolari"]) == (0, 5, 1)
+    assert st["nota"] == ("Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. "
+                          "5 giornate non entrano nel confronto: " + FUORI)
+    assert st["nota_frase"]["chiave"] == "diario.confronto_stessa_fuori"
+    solo = _note(voci[:1])
+    assert solo["nota"] == "Finora hai schierato gli stessi undici della consigliata."
+    assert solo["nota_frase"] == {"chiave": "diario.confronto_stessa", "param": {}}
+
+
+def test_con_un_verdetto_la_frase_dice_solo_chi_resta_fuori():
+    diversa = _voce(4, [1, 2, 9], [1, 2, 3], 70.0, 66.0)
+    st = _note([diversa, _voce(3, [1, 2, 3], [1, 2, 3], 70.0, 70.0), _senza_mostrata(2, [1, 2, 9])])
+    assert (st["giornate"], st["senza_istantanea"], st["stessi_titolari"]) == (1, 1, 1)
+    assert st["nota"] == "1 giornata non entra nel confronto: " + FUORI
+    assert _note([diversa])["nota"] is None and _note([diversa])["nota_frase"] is None
+    nessuna = _note([{"stagione": ST, "giornata": 1, "schierata": None, "consigliata": {"reale": 70.0, "titolari": []}}])
+    assert (nessuna["giornate"], nessuna["nota"]) == (0, None)                          # niente schierato: il client dice di dirlo
 
 
 def test_la_schierata_dice_se_e_stata_messa_nell_app_della_lega(finto):

@@ -976,6 +976,10 @@ const TESTI = {
     "frase.diario.serie_a_gioca": "quando diciamo «gioca {p}%», ha giocato {k} volte su 10",
     "frase.diario.serie_a_attesa.one": "Su tutta la Serie A serve ancora {n} giornata per dire quanto ci prendiamo.",
     "frase.diario.serie_a_attesa.other": "Su tutta la Serie A servono ancora {n} giornate per dire quanto ci prendiamo.",
+    "frase.diario.confronto_fuori.one": "{n} giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+    "frase.diario.confronto_fuori.other": "{n} giornate non entrano nel confronto: la consigliata di allora non era stata salvata.",
+    "frase.diario.confronto_stessa": "Finora hai schierato gli stessi undici della consigliata.",
+    "frase.diario.confronto_stessa_fuori": "Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. {fuori}",
 
     "giocatore.gioca": "gioca {p}",
 
@@ -2762,6 +2766,10 @@ const TESTI = {
     "frase.diario.serie_a_gioca": "when we say “plays {p}%”, they played {k} times out of 10",
     "frase.diario.serie_a_attesa.one": "Across the whole Serie A we need {n} more matchday to tell how accurate we are.",
     "frase.diario.serie_a_attesa.other": "Across the whole Serie A we need {n} more matchdays to tell how accurate we are.",
+    "frase.diario.confronto_fuori.one": "{n} matchday is left out of the comparison: the recommended lineup of the time had not been saved.",
+    "frase.diario.confronto_fuori.other": "{n} matchdays are left out of the comparison: the recommended lineup of the time had not been saved.",
+    "frase.diario.confronto_stessa": "So far you have fielded the same eleven as the recommended lineup.",
+    "frase.diario.confronto_stessa_fuori": "You fielded the same eleven as the recommended lineup in every matchday where it had been saved. {fuori}",
 
     "giocatore.gioca": "plays {p}",
 
