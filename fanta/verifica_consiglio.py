@@ -33,8 +33,10 @@ SEME = 166                          # seme dei ritocchi: gli stessi dati danno g
 SEMI = (8, 9, 10)                   # altri semi della simulazione (l'app usa sempre quello di fz.Valutatore)
 RITOCCHI = 3                        # piccoli aggiornamenti dei dati per ogni caso
 SCARTO_P, SCARTO_MU = 0.03, 0.10    # «piccolo aggiornamento»: ogni «gioca N%» si sposta di circa 3 punti, ogni fantavoto atteso di 0,1
-IMPROBABILE_SOTTO = 0.2             # C3: un titolare che gioca meno di così...
-COMPAGNO_DA = 0.5                   # ...con un compagno di ruolo fuori dagli 11 che gioca almeno così
+# C3 misura la regola con cui l'app toglie i titolari improbabili (`formazione._senza_improbabili`): le soglie sono le sue, lette
+# da lì (#614: il compagno era rimasto al 50% di prima di #612)
+IMPROBABILE_SOTTO = fz.IMPROBABILE_SOTTO    # C3: un titolare che gioca meno di così...
+COMPAGNO_DA = fz.COMPAGNO_ALMENO            # ...con un compagno di ruolo fuori dagli 11 che gioca almeno così
 SOGLIA_CAMBIO = SOGLIA_AVVISO_PUNTI  # C2 (decisione D2): un cambio di titolari deve valere almeno quanto l'avviso alla scadenza
 MAX_SENZA_MOTIVO = 0.10             # C4: titolari senza un motivo proprio nel «perché», al massimo il 10%
 NON_PROPRI = ("gioca", "partita", "altro")   # motivi del «perché questo numero» che non parlano del giocatore
@@ -81,8 +83,8 @@ def _esclusi(f: dict) -> list[dict]:
 
 
 def non_giocano(f: dict) -> list[tuple[int, int | None]]:
-    """I titolari della formazione `f` (come la dà `consigli.formazione`) che giocano meno del 20% o sono fuori, ognuno con il
-    miglior compagno di ruolo fuori dagli 11 che gioca almeno il 50% (None se non c'è): [(titolare, compagno)]."""
+    """I titolari della formazione `f` (come la dà `consigli.formazione`) che giocano meno di IMPROBABILE_SOTTO o sono fuori,
+    ognuno con il miglior compagno di ruolo fuori dagli 11 che gioca almeno COMPAGNO_DA (None se non c'è): [(titolare, compagno)]."""
     esclusi = _esclusi(f)
     esito = []
     for t in f["titolari"]:
@@ -228,7 +230,8 @@ def parte_giocate(d, regole: Regole, rose: Rose, stagione: str, simulazioni: int
             fv = {x.id: fv_vero.get(x.id, 0.0) for x in mod}
             voti = {x.id: voto_vero.get(x.id, 0.0) for x in mod}
             riga = {"giornata": g} | {n: fz.punteggio(f.titolari, f.panchina, gioca, fv, voti, regole) for n, f in scelte.items()}
-            riga["perfetta"] = verifica._perfetta(mod, fv_vero, regole)
+            # con le regole della lega (il modificatore della difesa) e mai sotto una formazione valutata, come `verifica` (#614)
+            riga["perfetta"] = max(verifica._perfetta(mod, fv_vero, regole, voto_vero), *(riga[n] for n in scelte))
             riga["senza_voto_consigliata"] = sum(not gioca[x.id] for x in cons.titolari)
             riga["senza_voto_s2"] = sum(not gioca[x.id] for x in scelte["s2"].titolari)
             riga["scoperti"] = fz.chi_va_a_punteggio(cons.titolari, cons.panchina, gioca, regole)[1]
