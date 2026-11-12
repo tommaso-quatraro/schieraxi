@@ -743,8 +743,7 @@ struct CreditoMovimento: Decodable, Identifiable {
     var id: String { squadra }
 }
 
-/// Cosa è cambiato nelle rose da un'importazione all'altra. Lo stesso modello vale per l'esito dell'importazione e per lo storico
-/// (`/api/movimenti`), dove c'è anche la data.
+/// Cosa è cambiato nelle rose da un'importazione all'altra: sta nell'esito dell'importazione.
 struct Differenze: Decodable, Identifiable {
     let quando: String?
     let primaImportazione: Bool?

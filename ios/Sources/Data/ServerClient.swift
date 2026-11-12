@@ -235,9 +235,8 @@ struct ServerHTTP: ServerClient {
         let base = indirizzo
         // Il token e le password non viaggiano mai in chiaro: solo https (o questo stesso computer, per le prove).
         guard IndirizzoServer.valido(base), let url = URL(string: base + percorso) else { throw ErroreApi.indirizzoNonValido }
-        // Gli scambi (soprattutto 2 contro 2) fanno molti calcoli sul server: più tempo. Accesso e account: 20 secondi,
-        // poi un messaggio chiaro e si può riprovare.
-        let attesa: TimeInterval = percorso.hasPrefix("/api/scambi") ? 90 : (percorso.hasPrefix("/api/account/") ? 20 : 25)
+        // Accesso e account: 20 secondi, poi un messaggio chiaro e si può riprovare.
+        let attesa: TimeInterval = percorso.hasPrefix("/api/account/") ? 20 : 25
         var r = URLRequest(url: url, timeoutInterval: attesa)
         r.setValue("1", forHTTPHeaderField: "X-Fanta")
         LinguaServer.applica(&r)

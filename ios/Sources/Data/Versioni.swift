@@ -20,7 +20,6 @@ final class VersioniRisorse: @unchecked Sendable {
         if inizia("/api/avvisi/prova") { return nil }
         if inizia("/api/regole") { return "regole" }
         if inizia("/api/avvisi") { return "avvisi" }
-        if inizia("/api/osservati") { return "osservati" }
         if inizia("/api/squadre") || inizia("/api/crediti") || inizia("/api/mia-squadra") || inizia("/api/rose") { return "rose" }
         return nil
     }
