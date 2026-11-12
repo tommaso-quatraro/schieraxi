@@ -3,8 +3,9 @@
 Il registro (`registro_giornate.py`, con i numeri «nostri» di `registro_nostri.py`) sta in `dati/fanta.sqlite` ma, a differenza
 del resto dell'archivio, NON si ricostruisce con `aggiorna`: per questo la copia notturna (`script/server/backup-dati.sh`) lo
 esporta a parte in `dati/registro-giornate.json`.
-Perché un file a sé e non l'archivio intero: le statistiche si riscaricano, la copia resta piccola e il ripristino rimette solo
-il registro, senza toccare il resto. L'esportazione apre l'archivio in sola lettura e legge le sue tabelle nella stessa
+Dal #607 la copia notturna contiene anche l'archivio intero (non tutto si riscarica: una fonte che chiude non ridà le stagioni
+passate). Il file a sé resta: è piccolo, c'è anche nelle copie di prima e rimette solo il registro in un archivio rifatto da zero,
+senza toccare il resto. L'esportazione apre l'archivio in sola lettura e legge le sue tabelle nella stessa
 transazione: anche con il servizio acceso prende i dati confermati (pure quelli ancora nel file -wal) e mai una scrittura a metà.
 L'importazione aggiunge solo le righe che mancano (quelle che ci sono già restano com'erano: si può ripetere) e tutto o niente.
 

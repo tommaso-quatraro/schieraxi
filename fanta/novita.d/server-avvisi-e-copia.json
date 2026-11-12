@@ -1,0 +1,12 @@
+{
+  "titolo": "Server: avvisi più utili e copia notturna completa",
+  "voci": [
+    "Server: chi gestisce il server riceve meno avvisi e più chiari: quali fonti di dati non rispondono (un messaggio solo) e quando tornano; niente avviso a ogni versione installata, ma uno se gli aggiornamenti si fermano.",
+    "Server: la copia di ogni notte contiene anche l'archivio delle statistiche, così un ripristino non perde i dati che una fonte non dà più. In Sotto il cofano ora si spiega che non tutti i dati si possono riscaricare."
+  ],
+  "tecnico": [
+    "script/server/aggiorna.sh: stato per passo di «fanta aggiorna» in ~/.cache/fantacalcio/passi/<passo> («giri di fila, ultimo avviso in secondi, nome»), letto dalle righe «  ! <passo>: non riuscito (» del giro; un solo avviso ntfy per giro con i passi alla seconda volta di fila, una volta sola per guasto (il promemoria di ogni giorno lo manda il controllo di salute del server), uno solo per i passi tornati se erano stati segnalati; ora dell'avviso segnata e file tolto solo se curl riesce; senza «Fatto:» e con uscita diversa da zero conta il guasto «aggiornamento» e gli altri passi restano com'erano; una fonte «saltata» si toglie senza avviso. Il vecchio contatore unico ~/.cache/fantacalcio/errori si toglie (#607).",
+    "script/server/aggiorna-app.sh: tolto l'avviso «SchieraXI aggiornato» dopo un'installazione riuscita (resta la riga in dati/pubblicazione.log). Funzioni guasto/risolto: avviso con il motivo per clone o fetch non riusciti (dalla terza volta di fila), copia di GitHub senza ramo main, versione senza cartelle del server, git archive | tar non riuscito, scambio degli ambienti non riuscito; al massimo uno al giorno per motivo (stato in ~/.cache/fantacalcio/guasto-<motivo>), «di nuovo a posto» al primo fetch riuscito (rete) o alla prima installazione riuscita. avvisa esce con 0 solo se notifiche.invia ha mandato.",
+    "script/server/backup-dati.sh: dati/fanta.sqlite nel pacchetto notturno, con l'API di backup di SQLite dall'archivio aperto in sola lettura (mode=ro), copia in journal_mode DELETE e PRAGMA quick_check. Se non riesce solo quella copia: pacchetto senza l'archivio, niente rotazione quella notte, avviso ntfy al massimo uno al giorno (~/.cache/fantacalcio/avvisato-copia-archivio) e uno quando torna completa. docs/RIPRISTINO-SERVER.md (passi 2, 4 e 5), fanta/registro_copia.py (docstring), Sotto il cofano (italiano, inglese, docs/SOTTO-IL-COFANO.md) aggiornati."
+  ]
+}
