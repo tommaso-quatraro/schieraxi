@@ -5,8 +5,8 @@ import Testing
 // Issue #304. I menu Squadra e Altro dell'iPhone sono quelli della web: stesse voci, stesso ordine, stessi testi e stesse
 // condizioni di `VOCI_LEGA` in `fanta/web/app.js` (nomi e righe sotto dal catalogo comune, #496). La pagina Calendario ha il
 // titolo e la spiegazione della web (`tabCalendario`: `mercato.calendario_difficolta`, `mercato.cal_spiega` dal catalogo,
-// legenda `diff.1` e `diff.4` da `fanta/web/testi.js`, pallino verde sulle squadre dei tuoi giocatori). I file della web si
-// leggono dal repository.
+// legenda `diff.1` e `diff.4` di `testi.js`, pallino verde sulle squadre dei tuoi giocatori). La web di riferimento è quella
+// del 12/11/2026, copiata ferma in `VociLegaWeb` e `TestiWeb`: la web nuova non si legge più.
 
 /// Le chiavi che `VOCI_LEGA` usa per nomi e righe sotto, con il loro testo nel catalogo (`ios/testi/lega.txt`). Una voce nuova
 /// della web con una chiave che non è qui fa fallire il test: va aggiunta qui e in `ios/testi/lega.txt`.

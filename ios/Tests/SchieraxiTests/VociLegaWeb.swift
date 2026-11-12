@@ -1,9 +1,10 @@
 import Foundation
 import Testing
 
-/// Le voci dei menu Squadra e Altro della web, lette dal repository: il blocco `const VOCI_LEGA = [ … ];` di `fanta/web/app.js`
-/// (id, scheda, funzione che accende la voce, chiavi di `testi.js` per il nome e la riga sotto) e i nomi delle funzioni del
-/// server (`FUNZIONI` di `fanta/funzioni.py`). Così una voce spostata, aggiunta o tolta su un lato solo fa fallire i test.
+/// Le voci dei menu Squadra e Altro della web e i nomi delle funzioni del server. Le voci sono una copia ferma del blocco
+/// `const VOCI_LEGA = [ … ];` di `fanta/web/app.js` presa il 12/11/2026, prima del rifacimento della web (spec
+/// `2026-11-12-revisione-generale-design`): l'app resta com'è finché il proprietario non decide, quindi la prova non segue più
+/// la web. Le funzioni si leggono da `FUNZIONI` di `fanta/funzioni.py` (il server, che l'app usa ancora).
 struct VociLegaWeb {
     struct Errore: Error, CustomStringConvertible {
         let description: String
@@ -21,6 +22,36 @@ struct VociLegaWeb {
         var testDescription: String { "\(ambito)/\(id)" }
     }
 
+    /// `VOCI_LEGA` della web com'era il 12/11/2026, nello stesso ordine.
+    static let vociFerme: [Voce] = [
+        Voce(id: "squadre", ambito: "squadra", funzione: nil,
+             chiaveNome: "lega.voce_squadre", chiaveDettaglio: "lega.voce_squadre_sub"),
+        Voce(id: "consigli", ambito: "squadra", funzione: nil,
+             chiaveNome: "lega.voce_consigli", chiaveDettaglio: "lega.voce_consigli_sub"),
+        Voce(id: "osservati", ambito: "squadra", funzione: "seguiti",
+             chiaveNome: "lega.voce_osservati", chiaveDettaglio: "lega.voce_osservati_sub"),
+        Voce(id: "giocatori", ambito: "squadra", funzione: "elenco_giocatori",
+             chiaveNome: "lega.voce_giocatori", chiaveDettaglio: "lega.voce_giocatori_sub"),
+        Voce(id: "calendario", ambito: "squadra", funzione: "elenco_giocatori",
+             chiaveNome: "lega.voce_calendario", chiaveDettaglio: "lega.voce_calendario_sub"),
+        Voce(id: "importa", ambito: "squadra", funzione: nil,
+             chiaveNome: "lega.voce_importa", chiaveDettaglio: "lega.voce_importa_sub"),
+        Voce(id: "scambi", ambito: "altro", funzione: nil,
+             chiaveNome: "lega.voce_scambi", chiaveDettaglio: "lega.voce_scambi_sub"),
+        Voce(id: "diario", ambito: "altro", funzione: "diario",
+             chiaveNome: "lega.voce_diario", chiaveDettaglio: "lega.voce_diario_sub"),
+        Voce(id: "regole", ambito: "altro", funzione: nil,
+             chiaveNome: "lega.voce_regole", chiaveDettaglio: "lega.voce_regole_sub"),
+        Voce(id: "movimenti", ambito: "altro", funzione: "movimenti",
+             chiaveNome: "lega.voce_movimenti", chiaveDettaglio: "lega.voce_movimenti_sub"),
+        Voce(id: "crediti", ambito: "altro", funzione: "crediti",
+             chiaveNome: "lega.voce_crediti", chiaveDettaglio: "lega.voce_crediti_sub"),
+        Voce(id: "stagione", ambito: "altro", funzione: nil,
+             chiaveNome: "lega.voce_stagione", chiaveDettaglio: "lega.voce_stagione_sub"),
+        Voce(id: "novita", ambito: "altro", funzione: "novita",
+             chiaveNome: "lega.voce_novita", chiaveDettaglio: "lega.voce_novita_sub"),
+    ]
+
     let voci: [Voce]
     /// Tutte le funzioni che il server conosce, nell'ordine di `fanta/funzioni.py`.
     let funzioniServer: [String]
@@ -28,7 +59,7 @@ struct VociLegaWeb {
     init(file: String = #filePath) throws {
         var radice = URL(fileURLWithPath: file)
         for _ in 0..<4 { radice.deleteLastPathComponent() }          // VociLegaWeb.swift, SchieraxiTests, Tests, ios
-        voci = try Self.vociLega(Self.leggi(radice, "fanta/web/app.js"))
+        voci = Self.vociFerme
         funzioniServer = try Self.funzioni(Self.leggi(radice, "fanta/funzioni.py"))
     }
 
@@ -40,32 +71,6 @@ struct VociLegaWeb {
             throw Errore(description: "non riesco a leggere \(percorso) dal repository")
         }
         return testo
-    }
-
-    private static func vociLega(_ app: String) throws -> [Voce] {
-        guard let inizio = app.range(of: "const VOCI_LEGA = ["),
-              let fine = app.range(of: "\n];", range: inizio.upperBound..<app.endIndex) else {
-            throw Errore(description: "in fanta/web/app.js non trovo il blocco «const VOCI_LEGA = [ … ];»")
-        }
-        let righe = app[inizio.upperBound..<fine.lowerBound]
-            .split(whereSeparator: \.isNewline)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { $0.hasPrefix("{ id:") }
-        let forma = try NSRegularExpression(pattern:
-            #"^\{ id: "([a-z_]+)", ambito: "([a-z]+)", (?:f: "([a-z_]+)", )?nome: t\("([a-z_.]+)"\), sub: t\("([a-z_.]+)"\)"#)
-        let voci = try righe.map { riga -> Voce in
-            let tutta = NSRange(riga.startIndex..., in: riga)
-            guard let m = forma.firstMatch(in: riga, range: tutta) else {
-                throw Errore(description: "riga di VOCI_LEGA in una forma che il test non sa leggere: \(riga)")
-            }
-            func pezzo(_ i: Int) -> String? { Range(m.range(at: i), in: riga).map { String(riga[$0]) } }
-            guard let id = pezzo(1), let ambito = pezzo(2), let nome = pezzo(4), let sotto = pezzo(5) else {
-                throw Errore(description: "riga di VOCI_LEGA senza id, ambito, nome o sub: \(riga)")
-            }
-            return Voce(id: id, ambito: ambito, funzione: pezzo(3), chiaveNome: nome, chiaveDettaglio: sotto)
-        }
-        guard !voci.isEmpty else { throw Errore(description: "VOCI_LEGA di fanta/web/app.js è vuoto") }
-        return voci
     }
 
     /// Le chiavi di `FUNZIONI` in `fanta/funzioni.py`: le righe `    "elenco_giocatori": ("Elenco dei giocatori", …),`.

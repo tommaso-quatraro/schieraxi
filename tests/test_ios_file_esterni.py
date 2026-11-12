@@ -1,6 +1,6 @@
 """I test iOS che leggono file fuori da `ios/` (issue #308).
 
-Alcuni test iOS leggono file del server o della web (oggi `fanta/frasi.py` e `fanta/web/testi.js`). Se una pull request cambia
+Alcuni test iOS leggono file del server (oggi `fanta/frasi.py` e `fanta/funzioni.py`; quelli della web no, dal 12/11/2026). Se una pull request cambia
 solo uno di quei file, il job `cambi` di test.yml (che guardava solo `ios/`) non faceva partire i test iOS, e il segno «già verde»
 di ios.yml (che guardava solo l'albero di `ios/`) li avrebbe saltati comunque: la PR si univa verde e lasciava `main` con un
 test iOS rotto. Ora c'è un elenco unico, `ios/Tests/file-esterni.txt`, letto da tutti e due i workflow:
@@ -56,6 +56,15 @@ def test_l_elenco_esiste_ed_e_scritto_bene():
         assert not voce.startswith(("/", "ios/")) and ".." not in voce.split("/"), f"{voce}: percorso dalla radice del repository, fuori da ios/"
         assert voce_esiste(voce), (
             f"{voce}: il file (o la cartella, con / finale) non c'è (l'API dei workflow darebbe errore e i test girerebbero sempre)")
+
+
+def test_nessun_file_della_web_nell_elenco():
+    # dal 12/11/2026 la web si rifà per conto suo (spec 2026-11-12-revisione-generale-design) e l'app nativa resta com'è: i test
+    # iOS non leggono più il sorgente della web (i testi che servono sono copiati fermi in `TestiWeb`). Una voce di `fanta/web`
+    # farebbe partire i Mac a ogni modifica della web e romperebbe i test iOS quando la web toglie una schermata.
+    voci = _voci(ELENCO.read_text(encoding="utf-8"))
+    assert not [v for v in voci if v.startswith("fanta/web")], (
+        "i test iOS non leggono i file della web: copia nel test il dato che serve, invece di leggere fanta/web/")
 
 
 def test_voce_cartella_valida_se_esiste(tmp_path):
@@ -323,6 +332,14 @@ def banco(tmp_path):
 ])
 def test_cambi_decide_con_l_elenco(banco, files, atteso):
     assert banco.cambi(files) == atteso
+
+
+@pytestmark_bash
+def test_con_l_elenco_vero_una_modifica_alla_web_non_fa_partire_i_mac(banco):
+    banco.elenco = ELENCO.read_text(encoding="utf-8")
+    web = ["fanta/web/app.js", "fanta/web/testi.js", "fanta/web/dafare.js", "fanta/web/live.js", "fanta/web/stile.css"]
+    assert banco.cambi(web) == "false"
+    assert banco.cambi(web + ["ios/Sources/Domain/Quando.swift"]) == "true"      # con un file di ios/ i test partono come prima
 
 
 @pytestmark_bash

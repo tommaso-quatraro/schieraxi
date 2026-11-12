@@ -2,9 +2,10 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Partite del turno di Oggi senza i risultati in diretta (funzione spenta o non raggiungibile), come `mostraOggi` della web:
-/// una partita giocata ha l'orario e il risultato del calendario (`punteggioUfficiale` di `fanta/web/live.js`, campi `gol_casa` e
-/// `gol_trasferta` di `GET /api/oggi`); «Finita» solo se è finita per l'orario e il calendario non ha ancora il risultato. Prima
+/// Partite del turno di Oggi senza i risultati in diretta (funzione spenta o non raggiungibile), come `mostraOggi` della web
+/// del 12/11/2026 (la web nuova non ha più le partite del turno; il suo codice non si legge più): una partita giocata ha
+/// l'orario e il risultato del calendario (`punteggioUfficiale` di `fanta/web/live.js`, campi `gol_casa` e `gol_trasferta` di
+/// `GET /api/oggi`); «Finita» solo se è finita per l'orario e il calendario non ha ancora il risultato. Prima
 /// l'iPhone scriveva «Finita» senza il risultato. Con la diretta vince il punteggio in diretta. Dati inventati.
 @MainActor
 @Suite("Partite del turno: il risultato del calendario anche senza la diretta, come la web")
@@ -59,16 +60,6 @@ struct PartiteRisultatoUfficialeTests {
     func voce() {
         let frase = RigaPartitaView.voce(partita: giocata, live: nil, ora: "20:45", titolari: [])
         #expect(frase.hasPrefix("Inter 2, Roma 1, finita"), "«\(frase)»")
-    }
-
-    @Test("La web scrive il risultato del calendario nelle partite del turno, e «Finita» solo senza risultato")
-    func comeLaWeb() throws {
-        var radice = URL(fileURLWithPath: #filePath)
-        for _ in 0..<4 { radice.deleteLastPathComponent() }          // questo file, SchieraxiTests, Tests, ios
-        let app = try #require(try? String(contentsOf: radice.appendingPathComponent("fanta/web/app.js"), encoding: .utf8),
-                               "non riesco a leggere fanta/web/app.js")
-        #expect(app.contains("LiveSchieraxi.punteggioUfficiale(p)"), "mostraOggi non scrive più il risultato del calendario")
-        #expect(app.contains(#"p.stato === "finita" && !p.giocata ? t("live.finita")"#), "la web scrive «Finita» in un altro caso")
     }
 
     @Test("Nella demo a giornata in corso la partita finita ha in Oggi lo stesso risultato della diretta")
