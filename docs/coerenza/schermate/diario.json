@@ -6,7 +6,7 @@
       "web": "«Giornata 7»",
       "iphone": "«Giornata 10» (Serie A)",
       "forma": "sezione «Giornata: le forme»",
-      "chi": "fatto (rassegna 6/11): il titolo di ogni giornata è `NomeGiornata.intero` (`Domain/Diario.swift`)",
+      "chi": "fatto (rassegna 6/11): il titolo di ogni giornata è `NomeGiornata.intero` (`Domain/Diario.swift`); dal 12/11/2026 sulla web è il nome di ogni riga della pagina Giornate (#617)",
       "stato": "fatto"
     },
     {
@@ -15,8 +15,8 @@
       "web": "«Ho schierato questa»",
       "iphone": "«Ho schierato la consigliata» (#21)",
       "forma": "iPhone",
-      "chi": "fatto sulla web (pacchetto 1)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web ha un solo pulsante per giornata, «Non è quello che ho schierato», che fa scegliere gli 11 a mano partendo da quelli della riga (#617). L'iPhone ha ancora «Ho schierato la consigliata» e «Correggi a mano». Prima: fatto sulla web (pacchetto 1)",
+      "stato": "da-decidere"
     },
     {
       "id": 48,
@@ -24,8 +24,17 @@
       "web": "riga sotto i quattro numeri, testo del server",
       "iphone": "uguale, stesso testo",
       "forma": "server (`precisione.serie_a.testo` di `GET /api/diario`)",
-      "chi": "web e iPhone fatti nella stessa PR (#374)",
+      "chi": "web e iPhone fatti nella stessa PR (#374); dal 12/11/2026 sulla web sta dentro «Dettagli» della pagina Giornate (#617)",
       "stato": "fatto"
+    },
+    {
+      "id": 69,
+      "schermata": "Giornate (il Diario)",
+      "web": "seconda scheda della barra: in cima «Finora il fantavoto atteso sbaglia in media di 1,4 punti a giocatore.» con «Dettagli»; una riga per giornata con punti fatti e attesi e «Hai schierato la consigliata.» o «2 cambi tuoi: −1,5 punti rispetto alla consigliata.»; al tocco gli 11 con atteso e preso",
+      "iphone": "Altro > Diario delle giornate: le due formazioni affiancate, «Le tue scelte», «Quanto ci abbiamo preso»",
+      "forma": "web; il confronto con la consigliata solo con `consigliata.origine: \"mostrata\"` di `GET /api/diario`",
+      "chi": "**da decidere**: dal 12/11/2026 la web ha la pagina Giornate al posto del Diario in Altro (#617). L'iPhone è fermo (spec del 12/11, §3)",
+      "stato": "da-decidere"
     }
   ]
 }
