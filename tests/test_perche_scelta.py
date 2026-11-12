@@ -74,6 +74,8 @@ T, Y = G(1, p=0.8, mu=6.5), G(2, p=0.9, mu=5.8)
 @pytest.mark.parametrize("t, y, attuale, invertita, extra, chiave", [
     # 1. l'altro quasi certamente non gioca e scambiarli varrebbe di più: la regola dei titolari che giocano (#341)
     (G(1, p=0.9), G(2, p=0.1, mu=9.0), 60.0, 60.3, {}, "scelta.titolare_che_gioca"),
+    # ...anche quando il titolare gioca poco ma non è «improbabile» (dalla revisione di #612 basta il 20%, non più il 50%)
+    (G(1, p=0.22), G(2, p=0.04, mu=9.0), 60.0, 60.05, {}, "scelta.titolare_che_gioca"),
     # ...ma se con il titolare la formazione vale di più, si dice quello (come il Confronto)
     (G(1, p=0.9), G(2, p=0.1, mu=9.0), 60.3, 60.0, {}, "scelta.piu_punti"),
     # 2. titolare incerto con la riserva sicura: la nota che c'era già (con lui la formazione vale di più o lo stesso)
@@ -122,7 +124,10 @@ def test_senza_un_motivo_vero_nessuna_riga(t, y, attuale, invertita, extra):
 def test_le_righe_in_italiano():
     tit, riserva = G(1, p=0.4), G(2, p=0.92)
     assert perche_scelta.motivo(tit, riserva, 60.5, 60.0, riserva=riserva) == (
-        "Titolare anche se incerto (gioca 40%): se non gioca entra Giocatore 2 dalla panchina, e insieme valgono di più.")
+        "Titolare anche se incerto (gioca 40%): se non gioca, in panchina c'è Giocatore 2 che gioca quasi di sicuro, "
+        "e insieme valgono di più.")
+    assert perche_scelta.senza_riserva(tit) == (
+        "Titolare anche se incerto (gioca 40%): in panchina nessuno del suo ruolo gioca quasi di sicuro.")
     assert perche_scelta.motivo(T, Y, 64.09, 63.98) == (
         "Preferito a Giocatore 2: con lui la formazione fa più punti attesi (64,1 contro 64,0).")
     assert perche_scelta.motivo(G(1, p=0.9), G(2, p=0.8), 60.0, 60.02) == "A pari punti gioca più sicuro di Giocatore 2 (90% contro 80%)."
@@ -159,6 +164,37 @@ def test_una_riga_solo_per_le_scelte_storte_e_per_gli_incerti():
     for r in righe:                       # testo italiano del server e, accanto, come tradurlo (fanta/frasi.py)
         assert isinstance(r["testo"], str) and r["testo"] and set(r) == {"titolare", "altro", "testo", "frase"}
     json.dumps(f)                         # tutto si scrive nella risposta
+
+
+def test_la_riga_dell_incerto_nomina_la_prima_riserva_sicura_della_panchina():
+    """Revisione di #612: la panchina è in ordine di fantavoto atteso. L'attaccante 23 (gioca 70%, fa 7,0) sta davanti a 22 (90%,
+    4,4): la riga dell'incerto 21 nomina 22, la prima riserva del ruolo che gioca quasi di sicuro, e non sparisce."""
+    f = _migliore(_prev({23: {"p_voto": 0.7, "mu": 7.0}, 9: {"mu": 3.0}}))
+    attaccanti = [i for i in [g["id"] for g in f["panchina"]] if i in (22, 23)]
+    assert 21 in [g["id"] for g in f["titolari"]] and attaccanti == [23, 22]
+    riga = next(r for r in _scelta(f) if r["titolare"] == 21)
+    assert (riga["altro"], riga["frase"]["chiave"]) == (22, "scelta.incerto")
+    assert "in panchina c'è Giocatore 22 che gioca quasi di sicuro" in riga["testo"]
+
+
+def test_l_incerto_senza_una_riserva_sicura_ha_la_riga_che_lo_dice():
+    """La riserva dell'attaccante incerto 21 gioca solo il 70%: nessun escluso ha più punti attesi di lui (niente scelta storta),
+    ma chi legge deve sapere che dietro non c'è nessuno di sicuro. La riga non nomina nessuno (`altro` = None)."""
+    f = _migliore(_prev({22: {"p_voto": 0.7, "mu": 5.5}}))
+    assert 21 in [g["id"] for g in f["titolari"]] and 22 in [g["id"] for g in f["panchina"]]
+    m = next(m for m in f["moduli"] if m["modulo"] == f["modulo"])
+    assert {"titolare": 21, "riserva": None} in m["incerti"]
+    riga = next(r for r in _scelta(f) if r["titolare"] == 21)
+    assert (riga["altro"], riga["frase"]["chiave"]) == (None, "scelta.incerto_senza_riserva")
+    assert riga["testo"] == "Titolare anche se incerto (gioca 45%): in panchina nessuno del suo ruolo gioca quasi di sicuro."
+    json.dumps(f)
+
+
+def test_l_incerto_senza_riserva_sicura_ma_con_un_escluso_piu_forte_tiene_il_motivo_di_prima():
+    """Se un escluso ha più punti attesi (scelta che sembra storta) la riga resta quella del confronto con lui."""
+    f = _migliore(_prev({22: {"p_voto": 0.7, "mu": 6.0}}))
+    riga = next(r for r in _scelta(f) if r["titolare"] == 21)
+    assert (riga["altro"], riga["frase"]["chiave"]) == (22, "scelta.piu_punti")
 
 
 def test_schede_senza_punti_attesi_usano_gioca_per_fantavoto():
@@ -229,6 +265,8 @@ def test_ogni_riga_di_ogni_stile_e_modulo_dice_quello_che_dice_il_confronto(monk
     for liv in f["livelli"]:
         for m in liv["moduli"]:
             for r in m["perche_scelta"]:
+                if r["altro"] is None:        # la riga non nomina nessuno (incerto senza riserva sicura): niente da confrontare
+                    continue
                 c = consigli._in_formazione(None, SOLO_442, None, None, GIORNATA, m["modulo"], r["titolare"], r["altro"], prev,
                                             liv["rischio"])
                 chiave = r["frase"]["chiave"]
