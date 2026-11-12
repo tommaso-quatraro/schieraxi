@@ -2,7 +2,8 @@
 
 La calibrazione confronta, per ogni gruppo di giocatori delle probabili formazioni (titolare al 90%, in panchina al 30%...),
 quanti hanno davvero preso voto con la probabilità che il modello aveva stimato. Serve a capire se i numeri di partenza
-(modello._p_da_probabili) vanno corretti: si compila da sola man mano che le giornate vengono giocate.
+(modello._p_da_probabili) vanno corretti: si compila da sola man mano che le giornate vengono giocate, solo con le probabili lette
+prima delle partite. I numeri della pagina sono quelli che usa il modello (stessa funzione, `taratura_e_fattori`).
 """
 from __future__ import annotations
 
@@ -27,8 +28,8 @@ def calibrazione(db: sqlite3.Connection, stagione: str) -> dict:
     """{"giornate": quante giornate hanno probabili e partite giocate, "gruppi": [{gruppo, n, osservato, previsto}]}.
     "osservato" = quota di giocatori che hanno preso voto; "previsto" = media della probabilità stimata dal modello.
     Con una riga attiva della taratura di «gioca N%» (`taratura_probabili.attiva`) i gruppi si fanno sulle probabili salvate prima
-    della scadenza (registro delle giornate) e il «previsto» usa la riga attiva; senza (o se il registro non si legge), sulla
-    tabella `probabili`, come sempre."""
+    della scadenza (registro delle giornate) e il «previsto» usa la riga attiva; senza (o se il registro non si legge), sull'ultima
+    lettura delle probabili di prima di ogni partita (`probabili_storia`, `_letture_prima_delle_partite`)."""
     return _con_taratura(db, stagione)[1]
 
 
@@ -56,13 +57,39 @@ def _con_taratura(db: sqlite3.Connection, stagione: str) -> tuple[dict | None, d
         return None, _calibrazione_probabili(db, stagione), True
 
 
+def _letture_prima_delle_partite(db: sqlite3.Connection, stagione: str) -> list[tuple]:
+    """(giornata, stato, percentuale, in dubbio, ha preso voto) dei giocatori delle partite giocate, presi dall'ultima lettura delle
+    probabili di PRIMA del calcio d'inizio della loro partita (`probabili_storia`, copie della giornata prima escluse). Non la tabella
+    `probabili`: tiene l'ultima lettura della giornata, che a partite finite è la formazione vera e farebbe sembrare le probabili
+    perfette. Partite senza una lettura di prima: non contano. Una richiesta per partita sull'indice `probabili_storia_letture`."""
+    partite = db.execute("SELECT id, giornata, REPLACE(data, ' ', 'T') FROM partite WHERE stagione = ? AND giocata = 1 "
+                         "AND data IS NOT NULL", (stagione,)).fetchall()
+    per_lettura: dict[tuple[int, str], set[int]] = {}
+    for pid, giornata, inizio in partite:
+        r = db.execute("SELECT MAX(rilevato) FROM probabili_storia WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio' "
+                       "AND copia = 0 AND rilevato < ?", (stagione, giornata, inizio)).fetchone()
+        if r and r[0]:
+            per_lettura.setdefault((giornata, r[0]), set()).add(pid)
+    righe = []
+    for (giornata, rilevato), pids in per_lettura.items():
+        for pid, stato, perc, dubbio, preso in db.execute(
+                "SELECT s.partita_id, s.stato, s.percentuale, s.in_dubbio, v.voto_red IS NOT NULL FROM probabili_storia s "
+                "LEFT JOIN voti v ON v.stagione = s.stagione AND v.giornata = s.giornata AND v.calciatore_id = s.calciatore_id "
+                "WHERE s.stagione = ? AND s.giornata = ? AND s.fonte = 'fantacalcio' AND s.copia = 0 AND s.rilevato = ?",
+                (stagione, giornata, rilevato)):
+            if pid in pids:
+                righe.append((giornata, stato, perc, dubbio, preso))
+    return righe
+
+
 def _calibrazione_probabili(db: sqlite3.Connection, stagione: str) -> dict:
-    """La calibrazione di sempre, sulla tabella `probabili` (ultima lettura della giornata) e con i numeri di partenza."""
-    righe = db.execute(
-        "SELECT p.giornata, p.stato, p.percentuale, p.in_dubbio, v.voto_red IS NOT NULL "
-        "FROM probabili p JOIN partite g ON g.id = p.partita_id AND g.giocata = 1 "
-        "LEFT JOIN voti v ON v.stagione = p.stagione AND v.giornata = p.giornata AND v.calciatore_id = p.calciatore_id "
-        "WHERE p.stagione = ? AND p.fonte = 'fantacalcio'", (stagione,)).fetchall()
+    """La calibrazione di sempre, con i numeri di partenza, sulle letture di prima di ogni partita (`_letture_prima_delle_partite`).
+    `giornate` = giornate misurabili (con almeno una partita così): sotto MIN_GIORNATE `fattori_da` non corregge niente."""
+    try:
+        righe = _letture_prima_delle_partite(db, stagione)
+    except sqlite3.Error as e:          # per esempio archivio non ancora con la colonna `copia`: nessuna correzione, mai un errore
+        LOG.warning("stato dei dati: letture delle probabili non lette (%s), nessuna correzione di «gioca N%%»", type(e).__name__)
+        righe = []
     gruppi = []
     for nome, stato, da, a in GRUPPI:
         scelti = [r for r in righe if r[1] == stato and r[2] is not None and da <= r[2] < a]
