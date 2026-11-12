@@ -103,14 +103,15 @@ def test_migliore_sceglie_chi_gioca_e_il_modulo():
 
 
 def test_titolare_in_dubbio_con_il_cambio_pronto():
-    """Chi gioca di rado ma vale molto si può schierare se il suo sostituto è il primo in panchina (sotto il 20% solo se metterci
-    il sostituto costa almeno 0,3 punti attesi: vedi i test «nessun titolare che non gioca»)."""
-    rosa = ([G(1, "P", 0.95, 6)] + [G(10 + i, "D", 0.9, 6) for i in range(4)]
-            + [G(20 + i, "C", 0.9, 6.5) for i in range(4)]
-            + [G(30, "A", 0.9, 9), G(31, "A", 0.9, 8.5), G(32, "A", 0.9, 8), G(33, "A", 0.05, 12)])
-    f = fz.migliore(rosa, Regole(), simulazioni=600)
-    if 33 in {g.id for g in f.titolari}:
-        assert f.panchina[0].id == 32
+    """Chi gioca di rado ma vale molto si schiera, con il suo sostituto primo in panchina. Sotto il 20% no, se un compagno di
+    ruolo gioca: vedi i test «nessun titolare che non gioca»."""
+    def rosa(p):
+        return ([G(1, "P", 0.95, 6)] + [G(10 + i, "D", 0.9, 6) for i in range(4)]
+                + [G(20 + i, "C", 0.9, 6.5) for i in range(4)]
+                + [G(30, "A", 0.9, 9), G(31, "A", 0.9, 8.5), G(32, "A", 0.9, 8), G(33, "A", p, 12)])
+    f = fz.migliore(rosa(0.25), Regole(), simulazioni=600)
+    assert 33 in {g.id for g in f.titolari} and f.panchina[0].id == 32
+    assert 33 not in {g.id for g in fz.migliore(rosa(0.05), Regole(), simulazioni=600).titolari}
 
 
 # ---------------------------------------------------------------- nessun titolare che non gioca (#329)
@@ -132,29 +133,93 @@ def _titolari(f):
 
 @pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
 def test_titolare_improbabile_lascia_il_posto_al_compagno_che_gioca(stile):
-    """X al 15% e Y al 60%: lo scambio costa 0,15 x 0,6 x 2 = 0,18 punti attesi (meno di 0,3), quindi gioca Y, con ogni stile."""
+    """X al 15% e Y al 60%: lo scambio costa 0,15 x 0,6 x 2 = 0,18 punti attesi, ma X è improbabile e Y gioca: gioca Y, con
+    ogni stile."""
     _, _, peso, inclinazione, _ = stile
     f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.6, 6), Regole(), peso=peso, inclinazione=inclinazione)
     assert Y in _titolari(f) and X not in _titolari(f)
     assert [g.id for g in f.panchina] == [X]                        # X non sparisce: va in panchina
 
 
-def test_compagno_proprio_al_50_per_cento_basta():
-    """Y gioca al 50% (il minimo): costo 0,15 x 0,5 x 2 = 0,15 punti attesi, si scambia."""
-    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.5, 6), Regole())
+def test_compagno_proprio_al_20_per_cento_basta():
+    """Y gioca al 20% (il minimo: non è «improbabile»): costo 0,15 x 0,2 x 2 = 0,06 punti attesi, si scambia. Prima della
+    revisione di #612 serviva un compagno al 50%: con chi gioca meno del 20% in fondo alla panchina non bastava più."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.2, 6), Regole())
     assert Y in _titolari(f) and X not in _titolari(f)
 
 
-def test_titolare_improbabile_resta_se_lo_scambio_costa_troppo():
-    """X al 15% che fa 14 quando gioca, Y al 60% che fa 6: lo scambio costerebbe 0,15 x 0,6 x 8 = 0,72 punti attesi."""
-    f = fz.migliore(_rosa_terzo_attaccante(0.15, 14, 0.6, 6), Regole())
+def test_titolare_improbabile_lascia_il_posto_anche_se_costa_tre_decimi():
+    """Il caso al limite visto con le probabili: X al 19% che quando gioca vale 1,8 più di Y, che gioca il 95%. Lo scambio costa
+    0,19 x 0,95 x 1,8 = 0,32 punti attesi: gioca Y lo stesso."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.19, 7.8, 0.95, 6), Regole())
+    assert Y in _titolari(f) and X not in _titolari(f)
+
+
+@pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
+def test_titolare_improbabile_lascia_il_posto_qualunque_sia_il_costo(stile):
+    """Regola di prodotto (decisione sulla revisione di #612): un improbabile non è mai proposto titolare se un compagno di ruolo
+    che si può schierare gioca almeno il 20%, qualunque sia il costo. X al 15% che fa 14 quando gioca, Y al 60% che fa 6: lo
+    scambio costa 0,15 x 0,6 x 8 = 0,72 punti attesi (prima c'era un tetto e X restava), gioca Y."""
+    _, _, peso, inclinazione, _ = stile
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 14, 0.6, 6), Regole(), peso=peso, inclinazione=inclinazione)
+    assert Y in _titolari(f) and X not in _titolari(f)
+    assert [g.id for g in f.panchina] == [X]
+
+
+def test_titolare_improbabile_che_non_si_puo_spostare_resta():
+    """Chi gioca un anticipo già cominciato resta dov'è (`fissi`), anche se è improbabile e un compagno gioca."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.6, 6), Regole(), fissi=[X])
+    assert X in _titolari(f)
+
+
+def test_titolare_improbabile_resta_senza_un_compagno_che_gioca():
+    """Anche Y gioca meno del 20%: nessun compagno di ruolo che gioca, resta la scelta della ricerca (X)."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.19, 6), Regole())
     assert X in _titolari(f) and Y not in _titolari(f)
 
 
-def test_titolare_improbabile_resta_senza_un_compagno_al_50_per_cento():
-    """Y gioca solo al 40%: nessun compagno di ruolo abbastanza sicuro, resta la scelta della ricerca (X)."""
-    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.4, 6), Regole())
-    assert X in _titolari(f) and Y not in _titolari(f)
+def _rosa_tre_portieri(*portieri):
+    """Tre portieri (gioca, fantavoto atteso) e tutti gli altri al 95%."""
+    return ([G(1 + i, "P", p, mu) for i, (p, mu) in enumerate(portieri)] + [G(10 + i, "D", 0.95, 6) for i in range(6)]
+            + [G(20 + i, "C", 0.95, 6.5) for i in range(6)] + [G(30 + i, "A", 0.95, 7) for i in range(5)])
+
+
+def _due_portieri_in_panchina():
+    r = Regole()
+    r.panchina.tipo, r.panchina.numero, r.panchina.max_sostituzioni = "per_ruolo", 11, 5
+    r.panchina.posti = {"P": 2, "D": 3, "C": 3, "A": 3}
+    return r
+
+
+@pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
+def test_tra_tre_portieri_non_e_titolare_quello_che_quasi_certamente_non_gioca(stile):
+    """Rilievo della revisione di #612: tre portieri che giocano 4%, 22% e 92% (fantavoto atteso 6,0 / 6,0 / 4,4), due portieri
+    in panchina. In panchina chi gioca meno del 20% sta in fondo, quindi da titolare il portiere al 4% vale qualche centesimo in
+    più che da riserva e la ricerca lo sceglie. Metterci quello al 92% costa 0,4 punti attesi, quello al 22% quasi niente: la
+    regola deve provare tutti i compagni che giocano almeno il 20%, non solo quelli sopra il 50%."""
+    _, _, peso, inclinazione, _ = stile
+    rosa = _rosa_tre_portieri((0.04, 6.0), (0.22, 6.0), (0.92, 4.4))
+    f = fz.migliore(rosa, _due_portieri_in_panchina(), peso=peso, inclinazione=inclinazione)
+    titolare = next(g for g in f.titolari if g.ruolo == "P")
+    assert titolare.p >= 0.2, titolare
+    assert [g.id for g in f.panchina if g.ruolo == "P"][-1] == 1         # l'improbabile resta l'ultimo dei portieri in panchina
+
+
+def test_tra_tre_portieri_la_consigliata_schiera_il_22_e_tiene_il_92_primo_in_panchina():
+    """Lo stesso caso con lo stile della consigliata: fra i due compagni che si possono mettere vince chi dà più punti attesi."""
+    f = fz.migliore(_rosa_tre_portieri((0.04, 6.0), (0.22, 6.0), (0.92, 4.4)), _due_portieri_in_panchina())
+    assert next(g.id for g in f.titolari if g.ruolo == "P") == 2
+    assert [g.id for g in f.panchina if g.ruolo == "P"] == [3, 1]
+
+
+def test_nessun_improbabile_titolare_in_nessun_modulo_se_un_compagno_gioca():
+    """La regola per chi legge il consiglio: chi gioca meno del 20% non è proposto titolare se un compagno di ruolo escluso
+    gioca almeno il 20%, in ogni modulo proposto."""
+    rosa = _rosa_tre_portieri((0.04, 6.0), (0.22, 6.0), (0.92, 4.4)) + [G(40, "A", 0.1, 9.5), G(41, "D", 0.15, 7.5)]
+    f = fz.migliore(rosa, _due_portieri_in_panchina())
+    assert len(f.tutte) > 1
+    for x in f.tutte:
+        assert [g.id for g in x.titolari if g.p < 0.2] == [], x.modulo
 
 
 def test_titolare_al_20_per_cento_non_e_improbabile():
@@ -187,6 +252,15 @@ def test_confronto_dice_che_il_titolare_improbabile_quasi_certamente_non_gioca(m
     assert r["frase"]["chiave"] == "confronto.titolare_che_gioca"
     assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 60%" in r["testo"]
     assert "non il migliore" not in r["testo"]
+
+
+def test_confronto_dice_lo_stesso_quando_il_titolare_gioca_poco_ma_non_e_improbabile(monkeypatch):
+    """Dalla revisione di #612 la regola mette titolare anche un compagno che gioca fra il 20% e il 50%: il Confronto deve dare lo
+    stesso motivo, non «con il modulo 4-3-3 (non il migliore)…»."""
+    r = _confronto_x_y(monkeypatch, 0.15, 8, 0.3, 6)
+    assert (r["posto_a"], r["posto_b"]) == ("panchina 1", "titolare") and r["differenza"] < -0.04
+    assert r["frase"]["chiave"] == "confronto.titolare_che_gioca"
+    assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 30%" in r["testo"]
 
 
 def test_confronto_senza_improbabile_resta_come_prima(monkeypatch):
@@ -247,6 +321,89 @@ def test_panchina_a_posti_fissi_per_ruolo():
     assert len(_panchina(rosa, titolari, r)) == 11 and r.problemi() == []
 
 
+# ---------------------------------------------------------------- ordine della panchina (#612)
+# Una riserva entra solo se ha preso voto: a quel punto conta quanto vale se gioca (il fantavoto atteso), non «gioca N% x fantavoto».
+def _rosa_due_riserve():
+    """4-4-2 obbligato (tutti i titolari sicuri tranne un difensore) e due difensori di riserva: SICURO gioca quasi sempre e vale
+    poco, FORTE gioca meno ma vale di più. Per «gioca N% x fantavoto» SICURO sta davanti (5,7 contro 4,2); per fantavoto atteso FORTE."""
+    return ([G(1, "P", 1, 6), G(2, "P", 0.5, 5)] + [G(10 + i, "D", 1, 6.5) for i in range(3)] + [G(13, "D", 0.5, 6.5)]
+            + [G(SICURO, "D", 0.95, 6.0), G(FORTE, "D", 0.6, 7.0)]
+            + [G(20 + i, "C", 1, 7) for i in range(4)] + [G(24, "C", 0.9, 5.5), G(25, "C", 0.4, 6.5)]
+            + [G(30, "A", 1, 8), G(31, "A", 1, 8), G(32, "A", 0.3, 7.5), G(33, "A", 0.9, 6.2)])
+
+
+SICURO, FORTE = 14, 15
+
+
+def _titolari_442(rosa):
+    return [g for g in rosa if g.id in (1, 10, 11, 12, 13, 20, 21, 22, 23, 30, 31)]
+
+
+def test_panchina_per_ruolo_dentro_il_ruolo_in_ordine_di_fantavoto_atteso():
+    rosa = _rosa_due_riserve()
+    r = imposta(Regole(), "panchina.tipo", '"per_ruolo"')
+    panchina = fz._panchina(rosa, _titolari_442(rosa), r)
+    assert [g.ruolo for g in panchina] == sorted((g.ruolo for g in panchina), key="PDCA".index)   # tra i ruoli: P, D, C, A
+    for ruolo in "PDCA":
+        mu = [g.mu for g in panchina if g.ruolo == ruolo]
+        assert mu == sorted(mu, reverse=True), ruolo                                              # dentro il ruolo: chi vale di più
+    assert [g.id for g in panchina if g.ruolo == "D"] == [FORTE, SICURO]
+
+
+def test_panchina_a_posti_fissi_dentro_il_ruolo_in_ordine_di_fantavoto_atteso():
+    rosa = _rosa_due_riserve()
+    r = Regole()
+    r.panchina.numero, r.panchina.posti, r.panchina.tipo = 7, {"P": 1, "D": 2, "C": 2, "A": 2}, "per_ruolo"
+    panchina = fz._panchina(rosa, _titolari_442(rosa), r)
+    assert [g.id for g in panchina] == [2, FORTE, SICURO, 25, 24, 32, 33]
+
+
+def test_panchina_libera_in_ordine_di_fantavoto_atteso():
+    """Panchina libera: entra il primo con voto che può entrare, di qualunque ruolo. Davanti chi vale di più quando gioca."""
+    rosa = _rosa_due_riserve()
+    panchina = fz._panchina(rosa, _titolari_442(rosa), Regole())
+    mu = [g.mu for g in panchina]
+    assert len(panchina) == 7 and mu == sorted(mu, reverse=True)
+
+
+@pytest.mark.parametrize("tipo", ["per_ruolo", "libera"])
+def test_in_panchina_chi_quasi_certamente_non_gioca_sta_dietro_a_chi_gioca(tipo):
+    """Un infortunato (gioca 0%) e uno quasi fuori (gioca 10%) con il fantavoto atteso più alto di tutti: per i punti attesi
+    metterli davanti non costa niente o quasi, ma chi legge la panchina con un infortunato per primo la prende per un errore
+    (come per i titolari, #329). Stanno dopo chi gioca: dentro il loro ruolo se la panchina è per ruolo, in fondo se è libera."""
+    infortunato, quasi_fuori = 16, 34
+    rosa = _rosa_due_riserve() + [G(infortunato, "D", 0.0, 7.5), G(quasi_fuori, "A", 0.1, 9.0)]
+    r = imposta(Regole(), "panchina.tipo", f'"{tipo}"')
+    r.panchina.numero = 9
+    panchina = [g.id for g in fz._panchina(rosa, _titolari_442(rosa), r)]
+    if tipo == "per_ruolo":
+        assert panchina == [2, FORTE, SICURO, infortunato, 25, 24, 32, 33, quasi_fuori]
+    else:
+        assert panchina == [32, FORTE, 25, 33, SICURO, 24, 2, quasi_fuori, infortunato]
+
+
+def test_chi_sta_in_panchina_resta_scelto_per_gioca_per_fantavoto():
+    """L'ordine cambia, la scelta di CHI va in panchina no: con un solo posto per i difensori ci va chi ha più «gioca N% x fantavoto»."""
+    rosa = _rosa_due_riserve()
+    r = Regole()
+    r.panchina.numero, r.panchina.posti, r.panchina.tipo = 4, {"P": 1, "D": 1, "C": 1, "A": 1}, "per_ruolo"
+    assert [g.id for g in fz._panchina(rosa, _titolari_442(rosa), r)] == [2, SICURO, 24, 33]
+
+
+@pytest.mark.parametrize("tipo", ["per_ruolo", "libera"])
+def test_la_panchina_in_ordine_di_fantavoto_atteso_vale_di_piu(tipo):
+    """Stessi titolari e stesse riserve: con FORTE davanti a SICURO i punti attesi salgono (quando hanno voto tutti e due entra
+    quello che vale di più; quando ne ha uno solo entra lui comunque)."""
+    rosa = _rosa_due_riserve()
+    r = imposta(Regole(), "panchina.tipo", f'"{tipo}"')
+    titolari = _titolari_442(rosa)
+    panchina = fz._panchina(rosa, titolari, r)
+    per_valore = sorted(panchina, key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore) if tipo == "per_ruolo" else -g.valore)
+    assert [g.id for g in per_valore] != [g.id for g in panchina]
+    val = fz.Valutatore(rosa, r, 600)
+    assert val.atteso(titolari, panchina) > val.atteso(titolari, per_valore) + 0.05
+
+
 def _due_attaccanti_stessi_punti():
     """Formazioni uguali tranne un attaccante: A gioca sempre e fa 6; B gioca una volta su due e quando gioca fa 12 (stessa media)."""
     base = [G(1, "P", 1, 6)] + [G(10 + i, "D", 1, 6) for i in range(4)] + [G(20 + i, "C", 1, 6.5) for i in range(3)] + [G(30, "A", 1, 8), G(31, "A", 1, 8)]
@@ -266,13 +423,167 @@ def test_livelli_di_rischio_sicura_o_rischiosa():
     assert bruttaa <= ma <= eccezionalea and bruttab <= mb <= eccezionaleb
 
 
-def test_spareggio_a_parita_vince_la_formazione_piu_sicura():
-    """Se uno è appena meglio in media (+0,1) ma gioca una volta su due, con il peso di base si schiera quello che gioca sempre."""
+def test_la_consigliata_sceglie_per_punti_attesi_la_prudenza_resta_agli_stili_sicuri():
+    """#612: uno appena meglio in media (+0,1) ma che gioca una volta su due. La consigliata («Equilibrata», peso di base) guarda
+    solo i punti attesi e lo schiera; chi vuole meno rischio di una brutta giornata sceglie lo stile «Sicura», che lo lascia fuori."""
     base, a, _ = _due_attaccanti_stessi_punti()
     b = G(33, "A", 0.5, 12.2)
     val = fz.Valutatore(base + [a, b], Regole(), 3000)
-    assert val.atteso(base + [b], []) > val.atteso(base + [a], []) - 0.3
-    assert val.scelta(base + [a], [], fz.PESO_BASE) > val.scelta(base + [b], [], fz.PESO_BASE)
+    assert val.atteso(base + [b], []) == pytest.approx(val.atteso(base + [a], []) + 0.1)
+    assert fz.PESO_BASE == (0.0, 0.0)
+    assert val.scelta(base + [b], [], fz.PESO_BASE) == val.atteso(base + [b], []) > val.scelta(base + [a], [], fz.PESO_BASE)
+    sicura = next(s[2] for s in fz.LIVELLI_RISCHIO if s[1] == "Sicura")
+    assert val.scelta(base + [a], [], sicura) > val.scelta(base + [b], [], sicura)
+
+
+# ---------------------------------------------------------------- punti attesi esatti, senza il rumore della simulazione (#612)
+def _tutti_i_casi(titolari, panchina, regole):
+    """Punti attesi contando uno per uno tutti i casi possibili di chi prende voto, con `fz.punteggio` (il calcolo semplice)."""
+    import itertools
+    incerti = [g for g in titolari + panchina if 0 < g.p < 1]
+    fv = {g.id: g.mu for g in titolari + panchina}
+    voto = {g.id: g.mu_voto for g in titolari + panchina}
+    totale = 0.0
+    for caso in itertools.product((False, True), repeat=len(incerti)):
+        gioca = {g.id: g.p >= 1 for g in titolari + panchina}
+        peso = 1.0
+        for g, c in zip(incerti, caso):
+            gioca[g.id] = c
+            peso *= g.p if c else 1 - g.p
+        totale += peso * fz.punteggio(titolari, panchina, gioca, fv, voto, regole)
+    return totale
+
+
+def _regole(tipo="libera", cambio_modulo=True, massimo=3, voto=None, numero=7):
+    r = Regole()
+    r.panchina.tipo, r.panchina.cambio_modulo, r.panchina.max_sostituzioni, r.panchina.numero = tipo, cambio_modulo, massimo, numero
+    r.voto_senza_sostituto = voto
+    return r
+
+
+@pytest.mark.parametrize("tipo", ["libera", "per_ruolo"])
+@pytest.mark.parametrize("cambio_modulo", [True, False])
+@pytest.mark.parametrize("massimo", [0, 1, 3, 5])
+def test_i_punti_attesi_sono_esatti(tipo, cambio_modulo, massimo):
+    """Senza modificatore difesa i punti attesi di una formazione sono quelli veri (tutti i casi contati uno per uno), non una
+    stima: non dipendono dal seme né dal numero di simulazioni."""
+    import numpy as np
+    rng = np.random.default_rng(612 + massimo)
+    for voto in (None, 4.0):
+        r = _regole(tipo, cambio_modulo, massimo, voto)
+        rosa = _rosa_casuale(rng, (3, 8, 8, 6))
+        titolari, panchina = _formazione_casuale(rng, rosa, int(rng.integers(0, 7)))
+        sicuri = set(rng.choice(11, 6, replace=False).tolist())          # pochi titolari incerti: l'elenco dei casi resta corto
+        titolari = [G(g.id, g.ruolo, 1.0 if k in sicuri else g.p, g.mu, g.mu_voto) for k, g in enumerate(titolari)]
+        veri = _tutti_i_casi(titolari, panchina, r)
+        for seme, simulazioni in ((7, 600), (8, 50)):
+            val = fz.Valutatore(titolari + panchina, r, simulazioni, seme=seme)
+            assert val.atteso(titolari, panchina) == pytest.approx(veri, abs=1e-6)
+
+
+def _formazione_a_posti_fissi(r, seme=11):
+    """Un 4-4-2 con un titolare incerto per reparto e la panchina a posti fissi delle regole `r`, da una rosa a caso."""
+    import numpy as np
+    rosa = _rosa_casuale(np.random.default_rng(seme), (3, 8, 8, 6))
+    titolari = [g for g in rosa if g.id in (1, 4, 5, 6, 7, 12, 13, 14, 15, 20, 21)]
+    titolari = [G(g.id, g.ruolo, g.p if g.id in (1, 4, 12, 20) else 1.0, g.mu, g.mu_voto) for g in titolari]
+    return titolari, fz._panchina(rosa, titolari, r)
+
+
+@pytest.mark.parametrize("tipo", ["per_ruolo", "libera"])
+def test_i_punti_attesi_esatti_con_due_portieri_di_riserva_e_il_cambio_di_modulo(tipo):
+    """Il portiere esce solo per un portiere (il primo di riserva con voto) e usa uno dei cambi: agli altri ne resta uno in meno."""
+    r = _regole(tipo, True, 2, 3.0, 8)
+    r.panchina.posti = {"P": 2, "D": 2, "C": 2, "A": 2}
+    titolari, panchina = _formazione_a_posti_fissi(r)
+    assert sorted(g.ruolo for g in panchina) == list("AACCDDPP")
+    val = fz.Valutatore(titolari + panchina, r, 100)
+    assert val.atteso(titolari, panchina) == pytest.approx(_tutti_i_casi(titolari, panchina, r), abs=1e-6)
+
+
+def test_i_punti_attesi_esatti_con_la_panchina_lunga_senza_cambio_di_modulo():
+    """11 in panchina a posti fissi e 5 cambi, senza cambio di modulo: il conto è esatto con ogni panchina."""
+    r = _regole("per_ruolo", False, 5, 3.0, 11)
+    r.panchina.posti = {"P": 2, "D": 3, "C": 3, "A": 3}
+    titolari, panchina = _formazione_a_posti_fissi(r)
+    panchina = [G(g.id, g.ruolo, float(k % 3 == 0) if k % 3 != 1 else g.p, g.mu, g.mu_voto) for k, g in enumerate(panchina)]
+    assert [g.ruolo for g in panchina] == list("PPDDDCCCAAA") and sum(0 < g.p < 1 for g in panchina) == 4
+    val = fz.Valutatore(titolari + panchina, r, 100)
+    assert val.atteso(titolari, panchina) == pytest.approx(_tutti_i_casi(titolari, panchina, r), abs=1e-6)
+
+
+def test_con_il_cambio_di_modulo_e_troppi_casi_restano_le_simulazioni_per_tutti_i_moduli():
+    """11 in panchina, 5 cambi e cambio di modulo: i casi da contare sono troppi (fz.MAX_CASI) e i punti attesi restano la
+    media delle simulazioni, come prima. Vale per tutti i moduli della lega insieme: formazioni a confronto non si valutano
+    una in un modo e una nell'altro."""
+    r = _regole("per_ruolo", True, 5, 3.0, 11)
+    r.panchina.posti = {"P": 2, "D": 3, "C": 3, "A": 3}
+    titolari, panchina = _formazione_a_posti_fissi(r)
+    val = fz.Valutatore(titolari + panchina, r, 200)
+    assert val.atteso(titolari, panchina) == pytest.approx(float(val._punti(titolari, panchina).mean()))
+    assert val._media_esatta(titolari, panchina) is None
+    # con 8 riserve di movimento il 5-4-1 da solo starebbe nel limite (ha meno casi), ma la lega ammette moduli che non ci
+    # stanno: simulazioni anche per lui
+    assert fz._quanti_casi((5, 4, 1), 5, 8) <= fz.MAX_CASI < fz._quanti_casi((4, 3, 3), 5, 8)
+    assert not val._si_conta((5, 4, 1), 8) and not val._si_conta((4, 3, 3), 8)
+    # con 7 riserve di movimento (8 in panchina con il portiere) il conto si fa per tutti i moduli
+    assert val._si_conta((4, 3, 3), 7) and val._si_conta((5, 4, 1), 7)
+
+
+@pytest.mark.parametrize("assetto", [dict(), dict(tipo="per_ruolo"), dict(tipo="per_ruolo", cambio_modulo=False, massimo=5),
+                                     dict(cambio_modulo=False, voto=4.0)])
+def test_la_scelta_non_dipende_dal_seme(assetto):
+    """#612: lo stesso calcolo rifatto con un altro seme (e con altre simulazioni) dà gli stessi 11, la stessa panchina e gli
+    stessi punti attesi. Rosa a caso con molti giocatori quasi pari: prima un altro seme cambiava un titolare 8 volte su 10."""
+    import numpy as np
+    rng = np.random.default_rng(3)
+    r = _regole(**assetto)
+    for _ in range(4):
+        rosa = [G(g.id, g.ruolo, g.p, 6.0 + (g.mu - 6.5) / 5, g.mu_voto) for g in _rosa_casuale(rng, (3, 8, 8, 6))]
+        scelte = [fz.migliore(rosa, r, n, valutatore=fz.Valutatore(rosa, r, n, seme=seme)) for seme, n in ((7, 600), (8, 600), (9, 150))]
+        for f in scelte[1:]:
+            assert [g.id for g in f.titolari] == [g.id for g in scelte[0].titolari]
+            assert [g.id for g in f.panchina] == [g.id for g in scelte[0].panchina]
+            assert f.atteso == pytest.approx(scelte[0].atteso, abs=1e-9)
+            assert [(x.modulo, pytest.approx(x.atteso, abs=1e-9)) for x in f.tutte] == [(x.modulo, x.atteso) for x in scelte[0].tutte]
+
+
+def _massimo_tra_le_valide(rosa, r, val) -> float:
+    """I punti attesi più alti fra tutte le formazioni valide della rosa: ogni scelta di 11 con un modulo ammesso, con la
+    panchina che sceglie il sistema."""
+    import itertools
+    per = {ruolo: [g for g in rosa if g.ruolo == ruolo] for ruolo in "PDCA"}
+    return max(val.atteso(list(p + d + c + a), fz._panchina(rosa, list(p + d + c + a), r))
+               for modulo in r.moduli for nd, nc, na in [map(int, modulo.split("-"))]
+               for p in itertools.combinations(per["P"], 1) for d in itertools.combinations(per["D"], nd)
+               for c in itertools.combinations(per["C"], nc) for a in itertools.combinations(per["A"], na))
+
+
+def test_la_consigliata_ha_il_massimo_dei_punti_attesi_tra_le_formazioni_valide():
+    """#612: provate tutte le formazioni valide di una rosa piccola, nessuna ha più punti attesi della consigliata. Tutti giocano
+    almeno il 20%: la regola del titolare improbabile (che rinuncia apposta a qualche decimo) qui non entra. Con le rose grandi
+    e la panchina lunga la ricerca prova solo i due migliori esclusi di ogni ruolo e può fermarsi qualche centesimo sotto il
+    massimo (misura e motivo in `formazione._candidati`)."""
+    import numpy as np
+    rng = np.random.default_rng(5)
+    r = Regole(moduli=["3-4-3", "4-3-3", "4-4-2"])
+    for _ in range(3):
+        rosa = _rosa_casuale(rng, (2, 5, 5, 4))
+        val = fz.Valutatore(rosa, r, 100)
+        assert fz.migliore(rosa, r, 100, valutatore=val).atteso == pytest.approx(_massimo_tra_le_valide(rosa, r, val), abs=1e-9)
+
+
+def test_la_consigliata_ha_il_massimo_anche_quando_costa_un_rischio():
+    """Senza cambi, tra chi gioca sempre e fa 6 e chi gioca una volta su due e fa 12,2 (6,1 di media) la consigliata prende il
+    secondo: è il massimo dei punti attesi. Prima sceglieva il primo, per prudenza."""
+    base, a, _ = _due_attaccanti_stessi_punti()
+    rosa = base + [a, G(33, "A", 0.5, 12.2)]
+    r = _regole(massimo=0)
+    r.moduli = ["4-3-3"]
+    val = fz.Valutatore(rosa, r, 600)
+    f = fz.migliore(rosa, r, 600, valutatore=val)
+    assert 33 in _titolari(f) and 32 not in _titolari(f)
+    assert f.atteso == pytest.approx(_massimo_tra_le_valide(rosa, r, val), abs=1e-9)
 
 
 # ---------------------------------------------------------------- Valutatore vettoriale = punteggio una simulazione alla volta

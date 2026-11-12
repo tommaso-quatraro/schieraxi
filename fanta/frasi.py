@@ -192,7 +192,9 @@ CATALOGO: dict[str, str] = {
     "confronto.titolare_che_gioca": "{altro} quasi certamente non gioca ({p}% di giocare): il sistema schiera titolare {titolare}, che gioca {pt}%, anche se costa {d} punti attesi. {entrata}",
     # il perché della scelta in una riga (fanta/perche_scelta.py, #356): nella nota sotto il campo, dopo il nome del titolare
     "scelta.titolare_che_gioca": "Titolare al posto di {altro}, che quasi certamente non gioca ({p}% di giocare).",
-    "scelta.incerto": "Titolare anche se incerto (gioca {p}%): se non gioca entra {riserva} dalla panchina, e insieme valgono di più.",
+    # {riserva} = la prima riserva del ruolo che gioca quasi di sicuro: non per forza la prima a entrare (panchina per fantavoto atteso)
+    "scelta.incerto": "Titolare anche se incerto (gioca {p}%): se non gioca, in panchina c'è {riserva} che gioca quasi di sicuro, e insieme valgono di più.",
+    "scelta.incerto_senza_riserva": "Titolare anche se incerto (gioca {p}%): in panchina nessuno del suo ruolo gioca quasi di sicuro.",
     "scelta.piu_punti": "Preferito a {altro}: con lui la formazione fa più punti attesi ({attuale} contro {invertita}).",
     "scelta.piu_sicuro": "A pari punti gioca più sicuro di {altro} ({pt}% contro {pa}%).",
     "scelta.fantavoto_piu_alto": "A pari punti ha il fantavoto atteso più alto di {altro} ({mu_t} contro {mu_a}).",
