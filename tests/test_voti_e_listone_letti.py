@@ -130,6 +130,31 @@ def test_il_conto_delle_letture_resta_anche_se_il_passo_non_riesce(db):
     assert _salvati(db) == 29
 
 
+# ---------------- giornate con i voti a metà (#658) ----------------
+def _giornata_giocata(db, giornata, data, squadre_con_voti):
+    """10 partite giocate il `data` (c0-t0 ... c9-t9); 14 voti per ognuna delle prime `squadre_con_voti` squadre, le altre senza."""
+    squadre = []
+    for i in range(10):
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, ?, ?, ?, 1)",
+                   (giornata * 100 + i, ST, giornata, data, f"c{i}", f"t{i}"))
+        squadre += [f"c{i}", f"t{i}"]
+    for k, sq in enumerate(squadre[:squadre_con_voti]):
+        for j in range(14):
+            db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red) VALUES (?, ?, ?, 'x', ?, 'C', 6.0)",
+                       (ST, giornata, giornata * 10000 + k * 100 + j, sq))
+
+
+def test_giornata_con_i_voti_a_meta_si_riscarica_anche_dopo_4_giorni(db, monkeypatch):
+    """I voti di una giornata arrivano a metà, poi la fonte non si legge per più di 4 giorni: la giornata ha già dei voti, tutte
+    le partite giocate e l'ultima è vecchia, e non si riscaricava più (i giocatori delle altre partite restavano senza voto per
+    sempre). Si riscarica finché una squadra di una partita giocata non ha nessun voto; una giornata completa no."""
+    monkeypatch.setattr(aggiorna, "_ora", lambda: "2026-11-12T08:03:00")
+    _giornata_giocata(db, 9, "2026-10-31 15:00", 20)
+    _giornata_giocata(db, 10, "2026-11-07 15:00", 14)            # 14 squadre su 20 con i voti, ultima partita 5 giorni fa
+    _giornata_giocata(db, 11, "2026-11-11 15:00", 20)            # finita da meno di 4 giorni: le correzioni arrivano dopo
+    assert _agg(db)._giornate_voti_da_scaricare() == [10, 11]
+
+
 # ---------------- righe dei voti scartate ----------------
 def test_righe_dei_voti_senza_i_tre_voti_si_contano():
     righe, scartate = fc.leggi_voti_e_scarti(VOTI_8, 8)

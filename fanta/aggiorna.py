@@ -2,7 +2,8 @@
 
 - listone: una volta al giorno
 - calendario: tutto se manca o ha più di 7 giorni, altrimenti solo le giornate in corso
-- voti: le giornate giocate che mancano, più quelle finite da meno di 4 giorni (le correzioni arrivano dopo)
+- voti: le giornate giocate che mancano o con squadre ancora senza voti, più quelle finite da meno di 4 giorni (le correzioni
+  arrivano dopo)
 - probabili formazioni: a ogni aggiornamento
 - Understat: totali di stagione a ogni aggiornamento, dettaglio delle partite giocate che mancano
 - dati extra di squadra (football-data): al massimo ogni 6 ore
@@ -313,15 +314,19 @@ class Aggiornamento:
         self.scrivi(f"  risultati {self.st.codice} giornata {g}: {n} partite, {len(righe)} voti")
 
     def _giornate_voti_da_scaricare(self) -> list[int]:
+        """Le giornate con partite giocate senza voti, quelle con partite ancora da giocare, quelle finite da meno di 4 giorni (le
+        correzioni arrivano dopo) e quelle in cui una squadra di una partita giocata non ha nessun voto: i voti arrivati a metà,
+        con la fonte poi ferma per giorni, si riprendono al ritorno (#658)."""
         presenti = {r[0] for r in self.db.execute("SELECT DISTINCT giornata FROM voti WHERE stagione = ?", (self.st.codice,))}
-        recente = (datetime.now() - timedelta(days=4)).strftime("%Y-%m-%d %H:%M")
+        a_meta = controlli.squadre_senza_voti(self.db, self.st.codice)
+        recente = (datetime.fromisoformat(_ora()) - timedelta(days=4)).strftime("%Y-%m-%d %H:%M")
         giornate = []
         for g, giocate, ultima in self.db.execute(
                 "SELECT giornata, SUM(giocata), MAX(data) FROM partite WHERE stagione = ? GROUP BY giornata",
                 (self.st.codice,)):
             if not giocate:
                 continue
-            if g not in presenti or giocate < 10 or (ultima or "") >= recente:
+            if g not in presenti or giocate < 10 or (ultima or "") >= recente or g in a_meta:
                 giornate.append(g)
         return giornate
 
