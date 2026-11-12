@@ -6,7 +6,7 @@ from dataclasses import replace
 import pandas as pd
 import pytest
 
-from fanta import modello
+from fanta import consigli, modello
 from fanta.modello import Parametri
 from fanta.regole import Regole
 
@@ -158,16 +158,90 @@ def test_il_rigorista_e_uno_solo_per_squadra():
     p = _p(d, Parametri())
     assert p.at[1, "quota_rigori"] >= 0.5 and p.at[2, "quota_rigori"] >= 0.5
     assert p["primo_rigorista"].tolist().count(True) == 1 and bool(p.at[2, "primo_rigorista"])       # in beta nessuno ne ha calciati
-    from fanta import consigli
     assert consigli.rigorista(p.loc[2]) and not consigli.rigorista(p.loc[1])
 
 
-def test_il_primo_rigorista_e_il_migliore_fra_chi_puo_giocare():
-    riga = lambda i, squadra, quota, stato=None: ({"id": i, "squadra": squadra}, {"quota_rigori": quota, "stato": stato}, ())   # noqa: E731
-    righe = [riga(1, "alfa", 0.8, "squalificato"), riga(2, "alfa", 0.55), riga(3, "alfa", 0.2), riga(4, "beta", 0.0),
-             riga(5, "gamma", 0.6, "infortunato"), riga(6, "gamma", 0.6, "titolare"), riga(7, "gamma", 0.6)]
+def _riga(i: int, squadra: str, quota: float, p_voto: float = 0.9, stato: str | None = None) -> tuple:
+    """Una riga di `modello._pezzi` con i soli campi che servono a scegliere il primo rigorista."""
+    return {"id": i, "squadra": squadra, "p_voto": p_voto}, {"quota_rigori": quota, "stato": stato}, ()
+
+
+def _primi(righe: list) -> list[int]:
     modello._segna_primo_rigorista(righe)
-    assert [dopo["primo_rigorista"] for _, dopo, _ in righe] == [False, True, False, False, False, True, False]
+    return [prima["id"] for prima, dopo, _ in righe if dopo["primo_rigorista"]]
+
+
+def test_il_primo_rigorista_e_il_migliore_fra_chi_puo_giocare():
+    righe = [_riga(1, "alfa", 0.8, stato="squalificato"), _riga(2, "alfa", 0.55), _riga(3, "alfa", 0.2), _riga(4, "beta", 0.0),
+             _riga(5, "gamma", 0.6, stato="infortunato"), _riga(6, "gamma", 0.6, stato="titolare"), _riga(7, "gamma", 0.6)]
+    assert _primi(righe) == [2, 6]              # a pari merito il primo dell'elenco; in beta nessuno ne ha calciati
+    assert all(dopo["primo_rigorista"] is (prima["id"] in (2, 6)) for prima, dopo, _ in righe)       # scritto in ogni riga
+
+
+def test_il_primo_rigorista_guarda_anche_quanto_gioca():
+    """#638: vinceva la quota dei rigori «se gioca» più alta, anche di chi parte dalla panchina o non è convocato. Ora vince chi
+    con più probabilità calcia il prossimo rigore: «gioca» per quota."""
+    # 0,25 × 0,8 = 0,20 contro 0,9 × 0,55 = 0,495: il titolare, non la riserva con la quota più alta
+    assert _primi([_riga(1, "alfa", 0.8, 0.25, "panchina"), _riga(2, "alfa", 0.55, 0.9, "titolare")]) == [2]
+    # 0,02 × 0,9 = 0,018 contro 0,9 × 0,3 = 0,27: chi non gioca quasi mai non è il primo
+    assert _primi([_riga(3, "beta", 0.9, 0.02, "non_citato"), _riga(4, "beta", 0.3, 0.9, "titolare")]) == [4]
+    # 0,6 × 0,9 = 0,54 contro 0,95 × 0,5 = 0,475: la quota conta ancora, non vince per forza chi gioca di più
+    assert _primi([_riga(5, "gamma", 0.9, 0.6), _riga(6, "gamma", 0.5, 0.95)]) == [5]
+    # chi non può giocare (probabilità zero) non è il primo, anche da solo
+    assert _primi([_riga(7, "delta", 0.9, 0.0)]) == []
+
+
+def test_la_frase_rigorista_va_al_titolare_non_a_chi_ha_la_quota_piu_alta():
+    """#638, dalle previsioni alla frase. A (1) ha calciato tutti i rigori della stagione prima e i primi 4 della nuova, poi da sei
+    giornate non gioca (non è infortunato né squalificato); B (2) ha calciato l'ultimo e gioca sempre. Tutti e due hanno la quota
+    «se gioca» sopra la metà, e quella di A è la più alta: la frase «rigorista» andava ad A, che non gioca."""
+    eventi = (_rigori(1, range(1, 9), stagione=S1) | _rigori(1, (1, 2, 3, 4)) | {(1, S2, g): None for g in range(5, 11)}
+              | _rigori(2, (8,)))
+    p = _p(_dati(eventi), Parametri())
+    assert p.at[1, "quota_rigori"] > p.at[2, "quota_rigori"] >= consigli.QUOTA_RIGORISTA
+    assert p.at[1, "p_voto"] < 0.3 and p.at[2, "p_voto"] > 0.8
+    assert p.index[p["primo_rigorista"].astype(bool)].tolist() == [2]
+    assert consigli.rigorista(p.loc[2]) and not consigli.rigorista(p.loc[1])
+    assert "rigorista" in consigli.motivi(p.loc[2]) and "rigorista" not in consigli.motivi(p.loc[1])
+
+
+def test_se_il_compagno_che_gioca_calcia_meno_della_meta_la_frase_non_l_ha_nessuno():
+    """La frase si toglie più spesso di quanto si sposta, ed è quello che dice la voce di novità. Chi di solito calcia i rigori
+    parte dalla panchina (quota 0,70, gioca 30%) e il compagno che gioca ne calcia meno della metà (0,40, gioca 90%): il primo è
+    il compagno (0,36 contro 0,21), ma «rigorista» non lo ha nessuno dei due."""
+    righe = [_riga(1, "alfa", 0.70, 0.30, "panchina"), _riga(2, "alfa", 0.40, 0.90, "titolare")]
+    assert _primi(righe) == [2]
+    assert [consigli.rigorista(prima | dopo) for prima, dopo, _ in righe] == [False, False]
+
+
+def test_chi_non_gioca_quasi_mai_non_e_il_primo_rigorista_nemmeno_da_solo():
+    """Revisione della pull request di #638 («un giocatore che gioca quasi mai non è il primo»). Chi gioca meno del 20% non è il
+    primo nemmeno se è l'unico della squadra ad aver calciato rigori: non aveva nessuno con cui confrontarsi, e teneva la frase."""
+    assert _primi([_riga(1, "alfa", 0.9, 0.02, "non_citato")]) == []
+    # se un compagno gioca, il primo è lui anche con «gioca» per quota più basso: 0,9 × 0,1 = 0,09 contro 0,15 × 0,9 = 0,135
+    assert _primi([_riga(2, "beta", 0.9, 0.15, "panchina"), _riga(3, "beta", 0.1, 0.9, "titolare")]) == [3]
+
+
+def test_il_confine_di_chi_non_gioca_quasi_mai_e_quello_di_improbabile():
+    """Un confine solo: chi la scheda chiama «improbabile» (`consigli.titolarita`, meno del 20%) non è il primo; dal 20% in su sì."""
+    for gioca in (0.0, 0.02, 0.1, 0.199, 0.2, 0.3, 0.9):
+        improbabile = consigli.titolarita({"stato": None, "p_voto": gioca, "quota_titolare": 0.5}) == "improbabile"
+        assert (_primi([_riga(1, "alfa", 0.9, gioca)]) == []) is improbabile, gioca
+
+
+def test_il_non_convocato_non_ha_la_frase_rigorista_anche_se_e_l_unico_che_li_calcia():
+    """Dalle previsioni alla frase. Il Rigorista (1) ha calciato tutti i rigori di alfa, ma le probabili di alfa non lo citano:
+    «gioca» 2%. La scheda diceva insieme «non tra i convocati previsti» e «rigorista»."""
+    probabili = pd.DataFrame([{"calciatore_id": cid, "squadra": sq, "stato": "titolare", "percentuale": 90.0, "nota": None,
+                               "in_dubbio": 0, "diffidato": 0} for cid, sq in ((2, "alfa"), (3, "alfa"), (4, "beta"), (5, "beta"))])
+    d = _dati(_rigori(1, (2, 4, 6, 8)))
+    p = modello.previsioni(d, *PROSSIMA, Regole(), Parametri(), probabili=probabili, giocatori=d.calciatori).set_index("id")
+    assert p.at[1, "stato"] == "non_citato" and p.at[1, "quota_rigori"] >= consigli.QUOTA_RIGORISTA
+    assert consigli.titolarita(p.loc[1]) == "improbabile"
+    assert not p["primo_rigorista"].any()                 # in alfa non ne ha mai calciati nessun altro: il primo non c'è
+    assert not consigli.rigorista(p.loc[1])
+    motivi = consigli.motivi(p.loc[1])
+    assert "non tra i convocati previsti" in motivi and "rigorista" not in motivi
 
 
 # ---------------------------------------------------------------- B2: minuti attesi «se prende voto»
