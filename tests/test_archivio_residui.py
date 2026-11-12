@@ -14,7 +14,7 @@ def _archivio_vecchio(f):
     c.execute("CREATE TABLE IF NOT EXISTS probabili_fonte2 (stagione TEXT, giornata INTEGER, fonte TEXT, calciatore_id INTEGER, "
               "squadra TEXT, titolare INTEGER, percentuale REAL, segnale TEXT, link TEXT, pubblicato TEXT, rilevato TEXT)")
     c.execute("INSERT INTO probabili_fonte2 VALUES ('2026-27', 10, 'x', 1, 'casa', 1, NULL, 'titolare', 'l', 'p', 'r')")
-    righe = [("aggiornamento", "2026-11-12T08:03:07"), ("calendario 2026-27", "2026-11-10T08:03:39"),
+    righe = [(cosa, "2026-11-12T08:03:07") for cosa in TENUTE] + [
              ("quote-giocatore", "2026-10-30T15:01:50"), ("quote-giocatore 2026-27 g10", "2026-10-30T15:01:50"),
              ("crediti-giocatore 2026-10", "2026-10-30T15:01:50"), ("probabili-fonte2", "2026-11-12T08:03:04")]
     c.executemany("INSERT INTO aggiornamenti VALUES (?, ?, '')", righe)
@@ -22,6 +22,11 @@ def _archivio_vecchio(f):
                   [("2026-27", "somma_quote"), ("2025-26", "somma_quote"), ("2026-27", "partite_per_giornata")])
     c.commit()
     c.close()
+
+
+# da tenere: anche le righe con un nome «vicino» a quelli da togliere (un filtro allargato per errore fa fallire il test)
+TENUTE = ["aggiornamento", "calendario 2026-27", "controlli", "dati-extra 2026-27", "listone", "probabili", "probabili-rapido",
+          "quotazioni 2025-26"]
 
 
 def _tabelle(db):
@@ -35,7 +40,7 @@ def test_all_avvio_via_i_residui_delle_quote_e_della_seconda_fonte(tmp_path):
         db = archivio.apri(f)
         try:
             assert not {"quote", "quote_giocatore", "probabili_fonte2"} & _tabelle(db)
-            assert [r[0] for r in db.execute("SELECT cosa FROM aggiornamenti ORDER BY cosa")] == ["aggiornamento", "calendario 2026-27"]
+            assert [r[0] for r in db.execute("SELECT cosa FROM aggiornamenti ORDER BY cosa")] == TENUTE
             assert [tuple(r) for r in db.execute("SELECT stagione, nome FROM controlli")] == [("2026-27", "partite_per_giornata")]
         finally:
             db.close()
