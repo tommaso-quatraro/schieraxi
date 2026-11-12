@@ -2,8 +2,8 @@
 
 NON È ANCORA USATO DAL CALCOLO: nessun altro modulo lo chiama. Oggi squalificati e diffidati arrivano solo dalla pagina delle
 probabili; questo modulo è la regola pronta per quando la pagina non ha una lettura buona. Non è agganciato perché la misura
-sull'archivio (qui sotto) ha dato falsi squalificati oltre la soglia decisa per agganciarlo; si rimisura con
-`prove/misura_squalifiche.py`.
+sull'archivio (qui sotto) ha dato, per la somma di ammonizioni, falsi squalificati oltre la soglia decisa per agganciarlo (uno
+ogni cento segnalati); si rimisura con `prove/misura_squalifiche.py`.
 
 La regola, dal Codice di giustizia sportiva della FIGC (testo aggiornato al 22/12/2025, letto il 12/11/2026 dal sito della FIGC):
 - art. 9 comma 5: squalifica per una gara alla quinta ammonizione, poi dopo altre cinque (10), quattro (14), tre (17), due (19)
@@ -34,13 +34,16 @@ Cosa i nostri dati non dicono:
 
 Misura del 12/11/2026 sull'archivio (2025-26 intero e 2026-27 fino alla giornata 11, 47 giornate): per ogni giornata, chi
 risulta squalificato usando solo le partite di prima, e se poi è nel tabellino di quella partita (allora è un falso).
-- senza la regola del conto incerto: 173 segnalati, 3 falsi (1,7%); in 2 dei 3 c'era un'espulsione prima;
-- con la regola (quella di questo modulo): 164 segnalati, 1 falso (0,6%). Tutti i 72 segnalati per espulsione senza falsi;
-  dei 92 per somma di ammonizioni (88 alla quinta, 4 alla decima) 1 falso. Le soglie oltre la decima non si sono mai viste;
-- in ordine di numero di giornata, senza le date: 14 falsi su 173 (nel 2025-26 dieci partite giocate fuori ordine);
+- 164 segnalati, 1 falso (0,61%). Per espulsione 72 segnalati, nessun falso; per somma di ammonizioni 92 (88 alla quinta,
+  4 alla decima), 1 falso: 1,09%, sopra la soglia dell'1%. Lo 0,61% di tutti i segnalati è più basso solo perché ci sono
+  dentro le espulsioni. Le soglie oltre la decima non si sono mai viste;
+- i falsi misurati sono un minimo: chi è segnalato a torto ma poi non gioca per un altro motivo (infortunio, scelta
+  dell'allenatore) conta come giusto;
 - contro l'elenco della fonte, giornate 9-12 del 2026-27: squalificati 6 su 7 (il mancato è una squalifica di più giornate),
   nessuno solo nostro; diffidati 15 su 15, nessuno solo nostro.
-Un falso su 164 non distingue lo 0,6% dall'1-2%: la regola del conto incerto è nata guardando i tre falsi, sugli stessi dati.
+Con un falso solo il tasso vero può stare sia sotto sia sopra l'1%. In più, la regola del conto incerto è nata guardando i
+falsi di una prima versione della regola senza di essa, sugli stessi dati: quella versione serviva solo alla misura e non è
+nel repository, quindi i suoi numeri (nella pull request #648) da qui non si rifanno.
 """
 from __future__ import annotations
 
