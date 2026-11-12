@@ -6,7 +6,10 @@ sensate (le «invarianti»). Così i difetti li trova il server, non chi usa l'a
   `/api/formazione` si legge con `consigli.formazione` (la rotta salverebbe la copia automatica della consigliata), i risultati in
   diretta dalla copia su file della cache del servizio (`dati/live.json`, se c'è), come li vede l'utente.
 - Con gli account conta anche le cartelle `utenti/<numero>` rimaste senza account (`cartella_senza_account`, un avviso): dice solo
-  quante sono; quali, lo dice `python -m fanta cartelle-senza-account`.
+  quante sono; quali, lo dice `python -m fanta cartelle-senza-account`. È una sola rottura per tutte le cartelle: per la regola
+  degli avvisi qui sotto, una cartella in più dopo un avviso si vede in «Stato dei dati» ma non ne fa partire un altro.
+- Se l'elenco degli utenti o quello delle cartelle non si legge (database degli account rovinato) il giro non muore: lo segna come
+  `risposta_in_errore` e fa gli altri controlli.
 - Esito nella tabella `controlli` (una riga `sentinella_<invariante>` per invariante, più `sentinella` col riassunto): si vede in
   «Stato dei dati». I dettagli non hanno mai nomi (né di persone, né di squadre della lega, né di giocatori): solo «utente N»,
   giornata, campo e numeri (al massimo le squadre di Serie A).
