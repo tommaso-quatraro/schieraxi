@@ -21,7 +21,12 @@
   },
   "regole.con_prima_giornata": {
     "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Diario e promemoria contano da lì.",
-    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Journal and reminders count from there."
+    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Journal and reminders count from there.",
+    "nota": "Solo per l'iPhone, che ha ancora il Diario: la web (Regole e scadenza, #618) usa regole.prima_giornata_conta"
+  },
+  "regole.prima_giornata_conta": {
+    "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Giornate e promemoria contano da lì.",
+    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Matchdays and reminders count from there."
   },
   "regole.controlla_valori_qui": {
     "it": "Controlla i valori qui sotto e tocca «Salva le regole» in fondo.",

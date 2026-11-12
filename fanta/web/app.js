@@ -2852,7 +2852,7 @@ async function vistaRegole() {
         <select class="campo-testo" id="tempi-scadenza">${opzioniScadenza(Number(r.scadenza_minuti ?? 0))}</select></label>
       <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
         <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(g === 1 ? t("pav.prima_uno") : t("pav.prima_n", { n: g }))}</option>`).join("")}</select></label>
-      <div class="debole piccolo">${t("regole.con_prima_giornata")}</div>
+      <div class="debole piccolo">${t("regole.prima_giornata_conta")}</div>
     </div>
 
     <div class="carta"><h2>${t("regole.incolla_titolo")}</h2>
