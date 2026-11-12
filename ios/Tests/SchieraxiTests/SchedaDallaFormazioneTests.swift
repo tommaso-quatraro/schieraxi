@@ -43,7 +43,7 @@ struct SchedaDallaFormazioneTests {
     }
 
     @Test("Senza la riga del server, il perché dell'incerto con la riserva sicura (campo `incerti`)")
-    func incerto() async throws {
+    func percheDellIncerto() async throws {
         let (vm, f) = try await caricata()
         let riserva = try #require(f.schede?[String(Self.riservaSicura)])
         #expect(vm.percheTitolare(Self.incerto) == Catalogo.Formazione.incerto(p: "60%", riserva: riserva.nome))
