@@ -167,7 +167,7 @@ Codice: `fanta/modello.py:_pesi`, `fanta/modello.py:Parametri`, `fanta/modello.p
 
 Con poche partite una media è inaffidabile: un attaccante con un gol in una presenza non ha «un gol a partita». Per questo ogni stima è mescolata con una stima di partenza come se il giocatore avesse già giocato un certo numero di partite fittizie: 20 presenze per il voto (k_voto), 16 partite intere da 90 minuti per gol e assist (k_90), 10 per i cartellini, 20 per gli autogol, 6 partite per la forza delle squadre. Più il giocatore ha giocato, meno conta la stima di partenza.
 
-La stima di partenza non è per forza la media del ruolo. Per i giocatori con poche partite il modello usa la quotazione iniziale di inizio stagione, fissata prima del campionato e quindi senza informazioni dal futuro. Per ogni ruolo calcola, sui dati già giocati, la retta che lega quotazione a voto, gol e assist ogni 90 minuti (servono almeno 15 giocatori con dati sufficienti) e vi fa partire i nuovi: un bomber appena arrivato parte da una stima da bomber, non da attaccante medio. Per gol e assist la stima è comunque tenuta tra un quarto e quattro volte la media del ruolo. Per il voto si usa solo metà della retta (a metà strada tra la media del ruolo e la retta): con la retta intera il voto dei giocatori più cari veniva sopravvalutato di circa un decimo, in tutte e due le stagioni provate (misura del 2/11/2026).
+La stima di partenza non è per forza la media del ruolo. Per i giocatori con poche partite il modello usa la quotazione iniziale di inizio stagione, fissata prima del campionato e quindi senza informazioni dal futuro. Per ogni ruolo calcola, sui dati già giocati, la retta che lega quotazione a voto, gol e assist ogni 90 minuti (servono almeno 15 giocatori con dati sufficienti) e vi fa partire i nuovi: un bomber appena arrivato parte da una stima da bomber, non da attaccante medio. Per gol e assist la stima è comunque tenuta tra un quarto e quattro volte la media del ruolo. Per il voto si usa solo metà della retta (a metà strada tra la media del ruolo e la retta): con la retta intera il voto dei giocatori più cari veniva sopravvalutato di circa un decimo, in tutte e due le stagioni provate (misura del 2/11/2026). La media del ruolo si calcola con gli stessi pesi nel tempo dei giocatori (le partite recenti contano di più, la stagione scorsa la metà), quindi segue la stagione in corso.
 
 I valori dei parametri sono stati tarati il 26/10/2026 sulla stagione 2025-26 (giornate 5-38) minimizzando l'errore quadratico, e poi controllati sul 2026-27.
 
@@ -187,7 +187,7 @@ L'xG (gol attesi) è la probabilità che un tiro diventi gol, stimata da dove e 
 
 Il tasso del giocatore (gol e assist ogni 90 minuti, con pesi nel tempo e restringimento) viene moltiplicato per la quota di partita che giocherà (minuti attesi diviso 90, al massimo 1) e per il «fattore partita»: i gol attesi della squadra in questa partita diviso i suoi gol attesi normali, tenuto tra 0,5 e 2.
 
-Per i rigori conta la quota di rigori della squadra che il giocatore ha calciato (rigori suoi / rigori della squadra + 0,5) per i rigori attesi per partita (media del campionato, 0,13 nella prova fatta il 30/10/2026). Ogni rigore è segnato con probabilità 0,78 (conversione_rigori) e sbagliato con 0,22.
+Per i rigori conta la quota dei rigori della squadra che il giocatore calcia. Si contano i rigori che ha calciato, con la memoria lunga (un rigore è raro: chi li calciava l'anno scorso resta il rigorista anche se quest'anno la squadra non ne ha ancora avuti), e si dividono per quelli di tutti i compagni di oggi più mezzo rigore messo in conto a un rigorista che ancora non si conosce: metà dei rigori li calcia chi non ne aveva mai calciati. La quota si moltiplica per i rigori attesi per partita (media del campionato, 0,13 nella prova fatta il 30/10/2026). Ogni rigore è segnato con probabilità 0,78 (conversione_rigori) e sbagliato con 0,22. Chi calcia almeno metà dei rigori della sua squadra ha il motivo «rigorista» nella sua scheda, uno solo per squadra (prima non usciva mai: chiedeva 0,15 rigori attesi a partita, e nessuno ci arriva). Misura del 12/11/2026: con la quota di prima (memoria corta) i rigori attesi erano il 42% e il 25% dei veri nelle due stagioni, ora il 51% e il 48%; di più non si può con questi dati, proprio perché metà dei rigori li calcia un giocatore senza precedenti.
 
 La probabilità di «almeno un gol» si ottiene da una distribuzione di Poisson (quella degli eventi rari e indipendenti): 1 meno e alla meno il numero di gol attesi, rigori compresi. La stessa cosa per gli assist.
 
@@ -197,6 +197,7 @@ Formula:
 gol attesi = tasso gol/90' × min(minuti,90)/90 × fattore partita
 P(almeno un gol) = 1 - e^-(gol attesi + 0,78 × rigori attesi)
 rigori attesi = quota rigorista × rigori squadra a partita × fattore partita × min(1, minuti/75)
+quota rigorista = rigori suoi / (rigori suoi + rigori dei compagni di oggi + 0,5)
 ```
 
 > **Un caso vero: Ramos G. (Milan-Udinese, giornata 8 del 2026-27)** (numeri veri del modello). Gol attesi 0,498 e rigori attesi 0,100. La probabilità di segnare è 1 - e^-(0,498 + 0,78 × 0,100) = 43,8%, come mostra l'app. In punti: 0,498 × 3 + 0,100 × (0,78 × 3 - 0,22 × 3) = 1,49 + 0,17.
@@ -209,12 +210,13 @@ Codice: `fanta/modello.py:previsioni`, `fanta/modello.py:XG_RIGORE`, `fanta/mode
 
 Ogni squadra ha un indice d'attacco e uno di difesa (1 = nella media, sopra 1 l'attacco segna di più o la difesa subisce di più), calcolati dagli xG fatti e subiti nelle partite passate con gli stessi pesi nel tempo e il restringimento verso 1. Le neopromosse partono un po' sotto (attacco 0,85, difesa 1,15). C'è anche un fattore campo: calcolato sui dati, nella prova del 30/10/2026 la squadra di casa segna il 4,7% in più (la media del campionato era 1,67 gol per squadra a partita).
 
-I gol attesi si ottengono moltiplicando: base del campionato × attacco di una squadra × difesa dell'altra × fattore campo (diviso, per chi gioca fuori).
+I gol attesi si ottengono moltiplicando: base del campionato × attacco di una squadra × difesa dell'altra × fattore campo (diviso, per chi gioca fuori) × livello della stagione. Il livello riporta la base ai gol veri della stagione in corso: la base mescola gli xG della fonte, che sono più alti dei gol veri, e la stagione scorsa, in cui si segnava meno. È il rapporto fra i gol veri della stagione e la base, tirato verso 1 con 5 giornate fittizie e tenuto fra 0,8 e 1,25. Misura del 12/11/2026: i gol attesi delle squadre erano il 107% dei veri nel 2025-26 e il 92% nel 2026-27, ora il 99% e il 94%. Il livello vale per i gol delle squadre, cioè per i gol subiti e la porta inviolata dei portieri; non entra nei gol e negli assist dei giocatori, dove lo scarto non è di livello (i centrocampisti segnano più del previsto, attaccanti e difensori no).
 
 Formula:
 
 ```
-gol casa = base × attacco(casa) × difesa(trasferta) × fattore campo
+gol casa = base × attacco(casa) × difesa(trasferta) × fattore campo × livello della stagione
+livello della stagione = (gol veri della stagione + 5 giornate × base) / (squadre-partita giocate + 5 giornate) / base
 ```
 
 Codice: `fanta/modello.py:forza_squadre`, `fanta/modello.py:Forza.gol_attesi`, `fanta/modello.py:Parametri`
@@ -526,7 +528,7 @@ Codice: `fanta/diario.py:calcola_giornata`, `fanta/diario.py:sintesi`
 
 Fantacalcio.it: listone dei calciatori (una volta al giorno), calendario, voti delle giornate (quelle giocate che mancano più quelle finite da meno di 4 giorni, perché le correzioni arrivano dopo) e probabili formazioni (a ogni aggiornamento).
 
-Understat: xG, xA, tiri, minuti e rigori calciati, partita per partita (totali a ogni aggiornamento, dettaglio delle partite giocate che mancano). È l'unica fonte di queste statistiche: se sparisse, ci sarebbe un piano B a pagamento ancora da decidere.
+Understat: xG, xA, tiri, minuti e rigori calciati, partita per partita (totali a ogni aggiornamento, dettaglio delle partite giocate che mancano). È l'unica fonte di queste statistiche: se sparisse, ci sarebbe un piano B a pagamento ancora da decidere. Se per una partita giocata non arrivano (è successo dal 1° novembre 2026), il modello non la ignora: ricostruisce le righe dai voti, con gol, assist, rigori e minuti stimati (90 per chi gioca tutta la partita, 71 per chi esce, 19 per chi entra); per quelle partite al posto di xG e xA valgono i gol su azione e gli assist veri moltiplicati per 1,2 (tanti ne conta in media la fonte per ogni gol e per ogni assist vero), e un controllo dei dati lo segnala. Misura del 12/11/2026, togliendo apposta le statistiche delle ultime giornate: con una fonte ferma da 8 giornate, rispetto a ignorare quelle partite, l'errore del fantavoto atteso va da -0,5% a +0,2% secondo la stagione e i gol attesi restano al livello di prima (1,03 e 0,94 dei veri, contro 1,02 e 0,89 con la fonte che funziona; ignorando le partite scendevano a 0,83).
 
 football-data.co.uk: solo le statistiche di squadra (xG, tiri, angoli, cartellini) per le partite giocate e per le prossime (al massimo ogni 6 ore), conservate in ombra.
 

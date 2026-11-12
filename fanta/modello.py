@@ -30,6 +30,16 @@ from .regole import RUOLI, Regole
 
 PASSO_STAGIONE = 50          # distanza "in giornate" tra l'inizio di una stagione e la successiva (38 + pausa estiva)
 XG_RIGORE = 0.76             # xG che Understat assegna a un rigore
+# Gol attesi (xG) e assist attesi (xA) che la fonte conta in media per ogni gol su azione e per ogni assist veri. Servono alle
+# righe ricostruite dai voti (`con_prestazioni_dai_voti`): lì xG e xA non ci sono e si usano gol e assist veri, ma quelli della
+# fonte sono più alti. Ricavati dall'archivio (12/11/2026), su tutti i giocatori con le statistiche vere: somma degli xG su
+# azione divisa per i gol su azione 1,22 nel 2025-26, 1,13 nelle prime 10 giornate del 2026-27, 1,19 in tutto (1.319 su 1.104);
+# somma degli xA divisa per gli assist 1,24, 1,13 e 1,21 (1.006 su 832). Senza questi fattori, con la fonte ferma gol e assist
+# attesi scendono giornata dopo giornata (revisione di #613). Misura a 8 giornate di fonte ferma, gol attesi su veri nelle due
+# stagioni: 0,92 e 0,82 senza, 1,03 e 0,94 con (1,02 e 0,89 con la fonte che funziona); assist 0,89 e 0,85 senza, 0,93 e 0,89
+# con (0,96 e 0,88). L'errore del fantavoto atteso non cambia (meno di 0,05%).
+XG_PER_GOL = 1.2
+XA_PER_ASSIST = 1.2
 # Quanto della retta quotazione -> voto si usa per il voto di partenza (1 = tutta). Misura del 2/11/2026: con la retta intera
 # il voto dei giocatori da 15 crediti in su era sopravvalutato (0,06-0,15) in tutte e due le stagioni; con metà l'errore
 # scende in entrambe (verifica prima e dopo nella PR). Gol e assist usano ancora la retta intera.
@@ -55,12 +65,26 @@ class Parametri:
     peso_xg_squadre: float = 0.6      # gol attesi di squadra: quanto contano gli xG rispetto ai gol veri
     decadimento_presenze: float = 0.75
     giornate_presenze: int = 6
+    # Quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_rigori_divisi`). In produzione dal
+    # 12/11/2026 (#613): con la quota di prima i rigori attesi erano il 42% e il 25% dei veri nelle due stagioni, con questa
+    # (e il termine qui sotto) il 51% e il 48%.
+    rigori_squadra: bool = True
+    # Rigori (pesati) messi in conto, nella quota di squadra, a un rigorista che ancora non si conosce: metà dei rigori li
+    # calcia chi non ne aveva mai calciati. Misura del 12/11/2026 su 132 casi con quota sopra 0,2: senza questo termine chi
+    # aveva quota 0,95 calciava il 60% dei rigori della squadra e chi aveva 0,64 il 50%; con 0,5 chi ha 0,64 ne calcia il 57%
+    # e chi ha 0,34 il 37%. I numeri «nostri» restano senza (`nostri.parametri`).
+    rigori_di_un_altro: float = 0.5
+    # Medie del ruolo (gol, assist, xG, xA, minuti) con i pesi dei giocatori (vedi `_pezzi`): la stima di partenza di chi ha
+    # pochi dati segue la stagione in corso. In produzione dal 12/11/2026 (#613).
+    medie_ruolo_pesate: bool = True
+    # Livello dei gol della stagione (vedi `forza_squadre`): giornate fittizie che tirano verso 1 il rapporto fra i gol veri
+    # della stagione e i gol «di base» delle squadre. Vale per i gol delle squadre (gol subiti e porta inviolata dei portieri),
+    # non per gol e assist dei giocatori. None = spento (i numeri «nostri», che hanno `decadimento_base`).
+    k_livello: float | None = 5.0
     # Correzioni dei gol attesi «nostri» (piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md): spente di default,
-    # le accende `nostri.parametri`. La produzione non cambia fino alla Fase G1.
-    rigori_squadra: bool = False      # quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_rigori_divisi`)
+    # le accende `nostri.parametri`.
     minuti_con_voto: bool = False     # minuti, tassi per 90' e medie del ruolo dalle sole presenze con voto (vedi `_pezzi`)
     decadimento_base: float | None = None   # memoria del livello recente del campionato (vedi `forza_squadre`); None = niente livello
-    medie_ruolo_pesate: bool = False  # medie del ruolo (gol, assist, xG, xA, minuti) con i pesi dei giocatori (vedi `_pezzi`)
 
 
 # ---------------------------------------------------------------- dati
@@ -122,7 +146,64 @@ def carica(db: sqlite3.Connection) -> Dati:
     # rigori calciati dalla squadra in ogni partita (per la quota del rigorista)
     rig = prestazioni.groupby(["understat_partita", "squadra"])["rigori_calciati"].sum().rename("rigori_squadra")
     d.prestazioni = prestazioni.join(rig, on=["understat_partita", "squadra"])
-    return d
+    return con_prestazioni_dai_voti(d)
+
+
+# Minuti giocati per presenza, da «entrato» e «uscito» dei voti di Fantacalcio.it (che non dà i minuti), per
+# (subentrato, sostituito). Medie dei minuti veri di Understat sull'archivio di sviluppo (2025-26 e 2026-27, circa 14.400
+# presenze, misura del 5/11/2026): 89,7 · 70,9 · 19,0 · 30,3 (quest'ultima su 29 casi soltanto).
+MINUTI_STIMATI = {(0, 0): 90.0, (0, 1): 71.0, (1, 0): 19.0, (1, 1): 30.0}
+
+
+def minuti_stimati(voti: pd.DataFrame) -> pd.Series:
+    """Minuti stimati di ogni riga dei voti (vedi `MINUTI_STIMATI`); un dato mancante vale «no»."""
+    sub, sos = (pd.to_numeric(voti[c], errors="coerce").fillna(0).astype(int).clip(0, 1) for c in ("subentrato", "sostituito"))
+    return pd.Series([MINUTI_STIMATI[(a, b)] for a, b in zip(sub, sos)], index=voti.index, dtype=float)
+
+
+def prestazioni_dai_voti(voti: pd.DataFrame, partite: pd.DataFrame) -> pd.DataFrame:
+    """Le statistiche per partita ricostruite dai voti di Fantacalcio.it, una riga per presenza (anche chi resta senza voto):
+    minuti stimati da entrato e uscito, rigori calciati = segnati + sbagliati, gol con i rigori (come Understat; nei voti «gol»
+    li esclude), senza xG e xA. `understat_partita` è l'id della partita di Fantacalcio.it (`partite.id`); `rigori_squadra` i
+    rigori calciati dalla squadra nella partita. Le usano i numeri «nostri» (`nostri.dati`, tutte le partite) e il ripiego per
+    le partite senza statistiche (`con_prestazioni_dai_voti`)."""
+    v = voti
+    num = lambda c: pd.to_numeric(v[c], errors="coerce").fillna(0)  # noqa: E731
+    pr = pd.DataFrame({"stagione": v["stagione"], "giornata": v["giornata"], "data": v["data"], "t": v["t"],
+                       "squadra": v["squadra"], "calciatore_id": v["calciatore_id"], "minuti": minuti_stimati(v),
+                       "gol": num("gol") + num("rig_segnati"), "assist": num("assist"), "rigori_segnati": num("rig_segnati"),
+                       "rigori_calciati": num("rig_segnati") + num("rig_sbagliati"), "xg": np.nan, "xa": np.nan})
+    partita = pd.concat([partite[["stagione", "giornata", c, "id"]].rename(columns={c: "squadra", "id": "understat_partita"})
+                         for c in ("casa", "trasferta")]).drop_duplicates(["stagione", "giornata", "squadra"])
+    pr = pr.merge(partita, on=["stagione", "giornata", "squadra"], how="left")
+    rig = pr.groupby(["understat_partita", "squadra"])["rigori_calciati"].sum().rename("rigori_squadra")
+    return pr.join(rig, on=["understat_partita", "squadra"])
+
+
+def con_prestazioni_dai_voti(d: Dati) -> Dati:
+    """`d` con le statistiche ricostruite dai voti per le partite giocate che non ne hanno (#613). Gol e assist attesi, minuti e
+    rigori vengono dalle statistiche per partita di una fonte esterna: quando per una partita non arrivano (fonte ferma o in
+    ritardo) il modello la ignorerebbe e invecchierebbe di una giornata alla volta, senza dirlo. Per quelle partite, se ci sono
+    i voti, valgono le righe di `prestazioni_dai_voti`, con i gol su azione e gli assist veri al posto di xG e xA, riportati alla
+    scala della fonte (XG_PER_GOL, XA_PER_ASSIST): più rumorosi, ma è l'informazione che c'è. L'id della partita è cambiato di
+    segno (non si confonde con quelli della fonte).
+    Con tutte le statistiche al loro posto restituisce `d` com'è. Che manchino lo dice `controlli.partite_senza_statistiche`."""
+    giocate = d.partite[d.partite["giocata"] == 1]
+    if giocate.empty or d.voti.empty:
+        return d
+    con = set(d.prestazioni["understat_partita"].dropna().unique()) if len(d.prestazioni) else set()
+    senza = giocate[~giocate["understat_id"].isin(con)]
+    if senza.empty:
+        return d
+    squadre = pd.concat([senza[["stagione", "giornata", c]].rename(columns={c: "squadra"}) for c in ("casa", "trasferta")])
+    voti = d.voti.merge(squadre.drop_duplicates(), on=["stagione", "giornata", "squadra"])
+    if voti.empty:
+        return d
+    pr = prestazioni_dai_voti(voti, senza)
+    pr["understat_partita"] = -pr["understat_partita"]
+    pr["xg"] = XG_PER_GOL * (pr["gol"] - pr["rigori_segnati"]) + XG_RIGORE * pr["rigori_calciati"]
+    pr["xa"] = XA_PER_ASSIST * pr["assist"]
+    return replace(d, prestazioni=pd.concat([d.prestazioni, pr], ignore_index=True))
 
 
 def _pesi(t: pd.Series, stagione_t: pd.Series, t0: int, stagione0: str, par: Parametri) -> np.ndarray:
@@ -139,16 +220,19 @@ PESO_PREC_RIGORI = 0.8          # i rigori della stagione scorsa
 def _rigori_divisi(U: pd.DataFrame, g: pd.DataFrame, t0: int, stagione: str, par: Parametri) -> pd.Series:
     """Quota dei rigori della squadra che va a ogni giocatore di `g`, se gioca (Parametri.rigori_squadra). Si contano i suoi
     rigori calciati con memoria lunga (con qualunque squadra) e quelli dei compagni di oggi, ognuno pesato con la sua quota di
-    presenze recenti (`p_storico`): quota = i suoi / (i suoi + quelli dei compagni). Chi non ne ha mai calciati ha quota 0.
+    presenze recenti (`p_storico`): quota = i suoi / (i suoi + quelli dei compagni + `Parametri.rigori_di_un_altro`). Chi non ne
+    ha mai calciati ha quota 0.
     `U`: le presenze prima della giornata (vedi `_pezzi`)."""
     pr = replace(par, decadimento=DECADIMENTO_RIGORI, peso_stagione_prec=PESO_PREC_RIGORI)
     calciati = pd.Series(_pesi(U["t"], U["stagione"], t0, stagione, pr) * U["rigori_calciati"].to_numpy(dtype=float),
                          index=U.index)
-    lungo = calciati.groupby(U["calciatore_id"]).sum().reindex(g.index, fill_value=0.0)
-    presenti = g["p_storico"] * lungo
+    # numeri veri e nessuna divisione per zero: con un archivio quasi vuoto (nessuna presenza) le colonne arrivano senza tipo
+    lungo = calciati.groupby(U["calciatore_id"]).sum().reindex(g.index, fill_value=0.0).astype(float)
+    presenti = pd.to_numeric(g["p_storico"], errors="coerce").fillna(0.0).astype(float) * lungo
     squadra = presenti.groupby(g["squadra_slug"].to_numpy()).transform("sum")
     compagni = (squadra - presenti).fillna(0.0).clip(lower=0.0)
-    return (lungo / (lungo + compagni)).where(lungo > 0, 0.0)
+    totale = lungo + compagni + par.rigori_di_un_altro
+    return (lungo / totale.where(totale > 0)).where(lungo > 0, 0.0).fillna(0.0)
 
 
 # ---------------------------------------------------------------- squadre
@@ -159,18 +243,30 @@ class Forza:
     attacco: dict[str, float]
     difesa: dict[str, float]     # > 1 = subisce più della media
     rigori_partita: float        # rigori calciati per squadra a partita
-    livello: float = 1.0         # gol recenti del campionato rispetto a `base` (Parametri.decadimento_base)
+    livello: float = 1.0         # gol recenti del campionato rispetto a `base` (Parametri.decadimento_base): squadre e giocatori
+    livello_stagione: float = 1.0   # gol della stagione rispetto a `base` (Parametri.k_livello): solo i gol delle squadre
 
     def gol_attesi(self, casa: str, trasferta: str) -> tuple[float, float]:
         a, d = self.attacco, self.difesa
-        lc = self.base * a.get(casa, 0.85) * d.get(trasferta, 1.15) * self.casa * self.livello
-        lt = self.base * a.get(trasferta, 0.85) * d.get(casa, 1.15) / self.casa * self.livello
+        livello = self.livello * self.livello_stagione
+        lc = self.base * a.get(casa, 0.85) * d.get(trasferta, 1.15) * self.casa * livello
+        lt = self.base * a.get(trasferta, 0.85) * d.get(casa, 1.15) / self.casa * livello
         return lc, lt
 
 
 # Livello recente del campionato (Parametri.decadimento_base): gol a squadra a partita delle ultime giornate rispetto a `base`,
 # che ha la memoria lunga delle squadre. Misura del 6/11/2026 (piano 2026-11-06-gol-attesi-nostri, §1): nel 2026-27 si segna il
 # 24% in più e la forza delle squadre non lo vedeva. Limiti per non inseguire poche giornate strane.
+# È dei numeri «nostri»: ha la memoria corta (una giornata da sola ha ±17% di rumore) e arriva anche ai gol dei giocatori, i cui
+# tassi seguono già la stagione: lì corregge troppo (analisi del 12/11/2026).
+#
+# Livello della stagione (Parametri.k_livello, in produzione dal 12/11/2026, #613): gol veri a squadra a partita della stagione
+# in corso rispetto a `base`, tirati verso `base` con K giornate fittizie. `base` mescola gli xG della fonte (più alti dei gol
+# veri: nel 2025-26 i gol attesi delle squadre erano il 107% dei veri) e la stagione prima (dove si segnava meno: nel 2026-27
+# erano il 92%). Misura del 12/11/2026 con K = 5: gol attesi delle squadre su veri 0,99 e 0,94; scarto del fantavoto atteso
+# dei portieri da -0,12 a 0,00 e da +0,13 a +0,09; errore del fantavoto atteso fermo (-0,02% e +0,02%, dentro il rumore).
+# Vale solo per i gol delle squadre: per gol e assist dei giocatori lo scarto non è di livello (attaccanti e difensori sono
+# già sopra i gol veri, i centrocampisti sotto) e con le probabili i gol attesi sono già al 105% della media della stagione.
 LIVELLO_MIN = 0.8
 LIVELLO_MAX = 1.25
 
@@ -216,14 +312,23 @@ def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazi
     p = d.prestazioni[prima_di(d.prestazioni, data0)]
     partite_squadra = p.groupby(["understat_partita", "squadra"]).ngroups
     rigori = float(p["rigori_calciati"].sum() / partite_squadra) if partite_squadra else 0.25
-    # livello recente: dopo attacco e difesa, che altrimenti lo riassorbirebbero (sono stimati intorno a `base`)
+    # livelli: dopo attacco e difesa, che altrimenti li riassorbirebbero (sono stimati intorno a `base`)
+    livello_stagione = 1.0
+    if par.k_livello is not None and base > 0:
+        della_stagione = m[m["stagione"] == stagione]
+        calendario = d.partite[d.partite["stagione"] == stagione]
+        fittizie = par.k_livello * len(set(calendario["casa"]) | set(calendario["trasferta"]))     # squadre-partita di K giornate
+        giocate = 2 * len(della_stagione)
+        if giocate + fittizie > 0:
+            gol = float(della_stagione["gol_casa"].sum() + della_stagione["gol_trasferta"].sum())
+            livello_stagione = float(np.clip((gol + fittizie * base) / (giocate + fittizie) / base, LIVELLO_MIN, LIVELLO_MAX))
     livello = 1.0
     if par.decadimento_base is not None:
         wr = _pesi(m["t"], m["stagione"], t0, stagione, replace(pp, decadimento=par.decadimento_base))
         base_recente = float(np.sum(wr * (gc + gt)) / (2 * np.sum(wr)))
         livello = float(np.clip(base_recente / base, LIVELLO_MIN, LIVELLO_MAX)) if base > 0 else 1.0
     return Forza(base, casa, {s: float(att[i]) for s, i in indice.items()},
-                 {s: float(dif[i]) for s, i in indice.items()}, rigori, livello)
+                 {s: float(dif[i]) for s, i in indice.items()}, rigori, livello, livello_stagione)
 
 
 # ---------------------------------------------------------------- giocatori
@@ -488,8 +593,9 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
         prior_a = partenza(r, "tasso_ass", x["qi"], par.peso_xa * mr["xa90"] + (1 - par.peso_xa) * mr["ass90"])
         gol90 = (gol_tasso + par.k_90 * prior_g) / (min90 + par.k_90)
         ass90 = (ass_tasso + par.k_90 * prior_a) / (min90 + par.k_90)
-        # la partita rispetto al solito: gol attesi oggi / gol medi della squadra
-        media_sq = forza.base * forza.attacco.get(x["squadra_slug"], 0.85)
+        # la partita rispetto al solito: gol attesi oggi / gol medi della squadra (tutti e due con il livello della stagione,
+        # che così non arriva a gol, assist e rigori del giocatore: vedi LIVELLO_MIN)
+        media_sq = forza.base * forza.attacco.get(x["squadra_slug"], 0.85) * forza.livello_stagione
         fattore = float(np.clip(l_sq / media_sq, 0.5, 2.0)) if media_sq > 0 else 1.0
         quota90 = min(minuti, 90) / 90
         e_gol = gol90 * quota90 * fattore
@@ -524,6 +630,8 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
                   p_mvp, gol_subiti, p_imbattuto)
         dopo = {
             "e_gol": round(e_gol, 3), "e_assist": round(e_ass, 3), "e_rigori": round(e_rig, 3),
+            # quanta parte dei rigori della sua squadra calcia lui, se gioca (per la frase «rigorista»)
+            "quota_rigori": round(float(quota_rig), 3),
             # probabilità di almeno un gol (rigori compresi) / un assist / un cartellino, se gioca
             "p_gol": round(1 - math.exp(-(e_gol + par.conversione_rigori * e_rig)), 3),
             "p_assist": round(1 - math.exp(-e_ass), 3),
@@ -536,7 +644,25 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
             "data_partita": data_partita.get(partita),
         }
         righe.append((prima, dopo, per_mu))
+    _segna_primo_rigorista(righe)
     return righe, forza.rigori_partita
+
+
+def _segna_primo_rigorista(righe: list) -> None:
+    """Mette in ogni riga `primo_rigorista`: vero per il giocatore con la quota dei rigori più alta della sua squadra fra chi non
+    è infortunato né squalificato (a pari quota il primo dell'elenco), falso per gli altri. Serve a «rigorista» (`consigli.rigorista`),
+    che è uno solo per squadra. La quota è «se gioca lui», con i compagni pesati per le loro presenze: fra chi è in campo la somma
+    supera 1 nel 2-5% delle squadre-partita e due compagni possono averla tutti e due sopra la metà. Normalizzarla dentro la
+    squadra toglie rigori attesi (da 0,51 e 0,48 dei veri a 0,43 e 0,39, misura del 12/11/2026): la quota resta com'è."""
+    primi: dict[str, dict] = {}
+    for prima, dopo, _ in righe:
+        dopo["primo_rigorista"] = False
+        if dopo["stato"] in ("infortunato", "squalificato") or not dopo["quota_rigori"] > 0:
+            continue
+        if prima["squadra"] not in primi or dopo["quota_rigori"] > primi[prima["squadra"]]["quota_rigori"]:
+            primi[prima["squadra"]] = dopo
+    for dopo in primi.values():
+        dopo["primo_rigorista"] = True
 
 
 # Probabilità di prendere voto dalle probabili formazioni di Fantacalcio.it.

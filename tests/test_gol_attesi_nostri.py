@@ -13,7 +13,11 @@ from fanta.regole import Regole
 S1, S2 = "2025-26", "2026-27"
 GIOCATE = [(S1, g) for g in range(1, 9)] + [(S2, g) for g in range(1, 11)]   # 8 giornate della stagione prima, 10 della nuova
 PROSSIMA = (S2, 11)                                                           # la giornata da prevedere
-NOSTRI = Parametri(peso_xg=0.0, peso_xa=0.0)                                  # come i nostri: niente xG e xA
+# come i nostri prima delle correzioni: niente xG e xA, la quota dei rigori di prima, le medie del ruolo senza pesi e nessun
+# livello (in produzione fino a #613); accesa, la quota di squadra qui è quella dei nostri, senza i rigori messi in conto a un
+# rigorista sconosciuto
+NOSTRI = Parametri(peso_xg=0.0, peso_xa=0.0, rigori_squadra=False, rigori_di_un_altro=0.0, medie_ruolo_pesate=False,
+                   k_livello=None)
 
 # id: (nome, ruolo, squadra). Chi non ha eventi gioca 90' con voto 6 in ogni giornata giocata, tranne la Riserva (mai in campo);
 # la Spalla segna un gol su azione ogni 3 giornate, la Punta ogni 2.
@@ -143,6 +147,27 @@ def test_rigori_e_minuti_senza_dati_dal_futuro():
     tutti = _par(rigori_squadra=True, minuti_con_voto=True)
     a, b = _p(_dati(base), tutti), _p(_dati(base | futuro), tutti)
     pd.testing.assert_frame_equal(a, b)
+
+
+def test_il_rigorista_e_uno_solo_per_squadra():
+    """Revisione di #613. Ogni quota è «se gioca lui», con i compagni pesati per le loro presenze: A (1) ha calciato 3 rigori ma
+    da sei giornate non gioca, B (2) ne ha calciati 2 e gioca sempre, e tutti e due hanno la quota sopra la metà. Normalizzare le
+    quote dentro la squadra toglie rigori attesi (misura nella pull request): si tiene la quota e si segna il primo della squadra."""
+    eventi = _rigori(1, (1, 2, 3)) | _rigori(2, (6, 8)) | {(1, S2, g): None for g in range(5, 11)}
+    d = _dati(eventi)
+    p = _p(d, Parametri())
+    assert p.at[1, "quota_rigori"] >= 0.5 and p.at[2, "quota_rigori"] >= 0.5
+    assert p["primo_rigorista"].tolist().count(True) == 1 and bool(p.at[2, "primo_rigorista"])       # in beta nessuno ne ha calciati
+    from fanta import consigli
+    assert consigli.rigorista(p.loc[2]) and not consigli.rigorista(p.loc[1])
+
+
+def test_il_primo_rigorista_e_il_migliore_fra_chi_puo_giocare():
+    riga = lambda i, squadra, quota, stato=None: ({"id": i, "squadra": squadra}, {"quota_rigori": quota, "stato": stato}, ())   # noqa: E731
+    righe = [riga(1, "alfa", 0.8, "squalificato"), riga(2, "alfa", 0.55), riga(3, "alfa", 0.2), riga(4, "beta", 0.0),
+             riga(5, "gamma", 0.6, "infortunato"), riga(6, "gamma", 0.6, "titolare"), riga(7, "gamma", 0.6)]
+    modello._segna_primo_rigorista(righe)
+    assert [dopo["primo_rigorista"] for _, dopo, _ in righe] == [False, True, False, False, False, True, False]
 
 
 # ---------------------------------------------------------------- B2: minuti attesi «se prende voto»
