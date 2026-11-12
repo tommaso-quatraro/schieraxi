@@ -14,6 +14,15 @@ La regola, dal Codice di giustizia sportiva della FIGC (testo aggiornato al 22/1
   se il giocatore l'ha cambiata. Quindi conta la prima partita che la squadra gioca davvero, in ordine di data: una partita
   rinviata non la sconta, un recupero sì.
 
+Partite non ancora giocate, secondo l'ora (`adesso`): una che comincia da MARGINE_RISULTATI prima di `adesso` in poi è in
+programma, in corso o finita da poco e non ancora segnata come giocata, e sconta la squalifica; una cominciata da più di
+MARGINE_RISULTATI e ancora non giocata è rinviata, e non la sconta. Serve l'ora perché l'archivio da solo non lo dice quando la
+partita rinviata è l'ultima della sua giornata. Limiti noti:
+- nella mezza giornata dopo l'inizio, una partita rinviata conta come giocata: in quelle ore lo squalificato risulta libero
+  per la giornata dopo;
+- se il calendario non si aggiorna, una partita giocata ma non ancora segnata da più di mezza giornata sembra rinviata: la
+  squalifica resta aperta una giornata di troppo.
+
 Cosa i nostri dati non dicono:
 - nei voti una riga ha il giallo o il rosso, mai tutti e due (0 righe su 15.417): un giallo seguito dal rosso nella stessa
   partita arriva come solo rosso. Dopo un'espulsione il nostro conto delle ammonizioni può essere indietro di uno, quindi per
@@ -35,9 +44,12 @@ Un falso su 164 non distingue lo 0,6% dall'1-2%: la regola del conto incerto è 
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Iterable, Mapping, NamedTuple
 
 SOGLIE = (5, 10, 14, 17, 19)          # ammonizioni che fanno scattare la squalifica; dopo l'ultima, ogni ammonizione
+MARGINE_RISULTATI = timedelta(hours=12)   # come consigli.MARGINE_RISULTATI: una partita non giocata è in corso o da segnare
+                                          # fino a mezza giornata dopo l'inizio; poi è rinviata
 
 
 class Stato(NamedTuple):
@@ -68,18 +80,18 @@ def _prima(a: _Quando, b: _Quando) -> bool:
 
 
 def calcola(cartellini: Iterable[Mapping], partite: Iterable[Mapping], stagione: str, giornata: int,
-            squadre: Mapping[int, str]) -> dict[int, Stato]:
+            squadre: Mapping[int, str], adesso: datetime) -> dict[int, Stato]:
     """Chi è squalificato o diffidato per la partita della sua squadra nella `giornata`: {calciatore_id: Stato}. Chi non è né
     l'uno né l'altro non c'è.
 
     `cartellini`: le righe dei voti (stagione, giornata, calciatore_id, squadra, ammonizioni, espulsioni).
     `partite`: il calendario (stagione, giornata, data, casa, trasferta, giocata).
     `squadre`: la squadra di adesso di ogni giocatore; chi non c'è, o ha la squadra che non gioca la giornata, si salta.
+    `adesso`: l'ora a cui si chiede; dice se una partita non giocata è in programma (o in corso) oppure rinviata.
     Contano solo i cartellini della stagione presi prima di quella partita: la stessa funzione vale per le giornate passate.
     """
     quando: dict[tuple[int, str], _Quando] = {}                       # (giornata, squadra) -> quando gioca
     della_squadra: dict[str, list[tuple[_Quando, bool]]] = {}         # squadra -> [(quando, giocata)]
-    ultima_giocata = ""                                               # fin dove arriva l'archivio: data dell'ultima partita giocata
     for p in partite:
         if p["stagione"] != stagione:
             continue
@@ -87,8 +99,7 @@ def calcola(cartellini: Iterable[Mapping], partite: Iterable[Mapping], stagione:
         for s in (p["casa"], p["trasferta"]):
             quando[(q.giornata, s)] = q
             della_squadra.setdefault(s, []).append((q, bool(p["giocata"])))
-        if p["giocata"] and q.data and q.data > ultima_giocata:
-            ultima_giocata = q.data
+    da_giocare_dal = (adesso - MARGINE_RISULTATI).strftime("%Y-%m-%d %H:%M")   # non giocata e cominciata prima: rinviata
 
     per_giocatore: dict[int, list[tuple[_Quando, bool, bool]]] = {}   # giocatore -> [(quando, giallo, rosso)]
     for c in cartellini:
@@ -115,18 +126,19 @@ def calcola(cartellini: Iterable[Mapping], partite: Iterable[Mapping], stagione:
                 ultimo = c
         # Solo l'ultimo cartellino può lasciare una squalifica aperta: dopo uno più vecchio il giocatore è tornato in campo.
         decisivo = ultimo[2] or (certo and _scatta(gialli))
-        squalificato = decisivo and not _scontata(ultimo[0], meta, della_squadra[squadra], ultima_giocata)
+        squalificato = decisivo and not _scontata(ultimo[0], meta, della_squadra[squadra], da_giocare_dal)
         diffidato = certo and _scatta(gialli + 1)
         if squalificato or diffidato:
             esito[cid] = Stato(squalificato, diffidato)
     return esito
 
 
-def _scontata(cartellino: _Quando, meta: _Quando, della_squadra: list[tuple[_Quando, bool]], ultima_giocata: str) -> bool:
+def _scontata(cartellino: _Quando, meta: _Quando, della_squadra: list[tuple[_Quando, bool]], da_giocare_dal: str) -> bool:
     """Se tra il cartellino e la partita `meta` la squadra ha un'altra partita in cui la squalifica si sconta: una giocata,
-    oppure una in programma dopo l'ultima partita giocata in archivio (un recupero a metà settimana). Una partita non giocata
-    con la data già passata è rinviata e non la sconta. Non conta la partita della stessa giornata del cartellino: è quella
-    del cartellino, o quella della squadra nuova giocata quando il giocatore era ancora nella vecchia."""
+    oppure una non ancora giocata che comincia da `da_giocare_dal` in poi (in programma, come un recupero a metà settimana;
+    in corso; o finita da poco e non ancora segnata come giocata). Una partita non giocata cominciata da più di
+    MARGINE_RISULTATI è rinviata e non la sconta, come una senza data. Non conta la partita della stessa giornata del
+    cartellino: è quella del cartellino, o quella della squadra nuova giocata quando il giocatore era ancora nella vecchia."""
     return any(q.giornata != cartellino.giornata and _prima(cartellino, q) and _prima(q, meta)
-               and (giocata or (q.data is not None and q.data > ultima_giocata))
+               and (giocata or (q.data is not None and q.data >= da_giocare_dal))
                for q, giocata in della_squadra)

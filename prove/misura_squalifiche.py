@@ -5,7 +5,8 @@ giocatore è nel tabellino della partita: se c'è, la segnalazione era falsa (se
 segnalato si conta a parte). Il tasso dei falsi è un minimo: chi è segnalato a torto ma poi non gioca per un altro motivo
 (infortunio, scelta dell'allenatore) conta come giusto. Dove l'archivio ha l'elenco della fonte (tabella
 `probabili`, l'ultima lettura della giornata) si confrontano anche squalificati e diffidati con quell'elenco.
-La squadra di un giocatore è quella della sua ultima riga dei voti prima della partita.
+La squadra di un giocatore è quella della sua ultima riga dei voti prima della partita. L'ora usata è quella vera, al momento
+della misura: sulle giornate passate una partita non giocata è sempre rinviata.
 
 Apre l'archivio in sola lettura e stampa solo numeri: nessun nome di giocatore o di squadra.
 
@@ -15,6 +16,7 @@ from __future__ import annotations
 
 import sqlite3
 import sys
+from datetime import datetime
 from pathlib import Path
 
 RADICE = Path(__file__).resolve().parent.parent
@@ -45,7 +47,7 @@ def _squadre(voti: list[dict], partite: list[dict], giornata: int) -> dict[int, 
     return {cid: squadra for cid, (_, squadra) in ultima.items()}
 
 
-def misura(db: sqlite3.Connection, stagione: str) -> dict[str, int]:
+def misura(db: sqlite3.Connection, stagione: str, adesso: datetime) -> dict[str, int]:
     """Sulle giornate giocate dalla seconda in poi: quanti segnalati come squalificati (per espulsione, per somma di
     ammonizioni) e quanti di loro erano poi nel tabellino della partita (falsi). Chi è segnalato per una partita che la sua
     squadra non ha giocato (rinviata) non è né giusto né falso: si conta a parte, in `non_giocate`."""
@@ -62,8 +64,8 @@ def misura(db: sqlite3.Connection, stagione: str) -> dict[str, int]:
     for g in range(2, ultima + 1):
         conti["giornate"] += 1
         squadre = _squadre(voti, partite, g)
-        per_rosso = squalifiche.calcola(rossi, partite, stagione, g, squadre)
-        for cid, stato in squalifiche.calcola(voti, partite, stagione, g, squadre).items():
+        per_rosso = squalifiche.calcola(rossi, partite, stagione, g, squadre, adesso)
+        for cid, stato in squalifiche.calcola(voti, partite, stagione, g, squadre, adesso).items():
             if not stato.squalificato:
                 continue
             if not giocata.get((g, squadre[cid])):
@@ -78,7 +80,7 @@ def misura(db: sqlite3.Connection, stagione: str) -> dict[str, int]:
     return conti
 
 
-def confronto_con_la_fonte(db: sqlite3.Connection, stagione: str) -> list[dict[str, int]]:
+def confronto_con_la_fonte(db: sqlite3.Connection, stagione: str, adesso: datetime) -> list[dict[str, int]]:
     """Per ogni giornata con le probabili in archivio: squalificati e diffidati della fonte, nostri e in comune."""
     partite = _righe(db, "partite", _PARTITE, stagione)
     voti = _righe(db, "voti", _VOTI, stagione)
@@ -90,7 +92,7 @@ def confronto_con_la_fonte(db: sqlite3.Connection, stagione: str) -> list[dict[s
                            "AND fonte = 'fantacalcio'", (stagione, g)).fetchall()
         fuori_fonte = {cid for cid, stato, _ in fonte if stato == "squalificato"}
         diffidati_fonte = {cid for cid, _, diffidato in fonte if diffidato}
-        nostri = squalifiche.calcola(voti, partite, stagione, g, _squadre(voti, partite, g))
+        nostri = squalifiche.calcola(voti, partite, stagione, g, _squadre(voti, partite, g), adesso)
         fuori_nostri = {cid for cid, stato in nostri.items() if stato.squalificato}
         diffidati_nostri = {cid for cid, stato in nostri.items() if stato.diffidato}
         righe.append({
@@ -106,16 +108,17 @@ def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     percorso = Path(sys.argv[1]) if len(sys.argv) > 1 else RADICE / "dati" / "fanta.sqlite"
     db = sqlite3.connect(f"{percorso.resolve().as_uri()}?mode=ro", uri=True)
+    adesso = datetime.now()
     stagioni = [s for (s,) in db.execute("SELECT DISTINCT stagione FROM voti ORDER BY stagione")]
     totale = {}
     for stagione in stagioni:
-        conti = misura(db, stagione)
+        conti = misura(db, stagione, adesso)
         totale = {k: totale.get(k, 0) + v for k, v in conti.items()}
         print(f"{stagione}: {conti}")
     if totale.get("segnalati"):
         print(f"in tutto: {totale}; falsi {100 * totale['falsi'] / totale['segnalati']:.2f}% dei segnalati")
     for stagione in stagioni:
-        for riga in confronto_con_la_fonte(db, stagione):
+        for riga in confronto_con_la_fonte(db, stagione, adesso):
             print(f"fonte {stagione}: {riga}")
     righe, insieme = db.execute("SELECT COUNT(*), SUM(ammonizioni > 0 AND espulsioni > 0) FROM voti").fetchone()
     print(f"righe dei voti: {righe}; con giallo e rosso insieme: {insieme or 0}")
