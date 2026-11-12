@@ -1,17 +1,14 @@
 "use strict";
 // App SchieraXI: JavaScript semplice, senza librerie. Parla con il server Python (fanta/server.py).
-// Sezioni: Formazione, Giornate, Squadra, Altro. La scheda di un giocatore è un pannello che sale dal basso.
+// Sezioni (la barra, #618): Formazione, Giornate, Impostazioni, più la ricerca di un giocatore. La scheda di un giocatore è un pannello
+// che sale dal basso.
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const contenuto = $("#contenuto");
-const VISTE = ["formazione", "giornate", "squadra", "altro"];
-// Nomi vecchi che arrivano ancora da indirizzi, scorciatoie e avvisi: «oggi» è diventata la Formazione (una schermata sola, #616);
-// «mercato» (Cambi consigliati, Seguiti, Elenco, Calendario) e «scambi» sono pagine tolte il 12/11/2026 (#615), «lega» è il nome di
-// prima delle voci di Squadra e Altro. Portano alla scheda in cui stavano (schermataCheResta).
-const SOTTO_VISTE = { oggi: "formazione", mercato: "squadra", scambi: "altro", lega: "altro" };
+const VISTE = ["formazione", "giornate", "impostazioni"];
 // Pulsante «torna indietro»: la freccia è un'icona, non un carattere nel testo (docs/STILE-SENZA-AI.md).
 const ICONA_INDIETRO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>`;
-const SCHEDA_DI = v => VISTE.includes(v) ? v : Object.hasOwn(SOTTO_VISTE, String(v)) ? SOTTO_VISTE[v] : null;   // `v` viene anche dall'indirizzo: solo i nomi veri
+const SCHEDA_DI = v => VISTE.includes(v) ? v : null;   // `v` viene anche dall'indirizzo: solo i nomi veri
 // Le funzioni accese (dieta): una chiave che manca vale «acceso», così con un server vecchio o senza risposta si vede tutto come prima.
 const funz = id => !stato.funzioni || stato.funzioni.funzioni[id] !== false;
 const stato = { vista: "formazione", info: null, squadraVista: null, richiesta: 0, calendario: null };
@@ -252,6 +249,8 @@ function svuotaCache() {
 }
 // Scrive la pagina: in cima il titolo della schermata (l'unico h1) e la riga di stato, poi il contenuto (grafica B, spec §8.2 e §10).
 // opz.titolo: il titolo (di norma il nome della scheda accesa); opz.stato === false: niente riga di stato.
+// opz.indietro: una pagina dentro Impostazioni (#618): sopra il titolo il pulsante che torna indietro, {testo, gruppo} (gruppo: la pagina
+// a cui torna, vuoto = Impostazioni). Testo dal catalogo o già passato da esc().
 // Se i dati arrivano da copia salvata aggiunge la nota, se sostituisce non rifà l'entrata. opz.carica: è la schermata di attesa
 // di caricamento() (aria-busy="true" sull'area principale); ogni altra pagina, anche quella di un errore, lo toglie.
 function pagina(html, opz = {}) {
@@ -262,7 +261,8 @@ function pagina(html, opz = {}) {
   const titolo = opz.titolo || (scheda ? t("nav." + scheda) : "SchieraXI");
   const riga = opz.stato === false ? "" : `<p class="stato-pagina">${rigaStato()}</p>`;
   const nota = opz.daCache ? `<div class="nota" id="nota-cache">${t("comune.dati_salvati", { quando: fDataOra(new Date(opz.daCache)) })}</div>` : "";
-  contenuto.innerHTML = `<header class="capo-pagina"><h1 id="titolo-pagina" tabindex="-1">${esc(titolo)}</h1>${riga}</header>` + nota + html;
+  const indietro = opz.indietro ? `<button class="bottone secondario indietro imp-torna" type="button" data-imp-torna="${esc(opz.indietro.gruppo || "")}">${ICONA_INDIETRO}${opz.indietro.testo}</button>` : "";
+  contenuto.innerHTML = `<header class="capo-pagina${indietro ? " con-indietro" : ""}">${indietro}<h1 id="titolo-pagina" tabindex="-1">${esc(titolo)}</h1>${riga}</header>` + nota + html;
   document.title = `${titolo} · SchieraXI`;            // il nome della finestra è il titolo grande (chi usa un lettore di schermo sente dove è)
   if (conFocus) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }
 }
@@ -322,7 +322,7 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
         return false;
       }
-      pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : ""));
+      pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" type="button" data-imp-gruppo="lega">${t("comune.vai_lega")}</button>` : ""));
       return false;
     }
   };
@@ -577,72 +577,84 @@ document.querySelectorAll(".schede .scheda, .testata .marchio").forEach(a => a.a
   vai(a.dataset.vista || "formazione", undefined, { focoTitolo: true });
 }));
 // L'indirizzo di ogni schermata, lo stesso che l'app sa aprire all'avvio: va nella cronologia, così Indietro e Avanti funzionano.
-// Anche le pagine dentro Squadra e Altro (#449): la voce (`&voce=`, Squadre e rose, Regole...) e la rosa di una squadra (`&rosa=`, il
-// nome; vuoto = la mia). Scritto come lo scrive il browser (URLSearchParams: l'apostrofo diventa %27), così l'indirizzo resta uguale.
-const indirizzoVista = (vista, gruppo, voce, rosa) => "/?" + new URLSearchParams([["vista", vista], ...(vista === "impostazioni" && gruppo ? [["gruppo", gruppo]] : []), ...((vista === "squadra" || vista === "altro") && voce && typeof rosa !== "string" ? [["voce", voce]] : []), ...(vista === "squadra" && typeof rosa === "string" ? [["rosa", rosa]] : [])]);
+// Le pagine dentro Impostazioni hanno il loro (`&gruppo=`), la rosa di un'altra squadra anche il nome (`&rosa=`). Scritto come lo
+// scrive il browser (URLSearchParams: l'apostrofo diventa %27), così l'indirizzo resta uguale.
+const indirizzoVista = (vista, gruppo, rosa) => "/?" + new URLSearchParams([["vista", vista],
+  ...(vista === "impostazioni" && gruppo ? [["gruppo", gruppo]] : []),
+  ...(vista === "impostazioni" && gruppo === "squadre" && typeof rosa === "string" && rosa ? [["rosa", rosa]] : [])]);
 let indirizzoMostrato = null;      // l'indirizzo (senza «#…») della schermata in pagina: un popstate che porta qui non ridisegna niente
 let timerConto = null;
 let regoleAC = null;      // gestori della schermata regole: si staccano quando si esce
 
 // Chi disegna ogni schermata: una mappa con i soli nomi ammessi. Il nome arriva anche dall'indirizzo (?vista=, Indietro): niente
 // chiamate per nome su un oggetto («__proto__», «constructor»...); un nome che non c'è porta alla Formazione.
-const DISEGNO_VISTE = new Map([["formazione", () => vistaFormazione()], ["giornate", () => vistaGiornate()], ["squadra", () => vistaLega("squadra")], ["altro", () => vistaLega("altro")]]);
-// La schermata che resta per un indirizzo, una scorciatoia o un avviso: {vista, voce, gruppo}. «oggi» è la Formazione (#616). Le pagine
-// tolte il 12/11/2026 (#615) portano alla più vicina: «mercato» (Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario) a Squadra, «scambi» ad Altro, una
-// voce che non c'è più (Movimenti, Crediti, Nuova stagione) al menu della sua scheda, le Novità a Impostazioni > Informazioni.
-// Il Diario, che era una voce di Altro, è la pagina Giornate (#617): il suo indirizzo di prima la apre.
-// «lega» è il nome di prima delle voci di Squadra e Altro: vale la scheda della voce. `voci`: le voci di oggi ({id, ambito}).
-function schermataCheResta(vista, voce, voci = VOCI_LEGA) {
-  if (vista === "impostazioni") return { vista, voce: null };
-  if (voce === "novita" && ["altro", "lega"].includes(vista)) return { vista: "impostazioni", voce: null, gruppo: "informazioni" };
-  if (voce === "diario" && ["altro", "lega"].includes(vista)) return { vista: "giornate", voce: null };
-  if (vista === "mercato") return { vista: "squadra", voce: null };
-  if (vista === "scambi") return { vista: "altro", voce: null };
-  const v = voci.find(x => x.id === voce);
-  if (vista === "lega") return v ? { vista: v.ambito, voce } : { vista: "altro", voce: null };
-  if (vista === "squadra" || vista === "altro") return { vista, voce: v && v.ambito === vista ? voce : null };
-  return { vista: VISTE.includes(vista) ? vista : "formazione", voce: null };
+const DISEGNO_VISTE = new Map([["formazione", () => vistaFormazione()], ["giornate", () => vistaGiornate()], ["impostazioni", d => vistaImpostazioni(d)]]);
+
+// ---------------------------------------------------------------- dove porta un indirizzo (anche di una versione di prima)
+// Impostazioni (#618) ha una pagina con le sezioni (Avvisi, La mia lega, Aspetto...) e alcune pagine sue, ognuna con il suo indirizzo
+// (?vista=impostazioni&gruppo=…). Le sezioni sono punti della pagina: il loro nome porta lì.
+const PAGINE_IMP = ["rose", "squadra", "squadre", "regole", "account", "informazioni", "gestione"];
+const SEZIONI_IMP = ["avvisi", "lega", "aspetto"];
+// Nomi di prima: i gruppi delle Impostazioni (#449), le voci di Squadra, Altro e Lega (fino al 12/11/2026), le viste tolte.
+const GRUPPI_DI_PRIMA = { avanzate: "gestione", notifiche: "avvisi", importa: "rose", miasquadra: "squadra", novita: "informazioni" };
+const VOCI_DI_PRIMA = { importa: "rose", squadre: "squadre", miasquadra: "squadra", regole: "regole", novita: "informazioni" };
+const SCHEDE_DI_PRIMA = ["squadra", "altro", "lega", "mercato", "scambi", "regole", "rosa"];
+const daNome = (nomi, x) => typeof x === "string" && Object.hasOwn(nomi, x) ? nomi[x] : x;
+// Una pagina che chi usa l'app non ha (l'account sul server senza account, Gestione per chi non gestisce) porta alla pagina di Impostazioni.
+const paginaImpVisibile = g => g === "account" ? !!stato.account : g === "gestione" ? soloAmministratore() : PAGINE_IMP.includes(g);
+// La rosa di una squadra: la mia (nome vuoto o il mio) è «La mia squadra»; quella di un'altra sta sotto «Le altre squadre», se si vedono.
+function rosaImp(nome) {
+  const mia = miaSquadra();
+  if (!nome || (mia && mia.nome === nome) || !funz("squadre_altrui")) return { vista: "impostazioni", gruppo: "squadra" };
+  return { vista: "impostazioni", gruppo: "squadre", rosa: nome };
 }
+function paginaImp(gruppo, rosa) {
+  const g = daNome(GRUPPI_DI_PRIMA, gruppo);
+  if (SEZIONI_IMP.includes(g)) return { vista: "impostazioni", sezione: g };
+  if (g === "squadre" && (typeof rosa === "string" && rosa || !funz("squadre_altrui"))) return rosaImp(rosa);
+  return paginaImpVisibile(g) ? { vista: "impostazioni", gruppo: g } : { vista: "impostazioni" };
+}
+// La schermata di un indirizzo, di una scorciatoia, di un avviso o di una riga «Da fare»: {vista, gruppo, rosa, sezione}. `q` ha i
+// campi dell'indirizzo (vista, gruppo, voce, rosa). «oggi» è la Formazione (#616), il Diario è Giornate (#617). Squadra e Altro non
+// sono più schede (#618): le loro voci (Aggiorna le rose, Squadre e rose, Regole, la rosa di una squadra) sono pagine di Impostazioni,
+// i loro menu la pagina di Impostazioni (Squadra e i Cambi consigliati alla sezione «La mia lega»). Le pagine tolte il 12/11/2026
+// (#615: Movimenti, Crediti, Scambi...) portano lì anche loro.
+function dove(q = {}) {
+  const vista = typeof q.vista === "string" ? q.vista : "", voce = typeof q.voce === "string" ? q.voce : null;
+  if (vista === "giornate" || vista === "diario" || (voce === "diario" && ["altro", "lega"].includes(vista))) return { vista: "giornate" };
+  if (vista === "impostazioni") return paginaImp(q.gruppo, q.rosa);
+  if (!SCHEDE_DI_PRIMA.includes(vista)) return { vista: "formazione" };
+  if (vista === "regole") return paginaImp("regole");
+  if (vista === "rosa" || (vista === "squadra" && typeof q.rosa === "string")) return rosaImp(vista === "rosa" ? "" : q.rosa);
+  if (voce && Object.hasOwn(VOCI_DI_PRIMA, voce)) return paginaImp(VOCI_DI_PRIMA[voce]);
+  return { vista: "impostazioni", sezione: ["squadra", "mercato"].includes(vista) ? "lega" : null };
+}
+
 // opz.daCronologia: si arriva da Indietro o Avanti del browser (l'indirizzo è già quello giusto: non si scrive di nuovo).
-// opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-4, Indietro): il focus va sul titolo della schermata,
+// opz.focoTitolo: cambio di schermata chiesto da chi usa l'app (clic, tasti 1-3, Indietro): il focus va sul titolo della schermata,
 // così il lettore di schermo dice dove si è arrivati e il Tab riparte dal contenuto.
-// opz.sostituisci: la schermata prende il posto della voce di adesso nella cronologia («‹ Altro» di una pagina aperta da un indirizzo,
-// una voce di Squadra che porta subito a un'altra pagina): Indietro non torna a una voce che riaprirebbe la stessa cosa.
-// La voce di Squadra o di Altro da aprire (`stato.legaTorna`) e la rosa di una squadra (`stato.rosaTorna`) vanno nell'indirizzo (#449).
+// opz.sostituisci: la schermata prende il posto della voce di adesso nella cronologia («‹ Impostazioni» di una pagina aperta da un
+// indirizzo): Indietro non torna a una voce che riaprirebbe la stessa cosa.
+// opz.voce, opz.rosa: gli altri campi dell'indirizzo (la voce di Squadra o Altro di prima, la rosa di una squadra): vedi dove().
+// Una voce nuova nella cronologia si ricorda da dove si veniva (`da`): i pulsanti «‹» dell'app tornano lì come Indietro.
 function vai(vista, gruppo, opz = {}) {
   chiudiPannelloAffiancato();                                             // schede e tasti restano attivi con il pannello accanto (da 1200 px)
-  const resta = schermataCheResta(vista, stato.legaTorna);                // nomi vecchi e pagine tolte: la schermata più vicina che resta
-  vista = resta.vista;
-  if (resta.gruppo) gruppo = resta.gruppo;
-  if (typeof stato.legaTorna === "string") stato.legaTorna = resta.voce;  // una voce che non c'è più non resta nell'indirizzo
-  const imp = vista === "impostazioni";                                   // l'ingranaggio in testata: non è una delle schede della barra
-  const scheda = imp ? null : vista;                                      // la scheda della barra che si accende
-  if (vista !== "squadra" && vista !== "altro") { stato.legaTorna = null; stato.rosaTorna = null; }   // valgono solo per Squadra e Altro
-  const prima = stato.vista;
-  stato.vista = vista;                                                    // il nome della finestra lo scrive pagina(), con il titolo grande
+  const d = dove({ vista, gruppo, voce: opz.voce, rosa: opz.rosa });       // nomi vecchi e pagine tolte: la schermata che ne ha preso il posto
+  const ora = location.pathname + location.search;
+  stato.vista = d.vista;                                                  // il nome della finestra lo scrive pagina(), con il titolo grande
   document.querySelectorAll(".schede .scheda").forEach(b => {
-    b.classList.toggle("attiva", b.dataset.vista === scheda);
-    if (b.dataset.vista === scheda) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    b.classList.toggle("attiva", b.dataset.vista === d.vista);
+    if (b.dataset.vista === d.vista) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   });
-  const ing = $("#bottone-impostazioni");
-  ing.classList.toggle("attiva", imp);
-  if (imp) ing.setAttribute("aria-current", "page"); else ing.removeAttribute("aria-current");
-  if (!imp) try { localStorage.setItem("vista", vista); } catch { /* niente memoria: va bene lo stesso */ }
+  // l'app si riapre sull'ultima schermata per schierare o per vedere com'è andata, non sulle impostazioni
+  if (d.vista !== "impostazioni") try { localStorage.setItem("vista", d.vista); } catch { /* niente memoria: va bene lo stesso */ }
   if (!opz.daCronologia) {
     // una voce nuova nella cronologia per ogni schermata nuova; la prima schermata e i ridisegni della stessa la sostituiscono
-    const g = imp ? gruppo || stato.impDaUrl || null : null;
-    const vl = (vista === "squadra" || vista === "altro") && typeof stato.legaTorna === "string" ? stato.legaTorna : null;
-    const rosa = vista === "squadra" && typeof stato.rosaTorna === "string" ? stato.rosaTorna : null;
-    const indirizzo = indirizzoVista(vista, g, vl, rosa), voce = { vista, gruppo: g, voce: vl, rosa };
-    // da 1100 px Squadra e Altro sono una schermata sola (menu e pagina affiancati), da 768 px anche le Impostazioni: la scheda o il
-    // tasto 3 con una voce aperta non aggiungono una voce che la pagina riporta subito lì (Indietro non farebbe niente). Non da
-    // Regole o dalla rosa di una squadra, che sono pagine loro (`pagina`).
-    const larga = imp ? !g && typeof impLargo === "function" && impLargo() : (vista === "squadra" || vista === "altro") && vl === null && rosa === null && legaLarga();
-    const stessa = larga && prima === vista && !(history.state && history.state.pagina);
+    const indirizzo = indirizzoVista(d.vista, d.gruppo, d.rosa), voce = { vista: d.vista, gruppo: d.gruppo || null, rosa: d.rosa || null };
     try {
-      // sostituendo la voce si tiene da dove era arrivata (`da`, scriviIndirizzo): è ancora la stessa pagina
-      if (!history.state || location.pathname + location.search === indirizzo || stessa || opz.sostituisci) history.replaceState({ ...voce, da: (history.state && history.state.da) || null }, "", indirizzo);
-      else history.pushState(voce, "", indirizzo);
+      // sostituendo la voce si tiene da dove era arrivata (`da`): è ancora la stessa pagina
+      if (!history.state || ora === indirizzo || opz.sostituisci) history.replaceState({ ...voce, da: (history.state && history.state.da) || null }, "", indirizzo);
+      else history.pushState({ ...voce, da: ora }, "", indirizzo);
     } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
   }
   indirizzoMostrato = location.pathname + location.search;
@@ -651,8 +663,7 @@ function vai(vista, gruppo, opz = {}) {
   delete contenuto.dataset.gruppo;
   clearInterval(timerConto);
   if (regoleAC) { regoleAC.abort(); regoleAC = null; }
-  if (imp) vistaImpostazioni(gruppo);
-  else DISEGNO_VISTE.get(vista)();
+  DISEGNO_VISTE.get(d.vista)(d);
   if (opz.focoTitolo) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }   // pagina() lo tiene anche quando la schermata si ridisegna
 }
 // Indietro e Avanti del browser (e del mouse): la schermata di quella voce, come un clic sulla sua scheda (il foglio si chiude con lei).
@@ -661,42 +672,22 @@ window.addEventListener("popstate", ev => {
   chiudiFoglio();
   const q = new URLSearchParams(location.search);                          // voce senza stato: si legge l'indirizzo
   const v = ev.state && ev.state.vista ? ev.state : { vista: q.get("vista"), gruppo: q.get("gruppo"), voce: q.get("voce"), rosa: q.get("rosa") };
-  stato.legaTorna = typeof v.voce === "string" ? v.voce : null;           // voce di Squadra o Altro, o il menu (#449)
-  stato.rosaTorna = typeof v.rosa === "string" ? v.rosa : null;           // rosa di una squadra
-  vai(v.vista || "formazione", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
+  vai(v.vista || "formazione", v.gruppo || undefined, { voce: v.voce, rosa: v.rosa, daCronologia: true, focoTitolo: true });
 });
-// L'indirizzo di una pagina dentro Squadra, Altro o Impostazioni (#449): la voce aperta accanto al menu, Regole, la rosa di
-// una squadra (`pagina: true`: pagine loro, non accanto al menu), il gruppo delle Impostazioni. `nuova` (un clic di chi usa l'app):
-// una voce nuova nella cronologia, che si ricorda da dove si veniva (`da`), così i pulsanti «‹» dell'app tornano lì come Indietro.
-// Senza (prima apertura, Indietro, ridisegno dopo un salvataggio) si corregge la voce di adesso, che tiene il suo `da`; con lo stesso
-// indirizzo anche con `nuova` (una voce uguale non cambierebbe niente con Indietro).
-function scriviIndirizzo(voce, nuova) {
-  const indirizzo = indirizzoVista(voce.vista, voce.gruppo, voce.voce, voce.rosa), ora = location.pathname + location.search;
-  try {
-    if (nuova && ora !== indirizzo) history.pushState({ ...voce, da: ora }, "", indirizzo);
-    else history.replaceState({ ...voce, da: (history.state && history.state.da) || null }, "", indirizzo);
-  } catch { /* niente cronologia (pagina aperta da un file) */ }
-  indirizzoMostrato = location.pathname + location.search;
-}
-// I pulsanti «‹ Squadra», «‹ Altro», «‹ Impostazioni»: se la voce di prima nella cronologia è quella giusta (`prima(da)`), sono
-// Indietro del browser e non lasciano una voce morta. `inPosto`: l'indirizzo che la pagina ha già disegnato da sola (il menu accanto):
-// Indietro non ridisegna niente. Torna false se non c'è una voce di prima giusta (pagina aperta da un indirizzo o da un collegamento).
-function tornaIndietro(prima, inPosto) {
+// I pulsanti «‹» dell'app: se la voce di prima nella cronologia è quella giusta (`prima(da)`), sono Indietro del browser e non
+// lasciano una voce morta. Torna false se non c'è una voce di prima giusta (pagina aperta da un indirizzo o da un collegamento).
+function tornaIndietro(prima) {
   const da = history.state && history.state.da;
   if (typeof da !== "string" || !prima(da)) return false;
-  if (inPosto) indirizzoMostrato = inPosto;
   history.back();
   return true;
 }
-// «‹ Squadra» della rosa di una squadra (`squadre`: torna a Squadre e rose) e «‹ Altro» di Regole (`altro`). Senza una voce
-// di prima nella stessa sezione, la sezione prende il posto della pagina nella cronologia.
-function tornaAllaSezione(dove) {
-  const sezione = dove === "altro" ? "altro" : "squadra";
-  const vistaDi = u => { try { return new URLSearchParams(u.split("?")[1] || "").get("vista"); } catch { return null; } };
-  if (tornaIndietro(da => vistaDi(da) === sezione)) return;
-  stato.rosaTorna = null;
-  if (dove === "altro") { stato.legaTorna = null; vai("altro", undefined, { sostituisci: true, focoTitolo: true }); }
-  else vaiLega(dove, { sostituisci: true, focoTitolo: true });
+// «‹ Impostazioni» di una pagina di Impostazioni, «‹ Le altre squadre» della rosa di un'altra squadra (`gruppo`): Indietro se si viene
+// da lì, altrimenti quella pagina prende il posto di questa nella cronologia.
+function tornaImp(gruppo) {
+  const meta = indirizzoVista("impostazioni", gruppo || null);
+  if (tornaIndietro(da => da === meta)) return;
+  vai("impostazioni", gruppo || undefined, { sostituisci: true, focoTitolo: true });
 }
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
@@ -741,20 +732,31 @@ async function caricaInfo() {
       squadra: i.mia_squadra || null,
       dati: (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, ""),
     };
-    $("#bottone-aggiorna").classList.toggle("gira", i.aggiornamento_in_corso);
+    segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
     stato.rigaStato = { offline: true };
   }
   aggiornaRigaStato();
 }
+// La schermata in pagina, di nuovo, dal suo indirizzo (anche una pagina dentro Impostazioni): «Riprova», dati nuovi.
+function vaiQui(opz = {}) {
+  const q = new URLSearchParams(location.search);
+  vai(q.get("vista") || stato.vista, q.get("gruppo") || undefined, { rosa: q.get("rosa"), sostituisci: true, ...opz });
+}
 
 // ---------------------------------------------------------------- aggiornamento dati
-$("#bottone-aggiorna").addEventListener("click", async () => {
-  const b = $("#bottone-aggiorna");
+// In Impostazioni > Gestione (#618: prima erano le frecce in testata). Mentre il server scarica il pulsante è spento; si può lasciare
+// la pagina, l'avviso arriva lo stesso.
+function segnaAggiornamento(inCorso) {
+  stato.aggiornoDati = inCorso;
+  const b = $("#aggiorna-dati");
+  if (b) b.disabled = inCorso;
+}
+async function aggiornaDati() {
   try {
     const r = await api("/api/aggiorna", { method: "POST" });
     if (!r.avviato) { avviso(r.messaggio); return; }
-    b.classList.add("gira");
+    segnaAggiornamento(true);
     avviso(t("aggiorna.avviato"));
     let tentativi = 0;
     const controlla = async () => {
@@ -762,21 +764,21 @@ $("#bottone-aggiorna").addEventListener("click", async () => {
       try { s = await api("/api/aggiorna"); tentativi = 0; }
       catch (e) {
         if (++tentativi < 5) { setTimeout(controlla, 3000); return; }
-        b.classList.remove("gira");
+        segnaAggiornamento(false);
         avviso(t("aggiorna.non_so"));
         return;
       }
       if (s.in_corso) { setTimeout(controlla, 2000); return; }
-      b.classList.remove("gira");
+      segnaAggiornamento(false);
       avviso(s.errori.length ? t("aggiorna.problemi", { errori: s.errori.join("; ") }) : t("aggiorna.ok"), 6000);
       stato.calendario = null;
       svuotaCache();
       await caricaInfo();
-      vai(stato.vista);
+      vaiQui();
     };
     setTimeout(controlla, 2000);
   } catch (e) { avviso(e.message); }
-});
+}
 
 // ---------------------------------------------------------------- Formazione: la schermata che dice chi schierare (#616)
 // Una schermata sola al posto di Oggi e Formazione. La testa cambia con la fase della giornata (`fase` di /api/oggi): prima della
@@ -1680,14 +1682,14 @@ document.addEventListener("click", ev => {
   if (sost) apriSostituzione(Number(sost.dataset.sostituisci));
   const v = ev.target.closest("[data-vai]");
   if (v) { chiudiFoglio(); vai(v.dataset.vai); }
-  const ind = ev.target.closest("[data-indietro]");                       // «‹ Squadra» della rosa, «‹ Altro» di Regole (#449)
-  if (ind) { chiudiFoglio(); tornaAllaSezione(ind.dataset.indietro); }
-  const ig = ev.target.closest("[data-imp-gruppo]");
-  if (ig) { chiudiFoglio(); vai("impostazioni", ig.dataset.impGruppo); }
+  const ind = ev.target.closest("[data-imp-torna]");                      // «‹ Impostazioni» di una sua pagina, «‹ Le altre squadre»
+  if (ind) { chiudiFoglio(); tornaImp(ind.dataset.impTorna); }
+  const ig = ev.target.closest("[data-imp-gruppo]");                      // una riga di Impostazioni, o un collegamento a una sua pagina
+  if (ig) { chiudiFoglio(); vai("impostazioni", ig.dataset.impGruppo, { focoTitolo: true }); }
   if (ev.target.closest("[data-chiudi]")) chiudiFoglio();
-  if (ev.target.closest("[data-riprova]")) vai(stato.vista);
+  if (ev.target.closest("[data-riprova]")) vaiQui();
   if (ev.target.closest("[data-importa-rose]")) {
-    if (typeof apriPrimoAvvio === "function") apriPrimoAvvio(); else { vaiLega("importa"); if (typeof dfPortaA === "function") dfPortaA("rose"); }
+    if (typeof apriPrimoAvvio === "function") apriPrimoAvvio(); else vai("impostazioni", "rose");
   }
 });
 document.addEventListener("keydown", ev => {
@@ -1701,7 +1703,7 @@ document.addEventListener("keydown", ev => {
     const c = $("#campo-cerca");
     if (c && c.getClientRects().length && !foglioModale()) c.focus(); else apriRicerca();              // sul PC il campo della testata
   }
-  else if (/^[1-9]$/.test(ev.key) && Number(ev.key) <= VISTE.length && !foglioModale()) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
+  else if (/^[1-9]$/.test(ev.key) && Number(ev.key) <= VISTE.length && !foglioModale()) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-3 cambiano sezione
   else if (ev.key === "," && !foglioModale()) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
 });
 // ---------------------------------------------------------------- lega: squadre, rose, regole
@@ -1729,13 +1731,34 @@ function htmlDifferenze(d) {
   return righe.join("");
 }
 
-// `o.nuova`: aperta con un clic da Squadre e rose, una voce nuova nella cronologia (#449: Indietro torna a Squadre e rose, un
-// ricaricamento riapre la rosa); senza (indirizzo, Indietro, nome cambiato, stemma caricato) si corregge la voce di adesso.
-async function vistaRosa(nome, o = {}) {
-  const mia = nuovaRichiesta();
-  stato.vista = "squadra";
-  scriviIndirizzo({ vista: "squadra", gruppo: null, voce: "squadre", rosa: nome == null ? "" : String(nome), pagina: true }, !!o.nuova);
-  caricamento(t("scambio.carico_rosa"));
+// La rosa di una squadra, pagina di Impostazioni (#618). `nome` vuoto: la mia («La mia squadra», ?gruppo=squadra), con la scelta di qual
+// è la mia («Non è la tua squadra?»); un nome: un'altra squadra (?gruppo=squadre&rosa=…), sotto «Le altre squadre», con la sua
+// formazione consigliata. Nome, crediti, stemma e maglia si cambiano qui. L'indirizzo lo scrive vai().
+const sceltaMiaSquadra = (squadre = stato.squadre || []) => `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${squadre.map(x =>
+  `<option value="${esc(x.nome)}" ${x.mia ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>`;
+function collegaSceltaMia() {
+  const ms = $("#mia-squadra");
+  if (ms) ms.addEventListener("change", async () => {
+    try {
+      await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: ms.value }) });
+      svuotaCache(); stato.squadraVista = null;
+      avviso(t("lega.squadra_salvata"));
+      await Promise.all([caricaInfo(), caricaSquadre()]);
+      if (stato.vista === "impostazioni") vaiQui();
+    } catch (e) { avviso(e.message); }
+  });
+}
+async function vistaRosa(nome) {
+  const mia = nuovaRichiesta(), miaS = miaSquadra(), squadre = stato.squadre || [];
+  const indietro = nome ? { testo: esc(t("imp.altre_squadre")), gruppo: "squadre" } : { testo: t("shell.impostazioni"), gruppo: "" };
+  if (!nome && !miaS) {                                                    // la mia squadra non è ancora scelta (o mancano le rose)
+    pagina(`<div class="carta">${squadre.length ? `<p class="debole">${t("lega.scegli_quale_delle")}</p>${sceltaMiaSquadra(squadre)}`
+      : `<p class="debole">${t("lega.importa_prima_rose")}</p><div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div>`}</div>`,
+    { titolo: t("lega.mia_squadra"), stato: false, indietro });
+    collegaSceltaMia();
+    return;
+  }
+  caricamento(t("scambio.carico_rosa"), { titolo: nome || miaS.nome, stato: false, indietro });
   try {
     const r = await api("/api/rosa" + (nome ? `?squadra=${encodeURIComponent(nome)}` : ""));
     if (!ancoraValida(mia)) return;
@@ -1759,10 +1782,8 @@ async function vistaRosa(nome, o = {}) {
         </button></li>`;
       }).join("")}</ul>`;
     }).join("");
-    // sul PC il menu di Squadra resta a sinistra, con «Squadre e rose» aperta: dalla rosa ad «Aggiorna le rose» con un clic (spec C10)
-    pagina(`<div class="lega-colonne" data-aperto="1">${menuLega(vociLega("squadra"), "squadre", t("lega.aria_squadra"))}<div class="lega-pagina">
-      <div class="carta">
-        <div class="riga"><button class="bottone secondario indietro" data-indietro="squadre" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button>${r.mia ? `<span class="etichetta">${t("lega.la_tua")}</span>` : ""}</div>
+    pagina(`<div class="rosa-pagina"><div class="carta">
+        ${r.mia && squadre.length > 1 ? `<details class="non-mia"><summary>${t("lega.non_tua_squadra")}</summary>${sceltaMiaSquadra(squadre)}</details>` : ""}
         <details class="rinomina-squadra"><summary>${t("scambio.cambia_nome")}</summary>
           <div class="riga" style="gap:8px;margin-top:8px"><label class="solo-lettori" for="nome-squadra">${t("scambio.nuovo_nome")}</label>
             <input class="campo-testo" id="nome-squadra" type="text" maxlength="60" autocomplete="off" value="${esc(r.nome)}" style="flex:1;min-width:0">
@@ -1772,22 +1793,19 @@ async function vistaRosa(nome, o = {}) {
           <span class="riga" style="gap:8px"><input class="campo-testo" id="crediti-squadra" type="number" min="0" max="99999" inputmode="numeric" value="${r.crediti_residui ?? ""}" style="width:96px;text-align:right">
           <button class="bottone secondario" id="salva-crediti-squadra" type="button">${t("scambio.salva")}</button></span></div>
         <div class="immagini-squadra">
-          ${["stemma", "maglia"].map(tipo => { const s = (stato.squadre || []).find(x => x.nome === r.nome); const c = s && s.immagini[tipo]; return `<div class="immagine-squadra">
+          ${["stemma", "maglia"].map(tipo => { const s = squadre.find(x => x.nome === r.nome); const c = s && s.immagini && s.immagini[tipo]; return `<div class="immagine-squadra">
             ${c ? `<img src="${urlImg(r.nome, tipo)}" alt="${t(NOME_IMMAGINE[tipo])}">` : `<span class="vuota">${t(NOME_IMMAGINE[tipo])}</span>`}
             <label class="bottone secondario" for="img-${tipo}" style="padding:5px 12px;min-height:44px;font-size:var(--t-sec)">${t(c ? "scambio.cambia_tipo" : "scambio.carica_tipo", { tipo: t(NOME_IMMAGINE[tipo]).toLowerCase() })}</label>
             <input id="img-${tipo}" data-tipo="${tipo}" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>`; }).join("")}
         </div>
-        <div class="pulsanti">${r.mia ? "" : `<button class="bottone" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
+        ${r.mia ? "" : `<div class="pulsanti"><button class="bottone" type="button" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button></div>`}
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" })}</div>
-      </div></div></div>`, { titolo: r.nome });          // il titolo è il nome della squadra (pagina() lo scrive con esc); «la tua» accanto a «‹ Squadra»
-    contenuto.querySelectorAll(".lega-menu [data-lega]").forEach(b => b.addEventListener("click", () => {
-      const v = vociLega("squadra").find(x => x.id === b.dataset.lega);
-      if (v) vaiVoceLega(v);
-    }));
+      </div></div>`, { titolo: r.nome, stato: false, indietro });          // il titolo è il nome della squadra (pagina() lo scrive con esc)
+    collegaSceltaMia();
     const vf = $("#vedi-formazione");
-    if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione"); });
+    if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione", undefined, { focoTitolo: true }); });
     $("#salva-nome-squadra").addEventListener("click", async () => {
       const nuovo = $("#nome-squadra").value.trim().replace(/\s+/g, " ");
       if (!nuovo || nuovo.length > 60) { avviso(t("scambio.nome_non_valido")); return; }
@@ -1796,9 +1814,9 @@ async function vistaRosa(nome, o = {}) {
         const esito = await api("/api/squadre/nome", { method: "PUT", body: JSON.stringify({ nome: r.nome, nuovo }) });
         svuotaCache();
         if (stato.squadraVista === r.nome) stato.squadraVista = null;
-        await caricaSquadre();
+        await Promise.all([caricaInfo(), caricaSquadre()]);
         avviso(t("scambio.nome_salvato"));
-        vistaRosa(esito.nome);
+        vai("impostazioni", r.mia ? "squadra" : "squadre", { rosa: r.mia ? undefined : esito.nome, sostituisci: true });   // il nome nuovo nell'indirizzo
       } catch (e) { avviso(e.message, 5000); }
     });
     $("#salva-crediti-squadra").addEventListener("click", async () => {
@@ -1820,19 +1838,15 @@ async function vistaRosa(nome, o = {}) {
         stato.vImg = Date.now();
         await caricaSquadre();
         avviso(t(inp.dataset.tipo === "stemma" ? "scambio.stemma_aggiornato" : "scambio.maglia_aggiornata"));
-        vistaRosa(r.nome);
+        vaiQui();
       } catch (e) { avviso(e.message, 6000); }
     }));
   } catch (e) {
-    if (ancoraValida(mia)) pagina(errore(e));
+    if (ancoraValida(mia)) pagina(erroreVista(e), { titolo: nome || miaS.nome, stato: false, indietro });
   }
 }
 
 const NOME_IMMAGINE = { stemma: "scambio.stemma", maglia: "scambio.maglia" };
-const NOMI_CONTROLLI = { partite_per_giornata: t("sd.ctl_partite"), voti_per_giornata: t("sd.ctl_voti"), somma_xg: t("sd.ctl_xg"), titolari_per_squadra: t("sd.ctl_titolari"), sentinella: t("sd.ctl_sentinella") };
-// righe della sentinella (fanta/sentinella.py): «sentinella_<invariante>», il nome dell'invariante con gli spazi; quelle a posto
-// non si mostrano (le riassume la riga «sentinella»)
-const nomeControllo = n => NOMI_CONTROLLI[n] || (n.startsWith("sentinella_") ? t("sd.ctl_sentinella_una", { nome: n.slice(11).replaceAll("_", " ") }) : n);
 // Gol attesi nostri, senza Understat (I4 dal vivo, #401): i numeri calcolati solo con i voti di Fantacalcio.it contro quelli mostrati
 // (campo `registro_nostri`), dopo il registro delle giornate e con le sue righe. Verdetto e soglie dal server (`regge`, `regge_tutto`),
 // non si ricalcolano qui. Errore in percentuale come il registro, punti con due cifre e il segno, scarto con tre cifre, gol attesi su
@@ -1958,9 +1972,8 @@ async function apriStatoDati() {
   try {
     const s = await api("/api/stato-dati");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
-    const nomiFonte = { aggiornamento: t("sd.f_aggiornamento"), listone: t("sd.f_listone"), voti: t("sd.f_voti"), probabili: t("sd.f_probabili"),
-      calendario: t("sd.f_calendario"), understat: t("sd.f_understat"), "taratura-probabili": t("sd.f_taratura") };
-    const agg = s.aggiornamenti.length ? s.aggiornamenti.map(a => `<div class="riga"><span>${esc(nomiFonte[a.cosa] || nomiFonte[a.cosa.split(" ")[0]] || a.cosa)}</span>
+    // il nome di ogni riga (aggiornamenti e controlli) lo scrive il server, campo `etichetta` (fanta/stato_dati.py, fanta/controlli.py)
+    const agg = s.aggiornamenti.length ? s.aggiornamenti.map(a => `<div class="riga"><span>${esc(a.etichetta || a.cosa)}</span>
       <span class="debole piccolo">${a.quando ? esc(quando(a.quando)) : t("sd.mai")}</span></div>
       ${a.errori.map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
     const c = s.calibrazione;
@@ -1985,7 +1998,7 @@ async function apriStatoDati() {
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
         ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${nomeGiornata(null, p.giornata)}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
       <div class="carta"><h2>${t("scambio.controlli_sui_dati")}</h2>
-        ${(s.controlli || []).length ? s.controlli.filter(k => !(k.nome.startsWith("sentinella_") && k.esito === "ok")).map(k => `<div class="riga"><span>${esc(nomeControllo(k.nome))}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
+        ${(s.controlli || []).length ? s.controlli.filter(k => !(k.nome.startsWith("sentinella_") && k.esito === "ok")).map(k => `<div class="riga"><span>${esc(k.etichetta || k.nome)}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
           ${k.esito === "ok" ? "" : `<div class="debole piccolo">${esc(k.dettaglio || "")}</div>`}`).join("") : `<div class="debole">${t("scambio.fanno_ogni_aggiornamento")}</div>`}</div>
       <div class="carta" id="affidabilita"><h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>
       ${cartaRegistro(s.registro)}
@@ -2031,17 +2044,19 @@ function applicaAspetto() {
   radice.dataset.densita = "compatta";
   segnaMovimento();
 }
+// Impostazioni > Aspetto (#618): il tema e la lingua, ognuno un gruppo di pulsanti. Niente colori, densità, dimensione del testo o icone
+// diverse.
 function schedaAspetto() {
   const a = leggiAspetto();
   const NOMI_TEMA = { auto: t("asp.tema_auto"), chiaro: t("asp.tema_chiaro"), scuro: t("asp.tema_scuro") };
-  const lingue = `<div class="segmenti" style="margin:6px 0 14px" role="group" aria-label="${t("asp.lingua")}">${Object.keys(LINGUE).map(l =>
-    `<button data-lingua="${l}" lang="${l}" class="${LINGUA === l ? "attivo" : ""}">${t("lingua." + l)}</button>`).join("")}</div>`;
-  const seg = (chiave, valore, opzioni) => `<div class="segmenti" style="margin:6px 0 14px">${opzioni.map(([v, n]) =>
-    `<button data-pref="${chiave}" data-valore="${v}" class="${String(valore) === String(v) ? "attivo" : ""}">${n}</button>`).join("")}</div>`;
-  // Lingua e tema. Niente colori, densità, dimensione del testo o icone diverse.
-  return `<div id="aspetto"><div class="carta"><h3>${t("asp.lingua")}</h3>${lingue}</div>
-  <div class="carta"><h3>${t("asp.tema")}</h3>${seg("tema", a.tema, ASPETTO.tema.map(k => [k, NOMI_TEMA[k]]))}
-    <div class="debole piccolo">${t("asp.auto_spiega")}</div></div></div>`;
+  return `<div id="aspetto">
+    <h3 class="imp-sotto" id="asp-tema">${t("asp.tema")}</h3>
+    <div class="segmenti" role="group" aria-labelledby="asp-tema">${ASPETTO.tema.map(v =>
+      `<button type="button" data-pref="tema" data-valore="${v}" class="${a.tema === v ? "attivo" : ""}">${NOMI_TEMA[v]}</button>`).join("")}</div>
+    <div class="debole piccolo">${t("asp.auto_spiega")}</div>
+    <h3 class="imp-sotto" id="asp-lingua">${t("asp.lingua")}</h3>
+    <div class="segmenti" role="group" aria-labelledby="asp-lingua">${Object.keys(LINGUE).map(l =>
+      `<button type="button" data-lingua="${l}" lang="${l}" class="${LINGUA === l ? "attivo" : ""}">${t("lingua." + l)}</button>`).join("")}</div></div>`;
 }
 function collegaAspetto() {
   document.querySelectorAll("#aspetto [data-lingua]").forEach(b => b.addEventListener("click", () => {
@@ -2334,8 +2349,7 @@ function mostraGiornate(d, opz = {}) {
         <span class="gn-dx"><b class="gn-num">${num(f.reale)}</b> <span class="gn-attesi">${f.atteso != null ? t("formazione.punti_e_attesi", { n: num(f.atteso) }) : t("formazione.punti")}</span></span>
       </button>${!largo && aperta ? dettaglioGiornata(d, g, stagioni) : ""}</li>`;
   };
-  const voceSquadre = (vociLega("squadra").find(v => v.id === "squadre") || {}).nome || t("lega.voce_squadre");
-  const vuoto = { squadra: t("giornate.vuoto_squadra", { voce: voceSquadre }), giornate: t("giornate.vuoto_giornate"), calcolo: t("giornate.vuoto_calcolo") }[d.motivo_vuoto] || t("giornate.vuoto");
+  const vuoto = { squadra: t("giornate.vuoto_squadra", { voce: t("lega.mia_squadra") }), giornate: t("giornate.vuoto_giornate"), calcolo: t("giornate.vuoto_calcolo") }[d.motivo_vuoto] || t("giornate.vuoto");
   const lato = largo ? `<div class="gn-lato">${voci.filter(g => giornate.aperte.has(idGiornata(g))).map(g => dettaglioGiornata(d, g, stagioni)).join("")}</div>` : "";
   // ridisegno della stessa pagina (dati nuovi dopo la copia del telefono, finestra più larga, correzione): «Dettagli» resta aperto e il
   // fuoco torna dov'era (una riga, «Dettagli», «Non è quello che ho schierato»); altrimenti finirebbe sul body
@@ -2484,49 +2498,48 @@ function chiaveInUint8(b64) {
   const p = "=".repeat((4 - b64.length % 4) % 4), s = atob((b64 + p).replace(/-/g, "+").replace(/_/g, "/"));
   return Uint8Array.from(s, c => c.charCodeAt(0));
 }
+// Gli avvisi su questo dispositivo (Impostazioni > Avvisi, #618): un interruttore solo, che iscrive o toglie questo browser dalle
+// notifiche dell'app. Quali avvisi partono lo decide il server. Senza notifiche nel browser (iPhone senza l'app sulla Home, browser
+// senza service worker) al posto dell'interruttore una frase dice cosa fare. `dispositivi`: quanti ne ha l'utente (GET /api/avvisi).
+const pushPossibile = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 async function notificheWeb(dispositivi) {
   const dove = $("#notifiche-web");
   if (!dove) return;
-  if (!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window)) {
-    dove.innerHTML = `<div class="debole piccolo" style="margin-top:10px">${t("avv.notifiche_dell_app")}</div>`;
-    return;
-  }
+  const senza = () => { dove.innerHTML = `<p class="debole piccolo">${t("avv.notifiche_dell_app")}</p>`; };
+  if (!pushPossibile()) { senza(); return; }
   // il service worker può non arrivare mai (navigazione privata, installazione fallita): senza, si dice che qui le notifiche non ci sono
   const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 4000))]).catch(() => null);
-  if (!reg) {
-    dove.innerHTML = `<div class="debole piccolo" style="margin-top:10px">${t("avv.notifiche_dell_app")}</div>`;
-    return;
-  }
+  if (!document.body.contains(dove)) return;
+  if (!reg) { senza(); return; }
   let sub = null;
   try { sub = await reg.pushManager.getSubscription(); } catch { /* senza service worker */ }
-  const disegna = attiva => {
-    dove.innerHTML = `<div class="riga" style="margin-top:12px"><span><b>${t("avv.notifiche_questa_app")}</b><span class="debole piccolo" style="display:block">${attiva
-      ? t("avv.attive_qui") + (dispositivi > 1 ? t("avv.in_tutto", { n: dispositivi }) : "") + (stato.account ? "." : t("avv.non_piu_ntfy"))
-      : t(stato.account ? "avv.attivale" : "avv.direttamente_qui")}</span></span>
-      <button class="bottone ${attiva ? "secondario" : ""}" id="push-bottone">${t(attiva ? "avv.disattiva" : "avv.attiva")}</button></div>`;
-    $("#push-bottone").addEventListener("click", attiva ? disattiva : attivaPush);
+  const accendi = async () => {
+    if (await Notification.requestPermission() !== "granted") throw new Error(t("avv.permesso_negato_abilita"));
+    const { chiave } = await api("/api/push/chiave");
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
+    dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
   };
-  const attivaPush = async () => {
-    try {
-      if (await Notification.requestPermission() !== "granted") { avviso(t("avv.permesso_negato_abilita"), 6000); return; }
-      const { chiave } = await api("/api/push/chiave");
-      const reg = await navigator.serviceWorker.ready;
-      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
-      const r = await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) });
-      dispositivi = r.dispositivi; disegna(true); avviso(t("avv.notifiche_attivate"), 5000);
-    } catch (e) { avviso(e.message || t("avv.non_attivo"), 6000); }
+  const spegni = async () => {
+    if (!sub) return;
+    const ep = sub.endpoint;
+    await sub.unsubscribe();
+    dispositivi = (await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) })).dispositivi;
+    sub = null;
   };
-  const disattiva = async () => {
-    try {
-      if (sub) { const ep = sub.endpoint; await sub.unsubscribe(); const r = await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) }); dispositivi = r.dispositivi; sub = null; }
-      disegna(false); avviso(t("avv.notifiche_disattivate_questo"));
-    } catch (e) { avviso(e.message || t("avv.non_disattivo"), 6000); }
-  };
-  disegna(!!sub);
+  dove.innerHTML = interruttore("av_qui", t("imp.avvisi_qui"), !!sub, t("imp.avvisi_qui_aiuto"));
+  const scelta = $("#av_qui");
+  scelta.addEventListener("change", async () => {
+    const acceso = scelta.checked;
+    scelta.disabled = true;
+    try { if (acceso) await accendi(); else await spegni(); avviso(t(acceso ? "avv.notifiche_attivate_qui" : "avv.notifiche_disattivate_questo"), 5000); }
+    catch (e) { scelta.checked = !acceso; avviso(e.message || t(acceso ? "avv.non_attivo" : "avv.non_disattivo"), 6000); }
+    finally { scelta.disabled = false; }
+  });
 }
 
-// Avvisi sul telefono: cosa mandare, le ore tranquille e un avviso di prova.
-const ORE_24 = Array.from({ length: 24 }, (_, h) => h);
+// Impostazioni > Avvisi: l'interruttore di questo dispositivo e le ore tranquille (la fascia è quella già scelta, di norma dalle 23
+// alle 7). Gli altri interruttori di prima (promemoria, riepilogo, reparto scoperto...) non si mostrano più: restano come sono sul
+// server. Si salva solo ciò che si cambia.
 async function avvisiTelefono() {
   const dove = $("#avvisi-telefono");
   if (!dove) return;
@@ -2534,48 +2547,21 @@ async function avvisiTelefono() {
     const a = await api("/api/avvisi");
     if (!document.body.contains(dove)) return;
     const o = a.impostazioni;
-    dove.innerHTML = `<h2>${t("asp.avvisi_titolo")}</h2>
-      ${a.ore_tranquille_spente ? `<div class="piccolo" role="status" style="margin:8px 0;font-weight:600">${t("avv.avevi_scelto_ore")}</div>` : ""}
-      <div class="debole piccolo">${t(stato.account ? "avv.arrivano_account" : "avv.arrivano_ntfy")}</div>
-      ${interruttore("av_cambi", t("avv.cambi"), o.cambi, t("avv.cambi_aiuto"))}
-      ${rigaRegola(t("avv.prima"), `<select class="campo-testo scelta-corta" id="av_prima" aria-label="${t("avv.prima")}">${[[0, "avv.prima_0"], [30, "avv.prima_30"], [60, "avv.prima_60"], [90, "avv.prima_90"]].map(([m, k]) => `<option value="${m}" ${m === (o.avviso_prima ?? 60) ? "selected" : ""}>${t(k)}</option>`).join("")}</select>`, t("avv.prima_aiuto"))}
-      ${interruttore("av_60", t("avv.prom_60"), o.promemoria_60, t("avv.prom_60_aiuto"))}
-      ${interruttore("av_15", t("avv.prom_15"), o.promemoria_15)}
-      ${interruttore("av_riepilogo", t("avv.riepilogo"), o.riepilogo, t("avv.riepilogo_aiuto"))}
-      ${interruttore("av_copertura", t("avv.copertura"), o.copertura, t("avv.copertura_aiuto"))}
-      ${stato.account ? "" : interruttore("av_nativa", t("avv.nativa"), o.app_nativa, t("avv.nativa_aiuto"))}
-      ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, t("avv.ore_tranq_aiuto"))}
-      <div class="riga" id="av-fascia" style="gap:10px;margin:6px 0 10px" ${o.silenzio ? "" : "hidden"}>
-        <label class="debole piccolo" style="flex:1">${t("avv.dalle")}<select class="campo-testo" id="av_da" aria-label="${t("avv.inizio_delle_ore")}">${ORE_24.map(h => `<option value="${h}" ${h === o.silenzio_da ? "selected" : ""}>${String(h).padStart(2, "0")}:00</option>`).join("")}</select></label>
-        <label class="debole piccolo" style="flex:1">${t("avv.alle")}<select class="campo-testo" id="av_a" aria-label="${t("avv.fine_delle_ore")}">${ORE_24.map(h => `<option value="${h}" ${h === o.silenzio_a ? "selected" : ""}>${String(h).padStart(2, "0")}:00</option>`).join("")}</select></label>
-      </div>
+    dove.innerHTML = `${a.ore_tranquille_spente ? `<div class="piccolo" role="status" style="margin:8px 0;font-weight:600">${t("avv.avevi_scelto_ore")}</div>` : ""}
       <div id="notifiche-web"></div>
-      <div class="pulsanti"><button class="bottone secondario" id="avviso-prova" ${a.canale ? "" : "disabled"}>${t("avv.manda_avviso_prova")}</button></div>
-      ${a.canale ? "" : `<div class="debole piccolo">${t(stato.account ? "avv.attiva_sopra" : "avv.non_attivi")}</div>`}`;
+      ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, t("imp.ore_tranquille_aiuto", { da: Number(o.silenzio_da), a: Number(o.silenzio_a) }))}`;
     notificheWeb(a.dispositivi);
-    const salva = async () => {
-      try {
-        $("#av-fascia").hidden = !$("#av_silenzio").checked;
-        if ($("#av_silenzio").checked && $("#av_da").value === $("#av_a").value) {
-          avviso(t("avv.ore_tranquille_non"), 6000);
-          $("#av_da").value = String(o.silenzio_da); $("#av_a").value = String(o.silenzio_a);
-          return;
-        }
-        const r = await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ cambi: $("#av_cambi").checked, promemoria_60: $("#av_60").checked, promemoria_15: $("#av_15").checked, riepilogo: $("#av_riepilogo").checked, copertura: $("#av_copertura").checked, app_nativa: $("#av_nativa") ? $("#av_nativa").checked : undefined,
-          silenzio: $("#av_silenzio").checked, silenzio_da: Number($("#av_da").value), silenzio_a: Number($("#av_a").value), avviso_prima: Number($("#av_prima").value) }) });
-        if (r && r.impostazioni) Object.assign(o, r.impostazioni);          // l'ultima fascia salvata, per tornarci se la prossima è sbagliata
-      } catch (e) { avviso(e.message); }
-    };
-    ["#av_cambi", "#av_prima", "#av_60", "#av_15", "#av_riepilogo", "#av_copertura", "#av_nativa", "#av_silenzio", "#av_da", "#av_a"].filter(id => $(id)).forEach(id => $(id).addEventListener("change", salva));
-    $("#avviso-prova").addEventListener("click", async () => {
-      try { const r = await api("/api/avvisi/prova", { method: "POST" }); avviso(t(r.inviato ? "avv.prova_ok" : "avv.prova_no"), 5000); }
-      catch (e) { avviso(e.message, 6000); }
+    const ore = $("#av_silenzio");
+    ore.addEventListener("change", async () => {
+      const acceso = ore.checked;
+      try { await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ silenzio: acceso }) }); }
+      catch (e) { ore.checked = !acceso; avviso(e.message, 6000); }
     });
-  } catch (e) { if (document.body.contains(dove)) dove.innerHTML = `<h2>${t("asp.avvisi_titolo")}</h2>${errore(e)}`; }
+  } catch (e) { if (document.body.contains(dove)) dove.innerHTML = errore(e); }
   finally { dove.removeAttribute("aria-busy"); }                           // ha finito di caricare, bene o male
 }
 
-// ---------------------------------------------------------------- stemma e maglia (Lega)
+// ---------------------------------------------------------------- stemma e maglia (foglio, da La mia squadra e dal menu Condividi)
 // Da file, da un indirizzo web (lo scarica il server, solo https pubblico) o dal menu Condividi del telefono (app installata).
 async function chiamaImmagine(percorso, opzioni = {}) {
   let r;
@@ -2679,81 +2665,16 @@ async function apriStemmaMaglia(nome, inAttesa = false) {
   disegna();
 }
 
-// Squadra e Altro: un menu di voci con la pagina accanto (stesso componente delle Impostazioni). `ambito` dice in quale scheda sta la
-// voce; `vai` è una voce che porta a un'altra pagina invece di aprirsi accanto al menu.
-// Restano tre voci. Dal 12/11/2026 (#615) Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Scambi, Movimenti, Crediti
-// e Novità non ci sono più (le Novità si leggono in Impostazioni > Informazioni); «Nuova stagione» compare da sola quando serve.
-// Il Diario è la pagina Giornate, nella barra (#617).
-// `vai(o)`: `o.nuova` = clic nel menu (Regole scrive una voce nuova nella cronologia, #449); `o.sostituisci` = la voce è stata
-// chiesta da un indirizzo o da un collegamento e la pagina prende il posto della voce di adesso (niente voce che riporta qui).
-const VOCI_LEGA = [
-  { id: "squadre", ambito: "squadra", nome: t("lega.voce_squadre"), sub: t("lega.voce_squadre_sub") },
-  { id: "importa", ambito: "squadra", nome: t("lega.voce_importa"), sub: t("lega.voce_importa_sub") },
-  { id: "regole", ambito: "altro", nome: t("lega.voce_regole"), sub: t("lega.voce_regole_sub"), vai: o => vistaRegole(o) },
-];
-const NOME_AMBITO = { squadra: t("nav.squadra"), altro: t("nav.altro") };
-// Apre Squadra o Altro già su una voce (anche tornando da una pagina come la rosa di una squadra o le regole). `opz` come in vai().
-function vaiLega(voce, opz) { stato.legaTorna = voce; vai("lega", undefined, opz); }
+// ---------------------------------------------------------------- La mia lega (Impostazioni, #618)
+// Fino al 12/11/2026 erano le schede Squadra (Squadre e rose, Aggiorna le rose) e Altro (Regole): ora sono pagine di Impostazioni,
+// con il loro indirizzo. La rosa di una squadra è vistaRosa, le regole vistaRegole.
+const indietroImp = () => ({ testo: t("shell.impostazioni"), gruppo: "" });
 
-// Squadra e Altro sugli schermi larghi (spec grafica B §5 C10): da 1100 px il menu delle voci resta a sinistra e la voce scelta si apre
-// a destra: da una all'altra con un clic, senza tornare al menu. Sotto i 1100 px una cosa alla volta: il menu, oppure la pagina con
-// «‹ Squadra».
-const LEGA_LARGA = matchMedia("(min-width: 1100px)");
-const legaLarga = () => LEGA_LARGA.matches;
-// Le voci di una scheda, nell'ordine di VOCI_LEGA. Senza le rose degli altri «La mia squadra».
-function vociLega(ambito) {
-  return VOCI_LEGA.filter(v => v.ambito === ambito)
-    .map(v => v.id === "squadre" && !funz("squadre_altrui") ? { ...v, nome: t("lega.voce_miasquadra"), sub: t("lega.voce_miasquadra_sub") } : v);
-}
-// Una voce si apre accanto al menu se non porta altrove (`vai`): le Regole sono una pagina loro.
-const nellaPagina = v => !v.vai;
-// Da una pagina con il menu che non è la pagina della scheda (la rosa di una squadra): una voce porta alla sua pagina.
-const vaiVoceLega = v => (v.vai ? v.vai({ nuova: true }) : vaiLega(v.id));
-// Il menu delle voci: la voce aperta ha aria-current="page" (il lettore di schermo la dice; a vista il fondo e la linea a sinistra).
-// Nomi e sottotitoli vengono da testi.js, non dall'utente.
-function menuLega(voci, aperta, aria) {
-  return `<nav class="lega-menu" aria-label="${aria}"><ul class="elenco">${voci.map(v => `<li><button class="voce lega-voce" type="button" data-lega="${v.id}"${v.id === aperta ? ' aria-current="page"' : ""}>
-    <span><span class="nome">${v.nome}</span><span class="dettaglio">${v.sub}</span></span><span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul></nav>`;
-}
-// L'indirizzo della voce aperta (spec C2): ?vista=squadra&voce=… o ?vista=altro&voce=… (#449: prima l'indirizzo non diceva la voce e sotto i 1100 px Indietro usciva dalla sezione). Così Indietro
-// torna alla voce di prima (o al menu) e un ricaricamento riapre questa. `nuova` (un clic): una voce nuova nella cronologia; senza
-// (prima apertura) si corregge quella di adesso (scriviIndirizzo). La voce aperta (`id`) sta anche nello stato della cronologia.
-function indirizzoLega(vista, nuova, id) {
-  stato.vista = vista;
-  scriviIndirizzo({ vista, gruppo: null, voce: id }, nuova);
-}
-// Finestra allargata oltre i 1100 px con il solo menu in pagina: a destra si apre la voce dell'ultima volta (o la prima), invece di
-// lasciare una colonna vuota. La prepara vistaLega a ogni disegno.
-let legaQuandoLarga = null;
-// Il focus non si perde quando la finestra passa i 1100 px: stringendo sparisce il menu (con la voce che aveva il focus), allargando
-// sparisce «‹ Squadra». Il focus va sul titolo della voce aperta (o della pagina, nella rosa) stringendo, sulla voce aperta del menu
-// allargando. Se il browser l'ha già tolto all'elemento nascosto (focus sul body) vale l'ultimo elemento di Squadra o Altro che l'aveva.
-let focusLega = null;
-document.addEventListener("focusin", ev => { focusLega = ev.target && ev.target.closest && ev.target.closest(".lega-colonne") ? ev.target : null; });
-function focusLegaVisibile() {
-  const ora = document.activeElement, prima = ora && ora !== document.body ? ora : focusLega;
-  const radice = prima && prima.isConnected && prima.closest(".lega-colonne");
-  if (!radice || prima.getClientRects().length) return;                  // non è di Squadra o Altro, oppure si vede ancora
-  const dove = LEGA_LARGA.matches ? radice.querySelector('.lega-menu [aria-current="page"]') : $("#lega-titolo", radice) || $("#titolo-pagina");
-  if (dove) dove.focus({ preventScroll: true });
-}
-LEGA_LARGA.addEventListener("change", () => { if (LEGA_LARGA.matches && legaQuandoLarga) legaQuandoLarga(); focusLegaVisibile(); });
-
-async function vistaLega(ambito = "altro") {
-  const rosaChiesta = stato.rosaTorna; stato.rosaTorna = null;
-  if (ambito === "squadra" && typeof rosaChiesta === "string") { stato.legaTorna = null; return vistaRosa(rosaChiesta); }   // ?vista=squadra&rosa=… (indirizzo, Indietro)
-  const mia = nuovaRichiesta();
-  caricamento(t(ambito === "squadra" ? "lega.carico_squadra" : "comune.carico"));
-  let squadre = [];
-  try { squadre = await api("/api/squadre"); }
-  catch (e) { if (e.rete) { if (ancoraValida(mia)) pagina(erroreVista(e)); return; } squadre = []; }
-  if (!ancoraValida(mia)) return;
-  const daUrl = stato.legaTorna; stato.legaTorna = null;
-  const immagine = (sq, tipo) => sq.immagini && sq.immagini[tipo] ? `<img class="${tipo === "stemma" ? "stemma-lista" : "maglia-lista"}" src="${urlImg(sq.nome, tipo)}" alt="${t("lega.alt_immagine", { tipo: t(NOME_IMMAGINE[tipo]), nome: esc(sq.nome) })}" loading="lazy">` : "";
-  const htmlSceltaMia = () => `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${squadre.map(x => `<option value="${esc(x.nome)}" ${x.mia ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>`;
-
-  const corpi = {
-    importa: () => `<div class="carta">
+// Aggiorna le rose (?vista=impostazioni&gruppo=rose): il file Excel di Leghe, i Comandi rapidi di Apple o il testo incollato, poi
+// l'anteprima (anteprima.js) e «Conferma e salva».
+function vistaImportaRose() {
+  nuovaRichiesta();
+  pagina(`<div class="carta imp-colonna">
       <div class="debole piccolo">${t("lega.esporta_rose_excel")}</div>
       <div class="pulsanti"><label class="bottone" for="file-rose">${t("pav.scegli_file")}</label></div>
       <details style="margin-top:14px"><summary style="font-size:var(--t-corpo)">${t("lega.con_tocco_dal")}</summary>
@@ -2772,114 +2693,54 @@ async function vistaLega(ambito = "altro") {
         <div class="debole piccolo">${t("lega.non_hai_file")}</div>
         <textarea id="testo-rose" class="campo-testo" style="margin-top:12px" placeholder="${t("lega.incolla_qui_testo")}"></textarea>
         <label class="interruttore"><span>${t("lega.togli_squadre_che")}</span><input type="checkbox" id="sostituisci-tutto"></label>
-        <div class="pulsanti"><button class="bottone" id="importa-testo">${t("lega.importa_testo")}</button></div>
+        <div class="pulsanti"><button class="bottone" id="importa-testo" type="button">${t("lega.importa_testo")}</button></div>
       </details>
       <input id="file-rose" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" hidden>
-      <div id="esito-import"></div></div>`,
-    squadre: () => { const miaS = squadre.find(x => x.mia), sceltaMia = htmlSceltaMia(); return squadre.length ? `<div class="carta" id="mia-squadra-carta"><h3 style="margin-top:0">${t("lega.mia_squadra")}</h3>
-      ${miaS ? `<div class="mia-riga">${immagine(miaS, "stemma") || `<span class="iniziale-squadra">${esc(miaS.nome.trim().slice(0, 1).toUpperCase())}</span>`}${immagine(miaS, "maglia")}
-        <div><b>${esc(miaS.nome)}</b><span class="debole piccolo" style="display:block">${tp("sd.n_giocatori", miaS.giocatori)}${miaS.crediti_residui != null ? ` · ${tp("lega.n_crediti", miaS.crediti_residui)}` : ""}</span></div></div>
-        <div class="pulsanti"><button class="bottone secondario" id="apri-stemma-maglia">${t("lega.stemma_maglia")}</button><button class="bottone secondario" data-squadra="${esc(miaS.nome)}">${t("lega.vedi_rosa")}</button></div>
-        <details style="margin-top:10px"><summary style="font-size:var(--t-corpo)">${t("lega.non_tua_squadra")}</summary>${sceltaMia}</details>`
-        : `<div class="debole piccolo">${t("lega.scegli_quale_delle")}</div>${sceltaMia}`}</div>
-      ${!funz("squadre_altrui") ? "" : `<div class="carta"><h3 style="margin-top:0">${t("lega.squadre_rose")}</h3>
-      <ul class="elenco">${squadre.map(x => `<li><button class="voce" style="grid-template-columns:46px 1fr auto" data-squadra="${esc(x.nome)}">
-        ${x.immagini && x.immagini.stemma ? `<img class="stemma-lista" src="${urlImg(x.nome, "stemma")}" alt="" loading="lazy">` : `<span class="iniziale-squadra">${esc(x.nome.trim().slice(0, 1).toUpperCase())}</span>`}
-        <span><span class="nome">${esc(x.nome)}</span>${x.mia ? ` <span class="etichetta">${t("lega.la_tua")}</span>` : ""}
-          <span class="dettaglio" style="display:block">${tp("sd.n_giocatori", x.giocatori)}${x.crediti_residui != null ? ` · ${tp("lega.n_crediti", x.crediti_residui)}` : ""}</span></span>
-        <span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul>
-      <div class="debole piccolo" style="margin-top:8px">${t("lega.tocca_una_squadra")}</div></div>`}`
-      : `<div class="carta"><div class="debole">${t("lega.importa_prima_rose")}</div></div>`; },
+      <div id="esito-import"></div></div>`, { titolo: t("lega.voce_importa"), stato: false, indietro: indietroImp() });
+  const mostraEsito = esito => {
+    svuotaCache();
+    $("#esito-import").innerHTML = `<h3>${t("lega.cosa_cambiato")}</h3>${htmlDifferenze(esito.differenze)}
+      <div class="debole piccolo" style="margin-top:10px">${t("lega.importate", { nomi: esito.squadre_importate.map(esc).join(", "), n: tp("lega.n_squadre", esito.totale_squadre) })}</div>
+      ${esito.avvisi.length ? `<div class="attenzione" style="margin-top:12px"><b>${t("lega.da_controllare")}</b><br>${esito.avvisi.map(esc).join("<br>")}</div>` : `<div class="debole piccolo">${t("lega.rose_controllate_tutto")}</div>`}`;
+    caricaInfo(); caricaSquadre();
   };
-
-  const aggiornaSquadre = () => { caricaInfo(); caricaSquadre(); };
-  // Le pagine disegnano `squadre`, lette all'apertura: dopo un salvataggio si rileggono (con `voce`, quella pagina si ridisegna se è
-  // ancora aperta), così «La mia squadra», i crediti e l'elenco delle squadre non restano quelli di prima finché non si cambia scheda.
-  const rileggiSquadre = async (voce) => {
-    try { squadre = await api("/api/squadre"); } catch { return; }
-    if (voce && stato.legaVoce[ambito] === voce) apri(voce, false);
-  };
-  const collega = {
-    importa: () => {
-      const mostraEsito = esito => {
-        svuotaCache();
-        $("#esito-import").innerHTML = `<h3>${t("lega.cosa_cambiato")}</h3>${htmlDifferenze(esito.differenze)}
-          <div class="debole piccolo" style="margin-top:10px">${t("lega.importate", { nomi: esito.squadre_importate.map(esc).join(", "), n: tp("lega.n_squadre", esito.totale_squadre) })}</div>
-          ${esito.avvisi.length ? `<div class="attenzione" style="margin-top:12px"><b>${t("lega.da_controllare")}</b><br>${esito.avvisi.map(esc).join("<br>")}</div>` : `<div class="debole piccolo">${t("lega.rose_controllate_tutto")}</div>`}`;
-        aggiornaSquadre(); rileggiSquadre();
-      };
-      // in due passi (anteprima.js): prima si controlla cosa ha capito l'app, poi «Conferma e salva»
-      const controlla = sorgente => anteprimaRose($("#esito-import"), sorgente, {
-        sostituisci: $("#sostituisci-tutto").checked,
-        fatto: esito => { mostraEsito(esito); avviso(t("ar.salvate")); },
-      });
-      $("#file-rose").addEventListener("change", ev => {
-        const file = ev.target.files[0];
-        ev.target.value = "";              // così si può scegliere di nuovo lo stesso file
-        if (file) controlla({ file });
-      });
-      $("#importa-testo").addEventListener("click", () => {
-        const testo = $("#testo-rose").value;
-        if (!testo.trim()) { avviso(t("lega.incolla_prima_testo")); return; }
-        controlla({ testo });
-      });
-    },
-    squadre: () => {
-      document.querySelectorAll("[data-squadra]").forEach(b => b.addEventListener("click", () => vistaRosa(b.dataset.squadra, { nuova: true })));
-      const asm = $("#apri-stemma-maglia");
-      if (asm) asm.addEventListener("click", () => apriStemmaMaglia());
-      const ms = $("#mia-squadra");
-      if (ms) ms.addEventListener("change", async () => {
-        try { await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: ms.value }) }); svuotaCache(); stato.squadraVista = null; avviso(t("lega.squadra_salvata")); aggiornaSquadre(); rileggiSquadre("squadre"); }
-        catch (e) { avviso(e.message); }
-      });
-    },
-  };
-
-  const voci = vociLega(ambito);
-  const diretta = voci.find(v => v.id === daUrl && !nellaPagina(v));      // «apri le regole» da Da fare o da un collegamento: subito lì
-  if (diretta) { diretta.vai({ sostituisci: true }); return; }            // al posto della voce di adesso: Indietro non torna qui
-  stato.legaVoce = stato.legaVoce || {};
-  // a destra la voce chiesta (un collegamento, «‹ Squadra» dalla rosa) e, da 1100 px, quella dell'ultima volta in questa scheda o la prima
-  const daAprire = () => { const accanto = voci.filter(v => nellaPagina(v)); return (accanto.find(v => v.id === stato.legaVoce[ambito]) || accanto[0] || {}).id; };
-  const scelta = (voci.find(v => v.id === daUrl && nellaPagina(v)) || {}).id || (legaLarga() ? daAprire() : null);
-  const nome = NOME_AMBITO[ambito];
-  pagina(`<div class="lega-colonne" data-aperto="${scelta ? 1 : 0}">${menuLega(voci, scelta, t(ambito === "squadra" ? "lega.aria_squadra" : "lega.aria_altro"))}
-    <section class="lega-pagina" id="lega-pagina" aria-label="${nome}"></section></div>`);
-  const radice = $(".lega-colonne", contenuto);
-  // Apre una voce nella pagina accanto al menu, che resta com'è (con il focus sulla voce cliccata). `sposta`: chiesta da chi usa l'app.
-  const apri = (id, sposta = true) => {
-    const v = voci.find(x => x.id === id), dove = $("#lega-pagina", radice);
-    if (!v || !dove || !document.body.contains(radice)) return;
-    if (sposta) chiudiPannelloAffiancato();                       // il pannello di un giocatore si chiude con la pagina da cui è nato
-    stato.legaVoce[ambito] = id;
-    radice.dataset.aperto = "1";
-    radice.querySelectorAll("[data-lega]").forEach(b => { if (b.dataset.lega === id) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-    dove.innerHTML = `<button class="bottone secondario lega-indietro" id="lega-indietro" type="button">${ICONA_INDIETRO}${nome}</button>
-      <h2 class="lega-titolo" id="lega-titolo" tabindex="-1">${v.nome}</h2><div id="lega-corpo">${corpi[id]()}</div>`;
-    // «‹ Squadra» (sotto i 1100 px): il menu è già in pagina. Se la voce di prima nella cronologia è il menu è Indietro (#449), altrimenti
-    // il menu prende il posto della voce
-    $("#lega-indietro", dove).addEventListener("click", () => {
-      radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-lega="${id}"]`, radice); if (b) b.focus();
-      const menu = indirizzoVista(ambito);
-      stato.vista = ambito;
-      if (!tornaIndietro(da => da === menu, menu)) scriviIndirizzo({ vista: ambito, gruppo: null }, false);
-    });
-    indirizzoLega(ambito, sposta, id);
-    collega[id]();
-    if (sposta) { window.scrollTo(0, 0); if (!legaLarga()) $("#lega-titolo", dove).focus({ preventScroll: true }); }
-  };
-  radice.querySelectorAll("[data-lega]").forEach(b => b.addEventListener("click", () => {
-    const v = voci.find(x => x.id === b.dataset.lega);
-    if (v && nellaPagina(v)) apri(v.id); else if (v) v.vai({ nuova: true });   // una voce con `vai` porta a un'altra pagina (Regole)
-  }));
-  legaQuandoLarga = () => { if (document.body.contains(radice) && radice.dataset.aperto === "0") { const id = daAprire(); if (id) apri(id, false); } };
-  if (scelta) apri(scelta, false);
-  bannerNuovaStagione();
+  // in due passi (anteprima.js): prima si controlla cosa ha capito l'app, poi «Conferma e salva»
+  const controlla = sorgente => anteprimaRose($("#esito-import"), sorgente, {
+    sostituisci: $("#sostituisci-tutto").checked,
+    fatto: esito => { mostraEsito(esito); avviso(t("ar.salvate")); },
+  });
+  $("#file-rose").addEventListener("change", ev => {
+    const file = ev.target.files[0];
+    ev.target.value = "";              // così si può scegliere di nuovo lo stesso file
+    if (file) controlla({ file });
+  });
+  $("#importa-testo").addEventListener("click", () => {
+    const testo = $("#testo-rose").value;
+    if (!testo.trim()) { avviso(t("lega.incolla_prima_testo")); return; }
+    controlla({ testo });
+  });
 }
 
-// Nuova stagione: quando le rose sono ancora quelle dell'anno prima, in cima a Squadra e ad Altro compare un avviso (non è più una
-// voce del menu, #615: per undici mesi l'anno non c'era niente da fare). Un tocco apre il foglio con il pulsante per archiviarle.
+// Le altre squadre (?vista=impostazioni&gruppo=squadre): l'elenco della lega, con la mia segnata; un tocco apre la rosa.
+async function vistaAltreSquadre() {
+  const mia = nuovaRichiesta(), opz = { titolo: t("imp.altre_squadre"), stato: false, indietro: indietroImp() };
+  caricamento(t("lega.carico_squadra"), opz);
+  let squadre;
+  try { squadre = await api("/api/squadre"); }
+  catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
+  if (!ancoraValida(mia)) return;
+  stato.squadre = squadre;
+  pagina(squadre.length ? `<div class="carta imp-colonna"><ul class="elenco">${squadre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
+      ${x.immagini && x.immagini.stemma ? `<img class="stemma-lista" src="${urlImg(x.nome, "stemma")}" alt="" loading="lazy">` : `<span class="iniziale-squadra" aria-hidden="true">${esc(x.nome.trim().slice(0, 1).toUpperCase())}</span>`}
+      <span><span class="nome">${esc(x.nome)}</span>${x.mia ? ` <span class="etichetta">${t("lega.la_tua")}</span>` : ""}
+        <span class="dettaglio" style="display:block">${tp("sd.n_giocatori", x.giocatori)}${x.crediti_residui != null ? ` · ${tp("lega.n_crediti", x.crediti_residui)}` : ""}</span></span>
+      <span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul></div>`
+    : `<div class="carta"><p class="debole">${t("lega.importa_prima_rose")}</p></div>`, opz);
+  contenuto.querySelectorAll("[data-rosa]").forEach(b => b.addEventListener("click", () => vai("impostazioni", "squadre", { rosa: b.dataset.rosa, focoTitolo: true })));
+}
+
+// Nuova stagione: quando le rose sono ancora quelle dell'anno prima, in cima a «La mia lega» compare un avviso (non è più una voce di
+// menu, #615: per undici mesi l'anno non c'era niente da fare). Un tocco apre il foglio con il pulsante per archiviarle.
 // `s`: la risposta di GET /api/stagione.
 function apriNuovaStagione(s) {
   apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("lega.nuova_stagione_n", { s: esc(s.corrente) })}</h2>
@@ -2893,10 +2754,9 @@ function apriNuovaStagione(s) {
         <div class="debole piccolo">${t("lega.tutto_salvato_nell")}</div>
         <div class="carta" style="margin-top:12px"><ol class="novita-voci">
           <li><b>${t("lega.importa_nuove_rose")}</b>${t("lega.squadra_aggiorna_rose")}</li>
-          <li><b>${t("lega.controlla_regole")}</b>${t("lega.bonus_moduli_crediti")}</li>
-          <li><b>${t("shell.aggiorna")}</b> ${t("lega.con_tasto_alto")}</li></ol></div>
-        <div class="pulsanti"><button class="bottone" data-vai="squadra">${t("lega.vai_squadra")}</button></div>`);
-      vaiLega("importa");
+          <li><b>${t("lega.controlla_regole")}</b>${t("lega.bonus_moduli_crediti")}</li></ol></div>
+        <div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div>`);
+      vai("impostazioni", "rose");
     } catch (e) { avviso(e.message, 5000); }
   });
 }
@@ -2904,13 +2764,12 @@ function apriNuovaStagione(s) {
 async function bannerNuovaStagione() {
   try {
     const s = await api("/api/stagione");
-    if (!s.nuova || !["squadra", "altro"].includes(stato.vista) || !$(".lega-colonne") || $("#banner-stagione")) return;
-    const c = document.createElement("div");
-    c.className = "carta"; c.dataset.g = "lega";
-    c.innerHTML = `<button class="voce" id="banner-stagione" type="button" style="grid-template-columns:1fr auto"><span><span class="nome">${t("lega.nuova_stagione_n", { s: esc(s.corrente) })}</span>
+    const dove = $("#imp-lega .elenco");
+    if (!s.nuova || stato.vista !== "impostazioni" || !dove || $("#banner-stagione")) return;
+    const li = document.createElement("li");
+    li.innerHTML = `<button class="voce" id="banner-stagione" type="button" style="grid-template-columns:1fr auto"><span><span class="nome">${t("lega.nuova_stagione_n", { s: esc(s.corrente) })}</span>
       <span class="dettaglio" style="display:block">${t("lega.banner_stagione", { s: esc(s.rose) })}</span></span><span class="debole" aria-hidden="true">›</span></button>`;
-    const capo = $(".capo-pagina", contenuto);                // sotto il titolo della schermata, prima del resto
-    if (capo) capo.after(c); else contenuto.prepend(c);
+    dove.prepend(li);
     $("#banner-stagione").addEventListener("click", () => apriNuovaStagione(s));
   } catch { /* senza rose o senza rete: niente avviso */ }
 }
@@ -2967,13 +2826,14 @@ const bonusDifesa = (media, fasce) => fasce.filter(f => media >= f[0]).reduce((b
 
 // `o.nuova`: aperta con un clic dal menu di Altro, una voce nuova nella cronologia (#449); senza (indirizzo, «Da fare», ridisegno dopo
 // «Salva») si corregge quella di adesso.
-async function vistaRegole(o = {}) {
-  const mia = nuovaRichiesta();
-  stato.vista = "altro";
-  scriviIndirizzo({ vista: "altro", gruppo: null, voce: "regole", pagina: true }, !!o.nuova);
-  caricamento(t("regole.carico"), { titolo: t("lega.voce_regole") });
+// Regole e scadenza (?vista=impostazioni&gruppo=regole, #618). In cima i tempi della lega (le due domande del primo avvio, salvate appena
+// cambiano) e il regolamento da incollare, che si salva con un tocco dopo aver visto cosa ho riconosciuto; i singoli valori (circa 45)
+// stanno dietro «Modifica i valori». Sul PC (da 1100 px) due colonne: a sinistra tempi e regolamento, a destra i valori.
+async function vistaRegole() {
+  const mia = nuovaRichiesta(), opz = { titolo: t("imp.regole"), stato: false, indietro: indietroImp() };
+  caricamento(t("regole.carico"), opz);
   let r;
-  try { r = await api("/api/regole"); } catch (e) { if (ancoraValida(mia)) pagina(errore(e), { titolo: t("lega.voce_regole") }); return; }
+  try { r = await api("/api/regole"); } catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
   if (!ancoraValida(mia)) return;
   if (regoleAC) regoleAC.abort();
   regoleAC = new AbortController();
@@ -2983,25 +2843,29 @@ async function vistaRegole(o = {}) {
   const rigaGol = x => rigaRegola(t("regole.gol_di", { ruolo: NOME_RUOLO_1[x].toLowerCase() }), stepper("gol_" + x, r.bonus.gol[x], { passo: 0.5, min: 0, max: 20 }));
   const bonusRighe = [["assist", t("bonus.assist")], ["rigore_segnato", t("bonus.rigore_segnato")], ["rigore_parato", t("regole.rigore_parato_p")], ["portiere_imbattuto", t("bonus.portiere_imbattuto")], ["mvp", t("bonus.mvp")]];
   const malusRighe = [["ammonizione", t("bonus.ammonizione")], ["espulsione", t("bonus.espulsione")], ["autogol", t("bonus.autogol")], ["rigore_sbagliato", t("bonus.rigore_sbagliato")], ["gol_subito_portiere", t("bonus.gol_subito_portiere"), t("regole.per_ogni_gol")]];
-  // Sul PC (da 1100 px) due colonne: a sinistra il nome della lega e «Importa da Leghe», a destra le sezioni con i «−/+», così l'anteprima
-  // del testo riconosciuto sta accanto ai valori che cambia. Sotto, una colonna sola nello stesso ordine (stile.css, «regole»).
+  const opzioniScadenza = valore => [...new Set([...PA_SCADENZE, valore])].sort((a, b) => a - b)
+    .map(m => `<option value="${m}" ${m === valore ? "selected" : ""}>${esc(paScadenzaNome(m))}</option>`).join("");
+  const prima = Number(r.prima_giornata_lega ?? 1);
   pagina(`<div class="regole-colonne"><div class="regole-testa">
-    <div class="carta">
-      <div class="riga"><button class="bottone secondario indietro" data-indietro="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("regole.altro")}</button>
-        <button class="bottone secondario" id="annulla-regole" style="padding:6px 14px;min-height:44px">${t("regole.annulla_modifiche")}</button></div>
-      <h2 style="margin-top:14px">${esc(r.nome_lega)}</h2>
-      <div class="debole piccolo">${t("regole.regole_della_lega")}</div>
-      <input class="campo-testo" id="nome_lega" value="${esc(r.nome_lega)}" aria-label="${t("regole.nome_della_lega")}" style="margin-top:8px">
+    <div class="carta" id="tempi-lega"><h2>${t("regole.tempi_della_lega")}</h2>
+      <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
+        <select class="campo-testo" id="tempi-scadenza">${opzioniScadenza(Number(r.scadenza_minuti ?? 0))}</select></label>
+      <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
+        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(g === 1 ? t("pav.prima_uno") : t("pav.prima_n", { n: g }))}</option>`).join("")}</select></label>
+      <div class="debole piccolo">${t("regole.con_prima_giornata")}</div>
     </div>
 
-    <div class="carta hero"><h2>${t("regole.importa_leghe")}</h2>
-      <div class="debole piccolo">${t("regole.leghe_apri_regolamento")}</div>
-      <textarea id="testo-regole" class="campo-testo" style="margin-top:10px;min-height:96px" placeholder="${t("regole.incolla_qui_testo")}"></textarea>
-      <div class="pulsanti"><button class="bottone" id="riconosci-regole">${t("regole.riconosci_regole")}</button></div>
+    <div class="carta"><h2>${t("regole.incolla_titolo")}</h2>
+      <div class="debole piccolo">${t("regole.incolla_spiega")}</div>
+      <textarea id="testo-regole" class="campo-testo" style="margin-top:10px;min-height:96px" placeholder="${t("regole.incolla_qui_testo")}" aria-label="${t("regole.incolla_qui_testo")}"></textarea>
+      <div class="pulsanti"><button class="bottone" id="riconosci-regole" type="button">${t("regole.riconosci_regole")}</button></div>
       <div id="anteprima-regole"></div>
     </div></div>
 
+    <details class="regole-valori"><summary>${t("regole.modifica_valori")}</summary>
     <div class="regole-sezioni">
+    <div class="carta"><label class="accesso-campo"><span>${t("regole.nome_della_lega")}</span><input class="campo-testo" id="nome_lega" value="${esc(r.nome_lega)}"></label>
+      <div class="pulsanti"><button class="bottone secondario" id="annulla-regole" type="button">${t("regole.annulla_modifiche")}</button></div></div>
     <details class="carta regola-sez" open><summary>${t("regole.punteggi")}</summary>
       <h3>${t("oggi.ev_gol")}</h3>${["P", "D", "C", "A"].map(rigaGol).join("")}
       <h3>${t("regole.altri_bonus")}</h3>${bonusRighe.map(([k, nome]) => rigaRegola(nome, stepper("b_" + k, r.bonus[k], { passo: 0.5, min: 0, max: 20 }))).join("")}
@@ -3047,11 +2911,8 @@ async function vistaRegole(o = {}) {
       <div id="vu-corpo" ${r.voto_senza_sostituto !== null && r.voto_senza_sostituto !== undefined ? "" : "hidden"}>${rigaRegola(t("regole.vu"), stepper("voto_ufficio", r.voto_senza_sostituto ?? 4, { passo: 0.5, min: 0, max: 10 }))}</div>
     </details>
 
-    <details class="carta regola-sez"><summary>${t("regole.tempi_della_lega")}</summary>
-      ${rigaRegola(t("regole.scadenza"), stepper("scad_min", r.scadenza_minuti ?? 0, { passo: 5, min: 0, max: 720, dec: 0 }), t("regole.scadenza_aiuto"))}
-      ${rigaRegola(t("regole.prima_giornata"), stepper("prima_g", r.prima_giornata_lega ?? 1, { passo: 1, min: 1, max: 38, dec: 0 }), t("regole.prima_giornata_aiuto"))}
+    <details class="carta regola-sez"><summary>${t("regole.aggiornamenti_titolo")}</summary>
       ${interruttore("agg_vicini", t("regole.agg_vicini"), r.aggiornamenti_vicino_scadenza !== false, t("regole.agg_vicini_aiuto"))}
-      <div class="debole piccolo">${t("regole.con_prima_giornata")}</div>
     </details>
 
     ${r.partite_rinviate !== undefined ? `<details class="carta regola-sez" id="sez-rinviate"><summary>${t("regole.rinviate")}</summary>
@@ -3065,7 +2926,7 @@ async function vistaRegole(o = {}) {
       ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, min: 0, max: 20, dec: 0 }))).join("")}
       ${rigaRegola(t("regole.crediti_iniziali"), stepper("crediti", r.crediti_iniziali, { passo: 10, min: 0, max: 5000, dec: 0 }))}
     </details>
-    <div class="salva-fisso" hidden><button class="bottone" id="salva-regole">${t("regole.salva_regole")}</button></div></div></div>`, { titolo: t("lega.voce_regole") });
+    <div class="salva-fisso" hidden><button class="bottone" id="salva-regole" type="button">${t("regole.salva_regole")}</button></div></div></details></div>`, opz);
   const mostraSalva = () => { const s = $(".salva-fisso"); if (s) s.hidden = false; };
 
   // --- comportamenti
@@ -3093,7 +2954,25 @@ async function vistaRegole(o = {}) {
   const aggiornaPosti = () => { const el = $("#totale-posti"); if (el) el.textContent = t("regole.totale_panchina", { n: tp("sd.n_giocatori", totalePosti()) }); };
   aggiornaProva(); aiutoPanchina(); aggiornaPosti(); aiutoRinvio();
   $("#posti_fissi").addEventListener("change", ev => { $("#posti-corpo").hidden = !ev.target.checked; $("#numero-corpo").hidden = ev.target.checked; mostraSalva(); });
-  contenuto.addEventListener("input", ev => { aggiornaProva(); aggiornaPosti(); if (ev.target.id !== "testo-regole") mostraSalva(); }, sig);
+  // il regolamento incollato e i tempi della lega non sono valori da salvare in fondo: il primo si salva dopo il riconoscimento, i
+  // tempi appena cambiano
+  contenuto.addEventListener("input", ev => { aggiornaProva(); aggiornaPosti(); if (!["testo-regole", "tempi-scadenza", "tempi-prima"].includes(ev.target.id)) mostraSalva(); }, sig);
+  const salvaTempi = async () => {
+    const sc = $("#tempi-scadenza"), pg = $("#tempi-prima");
+    const nuove = { ...structuredClone(r), scadenza_minuti: Number(sc.value), prima_giornata_lega: Number(pg.value) };
+    try {
+      await api("/api/regole", { method: "PUT", body: JSON.stringify(nuove) });
+      r.scadenza_minuti = nuove.scadenza_minuti; r.prima_giornata_lega = nuove.prima_giornata_lega;
+      svuotaCache(); stato.calendario = null;
+      caricaInfo();                    // la riga di stato passa subito alla «Giornata N» della lega
+      avviso(t("regole.tempi_salvati"));
+    } catch (e) {                      // resta scritto ciò che vale sul server
+      sc.value = String(r.scadenza_minuti ?? 0); pg.value = String(r.prima_giornata_lega ?? 1);
+      avviso(e.message, 8000);
+    }
+  };
+  $("#tempi-scadenza").addEventListener("change", salvaTempi);
+  $("#tempi-prima").addEventListener("change", salvaTempi);
   $("#md_attivo").addEventListener("change", ev => { $("#md-corpo").hidden = !ev.target.checked; mostraSalva(); });
   $("#vu_attivo").addEventListener("change", ev => { $("#vu-corpo").hidden = !ev.target.checked; mostraSalva(); });
   $("#p_cambio").addEventListener("change", mostraSalva);
@@ -3111,7 +2990,7 @@ async function vistaRegole(o = {}) {
     const m = ev.target.closest("[data-modulo-regola]");
     if (m) { m.classList.toggle("attiva"); mostraSalva(); }
   }, sig);
-  $("#annulla-regole").addEventListener("click", vistaRegole);
+  $("#annulla-regole").addEventListener("click", () => vistaRegole());
 
   // --- importazione dal testo di Leghe
   $("#riconosci-regole").addEventListener("click", async () => {
@@ -3128,9 +3007,9 @@ async function vistaRegole(o = {}) {
       const vedi = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
       dove.innerHTML = `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(etichettaRegola(m))}: <b>${esc(vedi(m.valore))}</b>${m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : ""}</span></div>`).join("")}
         ${esito.non_riconosciute.length ? `<details><summary style="font-size:var(--t-corpo)">${t("regole.non_riconosciute", { n: esito.non_riconosciute.length })}</summary><div class="debole piccolo">${esito.non_riconosciute.map(esc).join("<br>")}</div></details>` : ""}
-        <div class="pulsanti"><button class="bottone" id="applica-regole">${t("regole.applica_campi")}</button></div>
-        <div class="debole piccolo">${t("regole.controlla_valori_qui")}</div>`;
-      $("#applica-regole").addEventListener("click", () => { applicaModifiche(esito.modifiche); avviso(t("regole.valori_applicati_controlla")); });
+        <div class="pulsanti"><button class="bottone" id="salva-riconosciute" type="button">${t("regole.salva_queste")}</button></div>`;
+      // un tocco: i valori riconosciuti vanno nei campi (dietro «Modifica i valori») e le regole si salvano come con «Salva le regole»
+      $("#salva-riconosciute").addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
     } catch (e) { dove.innerHTML = errore(e); }
   });
   const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? (Number.isInteger(valore) ? 0 : 1)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
@@ -3141,8 +3020,8 @@ async function vistaRegole(o = {}) {
       else if (k.startsWith("bonus.")) imposta("b_" + k.slice(6), v);
       else if (k.startsWith("rosa.")) imposta("rosa_" + k.slice(5), v, 0);
       else if (k === "crediti_iniziali") imposta("crediti", v, 0);
-      else if (k === "scadenza_minuti") imposta("scad_min", v, 0);
-      else if (k === "prima_giornata_lega") imposta("prima_g", v, 0);
+      else if (k === "scadenza_minuti") { const sc = $("#tempi-scadenza"); sc.innerHTML = opzioniScadenza(Number(v)); }
+      else if (k === "prima_giornata_lega") $("#tempi-prima").value = String(v);
       else if (k === "panchina.numero") imposta("p_numero", v, 0);
       else if (k === "panchina.posti") { $("#posti_fissi").checked = true; $("#posti-corpo").hidden = false; $("#numero-corpo").hidden = true; for (const x of ["P", "D", "C", "A"]) imposta("posti_" + x, v[x], 0); aggiornaPosti(); }
       else if (k === "panchina.max_sostituzioni") imposta("p_max", v, 0);
@@ -3158,10 +3037,14 @@ async function vistaRegole(o = {}) {
   };
 
   // --- salvataggio
-  $("#salva-regole").addEventListener("click", async () => {
+  const salva = async () => {
     const campi = [...contenuto.querySelectorAll(".stepper input")].filter(i => !i.closest("[hidden]"));
     const rotti = campi.filter(i => !Number.isFinite(Number(String(i.value).replace(",", "."))));
-    if (rotti.length) { avviso(t("regole.sono_valori_non"), 5000); rotti[0].focus(); return; }
+    if (rotti.length) {                          // il campo sbagliato si vede anche se «Modifica i valori» era chiuso
+      avviso(t("regole.sono_valori_non"), 5000);
+      rotti[0].closest("details.regole-valori").open = true; const sez = rotti[0].closest("details.regola-sez"); if (sez) sez.open = true;
+      rotti[0].focus(); return;
+    }
     const nuove = structuredClone(r);
     nuove.nome_lega = $("#nome_lega").value.trim() || t("regole.mia_lega");
     nuove.fonte_voto = $("#fonte-voto .attivo").dataset.valore;
@@ -3175,8 +3058,8 @@ async function vistaRegole(o = {}) {
                        cambio_modulo: $("#p_cambio").checked, posti };
     nuove.voto_senza_sostituto = $("#vu_attivo").checked ? leggiN("voto_ufficio") : null;
     nuove.crediti_iniziali = leggiN("crediti");
-    nuove.scadenza_minuti = leggiN("scad_min");
-    nuove.prima_giornata_lega = leggiN("prima_g");
+    nuove.scadenza_minuti = Number($("#tempi-scadenza").value);
+    nuove.prima_giornata_lega = Number($("#tempi-prima").value);
     nuove.aggiornamenti_vicino_scadenza = $("#agg_vicini").checked;
     if ($("#rinvio-modo .attivo")) {             // (server vecchio senza la regola dei rinvii: la sezione non c'è e non si manda nulla)
       nuove.partite_rinviate = $("#rinvio-modo .attivo").dataset.valore;
@@ -3193,7 +3076,8 @@ async function vistaRegole(o = {}) {
       caricaInfo();
       vistaRegole();
     } catch (e) { avviso(e.message, 8000); }
-  });
+  };
+  $("#salva-regole").addEventListener("click", salva);
 }
 
 // ---------------------------------------------------------------- account
@@ -3285,6 +3169,23 @@ function svuotaPassword(scheda, codiceHttp) {
 }
 
 // La pagina di accesso copre tutto: finché non si entra, dell'app non si vede (e non si carica) niente.
+// Un messaggio della schermata di accesso, nel riquadro #accesso-msg (una regione `role="status"` che c'è sempre): un avviso (sessione
+// finita, codice mandato, password cambiata) ha lo stile «attenzione»; un errore ha `role="alert"` (tests/browser/LEGGIMI.md).
+// `dopo`: il riquadro è appena nato: il testo arriva un attimo dopo, perché un lettore di schermo legge ciò che viene scritto in una
+// regione che c'è già, non una regione che nasce con il suo testo.
+function mostraMessaggioAccesso(testo, errore, dopo = false) {
+  const scrivi = () => {
+    const dove = $("#accesso-msg");
+    if (!dove) return;
+    const m = document.createElement("div");
+    m.className = errore ? "errore" : "attenzione";
+    if (errore) m.setAttribute("role", "alert");
+    m.textContent = testo;
+    dove.replaceChildren(m);
+  };
+  if (dopo) setTimeout(scrivi, 50); else scrivi();
+}
+// `extra.errore`: il messaggio è un errore (un accesso con Google non riuscito), non un avviso.
 function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   accessoAperto = true;
   if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") === "invito" || stato.emailAttiva === false ? "codice" : "email" };
@@ -3304,7 +3205,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     <div class="accesso-marchio">${marchio(72, true)}</div>
     <h1 class="accesso-titolo"><svg class="wm" aria-hidden="true" focusable="false"><use href="#wm-c"/></svg><span class="solo-lettori">SchieraXI</span></h1>
     <div class="segmenti" id="accesso-schede">${SCHEDE_ACCESSO.map(k => `<button type="button" data-s="${k}" class="${k === scheda ? "attivo" : ""}" aria-pressed="${k === scheda}">${t("accesso.scheda_" + k)}</button>`).join("")}</div>
-    <div id="accesso-msg" role="alert">${messaggio ? `<div class="attenzione">${esc(messaggio)}</div>` : ""}</div>
+    <div id="accesso-msg" role="status"></div>
     ${socialPronto() && SCHEDE_ACCESSO.includes(scheda) && extra.sub !== "verifica" ? `<div class="accesso-social">${htmlGoogle(t("social.continua"))}<div class="accesso-oppure debole piccolo" aria-hidden="true"><span>${t("social.oppure")}</span></div></div>` : ""}
     ${scheda === "recupero" && stato.emailAttiva !== false && (extra.sub === "email" || extra.sub === "codice") ? `<div class="segmenti" id="accesso-metodi">${[["email", t("accesso.recupero_con_email")], ["codice", t("accesso.recupero_con_codice")]].map(([k, c]) => `<button type="button" data-m="${k}" class="${k === extra.sub ? "attivo" : ""}" aria-pressed="${k === extra.sub}">${c}</button>`).join("")}</div>` : ""}
     <form id="accesso-form" novalidate>${campiAccesso(scheda, extra)}
@@ -3317,6 +3218,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   vaiA("#accesso-dimenticata", "recupero"); vaiA("#accesso-torna", "accedi");
   el.querySelectorAll("#accesso-metodi button").forEach(b => b.addEventListener("click", () => mostraAccesso("", "recupero", { sub: b.dataset.m })));
   collegaGoogleAccesso(el);
+  if (messaggio) mostraMessaggioAccesso(messaggio, !!extra.errore, true);
   const primo = $("#accesso-form input");
   if (primo && !messaggio) primo.focus();
   let inCorso = false;                                   // un invio alla volta (doppio tocco, Invio ripetuto)
@@ -3366,9 +3268,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
       }
     } catch (e) {
       const attesa = e.status === 429 && e.riprova ? (e.riprova < 90 ? t("accesso.riprova_secondi", { n: e.riprova }) : e.riprova < 3600 ? t("accesso.riprova_minuti", { n: Math.ceil(e.riprova / 60) }) : t("accesso.riprova_ore", { n: Math.max(1, Math.round(e.riprova / 3600)) })) : "";
-      const msg = document.createElement("div");
-      msg.className = "errore"; msg.textContent = (e.message || t("accesso.errore_generico")) + attesa;
-      if ($("#accesso-msg")) $("#accesso-msg").replaceChildren(msg);
+      mostraMessaggioAccesso((e.message || t("accesso.errore_generico")) + attesa, true);
       if ($("#ac-pw") && svuotaPassword(scheda, e.status)) $("#ac-pw").value = "";
       invia.disabled = false; invia.removeAttribute("aria-busy");
     } finally { inCorso = false; }
@@ -3409,9 +3309,7 @@ function collegaGoogleAccesso(el) {
     try { await avviaGoogle("accedi"); }
     catch (e) {
       b.disabled = false;
-      const msg = document.createElement("div");
-      msg.className = "errore"; msg.textContent = erroreGoogle(e);
-      if ($("#accesso-msg")) $("#accesso-msg").replaceChildren(msg);
+      mostraMessaggioAccesso(erroreGoogle(e), true);
     }
   });
 }
@@ -3453,7 +3351,7 @@ function leggiRitornoGoogle() {
 
 // `dentro`: c'è già una sessione (collega, riconferma); altrimenti si è alla pagina di accesso.
 async function gestisciRitornoGoogle(rit, dentro) {
-  const fallito = testo => { if (dentro) { if (testo) avviso(testo, 6000); } else mostraAccesso(testo); };
+  const fallito = testo => { if (dentro) { if (testo) avviso(testo, 6000); } else mostraAccesso(testo, "accedi", { errore: true }); };
   if (rit.errore) { fallito(rit.errore === "annullato" ? "" : t("social.errore")); return; }          // annullato: si torna alla schermata senza errori rossi
   if (!rit.verificatore || !rit.codice) { fallito(t("social.altro_browser")); return; }
   try {
@@ -3462,7 +3360,7 @@ async function gestisciRitornoGoogle(rit, dentro) {
     if (r && r.stato === "nuovo") { mostraAccesso(); mostraNuovoGoogle(r); return; }
     if (r && (r.stato === "collegato" || r.stato === "riconfermato")) {
       if (r.accessi) stato.accessi = r.accessi;
-      iniziale = "impostazioni"; stato.impDaUrl = "account";
+      iniziale = { vista: "impostazioni", gruppo: "account" };
       avviso(t(r.stato === "collegato" ? "social.collegato_ok" : "social.riconfermato_ok"), 6000);
       return;
     }
@@ -3476,7 +3374,7 @@ function mostraNuovoGoogle(r, messaggio = "") {
   el.innerHTML = `<div class="accesso-corpo"><div class="accesso-marchio">${marchio(72, true)}</div>
     <h1 class="accesso-titolo">${t("social.scegli_nome")}</h1>
     <div class="debole piccolo">${t("social.scegli_spiega")}</div>
-    <div id="accesso-msg" role="alert">${messaggio ? `<div class="errore">${esc(messaggio)}</div>` : ""}</div>
+    <div id="accesso-msg" role="status"></div>
     <form id="accesso-form" novalidate>
       ${campoAccesso("ac-nome", t("accesso.nome_utente"), "text", `value="${esc(r.nome_suggerito || "")}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" required`)}
       ${r.serve_invito ? campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito()) : ""}
@@ -3485,12 +3383,13 @@ function mostraNuovoGoogle(r, messaggio = "") {
     <p class="accesso-legale"><a href="#" id="accesso-torna">${t("accesso.torna")}</a></p>
     <p class="debole piccolo accesso-legale">${linkLegali()}</p></div>`;
   $("#accesso-torna").addEventListener("click", ev => { ev.preventDefault(); mostraAccesso(); });
+  if (messaggio) mostraMessaggioAccesso(messaggio, true, true);
   let inCorso = false;
   $("#accesso-form").addEventListener("submit", async ev => {
     ev.preventDefault();
     if (inCorso) return;
     const invia = $("#accesso-invia");
-    const mostra = testo => { const m = document.createElement("div"); m.className = "errore"; m.textContent = testo; $("#accesso-msg").replaceChildren(m); };
+    const mostra = testo => mostraMessaggioAccesso(testo, true);
     if (!$("#ac-letto").checked) { mostra(t("accesso.spunta_letto", { eta: ETA_MINIMA })); return; }
     inCorso = true; invia.disabled = true; invia.setAttribute("aria-busy", "true");
     try {
@@ -3835,7 +3734,6 @@ async function controllaAccesso() {
     if (usaLinguaDi(dati.utente && dati.utente.nome_utente)) return false;           // l'utente aveva scelto un'altra lingua: ricarico con la sua
     stato.emailAccount = { email: dati.email || null, email_origine: dati.email_origine || null, email_in_attesa: dati.email_in_attesa || null };
     try { localStorage.setItem("account", JSON.stringify(dati.utente)); } catch { /* niente memoria */ }
-    if (!soloAmministratore()) $("#bottone-aggiorna").hidden = true;          // aggiornare i dati spetta all'amministratore
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, true);       // collega / conferma: si resta dentro
   }
   return true;
@@ -3856,29 +3754,32 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     barra.append(testo, bottone); document.body.appendChild(barra);
   });
   navigator.serviceWorker.register("sw.js").catch(() => { /* senza: funziona lo stesso, solo non offline */ });
-  // Tocco su un avviso con l'app già aperta: il service worker dice quale scheda aprire (per esempio la Formazione).
+  // Tocco su un avviso con l'app già aperta: il service worker dice quale schermata aprire (per esempio la Formazione). Un nome di una
+  // versione di prima (Squadra, Altro, Oggi) porta alla schermata che ne ha preso il posto (dove()).
   navigator.serviceWorker.addEventListener("message", e => {
     const v = e.data && e.data.tipo === "apri" ? String(e.data.vista || "") : "";
-    if (SCHEDA_DI(v)) vai(v);
+    if (v) vai(v);
   });
 }
-let iniziale = "formazione";
-try { iniziale = localStorage.getItem("vista") || "formazione"; } catch { /* niente memoria */ }
+// La prima schermata: quella dell'indirizzo (anche di una versione di prima: dove()); senza, l'ultima aperta fra Formazione e Giornate.
+// Un altro nome salvato da una versione di prima (Squadra, Altro, Oggi...) vale la Formazione: si riapre per schierare.
+let iniziale = { vista: "formazione" };
+try { const salvata = localStorage.getItem("vista"); if (["formazione", "giornate"].includes(salvata)) iniziale = { vista: salvata }; } catch { /* niente memoria */ }
 togliPrefVecchie();                                                                        // colore, densità, animazioni e sezione iniziale non si scelgono più
-try { const v = new URLSearchParams(location.search).get("vista"); if (SCHEDA_DI(v) || v === "impostazioni") iniziale = v; stato.impDaUrl = new URLSearchParams(location.search).get("gruppo"); } catch { /* indirizzo strano */ }   // scorciatoie dell'icona (Formazione, Squadra)
-// la voce di Squadra o di Altro e la rosa di una squadra (#449): un ricaricamento riapre la pagina, senza voci nuove nella cronologia
-try { const q = new URLSearchParams(location.search); if (q.get("voce")) stato.legaTorna = q.get("voce"); if (q.get("vista") === "squadra" && q.has("rosa")) stato.rosaTorna = q.get("rosa"); } catch { /* indirizzo strano */ }
-if (!SCHEDA_DI(iniziale) && iniziale !== "impostazioni") iniziale = "formazione";    // «oggi», «mercato», «scambi» e «lega» dei vecchi salvataggi e indirizzi valgono ancora: vai() li porta alla schermata che resta
+try {                                                                                      // scorciatoie dell'icona, avvisi, collegamenti
+  const q = new URLSearchParams(location.search);
+  if (q.get("vista")) iniziale = { vista: q.get("vista"), gruppo: q.get("gruppo"), voce: q.get("voce"), rosa: q.get("rosa") };
+} catch { /* indirizzo strano */ }
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
   Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
     let condivisa = null;
     try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }
-    if (condivisa) {                                     // arrivo dal menu Condividi del telefono (share_target)
+    if (condivisa) {                                     // arrivo dal menu Condividi del telefono (share_target): stemma e maglia stanno lì
       history.replaceState(null, "", "/");
-      iniziale = "squadra";
+      iniziale = { vista: "impostazioni", gruppo: "squadra" };
     }
-    vai(iniziale);
+    vai(iniziale.vista, iniziale.gruppo || undefined, { voce: iniziale.voce, rosa: iniziale.rosa });
     // dal menu Condividi si apre il foglio di stemma e maglia: la guida non gli prende il posto
     if (typeof primoAvvioSeServe === "function" && !condivisa) primoAvvioSeServe();
     if (condivisa === "1") apriStemmaMaglia(null, true);
@@ -3922,11 +3823,11 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   misura();
 })();
 
-// Colonne ferme in alto su tablet e PC (il campo della Formazione, l'elenco di Impostazioni, il menu di Squadra e Altro, la giornata
-// scelta in Giornate): restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, la spunta «L'ho messa»)
+// Colonne ferme in alto su tablet e PC (il campo della Formazione, la giornata scelta in Giornate): restano ferme solo se ci stanno nello
+// schermo. Più alte, il loro fondo (il portiere, la spunta «L'ho messa»)
 // restava sotto la barra o fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con
 // la finestra bassa (#280).
-const FERME = ".fz-campo .campo-fermo, .imp-elenco, .lega-menu, .gn-lato";
+const FERME = ".fz-campo .campo-fermo, .gn-lato";
 const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
 function controllaFerme() {
   const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è

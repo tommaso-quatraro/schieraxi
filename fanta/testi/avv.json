@@ -271,5 +271,9 @@
   "avv.prova_no": {
     "it": "Non sono riuscito a mandarlo",
     "en": "I could not send it"
+  },
+  "avv.notifiche_attivate_qui": {
+    "it": "Avvisi attivi su questo dispositivo",
+    "en": "Alerts are on for this device"
   }
 }

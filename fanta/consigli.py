@@ -343,7 +343,7 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     deve andare bene anche per l'ora vera (`_si_ricorda`)."""
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
-        raise ValueError("Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose")
+        raise ValueError("Squadra non trovata: indica la tua squadra in Impostazioni > La mia squadra")
     stagione = stagione_corrente()
     giornata = giornata or giornata_da_giocare(db, stagione, regole, adesso)
     if giornata is None:
@@ -798,7 +798,7 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
     `adesso`: l'ora con cui si chiede la consigliata (vedi `formazione`)."""
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
-        raise ValueError("Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose")
+        raise ValueError("Squadra non trovata: indica la tua squadra in Impostazioni > La mia squadra")
     if giornata is None and adesso is not None:     # con l'ora data la giornata si cerca con quella (senza: `previsioni`, ora vera)
         giornata = giornata_da_giocare(db, stagione_corrente(), regole, adesso)
         if giornata is None:

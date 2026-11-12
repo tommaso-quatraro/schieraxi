@@ -42,5 +42,61 @@
   "imp.gruppi_aria": {
     "it": "Gruppi di impostazioni",
     "en": "Settings groups"
+  },
+  "imp.sez_avvisi": {
+    "it": "Avvisi",
+    "en": "Alerts"
+  },
+  "imp.avvisi_qui": {
+    "it": "Avvisi su questo dispositivo",
+    "en": "Alerts on this device"
+  },
+  "imp.avvisi_qui_aiuto": {
+    "it": "Il promemoria della scadenza e i cambi della formazione consigliata",
+    "en": "The deadline reminder and changes to the suggested lineup"
+  },
+  "imp.ore_tranquille_aiuto": {
+    "it": "Niente avvisi dalle {da} alle {a}",
+    "en": "No alerts from {da} to {a}"
+  },
+  "imp.lega": {
+    "it": "La mia lega",
+    "en": "My league"
+  },
+  "imp.regole": {
+    "it": "Regole e scadenza",
+    "en": "Rules and deadline"
+  },
+  "imp.regole_sub": {
+    "it": "Punteggi, moduli e quando si chiude la formazione",
+    "en": "Scoring, formations and when the lineup closes"
+  },
+  "imp.mia_squadra_nessuna": {
+    "it": "Non l'hai ancora scelta",
+    "en": "Not chosen yet"
+  },
+  "imp.altre_squadre": {
+    "it": "Le altre squadre",
+    "en": "The other teams"
+  },
+  "imp.gestione": {
+    "it": "Gestione",
+    "en": "Management"
+  },
+  "imp.gestione_sub": {
+    "it": "Inviti, utenti, stato e aggiornamento dei dati",
+    "en": "Invites, users, data status and update"
+  },
+  "imp.aggiorna_spiega": {
+    "it": "Scarica adesso listone, voti e probabili formazioni dalle fonti accese. Di solito il server lo fa da solo.",
+    "en": "Downloads the player list, ratings and probable lineups from the enabled sources now. The server usually does it on its own."
+  },
+  "imp.sezioni_aria": {
+    "it": "Sezioni delle impostazioni",
+    "en": "Settings sections"
+  },
+  "imp.scegli_squadra": {
+    "it": "Qual è la tua squadra?",
+    "en": "Which team is yours?"
   }
 }

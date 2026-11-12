@@ -34,5 +34,9 @@
   "nav.altro": {
     "it": "Altro",
     "en": "More"
+  },
+  "nav.impostazioni": {
+    "it": "Impostazioni",
+    "en": "Settings"
   }
 }

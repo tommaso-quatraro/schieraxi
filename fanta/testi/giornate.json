@@ -112,8 +112,8 @@
     "en": "Nothing yet: matchdays appear here after the first one ends."
   },
   "giornate.vuoto_squadra": {
-    "it": "Ancora niente: manca la tua squadra. Indicala in Squadra, alla voce {voce}.",
-    "en": "Nothing yet: your team is missing. Set it in Team, under {voce}."
+    "it": "Ancora niente: manca la tua squadra. Indicala in Impostazioni, alla voce {voce}.",
+    "en": "Nothing yet: your team is missing. Set it in Settings, under {voce}."
   },
   "giornate.vuoto_giornate": {
     "it": "Ancora niente: nella tua lega non è ancora finita nessuna giornata.",

@@ -277,16 +277,16 @@
     "en": "The season calendar is not available yet (it usually comes out in July): forecasts and auction start as soon as it arrives. Update the data later."
   },
   "err.squadra_non_trovata_indica": {
-    "it": "Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose",
-    "en": "Team not found: choose your team in Team > Teams and rosters"
+    "it": "Squadra non trovata: indica la tua squadra in Impostazioni > La mia squadra",
+    "en": "Team not found: choose your team in Settings > My team"
   },
   "err.indica_prima_squadra": {
-    "it": "Indica prima la tua squadra in Squadra > Squadre e rose",
-    "en": "First choose your team in Team > Teams and rosters"
+    "it": "Indica prima la tua squadra in Impostazioni > La mia squadra",
+    "en": "First choose your team in Settings > My team"
   },
   "err.indica_squadra": {
-    "it": "Indica la tua squadra in Squadra > Squadre e rose",
-    "en": "Choose your team in Team > Teams and rosters"
+    "it": "Indica la tua squadra in Impostazioni > La mia squadra",
+    "en": "Choose your team in Settings > My team"
   },
   "err.squadra_non_trovata": {
     "it": "Squadra non trovata",
@@ -851,5 +851,10 @@
   "err.passo_sconosciuto": {
     "it": "Passo sconosciuto della configurazione",
     "en": "Unknown setup step"
+  },
+  "err.indica_prima_squadra_diario": {
+    "it": "Indica prima la tua squadra in Squadra > Squadre e rose",
+    "en": "First choose your team in Settings > My team",
+    "nota": "Frase di fanta/diario.py con il nome di prima della voce (#618): si toglie quando diario.py dice «Impostazioni > La mia squadra»"
   }
 }

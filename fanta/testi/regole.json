@@ -391,5 +391,29 @@
   "regole.rinviate_aiuto_formazione": {
     "it": "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo dalla Formazione.",
     "en": "What your league does with the players of a postponed match, even weeks later. You can change it for a single round from Lineup."
+  },
+  "regole.incolla_titolo": {
+    "it": "Incolla il regolamento",
+    "en": "Paste the rulebook"
+  },
+  "regole.incolla_spiega": {
+    "it": "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: prima di salvare ti mostro cosa ho riconosciuto.",
+    "en": "On Leghe open the competition rulebook, copy the text and paste it here: before saving I show you what I recognized."
+  },
+  "regole.salva_queste": {
+    "it": "Salva queste regole",
+    "en": "Save these rules"
+  },
+  "regole.modifica_valori": {
+    "it": "Modifica i valori",
+    "en": "Edit the values"
+  },
+  "regole.tempi_salvati": {
+    "it": "Salvato: promemoria e giornate usano i tempi nuovi",
+    "en": "Saved: reminders and matchdays use the new times"
+  },
+  "regole.aggiornamenti_titolo": {
+    "it": "Aggiornamenti dei dati",
+    "en": "Data updates"
   }
 }

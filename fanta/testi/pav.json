@@ -101,8 +101,8 @@
     "en": "From the {n}th"
   },
   "pav.tempi_dove": {
-    "it": "Puoi cambiarle quando vuoi in Altro > Regole, sezione «Tempi della lega».",
-    "en": "You can change them any time in More > Rules, section «League timing»."
+    "it": "Puoi cambiarle quando vuoi in Impostazioni > Regole e scadenza.",
+    "en": "You can change them whenever you want in Settings > Rules and deadline."
   },
   "pav.tempi_salva": {
     "it": "Salva",
@@ -113,8 +113,8 @@
     "en": "Use the example teams"
   },
   "pav.il_resto": {
-    "it": "Il resto (installare l'app, lo stemma, i widget) lo trovi in Impostazioni.",
-    "en": "The rest (installing the app, the crest, widgets) is in Settings."
+    "it": "In Impostazioni trovi gli avvisi, le regole della lega e lo stemma della tua squadra.",
+    "en": "In Settings you find alerts, your league's rules and your team's crest."
   },
   "pav.fatto_par": {
     "it": " (fatto)",

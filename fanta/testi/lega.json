@@ -281,8 +281,8 @@
     "en": "They are used for the market advice (refund and credits after the swap). They stay even if you import the Excel again."
   },
   "lega.squadra_aggiorna_rose": {
-    "it": ": in Squadra, «Aggiorna le rose», con l'Excel di Leghe (si importa anche con il menu Condividi).",
-    "en": ": in Team, «Update the rosters», with the Leghe Excel (you can also import it from the Share menu)."
+    "it": ": in Impostazioni, «Aggiorna le rose», con l'Excel di Leghe (si importa anche con il menu Condividi).",
+    "en": ": in Settings, «Update the rosters», with the Leghe Excel (you can also import it from the Share menu)."
   },
   "lega.squadra_salvata": {
     "it": "Squadra salvata",
@@ -337,8 +337,8 @@
     "en": "Check the rules"
   },
   "lega.bonus_moduli_crediti": {
-    "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Altro, Regole).",
-    "en": ": bonuses, formations and credits can change from one year to the next (More, Rules)."
+    "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Impostazioni, Regole e scadenza).",
+    "en": ": bonuses, formations and credits can change from one year to the next (Settings, Rules and deadline)."
   },
   "lega.con_tasto_alto": {
     "it": "con il tasto in alto: calendario, listone e quotazioni nuovi.",
