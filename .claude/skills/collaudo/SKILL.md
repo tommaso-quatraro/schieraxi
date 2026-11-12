@@ -19,16 +19,20 @@ py -3.13 -m venv <cartella-temporanea>\pw
 Dalla radice del repository o della worktree (fotografa il codice del ramo in cui sei):
 
 ```
-<cartella-temporanea>\pw\Scripts\python.exe prove\foto_web\foto.py <cartella-delle-foto> --scene oggi,formazione
+<cartella-temporanea>\pw\Scripts\python.exe prove\foto_web\foto.py <cartella-delle-foto> --scene formazione,scheda,impostazioni
 ```
 
 Avvia e ferma da solo un server di prova con la lega d'esempio, su un indirizzo suo. Opzioni e scene:
 `prove/foto_web/LEGGIMI.md`. Di norma: larghezze 390, 768, 1024, 1440 e temi chiaro e scuro. Le foto restano fuori dal
 repository.
+- Le scene seguono le tre voci della barra: `formazione` (la prima schermata; la scena «oggi» non c'è più), `scheda` (il
+  primo titolare), `diario` (la pagina Giornate), `impostazioni`. Le pagine di Impostazioni > La mia lega sono `rosa` (La mia
+  squadra) e `regole` (Regole e scadenza); `squadra` e `altro` sono gli indirizzi di prima, che aprono Impostazioni.
 - `riepilogo.txt`: per ogni scena violazioni gravi di accessibilità, scorrimento di lato, errori della console. Devono
   essere zero.
 - Le tre fasi della giornata (prima della scadenza, in corso, finita) si vedono con gli scenari registrati di
-  `ios/fotografie/vero-*.json` (come fa `script/ci/aspetto_web.py`).
+  `ios/fotografie/vero-*.json` e il server finto (`script/ci/server_finto.py`, come fa `script/ci/aspetto_web.py`): la
+  Formazione cambia testa con la fase, le altre schermate no.
 - L'ingresso di un utente nuovo: `prove/amico_nuovo/percorso.py <cartella-dei-risultati> --locale` (secondi, tocchi ed
   errori per ogni passo; opzioni in `prove/amico_nuovo/LEGGIMI.md`).
 

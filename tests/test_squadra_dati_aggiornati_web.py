@@ -61,23 +61,21 @@ def test_ogni_rotta_con_if_match_ha_la_sua_risorsa_nella_web():
     assert sbagliate == []
 
 
-def _lega():
-    inizio = APP.index("async function vistaLega(")
+def _funzione(nome: str) -> str:
+    inizio = APP.index(f"function {nome}(")
     return APP[inizio:APP.index("\n}\n", inizio)]
 
 
-def test_dopo_un_salvataggio_i_pannelli_rileggono_le_squadre():
-    lega = _lega()
-    assert re.search(r"\blet squadre = \[\];", lega)                     # le squadre si possono rileggere
-    m = re.search(r"const rileggiSquadre = async \(voce\) => \{(.*?)\n  \};", lega, re.S)
-    assert m, "manca rileggiSquadre in vistaLega"
-    # la pagina si ridisegna solo se è ancora quella aperta (non se nel frattempo si è passati a un'altra voce)
-    assert 'squadre = await api("/api/squadre")' in m.group(1) and "if (voce && stato.legaVoce[ambito] === voce) apri(voce, false);" in m.group(1)
-    # la mia squadra scelta, le rose importate: dopo ognuno si rileggono le squadre
-    collega = lega[lega.index("const collega = {"):lega.index("const voci = vociLega(ambito)")]
-    assert collega.count("rileggiSquadre(") >= 2
-    dopo = collega[collega.index('"/api/mia-squadra"'):]
-    assert "rileggiSquadre(" in dopo[:dopo.index("catch")]
+def test_dopo_un_salvataggio_le_pagine_rileggono_le_squadre():
+    """La mia squadra scelta, le rose importate (Impostazioni > La mia lega, #618): dopo ognuno si rileggono le squadre, così «La
+    mia squadra», i crediti e l'elenco delle squadre non restano quelli di prima; la pagina si ridisegna solo se si è ancora in
+    Impostazioni."""
+    scelta = _funzione("collegaSceltaMia")
+    dopo = scelta[scelta.index('"/api/mia-squadra"'):]
+    assert "caricaSquadre()" in dopo[:dopo.index("catch")] and 'if (stato.vista === "impostazioni") vaiQui();' in dopo
+    rose = _funzione("vistaImportaRose")
+    esito = rose[rose.index("const mostraEsito"):rose.index("const controlla")]
+    assert "caricaSquadre()" in esito
 
 
 def test_primo_avvio_toglie_il_giocatore_sistemato_dal_conto():

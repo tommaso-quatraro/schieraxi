@@ -16,10 +16,10 @@ NODE = shutil.which("node")
 
 def test_i_pulsanti_per_tornare_indietro_hanno_la_freccia_come_icona():
     # docs/STILE-SENZA-AI.md: «← Squadra» è vietato, la freccia è un'icona (ICONA_INDIETRO). Restava nei pannelli di
-    # Squadra, Altro e Impostazioni e in Novità.
+    # Squadra, Altro e Impostazioni e in Novità. Dal 12/11/2026 (#618) il pulsante delle pagine di Impostazioni lo scrive pagina().
     for nome, sorgente in (("app.js", APP), ("impostazioni.js", IMPOSTAZIONI)):
         assert not re.search(r">← ?\$\{", sorgente), nome
-    assert "${ICONA_INDIETRO}${cfg.indietro}" in IMPOSTAZIONI
+    assert "${ICONA_INDIETRO}${opz.indietro.testo}" in APP
 
 
 def _riga_regola(etichetta: str) -> str:
@@ -70,7 +70,8 @@ def test_ogni_campo_delle_fasce_dice_quale_fascia_e_quale_numero():
     prova = _regole_node("votiProva([6.5, 6, 6.5, 7])")
     assert re.findall(r'aria-label="([^"]+)" id="pv\d"', prova) == [
         "Voto del portiere", "Voto del difensore 1", "Voto del difensore 2", "Voto del difensore 3"]
-    regole = APP[APP.index("async function vistaRegole"):APP.index("async function vistaRegole") + 12000]
+    inizio = APP.index("async function vistaRegole")
+    regole = APP[inizio:APP.index("\n}\n", inizio)]
     assert "fascia(s[0], s[1])" not in regole and "numeraFasce()" in regole      # dopo «Togli» i numeri si rifanno
 
 

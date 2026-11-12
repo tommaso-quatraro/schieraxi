@@ -1,0 +1,18 @@
+{
+  "titolo": "Tre schede: Formazione, Giornate, Impostazioni",
+  "voci": [
+    "Web: la barra ha tre schede, Formazione, Giornate e Impostazioni, più la lente per cercare un giocatore. Le schede Squadra e Altro non ci sono più.",
+    "Impostazioni è una pagina sola: Avvisi, La mia lega, Il tuo account, Aspetto, Informazioni. Gestione c'è solo per chi gestisce il server.",
+    "La mia lega raccoglie ciò che stava in Squadra e in Altro: Aggiorna le rose, La mia squadra con stemma e maglia, Regole e scadenza, Le altre squadre.",
+    "Regole e scadenza: in cima quando si chiude la formazione e da quale giornata parte la lega; poi il regolamento da incollare, che si salva con un tocco dopo aver visto cosa è stato riconosciuto. I singoli valori stanno dietro Modifica i valori.",
+    "Avvisi: un interruttore per questo dispositivo, che appena acceso manda un avviso di prova, e le ore tranquille. Gli altri interruttori degli avvisi non si mostrano più: le scelte di prima restano come sono.",
+    "Per chi gestisce il server, Aggiorna i dati sta in Impostazioni > Gestione, al posto delle frecce in alto.",
+    "I collegamenti salvati di Squadra e Altro aprono la voce nuova."
+  ],
+  "tecnico": [
+    "Web: `VISTE` = formazione, giornate, impostazioni. Le pagine di Impostazioni: `?vista=impostazioni&gruppo=rose|squadra|squadre|regole|account|informazioni|gestione`, la rosa di un'altra squadra con `&rosa=`. `dove()` in `app.js` traduce indirizzi, valori salvati, messaggi del service worker e destinazioni di `da_fare` di prima (`squadra`, `altro`, `lega`, `mercato`, `scambi`, `regole`, `rosa`, gruppi `avanzate`, `aspetto`, `avvisi`). Tolti l'ingranaggio e le frecce della testata.",
+    "Avvisi: la web manda solo `silenzio` (PUT /api/avvisi, campi mandati soltanto) e iscrive o toglie il dispositivo (`/api/push/iscrivi`, `/api/push/disiscrivi`); gli altri campi restano sul server. Nessuna rotta cambiata: l'iPhone non cambia.",
+    "Stato dei dati usa il campo `etichetta` di `aggiornamenti` e `controlli`. Schermata di accesso: gli avvisi in una regione `role=\"status\"`, gli errori con `role=\"alert\"`.",
+    "Frasi del server senza percorso di menu, giuste sulla web e sull'iPhone: «Indica la tua squadra in «La mia squadra»» (consigli.py, gestione.py, server.py) e «Nessuna rosa importata: importale con «Aggiorna le rose»». `fanta/diario.py` dice ancora «Squadra > Squadre e rose»: la sua traduzione resta nel catalogo (`err.indica_prima_squadra_diario`)."
+  ]
+}

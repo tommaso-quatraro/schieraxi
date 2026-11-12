@@ -37,8 +37,10 @@ Con un server già acceso: `foto.py http://127.0.0.NN:80NN <cartella-delle-foto>
 Opzioni: `--scene formazione,scheda` (di norma tutte), `--larghezze 390,768,1024,1440`, `--temi chiaro,scuro`, `--lingua it|en`,
 `--accesso`, `--solo-misure` (sotto).
 Scene: `formazione` (dal 12/11/2026 è anche la prima schermata: la scena «oggi» non c'è più), `squadra`, `rosa`, `scheda`
-(scheda del primo titolare), `altro`, `diario` (dal 12/11/2026 la pagina Giornate), `regole`, `impostazioni`. Tutte le scene, a 4 larghezze e 2 temi, sono 64
-foto: circa 10 minuti.
+(scheda del primo titolare), `altro`, `diario` (dal 12/11/2026 la pagina Giornate), `regole`, `impostazioni`. Dal 12/11/2026
+(#618) la barra ha tre voci: `rosa` è Impostazioni > La mia squadra, `regole` è Impostazioni > Regole e scadenza, e `squadra`
+e `altro` aprono gli indirizzi di prima, che portano a Impostazioni (i nomi restano: li usa il collaudo dell'ambiente di prova).
+Tutte le scene, a 4 larghezze e 2 temi, sono 64 foto: circa 10 minuti.
 
 ## Cosa scrive
 Per ogni scena, larghezza e tema:

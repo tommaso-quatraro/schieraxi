@@ -97,8 +97,8 @@
     "en": "the image to SchieraXI (if the app is installed on the Home Screen): above choose crest or shirt."
   },
   "lega.immagini_png_jpeg": {
-    "it": "Immagini PNG, JPEG o WebP, fino a 4 MB. Si vedono in Squadra, nell'intestazione e nella formazione.",
-    "en": "PNG, JPEG or WebP images, up to 4 MB. They show in Team, in the header and in the lineup."
+    "it": "Immagini PNG, JPEG o WebP, fino a 4 MB. Si vedono nella rosa della squadra; lo stemma anche nell'elenco delle squadre e in Giornate.",
+    "en": "PNG, JPEG or WebP images, up to 4 MB. They show in the team's roster; the crest also in the list of teams and in Matchdays."
   },
   "lega.importa_nuove_rose": {
     "it": "Importa le nuove rose",
@@ -197,16 +197,12 @@
     "en": "Choose which of the teams is yours."
   },
   "lega.squadra_aggiorna_rose": {
-    "it": ": in Squadra, «Aggiorna le rose», con l'Excel di Leghe (si importa anche con il menu Condividi).",
-    "en": ": in Team, «Update the rosters», with the Leghe Excel (you can also import it from the Share menu)."
+    "it": ": in Impostazioni, «Aggiorna le rose», con l'Excel di Leghe (si importa anche con il menu Condividi).",
+    "en": ": in Settings, «Update the rosters», with the Leghe Excel (you can also import it from the Share menu)."
   },
   "lega.squadra_salvata": {
     "it": "Squadra salvata",
     "en": "Team saved"
-  },
-  "lega.squadre_rose": {
-    "it": "Squadre e rose",
-    "en": "Teams and rosters"
   },
   "lega.stemma_maglia": {
     "it": "Stemma e maglia",
@@ -240,10 +236,6 @@
     "it": "Usa come stemma",
     "en": "Use as crest"
   },
-  "lega.vai_squadra": {
-    "it": "Vai a Squadra",
-    "en": "Go to Team"
-  },
   "lega.vedi_rosa": {
     "it": "Vedi la rosa",
     "en": "See the roster"
@@ -253,12 +245,8 @@
     "en": "Check the rules"
   },
   "lega.bonus_moduli_crediti": {
-    "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Altro, Regole).",
-    "en": ": bonuses, formations and credits can change from one year to the next (More, Rules)."
-  },
-  "lega.con_tasto_alto": {
-    "it": "con il tasto in alto: calendario, listone e quotazioni nuovi.",
-    "en": "with the top button: new calendar, player list and prices."
+    "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Impostazioni, Regole e scadenza).",
+    "en": ": bonuses, formations and credits can change from one year to the next (Settings, Rules and deadline)."
   },
   "lega.indirizzo_aria": {
     "it": "Indirizzo web dell'immagine, {tipo}",
@@ -307,14 +295,6 @@
   "lega.voce_miasquadra_sub": {
     "it": "La tua squadra e i suoi giocatori",
     "en": "Your team and its players"
-  },
-  "lega.aria_squadra": {
-    "it": "Voci della squadra",
-    "en": "Team items"
-  },
-  "lega.aria_altro": {
-    "it": "Altre voci",
-    "en": "Other items"
   },
   "lega.nuova_stagione_n": {
     "it": "Nuova stagione {s}",

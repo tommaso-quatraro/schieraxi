@@ -2,7 +2,7 @@
 // Primo avvio: UN solo percorso breve (le rose o gli esempi; la squadra con le regole standard; i tempi della lega; fatto).
 // Ogni passo si può saltare.
 // A che punto sei resta sul server (GET e PUT /api/primo-avvio, vedi docs/API.md): si riprende da un altro dispositivo e si riapre
-// quando vuoi da Impostazioni > Informazioni. Si apre da solo una volta sola, se non hai ancora le rose e non hai già chiuso la vecchia procedura;
+// dalle righe della Formazione (i passi saltati). Si apre da solo una volta sola, se non hai ancora le rose e non hai già chiuso la vecchia procedura;
 // lasciato a metà, si riprende alla prossima apertura dell'app (primoAvvioSeServe).
 // Usa le funzioni di app.js (api, esc, avviso, apriFoglio...), caricato dopo questo file: si chiamano solo a pagina pronta.
 const PA_PASSI = ["rose", "squadra", "tempi"];
@@ -196,7 +196,7 @@ async function paTempiCarica() {
     const m = Number(r.scadenza_minuti ?? 0), g = Number(r.prima_giornata_lega ?? 1);
     if (!PA_SCADENZE.includes(m)) sc.insertAdjacentHTML("beforeend", `<option value="${m}">${esc(paScadenzaNome(m))}</option>`);
     sc.value = String(m); pg.value = String(g);
-  } catch { /* restano i valori più comuni; si cambiano anche in Altro > Regole */ }
+  } catch { /* restano i valori più comuni; si cambiano anche in Impostazioni > Regole e scadenza */ }
 }
 const paScadenzaNome = m => (m === 0 ? t("pav.scad_inizio") : tp("pav.scad_minuti", m));
 
@@ -224,7 +224,7 @@ const PA_SCHERMATE = {
       <div id="pa-anteprima"></div>`,
     esegui: async () => { paAnteprima(); return false; },        // il passo si segna fatto alla conferma dell'anteprima
     dopo: () => {
-      // il pulsante dell'app al posto del controllo del browser (#456), come in Squadra › Aggiorna le rose: scelto il file, si controlla subito
+      // il pulsante dell'app al posto del controllo del browser (#456), come in Impostazioni › Aggiorna le rose: scelto il file, si controlla subito
       $("#pa-scegli-file").addEventListener("click", () => $("#pa-file").click());
       $("#pa-file").addEventListener("change", ev => {
         const file = ev.target.files[0];
