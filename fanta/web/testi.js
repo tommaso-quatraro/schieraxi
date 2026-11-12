@@ -968,7 +968,7 @@ const TESTI = {
     "giornate.fuori_confronto.other": "{n} giornate con la tua formazione non entrano nel confronto: la consigliata mostrata prima della scadenza non era stata salvata.",
     "giornate.correggi": "Non è quello che ho schierato",
     "giornate.vuoto": "Ancora niente: le giornate compaiono qui dopo la prima finita.",
-    "giornate.vuoto_squadra": "Ancora niente: manca la tua squadra. Indicala in Squadra, alla voce Squadre e rose.",
+    "giornate.vuoto_squadra": "Ancora niente: manca la tua squadra. Indicala in Squadra, alla voce {voce}.",
     "giornate.vuoto_giornate": "Ancora niente: nella tua lega non è ancora finita nessuna giornata.",
     "giornate.vuoto_calcolo": "Ancora niente: le giornate finite non sono ancora state calcolate. Succede da solo al prossimo aggiornamento dei dati.",
 
@@ -2745,7 +2745,7 @@ const TESTI = {
     "giornate.fuori_confronto.other": "{n} matchdays with your lineup are left out of the comparison: the recommended lineup shown before the deadline had not been saved.",
     "giornate.correggi": "That is not what I fielded",
     "giornate.vuoto": "Nothing yet: matchdays appear here after the first one ends.",
-    "giornate.vuoto_squadra": "Nothing yet: your team is missing. Set it in Team, under Teams and rosters.",
+    "giornate.vuoto_squadra": "Nothing yet: your team is missing. Set it in Team, under {voce}.",
     "giornate.vuoto_giornate": "Nothing yet: no matchday has ended in your league.",
     "giornate.vuoto_calcolo": "Nothing yet: the finished matchdays have not been calculated. It happens on its own at the next data update.",
 

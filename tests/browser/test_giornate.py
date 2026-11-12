@@ -10,6 +10,7 @@ Si guarda ciò che vede chi usa l'app (ruoli, etichette, testi), non il sorgente
 import copy
 import json
 import re
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -100,6 +101,9 @@ def forma_di_oggi(web) -> tuple[dict, list[str]]:
     dentro = con_una_tua_diversa(d, 0, 1)
     d["scelte_tue"] = {"giornate": 1, "meglio_tua": 0, "meglio_consigliata": 1, "pari": 0, "punti_differenza": -3.0, "percentuale_tua": 0,
                        "pochi_dati": True, "per_giornata": [scelta_diversa(d["giornate"][0], -3.0)]}
+    # il server di oggi conta anche questa giornata nel confronto dei Dettagli (contro la consigliata rifatta dopo)
+    d["precisione"]["confronto"] = {"giornate": 1, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 0, "punti": 3.0,
+                                    "media_consigliata": 83.0, "media_tua": 80.0}
     return d, dentro
 
 
@@ -121,6 +125,8 @@ def forma_di_domani(web) -> tuple[dict, list[str]]:
     d["scelte_tue"] = {"giornate": 1, "meglio_tua": 0, "meglio_consigliata": 1, "pari": 0, "punti_differenza": -1.5, "percentuale_tua": 0,
                        "pochi_dati": True, "per_giornata": [scelta_diversa(g0, -1.5)], "senza_istantanea": 1}
     d["sintesi"] = {**d["sintesi"], "senza_consigliata_mostrata": 1}
+    d["precisione"]["confronto"] = {"giornate": 2, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 1, "punti": 1.5,
+                                    "media_consigliata": 80.0, "media_tua": 79.3, "senza_istantanea": 1}
     return d, dentro
 
 
@@ -269,6 +275,10 @@ def test_con_la_consigliata_mostrata_la_riga_dice_i_cambi_e_quanto_sono_valsi(we
     tocca(web, riga(web, nome_di(g2)))
     senza = dettaglio(web, nome_di(g2)).inner_text()
     assert "hai messo" not in senza and "Qui il confronto con la consigliata non c'è" in senza, senza
+    tocca(web, principale(web).get_by_text("Dettagli", exact=True))              # nei Dettagli il confronto c'è, e chi resta fuori
+    tutto = " ".join(web.testo_principale().split())
+    assert "giornate in cui la consigliata ha fatto meglio della tua" in tutto, tutto
+    assert "1 giornata con la tua formazione non entra nel confronto" in tutto, tutto
     assert not web.errori_mostrati() and not web.errori_console
 
 
@@ -353,18 +363,91 @@ def test_se_le_giornate_non_si_leggono_c_e_un_errore_con_riprova(web):
     assert principale(web).get_by_role("button", name="Riprova").is_visible()
 
 
+def diario_vuoto(motivo: str) -> dict:
+    return {"giornate": [], "sintesi": {"giornate": 0}, "scelte_tue": {"giornate": 0, "pochi_dati": True, "per_giornata": []},
+            "affidabilita": {"giornate": 0, "giudizio": "pochi_dati", "pochi_dati": True, "giornate_minime": 8},
+            "precisione": {"giornate": 0, "pochi_dati": True, "giornate_minime": 8, "fonti": {"mostrati": 0, "ricostruiti": 0}, "fantavoto": None,
+                           "gioca": None, "confronto": {"giornate": 0}, "squadra": None, "per_giornata": [], "serie_a": None},
+            "motivo_vuoto": motivo}
+
+
 def test_senza_giornate_finite_la_pagina_lo_dice_senza_errori(web):
     solo(web, "prima")
-    vuoto = {"giornate": [], "sintesi": {"giornate": 0}, "scelte_tue": {"giornate": 0, "pochi_dati": True, "per_giornata": []},
-             "affidabilita": {"giornate": 0, "giudizio": "pochi_dati", "pochi_dati": True, "giornate_minime": 8},
-             "precisione": {"giornate": 0, "pochi_dati": True, "giornate_minime": 8, "fonti": {"mostrati": 0, "ricostruiti": 0}, "fantavoto": None,
-                            "gioca": None, "confronto": {"giornate": 0}, "squadra": None, "per_giornata": [], "serie_a": None},
-             "motivo_vuoto": "giornate"}
-    web.risposta("/api/diario", vuoto)
+    web.risposta("/api/diario", diario_vuoto("giornate"))
     web.apri(GIORNATE)
     assert titolo(web) == "Giornate"
     assert "nella tua lega non è ancora finita nessuna giornata" in web.testo_principale()
     assert not web.errori_mostrati() and not web.in_caricamento() and righe(web).count() == 0
+
+
+@pytest.mark.parametrize("altrui, voce", [(True, "Squadre e rose"), (False, "La mia squadra e rosa")])
+def test_senza_la_tua_squadra_la_pagina_dice_la_voce_con_il_suo_nome(web, altrui, voce):
+    """Senza le rose degli altri la voce di Squadra si chiama «La mia squadra e rosa»: l'aiuto dice quel nome."""
+    solo(web, "prima")
+    f = web.registrata("/api/funzioni")
+    f["funzioni"]["squadre_altrui"] = altrui
+    web.risposta("/api/funzioni", f)
+    web.risposta("/api/diario", diario_vuoto("squadra"))
+    web.apri(GIORNATE)
+    assert f"in Squadra, alla voce {voce}." in " ".join(web.testo_principale().split())
+
+
+# ---------------------------------------------------------------- la copia del telefono e i ridisegni
+def e_il_diario(indirizzo: str) -> bool:
+    return urlsplit(indirizzo).path == "/api/diario"
+
+
+def scheda_della_barra(web, nome: str):
+    return web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name=nome)
+
+
+def test_senza_rete_la_nota_della_copia_resta_anche_girando_il_telefono(web):
+    """Senza rete la pagina mostra la copia salvata con la nota «Non riesco a collegarmi…» e «Riprova». Se la finestra passa i
+    768 px (telefono girato) la pagina si ridisegna: la nota resta, e quando la rete torna le giornate si rileggono da sole."""
+    solo(web, "prima")
+    web.apri(GIORNATE, larghezza=PC)                                            # letta e salvata sul telefono
+    web.pagina.route(e_il_diario, lambda r: r.abort("internetdisconnected"))
+    tocca(web, scheda_della_barra(web, "Formazione"))
+    tocca(web, scheda_della_barra(web, "Giornate"))
+    nota = principale(web).get_by_text("Non riesco a collegarmi")
+    assert nota.is_visible() and righe(web).count() >= 1
+    web.pagina.set_viewport_size({"width": 390, "height": 844})
+    web.aspetta()
+    assert nota.is_visible() and principale(web).get_by_role("button", name="Riprova").is_visible()
+    prima = web.richieste.count("/api/diario")
+    web.pagina.unroute(e_il_diario)
+    web.pagina.evaluate("window.dispatchEvent(new Event('online'))")
+    web.aspetta()
+    assert web.richieste.count("/api/diario") == prima + 1                      # tornata la rete, si rilegge da sola
+    assert not nota.is_visible()
+
+
+@pytest.mark.parametrize("dove", ["Dettagli", CORREGGI])
+def test_i_dati_nuovi_lasciano_il_fuoco_dov_era(web, dove):
+    """La pagina si apre con la copia salvata e si ridisegna quando arrivano i dati nuovi: il fuoco resta su «Dettagli» o su
+    «Non è quello che ho schierato» (prima finiva sul body)."""
+    solo(web, "prima")
+    d = web.registrata("/api/diario")
+    web.apri(GIORNATE)                                                          # letta e salvata sul telefono
+    tenute = []
+    web.pagina.route(e_il_diario, lambda r: tenute.append(r))
+    tocca(web, scheda_della_barra(web, "Formazione"))
+    tocca(web, scheda_della_barra(web, "Giornate"))                            # la copia in pagina, i dati nuovi in arrivo
+    g = d["giornate"][0]
+    if dove == CORREGGI:
+        tocca(web, riga(web, nome_di(g)))
+        bersaglio = dettaglio(web, nome_di(g)).get_by_role("button", name=CORREGGI)
+    else:
+        bersaglio = principale(web).get_by_text("Dettagli", exact=True)
+    bersaglio.focus()
+    nuovo = copy.deepcopy(d)
+    nuovo["precisione"]["fantavoto"]["errore_medio"] = 1.2
+    assert tenute, "la pagina non ha chiesto le giornate"
+    tenute[-1].fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps(nuovo, ensure_ascii=False))
+    web.aspetta()
+    assert "sbaglia in media di 1,2 punti" in web.testo_principale()            # la pagina si è ridisegnata
+    fuoco = web.pagina.evaluate("document.activeElement && document.activeElement.textContent.trim()")
+    assert fuoco == dove, fuoco
 
 
 @pytest.mark.parametrize("larghezza", [390, PC])

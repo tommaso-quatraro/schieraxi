@@ -2334,10 +2334,15 @@ function mostraGiornate(d, opz = {}) {
         <span class="gn-dx"><b class="gn-num">${num(f.reale)}</b> <span class="gn-attesi">${f.atteso != null ? t("formazione.punti_e_attesi", { n: num(f.atteso) }) : t("formazione.punti")}</span></span>
       </button>${!largo && aperta ? dettaglioGiornata(d, g, stagioni) : ""}</li>`;
   };
-  const vuoto = { squadra: t("giornate.vuoto_squadra"), giornate: t("giornate.vuoto_giornate"), calcolo: t("giornate.vuoto_calcolo") }[d.motivo_vuoto] || t("giornate.vuoto");
+  const voceSquadre = (vociLega("squadra").find(v => v.id === "squadre") || {}).nome || t("lega.voce_squadre");
+  const vuoto = { squadra: t("giornate.vuoto_squadra", { voce: voceSquadre }), giornate: t("giornate.vuoto_giornate"), calcolo: t("giornate.vuoto_calcolo") }[d.motivo_vuoto] || t("giornate.vuoto");
   const lato = largo ? `<div class="gn-lato">${voci.filter(g => giornate.aperte.has(idGiornata(g))).map(g => dettaglioGiornata(d, g, stagioni)).join("")}</div>` : "";
-  // ridisegno della stessa pagina (dati nuovi dopo la copia del telefono, finestra più larga, correzione): «Dettagli» resta aperto
-  const fuoco = document.activeElement && document.activeElement.closest && document.activeElement.closest(".gn-riga");
+  // ridisegno della stessa pagina (dati nuovi dopo la copia del telefono, finestra più larga, correzione): «Dettagli» resta aperto e il
+  // fuoco torna dov'era (una riga, «Dettagli», «Non è quello che ho schierato»); altrimenti finirebbe sul body
+  const attivo = document.activeElement && contenuto.contains(document.activeElement) ? document.activeElement : null;
+  const rigaAttiva = attivo && attivo.closest(".gn-riga");
+  const fuoco = rigaAttiva ? `#${rigaAttiva.id}` : attivo && attivo.matches(".gn-dettagli > summary") ? ".gn-dettagli > summary"
+    : attivo && attivo.matches("[data-correggi]") ? `[data-correggi="${attivo.dataset.correggi}"]` : null;
   const dettagliAperti = !!opz.sostituisce && !!($(".gn-dettagli", contenuto) || {}).open;
   pagina(voci.length ? `<div class="gn">${testa}<ul class="gn-elenco" aria-label="${t("giornate.elenco")}">${voci.map(riga).join("")}</ul>${lato}</div>`
     : `${testa}<p class="debole gn-vuoto">${vuoto}</p>`, opz);
@@ -2349,7 +2354,7 @@ function mostraGiornate(d, opz = {}) {
     const c = ev.target.closest("[data-correggi]"), g = c && voceGiornata(c.dataset.correggi);
     if (g) correggiGiornata(g);
   });
-  if (fuoco) { const b = document.getElementById(fuoco.id); if (b) b.focus({ preventScroll: true }); }   // ridisegno (dati nuovi, finestra più larga)
+  if (fuoco) { const b = $(fuoco, contenuto); if (b) b.focus({ preventScroll: true }); }
 }
 
 // Un tocco su una riga: al telefono apre o chiude i suoi 11 sotto di lei; da 768 px la sceglie e i suoi 11 vanno a destra. La riga resta
@@ -2374,8 +2379,16 @@ function apriChiudiGiornata(id) {
   else { giornate.aperte.delete(id); const z = document.getElementById(`gn-d-${id}`); if (z) z.remove(); }
   segna(b, aperta);
 }
-// La finestra passa i 768 px: la pagina si ridisegna con l'altra disposizione (la giornata aperta resta aperta).
-GIORNATE_LARGHE.addEventListener("change", () => { if (stato.vista === "giornate" && giornate.dati && $(".gn", contenuto)) mostraGiornate(giornate.dati, { sostituisce: true }); });
+// La finestra passa i 768 px (telefono girato): la pagina si ridisegna con l'altra disposizione, la giornata aperta resta aperta. Se in
+// pagina c'è la copia del telefono, la sua nota resta com'è sotto il titolo: dice perché i dati sono vecchi, ha «Riprova», e la riprova
+// che parte da sola al ritorno della rete (caricaConCache) la cerca prima di rileggere.
+GIORNATE_LARGHE.addEventListener("change", () => {
+  if (stato.vista !== "giornate" || !giornate.dati || !$(".gn", contenuto)) return;
+  const nota = $("#nota-cache", contenuto), fuocoNota = nota && nota.contains(document.activeElement) ? document.activeElement : null;
+  mostraGiornate(giornate.dati, { sostituisce: true });
+  const capo = $(".capo-pagina", contenuto);
+  if (nota && capo) { capo.after(nota); if (fuocoNota) fuocoNota.focus({ preventScroll: true }); }
+});
 
 // «Non è quello che ho schierato»: scegli a mano gli 11 che hai schierato in una giornata finita. Si parte dagli 11 della riga; il
 // server controlla che siano 11 della tua rosa con un modulo valido. La correzione porta sempre la stagione della giornata (il server
