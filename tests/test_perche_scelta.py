@@ -74,6 +74,8 @@ T, Y = G(1, p=0.8, mu=6.5), G(2, p=0.9, mu=5.8)
 @pytest.mark.parametrize("t, y, attuale, invertita, extra, chiave", [
     # 1. l'altro quasi certamente non gioca e scambiarli varrebbe di più: la regola dei titolari che giocano (#341)
     (G(1, p=0.9), G(2, p=0.1, mu=9.0), 60.0, 60.3, {}, "scelta.titolare_che_gioca"),
+    # ...anche quando il titolare gioca poco ma non è «improbabile» (dalla revisione di #612 basta il 20%, non più il 50%)
+    (G(1, p=0.22), G(2, p=0.04, mu=9.0), 60.0, 60.05, {}, "scelta.titolare_che_gioca"),
     # ...ma se con il titolare la formazione vale di più, si dice quello (come il Confronto)
     (G(1, p=0.9), G(2, p=0.1, mu=9.0), 60.3, 60.0, {}, "scelta.piu_punti"),
     # 2. titolare incerto con la riserva sicura: la nota che c'era già (con lui la formazione vale di più o lo stesso)

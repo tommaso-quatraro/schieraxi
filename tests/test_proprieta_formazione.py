@@ -108,9 +108,9 @@ def test_la_formazione_migliore_usa_un_modulo_ammesso_e_rispetta_i_ruoli(caso, r
 
 @PROVE
 @given(rosa_e_regole(), st.sampled_from(fz.LIVELLI_RISCHIO), st.booleans())
-def test_nessun_titolare_sotto_il_20_per_cento_se_un_compagno_sicuro_costa_poco(caso, stile, ricerca):
+def test_nessun_titolare_sotto_il_20_per_cento_se_un_compagno_che_gioca_costa_poco(caso, stile, ricerca):
     """In ogni modulo e con ogni stile, un titolare che gioca meno del 20% resta solo se nessun compagno di ruolo fuori dagli 11
-    gioca al 50% o più, oppure se metterlo al suo posto costa almeno 0,3 punti attesi (#329)."""
+    gioca almeno il 20%, oppure se metterlo al suo posto costa almeno 0,5 punti attesi (#329, soglie della revisione di #612)."""
     rosa, r = caso
     _, _, peso, inclinazione, _ = stile
     val = fz.Valutatore(rosa, r, simulazioni=40)
@@ -121,11 +121,11 @@ def test_nessun_titolare_sotto_il_20_per_cento_se_un_compagno_sicuro_costa_poco(
             if t.p >= 0.2:
                 continue
             for alt in rosa:
-                if alt.ruolo != t.ruolo or alt.id in ids or alt.p < 0.5:
+                if alt.ruolo != t.ruolo or alt.id in ids or alt.p < 0.2:
                     continue
                 prova = x.titolari[:i] + [alt] + x.titolari[i + 1:]
                 costo = val.atteso(x.titolari, x.panchina) - val.atteso(prova, fz._panchina(rosa, prova, r))
-                assert costo >= 0.3 - 1e-9, (t, alt, costo)
+                assert costo >= 0.5 - 1e-9, (t, alt, costo)
 
 
 # ---------------------------------------------------------------- sostituzioni

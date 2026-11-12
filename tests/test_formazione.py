@@ -104,7 +104,7 @@ def test_migliore_sceglie_chi_gioca_e_il_modulo():
 
 def test_titolare_in_dubbio_con_il_cambio_pronto():
     """Chi gioca di rado ma vale molto si può schierare se il suo sostituto è il primo in panchina (sotto il 20% solo se metterci
-    il sostituto costa almeno 0,3 punti attesi: vedi i test «nessun titolare che non gioca»)."""
+    il sostituto costa almeno 0,5 punti attesi: vedi i test «nessun titolare che non gioca»)."""
     rosa = ([G(1, "P", 0.95, 6)] + [G(10 + i, "D", 0.9, 6) for i in range(4)]
             + [G(20 + i, "C", 0.9, 6.5) for i in range(4)]
             + [G(30, "A", 0.9, 9), G(31, "A", 0.9, 8.5), G(32, "A", 0.9, 8), G(33, "A", 0.05, 12)])
@@ -132,16 +132,24 @@ def _titolari(f):
 
 @pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
 def test_titolare_improbabile_lascia_il_posto_al_compagno_che_gioca(stile):
-    """X al 15% e Y al 60%: lo scambio costa 0,15 x 0,6 x 2 = 0,18 punti attesi (meno di 0,3), quindi gioca Y, con ogni stile."""
+    """X al 15% e Y al 60%: lo scambio costa 0,15 x 0,6 x 2 = 0,18 punti attesi (meno di 0,5), quindi gioca Y, con ogni stile."""
     _, _, peso, inclinazione, _ = stile
     f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.6, 6), Regole(), peso=peso, inclinazione=inclinazione)
     assert Y in _titolari(f) and X not in _titolari(f)
     assert [g.id for g in f.panchina] == [X]                        # X non sparisce: va in panchina
 
 
-def test_compagno_proprio_al_50_per_cento_basta():
-    """Y gioca al 50% (il minimo): costo 0,15 x 0,5 x 2 = 0,15 punti attesi, si scambia."""
-    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.5, 6), Regole())
+def test_compagno_proprio_al_20_per_cento_basta():
+    """Y gioca al 20% (il minimo: non è «improbabile»): costo 0,15 x 0,2 x 2 = 0,06 punti attesi, si scambia. Prima della
+    revisione di #612 serviva un compagno al 50%: con chi gioca meno del 20% in fondo alla panchina non bastava più."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.2, 6), Regole())
+    assert Y in _titolari(f) and X not in _titolari(f)
+
+
+def test_titolare_improbabile_lascia_il_posto_anche_se_costa_tre_decimi():
+    """Il caso al limite visto con le probabili: X al 19% che quando gioca vale 1,8 più di Y, che gioca il 95%. Lo scambio costa
+    0,19 x 0,95 x 1,8 = 0,32 punti attesi: sotto il tetto (0,5), gioca Y."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.19, 7.8, 0.95, 6), Regole())
     assert Y in _titolari(f) and X not in _titolari(f)
 
 
@@ -151,10 +159,54 @@ def test_titolare_improbabile_resta_se_lo_scambio_costa_troppo():
     assert X in _titolari(f) and Y not in _titolari(f)
 
 
-def test_titolare_improbabile_resta_senza_un_compagno_al_50_per_cento():
-    """Y gioca solo al 40%: nessun compagno di ruolo abbastanza sicuro, resta la scelta della ricerca (X)."""
-    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.4, 6), Regole())
+def test_titolare_improbabile_resta_senza_un_compagno_che_gioca():
+    """Anche Y gioca meno del 20%: nessun compagno di ruolo che gioca, resta la scelta della ricerca (X)."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.19, 6), Regole())
     assert X in _titolari(f) and Y not in _titolari(f)
+
+
+def _rosa_tre_portieri(*portieri):
+    """Tre portieri (gioca, fantavoto atteso) e tutti gli altri al 95%."""
+    return ([G(1 + i, "P", p, mu) for i, (p, mu) in enumerate(portieri)] + [G(10 + i, "D", 0.95, 6) for i in range(6)]
+            + [G(20 + i, "C", 0.95, 6.5) for i in range(6)] + [G(30 + i, "A", 0.95, 7) for i in range(5)])
+
+
+def _due_portieri_in_panchina():
+    r = Regole()
+    r.panchina.tipo, r.panchina.numero, r.panchina.max_sostituzioni = "per_ruolo", 11, 5
+    r.panchina.posti = {"P": 2, "D": 3, "C": 3, "A": 3}
+    return r
+
+
+@pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
+def test_tra_tre_portieri_non_e_titolare_quello_che_quasi_certamente_non_gioca(stile):
+    """Rilievo della revisione di #612: tre portieri che giocano 4%, 22% e 92% (fantavoto atteso 6,0 / 6,0 / 4,4), due portieri
+    in panchina. In panchina chi gioca meno del 20% sta in fondo, quindi da titolare il portiere al 4% vale qualche centesimo in
+    più che da riserva e la ricerca lo sceglie. Metterci quello al 92% costa 0,4 punti attesi, quello al 22% quasi niente: la
+    regola deve provare tutti i compagni che giocano almeno il 20%, non solo quelli sopra il 50%."""
+    _, _, peso, inclinazione, _ = stile
+    rosa = _rosa_tre_portieri((0.04, 6.0), (0.22, 6.0), (0.92, 4.4))
+    f = fz.migliore(rosa, _due_portieri_in_panchina(), peso=peso, inclinazione=inclinazione)
+    titolare = next(g for g in f.titolari if g.ruolo == "P")
+    assert titolare.p >= 0.2, titolare
+    assert [g.id for g in f.panchina if g.ruolo == "P"][-1] == 1         # l'improbabile resta l'ultimo dei portieri in panchina
+
+
+def test_tra_tre_portieri_la_consigliata_schiera_il_22_e_tiene_il_92_primo_in_panchina():
+    """Lo stesso caso con lo stile della consigliata: fra i due compagni che si possono mettere vince chi dà più punti attesi."""
+    f = fz.migliore(_rosa_tre_portieri((0.04, 6.0), (0.22, 6.0), (0.92, 4.4)), _due_portieri_in_panchina())
+    assert next(g.id for g in f.titolari if g.ruolo == "P") == 2
+    assert [g.id for g in f.panchina if g.ruolo == "P"] == [3, 1]
+
+
+def test_nessun_improbabile_titolare_in_nessun_modulo_se_un_compagno_gioca():
+    """La regola per chi legge il consiglio: chi gioca meno del 20% non è proposto titolare se un compagno di ruolo escluso
+    gioca almeno il 20% (qui il cambio costa sempre meno del tetto), in ogni modulo proposto."""
+    rosa = _rosa_tre_portieri((0.04, 6.0), (0.22, 6.0), (0.92, 4.4)) + [G(40, "A", 0.1, 9.5), G(41, "D", 0.15, 7.5)]
+    f = fz.migliore(rosa, _due_portieri_in_panchina())
+    assert len(f.tutte) > 1
+    for x in f.tutte:
+        assert [g.id for g in x.titolari if g.p < 0.2] == [], x.modulo
 
 
 def test_titolare_al_20_per_cento_non_e_improbabile():
@@ -187,6 +239,15 @@ def test_confronto_dice_che_il_titolare_improbabile_quasi_certamente_non_gioca(m
     assert r["frase"]["chiave"] == "confronto.titolare_che_gioca"
     assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 60%" in r["testo"]
     assert "non il migliore" not in r["testo"]
+
+
+def test_confronto_dice_lo_stesso_quando_il_titolare_gioca_poco_ma_non_e_improbabile(monkeypatch):
+    """Dalla revisione di #612 la regola mette titolare anche un compagno che gioca fra il 20% e il 50%: il Confronto deve dare lo
+    stesso motivo, non «con il modulo 4-3-3 (non il migliore)…»."""
+    r = _confronto_x_y(monkeypatch, 0.15, 8, 0.3, 6)
+    assert (r["posto_a"], r["posto_b"]) == ("panchina 1", "titolare") and r["differenza"] < -0.04
+    assert r["frase"]["chiave"] == "confronto.titolare_che_gioca"
+    assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 30%" in r["testo"]
 
 
 def test_confronto_senza_improbabile_resta_come_prima(monkeypatch):

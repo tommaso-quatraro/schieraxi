@@ -44,10 +44,14 @@ MODULO_NEUTRO = (4, 3)     # difensori e attaccanti del modulo da cui si misura 
 # riserva titolare (se lui non gioca, entra lei); per chi legge il consiglio è un errore. Dopo la ricerca, un titolare che prende
 # voto meno di IMPROBABILE_SOTTO (chi è infortunato o squalificato ha quasi 0) lascia il posto al miglior compagno di ruolo che lo
 # prende almeno COMPAGNO_ALMENO, se il cambio costa meno di COSTO_MASSIMO_CAMBIO punti attesi. Non sono regole della lega: valgono
-# per ogni lega e ogni stile. Le soglie sono quelle di «improbabile» e «ballottaggio» di consigli.titolarita.
+# per ogni lega e ogni stile. La soglia è quella di «improbabile» di consigli.titolarita.
+# Dalla revisione di #612 basta un compagno che non è improbabile (prima doveva giocare almeno il 50%) e il tetto è 0,5 (prima 0,3):
+# in panchina chi è improbabile sta in fondo (`_panchina`), quindi da titolare vale qualche centesimo in più che da riserva e la
+# ricerca lo sceglie più spesso. Con tre portieri al 4%, 22% e 92% restava titolare quello al 4% (il 92% costava più del tetto, il
+# 22% non si provava); con uno al 19% e uno al 95% il cambio costava 0,32.
 IMPROBABILE_SOTTO = 0.2
-COMPAGNO_ALMENO = 0.5
-COSTO_MASSIMO_CAMBIO = 0.3
+COMPAGNO_ALMENO = IMPROBABILE_SOTTO
+COSTO_MASSIMO_CAMBIO = 0.5
 
 
 @dataclass(frozen=True)
