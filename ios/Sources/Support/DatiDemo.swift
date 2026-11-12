@@ -1075,6 +1075,8 @@ private extension LegaDemo {
             "/api/account/registra": "{\"multiutente\": true, \"utente\": {\"id\": 7, \"nome_utente\": \"mister.rossi\", \"ruolo\": \"utente\", \"creato\": \"2026-10-29\"}, \"token\": \"token-demo\", \"codice_recupero\": \"K7M2P-XQ4NH-W8RTV\"}",
             "/api/account/codice-recupero": "{\"codice_recupero\": \"H3N8D-R5WQA-C9XEJ\"}",
             "/api/account/recupero": "{\"ok\": true, \"codice_recupero\": \"H3N8D-R5WQA-C9XEJ\"}",
+            // come il server dal #589: il codice di recupero cambia con la password (senza token: la sessione della demo resta quella)
+            "/api/account/cambia-password": "{\"multiutente\": true, \"utente\": {\"id\": 7, \"nome_utente\": \"mister.rossi\", \"ruolo\": \"utente\", \"creato\": \"2026-10-29\"}, \"ok\": true, \"codice_recupero\": \"H3N8D-R5WQA-C9XEJ\"}",
             "/api/stato": stato(adesso: adesso),
             "/api/stato-dati": statoDati(adesso: adesso),
             "/api/squadre": squadre(),
