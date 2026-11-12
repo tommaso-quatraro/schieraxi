@@ -130,7 +130,8 @@ def test_il_perche_di_un_titolare_regge_altro_e_riserva_che_mancano():
     assert esiti[0] == "Titolare: nessun compagno di ruolo gioca di più."
     assert esiti[1] == "Preferito a Gallo: rigorista."                     # la frase del server viene prima degli incerti
     assert esiti[2] == ""
-    assert esiti[3] == ("Titolare anche se incerto (gioca 35%): se non gioca entra Gallo &lt;b&gt; dalla panchina, e insieme valgono di più.")
+    assert esiti[3] == ("Titolare anche se incerto (gioca 35%): se non gioca, in panchina c'è Gallo &lt;b&gt; che gioca quasi di sicuro, "
+                        "e insieme valgono di più.")
     assert esiti[4] == "" and esiti[5] == ""
 
 

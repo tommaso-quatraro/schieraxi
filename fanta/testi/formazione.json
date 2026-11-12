@@ -180,8 +180,8 @@
     "en": "Matchday started: the lineup is closed · the recommended one counts, yours is no longer valid"
   },
   "formazione.incerto": {
-    "it": "Titolare anche se incerto (gioca {p}): se non gioca entra {riserva} dalla panchina, e insieme valgono di più.",
-    "en": "Starting even though uncertain (plays {p}): if he doesn't play, {riserva} comes on from the bench, and together they are worth more."
+    "it": "Titolare anche se incerto (gioca {p}): se non gioca, in panchina c'è {riserva} che gioca quasi di sicuro, e insieme valgono di più.",
+    "en": "Starting even though uncertain (plays {p}): if he doesn't play, {riserva} is on the bench and almost certainly plays, and together they are worth more."
   },
   "formazione.fv_preso": {
     "it": "fantavoto {fv}",
