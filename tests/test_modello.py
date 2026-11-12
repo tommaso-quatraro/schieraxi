@@ -8,6 +8,7 @@ from fanta import modello
 from fanta.regole import Regole, imposta
 
 ST = "2026-27"
+NAN = float("nan")
 
 
 def _dati(voti_extra=()):
@@ -117,6 +118,41 @@ def test_recupero_giocato_dopo_non_e_usato():
         df.loc[df["giornata"] == 2, "data"] = "2026-10-30 15:00"
     con, senza = _p(d), _p(_dati())
     assert con.at[1, "presenze_pesate"] < senza.at[1, "presenze_pesate"]
+
+
+def _con_la_giornata_6(d, giocata_la_5: bool, voti_della_5=()):
+    """`_dati` con la giornata 5 giocata (1-1) o no, questi voti della 5 (nessuno: non ancora arrivati) e la 6 da giocare."""
+    p = d.partite
+    if giocata_la_5:
+        p.loc[p["giornata"] == 5, ["gol_casa", "gol_trasferta", "giocata"]] = [1, 1, 1]
+    sesta = {"id": 6, "stagione": ST, "giornata": 6, "data": "2026-09-06 15:00", "casa": "alfa", "trasferta": "beta",
+             "gol_casa": NAN, "gol_trasferta": NAN, "giocata": 0, "xg_casa": NAN, "xg_trasferta": NAN, "understat_id": 106, "t": 6}
+    d.partite = pd.concat([p, pd.DataFrame([sesta])], ignore_index=True)
+    if voti_della_5:
+        d.voti = pd.concat([d.voti, pd.DataFrame(list(voti_della_5))], ignore_index=True)
+    return d
+
+
+def _voto_della_5(cid, nome, ruolo, squadra):
+    return {"stagione": ST, "giornata": 5, "calciatore_id": cid, "nome": nome, "squadra": squadra, "ruolo": ruolo, "voto_red": 6.0,
+            "fv_red": 0, "voto_stat": 6, "fv_stat": 0, "voto_ita": 6, "fv_ita": 0, "gol": 0, "gol_subiti": 0, "autogol": 0,
+            "rig_segnati": 0, "rig_sbagliati": 0, "rig_parati": 0, "assist": 0, "mvp": 0, "ammonizioni": 0, "espulsioni": 0,
+            "subentrato": 0, "sostituito": 0, "data": "2026-09-05 15:00", "t": 5}
+
+
+def test_partita_giocata_senza_voti_non_e_un_assenza():
+    """#658: il calendario dà la partita per giocata prima che escano i voti (o il passo dei voti non riesce). Le presenze recenti la
+    contavano, la più pesante, come un'assenza di tutti i giocatori delle due squadre: «gioca N%» crollava fino all'arrivo dei voti.
+    Ora una squadra senza nessun voto in quella giornata non la conta: lo stesso «gioca N%» di prima della partita."""
+    prima = _p(_con_la_giornata_6(_dati(), giocata_la_5=False), giornata=6)
+    senza_voti = _p(_con_la_giornata_6(_dati(), giocata_la_5=True), giornata=6)
+    for cid in (1, 2, 3):
+        assert senza_voti.at[cid, "p_voto"] == prima.at[cid, "p_voto"], cid
+        assert senza_voti.at[cid, "presenze_pesate"] == prima.at[cid, "presenze_pesate"], cid
+    # con i voti arrivati per una squadra sola: per quella conta (il Bomber è rimasto fuori), per l'altra no
+    meta = _p(_con_la_giornata_6(_dati(), True, [_voto_della_5(9, "Riserva", "A", "alfa")]), giornata=6)
+    assert meta.at[1, "p_voto"] < prima.at[1, "p_voto"] - 0.05
+    assert (meta.at[2, "p_voto"], meta.at[3, "p_voto"]) == (prima.at[2, "p_voto"], prima.at[3, "p_voto"])
 
 
 def test_forza_squadre_senza_quote():
