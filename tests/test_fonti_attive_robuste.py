@@ -44,14 +44,14 @@ def test_due_scelte_insieme_non_si_perdono(tmp_path):
 
 def test_il_file_si_rilegge_quando_cambia(tmp_path):
     f = tmp_path / "f.json"
-    fa.imposta("sosfanta", False, f)
-    assert fa.acceso("sosfanta", f) is False
-    f.write_text('{"sosfanta": true, "espn": false}', encoding="utf-8")
-    assert fa.acceso("sosfanta", f) is True and fa.acceso("espn", f) is False
+    fa.imposta("footballdata", False, f)
+    assert fa.acceso("footballdata", f) is False
+    f.write_text('{"footballdata": true, "espn": false}', encoding="utf-8")
+    assert fa.acceso("footballdata", f) is True and fa.acceso("espn", f) is False
 
 
 def test_il_cambio_resta_nel_registro_di_sicurezza(monkeypatch, tmp_path):
     monkeypatch.setenv("FANTA_DATI_UTENTI", str(tmp_path))
-    assert cliente().put("/api/admin/fonti", json={"fonte": "sosfanta", "acceso": False}).status_code == 200
+    assert cliente().put("/api/admin/fonti", json={"fonte": "footballdata", "acceso": False}).status_code == 200
     righe = (tmp_path / registro.FILE_SICUREZZA).read_text(encoding="utf-8")
-    assert "fonte-cambiata" in righe and "fonte=sosfanta" in righe and "valore=spento" in righe
+    assert "fonte-cambiata" in righe and "fonte=footballdata" in righe and "valore=spento" in righe

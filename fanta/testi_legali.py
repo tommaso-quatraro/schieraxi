@@ -489,7 +489,6 @@ FONTI_TESTO = {
     "understat": "Understat: statistiche avanzate (gol e assist attesi, rigori).",
     "footballdata": "football-data.co.uk: statistiche di squadra (tiri, angoli, cartellini), usate solo per misure.",
     "espn": "ESPN: risultati in diretta.",
-    "sosfanta": "Sosfanta: seconda fonte di probabili formazioni, usata solo per misure.",
 }
 
 

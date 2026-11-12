@@ -1,4 +1,4 @@
-"""Un interruttore per ogni fonte di dati esterna (Fantacalcio.it, Understat, football-data, ESPN, Sosfanta, foto).
+"""Un interruttore per ogni fonte di dati esterna (Fantacalcio.it, Understat, football-data, ESPN, foto).
 
 Chi decide, in ordine: 1) la scelta dell'amministratore (file dati/fonti.json, cambiabile dall'app); 2) la variabile d'ambiente
 FANTA_FONTE_<NOME> ("1" acceso, "0" spento); 3) il predefinito. Il predefinito è SPENTO (chi scarica il codice non contatta siti di terzi senza una scelta);
@@ -29,7 +29,6 @@ FONTI: dict[str, tuple[str, str, bool]] = {
     "understat": ("Understat", "statistiche avanzate (gol e assist attesi, rigori)", False),
     "footballdata": ("football-data.co.uk", "risultati e statistiche di squadra delle partite giocate", False),
     "espn": ("ESPN", "risultati in diretta", False),
-    "sosfanta": ("Sosfanta", "seconda fonte di probabili formazioni (solo misura)", False),
     "foto": ("Foto dei giocatori", "foto al posto dei volti illustrati", True),
 }
 

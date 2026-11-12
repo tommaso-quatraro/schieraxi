@@ -430,7 +430,8 @@ def test_workflow_solo_avviso_e_permessi_minimi():
 def test_workflow_parte_sulle_pr_che_toccano_la_web():
     testo = _testo_workflow()
     blocco = testo[testo.index("pull_request:"):testo.index("workflow_dispatch:")]
-    for percorso in ("fanta/web/**", "script/ci/aspetto_web.py", "ios/fotografie/**"):
+    # anche il server finto, che sta in un modulo suo (lo usano pure i test del browser)
+    for percorso in ("fanta/web/**", "script/ci/aspetto_web.py", "script/ci/server_finto.py", "ios/fotografie/**"):
         assert f'"{percorso}"' in blocco, percorso
 
 

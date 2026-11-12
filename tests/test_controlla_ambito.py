@@ -97,3 +97,47 @@ def test_una_modifica_della_descrizione_non_rilancia_i_controlli():
     testo = WORKFLOW.read_text(encoding="utf-8")
     tipi = testo.split("pull_request:", 1)[1].split("types:", 1)[1].split("\n")[0]
     assert "edited" not in tipi and "ready_for_review" in tipi
+
+
+# ---------------------------------------------------------------- dimensione della PR (#620): solo un avviso
+def test_righe_cambiate_senza_test_ne_file_generati():
+    numstat = "\n".join([
+        "120\t30\tfanta/server.py",
+        "400\t0\ttests/test_server.py",                  # test: non contano
+        "50\t50\tios/Tests/SchieraxiTests/OggiTests.swift",
+        "900\t800\tfanta/web/testi.js",                  # generati da uno script: non contano
+        "300\t2\tios/Sources/Support/Catalogo/Catalogo+Oggi.swift",
+        "40\t40\trequirements.txt",
+        "5000\t0\tios/fotografie/vero-prima.json",
+        "70\t70\tdocs/COERENZA-WEB-IPHONE.md",
+        "10\t10\tdocs/openapi.json",
+        "-\t-\tfanta/web/icona-192.png",                 # file binario: niente righe
+        "3\t1\tfanta/web/app.js",
+    ])
+    righe, contati = ambito.righe_cambiate(numstat)
+    assert righe == 150 + 4
+    assert contati == ["fanta/server.py", "fanta/web/app.js"]
+
+
+def test_righe_cambiate_con_i_file_rinominati():
+    numstat = "10\t2\tfanta/{vecchio.py => nuovo.py}\n0\t0\tdocs/a.md => docs/b.md\n7\t0\t{tests => prove}/strumento.py\n"
+    righe, contati = ambito.righe_cambiate(numstat)
+    assert contati == ["fanta/nuovo.py", "docs/b.md", "prove/strumento.py"] and righe == 19
+
+
+def test_avviso_solo_oltre_le_600_righe(capsys):
+    assert ambito.dimensione("600\t0\tfanta/server.py\n") == 0
+    assert "::warning" not in capsys.readouterr().out
+    assert ambito.dimensione("400\t201\tfanta/server.py\n9000\t0\ttests/test_x.py\n") == 0      # mai rosso
+    uscita = capsys.readouterr().out
+    assert uscita.startswith("::warning title=Dimensione::") and "601 righe" in uscita and "600" in uscita
+    assert ambito.dimensione("") == 0
+
+
+def test_il_job_ambito_avvisa_della_dimensione_senza_bloccare():
+    blocco = _blocco_ambito()
+    passo = blocco[blocco.index("- name: Dimensione della PR (solo avviso)"):]
+    assert "if: ${{ !cancelled() }}" in passo
+    assert "git diff --numstat HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_ambito.py --dimensione" in passo
+    assert '|| echo "::warning' in passo                  # anche se lo script si rompe il passo resta verde
+    assert 'grep -q -- "--dimensione" _ci-main/script/ci/controlla_ambito.py' in passo and "exit 0" in passo

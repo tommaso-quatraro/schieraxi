@@ -87,13 +87,6 @@ CREATE TABLE IF NOT EXISTS partite_extra (
     rilevato TEXT,
     PRIMARY KEY (stagione, casa, trasferta)
 );
--- seconda fonte di probabili (feed RSS di Sosfanta): MODALITÀ OMBRA, il modello non la legge. Un segnale per giocatore, giornata
--- e articolo; titolare = 1 (titolare), 0 (fuori), NULL (dubbio). Dei testi si conserva solo il link. pubblicato = ora dell'articolo.
-CREATE TABLE IF NOT EXISTS probabili_fonte2 (
-    stagione TEXT, giornata INTEGER, fonte TEXT, calciatore_id INTEGER, squadra TEXT, titolare INTEGER, percentuale REAL,
-    segnale TEXT, link TEXT, pubblicato TEXT, rilevato TEXT,
-    PRIMARY KEY (stagione, giornata, fonte, calciatore_id, link)
-);
 -- quotazioni di Fantacalcio.it per stagione (qi = iniziale, fissata prima del campionato: buona stima di partenza)
 CREATE TABLE IF NOT EXISTS quotazioni (
     stagione TEXT, calciatore_id INTEGER, nome TEXT, ruolo TEXT, squadra TEXT, qi INTEGER, qa INTEGER, fvm INTEGER,
@@ -165,15 +158,31 @@ CREATE TABLE IF NOT EXISTS taratura_probabili (
 """
 
 
+# Cose dismesse che negli archivi vecchi restano: le quote (decisione 0005, «niente quote») e la seconda fonte di probabili (#609).
+TABELLE_DISMESSE = ("quote", "quote_giocatore", "probabili_fonte2")
+AGGIORNAMENTI_DISMESSI = ("quote%", "crediti-giocatore%", "probabili-fonte2")       # righe di `aggiornamenti` (LIKE)
+CONTROLLI_DISMESSI = ("somma_quote",)                                                # righe di `controlli`
+
+
 def _toglie_tabella_dismessa(db: sqlite3.Connection) -> None:
-    """Una tabella dismessa non si raccoglie più: negli archivi vecchi si toglie (una volta sola, senza scrivere se non c'è)."""
-    if db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'quote'").fetchone():
-        try:
-            db.execute("DROP TABLE quote")
-            db.execute("DELETE FROM aggiornamenti WHERE cosa LIKE 'quote%'")
-            db.commit()
-        except sqlite3.OperationalError:     # archivio occupato da un altro processo: si riprova alla prossima apertura
-            db.rollback()
+    """Tabelle e righe di cose dismesse: negli archivi vecchi si tolgono (una volta sola, senza scrivere se non c'è niente)."""
+    tabelle = [r[0] for r in db.execute(f"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN "
+                                        f"({', '.join('?' * len(TABELLE_DISMESSE))})", TABELLE_DISMESSE)]
+    righe = " OR ".join("cosa LIKE ?" for _ in AGGIORNAMENTI_DISMESSI)
+    controlli = ", ".join("?" * len(CONTROLLI_DISMESSI))
+    resti = db.execute(f"SELECT (SELECT COUNT(*) FROM aggiornamenti WHERE {righe}) + "
+                       f"(SELECT COUNT(*) FROM controlli WHERE nome IN ({controlli}))",
+                       (*AGGIORNAMENTI_DISMESSI, *CONTROLLI_DISMESSI)).fetchone()[0]
+    if not tabelle and not resti:
+        return
+    try:
+        for tabella in tabelle:                          # nomi dalla lista qui sopra, mai dai dati
+            db.execute(f"DROP TABLE {tabella}")
+        db.execute(f"DELETE FROM aggiornamenti WHERE {righe}", AGGIORNAMENTI_DISMESSI)
+        db.execute(f"DELETE FROM controlli WHERE nome IN ({controlli})", CONTROLLI_DISMESSI)
+        db.commit()
+    except sqlite3.OperationalError:     # archivio occupato da un altro processo: si riprova alla prossima apertura
+        db.rollback()
 
 
 def _aggiorna_schema(db: sqlite3.Connection) -> None:

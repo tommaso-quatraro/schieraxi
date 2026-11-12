@@ -114,7 +114,7 @@ def test_aiuto_della_verifica_senza_gli_esperimenti_tolti(capsys):
     with pytest.raises(SystemExit):
         main(["verifica", "--help"])
     aiuto = capsys.readouterr().out
-    assert "xg_fd" in aiuto and "probabili_fonte2" in aiuto and "tiri_porta" not in aiuto
+    assert "xg_fd" in aiuto and "tiri_porta" not in aiuto
 
 
 def test_rose_sintetiche_rispettano_la_composizione():
