@@ -263,6 +263,9 @@ def salva_copia(radice: Path = RADICE, cartella: Path | None = None, tieni: int 
     return destinazione
 
 
+COPIA_SERALE = re.compile(r"account-[0-9]{4}-[0-9]{2}-[0-9]{2}\.sqlite")      # account-AAAA-MM-GG.sqlite
+
+
 def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: datetime) -> Path | None:
     """Con gli account: una copia del database degli utenti (account.sqlite) con l'API di backup di SQLite, che è sicura anche
     mentre il server lo usa. Una al giorno (`adesso` dà il nome), ne tiene `tieni`. Contiene gli hash delle password: il file lo
@@ -282,7 +285,11 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: date
         destinazione.chmod(0o600)
     except OSError:
         pass
-    for vecchia in sorted(cartella.glob("account-*.sqlite"))[:-tieni]:
+    # Si contano e si tolgono solo le copie serali (data nel nome): le copie «prima della migrazione» stanno nella stessa
+    # cartella e, in ordine di nome, vengono dopo quelle con la data; contate qui toglievano posto alle serali, fino a cancellare
+    # quella appena scritta (#653).
+    serali = sorted(p for p in cartella.glob("account-*.sqlite") if COPIA_SERALE.fullmatch(p.name))
+    for vecchia in serali[:-tieni]:
         vecchia.unlink(missing_ok=True)
     return destinazione
 
