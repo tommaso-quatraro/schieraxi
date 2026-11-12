@@ -186,22 +186,14 @@ extension Demo {
                 if let f = vm.formazione, let modulo = moduloDaToccare(vm.livello(f), salvati: vm.salvati) { vm.scegliModulo(modulo) }
             }
 
-        case "formazione-perche":
-            // «Perché questo numero» di un titolare (meglio uno in dubbio: si vede anche «gioca N%»)
-            nav.sezione = .formazione
-            Task {
-                await modello.formazione.carica()
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                guard let f = modello.formazione.formazione else { return }
-                let conMotivi = f.titolari.filter { PercheNumero($0) != nil }
-                let inDubbio = conMotivi.first { PercheNumero($0)?.righe.contains { $0.verso == .avviso } == true }
-                modello.formazione.percheAperto = inDubbio ?? conMotivi.first
-            }
-
         case "squadra":
             nav.sezione = .squadra
         case "giocatore":
-            nav.vai(a: .giocatore(ScenarioVero.attuale?.giocatore ?? 203))
+            if let vero = ScenarioVero.attuale?.giocatore {
+                nav.vai(a: .giocatore(vero))
+            } else {
+                apriSchedaDallaFormazione(nav, modello)
+            }
 
         case "lega":
             nav.sezione = .altro
@@ -237,6 +229,21 @@ extension Demo {
 
     private static func apriLega(_ nav: Navigazione, _ modello: AppModel, _ pagine: [PaginaLega]) {
         nav.sezione = modello.lega.apri(pagine)
+    }
+
+    /// La foto `giocatore` (#616): la scheda aperta dal campo della Formazione, come la web, su un titolare che gioca sotto l'80%
+    /// e ha uno stato a parole (si vedono «gioca N%» colorato, «In dubbio» e «Sostituisci»); se non c'è, il primo titolare.
+    private static func apriSchedaDallaFormazione(_ nav: Navigazione, _ modello: AppModel) {
+        nav.sezione = .formazione
+        Task {
+            let vm = modello.formazione
+            await vm.carica()
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard let f = vm.formazione else { return }
+            let titolari = vm.vista(f).titolari
+            let scelto = titolari.first { SogliaGioca.daMostrare($0.pVoto) && ParolaStato($0) != nil } ?? titolari.first
+            if let g = scelto { nav.apriScheda(g.id, contesto: vm.contestoScheda(g.id)) }
+        }
     }
 }
 
