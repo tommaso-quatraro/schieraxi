@@ -42,7 +42,7 @@
       "web": "righe del perché della scelta (prima solo gli incerti)",
       "iphone": "mancava (nemmeno gli incerti)",
       "forma": "server (`perche_scelta` di `GET /api/formazione`)",
-      "chi": "**da decidere**: dal 12/11/2026 sulla web il perché della scelta non sta più sotto il campo: è nella scheda del titolare, «Perché è titolare» (#616). L'iPhone ha ancora le righe sotto il campo. Prima: web e iPhone fatti nella stessa PR (#356)",
+      "chi": "**da decidere**: dal 12/11/2026 sulla web il perché della scelta non sta più sotto il campo: è nella scheda del titolare, «Perché è titolare» (#616). L'iPhone ha già «Perché è titolare» nella scheda (#673, passo 1a: `PercheTitolare`, `FormazioneViewModel.percheTitolare`) e ancora le righe sotto il campo, che si tolgono con la Formazione unica (passo 1b). Prima: web e iPhone fatti nella stessa PR (#356)",
       "stato": "da-decidere"
     },
     {

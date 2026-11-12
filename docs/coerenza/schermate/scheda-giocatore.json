@@ -3,11 +3,11 @@
     {
       "id": 4,
       "schermata": "Scheda giocatore, prossima partita",
-      "web": "«Giornata 11 · fuori contro …» (Serie A)",
-      "iphone": "«Giornata 11 · in trasferta contro …»",
-      "forma": "«Giornata 8 · 11ª di Serie A · in trasferta contro …»",
-      "chi": "**da decidere**: dal 12/11/2026 sulla web la scheda scrive la partita senza la giornata, «In trasferta contro Parma · sab 31 20:45» (`formazione.partita_casa`, `formazione.partita_fuori`), perché si apre dalla Formazione di quella giornata (#616). L'iPhone ha ancora la giornata davanti. Prima: fatto (rassegna 6/11): web `mercato.partita_casa` e `mercato.partita_fuori`; iPhone `GiocatoreCorpo.descrizionePartita` (`SchedaGiocatoreView.swift`)",
-      "stato": "da-decidere"
+      "web": "«In trasferta contro Parma · sab 31 20:45»",
+      "iphone": "uguale alla web",
+      "forma": "«In casa contro Como · sab 31 20:45», senza la giornata (`formazione.partita_casa`, `formazione.partita_fuori`)",
+      "chi": "**fatto** (#673, passo 1a): dal 12/11/2026 la scheda scrive la partita senza la giornata, perché si apre dalla Formazione di quella giornata (#616); iPhone `LetturaScheda.partita` (`Domain/LetturaScheda.swift`), prova `SchedaGiocatoreComeLaWebTests`. Prima: web `mercato.partita_casa` e `mercato.partita_fuori` con la giornata davanti",
+      "stato": "fatto"
     },
     {
       "id": 23,
@@ -15,7 +15,7 @@
       "web": "neutro",
       "iphone": "verde",
       "forma": "neutro",
-      "chi": "fatto (rassegna 6/11): `NumeroFantavotoScheda` (colore del testo)",
+      "chi": "fatto (rassegna 6/11): `CifreScheda` (colore del testo); dal 12/11/2026 «Fantavoto atteso, se gioca» e accanto «gioca N%», arancio fra 50 e 79 e rosso sotto 50 (`SogliaGioca`), come la web (#616)",
       "stato": "fatto"
     }
   ]
