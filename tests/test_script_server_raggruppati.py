@@ -141,6 +141,8 @@ def test_il_segno_urgente_in_un_commit_senza_firma_non_installa(s):
     s.giro(10, uscita=1)
     assert s.riavvii() == 1 and s.codice() == "V2"
     assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c3
+    # l'avviso dice come si esce dopo il controllo, e non parla di altre versioni in attesa (non ce ne sono)
+    assert "--fidati" in s.avvisi()[-1] and "arrivat" not in s.avvisi()[-1]
 
 
 @con_bash
@@ -232,13 +234,13 @@ def test_ultima_versione_rifiutata_con_una_buona_sotto_resta_fuori_e_l_avviso_lo
     rifiuto lo dice; entrano con la prossima versione buona."""
     _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
     s.giro(0)
-    _commit(s.lavoro, "codice 3, buona", **{"fanta/__init__.py": "V3"})
+    _commit(s.lavoro, "Versione 1.6: codice 3, buona", **{"fanta/__init__.py": "V3"})
     s.giro(10)                                                              # raggruppata
-    _commit(s.lavoro, "codice 4, non parte", **{"fanta/__init__.py": "V4"})
+    _commit(s.lavoro, "Versione 1.7: codice 4, non parte", **{"fanta/__init__.py": "V4"})
     s.codice_curl.write_text("500", encoding="utf-8")
     s.giro(60)                                                              # si installa la 4, non risponde: si torna alla 2
     s.codice_curl.write_text("200", encoding="utf-8")
-    assert s.codice() == "V2" and "arrivate prima" in s.avvisi()[-1]
+    assert s.codice() == "V2" and "la versione arrivata prima" in s.avvisi()[-1]
     s.giro(130)
     assert s.codice() == "V2" and s.riavvii() == 3
     c5 = _commit(s.lavoro, "codice 5, correzione", **{"fanta/__init__.py": "V5"})
@@ -247,10 +249,21 @@ def test_ultima_versione_rifiutata_con_una_buona_sotto_resta_fuori_e_l_avviso_lo
 
 
 @con_bash
-def test_unione_senza_ancora_il_commit_di_versione_aspetta_il_giro_dopo(s, monkeypatch):
+def test_versione_rifiutata_con_sotto_solo_documenti_non_parla_di_versioni_in_attesa(s):
+    _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.giro(0)
+    _commit(s.lavoro, "Solo documenti (#60)", **{"docs/d.md": "doc3"})
+    _commit(s.lavoro, "Versione 1.6: codice 4, non parte", **{"fanta/__init__.py": "V4"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    s.giro(70)
+    assert s.codice() == "V2"
+    assert "La versione nuova non partiva" in s.avvisi()[-1] and "arrivat" not in s.avvisi()[-1]     # sotto, solo documenti
+
+
+@con_bash
+def test_unione_senza_ancora_il_commit_di_versione_aspetta_il_giro_dopo(s):
     """Il job rilascia crea il commit di versione 10-20 secondi dopo l'unione. Un giro che cade in mezzo non installa l'unione da
     sola (numero di versione e novità vecchi, con il raggruppamento per un'ora): aspetta il giro dopo."""
-    monkeypatch.setenv("GIT_COMMITTER_DATE", f"@{ORA_ZERO + 10 * 60} +0000")            # l'ora di GitHub per i due commit
     _commit(s.lavoro, "Correzione (#50)", **{"fanta/__init__.py": "V2", "fanta/novita.d/correzione.json": "{}"})
     s.giro(10)
     assert s.riavvii() == 0 and _righe(s, "commit di versione")
@@ -261,11 +274,38 @@ def test_unione_senza_ancora_il_commit_di_versione_aspetta_il_giro_dopo(s, monke
 
 
 @con_bash
-def test_commit_di_versione_che_non_arriva_non_ferma_gli_aggiornamenti(s, monkeypatch):
-    """Job rilascia fermo: la novità resta in attesa su main. Dopo mezz'ora si installa lo stesso, con una riga nel registro."""
-    monkeypatch.setenv("GIT_COMMITTER_DATE", f"@{ORA_ZERO + 10 * 60} +0000")
-    c2 = _commit(s.lavoro, "Correzione (#50)", **{"fanta/__init__.py": "V2", "fanta/novita.d/correzione.json": "{}"})
-    s.giro(20)
-    assert s.riavvii() == 0
-    s.giro(50)
-    assert s.riavvii() == 1 and s.ultimo() == c2 and _righe(s, "installo lo stesso")
+def test_rilascia_fermo_mezz_ora_dal_primo_giro_che_aspetta_anche_con_altre_unioni(s, monkeypatch):
+    """Job rilascia fermo: la novità resta in main e arrivano altre unioni. La mezz'ora si conta dal primo giro che ha aspettato, non
+    dall'ora dell'ultimo commit (anche nel futuro): un'unione nuova non la fa ripartire. Poi si installa lo stesso, con un avviso;
+    quando il commit di versione arriva, «di nuovo a posto»."""
+    env = {"SCHIERAXI_INTERVALLO_MINUTI": "0"}
+    _commit(s.lavoro, "Correzione (#50)", **{"fanta/__init__.py": "V2", "fanta/novita.d/correzione.json": "{}"})
+    s.giro(10, **env)
+    s.giro(20, **env)
+    monkeypatch.setenv("GIT_COMMITTER_DATE", f"@{ORA_ZERO + 90 * 60} +0000")           # orologio di chi committa avanti
+    _commit(s.lavoro, "Altra unione (#51)", **{"docs/d.md": "doc"})
+    monkeypatch.delenv("GIT_COMMITTER_DATE")
+    s.giro(30, **env)
+    assert s.riavvii() == 0 and len(_righe(s, "commit di versione")) == 1 and not _righe(s, "installo lo stesso")
+    c4 = _commit(s.lavoro, "Ancora un'unione (#52)", **{"docs/d.md": "doc 2"})
+    s.giro(40, **env)                                                       # mezz'ora dal giro delle 10
+    assert s.riavvii() == 1 and s.ultimo() == c4 and _righe(s, "installo lo stesso")
+    assert len(s.avvisi()) == 1 and "rilascia" in s.avvisi()[0]
+    (s.lavoro / "fanta" / "novita.d" / "correzione.json").unlink()
+    c5 = _commit(s.lavoro, "Versione 1.6: Correzione", **{"fanta/novita.json": "[]"})
+    s.giro(50, **env)
+    assert s.riavvii() == 2 and s.ultimo() == c5
+    assert len(s.avvisi()) == 2 and "di nuovo" in s.avvisi()[1]
+
+
+@con_bash
+@pytest.mark.parametrize("come", ["file", "variabile"])
+def test_installazione_forzata_non_aspetta_il_commit_di_versione(s, come, monkeypatch):
+    """La leva d'emergenza deve funzionare anche se il job rilascia è fermo (unione appena arrivata, novità in attesa)."""
+    env = {"SCHIERAXI_INSTALLA_SUBITO": "1"} if come == "variabile" else {}
+    if come == "file":
+        (s.stato / "installa-subito").write_text("", encoding="utf-8")
+    monkeypatch.setenv("GIT_COMMITTER_DATE", f"@{ORA_ZERO + 5 * 60} +0000")            # unione di cinque minuti prima
+    c2 = _commit(s.lavoro, "Correzione urgente (#50)", **{"fanta/__init__.py": "V2", "fanta/novita.d/correzione.json": "{}"})
+    s.giro(10, **env)
+    assert s.riavvii() == 1 and s.ultimo() == c2 and not (s.stato / "installa-subito").exists()
