@@ -2,7 +2,8 @@
 
 App libera (AGPL-3.0) che aiuta a schierare la formazione migliore del fantacalcio (lega classic di Serie A) con una statistica
 nostra, il **fantavoto atteso**. Tre parti: server e web app (`fanta/`), app per iPhone (`ios/`), sito (`sito/`).
-Un solo server: una pull request unita esce da sola in produzione, di solito entro dieci minuti.
+Un solo server: una pull request unita esce da sola in produzione, entro circa 70 minuti (installazioni raggruppate, al massimo
+una all'ora; con l'etichetta `P1` o `urgente` entro dieci minuti).
 
 Dove sta ogni cosa: `MAPPA.md` (si consulta con una ricerca, non si legge intera). Regole dell'area su cui lavori:
 `.claude/rules/` (`server.md`, `web.md`, `ios.md`, `ci.md`). Come si coordina il lavoro: `docs/METODO.md`.

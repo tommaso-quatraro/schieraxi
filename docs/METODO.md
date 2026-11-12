@@ -47,8 +47,10 @@ Chi riprende un lavoro parte da ciò che è scritto, non dalla memoria della cha
 - Vale solo il commento del proprietario del repository: su un'issue pubblica chiunque può scrivere.
 
 ## Dopo l'unione
-- **Server**: la versione nuova compare in produzione di solito entro 10 minuti (l'installazione si rimanda durante le
-  partite e nell'ora prima di una scadenza); l'ambiente di prova
+- **Server**: la versione nuova compare in produzione entro circa 70 minuti: le installazioni si raggruppano, al massimo una
+  all'ora, e si rimandano durante le partite e nell'ora prima di una scadenza. Con l'etichetta `P1` o `urgente` sulla pull
+  request (prima dell'unione) arriva entro 10 minuti. Intervallo e urgenze: `script/server/LEGGIMI.md`, «Rilasci
+  raggruppati». L'ambiente di prova
   (`script/server/prova/LEGGIMI.md`, `docs/decisioni/0012`) la riceve prima e il workflow «Collaudo della prova» la collauda
   da solo. Se non passa apre un'issue `P1`.
 - **iPhone**: release `build-<N>`; le foto delle schermate toccate si scattano su `main`

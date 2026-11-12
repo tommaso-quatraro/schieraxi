@@ -1,0 +1,12 @@
+{
+  "titolo": "Aggiornamenti raggruppati: meno interruzioni",
+  "voci": [
+    "Le versioni nuove dell'app si possono installare insieme, al massimo una volta all'ora: meno momenti in cui l'app si riavvia e meno aggiornamenti della web installata sul telefono.",
+    "Le correzioni urgenti arrivano subito, senza aspettare."
+  ],
+  "tecnico": [
+    "aggiorna-app.sh: fra due installazioni riuscite almeno un intervallo (predefinito 60 minuti; SCHIERAXI_INTERVALLO_MINUTI o ~/.config/schieraxi/intervallo-minuti, 0 = come prima), poi l'ultima versione in un colpo solo. Subito: versione urgente, installazione forzata, ambiente di prova, prima volta, orologio indietro.",
+    "Job rilascia: riga «Rilascio: urgente» nel commit di versione se una PR delle novità in attesa ha l'etichetta P1 o urgente (assegna_versione.py --pr-in-attesa e --urgente); permesso pull-requests: read.",
+    "giro.py dice in quanto arriva in produzione una PR unita (#635)."
+  ]
+}
