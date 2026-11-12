@@ -264,5 +264,13 @@ def test_passi_saltati_senza_rose_si_ritrovano_con_importa_le_rose():
     assert "Hai saltato Le rose, La tua squadra: li trovi in «Da fare» in Oggi" in con
 
 
+def test_passi_saltati_con_le_rose_si_riprendono_da_da_fare_non_da_informazioni():
+    # #597: Impostazioni › Informazioni non ha un pulsante per riaprire la guida (né sulla web né sull'iPhone): il testo non
+    # lo promette, rimanda solo a «Da fare» di Oggi, come l'iPhone
+    con = _fine([{"nome": "Real Esempio"}])
+    assert "Informazioni" not in con
+    assert "Hai saltato Le rose, La tua squadra: li trovi in «Da fare» in Oggi e puoi riprenderli da lì quando vuoi." in con
+
+
 def test_la_guida_osserva_la_chiusura_del_foglio():
     assert "paOsservaChiusura();" in _funzione(PRIMO, "paDisegna")

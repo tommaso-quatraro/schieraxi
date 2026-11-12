@@ -443,6 +443,22 @@ def passo_recupero_salvato(g: Giro) -> None:
     p.locator("#foglio:not([hidden]) .pa-capo").wait_for(state="visible", timeout=30000)
 
 
+FOGLIO_PRIMO_AVVIO = "#foglio:not([hidden]) .pa-capo"
+ATTESA_PRIMO_AVVIO_MS = 10000
+
+
+def primo_avvio_aperto(p, limite_ms: int = ATTESA_PRIMO_AVVIO_MS) -> bool:
+    """Vero se il foglio del primo avvio si vede entro `limite_ms`. Si apre dopo l'app (prima risponde il server sullo stato
+    della guida): guardarlo appena l'app è pronta dava «NON aperto» anche quando poi si apriva (#598)."""
+    try:
+        p.locator(FOGLIO_PRIMO_AVVIO).first.wait_for(state="visible", timeout=limite_ms)
+        return True
+    except Exception as e:                           # noqa: BLE001 - Playwright si importa solo con il browser
+        if type(e).__name__ != "TimeoutError":
+            raise
+        return False
+
+
 def passo_installabile(g: Giro) -> None:
     p = g.pagina
     problemi = controlla_manifesto(p.evaluate(
@@ -473,8 +489,8 @@ def passo_installabile(g: Giro) -> None:
         problemi.append("Chrome non la installa: " + ", ".join(errori))
     try:
         g.aspetta_app(nuova)
-        g.nota("aperta dalla Home: primo avvio " + ("aperto" if nuova.locator("#foglio:not([hidden]) .pa-capo").count()
-                                                   else "NON aperto") + ", si vede «" + nuova.locator("#contenuto").inner_text()[:160] + "»")
+        g.nota("aperta dalla Home: primo avvio " + ("aperto" if primo_avvio_aperto(nuova) else "NON aperto")
+               + ", si vede «" + nuova.locator("#contenuto").inner_text()[:160] + "»")
     except Exception as e:                           # noqa: BLE001 - è solo un'osservazione
         g.nota(f"aperta dalla Home: app non pronta ({type(e).__name__})")
     if problemi:
