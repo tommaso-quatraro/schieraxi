@@ -23,15 +23,3 @@ extension View {
         }
     }
 }
-
-extension View {
-    /// Questa vista (la scheda del giocatore `id`) si apre con lo zoom dal punto segnato con `origineZoom`.
-    @ViewBuilder
-    func arrivoZoom(_ id: Int, _ spazio: Namespace.ID?) -> some View {
-        if let spazio {
-            self.navigationTransition(.zoom(sourceID: id, in: spazio))
-        } else {
-            self
-        }
-    }
-}

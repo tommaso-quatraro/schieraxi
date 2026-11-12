@@ -28,21 +28,11 @@ private struct VaiASezioneChiave: EnvironmentKey {
     static let defaultValue: (Sezione) -> Void = { _ in }
 }
 
-private struct ApriNovitaChiave: EnvironmentKey {
-    static let defaultValue: () -> Void = {}
-}
-
 extension EnvironmentValues {
     /// Cambia sezione (per esempio dal pulsante «Apri la formazione» di Oggi).
     var vaiASezione: (Sezione) -> Void {
         get { self[VaiASezioneChiave.self] }
         set { self[VaiASezioneChiave.self] = newValue }
-    }
-
-    /// Apre Lega > Novità (dal banner «Novità nell'app» di Oggi).
-    var apriNovita: () -> Void {
-        get { self[ApriNovitaChiave.self] }
-        set { self[ApriNovitaChiave.self] = newValue }
     }
 }
 
@@ -56,7 +46,7 @@ extension Etichetta.Gravita {
     }
 }
 
-/// Riga di un giocatore: avatar con l'anello dell'indice, nome, partita, etichette e a destra il numero (fantavoto atteso e
+/// Riga di un giocatore: volto, nome, partita, etichette e a destra il numero (fantavoto atteso e
 /// «gioca N%» prima della partita, fantavoto preso dopo: vedi `numero`). Con `apribile` un tocco apre la scheda del giocatore.
 struct RigaGiocatore: View {
     let g: Giocatore
@@ -143,7 +133,6 @@ struct RigaGiocatore: View {
                 parti.append("fantavoto atteso \(testoPunti(g))")
                 parti.append("gioca al \(Formato.percento(g.pVoto)) per cento")
             }
-            if let i = g.indice { parti.append("indice \(Formato.intero(i)) su 100") }
         }
         parti.append(contentsOf: g.etichette.map { $0.testo.lowercased() })
         return parti.joined(separator: ", ")
@@ -208,7 +197,7 @@ struct RigaGiocatore: View {
     }
 
     private var avatar: some View {
-        AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.assente == true ? nil : g.indice, dimensione: min(lato, 64), nome: g.nome, ruolo: g.ruolo)
+        AvatarGiocatore(id: g.id, squadra: g.squadra, dimensione: min(lato, 64), nome: g.nome, ruolo: g.ruolo)
     }
 
     /// `conNumero` falso: il numero sta fuori, in un pulsante a sé (vedi `numeroPerche`).

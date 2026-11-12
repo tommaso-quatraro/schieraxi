@@ -147,25 +147,6 @@ final class AnteprimaRoseTests: XCTestCase {
 
     // MARK: una squadra basta
 
-    func testScambiConUnaSolaRosaChiedonoLeAltre() throws {
-        let una: [SquadraLega] = try Decodifica.decodifica(Data(#"[{"nome": "Real Fantasia", "mia": true}]"#.utf8))
-        let due: [SquadraLega] = try Decodifica.decodifica(Data(#"[{"nome": "Real Fantasia", "mia": true}, {"nome": "Atletico Pigiama"}]"#.utf8))
-        let soloAltra: [SquadraLega] = try Decodifica.decodifica(Data(#"[{"nome": "Atletico Pigiama"}]"#.utf8))
-        XCTAssertTrue(ScambiLogica.servonoAltreRose(una))
-        XCTAssertTrue(ScambiLogica.servonoAltreRose(soloAltra))
-        XCTAssertTrue(ScambiLogica.servonoAltreRose([]))
-        XCTAssertFalse(ScambiLogica.servonoAltreRose(due))
-    }
-
-    @MainActor
-    func testScambiViewModelSaQuandoServonoLeAltreRose() async {
-        let s = ServerDiProva { _, _, _ in Data(#"[{"nome": "Real Fantasia", "mia": true, "giocatori": 25}]"#.utf8) }
-        let vm = ScambiViewModel(server: s)
-        XCTAssertFalse(vm.servonoAltreRose, "finché le squadre non sono lette si mostra la schermata di sempre")
-        await vm.caricaSquadre()
-        XCTAssertTrue(vm.servonoAltreRose)
-        XCTAssertEqual(s.quante("/api/scambi/proposte"), 0, "nessuna ricerca consumata")
-    }
 }
 
 /// Il ViewModel: anteprima, scelte, «Conferma e salva», 412, 429, 400, file con i campi del modulo, If-Match dell'anteprima.

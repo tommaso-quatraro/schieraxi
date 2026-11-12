@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.476",
+    "data": "2026-11-12T16:44:01",
+    "titolo": "iPhone e iPad più semplici: via le funzioni tolte dalla web",
+    "voci": [
+      "iPhone e iPad: restano Oggi, Formazione, scheda del giocatore, Diario, rose, regole, impostazioni e ricerca. Non ci sono più stili, confronto, scambi, cambi consigliati, seguiti, elenco dei giocatori, calendario, movimenti e crediti.",
+      "iPhone e iPad, Oggi: non ci sono più le partite del turno né l'avviso a ogni versione nuova. Le novità si leggono in Impostazioni, sotto Informazioni.",
+      "iPhone: i widget sono tre, Prossima giornata, Formazione e Da controllare. I collegamenti alle pagine tolte aprono la schermata più vicina che resta."
+    ],
+    "tecnico": [
+      "Catalogo dei testi (fanta/testi, testi.js rigenerato): tolte le 122 chiavi che non usa più nessuno, né la web né l'iPhone; via fanta/testi/live.json, rimasto vuoto. Resta formazione.stato_altro_modulo, che ora usa solo l'iPhone.",
+      "ios/: tolti Presentation/Scambi e Presentation/Confronto, le pagine di Mercato, Partite del turno, Movimenti e Crediti, gli otto widget fuori dal pacchetto con i loro pezzi, i modelli e i test relativi; la ricerca resta in Presentation/Mercato. Formazione usa il solo livello equilibrato di `livelli`. Nessuna rotta e nessun campo del server cambiano."
+    ]
+  },
+  {
     "versione": "1.475",
     "data": "2026-11-12T16:15:30",
     "titolo": "Squalificati e diffidati dai cartellini che abbiamo già: regola pronta, non ancora in uso",

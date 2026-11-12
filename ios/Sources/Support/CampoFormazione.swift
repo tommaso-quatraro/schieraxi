@@ -7,9 +7,7 @@ import SwiftUI
 struct PedinaCampo: View {
     let g: Giocatore
     var diametro: CGFloat = 44
-    /// true nell'immagine da condividere: colori fissi (sempre su sfondo scuro).
-    var perImmagine = false
-    /// Nel campo a video un tocco apre la scheda del giocatore (nell'immagine da condividere no).
+    /// Un tocco apre la scheda del giocatore.
     var apribile = false
     @Environment(\.apriGiocatore) private var apri
     @Environment(\.spazioZoom) private var zoom
@@ -27,7 +25,7 @@ struct PedinaCampo: View {
 
     private var pedina: some View {
         VStack(spacing: 2) {
-            AvatarGiocatore(id: g.id, squadra: g.squadra, indice: nil, dimensione: diametro, nome: g.nome, ruolo: g.ruolo)
+            AvatarGiocatore(id: g.id, squadra: g.squadra, dimensione: diametro, nome: g.nome, ruolo: g.ruolo)
                 .overlay(alignment: .bottom) {
                     PillolaFantavoto(valore: g.fvAtteso, diametro: diametro).offset(y: 8)
                 }
@@ -141,46 +139,6 @@ struct DistintivoSquadra: View {
     }
 }
 
-/// La legenda del campo: gli stessi pezzi delle pedine, su un ritaglio di prato, con la spiegazione accanto.
-/// Testi uguali alla web app (`formazione.legenda_*` in testi.js). Con `chiudi` ha il pulsante «Ho capito» (la prima volta,
-/// sopra il campo); senza, sta nel riquadro che si apre con «Cosa vuol dire».
-struct LegendaCampo: View {
-    var chiudi: (() -> Void)?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            voce("fantavoto atteso se gioca, con le regole della tua lega") {
-                PillolaFantavoto(valore: 6.8)
-            }
-            voce("probabilità che giochi") { RigaGioca(testo: "gioca 85%", incerto: false) }
-            voce("sotto il 70%: il posto è a rischio") { RigaGioca(testo: "gioca 45%", incerto: true) }
-            voce("gioca in casa contro la squadra della sigla") { RigaAvversario(avversario: "napoli", inCasa: true) }
-            voce("gioca fuori casa contro la squadra della sigla") { RigaAvversario(avversario: "napoli", inCasa: false) }
-            voce("Il volto ha i colori della sua squadra. Tocca il fantavoto atteso per sapere perché è quello.") {
-                AvatarGiocatore(id: 4321, squadra: "napoli", indice: nil, dimensione: 30, nome: nil, ruolo: "C")
-            }
-            if let chiudi {
-                Button(action: chiudi) {
-                    Text("Ho capito").font(.subheadline.weight(.semibold)).frame(minHeight: 44).padding(.horizontal, 8)
-                }
-                .pulsanteVetro()
-            }
-        }
-    }
-
-    private func voce<Esempio: View>(_ testo: String, @ViewBuilder esempio: () -> Esempio) -> some View {
-        HStack(spacing: 12) {
-            esempio()
-                .frame(width: 92, height: 36)
-                .background(Color(red: 0.10, green: 0.40, blue: 0.24), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .environment(\.colorScheme, .dark)
-                .accessibilityHidden(true)
-            Text(testo).font(.footnote).fixedSize(horizontal: false, vertical: true)
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
 extension Color {
     /// Colore del ruolo (portiere, difensore, centrocampista, attaccante).
     static func ruolo(_ ruolo: String) -> Color {
@@ -198,9 +156,8 @@ extension Color {
 struct CampoFormazione: View {
     let titolari: [Giocatore]
     var diametro: CGFloat = 44
-    var perImmagine = false
 
-    /// Nel campo a video le pedine entrano una dopo l'altra e un tocco apre la scheda; nell'immagine da condividere no.
+    /// Le pedine entrano una dopo l'altra e un tocco apre la scheda.
     var apribile = false
 
     var body: some View {
@@ -222,14 +179,9 @@ struct CampoFormazione: View {
         .accessibilityLabel("Campo con i titolari")
     }
 
-    @ViewBuilder
     private func pedina(_ g: Giocatore) -> some View {
-        if perImmagine {
-            PedinaCampo(g: g, diametro: diametro, perImmagine: true)
-        } else {
-            PedinaCampo(g: g, diametro: diametro, perImmagine: false, apribile: apribile)
-                .transizione(.scale(scale: 0.6).combined(with: .opacity))
-        }
+        PedinaCampo(g: g, diametro: diametro, apribile: apribile)
+            .transizione(.scale(scale: 0.6).combined(with: .opacity))
     }
 
     /// Prato verde a fasce, con le righe del campo (area, cerchio di centrocampo, metà campo).
@@ -254,42 +206,5 @@ struct CampoFormazione: View {
                 .stroke(Color.white.opacity(0.28), lineWidth: 1.5)
             }
         }
-    }
-}
-
-/// L'immagine da condividere (si disegna con `ImageRenderer`): titolo, campo con i titolari, panchina. Sempre su fondo scuro,
-/// larga 360 punti e alta almeno 490: se i cognomi vanno a capo il campo cresce e l'immagine con lui. Alta 490 fissi tagliava
-/// già il titolo e la legenda (foto `formazione-immagine` del 3/11/2026, issue #274).
-struct ImmagineFormazione: View {
-    let giornata: Int
-    var giornataLega: Int? = nil
-    let squadra: String
-    let modulo: String
-    /// nil se i punti di una formazione a mano non sono ancora calcolati: nell'immagine non si scrivono.
-    let punti: Double?
-    let titolari: [Giocatore]
-    let panchina: [Giocatore]
-
-    var body: some View {
-        VStack(spacing: 10) {
-            VStack(spacing: 2) {
-                // «Giornata 8 · 11ª di Serie A · 3-4-3» come la web (#299): su una riga, il carattere si rimpicciolisce se non ci sta
-                Text("\(TempiLega.etichetta(serieA: giornata, lega: giornataLega)) · \(modulo)").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                    .lineLimit(1).minimumScaleFactor(0.6)
-                Text([squadra, punti.map { "\(Formato.punti($0)) punti attesi" }].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")).font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.85))
-            }
-            CampoFormazione(titolari: titolari, diametro: 42, perImmagine: true)
-            Text("Panchina: " + panchina.map(\.nomeCorto).joined(separator: ", "))
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85))
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-            Text("Il numero sotto il volto è il fantavoto atteso · vs in casa, @ in trasferta").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color(red: 0.24, green: 0.86, blue: 0.59))
-        }
-        .fixedSize(horizontal: false, vertical: true)   // alta quanto serve: niente righe tagliate per stare in 490 punti
-        .padding(.horizontal, 14).padding(.top, 18).padding(.bottom, 12)
-        .frame(width: 360)
-        .frame(minHeight: 490, alignment: .top)
-        .background(LinearGradient(colors: [Color(red: 0.05, green: 0.14, blue: 0.09), Color(red: 0.03, green: 0.06, blue: 0.04)], startPoint: .top, endPoint: .bottom))
-        .environment(\.colorScheme, .dark)
     }
 }

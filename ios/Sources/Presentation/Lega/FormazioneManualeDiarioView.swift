@@ -100,7 +100,7 @@ struct FormazioneManualeDiarioView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: scelto ? "checkmark.circle.fill" : "circle").foregroundStyle(scelto ? Color.verde : Color.testoSecondario)
-                AvatarGiocatore(id: g.id, squadra: g.squadraSlug ?? g.squadra, dimensione: 34, conNumero: false, nome: g.nome, ruolo: g.ruolo)
+                AvatarGiocatore(id: g.id, squadra: g.squadraSlug ?? g.squadra, dimensione: 34, nome: g.nome, ruolo: g.ruolo)
                 Text(g.nome)
                 Spacer()
             }

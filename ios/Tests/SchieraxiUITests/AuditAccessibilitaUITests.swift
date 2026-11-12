@@ -7,11 +7,10 @@ import XCTest
 /// così il workflow `Test` di ogni PR lo salta in un attimo.
 final class AuditAccessibilitaUITests: XCTestCase {
     private static let schermate = [
-        "oggi", "formazione", "formazione-manuale", "formazione-confronto", "formazione-perche",
-        "squadra", "mercato-consigliati", "mercato-classifica", "mercato-calendario", "mercato-osservati", "giocatore",
-        "scambi", "scambi-offerta", "scambi-dettaglio", "scambi-analizza",
-        "lega", "lega-squadre", "lega-rosa", "lega-regole", "lega-stato", "lega-avvisi", "lega-diario", "lega-novita",
-        "lega-importa", "lega-movimenti", "lega-stagione", "impostazioni", "impostazioni-aspetto", "impostazioni-crediti",
+        "oggi", "formazione", "formazione-manuale", "formazione-perche",
+        "squadra", "giocatore",
+        "lega", "lega-squadre", "lega-rosa", "lega-regole", "lega-stato", "lega-avvisi", "lega-diario",
+        "lega-importa", "lega-stagione", "impostazioni", "impostazioni-aspetto", "impostazioni-crediti", "impostazioni-novita",
         "impostazioni-avanzate", "collega-widget", "guida", "primo-avvio",
     ]
     private static let accessi = ["accedi", "registra", "recupero", "codice", "account", "rose", "rete", "limite"]

@@ -3,14 +3,6 @@
     "it": "Stato dei dati",
     "en": "Data status"
   },
-  "av.mostra_tutte": {
-    "it": "Mostra tutte le funzioni",
-    "en": "Show all features"
-  },
-  "av.mostra_tutte_spiega": {
-    "it": "Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche il resto (risultati in diretta, confronto, seguiti, diario e altro). Vale solo per te.",
-    "en": "By default SchieraXI shows only the essentials: lineup, team and trades. Turn this on to see the rest too (live scores, comparison, followed players, diary and more). It only applies to you."
-  },
   "av.stato_spiega": {
     "it": "Da dove arrivano i dati, se qualche fonte ha dato errore e quanto è affidabile il modello. Serve solo per capire cosa non va.",
     "en": "Where the data comes from, whether any source has failed and how reliable the model is. Only useful to understand what is wrong."

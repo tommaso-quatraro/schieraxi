@@ -8,38 +8,6 @@
     "it": "La tua squadra, le altre e le loro rose",
     "en": "Your team, the others and their rosters"
   },
-  "lega.voce_consigli": {
-    "it": "Cambi consigliati",
-    "en": "Recommended swaps"
-  },
-  "lega.voce_consigli_sub": {
-    "it": "Svincolati che migliorano la tua squadra",
-    "en": "Free agents who improve your team"
-  },
-  "lega.voce_osservati": {
-    "it": "Seguiti",
-    "en": "Following"
-  },
-  "lega.voce_osservati_sub": {
-    "it": "I giocatori che segui e gli avvisi quando si liberano",
-    "en": "The players you follow and alerts when they become available"
-  },
-  "lega.voce_giocatori": {
-    "it": "Elenco dei giocatori",
-    "en": "Player list"
-  },
-  "lega.voce_giocatori_sub": {
-    "it": "Tutti i giocatori, con ricerca e filtri",
-    "en": "All players, with search and filters"
-  },
-  "lega.voce_calendario": {
-    "it": "Calendario",
-    "en": "Calendar"
-  },
-  "lega.voce_calendario_sub": {
-    "it": "Le prossime partite e quanto sono facili",
-    "en": "The next matches and how easy they are"
-  },
   "lega.voce_importa": {
     "it": "Aggiorna le rose",
     "en": "Update the rosters"
@@ -47,14 +15,6 @@
   "lega.voce_importa_sub": {
     "it": "Il file Excel o il testo preso da Leghe",
     "en": "The Excel file or the text taken from Leghe"
-  },
-  "lega.voce_scambi": {
-    "it": "Scambi",
-    "en": "Trades"
-  },
-  "lega.voce_scambi_sub": {
-    "it": "Valuta un'offerta, trova o costruisci uno scambio",
-    "en": "Evaluate an offer, find or build a trade"
   },
   "lega.voce_diario": {
     "it": "Diario delle giornate",
@@ -72,37 +32,13 @@
     "it": "Punteggi, modificatore difesa, moduli, panchina, rosa",
     "en": "Scoring, defence modifier, formations, bench, roster"
   },
-  "lega.voce_movimenti": {
-    "it": "Movimenti e storico",
-    "en": "Moves and history"
-  },
-  "lega.voce_movimenti_sub": {
-    "it": "Cosa è cambiato a ogni aggiornamento delle rose",
-    "en": "What changed at every roster update"
-  },
-  "lega.voce_crediti": {
-    "it": "Crediti delle squadre",
-    "en": "Team credits"
-  },
-  "lega.voce_crediti_sub": {
-    "it": "I crediti residui di ogni squadra",
-    "en": "The credits left for each team"
-  },
   "lega.voce_stagione": {
     "it": "Nuova stagione",
     "en": "New season"
   },
-  "lega.voce_stagione_sub": {
-    "it": "Archivia le rose e riparti",
-    "en": "Archive the rosters and start over"
-  },
   "lega.voce_novita": {
     "it": "Novità",
     "en": "What's new"
-  },
-  "lega.voce_novita_sub": {
-    "it": "Cosa è cambiato negli ultimi aggiornamenti",
-    "en": "What has changed in recent updates"
   },
   "lega.alt_immagine": {
     "it": "{tipo} di {nome}",
@@ -135,18 +71,6 @@
   "lega.cosa_cambiato": {
     "it": "Cosa è cambiato",
     "en": "What has changed"
-  },
-  "lega.crediti_residui_ogni": {
-    "it": "Crediti residui di ogni squadra",
-    "en": "Credits left for each team"
-  },
-  "lega.crediti_non_salvati": {
-    "it": "Ci sono crediti scritti e non ancora salvati.",
-    "en": "Some credits are written but not saved yet."
-  },
-  "lega.crediti_salvati": {
-    "it": "Crediti salvati",
-    "en": "Credits saved"
   },
   "lega.da_controllare": {
     "it": "Da controllare:",
@@ -264,10 +188,6 @@
     "it": "Rose controllate: tutto in ordine.",
     "en": "Rosters checked: everything in order."
   },
-  "lega.salva_crediti": {
-    "it": "Salva i crediti",
-    "en": "Save the credits"
-  },
   "lega.salva_immagine": {
     "it": "Salva immagine",
     "en": "Save image"
@@ -283,10 +203,6 @@
   "lega.scegli_quale_delle": {
     "it": "Scegli quale delle squadre è la tua.",
     "en": "Choose which of the teams is yours."
-  },
-  "lega.servono_per_consigli": {
-    "it": "Servono per i consigli del mercato (rimborso e crediti dopo il cambio). Restano anche se importi di nuovo l'Excel.",
-    "en": "They are used for the market advice (refund and credits after the swap). They stay even if you import the Excel again."
   },
   "lega.squadra_aggiorna_rose": {
     "it": ": in Squadra, «Aggiorna le rose», con l'Excel di Leghe (si importa anche con il menu Condividi).",

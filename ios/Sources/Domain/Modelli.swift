@@ -23,7 +23,6 @@ struct Giocatore: Decodable, Identifiable {
     let puntiAttesi: Double?
     let golAttesi: Double?
     let assistAttesi: Double?
-    let indice: Double?
     let dubbio: Bool?
     let diffidato: Bool?
     let titolarita: String?
@@ -116,26 +115,6 @@ struct GiocatoreBreve: Decodable, Identifiable, Hashable {
     let ruolo: String
     let squadra: String?
     let quotazione: Double?
-}
-
-struct PropostaMercato: Decodable, Identifiable {
-    let esce: GiocatoreBreve
-    let entra: GiocatoreBreve
-    let guadagno: Double
-    let breve: Double?
-    let rimborso: Double?
-    let creditiDopo: Double?
-    let fattibile: Bool?
-    let giornate: [Int]?
-    var id: String { "\(esce.id)-\(entra.id)" }
-}
-
-struct Mercato: Decodable {
-    let squadra: String?
-    let proposte: [PropostaMercato]
-    let svincolati: Int?
-    let creditiResidui: Double?
-    let rimborsoIpotizzato: Double?
 }
 
 struct ElencoGiocatori: Decodable {
@@ -235,110 +214,6 @@ struct Rosa: Decodable {
     let aggiornato: String?
     let giocatori: [GiocatoreRosa]
     let avvisi: [String]?
-}
-
-struct PropostaScambio: Decodable, Identifiable {
-    let mia: String?
-    let altra: String
-    let `do`: [GiocatoreBreve]
-    let ricevo: [GiocatoreBreve]
-    let guadagnoMio: Double
-    let guadagnoLoro: Double
-    let perGiornataMio: [Double]?
-    let perGiornataLoro: [Double]?
-    let breveMio: Double?
-    let breveLoro: Double?
-    let giornate: [Int]?
-    /// Variazione percentuale dei punti attesi per reparto («mio» e «loro»): [P, D, C, A].
-    let reparti: RepartiScambio?
-    let percentualeMio: Double?
-    let quotazioneDo: Double?
-    let quotazioneRicevo: Double?
-    // Analisi completa (`completo=true`, scambi N contro M con conguaglio): tutti opzionali, un server più vecchio non li manda.
-    let completo: Bool?
-    /// Le rose dopo lo scambio sono valide per tutte e due le squadre e i crediti bastano.
-    let valido: Bool?
-    let problemi: [String]?
-    let rose: RoseDopoScambio?
-    let valoreRosa: LatiScambio<VariazioneRosa>?
-    let panchina: LatiScambio<VariazioneRosa>?
-    let conguaglio: ConguaglioScambio?
-    /// Punti attesi in stagione, con il valore dei crediti scambiati (se si è indicato un conguaglio).
-    let nettoMio: Double?
-    let nettoLoro: Double?
-    let giudizio: GiudizioScambio?
-    var id: String { altra + "|" + `do`.map { String($0.id) }.joined(separator: ",") + "|" + ricevo.map { String($0.id) }.joined(separator: ",") }
-}
-
-/// Un valore per me e uno per l'altra squadra.
-struct LatiScambio<T: Decodable>: Decodable {
-    let mio: T?
-    let loro: T?
-}
-
-struct VariazioneRosa: Decodable {
-    let prima: Double?
-    let dopo: Double?
-    let variazione: Double?
-    let percentuale: Double?
-}
-
-struct RoseDopoScambio: Decodable {
-    let mio: RosaDopoScambio?
-    let loro: RosaDopoScambio?
-}
-
-struct RosaDopoScambio: Decodable {
-    let squadra: String?
-    let valida: Bool?
-    let problemi: [String]?
-    let modulo: String?
-}
-
-/// I crediti scambiati: positivo = li ricevi tu (e la squadra «loro» li paga).
-struct ConguaglioScambio: Decodable {
-    let crediti: Int?
-    let valido: Bool?
-    let problema: String?
-    let residui: LatiScambio<Double>?
-    let dopo: LatiScambio<Double>?
-    /// «nessuno», «loro» o «tu».
-    let chiPaga: String?
-    let tassoMio: Double?
-    let tassoLoro: Double?
-    let valoreMio: Double?
-    let valoreLoro: Double?
-}
-
-struct GiudizioScambio: Decodable {
-    let chi: String?
-    let testo: String?
-    let soglia: Double?
-    let spiegazione: [String]?
-}
-
-struct RepartiScambio: Decodable {
-    let mio: [String: Double]?
-    let loro: [String: Double]?
-}
-
-/// Le ricerche di scambi che restano oggi (il server ne conta un numero al giorno; l'amministratore non ha limite: `tetto` nil).
-struct LimiteRicerche: Decodable, Equatable {
-    let restano: Int?
-    let tetto: Int?
-
-    /// «Ne restano 3 oggi su 20»; nil se non c'è un limite o non si sa.
-    var testo: String? {
-        guard let restano, let tetto else { return nil }
-        return "Ne \(restano == 1 ? "resta" : "restano") \(restano) oggi su \(tetto)"
-    }
-}
-
-struct ProposteScambi: Decodable {
-    let giornate: [Int]?
-    let proposte: [PropostaScambio]
-    /// Quante ricerche restano oggi (facoltativo: server vecchio o amministratore).
-    let ricerche: LimiteRicerche?
 }
 
 struct FormazioneBreve: Decodable {
@@ -868,8 +743,7 @@ struct CreditoMovimento: Decodable, Identifiable {
     var id: String { squadra }
 }
 
-/// Cosa è cambiato nelle rose da un'importazione all'altra. Lo stesso modello vale per l'esito dell'importazione e per lo storico
-/// (`/api/movimenti`), dove c'è anche la data.
+/// Cosa è cambiato nelle rose da un'importazione all'altra: sta nell'esito dell'importazione.
 struct Differenze: Decodable, Identifiable {
     let quando: String?
     let primaImportazione: Bool?

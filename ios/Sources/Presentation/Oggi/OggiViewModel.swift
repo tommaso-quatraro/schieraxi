@@ -1,44 +1,25 @@
 import SwiftUI
 
-/// Le partite di un giorno (titolo come «sabato 31 ottobre» e le partite in ordine di orario).
-struct PartiteDelGiorno: Identifiable {
-    let titolo: String
-    let partite: [Partita]
-    var id: String { titolo }
-}
-
 /// Logica della schermata Oggi: carica la giornata, chiede il permesso per le notifiche e riprogramma i promemoria.
 @MainActor
 final class OggiViewModel: ViewModelBase {
     let caricatore: Caricatore<Oggi>
-    /// Versione dell'app del server: serve al banner «Novità nell'app».
-    let info: Caricatore<InfoServer>
-    /// Risultati in diretta (GET /api/live). Senza copia su disco: un punteggio vecchio non deve sembrare di adesso.
-    let live: Caricatore<LiveWidget>
     /// false nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
     private let conPromemoria: Bool
     private let server: any ServerClient
     /// Partite rinviate: la scelta «per questa giornata» è in viaggio (il menu si blocca) e l'eventuale errore da mostrare.
     @Published private(set) var rinvioInCorso = false
     @Published var erroreRinvio: String?
-    /// La funzione «Risultati in diretta» (la imposta la schermata dalle funzioni del server). Spenta, Partite del turno resta
-    /// con giorno e ora e senza risultati in diretta, anche se ne è rimasto uno in memoria da quando era accesa.
-    @Published var liveAcceso = true
 
     init(server: any ServerClient, conPromemoria: Bool = true) {
         self.conPromemoria = conPromemoria
         self.server = server
         // Il comando «Aggiorna» lo gestisce questo ViewModel (deve anche riprogrammare i promemoria), non il Caricatore.
         caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
-        info = Caricatore<InfoServer>("/api/stato", ascolta: false, server: server)
-        live = Caricatore<LiveWidget>("/api/live", cache: false, ascolta: false, server: server)
         super.init()
-        osserva(live)
         osserva(caricatore)
-        osserva(info)
         alComandoAggiorna { [weak self] in
             await self?.carica()
-            await self?.live.ricarica()
         }
     }
 
@@ -53,29 +34,6 @@ final class OggiViewModel: ViewModelBase {
     /// Altri diffidati della rosa.
     var diffidati: [Avviso] { (oggi?.avvisi ?? []).filter { $0.inFormazione != true && $0.tipo == "diffidato" } }
 
-    /// Le partite del turno divise per giorno, in ordine di data.
-    var partitePerGiorno: [PartiteDelGiorno] { Self.raggruppa(DirettaLogica.conRecuperi(oggi?.partite ?? [], live: risultatiLive)) }
-
-    /// I risultati in diretta, solo con «Risultati in diretta» accesa e se l'ultima lettura è riuscita: con la funzione spenta o
-    /// la rete assente si vedono i dati del turno (giorno e ora), senza punteggio né minuto in diretta.
-    var risultatiLive: LiveWidget? { liveAcceso && live.errore == nil ? live.dato : nil }
-
-    func dalVivo(_ p: Partita) -> PartitaLive? { DirettaLogica.dalVivo(risultatiLive, per: p) }
-
-    /// I miei titolari che giocano in questa partita.
-    func mieiTitolari(_ p: Partita) -> [MioTitolare] { oggi?.mieiTitolari?.titolari(casa: p.casa, trasferta: p.trasferta) ?? [] }
-
-    /// Segue le partite: chiede ai risultati in diretta ogni tanto, solo finché la schermata è visibile (la vista annulla il lavoro
-    /// quando sparisce o l'app va in secondo piano) e ci sono partite in corso o in arrivo.
-    func seguiLive() async {
-        while !Task.isCancelled {
-            await live.ricarica()
-            guard !Task.isCancelled,
-                  let attesa = DirettaLogica.attesa(live: risultatiLive, turno: oggi?.partite ?? [], adesso: Orologio.adesso()) else { return }
-            do { try await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000)) } catch { return }
-        }
-    }
-
     /// Ogni quanto si rilegge Oggi durante la giornata (i voti escono a fine partita: non serve di più).
     static let ripassoGiornata: TimeInterval = 300
 
@@ -88,24 +46,6 @@ final class OggiViewModel: ViewModelBase {
             await caricatore.ricarica()
             guard oggi?.faseGiornata == .inCorso else { return }
         }
-    }
-
-    static func raggruppa(_ partite: [Partita]) -> [PartiteDelGiorno] {
-        var perGiorno: [String: [Partita]] = [:]
-        var ordine: [String] = []
-        let ordinate = partite.sorted { ($0.data ?? "") < ($1.data ?? "") }
-        for p in ordinate {
-            let titolo = Quando.data(p.data).map { Quando.giorno($0).primaMaiuscola } ?? Catalogo.Oggi.dataDaDefinire
-            if perGiorno[titolo] == nil { ordine.append(titolo) }
-            perGiorno[titolo, default: []].append(p)
-        }
-        return ordine.map { PartiteDelGiorno(titolo: $0, partite: perGiorno[$0] ?? []) }
-    }
-
-    /// La versione del server da far vedere nel banner, se l'utente non ha ancora guardato le novità (`novitaVista`).
-    func novitaDaVedere(ultimaVista: String) -> String? {
-        guard let v = info.dato?.versione, !v.isEmpty, v != "?", v != ultimaVista else { return nil }
-        return v
     }
 
     /// Ricarica la giornata e, se i dati sono freschi, riprogramma i promemoria.
@@ -129,7 +69,6 @@ final class OggiViewModel: ViewModelBase {
 
     func carica() async {
         await caricatore.ricarica()
-        await info.ricarica()
         // Con dati vecchi (server irraggiungibile, o ancora la cache) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
         guard conPromemoria, !Demo.attivo, let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
         let memoria = UserDefaults.standard

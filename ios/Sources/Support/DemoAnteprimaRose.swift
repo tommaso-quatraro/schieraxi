@@ -52,7 +52,4 @@ enum DemoAnteprimaRose {
       "tagliati": [], "crediti": [{"squadra": "Dinamo Pizza", "prima": 12, "dopo": 7}], "testo": "Dinamo Pizza prende Nenad Krslić"},
     "riepilogo": "Dinamo Pizza prende Nenad Krslić"}
     """#
-
-    /// Le squadre della lega con la sola mia rosa (fotografia `scambi-una-rosa`: Scambi spiega che servono le rose degli altri).
-    static let unaSquadra = #"[{"nome": "Schiera FC", "mia": true, "giocatori": 25, "crediti_residui": 12}]"#
 }

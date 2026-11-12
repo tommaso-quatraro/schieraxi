@@ -96,9 +96,4 @@ struct NomiInteriTests {
         }
     }
 
-    @MainActor
-    @Test("Confronto «Chi schierare?»: il nome di ognuno dei due va a capo intero")
-    func colonnaConfronto() throws {
-        try Self.cresceIntero("ColonnaDuello") { ColonnaDuello(g: try Self.giocatore($0), scelto: true, posto: "panchina 2") }
-    }
 }

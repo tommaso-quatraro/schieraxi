@@ -1,31 +1,7 @@
 {
-  "mercato.nessun_giocatore_osservato": {
-    "it": "Nessun giocatore seguito.",
-    "en": "You are not following any player."
-  },
   "mercato.come_legge": {
     "it": "Come si legge",
     "en": "How to read this"
-  },
-  "mercato.cerco_gli_svincolati": {
-    "it": "Cerco gli svincolati migliori…",
-    "en": "Looking for the best free agents…"
-  },
-  "mercato.carico_calendario": {
-    "it": "Carico il calendario…",
-    "en": "Loading the calendar…"
-  },
-  "mercato.calendario_difficolta": {
-    "it": "Calendario e difficoltà",
-    "en": "Calendar and difficulty"
-  },
-  "mercato.ruolo": {
-    "it": "Ruolo",
-    "en": "Position"
-  },
-  "mercato.solo_svincolati": {
-    "it": "Solo svincolati",
-    "en": "Free agents only"
   },
   "mercato.annulla": {
     "it": "Annulla",
@@ -106,34 +82,6 @@
   "mercato.svincolato": {
     "it": "Svincolato",
     "en": "Free agent"
-  },
-  "mercato.rimborso": {
-    "it": "Lo svincolo ti restituisce il {p}% del prezzo pagato.",
-    "en": "Releasing a player gives you back {p}% of the price paid."
-  },
-  "mercato.crediti_dopo": {
-    "it": "crediti dopo {dopo}{no}",
-    "en": "credits after {dopo}{no}"
-  },
-  "mercato.rimborso_n": {
-    "it": "rimborso {r}",
-    "en": "refund {r}"
-  },
-  "mercato.costo_n": {
-    "it": "costo {c}",
-    "en": "cost {c}"
-  },
-  "mercato.non_bastano": {
-    "it": " (non bastano)",
-    "en": " (not enough)"
-  },
-  "mercato.cal_spiega.one": {
-    "it": "Dalla più facile alla più difficile nella prossima giornata · pallino verde = tue squadre.",
-    "en": "From easiest to toughest in the next matchday · green dot = your teams."
-  },
-  "mercato.cal_spiega.other": {
-    "it": "Dalla più facile alla più difficile nelle prossime {n} giornate · pallino verde = tue squadre.",
-    "en": "From easiest to toughest over the next {n} matchdays · green dot = your teams."
   },
   "mercato.non_gioca": {
     "it": "non gioca",
@@ -279,14 +227,6 @@
     "it": "Stagione {s}: {m}' · {g} gol ({xg} attesi) · {a} assist ({xa} attesi)",
     "en": "Season {s}: {m}' · {g} goals ({xg} expected) · {a} assists ({xa} expected)"
   },
-  "mercato.non_osservi": {
-    "it": "Non lo segui più",
-    "en": "You no longer follow him"
-  },
-  "mercato.osservi_avviso": {
-    "it": "Lo segui: ti avviso se cambia qualcosa",
-    "en": "You follow him: I will tell you if anything changes"
-  },
   "mercato.panchina_n": {
     "it": "Panchina {n}",
     "en": "Bench {n}"
@@ -342,9 +282,5 @@
   "mercato.parte_di_rado": {
     "it": "di solito entra dopo",
     "en": "usually comes on later"
-  },
-  "mercato.bozza_copiata": {
-    "it": "Bozza copiata: incollala nel gruppo o in privato",
-    "en": "Draft copied: paste it in the group or privately"
   }
 }

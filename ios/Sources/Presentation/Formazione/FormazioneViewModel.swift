@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// I giocatori da mostrare in questo momento (consigliata, stile e modulo scelti, oppure modifica a mano).
+/// I giocatori da mostrare in questo momento (consigliata, un altro modulo, oppure modifica a mano).
 struct VistaFormazione {
     let titolari: [Giocatore]
     let panchina: [Giocatore]
@@ -20,21 +20,13 @@ struct RigaScelta: Identifiable, Equatable {
     var voce: String { nome + " · " + testo }
 }
 
-/// Un'immagine pronta da condividere (la formazione disegnata), con un identificativo per `.sheet(item:)`.
-struct ImmagineCondivisa: Identifiable {
-    let id = UUID()
-    let immagine: UIImage
-    let titolo: String
-}
-
-/// Logica della schermata Formazione: stile e modulo, modifica a mano, salvataggio della scelta, formazione di un'altra squadra.
+/// Logica della schermata Formazione: modulo, modifica a mano, salvataggio della scelta, formazione di un'altra squadra.
 /// Vive nell'`AppModel`, quindi cambiando sezione (barra laterale dell'iPad) la modifica a mano non si perde.
 @MainActor
 final class FormazioneViewModel: ViewModelBase {
     let caricatore: Caricatore<Formazione>
     let server: any ServerClient
 
-    @Published var rischio = 0
     @Published var moduloScelto: String?
     /// Id dei titolari scelti a mano; nil = si usa la formazione consigliata.
     @Published var manuale: [Int]?
@@ -42,10 +34,6 @@ final class FormazioneViewModel: ViewModelBase {
     @Published var messaggio: String?
     /// Nome di un'altra squadra della lega, se se ne sta guardando la formazione consigliata (nil = la mia).
     @Published var squadraVista: String?
-    /// Confronto aperto dalla formazione (ballottaggio o «⇄» su un titolare).
-    @Published var confrontoAperto: ConfrontoSheet.Inizio?
-    /// L'immagine della formazione, pronta da condividere.
-    @Published var anteprimaImmagine: ImmagineCondivisa?
     /// Il giocatore di cui si guarda «Perché questo numero» (tocco sul fantavoto atteso).
     @Published var percheAperto: Giocatore?
 
@@ -60,8 +48,8 @@ final class FormazioneViewModel: ViewModelBase {
     /// Il server sta provando la scelta salvata appena letta: finché non risponde la riga non dice niente (come la web).
     @Published private(set) var provaSalvata = false
     /// Un salvataggio è partito e il server non ha ancora risposto: un secondo tocco su Salva (o ⌘S) non ne manda un altro, come
-    /// `sc.occupato` della web. Finché dura, i pulsanti di salvataggio e «Annulla modifiche» sono spenti; «Torna alla consigliata»,
-    /// moduli e stili restano attivi, come sulla web (`StatoScelta.Pulsante.spentoSalvando`, #477).
+    /// `sc.occupato` della web. Finché dura, i pulsanti di salvataggio e «Annulla modifiche» sono spenti; «Torna alla consigliata»
+    /// e i moduli restano attivi, come sulla web (`StatoScelta.Pulsante.spentoSalvando`, #477).
     @Published private(set) var salvataggioInCorso = false
     /// Il calcolo della modifica a mano non è riuscito: invece dei punti, «Non riesco a calcolare» con «Riprova».
     @Published private(set) var calcoloNonRiuscito = false
@@ -70,7 +58,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// Il codice dell'ultimo errore di `valuta` (campo `codice` del server), se c'era.
     private var codiceUltimoErrore: String?
 
-    /// Hai toccato tu un modulo o uno stile (fuori dalla modifica a mano). Solo allora, rileggendo la scelta, quello che guardi resta
+    /// Hai toccato tu un modulo (fuori dalla modifica a mano). Solo allora, rileggendo la scelta, quello che guardi resta
     /// e la scelta salvata non lo copre. Si azzera con tutto ciò che riparte da capo (`azzeraManuale`: «Torna alla consigliata»,
     /// un'altra squadra e ritorno, scelta cambiata da un altro dispositivo).
     private var moduloToccato = false
@@ -88,14 +76,14 @@ final class FormazioneViewModel: ViewModelBase {
                                    nonValida: salvataNonValida || sceltaNonValidaPerIlServer, altra: altraDallaConsigliata)
     }
 
-    /// Senza modifica a mano, gli undici dello stile e del modulo sullo schermo: con una scelta salvata dicono se è ancora lei
-    /// («salvata») o se hai toccato un altro modulo o stile («Modifiche non salvate»), come la web.
+    /// Senza modifica a mano, gli undici del modulo sullo schermo: con una scelta salvata dicono se è ancora lei
+    /// («salvata») o se hai toccato un altro modulo («Modifiche non salvate»), come la web.
     private var titolariMostrati: [Int]? {
         guard manuale == nil, let f = formazione else { return nil }
         return vista(f).titolari.map(\.id)
     }
 
-    /// Senza modifica a mano hai toccato un modulo o uno stile diverso dalla scelta salvata, che vale ancora: è una modifica di
+    /// Senza modifica a mano hai toccato un modulo diverso dalla scelta salvata, che vale ancora: è una modifica di
     /// questo telefono. Rileggendo la scelta (ritorno sulla Formazione, tira per aggiornare) non si copre con quella salvata.
     /// Conta solo un tocco vero (`moduloToccato`): dopo un 412, «Torna alla consigliata» o il ritorno da un'altra squadra sullo
     /// schermo c'è la consigliata, ma la scelta salvata va rimessa in campo.
@@ -108,12 +96,21 @@ final class FormazioneViewModel: ViewModelBase {
     /// non lo manda). Come la web, conta solo a giornata chiusa: prima la scelta può cambiare e il campo sarebbe vecchio.
     var sceltaNonValidaPerIlServer: Bool { chiusa && formazione?.statoScelta == "non_valida" }
 
-    /// Senza modifica a mano si vede un altro stile o un altro modulo, non la consigliata (come `altra` della web).
+    /// Lo stile «Equilibrata» del server (`rischio` 0): dal 12/11/2026 è l'unico, come sulla web (#634).
+    static let rischioEquilibrato = 0
+
+    /// Il livello da cui vengono moduli e titolari: quello equilibrato. Gli altri livelli di `livelli` restano nella risposta del
+    /// server e non si mostrano; se manca quello equilibrato vale il primo. Nil con un server che non manda `livelli`.
+    func livello(_ f: Formazione) -> LivelloRischio? {
+        guard let livelli = f.livelli else { return nil }
+        return livelli.first(where: { $0.rischio == Self.rischioEquilibrato }) ?? livelli.first
+    }
+
+    /// Senza modifica a mano si vede un altro modulo, non la consigliata (come `altra` della web).
     var altraDallaConsigliata: Bool {
-        guard manuale == nil, let f = formazione, let livelli = f.livelli,
-              let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first else { return false }
+        guard manuale == nil, let f = formazione, let livello = self.livello(f) else { return false }
         let modulo = (livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) }) ?? livello.moduli.first)?.modulo
-        return livello.rischio != (f.stileConsigliato ?? 0) || (modulo.map { $0 != livello.modulo } ?? false)
+        return modulo.map { $0 != livello.modulo } ?? false
     }
 
     /// La giornata è chiusa (dopo la scadenza, `iniziata` del server): la tua formazione si vede in sola lettura, niente modifiche.
@@ -263,7 +260,6 @@ final class FormazioneViewModel: ViewModelBase {
     /// Mostra la formazione consigliata per un'altra squadra della lega (dalla sua rosa: «Formazione consigliata per loro»).
     func vediSquadra(_ nome: String) {
         squadraVista = nome
-        rischio = 0
         moduloScelto = nil
         azzeraManuale()
         Task { await carica() }
@@ -271,7 +267,6 @@ final class FormazioneViewModel: ViewModelBase {
 
     func tornaAllaMia() {
         squadraVista = nil
-        rischio = 0
         moduloScelto = nil
         azzeraManuale()
         Task { await carica() }
@@ -279,7 +274,7 @@ final class FormazioneViewModel: ViewModelBase {
 
     // MARK: cosa mostrare
 
-    /// Titolari, panchina, modulo e punteggio secondo la modalità (a mano, o stile e modulo scelti).
+    /// Titolari, panchina, modulo e punteggio secondo la modalità (a mano, o il modulo scelto).
     func vista(_ f: Formazione) -> VistaFormazione {
         let consigliata = VistaFormazione(titolari: f.titolari, panchina: f.panchina, modulo: f.modulo, punti: f.punteggioAtteso)
         if let manuale, let schede = f.schede {
@@ -291,8 +286,7 @@ final class FormazioneViewModel: ViewModelBase {
                                    modulo: calcolata?.modulo ?? ModuloTitolari.modulo(ruoli: titolari.map(\.ruolo)),
                                    punti: calcolata?.punteggioAtteso)
         }
-        guard let livelli = f.livelli, let schede = f.schede,
-              let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first,
+        guard let schede = f.schede, let livello = self.livello(f),
               let opzione = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) }) ?? livello.moduli.first
         else { return consigliata }
         let titolari = opzione.titolari.compactMap { schede[String($0)] }
@@ -308,7 +302,7 @@ final class FormazioneViewModel: ViewModelBase {
             guard let v = valutazioneAttuale else { return nil }
             return IntervalloPunti.frase(v.intervallo, dev: v.dev)
         }
-        guard let livelli = f.livelli, let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first else {
+        guard let livello = self.livello(f) else {
             return IntervalloPunti.frase(f.intervallo, dev: f.dev)
         }
         let modulo = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) })
@@ -318,8 +312,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// La nota sotto il campo (#356): il perché delle scelte che sembrano storte nel modulo mostrato (`perche_scelta`), con le
     /// parole del server, come la web. Solo per la proposta del server: niente righe in modifica a mano né a giornata chiusa.
     func righeScelta(_ f: Formazione) -> [RigaScelta] {
-        guard manuale == nil, !chiusa, let schede = f.schede, let livelli = f.livelli,
-              let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first,
+        guard manuale == nil, !chiusa, let schede = f.schede, let livello = self.livello(f),
               let opzione = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) }) ?? livello.moduli.first
         else { return [] }
         return (opzione.percheScelta ?? []).compactMap { r in
@@ -340,27 +333,8 @@ final class FormazioneViewModel: ViewModelBase {
         return Ballottaggio.alternative(per: g, rosa: Array((f.schede ?? [:]).values), titolari: v.titolari)
     }
 
-    /// Il modulo attivo per lo stile corrente (serve per evidenziare il chip giusto).
+    /// Il modulo attivo (serve per evidenziare il chip giusto).
     func moduloAttivo(_ livello: LivelloRischio) -> String { moduloScelto ?? livello.modulo }
-
-    /// In che formazione si sta guardando: il confronto spiega la scelta dentro quella formazione.
-    var contestoConfronto: ContestoConfronto? {
-        guard let f = formazione else { return nil }
-        return ContestoConfronto(livello: rischio, modulo: vista(f).modulo, squadra: squadraVista)
-    }
-
-    /// Sceglie uno stile: il modulo scelto a mano si azzera e modulo e punti tornano quelli proposti dallo stile.
-    func scegliStile(_ stile: Int) {
-        rischio = stile
-        cambiaStile()
-    }
-
-    func cambiaStile() {
-        moduloScelto = nil
-        esciDallaModificaAMano()
-        moduloToccato = true
-        Haptics.selezione()
-    }
 
     func scegliModulo(_ modulo: String) {
         moduloScelto = modulo
@@ -369,7 +343,7 @@ final class FormazioneViewModel: ViewModelBase {
         Haptics.selezione()
     }
 
-    /// Come la web (#463): in modifica a mano un tocco su un modulo o uno stile torna alla proposta del server. La scelta salvata
+    /// Come la web (#463): in modifica a mano un tocco su un modulo torna alla proposta del server. La scelta salvata
     /// resta sul server (se è diversa la riga dice «Modifiche non salvate», con «Annulla modifiche»); un calcolo ancora in corso
     /// non conta più. A giornata chiusa no: si vede la formazione che vale.
     private func esciDallaModificaAMano() {
@@ -377,7 +351,7 @@ final class FormazioneViewModel: ViewModelBase {
         azzeraManuale()
     }
 
-    // MARK: testo e immagine
+    // MARK: testo
 
     /// La formazione mostrata, scritta a parole (da copiare o condividere).
     func testo(_ f: Formazione) -> String {
@@ -389,21 +363,6 @@ final class FormazioneViewModel: ViewModelBase {
         UIPasteboard.general.string = testo(f)
         messaggio = Catalogo.Formazione.copiata
         Haptics.esito(riuscito: true)
-    }
-
-    /// Disegna la formazione come immagine (campo con i titolari e la panchina) e apre l'anteprima con il pulsante Condividi.
-    func preparaImmagine(_ f: Formazione) {
-        let v = vista(f)
-        let disegno = ImmagineFormazione(giornata: f.giornata, giornataLega: f.giornataLega, squadra: f.squadra ?? "", modulo: v.modulo, punti: v.punti,
-                                         titolari: v.titolari, panchina: v.panchina)
-        let renderer = ImageRenderer(content: disegno)
-        renderer.scale = 3   // larga 360 punti → 1080 pixel; alta almeno 490 punti (1470 pixel), di più se il campo lo chiede
-        if let immagine = renderer.uiImage {
-            // come la web: «Formazione · Giornata 8 · 11ª di Serie A» (#299)
-            anteprimaImmagine = ImmagineCondivisa(immagine: immagine, titolo: "Formazione · \(f.etichettaGiornata)")
-        } else {
-            messaggio = Catalogo.Formazione.nonRiescoCreare
-        }
     }
 
     // MARK: modifica a mano
@@ -429,7 +388,7 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     /// «Salva questa», «Salva le modifiche», «Salva come mia scelta»: salva come tua scelta gli undici che stai guardando
-    /// (consigliata, stile o modulo scelti, o modifica a mano).
+    /// (consigliata, un altro modulo, o modifica a mano).
     func salvaQuesta(_ f: Formazione) async {
         guard squadraVista == nil, !chiusa, !salvataggioInCorso else { return }
         salvataggioInCorso = true
@@ -439,7 +398,7 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     /// «Annulla modifiche»: si torna agli undici salvati (o, se non valgono più, alla consigliata con la riga che lo dice), anche
-    /// da un modulo o uno stile toccato fuori dalla modifica a mano.
+    /// da un modulo toccato fuori dalla modifica a mano.
     func annullaModifiche() {
         guard !chiusa, !salvataggioInCorso, let salvati else { return }
         if salvataNonValida { azzeraManuale(); return }
@@ -502,13 +461,11 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// 412 sulla scelta salvata: un altro dispositivo l'ha cambiata (o cancellata) dopo l'ultima lettura. Come per le altre risorse
     /// si rilegge tutto (formazione e scelta, con l'ETag nuovo) e lo si dice: la modifica di questo telefono non si salva sopra.
-    /// Come la web, che dopo un 412 ricarica la pagina, anche stile e modulo ripartono da quelli consigliati (#477): se l'altro
-    /// dispositivo ha cancellato la scelta, non resta in vista il modulo toccato. Lo stile è quello consigliato dalla formazione
-    /// riletta (se la rilettura non riesce, da quella che c'era).
+    /// Come la web, che dopo un 412 ricarica la pagina, anche il modulo riparte da quello consigliato (#477): se l'altro
+    /// dispositivo ha cancellato la scelta, non resta in vista il modulo toccato.
     private func sceltaCambiataAltrove() async {
         azzeraManuale()
         let riletta = await ricaricaConScelta()
-        rischio = formazione?.stileConsigliato ?? 0
         moduloScelto = nil
         if riletta {
             messaggio = Self.sceltaCambiata
@@ -533,10 +490,9 @@ final class FormazioneViewModel: ViewModelBase {
         Haptics.esito(riuscito: false)
     }
 
-    /// «Torna alla consigliata»: toglie la tua scelta e, come la web, rimette anche stile e modulo consigliati.
+    /// «Torna alla consigliata»: toglie la tua scelta e, come la web, rimette anche il modulo consigliato.
     func tornaAllaConsigliata(_ f: Formazione) async {
         guard !chiusa else { return }
-        rischio = f.stileConsigliato ?? 0
         moduloScelto = nil
         // La scelta salvata esiste solo per la propria squadra; se il server ha detto che non ce n'è, non c'è niente da togliere.
         guard squadraVista == nil, !(sceltaLetta && salvati == nil) else { azzeraManuale(); return }

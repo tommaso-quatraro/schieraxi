@@ -103,7 +103,7 @@ struct Galleria: View {
     @Environment(\.colorScheme) private var schema
     private let args = UserDefaults.standard
 
-    private var scelta: String { args.string(forKey: "GALLERIA") ?? "cruscotto" }
+    private var scelta: String { args.string(forKey: "GALLERIA") ?? "oggi" }
     private var soloBlocco: Bool { scelta.hasSuffix("-blocco") }
     private var widget: String { soloBlocco ? String(scelta.dropLast("-blocco".count)) : scelta }
     private var render: WidgetRenderingMode {
@@ -114,7 +114,7 @@ struct Galleria: View {
         }
     }
 
-    private var voce: Voce { DatiGalleria.voce(args.string(forKey: "DATI") ?? "pieni", widget: widget) }
+    private var voce: Voce { DatiGalleria.voce(args.string(forKey: "DATI") ?? "pieni") }
 
     var body: some View {
         let famiglie = DatiGalleria.famiglie(widget).filter { MisureWidget.accessorio($0) == soloBlocco && (MisureWidget.ipad || $0 != .systemExtraLarge) }

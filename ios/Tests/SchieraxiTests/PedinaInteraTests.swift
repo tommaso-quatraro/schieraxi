@@ -158,21 +158,4 @@ struct PedinaInteraTests {
 
     // MARK: immagine da condividere
 
-    @MainActor
-    @Test("L'immagine da condividere è alta abbastanza per il campo intero, il titolo, la panchina e la legenda")
-    func immagineIntera() throws {
-        let titolari = try Self.trecinquedue()
-        let panchina = try ["Milo Magrenti", "Fabio Dimarzi", "Renato Lemão", "Tarek Reimvaldt", "Mosè Kervan", "Adriano Cambrisi"]
-            .enumerated().map { i, nome in try Self.giocatore(nome, id: 200 + i) }
-        // il campo dentro l'immagine: 360 punti meno 2 × 14 di margine
-        let campo = Self.misura(CampoFormazione(titolari: titolari, diametro: 42, perImmagine: true), larghezza: 332)
-        let immagine = Self.misura(ImmagineFormazione(giornata: 9, giornataLega: 7, squadra: "Schiera FC", modulo: "3-5-2",
-                                                      punti: 71.4, titolari: titolari, panchina: panchina), larghezza: nil)
-        #expect(immagine.width == 360)
-        // sopra e sotto il campo: titolo (22 punti) e sottotitolo, panchina, legenda, margini e spazi; contati stretti
-        // fanno più di 100 punti. Prima l'immagine era alta 490 fissi e il solo campo ne chiedeva 466 (corsa del test rosso):
-        // titolo e legenda restavano fuori (foto `formazione-immagine` del 3/11).
-        #expect(immagine.height >= campo.height + 100,
-                "immagine alta \(immagine.height) punti, il solo campo \(campo.height): titolo o legenda restano tagliati")
-    }
 }

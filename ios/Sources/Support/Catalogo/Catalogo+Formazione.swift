@@ -25,8 +25,8 @@ extension Catalogo {
         /// `formazione.stato_consigliata`
         static let statoConsigliata = "Stai vedendo la consigliata: non hai salvato una tua formazione."
 
-        /// `formazione.stato_altra`
-        static let statoAltra = "Stai vedendo un modulo o uno stile diverso dalla consigliata: non l'hai salvato."
+        /// `formazione.stato_altro_modulo`
+        static let statoAltroModulo = "Stai vedendo un altro modulo, non quello consigliato: non l'hai salvato."
 
         /// `formazione.stato_salvata`
         static let statoSalvata = "La tua formazione è salvata"
@@ -80,14 +80,6 @@ extension Catalogo {
         /// `formazione.tocca_sostituire`
         static let toccaSostituire = "Tocca ✎ per sostituire un titolare: i punti attesi si ricalcolano."
 
-        /// `formazione.tocca_confronto`
-        static let toccaConfronto = "Tocca ⇄ per confrontarlo con un altro della rosa."
-
-        /// `formazione.confronta_aria`
-        static func confrontaAria(nome: String) -> String {
-            "Confronta \(nome) con un altro"
-        }
-
         /// `formazione.ballottaggio_alternative_vic`
         static let ballottaggioAlternativeVic = "In ballottaggio con"
 
@@ -107,33 +99,11 @@ extension Catalogo {
             "Senza dati per questa giornata: \(nomi)"
         }
 
-        /// `formazione.numero_sulla_maglia`
-        static let numeroSullaMaglia = "Negli elenchi il numero sul volto è l'indice: 100 = il migliore del suo ruolo questa giornata. Tocca il fantavoto atteso per vedere perché è quello."
-
-        /// `formazione.legenda_apri`
-        static let legendaApri = "Cosa vuol dire"
-
         /// `formazione.copia_formazione`
         static let copiaFormazione = "Copia il testo"
 
-        /// `formazione.condividi_immagine`
-        static let condividiImmagine = "Condividi come immagine"
-
         /// `formazione.modifica_mano`
         static let modificaMano = "Modifica a mano"
-
-        /// `formazione.modificata_mano`
-        static let modificataMano = "Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata."
-
-        /// `formazione.propone`
-        static func propone(modulo: String) -> String {
-            "propone il \(modulo)."
-        }
-
-        /// `formazione.modulo_fissato`
-        static func moduloFissato(modulo: String) -> String {
-            "Modulo fissato a mano (lo stile propone il \(modulo)): tocca lo stile per tornare al suo."
-        }
 
         /// `formazione.rispetto`
         static func rispetto(d: String, n: String) -> String {
@@ -174,9 +144,6 @@ extension Catalogo {
 
         /// `formazione.copiata`
         static let copiata = "Formazione copiata: incollala dove vuoi"
-
-        /// `formazione.non_riesco_creare`
-        static let nonRiescoCreare = "Non riesco a creare l'immagine"
 
         /// `formazione.salvata_come_tua`
         static let salvataComeTua = "Salvata come tua scelta"

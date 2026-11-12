@@ -1,8 +1,8 @@
 import SwiftUI
 import TipKit
 
-/// Le quattro sezioni dell'app (la «dieta delle funzioni»: la formazione al centro). Sull'iPhone sono le schede in basso,
-/// sull'iPad (e in orizzontale sui telefoni grandi) la barra laterale. Mercato, Scambi e Lega sono diventati pagine dentro Squadra e Altro.
+/// Le quattro sezioni dell'app (la formazione al centro). Sull'iPhone sono le schede in basso, sull'iPad (e in orizzontale sui
+/// telefoni grandi) la barra laterale. Squadra ha le rose, Altro il diario e le regole.
 enum Sezione: String, CaseIterable, Identifiable, Hashable {
     case oggi, formazione, squadra, altro
 
@@ -36,8 +36,8 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// Da un nome scritto (indirizzi `schieraxi://`, «Da fare», scelta salvata). I nomi delle vecchie cinque sezioni
-    /// continuano a funzionare: Mercato è Squadra, Scambi e Lega sono in Altro.
+    /// Da un nome scritto (indirizzi `schieraxi://`, «Da fare», scelta salvata). I nomi delle sezioni e delle pagine tolte
+    /// continuano a funzionare e aprono la scheda più vicina che resta (#634, come la web): Mercato è Squadra, Scambi e Lega sono Altro.
     static func da(nome: String?) -> Sezione? {
         switch (nome ?? "").lowercased() {
         case "oggi": return .oggi
@@ -213,7 +213,7 @@ struct RadiceView: View {
                 } label: {
                     Label(s.titolo, systemImage: s.icona)
                 }
-                // niente pallino sulle schede: le novità dell'app le annuncia una riga in Oggi, che porta ad Altro > Novità
+                // niente pallino sulle schede: le novità si leggono in Impostazioni > Informazioni
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -236,15 +236,12 @@ struct RadiceView: View {
         .environment(\.apriImportazione) {
             nav.sezione = modello.lega.apri([.importa])
         }
-        .environment(\.apriNovita) {
-            nav.sezione = modello.lega.apri([.novita])
-        }
         .environment(\.vediFormazioneDi) { nome in
             modello.formazione.vediSquadra(nome)
             nav.sezione = .formazione
         }
         .sheet(isPresented: $nav.impostazioniAperte) {
-            ImpostazioniView(vm: modello.lega, funzioni: modello.funzioni)
+            ImpostazioniView(vm: modello.lega)
                 .tint(Color.verde)
                 // Su iPad un foglio ampio, come le Impostazioni di sistema.
                 .presentationSizing(.page)
@@ -258,7 +255,7 @@ struct RadiceView: View {
                 .tint(Color.verde)
         }
         .sheet(item: $nav.scheda) { g in
-            GiocatoreSheet(id: g.id, server: modello.server, contesto: modello.formazione.contestoConfronto)
+            GiocatoreSheet(id: g.id, server: modello.server)
                 .navigationTransition(.zoom(sourceID: g.id, in: zoom))
                 .presentationDragIndicator(.visible)
                 .tint(Color.verde)
@@ -298,7 +295,7 @@ struct RadiceView: View {
         nav.controllaFineArrivo(importaAperta: modello.lega.percorsoSquadra.contains(.importa))
     }
 
-    /// Una pagina chiesta da fuori (indirizzo `schieraxi://scambi`, «Da fare»): si apre nella scheda a cui appartiene.
+    /// Una pagina chiesta da fuori («Da fare», «Apri il Diario»): si apre nella scheda a cui appartiene.
     private func apriPaginaRichiesta() {
         guard let pagina = nav.paginaDaAprire else { return }
         nav.paginaDaAprire = nil
@@ -310,8 +307,8 @@ struct RadiceView: View {
         switch s {
         case .oggi: OggiView(vm: modello.oggi)
         case .formazione: FormazioneView(vm: modello.formazione)
-        case .squadra: LegaView(vm: modello.lega, mercato: modello.mercato, scambi: modello.scambi, ambito: .squadra)
-        case .altro: LegaView(vm: modello.lega, mercato: modello.mercato, scambi: modello.scambi, ambito: .altro)
+        case .squadra: LegaView(vm: modello.lega, ambito: .squadra)
+        case .altro: LegaView(vm: modello.lega, ambito: .altro)
         }
     }
 }
