@@ -122,6 +122,17 @@ struct DiarioView: View {
     static let comeSiLegge = Catalogo.Mercato.comeLegge
     static let perOgniGiornata = "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI ti avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina la sceglie SchieraXI in entrambi i casi. SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la trovi qui, con in evidenza i giocatori che hai cambiato. Si aggiorna da solo dopo ogni giornata."
 
+    /// L'etichetta dei punti della consigliata di una giornata, come `etichettaConsigliataDiario` della web (#614): segue
+    /// `consigliata.origine`. «mostrata» = sono i punti della consigliata mostrata prima della scadenza; altrimenti è una
+    /// ricostruzione: «Ricostruita oggi» se quella di allora c'è ma non si può più schierare, «Di SchieraXI» se non era stata
+    /// registrata. Un server di prima non manda `origine`: restano le due etichette di sempre. `nil` senza consigliata.
+    static func etichettaConsigliata(_ v: VoceDiario) -> String? {
+        guard let c = v.consigliata else { return nil }
+        let modulo = c.modulo ?? "–"
+        if c.origine == "mostrata" { return Catalogo.Diario.laConsigliata(modulo: modulo) }
+        return v.istantanea?.titolari?.isEmpty == false ? "Ricostruita oggi (\(modulo))" : "Di SchieraXI (\(modulo))"
+    }
+
     /// Il riquadro «Quanto ci abbiamo preso», dove sta la riga su tutta la Serie A (#374): la foto `lega-diario-fondo` scorre fin lì
     /// (vedi `Demo.demoScorriA`). La riga non è in fondo al Diario ma a metà, sopra le giornate: in fondo non si vedrebbe.
     static let idPrecisioneDemo = "diario-precisione"
@@ -248,8 +259,8 @@ struct DiarioView: View {
                 .disabled(vm.inSalvataggio != nil)
                 .accessibilityHint("\(v.nomeGiornata?.voce ?? "Giornata \(g)"): scegli a mano i tuoi undici")
             }
-            if let c = v.consigliata {
-                riga(v.istantanea?.titolari?.isEmpty == false ? "Ricostruita oggi (\(c.modulo ?? "–"))" : "Di SchieraXI (\(c.modulo ?? "–"))", c)
+            if let c = v.consigliata, let etichetta = Self.etichettaConsigliata(v) {
+                riga(etichetta, c)
             }
             if let p = PuntoAttesoFatto(giornata: v.numero, v.attesoVsFatto), p.dentro != nil {
                 Label(p.frase, systemImage: p.dentro == true ? "checkmark.circle" : "exclamationmark.circle")

@@ -9,6 +9,7 @@ diario.ho_schierato_altra
 diario.correggi
 diario.tua
 diario.tua_consigliata
+diario.la_consigliata
 diario.cosa_hai_schierato_titolo
 diario.correggi_spiega
 diario.qp_andamento

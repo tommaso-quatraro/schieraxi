@@ -2271,6 +2271,10 @@ async function schieraDaOggi(giornata) {
   apriDiario(giornata);
 }
 
+// Diario, riga dei punti della consigliata (#614): l'etichetta segue `consigliata.origine`. «mostrata» = sono i punti della consigliata
+// mostrata prima della scadenza; altrimenti è una ricostruzione: «Ricostruita oggi» se quella di allora c'è ma non si può più schierare,
+// «Del modello» se non era stata registrata. Un server di prima non manda `origine`: restano le due etichette di sempre.
+const etichettaConsigliataDiario = g => t(g.consigliata.origine === "mostrata" ? "diario.la_consigliata" : g.istantanea ? "diario.ricostruita" : "avv.del_modello", { modulo: esc(g.consigliata.modulo) });
 // `giornata` (e `stagione`, se c'è): la voce da mostrare. Senza stagione vale la più recente con quel numero (Oggi e «Da fare» parlano della stagione in corso).
 async function apriDiario(giornata, stagione) {
   apriFoglio(`<div class="caricamento">${t("avv.carico_diario")}</div>`);
@@ -2321,7 +2325,7 @@ async function apriDiario(giornata, stagione) {
       ${azioni(g)}
       ${g.schierata ? righePunti(g.schierata.tipo === "consigliata" ? t("diario.tua_consigliata", { modulo: esc(g.schierata.modulo) }) : t("diario.tua", { modulo: esc(g.schierata.modulo) }), g.schierata)
         : g.automatica ? righePunti(t("diario.automatica", { modulo: esc(g.automatica.modulo) }), g.automatica) : ""}
-      ${righePunti(g.istantanea ? t("diario.ricostruita", { modulo: esc(g.consigliata.modulo) }) : t("avv.del_modello", { modulo: esc(g.consigliata.modulo) }), g.consigliata)}
+      ${righePunti(etichettaConsigliataDiario(g), g.consigliata)}
       ${rigaFascia(g)}</div>`).join("");
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("avv.diario_delle_giornate")}</h2>
       <div class="debole piccolo">${t("avv.diario_riga")}</div>
