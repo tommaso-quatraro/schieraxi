@@ -15,8 +15,6 @@ paths:
   la descrizione sia completa. Tra un push e l'uscita dalla bozza lascia passare un paio di minuti, o GitHub perde una corsa.
 - **Descrizione.** Il job `ambito` la legge quando parte la corsa: se la correggi dopo, serve una corsa nuova (un push,
   anche di un commit vuoto); «Re-run» rilegge quella vecchia. La riga `Aree:` vuole cartelle o file (`fanta, tests, docs`).
-- **«Closes #N»** in un messaggio di commit chiude l'issue all'unione, anche se sta dentro un piano o un documento: lì si
-  scrive «chiuderà #N».
 - **Ramo partito da un altro ramo**: porta con sé la sua voce di novità, che uscirebbe due volte. Prima di togliere la
   bozza `git diff --name-only origin/main HEAD -- fanta/novita.d` deve mostrare solo il file di questa pull request.
 - **I controlli si prendono da `main`**: un controllo nuovo vale dalla pull request successiva alla sua unione. Ciò che può

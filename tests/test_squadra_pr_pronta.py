@@ -17,16 +17,17 @@ CORPO = "## Cosa cambia\nx\n## Perché\ny\n## Come l'ho provato\nz\n## Revisione
 def controlli_finti(problemi=()):
     chiamate = []
 
-    def controlla(corpo, bozza, autore, file_con_stato, cartella_tests):
+    def controlla(corpo, bozza, autore, file_con_stato, cartella_tests, ramo_base=None):
         chiamate.append({"corpo": corpo, "bozza": bozza, "autore": autore, "file": list(file_con_stato),
-                         "tests": cartella_tests})
+                         "tests": cartella_tests, "base": ramo_base})
         return list(problemi), ["avviso finto"]
     return SimpleNamespace(controlla=controlla, chiamate=chiamate)
 
 
-def pr(mergeable="MERGEABLE", bozza=True, corpo=CORPO, stato="OPEN", dietro=False):
+def pr(mergeable="MERGEABLE", bozza=True, corpo=CORPO, stato="OPEN", dietro=False, base="main"):
     return {"number": 7, "state": stato, "isDraft": bozza, "mergeable": mergeable, "headRefOid": "t1",
-            "mergeStateStatus": "BEHIND" if dietro else "CLEAN", "body": corpo, "author": {"login": "persona"}}
+            "mergeStateStatus": "BEHIND" if dietro else "CLEAN", "body": corpo, "author": {"login": "persona"},
+            "baseRefName": base}
 
 
 def risposte(p=None, file=None, corse=None, **extra):
@@ -58,6 +59,17 @@ def test_tutto_a_posto_in_prova_non_tocca_la_bozza(capsys):
     assert "PROVA" in capsys.readouterr().out
     assert c.chiamate[0]["bozza"] is False                 # la revisione si controlla come se fosse già pronta
     assert ("added", "fanta/novita.d/x.json") in c.chiamate[0]["file"]
+
+
+def test_la_base_della_pr_arriva_ai_controlli(capsys):
+    """#620: una PR impilata (base diversa da main) si ferma già in pr-pronta, non solo nel job «ambito»."""
+    codice, f, c = lancia(risposte(pr(base="web-altro")))
+    assert c.chiamate[0]["base"] == "web-altro"
+    [vista] = [cmd for cmd in f.chiamate if cmd[:3] == ["gh", "pr", "view"]]
+    assert "baseRefName" in vista[vista.index("--json") + 1].split(",")
+    # e con il controlla_pr vero la base diversa da main è un problema
+    vero = pr_pronta._carica_da_ci("controlla_pr")
+    assert vero.controlla(CORPO, False, "persona", [("M", "fanta/server.py")], "tests", ramo_base="web-altro")[0]
 
 
 def test_tutto_a_posto_con_esegui_toglie_la_bozza():

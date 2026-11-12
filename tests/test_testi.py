@@ -197,7 +197,7 @@ def test_lingua_scelta_e_rilevata_dal_browser():
 
 # Moduli senza messaggi per chi usa l'app (comandi da terminale, email, pagine legali, misure, cose per chi gestisce il server): non si controllano
 MODULI_SENZA_MESSAGGI = {"__main__.py", "testi_legali.py", "posta.py", "verifica.py", "verifica_pacchetti.py", "verifica_fonti.py",
-                         "verifica_probabili_fonte2.py", "aggiorna.py", "contesto.py", "listone.py", "salute.py", "pianificatore.py",
+                         "aggiorna.py", "contesto.py", "listone.py", "salute.py", "pianificatore.py",
                          "formazioni_lega.py", "foto.py", "rotte_foto.py", "fonti_attive.py",
                          "registro_copia.py",       # copia e ripristino del registro delle giornate: solo da terminale, sul server
                          "misura_ingresso.py"}      # minuti di ingresso degli amici (`python -m fanta ingresso`): solo da terminale, sul server
