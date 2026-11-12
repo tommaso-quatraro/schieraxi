@@ -256,20 +256,20 @@ def _fine(squadre) -> str:
 
 
 def test_passi_saltati_senza_rose_si_ritrovano_con_importa_le_rose():
-    # senza rose «Da fare» non elenca i passi saltati (Oggi mostra solo il benvenuto con «Importa le rose»)
+    # senza rose non c'è ancora niente da riprendere (la Formazione mostra solo il benvenuto con «Importa le rose»)
     senza = _fine([])
-    assert "Hai saltato Le rose, La tua squadra: li ritrovi toccando «Importa le rose» in Oggi" in senza
-    assert "li trovi in «Da fare»" not in senza
+    assert "Hai saltato Le rose, La tua squadra: li ritrovi toccando «Importa le rose» nella Formazione." in senza
+    assert "puoi riprenderli" not in senza
     con = _fine([{"nome": "Real Esempio"}])
-    assert "Hai saltato Le rose, La tua squadra: li trovi in «Da fare» in Oggi" in con
+    assert "Hai saltato Le rose, La tua squadra: puoi riprenderli quando vuoi dalla Formazione." in con
 
 
-def test_passi_saltati_con_le_rose_si_riprendono_da_da_fare_non_da_informazioni():
-    # #597: Impostazioni › Informazioni non ha un pulsante per riaprire la guida (né sulla web né sull'iPhone): il testo non
-    # lo promette, rimanda solo a «Da fare» di Oggi, come l'iPhone
+def test_passi_saltati_con_le_rose_si_riprendono_dalla_formazione_non_da_informazioni():
+    # #597: Impostazioni › Informazioni non ha un pulsante per riaprire la guida: il testo non lo promette. Dal 12/11/2026 (#616)
+    # rimanda alla Formazione, dove la riga «Hai saltato N passi» con «Riprendi» sta fra le decisioni in cima
     con = _fine([{"nome": "Real Esempio"}])
-    assert "Informazioni" not in con
-    assert "Hai saltato Le rose, La tua squadra: li trovi in «Da fare» in Oggi e puoi riprenderli da lì quando vuoi." in con
+    assert "Informazioni" not in con and "Oggi" not in con
+    assert "Hai saltato Le rose, La tua squadra: puoi riprenderli quando vuoi dalla Formazione." in con
 
 
 def test_la_guida_osserva_la_chiusura_del_foglio():

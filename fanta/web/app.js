@@ -1,20 +1,20 @@
 "use strict";
 // App SchieraXI: JavaScript semplice, senza librerie. Parla con il server Python (fanta/server.py).
-// Sezioni: Oggi, Formazione, Squadra, Altro. La scheda di un giocatore è un pannello che sale dal basso.
+// Sezioni: Formazione, Squadra, Altro. La scheda di un giocatore è un pannello che sale dal basso.
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const contenuto = $("#contenuto");
-const VISTE = ["oggi", "formazione", "squadra", "altro"];
-// Nomi vecchi che arrivano ancora da indirizzi, scorciatoie e avvisi: «mercato» (Cambi consigliati, Seguiti, Elenco, Calendario) e
-// «scambi» sono pagine tolte il 12/11/2026 (#615), «lega» è il nome di prima delle voci di Squadra e Altro. Portano alla scheda in cui
-// stavano (schermataCheResta).
-const SOTTO_VISTE = { mercato: "squadra", scambi: "altro", lega: "altro" };
+const VISTE = ["formazione", "squadra", "altro"];
+// Nomi vecchi che arrivano ancora da indirizzi, scorciatoie e avvisi: «oggi» è diventata la Formazione (una schermata sola, #616);
+// «mercato» (Cambi consigliati, Seguiti, Elenco, Calendario) e «scambi» sono pagine tolte il 12/11/2026 (#615), «lega» è il nome di
+// prima delle voci di Squadra e Altro. Portano alla scheda in cui stavano (schermataCheResta).
+const SOTTO_VISTE = { oggi: "formazione", mercato: "squadra", scambi: "altro", lega: "altro" };
 // Pulsante «torna indietro»: la freccia è un'icona, non un carattere nel testo (docs/STILE-SENZA-AI.md).
 const ICONA_INDIETRO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>`;
 const SCHEDA_DI = v => VISTE.includes(v) ? v : Object.hasOwn(SOTTO_VISTE, String(v)) ? SOTTO_VISTE[v] : null;   // `v` viene anche dall'indirizzo: solo i nomi veri
 // Le funzioni accese (dieta): una chiave che manca vale «acceso», così con un server vecchio o senza risposta si vede tutto come prima.
 const funz = id => !stato.funzioni || stato.funzioni.funzioni[id] !== false;
-const stato = { vista: "oggi", info: null, squadraVista: null, richiesta: 0, calendario: null };
+const stato = { vista: "formazione", info: null, squadraVista: null, richiesta: 0, calendario: null };
 // ogni cambio di sezione ha un numero: una risposta arrivata in ritardo per una sezione già lasciata viene ignorata
 const nuovaRichiesta = () => ++stato.richiesta;
 const ancoraValida = n => n === stato.richiesta;
@@ -26,8 +26,6 @@ const SIGLE = { atalanta: "ATA", bologna: "BOL", cagliari: "CAG", como: "COM", f
   juventus: "JUV", lazio: "LAZ", lecce: "LEC", milan: "MIL", monza: "MON", napoli: "NAP", parma: "PAR", roma: "ROM", sassuolo: "SAS",
   torino: "TOR", udinese: "UDI", venezia: "VEN", verona: "VER", cremonese: "CRE", pisa: "PIS", sampdoria: "SAM", palermo: "PAL", spezia: "SPE" };
 const NOMI_DIFF = ["", t("diff.1"), t("diff.2"), t("diff.3"), t("diff.4"), t("diff.5")];
-const TITOLARITA = { titolare: [t("tit.titolare"), ""], ballottaggio: [t("tit.ballottaggio"), "arancio"], panchina: [t("tit.panchina"), "arancio"],
-  improbabile: [t("tit.improbabile"), "rossa"], fuori: [t("tit.fuori"), "rossa"] };
 
 // La lingua degli avvisi sul telefono (PUT /api/avvisi): parte quando cambi lingua e finisce anche se la pagina si ricarica subito (keepalive).
 function salvaLinguaAvvisi(lingua) {
@@ -227,7 +225,7 @@ const cartaSenzaRose = (titolo = t("comune.prima_rose")) => `<div class="carta b
 // Funzione spenta (404 con il campo «funzione»): non è un guasto, quindi niente «Riprova» e niente avviso di errore; si spiega.
 const funzioneSpenta = e => !!e && e.status === 404 && typeof e.funzione === "string";
 const cartaFunzioneSpenta = e => `<div class="carta" role="status"><h2>${t("dieta.non_disponibile")}</h2><p class="debole">${esc(e.message)}</p>
-  <div class="pulsanti"><button class="bottone" type="button" data-vai="oggi">${t("dieta.torna_oggi")}</button></div></div>`;
+  <div class="pulsanti"><button class="bottone" type="button" data-vai="formazione">${t("dieta.torna_formazione")}</button></div></div>`;
 const erroreVista = e => senzaRose(e) ? cartaSenzaRose() : funzioneSpenta(e) ? cartaFunzioneSpenta(e) : errore(e) + `<div class="pulsanti"><button class="bottone secondario" type="button" data-riprova>${t("comune.riprova")}</button></div>`;
 
 // ---------------------------------------------------------------- copia sul telefono delle ultime risposte
@@ -278,6 +276,7 @@ function rigaStato() {
 function aggiornaRigaStato() {
   document.querySelectorAll(".stato-pagina").forEach(e => { e.innerHTML = rigaStato(); });
 }
+// `percorso`: l'indirizzo da chiedere, oppure una funzione che legge più cose insieme e le restituisce (la Formazione).
 async function caricaConCache(chiave, percorso, mostra, testo) {
   const mia = nuovaRichiesta();
   let salvata = leggiCache(chiave);
@@ -286,7 +285,7 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
     catch { rimuoviCache(chiave); salvata = null; caricamento(testo); }     // copia rovinata o di una versione vecchia
   } else caricamento(testo);
   try {
-    const dati = await api(percorso);
+    const dati = typeof percorso === "function" ? await percorso() : await api(percorso);
     if (!ancoraValida(mia)) return;
     salvaCache(chiave, dati);
     if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) mostra(dati, { sostituisce: !!salvata });
@@ -358,39 +357,37 @@ function testoEtichetta(testo) {
   if (pezzi.length < 2) return esc(testo);
   return pezzi.map((p, i) => `<span class="pezzo">${esc(p)}${i < pezzi.length - 1 ? "&nbsp;·" : ""}</span>`).join(" ");
 }
-function pillTitolarita(x) {
-  if (etichettaPronta(x)) return `<span class="etichetta ${classeTono(x.etichetta)}">${testoEtichetta(x.etichetta.testo)}</span>`;
-  return pillRipiego(x);
-}
-// Ripiego per le risposte senza `etichetta` (server vecchio): le parole del vocabolario dai campi grezzi.
-function pillRipiego(x) {
-  if (x.titolarita == null && Object.hasOwn(STATO_PARTITA, x.stato_partita || "")) {
-    const [chiave, classe] = STATO_PARTITA[x.stato_partita];
-    return `<span class="etichetta ${classe}">${t(chiave)}</span>`;
-  }
-  const [testo, classe] = TITOLARITA[x.titolarita] || ["", "neutra"];
-  return testo ? `<span class="etichetta ${classe}">${testo}</span>` : "";
-}
 // Le regole riconosciute dal testo del regolamento («Rigore parato», «Moduli ammessi»...) hanno l'etichetta nella lingua scelta; una
 // voce nuova del server, senza etichetta qui, si mostra com'è.
 const etichettaRegola = m => (Object.hasOwn(TESTI.it, `regola.et.${m.chiave}`) ? t(`regola.et.${m.chiave}`) : m.etichetta);
-// Il tocco sul fantavoto atteso apre «Perché questo numero» (nella Formazione; altrove il tocco apre la scheda come sempre).
-const attrPerche = x => Array.isArray(x.perche_numero) ? ` data-perche="${Number(x.id)}" title="${t("perche.titolo")}"` : "";
-// I motivi sotto il nome: si scelgono dal testo italiano del server, si mostrano nella lingua scelta (motivi_frasi, vedi fanta/frasi.py).
+// I motivi nella scheda: si scelgono dal testo italiano del server, si mostrano nella lingua scelta (motivi_frasi, vedi fanta/frasi.py).
 const motiviUtili = x => (x.motivi || []).map((testo, i) => ({ testo, frase: (x.motivi_frasi || [])[i] }))
   .filter(m => !/^titolare|^parte dalla panchina|^partita (favorevole|difficile)/.test(m.testo)).slice(0, 2);
-// Nelle righe una sola percentuale per giocatore, «gioca N%»: gol atteso e porta inviolata (motivi con un numero) restano nella scheda.
+// Una sola percentuale per giocatore, «gioca N%»: gol atteso e porta inviolata (motivi con un numero) restano in «Tutti i numeri».
 const MOTIVI_CON_PERCENTUALE = ["motivo.gol_atteso", "motivo.porta_inviolata"];
 const senzaPercentuale = m => !(m.frase && MOTIVI_CON_PERCENTUALE.includes(m.frase.chiave)) && !/\d\s*%/.test(m.testo);
-const MOTIVI_DI_STATO = ["motivo.infortunato", "motivo.squalificato", "motivo.non_convocato"];
-const motivoDiStato = m => (m.frase ? MOTIVI_DI_STATO.includes(m.frase.chiave) : /^(infortunato|squalificato|non tra i convocati)/.test(m.testo));
+// Lo stato di un giocatore, dal codice dell'etichetta del server (fanta/etichette.py); con un server vecchio dai campi grezzi.
+const codiceStato = x => !x ? null : etichettaPronta(x) ? x.etichetta.codice
+  : ["infortunato", "squalificato"].includes(x.stato) ? x.stato : x.titolarita === "fuori" ? "fuori" : typeof x.rinvio === "string" || x.stato_partita === "rinviata" ? "rinviata" : x.dubbio ? "in_dubbio" : null;
+// Le sole parole di stato che si mostrano prima della partita (#616): ciò che dice se non gioca. Le quattro etichette di titolarità
+// («Probabile titolare», «In ballottaggio», «Probabile panchina», «Improbabile») non si mostrano più: «titolare» e «panchina» vogliono
+// dire la tua formazione, e quanto è probabile che giochi lo dice «gioca N%». Le parole sono quelle del server (senza « · gioca N%»).
+const PAROLE_STATO = { in_dubbio: ["tit.in_dubbio", "arancio"], rinviata: ["tit.st_rinviata", "arancio"], infortunato: ["oggi.infortunato", "rossa"],
+  squalificato: ["oggi.squalificato", "rossa"], fuori: ["tit.fuori", "rossa"] };
+function parolaStato(x) {
+  const c = codiceStato(x);
+  if (!Object.hasOwn(PAROLE_STATO, c || "")) return null;
+  const [chiave, classe] = PAROLE_STATO[c];
+  return { codice: c, classe, testo: etichettaPronta(x) ? x.etichetta.testo.split(" · ")[0] : t(chiave) };
+}
+// Non gioca di sicuro (infortunato, squalificato, fuori): la parola basta, «gioca 0%» non serve.
+const nonGiocaDiSicuro = stato => !!stato && stato.classe === "rossa";
+// Le parole sotto il nome in una riga: lo stato prima della partita, com'è andata dopo («Voto in arrivo», «Senza voto»), «Diffidato».
 function etichetteGiocatore(x) {
-  const pronta = etichettaPronta(x);
-  const altre = motiviUtili(x).filter(senzaPercentuale).filter(m => !(pronta && motivoDiStato(m))).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${testoEtichetta(traduciFrase(m.frase, m.testo))}</span>`).join("");
-  // ripiego: «Fuori» (infortunato) a partita finita, anche com'è andata («Voto in arrivo», «Senza voto»); con l'etichetta lo dice il server
-  const esito = !pronta && x.titolarita != null && PARTITA_FINITA.includes(x.stato_partita || "")
-    ? `<span class="etichetta ${STATO_PARTITA[x.stato_partita][1]}">${t(STATO_PARTITA[x.stato_partita][0])}</span>` : "";
-  return pillTitolarita(x) + esito + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
+  const esito = esitoPartita(x), stato = esito ? null : parolaStato(x);
+  const parola = esito && esito.fv == null ? `<span class="etichetta ${etichettaPronta(x) ? classeTono(x.etichetta) : STATO_PARTITA[x.stato_partita][1]}">${esc(esito.testo)}</span>`
+    : stato ? `<span class="etichetta ${stato.classe}">${esc(stato.testo)}</span>` : "";
+  return parola + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "");
 }
 
 // Il nome del club per i lettori di schermo («il Napoli»); la luminosità di un colore per il contrasto della lineetta (lineetta()).
@@ -400,20 +397,25 @@ function luminosita(hex) {
   const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
   return .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
 }
-// Per i lettori di schermo: «gioca all'85 per cento, in casa contro il Napoli» (in italiano con l'articolo giusto).
-const ARTICOLI_CLUB = { atalanta: "l'", inter: "l'", udinese: "l'", empoli: "l'", juventus: "la ", fiorentina: "la ", lazio: "la ", roma: "la ",
-  sampdoria: "la ", cremonese: "la ", salernitana: "la ", spezia: "lo " };
-function vocePedina(x, esito = null) {             // esito: esitoPedina(x), a partita iniziata o rinviata
+// «gioca N%» si mostra solo quando conta (#616): sotto l'80%, arancio fra 50 e 79, rosso sotto 50. Sopra, il fantavoto atteso basta.
+// Si decide sul numero che si legge: 79,6% si mostra «80%» e non è «sotto l'80%».
+const SOGLIA_GIOCA = 0.8, SOGLIA_BASSA = 0.5;
+const giocaLetto = x => Math.round((x.p_voto ?? 0) * 100) / 100;
+const classeGioca = p => (p < SOGLIA_BASSA ? "basso" : "medio");
+// Per i lettori di schermo la pedina in una frase, con le stesse cose che si vedono: «Rossi, fantavoto atteso 6,8, gioca al 45 per
+// cento, In dubbio». `esito`: esitoPedina(x), a partita iniziata o rinviata; `stato`: parolaStato(x). A formazione chiusa, per chi
+// deve ancora giocare (`da_giocare`), sulla pedina c'è quando gioca e non «gioca N%»: nemmeno qui.
+function vocePedina(x, esito = null, stato = null) {
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
-  const avv = (LINGUA === "it" ? (ARTICOLI_CLUB[x.avversario] ?? "il ") : "") + nomeClub(x.avversario);
-  return [x.nome, t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito ? esito.testo : t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }),
-    x.avversario ? t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv }) : ""].filter(Boolean).join(", ");
+  const preso = esito && esito.fv != null;
+  return [x.nome, preso ? esito.testo : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "",
+    !esito && x.stato_partita !== "da_giocare" && !nonGiocaDiSicuro(stato) && giocaLetto(x) < SOGLIA_GIOCA ? t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }) : "",
+    !esito && stato ? stato.testo : ""].filter(Boolean).join(", ");
 }
 // A partita iniziata «gioca N%» non serve più (come la scheda, PARTITA_INIZIATA): a partita finita il fantavoto preso (`fv_preso`
 // del server) o lo stato («Voto in arrivo», «Senza voto»); in corso lo stato. Null = la partita non è cominciata: «gioca N%».
 const CODICI_PARTITA_INIZIATA = ["voto", "senza_voto", "voto_in_arrivo", "in_corso"];
-const SOGLIA_GIOCA = 0.7;                       // sotto: «⚠ gioca 45%» in una pillola arancio sul campo, arancio e in grassetto nelle righe
 function esitoPartita(x) {
   const codice = etichettaPronta(x) ? x.etichetta.codice : null;
   if (!PARTITA_INIZIATA.includes(x.stato_partita || "") && !CODICI_PARTITA_INIZIATA.includes(codice)) return null;
@@ -431,19 +433,24 @@ function esitoPedina(x) {
 // Il nome per i lettori di schermo viene dal contenuto, non da un aria-label: le abbreviazioni che si vedono («6,8», «vs NAP»)
 // sono nascoste ai lettori e accanto c'è la frase intera, che comincia con il nome (chi usa il controllo vocale dice «Rossi»).
 // Con l'aria-label il testo visibile non stava nel nome (axe `label-content-name-mismatch`, WCAG 2.5.3, issue #244).
-// Grafica B (spec §8.10, scelta 2 dell'utente): la pedina è un disco bianco con il fantavoto atteso, niente volto (i volti stanno
-// negli elenchi e nella scheda; sull'iPhone la pedina ha il volto). Sotto il 70% un anello arancio attorno al disco (stile.css).
-// L'avversario con la lineetta nel colore sociale davanti alla sigla, come nelle righe.
+// La pedina (#616): un disco bianco con il fantavoto atteso e sotto il cognome; nient'altro, se il giocatore gioca quasi di sicuro.
+// «gioca N%» compare solo sotto l'80% (pillola arancio fra 50 e 79, rossa sotto 50, con l'anello dello stesso colore attorno al
+// disco); «In dubbio», «Infortunato», «Squalificato» a parole. Niente volto e niente avversario: stanno nella scheda, a un tocco.
+// A partita cominciata il disco ha il fantavoto preso; finché non c'è, resta vuoto dentro (l'atteso) con sotto lo stato della partita
+// o, se deve ancora giocare, quando gioca.
 function pedina(x, k = 0) {
-  const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
-  const esito = esitoPedina(x);
-  return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}">
-    <span class="disco" aria-hidden="true"${attrPerche(x)}>${num(x.fv_atteso)}</span>
+  const esito = esitoPedina(x), stato = esito ? null : parolaStato(x);
+  const p = giocaLetto(x), preso = !!esito && esito.fv != null;
+  const daGiocare = !esito && x.stato_partita === "da_giocare";                 // formazione chiusa, la sua partita non è cominciata
+  const gioca = !esito && !daGiocare && !nonGiocaDiSicuro(stato) && p < SOGLIA_GIOCA;
+  return `<button class="pedina${(esito && !preso) || daGiocare ? " attesa" : ""}" data-giocatore="${x.id}" style="--k:${k}">
+    <span class="disco" aria-hidden="true">${num(preso ? esito.fv : x.fv_atteso)}</span>
     <span class="nome" aria-hidden="true">${esc(cognome(x))}</span>
-    ${esito ? `<span class="gioca esito" aria-hidden="true">${esc(esito.testo)}</span>`
-      : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}" aria-hidden="true">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
-    ${x.avversario ? `<span class="avv" aria-hidden="true">${x.in_casa ? "vs" : "@"} <span>${lineetta(x.avversario)}${sigla(x.avversario)}</span></span>` : ""}
-    <span class="solo-lettori">${esc(vocePedina(x, esito))}</span>
+    ${gioca ? `<span class="gioca ${classeGioca(p)}" aria-hidden="true">${t("giocatore.gioca", { p: perc(p) })}</span>` : ""}
+    ${stato ? `<span class="gioca ${stato.classe === "rossa" ? "basso" : "parola"}" aria-hidden="true">${esc(stato.testo)}</span>` : ""}
+    ${esito && !preso ? `<span class="gioca parola" aria-hidden="true">${esc(esito.testo)}</span>` : ""}
+    ${daGiocare && x.data_partita ? `<span class="gioca parola" aria-hidden="true">${esc(quando(x.data_partita))}</span>` : ""}
+    <span class="solo-lettori">${esc(vocePedina(x, esito, stato))}${daGiocare && x.data_partita ? `, ${esc(quando(x.data_partita))}` : ""}</span>
   </button>`;
 }
 // Il numero della giornata, uguale in ogni schermata: l'UNICO posto della web che lo scrive (docs/COERENZA-WEB-IPHONE.md, «Giornata: le
@@ -467,9 +474,9 @@ const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.
 const partitaRiga = x => `${sigla(x.squadra)} ${vsAt(x)}`;
 const partitaBreve = x => `${partitaRiga(x)} · ${quando(x.data_partita)}`;
 
-// ---- la riga di un giocatore (grafica B, spec §8.4-8.5): una sola, uguale in Formazione, Oggi e Rosa.
-// Volto da 36 px, la lettera del ruolo grigia, il nome e sotto la partita (con la lineetta del club)
-// e le etichette; a destra «gioca N%» e il fantavoto atteso in due colonne della stessa larghezza in ogni riga (`--col-gioca`,
+// ---- la riga di un giocatore (grafica B, spec §8.4-8.5): una sola, uguale in Formazione e Rosa.
+// Volto da 36 px, la lettera del ruolo grigia, il nome e sotto la partita (con la lineetta del club) e lo stato a parole, se c'è;
+// a destra il fantavoto atteso e, solo sotto l'80%, «gioca N%», in due colonne della stessa larghezza in ogni riga (`--col-gioca`,
 // `--col-fv`): uno sopra l'altro quando la riga è stretta, una riga sola con la colonna della partita quando è larga (stile.css).
 // La lineetta nei colori sociali davanti alla sigla della squadra: decorativa (la sigla dice già la squadra), grigia per un club che
 // non conosciamo. Per ogni tema il primo colore del club, o il secondo se il primo quasi sparisce sul fondo (il bianco della Juventus
@@ -483,9 +490,9 @@ function lineetta(slug) {
 }
 // I nomi delle colonne sopra un elenco di giocatori, allineati alle colonne delle righe; nascosti ai lettori di schermo, perché il
 // nome di ogni riga dice già tutto. `partita: false` senza la colonna della partita; `ferma` resta sotto la testata mentre si
-// scorre (elenchi lunghi); `azione` lascia il posto del pulsante ✎ delle righe (Formazione, «Modifica a mano»).
+// scorre (elenchi lunghi).
 function intestazioneColonne(opz = { partita: true }) {
-  return `<div class="intestazione-colonne${opz.ferma ? " ferma" : ""}${opz.azione ? " posto-azione" : ""}" aria-hidden="true"><div class="voce-g">`
+  return `<div class="intestazione-colonne${opz.ferma ? " ferma" : ""}" aria-hidden="true"><div class="voce-g">`
     + (opz.partita === false ? "" : `<span class="ic-partita">${t("mercato.partita")}</span>`)
     + `<span class="ic-fv">${t("mercato.fantavoto_atteso")}</span></div></div>`;
 }
@@ -494,17 +501,15 @@ function intestazioneColonne(opz = { partita: true }) {
 // dentro il nome di una squadra; il «·» resta in fondo al pezzo prima. I pezzi sono già sicuri per l'HTML.
 const pezziRiga = pezzi => pezzi.filter(Boolean).map((p, i, tutti) => `<span class="nb">${p}${i < tutti.length - 1 ? " ·" : ""}</span>`).join(" ");
 
-// `posizione`: il numero d'ordine davanti al nome (la panchina). `azione`: "sostituisci" mette a destra il pulsante ✎ che apre i
-// sostituti (Formazione, «Modifica a mano»); "posto" lascia solo il suo spazio, così i numeri restano in colonna con le righe che
-// lo hanno (un titolare fermo perché gioca un anticipo già cominciato).
-function voceGiocatore(x, posizione, azione = "") {
-  return `<li class="riga-gioc${azione ? " con-azione" : ""}"><button class="voce voce-g" data-giocatore="${x.id}">
+// `posizione`: il numero d'ordine davanti al nome (la panchina, nell'ordine in cui entra). Un tocco apre la scheda del giocatore.
+function voceGiocatore(x, posizione) {
+  return `<li class="riga-gioc"><button class="voce voce-g" data-giocatore="${x.id}">
     ${volto(x)}
     <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${posizione ? `<span class="debole">${posizione}. </span>` : ""}${esc(x.nome)}</span></span>
-      <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([partitaBreve(x)])}</span>
+      <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra)])}</span>
       <span class="etichette">${etichetteGiocatore(x)}</span></span>
-    ${numeriRiga(x, attrPerche(x))}
-  </button>${azione === "sostituisci" ? `<button class="azione-riga" data-sostituisci="${x.id}" aria-label="${t("formazione.sostituisci_aria", { nome: esc(x.nome) })}" title="${t("formazione.sostituisci_con")}">✎</button>` : ""}</li>`;
+    ${numeriRiga(x)}
+  </button></li>`;
 }
 
 // I numeri a destra di una riga della Rosa: come le righe della Formazione (voceGiocatore). Senza previsione «non gioca» (o «?» per
@@ -514,28 +519,28 @@ function valoreRosa(p, x) {
   return numeriRiga(p);
 }
 
-// Le due colonne dei numeri di ogni riga: «gioca N%» (grigio; sotto il 70% arancio e in grassetto) e il fantavoto atteso. A partita
-// iniziata il fantavoto preso con accanto «fantavoto», oppure «–» (lo stato è già nell'etichetta): mai «gioca N%».
-// `perche`: gli attributi che fanno aprire «Perché questo numero» dal numero (attrPerche, nella Formazione). I nomi delle colonne sono
-// nascosti ai lettori di schermo: il numero ha il suo nome accanto, solo per loro («gioca 85%, Fantavoto atteso 6,8»).
+// Le due colonne dei numeri di ogni riga: il fantavoto atteso e, solo sotto l'80%, «gioca N%» (arancio fra 50 e 79, rosso sotto 50;
+// niente per chi non gioca di sicuro: lo dice la parola). A partita iniziata il fantavoto preso con accanto «fantavoto», oppure «–»
+// (lo stato è già scritto sotto il nome): mai «gioca N%». I nomi delle colonne sono nascosti ai lettori di schermo: il numero ha il
+// suo nome accanto, solo per loro («gioca 45%, Fantavoto atteso 6,8»).
 const nomeFvAtteso = () => `<span class="solo-lettori">${t("mercato.fantavoto_atteso")} </span>`;
-function numeriRiga(p, perche = "") {
+function numeriRiga(p) {
   const esito = esitoPartita(p);
   if (esito) return esito.fv != null
     ? `<span class="pv-g">${t("mercato.fantavoto")}</span><span class="valore esito"><b>${num(esito.fv)}</b></span>`
     : `<span class="pv-g"></span><span class="valore esito"><b class="debole" aria-hidden="true">–</b></span>`;
-  const basso = Math.round((p.p_voto ?? 0) * 100) / 100 < SOGLIA_GIOCA;        // sul numero che si legge, come la pedina
-  return `<span class="pv-g${basso ? " basso" : ""}">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span><span class="valore">${nomeFvAtteso()}<b${perche}>${num(p.fv_atteso)}</b></span>`;
+  const q = giocaLetto(p), mostra = q < SOGLIA_GIOCA && !nonGiocaDiSicuro(parolaStato(p));
+  return `<span class="pv-g${mostra ? " " + classeGioca(q) : ""}">${mostra ? t("giocatore.gioca", { p: perc(q) }) : ""}</span><span class="valore">${nomeFvAtteso()}<b>${num(p.fv_atteso)}</b></span>`;
 }
 
 // ---------------------------------------------------------------- navigazione
-// Le schede (e il nome disegnato, che porta a Oggi) sono collegamenti veri (spec grafica B §5 C2). Un clic normale cambia schermata
+// Le schede (e il nome disegnato, che porta alla Formazione) sono collegamenti veri (spec grafica B §5 C2). Un clic normale cambia schermata
 // dentro l'app; con Ctrl, ⌘, Maiusc, Alt o il tasto centrale decide il browser: la scheda si apre in un'altra scheda o finestra.
 const clicSemplice = ev => ev.button === 0 && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && !ev.altKey;
 document.querySelectorAll(".schede .scheda, .testata .marchio").forEach(a => a.addEventListener("click", ev => {
   if (!clicSemplice(ev)) return;
   ev.preventDefault();
-  vai(a.dataset.vista || "oggi", undefined, { focoTitolo: true });
+  vai(a.dataset.vista || "formazione", undefined, { focoTitolo: true });
 }));
 // L'indirizzo di ogni schermata, lo stesso che l'app sa aprire all'avvio: va nella cronologia, così Indietro e Avanti funzionano.
 // Anche le pagine dentro Squadra e Altro (#449): la voce (`&voce=`, Squadre e rose, Regole...) e la rosa di una squadra (`&rosa=`, il
@@ -545,23 +550,11 @@ let indirizzoMostrato = null;      // l'indirizzo (senza «#…») della scherma
 let timerConto = null;
 let regoleAC = null;      // gestori della schermata regole: si staccano quando si esce
 
-// «Modifica a mano» cambiata e non salvata nella Formazione (calcolato a ogni disegno, `sc.nonSalvata`).
-const modificaNonSalvata = () => stato.vista === "formazione" && !!(stato.scelta && stato.scelta.nonSalvata);
-// Prima di cambiare scheda si chiede; chi conferma lascia le modifiche (tornando, si riparte dalla consigliata o dalla scelta salvata).
-function lasciaFormazione() {
-  if (!modificaNonSalvata()) return true;
-  if (!confirm(t("formazione.esci_senza_salvare"))) return false;
-  Object.assign(stato.scelta, { manuale: null, nonSalvata: false, richiesta: (stato.scelta.richiesta || 0) + 1, occupato: false });
-  return true;
-}
-// Ricaricare o chiudere la pagina: il browser mostra la sua domanda (il testo lo sceglie lui).
-window.addEventListener("beforeunload", ev => { if (modificaNonSalvata()) { ev.preventDefault(); ev.returnValue = ""; } });
-
 // Chi disegna ogni schermata: una mappa con i soli nomi ammessi. Il nome arriva anche dall'indirizzo (?vista=, Indietro): niente
-// chiamate per nome su un oggetto («__proto__», «constructor»...); un nome che non c'è porta a Oggi.
-const DISEGNO_VISTE = new Map([["oggi", () => vistaOggi()], ["formazione", () => vistaFormazione()], ["squadra", () => vistaLega("squadra")], ["altro", () => vistaLega("altro")]]);
-// La schermata che resta per un indirizzo, una scorciatoia o un avviso: {vista, voce, gruppo}. Le pagine tolte il 12/11/2026 (#615)
-// portano alla più vicina: «mercato» (Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario) a Squadra, «scambi» ad Altro, una
+// chiamate per nome su un oggetto («__proto__», «constructor»...); un nome che non c'è porta alla Formazione.
+const DISEGNO_VISTE = new Map([["formazione", () => vistaFormazione()], ["squadra", () => vistaLega("squadra")], ["altro", () => vistaLega("altro")]]);
+// La schermata che resta per un indirizzo, una scorciatoia o un avviso: {vista, voce, gruppo}. «oggi» è la Formazione (#616). Le pagine
+// tolte il 12/11/2026 (#615) portano alla più vicina: «mercato» (Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario) a Squadra, «scambi» ad Altro, una
 // voce che non c'è più (Movimenti, Crediti, Nuova stagione) al menu della sua scheda, le Novità a Impostazioni > Informazioni.
 // «lega» è il nome di prima delle voci di Squadra e Altro: vale la scheda della voce. `voci`: le voci di oggi ({id, ambito}).
 function schermataCheResta(vista, voce, voci = VOCI_LEGA) {
@@ -572,20 +565,15 @@ function schermataCheResta(vista, voce, voci = VOCI_LEGA) {
   const v = voci.find(x => x.id === voce);
   if (vista === "lega") return v ? { vista: v.ambito, voce } : { vista: "altro", voce: null };
   if (vista === "squadra" || vista === "altro") return { vista, voce: v && v.ambito === vista ? voce : null };
-  return { vista: VISTE.includes(vista) ? vista : "oggi", voce: null };
+  return { vista: VISTE.includes(vista) ? vista : "formazione", voce: null };
 }
 // opz.daCronologia: si arriva da Indietro o Avanti del browser (l'indirizzo è già quello giusto: non si scrive di nuovo).
-// opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-4, Indietro): il focus va sul titolo della schermata,
+// opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-3, Indietro): il focus va sul titolo della schermata,
 // così il lettore di schermo dice dove si è arrivati e il Tab riparte dal contenuto.
 // opz.sostituisci: la schermata prende il posto della voce di adesso nella cronologia («‹ Altro» di una pagina aperta da un indirizzo,
 // una voce di Squadra che porta subito a un'altra pagina): Indietro non torna a una voce che riaprirebbe la stessa cosa.
 // La voce di Squadra o di Altro da aprire (`stato.legaTorna`) e la rosa di una squadra (`stato.rosaTorna`) vanno nell'indirizzo (#449).
 function vai(vista, gruppo, opz = {}) {
-  if (vista !== "formazione" && !lasciaFormazione()) {                   // resta nella Formazione: la modifica a mano non è salvata
-    if (opz.daCronologia) try { history.pushState({ vista: "formazione" }, "", indirizzoVista("formazione")); } catch { /* niente cronologia */ }   // con Indietro: l'indirizzo torna quello della Formazione
-    indirizzoMostrato = location.pathname + location.search;
-    return;
-  }
   chiudiPannelloAffiancato();                                             // schede e tasti restano attivi con il pannello accanto (da 1200 px)
   const resta = schermataCheResta(vista, stato.legaTorna);                // nomi vecchi e pagine tolte: la schermata più vicina che resta
   vista = resta.vista;
@@ -639,7 +627,7 @@ window.addEventListener("popstate", ev => {
   const v = ev.state && ev.state.vista ? ev.state : { vista: q.get("vista"), gruppo: q.get("gruppo"), voce: q.get("voce"), rosa: q.get("rosa") };
   stato.legaTorna = typeof v.voce === "string" ? v.voce : null;           // voce di Squadra o Altro, o il menu (#449)
   stato.rosaTorna = typeof v.rosa === "string" ? v.rosa : null;           // rosa di una squadra
-  vai(v.vista || "oggi", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
+  vai(v.vista || "formazione", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
 });
 // L'indirizzo di una pagina dentro Squadra, Altro o Impostazioni (#449): la voce aperta accanto al menu, Regole, la rosa di
 // una squadra (`pagina: true`: pagine loro, non accanto al menu), il gruppo delle Impostazioni. `nuova` (un clic di chi usa l'app):
@@ -754,108 +742,34 @@ $("#bottone-aggiorna").addEventListener("click", async () => {
   } catch (e) { avviso(e.message); }
 });
 
-// ---------------------------------------------------------------- Oggi
+// ---------------------------------------------------------------- Formazione: la schermata che dice chi schierare (#616)
+// Una schermata sola al posto di Oggi e Formazione. La testa cambia con la fase della giornata (`fase` di /api/oggi): prima della
+// scadenza la giornata e quando si chiude; in corso i punti fatti finora; finita com'è andata e, sotto, la formazione della prossima.
+// Poi al massimo due decisioni (dfDecisioni in dafare.js), il modulo con i punti attesi, il campo con gli 11, lo stato della scelta
+// con «Copia per l'app della lega» e la spunta «L'ho messa», la panchina nell'ordine in cui entra, i non schierati, gli infortunati
+// e gli squalificati. Il salvataggio è automatico: una sostituzione o un altro modulo si salvano al tocco.
+
+// Quando si chiude la formazione che la schermata mostra: a giornata finita, o per chi è arrivato a giornata iniziata, la prossima.
+const scadenzaDi = o => (o.prossima && (o.fase === "finita" || o.senza_formazione) && o.prossima.scadenza) || o.scadenza || o.inizio;
+// «Si chiude oggi 18:20» e «fra 3 h 10 min»: il conto resta, piccolo, accanto alla scadenza.
 function testoConto(o) {
-  // il conto alla rovescia va alla SCADENZA della formazione (prima partita meno i minuti della regola della lega); i server vecchi non la mandano
-  const inizio = parseData(o.scadenza || o.inizio);
-  if (!inizio) return { grande: "–", piccolo: t("oggi.calendario_no") };
-  const min = Math.round((inizio - new Date()) / 60000);
-  // la giornata è scritta subito sopra il conto (nomeGiornata): la riga sotto non la ripete
-  if (min <= 0) return { grande: t("oggi.chiusa"), piccolo: t("oggi.chiusa_dettaglio", { quando: quando(o.scadenza || o.inizio) }) };
+  const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude);
+  if (!fine) return { chiude: t("oggi.calendario_no"), manca: "" };
+  const min = Math.round((fine - new Date()) / 60000);
+  if (min <= 0) return { chiude: t("formazione.chiusa_breve"), manca: "" };
   const g = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
   // ogni numero resta attaccato alla sua unità (spazio che non va a capo): «1 giorno» / «8 h», mai «h» da sola su una riga (issue #286)
-  const grande = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
-  return { grande, piccolo: o.scadenza && o.scadenza !== o.inizio
-    ? t("oggi.si_chiude", { quando: quando(o.scadenza), min: o.minuti_scadenza })
-    : t("oggi.prima_partita", { quando: quando(o.inizio) }) };
-}
-
-function vistaOggi() {
-  caricaConCache("oggi", "/api/oggi", mostraOggi, t("oggi.preparo"));
+  const tempo = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
+  return { chiude: t("formazione.si_chiude", { quando: quando(quandoChiude) }), manca: t("formazione.fra", { tempo }) };
 }
 
 // Account nuovo, senza rose: benvenuto e un solo pulsante. Il primo avvio guidato si apre da solo (una volta, vedi primoAvvioSeServe).
-function mostraOggiSenzaRose(o, opz) {
+function mostraSenzaRose(opz) {
   clearInterval(timerConto);
   pagina(`<div class="carta benvenuto" role="status"><h2>${t("oggi.benvenuto_schieraxi")}</h2>
     <p class="debole">${t("oggi.per_cominciare_importa")}</p>
-    <div class="pulsanti"><button class="bottone" type="button" data-importa-rose>${t("comune.importa_rose")}</button></div></div>`, opz);
+    <div class="pulsanti"><button class="bottone" type="button" data-importa-rose>${t("comune.importa_rose")}</button></div></div>`, { ...opz, stato: false });
   if (typeof primoAvvioSeServe === "function") primoAvvioSeServe();
-}
-
-// Fasi della giornata (campo `fase` di /api/oggi, docs/API.md): «prima» come sempre; «in_corso» la giornata in diretta al posto
-// dei consigli su chi schierare; «finita» il riepilogo e la prossima giornata. Server vecchio senza `fase`: tutto come prima.
-const STATO_LIVE = { senza_voto: "oggi.st_senza_voto", attesa_voti: "oggi.st_attesa_voti", in_corso: "oggi.st_in_corso", rinviata: "oggi.st_rinviata" };
-function valoreLive(g) {
-  if (g.stato === "fatto") return `<b class="fv-fatto">${num(g.fantavoto)}</b>`;
-  if (g.stato === "da_giocare" && g.data) return `<span class="debole piccolo">${esc(quando(g.data))}</span>`;
-  if (etichettaPronta(g)) return `<span class="piccolo tono ${classeTono(g.etichetta)}">${esc(g.etichetta.testo)}</span>`;
-  return `<span class="debole piccolo">${t(STATO_LIVE[g.stato] || "oggi.st_da_giocare")}</span>`;
-}
-
-// A giornata in corso: le cifre (punti finora | a fine giornata, separate da un filo come in Oggi prima della scadenza), poi chi va
-// a punteggio con la lettera grigia del ruolo (come le righe dei giocatori, grafica B) e i cambi dalla panchina.
-function cardInCorso(c, f) {
-  if (!c || !Array.isArray(c.giocatori)) return "";
-  const righe = c.giocatori.filter(g => g.a_punteggio).map(g => `<button class="avviso-riga" data-giocatore="${Number(g.id)}"><span class="ruolo-l">${esc(ruoloSigla(g.ruolo))}</span>
-    <span><span class="nome">${esc(g.nome)}</span> <span class="dettaglio">${sigla(g.squadra)}</span>
-      ${g.titolare ? "" : `<div class="dettaglio nota">${t("oggi.dalla_panchina")}</div>`}</span>${valoreLive(g)}</button>`).join("");
-  const cambi = (c.sostituzioni || []).filter(s => s && s.esce).map(s => `<li><span>${esc(s.esce.nome)} → ${s.entra ? esc(s.entra.nome) : t("oggi.nessun_sostituto")}</span>
-    <span class="etichetta ${s.certa ? "" : "arancio"}">${t(s.certa ? "oggi.cambio_fatto" : "oggi.cambio_probabile")}</span></li>`).join("");
-  return `<div class="carta in-corso" id="oggi-in-corso">
-    <div class="cifre-oggi"><div class="cifra"><div class="debole">${t("oggi.punti_finora")}</div><div class="grande" id="oggi-fatti">${num(c.punti_fatti)}</div></div>
-      <div class="cifra"><div class="debole">${t("oggi.a_fine_giornata")}</div><div class="grande">≈ ${num(c.punti_previsti)}</div>
-        ${f && f.punteggio_atteso != null ? `<div class="debole piccolo">${t("oggi.attesi_prima", { n: num(f.punteggio_atteso) })}</div>` : ""}</div></div>
-    <div class="debole piccolo">${c.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c.ancora_da_giocare) : t("oggi.tutti_giocato")}</div>
-    ${righe}
-    ${cambi ? `<div class="etichetta-riga">${t("oggi.cambi_panchina")}</div><ul class="cambi-live">${cambi}</ul>` : ""}
-  </div>`;
-}
-
-// Chi è entrato a giornata iniziata senza una formazione (`senza_formazione` di /api/oggi): niente punti, si prepara la prossima.
-function cardSenzaFormazione(p) {
-  const gia = p && (p.con_probabili || !parseData(p.prepara_da) || parseData(p.prepara_da) <= new Date());
-  return `<div class="carta riepilogo-giornata" id="oggi-senza-formazione">
-    <h2>${t("oggi.gia_iniziata")}</h2><p>${t("oggi.gia_iniziata_testo")}</p>
-    ${p && p.scadenza ? `<p class="prossima-giornata">${t("oggi.prossima_chiude", { g: nomeGiornata(p.giornata_lega, p.giornata), quando: esc(quando(p.scadenza)) })}
-      ${gia ? t("oggi.prossima_pronta") : t("oggi.prossima_da", { quando: esc(quando(p.prepara_da)) })}</p>` : ""}
-    <div class="pulsanti"><button class="bottone" data-vai="formazione">${t("oggi.prepara_prossima")}</button></div></div>`;
-}
-
-function cardRiepilogo(r, p) {
-  if (!r && !p) return "";
-  let html = "";
-  if (r) {
-    const tua = r.formazione_di === "tua";
-    html += `<h2>${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</h2>
-      <div class="cifre-oggi"><div class="cifra"><div class="debole">${t(tua ? "oggi.la_tua_formazione" : "oggi.la_consigliata")}</div><div class="grande">${num(r.punti_fatti)}</div>
-        <div class="debole piccolo">${t("oggi.punti_fatti")}</div></div>
-        ${r.punti_attesi != null ? `<div class="cifra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
-      ${tua && r.consigliata ? `<p class="piccolo">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
-      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
-      ${r.rinvio && typeof menuRinvio === "function" ? menuRinvio(r.rinvio) : ""}
-      ${r.nel_diario ? "" : `<p class="debole piccolo">${t("oggi.confronto_in_arrivo")}</p>`}
-      <div class="pulsanti"><button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("oggi.apri_diario")}</button></div>`;
-  }
-  if (p && p.scadenza) {
-    const gia = p.con_probabili || !parseData(p.prepara_da) || parseData(p.prepara_da) <= new Date();
-    html += `<p class="prossima-giornata">${t("oggi.prossima_chiude", { g: nomeGiornata(p.giornata_lega, p.giornata), quando: esc(quando(p.scadenza)) })}
-      ${gia ? t("oggi.prossima_pronta") : t("oggi.prossima_da", { quando: esc(quando(p.prepara_da)) })}</p>`;
-  }
-  return `<div class="carta riepilogo-giornata" id="oggi-riepilogo">${html}</div>`;
-}
-
-// Una riga di Da controllare, Indisponibili e Diffidati (`avvisi` di /api/oggi): la lettera grigia del ruolo, nome e squadra, sotto
-// l'etichetta del server nel colore del suo tono e la nota (grafica B, spec §8.4 e §8.9: niente quadratino colorato né pallino, le
-// parole dicono già la gravità). Server vecchio senza `etichetta`: le parole del vocabolario dal tipo.
-function rigaAvviso(a) {
-  const pronta = etichettaPronta(a);
-  const classe = pronta ? classeTono(a.etichetta) : ({ infortunato: "rossa", squalificato: "rossa", dubbio: "arancio" }[a.tipo] || "neutra");
-  const testo = pronta ? esc(a.etichetta.testo)
-    : { infortunato: t("oggi.infortunato"), squalificato: t("oggi.squalificato"), dubbio: t("oggi.dubbio", { p: perc(a.p_voto) }), diffidato: t("oggi.diffidato_tipo") }[a.tipo];
-  return `<button class="avviso-riga" data-giocatore="${Number(a.id)}"><span class="ruolo-l">${esc(ruoloSigla(a.ruolo))}</span>
-    <span><span class="nome">${esc(a.nome)}</span> <span class="dettaglio">${sigla(a.squadra)}</span>
-      <span class="avviso-nota">${testo ? `<span class="etichetta ${classe}">${testo}</span>` : ""}${a.nota ? `<span class="debole"> · ${esc(a.nota)}</span>` : ""}</span></span></button>`;
 }
 
 // Partite rinviate della giornata (campo `rinvio` di /api/oggi, docs/API.md): quali, i miei giocatori coinvolti e cosa vale per
@@ -865,9 +779,9 @@ function nomeModoRinvio(m, voto) {
   if (m === "voto_ufficio") return t("oggi.rinvio_ufficio", { v: num(voto ?? 6, Number.isInteger(voto ?? 6) ? 0 : 1) });
   return m === "aspetta" || m === "senza_voto" ? t("oggi.rinvio_" + m) : String(m);
 }
-// Il menu «per questa giornata i loro giocatori…» (riquadro di Oggi e riepilogo della giornata finita): cambia solo quella giornata.
-// Un <select> non va a capo e tagliava la scelta («aspettano il recupero (conta il suo vo»): la scelta si legge intera nel riquadro
-// (`.menu-scelta-testo`, va a capo), il <select> vero sta sopra, trasparente, e apre il menu del sistema. Come MenuRinvio dell'iPhone.
+// Il menu «per questa giornata i loro giocatori…»: cambia solo quella giornata. Un <select> non va a capo e tagliava la scelta
+// («aspettano il recupero (conta il suo vo»): la scelta si legge intera nel riquadro (`.menu-scelta-testo`, va a capo), il <select>
+// vero sta sopra, trasparente, e apre il menu del sistema. Come MenuRinvio dell'iPhone.
 function menuRinvio(rv) {
   const modi = Array.isArray(rv.modi) && rv.modi.length ? rv.modi : MODI_RINVIO;
   const voto = rv.voto_ufficio ?? rv.valore;
@@ -877,8 +791,7 @@ function menuRinvio(rv) {
       <select class="rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === scelto ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></span></label>
     <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
 }
-// «UDI vs MIL»: le sigle, prima la squadra di casa. La usano la carta del rinvio e la riga dei recuperi
-// che mancano nel riepilogo (#310), come `TestiRinvio.partita` dell'iPhone.
+// «UDI vs MIL»: le sigle, prima la squadra di casa. La usano il riquadro del rinvio e la riga dei recuperi che mancano (#310).
 const partitaVs = p => `${sigla(p.casa)} vs ${sigla(p.trasferta)}`;
 function cardRinvio(rv) {
   if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
@@ -906,88 +819,21 @@ function collegaRinvio() {
         salvato = sel.value;
         svuotaCache();
         avviso(t("oggi.rinvio_salvato"));
-        vistaOggi();
+        vistaFormazione();
       } catch (e) { avviso(e.message, 8000); sel.value = salvato; mostra(); sel.disabled = false; }   // resta la scelta salvata
     });
   });
 }
 
-// Oggi come una distinta (grafica B, spec §9): a sinistra (al telefono prima) il conto alla rovescia, le cifre della formazione con
-// l'unico pulsante pieno «Apri la formazione» e le probabili, poi Partita rinviata e Da fare; a destra I tuoi migliori, Da
-// controllare, Indisponibili (chiuso) e Diffidati. Da 900 px le due colonne stanno 5:7 (stile.css). Senza elenchi a destra (giornata
-// in corso o finita) ci vanno Partita rinviata e Da fare, se c'è qualcosa da sbrigare; altrimenti una colonna sola. Al telefono
-// l'ordine è lo stesso.
-function mostraOggi(o, opz = {}) {
-  if (o.senza_rose) { mostraOggiSenzaRose(o, opz); return; }
-  const fase = o.fase || "prima";
-  const inCorso = fase === "in_corso", finita = fase === "finita";
-  const c = testoConto(o);
-  // a formazione chiusa niente «Da controllare» né migliori (non si può più cambiare); a giornata finita la prossima è ancora lontana
-  const inFormazione = inCorso || finita ? [] : o.avvisi.filter(a => a.in_formazione);
-  const migliori = inCorso || finita ? [] : o.migliori;
-  const indisponibili = inCorso ? [] : o.avvisi.filter(a => !a.in_formazione && (a.tipo === "infortunato" || a.tipo === "squalificato"));
-  const altri = inCorso ? [] : o.avvisi.filter(a => !a.in_formazione && a.tipo === "diffidato");
-  const mia = miaSquadra(), maglia = !!(mia && mia.immagini && mia.immagini.maglia);
-  const testa = `
-    <div class="conto-oggi${maglia ? " con-maglia" : ""}">
-      <div class="conto-testo">
-        <div class="debole">${nomeGiornata(o.giornata_lega, o.giornata)}</div>
-        <div class="enorme" id="conto">${esc(c.grande)}</div>
-        <div class="debole" id="conto-sotto">${esc(c.piccolo)}</div>
-      </div>
-      ${maglia ? `<img class="maglia-hero" src="${esc(urlImg(mia.nome, "maglia"))}" alt="">` : ""}
-    </div>
-    ${finita ? cardRiepilogo(o.riepilogo, o.prossima) : ""}
-    ${inCorso ? (o.senza_formazione ? cardSenzaFormazione(o.prossima) : cardInCorso(o.in_corso, o.formazione)) : ""}
-    ${inCorso && (o.in_corso || o.senza_formazione) ? "" : `<div class="formazione-oggi">
-      <div class="cifre-oggi"><div class="cifra"><div class="debole">${t(o.formazione.tua_scelta ? "oggi.tua_formazione_scelta" : "oggi.tua_formazione")}</div><div class="grande">${esc(o.formazione.modulo)}</div></div>
-        <div class="cifra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande" id="oggi-punti">${num(o.formazione.punteggio_atteso)}</div>${fraseFascia(o.formazione) ? `<div class="debole piccolo" id="oggi-fascia">${esc(fraseFascia(o.formazione))}</div>` : ""}</div></div>
-      <div class="pulsanti"><button class="bottone" data-vai="formazione">${t("oggi.apri_formazione")}</button></div>
-      ${o.con_probabili || inCorso || finita ? "" : `<div class="attenzione">${t("oggi.mancano_probabili_formazioni")}</div>`}
-      ${o.probabili && !inCorso ? `<div class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</div>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : ""}
-    </div>`}`;
-  const servizio = cardRinvio(o.rinvio) + cardDaFare(o.da_fare);
-  const elenchi = `
-    ${migliori.length ? `<div class="carta"><h2>${t("oggi.tuoi_migliori_della")}</h2>${intestazioneColonne()}<ul class="elenco">${migliori.map(x => voceGiocatore(x)).join("")}</ul></div>` : ""}
-    ${inFormazione.length ? `<div class="carta"><h2>${t("oggi.da_controllare")}</h2><div class="debole piccolo">${t("oggi.giocatori_formazione_con")}</div>${inFormazione.map(rigaAvviso).join("")}</div>` : ""}
-    ${indisponibili.length ? `<div class="carta"><details><summary>${t("oggi.indisponibili", { n: indisponibili.length })}</summary>${indisponibili.map(rigaAvviso).join("")}</details></div>` : ""}
-    ${altri.length ? `<div class="carta"><h2>${t("oggi.diffidati")}</h2>${altri.map(rigaAvviso).join("")}</div>` : ""}`.trim();
-  // senza elenchi a destra ci vanno Partita rinviata e Da fare, ma solo se c'è qualcosa: la sola riga «Tutto a posto» resta a sinistra
-  const daSbrigare = !!cardRinvio(o.rinvio) || dfValide(o.da_fare).length > 0;
-  const [sinistra, destra] = elenchi ? [testa + servizio, elenchi] : daSbrigare ? [testa, servizio] : [testa + servizio, ""];
-  pagina(`<div class="colonne colonne-oggi${destra ? "" : " sola"}"><div class="col">${sinistra}</div>${destra ? `<div class="col">${destra}</div>` : ""}</div>`, opz);
-  collegaDaFare(o.da_fare);
-  collegaRinvio();
-  const diario = $("[data-apri-diario]");
-  if (diario) diario.addEventListener("click", () => apriDiario(Number(diario.dataset.apriDiario) || undefined));
-  // il conto alla rovescia si aggiorna da solo finché si resta in questa sezione
-  clearInterval(timerConto);
-  const idTimer = timerConto = setInterval(() => {
-    const el = $("#conto");
-    if (!el) { clearInterval(idTimer); return; }
-    const ct = testoConto(o);
-    el.textContent = ct.grande;
-    const s = $("#conto-sotto");
-    if (s) s.textContent = ct.piccolo;
-  }, 30000);
-}
-
-// ---------------------------------------------------------------- formazione
-function vistaFormazione() {
-  const squadra = stato.squadraVista;
-  caricaConCache("formazione-" + (squadra || "mia"), "/api/formazione" + (squadra ? `?squadra=${encodeURIComponent(squadra)}` : ""),
-    (f, opz) => mostraFormazione(f, squadra, opz), t("formazione.calcolo"));
-}
-
 // Sul campo solo il cognome, senza l'iniziale («Rossi L.» → «Rossi»), come sull'iPhone: lo spazio è poco.
 const cognome = x => String(x.nome).replace(/\s+\S{1,3}\.$/u, "");
 
-// La formazione come testo da leggere (o da mandare nel gruppo): Leghe non permette di incollarla, si inserisce a mano.
-function testoFormazione(f, m) {
-  const sch = id => f.schede[String(id)];
-  const riga = r => `${ruoloSigla(r)}: ${m.titolari.map(sch).filter(x => x.ruolo === r).map(x => x.nome).join(", ")}`;
+// La formazione come testo, da copiare nell'app della lega (che non permette di incollarla: si inserisce a mano, leggendola da qui).
+function testoFormazione(f, m, scheda) {
+  const riga = r => `${ruoloSigla(r)}: ${m.titolari.map(scheda).filter(x => x && x.ruolo === r).map(x => x.nome).join(", ")}`;
   const righe = [`${nomeGiornata(f.giornata_lega, f.giornata)} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
-  if (m.panchina.length) righe.push(t("scambi.panchina") + ": " + m.panchina.map((id, k) => `${k + 1}) ${sch(id).nome}`).join(", "));
+  const panchina = m.panchina.map(scheda).filter(Boolean);
+  if (panchina.length) righe.push(t("scambi.panchina") + ": " + panchina.map((x, k) => `${k + 1}) ${x.nome}`).join(", "));
   return righe.join("\n");
 }
 
@@ -1004,348 +850,329 @@ async function copiaTesto(testo) {
   }
 }
 
-// Chi è in ballottaggio tra i titolari: i due della rosa dello stesso ruolo che gli stanno più vicini, con la differenza di punti attesi.
-// `etichetta`: la scritta «In ballottaggio con» si vede solo sulla prima riga (prima si ripeteva per ogni titolare); nelle altre è per i lettori di schermo.
-// Un tocco apre la scheda dell'altro (il Confronto a barre è stato tolto il 12/11/2026, #615).
-function alternativeVicine(x, m, f, etichetta = true) {
-  if (f.iniziata || x.titolarita == null || x.titolarita === "titolare") return "";      // a formazione chiusa non si cambia più
-  const dentro = new Set(m.titolari);
-  const alt = Object.values(f.schede).filter(y => y.ruolo === x.ruolo && !dentro.has(y.id) && y.p_voto >= 0.2)
-    .sort((a, b) => b.punti_attesi - a.punti_attesi).slice(0, 2);
-  if (!alt.length) return "";
-  return `<li class="alternative-li"><span class="${etichetta ? "debole piccolo" : "solo-lettori"}">${t("formazione.ballottaggio_alternative_vic")}</span>${alt.map(y => {
-    const d = y.punti_attesi - x.punti_attesi;
-    return `<button class="alt" data-giocatore="${y.id}">${esc(cognome(y))} <b class="${Math.abs(d) < 0.4 ? "" : d > 0 ? "positivo" : "debole"}">${segno(d, 1)}</b>${Math.abs(d) < 0.4 ? `<small>${t("formazione.quasi_pari")}</small>` : ""}</button>`;
-  }).join("")}</li>`;
-}
-
-// La fascia in una riga, come sull'iPhone: «tra 62 e 84 · 8 volte su 10» (+ « (indicativo)»); senza fascia «oscilla di ±N»; senza niente, vuota.
-function fraseFascia(m) {
+// «di solito fra 65 e 82»: dove cadono i punti veri 8 volte su 10 (fascia del server, calibrata sulle giornate passate). Le risposte
+// vecchie hanno solo `dev`: «oscilla di ±N». Senza niente, vuota.
+function fraseDiSolito(m) {
   const i = m && m.intervallo;
-  if (i && Number.isFinite(i.basso) && Number.isFinite(i.alto) && i.basso <= i.alto) {
-    let frase = t("formazione.tra", { a: num(i.basso, 0), b: num(i.alto, 0) });
-    const c = i.confidenza;
-    if (Number.isFinite(c) && c > 0 && c < 1) {
-      const base = [10, 20, 100].find(b => Math.abs(c * b - Math.round(c * b)) < 0.001);
-      frase += ` · ${t("formazione.volte_su", base ? { x: Math.round(c * base), y: base } : { x: Math.round(c * 100), y: 100 })}`;
-    }
-    return frase + (i.indicativo ? t("formazione.indicativo") : "");
-  }
+  if (i && Number.isFinite(i.basso) && Number.isFinite(i.alto) && i.basso <= i.alto) return t("formazione.di_solito", { a: num(i.basso, 0), b: num(i.alto, 0) });
   const d = m && m.dev;
   return Number.isFinite(d) && d >= 0 ? t("formazione.oscilla", { n: num(d, 0) }) : "";
 }
-// Dove cadranno i punti veri 8 volte su 10 (fascia calibrata sulle giornate passate); le risposte vecchie hanno solo `dev`.
-function fascia(m) {
-  const i = m.intervallo;
-  if (!i) return `<div class="debole piccolo">${t("formazione.oscilla", { n: num(m.dev || 0, 0) })}</div>`;
-  const nota = t(i.indicativo ? "formazione.fascia_nota_ind" : "formazione.fascia_nota");
-  return `<div class="debole piccolo" title="${nota}">${t("formazione.tra", { a: num(i.basso, 0), b: num(i.alto, 0) })}</div>
-            <div class="debole piccolo">${t(i.indicativo ? "formazione.fascia_riga_ind" : "formazione.fascia_riga")}</div>`;
-}
 
 const stessiIds = (a, b) => a.length === b.length && a.every(x => b.includes(x));
-// Il perché della scelta in una riga (campo `perche_scelta` del modulo, fanta/perche_scelta.py): una riga per ogni titolare che
-// sembra una scelta storta (meno punti attesi di un escluso dello stesso ruolo) o è incerto con la riserva sicura.
-// [{id, nome, riga}] nell'ordine del server (riga già pronta per l'HTML); null = il server non manda il campo.
-function righePercheScelta(m, scheda) {
-  if (!Array.isArray(m.perche_scelta)) return null;
-  return m.perche_scelta.map(x => [x, scheda(x && x.titolare)]).filter(([x, a]) => a && x.testo)
-    .map(([x, a]) => ({ id: a.id, nome: a.nome, riga: esc(testoDi(x)) }));
-}
-
-// Stato della scelta della giornata, dal confronto fra gli 11 mostrati e quelli salvati sul server (l'ordine non conta).
-// `salvata`: risposta di GET /api/scelta (null = nessuna scelta; undefined = non ancora letta o lettura fallita: nessuna riga).
-// Risultato: null, "consigliata" (A), "salvata" (B), "modificata" (C), "mano" (D), "non_valida" (la scelta salvata non vale più)
-// o "altra" (niente di salvato e sullo schermo un altro modulo: non è la consigliata e non si dice che lo sia).
-// "chiusa": scadenza della lega passata (`iniziata` del server), niente più da salvare né da cambiare, anche prima di leggere la scelta.
-function statoScelta(mostrati, salvata, manuale, nonValida = false, altra = false, chiusa = false) {
-  if (chiusa) return "chiusa";
-  if (salvata === undefined) return null;
-  if (salvata && Array.isArray(salvata.titolari)) {
-    if (nonValida && !manuale) return "non_valida";            // dopo «Modifica a mano» si può salvare la nuova (stato C)
-    return stessiIds(mostrati.map(Number), salvata.titolari.map(Number)) ? "salvata" : "modificata";
-  }
-  return manuale ? "mano" : altra ? "altra" : "consigliata";
-}
-// «oggi alle 21:40» / «ieri alle 21:40» / «sab 31 alle 21:40»; con `breve` oggi resta «alle 21:40».
-function quandoSalvata(s, breve = false) {
-  const d = parseData(s);
-  if (!d) return "";
-  const inizio = x => new Date(x.getFullYear(), x.getMonth(), x.getDate());
-  const diff = Math.round((inizio(d) - inizio(new Date())) / 864e5);
-  const ora = fOra(d);
-  if (diff === 0) return breve ? t("formazione.alle", { ora }) : t("formazione.giorno_alle", { giorno: t("tempo.oggi"), ora });
-  return t("formazione.giorno_alle", { giorno: diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + d.getDay())} ${d.getDate()}`, ora });
-}
-const SEGNI_SCELTA = { consigliata: "○", altra: "○", salvata: "✓", modificata: "●", mano: "●", non_valida: "!", chiusa: "■" };
-// Il tasto che salva la formazione (gestore `keydown`, spec C3): ⌘+S sul Mac, sull'iPhone e sull'iPad, Ctrl+S altrove.
-const tastoSalva = () => /Mac|iPhone|iPad|iPod/.test((globalThis.navigator && navigator.platform) || "") ? "⌘+S" : "Ctrl+S";
-// A giornata chiusa la frase dice quale formazione vale. `nonValida`: la scelta salvata non si può schierare (regola unica del
-// server: `stato_scelta: "non_valida"` di GET /api/formazione, o `formazione_non_valida` rileggendola): vale la consigliata, che è
-// anche quella mostrata.
-function rigaStatoScelta(st, salvata, nonValida = false) {
-  const quando = salvata ? quandoSalvata(salvata.salvata) : "", breve = salvata ? quandoSalvata(salvata.salvata, true) : "";
-  const testo = {
-    consigliata: t("formazione.stato_consigliata"),
-    altra: t("formazione.stato_altro_modulo"),
-    salvata: quando ? t("formazione.stato_salvata_quando", { quando }) : t("formazione.stato_salvata"),
-    modificata: breve ? t("formazione.stato_modificata_quando", { quando: breve }) : t("formazione.stato_modificata"),
-    mano: t("formazione.stato_mano"),
-    non_valida: t("formazione.stato_non_valida"),
-    chiusa: t(nonValida ? "formazione.stato_chiusa_non_valida" : salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
-  }[st];
-  const b = (id, chiave, secondario = true) => `<button class="bottone${secondario ? " secondario" : ""}" type="button" id="${id}"${id.startsWith("salva-") ? ` title="${t("formazione.salva_tasto", { tasto: tastoSalva() })}"` : ""}>${t(chiave)}</button>`;
-  const pulsanti = {
-    consigliata: b("salva-questa", "formazione.salva_questa", false) + b("modifica", "formazione.modifica_mano"),
-    altra: b("salva-questa", "formazione.salva_questa", false) + b("modifica", "formazione.modifica_mano") + b("torna-consigliata", "formazione.torna_alla_consigliata"),
-    salvata: b("torna-consigliata", "formazione.torna_alla_consigliata"),
-    modificata: b("salva-scelta", "formazione.salva_modifiche", false) + b("annulla-modifiche", "formazione.annulla_modifiche") + b("torna-consigliata", "formazione.torna_alla_consigliata"),
-    mano: b("salva-scelta", "formazione.salva_come_mia", false) + b("torna-consigliata", "formazione.torna_alla_consigliata"),
-    non_valida: b("modifica", "formazione.modifica_mano", false) + b("torna-consigliata", "formazione.torna_alla_consigliata"),
-    chiusa: "",                                           // dopo la scadenza il server rifiuta comunque (409 formazione_chiusa)
-  }[st];
-  return `<div class="stato-scelta ${st}" id="stato-scelta"><p role="status"><span class="segno" aria-hidden="true">${SEGNI_SCELTA[st]}</span><span>${testo}</span></p>
-    ${pulsanti ? `<div class="pulsanti">${pulsanti}</div>` : ""}</div>`;
+// La consigliata: un solo stile dal 12/11/2026 (#615), il livello «Equilibrata» del server (rischio 0). Gli altri livelli di
+// `f.livelli` restano nella risposta per l'iPhone. Server senza `livelli`: i moduli in cima alla risposta.
+const livelloBase = f => (f.livelli || []).find(x => x.rischio === 0) || { modulo: f.modulo, moduli: f.moduli };
+// Il modulo già calcolato dal server che ha proprio questi 11 (l'ordine non conta), o null: allora serve una valutazione a parte.
+const moduloDi = (f, ids) => livelloBase(f).moduli.find(m => stessiIds(m.titolari.map(Number), ids.map(Number))) || null;
+// Il perché di un titolare in una riga (campo `perche_scelta` del modulo, fanta/perche_scelta.py; se manca, il campo `incerti`: titolare
+// incerto con la riserva che gioca quasi di sicuro). Già pronto per l'HTML; vuoto se non c'è niente da dire. `altro` e `riserva`
+// possono mancare (null): la frase del server basta a sé, quella degli incerti senza riserva non si scrive.
+function percheTitolare(m, id, scheda) {
+  const riga = (Array.isArray(m.perche_scelta) ? m.perche_scelta : []).find(x => x && Number(x.titolare) === Number(id) && x.testo);
+  if (riga) return esc(testoDi(riga));
+  const inc = (Array.isArray(m.incerti) ? m.incerti : []).find(x => x && Number(x.titolare) === Number(id));
+  const a = inc && scheda(inc.titolare), b = inc && inc.riserva != null && scheda(inc.riserva);
+  return a && b ? t("formazione.incerto", { p: perc(a.p_voto), riserva: esc(b.nome) }) : "";
 }
 
 // Anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (campo `bloccati` di GET /api/formazione;
 // manca senza anticipi cominciati e con un server vecchio). Il server rifiuta comunque un salvataggio che ne sposta uno.
 const giocatoriFermi = f => new Set((Array.isArray(f && f.bloccati) ? f.bloccati : []).map(Number));
-// Chi può prendere il posto di `base` nella modifica a mano: stesso ruolo, non già fra i titolari (`dentro`) e non fermo, il migliore
-// per punti attesi in cima. Nessuno se `base` stesso è fermo.
+// Chi può prendere il posto di `base`: stesso ruolo, non già fra i titolari (`dentro`) e non fermo, il migliore per punti attesi in
+// cima. Nessuno se `base` stesso è fermo.
 function sostituti(f, base, dentro) {
   const fermi = giocatoriFermi(f);
   if (fermi.has(Number(base.id))) return [];
   return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
     .sort((a, b) => b.punti_attesi - a.punti_attesi);
 }
-// La Formazione si ridisegna (modulo, «Torna alla consigliata», un calcolo arrivato): la sostituzione di un titolare aperta
+// La Formazione si ridisegna (modulo, «Torna alla consigliata», un salvataggio arrivato): la sostituzione di un titolare aperta
 // (`data-sostituzione`) si chiude, perché i suoi candidati erano quelli della formazione di prima. Le schede dei giocatori restano.
 function chiudiSostituzione() {
   const foglio = $("#foglio");
   if (foglio && !foglio.hidden && $("#foglio-contenuto [data-sostituzione]")) chiudiFoglio();
 }
 
-function mostraFormazione(f, squadra, opz = {}) {
-  const scheda = id => f.schede[String(id)];
+function vistaFormazione() {
+  const squadra = stato.squadraVista;
+  if (squadra) {                                            // la formazione di un'altra squadra della lega: si guarda e basta
+    caricaConCache("formazione-" + squadra, async () => ({ o: null, f: await api(`/api/formazione?squadra=${encodeURIComponent(squadra)}`) }),
+      (b, opz) => mostraFormazione(b, squadra, opz), t("formazione.calcolo"));
+    return;
+  }
+  caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"));
+}
+
+// Tutto ciò che serve alla schermata, in una volta: la giornata (/api/oggi), la formazione, la scelta salvata e, se gli 11 salvati non
+// sono quelli di un modulo già calcolato, la loro valutazione. Così la schermata si disegna una volta sola, già con la formazione
+// giusta (prima compariva la consigliata e poi, un attimo dopo, la tua). `scelta`: null = niente di salvato; manca = non letta (rete):
+// allora la riga dello stato e la spunta non si mostrano.
+async function caricaGiornata() {
+  const [o, f] = await Promise.all([api("/api/oggi"), api("/api/formazione").catch(e => e)]);
+  if (o.senza_rose) return { o, f: null };
+  if (f instanceof Error) throw f;
+  const b = { o, f };
+  try {
+    const s = await api(`/api/scelta?giornata=${f.giornata}`);
+    b.scelta = s && Array.isArray(s.titolari) ? s : null;
+  } catch { return b; }
+  const inCorso = o.fase === "in_corso" && o.in_corso;      // a giornata in corso la formazione che vale la dice /api/oggi
+  if (b.scelta && f.stato_scelta !== "non_valida" && !inCorso && !moduloDi(f, b.scelta.titolari)) {
+    try { b.valutata = await api("/api/formazione/valuta", { method: "POST", body: JSON.stringify({ titolari: b.scelta.titolari, giornata: f.giornata, salva: false }) }); }
+    catch (e) { if (e.codice === "formazione_non_valida") b.non_valida = true; else delete b.scelta; }
+  }
+  return b;
+}
+
+// La testa della schermata, diversa per fase. `o` manca quando si guarda la formazione di un'altra squadra.
+function testaGiornata(o, f) {
+  const giornata = `<p class="tg-giornata">${nomeGiornata(f.giornata_lega, f.giornata)}</p>`;
+  if (!o) return giornata;
+  const c = testoConto(o);
+  const chiusura = `<p class="tg-scadenza"><b id="conto-chiude">${esc(c.chiude)}</b> <span id="conto">${esc(c.manca)}</span></p>`;
+  const fase = o.fase || "prima";
+  if (fase === "in_corso" && o.senza_formazione) {          // arrivato a partite cominciate: questa giornata non si gioca, si prepara la prossima
+    return `<p class="tg-nota" role="status" id="formazione-prossima">${f.giornata_saltata
+      ? elidiOrdinali(t("formazione.per_la_prossima", { g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata) }))
+      : t("oggi.gia_iniziata_testo")}</p>${chiusura}`;
+  }
+  if (fase === "in_corso" && o.in_corso) {
+    const c2 = o.in_corso;
+    return `<p class="tg-giornata">${nomeGiornata(f.giornata_lega, f.giornata)} · <b>${t("formazione.in_corso")}</b></p>
+      <p class="tg-punti"><b class="tg-numero" id="oggi-fatti">${num(c2.punti_fatti)}</b> ${t("formazione.punti_finora")}${c2.punti_previsti != null ? ` · ${t("formazione.circa_fine", { n: num(c2.punti_previsti, 0) })}` : ""}</p>
+      <p class="tg-sotto">${c2.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c2.ancora_da_giocare) : t("oggi.tutti_giocato")}</p>`;
+  }
+  if (fase === "finita" && o.riepilogo) {
+    const r = o.riepilogo, tua = r.formazione_di === "tua";
+    return `<div class="tg-finita" id="oggi-riepilogo"><div>
+        <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
+        <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
+        <button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
+      ${tua && r.consigliata && r.consigliata.punti_fatti !== r.punti_fatti ? `<p class="tg-sotto">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
+      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
+      <div class="tg-prossima">${giornata}${chiusura}</div>`;
+  }
+  return giornata + (f.iniziata ? "" : chiusura);
+}
+
+// A giornata in corso: i cambi dalla panchina già fatti o probabili (campo `sostituzioni` di `in_corso`).
+function cambiInCorso(c) {
+  const cambi = (c.sostituzioni || []).filter(s => s && s.esce).map(s => `<li><span>${esc(s.esce.nome)} → ${s.entra ? esc(s.entra.nome) : t("oggi.nessun_sostituto")}</span>
+    <span class="etichetta ${s.certa ? "" : "arancio"}">${t(s.certa ? "oggi.cambio_fatto" : "oggi.cambio_probabile")}</span></li>`).join("");
+  return cambi ? `<div class="carta" id="cambi-panchina"><h2>${t("oggi.cambi_panchina")}</h2><ul class="cambi-live">${cambi}</ul></div>` : "";
+}
+
+// `b`: ciò che caricaGiornata ha letto ({o, f, scelta, valutata, non_valida}); per un'altra squadra solo {f}.
+function mostraFormazione(b, squadra, opz = {}) {
+  const { o, f } = b;
+  if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
+  const l = livelloBase(f);
+  const consigliato = l.moduli.find(m => m.modulo === l.modulo) || l.moduli[0];
   const fermi = giocatoriFermi(f);
-  const sc = stato.scelta || (stato.scelta = {});
-  const chiaveSc = `${squadra || "mia"}/${f.giornata}`;
-  if (sc.chiave !== chiaveSc) Object.assign(sc, { chiave: chiaveSc, modulo: null, manuale: null, letta: false, salvata: undefined, nonValida: false });
-  if (sc.manuale && ![...sc.manuale.titolari, ...(sc.manuale.panchina || [])].every(id => f.schede[String(id)])) sc.manuale = null;      // la rosa è cambiata
-  // gli 11 salvati sul server (la scelta resta «salvata» solo se gli 11 mostrati sono proprio quelli: niente segno acceso dopo una sostituzione)
-  const comeSalvata = ids => !!(sc.salvata && Array.isArray(sc.salvata.titolari) && stessiIds(ids.map(Number), sc.salvata.titolari.map(Number)));
-  // «Modifica a mano» aperta e lasciata senza cambiare niente né salvare: tornando qui si riparte dalla consigliata (non «la tua scelta 0,0»)
-  if (sc.manuale && sc.manuale.uguale && !comeSalvata(sc.manuale.titolari)) sc.manuale = null;
-  // Un solo stile (dal 12/11/2026, #615): la consigliata è il livello «Equilibrata» del server (rischio 0). Gli altri livelli di
-  // `f.livelli` restano nella risposta per l'iPhone e qui non si mostrano. Server senza `livelli`: i moduli in cima alla risposta.
-  const l = (f.livelli || []).find(x => x.rischio === 0) || { modulo: f.modulo, moduli: f.moduli };
-  const moduloAuto = () => l.moduli.find(m => m.modulo === sc.modulo) || l.moduli.find(m => m.modulo === l.modulo) || l.moduli[0];
-  const corrente = () => sc.manuale
-    ? { modulo: sc.manuale.modulo, titolari: sc.manuale.titolari, panchina: sc.manuale.panchina, punteggio_atteso: sc.manuale.r.punteggio_atteso, dev: sc.manuale.r.dev, intervallo: sc.manuale.r.intervallo }
-    : moduloAuto();
-
-  // Titolari incerti con la riserva quasi sicura (campo `incerti` del modulo, fanta/consigli.py): solo per la proposta del server,
-  // non dopo una modifica a mano né a giornata iniziata. {id del titolare: {nome, riga}} (riga già pronta per l'HTML)
-  const incerti = m => {
-    const r = {};
-    if (sc.manuale || f.iniziata) return r;
-    for (const i of (Array.isArray(m.incerti) ? m.incerti : [])) {
-      const a = scheda(i && i.titolare), b = scheda(i && i.riserva);
-      if (a && b) r[a.id] = { nome: a.nome, riga: t("formazione.incerto", { p: perc(a.p_voto), riserva: esc(b.nome) }) };
-    }
-    return r;
+  // a giornata in corso la formazione che vale la dice /api/oggi (titolari e panchina in ordine, con chi è entrato): non si cambia più
+  const live = !squadra && o && o.fase === "in_corso" && o.in_corso && !o.senza_formazione && Array.isArray(o.in_corso.giocatori) ? o.in_corso : null;
+  const diLive = new Map((live ? live.giocatori : []).map(g => [Number(g.id), g]));
+  // la scheda di un giocatore: quella della Formazione, con sopra lo stato vero della sua partita a giornata in corso
+  const scheda = id => {
+    const x = f.schede[String(id)], g = diLive.get(Number(id));
+    if (!g) return x;
+    const dalVivo = { stato_partita: g.stato, fv_preso: g.fantavoto ?? null, ...(g.etichetta ? { etichetta: g.etichetta } : {}), ...(g.data ? { data_partita: g.data } : {}) };
+    return x ? { ...x, ...dalVivo } : { id: g.id, nome: g.nome, ruolo: g.ruolo, squadra: g.squadra, ...dalVivo };
   };
+  const chiusa = !!f.iniziata || !!live;
+  const mia = !squadra;
+  const sc = stato.scelta = { chiave: `${squadra || "mia"}/${f.giornata}`, salvata: mia ? b.scelta : undefined,
+    nonValida: mia && (!!b.non_valida || f.stato_scelta === "non_valida"), manuale: null, richiesta: 0, occupato: false };
+  // la formazione di partenza: gli 11 salvati, se valgono e non sono proprio quelli della consigliata
+  if (mia && sc.salvata && !sc.nonValida && !live) {
+    const m = moduloDi(f, sc.salvata.titolari);
+    if (m && m !== consigliato) sc.manuale = m;
+    else if (!m && b.valutata) sc.manuale = { modulo: b.valutata.modulo, titolari: sc.salvata.titolari.map(Number), panchina: b.valutata.panchina,
+      punteggio_atteso: b.valutata.punteggio_atteso, dev: b.valutata.dev, intervallo: b.valutata.intervallo };
+  }
+  const corrente = () => live ? { modulo: (o.formazione && o.formazione.modulo) || consigliato.modulo, titolari: live.giocatori.filter(g => g.titolare).map(g => Number(g.id)),
+    panchina: live.giocatori.filter(g => !g.titolare).map(g => Number(g.id)) } : sc.manuale || consigliato;
+  const diversi = m => m.titolari.filter(id => !consigliato.titolari.includes(id)).length;      // quanti titolari non sono quelli della consigliata
+  const qui = n => n === sc.richiesta && stato.scelta === sc && document.body.contains($("#campo-formazione"));
+  // dopo un salvataggio la copia sul telefono di questa schermata è già vecchia: la si aggiorna, così tornando qui non si rivede quella di prima
+  const ricorda = valutata => { if (mia) salvaCache("giornata", { ...b, scelta: sc.salvata, valutata: valutata || undefined, non_valida: false, f: { ...f, stato_scelta: sc.salvata ? "valida" : "nessuna" } }); };
 
-  // Una sola valutazione alla volta; se nel frattempo scegli un modulo, la risposta che arriva dopo si ignora.
-  const valutaManuale = async (ids, salva = false, silenzioso = false) => {
-    const n = sc.richiesta = (sc.richiesta || 0) + 1;
+  // Cambia gli 11 (una sostituzione, un altro modulo, la spunta «L'ho messa»): il server li valuta e li salva subito. Una richiesta
+  // alla volta: se nel frattempo ne parte un'altra, la risposta di prima si ignora. `messa`: vero o falso dalla spunta; senza, resta
+  // com'era finché gli 11 sono gli stessi (la stessa regola del server, scelte.salva).
+  const salvaTitolari = async (ids, messa) => {
+    const n = ++sc.richiesta;
     sc.occupato = true;
     try {
-      const r = await api("/api/formazione/valuta", { method: "POST", body: JSON.stringify({ titolari: ids, squadra: squadra || null, giornata: f.giornata, salva }) });
-      const ancoraQui = () => n === sc.richiesta && sc.chiave === chiaveSc && document.body.contains($("#punti-attesi"));    // stessa richiesta e stessa giornata
-      if (!ancoraQui()) return false;
-      const disegna = sc.disegna, moduloAuto = sc.moduloAuto;         // la vista più recente (i dati nuovi arrivati nel frattempo), non la copia locale
-      // uguale = gli stessi undici della scelta automatica (se non sono quelli salvati, tornando qui si riparte dalla consigliata)
-      sc.manuale = { modulo: r.modulo, titolari: ids, panchina: r.panchina, r, uguale: stessiIds(ids, moduloAuto().titolari) };
-      if (salva) {                                // lo stato «salvata» viene dal server: si rilegge la scelta appena scritta
-        let riletta;
-        try { const s = await api(`/api/scelta?giornata=${f.giornata}`); riletta = s && Array.isArray(s.titolari) ? s : { titolari: ids }; }
-        catch { riletta = { titolari: ids }; }              // scritta (il server ha risposto), ma non riletta: senza l'ora
-        if (!ancoraQui()) return false;                     // nel frattempo hai cambiato giornata: la scelta riletta non è di questa
-        sc.salvata = riletta; sc.nonValida = false;
-      }
+      const r = await api("/api/formazione/valuta", { method: "POST", body: JSON.stringify({ titolari: ids, giornata: f.giornata, salva: true, ...(messa === undefined ? {} : { messa }) }) });
+      if (!qui(n)) return false;
+      const stessi = !!sc.salvata && stessiIds(ids, sc.salvata.titolari.map(Number));
+      const eraConsigliata = stessiIds(ids, consigliato.titolari) || (stessi && sc.salvata.era_consigliata === true);
+      sc.salvata = { titolari: ids, modulo: r.modulo, ...(eraConsigliata ? { era_consigliata: true } : {}), ...((messa ?? (stessi && sc.salvata.messa === true)) ? { messa: true } : {}) };
+      sc.nonValida = false;
+      const m = moduloDi(f, ids);
+      sc.manuale = m === consigliato ? null : m || { modulo: r.modulo, titolari: ids, panchina: r.panchina, punteggio_atteso: r.punteggio_atteso, dev: r.dev, intervallo: r.intervallo };
+      ricorda(m ? null : r);
       disegna(true);
-      if (salva) avviso(t("formazione.salvata_come_tua"));
       return true;
     } catch (e) {
-      if (n === sc.richiesta) {
-        // la scelta salvata non vale più (rosa o regole cambiate): NON si cancella da sola, lo si dice nella riga dello stato
-        const qui = sc.chiave === chiaveSc && document.body.contains($("#punti-attesi"));
-        if (e.codice === "formazione_chiusa") { avviso(e.message, 5000); sc.manuale = null; sc.nonSalvata = false; if (qui) vistaFormazione(); }      // scadenza passata con la pagina aperta
-        else if (silenzioso && e.codice === "formazione_non_valida") { if (sc.chiave === chiaveSc) sc.nonValida = true; if (qui) sc.disegna(true); }
-        // rilettura della scelta fallita (rete): lo stato non è noto, la riga sparisce (niente falso «Modifiche non salvate») e si riprova la prossima volta
-        else if (silenzioso) { if (sc.chiave === chiaveSc) { sc.salvata = undefined; sc.letta = false; } if (qui) sc.disegna(true); }
-        else avviso(e.message, 5000);
-      }
+      if (!qui(n)) return false;
+      avviso(e.message, 5000);
+      if (e.codice === "formazione_chiusa") vistaFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
       return false;
     } finally { if (n === sc.richiesta) sc.occupato = false; }
   };
-  const annullaRichieste = () => { sc.richiesta = (sc.richiesta || 0) + 1; sc.occupato = false; };
+  // «Torna alla consigliata»: toglie la scelta salvata, e da lì in poi vale la consigliata (che si aggiorna da sola fino alla scadenza).
+  const tornaConsigliata = async () => {
+    if (!mia) { sc.manuale = null; disegna(true); return; }
+    const n = ++sc.richiesta;
+    sc.occupato = true;
+    try {
+      if (sc.salvata !== null) await api(`/api/scelta?giornata=${f.giornata}`, { method: "DELETE" });
+      if (!qui(n)) return;
+      sc.manuale = null; sc.salvata = null; sc.nonValida = false;
+      ricorda();
+      disegna(true);
+    } catch (e) {
+      if (!qui(n)) return;
+      avviso(e.message, 5000);                              // per esempio la consigliata sposterebbe chi gioca un anticipo già cominciato (#373)
+      if (e.codice === "formazione_chiusa") vistaFormazione(); else disegna(true);
+    } finally { if (n === sc.richiesta) sc.occupato = false; }
+  };
+  const libero = () => { if (sc.occupato) avviso(t("formazione.sto_ancora_ricalcolando")); return !sc.occupato; };
+  // Un titolare esce e al suo posto entra un altro dello stesso ruolo (dalla scheda del giocatore o da una decisione in cima).
+  const sostituisci = (esce, entra) => {
+    const m = corrente();
+    if (chiusa || !mia || !m.titolari.includes(esce) || m.titolari.includes(entra) || fermi.has(esce) || fermi.has(entra)) return false;
+    if (!libero()) return true;
+    salvaTitolari(m.titolari.map(id => id === esce ? entra : id));
+    return true;
+  };
+
+  // La riga dello stato sotto il campo: due stati («è la consigliata», «l'hai cambiata tu») più «chiusa» e «non più valida».
+  const rigaStato = m => {
+    if (!mia || sc.salvata === undefined) return "";
+    const riga = (classe, testo, azione = "") => `<div class="stato-scelta ${classe}" id="stato-scelta"><p role="status">${testo}</p>${azione}</div>`;
+    const torna = `<button class="azione-testo" type="button" id="torna-consigliata">${t("formazione.torna_alla_consigliata")}</button>`;
+    if (chiusa) return riga("chiusa", t(sc.nonValida ? "formazione.stato_chiusa_non_valida" : sc.salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"));
+    if (sc.nonValida) return riga("non_valida", t("formazione.stato_non_valida_ora"), torna);
+    const n = diversi(m);
+    if (!n) return riga("consigliata", t("formazione.stato_e_consigliata"));
+    const d = Number.isFinite(m.punteggio_atteso) && Number.isFinite(consigliato.punteggio_atteso) ? ` (${segno(m.punteggio_atteso - consigliato.punteggio_atteso, 1)})` : "";
+    // era la consigliata quando l'hai salvata (o messa) ed è lei a essere cambiata dopo, oppure l'hai cambiata tu
+    return riga("cambiata", sc.salvata && sc.salvata.era_consigliata ? tp("formazione.stato_superata", n, { d }) : tp("formazione.stato_cambiata", n, { d }), torna);
+  };
 
   const disegna = (mantieniScroll = false) => {
-    chiudiSostituzione();                                               // i candidati aperti erano quelli della formazione di prima
+    chiudiSostituzione();                                   // i candidati aperti erano quelli della formazione di prima
     const y0 = window.scrollY;
-    const m = corrente(), manuale = !!sc.manuale;
-    stato.formaz = { f, modulo: m, manuale };      // serve alla sostituzione: chi è titolare, in panchina o fuori in questa formazione
-    const titolari = m.titolari.map(scheda), panchina = m.panchina.map(scheda);
+    const m = corrente();
+    const titolari = m.titolari.map(scheda).filter(Boolean), panchina = m.panchina.map(scheda).filter(Boolean);
     const scelti = new Set([...m.titolari, ...m.panchina]);
-    const fuori = Object.values(f.schede).filter(x => !scelti.has(x.id)).sort((a, b) => b.punti_attesi - a.punti_attesi);
+    const altri = Object.values(f.schede).filter(x => !scelti.has(x.id)).map(x => scheda(x.id)).sort((a, b) => b.punti_attesi - a.punti_attesi);
+    const fermo = x => ["infortunato", "squalificato", "fuori"].includes(codiceStato(x));
+    const nonSchierati = altri.filter(x => !fermo(x)), indisponibili = altri.filter(fermo);
     const linee = { P: [], D: [], C: [], A: [] };
-    titolari.forEach(x => linee[x.ruolo].push(x));
-    const chip = l.moduli.map(x => `<button class="chip ${!manuale && x.modulo === m.modulo ? "attiva" : ""}" data-modulo="${esc(x.modulo)}">
-      ${esc(x.modulo)}<span>${num(x.punteggio_atteso)}</span>${x.modulo === l.modulo ? `<i title="${t("formazione.consigliato")}">★</i>` : ""}</button>`).join("");
-    const r = manuale ? sc.manuale.r : null;
-    const altra = !manuale && m.modulo !== l.modulo;                  // un altro modulo: non è la consigliata
-    const chiusa = !!f.iniziata;                                      // scadenza passata: niente «Modifica a mano» né «Salva»
-    const st = squadra ? null : statoScelta(m.titolari, sc.salvata, manuale, sc.nonValida, altra, chiusa);     // mai per le squadre altrui
-    // «Modifica a mano» cambiata e non salvata: chi lascia la pagina o la scheda lo sa prima (modificaNonSalvata)
-    sc.nonSalvata = !squadra && !chiusa && manuale && (st === "modificata" || (st === "mano" && !sc.manuale.uguale));
-    const modificabile = manuale && !chiusa;
-    const inc = incerti(m);
-    // la nota sotto il campo: il perché delle scelte che sembrano storte, solo per la proposta del server (server senza il campo: gli incerti)
-    const nota = (sc.manuale || f.iniziata) ? [] : (righePercheScelta(m, scheda) ?? Object.values(inc));
-    let etichettaAlt = true;                                          // «In ballottaggio con» scritto una volta sola
-    const voceTit = x => {
-      const h = voceGiocatore(x, null, !modificabile ? "" : fermi.has(x.id) ? "posto" : "sostituisci");      // fermo (anticipo cominciato): niente ✎
-      const alt = manuale ? "" : alternativeVicine(x, m, f, etichettaAlt);
-      if (alt) etichettaAlt = false;
-      return h + alt;
+    titolari.forEach(x => (linee[x.ruolo] || linee.A).push(x));
+    // per la scheda del giocatore e la sostituzione: la formazione in pagina e cosa ci si può fare
+    stato.formaz = { f, modulo: m, scheda, perche: id => (sc.manuale || chiusa ? "" : percheTitolare(m, id, scheda)),
+      sostituibile: id => mia && !chiusa && m.titolari.includes(id) && !fermi.has(id), sostituisci };
+    // le decisioni che hanno ancora senso con la formazione in pagina: un cambio già fatto non si propone più, e «la consigliata è
+    // cambiata» vale finché c'è una tua scelta salvata diversa da lei
+    const vale = v => v.tipo === "dubbio" ? !chiusa && !!v.giocatore && m.titolari.includes(Number(v.giocatore.id)) && !m.titolari.includes(Number(v.alternativa.id))
+      : dfConsigliataCambiata(v) ? !chiusa && !!sc.salvata && diversi(m) > 0 : true;
+    const decisioni = mia && o ? dfDecisioni(o.da_fare, vale) : [];
+    // «+0,9 punti»: quanto vale in più, da solo, il sostituto proposto rispetto al titolare (i punti attesi sono quelli del server)
+    const guadagno = v => {
+      const x = v.tipo === "dubbio" && v.giocatore ? scheda(v.giocatore.id) : null;
+      const d = x && v.alternativa ? v.alternativa.punti_attesi - x.punti_attesi : NaN;
+      return Number.isFinite(d) && d >= 0.05 ? t("formazione.decisione_punti", { d: segno(d, 1) }) : "";
     };
-    pagina(`
-      ${squadra ? `<div class="attenzione">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
-        <button class="bottone secondario" id="torna-mia" style="margin-left:6px;padding:4px 12px;min-height:0">${t("formazione.torna_alla_tua")}</button></div>` : ""}
-      ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${elidiOrdinali(t("formazione.per_la_prossima", { g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata) }))}</div>` : ""}
-      ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
-      <div class="colonne colonne-campo"><div class="col">
-      <div class="cifre-oggi cifre-formazione"><div class="cifra"><div class="debole">${nomeGiornata(f.giornata_lega, f.giornata)} · <span class="nb">${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</span></div><div class="grande">${esc(m.modulo)}</div></div>
-        <div class="cifra"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>${fascia(m)}</div></div>
-      ${manuale && r.differenza !== null ? `<div class="debole rispetto">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
-      ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
-      ${chiusa ? "" : `<div class="etichetta-riga">${t("formazione.modulo")}</div>
-      <div class="chips scorri" data-striscia>${chip}</div>`}
-      <div class="pulsanti azioni-formazione">
-        ${st || chiusa ? "" : manuale ? `${squadra ? "" : `<button class="bottone" id="salva-scelta">${t("formazione.salva_come_mia")}</button>`}<button class="bottone secondario" id="torna-consigliata">${t("formazione.torna_alla_consigliata")}</button>`
-                  : `<button class="bottone" id="modifica">${t("formazione.modifica_mano")}</button>`}
-        <button class="bottone secondario" id="copia">${t("formazione.copia_formazione")}</button>
+    const moduli = l.moduli.some(x => x.modulo === m.modulo) ? l.moduli : [...l.moduli, m];
+    const opzione = x => `<option value="${esc(x.modulo)}" ${x.modulo === m.modulo ? "selected" : ""}>${t(x === consigliato ? "formazione.opzione_consigliato" : "formazione.opzione_modulo", { modulo: esc(x.modulo), punti: num(x.punteggio_atteso) })}</option>`;
+    const diSolito = fraseDiSolito(m);
+    const probabili = o && o.probabili && !chiusa ? `<p class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</p>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : "";
+    const elenco = (righe, numerati) => `${intestazioneColonne({ partita: true })}<ul class="elenco">${righe.map((x, k) => voceGiocatore(x, numerati ? k + 1 : null)).join("")}</ul>`;
+    pagina(`<div class="fz${chiusa ? " chiusa" : ""}">
+      <div class="fz-testa">
+        ${squadra ? `<div class="attenzione" role="status">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
+          <button class="azione-testo" type="button" id="torna-mia">${t("formazione.torna_alla_tua")}</button></div>` : ""}
+        ${testaGiornata(squadra ? null : o, f)}
       </div>
-      <div class="zona-campo"><div class="campo-fermo">
-      <div class="campo"><i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
-        ${["P", "D", "C", "A"].map(rr => `<div class="linea">${linee[rr].map(pedina).join("")}</div>`).join("")}
-      </div>
-      ${nota.length ? `<div class="nota-incerti" id="nota-incerti">${nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
+      ${decisioni.length ? `<ul class="fz-decisioni" id="decisioni" aria-label="${t("df.da_fare")}">${decisioni.map((v, i) => dfRiga(v, i, guadagno(v))).join("")}</ul>` : ""}
+      <div class="fz-campo"><div class="campo-fermo">
+        ${live ? "" : `<div class="riga-modulo">
+          ${chiusa ? `<span class="modulo-fisso">${esc(m.modulo)}</span>` : `<label class="menu-scelta menu-modulo"><span class="solo-lettori">${t("formazione.modulo")}</span>
+            <span class="menu-scelta-testo" aria-hidden="true">${esc(m.modulo)}</span><select id="modulo">${moduli.map(opzione).join("")}</select></label>`}
+          <div class="punti-attesi"><span><b id="punti-attesi">${num(m.punteggio_atteso)}</b> ${t("formazione.punti_attesi")}</span>${diSolito ? `<span class="debole piccolo" id="di-solito">${esc(diSolito)}</span>` : ""}</div>
+        </div>`}
+        <div class="campo" id="campo-formazione"><i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
+          ${["P", "D", "C", "A"].map(rr => `<div class="linea">${linee[rr].map(pedina).join("")}</div>`).join("")}
+        </div>
+        ${rigaStato(m)}
+        ${mia && !chiusa ? `<div class="azioni-formazione">
+          <button class="bottone secondario" type="button" id="copia">${t("formazione.copia_lega")}</button>
+          ${sc.salvata === undefined ? "" : `<label class="spunta"><input type="checkbox" id="messa" ${sc.salvata && sc.salvata.messa ? "checked" : ""} ${sc.nonValida ? "disabled" : ""}><span>${t("formazione.messa")}</span></label>`}
+        </div>` : ""}
+        ${chiusa || f.con_probabili ? "" : `<div class="attenzione" role="status" id="senza-probabili">${t("formazione.mancano_probabili_formazioni")}</div>`}
+        ${probabili}
       </div></div>
-      <div class="carta"><h2>${t("formazione.titolari")}</h2>${modificabile ? `<div class="debole piccolo">${t("formazione.tocca_sostituire")}</div>` : ""}
-        ${modificabile && fermi.size ? `<div class="debole piccolo">${t("formazione.bloccati")}</div>` : ""}
-        ${intestazioneColonne({ partita: true, azione: modificabile })}<ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
-      <div class="carta"><h2>${t("scambi.panchina")}</h2><div class="debole piccolo">${t("formazione.quest_ordine_entra")}</div>
-        ${intestazioneColonne({ partita: true, azione: modificabile })}<ul class="elenco${modificabile ? " posto-azione" : ""}">${panchina.map((x, k) => voceGiocatore(x, k + 1)).join("")}</ul></div>
-      ${fuori.length || f.senza_dati.length ? `<div class="carta"><details><summary>${t("formazione.fuori_dalla", { n: fuori.length })}</summary>${fuori.length ? intestazioneColonne({ partita: true, azione: modificabile }) : ""}<ul class="elenco${modificabile ? " posto-azione" : ""}">${fuori.map(x => voceGiocatore(x)).join("")}</ul>
-        ${f.senza_dati.length ? `<div class="debole piccolo">${t("formazione.senza_dati", { nomi: f.senza_dati.map(esc).join(", ") })}</div>` : ""}</details></div>` : ""}
+      <div class="fz-lato">
+        ${live ? cambiInCorso(live) : ""}
+        <div class="carta" id="panchina"><h2>${t("scambi.panchina")}</h2><div class="debole piccolo">${t("formazione.quest_ordine_entra")}</div>
+          ${elenco(panchina, true)}</div>
+        ${nonSchierati.length || f.senza_dati.length ? `<div class="carta"><details><summary>${t("formazione.non_schierati", { n: nonSchierati.length })}</summary>${nonSchierati.length ? elenco(nonSchierati) : ""}
+          ${f.senza_dati.length ? `<div class="debole piccolo">${t("formazione.senza_dati", { nomi: f.senza_dati.map(esc).join(", ") })}</div>` : ""}</details></div>` : ""}
+        ${indisponibili.length ? `<div class="carta"><details><summary>${t("formazione.indisponibili", { n: indisponibili.length })}</summary>${elenco(indisponibili)}</details></div>` : ""}
+        ${mia && o ? cardRinvio(o.rinvio) : ""}
+        ${mia && o && o.fase === "finita" && o.riepilogo && o.riepilogo.rinvio ? `<div class="carta rinvio">${menuRinvio(o.riepilogo.rinvio)}</div>` : ""}
       </div></div>`,
-      { ...opz, daCache: mantieniScroll ? null : opz.daCache, sostituisce: opz.sostituisce || mantieniScroll });
-    document.querySelectorAll("[data-striscia]").forEach(striscia);
-    document.querySelectorAll("[data-modulo]").forEach(b => b.addEventListener("click", () => { annullaRichieste(); sc.manuale = null; sc.modulo = b.dataset.modulo; disegna(true); }));
-    document.querySelectorAll("[data-perche]").forEach(b => b.addEventListener("click", ev => {
-      const x = scheda(b.dataset.perche);
-      if (!x) return;
-      ev.stopPropagation(); ev.preventDefault();          // non apre la scheda: apre «Perché questo numero»
-      apriPerche(x, (inc[x.id] || {}).riga);
-    }));
-    document.querySelectorAll("[data-sostituisci]").forEach(b => b.addEventListener("click", () => apriSostituzione(Number(b.dataset.sostituisci))));
+      { ...opz, stato: false, daCache: mantieniScroll ? null : opz.daCache, sostituisce: opz.sostituisce || mantieniScroll });
     const bottone = (id, fn) => { const e = $(id); if (e) e.addEventListener("click", fn); };
-    bottone("#modifica", () => { if (!sc.occupato) valutaManuale([...m.titolari]); });
-    bottone("#salva-scelta", () => { if (!sc.occupato) valutaManuale([...m.titolari], true); });
-    bottone("#salva-questa", () => { if (!sc.occupato) valutaManuale([...m.titolari], true); });
-    bottone("#annulla-modifiche", () => { if (!sc.occupato && sc.salvata) { annullaRichieste(); valutaManuale([...sc.salvata.titolari], false, true); } });
-    bottone("#torna-consigliata", async () => {
-      annullaRichieste();
-      sc.manuale = null; sc.modulo = null;                            // anche il modulo: è la consigliata, non solo «niente a mano»
-      disegna(true);
-      if (squadra || sc.salvata === null) return;                       // niente di salvato da togliere
-      try {
-        await api(`/api/scelta?giornata=${f.giornata}`, { method: "DELETE" });
-        sc.salvata = null; sc.nonValida = false;
-      } catch (e) {
-        avviso(e.message, 5000);
-        if (e.codice === "formazione_chiusa") { if (document.body.contains($("#punti-attesi"))) vistaFormazione(); return; }     // scadenza passata: la scelta resta
-        // la consigliata sposterebbe chi gioca un anticipo già cominciato (#373): vale ancora la tua, e si rimette lei (come «Annulla modifiche»)
-        if (e.codice === "giocatore_bloccato" && sc.salvata && Array.isArray(sc.salvata.titolari)) { valutaManuale([...sc.salvata.titolari], false, true); return; }
-      }
-      if (document.body.contains($("#punti-attesi"))) disegna(true);
+    const sel = $("#modulo");
+    if (sel) sel.addEventListener("change", () => {
+      const scelto = l.moduli.find(x => x.modulo === sel.value);
+      if (!scelto || !libero()) { disegna(true); return; }
+      if (!mia) { sc.manuale = scelto === consigliato ? null : scelto; disegna(true); }
+      else if (scelto === consigliato) tornaConsigliata();
+      else salvaTitolari([...scelto.titolari]);
     });
-    bottone("#copia", async () => avviso(await copiaTesto(testoFormazione(f, m)) ? t("formazione.copiata") : t("formazione.non_copio")));
-    if (mantieniScroll) window.scrollTo(0, y0);      // i punti attesi sono già scritti giusti nell'HTML: nessun numero che sale (spec §7.6)
-    const torna = $("#torna-mia");
-    if (torna) torna.addEventListener("click", () => { stato.squadraVista = null; vistaFormazione(); });
-  };
-
-  // Sostituisci un titolare con un altro della rosa dello stesso ruolo (il modulo non cambia): poi si ricalcola.
-  function apriSostituzione(id) {
-    const base = scheda(id);
-    if (!base || !sc.manuale || f.iniziata) return;
-    if (fermi.has(base.id)) return;                                     // gioca un anticipo già cominciato (#373): resta dov'è
-    if (sc.occupato) { avviso(t("formazione.sto_ancora_ricalcolando")); return; }
-    ultimaScheda++;
-    const dentro = new Set(sc.manuale.titolari);
-    const candidati = sostituti(f, base, dentro);
-    const riga = x => `<li class="riga-gioc"><button class="voce voce-g" data-entra="${x.id}">${volto(x)}
-      <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
-        <span class="etichette">${pillTitolarita(x)}<span class="etichetta neutra">${postoInFormazione(x.id) || testoPosto("fuori")}</span></span></span>
-      <span class="pv-g largo">${t("formazione.punti_da_solo", { d: segno(x.punti_attesi - base.punti_attesi, 1) })}</span><span class="valore">${nomeFvAtteso()}<b>${num(x.fv_atteso)}</b></span></button></li>`;
-    apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
-      <div class="debole piccolo">${t("formazione.giocatori_dello_stesso")}</div>
-      <div class="carta" style="margin-top:12px" data-sostituzione>${candidati.length ? `<ul class="elenco">${candidati.map(riga).join("")}</ul>` : `<div class="debole">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`, { affianco: true });   // accanto al campo, da 1200 px
-    document.querySelectorAll("[data-entra]").forEach(b => b.addEventListener("click", () => {
-      // con il pannello affiancato la pagina resta attiva: nel frattempo un modulo o «Torna alla consigliata» possono aver
-      // tolto la modifica a mano, o il titolare non c'è più (revisione della #426). Allora si chiude e non si cambia niente.
-      if (!sc.manuale || !sc.manuale.titolari.includes(id)) { chiudiFoglio(); return; }
-      const ids = sc.manuale.titolari.map(t => t === id ? Number(b.dataset.entra) : t);
-      chiudiFoglio();
-      valutaManuale(ids);
+    document.querySelectorAll("#decisioni [data-df]").forEach(el => el.addEventListener("click", () => {
+      const v = decisioni[Number(el.dataset.df)];
+      if (!v) return;
+      if (v.tipo === "dubbio" && v.alternativa && v.giocatore && sostituisci(Number(v.giocatore.id), Number(v.alternativa.id))) return;
+      if (v.tipo === "dubbio" && v.giocatore) { apriGiocatore(Number(v.giocatore.id)); return; }      // il cambio non si può più fare da qui: la sua scheda
+      if (dfConsigliataCambiata(v)) { if (libero()) tornaConsigliata(); return; }
+      dfApri(v);
     }));
-  }
-
-  Object.assign(sc, { disegna, moduloAuto, valuta: valutaManuale });     // le risposte in arrivo usano sempre la vista più recente
-  disegna(false);
-  // se hai già salvato una tua scelta per questa giornata, riparte da quella; la riga dello stato compare solo dopo questa lettura
-  if (!squadra && !sc.letta) {
-    sc.letta = true;
-    api(`/api/scelta?giornata=${f.giornata}`).then(s => {
-      if (stato.scelta !== sc || sc.chiave !== chiaveSc) return;
-      sc.salvata = s && Array.isArray(s.titolari) ? s : null;
-      if (sc.salvata && !sc.manuale) sc.valuta(sc.salvata.titolari, false, true);
-      else if (document.body.contains($("#punti-attesi"))) sc.disegna(true);
-    }).catch(() => { sc.letta = false; });                               // lettura fallita: nessuna riga, si riprova la prossima volta
-  }
-}
-
-// Striscia scorrevole di voci: porta in vista la scelta e accende il bordo sfumato dal lato dove c'è ancora altro da vedere.
-function striscia(el) {
-  if (!el) return;
-  const agg = () => {
-    el.style.setProperty("--fs", el.scrollLeft > 4 ? "22px" : "0px");
-    el.style.setProperty("--fd", el.scrollLeft + el.clientWidth < el.scrollWidth - 4 ? "22px" : "0px");
+    bottone("#torna-consigliata", () => { if (libero()) tornaConsigliata(); });
+    bottone("#copia", async () => avviso(await copiaTesto(testoFormazione(f, m, scheda)) ? t("formazione.copiata_lega") : t("formazione.non_copio")));
+    const messa = $("#messa");
+    if (messa) messa.addEventListener("change", () => {
+      if (!libero()) { messa.checked = !messa.checked; return; }
+      // tolta la spunta su una formazione che è ancora la consigliata: non resta fissata, torna a seguire la consigliata
+      if (!messa.checked && sc.salvata && !diversi(m)) tornaConsigliata();
+      else salvaTitolari(m.titolari.map(Number), messa.checked);
+    });
+    bottone("#torna-mia", () => { stato.squadraVista = null; vistaFormazione(); });
+    collegaRinvio();
+    const diario = $("[data-apri-diario]");
+    if (diario) diario.addEventListener("click", () => apriDiario(Number(diario.dataset.apriDiario) || undefined));
+    if (mantieniScroll) window.scrollTo(0, y0);
   };
-  const att = el.querySelector(".attivo, .attiva");
-  if (att) el.scrollLeft = Math.max(0, att.offsetLeft - (el.clientWidth - att.offsetWidth) / 2);
-  if (!el.dataset.striscia) {
-    el.dataset.striscia = "1";
-    el.addEventListener("scroll", agg, { passive: true });
-    // con il tasto Tab: Chrome fa scorrere la striscia solo se la voce è tutta fuori, e una voce a metà restava mezza nascosta (issue #280)
-    el.addEventListener("focusin", e => { const voce = e.target.closest("button"); if (voce && el.contains(voce)) voce.scrollIntoView({ block: "nearest", inline: "nearest" }); });
+
+  disegna(false);
+  // il conto alla rovescia si aggiorna da solo finché si resta in questa schermata
+  clearInterval(timerConto);
+  if (o && !squadra) {
+    const idTimer = timerConto = setInterval(() => {
+      const el = $("#conto"), chiude = $("#conto-chiude");
+      if (!el || !chiude) { clearInterval(idTimer); return; }
+      const ct = testoConto(o);
+      el.textContent = ct.manca; chiude.textContent = ct.chiude;
+    }, 30000);
   }
-  agg();
 }
 
 async function datiCalendario() {
@@ -1441,88 +1268,143 @@ function bloccoPerche(x) {
   return `<div class="perche"><h3>${t("perche.titolo")}</h3>${righe ? `<ul class="perche-lista">${righe}</ul>` : ""}
     <div class="debole piccolo">${t(righe ? "perche.rispetto" : "perche.nessuno", { n: num(medio) })}</div></div>`;
 }
-const cartaPerche = x => { const b = bloccoPerche(x); return b ? `<div class="carta">${b}<div class="debole piccolo perche-definizione">${t("perche.definizione")}</div></div>` : ""; };
-// Dalla Formazione: il tocco sul numero mostra subito il perché, con i dati già caricati (niente attesa); un tasto porta alla scheda intera.
-// `incerto` (facoltativo, già pronto per l'HTML): perché è titolare anche se gioca poco (campo `incerti` del modulo).
-function apriPerche(x, incerto = "") {
-  apriFoglio(`<div class="intestazione-scheda">${volto(x, true)}
-      <div><h2>${esc(x.nome)}</h2><div class="debole">${partitaBreve(x)}</div></div></div>
-    <div class="carta"><div class="cifre-oggi cifre-scheda">
-        <div class="cifra"><div class="debole">${t("mercato.fantavoto_atteso")}</div><div class="enorme">${num(x.fv_atteso)}</div></div>
-        <div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(x.p_voto)}</div></div></div>
-      ${incerto ? `<p class="nota-incerto" id="perche-incerto">${incerto}</p>` : ""}
-      ${bloccoPerche(x)}<div class="debole piccolo perche-definizione">${t("perche.definizione")}</div></div>
-    <div class="pulsanti"><button class="bottone secondario" data-giocatore="${Number(x.id)}">${t("perche.apri_scheda")}</button></div>`, { affianco: true });
+
+// La scheda del giocatore (#616): una sola, al posto di scheda, «Perché questo numero» e sostituzione. In alto ciò che serve per
+// decidere: il fantavoto atteso (se gioca), «gioca N%» con lo stato a parole, perché è titolare, i motivi del numero, gli ultimi voti
+// e, per un titolare della tua formazione ancora aperta, «Sostituisci». Tutto il resto (probabilità, stagione, occasioni, prossime
+// partite) sta dietro «Tutti i numeri».
+// `c`: {id, nome, ruolo, squadra, squadra_slug}; `pr`: la sua previsione per la giornata (la scheda della Formazione o `previsione`
+// di /api/giocatore), null se non c'è; `fz`: la Formazione in pagina (stato.formaz), se la scheda si apre da lì.
+function htmlScheda(c, pr, fz) {
+  const esito = pr ? esitoPartita(pr) : null, stato = pr && !esito ? parolaStato(pr) : null;
+  const finitaP = !!pr && PARTITA_FINITA.includes(pr.stato_partita);
+  const preso = !!esito && esito.fv != null;
+  const q = pr ? giocaLetto(pr) : 0;
+  const perche = fz && pr ? fz.perche(Number(c.id)) : "";
+  // a partita cominciata «gioca N%» non serve più: fuori anche dai motivi
+  const prSenzaGioca = pr && esito && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
+  const partita = pr && pr.avversario ? t(pr.in_casa ? "formazione.partita_casa" : "formazione.partita_fuori", { avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) }) : "";
+  const cifre = !pr ? `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`
+    : `<div class="cifre-oggi cifre-scheda">
+        ${preso ? `<div class="cifra"><div class="debole">${t("mercato.fantavoto")}</div><div class="enorme">${num(esito.fv)}</div></div>`
+          : finitaP ? `<div class="cifra"><div class="grande stato-partita">${esc(esito.testo)}</div></div>`
+          : `<div class="cifra"><div class="debole">${t("mercato.fantavoto_atteso")}, ${t("formazione.se_gioca")}</div><div class="enorme">${num(pr.fv_atteso)}</div></div>`}
+        ${esito ? (finitaP ? "" : `<div class="cifra"><div class="grande stato-partita">${esc(esito.testo)}</div></div>`)
+          : `<div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande${q < SOGLIA_GIOCA ? " gioca-" + classeGioca(q) : ""}">${perc(q)}</div>
+              ${stato ? `<div class="etichetta ${stato.classe}">${esc(stato.testo)}</div>` : ""}</div>`}
+      </div>`;
+  return `
+    <div class="intestazione-scheda">
+      ${volto({ id: c.id, nome: c.nome, squadra: c.squadra_slug, ruolo: c.ruolo }, true)}
+      <div><h2>${esc(c.nome)}</h2>
+        <div class="debole">${NOME_RUOLO_1[c.ruolo] || esc(c.ruolo)} · ${esc(c.squadra)}${pr && pr.diffidato ? ` · <span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div>
+        ${partita ? `<div class="debole">${partita}</div>` : ""}</div>
+    </div>
+    ${cifre}
+    ${perche ? `<div class="scheda-pezzo" id="perche-titolare"><h3>${t("formazione.perche_titolare")}</h3><p>${perche}</p></div>` : ""}
+    ${pr && !finitaP ? bloccoPerche(prSenzaGioca) : ""}
+    <div class="scheda-pezzo" id="scheda-voti" aria-busy="true"><h3>${t("formazione.ultimi_voti")}</h3><div class="debole piccolo">${t("comune.carico")}</div></div>
+    ${fz && fz.sostituibile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-sostituisci="${Number(c.id)}">${t("formazione.sostituisci")}</button></div>` : ""}
+    <details class="scheda-numeri" id="scheda-numeri"><summary>${t("formazione.tutti_numeri")}</summary>
+      <div id="scheda-numeri-corpo" aria-busy="true"><div class="debole piccolo">${t("comune.carico")}</div></div></details>`;
+}
+
+// Gli ultimi voti e «Tutti i numeri», quando arriva la scheda intera (/api/giocatore). `cal`: il calendario, per le prossime partite.
+function riempiScheda(s, cal) {
+  const voti = $("#scheda-voti"), numeri = $("#scheda-numeri-corpo");
+  if (!voti || !numeri) return;
+  const c = s.calciatore, st = s.stagione, av = s.avanzate, pr = s.previsione;
+  const forma = formaGiocatore(s.voti || []);
+  voti.innerHTML = `<h3>${t("formazione.ultimi_voti")}</h3>${forma ? forma.pallini : `<div class="debole">${t("mercato.nessuna_presenza_questa")}</div>`}`;
+  voti.removeAttribute("aria-busy");
+  const grafico = graficoVoti(s.voti || [], st.giornate_giocate_serie_a);
+  const prossime = cal && pr ? (cal.squadre.find(x => x.squadra === pr.squadra) || { partite: [] }).partite : [];
+  const iniziataP = !!pr && PARTITA_INIZIATA.includes(pr.stato_partita);
+  const nonGioca = !!pr && nonGiocaDiSicuro(parolaStato(pr));              // infortunato o squalificato: niente partita, gol o cartellini
+  const tile = (valore, etichetta) => `<div><b>${valore}</b><span>${etichetta}</span></div>`;
+  const probabilita = !pr ? "" : c.ruolo === "P"
+    ? tile(perc(pr.porta_inviolata), t("mercato.porta_inviolata")) + tile(num(pr.gol_avversario, 1), t("mercato.gol_subiti_attesi")) + tile(perc(pr.p_giallo), t("mercato.giallo"))
+    : tile(perc(pr.p_gol), t("mercato.segna")) + tile(perc(pr.p_assist), t("mercato.assist")) + tile(perc(pr.p_giallo), t("mercato.giallo")) + tile(perc(pr.p_rosso), t("mercato.rosso"));
+  const motivi = pr && !iniziataP ? motiviUtili(pr).filter(senzaPercentuale) : [];
+  numeri.innerHTML = `
+    <div class="etichette"><span class="etichetta ${s.proprietario ? "neutra" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span><span class="etichetta neutra">${t("mercato.quot", { n: c.quotazione })}</span></div>
+    ${pr && !nonGioca && !iniziataP ? `<h3>${t("formazione.questa_partita")}</h3>
+      <div class="riga"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>
+      ${motivi.length ? `<div class="etichette">${motivi.map(m => `<span class="etichetta neutra">${testoEtichetta(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
+      <div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>` : ""}
+    ${prossime.length ? `<h3>${t("mercato.prossime_partite")}</h3><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}</span>`).join("")}</div>
+      <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div>` : ""}
+    ${forma ? `<h3>${t("mercato.forma")}</h3><div class="riga"><span class="debole piccolo">${t("mercato.andamento")}</span><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div>` : ""}
+    ${grafico}
+    ${s.rendimento ? `<h3>${t("mercato.rende_sopra_sotto")}</h3>
+      <div class="grande ${s.rendimento.sovra_rendimento > 0.3 ? "positivo" : s.rendimento.sovra_rendimento < -0.3 ? "negativo" : ""}">${segno(s.rendimento.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>
+      <div class="debole piccolo">${t("mercato.rendimento_riga", { g: segno(s.rendimento.gol_meno_xg), a: segno(s.rendimento.assist_meno_xa) })}
+        ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")}</div>` : ""}
+    <h3>${t("mercato.stagione")}</h3><div class="statistiche">
+      ${tile(`${st.presenze}/${st.giornate_giocate_serie_a}`, t("mercato.presenze"))}${tile(num(st.media_voto, 2), t("mercato.media_voto"))}${tile(num(st.fantamedia, 2), t("mercato.fantamedia"))}
+      ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
+      ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
+    ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
+      ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
+      ${tile(num(av.per_90?.xg, 2), t("mercato.xg_90"))}${tile(num(av.per_90?.xa, 2), t("mercato.xa_90"))}${tile(num(av.per_90?.tiri, 1), t("mercato.tiri_90"))}
+      ${tile(av.rigori_calciati, t("mercato.rigori_calciati"))}${tile(av.passaggi_chiave, t("mercato.passaggi_chiave"))}${tile(av.punizioni, t("mercato.punizioni"))}</div>
+      ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}` : ""}`;
+  numeri.removeAttribute("aria-busy");
 }
 
 let ultimaScheda = 0;
+// Dalla Formazione i dati del giocatore ci sono già (la sua scheda nella risposta): la scheda si apre subito, con «Sostituisci», e gli
+// ultimi voti e «Tutti i numeri» si riempiono quando arriva /api/giocatore. Da altrove (ricerca, rosa, Diario) si aspetta quella.
 async function apriGiocatore(id) {
-  apriFoglio(`<div class="caricamento">${t("mercato.carico_scheda")}</div>`, { affianco: true });
   const numero = ++ultimaScheda;
+  const fz = stato.vista === "formazione" && stato.formaz ? stato.formaz : null;
+  const locale = fz ? fz.scheda(id) : null;
+  if (locale) apriFoglio(htmlScheda({ id, nome: locale.nome, ruolo: locale.ruolo, squadra: nomeClub(locale.squadra), squadra_slug: locale.squadra }, locale, fz), { affianco: true });
+  else apriFoglio(`<div class="caricamento">${t("mercato.carico_scheda")}</div>`, { affianco: true });
+  const ancoraLei = () => numero === ultimaScheda && !$("#foglio").hidden;
   try {
     const [s, cal] = await Promise.all([api(`/api/giocatore/${id}`), datiCalendario().catch(() => null)]);
-    if (numero !== ultimaScheda || $("#foglio").hidden) return;
-    const c = s.calciatore, st = s.stagione, av = s.avanzate, pr = s.previsione;
-    const forma = formaGiocatore(s.voti || []);
-    const grafico = graficoVoti(s.voti || [], st.giornate_giocate_serie_a);
-    const prossime = cal && pr ? (cal.squadre.find(x => x.squadra === pr.squadra) || { partite: [] }).partite : [];
-    const nonGioca = !!pr && pr.titolarita === "fuori";          // infortunato o squalificato: niente partita, gol o cartellini
-    // Partita iniziata o finita (giornata cominciata): le probabilità di prima non servono più. In corso resta il fantavoto atteso,
-    // a partita finita solo com'è andata (il fantavoto preso, «Senza voto» o «Voto in arrivo»).
-    const iniziataP = !!pr && PARTITA_INIZIATA.includes(pr.stato_partita), finitaP = !!pr && PARTITA_FINITA.includes(pr.stato_partita);
-    const votoGiornata = finitaP && pr.stato_partita === "fatto" ? (s.voti || []).find(v => v.giornata === pr.giornata) : null;
-    const statoInGrande = finitaP && !(votoGiornata && votoGiornata.fv != null);     // lo stato è già scritto in grande: niente pillola uguale in testa
-    const prSenzaGioca = pr && iniziataP && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
-    const tile = (valore, etichetta) => `<div><b>${valore}</b><span>${etichetta}</span></div>`;
-    const probabilita = !pr ? "" : c.ruolo === "P"
-      ? tile(perc(pr.porta_inviolata), t("mercato.porta_inviolata")) + tile(num(pr.gol_avversario, 1), t("mercato.gol_subiti_attesi")) + tile(perc(pr.p_giallo), t("mercato.giallo"))
-      : tile(perc(pr.p_gol), t("mercato.segna")) + tile(perc(pr.p_assist), t("mercato.assist")) + tile(perc(pr.p_giallo), t("mercato.giallo")) + tile(perc(pr.p_rosso), t("mercato.rosso"));
-    apriFoglio(`
-      <div class="intestazione-scheda">
-        ${volto({ id: c.id, nome: c.nome, squadra: c.squadra_slug, ruolo: c.ruolo }, true)}
-        <div><h2>${esc(c.nome)}</h2>
-          <div class="debole">${NOME_RUOLO_1[c.ruolo] || c.ruolo} · ${esc(c.squadra)} · ${t("mercato.quot", { n: c.quotazione })}</div>
-          <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr && !statoInGrande ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
-      </div>
-      ${pr ? `<div class="carta">
-        <div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { g: nomeGiornata(pr.giornata_lega, pr.giornata), avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
-        <div class="cifre-oggi cifre-scheda">
-          ${finitaP ? (votoGiornata && votoGiornata.fv != null
-            ? `<div class="cifra"><div class="debole">${t("mercato.fantavoto")}</div><div class="enorme">${num(votoGiornata.fv)}</div></div>`
-            : `<div class="cifra"><div class="grande stato-partita">${etichettaPronta(pr) ? esc(pr.etichetta.testo) : t(STATO_PARTITA[pr.stato_partita][0])}</div></div>`)
-          : `<div class="cifra"><div class="debole">${t("mercato.fantavoto_atteso")}</div><div class="enorme">${num(pr.fv_atteso)}</div></div>`}
-          ${iniziataP ? "" : `<div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>`}</div>
-        ${nonGioca || iniziataP ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
-        ${!finitaP && motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${testoEtichetta(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
-        ${nonGioca || iniziataP ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${finitaP ? "" : cartaPerche(prSenzaGioca)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
-      ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}</span>`).join("")}</div>
-        <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div></div>` : ""}
-      <div class="carta"><h2>${t("mercato.forma")}</h2>
-        ${forma ? `<div class="riga"><div>${forma.pallini}</div><div style="text-align:right"><div class="debole piccolo">${t("mercato.andamento")}</div><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div></div>` : `<div class="debole">${t("mercato.nessuna_presenza_questa")}</div>`}
-        ${grafico}</div>
-      ${s.rendimento ? `<div class="carta"><h2>${t("mercato.rende_sopra_sotto")}</h2>
-        <div class="grande ${s.rendimento.sovra_rendimento > 0.3 ? "positivo" : s.rendimento.sovra_rendimento < -0.3 ? "negativo" : ""}">${segno(s.rendimento.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>
-        <div class="debole piccolo">${t("mercato.rendimento_riga", { g: segno(s.rendimento.gol_meno_xg), a: segno(s.rendimento.assist_meno_xa) })}
-          ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")}</div></div>` : ""}
-      <div class="carta"><details><summary>${t("mercato.tutte_statistiche")}</summary>
-        <h3>${t("mercato.stagione")}</h3><div class="statistiche">
-          ${tile(`${st.presenze}/${st.giornate_giocate_serie_a}`, t("mercato.presenze"))}${tile(num(st.media_voto, 2), t("mercato.media_voto"))}${tile(num(st.fantamedia, 2), t("mercato.fantamedia"))}
-          ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
-          ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
-        ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
-          ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
-          ${tile(num(av.per_90?.xg, 2), t("mercato.xg_90"))}${tile(num(av.per_90?.xa, 2), t("mercato.xa_90"))}${tile(num(av.per_90?.tiri, 1), t("mercato.tiri_90"))}
-          ${tile(av.rigori_calciati, t("mercato.rigori_calciati"))}${tile(av.passaggi_chiave, t("mercato.passaggi_chiave"))}${tile(av.punizioni, t("mercato.punizioni"))}</div>
-          ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}` : ""}
-      </details></div>`, { affianco: true });
+    if (!ancoraLei()) return;
+    if (!locale) apriFoglio(htmlScheda(s.calciatore, s.previsione, fz), { affianco: true });
+    riempiScheda(s, cal);
   } catch (e) {
-    if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e), { affianco: true });
+    if (!ancoraLei()) return;
+    if (!locale) { apriFoglio(errore(e), { affianco: true }); return; }
+    // la scheda aperta dalla Formazione resta com'è: mancano solo gli ultimi voti e «Tutti i numeri», e lo dice lì
+    for (const pezzo of [$("#scheda-voti"), $("#scheda-numeri-corpo")]) if (pezzo) { pezzo.innerHTML = errore(e); pezzo.removeAttribute("aria-busy"); }
   }
 }
 
+// «Sostituisci» (dalla scheda di un titolare): i compagni dello stesso ruolo che non sono titolari, il migliore in cima, ognuno con
+// i punti attesi in più o in meno rispetto a lui: è già il confronto, in una riga. Un tocco fa il cambio, che si salva da solo.
+function apriSostituzione(id) {
+  const fz = stato.vista === "formazione" ? stato.formaz : null, base = fz && fz.scheda(id);
+  if (!base || !fz.sostituibile(Number(id))) return;
+  ultimaScheda++;                                                         // una scheda ancora in arrivo non prende il posto dell'elenco
+  const candidati = sostituti(fz.f, base, new Set(fz.modulo.titolari)).map(x => fz.scheda(x.id));
+  const riga = x => {
+    const d = x.punti_attesi - base.punti_attesi;
+    return `<li class="riga-gioc"><button class="voce voce-g" data-entra="${x.id}">${volto(x)}
+      <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
+        <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra), postoInFormazione(x.id)])}</span>
+        <span class="etichette">${etichetteGiocatore(x)}</span></span>
+      <span class="valore"><b class="${d > 0.04 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_rispetto", { nome: esc(base.nome) })}</span></span>
+      <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
+  };
+  apriFoglio(`<h2 class="titolo-foglio">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
+    <div class="debole piccolo">${t("formazione.sost_spiega", { nome: esc(base.nome) })}</div>
+    <div data-sostituzione>${candidati.length ? `<ul class="elenco" style="margin-top:8px">${candidati.map(riga).join("")}</ul>` : `<div class="debole" style="margin-top:12px">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`, { affianco: true });   // accanto al campo, da 1200 px
+  document.querySelectorAll("#foglio-contenuto [data-entra]").forEach(b => b.addEventListener("click", () => {
+    // con il pannello affiancato la pagina resta attiva: nel frattempo il modulo o «Torna alla consigliata» possono aver cambiato
+    // la formazione. Si chiude comunque; il cambio si fa solo se il titolare c'è ancora.
+    const formazione = stato.vista === "formazione" ? stato.formaz : null;
+    chiudiFoglio();
+    if (formazione) formazione.sostituisci(Number(id), Number(b.dataset.entra));
+  }));
+}
+
 // Il posto in formazione a parole: «Titolare», «Panchina 2», «Non schierato» (codici `titolare`, `panchina N`, `fuori`). Parole
-// proprie, mai quelle della titolarità («Probabile titolare», «Fuori»): un giocatore al 2% può essere titolare nella tua formazione
-// e «Improbabile» per le probabili (#281).
+// proprie, mai quelle delle probabili: «titolare» e «panchina» vogliono dire la tua formazione.
 const testoPosto = p => {
   const c = String(p || "");
   return c === "titolare" ? t("mercato.posto_titolare") : c.startsWith("panchina ") ? t("mercato.panchina_n", { n: Number(c.split(" ")[1]) })
@@ -1544,7 +1426,7 @@ function postoInFormazione(id) {
 let chiusura = null, focusPrima = null, chiedeAffianco = false, sfondoBloccato = false;
 const PANNELLO_LARGO = matchMedia("(min-width: 1200px)");
 const affiancato = () => chiedeAffianco && PANNELLO_LARGO.matches;
-// Un foglio modale è aperto: i tasti dell'app (1-4, «,», Ctrl+S) non toccano la pagina sotto. Con il pannello affiancato sì.
+// Un foglio modale è aperto: i tasti dell'app (1-3, «,») non toccano la pagina sotto. Con il pannello affiancato sì.
 const foglioModale = () => !$("#foglio").hidden && !document.body.classList.contains("con-pannello");
 const SFONDO_FOGLIO = () => [document.querySelector(".salta"), document.querySelector(".testata"), contenuto, document.querySelector(".schede")].filter(Boolean);   // anche il link «Vai al contenuto»: il fuoco non esce dal pannello
 function bloccaSfondo() {
@@ -1668,6 +1550,8 @@ function chiudiPannelloAffiancato() {
 document.addEventListener("click", ev => {
   const g = ev.target.closest("[data-giocatore]");
   if (g && !g.disabled) apriGiocatore(Number(g.dataset.giocatore));
+  const sost = ev.target.closest("[data-sostituisci]");                  // «Sostituisci» nella scheda di un titolare
+  if (sost) apriSostituzione(Number(sost.dataset.sostituisci));
   const v = ev.target.closest("[data-vai]");
   if (v) { chiudiFoglio(); vai(v.dataset.vai); }
   const ind = ev.target.closest("[data-indietro]");                       // «‹ Squadra» della rosa, «‹ Altro» di Regole (#449)
@@ -1682,17 +1566,7 @@ document.addEventListener("click", ev => {
 });
 document.addEventListener("keydown", ev => {
   if (ev.key === "Escape") { chiudiFoglio(); return; }
-  // Ctrl+S (⌘+S sul Mac) nella Formazione preme il «Salva» che si vede in quel momento (spec C3); senza niente da salvare, in un'altra
-  // schermata o con un foglio modale aperto non si ferma: fa quello che fa di solito il browser. Anche mentre si scrive nella ricerca.
-  // Con il pannello affiancato (da 1200 px) la pagina resta attiva: Ctrl+S, `/`, 1-4 e «,» funzionano come a pannello chiuso.
-  // Con una tastiera non latina vale il tasto fisico S (`code`); tenuto premuto, le ripetizioni non salvano di nuovo e non aprono
-  // «Salva pagina con nome» (dopo il primo salvataggio il pulsante non c'è più).
-  const ctrlS = (typeof ev.key === "string" && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") || ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyS");
-  if (ctrlS && !ev.altKey && !ev.shiftKey && stato.vista === "formazione" && !foglioModale()) {
-    if (ev.repeat) { ev.preventDefault(); return; }
-    const salva = $("#salva-scelta") || $("#salva-questa");
-    if (salva && !salva.disabled && salva.getClientRects().length) { ev.preventDefault(); salva.click(); return; }
-  }
+  // Con il pannello affiancato (da 1200 px) la pagina resta attiva: `/`, 1-3 e «,» funzionano come a pannello chiuso.
   if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
   const bersaglio = ev.target;
   if (bersaglio && (["INPUT", "TEXTAREA", "SELECT"].includes(bersaglio.tagName) || bersaglio.isContentEditable)) return;      // si sta scrivendo
@@ -1701,7 +1575,7 @@ document.addEventListener("keydown", ev => {
     const c = $("#campo-cerca");
     if (c && c.getClientRects().length && !foglioModale()) c.focus(); else apriRicerca();              // sul PC il campo della testata
   }
-  else if (/^[1-4]$/.test(ev.key) && !foglioModale()) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
+  else if (/^[1-9]$/.test(ev.key) && Number(ev.key) <= VISTE.length && !foglioModale()) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-3 cambiano sezione
   else if (ev.key === "," && !foglioModale()) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
 });
 // ---------------------------------------------------------------- lega: squadre, rose, regole
@@ -2260,18 +2134,7 @@ const idVoceDiario = g => `diario-${String(g.stagione ?? "").replace(/[^0-9-]/g,
 // «Ho schierato…» per una voce del diario: sempre con la sua stagione (il server rifiuta quelle passate, senza scrivere sulla giornata di quest'anno)
 const corpoSchierata = (g, tipo, titolari) => JSON.stringify({ giornata: Number(g.giornata), tipo, ...(titolari ? { titolari } : {}), stagione: g.stagione });
 
-// Dal «Da fare» di Oggi: il tocco su «Ho schierato la consigliata» salva subito la scelta e apre il Diario su quella giornata.
-// La voce di «Da fare» ha solo la giornata ed è sempre della stagione in corso: senza `stagione` il server usa quella.
-async function schieraDaOggi(giornata) {
-  apriFoglio(`<div class="caricamento">${t("avv.segno_tua_formazione")}</div>`);
-  try {
-    await api("/api/diario/schierata", { method: "POST", body: JSON.stringify({ giornata: Number(giornata), tipo: "consigliata" }) });
-    avviso(t("diario.salvata"));
-  } catch (e) { avviso(e.message, 6000); }
-  apriDiario(giornata);
-}
-
-// `giornata` (e `stagione`, se c'è): la voce da mostrare. Senza stagione vale la più recente con quel numero (Oggi e «Da fare» parlano della stagione in corso).
+// `giornata` (e `stagione`, se c'è): la voce da mostrare. Senza stagione vale la più recente con quel numero («Com'è andata» della Formazione parla della stagione in corso).
 async function apriDiario(giornata, stagione) {
   apriFoglio(`<div class="caricamento">${t("avv.carico_diario")}</div>`);
   const numero = ++ultimaScheda;
@@ -3010,7 +2873,7 @@ async function vistaRegole(o = {}) {
     </details>
 
     ${r.partite_rinviate !== undefined ? `<details class="carta regola-sez" id="sez-rinviate"><summary>${t("regole.rinviate")}</summary>
-      <div class="debole piccolo">${t("regole.rinviate_aiuto")}</div>
+      <div class="debole piccolo">${t("regole.rinviate_aiuto_formazione")}</div>
       <div class="segmenti" id="rinvio-modo">${[["aspetta", t("regole.rv_aspetta")], ["senza_voto", t("regole.rv_senza_voto")], ["voto_ufficio", t("regole.rv_ufficio")]].map(([k, nome]) => `<button type="button" data-valore="${k}" class="${r.partite_rinviate === k ? "attivo" : ""}">${nome}</button>`).join("")}</div>
       <div class="debole piccolo" id="aiuto-rinvio"></div>
       <div id="rinvio-voto-corpo" ${r.partite_rinviate === "voto_ufficio" ? "" : "hidden"}>${rigaRegola(t("regole.rv_voto"), stepper("voto_rinv", r.voto_ufficio_rinviate ?? 6, { passo: 0.5, min: 0, max: 10 }))}</div>
@@ -3817,13 +3680,13 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     if (SCHEDA_DI(v)) vai(v);
   });
 }
-let iniziale = "oggi";
-try { iniziale = localStorage.getItem("vista") || "oggi"; } catch { /* niente memoria */ }
+let iniziale = "formazione";
+try { iniziale = localStorage.getItem("vista") || "formazione"; } catch { /* niente memoria */ }
 togliPrefVecchie();                                                                        // colore, densità, animazioni e sezione iniziale non si scelgono più
 try { const v = new URLSearchParams(location.search).get("vista"); if (SCHEDA_DI(v) || v === "impostazioni") iniziale = v; stato.impDaUrl = new URLSearchParams(location.search).get("gruppo"); } catch { /* indirizzo strano */ }   // scorciatoie dell'icona (Formazione, Squadra)
 // la voce di Squadra o di Altro e la rosa di una squadra (#449): un ricaricamento riapre la pagina, senza voci nuove nella cronologia
 try { const q = new URLSearchParams(location.search); if (q.get("voce")) stato.legaTorna = q.get("voce"); if (q.get("vista") === "squadra" && q.has("rosa")) stato.rosaTorna = q.get("rosa"); } catch { /* indirizzo strano */ }
-if (!SCHEDA_DI(iniziale) && iniziale !== "impostazioni") iniziale = "oggi";          // «mercato», «scambi» e «lega» dei vecchi salvataggi e indirizzi valgono ancora: vai() li porta alla schermata che resta
+if (!SCHEDA_DI(iniziale) && iniziale !== "impostazioni") iniziale = "formazione";    // «oggi», «mercato», «scambi» e «lega» dei vecchi salvataggi e indirizzi valgono ancora: vai() li porta alla schermata che resta
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
   Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
@@ -3877,10 +3740,10 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   misura();
 })();
 
-// Colonne ferme in alto su tablet e PC (la prima di Oggi, il campo della Formazione, l'elenco di Impostazioni, il menu di Squadra e Altro):
-// restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, «Apri la formazione») restava sotto la barra o
-// fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
-const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .campo-fermo, .imp-elenco, .lega-menu";
+// Colonne ferme in alto su tablet e PC (il campo della Formazione, l'elenco di Impostazioni, il menu di Squadra e Altro): restano
+// ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, la spunta «L'ho messa») restava sotto la barra o fuori
+// dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
+const FERME = ".fz-campo .campo-fermo, .imp-elenco, .lega-menu";
 const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
 function controllaFerme() {
   const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è
@@ -3893,25 +3756,10 @@ function controllaFerme() {
     if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria osserva le classi)
   });
 }
-// La riga dello stato della scelta con «Salva» (Formazione, stati «modificata» e «mano») resta ferma in alto mentre si scorrono i
-// titolari, ma solo se è bassa: oltre un terzo della finestra (zoom al 200%, telefono in orizzontale, testo grande) coprirebbe mezzo
-// schermo, quindi scorre con la pagina (`non-ferma`). Fuori o dentro non cambia altezza: niente oscillazioni. La sua altezza vera va in
-// --alto-stato, che stile.css aggiunge a scroll-padding-top: il titolare con il focus non le finisce sotto (WCAG 2.2, 2.4.11). Non
-// ferma (anche nella pagina strettissima) o assente: 0. La misura si rifà con il ResizeObserver e gli altri segnali di seguiFerme.
+// I nomi delle colonne fermi sotto la testata negli elenchi lunghi (la rosa di una squadra; spec C7): oltre un terzo della finestra
+// (zoom, testo grande, finestra bassa) scorrono con la pagina; la loro altezza vera, quando sono fermi, va in --alto-colonne per
+// scroll-padding-top: la riga con il focus (Maiusc+Tab) non finisce sotto di loro.
 const QUOTA_STATO = 1 / 3;
-function controllaStatoScelta() {
-  const el = document.querySelector(".stato-scelta.modificata, .stato-scelta.mano");
-  let alto = 0;
-  if (el) {
-    const era = el.classList.contains("non-ferma"), troppo = el.getBoundingClientRect().height > innerHeight * QUOTA_STATO;
-    if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria)
-    if (getComputedStyle(el).position === "sticky") alto = el.offsetHeight;
-  }
-  document.documentElement.style.setProperty("--alto-stato", `${alto}px`);
-}
-// I nomi delle colonne fermi sotto la testata negli elenchi lunghi (Elenco dei giocatori, rosa di una squadra; spec C7): stessa regola
-// della riga dello stato. Oltre un terzo della finestra (zoom, testo grande, finestra bassa) scorrono con la pagina; la loro altezza
-// vera, quando sono fermi, va in --alto-colonne per scroll-padding-top: la riga con il focus (Maiusc+Tab) non finisce sotto di loro.
 function controllaColonneFerme() {
   let alto = 0;
   document.querySelectorAll(".intestazione-colonne.ferma").forEach(el => {
@@ -3923,7 +3771,7 @@ function controllaColonneFerme() {
 }
 (function seguiFerme() {
   let atteso = false;
-  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); controllaStatoScelta(); controllaColonneFerme(); }); } };
+  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); controllaColonneFerme(); }); } };
   new MutationObserver(pianifica).observe(contenuto, { subtree: true, childList: true });
   if (typeof ResizeObserver === "function") new ResizeObserver(pianifica).observe(contenuto);          // anche quando una carta cresce dopo
   addEventListener("resize", pianifica);

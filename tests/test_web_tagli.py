@@ -1,8 +1,8 @@
 """Web senza le funzioni tolte il 12/11/2026 (#615): cosa succede a ciò che puntava a una schermata che non c'è più.
 
-Si esegue il codice vero della web con Node (niente ricerca di testo nel sorgente): i consigli di «Da fare» delle funzioni tolte
-(cambio con uno svincolato, scambio) non si mostrano, e un indirizzo vecchio apre la schermata più vicina che resta.
-Le schermate si provano nel browser: tests/browser/test_tagli.py.
+Si esegue il codice vero della web con Node (niente ricerca di testo nel sorgente): quali righe di «Da fare» del server sono
+decisioni da mostrare in cima alla Formazione (#616: al massimo due, solo con un'azione vera), e un indirizzo vecchio apre la
+schermata più vicina che resta. Le schermate si provano nel browser: tests/browser/.
 """
 import json
 import re
@@ -38,9 +38,9 @@ def _con_dafare(voci: list[dict], espressione: str):
     return _node(codice)
 
 
-def _da_fare(voci: list[dict]) -> list[str]:
-    """Gli id delle righe che la carta «Da fare» mostra."""
-    return _con_dafare(voci, "dfValide(voci).map(v => v.id)")
+def _decisioni(voci: list[dict]) -> list[str]:
+    """Gli id delle decisioni che la Formazione mostra in cima (al massimo due)."""
+    return _con_dafare(voci, "dfDecisioni(voci).map(v => v.id)")
 
 
 def _voce(id: str, tipo: str, scheda: str, sezione: str | None = None, **extra) -> dict:
@@ -48,38 +48,48 @@ def _voce(id: str, tipo: str, scheda: str, sezione: str | None = None, **extra) 
             "destinazione": {"scheda": scheda, "sezione": sezione, **extra}}
 
 
-def test_da_fare_non_mostra_i_consigli_delle_funzioni_tolte():
-    """Via solo il cambio con uno svincolato e lo scambio (si guarda il tipo della riga). Il reparto scoperto porta anche lui a
-    «mercato» ma è un avviso da non perdere: resta."""
-    voci = [_voce("dubbio:1", "dubbio", "formazione", giocatore=1),
-            _voce("svincolato:7", "svincolato", "mercato", giocatore=7),
-            _voce("scambio:Atletico Prova", "scambio", "scambi"),
-            _voce("copertura:P", "copertura", "mercato"),
-            _voce("copertura:moduli", "copertura", "formazione"),
-            _voce("rose-vecchie", "rose", "lega", "rose"),
-            _voce("diario:5", "diario", "lega", "diario", giornata=5),
-            _voce("dati-vecchi", "dati", "impostazioni", "avanzate")]
-    assert _da_fare(voci) == ["dubbio:1", "copertura:P", "copertura:moduli", "rose-vecchie", "diario:5", "dati-vecchi"]
+def test_le_decisioni_sono_solo_le_righe_con_un_azione_vera():
+    """Via i due consigli delle funzioni tolte (svincolato, scambio; #615) e ciò che non chiede niente (#616): il titolare incerto
+    senza un cambio da fare, «non l'hai ancora salvata» (il salvataggio è automatico), «dimmi se hai schierato la consigliata».
+    Restano il cambio di un titolare, la consigliata cambiata, le rose da aggiornare, il reparto scoperto (porta anche lui a
+    «mercato», ma è un avviso da non perdere) e gli avvisi di chi gestisce."""
+    una = lambda v: _decisioni([v])
+    assert una({**_voce("dubbio:1", "dubbio", "formazione", giocatore=1), "alternativa": {"id": 2, "nome": "Prova"}}) == ["dubbio:1"]
+    assert una(_voce("dubbio:1", "dubbio", "formazione")) == []
+    assert una(_voce("consigliata:9", "formazione", "formazione")) == ["consigliata:9"]
+    assert una(_voce("formazione:9", "formazione", "formazione")) == []
+    assert una(_voce("svincolato:7", "svincolato", "mercato", giocatore=7)) == []
+    assert una(_voce("scambio:Atletico Prova", "scambio", "scambi")) == []
+    assert una(_voce("diario:5", "diario", "lega", "diario", giornata=5)) == []
+    for resta in (_voce("copertura:P", "copertura", "mercato"), _voce("copertura:moduli", "copertura", "formazione"),
+                  _voce("rose-vecchie", "rose", "lega", "rose"), _voce("dati-vecchi", "server", "impostazioni", "avanzate"),
+                  _voce("primo-avvio", "primo_avvio", "impostazioni", "informazioni")):
+        assert una(resta) == [resta["id"]]
 
 
-def test_con_il_solo_reparto_scoperto_da_fare_non_dice_tutto_a_posto():
-    """Il difetto visto in revisione: con la sola riga «Non hai nessun portiere disponibile» Oggi diceva «Tutto a posto, Mister»."""
-    carta = _con_dafare([_voce("copertura:P", "copertura", "mercato")], "cardDaFare(voci)")
-    assert "testo di copertura:P" in carta and "df.tutto_posto_mister" not in carta
+def test_le_decisioni_sono_al_massimo_due_nell_ordine_del_server():
+    voci = [_voce("dubbio:1", "dubbio", "formazione"),                                        # non chiede niente: non conta
+            _voce("copertura:P", "copertura", "mercato"), _voce("rose-vecchie", "rose", "lega", "rose"),
+            _voce("dati-vecchi", "server", "impostazioni", "avanzate")]
+    assert _decisioni(voci) == ["copertura:P", "rose-vecchie"]
+    # `vale`: la Formazione toglie quelle che con la formazione in pagina non hanno più senso, e allora sale la successiva
+    assert _con_dafare(voci, "dfDecisioni(voci, v => v.id !== 'copertura:P').map(v => v.id)") == ["rose-vecchie", "dati-vecchi"]
 
 
-def test_il_pulsante_del_reparto_scoperto_porta_alla_rosa_e_lo_dice():
-    """«Cerca un rimpiazzo» apriva Cambi consigliati, che sulla web non c'è più: il pulsante dice «Vedi la rosa»; le altre righe
-    tengono il testo del server."""
-    voci = [{**_voce("copertura:P", "copertura", "mercato"), "azione": "Cerca un rimpiazzo"}, _voce("dubbio:1", "dubbio", "formazione")]
-    carta = _con_dafare(voci, "cardDaFare(voci)")
-    pulsanti = re.findall(r'data-df="(\d+)">([^<]*)<', carta)
-    assert pulsanti == [("0", "lega.vedi_rosa"), ("1", "Apri")]
+def test_il_pulsante_di_una_decisione_dice_dove_porta():
+    """«Cerca un rimpiazzo» apriva Cambi consigliati, che sulla web non c'è più: il pulsante dice «Vedi la rosa». «La consigliata è
+    cambiata» prende la consigliata. Le altre righe tengono il testo del server; i punti in più del cambio stanno accanto al testo."""
+    voci = [{**_voce("copertura:P", "copertura", "mercato"), "azione": "Cerca un rimpiazzo"}, _voce("consigliata:9", "formazione", "formazione"),
+            {**_voce("dubbio:1", "dubbio", "formazione"), "azione": "Sostituisci"}]
+    righe = _con_dafare(voci, "voci.map((v, i) => dfRiga(v, i, i === 2 ? '+0,9 punti.' : ''))")
+    pulsanti = [re.search(r'data-df="(\d+)">([^<]*)<', r).groups() for r in righe]
+    assert pulsanti == [("0", "lega.vedi_rosa"), ("1", "formazione.usa_consigliata"), ("2", "Sostituisci")]
+    assert "+0,9 punti." in righe[2] and "punti" not in righe[0]
 
 
-def test_da_fare_tiene_una_riga_senza_destinazione_e_scarta_quelle_senza_testo():
-    voci = [{"id": "senza-destinazione", "tipo": "certificato", "testo": "Rinnova"}, {"id": "rotta", "tipo": "dubbio"}, None]
-    assert _da_fare(voci) == ["senza-destinazione"]
+def test_le_decisioni_tengono_una_riga_senza_destinazione_e_scartano_quelle_senza_testo():
+    voci = [{"id": "senza-destinazione", "tipo": "certificato", "testo": "Rinnova"}, {"id": "rotta", "tipo": "rose"}, None]
+    assert _decisioni(voci) == ["senza-destinazione"]
 
 
 def _schermata(vista, voce=None):
@@ -89,7 +99,7 @@ def _schermata(vista, voce=None):
     assert funzione, "manca schermataCheResta in app.js"
     voci = [{"id": "squadre", "ambito": "squadra"}, {"id": "importa", "ambito": "squadra"},
             {"id": "diario", "ambito": "altro"}, {"id": "regole", "ambito": "altro"}]
-    codice = (f'const VISTE = ["oggi", "formazione", "squadra", "altro"];\n{funzione.group(0)}\n'
+    codice = (f'const VISTE = ["formazione", "squadra", "altro"];\n{funzione.group(0)}\n'
               f"const r = schermataCheResta({json.dumps(vista)}, {json.dumps(voce)}, {json.dumps(voci)});\n"
               "console.log(JSON.stringify({ vista: r.vista, voce: r.voce ?? null, gruppo: r.gruppo ?? null }));")
     return _node(codice)
@@ -115,7 +125,7 @@ def test_un_indirizzo_di_una_pagina_tolta_apre_la_schermata_piu_vicina(vista, vo
 
 
 @pytest.mark.parametrize("vista, voce, attesa", [
-    ("oggi", None, {"vista": "oggi", "voce": None, "gruppo": None}),
+    ("oggi", None, {"vista": "formazione", "voce": None, "gruppo": None}),           # Oggi è diventata la Formazione (#616)
     ("formazione", None, {"vista": "formazione", "voce": None, "gruppo": None}),
     ("squadra", "importa", {"vista": "squadra", "voce": "importa", "gruppo": None}),
     ("altro", "regole", {"vista": "altro", "voce": "regole", "gruppo": None}),
@@ -123,8 +133,8 @@ def test_un_indirizzo_di_una_pagina_tolta_apre_la_schermata_piu_vicina(vista, vo
     ("lega", "importa", {"vista": "squadra", "voce": "importa", "gruppo": None}),
     ("impostazioni", None, {"vista": "impostazioni", "voce": None, "gruppo": None}),
     ("altro", "importa", {"vista": "altro", "voce": None, "gruppo": None}),           # la voce è di un'altra scheda: il menu
-    ("__proto__", None, {"vista": "oggi", "voce": None, "gruppo": None}),             # un nome che non c'è porta a Oggi
-    (None, None, {"vista": "oggi", "voce": None, "gruppo": None}),
+    ("__proto__", None, {"vista": "formazione", "voce": None, "gruppo": None}),       # un nome che non c'è porta alla Formazione
+    (None, None, {"vista": "formazione", "voce": None, "gruppo": None}),
 ])
 def test_gli_indirizzi_delle_schermate_che_restano_non_cambiano(vista, voce, attesa):
     assert _schermata(vista, voce) == attesa

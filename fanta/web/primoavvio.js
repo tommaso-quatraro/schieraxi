@@ -122,7 +122,7 @@ function paFine() {
     <p class="debole">${saltati.length ? t(dove, { nomi: saltati.map(p => esc(PA_NOMI[p])).join(", ") }) : t("pav.hai_finito")}</p>
     <p class="debole piccolo">${t("pav.il_resto")}</p>
     <div id="pa-msg" role="alert"></div>
-    <div class="pulsanti"><button class="bottone" id="pa-chiudi">${t("pav.vai_oggi")}</button>
+    <div class="pulsanti"><button class="bottone" id="pa-chiudi">${t("pav.vai_formazione")}</button>
       ${paAvvisiPossibili() ? `<button class="bottone secondario" id="pa-avvisi">${t("onb.attiva_gli_avvisi_b")}</button>` : ""}</div>`);
   document.querySelectorAll("[data-pa-passo]").forEach(b => b.addEventListener("click", () => { pa.passo = b.dataset.paPasso; paDisegna(); }));
   const avvisi = $("#pa-avvisi");
@@ -141,7 +141,7 @@ function paFine() {
     if (stato.account) {                                       // la vecchia procedura ricorda com'è finita: resta coerente
       try { await api("/api/onboarding", { method: "PUT", body: JSON.stringify({ stato: saltati.length ? "saltato" : "completato", passo: "avvisi" }) }); } catch { /* non blocca */ }
     }
-    svuotaCache(); chiudiFoglio(); vai("oggi");
+    svuotaCache(); chiudiFoglio(); vai("formazione");
   });
 }
 

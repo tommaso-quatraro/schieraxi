@@ -62,7 +62,7 @@ def test_la_copia_automatica_non_e_una_formazione_messa(tmp_path):
 
 # ---------------------------------------------------------------- le rotte
 @pytest.fixture
-def prova(ambiente, monkeypatch):
+def prova(ambiente, monkeypatch):  # noqa: F811 (la fixture importata arriva come parametro con lo stesso nome)
     monkeypatch.setattr(server.consigli, "valuta", lambda db, regole, rose, titolari, squadra=None, giornata=None, simulazioni=600:
                         {"modulo": "4-3-3", "giornata": giornata or 9, "punteggio_atteso": 70.0, "dev": 4.0, "panchina": [], "differenza": -1.0})
     monkeypatch.setattr(server.consigli, "previsioni", lambda db, regole, giornata=None: (pd.DataFrame(index=[]), 9, False))

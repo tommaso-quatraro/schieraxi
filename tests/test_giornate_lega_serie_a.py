@@ -181,12 +181,10 @@ def test_ogni_giornata_della_web_passa_da_nome_giornata():
     assert not re.search(r"(?<!prima_)giornata_lega\)?\s*(\|\||\?\?)", resto)     # `prima_giornata_lega` è una regola, non una giornata
     usi = {
         "testata": "nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata)",
-        "Oggi, sopra il conto": '<div class="debole">${nomeGiornata(o.giornata_lega, o.giornata)}</div>',
-        "Oggi, prossima": 't("oggi.prossima_chiude", { g: nomeGiornata(p.giornata_lega, p.giornata),',
-        "Oggi, finita": 't("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })',
+        "Formazione, testa": '<p class="tg-giornata">${nomeGiornata(f.giornata_lega, f.giornata)}</p>',
+        "Formazione, giornata finita": 't("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })',
         "Formazione, saltata": "g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata)",
-        "Formazione, testo e intestazione": "${nomeGiornata(f.giornata_lega, f.giornata)} · ",
-        "scheda": "{ g: nomeGiornata(pr.giornata_lega, pr.giornata), avv:",
+        "Formazione, testo da copiare": "${nomeGiornata(f.giornata_lega, f.giornata)} · ${m.modulo}",
         "Diario": '<h2 style="margin:0">${nomeGiornata(g.giornata_lega, g.giornata)}</h2>',
         "Diario, correggi": 't("diario.correggi_spiega", { g: nomeGiornata(g.giornata_lega, g.giornata) })',
         "Diario, scelte diverse": "<b>${nomeGiornata(g.giornata_lega, g.giornata)}</b>",
@@ -198,7 +196,6 @@ def test_ogni_giornata_della_web_passa_da_nome_giornata():
     }
     mancano = [dove for dove, codice in usi.items() if codice not in APP]
     assert mancano == [], mancano
-    assert APP.count("${nomeGiornata(f.giornata_lega, f.giornata)} · ") == 2     # testo da copiare, intestazione
 
 
 def test_testi_con_la_giornata_intera():
@@ -211,8 +208,6 @@ def test_testi_con_la_giornata_intera():
         "oggi.giornata_finita": "{g}: finita",
         "oggi.chiusa_dettaglio": "La formazione si è chiusa {quando}",
         "formazione.per_la_prossima": "{g}: è già iniziata. Questa è la formazione per la {m}.",
-        "mercato.partita_casa": "{g} · in casa contro {avv} · {quando}",
-        "mercato.partita_fuori": "{g} · in trasferta contro {avv} · {quando}",
         "diario.correggi_spiega": "{g}: tocca i giocatori che hai schierato. Servono 11 titolari.",
         "diario.qp_su.other": "Calcolato su {n} giornate, dalla {da} alla {a}.",
         "avv.giornate_da_a": "dalla {a}ª alla {b}ª giornata di Serie A",

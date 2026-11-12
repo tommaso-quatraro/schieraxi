@@ -8,7 +8,6 @@ import re
 import shutil
 import subprocess
 
-import pytest
 
 from fanta import server
 from tests.test_design_web import _colore, _contrasto_rgb, _sopra, _temi
@@ -56,39 +55,6 @@ def _node(codice):
     r = subprocess.run([NODE, "-e", codice], capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout)
-
-
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_sigla_della_squadra_sul_campo_scritta_in_bianco_con_la_lineetta():
-    """Prima la sigla stava su un riquadro nei colori sociali (legenda del campo, pedine) e il suo colore doveva bastare a ogni club
-    (#244: Napoli 3,47:1). Grafica B (spec §8.10): la sigla è scritta in bianco sul campo, come il cognome (il contrasto lo controlla
-    `test_testo_sul_campo_leggibile` di test_grafica_b_web.py), e il colore del club sta solo nella lineetta davanti, decorativa e
-    nascosta ai lettori. Qui: pedina e legenda la disegnano così per ogni club, anche uno che non conosciamo."""
-    funz = APP[APP.index("function luminosita("):APP.index("// Per i lettori di schermo")]
-    tabella = APP[APP.index("const COLORI_SQUADRA = {"):APP.index("// Avatar: volto illustrato")]
-    lineetta = APP[APP.index("const FONDI_LINEETTA"):APP.index("// I nomi delle colonne sopra un elenco")]
-    codice = (tabella + funz + lineetta
-              + "console.log(JSON.stringify([...Object.keys(COLORI_SQUADRA), 'sconosciuta'].map(s => [s, lineetta(s)])))")
-    for squadra, html in _node(codice):
-        assert 'class="lineetta"' in html and 'aria-hidden="true"' in html and "--ct" not in html, (squadra, html)
-    assert "distintivo(" not in APP and ".dist " not in CSS and ".dist {" not in CSS
-    pedina = APP[APP.index("function pedina("):APP.index("// Il numero della giornata, uguale")]
-    assert "${lineetta(x.avversario)}${sigla(x.avversario)}" in pedina
-    assert re.search(r"\.pedina \.avv[^{]*\{[^}]*color: #fff", CSS)
-
-
-def test_pedina_nome_accessibile_dal_contenuto_con_il_testo_che_si_vede():
-    """Le pedine avevano un aria-label («Rossi L., fantavoto atteso 6,8, …») diverso dal testo visibile («6,8 Rossi gioca 85%
-    vs NAP»): chi usa il controllo vocale dice quello che vede (WCAG 2.5.3). Ora il pulsante prende il nome dal contenuto: le
-    abbreviazioni visibili sono nascoste ai lettori di schermo e accanto c'è la frase intera, come «vs PAR» nelle righe (vsAt)."""
-    pedina = APP[APP.index("function pedina("):APP.index("// Il numero della giornata, uguale")]
-    apertura = re.search(r'<button class="pedina"[^>]*>', pedina).group(0)
-    assert "aria-label" not in apertura
-    assert '<span class="solo-lettori">${esc(vocePedina(x, esito))}</span>' in pedina      # esito = esitoPedina(x) (#284)
-    for pezzo in ('<span class="disco" aria-hidden="true"', '<span class="nome" aria-hidden="true">',
-                  '<span class="gioca esito" aria-hidden="true">', '<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}" aria-hidden="true">',
-                  '<span class="avv" aria-hidden="true">'):
-        assert pezzo in pedina, pezzo
 
 
 def _opacita_dell_entrata(vela):

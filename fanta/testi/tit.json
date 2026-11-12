@@ -1,8 +1,4 @@
 {
-  "tit.titolare": {
-    "it": "Probabile titolare",
-    "en": "Likely starter"
-  },
   "tit.ballottaggio": {
     "it": "In ballottaggio",
     "en": "Contested"
@@ -42,5 +38,9 @@
   "tit.st_rinviata": {
     "it": "Rinviata",
     "en": "Postponed"
+  },
+  "tit.in_dubbio": {
+    "it": "In dubbio",
+    "en": "Doubtful"
   }
 }

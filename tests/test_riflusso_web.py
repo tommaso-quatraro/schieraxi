@@ -60,22 +60,15 @@ def test_righe_dei_giocatori_impilate_e_partite_su_due_righe():
     b = _blocco(STRETTA)
     # grafica B (spec §8.4): volto e numeri sopra, nome, partita ed etichette sotto a tutta larghezza
     assert 'grid-template-areas: "volto fv" "volto gioca" "testo testo"' in _regola(b, ".voce-g")
-    assert '"testo testo" "fv gioca"' in _regola(b, ".con-azione .voce-g")                             # con ✎ in alto: i numeri sotto il nome
-    assert "padding-right: 0" in _regola(b, ".elenco li.con-azione .voce-g, .elenco.posto-azione .voce-g")   # niente colonna vuota per ✎
-    assert "top:" in _regola(b, ".elenco li.con-azione .azione-riga")
     assert "flex-wrap: wrap" in _regola(b, ".riga")
-    # Oggi a giornata in corso: il fantavoto preso o lo stato («In dubbio · gioca 40%») va sotto il nome, non fuori dalla carta
-    assert "grid-row: 2" in _regola(b, ".avviso-riga > :nth-child(3)")
-    # Oggi: le cifre della formazione (modulo | punti attesi, con la fascia) una sotto l'altra, il filo sopra invece che in mezzo
+    # scheda del giocatore: le cifre (fantavoto atteso | gioca N%) una sotto l'altra, il filo sopra invece che in mezzo
     assert "grid-template-columns: minmax(0, 1fr)" in _regola(b, ".cifre-oggi")
     seconda = _regola(b, ".cifre-oggi > .cifra + .cifra")
     assert "border-left: 0" in seconda and "border-top: 1px solid var(--filo)" in seconda
 
 
-def test_formazione_chip_e_campo_vanno_a_capo():
+def test_formazione_il_campo_va_a_capo():
     b = _blocco(STRETTA)
-    chips = _regola(b, ".chips.scorri")
-    assert "flex-wrap: wrap" in chips and "mask-image: none" in chips                  # tutti i moduli in vista, senza scorrere di lato
     assert "flex-wrap: wrap" in _regola(b, ".linea")
     assert "flex: 0 1 64px" in _regola(b, ".pedina")                                # due pedine per fila
     # cognome intero, mai «Zosaba Nd…»: dal #265 vale a ogni larghezza (tests/test_testo_intero_web.py), non solo qui
@@ -87,7 +80,7 @@ def test_squadra_rose_e_calendario_non_si_tagliano():
     b = _blocco(STRETTA)
     assert "flex-wrap: wrap" in _regola(b, ".mia-riga")
     assert "grid-template-columns: 1fr" in _regola(b, ".immagini-squadra")
-    assert "flex-wrap: wrap" in _regola(b, ".segmenti, .segmenti.scorri")
+    assert "flex-wrap: wrap" in _regola(b, ".segmenti")
 
 
 def test_scheda_del_giocatore_in_colonna():
@@ -141,49 +134,28 @@ def test_lo_stemma_nella_riga_di_stato_lascia_posto_al_nome():
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 def test_il_conto_alla_rovescia_non_lascia_l_unita_da_sola():
-    """Issue #286: a 390 px, nella carta con la maglia, «1 giorno 8» su una riga e «h» da sola sotto (a 320 px anche «1», «giorno» e
-    «8 h» su tre righe). Il numero e la sua unità stanno insieme con uno spazio che non va a capo: si va a capo solo tra «1 giorno»
-    e «8 h». Qui testoConto di app.js, eseguito con node e l'orologio fermo."""
+    """Issue #286: a 390 px «1 giorno 8» su una riga e «h» da sola sotto (a 320 px anche «1», «giorno» e «8 h» su tre righe). Il
+    numero e la sua unità stanno insieme con uno spazio che non va a capo: si va a capo solo tra «1 giorno» e «8 h». Qui testoConto
+    di app.js (dal 12/11/2026 «Si chiude…» e «fra…», in testa alla Formazione), eseguito con node e l'orologio fermo."""
     inizio, fine = "function parseData(s)", "// ETag e If-Match"
     codice = "\n".join([
         TESTI,
         "const FERMO = Date.parse('2026-10-26T09:35:00Z'), DataVera = Date;",
         "globalThis.Date = class extends DataVera { constructor(...a) { super(...(a.length ? a : [FERMO])); } static now() { return FERMO; } };",
         APP[APP.index(inizio):APP.index(fine)],
-        APP[APP.index("function testoConto(o)"):APP.index("function vistaOggi()")],
-        "const minuti = [32 * 60 + 5, 2 * 1440 + 14 * 60, 3 * 60 + 10, 45], fuori = {};",
-        "for (const L of ['it', 'en']) { LINGUA = L; fuori[L] = minuti.map(m => testoConto({ giornata: 9, scadenza: new DataVera(FERMO + m * 60000).toISOString() }).grande); }",
+        APP[APP.index("const scadenzaDi = "):APP.index("// Account nuovo, senza rose")],
+        "const minuti = [32 * 60 + 5, 2 * 1440 + 14 * 60, 3 * 60 + 10, 45, -5], fuori = {};",
+        "for (const L of ['it', 'en']) { LINGUA = L; fuori[L] = minuti.map(m => testoConto({ giornata: 9, scadenza: new DataVera(FERMO + m * 60000).toISOString() }).manca); }",
+        "LINGUA = 'it'; fuori.chiusa = testoConto({ giornata: 9, scadenza: new DataVera(FERMO - 300000).toISOString() }).chiude;",
         "console.log(JSON.stringify(fuori));",
     ])
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     fuori = json.loads(r.stdout.strip().splitlines()[-1])
     nb = " "
-    assert fuori["it"] == [f"1{nb}giorno 8{nb}h", f"2{nb}giorni 14{nb}h", f"3{nb}h 10{nb}min", f"45{nb}min"]
-    assert fuori["en"] == [f"1{nb}day 8{nb}h", f"2{nb}days 14{nb}h", f"3{nb}h 10{nb}min", f"45{nb}min"]
-
-
-def test_la_maglia_lascia_posto_al_conto_alla_rovescia_sui_telefoni_stretti():
-    """«14 giorni» non va mai a capo (#286): accanto alla maglia a 320 px veniva tagliato («20 h 22 mi…», #384). Con la grafica B la
-    maglia ha la sua colonna e il numero si misura sulla colonna che resta (`cqi`), quindi non si taglia mai (lo controlla
-    tests/test_grafica_b_web.py; misurato anche in Chrome da 320 a 1440 px, PR #415). Qui il prezzo: accanto alla maglia più larga
-    che il CSS ammette (`max-width`, una divisa larga), dal telefono più stretto (320 px) al PC il conto resta più grande del titolo
-    della schermata (32 px), così resta la cosa audace della pagina. Sotto i 260 px la maglia (solo decorazione) non si mostra."""
-    k = float(re.search(r"font-size: min\(var\(--t-eroe\), (\d+(?:\.\d+)?)cqi\)", _regola(CSS, ".conto-testo .enorme")).group(1))
-    maglia = _regola(CSS, ".maglia-hero")
-    assert "height: 72px" in maglia
-    larga = int(re.search(r"max-width: (\d+)px", maglia).group(1))
-    spazio = int(re.search(r"column-gap: (\d+)px", _regola(CSS, ".conto-oggi")).group(1))
-    # colonna del conto alle larghezze di main: telefono 320 e 390 px (16 px per lato), iPad 768 px (24 per lato, due colonne
-    # uguali con 20 px in mezzo), PC 900 e 1024 px (32 per lato, colonne 5:7 con 20 px in mezzo)
-    colonne = {320: 320 - 32, 390: 390 - 32, 768: (768 - 48 - 20) / 2, 900: (900 - 64 - 20) * 5 / 12, 1024: (1024 - 64 - 20) * 5 / 12}
-    for pagina, colonna in colonne.items():
-        assert k * (colonna - larga - spazio) / 100 > 32, pagina
-    senza = _blocco("@container pagina (max-width: 259.98px) {")
-    assert "display: none" in _regola(senza, ".maglia-hero")
-    assert "grid-template-columns: minmax(0, 1fr)" in _regola(senza, ".conto-oggi.con-maglia")
-    sotto_360 = _blocco("@container pagina (max-width: 359.98px) {")                       # la regola dei 132 px a destra non serve più
-    assert ".maglia-hero" not in sotto_360 and ".conto-oggi" not in sotto_360               # (sotto i 360 px resta solo il Diario, PR 11)
+    assert fuori["it"] == [f"fra 1{nb}giorno 8{nb}h", f"fra 2{nb}giorni 14{nb}h", f"fra 3{nb}h 10{nb}min", f"fra 45{nb}min", ""]
+    assert fuori["en"] == [f"in 1{nb}day 8{nb}h", f"in 2{nb}days 14{nb}h", f"in 3{nb}h 10{nb}min", f"in 45{nb}min", ""]
+    assert fuori["chiusa"] == "Formazione chiusa"                       # scadenza passata: niente conto
 
 
 def test_le_impostazioni_non_scorrono_di_lato():

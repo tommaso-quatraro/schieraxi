@@ -225,11 +225,3 @@ def test_la_definizione_unica_e_nella_guida():
 
 # ---------------------------------------------------------------- web app
 APP = codice_web.app()
-
-
-def test_la_scheda_e_la_formazione_mostrano_il_perche():
-    assert "function bloccoPerche(" in APP and "cartaPerche(prSenzaGioca)" in APP         # scheda del giocatore
-    assert "function apriPerche(" in APP and "[data-perche]" in APP            # tocco sul numero in Formazione
-    assert "esc(testoDi(m))" in APP                                 # il testo del server non va mai nell'HTML senza protezione
-    assert "cartaPrecisione(d.precisione)" in APP and "rigaFascia(g)" in APP      # Diario («Quanto ci abbiamo preso», test_precisione.py)
-    assert 'data-perche="${Number(x.id)}"' in APP
