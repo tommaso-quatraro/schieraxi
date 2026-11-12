@@ -98,17 +98,25 @@ def _principale(gruppi: list[dict]) -> int | None:
 
 
 def _confronto(voci: list[dict]) -> dict:
-    """Le giornate in cui c'è la formazione schierata: quante volte la consigliata ha fatto di più, di meno, uguale; `punti` = somma
-    di (consigliata - tua): positivo = seguendo sempre la consigliata avresti fatto più punti."""
-    righe = [(v["consigliata"]["reale"], v["schierata"]["reale"]) for v in voci
-             if isinstance(v.get("schierata"), dict) and isinstance(v.get("consigliata"), dict)
-             and _numero(v["schierata"].get("reale")) is not None and _numero(v["consigliata"].get("reale")) is not None]
+    """Le giornate in cui c'è la formazione schierata e la consigliata è quella MOSTRATA prima della scadenza (#614): quante volte
+    la consigliata ha fatto di più, di meno, uguale; `punti` = somma di (consigliata - tua): positivo = seguendo sempre la
+    consigliata avresti fatto più punti. `senza_istantanea` = le giornate con la tua formazione lasciate fuori perché la
+    consigliata di allora non c'è (quella ricostruita dopo non è ciò che avevi davanti)."""
+    con = [v for v in voci if isinstance(v.get("schierata"), dict) and isinstance(v.get("consigliata"), dict)
+           and _numero(v["schierata"].get("reale")) is not None and _numero(v["consigliata"].get("reale")) is not None]
+    righe = [(v["consigliata"]["reale"], v["schierata"]["reale"]) for v in con if _mostrata(v)]
     if not righe:
-        return {"giornate": 0}
+        return {"giornate": 0, "senza_istantanea": len(con)}
     n = len(righe)
     return {"giornate": n, "meglio_consigliata": sum(1 for c, s in righe if c > s), "meglio_tua": sum(1 for c, s in righe if c < s),
             "pari": sum(1 for c, s in righe if c == s), "punti": round(sum(c - s for c, s in righe), 1),
-            "media_consigliata": round(sum(c for c, _ in righe) / n, 1), "media_tua": round(sum(s for _, s in righe) / n, 1)}
+            "media_consigliata": round(sum(c for c, _ in righe) / n, 1), "media_tua": round(sum(s for _, s in righe) / n, 1),
+            "senza_istantanea": len(con) - n}
+
+
+def _mostrata(voce: dict) -> bool:
+    """Vero se la consigliata della voce è quella mostrata prima della scadenza (`diario.py`): solo con quella si confronta."""
+    return voce["consigliata"].get("origine") == "mostrata"
 
 
 def riassunto(voci: list[dict]) -> dict:
@@ -134,8 +142,9 @@ def riassunto(voci: list[dict]) -> dict:
         per_giornata.append({"stagione": v.get("stagione"), "giornata": v.get("giornata"), "giornata_lega": v.get("giornata_lega"),
                              "fonte": fonte, "errore_fantavoto": fv["errore_medio"] if fv else None, "voti": fv["voti"] if fv else 0,
                              "attesi": _numero(c.get("atteso")), "fatti": _numero(c.get("reale")),
+                             "consigliata": "mostrata" if _mostrata(v) else "ricostruita",
                              "tua": _numero(s.get("reale")) if s else None,
-                             "differenza": round(c["reale"] - s["reale"], 1) if s and _numero(s.get("reale")) is not None
+                             "differenza": round(c["reale"] - s["reale"], 1) if s and _mostrata(v) and _numero(s.get("reale")) is not None
                              and _numero(c.get("reale")) is not None else None})
     sq = diario.affidabilita(voci)
     n = len(per_giornata)

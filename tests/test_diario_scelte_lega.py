@@ -10,7 +10,7 @@ from fanta.regole import Regole
 def _voce(g, tue, cons):
     riga = lambda ids, reale: {"modulo": "4-4-2", "atteso": 60.0, "reale": reale, "dev_simulata": 5.0,
                                "titolari": [{"id": i, "nome": f"G{i}", "ruolo": "C"} for i in ids]}
-    return {"stagione": "2026-27", "giornata": g, "consigliata": riga(cons, 50.0), "schierata": {**riga(tue, 48.0), "tipo": "manuale"},
+    return {"stagione": "2026-27", "giornata": g, "consigliata": riga(cons, 50.0) | {"origine": "mostrata"}, "schierata": {**riga(tue, 48.0), "tipo": "manuale"},
             "automatica": None}
 
 

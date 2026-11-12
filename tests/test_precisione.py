@@ -12,9 +12,10 @@ import codice_web
 ST = "2026-27"
 
 
-def _voce(g, giocatori, atteso=70.0, reale=72.0, tua=None, istantanea=None, basso=62.0, alto=78.0):
+def _voce(g, giocatori, atteso=70.0, reale=72.0, tua=None, istantanea=None, basso=62.0, alto=78.0, origine="mostrata"):
     v = {"stagione": ST, "giornata": g, "giornata_lega": g - 3,
-         "consigliata": {"atteso": atteso, "reale": reale, "intervallo": {"basso": basso, "alto": alto}, "titolari": []},
+         "consigliata": {"atteso": atteso, "reale": reale, "intervallo": {"basso": basso, "alto": alto}, "titolari": [],
+                         "origine": origine},
          "schierata": None if tua is None else {"atteso": atteso, "reale": tua, "titolari": [], "tipo": "manuale"},
          "giocatori": giocatori, "istantanea": istantanea}
     return v
@@ -60,10 +61,23 @@ def test_consigliata_contro_la_tua_e_squadra():
     voci = [_voce(4, [], reale=70, tua=65), _voce(5, [], reale=60, tua=66.5), _voce(6, [], reale=70, tua=70), _voce(7, [], reale=80)]
     r = precisione.riassunto(voci)
     assert r["confronto"] == {"giornate": 3, "meglio_consigliata": 1, "meglio_tua": 1, "pari": 1, "punti": -1.5,
-                              "media_consigliata": 66.7, "media_tua": 67.2}
+                              "media_consigliata": 66.7, "media_tua": 67.2, "senza_istantanea": 0}
     assert [x["differenza"] for x in r["per_giornata"]] == [5.0, -6.5, 0.0, None]
     assert r["squadra"]["giornate"] == 4 and r["squadra"]["con_fascia"] == 4 and r["squadra"]["dentro_fascia"] == 2      # 60 e 80 fuori da 62-78
     assert r["fantavoto"] is None and r["gioca"] is None and r["fonti"] == {"mostrati": 0, "ricostruiti": 0}
+
+
+def test_senza_la_consigliata_mostrata_niente_confronto():
+    """#614: una consigliata ricostruita a giornata finita non è quella che avevi davanti. I numeri della giornata restano, il
+    confronto con la tua formazione e il giudizio sui punti della squadra no."""
+    voci = [_voce(4, [], reale=70, tua=65), _voce(5, [], reale=60, tua=66.5, origine="ricostruita")]
+    r = precisione.riassunto(voci)
+    assert r["confronto"] == {"giornate": 1, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 0, "punti": 5.0,
+                              "media_consigliata": 70.0, "media_tua": 65.0, "senza_istantanea": 1}
+    assert [(x["consigliata"], x["differenza"]) for x in r["per_giornata"]] == [("mostrata", 5.0), ("ricostruita", None)]
+    assert r["squadra"]["giornate"] == 1
+    soli = precisione.riassunto([_voce(5, [], reale=60, tua=66.5, origine="ricostruita")])
+    assert soli["confronto"] == {"giornate": 0, "senza_istantanea": 1} and soli["squadra"] is None
 
 
 def test_brutti_numeri_si_vedono_lo_stesso():
