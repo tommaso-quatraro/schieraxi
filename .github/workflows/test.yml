@@ -117,13 +117,14 @@ jobs:
         run: '"$RUNNER_TEMP/pip-audit/bin/pip-audit" --disable-pip -r requirements.txt -r requirements-dev.txt --progress-spinner off'
 
   # La web in un browser vero (issue #619): i test di tests/browser/ in Chrome senza finestra, quello già installato sui server
-  # di GitHub (nessun browser scaricato). La web si apre su un server finto (script/ci, solo libreria standard) con le risposte
-  # registrate delle tre fasi della giornata (ios/fotografie/, nomi inventati): niente server vero, niente rete, nessun segreto.
-  # Gira nelle PR che toccano la web, i testi, i test del browser, axe, gli scenari, il suo ambiente o questo workflow (passo
-  # «Tocca la web?»: altrimenti i passi si saltano e il job resta verde in pochi secondi); lanciato a mano su un ramo
-  # (`gh workflow run test.yml --ref <ramo>`) gira sempre; su main no. Playwright e pytest in un ambiente a parte, versioni e
-  # hash fissati in .github/browser-requisiti.txt. BROWSER_OBBLIGATORIO=1: senza Playwright o senza Chrome i test falliscono
-  # invece di saltare (qui un test saltato sarebbe un verde finto). Guida: tests/browser/LEGGIMI.md.
+  # di GitHub (nessun browser scaricato). La web si apre sul server finto di script/ci/server_finto.py (solo libreria standard)
+  # con le risposte registrate delle tre fasi della giornata (ios/fotografie/, nomi inventati): niente server vero, niente
+  # rete, nessun segreto. Gira nelle PR che toccano la web, i testi, i test del browser, axe, gli scenari, il server finto, il
+  # suo ambiente o questo workflow (passo «Tocca la web?»: altrimenti i passi si saltano e il job resta verde in pochi
+  # secondi); lanciato a mano su un ramo (`gh workflow run test.yml --ref <ramo>`) gira sempre; su main no. Playwright e
+  # pytest in un ambiente a parte, versioni e hash fissati in .github/browser-requisiti.txt. BROWSER_OBBLIGATORIO=1: senza
+  # Playwright o senza Chrome i test falliscono invece di saltare (qui un test saltato sarebbe un verde finto).
+  # Guida: tests/browser/LEGGIMI.md.
   # Per ora SOLO AVVISO: fuori dai «needs» di «unisci». Diventa bloccante quando la web nuova è unita: «browser» nei needs di
   # «unisci» e «needs.browser.result == 'success'» nella sua condizione (nelle PR il job non si salta mai: basta questo).
   browser:
@@ -144,7 +145,8 @@ jobs:
         run: |
           serve=true
           if [ "$EVENTO" = pull_request ]; then
-            if ! git diff --name-only HEAD^1 HEAD | grep -qE '^(fanta/web/|fanta/testi/|tests/browser/|tests/strumenti/axe/|ios/fotografie/|\.github/workflows/test\.yml$|\.github/browser-requisiti\.txt$)'; then
+            # --no-renames: un file spostato conta col percorso vecchio e col nuovo (senza, git dice solo il nuovo)
+            if ! git diff --name-only --no-renames HEAD^1 HEAD | grep -qE '^(fanta/web/|fanta/testi/|tests/browser/|tests/strumenti/axe/|ios/fotografie/|script/ci/server_finto\.py$|\.github/workflows/test\.yml$|\.github/browser-requisiti\.txt$)'; then
               serve=false
             fi
           fi

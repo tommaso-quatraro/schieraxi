@@ -54,11 +54,18 @@ def test_il_job_browser_gira_nelle_pr_e_a_mano_su_un_ramo_non_su_main():
     ("fanta/web/app.js", True), ("fanta/web/stile.css", True), ("fanta/testi/it.json", True),
     ("tests/browser/test_prima_schermata.py", True), ("tests/strumenti/axe/axe.min.js", True),
     ("ios/fotografie/vero-prima.json", True), (".github/workflows/test.yml", True), (".github/browser-requisiti.txt", True),
+    ("script/ci/server_finto.py", True),                     # il server finto su cui i test aprono la web
     ("fanta/server.py", False), ("fanta/webapp.py", False), ("docs/API.md", False), ("tests/test_server.py", False),
     ("ios/Sources/App.swift", False), (".github/workflows/test.yml.bak", False), ("script/ci/controlla_pr.py", False),
+    ("script/ci/server_finto.py.bak", False),
 ])
 def test_il_job_browser_parte_solo_se_la_pr_tocca_la_web(file, serve):
     assert bool(_filtro().search(file)) is serve, file
+
+
+def test_un_file_spostato_fuori_dalla_web_conta():
+    """Con le rinomine git stampa solo il percorso nuovo: spostare fanta/web/a.js in altro/a.js non farebbe partire i test."""
+    assert "git diff --name-only --no-renames HEAD^1 HEAD | grep -qE" in _job("browser")
 
 
 def test_il_job_browser_ha_permessi_minimi_e_niente_testo_della_pr():
@@ -149,11 +156,12 @@ def test_una_richiesta_annullata_non_e_fallita(appoggio):
 
 
 class _Prova:
-    def __init__(self, segni):
-        self.segni, self.aggiunti = set(segni), []
+    """Un test raccolto da pytest, finto: dove sta e i suoi segni."""
+    def __init__(self, percorso: Path, segni=()):
+        self.path, self.segni, self.aggiunti = percorso, set(segni), []
 
     def get_closest_marker(self, nome):
-        return nome if nome in self.segni else None
+        return nome if nome in self.segni or any(s.name == nome for s in self.aggiunti) else None
 
     def add_marker(self, segno):
         self.aggiunti.append(segno)
@@ -161,10 +169,18 @@ class _Prova:
 
 @pytest.mark.parametrize("scelta, saltati", [("", True), ("not lento", True), ("browser", False)])
 def test_i_test_del_browser_girano_solo_con_m_browser(appoggio, scelta, saltati):
-    del_browser, normale = _Prova({"browser"}), _Prova(set())
+    del_browser = _Prova(RADICE / "tests" / "browser" / "test_x.py")           # senza segno: lo mette conftest.py
+    altrove = _Prova(RADICE / "tests" / "test_server.py")
+    segnato_altrove = _Prova(RADICE / "tests" / "test_y.py", {"browser"})
     config = SimpleNamespace(getoption=lambda nome: scelta if nome == "markexpr" else None)
-    appoggio.pytest_collection_modifyitems(config, [del_browser, normale])
-    assert normale.aggiunti == []
-    assert bool(del_browser.aggiunti) is saltati
+    appoggio.pytest_collection_modifyitems(config, [del_browser, altrove, segnato_altrove])
+    assert altrove.aggiunti == []
+    assert [s.name for s in del_browser.aggiunti] == (["browser", "skip"] if saltati else ["browser"])
+    assert [s.name for s in segnato_altrove.aggiunti] == (["skip"] if saltati else [])
     if saltati:
-        assert del_browser.aggiunti[0].name == "skip" and "-m browser" in del_browser.aggiunti[0].kwargs["reason"]
+        assert "-m browser" in del_browser.aggiunti[1].kwargs["reason"]
+
+
+def test_il_segno_si_mette_prima_della_scelta_di_m(appoggio):
+    """La scelta di `-m browser` la fa un hook di pytest sugli stessi test: il segno va messo prima, o il test sparisce."""
+    assert getattr(appoggio.pytest_collection_modifyitems, "pytest_impl", {}).get("tryfirst") is True

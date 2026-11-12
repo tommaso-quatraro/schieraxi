@@ -1,10 +1,9 @@
 """La prima schermata della web nelle tre fasi della giornata (prima della scadenza, in corso, finita), in Chrome vero.
 
-Valgono per ogni versione della web: nessun selettore né testo di una schermata, solo ciò che una web sana fa sempre.
-Ogni test gira una volta per fase (fixture `web`, tests/browser/conftest.py)."""
+Valgono per ogni versione della web: nessun selettore né testo di una schermata, solo ciò che una web sana fa sempre e i
+due patti di tests/browser/LEGGIMI.md (contenuto in `<main>`, errori mostrati con role="alert").
+Ogni test gira una volta per fase (fixture `web`, tests/browser/conftest.py); il segno `browser` lo mette conftest.py."""
 import pytest
-
-pytestmark = pytest.mark.browser
 
 LARGHEZZE = [390, 1440]
 TEMI = ["chiaro", "scuro"]
@@ -16,9 +15,10 @@ def _elenco(voci) -> str:
 
 @pytest.mark.parametrize("tema", TEMI)
 @pytest.mark.parametrize("larghezza", LARGHEZZE)
-def test_si_apre_senza_errori_della_console(web, larghezza, tema):
+def test_si_apre_con_il_contenuto_e_senza_errori(web, larghezza, tema):
     web.apri("/", larghezza=larghezza, tema=tema)
-    assert web.testo_visibile(), f"{web.fase}: la prima schermata è vuota"
+    assert web.testo_principale(), f"{web.fase}: l'area principale (<main>) della prima schermata è vuota o manca"
+    assert not web.errori_mostrati(), f"{web.fase}: la prima schermata mostra un errore:{_elenco(web.errori_mostrati())}"
     assert not web.errori_console, f"{web.fase}: errori nella console:{_elenco(web.errori_console)}"
 
 

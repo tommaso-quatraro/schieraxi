@@ -1,27 +1,28 @@
 """Test della web in un browser vero (issue #619): Chrome senza finestra, con le risposte registrate delle tre fasi della giornata.
 
-Il server di prova è quello della regressione visiva (`ServerFinto` di script/ci/aspetto_web.py): serve `fanta/web/` e risponde
-alle `/api/...` con uno scenario registrato di ios/fotografie/ (nomi inventati). Niente server vero, niente rete, nessun segreto.
-Ogni test che chiede `web` gira tre volte, una per fase: `prima` (prima della scadenza), `in-corso`, `finita`.
+Il server di prova è il server finto di script/ci/server_finto.py (lo stesso della regressione visiva): serve `fanta/web/` e
+risponde alle `/api/...` con uno scenario registrato di ios/fotografie/ (nomi inventati). Niente server vero, niente rete,
+nessun segreto. Ogni test che chiede `web` gira tre volte, una per fase: `prima` (prima della scadenza), `in-corso`, `finita`.
 
 Si lanciano a parte, con l'ambiente di Playwright (tests/browser/LEGGIMI.md):
     <venv-playwright>/python -m pytest -m browser --confcutdir tests/browser tests/browser
-Nella suite normale (senza `-m browser`) si saltano. Senza la libreria Playwright o senza Chrome si saltano; con la variabile
-BROWSER_OBBLIGATORIO=1 (il job «browser» dei controlli) invece falliscono: lì un test saltato sarebbe un verde finto.
+Ogni test di questa cartella ha da solo il segno `browser`. Nella suite normale (senza `-m browser`) si saltano. Senza la
+libreria Playwright o senza Chrome si saltano; con la variabile BROWSER_OBBLIGATORIO=1 (il job «browser» dei controlli)
+invece falliscono: lì un test saltato sarebbe un verde finto.
 """
 from __future__ import annotations
 
 import importlib.util
 import json
 import os
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
 
-RADICE = Path(__file__).resolve().parents[2]
+CARTELLA = Path(__file__).resolve().parent
+RADICE = CARTELLA.parents[1]
 WEB = RADICE / "fanta" / "web"
 SCENARI = RADICE / "ios" / "fotografie"
 AXE = RADICE / "tests" / "strumenti" / "axe" / "axe.min.js"
@@ -33,8 +34,22 @@ FUSO = "Europe/Rome"                                              # «adesso» d
 # /api/avatar: i tratti dei volti vengono dalle foto vere dei calciatori; senza tratti l'app disegna i volti dal codice.
 RISPOSTE_IN_PIU = {"/api/avatar": {"versione": 3, "tratti": {}}}
 
-# La pagina è pronta quando la rete è ferma e poi il DOM non cambia per 300 ms (al massimo 8 s): vale per ogni versione della
-# web, senza selettori di una schermata.
+# Patti con ogni versione della web (tests/browser/LEGGIMI.md), senza selettori di una schermata:
+# - il contenuto della schermata sta nell'area principale, `<main>` (o un elemento con role="main");
+# - un errore mostrato all'utente ha role="alert" (la web di oggi usa anche la classe `errore`).
+AREA_PRINCIPALE = "main, [role=main]"
+TESTO_PRINCIPALE = """(area) => { const m = document.querySelector(area);
+  return m ? (m.innerText || '').trim() : ''; }"""
+AREA_CON_TESTO = f"(area) => ({TESTO_PRINCIPALE})(area).length > 0"
+ERRORI_MOSTRATI = """(area) => { const m = document.querySelector(area);
+  if (!m) return [];
+  const visto = e => e.getClientRects().length > 0 && (e.innerText || '').trim();
+  const trovati = [...m.querySelectorAll('[role=alert], .errore')].filter(visto);
+  return trovati.filter(e => !trovati.some(a => a !== e && a.contains(e)))
+    .map(e => e.innerText.trim().replace(/\\s+/g, ' ').slice(0, 200)); }"""
+# Attesa: prima un segnale preciso (area principale con testo, al massimo 10 s), poi la rete ferma (al massimo 2 s) e il DOM
+# fermo per 300 ms (al massimo 3 s). Una richiesta che resta aperta costa così pochi secondi, non venti.
+LIMITE_AREA_MS, LIMITE_RETE_MS = 10000, 2000
 DOM_FERMO = """() => new Promise(fatto => {
   let ultimo = performance.now();
   const inizio = ultimo;
@@ -42,7 +57,7 @@ DOM_FERMO = """() => new Promise(fatto => {
   osservatore.observe(document, {subtree: true, childList: true, attributes: true, characterData: true});
   const giro = () => {
     const ora = performance.now();
-    if (ora - ultimo >= 300 || ora - inizio >= 8000) { osservatore.disconnect(); fatto(); } else setTimeout(giro, 50);
+    if (ora - ultimo >= 300 || ora - inizio >= 3000) { osservatore.disconnect(); fatto(); } else setTimeout(giro, 50);
   };
   setTimeout(giro, 50);
 })"""
@@ -60,8 +75,13 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "browser: test della web in Chrome senza finestra (tests/browser/LEGGIMI.md)")
 
 
+@pytest.hookimpl(tryfirst=True)              # prima della scelta di `-m`: un test senza segno sarebbe escluso
 def pytest_collection_modifyitems(config, items):
-    """I test del browser girano solo se scelti con `-m browser`: la suite normale non apre Chrome."""
+    """Ogni test di tests/browser/ ha il segno `browser` (anche se chi lo scrive se ne dimentica), e i test del browser
+    girano solo se scelti con `-m browser`: la suite normale non apre Chrome."""
+    for item in items:
+        if CARTELLA in Path(str(item.path)).resolve().parents:
+            item.add_marker(pytest.mark.browser)
     if "browser" in (config.getoption("markexpr") or ""):
         return
     salta = pytest.mark.skip(reason="test del browser: si lanciano a parte con -m browser (tests/browser/LEGGIMI.md)")
@@ -76,11 +96,10 @@ def _manca(motivo: str):
     pytest.skip(f"{motivo}: vedi tests/browser/LEGGIMI.md")
 
 
-def _aspetto_web():
-    """script/ci/aspetto_web.py come modulo (non è un pacchetto): il server finto e la scelta degli indirizzi locali."""
-    spec = importlib.util.spec_from_file_location("aspetto_web_per_browser", RADICE / "script" / "ci" / "aspetto_web.py")
+def _server_finto():
+    """script/ci/server_finto.py come modulo (script/ci non è un pacchetto)."""
+    spec = importlib.util.spec_from_file_location("server_finto_per_browser", RADICE / "script" / "ci" / "server_finto.py")
     modulo = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = modulo          # le dataclass con `from __future__ import annotations` cercano qui il loro modulo
     spec.loader.exec_module(modulo)
     return modulo
 
@@ -124,10 +143,10 @@ def scenario_completo(fase: str, cartella: Path) -> Path:
 @pytest.fixture(scope="session", params=list(FASI))
 def server_fase(request, tmp_path_factory):
     """Il server di prova di una fase, su un indirizzo di loopback suo (127.0.0.NN) e una porta libera."""
-    aw = _aspetto_web()
+    sf = _server_finto()
     scenario = scenario_completo(request.param, tmp_path_factory.mktemp(f"scenario-{request.param}"))
-    host = aw.host_per(aw.porta_libera("127.0.0.1") + list(FASI).index(request.param))
-    with aw.ServerFinto(WEB, scenario, aw.porta_libera(host), host=host) as s:
+    host = sf.host_per(sf.porta_libera("127.0.0.1") + list(FASI).index(request.param))
+    with sf.ServerFinto(WEB, scenario, sf.porta_libera(host), host=host) as s:
         yield ServerFase(request.param, s.indirizzo, s.adesso)
 
 
@@ -152,16 +171,28 @@ class Web:
         self.aspetta()
 
     def aspetta(self) -> None:
-        """Dopo un clic o un cambio: rete ferma (al massimo 10 s), poi DOM fermo, poi animazioni portate alla fine."""
+        """Dopo l'apertura, un clic o un cambio: area principale con testo, rete ferma, DOM fermo, animazioni portate alla
+        fine. Un'attesa scaduta non ferma il test: lo dicono i controlli dopo (per esempio «area principale vuota»)."""
+        from playwright.sync_api import TimeoutError as AttesaScaduta
         try:
-            self.pagina.wait_for_load_state("networkidle", timeout=10000)
-        except Exception:                    # una richiesta lunga: si va avanti, il DOM fermo basta
+            self.pagina.wait_for_function(AREA_CON_TESTO, arg=AREA_PRINCIPALE, timeout=LIMITE_AREA_MS)
+        except AttesaScaduta:
+            pass
+        try:
+            self.pagina.wait_for_load_state("networkidle", timeout=LIMITE_RETE_MS)
+        except AttesaScaduta:                # una richiesta che resta aperta: il DOM fermo basta
             pass
         self.pagina.evaluate(DOM_FERMO)
         self.pagina.evaluate(FINISCI_ANIMAZIONI)
 
-    def testo_visibile(self) -> str:
-        return self.pagina.evaluate("() => (document.body && document.body.innerText || '').trim()")
+    def testo_principale(self) -> str:
+        """Il testo dell'area principale (`<main>` o role="main"); vuoto se l'area non c'è."""
+        return self.pagina.evaluate(TESTO_PRINCIPALE, AREA_PRINCIPALE)
+
+    def errori_mostrati(self) -> list[str]:
+        """I messaggi d'errore visibili nell'area principale: elementi con role="alert" (o, nella web di oggi, con la classe
+        `errore`) che hanno del testo."""
+        return self.pagina.evaluate(ERRORI_MOSTRATI, AREA_PRINCIPALE)
 
     def scorre_di_lato(self) -> bool:
         return self.pagina.evaluate(SCORRE_DI_LATO)

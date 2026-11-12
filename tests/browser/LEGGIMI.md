@@ -3,9 +3,10 @@
 Qui la web si prova in Chrome vero, senza finestra: pochi test di **comportamento** (cosa succede nella pagina), che
 reggono a un rifacimento della grafica. Non cercano stringhe nel codice di `fanta/web/`.
 
-La web si apre su un server finto (`ServerFinto` di `script/ci/aspetto_web.py`, solo libreria standard): serve `fanta/web/`
-e risponde alle `/api/...` con le risposte registrate di `ios/fotografie/` (nomi inventati). Niente server vero, niente
-rete, nessun segreto. Ogni test che usa la fixture `web` gira **tre volte**, una per fase della giornata:
+La web si apre sul server finto di `script/ci/server_finto.py` (solo libreria standard, lo stesso della regressione
+visiva): serve `fanta/web/` e risponde alle `/api/...` con le risposte registrate di `ios/fotografie/` (nomi inventati).
+Niente server vero, niente rete, nessun segreto. Ogni test che usa la fixture `web` gira **tre volte**, una per fase della
+giornata:
 
 | fase | scenario | momento |
 |---|---|---|
@@ -16,10 +17,20 @@ rete, nessun segreto. Ogni test che usa la fixture `web` gira **tre volte**, una
 L'orologio della pagina è fermo sul momento dello scenario (`adesso`), in italiano e con l'ora italiana; ogni test parte
 da una scheda nuova (nessun dato salvato da un test prima).
 
+## Due patti con ogni versione della web
+I test non conoscono le schermate: si appoggiano a due regole che ogni versione della web rispetta.
+- **Il contenuto della schermata sta nell'area principale**: `<main>` (o un elemento con `role="main"`). Una schermata
+  con l'area principale vuota è rotta, anche se la testata c'è.
+- **Un errore mostrato all'utente ha `role="alert"`** (lo legge subito anche chi usa un lettore di schermo). Un elemento
+  `role="alert"` con del testo, visibile nell'area principale, fa fallire i test della prima schermata. La web di oggi
+  scrive gli errori anche con la classe `errore`, che vale lo stesso. Un contenitore `role="alert"` vuoto, pronto per un
+  messaggio, va bene.
+
 ## Quando girano
 - **Nelle pull request**: job `browser` dei controlli (`.github/workflows/test.yml`), quando la PR tocca `fanta/web/`,
-  `fanta/testi/`, `tests/browser/`, `tests/strumenti/axe/`, `ios/fotografie/`, `.github/browser-requisiti.txt` o
-  `test.yml`. Per ora è solo un avviso (fuori dai `needs` di `unisci`).
+  `fanta/testi/`, `tests/browser/`, `tests/strumenti/axe/`, `ios/fotografie/`, `script/ci/server_finto.py`,
+  `.github/browser-requisiti.txt` o `test.yml` (anche spostando un file da lì). Per ora è solo un avviso (fuori dai
+  `needs` di `unisci`).
 - **A mano su un ramo**: `gh workflow run test.yml --ref <ramo>` (girano tutti i controlli, questo compreso).
 - **Nella suite normale no**: senza `-m browser` si saltano. Si saltano anche se mancano Playwright o Chrome; nel job dei
   controlli (variabile `BROWSER_OBBLIGATORIO=1`) invece falliscono, perché lì un test saltato sarebbe un verde finto.
@@ -44,36 +55,38 @@ Poi, dalla radice del repository (anche da una worktree), circa un minuto:
 
 ## Cosa controllano oggi
 `test_prima_schermata.py`, in ognuna delle tre fasi, a 390 e 1440 px, tema chiaro e scuro:
-- la prima schermata si apre, non è vuota e non scrive errori nella console (né errori del codice);
-- nessuna richiesta fallita (risposta 4xx o 5xx, o richiesta che non arriva);
+- la prima schermata ha del testo nell'area principale, non mostra errori (`role="alert"`) e non scrive errori nella
+  console (né errori del codice);
+- nessuna richiesta fallita (risposta 4xx o 5xx, o richiesta che non arriva; una richiesta annullata non conta);
 - a 390 px la pagina non è più larga dello schermo (niente scorrimento di lato);
 - nessuna violazione grave (`critical` o `serious`) di axe, regole WCAG 2.0, 2.1 e 2.2 livelli A e AA
   (`tests/strumenti/axe/`).
 
 ## Aggiungere un test di comportamento (dieci righe)
-Un file `tests/browser/test_<cosa>.py`:
+Un file `tests/browser/test_<cosa>.py`. Il segno `browser` lo mette da solo `conftest.py` a ogni test di questa cartella:
+non serve scriverlo.
 
 ```python
 import pytest
-
-pytestmark = pytest.mark.browser
 
 
 @pytest.mark.parametrize("vista", ["formazione", "squadra"])
 def test_la_vista_si_apre_pulita(web, vista):
     web.apri(f"/?vista={vista}")                     # larghezza=390, tema="chiaro" di norma
-    assert web.testo_visibile(), f"{web.fase}: pagina vuota"
+    assert web.testo_principale(), f"{web.fase}: area principale vuota"
+    assert not web.errori_mostrati(), web.errori_mostrati()
     assert not web.errori_console, web.errori_console
     assert not web.richieste_fallite, web.richieste_fallite
 ```
 
 Cosa offre la fixture `web`:
-- `web.apri(percorso, larghezza=390, tema="chiaro")`: apre un indirizzo e aspetta che la pagina sia ferma (rete ferma,
-  poi DOM fermo per 300 ms, animazioni portate alla fine);
+- `web.apri(percorso, larghezza=390, tema="chiaro")`: apre un indirizzo e aspetta che la pagina sia pronta (area
+  principale con del testo, al massimo 10 s; poi rete ferma, al massimo 2 s; poi DOM fermo per 300 ms, al massimo 3 s;
+  animazioni portate alla fine). Un'attesa scaduta non ferma il test: lo dicono i controlli dopo;
 - `web.pagina`: la pagina di Playwright, per cliccare e leggere (`web.pagina.get_by_role("button", name="…").click()`);
   dopo un clic, `web.aspetta()`;
 - `web.errori_console`, `web.richieste_fallite`: liste che si riempiono da sole;
-- `web.testo_visibile()`, `web.scorre_di_lato()`, `web.violazioni_gravi()`;
+- `web.testo_principale()`, `web.errori_mostrati()`, `web.scorre_di_lato()`, `web.violazioni_gravi()`;
 - `web.fase`: `prima`, `in-corso` o `finita` (per un test che vale per una fase sola:
   `if web.fase != "prima": pytest.skip("solo prima della scadenza")`).
 
