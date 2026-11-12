@@ -134,7 +134,8 @@ def test_diario_gia_calcolato_con_la_consigliata_congelata_come_oggi(vero, salva
     v = diario.carica(vero.file)["giornate"][f"{ST}/1"]
     assert v["schierata"] is None and v["automatica"] is not None                  # prima: vuota, e il Diario diceva «non salvata»
     assert [t["id"] for t in v["automatica"]["titolari"]] == congelata
-    assert v["automatica"]["reale"] == 11 * 6 and v["consigliata"]["reale"] != 11 * 6       # la ricostruzione è un'altra
+    assert v["automatica"]["reale"] == 11 * 6 and v["ricostruita"]["reale"] != 11 * 6       # la ricostruzione è un'altra
+    assert v["consigliata"]["origine"] == "mostrata" and v["consigliata"]["reale"] == 11 * 6       # il confronto è con la congelata (#614)
     r = fasi.blocco_riepilogo(vero.db, Regole(), vero.rose, ST, 1, vero.scelte, vero.file)  # il riepilogo di Oggi
     assert r["nel_diario"] is True and r["formazione_di"] == "consigliata" and r["punti_fatti"] == 11 * 6
     assert diario.aggiorna(vero.db, Regole(), vero.rose, vero.file, simulazioni=50, file_scelte=vero.scelte) == 0   # resta ferma

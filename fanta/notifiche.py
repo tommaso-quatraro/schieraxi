@@ -850,7 +850,7 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     pan = [per_id[i] for i in dict.fromkeys(panchina_ids or []) if i in per_id and i not in ids] or fz._panchina(lista, tit, regole)
     punti = fz.punteggio(tit, pan, gioca, {g.id: fv_vero.get(g.id, 0.0) for g in lista}, {g.id: voto_vero.get(g.id, 0.0) for g in lista}, regole)
     attesi = fz.Valutatore(lista, regole, 600).atteso(tit, pan)
-    massimo = verifica._perfetta(lista, fv_vero, regole)
+    massimo = max(verifica._perfetta(lista, fv_vero, regole, voto_vero), punti)      # con le regole della lega (#614)
     parti = [F("n.riepilogo", giornata=_giornata(giornata, regole), fonte=fonte, punti=float(punti), attesi=float(attesi), massimo=float(massimo))]
     migliori = sorted((t for t in tit if gioca[t.id]), key=lambda t: -fv_vero[t.id])[:3]
     if migliori:

@@ -11,6 +11,11 @@
     "it": "La tua, la consigliata ({modulo})",
     "en": "Yours, the recommended one ({modulo})"
   },
+  "diario.la_consigliata": {
+    "it": "La consigliata ({modulo})",
+    "en": "The recommended one ({modulo})",
+    "nota": "riga dei punti della consigliata mostrata prima della scadenza (consigliata.origine = mostrata)"
+  },
   "diario.salvata": {
     "it": "Salvato: ho segnato che hai schierato la consigliata",
     "en": "Saved: I noted that you fielded the recommended lineup"

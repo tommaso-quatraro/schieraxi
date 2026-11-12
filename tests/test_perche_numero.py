@@ -152,7 +152,8 @@ def test_previsioni_vere_hanno_i_motivi_per_ogni_giocatore():
 
 # ---------------------------------------------------------------- Diario: atteso contro fatto
 def _voce(g, atteso, reale, basso, alto):
-    return {"stagione": ST, "giornata": g, "consigliata": {"atteso": atteso, "reale": reale, "intervallo": {"basso": basso, "alto": alto}}}
+    return {"stagione": ST, "giornata": g, "consigliata": {"atteso": atteso, "reale": reale, "intervallo": {"basso": basso, "alto": alto},
+                                                           "origine": "mostrata"}}
 
 
 def test_atteso_contro_fatto_di_una_giornata():
@@ -194,7 +195,9 @@ def test_l_elenco_del_diario_porta_atteso_contro_fatto_e_affidabilita(tmp_path):
     r = diario.elenco(f)
     voce = r["giornate"][0]
     assert voce["atteso_vs_fatto"]["scarto"] == -4.0 and voce["atteso_vs_fatto"]["intervallo"]["basso"] < 70.0 < voce["atteso_vs_fatto"]["intervallo"]["alto"]
-    assert r["affidabilita"]["giornate"] == 1 and r["affidabilita"]["giudizio"] == "pochi_dati"
+    # una voce scritta prima di #614 ha la consigliata ricostruita: i numeri ci sono, ma non entrano nel giudizio
+    assert voce["atteso_vs_fatto"]["riferimento"] == "ricostruita" and voce["consigliata"]["origine"] == "ricostruita"
+    assert r["affidabilita"]["giornate"] == 0 and r["affidabilita"]["senza_istantanea"] == 1 and r["affidabilita"]["giudizio"] == "pochi_dati"
 
 
 # ---------------------------------------------------------------- un solo nome: «Fantavoto atteso»

@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// «Le tue scelte» in cima al Diario: un numero grande («5 su 9»), tre conti (tu, consiglio, pari) e le ultime giornate.
+/// «Le tue scelte» in cima al Diario: un numero grande («5 su 9»), tre conti (tu, consiglio, pari) e le ultime giornate, con
+/// sotto la frase del server sulle giornate senza verdetto (#614). Senza giornate con un verdetto la scheda ha solo quella frase.
 /// Una sola frase per VoiceOver sul riepilogo; le righe delle giornate si leggono una per una.
 struct SchedaScelteTueView: View {
     let testo: ScelteTueTesto
@@ -11,9 +12,21 @@ struct SchedaScelteTueView: View {
 
     var body: some View {
         Carta("Le tue scelte", simbolo: "person.crop.circle.badge.questionmark") {
-            riepilogo
-            if !testo.righe.isEmpty { Divider(); giornate }
+            if testo.soloNota {
+                if let nota = testo.nota { fraseNota(nota) }
+            } else {
+                riepilogo
+                if !testo.righe.isEmpty { Divider(); giornate }
+            }
         }
+    }
+
+    /// La frase del server, piccola e grigia come sulla web; va a capo, mai tagliata.
+    private func fraseNota(_ nota: String) -> some View {
+        Text(nota)
+            .font(.subheadline).foregroundStyle(Color.testoSecondario)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var riepilogo: some View {
@@ -28,6 +41,7 @@ struct SchedaScelteTueView: View {
             if !testo.fraseCommento.isEmpty {
                 Text(testo.fraseCommento).font(.subheadline).foregroundStyle(Color.testoSecondario)
             }
+            if let nota = testo.nota { fraseNota(nota) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)

@@ -1,0 +1,333 @@
+{
+ "casi": {
+  "tutte_fuori": {
+   "giornate": [],
+   "scelte_tue": {
+    "giornate": 0,
+    "pochi_dati": true,
+    "per_giornata": [],
+    "senza_istantanea": 3,
+    "stessi_titolari": 0,
+    "nota": "3 giornate non entrano nel confronto: la consigliata di allora non era stata salvata.",
+    "nota_frase": {
+     "chiave": "diario.confronto_fuori",
+     "param": {
+      "n": 3
+     }
+    }
+   },
+   "precisione": {
+    "giornate": 3,
+    "pochi_dati": true,
+    "giornate_minime": 8,
+    "fonti": {
+     "mostrati": 0,
+     "ricostruiti": 0
+    },
+    "fantavoto": null,
+    "gioca": null,
+    "confronto": {
+     "giornate": 0,
+     "senza_istantanea": 3,
+     "stessi_titolari": 0,
+     "nota": "3 giornate non entrano nel confronto: la consigliata di allora non era stata salvata.",
+     "nota_frase": {
+      "chiave": "diario.confronto_fuori",
+      "param": {
+       "n": 3
+      }
+     }
+    },
+    "squadra": null,
+    "per_giornata": [
+     {
+      "stagione": "2026-27",
+      "giornata": 1,
+      "giornata_lega": 1,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     },
+     {
+      "stagione": "2026-27",
+      "giornata": 2,
+      "giornata_lega": 2,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     },
+     {
+      "stagione": "2026-27",
+      "giornata": 3,
+      "giornata_lega": 3,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     }
+    ]
+   }
+  },
+  "una_uguale": {
+   "giornate": [],
+   "scelte_tue": {
+    "giornate": 0,
+    "pochi_dati": true,
+    "per_giornata": [],
+    "senza_istantanea": 5,
+    "stessi_titolari": 1,
+    "nota": "Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. 5 giornate non entrano nel confronto: la consigliata di allora non era stata salvata.",
+    "nota_frase": {
+     "chiave": "diario.confronto_stessa_fuori",
+     "param": {
+      "fuori": {
+       "chiave": "diario.confronto_fuori",
+       "param": {
+        "n": 5
+       }
+      }
+     }
+    }
+   },
+   "precisione": {
+    "giornate": 6,
+    "pochi_dati": true,
+    "giornate_minime": 8,
+    "fonti": {
+     "mostrati": 0,
+     "ricostruiti": 0
+    },
+    "fantavoto": null,
+    "gioca": null,
+    "confronto": {
+     "giornate": 0,
+     "senza_istantanea": 5,
+     "stessi_titolari": 1,
+     "nota": "Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. 5 giornate non entrano nel confronto: la consigliata di allora non era stata salvata.",
+     "nota_frase": {
+      "chiave": "diario.confronto_stessa_fuori",
+      "param": {
+       "fuori": {
+        "chiave": "diario.confronto_fuori",
+        "param": {
+         "n": 5
+        }
+       }
+      }
+     }
+    },
+    "squadra": {
+     "giornate": 1,
+     "punti_medi_attesi": 70.0,
+     "punti_medi_fatti": 70.0,
+     "scarto_medio": 0.0,
+     "errore_medio": 0.0,
+     "dentro_fascia": 0,
+     "con_fascia": 0,
+     "percentuale_dentro": null,
+     "fascia_dichiarata": 80
+    },
+    "per_giornata": [
+     {
+      "stagione": "2026-27",
+      "giornata": 1,
+      "giornata_lega": 1,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     },
+     {
+      "stagione": "2026-27",
+      "giornata": 2,
+      "giornata_lega": 2,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     },
+     {
+      "stagione": "2026-27",
+      "giornata": 3,
+      "giornata_lega": 3,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     },
+     {
+      "stagione": "2026-27",
+      "giornata": 4,
+      "giornata_lega": 4,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     },
+     {
+      "stagione": "2026-27",
+      "giornata": 5,
+      "giornata_lega": 5,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     },
+     {
+      "stagione": "2026-27",
+      "giornata": 6,
+      "giornata_lega": 6,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "mostrata",
+      "tua": 66.0,
+      "differenza": 4.0
+     }
+    ]
+   }
+  },
+  "verdetto": {
+   "giornate": [],
+   "scelte_tue": {
+    "giornate": 1,
+    "meglio_tua": 0,
+    "meglio_consigliata": 1,
+    "pari": 0,
+    "punti_differenza": -4.0,
+    "percentuale_tua": 0,
+    "pochi_dati": true,
+    "per_giornata": [
+     {
+      "stagione": "2026-27",
+      "giornata": 2,
+      "giornata_lega": 2,
+      "hai_scelto": [
+       "G12"
+      ],
+      "consigliava": [
+       "G1"
+      ],
+      "punti_tua": 66.0,
+      "punti_consigliata": 70.0,
+      "differenza": -4.0,
+      "esito": "consigliata"
+     }
+    ],
+    "senza_istantanea": 1,
+    "stessi_titolari": 0,
+    "nota": "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+    "nota_frase": {
+     "chiave": "diario.confronto_fuori",
+     "param": {
+      "n": 1
+     }
+    }
+   },
+   "precisione": {
+    "giornate": 2,
+    "pochi_dati": true,
+    "giornate_minime": 8,
+    "fonti": {
+     "mostrati": 0,
+     "ricostruiti": 0
+    },
+    "fantavoto": null,
+    "gioca": null,
+    "confronto": {
+     "giornate": 1,
+     "meglio_consigliata": 1,
+     "meglio_tua": 0,
+     "pari": 0,
+     "punti": 4.0,
+     "media_consigliata": 70.0,
+     "media_tua": 66.0,
+     "senza_istantanea": 1,
+     "stessi_titolari": 0,
+     "nota": "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+     "nota_frase": {
+      "chiave": "diario.confronto_fuori",
+      "param": {
+       "n": 1
+      }
+     }
+    },
+    "squadra": {
+     "giornate": 1,
+     "punti_medi_attesi": 70.0,
+     "punti_medi_fatti": 70.0,
+     "scarto_medio": 0.0,
+     "errore_medio": 0.0,
+     "dentro_fascia": 0,
+     "con_fascia": 0,
+     "percentuale_dentro": null,
+     "fascia_dichiarata": 80
+    },
+    "per_giornata": [
+     {
+      "stagione": "2026-27",
+      "giornata": 1,
+      "giornata_lega": 1,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "ricostruita",
+      "tua": 66.0,
+      "differenza": null
+     },
+     {
+      "stagione": "2026-27",
+      "giornata": 2,
+      "giornata_lega": 2,
+      "fonte": null,
+      "errore_fantavoto": null,
+      "voti": 0,
+      "attesi": 70.0,
+      "fatti": 70.0,
+      "consigliata": "mostrata",
+      "tua": 66.0,
+      "differenza": 4.0
+     }
+    ]
+   }
+  }
+ }
+}

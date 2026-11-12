@@ -1,0 +1,50 @@
+{
+  "giornate": [
+    {
+      "stagione": "2026-27", "giornata": 11, "giornata_lega": 8, "modificabile": true,
+      "consigliata": {"modulo": "3-4-3", "atteso": 72.5, "reale": 64.5, "dev_simulata": 2.1, "origine": "mostrata",
+                      "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 4, "nome": "G4", "ruolo": "D"}]},
+      "ricostruita": {"modulo": "4-4-2", "atteso": 71.0, "reale": 66.0, "dev_simulata": 2.0, "origine": "ricostruita",
+                      "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
+      "schierata": {"modulo": "3-4-3", "atteso": 71.0, "reale": 66.0, "tipo": "manuale", "confermata": null,
+                    "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
+      "automatica": null,
+      "istantanea": {"giornata": 11, "modulo": "3-4-3", "atteso": 72.5, "stile": "Equilibrata", "calcolata": "2026-11-06T15:20:00",
+                     "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 4, "nome": "G4", "ruolo": "D"}], "panchina": []}
+    },
+    {
+      "stagione": "2026-27", "giornata": 10, "giornata_lega": 7, "modificabile": true,
+      "consigliata": {"modulo": "4-4-2", "atteso": 70.0, "reale": 66.5, "dev_simulata": 2.0, "origine": "ricostruita",
+                      "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
+      "ricostruita": {"modulo": "4-4-2", "atteso": 70.0, "reale": 66.5, "dev_simulata": 2.0, "origine": "ricostruita",
+                      "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
+      "schierata": null, "automatica": null,
+      "istantanea": {"giornata": 10, "modulo": "3-5-2", "atteso": 71.5, "stile": null, "calcolata": "2026-10-30T19:05:00",
+                     "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 99, "nome": "G99", "ruolo": "D"}], "panchina": []}
+    },
+    {
+      "stagione": "2026-27", "giornata": 9, "giornata_lega": 6, "modificabile": true,
+      "consigliata": {"modulo": "4-4-2", "atteso": 73.5, "reale": 76.5, "dev_simulata": 2.0, "origine": "ricostruita",
+                      "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
+      "ricostruita": {"modulo": "4-4-2", "atteso": 73.5, "reale": 76.5, "dev_simulata": 2.0, "origine": "ricostruita",
+                      "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
+      "schierata": null, "automatica": null, "istantanea": null
+    },
+    {
+      "stagione": "2026-27", "giornata": 8, "giornata_lega": 5, "modificabile": true,
+      "consigliata": {"modulo": "4-3-3", "atteso": 74.0, "reale": 78.5, "dev_simulata": 2.0,
+                      "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
+      "schierata": null, "automatica": null,
+      "istantanea": {"giornata": 8, "modulo": "4-3-3", "atteso": 74.5, "stile": "Equilibrata", "calcolata": "2026-10-17T14:00:00",
+                     "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 4, "nome": "G4", "ruolo": "D"}], "panchina": []}
+    },
+    {
+      "stagione": "2026-27", "giornata": 7, "giornata_lega": 4, "modificabile": true,
+      "consigliata": {"modulo": "4-3-3", "atteso": 73.8, "reale": 66.0, "dev_simulata": 2.0,
+                      "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
+      "schierata": null, "automatica": null, "istantanea": null
+    }
+  ],
+  "sintesi": {"giornate": 1, "punti_schierata": 66.0, "punti_consigliata": 64.5, "attesi_schierata": 71.0, "meglio_tua": 1,
+              "meglio_consigliata": 0, "senza_consigliata_mostrata": 0}
+}

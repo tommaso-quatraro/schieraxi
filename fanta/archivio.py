@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS registro_giornate (
     fascia_casi INTEGER, fascia_dentro INTEGER,                         -- I3: rose estratte a sorte, punti veri dentro la fascia
     fuori TEXT, da_avvisare TEXT, avvisati TEXT,                        -- indicatori fuori soglia e avvisi al proprietario (JSON)
     persa TEXT,                     -- motivo in breve se la giornata non è stata salvata prima della prima partita (salvato NULL)
+    avversario TEXT,                -- avversario di I1 della misura (registro_giornate.AVVERSARIO); NULL = misurata prima di #614
     PRIMARY KEY (stagione, giornata)
 );
 -- numeri «nostri» (solo Fantacalcio.it, fanta/registro_nostri.py) degli stessi giocatori di registro_giocatori, salvati subito dopo i
@@ -187,11 +188,14 @@ def _toglie_tabella_dismessa(db: sqlite3.Connection) -> None:
 
 def _aggiorna_schema(db: sqlite3.Connection) -> None:
     """Colonne nuove in tabelle che negli archivi ci sono già (`CREATE TABLE IF NOT EXISTS` non le aggiunge): una volta sola,
-    senza toccare i dati. Poi l'indice che serve a trovare l'ultima lettura delle probabili prima di un'ora (`stato_dati`)."""
+    senza toccare i dati. Poi l'indice che serve a trovare l'ultima lettura delle probabili prima di un'ora (`stato_dati`).
+    `registro_giornate.avversario` (#614): le righe che c'erano restano senza segno e si rimisurano una volta."""
     try:
         colonne = {r[1] for r in db.execute("PRAGMA table_info(probabili_storia)")}
         if "copia" not in colonne:
             db.execute("ALTER TABLE probabili_storia ADD COLUMN copia INTEGER NOT NULL DEFAULT 0")
+        if "avversario" not in {r[1] for r in db.execute("PRAGMA table_info(registro_giornate)")}:
+            db.execute("ALTER TABLE registro_giornate ADD COLUMN avversario TEXT")
         db.execute("CREATE INDEX IF NOT EXISTS probabili_storia_letture ON probabili_storia (stagione, giornata, fonte, copia, rilevato)")
         db.commit()
     except sqlite3.OperationalError:     # archivio occupato, o un altro processo ha appena aggiunto la colonna: si riprova alla prossima

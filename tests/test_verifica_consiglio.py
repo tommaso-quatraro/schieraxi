@@ -59,7 +59,9 @@ def test_s2_gioca_chi_ha_preso_voto_la_giornata_prima_con_la_sua_fantamedia():
 @pytest.mark.parametrize("titolare, panchina, atteso", [
     (S(2, "D", p=0.1), [S(20, "D", p=0.7)], [(2, 20)]),                              # improbabile, compagno al 70%
     (S(2, "D", p=0.2), [S(20, "D", p=0.7)], []),                                     # 20% giusto: non è improbabile
-    (S(2, "D", p=0.1), [S(20, "D", p=0.49)], [(2, None)]),                           # compagno sotto il 50%
+    (S(2, "D", p=0.1), [S(20, "D", p=0.49)], [(2, 20)]),                             # dal 12/11/2026 basta un compagno al 20%
+    (S(2, "D", p=0.1), [S(20, "D", p=0.2)], [(2, 20)]),                              # 20% giusto: il compagno conta
+    (S(2, "D", p=0.1), [S(20, "D", p=0.19)], [(2, None)]),                           # compagno sotto il 20%
     (S(2, "D", p=0.1), [S(20, "D", p=0.6, stato="infortunato")], [(2, None)]),       # compagno fuori
     (S(2, "D", p=0.1), [S(20, "C", p=0.9)], [(2, None)]),                            # compagno di un altro ruolo
     (S(2, "D", p=0.6, stato="squalificato"), [S(20, "D", p=0.7)], [(2, 20)]),        # titolare fuori
@@ -68,6 +70,13 @@ def test_s2_gioca_chi_ha_preso_voto_la_giornata_prima_con_la_sua_fantamedia():
 def test_titolari_che_non_giocano_e_compagno_sicuro(titolare, panchina, atteso):
     f = F(_titolari_343(t2=titolare), panchina)
     assert vc.non_giocano(f) == atteso
+
+
+def test_le_soglie_di_chi_gioca_sono_quelle_con_cui_l_app_sceglie():
+    """C3 misura la regola con cui l'app toglie i titolari improbabili (`formazione._senza_improbabili`): le due soglie si leggono
+    da lì, non si ricopiano. Fino a #612 il compagno doveva giocare almeno il 50%, e qui era rimasto quel numero (#614)."""
+    assert vc.IMPROBABILE_SOTTO == fz.IMPROBABILE_SOTTO
+    assert vc.COMPAGNO_DA == fz.COMPAGNO_ALMENO
 
 
 def test_compagno_anche_tra_i_fuori_dalla_panchina_ma_mai_un_altro_titolare():
@@ -213,6 +222,27 @@ def test_parte_giocate_confronta_consigliata_s1_s2_e_senno_di_poi(giocate):
     assert a["quota_perfetta"] == pytest.approx(100 * 66 / 69)
     assert a["senza_voto"] == {"consigliata": 1.0, "s2": 0.0} and a["scoperti"] == 0.0
     assert len(a["prove"]) == 2 * (len(vc.SEMI) + vc.RITOCCHI)
+
+
+def test_il_senno_di_poi_conta_il_modificatore_della_difesa_della_lega(giocate):
+    """In una lega con il modificatore il senno di poi lo conta (`verifica._perfetta` con i voti, #614): qui tutti hanno 6 in
+    pagella, quindi con quattro difensori vale un punto in più dei 69 di prima."""
+    r = Regole()
+    r.modificatore_difesa.attivo = True
+    a = vc.parte_giocate(giocate.d, r, giocate.rose, ST, simulazioni=60)
+    assert a["punti"]["perfetta"] == 70.0
+    assert a["punti"]["perfetta"] >= max(a["punti"][k] for k in ("consigliata", "s1", "s2"))
+
+
+def test_il_senno_di_poi_non_sta_mai_sotto_una_formazione_valutata(giocate):
+    """Con il voto d'ufficio un titolare senza voto e senza riserva può valere più di un voto vero: il portiere 3 non prende voto
+    e la consigliata, che lo schiera, fa 70 contro i 69 dei migliori voti veri. Il senno di poi è almeno quello (come `verifica`)."""
+    r = Regole()
+    r.panchina.max_sostituzioni, r.voto_senza_sostituto = 0, 10.0
+    a = vc.parte_giocate(giocate.d, r, giocate.rose, ST, simulazioni=60)
+    assert a["punti"]["consigliata"] == 70.0
+    assert a["punti"]["perfetta"] >= max(a["punti"][k] for k in ("consigliata", "s1", "s2"))
+    assert a["quota_perfetta"] <= 100.0
 
 
 def test_misura_senza_probabili_salta_la_parte_b_e_il_rapporto_lo_dice(giocate, tmp_path):

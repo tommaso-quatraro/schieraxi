@@ -68,5 +68,8 @@ extension Catalogo {
 
         /// `avv.manda_avviso_prova`
         static let mandaAvvisoProva = "Manda un avviso di prova"
+
+        /// `avv.per_ogni_giornata`
+        static let perOgniGiornata = "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e dalla consigliata che SchieraXI ti ha mostrato prima della scadenza, con in evidenza i giocatori che hai cambiato. Il confronto conta le giornate in cui hai schierato undici diversi dalla consigliata. Se la consigliata di allora non era stata salvata, SchieraXI la ricostruisce con i dati di allora e la rosa di oggi: i suoi punti si vedono, ma quella giornata non entra nel confronto. Se non conosciamo la tua panchina la sceglie SchieraXI; con gli stessi titolari della consigliata, è la sua. Si aggiorna da solo dopo ogni giornata."
     }
 }
