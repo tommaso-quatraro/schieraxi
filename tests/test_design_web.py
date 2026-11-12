@@ -21,10 +21,9 @@ def test_aree_di_tocco_da_44px_anche_in_densita_compatta():
     assert not re.search(r'data-densita="compatta"\] \.chip \{[^}]*min-height: (?:[0-3]\d|4[0-3])px', CSS)
     imp = codice_web.leggi("impostazioni.js")
     assert 'class="voce voce-link"' in imp                                   # privacy, termini e crediti sono voci intere da toccare
-    # ✕ dei fogli, ✎ della formazione e caselle: 44 px veri, senza aree invisibili intorno
+    # ✕ dei fogli e caselle: 44 px veri, senza aree invisibili intorno
     assert re.search(r"\.foglio-chiudi \{[^}]*width: 44px; height: 44px", CSS) and "foglio-chiudi::after" not in CSS
-    assert re.search(r"\.azione-riga \{[^}]*width: 44px; height: 44px", CSS) and "azione-riga::after" not in CSS
-    assert re.search(r'\.interruttore input\[type="checkbox"\] \{[^}]*width: 44px; height: 44px; margin: -9px', CSS)
+    assert re.search(r'\.interruttore input\[type="checkbox"\], \.spunta input\[type="checkbox"\] \{[^}]*width: 44px; height: 44px; margin: -9px', CSS)      # anche la spunta «L'ho messa»
 
 def test_accesso_e_primo_avvio_centrati():
     # il margine di .carta spingeva la scheda d'accesso in basso. Grafica B (spec §9): il modulo non è più una carta, ha auto su
@@ -43,12 +42,11 @@ def test_schermi_grandi_ingranditi():
 
 
 def test_composizione_a_colonne_su_schermi_larghi():
-    # Formazione 5:7 da 900 px (grafica B, spec C6: tests/test_grafica_b_web.py) e campo | elenco 1:2 da 1400 px, dove l'elenco è
-    # abbastanza largo per le righe su una linea (Oggi resta 5:7), foglio come pannello laterale da 1100 px, gradino di
-    # ingrandimento per i 5120 px
-    assert re.search(r"@media \(min-width: 1400px\) \{\s*main \.colonne-campo \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 2fr\); --quota-campo: calc\(1 / 3\);", CSS)
-    assert not re.search(r"@media \(min-width: 1400px\) \{[^@]*main \.colonne-oggi[^{]*\{ grid-template-columns", CSS)
-    assert "columns: 2" in CSS and "animation-name: sale-lato" in CSS
+    # Formazione (#616): due colonne da 768 px, campo | elenchi; da 1024 px il campo resta largo come al telefono e gli elenchi
+    # prendono il resto. Foglio come pannello laterale da 1100 px, gradino di ingrandimento per i 5120 px
+    assert re.search(r"@media \(min-width: 768px\) \{\s*\.fz \{ display: grid; grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);", CSS)
+    assert "@media (min-width: 1024px) { .fz { grid-template-columns: minmax(0, 420px) minmax(0, 1fr);" in CSS
+    assert "animation-name: sale-lato" in CSS
     assert "@media (min-width: 4400px) { :root { --z: 1.75; } }" in CSS
 
 def test_scorciatoia_virgola_per_le_impostazioni():
@@ -312,14 +310,15 @@ def test_scritta_delle_pillole_uguale_nei_due_temi_chiari_e_su_ios():
 
 def test_pillole_dei_giocatori_stesso_colore_su_web_e_ios():
     """Issue #242: «Probabile titolare» (e «Ha giocato», «Partita in corso») era una pillola verde sulla web e grigia sull'iPhone. Il
-    colore viene dal tono: quello del server (`CLASSE_TONO`) o, senza etichetta, quello del ripiego (`TITOLARITA`, `STATO_PARTITA`).
+    colore viene dal tono: quello del server (`CLASSE_TONO`) o, senza etichetta, quello del ripiego (`STATO_PARTITA`; le etichette di
+    titolarità sulla web non si mostrano più, #616).
     L'iPhone usa gli stessi quattro toni (`Etichetta.Tono`) con le stesse scelte: verde, grigio, arancio, rosso."""
     ios = IOS / "Domain/GiocatoreEtichette.swift"
     if not ios.exists():
         return
     swift = ios.read_text(encoding="utf-8")
     da_classe = {"": "positivo", "arancio": "attenzione", "rossa": "negativo", "neutra": "neutro"}   # classi di `.etichetta`
-    for nome_js, nome_swift in (("TITOLARITA", "nomiTitolarita"), ("STATO_PARTITA", "nomiStatoPartita")):
+    for nome_js, nome_swift in (("STATO_PARTITA", "nomiStatoPartita"),):
         js = re.search(rf"const {nome_js} = \{{(.*?)\}};", APP, re.S).group(1)
         web = {chiave: da_classe[classe] for chiave, classe in re.findall(r'(\w+): \[[^\]]*?, "(\w*)"\]', js)}
         corpo = re.search(rf"static let {nome_swift}: [^=]+= \[(.*?)\n    \]", swift, re.S).group(1)

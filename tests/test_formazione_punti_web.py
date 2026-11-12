@@ -8,7 +8,6 @@ import re
 import shutil
 import subprocess
 
-import pytest
 
 from fanta import server
 import codice_web
@@ -77,17 +76,6 @@ const api = () => new Promise(() => {});""",
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout.strip().splitlines()[-1])
-
-
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_formazione_mostra_i_punti_attesi_giusti_anche_se_i_fotogrammi_non_arrivano():
-    numeri = _esegui(f"""mostraFormazione({json.dumps(FORMAZIONE)}, null, {{}});
-const primo = el.textContent;
-fotogrammi = 0;                                                   // il cambio di modulo: un altro fotogramma solo
-document.querySelectorAll = () => [];
-stato.scelta.modulo = "4-3-3"; stato.scelta.disegna(true);
-console.log(JSON.stringify({{ primo, dopo: el.textContent }}));""")
-    assert numeri == {"primo": "65,5", "dopo": "64,7"}, numeri
 
 
 def test_nella_formazione_il_numero_non_sale_da_zero():

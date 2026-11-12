@@ -5,10 +5,7 @@ schierare non conta, e vale la consigliata congelata alla scadenza, come quando 
 riepilogo, il Diario e la Formazione (campo `stato_scelta`) lo dicono e lo mostrano allo stesso modo, su web e iPhone.
 Dati finti, file in cartelle temporanee, nessuna rete."""
 # ruff: noqa: F811  (le fixture importate da altri file di test arrivano come parametri con lo stesso nome: è il modo di pytest)
-import json
-import re
 import shutil
-import subprocess
 from datetime import datetime
 
 import pytest
@@ -178,23 +175,3 @@ def test_formazione_dice_lo_stato_della_scelta(client, monkeypatch, tmp_path):
     assert stato() == "non_valida"
     assert stato(squadra="Altra") == "manca"                          # la formazione di un'altra squadra non ha la tua scelta
     assert "stato_scelta" not in f                                    # la formazione in cache non cambia
-
-
-# ---------------------------------------------------------------- web: la riga dello stato a giornata chiusa
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_web_giornata_chiusa_dice_quale_formazione_vale():
-    funz = APP[APP.index("const SEGNI_SCELTA"):APP.index("function mostraFormazione(")]
-    base = "const t = k => k; const quandoSalvata = () => '';"
-    casi = ("[rigaStatoScelta('chiusa', null), rigaStatoScelta('chiusa', {titolari: [1]}),"
-            " rigaStatoScelta('chiusa', {titolari: [1]}, true), rigaStatoScelta('chiusa', null, true)]")
-    r = subprocess.run([NODE, "-e", base + funz + f"console.log(JSON.stringify({casi}))"], capture_output=True, text=True,
-                       encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    frasi = [re.search(r'</span><span>([^<]*)</span>', h).group(1) for h in json.loads(r.stdout)]
-    assert frasi == ["formazione.stato_chiusa", "formazione.stato_chiusa_tua", "formazione.stato_chiusa_non_valida",
-                     "formazione.stato_chiusa_non_valida"]
-    # la Formazione passa la regola del server (`stato_scelta`) e il «non valida» che il server ha già detto rileggendo la scelta
-    assert 'rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida)' in APP
-    assert TESTI.count('"formazione.stato_chiusa_non_valida"') == 2
-    assert ('"formazione.stato_chiusa_non_valida": "Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è '
-            'più valida"') in TESTI
