@@ -2292,9 +2292,12 @@ function mostraGiornate(d, opz = {}) {
   };
   const vuoto = { squadra: t("giornate.vuoto_squadra"), giornate: t("giornate.vuoto_giornate"), calcolo: t("giornate.vuoto_calcolo") }[d.motivo_vuoto] || t("giornate.vuoto");
   const lato = largo ? `<div class="gn-lato">${voci.filter(g => giornate.aperte.has(idGiornata(g))).map(g => dettaglioGiornata(d, g, stagioni)).join("")}</div>` : "";
+  // ridisegno della stessa pagina (dati nuovi dopo la copia del telefono, finestra più larga, correzione): «Dettagli» resta aperto
   const fuoco = document.activeElement && document.activeElement.closest && document.activeElement.closest(".gn-riga");
+  const dettagliAperti = !!opz.sostituisce && !!($(".gn-dettagli", contenuto) || {}).open;
   pagina(voci.length ? `<div class="gn">${testa}<ul class="gn-elenco" aria-label="${t("giornate.elenco")}">${voci.map(riga).join("")}</ul>${lato}</div>`
     : `${testa}<p class="debole gn-vuoto">${vuoto}</p>`, opz);
+  if (dettagliAperti) { const x = $(".gn-dettagli", contenuto); if (x) x.open = true; }
   const radice = $(".gn", contenuto);
   if (radice) radice.addEventListener("click", ev => {
     const r = ev.target.closest(".gn-riga");

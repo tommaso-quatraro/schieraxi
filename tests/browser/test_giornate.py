@@ -398,6 +398,22 @@ def test_su_tablet_e_pc_l_elenco_sta_a_sinistra_e_gli_11_a_destra(web, larghezza
     assert z2["x"] == z["x"] and abs(z2["y"] - z["y"]) < 2, (z, z2)             # il dettaglio resta al suo posto
 
 
+def test_cambiando_larghezza_restano_aperti_la_giornata_e_i_dettagli(web):
+    """La pagina si ridisegna quando la finestra passa i 768 px (e quando arrivano i dati nuovi dopo la copia del telefono): la
+    giornata aperta e «Dettagli» aperto restano come li ha lasciati chi la usa."""
+    solo(web, "finita")
+    d = web.registrata("/api/diario")
+    web.apri(GIORNATE, larghezza=PC)
+    seconda = d["giornate"][1]
+    tocca(web, riga(web, nome_di(seconda)))
+    tocca(web, principale(web).get_by_text("Dettagli", exact=True))
+    web.pagina.set_viewport_size({"width": 390, "height": 844})
+    web.aspetta()
+    assert riga(web, nome_di(seconda)).get_attribute("aria-expanded") == "true"
+    assert dettaglio(web, nome_di(seconda)).is_visible()
+    assert principale(web).locator("details").first.get_attribute("open") is not None
+
+
 def test_al_telefono_gli_11_si_aprono_sotto_la_riga(web):
     solo(web, "finita")
     d = web.registrata("/api/diario")
