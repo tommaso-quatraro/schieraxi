@@ -17,7 +17,7 @@ def telefono(monkeypatch, tmp_path):
     """Un telefono finto: raccoglie titolo e testo che arriverebbero davvero, con le impostazioni di un file temporaneo."""
     arrivati = []
     monkeypatch.setattr(push, "iscrizioni", lambda file=None: [{"finto": True}])
-    monkeypatch.setattr(push, "invia", lambda titolo, testo, priorita, tag, file=None: arrivati.append((titolo, testo)) or 1)
+    monkeypatch.setattr(push, "invia", lambda titolo, testo, priorita, tag, file=None, **k: arrivati.append((titolo, testo)) or 1)
     impostazioni = tmp_path / "avvisi.json"
 
     def manda(titolo, testo, priorita=3, tag="x", **k):
