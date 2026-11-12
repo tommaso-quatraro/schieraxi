@@ -55,9 +55,10 @@ def _git(cwd, *args):
 
 def _unisci(repo, titolo, nome):
     """Un'unione come quella del job unisci («Titolo (#N)») che porta la sua novità in attesa."""
-    f = repo / "fanta" / "novita.d" / f"{nome}.json"
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(json.dumps({"titolo": f"Novità {nome}", "voci": ["Una frase."]}), encoding="utf-8", newline="\n")
+    cartella = repo / "fanta" / "novita.d"                # nel «GitHub» finto, mai quella vera
+    cartella.mkdir(parents=True, exist_ok=True)
+    (cartella / f"{nome}.json").write_text(json.dumps({"titolo": f"Novità {nome}", "voci": ["Una frase."]}), encoding="utf-8",
+                                           newline="\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", titolo)
 
