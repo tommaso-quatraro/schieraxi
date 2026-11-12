@@ -65,6 +65,36 @@ def test_calibrazione_solo_dall_ultima_lettura_prima_di_ogni_partita(tmp_path):
     db.close()
 
 
+def test_calibrazione_senza_le_partite_giocate_ancora_senza_voti(tmp_path):
+    """#658: una partita giocata i cui voti non sono ancora arrivati non conta per le squadre senza voti: tutti i loro giocatori
+    sembrerebbero rimasti fuori (i titolari al 95% «giocano» lo 0%) e la correzione di «gioca N%» uscirebbe storta. Quando i voti
+    arrivano conta di nuovo, e chi non ha il voto mentre i compagni sì è davvero rimasto fuori."""
+    db = archivio.apri(tmp_path / "t.sqlite")
+    for pid, casa, trasf in ((1, "a", "b"), (2, "c", "d")):
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, 1, '2026-09-01 15:00', "
+                   "?, ?, 1)", (pid, ST, casa, trasf))
+    for cid, pid, sq in ((1, 1, "a"), (2, 1, "b"), (3, 2, "c"), (4, 2, "d")):
+        db.execute("INSERT INTO probabili_storia (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
+                   "in_dubbio, diffidato, rilevato) VALUES (?, 1, 'fantacalcio', ?, ?, ?, 'titolare', 95, 0, 0, '2026-09-01T08:00:00')",
+                   (ST, cid, sq, pid))
+
+    def voto(cid, sq):
+        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red) VALUES (?, 1, ?, 'x', ?, 'C', 6.0)",
+                   (ST, cid, sq))
+
+    def titolari():
+        g = next(g for g in stato_dati.calibrazione(db, ST)["gruppi"] if g["gruppo"] == "Titolare 90-100%")
+        return g["n"], g["osservato"]
+
+    voto(1, "a")
+    voto(2, "b")                                     # i voti della partita 2 non sono ancora arrivati
+    assert titolari() == (2, 1.0)
+    voto(3, "c")
+    voto(5, "d")                                     # arrivati: il 4 è rimasto fuori, un suo compagno ha il voto
+    assert titolari() == (4, 0.75)
+    db.close()
+
+
 def test_sotto_le_giornate_misurabili_nessuna_correzione(tmp_path):
     """Tante giornate in `probabili` (lette dopo le partite) ma solo 2 con letture di prima: nessuna correzione, e «Stato dei dati»
     mostra gli stessi numeri che usa il modello (`taratura_e_fattori`)."""

@@ -450,7 +450,7 @@
       "livello": "nerd",
       "paragrafi": [
         "Il codice calciatore di Fantacalcio.it è la chiave di tutto. Le altre fonti scrivono i nomi in modo diverso («Laurientè», «Lauriente», «Esposito Se.», «N'Dicka»): un modulo di riconoscimento toglie accenti, punti e apostrofi e abbina per squadra e somiglianza. Gli abbinamenti sicuri (stessa squadra) restano, quelli per somiglianza si rifanno ogni volta: sono i punti dove un errore si nasconde meglio.",
-        "Dopo ogni aggiornamento girano controlli di coerenza: 10 partite per giornata, almeno 180 voti per giornata finita, somma degli xG dei giocatori vicina a quella della partita (scarto massimo 1), 11 titolari per squadra. Fino al 2% di righe fuori misura è rumore delle fonti, oltre è un avviso, e tutto si vede in Stato dei dati.",
+        "Dopo ogni aggiornamento girano controlli di coerenza: 10 partite per giornata, i voti di ogni squadra nelle giornate finite, somma degli xG dei giocatori vicina a quella della partita (scarto massimo 1), 11 titolari per squadra. Fino al 2% di righe fuori misura è rumore delle fonti, oltre è un avviso, e tutto si vede in Stato dei dati.",
         "Rischio onesto: Understat è l'unica fonte di xG, xA e rigori e Fantacalcio.it quella di voti e probabili. I loro termini non sono pensati per un uso da programma: per uso personale il rischio è basso, ma va ripensato prima di aprire l'app a molte persone (permessi, fonti alternative)."
       ],
       "rimandi": [{"schermata": "stato-dati", "etichetta": "Stato dei dati > Controlli"}],
