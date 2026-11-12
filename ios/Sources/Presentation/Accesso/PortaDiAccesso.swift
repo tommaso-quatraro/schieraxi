@@ -39,7 +39,8 @@ struct PortaDiAccesso: View {
             }
         }
         // Sessione finita o cambiata (uscita, accesso scaduto, altro utente o server): la guida aperta l'ha chiusa l'app, non
-        // l'utente, e non si riapre da sola nella sessione nuova.
+        // l'utente (i passi non diventano saltati), e il suo foglio non resta aperto nel contenitore nuovo. Nella sessione nuova
+        // può ripartire da sola, anche per un altro utente, solo con le sue regole (`avviaGuidaSeServe`).
         .onChange(of: sessione.generazione) { _, _ in nav.chiudiGuidaDallApp() }
         // Fuori dall'account, un file o un'immagine già aperti da un'altra app non fermano più la guida al prossimo accesso.
         .onChange(of: sessione.stato == .daAccedere) { _, fuori in

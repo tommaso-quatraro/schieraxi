@@ -80,10 +80,15 @@ final class Navigazione: ObservableObject {
     /// La guida l'ha chiusa l'app e non l'utente (un file o un'immagine da fuori, la sessione cambiata): alla chiusura del
     /// foglio i passi rimasti non diventano saltati.
     private(set) var guidaChiusaDallApp = false
-    /// Il foglio della guida è sullo schermo: dalla comparsa alla fine della chiusura (`guidaComparsa`, `guidaSparita`).
+    /// Il foglio della guida è sullo schermo: dalla comparsa alla fine della chiusura (`guidaComparsa`, `guidaSparita`); si
+    /// azzera anche quando la chiude l'app, così una scomparsa mancata non fa aspettare per sempre le immagini.
     private var guidaSulloSchermo = false
-    /// Un'immagine arrivata con la guida sullo schermo: il suo foglio si apre quando quello della guida è sparito, uno alla volta.
+    /// Un'immagine arrivata con la guida aperta, in arrivo o in chiusura: il suo foglio si apre quando quello della guida è
+    /// sparito, uno alla volta.
     private var immagineInAttesa: ImmagineRicevuta?
+    /// Quanto si aspetta la scomparsa del foglio della guida prima di aprire comunque l'immagine in attesa (se non arriva, per
+    /// esempio perché il foglio non era mai comparso). I test la accorciano.
+    var attesaFoglio: Duration = .seconds(1)
 
     init() {
         if !Demo.attivo { sezione = Self.sezioneDiAvvio() }
@@ -101,18 +106,22 @@ final class Navigazione: ObservableObject {
     func apriFile(_ url: URL) {
         guard url.isFileURL else { return }
         apertaDaFuori = true
+        // guida aperta (anche col foglio non ancora comparso), in chiusura o con un'immagine già in attesa: si aspetta il suo turno
+        let aspetta = guidaAperta || guidaSulloSchermo || immagineInAttesa != nil
         chiudiGuidaDallApp()
         if Self.eImmagine(url) {
             let ricevuta = ImmagineRicevuta(url: url)
-            if guidaSulloSchermo { immagineInAttesa = ricevuta } else { immagineRicevuta = ricevuta }
+            if aspetta { mettiInAttesa(ricevuta) } else { immagineRicevuta = ricevuta }
         } else {
             fileDaImportare = url
         }
     }
 
-    /// Chiude la guida senza che l'abbia scelto l'utente (un file da fuori, la sessione cambiata): i passi restano come erano.
+    /// Chiude la guida senza che l'abbia scelto l'utente (un file da fuori, la sessione cambiata o il contenitore ricostruito):
+    /// i passi restano come erano. Se si stava già chiudendo per scelta dell'utente, la scelta resta sua.
     func chiudiGuidaDallApp() {
-        guard guidaAperta || guidaSulloSchermo else { return }
+        guidaSulloSchermo = false
+        guard guidaAperta else { return }
         guidaChiusaDallApp = true
         guidaAperta = false
     }
@@ -125,7 +134,21 @@ final class Navigazione: ObservableObject {
     /// Il foglio della guida è sparito (chiusura finita): si apre l'immagine arrivata nel frattempo.
     func guidaSparita() {
         guidaSulloSchermo = false
-        guard let attesa = immagineInAttesa else { return }
+        apriImmagineInAttesa()
+    }
+
+    /// L'immagine aspetta la scomparsa del foglio della guida; se non arriva entro `attesaFoglio`, si apre lo stesso.
+    private func mettiInAttesa(_ ricevuta: ImmagineRicevuta) {
+        immagineInAttesa = ricevuta
+        let attesa = attesaFoglio
+        Task { [weak self] in
+            try? await Task.sleep(for: attesa)
+            self?.apriImmagineInAttesa()
+        }
+    }
+
+    private func apriImmagineInAttesa() {
+        guard !guidaAperta, let attesa = immagineInAttesa else { return }
         immagineInAttesa = nil
         immagineRicevuta = attesa
     }
