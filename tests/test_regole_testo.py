@@ -248,6 +248,57 @@ def test_frasi_che_si_leggevano_bene_restano_uguali(riga):
     assert _per_chiave(regole_testo.interpreta(riga)) == COME_PRIMA[riga]
 
 
+# Il «non» di una condizione («quando non è possibile sostituire nel ruolo») dice quando scatta la regola: non la spegne.
+# None = nessuna proposta (la regola sta dentro la condizione, o la condizione ha un «no» che non si sa a cosa risponda).
+CONDIZIONI = {
+    "Il cambio modulo avviene quando non è possibile sostituire il titolare con un giocatore dello stesso ruolo": True,
+    "Cambio modulo automatico se il titolare non può essere sostituito nel ruolo": True,
+    "Cambio modulo sì quando non si può sostituire nel ruolo": True,
+    "Cambio modulo: se non è possibile la sostituzione nello stesso ruolo, si passa a un modulo valido": True,
+    "Cambio modulo consentito se il titolare non può essere sostituito nel ruolo": True,
+    "Il cambio modulo si applica solo se non è possibile sostituire nel ruolo": True,
+    "Cambio modulo consentito quando un titolare non viene utilizzato": True,
+    "Il cambio modulo non è consentito quando non ci sono riserve": False,
+    "In caso di cambio modulo non sono consentite più di 3 sostituzioni": None,
+    "Se il titolare non gioca il cambio modulo non è consentito": None,
+    "Modificatore della difesa attivo quando non si usa la difesa a 3": True,
+    "Il modificatore difesa si applica se il portiere non prende voto? No": None,
+}
+
+
+@pytest.mark.parametrize("riga", sorted(CONDIZIONI))
+def test_il_non_di_una_condizione_non_spegne_la_regola(riga):
+    chiave = "modificatore_difesa.attivo" if "modificatore" in riga.lower() else "panchina.cambio_modulo"
+    assert _per_chiave(regole_testo.interpreta(riga)).get(chiave) is CONDIZIONI[riga]
+
+
+# Altri modi di dire sì e no: o il valore giusto, o nessuna proposta (una regola letta male non si applica in silenzio).
+ALTRE_FORME = {
+    "Moduli: 3-4-3, 4-4-2, 4-3-3 (no 5-4-1)": ("moduli", None),
+    "Moduli ammessi 343 442 433, NO 541": ("moduli", None),
+    "Moduli ammessi: 3-4-3, 4-4-2 salvo il 5-4-1": ("moduli", None),
+    "Modificatore difesa: disabilitato": ("modificatore_difesa.attivo", False),
+    "Modificatore difesa: OFF": ("modificatore_difesa.attivo", False),
+    "Modificatore difesa: vietato se il titolare non gioca": ("modificatore_difesa.attivo", False),
+    "Cambio modulo: OFF": ("panchina.cambio_modulo", False),
+    "Cambio modulo disabilitato": ("panchina.cambio_modulo", False),
+    "Non è vietato il cambio modulo": ("panchina.cambio_modulo", None),
+    "Non c'è nessun modificatore della difesa": ("modificatore_difesa.attivo", False),
+    "Modificatore difesa: attivo; modificatore attacco: non attivo": ("modificatore_difesa.attivo", True),
+    "Panchina fissa: non si può scegliere l'ordine liberamente": ("panchina.tipo", "per_ruolo"),
+    "Panchina libera: no": ("panchina.tipo", None),
+    "Panchina libera o per ruolo, a scelta della lega": ("panchina.tipo", None),
+    "Panchina: le riserve non sono mai vincolate al ruolo": ("panchina.tipo", "libera"),
+}
+
+
+@pytest.mark.parametrize("riga", sorted(ALTRE_FORME))
+def test_altri_modi_di_dire_si_e_no(riga):
+    chiave, atteso = ALTRE_FORME[riga]
+    r = regole_testo.interpreta(riga)
+    assert _per_chiave(r).get(chiave) == atteso and (atteso is not None or chiave != "moduli" or r["non_riconosciute"] == [riga])
+
+
 # ---------------------------------------------------------------- testi costruiti male: la lettura resta veloce
 N = 10_000
 # Una riga di circa N caratteri per ogni forma che faceva lavorare le espressioni regolari in tempo quadratico (lunghe file di spazi,
@@ -275,6 +326,7 @@ CATTIVI = {
     "spazi dopo non": "panchina libera, cambio modulo non" + " " * N + "x",
     "cambio modulo in tanti pezzi": "cambio modulo, " * (N // 15) + "non e consentito",
     "modificatore in tanti pezzi": "modificatore difesa; " * (N // 21) + "attivo",
+    "condizioni ripetute": "cambio modulo consentito " + "quando se non " * (N // 14),
 }
 
 
