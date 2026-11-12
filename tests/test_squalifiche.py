@@ -96,6 +96,14 @@ def test_ammonizione_presa_nel_recupero_conta_per_data():
     assert sq.calcola(gialli(1, [1, 2, 4, 5, 3]), partite, ST, 7, {1: "alfa"}) == {1: (True, False)}
 
 
+def test_ultimo_cartellino_per_data_anche_nell_ordine_dell_archivio():
+    """I cartellini escono dall'archivio in ordine di giornata. La partita della 3 è recuperata il mercoledì dopo la 5 e la
+    quinta ammonizione arriva lì: l'ultimo cartellino è quello della 3, non quello della 5 in fondo alla lista. Squalificato
+    alla 6; contando dalla 5, la squalifica risulterebbe scontata nel recupero."""
+    partite = calendario(5, salta=(3,)) + [partita(3, data=quando(5, giorni=4))]
+    assert sq.calcola(gialli(1, [1, 2, 3, 4, 5]), partite, ST, 6, {1: "alfa"}) == {1: (True, False)}
+
+
 def test_recupero_in_programma_prima_della_giornata_la_squalifica_si_sconta_li():
     """Quinta ammonizione alla 6, l'ultima giocata. Prima della 7 la squadra ha in programma il recupero della giornata 3: la
     squalifica si sconterà lì, quindi alla 7 gioca."""
