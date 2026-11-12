@@ -15,7 +15,7 @@ struct RigaStatoComeWebTests {
 
     @Test("Le frasi senza ora sono quelle della web",
           arguments: zip([StatoScelta.consigliata, .altra, .bozza, .nonValida, .salvata(nil), .modificata(nil)],
-                         [Catalogo.Formazione.statoConsigliata, Catalogo.Formazione.statoAltra, Catalogo.Formazione.statoMano,
+                         [Catalogo.Formazione.statoConsigliata, Catalogo.Formazione.statoAltroModulo, Catalogo.Formazione.statoMano,
                           Catalogo.Formazione.statoNonValida, Catalogo.Formazione.statoSalvata, Catalogo.Formazione.statoModificata]))
     func fraseSenzaOra(stato: StatoScelta, atteso: String) {
         #expect(stato.titolo() == atteso)
@@ -111,29 +111,24 @@ struct RigaStatoComeWebTests {
 
     // MARK: schermata
 
-    @Test("Un altro stile o un altro modulo senza niente di salvato: «altra»; «Torna alla consigliata» rimette stile e modulo, senza cancellare niente")
-    func altroStileOModulo() async throws {
+    @Test("Un altro modulo senza niente di salvato: «altra»; «Torna alla consigliata» rimette il modulo, senza cancellare niente")
+    func altroModulo() async throws {
         let srv = try server(scelta: nil)
         let (vm, f) = try await caricata(srv)
-        let frase = Catalogo.Formazione.statoAltra
+        // la frase della web di oggi (`formazione.stato_altro_modulo`), scritta per esteso: non parla più di stili (#634)
+        let frase = "Stai vedendo un altro modulo, non quello consigliato: non l'hai salvato."
         #expect(vm.statoScelta == .consigliata)
         let livelli = try #require(f.livelli)
         let base = try #require(livelli.first { $0.rischio == 0 })
         let altroModulo = try #require(base.moduli.first { $0.modulo != base.modulo })
-        vm.scegliStile(1)
-        #expect(vm.statoScelta == .altra)
-        #expect(vm.statoScelta.titolo() == frase)
-        vm.scegliStile(0)
-        #expect(vm.statoScelta == .consigliata)
         vm.scegliModulo(altroModulo.modulo)
         #expect(vm.statoScelta == .altra)
+        #expect(vm.statoScelta.titolo() == frase)
         vm.scegliModulo(base.modulo)
-        #expect(vm.statoScelta == .consigliata, "il modulo proposto dallo stile consigliato è la consigliata")
-        vm.scegliStile(-1)
+        #expect(vm.statoScelta == .consigliata, "il modulo proposto è la consigliata")
         vm.scegliModulo(altroModulo.modulo)
         #expect(vm.statoScelta == .altra)
         await vm.tornaAllaConsigliata(f)
-        #expect(vm.rischio == 0)
         #expect(vm.moduloScelto == nil)
         #expect(vm.statoScelta == .consigliata)
         #expect(srv.quante("DELETE /api/scelta") == 0, "non c'era niente di salvato da togliere")

@@ -1,5 +1,4 @@
 # Funzione spenta (ErroreVista in Support/Design/Stati.swift): la carta «Non disponibile» della web.
 # Poi: python script/testi.py --scrivi
 dieta.non_disponibile
-dieta.apri_impostazioni
 dieta.torna_oggi

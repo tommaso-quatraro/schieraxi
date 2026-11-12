@@ -440,8 +440,8 @@ struct RosaView: View {
             Label(ParoleSquadre.daUnFileMenu, systemImage: "folder").frame(minHeight: 44)
         }
         .disabled(vm.inCorso)
-        // Lo scarica il server: il server la blocca per tutti se l'amministratore la spegne, anche con «Mostra tutte» (qui uguale).
-        if funzioni.accesoDavvero(Funzione.immaginiWeb) {
+        // Lo scarica il server: se l'amministratore la spegne, il server la blocca per tutti.
+        if funzioni.acceso(Funzione.immaginiWeb) {
             Button { indirizzoScritto = ""; chiediIndirizzo = true } label: {
                 Label(ParoleSquadre.daUnIndirizzoWeb, systemImage: "link").frame(minHeight: 44)
             }
@@ -493,12 +493,12 @@ private struct PillolaNuovo: View {
     }
 }
 
-/// Le novità come la web (`vistaNovita`): ogni carta ha per titolo il titolo della versione e sotto «Versione 1.432 · data»; le
+/// Le novità (Impostazioni > Informazioni, come la web): ogni carta ha per titolo il titolo della versione e sotto «Versione 1.432 · data»; le
 /// versioni non ancora viste hanno «Nuovo»; si vedono le prime 10 (almeno tutte le nuove) e «Mostra le 42 versioni precedenti»
 /// apre tutte le altre. Le regole sono in `ParoleNovita`.
 struct NovitaView: View {
     @StateObject private var caricatore: Caricatore<[VoceNovita]>
-    /// L'ultima versione guardata: Oggi smette di mostrare il banner «Novità nell'app».
+    /// L'ultima versione guardata: le versioni uscite dopo hanno l'etichetta «Nuovo».
     @AppStorage("novitaVista") private var novitaVista = ""
     /// L'ultima versione guardata PRIMA di aprire la pagina: dice quali versioni sono «Nuovo». Si ricorda qui perché `novitaVista`
     /// diventa subito l'ultima versione, e le etichette sparirebbero mentre si legge.
@@ -541,7 +541,6 @@ struct NovitaView: View {
                 .frame(maxWidth: 720)
                 .frame(maxWidth: .infinity)
             }
-            .ricercaGlobale()
             .refreshable { await caricatore.ricarica() }
             .avvisoDatiSalvati(caricatore)
         }

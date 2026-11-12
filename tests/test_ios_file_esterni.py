@@ -1,6 +1,6 @@
 """I test iOS che leggono file fuori da `ios/` (issue #308).
 
-Alcuni test iOS leggono file del server (oggi `fanta/frasi.py` e `fanta/funzioni.py`; quelli della web no, dal 12/11/2026). Se una pull request cambia
+Alcuni test iOS leggono file del server (oggi `fanta/frasi.py`; quelli della web no, dal 12/11/2026). Se una pull request cambia
 solo uno di quei file, il job `cambi` di test.yml (che guardava solo `ios/`) non faceva partire i test iOS, e il segno «già verde»
 di ios.yml (che guardava solo l'albero di `ios/`) li avrebbe saltati comunque: la PR si univa verde e lasciava `main` con un
 test iOS rotto. Ora c'è un elenco unico, `ios/Tests/file-esterni.txt`, letto da tutti e due i workflow:

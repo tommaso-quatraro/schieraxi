@@ -38,21 +38,4 @@ final class ModificheNonSalvateTests: XCTestCase {
         XCTAssertEqual(vm.valore, prima)
     }
 
-    func testICreditiScrittiRestanoRicaricando() async {
-        let s = ServerDiProva.conFixture(["/api/squadre": "squadre"])
-        let vm = CreditiViewModel(server: s)
-        await vm.carica()
-        XCTAssertEqual(vm.valori["Borgo Alto"], "")
-        XCTAssertFalse(vm.modificati)
-        vm.valori["Borgo Alto"] = "120"
-        XCTAssertTrue(vm.modificati)
-
-        await vm.carica()
-        XCTAssertEqual(vm.valori["Borgo Alto"], "120", "il valore scritto resta")
-        XCTAssertTrue(vm.modificati)
-
-        await vm.salva()
-        XCTAssertEqual(vm.messaggio, Catalogo.Lega.creditiSalvati)
-        XCTAssertFalse(vm.modificati, "salvato: non è più una modifica in sospeso")
-    }
 }

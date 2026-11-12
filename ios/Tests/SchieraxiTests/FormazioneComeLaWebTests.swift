@@ -44,34 +44,31 @@ struct FormazioneComeLaWebTests {
         #expect(iPhone == catalogo)
     }
 
-    @Test("Sotto «Titolari»: «Tocca ✎ per sostituire…» in modifica a mano, «Tocca ⇄ per confrontarlo…» altrimenti",
-          arguments: zip([true, false], [Catalogo.Formazione.toccaSostituire, Catalogo.Formazione.toccaConfronto]))
-    func rigaTitolari(modificabile: Bool, catalogo: String) {
-        #expect(FormazioneView.istruzioneTitolari(modificabile: modificabile) == catalogo)
+    @Test("Sotto «Titolari», in modifica a mano: «Tocca ✎ per sostituire…» (il confronto con ⇄ non c'è più, #634)")
+    func rigaTitolari() {
+        #expect(FormazioneView.istruzioneTitolari == Catalogo.Formazione.toccaSostituire)
     }
 
-    @Test("Il segno della riga è quello della frase: ✎ (matita) per sostituire, ⇄ per confrontare")
+    @Test("Il segno della riga è quello della frase: ✎ (matita) per sostituire")
     func segniDelleRighe() {
         #expect(FormazioneView.simboloSostituisci == "pencil")
-        #expect(FormazioneView.simboloConfronta == "arrow.left.arrow.right")
         #expect(Catalogo.Formazione.toccaSostituire.contains("✎"))
-        #expect(Catalogo.Formazione.toccaConfronto.contains("⇄"))
     }
 
-    @Test("Stile: «propone il 3-4-3.» con il modulo dello stile, «Modulo fissato a mano (…)» con un altro modulo")
-    func fraseStile() {
-        #expect(FormazioneView.fraseStile(proposto: "3-4-3", attivo: "3-4-3") == Catalogo.Formazione.propone(modulo: "3-4-3"))
-        #expect(FormazioneView.fraseStile(proposto: "3-4-3", attivo: "3-4-3") == "propone il 3-4-3.",
-                "dopo «Equilibrata:» la frase comincia con la minuscola (#557)")
-        #expect(FormazioneView.fraseStile(proposto: "3-4-3", attivo: "4-4-2") == Catalogo.Formazione.moduloFissato(modulo: "3-4-3"),
-                "nella frase c'è il modulo dello stile, non quello scelto")
+    @Test("In fondo alla Formazione la nota sui numeri non parla più dell'indice né dell'anello (#634)", arguments: [true, false])
+    func notaSenzaIndice(conPerche: Bool) {
+        let nota = FormazioneView.legenda(conPerche: conPerche)
+        #expect(nota.contains("fantavoto atteso"))
+        #expect(nota.contains("Toccalo per sapere perché.") == conPerche)
+        for parola in ["indice", "anello", "sul volto"] {
+            #expect(!nota.localizedCaseInsensitiveContains(parola), "c'è ancora «\(parola)»")
+        }
     }
 
     @Test("Le frasi di prima non ci sono più (#437)")
     func nienteFrasiVecchie() {
         let tutte = [FormazioneView.testoSenzaProbabili, FormazioneView.testoPanchina, FormazioneView.testoBallottaggio,
-                     FormazioneView.istruzioneTitolari(modificabile: true), FormazioneView.fraseStile(proposto: "3-4-3", attivo: "3-4-3"),
-                     SostituzioneSheet.testoNessunAltro]
+                     FormazioneView.istruzioneTitolari, SostituzioneSheet.testoNessunAltro]
         for vecchia in ["Probabili formazioni non ancora uscite", "In quest'ordine", "alternative vicine", "Modulo proposto",
                         "Tocca un titolare per sostituirlo", "Non ci sono altri giocatori"] {
             #expect(!tutte.contains { $0.contains(vecchia) }, "c'è ancora «\(vecchia)»")

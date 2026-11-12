@@ -1,7 +1,7 @@
 import XCTest
 @testable import Schieraxi
 
-/// La «dieta delle funzioni»: cosa dice il server, cosa nasconde l'app, il 404 con il campo `funzione`.
+/// Le funzioni che il server può spegnere: cosa dice il server, cosa nasconde l'app, il 404 con il campo `funzione`.
 final class FunzioniTests: XCTestCase {
     func testUnaChiaveCheMancaValeAcceso() throws {
         let r: RispostaFunzioni = try Decodifica.decodifica(Data(#"{"funzioni": {"live": false, "stili_ridotti": true}, "mostra_tutte": false}"#.utf8), snake: false)
@@ -9,7 +9,6 @@ final class FunzioniTests: XCTestCase {
         XCTAssertFalse(s.acceso("live"))
         XCTAssertTrue(s.acceso("stili_ridotti"))
         XCTAssertTrue(s.acceso("una_funzione_nuova"), "una chiave sconosciuta vale acceso")
-        XCTAssertFalse(s.mostraTutte)
     }
 
     func testRispostaVuotaOStranaNonRompe() throws {
@@ -19,10 +18,14 @@ final class FunzioniTests: XCTestCase {
         XCTAssertFalse(strana.stato.acceso("live"))
     }
 
-    func testMostraTutteVinceSulleScelte() {
-        let s = StatoFunzioni(scelte: ["live": false, "diario": false], mostraTutte: true)
-        XCTAssertTrue(s.acceso("live"))
-        XCTAssertTrue(s.acceso("diario"))
+    /// «Mostra tutte le funzioni» non si sceglie più dall'app (#634): se la risposta ha ancora `mostra_tutte`, valgono le funzioni
+    /// come le manda il server (a chi l'aveva accesa le manda già accese, tranne quelle che blocca per tutti).
+    func testMostraTutteNellaRispostaNonCambiaNiente() throws {
+        let r: RispostaFunzioni = try Decodifica.decodifica(
+            Data(#"{"funzioni": {"immagini_web": false, "squadre_altrui": true}, "mostra_tutte": true}"#.utf8), snake: false)
+        XCTAssertFalse(r.stato.acceso(Funzione.immaginiWeb), "spenta dal server: resta spenta")
+        XCTAssertTrue(r.stato.acceso(Funzione.squadreAltrui))
+        XCTAssertEqual(r.stato, StatoFunzioni(scelte: ["immagini_web": false, "squadre_altrui": true]))
     }
 
     func testUnaFunzioneSpentaDaUn404SiNasconde() {
@@ -50,11 +53,10 @@ final class FunzioniTests: XCTestCase {
     func testOgniPaginaStaNellaSuaScheda() {
         XCTAssertEqual(PaginaLega.importa.sezione, .squadra)
         XCTAssertEqual(PaginaLega.rosa("X").sezione, .squadra)
-        XCTAssertEqual(PaginaLega.cambi.sezione, .squadra)
-        XCTAssertEqual(PaginaLega.seguiti.sezione, .squadra)
-        XCTAssertEqual(PaginaLega.scambi.sezione, .altro)
+        XCTAssertEqual(PaginaLega.squadre.sezione, .squadra)
         XCTAssertEqual(PaginaLega.regole.sezione, .altro)
         XCTAssertEqual(PaginaLega.diario.sezione, .altro)
+        XCTAssertEqual(PaginaLega.stagione.sezione, .altro)
     }
 
     @MainActor
@@ -67,22 +69,12 @@ final class FunzioniTests: XCTestCase {
     }
 
     @MainActor
-    func testArchivioLeggeEImpostaMostraTutte() async {
+    func testArchivioLeggeLeFunzioniDalServer() async {
         let server = FinteServer(risposte: ["/api/funzioni": #"{"funzioni": {"live": false}, "mostra_tutte": false}"#])
         let archivio = ArchivioFunzioni(server: server)
         XCTAssertTrue(archivio.stato.acceso("live"), "all'inizio è tutto acceso")
         await archivio.carica()
         XCTAssertFalse(archivio.stato.acceso("live"))
-    }
-
-    @MainActor
-    func testMostraTutteSiSalvaEdAccendeTutto() async {
-        // il server finto risponde allo stesso modo a GET e PUT: qui è la risposta al PUT
-        let archivio = ArchivioFunzioni(server: FinteServer(risposte: ["/api/funzioni": #"{"funzioni": {"live": true}, "mostra_tutte": true}"#]))
-        await archivio.impostaMostraTutte(true)
-        XCTAssertTrue(archivio.stato.mostraTutte)
-        XCTAssertTrue(archivio.stato.acceso("live"))
-        XCTAssertNil(archivio.errore)
     }
 
     @MainActor

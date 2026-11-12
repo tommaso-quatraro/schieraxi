@@ -48,27 +48,18 @@ struct ContrattoDalVeroTests {
         "/api/avvisi": [.modello(StatoAvvisi.self, snake: false)],
         "/api/calendario": [.modello(Calendario.self)],
         "/api/classifica": [.modello(ElencoGiocatori.self)],
-        "/api/confronto": [.modello(Confronto.self)],
         "/api/diario": [.modello(DiarioRisposta.self)],
         "/api/formazione": [.modello(Formazione.self)],
         "/api/formazione/valuta": [.modello(ValutazioneManuale.self)],
         "/api/funzioni": [.modello(RispostaFunzioni.self, snake: false)],
         "/api/giocatore/{id}": [.modello(SchedaGiocatore.self)],
         "/api/giocatori": [.modello([GiocatoreBreve].self)],
-        "/api/live": [.modello(LiveWidget.self)],
-        "/api/mercato": [.modello(Mercato.self)],
-        "/api/movimenti": [.modello([Differenze].self)],
         "/api/oggi": [.modello(Oggi.self)],   // anche il ripiego del widget senza `/api/widget` (stesse chiavi)
-        "/api/osservati": [.modello(ElencoGiocatori.self)],
         "/api/primo-avvio": [.modello(PrimoAvvioRisposta.self)],
         "/api/regole": [.modello(JSONValue.self, snake: false)],
         "/api/rosa": [.modello(Rosa.self)],
-        "/api/scambi/analizza": [.modello(PropostaScambio.self)],
-        "/api/scambi/da-testo": [.modello(OffertaRiconosciuta.self)],
-        "/api/scambi/limite": [.modello(LimiteRicerche.self)],
-        "/api/scambi/proposte": [.modello(ProposteScambi.self)],
         "/api/scelta": [.modello(SceltaSalvata?.self)],   // «null» se non c'è una scelta salvata
-        "/api/squadre": [.modello([SquadraLega].self), .modello([SquadraCrediti].self)],
+        "/api/squadre": [.modello([SquadraLega].self)],
         "/api/stagione": [.modello(StatoStagione.self)],
         "/api/stato": [.modello(InfoServer.self), .modello(StatoSorgente.self)],
         "/api/stato-dati": [.modello(StatoDati.self)],
@@ -78,9 +69,21 @@ struct ContrattoDalVeroTests {
     /// Rotte registrate che l'app non decodifica, con il motivo.
     static let nonLette: [String: String] = [
         "/api/asta": "l'asta c'è solo sulla web",
+        "/api/confronto": ContrattoDalVeroTests.tolta,
         "/api/diario/schierata": "l'app la manda (POST) e non legge la risposta",
         "/api/formazione/testo": "testo semplice per la web: l'app non la chiede",
+        "/api/live": ContrattoDalVeroTests.tolta,
+        "/api/mercato": ContrattoDalVeroTests.tolta,
+        "/api/movimenti": ContrattoDalVeroTests.tolta,
+        "/api/osservati": ContrattoDalVeroTests.tolta,
+        "/api/scambi/analizza": ContrattoDalVeroTests.tolta,
+        "/api/scambi/da-testo": ContrattoDalVeroTests.tolta,
+        "/api/scambi/limite": ContrattoDalVeroTests.tolta,
+        "/api/scambi/proposte": ContrattoDalVeroTests.tolta,
     ]
+
+    /// Il motivo delle rotte delle schermate tolte il 12/11/2026 (#634): le fotografie le hanno ancora, l'app non le chiede più.
+    static let tolta = "la schermata non c'è più dal 12/11/2026 (#634): l'app non la chiede"
 
     // MARK: test
 

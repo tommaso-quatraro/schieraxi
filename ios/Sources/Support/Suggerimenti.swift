@@ -25,6 +25,6 @@ enum Suggerimenti {
 /// «Tocca un giocatore»: compare in Oggi finché non si apre una scheda.
 struct SuggerimentoScheda: Tip {
     var title: Text { Text("Tocca un giocatore") }
-    var message: Text? { Text("Si apre la sua scheda: previsione, forma, statistiche e confronto con gli altri.") }
+    var message: Text? { Text("Si apre la sua scheda: previsione, prossime partite, forma e statistiche.") }
     var image: Image? { Image(systemName: "hand.tap") }
 }

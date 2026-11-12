@@ -16,17 +16,9 @@ final class OggiViewModelTests: XCTestCase {
         XCTAssertEqual(vm.daControllare.count, 2, "i due dubbi in formazione")
         XCTAssertEqual(vm.indisponibili.count, 6, "sei infortunati fuori formazione")
         XCTAssertEqual(vm.diffidati.count, 0)
-        XCTAssertGreaterThanOrEqual(vm.partitePerGiorno.count, 2)
-        XCTAssertEqual(vm.partitePerGiorno.reduce(0) { $0 + $1.partite.count }, 10)
         XCTAssertEqual(server.quante("GET /api/oggi"), 1)
-    }
-
-    func testIlBannerDelleNovitaSiVedeSoloSeLaVersioneECambiata() async throws {
-        let vm = vm(.conFixture(["/api/oggi": "oggi", "/api/stato": "stato"]))
-        await vm.carica()
-        XCTAssertEqual(vm.novitaDaVedere(ultimaVista: ""), "1.14")
-        XCTAssertEqual(vm.novitaDaVedere(ultimaVista: "1.13"), "1.14")
-        XCTAssertNil(vm.novitaDaVedere(ultimaVista: "1.14"), "già guardate")
+        XCTAssertEqual(server.quante("/api/live"), 0, "le partite in diretta non ci sono più (#634): Oggi non le chiede")
+        XCTAssertEqual(server.quante("/api/stato"), 0, "né la versione del server, che serviva al banner delle novità")
     }
 
     func testServerSpentoMostraUnErroreInItaliano() async throws {
@@ -92,45 +84,44 @@ final class FormazioneViewModelTests: XCTestCase {
         XCTAssertNil(vm.manuale)
         XCTAssertEqual(vm.testo(f).components(separatedBy: "\n").first, "9ª giornata di Serie A · 4-3-3", "la fixture non ha `giornata_lega`")
         XCTAssertEqual(vm.fuori(f, v).count, 3, "25 in rosa, 11 titolari e 11 in panchina")
-        XCTAssertEqual(vm.contestoConfronto, ContestoConfronto(livello: 0, modulo: "4-3-3", squadra: nil))
     }
 
-    func testStileEModulo() async throws {
+    /// Un solo stile dal 12/11/2026 (#634): moduli, punti e fascia sono quelli dello stile equilibrato (rischio 0), anche se il
+    /// server manda ancora gli altri livelli.
+    func testSoloLoStileEquilibrato() async throws {
         let (vm, f) = try await caricata(server())
-        vm.rischio = 2
-        vm.cambiaStile()
-        let audace = try XCTUnwrap(f.livelli?.first { $0.rischio == 2 })
-        let atteso = try XCTUnwrap(audace.moduli.first { $0.modulo == audace.modulo })
-        XCTAssertEqual(vm.vista(f).modulo, audace.modulo)
-        XCTAssertEqual(try XCTUnwrap(vm.vista(f).punti), atteso.punteggioAtteso, accuracy: 0.001)
-        XCTAssertEqual(vm.fascia(f), IntervalloPunti.frase(atteso.intervallo, dev: atteso.dev), "la fascia è quella del modulo scelto")
+        XCTAssertGreaterThan(f.livelli?.count ?? 0, 1, "la fixture ha più stili, come il server")
+        XCTAssertNotEqual(f.livelli?.first?.rischio, 0, "nella fixture lo stile equilibrato non è il primo: non lo si sceglie per caso")
+        let equilibrata = try XCTUnwrap(f.livelli?.first { $0.rischio == 0 })
+        XCTAssertEqual(vm.livello(f)?.rischio, 0)
+        let proposto = try XCTUnwrap(equilibrata.moduli.first { $0.modulo == equilibrata.modulo })
+        XCTAssertEqual(vm.vista(f).modulo, equilibrata.modulo)
+        XCTAssertEqual(try XCTUnwrap(vm.vista(f).punti), proposto.punteggioAtteso, accuracy: 0.001)
+        XCTAssertFalse(vm.altraDallaConsigliata)
         // un altro modulo dello stesso stile
-        let altro = try XCTUnwrap(audace.moduli.first { $0.modulo != audace.modulo })
+        let altro = try XCTUnwrap(equilibrata.moduli.first { $0.modulo != equilibrata.modulo })
         vm.scegliModulo(altro.modulo)
         XCTAssertEqual(vm.vista(f).modulo, altro.modulo)
         XCTAssertEqual(vm.vista(f).titolari.map(\.id), altro.titolari)
-        XCTAssertEqual(vm.moduloAttivo(audace), altro.modulo)
-        // cambiando stile si torna al modulo consigliato di quello stile
-        vm.rischio = -1
-        vm.cambiaStile()
-        XCTAssertNil(vm.moduloScelto)
+        XCTAssertEqual(try XCTUnwrap(vm.vista(f).punti), altro.punteggioAtteso, accuracy: 0.001)
+        XCTAssertEqual(vm.moduloAttivo(equilibrata), altro.modulo)
+        XCTAssertEqual(vm.fascia(f), IntervalloPunti.frase(altro.intervallo, dev: altro.dev), "la fascia è quella del modulo scelto")
+        XCTAssertTrue(vm.altraDallaConsigliata, "un altro modulo non è la consigliata")
     }
 
-    func testScegliereUnoStileAzzeraIlModuloEIPuntiSiRicalcolano() async throws {
-        let (vm, f) = try await caricata(server())
-        let livelli = try XCTUnwrap(f.livelli)
-        let primo = try XCTUnwrap(livelli.first)
-        // un modulo scelto a mano resta fisso (anche se si ricarica la vista)...
-        let altro = try XCTUnwrap(primo.moduli.first { $0.modulo != primo.modulo })
-        vm.rischio = primo.rischio
-        vm.scegliModulo(altro.modulo)
-        XCTAssertEqual(try XCTUnwrap(vm.vista(f).punti), altro.punteggioAtteso, accuracy: 0.001)
-        XCTAssertEqual(vm.vista(f).modulo, altro.modulo)
-        // ...finché si tocca uno stile, anche lo stesso: torna il modulo proposto e i punti di quello
-        vm.scegliStile(primo.rischio)
-        XCTAssertNil(vm.moduloScelto)
-        XCTAssertEqual(vm.vista(f).modulo, primo.modulo)
-        XCTAssertEqual(try XCTUnwrap(vm.vista(f).punti), primo.punteggioAtteso, accuracy: 0.001)
+    /// Un server che non manda lo stile equilibrato: vale il primo livello; senza `livelli` niente livello (e la consigliata).
+    func testSenzaLoStileEquilibrato() throws {
+        let vm = FormazioneViewModel(server: server())
+        let soloSicura = Data(#"""
+        {"giornata": 9, "modulo": "4-3-3", "punteggio_atteso": 60.5, "titolari": [], "panchina": [],
+         "livelli": [{"rischio": -1, "stile": -1, "nome": "Sicura", "modulo": "5-3-2", "punteggio_atteso": 59.0, "moduli": []}]}
+        """#.utf8)
+        let f: Formazione = try Decodifica.decodifica(soloSicura, snake: true)
+        XCTAssertEqual(vm.livello(f)?.rischio, -1)
+        let senza: Formazione = try Decodifica.decodifica(
+            Data(#"{"giornata": 9, "modulo": "4-3-3", "punteggio_atteso": 60.5, "titolari": [], "panchina": []}"#.utf8), snake: true)
+        XCTAssertNil(vm.livello(senza))
+        XCTAssertEqual(vm.vista(senza).modulo, "4-3-3")
     }
 
     func testStileConDescrizioneESenza() throws {
@@ -321,11 +312,10 @@ final class FormazioneViewModelTests: XCTestCase {
         XCTAssertEqual(vm.squadraVista, "Gli Amici")
         XCTAssertEqual(vm.percorso, "/api/formazione?squadra=Gli%20Amici")
         // Non basta che la richiesta sia partita: finché la risposta non arriva il caricatore è in «loading» senza dati (indirizzo
-        // nuovo) e `contestoConfronto` è nil. Si aspetta la formazione della squadra caricata davvero (prima il test falliva a volte).
+        // nuovo). Si aspetta la formazione della squadra caricata davvero (prima il test falliva a volte).
         await attendi("caricamento della squadra", finche: {
             s.quante("GET /api/formazione?squadra=Gli%20Amici") >= 1 && !vm.caricatore.inCorso && vm.formazione != nil
         })
-        XCTAssertEqual(vm.contestoConfronto?.squadra, "Gli Amici")
         // per un'altra squadra la scelta non si salva mai, anche se lo si chiede
         vm.iniziaModificaManuale(f)
         await attendi("valutazione", finche: { vm.valutazione != nil })
@@ -358,88 +348,7 @@ final class FormazioneViewModelTests: XCTestCase {
 }
 
 @MainActor
-final class ScambiViewModelTests: XCTestCase {
-    func testIndirizzoDelleProposte() {
-        let vm = ScambiViewModel(server: ServerDiProva.conFixture([:]))
-        XCTAssertEqual(vm.indirizzoProposte, "/api/scambi/proposte?due=false")
-        vm.due = true
-        XCTAssertEqual(vm.indirizzoProposte, "/api/scambi/proposte?due=false", "il 2 contro 2 si chiede solo con una squadra scelta")
-        vm.con = "Gli Amici & C."
-        XCTAssertEqual(vm.indirizzoProposte, "/api/scambi/proposte?due=true&con=Gli%20Amici%20%26%20C.")
-        vm.con = "Tutte"
-        vm.due = false
-        XCTAssertEqual(vm.indirizzoProposte, "/api/scambi/proposte?due=false")
-    }
-
-    func testProposteELeSquadrePiuPropense() async throws {
-        let vm = ScambiViewModel(server: ServerDiProva.conFixture(["/api/scambi/proposte": "proposte", "/api/squadre": "squadre"]))
-        await vm.caricaSquadre()
-        await vm.caricaProposte()
-        XCTAssertEqual(vm.proposte.dato?.proposte.count, 5)
-        XCTAssertEqual(vm.altre.count, 9, "10 squadre, una è la mia")
-        XCTAssertEqual(vm.propense.first?.nome, "Jolly Bianca")
-    }
-
-    func testOffertaRicevutaDaTesto() async throws {
-        let s = ServerDiProva.conFixture(["/api/scambi/da-testo": "da-testo"])
-        let vm = ScambiViewModel(server: s)
-        await vm.valutaOfferta()
-        XCTAssertEqual(vm.erroreOfferta, "Incolla prima il messaggio", "senza testo non si chiede niente (la frase della web, `scambio.incolla_prima_messaggio`)")
-        XCTAssertEqual(s.quante("da-testo"), 0)
-        vm.testoOfferta = "Ti do Barucci e tu mi dai Mangoni, ci stai?"
-        await vm.valutaOfferta()
-        XCTAssertNil(vm.erroreOfferta)
-        XCTAssertEqual(vm.esitoOfferta?.con, "Lambda Rossa")
-        XCTAssertEqual(vm.esitoOfferta?.`do`, ["Barucci"])
-        XCTAssertNotNil(vm.esitoOfferta?.analisi)
-        let corpo = String(decoding: try XCTUnwrap(s.corpiInviati(a: "POST /api/scambi/da-testo").last), as: UTF8.self)
-        XCTAssertTrue(corpo.contains("Ti do Barucci"), corpo)
-    }
-
-    func testOffertaConServerSpento() async {
-        let vm = ScambiViewModel(server: ServerDiProva.chePrecipita(.server("Indica prima la tua squadra nella sezione Lega")))
-        vm.testoOfferta = "Ti do X e tu mi dai Y"
-        await vm.valutaOfferta()
-        XCTAssertNil(vm.esitoOfferta)
-        XCTAssertEqual(vm.erroreOfferta, "Indica prima la tua squadra nella sezione Lega")
-    }
-
-    func testBozzaCopiataNegliAppunti() throws {
-        let vm = ScambiViewModel(server: ServerDiProva.conFixture([:]))
-        let p: ProposteScambi = try Fixture.decodifica("proposte")
-        vm.copiaBozza(p.proposte[0])
-        XCTAssertEqual(UIPasteboard.general.string, ScambiLogica.bozza(p.proposte[0]))
-        XCTAssertEqual(vm.messaggio, "Bozza copiata: incollala nel gruppo o in privato", "la frase della web, `mercato.bozza_copiata`")
-    }
-
-    func testAnalisiDiUnoScambioEArchivio() async throws {
-        ArchivioScambi.svuota()
-        defer { ArchivioScambi.svuota() }
-        let s = ServerDiProva.conFixture(["/api/squadre": "squadre", "/api/rosa": "rosa", "/api/scambi/analizza": "analisi"])
-        let vm = AnalizzaScambioViewModel(server: s)
-        XCTAssertFalse(vm.puoAnalizzare)
-        vm.altra = "Lambda Rossa"
-        vm.doIds = [6523]
-        vm.ricevoIds = [7485]
-        XCTAssertTrue(vm.puoAnalizzare)
-        await vm.analizza()
-        XCTAssertEqual(vm.esito?.altra, "Lambda Rossa")
-        XCTAssertNil(vm.errore)
-        XCTAssertEqual(s.quante("GET /api/scambi/analizza?con=Lambda%20Rossa&do=6523&ricevo=7485&completo=true"), 1)
-        XCTAssertEqual(ArchivioScambi.leggi().first?.dai, ["Barucci"], "lo scambio analizzato finisce nell'archivio")
-    }
-}
-
-@MainActor
-final class MercatoViewModelTests: XCTestCase {
-    func testIndirizzoDellaClassifica() {
-        let vm = MercatoViewModel(server: ServerDiProva.conFixture([:]))
-        XCTAssertEqual(vm.percorsoClassifica, "/api/classifica?limite=60&liberi=true")
-        vm.ruolo = "D"
-        vm.soloLiberi = false
-        XCTAssertEqual(vm.percorsoClassifica, "/api/classifica?limite=60&liberi=false&ruolo=D")
-    }
-
+final class RicercaESchedaViewModelTests: XCTestCase {
     func testRicercaConPausaEAnnullamento() async throws {
         let s = ServerDiProva { _, percorso, _ in
             if percorso.hasPrefix("/api/giocatori") { return Data(#"[{"id": 1, "nome": "Marco Rossi", "ruolo": "A", "squadra": "inter", "quotazione": 10}]"#.utf8) }
@@ -472,20 +381,13 @@ final class MercatoViewModelTests: XCTestCase {
         XCTAssertTrue(vm.risultati.isEmpty)
     }
 
-    func testSchedaDelGiocatoreOsservatoESiPuoConfrontare() async throws {
-        let s = ServerDiProva.conFixture(["/api/giocatore/": "giocatore", "/api/calendario": "calendario", "/api/osservati": "osservati",
-                                          "/api/formazione": "formazione"])
+    func testSchedaDelGiocatoreConLeProssimePartite() async throws {
+        let s = ServerDiProva.conFixture(["/api/giocatore/": "giocatore", "/api/calendario": "calendario"])
         let vm = SchedaGiocatoreViewModel(id: 5585, server: s)
         await vm.carica()
         XCTAssertEqual(vm.caricatore.dato?.calciatore.nome, "Malvi")
-        XCTAssertEqual(vm.osservato, false)
-        XCTAssertFalse(vm.inFormazione, "Malvi non è nella rosa della fixture")
         XCTAssertEqual(vm.prossime.first?.avversario, "cagliari", "dal calendario della sua squadra (roma)")
-        await vm.alternaOsservato()
-        XCTAssertEqual(vm.osservato, true)
-        XCTAssertEqual(s.quante("PUT /api/osservati/5585"), 1)
-        await vm.alternaOsservato()
-        XCTAssertEqual(vm.osservato, false)
-        XCTAssertEqual(s.quante("DELETE /api/osservati/5585"), 1)
+        XCTAssertEqual(s.quante("/api/osservati"), 0, "i seguiti non ci sono più (#634): la scheda non li chiede")
+        XCTAssertEqual(s.quante("/api/formazione"), 0, "né la formazione, che serviva al confronto")
     }
 }

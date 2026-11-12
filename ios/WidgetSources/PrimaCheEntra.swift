@@ -4,7 +4,7 @@ import SwiftUI
 /// spazio il testo perde parole intere invece di finire con «…». Le forme le decide `ParoleWidget` (provato dai test); qui si sceglie
 /// solo quale entra, misurando. Se non ne entra nessuna resta l'ultima.
 /// Si preparano solo le forme che ci sono (prima erano sempre sei, con l'ultima ripetuta): la scelta è la stessa, ma un
-/// `PrimaCheEntra` dentro un altro (Cruscotto) non moltiplica le copie da misurare.
+/// `PrimaCheEntra` dentro un altro non moltiplica le copie da misurare.
 struct PrimaCheEntra<Contenuto: View>: View {
     private let ultima: Int
     private let assi: Axis.Set

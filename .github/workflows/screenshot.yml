@@ -35,7 +35,7 @@ on:
         options: [tutti, iphone, ipad]
         default: iphone
       schermate:
-        description: "solo queste schermate (nomi separati da spazi, es. «lega-importa-csv scambi-una-rosa»), in tutte le varianti; vuoto = secondo «scatti»"
+        description: "solo queste schermate (nomi separati da spazi, es. «lega-importa-csv lega-diario»), in tutte le varianti; vuoto = secondo «scatti»"
         type: string
         default: ""
       widget:

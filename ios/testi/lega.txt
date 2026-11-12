@@ -6,30 +6,14 @@ lega.voce_squadre
 lega.voce_squadre_sub
 lega.voce_miasquadra
 lega.voce_miasquadra_sub
-lega.voce_consigli
-lega.voce_consigli_sub
-lega.voce_osservati
-lega.voce_osservati_sub
-lega.voce_giocatori
-lega.voce_giocatori_sub
-lega.voce_calendario
-lega.voce_calendario_sub
 lega.voce_importa
 lega.voce_importa_sub
-lega.voce_scambi
-lega.voce_scambi_sub
 lega.voce_diario
 lega.voce_diario_sub
 lega.voce_regole
 lega.voce_regole_sub
-lega.voce_movimenti
-lega.voce_movimenti_sub
-lega.voce_crediti
-lega.voce_crediti_sub
 lega.voce_stagione
-lega.voce_stagione_sub
 lega.voce_novita
-lega.voce_novita_sub
 
 # Squadre e rose (ParoleSquadre), stemma e maglia
 lega.mia_squadra
@@ -58,13 +42,6 @@ lega.importate
 lega.n_squadre
 lega.rose_controllate_tutto
 lega.da_controllare
-
-# Crediti delle squadre
-lega.crediti_residui_ogni
-lega.crediti_non_salvati
-lega.salva_crediti
-lega.servono_per_consigli
-lega.crediti_salvati
 
 # Nuova stagione
 lega.rose_ancora_quelle

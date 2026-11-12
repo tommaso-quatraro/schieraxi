@@ -194,18 +194,4 @@ struct OggiFasiComeLaWebTests {
 
     // MARK: partite del turno
 
-    @Test("Partita sospesa: «Sospesa» senza «LIVE», come la web")
-    func sospesa() {
-        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "sospesa", golCasa: 1, golTrasferta: 0)) == .sospesa)
-    }
-
-    @Test("In diretta: LIVE con il minuto; uno stato nuovo con il punteggio e senza minuto dice «In aggiornamento», come la web")
-    func inDiretta() {
-        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "primo_tempo", minuto: "12'")) == .inGioco(minuto: "12'"))
-        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "secondo_tempo")) == .inGioco(minuto: nil))
-        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "supplementari", golCasa: 2, golTrasferta: 2))
-                == .inGioco(minuto: Catalogo.Live.aggiornamento))
-        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "da_giocare")) == nil)
-        #expect(RigaPartitaView.diretta(nil) == nil)
-    }
 }

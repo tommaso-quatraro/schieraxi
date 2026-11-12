@@ -17,18 +17,14 @@ oggi.tua_formazione_scelta
 oggi.punti_attesi
 oggi.apri_formazione
 oggi.mancano_probabili_formazioni
-oggi.novita_banner
 oggi.tuoi_migliori_della
 oggi.da_controllare
 oggi.giocatori_formazione_con
 oggi.indisponibili
 oggi.diffidati
 
-# Partite del turno (PartiteDelTurnoView, OggiViewModel)
-oggi.partite_del_turno
+# Il conto alla rovescia senza una data (OggiView)
 oggi.data_da_definire
-oggi.partita_in_corso
-oggi.n_titolari
 
 # Giornata in corso, finita e «già iniziata» (TestiFase in Domain/FasiGiornata.swift)
 oggi.punti_finora

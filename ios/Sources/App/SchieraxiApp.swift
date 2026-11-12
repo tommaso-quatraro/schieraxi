@@ -11,6 +11,14 @@ struct SchieraxiApp: App {
 
     init() {
         OpzioniTolte.pulisci()   // colore, densità e sezione iniziale non si scelgono più: si torna ai valori normali
+        // I giocatori seguiti non ci sono più (#634): via dalla ricerca di iOS (Spotlight) le voci messe da una versione di prima.
+        // Una volta sola: quando riesce resta un segno sul telefono e agli avvii dopo non si rifà.
+        let segno = OpzioniTolte.chiaveSpotlightSvuotato
+        if !Demo.attivo, !Ambiente.ospiteDeiTest, !UserDefaults.standard.bool(forKey: segno) {
+            CSSearchableIndex.default().deleteAllSearchableItems { errore in
+                if errore == nil { UserDefaults.standard.set(true, forKey: segno) }
+            }
+        }
         Suggerimenti.configura()
     }
 
@@ -25,10 +33,6 @@ struct SchieraxiApp: App {
             PortaDiAccesso()
                 .environmentObject(nav)
                 .environmentObject(sessione)
-                .onContinueUserActivity(CSSearchableItemActionType) { attivita in
-                    // Aperta da Spotlight su un giocatore osservato: si va alla sua scheda.
-                    if let id = Spotlight.idGiocatore(da: attivita) { nav.vai(a: .giocatore(id)) }
-                }
                 .onOpenURL { url in
                     // schieraxi://formazione, schieraxi://giocatore/12, ... (per esempio dal tocco su una notifica di ntfy)
                     if url.isFileURL {

@@ -15,41 +15,11 @@ extension Catalogo {
         /// `lega.voce_miasquadra_sub`
         static let voceMiasquadraSub = "La tua squadra e i suoi giocatori"
 
-        /// `lega.voce_consigli`
-        static let voceConsigli = "Cambi consigliati"
-
-        /// `lega.voce_consigli_sub`
-        static let voceConsigliSub = "Svincolati che migliorano la tua squadra"
-
-        /// `lega.voce_osservati`
-        static let voceOsservati = "Seguiti"
-
-        /// `lega.voce_osservati_sub`
-        static let voceOsservatiSub = "I giocatori che segui e gli avvisi quando si liberano"
-
-        /// `lega.voce_giocatori`
-        static let voceGiocatori = "Elenco dei giocatori"
-
-        /// `lega.voce_giocatori_sub`
-        static let voceGiocatoriSub = "Tutti i giocatori, con ricerca e filtri"
-
-        /// `lega.voce_calendario`
-        static let voceCalendario = "Calendario"
-
-        /// `lega.voce_calendario_sub`
-        static let voceCalendarioSub = "Le prossime partite e quanto sono facili"
-
         /// `lega.voce_importa`
         static let voceImporta = "Aggiorna le rose"
 
         /// `lega.voce_importa_sub`
         static let voceImportaSub = "Il file Excel o il testo preso da Leghe"
-
-        /// `lega.voce_scambi`
-        static let voceScambi = "Scambi"
-
-        /// `lega.voce_scambi_sub`
-        static let voceScambiSub = "Valuta un'offerta, trova o costruisci uno scambio"
 
         /// `lega.voce_diario`
         static let voceDiario = "Diario delle giornate"
@@ -63,29 +33,11 @@ extension Catalogo {
         /// `lega.voce_regole_sub`
         static let voceRegoleSub = "Punteggi, modificatore difesa, moduli, panchina, rosa"
 
-        /// `lega.voce_movimenti`
-        static let voceMovimenti = "Movimenti e storico"
-
-        /// `lega.voce_movimenti_sub`
-        static let voceMovimentiSub = "Cosa è cambiato a ogni aggiornamento delle rose"
-
-        /// `lega.voce_crediti`
-        static let voceCrediti = "Crediti delle squadre"
-
-        /// `lega.voce_crediti_sub`
-        static let voceCreditiSub = "I crediti residui di ogni squadra"
-
         /// `lega.voce_stagione`
         static let voceStagione = "Nuova stagione"
 
-        /// `lega.voce_stagione_sub`
-        static let voceStagioneSub = "Archivia le rose e riparti"
-
         /// `lega.voce_novita`
         static let voceNovita = "Novità"
-
-        /// `lega.voce_novita_sub`
-        static let voceNovitaSub = "Cosa è cambiato negli ultimi aggiornamenti"
 
         /// `lega.mia_squadra`
         static let miaSquadra = "La mia squadra"
@@ -162,21 +114,6 @@ extension Catalogo {
 
         /// `lega.da_controllare`
         static let daControllare = "Da controllare:"
-
-        /// `lega.crediti_residui_ogni`
-        static let creditiResiduiOgni = "Crediti residui di ogni squadra"
-
-        /// `lega.crediti_non_salvati`
-        static let creditiNonSalvati = "Ci sono crediti scritti e non ancora salvati."
-
-        /// `lega.salva_crediti`
-        static let salvaCrediti = "Salva i crediti"
-
-        /// `lega.servono_per_consigli`
-        static let servonoPerConsigli = "Servono per i consigli del mercato (rimborso e crediti dopo il cambio). Restano anche se importi di nuovo l'Excel."
-
-        /// `lega.crediti_salvati`
-        static let creditiSalvati = "Crediti salvati"
 
         /// `lega.rose_ancora_quelle`
         static func roseAncoraQuelle(s: String) -> String {

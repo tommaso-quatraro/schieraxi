@@ -8,18 +8,10 @@ struct FormazioneView: View {
     @State private var schedaDopoPerche: Int?
     @Environment(\.apriGiocatore) private var apriGiocatore
     @Namespace private var moduloNS
-    @Namespace private var stileNS
-    @Environment(\.funzioni) private var funzioni
-    /// La legenda del campo si mostra da sola una volta; poi si riapre con «Cosa vuol dire» (come la web app).
-    @AppStorage("legendaCampoVista") private var legendaVista = false
-    @State private var legendaAperta = false
 
     /// Dall'alto in basso come sul campo: attacco in alto, portiere in basso.
     private let ruoli = ["A", "C", "D", "P"]
     private let nomiRuolo = ["P": "Portiere", "D": "Difensori", "C": "Centrocampisti", "A": "Attaccanti"]
-
-    /// Cosa fa ogni stile, a parole (come il server e la web app): vedi `StileFormazione`.
-    static func descrizioneStile(_ rischio: Int) -> String { StileFormazione.descrizione(rischio) }
 
     // MARK: frasi della web (catalogo comune `fanta/testi/formazione.json` → `Catalogo.Formazione`, #495; le prove sono
     // `FormazioneComeLaWebTests` e `FormazioneDalCatalogoTests`)
@@ -30,29 +22,17 @@ struct FormazioneView: View {
     static let testoPanchina = Catalogo.Formazione.questOrdineEntra
     /// Davanti alle alternative vicine, solo sul primo titolare che le ha (`formazione.ballottaggio_alternative_vic`).
     static let testoBallottaggio = Catalogo.Formazione.ballottaggioAlternativeVic
-    /// ✎ sostituisce un titolare (modifica a mano), ⇄ lo confronta con un altro della rosa: come i due pulsanti della web.
+    /// ✎ sostituisce un titolare (modifica a mano), come il pulsante della web.
     static let simboloSostituisci = "pencil"
-    static let simboloConfronta = "arrow.left.arrow.right"
-    /// Il pulsante accanto alla frase dello stile (`formazione.modifica_mano`).
+    /// Il pulsante sopra i moduli (`formazione.modifica_mano`).
     static let testoModificaAMano = Catalogo.Formazione.modificaMano
-    /// In modifica a mano, al posto della frase dello stile (`formazione.modificata_mano`): moduli e stili restano sullo schermo e
-    /// un tocco torna alla loro proposta (#463).
-    static let testoModificataAMano = Catalogo.Formazione.modificataMano
-    /// In modifica a mano, per VoiceOver su ogni stile e modulo: cosa fa il tocco, come dice la frase sopra.
+    /// In modifica a mano, per VoiceOver su ogni modulo: un tocco torna alla proposta del server.
     static let suggerimentoChipAMano = Catalogo.Formazione.tornaAllaConsigliata
     /// Mentre la formazione arriva, come la web (`formazione.calcolo`).
     static let testoCaricamento = Catalogo.Formazione.calcolo
 
-    /// La riga sotto «Titolari» (`formazione.tocca_sostituire` in modifica a mano, altrimenti `formazione.tocca_confronto`).
-    static func istruzioneTitolari(modificabile: Bool) -> String {
-        modificabile ? Catalogo.Formazione.toccaSostituire : Catalogo.Formazione.toccaConfronto
-    }
-
-    /// Dopo il nome dello stile: il modulo che propone (`formazione.propone`) o, se ne hai toccato un altro, che è fissato a mano
-    /// (`formazione.modulo_fissato`). Toccare lo stile riporta al suo modulo (`scegliStile` azzera il modulo scelto).
-    static func fraseStile(proposto: String, attivo: String) -> String {
-        attivo == proposto ? Catalogo.Formazione.propone(modulo: proposto) : Catalogo.Formazione.moduloFissato(modulo: proposto)
-    }
+    /// La riga sotto «Titolari» in modifica a mano (`formazione.tocca_sostituire`).
+    static let istruzioneTitolari = Catalogo.Formazione.toccaSostituire
 
     /// La formazione di un'altra squadra, come la web: «Stai guardando la formazione di Gli Amici.»
     /// (`formazione.stai_guardando_formazione`, poi il nome e il punto).
@@ -71,25 +51,17 @@ struct FormazioneView: View {
                             let v = vm.vista(f)
                             let primoBallottaggio = primoConBallottaggio(f, v)
                             cardStile(f, v).ingresso(0)
-                            if !legendaVista {
-                                Carta("Come si legge il campo", simbolo: "info.circle") {
-                                    LegendaCampo { withAnimation(Tema.morbida) { legendaVista = true } }
-                                }
-                                .ingresso(2)
-                            }
                             Carta("Campo", simbolo: "sportscourt") {
                                 CampoFormazione(titolari: v.titolari, apribile: true)
                                 notaScelta(vm.righeScelta(f))
-                                if legendaVista { pulsanteLegenda }
                             }
                             .ingresso(3)
                             // Un'unica scheda con i quattro reparti in ordine (Portiere, Difensori, Centrocampisti, Attaccanti):
                             // sull'iPad le colonne si leggono così dall'alto in basso senza saltare da una parte all'altra.
                             Carta(Catalogo.Formazione.titolari, simbolo: "person.3.fill") {
-                                // come la web: ✎ sostituisce (modifica a mano), ⇄ confronta. A giornata chiusa l'iPhone non ha né
-                                // l'uno né l'altro (sola lettura), quindi niente riga.
-                                if !vm.chiusa {
-                                    Text(Self.istruzioneTitolari(modificabile: vm.manuale != nil))
+                                // come la web: in modifica a mano ✎ sostituisce un titolare; altrimenti (e a giornata chiusa) niente riga
+                                if vm.manuale != nil, !vm.chiusa {
+                                    Text(Self.istruzioneTitolari)
                                         .font(.caption).foregroundStyle(Color.testoSecondario)
                                 }
                                 if let nota = vm.notaFermi {
@@ -135,12 +107,10 @@ struct FormazioneView: View {
                     if let f = vm.formazione {
                         Menu {
                             ShareLink(item: vm.testo(f)) { Label("Condividi come testo", systemImage: "text.alignleft") }
-                            Button { vm.preparaImmagine(f) } label: { Label(Catalogo.Formazione.condividiImmagine, systemImage: "photo") }
                             Button { vm.copiaTesto(f) } label: { Label(Catalogo.Formazione.copiaFormazione, systemImage: "doc.on.doc") }
                         } label: {
                             Image(systemName: "square.and.arrow.up").frame(minWidth: 44, minHeight: 44)
                         }
-                        .sensoryFeedback(trigger: vm.anteprimaImmagine?.id) { _, nuovo in nuovo != nil ? .success : nil }
                         .accessibilityLabel("Condividi la formazione")
                     }
                 }
@@ -154,12 +124,6 @@ struct FormazioneView: View {
                     }
                 }
             }
-            .sheet(item: $vm.confrontoAperto) { inizio in
-                ConfrontoSheet(inizio: inizio, contesto: vm.contestoConfronto, server: vm.server)
-            }
-            .sheet(item: $vm.anteprimaImmagine) { immagine in
-                AnteprimaImmagineSheet(elemento: immagine)
-            }
             .sheet(item: $vm.percheAperto, onDismiss: {
                 if let id = schedaDopoPerche {
                     schedaDopoPerche = nil
@@ -172,28 +136,6 @@ struct FormazioneView: View {
                 }
             }
             .task { await vm.carica() }
-        }
-    }
-
-    /// Riapre la legenda del campo (popover sull'iPad, foglio sull'iPhone).
-    private var pulsanteLegenda: some View {
-        Button { legendaAperta = true } label: {
-            Label(Catalogo.Formazione.legendaApri, systemImage: "info.circle").font(.footnote.weight(.semibold))
-                .frame(minHeight: 44).contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(Color.verde)
-        .accessibilityHint("Apre la legenda del campo")
-        .popover(isPresented: $legendaAperta) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Come si legge il campo").font(.headline).accessibilityAddTraits(.isHeader)
-                    LegendaCampo()
-                }
-                .padding(20)
-            }
-            .frame(minWidth: 320, idealWidth: 380)
-            .presentationDetents([.medium, .large])
         }
     }
 
@@ -220,21 +162,11 @@ struct FormazioneView: View {
     }
 
     /// La riga in fondo alla Formazione: cosa sono i numeri (e, con un server che manda i motivi, che si possono toccare).
-    /// L'ultima frase è la prima di `formazione.numero_sulla_maglia` della web (l'indice sul volto); la seconda della web («Tocca il
-    /// fantavoto atteso…») qui ha il suo posto prima, «Toccalo per sapere perché.», solo se il server manda i motivi.
     static func legenda(conPerche: Bool) -> String {
         "Il numero è il fantavoto atteso: quello che SchieraXI si aspetta dal giocatore se gioca, con le regole della tua lega."
             + (conPerche ? " Toccalo per sapere perché." : "")
-            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. "
-            + fraseIndice
+            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare."
     }
-
-    /// La prima frase di `formazione.numero_sulla_maglia`, con il suo punto («Negli elenchi il numero sul volto è l'indice: …»).
-    private static let fraseIndice: String = {
-        let testo = Catalogo.Formazione.numeroSullaMaglia
-        guard let fine = testo.range(of: ". ") else { return testo }
-        return String(testo[..<fine.lowerBound]) + "."
-    }()
 
     // MARK: un'altra squadra
 
@@ -252,12 +184,12 @@ struct FormazioneView: View {
     // MARK: righe
 
     /// In modifica a mano ogni titolare è un bottone con ✎ che apre la scelta del sostituto (tranne chi gioca un anticipo già
-    /// cominciato: `vm.fermi`); altrimenti un tocco apre la scheda, «⇄» confronta con un altro della rosa e sotto i titolari incerti
-    /// ci sono le alternative vicine (ballottaggio). `etichettaBallottaggio`: solo sul primo che le ha si legge «In ballottaggio con».
+    /// cominciato: `vm.fermi`); altrimenti un tocco apre la scheda e sotto i titolari incerti ci sono le alternative vicine
+    /// (ballottaggio). `etichettaBallottaggio`: solo sul primo che le ha si legge «In ballottaggio con».
     @ViewBuilder
     private func rigaTitolare(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione, etichettaBallottaggio: Bool) -> some View {
         if vm.chiusa {
-            // giornata chiusa: sola lettura (un tocco apre la scheda, niente sostituzioni né confronti per cambiare)
+            // giornata chiusa: sola lettura (un tocco apre la scheda, niente sostituzioni)
             RigaGiocatore(g: g, apribile: true, perche: apriPerche)
         } else if vm.manuale != nil && !vm.fermi.contains(g.id) {
             Button { daSostituire = g } label: {
@@ -268,16 +200,8 @@ struct FormazioneView: View {
             .accessibilityHint("Apre la scelta del giocatore che prende il suo posto")
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    RigaGiocatore(g: g, apribile: true, perche: apriPerche)
-                    Button { vm.confrontoAperto = .scelta(g.id) } label: {
-                        Image(systemName: Self.simboloConfronta).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.verde)
-                    .accessibilityLabel(Catalogo.Formazione.confrontaAria(nome: g.nome))
-                }
-                // in modifica a mano qui c'è solo chi è fermo (anticipo già cominciato, #373): come la web, ⇄ e niente ballottaggio
+                RigaGiocatore(g: g, apribile: true, perche: apriPerche)
+                // in modifica a mano qui c'è solo chi è fermo (anticipo già cominciato, #373): come la web, niente ballottaggio
                 if vm.manuale == nil { ballottaggio(g, f, v, conEtichetta: etichettaBallottaggio) }
             }
         }
@@ -310,8 +234,9 @@ struct FormazioneView: View {
         }
     }
 
+    /// Un'alternativa vicina: un tocco apre la sua scheda, come la web.
     private func chipAlternativa(_ a: Ballottaggio.Alternativa, rispetto g: Giocatore) -> some View {
-        Button { vm.confrontoAperto = .coppia(g.id, a.giocatore.id) } label: {
+        Button { apriGiocatore(a.giocatore.id) } label: {
             HStack(spacing: 5) {
                 Text(a.giocatore.nomeCorto).font(.caption.weight(.semibold))
                 Text(Formato.conSegno(a.differenza)).font(.caption.bold()).monospacedDigit()
@@ -323,7 +248,8 @@ struct FormazioneView: View {
             .background(Color.sfondoIncavo, in: Capsule())
         }
         .buttonStyle(StilePressione())
-        .accessibilityLabel("Confronta \(g.nome) con \(a.giocatore.nome), \(Formato.conSegno(a.differenza)) punti attesi\(a.quasiPari ? ", \(Catalogo.Formazione.quasiPari)" : "")")
+        .accessibilityLabel("\(a.giocatore.nome), \(Formato.conSegno(a.differenza)) punti attesi rispetto a \(g.nome)\(a.quasiPari ? ", \(Catalogo.Formazione.quasiPari)" : "")")
+        .accessibilityHint("Apre la scheda del giocatore")
     }
 
     @ViewBuilder
@@ -345,10 +271,10 @@ struct FormazioneView: View {
         }
     }
 
-    // MARK: stile, modulo e punti (una sola card)
+    // MARK: modulo e punti (una sola card)
 
-    /// Giornata, punti, stato della scelta, stile con la sua descrizione, modulo proposto e «Modifica a mano» in una card compatta:
-    /// il campo parte subito sotto. Come la web, stili e moduli restano anche in modifica a mano (#463).
+    /// Giornata, punti, stato della scelta, «Modifica a mano» e i moduli in una card compatta: il campo parte subito sotto.
+    /// Come la web, i moduli restano anche in modifica a mano (#463).
     private func cardStile(_ f: Formazione, _ v: VistaFormazione) -> some View {
         Carta {
             intestazione(f, v)
@@ -369,7 +295,7 @@ struct FormazioneView: View {
             if vm.manuale != nil { calcoloManuale }
             rigaStato(f)
             if !vm.chiusa {
-                if let livelli = f.livelli, !livelli.isEmpty { sceltaStile(f, livelli) }
+                if let livello = vm.livello(f) { sceltaModulo(f, livello) }
                 pulsantiSenzaRiga(f)
             }
             if let messaggio = vm.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.testoSecondario) }
@@ -385,7 +311,7 @@ struct FormazioneView: View {
                         .lineLimit(1).fixedSize()   // «3-4-3» non va mai a capo
                 }
                 Text(TempiLega.didascalia(giornata: f.etichettaGiornata, scelta: vm.manuale != nil,
-                                          comeConsigliato: v.modulo == f.modulo && vm.rischio == (f.stileConsigliato ?? 0)))
+                                          comeConsigliato: !vm.altraDallaConsigliata))
                     .font(.caption).foregroundStyle(Color.testoSecondario)
             }
             Spacer()
@@ -436,43 +362,13 @@ struct FormazioneView: View {
         Task { await vm.tornaAllaConsigliata(f) }
     }
 
-    /// Gli stili come scelte in fila, la loro descrizione, il modulo proposto e i moduli. In modifica a mano, come la web, nessuno
-    /// stile né modulo è acceso, la descrizione non c'è e al posto della frase dello stile c'è «Modificata a mano. Tocca un modulo
-    /// o uno stile per tornare alla consigliata.»: un tocco esce dalla modifica a mano (la scelta salvata resta).
+    /// «Modifica a mano» (solo dove la web la offre: `StatoScelta.conModificaAMano`) e i moduli dello stile equilibrato, l'unico
+    /// rimasto (#634, come la web). In modifica a mano nessun modulo è acceso: un tocco torna alla proposta del server (la scelta
+    /// salvata resta).
     @ViewBuilder
-    private func sceltaStile(_ f: Formazione, _ livelli: [LivelloRischio]) -> some View {
-        let livello = livelli.first(where: { $0.rischio == vm.rischio }) ?? livelli[0]
-        let consigliato = f.stileConsigliato ?? 0
+    private func sceltaModulo(_ f: Formazione, _ livello: LivelloRischio) -> some View {
         let aMano = vm.manuale != nil
-        // «Stili a 3 livelli» spenta (di norma): più sicura, equilibrata, più rischiosa (e lo stile in uso, se è un altro). Accesa: tutti e 5.
-        let visibili = funzioni.acceso(Funzione.stiliRidotti) ? livelli : livelli.filter { $0.rischio == livello.rischio || abs($0.rischio) < 2 }
-        FilaScorrevole {
-            ForEach(visibili) { l in
-                let attivo = !aMano && l.rischio == livello.rischio
-                Button { withAnimation(Tema.molla) { vm.scegliStile(l.rischio) } } label: {
-                    Text(l.nome + (l.rischio == consigliato ? " ★" : ""))
-                        .font(.subheadline.bold())
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 44)
-                        .pillola(attiva: attivo, spazio: stileNS)
-                }
-                .buttonStyle(StilePressione())
-                .accessibilityLabel("Stile \(l.nome)\(l.rischio == consigliato ? ", consigliato" : "")")
-                .accessibilityHint(aMano ? Self.suggerimentoChipAMano : "")
-                .accessibilityAddTraits(attivo ? .isSelected : [])
-            }
-        }
-        if aMano {
-            Text(Self.testoModificataAMano).font(.footnote)
-                .fixedSize(horizontal: false, vertical: true)
-        } else {
-            // la descrizione dello stile per intero (sulla web si apre con «Come si legge»: differenza ammessa)
-            Text((livello.descrizione ?? Self.descrizioneStile(livello.rischio))
-                 + (StileFormazione.stellaNonMassimo(livello).map { " " + $0 } ?? ""))
-                .font(.footnote).foregroundStyle(Color.testoSecondario)
-                .fixedSize(horizontal: false, vertical: true)
-            rigaStile(f, livello)
-        }
+        if !aMano, vm.statoScelta.conModificaAMano { modificaAMano(f) }
         FilaScorrevole {
             ForEach(livello.moduli) { m in
                 let attivo = !aMano && vm.moduloAttivo(livello) == m.modulo
@@ -486,34 +382,10 @@ struct FormazioneView: View {
                     .pillola(attiva: attivo, spazio: moduloNS)
                 }
                 .buttonStyle(StilePressione())
-                .accessibilityLabel("Modulo \(m.modulo), \(Formato.punti(m.punteggioAtteso)) punti attesi\(m.modulo == livello.modulo ? ", proposto dallo stile" : "")")
+                .accessibilityLabel("Modulo \(m.modulo), \(Formato.punti(m.punteggioAtteso)) punti attesi\(m.modulo == livello.modulo ? ", consigliato" : "")")
                 .accessibilityHint(aMano ? Self.suggerimentoChipAMano : "")
                 .accessibilityAddTraits(attivo ? .isSelected : [])
             }
-        }
-    }
-
-    /// Come la web: «**Equilibrata**: propone il 3-4-3.» o «Modulo fissato a mano (…)». Accanto a «Modifica a mano» se ci sta in
-    /// una riga, altrimenti sopra (la frase lunga o il testo grande non schiacciano il pulsante). «Modifica a mano» solo dove la web
-    /// la offre (`StatoScelta.conModificaAMano`): con una scelta salvata e un altro modulo sullo schermo ci sono Salva e Annulla.
-    @ViewBuilder
-    private func rigaStile(_ f: Formazione, _ livello: LivelloRischio) -> some View {
-        let frase = Text("\(Text(livello.nome).bold()): \(Self.fraseStile(proposto: livello.modulo, attivo: vm.moduloAttivo(livello)))")
-            .font(.footnote)
-        if vm.statoScelta.conModificaAMano {
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    frase
-                    Spacer(minLength: 8)
-                    modificaAMano(f)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    frase.fixedSize(horizontal: false, vertical: true)
-                    modificaAMano(f)
-                }
-            }
-        } else {
-            frase.fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -626,34 +498,6 @@ struct SostituzioneSheet: View {
             .navigationTitle("Sostituisci")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Annulla") { chiudi() } } }
-        }
-    }
-}
-
-/// L'immagine della formazione, con il pulsante per condividerla (menu Condividi di iOS).
-struct AnteprimaImmagineSheet: View {
-    let elemento: ImmagineCondivisa
-    @Environment(\.dismiss) private var chiudi
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    Image(uiImage: elemento.immagine).resizable().scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .frame(maxWidth: 480)
-                        .accessibilityLabel("Immagine della formazione")
-                    ShareLink(item: Image(uiImage: elemento.immagine), preview: SharePreview(elemento.titolo, image: Image(uiImage: elemento.immagine))) {
-                        Label("Condividi l'immagine", systemImage: "square.and.arrow.up").frame(minHeight: 44)
-                    }
-                    .pulsanteVetro(prominente: true)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity)
-            }
-            .navigationTitle("Formazione")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } } }
         }
     }
 }
