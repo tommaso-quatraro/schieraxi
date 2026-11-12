@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from fanta import backup, lega, server
+from fanta import backup, lega, limiti, movimenti, osservati, scelte, server
 from fanta.regole import Regole
 from fanta.regole import salva as salva_regole
 from fastapi.testclient import TestClient
@@ -96,6 +96,67 @@ def test_backup_impostazioni_avvisi_si_ripristinano_senza_le_voci_sconosciute(ra
     assert json.loads((radice / "dati" / "avvisi-impostazioni.json").read_text(encoding="utf-8")) == {}
 
 
+def _annidato(livelli: int):
+    """Una lista dentro una lista, `livelli` volte."""
+    d: list = [0]
+    for _ in range(livelli - 1):
+        d = [d]
+    return d
+
+
+def _scelta(**campi) -> dict:
+    return {"2025-26/9": {"titolari": [1, 2, 3], "modulo": "3-4-3", "tipo": "manuale"} | campi}
+
+
+def _movimento(**campi) -> list:
+    return [{"quando": "2026-11-01T10:00:00", "testo": "Passaggio da A a B: Rossi"} | campi]
+
+
+@pytest.mark.parametrize("nome, contenuto", [
+    pytest.param("dati/scelte.json", _scelta(titolari=[float("inf")] * 11), id="scelte-titolari-non-finiti"),
+    pytest.param("dati/scelte.json", _scelta(titolari=[1.5, 2]), id="scelte-titolari-non-interi"),
+    pytest.param("dati/scelte.json", _scelta(titolari=[True, 2]), id="scelte-titolari-vero-falso"),
+    pytest.param("dati/scelte.json", _scelta(titolari=[0, 2]), id="scelte-titolari-fuori-misura"),
+    pytest.param("dati/scelte.json", _scelta(titolari="1,2,3"), id="scelte-titolari-testo"),
+    pytest.param("dati/scelte.json", _scelta(titolari=list(range(1, limiti.MAX_GIOCATORI_SQUADRA + 2))), id="scelte-titolari-troppi"),
+    pytest.param("dati/scelte.json", _scelta(panchina=[float("inf")]), id="scelte-panchina-non-finita"),
+    pytest.param("dati/scelte.json", _scelta(modulo=[3, 4, 3]), id="scelte-modulo-non-testo"),
+    pytest.param("dati/scelte.json", {"2025-26/9": {"modulo": "3-4-3"}}, id="scelte-senza-titolari"),
+    pytest.param("dati/scelte.json", {"2025-26/9": [1, 2, 3]}, id="scelte-voce-non-dizionario"),
+    pytest.param("dati/scelte.json", {"x0": _scelta()["2025-26/9"]}, id="scelte-chiave-sbagliata"),
+    pytest.param("lega/movimenti.json", [1, 2, 3], id="movimenti-numeri"),
+    pytest.param("lega/movimenti.json", {"a": 1}, id="movimenti-dizionario"),
+    pytest.param("lega/movimenti.json", [None], id="movimenti-voce-vuota"),
+    pytest.param("lega/movimenti.json", _movimento(scambi=5), id="movimenti-scambi-numero"),
+    pytest.param("lega/movimenti.json", _movimento(scambi=[{"squadre": ["A"], "da_a": [], "da_b": []}]), id="movimenti-scambio-una-squadra"),
+    pytest.param("lega/movimenti.json", _movimento(tagliati=[{"squadra": "A", "giocatori": [{"id": "x", "nome": "Rossi"}]}]),
+                 id="movimenti-giocatore-codice-testo"),
+    pytest.param("lega/movimenti.json", _movimento(svincolati_presi=[{"squadra": "A", "giocatori": [{"id": 1}]}]),
+                 id="movimenti-giocatore-senza-nome"),
+    pytest.param("lega/movimenti.json", _movimento(crediti=[{"squadra": "A", "prima": "molti", "dopo": 3}]), id="movimenti-crediti-testo"),
+    pytest.param("lega/movimenti.json", _movimento(squadre_nuove="A"), id="movimenti-squadre-nuove-testo"),
+    pytest.param("lega/movimenti.json", _movimento(quando=5), id="movimenti-data-numero"),
+    pytest.param("lega/movimenti.json", _movimento() * (movimenti.MAX_STORICO + 1), id="movimenti-troppe-voci"),
+    pytest.param("lega/movimenti.json", _movimento(testo="t" * (backup.MAX_TESTO_MOVIMENTO + 1)), id="movimenti-testo-troppo-lungo"),
+    pytest.param("lega/movimenti.json", _movimento(tagliati=[{"squadra": "A", "giocatori": [{"id": None, "nome": "Rossi"}] * (
+        backup.MAX_GIOCATORI_MOVIMENTO + 1)}]), id="movimenti-troppi-giocatori-in-un-gruppo"),
+    pytest.param("lega/movimenti.json", _movimento(tagliati=[{"squadra": "A", "giocatori": [{"id": None, "nome": "R" * (
+        backup.MAX_TESTO_ROSE + 1)}]}]), id="movimenti-nome-troppo-lungo"),
+    pytest.param("dati/osservati.json", [True], id="osservati-vero-falso"),
+    pytest.param("dati/osservati.json", [1.5], id="osservati-non-interi"),
+    pytest.param("dati/osservati.json", ["5"], id="osservati-testo"),
+    pytest.param("dati/osservati.json", list(range(1, osservati.MASSIMO + 2)), id="osservati-troppi"),
+])
+def test_backup_con_dati_di_forma_sbagliata_non_cambia_niente(radice, nome, contenuto):
+    """Scelte, movimenti e osservati del backup hanno la forma che scrive l'app: altrimenti un errore che dice quale file non va
+    e niente scritto."""
+    prima = backup.crea(radice)
+    with pytest.raises(ValueError, match=f"{nome} non è valido"):
+        backup.ripristina(_solo(nome, contenuto), radice)
+    dopo = backup.crea(radice)
+    assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
+
+
 def _rose_con(nome="Mia", giocatore: dict | None = None, **campi) -> dict:
     g = {"id": 1, "nome": "Rossi", "ruolo": "A", "squadra": "ROM"} | (giocatore or {})
     return {"squadre": [{"nome": nome, "giocatori": [g]} | campi], "mia_squadra": nome}
@@ -169,6 +230,93 @@ def test_backup_regole_ai_tetti_si_ripristinano(radice):
     assert backup.ripristina(b, radice) == ["lega/regole.json"]
     r = regole.carica(radice / "lega" / "regole.json")
     assert len(r.nome_lega) == regole.MAX_NOME_LEGA and len(r.modificatore_difesa.soglie) == regole.MAX_SOGLIE
+
+
+@pytest.mark.parametrize("nome, contenuto", [
+    pytest.param("lega/rose.json", _rose_con() | {"in_piu": _annidato(30)}, id="rose"),
+    pytest.param("dati/avvisi-impostazioni.json", {"in_piu": _annidato(30)}, id="impostazioni"),
+])
+def test_backup_con_campi_troppo_annidati_non_cambia_niente(radice, nome, contenuto):
+    """I campi che l'app non conosce (scritti da una versione più nuova) passano, ma non annidati oltre backup.MAX_PROFONDITA livelli.
+    Vale per ogni file (le regole rifiutano già i campi sconosciuti)."""
+    prima = backup.crea(radice)
+    with pytest.raises(ValueError, match=f"{nome} non è valido"):
+        backup.ripristina(_solo(nome, contenuto), radice)
+    dopo = backup.crea(radice)
+    assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
+
+
+def test_backup_con_un_testo_che_non_si_puo_salvare_non_cambia_niente(radice):
+    """Un testo che non si può scrivere su file (un carattere spezzato) si scopre prima di scrivere il primo file: niente a metà."""
+    prima = backup.crea(radice)
+    b = {"formato": backup.FORMATO, "versione": 1,
+         "file": {"dati/osservati.json": [9], "lega/rose.json": _rose_con("Mia\ud800")}}
+    with pytest.raises(ValueError, match="lega/rose.json non è valido"):
+        backup.ripristina(b, radice)
+    dopo = backup.crea(radice)
+    assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
+
+
+def test_backup_osservati_senza_doppioni_e_senza_numeri_fuori_misura(radice):
+    """Come la lettura dell'elenco: i doppioni e i codici che non possono essere giocatori si tolgono, l'ordine resta."""
+    backup.ripristina(_solo("dati/osservati.json", [5, 5, 7, 0, osservati.ID_MASSIMO + 1, 5]), radice)
+    assert json.loads((radice / "dati" / "osservati.json").read_text()) == [5, 7]
+
+
+def test_backup_osservati_al_tetto_si_ripristinano(radice):
+    tutti = list(range(1, osservati.MASSIMO + 1)) + [1, 2]          # doppioni: contano una volta
+    backup.ripristina(_solo("dati/osservati.json", tutti), radice)
+    assert json.loads((radice / "dati" / "osservati.json").read_text()) == list(range(1, osservati.MASSIMO + 1))
+
+
+def test_backup_scelte_tiene_le_ultime_giornate_come_l_app(radice):
+    """Il file delle scelte tiene le ultime scelte.MAX_GIORNATE giornate (come scelte.salva): un backup con più voci si ripristina
+    con le più recenti."""
+    voce = {"titolari": [1, 2, 3], "modulo": "3-4-3"}
+    tante = {f"2024-25/{g}": voce for g in range(1, 39)} | {f"2025-26/{g}": voce for g in range(1, 39)}
+    backup.ripristina(_solo("dati/scelte.json", tante), radice)
+    dopo = json.loads((radice / "dati" / "scelte.json").read_text())
+    assert len(dopo) == scelte.MAX_GIORNATE and "2025-26/38" in dopo and "2024-25/16" not in dopo and "2024-25/17" in dopo
+
+
+def test_backup_con_le_forme_scritte_dall_app_si_ripristina(radice, tmp_path_factory):
+    """Scelte e movimenti scritti dall'app (con tutti i loro campi) passano i controlli e tornano uguali."""
+    s = radice / "dati" / "scelte.json"
+    s.unlink()
+    scelte.salva("2025-26", 9, list(range(1, 12)), "3-4-3", s, panchina=[12, 13], era_consigliata=True)
+    scelte.salva_automatica("2025-26", 10, list(range(1, 12)), "4-4-2", s)
+    tutte = json.loads(s.read_text())
+    tutte["2025-26/9"] |= {"messa": True, "messa_il": "2026-11-01T10:00:00"}      # campi semplici di una versione più nuova
+    s.write_text(json.dumps(tutte))
+    prima = lega.Rose([lega.Squadra("A", [lega.GiocatoreRosa(1, "Rossi", "D", "ROM", 10)], 50),
+                       lega.Squadra("B", [lega.GiocatoreRosa(2, "Bianchi", "C", "MIL", 5)], 40)], "A")
+    dopo = lega.Rose([lega.Squadra("A", [lega.GiocatoreRosa(2, "Bianchi", "C", "MIL", 5), lega.GiocatoreRosa(None, "Nuovo", "A", None)], 45),
+                      lega.Squadra("B", [lega.GiocatoreRosa(1, "Rossi", "D", "ROM", 10)], 40), lega.Squadra("C", [])], "A")
+    movimenti.registra(radice / "lega" / "movimenti.json", movimenti.differenze(prima, dopo))
+    b = backup.crea(radice)
+    assert set(b["file"]) >= {"dati/scelte.json", "lega/movimenti.json"}
+    nuova = tmp_path_factory.mktemp("nuova")
+    assert backup.ripristina(b, nuova) == sorted(b["file"])
+    assert backup.crea(nuova)["file"] == b["file"]
+
+
+def test_il_ripristino_scrive_quanto_misura(radice):
+    """Il ripristino dice a `spazio` quanti byte sta per scrivere (i file come andranno su disco), prima di scrivere qualsiasi cosa:
+    se `spazio` alza un errore non cambia niente. I file si scrivono in forma compatta."""
+    contenuto = _rose_con()
+    b = _solo("lega/rose.json", contenuto)
+    prima = backup.crea(radice)
+
+    def troppo(n):
+        raise ValueError("spazio finito")
+    with pytest.raises(ValueError, match="spazio finito"):
+        backup.ripristina_esito(b, radice, spazio=troppo)
+    dopo = backup.crea(radice)
+    assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
+    misurati = []
+    backup.ripristina_esito(b, radice, spazio=misurati.append)
+    file = radice / "lega" / "rose.json"
+    assert misurati == [file.stat().st_size] and file.read_text(encoding="utf-8") == json.dumps(contenuto, ensure_ascii=False)
 
 
 def test_un_file_alla_volta_il_resto_resta(radice):
