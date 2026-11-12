@@ -34,11 +34,11 @@ Senza indirizzo lo strumento avvia da solo un server di prova e lo ferma alla fi
 
 Con un server già acceso: `foto.py http://127.0.0.NN:80NN <cartella-delle-foto>`.
 
-Opzioni: `--scene oggi,formazione` (di norma tutte), `--larghezze 390,768,1024,1440`, `--temi chiaro,scuro`, `--lingua it|en`,
+Opzioni: `--scene formazione,scheda` (di norma tutte), `--larghezze 390,768,1024,1440`, `--temi chiaro,scuro`, `--lingua it|en`,
 `--accesso`, `--solo-misure` (sotto).
-Scene: `oggi`, `formazione`, `squadra`, `rosa`, `scheda` (scheda del primo titolare), `altro`, `diario`, `regole`,
-`impostazioni`. Tutte le scene, a 4 larghezze e 2 temi, sono 72
-foto: circa 11 minuti.
+Scene: `formazione` (dal 12/11/2026 è anche la prima schermata: la scena «oggi» non c'è più), `squadra`, `rosa`, `scheda`
+(scheda del primo titolare), `altro`, `diario`, `regole`, `impostazioni`. Tutte le scene, a 4 larghezze e 2 temi, sono 64
+foto: circa 10 minuti.
 
 ## Cosa scrive
 Per ogni scena, larghezza e tema:

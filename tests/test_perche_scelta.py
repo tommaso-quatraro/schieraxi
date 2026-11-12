@@ -3,7 +3,6 @@ escluso dello stesso ruolo) e per gli incerti con la riserva sicura, il motivo v
 Rose e numeri inventati."""
 import json
 import shutil
-import subprocess
 
 import pandas as pd
 import pytest
@@ -302,36 +301,3 @@ def test_la_consigliata_tenuta_ha_le_sue_righe():
 # ------------------------------------------------------------------ web: la nota sotto il campo
 APP = codice_web.app()
 TESTI = codice_web.leggi("testi.js")
-
-
-@CON_NODE
-@pytest.mark.parametrize("lingua", ["it", "en"])
-def test_la_nota_sotto_il_campo_del_web(lingua):
-    inizio = APP.index("function righePercheScelta")
-    funzione = APP[inizio:APP.index("\n}\n", inizio) + 3]
-    schede = {"7": {"id": 7, "nome": "Rossi <b>"}, "21": {"id": 21, "nome": "Verdi"}}
-    riga = perche_scelta.motivo(G(7, p=0.6, mu=7.5), G(8, p=0.95, mu=5.2), 64.09, 63.98)
-    incerto = perche_scelta.motivo(G(21, p=0.45), G(22, p=0.9), 64.2, 64.0, riserva=G(22, p=0.9))
-    # nell'ordine del server (prima l'attacco, poi la difesa: qui apposta al contrario dei numeri); un id fuori dalla rosa si salta
-    modulo = {"perche_scelta": [{"titolare": 21, "altro": 22, "testo": incerto, "frase": incerto.json()},
-                                {"titolare": 7, "altro": 8, "testo": riga, "frase": riga.json()},
-                                {"titolare": 99, "altro": 8, "testo": "x", "frase": None}]}
-    prova = TESTI + APP[APP.index("function esc"):APP.index("const sigla")] + funzione + f"""
-    LINGUA = {json.dumps(lingua)};
-    const schede = {json.dumps(schede)}, scheda = id => schede[String(id)];
-    console.log(JSON.stringify([righePercheScelta({json.dumps(modulo, ensure_ascii=False)}, scheda), righePercheScelta({{}}, scheda)]));
-    """
-    r = subprocess.run(["node", "-"], input=prova, capture_output=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    righe, senza = json.loads(r.stdout)
-    assert senza is None                                  # server senza il campo: resta la nota degli incerti di prima
-    assert [(x["id"], x["nome"]) for x in righe] == [(21, "Verdi"), (7, "Rossi <b>")]
-    atteso = ("Preferito a Giocatore 8: con lui la formazione fa più punti attesi (64,1 contro 64,0)." if lingua == "it"
-              else "Preferred to Giocatore 8: with him the team gets more expected points (64.1 vs 64.0).")
-    assert righe[1]["riga"] == atteso
-    assert righe[0]["riga"].startswith("Titolare anche se incerto (gioca 45%)" if lingua == "it" else "Starting even though uncertain (plays 45%)")
-
-
-def test_la_nota_usa_le_righe_del_server_e_resta_solo_per_la_proposta():
-    assert "(sc.manuale || f.iniziata) ? [] : (righePercheScelta(m, scheda) ?? Object.values(inc))" in APP
-    assert 'id="nota-incerti"' in APP and "nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`)" in APP

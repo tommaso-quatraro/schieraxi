@@ -29,8 +29,9 @@ def _funzione(testo, nome):
 
 def test_una_sola_nav_nella_testata_con_le_schede_come_collegamenti():
     assert HTML.count("<nav") == 1 and HTML.index("<nav") < HTML.index("</header>")
-    for v in ("oggi", "formazione", "squadra", "altro"):
+    for v in ("formazione", "squadra", "altro"):
         assert f'<a class="scheda" data-vista="{v}" href="/?vista={v}"' in HTML
+    assert 'data-vista="oggi"' not in HTML                           # Oggi e Formazione sono una schermata sola (#616)
 
 
 def test_testata_senza_h1_e_nome_disegnato_uguale_al_sito():
@@ -38,7 +39,7 @@ def test_testata_senza_h1_e_nome_disegnato_uguale_al_sito():
     assert "<h1" not in testata
     simbolo = lambda t: re.search(r'<symbol id="wm-c".*?</symbol>', t, re.S).group(0)
     assert simbolo(HTML) == simbolo((RADICE / "sito" / "index.html").read_text(encoding="utf-8"))
-    assert '<a class="marchio" href="/?vista=oggi"' in testata and '<use href="#wm-c"/>' in testata
+    assert '<a class="marchio" href="/?vista=formazione"' in testata and '<use href="#wm-c"/>' in testata
 
 
 def test_ricerca_sempre_aperta_sul_pc_e_che_funziona_subito():
@@ -66,12 +67,12 @@ def test_niente_pillola_verticale_ne_lente_sul_pc():
 
 
 def test_le_colonne_ferme_stanno_sotto_la_testata_ferma():
-    """Da 900 px la testata resta ferma in alto: le colonne ferme (Oggi, campo, Impostazioni, filtri) partono sotto di lei
+    """Da 900 px la testata resta ferma in alto: le colonne ferme (campo della Formazione, Impostazioni, menu) partono sotto di lei
     (`--alto-ferma`); sotto i 900 px la testata scorre via e le colonne stanno a un filo dal bordo."""
     assert re.search(r"\n:root \{[^}]*--alto-ferma: 0px", CSS)
     assert re.search(r"@media \(min-width: 900px\) \{[^@]*--alto-ferma: var\(--alto-testata, 56px\)", CSS)
     assert "top: 76px" not in CSS
-    assert CSS.count("top: calc(var(--alto-ferma) + 16px)") >= 4
+    assert CSS.count("top: calc(var(--alto-ferma) + 16px)") >= 3
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
@@ -105,9 +106,10 @@ def test_indirizzo_di_ogni_schermata():
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
-def test_un_indirizzo_strano_porta_a_oggi():
+def test_un_indirizzo_strano_non_trova_niente_e_oggi_vale_la_formazione():
     """`?vista=` arriva dall'indirizzo (anche con Indietro): un nome che non è una schermata non deve trovare niente, nemmeno
-    le proprietà di ogni oggetto JavaScript («__proto__», «constructor»), che prima rompevano la pagina."""
+    le proprietà di ogni oggetto JavaScript («__proto__», «constructor»), che prima rompevano la pagina. «oggi», il nome di
+    prima, vale la Formazione (#616)."""
     pezzo = APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")]
     riga = re.search(r"\nconst SCHEDA_DI = [^\n]*\n", APP).group(0)
     codice = pezzo + riga + """
@@ -115,19 +117,7 @@ def test_un_indirizzo_strano_porta_a_oggi():
     """
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout) == ["oggi", "squadra", "altro", "altro", None, None, None, None, None]
-
-
-def test_indietro_con_la_formazione_non_salvata_resta_nella_formazione():
-    """Spec §15.6: Indietro chiede come un clic su una scheda; se si resta, l'indirizzo torna quello della Formazione.
-    Indietro chiude anche il foglio aperto, come un cambio di scheda; il foglio non scrive nella cronologia."""
-    corpo = _funzione(APP, "vai")
-    resta = corpo[:corpo.index("return;")]
-    assert "lasciaFormazione()" in resta and "opz.daCronologia" in resta and 'indirizzoVista("formazione")' in resta
-    gestore = APP[APP.index('addEventListener("popstate"'):]
-    gestore = gestore[:gestore.index("\n});\n")]
-    assert "chiudiFoglio()" in gestore and "daCronologia: true" in gestore
-    assert "history.pushState" not in _funzione(APP, "apriFoglio")
+    assert json.loads(r.stdout) == ["formazione", "squadra", "altro", "altro", None, None, None, None, None]
 
 
 def test_la_ricerca_dalla_testata_non_perde_le_lettere():
@@ -486,19 +476,6 @@ def test_la_scelta_si_riconosce_anche_con_il_contrasto_elevato_di_windows():
     assert "border: 2px solid var(--testo)" in _corpo(".chip.attiva")
 
 
-def test_il_focus_della_voce_scelta_sta_dentro_la_striscia_che_scorre():
-    """Revisione di accessibilità della #405: nella striscia dei moduli e degli stili (che scorre di lato e taglia ciò che esce) la voce
-    scelta sporge di 1 px (bordo di 2 px e margine di −1 px) e il focus sta 2 + 2 px più in là: 5 px, con 4 px di spazio il contorno
-    veniva tagliato. Lo spazio intorno alle voci basta per tutto il contorno; il margine negativo uguale tiene le voci allineate."""
-    fuoco = re.search(r"\n:focus-visible \{ outline: (\d+)px solid var\(--testo\); outline-offset: (\d+)px; \}", SENZA_COMMENTI)
-    sporge = -int(re.search(r"margin: (-\d+)px", _corpo(".chip.attiva")).group(1))
-    serve = int(fuoco.group(1)) + int(fuoco.group(2)) + sporge
-    striscia = _corpo(".chips.scorri")
-    spazio = int(re.search(r"(?<![\w-])padding: (\d+)px;", striscia).group(1))
-    assert spazio >= serve, (spazio, serve)
-    assert f"margin: {2 - (spazio - 4)}px -{spazio}px {4 - (spazio - 4)}px" in striscia     # stesso ingombro di prima, voci allineate
-
-
 def test_pulsante_secondario_da_solo_con_il_bordo_nella_riga_solo_testo():
     """Spec §8.7: un pulsante pieno per schermata (fondo `--azione`); il secondario da solo ha il bordo dei controlli e la scritta del
     testo, quello nella riga (`.azione-testo`) è solo testo del colore delle azioni, con l'area da 44 px. Mai tre contorni in fila."""
@@ -520,12 +497,11 @@ def test_etichette_senza_fondo_ne_bordo_tranne_le_due_pillole():
 
 def test_nessuna_regola_rimette_la_pillola_alle_etichette():
     """Spec §8.9: le etichette dei giocatori sono testo nel colore del loro tono (verde, arancio, rosso, grigio per il neutro), senza
-    fondo, bordo né angoli, in ogni variante e in ogni posto (righe, scheda, confronto, Oggi in corso). Le parole e i toni restano
+    fondo, bordo né angoli, in ogni variante e in ogni posto (righe, scheda). Le parole e i toni restano
     quelli del server, gli stessi dell'iPhone (che le mostra come pillole: differenza ammessa)."""
     assert not _scatole(["etichetta"])
     for classe, colore in ((".etichetta", "--eti-verde"), (".etichetta.arancio", "--eti-arancio"), (".etichetta.rossa", "--eti-rosso"),
-                           (".etichetta.neutra", "--testo-2"), (".tono", "--eti-verde"), (".tono.arancio", "--eti-arancio"),
-                           (".tono.rossa", "--eti-rosso"), (".tono.neutra", "--testo-2")):
+                           (".etichetta.neutra", "--testo-2")):
         assert f"color: var({colore})" in _corpo(classe), classe
 
 
@@ -563,7 +539,7 @@ def test_avvisi_ed_errori_senza_riquadro_con_il_testo_pieno():
     from tests.test_design_web import _colore, _contrasto_rgb, _temi
     assert not _scatole(AVVISI)
     assert "color: var(--testo)" in _corpo(".errore") and "color: var(--rosso)" not in _corpo(".errore")
-    classe, colore = ".nota-incerto", "--arancio"
+    classe, colore = ".attenzione", "--arancio"
     assert f"border-left-color: var({colore})" in _corpo(classe) or f"border-left: 3px solid var({colore})" in _corpo(classe), classe
     for tema, v in _temi().items():
         for colore in ("--rosso", "--arancio", "--verde"):
@@ -604,7 +580,6 @@ def _esegui_righe(chiamata, lingua="it"):
         pezzo("function esc(x)", "const menoMovimento"),
         re.search(r"^const ruoloSigla = .*$", APP, re.M).group(0),
         re.search(r"^const SIGLE = \{.*?\};$", APP, re.M | re.S).group(0),
-        re.search(r"^const TITOLARITA = \{.*?\};$", APP, re.M | re.S).group(0),
         pezzo("// ---------------------------------------------------------------- pezzi grafici riusati",
               "// ---------------------------------------------------------------- navigazione"),
         f"console.log(JSON.stringify({chiamata}));",
@@ -636,16 +611,19 @@ def test_riga_del_giocatore_con_pochi_segni_e_gioca_intero():
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_riga_del_giocatore_prima_e_dopo_la_partita():
     g = json.dumps(GIOCATORE)
-    prima, dubbio, fatto, corso = _esegui_righe(f"""[
+    prima, dubbio, poco, fatto, corso = _esegui_righe(f"""[
       voceGiocatore({g}),
       voceGiocatore({{...{g}, p_voto: 0.55}}),
+      voceGiocatore({{...{g}, p_voto: 0.3}}),
       voceGiocatore({{...{g}, stato_partita: "fatto", fv_preso: 7, etichetta: {{codice: "voto", testo: "Ha giocato", tono: "positivo"}}}}),
       voceGiocatore({{...{g}, stato_partita: "in_corso", etichetta: {{codice: "in_corso", testo: "Partita in corso", tono: "positivo"}}}})]""")
     testo = _testo_riga(prima)
     assert testo.startswith("D Rossi L. NAP vs LAZ")                        # lettera del ruolo, nome, partita: nessun numero sul volto
-    assert "sab 31 20:45" in testo and "Probabile titolare" in testo and testo.endswith("gioca 85% Fantavoto atteso 6,8")
-    assert '<span class="pv-g">gioca 85%</span>' in prima                   # grigio sopra il 70%...
-    assert '<span class="pv-g basso">gioca 55%</span>' in dubbio            # ...arancio e in grassetto sotto
+    # dal 12/11/2026 (#616): niente etichette di titolarità, e «gioca N%» solo sotto l'80% (arancio fra 50 e 79, rosso sotto 50)
+    assert "sab 31 20:45" in testo and "Probabile titolare" not in testo and testo.endswith("20:45 Fantavoto atteso 6,8")
+    assert '<span class="pv-g"></span>' in prima and "gioca" not in testo
+    assert '<span class="pv-g medio">gioca 55%</span>' in dubbio
+    assert '<span class="pv-g basso">gioca 30%</span>' in poco
     gioca = re.compile(r"gioca \d")                                          # «data-giocatore» non conta
     assert "7,0" in _testo_riga(fatto) and not gioca.search(fatto)          # a partita finita il fantavoto preso, mai «gioca N%»
     assert _testo_riga(fatto).endswith("fantavoto 7,0")
@@ -664,10 +642,9 @@ def test_il_fantavoto_atteso_ha_il_suo_nome_per_i_lettori_di_schermo():
     en = _esegui_righe(f"voceGiocatore({g})", "en")
     for html in (riga, rosa, scelta):
         assert re.search(r'<span class="valore"><span class="solo-lettori">Fantavoto atteso </span><b[^>]*>\d,\d</b></span>', html), html
-    assert _testo_riga(en).endswith("plays 85% Expected fantasy score 6.8")
-    sostituzione = _funzione(APP, "mostraFormazione")
-    sostituzione = sostituzione[sostituzione.index("function apriSostituzione"):]
-    assert '<span class="valore">${nomeFvAtteso()}<b>' in sostituzione                  # anche la sostituzione
+    assert _testo_riga(en).endswith("Expected fantasy score 6.8")
+    # nella sostituzione il numero grande è la differenza di punti attesi: anche lei ha il suo nome per i lettori di schermo
+    assert '<span class="solo-lettori"> ${t("formazione.punti_rispetto"' in _funzione(APP, "apriSostituzione")
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
@@ -721,11 +698,11 @@ def test_lineetta_nei_colori_sociali_e_grigia_se_il_club_manca():
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_intestazione_delle_colonne():
     con, senza, ferma = _esegui_righe("[intestazioneColonne(), intestazioneColonne({ partita: false }), "
-                                      "intestazioneColonne({ ferma: true, azione: true })]")
+                                      "intestazioneColonne({ ferma: true })]")
     en = _esegui_righe("intestazioneColonne()", "en")
     assert 'class="intestazione-colonne" aria-hidden="true"' in con
     assert _testo_riga(con) == "Partita Fantavoto atteso" and _testo_riga(senza) == "Fantavoto atteso"
-    assert 'class="intestazione-colonne ferma posto-azione"' in ferma
+    assert 'class="intestazione-colonne ferma"' in ferma
     assert _testo_riga(en) == "Match Expected fantasy score"
 
 
@@ -764,13 +741,6 @@ def test_il_campo_che_scorre_con_la_pagina_tiene_dentro_le_sue_linee():
             assert not _proprieta(corpo, "position"), s
 
 
-def test_azione_della_riga_scritta_senza_cerchio():
-    """Spec C9 e §8.7: «✎» è un'icona da 44 px nel colore delle azioni, nella riga a destra, senza il cerchio a contorno."""
-    mini = _corpo(".azione-riga")
-    assert "width: 44px; height: 44px" in mini and "border: 0" in mini and "color: var(--azione)" in mini
-    assert "border-radius: 50%" not in mini
-
-
 def test_nome_del_giocatore_nelle_righe_a_15_px_e_numero_a_20():
     assert "font-size: var(--t-corpo)" in _corpo(".voce-g .nome") and "font-weight: 650" in _corpo(".voce-g .nome")
     assert "font-size: var(--t-valore)" in _corpo(".voce .valore b")
@@ -806,103 +776,9 @@ LARGHEZZA_14_GIORNI = {"archivo": 3.56, "sistema": 3.94}
 LARGHEZZA_RIGA_ARCHIVO = 4.49
 
 
-def test_oggi_senza_nome_e_slogan_e_con_due_colonne_5_7():
-    assert "marchioOggi(" not in APP and ".slogan-oggi" not in CSS
-    assert re.search(r"@media \(min-width: 900px\) \{[^@]*\.colonne-oggi[^{]*\{ grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\)", CSS)
-
-
-def test_sul_pc_largo_la_colonna_di_destra_di_oggi_in_due():
-    """Scelta della PR 7 (#415): da 1400 px la colonna di destra di Oggi (~672 px) si divide in due, migliori e avvisi | partite del
-    turno, invece della colonna sola disegnata nella spec §9. Una colonna sola non arriva ai 680 px della riga larga dei giocatori e
-    manda le partite sotto il primo schermo; in due tutto sta in vista. Le sezioni non si spezzano tra le due colonne."""
-    blocco = re.search(r"@media \(min-width: 1400px\) \{(.*?)\n\}", CSS, re.S).group(1)
-    assert re.search(r"main \.colonne-oggi > \.col:nth-child\(2\) \{ display: block; columns: 2;", blocco)
-    assert "main .colonne-oggi > .col:nth-child(2) > * { break-inside: avoid; }" in blocco
-
-
 def test_da_fare_con_l_azione_scritta_nella_riga():
     corpo = _funzione(DAFARE, "dfRiga")
     assert 'class="azione-testo df-azione"' in corpo and "bottone secondario" not in corpo
-
-
-def test_maglia_piccola_dritta_senza_ombra():
-    regola = re.search(r"\.maglia-hero \{([^}]*)\}", CSS).group(1)
-    assert "height: 72px" in regola and "rotate" not in regola and "drop-shadow" not in regola
-
-
-def test_conto_alla_rovescia_grande_senza_riquadro_e_sempre_intero():
-    """Spec §9 e issue #384: il conto alla rovescia è il numero eroe (56 px, 72 px da 900 px) senza riquadro, e non si taglia mai.
-    La maglia sta nella sua colonna accanto (niente posizione assoluta sopra il testo) e il numero si rimpicciolisce con la colonna
-    che gli resta: con il pezzo più largo («14 giorni») e il carattere più largo ci sta sempre, con o senza maglia, a ogni larghezza.
-    Prima accanto alla maglia il numero scendeva alla misura dei titoli e la maglia, larga 150 px, copriva il testo."""
-    corpo = _funzione(APP, "mostraOggi")
-    assert 'class="conto-oggi${' in corpo and "carta hero conto" not in APP and 'class="enorme" id="conto"' in corpo
-    assert not _scatole(["conto-oggi", "conto-testo"])
-    assert "container-type: inline-size" in _corpo(".conto-testo")
-    k = float(re.search(r"font-size: min\(var\(--t-eroe\), (\d+(?:\.\d+)?)cqi\)", _corpo(".conto-testo .enorme")).group(1))
-    assert k * max(LARGHEZZA_14_GIORNI.values()) <= 100, k             # mai tagliato
-    assert k * LARGHEZZA_RIGA_ARCHIVO <= 100, k                         # «15 h 41 min» su una riga sola, non «15 h» sopra e «41 min» sotto
-    assert "grid-template-columns: minmax(0, 1fr) auto" in _corpo(".conto-oggi.con-maglia")
-    maglia = _corpo(".maglia-hero")
-    assert "position: absolute" not in maglia and "animation" not in maglia      # dritta e ferma: si muove solo ciò che risponde a un gesto
-    assert ".con-maglia .enorme" not in CSS and "padding-right: 132px" not in CSS
-
-
-def test_cifre_affiancate_separate_da_un_filo():
-    """Spec §8.6: le cifre stanno senza scatola, affiancate e separate da un filo verticale («La tua formazione 4-4-2 | Punti attesi
-    65,5»); lo stesso a giornata in corso (punti finora | a fine giornata) e a giornata finita (punti fatti | attesi)."""
-    for nome in ("mostraOggi", "cardInCorso", "cardRiepilogo"):
-        assert 'class="cifre-oggi"' in _funzione(APP, nome), nome
-    assert "display: grid" in _corpo(".cifre-oggi")
-    assert "border-left: 1px solid var(--filo)" in _corpo(".cifre-oggi > .cifra + .cifra")
-    assert not _scatole(["cifre-oggi", "cifra"])
-    assert 'style="text-align:right"' not in _funzione(APP, "mostraOggi")
-
-
-def test_un_solo_pulsante_pieno_in_oggi():
-    """Spec §4.5 e §8.7: un solo pulsante pieno per schermata («Apri la formazione»); le azioni di Da fare sono testo nella riga, anche
-    quella urgente (lo dice la parola «Urgente»), mai tre «Sostituisci» a contorno in fila."""
-    assert _funzione(APP, "mostraOggi").count('class="bottone') == 1
-    assert 'class="bottone' not in DAFARE
-
-
-def test_contatore_di_da_fare_un_numero_grigio():
-    """Piano, PR 7: il contatore di «Da fare» è un numero grigio accanto al titolo, non più il pallino lime."""
-    assert '<h2>${t("df.da_fare")} <span class="df-conto">${valide.length}</span></h2>' in DAFARE
-    conto = _corpo(".df-conto")
-    assert "color: var(--testo-2)" in conto and "font-family: var(--font-numeri)" in conto
-    assert not _scatole(["df-conto"]) and "--capitano" not in conto
-
-
-def test_azione_di_da_fare_a_destra_e_sotto_il_testo_se_stretta():
-    """Spec C9: l'azione sta nella riga, a destra. Nella colonna stretta (telefono, sinistra del PC) va sotto il testo, sempre a destra."""
-    stretta = re.search(r"@container \(max-width: 520px\) \{(.*?)\n\}", CSS, re.S).group(1)
-    assert ".df-azione { justify-self: end; }" in stretta
-    assert "min-height: 44px" in _corpo(".df-azione")
-
-
-def test_righe_degli_avvisi_con_la_lettera_del_ruolo_e_l_etichetta_scritta():
-    """Spec §8.4, §8.9 e §11: in Da controllare, Indisponibili, Diffidati e nella giornata in corso niente quadratino colorato del
-    ruolo né pallino della gravità: la lettera grigia del ruolo, come nelle righe dei giocatori, e la gravità nel colore
-    dell'etichetta scritta (le parole dicono già tutto)."""
-    corpo = _funzione(APP, "rigaAvviso") + _funzione(APP, "cardInCorso") + _funzione(APP, "mostraOggi")
-    assert "badgeRuolo(" not in corpo and "pallino-stato" not in corpo and ".pallino-stato" not in CSS
-    assert 'class="ruolo-l"' in _funzione(APP, "rigaAvviso") and 'class="ruolo-l"' in _funzione(APP, "cardInCorso")
-    assert "inFormazione.map(rigaAvviso)" in corpo and "indisponibili.map(rigaAvviso)" in corpo and "altri.map(rigaAvviso)" in corpo
-
-
-@pytest.mark.skipif(not NODE, reason="serve node")
-def test_riga_di_da_controllare_con_le_parole_del_server():
-    from tests.test_oggi_fasi_web import _esegui as _esegui_oggi
-    a = {"id": 3, "nome": "Rossi <b>", "ruolo": "D", "squadra": "inter", "tipo": "dubbio", "p_voto": 0.55, "nota": "affaticato",
-         "in_formazione": True, "etichetta": {"codice": "dubbio", "testo": "In dubbio · gioca 55%", "tono": "attenzione"}}
-    h = _esegui_oggi(f"rigaAvviso({json.dumps(a)})")
-    assert '<span class="ruolo-l">D</span>' in h and "Rossi &lt;b&gt;" in h and 'data-giocatore="3"' in h
-    assert '<span class="etichetta arancio">In dubbio · gioca 55%</span>' in h and "affaticato" in h
-    senza = {k: v for k, v in a.items() if k != "etichetta"}
-    assert '<span class="etichetta rossa">Infortunato</span>' in _esegui_oggi(f"rigaAvviso({json.dumps(senza | {'tipo': 'infortunato'})})")
-    assert '<span class="etichetta arancio">In dubbio · gioca 55%</span>' in _esegui_oggi(f"rigaAvviso({json.dumps(senza)})")
-    assert '<span class="etichetta neutra">Diffidato</span>' in _esegui_oggi(f"rigaAvviso({json.dumps(senza | {'tipo': 'diffidato'})})")
 
 
 def test_differenze_di_oggi_scritte_al_posto_giusto():
@@ -918,38 +794,14 @@ def test_differenze_di_oggi_scritte_al_posto_giusto():
     riga = next((r for r in di_oggi.splitlines() if r.startswith("|") and "slogan" in r), "")
     assert "Oggi" in riga and "#416" in riga and "I tuoi migliori" in riga and "Apri la formazione" in riga, riga
     guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
-    oggi = guida[guida.index("### Oggi"):guida.index("### Formazione")]
-    assert "motto" not in oggi and "slogan" not in oggi
-
-
-def test_novita_di_oggi():
-    voce = _voce_di_novita("Oggi più ordinata")
-    assert voce["voci"] and all("PC" not in v and "cqi" not in v for v in voce["voci"])
-    k = re.search(r"font-size: min\(var\(--t-eroe\), (\d+)cqi\)", _corpo(".conto-testo .enorme")).group(1)
-    for riga in voce.get("tecnico", []):                         # dopo il rilascio in novita.json può non esserci
-        for scritto in re.findall(r"(\d+)cqi", riga):
-            assert scritto == k, (scritto, k)                    # la nota tecnica dice il numero vero del CSS
+    formazione = guida[guida.index("### Formazione"):guida.index("### Squadra")]      # dal 12/11/2026 la prima schermata è la Formazione (#616)
+    assert "motto" not in formazione and "slogan" not in formazione and "### Oggi" not in guida
 
 
 # ---------------------------------------------------------------- PR 8: Formazione
 def _contrasto(a, b):
     from tests.test_design_web import _contrasto as contrasto
     return contrasto(a, b)
-
-
-def test_pedina_con_il_numero_nel_disco_e_la_lineetta_del_club():
-    """Spec §8.10 e scelta 2 dell'utente: sul campo della web la pedina è un disco bianco con il fantavoto atteso (il numero è la
-    pedina), niente volto; l'avversario con la lineetta del colore sociale e la sigla. La frase per i lettori non cambia."""
-    corpo = _funzione(APP, "pedina")
-    assert 'class="disco"' in corpo and "lineetta(x.avversario)" in corpo and "distintivo(" not in corpo
-    assert 'class="solo-lettori"' in corpo and "vocePedina(x, esito)" in corpo
-    assert "avatar(" not in corpo and "avatar-pedina" not in CSS
-
-
-def test_campo_ed_elenco_affiancati_e_salva_sempre_in_vista():
-    assert re.search(r"@media \(min-width: 900px\) \{[^@]*\.colonne-campo[^{]*\{ grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\)", CSS)
-    assert re.search(r"\.stato-scelta\.modificata, \.stato-scelta\.mano \{[^}]*position: sticky; top: var\(--alto-ferma\)", CSS)
-    assert re.search(r"html:has\(\.stato-scelta\.modificata\)", CSS)       # il focus non finisce sotto la riga ferma
 
 
 def test_testo_sul_campo_leggibile():
@@ -977,58 +829,6 @@ def test_campo_piatto_raggio_12_e_disco_da_44_px():
     assert "respira" not in CSS and ".pedina .maglia" not in CSS
 
 
-def test_il_campo_resta_fermo_accanto_all_elenco_e_non_copre_niente():
-    """Issue #382: a 1440 px il campo copriva le prime righe delle spiegazioni sotto di lui. Causa: da 1400 px il campo passava da
-    `sticky` a `relative` e teneva il suo `top` (72 px): scendeva di 72 px sopra le righe sotto. Lo stesso con `.campo.non-ferma`.
-    Ora il campo non si sposta mai: è fermo il blocco che lo contiene (campo, «Cosa vuol dire» e spiegazioni), nella colonna di
-    sinistra, e quando non ci sta nello schermo scorre con la pagina (`non-ferma`, position: static, che ignora il `top`)."""
-    for s, corpo in _regole_per(["campo"]):
-        assert not _proprieta(corpo, "top"), s
-        assert not any(v == "sticky" for _, v in _proprieta(corpo, "position")), s
-    assert ".campo.non-ferma" not in CSS
-    ferme = re.search(r'const FERME = "([^"]+)"', APP).group(1)
-    assert ".colonne-campo .campo-fermo" in ferme
-    larga = re.search(r"@media \(min-width: 768px\) \{\n  \.colonne \{(.*?)\n\}", CSS, re.S).group(1)
-    assert re.search(r"\.colonne-campo \.zona-campo \{[^}]*position: absolute; top: 0; bottom: 0; left: 0;", larga)
-    assert re.search(r"\.colonne-campo \.campo-fermo \{[^}]*position: sticky; top: calc\(var\(--alto-ferma\) \+ 16px\)", larga)
-    corpo = _funzione(APP, "mostraFormazione")
-    assert '<div class="zona-campo"><div class="campo-fermo">' in corpo
-    # al telefono il campo viene dopo il modulo e i pulsanti e prima dei Titolari (spec §9); sul PC sta nella colonna di sinistra
-    posti = [corpo.index(x) for x in ('id="punti-attesi"', "rigaStatoScelta(", 't("formazione.modulo")',
-                                      'class="zona-campo"', 't("formazione.titolari")', 't("scambi.panchina")')]
-    assert posti == sorted(posti)
-
-
-def test_il_blocco_del_campo_e_largo_quanto_la_prima_colonna_della_griglia():
-    """Il blocco del campo esce dal flusso della colonna (position: absolute) e la sua larghezza si calcola con `--quota-campo`: deve
-    essere la stessa frazione della prima colonna della griglia a ogni soglia (1:1 da 768 px, 5:7 da 900, 1:2 da 1400, 5:7 di nuovo
-    con il pannello affiancato aperto, da 1200 px), se no il campo finisce sotto l'elenco o lascia un buco tra le due colonne."""
-    trovati = {}
-    for larghezza, blocco in re.findall(r"@media \(min-width: (\d+)px\) \{\n(.*?)\n\}", CSS, re.S):
-        f = re.search(r"\.colonne-campo[^{]*\{[^}]*grid-template-columns: minmax\(0, (\d+)fr\) minmax\(0, (\d+)fr\)", blocco)
-        q = re.search(r"\.colonne-campo \{[^}]*--quota-campo: ([^;]+);", blocco)
-        if f or q:
-            assert f and q, larghezza
-            trovati[int(larghezza)] = (int(f.group(1)), int(f.group(2)), q.group(1))
-    assert set(trovati) == {768, 900, 1200, 1400}, trovati
-    for larghezza, (a, b, quota) in trovati.items():
-        frazione = re.fullmatch(r"calc\((\d+) / (\d+)\)", quota)
-        valore = int(frazione.group(1)) / int(frazione.group(2)) if frazione else float(quota)
-        assert abs(valore - a / (a + b)) < 1e-9, (larghezza, quota, a, b)
-    assert "width: calc((100% - var(--spazio-colonne)) * var(--quota-campo))" in CSS
-    assert re.search(r"\.colonne \{ --spazio-colonne: 20px; [^}]*gap: 0 var\(--spazio-colonne\)", CSS)
-
-
-def test_la_striscia_di_moduli_e_stili_porta_in_vista_la_voce_scelta_anche_accanto_al_campo():
-    """Foto della PR 8 a 768 px: la voce scelta (4-4-2) era fuori dalla striscia e «Equilibrata» tagliata a metà. `striscia()` centra
-    la voce con `offsetLeft`, che si misura dall'antenato posizionato più vicino: prima era la carta della testa, poi la griglia del
-    campo (`position: relative`), e l'offset contava anche la colonna del campo, quindi la striscia scorreva fino in fondo. Ora la
-    striscia è il riferimento delle sue voci, come il controllo segmentato del Mercato."""
-    assert "att.offsetLeft" in _funzione(APP, "striscia")
-    assert "position: relative" in _corpo(".chips.scorri")
-    assert "position: relative" in _corpo(".segmenti")
-
-
 def test_la_maniglia_dei_pannelli_dal_basso_non_copre_il_testo():
     """Issue #382: nei pannelli che salgono dal basso (scheda, confronto, diario) la maniglia resta ferma in alto mentre il testo
     scorre, ma era trasparente: il testo le passava sotto e la barretta stava sopra le scritte. Ora ha il fondo del pannello: il
@@ -1043,14 +843,6 @@ def test_la_maniglia_dei_pannelli_dal_basso_non_copre_il_testo():
     assert "padding: 14px 0 14px" in maniglia
 
 
-def test_stato_della_scelta_fuori_dalla_testa_cosi_resta_in_vista():
-    """La riga dello stato con «Salva» resta ferma in alto mentre si scorrono i titolari: per questo è figlia diretta della colonna
-    (alta quanto l'elenco), non di un blocco corto che la porterebbe via con sé."""
-    corpo = _funzione(APP, "mostraFormazione")
-    assert 'class="carta hero"' not in corpo
-    assert re.search(r"\.stato-scelta\.modificata, \.stato-scelta\.mano \{[^}]*z-index: \d;[^}]*background: var\(--sfondo\)", CSS)
-
-
 def _blocco_css(apertura):
     """Il contenuto di un blocco @media / @container di stile.css, dalla graffa che lo apre a quella che lo chiude."""
     i = SENZA_COMMENTI.index(apertura) + len(apertura)
@@ -1059,101 +851,6 @@ def _blocco_css(apertura):
         livello += {"{": 1, "}": -1}.get(SENZA_COMMENTI[j], 0)
         j += 1
     return SENZA_COMMENTI[i:j - 1]
-
-
-def test_la_riga_dello_stato_resta_ferma_solo_se_e_bassa():
-    """Revisione della #420 (piano, «Attenzione in revisione» 2): con lo zoom al 200% o il telefono in orizzontale la riga con «Salva»,
-    dopo una sostituzione alta 220-300 px, restava ferma su mezza finestra, e lo spazio per il focus era fisso (176 px), più basso di
-    lei: il titolare con il focus le finiva sotto (WCAG 2.2, 2.4.11). Nella pagina strettissima non è ferma; oltre un terzo della
-    finestra scorre con la pagina (controllaStatoScelta in app.js); la sua altezza vera va in --alto-stato per scroll-padding-top."""
-    stretta = _blocco_css("@container pagina (max-width: 319.98px) {")
-    assert ".stato-scelta.modificata, .stato-scelta.mano { position: static; }" in stretta
-    assert "176px" not in CSS
-    assert re.search(r"html:has\(\.stato-scelta\.modificata\), html:has\(\.stato-scelta\.mano\) \{ scroll-padding-top: "
-                     r"calc\(var\(--alto-testata, 0px\) \+ var\(--alto-stato, 0px\) \+ 8px\); \}", CSS)
-    segui = APP[APP.index("(function seguiFerme()"):]
-    assert "controllaStatoScelta();" in segui[:segui.index("})();")]
-
-
-@pytest.mark.skipif(not NODE, reason="serve node")
-def test_la_riga_dello_stato_oltre_un_terzo_della_finestra_scorre_con_la_pagina():
-    i = APP.index("const QUOTA_STATO")
-    funzione = APP[i:APP.index("\n}\n", APP.index("function controllaStatoScelta(")) + 3]
-    codice = "\n".join([
-        """let innerHeight = 900; const variabili = {}; let attuale = null;
-function riga(alto, posizione = "sticky") {
-  const r = { alto, posizione, classi: new Set(), tocchi: 0, get offsetHeight() { return this.alto; }, getBoundingClientRect() { return { height: this.alto }; } };
-  r.classList = { contains: c => r.classi.has(c), toggle: (c, si) => { r.tocchi++; if (si) r.classi.add(c); else r.classi.delete(c); } };
-  return r;
-}
-const document = { querySelector: () => attuale, documentElement: { style: { setProperty: (k, v) => { variabili[k] = v; } } } };
-const getComputedStyle = el => ({ position: el.classi.has("non-ferma") ? "static" : el.posizione });""",
-        funzione,
-        """const esiti = [], passo = () => { controllaStatoScelta(); esiti.push([attuale ? attuale.classi.has("non-ferma") : null, variabili["--alto-stato"]]); };
-attuale = riga(120); passo();                         // bassa: ferma, il focus le sta sotto
-attuale.alto = 320; passo();                          // più di un terzo di 900: scorre con la pagina, niente spazio in più
-const tocchi = attuale.tocchi; passo(); esiti.push(attuale.tocchi - tocchi);       // rifatto senza cambiamenti: la classe non si tocca
-innerHeight = 1200; passo();                          // finestra più alta: torna ferma
-attuale = riga(120, "static"); passo();               // pagina strettissima: non è ferma
-attuale = null; passo();                              // niente da salvare: nessuna riga ferma
-console.log(JSON.stringify(esiti));""",
-    ])
-    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout.strip().splitlines()[-1]) == [
-        [False, "120px"], [True, "0px"], [True, "0px"], 0, [False, "320px"], [False, "0px"], [None, "0px"]]
-
-
-def test_cifre_della_formazione_affiancate_con_il_filo():
-    corpo = _funzione(APP, "mostraFormazione")
-    assert 'class="cifre-oggi cifre-formazione"' in corpo and 'style="text-align:right"' not in corpo
-
-
-def test_ctrl_s_salva_nella_formazione_solo_se_c_e_da_salvare():
-    i = APP.index('document.addEventListener("keydown"')
-    tasti = APP[i:APP.index("\n});\n", i)]
-    assert '(ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s"' in tasti
-    assert 'stato.vista === "formazione"' in tasti and "#salva-scelta" in tasti and "#salva-questa" in tasti
-    assert tasti.index('ev.key.toLowerCase() === "s"') < tasti.index("if (ev.metaKey || ev.ctrlKey || ev.altKey) return;")
-
-
-@pytest.mark.skipif(not NODE, reason="serve node")
-def test_ctrl_s_preme_il_salva_che_si_vede_e_altrimenti_lascia_fare_al_browser():
-    """Spec C3: Ctrl+S (⌘+S sul Mac) nella Formazione preme «Salva questa» o «Salva le modifiche»; senza niente da salvare, in
-    un'altra schermata o con un foglio modale aperto il tasto fa quello che fa di solito il browser (niente preventDefault); con il
-    pannello affiancato (PR 9) la pagina resta attiva e «Salva» si vede, quindi salva.
-    Revisione della #420: con i tasti tenuti premuti le ripetizioni non salvano di nuovo e non aprono «Salva pagina con nome»
-    (dopo il primo salvataggio il pulsante non c'è più); con una tastiera non latina (russo: «ы») vale il tasto fisico S."""
-    i = APP.index('document.addEventListener("keydown"')
-    codice = "\n".join([
-        """let premuto = null; const pulsanti = {};
-const $ = s => s === "#foglio" ? { hidden: !globalThis.aperto } : pulsanti[s] || null;
-const foglioModale = () => !!globalThis.aperto && !globalThis.affiancato;      // il pannello affiancato (PR 9) lascia usare la pagina
-const pulsante = id => ({ disabled: false, getClientRects: () => [1], click() { premuto = id; } });
-const stato = { vista: "formazione" }; const chiudiFoglio = () => {}; const VISTE = []; const vai = () => {}; const apriRicerca = () => {};
-const document = { addEventListener: (tipo, f) => { globalThis.premi = f; } };""",
-        APP[i:APP.index("\n});\n", i) + 4],
-        """const prova = (tasto, opz = {}) => { premuto = null; let fermato = false;
-  premi({ key: tasto, code: opz.code || "Key" + tasto.toUpperCase(), repeat: !!opz.ripetuto, ctrlKey: !!opz.ctrl, metaKey: !!opz.meta,
-          altKey: false, shiftKey: false, target: { tagName: "BODY" }, preventDefault() { fermato = true; } }); return [premuto, fermato]; };
-const esiti = [];
-pulsanti["#salva-questa"] = pulsante("salva-questa"); esiti.push(prova("s", { ctrl: true }));
-delete pulsanti["#salva-questa"]; pulsanti["#salva-scelta"] = pulsante("salva-scelta"); esiti.push(prova("S", { meta: true }));
-delete pulsanti["#salva-scelta"]; esiti.push(prova("s", { ctrl: true }));
-pulsanti["#salva-scelta"] = pulsante("salva-scelta"); stato.vista = "oggi"; esiti.push(prova("s", { ctrl: true }));
-stato.vista = "formazione"; globalThis.aperto = true; esiti.push(prova("s", { ctrl: true }));
-globalThis.affiancato = true; esiti.push(prova("s", { ctrl: true })); globalThis.affiancato = false;   // pannello accanto: «Salva» si vede
-globalThis.aperto = false; esiti.push(prova("s"));
-esiti.push(prova("ы", { ctrl: true, code: "KeyS" }));                     // tastiera russa: il tasto fisico S
-esiti.push(prova("s", { ctrl: true, ripetuto: true }));                   // tenuto premuto: niente secondo salvataggio
-delete pulsanti["#salva-scelta"]; esiti.push(prova("s", { ctrl: true, ripetuto: true }));   // salvato, pulsante sparito: niente «Salva pagina con nome»
-console.log(JSON.stringify(esiti));""",
-    ])
-    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout.strip().splitlines()[-1]) == [
-        ["salva-questa", True], ["salva-scelta", True], [None, False], [None, False], [None, False], ["salva-scelta", True],
-        [None, False], ["salva-scelta", True], [None, True], [None, True]]
 
 
 def test_differenza_ammessa_della_pedina_scritta():
@@ -1166,9 +863,10 @@ def test_differenza_ammessa_della_pedina_scritta():
     assert "sul campo il numero" in resta and "negli elenchi e nella scheda" in resta, resta
 
 
-def test_guida_ctrl_s_e_campo_della_formazione():
+def test_guida_salvataggio_automatico_e_campo_della_formazione():
     guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
-    assert "**Ctrl+S** (⌘+S sul Mac) salva la formazione quando c'è qualcosa da salvare" in guida
+    # dal 12/11/2026 (#616) ogni cambio si salva da solo: niente pulsante Salva né Ctrl+S
+    assert "Ctrl+S" not in guida and "Non c'è un pulsante Salva: ogni cambio" in guida
     formazione = guida[guida.index("### Formazione"):]
     assert "ⓘ" not in formazione and "pillola scura" not in formazione
 
@@ -1180,11 +878,10 @@ def test_novita_della_formazione():
 
 # ---------------------------------------------------------------- PR 9: pannello affiancato, scheda del giocatore, ricerca
 def test_pannello_affiancato_solo_per_i_dettagli_dei_giocatori():
-    """Spec C5 e §10: scheda, sostituzione di un titolare, «Perché questo numero» e ricerca
-    chiedono il pannello affiancato; da 1200 px la pagina si stringe di quanto è largo il pannello (400-520 px)."""
-    for nome in ("apriGiocatore", "apriPerche", "apriRicerca"):
+    """Spec C5 e §10: scheda del giocatore, sostituzione di un titolare e ricerca chiedono il pannello affiancato; da 1200 px la
+    pagina si stringe di quanto è largo il pannello (400-520 px)."""
+    for nome in ("apriGiocatore", "apriSostituzione", "apriRicerca"):
         assert "affianco: true" in _funzione(APP, nome), nome
-    assert "affianco: true" in _funzione(APP, "mostraFormazione")          # la sostituzione di un titolare
     apri = _funzione(APP, "apriFoglio") + _funzione(APP, "modoFoglio")
     assert 'matchMedia("(min-width: 1200px)")' in APP and "bloccaSfondo()" in apri and "con-pannello" in apri
     assert re.search(r"@media \(min-width: 1200px\) \{[^@]*body\.con-pannello main \{[^}]*margin-right: var\(--pannello\)", CSS)
@@ -1214,9 +911,6 @@ def test_il_pannello_sta_sotto_la_testata_senza_velo_e_con_il_filo_a_sinistra():
     assert "margin: 0 -10px 6px 8px" in chiudi
     assert "scroll-padding-top: 72px" in corpo                            # ✕ da 44 px + 16 di margine del pannello + stacco
     assert re.search(r"body\.con-pannello #foglio-contenuto > :not\(:first-child\) \{ clear: right; \}", b)
-    # con il pannello la pagina è più stretta: Formazione 5:7 e Oggi senza la colonna di destra divisa in due (sopra i 1400 px)
-    assert re.search(r"body\.con-pannello main \.colonne-campo \{ grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\); --quota-campo: calc\(5 / 12\); \}", b)
-    assert re.search(r"body\.con-pannello main \.colonne-oggi > \.col:nth-child\(2\) \{ columns: auto; \}", b)
 
 
 def _codice_pannello():
@@ -1376,61 +1070,14 @@ const invio = async (extra = {}) => { let fermato = false;
 
 def test_scheda_del_giocatore_come_distinta():
     """Spec §9: volto 56 px e nome in Archivo 32; sotto il fantavoto atteso come numero eroe e «gioca N%» affiancati come cifre,
-    separati da un filo (le cifre di Oggi); la partita in una riga; «Perché questo numero» come righe con l'effetto a destra."""
-    scheda = _funzione(APP, "apriGiocatore")
+    separati da un filo; la partita in una riga; «Perché questo numero» come righe con l'effetto a destra."""
+    scheda = _funzione(APP, "htmlScheda")
     assert '<div class="cifre-oggi cifre-scheda">' in scheda and '<div class="enorme">${num(pr.fv_atteso)}</div>' in scheda
-    assert '<div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>' in scheda
-    perche = _funzione(APP, "apriPerche")
-    assert '<div class="cifre-oggi cifre-scheda">' in perche and '<div class="enorme">${num(x.fv_atteso)}</div>' in perche
+    assert '<div class="cifra"><div class="debole">${t("mercato.gioca")}</div>' in scheda
     assert '<li class="perche-voce"><span>${esc(testoDi(m))}</span>${effetto(m.effetto)}</li>' in _funzione(APP, "bloccoPerche")
     assert re.search(r"\n\.perche-voce \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto", CSS)
     assert re.search(r"\n\.intestazione-scheda \.avatar-anello\.grande-a \{ --d: 56px; \}", CSS)
     assert re.search(r"\n\.intestazione-scheda h2 \{[^}]*font-family: var\(--font-numeri\);[^}]*font-size: var\(--t-titolo\)", CSS)
-
-
-@pytest.mark.skipif(not NODE, reason="serve node")
-def test_la_sostituzione_aperta_non_vale_piu_se_la_modifica_a_mano_e_finita():
-    """Revisione della #426: con il pannello affiancato la pagina resta attiva. Con «Al posto di X» aperto, un clic su un modulo, su
-    uno stile o su «Torna alla consigliata» toglie la modifica a mano (`sc.manuale = null`): poi un clic su un candidato dava un
-    TypeError. Ora il candidato chiude il pannello e non cambia niente se la modifica a mano non c'è più o X non è più titolare;
-    e la Formazione che si ridisegna chiude la sostituzione aperta (i candidati erano quelli di prima)."""
-    i = APP.index("  function apriSostituzione(id) {")
-    sostituzione = APP[i:APP.index("\n  }\n", i) + 4]
-    codice = "\n".join([r"""
-const chiamate = [];
-const t = k => k, esc = x => String(x), avviso = m => chiamate.push(["avviso", m]);
-const f = { iniziata: false }, fermi = new Set(), sc = { occupato: false };
-const scheda = id => ({ id, nome: "Rossi" + id, ruolo: "C" });
-let ultimaScheda = 0;
-const sostituti = () => [];
-const apriFoglio = (html, o) => chiamate.push(["apri", !!(o && o.affianco), html.includes("data-sostituzione")]);
-const bottoni = [];
-const document = { querySelectorAll: s => (s === "[data-entra]" ? bottoni : []) };
-const candidato = entra => { bottoni.length = 0; bottoni.push({ dataset: { entra: String(entra) }, ascolta: {}, addEventListener(n, fn) { this.ascolta[n] = fn; } }); };
-const chiudiFoglio = () => chiamate.push(["chiudi"]), valutaManuale = ids => chiamate.push(["valuta", ids]);
-""", sostituzione, _funzione(APP, "chiudiSostituzione").replace("$(", "trova(") + "\n}", r"""
-let aperto = false, conSostituzione = false;
-const trova = s => (s === "#foglio" ? { hidden: !aperto } : s === "#foglio-contenuto [data-sostituzione]" ? (conSostituzione ? {} : null) : null);
-const e = {};
-const prova = (dopo) => { sc.manuale = { titolari: [1, 2, 3] }; candidato(9); apriSostituzione(2); chiamate.splice(0); dopo(); bottoni[0].ascolta.click(); return chiamate.splice(0); };
-e.apre = (() => { sc.manuale = { titolari: [1, 2, 3] }; candidato(9); apriSostituzione(2); return chiamate.splice(0); })();
-e.modulo = prova(() => { sc.manuale = null; });                       // modulo, stile o «Torna alla consigliata»
-e.altro = prova(() => { sc.manuale = { titolari: [1, 5, 3] }; });       // X non è più titolare
-e.giusto = prova(() => {});
-aperto = true; conSostituzione = true; chiudiSostituzione(); e.ridisegno = chiamate.splice(0);
-conSostituzione = false; chiudiSostituzione(); e.altro_pannello = chiamate.splice(0);
-aperto = false; conSostituzione = true; chiudiSostituzione(); e.chiuso = chiamate.splice(0);
-console.log(JSON.stringify(e));
-"""])
-    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    e = json.loads(r.stdout.strip().splitlines()[-1])
-    assert e["apre"] == [["apri", True, True]]                             # accanto al campo, con il segno della sostituzione
-    assert e["modulo"] == [["chiudi"]] and e["altro"] == [["chiudi"]]       # niente TypeError, niente cambio
-    assert e["giusto"] == [["chiudi"], ["valuta", [1, 9, 3]]]
-    assert e["ridisegno"] == [["chiudi"]] and e["altro_pannello"] == [] and e["chiuso"] == []
-    disegna = APP[APP.index("  const disegna = (mantieniScroll = false) => {"):]
-    assert "chiudiSostituzione();" in disegna[:disegna.index("\n  };\n")]
 
 
 def _testi_node(lingua="it"):

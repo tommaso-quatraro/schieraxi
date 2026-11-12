@@ -76,9 +76,9 @@ mano (mai la password).
 | `file_sbagliato` | solo `--locale`: il calendario dà il messaggio «Non ho trovato rose nel file» (o quello di prima, «nessuna rosa») e con «Torna indietro» si può riprovare o saltare |
 | `rose` | l'anteprima mostra tutte e 10 le squadre d'esempio |
 | `squadra` | «Qual è la tua squadra?» → `Real Esempio`, i dubbi restano sulla prima proposta, «Conferma e salva» |
-| `tempi` | scadenza 10 minuti, prima giornata quella proposta, «Salva», poi «Tutto pronto» e «Vai a Oggi» |
+| `tempi` | scadenza 10 minuti, prima giornata quella proposta, «Salva», poi «Tutto pronto» e «Vai alla Formazione» |
 | `regole` | Altro > Regole, incolla il testo `ESEMPIO` di `tests/test_regole_testo.py`, «Riconosci», «Applica ai campi», «Salva le regole» |
-| `formazione` | Formazione > «Salva questa»: 11 titolari e un modulo salvati |
+| `formazione` | Formazione: 11 titolari sul campo, poi la spunta «L'ho messa»: sul server 11 titolari, un modulo e `messa` |
 | `rientro` | Impostazioni > Il tuo account > Esci, «Password dimenticata» con il codice di recupero e una password nuova, poi dentro |
 | `invito_usato` | solo `--locale`: lo stesso invito una seconda volta dà una frase che nomina l'invito |
 | `elimina` | Impostazioni > Il tuo account > Elimina l'account: dopo, l'accesso con quelle credenziali è rifiutato. Si fa sempre |

@@ -1,5 +1,6 @@
 """La web senza le funzioni tolte il 12/11/2026 (#615): niente voci morte nei menu, gli indirizzi di prima aprono la schermata
-più vicina che resta, e le schermate che restano non mostrano più stili, legenda, confronto, diretta e banner.
+più vicina che resta, e le schermate che restano non mostrano più stili, legenda, confronto, diretta e banner. La schermata
+«Formazione» unica (#616) ha i suoi test in test_formazione_unica.py.
 
 Si guarda ciò che vede chi usa l'app (testi, pulsanti, cosa succede a un tocco), non il sorgente. Dove un ruolo o un'etichetta
 non bastano (le pedine del campo, i volti) si usa la classe di oggi: quei test si riscrivono con la schermata.
@@ -99,17 +100,15 @@ def test_le_novita_mostrano_le_ultime_dieci_versioni_e_le_altre_a_richiesta(web)
     assert principale(web).get_by_role("button", name="Mostra le 2 versioni precedenti").count() == 0
 
 
-def test_formazione_ha_un_solo_stile_e_niente_legenda_confronto_e_immagine(web):
+def test_formazione_non_ha_stili_legenda_confronto_e_immagine(web):
     solo(web, "prima")
     web.apri("/?vista=formazione")
-    assert principale(web).locator(".campo .pedina").count() == 11
+    assert principale(web).locator("#campo-formazione").get_by_role("button").count() == 11
     testo = web.testo_principale()
     for tolto in ("Stile", "Equilibrata", "Molto sicura", "Rischiosa", "Ho capito", "Cosa vuol dire", "Condividi", "indice"):
         assert tolto not in testo, tolto
     bottoni = [b.strip() for b in principale(web).get_by_role("button").all_inner_texts()]
-    assert "⇄" not in bottoni and "Altro" not in bottoni
-    assert principale(web).get_by_role("button", name="Copia il testo").is_visible()         # non più dentro «Altro»
-    assert principale(web).get_by_role("button", name=re.compile(r"^\d-\d-\d")).count() >= 3   # il modulo si sceglie ancora
+    assert "⇄" not in bottoni and "Altro" not in bottoni and "✎" not in bottoni
 
 
 def test_i_volti_non_hanno_piu_il_numero_dell_indice(web):
@@ -120,50 +119,21 @@ def test_i_volti_non_hanno_piu_il_numero_dell_indice(web):
     assert [t for t in volti.all_inner_texts() if t.strip()] == []
 
 
-def test_oggi_non_ha_partite_del_turno_diretta_e_banner_delle_novita(web):
-    web.apri("/?vista=oggi", larghezza=PC)
+def test_la_prima_schermata_non_ha_partite_del_turno_diretta_e_banner_delle_novita(web):
+    web.apri("/", larghezza=PC)
     testo = web.testo_principale()
     assert "Partite del turno" not in testo and "Novità della versione" not in testo
     assert [r for r in web.richieste if r.startswith("/api/live")] == []
-    colonne = principale(web).locator(".colonne-oggi > .col")
-    assert all(t.strip() for t in colonne.all_inner_texts()), "una colonna di Oggi è vuota"
-    assert "Da fare" in testo or "Tutto a posto" in testo
-
-
-def test_oggi_sul_pc_non_lascia_a_destra_la_sola_riga_tutto_a_posto(web):
-    """A giornata finita, senza elenchi di giocatori e senza cose da fare, a destra restava una colonna con la sola riga
-    «Tutto a posto»: Oggi resta su una colonna. Con una partita rinviata o una cosa da fare la colonna di destra c'è."""
-    solo(web, "in-corso", "finita")
-    web.apri("/?vista=oggi", larghezza=PC)
-    colonne = principale(web).locator(".colonne-oggi > .col")
-    if web.fase == "finita":
-        assert colonne.count() == 1 and "Tutto a posto" in colonne.first.inner_text()
-    else:
-        assert colonne.count() == 2 and "Da fare" in colonne.nth(1).inner_text() and "Punti fatti finora" in colonne.nth(0).inner_text()
 
 
 def test_la_scheda_del_giocatore_non_ha_confronta_e_segui(web):
     solo(web, "prima")
     web.apri("/?vista=formazione")
-    nome = principale(web).locator(".campo .pedina .nome").first.inner_text().strip()
-    tocca(web, ".campo .pedina")
+    tocca(web, principale(web).locator("#campo-formazione").get_by_role("button").first)
     scheda = web.pagina.get_by_role("dialog")
-    assert nome in scheda.get_by_role("heading").first.inner_text()
     bottoni = " | ".join(scheda.get_by_role("button").all_inner_texts())
     assert not re.search(r"Confronta|Segui|Osserva|★|☆", bottoni), bottoni
     assert "Fantavoto atteso" in scheda.inner_text()
-
-
-def test_un_tocco_su_un_ballottaggio_apre_la_scheda_dell_altro(web):
-    solo(web, "prima")
-    # nei dati registrati c'è una scelta salvata a mano, e con quella i ballottaggi non si mostrano: qui niente di salvato
-    web.risposta("/api/scelta?giornata=9", None)
-    web.apri("/?vista=formazione")
-    alternative = principale(web).locator(".alternative-li").get_by_role("button")
-    assert alternative.count() >= 1
-    cognome = alternative.first.inner_text().split()[0]
-    tocca(web, alternative.first)
-    assert cognome in web.pagina.get_by_role("dialog").get_by_role("heading").first.inner_text()
 
 
 def test_la_dimensione_del_testo_non_si_sceglie_piu_e_quella_salvata_non_vale(web):
@@ -176,14 +146,14 @@ def test_la_dimensione_del_testo_non_si_sceglie_piu_e_quella_salvata_non_vale(we
     assert web.pagina.evaluate("localStorage.getItem('testo')") is None
 
 
-def _oggi_con_da_fare(web, da_fare: list[dict]) -> None:
+def _con_da_fare(web, da_fare: list[dict]) -> None:
     web.risposta("/api/oggi", {**web.registrata("/api/oggi"), "da_fare": da_fare})
-    web.apri("/?vista=oggi")
+    web.apri("/")
 
 
-def test_da_fare_non_propone_cambi_di_mercato_ne_scambi(web):
+def test_le_decisioni_non_propongono_cambi_di_mercato_ne_scambi(web):
     solo(web, "prima")
-    _oggi_con_da_fare(web, [
+    _con_da_fare(web, [
         {"id": "svincolato:1", "tipo": "svincolato", "testo": "Prendi Esempio al posto di Prova", "priorita": 3, "azione": "Vedi",
          "destinazione": {"scheda": "mercato", "sezione": None, "giocatore": 1}},
         {"id": "scambio:x", "tipo": "scambio", "testo": "Uno scambio possibile con Atletico Prova", "priorita": 3, "azione": "Apri",
@@ -193,23 +163,23 @@ def test_da_fare_non_propone_cambi_di_mercato_ne_scambi(web):
     ])
     testo = web.testo_principale()
     assert "Le rose non si aggiornano" in testo and "Prendi Esempio" not in testo and "scambio possibile" not in testo
-    assert principale(web).get_by_role("heading", name=re.compile(r"^Da fare\s*1$")).is_visible()
+    assert principale(web).get_by_role("list", name="Da fare").get_by_role("listitem").count() == 1
     tocca(web, principale(web).get_by_role("button", name="Aggiorna le rose"))
     assert titolo(web) == "Squadra" and principale(web).get_by_role("heading", name="Aggiorna le rose", exact=True).is_visible()
 
 
-def test_il_reparto_scoperto_resta_in_da_fare_e_porta_alla_rosa(web):
-    """Difetto visto in revisione: la riga «Non hai nessun portiere disponibile» (priorità alta, la stessa dell'avviso sul
-    telefono) spariva con i consigli di mercato, e Oggi diceva «Tutto a posto, Mister». Resta, e il suo pulsante porta alla rosa
-    della propria squadra («Cerca un rimpiazzo» apriva Cambi consigliati, che sulla web non c'è più)."""
+def test_il_reparto_scoperto_resta_fra_le_decisioni_e_porta_alla_rosa(web):
+    """Difetto visto in revisione della #624: la riga «Non hai nessun portiere disponibile» (priorità alta, la stessa dell'avviso sul
+    telefono) spariva con i consigli di mercato. Resta, e il suo pulsante porta alla rosa della propria squadra («Cerca un
+    rimpiazzo» apriva Cambi consigliati, che sulla web non c'è più)."""
     solo(web, "prima")
-    _oggi_con_da_fare(web, [
+    _con_da_fare(web, [
         {"id": "copertura:P", "tipo": "copertura", "testo": "Non hai nessun portiere disponibile per la prossima giornata.",
          "priorita": 1, "azione": "Cerca un rimpiazzo", "destinazione": {"scheda": "mercato", "sezione": None, "link": "schieraxi://mercato"},
          "reparto": "P", "livello": "scoperto", "disponibili": 0, "minimo": 1},
     ])
     testo = web.testo_principale()
-    assert "Non hai nessun portiere disponibile" in testo and "Tutto a posto" not in testo
+    assert "Urgente" in testo and "Non hai nessun portiere disponibile" in testo
     assert principale(web).get_by_role("button", name="Cerca un rimpiazzo").count() == 0
     tocca(web, principale(web).get_by_role("button", name="Vedi la rosa"))
     assert titolo(web) == web.registrata("/api/rosa")["nome"] and "Portieri" in web.testo_principale()      # la rosa della mia squadra
@@ -240,7 +210,7 @@ def test_girando_per_l_app_non_si_chiedono_le_rotte_delle_funzioni_tolte(web):
                       "/?vista=impostazioni", "/?vista=mercato", "/?vista=scambi"):
         web.apri(indirizzo, larghezza=PC)
     web.apri("/?vista=formazione", larghezza=PC)
-    tocca(web, ".campo .pedina")
+    tocca(web, principale(web).locator("#campo-formazione").get_by_role("button").first)
     assert sorted({r.split("?")[0] for r in web.richieste if r.startswith(ROTTE_TOLTE)}) == []
 
 
@@ -286,7 +256,7 @@ def test_mentre_una_schermata_carica_l_area_principale_lo_dice(web):
         richiesta.continue_()
     web.aspetta()
     assert principale(web).get_attribute("aria-busy") != "true" and not web.in_caricamento()
-    assert principale(web).locator(".campo .pedina").count() == 11
+    assert principale(web).locator("#campo-formazione").get_by_role("button").count() == 11
 
 
 # ---------------------------------------------------------------- riconoscimento delle rose: avvisi con role="status", errori con role="alert"

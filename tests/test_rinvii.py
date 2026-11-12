@@ -387,8 +387,8 @@ def test_web_regole_e_risorsa():
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node non installato")
-def test_web_riquadro_di_oggi():
-    inizio, fine = APP.index("const MODI_RINVIO"), APP.index("function mostraOggi(")
+def test_web_riquadro_del_rinvio():
+    inizio, fine = APP.index("const MODI_RINVIO"), APP.index("function collegaRinvio(")
     num = re.search(r"^const num = .*$", APP, re.M).group(0)
     testi = codice_web.leggi("testi.js")
     stub = """const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -410,23 +410,4 @@ console.log(JSON.stringify([cardRinvio({json.dumps(rv)}), cardRinvio(null), card
     assert '<option value="voto_ufficio" selected>' in html and "voto d&#39;ufficio" not in html
     assert "prendono il voto d'ufficio (5,5)" in html
     assert "Di solito la tua lega: aspettano il recupero" in html
-    inizio2 = APP.index("function cardRiepilogo(")
-    corpo = APP[inizio2:APP.index("\nfunction ", inizio2 + 10)]
-    stub2 = stub + 'const fraseFascia = () => "";'
-    corpo = APP[APP.index("const MODI_RINVIO"):APP.index("function cardRinvio(")] + corpo
-    corpo += "\n" + re.search(r"^function nomeGiornata\(.*?^\}$", APP, re.M | re.S).group(0)     # il titolo «Giornata 6 · 9ª di Serie A: finita»
-    r = {"giornata": 9, "punti_fatti": 61, "punti_attesi": 70, "formazione_di": "tua", "nel_diario": False,
-         "recuperi": [{"casa": "atalanta", "trasferta": "parma", "data": None}],
-         "rinvio": {"stagione": ST, "giornata": 9, "modo": "aspetta", "predefinito": "aspetta", "eccezione": False, "voto_ufficio": 6}}
-    codice = f"""{testi}
-{num}
-{stub2}
-{corpo}
-console.log(JSON.stringify([cardRiepilogo({json.dumps(r)}, null), cardRiepilogo({json.dumps(r | {"recuperi": [], "rinvio": None})}, null)]));"""
-    esito = subprocess.run([shutil.which("node"), "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert esito.returncode == 0, esito.stderr
-    con, senza = json.loads(esito.stdout)
-    assert "Manca il recupero di ATA vs PAR: i punti possono ancora cambiare." in con and "Manca il recupero" not in senza
-    assert "ATA–PAR" not in con                                     # come la carta del rinvio (#310)
-    assert '<select class="rinvio-modo" data-giornata="9"' in con and "rinvio-modo" not in senza       # il menu nel riepilogo
-    assert '<span class="menu-scelta-testo" aria-hidden="true">aspettano il recupero (conta il suo voto)</span>' in con   # scelta intera (#265)
+    # i recuperi che mancano e il menu del rinvio a giornata finita: tests/test_etichette_coerenti_web.py e tests/browser/

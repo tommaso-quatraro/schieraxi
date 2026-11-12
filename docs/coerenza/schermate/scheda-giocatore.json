@@ -6,8 +6,8 @@
       "web": "«Giornata 11 · fuori contro …» (Serie A)",
       "iphone": "«Giornata 11 · in trasferta contro …»",
       "forma": "«Giornata 8 · 11ª di Serie A · in trasferta contro …»",
-      "chi": "fatto (rassegna 6/11): web `mercato.partita_casa` e `mercato.partita_fuori`; iPhone `GiocatoreCorpo.descrizionePartita` (`SchedaGiocatoreView.swift`)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 sulla web la scheda scrive la partita senza la giornata, «In trasferta contro Parma · sab 31 20:45» (`formazione.partita_casa`, `formazione.partita_fuori`), perché si apre dalla Formazione di quella giornata (#616). L'iPhone ha ancora la giornata davanti. Prima: fatto (rassegna 6/11): web `mercato.partita_casa` e `mercato.partita_fuori`; iPhone `GiocatoreCorpo.descrizionePartita` (`SchedaGiocatoreView.swift`)",
+      "stato": "da-decidere"
     },
     {
       "id": 23,

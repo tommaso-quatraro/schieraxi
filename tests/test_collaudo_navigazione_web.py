@@ -45,7 +45,7 @@ def _cronologia(scena: str):
         "const sotto = () => ({ voce: stato.legaTorna ?? null, rosa: stato.rosaTorna ?? null, da: (history.state || {}).da ?? null });",
         APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")], _riga("const SCHEDA_DI = "),
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
-        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "),
+        _riga("const DISEGNO_VISTE = "),
         _funzione("schermataCheResta"), _funzione("vai"),
         _da_a('window.addEventListener("popstate"', "\n});\n"),
         _funzione("scriviIndirizzo"), _funzione("indirizzoLega"), _funzione("tornaIndietro"), _funzione("tornaAllaSezione"),
@@ -63,19 +63,19 @@ def test_ogni_pagina_di_squadra_e_altro_ha_il_suo_indirizzo():
     r = _node(corpo + """
     console.log(JSON.stringify([indirizzoVista("squadra", null, "squadre"), indirizzoVista("altro", null, "regole"),
       indirizzoVista("squadra", null, "squadre", "Dell'Orto FC"), indirizzoVista("squadra", null, null, ""),
-      indirizzoVista("oggi", null, "squadre")]));""")
+      indirizzoVista("formazione", null, "squadre")]));""")
     assert r == ["/?vista=squadra&voce=squadre", "/?vista=altro&voce=regole", "/?vista=squadra&rosa=Dell%27Orto+FC",
-                 "/?vista=squadra&rosa=", "/?vista=oggi"]
+                 "/?vista=squadra&rosa=", "/?vista=formazione"]
 
 
 @serve_node
 def test_indietro_dalla_voce_e_dalla_rosa_torna_al_passo_di_prima_sotto_i_1100_px():
     """390 px: Squadra › «Squadre e rose» › rosa di un'altra squadra. Ogni passo è una voce della cronologia: Indietro torna alla
-    lista delle squadre, poi al menu di Squadra, poi a Oggi (prima uscivano subito su Oggi). Avanti rifà i passi; la voce che si
+    lista delle squadre, poi al menu di Squadra, poi alla Formazione (prima uscivano subito sulla prima schermata). Avanti rifà i passi; la voce che si
     riapre (Squadre e rose, la rosa) arriva a vistaLega da `stato.legaTorna` e `stato.rosaTorna`."""
     e = _cronologia("""
     const esiti = {};
-    vai("oggi"); vai("squadra"); chiamate.splice(0);
+    vai("formazione"); vai("squadra"); chiamate.splice(0);
     indirizzoLega("squadra", true, "squadre"); esiti.voce = { ...foto(), ...sotto() };                  // clic su «Squadre e rose»
     scriviIndirizzo({ vista: "squadra", voce: "squadre", rosa: "Real Esempio", pagina: true }, true);   // clic su una squadra
     esiti.rosa = { ...foto(), ...sotto() };
@@ -93,7 +93,7 @@ def test_indietro_dalla_voce_e_dalla_rosa_torna_al_passo_di_prima_sotto_i_1100_p
     assert ["disegna", "squadra", "squadre", None] in e["indietro1"]["chiamate"]
     assert e["indietro2"]["indirizzo"] == "/?vista=squadra"                # il menu, non l'ultima voce vista
     assert ["disegna", "squadra", None, None] in e["indietro2"]["chiamate"]
-    assert e["indietro3"]["indirizzo"] == "/?vista=oggi" and e["indietro3"]["pos"] == 0
+    assert e["indietro3"]["indirizzo"] == "/?vista=formazione" and e["indietro3"]["pos"] == 0
     assert e["avanti"]["indirizzo"] == "/?vista=squadra&rosa=Real+Esempio"
     assert ["disegna", "squadra", "squadre", "Real Esempio"] in e["avanti"]["chiamate"]
     assert not any(c[0] in ("push", "replace") for k in ("indietro1", "indietro2", "indietro3", "avanti") for c in e[k]["chiamate"])
@@ -102,11 +102,11 @@ def test_indietro_dalla_voce_e_dalla_rosa_torna_al_passo_di_prima_sotto_i_1100_p
 @serve_node
 def test_da_1100_px_regole_e_novita_tornano_alla_voce_di_altro():
     """1440 px: Altro apre accanto al menu il Diario (l'indirizzo si corregge, niente voce in più); Regole è una pagina sua con una
-    voce nuova: Indietro torna ad Altro con il Diario, poi a Oggi. La scheda «Altro» con una voce di Altro aperta accanto al menu
+    voce nuova: Indietro torna ad Altro con il Diario, poi alla Formazione. La scheda «Altro» con una voce di Altro aperta accanto al menu
     non aggiunge voci (la pagina riaprirebbe la stessa); da Regole sì, perché Regole è un'altra pagina."""
     e = _cronologia("""
     const esiti = {};
-    largo = true; vai("oggi"); vai("altro"); indirizzoLega("altro", false, "diario"); esiti.altro = foto();
+    largo = true; vai("formazione"); vai("altro"); indirizzoLega("altro", false, "diario"); esiti.altro = foto();
     scriviIndirizzo({ vista: "altro", voce: "regole", pagina: true }, true); esiti.regole = { ...foto(), ...sotto() };
     history.back(); esiti.indietro = { ...foto(), ...sotto() };
     vai("altro"); esiti.scheda_altro = foto();
@@ -128,13 +128,13 @@ def test_i_pulsanti_indietro_dell_app_non_lasciano_voci_morte():
     sezione) la sezione prende il posto della pagina: nessuna voce in più."""
     e = _cronologia("""
     const esiti = {};
-    vai("oggi"); vai("squadra"); indirizzoLega("squadra", true, "squadre");
+    vai("formazione"); vai("squadra"); indirizzoLega("squadra", true, "squadre");
     scriviIndirizzo({ vista: "squadra", voce: "squadre", rosa: "Real Esempio", pagina: true }, true); chiamate.splice(0);
     tornaAllaSezione("squadre"); esiti.rosa_da_clic = { ...foto(), ...sotto() };
     vai("altro"); scriviIndirizzo({ vista: "altro", voce: "regole", pagina: true }, true); chiamate.splice(0);
     tornaAllaSezione("altro"); esiti.regole_da_clic = { ...foto(), ...sotto() };
     // Regole aperta da un indirizzo (o da «Da fare»): la voce di prima non è Altro
-    vai("oggi"); stato.legaTorna = "regole"; vai("altro"); scriviIndirizzo({ vista: "altro", voce: "regole", pagina: true }, false);
+    vai("formazione"); stato.legaTorna = "regole"; vai("altro"); scriviIndirizzo({ vista: "altro", voce: "regole", pagina: true }, false);
     const quante = foto().voci;
     tornaAllaSezione("altro"); esiti.regole_da_indirizzo = { ...foto(), ...sotto(), prima: quante };
     console.log(JSON.stringify(esiti));
@@ -159,7 +159,7 @@ def test_ricaricando_una_voce_non_si_aggiunge_niente_e_si_ricorda_da_dove_si_ven
     const esiti = {};
     history.replaceState({ vista: "squadra", voce: "importa", da: "/?vista=squadra" }, "", "/?vista=squadra&voce=importa"); chiamate.splice(0);
     stato.legaTorna = "importa"; vai("squadra"); esiti.ricarica = { ...foto(), ...sotto() };
-    stato.legaTorna = "importa"; stato.rosaTorna = "X"; vai("oggi"); esiti.oggi = { ...foto(), ...sotto() };
+    stato.legaTorna = "importa"; stato.rosaTorna = "X"; vai("formazione"); esiti.oggi = { ...foto(), ...sotto() };
     console.log(JSON.stringify(esiti));
     """)
     assert ["replace", "/?vista=squadra&voce=importa"] in e["ricarica"]["chiamate"] and e["ricarica"]["voci"] == 1
@@ -171,14 +171,14 @@ def test_ricaricando_una_voce_non_si_aggiunge_niente_e_si_ricorda_da_dove_si_ven
 
 @serve_node
 def test_impostazioni_ogni_gruppo_ha_la_sua_voce():
-    """390 px: Impostazioni › Notifiche era una pagina senza indirizzo, Indietro usciva su Oggi. Il gruppo aperto con un clic scrive
+    """390 px: Impostazioni › Notifiche era una pagina senza indirizzo, Indietro usciva sulla prima schermata. Il gruppo aperto con un clic scrive
     ?vista=impostazioni&gruppo=…; aperto da solo (da 768 px il primo, o da un indirizzo) corregge la voce di adesso; «‹ Impostazioni»
     torna alla lista come Indietro."""
     codice = "\n".join([
         AMBIENTE_LEGA,
         APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")], _riga("const SCHEDA_DI = "),
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
-        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "),
+        _riga("const DISEGNO_VISTE = "),
         _funzione("schermataCheResta"), _funzione("vai"),
         _da_a('window.addEventListener("popstate"', "\n});\n"),
         _funzione("scriviIndirizzo"), _funzione("tornaIndietro"),
@@ -186,7 +186,7 @@ def test_impostazioni_ogni_gruppo_ha_la_sua_voce():
         IMP[IMP.index("function listaImp("):IMP.index("\n}\n", IMP.index("function listaImp(")) + 3],
         """
         const esiti = {};
-        vai("oggi"); vai("impostazioni"); chiamate.splice(0);
+        vai("formazione"); vai("impostazioni"); chiamate.splice(0);
         indirizzoImp("avvisi", true); esiti.gruppo = foto();
         history.back(); esiti.indietro = foto();
         history.forward(); chiamate.splice(0); listaImp(); esiti.lista = foto();
@@ -215,7 +215,7 @@ def test_i_pulsanti_e_le_pagine_usano_la_cronologia():
     assert 'data-indietro="squadre"' in _funzione("vistaRosa")
     assert 'closest("[data-indietro]")' in APP
     assert "cfg.indirizzo(" in IMP and "cfg.lista(" in IMP
-    avvio = APP[APP.index('let iniziale = "oggi";'):APP.index("controllaAccesso().then(")]
+    avvio = APP[APP.index('let iniziale = "formazione";'):APP.index("controllaAccesso().then(")]
     assert 'get("voce")' in avvio and 'get("rosa")' in avvio
 
 

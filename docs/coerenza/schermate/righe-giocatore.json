@@ -6,8 +6,8 @@
       "web": "a parole",
       "iphone": "«Titolare 85%»",
       "forma": "web",
-      "chi": "fatto (rassegna 6/11): `Giocatore.etichette` (`Domain/GiocatoreEtichette.swift`) mostra l'`etichetta` del server; senza, le parole di `tit.*` (`nomiTitolarita`), mai numeri",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non mostra più le etichette di titolarità («Probabile titolare», «In ballottaggio», «Probabile panchina», «Improbabile»): solo «In dubbio», «Infortunato», «Squalificato», «Fuori», «Rinviata», e «gioca N%» sotto l'80% (#616). L'iPhone le mostra. Prima: fatto (rassegna 6/11): `Giocatore.etichette` (`Domain/GiocatoreEtichette.swift`) mostra l'`etichetta` del server; senza, le parole di `tit.*` (`nomiTitolarita`), mai numeri",
+      "stato": "da-decidere"
     },
     {
       "id": 12,
@@ -33,8 +33,8 @@
       "web": "quattro toni del server: «Probabile titolare», «Ha giocato», «Partita in corso» verdi",
       "iphone": "le stesse grigie (tre gravità, positivo come neutro)",
       "forma": "web (`docs/DESIGN.md`, «Colori semantici»)",
-      "chi": "fatto con #242",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 sulla web «Probabile titolare» non si scrive più: i toni restano per lo stato a parole e per la partita cominciata, e «gioca N%» è arancio fra 50 e 79 e rosso sotto 50 (#616). L'iPhone ha ancora le quattro etichette. Prima: fatto con #242",
+      "stato": "da-decidere"
     },
     {
       "id": 43,

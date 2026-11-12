@@ -6,7 +6,7 @@
       "web": "«Giornata 10 · la tua scelta» (`f.giornata`)",
       "iphone": "«Giornata 7 di lega (Serie A 10)»",
       "forma": "sezione «Giornata: le forme»",
-      "chi": "**da decidere**: dal 12/11/2026 la web non ha più l'immagine da condividere (#615), l'iPhone sì. Prima: fatto (rassegna 6/11): web `nomeGiornata`; iPhone `TempiLega.didascalia` con `NomeGiornata.intero` (`FormazioneView.intestazione`), `TestoFormazione.crea` e il titolo dell'immagine «Formazione · …» (`FormazioneViewModel`), #312. «· la tua scelta» con #437 (riga 52)",
+      "chi": "**da decidere**: dal 12/11/2026 la web non scrive più «· la tua scelta» accanto alla giornata: lo dice la riga dello stato sotto il campo (#616; già senza l'immagine da condividere, #615). L'iPhone sì. Prima: fatto (rassegna 6/11): web `nomeGiornata`; iPhone `TempiLega.didascalia` con `NomeGiornata.intero` (`FormazioneView.intestazione`), `TestoFormazione.crea` e il titolo dell'immagine «Formazione · …» (`FormazioneViewModel`), #312. «· la tua scelta» con #437 (riga 52)",
       "stato": "da-decidere"
     },
     {
@@ -24,8 +24,8 @@
       "web": "sempre visibile",
       "iphone": "mancava",
       "forma": "web",
-      "chi": "fatto con #22",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web salva da sola a ogni cambio e la riga dello stato ha due frasi, «È la consigliata.» e «L'hai cambiata tu: N titolari diversi dalla consigliata (−0,4 punti attesi).», con «Torna alla consigliata», «Copia per l'app della lega» e la spunta «L'ho messa» (campo `messa` della scelta) (#616). L'iPhone ha ancora Salva e «La tua formazione è salvata». Prima: fatto con #22",
+      "stato": "da-decidere"
     },
     {
       "id": 37,
@@ -42,8 +42,8 @@
       "web": "righe del perché della scelta (prima solo gli incerti)",
       "iphone": "mancava (nemmeno gli incerti)",
       "forma": "server (`perche_scelta` di `GET /api/formazione`)",
-      "chi": "web e iPhone fatti nella stessa PR (#356)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 sulla web il perché della scelta non sta più sotto il campo: è nella scheda del titolare, «Perché è titolare» (#616). L'iPhone ha ancora le righe sotto il campo. Prima: web e iPhone fatti nella stessa PR (#356)",
+      "stato": "da-decidere"
     },
     {
       "id": 47,
@@ -51,8 +51,8 @@
       "web": "in «Modifica a mano» i `bloccati` non si sostituiscono né entrano, riga `formazione.bloccati`; rifiuto del server con la sua frase",
       "iphone": "uguale alla web",
       "forma": "server (`bloccati`, 400 `giocatore_bloccato`)",
-      "chi": "fatto con #373 (web e iPhone nella stessa PR; test contro `testi.js`)",
-      "stato": "fatto"
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più «Modifica a mano»: la scheda di un titolare fermo non ha «Sostituisci» e dice la frase di `formazione.bloccati`, i fermi non compaiono fra i sostituti (#616). L'iPhone ha ancora «Modifica a mano». Prima: fatto con #373 (web e iPhone nella stessa PR; test contro `testi.js`)",
+      "stato": "da-decidere"
     },
     {
       "id": 52,
@@ -60,7 +60,7 @@
       "web": "intestazione «… · la tua scelta»; «Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono.»; «Entra il primo che può sostituire chi resta senza voto.»; «In ballottaggio con»; «Equilibrata: propone il 3-4-3.» (minuscola dopo i due punti, #557), «Modulo fissato a mano …», «Modificata a mano …»; «Tocca ✎ per sostituire un titolare …» o «Tocca ⇄ per confrontarlo …»; nella sostituzione «Giocatori dello stesso ruolo della tua rosa …» (testi `formazione.*`)",
       "iphone": "con la tua scelta solo la giornata; «Probabili formazioni non ancora uscite: uso le presenze recenti.»; «In quest'ordine: entra il primo …»; «Ballottaggio · alternative vicine»; «Modulo proposto: 3-4-3»; «Tocca un titolare per sostituirlo …», ⇄ anche per sostituire (`FormazioneView.swift`, `TempiLega.didascalia`)",
       "forma": "web",
-      "chi": "**da decidere**: dal 12/11/2026 la web non ha più gli stili e il confronto ⇄ (#615), l'iPhone sì. Prima: fatto con #437 e #463 (PR #475): in modifica a mano stili e moduli restano (nessuno acceso) con «Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata.»; un tocco torna alla loro proposta senza cancellare la scelta salvata; Salva, Annulla e Torna nella riga dello stato come `rigaStatoScelta`. A giornata chiusa l'iPhone resta in sola lettura. Prova: `FormazioneComeLaWebTests`, `ModificaAManoModuliTests`",
+      "chi": "**da decidere**: dal 12/11/2026 la web non ha più ✎, «In ballottaggio con», «Modulo fissato a mano» né «Modificata a mano»: il modulo è un menu, un tocco su un titolare apre la scheda con «Sostituisci» e sotto il campo c'è la riga dello stato (#616; già senza stili e confronto ⇄, #615). L'iPhone sì. Prima: fatto con #437 e #463 (PR #475): in modifica a mano stili e moduli restano (nessuno acceso) con «Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata.»; un tocco torna alla loro proposta senza cancellare la scelta salvata; Salva, Annulla e Torna nella riga dello stato come `rigaStatoScelta`. A giornata chiusa l'iPhone resta in sola lettura. Prova: `FormazioneComeLaWebTests`, `ModificaAManoModuliTests`",
       "stato": "da-decidere"
     },
     {
@@ -69,7 +69,16 @@
       "web": "mentre carica «Calcolo la formazione migliore…»; «Formazione copiata: incollala dove vuoi» e «Non riesco a creare l'immagine» senza punto finale; «Stai guardando la formazione di Gli Amici.»; ⇄ letto «Confronta Rossi con un altro»; dopo il salvataggio «Salvata come tua scelta» (testi `formazione.*`)",
       "iphone": "«Scelgo gli undici…»; le due frasi con il punto finale; «Stai guardando la formazione di Gli Amici» senza punto; VoiceOver «Confronta Rossi con un altro della rosa» e «Formazione salvata»",
       "forma": "web (catalogo `fanta/testi/formazione.json`)",
-      "chi": "**da decidere**: dal 12/11/2026 la web non ha più l'immagine da condividere e il confronto ⇄ (#615), l'iPhone sì. Prima: fatto con #495: l'iPhone prende queste frasi, e le altre della Formazione elencate in `ios/testi/formazione.txt`, da `Catalogo.Formazione` (generato da `script/testi.py`). Prova: `FormazioneDalCatalogoTests`",
+      "chi": "**da decidere**: dal 12/11/2026 la web non dice più «Salvata come tua scelta» (salva da sola) e copia con «Copia per l'app della lega» e «Formazione copiata: ora mettila nell'app della lega» (#616; già senza immagine da condividere e confronto ⇄, #615). L'iPhone ha le frasi di prima. Prima: fatto con #495: l'iPhone prende queste frasi, e le altre della Formazione elencate in `ios/testi/formazione.txt`, da `Catalogo.Formazione` (generato da `script/testi.py`). Prova: `FormazioneDalCatalogoTests`",
+      "stato": "da-decidere"
+    },
+    {
+      "id": 68,
+      "schermata": "Formazione unica al posto di Oggi e Formazione",
+      "web": "una schermata sola, «Formazione», che si apre per prima: testa con giornata e scadenza (in corso i punti finora, finita com'è andata e sotto la prossima), al massimo due decisioni, modulo come menu con i punti attesi e «di solito fra 65 e 82», campo con numero e cognome, riga dello stato con salvataggio automatico, «Copia per l'app della lega», spunta «L'ho messa», panchina, «Non schierati», «Infortunati e squalificati»; una sola scheda del giocatore con «Sostituisci»; tre schede in basso",
+      "iphone": "Oggi e Formazione separate, con Da fare, stili, «Modifica a mano», Salva, etichette di titolarità e «gioca N%» sempre",
+      "forma": "web",
+      "chi": "**da decidere** (#616): si aspetta la scelta sull'app per iPhone (involucro della web o app nativa). Fino ad allora il vocabolario («gioca N%», «Stato del giocatore», «Stato della scelta in Formazione», «Da fare (Oggi)», anticipi, perché della scelta) e le differenze ammesse («Pedina sul campo», «gioca N%» nelle righe, «Oggi») descrivono la web di prima del 12/11/2026",
       "stato": "da-decidere"
     }
   ]
