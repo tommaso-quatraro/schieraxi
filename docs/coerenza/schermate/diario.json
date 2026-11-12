@@ -26,6 +26,15 @@
       "forma": "server (`precisione.serie_a.testo` di `GET /api/diario`)",
       "chi": "web e iPhone fatti nella stessa PR (#374)",
       "stato": "fatto"
+    },
+    {
+      "id": 69,
+      "schermata": "Diario, «Le tue scelte» e «Quanto ci abbiamo preso», giornate senza verdetto",
+      "web": "frase del server sotto i numeri, o da sola senza giornate da confrontare",
+      "iphone": "uguale, stesso testo",
+      "forma": "server (`scelte_tue.nota` e `precisione.confronto.nota` di `GET /api/diario`)",
+      "chi": "web e iPhone fatti nella stessa PR (#614)",
+      "stato": "fatto"
     }
   ]
 }
