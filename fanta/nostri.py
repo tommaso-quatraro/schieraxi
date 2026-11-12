@@ -56,8 +56,8 @@ def parametri(par: Parametri | None = None) -> Parametri:
     """I parametri dei nostri: quelli dati (o i predefiniti) senza xG e xA, perché i nostri non li hanno, e con le correzioni
     tarate sui gol veri: rigori con memoria lunga divisi nella squadra e minuti dalle sole presenze con voto (Fase B del
     piano), forza delle squadre di `FORZA` con il livello recente del campionato e medie del ruolo pesate (Fase C)."""
-    return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0, rigori_squadra=True, minuti_con_voto=True,
-                   medie_ruolo_pesate=True, **FORZA)
+    return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0, rigori_squadra=True, rigori_di_un_altro=0.0,
+                   minuti_con_voto=True, medie_ruolo_pesate=True, **FORZA)
 
 
 def gol_attesi(prev: pd.DataFrame, par: Parametri) -> pd.Series:

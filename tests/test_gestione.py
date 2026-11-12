@@ -51,6 +51,16 @@ def test_motivi_senza_percentuali_sul_giocare():
             assert not any(f"{perc:.0f}%" in x for x in m), m
 
 
+def test_rigorista_e_chi_calcia_piu_della_meta_dei_rigori_della_squadra():
+    """#613: la frase «rigorista» guardava i rigori attesi a partita (soglia 0,15), che nessuno raggiungeva mai: una squadra ne
+    calcia circa 0,14 a partita. Ora guarda la quota dei rigori della squadra che va al giocatore, se gioca."""
+    assert "rigorista" in consigli.motivi(_giocatore(stato="titolare", quota_rigori=0.8, e_rigori=0.10))
+    assert "rigorista" in consigli.motivi(_giocatore(quota_rigori=0.5, e_rigori=0.06))
+    assert "rigorista" not in consigli.motivi(_giocatore(quota_rigori=0.45, e_rigori=0.30))      # ne calcia meno della metà
+    assert "rigorista" not in consigli.motivi(_giocatore(e_rigori=0.30))                         # previsione senza la quota
+    assert consigli.motivi(_giocatore(stato="squalificato", quota_rigori=0.9)) == ["squalificato"]
+
+
 def test_infortunato_niente_consigli_sulla_partita():
     """Collaudo 2/11/2026: un infortunato aveva ancora «gol atteso 68%» e «partita favorevole» (oggi «49% di segnare»)."""
     for stato in ("infortunato", "squalificato"):

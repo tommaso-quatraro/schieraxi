@@ -55,9 +55,16 @@ class Parametri:
     peso_xg_squadre: float = 0.6      # gol attesi di squadra: quanto contano gli xG rispetto ai gol veri
     decadimento_presenze: float = 0.75
     giornate_presenze: int = 6
+    # Quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_rigori_divisi`). In produzione dal
+    # 12/11/2026 (#613): con la quota di prima i rigori attesi erano il 42% e il 25% dei veri nelle due stagioni, con questa il 65%.
+    rigori_squadra: bool = True
+    # Rigori (pesati) messi in conto, nella quota di squadra, a un rigorista che ancora non si conosce: metà dei rigori li
+    # calcia chi non ne aveva mai calciati. Misura del 12/11/2026 su 132 casi con quota sopra 0,2: senza questo termine chi
+    # aveva quota 0,95 calciava il 60% dei rigori della squadra e chi aveva 0,64 il 50%; con 0,5 chi ha 0,64 ne calcia il 57%
+    # e chi ha 0,34 il 37%. I numeri «nostri» restano senza (`nostri.parametri`).
+    rigori_di_un_altro: float = 0.5
     # Correzioni dei gol attesi «nostri» (piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md): spente di default,
-    # le accende `nostri.parametri`. La produzione non cambia fino alla Fase G1.
-    rigori_squadra: bool = False      # quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_rigori_divisi`)
+    # le accende `nostri.parametri`.
     minuti_con_voto: bool = False     # minuti, tassi per 90' e medie del ruolo dalle sole presenze con voto (vedi `_pezzi`)
     decadimento_base: float | None = None   # memoria del livello recente del campionato (vedi `forza_squadre`); None = niente livello
     medie_ruolo_pesate: bool = False  # medie del ruolo (gol, assist, xG, xA, minuti) con i pesi dei giocatori (vedi `_pezzi`)
@@ -195,16 +202,19 @@ PESO_PREC_RIGORI = 0.8          # i rigori della stagione scorsa
 def _rigori_divisi(U: pd.DataFrame, g: pd.DataFrame, t0: int, stagione: str, par: Parametri) -> pd.Series:
     """Quota dei rigori della squadra che va a ogni giocatore di `g`, se gioca (Parametri.rigori_squadra). Si contano i suoi
     rigori calciati con memoria lunga (con qualunque squadra) e quelli dei compagni di oggi, ognuno pesato con la sua quota di
-    presenze recenti (`p_storico`): quota = i suoi / (i suoi + quelli dei compagni). Chi non ne ha mai calciati ha quota 0.
+    presenze recenti (`p_storico`): quota = i suoi / (i suoi + quelli dei compagni + `Parametri.rigori_di_un_altro`). Chi non ne
+    ha mai calciati ha quota 0.
     `U`: le presenze prima della giornata (vedi `_pezzi`)."""
     pr = replace(par, decadimento=DECADIMENTO_RIGORI, peso_stagione_prec=PESO_PREC_RIGORI)
     calciati = pd.Series(_pesi(U["t"], U["stagione"], t0, stagione, pr) * U["rigori_calciati"].to_numpy(dtype=float),
                          index=U.index)
-    lungo = calciati.groupby(U["calciatore_id"]).sum().reindex(g.index, fill_value=0.0)
-    presenti = g["p_storico"] * lungo
+    # numeri veri e nessuna divisione per zero: con un archivio quasi vuoto (nessuna presenza) le colonne arrivano senza tipo
+    lungo = calciati.groupby(U["calciatore_id"]).sum().reindex(g.index, fill_value=0.0).astype(float)
+    presenti = pd.to_numeric(g["p_storico"], errors="coerce").fillna(0.0).astype(float) * lungo
     squadra = presenti.groupby(g["squadra_slug"].to_numpy()).transform("sum")
     compagni = (squadra - presenti).fillna(0.0).clip(lower=0.0)
-    return (lungo / (lungo + compagni)).where(lungo > 0, 0.0)
+    totale = lungo + compagni + par.rigori_di_un_altro
+    return (lungo / totale.where(totale > 0)).where(lungo > 0, 0.0).fillna(0.0)
 
 
 # ---------------------------------------------------------------- squadre
@@ -580,6 +590,8 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
                   p_mvp, gol_subiti, p_imbattuto)
         dopo = {
             "e_gol": round(e_gol, 3), "e_assist": round(e_ass, 3), "e_rigori": round(e_rig, 3),
+            # quanta parte dei rigori della sua squadra calcia lui, se gioca (per la frase «rigorista»)
+            "quota_rigori": round(float(quota_rig), 3),
             # probabilità di almeno un gol (rigori compresi) / un assist / un cartellino, se gioca
             "p_gol": round(1 - math.exp(-(e_gol + par.conversione_rigori * e_rig)), 3),
             "p_assist": round(1 - math.exp(-e_ass), 3),

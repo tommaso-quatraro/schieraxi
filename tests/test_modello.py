@@ -165,6 +165,22 @@ def test_pezzi_condivisi_fra_leghe_stessi_numeri():
     assert len(d._pezzi) <= modello.MAX_PEZZI
 
 
+# ---------------------------------------------------------------- rigori dalla quota di squadra (#613)
+def test_rigori_dalla_quota_di_squadra_anche_in_produzione():
+    """La quota dei rigori è quella «di squadra» a memoria lunga (prima un termine fisso la schiacciava: i rigori attesi erano
+    un quarto dei veri), e la previsione la riporta: serve alla frase «rigorista»."""
+    assert modello.Parametri().rigori_squadra
+    p = _p(_dati())
+    # il Bomber ha calciato tutti e 4 i rigori della sua squadra (pesati 0,98 a giornata): 3,81 / (3,81 + 0,5 di un rigorista che
+    # ancora non si conosce)
+    lungo = sum(0.98 ** k for k in range(1, 5))
+    assert p.at[1, "quota_rigori"] == pytest.approx(lungo / (lungo + 0.5), abs=1e-3) and p.at[3, "quota_rigori"] == 0.0
+    rigori_partita = modello.forza_squadre(_dati(), ST, 5, modello.Parametri()).rigori_partita
+    assert p.at[1, "e_rigori"] == pytest.approx(p.at[1, "quota_rigori"] * rigori_partita * p.at[1, "fattore"], abs=2e-3)
+    tutta =modello.previsioni(_dati(), ST, 5, Regole(), modello.Parametri(rigori_di_un_altro=0.0)).set_index("id")
+    assert tutta.at[1, "quota_rigori"] == 1.0                    # senza quel termine tutta la quota è sua
+
+
 # ---------------------------------------------------------------- partite senza statistiche (#613)
 def _senza_statistiche(d, giornate):
     """Gli stessi dati come se la fonte delle statistiche per partita si fosse fermata prima di queste giornate."""

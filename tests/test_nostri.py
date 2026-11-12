@@ -48,14 +48,15 @@ def test_scenario_solo_fantacalcio_misura_i_numeri_nostri():
 def test_parametri_nostri_senza_xg():
     p = nostri.parametri()
     assert p.peso_xg == 0.0 and p.peso_xa == 0.0
-    # Fase B: rigori con memoria lunga e minuti dalle presenze con voto, accesi solo per i nostri (la produzione non cambia)
+    # Fase B: rigori con memoria lunga (dal 12/11/2026 anche in produzione, #613) e minuti dalle presenze con voto (solo i nostri)
     assert p.rigori_squadra and p.minuti_con_voto
-    assert not Parametri().rigori_squadra and not Parametri().minuti_con_voto
+    assert Parametri().rigori_squadra and not Parametri().minuti_con_voto
     # Fase C: livello recente del campionato e medie del ruolo pesate, forza delle squadre tarata sui soli gol
     assert p.decadimento_base is not None and p.medie_ruolo_pesate
     assert Parametri().decadimento_base is None and not Parametri().medie_ruolo_pesate
     assert (p.decadimento_squadre, p.k_squadre) != (Parametri().decadimento_squadre, Parametri().k_squadre)
-    cambiati = ("peso_xg", "peso_xa", "rigori_squadra", "minuti_con_voto", "decadimento_base", "medie_ruolo_pesate",
+    assert p.rigori_di_un_altro == 0.0 and Parametri().rigori_di_un_altro == 0.5     # i nostri restano com'erano
+    cambiati = ("peso_xg", "peso_xa", "rigori_di_un_altro", "minuti_con_voto", "decadimento_base", "medie_ruolo_pesate",
                 "decadimento_squadre", "k_squadre")
     altri = [f.name for f in fields(Parametri) if f.name not in cambiati]
     assert {c: getattr(p, c) for c in altri} == {c: getattr(Parametri(), c) for c in altri}
