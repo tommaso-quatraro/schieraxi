@@ -14,6 +14,7 @@ from dataclasses import replace
 import numpy as np
 import pandas as pd
 
+from . import modello as _modello
 from .modello import Dati, Parametri
 from .modello import previsioni as _previsioni_modello
 from .regole import Regole
@@ -22,10 +23,7 @@ from .regole import Regole
 # 3: forza delle squadre tarata sui soli gol, livello recente del campionato, medie del ruolo pesate (Fase C)
 VERSIONE: str = "3"
 
-# Minuti giocati per presenza, da «entrato» e «uscito» dei voti di Fantacalcio.it (che non dà i minuti), per
-# (subentrato, sostituito). Medie dei minuti veri di Understat sull'archivio di sviluppo (2025-26 e 2026-27, circa 14.400
-# presenze, misura del 5/11/2026): 89,7 · 70,9 · 19,0 · 30,3 (quest'ultima su 29 casi soltanto).
-MINUTI_STIMATI = {(0, 0): 90.0, (0, 1): 71.0, (1, 0): 19.0, (1, 1): 30.0}
+MINUTI_STIMATI = _modello.MINUTI_STIMATI          # minuti per presenza da «entrato» e «uscito» dei voti (ora in modello.py)
 
 # Fasce dei gol attesi per dire se sono tarati (indicatore I4)
 FASCE_GOL = (0.0, 0.05, 0.10, 0.20, 0.30, 0.45, np.inf)
@@ -33,31 +31,17 @@ FASCE_GOL_NOMI = ("0-0,05", "0,05-0,10", "0,10-0,20", "0,20-0,30", "0,30-0,45", 
 MIN_CASI_FASCIA = 50                # sotto, lo scarto di una fascia è quasi solo caso: non entra in `scarto_gol`
 
 
-def minuti_stimati(voti: pd.DataFrame) -> pd.Series:
-    """Minuti stimati di ogni riga dei voti (vedi `MINUTI_STIMATI`); un dato mancante vale «no»."""
-    sub, sos = (pd.to_numeric(voti[c], errors="coerce").fillna(0).astype(int).clip(0, 1) for c in ("subentrato", "sostituito"))
-    return pd.Series([MINUTI_STIMATI[(a, b)] for a, b in zip(sub, sos)], index=voti.index, dtype=float)
+minuti_stimati = _modello.minuti_stimati
 
 
 def dati(d: Dati) -> Dati:
     """Copia dei dati come se avessimo solo Fantacalcio.it: niente xG e xA (giocatori e squadre: la forza delle squadre viene
-    dai soli gol) e prestazioni ricostruite dai voti, una riga per presenza (anche chi resta senza voto): minuti stimati da
-    entrato e uscito, rigori calciati = segnati + sbagliati, gol con i rigori (come Understat; nei voti «gol» li esclude).
-    Le prestazioni di Understat non si leggono; la partita è quella di Fantacalcio.it."""
-    v = d.voti
-    num = lambda c: pd.to_numeric(v[c], errors="coerce").fillna(0)  # noqa: E731
-    pr = pd.DataFrame({"stagione": v["stagione"], "giornata": v["giornata"], "data": v["data"], "t": v["t"],
-                       "squadra": v["squadra"], "calciatore_id": v["calciatore_id"], "minuti": minuti_stimati(v),
-                       "gol": num("gol") + num("rig_segnati"), "assist": num("assist"), "rigori_segnati": num("rig_segnati"),
-                       "rigori_calciati": num("rig_segnati") + num("rig_sbagliati"), "xg": np.nan, "xa": np.nan})
-    partita = pd.concat([d.partite[["stagione", "giornata", c, "id"]].rename(columns={c: "squadra", "id": "understat_partita"})
-                         for c in ("casa", "trasferta")]).drop_duplicates(["stagione", "giornata", "squadra"])
-    pr = pr.merge(partita, on=["stagione", "giornata", "squadra"], how="left")
-    rig = pr.groupby(["understat_partita", "squadra"])["rigori_calciati"].sum().rename("rigori_squadra")
+    dai soli gol) e prestazioni ricostruite dai voti per tutte le partite (`modello.prestazioni_dai_voti`). Le prestazioni di
+    Understat non si leggono; la partita è quella di Fantacalcio.it."""
     pa = d.partite.copy()
     pa["xg_casa"] = np.nan
     pa["xg_trasferta"] = np.nan
-    return replace(d, prestazioni=pr.join(rig, on=["understat_partita", "squadra"]), partite=pa)
+    return replace(d, prestazioni=_modello.prestazioni_dai_voti(d.voti, d.partite), partite=pa)
 
 
 # Forza delle squadre dai soli gol (senza xG): tarata il 6/11/2026 con `prove/tara_forza_gol.py` sul 2025-26 dalla 5ª giornata,
@@ -71,9 +55,10 @@ FORZA = {"decadimento_squadre": 0.99, "k_squadre": 8.0, "decadimento_base": 0.85
 def parametri(par: Parametri | None = None) -> Parametri:
     """I parametri dei nostri: quelli dati (o i predefiniti) senza xG e xA, perché i nostri non li hanno, e con le correzioni
     tarate sui gol veri: rigori con memoria lunga divisi nella squadra e minuti dalle sole presenze con voto (Fase B del
-    piano), forza delle squadre di `FORZA` con il livello recente del campionato e medie del ruolo pesate (Fase C)."""
-    return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0, rigori_squadra=True, minuti_con_voto=True,
-                   medie_ruolo_pesate=True, **FORZA)
+    piano), forza delle squadre di `FORZA` con il livello recente del campionato e medie del ruolo pesate (Fase C). Il livello
+    della stagione della produzione (`Parametri.k_livello`, #613) resta spento: i nostri hanno già il loro."""
+    return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0, rigori_squadra=True, rigori_di_un_altro=0.0,
+                   minuti_con_voto=True, medie_ruolo_pesate=True, k_livello=None, **FORZA)
 
 
 def gol_attesi(prev: pd.DataFrame, par: Parametri) -> pd.Series:

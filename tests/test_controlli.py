@@ -74,6 +74,48 @@ def test_senza_dati_non_scrive_righe_e_riesegue_senza_duplicati(db):
     assert db.execute("SELECT COUNT(*) FROM controlli WHERE nome = 'partite_per_giornata'").fetchone()[0] == 1
 
 
+def test_partite_giocate_senza_statistiche(db, monkeypatch):
+    """Una partita giocata che ha già i voti ma non le statistiche per partita (fonte ferma): si segnala, con le giornate.
+    Senza voti non conta (è appena finita: voti e statistiche devono ancora arrivare). #613"""
+    monkeypatch.setattr(controlli.fonti_attive, "acceso", lambda fonte, *a: True)      # la fonte delle statistiche è accesa
+    _giornata(db, 1)
+    _giornata(db, 2)
+    for g in (1, 2):
+        for i in range(10):
+            db.execute("UPDATE partite SET understat_id = ? WHERE id = ?", (g * 100 + i, g * 100 + i))
+            for sq in (f"c{i}", f"t{i}"):
+                db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, squadra, voto_red) VALUES (?, ?, ?, ?, 6.0)",
+                           (ST, g, g * 1000 + i * 10 + (sq[0] == "t"), sq))
+    e = _esiti(db)["partite_senza_statistiche"]
+    assert e["esito"] == "avviso" and e["valore"] == 20.0
+    for g in (1, 2):
+        for i in range(10):
+            if (g, i) not in ((2, 3), (2, 4)):                        # della giornata 2 mancano due partite
+                db.execute("INSERT INTO prestazioni (understat_partita, understat_giocatore, squadra) VALUES (?, 1, ?)",
+                           (g * 100 + i, f"c{i}"))
+    e = _esiti(db)["partite_senza_statistiche"]
+    assert e["esito"] == "avviso" and e["valore"] == 2.0 and "g2: 2" in e["dettaglio"] and "g1" not in e["dettaglio"]
+    db.execute("DELETE FROM voti WHERE giornata = 2 AND squadra IN ('c3', 't3', 'c4', 't4')")       # voti non ancora arrivati
+    e = _esiti(db)["partite_senza_statistiche"]
+    assert e["esito"] == "ok" and e["valore"] == 0.0
+    assert controlli.etichetta("partite_senza_statistiche") == "Statistiche delle partite giocate"
+
+
+def test_con_la_fonte_delle_statistiche_spenta_il_controllo_non_si_applica(db, monkeypatch):
+    """Le fonti sono spente di default: chi non ha acceso quella delle statistiche per partita le righe le ha dai voti per scelta,
+    e un avviso a ogni giro, per sempre, non direbbe niente (revisione di #613)."""
+    _giornata(db, 1)
+    for i in range(10):
+        db.execute("UPDATE partite SET understat_id = ? WHERE id = ?", (100 + i, 100 + i))
+        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, squadra, voto_red) VALUES (?, 1, ?, ?, 6.0)", (ST, 1000 + i, f"c{i}"))
+    chieste = []
+    monkeypatch.setattr(controlli.fonti_attive, "acceso", lambda fonte, *a: chieste.append(fonte) or False)
+    assert controlli.partite_senza_statistiche(db, ST) is None and chieste == ["understat"]
+    assert "partite_senza_statistiche" not in _esiti(db)
+    monkeypatch.setattr(controlli.fonti_attive, "acceso", lambda fonte, *a: True)
+    assert controlli.partite_senza_statistiche(db, ST)[0] == "avviso"
+
+
 def test_un_controllo_rotto_diventa_avviso(db, monkeypatch):
     _giornata(db, 1)
     monkeypatch.setitem(controlli.CONTROLLI, "rotto", lambda d, s: 1 / 0)

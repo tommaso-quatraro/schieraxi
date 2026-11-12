@@ -187,6 +187,31 @@ def _indice(p: pd.DataFrame) -> pd.Series:
 FUORI = ("infortunato", "squalificato")
 # sotto questa percentuale delle probabili (quella della fonte, che non si mostra) un titolare è «in ballottaggio»
 PERC_BALLOTTAGGIO = 60
+# «Rigorista»: chi, quando gioca, calcia almeno questa parte dei rigori della sua squadra (`quota_rigori` della previsione).
+# Prima la frase guardava i rigori attesi a partita (almeno 0,15): una squadra ne calcia circa 0,14, quindi non usciva mai (#613).
+QUOTA_RIGORISTA = 0.5
+
+
+def _numero(v) -> float:
+    """`v` come numero; 0 se manca (previsione senza quel campo) o non è un numero."""
+    try:
+        n = float(v)
+    except (TypeError, ValueError):
+        return 0.0
+    return 0.0 if np.isnan(n) else n
+
+
+def rigorista(x) -> bool:
+    """Vero se, quando gioca, calcia almeno QUOTA_RIGORISTA dei rigori della sua squadra (`quota_rigori` della previsione `x`) ed
+    è il primo della squadra fra chi può giocare (`primo_rigorista`; senza la colonna vale la sola quota): uno per squadra.
+    È la regola unica di «rigorista»: il motivo della scheda (`motivi`) e l'elenco `rigoristi` di `/api/widget` passano di qui.
+    Chi è infortunato o squalificato, o ha la partita rinviata senza voto, non lo è: la scheda non gli dice niente sui rigori."""
+    if x.get("stato") in FUORI or _rinvio(x) in ("senza_voto", "voto_ufficio"):
+        return False
+    primo = x.get("primo_rigorista")
+    if primo is not None and not pd.isna(primo) and not bool(primo):
+        return False
+    return _numero(x.get("quota_rigori")) >= QUOTA_RIGORISTA
 
 
 def titolarita(x: pd.Series) -> str:
@@ -224,7 +249,7 @@ def motivi(x: pd.Series) -> list[str]:
         m.append(str(x["nota"]))
     if stato in FUORI:
         return m
-    if x["e_rigori"] >= 0.15:
+    if rigorista(x):
         m.append(F("motivo.rigorista"))
     if x["ruolo"] == "P":
         m.append(F("motivo.porta_inviolata", p=round(float(x["p_imbattuto"]) * 100)))
