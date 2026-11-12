@@ -29,7 +29,8 @@ repository.
   essere zero.
 - Le tre fasi della giornata (prima della scadenza, in corso, finita) si vedono con gli scenari registrati di
   `ios/fotografie/vero-*.json` (come fa `script/ci/aspetto_web.py`).
-- L'ingresso di un utente nuovo: `prove/amico_nuovo/percorso.py --locale` (secondi, tocchi ed errori per ogni passo).
+- L'ingresso di un utente nuovo: `prove/amico_nuovo/percorso.py <cartella-dei-risultati> --locale` (secondi, tocchi ed
+  errori per ogni passo; opzioni in `prove/amico_nuovo/LEGGIMI.md`).
 
 ## Guardare
 Le misure non bastano. Apri le foto (almeno 390 px chiaro e 1440 px chiaro delle scene toccate) e rispondi da utente:

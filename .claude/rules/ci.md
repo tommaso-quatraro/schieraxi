@@ -23,7 +23,8 @@ paths:
   rompere `main` si controlla nella pull request, non dopo.
 - **Workflow.** Solo azioni di GitHub, fissate per hash (unica eccezione `anthropics/claude-code-action`, nell'elenco delle
   azioni permesse: un suo aggiornamento va rifatto a mano, con test ed elenco aggiornati); permessi minimi; mai testo della
-  pull request dentro `run:`; nessun segreto nei job che partono da un fork. Li controllano `zizmor` e CodeQL.
+  pull request dentro `run:`; nessun segreto nei job che partono da un fork. `zizmor` e CodeQL lo segnalano ma per
+  ora non bloccano l'unione: chi rivede un workflow lo controlla a mano.
 - **Release.** `v<numero>` (server) la crea `rilascia`, sempre con `--latest=false`; `build-<N>` (iPhone) è l'unica
   «Latest» e la crea `ipa.yml`, che non si rinomina (il contatore è per file). Nessuna release creata a mano.
 - **Strumenti della squadra.** Ogni passo che chi coordina fa due volte diventa un comando di `script/squadra/` con il suo
