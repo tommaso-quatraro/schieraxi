@@ -24,7 +24,7 @@ extension Catalogo {
         static let regPerseSpiega = "Non salvate prima della prima partita: non si possono più misurare."
 
         /// `sd.reg_i1`
-        static let regI1 = "Errore del fantavoto atteso contro la fantamedia"
+        static let regI1 = "Errore del fantavoto atteso contro la fantamedia avvicinata alla media del ruolo"
 
         /// `sd.reg_i2`
         static let regI2 = "«Gioca N%» contro chi ha giocato davvero"
@@ -182,7 +182,7 @@ extension Catalogo {
 
         /// `sd.cons_c3_riga`
         static func consC3Riga(i: String, n: String, s: String) -> String {
-            "sotto il 20% o fuori: \(i) · con un compagno di ruolo al 50% o più tra gli esclusi: \(n) (devono essere \(s))"
+            "sotto il 20% o fuori: \(i) · con un compagno di ruolo al 20% o più tra gli esclusi: \(n) (devono essere \(s))"
         }
 
         /// `sd.cons_c4_riga`

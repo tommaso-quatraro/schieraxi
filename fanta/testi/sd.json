@@ -268,8 +268,8 @@
     "en": "No matchday measured yet: the numbers arrive the day after the first saved matchday ends."
   },
   "sd.reg_i1": {
-    "it": "Errore del fantavoto atteso contro la fantamedia",
-    "en": "Expected fantasy score error against the fantasy average"
+    "it": "Errore del fantavoto atteso contro la fantamedia avvicinata alla media del ruolo",
+    "en": "Expected fantasy score error against the fantasy average pulled towards the role average"
   },
   "sd.reg_i1_riga": {
     "it": "{v} (deve stare a {s} o meno) · errore {m} contro {f}",
@@ -380,8 +380,8 @@
     "en": "Starters at risk of not playing"
   },
   "sd.cons_c3_riga": {
-    "it": "sotto il 20% o fuori: {i} · con un compagno di ruolo al 50% o più tra gli esclusi: {n} (devono essere {s})",
-    "en": "below 20% or out: {i} · with a teammate in the same role at 50% or more among those left out: {n} (must be {s})"
+    "it": "sotto il 20% o fuori: {i} · con un compagno di ruolo al 20% o più tra gli esclusi: {n} (devono essere {s})",
+    "en": "below 20% or out: {i} · with a teammate in the same role at 20% or more among those left out: {n} (must be {s})"
   },
   "sd.cons_c4": {
     "it": "Scelte strane senza un motivo detto",

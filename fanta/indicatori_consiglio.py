@@ -6,15 +6,17 @@ con le definizioni della misura in laboratorio (`verifica_consiglio.py`, riusate
 - C2 stabilità: quante volte i titolari della consigliata sono cambiati nelle 24 ore prima della scadenza, e quanti di quei cambi
   valevano meno della soglia (1 punto atteso) senza un titolare diventato fuori o improbabile. Il cambio si registra quando
   l'istantanea si sovrascrive (`cambio`), con i numeri di allora; il suo valore si ricalcola a giornata finita (`conta_cambi`);
-- C3 chi gioca: titolari sotto il 20% (o fuori) con un compagno di ruolo al 50% o più;
+- C3 chi gioca: titolari sotto il 20% (o fuori) con un compagno di ruolo che gioca almeno il 20% (le soglie con cui l'app
+  sceglie, `formazione.IMPROBABILE_SOTTO` e `COMPAGNO_ALMENO`, lette da `verifica_consiglio`);
 - C4 perché: scelte che sembrano storte e titolari senza un motivo proprio nel «perché questo numero».
 C3 e C4 si contano a ogni salvataggio dell'istantanea (`misure`): resta quello dell'ultima, la mostrata.
 
 Per il proprietario («Stato dei dati», campo `consiglio`): `giro` somma le voci di tutti i Diari per giornata, fa le medie sulle
 ultime FINESTRA giornate (verdetto solo a finestra piena) e manda un avviso (canale della sentinella) quando una media resta fuori
 soglia per 2 giornate di fila, una volta sola; se l'avviso non parte si riprova al giro dopo. Lo stesso schema del registro delle
-giornate (#165). Gira dopo il Diario di tutti, nel comando `python -m fanta affidabilita` del cron; i totali e lo stato
-dell'avviso stanno in `dati/indicatori-consiglio.json` (solo giornate e numeri).
+giornate (#165). C1 non manda avvisi (`AVVISANO`, #614): resta in «Stato dei dati» con il suo numero. Gira dopo il Diario di
+tutti, nel comando `python -m fanta affidabilita` del cron; i totali e lo stato dell'avviso stanno in
+`dati/indicatori-consiglio.json` (solo giornate e numeri).
 Niente nomi né dati personali: solo id dei giocatori nel Diario dell'utente, e solo numeri nei totali per il proprietario.
 """
 from __future__ import annotations
@@ -41,6 +43,11 @@ MOSTRATE = 38                   # giornate tenute e mostrate in «Stato dei dati
 # la soglia; C3 nessun titolare improbabile con un compagno che gioca; C4 tutte le scelte storte spiegate e titolari senza un motivo
 # proprio al massimo il 10%
 SOGLIE = {"C1": 0.0, "C2": 0, "C3": 0, "C4_senza_motivo": vc.MAX_SENZA_MOTIVO}
+# Gli indicatori che mandano l'avviso. C1 no (#614): su 8 giornate di poche rose la differenza in punti esce dalla soglia per
+# caso. Misura in laboratorio del 12/11/2026: +1,0 punti sulla scelta semplice con un errore standard di 0,4 su 97 formazioni;
+# una finestra di 8 giornate con le formazioni di pochi utenti ne ha poche decine, e lì l'errore standard è intorno al punto,
+# quanto la differenza. C1 resta come numero; i punti si giudicano sulle rose estratte a sorte di `verifica`.
+AVVISANO = ("C2", "C3", "C4")
 
 
 def misure(f: dict) -> dict | None:
@@ -212,18 +219,14 @@ def _n(x: float, cifre: int = 2, segno: bool = False) -> str:
 
 
 def testo_avviso(fuori: list[str], m: dict) -> tuple[str, str]:
-    """Titolo e testo dell'avviso: solo indicatori e numeri, mai nomi."""
+    """Titolo e testo dell'avviso: solo indicatori e numeri, mai nomi. Solo gli indicatori di `AVVISANO`: C1 non ha la sua riga."""
     righe = []
-    if "C1" in fuori and m.get("meno_s2") is not None:
-        schierata = "" if m.get("meno_schierata") is None else f" e {_n(m['meno_schierata'], segno=True)} rispetto alla schierata"
-        righe.append(f"• C1 valore: la consigliata fa {_n(m['meno_s2'], segno=True)} punti a giornata rispetto alla scelta "
-                     f"semplice{schierata} (deve stare almeno a 0)")
     if "C2" in fuori and m.get("cambi_sotto_soglia") is not None:
         righe.append(f"• C2 stabilità: {m['cambi_sotto_soglia']} cambi della consigliata nelle 24 ore prima della scadenza per meno "
                      "di 1 punto atteso, senza un titolare diventato fuori o improbabile (devono essere 0)")
     if "C3" in fuori and m.get("con_compagno") is not None:
-        righe.append(f"• C3 chi gioca: {m['con_compagno']} titolari sotto il 20% con un compagno di ruolo al 50% o più "
-                     "(devono essere 0)")
+        righe.append(f"• C3 chi gioca: {m['con_compagno']} titolari sotto il {round(100 * vc.IMPROBABILE_SOTTO)}% con un compagno "
+                     f"di ruolo al {round(100 * vc.COMPAGNO_DA)}% o più (devono essere 0)")
     if "C4" in fuori and m.get("senza_motivo") is not None:
         righe.append(f"• C4 perché: scelte che sembrano storte spiegate {m['spiegate']} su {m['storte']}; titolari senza un "
                      f"motivo proprio {round(100 * m['senza_motivo'])}% (tutte spiegate, al massimo 10%)")
@@ -258,7 +261,8 @@ def giro(manda: Callable[[str, str], bool], diari: list[list[dict]] | None = Non
          adesso: datetime | None = None) -> dict:
     """Rifà i totali per giornata da tutti i Diari (`diari`: di norma `tutti_i_diari`), segna per ogni giornata gli indicatori fuori
     soglia (media delle FINESTRA giornate fino a lei) e decide l'avviso: da mandare = fuori nell'ultima giornata E in quella prima, e
-    non già avvisati mentre restavano fuori (un indicatore rientrato si può avvisare di nuovo). `manda(titolo, testo)` vero se è
+    non già avvisati mentre restavano fuori (un indicatore rientrato si può avvisare di nuovo). Avvisano solo gli indicatori di
+    `AVVISANO`: C1 resta tra i `fuori` della giornata ma non parte e non si segna. `manda(titolo, testo)` vero se è
     partito; se non parte resta da mandare e si riprova al giro dopo. Scrive tutto in `file`.
     Restituisce {giornate, fuori (dell'ultima), avvisato (gli indicatori dell'avviso partito adesso)}."""
     righe = per_giornata(tutti_i_diari() if diari is None else diari)
@@ -266,8 +270,9 @@ def giro(manda: Callable[[str, str], bool], diari: list[list[dict]] | None = Non
         r["fuori"] = medie(righe[max(0, i + 1 - FINESTRA): i + 1])["fuori"]
     ultima = righe[-1]["fuori"] if righe else []
     prima = righe[-2]["fuori"] if len(righe) >= 2 else []
-    avvisati = sorted(set(_lista(_carica(file).get("avvisati"))) & set(ultima))
-    da_avvisare = sorted(set(ultima) & set(prima) - set(avvisati))
+    fuori_da_due = set(ultima) & set(prima) & set(AVVISANO)
+    avvisati = sorted(set(_lista(_carica(file).get("avvisati"))) & set(ultima) & set(AVVISANO))
+    da_avvisare = sorted(fuori_da_due - set(avvisati))
     mandati = da_avvisare if da_avvisare and manda(*testo_avviso(da_avvisare, medie(righe[-FINESTRA:]))) else []
     avvisati = sorted(set(avvisati) | set(mandati))
     scrivi_sicuro(file or FILE, json.dumps({

@@ -129,7 +129,7 @@ def test_stato_dati_ha_il_registro_delle_giornate(tmp_path):
               "fasce": [[2, 0.3, 0]] + [[0, 0.0, 0]] * 8 + [[2, 1.9, 2]], "fascia_casi": 20, "fascia_dentro": 16}
     registro_giornate.registra_misura(db, ST, 9, misura, datetime(2026, 11, 3, 12))
     r = stato_dati.riepilogo(db, ST)["registro"]
-    assert r["finestra"] == 8 and r["soglie"]["I1"] == -0.03 and r["soglie"]["I3_minimo"] == 0.72
+    assert r["finestra"] == 8 and r["soglie"]["I1"] == 0.01 and r["soglie"]["I3_minimo"] == 0.72
     assert r["giornate"] == 1 and not r["verdetto"] and r["regge"] == {"I1": None, "I2": None, "I3": None}
     assert r["errore_modello"] == 1.0 and r["errore_fantamedia"] == 1.061 and r["copertura"] == 0.8 and r["brier"] == 0.1
     assert [(g["giornata"], g["misurato"] is not None) for g in r["per_giornata"]] == [(10, False), (9, True)]
@@ -222,7 +222,7 @@ def test_affidabilita_si_rifa_solo_con_una_giornata_nuova(tmp_path, monkeypatch)
     monkeypatch.setattr(consigli, "dati", lambda db: None)
     chiamate = []
 
-    def finta(d, regole, par, giornate, rose=None, simulazioni=0, scrivi=None):
+    def finta(d, regole, par, giornate, rose=None, simulazioni=0, scrivi=None, sintetiche=0):
         chiamate.append(list(giornate))
         return pd.DataFrame([{"stagione": s, "giornata": g, "errore_modello": 1.0, "errore_fantamedia": 1.2, "brier": 0.1, "n": 50,
                               "quadratico_modello": 1.0, "quadratico_fantamedia": 1.44, "punti_modello": 70.0, "punti_fantamedia": 66.0, "punti_perfetta": 85.0}

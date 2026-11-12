@@ -8,29 +8,29 @@
   "introduzione": [
     "SchieraXI does not predict the future: for every player and every matchday it estimates how many fantasy points he will bring on average, and then picks the line-up that brings the most on average. Below you can see how it does it, where the data comes from and, above all, where it gets things wrong.",
     "The \"base\" sections take about a minute each. The \"nerd\" ones have formulas, parameters and small examples with real numbers, calculated with the model and with the rules of the league used for testing (goal bonus 3, assist 1, yellow card -0.5, defence modifier with thresholds).",
-    "The reliability numbers are real measurements taken on 30/10/2026 on the matchdays already played (2025-26 from matchday 5 and 2026-27 up to matchday 8) with the test league's squads. In the app they update on their own in the Data status screen."
+    "The reliability numbers are real measurements taken on 30/10/2026 on the matchdays already played (2025-26 from matchday 5 and 2026-27 up to matchday 8) with the test league's squads; the comparison with the fantasy average was redone on 12/11/2026 (2026-27 up to matchday 11). In the app they update on their own in the Data status screen."
   ],
   "misure": {
     "riferimento": {
       "come": "python -m fanta verifica and python -m fanta oracolo, rules and squads of the league in the repository, 300 simulations per line-up, archive with the 2025-26 (38 matchdays) and 2026-27 (8 matchdays played) seasons.",
-      "nota": "A measurement on one precise date and a small sample: it is for understanding the order of magnitude, not for promising points. The values marked \"app\" are the automatic test the app repeats by itself after every finished matchday (last 8 matchdays, reliability file of 28/10/2026).",
+      "nota": "A measurement on one precise date and a small sample: it is for understanding the order of magnitude, not for promising points. The values marked \"app\" are the automatic test the app repeats by itself after every finished matchday (last 8 matchdays, reliability file of 28/10/2026). In this table the fantasy average is still the season-only one and the best possible does not count the defence modifier: the comparison redone on 12/11/2026 with a better fantasy average is in the section \"How reliable is it?\".",
       "voci": {
         "backtest.giornate": {"etichetta": "Matchdays tested", "unita": "matchdays"},
         "backtest.casi_rosa": {"etichetta": "Team-matchday cases with a large enough squad (at least 20 players present)", "unita": "cases"},
         "backtest.errore_modello": {"etichetta": "Model error on the fantasy score of those who played (root mean square error)", "unita": "points"},
         "backtest.errore_modello_2025_26": {"etichetta": "Model error, 2025-26 season (34 matchdays)", "unita": "points"},
-        "backtest.errore_fantamedia_2025_26": {"etichetta": "Error of a \"fantasy average\" estimate, 2025-26 season", "unita": "points"},
+        "backtest.errore_fantamedia_2025_26": {"etichetta": "Error of the season-only fantasy average (6 for those with no ratings), 2025-26", "unita": "points"},
         "backtest.errore_modello_2026_27": {"etichetta": "Model error, 2026-27 season (7 matchdays)", "unita": "points"},
-        "backtest.errore_fantamedia_2026_27": {"etichetta": "Error of a \"fantasy average\" estimate, 2026-27 season", "unita": "points"},
+        "backtest.errore_fantamedia_2026_27": {"etichetta": "Error of the season-only fantasy average (6 for those with no ratings), 2026-27", "unita": "points"},
         "backtest.brier": {"etichetta": "Brier score of the probabilities of playing (0 = perfect, 0.25 = always saying 50%)", "unita": ""},
         "backtest.punti_modello": {"etichetta": "Real points per matchday with the recommended line-up", "unita": "points"},
-        "backtest.punti_perfetta": {"etichetta": "Best possible with hindsight (same squad, same days)", "unita": "points"},
+        "backtest.punti_perfetta": {"etichetta": "Best possible with hindsight, without the defence modifier (same squad, same days)", "unita": "points"},
         "backtest.punti_modello_2025_26": {"etichetta": "Points with the recommended line-up, 2025-26", "unita": "points"},
-        "backtest.punti_fantamedia_2025_26": {"etichetta": "Points choosing by fantasy average, 2025-26", "unita": "points"},
-        "backtest.punti_perfetta_2025_26": {"etichetta": "Best possible, 2025-26", "unita": "points"},
+        "backtest.punti_fantamedia_2025_26": {"etichetta": "Points choosing by the season-only fantasy average, 2025-26", "unita": "points"},
+        "backtest.punti_perfetta_2025_26": {"etichetta": "Best possible without the defence modifier, 2025-26", "unita": "points"},
         "backtest.punti_modello_2026_27": {"etichetta": "Points with the recommended line-up, 2026-27", "unita": "points"},
-        "backtest.punti_fantamedia_2026_27": {"etichetta": "Points choosing by fantasy average, 2026-27", "unita": "points"},
-        "backtest.punti_perfetta_2026_27": {"etichetta": "Best possible, 2026-27", "unita": "points"},
+        "backtest.punti_fantamedia_2026_27": {"etichetta": "Points choosing by the season-only fantasy average, 2026-27", "unita": "points"},
+        "backtest.punti_perfetta_2026_27": {"etichetta": "Best possible without the defence modifier, 2026-27", "unita": "points"},
         "oracolo.presenze": {"etichetta": "Gain if we knew in advance who gets a rating", "unita": "points per matchday"},
         "oracolo.gol_squadra": {"etichetta": "Gain if we knew the real goals of the team", "unita": "points per matchday"},
         "oracolo.rigorista": {"etichetta": "Gain if we knew the real penalty taker", "unita": "points per matchday"},
@@ -296,18 +296,18 @@
     "affidabilita": {
       "titolo": "How reliable is it? The test on the past",
       "paragrafi": [
-        "To know whether the model is worth anything, it is run again on the matchdays already played, matchday by matchday, giving it only what was known before each one. Then it is compared with what happened and with a simple \"fantasy average\" choice (whoever has the highest average).",
-        "On 30/10/2026, over 41 matchdays and 10 squads: the model gets the fantasy score of those who play wrong by about 1.46 points (typical error). A \"fantasy average\" estimate gets it more wrong: 1.50 against the model's 1.43 in 2025-26 and 1.84 against 1.61 in 2026-27. The recommended line-up made 68.6 points per matchday against a best possible with hindsight of 71.8.",
-        "It reads like this: the model beats the simple choice, but only slightly on line-up points (a few tenths, which with a small sample cannot be told apart from chance) and with more margin on the error of the fantasy score. The gap to the best possible also exists because nobody knows in advance who will score."
+        "To know whether the model is worth anything, it is run again on the matchdays already played, matchday by matchday, giving it only what was known before each one. Then it is compared with what happened and with two simple estimates of the fantasy score: the player's fantasy average, pulled towards the average of his role when he has few ratings, and a fixed number per role, the same for everyone.",
+        "Measurement of 12/11/2026, over 44 matchdays. On the fantasy score of those who play the model is wrong by about 1.5 points (typical error): 1.431 in 2025-26 and 1.616 in 2026-27. The fantasy average pulled towards the role is wrong by 1.450 and 1.624: the model does 1.3% and 0.5% better. A fixed number per role is wrong by 1.462 and 1.656: the model does 2.1% and 2.4% better. Until 11/11/2026 the comparison was with the fantasy average of the current season only, with 6 for those who had no ratings yet: that estimate is more wrong than a fixed number per role (1.502 and 1.828), and against it the model's advantage looked like 5% to 12%.",
+        "On line-up points the squads of one league are too few to tell half a point apart: the measurement is made on twenty squads drawn at random for every matchday. The recommended line-up scores more than the one chosen by fantasy average: +0.56 per matchday in 2025-26 (between +0.28 and +0.85, over 680 squads) and +0.70 in 2026-27 (between −0.13 and +1.48, over 200 squads: the matchdays are still few and the interval includes zero). On the test league's squads the recommended line-up made 67.4 and 72.2 points per matchday against a best possible with hindsight of 70.1 and 79.1, counted with the league rules. That gap also exists because nobody knows in advance who will score."
       ],
       "rimandi": ["Data status (the app's up-to-date numbers)", "Diary"]
     },
     "metriche": {
       "titolo": "The measures: error, Brier and points",
       "paragrafi": [
-        "Error on the fantasy score: for those who really got a rating, the predicted mu is compared with the real fantasy score calculated with the league rules. The main measure is the root of the mean of the squared errors (RMSE), because mu is an average value and large errors weigh more; the mean absolute error is also reported (0.93 in 2025-26, 1.03 in 2026-27). The comparison is with a hypothetical \"fantasy average\" choice: the average of the season's fantasy scores, 6 if there are none.",
+        "Error on the fantasy score: for those who really got a rating, the predicted mu is compared with the real fantasy score calculated with the league rules. The main measure is the root of the mean of the squared errors (RMSE), because mu is an average value and large errors weigh more; the mean absolute error is also reported (0.93 in 2025-26, 1.03 in 2026-27). The comparison is with two simple estimates. The first is the fantasy average pulled towards the role: the average of all the player's fantasy scores before the matchday, past seasons included, mixed with 10 fictitious appearances at the average of his role (those with no ratings are worth the role average). The second is a fixed number per role: the average of all the fantasy scores of that role. The fantasy average of the current season only, with 6 for those with no ratings, was the previous comparison: the check still prints it, only as a number.",
         "Brier of appearances: mean of the squared difference between the predicted probability of playing (0-1) and what happened (1 got a rating, 0 did not). 0 is perfect; always saying 50% would give 0.25. In the past test it is 0.157 (0.161 in 2025-26, 0.140 in 2026-27).",
-        "Line-up points: for every league squad and every matchday two line-ups are chosen, the recommended one and the \"fantasy average\" one (same probabilities of playing, mu replaced by the fantasy average: the comparison therefore measures the quality of mu, not of p). The real points are calculated with the real substitutions. The \"perfect\" one is the best with hindsight: the best real fantasy scores in the best formation, without the defence modifier. It is a theoretical ceiling that nobody can reach.",
+        "Line-up points: for every league squad and every matchday two line-ups are chosen, the recommended one and the \"fantasy average\" one (same probabilities of playing, mu replaced by the fantasy average pulled towards the role: the comparison therefore measures the quality of mu, not of p). The real points are calculated with the real substitutions. The squads of one league are few, so the same calculation is made on 20 squads drawn at random per matchday (3 goalkeepers, 8 defenders, 8 midfielders and 6 forwards, among those with at least a 30% probability of playing); the 95% interval of the difference is calculated by resampling whole matchdays, because the squads of the same matchday are not independent. The \"perfect\" one is the best with hindsight under the league rules: the best real fantasy scores in the best formation, plus the defence modifier where the league uses it (every group of defenders and every goalkeeper is tried). It is a theoretical ceiling that nobody can reach.",
         "Beware of two things. For past matchdays we do not have the probable line-ups, so p is derived from recent appearances: in the test the model is weaker than live. And the squads are today's applied to the past: only squads that on that matchday have at least 20 players present count (93 cases out of 410 possible, so far fewer than it might seem)."
       ],
       "formula": "RMSE = root( mean( (predicted mu - real fantasy score)^2 ) )\nBrier = mean( (predicted p - got a rating)^2 )"
@@ -323,7 +323,7 @@
     "diario": {
       "titolo": "The diary: your choice against the recommended one",
       "paragrafi": [
-        "For every finished matchday the diary compares the line-up you fielded with the one the system would have recommended, with the expected points and the ones scored. The system redoes the choice with only the data that existed before the matchday, but with today's squad (past squads are not kept), and the bench is the one chosen by the system, also for yours.",
+        "For every finished matchday the diary compares the line-up you fielded with the recommended one you had in front of you before the deadline, with the expected points shown then and the ones scored. Where that recommended line-up was not saved (earlier matchdays, or one of its players is no longer in your squad) the diary puts in its place the choice the system redoes once the matchday is over, with only the data that existed before the matchday and with today's squad (past squads are not kept), without the probable line-ups: it measures the model and does not count towards who did better. The bench of your line-up is chosen by the system.",
         "With few matchdays it is just a story: the swing in points is much bigger than the difference between the two choices."
       ],
       "rimandi": ["Diary"]
@@ -419,7 +419,7 @@
     {"termine": "Shrinkage", "spiegazione": "Mixing an estimate with a starting estimate (the role average or the one linked to the price): it prevents few data from giving exaggerated values."},
     {"termine": "Initial price", "spiegazione": "The player's price at the start of the season, set before the league: it sums up the experts' expectations and is the starting point for players with few matches."},
     {"termine": "Expected rating", "spiegazione": "The part of the expected fantasy score that comes from the rating, without bonuses and maluses."},
-    {"termine": "Fantasy average", "spiegazione": "The average of a player's fantasy scores. It is the simple choice the model is compared with."},
+    {"termine": "Fantasy average", "spiegazione": "The average of a player's fantasy scores. It is the simple estimate the model is compared with: in the comparison, those with few ratings are pulled towards the average of their role."},
     {"termine": "Simulation (Monte Carlo)", "spiegazione": "Repeating a made-up matchday hundreds of times, drawing at random who plays, to see the average and the variability of the points."},
     {"termine": "Percentile", "spiegazione": "The 10th percentile is the value below which 10% of the simulated matchdays fall (bad day); the 90th is the one above which 10% sit (exceptional day)."},
     {"termine": "Defence modifier", "spiegazione": "A team bonus that depends on the average rating of the goalkeeper and the three best defenders, in steps decided by the league."},

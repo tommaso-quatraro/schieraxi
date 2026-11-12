@@ -36,7 +36,8 @@ REGOLE = Regole()                       # regole classiche: i numeri non dipendo
 DOPO_FINE = timedelta(hours=24)         # a turno finito si misura un giorno dopo: i voti hanno il tempo di assestarsi
 ATTESA_VOTI = timedelta(hours=72)       # oltre, si misura anche se a qualche partita mancano i voti (quelle partite non contano)
 FASCE = 10                              # fasce di 10 punti di «gioca N%» per l'errore di calibrazione
-FANTAMEDIA_SENZA_VOTI = 6.0             # come nella verifica: chi non ha ancora voti ha fantamedia 6
+PRESENZE_FITTIZIE = 10                  # fantamedia tirata verso il ruolo, come `verifica.PRESENZE_FITTIZIE`
+FANTAVOTO_SENZA_RUOLO = 6.0             # ruolo che non ha ancora nessun voto
 # Fascia «8 volte su 10» (I3): come `verifica --incertezza`, su rose estratte a sorte (seme fisso) tra chi ha una probabilità vera di
 # giocare; per ogni rosa la formazione migliore con i numeri MOSTRATI, la sua fascia e i punti veri.
 ROSE_SINTETICHE = 20
@@ -45,9 +46,17 @@ POSTI_ROSA = {"P": 3, "D": 8, "C": 8, "A": 6}
 P_MINIMA_ROSA = 0.3
 FINESTRA = 8                            # le medie si fanno sulle ultime 8 giornate misurate; verdetto solo a finestra piena
 MOSTRATE = 38                           # righe per giornata in «Stato dei dati»: al massimo una stagione
-# soglie decise il 5/11/2026 (spec §2 e §4, D1): I1 errore del fantavoto atteso almeno il 3% sotto quello della fantamedia;
+# soglie decise il 5/11/2026 (spec §2 e §4, D1), I1 rifatta il 12/11/2026 (#614). Prima I1 chiedeva un errore almeno il 3% sotto
+# quello della fantamedia della sola stagione (6 a chi non ha voti): un avversario che fa peggio di un numero fisso per ruolo, per
+# cui la soglia non si accorgeva di un modello rotto (un numero fisso per ruolo dava -2,7% e -9,3%). Ora l'avversario è la
+# fantamedia tirata verso il ruolo (`fantamedie_tirate`): il modello la batte di circa l'1% (-1,3% [-1,8; -0,8] e -0,5%
+# [-1,3; +0,2] nelle due stagioni, pari con le probabili) e un numero fisso per ruolo fa +0,8% e +1,9%. Soglia: l'errore del
+# fantavoto atteso non deve superare di più dell'1% quello della fantamedia tirata;
 # I2 «gioca N%» con errore di calibrazione al massimo 5 punti e Brier al massimo 0,15; I3 punti veri nella fascia tra 72% e 88%
-SOGLIE = {"I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88}
+SOGLIE = {"I1": 0.01, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88}
+# il segno dell'avversario di I1 in ogni giornata misurata (`registro_giornate.avversario` nell'archivio): la fantamedia tirata verso
+# il ruolo di #614. Le giornate senza segno sono state misurate prima e si rimisurano una volta (`rimisura_avversario`)
+AVVERSARIO = "fantamedia_tirata"
 LOG = logging.getLogger(__name__)
 BONUS_E_MALUS = ("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagliati", "rig_parati", "assist", "mvp", "ammonizioni",
                  "espulsioni")
@@ -96,15 +105,31 @@ def fantavoto_vero(riga: dict, ruolo: str, regole: Regole = REGOLE) -> float | N
     return fantavoto({**riga, **{k: riga.get(k) or 0 for k in BONUS_E_MALUS}}, ruolo, regole)
 
 
-def fantamedie(db: sqlite3.Connection, stagione: str, giornata: int, regole: Regole = REGOLE) -> dict[int, float]:
-    """{id: fantamedia} con le giornate della stagione PRIMA di `giornata` (chi non ha voti non c'è)."""
+def fantamedie_tirate(db: sqlite3.Connection, stagione: str, giornata: int,
+                      regole: Regole = REGOLE) -> tuple[dict[int, float], dict[str, float]]:
+    """L'avversario onesto del fantavoto atteso (come `verifica.avversari`, #614), con i voti di PRIMA di `giornata`, anche
+    delle stagioni passate: ({id: fantamedia tirata verso il ruolo}, {ruolo: fantavoto medio}). Tirata = (somma dei suoi fantavoti
+    + PRESENZE_FITTIZIE x media del suo ruolo) / (presenze + PRESENZE_FITTIZIE); il ruolo è quello dell'ultimo voto. Chi non ha
+    voti non c'è: per lui vale la media del ruolo (`avversario`)."""
     col = COLONNA_VOTO[regole.fonte_voto]
-    somme: dict[int, list[float]] = {}
-    for r in _righe(db.execute(f"SELECT * FROM voti WHERE stagione = ? AND giornata < ? AND {col} IS NOT NULL", (stagione, giornata))):
+    del_ruolo: dict[str, list[float]] = {}
+    suoi: dict[int, tuple[float, int, str]] = {}
+    for r in _righe(db.execute(f"SELECT * FROM voti WHERE (stagione < ? OR (stagione = ? AND giornata < ?)) AND {col} IS NOT NULL "
+                               "ORDER BY stagione, giornata", (stagione, stagione, giornata))):
         fv = fantavoto_vero(r, r["ruolo"], regole)
-        if fv is not None:
-            somme.setdefault(int(r["calciatore_id"]), []).append(fv)
-    return {i: round(sum(v) / len(v), 3) for i, v in somme.items()}
+        if fv is None:
+            continue
+        del_ruolo.setdefault(str(r["ruolo"]), []).append(fv)
+        somma, n, _ = suoi.get(int(r["calciatore_id"]), (0.0, 0, ""))
+        suoi[int(r["calciatore_id"])] = (somma + fv, n + 1, str(r["ruolo"]))
+    ruoli = {ruolo: sum(v) / len(v) for ruolo, v in del_ruolo.items()}
+    tirate = {i: round((somma + PRESENZE_FITTIZIE * ruoli[ruolo]) / (n + PRESENZE_FITTIZIE), 3) for i, (somma, n, ruolo) in suoi.items()}
+    return tirate, {ruolo: round(m, 3) for ruolo, m in ruoli.items()}
+
+
+def avversario(tirate: dict[int, float], ruoli: dict[str, float], calciatore_id: int, ruolo: str) -> float:
+    """La stima dell'avversario per un giocatore: la sua fantamedia tirata; senza voti la media del ruolo; senza nemmeno quella 6."""
+    return tirate.get(int(calciatore_id), ruoli.get(str(ruolo), FANTAVOTO_SENZA_RUOLO))
 
 
 def _salvata(db: sqlite3.Connection, stagione: str, giornata: int) -> bool:
@@ -127,7 +152,7 @@ def _da_scrivere(db: sqlite3.Connection, stagione: str, giornata: int, prev: pd.
         return [], f"nelle previsioni mancano le colonne {', '.join(mancano)}"
     if mancano := [c for c in FACOLTATIVE if c not in prev.columns]:
         LOG.warning("registro delle giornate: nelle previsioni mancano le colonne %s, si salvano vuote", ", ".join(mancano))
-    fm = fantamedie(db, stagione, giornata)
+    tirate, ruoli = fantamedie_tirate(db, stagione, giornata)
     righe, fuori, senza_numeri = [], 0, 0
     for cid, x in prev.iterrows():
         partita = _numero(x.get("partita"))
@@ -140,7 +165,7 @@ def _da_scrivere(db: sqlite3.Connection, stagione: str, giornata: int, prev: pd.
              "mu": _numero(x.get("mu")), "mu_voto": _numero(x.get("mu_voto")), "e_gol": _numero(x.get("e_gol")),
              "e_assist": _numero(x.get("e_assist")), "minuti": _numero(x.get("minuti")),
              "stato": _testo(x.get("stato")), "percentuale": _numero(x.get("percentuale")),
-             "dubbio": 1 if x.get("dubbio") == 1 else 0, "fantamedia": fm.get(int(cid))}
+             "dubbio": 1 if x.get("dubbio") == 1 else 0, "fantamedia": avversario(tirate, ruoli, int(cid), str(x.get("ruolo")))}
         if r["p_voto"] is None or r["mu"] is None:
             senza_numeri += 1
             continue
@@ -298,7 +323,8 @@ def _fascia(registro: list[dict], fv: dict[int, float], voto: dict[int, float], 
 
 def misura_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> dict | None:
     """I pezzi delle misure di una giornata finita, solo per le partite giocate e con i voti (None se non ce n'è):
-    I1 `voti`, `sq_modello`, `sq_fantamedia` (somme dei quadrati degli errori di chi ha preso voto);
+    I1 `voti`, `sq_modello`, `sq_fantamedia` (somme dei quadrati degli errori di chi ha preso voto; la fantamedia è quella
+    tirata verso il ruolo, ricalcolata dall'archivio: le righe salvate prima di #614 hanno ancora quella di allora);
     I2 `presenze`, `brier_somma`, `fasce` (per fascia di «gioca N%»: [giocatori, somma del detto, quanti hanno preso voto]);
     I3 `fascia_casi`, `fascia_dentro`. Si sommano poi sulla finestra (`medie`)."""
     valide, _ = _partite(db, stagione, giornata)
@@ -317,13 +343,13 @@ def misura_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> dic
             fv[i], voto[i] = f, float(righe_voti[i][col])
     sq_m = sq_f = brier = 0.0
     fasce = [[0, 0.0, 0] for _ in range(FASCE)]
+    tirate, ruoli = fantamedie_tirate(db, stagione, giornata)
     for r in registro:
         i, p = int(r["calciatore_id"]), float(r["p_voto"])
         preso = i in fv
         if preso:
-            fm = r["fantamedia"] if r["fantamedia"] is not None else FANTAMEDIA_SENZA_VOTI
             sq_m += (r["mu"] - fv[i]) ** 2
-            sq_f += (fm - fv[i]) ** 2
+            sq_f += (avversario(tirate, ruoli, i, r["ruolo"]) - fv[i]) ** 2
         brier += (p - preso) ** 2
         b = min(FASCE - 1, max(0, math.floor(p * FASCE + 1e-9)))
         fasce[b][0] += 1
@@ -399,14 +425,14 @@ def registra_misura(db: sqlite3.Connection, stagione: str, giornata: int, m: dic
     da avvisare = fuori soglia adesso E nella giornata misurata prima, e non già avvisati mentre restavano fuori."""
     chiave = (stagione, int(giornata))
     if m is None:
-        db.execute("UPDATE registro_giornate SET misurato = ?, voti = 0, presenze = 0, fuori = '[]', da_avvisare = '[]', avvisati = '[]' "
-                   "WHERE stagione = ? AND giornata = ?", (adesso.isoformat(timespec="seconds"), *chiave))
+        db.execute("UPDATE registro_giornate SET misurato = ?, voti = 0, presenze = 0, fuori = '[]', da_avvisare = '[]', avvisati = '[]', "
+                   "avversario = ? WHERE stagione = ? AND giornata = ?", (adesso.isoformat(timespec="seconds"), AVVERSARIO, *chiave))
         db.commit()
         return []
     db.execute("UPDATE registro_giornate SET misurato = ?, voti = ?, sq_modello = ?, sq_fantamedia = ?, presenze = ?, brier_somma = ?, "
-               "fasce = ?, fascia_casi = ?, fascia_dentro = ? WHERE stagione = ? AND giornata = ?",
+               "fasce = ?, fascia_casi = ?, fascia_dentro = ?, avversario = ? WHERE stagione = ? AND giornata = ?",
                (adesso.isoformat(timespec="seconds"), m["voti"], m["sq_modello"], m["sq_fantamedia"], m["presenze"], m["brier_somma"],
-                json.dumps(m["fasce"]), m["fascia_casi"], m["fascia_dentro"], *chiave))
+                json.dumps(m["fasce"]), m["fascia_casi"], m["fascia_dentro"], AVVERSARIO, *chiave))
     finestra = _misurate(db, chiave, FINESTRA + 1)
     fuori = medie(finestra[-FINESTRA:])["fuori"]
     prima = finestra[-2] if len(finestra) >= 2 else {}
@@ -443,6 +469,27 @@ def chiudi_giornate(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str,
     return fatte
 
 
+def rimisura_avversario(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str, int]]:
+    """Le giornate misurate quando l'avversario di I1 era la fantamedia della sola stagione (prima di #614) si rimisurano contro
+    quello di adesso: senza, per otto giornate la media mescolerebbe due avversari. Si riconoscono dal segno nell'archivio
+    (`avversario` diverso da AVVERSARIO, NULL per quelle di prima): una volta rimisurate lo hanno, e ai giri dopo la ricerca non
+    trova niente senza rifare nessun calcolo, anche dopo un riavvio del servizio. Se il numero non cambia si scrive solo il
+    segno: la misura e i suoi avvisi restano com'erano. Restituisce quelle rifatte."""
+    fatte = []
+    for r in _righe(db.execute("SELECT stagione, giornata, sq_fantamedia FROM registro_giornate WHERE misurato IS NOT NULL "
+                               "AND presenze > 0 AND (avversario IS NULL OR avversario != ?) ORDER BY stagione, giornata",
+                               (AVVERSARIO,))):
+        m = misura_giornata(db, r["stagione"], r["giornata"])
+        if m is not None and abs(m["sq_fantamedia"] - float(r["sq_fantamedia"] or 0.0)) > 1e-3:
+            registra_misura(db, r["stagione"], r["giornata"], m, adesso)
+            fatte.append((r["stagione"], int(r["giornata"])))
+        else:
+            db.execute("UPDATE registro_giornate SET avversario = ? WHERE stagione = ? AND giornata = ?",
+                       (AVVERSARIO, r["stagione"], r["giornata"]))
+            db.commit()
+    return fatte
+
+
 # ---------------------------------------------------------------- avviso al proprietario (come la sentinella)
 def _percento(x: float) -> str:
     return f"{100 * x:.0f}%"
@@ -453,7 +500,7 @@ def testo_avviso(fuori: list[str], m: dict) -> tuple[str, str]:
     righe = []
     if "I1" in fuori and m.get("i1") is not None:
         righe.append(f"• I1 errore del fantavoto atteso {_percento(abs(m['i1']))} {'sotto' if m['i1'] < 0 else 'sopra'} quello della "
-                     "fantamedia (deve stare almeno 3% sotto)")
+                     "fantamedia tirata verso il ruolo (non deve superarlo di più dell'1%)")
     if "I2" in fuori and m.get("calibrazione") is not None and m.get("brier") is not None:
         righe.append(f"• I2 «gioca N%»: calibrazione sbagliata di {100 * m['calibrazione']:.1f} punti, Brier {m['brier']:.3f} "
                      "(al massimo 5 punti e 0,150)".replace(".", ","))
@@ -523,6 +570,7 @@ def giro(adesso: datetime, db: sqlite3.Connection, manda: Callable[[str, str], b
              ("controllo delle giornate perse", lambda: segna_perse(db, adesso)),
              ("controllo delle giornate perse dei numeri nostri", lambda: rn().segna_perse(db, adesso)),
              ("misura", lambda: chiudi_giornate(db, adesso)), ("misura dei numeri nostri", lambda: rn().chiudi_giornate(db, adesso)),
+             ("misura contro l'avversario di adesso", lambda: rimisura_avversario(db, adesso)),
              ("avviso", lambda: avvisa(db, invia)), ("avviso delle giornate perse", lambda: avvisa_perse(db, invia)),
              ("avviso dei numeri nostri", lambda: rn().avvisa(db, invia)),
              ("avviso delle giornate perse dei numeri nostri", lambda: rn().avvisa_perse(db, invia)))

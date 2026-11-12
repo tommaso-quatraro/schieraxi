@@ -93,7 +93,7 @@ def test_con_8_giornate_medie_soglie_e_verdetto_del_server(tmp_path):
                                          "quando è diversa")
     assert ("1,5 a formazione, in media · per meno di 1 punto atteso, senza un titolare diventato fuori o improbabile: 1 "
             "(devono essere 0)") in pezzi
-    assert "sotto il 20% o fuori: 8 · con un compagno di ruolo al 50% o più tra gli esclusi: 0 (devono essere 0)" in pezzi
+    assert "sotto il 20% o fuori: 8 · con un compagno di ruolo al 20% o più tra gli esclusi: 0 (devono essere 0)" in pezzi
     assert ("spiegate 16 su 16 (devono essere tutte) · titolari senza un motivo loro in «Perché questo numero»: 4,5% "
             "(al massimo 10%)") in pezzi
     assert re.search(r'style="color:var\(--rosso\)">non regge<', html)          # il colore accompagna la parola, non la sostituisce

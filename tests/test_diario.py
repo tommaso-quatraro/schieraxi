@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from fanta import archivio, consigli, diario, lega
+from fanta import archivio, consigli, diario, lega, precisione
 from fanta.regole import Regole
 
 ST = "2026-27"
@@ -88,7 +88,8 @@ def test_aggiorna_fa_solo_le_giornate_nuove_e_rifa_quelle_senza_scelta(finto, mo
     assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 0
     e = diario.elenco(finto.file)
     assert [v["giornata"] for v in e["giornate"]] == [2, 1]
-    assert e["sintesi"]["giornate"] == 1 and e["sintesi"]["meglio_tua"] + e["sintesi"]["meglio_consigliata"] <= 1
+    # senza la consigliata mostrata prima della scadenza (l'istantanea) il confronto non dà un verdetto (#614)
+    assert e["sintesi"] == {"giornate": 0, "senza_consigliata_mostrata": 1}
 
 
 def test_senza_la_mia_squadra_non_fa_niente(finto):
@@ -100,15 +101,18 @@ def test_senza_la_mia_squadra_non_fa_niente(finto):
 def test_file_mancante_o_rovinato(tmp_path):
     assert diario.carica(tmp_path / "no.json") == {"giornate": {}}
     (tmp_path / "x.json").write_text("{rotto")
-    assert diario.elenco(tmp_path / "x.json") == {"giornate": [], "sintesi": {"giornate": 0},
-                                                  "scelte_tue": {"giornate": 0, "pochi_dati": True, "per_giornata": []},
+    assert diario.elenco(tmp_path / "x.json") == {"giornate": [], "sintesi": {"giornate": 0, "senza_consigliata_mostrata": 0},
+                                                  "scelte_tue": {"giornate": 0, "pochi_dati": True, "per_giornata": [],
+                                                                 "senza_istantanea": 0, "stessi_titolari": 0, "nota": None,
+                                                                 "nota_frase": None},
                                                   "affidabilita": {"giornate": 0, "giudizio": "pochi_dati", "pochi_dati": True,
-                                                                   "giornate_minime": diario.POCHI_DATI}}
+                                                                   "giornate_minime": diario.POCHI_DATI, "senza_istantanea": 0}}
 
 
 def _voce(g, tue, loro, punti_tua, punti_loro):
     riga = lambda ids, r: {"reale": r, "atteso": 60.0, "titolari": [{"id": i, "nome": f"G{i}", "ruolo": "A"} for i in ids]}    # noqa: E731
-    return {"stagione": ST, "giornata": g, "schierata": riga(tue, punti_tua), "consigliata": riga(loro, punti_loro)}
+    return {"stagione": ST, "giornata": g, "schierata": riga(tue, punti_tua),
+            "consigliata": riga(loro, punti_loro) | {"origine": "mostrata"}}          # la consigliata mostrata prima della scadenza
 
 
 def test_scelte_tue_chi_aveva_ragione():
@@ -129,6 +133,196 @@ def test_scelte_tue_con_abbastanza_giornate():
     voci = [_voce(g, [1, 2, 9], [1, 2, 3], 70, 60) for g in range(1, 9)]
     s = diario.scelte_tue(voci)
     assert s["giornate"] == 8 and s["pochi_dati"] is False and s["percentuale_tua"] == 100 and s["punti_differenza"] == 80.0
+
+
+# ---------------------------------------------------------------- il confronto è con la consigliata MOSTRATA (#614)
+MOSTRATI = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 22]          # 3-4-3 senza l'attaccante 25, quello che prende 9
+CON_IL_25 = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]
+
+
+def _mostrata(finto, ids=MOSTRATI, giornata=1):
+    """Salva l'istantanea (la consigliata mostrata prima della scadenza, 71,5 punti attesi) e la restituisce."""
+    diario.salva_istantanea({**_formazione_finta(giornata=giornata, ids=ids), "panchina": []}, ST, finto.file)
+    return diario.carica(finto.file)["istantanee"][f"{ST}/{giornata}"]
+
+
+def test_con_l_istantanea_il_diario_confronta_con_la_consigliata_mostrata(finto):
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), _scelta(CON_IL_25), simulazioni=50,
+                                istantanea=_mostrata(finto))
+    c, r = v["consigliata"], v["ricostruita"]
+    assert c["origine"] == "mostrata" and [t["id"] for t in c["titolari"]] == MOSTRATI
+    assert c["atteso"] == 71.5 and c["reale"] == 66.0            # i punti attesi mostrati allora; undici giocatori da 6
+    assert c["intervallo"]["basso"] < 71.5 < c["intervallo"]["alto"]
+    # la ricostruita (la scelta rifatta a giornata finita, senza le probabili) resta come misura del modello, con il suo nome
+    assert r["origine"] == "ricostruita" and 25 in [t["id"] for t in r["titolari"]] and r["reale"] == 69.0
+    assert v["consiglio"]["mostrata"] == "istantanea" and v["consiglio"]["punti_consigliata"] == 66.0
+    # il verdetto è sulla mostrata: con il 25 hai fatto 3 punti in più
+    s = diario.scelte_tue([v])
+    assert (s["giornate"], s["meglio_tua"], s["punti_differenza"], s["senza_istantanea"]) == (1, 1, 3.0, 0)
+    assert diario.sintesi([v])["punti_consigliata"] == 66.0 and diario.sintesi([v])["senza_consigliata_mostrata"] == 0
+    a = diario.atteso_vs_fatto(v)
+    assert (a["riferimento"], a["atteso"], a["fatti"], a["scarto"]) == ("consigliata", 71.5, 66.0, -5.5)
+    assert diario.affidabilita([v])["giornate"] == 1
+
+
+def test_senza_istantanea_il_diario_lo_dice_e_non_da_il_verdetto(finto):
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), _scelta(MOSTRATI), simulazioni=50)
+    assert v["consigliata"]["origine"] == "ricostruita" and v["ricostruita"] == v["consigliata"]
+    assert v["schierata"]["reale"] == 66.0 and v["consigliata"]["reale"] == 69.0       # i numeri ci sono, il verdetto no
+    assert diario.scelte_tue([v]) == {"giornate": 0, "pochi_dati": True, "per_giornata": [], "senza_istantanea": 1, "stessi_titolari": 0,
+                                      "nota": "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+                                      "nota_frase": {"chiave": "diario.confronto_fuori", "param": {"n": 1}}}
+    assert diario.sintesi([v]) == {"giornate": 0, "senza_consigliata_mostrata": 1}
+    assert diario.atteso_vs_fatto(v)["riferimento"] == "ricostruita"
+    aff = diario.affidabilita([v])
+    assert aff["giornate"] == 0 and aff["giudizio"] == "pochi_dati" and aff["senza_istantanea"] == 1
+
+
+def test_istantanea_che_non_si_puo_piu_schierare_non_vale_come_mostrata(finto):
+    ist = _mostrata(finto, ids=[1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 99])               # il 99 non è più in rosa
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), None, simulazioni=50, istantanea=ist)
+    assert v["consigliata"]["origine"] == "ricostruita" and v["consiglio"]["mostrata"] == "ricostruita"
+
+
+def test_le_voci_di_prima_si_rifanno_una_volta_se_c_e_l_istantanea(finto):
+    """Le voci scritte prima di #614 non hanno la consigliata mostrata: dove l'istantanea c'è si ricalcolano, una volta sola."""
+    assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 2
+    d = diario.carica(finto.file)
+    for v in d["giornate"].values():                                                   # come le voci di prima
+        v.pop("ricostruita")
+        v["consigliata"].pop("origine")
+    finto.file.write_text(json.dumps(d), encoding="utf-8")
+    _mostrata(finto, giornata=1)
+    assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 1          # solo la giornata 1
+    voci = {v["giornata"]: v for v in diario.elenco(finto.file)["giornate"]}
+    assert voci[1]["consigliata"]["origine"] == "mostrata" and voci[1]["ricostruita"]["origine"] == "ricostruita"
+    # la 2 non ha l'istantanea: resta com'era, e chi la legge sa che è ricostruita
+    assert voci[2]["consigliata"]["origine"] == "ricostruita" and voci[2]["ricostruita"]["titolari"] == voci[2]["consigliata"]["titolari"]
+    assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 0
+
+
+def _mostrata_con_panchina(finto, giornata=1):
+    """La consigliata mostrata con il 25 e la panchina 22, 24, 23. L'attaccante 20 non prende voto e il 22 prende 10: con la
+    panchina mostrata allora entra il 22, con quella che sceglie il sistema a giornata finita entra il 24 (6)."""
+    v = finto.dati.voti
+    finto.dati.voti = v[~((v["giornata"] == giornata) & (v["calciatore_id"] == 20))].copy()
+    finto.dati.voti.loc[finto.dati.voti["calciatore_id"] == 22, "voto_red"] = 10.0
+    f = _formazione_finta(giornata=giornata, ids=CON_IL_25)
+    f["panchina"] = [{"id": i, "nome": f"G{i}", "ruolo": "A"} for i in (22, 24, 23)]
+    diario.salva_istantanea(f, ST, finto.file)
+    return diario.carica(finto.file)["istantanee"][f"{ST}/{giornata}"]
+
+
+NUMERI = ("reale", "atteso", "dev_simulata", "intervallo")
+
+
+@pytest.mark.parametrize("chi", ["consigliata", "manuale", "automatica"])
+def test_gli_stessi_titolari_della_mostrata_sono_la_mostrata(finto, chi):
+    """Hai schierato proprio la consigliata mostrata (stessi undici, senza una tua panchina), oppure l'ha fatto la copia automatica
+    alla scadenza: la tua formazione È la consigliata, con la panchina e i punti attesi mostrati allora. Prima la tua aveva la
+    panchina e gli attesi rifatti a giornata finita e il Diario dava 4 punti di verdetto fra due formazioni uguali (revisione di #642)."""
+    ist = _mostrata_con_panchina(finto)
+    scelta = {"titolari": CON_IL_25[::-1], "tipo": chi}                                   # l'ordine dei titolari non conta
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), None if chi == "automatica" else scelta,
+                                simulazioni=50, automatica=scelta if chi == "automatica" else None, istantanea=ist)
+    c = v["consigliata"]
+    assert c["origine"] == "mostrata" and (c["reale"], c["atteso"]) == (73.0, 71.5)        # entra il 22 della panchina mostrata
+    tua = v["automatica"] if chi == "automatica" else v["schierata"]
+    assert {k: tua[k] for k in NUMERI} == {k: c[k] for k in NUMERI}
+    if chi != "automatica":
+        assert diario.sintesi([v]) == {"giornate": 0, "senza_consigliata_mostrata": 0}       # niente verdetto fra due uguali
+        assert precisione.riassunto([v])["confronto"]["giornate"] == 0
+
+
+def test_gli_stessi_titolari_con_una_panchina_tua_tengono_i_loro_punti(finto):
+    """Con una panchina tua (giornate importate) la formazione schierata è un'altra: i suoi punti restano i suoi."""
+    ist = _mostrata_con_panchina(finto)
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)),
+                                {"titolari": CON_IL_25, "panchina": [24, 22, 23]}, simulazioni=50, istantanea=ist)
+    assert (v["schierata"]["reale"], v["consigliata"]["reale"]) == (69.0, 73.0)            # con la tua panchina entrava il 24
+
+
+def test_gli_stessi_titolari_non_entrano_nel_verdetto():
+    """`sintesi` e il confronto di «Quanto ci abbiamo preso» saltano le giornate con gli stessi undici della consigliata mostrata,
+    come già «Le tue scelte»: fra due formazioni uguali non c'è chi ha ragione."""
+    stessi = _voce(2, [1, 2, 3], [1, 2, 3], 69.0, 73.0)          # stessi undici con punti diversi (per esempio una tua panchina)
+    diversi = _voce(1, [1, 2, 9], [1, 2, 3], 70.0, 66.0)
+    s = diario.sintesi([stessi, diversi])
+    assert (s["giornate"], s["meglio_tua"], s["meglio_consigliata"], s["punti_schierata"], s["punti_consigliata"]) == (1, 1, 0, 70.0, 66.0)
+    c = precisione.riassunto([stessi, diversi])["confronto"]
+    assert (c["giornate"], c["meglio_tua"], c["meglio_consigliata"], c["punti"]) == (1, 1, 0, -4.0)
+
+
+# ---------------------------------------------------------------- la frase sulle giornate senza verdetto la scrive il server
+FUORI = "la consigliata di allora non era stata salvata."
+
+
+def _senza_mostrata(g, tue, loro=(1, 2, 3)):
+    """Una giornata con la tua formazione ma senza la consigliata mostrata: la consigliata della voce è la ricostruita."""
+    v = _voce(g, list(tue), list(loro), 66.0, 69.0)
+    v["consigliata"]["origine"] = "ricostruita"
+    return v
+
+
+def _note(voci):
+    """La frase di «Le tue scelte» e quella del confronto di «Quanto ci abbiamo preso», con i loro conti."""
+    st, cf = diario.scelte_tue(voci), precisione.riassunto(voci)["confronto"]
+    assert (st["nota"], st["nota_frase"]) == (cf["nota"], cf["nota_frase"])              # stessa frase nei due riquadri
+    assert (st["senza_istantanea"], st["stessi_titolari"]) == (cf["senza_istantanea"], cf["stessi_titolari"])
+    return st
+
+
+def test_giornate_segnate_senza_la_consigliata_di_allora():
+    """Le giornate segnate ma senza la consigliata di allora (quasi tutte, finché il server non salva l'istantanea): il server
+    dice quante non entrano nel confronto. Prima web e iPhone scrivevano «Non sappiamo ancora cosa hai schierato», o
+    nascondevano «Le tue scelte» (revisione di #642). Conta anche «Ho schierato la consigliata» senza istantanea (stessi
+    titolari della ricostruita): la consigliata di allora non la conosciamo."""
+    st = _note([_senza_mostrata(2, [1, 2, 9]), _senza_mostrata(1, [1, 2, 3])])
+    assert (st["giornate"], st["senza_istantanea"], st["stessi_titolari"]) == (0, 2, 0)
+    assert st["nota"] == "2 giornate non entrano nel confronto: " + FUORI
+    assert st["nota_frase"] == {"chiave": "diario.confronto_fuori", "param": {"n": 2}}
+    assert _note([_senza_mostrata(1, [1, 2, 9])])["nota"] == "1 giornata non entra nel confronto: " + FUORI
+
+
+def test_con_una_sola_giornata_confrontabile_uguale_non_si_dice_finora_sempre_uguale():
+    """Una giornata con la consigliata mostrata e gli stessi titolari, cinque diverse senza la consigliata di allora: non è vero che
+    «finora» hai schierato sempre la consigliata. Senza giornate lasciate fuori, invece, sì."""
+    voci = [_voce(6, [1, 2, 3], [1, 2, 3], 70.0, 70.0)] + [_senza_mostrata(g, [1, 2, 9]) for g in range(1, 6)]
+    st = _note(voci)
+    assert (st["giornate"], st["senza_istantanea"], st["stessi_titolari"]) == (0, 5, 1)
+    assert st["nota"] == ("Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. "
+                          "5 giornate non entrano nel confronto: " + FUORI)
+    assert st["nota_frase"]["chiave"] == "diario.confronto_stessa_fuori"
+    solo = _note(voci[:1])
+    assert solo["nota"] == "Finora hai schierato gli stessi undici della consigliata."
+    assert solo["nota_frase"] == {"chiave": "diario.confronto_stessa", "param": {}}
+
+
+def test_con_un_verdetto_la_frase_dice_solo_chi_resta_fuori():
+    diversa = _voce(4, [1, 2, 9], [1, 2, 3], 70.0, 66.0)
+    st = _note([diversa, _voce(3, [1, 2, 3], [1, 2, 3], 70.0, 70.0), _senza_mostrata(2, [1, 2, 9])])
+    assert (st["giornate"], st["senza_istantanea"], st["stessi_titolari"]) == (1, 1, 1)
+    assert st["nota"] == "1 giornata non entra nel confronto: " + FUORI
+    assert _note([diversa])["nota"] is None and _note([diversa])["nota_frase"] is None
+    nessuna = _note([{"stagione": ST, "giornata": 1, "schierata": None, "consigliata": {"reale": 70.0, "titolari": []}}])
+    assert (nessuna["giornate"], nessuna["nota"]) == (0, None)                          # niente schierato: il client dice di dirlo
+
+
+def test_la_schierata_dice_se_e_stata_messa_nell_app_della_lega(finto):
+    """«L'ho messa» (#616): la scelta salvata porta `messa: true` e `messa_il` solo quando l'utente ha detto di aver messo quegli
+    11 nell'app della lega (`scelte.salva`; se gli 11 cambiano il campo cade). Il Diario lo legge da `diario.CAMPO_NELLA_LEGA`.
+    Senza il campo non si sa (None) e il Diario fa come prima: sono le scelte salvate prima di #616, o senza la spunta."""
+    assert diario.CAMPO_NELLA_LEGA == "messa"
+    senza = _scelta(MOSTRATI)
+    messa = {**senza, "tipo": "manuale", "salvata": "2026-11-12T18:00:00", "messa": True, "messa_il": "2026-11-12T18:05:00"}
+    assert diario.schierata_confermata(None) is None and diario.schierata_confermata(senza) is None
+    assert diario.schierata_confermata(messa) is True
+    assert diario.schierata_confermata({**senza, "messa": False}) is False             # se mai fosse scritto: ha detto di no
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), senza, simulazioni=50)
+    assert v["schierata"]["confermata"] is None
+    v = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), messa, simulazioni=50)
+    assert v["schierata"]["confermata"] is True
+    assert v["schierata"]["tipo"] == "manuale" and v["schierata"]["reale"] == 66.0     # il resto della voce è quello di sempre
 
 
 # ---------------------------------------------------------------- «Ho schierato la consigliata» e copia automatica
@@ -158,7 +352,7 @@ def test_ho_schierato_la_consigliata_rifa_solo_quella_giornata(vero):
     assert set(diario.carica(vero.file)["giornate"]) == {f"{ST}/1"}              # la giornata 2 non è stata toccata né calcolata
     salvata = _LEGGI_VERO(ST, 1, vero.scelte)
     assert salvata["tipo"] == "consigliata" and salvata["titolari"] == [t["id"] for t in voce["consigliata"]["titolari"]]
-    assert diario.elenco(vero.file)["sintesi"]["giornate"] == 1
+    assert diario.elenco(vero.file)["sintesi"] == {"giornate": 0, "senza_consigliata_mostrata": 1}      # nessuna istantanea: niente verdetto
 
 
 def test_ho_schierato_a_mano(vero):
@@ -192,6 +386,34 @@ def test_la_copia_automatica_non_e_una_scelta_dell_utente(vero):
     assert _LEGGI_VERO(ST, 1, vero.scelte)["tipo"] == "manuale"
 
 
+def test_il_diario_legge_l_ho_messa_dal_file_delle_scelte(vero):
+    """Dal file delle scelte alla voce del Diario: nella giornata 1 l'utente aveva detto «L'ho messa», nella 2 no."""
+    scelta = {"titolari": CON_IL_25, "modulo": "3-4-3", "salvata": "2026-08-31T18:00:00", "tipo": "manuale"}
+    vero.scelte.write_text(json.dumps({f"{ST}/1": scelta | {"messa": True, "messa_il": "2026-08-31T18:05:00"}, f"{ST}/2": scelta}),
+                           encoding="utf-8")
+    assert diario.aggiorna(vero.db, Regole(), vero.rose, vero.file, simulazioni=50, file_scelte=vero.scelte) == 2
+    voci = diario.elenco(vero.file)["giornate"]
+    assert [(v["giornata"], v["schierata"]["confermata"]) for v in voci] == [(2, None), (1, True)]
+
+
+@pytest.mark.parametrize("tipo, titolari, messa", [
+    ("manuale", CON_IL_25[::-1], True),          # «Correggi a mano» con gli stessi titolari: resta messa
+    ("consigliata", None, True),                 # «Ho schierato la consigliata» (l'istantanea ha gli stessi titolari)
+    ("manuale", MOSTRATI, None),                 # un titolare diverso: nell'app della lega c'è un'altra formazione
+])
+def test_ho_schierato_tiene_l_ho_messa_con_gli_stessi_titolari(vero, tipo, titolari, messa):
+    """«L'ho messa» resta nella scelta salvata finché i titolari sono gli stessi (`scelte.salva`): la voce del Diario scritta da
+    «Ho schierato…» o «Correggi a mano» lo deve dire anche lei, non `null` (revisione di #642)."""
+    diario.salva_istantanea(_formazione_finta(giornata=1, ids=CON_IL_25), ST, vero.file)
+    vero.scelte.write_text(json.dumps({f"{ST}/1": {"titolari": CON_IL_25, "modulo": "3-4-3", "salvata": "2026-08-31T18:00:00",
+                                                   "tipo": "manuale", "messa": True, "messa_il": "2026-08-31T18:05:00"}}),
+                           encoding="utf-8")
+    voce = _salva(vero, 1, tipo, titolari)
+    assert voce["schierata"]["confermata"] is messa
+    assert diario.carica(vero.file)["giornate"][f"{ST}/1"]["schierata"]["confermata"] is messa
+    assert _LEGGI_VERO(ST, 1, vero.scelte).get("messa") is messa
+
+
 def test_il_diario_distingue_automatica_e_schierata(vero):
     scelti = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]
     _scelte.salva_automatica(ST, 1, scelti, "3-4-3", vero.scelte)
@@ -199,7 +421,8 @@ def test_il_diario_distingue_automatica_e_schierata(vero):
     v = diario.carica(vero.file)["giornate"][f"{ST}/1"]
     assert v["schierata"] is None and v["automatica"]["reale"] == 11 * 6 + 3
     assert diario.carica(vero.file)["giornate"][f"{ST}/2"]["automatica"] is None
-    assert diario.elenco(vero.file)["sintesi"] == {"giornate": 0}                      # la copia automatica non entra nelle statistiche di ciò che hai schierato
+    # la copia automatica non entra nelle statistiche di ciò che hai schierato
+    assert diario.elenco(vero.file)["sintesi"] == {"giornate": 0, "senza_consigliata_mostrata": 0}
     assert diario.aggiorna(vero.db, Regole(), vero.rose, vero.file, simulazioni=50, file_scelte=vero.scelte) == 0
 
 

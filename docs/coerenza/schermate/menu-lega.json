@@ -19,7 +19,7 @@
       "stato": "fatto"
     },
     {
-      "id": 70,
+      "id": 71,
       "schermata": "Barra e Impostazioni (#618)",
       "web": "tre schede, Formazione, Giornate, Impostazioni, più la ricerca; niente Squadra né Altro. Impostazioni è una pagina: Avvisi (un interruttore «Avvisi su questo dispositivo» e le «Ore tranquille» con la fascia già scelta), La mia lega («Aggiorna le rose», «La mia squadra» con rosa, stemma e maglia, «Regole e scadenza» con i tempi in cima, il regolamento da incollare con «Salva queste regole» e i valori dietro «Modifica i valori», «Le altre squadre»), «Il tuo account», Aspetto, «Informazioni», «Gestione» solo per chi gestisce il server (con «Aggiorna i dati», che era in testata). Gli indirizzi di prima portano alla voce nuova (`impostazioni.js`, `dove()` in `app.js`)",
       "iphone": "come prima del 12/11/2026: le voci di Squadra e Altro e le Impostazioni con un interruttore per ogni avviso",

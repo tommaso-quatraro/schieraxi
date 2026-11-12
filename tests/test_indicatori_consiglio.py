@@ -1,5 +1,6 @@
 """Indicatori del consiglio nel Diario e in Stato dei dati (C1-C4 di #166, lavoro L4): misurati sulla consigliata MOSTRATA
 (l'istantanea congelata alla scadenza), medie sulle ultime 8 giornate e avviso al proprietario. Dati inventati."""
+import json
 from datetime import datetime, timedelta
 
 import pytest
@@ -338,6 +339,31 @@ def test_avviso_dopo_due_giornate_fuori_soglia_una_volta_sola(avvisi):
     assert passo(20, sotto=1) == [] and passo(21, sotto=1) == ["C2"] and len(inviati) == 2   # esce di nuovo: nuovo avviso
 
 
+def test_i_punti_restano_un_numero_e_non_mandano_avvisi(avvisi):
+    """C1 (#614): su 8 giornate di poche rose la differenza in punti esce dalla soglia per caso. Resta in Stato dei dati con il
+    suo numero, ma non manda avvisi: né da solo, né insieme a un indicatore che avvisa."""
+    passo, inviati, _, file = avvisi
+    assert passo(9, meno_s2=-20.0) == [] and passo(10, meno_s2=-20.0) == [] and passo(11, meno_s2=-20.0) == []
+    assert inviati == []
+    r = ic.riepilogo(file)
+    assert r["meno_s2"] < 0 and r["regge"]["C1"] is False and r["fuori"] == ["C1"]      # il numero resta, e si vede che è sotto
+    assert r["avvisati"] == []
+    assert passo(12, meno_s2=-20.0, sotto=1) == [] and passo(13, meno_s2=-20.0, sotto=1) == ["C2"]
+    assert len(inviati) == 1 and "C2" in inviati[0][1] and "C1" not in inviati[0][1]
+    assert ic.riepilogo(file)["avvisati"] == ["C2"]
+
+
+def test_un_avviso_sui_punti_mandato_prima_non_resta_tra_gli_avvisati(avvisi):
+    """Il file di prima di #614 può dire che C1 è già stato avvisato: al primo giro non lo dice più."""
+    passo, _, _, file = avvisi
+    passo(9, meno_s2=-20.0)
+    d = json.loads(file.read_text(encoding="utf-8"))
+    file.write_text(json.dumps(d | {"avvisati": ["C1"], "da_avvisare": ["C1"]}), encoding="utf-8")
+    assert passo(10, meno_s2=-20.0) == []
+    d = json.loads(file.read_text(encoding="utf-8"))
+    assert d["avvisati"] == [] and d["da_avvisare"] == []
+
+
 def test_avviso_non_mandato_si_riprova(avvisi):
     passo, inviati, esito, _ = avvisi
     passo(9, sotto=1)
@@ -355,8 +381,10 @@ def test_testo_dell_avviso_solo_indicatori_e_numeri():
     titolo, testo = ic.testo_avviso(m["fuori"], m)
     assert titolo == "SchieraXI: consiglio di formazione"
     assert "2 giornate di fila" in testo and "ultime 8 giornate" in testo and "Stato dei dati" in testo
-    assert "-1,50 punti" in testo and "8 cambi" in testo and "8 titolari" in testo and "spiegate 0 su 8" in testo and "27%" in testo
-    assert all(f"• {c}" in testo for c in ("C1", "C2", "C3", "C4"))
+    assert "8 cambi" in testo and "8 titolari" in testo and "spiegate 0 su 8" in testo and "27%" in testo
+    assert all(f"• {c}" in testo for c in ("C2", "C3", "C4"))
+    assert "C1" not in testo and "-1,50" not in testo                       # i punti non mandano avvisi (#614)
+    assert "sotto il 20% con un compagno di ruolo al 20% o più" in testo     # le soglie con cui l'app sceglie (formazione.py)
 
 
 def test_riepilogo_per_stato_dei_dati(tmp_path):

@@ -122,12 +122,18 @@ def forma_di_domani(web) -> tuple[dict, list[str]]:
     g0["consigliata"]["origine"] = g1["consigliata"]["origine"] = "mostrata"
     g1["schierata"] = {**copy.deepcopy(g1["consigliata"]), "tipo": "consigliata", "confermata": True}
     g1["schierata"].pop("origine")
+    # la frase sulle giornate senza verdetto la scrive il server (`diario.nota_confronto`): la terza giornata resta fuori; la
+    # seconda, con gli stessi titolari della mostrata, non ha un verdetto e non entra nei conti
+    nota = {"nota": NOTA_UNA_FUORI, "nota_frase": {"chiave": "diario.confronto_fuori", "param": {"n": 1}}}
     d["scelte_tue"] = {"giornate": 1, "meglio_tua": 0, "meglio_consigliata": 1, "pari": 0, "punti_differenza": -1.5, "percentuale_tua": 0,
-                       "pochi_dati": True, "per_giornata": [scelta_diversa(g0, -1.5)], "senza_istantanea": 1}
+                       "pochi_dati": True, "per_giornata": [scelta_diversa(g0, -1.5)], "senza_istantanea": 1, "stessi_titolari": 1} | nota
     d["sintesi"] = {**d["sintesi"], "senza_consigliata_mostrata": 1}
-    d["precisione"]["confronto"] = {"giornate": 2, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 1, "punti": 1.5,
-                                    "media_consigliata": 80.0, "media_tua": 79.3, "senza_istantanea": 1}
+    d["precisione"]["confronto"] = {"giornate": 1, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 0, "punti": 1.5,
+                                    "media_consigliata": 80.0, "media_tua": 78.5, "senza_istantanea": 1, "stessi_titolari": 1} | nota
     return d, dentro
+
+
+NOTA_UNA_FUORI = "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata."
 
 
 # ---------------------------------------------------------------- una pagina, a un tocco
@@ -278,7 +284,7 @@ def test_con_la_consigliata_mostrata_la_riga_dice_i_cambi_e_quanto_sono_valsi(we
     tocca(web, principale(web).get_by_text("Dettagli", exact=True))              # nei Dettagli il confronto c'è, e chi resta fuori
     tutto = " ".join(web.testo_principale().split())
     assert "giornate in cui la consigliata ha fatto meglio della tua" in tutto, tutto
-    assert "1 giornata con la tua formazione non entra nel confronto" in tutto, tutto
+    assert NOTA_UNA_FUORI in tutto, tutto                                       # la frase del server, così com'è
     assert not web.errori_mostrati() and not web.errori_console
 
 
