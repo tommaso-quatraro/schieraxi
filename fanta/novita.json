@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.472",
+    "data": "2026-11-12T15:44:27",
+    "titolo": "Rigorista: il motivo guarda anche quanto gioca",
+    "voci": [
+      "Web, iPhone e iPad: nella scheda il motivo «rigorista» non va più a chi quasi certamente non gioca (meno del 20%), come chi non è tra i convocati previsti, anche se è l'unico della squadra che calcia i rigori. Vale anche per i widget.",
+      "Non va più nemmeno a chi parte dalla panchina, quando è più probabile che il prossimo rigore lo calci un compagno che gioca. Il compagno lo riceve solo se di solito ne calcia almeno la metà; altrimenti nella squadra non lo ha nessuno.",
+      "Il fantavoto atteso dei giocatori resta quello di prima."
+    ],
+    "tecnico": [
+      "modello._segna_primo_rigorista: `primo_rigorista` è il giocatore della squadra con il prodotto più alto fra `p_voto` e `quota_rigori` (prima la sola `quota_rigori`), fra chi non è infortunato né squalificato e ha `p_voto` di almeno 0,2 (formazione.IMPROBABILE_SOTTO, il confine di «improbabile» di consigli.titolarita); con il prodotto a zero non lo è nessuno. `consigli.rigorista` non cambia: il motivo della scheda e `rigoristi` di /api/widget restano uno per squadra, con `quota_rigori` di almeno 0,5. Nessun cambio a mu, rigori attesi e forme delle risposte.",
+      "Misura del 12/11/2026 sul passato senza probabili (2025-26, 680 squadre-giornata): il motivo va a 415 giocatori invece di 492, più spesso tolto che passato a un compagno (77 volte contro 4); nessuno di loro gioca meno del 20% (prima 50) e ha poi preso voto il 79% (prima il 69%).",
+      "modello.con_prestazioni_dai_voti salta le partite già ricostruite (`understat_partita` uguale all'id della partita cambiato di segno): richiamata sui dati che ha già completato non aggiunge le stesse righe un'altra volta. In produzione la chiama solo `carica`, una volta: i numeri non cambiano."
+    ]
+  },
+  {
     "versione": "1.471",
     "data": "2026-11-12T15:12:05",
     "titolo": "Aggiornamenti raggruppati: meno interruzioni",
