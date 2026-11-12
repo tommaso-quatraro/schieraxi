@@ -62,18 +62,18 @@ def _riempimento_x(corpo: str) -> float:
 
 def test_cognome_e_stato_della_pedina_vanno_a_capo_a_ogni_larghezza():
     """Mai «…»: il cognome intero, a capo tra le parole («Zosaba» sopra, «Ndorti» sotto) e, solo per una parola più larga della
-    pedina, dentro la parola. Lo stesso per lo stato («Partita in corso», «fantavoto 10,0»), «⚠ gioca 19%» e «vs MON»."""
-    for selettore in (".pedina .nome", ".pedina .gioca", ".pedina .avv"):
+    pedina, dentro la parola. Lo stesso per lo stato («Partita in corso», «Infortunato») e «gioca 19%»."""
+    for selettore in (".pedina .nome", ".pedina .gioca"):
         corpo = _regole(GLOBALE, selettore)
         assert "ellipsis" not in corpo and "nowrap" not in corpo, f"{selettore}: non si taglia e va a capo"
         assert not re.search(r"overflow(-x)?\s*:\s*hidden", corpo), f"{selettore}: non si taglia"
         assert not re.search(r"max-width\s*:\s*\d", corpo), f"{selettore}: niente larghezza fissa, segue la pedina"
     assert "overflow-wrap: anywhere" in _regole(GLOBALE, ".pedina .nome")
     assert "overflow-wrap: anywhere" in _regole(GLOBALE, ".pedina .gioca")
-    assert "flex-wrap: wrap" in _regole(GLOBALE, ".pedina .avv")             # «vs» sopra la sigla solo se insieme non ci stanno
-    # la pillola arancio su due righe resta tonda agli angoli (come le etichette), non una capsula tagliata dal testo
-    raggio = re.search(r"border-radius\s*:\s*([^;]+);", _regole(GLOBALE, ".pedina .gioca.basso")).group(1)
-    assert "999" not in raggio and "r-pill" not in raggio
+    # la pillola su due righe resta tonda agli angoli (come le etichette), non una capsula tagliata dal testo
+    for pillola in (".pedina .gioca.medio", ".pedina .gioca.basso"):
+        raggio = re.search(r"border-radius\s*:\s*([^;]+);", _regole(GLOBALE, pillola)).group(1)
+        assert "999" not in raggio and "r-pill" not in raggio, pillola
 
 
 def test_le_pedine_si_stringono_dentro_il_campo_anche_con_cinque_per_fila():
@@ -125,7 +125,7 @@ def _codice_rinvio(dopo: str) -> str:
         "var document = { querySelectorAll: () => [] };",           # var dopo testi.js: lì `typeof document` è ancora "undefined"
         _pezzo("function esc(x)", "const sigla ="), _pezzo("const num =", "const perc ="),
         _pezzo("const MODI_RINVIO", "function cardRinvio("),
-        _pezzo("function collegaRinvio()", "function mostraOggi("),
+        _pezzo("function collegaRinvio()", "// Sul campo solo il cognome"),
         dopo,
     ])
 
@@ -167,7 +167,7 @@ const sel = { value: "aspetta", disabled: false, dataset: { giornata: "8", stagi
 document.querySelectorAll = s => s === "select.rinvio-modo" ? [sel] : [];
 const chiamate = [], avvisi = []; let fallisci = false, ridisegni = 0;
 async function api(p, o) { chiamate.push([p, JSON.parse(o.body)]); if (fallisci) throw new Error("Non riesco a salvare la scelta."); return {}; }
-const svuotaCache = () => {}, avviso = m => avvisi.push(m), vistaOggi = () => { ridisegni++; };
+const svuotaCache = () => {}, avviso = m => avvisi.push(m), rileggiFormazione = () => { ridisegni++; };     // rilegge e tiene il fuoco sul menu
 (async () => {
   collegaRinvio();
   const visto = [];

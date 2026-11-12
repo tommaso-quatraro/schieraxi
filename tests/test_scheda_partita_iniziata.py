@@ -9,25 +9,11 @@ import codice_web
 WEB = Path(server.__file__).parent / "web"
 APP = codice_web.app()
 TESTI = codice_web.leggi("testi.js")
-SCHEDA = APP[APP.index("async function apriGiocatore"):APP.index("// Il posto in formazione a parole")]
+SCHEDA = APP[APP.index("function htmlScheda"):APP.index("// Il posto in formazione a parole")]
 
 
 def test_stati_iniziati_e_finiti_sono_quelli_del_server():
     assert 'const PARTITA_INIZIATA = ["in_corso", "attesa_voti", "fatto", "senza_voto"], PARTITA_FINITA = ["attesa_voti", "fatto", "senza_voto"];' in APP
-
-
-def test_a_partita_iniziata_spariscono_gioca_e_probabilita():
-    # «gioca N%» è la seconda cifra accanto al fantavoto atteso (grafica B, spec §9): a partita iniziata la cifra sparisce
-    assert '${iniziataP ? "" : `<div class="cifra"><div class="debole">${t("mercato.gioca")}</div>' in SCHEDA
-    assert '${nonGioca || iniziataP ? "" : `<div class="stat-fila' in SCHEDA
-    assert 'perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca")' in SCHEDA     # «gioca l'1%: improbabile»
-    assert '${finitaP ? "" : cartaPerche(prSenzaGioca)}' in SCHEDA
-
-
-def test_a_partita_finita_resta_solo_com_e_andata():
-    assert '(s.voti || []).find(v => v.giornata === pr.giornata)' in SCHEDA
-    assert 't(STATO_PARTITA[pr.stato_partita][0])' in SCHEDA
-    assert '!finitaP && motiviUtili(pr)' in SCHEDA
 
 
 def test_assist_al_plurale_giusto_in_inglese():

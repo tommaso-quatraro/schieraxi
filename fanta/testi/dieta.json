@@ -6,5 +6,9 @@
   "dieta.torna_oggi": {
     "it": "Torna a Oggi",
     "en": "Back to Today"
+  },
+  "dieta.torna_formazione": {
+    "it": "Torna alla Formazione",
+    "en": "Back to Lineup"
   }
 }

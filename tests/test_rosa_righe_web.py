@@ -27,8 +27,9 @@ def _esegui(chiamata: str, lingua: str = "it"):
         f"LINGUA = '{lingua}';",
         re.search(r"^const SIGLE = \{.*?\};$", APP, re.M | re.S).group(0),
         _pezzo("function esc(x)", "// Numero con il segno"),
-        _pezzo("const STATO_PARTITA =", "function pillTitolarita"),
-        _pezzo("const CODICI_PARTITA_INIZIATA", "function pedina"),
+        _pezzo("const STATO_PARTITA =", "// Le regole riconosciute"),
+        _pezzo("// Lo stato di un giocatore, dal codice", "// Il nome del club"),
+        _pezzo("const SOGLIA_GIOCA", "// Il nome per i lettori di schermo viene"),
         re.search(r"^const nomeClub = .*$", APP, re.M).group(0),
         re.search(r"^const vsAt = .*$", APP, re.M).group(0),
         re.search(r"^const partitaRiga = .*$", APP, re.M).group(0),
@@ -70,20 +71,21 @@ def test_i_lettori_di_schermo_sentono_la_partita_in_frase():
 
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_valore_della_rosa_prima_e_dopo_la_partita():
-    prima, attesa, fatto, nessuna = _esegui("""[
+    prima, medio, sicuro, infortunato, attesa, fatto, nessuna = _esegui("""[
       valoreRosa({fv_atteso: 5.7, p_voto: 0.24}, {id: 1}),
+      valoreRosa({fv_atteso: 6.0, p_voto: 0.794}, {id: 1}),
+      valoreRosa({fv_atteso: 6.1, p_voto: 0.796}, {id: 1}),
+      valoreRosa({fv_atteso: 6.4, p_voto: 0, stato: "infortunato", etichetta: {codice: "infortunato", testo: "Infortunato", tono: "negativo"}}, {id: 1}),
       valoreRosa({fv_atteso: 5.7, p_voto: 0.24, stato_partita: "attesa_voti", etichetta: {codice: "voto_in_arrivo", testo: "Voto in arrivo", tono: "neutro"}}, {id: 1}),
       valoreRosa({fv_atteso: 5.7, p_voto: 0.9, stato_partita: "fatto", fv_preso: 7.5, etichetta: {codice: "voto", testo: "Ha giocato", tono: "positivo"}}, {id: 1}),
       valoreRosa(null, {id: 1})]""")
-    # grafica B (spec §8.4, C8): «gioca N%» e il fantavoto atteso in due colonne, nello stesso ordine di ogni riga dei giocatori
+    # grafica B (spec §8.4, C8): «gioca N%» e il fantavoto atteso in due colonne, nello stesso ordine di ogni riga dei giocatori.
+    # Dal 12/11/2026 (#616) «gioca N%» c'è solo sotto l'80%: rosso sotto 50, arancio fra 50 e 79, deciso sul numero che si legge
     assert _testo(prima) == "gioca 24% Fantavoto atteso 5,7"             # il nome del numero per i soli lettori di schermo
-    assert '<span class="pv-g basso">gioca 24%</span>' in prima           # sotto il 70% arancio e in grassetto
+    assert '<span class="pv-g basso">gioca 24%</span>' in prima
+    assert '<span class="pv-g medio">gioca 79%</span>' in medio
+    assert _testo(sicuro) == "Fantavoto atteso 6,1" and "gioca" not in sicuro          # 79,6% si legge 80%: non è sotto l'80%
+    assert _testo(infortunato) == "Fantavoto atteso 6,4" and "gioca" not in infortunato   # non gioca di sicuro: lo dice la parola
     assert _testo(attesa) == "–" and "gioca" not in attesa                  # a partita iniziata mai «gioca N%»
     assert _testo(fatto) == "fantavoto 7,5"
     assert _testo(nessuna) == "non gioca" and "fantavoto" not in nessuna and "%" not in nessuna
-
-
-def test_scheda_niente_stato_doppio_a_partita_finita():
-    scheda = _pezzo("async function apriGiocatore", "// Il posto in formazione a parole")
-    assert "const statoInGrande = finitaP && !(votoGiornata && votoGiornata.fv != null)" in scheda
-    assert "${pr && !statoInGrande ? pillTitolarita(pr) : \"\"}" in scheda

@@ -60,7 +60,7 @@ def _node(codice: str):
 # ---------------------------------------------------------------- compito 11.1 del piano
 
 def test_numeri_di_altro_nel_carattere_dei_numeri_e_regole_da_44_px():
-    for selettore in (r"\.qp-num", r"\.fv-fatto"):                        # Diario, Oggi in corso
+    for selettore in (r"\.qp-num", r"\.tg-numero"):                       # Diario, i punti in testa alla Formazione
         assert re.search(selettore + r" \{[^}]*font-family: var\(--font-numeri\)", CSS), selettore
     assert re.search(r"\.stepper button \{ width: 44px", CSS)              # i «−/+» delle regole restano da 44 px
     assert not re.search(r"\.riga-regola\.evidenzia \{[^}]*color-mix\(in srgb, var\(--verde\)", CSS)   # evidenziata con --superficie, non tinta

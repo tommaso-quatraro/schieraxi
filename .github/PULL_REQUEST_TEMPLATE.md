@@ -2,7 +2,7 @@ Closes #
 
 Aree: <!-- cartelle o file toccati, separati da virgole (es. «fanta/web, tests, docs»). Il job «ambito» controlla che i file cambiati stiano qui dentro. -->
 
-Aspetto: <!-- solo se tocchi fanta/web: le scene della web che cambiano aspetto (oggi, formazione, squadra, rosa, scheda, altro, diario, regole, impostazioni), oppure «nessuno» o «tutte». Il workflow «Aspetto della web» avvisa se cambia una scena non scritta qui. -->
+Aspetto: <!-- solo se tocchi fanta/web: le scene della web che cambiano aspetto (formazione, squadra, rosa, scheda, altro, diario, regole, impostazioni), oppure «nessuno» o «tutte». Il workflow «Aspetto della web» avvisa se cambia una scena non scritta qui. -->
 
 ## Cosa cambia
 

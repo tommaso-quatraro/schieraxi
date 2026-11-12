@@ -15,10 +15,6 @@
     "it": "Tutto pronto, Mister",
     "en": "All set, coach"
   },
-  "pav.vai_oggi": {
-    "it": "Vai a Oggi",
-    "en": "Go to Today"
-  },
   "pav.incolla_testo_delle": {
     "it": "Incolla il testo delle rose o scegli il file Excel che scarichi da Leghe.",
     "en": "Paste the roster text or choose the Excel file you download from Leghe."
@@ -133,13 +129,12 @@
     "en": "Skip"
   },
   "pav.hai_saltato": {
-    "it": "Hai saltato {nomi}: li trovi in «Da fare» in Oggi e puoi riprenderli da lì quando vuoi.",
-    "en": "You skipped {nomi}: you find them in «To do» in Today and you can pick them up from there whenever you like."
+    "it": "Hai saltato {nomi}: puoi riprenderli quando vuoi dalla Formazione.",
+    "en": "You skipped {nomi}: you can pick them up whenever you like from Lineup."
   },
   "pav.hai_saltato_senza_rose": {
-    "it": "Hai saltato {nomi}: li ritrovi toccando «Importa le rose» in Oggi (dopo le rose, in «Da fare»).",
-    "en": "You skipped {nomi}: you get them back by tapping «Import the rosters» in Today (after the rosters, in «To do»).",
-    "nota": "«Tutto pronto» senza rose caricate: «Da fare» non elenca ancora i passi saltati"
+    "it": "Hai saltato {nomi}: li ritrovi toccando «Importa le rose» nella Formazione.",
+    "en": "You skipped {nomi}: you get them back by tapping «Import the rosters» in Lineup."
   },
   "pav.hai_finito": {
     "it": "Hai finito la configurazione.",
@@ -152,5 +147,9 @@
   "pav.questa_mia": {
     "it": "Questa è la mia",
     "en": "This is mine"
+  },
+  "pav.vai_formazione": {
+    "it": "Vai alla Formazione",
+    "en": "Go to Lineup"
   }
 }

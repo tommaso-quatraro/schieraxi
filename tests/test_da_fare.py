@@ -128,6 +128,22 @@ def test_tenuto_senza_sostituzioni_o_senza_riserva_niente_panchina(mondo):
     assert d["testo"] == "Rossi è in dubbio (55% di giocare)." and "riserva" not in d
 
 
+def test_la_riserva_nominata_e_quella_che_gioca_quasi_di_sicuro(mondo, monkeypatch):
+    """Con la panchina in ordine di fantavoto atteso la prima riserva del ruolo può essere uno che gioca poco: la frase nomina la
+    prima che gioca quasi di sicuro (la stessa regola di `incerti`, consigli.RISERVA_SOPRA), e nessuna se non c'è."""
+    schede = {i: da_fare.consigli.scheda_previsione(i, None) for i in range(1, 15)}
+    schede[6] = _x(6, "Verdi")                                               # qui non è infortunato: è titolare e sta bene
+    schede[12] = _x(12, "Riserva", p_voto=0.3, atteso=7.0)                   # la prima in panchina: vale di più ma gioca poco
+    monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
+    mondo.sistema.titolari, mondo.sistema.panchina = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [12, 14, 13]
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert d["testo"] == "Rossi è in dubbio (55% di giocare) ma resta titolare: se non gioca entra g14 dalla panchina."
+    assert d["riserva"] == {"id": 14, "nome": "g14"}
+    schede[14] = _x(14, "g14", p_voto=da_fare.consigli.RISERVA_SOPRA)        # proprio sulla soglia non basta: serve di più
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert d["testo"] == "Rossi è in dubbio (55% di giocare)." and "riserva" not in d
+
+
 def test_il_cambio_da_fare_non_resta_fuori_dal_tetto(mondo, monkeypatch):
     """Quattro titolari in dubbio, uno solo da cambiare: le voci che non chiedono niente («resta titolare») non lo spingono oltre
     il tetto di 3 dubbi."""

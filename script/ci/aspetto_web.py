@@ -3,17 +3,17 @@ r"""Regressione visiva della web: le scene della PR confrontate con quelle di ma
 Uso (workflow «Aspetto della web», .github/workflows/aspetto-web.yml; in locale con un venv che ha Playwright e Pillow,
 `.github/playwright-requisiti.txt`):
     python script/ci/aspetto_web.py --base <copia di main> --pr <copia della PR> --uscita <cartella>
-        [--scenario ios/fotografie/vero-prima.json] [--scene oggi,rosa] [--larghezze 390,1440] [--temi chiaro,scuro]
+        [--scenario ios/fotografie/vero-prima.json] [--scene formazione,rosa] [--larghezze 390,1440] [--temi chiaro,scuro]
         [--corpo <file con la descrizione della PR>]
 
 Per ognuna delle due copie un server finto (script/ci/server_finto.py, solo libreria standard) serve `fanta/web/` e risponde alle
 `/api/...` con le risposte
 registrate dello scenario (nomi inventati, le stesse delle foto dell'iPhone). Chrome di sistema senza finestra fotografa le scene
-(9 scene x 2 larghezze x 2 temi) con l'orologio fermo sul momento della registrazione; poi si confrontano le foto.
+(8 scene x 2 larghezze x 2 temi) con l'orologio fermo sul momento della registrazione; poi si confrontano le foto.
 Una scena è diversa se più dello 0,1% dei pixel cambia di oltre 16/255 su un canale, o se cambia la misura della pagina. Una
 scena diversa si fotografa di nuovo su main: se cambia da sola è instabile (non è colpa della PR) e va in INSTABILI col motivo.
 
-La PR dichiara le scene che cambiano con la riga `Aspetto: oggi, formazione` (o `Aspetto: nessuno`, o `Aspetto: tutte`);
+La PR dichiara le scene che cambiano con la riga `Aspetto: formazione, scheda` (o `Aspetto: nessuno`, o `Aspetto: tutte`);
 la descrizione arriva dal file di --corpo o dalla variabile d'ambiente CORPO, mai dentro un comando.
 Scrive in <uscita>: `base/`, `pr/` (foto), `diverse/` (per ogni foto diversa: base, PR e differenza in rosso), `riassunto.md`
 (anche nel riassunto della corsa, se c'è GITHUB_STEP_SUMMARY).
@@ -49,8 +49,8 @@ class Scena:
     clic: tuple[str, ...] = ()
 
 
+# Dal 12/11/2026 (#616) Oggi e Formazione sono una schermata sola: la scena «oggi» non c'è più.
 SCENE: dict[str, Scena] = {
-    "oggi": Scena("/?vista=oggi"),
     "formazione": Scena("/?vista=formazione"),
     "squadra": Scena("/?vista=squadra"),
     "rosa": Scena("/?vista=squadra&rosa="),                                        # la rosa della mia squadra
@@ -69,7 +69,8 @@ PRONTA = """() => {
   if (!c) return false;
   const foglio = document.querySelector('#foglio:not([hidden])');
   if (!c.children.length && !foglio) return false;
-  return ![...document.querySelectorAll('#contenuto .caricamento, #foglio:not([hidden]) .caricamento')]
+  const carica = '.caricamento, [aria-busy="true"]';        // anche un pezzo che si riempie dopo (gli ultimi voti nella scheda)
+  return !c.matches('[aria-busy="true"]') && ![...c.querySelectorAll(carica), ...(foglio ? foglio.querySelectorAll(carica) : [])]
     .some(e => e.getClientRects().length);
 }"""
 FERMA = """async () => {
@@ -164,7 +165,7 @@ def confronta_scatti(base: Path, pr: Path, nomi: list[str]) -> dict[str, Differe
 
 # =========================== descrizione della PR ed esito ===========================
 def aspetto_dichiarato(corpo: str | None) -> set[str] | None:
-    """Le scene delle righe «Aspetto: oggi, formazione» fuori dai commenti HTML (quelli del modello di PR), unite: la riga del
+    """Le scene delle righe «Aspetto: formazione, scheda» fuori dai commenti HTML (quelli del modello di PR), unite: la riga del
     modello lasciata col solo commento non nasconde quella scritta più sotto. «nessuno» = nessuna, «tutte» = tutte; senza
     righe non vuote None."""
     testo = re.sub(r"<!--.*?-->", "", corpo or "", flags=re.S)

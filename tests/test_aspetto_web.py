@@ -105,11 +105,11 @@ def test_confronto_di_una_scena_con_pezzi_del_foglio(aw, tmp_path):
     for cartella in (base, pr):
         _png(cartella / "scheda-390-chiaro.png")
         _png(cartella / "scheda-390-chiaro-2.png")
-        _png(cartella / "oggi-390-chiaro.png")
+        _png(cartella / "squadra-390-chiaro.png")
     _png(pr / "scheda-390-chiaro-3.png")
-    diff = aw.confronta_scatti(base, pr, ["scheda-390-chiaro", "oggi-390-chiaro"])
+    diff = aw.confronta_scatti(base, pr, ["scheda-390-chiaro", "squadra-390-chiaro"])
     assert diff["scheda-390-chiaro"].diversa and diff["scheda-390-chiaro"].misura_diversa
-    assert not diff["oggi-390-chiaro"].diversa
+    assert not diff["squadra-390-chiaro"].diversa
 
 
 def test_per_l_artifact_tutti_i_pezzi_dei_due_lati(aw, tmp_path):
@@ -134,38 +134,38 @@ def test_avviso_di_github_con_testo_protetto(aw, monkeypatch, capsys):
 
 # ------------------------------------------------------------------ riga «Aspetto:» ed esito
 def test_riga_aspetto(aw):
-    assert aw.aspetto_dichiarato("Closes #1\n\nAree: fanta/web\nAspetto: oggi, formazione\n") == {"oggi", "formazione"}
+    assert aw.aspetto_dichiarato("Closes #1\n\nAree: fanta/web\nAspetto: squadra, formazione\n") == {"squadra", "formazione"}
     assert aw.aspetto_dichiarato("Aree: fanta/web\nAspetto: nessuno\n") == set()
     assert aw.aspetto_dichiarato("Aree: fanta/web\n\n## Cosa cambia\n") is None
     # come nel modello delle PR: il commento non è una dichiarazione
     assert aw.aspetto_dichiarato("Aspetto: <!-- scene che cambiano, o «nessuno» -->\n") is None
     assert aw.aspetto_dichiarato(None) is None
-    assert aw.aspetto_dichiarato("aspetto:  `Oggi`  scheda\n") == {"oggi", "scheda"}
+    assert aw.aspetto_dichiarato("aspetto:  `Squadra`  scheda\n") == {"squadra", "scheda"}
     assert aw.aspetto_dichiarato("Aspetto: tutte\n") == set(aw.SCENE)
 
 
 def test_riga_aspetto_piu_righe(aw):
     """Conta ogni riga «Aspetto:» non vuota, non solo la prima: la riga del modello lasciata col solo commento non nasconde
     quella scritta più sotto."""
-    modello_e_vera = "Aree: fanta/web\n\nAspetto: <!-- scene che cambiano -->\n\n## Cosa cambia\nAspetto: oggi\n"
-    assert aw.aspetto_dichiarato(modello_e_vera) == {"oggi"}
-    assert aw.aspetto_dichiarato("Aspetto: oggi\n\nAspetto: rosa, scheda\n") == {"oggi", "rosa", "scheda"}
-    assert aw.aspetto_dichiarato("Aspetto: nessuno\nAspetto: oggi\n") == {"oggi"}
+    modello_e_vera = "Aree: fanta/web\n\nAspetto: <!-- scene che cambiano -->\n\n## Cosa cambia\nAspetto: squadra\n"
+    assert aw.aspetto_dichiarato(modello_e_vera) == {"squadra"}
+    assert aw.aspetto_dichiarato("Aspetto: squadra\n\nAspetto: rosa, scheda\n") == {"squadra", "rosa", "scheda"}
+    assert aw.aspetto_dichiarato("Aspetto: nessuno\nAspetto: squadra\n") == {"squadra"}
     assert aw.aspetto_dichiarato("Aspetto: <!-- a -->\nAspetto:\n") is None
 
 
 def test_esito_dichiarate_0_non_dichiarate_1(aw):
     assert aw.esito(diverse=set(), dichiarate=None, problemi=set()) == 0
-    assert aw.esito(diverse={"oggi"}, dichiarate={"oggi", "rosa"}, problemi=set()) == 0
-    assert aw.esito(diverse={"oggi", "rosa"}, dichiarate={"oggi"}, problemi=set()) == 1
-    assert aw.esito(diverse={"oggi"}, dichiarate=None, problemi=set()) == 1           # senza riga: nessuna è dichiarata
-    assert aw.esito(diverse={"oggi"}, dichiarate=set(), problemi=set()) == 1          # «nessuno»
+    assert aw.esito(diverse={"squadra"}, dichiarate={"squadra", "rosa"}, problemi=set()) == 0
+    assert aw.esito(diverse={"squadra", "rosa"}, dichiarate={"squadra"}, problemi=set()) == 1
+    assert aw.esito(diverse={"squadra"}, dichiarate=None, problemi=set()) == 1           # senza riga: nessuna è dichiarata
+    assert aw.esito(diverse={"squadra"}, dichiarate=set(), problemi=set()) == 1          # «nessuno»
     assert aw.esito(diverse=set(), dichiarate=set(), problemi={"scheda"}) == 2        # scena che non si apre o instabile
-    assert aw.esito(diverse={"oggi"}, dichiarate=set(), problemi={"scheda"}) == 2
+    assert aw.esito(diverse={"squadra"}, dichiarate=set(), problemi={"scheda"}) == 2
 
 
 def test_il_riassunto_dice_cosa_fare(aw):
-    testo = aw.riassunto(diverse={"oggi": ["oggi-390-chiaro"], "rosa": ["rosa-1440-scuro"]}, dichiarate={"oggi"},
+    testo = aw.riassunto(diverse={"squadra": ["squadra-390-chiaro"], "rosa": ["rosa-1440-scuro"]}, dichiarate={"squadra"},
                          problemi={"scheda": "non si apre nella PR: Timeout"}, mancanti=["/api/novita"], instabili={})
     assert "rosa" in testo and "rosa-1440-scuro" in testo
     assert "Aspetto:" in testo                                    # come si dichiara
@@ -178,12 +178,12 @@ def test_il_riassunto_dice_cosa_fare(aw):
 def test_il_riassunto_scrive_i_pixel_di_ogni_scena_anche_sotto_soglia(aw):
     """Con lo 0,1% della pagina un numero o una parola cambiati passano: i pixel di ogni scena servono a scegliere la soglia
     giusta prima che il controllo diventi bloccante."""
-    pixel = {"oggi": aw.Differenza(1234, 0.0005, False), "rosa": aw.Differenza(0, 0.0, False),
+    pixel = {"squadra": aw.Differenza(1234, 0.0005, False), "rosa": aw.Differenza(0, 0.0, False),
              "scheda": aw.Differenza(7, 0.00002, True)}
     testo = aw.riassunto(diverse={}, dichiarate=None, problemi={}, mancanti=[], instabili={}, pixel=pixel)
     righe = {r.split("|")[1].strip(" `"): r for r in testo.splitlines() if r.startswith("| `")}
-    assert set(righe) == {"oggi", "rosa", "scheda"}
-    assert "1234" in righe["oggi"] and "0,050%" in righe["oggi"]
+    assert set(righe) == {"squadra", "rosa", "scheda"}
+    assert "1234" in righe["squadra"] and "0,050%" in righe["squadra"]
     assert "| 0 |" in righe["rosa"]
     assert "misura" in righe["scheda"]
 
@@ -227,7 +227,7 @@ def test_server_finto_risponde_dalla_registrazione(aw, tmp_path):
         assert _chiedi(s.indirizzo, "/api/stato", "POST")[0] == 200                              # nessuna scrittura: stessa risposta
         stato, _, corpo = _chiedi(s.indirizzo, "/api/novita?da=1")                               # mancante
         assert stato == 404 and json.loads(corpo) == {"detail": "rotta non registrata"}
-        stato, tipo, corpo = _chiedi(s.indirizzo, "/?vista=oggi")
+        stato, tipo, corpo = _chiedi(s.indirizzo, "/?vista=squadra")
         assert stato == 200 and "text/html" in tipo and "<title>prova</title>" in corpo
         stato, tipo, _ = _chiedi(s.indirizzo, "/app.js?v=3")
         assert stato == 200 and "javascript" in tipo                                              # mai text/plain (Windows)
@@ -264,9 +264,9 @@ def test_server_finto_scenario_senza_risposte_e_errore(aw, tmp_path):
 
 # ------------------------------------------------------------------ scene
 def test_elenco_delle_scene(aw):
-    """Le schermate da coprire: le quattro schede, la rosa, la scheda di un giocatore, diario, regole, impostazioni (Confronto e
-    Scambi non ci sono più, #615)."""
-    assert list(aw.SCENE) == ["oggi", "formazione", "squadra", "rosa", "scheda", "altro", "diario", "regole", "impostazioni"]
+    """Le schermate da coprire: le tre schede, la rosa, la scheda di un giocatore, diario, regole, impostazioni (Confronto e
+    Scambi non ci sono più, #615; Oggi e Formazione sono una schermata sola, #616)."""
+    assert list(aw.SCENE) == ["formazione", "squadra", "rosa", "scheda", "altro", "diario", "regole", "impostazioni"]
     for nome, scena in aw.SCENE.items():
         assert scena.indirizzo.startswith("/?vista="), nome
     assert aw.LARGHEZZE == (390, 1440) and aw.TEMI == ("chiaro", "scuro")
@@ -300,8 +300,8 @@ def test_scene_instabili_hanno_un_motivo(aw):
 
 
 def test_argomenti(aw, tmp_path):
-    a = aw.leggi_argomenti(["--base", "b", "--pr", "p", "--uscita", str(tmp_path), "--scene", "oggi,rosa"])
-    assert a.scene == ["oggi", "rosa"] and a.larghezze == [390, 1440] and a.temi == ["chiaro", "scuro"]
+    a = aw.leggi_argomenti(["--base", "b", "--pr", "p", "--uscita", str(tmp_path), "--scene", "squadra,rosa"])
+    assert a.scene == ["squadra", "rosa"] and a.larghezze == [390, 1440] and a.temi == ["chiaro", "scuro"]
     with pytest.raises(SystemExit):
         aw.leggi_argomenti(["--base", "b", "--pr", "p", "--uscita", str(tmp_path), "--scene", "inventata"])
 
@@ -347,7 +347,7 @@ def _copia(tmp_path: Path) -> Path:
     return tmp_path / "copia"
 
 
-def _lancia(aw, tmp_path, monkeypatch, corpo: str | None, scene="oggi,rosa"):
+def _lancia(aw, tmp_path, monkeypatch, corpo: str | None, scene="squadra,rosa"):
     copia = _copia(tmp_path)
     if corpo is None:
         monkeypatch.delenv("CORPO", raising=False)
@@ -364,24 +364,24 @@ def _lancia(aw, tmp_path, monkeypatch, corpo: str | None, scene="oggi,rosa"):
 
 def test_flusso_scena_cambiata_non_dichiarata(aw, tmp_path, monkeypatch, capsys):
     chiamate = []
-    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "oggi"): GRANDE}, chiamate=chiamate))
+    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "squadra"): GRANDE}, chiamate=chiamate))
     codice, uscita, riassunto_corsa = _lancia(aw, tmp_path, monkeypatch, "Aree: fanta/web\nAspetto: nessuno\n")
     assert codice == 1
-    assert chiamate == [("base", ["oggi", "rosa"]), ("pr", ["oggi", "rosa"]), ("base-2", ["oggi"])]   # rifatta su main
+    assert chiamate == [("base", ["squadra", "rosa"]), ("pr", ["squadra", "rosa"]), ("base-2", ["squadra"])]   # rifatta su main
     assert sorted(p.name for p in (uscita / "diverse").iterdir()) == [
-        "oggi-390-chiaro-differenza.png", "oggi-390-chiaro-main.png", "oggi-390-chiaro-pr.png"]
+        "squadra-390-chiaro-differenza.png", "squadra-390-chiaro-main.png", "squadra-390-chiaro-pr.png"]
     testo = (uscita / "riassunto.md").read_text(encoding="utf-8")
-    assert "`oggi`: diversa da main, **non dichiarata**" in testo and "`Aspetto: oggi`" in testo
+    assert "`squadra`: diversa da main, **non dichiarata**" in testo and "`Aspetto: squadra`" in testo
     assert riassunto_corsa.read_text(encoding="utf-8") == testo                  # anche nel riassunto della corsa
     assert "::warning title=Aspetto della web::scene diverse da main non dichiarate" in capsys.readouterr().out
 
 
 def test_flusso_scena_dichiarata_anche_su_una_riga_piu_sotto(aw, tmp_path, monkeypatch):
-    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "oggi"): GRANDE}))
-    corpo = "Aree: fanta/web\n\nAspetto: <!-- commento del modello -->\n\n## Cosa cambia\nAspetto: oggi\n"
+    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "squadra"): GRANDE}))
+    corpo = "Aree: fanta/web\n\nAspetto: <!-- commento del modello -->\n\n## Cosa cambia\nAspetto: squadra\n"
     codice, uscita, _ = _lancia(aw, tmp_path, monkeypatch, corpo)
     assert codice == 0
-    assert "`oggi`: diversa da main, dichiarata" in (uscita / "riassunto.md").read_text(encoding="utf-8")
+    assert "`squadra`: diversa da main, dichiarata" in (uscita / "riassunto.md").read_text(encoding="utf-8")
 
 
 def test_flusso_main_che_cambia_da_sola_e_instabile(aw, tmp_path, monkeypatch):
@@ -403,14 +403,14 @@ def test_flusso_scena_che_non_si_apre(aw, tmp_path, monkeypatch):
 
 def test_flusso_pochi_pixel_passano_ma_si_vedono(aw, tmp_path, monkeypatch):
     chiamate = []
-    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "oggi"): PICCOLA}, chiamate=chiamate))
+    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "squadra"): PICCOLA}, chiamate=chiamate))
     codice, uscita, _ = _lancia(aw, tmp_path, monkeypatch, None)
     assert codice == 0 and [c[0] for c in chiamate] == ["base", "pr"]           # niente seconda foto su main
     assert not (uscita / "diverse").exists()
     testo = (uscita / "riassunto.md").read_text(encoding="utf-8")
     assert "Nessuna scena diversa da main" in testo
     righe = {r.split("|")[1].strip(" `"): r for r in testo.splitlines() if r.startswith("| `")}
-    assert "| 3 |" in righe["oggi"] and "| 0 |" in righe["rosa"]
+    assert "| 3 |" in righe["squadra"] and "| 0 |" in righe["rosa"]
 
 
 # ------------------------------------------------------------------ workflow, requisiti, modello delle PR

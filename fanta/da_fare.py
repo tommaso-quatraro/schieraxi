@@ -92,7 +92,8 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
     """Titolari (quelli che l'utente ha salvato, se si possono ancora schierare, altrimenti i consigliati) fuori o in dubbio. Il cambio con il miglior sostituto
     libero («Meglio Y», «Sostituisci») si propone solo se la formazione consigliata lo fa davvero: stessa regola di `consigliato`
     del confronto (`consigli.da_schierare`). Se la consigliata tiene il titolare, la voce dice chi entra dalla panchina se lui non
-    gioca (la prima riserva dello stesso ruolo, come le sostituzioni) e porta alla formazione: Oggi e Formazione non si contraddicono.
+    gioca (la prima riserva dello stesso ruolo che gioca quasi di sicuro, o nessun nome se non c'è) e porta alla formazione: Oggi e
+    Formazione non si contraddicono.
     `formazione`: la consigliata (`consigli.formazione`) se chi chiama l'ha già calcolata (l'avviso «cambio pronto», notifiche.py)."""
     s = rose.squadra(rose.mia_squadra or "")
     prev, _, _ = consigli.previsioni(db, regole)
@@ -143,7 +144,10 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         else:                       # nessun cambio da proporre (la consigliata lo tiene, o non c'è un sostituto): niente «Sostituisci»
             riserva = None
             if not fuori and sistema and i in sistema and _sostituzioni_ammesse(regole):
-                riserva = next((schede[j] for j in panchina if libero(j, x["ruolo"])), None)
+                # la riserva che si nomina è la prima del ruolo che gioca quasi di sicuro, come `incerti` della Formazione
+                # (consigli.RISERVA_SOPRA): con la panchina in ordine di fantavoto atteso la prima può essere uno che gioca poco
+                riserva = next((schede[j] for j in panchina
+                                if libero(j, x["ruolo"]) and schede[j]["p_voto"] > consigli.RISERVA_SOPRA), None)
             if riserva:
                 usati.add(riserva["id"])
                 testo = F(chiave + "_tiene", nome=x["nome"], riserva=riserva["nome"], **param)

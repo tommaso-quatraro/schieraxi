@@ -2,7 +2,7 @@ r"""Foto e axe della web app, senza finestra: per vedere le schermate prima e do
 
 Uso (dalla radice del repository; il Python è quello di un venv con Playwright, vedi LEGGIMI.md):
     <venv-playwright>\Scripts\python.exe prove\foto_web\foto.py [indirizzo] <cartella>
-        [--scene oggi,formazione] [--larghezze 390,768,1024,1440] [--temi chiaro,scuro] [--lingua it|en]
+        [--scene formazione,scheda] [--larghezze 390,768,1024,1440] [--temi chiaro,scuro] [--lingua it|en]
         [--accesso] [--solo-misure]
 
 Senza indirizzo avvia da solo un server di prova: copia di `fanta/` di questa cartella, lega d'esempio, copia
@@ -45,8 +45,8 @@ REGOLE_AXE = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]
 # Ogni scena è una lista di passi (JavaScript lanciato nella pagina); dopo ogni passo si aspetta che il caricamento finisca.
 # I nomi delle funzioni sono quelli di fanta/web/app.js: se cambiano, la scena dà errore nel riepilogo invece di una foto sbagliata.
 PRIMO_GIOCATORE = "Number(document.querySelector('#contenuto [data-giocatore]').dataset.giocatore)"
+# Dal 12/11/2026 (#616) Oggi e Formazione sono una schermata sola: la scena «oggi» non c'è più.
 SCENE: dict[str, list[str]] = {
-    "oggi": ["vai('oggi')"],
     "formazione": ["vai('formazione')"],
     "squadra": ["vai('squadra')"],
     "rosa": ["vistaRosa()"],
@@ -57,7 +57,8 @@ SCENE: dict[str, list[str]] = {
     "impostazioni": ["vai('impostazioni')"],
 }
 PRONTA = """() => typeof vai === 'function' && !!document.querySelector('#contenuto')
-  && ![...document.querySelectorAll('#contenuto .caricamento, #foglio:not([hidden]) .caricamento')].some(e => e.getClientRects().length)
+  && !document.querySelector('#contenuto[aria-busy="true"]')
+  && ![...document.querySelectorAll('#contenuto .caricamento, #contenuto [aria-busy="true"], #foglio:not([hidden]) .caricamento, #foglio:not([hidden]) [aria-busy="true"]')].some(e => e.getClientRects().length)
   && (document.querySelector('#contenuto').children.length > 0 || !!document.querySelector('#foglio:not([hidden])'))"""
 FOGLIO_APERTO = "() => !!document.querySelector('#foglio:not([hidden]) .foglio-corpo')"
 MISURA_FOGLIO = "() => { const c = document.querySelector('#foglio .foglio-corpo'); return [c.scrollHeight, c.clientHeight]; }"
