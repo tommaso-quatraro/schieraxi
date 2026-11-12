@@ -1,5 +1,6 @@
-"""Controllo di salute dell'app (gira ogni 10 minuti sul server insieme ai promemoria): se il servizio non risponde o i dati
-non si aggiornano da troppo tempo manda un avviso sul telefono. Testi generici, un avviso per problema (poi ogni 12 ore finche' dura)."""
+"""Controllo di salute dell'app (gira ogni 10 minuti sul server insieme ai promemoria): se il servizio non risponde, i dati
+non si aggiornano da troppo tempo o un passo dell'aggiornamento non riesce da piu' di 24 ore (con il nome del passo) manda un avviso
+sul telefono. Testi generici, un avviso per problema (poi ogni 12 ore finche' dura; per un passo fermo ogni 24 ore)."""
 from __future__ import annotations
 
 import json
@@ -11,12 +12,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
+from . import archivio
 from .notifiche import _json, invia
 from .percorsi import RADICE, scrivi_sicuro
 
 FILE_STATO = RADICE / "dati" / "salute.json"
 DATI_VECCHI = timedelta(hours=30)         # l'aggiornamento gira 4 volte al giorno: 30 ore senza novita' sono un problema
 RIPETI = timedelta(hours=12)
+RIPETI_PASSO = timedelta(hours=24)        # un passo fermo (archivio.passi_fermi) si ricorda una volta al giorno finche' dura
 ERRORI_GRAVI = 3                          # passi dell'aggiornamento falliti nello stesso giro (su sei) oltre i quali si avvisa
 
 
@@ -68,13 +71,16 @@ def controlla(db: sqlite3.Connection, adesso: datetime | None = None, file_stato
         n_errori = 0
     if n_errori >= ERRORI_GRAVI:
         problemi["errori"] = f"L'ultimo aggiornamento dei dati ha avuto {n_errori} errori: controlla in Lega > Dati > Stato dei dati."
+    for p in archivio.passi_fermi(db, adesso):      # un passo solo che non riesce (per esempio una fonte ferma) si dice per nome
+        problemi[f"passo:{p['passo']}"] = (f"Il passo «{p['passo']}» dell'aggiornamento dei dati non riesce da {archivio.durata_testo(p['fermo'])}: "
+                                           "controlla in Lega > Dati > Stato dei dati.")
     stato = _json(file_stato)
     avvisati = stato.get("avvisati", {})
     for chiave in [k for k in avvisati if k not in problemi]:
         avvisati.pop(chiave)                   # il problema e' passato: se torna, si riavvisa subito
     for chiave, testo in problemi.items():
         prima = avvisati.get(chiave)
-        if prima and adesso - datetime.fromisoformat(prima) < RIPETI:
+        if prima and adesso - datetime.fromisoformat(prima) < (RIPETI_PASSO if chiave.startswith("passo:") else RIPETI):
             continue
         if manda("SchieraXI · attenzione", testo, 4, "warning"):
             avvisati[chiave] = adesso.isoformat(timespec="seconds")

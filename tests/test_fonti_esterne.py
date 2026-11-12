@@ -22,7 +22,7 @@ def test_predefinito_spento_per_tutte_le_fonti(spente):
 
 
 def test_il_listone_senza_fonte_e_senza_copia_locale_si_ferma(spente, monkeypatch, tmp_path):
-    monkeypatch.setattr(listone.requests, "get", lambda *a, **k: pytest.fail("rete usata"))
+    monkeypatch.setattr(listone.rete, "scarica", lambda *a, **k: pytest.fail("rete usata"))
     with pytest.raises(fonti_attive.FonteSpenta):
         listone.carica(aggiorna=True, file_cache=tmp_path / "listone.json")
 

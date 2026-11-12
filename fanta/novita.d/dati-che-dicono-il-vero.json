@@ -1,0 +1,17 @@
+{
+  "titolo": "Dati che dicono il vero: probabili vecchie riconosciute, guasti delle fonti che si vedono",
+  "voci": [
+    "Web, iPhone e iPad: il mattino dopo una giornata le probabili rimaste quelle della giornata finita non contano come nuove: niente «Probabili aggiornate» né avvisi di cambi sbagliati.",
+    "Stato dei dati: ogni fonte mostra con un nome chiaro l'ora del suo ultimo aggiornamento riuscito; la correzione di «gioca N%» usa solo le probabili lette prima delle partite.",
+    "Chi gestisce il server riceve un promemoria al giorno con il nome della fonte ferma da più di un giorno, e i voti di una giornata non vengono più sostituiti da letture incomplete."
+  ],
+  "tecnico": [
+    "aggiorna.probabili: lettura uguale per oltre il 95% (stato, percentuale, in dubbio) all'ultima lettura accettata della giornata prima, finché la giornata non ha probabili accettate = copia: solo in probabili_storia con copia = 1, mai in probabili. Colonna copia e indice probabili_storia_letture aggiunti agli archivi esistenti (PRAGMA table_info + ALTER TABLE in archivio._aggiorna_schema).",
+    "stato_dati._calibrazione_probabili: per ogni partita giocata l'ultima lettura di probabili_storia prima del calcio d'inizio, copie escluse; giornate = giornate misurabili; sotto MIN_GIORNATE (3) fattori vuoti. Stessa funzione per la pagina e per consigli/registro_nostri (taratura_e_fattori).",
+    "aggiornamenti: righe dei passi seguiti (archivio.PASSI: listone, calendario, voti, probabili, understat, dati-extra, controlli) con quando = ultimo successo e dettaglio JSON {errore, dal, ultimo}; fermo = da più di 24 ore dal primo errore di fila (archivio.passi_fermi); salute.controlla avvisa «passo:<nome>» ogni 24 ore. Dentro esegui le ore nuove si scrivono a fine giro con la riga generale: consigli._versione cambia una volta per aggiornamento (prima 8 con i passi finti). La riga aggiornamento non avanza se nessun passo dei dati riesce.",
+    "Stato dei dati: campo facoltativo etichetta in ogni voce di aggiornamenti e controlli (nome leggibile dal server). football-data: una sola riga dati-extra; il limite delle 6 ore da partite_extra.rilevato.",
+    "D'estate (stagione in archivio non ancora iniziata, o pagina della stagione precedente): probabili di partite di un'altra stagione, calendario che mostra l'altra stagione; giornata lontana più di 96 ore senza titolari, Understat senza partite e file di football-data «non trovato» prima della prima partita giocata = passo riuscito senza dati.",
+    "Understat: fonti.understat.dati_json dà RispostaNonDati (con il titolo della pagina) quando arriva HTML o testo al posto del JSON; il passo si ferma alla prima richiesta.",
+    "controlli: gol_dei_voti e gol_subiti_portieri (CONTANO_COME_ERRORI, zero su tutte le 490 partite in archivio il 12/11). aggiorna._salva_voti: una lettura con meno righe non sostituisce i voti (VotiCalati); fino a 2 righe in meno si accetta dopo 3 letture uguali di fila (tabella voti_calati, scritto nel registro), oltre resta bloccata. fantacalcio.leggi_voti_e_scarti conta le righe saltate (errore oltre 2 e il 10%). listone.carica(severo=True) nel passo dell'aggiornamento attraverso rete.scarica; le rotte dell'app usano subito la copia che c'è."
+  ]
+}
