@@ -38,7 +38,7 @@ Giornate già giocate dall'archivio (2025-26 dalla 5ª, 2026-27 dalla 2ª all'11
 
 Letture oneste: (1) i punti attesi salgono di 0,13-0,23 in tutti i casi, quelli veri non scendono in nessuno e salgono di 0,2-0,4 dove il campione basta a vederlo; sulle 97 rose della lega con le sue regole la differenza non si distingue da zero; (2) quanto pesa ogni pezzo, in punti attesi: l'ordine della panchina 0,11-0,18, il peso zero 0,02-0,04, il conto esatto 0,00-0,03; (3) il tempo di una scelta scende da 30-43 a 23-28 millisecondi (le simulazioni si fanno solo quando servono); con tutti e cinque gli stili, come li calcola l'app, resta quello di prima (da -3% a +10%).
 
-Con le probabili (giornata 12, 10 squadre): i titolari che giocano meno del 50% passano da 7 a 10 su 110, e uno gioca meno del 20% (un portiere al 19% che quando gioca vale 1,6 punti più del titolare sicuro: toglierlo costerebbe 0,32 punti attesi, sopra la soglia di 0,3 della regola #329).
+Con le probabili (giornata 12, 10 squadre): i titolari che giocano meno del 50% passano da 7 a 10 su 110, e uno gioca meno del 20% (un portiere al 19% che quando gioca vale 1,6 punti più del titolare sicuro: toglierlo costerebbe 0,32 punti attesi, appena sopra la soglia di 0,3 della regola #329; con la media simulata di prima il conto dava 0,30 scarso e la regola lo toglieva).
 
 ## Misura degli stili (backtest, 30/10/2026)
 Fatta quando l'«Equilibrata» aveva ancora il peso 0,15. Rose della lega (10 squadre) sulle giornate già giocate dall'archivio (76 casi squadra-giornata con rosa sufficiente), 100 simulazioni, punti veri a giornata con le regole della lega. Differenza dalla Equilibrata (69,29 punti), errore standard in parentesi; con un campione così piccolo sotto circa ±0,3 è rumore.
