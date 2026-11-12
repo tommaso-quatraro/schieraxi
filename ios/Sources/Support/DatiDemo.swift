@@ -793,9 +793,9 @@ private extension LegaDemo {
 
     static func novita() -> String {
         json([
-            ["versione": "1.9", "data": "2026-10-20", "titolo": "Scambi più veloci",
-             "voci": ["Gli scambi 2 contro 2 si calcolano in metà tempo.", "Il calendario mostra la difficoltà per cinque giornate.",
-                      "Corretto il conteggio dei crediti dopo uno svincolo."]],
+            ["versione": "1.9", "data": "2026-10-20", "titolo": "Formazione più chiara",
+             "voci": ["Sotto il campo una riga spiega le scelte che sembrano strane.", "La scheda del giocatore mostra le prossime cinque partite.",
+                      "Corretto il conto dei punti attesi con un titolare in dubbio."]],
             ["versione": "1.8", "data": "2026-10-05", "titolo": "Copia di sicurezza e icona",
              "voci": ["La copia di sicurezza notturna comprende anche le chiavi degli avvisi.", "Nuova icona dell'app."]],
             ["versione": "1.7", "data": "2026-09-21", "titolo": "Probabili formazioni",

@@ -160,14 +160,9 @@
     "it": "Stai vedendo la consigliata: non hai salvato una tua formazione.",
     "en": "You are seeing the recommended lineup: you have not saved one of your own."
   },
-  "formazione.stato_altra": {
-    "it": "Stai vedendo un modulo o uno stile diverso dalla consigliata: non l'hai salvato.",
-    "en": "You are seeing a formation or style other than the recommended one: not saved."
-  },
   "formazione.stato_altro_modulo": {
     "it": "Stai vedendo un altro modulo, non quello consigliato: non l'hai salvato.",
-    "en": "You are seeing a formation other than the recommended one: not saved.",
-    "nota": "solo web, dal 12/11/2026 (#615): la web ha un solo stile; l'iPhone usa ancora formazione.stato_altra"
+    "en": "You are seeing a formation other than the recommended one: not saved."
   },
   "formazione.stato_salvata": {
     "it": "La tua formazione è salvata",

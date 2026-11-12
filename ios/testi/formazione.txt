@@ -9,7 +9,7 @@ formazione.modulo_scelto
 formazione.alle
 formazione.giorno_alle
 formazione.stato_consigliata
-formazione.stato_altra
+formazione.stato_altro_modulo
 formazione.stato_salvata
 formazione.stato_salvata_quando
 formazione.stato_modificata

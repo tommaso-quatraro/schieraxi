@@ -5,6 +5,6 @@
   "iPhone: i widget sono tre, Prossima giornata, Formazione e Da controllare. I collegamenti alle pagine tolte aprono la schermata più vicina che resta."
  ],
  "tecnico": [
-  "Catalogo dei testi (fanta/testi, testi.js rigenerato): tolte le 120 chiavi che non usa più nessuno, né la web né l'iPhone; via fanta/testi/live.json, rimasto vuoto.",
+  "Catalogo dei testi (fanta/testi, testi.js rigenerato): tolte le 122 chiavi che non usa più nessuno, né la web né l'iPhone; via fanta/testi/live.json, rimasto vuoto. L'iPhone usa formazione.stato_altro_modulo, come la web.",
   "ios/: tolti Presentation/Scambi e Presentation/Confronto, le pagine di Mercato, Partite del turno, Movimenti e Crediti, gli otto widget fuori dal pacchetto con i loro pezzi, i modelli e i test relativi; la ricerca resta in Presentation/Mercato. Formazione usa il solo livello equilibrato di `livelli`. Nessuna rotta e nessun campo del server cambiano."
  ]}

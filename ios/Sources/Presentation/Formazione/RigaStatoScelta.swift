@@ -2,7 +2,7 @@ import SwiftUI
 
 /// La riga di stato della tua scelta in Formazione, come `rigaStatoScelta` di `fanta/web/app.js`: il segno (simbolo e colore),
 /// la frase della web e i pulsanti di quello stato (`StatoScelta.pulsanti`, #463): «Salva questa», «Salva le modifiche» o «Salva
-/// come mia scelta», «Annulla modifiche», «Torna alla consigliata». «Modifica a mano» sta accanto alla frase dello stile.
+/// come mia scelta», «Annulla modifiche», «Torna alla consigliata». «Modifica a mano» sta sopra i moduli.
 struct RigaStatoScelta: View {
     let stato: StatoScelta
     /// Un salvataggio è in corso: i pulsanti che salvano e «Annulla modifiche» sono spenti (niente doppio salvataggio).
@@ -97,7 +97,7 @@ struct RigaStatoScelta: View {
         switch stato {
         case .nonValida: return "Toglie la formazione salvata che non vale più e mostra la consigliata"
         case .salvata, .modificata: return "Toglie la formazione che hai salvato e rimette la consigliata"
-        default: return "Rimette lo stile e il modulo consigliati"
+        default: return "Rimette il modulo consigliato"
         }
     }
 }

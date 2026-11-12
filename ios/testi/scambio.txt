@@ -1,9 +1,6 @@
 # Testi della web (fanta/testi/scambio.json) che l'iPhone mostra: una chiave per riga.
 # Dopo una modifica: python script/testi.py --scrivi
 
-# Scambi: i tre modi e «Trova per me» (TestiScambi)
-scambio.costruisci
-
 # Squadre e rose: stemma, maglia e la rosa di una squadra (ParoleSquadre, RigaRosa)
 scambio.stemma
 scambio.maglia
@@ -25,7 +22,7 @@ scambio.senza_ruolo
 scambio.rose_aggiornate
 scambio.non_gioca
 
-# Movimenti e storico (DifferenzeView)
+# Cosa è cambiato dopo un'importazione delle rose (DifferenzeView)
 scambio.nessuna_differenza_rispetto
 scambio.scambio_b
 scambio.passaggio_b

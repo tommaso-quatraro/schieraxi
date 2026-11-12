@@ -37,6 +37,8 @@ enum OpzioniTolte {
     /// L'archivio degli scambi analizzati e «legenda del campo già vista»: le loro schermate non ci sono più.
     static let chiaviFunzioni = ["archivioScambi", "legendaCampoVista"]
     static let chiavi = ["accento", "densita", "sezioneAvvio"] + chiaviFunzioni
+    /// Il segno che le voci dei giocatori seguiti sono già state tolte dalla ricerca di iOS (Spotlight): si fa una volta sola.
+    static let chiaveSpotlightSvuotato = "spotlightSeguitiSvuotato"
 
     static func pulisci(_ memoria: UserDefaults = .standard) {
         for chiave in chiavi where memoria.object(forKey: chiave) != nil {

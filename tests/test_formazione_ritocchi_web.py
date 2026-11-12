@@ -121,7 +121,7 @@ def test_altro_modulo_o_stile_non_e_la_consigliata():
     r = _node(funz + f"console.log(JSON.stringify([statoScelta({undici}, null, false, false, true), statoScelta({undici}, null, true, false, true),"
               f"statoScelta({undici}, {{titolari: {undici}}}, false, false, true), statoScelta({undici}, null, false)]))")
     assert r == ["altra", "mano", "salvata", "consigliata"]
-    assert TESTI.count('"formazione.stato_altra"') == 2 and 'altra: b("salva-questa"' in APP
+    assert TESTI.count('"formazione.stato_altro_modulo"') == 2 and 'altra: b("salva-questa"' in APP
 
 
 def test_le_risposte_ridisegnano_la_vista_piu_recente():

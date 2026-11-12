@@ -12,7 +12,13 @@ struct SchieraxiApp: App {
     init() {
         OpzioniTolte.pulisci()   // colore, densità e sezione iniziale non si scelgono più: si torna ai valori normali
         // I giocatori seguiti non ci sono più (#634): via dalla ricerca di iOS (Spotlight) le voci messe da una versione di prima.
-        if !Demo.attivo, !Ambiente.ospiteDeiTest { CSSearchableIndex.default().deleteAllSearchableItems { _ in } }
+        // Una volta sola: quando riesce resta un segno sul telefono e agli avvii dopo non si rifà.
+        let segno = OpzioniTolte.chiaveSpotlightSvuotato
+        if !Demo.attivo, !Ambiente.ospiteDeiTest, !UserDefaults.standard.bool(forKey: segno) {
+            CSSearchableIndex.default().deleteAllSearchableItems { errore in
+                if errore == nil { UserDefaults.standard.set(true, forKey: segno) }
+            }
+        }
         Suggerimenti.configura()
     }
 

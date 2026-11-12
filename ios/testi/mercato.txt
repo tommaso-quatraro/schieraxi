@@ -1,11 +1,10 @@
-# Testi della web (fanta/testi/mercato.json) che l'iPhone mostra nelle pagine di Squadra, Altro e Scambi.
+# Testi della web (fanta/testi/mercato.json) che l'iPhone mostra nelle pagine di Squadra e Altro e nella ricerca.
 # Una chiave per riga. Dopo una modifica: python script/testi.py --scrivi
-# (Le chiavi mercato.* di Confronto, scheda del giocatore e widget le elenca chi cura quelle parti.)
 
-# Cambi consigliati ed Elenco dei giocatori
+# Ricerca di un giocatore: chi non è nell'elenco della giornata (DatiRigaElenco)
 mercato.non_gioca
 
-# Scambi e Diario
+# Diario
 mercato.come_legge
 mercato.annulla
 

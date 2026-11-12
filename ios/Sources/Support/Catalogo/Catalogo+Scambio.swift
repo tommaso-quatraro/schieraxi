@@ -3,9 +3,6 @@
 
 extension Catalogo {
     enum Scambio {
-        /// `scambio.costruisci`
-        static let costruisci = "Costruisci"
-
         /// `scambio.stemma`
         static let stemma = "Stemma"
 

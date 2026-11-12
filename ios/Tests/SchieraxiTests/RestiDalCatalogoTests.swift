@@ -64,7 +64,7 @@ struct RestiDalCatalogoTests {
                    "Catalogo.Regole.rvAiutoVotoUfficio"]),
         Caso(file: "Sources/Domain/StatoScelta.swift",
              testi: [
-                Catalogo.Formazione.statoConsigliata, Catalogo.Formazione.statoAltra, Catalogo.Formazione.statoMano,
+                Catalogo.Formazione.statoConsigliata, Catalogo.Formazione.statoAltroModulo, Catalogo.Formazione.statoMano,
                 Catalogo.Formazione.statoSalvata, Catalogo.Formazione.statoModificata, Catalogo.Formazione.statoNonValida,
                 Catalogo.Formazione.statoChiusa, Catalogo.Formazione.statoChiusaTua, Catalogo.Formazione.statoChiusaNonValida,
                 Catalogo.Tempo.giorno0, Catalogo.Tempo.giorno1, Catalogo.Tempo.giorno2, Catalogo.Tempo.giorno3,

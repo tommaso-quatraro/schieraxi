@@ -25,8 +25,8 @@ extension Catalogo {
         /// `formazione.stato_consigliata`
         static let statoConsigliata = "Stai vedendo la consigliata: non hai salvato una tua formazione."
 
-        /// `formazione.stato_altra`
-        static let statoAltra = "Stai vedendo un modulo o uno stile diverso dalla consigliata: non l'hai salvato."
+        /// `formazione.stato_altro_modulo`
+        static let statoAltroModulo = "Stai vedendo un altro modulo, non quello consigliato: non l'hai salvato."
 
         /// `formazione.stato_salvata`
         static let statoSalvata = "La tua formazione è salvata"
