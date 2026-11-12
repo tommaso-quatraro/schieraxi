@@ -8,8 +8,10 @@
 Mai l'orologio vero: tempi finti o attese brevi. Cartelle temporanee e dati inventati."""
 import io
 import itertools
+import json
 import subprocess
 import threading
+from pathlib import Path
 
 import openpyxl
 import pytest
@@ -20,6 +22,8 @@ from test_limiti import ambiente, nuovo_utente  # noqa: F401 (fixture e utente d
 
 TESTO_LUNGO = f"Il testo è troppo lungo (massimo {importa_sicuro.MAX_TESTO // 1000} mila caratteri): incolla solo le rose"
 GRANDE_APERTO = "Il file Excel è troppo grande una volta aperto: carica solo il foglio con le rose"
+TEMPO_FINITO = ("Il riconoscimento dei giocatori ha richiesto troppo tempo: riprova fra qualche minuto e, se succede ancora, "
+                "lascia solo le rose")
 
 
 def excel(cartella, fogli: dict[str, list[list]], nome="rose.xlsx"):
@@ -131,10 +135,12 @@ def test_riconoscimento_oltre_il_tempo_si_ferma_con_messaggio(ambiente, tmp_path
         return vera(self, *a, **k)
     monkeypatch.setattr(nomi.Indice, "cerca", conta)
     r = a.post("/api/rose/testo", json={"testo": rose_lunghe()})
-    assert r.status_code == 400 and r.json()["detail"] == TESTO_LUNGO
+    assert r.status_code == 400 and r.json()["detail"] == TEMPO_FINITO   # un testo corto: non «troppo lungo» (#541)
     assert len(cercati) <= limiti.MAX_SECONDI_RICONOSCIMENTO + 2          # si è fermato: 60 nomi non li ha cercati tutti
     r = a.post("/api/rose/anteprima", json={"testo": rose_lunghe()})
-    assert r.status_code == 400 and r.json()["detail"] == TESTO_LUNGO
+    assert r.status_code == 400 and r.json()["detail"] == TEMPO_FINITO
+    r = a.post("/api/rose/file", files={"file": ("rose.csv", rose_lunghe().encode(), "text/csv")})
+    assert r.status_code == 400 and r.json()["detail"] == TEMPO_FINITO   # un file di testo caricato: niente «incolla»
     foglio = [["Mia"]] + [["D", "Bastoni", 5]] * 60
     r = a.post("/api/rose/file", files={"file": ("rose.xlsx", excel(tmp_path, {"Rose": foglio}).read_bytes(), "application/octet-stream")})
     assert r.status_code == 400 and r.json()["detail"] == importa_sicuro.PESANTE
@@ -150,9 +156,18 @@ def test_per_conto_di_un_excel_oltre_il_tempo_ha_il_messaggio_dell_excel(ambient
     with pytest.raises(ValueError) as e:
         server.importa_per_conto_di(id_a, griglie, False, None)
     assert str(e.value) == importa_sicuro.PESANTE
-    with pytest.raises(ValueError) as e:                                  # il testo resta col messaggio del testo
+    with pytest.raises(ValueError) as e:                                  # il testo ha il messaggio del tempo finito
         server.importa_per_conto_di(id_a, [("testo", rose.griglia_da_testo(rose_lunghe()))], False, None)
-    assert str(e.value) == TESTO_LUNGO
+    assert str(e.value) == TEMPO_FINITO
+
+
+def test_il_messaggio_del_tempo_finito_e_nel_catalogo():
+    """Web e iPhone mostrano lo stesso testo, quello del server; la web lo traduce con la sua chiave «err.*» del catalogo (#541)."""
+    catalogo = json.loads((Path(server.__file__).parent / "testi" / "err.json").read_text(encoding="utf-8"))
+    voce = catalogo["err.riconoscimento_lungo"]
+    assert voce["it"] == TEMPO_FINITO
+    assert voce["en"] == ("Recognising the players took too long: try again in a few minutes and, if it happens again, "
+                          "keep only the rosters")
 
 
 def test_senza_account_nessun_tempo_massimo(monkeypatch):

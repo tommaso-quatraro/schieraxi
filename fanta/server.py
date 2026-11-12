@@ -1817,14 +1817,14 @@ class _Riconosciute(NamedTuple):
 def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
     """I giocatori delle celle cercati nel listone: la parte lenta dell'importazione (e dell'anteprima). Si fa PRIMA di prendere
     il blocco delle rose, così le scritture degli altri non la aspettano. Con gli account ha un tempo massimo
-    (`limiti.MAX_SECONDI_RICONOSCIMENTO`): oltre si ferma, con il messaggio dei contenuti troppo pesanti (`excel`: quello dell'Excel)."""
+    (`limiti.MAX_SECONDI_RICONOSCIMENTO`): oltre si ferma con `importa_sicuro.riconoscimento_lungo` (`excel`: quello dell'Excel)."""
     calciatori, _ = listone.carica()
     avvisi: list[str] = []
     indice = nomi.Indice(calciatori, listone.nomi_completi(), scaduto=limiti.tempo_riconoscimento(ctx))
     try:
         lette = rose.estrai(griglie, indice, _regole(ctx).rosa, avvisi)
     except nomi.TempoScaduto:
-        raise ValueError(importa_sicuro.troppo_pesante(excel)) from None
+        raise ValueError(importa_sicuro.riconoscimento_lungo(excel)) from None
     if not lette:
         raise ValueError(rose.NESSUNA_ROSA)
     return _Riconosciute(lette, avvisi, calciatori)

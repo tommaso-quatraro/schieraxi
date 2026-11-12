@@ -75,9 +75,10 @@ Sigle usate qui:
       lo stesso tetto di lavoro per ogni formato. Un Excel si legge al massimo per 90.000 celle in tutto, tutti i fogli insieme
       (come il testo: 1500 righe × 60 colonne; in ogni riga contano le celle fino all'ultima piena): oltre, `400` «Il file Excel
       è troppo grande una volta aperto: carica solo il foglio con le rose». Il riconoscimento dei giocatori dura al massimo
-      20 secondi: oltre si ferma con `400` e il messaggio di sempre per i contenuti troppo pesanti («Il file Excel è troppo
-      pesante da leggere: carica solo il foglio con le rose» per un Excel, «Il testo è troppo lungo (massimo 200 mila
-      caratteri): incolla solo le rose» per testo e CSV); l'importazione resta contata come gli altri rifiuti dopo la lettura.
+      20 secondi: oltre si ferma con `400`: per un Excel «Il file Excel è troppo pesante da leggere: carica solo il foglio con
+      le rose», per testo e CSV (dal 12/11/2026) «Il riconoscimento dei giocatori ha richiesto troppo tempo: riprova fra
+      qualche minuto e, se succede ancora, lascia solo le rose» (anche un testo corto può arrivarci con il server carico);
+      l'importazione resta contata come gli altri rifiuti dopo la lettura.
       Mentre un'importazione legge e riconosce, le scritture degli altri utenti non la aspettano. I numeri si cambiano sul
       server con `FANTA_MAX_CELLE_IMPORTAZIONE` e `FANTA_MAX_SECONDI_RICONOSCIMENTO`. Nessun campo nuovo nelle risposte.
     - avvisi (dal 8/11/2026): la prova degli avvisi (`POST /api/avvisi/prova`) vale al massimo 5 volte all'ora per utente (solo

@@ -41,6 +41,8 @@ PROIBITE = ("vbaproject", "macros/", "activex", "embeddings/", "externallinks/",
 ERRORE_FILE = "File Excel non leggibile: è rovinato, protetto da password o non è un vero file .xlsx"
 PESANTE = "Il file Excel è troppo pesante da leggere: carica solo il foglio con le rose"
 GRANDE_APERTO = "Il file Excel è troppo grande una volta aperto: carica solo il foglio con le rose"
+RICONOSCIMENTO_LUNGO = ("Il riconoscimento dei giocatori ha richiesto troppo tempo: riprova fra qualche minuto e, se succede "
+                        "ancora, lascia solo le rose")      # testo e CSV oltre il tempo massimo: anche corti, col server carico
 PEZZO_USCITA = 64 * 1024                 # byte letti alla volta dall'uscita del processo che legge l'Excel
 TROPPE_CELLE = 5                         # uscita del processo figlio: oltre il tetto di celle (vedi _excel_figlio.py)
 _ENTITA = re.compile(rb"<!(?:DOCTYPE|ENTITY)", re.IGNORECASE)
@@ -191,10 +193,11 @@ def testo_troppo_lungo() -> str:
     return f"Il testo è troppo lungo (massimo {MAX_TESTO // 1000} mila caratteri): incolla solo le rose"
 
 
-def troppo_pesante(excel: bool) -> str:
-    """Il messaggio per un contenuto che costa troppo lavoro (per esempio un riconoscimento oltre il tempo massimo): quello dei
-    file Excel troppo pesanti o quello del testo troppo lungo. Messaggi di sempre: i client li traducono già."""
-    return PESANTE if excel else testo_troppo_lungo()
+def riconoscimento_lungo(excel: bool) -> str:
+    """Il messaggio per un riconoscimento dei giocatori oltre il tempo massimo: per un Excel quello dei file troppo pesanti
+    (carica solo il foglio con le rose); per testo e CSV uno apposta, perché anche un testo corto può arrivarci con il server
+    carico e «troppo lungo» non c'entrerebbe (#541)."""
+    return PESANTE if excel else RICONOSCIMENTO_LUNGO
 
 
 def controlla_testo(testo: str) -> None:
