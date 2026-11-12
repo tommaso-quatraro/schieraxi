@@ -1,0 +1,14 @@
+{
+  "titolo": "Ripristino di una copia: controlli sui dati",
+  "voci": [
+    "Il ripristino di una copia dei dati controlla meglio quello che contiene: se una parte non va, lo dice e non cambia niente.",
+    "L'elenco dei giocatori osservati tiene ogni giocatore una volta sola, al massimo 60."
+  ],
+  "tecnico": [
+    "backup.CONTROLLI: scelte (chiave «stagione/giornata», titolari e panchina elenchi di codici interi da 1 a osservati.ID_MASSIMO, al massimo MAX_GIOCATORI_SCELTA = limiti.MAX_GIOCATORI_SQUADRA; modulo, tipo e salvata testi brevi), movimenti (la forma di movimenti.registra, al massimo movimenti.MAX_STORICO voci, MAX_GIOCATORI_MOVIMENTO = 4 × regole.MAX_ROSA_PER_RUOLO giocatori per gruppo, `testo` al massimo MAX_TESTO_MOVIMENTO caratteri, nomi al massimo MAX_TESTO_ROSE; si scrive una copia con le sole parti che l'app scrive) e osservati (interi; doppioni e numeri fuori misura tolti come in osservati.leggi; più di osservati.MASSIMO: non valido). Ogni file al massimo MAX_PROFONDITA = 10 livelli. Errore: 400 «<file> non è valido: controlla di aver scelto il file di backup giusto», niente scritto.",
+    "backup.ripristina_esito prepara e codifica tutti i testi prima di scrivere il primo file, li scrive compatti (senza rientri) e passa il loro peso al nuovo parametro facoltativo `spazio`; POST /api/backup/ripristina lo collega a limiti.controlla_spazio (413 come prima). Le scelte ripristinate tengono le ultime scelte.MAX_GIORNATE giornate, come scelte.salva.",
+    "movimenti.registra scrive lo storico in forma compatta (prima con indent=1); la lettura non cambia.",
+    "osservati.leggi toglie i doppioni e restituisce al massimo gli ultimi MASSIMO codici; un numero non finito nel file dà un elenco vuoto.",
+    "`titolari` di POST /api/formazione/valuta e POST /api/diario/schierata: al massimo limiti.MAX_GIOCATORI_SQUADRA (40) elementi, oltre 422 con campi [\"titolari\"]. docs/openapi.json rigenerato (maxItems) e riga dei 422 in docs/API.md. Nessun campo delle risposte cambia."
+  ]
+}
