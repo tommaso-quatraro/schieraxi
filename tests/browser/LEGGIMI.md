@@ -98,7 +98,9 @@ prima della scadenza:
   e finché è in volo la pagina riletta ha i comandi spenti (un cambio fatto lì gli scriveva sopra); se quel salvataggio non
   riesce un avviso lo dice e i comandi si riaccendono; togliere la spunta non cancella una scelta
   salvata altrove; se la scelta non si legge c'è un errore con «Riprova» e niente si può cambiare; rete caduta, rifiuto
-  del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono;
+  del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono; dopo un 412 i
+  comandi restano spenti finché la pagina non ha riletto dal server (l'avviso dice prima «Sto ricaricando…», poi di rifare
+  la modifica), e una scrittura sulla scelta porta sempre If-Match, anche dopo un 412 su altri dati;
 - tastiera: dopo il menu del modulo, la spunta, «Sostituisci» e «Torna alla consigliata» il fuoco resta su un comando;
 - al massimo due decisioni, solo quelle con un'azione: prima le urgenti (fra loro prima quelle con un'azione vera), poi
   le altre; il reparto scoperto non ne prende più di una; «Usa la consigliata» prende quella nuova;

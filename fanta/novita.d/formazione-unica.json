@@ -14,6 +14,7 @@
     "Scelta salvata: `era_consigliata` resta com'era finché gli 11 sono gli stessi, anche se la consigliata nel frattempo è cambiata.",
     "`da_fare` di GET /api/oggi: nelle voci `dubbio` senza cambio la riserva nominata è la prima del ruolo che gioca quasi di sicuro, come `incerti` della Formazione.",
     "Web: `?vista=oggi` porta alla Formazione; la scena «oggi» non c'è più negli strumenti delle foto (aspetto_web.py, foto.py).",
+    "Web: dopo un 412 gli ETag ricordati non si dimenticano più (prima tutti): una modifica rifatta prima di aver riletto è rifiutata ancora, invece di partire senza If-Match. Sulla scelta la Formazione rilegge subito dal server, senza ricaricare la pagina.",
     "L'app per iPhone e i widget non cambiano: nessun campo e nessuna rotta tolti o rinominati."
   ]
 }

@@ -19,6 +19,10 @@
     "it": "Questi dati sono stati cambiati da un altro dispositivo.",
     "en": "This data was changed from another device."
   },
+  "comune.cambiato_ricarico": {
+    "it": "Questi dati sono stati cambiati da un altro dispositivo. Sto ricaricando la versione nuova…",
+    "en": "This data was changed from another device. I am reloading the new version…"
+  },
   "comune.errore_server": {
     "it": "Qualcosa non ha funzionato da parte nostra: riprova tra poco",
     "en": "Something went wrong on our side: try again shortly"

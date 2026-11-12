@@ -822,21 +822,127 @@ def test_un_salvataggio_non_riuscito_lascia_la_formazione_com_era_e_lo_dice(web,
     assert not web.errori_mostrati()
 
 
-def test_se_la_scelta_e_cambiata_su_un_altro_dispositivo_la_pagina_lo_dice_e_la_rilegge(web):
-    """412: nel frattempo un altro dispositivo ha salvato una formazione diversa. Il cambio non si fa, un avviso lo dice e la
-    pagina si ricarica con quella che c'è sul server."""
+CONFLITTO = {"detail": "Questi dati sono stati cambiati da un altro dispositivo. Ho ricaricato la versione nuova: controlla e rifai la modifica."}
+
+
+def server_con_etag(web, iniziale):
+    """Fa la parte del server vero sulla scelta della giornata, ETag compreso: ogni lettura dà l'ETag di adesso; una scrittura
+    con un If-Match vecchio è rifiutata (412), una senza If-Match è accettata, anche sopra ciò che ha salvato un altro
+    dispositivo. `srv["cambia"](scelta)`: un altro dispositivo salva; `srv["if_match"]`: l'If-Match di ogni scrittura arrivata;
+    con `srv["trattieni"]` le letture restano in volo in `srv["ferme"]` finché il test non risponde con `srv["leggi"](route)`."""
+    srv = {"scelta": iniziale, "versione": 0, "if_match": [], "trattieni": False, "ferme": []}
+    js = "application/json"
+
+    def etag() -> str:
+        return f'"v{srv["versione"]}"'
+
+    def cambia(nuova) -> None:
+        srv["scelta"], srv["versione"] = nuova, srv["versione"] + 1
+
+    def rifiutata(route) -> bool:
+        voluto = route.request.headers.get("if-match")
+        srv["if_match"].append(voluto)
+        if voluto is None or voluto == etag():
+            return False
+        route.fulfill(status=412, content_type=js, headers={"ETag": etag()}, body=json.dumps(CONFLITTO))
+        return True
+
+    def leggi(route) -> None:
+        route.fulfill(status=200, content_type=js, headers={"ETag": etag()}, body=json.dumps(srv["scelta"]))
+
+    def scelta(route):
+        if route.request.method == "DELETE":
+            if not rifiutata(route):
+                cambia(None)
+                route.fulfill(status=200, content_type=js, headers={"ETag": etag()}, body='{"ok": true}')
+        elif srv["trattieni"]:
+            srv["ferme"].append(route)
+        else:
+            leggi(route)
+
+    def valuta(route):
+        corpo = json.loads(route.request.post_data)
+        if not corpo.get("salva"):
+            return route.fallback()
+        if not rifiutata(route):
+            cambia({"titolari": corpo["titolari"], "modulo": "4-3-3", "salvata": "2026-10-27T15:10:00", "tipo": "manuale",
+                    **({"messa": True, "messa_il": "2026-10-27T15:10:00"} if corpo.get("messa") else {})})
+            route.fulfill(status=200, content_type=js, headers={"ETag": etag()}, body=json.dumps(web.registrata("/api/formazione/valuta")))
+
+    srv["cambia"], srv["leggi"] = cambia, leggi
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/scelta", scelta)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione/valuta", valuta)
+    return srv
+
+
+def _comandi_accesi(web) -> list[str]:
+    """I comandi che scrivono sulla scelta e che in questo momento si possono usare."""
+    comandi = {"menu del modulo": principale(web).get_by_label("Modulo"), "spunta": principale(web).get_by_role("checkbox", name="L'ho messa"),
+               "torna alla consigliata": principale(web).get_by_role("button", name="Torna alla consigliata")}
+    return [nome for nome, c in comandi.items() if c.count() and c.is_enabled()]
+
+
+@pytest.mark.parametrize("comando", ["la spunta", "torna alla consigliata"])
+def test_dopo_un_412_i_comandi_restano_spenti_finche_la_pagina_non_ha_riletto_e_la_modifica_rifatta_ha_if_match(web, comando):
+    """412: nel frattempo un altro dispositivo ha salvato una formazione diversa. Difetto visto in revisione: l'avviso diceva
+    «ho ricaricato» ma la ricarica arrivava 2,5 secondi dopo; intanto i comandi erano accesi, la spunta restava segnata, e una
+    modifica rifatta subito partiva senza If-Match e scriveva sopra la formazione dell'altro dispositivo. Ora i comandi si
+    spengono subito, la pagina rilegge, e solo allora l'avviso dice di rifare la modifica."""
     solo(web, "prima")
-    mem = server_con_memoria(web, None)
-    web.apri("/")
+    f = web.registrata("/api/formazione")
     altro = _altro_modulo(web)
-    mem["rifiuto"] = (412, {"detail": "Questi dati sono stati cambiati da un altro dispositivo."})
-    principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    terzo = next(m for m in f["moduli"] if m["modulo"] not in (f["modulo"], altro["modulo"]))
+    mia = {"titolari": altro["titolari"], "modulo": altro["modulo"], "salvata": "2026-10-27T09:00:00", "tipo": "manuale"}
+    srv = server_con_etag(web, mia if comando == "torna alla consigliata" else None)
+    web.apri("/")
+    srv["cambia"]({"titolari": terzo["titolari"], "modulo": terzo["modulo"], "salvata": "2026-10-27T15:09:00", "tipo": "manuale"})   # dall'altro dispositivo
+    srv["trattieni"] = True                                            # la rilettura resta in volo: si guarda la pagina nel frattempo
+    tocco = (principale(web).get_by_role("checkbox", name="L'ho messa") if comando == "la spunta"
+             else principale(web).get_by_role("button", name="Torna alla consigliata"))
+    with web.pagina.expect_request(lambda r: r.method == "GET" and urlsplit(r.url).path == "/api/scelta", timeout=10000):
+        tocco.click()
     avviso = web.pagina.get_by_role("status").filter(has_text="cambiati da un altro dispositivo")
-    _aspetta(avviso.first, testo="cambiati da un altro dispositivo")
-    mem["rifiuto"] = None
-    mem["scelta"] = {"titolari": altro["titolari"], "modulo": altro["modulo"], "salvata": "2026-10-27T15:09:00", "tipo": "manuale"}   # quella dell'altro
-    _aspetta(principale(web).locator("#stato-scelta"), testo="L'hai cambiata tu")
-    assert principale(web).get_by_label("Modulo").input_value() == altro["modulo"]
+    _aspetta(avviso.first, testo="Sto ricaricando")
+    assert "rifai la modifica" not in avviso.first.inner_text(), "l'avviso dice di rifare la modifica prima che la pagina abbia riletto"
+    assert not _comandi_accesi(web), "dopo il 412 ci sono comandi accesi prima della rilettura"
+    srv["trattieni"] = False
+    for lettura in srv["ferme"]:
+        srv["leggi"](lettura)
+    _aspetta(avviso.first, testo="controlla e rifai la modifica")
+    web.aspetta()
+    assert stato(web).startswith("L'hai cambiata tu") and principale(web).get_by_label("Modulo").input_value() == terzo["modulo"]
+    casella = principale(web).get_by_role("checkbox", name="L'ho messa")
+    assert not casella.is_checked() and casella.is_enabled()           # in pagina c'è ciò che è salvato, non il tocco non riuscito
+    assert _ha_il_fuoco(casella if comando == "la spunta" else principale(web).get_by_role("button", name="Torna alla consigliata")), "il fuoco non è tornato sul comando"
+    if comando == "la spunta":                                         # la modifica rifatta: parte con l'ETag appena riletto
+        casella.check()
+        web.aspetta()
+        assert sorted(srv["scelta"]["titolari"]) == sorted(terzo["titolari"]) and srv["scelta"]["messa"] is True
+    else:
+        tocca(web, principale(web).get_by_role("button", name="Torna alla consigliata"))
+        assert srv["scelta"] is None and stato(web) == "È la consigliata."
+    assert srv["if_match"] == ['"v0"', '"v1"'], srv["if_match"]        # la prima rifiutata, la seconda con l'ETag riletto
+    assert not web.errori_mostrati()
+
+
+def test_un_412_su_altri_dati_non_toglie_l_if_match_alle_scritture_sulla_scelta(web):
+    """Nessuna scrittura sulla scelta parte senza If-Match. Un 412 su un'altra cosa (qui la regola sul rinvio, cambiata da un
+    altro dispositivo) faceva dimenticare tutti gli ETag: fino alla ricarica, 2,5 secondi dopo, un tocco sulla spunta partiva
+    senza If-Match e avrebbe scritto sopra una formazione salvata altrove."""
+    solo(web, "prima")
+    srv = server_con_etag(web, None)
+    oggi = web.registrata("/api/oggi")
+    web.risposta("/api/oggi", {**oggi, "rinvio": {"giornata": oggi["giornata"], "stagione": "2026-27", "modo": "aspetta",
+                                                  "modi": ["aspetta", "senza_voto", "voto_ufficio"], "voto_ufficio": 6, "predefinito": "aspetta",
+                                                  "eccezione": False, "partite": [{"casa": "udinese", "trasferta": "milan", "data": None}]}})
+    web.risposta("/api/regole/rinvio", CONFLITTO, stato=412)
+    web.apri("/")
+    principale(web).get_by_label("Per questa giornata i loro giocatori").select_option("senza_voto")
+    _aspetta(web.pagina.get_by_role("status").filter(has_text="cambiati da un altro dispositivo").first, testo="cambiati da un altro dispositivo")
+    with web.pagina.expect_request(lambda r: r.method == "POST" and urlsplit(r.url).path == "/api/formazione/valuta", timeout=10000):
+        principale(web).get_by_role("checkbox", name="L'ho messa").click()
+    web.aspetta()
+    assert srv["if_match"] == ['"v0"'], srv["if_match"]
 
 
 # ---------------------------------------------------------------- tastiera: dopo un comando il fuoco non si perde
