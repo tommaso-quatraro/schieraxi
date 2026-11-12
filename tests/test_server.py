@@ -8,7 +8,8 @@ import codice_web
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch, calciatori):
+def client(dati_isolati, tmp_path, monkeypatch, calciatori):
+    """L'app di sempre su file temporanei: con `dati_isolati` anche l'archivio e la `dati/` del repository restano fuori (#582)."""
     monkeypatch.setattr(server, "FILE_REGOLE", tmp_path / "regole.json")
     monkeypatch.setattr(server, "FILE_ROSE", tmp_path / "rose.json")
     monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))

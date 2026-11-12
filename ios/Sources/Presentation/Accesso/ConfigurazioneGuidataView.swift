@@ -2,17 +2,23 @@ import SwiftUI
 
 /// La configurazione guidata («Primo avvio», come si chiama sulla web): un passo alla volta, tutti saltabili, con un riepilogo
 /// alla fine. I passi sono quelli dell'iPhone (la web ne ha altri): titolo, «Salta» e il riepilogo hanno le parole della web.
-/// Parte da sola se la lega non ha ancora le rose (e dalla lista «Da fare» di Oggi). Salta i passi già fatti.
+/// Parte da sola se la lega non ha ancora le rose e non è mai stata iniziata (con gli account, se nemmeno la vecchia procedura è
+/// finita: #600), o si riprende se era stata lasciata prima delle rose (anche sulla web), come la web (#595); si apre anche dalla
+/// lista «Da fare» di Oggi. Salta i passi già fatti.
 struct ConfigurazioneGuidataView: View {
     @StateObject private var vm: ConfigurazioneGuidataViewModel
     /// Cosa fare quando un passo porta in un'altra schermata (la guida si chiude prima).
     let vai: (AzioneGuida) -> Void
+    /// Vero se il foglio l'ha chiuso l'app e non l'utente (sessione finita o cambiata, un file arrivato da fuori): alla chiusura
+    /// i passi rimasti non diventano saltati.
+    let chiusaDallApp: @MainActor () -> Bool
     @Environment(\.dismiss) private var chiudi
     @Environment(\.accessibilityReduceMotion) private var ridotto
 
-    init(server: any ServerClient, vai: @escaping (AzioneGuida) -> Void) {
+    init(server: any ServerClient, vai: @escaping (AzioneGuida) -> Void, chiusaDallApp: @escaping @MainActor () -> Bool = { false }) {
         _vm = StateObject(wrappedValue: ConfigurazioneGuidataViewModel(server: server))
         self.vai = vai
+        self.chiusaDallApp = chiusaDallApp
     }
 
     var body: some View {
@@ -62,6 +68,10 @@ struct ConfigurazioneGuidataView: View {
             .task { await vm.carica() }
         }
         .tint(Color.verde)
+        // trascinata giù (o un tocco fuori sull'iPad) senza «Più tardi»: vale come «Più tardi», come la ✕ della web. Chiusa
+        // dall'app (fine della sessione, altro server, un file da fuori) non segna niente; si chiede nel Task, cioè dopo che chi
+        // l'ha chiusa ha finito di aggiornare lo stato.
+        .onDisappear { Task { await vm.chiusa(dallApp: chiusaDallApp()) } }
     }
 
     // MARK: un passo

@@ -3669,7 +3669,7 @@ async function vistaLega(ambito = "altro") {
   const corpi = {
     importa: () => `<div class="carta">
       <div class="debole piccolo">${t("lega.esporta_rose_excel")}</div>
-      <div class="pulsanti"><label class="bottone" for="file-rose">${t("lega.scegli_file_excel")}</label></div>
+      <div class="pulsanti"><label class="bottone" for="file-rose">${t("pav.scegli_file")}</label></div>
       <details style="margin-top:14px"><summary style="font-size:var(--t-corpo)">${t("lega.con_tocco_dal")}</summary>
         <div class="debole piccolo">${t("lega.una_volta_sola")}</div>
         <ol class="guida">
@@ -4252,13 +4252,19 @@ const CAMPO_EMAIL = (id, facoltativa) => campoAccesso(id, facoltativa ? t("acces
   facoltativa ? t("accesso.email_facoltativa_aiuto") : "");
 const CAMPO_CODICE_EMAIL = (id) => campoAccesso(id, t("accesso.codice_email"), "text",
   'autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocapitalize="none" autocorrect="off" spellcheck="false" required');
+// La riga sopra i campi di «Registrati»: con il codice d'invito già scritto (arrivato dal link) non chiede di procurarselo (#580).
+function spiegaRegistrazione(modo, conInvito) {
+  if (modo === "aperta") return "accesso.serve_email";
+  if (modo === "email") return conInvito ? "accesso.invito_inserito_email" : "accesso.serve_invito_email";
+  return conInvito ? "accesso.invito_inserito" : "accesso.serve_invito";
+}
 // `extra.sub`: passo dentro la scheda (registra: "verifica"; recupero: "codice" | "email" | "email-codice"); `extra.email`: indirizzo del passo
 function campiAccesso(scheda, extra = {}) {
   const modo = stato.registrazione || "invito";
   if (scheda === "accedi") return CAMPO_NOME() + campoAccesso("ac-pw", t("accesso.password"), "password", `autocomplete="current-password" ${CAMPO_PW}`);
   if (scheda === "registra" && extra.sub === "verifica") return `<div class="debole piccolo">${t("accesso.verifica_spiega", { email: esc(extra.email || "") })}</div>`
     + CAMPO_CODICE_EMAIL("ac-codice-email");
-  if (scheda === "registra") return `<div class="debole piccolo">${modo === "aperta" ? t("accesso.serve_email") : modo === "email" ? t("accesso.serve_invito_email") : t("accesso.serve_invito")}</div>`
+  if (scheda === "registra") return `<div class="debole piccolo">${t(spiegaRegistrazione(modo, !!invitoSalvato()))}</div>`
     + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME()
     + (stato.emailAttiva === false && modo === "invito" ? "" : CAMPO_EMAIL("ac-email", modo === "invito"))
     + campoAccesso("ac-pw", t("accesso.password_10"), "password", `autocomplete="new-password" minlength="10" ${CAMPO_PW}`)
@@ -4276,6 +4282,13 @@ function testoInvio(scheda, sub) {
   if (scheda === "registra" && sub === "verifica") return t("accesso.invio_verifica");
   if (scheda === "recupero" && sub === "email") return t("accesso.invio_recupero_email");
   return t("accesso.invio_" + scheda);
+}
+
+// Dopo un errore la password si svuota solo se è stata rifiutata (accesso o codice sbagliato: 401/403). In «Registrati» mai: la
+// password è nuova e il rifiuto riguarda altro (invito non valido o già usato, registrazioni chiuse, #580). Un errore di compilazione
+// (400, 422), una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto.
+function svuotaPassword(scheda, codiceHttp) {
+  return scheda !== "registra" && (codiceHttp === 401 || codiceHttp === 403);
 }
 
 // La pagina di accesso copre tutto: finché non si entra, dell'app non si vede (e non si carica) niente.
@@ -4348,11 +4361,13 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         mostraAccesso(t("accesso.codice_inviato"), "recupero", { sub: "email-codice", email });
         return;
       } else if (extra.sub === "email-codice") {
-        const r = await manda("/api/account/recupero-email/conferma", { email: extra.email, codice: v("#ac-codice-email").trim(), nuova: v("#ac-pw") });
+        const ep = await endpointPushQui();
+        const r = await manda("/api/account/recupero-email/conferma", { email: extra.email, codice: v("#ac-codice-email").trim(), nuova: v("#ac-pw"), ...(ep ? { endpoint_push: ep } : {}) });
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta"));
         mostraCodiceAccesso(t("accesso.password_cambiata"), r.codice_recupero, t("accesso.vai_accesso"), () => mostraAccesso(t("accesso.password_cambiata_accedi")));
       } else {
-        const r = await manda("/api/account/recupero", { nome_utente: v("#ac-nome"), codice: v("#ac-codice"), nuova: v("#ac-pw") });
+        const ep = await endpointPushQui();
+        const r = await manda("/api/account/recupero", { nome_utente: v("#ac-nome"), codice: v("#ac-codice"), nuova: v("#ac-pw"), ...(ep ? { endpoint_push: ep } : {}) });
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta"));
         mostraCodiceAccesso(t("accesso.password_cambiata"), r.codice_recupero, t("accesso.vai_accesso"), () => mostraAccesso(t("accesso.password_cambiata_accedi")));
       }
@@ -4361,9 +4376,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
       const msg = document.createElement("div");
       msg.className = "errore"; msg.textContent = (e.message || t("accesso.errore_generico")) + attesa;
       if ($("#accesso-msg")) $("#accesso-msg").replaceChildren(msg);
-      // la password si svuota solo se è stata rifiutata (accesso o codice sbagliato: 401/403); un errore di compilazione (400, 422),
-      // una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto
-      if ($("#ac-pw") && (e.status === 401 || e.status === 403)) $("#ac-pw").value = "";
+      if ($("#ac-pw") && svuotaPassword(scheda, e.status)) $("#ac-pw").value = "";
       invia.disabled = false; invia.removeAttribute("aria-busy");
     } finally { inCorso = false; }
   });
@@ -4548,6 +4561,17 @@ function mostraCodiceAccesso(titolo, codice, continua, dopo) {
   $("#codice-continua").addEventListener("click", dopo);
 }
 
+// L'indirizzo delle notifiche web di questo dispositivo, o "" se non ci sono: dopo un cambio di password o un recupero il server
+// tiene solo questo e toglie le altre iscrizioni. Non aspetta il service worker: se non c'è, non ci sono nemmeno le notifiche.
+async function endpointPushQui() {
+  try {
+    if (!("serviceWorker" in navigator && "PushManager" in window)) return "";
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+    return sub && sub.endpoint ? sub.endpoint : "";
+  } catch { return ""; }
+}
+
 async function esciDa(percorso) {
   await lasciaNotifiche();
   try { await api(percorso, { method: "POST" }); } catch { /* se la sessione era già finita, va bene lo stesso */ }
@@ -4701,9 +4725,15 @@ function collegaAccount() {
       avviso(t("social.password_aggiunta"), 6000);
       return;
     }
-    await api("/api/account/cambia-password", { method: "POST", body: JSON.stringify({ attuale: valore("#acc-attuale"), nuova: valore("#acc-nuova") }) });
+    const corpo = { attuale: valore("#acc-attuale"), nuova: valore("#acc-nuova") };
+    const ep = await endpointPushQui();
+    if (ep) corpo.endpoint_push = ep;                                     // le notifiche di questo dispositivo restano, le altre si tolgono
+    const r = await api("/api/account/cambia-password", { method: "POST", body: JSON.stringify(corpo) });
     $("#acc-attuale").value = ""; $("#acc-nuova").value = ""; $("#acc-ripeti").value = "";
-    avviso(t("account.password_cambiata_ok"), 5000);
+    if (r && r.codice_recupero) {                                         // il codice di prima non vale più: si mostra subito quello nuovo
+      mostraCodice("#acc-esito-password", r.codice_recupero);
+      avviso(t("account.password_cambiata_codice"), 6000);
+    } else avviso(t("account.password_cambiata_ok"), 5000);
   }));
   if ($("#acc-nuovo-codice")) $("#acc-nuovo-codice").addEventListener("click", () => provaCosi(t("account.nuovo_codice_no"), async () => {
     if (!valore("#acc-pw-codice")) { avviso(t("account.email_serve_password")); return; }
@@ -4857,7 +4887,8 @@ controllaAccesso().then(async entrato => {
       iniziale = "squadra";
     }
     vai(iniziale);
-    if (typeof primoAvvioSeServe === "function") primoAvvioSeServe();
+    // dal menu Condividi si apre il foglio di stemma e maglia: la guida non gli prende il posto
+    if (typeof primoAvvioSeServe === "function" && !condivisa) primoAvvioSeServe();
     if (condivisa === "1") apriStemmaMaglia(null, true);
     else if (condivisa === "no") avviso("Non ho potuto usare l'immagine condivisa: servono PNG, JPEG o WebP fino a 4 MB", 7000);
   });

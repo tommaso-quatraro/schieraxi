@@ -2,7 +2,8 @@
 // Primo avvio: UN solo percorso breve (le rose o gli esempi; la squadra con le regole standard; i tempi della lega; fatto).
 // Ogni passo si può saltare.
 // A che punto sei resta sul server (GET e PUT /api/primo-avvio, vedi docs/API.md): si riprende da un altro dispositivo e si riapre
-// quando vuoi da Impostazioni > Informazioni. Si apre da solo una volta sola, se non hai ancora le rose e non hai già chiuso la vecchia procedura.
+// quando vuoi da Impostazioni > Informazioni. Si apre da solo una volta sola, se non hai ancora le rose e non hai già chiuso la vecchia procedura;
+// lasciato a metà, si riprende alla prossima apertura dell'app (primoAvvioSeServe).
 // Usa le funzioni di app.js (api, esc, avviso, apriFoglio...), caricato dopo questo file: si chiamano solo a pagina pronta.
 const PA_PASSI = ["rose", "squadra", "tempi"];
 const PA_NOMI = { rose: t("pav.n_rose"), squadra: t("pav.n_squadra"), tempi: t("pav.n_tempi") };
@@ -26,13 +27,14 @@ async function paSalva(campi) {
 const paSegnaFatto = p => paSalva({ fatti: [...new Set([...pa.stato.fatti, p])], saltati: pa.stato.saltati.filter(x => x !== p) });
 const paSalta = p => paSalva({ saltati: [...new Set([...pa.stato.saltati, p])] });
 
+// Cose che si vedono già fatte nei dati della lega (le rose ci sono, la tua squadra è scelta).
+const paGiaFatti = () => [...((stato.squadre || []).length ? ["rose"] : []), ...(miaSquadra() ? ["squadra"] : [])];
+
 // Cose che si vedono già fatte: il passo si segna da solo.
 async function paRileva() {
   await caricaInfo();
   await caricaSquadre(true);
-  const gia = [];
-  if ((stato.squadre || []).length) gia.push("rose");
-  if (miaSquadra()) gia.push("squadra");
+  const gia = paGiaFatti();
   const nuovi = gia.filter(p => !paFatto(p));
   if (nuovi.length || !pa.stato.fatti.includes("accesso")) {
     await paSalva({ fatti: [...new Set([...pa.stato.fatti, "server", "accesso", ...gia])], saltati: pa.stato.saltati.filter(p => !gia.includes(p)) });
@@ -57,7 +59,24 @@ function paProgresso() {
   }).join("")}</ol>`;
 }
 
+// Guida chiusa senza finire (✕, Esc, tocco fuori, foglio trascinato giù, un collegamento che porta altrove): i passi rimasti
+// diventano saltati, come «Più tardi» sull'iPhone. Così non si riapre da sola: si ritrova con «Importa le rose» di Oggi (dopo le
+// rose, in «Da fare»).
+// Si guarda il foglio, non ogni modo di chiuderlo: quando si nasconde con la guida dentro.
+let paOsservatore = null;
+function paOsservaChiusura() {
+  const foglio = $("#foglio");
+  if (paOsservatore || !foglio || typeof MutationObserver !== "function") return;
+  paOsservatore = new MutationObserver(() => {
+    if (!foglio.hidden || !$("#foglio-contenuto .pa-capo")) return;
+    const rimasti = PA_PASSI.filter(p => !paFatto(p) && !paSaltato(p));
+    if (rimasti.length) paSalva({ saltati: [...new Set([...pa.stato.saltati, ...rimasti])] });
+  });
+  paOsservatore.observe(foglio, { attributes: true, attributeFilter: ["hidden"] });
+}
+
 function paDisegna() {
+  paOsservaChiusura();
   const p = pa.passo;
   if (!p) { paFine(); return; }
   const corpo = PA_SCHERMATE[p]();
@@ -97,8 +116,10 @@ const paAvvisiPossibili = () => "serviceWorker" in navigator && "PushManager" in
 
 function paFine() {
   const saltati = PA_PASSI.filter(p => !paFatto(p));
+  // senza rose «Da fare» non elenca ancora i passi saltati: si ritrovano con «Importa le rose» di Oggi
+  const dove = (stato.squadre || []).length ? "pav.hai_saltato" : "pav.hai_saltato_senza_rose";
   apriFoglio(`<h2 class="pa-capo">${t("pav.tutto_pronto_mister")}</h2>${paProgresso()}
-    <p class="debole">${saltati.length ? t("pav.hai_saltato", { nomi: saltati.map(p => esc(PA_NOMI[p])).join(", ") }) : t("pav.hai_finito")}</p>
+    <p class="debole">${saltati.length ? t(dove, { nomi: saltati.map(p => esc(PA_NOMI[p])).join(", ") }) : t("pav.hai_finito")}</p>
     <p class="debole piccolo">${t("pav.il_resto")}</p>
     <div id="pa-msg" role="alert"></div>
     <div class="pulsanti"><button class="bottone" id="pa-chiudi">${t("pav.vai_oggi")}</button>
@@ -135,6 +156,14 @@ async function paRegoleStandard() {
   } catch { /* le regole si vedono e si cambiano in Impostazioni */ }
 }
 
+// Il file scelto si dimentica (#578) con «Torna indietro» o «Annulla» dell'anteprima e quando si scrive nel riquadro del testo:
+// prima restava nel campo e «Controlla le rose» rimandava quello, non il testo incollato. Così si manda solo ciò che si vede.
+function paDimenticaFile() {
+  const campo = $("#pa-file"), nome = $("#pa-file-nome");
+  if (campo) campo.value = "";                     // un campo file accetta solo la stringa vuota: lo svuota
+  if (nome) nome.textContent = "";
+}
+
 // Le rose in due passi (anteprima.js): «Controlla le rose» mostra cosa ha capito l'app, con i dubbi e la tua squadra;
 // «Conferma e salva» salva tutto insieme. Con la tua squadra scelta qui, anche il passo «La tua squadra» è fatto.
 function paAnteprima() {
@@ -145,7 +174,7 @@ function paAnteprima() {
   $("#pa-msg").innerHTML = "";
   mostra(false);
   anteprimaRose($("#pa-anteprima"), file ? { file } : { testo }, {
-    annulla: () => { mostra(true); $("#pa-testo").focus(); },
+    annulla: () => { paDimenticaFile(); mostra(true); $("#pa-testo").focus(); },
     fatto: async (esito, mia) => {
       await paAggiornaRose();
       // una squadra basta per cominciare: solo un avviso gentile (gli scambi aspettano le rose degli altri)
@@ -187,7 +216,7 @@ const PA_SCHERMATE = {
     html: `<div id="pa-ingresso"><p class="debole">${t("pav.incolla_testo_delle")}</p>
       <textarea id="pa-testo" class="campo-testo" placeholder="${t("lega.incolla_qui_testo")}" maxlength="200000" aria-label="${t("pav.testo_delle_rose")}"></textarea>
       <p class="debole piccolo" style="margin:12px 0 0">${t("pav.oppure_file")}</p>
-      <div class="pulsanti"><button class="bottone secondario" id="pa-scegli-file" type="button">${t("lega.scegli_file_excel")}</button></div>
+      <div class="pulsanti"><button class="bottone secondario" id="pa-scegli-file" type="button">${t("pav.scegli_file")}</button></div>
       <p class="debole piccolo" id="pa-file-nome" role="status"></p>
       <input id="pa-file" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" hidden>
       ${stato.account ? `<div class="onb-blocco"><b>${t("onb.prova_con_una")}</b><p class="debole piccolo">${t("onb.quattro_squadre_inventate")}</p>
@@ -202,6 +231,7 @@ const PA_SCHERMATE = {
         $("#pa-file-nome").textContent = file ? t("pav.file_scelto", { nome: file.name }) : "";
         if (file) { try { paAnteprima(); } catch (err) { paErrore(err); } }
       });
+      $("#pa-testo").addEventListener("input", () => { if ($("#pa-file").files.length) paDimenticaFile(); });
       const e = $("#pa-esempi");
       if (e) e.addEventListener("click", async () => {
         e.disabled = true;
@@ -285,18 +315,39 @@ async function paNonRiconosciuti() {
   });
 }
 
-// All'avvio: se non hai ancora le rose e non hai mai iniziato (né il primo avvio né la vecchia procedura), parte da solo
-// (una volta: da quel momento il server ricorda che hai cominciato).
-async function primoAvvioSeServe() {
+// Il primo avvio lasciato a metà si riprende da solo SOLO nel caso di #580: l'amico ha aperto l'app (per esempio dalla Home, dopo
+// averla installata) prima di caricare le rose. Serve che l'abbia cominciato e non l'abbia chiuso e che il passo «Le rose» non sia
+// né fatto né saltato (la ✕ salta i passi rimasti: paOsservaChiusura); che le rose non ci siano lo guarda paControllaAvvio. Chi ha
+// già le rose non la rivede da sola, anche con un passo aperto (per esempio «I tempi della lega», che l'iPhone non ha): i passi
+// saltati li ritrova in «Da fare».
+function paDaRiprendere(s) {
+  return !!s && !s.chiuso && !(s.fatti || []).includes("rose") && !(s.saltati || []).includes("rose");
+}
+
+// All'apertura dell'app, una volta sola (lo chiedono sia l'avvio sia Oggi senza rose: non torna a ogni visita di Oggi), e mai
+// dall'arrivo da Condividi (lo decide l'avvio in app.js):
+// - cominciato prima di caricare le rose, anche nel browser prima di mettere l'app sulla Home o su un altro dispositivo: si
+//   riprende dalle rose, con lo stato che il server ricorda (#580);
+// - mai cominciato (né il primo avvio né la vecchia procedura) e senza rose: parte da solo; da quel momento il server ricorda che
+//   hai cominciato.
+let paControllo = null;
+function primoAvvioSeServe() {
+  if (!paControllo) paControllo = paControllaAvvio();
+  return paControllo;
+}
+async function paControllaAvvio() {
   try {
-    if ((stato.squadre || []).length) return;
+    if ((stato.squadre || []).length) return;             // con le rose la guida non parte né riprende da sola
     const r = await api("/api/primo-avvio");
-    if (r.primo_avvio) return;
+    if (r.primo_avvio) {
+      if (paDaRiprendere(r.primo_avvio)) await apriPrimoAvvio();
+      return;
+    }
     if (stato.account) {
       const o = await api("/api/onboarding");
       if (o.stato === "completato" || o.stato === "saltato") return;
     }
     await paSalva({ fatti: ["server", "accesso"] });
     apriPrimoAvvio();
-  } catch { /* il primo avvio è un di più: l'app funziona lo stesso */ }
+  } catch { paControllo = null; /* il primo avvio è un di più: l'app funziona lo stesso (si riprova alla prossima visita di Oggi) */ }
 }

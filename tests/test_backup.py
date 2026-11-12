@@ -67,20 +67,108 @@ def test_un_backup_sbagliato_non_cambia_niente(radice, brutto):
     assert not (radice / backup.COPIA_PRIMA).exists()
 
 
-def test_backup_con_regole_salvate_prima_dei_tetti_si_ripristina(radice, caplog):
-    """Le regole di un backup fatto prima dei tetti di misura (#480) si rimettono come sono: un ripristino rifiutato è peggio.
-    I tetti valgono solo per le regole scritte di nuovo dalle rotte; qui basta un avviso nel registro."""
+def _solo(nome: str, contenuto) -> dict:
+    return {"formato": backup.FORMATO, "versione": 1, "file": {nome: contenuto}}
+
+
+@pytest.mark.parametrize("impostazioni", [
+    [], {"silenzio_da": float("inf")}, {"silenzio_a": float("-inf")}, {"avviso_prima": float("nan")}, {"silenzio_da": 24},
+    {"silenzio_a": "7"}, {"silenzio_da": True}, {"avviso_prima": 45}, {"cambi": "si"}, {"riepilogo": 1}, {"lingua": "xx"},
+    {"backup_il": float("inf")}, {"primo_avvio": {"aggiornato": float("inf")}},
+])
+def test_backup_impostazioni_avvisi_non_valide_non_cambiano_niente(radice, impostazioni):
+    """Le impostazioni degli avvisi del backup passano gli stessi controlli del salvataggio normale: un valore che non si può
+    salvare dall'app (numero non finito, ora fuori dalla giornata, minuti non previsti, tipo sbagliato) è un errore e non si scrive niente."""
+    prima = backup.crea(radice)
+    with pytest.raises(ValueError, match="avvisi-impostazioni.json non è valido"):
+        backup.ripristina(_solo("dati/avvisi-impostazioni.json", impostazioni), radice)
+    dopo = backup.crea(radice)
+    assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
+
+
+def test_backup_impostazioni_avvisi_si_ripristinano_senza_le_voci_sconosciute(radice):
+    imp = {"cambi": False, "promemoria_60": True, "silenzio": True, "silenzio_da": 22, "silenzio_a": 6, "avviso_prima": 30,
+           "lingua": "en", "primo_avvio": {"fatti": ["rose"], "saltati": [], "chiuso": False, "aggiornato": "2026-11-01T10:00:00"},
+           "backup_il": "2026-11-01T10:00:00", "mostra_tutte": True}
+    backup.ripristina(_solo("dati/avvisi-impostazioni.json", imp | {"voce_sconosciuta": {"x": [1, 2]}}), radice)
+    assert json.loads((radice / "dati" / "avvisi-impostazioni.json").read_text(encoding="utf-8")) == imp
+    backup.ripristina(_solo("dati/avvisi-impostazioni.json", {}), radice)               # un file vuoto resta vuoto: valgono quelle di base
+    assert json.loads((radice / "dati" / "avvisi-impostazioni.json").read_text(encoding="utf-8")) == {}
+
+
+def _rose_con(nome="Mia", giocatore: dict | None = None, **campi) -> dict:
+    g = {"id": 1, "nome": "Rossi", "ruolo": "A", "squadra": "ROM"} | (giocatore or {})
+    return {"squadre": [{"nome": nome, "giocatori": [g]} | campi], "mia_squadra": nome}
+
+
+LUNGO = backup.MAX_TESTO_ROSE + 1
+
+
+@pytest.mark.parametrize("rose", [
+    _rose_con("S" * LUNGO),
+    _rose_con(nome_importato="I" * LUNGO),
+    _rose_con(giocatore={"nome": "G" * LUNGO}),
+    _rose_con(giocatore={"squadra": "Q" * LUNGO}),
+    _rose_con(giocatore={"ruolo": "R" * LUNGO}),
+    _rose_con(giocatore={"riconosciuto": "x" * LUNGO}),
+    _rose_con(giocatore={"avviso": "A" * (backup.MAX_AVVISO_ROSE + 1)}),
+    _rose_con() | {"mia_squadra": "M" * LUNGO},
+    _rose_con() | {"aggiornato": "2" * LUNGO},
+])
+def test_backup_rose_con_testi_troppo_lunghi_non_cambiano_niente(radice, rose):
+    """Nomi e testi delle rose del backup hanno gli stessi tetti dell'importazione (una cella: 200 caratteri)."""
+    prima = backup.crea(radice)
+    with pytest.raises(ValueError, match="rose.json non è valido"):
+        backup.ripristina(_solo("lega/rose.json", rose), radice)
+    dopo = backup.crea(radice)
+    assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
+
+
+def test_backup_rose_con_testi_al_tetto_si_ripristinano(radice):
+    n = backup.MAX_TESTO_ROSE
+    rose = _rose_con("S" * n, giocatore={"nome": "G" * n, "squadra": "Q" * n, "avviso": "A" * backup.MAX_AVVISO_ROSE},
+                     nome_importato="I" * n)
+    assert backup.ripristina(_solo("lega/rose.json", rose), radice) == ["lega/rose.json"]
+    r = lega.carica(radice / "lega" / "rose.json")
+    assert r.mia_squadra == "S" * n and r.squadra(r.mia_squadra).giocatori[0].nome == "G" * n
+
+
+def _regole_con(**campi) -> dict:
     from dataclasses import asdict
+    r = asdict(Regole())
+    for chiave, valore in campi.items():
+        if chiave == "soglie":
+            r["modificatore_difesa"]["soglie"] = valore
+        else:
+            r[chiave] = valore
+    return r
+
+
+@pytest.mark.parametrize("campi", [
+    {"nome_lega": "L" * 150},
+    {"soglie": [[6 + i / 100, 1] for i in range(25)]},
+    {"moduli": ["3-4-3" + " " * 40, "4-4-2"]},
+    {"moduli": [f"{d}-{c}-{a}" for d in range(3, 6) for c in range(2, 7) for a in range(1, 4)][:31]},
+])
+def test_backup_regole_oltre_i_tetti_danno_un_errore_chiaro_e_niente_scritto(radice, campi):
+    """Le regole del backup hanno gli stessi tetti di misura di quelle salvate dall'app (#480), anche se il backup è di prima:
+    oltre i tetti un errore che lo dice, e niente scritto (nemmeno gli altri file del backup)."""
+    prima = backup.crea(radice)
+    b = {"formato": backup.FORMATO, "versione": 1, "file": {"lega/regole.json": _regole_con(**campi), "dati/osservati.json": [1]}}
+    with pytest.raises(ValueError) as e:
+        backup.ripristina(b, radice)
+    assert str(e.value) == backup.REGOLE_OLTRE_I_TETTI and "L" * 150 not in str(e.value)       # il messaggio non ripete i valori
+    dopo = backup.crea(radice)
+    assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
+
+
+def test_backup_regole_ai_tetti_si_ripristinano(radice):
     from fanta import regole
-    vecchie = asdict(Regole()) | {"nome_lega": "L" * 150}
-    vecchie["modificatore_difesa"]["soglie"] = [[6 + i / 100, 1] for i in range(25)]
-    b = {"formato": backup.FORMATO, "versione": 1, "file": {"lega/regole.json": vecchie}}
-    with caplog.at_level("WARNING"):
-        assert backup.ripristina(b, radice) == ["lega/regole.json"]
+    b = _solo("lega/regole.json", _regole_con(nome_lega="L" * regole.MAX_NOME_LEGA,
+                                              soglie=[[6 + i / 100, 1] for i in range(regole.MAX_SOGLIE)]))
+    assert backup.ripristina(b, radice) == ["lega/regole.json"]
     r = regole.carica(radice / "lega" / "regole.json")
-    assert r.nome_lega == "L" * 150 and len(r.modificatore_difesa.soglie) == 25
-    assert any("tetti" in x.getMessage() for x in caplog.records)
-    assert "L" * 150 not in caplog.text                          # l'avviso non ripete i valori
+    assert len(r.nome_lega) == regole.MAX_NOME_LEGA and len(r.modificatore_difesa.soglie) == regole.MAX_SOGLIE
 
 
 def test_un_file_alla_volta_il_resto_resta(radice):
@@ -90,7 +178,7 @@ def test_un_file_alla_volta_il_resto_resta(radice):
     assert json.loads((radice / "dati" / "scelte.json").read_text())["2025-26/9"]
 
 
-def test_indirizzi_del_server(radice, monkeypatch):
+def test_indirizzi_del_server(dati_isolati, radice, monkeypatch):
     monkeypatch.setattr(server, "RADICE", radice)
     client = TestClient(server.app, headers={"X-Fanta": "1"})
     r = client.get("/api/backup")
@@ -103,10 +191,8 @@ def test_indirizzi_del_server(radice, monkeypatch):
     assert TestClient(server.app).post("/api/backup/ripristina", json=b).status_code == 403
 
 
-def test_il_ripristino_rifiuta_rose_con_una_stagione_strana(radice, monkeypatch):
-    from fanta import archivio
+def test_il_ripristino_rifiuta_rose_con_una_stagione_strana(dati_isolati, radice, monkeypatch):
     monkeypatch.setattr(server, "RADICE", radice)
-    monkeypatch.setattr(server, "_db", lambda: archivio.apri(radice / "archivio-finto" / "fanta.sqlite"))
     client = TestClient(server.app, headers={"X-Fanta": "1"})
     b = client.get("/api/backup").json()
     prima = backup.crea(radice)["file"]
@@ -142,7 +228,7 @@ def test_copia_serale_senza_dati_non_scrive(tmp_path):
     assert backup.salva_copia(tmp_path) is None and not (tmp_path / "dati" / "backup").exists()
 
 
-def test_il_ripristino_non_cambia_le_formazioni_delle_giornate_chiuse(radice, monkeypatch):
+def test_il_ripristino_non_cambia_le_formazioni_delle_giornate_chiuse(dati_isolati, radice, monkeypatch):
     """Revisione 2/11: dopo la scadenza un backup con `scelte.json` modificato cambiava la scelta di una giornata chiusa
     (aggirava il 409 `formazione_chiusa`). Ora le giornate chiuse restano come sul server, le altre si ripristinano."""
     from fanta import archivio, consigli

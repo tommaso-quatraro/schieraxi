@@ -39,6 +39,10 @@
     "it": "Invito non valido o scaduto",
     "en": "Invitation invalid or expired"
   },
+  "err.invito_chiedi": {
+    "it": "Invito non valido, scaduto o già usato: chiedine uno nuovo a chi te l'ha mandato",
+    "en": "Invitation not valid, expired or already used: ask the person who sent it for a new one"
+  },
   "err.codice_scaduto": {
     "it": "Codice non valido o scaduto",
     "en": "Code invalid or expired"
@@ -364,6 +368,10 @@
     "it": "Un'altra operazione sulle rose è ancora in corso: riprova fra qualche secondo",
     "en": "Another operation on the rosters is still running: try again in a few seconds"
   },
+  "err.notifiche_occupate": {
+    "it": "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo",
+    "en": "Another operation on the notifications is still running: try again in a few seconds"
+  },
   "err.scambio_altra_squadra": {
     "it": "Scegli un'altra squadra: non puoi scambiare con te stesso",
     "en": "Choose another team: you cannot trade with yourself"
@@ -455,6 +463,10 @@
   "err.testo_lungo": {
     "it": "Il testo è troppo lungo (massimo {1} mila caratteri): incolla solo le rose",
     "en": "The text is too long (at most {1} thousand characters): paste only the rosters"
+  },
+  "err.riconoscimento_lungo": {
+    "it": "Il riconoscimento dei giocatori ha richiesto troppo tempo: riprova fra qualche minuto e, se succede ancora, lascia solo le rose",
+    "en": "Recognising the players took too long: try again in a few minutes and, if it happens again, keep only the rosters"
   },
   "err.regolamento_lungo": {
     "it": "Il regolamento è troppo lungo (al massimo {1} mila caratteri): incolla solo la parte con bonus, malus, moduli e panchina.",
@@ -600,6 +612,14 @@
     "it": "Sto già analizzando i tuoi scambi: aspetta la risposta e riprova.",
     "en": "I am already analysing your trades: wait for the reply and try again."
   },
+  "err.push_in_corso": {
+    "it": "Sto già attivando le notifiche per te: aspetta la risposta e riprova.",
+    "en": "I am already turning on notifications for you: wait for the answer and try again."
+  },
+  "err.push_altri": {
+    "it": "Il server sta attivando altre notifiche: riprova tra qualche secondo.",
+    "en": "The server is turning on other notifications: try again in a few seconds."
+  },
   "err.analisi_altri": {
     "it": "Il server sta analizzando altri scambi: riprova tra qualche secondo.",
     "en": "The server is analysing other trades: try again in a few seconds."
@@ -703,6 +723,10 @@
   "err.backup_non_valido": {
     "it": "{1} non è valido: controlla di aver scelto il file di backup giusto",
     "en": "{1} is not valid: check you chose the right backup file"
+  },
+  "err.backup_regole_oltre_i_tetti": {
+    "it": "Le regole di questo backup superano i limiti dell'app (per esempio troppi moduli o fasce del modificatore, oppure testi troppo lunghi) e non è stato cambiato niente: riporta le regole nei limiti dall'app e scarica un backup nuovo.",
+    "en": "The rules in this backup go beyond the app limits (for example too many formations or modifier bands, or texts that are too long) and nothing was changed: bring the rules within the limits in the app and download a new backup."
   },
   "err.p_backup_grande": {
     "it": "Questo backup è troppo grande: controlla di aver scelto il file giusto.",

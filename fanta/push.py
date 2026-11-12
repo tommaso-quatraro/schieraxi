@@ -4,12 +4,15 @@
 - iscrizioni: ogni dispositivo che le attiva (iPhone con l'app sulla Home, PC, iPad) lascia la sua in dati/push.json;
 - invio: a tutti i dispositivi iscritti, insieme, con un tempo massimo totale (`limiti.MAX_SECONDI_INVIO`): un servizio lento non
   ritarda gli altri dispositivi né il giro degli avvisi; quelle scadute (404/410) si tolgono da sole.
+Chi cambia push.json (il server che iscrive, il processo dei promemoria che toglie le scadute) lo fa uno alla volta, anche tra
+processi diversi: blocco su file `push.json.lock` (`blocco.BloccoFile`).
 Su iPhone servono iOS 16.4 o più e l'app aggiunta alla schermata Home.
 """
 from __future__ import annotations
 
 import base64
 import concurrent.futures
+import contextlib
 import functools
 import hashlib
 import http.client
@@ -23,6 +26,7 @@ import time
 import uuid
 from pathlib import Path
 
+from .blocco import BloccoFile
 from .percorsi import RADICE, ricontrolla_dopo_la_scrittura, scrittura_permessa
 
 FILE_VAPID = RADICE / "dati" / "vapid.json"
@@ -95,7 +99,8 @@ def iscrizioni(percorso: Path | None = None) -> list[dict]:
 
 TEMPO_DNS = 5.0                      # secondi al massimo per risolvere un nome
 DURATA_CACHE_DNS = 300               # 5 minuti: l'indirizzo controllato e quello usato per connettersi sono lo stesso
-_cache_dns: dict[str, tuple[float, list[str]]] = {}
+DURATA_CACHE_NEGATIVA = 120          # 2 minuti: un nome che non si è risolto (tempo finito o errore) risponde subito «no»
+_cache_dns: dict[str, tuple[float, list[str]]] = {}      # nome -> (quando, indirizzi); lista vuota = non risolto
 _blocco_dns = threading.Lock()
 _NOME_SITO = re.compile(r"^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+(xn--[a-z0-9-]{2,59}|[a-z]{2,24})$")
 
@@ -138,27 +143,37 @@ def _forma_endpoint(ep: str) -> str:
     return host
 
 
+def _ricorda(host: str, ora: float, trovati: list[str]) -> None:
+    with _blocco_dns:
+        if len(_cache_dns) > 200:
+            _cache_dns.clear()
+        _cache_dns[host] = (ora, list(trovati))
+
+
 def indirizzi_verificati(host: str) -> list[str]:
     """Gli indirizzi IP del sito, tutti pubblici (altrimenti ValueError). Il risultato resta 5 minuti: la connessione di invio usa
-    proprio questi, senza risolvere una seconda volta (contro il «DNS rebinding»)."""
+    proprio questi, senza risolvere una seconda volta (contro il «DNS rebinding»). Un nome che non si risolve (tempo finito o
+    errore) si ricorda per DURATA_CACHE_NEGATIVA secondi: nel frattempo la risposta è subito «no», senza aspettare di nuovo."""
     from .scarica_immagine import indirizzo_pubblico
     if indirizzo_pubblico(host):
         return [host]
     ora = time.monotonic()
     with _blocco_dns:
         voce = _cache_dns.get(host)
-        if voce and ora - voce[0] < DURATA_CACHE_DNS:
+        if voce and voce[1] and ora - voce[0] < DURATA_CACHE_DNS:
             return list(voce[1])
+        if voce and not voce[1] and ora - voce[0] < DURATA_CACHE_NEGATIVA:
+            raise ValueError("Nome non risolto")
     try:
         trovati = _risolvi_host(host)
-    except OSError:
-        raise ValueError("Nome non risolto") from None
-    if not trovati or not all(indirizzo_pubblico(i) for i in trovati):
+    except (OSError, ValueError):                    # ValueError: tempo finito (`_risolvi_host`)
+        trovati = []
+    if not trovati:
+        _ricorda(host, ora, [])
+        raise ValueError("Nome non risolto")
+    if not all(indirizzo_pubblico(i) for i in trovati):
         raise ValueError("Indirizzo non pubblico")
-    with _blocco_dns:
-        if len(_cache_dns) > 200:
-            _cache_dns.clear()
-        _cache_dns[host] = (ora, list(trovati))
+    _ricorda(host, ora, trovati)
     return list(trovati)
 
 
@@ -295,21 +310,88 @@ def _valida(sub: dict) -> dict:
 
 
 _blocco_iscrizioni = threading.Lock()          # leggere-modificare-scrivere una alla volta: due iscrizioni insieme non si perdono
+ATTESA_BLOCCO = 10.0                           # secondi: leggere e riscrivere push.json dura millisecondi; oltre, Occupato
+OCCUPATO = "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo"
 
 
-def iscrivi(sub: dict, percorso: Path | None = None) -> list[dict]:
+class Occupato(TimeoutError):
+    """push.json tenuto da un altro processo oltre ATTESA_BLOCCO secondi: niente letto né scritto, si può riprovare. Le rotte
+    delle iscrizioni la trasformano in 503 con il messaggio OCCUPATO."""
+
+    def __init__(self):
+        super().__init__(OCCUPATO)
+
+
+@contextlib.contextmanager
+def _scrittura_iscrizioni(percorso: Path, crea_cartella: bool = True):
+    """Leggere-modificare-scrivere `percorso` uno alla volta: i thread di questo processo (`_blocco_iscrizioni`) e gli altri
+    processi (il server che iscrive, i promemoria che tolgono le scadute), con il blocco su file `push.json.lock` accanto
+    (#547). Dà vero; dà falso, senza bloccare niente, se la cartella non c'è e `crea_cartella` è falso: non c'è niente da
+    togliere, e la cartella di un account eliminato non rinasce per il file del blocco. Oltre ATTESA_BLOCCO secondi: Occupato."""
+    with _blocco_iscrizioni, contextlib.ExitStack() as pila:
+        try:
+            pila.enter_context(BloccoFile(percorso.with_name(percorso.name + ".lock"), ATTESA_BLOCCO, crea_cartella=crea_cartella))
+            preso = True
+        except FileNotFoundError:                  # solo con crea_cartella falso: la cartella non c'è
+            preso = False
+        except TimeoutError:
+            raise Occupato() from None
+        yield preso
+
+
+class NonPiuValida(Exception):
+    """Chi chiedeva l'iscrizione non vale più (sessione chiusa mentre si controllava il nome del servizio, account eliminato):
+    niente scritto."""
+
+
+def iscrivi(sub: dict, percorso: Path | None = None, ancora_valida=None) -> list[dict]:
+    """Aggiunge l'iscrizione (gli ultimi MASSIMO_DISPOSITIVI restano). `ancora_valida`: se c'è, si richiama dentro il blocco, subito
+    prima di scrivere; se dice no (per esempio la sessione si è chiusa mentre si controllava il nome) non si scrive niente e
+    alza NonPiuValida. Chi toglie le iscrizioni (`tieni_solo`) prende lo stesso blocco: o arriva prima e il controllo dice no,
+    o arriva dopo e toglie anche questa. Lo stesso blocco vale tra processi (`_scrittura_iscrizioni`).
+    Account eliminato: NonPiuValida prima di prendere il blocco, così il suo file non fa rinascere la cartella; se il database
+    degli account non risponde, `percorsi.DatabaseAccountNonRisponde` (riprova). File occupato: Occupato."""
     nuova = _valida(sub)                       # (rete) fuori dal blocco
-    with _blocco_iscrizioni:
-        lista = [s for s in iscrizioni(percorso) if s["endpoint"] != nuova["endpoint"]] + [nuova]
-        lista = lista[-MASSIMO_DISPOSITIVI:]
-        scrivi_sicuro(percorso or FILE_ISCRIZIONI, json.dumps(lista))
+    p = percorso or FILE_ISCRIZIONI
+    if not scrittura_permessa(p):
+        raise NonPiuValida()
+    try:
+        with _scrittura_iscrizioni(p):
+            if ancora_valida is not None and not ancora_valida():
+                raise NonPiuValida()
+            lista = [s for s in iscrizioni(p) if s["endpoint"] != nuova["endpoint"]] + [nuova]
+            lista = lista[-MASSIMO_DISPOSITIVI:]
+            scrivi_sicuro(p, json.dumps(lista))
+    finally:
+        ricontrolla_dopo_la_scrittura(p)       # eliminato tra il controllo e il blocco: anche la cartella rinata se ne va
+    return lista
+
+
+def tieni_solo(endpoint: str | None, percorso: Path | None = None) -> list[dict]:
+    """Toglie tutte le iscrizioni tranne quella con questo indirizzo, se c'è (None o vuoto: le toglie tutte). Non ne aggiunge mai.
+    Si usa dopo un cambio di password, un recupero o «Esci da tutti»: restano solo le notifiche del dispositivo che l'ha chiesto.
+    Se non c'è niente da togliere non scrive (e non crea il file); se manca la cartella non la crea, nemmeno per il file del
+    blocco. Sotto lo stesso blocco di `iscrivi`, anche tra processi; file occupato oltre ATTESA_BLOCCO secondi: Occupato."""
+    p = percorso or FILE_ISCRIZIONI
+    with _scrittura_iscrizioni(p, crea_cartella=False) as aperto:
+        if not aperto:
+            return []
+        prima = iscrizioni(p)
+        lista = [s for s in prima if endpoint and s["endpoint"] == endpoint][:1]
+        if len(lista) != len(prima):
+            scrivi_sicuro(p, json.dumps(lista))
     return lista
 
 
 def togli(endpoint: str, percorso: Path | None = None) -> list[dict]:
-    with _blocco_iscrizioni:
-        lista = [s for s in iscrizioni(percorso) if s["endpoint"] != endpoint]
-        scrivi_sicuro(percorso or FILE_ISCRIZIONI, json.dumps(lista))
+    """Toglie l'iscrizione con questo indirizzo. Senza la cartella del file non c'è niente da togliere: non la crea.
+    File occupato oltre ATTESA_BLOCCO secondi: Occupato."""
+    p = percorso or FILE_ISCRIZIONI
+    with _scrittura_iscrizioni(p, crea_cartella=False) as aperto:
+        if not aperto:
+            return []
+        lista = [s for s in iscrizioni(p) if s["endpoint"] != endpoint]
+        scrivi_sicuro(p, json.dumps(lista))
     return lista
 
 
@@ -388,5 +470,8 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
         else:
             _annota(f"{dettaglio} ({maschera(s['endpoint'])})")
     for ep in scadute:
-        togli(ep, percorso)
+        try:
+            togli(ep, percorso)
+        except Occupato:                               # push.json tenuto da un altro processo: si toglie al prossimo invio
+            _annota(f"Iscrizione scaduta non tolta (file occupato): {maschera(ep)}")
     return consegnate

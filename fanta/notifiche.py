@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import sqlite3
 import threading
@@ -128,7 +129,7 @@ def _json(percorso: Path) -> dict:
 def _ora(valore, predefinita: int) -> int:
     try:
         v = int(valore)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):      # OverflowError: un numero infinito (1e999 nel JSON)
         return predefinita
     return v if 0 <= v <= 23 else predefinita
 
@@ -139,7 +140,7 @@ def _minuti_avviso(valore, predefinito: int) -> int:
         return predefinito
     try:
         v = int(valore)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return predefinito
     return v if v in MINUTI_AVVISO else predefinito
 
@@ -179,6 +180,42 @@ def salva_impostazioni(nuove: dict, percorso: Path | None = None) -> dict:
         altri = {k: v for k, v in _json(percorso).items() if k in CAMPI_UTENTE}
         scrivi_sicuro(percorso, json.dumps(altri | ok))
     return ok
+
+
+def _intero(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _numeri_finiti(valore) -> bool:
+    """Vero se dentro `valore` (anche in liste e dizionari annidati) non c'è nessun numero infinito o NaN."""
+    da_vedere = [valore]
+    while da_vedere:
+        v = da_vedere.pop()
+        if isinstance(v, float) and not math.isfinite(v):
+            return False
+        if isinstance(v, dict):
+            da_vedere.extend(v.values())
+        elif isinstance(v, list):
+            da_vedere.extend(v)
+    return True
+
+
+def impostazioni_da_ripristinare(d) -> dict:
+    """Le impostazioni di un backup, con gli stessi valori ammessi dal salvataggio (`salva_impostazioni`): restano solo le voci
+    note (gli avvisi e CAMPI_UTENTE, che stato_utente ripulisce quando li legge); le altre si tolgono. Un valore che l'app non
+    salverebbe mai (tipo sbagliato, ora fuori dalla giornata, minuti non previsti, lingua sconosciuta, numero non finito) alza
+    ValueError: il ripristino allora non scrive niente."""
+    if not isinstance(d, dict):
+        raise ValueError("deve essere un elenco di voci")
+    tenute = {k: v for k, v in d.items() if k in IMPOSTAZIONI_PREDEFINITE or k in ORE_PREDEFINITE or k in CAMPI_UTENTE
+              or k in ("avviso_prima", "lingua")}
+    giusti = (all(isinstance(tenute[k], bool) for k in IMPOSTAZIONI_PREDEFINITE if k in tenute)
+              and all(_intero(tenute[k]) and 0 <= tenute[k] <= 23 for k in ORE_PREDEFINITE if k in tenute)
+              and ("avviso_prima" not in tenute or (_intero(tenute["avviso_prima"]) and tenute["avviso_prima"] in MINUTI_AVVISO))
+              and ("lingua" not in tenute or (isinstance(tenute["lingua"], str) and tenute["lingua"] in LINGUE)))
+    if not giusti or not _numeri_finiti(tenute):
+        raise ValueError("formato non riconosciuto")       # messaggio interno: il backup lo sostituisce con il suo
+    return tenute
 
 
 def in_silenzio(adesso: datetime, opzioni: dict) -> bool:
@@ -318,7 +355,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
     if inizio is None or inizio <= adesso:
         return []                                  # la formazione si è già chiusa: i cambi non servono più
-    prev, giornata, con_probabili = consigli.previsioni(db, regole)
+    prev, giornata, con_probabili = consigli.previsioni(db, regole, giornata)     # la giornata del giro, non cercata di nuovo
     if not con_probabili:
         return []                                  # senza probabili non c'è niente da confrontare
     ids_oss = [i for i in osservati.leggi(file_osservati) if i not in ids]
@@ -335,7 +372,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         f, titolari = None, vecchio["titolari"]    # niente è cambiato: la formazione di prima vale ancora
     else:
         try:
-            f = consigli.formazione(db, regole, rose)
+            f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)
             titolari = sorted(int(x["id"]) for x in f["titolari"])
         except ValueError:                         # per esempio nessun portiere disponibile: l'avviso sui cambi serve proprio ora
             f, titolari = None, []
@@ -407,7 +444,7 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)     # la scadenza, non l'inizio della partita
     if inizio is None or inizio <= adesso:
         return []
-    prev, giornata, _ = consigli.previsioni(db, regole)
+    prev, giornata, _ = consigli.previsioni(db, regole, giornata)     # la giornata del giro, non cercata di nuovo
     r = cop.analizza(prev, regole, rose, opzioni.get("lingua", LINGUA_PREDEFINITA))          # il testo del reparto è già nella lingua dell'utente
     stato = _json(file_stato)
     gia = set(stato.get("copertura", []))
@@ -499,7 +536,7 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
         elif nome == "60":
             parti = [F("n.non_valida_tra_un_ora" if non_valida else "n.tra_un_ora", giornata=_giornata(giornata, regole), ora=ora_chiusura)]
             try:
-                f = consigli.formazione(db, regole, rose)
+                f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)
                 dubbi = [x["nome"] for x in f["titolari"] if x["titolarita"] != "titolare" or x["dubbio"]][:4]
                 parti.append(F("n.consigliato", modulo=f["modulo"], punti=float(f["punteggio_atteso"])))
                 if dubbi:
@@ -648,7 +685,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     scelta = scelte.leggi(stagione, giornata, file_scelte)
     if scelta:                                     # conta solo se si può ancora schierare: se no è come non averla salvata
         try:
-            prev, _, _ = consigli.previsioni(db, regole)
+            prev, _, _ = consigli.previsioni(db, regole, giornata)
         except ValueError:                         # senza previsioni non c'è nessun consiglio da confrontare
             return []
         scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
@@ -658,7 +695,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     if versione is not None and firma_giro == mio.get("valutato"):
         return []                                  # niente di nuovo dall'ultima volta: niente calcoli
     try:
-        f = consigli.formazione(db, regole, rose)
+        f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)     # la giornata e l'ora del giro
     except ValueError:
         return []
     ora = sorted(int(x["id"]) for x in f["titolari"])
@@ -671,7 +708,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
         salva()
         return []
     try:
-        v = consigli.valuta(db, regole, rose, rif)
+        v = consigli.valuta(db, regole, rose, rif, giornata=giornata, adesso=adesso)
     except ValueError:                             # il riferimento non è più valido (un giocatore non è più nella rosa)
         if not scelta:
             mio |= {"rif": ora, "valutato": firma_giro}
@@ -682,7 +719,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
         mio["valutato"] = firma_giro               # cambio piccolo: non vale un avviso
         salva()
         return []
-    prev, _, _ = consigli.previsioni(db, regole)
+    prev, _, _ = consigli.previsioni(db, regole, giornata)
     nomi = {int(x["id"]): x.get("nome") for x in f["titolari"]}
     entrano = [nomi[i] for i in ora if i not in rif]
     escono = [i for i in rif if i not in ora]

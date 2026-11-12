@@ -62,20 +62,20 @@ def test_file_della_diretta_rotto_o_mancante(tmp_path):
 @pytest.mark.parametrize("ora,occupato", [
     (H(7, 13, 29), False), (H(7, 13, 30), True), (H(7, 14, 30), True), (H(7, 14, 31), False)])
 def test_ora_prima_della_scadenza(ora, occupato, monkeypatch):
-    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r: 11)
+    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r, adesso=None: 11)
     # giornata 11: prima partita alle 15:00, scadenza 30 minuti prima = 14:30; si blocca da 13:30 (dalle 14:50 c'è la partita)
     m = libero.motivo(_db(), [_lega(30)], ora)
     assert (m is not None) is occupato and (not occupato or "14:30" in m)
 
 
 def test_due_leghe_con_scadenze_diverse(monkeypatch):
-    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r: 11)
+    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r, adesso=None: 11)
     assert libero.motivo(_db(), [_lega(10)], H(7, 13, 40)) is None
     assert "14:00" in libero.motivo(_db(), [_lega(10), _lega(60)], H(7, 13, 40))   # la seconda chiude alle 14
 
 
 def test_una_lega_con_dati_strani_non_ferma_le_altre(monkeypatch):
-    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r: 11)
+    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r, adesso=None: 11)
     rotta = Regole()
     rotta.scadenza_minuti = "boh"                                                    # noqa - dati sbagliati di proposito
     assert libero.motivo(_db(), [rotta, _lega(10)], H(7, 14, 0)) is not None

@@ -292,6 +292,26 @@ def test_una_voce_per_squadra_e_un_tetto_al_file(mondo, monkeypatch):
     assert voci == [1, 2, 2]                                  # stessa rosa ma squadre diverse: voci diverse; poi esce la più vecchia
 
 
+def test_formazione_segna_la_consigliata_della_propria_squadra(mondo):
+    """Con gli account la consigliata della squadra di chi chiede si segna come sua (`proprie`), quella di un'avversaria no;
+    rivedendo la propria già ricordata (prima senza il segno) il segno si aggiunge."""
+    from fanta import calcolo
+    squadre = [lega.Squadra("Mia", _squadra().giocatori), lega.Squadra("Avversaria", _squadra().giocatori)]
+    gettone = calcolo.utente_richiesta.set(7)
+    try:
+        consigli.formazione(mondo["db"], SOLO_442, lega.Rose(squadre, "Avversaria"), "Mia")      # un'altra lega: Mia non è sua
+        mondo["adesso"] += timedelta(minutes=1)
+        consigli.formazione(mondo["db"], SOLO_442, lega.Rose(squadre, "Mia"), "Avversaria")
+        voci = json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
+        assert len(voci) == 2 and not [v for v in voci.values() if "proprie" in v]
+        mondo["adesso"] += timedelta(minutes=1)
+        consigli.formazione(mondo["db"], SOLO_442, lega.Rose(squadre, "Mia"))                   # la sua, già vista: si segna
+    finally:
+        calcolo.utente_richiesta.reset(gettone)
+    voci = json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
+    assert sorted(v.get("proprie", []) for v in voci.values()) == [[], [7]]
+
+
 def test_giocatori_non_riconosciuti_diversi_non_si_mescolano_fra_utenti(mondo):
     """La memoria dei calcoli è di tutti: due utenti con la stessa squadra e gli stessi giocatori riconosciuti, ma un giocatore
     non riconosciuto scritto in modo diverso, vedono ognuno il proprio nome tra quelli senza dati (#480)."""

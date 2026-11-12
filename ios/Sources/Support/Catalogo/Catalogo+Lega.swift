@@ -126,9 +126,6 @@ extension Catalogo {
         /// `lega.esporta_rose_excel`
         static let esportaRoseExcel = "Esporta le rose in Excel da Leghe (come fai di solito) e scegli il file qui: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti)."
 
-        /// `lega.scegli_file_excel`
-        static let scegliFileExcel = "Scegli il file Excel"
-
         /// `lega.non_hai_file`
         static let nonHaiFile = "Se non hai il file Excel: copia la pagina delle rose di Leghe e incollala qui. Le squadre che non sono nel file restano com'erano."
 

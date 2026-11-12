@@ -219,3 +219,83 @@ def test_prima_che_l_anticipo_cominci_si_sposta_come_sempre(mondo):
     _formazione(mondo)
     mondo["adesso"] = MERCOLEDI_PRIMA
     assert 7 not in _tit(_formazione(mondo, _prev(GIU_E_INFORTUNATO)))
+
+
+# ---------------------------------------------------------------- l'ora data, non l'orologio vero (#571)
+# Gli avvisi chiedono la consigliata con l'ora del loro giro (`adesso`): nella risposta giornata, scadenza passata e anticipi
+# cominciati si contano da lì. Ricordarla, cioè cambiare quella che l'app mostra, si può invece solo se lo permette anche l'ora
+# vera: un giro partito prima della scadenza o di un anticipo non cambia mai la consigliata già fissata (#335, #368).
+# Qui l'orologio vero è `mondo["adesso"]`, messo di proposito in un altro momento.
+PROSSIMA_VERA = consigli.prossima_giornata              # presa all'import, prima di ogni finto
+DOPO_LA_STAGIONE = datetime(2027, 3, 1, 12, 0)          # per l'orologio vero la formazione della giornata 9 è chiusa da mesi
+GIRO_DI_SABATO = datetime(2026, 11, 7, 14, 59)          # un giro degli avvisi partito un minuto prima della scadenza (15:00)...
+SABATO_DOPO = datetime(2026, 11, 7, 15, 1)              # ...che arriva a questa squadra quando la formazione è già chiusa
+SQUADRA = lega.Rose([_squadra()], "Squadra Prova")
+COL_7_FERMO = {1, 4, 5, 6, 7, 12, 14, 15, 16, 20, 21}    # anticipo giocato: il 7 resta, il 13 infortunato lascia il posto al 16
+
+
+def _dati_nuovi(mondo):
+    mondo["prev"], mondo["versione"] = _prev(GIU_E_INFORTUNATO), mondo["versione"] + "+"
+
+
+def _app(mondo) -> set[int]:
+    """I titolari della consigliata che l'app mostra adesso (ora vera)."""
+    return _tit(consigli.formazione(mondo["db"], SOLO_442, SQUADRA))
+
+
+def test_con_l_ora_data_la_formazione_e_ancora_aperta(mondo):
+    assert _tit(consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MARTEDI)) == TITOLARI
+    mondo["adesso"] = DOPO_LA_STAGIONE
+    _dati_nuovi(mondo)
+    # alle 20 di mercoledì la formazione è aperta e l'anticipo non è cominciato: nella risposta il 7 esce come sempre...
+    assert 7 not in _tit(consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MERCOLEDI_PRIMA))
+    assert _app(mondo) == TITOLARI                         # ...ma per l'ora vera è chiusa: quella mostrata resta
+
+
+def test_con_l_ora_data_l_anticipo_e_gia_cominciato(mondo):
+    consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MARTEDI)
+    _dati_nuovi(mondo)                                     # per l'orologio vero è ancora martedì: nessun anticipo cominciato
+    assert _tit(consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=GIOVEDI)) == COL_7_FERMO
+
+
+def test_valuta_confronta_con_la_consigliata_dell_ora_data(mondo):
+    consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MARTEDI)
+    mondo["adesso"] = DOPO_LA_STAGIONE
+    _dati_nuovi(mondo)
+    chiusa = consigli.formazione(mondo["db"], SOLO_442, SQUADRA)["punteggio_atteso"]      # orologio vero: resta quella di martedì
+    aperta = consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MERCOLEDI_PRIMA)["punteggio_atteso"]
+    v = consigli.valuta(mondo["db"], SOLO_442, SQUADRA, sorted(TITOLARI), adesso=MERCOLEDI_PRIMA)
+    assert aperta > chiusa and v["consigliata"] == aperta
+    assert _app(mondo) == TITOLARI                         # risposte con l'ora data: quella mostrata non cambia
+
+
+def test_un_giro_partito_prima_della_scadenza_non_cambia_la_consigliata_fissata(mondo):
+    """Revisione di #576: il giro fissa la sua ora all'inizio; se arriva a una squadra dopo la scadenza, la consigliata già fissata
+    (quella che l'app mostra a formazione chiusa) resta la stessa."""
+    assert _app(mondo) == TITOLARI                         # martedì: mostrata
+    mondo["adesso"] = SABATO_DOPO
+    _dati_nuovi(mondo)
+    assert _app(mondo) == TITOLARI                         # dopo la scadenza: fissata
+    consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=GIRO_DI_SABATO)
+    assert _app(mondo) == TITOLARI
+
+
+def test_un_giro_partito_prima_dell_anticipo_non_sposta_chi_lo_gioca(mondo):
+    assert _app(mondo) == TITOLARI                         # martedì: mostrata
+    mondo["adesso"] = GIOVEDI                              # per l'ora vera l'anticipo è giocato
+    _dati_nuovi(mondo)
+    assert 7 not in _tit(consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MERCOLEDI_PRIMA))   # giro partito prima
+    assert _app(mondo) == COL_7_FERMO                      # il 7 resta dove era nella consigliata mostrata
+
+
+def test_senza_giornata_la_si_cerca_con_l_ora_data(mondo, monkeypatch):
+    def previsioni(db, regole, giornata=None):             # come la vera: senza giornata la cerca con l'orologio vero
+        giornata = giornata or consigli.giornata_da_giocare(db, ST, regole)
+        if giornata is None:
+            raise ValueError(consigli.SENZA_CALENDARIO)
+        return mondo["prev"], giornata, True
+    monkeypatch.setattr(consigli, "prossima_giornata", PROSSIMA_VERA)
+    monkeypatch.setattr(consigli, "previsioni", previsioni)
+    mondo["adesso"] = DOPO_LA_STAGIONE                     # per l'orologio vero non c'è più nessuna giornata da giocare
+    assert consigli.formazione(mondo["db"], SOLO_442, SQUADRA, adesso=MARTEDI)["giornata"] == 9
+    assert consigli.valuta(mondo["db"], SOLO_442, SQUADRA, sorted(TITOLARI), adesso=MARTEDI)["giornata"] == 9

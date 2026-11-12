@@ -42,6 +42,23 @@ struct PrimoAvvioRisposta: Decodable, Equatable {
     }
 }
 
+/// La vecchia procedura guidata degli account (`GET /api/onboarding`, solo con gli account): conta solo com'è finita.
+struct ProceduraVecchia: Decodable, Equatable {
+    var stato: String?
+
+    init(stato: String? = nil) { self.stato = stato }
+
+    private enum Chiavi: String, CodingKey { case stato }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        stato = (try? k.decodeIfPresent(String.self, forKey: .stato)) ?? nil
+    }
+
+    /// Completata o saltata: chi l'ha già fatta (o lasciata) non rivede la guida da sola, come la web (`paControllaAvvio`).
+    var finita: Bool { stato == "completato" || stato == "saltato" }
+}
+
 /// `PUT /api/primo-avvio`.
 struct CorpoPrimoAvvio: Codable, Equatable {
     var fatti: [String]
@@ -124,10 +141,22 @@ enum PrimoAvvioLogica {
     /// Quanti passi al massimo il server accetta in una lista.
     static let massimoVoci = 12
 
-    /// Si avvia da solo solo se non l'ha mai iniziato E mancano le rose (chi ha già la lega non lo vede mai).
-    static func daAvviare(_ risposta: PrimoAvvioRisposta?, roseImportate: Bool?) -> Bool {
-        guard let risposta, risposta.primoAvvio == nil else { return false }
-        return roseImportate == false
+    /// All'apertura dell'app si apre da sola solo se mancano le rose (chi ha già la lega non la vede mai da sola), come
+    /// `primoAvvioSeServe` della web: si riprende se è da riprendere (`daRiprendere`); se non è mai stata iniziata parte, tranne
+    /// quando la vecchia procedura degli account (`procedura`, nil senza account) è già completata o saltata.
+    static func daAvviare(_ risposta: PrimoAvvioRisposta?, roseImportate: Bool?, procedura: ProceduraVecchia? = nil) -> Bool {
+        guard let risposta, roseImportate == false else { return false }
+        guard let avanzamento = risposta.primoAvvio else { return !(procedura?.finita ?? false) }
+        return daRiprendere(avanzamento)
+    }
+
+    /// Cominciata (anche sulla web o su un altro dispositivo) e lasciata prima delle rose: non chiusa, passo «rose» né fatto né
+    /// saltato. Stessa regola di `paDaRiprendere` della web. «Più tardi» (e la ✕ della web) segna saltati i passi rimasti, rose
+    /// comprese: così chi la chiude non la rivede da sola.
+    static func daRiprendere(_ avanzamento: AvanzamentoPrimoAvvio?) -> Bool {
+        guard let avanzamento else { return false }
+        let rose = PassoGuidato.rose.nomeServer
+        return !avanzamento.chiuso && !avanzamento.fatti.contains(rose) && !avanzamento.saltati.contains(rose)
     }
 
     /// I passi fatti: quelli ricordati dal server più quelli che i dati della lega mostrano già fatti.

@@ -105,9 +105,10 @@ struct RestiDalCatalogoTests {
              ],
              usa: ["Catalogo.Bonus.assist", "Catalogo.Bonus.golSubitoPortiere", "Catalogo.Regole.legheApriRegolamento",
                    "Catalogo.Regole.controllaValoriQui", "Catalogo.Regole.valoriApplicatiControlla"]),
+        // il pulsante del file con le parole del primo avvio della web (#594)
         Caso(file: "Sources/Presentation/Lega/ImportaRoseView.swift",
-             testi: [Catalogo.Lega.esportaRoseExcel],
-             usa: ["Catalogo.Lega.esportaRoseExcel"]),
+             testi: [Catalogo.Lega.esportaRoseExcel, Catalogo.Pav.scegliFile],
+             usa: ["Catalogo.Lega.esportaRoseExcel", "Catalogo.Pav.scegliFile"]),
         Caso(file: "Sources/Support/RigaGiocatore.swift", testi: [Catalogo.Mercato.fantavoto], usa: ["Catalogo.Mercato.fantavoto"]),
         Caso(file: "Sources/Presentation/Lega/RigaRosa.swift", testi: [Catalogo.Mercato.fantavoto], usa: ["Catalogo.Mercato.fantavoto"]),
     ]

@@ -8,6 +8,7 @@ import WidgetKit
 /// - codice di recupero appena creato: la schermata «Salva il tuo codice», prima di tutto il resto.
 struct PortaDiAccesso: View {
     @EnvironmentObject private var sessione: SessioneAccount
+    @EnvironmentObject private var nav: Navigazione
     @Environment(\.scenePhase) private var fase
     @AppStorage("indirizzo") private var indirizzo = ""
     /// La prova con dati di esempio (`ProvaEsempio`): accesa o spenta, la porta si ridisegna.
@@ -31,8 +32,19 @@ struct PortaDiAccesso: View {
             } else if sessione.stato == .daAccedere {
                 SchermataAccesso(iniziale: Demo.schedaAccesso)
             } else {
-                ContenitoreApp().id(sessione.generazione)
+                let generazione = sessione.generazione
+                let s = sessione
+                ContenitoreApp(conAccount: sessione.multiutente, sessioneCambiata: { s.generazione != generazione })
+                    .id(generazione)
             }
+        }
+        // Sessione finita o cambiata (uscita, accesso scaduto, altro utente o server): la guida aperta l'ha chiusa l'app, non
+        // l'utente (i passi non diventano saltati), e il suo foglio non resta aperto nel contenitore nuovo. Nella sessione nuova
+        // può ripartire da sola, anche per un altro utente, solo con le sue regole (`avviaGuidaSeServe`).
+        .onChange(of: sessione.generazione) { _, _ in nav.chiudiGuidaDallApp() }
+        // Fuori dall'account, un file o un'immagine già aperti da un'altra app non fermano più la guida al prossimo accesso.
+        .onChange(of: sessione.stato == .daAccedere) { _, fuori in
+            if fuori { nav.uscitoDallAccount() }
         }
         .animation(Tema.morbida, value: sessione.stato == .daAccedere)
         .animation(Tema.morbida, value: indirizzo.isEmpty)
@@ -70,6 +82,15 @@ struct PortaDiAccesso: View {
 struct ContenitoreApp: View {
     @EnvironmentObject private var nav: Navigazione
     @StateObject private var modello = AppModel()
+    /// Il server ha gli account: la guida guarda anche la vecchia procedura (`/api/onboarding`), come la web.
+    let conAccount: Bool
+    /// Vero quando la sessione per cui è nato questo contenitore è finita o cambiata (la porta lo ricostruisce da zero).
+    let sessioneCambiata: @MainActor () -> Bool
+
+    init(conAccount: Bool = false, sessioneCambiata: @escaping @MainActor () -> Bool = { false }) {
+        self.conAccount = conAccount
+        self.sessioneCambiata = sessioneCambiata
+    }
 
     var body: some View {
         RadiceView()
@@ -79,18 +100,30 @@ struct ContenitoreApp: View {
                 Demo.applica(nav: nav, modello: modello)
             }
             .sheet(isPresented: $nav.guidaAperta) {
-                ConfigurazioneGuidataView(server: modello.server, vai: apriDaGuida)
+                ConfigurazioneGuidataView(server: modello.server, vai: apriDaGuida,
+                                          chiusaDallApp: { [navigazione = nav, cambiata = sessioneCambiata] in
+                                              navigazione.guidaChiusaDallApp || cambiata()
+                                          })
                     .tint(Color.verde)
+                    // un'immagine arrivata da fuori con la guida aperta aspetta che il foglio della guida sia sparito
+                    .onAppear { nav.guidaComparsa() }
+                    .onDisappear { nav.guidaSparita() }
             }
             .task { await avviaGuidaSeServe() }
     }
 
-    /// Una sola volta all'apertura: se la lega non ha le rose e la guida non è mai stata iniziata, parte da sola.
+    /// Una sola volta all'apertura, come `primoAvvioSeServe` della web: se la lega non ha le rose la guida parte da sola (mai
+    /// iniziata, e con gli account nemmeno la vecchia procedura finita) o si riprende (lasciata prima delle rose, anche sulla
+    /// web). Mai se l'app è stata aperta con un file o un'immagine da un'altra app.
     private func avviaGuidaSeServe() async {
         guard !Demo.attivo else { return }
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         if Task.isCancelled { return }
-        if await ConfigurazioneGuidataViewModel.devePartire(server: modello.server) { nav.guidaAperta = true }
+        if await ConfigurazioneGuidataViewModel.devePartire(server: modello.server, conAccount: conAccount,
+                                                            apertaDaFuori: { nav.apertaDaFuori }),
+           !Task.isCancelled {
+            nav.guidaAperta = true
+        }
     }
 
     /// Un passo della guida porta in un'altra schermata (la guida si è già chiusa).

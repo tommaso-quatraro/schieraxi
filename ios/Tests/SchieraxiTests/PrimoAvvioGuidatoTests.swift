@@ -35,13 +35,16 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
 
     // MARK: quando parte
 
-    func testPartePerContoSuoSoloSenzaRoseEMaiIniziato() throws {
+    func testPartePerContoSuoSoloSenzaRose() throws {
         let nuovo = try leggi("{\"primo_avvio\": null, \(tuttiIPassi)}")
         XCTAssertTrue(PrimoAvvioLogica.daAvviare(nuovo, roseImportate: false))
         XCTAssertFalse(PrimoAvvioLogica.daAvviare(nuovo, roseImportate: true), "chi ha già la lega non lo vede")
         XCTAssertFalse(PrimoAvvioLogica.daAvviare(nuovo, roseImportate: nil), "se non si sa, non parte")
+        // cominciata e lasciata prima delle rose: si riprende, come la web (#595; tutti i casi in IngressoComeLaWebTests)
         let iniziato = try leggi(#"{"primo_avvio": {"fatti": [], "saltati": [], "chiuso": false}}"#)
-        XCTAssertFalse(PrimoAvvioLogica.daAvviare(iniziato, roseImportate: false), "già iniziato: non riparte da solo")
+        XCTAssertTrue(PrimoAvvioLogica.daAvviare(iniziato, roseImportate: false), "cominciata prima delle rose: si riprende")
+        let piuTardi = try leggi(#"{"primo_avvio": {"fatti": [], "saltati": ["rose", "squadra"], "chiuso": false}}"#)
+        XCTAssertFalse(PrimoAvvioLogica.daAvviare(piuTardi, roseImportate: false), "dopo «Più tardi» non riparte da sola")
         XCTAssertFalse(PrimoAvvioLogica.daAvviare(nil, roseImportate: false))
     }
 

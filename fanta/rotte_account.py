@@ -204,8 +204,14 @@ def controllo_accesso(request: Request) -> JSONResponse | None:
     return None
 
 
+# Invito inesistente, scaduto, revocato o già usato (`account.INVITO_NON_VALIDO`, da registrazione, conferma dell'email e Google):
+# a chi si iscrive un messaggio solo, che non dice quale dei casi è ma dice cosa fare (#580).
+INVITO_DA_CHIEDERE = "Invito non valido, scaduto o già usato: chiedine uno nuovo a chi te l'ha mandato"
+
+
 def errore_account(_, e: ErroreAccount) -> JSONResponse:
-    corpo = ({"detail": e.messaggio} | ({"riprova_tra": e.riprova_tra} if e.riprova_tra else {})
+    messaggio = INVITO_DA_CHIEDERE if e.messaggio == account.INVITO_NON_VALIDO else e.messaggio
+    corpo = ({"detail": messaggio} | ({"riprova_tra": e.riprova_tra} if e.riprova_tra else {})
              | ({"codice": e.codice} if getattr(e, "codice", None) else {}))      # secondi: anche nel corpo, non solo in Retry-After
     return JSONResponse(status_code=e.stato, content=corpo,
                         headers={"Retry-After": str(e.riprova_tra)} if e.riprova_tra else None)
@@ -270,10 +276,13 @@ class Iscrizione(Credenziali):
     accetto_termini: bool | None = None                           # facoltativo: assente = client vecchio (si iscrive, senza traccia); false = errore
 
 
+# `endpoint_push` (facoltativo, sulle rotte che chiudono tutto: cambio password e recupero): l'indirizzo delle notifiche web di
+# QUESTO dispositivo. Resta iscritto; tutte le altre iscrizioni dell'utente si tolgono. Non aggiunge mai un'iscrizione che non c'era.
 class Recupero(BaseModel):
     nome_utente: str = Field(max_length=100)
     codice: str = Field(max_length=100)
     nuova: str = Field(max_length=500)
+    endpoint_push: str | None = Field(default=None, max_length=600)
 
 
 class NuovaEmail(BaseModel):
@@ -300,11 +309,19 @@ class RecuperoEmail(BaseModel):
     email: str = Field(max_length=300)
     codice: str = Field(max_length=40)
     nuova: str = Field(max_length=500)
+    endpoint_push: str | None = Field(default=None, max_length=600)
 
 
 class CambioPassword(BaseModel):
     attuale: str = Field(max_length=500)
     nuova: str = Field(max_length=500)
+    endpoint_push: str | None = Field(default=None, max_length=600)
+
+
+class EsciDaTutti(BaseModel):
+    """Corpo facoltativo di «Esci da tutti» (i client di prima non lo mandano). Con la password (per chi è solo Google: vuota, vale
+    la riconferma recente) la risposta ha il nuovo codice di recupero."""
+    password: str | None = Field(default=None, max_length=500)
 
 
 class SoloPassword(BaseModel):
@@ -442,20 +459,23 @@ def revoca_token_widget(utente: Utente = Depends(utente_corrente)):
 
 
 @router.post("/api/account/esci-da-tutti", dependencies=[Depends(_attivo)])
-def esci_da_tutti(request: Request, risposta: Response, utente: Utente = Depends(utente_corrente)):
+def esci_da_tutti(request: Request, risposta: Response, dati: EsciDaTutti | None = None, utente: Utente = Depends(utente_corrente)):
+    """Chiude tutto (anche questa sessione) e cambia il codice di recupero; il codice nuovo torna solo con la password."""
     with closing(account.apri()) as db:
-        chiuse = account.esci_da_tutti(db, utente.id, scollega_social=True)
+        chiuse, codice = account.esci_da_tutti_i_dispositivi(db, utente.id, dati.password if dati else None, token_della_richiesta(request))
     _togli_cookie(risposta, request)
-    return {"sessioni_chiuse": chiuse}
+    return {"sessioni_chiuse": chiuse} | ({"codice_recupero": codice} if codice else {})
 
 
 @router.post("/api/account/cambia-password", dependencies=[Depends(_attivo)])
 def cambia_password(dati: CambioPassword, request: Request, risposta: Response, utente: Utente = Depends(utente_corrente)):
-    """Tutte le sessioni si chiudono e questa riparte con un token nuovo (cookie per il web, nella risposta per le app native)."""
+    """Tutte le sessioni si chiudono e questa riparte con un token nuovo (cookie per il web, nella risposta per le app native).
+    La risposta ha anche il nuovo codice di recupero (il vecchio non vale più), da mostrare una volta sola."""
     with closing(account.apri()) as db:
-        token = account.cambia_password(db, utente.id, dati.attuale, dati.nuova, dispositivo=_dispositivo(request))
+        token, codice = account.cambia_password(db, utente.id, dati.attuale, dati.nuova, dispositivo=_dispositivo(request),
+                                                tieni_push=dati.endpoint_push)
     nativo = request.headers.get("authorization", "")[:7].lower() == "bearer "
-    return _con_sessione(risposta, request, utente, token, nativo, {"ok": True})
+    return _con_sessione(risposta, request, utente, token, nativo, {"ok": True, "codice_recupero": codice})
 
 
 @router.post("/api/account/codice-recupero", dependencies=[Depends(_attivo)])
@@ -481,7 +501,8 @@ def elimina_account(dati: SoloPassword, request: Request, risposta: Response, ut
 def recupero(dati: Recupero, request: Request):
     """Nuova password con il codice di recupero (o con un codice di reset dell'amministratore). Le sessioni aperte si chiudono."""
     with closing(account.apri()) as db:
-        nuovo = account.recupera(db, dati.nome_utente, dati.codice, dati.nuova, ip_reale(request), fidato=dispositivo_fidato(request))
+        nuovo = account.recupera(db, dati.nome_utente, dati.codice, dati.nuova, ip_reale(request), fidato=dispositivo_fidato(request),
+                                 tieni_push=dati.endpoint_push)
     return {"ok": True, "codice_recupero": nuovo}
 
 
@@ -516,7 +537,7 @@ def recupero_email_richiesta(dati: RichiestaRecuperoEmail, request: Request):
 @router.post("/api/account/recupero-email/conferma", dependencies=[Depends(_attivo)])
 def recupero_email_conferma(dati: RecuperoEmail, request: Request):
     with closing(account.apri()) as db:
-        nuovo = account_email.recupera_con_email(db, dati.email, dati.codice, dati.nuova, ip_reale(request))
+        nuovo = account_email.recupera_con_email(db, dati.email, dati.codice, dati.nuova, ip_reale(request), tieni_push=dati.endpoint_push)
     return {"ok": True, "codice_recupero": nuovo}
 
 

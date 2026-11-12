@@ -263,6 +263,9 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     assert not re.search(r"Real Esempio B|Altra B|LEGA-DI-B|web\.push\.example/B", tutto_il_testo(ancora_a))
     assert albero(cartella_di(due, "A")) == prima
     for nome, impronta in albero(cartella_di(due, "B")).items():                   # e viceversa: i file di B non sono quelli di A
+        if nome.endswith(".lock"):                 # file di blocco (blocco.BloccoFile, per esempio push.json.lock): vuoti, senza dati
+            assert (cartella_di(due, "B") / nome).stat().st_size == 0, nome
+            continue
         assert nome not in prima or prima[nome] != impronta, nome
 
     # 5. nessun file personale è finito nelle posizioni "di sempre" (lega/, dati/ della radice)

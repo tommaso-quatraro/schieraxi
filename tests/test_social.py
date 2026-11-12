@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
-from fanta import account, percorsi, registro, server, social
+from fanta import account, percorsi, registro, rotte_account, server, social
 
 PASSWORD = "una-password-lunga-9"
 CLIENT_ID = "id-di-prova.apps.googleusercontent.com"
@@ -155,7 +155,8 @@ def test_iscrizione_su_invito_serve_il_codice_d_invito(scena):
     assert nuovo["serve_invito"] is True and nuovo["nome_suggerito"] == "mario"
     corpo = {"iscrizione": nuovo["iscrizione"], "nome_utente": "Mario", "accetto_termini": True}
     assert c.post("/api/account/social/completa", json=corpo).status_code == 403                           # senza invito
-    assert c.post("/api/account/social/completa", json=corpo | {"invito": "sbagliato"}).status_code == 403
+    sbagliato = c.post("/api/account/social/completa", json=corpo | {"invito": "sbagliato"})
+    assert sbagliato.status_code == 403 and sbagliato.json()["detail"] == rotte_account.INVITO_DA_CHIEDERE     # #580
     assert c.post("/api/account/social/completa", json=corpo | {"invito": invito(), "accetto_termini": False}).status_code == 400
     r = c.post("/api/account/social/completa", json=corpo | {"invito": invito()})
     assert r.status_code == 200 and r.json()["utente"]["nome_utente"] == "mario" and "codice_recupero" not in r.json()
@@ -711,6 +712,45 @@ def test_il_log_non_ha_nemmeno_il_redirect_finale_con_il_codice():
     for percorso in ("/?social=CODICESEGRETO", "/?vista=oggi&social_errore=annullato&x=1"):
         r = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d', ("1.2.3.4:5", "GET", percorso, "1.1", 200), None)
         assert filtro.filter(r) and "?" not in r.getMessage() and "SEGRETO" not in r.getMessage()
+
+
+def test_registro_della_pagina_principale_senza_parametri():
+    """Il link d'invito apre la pagina principale con il codice nell'indirizzo: nel registro degli accessi solo il percorso."""
+    import logging
+    filtro = social._SenzaQuery()
+    for percorso, atteso in (("/?invito=CODICEPROVA", "/"), ("/?vista=oggi&invito=CODICEPROVA", "/"), ("/?qualsiasi=1", "/"),
+                             ("/index.html?invito=CODICEPROVA", "/index.html")):
+        r = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d', ("1.2.3.4:5", "GET", percorso, "1.1", 200), None)
+        registro.FILTRO_INDIRIZZI.filter(r)
+        assert filtro.filter(r) and "CODICEPROVA" not in r.getMessage() and "?" not in r.getMessage(), r.getMessage()
+        assert f'"GET {atteso} HTTP/1.1"' in r.getMessage(), r.getMessage()
+
+
+def test_registro_delle_richieste_vero_senza_parametri_della_pagina_principale():
+    """Dal registro `uvicorn.access` com'è dopo `togli_query_dai_log()` (lo fa l'avvio del server), con il formato di uvicorn."""
+    import logging
+    registro_richieste = logging.getLogger("uvicorn.access")
+    filtri_prima, livello_prima = list(registro_richieste.filters), registro_richieste.level
+    righe = []
+
+    class Raccogli(logging.Handler):
+        def emit(self, record):
+            righe.append(record.getMessage())
+    raccogli = Raccogli()
+    registro_richieste.addHandler(raccogli)
+    registro_richieste.setLevel(logging.INFO)
+    try:
+        social.togli_query_dai_log()
+        for percorso in ("/?invito=CODICEPROVA", "/?vista=oggi", "/api/oggi?x=1"):
+            registro_richieste.info('%s - "%s %s HTTP/%s" %d', "1.2.3.4:5", "GET", percorso, "1.1", 200)
+    finally:
+        registro_richieste.removeHandler(raccogli)
+        registro_richieste.filters[:] = filtri_prima
+        registro_richieste.setLevel(livello_prima)
+    assert len(righe) == 3, righe
+    assert not [r for r in righe if "invito=" in r or "CODICEPROVA" in r or "vista=" in r], righe
+    assert '"GET / HTTP/1.1"' in righe[0] and '"GET / HTTP/1.1"' in righe[1]
+    assert '"GET /api/oggi?x=1 HTTP/1.1"' in righe[2]                    # le altre richieste restano come sono
 
 
 def test_migrazione_gia_fatta_da_un_altro_processo(tmp_path):

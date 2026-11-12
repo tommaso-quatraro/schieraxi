@@ -1817,14 +1817,14 @@ class _Riconosciute(NamedTuple):
 def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
     """I giocatori delle celle cercati nel listone: la parte lenta dell'importazione (e dell'anteprima). Si fa PRIMA di prendere
     il blocco delle rose, così le scritture degli altri non la aspettano. Con gli account ha un tempo massimo
-    (`limiti.MAX_SECONDI_RICONOSCIMENTO`): oltre si ferma, con il messaggio dei contenuti troppo pesanti (`excel`: quello dell'Excel)."""
+    (`limiti.MAX_SECONDI_RICONOSCIMENTO`): oltre si ferma con `importa_sicuro.riconoscimento_lungo` (`excel`: quello dell'Excel)."""
     calciatori, _ = listone.carica()
     avvisi: list[str] = []
     indice = nomi.Indice(calciatori, listone.nomi_completi(), scaduto=limiti.tempo_riconoscimento(ctx))
     try:
         lette = rose.estrai(griglie, indice, _regole(ctx).rosa, avvisi)
     except nomi.TempoScaduto:
-        raise ValueError(importa_sicuro.troppo_pesante(excel)) from None
+        raise ValueError(importa_sicuro.riconoscimento_lungo(excel)) from None
     if not lette:
         raise ValueError(rose.NESSUNA_ROSA)
     return _Riconosciute(lette, avvisi, calciatori)
@@ -2233,9 +2233,17 @@ def chiave_push():
 
 
 @app.post("/api/push/iscrivi")
-def iscrivi_push(dati: IscrizionePush, ctx: Contesto = Depends(lega_corrente)):
-    """Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy)."""
-    return {"dispositivi": len(notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push))}
+def iscrivi_push(dati: IscrizionePush, request: Request, ctx: Contesto = Depends(lega_corrente)):
+    """Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy). Con gli account la sessione si
+    ricontrolla subito prima di scrivere: se nel frattempo si è chiusa (cambio password, «Esci da tutti») non resta niente."""
+    ancora_valida = (lambda: rotte_account.identifica(request) is not None) if ctx.utente_id is not None else None
+    with limiti.iscrizione_push(ctx):                # una alla volta per utente, poche in tutto, tetto all'ora (429)
+        try:
+            return {"dispositivi": len(notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push, ancora_valida=ancora_valida))}
+        except notifiche_web.NonPiuValida:
+            raise HTTPException(401, "Accesso richiesto") from None
+        except notifiche_web.Occupato as e:          # file tenuto da un altro processo: 503 «riprova», niente scritto
+            raise HTTPException(503, str(e)) from None
 
 
 class DisiscrizionePush(BaseModel):
@@ -2244,7 +2252,10 @@ class DisiscrizionePush(BaseModel):
 
 @app.post("/api/push/disiscrivi")
 def disiscrivi_push(dati: DisiscrizionePush, ctx: Contesto = Depends(lega_corrente)):
-    return {"dispositivi": len(notifiche_web.togli(dati.endpoint, ctx.iscrizioni_push))}
+    try:
+        return {"dispositivi": len(notifiche_web.togli(dati.endpoint, ctx.iscrizioni_push))}
+    except notifiche_web.Occupato as e:              # file tenuto da un altro processo: 503 «riprova», niente tolto
+        raise HTTPException(503, str(e)) from None
 
 
 @app.get("/api/movimenti")
