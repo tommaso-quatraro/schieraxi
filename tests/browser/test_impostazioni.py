@@ -298,7 +298,9 @@ def test_lo_stemma_sbagliato_si_toglie_da_la_mia_squadra(web):
     assert rimuovi.count() == 1                                          # solo lo stemma è caricato
     rimuovi.click()
     web.pagina.locator("#avviso").filter(has_text="Stemma rimosso").wait_for(timeout=10000)
+    web.aspetta()                                                        # la rosa sotto il foglio si ridisegna
     assert tolte == [{"squadra": [nome], "tipo": ["stemma"]}]
+    assert foglio.is_visible() and titolo(web) == nome                   # il foglio resta aperto sulla rosa
     assert not web.errori_console and not web.richieste_fallite
 
 
