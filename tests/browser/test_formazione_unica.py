@@ -83,6 +83,20 @@ def test_il_vecchio_indirizzo_di_oggi_apre_la_formazione(web):
     assert schede == ["Formazione", "Squadra", "Altro"]
 
 
+def test_un_account_senza_rose_vede_il_benvenuto_e_nessuna_richiesta_fallisce(web):
+    """Chi è appena entrato non ha rose: la Formazione dà il benvenuto e non chiede la formazione, che il server rifiuterebbe
+    (409): un rifiuto, anche se la pagina lo regge, resta scritto fra gli errori del browser."""
+    solo(web, "prima")
+    web.risposta("/api/stato", {**web.registrata("/api/stato"), "rose_importate": False, "mia_squadra": None})
+    web.risposta("/api/oggi", {**web.registrata("/api/oggi"), "senza_rose": True, "da_fare": []})
+    web.risposta("/api/formazione", {"detail": "Nessuna rosa importata: importa le rose della tua lega."}, stato=409)
+    web.apri("/")
+    assert "Benvenuto in SchieraXI" in web.testo_principale()
+    assert principale(web).get_by_role("button", name="Importa le rose").is_visible()
+    assert "/api/formazione" not in web.richieste
+    assert not web.richieste_fallite and not web.errori_console and not web.errori_mostrati()
+
+
 # ---------------------------------------------------------------- il giocatore: due numeri, e parole solo se servono
 def test_gioca_si_vede_solo_sotto_l_80_per_cento_e_niente_etichette_di_titolarita(web):
     solo(web, "prima")

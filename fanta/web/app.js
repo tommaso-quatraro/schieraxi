@@ -909,8 +909,12 @@ function vistaFormazione() {
 // giusta (prima compariva la consigliata e poi, un attimo dopo, la tua). `scelta`: null = niente di salvato; manca = non letta (rete):
 // allora la riga dello stato e la spunta non si mostrano.
 async function caricaGiornata() {
-  const [o, f] = await Promise.all([api("/api/oggi"), api("/api/formazione").catch(e => e)]);
+  // Account nuovo, senza rose (lo dice /api/stato, letto all'avvio): /api/formazione risponderebbe 409 e il browser lo scriverebbe fra
+  // gli errori, quindi si chiede solo /api/oggi, che dà il benvenuto. Se le rose nel frattempo ci sono, la formazione si chiede dopo.
+  const senzaRose = !!stato.info && stato.info.rose_importate === false;
+  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose ? null : api("/api/formazione").catch(e => e)]);
   if (o.senza_rose) return { o, f: null };
+  const f = letta || await api("/api/formazione");
   if (f instanceof Error) throw f;
   const b = { o, f };
   try {

@@ -606,18 +606,23 @@ def passo_regole(g: Giro) -> None:
 
 
 def passo_formazione(g: Giro) -> None:
+    """La Formazione si apre con gli 11 consigliati e si salva da sola (#616): non c'è un pulsante da toccare. Chi ha messo la
+    formazione nell'app della lega lo dice con la spunta «L'ho messa»: da lì quegli 11 sono la sua scelta sul server."""
     p = g.pagina
     g.chiudi_fogli()
     g.tocca(p.locator("a.scheda[data-vista='formazione']"))
-    p.locator("#salva-questa, #stato-scelta.chiusa").first.wait_for(state="visible", timeout=90000)
-    if not p.locator("#salva-questa").count():
-        raise Bloccato("la formazione è già chiusa: non si può salvare")
-    g.tocca(p.locator("#salva-questa"))
-    g.avviso("Salvata come tua scelta")
-    s = p.evaluate("() => ({ titolari: ((stato.scelta || {}).salvata || {}).titolari || [],"
-                   " modulo: ((stato.scelta || {}).manuale || {}).modulo || '' })")
-    if len(s["titolari"]) != 11 or not re.fullmatch(r"\d-\d-\d(-\d)?", s["modulo"] or ""):
-        raise Bloccato(f"formazione salvata con {len(s['titolari'])} titolari e modulo «{s['modulo']}»")
+    p.locator("label.spunta, .fz.chiusa").first.wait_for(state="visible", timeout=90000)
+    if not p.locator("label.spunta").count():
+        raise Bloccato("la formazione è già chiusa: non si può più dire «L'ho messa»")
+    sul_campo = p.locator("#campo-formazione .pedina").count()
+    if sul_campo != 11:
+        raise Bloccato(f"sul campo ci sono {sul_campo} titolari, non 11")
+    g.tocca(p.locator("label.spunta"))
+    p.wait_for_function("() => !!(stato.scelta && stato.scelta.salvata && stato.scelta.salvata.messa)", timeout=30000)
+    giornata = p.evaluate("() => stato.formaz.f.giornata")
+    s = g.api(f"/api/scelta?giornata={int(giornata)}") or {}
+    if len(s.get("titolari") or []) != 11 or s.get("messa") is not True or not re.fullmatch(r"\d-\d-\d(-\d)?", s.get("modulo") or ""):
+        raise Bloccato(f"scelta salvata con {len(s.get('titolari') or [])} titolari, modulo «{s.get('modulo')}», messa {s.get('messa')}")
 
 
 def passo_rientro(g: Giro) -> None:
