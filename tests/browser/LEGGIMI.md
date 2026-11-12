@@ -40,7 +40,9 @@ hanno il loro `role="alert"`. Il controllo non conta ancora come errori gli elem
 - **Nelle pull request**: job `browser` dei controlli (`.github/workflows/test.yml`), quando la PR tocca `fanta/web/`,
   `fanta/testi/`, `tests/browser/`, `tests/strumenti/axe/`, `ios/fotografie/`, `script/ci/server_finto.py`,
   `.github/browser-requisiti.txt` o `test.yml` (anche spostando un file da lì). Blocca l'unione: `unisci` lo aspetta e
-  lo vuole riuscito (se la PR non tocca la web il job salta i passi e resta verde).
+  lo vuole riuscito (se la PR non tocca la web il job salta i passi e resta verde). Il job ha un tetto di 10 minuti: i test
+  girano in 4 processi (`pytest-xdist`, `-n 4 --dist worksteal`, #680), ognuno con il suo Chrome e i suoi server finti, e
+  il registro del job elenca i dieci test più lenti (`--durations=10`).
 - **A mano su un ramo**: `gh workflow run test.yml --ref <ramo>` (girano tutti i controlli, questo compreso).
 - **Nella suite normale no**: senza `-m browser` si saltano. Si saltano anche se mancano Playwright o Chrome; nel job dei
   controlli (variabile `BROWSER_OBBLIGATORIO=1`) invece falliscono, perché lì un test saltato sarebbe un verde finto.
@@ -185,7 +187,9 @@ Regole:
 - si prova un comportamento che l'utente vede, non il testo di `app.js`; gli elementi si cercano per ruolo ed etichetta
   (`get_by_role`, `get_by_label`), che sono anche ciò che legge chi usa un lettore di schermo;
 - il server finto non salva niente: ogni metodo (anche un salvataggio) riceve la risposta registrata per quell'indirizzo;
-- niente orologio vero e niente attese a tempo fisso: `web.aspetta()`.
+- niente orologio vero e niente attese a tempo fisso: `web.aspetta()`;
+- ogni test regge da solo: con `-n` i test girano in processi diversi e in un ordine qualsiasi, quindi niente dati lasciati
+  da un test per quello dopo, niente file scritti fuori da `tmp_path` e niente porte fisse.
 
 ## Una rotta che manca nello scenario
 Il server finto risponde 404 a una rotta che non ha registrata, e il test delle richieste fallite lo dice

@@ -161,11 +161,15 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/browser"
           "$RUNNER_TEMP/browser/bin/python" -m pip install -q --require-hashes --only-binary=:all: -r .github/browser-requisiti.txt
+      # In fila i test superavano il tetto di 10 minuti (issue #680): con pytest-xdist girano in 4 processi (i processori dei
+      # server di GitHub nei repository pubblici), ognuno con il suo Chrome e i suoi server finti su una porta sua (le fixture
+      # di sessione di tests/browser/conftest.py valgono per processo). --dist worksteal: un processo rimasto senza test prende
+      # quelli che un altro non ha ancora cominciato (i test durano da meno di un secondo a decine di secondi).
       - name: La web nel browser, nelle tre fasi della giornata
         if: steps.decidi.outputs.serve == 'true'
         env:
           BROWSER_OBBLIGATORIO: "1"
-        run: '"$RUNNER_TEMP/browser/bin/python" -I -m pytest -q -p no:cacheprovider -m browser --confcutdir tests/browser tests/browser'
+        run: '"$RUNNER_TEMP/browser/bin/python" -I -m pytest -q -p no:cacheprovider -n 4 --dist worksteal --durations=10 -m browser --confcutdir tests/browser tests/browser'
 
   # Contro il lavoro fuori piano: la descrizione della PR dichiara le aree («Aree: fanta/web, tests, docs») e i file cambiati
   # devono stare lì dentro (script/ci/controlla_ambito.py, preso da main). Esenti: PR dei bot e PR di soli documenti.

@@ -3,12 +3,16 @@
 # Versioni e hash fissati, solo file binari da PyPI, per Linux x86_64 (la CI, Python 3.12) e Windows 64 bit (prova in locale),
 # Python 3.12 e 3.13.
 # - playwright, greenlet, pyee, typing_extensions: gli stessi di .github/playwright-requisiti.txt;
-# - pytest e le sue dipendenze: gli stessi di requirements-dev.txt (lo controlla tests/test_workflow_browser.py).
+# - pytest e le sue dipendenze: gli stessi di requirements-dev.txt (lo controlla tests/test_workflow_browser.py);
+# - pytest-xdist ed execnet (i test in più processi, issue #680): gli stessi di requirements-dev.txt.
 # In locale: python -m venv <cartella-temporanea>\pw-test && <cartella-temporanea>\pw-test\Scripts\python.exe -m pip install
 #   --require-hashes --only-binary=:all: -r .github\browser-requisiti.txt
 colorama==0.4.6 ; sys_platform == "win32" \
     --hash=sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44 \
     --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
+execnet==2.1.2 \
+    --hash=sha256:63d83bfdd9a23e35b9c6a3261412324f964c2ec8dcd8d3c6916ee9373e0befcd \
+    --hash=sha256:67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec
 greenlet==3.5.6 \
     --hash=sha256:975736b002ed080d124cf81a79cb7e05cb26d6b3f5c7a7b651c0fcce70353aa1 \
     --hash=sha256:7ac4abb3877c43af320392c664774eef6fa2cc063c79a55fc02d844a3cbe7395 \
@@ -34,5 +38,8 @@ pygments==2.21.0 \
 pytest==9.2.0 \
     --hash=sha256:07acdcf88ec174f907dc01af70bf52d49b014bbab03faeeade31c96b18c2e588 \
     --hash=sha256:97c4f3b1f3c7414aa36465e09b8220f1d03627993bd51b1282e193753c80557b
+pytest-xdist==3.8.0 \
+    --hash=sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88 \
+    --hash=sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1
 typing_extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8

@@ -89,6 +89,16 @@ def test_il_job_browser_installa_l_ambiente_fissato_e_non_salta_i_test():
     assert j.count("if: steps.decidi.outputs.serve == 'true'") == 3
 
 
+def test_i_test_del_browser_girano_in_parallelo():
+    """Issue #680: in fila i test superavano il tetto di 10 minuti. Con pytest-xdist girano in più processi, ognuno con il
+    suo Chrome e i suoi server finti (le fixture di sessione sono per processo), così il passo resta lontano dal tetto."""
+    comando = re.search(r"-m pytest (.*)", _senza_commenti(_job("browser"))).group(1)
+    processi = re.search(r"(?:^|\s)-n (\d+)(?:\s|'|$)", comando)
+    assert processi, f"il comando dei test non chiede più processi (-n N): {comando}"
+    assert 2 <= int(processi.group(1)) <= 4, "i server di GitHub dei repository pubblici hanno 4 processori"
+    assert "--dist worksteal" in comando, "test lunghi e corti: chi finisce prima prende i test rimasti agli altri"
+
+
 def _librerie(testo: str) -> dict[str, tuple[str, set[str]]]:
     """{nome minuscolo: (versione, hash)} di un file di requisiti con «nome==versione [; condizione] \\» e righe --hash."""
     voci = {}
@@ -102,7 +112,7 @@ def test_requisiti_del_browser_fissati_e_uguali_agli_altri_ambienti():
     requisiti = REQUISITI.read_text(encoding="utf-8")
     voci = _librerie(requisiti)
     assert len(voci) == len(re.findall(r"^[A-Za-z0-9_.-]+==", requisiti, re.M)), "ogni libreria con i suoi hash"
-    assert {"playwright", "pytest", "greenlet", "pyee", "pluggy"} <= set(voci)
+    assert {"playwright", "pytest", "greenlet", "pyee", "pluggy", "pytest-xdist", "execnet"} <= set(voci)
     # Playwright come nell'ambiente della regressione visiva; pytest come nei requisiti dei test
     playwright = _librerie((RADICE / ".github" / "playwright-requisiti.txt").read_text(encoding="utf-8"))
     sviluppo = _librerie((RADICE / "requirements-dev.txt").read_text(encoding="utf-8"))
