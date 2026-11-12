@@ -5,8 +5,11 @@ Con --esegui toglie SOLO:
   locale (`git branch -d`, oppure `-D` quando la PR è unita con squash e la testa del ramo è quella della PR o un suo antenato);
 - i rami locali «da togliere»: PR del ramo unita e lavoro già su main (stessa testa della PR, testa antenata di quella della
   PR, o testa dentro origin/main).
-Le worktree bloccate da un agente, quelle con modifiche e quelle senza PR non si toccano mai. I rami locali senza PR, con PR
-chiusa o con commit non uniti si elencano «da chiedere» e non si toccano; mai `main`, mai il ramo corrente.
+Le worktree bloccate da un agente, quelle con modifiche e quelle senza PR non si toccano mai. «Unito» vuole una PR unita: una
+worktree con la testa già in main ma senza PR unita (ramo senza commit propri, o staccata) è anche lo stato di una sessione
+appena aperta e sta in «Senza PR» (#524).
+I rami locali senza PR, con PR chiusa o con commit non uniti si elencano «da chiedere» e non si toccano; mai `main`, mai il
+ramo corrente.
 Codici di uscita: 0 fatto; 1 errore di gh o git, o una rimozione non riuscita."""
 from __future__ import annotations
 

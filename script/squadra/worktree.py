@@ -7,11 +7,12 @@ Gruppi delle worktree:
 - con_modifiche: file cambiati non salvati in un commit, o commit fatti dopo l'unione della PR. Si chiede all'utente.
 - in_corso: la PR del ramo è aperta.
 - da_togliere: ramo unito e niente modifiche.
-- senza_pr: niente PR aperta né unita, e la testa non è in origin/main.
+- senza_pr: niente PR aperta né unita. Anche quando la testa è già in origin/main: un ramo senza commit propri (o una
+  worktree staccata su un commit di main) è lo stato di una sessione appena aperta, non di un lavoro finito (#524).
 
-«Unito» (funzione `unione`): PR MERGED con la stessa testa; oppure testa già dentro origin/main (dell'ultimo `git fetch`);
-oppure PR MERGED con una testa che discende da quella locale (PR portata in pari con main da GitHub, «Update branch»):
-`compare/<testa della PR>...<testa locale>` con `status` uguale a `behind` o `identical`.
+«Unito» (funzione `unione`) vuole sempre una PR MERGED: con la stessa testa; oppure con la testa locale già dentro
+origin/main (dell'ultimo `git fetch`); oppure con una testa che discende da quella locale (PR portata in pari con main da
+GitHub, «Update branch»): `compare/<testa della PR>...<testa locale>` con `status` uguale a `behind` o `identical`.
 
 Gruppi dei rami locali (`rami_locali`): da_togliere (PR MERGED e unito come sopra), in_corso (PR aperta), da_chiedere (tutto
 il resto: senza PR, anche se la testa è in main; PR chiusa senza unione; commit non uniti). Mai `main`, mai il ramo corrente, mai un ramo aperto in una worktree."""
@@ -24,8 +25,10 @@ DISCENDENTE = ("behind", "identical")
 SQUASH = ("stessa_testa", "antenata")      # unione squash: il ramo si toglie con «git branch -D»
 UNITE = ("stessa_testa", "in_main", "antenata")
 NON_VERIFICATO = "non_verificato"          # il confronto su GitHub non ha risposto
+SENZA_COMMIT = "senza_commit"              # testa in origin/main ma nessuna PR unita: niente di proprio, niente di unito
 MOTIVO_NON_VERIFICATO = "GitHub non ha risposto: riprova"
 MOTIVO_DOPO = "commit fatti dopo l'unione della PR"
+MOTIVO_SENZA_COMMIT = "nessun commit proprio: può essere una sessione appena aperta"
 
 
 def _leggi_porcelain(testo: str) -> list[dict]:
@@ -83,12 +86,13 @@ def antenata_della_pr(esegui: comune.Esegui, testa: str, testa_pr: str) -> str:
 
 def unione(esegui: comune.Esegui, pr: dict | None, testa: str) -> str | None:
     """Come il lavoro è arrivato su main: «stessa_testa», «in_main», «antenata»; NON_VERIFICATO se GitHub non ha risposto al
-    confronto; None se non è unito. Solo i valori di UNITE contano come unito."""
+    confronto; SENZA_COMMIT se la testa è in origin/main ma nessuna PR è stata unita (ramo appena creato: non c'è lavoro
+    arrivato su main, non c'è proprio lavoro); None se non è unito. Solo i valori di UNITE contano come unito."""
     unita = bool(pr and pr["state"] == "MERGED")
     if unita and pr["headRefOid"] == testa:
         return "stessa_testa"
     if in_main(esegui, testa):
-        return "in_main"
+        return "in_main" if unita else SENZA_COMMIT
     if unita:
         esito = antenata_della_pr(esegui, testa, pr["headRefOid"])
         if esito == "si":
@@ -127,6 +131,8 @@ def raccogli(esegui: comune.Esegui, prs: dict[str, dict] | None = None) -> list[
             v["motivo"] = MOTIVO_NON_VERIFICATO if v["unione"] == NON_VERIFICATO else MOTIVO_DOPO
         else:
             v["gruppo"] = "senza_pr"
+            if v["unione"] == SENZA_COMMIT:
+                v["motivo"] = MOTIVO_SENZA_COMMIT
     return voci
 
 
