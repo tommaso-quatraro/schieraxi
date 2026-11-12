@@ -118,8 +118,9 @@ jobs:
 
   # Contro il lavoro fuori piano: la descrizione della PR dichiara le aree («Aree: fanta/web, tests, docs») e i file cambiati
   # devono stare lì dentro (script/ci/controlla_ambito.py, preso da main). Esenti: PR dei bot e PR di soli documenti.
-  # Poi i controlli della PR (script/ci/controlla_pr.py, preso da main): sezioni della descrizione, «## Revisione» fuori dalla
-  # bozza, in fanta/novita.d solo il file della PR, nessun test che legge una novità per nome.
+  # Poi i controlli della PR (script/ci/controlla_pr.py, preso da main): base main (niente rami impilati), sezioni della
+  # descrizione, «## Revisione» fuori dalla bozza, in fanta/novita.d solo il file della PR, nessun test che legge una novità
+  # per nome. Infine la dimensione: oltre 600 righe cambiate, senza test e file generati, un avviso (mai rosso).
   # BLOCCANTE: il job sta nei «needs» di «unisci». Gli script si prendono da main: un controllo nuovo vale dalla PR dopo la sua
   # unione, e se manca su main il passo lo dice e salta. La descrizione arriva solo come variabile d'ambiente.
   # Niente evento «edited» (scelta del 6/11): la revisione si scrive in bozza e «gh pr ready» rifà i controlli con la descrizione
@@ -157,9 +158,16 @@ jobs:
           AUTORE: ${{ github.event.pull_request.user.login }}
           CORPO: ${{ github.event.pull_request.body }}
           BOZZA: ${{ github.event.pull_request.draft }}
+          BASE: ${{ github.base_ref }}
         run: |
           if [ ! -f _ci-main/script/ci/controlla_pr.py ]; then echo "::warning title=Controlli della PR::controlla_pr.py non è su main: controllo saltato"; exit 0; fi
           git diff --name-status HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_pr.py tests
+      # Solo avviso: questo passo non diventa mai rosso (una PR grande si rivede male, ma a volte non si può dividere)
+      - name: Dimensione della PR (solo avviso)
+        if: ${{ !cancelled() }}
+        run: |
+          if ! grep -q -- "--dimensione" _ci-main/script/ci/controlla_ambito.py 2>/dev/null; then echo "::warning title=Dimensione::il controllo della dimensione non è ancora su main: saltato"; exit 0; fi
+          git diff --numstat HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_ambito.py --dimensione || echo "::warning title=Dimensione::controllo della dimensione non riuscito"
 
   # Ogni modifica al codice dell'app dice cosa cambia: un file fanta/novita.d/<nome>.json (il numero lo dà il bot all'unione)
   # Gli script di controllo si prendono da main, mai dal ramo della PR. Le PR di Dependabot non lo richiedono (e non si uniscono da sole).
@@ -308,21 +316,40 @@ jobs:
       pull-requests: write     # per unire la PR
       issues: write            # per chiudere le issue di «Closes #N» (vedi sotto)
     steps:
+      # Titolo e corpo del commit su main scritti qui (#620): il titolo della PR col numero, e nel corpo solo le righe
+      # «Closes #N» della descrizione (anche Fixes e Resolves, a inizio riga). Senza, GitHub ci metteva tutta la descrizione,
+      # citazioni comprese. Il corpo non è mai vuoto: un corpo vuoto potrebbe valere come «non dato» e riportare quello di GitHub.
+      # Titolo e descrizione arrivano solo come variabili d'ambiente; i numeri delle issue vanno al passo dopo («numeri»).
       - name: Unisci la PR (solo il commit che ha passato i test)
+        id: unione
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
           TESTA: ${{ github.event.pull_request.head.sha }}
-        run: gh pr merge "$PR" --squash --delete-branch --match-head-commit "$TESTA" --repo "$GITHUB_REPOSITORY"
+          TITOLO: ${{ github.event.pull_request.title }}
+          CORPO: ${{ github.event.pull_request.body }}
+        run: |
+          chiude=$(printf '%s\n' "$CORPO" | tr -d '\r' \
+            | grep -iE '^[[:space:]]*(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' \
+            | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+' | awk '!visti[tolower($0)]++') || chiude=""
+          echo "numeri=$(printf '%s\n' "$chiude" | grep -oE '[0-9]+' | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          gh pr merge "$PR" --squash --delete-branch --match-head-commit "$TESTA" --subject="$TITOLO (#$PR)" \
+            --body="${chiude:-Senza issue collegata.}" --repo "$GITHUB_REPOSITORY"
       # Un'unione fatta con il token di GitHub Actions non chiude le issue di «Closes #N»: le chiude questo passo.
-      # Solo issue di questo repository collegate dalla PR (closingIssuesReferences), e solo se sono ancora aperte.
+      # Solo issue di questo repository collegate dalla PR (closingIssuesReferences), e solo se sono ancora aperte; e tra
+      # queste solo quelle delle righe «Closes #N» della descrizione (#620): un «closes #N» citato nel testo non chiude niente.
       - name: Chiudi le issue collegate alla PR
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
+          RIGHE: ${{ steps.unione.outputs.numeri }}
         run: |
           numeri=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json closingIssuesReferences --jq '.closingIssuesReferences[] | select((.repository.owner.login + "/" + .repository.name) == env.GITHUB_REPOSITORY) | .number')
           for n in $numeri; do
+            case " $RIGHE " in
+              *" $n "*) ;;
+              *) echo "#$n è collegata alla PR ma non sta in una riga «Closes #N» della descrizione: resta aperta"; continue ;;
+            esac
             stato=$(gh issue view "$n" --repo "$GITHUB_REPOSITORY" --json state --jq .state)
             if [ "$stato" = "OPEN" ]; then
               gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "Fatta con la PR #$PR, unita su main."

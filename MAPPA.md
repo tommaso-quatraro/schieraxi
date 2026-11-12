@@ -28,8 +28,10 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
 | Fonti e archivio | `fonti/` (un lettore per fonte), `aggiorna.py` (riempie `dati/fanta.sqlite`), `archivio.py`, `rete.py`, `fonti_attive.py`, `controlli.py`, `stato_dati.py` |
 | Avvisi | `notifiche.py`, `push.py`, `avvisi.py`, `avvisi_utenti.py`, `pianificatore.py`, `frasi.py` e `frasi_avvisi.py` (frasi con chiave) |
 | Account | `account.py` (sessioni, inviti, migrazioni), `account_email.py`, `posta.py`, `social.py` (Google), `onboarding.py`, `testi_legali.py` |
-| Misura e sorveglianza | `verifica*.py` (misure sul passato), `registro_giornate.py`, `registro_nostri.py`, `indicatori_consiglio.py`, `affidabilita.py`, `sentinella.py`, `salute.py`, `misura_ingresso.py` |
-| Altro | `widget.py`, `live.py` (risultati in diretta), `scambi.py`, `scambi_multi.py`, `asta.py`, `coppe.py`, `osservati.py`, `immagini.py`, `avatar.py`, `backup.py`, `funzioni.py` (interruttori delle funzioni), `gestione.py`, `percorsi.py` |
+| Misura | `verifica*.py` (misure sul passato), `registro_giornate.py`, `registro_nostri.py`, `indicatori_consiglio.py`, `affidabilita.py` |
+| Sorveglianza | `sentinella.py`, `salute.py`, `misura_ingresso.py` |
+| Mercato e lega | `scambi.py`, `scambi_multi.py`, `asta.py`, `coppe.py`, `osservati.py` |
+| Altro | `widget.py`, `live.py` (risultati in diretta), `immagini.py`, `avatar.py`, `backup.py`, `funzioni.py` (interruttori delle funzioni), `gestione.py`, `percorsi.py` |
 
 ## `fanta/web/`: la web app
 `index.html` (testata e contenitore), `app.js` (schermate e navigazione), `impostazioni.js`, `dafare.js`, `primoavvio.js`,
