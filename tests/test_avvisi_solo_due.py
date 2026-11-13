@@ -14,6 +14,8 @@ Orari simulati (`adesso` passato come argomento), archivio in memoria, notifiche
 # ruff: noqa: F811  (le fixture importate da altri file di test arrivano come parametri con lo stesso nome: è il modo di pytest)
 from datetime import datetime
 
+import pytest
+
 from fanta import __main__ as cli
 from fanta import avvisi_utenti, consigli, notifiche, scelte
 from fanta.regole import Regole
@@ -215,12 +217,15 @@ def test_con_le_vecchie_scelte_spente_arrivano_i_due_avvisi(mondo, registro):
     assert [t for _, t, _ in registro.web] == ["SchieraXI · formazione tra un'ora"]
 
 
-def test_riepilogo_e_formazione_pronta_non_partono_piu(mondo, registro, capsys):
-    nuovo("amico1", (1, "Castro"))
+def test_riepilogo_e_formazione_pronta_non_partono_piu(capsys):
+    """Solo due giri di avvisi; i comandi del riepilogo e di «formazione pronta» non ci sono più (gli script del server non li
+    lanciano più, vedi test_script_comandi.py)."""
     assert set(avvisi_utenti.FUNZIONI) == {"cambi", "promemoria"}
-    cli.cmd_avviso(None)                                                                # «formazione pronta»: 30 ore prima
-    cli.cmd_riepilogo(None)
-    assert registro.web == [] and registro.ntfy == [] and capsys.readouterr().out == ""
+    for comando in ("riepilogo", "avviso"):
+        with pytest.raises(SystemExit) as uscita:
+            cli.main([comando])
+        assert uscita.value.code == 2, comando                                         # comando sconosciuto
+    capsys.readouterr()
 
 
 def test_nel_giro_dei_cambi_niente_reparto_scoperto(mondo, registro, monkeypatch):
@@ -233,19 +238,6 @@ def test_nel_giro_dei_cambi_niente_reparto_scoperto(mondo, registro, monkeypatch
 
 
 # ---------------------------------------------------------------- un solo utente
-def test_un_solo_utente_niente_riepilogo_ne_formazione_pronta(client, monkeypatch, capsys):
-    """Gli script del server lanciano ancora `avviso` e `riepilogo`: escono subito, senza scrivere niente (lo script manda su ntfy
-    quello che `avviso` stampa), anche quando sarebbe il momento di «formazione pronta»."""
-    from fanta import avvisi
-    inviati = []
-    monkeypatch.setattr(notifiche, "invia", lambda *a, **k: inviati.append(a) or True)
-    monkeypatch.setattr(avvisi, "da_mandare", lambda *a, **k: {"titolo": "SchieraXI", "testo": "pronta", "scadenza": ore(18, 30)},
-                        raising=False)
-    cli.cmd_avviso(type("A", (), {"prova": False})())
-    cli.cmd_riepilogo(None)
-    assert inviati == [] and capsys.readouterr().out == ""
-
-
 def test_un_osservato_lasciato_libero_non_avvisa_piu(client, monkeypatch):
     from fanta import osservati, server
     inviati = []

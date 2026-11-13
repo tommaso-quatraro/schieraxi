@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from fanta import avvisi, frasi, notifiche, push, server
+from fanta import frasi, notifiche, push, server
 from fanta.regole import Regole
 
 from test_notifiche import ROSE, _db, _finto, _stato
@@ -66,21 +66,16 @@ def test_promemoria_e_cambi_in_inglese(telefono, tmp_path, monkeypatch):
     assert t1 == "SchieraXI · lineup in one hour" and c1.startswith("Matchday 9 · Serie A matchday 9: the lineup closes in about an hour (deadline at 18:30). Recommended: 4-3-3, 71.2 expected points.")
     assert "To check: Castro." in c1
     assert t2 == "SchieraXI · last minutes for the lineup" and c2 == "Matchday 9 · Serie A matchday 9: the lineup closes at 18:30. Have you entered it on Leghe?"
-    righe = notifiche.confronta({"1": _stato("Castro", "titolare", 80), "2": _stato("Vicario", "titolare", 90)},
-                                {"1": _stato("Castro", "panchina", 40), "2": _stato("Vicario", "infortunato")})
-    giornata = frasi.nome_giornata(9, 6, avviso=True)
-    assert telefono.manda(frasi.F("n.t_cambi"), frasi.elenco([giornata] + righe, sep="\n"), 4, "rotating_light")
-    assert telefono.arrivati[-1] == ("SchieraXI · changes in the probable lineups",
-                                     "Matchday 6 · Serie A matchday 9\nCastro: from the starting lineup to the bench\nVicario: now injured")
+    metti = frasi.F("n.metti", motivi=frasi.F("n.m_infortunato", nome="Vicario"), entrano="Bonny")
+    assert telefono.manda(frasi.F("n.t_cambia_titolare"), frasi.F("n.testo_cambiata", frase=metti, data="28/10", ora="18:30"), 4,
+                          "rotating_light")
+    assert telefono.arrivati[-1] == ("SchieraXI · a starter changes", "Vicario is injured: field Bonny. The lineup closes on 28/10 at 18:30.")
 
 
-def test_formazione_pronta_e_avviso_di_prova_in_inglese(telefono):
+def test_avviso_di_prova_in_inglese(telefono):
     telefono.impostazioni.write_text(json.dumps({"lingua": "en"}), encoding="utf-8")
-    pronta = {"titolo": "SchieraXI", "testo": frasi.F("n.pronta", giornata=frasi.nome_giornata(12, 9, avviso=True))}
-    assert telefono.manda(pronta["titolo"], pronta["testo"]) and "Matchday 9 · Serie A matchday 12: the lineup is ready." in telefono.arrivati[-1][1]
     assert telefono.manda(frasi.F("n.t_prova"), frasi.F("n.prova"), ignora_silenzio=True)
     assert telefono.arrivati[-1] == ("SchieraXI · test", "If you can read this, the alerts work.")
-    assert avvisi.F is frasi.F                                                   # il testo di avvisi.py è una frase con chiave
 
 
 def test_il_web_manda_la_lingua_agli_avvisi_quando_cambia():

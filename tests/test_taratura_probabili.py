@@ -614,7 +614,7 @@ def test_aggiorna_sh_lancia_la_taratura_per_ultima_con_priorita_bassa_e_tempo_ma
     t = AGGIORNA.read_text(encoding="utf-8")
     riga = next(r for r in t.splitlines() if "taratura-probabili" in r and not r.lstrip().startswith("#"))
     assert riga.startswith("nice -n 15 timeout 300 .venv/bin/python -m fanta taratura-probabili >> \"$LOG\" 2>&1 || ")
-    assert t.index(riga) > t.index("fanta foto") and t.index(riga) > t.index("fanta avviso") and t.index(riga) < t.index('ruota_registro "$LOG" 2000')
+    assert t.index(riga) > t.index("fanta foto") and t.index(riga) > t.index("fanta affidabilita") and t.index(riga) < t.index('ruota_registro "$LOG" 2000')
 
 
 # ---------------------------------------------------------------- B1: accensione, ritorno indietro, spegnimento
