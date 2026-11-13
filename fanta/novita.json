@@ -1,5 +1,33 @@
 [
   {
+    "versione": "1.499",
+    "data": "2026-11-13T15:23:49",
+    "titolo": "Copie di sicurezza dei dati di ogni utente: la copia di ogni notte non si perde",
+    "voci": [
+      "Server: se l'orologio del server torna indietro, la copia di sicurezza dei dati di ogni utente appena fatta non si perde più, e il server conta una copia fra quelle fatte solo se c'è davvero. Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "backup.salva_copia: la copia appena scritta non entra mai fra quelle da togliere; le altre si tengono per data del file (a parità, per nome), le più recenti tieni - 1. Prima si ordinavano per la data nel nome: con l'orologio indietro o copie datate nel futuro la copia di adesso era la prima a uscire. La regola è la stessa di copia_account (#690), ora in una funzione sola (backup._tieni_le_recenti) usata da entrambe.",
+      "backup.salva_copia riceve adesso (obbligatorio, da passare con il suo nome) per il nome del file e lo passa a backup.crea, che lo usa per «creato» (senza adesso: l'ora del momento, come prima, per il file che si scarica e per la copia prima del ripristino). python -m fanta backup legge l'ora una volta sola e la passa alle copie degli utenti e a quella del database degli account.",
+      "python -m fanta backup con gli account: una copia di un utente che dopo il giro non c'è non si conta in «copie salvate» ma fra gli errori (riga «non trovata dopo averla scritta» nel registro del servizio) e il comando esce con errore. Senza account: «copia salvata» solo se il file c'è, altrimenti uscita con errore e il nome del file. Client: nessuna rotta cambia."
+    ]
+  },
+  {
+    "versione": "1.498",
+    "data": "2026-11-13T14:58:58",
+    "titolo": "Copie di sicurezza degli account: leggibili solo dal server, e la copia di ogni notte non si perde",
+    "voci": [
+      "Server: le copie di sicurezza degli account fatte prima di questa versione diventano leggibili solo dal server alla prima copia di ogni notte, come quelle nuove. Per chi usa l'app non cambia niente.",
+      "Server: se l'orologio del server torna indietro, la copia di sicurezza degli account appena fatta non si perde più, e il server dice di averla fatta solo se c'è davvero."
+    ],
+    "tecnico": [
+      "backup.stringi_permessi(cartella): dà 600 a ogni account-*.sqlite della cartella (serali e «prima della migrazione», anche quelle nate prima della #688 con i permessi di sistema) e restituisce i nomi dei file che non è riuscita a stringere. La chiama python -m fanta backup subito dopo copia_account, che i permessi non li tocca più (prima: chmod della sola copia nuova, con l'errore taciuto). Un file non stretto finisce fra gli errori del comando, con il nome, e il comando esce con errore: script/server/backup-serale.sh scrive in dati/backup.log solo le uscite con errore.",
+      "backup.copia_account: la copia appena scritta non entra mai fra quelle da togliere; le altre serali si tengono per data del file (a parità, per nome), le più recenti tieni - 1. Prima si ordinavano per nome: con l'orologio indietro o copie datate nel futuro la copia di adesso era la prima a uscire.",
+      "python -m fanta backup (con gli account): «copiato» solo se il file restituito da copia_account esiste; altrimenti «copia non trovata» e uscita con errore, insieme agli eventuali errori delle copie degli utenti.",
+      "Calcolo della Formazione in coda quando l'account si elimina: un test nuovo mostra che non rimette il numero nelle consigliate già mostrate (le ricorda solo la richiesta, con il risultato pronto, e dopo l'eliminazione la sessione non c'è più). Nessuna correzione. Client: nessuna rotta cambia."
+    ]
+  },
+  {
     "versione": "1.497",
     "data": "2026-11-13T14:48:02",
     "titolo": "Formazione: i pulsanti che si accendono si leggono subito",

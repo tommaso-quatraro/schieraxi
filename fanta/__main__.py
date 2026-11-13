@@ -495,16 +495,22 @@ def _affidabilita_pubblica(file: str | None) -> None:
 
 def cmd_backup(a) -> None:
     from . import account, backup
+    adesso = datetime.now()
     if account.multiutente():
-        return _backup_per_utente(a.tieni, datetime.now())
-    file = backup.salva_copia(tieni=a.tieni)
-    print(f"copia salvata: {file}" if file else "niente da salvare")
+        return _backup_per_utente(a.tieni, adesso)
+    file = backup.salva_copia(tieni=a.tieni, adesso=adesso)
+    if file is None:
+        print("niente da salvare")
+    elif not file.is_file():                 # «copia salvata» solo se la copia c'è davvero dopo il giro (#709)
+        sys.exit(f"Errore: la copia non c'è dopo averla scritta ({file}).")
+    else:
+        print(f"copia salvata: {file}")
 
 
 def _backup_per_utente(tieni: int, adesso: datetime) -> None:
     """Con gli account: una copia dei dati di ogni utente nella sua cartella (le ultime 3) e una del database degli account.
-    La copia di un utente che non si scrive (disco, database degli account che non risponde) non ferma gli altri né la copia del
-    database: l'errore va nel registro del servizio e alla fine il comando esce con errore."""
+    La copia di un utente che non si scrive (disco, database degli account che non risponde) o che dopo il giro non c'è non ferma
+    gli altri né la copia del database: l'errore va nel registro del servizio e alla fine il comando esce con errore."""
     import contextlib
     import logging
     from . import account, backup, percorsi
@@ -515,16 +521,35 @@ def _backup_per_utente(tieni: int, adesso: datetime) -> None:
     for i in ids:
         ctx = Contesto.per_utente(i)
         try:
-            if backup.salva_copia(cartella=ctx.cartella / "backup", tieni=min(tieni, 3), file_utente=ctx.file_backup):
-                fatte += 1
+            copia = backup.salva_copia(cartella=ctx.cartella / "backup", tieni=min(tieni, 3), file_utente=ctx.file_backup,
+                                       adesso=adesso)
         except (OSError, percorsi.DatabaseAccountNonRisponde) as e:
             errori += 1
             logging.getLogger(__name__).error("Backup dell'account %s non salvato (%s)", i, type(e).__name__)
+            continue
+        if copia is None:
+            continue                                 # niente da salvare
+        if copia.is_file():                          # si conta solo una copia che c'è davvero dopo il giro (#709)
+            fatte += 1
+        else:
+            errori += 1
+            logging.getLogger(__name__).error("Copia dell'account %s non trovata dopo averla scritta (%s)", i, copia.name)
     conti = backup.copia_account(percorsi.cartella_account() / "backup", percorsi.cartella_account() / "account.sqlite", tieni,
                                  adesso=adesso)
-    print(f"copie salvate: {fatte} utenti su {len(ids)}; database degli account: {'copiato' if conti else 'niente da copiare'}")
+    non_ristrette = backup.stringi_permessi(percorsi.cartella_account() / "backup")     # anche le copie già presenti (#690)
+    sparita = conti is not None and not conti.is_file()     # «copiato» solo se la copia c'è davvero dopo il giro (#690)
+    stato = "niente da copiare" if conti is None else "copia non trovata" if sparita else "copiato"
+    print(f"copie salvate: {fatte} utenti su {len(ids)}; database degli account: {stato}")
+    problemi = []
     if errori:
-        sys.exit(f"Errore: copia non salvata per {errori} utenti su {len(ids)} (il motivo è nel registro del servizio).")
+        problemi.append(f"copia non salvata per {errori} utenti su {len(ids)} (il motivo è nel registro del servizio)")
+    if sparita:
+        problemi.append(f"la copia del database degli account non c'è dopo averla scritta ({conti})")
+    if non_ristrette:                # lo script serale scrive nel suo registro solo le uscite con errore: qui deve uscire così
+        problemi.append("copie del database degli account con i permessi non ristretti al solo proprietario (forse di un altro "
+                        f"utente della macchina): {', '.join(non_ristrette)}")
+    if problemi:
+        sys.exit(f"Errore: {'; '.join(problemi)}.")
 
 
 def cmd_salute(a) -> None:

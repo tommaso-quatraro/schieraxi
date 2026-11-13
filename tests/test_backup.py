@@ -1,5 +1,7 @@
 """Backup e ripristino dei dati della lega, su una cartella temporanea."""
 import json
+import os
+from datetime import datetime
 
 import pytest
 
@@ -359,21 +361,69 @@ def test_nome_del_file_e_formato():
         backup.controlla({"formato": "altro-backup", "versione": 1, "file": {"dati/osservati.json": [1]}})
 
 
-def test_copia_serale_una_al_giorno_e_si_tengono_le_ultime(radice, monkeypatch):
+GIRO_SERALE = datetime(2026, 10, 29, 3, 30)          # il giro serale (cron delle 3:30): l'ora arriva come argomento
+
+
+def test_copia_serale_una_al_giorno_e_si_tengono_le_ultime(radice):
     cartella = radice / "dati" / "backup"
     cartella.mkdir()
     for giorno in range(1, 10):
         (cartella / f"schieraxi-backup-2026-10-0{giorno}.json").write_text("{}")
-    monkeypatch.setattr(backup, "datetime", type("D", (), {"now": staticmethod(lambda: __import__("datetime").datetime(2026, 10, 29, 3, 30))}))
-    f = backup.salva_copia(radice, tieni=7)
+    f = backup.salva_copia(radice, tieni=7, adesso=GIRO_SERALE)
     assert f.name == "schieraxi-backup-2026-10-29.json"
     assert len(list(cartella.glob("*.json"))) == 7 and f.exists()
+    assert json.loads(f.read_text())["creato"] == "2026-10-29T03:30:00"
     assert backup.controlla(json.loads(f.read_text()))                      # è un backup ripristinabile
-    assert backup.salva_copia(radice, tieni=7) == f and len(list(cartella.glob("*.json"))) == 7      # stesso giorno: si sostituisce
+    assert backup.salva_copia(radice, tieni=7, adesso=GIRO_SERALE) == f and len(list(cartella.glob("*.json"))) == 7  # stesso giorno: si sostituisce
 
 
 def test_copia_serale_senza_dati_non_scrive(tmp_path):
-    assert backup.salva_copia(tmp_path) is None and not (tmp_path / "dati" / "backup").exists()
+    assert backup.salva_copia(tmp_path, adesso=GIRO_SERALE) is None and not (tmp_path / "dati" / "backup").exists()
+
+
+def _data(p, quando: datetime) -> None:
+    os.utime(p, (quando.timestamp(), quando.timestamp()))
+
+
+def test_la_copia_appena_scritta_resta_anche_con_l_orologio_indietro(radice):
+    """#709: l'orologio del server torna indietro (o nella cartella ci sono copie datate nel futuro): la copia di adesso ha un
+    nome che viene prima di tutte le altre. Resta lo stesso, e le copie restano `tieni`: esce la più vecchia per data del file."""
+    cartella = radice / "dati" / "backup"
+    cartella.mkdir()
+    for giorno in range(1, 8):                                       # sette copie con una data dopo quella di adesso
+        copia = cartella / f"schieraxi-backup-2026-11-0{giorno}.json"
+        copia.write_text("{}")
+        _data(copia, datetime(2026, 11, giorno, 3, 30))
+    scritta = backup.salva_copia(radice, tieni=7, adesso=GIRO_SERALE)
+    assert scritta == cartella / "schieraxi-backup-2026-10-29.json" and scritta.is_file()
+    assert sorted(p.name for p in cartella.iterdir()) == (["schieraxi-backup-2026-10-29.json"]
+                                                          + [f"schieraxi-backup-2026-11-0{g}.json" for g in range(2, 8)])
+
+
+def test_le_copie_si_tengono_per_data_del_file_non_per_nome(radice):
+    """Due copie con il nome e la data del file in disaccordo (per esempio una copia rimessa a mano nella cartella): si tiene la
+    più recente per data del file."""
+    cartella = radice / "dati" / "backup"
+    cartella.mkdir()
+    nome_vecchio, nome_nuovo = cartella / "schieraxi-backup-2026-10-01.json", cartella / "schieraxi-backup-2026-10-02.json"
+    for copia, quando in ((nome_vecchio, datetime(2026, 10, 28, 3, 30)), (nome_nuovo, datetime(2026, 10, 24, 3, 30))):
+        copia.write_text("{}")
+        _data(copia, quando)
+    backup.salva_copia(radice, tieni=2, adesso=GIRO_SERALE)
+    assert nome_vecchio.exists() and not nome_nuovo.exists()
+
+
+def test_il_comando_dice_copia_salvata_solo_se_la_copia_c_e(tmp_path, monkeypatch, capsys):
+    """#709, senza account: se dopo il giro la copia non c'è, `python -m fanta backup` non dice «copia salvata» ma esce con un
+    errore che dice quale file manca."""
+    from fanta import __main__ as cli
+    monkeypatch.delenv("FANTA_MULTIUTENTE", raising=False)
+    sparita = tmp_path / "schieraxi-backup-2026-10-29.json"
+    monkeypatch.setattr(backup, "salva_copia", lambda **k: sparita)
+    with pytest.raises(SystemExit) as uscita:
+        cli.cmd_backup(type("A", (), {"tieni": 7})())
+    assert "copia salvata" not in capsys.readouterr().out
+    assert str(uscita.value.code).startswith("Errore:") and sparita.name in str(uscita.value.code)
 
 
 def test_il_ripristino_non_cambia_le_formazioni_delle_giornate_chiuse(dati_isolati, radice, monkeypatch):

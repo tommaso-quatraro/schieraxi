@@ -8,7 +8,7 @@ import math
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from . import lega, movimenti, osservati, regole, scelte
 from .limiti import MAX_GIOCATORI_SQUADRA
@@ -236,31 +236,47 @@ def _percorsi(radice: Path, file: dict[str, Path] | None) -> dict[str, Path]:
     return file if file is not None else {nome: radice / nome for nome in CONTROLLI}
 
 
-def crea(radice: Path = RADICE, file_utente: dict[str, Path] | None = None) -> dict:
-    """Tutto quello che c'è, in un dizionario pronto per essere scritto come JSON."""
+def crea(radice: Path = RADICE, file_utente: dict[str, Path] | None = None, adesso: datetime | None = None) -> dict:
+    """Tutto quello che c'è, in un dizionario pronto per essere scritto come JSON. `adesso` è l'ora di «creato» (senza: quella
+    del momento, per il file che l'utente scarica)."""
     file = {}
     for nome, percorso in _percorsi(radice, file_utente).items():
         try:
             file[nome] = json.loads(percorso.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue                                  # non c'è (ancora) o è rovinato: nel backup non finisce
-    return {"formato": FORMATO, "versione": VERSIONE, "creato": datetime.now().isoformat(timespec="seconds"), "file": file}
+    creato = (adesso or datetime.now()).isoformat(timespec="seconds")
+    return {"formato": FORMATO, "versione": VERSIONE, "creato": creato, "file": file}
 
 
-def salva_copia(radice: Path = RADICE, cartella: Path | None = None, tieni: int = 7, file_utente: dict[str, Path] | None = None) -> Path | None:
-    """Scrive la copia di oggi in dati/backup/ (una al giorno: se c'è già si sostituisce) e tiene solo le ultime `tieni`.
-    Con `file_utente` (e `cartella`) è la copia di un utente con un account. Restituisce il file scritto, o None se non c'è niente da salvare."""
-    b = crea(radice, file_utente)
+def salva_copia(radice: Path = RADICE, cartella: Path | None = None, tieni: int = 7, file_utente: dict[str, Path] | None = None,
+                *, adesso: datetime) -> Path | None:
+    """Scrive la copia di oggi in dati/backup/ (una al giorno, `adesso` dà il nome: se c'è già si sostituisce) e tiene solo le
+    ultime `tieni`. Con `file_utente` (e `cartella`) è la copia di un utente con un account. Restituisce il file scritto, o None
+    se non c'è niente da salvare."""
+    b = crea(radice, file_utente, adesso)
     if not b["file"]:
         return None
     cartella = cartella or radice / "dati" / "backup"
     destinazione = cartella / nome_file(b["creato"])
     scrivi_sicuro(destinazione, json.dumps(b, ensure_ascii=False))
-    # Si tengono le ultime `tieni` copie (ordine per data, non per nome).
-    copie = sorted(cartella.glob(f"{PREFISSO_FILE}-*.json"), key=lambda p: (p.stem[-10:], p.name))
-    for vecchia in copie[:-tieni]:
-        vecchia.unlink(missing_ok=True)
+    _tieni_le_recenti(destinazione, cartella.glob(f"{PREFISSO_FILE}-*.json"), tieni)
     return destinazione
+
+
+def _tieni_le_recenti(appena_scritta: Path, copie: Iterable[Path], tieni: int) -> None:
+    """Fra le `copie` di una cartella restano `appena_scritta` e le `tieni - 1` più recenti per data del file (a parità, per
+    nome); le altre si tolgono. La copia appena scritta non si toglie mai e non conta l'ordine dei nomi: con l'orologio tornato
+    indietro, o con copie datate nel futuro, il nome di adesso viene prima degli altri e sarebbe il primo a uscire (#690, #709)."""
+    altre = []
+    for copia in copie:
+        if copia != appena_scritta:
+            try:
+                altre.append((copia.stat().st_mtime, copia.name, copia))
+            except FileNotFoundError:
+                pass                                 # già tolta (da un altro giro): va bene
+    for _, _, vecchia in sorted(altre, reverse=True)[max(0, tieni - 1):]:
+        vecchia.unlink(missing_ok=True)
 
 
 COPIA_SERALE = re.compile(r"account-[0-9]{4}-[0-9]{2}-[0-9]{2}\.sqlite")      # account-AAAA-MM-GG.sqlite
@@ -278,7 +294,8 @@ COPIE_MIGRAZIONE = "account-prima-della-migrazione-*.sqlite"
 def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: datetime) -> Path | None:
     """Con gli account: una copia del database degli utenti (account.sqlite) con l'API di backup di SQLite, che è sicura anche
     mentre il server lo usa. Una al giorno (`adesso` dà il nome), ne tiene `tieni`. Nello stesso giro toglie le copie «prima della
-    migrazione» più vecchie di GIORNI_COPIE_MIGRAZIONE. Contiene gli hash delle password: il file lo legge solo chi lo ha creato."""
+    migrazione» più vecchie di GIORNI_COPIE_MIGRAZIONE. Contiene gli hash delle password, ma i permessi qui non si toccano: li
+    stringe `stringi_permessi`, che il giro serale chiama subito dopo e che dice quali copie non è riuscita a stringere."""
     import sqlite3
     if not origine.exists():
         return None
@@ -290,16 +307,10 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: date
     finally:
         copia.close()
         sorgente.close()
-    try:
-        destinazione.chmod(0o600)
-    except OSError:
-        pass
     # Si contano e si tolgono solo le copie serali (data nel nome): le copie «prima della migrazione» stanno nella stessa
     # cartella e, in ordine di nome, vengono dopo quelle con la data; contate qui toglievano posto alle serali, fino a cancellare
-    # quella appena scritta (#653).
-    serali = sorted(p for p in cartella.glob("account-*.sqlite") if COPIA_SERALE.fullmatch(p.name))
-    for vecchia in serali[:-tieni]:
-        vecchia.unlink(missing_ok=True)
+    # quella appena scritta (#653). Le serali si tengono per data del file e quella appena scritta resta sempre (#690).
+    _tieni_le_recenti(destinazione, (p for p in cartella.glob("account-*.sqlite") if COPIA_SERALE.fullmatch(p.name)), tieni)
     scadenza = (adesso - timedelta(days=GIORNI_COPIE_MIGRAZIONE)).timestamp()
     for copia in cartella.glob(COPIE_MIGRAZIONE):
         try:
@@ -308,6 +319,22 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: date
         except FileNotFoundError:
             pass                                     # già tolta (da un altro giro): va bene
     return destinazione
+
+
+def stringi_permessi(cartella: Path) -> list[str]:
+    """Lettura e scrittura solo per il proprietario (600) a ogni copia del database degli account nella cartella: nelle copie ci
+    sono nomi, email e impronte delle password. Anche a quelle già presenti: le copie nate prima della #688 avevano i permessi di
+    sistema (di solito leggibili dagli altri utenti della macchina) e restano fino a 7 giorni (#690). Restituisce i nomi dei file
+    che non è riuscita a stringere (per esempio di un altro utente della macchina): chi chiama lo deve far vedere."""
+    non_ristrette = []
+    for copia in sorted(cartella.glob("account-*.sqlite")):
+        try:
+            copia.chmod(0o600)
+        except FileNotFoundError:
+            pass                                     # già tolta (da un altro giro): va bene
+        except OSError:
+            non_ristrette.append(copia.name)
+    return non_ristrette
 
 
 def controlla(backup: Any) -> dict[str, Any]:
