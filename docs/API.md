@@ -600,6 +600,8 @@ giocatori di un anticipo già cominciato hanno già `stato_partita`, `titolarita
 formazione non si spostano più (dal 5/11/2026, #373): `GET /api/formazione` li elenca in `bloccati`, e un salvataggio o un ritorno
 alla consigliata che li sposta risponde `400` `giocatore_bloccato` (vedi `POST /api/formazione/valuta`). Partite
 giocate 7 giorni o più prima del gruppo principale (metà giornata giocata e il resto rinviato) fissano la scadenza come prima.
+Le partite rinviate non tengono ferma la giornata da giocare (`giornata` di `/api/oggi`, `prossima_giornata` di `/api/stato`), quante
+che siano (#659): finite le partite già giocabili, se la giornata dopo comincia prima del recupero si passa a quella.
 
 Una partita della giornata è **rinviata** se non è stata giocata e non sta nel turno (regola unica di `fanta/turno.py`): senza data
 o spostata a un recupero, anche settimane dopo. Appena il recupero è giocato non è più rinviata: i suoi voti valgono per la sua
