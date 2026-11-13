@@ -158,6 +158,18 @@ def test_panchina_con_i_posti_per_ruolo():
     assert _pan(f) == [2, 3, 8, 9, 11, 16, 17, 18, 22, 23, 24]
 
 
+def test_portiere_di_riserva_nell_anticipo_non_porta_un_altro_portiere_in_panchina():
+    """Panchina libera: il 2 (portiere di riserva, quarto in panchina) gioca l'anticipo e resta fermo al suo posto. Gli altri posti
+    sono la panchina di sempre: prima la regola «almeno un portiere» faceva entrare anche il 3 (terzo portiere, gioca 3%) al posto
+    del 23 (#659)."""
+    nuove = _prev({2: {"squadra": ANTICIPO}, 3: {"p_voto": 0.03}, 9: {"mu": 5.5}})
+    migliore, f = _stabile(nuove, {ANTICIPO})
+    assert _pan(migliore)[2] == 9                                          # da sola la migliore sposterebbe il 9: si rifà con i fermi
+    assert _tit(f) == TITOLARI
+    assert _pan(f) == PANCHINA
+    assert sum(g["ruolo"] == "P" for g in f["panchina"]) == 1
+
+
 # ---------------------------------------------------------------- consigli.formazione: l'orario dell'anticipo
 MARTEDI = datetime(2026, 11, 3, 12, 0)
 MERCOLEDI_PRIMA = datetime(2026, 11, 4, 20, 0)          # l'anticipo comincia alle 20:45

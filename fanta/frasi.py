@@ -103,6 +103,7 @@ CATALOGO: dict[str, str] = {
     "dafare.az_inizia": "Inizia",
     "senso.nessuna_giornata": "Non ci sono giornate su cui misurare il guadagno.",
     "senso.differenza_piccola": "La differenza è piccola ({punti} punti in {giornate}): meno del normale su e giù del fantavoto.",
+    "senso.guadagno_concentrato": "Il guadagno sta tutto in {in_guadagno} delle {totale} giornate: nelle altre il cambio non dà punti in più.",
     "senso.entra_infortunato": "{nome} è infortunato.",
     "senso.entra_squalificato": "{nome} è squalificato.",
     "senso.entra_dubbio": "{nome} è in dubbio per la prossima giornata.",

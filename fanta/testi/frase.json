@@ -264,6 +264,10 @@
     "it": "La differenza è piccola ({punti} punti in {giornate}): meno del normale su e giù del fantavoto.",
     "en": "The difference is small ({punti} points over {giornate}): less than the usual ups and downs of the fantasy score."
   },
+  "frase.senso.guadagno_concentrato": {
+    "it": "Il guadagno sta tutto in {in_guadagno} delle {totale} giornate: nelle altre il cambio non dà punti in più.",
+    "en": "The whole gain comes from {in_guadagno} of the {totale} matchdays: in the others the change brings no extra points."
+  },
   "frase.senso.entra_infortunato": {
     "it": "{nome} è infortunato.",
     "en": "{nome} is injured."

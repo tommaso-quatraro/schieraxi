@@ -102,11 +102,17 @@ def _data(testo) -> datetime | None:
 
 
 def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | None = None) -> int | None:
-    """La giornata in corso o, se non ce n'è una, la prossima. È la prima con almeno metà delle partite ancora da giocare,
-    oppure con anche una sola partita da giocare nel suo turno (regola unica in turno.py, come la scadenza) e non passata da più di
-    MARGINE_RISULTATI: così la domenica sera e i posticipi del lunedì tengono aperta la giornata finché non sono finite tutte.
-    Un recupero isolato (rinviato a settimane dopo, o rimasto con la vecchia data) non tiene ferma la giornata."""
+    """La giornata in corso o, se non ce n'è una, la prossima. È la prima con anche una sola partita da giocare nel suo turno (regola
+    unica in turno.py, come la scadenza) e non passata da più di MARGINE_RISULTATI: così la domenica sera e i posticipi del lunedì
+    tengono aperta la giornata finché non sono finite tutte. Una giornata ancora senza date la tengono 5 o più partite da giocare.
+    Le partite rinviate (fuori dal turno o senza data, come in rinvii.py) non tengono ferma la giornata, quante che siano (#659).
+    Con partite già giocate settimane prima del turno si decide dalla posizione, non dal numero: la giornata resta solo se ha una
+    partita da giocare prima dell'inizio del turno della giornata dopo. Metà giornata giocata e il resto rinviato a settimane dopo
+    (per turno.py il turno diventa il recupero, dopo la giornata dopo): si passa alla giornata dopo e non si torna indietro quando
+    il recupero si avvicina. Anticipi lontani (Supercoppa, coppe, turno.lontano): il turno viene prima della giornata dopo, quindi
+    la giornata resta «da giocare» finché il suo turno ha partite da cominciare. Le giornate normali non hanno partite così."""
     adesso = adesso or _adesso()
+    da = adesso - MARGINE_RISULTATI        # una partita non giocata e cominciata prima: calendario fermo, non tiene la giornata
     per_giornata: dict[int, list[tuple[datetime | None, bool]]] = {}
     for g, testo, giocata in db.execute("SELECT giornata, data, giocata FROM partite WHERE stagione = ? ORDER BY giornata",
                                         (stagione,)):
@@ -114,13 +120,19 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
     for g in sorted(per_giornata):
         partite = per_giornata[g]
         aperte = [d for d, giocata in partite if not giocata]
-        # 5 o più partite aperte tengono la giornata, ma non se sono TUTTE passate da più di MARGINE_RISULTATI: vuol dire che
-        # il calendario non si aggiorna (fonte giù) e quella giornata è già stata giocata
-        if len(aperte) >= 5 and any(d is None or d >= adesso - MARGINE_RISULTATI for d in aperte):
-            return g
         inizio = turno.inizio(d for d, _ in partite)
-        if aperte and inizio and any(d and turno.nel_turno(d, inizio) and d >= adesso - MARGINE_RISULTATI for d in aperte):
-            return g
+        if inizio is None:
+            if len(aperte) >= 5:
+                return g
+            continue
+        if not any(d and turno.nel_turno(d, inizio) and d >= da for d in aperte):
+            continue
+        # partite giocate settimane prima del turno (non anticipi di turno.py): conta dove cadono le partite da giocare
+        giocate_prima = any(d and giocata and d < inizio and not turno.anticipo(d, inizio) for d, giocata in partite)
+        dopo = turno.inizio(d for d, _ in per_giornata.get(g + 1, ()))
+        if giocate_prima and dopo is not None and not any(d and da <= d < dopo for d in aperte):
+            continue                       # metà giornata giocata: le partite che restano sono recuperi dopo la giornata dopo
+        return g
     return None
 
 
@@ -416,8 +428,9 @@ def _formazione_pronta(db, s, giornata, regole, simulazioni) -> dict:
 
 def _rosa(s: Squadra, prev: pd.DataFrame) -> list[fz.Giocatore]:
     """I giocatori della squadra che hanno una previsione per la giornata, nell'ordine della rosa (lo stesso ordine dà le stesse
-    simulazioni: la consigliata e quella di prima si confrontano alla pari)."""
-    ids = [g.id for g in s.giocatori if g.id is not None]
+    simulazioni: la consigliata e quella di prima si confrontano alla pari). Un giocatore ripetuto (rosa salvata con una riga doppia:
+    file vecchio o backup) conta una volta sola, al primo posto: così consigliata, consigliata tenuta e anticipi usano la stessa rosa."""
+    ids = list(dict.fromkeys(g.id for g in s.giocatori if g.id is not None))
     return [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
                          float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"])) for i in ids if i in prev.index]
 
@@ -827,7 +840,8 @@ class Fermi:
 
     def panchina_di(self, rosa: list[fz.Giocatore], titolari: list[fz.Giocatore], regole: Regole) -> list[fz.Giocatore]:
         """La panchina di sempre (formazione._panchina) fra chi si può ancora spostare, nei posti che restano (per ruolo se la lega
-        li fissa); chi è fermo in panchina torna al suo posto."""
+        li fissa); chi è fermo in panchina torna al suo posto. Se fra i fermi c'è già un portiere, gli altri posti non tengono il
+        posto del portiere (panchina libera): altrimenti entrava un altro portiere al posto di un giocatore di movimento (#659)."""
         ids = {g.id for g in titolari}
         fermi = sorted(((self.panchina[g.id], g) for g in rosa if g.id in self.panchina and g.id not in ids), key=lambda x: x[0])
         liberi = [g for g in rosa if g.id not in ids and g.id not in self.panchina and g.id not in self.fuori]
@@ -837,7 +851,8 @@ class Fermi:
             meno = replace(pr, posti=posti, numero=sum(posti.values()))
         else:
             meno = replace(pr, numero=max(0, pr.numero - len(fermi)))
-        scelti = fz._panchina(liberi, titolari, replace(regole, panchina=meno))
+        scelti = fz._panchina(liberi, titolari, replace(regole, panchina=meno),
+                              portiere=not any(g.ruolo == "P" for _, g in fermi))
         for k, g in fermi:
             scelti.insert(min(k, len(scelti)), g)
         return scelti

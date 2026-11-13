@@ -546,17 +546,21 @@ def _senza_probabili(x: dict) -> dict:
 
 def squadre_in_anticipo_iniziato(db: sqlite3.Connection, stagione: str, giornata: int | None, adesso: datetime,
                                  live: dict | None = None) -> set[str]:
-    """Le squadre di Serie A che hanno già cominciato (o finito) una partita in ANTICIPO di questa giornata (turno.anticipo):
-    i loro giocatori mostrano lo stato vero della partita anche con la formazione ancora aperta."""
+    """Le squadre di Serie A che hanno già cominciato (o finito) una partita in ANTICIPO di questa giornata (turno.anticipo), o che
+    hanno giocato un anticipo lontano (turno.lontano: settimane prima, #659): i loro giocatori mostrano lo stato vero della partita
+    anche con la formazione ancora aperta, e restano fermi."""
     if not giornata:
         return set()
     righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ?",
                        (stagione, giornata)).fetchall()
     partite = [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": bool(r[3])} for r in righe]
     inizio = inizio_turno(partite)
+    precedente, prossimo = avvisi.turni_vicini(db, stagione, giornata)
     squadre: set[str] = set()
     for p in partite:
-        if turni.anticipo(_data(p["data"]), inizio) and stato_partita(p, adesso, live, inizio) != "da_giocare":
+        d = _data(p["data"])
+        if (turni.lontano(d, p["giocata"], inizio, precedente, prossimo)
+                or turni.anticipo(d, inizio) and stato_partita(p, adesso, live, inizio) != "da_giocare"):
             squadre.update(s for s in (p["casa"], p["trasferta"]) if s)
     return squadre
 
