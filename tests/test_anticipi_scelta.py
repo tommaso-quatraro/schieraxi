@@ -65,7 +65,9 @@ def mondo(client, monkeypatch, tmp_path):
         squadre = [(ANTICIPO, "ccc")] + [(f"c{k}", f"t{k}") for k in range(9)]
         giocate = [stato.get("anticipo_giocato", 0)] + [0] * 9
         righe = [(GIORNATA, q, c, t, g) for q, (c, t), g in zip(date, squadre, giocate)]
-        if stato.get("giornata_dopo"):              # la giornata 11, una settimana dopo il gruppo principale
+        if stato.get("giornate_vicine"):            # la 9, giocata intorno all'anticipo, e la 11, una settimana dopo il gruppo principale
+            righe += [(GIORNATA - 1, stato["anticipo"] - timedelta(days=1) + timedelta(hours=3 * k), f"f{k}", f"g{k}", 1)
+                      for k in range(10)]
             righe += [(GIORNATA + 1, stato["principale"] + timedelta(days=7, hours=3 * k), f"d{k}", f"e{k}", 0) for k in range(10)]
         archivio.inserisci(d, "partite", [{"id": n, "stagione": ST, "giornata": g, "data": q.strftime("%Y-%m-%d %H:%M"),
                                            "casa": c, "trasferta": t, "gol_casa": None, "gol_trasferta": None, "giocata": gi,
@@ -153,10 +155,10 @@ def test_prima_che_l_anticipo_cominci_nulla_cambia(mondo):
 
 
 def test_anticipo_di_settimane_la_formazione_si_salva_e_i_suoi_giocatori_restano_fermi(mondo):
-    """Coordinatore, #695 (difetto già su main): l'anticipo è stato giocato due settimane fa (Supercoppa, coppe), il gruppo principale
-    è fra tre giorni e la giornata 11 una settimana dopo. La scadenza viene dal gruppo principale: la formazione si salva (prima: 409,
-    giornata già iniziata dal giorno dell'anticipo), e chi ha giocato l'anticipo resta fermo come per un anticipo."""
-    mondo |= {"anticipo": datetime.now() - timedelta(days=14), "anticipo_giocato": 1, "giornata_dopo": True}
+    """Coordinatore, #695 (difetto già su main): l'anticipo è stato giocato due settimane fa, insieme alla giornata 9 (Supercoppa,
+    coppe), il gruppo principale è fra tre giorni e la giornata 11 una settimana dopo. La scadenza viene dal gruppo principale: la
+    formazione si salva (prima: 409, giornata già iniziata dal giorno dell'anticipo), e chi ha giocato l'anticipo resta fermo."""
+    mondo |= {"anticipo": datetime.now() - timedelta(days=14), "anticipo_giocato": 1, "giornate_vicine": True}
     assert _salva(mondo, SENZA_ANTICIPO).status_code == 200
     assert _salvata(mondo) == SENZA_ANTICIPO
     _rifiutato(_salva(mondo, DENTRO_IL_16), "Dif16")

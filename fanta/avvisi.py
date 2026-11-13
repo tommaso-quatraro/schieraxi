@@ -31,9 +31,11 @@ def _date(db: sqlite3.Connection, stagione: str, giornata: int) -> list[tuple[da
     return date
 
 
-def inizio_turno_dopo(db: sqlite3.Connection, stagione: str, giornata: int) -> datetime | None:
-    """L'inizio del turno della giornata dopo (turno.inizio), per riconoscere gli anticipi lontani (turno.lontano). None se non c'è."""
-    return turno.inizio(d for d, _ in _date(db, stagione, giornata + 1))
+def turni_vicini(db: sqlite3.Connection, stagione: str, giornata: int) -> tuple[datetime | None, datetime | None]:
+    """(inizio del turno della giornata prima, inizio del turno della giornata dopo), per riconoscere gli anticipi lontani
+    (turno.lontano). None dove la giornata non c'è o non ha date."""
+    return (turno.inizio(d for d, _ in _date(db, stagione, giornata - 1)),
+            turno.inizio(d for d, _ in _date(db, stagione, giornata + 1)))
 
 
 def prima_partita(db: sqlite3.Connection, stagione: str, giornata: int) -> datetime | None:
@@ -45,10 +47,11 @@ def prima_partita(db: sqlite3.Connection, stagione: str, giornata: int) -> datet
     # in calendario settimane dopo spostano la scadenza. Prima si contava dall'ULTIMA partita: con i recuperi già in calendario la
     # formazione risultava aperta fino a gennaio.
     # Un anticipo (da 36 ore a 7 giorni prima del gruppo principale) non la fissa, e nemmeno un anticipo lontano (partita giocata
-    # settimane prima, con il turno che comincia prima della giornata dopo, #659): regola in turno.conta_per_scadenza.
+    # settimane prima, entro la giornata precedente, con il turno che comincia prima della giornata dopo, #659): regola in
+    # turno.conta_per_scadenza.
     inizio_turno = turno.inizio(d for d, _ in date)
-    prossimo = inizio_turno_dopo(db, stagione, giornata)
-    valide = [d for d, giocata in date if turno.conta_per_scadenza(d, giocata, inizio_turno, prossimo)]
+    precedente, prossimo = turni_vicini(db, stagione, giornata)
+    valide = [d for d, giocata in date if turno.conta_per_scadenza(d, giocata, inizio_turno, precedente, prossimo)]
     return min(valide)
 
 

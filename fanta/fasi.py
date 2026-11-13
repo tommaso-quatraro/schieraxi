@@ -555,11 +555,11 @@ def squadre_in_anticipo_iniziato(db: sqlite3.Connection, stagione: str, giornata
                        (stagione, giornata)).fetchall()
     partite = [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": bool(r[3])} for r in righe]
     inizio = inizio_turno(partite)
-    prossimo = avvisi.inizio_turno_dopo(db, stagione, giornata)
+    precedente, prossimo = avvisi.turni_vicini(db, stagione, giornata)
     squadre: set[str] = set()
     for p in partite:
         d = _data(p["data"])
-        if (turni.lontano(d, p["giocata"], inizio, prossimo)
+        if (turni.lontano(d, p["giocata"], inizio, precedente, prossimo)
                 or turni.anticipo(d, inizio) and stato_partita(p, adesso, live, inizio) != "da_giocare"):
             squadre.update(s for s in (p["casa"], p["trasferta"]) if s)
     return squadre

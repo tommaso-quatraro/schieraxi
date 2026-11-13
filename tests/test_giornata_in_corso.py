@@ -190,3 +190,24 @@ def test_partite_anticipate_di_settimane_non_fissano_la_scadenza_e_i_loro_giocat
     db = _db(_rinviate(6), finite[11], finite[12])
     assert avvisi.prima_partita(db, ST, 10) == datetime(2026, 10, 31, 15, 0)
     assert fasi.squadre_in_anticipo_iniziato(db, ST, 10, datetime(2026, 11, 3, 12, 0)) == set()
+
+
+def test_meta_giornata_rinviata_dentro_la_sosta_la_scadenza_passata_non_torna_indietro(monkeypatch):
+    """Quarta revisione della #695: 4 partite della 10 giocate il 31/10-1/11, le altre 6 rinviate all'11-12/11 dentro la sosta, la
+    11 dal 20/11. Per turno.py il turno è il recupero, che comincia prima della giornata dopo: le 4 partite sembravano anticipi
+    lontani e la 10 tornava aperta con scadenza 11/11. Un anticipo lontano si gioca prima della fine del turno della giornata
+    precedente (la 9, 24-27 ottobre); queste sono state giocate dopo, quindi sono metà giornata e la scadenza resta il 31/10."""
+    g9 = [(d, 1) for d, _ in _sposta(G10, -7)]
+    sosta = [("2026-11-11 18:30", 0), ("2026-11-11 20:45", 0), ("2026-11-11 20:45", 0), ("2026-11-12 18:30", 0),
+             ("2026-11-12 20:45", 0), ("2026-11-12 20:45", 0)]
+    g10 = [(d, 1) for d, _ in G10[:4]] + sosta
+    db = _db(g10, _sposta(G11, 14), (), {9: g9})
+    reg = _regole_scadenza_10()
+    assert avvisi.prima_partita(db, ST, 10) == datetime(2026, 10, 31, 15, 0)
+    for adesso in (datetime(2026, 11, 1, 18, 0), datetime(2026, 11, 3, 10, 0)):
+        assert fasi.iniziata(db, reg, ST, 10, adesso), adesso
+        assert fasi.squadre_in_anticipo_iniziato(db, ST, 10, adesso) == set()
+    monkeypatch.setattr(consigli, "_adesso", lambda: datetime(2026, 11, 3, 10, 0))
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    o = gestione.oggi_senza_rose(db, adesso=datetime(2026, 11, 3, 10, 0), regole=reg)
+    assert o["iniziata"] is True and o["scadenza"] == "2026-10-31 14:50"
