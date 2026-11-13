@@ -7,7 +7,9 @@
 // si chiama solo a pagina pronta.
 
 const AR_TOGLI = "togli", AR_CERCA = "cerca";
-const arChiave = (squadra, testo) => `${squadra}\u0000${testo}`;
+// La chiave di una scelta: squadra più riga (campo `riga` dell'anteprima), non il testo: due omonimi scritti uguali nella stessa
+// rosa si scelgono uno per uno (#662).
+const arChiave = (squadra, riga) => `${squadra}\u0000${riga}`;
 // La scelta di partenza per un dubbio: la proposta del server (se c'è), altrimenti niente.
 const arIniziale = g => (g.stato === "da_controllare" && g.id != null ? String(g.id) : "");
 // Le squadre tra cui scegliere la propria: quelle lette più quella già scelta che resta com'era (si aggiungono le rose degli altri).
@@ -17,19 +19,17 @@ const nomiMia = r => {
   return r.mia_squadra && !nomi.includes(r.mia_squadra) ? [r.mia_squadra, ...nomi] : nomi;
 };
 
-// Le scelte da mandare con l'importazione: una per ogni dubbio deciso (id = il giocatore giusto, null = togli la riga).
-// Funzione pura (provata con node in tests/test_anteprima_rose_web.py).
+// Le scelte da mandare con l'importazione: una per ogni dubbio deciso (id = il giocatore giusto, null = togli la riga), con la
+// sua `riga`: vale solo per quella riga. Funzione pura (provata con node in tests/test_anteprima_rose_web.py).
 function arCorrezioni(squadre, scelte) {
-  const fuori = [], viste = new Set();
+  const fuori = [];
   for (const s of squadre || []) {
     for (const g of s.giocatori || []) {
       if (g.stato === "sicuro") continue;
-      const k = arChiave(s.nome, g.testo);
-      if (viste.has(k)) continue;
-      viste.add(k);
+      const k = arChiave(s.nome, g.riga);
       const v = scelte.has(k) ? scelte.get(k) : arIniziale(g);
-      if (v === AR_TOGLI) fuori.push({ squadra: s.nome, testo: g.testo, id: null });
-      else if (/^\d+$/.test(v)) fuori.push({ squadra: s.nome, testo: g.testo, id: Number(v) });
+      if (v === AR_TOGLI) fuori.push({ squadra: s.nome, testo: g.testo, id: null, riga: g.riga });
+      else if (/^\d+$/.test(v)) fuori.push({ squadra: s.nome, testo: g.testo, id: Number(v), riga: g.riga });
     }
   }
   return fuori;
@@ -99,7 +99,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
 
   const rigaDubbio = i => {
     const { s, g } = st.righe[i];
-    const k = arChiave(s.nome, g.testo);
+    const k = arChiave(s.nome, g.riga);
     const scelta = st.scelte.has(k) ? st.scelte.get(k) : arIniziale(g);
     const cerca = scelta === AR_CERCA || (g.stato === "non_trovato" && scelta === "");
     const etichetta = g.stato === "non_trovato" ? `<span class="etichetta rossa">${t("ar.non_trovato")}</span>` : `<span class="etichetta arancio">${t("ar.da_controllare")}</span>`;
@@ -163,7 +163,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
   const dici = html => { const m = $("#ar-msg", dove); if (m) m.innerHTML = html; };
 
   const collegaRiga = li => {
-    const i = Number(li.dataset.i), { s, g } = st.righe[i], k = arChiave(s.nome, g.testo);
+    const i = Number(li.dataset.i), { s, g } = st.righe[i], k = arChiave(s.nome, g.riga);
     const sel = $("select", li);
     sel.addEventListener("change", () => {
       st.scelte.set(k, sel.value);
@@ -221,7 +221,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
   const salva = async () => {
     const b = $("#ar-salva", dove), msg = $("#ar-msg", dove);
     // «lo cerco io» senza aver toccato un risultato: si salverebbe la proposta di prima senza che l'utente lo sappia
-    const aMeta = st.righe.findIndex(({ s, g }) => st.scelte.get(arChiave(s.nome, g.testo)) === AR_CERCA);
+    const aMeta = st.righe.findIndex(({ s, g }) => st.scelte.get(arChiave(s.nome, g.riga)) === AR_CERCA);
     if (aMeta >= 0) {
       dici(`<div class="attenzione">${t("ar.cerca_incompleta", { nome: esc(st.righe[aMeta].g.testo) })}</div>`);
       const campo = $(`#ar-cerca-${aMeta}`, dove);
@@ -263,7 +263,7 @@ function arRiassuntoScelte(r, scelte) {
   for (const s of r.squadre || []) {
     for (const g of s.giocatori || []) {
       if (g.stato === "sicuro") continue;
-      const v = scelte.get(arChiave(s.nome, g.testo));
+      const v = scelte.get(arChiave(s.nome, g.riga));
       if (v !== AR_TOGLI && !/^\d+$/.test(v || "")) continue;
       if (g.stato === "non_trovato") nonTrovati++; else dubbi++;
       if (v !== AR_TOGLI) sistemati++;

@@ -1890,6 +1890,7 @@ class _Riconosciute(NamedTuple):
     squadre: list                    # rose.SquadraLetta
     avvisi: list[str]
     calciatori: list                 # il listone usato
+    griglie: list | None = None      # le celle lette: un Excel con più fogli del tetto non toglie squadre (rose.controlla_sostituzione)
 
 
 def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
@@ -1905,7 +1906,10 @@ def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
         raise ValueError(importa_sicuro.riconoscimento_lungo(excel)) from None
     if not lette:
         raise ValueError(rose.NESSUNA_ROSA)
-    return _Riconosciute(lette, avvisi, calciatori)
+    taglio = rose.avviso_fogli(griglie)                 # Excel con più fogli del tetto: si dice, in cima agli avvisi (#662)
+    if taglio:
+        avvisi.insert(0, taglio)
+    return _Riconosciute(lette, avvisi, calciatori, griglie)
 
 
 def _leggi_rose(lette: _Riconosciute, correzioni: list[dict] | None = None, prima: lega.Rose | None = None):
@@ -1940,11 +1944,22 @@ def _metti_da_parte(percorso: Path) -> None:
                                                da_parte.name)
 
 
+def _controlla_sostituzione(riconosciute: _Riconosciute, prima: lega.Rose | None) -> None:
+    """«Togli le squadre che non sono nel file» con un Excel letto solo in parte: 400 se toglierebbe una squadra salvata, che
+    potrebbe stare in un foglio non letto (rose.controlla_sostituzione). Le squadre lette prendono prima i nomi dell'app
+    (lega.nomi_rinominati, che si può ripetere senza effetti). Da chiamare prima di scrivere qualunque cosa."""
+    lega.nomi_rinominati(riconosciute.squadre, prima)
+    rose.controlla_sostituzione(riconosciute.griglie, {s.nome for s in riconosciute.squadre},
+                                [s.nome for s in prima.squadre] if prima else [])
+
+
 def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto, correzioni: list[dict] | None = None,
              mia_squadra: str | None = None) -> dict:
     """Salva le rose già riconosciute (`_riconosci`). Da chiamare con il blocco delle rose preso."""
     r = _regole(ctx)
     prima, rovinate = _rose_di_prima(ctx)
+    if sostituisci_tutto:
+        _controlla_sostituzione(riconosciute, prima)
     lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     anteprima_rose.scegli_mia(nuove, mia_squadra)              # facoltativa: la squadra dell'utente scelta nell'anteprima
@@ -1972,10 +1987,12 @@ MAX_CORREZIONI = limiti.MAX_SQUADRE * limiti.MAX_GIOCATORI_SQUADRA
 
 class CorrezioneRosa(BaseModel):
     """Una scelta dell'utente su un dubbio dell'anteprima: `testo` = il nome come scritto nel file, `id` = il giocatore giusto
-    del listone (null = togli la riga)."""
+    del listone (null = togli la riga), `riga` = la posizione del giocatore nella squadra come nell'anteprima (facoltativa:
+    con la riga la scelta vale solo per quella, senza per le righe con quel testo; vedi anteprima_rose.applica_correzioni)."""
     squadra: str = Field(max_length=200)
     testo: str = Field(max_length=200)
     id: int | None = None
+    riga: int | None = Field(None, ge=0, le=100_000)
 
 
 _CORREZIONI = TypeAdapter(list[CorrezioneRosa])
@@ -2051,7 +2068,10 @@ def _anteprima(griglie, sostituisci_tutto: bool, correzioni: list[dict] | None, 
     etag = versioni.etag_file(ctx.rose)          # PRIMA di leggere le rose: se cambiano subito dopo, l'importazione darà 412
     r = _regole(ctx)
     prima, rovinate = _rose_di_prima(ctx)                          # come l'importazione, ma il file rovinato resta dov'è
-    lette, avvisi = _leggi_rose(_riconosci(griglie, ctx, excel), correzioni, prima)
+    riconosciute = _riconosci(griglie, ctx, excel)
+    if sostituisci_tutto:                                          # stesso rifiuto dell'importazione
+        _controlla_sostituzione(riconosciute, prima)
+    lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
     if rovinate:
         avvisi.insert(0, lega.ROSE_ROVINATE)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
@@ -2110,6 +2130,7 @@ def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_ch
     riconosciute = _riconosci(griglie, ctx, excel=isinstance(griglie, importa_sicuro.FogliExcel))
     with _scrittura_rose:
         if sostituisci_tutto:
+            _controlla_sostituzione(riconosciute, _rose_di_prima(ctx)[0])    # un rifiuto non aggiunge copie (non toglie le vecchie)
             _copia_datata_delle_rose(ctx)
         risposta = _importa(riconosciute, sostituisci_tutto, ctx)
     account.evento("importazione_per_conto_di", admin=da_chi if da_chi is not None else "riga-di-comando", utente=utente_id,

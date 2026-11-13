@@ -9,6 +9,7 @@ import pytest
 
 from fanta import contesto, lega, limiti, nomi, rose, server
 from fanta.anteprima_rose import anteprima, applica_correzioni
+from fanta.listone import Calciatore
 from fanta.regole import Regole
 
 from test_importa_sicuro import excel_buono
@@ -31,6 +32,7 @@ def leggi(testo, calciatori, correzioni=None, prima=None):
     r, avvisi = Regole(), []
     lette = rose.estrai([("testo", rose.griglia_da_testo(testo))], nomi.Indice(calciatori), r.rosa, avvisi)
     applica_correzioni(lette, correzioni, calciatori)
+    rose.togli_doppioni(lette, avvisi)                     # come il server (_leggi_rose): dopo le scelte, i doppioni
     return anteprima(lette, avvisi, r, prima, lega.da_import(lette, prima))
 
 
@@ -113,6 +115,8 @@ def test_correzioni_scelgono_e_tolgono(calciatori):
     ({"squadra": "Mia", "testo": "Nessuno", "id": 15}, "non corrispondono"),
     ({"squadra": "Inventata", "testo": "Rossi", "id": 15}, "non corrispondono"),
     ({"squadra": "Mia", "testo": "Rossi", "id": 99999}, "non è nel listone"),
+    ({"squadra": "Mia", "testo": "Rossi", "id": 15, "riga": 9}, "non corrispondono"),        # nessuna riga 9
+    ({"squadra": "Mia", "testo": "Sommer", "id": 2, "riga": 2}, "non corrispondono"),        # la riga 2 è «Rossi»
 ])
 def test_correzioni_sbagliate(calciatori, corr, messaggio):
     with pytest.raises(ValueError, match=messaggio):
@@ -445,3 +449,66 @@ def test_importazione_rifiutata_non_sposta_il_file_rovinato(ambiente):
     r = a.post("/api/rose/testo", json={"testo": "Nuova\nD\tBastoni\t5\n", "mia_squadra": "Non c'è"})
     assert r.status_code == 400, r.text
     assert file_rose.read_text(encoding="utf-8") == '{"squadre": [' and not file_rose.with_name("rose.json.rovinato").exists()
+
+
+# ---------------------------------------------------------------- due omonimi nella stessa rosa (#662)
+def _listone(*righe):
+    """Giocatori inventati: (codice, nome, ruolo, squadra di Serie A)."""
+    return [Calciatore(id, nome, ruolo, "", sq, sq.lower(), 10, 10, 100) for id, nome, ruolo, sq in righe]
+
+
+def giocatori_di(risposta, squadra="Mia"):
+    return next(x for x in risposta["squadre"] if x["nome"] == squadra)["giocatori"]
+
+
+def test_omonimi_di_ruolo_diverso_restano_con_la_scelta_che_manda_la_web_di_oggi():
+    """Cognome senza iniziale, due omonimi di ruolo diverso: l'anteprima li mostra giusti (una proposta per riga). La web di oggi
+    (e l'iPhone già installato) manda una sola scelta per testo, la proposta della prima riga: prima valeva per tutte e due le
+    righe e la seconda spariva come doppione («compare due volte»)."""
+    elenco = _listone((15, "Rossi M.", "D", "GEN"), (16, "Rossi L.", "A", "LEC"))
+    testo = "Mia\nD\tRossi\t7\nA\tRossi\t30\n"
+    g = giocatori_di(leggi(testo, elenco))
+    assert [(x["id"], x["stato"], x["riga"]) for x in g] == [(15, "da_controllare", 0), (16, "da_controllare", 1)]
+    a = leggi(testo, elenco, [{"squadra": "Mia", "testo": "Rossi", "id": 15}])
+    assert [x["id"] for x in giocatori_di(a)] == [15, 16]
+    assert not any("due volte" in x for x in a["avvisi"])
+
+
+def test_senza_riga_la_scelta_non_tocca_l_omonimo_gia_sicuro(calciatori):
+    """Le app già installate mandano scelte solo per i dubbi: una scelta senza `riga` non cambia (né toglie) la riga sicura con
+    lo stesso testo."""
+    testo = "Mia\nD\tRossi\t7\nRossi\t30\n"                       # il primo è sicuro (ruolo), il secondo è un dubbio fra i due
+    assert [(x["id"], x["stato"]) for x in giocatori_di(leggi(testo, calciatori))] == [(15, "sicuro"), (None, "da_controllare")]
+    a = leggi(testo, calciatori, [{"squadra": "Mia", "testo": "Rossi", "id": 16}])
+    assert [x["id"] for x in giocatori_di(a)] == [15, 16] and not any("due volte" in x for x in a["avvisi"])
+    assert [x["id"] for x in giocatori_di(leggi(testo, calciatori, [{"squadra": "Mia", "testo": "Rossi", "id": None}]))] == [15]
+
+
+def test_omonimi_dello_stesso_ruolo_scelti_uno_per_riga():
+    elenco = _listone((15, "Rossi M.", "D", "GEN"), (16, "Rossi L.", "D", "LEC"))
+    testo = "Mia\nD\tRossi\t7\nD\tRossi\t5\nP\tRossi\t1\n"
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 16, "riga": 0}, {"squadra": "Mia", "testo": "Rossi", "id": 15, "riga": 1},
+            {"squadra": "Mia", "testo": "Rossi", "id": None, "riga": 2}]                        # la terza riga si toglie, sola
+    a = leggi(testo, elenco, corr)
+    assert [(x["id"], x["stato"], x["riga"]) for x in giocatori_di(a)] == [(16, "sicuro", 0), (15, "sicuro", 1)]
+    assert not any("due volte" in x for x in a["avvisi"])
+
+
+def test_lo_stesso_giocatore_scelto_per_due_righe_resta_un_doppione_dichiarato():
+    elenco = _listone((15, "Rossi M.", "D", "GEN"), (16, "Rossi L.", "D", "LEC"))
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 15, "riga": 0}, {"squadra": "Mia", "testo": "Rossi", "id": 15, "riga": 1}]
+    a = leggi("Mia\nD\tRossi\t7\nD\tRossi\t5\n", elenco, corr)
+    assert [x["id"] for x in giocatori_di(a)] == [15] and "Mia: Rossi M. compare due volte, l'ho tenuto una volta sola." in a["avvisi"]
+
+
+def test_omonimi_scelti_uno_per_riga_dalle_rotte(ambiente):
+    a, _ = nuovo_utente("utentea")
+    testo = "Mia\nRossi\t7\nRossi\t30\n"                       # i due Rossi del listone di prova, nessun ruolo nel testo
+    r = a.post("/api/rose/anteprima", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    assert [(g["riga"], g["stato"]) for g in giocatori_di(r.json())] == [(0, "da_controllare"), (1, "da_controllare")]
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 15, "riga": 0}, {"squadra": "Mia", "testo": "Rossi", "id": 16, "riga": 1}]
+    r = a.post("/api/rose/testo", json={"testo": testo, "correzioni": corr})
+    assert r.status_code == 200, r.text
+    assert not any("due volte" in x for x in r.json()["avvisi"])
+    assert sorted(g["id"] for g in a.get("/api/rosa", params={"squadra": "Mia"}).json()["giocatori"]) == [15, 16]

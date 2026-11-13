@@ -88,33 +88,55 @@ def _conteggio(squadra: lega.Squadra, regole: Regole) -> dict:
 
 
 def applica_correzioni(lette: list[SquadraLetta], correzioni: list[dict] | None, calciatori: list[Calciatore]) -> None:
-    """Le scelte dell'utente sui dubbi, prima di salvare: `{squadra, testo, id}` con `testo` = il nome come scritto nel file
-    (campo `testo` dell'anteprima) e `id` = il giocatore giusto del listone, oppure None per togliere quella riga.
+    """Le scelte dell'utente sui dubbi, prima di salvare: `{squadra, testo, id, riga?}` con `testo` = il nome come scritto nel
+    file (campo `testo` dell'anteprima), `id` = il giocatore giusto del listone (None = togli la riga) e `riga` = la posizione
+    del giocatore nella sua squadra (campo `riga` dell'anteprima). Prima numera le righe di ogni squadra (`posizione`).
+    - Con `riga` la scelta vale solo per quella riga, che deve avere ancora quel testo: due omonimi con lo stesso testo si
+      scelgono uno per riga (#662). Vince sulle scelte senza `riga` per lo stesso testo.
+    - Senza `riga` (le app già installate) vale per le righe della squadra con quel testo che sono dubbi (tutte, se sono
+      tutte sicure); e se il giocatore scelto è già la proposta di una di loro, solo per quelle: la conferma della proposta
+      della prima riga non fa diventare la seconda lo stesso giocatore (e poi un doppione tolto).
     Una scelta che non corrisponde a niente (testo cambiato nel frattempo) o un id fuori listone: ValueError, niente si salva."""
+    for s in lette:
+        for i, r in enumerate(s.righe):
+            r.posizione = i
     if not correzioni:
         return
     per_id = {c.id: c for c in calciatori}
     per_squadra = {s.nome: s for s in lette}
-    togliere: dict[str, set[str]] = {}
-    scelte: dict[tuple[str, str], Calciatore] = {}
+    per_testo: dict[tuple[str, int], Calciatore | None] = {}       # (squadra, posizione) -> scelta senza riga (None = togli)
+    per_riga: dict[tuple[str, int], Calciatore | None] = {}        # (squadra, posizione) -> scelta con la riga
     for corr in correzioni:
         s = per_squadra.get(corr["squadra"])
-        if s is None or not any(r.testo == corr["testo"] for r in s.righe):
+        riga = corr.get("riga")
+        righe = [] if s is None else [r for r in s.righe if r.testo == corr["testo"] and riga in (None, r.posizione)]
+        if not righe:
             raise ValueError(CORREZIONE_NON_TROVATA)
-        if corr.get("id") is None:
-            togliere.setdefault(s.nome, set()).add(corr["testo"])
-            continue
-        c = per_id.get(corr["id"])
-        if c is None:
-            raise ValueError(GIOCATORE_NON_NEL_LISTONE)
-        scelte[s.nome, corr["testo"]] = c
+        if riga is None:                                            # i client mandano scelte solo per i dubbi
+            righe = [r for r in righe if stato(r.esito) != SICURO] or righe
+        c = None
+        if corr.get("id") is not None:
+            c = per_id.get(corr["id"])
+            if c is None:
+                raise ValueError(GIOCATORE_NON_NEL_LISTONE)
+            if riga is None:
+                proposte = [r for r in righe if r.esito.calciatore is not None and r.esito.calciatore.id == c.id]
+                righe = proposte or righe
+        for r in righe:
+            (per_testo if riga is None else per_riga)[s.nome, r.posizione] = c
     for s in lette:
-        via = togliere.get(s.nome, set())
-        s.righe = [r for r in s.righe if r.testo not in via]
+        tenute = []
         for r in s.righe:
-            c = scelte.get((s.nome, r.testo))
-            if c is not None:
-                r.esito, r.ruolo, r.squadra = Esito(c, MANUALE), c.ruolo, c.squadra
+            chiave = (s.nome, r.posizione)
+            if chiave not in per_riga and chiave not in per_testo:
+                tenute.append(r)
+                continue
+            c = per_riga[chiave] if chiave in per_riga else per_testo[chiave]
+            if c is None:                                           # «toglilo»
+                continue
+            r.esito, r.ruolo, r.squadra = Esito(c, MANUALE), c.ruolo, c.squadra
+            tenute.append(r)
+        s.righe = tenute
 
 
 def scegli_mia(rose: lega.Rose, nome: str | None) -> None:
@@ -147,11 +169,12 @@ def anteprima(lette: list[SquadraLetta], avvisi_lettura: list[str], regole: Rego
     for s in lette:
         salvata = per_nome[s.nome]
         giocatori = []
-        for riga, g in zip(s.righe, salvata.giocatori):        # da_import tiene l'ordine delle righe
+        for i, (riga, g) in enumerate(zip(s.righe, salvata.giocatori)):        # da_import tiene l'ordine delle righe
             st = stato(riga.esito)
             totali[st] += 1
             giocatori.append({
-                "testo": riga.testo, "stato": st, "metodo": riga.esito.metodo,
+                "testo": riga.testo, "riga": i if riga.posizione is None else riga.posizione,
+                "stato": st, "metodo": riga.esito.metodo,
                 "id": g.id, "nome": g.nome if g.id is not None else None, "ruolo": g.ruolo, "squadra": g.squadra,
                 "costo": g.costo, "avviso": riga.esito.avviso, "avviso_frase": frasi.di(riga.esito.avviso),
                 "alternative": _alternative(riga.esito) if st != SICURO else [],

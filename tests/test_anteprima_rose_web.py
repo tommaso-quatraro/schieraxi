@@ -19,13 +19,13 @@ NODE = shutil.which("node")
 
 SQUADRE = [
     {"nome": "Rossi", "giocatori": [
-        {"testo": "Bastoni", "stato": "sicuro", "id": 1},
-        {"testo": "Martinez", "stato": "da_controllare", "id": 10, "alternative": [{"id": 10}, {"id": 11}]},
-        {"testo": "Martinez", "stato": "da_controllare", "id": 10, "alternative": [{"id": 10}, {"id": 11}]},
-        {"testo": "Esposito", "stato": "da_controllare", "id": None, "alternative": [{"id": 20}, {"id": 21}]},
-        {"testo": "Pinco", "stato": "non_trovato", "id": None, "alternative": []},
+        {"testo": "Bastoni", "stato": "sicuro", "id": 1, "riga": 0},
+        {"testo": "Martinez", "stato": "da_controllare", "id": 10, "alternative": [{"id": 10}, {"id": 11}], "riga": 1},
+        {"testo": "Martinez", "stato": "da_controllare", "id": 11, "alternative": [{"id": 11}, {"id": 10}], "riga": 2},
+        {"testo": "Esposito", "stato": "da_controllare", "id": None, "alternative": [{"id": 20}, {"id": 21}], "riga": 3},
+        {"testo": "Pinco", "stato": "non_trovato", "id": None, "alternative": [], "riga": 4},
     ]},
-    {"nome": "Verdi", "giocatori": [{"testo": "Martinez", "stato": "da_controllare", "id": 10, "alternative": [{"id": 10}]}]},
+    {"nome": "Verdi", "giocatori": [{"testo": "Martinez", "stato": "da_controllare", "id": 10, "alternative": [{"id": 10}], "riga": 0}]},
 ]
 
 
@@ -41,16 +41,20 @@ def _node(espressione: str):
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 def test_le_correzioni_partono_dalle_proposte_e_dalle_scelte():
-    # senza scelte: si confermano le proposte del server (anche una sola volta per nome ripetuto), i dubbi senza proposta restano
+    # senza scelte: si confermano le proposte del server, una per riga (#662: due omonimi con lo stesso testo e proposte diverse
+    # danno due scelte, non una sola che vale per tutti e due); i dubbi senza proposta restano
     assert _node(f"arCorrezioni({json.dumps(SQUADRE)}, new Map())") == [
-        {"squadra": "Rossi", "testo": "Martinez", "id": 10},
-        {"squadra": "Verdi", "testo": "Martinez", "id": 10},
+        {"squadra": "Rossi", "testo": "Martinez", "id": 10, "riga": 1},
+        {"squadra": "Rossi", "testo": "Martinez", "id": 11, "riga": 2},
+        {"squadra": "Verdi", "testo": "Martinez", "id": 10, "riga": 0},
     ]
-    scelte = 'new Map([["Rossi\\u0000Martinez", "11"], ["Rossi\\u0000Esposito", "21"], ["Rossi\\u0000Pinco", "togli"], ["Verdi\\u0000Martinez", "cerca"]])'
+    # la chiave delle scelte è squadra più riga: la scelta su una riga non cambia l'altra con lo stesso testo
+    scelte = 'new Map([["Rossi\\u00002", "togli"], ["Rossi\\u00003", "21"], ["Rossi\\u00004", "togli"], ["Verdi\\u00000", "cerca"]])'
     assert _node(f"arCorrezioni({json.dumps(SQUADRE)}, {scelte})") == [
-        {"squadra": "Rossi", "testo": "Martinez", "id": 11},
-        {"squadra": "Rossi", "testo": "Esposito", "id": 21},
-        {"squadra": "Rossi", "testo": "Pinco", "id": None},
+        {"squadra": "Rossi", "testo": "Martinez", "id": 10, "riga": 1},
+        {"squadra": "Rossi", "testo": "Martinez", "id": None, "riga": 2},
+        {"squadra": "Rossi", "testo": "Esposito", "id": 21, "riga": 3},
+        {"squadra": "Rossi", "testo": "Pinco", "id": None, "riga": 4},
     ]
 
 
@@ -110,7 +114,7 @@ def test_il_conto_dei_dubbi_scende_quando_li_sistemi():
     r = {"squadre": SQUADRE, "sicuri": 1, "da_controllare": 4, "non_trovati": 1}
     prima = _node(f"arRiassuntoScelte({json.dumps(r)}, new Map())")
     assert "4 da controllare" in prima and "1 non trovato" in prima
-    # Martinez scelto (due righe nella stessa rosa), Pinco tolto, Verdi ancora da cercare
-    scelte = 'new Map([["Rossi\\u0000Martinez", "11"], ["Rossi\\u0000Pinco", "togli"], ["Verdi\\u0000Martinez", "cerca"]])'
+    # i due Martinez scelti (una scelta per riga), Pinco tolto, Verdi ancora da cercare
+    scelte = 'new Map([["Rossi\\u00001", "11"], ["Rossi\\u00002", "10"], ["Rossi\\u00004", "togli"], ["Verdi\\u00000", "cerca"]])'
     dopo = _node(f"arRiassuntoScelte({json.dumps(r)}, {scelte})")
     assert "3 giocatori riconosciuti" in dopo and "2 da controllare" in dopo and "non trovat" not in dopo

@@ -356,7 +356,8 @@ Risposta dell'anteprima:
   `sicuri`, `da_controllare`, `non_trovati` (conteggi), `totale` e `attesi` (giocatori letti e quelli della rosa nelle regole),
   `ruoli` (`{"P": n, "D": n, "C": n, "A": n}`), `mancano` e `in_piu` (solo i ruoli che non tornano, es. `{"P": 1}`), `senza_ruolo`,
   `completa` (bool), `avvisi` (frasi brevi senza il nome della squadra), `giocatori`.
-- ogni giocatore: `testo` (il nome come scritto nel file: è la chiave per le `correzioni`), `stato`, `metodo` (`esatto`, `abbreviato`,
+- ogni giocatore: `testo` (il nome come scritto nel file), `riga` (la sua posizione nella squadra come letta dal file, da 0: con la squadra è
+  la chiave per le `correzioni`, perché due omonimi possono avere lo stesso `testo`), `stato`, `metodo` (`esatto`, `abbreviato`,
   `simile`, `ambiguo`, `non trovato`, `manuale`), `id`/`nome`/`ruolo`/`squadra` (il giocatore proposto; `id` e `nome` `null` se nessuno),
   `costo`, `avviso` (es. «squadra diversa: …», può essere vuoto), `alternative` (`[{id, nome, ruolo, squadra}]`: per `da_controllare`
   i candidati, se c'è una proposta è la prima; per `non_trovato` fino a 3 nomi somiglianti da suggerire, nessuno scelto in partenza; vuoto per `sicuro`).
@@ -400,6 +401,10 @@ C;Kone M.;Roma;9
   il giocatore è `da_controllare`, con l'avviso «ruolo diverso: indicato X, nel listone Y» / «squadra diversa: indicata X, nel listone Y»,
   oppure un dubbio tra gli omonimi con quello che ha ruolo e squadra giusti per primo.
 - Stessi tetti del testo incollato (200 mila caratteri, 1500 righe) e stesse risposte dell'anteprima.
+- Excel con più di 10 fogli: si leggono i primi 10 e un avviso in cima agli `avvisi` lo dice («Ho letto solo i primi 10 fogli su 12: se negli
+  altri ci sono delle rose, non le ho lette. …», chiave `rose.fogli_non_letti` con `letti` e `totale`), anche nell'importazione. Con
+  `sostituisci_tutto` anteprima e importazione rispondono `400` con il motivo solo se una squadra già salvata non è tra quelle lette (potrebbe
+  stare in un foglio non letto e verrebbe tolta); se ci sono tutte (per esempio 10 fogli di rose più listone, calendario e classifica) si va avanti.
 - in tutto: `avvisi` (lettura del file, rose incomplete o con ruoli che non tornano, giocatori in più squadre, «una sola squadra»), `mia_squadra`
   (suggerita: quella già scelta se è tra le lette o se resta com'era perché il file ha solo le rose degli altri, oppure l'unica letta;
   altrimenti `null`; può quindi non essere tra `squadre`: il client la offre comunque nella scelta), `totale_squadre` (dopo l'importazione),
@@ -407,8 +412,13 @@ C;Kone M.;Roma;9
   `differenze` ha anche `squadre_nuove` e `squadre_tolte` (elenchi di nomi): con squadre aggiunte o tolte `nessuna_differenza` è falso.
   Un giocatore ripetuto nella stessa rosa si tiene una volta sola, con un avviso («… compare due volte, l'ho tenuto una volta sola»).
 
-`correzioni` (anteprima e importazione): `[{squadra, testo, id}]`, al massimo 800; `squadra` e `testo` come nell'anteprima, `id` = codice
-del listone oppure `null` per togliere quella riga. Il giocatore scelto entra con il ruolo e la squadra del listone e `riconosciuto: "manuale"`.
+`correzioni` (anteprima e importazione): `[{squadra, testo, id, riga?}]`, al massimo 800; `squadra`, `testo` e `riga` come nell'anteprima, `id` = codice
+del listone oppure `null` per togliere quella riga. Con `riga` la scelta vale solo per quella riga (che deve avere ancora quel `testo`) e vince
+sulle scelte senza `riga`: i client mandano una scelta per riga. Senza `riga` (app già installate) vale per le righe della squadra con quel
+`testo` che non sono `sicuro` (per tutte, se lo sono tutte), e se l'`id` è già la proposta di una di loro solo per quelle: due omonimi con
+proposte diverse restano tutti e due.
+Se due righe finiscono sullo stesso giocatore resta la prima, con l'avviso «compare due volte».
+Il giocatore scelto entra con il ruolo e la squadra del listone e `riconosciuto: "manuale"`.
 Nel multipart il campo `correzioni` è lo stesso elenco scritto come testo JSON (JSON non valido: `422`). Una scelta che non corrisponde più al
 testo, o un `id` fuori listone: `400` con il messaggio, e niente si salva. `mia_squadra` che non c'è tra le rose: `400`.
 Si può cominciare con la sola propria rosa: una squadra sola non è un errore (solo un avviso, testo `lega.UNA_SQUADRA`: «Con una sola squadra funzionano formazione e consigli; per gli scambi servono le rose degli altri: potrai aggiungerle quando vuoi.»).

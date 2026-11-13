@@ -18,7 +18,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .frasi import F
+from .frasi import F, Frase
 from .nomi import Esito, Indice, normalizza
 from .regole import RUOLI
 
@@ -46,6 +46,7 @@ class RigaRosa:
     ruolo: str | None = None        # dal file (colonna ruolo o posizione nel blocco)
     squadra: str | None = None      # squadra di Serie A scritta nel file
     costo: int | None = None
+    posizione: int | None = None    # la riga nella sua squadra, come letta dal file: il campo `riga` dell'anteprima (#662)
 
 
 @dataclass
@@ -190,9 +191,41 @@ def griglie_da_stringa(testo: str) -> list[tuple[str, list[list[str]]]]:
     return [("testo", griglia_da_testo(testo))]
 
 
+class Fogli(list):
+    """I fogli letti da un Excel, [(nome foglio, griglia)], e quanti fogli ha il file (`nel_file`): oltre MAX_FOGLI se ne
+    leggono solo i primi, e chi riceve le griglie lo sa (`avviso_fogli`, `controlla_sostituzione`), mai un taglio in silenzio."""
+
+    def __init__(self, fogli=(), nel_file: int | None = None):
+        super().__init__(fogli)
+        self.nel_file = len(self) if nel_file is None else nel_file
+
+
+def _non_letti(griglie) -> int:
+    return griglie.nel_file - len(griglie) if isinstance(griglie, Fogli) else 0
+
+
+def avviso_fogli(griglie) -> Frase | None:
+    """L'avviso per un Excel con più fogli di quelli che leggo (#662), None per gli altri file. I fogli non letti possono
+    essere rose o no (listone, calendario...): non si sa, e l'avviso non lo dà per certo."""
+    if _non_letti(griglie) <= 0:
+        return None
+    return F("rose.fogli_non_letti", letti=len(griglie), totale=griglie.nel_file)
+
+
+def controlla_sostituzione(griglie, lette: set[str], salvate: list[str]) -> None:
+    """«Togli le squadre che non sono nel file» con un Excel letto solo in parte: se una squadra già salvata (`salvate`) non è
+    tra quelle lette (`lette`, con i nomi dell'app) potrebbe essere in un foglio non letto, e verrebbe tolta: ValueError con il
+    motivo, niente si salva. Se tutte le salvate sono tra le lette non si toglie niente e si va avanti come sempre."""
+    if _non_letti(griglie) > 0 and any(nome not in lette for nome in salvate):
+        raise ValueError(f"Il file ha {griglie.nel_file} fogli e ne leggo al massimo {len(griglie)}: non tolgo le squadre che "
+                         "non sono nel file, perché potrebbero essere nei fogli che non ho letto. Togli dal file i fogli che "
+                         "non sono rose e riprova.")
+
+
 def leggi_griglie(percorso: Path) -> list[tuple[str, list[list[str]]]]:
     """Restituisce [(nome foglio, griglia)] per Excel, CSV o testo. Excel con fogli enormi: si leggono solo i primi
-    MAX_FOGLI fogli, MAX_RIGHE righe e MAX_COLONNE colonne (un file con dimensioni dichiarate gigantesche esaurirebbe la memoria del server)."""
+    MAX_FOGLI fogli, MAX_RIGHE righe e MAX_COLONNE colonne (un file con dimensioni dichiarate gigantesche esaurirebbe la memoria del server).
+    Per un Excel il risultato è un `Fogli`, che sa quanti fogli ha il file."""
     est = percorso.suffix.lower()
     if est in (".xlsx", ".xlsm"):
         import zipfile
@@ -203,9 +236,9 @@ def leggi_griglie(percorso: Path) -> list[tuple[str, list[list[str]]]]:
         except (zipfile.BadZipFile, KeyError, OSError, ValueError):
             raise ValueError("File Excel non leggibile: è rovinato o protetto da password") from None
         try:
-            return [(ws.title, [[_testo(v)[:MAX_TESTO_CELLA] for v in r]
-                                for r in ws.iter_rows(max_row=MAX_RIGHE, max_col=MAX_COLONNE, values_only=True)])
-                    for ws in wb.worksheets[:MAX_FOGLI]]
+            return Fogli(((ws.title, [[_testo(v)[:MAX_TESTO_CELLA] for v in r]
+                                      for r in ws.iter_rows(max_row=MAX_RIGHE, max_col=MAX_COLONNE, values_only=True)])
+                          for ws in wb.worksheets[:MAX_FOGLI]), len(wb.worksheets))
         finally:
             wb.close()
     return griglie_da_bytes(percorso.read_bytes())

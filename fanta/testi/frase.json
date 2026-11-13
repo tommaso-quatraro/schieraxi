@@ -780,6 +780,10 @@
     "it": "Riga {riga}: ignorata ({celle}): non è chiaro se sia un'intestazione o il nome di più squadre.",
     "en": "Row {riga}: ignored ({celle}): it is not clear whether it is a heading or the name of several teams."
   },
+  "frase.rose.fogli_non_letti": {
+    "it": "Ho letto solo i primi {letti} fogli su {totale}: se negli altri ci sono delle rose, non le ho lette. Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
+    "en": "I only read the first {letti} sheets out of {totale}: if the others contain rosters, I didn't read them. Remove the sheets you don't need from the file, or upload the others in a second file."
+  },
   "frase.rose.nome_doppio": {
     "it": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
     "en": "{squadra}: {nome} appears twice, I kept it only once."
