@@ -1,5 +1,18 @@
 [
   {
+    "versione": "1.493",
+    "data": "2026-11-13T13:24:45",
+    "titolo": "Server: tolto il codice degli avvisi che non partivano più",
+    "voci": [
+      "Server: tolto il codice degli avvisi che non partivano più (riepilogo della giornata, reparto scoperto, giocatori seguiti, «la formazione è pronta»). Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "Tolti i comandi python -m fanta riepilogo e python -m fanta avviso (vuoti dalla #693) e le loro chiamate in script/server/aggiorna.sh; test nuovo test_script_comandi: ogni python -m fanta <comando> degli script del server deve esistere.",
+      "notifiche: tolti riepilogo (con _testo_riepilogo, _da_riepilogare, _con_la_regola_dei_rinvii, RIEPILOGO_ENTRO, FILE_RIEPILOGO), copertura e osservati_liberi; SEZIONE_PER_TAG solo con rotating_light e alarm_clock. avvisi.py: tolti da_mandare, segna, inizio_giornata, FILE_STATO, ANTICIPO (resta la scadenza della formazione). Contesto: tolti stato_riepilogo e stato_avvisi (la migrazione non copia più notifiche-riepilogo.json e avvisi.json).",
+      "frasi_avvisi: tolte le chiavi senza uso (osservato libero, reparto scoperto, riepilogo, formazione pronta, n.t_cambi, n.osservato_riga, n.formazione_aggiornata, n.riga_consiglio, n.altre_novita). Nessuna rotta né campo cambia: le rotte delle funzioni tolte dalle schermate restano per le app iPhone già installate."
+    ]
+  },
+  {
     "versione": "1.492",
     "data": "2026-11-13T12:55:34",
     "titolo": "Le decisioni in cima alla Formazione le sceglie il server",
