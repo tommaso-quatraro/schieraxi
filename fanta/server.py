@@ -60,14 +60,15 @@ FILE_NOVITA_EN = Path(__file__).parent / "contenuti" / "novita.en.json"
 
 @asynccontextmanager
 async def _ciclo(_):
-    # formazione e mercato pronti appena parte il servizio e dopo ogni aggiornamento dei dati (anche fatto da un altro processo)
+    # formazione e mercato pronti appena parte il servizio, dopo ogni aggiornamento dei dati (anche fatto da un altro processo) e quando
+    # passa una scadenza o comincia un anticipo (_da_sorvegliare)
     fermo = threading.Event()
     if not account.multiutente():                                        # senza account: solo richieste dirette da questo computer
         logging.getLogger("uvicorn.error").warning(rotte_account.AVVISO_SOLO_LOCALE)
     registro.accorcia_registro_richieste()                               # anche il registro delle richieste: mai l'indirizzo intero
     threading.Thread(target=registro.sorveglia, args=(fermo,), name="registri", daemon=True).start()     # righe oltre 30 giorni
     if riscaldamento.attivo():                                           # FANTA_RISCALDA=0 lo spegne
-        threading.Thread(target=riscaldamento.sorveglia, args=(lambda: _versione_dati(), lambda: _scalda(), fermo),
+        threading.Thread(target=riscaldamento.sorveglia, args=(lambda: _da_sorvegliare(), lambda: _scalda(), fermo),
                          kwargs={"ritardo": riscaldamento.ritardo_avvio()}, name="riscaldamento", daemon=True).start()
     threading.Thread(target=pianificatore.sorveglia, args=(fermo, _leghe_attive, _db, _aggiorna_leggero, _dopo_giro_leggero),
                      kwargs={"risultati": _risultati_leggeri},       # e risultati e voti la sera stessa, dopo le partite
@@ -598,6 +599,44 @@ def _versione_dati() -> str | None:
         return consigli._versione(db)
     finally:
         db.close()
+
+
+_guasti_visti: frozenset = frozenset()     # i guasti del riscaldamento già scritti nel registro (una riga quando compaiono)
+
+
+def _da_sorvegliare() -> tuple:
+    """Quello che il riscaldamento confronta ogni minuto: la versione dei dati e, per le leghe attive, giornata, scadenza passata e
+    anticipi cominciati, che cambiano con l'ora senza dati nuovi (riscaldamento.stato_giornate, #651). Le regole di un utente che non
+    si leggono non fermano le altre leghe; se non si leggono utenti o calendario resta la sola versione dei dati, come prima. Ogni
+    guasto va nel registro del servizio con il tipo dell'errore e il numero dell'utente (`_registra_guasti`)."""
+    versione, giornate, guasti = _versione_dati(), None, set()
+    try:
+        leghe = []
+        for ctx in riscaldamento.contesti_da_scaldare(_contesto_locale):
+            try:
+                leghe.append(_regole(ctx))
+            except Exception as e:  # noqa: BLE001 - le altre leghe contano lo stesso; il guasto va nel registro
+                chi = "senza account" if ctx.utente_id is None else f"utente {ctx.utente_id}"
+                guasti.add(f"regole non lette ({chi}, {type(e).__name__}): per questa lega niente giro alla scadenza né all'inizio "
+                           "di un anticipo")
+        db = _db()
+        try:
+            giornate = riscaldamento.stato_giornate(db, leghe, consigli._adesso())
+        finally:
+            db.close()
+    except Exception as e:  # noqa: BLE001 - resta il giro dopo un aggiornamento dei dati; il guasto va nel registro
+        guasti.add(f"utenti o calendario non letti ({type(e).__name__}): niente giro alla scadenza né all'inizio di un anticipo")
+    _registra_guasti(guasti)
+    return versione, giornate
+
+
+def _registra_guasti(guasti: set[str]) -> None:
+    """Scrive nel registro del servizio i guasti nuovi del riscaldamento, una riga ciascuno: un guasto che dura non si ripete ogni
+    minuto; uno sparito si dimentica, e se torna si riscrive. Mai nomi né testi degli errori (possono contenere dati): tipo e numero."""
+    global _guasti_visti
+    for g in sorted(guasti - _guasti_visti):
+        logging.getLogger("uvicorn.error").warning("Riscaldamento: %s", g)
+    _guasti_visti = frozenset(guasti)
 
 
 def _novita() -> list[dict]:
@@ -1383,16 +1422,20 @@ def risultati_live(request: Request):
 def widget(request: Request, ctx: Contesto = Depends(lega_corrente)):
     """Tutto per i widget dell'iPhone in una chiamata (vedi `widget.py`; apribile anche con il token del widget). Risposta piccola
     (< 20 kB) con ETag: se non è cambiato niente, `If-None-Match` ottiene 304. Se i calcoli del nucleo non sono pronti: 202."""
+    try:
+        dal = _ora_locale(rotte_account.utente_corrente(request).creato)     # chi entra a giornata iniziata, come /api/oggi (#651)
+    except HTTPException:
+        dal = None
     db = _db()
     try:
         corpo = widget_riassunto.costruisci(db, _regole(ctx), _rose(ctx), ctx.diario, ctx.osservati, file_scelte=ctx.scelte,
-                                            live_partite=_stati_live())
+                                            live_partite=_stati_live(), dal=dal)
     finally:
         db.close()
     corpo["live"] = _live_per_widget()
     corpo["funzioni"] = widget_riassunto.funzioni_per_widget(stato_utente.leggi_mostra_tutte(ctx.impostazioni_avvisi))
     widget_riassunto.entro_il_peso(corpo)                 # rete di sicurezza sulla dimensione: i blocchi tolti vanno in `mancano`
-    etag = versioni.etag_dati(corpo)
+    etag = widget_riassunto.etag(corpo)                   # senza i campi che cambiano solo con l'orologio (#651)
     intestazioni = {"ETag": etag, "Cache-Control": "private, no-cache", "Vary": "Authorization, Cookie"}
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=intestazioni)

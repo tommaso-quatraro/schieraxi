@@ -336,6 +336,14 @@ def _moduli(tutte: list) -> list[dict]:
              "incerti": incerti(x.titolari, x.panchina)} for x in tutte]
 
 
+class FormazioneImpossibile(ValueError):
+    """Con questa rosa non si forma una squadra (pochi giocatori, o in un ruolo nessuno gioca la giornata). È un esito dei dati, non un
+    guasto: `formazione` lo ricorda come un risultato (stessa chiave, stesso esito) e chi legge solo la cache, il widget, lo trova (#651)."""
+
+
+IMPOSSIBILE = "formazione_impossibile"      # la voce della cache che ricorda l'esito: {IMPOSSIBILE: messaggio per l'utente}
+
+
 def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra: str | None = None,
                giornata: int | None = None, simulazioni: int = 600, adesso: datetime | None = None) -> dict:
     """La formazione consigliata. `adesso`: l'ora con cui cercare la giornata e contare scadenza passata e anticipi cominciati nella
@@ -371,11 +379,16 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
         return prima is not None and (bool(iniziate) or not _stessa(prima, migliore, chiusa))
 
     def pronta(d) -> dict:
-        migliore = _formazione_pronta(d, s, giornata, regole, simulazioni)
+        try:
+            migliore = _formazione_pronta(d, s, giornata, regole, simulazioni)
+        except FormazioneImpossibile as e:              # si ricorda come un risultato: niente calcolo rifatto a ogni richiesta (#651)
+            return {IMPOSSIBILE: str(e)}
         if da_rivedere(migliore):                       # nello stesso giro: un solo «sto calcolando»
             _cache.metti(chiave_stabile, con_la_stabile(d, migliore), peso=calcolo.PESO_LEGGERO)
         return migliore
     f = migliore = calcolo.ottieni(chiave, pronta, db, peso=calcolo.PESO_LEGGERO)
+    if IMPOSSIBILE in migliore:
+        raise FormazioneImpossibile(migliore[IMPOSSIBILE])
     if da_rivedere(migliore):
         f = calcolo.ottieni(chiave_stabile, lambda d: con_la_stabile(d, migliore), db, peso=calcolo.PESO_LEGGERO)
     if _si_ricorda(db, regole, stagione, giornata, prima, chiusa, iniziate, adesso):
@@ -418,7 +431,7 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, f
     try:
         f = fz.migliore(candidati, regole, simulazioni, valutatore=val, **vincoli)
     except ValueError:
-        raise ValueError("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata") from None
+        raise FormazioneImpossibile("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata") from None
     livelli = []
     for rischio, nome, peso, inclinazione, descrizione in fz.LIVELLI_RISCHIO:
         fl = f if (peso, inclinazione) == (fz.PESO_BASE, (0.0, 0.0)) else fz.migliore(

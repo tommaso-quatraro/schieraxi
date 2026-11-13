@@ -260,21 +260,32 @@ def migliori_della_giornata(titolari: list[dict]) -> list[dict]:
     return sorted(tre, key=lambda g: (-(g.get("fv_atteso") or 0.0), -g["punti_attesi"]))
 
 
+def formazione_di_oggi(db: sqlite3.Connection, regole: Regole, rose: Rose) -> dict:
+    """La consigliata come la usa Oggi: se con questa rosa non si forma una squadra (per esempio in un reparto nessuno gioca, per i
+    rinvii) una formazione vuota, e il resto della schermata si mostra lo stesso. Può alzare InCalcolo (202)."""
+    s = rose.squadra(rose.mia_squadra or "")
+    if not s:
+        raise ValueError("Indica la tua squadra in «La mia squadra»")
+    try:
+        return consigli.formazione(db, regole, rose)
+    except ValueError:
+        return {"titolari": [], "panchina": [], "modulo": "–", "punteggio_atteso": None, "squadra": s.nome}
+
+
 def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_scelte=None,
-         file_diario=None, live_partite: dict | None = None, dal: datetime | None = None) -> dict:
+         file_diario=None, live_partite: dict | None = None, dal: datetime | None = None, formazione: dict | None = None) -> dict:
     """Tutto ciò che serve per decidere oggi: scadenza, formazione in breve, cose da controllare, partite del turno; e, secondo
     la fase della giornata, la giornata in diretta o il riepilogo (fasi.py). `file_diario` e `live_partite` (la cache dei
     risultati in diretta, {(casa, trasferta): partita}) sono facoltativi: senza, i blocchi usano solo il calendario e i voti.
-    `dal` (facoltativo): quando è nato l'account, per chi entra a giornata iniziata (fasi.aggiungi)."""
+    `dal` (facoltativo): quando è nato l'account, per chi entra a giornata iniziata (fasi.aggiungi).
+    `formazione` (facoltativo): la consigliata già presa con `formazione_di_oggi` (il widget, #651): chiederla due volte nella stessa
+    richiesta rimetterebbe in coda un calcolo fallito, perché il suo errore arriva una volta sola."""
     adesso = adesso or datetime.now()
     s = rose.squadra(rose.mia_squadra or "")
     if not s:
         raise ValueError("Indica la tua squadra in «La mia squadra»")
     stagione = consigli.stagione_corrente()
-    try:
-        f = consigli.formazione(db, regole, rose)
-    except ValueError:          # per esempio in un reparto nessuno gioca (rinvii): il resto della schermata si mostra lo stesso
-        f = {"titolari": [], "modulo": "–", "punteggio_atteso": None, "squadra": s.nome}
+    f = formazione if formazione is not None else formazione_di_oggi(db, regole, rose)
     prev, giornata, con_probabili = consigli.previsioni(db, regole)
     tua_scelta, f_extra = False, {}
     scelta = scelte.leggi(stagione, giornata, file_scelte) if file_scelte else None
