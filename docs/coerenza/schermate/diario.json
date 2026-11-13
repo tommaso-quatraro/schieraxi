@@ -13,36 +13,36 @@
       "id": 24,
       "schermata": "Diario, pulsante",
       "web": "«Ho schierato questa»",
-      "iphone": "«Ho schierato la consigliata» (#21)",
-      "forma": "iPhone",
-      "chi": "**da decidere**: dal 12/11/2026 la web ha un solo pulsante per giornata, «Non è quello che ho schierato», che fa scegliere gli 11 a mano partendo da quelli della riga (#617). L'iPhone ha ancora «Ho schierato la consigliata» e «Correggi a mano». Prima: fatto sulla web (pacchetto 1)",
-      "stato": "da-decidere"
+      "iphone": "«Non è quello che ho schierato» (un solo pulsante, nella giornata aperta)",
+      "forma": "web",
+      "chi": "**fatto** (#673 passo 2): come la web (#617), un solo pulsante per giornata, «Non è quello che ho schierato», che fa scegliere gli 11 a mano partendo da quelli della riga (`Giornate/FormazioneManualeDiarioView`). Via «Ho schierato la consigliata» e «Correggi a mano». Prima: fatto sulla web (pacchetto 1)",
+      "stato": "fatto"
     },
     {
       "id": 48,
       "schermata": "Diario, «Quanto ci abbiamo preso», riga su tutta la Serie A",
       "web": "riga sotto i quattro numeri, testo del server",
-      "iphone": "uguale, stesso testo",
+      "iphone": "uguale, stesso testo, dentro «Dettagli» della pagina Giornate",
       "forma": "server (`precisione.serie_a.testo` di `GET /api/diario`)",
-      "chi": "web e iPhone fatti nella stessa PR (#374); dal 12/11/2026 sulla web sta dentro «Dettagli» della pagina Giornate (#617)",
+      "chi": "web e iPhone fatti nella stessa PR (#374); dal 12/11/2026 sulla web (#617) e dal passo 2 di #673 sull'iPhone sta dentro «Dettagli» della pagina Giornate",
       "stato": "fatto"
     },
     {
       "id": 69,
       "schermata": "Giornate (il Diario)",
       "web": "seconda scheda della barra: in cima «Finora il fantavoto atteso sbaglia in media di 1,4 punti a giocatore.» con «Dettagli»; una riga per giornata con punti fatti e attesi e «Hai schierato la consigliata.» o «2 cambi tuoi: −1,5 punti rispetto alla consigliata.»; al tocco gli 11 con atteso e preso",
-      "iphone": "Altro > Diario delle giornate: le due formazioni affiancate, «Le tue scelte», «Quanto ci abbiamo preso»",
+      "iphone": "uguale: seconda scheda della barra (Formazione, Giornate, Squadra, Altro), riga sulla precisione con «Dettagli», una riga per giornata con le stesse frasi, al tocco gli 11 in tre colonne (Giocatore, Atteso, Preso); sull'iPad elenco e giornata affiancati",
       "forma": "web; il confronto con la consigliata solo con `consigliata.origine: \"mostrata\"` di `GET /api/diario`",
-      "chi": "**da decidere**: dal 12/11/2026 la web ha la pagina Giornate al posto del Diario in Altro (#617). L'iPhone è fermo (spec del 12/11, §3)",
-      "stato": "da-decidere"
+      "chi": "**fatto** (#673 passo 2): `Presentation/Giornate/GiornateView`, logica in `Domain/Giornate.swift` (`PaginaGiornate`, provata da `GiornateTests`), testi dal catalogo (`Catalogo.Giornate`). Via Altro > Diario, le due formazioni affiancate, «Le tue scelte» e «Ho schierato la consigliata». Prima: da decidere (#617)",
+      "stato": "fatto"
     },
     {
       "id": 70,
       "schermata": "Diario, giornate senza verdetto (senza la consigliata di allora, o con gli stessi titolari)",
       "web": "Giornate > «Dettagli»: frase del server in fondo",
-      "iphone": "«Le tue scelte» e «Quanto ci abbiamo preso»: stessa frase, sotto i numeri o da sola",
+      "iphone": "Giornate > «Dettagli»: stessa frase, in fondo",
       "forma": "server (`precisione.confronto.nota` e `scelte_tue.nota` di `GET /api/diario`, lo stesso testo)",
-      "chi": "web e iPhone fatti nella stessa PR (#614); la web la mostra solo nei «Dettagli» della pagina Giornate (#617)",
+      "chi": "web e iPhone fatti nella stessa PR (#614); dal passo 2 di #673 anche l'iPhone la mostra solo in fondo ai «Dettagli» della pagina Giornate, come la web (#617)",
       "stato": "fatto"
     }
   ]

@@ -14,8 +14,10 @@ enum Destinazione: Equatable {
 }
 
 /// Indirizzi accettati dall'app (schema `schieraxi://`), per aprirla dal tocco su una notifica di ntfy (intestazione `Click`):
-/// `schieraxi://oggi`, `formazione`, `squadra`, `altro` e `schieraxi://giocatore/<id>`. I vecchi `mercato`, `scambi` e `lega`
-/// valgono ancora: le pagine tolte il 12/11/2026 (#634) aprono la scheda più vicina che resta (`mercato` Squadra, `scambi` e `lega` Altro).
+/// `schieraxi://oggi`, `formazione`, `giornate`, `squadra`, `altro` e `schieraxi://giocatore/<id>`. I vecchi `mercato`, `scambi` e
+/// `lega` valgono ancora: le pagine tolte il 12/11/2026 (#634) aprono la scheda più vicina che resta (`mercato` Squadra, `scambi` e
+/// `lega` Altro). Il Diario è la pagina Giornate (#673 passo 2): `schieraxi://diario` e `schieraxi://lega/diario` (la voce `diario` di
+/// «Da fare») aprono Giornate.
 enum Collegamenti {
     static let schema = "schieraxi"
 
@@ -35,6 +37,10 @@ enum Collegamenti {
             // pathComponents di "schieraxi://giocatore/12" è ["/", "12"]
             guard let testo = url.pathComponents.dropFirst().first, let id = Int(testo), id > 0 else { return nil }
             return .giocatore(id)
+        }
+        // «schieraxi://lega/diario» e «schieraxi://altro/diario»: il Diario stava in Altro, ora è la pagina Giornate
+        if ["lega", "altro"].contains(host), url.pathComponents.dropFirst().first?.lowercased() == "diario" {
+            return .sezione(.giornate)
         }
         return Sezione.da(nome: host).map { .sezione($0) }
     }

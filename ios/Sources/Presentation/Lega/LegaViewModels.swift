@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 /// Le pagine che si aprono dalle schede Squadra e Altro.
 enum PaginaLega: Hashable {
     case importa, squadre, rosa(String), regole, avvisi, stato
-    case stagione, diario
+    case stagione
 
     /// In quale scheda sta la pagina: Squadra (la mia squadra, le rose, l'importazione) oppure Altro (tutto il resto).
     var sezione: Sezione {

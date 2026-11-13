@@ -340,7 +340,7 @@ def test_spento_i_comandi_restano_quelli_di_sempre(monkeypatch):
     chiamate = []
     monkeypatch.setattr(backup, "salva_copia", lambda **k: chiamate.append(k) or None)
     cli.cmd_backup(type("A", (), {"tieni": 5})())
-    assert chiamate == [{"tieni": 5}]
+    assert len(chiamate) == 1 and chiamate[0]["tieni"] == 5 and isinstance(chiamate[0]["adesso"], datetime)
 
 
 # ---------------------------------------------------------------- backup
@@ -349,6 +349,7 @@ def test_backup_per_utente_e_del_database_degli_account(mondo, registro, capsys)
     cli._backup_per_utente(7, ADESSO)
     copia_a, copia_b = sorted((a.cartella / "backup").glob("schieraxi-backup-*.json")), sorted((b.cartella / "backup").glob("schieraxi-backup-*.json"))
     assert len(copia_a) == len(copia_b) == 1
+    assert copia_a[0].name == copia_b[0].name == "schieraxi-backup-2026-10-27.json"      # il giorno di ADESSO, non dell'orologio
     assert "Squadra di amico1" in copia_a[0].read_text(encoding="utf-8") and "amico2" not in copia_a[0].read_text(encoding="utf-8")
     assert "Squadra di amico2" in copia_b[0].read_text(encoding="utf-8") and "amico1" not in copia_b[0].read_text(encoding="utf-8")
     sqlite_copie = sorted((percorsi.cartella_account() / "backup").glob("account-*.sqlite"))
@@ -356,6 +357,27 @@ def test_backup_per_utente_e_del_database_degli_account(mondo, registro, capsys)
     with contextlib.closing(sqlite3.connect(sqlite_copie[0])) as db:
         assert [r[0] for r in db.execute("SELECT nome_utente FROM utenti ORDER BY id")] == ["amico1", "amico2"]
     assert "2 utenti su 2" in capsys.readouterr().out
+
+
+def test_backup_per_utente_conta_solo_le_copie_che_ci_sono(mondo, registro, monkeypatch, capsys, caplog):
+    """#709: una copia che dopo il giro non c'è non si conta fra quelle salvate: il comando esce con errore e il motivo va nel
+    registro del servizio. La copia dell'altro utente e quella del database degli account si fanno lo stesso."""
+    a, b = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
+    vera = backup.salva_copia
+
+    def salva(**k):
+        scritta = vera(**k)
+        if k["cartella"] == b.cartella / "backup":
+            scritta.unlink()                                         # sparita subito dopo averla scritta
+        return scritta
+    monkeypatch.setattr(backup, "salva_copia", salva)
+    with pytest.raises(SystemExit) as uscita:
+        cli._backup_per_utente(7, ADESSO)
+    assert "copie salvate: 1 utenti su 2; database degli account: copiato" in capsys.readouterr().out
+    assert str(uscita.value.code) == ("Errore: copia non salvata per 1 utenti su 2 (il motivo è nel registro del "
+                                      "servizio).")
+    assert "non trovata dopo averla scritta" in caplog.text
+    assert len(list((a.cartella / "backup").glob("schieraxi-backup-*.json"))) == 1
 
 
 def test_le_copie_vecchie_si_tolgono(mondo, tmp_path):

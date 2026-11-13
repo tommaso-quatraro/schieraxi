@@ -27,5 +27,9 @@ avv.dalle
 avv.alle
 avv.manda_avviso_prova
 
-# Il Diario: la spiegazione dentro «Come si legge» (DiarioView.perOgniGiornata)
+# Il Diario di prima: la spiegazione dentro «Come si legge». La pagina Giornate (#673, passo 2) non la mostra più; resta elencata
+# finché il catalogo comune la tiene (la web non la usa: toglierla è un lavoro sul catalogo, fuori da ios/)
 avv.per_ogni_giornata
+
+# La correzione di una giornata finita, nella pagina Giornate (#673, passo 2): «N di 11»
+avv.n_di_11

@@ -1,3 +1,5 @@
 # Nomi delle sezioni. Poi: python script/testi.py --scrivi
 # la Formazione unica (#673), al posto di Oggi
 nav.formazione
+# la pagina Giornate (#673, passo 2), al posto del Diario di Altro
+nav.giornate

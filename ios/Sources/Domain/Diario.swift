@@ -12,6 +12,9 @@ struct DiarioRisposta: Decodable {
     /// «Quanto ci abbiamo preso» nella forma nuova (fantavoto, «gioca N%», consigliata contro tua, squadra). Facoltativo: se manca
     /// (server vecchio) resta la scheda di `affidabilita`; tollerante, un formato strano vale «niente da mostrare».
     let precisione: PrecisioneDiario?
+    /// Perché `giornate` è vuoto (`squadra`, `giornate` o `calcolo`): la pagina Giornate lo dice. Facoltativo (server vecchio: la
+    /// frase generica).
+    let motivoVuoto: String?
 }
 
 struct VoceDiario: Decodable, Identifiable {
@@ -23,12 +26,21 @@ struct VoceDiario: Decodable, Identifiable {
     /// ricostruzione di oggi con i dati di allora (`origine` «ricostruita», o assente da un server di prima).
     let consigliata: FormazioneDiario?
     let schierata: FormazioneDiario?
+    /// La consigliata salvata da sola alla scadenza, se non avevi scelto (facoltativo; `null` se non c'è).
+    let automatica: FormazioneDiario?
+    /// I giocatori della rosa con il fantavoto atteso ricostruito con i dati di prima (`fv_atteso`) e il fantavoto preso (`fv`,
+    /// `null` se non ha preso voto). Facoltativo: un server vecchio non lo manda.
+    let giocatori: [NumeriGiocatoreDiario]?
     /// Facoltativo: la formazione che SchieraXI consigliava davvero prima della giornata. `null` o assente = non registrata.
     let istantanea: IstantaneaDiario?
     /// Facoltativo: punti attesi contro punti fatti della consigliata, con la fascia (server nuovi).
     let attesoVsFatto: AttesoVsFatto?
     /// Facoltativo: `false` per le voci di una stagione passata, che si leggono e basta. Un server vecchio non lo manda.
     let modificabile: Bool?
+    /// Facoltativo (#674): la frase del server sulla consigliata di allora che non entra nel confronto («Qui il confronto con la
+    /// consigliata non c'è: …», «Questa è rifatta con i dati di allora: …»), da mostrare così com'è. `null`, vuota o assente (server
+    /// di prima) = nessuna frase.
+    let notaConsigliata: String?
 
     /// Stagione e giornata: con due stagioni nel Diario la giornata 10 c'è due volte.
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
@@ -49,7 +61,10 @@ struct VoceDiario: Decodable, Identifiable {
         return giornata
     }
 
-    private enum Chiavi: String, CodingKey { case stagione, giornata, giornataLega, consigliata, schierata, istantanea, attesoVsFatto, modificabile }
+    private enum Chiavi: String, CodingKey {
+        case stagione, giornata, giornataLega, consigliata, schierata, automatica, giocatori, istantanea, attesoVsFatto, modificabile
+        case notaConsigliata
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Chiavi.self)
@@ -58,14 +73,23 @@ struct VoceDiario: Decodable, Identifiable {
         giornataLega = (try? c.decodeIfPresent(Int.self, forKey: .giornataLega)) ?? nil
         consigliata = try? c.decodeIfPresent(FormazioneDiario.self, forKey: .consigliata)
         schierata = try? c.decodeIfPresent(FormazioneDiario.self, forKey: .schierata)
+        automatica = (try? c.decodeIfPresent(FormazioneDiario.self, forKey: .automatica)) ?? nil
+        giocatori = (try? c.decodeIfPresent([NumeriGiocatoreDiario].self, forKey: .giocatori)) ?? nil
         // Un'istantanea in un formato che non conosco vale come «non registrata»: il resto del Diario si legge lo stesso.
         istantanea = try? c.decodeIfPresent(IstantaneaDiario.self, forKey: .istantanea)
         attesoVsFatto = (try? c.decodeIfPresent(AttesoVsFatto.self, forKey: .attesoVsFatto)) ?? nil
         modificabile = (try? c.decodeIfPresent(Bool.self, forKey: .modificabile)) ?? nil
+        let nota = (try? c.decodeIfPresent(String.self, forKey: .notaConsigliata)) ?? nil
+        notaConsigliata = nota?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? nota : nil
     }
+}
 
-    /// Il confronto «Cosa consigliava SchieraXI» contro «Cosa hai schierato»; `nil` se non c'è nessuna formazione consigliata da mostrare.
-    var confronto: ConfrontoDiario? { ConfrontoDiario(self) }
+/// Un giocatore della rosa in una giornata finita (`giornate[].giocatori` di `GET /api/diario`): il fantavoto atteso rifatto con i
+/// soli dati di prima e il fantavoto preso (`nil` = senza voto).
+struct NumeriGiocatoreDiario: Decodable, Equatable {
+    let id: Int?
+    let fvAtteso: Double?
+    let fv: Double?
 }
 
 /// La formazione consigliata salvata dal server per una giornata (`istantanea` di `GET /api/diario`).
@@ -99,6 +123,8 @@ struct TitolareDiario: Decodable {
     let id: Int?
     let nome: String?
     let ruolo: String?
+    /// Solo nei giocatori di `istantanea` (facoltativo): il fantavoto atteso mostrato prima della scadenza.
+    var fvAtteso: Double? = nil
 }
 
 struct SintesiDiario: Decodable {

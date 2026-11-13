@@ -1,17 +1,18 @@
 import SwiftUI
 import TipKit
 
-/// Le tre sezioni dell'app, come la web fra #637 e #671: la Formazione per prima (al posto di Oggi e Formazione, #673), Squadra con
-/// le rose, Altro con il diario e le regole. Sull'iPhone sono le schede in basso, sull'iPad (e in orizzontale sui telefoni grandi)
-/// la barra laterale.
+/// Le quattro sezioni dell'app, come la web fra #671 e #675: la Formazione per prima (al posto di Oggi e Formazione, #673), le
+/// Giornate (al posto del Diario di Altro, #673 passo 2), Squadra con le rose, Altro con le regole. Sull'iPhone sono le schede in
+/// basso, sull'iPad (e in orizzontale sui telefoni grandi) la barra laterale.
 enum Sezione: String, CaseIterable, Identifiable, Hashable {
-    case formazione, squadra, altro
+    case formazione, giornate, squadra, altro
 
     var id: String { rawValue }
 
     var titolo: String {
         switch self {
-        case .formazione: return "Formazione"
+        case .formazione: return Catalogo.Nav.formazione
+        case .giornate: return Catalogo.Nav.giornate
         case .squadra: return "Squadra"
         case .altro: return "Altro"
         }
@@ -20,26 +21,30 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
     var icona: String {
         switch self {
         case .formazione: return "sportscourt"
+        case .giornate: return "calendar"
         case .squadra: return "person.3"
         case .altro: return "ellipsis.circle"
         }
     }
 
-    /// Cmd+1 ... Cmd+3 con la tastiera (iPad con tastiera, iPhone con tastiera Bluetooth).
+    /// Cmd+1 ... Cmd+4 con la tastiera (iPad con tastiera, iPhone con tastiera Bluetooth).
     var scorciatoia: KeyEquivalent {
         switch self {
         case .formazione: return "1"
-        case .squadra: return "2"
-        case .altro: return "3"
+        case .giornate: return "2"
+        case .squadra: return "3"
+        case .altro: return "4"
         }
     }
 
     /// Da un nome scritto (indirizzi `schieraxi://`, «Da fare», scelta salvata). I nomi delle sezioni e delle pagine tolte
     /// continuano a funzionare e aprono la scheda più vicina che resta (#634, come la web): Mercato è Squadra, Scambi e Lega sono Altro,
-    /// Oggi è la Formazione (#673: `schieraxi://oggi` dei widget già sulla Home, il tocco sugli avvisi, l'ultima sezione salvata).
+    /// Oggi è la Formazione (#673: `schieraxi://oggi` dei widget già sulla Home, il tocco sugli avvisi, l'ultima sezione salvata),
+    /// il Diario è Giornate (#673 passo 2, come `dove` della web).
     static func da(nome: String?) -> Sezione? {
         switch (nome ?? "").lowercased() {
         case "oggi", "formazione": return .formazione
+        case "giornate", "diario": return .giornate
         case "squadra", "mercato": return .squadra
         case "altro", "lega", "scambi": return .altro
         default: return nil
@@ -71,6 +76,9 @@ final class Navigazione: ObservableObject {
     }
     /// Una pagina di Squadra o di Altro da aprire (da un indirizzo `schieraxi://` o da Oggi): la radice la apre nella scheda giusta.
     @Published var paginaDaAprire: PaginaLega?
+    /// La giornata (numero di Serie A) da aprire nella pagina Giornate («Com'è andata» della Formazione): la pagina la prende e la
+    /// rimette a nil.
+    @Published var giornataDaAprire: Int?
     /// È arrivato un file o un'immagine da un'altra app (Condividi, «Apri con SchieraXI»): all'apertura la configurazione guidata
     /// non parte da sola, per non coprire l'importazione o la scelta dello stemma (come l'arrivo da Condividi della web).
     /// Torna falso quando l'arrivo è finito (`controllaFineArrivo`) o si esce dall'account (`uscitoDallAccount`).
@@ -173,6 +181,12 @@ final class Navigazione: ObservableObject {
     func apriScheda(_ id: Int, contesto: ContestoScheda? = nil) {
         Suggerimenti.schedaAperta()
         scheda = IdGiocatore(id: id, contesto: contesto)
+    }
+
+    /// La pagina Giornate, aperta sulla giornata `giornata` (numero di Serie A) se c'è, come `vaiGiornate` della web.
+    func apriGiornate(_ giornata: Int?) {
+        giornataDaAprire = giornata
+        sezione = .giornate
     }
 
     /// Apre una sezione o la scheda di un giocatore (da Spotlight o da un indirizzo schieraxi://).
@@ -313,6 +327,7 @@ struct RadiceView: View {
             // `oggi`. Dalla Formazione la scheda si apre subito con la previsione già letta, il perché del titolare e «Sostituisci»
             FormazioneView(vm: modello.formazione, oggi: modello.oggi)
                 .environment(\.apriGiocatore) { id in nav.apriScheda(id, contesto: modello.formazione.contestoScheda(id)) }
+        case .giornate: GiornateView(vm: modello.giornate)
         case .squadra: LegaView(vm: modello.lega, ambito: .squadra)
         case .altro: LegaView(vm: modello.lega, ambito: .altro)
         }

@@ -856,8 +856,30 @@ private extension LegaDemo {
         let base = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Leonel", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey"]
         let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Leonel", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Orsetti"]
         let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Leonel", "Thorvan", "Pulinski", "Lemão", "Zelawski", "Orsetti"]
+        // Fantavoto atteso e preso di ogni giocatore (pagina Giornate, #673 passo 2): numeri inventati e fermi, vicini ai punti della
+        // squadra divisi per 11; ogni giornata uno è senza voto.
+        let scarti: [Double] = [1.5, -1, 0.5, -0.5, 2, -1.5, 0, 1, -2, 0.5, -0.5, 0.5, -1, 1]
+        func scarto(_ i: Int, _ g: Int) -> Double { scarti[(i + g) % scarti.count] }
+        func fvAtteso(_ i: Int, _ g: Int, _ atteso: Double) -> Double { ((atteso / 11 + scarto(i, g) * 0.4) * 10).rounded() / 10 }
+        func fvPreso(_ i: Int, _ g: Int, _ fatti: Double) -> Any {
+            (i + g) % 9 == 0 ? NSNull() as Any : ((fatti / 11 + scarto(i, g + 3)) * 2).rounded() / 2 as Any
+        }
+        // i titolari mostrati prima della scadenza portano il fantavoto atteso di allora, come `istantanea` del server
+        func conAtteso(_ nomi: [String], _ g: Int, _ atteso: Double) -> [[String: Any]] {
+            titolari(nomi).map { x -> [String: Any] in
+                var d = x
+                if let i = anagrafe.firstIndex(of: x["nome"] as? String ?? "") { d["fv_atteso"] = fvAtteso(i, g, atteso) }
+                return d
+            }
+        }
+        func numeriGiocatori(_ g: Int, _ c: EsitoGiornata) -> [[String: Any]] {
+            anagrafe.indices.map { i in
+                ["id": 9000 + i, "p_voto": 0.9, "fv_atteso": fvAtteso(i, g, c.atteso), "fv": fvPreso(i, g, c.fatti)] as [String: Any]
+            }
+        }
         func istantanea(_ g: Int, _ modulo: String, _ nomi: [String], atteso: Double, ora: String) -> [String: Any] {
-            ["giornata": g, "modulo": modulo, "titolari": titolari(nomi), "panchina": titolari(["Mkhedrian", "Zelawski", "Orsetti"]),
+            ["giornata": g, "modulo": modulo, "titolari": conAtteso(nomi, g, atteso),
+             "panchina": conAtteso(["Mkhedrian", "Zelawski", "Orsetti"], g, atteso),
              "atteso": atteso, "stile": "Equilibrato", "calcolata": ora]
         }
         // «Quanto ci abbiamo preso»: punti attesi e fatti della consigliata (le stesse voci qui sotto), con la fascia.
@@ -904,12 +926,29 @@ private extension LegaDemo {
         func esito(_ e: EsitoGiornata, _ nomi: [String]) -> [String: Any] {
             ["modulo": e.modulo, "atteso": e.atteso, "reale": e.fatti, "intervallo": fascia(e.atteso), "titolari": titolari(nomi)]
         }
+        // Con l'istantanea la consigliata è quella mostrata prima della scadenza (`origine` «mostrata», #614), senza è rifatta
+        // («ricostruita»); senza una tua formazione ma con l'istantanea c'è la copia salvata alla scadenza (`automatica`).
         let voci: [[String: Any]] = giornateFinite.map { g -> [String: Any] in
             let c = g.consigliata
+            var consigliata = esito(c, base)
+            consigliata["origine"] = calcolata[g.serieA] == nil ? "ricostruita" : "mostrata"
             var voce: [String: Any] = ["stagione": stagioneInCorso, "giornata": g.serieA, "giornata_lega": lega(g.serieA),
-                                       "atteso_vs_fatto": avf(c.atteso, c.fatti), "consigliata": esito(c, base)]
+                                       "modificabile": true, "atteso_vs_fatto": avf(c.atteso, c.fatti), "consigliata": consigliata,
+                                       "automatica": NSNull(), "giocatori": numeriGiocatori(g.serieA, c)]
             if let ora = calcolata[g.serieA] { voce["istantanea"] = istantanea(g.serieA, c.modulo, base, atteso: c.atteso, ora: ora) }
-            if let s = g.schierata, let nomi = tuoi[g.serieA] { voce["schierata"] = esito(s, nomi) }
+            if let s = g.schierata, let nomi = tuoi[g.serieA] {
+                voce["schierata"] = esito(s, nomi)
+            } else if calcolata[g.serieA] != nil {
+                voce["automatica"] = esito(c, base)
+            }
+            // senza l'istantanea la consigliata di allora non era stata salvata: la frase la scrive il server
+            // (`nota_consigliata` di fanta/diario.py, #674), qui il suo testo per la consigliata rifatta o per la tua formazione
+            if calcolata[g.serieA] == nil {
+                voce["consigliata_di_allora"] = "non_salvata"
+                voce["nota_consigliata"] = voce["schierata"] == nil
+                    ? "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata."
+                    : "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata."
+            }
             return voce
         }
         return json([

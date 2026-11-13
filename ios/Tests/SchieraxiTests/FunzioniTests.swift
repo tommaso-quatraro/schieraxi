@@ -49,7 +49,7 @@ final class FunzioniTests: XCTestCase {
         XCTAssertNil(Sezione.da(nome: nil))
         // Oggi è nella Formazione (#673): i collegamenti dei widget, gli avvisi e l'ultima sezione salvata la aprono
         XCTAssertEqual(Sezione.da(nome: "oggi"), .formazione)
-        XCTAssertEqual(Sezione.allCases.map(\.titolo), ["Formazione", "Squadra", "Altro"])
+        XCTAssertEqual(Sezione.allCases.map(\.titolo), ["Formazione", "Giornate", "Squadra", "Altro"], "il Diario è Giornate (#673 passo 2)")
     }
 
     func testOgniPaginaStaNellaSuaScheda() {
@@ -57,7 +57,6 @@ final class FunzioniTests: XCTestCase {
         XCTAssertEqual(PaginaLega.rosa("X").sezione, .squadra)
         XCTAssertEqual(PaginaLega.squadre.sezione, .squadra)
         XCTAssertEqual(PaginaLega.regole.sezione, .altro)
-        XCTAssertEqual(PaginaLega.diario.sezione, .altro)
         XCTAssertEqual(PaginaLega.stagione.sezione, .altro)
     }
 

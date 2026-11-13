@@ -2,9 +2,10 @@ import SwiftUI
 
 /// Una voce dei menu Squadra e Altro: la stessa di `VOCI_LEGA` in `fanta/web/app.js`, con il nome e la riga sotto del catalogo
 /// comune (`lega.voce_*`, file generato `Catalogo+Lega.swift`), nello stesso ordine.
-/// Dal 12/11/2026 (#634) restano quattro voci, come sulla web: Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Scambi,
+/// Dal 12/11/2026 (#634) restano poche voci, come sulla web: Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Scambi,
 /// Movimenti, Crediti e Novità non ci sono più (le Novità si leggono in Impostazioni > Informazioni); «Nuova stagione» compare da
-/// sola in cima alle due schede quando serve.
+/// sola in cima alle due schede quando serve. Il Diario è la pagina Giornate, una scheda della barra (#673 passo 2, come la web
+/// con #671): in Altro restano le Regole.
 struct VoceMenuLega: Identifiable, Equatable {
     /// L'`id` della stessa voce sulla web («squadre», «importa», …).
     let id: String
@@ -37,10 +38,8 @@ struct VoceMenuLega: Identifiable, Equatable {
                      simbolo: "doc.badge.plus", colore: .blue),
     ]
 
-    /// Altro: il diario e le regole.
+    /// Altro: le regole.
     private static let altro: [VoceMenuLega] = [
-        VoceMenuLega(id: "diario", pagina: .diario, nome: Catalogo.Lega.voceDiario, dettaglio: Catalogo.Lega.voceDiarioSub,
-                     simbolo: "book", colore: .teal),
         VoceMenuLega(id: "regole", pagina: .regole, nome: Catalogo.Lega.voceRegole, dettaglio: Catalogo.Lega.voceRegoleSub,
                      simbolo: "list.bullet.rectangle", colore: .indigo),
     ]
