@@ -832,7 +832,11 @@ FALLIMENTI_GLOBALI = (200, 600)          # (quanti, in quanti secondi)
 RITARDO_SOTTO_ATTACCO = (1.0, 3.0)       # secondi: rallentamento oltre la soglia globale (base per ogni soglia superata, massimo)
 FALLIMENTI_PER_IP = (30, QUARTO_D_ORA)
 FALLIMENTI_PER_NOME = (50, ORA)          # da tutti gli indirizzi insieme: oltre, entra solo chi usa un indirizzo o un dispositivo già noti
-REGISTRAZIONI_PER_IP = (10, ORA)         # tentativi di registrazione da un indirizzo (anche riusciti)
+REGISTRAZIONI_PER_IP = (10, ORA)         # tentativi di registrazione da un indirizzo che non fanno nascere un account
+# Account nati da uno stesso indirizzo in un'ora. Le iscrizioni riuscite non contano fra i tentativi (sopra): la sera dell'asta
+# una lega intera si iscrive dallo stesso Wi-Fi, anche con un invito a testa. Il tetto resta comunque: 20 è il numero massimo di
+# squadre di una lega nell'app (limiti.MAX_SQUADRE), quindi una lega intera entra tutta; oltre non è più un gruppo di amici.
+ACCOUNT_PER_IP = (20, ORA)
 INVITI_SBAGLIATI_PER_IP = (5, ORA)
 INVITI_SBAGLIATI_GLOBALI = (500, ORA)    # alto: gli inviti hanno 100 bit, il tetto serve solo contro le raffiche da molti indirizzi
 PROVE_PER_INVITO = (10, ORA)             # con un invito valido si prova un nome dopo l'altro: tetto per invito
@@ -1062,12 +1066,40 @@ def revoca_invito(db: sqlite3.Connection, invito_id: int) -> None:
 INVITO_NON_VALIDO = "Invito non valido o scaduto"
 
 
+def posti_dell_invito(inv) -> int:
+    """Le persone che possono entrare con un invito valido (riga di `inviti`), se sono più di una; altrimenti 0. I tetti per
+    indirizzo e per invito hanno un posto in più per ognuna (vedi `prove_per_invito`)."""
+    return inv["usi_max"] if inv is not None and inv["usi_max"] > 1 else 0
+
+
+def conta_per_indirizzo(db: sqlite3.Connection, ip: str | None, *tetti: tuple[str, int, float]) -> list[list]:
+    """Conta questo tentativo di iscrizione nei tetti per indirizzo `tetti` ((nome, massimo, finestra)), controllandoli tutti
+    nella stessa transazione (429 se uno è pieno). Restituisce le righe contate, [numero, chiave]: se l'account nasce,
+    `crea_utente` le toglie. Senza indirizzo niente da contare."""
+    if not ip:
+        return []
+    controlli = [(_chiave(nome, ip), massimo, finestra) for nome, massimo, finestra in tetti]
+    return [[riga, chiave] for riga, (chiave, _, _) in zip(limite.prenota(db, controlli), controlli)]
+
+
+def troppi_account(db: sqlite3.Connection, ip: str | None) -> None:
+    """429 se da questo indirizzo sono già nati ACCOUNT_PER_IP account nell'ultima ora. Si guarda prima del lavoro (scrypt, codice
+    usato); il controllo che vale è quello dentro la transazione di `crea_utente`."""
+    if ip:
+        limite.troppi(db, _chiave("account-ip", ip), *ACCOUNT_PER_IP)
+
+
 def crea_utente(db: sqlite3.Connection, nome: str, nome_visualizzato: str, password_hash: str, recupero_hash: str, ruolo: str,
-                adesso: datetime, email: str | None = None, senza_password: bool = False) -> int:
-    """L'unico punto in cui nasce un account (invito, iscrizione con email, Google), dentro la transazione di chi chiama.
-    Restituisce il numero del nuovo account. Subito dopo la riga in `utenti` il numero riceve una cartella vuota
-    (`contesto.libera_cartella`): se non si riesce a liberarla l'account non nasce (ErroreAccount 503, chi chiama annulla la
-    transazione), perché ritroverebbe i dati di un altro."""
+                adesso: datetime, *, ip: str | None = None, contate=(), email: str | None = None,
+                senza_password: bool = False) -> int:
+    """L'unico punto in cui nasce un account (invito, iscrizione con email, Google), dentro la transazione di chi chiama
+    (BEGIN IMMEDIATE). Restituisce il numero del nuovo account.
+    - Tetto degli account nati da un indirizzo (ACCOUNT_PER_IP), controllato qui: due richieste insieme non lo superano.
+    - I tentativi contati per l'indirizzo in questa iscrizione (`contate`, da `conta_per_indirizzo`) si tolgono: un'iscrizione
+      riuscita non consuma i tetti dei tentativi; conta invece fra gli account nati da quell'indirizzo.
+    - Subito dopo la riga in `utenti` il numero riceve una cartella vuota (`contesto.libera_cartella`): se non si riesce a
+      liberarla l'account non nasce (ErroreAccount 503, chi chiama annulla la transazione), perché ritroverebbe i dati di un altro."""
+    troppi_account(db, ip)
     cur = db.execute("INSERT INTO utenti (nome_utente, nome_visualizzato, password_hash, recupero_hash, ruolo, creato, email, "
                      "senza_password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                      (nome, nome_visualizzato, password_hash, recupero_hash, ruolo, _testo(adesso), email, int(senza_password)))
@@ -1079,6 +1111,10 @@ def crea_utente(db: sqlite3.Connection, nome: str, nome_visualizzato: str, passw
         logging.getLogger(__name__).error("Account nuovo con il numero %s non creato: la cartella che c'era già non si sposta (%s)",
                                           cur.lastrowid, type(e).__name__)
         raise ErroreAccount(percorsi.NON_VERIFICATO, 503) from None
+    for riga, chiave in contate:                     # la chiave insieme al numero: mai la riga di un altro contatore
+        db.execute("DELETE FROM tentativi WHERE rowid = ? AND chiave = ?", (riga, chiave))
+    if ip:
+        db.execute("INSERT INTO tentativi (chiave, quando) VALUES (?, ?)", (_chiave("account-ip", ip), _orologio()))
     return cur.lastrowid
 
 
@@ -1105,13 +1141,14 @@ def prenota_invito(db: sqlite3.Connection, ip: str | None) -> list[int]:
 def _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termini=False) -> tuple[Utente, str, str]:
     adesso = _ora(adesso)
     invito = invito if isinstance(invito, str) else ""
+    nome = valida_nome(nome_utente)                  # prima dei tetti: un modulo scritto male non consuma tentativi
+    valida_password(password, nome)
     if ip:
         limite.troppi(db, _chiave("inviti-sbagliati-ip", ip), *INVITI_SBAGLIATI_PER_IP)
-        limite.consuma(db, _chiave("registra-ip", ip), *REGISTRAZIONI_PER_IP)
+    troppi_account(db, ip)
+    contate = conta_per_indirizzo(db, ip, ("registra-ip", *REGISTRAZIONI_PER_IP))     # tolto se l'account nasce
     limite.troppi(db, _chiave("inviti-sbagliati"), *INVITI_SBAGLIATI_GLOBALI)
     limite.consuma(db, _chiave("registra-invito", _hash_codice(invito)), *prove_per_invito(db, invito))
-    nome = valida_nome(nome_utente)
-    valida_password(password, nome)
     righe = prenota_invito(db, ip)                   # contato come sbagliato finché non si vede che è buono
     password_hash = hash_password(password)          # prima di guardare invito e nome: lo stesso tempo in tutti i casi
     recupero = nuovo_codice(20)
@@ -1127,7 +1164,8 @@ def _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termin
             raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
         if db.execute("SELECT 1 FROM utenti WHERE nome_utente = ?", (nome,)).fetchone():
             raise ErroreAccount("Questo nome utente è già preso: scegline un altro")
-        nuovo = crea_utente(db, nome, nome_da_mostrare(nome_utente, nome), password_hash, _hash_codice(recupero), inv["ruolo"], adesso)
+        nuovo = crea_utente(db, nome, nome_da_mostrare(nome_utente, nome), password_hash, _hash_codice(recupero), inv["ruolo"], adesso,
+                            ip=ip, contate=contate)
         if not consuma_invito(db, inv["codice_hash"], nuovo):    # un altro ha appena preso l'ultimo posto
             raise ErroreAccount(INVITO_NON_VALIDO, 403)
         if termini:

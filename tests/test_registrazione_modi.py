@@ -42,6 +42,11 @@ def conferma(c, email, codice, **extra):
     return c.post("/api/account/registra/conferma", json=corpo | extra)
 
 
+def invito_per(posti: int) -> str:
+    with contextlib.closing(account.apri()) as db:
+        return account.crea_invito(db, "amici", usi_max=posti)
+
+
 def utenti() -> list[str]:
     with contextlib.closing(account.apri()) as db:
         return [u["nome_utente"] for u in account.elenco(db)]
@@ -226,6 +231,28 @@ def test_email_invito_sbagliato_conta_nei_limiti(web, monkeypatch):
     modo(monkeypatch, "email")
     stati = [iscrivi(web, invito=f"SBAGL-IATO{i}-AAAAA-BBBBB").status_code for i in range(account.INVITI_SBAGLIATI_PER_IP[0] + 2)]
     assert set(stati[:5]) == {403} and stati[-1] == 429
+
+
+def test_email_dodici_amici_dalla_stessa_rete_con_un_invito(web, posta_finta, monkeypatch):
+    """Tutti chiedono il codice insieme dalla stessa rete, poi confermano: entrano tutti e dodici."""
+    modo(monkeypatch, "email")
+    inv = invito_per(12)
+    for i in range(12):
+        assert iscrivi(web, f"amico{i:02d}", f"amico{i:02d}@example.com", invito=inv).status_code == 200
+    for i in range(12):
+        email = f"amico{i:02d}@example.com"
+        assert conferma(cliente(**{"X-Forwarded-For": "4.4.4.4"}), email, codice_di(ultimi(posta_finta, email)[-1])).status_code == 200
+    assert len(utenti()) == 12
+
+
+def test_email_amici_con_un_invito_a_testa_dalla_stessa_rete(web, posta_finta, monkeypatch):
+    """Un'iscrizione confermata non conta più fra le richieste dell'indirizzo."""
+    modo(monkeypatch, "email")
+    for i in range(account_email.ISCRIZIONI_PER_IP[0] + 3):
+        email = f"amico{i:02d}@example.com"
+        assert iscrivi(web, f"amico{i:02d}", email, invito=invito()).status_code == 200
+        assert conferma(web, email, codice_di(ultimi(posta_finta, email)[-1])).status_code == 200
+    assert len(utenti()) == account_email.ISCRIZIONI_PER_IP[0] + 3
 
 
 def test_email_invito_da_amministratore_da_il_ruolo_alla_conferma(web, posta_finta, monkeypatch):

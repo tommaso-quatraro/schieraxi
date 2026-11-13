@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from fanta import account
+from fanta import account, limiti
 from fanta.account import ErroreAccount
 from test_account_http import PASSWORD, cliente
 
@@ -36,6 +36,47 @@ def test_codice_per_dodici_amici(db):
     riga = db.execute("SELECT usi, usi_max, usato FROM inviti").fetchone()
     assert tuple(riga) == (12, 12, 1)
     assert db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] == 12
+
+
+IP = "5.5.5.5"                                       # tutti dallo stesso Wi-Fi
+
+
+def test_dodici_amici_dalla_stessa_rete_entrano_tutti(db):
+    """La sera dell'asta tutti si iscrivono dalla stessa rete; qualcuno sbaglia prima la password. Entrano tutti e dodici: le
+    iscrizioni riuscite e i moduli scritti male non contano fra i tentativi dell'indirizzo."""
+    codice = account.crea_invito(db, "amici", usi_max=12, adesso=ADESSO)
+    for i in range(4):
+        assert errore(account.registra, db, f"amico{i:02d}", "password", codice, ip=IP, adesso=ADESSO).stato == 400
+    for i in range(12):
+        assert account.registra(db, f"amico{i:02d}", PASSWORD, codice, ip=IP, adesso=ADESSO)[0].ruolo == "utente"
+    assert db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] == 12
+
+
+def test_dodici_amici_con_un_invito_a_testa_dalla_stessa_rete(db):
+    for i in range(12):
+        codice = account.crea_invito(db, f"amico {i}", adesso=ADESSO)
+        account.registra(db, f"amico{i:02d}", PASSWORD, codice, ip=IP, adesso=ADESSO)
+    assert db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] == 12
+
+
+def test_i_tentativi_non_riusciti_contano_ancora_per_indirizzo(db):
+    codice = account.crea_invito(db, "amici", usi_max=30, adesso=ADESSO)
+    account.registra(db, "marco", PASSWORD, codice, ip=IP, adesso=ADESSO)
+    for _ in range(account.REGISTRAZIONI_PER_IP[0]):
+        assert "già preso" in errore(account.registra, db, "marco", PASSWORD, codice, ip=IP, adesso=ADESSO).messaggio
+    assert errore(account.registra, db, "luca", PASSWORD, codice, ip=IP, adesso=ADESSO).stato == 429
+    assert account.registra(db, "luca", PASSWORD, codice, ip="6.6.6.6", adesso=ADESSO)[0]       # un'altra rete no
+
+
+def test_tetto_di_account_nuovi_per_indirizzo(db):
+    """Un tetto resta anche per le iscrizioni riuscite: una lega intera (fino a MAX_SQUADRE squadre) entra dalla stessa rete in
+    un'ora, oltre no."""
+    assert account.ACCOUNT_PER_IP[0] >= limiti.MAX_SQUADRE and account.ACCOUNT_PER_IP[1] == account.ORA
+    codice = account.crea_invito(db, "tutti", usi_max=30, adesso=ADESSO)
+    for i in range(account.ACCOUNT_PER_IP[0]):
+        account.registra(db, f"amico{i:02d}", PASSWORD, codice, ip=IP, adesso=ADESSO)
+    assert errore(account.registra, db, "uno-di-troppo", PASSWORD, codice, ip=IP, adesso=ADESSO).stato == 429
+    assert db.execute("SELECT usi FROM inviti").fetchone()[0] == account.ACCOUNT_PER_IP[0]      # il posto non si consuma
 
 
 def test_invito_monouso_come_sempre(db):

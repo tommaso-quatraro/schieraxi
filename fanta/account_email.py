@@ -96,12 +96,13 @@ def _puo(db: sqlite3.Connection, chiave: str, massimo: int, finestra: float) -> 
         return False
 
 
-def _tetti_ip(db: sqlite3.Connection, ip: str | None) -> None:
+def _tetti_ip(db: sqlite3.Connection, ip: str | None, posti: int = 0) -> list[list]:
     """Limiti che riguardano chi sta chiedendo: 429 vero (non rivelano niente su altri). Il tetto globale qui si guarda soltanto:
-    si conta in `_invia`, sulle email che partono davvero (le richieste a vuoto non lo esauriscono a danno di tutti)."""
+    si conta in `_invia`, sulle email che partono davvero (le richieste a vuoto non lo esauriscono a danno di tutti).
+    `posti`: quelli in più dell'invito per più amici (iscrizione nel modo `email`). Restituisce la riga contata per l'indirizzo
+    (vedi `account.conta_per_indirizzo`)."""
     limite.troppi(db, _chiave("email-invii-globali"), *INVII_GLOBALI)
-    if ip:
-        limite.consuma(db, _chiave("email-invii-ip", ip), *INVII_PER_IP)
+    return account.conta_per_indirizzo(db, ip, ("email-invii-ip", INVII_PER_IP[0] + posti, INVII_PER_IP[1]))
 
 
 def _invia(db: sqlite3.Connection, messaggio) -> None:
@@ -387,17 +388,19 @@ def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accett
         raise ErroreAccount(account.INVITO_NON_VALIDO, 403)
     if not posta.attiva():       # il codice non può arrivare: l'iscrizione resterebbe in attesa per sempre. Uguale per ogni indirizzo, prima dei limiti
         raise ErroreAccount(ISCRIZIONE_POSTA_SPENTA, 503, codice="iscrizione_posta_spenta")
-    if ip:
-        limite.consuma(db, _chiave("iscrizioni-ip", ip), *ISCRIZIONI_PER_IP)
-        limite.consuma(db, _chiave("registra-ip", ip), *account.REGISTRAZIONI_PER_IP)
-    limite.troppi(db, _chiave("iscrizioni-globali"), *ISCRIZIONI_GLOBALI)     # si conta solo quando parte davvero un codice
-    inv = _invito_vivo(db, invito, adesso, ip) if modo == "email" else None
-    nome = account.valida_nome(nome_utente)
+    nome = account.valida_nome(nome_utente)                   # prima dei tetti: un modulo scritto male non consuma tentativi
     account.valida_password(password, nome)
     if not email_grezza:
         raise ErroreAccount("Per iscriverti serve un indirizzo email: ti mandiamo un codice per confermarlo")
     email = normalizza_email(email_grezza)
-    _tetti_ip(db, ip)
+    limite.troppi(db, _chiave("iscrizioni-globali"), *ISCRIZIONI_GLOBALI)     # si conta solo quando parte davvero un codice
+    inv = _invito_vivo(db, invito, adesso, ip) if modo == "email" else None
+    # Tetti per indirizzo: un posto in più per ogni persona dell'invito (tutti gli amici chiedono il codice insieme dalla stessa
+    # rete); le righe contate si tolgono quando l'account nasce (conferma_iscrizione).
+    posti = account.posti_dell_invito(inv)
+    contate = account.conta_per_indirizzo(db, ip, ("iscrizioni-ip", ISCRIZIONI_PER_IP[0] + posti, ISCRIZIONI_PER_IP[1]),
+                                          ("registra-ip", account.REGISTRAZIONI_PER_IP[0] + posti, account.REGISTRAZIONI_PER_IP[1]))
+    contate += _tetti_ip(db, ip, posti)
     password_hash = account.hash_password(password)           # sempre, anche se poi non si invia niente: stesso tempo
     if db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] >= account.max_utenti():
         raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
@@ -411,7 +414,7 @@ def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accett
     if consentito and not occupata:
         codice = _nuovo_codice(db, "iscrizione", email, None, adesso,
                                {"nome": nome, "nome_visualizzato": account.nome_da_mostrare(nome_utente, nome), "password_hash": password_hash, "invito": inv["codice_hash"] if inv else None,
-                                "segreto": _hash_segreto(segreto), "termini": termini})
+                                "segreto": _hash_segreto(segreto), "termini": termini, "contate": contate})
         limite.aggiungi(db, _chiave("iscrizioni-globali"))
         _invia(db, posta.modello_verifica(email, codice, int(DURATA_CODICE.total_seconds() // 60), nome))
     else:
@@ -437,11 +440,20 @@ def _iscrizione_viva(db: sqlite3.Connection, email: str, segreto, adesso: dateti
     return trovata
 
 
+def _righe_contate(dati: dict) -> list[list]:
+    """Le righe dei tetti per indirizzo contate dalla richiesta di iscrizione ([numero, chiave]); quelle di prima di questa
+    versione non le hanno (restano contate, come allora)."""
+    righe = dati.get("contate")
+    return [r for r in righe if isinstance(r, list) and len(r) == 2 and isinstance(r[0], int) and isinstance(r[1], str)] \
+        if isinstance(righe, list) else []
+
+
 def conferma_iscrizione(db: sqlite3.Connection, email_grezza, codice, ip: str | None = None, dispositivo: str = "",
                         adesso: datetime | None = None, segreto: str | None = None):
     """Seconda metà: con il codice giusto E il segreto restituito da `iscrivi` nasce l'account (già con l'email verificata) e si
     apre la sessione. Restituisce (utente, token, codice di recupero)."""
     adesso = _ora(adesso)
+    account.troppi_account(db, ip)                           # prima del codice: con il tetto pieno il codice resta buono
     if ip:
         limite.consuma(db, _chiave("email-prove-ip", ip), *PROVE_PER_IP)
     email = _email_o_none(email_grezza) or ""
@@ -468,7 +480,7 @@ def conferma_iscrizione(db: sqlite3.Connection, email_grezza, codice, ip: str | 
         if db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] >= account.max_utenti():
             raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
         nuovo = account.crea_utente(db, dati["nome"], dati.get("nome_visualizzato") or dati["nome"], dati["password_hash"],
-                                    _hash_codice(recupero), ruolo, adesso, email=email)
+                                    _hash_codice(recupero), ruolo, adesso, ip=ip, contate=_righe_contate(dati), email=email)
         if dati.get("invito") and not account.consuma_invito(db, dati["invito"], nuovo):
             raise ErroreAccount(account.INVITO_NON_VALIDO, 403)
         if dati.get("termini"):
