@@ -4,7 +4,6 @@ Serve quando si cambia server o si vuole una copia al sicuro. Non contiene chiav
 from __future__ import annotations
 
 import json
-import logging
 import math
 import re
 from datetime import datetime, timedelta
@@ -15,8 +14,6 @@ from . import lega, movimenti, osservati, regole, scelte
 from .limiti import MAX_GIOCATORI_SQUADRA
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
 from .rose import MAX_TESTO_CELLA
-
-LOG = logging.getLogger(__name__)
 
 FORMATO = "schieraxi-backup"
 VERSIONE = 1
@@ -281,8 +278,8 @@ COPIE_MIGRAZIONE = "account-prima-della-migrazione-*.sqlite"
 def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: datetime) -> Path | None:
     """Con gli account: una copia del database degli utenti (account.sqlite) con l'API di backup di SQLite, che è sicura anche
     mentre il server lo usa. Una al giorno (`adesso` dà il nome), ne tiene `tieni`. Nello stesso giro toglie le copie «prima della
-    migrazione» più vecchie di GIORNI_COPIE_MIGRAZIONE. Contiene gli hash delle password: tutte le copie che restano nella cartella,
-    anche quelle già presenti, le legge solo chi le ha create (600)."""
+    migrazione» più vecchie di GIORNI_COPIE_MIGRAZIONE. Contiene gli hash delle password, ma i permessi qui non si toccano: li
+    stringe `stringi_permessi`, che il giro serale chiama subito dopo e che dice quali copie non è riuscita a stringere."""
     import sqlite3
     if not origine.exists():
         return None
@@ -314,22 +311,23 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: date
                 copia.unlink()
         except FileNotFoundError:
             pass                                     # già tolta (da un altro giro): va bene
-    # Solo il proprietario le legge tutte, anche quelle già presenti: le copie nate prima della #688 avevano i permessi di
-    # sistema (di solito leggibili dagli altri utenti della macchina) e restano fino a 7 giorni (#690).
-    for rimasta in cartella.glob("account-*.sqlite"):
-        _solo_proprietario(rimasta)
     return destinazione
 
 
-def _solo_proprietario(copia: Path) -> None:
-    """Lettura e scrittura solo per il proprietario (600): nelle copie degli account ci sono nomi, email e impronte delle password.
-    Se non si può (per esempio un file di un altro utente della macchina) lo dice il registro del servizio, con il nome del file."""
-    try:
-        copia.chmod(0o600)
-    except FileNotFoundError:
-        pass                                         # già tolta (da un altro giro): va bene
-    except OSError as e:
-        LOG.error("Copia del database degli account %s: permessi non ristretti al proprietario (%s)", copia.name, type(e).__name__)
+def stringi_permessi(cartella: Path) -> list[str]:
+    """Lettura e scrittura solo per il proprietario (600) a ogni copia del database degli account nella cartella: nelle copie ci
+    sono nomi, email e impronte delle password. Anche a quelle già presenti: le copie nate prima della #688 avevano i permessi di
+    sistema (di solito leggibili dagli altri utenti della macchina) e restano fino a 7 giorni (#690). Restituisce i nomi dei file
+    che non è riuscita a stringere (per esempio di un altro utente della macchina): chi chiama lo deve far vedere."""
+    non_ristrette = []
+    for copia in sorted(cartella.glob("account-*.sqlite")):
+        try:
+            copia.chmod(0o600)
+        except FileNotFoundError:
+            pass                                     # già tolta (da un altro giro): va bene
+        except OSError:
+            non_ristrette.append(copia.name)
+    return non_ristrette
 
 
 def controlla(backup: Any) -> dict[str, Any]:

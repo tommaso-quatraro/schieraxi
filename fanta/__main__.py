@@ -522,6 +522,7 @@ def _backup_per_utente(tieni: int, adesso: datetime) -> None:
             logging.getLogger(__name__).error("Backup dell'account %s non salvato (%s)", i, type(e).__name__)
     conti = backup.copia_account(percorsi.cartella_account() / "backup", percorsi.cartella_account() / "account.sqlite", tieni,
                                  adesso=adesso)
+    non_ristrette = backup.stringi_permessi(percorsi.cartella_account() / "backup")     # anche le copie già presenti (#690)
     sparita = conti is not None and not conti.is_file()     # «copiato» solo se la copia c'è davvero dopo il giro (#690)
     stato = "niente da copiare" if conti is None else "copia non trovata" if sparita else "copiato"
     print(f"copie salvate: {fatte} utenti su {len(ids)}; database degli account: {stato}")
@@ -530,6 +531,9 @@ def _backup_per_utente(tieni: int, adesso: datetime) -> None:
         problemi.append(f"copia non salvata per {errori} utenti su {len(ids)} (il motivo è nel registro del servizio)")
     if sparita:
         problemi.append(f"la copia del database degli account non c'è dopo averla scritta ({conti})")
+    if non_ristrette:                # lo script serale scrive nel suo registro solo le uscite con errore: qui deve uscire così
+        problemi.append("copie del database degli account con i permessi non ristretti al solo proprietario (forse di un altro "
+                        f"utente della macchina): {', '.join(non_ristrette)}")
     if problemi:
         sys.exit(f"Errore: {'; '.join(problemi)}.")
 

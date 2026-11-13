@@ -7,6 +7,7 @@ import os
 import re
 import sqlite3
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -121,29 +122,37 @@ def _copie_di_prima(cartella) -> None:
         _data(p, ADESSO - timedelta(days=1))
 
 
+def _cartella_del_giro():
+    """La cartella delle copie del giro serale con gli account (database degli account senza utenti), con le copie di prima."""
+    account.apri().close()
+    cartella = percorsi.cartella_account() / "backup"
+    _copie_di_prima(cartella)
+    return cartella
+
+
 @pytest.mark.skipif(os.name != "posix", reason="i permessi «solo il proprietario» (600) esistono solo su Linux e macOS: su "
                                                "Windows non si leggono, li prova la CI su Linux")
-def test_il_giro_serale_stringe_i_permessi_delle_copie_gia_presenti(tmp_path):
-    cartella = tmp_path / "backup"
-    _copie_di_prima(cartella)
-    backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
+def test_il_giro_serale_stringe_i_permessi_delle_copie_gia_presenti(multiutente):
+    from fanta import __main__ as cli
+    cartella = _cartella_del_giro()
+    cli._backup_per_utente(7, ADESSO)
     permessi = {p.name: oct(p.stat().st_mode & 0o777) for p in cartella.iterdir()}
     assert len(permessi) == 4 and set(permessi.values()) == {oct(0o600)}, permessi      # le tre di prima e quella nuova
 
 
-def test_il_giro_serale_chiede_solo_il_proprietario_per_ogni_copia_che_resta(tmp_path, monkeypatch):
+def test_il_giro_serale_chiede_solo_il_proprietario_per_ogni_copia_che_resta(multiutente, monkeypatch):
     """Lo stesso dove i permessi veri non si leggono (Windows): ogni copia rimasta nella cartella, anche quelle di prima, riceve
     600 (lettura e scrittura solo per il proprietario)."""
-    cartella = tmp_path / "backup"
-    _copie_di_prima(cartella)
+    from fanta import __main__ as cli
+    cartella = _cartella_del_giro()
     chiesti, vero = {}, os.chmod
 
     def chmod(percorso, modo, *a, **k):
-        chiesti[os.path.basename(percorso)] = modo
+        chiesti[Path(percorso)] = modo
         return vero(percorso, modo, *a, **k)
     monkeypatch.setattr(os, "chmod", chmod)
-    backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
-    assert chiesti == {p.name: 0o600 for p in cartella.iterdir()}
+    cli._backup_per_utente(7, ADESSO)
+    assert {p.name: m for p, m in chiesti.items() if p.parent == cartella} == {p.name: 0o600 for p in cartella.iterdir()}
 
 
 # ---------------------------------------------------------------- orologio indietro, copie datate nel futuro (#690)
@@ -185,3 +194,23 @@ def test_il_comando_dice_copiato_solo_se_la_copia_c_e(multiutente, monkeypatch, 
         cli._backup_per_utente(7, ADESSO)
     assert "copiato" not in capsys.readouterr().out
     assert uscita.value.code and "account-2026-11-12.sqlite" in str(uscita.value.code)
+
+
+def test_permessi_non_ristretti_il_giro_serale_esce_con_errore_e_dice_quale_copia(multiutente, monkeypatch, capsys):
+    """Una copia che il giro non riesce a rendere leggibile solo dal proprietario (per esempio creata da un altro utente della
+    macchina): il comando esce con errore e ne dice il nome. Lo script serale scrive nel suo registro solo le uscite con errore."""
+    from fanta import __main__ as cli
+    _cartella_del_giro()
+    vero = os.chmod
+
+    def chmod(percorso, modo, *a, **k):
+        if os.path.basename(percorso) == "account-prima-della-migrazione-5.sqlite":
+            raise PermissionError(1, "file di un altro utente")
+        return vero(percorso, modo, *a, **k)
+    monkeypatch.setattr(os, "chmod", chmod)
+    with pytest.raises(SystemExit) as uscita:
+        cli._backup_per_utente(7, ADESSO)
+    assert "database degli account: copiato" in capsys.readouterr().out          # la copia di stanotte c'è
+    messaggio = str(uscita.value.code)
+    assert messaggio.startswith("Errore:") and "account-prima-della-migrazione-5.sqlite" in messaggio
+    assert "account-2026-11-10.sqlite" not in messaggio                          # le altre si sono strette
