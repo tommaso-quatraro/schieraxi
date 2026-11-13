@@ -1,5 +1,6 @@
 """Copie di sicurezza del database degli account (#653): le copie «prima della migrazione» non tolgono posto alle copie serali,
-scadono dopo backup.GIORNI_COPIE_MIGRAZIONE giorni e nascono leggibili solo dal proprietario.
+scadono dopo backup.GIORNI_COPIE_MIGRAZIONE giorni e nascono leggibili solo dal proprietario. Il giro serale stringe i permessi
+anche delle copie già presenti e non toglie mai la copia appena scritta, anche con l'orologio indietro (#690).
 Cartelle temporanee, account inventati, l'ora sempre passata come argomento (niente orologio vero)."""
 import contextlib
 import os
@@ -105,3 +106,41 @@ def test_le_copie_serali_non_scadono_per_eta(tmp_path):
     _data(vecchia, datetime(2026, 1, 1, 3, 30))
     backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
     assert vecchia.exists()
+
+
+# ---------------------------------------------------------------- copie già presenti (#690)
+def _copie_di_prima(cartella) -> None:
+    """Due serali e una copia «prima della migrazione» recente, nate prima della #688 con i permessi di sistema (leggibili da
+    tutti gli utenti della macchina): restano dopo il giro, perché rientrano nelle ultime 7 o non sono ancora scadute."""
+    cartella.mkdir()
+    copie = [cartella / "account-2026-11-10.sqlite", cartella / "account-2026-11-11.sqlite",
+             cartella / "account-prima-della-migrazione-5.sqlite"]
+    for p in copie:
+        p.write_bytes(b"copia")
+        p.chmod(0o644)
+        _data(p, ADESSO - timedelta(days=1))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="i permessi «solo il proprietario» (600) esistono solo su Linux e macOS: su "
+                                               "Windows non si leggono, li prova la CI su Linux")
+def test_il_giro_serale_stringe_i_permessi_delle_copie_gia_presenti(tmp_path):
+    cartella = tmp_path / "backup"
+    _copie_di_prima(cartella)
+    backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
+    permessi = {p.name: oct(p.stat().st_mode & 0o777) for p in cartella.iterdir()}
+    assert len(permessi) == 4 and set(permessi.values()) == {oct(0o600)}, permessi      # le tre di prima e quella nuova
+
+
+def test_il_giro_serale_chiede_solo_il_proprietario_per_ogni_copia_che_resta(tmp_path, monkeypatch):
+    """Lo stesso dove i permessi veri non si leggono (Windows): ogni copia rimasta nella cartella, anche quelle di prima, riceve
+    600 (lettura e scrittura solo per il proprietario)."""
+    cartella = tmp_path / "backup"
+    _copie_di_prima(cartella)
+    chiesti, vero = {}, os.chmod
+
+    def chmod(percorso, modo, *a, **k):
+        chiesti[os.path.basename(percorso)] = modo
+        return vero(percorso, modo, *a, **k)
+    monkeypatch.setattr(os, "chmod", chmod)
+    backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
+    assert chiesti == {p.name: 0o600 for p in cartella.iterdir()}
