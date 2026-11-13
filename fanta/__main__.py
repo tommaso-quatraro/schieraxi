@@ -49,7 +49,7 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
-from . import lega, listone, movimenti, nomi, regole, rose
+from . import fuso, lega, listone, movimenti, nomi, regole, rose
 from .percorsi import CARTELLA_LEGA
 
 FILE_REGOLE = CARTELLA_LEGA / "regole.json"
@@ -538,7 +538,7 @@ def cmd_salute(a) -> None:
     from . import archivio, salute
     db = archivio.apri()
     try:
-        for p in salute.controlla(db):
+        for p in salute.controlla(db, orologio_italiano=fuso.orologio_italiano):
             print(p)
     finally:
         db.close()
@@ -988,4 +988,9 @@ def main(argv: list[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
+    # ora italiana per tutto il processo, qualunque sia il fuso del sistema (#665): solo qui, all'avvio vero (servizio e comandi
+    # del cron), non nei test che chiamano main()
+    if not fuso.imposta():
+        print("Attenzione: l'orologio non dà l'ora italiana (Europe/Rome): scadenze e promemoria slittano. "
+              "Controlla il fuso orario del sistema.", file=sys.stderr)
     main()

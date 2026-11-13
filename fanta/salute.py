@@ -49,13 +49,19 @@ def servizio_risponde_con_tentativi(prova: Callable[[], bool] = servizio_rispond
 
 
 def controlla(db: sqlite3.Connection, adesso: datetime | None = None, file_stato: Path | None = None,
-              manda: Callable[..., bool] = invia, risponde: Callable[[], bool] = servizio_risponde_con_tentativi) -> list[str]:
-    """Restituisce i problemi trovati (e li manda sul telefono se sono nuovi o se durano da piu' di 12 ore)."""
+              manda: Callable[..., bool] = invia, risponde: Callable[[], bool] = servizio_risponde_con_tentativi, *,
+              orologio_italiano: Callable[[], bool] | None = None) -> list[str]:
+    """Restituisce i problemi trovati (e li manda sul telefono se sono nuovi o se durano da piu' di 12 ore).
+    `orologio_italiano()` dice se l'orologio dell'app da' l'ora italiana (`fuso.orologio_italiano`, #665): lo passa il comando
+    `salute`, dopo `fuso.imposta`; None = non si controlla."""
     adesso = adesso or datetime.now()
     file_stato = file_stato or FILE_STATO
     problemi = {}
     if not risponde():
         problemi["servizio"] = "L'app SchieraXI non risponde: controlla il servizio sul server."
+    if orologio_italiano is not None and not orologio_italiano():
+        problemi["fuso"] = ("L'orologio di SchieraXI sul server non da' l'ora italiana: scadenze, promemoria e diretta slittano. "
+                            "Controlla il fuso orario del server.")
     r = db.execute("SELECT quando FROM aggiornamenti WHERE cosa = 'aggiornamento'").fetchone()
     try:
         ultimo = datetime.fromisoformat(r[0]) if r and r[0] else None
