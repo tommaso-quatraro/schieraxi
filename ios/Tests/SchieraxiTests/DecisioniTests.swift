@@ -97,7 +97,7 @@ struct DecisioniTests {
     }
 
     @Test("«La consigliata è cambiata» vale finché in campo c'è una tua scelta salvata diversa da lei")
-    func consigliataCambiata() throws {
+    func consigliataCambiataSensata() throws {
         let v = try Self.consigliataCambiata()
         #expect(v.consigliataCambiata)
         #expect(!Decisioni.vale(v, Self.pagina), "in campo la consigliata: niente da decidere")

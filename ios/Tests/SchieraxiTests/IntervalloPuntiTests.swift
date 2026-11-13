@@ -42,6 +42,7 @@ final class IntervalloPuntiTests: XCTestCase {
 
     /// La Formazione unica (#673) scrive la fascia come `fraseDiSolito` della web: «di solito fra 52 e 70», o con una risposta
     /// vecchia «oscilla di ±3»; del modulo in campo.
+    @MainActor
     func testLaFormazioneScriveLaFasciaComeLaWeb() {
         XCTAssertEqual(FormazioneViewModel.diSolito(IntervalloPunti(basso: 51.6, alto: 70.4, confidenza: 0.8), dev: 3),
                        Catalogo.Formazione.diSolito(a: "52", b: "70"))
