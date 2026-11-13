@@ -276,7 +276,7 @@ final class RicercaESchedaViewModelTests: XCTestCase {
         vm.testo = "mar co"
         await vm.cerca()
         XCTAssertEqual(vm.risultati.map(\.nome), ["Marco Rossi"])
-        XCTAssertEqual(s.quante("GET /api/giocatori?limite=25&q=mar%20co"), 1)
+        XCTAssertEqual(s.quante("GET /api/giocatori?limite=12&q=mar%20co"), 1, "al massimo 12 risultati, come la web")
         XCTAssertNil(vm.errore)
     }
 

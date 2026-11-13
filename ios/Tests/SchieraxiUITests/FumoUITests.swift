@@ -207,7 +207,8 @@ final class FumoUITests: XCTestCase {
     func testLaRicercaEUnaVoceDellaBarra() {
         let barra = app.tabBars.firstMatch
         XCTAssertTrue(barra.waitForExistence(timeout: 30), "la barra delle sezioni deve comparire")
-        let cerca = barra.buttons.matching(NSPredicate(format: "label IN %@", ["Cerca", "Search"])).firstMatch
+        // con iOS 26 la voce della ricerca è il tondo accanto alla barra: si cerca fra tutti i pulsanti, non solo dentro la barra
+        let cerca = app.buttons.matching(NSPredicate(format: "label IN %@", ["Cerca", "Search"])).firstMatch
         XCTAssertTrue(cerca.waitForExistence(timeout: 10), "la voce della ricerca deve esserci nella barra")
         tocca(cerca, finchéCompare: elemento("Scrivi almeno due lettere."), "la voce apre la ricerca")
     }
