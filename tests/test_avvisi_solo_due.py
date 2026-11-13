@@ -8,7 +8,8 @@ Gli altri (cambi delle probabili, giocatori seguiti, riepilogo della giornata, r
 più: il riepilogo è già in testa alla Formazione a giornata finita, il reparto scoperto è una riga di «Da fare».
 Le scelte per avviso salvate dagli utenti (anche dall'iPhone) restano nel file e la rotta le legge e le scrive come prima, ma il
 server non le usa più: decide l'interruttore unico (gli avvisi arrivano a chi li ha accesi su un dispositivo). Restano le ore
-tranquille e la lingua. Il tetto per giornata resta: due avvisi «cambia la formazione», un promemoria per finestra.
+tranquille e la lingua. Il tetto per giornata resta: due avvisi «cambia la formazione», un promemoria per finestra; «cambia un
+titolare» (titolo suo, fuori da quel tetto) parte una volta per ogni titolare che diventa fuori.
 Orari simulati (`adesso` passato come argomento), archivio in memoria, notifiche finte."""
 # ruff: noqa: F811  (le fixture importate da altri file di test arrivano come parametri con lo stesso nome: è il modo di pytest)
 from datetime import datetime
@@ -71,7 +72,7 @@ def test_un_titolare_fuori_che_cambia_la_consigliata_avvisa_con_il_motivo(m, tmp
     _cambi(m, tmp_path, ore(9, 0), manda, SPENTE)
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"})
     righe = _cambi(m, tmp_path, ore(10, 0), manda, SPENTE)
-    assert mandati == [("SchieraXI · cambia la formazione consigliata",
+    assert mandati == [("SchieraXI · cambia un titolare",
                         "Castoldi è infortunato: metti Bonvicini. La formazione si chiude il 28/10 alle 18:30.")]
     assert righe == [mandati[0][1]]
     assert _cambi(m, tmp_path, ore(10, 30), manda, SPENTE) == [] and len(mandati) == 1
@@ -102,7 +103,7 @@ def test_se_con_la_rosa_non_si_forma_piu_una_squadra_lo_dice(m, tmp_path, monkey
         raise ValueError("nessun portiere disponibile")
     monkeypatch.setattr(consigli, "formazione", impossibile)
     _cambi(m, tmp_path, ore(10, 0), manda)
-    assert mandati == [("SchieraXI · cambia la formazione consigliata",
+    assert mandati == [("SchieraXI · cambia un titolare",
                         "Ferraglia è squalificato: con la tua rosa non si forma più una squadra. La formazione si chiude il 28/10 alle 18:30.")]
 
 
@@ -134,6 +135,74 @@ def test_nelle_ore_tranquille_l_avviso_aspetta(m, tmp_path):
     assert notifiche.cambi(m.db, Regole(), ROSE, ore(10, 0), tmp_path / "cambi.json", lambda *a, **k: False, {},
                            file_scelte=tmp_path / "scelte.json", file_promemoria=tmp_path / "prom.json") == []
     assert len(_cambi(m, tmp_path, ore(11, 0), manda)) == 1 and len(mandati) == 1        # al giro dopo parte
+
+
+def test_ogni_titolare_che_diventa_fuori_si_dice_una_volta_con_un_titolo_suo(m, tmp_path):
+    """L'avviso del giro dei cambi ha un titolo diverso da «cambia la formazione» e non entra nel suo tetto di due per giornata:
+    parte una volta per ogni titolare che diventa fuori (revisione della #693)."""
+    mandati, manda = _registro()
+    _cambi(m, tmp_path, ore(9, 0), manda)
+    m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"})
+    _cambi(m, tmp_path, ore(10, 0), manda)
+    m.cambia("v2", esce=10, entra=14, stato={10: "squalificato"})
+    _cambi(m, tmp_path, ore(11, 0), manda)
+    m.cambia("v3", esce=9, entra=13, stato={9: "panchina"})
+    _cambi(m, tmp_path, ore(12, 0), manda)
+    assert [t for t, _ in mandati] == ["SchieraXI · cambia un titolare"] * 3
+    assert [x.split(":")[0] for _, x in mandati] == ["Castoldi è infortunato", "Kerani è squalificato", "Lombrici parte dalla panchina"]
+    assert _cambi(m, tmp_path, ore(13, 0), manda) == [] and len(mandati) == 3          # la stessa notizia non si ripete
+
+
+def test_chi_era_gia_fuori_quando_e_stata_mostrata_non_fa_partire_l_avviso(m, tmp_path):
+    """Castoldi era già in panchina al primo controllo e la consigliata lo teneva; più tardi la consigliata lo toglie per i punti
+    attesi: non è un titolare «diventato» fuori, quindi niente avviso (lontano dalla scadenza lo dice la Formazione)."""
+    mandati, manda = _registro()
+    m.prev.at[11, "stato"] = "panchina"
+    _cambi(m, tmp_path, ore(9, 0), manda)
+    m.cambia("v1", esce=11, entra=12, bonus={12: 1.5})
+    assert _cambi(m, tmp_path, ore(10, 0), manda) == [] and mandati == []
+
+
+def _consigliata_senza_castro(monkeypatch, prev):
+    """La consigliata finta della rosa di test_cambio_pronto: Castro (1) se gioca, altrimenti Bonny (2), con gli altri dieci."""
+    from test_cambio_pronto import ALTRI
+    monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {"modulo": "4-4-2", "punteggio_atteso": 70.0, "titolari": [
+        {"id": i} for i in [*ALTRI, 1 if prev.at[1, "stato"] not in notifiche.MOTIVI_FUORI else 2]]})
+
+
+def test_con_la_formazione_salvata_parla_solo_il_cambio_pronto(tmp_path, monkeypatch):
+    """Con una formazione salvata che si può schierare conta lei: quando la consigliata toglie Castro arriva «cambio pronto»,
+    non anche «cambia un titolare» (che è per chi non ha salvato niente)."""
+    from test_cambio_pronto import ADESSO, CON_CASTRO, ROSE as ROSE_CP, _db as _db_cp, _scena
+    prev, mandati, manda = _scena(monkeypatch, stato="titolare")
+    _consigliata_senza_castro(monkeypatch, prev)
+    fs, stato, db = tmp_path / "s.json", tmp_path / "n.json", _db_cp()
+    scelte.salva(ST, 9, CON_CASTRO, "4-4-2", fs, da="web")
+    notifiche.cambi(db, Regole(), ROSE_CP, ADESSO, stato, manda, {}, file_scelte=fs)       # primo controllo: memorizza
+    prev.loc[1, "stato"] = "infortunato"
+    notifiche.cambi(db, Regole(), ROSE_CP, ADESSO, stato, manda, {}, file_scelte=fs)
+    assert [t for t, _, _ in mandati] == ["SchieraXI · cambio pronto"]
+
+
+def test_se_parte_cambia_un_titolare_e_il_cambio_pronto_no_quello_riprova_da_solo(tmp_path, monkeypatch):
+    """Nello stesso giro due avvisi: «cambia un titolare» (Castro è fuori, entra Bonny) parte, il «cambio pronto» su Bonny, che parte
+    dalla panchina, no (invio fallito). Lo stato si salva: al giro dopo riprova solo il «cambio pronto», l'altro non si ripete."""
+    from test_cambio_pronto import ADESSO, ROSE as ROSE_CP, _db as _db_cp, _scena
+    from fanta import da_fare
+    prev, mandati, manda = _scena(monkeypatch, stato="titolare")
+    _consigliata_senza_castro(monkeypatch, prev)
+    voce_bonny = {"giocatore": {"id": 2, "nome": "Bonny"}, "alternativa": {"id": 12, "nome": "Tosi", "ruolo": "A", "punti_attesi": 6.0}}
+    monkeypatch.setattr(da_fare, "_dubbi", lambda *a, **k: [voce_bonny])
+    fs, stato, db = tmp_path / "s.json", tmp_path / "n.json", _db_cp()
+    notifiche.cambi(db, Regole(), ROSE_CP, ADESSO, stato, manda, {}, file_scelte=fs)       # primo controllo: memorizza
+    prev.loc[1, "stato"], prev.loc[2, "stato"] = "infortunato", "panchina"
+    senza_pronto = lambda titolo, *a, **k: "cambio pronto" not in str(titolo) and manda(titolo, *a, **k)     # noqa: E731
+    notifiche.cambi(db, Regole(), ROSE_CP, ADESSO, stato, senza_pronto, {}, file_scelte=fs)
+    assert [t for t, _, _ in mandati] == ["SchieraXI · cambia un titolare"]
+    notifiche.cambi(db, Regole(), ROSE_CP, ADESSO, stato, manda, {}, file_scelte=fs)
+    assert [t for t, _, _ in mandati] == ["SchieraXI · cambia un titolare", "SchieraXI · cambio pronto"]
+    notifiche.cambi(db, Regole(), ROSE_CP, ADESSO, stato, manda, {}, file_scelte=fs)
+    assert len(mandati) == 2
 
 
 # ---------------------------------------------------------------- con gli account: l'interruttore unico decide

@@ -84,7 +84,9 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.e_passa": ("{frase} e passa al {modulo}", "{frase} and switch to {modulo}"),
     "n.testo_scadenza": ("{frase} (+{punti} punti attesi). La formazione si chiude alle {ora}.",
                          "{frase} (+{punti} expected points). The lineup closes at {ora}."),
-    # la consigliata è cambiata perché un titolare è diventato fuori (anche giorni prima della scadenza, #676)
+    # la consigliata è cambiata perché un titolare è diventato fuori (anche giorni prima della scadenza, #676): un titolo suo, fuori
+    # dal tetto di «cambia la formazione», una volta per ogni titolare che diventa fuori
+    "n.t_cambia_titolare": ("SchieraXI · cambia un titolare", "SchieraXI · a starter changes"),
     "n.testo_cambiata": ("{frase}. La formazione si chiude il {data} alle {ora}.", "{frase}. The lineup closes on {data} at {ora}."),
     "n.senza_sostituto": ("{motivi}: con la tua rosa non si forma più una squadra", "{motivi}: your roster can no longer field a team"),
     # ---- riepilogo di giornata

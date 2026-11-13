@@ -433,7 +433,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
             #                                        questa notizia non riparte più tardi
     detti = []
     if cambiata is not None:                       # il tocco apre la Formazione; la notifica web non arriva dopo la scadenza
-        if not manda(F("n.t_cambia_consigliata"), cambiata, 4, "rotating_light", vale_per=inizio - adesso):
+        if not manda(F("n.t_cambia_titolare"), cambiata, 4, "rotating_light", vale_per=inizio - adesso):
             return gia_detti                       # ore tranquille o invio fallito: lo stato resta, al prossimo giro si riprova
         detti.append(cambiata)
     if singoli:

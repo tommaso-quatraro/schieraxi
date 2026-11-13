@@ -91,7 +91,7 @@ def test_cambi(tmp_path, monkeypatch):
     prev.loc[1, "stato"] = "infortunato"               # la consigliata mette Bonny
     assert notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda, {}, file_scelte=tmp_path / "s.json") == [
         "Castro è infortunato: metti Bonny. La formazione si chiude il 28/10 alle 18:30."]
-    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"]
+    assert [t for t, _ in mandati] == ["SchieraXI · cambia un titolare"]
     assert c.chieste == {("previsioni", 9, None), ("formazione", 9, adesso)}
 
 

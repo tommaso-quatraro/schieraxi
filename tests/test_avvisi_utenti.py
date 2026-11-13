@@ -93,7 +93,7 @@ def test_i_cambi_arrivano_a_ciascuno_con_il_suo_stato(mondo, registro):
     esiti, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
     assert errori == {} and len(esiti["amico1"]) == 1 and esiti["amico2"] == []
     assert [(chi, titolo, testo) for chi, titolo, testo in registro.web] == [
-        (a.cartella.name, "SchieraXI · cambia la formazione consigliata",
+        (a.cartella.name, "SchieraXI · cambia un titolare",
          "Castro parte dalla panchina: con la tua rosa non si forma più una squadra. La formazione si chiude il 28/10 alle 18:30.")]
     assert registro.ntfy == []
     assert json.loads(a.stato_cambi.read_text())["cambi"] and json.loads(b.stato_cambi.read_text())["cambi"]    # ognuno ha il suo stato
