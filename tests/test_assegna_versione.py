@@ -75,7 +75,8 @@ def test_commit_di_versione_con_la_riga_urgente_solo_se_chiesta(repo, urgente):
 
 
 def _versione_sw(repo) -> str:
-    return (repo / "fanta" / "web" / "sw.js").read_text(encoding="utf-8").splitlines()[0]
+    """La riga VERSIONE di sw.js nell'ultimo commit del repository di prova (quello del bot, se c'è)."""
+    return _git(repo, "show", "HEAD:fanta/web/sw.js").splitlines()[0]
 
 
 @pytest.mark.parametrize("toccato", ["fanta/web/app.js", "fanta/web/sw.js"])

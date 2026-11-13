@@ -92,7 +92,8 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   pagina «/» con qualunque indirizzo) sempre dalla copia della sua `VERSIONE`, anche con la rete buona: una pagina non mescola file
   di due versioni e si apre anche mentre il server riparte. La versione nuova arriva con il service worker nuovo e la barra
   «Aggiornamento pronto – Ricarica» (#654). Le altre pagine (Privacy, Termini, Crediti) chiedono prima alla rete; con 502, 503 o 504
-  danno la copia salvata, senza rete e senza copia «Nessuna connessione». In locale un file della web appena cambiato si vede
+  danno la copia salvata, senza rete e senza copia «Nessuna connessione». Con gli account, se `/api/account/me` riceve un 5xx o
+  una risposta non JSON, `controllaAccesso` di `app.js` riprende l'account salvato come senza rete. In locale un file della web appena cambiato si vede
   con la ricarica forzata (Ctrl+Maiusc+R, una volta) o, in Chrome, con Strumenti per sviluppatori > Application > Service workers >
   «Update on reload»; altrimenti il browser mostra la copia del service worker. Test: `tests/test_sw_web.py`,
   `tests/browser/test_web_installata.py`.

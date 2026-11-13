@@ -317,13 +317,15 @@ class Proxy:
     """Fa la parte di nginx davanti al server finto, su 127.0.0.1 (senza https la web registra il service worker solo lì e su
     localhost). `modo`: "ok" inoltra; "502" risponde 502 Bad Gateway a tutto, come mentre il servizio dietro riparte;
     "spento" chiude la connessione senza rispondere, come senza rete. `lenti`: percorso -> secondi di ritardo (una rete debole
-    sui file grossi)."""
+    sui file grossi). `risposte`: percorso -> oggetto JSON dato al posto del server finto quando il modo è "ok" (per esempio
+    `/api/account/me` del server con gli account)."""
 
     def __init__(self, dietro: str, server_finto):
         parti = urlsplit(dietro)
         self.host_dietro, self.porta_dietro = parti.hostname, parti.port
         self.modo = "ok"
         self.lenti: dict[str, float] = {}
+        self.risposte: dict[str, object] = {}
         self._sf = server_finto
         self._server = None
 
@@ -354,7 +356,18 @@ class Proxy:
                     if self.command != "HEAD":
                         self.wfile.write(PAGINA_502)
                     return
-                ritardo = proxy.lenti.get(self.path.split("?", 1)[0])
+                percorso = self.path.split("?", 1)[0]
+                if percorso in proxy.risposte:
+                    dati = json.dumps(proxy.risposte[percorso]).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", str(len(dati)))
+                    self.end_headers()
+                    if self.command != "HEAD":
+                        self.wfile.write(dati)
+                    return
+                ritardo = proxy.lenti.get(percorso)
                 if ritardo:
                     time.sleep(ritardo)
                 dietro = http.client.HTTPConnection(proxy.host_dietro, proxy.porta_dietro, timeout=30)
@@ -401,6 +414,16 @@ class Installata:
         pagina.on("pageerror", lambda e: self.errori.append(f"{pagina.url}: {e}"))
         pagina.goto(self.proxy.indirizzo + percorso, wait_until="load")
         return pagina
+
+    def aspetta(self, pagina) -> None:
+        """Come `Web.aspetta`, senza la rete ferma: area principale con del testo e senza caricamento (al massimo 10 s), poi
+        DOM fermo. Un'attesa scaduta non ferma il test: lo dicono i controlli dopo."""
+        from playwright.sync_api import TimeoutError as AttesaScaduta
+        try:
+            pagina.wait_for_function(PRONTA, arg=AREA_PRINCIPALE, timeout=LIMITE_AREA_MS)
+        except AttesaScaduta:
+            pass
+        pagina.evaluate(DOM_FERMO)
 
     def installa(self) -> None:
         """Prima apertura con la rete buona: il service worker si installa (salva la scocca) e prende la pagina."""

@@ -21,6 +21,9 @@ VERSIONI = """() => {
   return v; }"""
 TESTO_NUOVO = "() => { const e = document.getElementById('prova-nuova'); return e ? e.textContent : null; }"
 SEZIONI = "Sezioni"            # la barra delle schede dell'app (nav.sezioni): c'è solo se si è aperta l'app
+# /api/account/me del server con gli account (com'è in produzione), per un utente normale inventato
+UTENTE = {"multiutente": True, "utente": {"id": 7, "nome_utente": "amico", "nome_visualizzato": "Amico di prova", "ruolo": "utente",
+                                           "creato": "2026-10-01T10:00:00"}}
 
 
 def rilascio(web, originali: dict[str, str], versione: str, testo_nuovo: bool = False) -> None:
@@ -78,6 +81,31 @@ def test_mentre_il_server_riparte_si_apre_l_app_salvata(installata):
     pagina = installata.scheda("/?da=app")
     assert "502" not in pagina.title(), f"si vede la pagina d'errore del proxy: {pagina.title()!r}"
     assert pagina.get_by_role("navigation", name=SEZIONI).is_visible(), "non si è aperta l'app salvata"
+
+
+def test_con_gli_account_mentre_il_server_riparte_restano_l_account_e_i_suoi_dati(installata):
+    """In produzione ci sono gli account: durante il riavvio anche «chi sono» riceve 502. L'app riprende l'account salvato, come
+    senza rete: mostra la copia dei dati di quell'account e, tornato il server, non diventa un altro utente (niente «Gestione»)."""
+    installata.proxy.risposte["/api/account/me"] = UTENTE
+    installata.installa()
+    pagina = installata.scheda("/?vista=formazione")
+    installata.aspetta(pagina)                                      # la Formazione letta resta nel browser, sotto l'account
+    assert "punti attesi" in pagina.locator("main").inner_text()
+    pagina.close()
+    installata.proxy.modo = "502"
+    pagina = installata.scheda("/?vista=formazione")
+    installata.aspetta(pagina)
+    testo = pagina.locator("main").inner_text()
+    assert "punti attesi" in testo, f"durante il riavvio la Formazione salvata dell'account non si vede: {testo[:300]!r}"
+    installata.proxy.modo = "ok"
+    pagina.locator("main").get_by_role("button", name="Riprova").first.click()
+    installata.aspetta(pagina)
+    pagina.get_by_role("navigation", name=SEZIONI).get_by_role("link", name="Impostazioni").click()
+    installata.aspetta(pagina)
+    principale = pagina.locator("main")
+    assert principale.get_by_role("button", name=re.compile(r"^\s*Il tuo account")).is_visible(), principale.inner_text()[:400]
+    assert principale.get_by_role("button", name=re.compile(r"^\s*Gestione")).count() == 0, "un utente normale vede «Gestione»"
+    assert not installata.errori, installata.errori
 
 
 def test_senza_rete_privacy_dice_nessuna_connessione_e_l_app_si_apre(installata):
