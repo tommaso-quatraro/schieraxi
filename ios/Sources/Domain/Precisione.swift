@@ -217,8 +217,9 @@ struct PrecisioneDiario: Decodable, Equatable {
     }
 }
 
-/// I testi pronti di «Quanto ci abbiamo preso»: quattro numeri con una frase, l'andamento e le note.
-/// `nil` se il campo manca o non ci sono giornate (la sezione non si mostra).
+//// I testi pronti di «Quanto ci abbiamo preso» (i «Dettagli» della pagina Giornate, come `dettagliPrecisione` della web): i numeri con
+/// una frase, l'andamento e le note. Le frasi vengono dal catalogo comune (`diario.qp_*`). `nil` se il campo manca o non ci sono
+/// giornate (la parte non si mostra).
 struct TestoPrecisione: Equatable {
     struct Voce: Equatable {
         /// Il numero grande («1,3», «8 su 10», «–» se manca).
@@ -255,12 +256,12 @@ struct TestoPrecisione: Equatable {
         var voce: String { "\(voceGiornata): errore medio \(valore) punti" }
     }
 
-    static let titolo = "Quanto ci abbiamo preso"
-    static let intro = "Le giornate finite confrontate con quello che SchieraXI si aspettava. Lo mostriamo anche quando va male."
-    static let titoloGrafico = "Errore medio del fantavoto atteso, giornata per giornata"
-    static let legendaGrafico = "Di quanto ha sbagliato in media il fantavoto atteso in ogni giornata: più bassa è la barra, meglio è."
-    static let andamento = "Giornata per giornata"
-    static let tutteLeFasce = "Tutte le fasce"
+    static let titolo = Catalogo.Diario.afTitolo
+    static let intro = Catalogo.Diario.qpIntro
+    static let titoloGrafico = Catalogo.Diario.qpGraficoAria
+    static let legendaGrafico = Catalogo.Diario.qpGraficoLeg
+    static let andamento = Catalogo.Diario.qpAndamento
+    static let tutteLeFasce = Catalogo.Diario.qpGiocaTutte
 
     /// «Calcolato su N giornate, dalla giornata X alla Y.»
     let calcolatoSu: String
@@ -268,16 +269,22 @@ struct TestoPrecisione: Equatable {
     let pochi: String?
     let fantavoto: Voce
     let gioca: Voce
-    let confronto: Voce
+    /// «La consigliata contro la tua»: solo se una giornata ha la consigliata mostrata prima della scadenza (`conConfronto`) e il
+    /// server conta almeno una giornata con un verdetto, come la web. Nil altrimenti.
+    let confronto: Voce?
     let squadra: Voce
     /// Le ultime 12 giornate con l'errore del fantavoto (il grafico si mostra solo con almeno 2).
     let barre: [Barra]
-    /// Le righe dell'andamento, dalla più recente.
+    /// Le righe dell'andamento, dalla più recente: l'errore e i punti della consigliata (quanto ha fatto la tua lo dice la riga di
+    /// ogni giornata).
     let righe: [String]
     /// La nota sulle giornate con i numeri ricostruiti (nil se nessuna).
     let notaRicostruiti: String?
-    /// La riga su tutta la Serie A, sotto i quattro numeri: la frase del server così com'è (nil = niente riga).
+    /// La riga su tutta la Serie A, sotto i numeri: la frase del server così com'è (nil = niente riga).
     let serieA: String?
+    /// La frase del server sulle giornate con la tua formazione che non hanno un verdetto (`confronto.nota`, #614), in fondo e
+    /// così com'è, come la web; nil se non c'è.
+    let nota: String?
 
     // MARK: aiuti uguali alla web
 
@@ -298,9 +305,12 @@ struct TestoPrecisione: Equatable {
     }
 
     /// Il plurale della web (`Intl.PluralRules` italiano): «one» solo per 1 esatto.
-    private static func uno(_ x: Double) -> Bool { x == 1 }
+    private static func plurale(_ x: Double) -> Int { x == 1 ? 1 : 2 }
 
-    init?(_ p: PrecisioneDiario?) {
+    /// `conConfronto`: c'è almeno una giornata con la consigliata mostrata prima della scadenza (la pagina Giornate lo chiede alle
+    /// sue voci, `VoceDiario.conMostrata`). Senza, la voce del confronto non c'è: con il server di prima il confronto era con una
+    /// formazione rifatta dopo.
+    init?(_ p: PrecisioneDiario?, conConfronto: Bool = true) {
         guard let p, let n = p.giornate, n > 0 else { return nil }
         let v = Self.v
 
@@ -308,85 +318,79 @@ struct TestoPrecisione: Equatable {
         // «dalla Giornata 4 · 7ª di Serie A alla Giornata 8 · 11ª di Serie A». Senza il numero di Serie A, quello che c'è.
         let pg = p.perGiornata
         let primo = pg.first.flatMap(Self.nomeInFrase), ultimo = pg.last.flatMap(Self.nomeInFrase)
-        if n == 1 {
+        if let primo, let ultimo {
             // «(l'11ª giornata di Serie A)», «dall'8ª … all'11ª …»: l'apostrofo come la web (`elidiOrdinali`)
-            calcolatoSu = primo.map { TempiLega.elidiOrdinali("Calcolato su 1 giornata (la \($0)).") } ?? "Calcolato su 1 giornata."
-        } else if let primo, let ultimo {
-            calcolatoSu = TempiLega.elidiOrdinali("Calcolato su \(n) giornate, dalla \(primo) alla \(ultimo).")
+            calcolatoSu = TempiLega.elidiOrdinali(Catalogo.Diario.qpSu(n, a: ultimo, da: primo))
         } else {
-            calcolatoSu = "Calcolato su \(n) giornate."
+            calcolatoSu = n == 1 ? "Calcolato su 1 giornata." : "Calcolato su \(n) giornate."
         }
-        pochi = p.pochiDati == true
-            ? "Ancora pochi dati: servono almeno \(p.giornateMinime ?? 8) giornate perché questi numeri siano affidabili. Per ora possono cambiare molto."
-            : nil
+        pochi = p.pochiDati == true ? Catalogo.Diario.qpPochi(n: String(p.giornateMinime ?? 8)) : nil
 
-        let vuoto = "Ancora niente da confrontare."
+        let vuoto = Catalogo.Diario.qpFvVuoto
 
         // 1. Fantavoto atteso dei tuoi giocatori
         if let fv = p.fantavoto {
-            var frase = "In media il fantavoto atteso dei tuoi giocatori sbaglia di \(v(fv.erroreMedio)) punti; \(Self.suDieci(fv.entroUnPunto)) voti su 10 sono entro un punto."
-            if let voti = fv.voti { frase += voti == 1 ? " Su 1 voto." : " Su \(voti) voti." }
+            var frase = Catalogo.Diario.qpFv(e: v(fv.erroreMedio), k: String(Self.suDieci(fv.entroUnPunto)))
+            if let voti = fv.voti { frase += " " + Catalogo.Diario.qpFvVoti(voti) }
             if let sc = fv.scostamento, abs(sc) >= 0.3 {
-                frase += sc > 0 ? " In media hanno fatto \(v(sc)) in più del previsto." : " In media hanno fatto \(v(-sc)) in meno del previsto."
+                frase += " " + (sc > 0 ? Catalogo.Diario.qpFvPiu(e: v(sc)) : Catalogo.Diario.qpFvMeno(e: v(-sc)))
             }
-            fantavoto = Voce(numero: v(fv.erroreMedio), etichetta: "punti di errore medio del fantavoto atteso", frase: frase)
+            fantavoto = Voce(numero: v(fv.erroreMedio), etichetta: Catalogo.Diario.qpFvEti, frase: frase)
         } else {
-            fantavoto = Voce(numero: "–", etichetta: "punti di errore medio del fantavoto atteso", frase: vuoto)
+            fantavoto = Voce(numero: "–", etichetta: Catalogo.Diario.qpFvEti, frase: vuoto)
         }
 
         // 2. «Gioca N%»: la fascia principale e, sotto, tutte
-        let etiGioca = "hanno giocato davvero, quando diciamo che giocano"
         if let gi = p.gioca, let gp = gi.fasciaPrincipale {
             let detto = gp.detto ?? 0, giocato = gp.giocato ?? 0
-            let k = Self.suDieci(Double(giocato))
+            let k = String(Self.suDieci(Double(giocato)))
             let frase = gi.fonte == "ricostruiti"
-                ? "Con i dati disponibili prima di ogni giornata (senza le probabili formazioni), chi davamo \(Self.alPercento(detto)) ha giocato \(k) volte su 10."
-                : "Quando diciamo «gioca \(detto)%», ha giocato \(k) volte su 10."
+                ? Catalogo.Diario.qpGiocaRic(al: Self.alPercento(detto), k: k)
+                : Catalogo.Diario.qpGioca(k: k, p: String(detto))
             let ottimisti = giocato < detto - 10
-            let giudizio: String? = ottimisti ? "Qui siamo stati troppo ottimisti." : giocato > detto + 10 ? "Qui siamo stati troppo prudenti." : nil
+            let giudizio: String? = ottimisti ? Catalogo.Diario.qpGiocaOttimisti
+                : giocato > detto + 10 ? Catalogo.Diario.qpGiocaPrudenti : nil
             let fasce = gi.gruppi.map { g -> String in
                 let da = g.da ?? 0, a = g.a ?? 0
-                let casi = (g.giocatori ?? 0) == 1 ? "1 caso" : "\(g.giocatori ?? 0) casi"
-                return "Gioca \(da)-\(a >= 100 ? 100 : a - 1)%: dicevamo \(g.detto ?? 0)%, hanno giocato nel \(g.giocato ?? 0)% dei casi"
-                    + " (\(casi)\(g.pochi == true ? ", pochi per dirlo" : ""))"
+                let riga = Catalogo.Diario.qpGiocaFascia(a: String(a >= 100 ? 100 : a - 1), d: String(g.detto ?? 0), da: String(da),
+                                                         g: String(g.giocato ?? 0))
+                let casi = Catalogo.Diario.qpGiocatori(g.giocatori ?? 0)
+                return riga + " (" + casi + (g.pochi == true ? ", " + Catalogo.Diario.qpPochiCasi : "") + ")"
             }
-            gioca = Voce(numero: "\(k) su 10", etichetta: etiGioca, frase: frase, giudizio: giudizio, attenzione: ottimisti, fasce: fasce)
+            gioca = Voce(numero: Catalogo.Diario.qpSuDieci(k: k), etichetta: Catalogo.Diario.qpGiocaEti, frase: frase,
+                         giudizio: giudizio, attenzione: ottimisti, fasce: fasce)
         } else {
-            gioca = Voce(numero: "–", etichetta: etiGioca, frase: vuoto)
+            gioca = Voce(numero: "–", etichetta: Catalogo.Diario.qpGiocaEti, frase: vuoto)
         }
 
-        // 3. Consigliata contro la tua, con la frase del server sulle giornate senza verdetto (#614) dopo i numeri o al loro posto
-        let etiCf = "giornate in cui la consigliata ha fatto meglio della tua"
-        let notaCf = p.confronto?.nota?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if let cf = p.confronto, let g = cf.giornate, g > 0 {
-            var frase = "Giornate in cui la consigliata ha fatto meglio della tua: \(cf.meglioConsigliata ?? 0) su \(g). Meglio la tua: \(cf.meglioTua ?? 0). Pari: \(cf.pari ?? 0)."
+        // 3. Consigliata contro la tua: solo con la consigliata mostrata in almeno una giornata e un verdetto, come la web
+        if conConfronto, let cf = p.confronto, let g = cf.giornate, g > 0 {
+            let k = String(cf.meglioConsigliata ?? 0), tot = String(g)
+            var frase = Catalogo.Diario.qpCf(k: k, n: tot, pari: String(cf.pari ?? 0), tua: String(cf.meglioTua ?? 0))
             if let punti = cf.punti {
                 if punti == 0 {
-                    frase += " In tutto, gli stessi punti."
+                    frase += " " + Catalogo.Diario.qpCfPari
                 } else if punti > 0 {
-                    frase += " Seguendo sempre la consigliata avresti fatto \(v(punti)) \(Self.uno(punti) ? "punto" : "punti") in più."
+                    frase += " " + Catalogo.Diario.qpCfPiu(Self.plurale(punti), e: v(punti))
                 } else {
-                    frase += " Con le tue scelte hai fatto \(v(-punti)) \(Self.uno(-punti) ? "punto" : "punti") in più della consigliata."
+                    frase += " " + Catalogo.Diario.qpCfMeno(Self.plurale(-punti), e: v(-punti))
                 }
             }
-            if !notaCf.isEmpty { frase += " " + notaCf }
-            confronto = Voce(numero: "\(cf.meglioConsigliata ?? 0) su \(g)", etichetta: etiCf, frase: frase)
+            confronto = Voce(numero: Catalogo.Diario.qpKSuN(k: k, n: tot), etichetta: Catalogo.Diario.qpCfEti, frase: frase)
         } else {
-            confronto = Voce(numero: "–", etichetta: etiCf,
-                             frase: notaCf.isEmpty ? "Non sappiamo ancora cosa hai schierato: dillo qui sotto in ogni giornata, con «Ho schierato…»." : notaCf)
+            confronto = nil
         }
+        let notaCf = p.confronto?.nota?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        nota = notaCf.isEmpty ? nil : notaCf
 
         // 4. Punti della squadra (consigliata): previsti contro fatti
-        let etiSq = "punti di scarto medio sulla squadra"
         if let sq = p.squadra {
-            var frase = "Punti della consigliata: \(v(sq.puntiMediAttesi)) previsti e \(v(sq.puntiMediFatti)) fatti, in media."
-            if let k = sq.dentroFascia, let tot = sq.conFascia ?? sq.giornate {
-                let d = Formato.intero((sq.fasciaDichiarata ?? 80) / 10)
-                frase += " Giornate dentro la fascia prevista: \(k) su \(tot) (puntiamo a \(d) su 10)."
-            }
-            squadra = Voce(numero: v(sq.scartoMedio), etichetta: etiSq, frase: frase)
+            let frase = Catalogo.Diario.qpSq(a: v(sq.puntiMediAttesi), d: String(Formato.intero((sq.fasciaDichiarata ?? 80) / 10)),
+                                             f: v(sq.puntiMediFatti), k: sq.dentroFascia.map { String($0) } ?? "–",
+                                             n: (sq.conFascia ?? sq.giornate).map { String($0) } ?? "–")
+            squadra = Voce(numero: v(sq.scartoMedio), etichetta: Catalogo.Diario.qpSqEti, frase: frase)
         } else {
-            squadra = Voce(numero: "–", etichetta: etiSq, frase: vuoto)
+            squadra = Voce(numero: "–", etichetta: Catalogo.Diario.qpSqEti, frase: vuoto)
         }
 
         // Grafico: le ultime 12 giornate con l'errore del fantavoto atteso
@@ -404,17 +408,11 @@ struct TestoPrecisione: Equatable {
         }
         barre = elenco
 
-        // Andamento, dalla più recente
+        // Andamento, dalla più recente: l'errore e i punti della consigliata, come la web
         righe = pg.reversed().map { (g: PrecisioneDiario.Giornata) -> String in
             var r = (g.nomeGiornata?.intero ?? "Giornata \(g.numero.map { String($0) } ?? "–")") + " · "
-            if let e = g.erroreFantavoto { r += "fantavoto: errore \(v(e)) · " }
-            r += "squadra: \(v(g.attesi)) previsti, \(v(g.fatti)) fatti"
-            if let tua = g.tua {
-                // senza la consigliata di allora il server non manda la differenza: i tuoi punti da soli, non «(0,0)» (come la web)
-                r += " · tua: \(v(tua))"
-                if let d = g.differenza { r += " (\(d > 0 ? "+" : d < 0 ? "−" : "")\(v(abs(d))))" }
-            }
-            return r
+            if let e = g.erroreFantavoto { r += Catalogo.Diario.qpRigaFv(e: v(e)) + " · " }
+            return r + Catalogo.Diario.qpRigaSq(a: v(g.attesi), f: v(g.fatti))
         }
 
         // Su tutta la Serie A (#374): il testo del server, lo stesso che la web mostra in italiano
@@ -422,15 +420,9 @@ struct TestoPrecisione: Equatable {
         serieA = riga.isEmpty ? nil : riga
 
         let ric = p.fonti?.ricostruiti ?? 0
-        if ric > 0 {
-            notaRicostruiti = ric == 1
-                ? "In 1 giornata su \(n) i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati."
-                : "In \(ric) giornate su \(n) i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati."
-        } else {
-            notaRicostruiti = nil
-        }
+        notaRicostruiti = ric > 0 ? Catalogo.Diario.qpRicostruiti(ric, t: String(n)) : nil
     }
 
-    /// Le quattro voci nell'ordine della web.
-    var voci: [Voce] { [fantavoto, gioca, confronto, squadra] }
+    /// Le voci nell'ordine della web (quella del confronto solo se c'è).
+    var voci: [Voce] { [fantavoto, gioca] + (confronto.map { [$0] } ?? []) + [squadra] }
 }

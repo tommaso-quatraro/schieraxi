@@ -1,7 +1,8 @@
 import Foundation
 
-/// «Le tue scelte» del Diario (`scelte_tue` dentro `GET /api/diario`): quante volte i tuoi undici hanno fatto più punti
-/// di quelli consigliati. Tutti i campi sono opzionali: un server più vecchio non manda il blocco e la scheda sparisce.
+/// `scelte_tue` dentro `GET /api/diario`: le giornate in cui i tuoi undici erano diversi dai consigliati. La pagina Giornate legge
+/// `per_giornata` (nomi dei cambi e differenza di punti, calcolati dal server). Tutti i campi sono opzionali: un server più vecchio
+/// non manda il blocco e le righe dicono solo di chi sono i punti.
 struct ScelteTue: Decodable {
     let giornate: Int?
     let meglioTua: Int?
@@ -52,108 +53,5 @@ struct SceltaGiornata: Decodable, Identifiable {
         puntiConsigliata = try? c.decodeIfPresent(Double.self, forKey: .puntiConsigliata)
         differenza = try? c.decodeIfPresent(Double.self, forKey: .differenza)
         esito = try? c.decodeIfPresent(String.self, forKey: .esito)
-    }
-}
-
-/// I testi della scheda, in un posto solo (si provano nei test, VoiceOver legge le stesse frasi).
-struct ScelteTueTesto: Equatable {
-    /// Sotto questo numero di giornate il server dice «pochi dati».
-    static let giornateMinime = 8
-
-    let giornate: Int
-    let tua: Int
-    let consigliata: Int
-    let pari: Int
-    let pochiDati: Bool
-    let percentuale: Int?
-    let puntiDifferenza: Double
-    let righe: [RigaScelta]
-    /// La frase del server sulle giornate senza verdetto (`nota`), nil se non c'è.
-    let nota: String?
-
-    /// Nessuna giornata con un verdetto: la scheda ha solo la frase del server.
-    var soloNota: Bool { giornate == 0 }
-
-    struct RigaScelta: Equatable, Identifiable {
-        let id: String
-        let titolo: String
-        let frase: String
-        let punti: String
-        let esito: Esito
-        /// Il titolo come lo legge VoiceOver: «Giornata 6, 9ª di Serie A» (#299).
-        var voceTitolo: String? = nil
-    }
-
-    enum Esito: Equatable { case tua, consigliata, pari }
-
-    /// `nil` se il blocco manca, oppure se non ci sono giornate con scelte diverse e il server non ha niente da dire (`nota`):
-    /// la scheda allora non si mostra. Senza giornate ma con la frase, la scheda ha solo quella (`soloNota`).
-    init?(_ s: ScelteTue?) {
-        guard let s else { return nil }
-        let n = max(0, s.giornate ?? 0)
-        let frase = s.nota?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard n > 0 || !frase.isEmpty else { return nil }
-        nota = frase.isEmpty ? nil : frase
-        giornate = n
-        let t = max(0, s.meglioTua ?? 0)
-        tua = t
-        consigliata = max(0, s.meglioConsigliata ?? 0)
-        pari = max(0, s.pari ?? 0)
-        pochiDati = s.pochiDati ?? (n < Self.giornateMinime)
-        let calcolata: Int? = n > 0 ? Int((Double(t) * 100 / Double(n)).rounded()) : nil
-        percentuale = s.percentualeTua.map { Int($0.rounded()) } ?? calcolata
-        puntiDifferenza = s.puntiDifferenza ?? 0
-        righe = (s.perGiornata ?? []).map(Self.riga)
-    }
-
-    private static func riga(_ g: SceltaGiornata) -> RigaScelta {
-        let esito: Esito = g.esito == "tua" ? .tua : g.esito == "consigliata" ? .consigliata : .pari
-        var frase = "Hai messo \(elenco(g.haiScelto)) al posto di \(elenco(g.consigliava))."
-        if (g.haiScelto ?? []).isEmpty || (g.consigliava ?? []).isEmpty { frase = "Hai scelto undici diversi da quelli consigliati." }
-        let t = Formato.punti(g.puntiTua), c = Formato.punti(g.puntiConsigliata)
-        let verdetto = esito == .tua ? "Meglio tu" : esito == .consigliata ? "Meglio il consiglio" : "Pari"
-        return RigaScelta(id: g.id, titolo: g.titolo, frase: frase,
-                          punti: "\(verdetto): tu \(t), consiglio \(c)", esito: esito,
-                          voceTitolo: g.giornata.map { NomeGiornata(serieA: $0, lega: g.giornataLega).voce })
-    }
-
-    private static func elenco(_ nomi: [String]?) -> String {
-        let n = (nomi ?? []).filter { !$0.isEmpty }
-        switch n.count {
-        case 0: return "–"
-        case 1: return n[0]
-        default: return n.dropLast().joined(separator: ", ") + " e " + n[n.count - 1]
-        }
-    }
-
-    static func volte(_ n: Int) -> String { Formato.plurale(n, "volta", "volte") }
-
-    /// Il numero grande: «5 su 9».
-    var numeroGrande: String { "\(tua) su \(giornate)" }
-
-    var sottotitolo: String {
-        "\(tua == 1 ? "volta" : "volte") in cui i tuoi undici hanno fatto più punti del consiglio, in \(Formato.giornate(giornate)) con scelte diverse"
-    }
-
-    /// «+4,5 punti rispetto al consiglio» o «gli stessi punti del consiglio».
-    var frasePunti: String {
-        let d = (puntiDifferenza * 10).rounded() / 10
-        if d == 0 { return "In totale, gli stessi punti del consiglio." }
-        let unita = abs(d) == 1 ? "punto" : "punti"
-        let segno = Formato.conSegno(d).replacingOccurrences(of: "-", with: "−")
-        return d > 0 ? "In totale \(segno) \(unita) rispetto al consiglio: ci hai guadagnato."
-                     : "In totale \(segno) \(unita) rispetto al consiglio: ci hai perso."
-    }
-
-    var fraseCommento: String {
-        if pochiDati { return "Ancora pochi dati: servono almeno \(Self.giornateMinime) giornate con scelte diverse per dire chi ha ragione più spesso." }
-        return percentuale.map { "Hai avuto ragione nel \($0)% delle giornate." } ?? ""
-    }
-
-    /// La frase che legge VoiceOver per tutto il riepilogo, con la frase del server in fondo.
-    var voceRiepilogo: String {
-        let fine = nota.map { " \($0)" } ?? ""
-        if soloNota { return "Le tue scelte." + fine }
-        return "Le tue scelte. In \(Formato.giornate(giornate)) con undici diversi dal consiglio: meglio tu \(Self.volte(tua)), meglio il consiglio \(Self.volte(consigliata)), pari \(Self.volte(pari)). \(frasePunti) \(fraseCommento)" + fine
     }
 }

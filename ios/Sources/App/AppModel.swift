@@ -8,7 +8,9 @@ final class AppModel: ObservableObject {
     let server: any ServerClient
     let oggi: OggiViewModel
     let formazione: FormazioneViewModel
-    /// Rose, diario, regole e le altre pagine di Squadra e Altro.
+    /// La pagina Giornate (il diario delle giornate finite): righe aperte e «Dettagli» restano cambiando sezione.
+    let giornate: GiornateViewModel
+    /// Rose, regole e le altre pagine di Squadra e Altro.
     let lega: LegaViewModel
     /// Le funzioni accese sul server: cambiando, la radice ridisegna le schede.
     let funzioni: ArchivioFunzioni
@@ -20,6 +22,7 @@ final class AppModel: ObservableObject {
         self.oggi = giornata
         // la Formazione legge anche la giornata: a giornata in corso la formazione schierata viene da lì
         self.formazione = FormazioneViewModel(server: server, oggi: giornata)
+        self.giornate = GiornateViewModel(server: server)
         self.lega = LegaViewModel(server: server)
         self.funzioni = ArchivioFunzioni(server: server)
         ascoltoFunzioni = funzioni.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }

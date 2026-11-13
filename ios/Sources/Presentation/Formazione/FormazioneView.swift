@@ -187,9 +187,9 @@ struct FormazioneView: View {
                         .pulsanteVetro()
                 }
             }
-            TestaFormazioneView(oggi: vm.squadraVista == nil ? oggi.oggi : nil, formazione: f) { _ in
-                // fino alla pagina Giornate (passo 2 di #673) «Com'è andata» apre il Diario
-                nav.vai(a: .pagina(.diario))
+            TestaFormazioneView(oggi: vm.squadraVista == nil ? oggi.oggi : nil, formazione: f) { giornata in
+                // «Com'è andata»: la pagina Giornate, aperta sulla giornata appena finita (come la web)
+                nav.apriGiornate(giornata)
             }
             if let errore = vm.erroreGiornata { erroreGiornata(errore) }
         }

@@ -186,8 +186,10 @@ extension Demo {
             apriLega(nav, modello, [.stato])
         case "lega-avvisi":
             apriLega(nav, modello, [.avvisi])
-        case "lega-diario":
-            apriLega(nav, modello, [.diario])
+        // la pagina Giornate (#673 passo 2): le righe chiuse (sull'iPad la più recente a destra), la più recente aperta, «Dettagli»
+        case "giornate", "giornate-aperta", "giornate-dettagli":
+            nav.sezione = .giornate
+            modello.giornate.preparaFoto(nome)
         case "lega-importa", "lega-importa-salvate", "lega-importa-salvate-ok":
             apriLega(nav, modello, [.importa])
         case "lega-importa-csv":
