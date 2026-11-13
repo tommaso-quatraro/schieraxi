@@ -13,7 +13,8 @@ Per ogni scena, larghezza e tema scrive nella cartella (che deve stare FUORI dal
 - `<scena>-<larghezza>-<tema>.png`, la pagina intera;
 - `axe-<scena>-<larghezza>-<tema>.json`, le violazioni di axe (regole WCAG 2.0, 2.1 e 2.2, livelli A e AA);
 - una riga in `riepilogo.txt`: `<scena> <larghezza> <tema> gravi=<n> scorrimento-di-lato=<sì|no> errori-console=<n>`
-  (gravi = violazioni `critical` e `serious`). Esce con 1 se una scena ha violazioni gravi, con 2 se una scena non si apre.
+  (gravi = violazioni `critical` e `serious`), con in fondo `regole=<id>,<id>` se ce ne sono di gravi (gli elementi sono nel
+  file di axe). Esce con 1 se una scena ha violazioni gravi, con 2 se una scena non si apre.
 
 `--accesso`: prima delle scene entra nel server con l'account dato dalle variabili d'ambiente `SCHIERAXI_UTENTE` e
 `SCHIERAXI_PASSWORD` (mai sulla riga di comando, mai stampate). `--solo-misure`: niente PNG, solo riepilogo, axe e console
@@ -103,7 +104,7 @@ def leggi_argomenti(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="foto.py", description="Foto e axe della web app senza finestra. Scrive le foto, i risultati di axe e riepilogo.txt.",
         epilog="riepilogo.txt: una riga per foto, «<scena> <larghezza> <tema> gravi=<n> scorrimento-di-lato=<sì|no> "
-               "errori-console=<n>». Esce con 1 se ci sono violazioni gravi (critical o serious).")
+               "errori-console=<n> [regole=<id>,<id>]». Esce con 1 se ci sono violazioni gravi (critical o serious).")
     p.add_argument("posizionali", nargs="+", metavar="[indirizzo] cartella",
                    help="indirizzo del server (facoltativo: senza, ne avvia uno di prova) e cartella delle foto, fuori dal repository")
     p.add_argument("--scene", type=lambda s: _elenco(s, list(SCENE)), default=list(SCENE), help=f"di norma tutte: {','.join(SCENE)}")
@@ -142,7 +143,12 @@ def accedi(richieste, base: str, utente: str, password: str) -> None:
 
 
 def gravi(violazioni: list[dict]) -> int:
-    return sum(1 for v in violazioni if v.get("impact") in ("critical", "serious"))
+    return len(regole_gravi(violazioni))
+
+
+def regole_gravi(violazioni: list[dict]) -> list[str]:
+    """Le regole di axe violate con gravità `critical` o `serious`, nell'ordine di axe (finiscono nel riepilogo, #697)."""
+    return [str(v.get("id")) for v in violazioni if v.get("impact") in ("critical", "serious")]
 
 
 def posizioni_foglio(altezza_contenuto: int, altezza_visibile: int) -> list[int]:
@@ -153,8 +159,11 @@ def posizioni_foglio(altezza_contenuto: int, altezza_visibile: int) -> list[int]
     return sorted(set(pos))
 
 
-def riga_riepilogo(scena: str, larghezza: int, tema: str, n_gravi: int, scorre: bool, errori_console: int) -> str:
-    return f"{scena} {larghezza} {tema} gravi={n_gravi} scorrimento-di-lato={'sì' if scorre else 'no'} errori-console={errori_console}"
+def riga_riepilogo(scena: str, larghezza: int, tema: str, n_gravi: int, scorre: bool, errori_console: int,
+                   regole: list[str] | tuple = ()) -> str:
+    """Una riga di riepilogo.txt; con violazioni gravi anche `regole=<id>,<id>` (gli elementi stanno nel file axe-…json)."""
+    riga = f"{scena} {larghezza} {tema} gravi={n_gravi} scorrimento-di-lato={'sì' if scorre else 'no'} errori-console={errori_console}"
+    return riga + (f" regole={','.join(regole)}" if regole else "")
 
 
 def _principale() -> Path | None:
@@ -361,7 +370,7 @@ def fotografa(base: str, uscita: Path, scene: list[str], larghezze: list[int], t
                             riga = f"{scena} {larghezza} {tema} errore={type(e).__name__}: {str(e).splitlines()[0][:160]}"
                         else:
                             (uscita / f"axe-{nome}.json").write_text(json.dumps(violazioni, ensure_ascii=False, indent=1), encoding="utf-8")
-                            riga = riga_riepilogo(scena, larghezza, tema, gravi(violazioni), scorre, len(errori))
+                            riga = riga_riepilogo(scena, larghezza, tema, gravi(violazioni), scorre, len(errori), regole_gravi(violazioni))
                         if errori:
                             (uscita / f"console-{nome}.txt").write_text("\n".join(errori), encoding="utf-8")
                         print(riga, flush=True)

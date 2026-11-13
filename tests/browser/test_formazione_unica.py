@@ -485,6 +485,35 @@ def test_la_scheda_e_l_elenco_dei_sostituti_non_hanno_violazioni_gravi(web, tema
     assert not web.scorre_di_lato()
 
 
+# Ogni pulsante che si accende (perde `disabled`), con la sua opacità in quell'istante: in window.accesi.
+OSSERVA_ACCENSIONI = """() => { window.accesi = [];
+  new MutationObserver(ms => ms.forEach(m => { const e = m.target;
+    if (e.tagName === 'BUTTON' && !e.disabled) window.accesi.push([(e.textContent || '').trim(), getComputedStyle(e).opacity]); }))
+    .observe(document, {subtree: true, attributes: true, attributeFilter: ['disabled']}); }"""
+
+
+@pytest.mark.parametrize("tema", ["chiaro", "scuro"])
+def test_i_comandi_che_si_accendono_coi_dati_nuovi_si_leggono_subito(web, tema):
+    """Collaudo della prova (#697): la scheda aperta sulla copia tenuta sul telefono ha «Sostituisci» spento (mezzo trasparente),
+    e si accende quando arrivano i dati nuovi. Passava da mezzo trasparente a pieno in 0,2 s: axe lanciato in quell'istante
+    trovava un contrasto di 2 a 1 (color-contrast, button[data-sostituisci]). Un comando che si accende è subito pieno."""
+    solo(web, "prima")
+    web.pagina.add_init_script(RITARDA)
+    web.apri("/", tema=tema)
+    _ritardi(web, {"/api/formazione": 1500})
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="commit")
+    web.pagina.wait_for_selector("#campo-formazione")
+    campo(web).nth(3).click()                                          # la scheda sulla copia: «Sostituisci» spento
+    sostituisci = scheda(web).get_by_role("button", name="Sostituisci")
+    assert sostituisci.is_disabled()
+    web.pagina.evaluate(OSSERVA_ACCENSIONI)
+    _aspetta(sostituisci, attivo=True)                                 # arrivano i dati nuovi
+    accesi = web.pagina.evaluate("() => window.accesi")
+    assert "Sostituisci" in [nome for nome, _ in accesi]
+    a_meta = [(nome, opacita) for nome, opacita in accesi if float(opacita) < 1]
+    assert not a_meta, f"{tema}: comandi ancora trasparenti nell'istante in cui si accendono: {a_meta}"
+
+
 # ---------------------------------------------------------------- revisione della #637: ciò che si salva è ciò che si vede
 # Il server finto non salva: dove serve, il test fa la parte del server e tiene lui la scelta della giornata.
 RITARDA = """(() => { const vera = window.fetch;

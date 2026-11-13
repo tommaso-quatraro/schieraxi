@@ -1,0 +1,10 @@
+{
+  "titolo": "Formazione: i pulsanti che si accendono si leggono subito",
+  "voci": [
+    "Formazione (web): quando arrivano i dati nuovi, «Sostituisci» nella scheda del giocatore e «Torna alla consigliata» si accendono subito pieni, senza passare per un attimo da mezzi trasparenti e poco leggibili."
+  ],
+  "tecnico": [
+    "stile.css: tolta `opacity .2s` dalla transizione di `button`. Il pulsante spento sulla copia tenuta sul telefono (sc.sola) si accende in pronta() di mostraFormazione; con la transizione restava 0,2 s fra opacità 0,5 e 1, e axe lanciato in quell'istante dava color-contrast (2 a 1) su button[data-sostituisci]: è la violazione del collaudo della prova (scheda 390 chiaro, #697).",
+    "prove/foto_web/foto.py: la riga di riepilogo.txt ha in fondo `regole=<id>,<id>` se ci sono violazioni gravi. script/ci/collaudo_prova.py esito: nell'esito (artifact e issue) la regola di axe e fino a due elementi per regola, dai file axe-*.json, senza i valori degli attributi."
+  ]
+}

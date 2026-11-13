@@ -120,8 +120,9 @@ body {
   overscroll-behavior-y: none;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
-/* toccare un pulsante non lo rimpicciolisce più (spec §7.6): cambiano solo fondo e colore */
-button { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .2s, color .2s, box-shadow .25s, opacity .2s; }
+/* toccare un pulsante non lo rimpicciolisce più (spec §7.6): cambiano solo fondo e colore. L'opacità no: un pulsante spento che si
+   accende (i dati nuovi arrivano) è subito pieno, mai mezzo trasparente con un contrasto troppo basso (#697) */
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .2s, color .2s, box-shadow .25s; }
 b, strong { font-weight: 650; }
 
 /* Il fondo è quello del body, piatto (le macchie colorate che si muovevano sapevano di generato): niente elementi dietro la pagina. */
