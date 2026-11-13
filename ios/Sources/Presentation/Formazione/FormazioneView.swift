@@ -89,6 +89,13 @@ struct FormazioneView: View {
 
     /// La giornata (`/api/oggi`, che passa i dati a widget e promemoria) e, insieme, formazione e scelta.
     private func ricarica() async {
+        await Self.ricarica(vm, oggi: oggi)
+    }
+
+    /// Senza la scheda Oggi la Formazione è l'unica schermata che legge la giornata: a ogni apertura e rilettura `/api/oggi`, che
+    /// passa i dati freschi a widget e promemoria (`OggiViewModel.dopoLetturaFresca`), e insieme formazione e scelta. Statica per
+    /// provarla senza disegnare la schermata (`OggiPerWidgetTests`).
+    static func ricarica(_ vm: FormazioneViewModel, oggi: OggiViewModel) async {
         let giornata = Task { await oggi.carica() }
         await vm.carica()
         await giornata.value

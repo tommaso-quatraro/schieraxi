@@ -40,6 +40,93 @@ final class DominioTests: XCTestCase {
 
     // MARK: testo, nome corto
 
+    func testTestoDellaFormazione() throws {
+        let p = try giocatore(1, "Noraldi", ruolo: "P")
+        let d1 = try giocatore(2, "Foselli")
+        let d2 = try giocatore(3, "Barucci")
+        let c = try giocatore(4, "Delardi", ruolo: "C")
+        let a = try giocatore(5, "Castotti", ruolo: "A")
+        let panchina = [try giocatore(6, "Pelucci", ruolo: "P"), try giocatore(7, "Fosaldi", ruolo: "P")]
+        let testo = TestoFormazione.crea(giornata: 9, modulo: "2-1-1", titolari: [a, c, d1, p, d2], panchina: panchina)
+        XCTAssertEqual(testo, "9ª giornata di Serie A · 2-1-1\nP: Noraldi\nD: Foselli, Barucci\nC: Delardi\nA: Castotti\nPanchina: 1) Pelucci, 2) Fosaldi")
+        XCTAssertFalse(TestoFormazione.crea(giornata: 1, modulo: "x", titolari: [], panchina: []).contains("Panchina"))
+    }
+
+    func testNomeCorto() throws {
+        XCTAssertEqual(try giocatore(1, "Dalanti S.").nomeCorto, "Dalanti")
+        XCTAssertEqual(try giocatore(1, "Monelli Feraldi").nomeCorto, "Monelli Feraldi")
+        XCTAssertEqual(try giocatore(1, "Lanotti E.").nomeCorto, "Lanotti")
+        XCTAssertEqual(try giocatore(1, "Pelayo").nomeCorto, "Pelayo")
+    }
+
+    // MARK: confronto
+
+    // MARK: scambi
+
+    // MARK: regole
+
+    func testPercorsiNelJSONDelleRegole() throws {
+        var v: JSONValue = try Fixture.decodifica("regole", snake: false)
+        XCTAssertEqual(v.valore("bonus.assist")?.numero, 1)
+        v.imposta("bonus.assist", .numero(1.5))
+        XCTAssertEqual(v.valore("bonus.assist"), .decimale(1.5))
+        v.imposta("crediti_iniziali", .numero(600))
+        XCTAssertEqual(v.valore("crediti_iniziali"), .intero(600), "un numero intero resta intero")
+        v.imposta("nuovo.livello.valore", .booleano(true))
+        XCTAssertEqual(v.valore("nuovo.livello.valore")?.booleano, true)
+        XCTAssertNil(v.valore("non.esiste"))
+    }
+
+    func testRiconoscimentoApplicatoSenzaSalvare() throws {
+        let originale: JSONValue = try Fixture.decodifica("regole", snake: false)
+        let riconosciute: [ModificaRegola] = [
+            ModificaRegola(chiave: "bonus.assist", etichetta: "Assist", valore: .decimale(2), riga: nil),
+            ModificaRegola(chiave: "moduli", etichetta: "Moduli", valore: .lista([.testo("3-4-3"), .testo("4-4-2")]), riga: nil),
+            ModificaRegola(chiave: "panchina.numero", etichetta: "Panchina", valore: .intero(7), riga: nil),
+        ]
+        let nuove = RegoleLogica.applica(riconosciute, a: originale)
+        XCTAssertEqual(nuove.valore("bonus.assist")?.numero, 2)
+        XCTAssertEqual(nuove.valore("moduli")?.elenco?.count, 2)
+        XCTAssertEqual(nuove.valore("panchina.numero")?.numero, 7)
+        // il resto delle regole non cambia
+        XCTAssertEqual(nuove.valore("bonus.gol.A"), originale.valore("bonus.gol.A"))
+        XCTAssertEqual(originale.valore("bonus.assist")?.numero, 1, "l'originale non si tocca")
+    }
+
+    func testFasceDelModificatoreDifesa() throws {
+        let v: JSONValue = try Fixture.decodifica("regole", snake: false)
+        let fasce = RegoleLogica.fasce(v)
+        XCTAssertEqual(fasce.count, 6)
+        XCTAssertEqual(fasce.first?.media, 6)
+        XCTAssertEqual(RegoleLogica.bonusDifesa(media: 5.9, fasce: fasce), 0)
+        XCTAssertEqual(RegoleLogica.bonusDifesa(media: 6.0, fasce: fasce), 1)
+        XCTAssertEqual(RegoleLogica.bonusDifesa(media: 6.6, fasce: fasce), 2)
+        XCTAssertEqual(RegoleLogica.bonusDifesa(media: 9, fasce: fasce), 3.5)
+        XCTAssertEqual(RegoleLogica.mediaDifesa([6.5, 6, 6.5, 7]), 6.5)
+        var scritte = v
+        RegoleLogica.scriviFasce([RegoleLogica.Fascia(media: 7, bonus: 4), RegoleLogica.Fascia(media: 6, bonus: 1)], in: &scritte)
+        XCTAssertEqual(RegoleLogica.fasce(scritte).map(\.media), [6, 7], "si scrivono in ordine di media")
+    }
+
+    func testControlliPrimaDiSalvareLeRegole() throws {
+        var v: JSONValue = try Fixture.decodifica("regole", snake: false)
+        // posti fissi: il numero in panchina diventa la somma dei posti (2 + 3 + 3 + 3)
+        v.imposta("panchina.numero", .intero(1))
+        XCTAssertEqual(try RegoleLogica.preparaPerSalvataggio(v).valore("panchina.numero")?.numero, 11)
+        // nessun modulo
+        var senzaModuli = v
+        senzaModuli.imposta("moduli", .lista([]))
+        XCTAssertThrowsError(try RegoleLogica.preparaPerSalvataggio(senzaModuli)) { XCTAssertEqual($0.localizedDescription, "Scegli almeno un modulo.") }
+        // due fasce con la stessa media
+        var doppie = v
+        doppie.imposta("modificatore_difesa.soglie", .lista([.lista([.intero(6), .intero(1)]), .lista([.intero(6), .intero(2)])]))
+        XCTAssertThrowsError(try RegoleLogica.preparaPerSalvataggio(doppie)) { XCTAssertTrue($0.localizedDescription.contains("stessa media")) }
+        // nome vuoto
+        var senzaNome = v
+        senzaNome.imposta("nome_lega", .testo("  "))
+        XCTAssertEqual(try RegoleLogica.preparaPerSalvataggio(senzaNome).valore("nome_lega")?.testo, "La mia lega")
+    }
+
     func testDescrizioneDeiValoriRiconosciuti() {
         XCTAssertEqual(RegoleLogica.descrivi(.booleano(true)), "sì")
         XCTAssertEqual(RegoleLogica.descrivi(.intero(7)), "7")
