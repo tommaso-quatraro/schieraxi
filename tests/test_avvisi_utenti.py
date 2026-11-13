@@ -412,7 +412,7 @@ def test_spento_i_comandi_restano_quelli_di_sempre(monkeypatch):
 # ---------------------------------------------------------------- backup
 def test_backup_per_utente_e_del_database_degli_account(mondo, registro, capsys):
     a, b = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
-    cli._backup_per_utente(7)
+    cli._backup_per_utente(7, ADESSO)
     copia_a, copia_b = sorted((a.cartella / "backup").glob("schieraxi-backup-*.json")), sorted((b.cartella / "backup").glob("schieraxi-backup-*.json"))
     assert len(copia_a) == len(copia_b) == 1
     assert "Squadra di amico1" in copia_a[0].read_text(encoding="utf-8") and "amico2" not in copia_a[0].read_text(encoding="utf-8")
@@ -432,6 +432,6 @@ def test_le_copie_vecchie_si_tolgono(mondo, tmp_path):
     cartella.mkdir()
     for giorno in range(1, 6):
         (cartella / f"account-2026-01-0{giorno}.sqlite").write_bytes(b"vecchia")
-    assert backup.copia_account(cartella, origine, tieni=3).exists()
+    assert backup.copia_account(cartella, origine, tieni=3, adesso=ADESSO).exists()
     assert len(list(cartella.glob("account-*.sqlite"))) == 3
-    assert backup.copia_account(cartella, tmp_path / "non-esiste.sqlite") is None
+    assert backup.copia_account(cartella, tmp_path / "non-esiste.sqlite", adesso=ADESSO) is None
