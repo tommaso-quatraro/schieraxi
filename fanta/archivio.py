@@ -233,7 +233,13 @@ def segna(db: sqlite3.Connection, cosa: str, quando: str | None, dettaglio: str 
 # I passi di ogni aggiornamento che hanno una riga loro in `aggiornamenti` (cosa = nome del passo in minuscolo con i trattini,
 # `cosa_passo`: «listone», «voti», «probabili», «understat», «calendario», «dati-extra»). `quando` = ultimo successo (NULL = mai);
 # `dettaglio` vuoto se l'ultima prova è andata, altrimenti JSON {"errore", "dal" (primo fallimento di fila), "ultimo"}.
-PASSI = ("listone", "calendario", "voti", "probabili", "understat", "dati-extra", "controlli")
+# «risultati-rapido» (PASSO_SERA) è il giro dei risultati la sera stessa (`pianificatore.aggiorna_risultati`, #661): stessa riga,
+# così un giro fallito si vede in «Stato dei dati». Non nella salute (FUORI_SALUTE): è un di più, e Fantacalcio.it giù per un giorno
+# lo segnalano già calendario e voti dell'aggiornamento completo; il suo errore si toglie quando quell'aggiornamento li legge
+# (`aggiorna.Aggiornamento.esegui`), così una sosta non lo fa sembrare «fermo da 17 giorni».
+PASSO_SERA = "risultati-rapido"
+PASSI = ("listone", "calendario", "voti", "probabili", "understat", "dati-extra", "controlli", PASSO_SERA)
+FUORI_SALUTE = (PASSO_SERA,)
 PASSO_FERMO = timedelta(hours=24)        # un passo che non riesce da più di così si segnala per nome (salute, Stato dei dati)
 
 
@@ -272,6 +278,12 @@ def segna_passo(db: sqlite3.Connection, nome: str, quando: str, errore: str | No
 
 def passo_saltato(db: sqlite3.Connection, nome: str) -> None:
     """Passo saltato apposta (fonte spenta): non è un guasto, l'errore di prima si toglie (l'ultimo successo resta)."""
+    togli_errore(db, nome)
+
+
+def togli_errore(db: sqlite3.Connection, nome: str) -> None:
+    """L'errore di un passo seguito non vale più (fonte spenta apposta, o i suoi dati sono arrivati per un'altra strada): si toglie,
+    l'ultimo successo resta."""
     if cosa_passo(nome) in PASSI:
         db.execute("UPDATE aggiornamenti SET dettaglio = '' WHERE cosa = ? AND dettaglio <> ''", (cosa_passo(nome),))
 
@@ -306,9 +318,12 @@ def durata_testo(d: timedelta) -> str:
 
 
 def passi_fermi(db: sqlite3.Connection, adesso: datetime, soglia: timedelta = PASSO_FERMO) -> list[dict]:
-    """I passi che non riescono e sono fermi da più di `soglia` (vedi `fermo_da`), con `fermo` = da quanto."""
+    """I passi che non riescono e sono fermi da più di `soglia` (vedi `fermo_da`), con `fermo` = da quanto. Per la salute: senza
+    quelli di FUORI_SALUTE."""
     fermi = []
     for p in passi(db):
+        if p["passo"] in FUORI_SALUTE:
+            continue
         durata = fermo_da(p, adesso)
         if durata is not None and durata > soglia:
             fermi.append({**p, "fermo": durata})

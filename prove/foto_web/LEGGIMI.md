@@ -54,10 +54,11 @@ Per ogni scena, larghezza e tema:
 - una riga in `riepilogo.txt`:
 
 ```
-<scena> <larghezza> <tema> gravi=<n> scorrimento-di-lato=<sì|no> errori-console=<n>
+<scena> <larghezza> <tema> gravi=<n> scorrimento-di-lato=<sì|no> errori-console=<n> [regole=<id>,<id>]
 ```
 
-`gravi` = regole violate di gravità `critical` o `serious` (l'obiettivo della nuova grafica è zero ovunque);
+`gravi` = regole violate di gravità `critical` o `serious` (l'obiettivo della nuova grafica è zero ovunque); se ce ne sono,
+`regole=` dice quali (per esempio `regole=color-contrast`) e il file `axe-…json` della stessa foto dice su quali elementi;
 `scorrimento-di-lato=sì` = la pagina è più larga dello schermo. Una scena che non si apre scrive `errore=…` al posto dei numeri.
 Esce con 0 se è tutto a posto, 1 se ci sono violazioni gravi, 2 se una scena non si è aperta.
 
@@ -74,7 +75,9 @@ il codice della risposta.
 
 `--solo-misure` non scrive nessun PNG: solo `riepilogo.txt`, i risultati di axe e gli errori della console. Lo usa il collaudo
 automatico dell'ambiente di prova (`.github/workflows/collaudo-prova.yml`, con `script/ci/collaudo_prova.py`), che apre le
-schermate principali a 390 e 1440 px e apre un'issue se qualcosa non va.
+schermate principali a 390 e 1440 px e apre un'issue se qualcosa non va. Per una violazione grave l'issue e l'allegato
+`esito.txt` dicono la regola di axe e fino a due elementi, senza i valori degli attributi (#697): per esempio
+`scheda 390 chiaro: 1 violazione grave di accessibilità (color-contrast su #foglio-contenuto > .pulsanti > button[data-sostituisci])`.
 
 Esempio contro un server locale con gli account accesi (account inventato, mai credenziali vere in un file):
 

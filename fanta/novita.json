@@ -1,5 +1,32 @@
 [
   {
+    "versione": "1.497",
+    "data": "2026-11-13T14:48:02",
+    "titolo": "Formazione: i pulsanti che si accendono si leggono subito",
+    "voci": [
+      "Formazione (web): quando arrivano i dati nuovi, «Sostituisci» nella scheda del giocatore e «Torna alla consigliata» si accendono subito pieni, senza passare per un attimo da mezzi trasparenti e poco leggibili."
+    ],
+    "tecnico": [
+      "stile.css: tolta `opacity .2s` dalla transizione di `button`. Il pulsante spento sulla copia tenuta sul telefono (sc.sola) si accende in pronta() di mostraFormazione; con la transizione restava 0,2 s fra opacità 0,5 e 1, e axe lanciato in quell'istante dava color-contrast (2 a 1) su button[data-sostituisci]: è la violazione del collaudo della prova (scheda 390 chiaro, #697).",
+      "prove/foto_web/foto.py: la riga di riepilogo.txt ha in fondo `regole=<id>,<id>` se ci sono violazioni gravi. script/ci/collaudo_prova.py esito: nell'esito (artifact e issue) la regola di axe e fino a due elementi per regola, dai file axe-*.json, senza i valori degli attributi."
+    ]
+  },
+  {
+    "versione": "1.496",
+    "data": "2026-11-13T14:30:04",
+    "titolo": "Diretta: partite rinviate e poi giocate, e guasti che si vedono",
+    "voci": [
+      "Una partita rinviata e rimessa più avanti non resta più «Rinviata» in Oggi e nella diretta, e non passa più da «Rinviata» a «Da giocare» a ogni aggiornamento: quando si gioca si segue come le altre, con punteggio e minuto.",
+      "Se il sito dei risultati in diretta risponde senza le partite, l'app passa al calendario di Fantacalcio.it invece di mostrare la partita in corso senza punteggio, e l'ora dell'ultimo aggiornamento resta quella vera.",
+      "In Lega > Dati > Stato dei dati, «Risultati la sera stessa» dice quando l'ultimo giro della sera non è riuscito e perché."
+    ],
+    "tecnico": [
+      "live.Raccoglitore._da_seguire: una «rinviata» in cache non chiude la partita se la finestra della data del calendario si apre dopo l'ultima volta che la fonte l'ha data (live.rimessa_dopo, con _visto); se la data è cambiata la voce esce dalla cache, così /api/live e fasi.stato_partita tornano allo stato dall'orario fino alla lettura nuova. Una rinviata vista dentro la sua finestra resta chiusa (niente richieste in più). Una «rinviata» letta dalla fonte con una data più vecchia di quella del calendario si scarta prima di tutto (live.senza_rinvii_superati): non entra in cache e non conta come partita seguita nella lettura.",
+      "live.Raccoglitore.passo: una lettura (fonte principale o ripiego) che non contiene nessuna delle partite seguite alza live.SenzaPartite e conta come errore (stesso conteggio che porta al ripiego dopo 3); aggiornato_il e fonte non cambiano. Ogni lettura non riuscita scrive un warning nel registro fanta.live con la fonte, il motivo (solo il tipo d'errore) e quante di fila. Adattato test_errori_aspettano_sempre_di_piu_poi_il_ripiego: il ripiego ora deve leggere una partita seguita (pagina d'esempio della giornata 1). La pausa dopo un errore e il passaggio al ripiego non scendono mai sotto la pausa normale (INTERVALLO_DOPO, 5 minuti, oltre la finestra).",
+      "archivio.PASSI comprende «risultati-rapido»: pianificatore.aggiorna_risultati scrive l'esito con archivio.segna_passo (errore, dal, ultimo; l'ultimo successo resta), passo_saltato con la fonte spenta, e un warning nel registro fanta.pianificatore con passo e tipo d'errore. Stato dei dati mostra l'errore (stato_dati._errori_passo); la salute no (archivio.FUORI_SALUTE, saltato da archivio.passi_fermi). aggiorna.Aggiornamento.esegui toglie l'errore (archivio.togli_errore) quando calendario e voti sono riusciti."
+    ]
+  },
+  {
     "versione": "1.495",
     "data": "2026-11-13T14:14:36",
     "titolo": "Orari sempre in ora italiana",
