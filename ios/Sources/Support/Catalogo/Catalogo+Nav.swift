@@ -5,5 +5,8 @@ extension Catalogo {
     enum Nav {
         /// `nav.formazione`
         static let formazione = "Formazione"
+
+        /// `nav.giornate`
+        static let giornate = "Giornate"
     }
 }

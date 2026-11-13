@@ -1,0 +1,32 @@
+# Testi della web (fanta/testi/giornate.json) che l'iPhone mostra nella pagina Giornate (#673, passo 2): una chiave per riga.
+# Dopo una modifica: python script/testi.py --scrivi
+
+giornate.carico
+giornate.precisione
+giornate.dettagli
+giornate.elenco
+giornate.hai_consigliata
+giornate.cambi.one
+giornate.cambi.other
+giornate.cambi_pari.one
+giornate.cambi_pari.other
+giornate.tua
+giornate.automatica
+giornate.non_salvata
+giornate.formazione_tua
+giornate.formazione_automatica
+giornate.formazione_consigliata
+giornate.formazione_rifatta
+giornate.rifatta_nota
+giornate.tabella
+giornate.col_giocatore
+giornate.col_atteso
+giornate.col_preso
+giornate.senza_voto
+giornate.al_posto
+giornate.senza_confronto
+giornate.correggi
+giornate.vuoto
+giornate.vuoto_squadra
+giornate.vuoto_giornate
+giornate.vuoto_calcolo
