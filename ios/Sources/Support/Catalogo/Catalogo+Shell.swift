@@ -11,5 +11,8 @@ extension Catalogo {
 
         /// `shell.cerca`
         static let cerca = "Cerca un giocatore"
+
+        /// `shell.aggiorna`
+        static let aggiorna = "Aggiorna i dati"
     }
 }

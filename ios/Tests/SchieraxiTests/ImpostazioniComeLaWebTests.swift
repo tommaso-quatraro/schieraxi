@@ -62,7 +62,9 @@ struct ImpostazioniComeLaWebTests {
         #expect(VociImpostazioni.informazioni(gestisce: true).map(\.id) == ["informazioni", "gestione"])
         let voci = VociImpostazioni.informazioni(gestisce: true)
         #expect(voci.map(\.nome) == [Catalogo.Imp.informazioni, Catalogo.Imp.gestione])
-        #expect(voci.map(\.sotto) == [Catalogo.Imp.informazioniSub, Catalogo.Imp.gestioneSub])
+        // la Gestione dell'iPhone non ha inviti né utenti (quelli sono della web): la riga sotto dice solo ciò che c'è
+        #expect(voci.map(\.sotto) == [Catalogo.Imp.informazioniSub, "\(Catalogo.Shell.aggiorna) · \(Catalogo.Av.stato)"])
+        #expect(!(voci.last?.sotto ?? "").contains("Inviti"))
         #expect(voci.map(\.pagina) == [.informazioni, .gestione])
     }
 

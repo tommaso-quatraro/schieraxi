@@ -3,3 +3,4 @@
 shell.impostazioni
 shell.chiudi
 shell.cerca
+shell.aggiorna

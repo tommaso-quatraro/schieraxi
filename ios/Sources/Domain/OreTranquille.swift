@@ -60,6 +60,15 @@ enum ArchivioOreTranquille {
     }
 }
 
+/// La spunta «L'ho messa» della giornata, per i promemoria del telefono (da fare).
+enum ArchivioMessa {
+    static let chiave = "promemoria.messa"
+
+    static func messa(giornata: Int?, _ memoria: UserDefaults = .standard) -> Bool { false }
+
+    static func salva(giornata: Int, messa: Bool, _ memoria: UserDefaults = .standard) {}
+}
+
 /// «Avvisi su questo dispositivo» (Impostazioni > Avvisi, come la web): un interruttore solo per i promemoria locali (un'ora e 15
 /// minuti prima) e l'avviso quando cambia la consigliata. Senza una scelta salvata è acceso, come prima: chi aveva il permesso
 /// continua a ricevere i promemoria. Le scelte per singolo avviso del server (`promemoria_60`, `promemoria_15`) non si usano più (#693).

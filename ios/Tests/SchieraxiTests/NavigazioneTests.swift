@@ -51,6 +51,7 @@ struct NavigazioneTests {
         #expect(vai("schieraxi://lega/regole") == .pagina(.regole))
         #expect(vai("schieraxi://altro/regole") == .pagina(.regole))
         #expect(vai("schieraxi://impostazioni/installazione") == .pagina(.gestione))
+        #expect(vai("schieraxi://impostazioni/avanzate") == .pagina(.gestione), "la voce dei dati vecchi del server (`da_fare.py`)")
         #expect(vai("schieraxi://impostazioni/avvisi") == .impostazioni(.avvisi))
     }
 

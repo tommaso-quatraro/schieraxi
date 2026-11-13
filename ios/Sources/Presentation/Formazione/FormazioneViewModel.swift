@@ -60,7 +60,8 @@ final class FormazioneViewModel: ViewModelBase {
     /// Cresce a ogni rilettura: una risposta (lettura o scrittura) partita prima non vale più.
     private var generazione = 0
 
-    init(server: any ServerClient, oggi: OggiViewModel? = nil) {
+    init(server: any ServerClient, oggi: OggiViewModel? = nil, memoria: UserDefaults = .standard,
+         promemoria: @escaping @MainActor () -> Void = {}) {
         self.server = server
         self.oggi = oggi
         // il comando «Aggiorna» rilegge formazione e scelta insieme (non solo la formazione)

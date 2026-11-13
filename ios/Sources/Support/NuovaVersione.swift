@@ -57,6 +57,14 @@ enum NuovaVersione {
         return Esito(build: n, nome: tag)
     }
 
+    /// Avvisa della build se non è ancora stata segnalata (da fare).
+    static func avvisaSeServe(_ esito: Esito, memoria: UserDefaults = .standard, manda: (Esito) async -> Bool) async {
+        if memoria.integer(forKey: chiaveAvvisata) < esito.build {
+            _ = await manda(esito)
+            memoria.set(esito.build, forKey: chiaveAvvisata)
+        }
+    }
+
     /// Controlla e, se c'è una build mai segnalata, manda la notifica (una sola volta per build).
     @discardableResult
     static func controllaEAvvisa() async -> Esito? {
