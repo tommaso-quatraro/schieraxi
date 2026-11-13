@@ -72,3 +72,30 @@ def test_commit_di_versione_con_la_riga_urgente_solo_se_chiesta(repo, urgente):
     assert righe[0] == "Versione 1.5: Novità correzione"
     # aggiorna-app.sh cerca la riga intera, esatta (git log ... | grep -x): un titolo di PR che la contiene non basta
     assert ("Rilascio: urgente" in righe) is urgente
+
+
+def _versione_sw(repo) -> str:
+    """La riga VERSIONE di sw.js nell'ultimo commit del repository di prova (quello del bot, se c'è)."""
+    return _git(repo, "show", "HEAD:fanta/web/sw.js").splitlines()[0]
+
+
+@pytest.mark.parametrize("toccato", ["fanta/web/app.js", "fanta/web/sw.js"])
+def test_un_unione_che_tocca_la_web_alza_versione_del_service_worker(repo, toccato):
+    """Il service worker dà la scocca dell'app dalla copia della sua VERSIONE (#654): se VERSIONE non sale, chi ha l'app
+    installata resta alla web di prima. Ogni unione che tocca fanta/web/ (anche solo sw.js, senza alzarla) la porta a +1."""
+    _unisci(repo, "Service worker", **{"fanta/web/sw.js": 'const VERSIONE = "fanta-41";\nconst FILE = ["/"];\n'})
+    _unisci(repo, "Una schermata nuova (#30)", "schermata", **{toccato: 'const VERSIONE = "fanta-41";\n// cambiato\n'})
+    r = _lancia(repo, "--commit")
+    assert r.returncode == 0, r.stderr
+    assert _versione_sw(repo) == 'const VERSIONE = "fanta-42";', _versione_sw(repo)
+    assert "fanta/web/sw.js" in _git(repo, "show", "--name-only", "--format=", "HEAD").split()
+
+
+def test_versione_del_service_worker_non_sale_due_volte_ne_senza_la_web(repo):
+    """Una PR che ha già alzato VERSIONE da sé non la vede salire di nuovo; una PR senza file della web non la tocca."""
+    _unisci(repo, "Service worker", **{"fanta/web/sw.js": 'const VERSIONE = "fanta-41";\n'})
+    _unisci(repo, "Alzata a mano (#31)", "a-mano", **{"fanta/web/sw.js": 'const VERSIONE = "fanta-42";\n'})
+    _unisci(repo, "Solo il server (#32)", "server", **{"fanta/x.py": "x = 1\n"})
+    r = _lancia(repo, "--commit")
+    assert r.returncode == 0, r.stderr
+    assert _versione_sw(repo) == 'const VERSIONE = "fanta-42";', _versione_sw(repo)

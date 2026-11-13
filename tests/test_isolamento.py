@@ -395,6 +395,23 @@ def test_la_cartella_non_si_sceglie_con_i_parametri(due):
     assert albero(cartella_di(due, "A")) == prima
 
 
+def test_lo_stemma_di_un_altro_account_non_resta_nella_copia_del_browser(due):
+    """Stesso browser, stessa lega: esce A ed entra B, con una squadra dello stesso nome e quindi lo stesso indirizzo dello
+    stemma (#654). La copia del browser è quella di A: la risposta va sempre ricontrollata e, con l'ETag di A, B riceve il suo."""
+    stemmi = {}
+    for m in "AB":
+        c = due[m][0]
+        assert c.post("/api/rose/testo", json={"testo": "Real Comune\nP\tSommer\t10\n"}).status_code == 200
+        stemmi[m] = PNG + m.encode() * 8
+        assert c.post("/api/squadre/immagine", params={"squadra": "Real Comune", "tipo": "stemma"},
+                      files={"file": ("s.png", stemmi[m], "image/png")}).status_code == 200
+    q = {"squadra": "Real Comune", "tipo": "stemma"}
+    di_a = due["A"][0].get("/api/squadre/immagine", params=q)
+    assert di_a.content == stemmi["A"] and "no-cache" in di_a.headers["cache-control"], di_a.headers
+    di_b = due["B"][0].get("/api/squadre/immagine", params=q, headers={"If-None-Match": di_a.headers["etag"]})
+    assert di_b.status_code == 200 and di_b.content == stemmi["B"], di_b.status_code
+
+
 def test_chi_non_e_registrato_non_ha_cartella(due, tmp_path):
     """Una sessione finta, scaduta o revocata non arriva a nessuna cartella (e non ne crea)."""
     anonimo = cliente()

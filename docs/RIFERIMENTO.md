@@ -88,7 +88,15 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   Elenco dei giocatori, Calendario, Movimenti, Crediti delle squadre, Partite del turno con la diretta, immagine da condividere,
   banner delle novità e dimensione del testo: le rotte del server restano (le usa l'iPhone). Gli indirizzi di prima portano alla
   schermata più vicina che resta (`schermataCheResta` in `app.js`); le Novità sono in Impostazioni > Informazioni.
-  Dopo una modifica il job `rilascia` alza `VERSIONE` in `fanta/web/sw.js`.
+  Dopo una modifica il job `rilascia` alza `VERSIONE` in `fanta/web/sw.js`. Il service worker dà la scocca (i file di `FILE`, la
+  pagina «/» con qualunque indirizzo) sempre dalla copia della sua `VERSIONE`, anche con la rete buona: una pagina non mescola file
+  di due versioni e si apre anche mentre il server riparte. La versione nuova arriva con il service worker nuovo e la barra
+  «Aggiornamento pronto – Ricarica» (#654). Le altre pagine (Privacy, Termini, Crediti) chiedono prima alla rete; con 502, 503 o 504
+  danno la copia salvata, senza rete e senza copia «Nessuna connessione». Con gli account, se `/api/account/me` riceve un 5xx o
+  una risposta non JSON, `controllaAccesso` di `app.js` riprende l'account salvato come senza rete. In locale un file della web appena cambiato si vede
+  con la ricarica forzata (Ctrl+Maiusc+R, una volta) o, in Chrome, con Strumenti per sviluppatori > Application > Service workers >
+  «Update on reload»; altrimenti il browser mostra la copia del service worker. Test: `tests/test_sw_web.py`,
+  `tests/browser/test_web_installata.py`.
   Grafica B «Distinta» (in vigore dal 6/11/2026, `docs/DESIGN.md`, «Web: grafica B»; spec e piano in `docs/superpowers/`): una sola
   testata in `index.html` (nome disegnato, `nav` con le 4 schede come collegamenti `<a href="/?vista=…">`, ricerca, ingranaggio) che
   al telefono diventa la barra in basso; `pagina(html, opz)` in `app.js` scrive titolo (`h1`) e riga di stato di ogni schermata;
