@@ -130,10 +130,54 @@ def forma_di_domani(web) -> tuple[dict, list[str]]:
     d["sintesi"] = {**d["sintesi"], "senza_consigliata_mostrata": 1}
     d["precisione"]["confronto"] = {"giornate": 1, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 0, "punti": 1.5,
                                     "media_consigliata": 80.0, "media_tua": 78.5, "senza_istantanea": 1, "stessi_titolari": 1} | nota
+    for g in d["giornate"]:                                                     # i campi di #672 e #674, come li scrive il server
+        con_la_nota(g, "mostrata" if g["consigliata"]["origine"] == "mostrata" else "non_salvata")
+        g["fatti_e_attesi"] = fatti_e_attesi(g)
     return d, dentro
 
 
 NOTA_UNA_FUORI = "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata."
+PERCHE = {"non_salvata": ("diario.allora_non_salvata", "quella mostrata prima della scadenza non era stata salvata"),
+          "fuori_rosa": ("diario.allora_fuori_rosa", "in quella mostrata prima della scadenza c'è chi non è più nella tua rosa")}
+
+
+def con_la_nota(g: dict, allora: str) -> None:
+    """La consigliata di allora e la frase della giornata su di lei, come le scrive il server (#674, `diario.nota_consigliata`): con
+    la tua formazione «Qui il confronto… non c'è», con la consigliata rifatta «Questa è rifatta…», niente con la copia alla scadenza
+    o con la consigliata mostrata."""
+    g["consigliata_di_allora"], g["nota_consigliata"], g["nota_consigliata_frase"] = allora, None, None
+    if allora == "mostrata" or (not g.get("schierata") and g.get("automatica")):
+        return
+    chiave, perche = PERCHE[allora]
+    fuori, testo = ("diario.senza_confronto", "Qui il confronto con la consigliata non c'è: {}.") if g.get("schierata") else (
+        "diario.rifatta", "Questa è rifatta con i dati di allora: {}.")
+    g["nota_consigliata"] = testo.format(perche)
+    g["nota_consigliata_frase"] = {"chiave": fuori, "param": {"perche": {"chiave": chiave, "param": {}}}}
+
+
+def fatti_e_attesi(g: dict, meglio=(), peggio=()) -> dict:
+    """Il campo `fatti_e_attesi` di una giornata (#672): i punti della formazione che conta e chi ha fatto meglio o peggio del
+    previsto, [(nome, differenza)]. La frase è quella che scrive il server (`diario.fatti_e_attesi`)."""
+    def nomi(righe):
+        parti = [{"chiave": "diario.scarto_giocatore", "param": {"nome": n, "d": f"{d:+.1f}"}} for n, d in righe]
+        return parti[0] if len(parti) == 1 else {"chiave": "elenco_e", "param": {"parti": parti, "sep": ", "}}
+
+    def scritti(righe):
+        parti = [f"{n} ({'+' if d > 0 else '−'}{virgola(abs(d))})" for n, d in righe]
+        return " e ".join(parti)
+    testo = frase = None
+    if meglio and peggio:
+        testo = f"Meglio del previsto: {scritti(meglio)}. Peggio: {scritti(peggio)}."
+        frase = {"chiave": "diario.meglio_peggio", "param": {"meglio": nomi(meglio), "peggio": nomi(peggio)}}
+    elif meglio or peggio:
+        chi = "meglio" if meglio else "peggio"
+        testo = f"{chi.capitalize()} del previsto: {scritti(meglio or peggio)}."
+        frase = {"chiave": f"diario.{chi}", "param": {chi: nomi(meglio or peggio)}}
+    giocatore = lambda n, d: {"id": 0, "nome": n, "ruolo": "C", "atteso": 6.0, "preso": round(6.0 + d, 1), "differenza": d}  # noqa: E731
+    f = undici(g)
+    formazione = "schierata" if g.get("schierata") else "automatica" if g.get("automatica") else "consigliata"
+    return {"formazione": formazione, "atteso": f["atteso"], "fatti": f["reale"], "differenza": round(f["reale"] - f["atteso"], 1),
+            "meglio": [giocatore(*x) for x in meglio], "peggio": [giocatore(*x) for x in peggio], "testo": testo, "frase": frase}
 
 
 # ---------------------------------------------------------------- una pagina, a un tocco
@@ -286,6 +330,81 @@ def test_con_la_consigliata_mostrata_la_riga_dice_i_cambi_e_quanto_sono_valsi(we
     assert "giornate in cui la consigliata ha fatto meglio della tua" in tutto, tutto
     assert NOTA_UNA_FUORI in tutto, tutto                                       # la frase del server, così com'è
     assert not web.errori_mostrati() and not web.errori_console
+
+
+def test_la_frase_sulla_consigliata_di_allora_e_quella_del_server(web):
+    """#674: la consigliata di allora era salvata ma dentro c'è chi poi è stato ceduto. La pagina non scrive più di suo «non era
+    stata salvata»: mostra la frase del server (`nota_consigliata`), sotto la tua formazione e sopra la consigliata rifatta."""
+    solo(web, "prima")
+    d, _ = forma_di_domani(web)
+    tua, rifatta = d["giornate"][2], d["giornate"][3]                           # la tua formazione; i punti della consigliata rifatta
+    assert tua.get("schierata") and not rifatta.get("schierata") and not rifatta.get("automatica")
+    con_la_nota(tua, "fuori_rosa")
+    con_la_nota(rifatta, "fuori_rosa")
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE)
+    for g, frase in ((tua, "Qui il confronto con la consigliata non c'è: in quella mostrata prima della scadenza c'è chi non è più "
+                           "nella tua rosa."),
+                     (rifatta, "Questa è rifatta con i dati di allora: in quella mostrata prima della scadenza c'è chi non è più "
+                               "nella tua rosa.")):
+        tocca(web, riga(web, nome_di(g)))
+        testo = " ".join(dettaglio(web, nome_di(g)).inner_text().split())
+        assert frase in testo and "non era stata salvata" not in testo, testo
+    assert not web.errori_mostrati() and not web.errori_console
+
+
+def test_senza_la_frase_del_server_nessuna_nota_sulla_consigliata_di_allora(web):
+    """Con la consigliata mostrata o con la copia alla scadenza il server non manda la frase, e la pagina non ne scrive una sua."""
+    solo(web, "prima")
+    d, _ = forma_di_domani(web)
+    g = d["giornate"][3]
+    g["nota_consigliata"] = g["nota_consigliata_frase"] = None
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE)
+    tocca(web, riga(web, nome_di(g)))
+    testo = dettaglio(web, nome_di(g)).inner_text()
+    assert "Questa è rifatta" not in testo and "non era stata salvata" not in testo, testo
+
+
+# ---------------------------------------------------------------- fatti contro attesi, e chi ha fatto meglio o peggio (#672)
+def test_la_riga_dice_di_quanto_i_punti_sono_sopra_o_sotto_gli_attesi(web):
+    """La differenza è quella del server (`fatti_e_attesi.differenza`): la pagina la scrive con il segno, non la ricalcola (qui il
+    server finto ne dà una diversa da fatti meno attesi, apposta)."""
+    d = web.registrata("/api/diario")
+    sopra, sotto, pari, senza = d["giornate"][:4]
+    sopra["fatti_e_attesi"] = {**fatti_e_attesi(sopra), "differenza": 9.2}
+    sotto["fatti_e_attesi"] = {**fatti_e_attesi(sotto), "differenza": -3.1}
+    pari["fatti_e_attesi"] = {**fatti_e_attesi(pari), "differenza": 0.0}
+    senza.pop("fatti_e_attesi", None)                                           # una risposta di prima, senza il campo
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE)
+    testo = {g["giornata"]: " ".join(riga(web, nome_di(g)).inner_text().split()) for g in (sopra, sotto, pari, senza)}
+    assert "+9,2 sul previsto" in testo[sopra["giornata"]], testo
+    assert "−3,1 sul previsto" in testo[sotto["giornata"]], testo
+    assert "come previsto" in testo[pari["giornata"]] and "sul previsto" not in testo[pari["giornata"]], testo
+    assert "previsto" not in testo[senza["giornata"]], testo
+    assert f"attesi {virgola(undici(sopra)['atteso'])}" in testo[sopra["giornata"]]       # i punti attesi restano
+    assert not web.errori_console and not web.scorre_di_lato()
+
+
+@pytest.mark.parametrize("larghezza", [390, PC])
+def test_il_dettaglio_dice_chi_ha_fatto_meglio_o_peggio_del_previsto(web, larghezza):
+    solo(web, "prima")
+    d = web.registrata("/api/diario")
+    g, altra = d["giornate"][:2]
+    a, b, c = (x["nome"] for x in undici(g)["titolari"][:3])
+    g["fatti_e_attesi"] = fatti_e_attesi(g, meglio=[(a, 3.9), (b, 2.0)], peggio=[(c, -2.5)])
+    altra["fatti_e_attesi"] = fatti_e_attesi(altra)                             # tutti come previsto: niente frase
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE, larghezza=larghezza)
+    if riga(web, nome_di(g)).get_attribute("aria-expanded") != "true":
+        tocca(web, riga(web, nome_di(g)))
+    testo = " ".join(dettaglio(web, nome_di(g)).inner_text().split())
+    assert f"Meglio del previsto: {a} (+3,9) e {b} (+2,0). Peggio: {c} (−2,5)." in testo, testo
+    assert dettaglio(web, nome_di(g)).get_by_role("row").count() == 12          # gli 11 restano tutti nella tabella
+    tocca(web, riga(web, nome_di(altra)))
+    assert "del previsto" not in dettaglio(web, nome_di(altra)).inner_text()
+    assert not web.errori_console and not web.scorre_di_lato()
 
 
 # ---------------------------------------------------------------- un solo pulsante di correzione
