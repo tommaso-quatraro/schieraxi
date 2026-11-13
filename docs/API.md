@@ -600,6 +600,14 @@ giocatori di un anticipo già cominciato hanno già `stato_partita`, `titolarita
 formazione non si spostano più (dal 5/11/2026, #373): `GET /api/formazione` li elenca in `bloccati`, e un salvataggio o un ritorno
 alla consigliata che li sposta risponde `400` `giocatore_bloccato` (vedi `POST /api/formazione/valuta`). Partite
 giocate 7 giorni o più prima del gruppo principale (metà giornata giocata e il resto rinviato) fissano la scadenza come prima.
+Le partite rinviate non tengono ferma la giornata da giocare (`giornata` di `/api/oggi`, `prossima_giornata` di `/api/stato`), quante
+che siano (#659): con metà giornata giocata e il resto rinviato a settimane dopo (il turno, cioè il recupero, comincia dopo
+la giornata successiva) si passa alla giornata successiva e non si torna indietro per il recupero. Partite giocate settimane
+prima di un turno che comincia prima della giornata successiva, ed entro la fine del turno della giornata precedente, sono
+**anticipi lontani** (Supercoppa, coppe; `turno.lontano`); giocate dopo la giornata precedente (per esempio prima di una sosta)
+sono metà giornata e fissano la scadenza, che non torna mai indietro. Con gli anticipi lontani:
+la giornata resta da giocare finché il suo turno ha partite da cominciare, `inizio` e `scadenza` vengono dal turno (non
+dall'anticipo), i loro giocatori sono in `bloccati` come per un anticipo e tengono il loro voto con qualunque regola dei rinvii.
 
 Una partita della giornata è **rinviata** se non è stata giocata e non sta nel turno (regola unica di `fanta/turno.py`): senza data
 o spostata a un recupero, anche settimane dopo. Appena il recupero è giocato non è più rinviata: i suoi voti valgono per la sua
