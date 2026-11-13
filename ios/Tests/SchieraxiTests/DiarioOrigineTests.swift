@@ -5,9 +5,10 @@ import Testing
 /// Diario (#614), pagina Giornate dal passo 2 di #673: il titolo della consigliata segue `consigliata.origine`, come la web (#617
 /// mostra il confronto solo con «mostrata»; `tests/test_diario_nota_web.py` controlla che la fixture abbia i campi del server).
 /// Con «mostrata» quei punti sono della consigliata che SchieraXI mostrava prima della scadenza, non di una ricostruzione. Un server
-/// di prima non manda `origine`: niente confronto e niente nota.
-/// La fixture `diario-origine.json` (dati inventati) ha le voci nelle due forme: giornate 11, 10 e 9 con `origine` (server
-/// nuovo), giornate 8 e 7 senza (server di prima).
+/// di prima non manda `origine`: niente confronto e niente nota. La nota sotto la consigliata rifatta è la frase del server
+/// (`nota_consigliata`, #674), così com'è.
+/// La fixture `diario-origine.json` (dati inventati) ha le voci nelle due forme: giornate 11, 10 e 9 con `origine` e
+/// `nota_consigliata` (server nuovo), giornate 8 e 7 senza (server di prima).
 @MainActor
 struct DiarioOrigineTests {
     private func voce(_ giornata: Int) throws -> VoceDiario {
@@ -28,6 +29,11 @@ struct DiarioOrigineTests {
         #expect(ricostruita.consigliata?.origine == "ricostruita")
         #expect(diPrima.consigliata?.origine == nil)
         #expect(diPrima.consigliata?.reale == 78.5)
+        // la frase del server sulla consigliata di allora (#674): `null` con la consigliata mostrata, assente da un server di prima
+        #expect(mostrata.notaConsigliata == nil)
+        #expect(ricostruita.notaConsigliata
+                == "Questa è rifatta con i dati di allora: in quella mostrata prima della scadenza c'è chi non è più nella tua rosa.")
+        #expect(diPrima.notaConsigliata == nil)
     }
 
     @Test("Pagina Giornate: la tua formazione si chiama tua, la consigliata rifatta dice che è rifatta")
@@ -38,7 +44,8 @@ struct DiarioOrigineTests {
         #expect(tua.titolo == Catalogo.Giornate.formazioneTua(modulo: "3-4-3"))
         let ricostruita = try #require(p.dettaglio("2026-27-10"))
         #expect(ricostruita.titolo == Catalogo.Giornate.formazioneRifatta(modulo: "4-4-2"))
-        #expect(ricostruita.nota == Catalogo.Giornate.rifattaNota)
+        #expect(ricostruita.nota
+                == "Questa è rifatta con i dati di allora: in quella mostrata prima della scadenza c'è chi non è più nella tua rosa.")
         // un server di prima non manda `origine`: niente nota, come la web
         let diPrima = try #require(p.dettaglio("2026-27-8"))
         #expect(diPrima.titolo == Catalogo.Giornate.formazioneRifatta(modulo: "4-3-3"))

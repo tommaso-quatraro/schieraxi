@@ -15,7 +15,8 @@
                                   {"id": 3, "nome": "Attaccante Tre", "ruolo": "A", "p_voto": 0.85, "fv_atteso": 7.4}],
                      "panchina": [{"id": 4, "nome": "Difensore Quattro", "ruolo": "D", "p_voto": 0.7, "fv_atteso": 5.8}]},
       "giocatori": [{"id": 1, "p_voto": 0.97, "fv_atteso": 6.3, "fv": 5.5}, {"id": 4, "p_voto": 0.6, "fv_atteso": 5.6, "fv": 6.5},
-                    {"id": 5, "p_voto": 0.8, "fv_atteso": 6.9, "fv": null}, {"id": 2, "p_voto": 0.9, "fv_atteso": 6.0, "fv": 7.0}]
+                    {"id": 5, "p_voto": 0.8, "fv_atteso": 6.9, "fv": null}, {"id": 2, "p_voto": 0.9, "fv_atteso": 6.0, "fv": 7.0}],
+      "consigliata_di_allora": "mostrata", "nota_consigliata": null, "nota_consigliata_frase": null
     },
     {
       "stagione": "2026-27", "giornata": 10, "giornata_lega": 7, "modificabile": true,
@@ -37,7 +38,10 @@
       "stagione": "2026-27", "giornata": 8, "giornata_lega": 5, "modificabile": true,
       "consigliata": {"modulo": "4-3-3", "atteso": 74.0, "reale": 78.5, "origine": "ricostruita",
                       "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 9, "nome": "Senza Numeri", "ruolo": "C"}]},
-      "schierata": null, "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.4, "fv": 7.0}]
+      "schierata": null, "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.4, "fv": 7.0}],
+      "consigliata_di_allora": "non_salvata",
+      "nota_consigliata": "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata.",
+      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
     },
     {
       "stagione": "2026-27", "giornata": 7, "giornata_lega": 4, "modificabile": true,
@@ -45,7 +49,10 @@
                       "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
       "schierata": {"modulo": "3-5-2", "reale": 64.0, "tipo": "manuale",
                     "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
-      "automatica": null, "istantanea": null
+      "automatica": null, "istantanea": null,
+      "consigliata_di_allora": "non_salvata",
+      "nota_consigliata": "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata.",
+      "nota_consigliata_frase": {"chiave": "diario.senza_confronto", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
     },
     {
       "stagione": "2026-27", "giornata": 6, "giornata_lega": 3, "modificabile": true,
@@ -59,7 +66,10 @@
       "stagione": "2025-26", "giornata": 38, "giornata_lega": null, "modificabile": false,
       "consigliata": {"modulo": "4-4-2", "atteso": 68.0, "reale": 61.5, "origine": "ricostruita",
                       "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
-      "schierata": null, "automatica": null, "istantanea": null
+      "schierata": null, "automatica": null, "istantanea": null,
+      "consigliata_di_allora": "non_salvata",
+      "nota_consigliata": "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata.",
+      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
     }
   ],
   "scelte_tue": {
