@@ -45,6 +45,24 @@ MAX_NOME_LEGA = 100                # caratteri del nome della lega
 MAX_TESTO_MODULO = 20              # caratteri di un modulo («3-4-3», anche con qualche spazio)
 MAX_SOGLIE = 20                    # fasce del modificatore difesa
 MAX_CHIAVE_RINVIO = 20             # caratteri di una giornata delle eccezioni («2026-27/12»)
+# Intervalli dei numeri (#663): larghi rispetto ai regolamenti veri (la web e l'iPhone lasciano scegliere bonus da 0 a 20, malus da
+# -20 a 0, crediti fino a 5.000, da 3 a 6 difensori, medie delle fasce da 4 a 9), servono solo contro numeri enormi che nei conti
+# diventano infiniti e rompono tutte le schermate. Si controllano al salvataggio, come i tetti di misura: le regole salvate prima
+# si leggono ancora (la schermata Regole le mostra e le si corregge), ma per salvarle di nuovo vanno riportate negli intervalli.
+MAX_BONUS = 100                    # bonus e malus (anche le fasce del modificatore e il fattore campo), da -100 a 100
+MAX_VOTO = 10                      # voto di chi resta senza sostituto e media delle fasce del modificatore difesa, da 0 a 10
+MAX_CREDITI = 100_000              # crediti iniziali, come il tetto dei crediti delle squadre
+MAX_DIFENSORI = 10                 # difensori minimi del modificatore difesa (i giocatori di movimento sono 10)
+MAX_SOGLIA_PRIMO_GOL = 200         # partite testa a testa: punti del primo gol (di solito 66)
+MAX_FASCIA_GOL = 100               # partite testa a testa: ampiezza delle fasce dei gol (di solito 6)
+_RUOLO_DEL_GOL = {"P": "del portiere", "D": "del difensore", "C": "del centrocampista", "A": "dell'attaccante"}
+_INTERVALLI_BONUS = {              # campo di `Bonus` -> inizio della frase dell'errore (vedi Regole.problemi_di_intervallo)
+    "rigore_segnato": "il bonus per il rigore segnato deve", "assist": "il bonus per l'assist deve",
+    "rigore_parato": "il bonus per il rigore parato deve", "rigore_sbagliato": "il malus per il rigore sbagliato deve",
+    "autogol": "il malus per l'autogol deve", "gol_subito_portiere": "il malus per ogni gol subito dal portiere deve",
+    "portiere_imbattuto": "il bonus per il portiere imbattuto deve", "ammonizione": "il malus per l'ammonizione deve",
+    "espulsione": "il malus per l'espulsione deve", "mvp": "il bonus per il migliore in campo deve",
+}
 
 
 class RegoleTroppoGrandi(ValueError):
@@ -153,10 +171,35 @@ class Regole:
         return p
 
     def problemi(self, misure: bool = True) -> list[str]:
-        """Tutto ciò che non va. `misure=False` salta i tetti di misura (per leggere le regole salvate prima dei tetti)."""
+        """Tutto ciò che non va. `misure=False` salta i tetti di misura e gli intervalli dei numeri (per leggere le regole salvate
+        prima dei tetti e degli intervalli)."""
         p = self.problemi_di_misura() if misure else []
         if p:
             return p
+        return self._problemi_di_valore(intervalli=misure)
+
+    def problemi_di_intervallo(self) -> list[str]:
+        """Numeri fuori dagli intervalli (MAX_BONUS e gli altri sopra). Da chiamare con i tipi già controllati."""
+        md = self.modificatore_difesa
+        # (inizio della frase, valori, minimo, massimo): la frase continua con «essere tra minimo e massimo»
+        controlli = [(f"il bonus per il gol {_RUOLO_DEL_GOL.get(ruolo, ruolo)} deve", [v], -MAX_BONUS, MAX_BONUS)
+                     for ruolo, v in self.bonus.gol.items()]
+        controlli += [(frase, [getattr(self.bonus, nome)], -MAX_BONUS, MAX_BONUS) for nome, frase in _INTERVALLI_BONUS.items()]
+        controlli += [
+            ("il voto di chi resta senza sostituto deve", [v for v in [self.voto_senza_sostituto] if v is not None], 0, MAX_VOTO),
+            ("i crediti iniziali devono", [self.crediti_iniziali], 0, MAX_CREDITI),
+            ("i difensori minimi del modificatore difesa devono", [md.min_difensori], 0, MAX_DIFENSORI),
+            ("la media di ogni fascia del modificatore difesa deve", [media for media, _ in md.soglie], 0, MAX_VOTO),
+            ("il bonus di ogni fascia del modificatore difesa deve", [bonus for _, bonus in md.soglie], -MAX_BONUS, MAX_BONUS),
+            ("il fattore campo deve", [self.fattore_campo], -MAX_BONUS, MAX_BONUS),
+            ("i punti del primo gol (partite testa a testa) devono", [self.soglia_primo_gol], 0, MAX_SOGLIA_PRIMO_GOL),
+            ("l'ampiezza delle fasce dei gol (partite testa a testa) deve", [self.ampiezza_fascia_gol], 0, MAX_FASCIA_GOL),
+        ]
+        return [f"{frase} essere tra {_cifra(minimo)} e {_cifra(massimo)}" for frase, valori, minimo, massimo in controlli
+                if any(not minimo <= v <= massimo for v in valori)]
+
+    def _problemi_di_valore(self, intervalli: bool) -> list[str]:
+        """Tipi e valori (senza i tetti di misura); `intervalli` aggiunge gli intervalli dei numeri."""
         p = self._problemi_di_tipo()
         if p:  # con tipi sbagliati gli altri controlli non hanno senso
             return p
@@ -224,6 +267,8 @@ class Regole:
         elif f is not None:
             for i, x in enumerate(f):
                 p += _problemi_periodo(f"finestre_scambio[{i}]", x)
+        if intervalli:
+            p += self.problemi_di_intervallo()
         return p
 
     def _problemi_di_tipo(self) -> list[str]:
@@ -320,6 +365,11 @@ def _numero(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)      # niente inf e nan
 
 
+def _cifra(n: int) -> str:
+    """Un numero intero scritto all'italiana: 100000 -> «100.000»."""
+    return f"{n:,}".replace(",", ".")
+
+
 @lru_cache(maxsize=256)
 @lru_cache(maxsize=512)          # chiamata decine di migliaia di volte per ricerca (scambi, formazione): il testo del modulo è sempre lo stesso
 def modulo_in_numeri(modulo: str) -> tuple[int, int, int]:
@@ -357,11 +407,12 @@ def _da_dict(classe, dati: dict[str, Any]):
 
 
 def _controlla(regole: Regole, misure: bool = True) -> Regole:
-    """Errore se le regole non vanno: RegoleTroppoGrandi oltre i tetti di misura (se `misure`), ValueError per il resto."""
+    """Errore se le regole non vanno: RegoleTroppoGrandi oltre i tetti di misura (se `misure`), ValueError per il resto (anche
+    per i numeri fuori dagli intervalli, controllati solo con `misure`: il server risponde 400 con la frase)."""
     troppo = regole.problemi_di_misura() if misure else []
     if troppo:
         raise RegoleTroppoGrandi("Regole non valide:\n- " + "\n- ".join(troppo))
-    problemi = regole.problemi(misure=False)
+    problemi = regole._problemi_di_valore(intervalli=misure)
     if problemi:
         raise ValueError("Regole non valide:\n- " + "\n- ".join(problemi))
     return regole
@@ -372,7 +423,8 @@ def da_dict(dati: dict[str, Any], misure: bool = True) -> Regole:
 
 
 def carica(percorso: Path) -> Regole:
-    """Le regole salvate (o quelle di partenza se il file non c'è). Senza i tetti di misura: un file salvato prima dei tetti si legge ancora."""
+    """Le regole salvate (o quelle di partenza se il file non c'è). Senza i tetti di misura e gli intervalli dei numeri: un file
+    salvato prima si legge ancora."""
     if not percorso.exists():
         return Regole()
     return da_dict(json.loads(percorso.read_text(encoding="utf-8")), misure=False)

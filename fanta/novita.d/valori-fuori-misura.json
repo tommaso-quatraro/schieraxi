@@ -1,0 +1,11 @@
+{
+  "titolo": "Regole con numeri fuori misura: rifiutate con un messaggio chiaro",
+  "voci": [
+    "Regole della lega: un numero fuori misura (per esempio un bonus di miliardi o crediti iniziali negativi) non si salva più e il messaggio dice quale regola e fra quali numeri deve stare. Prima si salvava e poi Formazione, Oggi, Rosa e i widget davano errore finché la regola non si correggeva. I limiti sono molto larghi: nessun regolamento vero li supera.",
+    "Server: un numero di giocatore, invito o utente sbagliato (enorme o negativo) riceve la risposta «dati non validi» invece di un errore del server."
+  ],
+  "tecnico": [
+    "regole.Regole.problemi_di_intervallo (#663): bonus.gol.* e gli altri bonus.* da -100 a 100 (MAX_BONUS), voto_senza_sostituto da 0 a 10, crediti_iniziali da 0 a 100.000 (come i crediti delle squadre), modificatore_difesa.min_difensori da 0 a 10, soglie con media da 0 a 10 e bonus da -100 a 100, fattore_campo da -100 a 100, soglia_primo_gol da 0 a 200, ampiezza_fascia_gol da 0 a 100. Si controllano a ogni salvataggio (PUT /api/regole, PUT /api/regole/rinvio, regole --imposta, onboarding, ripristino di un backup) e rispondono 400 con «Regole non valide:» e una riga per campo con l'intervallo; carica() non li controlla, come per i tetti di misura: le regole salvate prima si leggono ancora (la schermata Regole le mostra e le si corregge).",
+    "GET /api/giocatore/{calciatore_id}: minimo 1 (prima solo il massimo, e un numero negativo enorme dava 500 in sqlite). DELETE /api/admin/inviti/{invito_id} e POST /api/admin/utenti/{utente_id}/rose: da 1 a 2^31-1 (rotte_account.MAX_ID), altrimenti 422 con campi. docs/openapi.json rigenerato, docs/API.md aggiornato. Un test nuovo trova da solo ogni parametro intero di percorso e di query (anche nelle dipendenze e nei router inclusi) e controlla che un numero enorme, positivo o negativo, non dia mai 500."
+  ]
+}
