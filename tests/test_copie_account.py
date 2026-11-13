@@ -1,11 +1,13 @@
 """Copie di sicurezza del database degli account (#653): le copie «prima della migrazione» non tolgono posto alle copie serali,
-scadono dopo backup.GIORNI_COPIE_MIGRAZIONE giorni e nascono leggibili solo dal proprietario.
+scadono dopo backup.GIORNI_COPIE_MIGRAZIONE giorni e nascono leggibili solo dal proprietario. Il giro serale stringe i permessi
+anche delle copie già presenti e non toglie mai la copia appena scritta, anche con l'orologio indietro (#690).
 Cartelle temporanee, account inventati, l'ora sempre passata come argomento (niente orologio vero)."""
 import contextlib
 import os
 import re
 import sqlite3
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -105,3 +107,110 @@ def test_le_copie_serali_non_scadono_per_eta(tmp_path):
     _data(vecchia, datetime(2026, 1, 1, 3, 30))
     backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
     assert vecchia.exists()
+
+
+# ---------------------------------------------------------------- copie già presenti (#690)
+def _copie_di_prima(cartella) -> None:
+    """Due serali e una copia «prima della migrazione» recente, nate prima della #688 con i permessi di sistema (leggibili da
+    tutti gli utenti della macchina): restano dopo il giro, perché rientrano nelle ultime 7 o non sono ancora scadute."""
+    cartella.mkdir()
+    copie = [cartella / "account-2026-11-10.sqlite", cartella / "account-2026-11-11.sqlite",
+             cartella / "account-prima-della-migrazione-5.sqlite"]
+    for p in copie:
+        p.write_bytes(b"copia")
+        p.chmod(0o644)
+        _data(p, ADESSO - timedelta(days=1))
+
+
+def _cartella_del_giro():
+    """La cartella delle copie del giro serale con gli account (database degli account senza utenti), con le copie di prima."""
+    account.apri().close()
+    cartella = percorsi.cartella_account() / "backup"
+    _copie_di_prima(cartella)
+    return cartella
+
+
+@pytest.mark.skipif(os.name != "posix", reason="i permessi «solo il proprietario» (600) esistono solo su Linux e macOS: su "
+                                               "Windows non si leggono, li prova la CI su Linux")
+def test_il_giro_serale_stringe_i_permessi_delle_copie_gia_presenti(multiutente):
+    from fanta import __main__ as cli
+    cartella = _cartella_del_giro()
+    cli._backup_per_utente(7, ADESSO)
+    permessi = {p.name: oct(p.stat().st_mode & 0o777) for p in cartella.iterdir()}
+    assert len(permessi) == 4 and set(permessi.values()) == {oct(0o600)}, permessi      # le tre di prima e quella nuova
+
+
+def test_il_giro_serale_chiede_solo_il_proprietario_per_ogni_copia_che_resta(multiutente, monkeypatch):
+    """Lo stesso dove i permessi veri non si leggono (Windows): ogni copia rimasta nella cartella, anche quelle di prima, riceve
+    600 (lettura e scrittura solo per il proprietario)."""
+    from fanta import __main__ as cli
+    cartella = _cartella_del_giro()
+    chiesti, vero = {}, os.chmod
+
+    def chmod(percorso, modo, *a, **k):
+        chiesti[Path(percorso)] = modo
+        return vero(percorso, modo, *a, **k)
+    monkeypatch.setattr(os, "chmod", chmod)
+    cli._backup_per_utente(7, ADESSO)
+    assert {p.name: m for p, m in chiesti.items() if p.parent == cartella} == {p.name: 0o600 for p in cartella.iterdir()}
+
+
+# ---------------------------------------------------------------- orologio indietro, copie datate nel futuro (#690)
+def test_la_copia_appena_scritta_resta_anche_con_l_orologio_indietro(tmp_path):
+    """L'orologio del server torna indietro (o nella cartella ci sono copie datate nel futuro): la copia di adesso ha un nome che
+    viene prima di tutte le altre. Resta lo stesso, e le copie serali restano `tieni`: esce la più vecchia per data del file."""
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    for giorno in range(13, 20):                                     # sette copie con una data dopo quella di adesso
+        copia = cartella / f"account-2026-11-{giorno}.sqlite"
+        copia.write_bytes(b"serale")
+        _data(copia, datetime(2026, 11, giorno, 3, 30))
+    scritta = backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
+    assert scritta == cartella / "account-2026-11-12.sqlite" and scritta.is_file()
+    serali = sorted(p.name for p in cartella.iterdir() if SERALE.fullmatch(p.name))
+    assert serali == ["account-2026-11-12.sqlite"] + [f"account-2026-11-{g}.sqlite" for g in range(14, 20)]
+
+
+def test_le_copie_serali_si_tengono_per_data_del_file_non_per_nome(tmp_path):
+    """Due copie con il nome e la data del file in disaccordo (per esempio una copia rimessa a mano nella cartella): si tiene la
+    più recente per data del file."""
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    nome_vecchio, nome_nuovo = cartella / "account-2026-11-01.sqlite", cartella / "account-2026-11-02.sqlite"
+    for copia, quando in ((nome_vecchio, ADESSO - timedelta(days=1)), (nome_nuovo, ADESSO - timedelta(days=5))):
+        copia.write_bytes(b"serale")
+        _data(copia, quando)
+    backup.copia_account(cartella, _origine(tmp_path), tieni=2, adesso=ADESSO)
+    assert nome_vecchio.exists() and not nome_nuovo.exists()
+
+
+def test_il_comando_dice_copiato_solo_se_la_copia_c_e(multiutente, monkeypatch, capsys):
+    """Se dopo il giro la copia del database degli account non c'è, il comando non dice «copiato»: lo dice come errore."""
+    from fanta import __main__ as cli
+    account.apri().close()                                           # il database degli account, senza utenti
+    sparita = percorsi.cartella_account() / "backup" / "account-2026-11-12.sqlite"
+    monkeypatch.setattr(backup, "copia_account", lambda *a, **k: sparita)
+    with pytest.raises(SystemExit) as uscita:
+        cli._backup_per_utente(7, ADESSO)
+    assert "copiato" not in capsys.readouterr().out
+    assert uscita.value.code and "account-2026-11-12.sqlite" in str(uscita.value.code)
+
+
+def test_permessi_non_ristretti_il_giro_serale_esce_con_errore_e_dice_quale_copia(multiutente, monkeypatch, capsys):
+    """Una copia che il giro non riesce a rendere leggibile solo dal proprietario (per esempio creata da un altro utente della
+    macchina): il comando esce con errore e ne dice il nome. Lo script serale scrive nel suo registro solo le uscite con errore."""
+    from fanta import __main__ as cli
+    _cartella_del_giro()
+    vero = os.chmod
+
+    def chmod(percorso, modo, *a, **k):
+        if os.path.basename(percorso) == "account-prima-della-migrazione-5.sqlite":
+            raise PermissionError(1, "file di un altro utente")
+        return vero(percorso, modo, *a, **k)
+    monkeypatch.setattr(os, "chmod", chmod)
+    with pytest.raises(SystemExit) as uscita:
+        cli._backup_per_utente(7, ADESSO)
+    assert "database degli account: copiato" in capsys.readouterr().out          # la copia di stanotte c'è
+    messaggio = str(uscita.value.code)
+    assert messaggio.startswith("Errore:") and "account-prima-della-migrazione-5.sqlite" in messaggio
+    assert "account-2026-11-10.sqlite" not in messaggio                          # le altre si sono strette

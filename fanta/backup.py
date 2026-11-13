@@ -278,7 +278,8 @@ COPIE_MIGRAZIONE = "account-prima-della-migrazione-*.sqlite"
 def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: datetime) -> Path | None:
     """Con gli account: una copia del database degli utenti (account.sqlite) con l'API di backup di SQLite, che è sicura anche
     mentre il server lo usa. Una al giorno (`adesso` dà il nome), ne tiene `tieni`. Nello stesso giro toglie le copie «prima della
-    migrazione» più vecchie di GIORNI_COPIE_MIGRAZIONE. Contiene gli hash delle password: il file lo legge solo chi lo ha creato."""
+    migrazione» più vecchie di GIORNI_COPIE_MIGRAZIONE. Contiene gli hash delle password, ma i permessi qui non si toccano: li
+    stringe `stringi_permessi`, che il giro serale chiama subito dopo e che dice quali copie non è riuscita a stringere."""
     import sqlite3
     if not origine.exists():
         return None
@@ -290,15 +291,18 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: date
     finally:
         copia.close()
         sorgente.close()
-    try:
-        destinazione.chmod(0o600)
-    except OSError:
-        pass
     # Si contano e si tolgono solo le copie serali (data nel nome): le copie «prima della migrazione» stanno nella stessa
     # cartella e, in ordine di nome, vengono dopo quelle con la data; contate qui toglievano posto alle serali, fino a cancellare
-    # quella appena scritta (#653).
-    serali = sorted(p for p in cartella.glob("account-*.sqlite") if COPIA_SERALE.fullmatch(p.name))
-    for vecchia in serali[:-tieni]:
+    # quella appena scritta (#653). La copia appena scritta non si toglie mai e le altre si tengono per data del file, non per
+    # nome: con l'orologio tornato indietro, o con copie datate nel futuro, il nome di adesso viene prima degli altri (#690).
+    altre = []
+    for serale in cartella.glob("account-*.sqlite"):
+        if serale != destinazione and COPIA_SERALE.fullmatch(serale.name):
+            try:
+                altre.append((serale.stat().st_mtime, serale.name, serale))
+            except FileNotFoundError:
+                pass                                 # già tolta (da un altro giro): va bene
+    for _, _, vecchia in sorted(altre, reverse=True)[max(0, tieni - 1):]:
         vecchia.unlink(missing_ok=True)
     scadenza = (adesso - timedelta(days=GIORNI_COPIE_MIGRAZIONE)).timestamp()
     for copia in cartella.glob(COPIE_MIGRAZIONE):
@@ -308,6 +312,22 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: date
         except FileNotFoundError:
             pass                                     # già tolta (da un altro giro): va bene
     return destinazione
+
+
+def stringi_permessi(cartella: Path) -> list[str]:
+    """Lettura e scrittura solo per il proprietario (600) a ogni copia del database degli account nella cartella: nelle copie ci
+    sono nomi, email e impronte delle password. Anche a quelle già presenti: le copie nate prima della #688 avevano i permessi di
+    sistema (di solito leggibili dagli altri utenti della macchina) e restano fino a 7 giorni (#690). Restituisce i nomi dei file
+    che non è riuscita a stringere (per esempio di un altro utente della macchina): chi chiama lo deve far vedere."""
+    non_ristrette = []
+    for copia in sorted(cartella.glob("account-*.sqlite")):
+        try:
+            copia.chmod(0o600)
+        except FileNotFoundError:
+            pass                                     # già tolta (da un altro giro): va bene
+        except OSError:
+            non_ristrette.append(copia.name)
+    return non_ristrette
 
 
 def controlla(backup: Any) -> dict[str, Any]:
