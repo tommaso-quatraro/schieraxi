@@ -320,7 +320,7 @@ def scambio(db: sqlite3.Connection, codice: str, verificatore: str, utente_sessi
         evento("social_accesso", provider="google", id=esito["sub"][:6], ip=ip)
         if nuovo_dispositivo:                        # stesso avviso dell'accesso con password: «sei stato tu?»
             from . import posta
-            posta.invia(posta.modello_accesso_nuovo(email_utente, dispositivo, adesso.strftime("%d/%m/%Y %H:%M UTC")))
+            posta.invia(posta.modello_accesso_nuovo(email_utente, dispositivo, posta.ora_italiana(adesso)))
         return {"stato": "ok", "utente": utente, "token": token}
     if esito["email"] and esito["verificata"] and account_email._gia_di_un_account(db, esito["email"]):
         db.execute("UPDATE flussi_social SET esito = NULL WHERE id = ?", (riga["id"],))
@@ -362,7 +362,7 @@ def _collega(db: sqlite3.Connection, utente_id: int, esito: dict, adesso: dateti
     avviso = db.execute("SELECT email FROM utenti WHERE id = ?", (utente_id,)).fetchone()["email"]
     if avviso:                                       # chi ha un'email verificata sa subito che è stato collegato un accesso nuovo
         from . import posta
-        posta.invia(posta.modello_google_collegato(avviso, adesso.strftime("%d/%m/%Y %H:%M UTC")))
+        posta.invia(posta.modello_google_collegato(avviso, posta.ora_italiana(adesso)))
     return {"stato": "collegato", "accessi": accessi(db, utente_id)}
 
 
