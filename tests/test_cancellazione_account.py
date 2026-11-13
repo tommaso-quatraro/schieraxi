@@ -5,6 +5,7 @@
 - Se la cartella non si cancella tutta, l'errore non è muto: registro di sicurezza (lo vede l'amministratore) e registro del servizio.
 - `python -m fanta cartelle-senza-account` trova le cartelle rimaste senza account; le cancella solo con `--esegui`.
 - Le scritture degli utenti vivi restano come prima.
+- Un calcolo della Formazione ancora in coda quando l'account si elimina non rimette il suo numero nelle consigliate (#690).
 Dati inventati, cartelle temporanee, niente orologio vero.
 """
 import contextlib
@@ -12,12 +13,14 @@ import json
 import logging
 import os
 import sqlite3
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from fanta import account, calcolo, consigli, contesto, percorsi, push, registro
+from fanta import account, calcolo, consigli, contesto, percorsi, push, registro, server
 from fanta.__main__ import main
 
 from test_account_http import PASSWORD, cliente, registra
@@ -398,6 +401,54 @@ def test_cartelle_senza_account_toglie_i_numeri_rimasti_nelle_consigliate(ambien
     main(["cartelle-senza-account", "--esegui"])
     assert numeri_nelle_consigliate() == {vivo}
     assert "di-chi-se-ne-e-andato" not in json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def formazione_in_coda(ambiente, calciatori, ora_fissa, monkeypatch):
+    """La Formazione vera passa dalla coda dei calcoli; il calcolo, invece di durare, aspetta il «via» e dà una consigliata da
+    ricordare (11 titolari). Rose importate senza rete, giornata 9."""
+    monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: "2026-27")
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
+    stato = {"via": threading.Event(), "finiti": 0}
+
+    def pronta(db, s, giornata, regole, simulazioni):
+        stato["via"].wait(10)
+        stato["finiti"] += 1
+        return CONSIGLIATA | {"squadra": s.nome, "giornata": giornata}
+    monkeypatch.setattr(consigli, "_formazione_pronta", pronta)
+    calcolo.cache.clear()
+    yield stato
+    stato["via"].set()
+    calcoli_finiti()
+    calcolo.cache.clear()
+
+
+def calcoli_finiti(secondi: float = 10) -> None:
+    fine = time.monotonic() + secondi
+    while calcolo.in_corso() and time.monotonic() < fine:
+        time.sleep(0.01)
+    assert calcolo.in_corso() == 0
+
+
+def test_calcolo_della_formazione_in_coda_non_rimette_il_numero_dopo_l_eliminazione(formazione_in_coda):
+    """#690: l'utente apre la Formazione, il calcolo parte in coda (202, «sto calcolando») e intanto lui elimina l'account. Il
+    calcolo finisce dopo la pulizia delle consigliate già mostrate: il suo numero non ci torna, né con il calcolo finito né con
+    l'app che riprova (la sessione non c'è più). Per confronto, un account vivo della stessa lega che vede lo stesso risultato
+    viene ricordato: la prova sa vedere un numero scritto."""
+    (c, uid), (vivo, vivo_id) = nuovo_utente("marco"), nuovo_utente("luca")
+    for cliente_ in (c, vivo):                                       # stessa lega: stessa rosa, stesso calcolo
+        assert cliente_.post("/api/rose/testo", json={"testo": "Mia\nP\tSommer\t10\n"}).status_code == 200
+        assert cliente_.put("/api/mia-squadra", json={"nome": "Mia"}).status_code == 200
+    assert c.get("/api/formazione").status_code == 202
+    elimina(c)
+    formazione_in_coda["via"].set()
+    calcoli_finiti()
+    assert formazione_in_coda["finiti"] == 1                         # il calcolo in coda è finito davvero, dopo l'eliminazione
+    assert c.get("/api/formazione").status_code == 401               # l'app riprova: non è più di nessuno
+    assert uid not in consigli.numeri_ricordati()
+    assert vivo.get("/api/formazione").status_code == 200            # risultato già pronto, nessun calcolo nuovo
+    assert consigli.numeri_ricordati() == {vivo_id} and formazione_in_coda["finiti"] == 1
 
 
 def test_segno_non_scritto_registrato(ambiente):
