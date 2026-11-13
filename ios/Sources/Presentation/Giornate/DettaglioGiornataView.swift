@@ -44,7 +44,7 @@ struct DettaglioGiornataView: View {
                         .multilineTextAlignment(.leading)
                         .frame(minHeight: Tema.areaTocco)
                 }
-                .buttonStyle(.bordered)
+                .pulsanteVetro()
             }
         }
         .padding(.vertical, 6)
