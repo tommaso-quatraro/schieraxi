@@ -513,14 +513,15 @@ def accendi_qui(web) -> None:
     riga_qui(web).click()
 
 
-def test_la_frase_dell_interruttore_dice_che_arrivano_anche_gli_altri_avvisi(web):
-    """Il server manda ancora gli avvisi secondo le scelte di prima (promemoria, cambi, riepilogo, reparto scoperto): la frase sotto
-    l'interruttore non promette solo il promemoria e i cambi (la riduzione a due è l'issue #676)."""
+def test_la_frase_dell_interruttore_dice_quali_avvisi_arrivano(web):
+    """Dal #676 il server manda solo due avvisi, qualunque fossero le scelte di prima: la frase sotto l'interruttore dice quali
+    (il promemoria, che tace con la spunta «L'ho messa», e il cambio della formazione) e non promette altro."""
     solo(web, "prima")
     notifiche_finte(web)
     web.apri("/?vista=impostazioni")
     frase = riga_qui(web).inner_text()
-    assert "gli altri avvisi" in frase, frase
+    assert "promemoria prima della scadenza" in frase and "«L'ho messa»" in frase, frase
+    assert "cambia la formazione da schierare" in frase and "altri avvisi" not in frase, frase
 
 
 def test_accendere_gli_avvisi_manda_un_avviso_di_prova(web):
