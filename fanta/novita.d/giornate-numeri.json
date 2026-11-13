@@ -1,8 +1,8 @@
 {
   "titolo": "Giornate: di quanto sei andato sopra o sotto il previsto, e chi ha fatto meglio o peggio",
   "voci": [
-    "Giornate: ogni riga dice di quanto i punti fatti sono andati sopra o sotto quelli attesi, per esempio «+9,2 sul previsto».",
-    "Toccando una giornata, una riga dice chi ha fatto meglio e chi peggio del previsto di almeno un punto, al massimo due per parte, con quanto.",
+    "Giornate (web): ogni riga dice di quanto i punti fatti sono andati sopra o sotto quelli attesi, per esempio «+9,2 sul previsto».",
+    "Giornate (web): toccando una giornata, una riga dice chi ha fatto meglio e chi peggio del previsto di almeno un punto, al massimo due per parte, con quanto.",
     "Quando il confronto con la consigliata non c'è, la frase ora dice il perché vero: la consigliata di allora non era stata salvata, oppure dentro c'è chi non è più nella tua rosa (per esempio un giocatore ceduto)."
   ],
   "tecnico": [
