@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from fanta import avvisi, frasi, notifiche, push, server
+from fanta import frasi, notifiche, push, server
 from fanta.regole import Regole
 
 from test_notifiche import ROSE, _db, _finto, _stato
@@ -74,13 +74,10 @@ def test_promemoria_e_cambi_in_inglese(telefono, tmp_path, monkeypatch):
                                      "Matchday 6 · Serie A matchday 9\nCastro: from the starting lineup to the bench\nVicario: now injured")
 
 
-def test_formazione_pronta_e_avviso_di_prova_in_inglese(telefono):
+def test_avviso_di_prova_in_inglese(telefono):
     telefono.impostazioni.write_text(json.dumps({"lingua": "en"}), encoding="utf-8")
-    pronta = {"titolo": "SchieraXI", "testo": frasi.F("n.pronta", giornata=frasi.nome_giornata(12, 9, avviso=True))}
-    assert telefono.manda(pronta["titolo"], pronta["testo"]) and "Matchday 9 · Serie A matchday 12: the lineup is ready." in telefono.arrivati[-1][1]
     assert telefono.manda(frasi.F("n.t_prova"), frasi.F("n.prova"), ignora_silenzio=True)
     assert telefono.arrivati[-1] == ("SchieraXI · test", "If you can read this, the alerts work.")
-    assert avvisi.F is frasi.F                                                   # il testo di avvisi.py è una frase con chiave
 
 
 def test_il_web_manda_la_lingua_agli_avvisi_quando_cambia():

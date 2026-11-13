@@ -83,9 +83,7 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.t_cambia_titolare": ("SchieraXI · cambia un titolare", "SchieraXI · a starter changes"),
     "n.testo_cambiata": ("{frase}. La formazione si chiude il {data} alle {ora}.", "{frase}. The lineup closes on {data} at {ora}."),
     "n.senza_sostituto": ("{motivi}: con la tua rosa non si forma più una squadra", "{motivi}: your roster can no longer field a team"),
-    # ---- formazione pronta e prova
-    "n.pronta": ("{giornata}: la formazione è pronta. Apri l'app e controlla le probabili.",
-                 "{giornata}: the lineup is ready. Open the app and check the probable lineups."),
+    # ---- avviso di prova
     "n.t_prova": ("SchieraXI · prova", "SchieraXI · test"),
     "n.prova": ("Se leggi questo, gli avvisi funzionano.", "If you can read this, the alerts work."),
 }

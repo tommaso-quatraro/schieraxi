@@ -12,7 +12,7 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
-from fanta import avvisi, consigli, da_fare, frasi, lega, notifiche, rinvii
+from fanta import consigli, da_fare, frasi, lega, notifiche, rinvii
 from fanta.frasi_avvisi import NOTIFICHE
 from fanta.regole import Regole
 import codice_web
@@ -131,15 +131,6 @@ def test_titolare_a_rischio_con_i_due_numeri(tmp_path, finto, monkeypatch):
     notifiche.promemoria(_db("2026-10-28 18:30"), LEGA_DA_4, ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "p.json", manda, {})
     assert mandati[0][1] == ("Hai già schierato, ma Castro non è più sicuro come titolare. "
                              "Giornata 6 · 9ª di Serie A: la formazione si chiude alle 18:30, controlla.")
-
-
-def test_formazione_pronta_con_i_due_numeri(tmp_path):
-    db = _db("2026-10-28 18:30")
-    a = avvisi.da_mandare(db, ST, 9, datetime(2026, 10, 27, 20, 0), tmp_path / "a.json", regole=LEGA_DA_4)
-    assert a["testo"] == "Giornata 6 · 9ª di Serie A: la formazione è pronta. Apri l'app e controlla le probabili."
-    assert frasi.testo(a["testo"], "en").startswith("Matchday 6 · Serie A matchday 9: the lineup is ready.")
-    senza = avvisi.da_mandare(db, ST, 9, datetime(2026, 10, 27, 20, 0), tmp_path / "b.json")      # chi non passa le regole: solo Serie A
-    assert senza["testo"].startswith("9ª giornata di Serie A: la formazione è pronta.")
 
 
 def test_titoli_degli_avvisi_senza_numero():
