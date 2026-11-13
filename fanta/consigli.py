@@ -431,8 +431,9 @@ def _formazione_pronta(db, s, giornata, regole, simulazioni) -> dict:
 
 def _rosa(s: Squadra, prev: pd.DataFrame) -> list[fz.Giocatore]:
     """I giocatori della squadra che hanno una previsione per la giornata, nell'ordine della rosa (lo stesso ordine dà le stesse
-    simulazioni: la consigliata e quella di prima si confrontano alla pari)."""
-    ids = [g.id for g in s.giocatori if g.id is not None]
+    simulazioni: la consigliata e quella di prima si confrontano alla pari). Un giocatore ripetuto (rosa salvata con una riga doppia:
+    file vecchio o backup) conta una volta sola, al primo posto: così consigliata, consigliata tenuta e anticipi usano la stessa rosa."""
+    ids = list(dict.fromkeys(g.id for g in s.giocatori if g.id is not None))
     return [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
                          float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"])) for i in ids if i in prev.index]
 
