@@ -469,6 +469,7 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
 
 # ---------------------------------------------------------------- promemoria prima della scadenza
 NON_VALIDA = "non_valida"          # `_gia_schierato`: c'è una scelta salvata, ma non si può più schierare
+NON_MESSA = "non_messa"            # `_gia_schierato`: scelta salvata dalla web e a posto, ma non segnata come messa nell'app della lega
 
 
 def _giornata(giornata: int, regole: Regole) -> frasi.Frase:
@@ -480,8 +481,10 @@ def _gia_schierato(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione:
                    file_scelte: Path | None) -> list[str] | str | None:
     """None se non hai ancora schierato (nessuna scelta salvata, né «ho schierato la consigliata»). `NON_VALIDA` se la scelta salvata
     non si può più schierare (regola unica della scelta, come la Formazione: vale la consigliata, come senza scelta, ma il promemoria
-    lo dice con una frase sua). Altrimenti la lista, anche vuota, dei titolari che hai schierato e che ora risultano fuori, in
-    panchina o non citati nelle probabili."""
+    lo dice con una frase sua). Altrimenti la lista dei titolari che hai schierato e che ora risultano fuori, in panchina o non
+    citati nelle probabili; se non ce n'è nessuno, la lista vuota (a posto) oppure `NON_MESSA` (#639): la web salva da sola a ogni
+    tocco, quindi una sua scelta è a posto solo con la spunta «L'ho messa». Le scelte salvate dall'iPhone, che oggi non ha la
+    spunta, e quelle che non dicono da dove arrivano (salvate prima) restano a posto come prima."""
     from . import consigli, scelte
     scelta = scelte.leggi(stagione, giornata, file_scelte)
     if not scelta:
@@ -492,12 +495,12 @@ def _gia_schierato(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione:
         prev = None
     if not scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole):
         return NON_VALIDA                          # giocatore ceduto, modulo non ammesso...: vale la consigliata
-    if prev is None:
-        return []                                  # senza previsioni non so dire se è cambiato qualcosa: lo considero a posto
     problemi = []
-    for i in scelta["titolari"]:
+    for i in (scelta["titolari"] if prev is not None else []):     # senza previsioni non so dire se è cambiato qualcosa
         if i in prev.index and prev.at[i, "stato"] in FUORI + ("panchina", "non_citato"):
             problemi.append(str(prev.at[i, "nome"]))
+    if not problemi and scelta.get("da") == scelte.DA_WEB and scelta.get("messa") is not True:
+        return NON_MESSA
     return problemi
 
 
@@ -533,9 +536,13 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
         ora_chiusura = inizio.strftime("%H:%M")
         problemi = _gia_schierato(db, regole, rose, stagione, giornata, file_scelte)
         non_valida = problemi == NON_VALIDA
-        if problemi is not None and not non_valida and not problemi:
-            continue                               # hai già schierato e va ancora bene: niente disturbo
-        if problemi and not non_valida:
+        if problemi == []:
+            continue                               # hai già schierato (e messo) e va ancora bene: niente disturbo
+        if problemi == NON_MESSA:                  # salvata ma non segnata come messa: la domanda è proprio questa (#639)
+            testo = F("n.non_messa_tra_un_ora" if nome == "60" else "n.non_messa_ultimi_minuti", giornata=_giornata(giornata, regole),
+                      ora=ora_chiusura)
+            titolo = F("n.t_un_ora" if nome == "60" else "n.t_ultimi_minuti")
+        elif problemi and not non_valida:
             testo = F("n.rischio", n=len(problemi[:4]), nomi=", ".join(problemi[:4]), giornata=_giornata(giornata, regole), ora=ora_chiusura)
             titolo = F("n.t_titolare_rischio")
         elif nome == "60":

@@ -61,6 +61,11 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
                         "{giornata}: the lineup closes at {ora}. Have you entered it on Leghe?"),
     "n.non_valida_ultimi_minuti": ("{giornata}: la formazione si chiude alle {ora} e quella che hai salvato non è più valida. Salvane un'altra.",
                                    "{giornata}: the lineup closes at {ora} and the one you saved is no longer valid. Save another one."),
+    # salvata dalla web ma senza la spunta «L'ho messa» (#639)
+    "n.non_messa_tra_un_ora": ("{giornata}: la formazione si chiude tra circa un'ora (scadenza alle {ora}). Hai messo la formazione nell'app della lega? Se sì, spunta «L'ho messa».",
+                               "{giornata}: the lineup closes in about an hour (deadline at {ora}). Have you entered the lineup in your league's app? If so, tick «I've entered it»."),
+    "n.non_messa_ultimi_minuti": ("{giornata}: la formazione si chiude alle {ora}. Hai messo la formazione nell'app della lega? Se sì, spunta «L'ho messa».",
+                                  "{giornata}: the lineup closes at {ora}. Have you entered the lineup in your league's app? If so, tick «I've entered it»."),
     # ---- «cambia la formazione»
     "n.t_cambia": ("SchieraXI · cambia la formazione", "SchieraXI · change your lineup"),
     "n.t_cambia_consigliata": ("SchieraXI · cambia la formazione consigliata", "SchieraXI · the recommended lineup has changed"),
