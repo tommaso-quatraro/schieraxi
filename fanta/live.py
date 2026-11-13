@@ -113,6 +113,20 @@ def rimessa_dopo(visto: str | None, data: str | None) -> bool:
     return i is not None and i - PRIMA > v
 
 
+def _data16(data) -> str:
+    """'2026-11-01T15:00:00' o '2026-11-01 15:00' -> '2026-11-01 15:00' (per confrontare le date della fonte e del calendario)."""
+    return str(data or "")[:16].replace("T", " ")
+
+
+def senza_rinvii_superati(nuove: list[dict], calendario: list[dict]) -> list[dict]:
+    """La lettura senza le partite «rinviate» a una data più vecchia di quella del calendario: la fonte tiene il rinvio alla data
+    vecchia, ma il calendario ha già rimesso la partita più avanti. Contarle farebbe tornare «rinviata» a ogni lettura (o la terrebbe
+    mentre si gioca); così lo stato viene dall'orario della data nuova finché la fonte non dà la partita vera (revisione #700)."""
+    nel_calendario = {(p.get("casa"), p.get("trasferta")): _data16(p.get("data")) for p in calendario}
+    return [p for p in nuove if not (p["stato"] == "rinviata" and p.get("data")
+                                     and _data16(p["data"]) < nel_calendario.get((p["casa"], p["trasferta"]), ""))]
+
+
 class SenzaPartite(ValueError):
     """La fonte ha risposto, ma nella risposta non c'è nessuna delle partite seguite (forma cambiata o elenco vuoto)."""
 
@@ -323,7 +337,7 @@ class Raccoglitore:
                     continue
                 cal = nel_calendario.get(k)
                 if v["stato"] == "rinviata" and cal and rimessa_dopo(self._visto.get(k), cal.get("data")):
-                    if (v.get("data") or "")[:16] != str(cal.get("data") or "")[:16].replace("T", " "):
+                    if _data16(v.get("data")) != _data16(cal.get("data")):
                         del self._partite[k]
                         self._visto.pop(k, None)
                     continue
@@ -342,7 +356,8 @@ class Raccoglitore:
         if ora < self.prossima:
             return "attesa"
         solo_dopo = not any(in_finestra(p["data"], adesso) for p in da_seguire)
-        self.prossima = ora + (INTERVALLO_DOPO if solo_dopo else INTERVALLO)   # mai due richieste a meno di un minuto
+        normale = INTERVALLO_DOPO if solo_dopo else INTERVALLO
+        self.prossima = ora + normale                    # mai due richieste a meno di un minuto (5 minuti dopo la finestra)
         usa_ripiego = ora < self.ripiego_fino
         fonte = FONTE_RIPIEGO if usa_ripiego else FONTE_ESPN
         slug_noti = {p["casa"] for p in calendario} | {p["trasferta"] for p in calendario}
@@ -356,16 +371,18 @@ class Raccoglitore:
                 date = sorted({data_per_fonte(p["data"]) for p in da_seguire} - {None})
                 self._giro += 1
                 nuove = leggi_espn(json.loads(self.scarica(URL_ESPN.format(date[self._giro % len(date)]))), slug_noti)
+            nuove = senza_rinvii_superati(nuove, calendario)
             if not seguite & {(p["casa"], p["trasferta"]) for p in nuove}:
                 raise SenzaPartite                       # risposta arrivata ma inutile: è un errore, non una lettura buona (#661)
         except Exception as e:                           # rete, risposta storta, fonte che cambia forma: mai fermare il servizio
             self.errori += 1
             motivo = "nessuna delle partite seguite nella risposta" if isinstance(e, SenzaPartite) else type(e).__name__
             LOG.warning("diretta: lettura di %s non riuscita (%s), %d di fila", fonte, motivo, self.errori)
-            self.prossima = ora + min(INTERVALLO * 2 ** (self.errori - 1), ATTESA_MASSIMA)
+            # la pausa dopo un errore non è mai più corta di quella normale (dopo la finestra: 5 minuti, anche verso il ripiego)
+            self.prossima = ora + max(normale, min(INTERVALLO * 2 ** (self.errori - 1), ATTESA_MASSIMA))
             if not usa_ripiego and self.errori >= ERRORI_PER_RIPIEGO:
                 self.ripiego_fino = ora + DURATA_RIPIEGO
-                self.prossima = ora + INTERVALLO
+                self.prossima = ora + normale
             return "errore"
         self.errori = 0
         self._unisci(nuove, fonte, adesso)

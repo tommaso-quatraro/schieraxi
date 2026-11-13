@@ -151,6 +151,74 @@ def test_rinviata_e_rimessa_il_giorno_dopo_si_segue_quando_si_gioca():
     assert (p["stato"], p["gol_casa"], p["data"]) == ("primo_tempo", 1, "2026-11-02 18:30")
 
 
+def _ev(data_utc, casa, trasf, stato, gruppo):
+    return {"date": data_utc, "competitions": [{"status": {"type": {"name": stato, "state": gruppo}, "displayClock": "0"},
+            "competitors": [{"homeAway": "home", "score": "0", "team": {"id": casa, "displayName": casa}},
+                            {"homeAway": "away", "score": "0", "team": {"id": trasf, "displayName": trasf}}], "details": []}]}
+
+
+def _due_partite():
+    """Domenica: Juventus-Napoli alle 15 (la fonte la darà rinviata) e Inter-Milan alle 18."""
+    riga = {"giornata": 10, "stagione": "2026-27", "giocata": 0, "gol_casa": None, "gol_trasferta": None}
+    return [riga | {"data": "2026-11-01 15:00", "casa": "juventus", "trasferta": "napoli"},
+            riga | {"data": "2026-11-01 18:00", "casa": "inter", "trasferta": "milan"}]
+
+
+RINVIATA_VECCHIA = _ev("2026-11-01T14:00Z", "Juventus", "Napoli", "STATUS_POSTPONED", "post")   # la fonte non cambia la data
+
+
+def _juve_in(r, cal):
+    return next((p["stato"], p["data"]) for p in live.risposta(r, cal)["partite"] if p["casa"] == "juventus")
+
+
+@pytest.mark.parametrize("nuova, inizio, passo_secondi, giri", [
+    ("2026-11-02 18:30", "2026-11-01 17:50", 15, 16),      # rimessa a lunedì: la fonte la ridà rinviata a ogni lettura di domenica
+    ("2026-11-01 20:45", "2026-11-01 20:34", 180, 12),     # rimessa alla sera stessa: si gioca mentre la fonte dice «rinviata»
+])
+def test_una_rinviata_alla_data_vecchia_non_torna_se_il_calendario_l_ha_spostata(nuova, inizio, passo_secondi, giri):
+    """Revisione #700: la fonte tiene la partita rinviata alla data vecchia, il calendario l'ha spostata. Prima «rinviata» e «da
+    giocare» si alternavano a ogni lettura (o restava «rinviata» mentre si giocava): la rinviata alla data vecchia non conta."""
+    m = Mondo("2026-11-01 14:50", {"events": [RINVIATA_VECCHIA,
+                                               _ev("2026-11-01T17:00Z", "Inter", "Milan", "STATUS_FIRST_HALF", "in")]})
+    cal = _due_partite()
+    r = m.raccoglitore(cal=cal)
+    assert r.passo() == "ok" and _juve_in(r, cal) == ("rinviata", "2026-11-01 15:00")
+    cal[0]["data"] = nuova
+    m.avanza((datetime.fromisoformat(inizio) - m.t).total_seconds())
+    visti = []
+    for _ in range(giri):
+        r.passo()
+        visti.append(_juve_in(r, cal))
+        m.avanza(passo_secondi)
+    assert {d for _, d in visti} == {nuova} and "rinviata" not in {s for s, _ in visti}, visti
+    assert len(m.url) > 2                                            # la fonte si è letta davvero, più volte
+
+
+def test_una_lettura_con_la_sola_rinviata_alla_data_vecchia_conta_come_errore():
+    """Se nella risposta l'unica partita seguita è la rinviata alla data vecchia, la fonte non sa niente della partita vera:
+    è un errore (dopo tre si passa al ripiego), non una lettura buona."""
+    m = Mondo("2026-11-01 20:40", {"events": [RINVIATA_VECCHIA]})
+    cal = _due_partite()[:1]
+    cal[0]["data"] = "2026-11-01 20:45"
+    r = m.raccoglitore(cal=cal)
+    assert r.passo() == "errore" and r.aggiornato_il is None
+
+
+def test_dopo_la_finestra_un_errore_non_accorcia_la_pausa_di_cinque_minuti():
+    """Revisione #700: oltre la finestra si chiede una volta ogni 5 minuti; un errore (anche una risposta senza la partita)
+    non deve riportare la pausa a un minuto, né il passaggio al ripiego (poche richieste alle fonti)."""
+    m = Mondo("2026-11-01 23:00", {"events": []})                  # finestra chiusa alle 22:55, partita non ancora «finita»
+    quando = []
+    scarica = m.scarica
+    m.scarica = lambda url: quando.append(m.mono) or scarica(url)
+    r = m.raccoglitore()
+    for _ in range(4 * 60):                                          # un'ora, un controllo ogni 15 secondi
+        r.passo()
+        m.avanza(15)
+    assert len(quando) >= 3 and r.errori >= 3
+    assert all(b - a >= live.INTERVALLO_DOPO for a, b in zip(quando, quando[1:])), [b - a for a, b in zip(quando, quando[1:])]
+
+
 def _riga(**k):
     db = sqlite3.connect(":memory:")
     db.row_factory = sqlite3.Row
