@@ -293,7 +293,7 @@
     "type": "object"
    },
    "CorrezioneRosa": {
-    "description": "Una scelta dell'utente su un dubbio dell'anteprima: `testo` = il nome come scritto nel file, `id` = il giocatore giusto\ndel listone (null = togli la riga).",
+    "description": "Una scelta dell'utente su un dubbio dell'anteprima: `testo` = il nome come scritto nel file, `id` = il giocatore giusto\ndel listone (null = togli la riga), `riga` = la posizione del giocatore nella squadra come nell'anteprima (facoltativa:\ncon la riga la scelta vale solo per quella, senza per le righe con quel testo; vedi anteprima_rose.applica_correzioni).",
     "properties": {
      "id": {
       "anyOf": [
@@ -305,6 +305,19 @@
        }
       ],
       "title": "Id"
+     },
+     "riga": {
+      "anyOf": [
+       {
+        "maximum": 100000.0,
+        "minimum": 0.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Riga"
      },
      "squadra": {
       "maxLength": 200,

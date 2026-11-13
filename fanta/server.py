@@ -1978,10 +1978,12 @@ MAX_CORREZIONI = limiti.MAX_SQUADRE * limiti.MAX_GIOCATORI_SQUADRA
 
 class CorrezioneRosa(BaseModel):
     """Una scelta dell'utente su un dubbio dell'anteprima: `testo` = il nome come scritto nel file, `id` = il giocatore giusto
-    del listone (null = togli la riga)."""
+    del listone (null = togli la riga), `riga` = la posizione del giocatore nella squadra come nell'anteprima (facoltativa:
+    con la riga la scelta vale solo per quella, senza per le righe con quel testo; vedi anteprima_rose.applica_correzioni)."""
     squadra: str = Field(max_length=200)
     testo: str = Field(max_length=200)
     id: int | None = None
+    riga: int | None = Field(None, ge=0, le=100_000)
 
 
 _CORREZIONI = TypeAdapter(list[CorrezioneRosa])
