@@ -340,7 +340,7 @@ def test_spento_i_comandi_restano_quelli_di_sempre(monkeypatch):
     chiamate = []
     monkeypatch.setattr(backup, "salva_copia", lambda **k: chiamate.append(k) or None)
     cli.cmd_backup(type("A", (), {"tieni": 5})())
-    assert chiamate == [{"tieni": 5}]
+    assert len(chiamate) == 1 and chiamate[0]["tieni"] == 5 and isinstance(chiamate[0]["adesso"], datetime)
 
 
 # ---------------------------------------------------------------- backup
@@ -349,6 +349,7 @@ def test_backup_per_utente_e_del_database_degli_account(mondo, registro, capsys)
     cli._backup_per_utente(7, ADESSO)
     copia_a, copia_b = sorted((a.cartella / "backup").glob("schieraxi-backup-*.json")), sorted((b.cartella / "backup").glob("schieraxi-backup-*.json"))
     assert len(copia_a) == len(copia_b) == 1
+    assert copia_a[0].name == copia_b[0].name == "schieraxi-backup-2026-10-27.json"      # il giorno di ADESSO, non dell'orologio
     assert "Squadra di amico1" in copia_a[0].read_text(encoding="utf-8") and "amico2" not in copia_a[0].read_text(encoding="utf-8")
     assert "Squadra di amico2" in copia_b[0].read_text(encoding="utf-8") and "amico1" not in copia_b[0].read_text(encoding="utf-8")
     sqlite_copie = sorted((percorsi.cartella_account() / "backup").glob("account-*.sqlite"))

@@ -1,5 +1,6 @@
 """Backup e ripristino dei dati della lega, su una cartella temporanea."""
 import json
+from datetime import datetime
 
 import pytest
 
@@ -359,21 +360,24 @@ def test_nome_del_file_e_formato():
         backup.controlla({"formato": "altro-backup", "versione": 1, "file": {"dati/osservati.json": [1]}})
 
 
-def test_copia_serale_una_al_giorno_e_si_tengono_le_ultime(radice, monkeypatch):
+GIRO_SERALE = datetime(2026, 10, 29, 3, 30)          # il giro serale (cron delle 3:30): l'ora arriva come argomento
+
+
+def test_copia_serale_una_al_giorno_e_si_tengono_le_ultime(radice):
     cartella = radice / "dati" / "backup"
     cartella.mkdir()
     for giorno in range(1, 10):
         (cartella / f"schieraxi-backup-2026-10-0{giorno}.json").write_text("{}")
-    monkeypatch.setattr(backup, "datetime", type("D", (), {"now": staticmethod(lambda: __import__("datetime").datetime(2026, 10, 29, 3, 30))}))
-    f = backup.salva_copia(radice, tieni=7)
+    f = backup.salva_copia(radice, tieni=7, adesso=GIRO_SERALE)
     assert f.name == "schieraxi-backup-2026-10-29.json"
     assert len(list(cartella.glob("*.json"))) == 7 and f.exists()
+    assert json.loads(f.read_text())["creato"] == "2026-10-29T03:30:00"
     assert backup.controlla(json.loads(f.read_text()))                      # è un backup ripristinabile
-    assert backup.salva_copia(radice, tieni=7) == f and len(list(cartella.glob("*.json"))) == 7      # stesso giorno: si sostituisce
+    assert backup.salva_copia(radice, tieni=7, adesso=GIRO_SERALE) == f and len(list(cartella.glob("*.json"))) == 7  # stesso giorno: si sostituisce
 
 
 def test_copia_serale_senza_dati_non_scrive(tmp_path):
-    assert backup.salva_copia(tmp_path) is None and not (tmp_path / "dati" / "backup").exists()
+    assert backup.salva_copia(tmp_path, adesso=GIRO_SERALE) is None and not (tmp_path / "dati" / "backup").exists()
 
 
 def test_il_ripristino_non_cambia_le_formazioni_delle_giornate_chiuse(dati_isolati, radice, monkeypatch):

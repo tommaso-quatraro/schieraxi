@@ -236,21 +236,25 @@ def _percorsi(radice: Path, file: dict[str, Path] | None) -> dict[str, Path]:
     return file if file is not None else {nome: radice / nome for nome in CONTROLLI}
 
 
-def crea(radice: Path = RADICE, file_utente: dict[str, Path] | None = None) -> dict:
-    """Tutto quello che c'è, in un dizionario pronto per essere scritto come JSON."""
+def crea(radice: Path = RADICE, file_utente: dict[str, Path] | None = None, adesso: datetime | None = None) -> dict:
+    """Tutto quello che c'è, in un dizionario pronto per essere scritto come JSON. `adesso` è l'ora di «creato» (senza: quella
+    del momento, per il file che l'utente scarica)."""
     file = {}
     for nome, percorso in _percorsi(radice, file_utente).items():
         try:
             file[nome] = json.loads(percorso.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue                                  # non c'è (ancora) o è rovinato: nel backup non finisce
-    return {"formato": FORMATO, "versione": VERSIONE, "creato": datetime.now().isoformat(timespec="seconds"), "file": file}
+    creato = (adesso or datetime.now()).isoformat(timespec="seconds")
+    return {"formato": FORMATO, "versione": VERSIONE, "creato": creato, "file": file}
 
 
-def salva_copia(radice: Path = RADICE, cartella: Path | None = None, tieni: int = 7, file_utente: dict[str, Path] | None = None) -> Path | None:
-    """Scrive la copia di oggi in dati/backup/ (una al giorno: se c'è già si sostituisce) e tiene solo le ultime `tieni`.
-    Con `file_utente` (e `cartella`) è la copia di un utente con un account. Restituisce il file scritto, o None se non c'è niente da salvare."""
-    b = crea(radice, file_utente)
+def salva_copia(radice: Path = RADICE, cartella: Path | None = None, tieni: int = 7, file_utente: dict[str, Path] | None = None,
+                *, adesso: datetime) -> Path | None:
+    """Scrive la copia di oggi in dati/backup/ (una al giorno, `adesso` dà il nome: se c'è già si sostituisce) e tiene solo le
+    ultime `tieni`. Con `file_utente` (e `cartella`) è la copia di un utente con un account. Restituisce il file scritto, o None
+    se non c'è niente da salvare."""
+    b = crea(radice, file_utente, adesso)
     if not b["file"]:
         return None
     cartella = cartella or radice / "dati" / "backup"

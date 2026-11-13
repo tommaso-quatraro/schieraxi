@@ -495,9 +495,10 @@ def _affidabilita_pubblica(file: str | None) -> None:
 
 def cmd_backup(a) -> None:
     from . import account, backup
+    adesso = datetime.now()
     if account.multiutente():
-        return _backup_per_utente(a.tieni, datetime.now())
-    file = backup.salva_copia(tieni=a.tieni)
+        return _backup_per_utente(a.tieni, adesso)
+    file = backup.salva_copia(tieni=a.tieni, adesso=adesso)
     print(f"copia salvata: {file}" if file else "niente da salvare")
 
 
@@ -515,7 +516,7 @@ def _backup_per_utente(tieni: int, adesso: datetime) -> None:
     for i in ids:
         ctx = Contesto.per_utente(i)
         try:
-            if backup.salva_copia(cartella=ctx.cartella / "backup", tieni=min(tieni, 3), file_utente=ctx.file_backup):
+            if backup.salva_copia(cartella=ctx.cartella / "backup", tieni=min(tieni, 3), file_utente=ctx.file_backup, adesso=adesso):
                 fatte += 1
         except (OSError, percorsi.DatabaseAccountNonRisponde) as e:
             errori += 1
