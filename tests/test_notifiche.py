@@ -189,87 +189,6 @@ def test_diffidato_e_squalificato_vengono_segnalati():
     assert notifiche.confronta(dopo, dopo) == []                      # già diffidato: niente di nuovo
 
 
-def test_riepilogo_a_giornata_finita(tmp_path, monkeypatch):
-    from fanta import archivio, scelte
-    db = archivio.apri(tmp_path / "t.sqlite")
-    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (1, ?, 8, '2026-10-20 18:00', 'a', 'b', 1)", (ST,))
-    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (2, ?, 9, '2026-10-28 18:30', 'a', 'b', 0)", (ST,))
-    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    # la prossima giornata (la 9) la calcola davvero prossima_giornata, con l'ora del riepilogo e non con l'orologio vero (#566)
-    righe = [("P1", "P"), ("P2", "P")] + [(f"D{i}", "D") for i in range(5)] + [(f"C{i}", "C") for i in range(5)] + [(f"A{i}", "A") for i in range(4)]
-    prev = pd.DataFrame([{"nome": n, "ruolo": r, "p_voto": 0.9, "mu": 6.5, "mu_voto": 6.0} for n, r in righe], index=range(1, len(righe) + 1))
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, giornata or 9, True))
-    rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], "X", 1) for i in prev.index])], "Mia")
-    # voti di 70 giocatori delle due squadre (la giornata è arrivata): i nostri hanno voto 6, l'attaccante A0 (id 13) ha segnato
-    for i in range(1, 71):
-        ruolo = prev.at[i, "ruolo"] if i in prev.index else "C"
-        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, autogol, rig_segnati, rig_sbagliati, "
-                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', ?, ?, 6.0, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
-                   (ST, i, "ab"[i % 2], ruolo, 1 if i == 13 else 0))
-    titolari = [1, 3, 4, 5, 6, 8, 9, 10, 13, 14, 15]
-    scelte.salva(ST, 8, titolari, "4-3-3", tmp_path / "scelte.json")
-    mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True    # noqa: E731
-    adesso = datetime(2026, 10, 21, 8, 0)
-    opz = {"riepilogo": True}
-    f = tmp_path / "r.json"
-    r = notifiche.riepilogo(db, Regole(), rose, adesso, f, manda, opz, tmp_path / "nessun-cambi.json", tmp_path / "scelte.json")
-    assert len(r) == 1 and "Giornata 8 · 8ª di Serie A: la tua scelta salvata ha fatto circa" in r[0] and "A0 " in r[0]
-    assert "Prossima: Giornata 9 · 9ª di Serie A. La formazione si chiude" in r[0]
-    assert mandati[0][0] == "SchieraXI · riepilogo della giornata"
-    assert notifiche.riepilogo(db, Regole(), rose, adesso, f, manda, opz, tmp_path / "nessun-cambi.json", tmp_path / "scelte.json") == []   # una volta sola
-    assert len(mandati) == 1
-    # senza sapere cosa avevi schierato non si manda niente; e se l'opzione è spenta nemmeno
-    (tmp_path / "scelte.json").unlink()
-    assert notifiche.riepilogo(db, Regole(), rose, adesso, tmp_path / "r2.json", manda, opz, tmp_path / "nessun-cambi.json", tmp_path / "scelte.json") == []
-    scelte.salva(ST, 8, titolari, "4-3-3", tmp_path / "scelte.json")
-    assert notifiche.riepilogo(db, Regole(), rose, adesso, tmp_path / "r3.json", manda, {"riepilogo": False}, tmp_path / "nessun-cambi.json", tmp_path / "scelte.json") == []
-    assert notifiche.riepilogo(db, Regole(), rose, datetime(2026, 11, 20), tmp_path / "r4.json", manda, opz, tmp_path / "nessun-cambi.json", tmp_path / "scelte.json") == []   # troppo tardi
-
-
-def _regole_modificatore() -> Regole:
-    r = Regole()
-    r.modificatore_difesa.attivo, r.modificatore_difesa.min_difensori = True, 4
-    r.modificatore_difesa.soglie = [[6.0, 1.0], [6.5, 3.0], [7.0, 6.0]]
-    return r
-
-
-def _regole_ufficio() -> Regole:
-    from fanta.regole import imposta
-    r = imposta(Regole(), "panchina.max_sostituzioni", "0")
-    r.voto_senza_sostituto = 6.0
-    return r
-
-
-@pytest.mark.parametrize("regole, voto, senza_voto, massimo", [
-    # modificatore della difesa (portiere 7 con l'imbattibilità, attaccante 13 9 con il gol, gli altri 6): la tua 3-4-3 fa 70,
-    # niente modificatore con tre difensori; il massimo è una difesa a quattro con il +1, 71. Senza le regole della lega sarebbe 70
-    (_regole_modificatore(), 6.0, (), "71,0"),
-    # voto d'ufficio 6 a chi non ha voto né sostituto: i tuoi due attaccanti senza voto valgono più di quelli con il 5 e la tua fa
-    # 61; il conto del massimo con chi ha preso voto dà 59, ma il massimo non sta sotto quello che hai fatto
-    (_regole_ufficio(), 5.0, (14, 15), "61,0"),
-])
-def test_riepilogo_il_massimo_con_le_regole_della_lega_e_mai_sotto_i_tuoi_punti(tmp_path, monkeypatch, regole, voto, senza_voto, massimo):
-    from fanta import archivio, scelte
-    db = archivio.apri(tmp_path / "t.sqlite")
-    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (1, ?, 8, '2026-10-20 18:00', 'a', 'b', 1)", (ST,))
-    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    righe = [("P1", "P"), ("P2", "P")] + [(f"D{i}", "D") for i in range(5)] + [(f"C{i}", "C") for i in range(5)] + [(f"A{i}", "A") for i in range(4)]
-    prev = pd.DataFrame([{"nome": n, "ruolo": r, "p_voto": 0.9, "mu": 6.5, "mu_voto": 6.0} for n, r in righe], index=range(1, len(righe) + 1))
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, giornata or 9, True))
-    rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], "X", 1) for i in prev.index])], "Mia")
-    for i in (i for i in range(1, 71) if i not in senza_voto):       # l'attaccante 13 segna: fantavoto voto + 3
-        ruolo = prev.at[i, "ruolo"] if i in prev.index else "C"
-        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, autogol, rig_segnati, rig_sbagliati, "
-                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
-                   (ST, i, "ab"[i % 2], ruolo, voto, 1 if i == 13 else 0))         # voti delle due squadre che hanno giocato
-    scelte.salva(ST, 8, [1, 3, 4, 5, 8, 9, 10, 11, 13, 14, 15], "3-4-3", tmp_path / "scelte.json")
-    manda = lambda titolo, testo, priorita=3, tag="x": True    # noqa: E731
-    r = notifiche.riepilogo(db, regole, rose, datetime(2026, 10, 21, 8, 0), tmp_path / "r.json", manda, {"riepilogo": True},
-                            tmp_path / "nessun-cambi.json", tmp_path / "scelte.json")
-    assert len(r) == 1 and f"Il massimo possibile con la tua rosa era {massimo}." in r[0]
-
-
 def test_gli_osservati_si_aggiungono_una_volta_e_si_tolgono(tmp_path):
     """(I giocatori seguiti non mandano più avvisi, #676: restano l'elenco e le sue regole.)"""
     from fanta import osservati
@@ -344,22 +263,9 @@ def test_con_l_app_nativa_l_avviso_va_anche_su_ntfy_e_il_tocco_apre_l_app(monkey
     assert notifiche.invia("t", "x", 3, "alarm_clock") is True
     assert chiamate == ["web", "schieraxi://formazione"]                      # le web non si tolgono; ntfy in più con il tocco verso l'app
     chiamate.clear()
-    notifiche.invia("t", "x", 3, "bar_chart")
+    notifiche.invia("t", "x", 3, "rotating_light")
     notifiche.invia("t", "x", 3, "warning")
-    assert [c for c in chiamate if c != "web"] == ["schieraxi://oggi", "schieraxi://lega"]
-
-
-def test_osservato_lasciato_libero_avvisa(tmp_path):
-    from fanta import osservati
-    f = tmp_path / "oss.json"
-    osservati.aggiungi(7, f)
-    diff = {"tagliati": [{"squadra": "Real Esempio", "giocatori": [{"id": 7, "nome": "Bonny", "ruolo": "A"}, {"id": 9, "nome": "Altro", "ruolo": "D"}]}]}
-    mandati = []
-    righe = notifiche.osservati_liberi(diff, f, lambda t, x, p=3, tag="x": mandati.append((t, x, tag)) or True, {"cambi": True})
-    assert righe == ["Bonny (A): lasciato libero da Real Esempio"]                       # solo l'osservato, non l'altro
-    assert mandati[0][2] == "unlock" and "Altro" not in mandati[0][1]
-    assert notifiche.osservati_liberi(diff, f, lambda *a: True, {"cambi": False}) == []   # avvisi sui cambi spenti
-    assert notifiche.osservati_liberi({"tagliati": []}, f, lambda *a: True, {"cambi": True}) == []
+    assert [c for c in chiamate if c != "web"] == ["schieraxi://formazione", "schieraxi://lega"]
 
 
 def test_ntfy_manda_il_collegamento_solo_se_richiesto(monkeypatch):

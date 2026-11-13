@@ -17,31 +17,41 @@ extension FinteServer {
                     binari: { DemoImmagini.dati(per: $0) ?? DatiDemo.calcolata($0, adesso: adesso) })
     }
 
-    /// Le fotografie delle fasi della giornata (`-DEMO_SCHERMATA oggi-in-corso` e `oggi-finita`): la stessa demo, con Oggi durante
-    /// e dopo la giornata. Ognuna ha il suo indirizzo finto, così la copia salvata di Oggi non si mescola. Nil per le altre schermate.
+    /// Le fotografie delle fasi della giornata nella Formazione unica (#673: `-DEMO_SCHERMATA formazione-in-corso`,
+    /// `formazione-finita`, …): la stessa demo, durante e dopo la giornata, con una partita rinviata o con una tua scelta diversa
+    /// dalla consigliata. Ognuna ha il suo indirizzo finto, così la copia salvata non si mescola. I nomi di prima (`oggi-in-corso`,
+    /// `oggi-finita`, …) restano come sinonimi: li usano i test che confrontano la demo con il widget. Nil per le altre schermate.
     /// `fissato`: l'istante della demo (solo i test); senza, adesso.
     static func demoFase(_ schermata: String?, adesso fissato: Date? = nil) -> FinteServer? {
         let adesso = fissato ?? Date()
         var server = fissato.map { demoFissata(adesso: $0) } ?? FinteServer.demo
         switch schermata ?? "" {
-        case "oggi-in-corso", "formazione-chiusa":
-            // la giornata in corso nel momento della demo (#417, #424): Oggi, Formazione chiusa, Rosa e schede raccontano la stessa
+        case "oggi-in-corso", "formazione-in-corso", "formazione-chiusa":
+            // la giornata in corso nel momento della demo (#417, #424): testa, campo chiuso, Rosa e schede raccontano la stessa
             // giornata, con le stesse partite agli stessi orari e la tua scelta salvata
             server.risposte.merge(DatiDemo.risposteInCorso(adesso: adesso)) { _, nuova in nuova }
-            server.indirizzoFinto = schermata == "oggi-in-corso" ? "https://finto-giornata-in-corso.invalid"
-                                                                  : "https://finto-formazione-chiusa.invalid"
-        case "oggi-finita":
+            server.indirizzoFinto = schermata == "formazione-chiusa" ? "https://finto-formazione-chiusa.invalid"
+                                                                     : "https://finto-giornata-in-corso.invalid"
+        case "oggi-finita", "formazione-finita":
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
+            if schermata == "formazione-finita", let formazione = server.risposte["/api/formazione"] {
+                // a giornata finita il server manda già la formazione della prossima: la testa la scrive sotto «Com'è andata»
+                server.risposte["/api/formazione"] = DatiDemo.formazioneDellaProssima(formazione)
+            }
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
         case "formazione-salvata", "formazione-modificata":
-            // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»); Oggi dice lo stesso
-            // («La tua formazione · la tua scelta», #418). `formazione-modificata`: la stessa scelta e poi un altro modulo
-            // toccato (`Demo.moduloDaToccare`), «Modifiche non salvate» con Salva, Annulla e Torna (#463)
+            // la tua scelta già salvata: gli 11 della consigliata («È la consigliata.»)
             server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
             server.risposte["/api/oggi"] = DatiDemo.json(DatiDemo.oggiDati(adesso: adesso, tuaScelta: true))
             server.indirizzoFinto = schermata == "formazione-modificata" ? "https://finto-scelta-modificata.invalid"
                                                                          : "https://finto-scelta-salvata.invalid"
-        case "oggi-rinvio":
+        case "formazione-cambiata":
+            // la tua scelta salvata è un altro modulo: «L'hai cambiata tu: N titolari diversi dalla consigliata (… punti attesi).»
+            // con «Torna alla consigliata»
+            server.risposte["/api/scelta"] = DatiDemo.sceltaCambiata(adesso: adesso)
+            server.risposte["/api/oggi"] = DatiDemo.json(DatiDemo.oggiDati(adesso: adesso, tuaScelta: true))
+            server.indirizzoFinto = "https://finto-scelta-cambiata.invalid"
+        case "oggi-rinvio", "formazione-rinvio":
             server.risposte["/api/oggi"] = DatiDemo.oggiRinvio(adesso: adesso)
             server.indirizzoFinto = "https://finto-partita-rinviata.invalid"
         case "oggi-finita-recupero":
@@ -53,13 +63,13 @@ extension FinteServer {
         return server
     }
 
-    /// La fase della giornata in cui vive la demo di una fotografia (`-DEMO_SCHERMATA`): in corso `oggi-in-corso` e
-    /// `formazione-chiusa`, finita `oggi-finita` e `oggi-finita-recupero`, prima della scadenza le altre e la «Prova con dati di
+    /// La fase della giornata in cui vive la demo di una fotografia (`-DEMO_SCHERMATA`): in corso `formazione-in-corso` e
+    /// `formazione-chiusa`, finita `formazione-finita` (e i sinonimi di prima), prima della scadenza le altre e la «Prova con dati di
     /// esempio». Serve all'ora dell'app (`Orologio`): a giornata in corso è il momento della demo.
     static func faseDemo(_ schermata: String?) -> LegaDemo.Fase {
         switch schermata ?? "" {
-        case "oggi-in-corso", "formazione-chiusa": return .inCorso
-        case "oggi-finita", "oggi-finita-recupero": return .finita
+        case "oggi-in-corso", "formazione-in-corso", "formazione-chiusa": return .inCorso
+        case "oggi-finita", "oggi-finita-recupero", "formazione-finita": return .finita
         default: return .prima
         }
     }
@@ -327,6 +337,26 @@ private extension LegaDemo {
                      "tipo": "manuale"])
     }
 
+    /// La formazione della giornata dopo (foto `formazione-finita`), come la manda il server a giornata finita: la stessa consigliata
+    /// con i numeri della prossima giornata, quelli di `prossima` di Oggi.
+    static func formazioneDellaProssima(_ testo: String) -> String {
+        guard var f = (try? JSONSerialization.jsonObject(with: Data(testo.utf8))) as? [String: Any] else { return testo }
+        f["giornata"] = giornata + 1
+        f["giornata_lega"] = giornataLega + 1
+        return json(f)
+    }
+
+    /// La scelta salvata diversa dalla consigliata (foto `formazione-cambiata`): gli 11 del secondo modulo, salvati un'ora prima.
+    static func sceltaCambiata(adesso: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "Europe/Rome")
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        let modulo = moduli.count > 1 ? moduli[1] : moduli[0]
+        return json(["titolari": modulo.titolari, "modulo": modulo.nome, "salvata": f.string(from: adesso.addingTimeInterval(-3600)),
+                     "tipo": "manuale"])
+    }
+
     /// La valutazione di una formazione (`POST /api/formazione/valuta`), come `valuta` di fanta/consigli.py. Il server finto non
     /// legge il corpo della domanda: risponde per gli undici della consigliata, che sono la scelta salvata della demo
     /// (`sceltaSalvata`) e quelli da cui parte «Modifica a mano». Quindi gli stessi punti attesi della consigliata e differenza zero,
@@ -468,6 +498,7 @@ private extension LegaDemo {
             voce["testo"] = "\(x.nome) è in dubbio (\(p)% di giocare). Meglio \(alt.nome)."
             voce["alternativa"] = ["id": alt.id, "nome": alt.nome, "ruolo": alt.ruolo, "punti_attesi": alt.puntiAttesi]
             voce["azione"] = "Sostituisci"
+            voce["decisione"] = 1           // un cambio da fare: la prima decisione, come `segna_decisioni` del server (#673)
             voce["destinazione"] = ["scheda": "formazione", "sezione": NSNull(), "link": "schieraxi://giocatore/\(x.id)", "giocatore": x.id]
         } else if maxSostituzioni > 0,
                   let riserva = panchina(per: titolari).map({ calciatore($0) }).first(where: { $0.ruolo == x.ruolo && !$0.assente }) {
@@ -488,10 +519,12 @@ private extension LegaDemo {
                 "priorita": 2, "azione": "Vedi", "destinazione": ["sezione": "mercato", "link": "schieraxi://mercato"]]
     }
 
-    /// Rose ferme da 5 giorni dopo una giornata giocata.
+    /// Rose ferme da 5 giorni dopo una giornata giocata: una decisione in cima alla Formazione (`decisione`, #673), dopo il cambio
+    /// del titolare in dubbio se la demo lo propone.
     static var voceRoseVecchie: [String: Any] {
         ["id": "rose", "tipo": "rose", "testo": "Le rose non sono aggiornate da 5 giorni e nel frattempo si è giocata una giornata.",
-         "priorita": 2, "azione": "Aggiorna le rose", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]]
+         "priorita": 2, "azione": "Aggiorna le rose", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"],
+         "decisione": voceDubbio["alternativa"] == nil ? 1 : 2]
     }
 
     /// L'ultima giornata finita con i due numeri, come il server dalla #299 («Giornata 7 · 10ª di Serie A: è finita, …»), mentre

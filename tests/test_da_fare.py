@@ -79,6 +79,16 @@ def test_dubbi_e_infortuni_con_alternativa(mondo):
     assert all(x["azione"] and x["testo"] for x in v)
 
 
+def test_le_decisioni_in_cima_le_segna_il_server(mondo):
+    """#673: le voci che chiedono di fare qualcosa hanno `decisione` (1, 2, …), con la regola di tests/test_da_fare_decisioni.py:
+    qui i due cambi, prima quello dell'infortunato (urgente)."""
+    la_consigliata_cambia(mondo, (6, 14), (5, 12))
+    v = vai(mondo)
+    segnate = sorted((x for x in v if "decisione" in x), key=lambda x: x["decisione"])
+    assert [x["id"] for x in segnate][:2] == ["dubbio:6", "dubbio:5"]
+    assert [x["decisione"] for x in segnate] == list(range(1, len(segnate) + 1))
+
+
 def test_titolare_in_dubbio_tenuto_dalla_consigliata_niente_cambio(mondo):
     """#266: la consigliata tiene Rossi (55%) titolare e la riserva in panchina, quindi Formazione e confronto dicono «Schiera Rossi».
     Da fare non deve scrivere «Meglio Riserva» né avere «Sostituisci»: dice chi entra se lui non gioca."""

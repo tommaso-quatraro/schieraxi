@@ -32,11 +32,11 @@ def test_ogni_file_swift_di_oggi_ha_una_regola_o_e_ignorato():
 
 
 def test_schermate_dai_file():
-    esito = foto.schermate(["ios/Sources/Presentation/Oggi/OggiView.swift",
+    esito = foto.schermate(["ios/Sources/Presentation/Formazione/FormazioneView.swift",
                             "ios/Sources/Presentation/Mercato/SchedaGiocatoreView.swift",
                             "ios/Tests/SchieraxiTests/ViewModelTests.swift",
                             "fanta/server.py"])
-    assert esito["schermate"][:5] == ["oggi", "oggi-fondo", "oggi-in-corso", "oggi-finita", "oggi-rinvio"]
+    assert esito["schermate"][:5] == ["formazione", "formazione-fondo", "formazione-in-corso", "formazione-finita", "formazione-rinvio"]
     assert "giocatore" in esito["schermate"] and "lega-diario" not in esito["schermate"]
     assert esito["widget"] is False and esito["senza"] == []
 

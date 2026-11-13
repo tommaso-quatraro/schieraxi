@@ -34,9 +34,9 @@ FILE_VAPID = RADICE / "dati" / "vapid.json"
 FILE_ISCRIZIONI = RADICE / "dati" / "push.json"
 MASSIMO_DISPOSITIVI = 8
 CONTATTO = "mailto:schieraxi@users.noreply.github.com"      # richiesto dal protocollo (deve essere un mailto:): un recapito di chi manda le notifiche; qui uno neutro
-# Tempo di vita: per quanto il servizio delle notifiche tiene un avviso per un telefono spento o senza rete (#652). Riepilogo,
-# «formazione pronta» e gli altri aspettano il telefono qualche ora; gli avvisi sulla formazione (promemoria, cambi, «cambia la
-# formazione», reparto scoperto) mai oltre la scadenza: chi li manda dice quanto manca (`vale_per`).
+# Tempo di vita: per quanto il servizio delle notifiche tiene un avviso per un telefono spento o senza rete (#652). Gli avvisi che
+# non parlano della formazione (oggi solo quello di prova) aspettano il telefono qualche ora; quelli sulla formazione (promemoria,
+# cambi, «cambia la formazione») mai oltre la scadenza: chi li manda dice quanto manca (`vale_per`).
 TEMPO_DI_VITA = 12 * 3600
 
 

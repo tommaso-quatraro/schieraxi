@@ -9,6 +9,9 @@ extension Catalogo {
         /// `comune.riprova`
         static let riprova = "Riprova"
 
+        /// `comune.cambiato_ricarico`
+        static let cambiatoRicarico = "Questi dati sono stati cambiati da un altro dispositivo. Sto ricaricando la versione nuova…"
+
         /// `comune.prima_rose`
         static let primaRose = "Prima le tue rose"
 

@@ -4,10 +4,10 @@
       "id": 6,
       "schermata": "Campo",
       "web": "«gioca 92%» e «vs PAR / @ UDI»",
-      "iphone": "«92% · PAR (f)»",
+      "iphone": "come la web, con il volto: fantavoto atteso, cognome, «gioca N%» solo sotto l'80% (pillola arancio, rossa sotto 50), lo stato a parole, niente avversario",
       "forma": "web",
-      "chi": "**da decidere**: dal 12/11/2026 sulla web la pedina ha solo il fantavoto atteso e il cognome: «gioca N%» si vede solo sotto l'80% (arancio fra 50 e 79, rosso sotto 50, senza ⚠) e l'avversario sta nella scheda (#616). L'iPhone ha ancora «gioca 92%» e «vs PAR». Prima: fatto con #22 (build 256): aggiornare l'app sul telefono",
-      "stato": "da-decidere"
+      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `LetturaPedina.contenuto`, `PedinaCampo`; prova `PedinaComeLaWebTests`. Prima: fatto con #22 (build 256)",
+      "stato": "fatto"
     },
     {
       "id": 7,

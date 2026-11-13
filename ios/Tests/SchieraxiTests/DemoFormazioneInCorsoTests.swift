@@ -165,17 +165,17 @@ struct DemoFormazioneInCorsoTests {
         #expect(abs(Orologio.scartoAllAvvio(scenario: fotografia, demo: true, schermata: "oggi-in-corso", adesso: telefono) + 5000) < 0.001)
     }
 
-    @Test("Sotto «Chiusa» Oggi scrive «La formazione si è chiusa ieri 20:35», come il widget, a qualunque ora segni il telefono",
+    @Test("A giornata in corso la testa della Formazione dice «in corso» e i punti finora, senza scadenza, a qualunque ora segni il telefono",
           arguments: Array(0..<24))
-    func siEChiusaComeIlWidget(dopoOre: Int) async throws {
+    func testaInCorso(dopoOre: Int) async throws {
         let telefono = istante(dopoOre)
-        let oggi = try await leggi("/api/oggi", da: try demo("oggi-in-corso", telefono), come: Oggi.self)
-        let frase = OggiView.siEChiusa(oggi, adesso: oraApp("oggi-in-corso", telefono))
-        let w = try #require(RiassuntoWidget.leggi(LegaDemo.widget(adesso: telefono, fase: .inCorso)), "il widget in corso non si legge")
-        let nelWidget = ParoleWidget.sottoScadenza(w.inizio, adesso: LegaDemo.momento(adesso: telefono, fase: .inCorso),
-                                                   conProbabili: w.conProbabili)
-        #expect(frase == "La formazione si è chiusa ieri 20:35", "dopo \(dopoOre) ore: «\(frase)»")
-        #expect(frase == "La formazione " + (nelWidget.first ?? ""), "dopo \(dopoOre) ore: Oggi «\(frase)», il widget «\(nelWidget.first ?? "")»")
+        let server = try demo("formazione-in-corso", telefono)
+        let oggi = try await leggi("/api/oggi", da: server, come: Oggi.self)
+        let f = try await leggi("/api/formazione", da: server, come: Formazione.self)
+        let t = TestaFormazione.per(oggi: oggi, formazione: f, adesso: oraApp("formazione-in-corso", telefono))
+        #expect(t.inCorso, "dopo \(dopoOre) ore")
+        #expect(t.punti != nil, "dopo \(dopoOre) ore: niente punti finora")
+        #expect(t.chiude == nil, "dopo \(dopoOre) ore: «\(t.chiude ?? "")»")
     }
 
     @Test("Le righe della Formazione chiusa scrivono il giorno delle partite con l'ora dell'app, come Oggi", arguments: [0, 5, 11, 17, 22])
@@ -192,9 +192,8 @@ struct DemoFormazioneInCorsoTests {
         }
     }
 
-    @Test("Oggi, le righe dei giocatori e la partita della scheda contano «oggi» e «ieri» con l'ora dell'app (`Orologio`), mai con quella del telefono",
-          arguments: ["Sources/Presentation/Oggi/OggiView.swift", "Sources/Support/RigaGiocatore.swift",
-                      "Sources/Domain/LetturaScheda.swift"])
+    @Test("Le righe dei giocatori e la partita della scheda contano «oggi» e «ieri» con l'ora dell'app (`Orologio`), mai con quella del telefono",
+          arguments: ["Sources/Support/RigaGiocatore.swift", "Sources/Domain/LetturaScheda.swift"])
     func conLOrologioDellApp(percorso: String) throws {
         let codice = try sorgente(percorso)
         let chiamate = Self.chiamate("Quando.leggibile(", in: codice)

@@ -1057,6 +1057,7 @@ body.senza-accesso .salta { display: none; }
 .gn-dx { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
 .gn-num { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .gn-attesi { font-size: var(--t-eti); color: var(--testo-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gn-diff { font-size: var(--t-eti); color: var(--testo-2); white-space: nowrap; font-variant-numeric: tabular-nums; }      /* fatti meno attesi (#672): il segno dice com'è andata, niente colore */
 /* gli 11: il nome, poi atteso e preso in due colonne della stessa larghezza; il voto preso è il dato principale */
 .gn-dettaglio { padding: 2px 0 16px; }
 .gn-titolo { margin: 0 0 4px; font-size: var(--t-sec); font-weight: 650; color: var(--testo-2); }
@@ -1068,6 +1069,7 @@ body.senza-accesso .salta { display: none; }
 .gn-tabella td + td { font-family: var(--font-numeri); font-weight: 600; }
 .gn-tabella td.gn-senza { font-family: inherit; font-size: var(--t-sec); font-weight: 400; color: var(--testo-2); white-space: nowrap; }
 .gn-cambi { margin: 12px 0 0; font-size: var(--t-corpo); line-height: 1.4; max-width: 60ch; }
+.gn-scarti { margin: 4px 0 10px; font-size: var(--t-corpo); line-height: 1.4; }      /* chi ha fatto meglio o peggio del previsto (#672) */
 .gn-nota { margin: 4px 0 8px; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.4; max-width: 60ch; }
 .gn-dettaglio .pulsanti { margin-top: 12px; }
 .gn-vuoto { margin: 0; }

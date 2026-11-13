@@ -38,19 +38,20 @@ final class FotoUITests: XCTestCase {
 
     func testLaFormazioneInOrizzontaleFinisceDiCaricare() {
         avvia(["-DEMO_SCHERMATA", "formazione", "-DEMO_ORIENTAMENTO", "orizzontale"])
-        let modifica = app.buttons["Modifica a mano"]
+        // la riga dello stato c'è quando formazione e scelta sono arrivate (la demo non ha una scelta salvata)
+        let pronta = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "È la consigliata.")).firstMatch
         // Il tempo delle foto: 3 secondi dopo l'avvio più al massimo 8 di attesa dello schermo fermo (scripts/screenshot.sh).
-        let inTempo = modifica.waitForExistence(timeout: 10)
+        let inTempo = pronta.waitForExistence(timeout: 10)
         var perché = ""
         if !inTempo {
             // Per capire la causa: arriva più tardi? Cambiando scheda e tornando, carica?
-            let tardi = modifica.waitForExistence(timeout: 20)
+            let tardi = pronta.waitForExistence(timeout: 20)
             var cambiandoScheda = tardi
             if !tardi {
                 let barra = app.tabBars.firstMatch
-                barra.buttons["Oggi"].firstMatch.tap()
+                barra.buttons["Squadra"].firstMatch.tap()
                 barra.buttons["Formazione"].firstMatch.tap()
-                cambiandoScheda = modifica.waitForExistence(timeout: 15)
+                cambiandoScheda = pronta.waitForExistence(timeout: 15)
             }
             perché = " (dopo altri 20 s: \(tardi ? "sì" : "no"); cambiando scheda: \(cambiandoScheda ? "sì" : "no"); orizzontale: \(inOrizzontale ? "sì" : "no"))"
         }

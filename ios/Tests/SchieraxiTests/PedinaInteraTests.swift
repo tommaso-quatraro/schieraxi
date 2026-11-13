@@ -103,7 +103,7 @@ struct PedinaInteraTests {
         }
     }
 
-    // MARK: «gioca N%» e avversario
+    // MARK: «gioca N%» (l'avversario non sta più sulla pedina, #673: è nella scheda)
 
     @MainActor
     @Test("«⚠ gioca 45%» e «gioca 85%» vanno a capo invece di rimpicciolirsi", arguments: [true, false])
@@ -114,19 +114,6 @@ struct PedinaInteraTests {
         let misura = Self.misura(vista, larghezza: stretta)
         #expect(intera.height > 0)
         #expect(misura.height >= intera.height * 1.6,
-                "in \(stretta) punti è alta \(misura.height), su una riga \(intera.height): non va a capo")
-        #expect(misura.width <= stretta + 1, "esce dalla pedina (larga \(misura.width) in \(stretta))")
-    }
-
-    @MainActor
-    @Test("«vs NAP» va a capo: «vs» sopra la sigla quando la pedina è stretta", arguments: [true, false])
-    func avversarioACapo(inCasa: Bool) {
-        let vista = RigaAvversario(avversario: "napoli", inCasa: inCasa)
-        let intera = Self.misura(vista, larghezza: nil)
-        let stretta = (intera.width * 0.75).rounded(.down)
-        let misura = Self.misura(vista, larghezza: stretta)
-        #expect(intera.height > 0)
-        #expect(misura.height >= intera.height * 1.5,
                 "in \(stretta) punti è alta \(misura.height), su una riga \(intera.height): non va a capo")
         #expect(misura.width <= stretta + 1, "esce dalla pedina (larga \(misura.width) in \(stretta))")
     }

@@ -1,5 +1,49 @@
 [
   {
+    "versione": "1.494",
+    "data": "2026-11-13T14:02:53",
+    "titolo": "Giornate: di quanto sei andato sopra o sotto il previsto, e chi ha fatto meglio o peggio",
+    "voci": [
+      "Giornate (web): ogni riga dice di quanto i punti fatti sono andati sopra o sotto quelli attesi, per esempio «+9,2 sul previsto».",
+      "Giornate (web): toccando una giornata, una riga dice chi ha fatto meglio e chi peggio del previsto di almeno un punto, al massimo due per parte, con quanto.",
+      "Quando il confronto con la consigliata non c'è, la frase ora dice il perché vero: la consigliata di allora non era stata salvata, oppure dentro c'è chi non è più nella tua rosa (per esempio un giocatore ceduto)."
+    ],
+    "tecnico": [
+      "GET /api/diario, campi nuovi per voce (nessuno tolto): `fatti_e_attesi` {formazione, atteso, fatti, differenza, meglio[], peggio[], testo, frase} (#672) da diario.fatti_e_attesi; `consigliata_di_allora` (mostrata | non_salvata | fuori_rosa | non_valutabile), `nota_consigliata` e `nota_consigliata_frase` (#674) da diario.consigliata_di_allora e diario.nota_consigliata. Contratto in docs/API.md.",
+      "calcola_giornata scrive `consigliata_di_allora` nella voce: fuori_rosa se un titolare dell'istantanea non è fra i giocatori schierabili della rosa di oggi, non_valutabile se sono tutti in rosa ma la regola unica della scelta la rifiuta (modulo). Le voci di prima lo ricavano dall'istantanea: con l'istantanea non_valutabile, senza non_salvata.",
+      "diario.nota_confronto(giornate, stessi, senza, motivi): frasi nuove diario.confronto_fuori_rosa, diario.confronto_non_valutabili, diario.confronto_stessa_confrontabili; con giornate di due tipi un `elenco` di due frasi. senza_istantanea, sintesi.senza_consigliata_mostrata e affidabilita.senza_istantanea contano come prima.",
+      "In meglio e peggio solo chi si scosta di almeno diario.SOGLIA_SCARTO (1 punto, 1,0 compreso); nessuno sopra la soglia: liste vuote, testo e frase null.",
+      "Le differenze per giocatore sono quelle dei numeri come li scrive la web (Decimal, ROUND_HALF_UP sul valore vero del float, come toFixed(1)): niente scarti di 0,1 fra la frase e la tabella.",
+      "Web: riga di Giornate con `fatti_e_attesi.differenza` (testi giornate.sul_previsto e giornate.come_previsto); nel dettaglio `fatti_e_attesi.testo` e `nota_consigliata` così come arrivano. Tolti dal catalogo giornate.senza_confronto e giornate.rifatta_nota."
+    ]
+  },
+  {
+    "versione": "1.493",
+    "data": "2026-11-13T13:24:45",
+    "titolo": "Server: tolto il codice degli avvisi che non partivano più",
+    "voci": [
+      "Server: tolto il codice degli avvisi che non partivano più (riepilogo della giornata, reparto scoperto, giocatori seguiti, «la formazione è pronta»). Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "Tolti i comandi python -m fanta riepilogo e python -m fanta avviso (vuoti dalla #693) e le loro chiamate in script/server/aggiorna.sh; test nuovo test_script_comandi: ogni python -m fanta <comando> degli script del server deve esistere.",
+      "notifiche: tolti riepilogo (con _testo_riepilogo, _da_riepilogare, _con_la_regola_dei_rinvii, RIEPILOGO_ENTRO, FILE_RIEPILOGO), copertura e osservati_liberi; SEZIONE_PER_TAG solo con rotating_light e alarm_clock. avvisi.py: tolti da_mandare, segna, inizio_giornata, FILE_STATO, ANTICIPO (resta la scadenza della formazione). Contesto: tolti stato_riepilogo e stato_avvisi (la migrazione non copia più notifiche-riepilogo.json e avvisi.json).",
+      "frasi_avvisi: tolte le chiavi senza uso (osservato libero, reparto scoperto, riepilogo, formazione pronta, n.t_cambi, n.osservato_riga, n.formazione_aggiornata, n.riga_consiglio, n.altre_novita). Nessuna rotta né campo cambia: le rotte delle funzioni tolte dalle schermate restano per le app iPhone già installate."
+    ]
+  },
+  {
+    "versione": "1.492",
+    "data": "2026-11-13T12:55:34",
+    "titolo": "Le decisioni in cima alla Formazione le sceglie il server",
+    "voci": [
+      "Formazione: le cose da decidere in cima (un cambio da fare, la consigliata cambiata, le rose da aggiornare) le sceglie SchieraXI, con la stessa regola sulla web e sull'iPhone: prima quelle urgenti, al massimo due."
+    ],
+    "tecnico": [
+      "GET /api/oggi: le voci di da_fare che sono decisioni hanno il campo facoltativo decisione (1, 2, ...), scritto da da_fare.segna_decisioni con la regola di dfVera e dfDecisioni della web (fanta/web/dafare.js): niente svincolato, scambio, diario, dubbio senza alternativa, formazione diversa da consigliata:<giornata>; prima le urgenti non copertura, poi le copertura urgenti, poi le altre; una sola copertura. Nessun campo tolto.",
+      "La web per ora applica ancora la sua regola, che dà le stesse voci: tests/test_da_fare_decisioni.py ha i casi dei test nel browser della Formazione unica.",
+      "Catalogo dei testi (fanta/testi): tolte le chiavi di Oggi, della modifica a mano e del vecchio stato della scelta che non usano più né la web né l'iPhone (Formazione unica dell'iPhone, #673)."
+    ]
+  },
+  {
     "versione": "1.491",
     "data": "2026-11-13T12:31:42",
     "titolo": "Formazione: giornate con molte partite rinviate, panchina e frasi più giuste",

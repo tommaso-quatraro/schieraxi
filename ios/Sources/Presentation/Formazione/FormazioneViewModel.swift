@@ -1,166 +1,290 @@
 import SwiftUI
 
-/// I giocatori da mostrare in questo momento (consigliata, un altro modulo, oppure modifica a mano).
+/// I giocatori da mostrare in questo momento: la consigliata, la tua scelta salvata, a giornata in corso la formazione schierata o,
+/// per un'altra squadra, un altro modulo.
 struct VistaFormazione {
     let titolari: [Giocatore]
     let panchina: [Giocatore]
     let modulo: String
-    /// nil in modifica a mano finché il server non ha calcolato quella formazione (o se il calcolo non è riuscito):
-    /// al suo posto si mostra «Calcolo…», mai i punti della consigliata.
+    /// nil finché il server non ha valutato quegli 11 (allora niente numero, mai i punti della consigliata) e a giornata in corso
+    /// (contano i punti fatti, nella testa).
     let punti: Double?
 }
 
-/// Una riga della nota sotto il campo (#356): il nome del titolare e il perché della scelta, con le parole del server.
-struct RigaScelta: Identifiable, Equatable {
-    /// L'id del titolare.
-    let id: Int
-    let nome: String
-    let testo: String
-    /// Come la scrive la web («Nome · riga») e come la legge VoiceOver.
-    var voce: String { nome + " · " + testo }
-}
-
-/// Logica della schermata Formazione: modulo, modifica a mano, salvataggio della scelta, formazione di un'altra squadra.
-/// Vive nell'`AppModel`, quindi cambiando sezione (barra laterale dell'iPad) la modifica a mano non si perde.
+/// Logica della Formazione unica (#673), come `mostraFormazione` della web (#616): in campo la consigliata o la tua scelta salvata;
+/// ogni cambio degli 11 (un altro modulo, «Sostituisci», una decisione in cima, la spunta «L'ho messa») si salva subito con
+/// `POST /api/formazione/valuta` (`salva: true`, If-Match della scelta), «Torna alla consigliata» è `DELETE /api/scelta`. Una
+/// scrittura alla volta; una risposta arrivata dopo una rilettura non vale e si rilegge. I comandi che scrivono restano spenti sulla
+/// copia del telefono, con la scelta non letta e con una scrittura in volo. La formazione di un'altra squadra si guarda e basta.
+/// A giornata in corso in campo c'è la formazione schierata di `/api/oggi` (`in_corso.giocatori`), come la web; prima della scadenza
+/// la scelta letta resta sul telefono accanto alla copia della Formazione (`CopiaScelta`), così riaprendo senza rete in campo c'è
+/// la formazione salvata e non la consigliata. Vive nell'`AppModel`: cambiando sezione non si perde niente.
 @MainActor
 final class FormazioneViewModel: ViewModelBase {
     let caricatore: Caricatore<Formazione>
     let server: any ServerClient
+    /// La giornata (`/api/oggi`): a giornata in corso dice la formazione schierata; le sue copie spengono le decisioni che scrivono.
+    let oggi: OggiViewModel?
 
-    @Published var moduloScelto: String?
-    /// Id dei titolari scelti a mano; nil = si usa la formazione consigliata.
-    @Published var manuale: [Int]?
-    @Published var valutazione: ValutazioneManuale?
+    /// L'ultimo avviso (un salvataggio non riuscito, la scelta cambiata da un altro dispositivo, la formazione copiata).
     @Published var messaggio: String?
     /// Nome di un'altra squadra della lega, se se ne sta guardando la formazione consigliata (nil = la mia).
-    @Published var squadraVista: String?
-    /// Il titolare di cui si sceglie il sostituto (foglio della sostituzione): da «Sostituisci» nella scheda del giocatore o,
-    /// in modifica a mano, dal tocco sulla riga.
+    @Published private(set) var squadraVista: String?
+    /// Un altro modulo guardato nella formazione di un'altra squadra: solo sullo schermo, non si salva niente.
+    @Published private(set) var moduloScelto: String?
+    /// Il titolare di cui si sceglie il sostituto (da «Sostituisci» nella scheda del giocatore).
     @Published var daSostituire: Giocatore?
     /// «Sostituisci» toccato nella scheda: la scelta del sostituto si apre quando il foglio della scheda è sparito.
     private var sostituzioneInAttesa: Int?
 
-    /// La scelta della giornata è stata letta dal server (anche «nessuna»): solo allora la riga di stato dice qualcosa.
+    /// La scelta della giornata è stata letta dal server (anche «nessuna»): finché no, non si può cambiare niente.
     @Published private(set) var sceltaLetta = false
-    /// I titolari salvati sul server per questa giornata (nil = nessuna scelta salvata) e quando.
-    @Published private(set) var salvati: [Int]?
-    @Published private(set) var salvataIl: Date?
-    /// La scelta salvata non vale più (rosa o regole cambiate): come sulla web non si cancella da sola, lo dice la riga di stato
-    /// e si vede la consigliata finché non la rifai o torni alla consigliata.
+    /// Scelta, 11 in campo e valutazione vengono dalla copia del telefono (`CopiaScelta`), non ancora dal server: si mostrano finché
+    /// si vede la copia della Formazione o si sta rileggendo, ma non si scrive niente (`sceltaLetta` resta falso).
+    @Published private(set) var sceltaInCopia = false
+    /// La scelta salvata (nil = nessuna, vale la consigliata).
+    @Published private(set) var salvata: SceltaSalvata?
+    /// La scelta salvata non si può più schierare (lo dice il server): in campo la consigliata, finché non la cambi.
     @Published private(set) var salvataNonValida = false
-    /// Il server sta provando la scelta salvata appena letta: finché non risponde la riga non dice niente (come la web).
-    @Published private(set) var provaSalvata = false
-    /// Un salvataggio è partito e il server non ha ancora risposto: un secondo tocco su Salva (o ⌘S) non ne manda un altro, come
-    /// `sc.occupato` della web. Finché dura, i pulsanti di salvataggio e «Annulla modifiche» sono spenti; «Torna alla consigliata»
-    /// e i moduli restano attivi, come sulla web (`StatoScelta.Pulsante.spentoSalvando`, #477).
-    @Published private(set) var salvataggioInCorso = false
-    /// Il calcolo della modifica a mano non è riuscito: invece dei punti, «Non riesco a calcolare» con «Riprova».
-    @Published private(set) var calcoloNonRiuscito = false
-    /// I titolari a cui si riferisce `valutazione` (dopo una sostituzione la valutazione vecchia non vale più).
-    private var valutati: [Int]?
-    /// Il codice dell'ultimo errore di `valuta` (campo `codice` del server), se c'era.
-    private var codiceUltimoErrore: String?
+    /// Gli 11 in campo quando non sono quelli della consigliata (la tua scelta salvata); nil = la consigliata.
+    @Published private(set) var manuale: [Int]?
+    /// La valutazione del server per `manuale`, quando quegli 11 non sono un modulo già calcolato.
+    @Published private(set) var valutazione: ValutazioneManuale?
+    /// Una scrittura è partita e il server non ha ancora risposto: una alla volta, gli altri comandi aspettano.
+    @Published private(set) var occupato = false
+    /// Formazione e scelta si stanno rileggendo: i comandi aspettano i dati nuovi.
+    @Published private(set) var leggendo = false
 
-    /// Hai toccato tu un modulo (fuori dalla modifica a mano). Solo allora, rileggendo la scelta, quello che guardi resta
-    /// e la scelta salvata non lo copre. Si azzera con tutto ciò che riparte da capo (`azzeraManuale`: «Torna alla consigliata»,
-    /// un'altra squadra e ritorno, scelta cambiata da un altro dispositivo).
-    private var moduloToccato = false
-
-    /// Giornata a cui si riferisce la modifica a mano: se cambia, si riparte da zero.
+    /// La giornata della scelta letta: se cambia si riparte da zero.
     private var giornata: Int?
-    /// Numera le valutazioni inviate: una risposta arrivata in ritardo (fuori ordine) viene ignorata.
-    private var contatore = 0
+    /// Cresce a ogni rilettura: una risposta (lettura o scrittura) partita prima non vale più.
+    private var generazione = 0
 
-    /// A che punto è la tua scelta (riga di stato della Formazione). Per le altre squadre non si dice niente.
-    var statoScelta: StatoScelta {
-        guard squadraVista == nil else { return .sconosciuto }
-        return StatoScelta.calcola(letta: sceltaLetta && !provaSalvata, salvati: salvati, salvataIl: salvataIl, manuale: manuale,
-                                   mostrati: titolariMostrati, chiusa: chiusa,
-                                   nonValida: salvataNonValida || sceltaNonValidaPerIlServer, altra: altraDallaConsigliata)
-    }
-
-    /// Senza modifica a mano, gli undici del modulo sullo schermo: con una scelta salvata dicono se è ancora lei
-    /// («salvata») o se hai toccato un altro modulo («Modifiche non salvate»), come la web.
-    private var titolariMostrati: [Int]? {
-        guard manuale == nil, let f = formazione else { return nil }
-        return vista(f).titolari.map(\.id)
-    }
-
-    /// Senza modifica a mano hai toccato un modulo diverso dalla scelta salvata, che vale ancora: è una modifica di
-    /// questo telefono. Rileggendo la scelta (ritorno sulla Formazione, tira per aggiornare) non si copre con quella salvata.
-    /// Conta solo un tocco vero (`moduloToccato`): dopo un 412, «Torna alla consigliata» o il ritorno da un'altra squadra sullo
-    /// schermo c'è la consigliata, ma la scelta salvata va rimessa in campo.
-    private var modificaSenzaMano: Bool {
-        guard moduloToccato, manuale == nil, let salvati, !salvataNonValida, let mostrati = titolariMostrati else { return false }
-        return Set(mostrati) != Set(salvati)
-    }
-
-    /// A giornata chiusa il server dice se la tua scelta salvata si può schierare (`stato_scelta`, facoltativo: un server vecchio
-    /// non lo manda). Come la web, conta solo a giornata chiusa: prima la scelta può cambiare e il campo sarebbe vecchio.
-    var sceltaNonValidaPerIlServer: Bool { chiusa && formazione?.statoScelta == "non_valida" }
-
-    /// Lo stile «Equilibrata» del server (`rischio` 0): dal 12/11/2026 è l'unico, come sulla web (#634).
-    static let rischioEquilibrato = 0
-
-    /// Il livello da cui vengono moduli e titolari: quello equilibrato. Gli altri livelli di `livelli` restano nella risposta del
-    /// server e non si mostrano; se manca quello equilibrato vale il primo. Nil con un server che non manda `livelli`.
-    func livello(_ f: Formazione) -> LivelloRischio? {
-        guard let livelli = f.livelli else { return nil }
-        return livelli.first(where: { $0.rischio == Self.rischioEquilibrato }) ?? livelli.first
-    }
-
-    /// Senza modifica a mano si vede un altro modulo, non la consigliata (come `altra` della web).
-    var altraDallaConsigliata: Bool {
-        guard manuale == nil, let f = formazione, let livello = self.livello(f) else { return false }
-        let modulo = (livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) }) ?? livello.moduli.first)?.modulo
-        return modulo.map { $0 != livello.modulo } ?? false
-    }
-
-    /// La giornata è chiusa (dopo la scadenza, `iniziata` del server): la tua formazione si vede in sola lettura, niente modifiche.
-    var chiusa: Bool { formazione?.iniziata == true }
-
-    /// La frase della web per la formazione chiusa di un'altra squadra (`formazione.chiusa`).
-    static let testoChiusa = Catalogo.Formazione.chiusa
-    /// La fascia sopra la formazione a giornata chiusa, come la web: solo dove non c'è la riga di stato della scelta (un'altra
-    /// squadra). Per la tua squadra lo dice già la riga di stato («Giornata iniziata: la formazione è chiusa»): niente seconda frase.
-    var fasciaChiusa: String? { chiusa && statoScelta == .sconosciuto ? Self.testoChiusa : nil }
-    /// Salvataggio rifiutato perché la scadenza è passata con la pagina aperta: la frase della web (`err.formazione_chiusa`).
-    static let testoChiusaAlSalvataggio = "La giornata è già iniziata: la formazione non si può più cambiare."
-    /// Il codice del server per una scrittura arrivata dopo la scadenza (409).
-    static let codiceChiusa = "formazione_chiusa"
-
-    /// In modifica a mano, il server sta calcolando i punti di questa formazione.
-    var inCalcolo: Bool { manuale != nil && valutati != manuale && !calcoloNonRiuscito }
-
-    /// Anticipi già cominciati (#373, campo `bloccati` del server): chi gioca una partita già cominciata non si sposta più. Vuoto
-    /// senza anticipi cominciati e con un server vecchio; il server rifiuta comunque un salvataggio che ne sposta uno.
-    var fermi: Set<Int> { Set(formazione?.bloccati ?? []) }
-    /// La frase della web sotto i titolari in modifica a mano (`formazione.bloccati`), solo se qualcuno è fermo.
-    static let testoFermi = Catalogo.Formazione.bloccati
-    var notaFermi: String? { manuale != nil && !chiusa && !fermi.isEmpty ? Self.testoFermi : nil }
-
-    /// Chi può prendere il posto di `uscente` nella modifica a mano, come `sostituti` della web: stesso ruolo, non già titolare e non
-    /// fermo, il migliore per punti attesi in cima. Nessuno se `uscente` stesso è fermo.
-    /// Fuori dalla modifica a mano (dalla scheda del giocatore) i titolari sono gli undici sullo schermo.
-    func sostituti(di uscente: Giocatore, _ f: Formazione) -> [Giocatore] {
-        let fermi = Set(f.bloccati ?? [])
-        guard !fermi.contains(uscente.id) else { return [] }
-        let titolari = Set(manuale ?? vista(f).titolari.map(\.id))
-        return (f.schede ?? [:]).values
-            .filter { $0.ruolo == uscente.ruolo && !titolari.contains($0.id) && !fermi.contains($0.id) }
-            .sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }
-    }
-
-    init(server: any ServerClient) {
+    init(server: any ServerClient, oggi: OggiViewModel? = nil) {
         self.server = server
-        caricatore = Caricatore<Formazione>("/api/formazione", server: server)
+        self.oggi = oggi
+        // il comando «Aggiorna» rilegge formazione e scelta insieme (non solo la formazione)
+        caricatore = Caricatore<Formazione>("/api/formazione", ascolta: false, server: server)
         super.init()
         osserva(caricatore)
+        // campo, striscia e decisioni dipendono anche dalla giornata: chi guarda solo questo ViewModel si ridisegna lo stesso
+        if let oggi { osserva(oggi) }
+        alComandoAggiorna { [weak self] in
+            _ = await self?.carica()
+        }
     }
 
     var formazione: Formazione? { caricatore.dato }
     var errore: String? { caricatore.errore }
     var datiSalvati: Date? { caricatore.datiSalvati }
+
+    // MARK: stato della schermata
+
+    /// La giornata è chiusa (dopo la scadenza, `iniziata` del server, o a giornata in corso come la web): la formazione si vede in
+    /// sola lettura.
+    var chiusa: Bool { formazione.map { $0.iniziata == true || dalVivo($0) != nil } ?? false }
+
+    /// Si vedono i dati salvati sul telefono: all'apertura finché non arriva la risposta nuova, o perché non è arrivata.
+    var copia: Bool { caricatore.dallaCache || caricatore.datiSalvati != nil }
+
+    /// I dati nuovi non sono arrivati: resta la copia, che non si può cambiare (`formazione.copia_ferma`, con «Riprova»).
+    var copiaFerma: Bool { squadraVista == nil && caricatore.datiSalvati != nil }
+
+    /// I comandi che scrivono sono spenti (`sc.sola` della web): sulla copia del telefono, con la scelta non letta, mentre la si
+    /// rilegge e con una scrittura in volo. Solo per la tua formazione: quella di un'altra squadra non scrive niente.
+    var comandiSpenti: Bool { squadraVista == nil && (copia || !sceltaLetta || leggendo || occupato) }
+
+    /// Si può scrivere sulla scelta: la tua formazione, aperta, con i comandi accesi.
+    private var puoScrivere: Bool { squadraVista == nil && !chiusa && !comandiSpenti }
+
+    /// La scelta da mostrare è nota: letta dal server o, mentre si vede la copia della Formazione o si sta rileggendo, dalla copia del
+    /// telefono. Sempre della giornata in pagina.
+    var sceltaNota: Bool {
+        guard let f = formazione, giornata == f.giornata else { return false }
+        return sceltaLetta || (sceltaInCopia && (copia || leggendo))
+    }
+
+    /// La riga dello stato sotto il campo (vedi `StatoScelta`). Mentre si rilegge non si dice che la scelta non è letta (sta
+    /// arrivando); se il server dice che ce n'è una salvata e non si è letta lo si dice sempre, tranne a giornata in corso, quando in
+    /// campo c'è già la formazione schierata.
+    var statoScelta: StatoScelta {
+        guard let f = formazione else { return .nessuno }
+        let v = vista(f)
+        return StatoScelta.calcola(mia: squadraVista == nil, letta: sceltaNota, copia: copia || leggendo, chiusa: chiusa, salvata: salvata,
+                                   nonValida: salvataNonValida, titolari: v.titolari.map(\.id), consigliati: consigliati(f),
+                                   punti: v.punti, puntiConsigliata: consigliato(f)?.punteggioAtteso ?? f.punteggioAtteso,
+                                   salvataNonLetta: !leggendo && dalVivo(f) == nil && f.statoScelta == Self.statoValida)
+    }
+
+    /// `stato_scelta` del server quando c'è una scelta salvata che vale.
+    static let statoValida = "valida"
+
+    /// Le decisioni in cima che scrivono sono spente: come gli altri comandi e, in più, quando la giornata da cui vengono
+    /// (`/api/oggi`) è la copia del telefono.
+    var decisioniSpente: Bool { comandiSpenti || (squadraVista == nil && oggi?.copia == true) }
+
+    /// La striscia dei dati salvati: la Formazione o la giornata (`/api/oggi`) non sono arrivate fresche. La data più vecchia delle
+    /// due, con il suo motivo (nil = server non raggiungibile).
+    var striscia: (data: Date, motivo: String?)? {
+        var vecchi: [(data: Date, motivo: String?)] = []
+        if let d = caricatore.datiSalvati { vecchi.append((d, caricatore.motivoDatiSalvati)) }
+        if squadraVista == nil, let o = oggi, let d = o.datiSalvati { vecchi.append((d, o.caricatore.motivoDatiSalvati)) }
+        return vecchi.min { $0.data < $1.data }
+    }
+
+    /// L'errore di `/api/oggi` quando non c'è nemmeno una copia da mostrare: mancano testa e decisioni, e lo si dice.
+    var erroreGiornata: String? {
+        guard squadraVista == nil, let o = oggi, o.oggi == nil else { return nil }
+        return o.errore
+    }
+
+    /// La spunta «L'ho messa»: vale per gli 11 salvati.
+    var messa: Bool { salvata?.messa == true }
+
+    /// Anticipi già cominciati (#373, campo `bloccati` del server): chi gioca una partita già cominciata non si sposta più.
+    var fermi: Set<Int> { Set(formazione?.bloccati ?? []) }
+
+    // MARK: livello, consigliata e moduli
+
+    /// Lo stile «Equilibrata» del server (`rischio` 0): dal 12/11/2026 è l'unico, come sulla web (#634).
+    static let rischioEquilibrato = 0
+
+    /// Il livello da cui vengono moduli e titolari: quello equilibrato (se manca, il primo). Nil con un server senza `livelli`.
+    func livello(_ f: Formazione) -> LivelloRischio? {
+        guard let livelli = f.livelli else { return nil }
+        return livelli.first(where: { $0.rischio == Self.rischioEquilibrato }) ?? livelli.first
+    }
+
+    /// Il modulo consigliato del livello equilibrato.
+    func consigliato(_ f: Formazione) -> OpzioneModulo? {
+        guard let l = livello(f) else { return nil }
+        return l.moduli.first(where: { $0.modulo == l.modulo }) ?? l.moduli.first
+    }
+
+    /// Gli 11 della consigliata.
+    func consigliati(_ f: Formazione) -> [Int] { consigliato(f)?.titolari ?? f.titolari.map(\.id) }
+
+    /// Il modulo già calcolato dal server che ha proprio questi 11 (l'ordine non conta), come `moduloDi` della web.
+    func moduloDi(_ f: Formazione, _ ids: [Int]) -> OpzioneModulo? {
+        livello(f)?.moduli.first { Set($0.titolari) == Set(ids) }
+    }
+
+    /// I moduli del menu: quelli del livello equilibrato e, se gli 11 in campo non sono uno di loro, anche il loro.
+    func moduli(_ f: Formazione) -> [OpzioneModulo] { livello(f)?.moduli ?? [] }
+
+    // MARK: cosa mostrare
+
+    /// A giornata in corso la formazione che vale la dice `/api/oggi` (`in_corso.giocatori`: titolari e panchina in ordine, con chi è
+    /// entrato), come `live` di `mostraFormazione` della web: anche sulla copia del telefono, ed è quella dei punti della testa. Solo
+    /// per la tua squadra e per la giornata in pagina.
+    func dalVivo(_ f: Formazione) -> GiornataInCorso? {
+        guard squadraVista == nil, let o = oggi?.oggi, !o.senzaFormazioneInCorso, let c = o.giornataInCorso,
+              c.giocatori.contains(where: \.titolare), (c.giornata ?? o.giornata).map({ $0 == f.giornata }) ?? true else { return nil }
+        return c
+    }
+
+    /// Il modulo e i punti attesi sopra il campo: non a giornata in corso, quando contano i punti fatti (la web li nasconde).
+    func conModulo(_ f: Formazione) -> Bool { dalVivo(f) == nil }
+
+    /// La scheda di un giocatore schierato con lo stato vero della sua partita (`scheda` della web a giornata in corso).
+    private func scheda(_ g: GiocatoreInCorso, _ f: Formazione) -> Giocatore? {
+        let x = f.schede?[String(g.id)] ?? (f.titolari + f.panchina).first { $0.id == g.id }
+        return x.map { $0.dalVivo(g) } ?? Giocatore.soloDalVivo(g)
+    }
+
+    /// Gli 11 della tua scelta da mettere in campo, se sono della giornata in pagina.
+    private func manualeDi(_ f: Formazione) -> [Int]? {
+        guard let manuale, giornata == f.giornata else { return nil }
+        return manuale
+    }
+
+    /// Titolari, panchina, modulo e punti attesi in campo.
+    func vista(_ f: Formazione) -> VistaFormazione {
+        let base = VistaFormazione(titolari: f.titolari, panchina: f.panchina, modulo: f.modulo, punti: f.punteggioAtteso)
+        if let live = dalVivo(f) {
+            return VistaFormazione(titolari: live.giocatori.filter(\.titolare).compactMap { scheda($0, f) },
+                                   panchina: live.giocatori.filter { !$0.titolare }.compactMap { scheda($0, f) },
+                                   modulo: oggi?.oggi?.formazione?.modulo ?? consigliato(f)?.modulo ?? f.modulo, punti: nil)
+        }
+        guard let schede = f.schede else { return base }
+        func giocatori(_ ids: [Int]) -> [Giocatore] { ids.compactMap { schede[String($0)] } }
+        if squadraVista == nil, let manuale = manualeDi(f) {
+            let titolari = giocatori(manuale)
+            if let m = moduloDi(f, manuale) {
+                return VistaFormazione(titolari: titolari, panchina: giocatori(m.panchina), modulo: m.modulo, punti: m.punteggioAtteso)
+            }
+            let panchina = valutazione?.panchina ?? f.panchina.map(\.id).filter { !manuale.contains($0) }
+            return VistaFormazione(titolari: titolari, panchina: giocatori(panchina),
+                                   modulo: valutazione?.modulo ?? ModuloTitolari.modulo(ruoli: titolari.map(\.ruolo)),
+                                   punti: valutazione?.punteggioAtteso)
+        }
+        let guardato = squadraVista == nil ? nil : moduloScelto.flatMap { m in livello(f)?.moduli.first { $0.modulo == m } }
+        guard let opzione = guardato ?? consigliato(f) else { return base }
+        let titolari = giocatori(opzione.titolari)
+        if titolari.isEmpty { return base }
+        return VistaFormazione(titolari: titolari, panchina: giocatori(opzione.panchina), modulo: opzione.modulo,
+                               punti: opzione.punteggioAtteso)
+    }
+
+    /// «di solito fra 65 e 82» (la fascia del server, 8 volte su 10) o, con una risposta vecchia, «oscilla di ±N», come
+    /// `fraseDiSolito` della web. Nil se il server non manda niente.
+    func fascia(_ f: Formazione) -> String? {
+        if squadraVista == nil, let manuale = manualeDi(f) {
+            if let m = moduloDi(f, manuale) { return Self.diSolito(m.intervallo, dev: m.dev) }
+            return Self.diSolito(valutazione?.intervallo, dev: valutazione?.dev)
+        }
+        let guardato = squadraVista == nil ? nil : moduloScelto.flatMap { m in livello(f)?.moduli.first { $0.modulo == m } }
+        if let opzione = guardato ?? consigliato(f) { return Self.diSolito(opzione.intervallo, dev: opzione.dev) }
+        return Self.diSolito(f.intervallo, dev: f.dev)
+    }
+
+    static func diSolito(_ intervallo: IntervalloPunti?, dev: Double?) -> String? {
+        if let b = intervallo?.basso, let a = intervallo?.alto, b.isFinite, a.isFinite, b <= a {
+            return Catalogo.Formazione.diSolito(a: Formato.decimali(b, cifre: 0), b: Formato.decimali(a, cifre: 0))
+        }
+        if let dev, dev.isFinite, dev >= 0 { return Catalogo.Formazione.oscilla(n: Formato.decimali(dev, cifre: 0)) }
+        return nil
+    }
+
+    /// Una voce del menu dei moduli: «4-3-3 · 73,7 punti · consigliato».
+    func etichettaModulo(_ m: OpzioneModulo, _ f: Formazione) -> String {
+        m.modulo == consigliato(f)?.modulo
+            ? Catalogo.Formazione.opzioneConsigliato(modulo: m.modulo, punti: Formato.punti(m.punteggioAtteso))
+            : Catalogo.Formazione.opzioneModulo(modulo: m.modulo, punti: Formato.punti(m.punteggioAtteso))
+    }
+
+    /// Chi non è fra titolari e panchina e può giocare, dal più forte (punti attesi): «Non schierati».
+    func nonSchierati(_ f: Formazione, _ v: VistaFormazione) -> [Giocatore] { altri(f, v).filter { !Self.nonGioca($0) } }
+    /// Chi non è fra titolari e panchina ed è infortunato, squalificato o fuori: «Infortunati e squalificati».
+    func indisponibili(_ f: Formazione, _ v: VistaFormazione) -> [Giocatore] { altri(f, v).filter { Self.nonGioca($0) } }
+
+    private func altri(_ f: Formazione, _ v: VistaFormazione) -> [Giocatore] {
+        let scelti = Set((v.titolari + v.panchina).map(\.id))
+        return (f.schede ?? [:]).values.filter { !scelti.contains($0.id) }.sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }
+    }
+
+    /// Non gioca di sicuro (`fermo` della web): infortunato, squalificato o fuori.
+    static func nonGioca(_ g: Giocatore) -> Bool {
+        ["infortunato", "squalificato", "fuori"].contains(ParolaStato(g)?.codice ?? "")
+    }
+
+    // MARK: decisioni in cima
+
+    /// Al massimo due decisioni, quelle che il server segna e che hanno ancora senso con gli 11 in campo (`Decisioni`). Solo per la
+    /// tua formazione. `tecniche`: chi gestisce l'app vede anche le voci tecniche.
+    func decisioni(_ oggi: Oggi?, tecniche: Bool) -> [DaFareVoce] {
+        guard squadraVista == nil, let oggi, let f = formazione else { return [] }
+        let titolari = vista(f).titolari.map(\.id)
+        let dentro = Set(consigliati(f))
+        let pagina = Decisioni.Pagina(titolari: titolari, chiusa: chiusa, conScelta: salvata != nil,
+                                      diversi: titolari.filter { !dentro.contains($0) }.count, tecniche: tecniche)
+        return Decisioni.prime(oggi.daFare ?? [], pagina: pagina)
+    }
+
+    /// «+0,9 punti attesi.» accanto al cambio proposto.
+    func guadagno(_ v: DaFareVoce) -> String? {
+        Decisioni.guadagno(v, puntiTitolare: v.giocatore.flatMap { formazione?.schede?[String($0.id)]?.puntiAttesi })
+    }
 
     // MARK: caricamento
 
@@ -170,93 +294,120 @@ final class FormazioneViewModel: ViewModelBase {
         return "/api/formazione"
     }
 
-    func carica() async {
-        await ricaricaConScelta()
-    }
-
-    /// Rilegge la formazione e, per la tua squadra, la scelta della giornata. true se il server ha dato la scelta (anche
-    /// «nessuna»): solo allora lo stato della scelta è quello del server.
+    /// Rilegge la formazione e, per la tua squadra, la scelta della giornata. true se la scelta è stata letta (anche «nessuna»).
     @discardableResult
-    private func ricaricaConScelta() async -> Bool {
+    func carica() async -> Bool {
+        generazione += 1
+        let g = generazione
+        leggendo = true
+        defer { if g == generazione { leggendo = false } }
+        // all'apertura, prima della copia della Formazione, la scelta tenuta sul telefono: in campo subito la formazione salvata
+        if squadraVista == nil, giornata == nil { await riprendiSceltaDalTelefono() }
         await caricatore.ricarica(percorso)
-        guard let f = caricatore.dato else { return false }
-        return await caricaScelta(f)
+        // la risposta nuova non è arrivata: resta la copia, con la scelta di prima
+        guard g == generazione, let f = caricatore.dato, caricatore.datiSalvati == nil else { return false }
+        return await leggiScelta(f, generazione: g)
     }
 
-    /// Legge dal server la scelta salvata per questa giornata (solo per la propria squadra): tiene lo stato «salvata» e, se non
-    /// c'è una modifica in corso, riparte da lì. Se la lettura non riesce lo stato resta com'era (all'inizio: non si sa).
-    /// true se il server ha dato la scelta (anche «nessuna»).
-    private func caricaScelta(_ f: Formazione) async -> Bool {
-        // Un'altra giornata: la modifica a mano e la scelta della vecchia non valgono più.
-        if giornata != f.giornata {
-            azzeraManuale()
-            sceltaLetta = false
-            salvati = nil
-            salvataIl = nil
-            salvataNonValida = false
-            giornata = f.giornata
-        }
+    /// Legge la scelta salvata (come `caricaGiornata` della web): se gli 11 non sono un modulo già calcolato li valuta il server,
+    /// senza salvare. Non letta o non valutata: la riga lo dice e non si può cambiare niente (un salvataggio scriverebbe sopra una
+    /// scelta che non si è vista). Una lettura annullata (la schermata è sparita) lascia tutto com'era.
+    private func leggiScelta(_ f: Formazione, generazione g: Int) async -> Bool {
         guard squadraVista == nil else { return false }
-        let salvata: SceltaSalvata?
+        if giornata != f.giornata {
+            giornata = f.giornata
+            dimentica()
+            sceltaLetta = false
+        }
+        let letta: SceltaSalvata?
         do {
-            salvata = try await server.get("/api/scelta?giornata=\(f.giornata)")
+            letta = try await server.get("/api/scelta?giornata=\(f.giornata)")
         } catch {
+            if Task.isCancelled || error is CancellationError { return false }
+            if g == generazione { sceltaLetta = false }
             return false
         }
-        guard squadraVista == nil, giornata == f.giornata else { return false }
-        // Nessuna modifica di questo telefono: la formazione mostrata è quella salvata di prima (o la consigliata).
-        // A giornata chiusa le modifiche non salvate di questo telefono non contano più: vale quella salvata (o la consigliata).
-        let senzaModifiche = f.iniziata == true || (manuale == nil && !modificaSenzaMano)
-            || salvati.map { Set($0) == Set(manuale ?? []) } == true
-        sceltaLetta = true
-        guard let salvata else {
-            salvati = nil
-            salvataIl = nil
-            salvataNonValida = false
-            if senzaModifiche { azzeraManuale() }   // cancellata da un altro dispositivo: si torna alla consigliata
+        guard g == generazione, squadraVista == nil, giornata == f.giornata else { return false }
+        guard let s = letta else {
+            dimentica()
+            sceltaLetta = true
+            ricordaSulTelefono(f)
             return true
         }
-        // Già giudicata non valida (anche dal server) e intanto non è cambiata: resta così senza riprovarla, come la web che
-        // tiene `nonValida` per la giornata. Altrimenti a ogni ritorno sulla Formazione tornerebbe in campo con errore e vibrazione.
-        let stessa = salvati.map { Set($0) == Set(salvata.titolari) } == true && salvataIl == Quando.data(salvata.salvata)
-        let giaNonValida = salvataNonValida && stessa
-        salvati = salvata.titolari
-        salvataIl = Quando.data(salvata.salvata)
-        // Una scelta che non vale più (fuori dalla rosa) NON si cancella da sola, come sulla web: lo dice la riga di stato e si
-        // vede la consigliata. Solo se la rosa c'è davvero: senza rosa non si giudica (decide il server, sotto).
-        // A giornata chiusa con `stato_scelta: "non_valida"` lo sa già il server: si vede la consigliata, senza riprovarla.
-        salvataNonValida = giaNonValida || (f.iniziata == true && f.statoScelta == "non_valida")
-            || ValiditaScelta.controlla(titolari: salvata.titolari, rosa: f.schede) == .nonValida
-        guard senzaModifiche else { return true }   // c'è una modifica in corso: non si sovrascrive (la riga dice «Modifiche non salvate»)
-        if salvataNonValida {
-            if manuale != nil { azzeraManuale() }
+        let nonValida = f.statoScelta == "non_valida"
+        if nonValida || Set(s.titolari) == Set(consigliati(f)) || moduloDi(f, s.titolari) != nil {
+            ricorda(s, nonValida: nonValida, f, valutazione: nil)
             return true
         }
-        if manuale.map({ Set($0) == Set(salvata.titolari) }) == true, valutati == manuale { return true }   // già lei, già calcolata
-        manuale = salvata.titolari
-        // Mentre il server la prova la riga non dice niente (come la web, che la mostra solo dopo): niente «salvata» per un
-        // attimo se poi non vale.
-        provaSalvata = true
-        await valuta(salva: false, silenzioso: true)
-        provaSalvata = false
-        // Il server dice che non si può valutare (il codice, non il testo): non vale più. Si vede la consigliata, senza il testo
-        // dell'errore (lo dice la riga di stato).
-        if codiceUltimoErrore == ValiditaScelta.codiceNonValida, manuale == salvata.titolari {
-            salvataNonValida = true
-            azzeraManuale()
+        do {
+            let r: ValutazioneManuale = try await server.posta("POST", "/api/formazione/valuta",
+                                                                RichiestaValutazione(titolari: s.titolari, salva: false, giornata: f.giornata))
+            guard g == generazione else { return false }
+            ricorda(s, nonValida: false, f, valutazione: r)
+            return true
+        } catch {
+            if Task.isCancelled || error is CancellationError { return false }
+            guard g == generazione else { return false }
+            if case .codificato(let codice, _)? = error as? ErroreApi, codice == ValiditaScelta.codiceNonValida {
+                ricorda(s, nonValida: true, f, valutazione: nil)
+                return true
+            }
+            sceltaLetta = false
+            return false
         }
-        return true
     }
 
-    private func azzeraManuale() {
+    /// La scelta letta (o appena salvata) e gli 11 da mettere in campo: quelli salvati, se valgono e non sono la consigliata.
+    private func ricorda(_ s: SceltaSalvata, nonValida: Bool, _ f: Formazione, valutazione r: ValutazioneManuale?) {
+        salvata = s
+        salvataNonValida = nonValida
+        metti(nonValida ? nil : s.titolari, f, valutazione: r)
+        sceltaLetta = true
+        sceltaInCopia = false
+        ricordaSulTelefono(f)
+    }
+
+    /// Mette in campo questi 11 (nil = la consigliata).
+    private func metti(_ ids: [Int]?, _ f: Formazione, valutazione r: ValutazioneManuale?) {
+        guard let ids, Set(ids) != Set(consigliati(f)) else {
+            manuale = nil
+            valutazione = nil
+            return
+        }
+        manuale = ids
+        valutazione = moduloDi(f, ids) == nil ? r : nil
+    }
+
+    /// Niente scelta: in campo la consigliata.
+    private func dimentica() {
+        salvata = nil
+        salvataNonValida = false
         manuale = nil
-        moduloToccato = false
         valutazione = nil
-        valutati = nil
-        calcoloNonRiuscito = false
-        codiceUltimoErrore = nil
-        messaggio = nil
-        contatore += 1
+        sceltaInCopia = false
+    }
+
+    // MARK: la scelta sul telefono
+
+    /// Tiene sul telefono la scelta appena letta o salvata, accanto alla copia della Formazione (`CopiaScelta`).
+    private func ricordaSulTelefono(_ f: Formazione) {
+        guard squadraVista == nil,
+              let dati = CopiaScelta(giornata: f.giornata, scelta: salvata, nonValida: salvataNonValida, valutazione: valutazione).dati
+        else { return }
+        Cache.salva(dati, CopiaScelta.percorso, indirizzo: server.indirizzo)
+    }
+
+    /// All'apertura, prima della copia della Formazione: la scelta tenuta sul telefono, finché il server non risponde. In campo
+    /// subito la formazione salvata, mai la consigliata al suo posto; i comandi restano spenti (`sceltaLetta` è falso).
+    private func riprendiSceltaDalTelefono() async {
+        guard let salvato = await Cache.leggi(CopiaScelta.percorso, indirizzo: server.indirizzo),
+              let c = CopiaScelta.da(salvato.dati), squadraVista == nil, giornata == nil else { return }
+        giornata = c.giornata
+        salvata = c.scelta
+        salvataNonValida = c.nonValida
+        manuale = c.nonValida ? nil : c.titolari
+        valutazione = c.valutazioneManuale
+        sceltaInCopia = true
     }
 
     // MARK: formazione di un'altra squadra
@@ -265,64 +416,144 @@ final class FormazioneViewModel: ViewModelBase {
     func vediSquadra(_ nome: String) {
         squadraVista = nome
         moduloScelto = nil
-        azzeraManuale()
         Task { await carica() }
     }
 
     func tornaAllaMia() {
         squadraVista = nil
         moduloScelto = nil
-        azzeraManuale()
         Task { await carica() }
     }
 
-    // MARK: cosa mostrare
+    // MARK: scritture (salvataggio automatico)
 
-    /// Titolari, panchina, modulo e punteggio secondo la modalità (a mano, o il modulo scelto).
-    func vista(_ f: Formazione) -> VistaFormazione {
-        let consigliata = VistaFormazione(titolari: f.titolari, panchina: f.panchina, modulo: f.modulo, punti: f.punteggioAtteso)
-        if let manuale, let schede = f.schede {
-            let titolari = manuale.compactMap { schede[String($0)] }
-            // Solo la valutazione di QUESTI titolari: durante il calcolo (o se non è riuscito) niente punti, e il modulo si conta dai ruoli.
-            let calcolata = valutati == manuale ? valutazione : nil
-            let ids = calcolata?.panchina ?? f.panchina.map(\.id).filter { !manuale.contains($0) }
-            return VistaFormazione(titolari: titolari, panchina: ids.compactMap { schede[String($0)] },
-                                   modulo: calcolata?.modulo ?? ModuloTitolari.modulo(ruoli: titolari.map(\.ruolo)),
-                                   punti: calcolata?.punteggioAtteso)
+    /// Un altro modulo dal menu. Per la tua formazione si salva subito (il consigliato toglie la scelta, come la web); per un'altra
+    /// squadra si guarda e basta.
+    func scegliModulo(_ modulo: String) async {
+        guard let f = formazione, let l = livello(f), let scelto = l.moduli.first(where: { $0.modulo == modulo }) else { return }
+        if squadraVista != nil {
+            moduloScelto = scelto.modulo == consigliato(f)?.modulo ? nil : scelto.modulo
+            return
         }
-        guard let schede = f.schede, let livello = self.livello(f),
-              let opzione = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) }) ?? livello.moduli.first
-        else { return consigliata }
-        let titolari = opzione.titolari.compactMap { schede[String($0)] }
-        if titolari.isEmpty { return consigliata }
-        return VistaFormazione(titolari: titolari, panchina: opzione.panchina.compactMap { schede[String($0)] },
-                               modulo: opzione.modulo, punti: opzione.punteggioAtteso)
+        guard puoScrivere, Set(scelto.titolari) != Set(vista(f).titolari.map(\.id)) else { return }
+        Haptics.selezione()
+        if scelto.modulo == consigliato(f)?.modulo {
+            await tornaAllaConsigliata()
+        } else {
+            await salva(scelto.titolari)
+        }
     }
 
-    /// La fascia dei punti del modulo scelto (o della valutazione a mano): «tra 62 e 84 · 8 volte su 10»,
-    /// o «oscilla di ±3» se il server non manda la fascia.
-    func fascia(_ f: Formazione) -> String? {
-        if manuale != nil {
-            guard let v = valutazioneAttuale else { return nil }
-            return IntervalloPunti.frase(v.intervallo, dev: v.dev)
-        }
-        guard let livello = self.livello(f) else {
-            return IntervalloPunti.frase(f.intervallo, dev: f.dev)
-        }
-        let modulo = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) })
-        return IntervalloPunti.frase(modulo?.intervallo ?? (modulo?.dev == nil ? (livello.intervallo ?? f.intervallo) : nil), dev: modulo?.dev ?? f.dev)
+    /// Un titolare esce e al suo posto entra un altro dello stesso ruolo (da «Sostituisci» o da una decisione in cima): si salva
+    /// subito. false se il cambio non si può fare da qui (giornata chiusa, comandi spenti, giocatore fermo, già fatto).
+    @discardableResult
+    func sostituisciTitolare(_ esce: Int, con entra: Int) async -> Bool {
+        guard let f = formazione, puoScrivere, !fermi.contains(esce), !fermi.contains(entra) else { return false }
+        let titolari = vista(f).titolari.map(\.id)
+        guard titolari.contains(esce), !titolari.contains(entra) else { return false }
+        Haptics.selezione()
+        await salva(titolari.map { $0 == esce ? entra : $0 })
+        return true
     }
 
-    /// La nota sotto il campo (#356): il perché delle scelte che sembrano storte nel modulo mostrato (`perche_scelta`), con le
-    /// parole del server, come la web. Solo per la proposta del server: niente righe in modifica a mano né a giornata chiusa.
-    func righeScelta(_ f: Formazione) -> [RigaScelta] {
-        guard manuale == nil, !chiusa, let schede = f.schede, let livello = self.livello(f),
-              let opzione = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) }) ?? livello.moduli.first
-        else { return [] }
-        return (opzione.percheScelta ?? []).compactMap { r in
-            guard let id = r.titolare, let g = schede[String(id)], let testo = r.testo, !testo.isEmpty else { return nil }
-            return RigaScelta(id: g.id, nome: g.nome, testo: testo)
+    /// La spunta «L'ho messa»: salva gli 11 in campo con `messa` (messa o tolta, la scelta salvata non si cancella da sola).
+    func segnaMessa(_ messa: Bool) async {
+        guard let f = formazione, puoScrivere, !salvataNonValida else { return }
+        await salva(vista(f).titolari.map(\.id), messa: messa)
+    }
+
+    /// «Torna alla consigliata» (e «Usa la consigliata»): toglie la scelta salvata (`DELETE /api/scelta`), e da lì vale la
+    /// consigliata. Per un'altra squadra rimette il modulo consigliato.
+    func tornaAllaConsigliata() async {
+        if squadraVista != nil {
+            moduloScelto = nil
+            return
         }
+        guard let f = formazione, puoScrivere else { return }
+        let g = generazione
+        occupato = true
+        defer { occupato = false }
+        do {
+            if salvata != nil { try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)") }
+            guard g == generazione else {
+                await carica()
+                return
+            }
+            dimentica()
+            ricordaSulTelefono(f)
+            Haptics.esito(riuscito: true)
+        } catch {
+            await nonRiuscita(error, generazione: g)
+        }
+    }
+
+    /// Salva questi 11 come tua scelta (`salvaTitolari` della web). `messa`: la spunta; senza, il server la lascia com'era finché
+    /// gli 11 sono gli stessi (la stessa regola qui, per la riga e la spunta).
+    private func salva(_ ids: [Int], messa: Bool? = nil) async {
+        guard let f = formazione, puoScrivere else { return }
+        let g = generazione
+        occupato = true
+        defer { occupato = false }
+        do {
+            let corpo = RichiestaValutazione(titolari: ids, salva: true, giornata: f.giornata, messa: messa)
+            let r: ValutazioneManuale = try await server.posta("POST", "/api/formazione/valuta", corpo)
+            // nel frattempo la schermata si è riletta: questa risposta non vale, si rilegge dal server (mai una scelta che non si vede)
+            guard g == generazione else {
+                await carica()
+                return
+            }
+            let stessi = salvata.map { Set($0.titolari) == Set(ids) } ?? false
+            let eraConsigliata = Set(ids) == Set(consigliati(f)) || (stessi && salvata?.eraConsigliata == true)
+            let messaOra = messa ?? (stessi && salvata?.messa == true)
+            ricorda(SceltaSalvata(titolari: ids, modulo: r.modulo, eraConsigliata: eraConsigliata ? true : nil, messa: messaOra ? true : nil),
+                    nonValida: false, f, valutazione: r)
+            Haptics.esito(riuscito: true)
+        } catch {
+            await nonRiuscita(error, generazione: g)
+        }
+    }
+
+    /// Una scrittura non riuscita: 412 rilegge e lo dice (`comune.cambiato_ricarico`); 409 `formazione_chiusa` rilegge (la scadenza
+    /// è passata con la schermata aperta); gli altri errori (per esempio 400 `giocatore_bloccato`) dicono il messaggio del server.
+    private func nonRiuscita(_ error: Error, generazione g: Int) async {
+        if let e = error as? ErroreApi, e.eConflitto {
+            await cambiataAltrove()
+            return
+        }
+        Haptics.esito(riuscito: false)
+        messaggio = error.localizedDescription
+        if g != generazione {
+            await carica()
+        } else if case .codificato(let codice, _)? = error as? ErroreApi, codice == Self.codiceChiusa {
+            await carica()
+        }
+    }
+
+    /// Il codice del server per una scrittura arrivata dopo la scadenza (409).
+    static let codiceChiusa = "formazione_chiusa"
+
+    /// 412: la scelta è stata cambiata su un altro dispositivo e la scrittura non è stata fatta. Si dice che si sta ricaricando, si
+    /// rilegge tutto (formazione e scelta, con l'ETag nuovo) e, a dati riletti, si chiede di controllare e rifare la modifica.
+    private func cambiataAltrove() async {
+        Haptics.esito(riuscito: false)
+        messaggio = Catalogo.Comune.cambiatoRicarico
+        if await carica() { messaggio = ErroreApi.conflitto.localizedDescription }
+    }
+
+    // MARK: testo da copiare
+
+    /// La formazione in campo, scritta a parole per l'app della lega.
+    func testo(_ f: Formazione) -> String {
+        let v = vista(f)
+        return TestoFormazione.crea(giornata: f.giornata, giornataLega: f.giornataLega, modulo: v.modulo, titolari: v.titolari,
+                                    panchina: v.panchina)
+    }
+
+    /// «Copia per l'app della lega».
+    func copiaTesto(_ f: Formazione) {
+        UIPasteboard.general.string = testo(f)
+        messaggio = Catalogo.Formazione.copiataLega
+        Haptics.esito(riuscito: true)
     }
 
     // MARK: scheda del giocatore (come `stato.formaz` della web, #616)
@@ -332,21 +563,21 @@ final class FormazioneViewModel: ViewModelBase {
     func contestoScheda(_ id: Int) -> ContestoScheda? {
         guard let f = formazione,
               let g = f.schede?[String(id)] ?? (f.titolari + f.panchina).first(where: { $0.id == id }) else { return nil }
-        return ContestoScheda(previsione: g, perche: percheTitolare(id), sostituibile: sostituibile(id), fermo: fermo(id))
+        // a giornata in corso con lo stato vero della sua partita, come sul campo
+        let previsione = dalVivo(f)?.giocatori.first { $0.id == id }.map { g.dalVivo($0) } ?? g
+        return ContestoScheda(previsione: previsione, perche: percheTitolare(id), sostituibile: sostituibile(id), fermo: fermo(id))
     }
 
-    /// «Perché è titolare» (`PercheTitolare`): solo con la consigliata sullo schermo e a formazione aperta, come la web (dopo un
-    /// cambio, con un altro modulo o a giornata chiusa non si dice).
+    /// «Perché è titolare» (`PercheTitolare`): solo con la consigliata in campo e a formazione aperta, come la web.
     func percheTitolare(_ id: Int) -> String? {
-        guard !chiusa, let f = formazione, let schede = f.schede, let livello = self.livello(f),
-              let consigliata = livello.moduli.first(where: { $0.modulo == livello.modulo }) ?? livello.moduli.first,
+        guard !chiusa, let f = formazione, let schede = f.schede, let consigliata = consigliato(f),
               Set(vista(f).titolari.map(\.id)) == Set(consigliata.titolari) else { return nil }
         return PercheTitolare.testo(consigliata, id: id, schede: schede)
     }
 
-    /// Un titolare della tua formazione ancora aperta, sullo schermo: nella scheda «Sostituisci».
+    /// Un titolare della tua formazione ancora aperta, con i comandi accesi: nella scheda «Sostituisci».
     func sostituibile(_ id: Int) -> Bool {
-        titolareTuo(id) && !fermi.contains(id)
+        titolareTuo(id) && !fermi.contains(id) && !comandiSpenti
     }
 
     /// Un titolare della tua formazione che gioca un anticipo già cominciato: nella scheda la frase di `formazione.bloccati`.
@@ -359,221 +590,28 @@ final class FormazioneViewModel: ViewModelBase {
         return vista(f).titolari.contains { $0.id == id }
     }
 
-    /// «Sostituisci» nella scheda: il foglio della scheda si chiude e la scelta del sostituto parte quando è sparito
-    /// (`apriSostituzioneInAttesa`).
+    /// Chi può prendere il posto di `uscente`, come `sostituti` della web: stesso ruolo, non già titolare e non fermo, il migliore
+    /// per punti attesi in cima. Nessuno se `uscente` stesso è fermo.
+    func sostituti(di uscente: Giocatore, _ f: Formazione) -> [Giocatore] {
+        let fermi = Set(f.bloccati ?? [])
+        guard !fermi.contains(uscente.id) else { return [] }
+        let titolari = Set(vista(f).titolari.map(\.id))
+        return (f.schede ?? [:]).values
+            .filter { $0.ruolo == uscente.ruolo && !titolari.contains($0.id) && !fermi.contains($0.id) }
+            .sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }
+    }
+
+    /// «Sostituisci» nella scheda: il foglio della scheda si chiude e la scelta del sostituto parte quando è sparito.
     func chiediSostituzione(_ id: Int) {
         sostituzioneInAttesa = id
     }
 
-    /// Chiamata quando il foglio della scheda è sparito: apre la scelta del sostituto chiesta con «Sostituisci», se quel
-    /// titolare si può ancora sostituire.
+    /// Chiamata quando il foglio della scheda è sparito: apre la scelta del sostituto chiesta con «Sostituisci», se quel titolare si
+    /// può ancora sostituire.
     func apriSostituzioneInAttesa() {
         guard let id = sostituzioneInAttesa else { return }
         sostituzioneInAttesa = nil
         guard sostituibile(id), let g = formazione?.schede?[String(id)] else { return }
         daSostituire = g
-    }
-
-    /// Sostituisce un titolare degli undici sullo schermo: fuori dalla modifica a mano ci entra partendo da quegli undici (la riga
-    /// dello stato dice che la formazione è cambiata e si salva con «Salva»). Mai a giornata chiusa, mai un giocatore fermo, mai
-    /// un titolare al posto di un altro.
-    func sostituisciTitolare(_ vecchio: Int, con nuovo: Int) {
-        guard let f = formazione, !chiusa, !fermi.contains(vecchio), !fermi.contains(nuovo) else { return }
-        let titolari = manuale ?? vista(f).titolari.map(\.id)
-        guard titolari.contains(vecchio), !titolari.contains(nuovo) else { return }
-        if manuale == nil { manuale = titolari }
-        sostituisci(vecchio, con: nuovo)
-    }
-
-    /// Chi è fuori dalla formazione mostrata, dal più forte (punti attesi).
-    func fuori(_ f: Formazione, _ v: VistaFormazione) -> [Giocatore] {
-        let scelti = Set((v.titolari + v.panchina).map(\.id))
-        return (f.schede ?? [:]).values.filter { !scelti.contains($0.id) }.sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }
-    }
-
-    /// I due della rosa che più si avvicinano a un titolare non sicuro (ballottaggio). Non in modifica a mano.
-    func ballottaggio(per g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> [Ballottaggio.Alternativa] {
-        guard manuale == nil, !chiusa else { return [] }
-        return Ballottaggio.alternative(per: g, rosa: Array((f.schede ?? [:]).values), titolari: v.titolari)
-    }
-
-    /// Il modulo attivo (serve per evidenziare il chip giusto).
-    func moduloAttivo(_ livello: LivelloRischio) -> String { moduloScelto ?? livello.modulo }
-
-    func scegliModulo(_ modulo: String) {
-        moduloScelto = modulo
-        esciDallaModificaAMano()
-        moduloToccato = true
-        Haptics.selezione()
-    }
-
-    /// Come la web (#463): in modifica a mano un tocco su un modulo torna alla proposta del server. La scelta salvata
-    /// resta sul server (se è diversa la riga dice «Modifiche non salvate», con «Annulla modifiche»); un calcolo ancora in corso
-    /// non conta più. A giornata chiusa no: si vede la formazione che vale.
-    private func esciDallaModificaAMano() {
-        guard manuale != nil, !chiusa else { return }
-        azzeraManuale()
-    }
-
-    // MARK: testo
-
-    /// La formazione mostrata, scritta a parole (da copiare o condividere).
-    func testo(_ f: Formazione) -> String {
-        let v = vista(f)
-        return TestoFormazione.crea(giornata: f.giornata, giornataLega: f.giornataLega, modulo: v.modulo, titolari: v.titolari, panchina: v.panchina)
-    }
-
-    func copiaTesto(_ f: Formazione) {
-        UIPasteboard.general.string = testo(f)
-        messaggio = Catalogo.Formazione.copiata
-        Haptics.esito(riuscito: true)
-    }
-
-    // MARK: modifica a mano
-
-    /// La valutazione dei titolari mostrati adesso (nil durante il calcolo o se non è riuscito).
-    var valutazioneAttuale: ValutazioneManuale? {
-        guard let manuale, valutati == manuale else { return nil }
-        return valutazione
-    }
-
-    func iniziaModificaManuale(_ f: Formazione) {
-        guard !chiusa else { return }
-        manuale = vista(f).titolari.map(\.id)
-        Task { await valuta(salva: false) }
-    }
-
-    func sostituisci(_ vecchio: Int, con nuovo: Int) {
-        guard !chiusa, !fermi.contains(vecchio), !fermi.contains(nuovo), var m = manuale, let i = m.firstIndex(of: vecchio) else { return }
-        m[i] = nuovo
-        manuale = m
-        Haptics.selezione()
-        Task { await valuta(salva: false) }
-    }
-
-    /// «Salva questa», «Salva le modifiche», «Salva come mia scelta»: salva come tua scelta gli undici che stai guardando
-    /// (consigliata, un altro modulo, o modifica a mano).
-    func salvaQuesta(_ f: Formazione) async {
-        guard squadraVista == nil, !chiusa, !salvataggioInCorso else { return }
-        salvataggioInCorso = true
-        defer { salvataggioInCorso = false }
-        if manuale == nil { manuale = vista(f).titolari.map(\.id) }
-        await valuta(salva: true)
-    }
-
-    /// «Annulla modifiche»: si torna agli undici salvati (o, se non valgono più, alla consigliata con la riga che lo dice), anche
-    /// da un modulo toccato fuori dalla modifica a mano.
-    func annullaModifiche() {
-        guard !chiusa, !salvataggioInCorso, let salvati else { return }
-        if salvataNonValida { azzeraManuale(); return }
-        manuale = salvati
-        messaggio = nil
-        calcoloNonRiuscito = false
-        contatore += 1   // un calcolo partito con la modifica annullata non deve più contare
-        if valutati != salvati { Task { await valuta(salva: false) } }
-    }
-
-    /// Chiede al server i punti della formazione scelta a mano (e, se `salva`, la salva: solo per la propria squadra).
-    /// Se nel frattempo la scelta è cambiata, la risposta (arrivata in ritardo) viene ignorata.
-    /// `silenzioso`: la prova della scelta salvata appena letta; se il server dice che non vale più, niente messaggio né vibrazione
-    /// (lo dice la riga di stato).
-    func valuta(salva: Bool, silenzioso: Bool = false) async {
-        guard let m = manuale else { return }
-        contatore += 1
-        let numero = contatore
-        if salva && chiusa { return }
-        let salvaDavvero = salva && squadraVista == nil
-        calcoloNonRiuscito = false
-        codiceUltimoErrore = nil
-        do {
-            let richiesta = RichiestaValutazione(titolari: m, salva: salvaDavvero, squadra: squadraVista, giornata: formazione?.giornata)
-            let v: ValutazioneManuale = try await server.posta("POST", "/api/formazione/valuta", richiesta)
-            guard numero == contatore, manuale == m else { return }
-            valutazione = v
-            valutati = m
-            messaggio = nil
-            if salvaDavvero {
-                // Lo stato «salvata» resta nella riga fissa (e alla riapertura lo rilegge dal server): niente messaggio che sparisce.
-                salvati = m
-                salvataIl = Date()
-                salvataNonValida = false
-                sceltaLetta = true
-                Haptics.esito(riuscito: true)
-                AccessibilityNotification.Announcement(Self.annuncioSalvata).post()
-            }
-        } catch {
-            if Task.isCancelled || error is CancellationError { return }
-            guard numero == contatore, manuale == m else { return }
-            if salvaDavvero, (error as? ErroreApi)?.eConflitto == true { await sceltaCambiataAltrove(); return }
-            if case .codificato(let codice, _)? = error as? ErroreApi { codiceUltimoErrore = codice }
-            // solo un salvataggio rifiutato porta a ricaricare (una semplice valutazione no: niente giri a vuoto)
-            if salvaDavvero, codiceUltimoErrore == Self.codiceChiusa, !chiusa { await formazioneChiusa(); return }
-            if silenzioso, codiceUltimoErrore == ValiditaScelta.codiceNonValida { return }
-            // Il salvataggio non riuscito non cancella i punti già calcolati per questi titolari.
-            calcoloNonRiuscito = valutati != m
-            messaggio = error.localizedDescription
-            Haptics.esito(riuscito: false)
-        }
-    }
-
-    /// Detto da VoiceOver dopo il salvataggio: la frase dell'avviso della web (`formazione.salvata_come_tua`).
-    static let annuncioSalvata = Catalogo.Formazione.salvataComeTua
-
-    static let sceltaCambiata = "La scelta di questa giornata è stata cambiata da un altro dispositivo: ho ricaricato quella salvata. Controlla e, se serve, rifai la modifica."
-    /// Dopo un 412 la rilettura della scelta non è riuscita (rete, server): «ho ricaricato» sarebbe falso (#477).
-    static let sceltaCambiataSenzaRicarica = "La scelta di questa giornata è stata cambiata da un altro dispositivo, ma non riesco a ricaricarla: tira giù per aggiornare e, se serve, rifai la modifica."
-
-    /// 412 sulla scelta salvata: un altro dispositivo l'ha cambiata (o cancellata) dopo l'ultima lettura. Come per le altre risorse
-    /// si rilegge tutto (formazione e scelta, con l'ETag nuovo) e lo si dice: la modifica di questo telefono non si salva sopra.
-    /// Come la web, che dopo un 412 ricarica la pagina, anche il modulo riparte da quello consigliato (#477): se l'altro
-    /// dispositivo ha cancellato la scelta, non resta in vista il modulo toccato.
-    private func sceltaCambiataAltrove() async {
-        azzeraManuale()
-        let riletta = await ricaricaConScelta()
-        moduloScelto = nil
-        if riletta {
-            messaggio = Self.sceltaCambiata
-        } else {
-            // La scelta che si conosceva non è più quella del server, e quella nuova non si è potuta leggere: la riga non dice
-            // niente (come la web quando la rilettura non riesce, niente «salvata» falso) e la prossima lettura la rimette a posto.
-            sceltaLetta = false
-            salvati = nil
-            salvataIl = nil
-            salvataNonValida = false
-            messaggio = Self.sceltaCambiataSenzaRicarica
-        }
-        Haptics.esito(riuscito: false)
-    }
-
-    /// 409 `formazione_chiusa`: la scadenza è passata mentre la pagina era aperta. Si ricarica (il server dice `iniziata`)
-    /// e lo si dice con una frase chiara, senza l'errore del server.
-    private func formazioneChiusa() async {
-        azzeraManuale()
-        await carica()
-        messaggio = Self.testoChiusaAlSalvataggio
-        Haptics.esito(riuscito: false)
-    }
-
-    /// «Torna alla consigliata»: toglie la tua scelta e, come la web, rimette anche il modulo consigliato.
-    func tornaAllaConsigliata(_ f: Formazione) async {
-        guard !chiusa else { return }
-        moduloScelto = nil
-        // La scelta salvata esiste solo per la propria squadra; se il server ha detto che non ce n'è, non c'è niente da togliere.
-        guard squadraVista == nil, !(sceltaLetta && salvati == nil) else { azzeraManuale(); return }
-        do {
-            try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)")
-            azzeraManuale()
-            salvati = nil
-            salvataIl = nil
-            salvataNonValida = false
-        } catch let e as ErroreApi where e.eConflitto {
-            await sceltaCambiataAltrove()
-        } catch ErroreApi.codificato(let codice, _) where codice == Self.codiceChiusa {
-            await formazioneChiusa()
-        } catch {
-            // Se il server non cancella la scelta salvata, resta com'è e lo si dice.
-            messaggio = error.localizedDescription
-            Haptics.esito(riuscito: false)
-        }
     }
 }

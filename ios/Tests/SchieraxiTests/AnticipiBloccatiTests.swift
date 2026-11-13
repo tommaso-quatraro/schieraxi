@@ -3,8 +3,8 @@ import Testing
 @testable import Schieraxi
 
 /// Anticipi già cominciati (#373). Il server dice in `bloccati` (campo facoltativo di `GET /api/formazione`) chi gioca una partita
-/// già cominciata: nella lega non si sposta più. Come la web (`sostituti` in `fanta/web/app.js`), nella modifica a mano un
-/// titolare fermo non si sostituisce e uno fermo non entra dalla rosa; sotto i titolari una riga lo dice con la frase della web
+/// già cominciata: nella lega non si sposta più. Come la web (`sostituti` in `fanta/web/app.js`), un titolare fermo non si
+/// sostituisce e uno fermo non entra dalla rosa; nella sua scheda, al posto di «Sostituisci», la frase della web
 /// (`formazione.bloccati`). Un salvataggio che ne sposta uno il server lo rifiuta (400 `giocatore_bloccato`): si mostra la sua frase,
 /// la stessa della web (`err.giocatore_bloccato`).
 @MainActor
@@ -27,11 +27,10 @@ struct AnticipiBloccatiTests {
         #expect(senza.fermi.isEmpty)
     }
 
-    @Test("Modifica a mano: un titolare fermo non si sostituisce, uno fermo non entra, gli altri come sempre")
+    @Test("Un titolare fermo non si sostituisce, uno fermo non entra, gli altri come sempre (e il cambio si salva subito)")
     func sostituzioni() async throws {
         let (vm, f) = try await caricata()
-        vm.iniziaModificaManuale(f)
-        let prima = try #require(vm.manuale)
+        let prima = vm.vista(f).titolari.map(\.id)
         #expect(prima.contains(Self.titolareFermo) && prima.contains(Self.titolareLibero))
         let fermo = try #require(f.schede?[String(Self.titolareFermo)])
         let libero = try #require(f.schede?[String(Self.titolareLibero)])
@@ -39,33 +38,33 @@ struct AnticipiBloccatiTests {
         let ids = vm.sostituti(di: libero, f).map(\.id)
         #expect(!ids.contains(Self.fuoriFermo))
         #expect(ids.contains(Self.fuoriLibero))
-        vm.sostituisci(Self.titolareFermo, con: Self.fuoriLibero)
-        #expect(vm.manuale == prima)
-        vm.sostituisci(Self.titolareLibero, con: Self.fuoriFermo)
-        #expect(vm.manuale == prima)
-        vm.sostituisci(Self.titolareLibero, con: Self.fuoriLibero)
-        #expect(vm.manuale?.contains(Self.fuoriLibero) == true)
-        #expect(vm.manuale?.contains(Self.titolareFermo) == true)
+        let esceFermo = await vm.sostituisciTitolare(Self.titolareFermo, con: Self.fuoriLibero)
+        let entraFermo = await vm.sostituisciTitolare(Self.titolareLibero, con: Self.fuoriFermo)
+        #expect(!esceFermo && !entraFermo)
+        #expect(vm.vista(f).titolari.map(\.id) == prima, "niente cambi su chi è fermo")
+        let fatto = await vm.sostituisciTitolare(Self.titolareLibero, con: Self.fuoriLibero)
+        #expect(fatto)
+        let dopo = vm.vista(f).titolari.map(\.id)
+        #expect(dopo.contains(Self.fuoriLibero) && dopo.contains(Self.titolareFermo) && !dopo.contains(Self.titolareLibero))
     }
 
     @Test("Senza `bloccati` la sostituzione è quella di sempre")
     func senzaCampoComeSempre() async throws {
         let (vm, f) = try await caricata(conBloccati: false)
-        vm.iniziaModificaManuale(f)
         let fermo = try #require(f.schede?[String(Self.titolareFermo)])
         #expect(vm.sostituti(di: fermo, f).map(\.id).contains(Self.fuoriFermo))
     }
 
-    @Test("La riga sotto i titolari: la frase della web, solo in modifica a mano e solo se qualcuno è fermo")
-    func riga() async throws {
-        let web = Catalogo.Formazione.bloccati
-        let (vm, f) = try await caricata()
-        #expect(vm.notaFermi == nil)
-        vm.iniziaModificaManuale(f)
-        #expect(vm.notaFermi == web)
-        let (senza, fs) = try await caricata(conBloccati: false)
-        senza.iniziaModificaManuale(fs)
-        #expect(senza.notaFermi == nil)
+    @Test("Nella scheda di chi è fermo niente «Sostituisci» ma la frase della web; senza `bloccati` «Sostituisci»")
+    func scheda() async throws {
+        let (vm, _) = try await caricata()
+        #expect(vm.fermo(Self.titolareFermo))
+        #expect(!vm.sostituibile(Self.titolareFermo))
+        #expect(vm.contestoScheda(Self.titolareFermo)?.fermo == true)
+        #expect(Catalogo.Formazione.bloccati == "Chi gioca in una partita già cominciata non si può più spostare.")
+        let (senza, _) = try await caricata(conBloccati: false)
+        #expect(!senza.fermo(Self.titolareFermo))
+        #expect(senza.sostituibile(Self.titolareFermo))
     }
 
     @Test("Salvataggio rifiutato dal server: la sua frase, la stessa della web")
@@ -74,8 +73,10 @@ struct AnticipiBloccatiTests {
         let web = try TestiWeb().italiano("err.giocatore_bloccato").replacingOccurrences(of: "{1}", with: "Rossi")
         #expect(frase == web)
         let (vm, f) = try await caricata(rifiutaCon: frase)
-        await vm.salvaQuesta(f)
+        let prima = vm.vista(f).titolari.map(\.id)
+        await vm.sostituisciTitolare(Self.titolareLibero, con: Self.fuoriLibero)
         #expect(vm.messaggio == frase)
+        #expect(vm.vista(f).titolari.map(\.id) == prima, "il cambio rifiutato non resta in campo")
     }
 
     // MARK: aiuti

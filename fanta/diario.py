@@ -17,6 +17,7 @@ import threading
 import time
 from dataclasses import asdict
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -26,7 +27,7 @@ from . import indicatori_consiglio as ic
 from . import verifica_consiglio as vc
 from . import formazione as fz
 from .blocco import BloccoFile
-from .frasi import F
+from .frasi import F, ConSegno, elenco as elenco_frasi
 from .lega import Rose
 from .modello import Dati, Parametri, previsioni
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
@@ -200,6 +201,60 @@ def _come_la_mostrata(riga: dict | None, sc: dict | None, consigliata: dict, ist
     return riga | {k: consigliata[k] for k in ("atteso", "reale", "dev_simulata", "intervallo") if k in consigliata}
 
 
+ALLORA_FUORI = ("non_salvata", "fuori_rosa", "non_valutabile")      # perché la consigliata di allora non entra nel confronto (#674)
+
+
+def _allora_al_calcolo(istantanea: dict | None, consigliata: dict, ruoli: dict) -> str:
+    """Al calcolo della voce, il valore di `consigliata_di_allora` (vedi `consigliata_di_allora`): "fuori_rosa" se fra i titolari
+    dell'istantanea c'è chi non si può più schierare perché non è nella rosa di oggi (`ruoli`, quelli di `riga_di`), "non_valutabile"
+    se sono tutti in rosa ma non si può schierare lo stesso (modulo o ruoli che la lega non ammette più)."""
+    if consigliata.get("origine") == "mostrata":
+        return "mostrata"
+    ids = _ids(istantanea.get("titolari")) if isinstance(istantanea, dict) else []
+    if not ids:
+        return "non_salvata"
+    return "fuori_rosa" if any(i not in ruoli for i in ids) else "non_valutabile"
+
+
+def consigliata_di_allora(voce: dict) -> str:
+    """La consigliata mostrata prima della scadenza (l'istantanea), per una voce: "mostrata" = è la consigliata della voce, quindi
+    c'è il confronto; "non_salvata" = non era stata salvata; "fuori_rosa" = salvata, ma fra i suoi titolari c'è chi non è più nella
+    rosa; "non_valutabile" = salvata ma non si può più valutare per un altro motivo (modulo o ruoli che la lega non ammette più),
+    oppure la voce è stata scritta prima di #674 e il motivo non lo ricorda. Lo dice il campo scritto al calcolo; per le voci di
+    prima lo si ricava dall'istantanea (`elenco` la mette nella voce). I client usano questo campo, non `consigliata.origine`."""
+    if _con_mostrata(voce):
+        return "mostrata"
+    scritto = voce.get("consigliata_di_allora")
+    if scritto in ALLORA_FUORI:
+        return scritto
+    ist = voce.get("istantanea")
+    return "non_valutabile" if isinstance(ist, dict) and _ids(ist.get("titolari")) else "non_salvata"
+
+
+def nota_consigliata(voce: dict) -> dict:
+    """La frase della pagina Giornate sulla consigliata di allora che non entra nel confronto: con la tua formazione «Qui il
+    confronto con la consigliata non c'è: …», senza (quando i punti sono della consigliata rifatta a giornata finita) «Questa è
+    rifatta con i dati di allora: …», con il perché giusto (#674). Null con la consigliata mostrata e con la copia fatta alla
+    scadenza. {"nota_consigliata": testo, "nota_consigliata_frase": {chiave, param}}."""
+    allora, frase = consigliata_di_allora(voce), None
+    if allora != "mostrata":
+        perche = F("diario.allora_" + allora)
+        if voce.get("schierata"):
+            frase = F("diario.senza_confronto", perche=perche)
+        elif not voce.get("automatica"):
+            frase = F("diario.rifatta", perche=perche)
+    return {"nota_consigliata": str(frase) if frase else None, "nota_consigliata_frase": frase.json() if frase else None}
+
+
+def _conta_fuori(voci: list[dict]) -> dict:
+    """{motivo: giornate} delle voci fuori dal confronto, per `nota_confronto`."""
+    conta: dict = {}
+    for v in voci:
+        m = consigliata_di_allora(v)
+        conta[m] = conta.get(m, 0) + 1
+    return conta
+
+
 def _stessa_formazione(voce: dict) -> bool:
     """Vero se la formazione schierata ha gli stessi undici della consigliata della voce (l'ordine non conta). Senza i titolari
     non si sa: falso."""
@@ -346,6 +401,7 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             return _riga(tit, val.statistiche(tit, panchina), fz.punteggio(tit, panchina, gioca, fv, voto, regole))
         return None
     voce["consigliata"] = _mostrata(istantanea, riga_di) or ricostruita
+    voce["consigliata_di_allora"] = _allora_al_calcolo(istantanea, voce["consigliata"], ruoli)
     voce["schierata"] = _come_la_mostrata(riga_di(scelta), scelta, voce["consigliata"], istantanea)
     if voce["schierata"]:
         voce["schierata"]["tipo"] = (scelta or {}).get("tipo") or "manuale"        # «manuale» o «consigliata»; i file vecchi non hanno il campo
@@ -588,15 +644,17 @@ def scelte_tue(voci: list[dict]) -> dict:
     contro quella consigliata). `differenza` = tua - consigliata (positiva: avevi ragione tu). Le voci vanno dalla più recente.
     Conta solo la consigliata mostrata prima della scadenza: `senza_istantanea` = le giornate con la tua formazione per cui la
     consigliata di allora non c'è, e che quindi non hanno un verdetto; `stessi_titolari` = quelle con gli stessi titolari della
-    consigliata mostrata. `nota` (con `nota_frase`) = la frase su quelle giornate (`nota_confronto`), null se non c'è niente da dire."""
-    giornate, senza, stessi = [], 0, 0
+    consigliata mostrata. `nota` (con `nota_frase`) = la frase su quelle giornate (`nota_confronto`), null se non c'è niente da dire.
+    `senza_istantanea` conta anche le giornate con la consigliata di allora salvata ma non più valutabile: il perché lo dice la frase
+    e, per giornata, `consigliata_di_allora` (#674)."""
+    giornate, fuori, stessi = [], [], 0
     for v in voci:
         s, c = v.get("schierata"), v.get("consigliata")
         if not s or not c or not s.get("titolari") or not c.get("titolari"):
             continue
         tue, loro = {t["id"] for t in s["titolari"]}, {t["id"] for t in c["titolari"]}
         if not _con_mostrata(v):
-            senza += 1
+            fuori.append(v)
             continue
         if tue == loro:
             stessi += 1
@@ -608,28 +666,108 @@ def scelte_tue(voci: list[dict]) -> dict:
                          "punti_tua": s["reale"], "punti_consigliata": c["reale"], "differenza": diff,
                          "esito": "tua" if diff > 0 else "consigliata" if diff < 0 else "pari"})
     n = len(giornate)
-    fuori = {"senza_istantanea": senza, "stessi_titolari": stessi} | nota_confronto(n, stessi, senza)
+    conti = {"senza_istantanea": len(fuori), "stessi_titolari": stessi} | nota_confronto(n, stessi, len(fuori), _conta_fuori(fuori))
     if not n:
-        return {"giornate": 0, "pochi_dati": True, "per_giornata": []} | fuori
+        return {"giornate": 0, "pochi_dati": True, "per_giornata": []} | conti
     meglio_tua = sum(1 for g in giornate if g["esito"] == "tua")
     return {"giornate": n, "meglio_tua": meglio_tua, "meglio_consigliata": sum(1 for g in giornate if g["esito"] == "consigliata"),
             "pari": sum(1 for g in giornate if g["esito"] == "pari"),
             "punti_differenza": round(sum(g["differenza"] for g in giornate), 1),
-            "percentuale_tua": round(100 * meglio_tua / n), "pochi_dati": n < POCHI_DATI, "per_giornata": giornate} | fuori
+            "percentuale_tua": round(100 * meglio_tua / n), "pochi_dati": n < POCHI_DATI, "per_giornata": giornate} | conti
 
 
-def nota_confronto(giornate: int, stessi: int, senza: int) -> dict:
+def nota_confronto(giornate: int, stessi: int, senza: int, motivi: dict | None = None) -> dict:
     """La frase sulle giornate con la tua formazione che non hanno un verdetto, per «Le tue scelte» (`scelte_tue`) e per il confronto
     di «Quanto ci abbiamo preso» (`precisione._confronto`): la scrive il server, web e iPhone la mostrano così com'è.
     `giornate` = quelle con un verdetto, `stessi` = con gli stessi titolari della consigliata mostrata, `senza` = senza la consigliata
-    mostrata (non era stata salvata). {"nota": testo, "nota_frase": {chiave, param}}; tutti e due null se non c'è niente da dire
-    (nessuna giornata segnata, oppure tutte con un verdetto)."""
-    fuori = F("diario.confronto_fuori", n=senza) if senza else None
+    mostrata. `motivi` = {motivo: giornate} di quelle `senza` (`consigliata_di_allora`): le giornate «fuori_rosa» e
+    «non_valutabile» avevano la consigliata salvata, e la frase lo dice (#674); le altre non l'avevano salvata.
+    {"nota": testo, "nota_frase": {chiave, param}}; tutti e due null se non c'è niente da dire (nessuna giornata segnata, oppure
+    tutte con un verdetto)."""
+    motivi = motivi or {}
+    rosa, altro = int(motivi.get("fuori_rosa", 0)), int(motivi.get("non_valutabile", 0))
+    parti = []
+    if senza - rosa - altro > 0:
+        parti.append(F("diario.confronto_fuori", n=senza - rosa - altro))
+    if rosa + altro:
+        parti.append(F("diario.confronto_non_valutabili", n=rosa + altro) if altro else F("diario.confronto_fuori_rosa", n=rosa))
+    fuori = elenco_frasi(parti, sep=" ") or None
     if giornate or not stessi:
         frase = fuori
+    elif not fuori:
+        frase = F("diario.confronto_stessa")
     else:
-        frase = F("diario.confronto_stessa_fuori", fuori=fuori) if fuori else F("diario.confronto_stessa")
+        frase = F("diario.confronto_stessa_confrontabili" if rosa + altro else "diario.confronto_stessa_fuori", fuori=fuori)
     return {"nota": str(frase) if frase else None, "nota_frase": frase.json() if frase else None}
+
+
+MAX_SCARTI = 2          # «chi ha fatto meglio o peggio del previsto»: al massimo due giocatori per parte
+# ... e solo chi si scosta dal suo fantavoto atteso di almeno 1 punto (scelta del proprietario, revisione di #702): sotto un punto
+# lo scarto è il rumore di mezzo voto in pagella o di un'ammonizione, e nominare chi ha fatto «come previsto» non dice niente.
+# Se nessuno arriva a 1 punto le liste sono vuote e la frase non c'è.
+SOGLIA_SCARTO = 1.0
+
+
+def _numero(x) -> float | None:
+    return float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) and x == x else None
+
+
+def _letto(x: float) -> float:
+    """Il numero come lo scrive la pagina: una cifra, come `toFixed(1)` della web (il mezzo lontano dallo zero, sul valore vero del
+    numero: 6,25 → 6,3; 5,55, che è 5,5499…, → 5,5). `round` di Python farebbe 6,2."""
+    return float(Decimal(x).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+def _formazione_che_conta(voce: dict) -> tuple[str, dict] | None:
+    """La formazione dei punti della giornata, come nella riga della pagina Giornate e nel riepilogo della Formazione: la tua
+    (`schierata`), altrimenti la copia della consigliata fatta alla scadenza (`automatica`), altrimenti la consigliata."""
+    return next(((k, voce[k]) for k in ("schierata", "automatica", "consigliata") if isinstance(voce.get(k), dict)), None)
+
+
+def _frase_scarti(meglio: list[dict], peggio: list[dict]):
+    """«Meglio del previsto: Rossi (+3,9) e Verdi (+2,0). Peggio: Bianchi (−2,5).», o una parte sola; None senza nessuno."""
+    def nomi(righe):
+        return elenco_frasi([F("diario.scarto_giocatore", nome=r["nome"], d=ConSegno(r["differenza"])) for r in righe], con_e=True)
+    if meglio and peggio:
+        return F("diario.meglio_peggio", meglio=nomi(meglio), peggio=nomi(peggio))
+    if meglio:
+        return F("diario.meglio", meglio=nomi(meglio))
+    return F("diario.peggio", peggio=nomi(peggio)) if peggio else None
+
+
+def fatti_e_attesi(voce: dict) -> dict | None:
+    """Per la pagina Giornate (#672): i punti fatti e attesi della formazione che conta (`formazione`: "schierata", "automatica" o
+    "consigliata", vedi `_formazione_che_conta`), la `differenza` (fatti meno attesi, positiva = meglio del previsto) e chi dei suoi
+    titolari ha fatto meglio (`meglio`) o peggio (`peggio`) del suo fantavoto atteso di almeno SOGLIA_SCARTO punti, al massimo
+    MAX_SCARTI per parte, dalla differenza più grande: `{id, nome, ruolo, atteso, preso, differenza}`. L'atteso di un giocatore è quello mostrato prima della
+    scadenza (istantanea), se c'è, altrimenti quello rifatto con i soli dati di prima (`giocatori`): gli stessi numeri della tabella
+    della pagina. Chi non ha preso voto non c'è (senza un fantavoto non si confronta; la tabella lo dice «senza voto»). Le
+    differenze sono quelle dei numeri come la pagina li scrive (`_letto`). `testo` e `frase`: la frase su `meglio` e `peggio`, null
+    se sono vuoti. None se la formazione non ha i punti."""
+    chi = _formazione_che_conta(voce)
+    if chi is None or _numero(chi[1].get("atteso")) is None or _numero(chi[1].get("reale")) is None:
+        return None
+    nome, f = chi
+    ist = voce.get("istantanea") if isinstance(voce.get("istantanea"), dict) else {}
+    mostrati = {t.get("id"): t["fv_atteso"] for t in (ist.get("titolari") or []) + (ist.get("panchina") or [])
+                if isinstance(t, dict) and _numero(t.get("fv_atteso")) is not None}
+    numeri = {g.get("id"): g for g in voce.get("giocatori") or [] if isinstance(g, dict)}
+    righe = []
+    for t in f.get("titolari") or []:
+        if not isinstance(t, dict) or "id" not in t:
+            continue
+        n = numeri.get(t["id"]) or {}
+        atteso, preso = mostrati.get(t["id"], n.get("fv_atteso")), n.get("fv")
+        if _numero(atteso) is None or _numero(preso) is None:
+            continue
+        righe.append({"id": t["id"], "nome": t.get("nome", ""), "ruolo": t.get("ruolo"), "atteso": atteso, "preso": preso,
+                      "differenza": round(_letto(preso) - _letto(atteso), 1)})
+    meglio = sorted((r for r in righe if r["differenza"] >= SOGLIA_SCARTO), key=lambda r: -r["differenza"])[:MAX_SCARTI]
+    peggio = sorted((r for r in righe if r["differenza"] <= -SOGLIA_SCARTO), key=lambda r: r["differenza"])[:MAX_SCARTI]
+    frase = _frase_scarti(meglio, peggio)
+    return {"formazione": nome, "atteso": f["atteso"], "fatti": f["reale"],
+            "differenza": round(_letto(f["reale"]) - _letto(f["atteso"]), 1), "meglio": meglio, "peggio": peggio,
+            "testo": str(frase) if frase else None, "frase": frase.json() if frase else None}
 
 
 COPERTURA_MINIMA = 0.6          # sotto questa quota di giornate dentro la fascia (dichiarata: 8 su 10) il periodo è «andato peggio del previsto»
@@ -714,4 +852,7 @@ def elenco(percorso: Path | None = None, regole: Regole | None = None) -> dict:
                 v[k]["intervallo"] = incertezza.intervallo(v[k]["atteso"], v[k].get("dev_simulata", 0.0))
     for v in voci:
         v["atteso_vs_fatto"] = atteso_vs_fatto(v)
+        v["fatti_e_attesi"] = fatti_e_attesi(v)                      # #672: fatti meno attesi, e chi ha fatto meglio o peggio
+        v["consigliata_di_allora"] = consigliata_di_allora(v)        # #674: perché c'è, o non c'è, il confronto
+        v.update(nota_consigliata(v))
     return {"giornate": voci, "sintesi": sintesi(voci), "scelte_tue": scelte_tue(voci), "affidabilita": affidabilita(voci)}

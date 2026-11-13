@@ -281,6 +281,25 @@ CATALOGO: dict[str, str] = {
     "diario.confronto_fuori.other": "{n} giornate non entrano nel confronto: la consigliata di allora non era stata salvata.",
     "diario.confronto_stessa": "Finora hai schierato gli stessi undici della consigliata.",
     "diario.confronto_stessa_fuori": "Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. {fuori}",
+    # ... e quando la consigliata di allora era salvata ma non si può più valutare (#674): {fuori} = una di queste, o un `elenco`
+    # di `diario.confronto_fuori` e di una di queste (separate da uno spazio)
+    "diario.confronto_fuori_rosa.one": "{n} giornata non entra nel confronto: nella consigliata di allora c'è chi non è più nella tua rosa.",
+    "diario.confronto_fuori_rosa.other": "{n} giornate non entrano nel confronto: nella consigliata di allora c'è chi non è più nella tua rosa.",
+    "diario.confronto_non_valutabili.one": "{n} giornata non entra nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
+    "diario.confronto_non_valutabili.other": "{n} giornate non entrano nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
+    "diario.confronto_stessa_confrontabili": "Hai schierato gli stessi undici della consigliata in tutte le giornate che si possono confrontare. {fuori}",
+    # Giornate, una giornata senza la consigliata mostrata (#674, diario.nota_consigliata): {perche} = una `diario.allora_*`
+    "diario.senza_confronto": "Qui il confronto con la consigliata non c'è: {perche}.",
+    "diario.rifatta": "Questa è rifatta con i dati di allora: {perche}.",
+    "diario.allora_non_salvata": "quella mostrata prima della scadenza non era stata salvata",
+    "diario.allora_fuori_rosa": "in quella mostrata prima della scadenza c'è chi non è più nella tua rosa",
+    "diario.allora_non_valutabile": "quella mostrata prima della scadenza non si può più valutare con la rosa e le regole di oggi",
+    # Giornate, chi ha fatto meglio o peggio del previsto (#672, diario.fatti_e_attesi): {meglio} e {peggio} = una
+    # `diario.scarto_giocatore` o un `elenco_e` di due; {d} = preso meno atteso, con il segno
+    "diario.scarto_giocatore": "{nome} ({d})",
+    "diario.meglio_peggio": "Meglio del previsto: {meglio}. Peggio: {peggio}.",
+    "diario.meglio": "Meglio del previsto: {meglio}.",
+    "diario.peggio": "Peggio del previsto: {peggio}.",
 }
 
 
