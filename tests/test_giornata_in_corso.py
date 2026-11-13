@@ -151,3 +151,21 @@ def test_giornata_normale_cominciata_resta_finche_ha_partite_entro_la_finestra()
     assert consigli.prossima_giornata(_db(dentro), ST, datetime(2026, 11, 4, 12, 0)) == 10
     fuori = [(d, 1) for d, _ in G10[:-1]] + [("2026-11-05 15:00", 0)]
     assert consigli.prossima_giornata(_db(fuori), ST, datetime(2026, 11, 4, 12, 0)) == 11
+
+
+@pytest.mark.parametrize("anticipate", [
+    [("2026-11-05 20:45", 1)],                                               # una partita (Supercoppa, coppe)
+    [("2026-11-04 20:45", 1), ("2026-11-05 20:45", 1)],                      # due, fino a turno.MAX_ANTICIPI
+], ids=["una", "due"])
+def test_partite_anticipate_di_settimane_non_fanno_saltare_la_giornata(monkeypatch, anticipate):
+    """Coordinatore, #695: partite della 12 giocate due settimane prima del suo turno (21-23 novembre) sono anticipi lontani, non
+    metà giornata giocata: la 12 resta «da giocare» finché il suo turno ha partite da cominciare, come su main. Le partite giocate
+    molto prima non fanno partire la finestra dei 5 giorni; con più di turno.MAX_ANTICIPI (4 + 6) è metà giornata giocata e il
+    resto rinviato (test sopra)."""
+    g12 = anticipate + [(d, 0) for d, _ in G12[len(anticipate):]]
+    db = _db([(d, 1) for d, _ in G10], [(d, 1) for d, _ in G11], g12, {13: _sposta(G12, 7)})
+    for adesso in (datetime(2026, 11, 12, 12, 0), datetime(2026, 11, 21, 16, 0), datetime(2026, 11, 23, 21, 0)):
+        assert consigli.prossima_giornata(db, ST, adesso) == 12, adesso
+    monkeypatch.setattr(consigli, "_adesso", lambda: datetime(2026, 11, 12, 12, 0))
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    assert gestione.oggi_senza_rose(db, adesso=datetime(2026, 11, 12, 12, 0), regole=_regole_scadenza_10())["giornata"] == 12

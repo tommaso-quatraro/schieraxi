@@ -260,6 +260,23 @@ def test_i_recuperi_della_giornata_prima_non_la_rendono_incoerente(tmp_path, mon
         assert [x for x in sentinella.controlla_comuni(d, ST, adesso, None) if x.invariante == "giornata_incoerente"] == []
 
 
+def test_una_partita_anticipata_di_settimane_non_rende_incoerente_la_giornata(tmp_path, monkeypatch):
+    """Coordinatore, #695: una partita della 11 giocata due settimane prima (il 24/10, Supercoppa o coppe), le altre 9 nel suo turno
+    (7-9 novembre). Finita la 10, la giornata da giocare è la 11 e la sentinella non vede niente di incoerente."""
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    piu = lambda testo, giorni: (datetime.fromisoformat(testo) + timedelta(days=giorni)).strftime("%Y-%m-%d %H:%M")
+    righe = ([(10, dt, c, t, 1) for dt, c, t in G10] + [(11, "2026-10-24 20:45", "a", "c", 1)]
+             + [(11, piu(dt, 7), c, t, 0) for dt, c, t in G10[1:]] + [(12, piu(dt, 14), c, t, 0) for dt, c, t in G10])
+    d = archivio.apri(tmp_path / "fanta.sqlite")
+    archivio.inserisci(d, "partite", [{"id": n, "stagione": ST, "giornata": g, "data": dt, "casa": c, "trasferta": t,
+                                       "gol_casa": 1 if gi else None, "gol_trasferta": 0 if gi else None, "giocata": gi,
+                                       "understat_id": None} for n, (g, dt, c, t, gi) in enumerate(righe)])
+    d.commit()
+    for adesso in (datetime(2026, 11, 4, 10, 0), datetime(2026, 11, 7, 12, 0)):
+        assert consigli.prossima_giornata(d, ST, adesso) == 11
+        assert [x for x in sentinella.controlla_comuni(d, ST, adesso, None) if x.invariante == "giornata_incoerente"] == []
+
+
 # ---------------------------------------------------------------- avvisi: una volta sola, niente nomi
 def _esito(*rotture, controllati=("utente 3",)):
     return {"rotture": list(rotture), "controllati": list(controllati), "rimandati": 0, "secondi": 1.0, "stagione": ST}

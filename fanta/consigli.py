@@ -106,10 +106,11 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
     unica in turno.py, come la scadenza) e non passata da più di MARGINE_RISULTATI: così la domenica sera e i posticipi del lunedì
     tengono aperta la giornata finché non sono finite tutte. Una giornata ancora senza date la tengono 5 o più partite da giocare.
     Le partite rinviate (fuori dal turno o senza data, come in rinvii.py) non tengono ferma la giornata, quante che siano (#659).
-    Una giornata già cominciata (passata la prima partita che conta per la scadenza, come avvisi.prima_partita) la tengono aperta
-    solo le partite entro turno.FINESTRA da quella prima: con metà giornata giocata e il resto rinviato a settimane dopo (per
-    turno.py il turno diventa il recupero) si passa alla giornata dopo, come quando le rinviate sono fuori dal turno, e non si torna
-    indietro quando il recupero si avvicina. Per una giornata normale la prima partita è l'inizio del turno: non cambia niente."""
+    Metà giornata giocata e il resto rinviato a settimane dopo (più di turno.MAX_ANTICIPI partite giocate prima del turno, che per
+    turno.py diventa il recupero): la tengono aperta solo le partite entro turno.FINESTRA dalla prima giocata, quindi si passa alla
+    giornata dopo, come quando le rinviate sono fuori dal turno, e non si torna indietro quando il recupero si avvicina. Fino a
+    turno.MAX_ANTICIPI partite giocate settimane prima sono anticipi lontani (Supercoppa, coppe): non fanno partire la finestra e la
+    giornata resta «da giocare» finché il suo turno ha partite da cominciare. Le giornate normali non hanno partite così."""
     adesso = adesso or _adesso()
     da = adesso - MARGINE_RISULTATI        # una partita non giocata e cominciata prima: calendario fermo, non tiene la giornata
     per_giornata: dict[int, list[tuple[datetime | None, bool]]] = {}
@@ -126,10 +127,11 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
             continue
         if not any(d and turno.nel_turno(d, inizio) and d >= da for d in aperte):
             continue
-        prima = min((d for d, giocata in partite if d and turno.conta_per_scadenza(d, giocata, inizio)), default=None)
-        if prima is not None and prima <= adesso and not any(
-                d and prima <= d < prima + turno.FINESTRA and d >= da for d in aperte):
-            continue                       # già cominciata: le partite che restano sono recuperi settimane dopo
+        # partite giocate settimane prima del turno (non anticipi di turno.py): poche sono anticipi lontani, di più metà giornata
+        giocate_prima = sorted(d for d, giocata in partite if d and giocata and d < inizio and not turno.anticipo(d, inizio))
+        if len(giocate_prima) > turno.MAX_ANTICIPI and not any(
+                d and giocate_prima[0] <= d < giocate_prima[0] + turno.FINESTRA and d >= da for d in aperte):
+            continue                       # metà giornata giocata: le partite che restano sono recuperi settimane dopo
         return g
     return None
 
