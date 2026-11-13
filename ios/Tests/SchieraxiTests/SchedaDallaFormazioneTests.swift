@@ -49,17 +49,18 @@ struct SchedaDallaFormazioneTests {
         #expect(vm.percheTitolare(Self.incerto) == Catalogo.Formazione.incerto(p: "60%", riserva: riserva.nome))
     }
 
-    @Test("Il perché del titolare solo sulla consigliata: non con un altro modulo né dopo un cambio")
+    @Test("Il perché del titolare solo sulla consigliata: non con un altro modulo né dopo un cambio (salvati da soli)")
     func soloSullaConsigliata() async throws {
-        let (vm, f) = try await caricata()
-        vm.iniziaModificaManuale(f)
-        #expect(vm.percheTitolare(Self.attaccante) == Self.frase, "gli stessi undici della consigliata: vale ancora")
-        vm.sostituisci(Self.altroAttaccante, con: Self.riservaAttaccante)
+        let (vm, _) = try await caricata()
+        #expect(vm.percheTitolare(Self.attaccante) == Self.frase, "in campo la consigliata: vale")
+        await vm.sostituisciTitolare(Self.altroAttaccante, con: Self.riservaAttaccante)
+        #expect(vm.manuale != nil, "il cambio è in campo")
         #expect(vm.percheTitolare(Self.attaccante) == nil)
         let (altro, fa) = try await caricata()
         let altroModulo = altro.livello(fa)?.moduli.first(where: { $0.modulo != "4-3-3" })?.modulo
         let modulo = try #require(altroModulo)
-        altro.scegliModulo(modulo)
+        await altro.scegliModulo(modulo)
+        #expect(altro.manuale != nil, "l'altro modulo è in campo")
         #expect(altro.percheTitolare(Self.attaccante) == nil)
     }
 
@@ -82,7 +83,7 @@ struct SchedaDallaFormazioneTests {
         #expect(!vm.fermo(Self.fermo))
     }
 
-    @Test("I sostituti fuori dalla modifica a mano: stesso ruolo, mai uno dei titolari sullo schermo")
+    @Test("I sostituti: stesso ruolo, mai uno dei titolari in campo né chi è fermo")
     func sostituti() async throws {
         let (vm, f) = try await caricata()
         let uscente = try #require(f.schede?[String(Self.attaccante)])
@@ -91,25 +92,29 @@ struct SchedaDallaFormazioneTests {
         #expect(!ids.contains(Self.altroAttaccante) && !ids.contains(Self.fermo) && !ids.contains(Self.attaccante))
     }
 
-    @Test("Sostituire dalla scheda parte dagli undici sullo schermo e cambia solo quel titolare")
+    @Test("Sostituire dalla scheda parte dagli undici in campo, cambia solo quel titolare e si salva subito")
     func sostituisciTitolare() async throws {
         let (vm, f) = try await caricata()
         let prima = vm.vista(f).titolari.map(\.id)
         let attesa = prima.map { $0 == Self.attaccante ? Self.riservaAttaccante : $0 }
-        vm.sostituisciTitolare(Self.attaccante, con: Self.riservaAttaccante)
+        let fatto = await vm.sostituisciTitolare(Self.attaccante, con: Self.riservaAttaccante)
+        #expect(fatto)
         let dopo = try #require(vm.manuale)
         #expect(dopo == attesa)
+        #expect(vm.vista(f).titolari.map(\.id) == attesa)
+        #expect(vm.salvata?.titolari == attesa, "il cambio è la tua scelta salvata")
     }
 
-    @Test("Un titolare fermo non si sostituisce, uno fermo non entra, un titolare non entra due volte")
+    @Test("Un titolare fermo non si sostituisce, uno fermo non entra, un titolare non entra due volte, a giornata chiusa niente")
     func sostituzioniRifiutate() async throws {
         let (vm, _) = try await caricata()
-        vm.sostituisciTitolare(Self.fermo, con: Self.riservaAttaccante)
-        #expect(vm.manuale == nil)
-        vm.sostituisciTitolare(Self.attaccante, con: Self.altroAttaccante)
-        #expect(vm.manuale == nil)
+        let esceFermo = await vm.sostituisciTitolare(Self.fermo, con: Self.riservaAttaccante)
+        let entraTitolare = await vm.sostituisciTitolare(Self.attaccante, con: Self.altroAttaccante)
+        #expect(!esceFermo && !entraTitolare)
+        #expect(vm.manuale == nil && vm.salvata == nil)
         let (chiusa, _) = try await caricata(chiusa: true)
-        chiusa.sostituisciTitolare(Self.attaccante, con: Self.riservaAttaccante)
+        let aGiornataChiusa = await chiusa.sostituisciTitolare(Self.attaccante, con: Self.riservaAttaccante)
+        #expect(!aGiornataChiusa)
         #expect(chiusa.manuale == nil)
     }
 

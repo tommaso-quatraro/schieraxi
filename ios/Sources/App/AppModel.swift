@@ -16,8 +16,10 @@ final class AppModel: ObservableObject {
 
     init(server: any ServerClient = ServerCorrente.condiviso) {
         self.server = server
-        self.oggi = OggiViewModel(server: server)
-        self.formazione = FormazioneViewModel(server: server)
+        let giornata = OggiViewModel(server: server)
+        self.oggi = giornata
+        // la Formazione legge anche la giornata: a giornata in corso la formazione schierata viene da lì
+        self.formazione = FormazioneViewModel(server: server, oggi: giornata)
         self.lega = LegaViewModel(server: server)
         self.funzioni = ArchivioFunzioni(server: server)
         ascoltoFunzioni = funzioni.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }

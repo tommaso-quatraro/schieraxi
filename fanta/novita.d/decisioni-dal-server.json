@@ -1,0 +1,11 @@
+{
+  "titolo": "Le decisioni in cima alla Formazione le sceglie il server",
+  "voci": [
+    "Formazione: le cose da decidere in cima (un cambio da fare, la consigliata cambiata, le rose da aggiornare) le sceglie SchieraXI, con la stessa regola sulla web e sull'iPhone: prima quelle urgenti, al massimo due."
+  ],
+  "tecnico": [
+    "GET /api/oggi: le voci di da_fare che sono decisioni hanno il campo facoltativo decisione (1, 2, ...), scritto da da_fare.segna_decisioni con la regola di dfVera e dfDecisioni della web (fanta/web/dafare.js): niente svincolato, scambio, diario, dubbio senza alternativa, formazione diversa da consigliata:<giornata>; prima le urgenti non copertura, poi le copertura urgenti, poi le altre; una sola copertura. Nessun campo tolto.",
+    "La web per ora applica ancora la sua regola, che dà le stesse voci: tests/test_da_fare_decisioni.py ha i casi dei test nel browser della Formazione unica.",
+    "Catalogo dei testi (fanta/testi): tolte le chiavi di Oggi, della modifica a mano e del vecchio stato della scelta che non usano più né la web né l'iPhone (Formazione unica dell'iPhone, #673)."
+  ]
+}

@@ -1,6 +1,8 @@
 # Parole comuni a più schermate. Poi: python script/testi.py --scrivi
 comune.importa_rose
 comune.riprova
+# la scelta della Formazione cambiata da un altro dispositivo (412): rileggo
+comune.cambiato_ricarico
 
 # Lega senza rose (ConfiguraLegaVista): titolo e frase della carta della web
 comune.prima_rose

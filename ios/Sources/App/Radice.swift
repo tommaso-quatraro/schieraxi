@@ -1,16 +1,16 @@
 import SwiftUI
 import TipKit
 
-/// Le quattro sezioni dell'app (la formazione al centro). Sull'iPhone sono le schede in basso, sull'iPad (e in orizzontale sui
-/// telefoni grandi) la barra laterale. Squadra ha le rose, Altro il diario e le regole.
+/// Le tre sezioni dell'app, come la web fra #637 e #671: la Formazione per prima (al posto di Oggi e Formazione, #673), Squadra con
+/// le rose, Altro con il diario e le regole. Sull'iPhone sono le schede in basso, sull'iPad (e in orizzontale sui telefoni grandi)
+/// la barra laterale.
 enum Sezione: String, CaseIterable, Identifiable, Hashable {
-    case oggi, formazione, squadra, altro
+    case formazione, squadra, altro
 
     var id: String { rawValue }
 
     var titolo: String {
         switch self {
-        case .oggi: return "Oggi"
         case .formazione: return "Formazione"
         case .squadra: return "Squadra"
         case .altro: return "Altro"
@@ -19,29 +19,27 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
 
     var icona: String {
         switch self {
-        case .oggi: return "calendar"
         case .formazione: return "sportscourt"
         case .squadra: return "person.3"
         case .altro: return "ellipsis.circle"
         }
     }
 
-    /// Cmd+1 ... Cmd+4 con la tastiera (iPad con tastiera, iPhone con tastiera Bluetooth).
+    /// Cmd+1 ... Cmd+3 con la tastiera (iPad con tastiera, iPhone con tastiera Bluetooth).
     var scorciatoia: KeyEquivalent {
         switch self {
-        case .oggi: return "1"
-        case .formazione: return "2"
-        case .squadra: return "3"
-        case .altro: return "4"
+        case .formazione: return "1"
+        case .squadra: return "2"
+        case .altro: return "3"
         }
     }
 
     /// Da un nome scritto (indirizzi `schieraxi://`, «Da fare», scelta salvata). I nomi delle sezioni e delle pagine tolte
-    /// continuano a funzionare e aprono la scheda più vicina che resta (#634, come la web): Mercato è Squadra, Scambi e Lega sono Altro.
+    /// continuano a funzionare e aprono la scheda più vicina che resta (#634, come la web): Mercato è Squadra, Scambi e Lega sono Altro,
+    /// Oggi è la Formazione (#673: `schieraxi://oggi` dei widget già sulla Home, il tocco sugli avvisi, l'ultima sezione salvata).
     static func da(nome: String?) -> Sezione? {
         switch (nome ?? "").lowercased() {
-        case "oggi": return .oggi
-        case "formazione": return .formazione
+        case "oggi", "formazione": return .formazione
         case "squadra", "mercato": return .squadra
         case "altro", "lega", "scambi": return .altro
         default: return nil
@@ -53,7 +51,7 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
 @MainActor
 final class Navigazione: ObservableObject {
     /// La sezione aperta; si ricorda l'ultima: all'apertura l'app torna lì.
-    @Published var sezione: Sezione = .oggi {
+    @Published var sezione: Sezione = .formazione {
         didSet { if !Demo.attivo { UserDefaults.standard.set(sezione.rawValue, forKey: "ultimaSezione") } }
     }
     /// Un file delle rose arrivato da un'altra app («Apri con SchieraXI», Condividi): Lega > Aggiorna le rose lo importa.
@@ -98,7 +96,7 @@ final class Navigazione: ObservableObject {
     static func sezioneDiAvvio(_ memoria: UserDefaults = .standard) -> Sezione {
         let scelta = memoria.string(forKey: "sezioneAvvio") ?? "ultima"
         let nome = scelta == "ultima" ? memoria.string(forKey: "ultimaSezione") : scelta
-        return Sezione.da(nome: nome) ?? .oggi
+        return Sezione.da(nome: nome) ?? .formazione
     }
 
     /// Un file arrivato da fuori: si accetta solo se l'estensione è di quelle delle rose (il controllo vero è all'importazione).
@@ -310,10 +308,10 @@ struct RadiceView: View {
     @ViewBuilder
     private func vista(_ s: Sezione) -> some View {
         switch s {
-        case .oggi: OggiView(vm: modello.oggi)
         case .formazione:
-            // dalla Formazione la scheda si apre subito con la previsione già letta, il perché del titolare e «Sostituisci»
-            FormazioneView(vm: modello.formazione)
+            // la Formazione unica (#673): formazione e scelta da `formazione`, la giornata (testa, decisioni, widget e promemoria) da
+            // `oggi`. Dalla Formazione la scheda si apre subito con la previsione già letta, il perché del titolare e «Sostituisci»
+            FormazioneView(vm: modello.formazione, oggi: modello.oggi)
                 .environment(\.apriGiocatore) { id in nav.apriScheda(id, contesto: modello.formazione.contestoScheda(id)) }
         case .squadra: LegaView(vm: modello.lega, ambito: .squadra)
         case .altro: LegaView(vm: modello.lega, ambito: .altro)

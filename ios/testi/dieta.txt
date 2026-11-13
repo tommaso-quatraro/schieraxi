@@ -2,3 +2,4 @@
 # Poi: python script/testi.py --scrivi
 dieta.non_disponibile
 dieta.torna_oggi
+dieta.torna_formazione

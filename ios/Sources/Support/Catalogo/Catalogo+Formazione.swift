@@ -3,52 +3,26 @@
 
 extension Catalogo {
     enum Formazione {
-        /// `formazione.la_tua_scelta`
-        static let laTuaScelta = "la tua scelta"
+        /// `formazione.stato_e_consigliata`
+        static let statoEConsigliata = "È la consigliata."
 
-        /// `formazione.modulo_consigliato`
-        static let moduloConsigliato = "modulo consigliato"
-
-        /// `formazione.modulo_scelto`
-        static let moduloScelto = "modulo scelto"
-
-        /// `formazione.alle`
-        static func alle(ora: String) -> String {
-            "alle \(ora)"
+        /// `formazione.stato_cambiata.one`, `formazione.stato_cambiata.other`
+        static func statoCambiata(_ n: Int, d: String) -> String {
+            n == 1 ? "L'hai cambiata tu: \(n) titolare diverso dalla consigliata\(d)." : "L'hai cambiata tu: \(n) titolari diversi dalla consigliata\(d)."
         }
 
-        /// `formazione.giorno_alle`
-        static func giornoAlle(giorno: String, ora: String) -> String {
-            "\(giorno) alle \(ora)"
+        /// `formazione.stato_superata.one`, `formazione.stato_superata.other`
+        static func statoSuperata(_ n: Int, d: String) -> String {
+            n == 1 ? "La consigliata è cambiata da quando l'hai salvata: \(n) titolare diverso\(d)." : "La consigliata è cambiata da quando l'hai salvata: \(n) titolari diversi\(d)."
         }
 
-        /// `formazione.stato_consigliata`
-        static let statoConsigliata = "Stai vedendo la consigliata: non hai salvato una tua formazione."
-
-        /// `formazione.stato_altro_modulo`
-        static let statoAltroModulo = "Stai vedendo un altro modulo, non quello consigliato: non l'hai salvato."
-
-        /// `formazione.stato_salvata`
-        static let statoSalvata = "La tua formazione è salvata"
-
-        /// `formazione.stato_salvata_quando`
-        static func statoSalvataQuando(quando: String) -> String {
-            "La tua formazione è salvata (\(quando))"
+        /// `formazione.stato_punti`
+        static func statoPunti(d: String) -> String {
+            "\(d) punti attesi"
         }
 
-        /// `formazione.stato_modificata`
-        static let statoModificata = "Modifiche non salvate"
-
-        /// `formazione.stato_modificata_quando`
-        static func statoModificataQuando(quando: String) -> String {
-            "Modifiche non salvate · salvata \(quando)"
-        }
-
-        /// `formazione.stato_mano`
-        static let statoMano = "Modifica a mano non ancora salvata"
-
-        /// `formazione.stato_non_valida`
-        static let statoNonValida = "La formazione salvata non è più valida: rifalla o torna alla consigliata."
+        /// `formazione.stato_non_valida_ora`
+        static let statoNonValidaOra = "La formazione che avevi salvato non è più valida: vale la consigliata."
 
         /// `formazione.stato_chiusa`
         static let statoChiusa = "Giornata iniziata: la formazione è chiusa"
@@ -59,11 +33,86 @@ extension Catalogo {
         /// `formazione.stato_chiusa_non_valida`
         static let statoChiusaNonValida = "Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida"
 
-        /// `formazione.calcolo`
-        static let calcolo = "Calcolo la formazione migliore…"
+        /// `formazione.torna_alla_consigliata`
+        static let tornaAllaConsigliata = "Torna alla consigliata"
+
+        /// `formazione.scelta_non_letta`
+        static let sceltaNonLetta = "Non riesco a leggere la formazione che hai salvato: finché non la leggo non si può cambiare niente."
+
+        /// `formazione.copia_ferma`
+        static let copiaFerma = "Finché non arrivano quelli nuovi la formazione non si può cambiare."
+
+        /// `formazione.sto_ancora_ricalcolando`
+        static let stoAncoraRicalcolando = "Sto ancora ricalcolando: un attimo"
+
+        /// `formazione.si_chiude`
+        static func siChiude(quando: String) -> String {
+            "Si chiude \(quando)"
+        }
+
+        /// `formazione.fra`
+        static func fra(tempo: String) -> String {
+            "fra \(tempo)"
+        }
+
+        /// `formazione.chiusa_breve`
+        static let chiusaBreve = "Formazione chiusa"
+
+        /// `formazione.in_corso`
+        static let inCorso = "in corso"
+
+        /// `formazione.punti_finora`
+        static let puntiFinora = "punti finora"
+
+        /// `formazione.circa_fine`
+        static func circaFine(n: String) -> String {
+            "circa \(n) a fine giornata"
+        }
+
+        /// `formazione.punti_e_attesi`
+        static func puntiEAttesi(n: String) -> String {
+            "punti (attesi \(n))"
+        }
+
+        /// `formazione.punti`
+        static let punti = "punti"
+
+        /// `formazione.come_andata`
+        static let comeAndata = "Com'è andata"
+
+        /// `formazione.per_la_prossima`
+        static func perLaProssima(g: String, m: String) -> String {
+            "\(g): è già iniziata. Questa è la formazione per la \(m)."
+        }
+
+        /// `formazione.modulo`
+        static let modulo = "Modulo"
+
+        /// `formazione.opzione_consigliato`
+        static func opzioneConsigliato(modulo: String, punti: String) -> String {
+            "\(modulo) · \(punti) punti · consigliato"
+        }
+
+        /// `formazione.opzione_modulo`
+        static func opzioneModulo(modulo: String, punti: String) -> String {
+            "\(modulo) · \(punti) punti"
+        }
 
         /// `formazione.punti_attesi`
         static let puntiAttesi = "punti attesi"
+
+        /// `formazione.di_solito`
+        static func diSolito(a: String, b: String) -> String {
+            "di solito fra \(a) e \(b)"
+        }
+
+        /// `formazione.oscilla`
+        static func oscilla(n: String) -> String {
+            "oscilla di ±\(n)"
+        }
+
+        /// `formazione.calcolo`
+        static let calcolo = "Calcolo la formazione migliore…"
 
         /// `formazione.mancano_probabili_formazioni`
         static let mancanoProbabiliFormazioni = "Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono."
@@ -74,24 +123,43 @@ extension Catalogo {
         /// `formazione.torna_alla_tua`
         static let tornaAllaTua = "Torna alla tua"
 
-        /// `formazione.titolari`
-        static let titolari = "Titolari"
+        /// `formazione.chiusa`
+        static let chiusa = "La formazione di questa giornata è chiusa: le partite sono cominciate."
 
-        /// `formazione.tocca_sostituire`
-        static let toccaSostituire = "Tocca ✎ per sostituire un titolare: i punti attesi si ricalcolano."
+        /// `formazione.bloccati`
+        static let bloccati = "Chi gioca in una partita già cominciata non si può più spostare."
 
-        /// `formazione.ballottaggio_alternative_vic`
-        static let ballottaggioAlternativeVic = "In ballottaggio con"
+        /// `formazione.copia_lega`
+        static let copiaLega = "Copia per l'app della lega"
 
-        /// `formazione.quasi_pari`
-        static let quasiPari = "quasi pari"
+        /// `formazione.copiata_lega`
+        static let copiataLega = "Formazione copiata: ora mettila nell'app della lega"
+
+        /// `formazione.non_copio`
+        static let nonCopio = "Non riesco a copiare: tieni premuto sul testo"
+
+        /// `formazione.messa`
+        static let messa = "L'ho messa"
+
+        /// `formazione.decisione_punti`
+        static func decisionePunti(d: String) -> String {
+            "\(d) punti attesi."
+        }
+
+        /// `formazione.usa_consigliata`
+        static let usaConsigliata = "Usa la consigliata"
 
         /// `formazione.quest_ordine_entra`
         static let questOrdineEntra = "Entra il primo che può sostituire chi resta senza voto."
 
-        /// `formazione.fuori_dalla`
-        static func fuoriDalla(n: String) -> String {
-            "Fuori dalla formazione (\(n))"
+        /// `formazione.non_schierati`
+        static func nonSchierati(n: String) -> String {
+            "Non schierati (\(n))"
+        }
+
+        /// `formazione.indisponibili`
+        static func indisponibili(n: String) -> String {
+            "Infortunati e squalificati (\(n))"
         }
 
         /// `formazione.senza_dati`
@@ -99,54 +167,46 @@ extension Catalogo {
             "Senza dati per questa giornata: \(nomi)"
         }
 
-        /// `formazione.copia_formazione`
-        static let copiaFormazione = "Copia il testo"
-
-        /// `formazione.modifica_mano`
-        static let modificaMano = "Modifica a mano"
-
-        /// `formazione.rispetto`
-        static func rispetto(d: String, n: String) -> String {
-            "\(d) rispetto alla consigliata con lo stesso modulo (\(n))."
+        /// `formazione.voce_fv`
+        static func voceFv(fv: String) -> String {
+            "fantavoto atteso \(fv)"
         }
 
-        /// `formazione.salva_come_mia`
-        static let salvaComeMia = "Salva come mia scelta"
+        /// `formazione.voce_gioca`
+        static func voceGioca(p: String) -> String {
+            "gioca al \(p) per cento"
+        }
 
-        /// `formazione.salva_modifiche`
-        static let salvaModifiche = "Salva le modifiche"
+        /// `formazione.voce_gioca_v`
+        static func voceGiocaV(p: String) -> String {
+            "gioca all'\(p) per cento"
+        }
 
-        /// `formazione.giocatori_dello_stesso`
-        static let giocatoriDelloStesso = "Giocatori dello stesso ruolo della tua rosa. Per cambiare ruolo scegli un altro modulo."
-
-        /// `formazione.nessun_altro_giocatore`
-        static let nessunAltroGiocatore = "Nessun altro giocatore di questo ruolo in rosa."
+        /// `formazione.sostituisci`
+        static let sostituisci = "Sostituisci"
 
         /// `formazione.al_posto_di`
         static func alPostoDi(nome: String) -> String {
             "Al posto di \(nome)"
         }
 
-        /// `formazione.salva_questa`
-        static let salvaQuesta = "Salva questa"
+        /// `formazione.sost_spiega`
+        static func sostSpiega(nome: String) -> String {
+            "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi in più o in meno rispetto a \(nome)."
+        }
 
-        /// `formazione.annulla_modifiche`
-        static let annullaModifiche = "Annulla modifiche"
+        /// `formazione.punti_rispetto`
+        static func puntiRispetto(nome: String) -> String {
+            "punti attesi rispetto a \(nome)"
+        }
 
-        /// `formazione.torna_alla_consigliata`
-        static let tornaAllaConsigliata = "Torna alla consigliata"
+        /// `formazione.fv_atteso_breve`
+        static func fvAttesoBreve(fv: String) -> String {
+            "atteso \(fv)"
+        }
 
-        /// `formazione.chiusa`
-        static let chiusa = "La formazione di questa giornata è chiusa: le partite sono cominciate."
-
-        /// `formazione.bloccati`
-        static let bloccati = "Chi gioca in una partita già cominciata non si può più spostare."
-
-        /// `formazione.copiata`
-        static let copiata = "Formazione copiata: incollala dove vuoi"
-
-        /// `formazione.salvata_come_tua`
-        static let salvataComeTua = "Salvata come tua scelta"
+        /// `formazione.nessun_altro_giocatore`
+        static let nessunAltroGiocatore = "Nessun altro giocatore di questo ruolo in rosa."
 
         /// `formazione.partita_casa`
         static func partitaCasa(avv: String, quando: String) -> String {
@@ -172,23 +232,10 @@ extension Catalogo {
         /// `formazione.ultimi_voti`
         static let ultimiVoti = "Ultimi voti"
 
-        /// `formazione.sostituisci`
-        static let sostituisci = "Sostituisci"
-
         /// `formazione.tutti_numeri`
         static let tuttiNumeri = "Tutti i numeri"
 
         /// `formazione.questa_partita`
         static let questaPartita = "Questa partita"
-
-        /// `formazione.voce_gioca`
-        static func voceGioca(p: String) -> String {
-            "gioca al \(p) per cento"
-        }
-
-        /// `formazione.voce_gioca_v`
-        static func voceGiocaV(p: String) -> String {
-            "gioca all'\(p) per cento"
-        }
     }
 }

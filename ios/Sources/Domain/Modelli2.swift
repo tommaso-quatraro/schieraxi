@@ -137,10 +137,15 @@ struct StatoAvvisi: Decodable {
     }
 }
 
-struct SceltaSalvata: Decodable {
+struct SceltaSalvata: Decodable, Equatable {
     let titolari: [Int]
-    let modulo: String?
-    let salvata: String?
+    var modulo: String? = nil
+    var salvata: String? = nil
+    /// Gli 11 salvati erano quelli della consigliata (`era_consigliata`, c'è solo se è vero): se la consigliata poi cambia, la riga
+    /// dello stato dice «La consigliata è cambiata da quando l'hai salvata».
+    var eraConsigliata: Bool? = nil
+    /// «L'ho messa» (`messa`, c'è solo se è vero): l'utente ha detto di aver messo questi 11 nell'app della lega.
+    var messa: Bool? = nil
 }
 
 struct ValutazioneManuale: Decodable {
@@ -162,6 +167,8 @@ struct RichiestaValutazione: Encodable {
     /// Se si guarda la formazione di un'altra squadra (altrimenti la propria).
     var squadra: String? = nil
     var giornata: Int? = nil
+    /// La spunta «L'ho messa» (solo con `salva`): vero o falso; senza, il server la lascia com'era finché gli 11 sono gli stessi.
+    var messa: Bool? = nil
 }
 
 struct CreditiSquadre: Encodable {

@@ -371,6 +371,41 @@ def _limita_consigli(voci: list[dict]) -> list[dict]:
     return out
 
 
+def _decisione_vera(v: dict) -> bool:
+    """La voce chiede di fare qualcosa, quindi è una decisione da mettere in cima alla Formazione (#616, la regola di `dfVera` della
+    web). Non lo sono: i consigli delle funzioni tolte (cambio con uno svincolato, scambio); «dimmi se hai schierato la consigliata»
+    (lo dice la spunta «L'ho messa»); un titolare incerto senza un cambio da fare (è un'informazione: sta sul giocatore e nella sua
+    scheda); «la formazione si chiude e non l'hai salvata» (il salvataggio è automatico e, se non si tocca niente, vale la
+    consigliata). Delle voci `formazione` resta solo la consigliata cambiata (`consigliata:<giornata>`)."""
+    tipo = v.get("tipo")
+    if tipo in ("svincolato", "scambio", "diario"):
+        return False
+    if tipo == "dubbio":
+        return bool(v.get("alternativa"))
+    if tipo == "formazione":
+        return str(v.get("id", "")).startswith("consigliata:")
+    return True
+
+
+def segna_decisioni(voci: list[dict]) -> list[dict]:
+    """Scrive su ogni decisione il campo `decisione` (1, 2, …): il suo posto in cima alla Formazione. Prima le urgenti (priorità
+    ALTA) che non sono un reparto scoperto, poi le urgenti sul reparto scoperto, poi le altre non scoperte, poi le altre scoperte;
+    dentro ogni gruppo l'ordine della lista. Il reparto scoperto («Vedi la rosa», che porta solo a guardare la rosa) prende al
+    massimo un posto: due righe sue nascondevano un cambio da fare o le rose da aggiornare. Le altre voci restano senza il campo e
+    l'ordine della lista non cambia. I client mostrano le prime due che hanno ancora senso con la formazione in pagina (un cambio
+    già fatto no): per questo i posti non si fermano a due."""
+    vere = [v for v in voci if _decisione_vera(v)]
+    scoperto = lambda v: v.get("tipo") == "copertura"                                       # noqa: E731
+    urgente = lambda v: v.get("priorita") == ALTA                                           # noqa: E731
+    gruppi = (lambda v: urgente(v) and not scoperto(v), lambda v: urgente(v) and scoperto(v),
+              lambda v: not urgente(v) and not scoperto(v), lambda v: not urgente(v) and scoperto(v))
+    ordinate = [v for g in gruppi for v in vere if g(v)]
+    primo_scoperto = next((v for v in ordinate if scoperto(v)), None)
+    for posto, v in enumerate((v for v in ordinate if not scoperto(v) or v is primo_scoperto), start=1):
+        v["decisione"] = posto
+    return voci
+
+
 def _turni(db, stagione: str) -> dict[int, tuple[datetime, datetime]]:
     """Per ogni giornata della stagione: prima e ultima partita giocata con la sua giornata (turno e anticipi, regola unica di
     turno.py): una partita rinviata a settimane dopo non sposta la fine della giornata."""
@@ -586,4 +621,4 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, c
             continue
         voci += r if isinstance(r, list) else [r] if r else []
     voci.sort(key=lambda v: v["priorita"])                   # ordinamento stabile: a parità resta l'ordine dei controlli
-    return _limita_consigli(voci)[:MAX_VOCI]
+    return segna_decisioni(_limita_consigli(voci)[:MAX_VOCI])
