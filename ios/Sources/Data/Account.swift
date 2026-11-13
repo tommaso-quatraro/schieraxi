@@ -229,7 +229,8 @@ enum DatiLocali {
         VersioniRisorse.condivise.azzera()
         dimenticaIlWidget()
         let memoria = UserDefaults.standard
-        for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto"] + OpzioniTolte.chiaviFunzioni {
+        for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto", ArchivioMessa.chiave]
+            + OpzioniTolte.chiaviFunzioni {
             memoria.removeObject(forKey: chiave)
         }
         if !Demo.attivo {

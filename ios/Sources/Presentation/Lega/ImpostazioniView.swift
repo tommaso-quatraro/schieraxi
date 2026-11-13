@@ -1,16 +1,11 @@
 import SwiftUI
 
-/// Le pagine che si aprono dalle Impostazioni.
-enum PaginaImpostazioni: Hashable {
-    case aspetto, avvisi, stato, crediti, novita, avanzate, cambiaServer
-}
-
 private struct ApriRosaDiChiave: EnvironmentKey {
     static let defaultValue: ((String) -> Void)? = nil
 }
 
 extension EnvironmentValues {
-    /// Apre Lega > Squadre > la rosa di una squadra (da Oggi: «Aggiungi la tua divisa»). `nil` dove non c'è.
+    /// Apre Impostazioni > la rosa di una squadra (dalla Formazione: «Vedi la rosa», «Aggiungi la tua divisa»). `nil` dove non c'è.
     var apriRosaDi: ((String) -> Void)? {
         get { self[ApriRosaDiChiave.self] }
         set { self[ApriRosaDiChiave.self] = newValue }
@@ -22,157 +17,130 @@ private struct ApriImpostazioniChiave: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    /// Apre le Impostazioni (l'ingranaggio accanto alla lente in ogni testata). `nil` dove non ci sono (anteprime, fogli).
+    /// Apre la voce Impostazioni della barra. `nil` dove non c'è (anteprime, fogli).
     var apriImpostazioni: (() -> Void)? {
         get { self[ApriImpostazioniChiave.self] }
         set { self[ApriImpostazioniChiave.self] = newValue }
     }
 }
 
-/// Impostazioni: l'account (con «Esci» in fondo, come sulla web), l'app (aspetto e avvisi) e le informazioni, con le novità.
-/// Solo l'essenziale: la lega (rose, diario, regole) sta in Squadra e in Altro. Chi amministra il server ha in più «Avanzate».
-/// Si apre come foglio dall'ingranaggio in testata.
+/// Impostazioni, la terza voce della barra: una pagina sola come la web (#673 passo 3, web #675). In ordine: Avvisi («Avvisi su
+/// questo dispositivo», «Ore tranquille»), La mia lega (Aggiorna le rose, La mia squadra, Regole e scadenza, Le altre squadre),
+/// Il tuo account, Aspetto, e le righe di Informazioni e di Gestione (solo per chi gestisce il server). Restano solo dell'iPhone il
+/// widget, «C'è una versione nuova», la prova con dati di esempio e «Animazioni ridotte». La pila delle pagine vive in
+/// `LegaViewModel.percorso`, così un indirizzo o la Formazione possono aprire una pagina (`LegaViewModel.apri`).
 struct ImpostazioniView: View {
     @ObservedObject var vm: LegaViewModel
+    @StateObject private var avvisi: AvvisiDispositivoViewModel
     @EnvironmentObject private var sessione: SessioneAccount
-    @Environment(\.dismiss) private var chiudi
-    @State private var percorso: [PaginaImpostazioni] = []
-    /// I fogli dell'account: lo stato vive qui e si presentano dal NavigationStack, mai da una riga della lista.
-    @StateObject private var fogli = FogliAccount()
+    @EnvironmentObject private var nav: Navigazione
+    @Environment(\.funzioni) private var funzioni
+
+    init(vm: LegaViewModel) {
+        self.vm = vm
+        _avvisi = StateObject(wrappedValue: AvvisiDispositivoViewModel(server: vm.server))
+    }
 
     var body: some View {
-        NavigationStack(path: $percorso) {
+        NavigationStack(path: $vm.percorso) {
             ScrollViewReader { proxy in
                 List {
                     TitoloNellaPagina()
-                    AccountSezione(fogli: fogli)
+                    // come la web: l'avviso della nuova stagione in cima, solo quando serve
+                    if vm.nuovaStagione { bannerStagione }
                     SessioneMinimaSezione(nonRaggiungibile: vm.info.datiSalvati != nil || vm.info.errore != nil)
                     if ProvaEsempio.attiva { SezioneProvaEsempio() }
-                    sezioneApp
+                    AvvisiDispositivoSezione(vm: avvisi)
+                    sezioneLega
+                    if let voce = VociImpostazioni.account(nome: nomeAccount) {
+                        Section { RigaVoceImpostazioni(voce: voce) }
+                    }
+                    AspettoSezione()
+                    Section { RigaCollegamentoWidget() }
                     NuovaVersioneSezione()
-                    sezioneInformazioni
-                    sezioneAvanzateLink
+                    Section {
+                        ForEach(VociImpostazioni.informazioni(gestisce: sessione.puoAmministrare)) { voce in
+                            RigaVoceImpostazioni(voce: voce).id("imp-\(voce.id)")
+                        }
+                    }
                 }
                 .scrollContentBackground(.hidden)
+                .contentMargins(.bottom, 24, for: .scrollContent)
                 .background(Sfondo())
-                .demoInFondo()
-                // fotografia `accesso-account-fondo`: la fine di «Il tuo account», con «Esci»
-                .demoScorriA(RigaEsci.idDemo, proxy: proxy, schermate: ["accesso-account"], inFondo: true, ancora: .center,
-                             pronto: sessione.utente != nil)
+                // fotografia `impostazioni-fondo`: la fine della pagina, quando le righe della lega sono arrivate (con le righe che
+                // arrivano dopo, `demoInFondo` da solo restava in cima)
+                .demoScorriA("imp-informazioni", proxy: proxy, schermate: ["impostazioni"], inFondo: true, ancora: .bottom,
+                             pronto: vm.squadre.dato != nil)
+                .refreshable {
+                    await vm.carica()
+                    await avvisi.carica()
+                }
+                .onAppear { portaInVista(proxy) }
+                .onChange(of: nav.parteImpostazioni) { _, _ in portaInVista(proxy) }
             }
             .titoloPagina(Catalogo.Shell.impostazioni)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) { Button(Catalogo.Shell.chiudi) { chiudi() } }
-            }
             .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0) }
             .task { await vm.carica() }
-            .onAppear {
-                // Solo per le fotografie del simulatore (-DEMO_SCHERMATA impostazioni-crediti, ...).
-                if Demo.schermata == "impostazioni-crediti", percorso.isEmpty { percorso = [.crediti] }
-                if Demo.schermata == "impostazioni-avanzate", percorso.isEmpty { percorso = [.avanzate] }
-                if Demo.schermata == "impostazioni-aspetto", percorso.isEmpty { percorso = [.aspetto] }
-                if Demo.schermata == "impostazioni-novita", percorso.isEmpty { percorso = [.novita] }
+            .task { await avvisi.carica() }
+        }
+        .schermoProtetto()   // rose, nomi e dati dell'account non devono comparire nell'anteprima del selettore delle app
+    }
+
+    /// Il nome sotto «Il tuo account»: solo con gli account e un utente noto (senza, c'è `SessioneMinimaSezione`).
+    private var nomeAccount: String? {
+        guard sessione.multiutente, let utente = sessione.utente else { return nil }
+        return utente.nome
+    }
+
+    /// La mia lega, con le righe di `VociImpostazioni.lega`.
+    private var sezioneLega: some View {
+        Section(titolo: Catalogo.Imp.lega) {
+            ForEach(VociImpostazioni.lega(squadre: vm.squadre.dato ?? [], squadreAltrui: funzioni.acceso(Funzione.squadreAltrui))) { voce in
+                RigaVoceImpostazioni(voce: voce).id("imp-\(voce.id)")
             }
         }
-        .fogliAccount(fogli)   // fuori dalla List: i dati dell'account che arrivano non chiudono più i fogli
-        .tint(Color.verde)
-        .schermoProtetto()   // l'email e i dati dell'account non devono comparire nell'anteprima del selettore delle app
+    }
+
+    private var bannerStagione: some View {
+        Section {
+            NavigationLink(value: PaginaImpostazioni.stagione) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(Catalogo.Lega.nuovaStagioneN(s: vm.stagione.dato?.corrente ?? ""), systemImage: "calendar.badge.exclamationmark").font(.headline)
+                    Text(Catalogo.Lega.bannerStagione(s: vm.stagione.dato?.rose ?? "")).font(.caption).foregroundStyle(Color.testoSecondario)
+                }
+                .frame(minHeight: Tema.areaTocco)
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    /// Porta in vista la parte chiesta da un indirizzo (`schieraxi://lega` apre La mia lega) e la dimentica.
+    private func portaInVista(_ proxy: ScrollViewProxy) {
+        guard let parte = nav.parteImpostazioni else { return }
+        nav.parteImpostazioni = nil
+        Task {
+            // la lista deve avere già le righe (le squadre arrivano dopo): un attimo di attesa, come per le foto della demo
+            try? await Task.sleep(for: .milliseconds(400))
+            proxy.scrollTo(parte.ancora, anchor: .top)
+        }
     }
 
     @ViewBuilder
     private func destinazione(_ pagina: PaginaImpostazioni) -> some View {
         switch pagina {
-        case .aspetto: AspettoView()
-        case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
+        case .importa: ImportaExcelView(server: vm.server)
+        case .squadre: SquadreView(server: vm.server)
+        case .rosa(let nome): RosaView(nome: nome, server: vm.server)
+        case .regole: RegoleEditorView(server: vm.server)
+        case .stagione: StagioneView(server: vm.server)
+        case .account: AccountPagina()
+        case .informazioni: InformazioniPagina(server: vm.server)
+        case .gestione: GestionePagina(vm: vm, avvisi: avvisi)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .crediti: CreditiEFontiView()
         case .novita: NovitaView(server: vm.server)
-        case .avanzate: paginaAvanzate
         case .cambiaServer: PaginaCambiaServer(dopoProva: { await vm.info.ricarica() })
         }
-    }
-
-    // MARK: gruppi
-
-    private var sezioneCollegamento: some View {
-        Section(titolo: "Collegamento") {
-            ProvaServerView(utente: sessione.utente?.nome, dopoProva: { await vm.info.ricarica() })
-            if vm.info.inCorso {
-                ProgressView()
-            } else if let s = vm.info.dato {
-                if let salvati = vm.info.datiSalvati {
-                    Label("Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(salvati.formatted(date: .abbreviated, time: .shortened)) e può essere vecchio.", systemImage: "icloud.slash")
-                        .font(.footnote).foregroundStyle(Color.attenzione)
-                }
-                RigaValore(titolo: "Squadra", valore: s.miaSquadra ?? "—")
-                RigaValore(titolo: "Stagione", valore: s.stagione ?? "—")
-                RigaValore(titolo: "Dati aggiornati", valore: Quando.leggibile((s.ultimoAggiornamento ?? "").replacingOccurrences(of: "T", with: " ")))
-            } else if let e = vm.info.errore {
-                Text(e).foregroundStyle(Color.attenzione)
-            }
-        }
-    }
-
-    /// L'app su questo telefono: aspetto e avvisi.
-    private var sezioneApp: some View {
-        Section(titolo: "App") {
-            NavigationLink(value: PaginaImpostazioni.aspetto) { Label(Catalogo.Imp.aspetto, systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaImpostazioni.avvisi) {
-                // Nome e riga sotto come sulla web (`imp.avvisi`, `imp.avvisi_sub`); il permesso di iOS sta dentro la pagina.
-                Label {
-                    NomeConAiuto(TestiImpostazioni.notifiche, aiuto: TestiImpostazioni.notificheSotto)
-                } icon: {
-                    Image(systemName: "bell.badge")
-                }
-                .labelStyle(.voce(.red)).frame(minHeight: 44)
-            }
-            RigaCollegamentoWidget()
-        }
-    }
-
-    /// Privacy, termini, crediti, le novità e la versione, come sulla web (dal 12/11/2026 le novità si leggono qui, #634).
-    private var sezioneInformazioni: some View {
-        Section(titolo: Catalogo.Imp.informazioni) {
-            RigheLegali(server: vm.server)
-            NavigationLink(value: PaginaImpostazioni.novita) {
-                Label(Catalogo.Lega.voceNovita, systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44)
-            }
-            RigaValore(titolo: "Versione", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
-        }
-    }
-
-    /// La riga «Avanzate» c'è solo per chi amministra il server (o per chi usa il server di sempre, senza account).
-    @ViewBuilder
-    private var sezioneAvanzateLink: some View {
-        if sessione.puoAmministrare {
-            Section {
-                NavigationLink(value: PaginaImpostazioni.avanzate) {
-                    Label(Catalogo.Imp.avanzate, systemImage: "wrench.and.screwdriver").labelStyle(.voce(.gray)).frame(minHeight: 44)
-                }
-            } footer: {
-                Text("Server, aggiornamento e rinnovo con SideStore, stato dei dati, diagnostica del widget.").foregroundStyle(Color.testoSecondario)
-            }
-        }
-    }
-
-    /// La pagina «Avanzate»: tutto quello che serve a chi gestisce il server e l'installazione, non a chi usa l'app.
-    private var paginaAvanzate: some View {
-        List {
-            if !ProvaEsempio.attiva { sezioneCollegamento }
-            Section {
-                NavigationLink(value: PaginaImpostazioni.stato) { Label("Stato dei dati", systemImage: "externaldrive").labelStyle(.voce(.gray)).frame(minHeight: 44) }
-                AggiornaDatiSezione(vm: vm.aggiornamento)
-                if let v = vm.info.dato?.versione { RigaValore(titolo: "Versione del server", valore: v) }
-            }
-            DiagnosticaWidgetSezione()
-            CertificatoSezione()
-            RinnovoSideStoreSezione()
-            NotificheNtfySezione()
-        }
-        .scrollContentBackground(.hidden)
-        .background(Sfondo())
-        .navigationTitle(Catalogo.Imp.avanzate)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

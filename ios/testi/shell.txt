@@ -1,3 +1,6 @@
-# Pulsanti comuni dell'app (Support: Stati.swift, PercheNumeroView.swift). Poi: python script/testi.py --scrivi
+# Pulsanti comuni dell'app (Support: Stati.swift, PercheNumeroView.swift) e le voci della barra (Sezione in App/Radice.swift).
+# Poi: python script/testi.py --scrivi
 shell.impostazioni
 shell.chiudi
+shell.cerca
+shell.aggiorna

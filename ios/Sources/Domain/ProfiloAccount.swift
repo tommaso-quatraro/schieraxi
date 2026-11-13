@@ -36,7 +36,8 @@ enum ProfiloAccount {
 enum OpzioniTolte {
     /// L'archivio degli scambi analizzati e «legenda del campo già vista»: le loro schermate non ci sono più.
     static let chiaviFunzioni = ["archivioScambi", "legendaCampoVista"]
-    static let chiavi = ["accento", "densita", "sezioneAvvio"] + chiaviFunzioni
+    /// `promemoria_60` e `promemoria_15`: le scelte per singolo promemoria, sostituite da «Avvisi su questo dispositivo» (#673 passo 3).
+    static let chiavi = ["accento", "densita", "sezioneAvvio", "promemoria_60", "promemoria_15"] + chiaviFunzioni
     /// Il segno che le voci dei giocatori seguiti sono già state tolte dalla ricerca di iOS (Spotlight): si fa una volta sola.
     static let chiaveSpotlightSvuotato = "spotlightSeguitiSvuotato"
 

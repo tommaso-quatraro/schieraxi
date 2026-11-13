@@ -44,7 +44,6 @@ struct ImportaExcelView: View {
                 CercaPerAnteprimaView(server: server, dubbio: d) { c in vm.scegli(trovato: c, squadra: d.squadra, testo: d.testo) }
             }
         }
-        .ricercaGlobale()
         .fileImporter(isPresented: $scegli, allowedContentTypes: vm.tipiAmmessi, allowsMultipleSelection: false) { risultato in
             Task { await vm.importa(risultato) }
         }

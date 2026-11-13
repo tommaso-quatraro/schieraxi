@@ -1,19 +1,21 @@
 # Testi della web (fanta/testi/lega.json) che l'iPhone mostra: una chiave per riga.
 # Dopo una modifica: python script/testi.py --scrivi
 
-# Menu Squadra e Altro (VoceMenuLega, come VOCI_LEGA della web) e titoli delle pagine
+# Impostazioni > La mia lega (VociImpostazioni, come paginaImpostazioni della web) e titoli delle pagine
 lega.voce_squadre
-lega.voce_squadre_sub
 lega.voce_miasquadra
-lega.voce_miasquadra_sub
 lega.voce_importa
 lega.voce_importa_sub
+lega.voce_stagione
+lega.voce_novita
+# Non più mostrate dall'iPhone dal passo 3 di #673: restano elencate finché il catalogo comune le tiene (la web non le usa:
+# toglierle è un lavoro sul catalogo, fuori da ios/; tests/test_testi.py le chiede a chi le usava)
+lega.voce_squadre_sub
+lega.voce_miasquadra_sub
 lega.voce_diario
 lega.voce_diario_sub
 lega.voce_regole
 lega.voce_regole_sub
-lega.voce_stagione
-lega.voce_novita
 
 # Squadre e rose (ParoleSquadre), stemma e maglia
 lega.mia_squadra

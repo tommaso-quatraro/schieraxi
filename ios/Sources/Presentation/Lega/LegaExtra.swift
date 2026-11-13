@@ -31,7 +31,7 @@ struct SquadreView: View {
                         if funzioni.acceso(Funzione.squadreAltrui) {
                             Section {
                                 ForEach(s) { sq in
-                                    NavigationLink(value: PaginaLega.rosa(sq.nome)) {
+                                    NavigationLink(value: PaginaImpostazioni.rosa(sq.nome)) {
                                         RigaSquadra(squadra: sq)
                                     }
                                     .swipeActions {
@@ -54,7 +54,6 @@ struct SquadreView: View {
             .avvisoDatiSalvati(vm.caricatore)
         }
         .titoloPagina(ParoleSquadre.titolo(squadreAltrui: funzioni.acceso(Funzione.squadreAltrui)))
-        .ricercaGlobale()
         .task { await vm.carica() }
         .sheet(isPresented: $apriImmagini) {
             NavigationStack {
@@ -85,7 +84,7 @@ struct SquadreView: View {
             Button { apriImmagini = true } label: {
                 Label(ParoleSquadre.stemmaEMaglia, systemImage: "photo").frame(minHeight: 44)
             }
-            NavigationLink(value: PaginaLega.rosa(mia.nome)) {
+            NavigationLink(value: PaginaImpostazioni.rosa(mia.nome)) {
                 Label(ParoleSquadre.vediLaRosa, systemImage: "person.3").frame(minHeight: 44)
             }
             DisclosureGroup(ParoleSquadre.nonLaTua) { sceltaMia(squadre) }
@@ -310,7 +309,7 @@ struct RosaView: View {
         if soloImmagini {
             contenuto.navigationTitle(ParoleSquadre.stemmaEMaglia).navigationBarTitleDisplayMode(.inline)
         } else {
-            contenuto.titoloPagina(vm.nome, piccoloInBarra: true).ricercaGlobale()
+            contenuto.titoloPagina(vm.nome, piccoloInBarra: true)
         }
     }
 

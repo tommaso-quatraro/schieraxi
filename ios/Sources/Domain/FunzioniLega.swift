@@ -1,6 +1,6 @@
 import Foundation
 
-// Le voci dei menu Squadra e Altro stanno in `VoceMenuLega` (come `VOCI_LEGA` della web).
+// Le voci di Impostazioni > La mia lega stanno in `VociImpostazioni` (come `paginaImpostazioni` della web).
 
 extension Oggi {
     /// Le cose da fare che questo utente può usare: i consigli delle funzioni tolte (`DaFareVoce.tipiTolti`) non si vedono, e le

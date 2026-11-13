@@ -13,7 +13,6 @@ struct FormazioneView: View {
     @Environment(\.apriGiocatore) private var apriGiocatore
     @Environment(\.vaiASezione) private var vaiASezione
     @Environment(\.apriRosaDi) private var apriRosaDi
-    @Environment(\.apriImpostazioni) private var apriImpostazioni
     @Environment(\.horizontalSizeClass) private var classe
     @Environment(\.dynamicTypeSize) private var taglia
     @Environment(\.scenePhase) private var fase
@@ -56,7 +55,6 @@ struct FormazioneView: View {
                 .bordiMorbidi()
             }
             .navigationTitle(Catalogo.Nav.formazione)
-            .ricercaGlobale()
             .sheet(item: $vm.daSostituire) { g in
                 if let f = vm.formazione {
                     SceltaSostituto(uscente: g, candidati: vm.sostituti(di: g, f)) { nuovo in
@@ -232,18 +230,19 @@ struct FormazioneView: View {
     }
 
     /// Dove porta una decisione che non scrive (`dfApri` della web): la guida, la rosa della tua squadra, le rose da aggiornare, le
-    /// Impostazioni, una pagina di Squadra o di Altro.
+    /// Impostazioni o una loro pagina.
     private func apri(_ v: DaFareVoce) {
         if v.tipo == "primo_avvio" {
             nav.guidaAperta = true
             return
         }
         if v.allaRosa {
-            if let nome = vm.formazione?.squadra ?? oggi.oggi?.formazione?.squadra, let apriRosaDi { apriRosaDi(nome) } else { vaiASezione(.squadra) }
+            if let nome = vm.formazione?.squadra ?? oggi.oggi?.formazione?.squadra, let apriRosaDi { apriRosaDi(nome) } else { nav.vai(a: .impostazioni(.lega)) }
             return
         }
         guard let d = v.destinazione?.destinazione else { return }
-        if v.tipo == "rose", case .sezione = d {
+        // le rose da aggiornare aprono «Aggiorna le rose» anche se il server dice solo la sezione
+        if v.tipo == "rose", d.portaAlleImpostazioni {
             nav.vai(a: .pagina(.importa))
             return
         }
@@ -252,9 +251,7 @@ struct FormazioneView: View {
             if s != .formazione { vaiASezione(s) }
         case .giocatore(let id):
             apriGiocatore(id)
-        case .impostazioni:
-            apriImpostazioni?()
-        case .pagina, .collegaWidget:
+        case .impostazioni, .pagina, .collegaWidget:
             nav.vai(a: d)
         }
     }

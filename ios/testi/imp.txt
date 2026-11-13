@@ -1,7 +1,23 @@
-# Voci e gruppi delle Impostazioni (ImpostazioniView, AccountSezione, TestiImpostazioni). Poi: python script/testi.py --scrivi
+# Impostazioni, una pagina sola come la web (#673 passo 3): ImpostazioniView, VociImpostazioni, AvvisiDispositivoSezione,
+# GestionePagina, AccountSezione; «Avanzate» anche nell'accesso (AccessoView). Poi: python script/testi.py --scrivi
+imp.sez_avvisi
+imp.avvisi_qui
+imp.avvisi_qui_aiuto
+imp.ore_tranquille_aiuto
+imp.lega
+imp.regole
+imp.regole_sub
+imp.mia_squadra_nessuna
+imp.altre_squadre
 imp.account
 imp.aspetto
+imp.informazioni
+imp.informazioni_sub
+imp.gestione
+imp.aggiorna_spiega
+imp.avanzate
+
+# Non più mostrate dall'iPhone dal passo 3 di #673: restano elencate finché il catalogo comune le tiene (la web non le usa:
+# toglierle è un lavoro sul catalogo, fuori da ios/; tests/test_testi.py le chiede a chi le usava)
 imp.avvisi
 imp.avvisi_sub
-imp.informazioni
-imp.avanzate

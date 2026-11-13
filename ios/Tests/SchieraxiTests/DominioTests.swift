@@ -141,14 +141,15 @@ final class DominioTests: XCTestCase {
         func vai(_ testo: String) -> Destinazione? { URL(string: testo).flatMap { Collegamenti.interpreta($0) } }
         XCTAssertEqual(vai("schieraxi://oggi"), .sezione(.formazione), "Oggi è nella Formazione (#673): widget e avvisi vecchi la aprono")
         XCTAssertEqual(vai("schieraxi://formazione"), .sezione(.formazione))
-        XCTAssertEqual(vai("schieraxi://mercato"), .sezione(.squadra), "Mercato è diventato Squadra")
-        XCTAssertEqual(vai("schieraxi://squadra"), .sezione(.squadra))
-        XCTAssertEqual(vai("schieraxi://altro"), .sezione(.altro))
-        XCTAssertEqual(vai("schieraxi://scambi"), .sezione(.altro), "Scambi non c'è più (#634): si apre Altro, la scheda in cui stava")
-        XCTAssertEqual(vai("schieraxi://lega"), .sezione(.altro))
-        XCTAssertEqual(vai("SCHIERAXI://Lega"), .sezione(.altro), "maiuscole e minuscole non contano")
+        // Squadra e Altro non sono più schede (#673 passo 3): si aprono le Impostazioni su La mia lega
+        XCTAssertEqual(vai("schieraxi://mercato"), .impostazioni(.lega))
+        XCTAssertEqual(vai("schieraxi://squadra"), .impostazioni(.lega))
+        XCTAssertEqual(vai("schieraxi://altro"), .impostazioni(.lega))
+        XCTAssertEqual(vai("schieraxi://scambi"), .impostazioni(.lega))
+        XCTAssertEqual(vai("schieraxi://lega"), .impostazioni(.lega))
+        XCTAssertEqual(vai("SCHIERAXI://Lega"), .impostazioni(.lega), "maiuscole e minuscole non contano")
         XCTAssertEqual(vai("schieraxi://giocatore/203"), .giocatore(203))
-        XCTAssertEqual(vai("schieraxi://impostazioni"), .impostazioni)
+        XCTAssertEqual(vai("schieraxi://impostazioni"), .impostazioni(nil))
         XCTAssertNil(vai("schieraxi://giocatore/abc"))
         XCTAssertNil(vai("schieraxi://giocatore/0"))
         XCTAssertNil(vai("schieraxi://giocatore"))
@@ -165,10 +166,12 @@ final class DominioTests: XCTestCase {
         XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione, "senza scelte si parte dalla Formazione, come la web")
         memoria.set("oggi", forKey: "ultimaSezione")
         XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione, "chi era su Oggi si ritrova nella Formazione (#673)")
+        memoria.set("giornate", forKey: "ultimaSezione")
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .giornate, "predefinito: l'ultima sezione")
         memoria.set("scambi", forKey: "ultimaSezione")
-        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .altro, "predefinito: l'ultima sezione")
-        memoria.set("mercato", forKey: "sezioneAvvio")
-        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .squadra, "una sezione scelta vince sull'ultima")
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione, "si ricordano solo Formazione e Giornate (#673 passo 3)")
+        memoria.set("diario", forKey: "sezioneAvvio")
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .giornate, "una sezione scelta vince sull'ultima")
         memoria.set("boh", forKey: "sezioneAvvio")
         XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione)
     }
@@ -225,7 +228,7 @@ final class DaFareTests: XCTestCase {
         XCTAssertEqual(c[0].id, "dubbio-5")
         XCTAssertEqual(c[1].id, "7", "un id numerico si legge come testo")
         XCTAssertEqual(c[0].destinazione?.destinazione, .sezione(.formazione))
-        XCTAssertEqual(c[1].destinazione?.destinazione, .sezione(.altro), "senza link vale la sezione")
+        XCTAssertEqual(c[1].destinazione?.destinazione, .impostazioni(.lega), "senza link vale la sezione")
     }
 
     func testOrdineDiUrgenzaEVociVuote() throws {

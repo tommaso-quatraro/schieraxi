@@ -1,9 +1,10 @@
 import UserNotifications
 
 /// Promemoria locali di iOS: non servono server né l'account a pagamento di Apple (le notifiche push, invece, sì).
-/// Un'ora e un quarto d'ora prima della scadenza della formazione, solo quelli accesi negli avvisi («Promemoria un'ora prima»,
-/// «Promemoria 15 minuti prima»). Si programmano quando l'app legge la giornata e quando negli avvisi un promemoria si
-/// riaccende o cambiano le ore tranquille; spegnendolo si toglie subito (vedi `PromemoriaTelefono`).
+/// Un'ora e un quarto d'ora prima della scadenza della formazione, e l'avviso quando cambia la formazione consigliata, solo con
+/// «Avvisi su questo dispositivo» acceso (un interruttore unico come la web, #673 passo 3: le scelte per singolo avviso non si usano
+/// più). Si programmano quando l'app legge la giornata, quando l'interruttore si riaccende e quando cambiano le ore tranquille;
+/// spegnendolo si tolgono subito (vedi `TelefonoAvvisi`).
 enum Notifiche {
     static func stato() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
@@ -14,11 +15,13 @@ enum Notifiche {
         return (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
-    /// Notifica locale subito (usata dall'aggiornamento in background quando la formazione consigliata cambia).
-    /// Nelle ore tranquille non suona: arriva alla fine del silenzio.
-    static func avviso(id: String, titolo: String, corpo: String, ore: OreTranquille = ArchivioOreTranquille.leggi(), adesso: Date = Date()) async {
+    /// Notifica locale subito (usata dall'aggiornamento in background quando la formazione consigliata cambia), solo con «Avvisi su
+    /// questo dispositivo» acceso. Nelle ore tranquille non suona: arriva alla fine del silenzio. Dice se l'avviso è partito.
+    @discardableResult
+    static func avviso(id: String, titolo: String, corpo: String, ore: OreTranquille = ArchivioOreTranquille.leggi(), adesso: Date = Date()) async -> Bool {
+        guard ArchivioAvvisiQui.acceso() else { return false }
         let stato = await stato()
-        guard stato == .authorized || stato == .provisional else { return }
+        guard stato == .authorized || stato == .provisional else { return false }
         let contenuto = UNMutableNotificationContent()
         contenuto.title = titolo
         contenuto.body = corpo
@@ -28,14 +31,21 @@ enum Notifiche {
             let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fine)
             trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
         }
-        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
+        do {
+            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// I promemoria che cadono nelle ore tranquille si saltano (come fa il server): sono utili solo a quell'ora.
-    /// Solo quelli accesi negli avvisi (`attivi`: 60 e/o 15 minuti).
-    static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, attivi: Set<Int> = [60, 15],
+    /// `attivi`: i minuti dei promemoria da mandare (60 e 15 con gli avvisi accesi, nessuno spenti). `messa`: la formazione della
+    /// giornata è spuntata «L'ho messa»: nessun promemoria, come il server (`imp.avvisi_qui_aiuto`).
+    static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, attivi: Set<Int> = [60, 15], messa: Bool = false,
                                      adesso: Date = Date()) -> [(id: String, minuti: Int, quando: Date)] {
         var elenco: [(id: String, minuti: Int, quando: Date)] = []
+        if messa { return elenco }
         for (id, minuti) in [("fanta-60", 60), ("fanta-15", 15)] where attivi.contains(minuti) {
             let quando = inizio.addingTimeInterval(-Double(minuti) * 60)
             guard quando > adesso, !ore.inSilenzio(quando) else { continue }
@@ -64,10 +74,11 @@ enum Notifiche {
         }
     }
 
-    /// Toglie subito i promemoria già programmati che l'utente ha appena spento negli avvisi.
-    static func togliSpenti(_ attivi: Set<Int>) {
-        let spenti = [("fanta-60", 60), ("fanta-15", 15)].filter { !attivi.contains($0.1) }.map { $0.0 }
-        if !spenti.isEmpty { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: spenti) }
+    /// Toglie subito i promemoria e gli avvisi già programmati (l'utente ha spento «Avvisi su questo dispositivo»). Restano i due
+    /// promemoria della scadenza del certificato: senza rinnovo l'app smette di aprirsi.
+    static func togliPromemoria() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: ["fanta-60", "fanta-15", "fanta-cambio", "fanta-probabili"])
     }
 
     /// Il testo dei promemoria: la giornata con i due numeri in testa, come gli avvisi del server (#299).
@@ -76,12 +87,13 @@ enum Notifiche {
                                    ?? "mister, dai un'occhiata alla formazione.")
     }
 
-    static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?) async {
+    static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?, messa: Bool = false) async {
         let centro = UNUserNotificationCenter.current()
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
         centro.removePendingNotificationRequests(withIdentifiers: ["fanta-60", "fanta-15"])
-        for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi(), attivi: ArchivioPromemoria.minutiAttivi()) {
+        for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi(), attivi: ArchivioAvvisiQui.minutiAttivi(),
+                                                         messa: messa) {
             let contenuto = UNMutableNotificationContent()
             contenuto.title = minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti"
             contenuto.body = corpoPromemoria(giornata: giornata, modulo: modulo)
@@ -93,25 +105,36 @@ enum Notifiche {
     }
 }
 
-/// Cosa fanno gli avvisi ai promemoria di questo telefono dopo una lettura o un salvataggio riuscito. I test passano una
-/// versione che annota le chiamate: così si vede che l'interruttore arriva davvero ai promemoria.
-struct PromemoriaTelefono: Sendable {
-    /// Ricorda sul telefono ore tranquille e promemoria accesi: li usa ogni programmazione successiva.
-    var ricorda: @MainActor @Sendable (ImpostazioniAvvisi) -> Void
-    /// Toglie subito i promemoria già programmati che non sono fra quelli accesi (minuti: 60 e/o 15).
-    var togliSpenti: @MainActor @Sendable (_ accesi: Set<Int>) -> Void
-    /// Rimette in programma i promemoria con l'ultima giornata salvata: serve quando uno si è riacceso o cambiano le ore tranquille.
+/// Cosa fa «Avvisi su questo dispositivo» al telefono: il permesso di iOS, le ore tranquille ricordate per i promemoria, i promemoria
+/// tolti o rimessi in programma. I test passano una versione che annota le chiamate: così si vede che l'interruttore arriva davvero
+/// ai promemoria.
+struct TelefonoAvvisi: Sendable {
+    /// iOS permette le notifiche dell'app?
+    var permesso: @MainActor @Sendable () async -> Bool
+    /// Chiede il permesso a iOS (la prima volta compare la domanda di sistema); dice se c'è.
+    var chiediPermesso: @MainActor @Sendable () async -> Bool
+    /// Ricorda sul telefono le ore tranquille lette dal server: le usa ogni programmazione successiva, anche in background.
+    var ricordaOre: @MainActor @Sendable (OreTranquille) -> Void
+    /// Toglie subito i promemoria e gli avvisi già programmati.
+    var togliTutti: @MainActor @Sendable () -> Void
+    /// Rimette in programma i promemoria con l'ultima giornata salvata (e quelli del certificato).
     var riprogramma: @MainActor @Sendable () async -> Void
 
-    static let veri = PromemoriaTelefono(
-        ricorda: { impostazioni in
-            ArchivioOreTranquille.salva(impostazioni.oreTranquille)
-            ArchivioPromemoria.salva(sessanta: impostazioni.promemoria_60, quindici: impostazioni.promemoria_15)
+    static let veri = TelefonoAvvisi(
+        permesso: {
+            if Demo.attivo { return true }   // demo: l'interruttore acceso, senza chiedere niente
+            let stato = await Notifiche.stato()
+            return stato == .authorized || stato == .provisional || stato == .ephemeral
         },
-        togliSpenti: { accesi in
-            if !Ambiente.ospiteDeiTest { Notifiche.togliSpenti(accesi) }
+        chiediPermesso: { await Notifiche.chiediPermesso() },
+        ricordaOre: { ore in ArchivioOreTranquille.salva(ore) },
+        togliTutti: {
+            if !Ambiente.ospiteDeiTest { Notifiche.togliPromemoria() }
         },
         riprogramma: {
-            if !Ambiente.ospiteDeiTest { await Aggiornamento.riprogrammaPromemoria() }
+            if !Ambiente.ospiteDeiTest {
+                await Aggiornamento.riprogrammaPromemoria()
+                await Aggiornamento.riprogrammaScadenza()
+            }
         })
 }
