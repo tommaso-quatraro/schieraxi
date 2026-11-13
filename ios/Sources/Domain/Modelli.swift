@@ -27,8 +27,8 @@ struct Giocatore: Decodable, Identifiable {
     let diffidato: Bool?
     let titolarita: String?
     /// A giornata iniziata (quando `titolarita` arriva vuota): `fatto`, `senza_voto`, `attesa_voti`, `in_corso`, `da_giocare`, `rinviata`.
-    let statoPartita: String?
-    let dataPartita: String?
+    var statoPartita: String?
+    var dataPartita: String?
     let proprietario: String?
     let assente: Bool?
     let quotazione: Double?
@@ -52,7 +52,7 @@ struct Giocatore: Decodable, Identifiable {
     let motivi: [String]?
     /// L'etichetta pronta dal server (`fanta/etichette.py`, `{codice, testo, tono}`): il suo testo va mostrato com'è, al posto
     /// della titolarità composta qui. Facoltativa e tollerante: un server vecchio non la manda, una forma strana vale «niente».
-    let etichetta: Avviso.EtichettaPronta?
+    var etichetta: Avviso.EtichettaPronta?
     /// Solo nella scheda del giocatore: la giornata a cui si riferisce la previsione.
     let giornata: Int?
     /// Solo nella scheda: la stessa giornata con il numero della lega (facoltativo, si preferisce a `giornata`).
@@ -62,7 +62,7 @@ struct Giocatore: Decodable, Identifiable {
     /// Il fantavoto atteso del giocatore medio del suo ruolo (il riferimento dei motivi). Facoltativo.
     private let fvAttesoMedioRuolo: Tollerante<Double>?
     /// A giornata iniziata, il fantavoto preso con le regole della lega (`stato_partita` `fatto`; server dal 2/11/2026). Facoltativo.
-    private let fvPreso: Tollerante<Double>?
+    private var fvPreso: Tollerante<Double>?
     /// Il modo del rinvio se la sua partita è rinviata (`aspetta`, `senza_voto`, `voto_ufficio`), assente se si gioca. Facoltativo.
     private let rinvio: Tollerante<String>?
 
@@ -85,6 +85,27 @@ struct Giocatore: Decodable, Identifiable {
     var mediaRuolo: Double? {
         guard let v = fvAttesoMedioRuolo?.valore, v.isFinite else { return nil }
         return v
+    }
+
+    /// La stessa scheda con lo stato vero della sua partita a giornata in corso (`in_corso.giocatori` di Oggi), come `scheda` di
+    /// `mostraFormazione` della web: stato e fantavoto preso sempre quelli di Oggi, etichetta e orario solo se Oggi li manda.
+    func dalVivo(_ g: GiocatoreInCorso) -> Giocatore {
+        var x = self
+        x.statoPartita = g.stato
+        x.fvPreso = Tollerante(valore: g.fantavoto)
+        if let e = g.etichetta { x.etichetta = e }
+        if let d = g.data { x.dataPartita = d }
+        return x
+    }
+
+    /// Un giocatore della formazione schierata che la Formazione non ha (per esempio una copia di prima di un cambio della rosa):
+    /// solo quello che dice Oggi, come la web. nil se non si riesce a comporlo.
+    static func soloDalVivo(_ g: GiocatoreInCorso) -> Giocatore? {
+        var base: [String: Any] = ["id": g.id, "nome": g.nome, "ruolo": g.ruolo ?? ""]
+        if let s = g.squadra { base["squadra"] = s }
+        guard let dati = try? JSONSerialization.data(withJSONObject: base),
+              let x = try? JSONDecoder().decode(Giocatore.self, from: dati) else { return nil }
+        return x.dalVivo(g)
     }
 }
 
@@ -252,7 +273,7 @@ struct Avviso: Decodable, Identifiable {
     var ident: String { "\(id)-\(tipo ?? "")" }
 
     /// `{codice, testo, tono}` del server. Tollerante: un valore con una forma strana vale «niente etichetta» e non rompe Oggi.
-    struct EtichettaPronta: Decodable {
+    struct EtichettaPronta: Decodable, Equatable {
         let codice: String?
         let testo: String?
         let tono: String?
@@ -384,8 +405,15 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
     let destinazione: DestinazioneDaFare?
     /// Perché te lo consiglia, in una frase breve (facoltativo).
     let motivo: String?
+    /// Il posto fra le decisioni in cima alla Formazione (1, 2, …), solo sulle voci che chiedono di fare qualcosa: lo segna il
+    /// server (#673, `docs/API.md`). Facoltativo: un server vecchio non lo manda, e allora in cima non c'è niente.
+    var decisione: Int? = nil
+    /// Il titolare di cui parla una voce `dubbio` (facoltativo).
+    var giocatore: PersonaDaFare? = nil
+    /// Il sostituto proposto da una voce `dubbio` (azione «Sostituisci»), con i suoi punti attesi (facoltativo).
+    var alternativa: AlternativaDaFare? = nil
 
-    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione, motivo }
+    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione, motivo, decisione, giocatore, alternativa }
 
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
@@ -399,12 +427,32 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
         azione = try? k.decodeIfPresent(String.self, forKey: .azione)
         destinazione = try? k.decodeIfPresent(DestinazioneDaFare.self, forKey: .destinazione)
         motivo = (try? k.decodeIfPresent(String.self, forKey: .motivo)) ?? nil
+        // tolleranti: un valore con una forma strana vale «niente», la voce resta
+        decisione = (try? k.decodeIfPresent(Int.self, forKey: .decisione)) ?? nil
+        giocatore = (try? k.decodeIfPresent(PersonaDaFare.self, forKey: .giocatore)) ?? nil
+        alternativa = (try? k.decodeIfPresent(AlternativaDaFare.self, forKey: .alternativa)) ?? nil
     }
 
-    init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil, motivo: String? = nil) {
+    init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil,
+         motivo: String? = nil, decisione: Int? = nil, giocatore: PersonaDaFare? = nil, alternativa: AlternativaDaFare? = nil) {
         self.motivo = motivo
         self.id = id; self.tipo = tipo; self.testo = testo; self.priorita = priorita; self.azione = azione; self.destinazione = destinazione
+        self.decisione = decisione; self.giocatore = giocatore; self.alternativa = alternativa
     }
+}
+
+/// Un giocatore nominato da una voce di «Da fare» (`giocatore`): id e nome.
+struct PersonaDaFare: Decodable, Equatable {
+    let id: Int
+    let nome: String
+}
+
+/// Il sostituto proposto da una voce `dubbio` (`alternativa`): id, nome, ruolo e punti attesi.
+struct AlternativaDaFare: Decodable, Equatable {
+    let id: Int
+    let nome: String
+    var ruolo: String? = nil
+    var puntiAttesi: Double? = nil
 }
 
 struct DestinazioneDaFare: Decodable, Equatable {
@@ -488,6 +536,10 @@ struct Formazione: Decodable {
     /// Con la formazione ancora aperta, gli id di chi gioca un anticipo già cominciato (#373): nella lega non si spostano più.
     /// Facoltativo: manca senza anticipi cominciati e con un server vecchio.
     let bloccati: [Int]?
+    /// Per chi è arrivato a giornata già cominciata senza una formazione: la risposta è della giornata dopo e questi due numeri
+    /// dicono quella che non si può più schierare (`giornata_saltata`, `giornata_saltata_lega`). Facoltativi.
+    let giornataSaltata: Int?
+    let giornataSaltataLega: Int?
 }
 
 struct VoceNovita: Decodable, Identifiable {
@@ -831,6 +883,11 @@ struct Tollerante<T: Decodable>: Decodable {
     init(from decoder: Decoder) throws {
         valore = try? T(from: decoder)
     }
+
+    /// Un valore già letto (per esempio il fantavoto preso di Oggi a giornata in corso, `Giocatore.dalVivo`).
+    init(valore: T?) {
+        self.valore = valore
+    }
 }
 
 /// Un mio titolare consigliato (campo `miei_titolari` di Oggi): serve a evidenziare le partite in cui gioca.
@@ -965,13 +1022,15 @@ struct GiocatoreInCorso: Decodable, Identifiable, Equatable {
     let fantavoto: Double?
     /// Ora d'inizio della sua partita («AAAA-MM-GG HH:MM»).
     let data: String?
+    /// L'etichetta pronta del server (`fanta/etichette.py`), la stessa di Formazione e scheda. Facoltativa e tollerante.
+    let etichetta: Avviso.EtichettaPronta?
 
-    private enum Chiavi: String, CodingKey { case id, nome, ruolo, squadra, titolare, aPunteggio, stato, fantavoto, data }
+    private enum Chiavi: String, CodingKey { case id, nome, ruolo, squadra, titolare, aPunteggio, stato, fantavoto, data, etichetta }
 
     init(id: Int, nome: String, ruolo: String? = nil, squadra: String? = nil, titolare: Bool = true, aPunteggio: Bool = true,
-         stato: String? = nil, fantavoto: Double? = nil, data: String? = nil) {
+         stato: String? = nil, fantavoto: Double? = nil, data: String? = nil, etichetta: Avviso.EtichettaPronta? = nil) {
         self.id = id; self.nome = nome; self.ruolo = ruolo; self.squadra = squadra; self.titolare = titolare
-        self.aPunteggio = aPunteggio; self.stato = stato; self.fantavoto = fantavoto; self.data = data
+        self.aPunteggio = aPunteggio; self.stato = stato; self.fantavoto = fantavoto; self.data = data; self.etichetta = etichetta
     }
 
     init(from decoder: Decoder) throws {
@@ -985,6 +1044,7 @@ struct GiocatoreInCorso: Decodable, Identifiable, Equatable {
         stato = k.facoltativo(String.self, .stato)
         fantavoto = k.facoltativo(Double.self, .fantavoto).flatMap { $0.isFinite ? $0 : nil }
         data = k.facoltativo(String.self, .data)
+        etichetta = k.facoltativo(Avviso.EtichettaPronta.self, .etichetta)
     }
 }
 

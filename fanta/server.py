@@ -426,8 +426,7 @@ def _contesto_locale() -> Contesto:
     return Contesto(utente_id=None, regole=FILE_REGOLE, rose=FILE_ROSE, movimenti=FILE_MOVIMENTI, scelte=scelte.FILE_SCELTE,
                     osservati=osservati.FILE_OSSERVATI, impostazioni_avvisi=notifiche.FILE_IMPOSTAZIONI, icona=FILE_ICONA,
                     iscrizioni_push=notifiche_web.FILE_ISCRIZIONI, diario=diario.FILE, affidabilita=affidabilita.FILE,
-                    stato_cambi=notifiche.FILE_STATO, stato_promemoria=notifiche.FILE_PROMEMORIA,
-                    stato_riepilogo=notifiche.FILE_RIEPILOGO, stato_avvisi=avvisi_pronta.FILE_STATO, immagini=immagini.CARTELLA)
+                    stato_cambi=notifiche.FILE_STATO, stato_promemoria=notifiche.FILE_PROMEMORIA, immagini=immagini.CARTELLA)
 
 
 def _mostra_tutte(request: Request) -> bool:

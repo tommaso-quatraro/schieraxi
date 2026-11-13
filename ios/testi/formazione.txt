@@ -1,69 +1,82 @@
-# Chiavi di fanta/testi/formazione.json che usa l'iPhone (Formazione, riga dello stato, sostituzione). #495
+# Chiavi di fanta/testi/formazione.json che usa l'iPhone (Formazione unica, riga dello stato, sostituzione, scheda). #495, #673
 # Dopo una modifica: python script/testi.py --scrivi (nasce ios/Sources/Support/Catalogo/Catalogo+Formazione.swift).
 
-# intestazione (TempiLega.didascalia) e stato della scelta (StatoScelta): per ora le usano solo i test della Formazione, che
-# confrontano con il catalogo le frasi ancora scritte in Domain/ (fuori dai file di questo lavoro)
-formazione.la_tua_scelta
-formazione.modulo_consigliato
-formazione.modulo_scelto
-formazione.alle
-formazione.giorno_alle
-formazione.stato_consigliata
-formazione.stato_altro_modulo
-formazione.stato_salvata
-formazione.stato_salvata_quando
-formazione.stato_modificata
-formazione.stato_modificata_quando
-formazione.stato_mano
-formazione.stato_non_valida
+# Riga dello stato della scelta sotto il campo (Domain/StatoScelta): cinque stati e la giornata chiusa con le sue tre frasi
+formazione.stato_e_consigliata
+formazione.stato_cambiata
+formazione.stato_superata
+formazione.stato_punti
+formazione.stato_non_valida_ora
 formazione.stato_chiusa
 formazione.stato_chiusa_tua
 formazione.stato_chiusa_non_valida
+formazione.torna_alla_consigliata
+formazione.scelta_non_letta
+formazione.copia_ferma
+formazione.sto_ancora_ricalcolando
 
-# FormazioneView
-formazione.calcolo
+# Testa per fase (Domain/TestaFormazione)
+formazione.si_chiude
+formazione.fra
+formazione.chiusa_breve
+formazione.in_corso
+formazione.punti_finora
+formazione.circa_fine
+formazione.punti_e_attesi
+formazione.punti
+formazione.come_andata
+formazione.per_la_prossima
+
+# Modulo, punti attesi e campo (FormazioneView, FormazioneViewModel)
+formazione.modulo
+formazione.opzione_consigliato
+formazione.opzione_modulo
 formazione.punti_attesi
+formazione.di_solito
+formazione.oscilla
+formazione.calcolo
 formazione.mancano_probabili_formazioni
 formazione.stai_guardando_formazione
 formazione.torna_alla_tua
-formazione.titolari
-formazione.tocca_sostituire
-formazione.ballottaggio_alternative_vic
-formazione.quasi_pari
-formazione.quest_ordine_entra
-formazione.fuori_dalla
-formazione.senza_dati
-formazione.copia_formazione
-formazione.modifica_mano
-formazione.rispetto
-formazione.salva_come_mia
-formazione.salva_modifiche
-formazione.giocatori_dello_stesso
-formazione.nessun_altro_giocatore
-formazione.al_posto_di
-
-# RigaStatoScelta
-formazione.salva_questa
-formazione.annulla_modifiche
-formazione.torna_alla_consigliata
-
-# FormazioneViewModel
 formazione.chiusa
 formazione.bloccati
-formazione.copiata
-formazione.salvata_come_tua
+
+# Copia per l'app della lega e spunta «L'ho messa»
+formazione.copia_lega
+formazione.copiata_lega
+formazione.non_copio
+formazione.messa
+
+# Decisioni in cima (Domain/Decisioni)
+formazione.decisione_punti
+formazione.usa_consigliata
+
+# Panchina ed elenchi
+formazione.quest_ordine_entra
+formazione.non_schierati
+formazione.indisponibili
+formazione.senza_dati
+
+# La pedina sul campo per VoiceOver, come `vocePedina` della web (Domain/LetturaPedina); anche la scheda (CifreScheda)
+formazione.voce_fv
+formazione.voce_gioca
+formazione.voce_gioca_v
+
+# Sostituzione (SceltaSostituto)
+formazione.sostituisci
+formazione.al_posto_di
+formazione.sost_spiega
+formazione.punti_rispetto
+formazione.fv_atteso_breve
+formazione.nessun_altro_giocatore
 
 # Scheda del giocatore, una sola come la web (#616): SchedaGiocatoreView, CifreScheda, TuttiINumeri, Domain/LetturaScheda,
-# Domain/PercheTitolare; «Sostituisci» anche come titolo del foglio della sostituzione (FormazioneView)
+# Domain/PercheTitolare
 formazione.partita_casa
 formazione.partita_fuori
 formazione.se_gioca
 formazione.perche_titolare
 formazione.incerto
 formazione.ultimi_voti
-formazione.sostituisci
 formazione.tutti_numeri
 formazione.questa_partita
-# «gioca al 62 per cento», «gioca all'85 per cento» per VoiceOver (CifreScheda), come la pedina della web
-formazione.voce_gioca
-formazione.voce_gioca_v

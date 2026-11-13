@@ -40,8 +40,21 @@ final class IntervalloPuntiTests: XCTestCase {
         XCTAssertNil(IntervalloPunti.frase(nil, dev: .nan))
     }
 
+    /// La Formazione unica (#673) scrive la fascia come `fraseDiSolito` della web: «di solito fra 52 e 70», o con una risposta
+    /// vecchia «oscilla di ±3»; del modulo in campo.
     @MainActor
-    func testLaFormazioneMostraLaFasciaDelModuloScelto() async throws {
+    func testLaFormazioneScriveLaFasciaComeLaWeb() {
+        XCTAssertEqual(FormazioneViewModel.diSolito(IntervalloPunti(basso: 51.6, alto: 70.4, confidenza: 0.8), dev: 3),
+                       Catalogo.Formazione.diSolito(a: "52", b: "70"))
+        XCTAssertEqual(FormazioneViewModel.diSolito(IntervalloPunti(basso: 50, alto: 67), dev: 3), "di solito fra 50 e 67")
+        XCTAssertEqual(FormazioneViewModel.diSolito(nil, dev: 2.6), "oscilla di ±3", "risposta vecchia: la deviazione")
+        XCTAssertEqual(FormazioneViewModel.diSolito(IntervalloPunti(basso: 90, alto: 10), dev: 2.6), "oscilla di ±3", "fascia al contrario")
+        XCTAssertNil(FormazioneViewModel.diSolito(nil, dev: nil))
+        XCTAssertNil(FormazioneViewModel.diSolito(nil, dev: .nan))
+    }
+
+    @MainActor
+    func testLaFormazioneMostraLaFasciaDelModuloInCampo() async throws {
         let json = """
         {"giornata": 9, "modulo": "3-4-3", "punteggio_atteso": 60, "dev": 3, "titolari": [], "panchina": [],
          "intervallo": {"basso": 52, "alto": 70, "confidenza": 0.8, "indicativo": true},
@@ -49,16 +62,21 @@ final class IntervalloPuntiTests: XCTestCase {
                       "intervallo": {"basso": 52, "alto": 70, "confidenza": 0.8, "indicativo": true},
                       "moduli": [{"modulo": "3-4-3", "punteggio_atteso": 60, "dev": 3, "titolari": [], "panchina": [],
                                   "intervallo": {"basso": 52, "alto": 70, "confidenza": 0.8, "indicativo": true}},
-                                 {"modulo": "4-3-3", "punteggio_atteso": 58, "dev": 3, "titolari": [], "panchina": [],
+                                 {"modulo": "4-3-3", "punteggio_atteso": 58, "dev": 3, "titolari": [1], "panchina": [],
                                   "intervallo": {"basso": 50, "alto": 67, "confidenza": 0.8, "indicativo": false}},
-                                 {"modulo": "3-5-2", "punteggio_atteso": 57, "dev": 2.6, "titolari": [], "panchina": []}]}]}
+                                 {"modulo": "3-5-2", "punteggio_atteso": 57, "dev": 2.6, "titolari": [2], "panchina": []}]}]}
         """
-        let f: Formazione = try Decodifica.decodifica(Data(json.utf8))
-        let vm = FormazioneViewModel(server: ServerDiProva { _, _, _ in Data("{}".utf8) })
-        XCTAssertEqual(vm.fascia(f), "tra 52 e 70 · 8 volte su 10 (indicativo)")
-        vm.moduloScelto = "4-3-3"
-        XCTAssertEqual(vm.fascia(f), "tra 50 e 67 · 8 volte su 10")
-        vm.moduloScelto = "3-5-2"
+        let srv = ServerDiProva { _, _, _ in Data(json.utf8) }
+        let vm = FormazioneViewModel(server: srv)
+        // la formazione di un'altra squadra: un altro modulo si guarda e basta (per la tua si salverebbe)
+        vm.vediSquadra("Gli Amici")
+        await vm.carica()
+        let f = try XCTUnwrap(vm.formazione)
+        XCTAssertEqual(vm.fascia(f), "di solito fra 52 e 70")
+        await vm.scegliModulo("4-3-3")
+        XCTAssertEqual(vm.fascia(f), "di solito fra 50 e 67")
+        await vm.scegliModulo("3-5-2")
         XCTAssertEqual(vm.fascia(f), "oscilla di ±3", "il modulo non ha la fascia: si ripiega sulla sua deviazione")
+        XCTAssertEqual(srv.quante("POST"), 0, "guardare un modulo di un'altra squadra non salva niente")
     }
 }

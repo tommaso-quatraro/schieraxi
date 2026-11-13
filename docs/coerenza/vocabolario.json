@@ -57,13 +57,13 @@
     },
     {
       "cosa": "Stato della scelta (Formazione)",
-      "forma": "Le frasi di `formazione.stato_*` di `testi.js`: «Stai vedendo la consigliata: non hai salvato una tua formazione.», «La tua formazione è salvata (oggi alle 13:09)», «Modifiche non salvate · salvata …», «Modifica a mano non ancora salvata», «La formazione salvata non è più valida: …»",
-      "mai": "frasi diverse per lo stesso stato"
+      "forma": "La riga sotto il campo, con le frasi di `formazione.stato_*` del catalogo comune: «È la consigliata.», «L'hai cambiata tu: 2 titolari diversi dalla consigliata (−0,4 punti attesi).», «La consigliata è cambiata da quando l'hai salvata: 1 titolare diverso (…).», «La formazione che avevi salvato non è più valida: vale la consigliata.» e, a giornata chiusa, le tre frasi di `formazione.stato_chiusa*`. Il salvataggio è automatico.",
+      "mai": "frasi diverse per lo stesso stato; «Salva», «Modifiche non salvate»"
     },
     {
-      "cosa": "Da fare (Oggi)",
-      "forma": "Le frasi e i pulsanti sono il `testo` e l'`azione` del server, uguali sui due lati (la web traduce da `frase.*`). Hai salvato la consigliata e poi è cambiata: una riga sola, «La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera Y al posto di X.» (oltre 3 cambi «… Cambiano N titolari.»; se esce un titolare fuori, «X è infortunato e la consigliata è cambiata…», urgente), pulsante «Apri la formazione», icona della formazione sull'iPhone (tipo `formazione`, #333). Con la consigliata salvata e ancora uguale nessun «Meglio…» né «Sostituisci».",
-      "mai": "frasi riscritte su un lato; «Sostituisci» su una consigliata appena salvata"
+      "cosa": "Decisioni (in cima alla Formazione)",
+      "forma": "Al massimo due voci di `da_fare`, quelle che il server segna con il campo `decisione` e che hanno ancora senso con la formazione in pagina. Le frasi e i pulsanti sono il `testo` e l'`azione` del server, uguali sui due lati; «Urgente» scritto davanti alla voce urgente; per la consigliata cambiata il pulsante è «Usa la consigliata»; accanto al cambio proposto «+0,9 punti attesi.».",
+      "mai": "frasi riscritte su un lato; una decisione già fatta proposta di nuovo; più di due decisioni"
     },
     {
       "cosa": "Formazione chiusa",
@@ -81,9 +81,9 @@
       "mai": "frasi scritte dal client; righe per i titolari che non sembrano storti; la nota anche sulla formazione modificata a mano"
     },
     {
-      "cosa": "Stato della giornata (Oggi)",
-      "forma": "Prima: conto alla rovescia («2 giorni 3 h», «3 h 20 min», «12 min») e sotto «La formazione si chiude sab 31 14:50 (10 min prima della prima partita)». Dopo la scadenza: «**Chiusa**» e «La formazione si è chiusa sab 31 14:50» (la giornata è scritta subito sopra il conto, non si ripete). Finita: «Giornata 7 · 10ª di Serie A: finita». Senza data: «Data da definire».",
-      "mai": "«In corso» al posto di «Chiusa»"
+      "cosa": "Testa della Formazione",
+      "forma": "Prima della scadenza la giornata («Giornata 8 · 11ª di Serie A») e «**Si chiude sab 31 14:50** fra 3 h 10 min»; scaduta «Formazione chiusa»; in corso «40,0 punti finora · circa 75 a fine giornata» e quanti devono ancora giocare; finita «Giornata 7 · 10ª di Serie A: finita», «83,0 punti (attesi 71,7)» e «Com'è andata». Senza data: «Calendario non disponibile».",
+      "mai": "«In corso» al posto di «Formazione chiusa»"
     },
     {
       "cosa": "Fantavoto atteso",

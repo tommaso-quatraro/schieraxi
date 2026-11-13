@@ -332,12 +332,24 @@ def test_ogni_avviso_sul_telefono_ha_italiano_e_inglese_con_gli_stessi_segnapost
                 assert f.in_lingua("en") != str(f), chiave           # l'inglese c'è davvero
 
 
+def test_ogni_avviso_sul_telefono_lo_usa_ancora_il_server():
+    """Una frase degli avvisi che il server non manda più è un testo morto da togliere (come `test_nessuna_chiave_dimenticata` di
+    test_testi.py per il catalogo di web e iPhone). Le chiavi costruite al volo, F("n.m_" + stato), contano con il loro inizio;
+    `n.giornata.*` la compone frasi.nome_giornata."""
+    codice = "\n".join(p.read_text(encoding="utf-8") for p in PACCHETTO.glob("*.py") if p.name != "frasi_avvisi.py")
+    al_volo = tuple(re.findall(r'F\("(n\.[a-z_]+)" \+', codice)) + ("n.giornata.",)
+    assert "n.m_" in al_volo                                         # la ricerca delle chiavi al volo funziona
+    morte = sorted(k for k in NOTIFICHE if f'"{re.sub(r"[.](one|other)$", "", k)}"' not in codice and not k.startswith(al_volo))
+    assert not morte, morte
+
+
 def test_una_frase_nella_lingua_dell_utente():
-    f = F("n.riepilogo", giornata=frasi.nome_giornata(9, 6, avviso=True), fonte=F("n.fonte_scelta"), punti=71.34, attesi=70.0, massimo=80.3)
-    assert f.in_lingua("it") == str(f) == ("Giornata 6 · 9ª di Serie A: la tua scelta salvata ha fatto circa 71,3 punti (il modello ne aspettava 70,0). "
-                                          "Il massimo possibile con la tua rosa era 80,3.")
-    assert f.in_lingua("en") == ("Matchday 6 · Serie A matchday 9: your saved choice scored about 71.3 points (the model expected 70.0). "
-                                 "The maximum possible with your roster was 80.3.")
+    f = frasi.elenco([F("n.tra_un_ora", giornata=frasi.nome_giornata(9, 6, avviso=True), ora="18:30"),
+                      F("n.consigliato", modulo="3-4-3", punti=71.34)], sep=" ")
+    assert f.in_lingua("it") == str(f) == ("Giornata 6 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30). "
+                                          "Consigliato: 3-4-3, 71,3 punti attesi.")
+    assert f.in_lingua("en") == ("Matchday 6 · Serie A matchday 9: the lineup closes in about an hour (deadline at 18:30). "
+                                 "Recommended: 3-4-3, 71.3 expected points.")
     righe = frasi.elenco([F("n.ora_dubbio", nome="Rossi"), F("n.ora_infortunato", nome="Bianchi")], sep="\n")
     assert righe.in_lingua("en") == "Rossi: now in doubt\nBianchi: now injured" and str(righe) == "Rossi: ora in dubbio\nBianchi: ora infortunato"
     e = frasi.elenco([F("n.m_infortunato", nome="A"), F("n.m_dubbio", nome="B")], con_e=True)

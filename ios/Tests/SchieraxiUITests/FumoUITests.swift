@@ -1,6 +1,6 @@
 import XCTest
 
-/// Test di fumo dell'interfaccia: l'app parte in modalità demo (dati finti, senza rete, tutte le funzioni accese), le quattro sezioni si raggiungono
+/// Test di fumo dell'interfaccia: l'app parte in modalità demo (dati finti, senza rete, tutte le funzioni accese), le tre sezioni si raggiungono
 /// e le schermate principali mostrano il testo atteso. Si cerca per testo (etichetta di accessibilità), non per posizione.
 /// Ogni tocco che apre qualcosa passa da `tocca(_:finchéCompare:_:)` (Tocchi.swift): se il tocco si perde, si ritocca (#212).
 final class FumoUITests: XCTestCase {
@@ -41,33 +41,42 @@ final class FumoUITests: XCTestCase {
               file: file, line: line)
     }
 
-    func testLeQuattroSezioniSonoRaggiungibili() {
+    func testLeTreSezioniSonoRaggiungibili() {
         let barra = app.tabBars.firstMatch
         XCTAssertTrue(barra.waitForExistence(timeout: 30), "la barra delle sezioni deve comparire")
-        for nome in ["Oggi", "Formazione", "Squadra", "Altro"] {
+        for nome in ["Formazione", "Squadra", "Altro"] {
             XCTAssertTrue(barra.buttons[nome].exists, "manca la sezione \(nome)")
         }
+        XCTAssertFalse(barra.buttons["Oggi"].exists, "Oggi è nella Formazione (#673)")
     }
 
-    func testOggiMostraLaGiornataELaFormazione() {
-        // il titolo della web (oggi.tua_formazione, #416): la demo mostra la consigliata non salvata, come la Formazione (#418)
-        attendi("La tua formazione")
-        attendi("Da controllare")
-        attendi("Apri la formazione")
+    func testLaFormazioneSiApreConLaGiornataEIlCampo() {
+        // la Formazione unica (#673) si apre per prima, come la web: quando si chiude, i punti attesi, la riga dello stato (la demo
+        // non ha una scelta salvata), «Copia per l'app della lega», la panchina. Niente più modifica a mano né «Salva»
+        attendi("Si chiude", contiene: true)
         attendi("punti attesi", contiene: true)
-        XCTAssertTrue(app.navigationBars["Oggi"].exists)
-    }
-
-    func testFormazioneConCampoEModificaAMano() {
-        vaiA("Formazione")
-        attendi("Campo")
-        attendi("Panchina")
+        attendi("È la consigliata.")
+        XCTAssertTrue(app.navigationBars["Formazione"].exists)
+        attendiScorrendo("Copia per l'app della lega", contiene: true)
+        attendiScorrendo("Panchina")
         // gli stili non ci sono più (#634): niente frase dello stile («Equilibrata: propone il 3-4-3.»)
         XCTAssertFalse(elemento("propone il", contiene: true).exists, "in Formazione non c'è più la frase dello stile")
-        tocca(app.buttons["Modifica a mano"], finchéCompare: app.buttons["Torna alla consigliata"], "«Modifica a mano» apre la modifica")
-        attendi("Salva come mia scelta")
-        tocca(app.buttons["Torna alla consigliata"], finchéCompare: app.buttons["Modifica a mano"],
-              "tornando alla consigliata ricompare «Modifica a mano»")
+        XCTAssertFalse(elemento("Modifica a mano").exists, "il salvataggio è automatico: niente «Modifica a mano»")
+        XCTAssertFalse(elemento("Salva come mia scelta").exists)
+    }
+
+    func testUnAltroModuloSiSalvaETornaAllaConsigliata() {
+        // il modulo è un menu: un altro modulo si salva da solo e la riga dello stato lo dice, con «Torna alla consigliata»
+        let menu = app.buttons["Modulo"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 30), "il menu del modulo deve esserci")
+        attendi("È la consigliata.")
+        // le voci del menu: «4-3-3 · 73,7 punti · consigliato», le altre senza «consigliato»
+        let altro = app.buttons.matching(NSPredicate(format: "label MATCHES %@", "^[0-9]-[0-9]-[0-9](-[0-9])? · .* punti$")).firstMatch
+        tocca(menu, finchéCompare: altro, "il menu del modulo si apre")
+        tocca(altro, finchéCompare: elemento("L'hai cambiata tu", contiene: true), "un altro modulo si salva da solo")
+        let torna = app.buttons["Torna alla consigliata"].firstMatch
+        XCTAssertTrue(torna.waitForExistence(timeout: 10))
+        tocca(torna, finchéCompare: elemento("È la consigliata."), "«Torna alla consigliata» rimette la consigliata")
     }
 
     func testSquadraConLeSuePagine() {
@@ -137,10 +146,10 @@ final class FumoUITests: XCTestCase {
     }
 
     func testSchedaDiUnGiocatoreSiApreEDiChiude() {
-        // un tocco su una riga di Oggi apre la scheda (foglio) unica, come la web (#616): gli ultimi voti e, chiusi,
+        // un tocco su una pedina della Formazione apre la scheda (foglio) unica, come la web (#616): gli ultimi voti e, chiusi,
         // «Tutti i numeri»
         let riga = app.buttons.matching(NSPredicate(format: "label CONTAINS 'fantavoto atteso'")).firstMatch
-        XCTAssertTrue(riga.waitForExistence(timeout: 30), "serve almeno una riga di giocatore in Oggi")
+        XCTAssertTrue(riga.waitForExistence(timeout: 30), "serve almeno una pedina o una riga di giocatore nella Formazione")
         tocca(riga, finchéCompare: elemento("Ultimi voti"), "un tocco sulla riga apre la scheda del giocatore")
         attendiScorrendo("Tutti i numeri")
         let chiudi = app.buttons["Chiudi"]
@@ -202,7 +211,7 @@ final class FumoUITests: XCTestCase {
 
     func testLaLenteApreLaRicerca() {
         let lente = app.buttons["Cerca un giocatore"]
-        XCTAssertTrue(lente.waitForExistence(timeout: 30), "la lente della ricerca deve esserci in Oggi")
+        XCTAssertTrue(lente.waitForExistence(timeout: 30), "la lente della ricerca deve esserci nella Formazione")
         tocca(lente, finchéCompare: elemento("Scrivi almeno due lettere del nome."), "la lente apre la ricerca")
     }
 }

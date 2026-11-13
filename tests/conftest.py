@@ -207,7 +207,7 @@ def multiutente(tmp_path, monkeypatch):
 def dati_isolati(tmp_path, monkeypatch):
     """Se per un errore una rotta risultasse aperta, il test non deve poter toccare i dati veri né fare cose vere (aggiornamenti,
     avvisi): tutti i file personali vanno in una cartella temporanea e le azioni verso l'esterno sono spente."""
-    from fanta import affidabilita, archivio, avvisi, diario, immagini, notifiche, osservati, push, scelte, server
+    from fanta import affidabilita, archivio, diario, immagini, notifiche, osservati, push, scelte, server
     d = tmp_path / "dati-finti"
     for modulo, nome, percorso in ((server, "FILE_REGOLE", d / "regole.json"), (server, "FILE_ROSE", d / "rose.json"),
                                    (server, "FILE_MOVIMENTI", d / "movimenti.json"), (server, "FILE_ICONA", d / "icona.json"),
@@ -216,8 +216,7 @@ def dati_isolati(tmp_path, monkeypatch):
                                    (affidabilita, "FILE", d / "affidabilita.json"),
                                    (immagini, "CARTELLA", d / "immagini"), (push, "FILE_VAPID", d / "vapid.json"),
                                    (push, "FILE_ISCRIZIONI", d / "push.json"), (notifiche, "FILE_IMPOSTAZIONI", d / "avvisi.json"),
-                                   (notifiche, "FILE_STATO", d / "n.json"), (notifiche, "FILE_PROMEMORIA", d / "p.json"),
-                                   (notifiche, "FILE_RIEPILOGO", d / "r.json"), (avvisi, "FILE_STATO", d / "a.json")):
+                                   (notifiche, "FILE_STATO", d / "n.json"), (notifiche, "FILE_PROMEMORIA", d / "p.json")):
         monkeypatch.setattr(modulo, nome, percorso)
     try:                                           # nella versione pubblica il modulo delle foto non c'è
         from fanta import foto

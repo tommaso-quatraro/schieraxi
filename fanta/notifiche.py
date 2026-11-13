@@ -30,7 +30,7 @@ from typing import Callable
 import pandas as pd
 import requests
 
-from . import avvisi, frasi, osservati
+from . import avvisi, frasi
 from .frasi import F
 from .lega import Rose
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
@@ -40,7 +40,6 @@ LOG = logging.getLogger(__name__)
 FILE_STATO = RADICE / "dati" / "notifiche.json"
 FILE_PROMEMORIA = RADICE / "dati" / "notifiche-promemoria.json"      # file separato: cambi e promemoria girano da script diversi
 FILE_IMPOSTAZIONI = RADICE / "dati" / "avvisi-impostazioni.json"
-FILE_RIEPILOGO = RADICE / "dati" / "notifiche-riepilogo.json"
 LINGUE = ("it", "en")
 LINGUA_PREDEFINITA = "it"
 IMPOSTAZIONI_PREDEFINITE = {"cambi": True, "promemoria_60": True, "promemoria_15": True, "riepilogo": True, "app_nativa": False,
@@ -49,7 +48,7 @@ CAMPI_UTENTE = ("primo_avvio", "backup_il", "mostra_tutte")    # altri campi del
 BLOCCO_FILE = threading.Lock()
 ORE_PREDEFINITE = {"silenzio_da": 23, "silenzio_a": 7}      # ore tranquille: dalle 23 alle 7 (se "silenzio" è acceso)
 # a quale sezione dell'app nativa porta il tocco sull'avviso ntfy (schema schieraxi://, vedi l'app iOS); quel che non è qui apre Lega
-SEZIONE_PER_TAG = {"rotating_light": "formazione", "alarm_clock": "formazione", "bar_chart": "oggi", "unlock": "mercato", "no_entry": "mercato"}
+SEZIONE_PER_TAG = {"rotating_light": "formazione", "alarm_clock": "formazione"}
 FUORI = ("infortunato", "squalificato")
 # un titolare delle probabili sotto questa percentuale della fonte è «in ballottaggio» (come consigli.PERC_BALLOTTAGGIO): l'avviso
 # scatta quando la passa, in su o in giù, e lo dice a parole (all'utente si mostra una sola percentuale, «gioca N%»)
@@ -87,7 +86,7 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", ignor
           file_impostazioni: Path | None = None, file_iscrizioni: Path | None = None, ntfy: bool = True,
           vale_per: timedelta | None = None) -> bool:
     """Manda l'avviso: con le notifiche web attive su almeno un dispositivo si usano quelle; altrimenti (o se non arriva a nessuno) ntfy.
-    Nelle ore tranquille non parte niente e restituisce False: cambi e riepilogo allora riprovano al giro dopo, fuori dalla fascia.
+    Nelle ore tranquille non parte niente e restituisce False: cambi e promemoria allora riprovano al giro dopo, fuori dalla fascia.
     I file sono quelli dell'utente (di norma quelli di sempre); `ntfy=False` per gli utenti con un account: il canale ntfy è uno
     solo, del proprietario del server, e i nomi dei calciatori di un altro non devono finire lì.
     `vale_per`: per gli avvisi sulla formazione, quanto manca alla scadenza: la notifica web non arriva dopo (`push.tempo_di_vita`)."""
@@ -232,22 +231,6 @@ def in_silenzio(adesso: datetime, opzioni: dict) -> bool:
     if not opzioni.get("silenzio") or da == a:
         return False
     return da <= adesso.hour < a if da < a else adesso.hour >= da or adesso.hour < a
-
-
-# ---------------------------------------------------------------- osservati che tornano liberi
-def osservati_liberi(diff: dict, file_osservati: Path | None = None, manda: Callable[..., bool] = invia,
-                     opzioni: dict | None = None) -> list[str]:
-    """Dopo un'importazione delle rose: avvisa se un giocatore tra gli osservati è stato lasciato libero da una squadra
-    (si può prendere dagli svincolati). `diff` è il risultato di movimenti.differenze. Restituisce le righe mandate."""
-    opzioni = opzioni if opzioni is not None else impostazioni()
-    if not opzioni.get("cambi", True):
-        return []
-    seguiti = set(osservati.leggi(file_osservati))
-    righe = [F("n.osservato_libero", nome=g["nome"], ruolo=g.get("ruolo") or "?", squadra=t["squadra"])
-             for t in diff.get("tagliati", []) for g in t.get("giocatori", []) if g.get("id") in seguiti]
-    if righe and manda(F("n.t_osservato_libero"), frasi.elenco(righe[:MAX_RIGHE], sep="\n"), 3, "unlock"):
-        return righe
-    return []
 
 
 # ---------------------------------------------------------------- cambi delle probabili
@@ -455,41 +438,6 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         cambi_stato.pop(vecchia, None)
     scrivi_sicuro(file_stato, json.dumps(stato))
     return gia_detti + detti
-
-
-# ---------------------------------------------------------------- copertura della rosa
-def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_STATO,
-              manda: Callable[..., bool] = invia, opzioni: dict | None = None) -> list[str]:
-    """Avvisa (facoltativo) se un reparto della tua rosa è scoperto o senza ricambi per la prossima giornata, finché la formazione è
-    aperta. Ogni situazione una volta sola (giornata, reparto, gravità); nelle ore tranquille non segna niente e riprova al giro dopo."""
-    from . import consigli, copertura as cop
-    adesso = adesso or datetime.now()
-    opzioni = opzioni if opzioni is not None else impostazioni()
-    if not opzioni.get("copertura", True):
-        return []
-    stagione = consigli.stagione_corrente()
-    giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)      # la giornata della lega, come cambi e promemoria
-    if giornata is None:
-        return []
-    inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)     # la scadenza, non l'inizio della partita
-    if inizio is None or inizio <= adesso:
-        return []
-    prev, giornata, _ = consigli.previsioni(db, regole, giornata)     # la giornata del giro, non cercata di nuovo
-    r = cop.analizza(prev, regole, rose, opzioni.get("lingua", LINGUA_PREDEFINITA))          # il testo del reparto è già nella lingua dell'utente
-    stato = _json(file_stato)
-    gia = set(stato.get("copertura", []))
-    nuovi = [(f"{stagione}/{giornata}/{x['ruolo'] or 'moduli'}/{x['livello']}", x) for x in (r or {}).get("reparti", [])]
-    nuovi = [(k, x) for k, x in nuovi if k not in gia]
-    if not nuovi:
-        return []
-    scoperti = any(x["livello"] == cop.SCOPERTO for _, x in nuovi)
-    titolo = F("n.t_reparto_scoperto") if scoperti else F("n.t_reparto_rischio")
-    righe = [x["testo"] for _, x in nuovi]
-    if not manda(titolo, "\n".join(righe), 4 if scoperti else 3, "no_entry", vale_per=inizio - adesso):
-        return righe                                   # ore tranquille o invio fallito: si riprova al giro dopo
-    stato["copertura"] = (list(stato.get("copertura", [])) + [k for k, _ in nuovi])[-40:]
-    scrivi_sicuro(file_stato, json.dumps(stato))
-    return righe
 
 
 # ---------------------------------------------------------------- promemoria prima della scadenza
@@ -779,132 +727,3 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     salva()
     return [testo]
 
-
-# ---------------------------------------------------------------- riepilogo a giornata finita
-RIEPILOGO_ENTRO = timedelta(days=6)        # dall'ultima partita giocata della giornata: più tardi il riepilogo non parte più
-
-
-def _da_riepilogare(db: sqlite3.Connection, stagione: str, regole: Regole, adesso: datetime, fatti: list[str]) -> list[int]:
-    """Le giornate di cui si può mandare il riepilogo, dalla più recente: finite per la lega (`rinvii.giornate_chiuse`, come Oggi e
-    il Diario: con «aspetta» dopo il recupero, con le altre regole a turno finito), giocate da meno di RIEPILOGO_ENTRO, con i voti
-    di ogni squadra che ha giocato (`fasi.voti_arrivati`, la regola di Oggi) e non ancora riepilogate. Prima contava solo la
-    giornata più alta con tutte le partite giocate: una giornata con un recupero non la era mai, e le bastavano 60 righe di voti (#649)."""
-    from . import fasi, rinvii
-    ultime = {int(g): fasi._data(d) for g, d in db.execute("SELECT giornata, MAX(data) FROM partite WHERE stagione = ? AND giocata = 1 "
-                                                           "AND data IS NOT NULL GROUP BY giornata", (stagione,))}
-    chiuse = [g for g in rinvii.giornate_chiuse(db, stagione, regole) if ultime.get(g) is not None]
-    return [g for g in sorted(chiuse, key=lambda g: ultime[g], reverse=True)
-            if f"{stagione}/{g}" not in fatti and timedelta(0) < adesso - ultime[g] <= RIEPILOGO_ENTRO
-            and fasi.voti_arrivati(db, stagione, g, regole)]
-
-
-def _con_la_regola_dei_rinvii(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, ids: list[int],
-                              fv: dict[int, float], voto: dict[int, float]) -> None:
-    """Chi aveva una partita fuori dal turno (rinviata, recuperata o no) conta come per la lega (`rinvii.voti_lega`, come il Diario e
-    il riepilogo di Oggi): con «senza voto» resta senza voto (entra la riserva), con il voto d'ufficio prende il voto fisso, con
-    «aspetta» il voto del recupero. Cambia `fv` e `voto` ({id: valore} di chi ha preso voto)."""
-    from . import fasi, rinvii
-    partite = [{"data": d, "casa": c, "trasferta": t} for d, c, t in
-               db.execute("SELECT data, casa, trasferta FROM partite WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
-    fuori = {s for p in rinvii.fuori_turno(partite) for s in (p["casa"], p["trasferta"]) if s}
-    if not fuori:
-        return
-    squadre = fasi.squadre_dei_giocatori(db, stagione, giornata, ids)
-    coinvolti = [i for i in ids if squadre.get(i) in fuori]
-    gioca = {i: i in fv for i in coinvolti}
-    fv_l, voto_l = {i: fv.get(i, 0.0) for i in coinvolti}, {i: voto.get(i, 0.0) for i in coinvolti}
-    rinvii.voti_lega(gioca, fv_l, voto_l, coinvolti, rinvii.regola(regole, stagione, giornata))
-    for i in coinvolti:
-        if gioca[i]:
-            fv[i], voto[i] = fv_l[i], voto_l[i]
-        else:
-            fv.pop(i, None)
-            voto.pop(i, None)
-
-
-def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_RIEPILOGO,
-              manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_cambi: Path = FILE_STATO,
-              file_scelte: Path | None = None, file_diario: Path | None = None) -> list[str]:
-    """Quando una giornata è finita e i voti sono arrivati: quanti punti ha fatto la formazione che avevi, quanti se ne aspettava il
-    modello e il massimo possibile con la tua rosa. Una volta per giornata.
-    La formazione che avevi è quella di Oggi e del Diario (`fasi.schierata`): la tua scelta salvata, se si può schierare con la rosa;
-    altrimenti la consigliata fissata alla scadenza (istantanea del Diario) o la sua copia automatica, con la sua panchina. Solo se
-    mancano entrambe resta l'ultima consigliata vista dall'avviso dei cambi (`file_cambi`), che può essere più vecchia.
-    Quale giornata e quando: `_da_riepilogare`, una per giro. Una giornata di cui non si può fare il riepilogo (formazione non nota,
-    un titolare non più in rosa) non ferma le altre: si prova la successiva (revisione della #678)."""
-    from . import consigli
-    adesso = adesso or datetime.now()
-    opzioni = opzioni if opzioni is not None else impostazioni()
-    if not opzioni.get("riepilogo", True):
-        return []
-    stagione = consigli.stagione_corrente()
-    stato = _json(file_stato)
-    fatti = stato.setdefault("riepilogo", [])
-    for giornata in _da_riepilogare(db, stagione, regole, adesso, fatti):
-        testo = _testo_riepilogo(db, regole, rose, adesso, stagione, giornata, file_cambi, file_scelte, file_diario)
-        if testo is None:
-            continue
-        if manda(F("n.t_riepilogo"), testo, 3, "bar_chart"):
-            fatti.append(f"{stagione}/{giornata}")
-            stato["riepilogo"] = fatti[-20:]
-            scrivi_sicuro(file_stato, json.dumps(stato))
-        return [testo]
-    return []
-
-
-def _testo_riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime, stagione: str, giornata: int,
-                     file_cambi: Path, file_scelte: Path | None, file_diario: Path | None) -> frasi.Frase | None:
-    """Il testo del riepilogo di una giornata finita, o None se non si può fare (non si sa cosa avevi schierato, rosa cambiata).
-    Chi aveva la partita rinviata conta con la regola della lega (`_con_la_regola_dei_rinvii`)."""
-    from . import consigli, diario, fasi, scelte, verifica
-    from . import formazione as fz
-    from .punteggio import COLONNA_VOTO, fantavoto
-    chiave = f"{stagione}/{giornata}"
-    righe_voti = [dict(x) for x in db.execute("SELECT * FROM voti WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
-    # la stessa formazione di Oggi e del Diario (fasi.schierata): la regola unica della scelta con i ruoli della rosa (una scelta che
-    # non vale non conta), poi la consigliata congelata alla scadenza e la copia automatica. Senza file indicati, quelli dell'utente unico
-    sch = fasi.schierata(stagione, giornata, file_scelte or scelte.FILE_SCELTE, file_diario or diario.FILE,
-                         ruoli=scelte.ruoli_schierabili(rose), regole=regole)
-    snap = _json(file_cambi).get("cambi", {}).get(chiave)
-    if sch:
-        ids, panchina_ids, di = sch
-        fonte = F("n.fonte_scelta") if di == "tua" else F("n.fonte_consigliata")
-    elif snap and snap.get("titolari"):            # ripiego: l'ultima consigliata vista dall'avviso dei cambi
-        ids, panchina_ids, fonte = snap["titolari"], None, F("n.fonte_consigliata")
-    else:
-        return None                                # non so cosa avevi schierato
-    prev, _, _ = consigli.previsioni(db, regole, giornata)
-    squadra = rose.squadra(rose.mia_squadra or "")
-    if not squadra:
-        return None
-    lista = [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]), float(prev.at[i, "mu"]),
-                          float(prev.at[i, "mu_voto"])) for i in (g.id for g in squadra.giocatori if g.id is not None) if i in prev.index]
-    per_id = {g.id: g for g in lista}
-    if any(i not in per_id for i in ids):
-        return None
-    fv_vero, voto_vero = {}, {}
-    for v in righe_voti:
-        i = int(v["calciatore_id"])
-        fv = fantavoto(v, v["ruolo"], regole) if i in per_id else None
-        if fv is not None:
-            fv_vero[i], voto_vero[i] = fv, v[COLONNA_VOTO[regole.fonte_voto]]
-    _con_la_regola_dei_rinvii(db, regole, stagione, giornata, list(per_id), fv_vero, voto_vero)
-    gioca = {g.id: g.id in fv_vero for g in lista}
-    tit = [per_id[i] for i in ids]
-    # la panchina che si conosce (congelata alla scadenza o schierata davvero), come il Diario; senza, la migliore possibile
-    pan = [per_id[i] for i in dict.fromkeys(panchina_ids or []) if i in per_id and i not in ids] or fz._panchina(lista, tit, regole)
-    punti = fz.punteggio(tit, pan, gioca, {g.id: fv_vero.get(g.id, 0.0) for g in lista}, {g.id: voto_vero.get(g.id, 0.0) for g in lista}, regole)
-    attesi = fz.Valutatore(lista, regole, 600).atteso(tit, pan)
-    massimo = max(verifica._perfetta(lista, fv_vero, regole, voto_vero), punti)      # con le regole della lega (#614)
-    parti = [F("n.riepilogo", giornata=_giornata(giornata, regole), fonte=fonte, punti=float(punti), attesi=float(attesi), massimo=float(massimo))]
-    migliori = sorted((t for t in tit if gioca[t.id]), key=lambda t: -fv_vero[t.id])[:3]
-    if migliori:
-        parti.append(F("n.migliori", elenco=frasi.elenco([F("n.nome_voto", nome=t.nome, voto=float(fv_vero[t.id])) for t in migliori])))
-    senza = [t.nome for t in tit if not gioca[t.id]]
-    if senza:
-        parti.append(F("n.senza_voto", nomi=", ".join(senza)))
-    prossima = consigli.giornata_da_giocare(db, stagione, regole, adesso)
-    inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, prossima), regole) if prossima else None
-    if inizio:
-        parti.append(F("n.prossima", giornata=_giornata(prossima, regole), data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))
-    return frasi.elenco(parti, sep=" ")

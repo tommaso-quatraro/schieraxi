@@ -136,13 +136,6 @@ extension Demo {
         }
     }
 
-    /// La foto `formazione-modificata` (#463): un modulo con undici diversi dalla scelta salvata. Toccato, la riga dice
-    /// «Modifiche non salvate» con «Salva le modifiche», «Annulla modifiche» e «Torna alla consigliata».
-    static func moduloDaToccare(_ livello: LivelloRischio?, salvati: [Int]?) -> String? {
-        guard let salvati, let livello else { return nil }
-        return livello.moduli.first { Set($0.titolari) != Set(salvati) }?.modulo
-    }
-
     /// Porta l'app sulla schermata chiesta con `-DEMO_SCHERMATA`. Chiamata una volta sola all'avvio.
     static func applica(nav: Navigazione, modello: AppModel) {
         guard attivo, !applicata else { return }
@@ -155,8 +148,6 @@ extension Demo {
         }
         guard let nome = argomento("DEMO_SCHERMATA") else { return }
         switch nome {
-        case "oggi", "oggi-in-corso", "oggi-finita", "oggi-rinvio", "oggi-finita-recupero":
-            nav.sezione = .oggi
         case "guida":
             // la configurazione guidata: in demo mostra i passi non ancora fatti
             nav.guidaAperta = true
@@ -167,24 +158,12 @@ extension Demo {
             // le Impostazioni (le pagine «Crediti e fonti», «Avanzate», «Aspetto» e «Novità» le apre da sola ImpostazioniView)
             nav.impostazioniAperte = true
 
-        case "formazione", "formazione-salvata", "formazione-chiusa":
+        // la Formazione unica (#673): prima della scadenza, in corso, finita, con una partita rinviata, a giornata chiusa (scorsa alla
+        // riga dello stato), con una tua scelta diversa dalla consigliata
+        case "formazione", "formazione-in-corso", "formazione-finita", "formazione-rinvio", "formazione-chiusa", "formazione-cambiata":
             nav.sezione = .formazione
-        case "formazione-manuale":
-            nav.sezione = .formazione
-            Task {
-                await modello.formazione.carica()
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                if let f = modello.formazione.formazione { modello.formazione.iniziaModificaManuale(f) }
-            }
-        case "formazione-modificata":
-            // la tua scelta salvata e un altro modulo toccato: «Modifiche non salvate» con Salva, Annulla e Torna (#463)
-            nav.sezione = .formazione
-            Task {
-                let vm = modello.formazione
-                await vm.carica()
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                if let f = vm.formazione, let modulo = moduloDaToccare(vm.livello(f), salvati: vm.salvati) { vm.scegliModulo(modulo) }
-            }
+        case "formazione-sostituisci":
+            apriSostituzione(modello)
 
         case "squadra":
             nav.sezione = .squadra
@@ -221,9 +200,22 @@ extension Demo {
         case "lega-stagione":
             apriLega(nav, modello, [.stagione])
         case "ricerca":
-            nav.sezione = .oggi
+            nav.sezione = .formazione
         default:
             break
+        }
+    }
+
+    /// La foto `formazione-sostituisci` (#673): la scelta del sostituto, come dopo «Sostituisci» nella scheda, per un titolare che
+    /// gioca sotto l'80% (se non c'è, il primo titolare).
+    private static func apriSostituzione(_ modello: AppModel) {
+        Task {
+            let vm = modello.formazione
+            await vm.carica()
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard let f = vm.formazione else { return }
+            let titolari = vm.vista(f).titolari
+            vm.daSostituire = titolari.first { SogliaGioca.daMostrare($0.pVoto) } ?? titolari.first
         }
     }
 

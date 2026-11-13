@@ -2,147 +2,131 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Formazione dopo la scadenza (`iniziata` del server), con le frasi della web come dice `docs/COERENZA-WEB-IPHONE.md` (dal
-/// #495 dal catalogo comune, `Catalogo.Formazione`): per la tua squadra la riga di stato della scelta («Giornata iniziata: la
-/// formazione è chiusa», con «· vale quella che hai salvato» se c'è una scelta salvata), per un'altra squadra la fascia
-/// `formazione.chiusa`. La formazione resta in sola lettura.
+/// Formazione dopo la scadenza (`iniziata` del server), come la web (#616, #673): per la tua squadra la riga dello stato con una
+/// delle tre frasi della giornata chiusa (`formazione.stato_chiusa*`), in campo quella che vale, e niente che scriva: né modulo,
+/// né «Sostituisci», né «Torna alla consigliata», né la spunta. La formazione di un'altra squadra non ha la riga dello stato.
 @MainActor
 @Suite("Formazione chiusa come la web")
 struct FormazioneChiusaTests {
-    // MARK: frasi e stato
-
-    @Test("Riga di stato a giornata chiusa: la frase della web, con «vale quella che hai salvato» solo se c'è una scelta salvata",
-          arguments: zip([true, false], [Catalogo.Formazione.statoChiusaTua, Catalogo.Formazione.statoChiusa]))
-    func fraseDellaRiga(tua: Bool, catalogo: String) {
-        #expect(StatoScelta.chiusa(tua: tua).titolo() == catalogo)
-    }
-
-    @Test("A giornata chiusa lo stato è «chiusa», anche prima di leggere la scelta e con una modifica a mano lasciata a metà")
-    func statoChiusa() {
-        let scelti = Array(1...11)
-        var altri = scelti
-        altri[0] = 99
-        #expect(StatoScelta.calcola(letta: false, salvati: nil, salvataIl: nil, manuale: nil, chiusa: true) == .chiusa(tua: false))
-        #expect(StatoScelta.calcola(letta: true, salvati: nil, salvataIl: nil, manuale: nil, chiusa: true) == .chiusa(tua: false))
-        #expect(StatoScelta.calcola(letta: true, salvati: nil, salvataIl: nil, manuale: scelti, chiusa: true) == .chiusa(tua: false))
-        #expect(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: nil, manuale: scelti, chiusa: true) == .chiusa(tua: true))
-        #expect(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: nil, manuale: altri, chiusa: true) == .chiusa(tua: true))
-        // aperta: come prima
-        #expect(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: nil, manuale: scelti, chiusa: false) == .salvata(nil))
-        // niente da salvare, grigia come il «■» della web, con il lucchetto (lo stato non si legge dal solo colore)
-        #expect(!StatoScelta.chiusa(tua: true).daSalvare)
-        #expect(StatoScelta.chiusa(tua: true).tono == .neutro)
-        #expect(StatoScelta.chiusa(tua: false).simbolo == "lock.fill")
-    }
-
-    // MARK: schermata
-
-    @Test("La tua formazione salvata a giornata chiusa: una riga sola con la frase della web, niente fascia, sola lettura")
+    @Test("La tua formazione salvata a giornata chiusa: «vale quella che hai salvato», in campo lei, niente scritture")
     func salvataASolaLettura() async throws {
-        let web = Catalogo.Formazione.statoChiusaTua
-        let srv = try serverChiuso()
+        let srv = try serverChiuso(scelta: .altroModulo)
         let (vm, f) = try await caricata(srv)
         #expect(vm.chiusa)
-        #expect(vm.statoScelta == .chiusa(tua: true))
-        #expect(vm.statoScelta.titolo() == web)
-        #expect(vm.fasciaChiusa == nil, "la riga di stato dice già che è chiusa: niente seconda frase")
-        let base: Formazione = try Fixture.decodifica("formazione")
-        #expect(Set(vm.manuale ?? []) == Set(base.titolari.map(\.id)), "si vede la formazione salvata")
-        let prima = vm.manuale
-        // niente sostituzioni, niente «Salva», niente «Torna alla consigliata», niente ballottaggi
+        #expect(vm.statoScelta == .chiusa(.tua))
+        #expect(vm.statoScelta.frase == Catalogo.Formazione.statoChiusaTua)
+        let salvati = try Self.altroModulo()
+        #expect(Set(vm.vista(f).titolari.map(\.id)) == Set(salvati), "si vede la formazione salvata")
+        // niente cambi: modulo, sostituzione, spunta, «Torna alla consigliata»
+        let consigliato = try #require(vm.consigliato(f))
+        await vm.scegliModulo(consigliato.modulo)
         let uscente = try #require(vm.vista(f).titolari.first { $0.ruolo == "D" })
-        let titolari = Set(vm.manuale ?? [])
+        let titolari = Set(vm.vista(f).titolari.map(\.id))
         let entrante = try #require(f.schede?.values.first { $0.ruolo == "D" && !titolari.contains($0.id) })
-        vm.sostituisci(uscente.id, con: entrante.id)
-        #expect(vm.manuale == prima)
-        await vm.valuta(salva: true)
-        await vm.tornaAllaConsigliata(f)
+        let fatto = await vm.sostituisciTitolare(uscente.id, con: entrante.id)
+        await vm.segnaMessa(true)
+        await vm.tornaAllaConsigliata()
+        #expect(!fatto)
+        #expect(Set(vm.vista(f).titolari.map(\.id)) == Set(salvati))
         #expect(srv.quante("DELETE /api/scelta") == 0)
-        let salvataggi = srv.corpiInviati(a: "POST /api/formazione/valuta").filter { String(decoding: $0, as: UTF8.self).contains("\"salva\":true") }
-        #expect(salvataggi.isEmpty, "a giornata chiusa non si prova nemmeno a salvare")
-        #expect(vm.ballottaggio(per: uscente, f, vm.vista(f)).isEmpty)
+        #expect(Self.salvataggi(srv) == 0, "a giornata chiusa non si prova nemmeno a salvare")
+        #expect(!vm.sostituibile(uscente.id) && vm.percheTitolare(uscente.id) == nil)
     }
 
-    @Test("Senza scelta salvata a giornata chiusa: la frase della web senza «vale quella che hai salvato», niente modifica a mano")
-    func senzaSceltaNienteModificaAMano() async throws {
-        let web = Catalogo.Formazione.statoChiusa
-        let (vm, f) = try await caricata(try serverChiuso(conScelta: false))
-        #expect(vm.statoScelta == .chiusa(tua: false))
-        #expect(vm.statoScelta.titolo() == web)
-        #expect(vm.fasciaChiusa == nil)
-        vm.iniziaModificaManuale(f)
+    @Test("Senza scelta salvata a giornata chiusa: la frase senza «vale quella che hai salvato», in campo la consigliata")
+    func senzaScelta() async throws {
+        let srv = try serverChiuso(scelta: .nessuna)
+        let (vm, f) = try await caricata(srv)
+        #expect(vm.statoScelta == .chiusa(.senzaScelta))
+        #expect(vm.statoScelta.frase == Catalogo.Formazione.statoChiusa)
         #expect(vm.manuale == nil)
-        await vm.salvaQuesta(f)
+        #expect(Set(vm.vista(f).titolari.map(\.id)) == Set(vm.consigliati(f)))
+        let altro = try #require(vm.moduli(f).first { $0.modulo != vm.consigliato(f)?.modulo })
+        await vm.scegliModulo(altro.modulo)
         #expect(vm.manuale == nil)
-        #expect(vm.statoScelta == .chiusa(tua: false))
+        #expect(Self.salvataggi(srv) == 0)
     }
 
-    @Test("La formazione di un'altra squadra a giornata chiusa: la fascia della web (`formazione.chiusa`), nessuna riga di stato")
+    @Test("La scelta salvata non vale più (`stato_scelta` del server): «vale la consigliata, la tua non è più valida»")
+    func nonValidaAChiusura() async throws {
+        let srv = try serverChiuso(scelta: .altroModulo, statoScelta: "non_valida")
+        let (vm, f) = try await caricata(srv)
+        #expect(vm.statoScelta == .chiusa(.nonValida))
+        #expect(vm.statoScelta.frase == Catalogo.Formazione.statoChiusaNonValida)
+        #expect(Set(vm.vista(f).titolari.map(\.id)) == Set(vm.consigliati(f)), "in campo la consigliata")
+        #expect(srv.quante("POST /api/formazione/valuta") == 0, "il server ha già detto che non vale: niente valutazione")
+    }
+
+    @Test("La formazione di un'altra squadra a giornata chiusa: nessuna riga dello stato, la scelta non si legge")
     func altraSquadra() async throws {
-        let web = Catalogo.Formazione.chiusa
-        let srv = try serverChiuso()
+        let srv = try serverChiuso(scelta: .altroModulo)
         let vm = FormazioneViewModel(server: srv)
-        vm.squadraVista = "Gli Amici"
+        vm.vediSquadra("Gli Amici")
         await vm.carica()
         #expect(vm.chiusa)
-        #expect(vm.statoScelta == .sconosciuto)
-        #expect(vm.fasciaChiusa == web)
+        #expect(vm.statoScelta == .nessuno)
         #expect(srv.quante("GET /api/scelta") == 0, "la scelta salvata è solo della tua squadra")
     }
 
-    @Test("Prima della scadenza nessuna fascia di formazione chiusa")
-    func apertaSenzaFascia() async throws {
-        let srv = ServerDiProva { _, percorso, _ in
-            if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
-            return try Fixture.dati("formazione")
-        }
-        let (vm, _) = try await caricata(srv)
-        #expect(!vm.chiusa)
-        #expect(vm.fasciaChiusa == nil)
-        #expect(vm.statoScelta == .consigliata)
-    }
-
-    @Test("Se la giornata si chiude mentre salvi: la frase della web (`err.formazione_chiusa`), mai il testo grezzo del server")
-    func siChiudeMentreSalvi() async throws {
+    @Test("Se la giornata si chiude con la schermata aperta: la frase del server (`err.formazione_chiusa`) e si rilegge")
+    func siChiudeMentreCambi() async throws {
         // il server dice «aperta» ma rifiuta il salvataggio con 409 formazione_chiusa (scadenza passata con la pagina aperta)
+        let web = try TestiWeb().italiano("err.formazione_chiusa")
         let srv = ServerDiProva { _, percorso, corpo in
             if percorso.hasPrefix("/api/formazione/valuta") {
-                if let corpo, String(decoding: corpo, as: UTF8.self).contains("\"salva\":true") {
-                    throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "testo tecnico")
-                }
+                if Self.salva(corpo) { throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: web) }
                 return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
             }
             if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
             return try Fixture.dati("formazione")
         }
-        let web = try TestiWeb().italiano("err.formazione_chiusa")
         let (vm, f) = try await caricata(srv)
-        await vm.salvaQuesta(f)
+        let altro = try #require(vm.moduli(f).first { $0.modulo != vm.consigliato(f)?.modulo })
+        await vm.scegliModulo(altro.modulo)
         #expect(vm.messaggio == web)
-        #expect(srv.quante("GET /api/formazione") == 2, "si ricarica per sapere che è chiusa")
+        #expect(srv.quante("GET /api/formazione") == 2, "si rilegge per sapere che è chiusa")
+        #expect(vm.manuale == nil, "il cambio rifiutato non resta in campo")
+        #expect(!vm.occupato)
     }
 
     // MARK: aiuti
 
-    /// Un server con la giornata chiusa (`iniziata: true`) e, se serve, una scelta salvata; le scritture rispondono 409 `formazione_chiusa`.
-    private func serverChiuso(conScelta: Bool = true) throws -> ServerDiProva {
+    enum Scelta { case nessuna, altroModulo }
+
+    /// Gli 11 del secondo modulo dello stile equilibrato della fixture: una scelta salvata diversa dalla consigliata.
+    static func altroModulo() throws -> [Int] {
+        let f: Formazione = try Fixture.decodifica("formazione")
+        let livello = try #require(f.livelli?.first { $0.rischio == 0 })
+        return try #require(livello.moduli.first { $0.modulo != livello.modulo }).titolari
+    }
+
+    /// La richiesta salva la scelta (`salva: true` nel corpo di `POST /api/formazione/valuta`).
+    nonisolated static func salva(_ corpo: Data?) -> Bool {
+        corpo.map { String(decoding: $0, as: UTF8.self).contains("\"salva\":true") } == true
+    }
+
+    static func salvataggi(_ srv: ServerDiProva) -> Int {
+        srv.corpiInviati(a: "POST /api/formazione/valuta").filter { salva($0) }.count
+    }
+
+    /// Un server con la giornata chiusa (`iniziata: true`), con o senza scelta salvata e lo `stato_scelta` del server; le scritture
+    /// rispondono 409 `formazione_chiusa`, come il server vero.
+    private func serverChiuso(scelta: Scelta, statoScelta: String? = nil) throws -> ServerDiProva {
         let json = try JSONSerialization.jsonObject(with: try Fixture.dati("formazione"))
         var formazione = try #require(json as? [String: Any])
         formazione["iniziata"] = true
+        if let statoScelta { formazione["stato_scelta"] = statoScelta }
         let dati = try JSONSerialization.data(withJSONObject: formazione)
-        let base: Formazione = try Fixture.decodifica("formazione")
-        let ids = base.titolari.map(\.id).map(String.init).joined(separator: ",")
-        let scelta = Data((conScelta ? "{\"titolari\": [\(ids)], \"salvata\": \"2026-10-31T13:09:00\"}" : "null").utf8)
+        let ids = try Self.altroModulo().map(String.init).joined(separator: ",")
+        let risposta = Data((scelta == .altroModulo ? "{\"titolari\": [\(ids)], \"salvata\": \"2026-10-31T13:09:00\"}" : "null").utf8)
         return ServerDiProva { metodo, percorso, corpo in
             if percorso.hasPrefix("/api/formazione/valuta") {
-                if let corpo, String(decoding: corpo, as: UTF8.self).contains("\"salva\":true") {
-                    throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "Formazione chiusa")
-                }
+                if Self.salva(corpo) { throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "Formazione chiusa") }
                 return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
             }
             if percorso.hasPrefix("/api/scelta") {
                 if metodo == "DELETE" { throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "Formazione chiusa") }
-                return scelta
+                return risposta
             }
             return dati
         }
