@@ -35,7 +35,7 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     }
 
     /// La riga sotto «Ore tranquille»: la fascia scelta, con le ore del server (`imp.ore_tranquille_aiuto`).
-    static func aiutoOreTranquille(_ ore: OreTranquille) -> String {
+    nonisolated static func aiutoOreTranquille(_ ore: OreTranquille) -> String {
         Catalogo.Imp.oreTranquilleAiuto(a: String(ore.a), da: String(ore.da))
     }
 

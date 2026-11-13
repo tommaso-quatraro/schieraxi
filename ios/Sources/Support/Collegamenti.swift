@@ -53,7 +53,7 @@ enum Collegamenti {
     /// Una destinazione da un nome di sezione (l'host di un indirizzo, la sezione scritta a parole di «Da fare», un nome vecchio) e,
     /// se c'è, dalla pagina che segue.
     static func perNome(_ nome: String, parte: String? = nil) -> Destinazione? {
-        let nome = nome.lowercased(), parte = parte?.lowercased()
+        let nome = nome.lowercased(), parte = parte?.lowercased() ?? ""
         if Self.lega.contains(nome) {
             switch parte {
             case "diario": return .sezione(.giornate)          // il Diario stava in Altro, ora è la pagina Giornate
@@ -67,8 +67,7 @@ enum Collegamenti {
             case "installazione", "gestione": return .pagina(.gestione)
             case "account": return .pagina(.account)
             case "informazioni": return .pagina(.informazioni)
-            case let p?: return .impostazioni(ParteImpostazioni(rawValue: p))
-            case nil: return .impostazioni(nil)
+            default: return .impostazioni(ParteImpostazioni(rawValue: parte))   // «avvisi», «lega», «aspetto»; altrimenti in cima
             }
         }
         return Sezione.da(nome: nome).map { .sezione($0) }

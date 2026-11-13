@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class RicercaViewModel: ViewModelBase {
     /// Quanti risultati, come `cercaGiocatori(q, 12)` della web.
-    static let limite = 12
+    nonisolated static let limite = 12
     /// Sotto le due lettere non si cerca: lo si dice (`avv.scrivi_almeno_due`).
     static let testoVuoto = Catalogo.Avv.scriviAlmenoDue
     /// Nessun risultato (`avv.nessun_giocatore_trovato`).
@@ -23,7 +23,7 @@ final class RicercaViewModel: ViewModelBase {
         if Demo.attivo, let t = Demo.argomento("DEMO_CERCA") { testo = t }   // solo per le fotografie del simulatore
     }
 
-    static func percorso(_ scritto: String) -> String {
+    nonisolated static func percorso(_ scritto: String) -> String {
         "/api/giocatori?limite=\(limite)&q=\(IndirizzoServer.codifica(scritto))"
     }
 

@@ -132,7 +132,7 @@ struct ContenitoreApp: View {
         case .importaRose:
             nav.sezione = modello.lega.apri([.importa])
         case .squadre(let nome):
-            nav.sezione = modello.lega.apri(nome.map { [.rosa($0)] } ?? [.squadre])
+            nav.sezione = modello.lega.apri(nome.map { [PaginaImpostazioni.rosa($0)] } ?? [.squadre])
         case .impostazioni:
             nav.sezione = .impostazioni
         case .collegaWidget:

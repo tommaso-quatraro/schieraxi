@@ -5,6 +5,7 @@ import Testing
 /// Le Impostazioni in una pagina sola, come `paginaImpostazioni` della web (#673 passo 3, web #675): in La mia lega «Aggiorna le
 /// rose», «La mia squadra» (con le rose), «Regole e scadenza», «Le altre squadre» (con più squadre e la funzione `squadre_altrui`);
 /// poi «Il tuo account» con gli account, «Informazioni» e «Gestione» solo per chi gestisce il server. Nomi e righe sotto dal catalogo.
+@MainActor
 @Suite("Impostazioni come la web")
 struct ImpostazioniComeLaWebTests {
     private func squadre(_ n: Int, mia: Int? = nil) -> [SquadraLega] {

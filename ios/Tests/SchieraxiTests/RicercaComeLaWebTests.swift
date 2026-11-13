@@ -4,6 +4,7 @@ import Testing
 
 /// La ricerca di un giocatore come la web (#673 passo 3, decisione 3 della #677): ruolo, nome, club e quotazione da `/api/giocatori`,
 /// senza fantavoto atteso né «gioca N%» (niente più scarico dell'elenco largo della giornata). Testi dal catalogo.
+@MainActor
 @Suite("Ricerca come la web")
 struct RicercaComeLaWebTests {
     @Test("Una riga: nome, ruolo, club e «quotazione N»")
