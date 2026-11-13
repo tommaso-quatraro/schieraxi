@@ -16,7 +16,7 @@ import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from fanta import account, contesto, server
+from fanta import account, contesto, percorsi, registro, server
 from fanta.regole import Regole
 
 from test_account_http import _tutte_le_rotte, cliente
@@ -513,6 +513,64 @@ def test_quanto_ci_abbiamo_preso_e_per_utente(due):
     for m, reale, errore in (("A", 61.0, 3.0), ("B", 77.0, 0.5)):
         p = due[m][0].get("/api/diario").json()["precisione"]
         assert p["giornate"] == 1 and p["per_giornata"][0]["fatti"] == reale and p["fantavoto"]["errore_medio"] == errore
+
+
+# ---------------------------------------------------------------- un numero di account tornato libero
+def _iscritto(nome: str):
+    with contextlib.closing(account.apri()) as db:
+        inv = account.crea_invito(db, nome)
+    c = cliente()
+    r = c.post("/api/account/registra", json={"nome_utente": nome, "password": PASSWORD, "invito": inv})
+    assert r.status_code == 200, r.text
+    return c, r.json()["utente"]["id"]
+
+
+def _copia_sqlite(da: Path, a: Path) -> None:
+    with contextlib.closing(sqlite3.connect(da)) as origine, contextlib.closing(sqlite3.connect(a)) as destinazione:
+        origine.backup(destinazione)
+
+
+def _da_parte() -> Path:
+    """Dove vanno le cartelle rimaste con un numero tornato libero (accanto a `utenti/`, fuori dalla copia notturna)."""
+    return percorsi.cartella_account() / "utenti-da-parte"
+
+
+def test_un_numero_tornato_libero_parte_da_una_cartella_vuota(multiutente, dati_isolati, tmp_path):
+    """Il database degli account torna a una copia di prima: il contatore dei numeri torna indietro con lui, ma le cartelle degli
+    account nati dopo la copia restano. Chi riceve di nuovo uno di quei numeri parte da una cartella vuota; quella di prima va
+    da parte (non si cancella) con una riga nel registro di sicurezza."""
+    file = percorsi.cartella_account() / "account.sqlite"
+    _iscritto("primo")
+    copia = tmp_path / "copia-della-notte.sqlite"
+    _copia_sqlite(file, copia)
+    c2, numero = _iscritto("secondo")
+    assert c2.put("/api/icona", json={"nome": "viola"}).status_code == 200
+    di_prima = albero(contesto.cartella_utente(numero))
+    assert di_prima
+    _copia_sqlite(copia, file)                                       # il ripristino della copia
+    c3, uid3 = _iscritto("terzo")
+    assert uid3 == numero                                            # il numero è di nuovo libero...
+    assert c3.get("/api/icona").json()["scelta"] == "verde"          # ...ma i dati di chi lo aveva non arrivano al nuovo account
+    assert not (contesto.cartella_utente(numero) / "icona.json").exists()
+    da_parte = list(_da_parte().iterdir())
+    assert len(da_parte) == 1 and albero(da_parte[0]) == di_prima   # messi da parte, non cancellati
+    eventi = [e for e in registro.ultimi(registro.FILE_SICUREZZA) if e["tipo"] == "cartella_messa_da_parte"]
+    assert len(eventi) == 1 and eventi[0]["utente"] == str(numero)
+
+
+def test_la_cartella_che_non_si_sposta_ferma_l_account(multiutente, dati_isolati):
+    """Se la cartella rimasta non si riesce a spostare l'account non nasce (meglio un «riprova» che i dati di un altro)."""
+    rimasta = contesto.cartella_utente(1)
+    rimasta.mkdir(parents=True)
+    (rimasta / "push.json").write_text("[]", encoding="utf-8")
+    _da_parte().write_text("", encoding="utf-8")                    # al posto della cartella c'è un file: lo spostamento non riesce
+    with contextlib.closing(account.apri()) as db:
+        inv = account.crea_invito(db, "uno")
+    r = cliente().post("/api/account/registra", json={"nome_utente": "uno", "password": PASSWORD, "invito": inv})
+    assert r.status_code == 503
+    with contextlib.closing(account.apri()) as db:
+        assert db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] == 0
+    assert (rimasta / "push.json").exists()
 
 
 # ---------------------------------------------------------------- interruttore spento: tutto come prima

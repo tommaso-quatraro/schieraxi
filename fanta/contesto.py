@@ -8,9 +8,12 @@ I dati comuni a tutti (`dati/fanta.sqlite`: calendario, voti, probabili, quotazi
 from __future__ import annotations
 
 import logging
+import os
+import secrets
 import shutil
 import sqlite3
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import account, percorsi
@@ -72,6 +75,28 @@ class Contesto:
 
 def cartella_utente(utente_id: int) -> Path:
     return percorsi.cartella_utenti() / str(int(utente_id))
+
+
+def cartella_da_parte() -> Path:
+    """Dove vanno le cartelle rimaste con un numero di account tornato libero: accanto a `utenti/`, fuori dalla copia notturna."""
+    return percorsi.cartella_account() / "utenti-da-parte"
+
+
+def libera_cartella(utente_id: int, adesso: datetime) -> None:
+    """Un account nuovo parte sempre da una cartella vuota. Se `utenti/<numero>` c'è già, quei dati erano di qualcun altro: il
+    numero è tornato libero perché il database degli account è tornato a una copia di prima (il contatore dei numeri sta nel
+    database, le cartelle no) oppure è stato ricreato. La cartella si sposta in `utenti-da-parte/<numero>-<data>-<sigla>`, senza
+    cancellare niente (decide l'amministratore: docs/RIPRISTINO-SERVER.md), con una riga nel registro di sicurezza e una in quello
+    del servizio. Se lo spostamento non riesce alza OSError: chi chiama non crea l'account."""
+    cartella = cartella_utente(utente_id)
+    if not os.path.lexists(cartella):
+        return
+    nome = f"{int(utente_id)}-{adesso.astimezone(timezone.utc):%Y%m%d-%H%M%S}-{secrets.token_hex(3)}"
+    destinazione = percorsi.cartella_privata(cartella_da_parte()) / nome
+    os.replace(cartella, destinazione)
+    account.evento("cartella_messa_da_parte", utente=int(utente_id))
+    LOG.warning("Account nuovo con il numero %s: la cartella che c'era già (di un account che non c'è più nel database) è "
+                "stata messa da parte in %s", int(utente_id), destinazione)
 
 
 def elimina_cartella(utente_id: int) -> bool:

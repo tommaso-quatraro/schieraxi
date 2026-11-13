@@ -1,5 +1,22 @@
 [
   {
+    "versione": "1.490",
+    "data": "2026-11-13T10:00:06",
+    "titolo": "Account: controlli più severi, e iscrizioni di gruppo dalla stessa rete",
+    "voci": [
+      "Un gruppo di amici che si iscrive dalla stessa rete, per esempio dal Wi-Fi di casa la sera dell'asta, entra tutto: prima, dopo dieci iscrizioni in un'ora gli altri dovevano aspettare, e ancora prima se qualcuno sbagliava la password. Resta un tetto di 20 account nuovi all'ora dalla stessa rete, quante sono al massimo le squadre di una lega.",
+      "Controlli più severi quando nasce un account nuovo e quando aggiungi un'email in «Il tuo account».",
+      "Lo storico dei movimenti delle rose ha un tetto di spazio: se le importazioni cambiano tutte le rose molte volte, tiene le più recenti."
+    ],
+    "tecnico": [
+      "account.crea_utente: unico punto in cui nasce un account (account.registra, account_email.conferma_iscrizione, social.completa), dentro la transazione di chi chiama. Se utenti/<numero> c'è già, contesto.libera_cartella la sposta in utenti-da-parte/<numero>-<data>-<sigla> (evento cartella_messa_da_parte nel registro di sicurezza, avviso nel registro del servizio); se non si sposta l'account non nasce (503, evento cartella_non_liberata). docs/RIPRISTINO-SERVER.md, passo 2: cartelle-senza-account prima di riavviare il servizio.",
+      "Tetti per indirizzo della registrazione (REGISTRAZIONI_PER_IP, ISCRIZIONI_PER_IP, COMPLETAMENTI_PER_IP e, nell'iscrizione con email, INVII_PER_IP): contano con account.conta_per_indirizzo e crea_utente toglie le righe contate quando l'account nasce (nell'iscrizione con email le righe restano nei dati del codice fino alla conferma). Nuovo ACCOUNT_PER_IP (20 all'ora), controllato dentro la transazione e prima del lavoro (troppi_account). Nome e password si controllano prima dei tetti. Nel modo email i tetti per indirizzo hanno un posto in più per ogni posto ancora libero dell'invito (posti_dell_invito).",
+      "account_email.chiedi_verifica: con l'invio consentito la riga di attesa c'è per ogni indirizzo diverso dal proprio; dove il codice non parte ha un'impronta casuale (_nuovo_codice(spedito=False)) che nessun codice conferma.",
+      "movimenti.MAX_BYTE_STORICO (512 KB): movimenti.registra tiene le voci più recenti entro il tetto (e entro MAX_STORICO), sempre almeno l'ultima.",
+      "Client: nessuna rotta cambia."
+    ]
+  },
+  {
     "versione": "1.489",
     "data": "2026-11-13T08:58:55",
     "titolo": "Avvisi: solo il promemoria e il cambio della formazione",
