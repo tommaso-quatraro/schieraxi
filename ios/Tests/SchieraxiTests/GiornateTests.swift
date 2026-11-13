@@ -213,4 +213,44 @@ struct GiornateTests {
         #expect(vm.aperte == ["2026-27-9"])
         #expect(vm.scelta == "2026-27-9")
     }
+
+    /// Il diario prima e dopo la fine della giornata 11 di Serie A (8 della lega).
+    private static let senzaLaUndicesima = #"{"giornate": [{"stagione": "2026-27", "giornata": 10, "giornata_lega": 7}]}"#
+    private static let conLaUndicesima = #"""
+        {"giornate": [{"stagione": "2026-27", "giornata": 11, "giornata_lega": 8}, {"stagione": "2026-27", "giornata": 10, "giornata_lega": 7}]}
+        """#
+
+    /// Un server che alla prima lettura del diario manda `prima` e poi sempre `dopo`.
+    private static func server(prima: String, dopo: String) -> ServerDiProva {
+        let letture = Scatola<Int>()
+        return ServerDiProva { _, _, _ in
+            let n = (letture.valore ?? 0) + 1
+            letture.valore = n
+            return Data((n == 1 ? prima : dopo).utf8)
+        }
+    }
+
+    @Test("«Com'è andata» con la pagina già letta prima: la giornata nuova si apre quando arriva la risposta fresca che la contiene")
+    func giornataChiestaConLaPaginaGiaLetta() async throws {
+        let vm = GiornateViewModel(server: Self.server(prima: Self.senzaLaUndicesima, dopo: Self.conLaUndicesima))
+        await vm.carica()
+        #expect(vm.aperte.isEmpty)
+        // la pagina era già aperta: i suoi dati sono freschi ma di prima della giornata 11, che non c'è ancora
+        vm.apri(giornata: 11)
+        #expect(vm.aperte.isEmpty, "la 11ª non c'è ancora: la richiesta resta finché non arriva una risposta fresca")
+        await vm.carica()
+        #expect(vm.aperte == ["2026-27-11"])
+        #expect(vm.scelta == "2026-27-11")
+    }
+
+    @Test("Se la giornata chiesta c'è già si apre subito; una risposta fresca senza la giornata chiude la richiesta")
+    func giornataChiestaSubitoOPersa() async throws {
+        let vm = GiornateViewModel(server: Self.server(prima: Self.conLaUndicesima, dopo: Self.senzaLaUndicesima))
+        await vm.carica()
+        vm.apri(giornata: 11)
+        #expect(vm.aperte == ["2026-27-11"], "c'è già: si apre senza aspettare")
+        vm.apri(giornata: 20)
+        await vm.carica()
+        #expect(vm.aperte == ["2026-27-11"], "la 20ª non c'è nemmeno nella risposta fresca: niente cambia")
+    }
 }
