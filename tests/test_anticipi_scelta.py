@@ -63,9 +63,13 @@ def mondo(client, monkeypatch, tmp_path):
         d.execute("DELETE FROM partite")
         date = [stato["anticipo"]] + [stato["principale"] + timedelta(hours=3 * k) for k in range(9)]
         squadre = [(ANTICIPO, "ccc")] + [(f"c{k}", f"t{k}") for k in range(9)]
-        archivio.inserisci(d, "partite", [{"id": n, "stagione": ST, "giornata": GIORNATA, "data": q.strftime("%Y-%m-%d %H:%M"),
-                                           "casa": c, "trasferta": t, "gol_casa": None, "gol_trasferta": None, "giocata": 0,
-                                           "understat_id": None} for n, (q, (c, t)) in enumerate(zip(date, squadre))])
+        giocate = [stato.get("anticipo_giocato", 0)] + [0] * 9
+        righe = [(GIORNATA, q, c, t, g) for q, (c, t), g in zip(date, squadre, giocate)]
+        if stato.get("giornata_dopo"):              # la giornata 11, una settimana dopo il gruppo principale
+            righe += [(GIORNATA + 1, stato["principale"] + timedelta(days=7, hours=3 * k), f"d{k}", f"e{k}", 0) for k in range(10)]
+        archivio.inserisci(d, "partite", [{"id": n, "stagione": ST, "giornata": g, "data": q.strftime("%Y-%m-%d %H:%M"),
+                                           "casa": c, "trasferta": t, "gol_casa": None, "gol_trasferta": None, "giocata": gi,
+                                           "understat_id": None} for n, (g, q, c, t, gi) in enumerate(righe)])
         d.commit()
         return d
     prev = pd.DataFrame([{"id": i, "nome": n, "ruolo": r, "squadra": s, "p_voto": 0.9, "mu": 6.0, "mu_voto": 6.0}
@@ -146,6 +150,18 @@ def test_prima_che_l_anticipo_cominci_nulla_cambia(mondo):
     mondo["anticipo"] = datetime.now() + timedelta(hours=2)
     assert _salva(mondo, FUORI_IL_5).status_code == 200
     assert _salva(mondo, DENTRO_IL_16).status_code == 200
+
+
+def test_anticipo_di_settimane_la_formazione_si_salva_e_i_suoi_giocatori_restano_fermi(mondo):
+    """Coordinatore, #695 (difetto già su main): l'anticipo è stato giocato due settimane fa (Supercoppa, coppe), il gruppo principale
+    è fra tre giorni e la giornata 11 una settimana dopo. La scadenza viene dal gruppo principale: la formazione si salva (prima: 409,
+    giornata già iniziata dal giorno dell'anticipo), e chi ha giocato l'anticipo resta fermo come per un anticipo."""
+    mondo |= {"anticipo": datetime.now() - timedelta(days=14), "anticipo_giocato": 1, "giornata_dopo": True}
+    assert _salva(mondo, SENZA_ANTICIPO).status_code == 200
+    assert _salvata(mondo) == SENZA_ANTICIPO
+    _rifiutato(_salva(mondo, DENTRO_IL_16), "Dif16")
+    f = _formazione(mondo)
+    assert f["iniziata"] is False and f["bloccati"] == BLOCCATI
 
 
 def test_senza_anticipi_nulla_cambia(mondo):

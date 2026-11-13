@@ -11,7 +11,10 @@ ANTICIPI (decisione del 2/11/2026): il turno comincia dal GRUPPO PRINCIPALE, cio
 l'altra al massimo ANTICIPO_MIN) con almeno metà delle partite. Una partita da più di ANTICIPO_MIN a meno di ANTICIPO_MAX prima del
 gruppo principale è un ANTICIPO: è della giornata (mai «Rinviata»), ma non fissa la scadenza della formazione. Una partita
 giocata ancora prima (ANTICIPO_MAX o più) resta «prima del turno» e fissa la scadenza come sempre: è il caso della metà giornata
-giocata e dell'altra metà rinviata a settimane dopo (`conta_per_scadenza`). La finestra del turno si misura dal gruppo principale,
+giocata e dell'altra metà rinviata a settimane dopo (`conta_per_scadenza`), riconoscibile perché il turno (il recupero) comincia
+dopo la giornata dopo. Se invece il turno comincia prima della giornata dopo, quelle partite sono ANTICIPI LONTANI (Supercoppa,
+coppe; `lontano`, #659): non fissano la scadenza, non sono «fuori dal turno» e i loro giocatori restano fermi come per un anticipo.
+La finestra del turno si misura dal gruppo principale,
 quindi un anticipo non fa uscire dal turno la partita del lunedì. Più di MAX_ANTICIPI partite così non sono anticipi ma un turno
 diviso in due (per esempio a Pasqua: sabato e lunedì): allora vale la regola di sempre e il turno parte dalla prima.
 """
@@ -63,9 +66,21 @@ def della_giornata(quando: datetime | None, inizio: datetime | None) -> bool:
     return quando is not None and inizio is not None and (nel_turno(quando, inizio) or anticipo(quando, inizio))
 
 
-def conta_per_scadenza(quando: datetime, giocata: bool, inizio: datetime | None) -> bool:
+def lontano(quando: datetime | None, giocata: bool, inizio: datetime | None, prossimo: datetime | None) -> bool:
+    """Vero se la partita è un ANTICIPO LONTANO (#659): già giocata, ANTICIPO_MAX o più prima dell'inizio del turno, in una giornata
+    il cui turno comincia prima di quello della giornata dopo (`prossimo`). È una partita anticipata di settimane (Supercoppa, coppe),
+    quante che siano: è della giornata (mai «fuori dal turno»: chi l'ha giocata tiene il suo voto), non fissa la scadenza e i suoi
+    giocatori restano fermi come per un anticipo. Se invece il turno comincia dopo la giornata dopo, il turno è un recupero (metà
+    giornata giocata e il resto rinviato a settimane dopo) e quelle partite fissano la scadenza come sempre. Si decide dalla
+    posizione, non dal numero. Senza `prossimo` (ultima giornata, giornata dopo senza date) mai."""
+    return (bool(giocata) and quando is not None and inizio is not None and prossimo is not None and inizio < prossimo
+            and quando <= inizio - ANTICIPO_MAX)
+
+
+def conta_per_scadenza(quando: datetime, giocata: bool, inizio: datetime | None, prossimo: datetime | None = None) -> bool:
     """Se la partita conta per la scadenza della formazione (la prima che conta la fissa): dall'inizio del turno in poi, e le partite
-    già giocate prima del turno (metà giornata giocata e il resto rinviato), ma mai un anticipo."""
+    già giocate prima del turno (metà giornata giocata e il resto rinviato), ma mai un anticipo né un anticipo lontano (`lontano`,
+    con `prossimo` = inizio del turno della giornata dopo)."""
     if inizio is None:
         return True
-    return quando >= inizio or (giocata and not anticipo(quando, inizio))
+    return quando >= inizio or (giocata and not anticipo(quando, inizio) and not lontano(quando, giocata, inizio, prossimo))

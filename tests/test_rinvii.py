@@ -326,6 +326,29 @@ def test_diario_con_la_partita_rinviata(monkeypatch, modo, reale):
     assert diario.impronta_regole(Regole(), ST, 1, True) == base       # predefinito: le voci di prima restano
 
 
+@pytest.mark.parametrize("modo", ["aspetta", "voto_ufficio", "senza_voto"])
+def test_diario_chi_ha_giocato_un_anticipo_di_settimane_tiene_il_suo_voto(monkeypatch, modo):
+    """Coordinatore, #695: la partita 2 della giornata 1 è giocata il 10 agosto, tre settimane prima del turno (1-2 settembre), che
+    comincia prima della giornata 2 (8 settembre): è un anticipo lontano (Supercoppa, coppe), non una partita rinviata. Chi l'ha
+    giocata tiene il suo voto con qualunque regola dei rinvii (prima: senza voto o voto d'ufficio)."""
+    from fanta import diario
+    partite = pd.DataFrame([{"id": 2, "stagione": ST, "giornata": 1, "data": "2026-08-10 20:45", "giocata": 1},     # anticipo
+                            {"id": 1, "stagione": ST, "giornata": 1, "data": "2026-09-01 18:00", "giocata": 1},
+                            {"id": 3, "stagione": ST, "giornata": 1, "data": "2026-09-01 20:45", "giocata": 1},
+                            {"id": 4, "stagione": ST, "giornata": 1, "data": "2026-09-02 18:00", "giocata": 1},
+                            {"id": 5, "stagione": ST, "giornata": 2, "data": "2026-09-08 18:00", "giocata": 0}])
+    assert rinvii.id_fuori_turno(partite, ST, 1) == set()
+    voti = pd.DataFrame([{"stagione": ST, "giornata": 1, "calciatore_id": i, "voto_red": 9.0 if i == 25 else 6.0} for i in range(1, 26)])
+    monkeypatch.setattr(diario, "previsioni", lambda d, stagione, giornata, regole, par: pd.DataFrame([
+        {"id": i, "nome": f"G{i}", "ruolo": RUOLI_D[i - 1], "p_voto": 0.9, "mu": 5.5 + i * 0.05, "mu_voto": 6.0, "atteso": 5.0,
+         "partita": 2 if i > 20 else 1} for i in range(1, 26)]))
+    monkeypatch.setattr(diario, "fantavoto", lambda r, ruolo, regole: float(r["voto_red"]))
+    scelti = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]
+    v = diario.calcola_giornata(NS(partite=partite, voti=voti), ST, 1, replace(Regole(), partite_rinviate=modo), None,
+                                list(range(1, 26)), {"titolari": scelti, "panchina": [2, 22]}, simulazioni=50)
+    assert v["schierata"]["reale"] == 11 * 6 + 3                     # il 9 del 25, che ha giocato l'anticipo
+
+
 def test_diario_chi_non_ha_previsione_e_ha_la_partita_rinviata_prende_il_voto_d_ufficio(monkeypatch):
     """Revisione di #461: il portiere di riserva senza previsione (#447) gioca con la Roma, partita rinviata e recuperata dopo;
     con la regola «voto d'ufficio» la lega gli dà il voto fisso, come agli altri della stessa partita. La partita si trova dal club."""

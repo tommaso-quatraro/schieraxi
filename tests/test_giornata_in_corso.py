@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from fanta import consigli, gestione, regole
+from fanta import avvisi, consigli, fasi, gestione, regole
 from fanta.regole import Regole
 
 ST = "2026-27"
@@ -153,19 +153,40 @@ def test_giornata_normale_cominciata_resta_finche_ha_partite_entro_la_finestra()
     assert consigli.prossima_giornata(_db(fuori), ST, datetime(2026, 11, 4, 12, 0)) == 11
 
 
-@pytest.mark.parametrize("anticipate", [
-    [("2026-11-05 20:45", 1)],                                               # una partita (Supercoppa, coppe)
-    [("2026-11-04 20:45", 1), ("2026-11-05 20:45", 1)],                      # due, fino a turno.MAX_ANTICIPI
-], ids=["una", "due"])
-def test_partite_anticipate_di_settimane_non_fanno_saltare_la_giornata(monkeypatch, anticipate):
-    """Coordinatore, #695: partite della 12 giocate due settimane prima del suo turno (21-23 novembre) sono anticipi lontani, non
-    metà giornata giocata: la 12 resta «da giocare» finché il suo turno ha partite da cominciare, come su main. Le partite giocate
-    molto prima non fanno partire la finestra dei 5 giorni; con più di turno.MAX_ANTICIPI (4 + 6) è metà giornata giocata e il
-    resto rinviato (test sopra)."""
-    g12 = anticipate + [(d, 0) for d, _ in G12[len(anticipate):]]
+ANTICIPATE = [("2026-11-02 20:45", 1), ("2026-11-03 20:45", 1), ("2026-11-04 20:45", 1), ("2026-11-05 20:45", 1)]
+
+
+@pytest.mark.parametrize("quante", [1, 2, 3, 4])
+def test_partite_anticipate_di_settimane_non_fanno_saltare_la_giornata(monkeypatch, quante):
+    """Coordinatore, #695: partite della 12 giocate settimane prima del suo turno (21-23 novembre: Supercoppa, coppe) sono anticipi
+    lontani, non metà giornata giocata: il turno della 12 comincia prima di quello della 13. La 12 resta «da giocare» finché il suo
+    turno ha partite da cominciare, quante che siano le partite anticipate (si decide dalla posizione, non dal numero), come su
+    main. Nel 4 + 6 invece il turno (i recuperi) comincia dopo la giornata dopo (test sopra)."""
+    g12 = ANTICIPATE[:quante] + [(d, 0) for d, _ in G12[quante:]]
     db = _db([(d, 1) for d, _ in G10], [(d, 1) for d, _ in G11], g12, {13: _sposta(G12, 7)})
     for adesso in (datetime(2026, 11, 12, 12, 0), datetime(2026, 11, 21, 16, 0), datetime(2026, 11, 23, 21, 0)):
         assert consigli.prossima_giornata(db, ST, adesso) == 12, adesso
     monkeypatch.setattr(consigli, "_adesso", lambda: datetime(2026, 11, 12, 12, 0))
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
     assert gestione.oggi_senza_rose(db, adesso=datetime(2026, 11, 12, 12, 0), regole=_regole_scadenza_10())["giornata"] == 12
+
+
+@pytest.mark.parametrize("quante", [1, 2, 3])
+def test_partite_anticipate_di_settimane_non_fissano_la_scadenza_e_i_loro_giocatori_restano_fermi(quante):
+    """Coordinatore, #695 (difetto già su main): la scadenza viene dal turno principale. Prima la partita anticipata di settimane, già
+    giocata, fissava la scadenza: la giornata risultava iniziata dal giorno dell'anticipo, quindi niente salvataggio (409), niente
+    copia alla scadenza e niente promemoria. Chi ha giocato l'anticipo resta fermo come per un anticipo (turno.py)."""
+    g12 = ANTICIPATE[:quante] + [(d, 0) for d, _ in G12[quante:]]
+    db = _db([(d, 1) for d, _ in G10], [(d, 1) for d, _ in G11], g12, {13: _sposta(G12, 7)})
+    turno_12 = datetime.fromisoformat(G12[quante][0])
+    assert avvisi.prima_partita(db, ST, 12) == turno_12
+    reg = _regole_scadenza_10()
+    assert not fasi.iniziata(db, reg, ST, 12, datetime(2026, 11, 12, 12, 0))                  # la formazione si salva
+    assert fasi.iniziata(db, reg, ST, 12, turno_12 - timedelta(minutes=10))                   # e si chiude col turno
+    attese = {s for k in range(quante) for s in (f"c12{k}", f"t12{k}")}
+    assert fasi.squadre_in_anticipo_iniziato(db, ST, 12, datetime(2026, 11, 12, 12, 0)) == attese
+    # nel 4 + 6 le partite giocate prima del recupero fissano la scadenza come prima: lì il turno comincia dopo la giornata dopo
+    finite = {11: [(d, 1) for d, _ in G11], 12: [(d, 1) for d, _ in G12]}
+    db = _db(_rinviate(6), finite[11], finite[12])
+    assert avvisi.prima_partita(db, ST, 10) == datetime(2026, 10, 31, 15, 0)
+    assert fasi.squadre_in_anticipo_iniziato(db, ST, 10, datetime(2026, 11, 3, 12, 0)) == set()
