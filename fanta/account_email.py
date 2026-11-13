@@ -136,14 +136,17 @@ def email_di(db: sqlite3.Connection, utente_id: int) -> dict:
 
 
 def _nuovo_codice(db: sqlite3.Connection, scopo: str, email: str, utente_id: int | None, adesso: datetime,
-                  dati: dict | None = None) -> str:
+                  dati: dict | None = None, spedito: bool = True) -> str:
     """Salva un codice nuovo e lo restituisce. Per un account, i vecchi dello stesso tipo smettono di valere. Le iscrizioni (senza
-    account) invece no: la richiesta di un altro con lo stesso indirizzo non deve annullare quella in attesa."""
+    account) invece no: la richiesta di un altro con lo stesso indirizzo non deve annullare quella in attesa.
+    `spedito=False`: un'attesa che nessun codice conferma (al posto dell'impronta del codice una casuale, che nessun numero di
+    6 cifre dà); il codice restituito non vale e non si manda a nessuno."""
     codice = nuovo_codice_numerico()
+    impronta = _h(codice) if spedito else secrets.token_hex(32)
     if utente_id is not None:
         db.execute("UPDATE codici_email SET usato = 1 WHERE utente_id = ? AND scopo = ?", (utente_id, scopo))
     db.execute("INSERT INTO codici_email (scopo, utente_id, email, codice_hash, dati, creato, scade) VALUES (?, ?, ?, ?, ?, ?, ?)",
-               (scopo, utente_id, email, _h(codice), json.dumps(dati) if dati else None, _testo(adesso), _testo(adesso + DURATA_CODICE)))
+               (scopo, utente_id, email, impronta, json.dumps(dati) if dati else None, _testo(adesso), _testo(adesso + DURATA_CODICE)))
     db.commit()
     return codice
 
@@ -195,7 +198,9 @@ def chiedi_verifica(db: sqlite3.Connection, utente_id: int, email_grezza, passwo
                     adesso: datetime | None = None, *, senza_password: bool = False, sessione: str | None = None) -> dict:
     """Manda un codice all'indirizzo indicato. Serve la password (chi ruba una sessione non può mettere la propria email e poi
     «recuperare» l'account), salvo `senza_password` (alla registrazione, dove la password è appena stata scelta).
-    Stessa risposta se l'indirizzo è libero, è già di un altro account o ha troppi invii alle spalle."""
+    Stessa risposta se l'indirizzo è libero, è già di un altro account o ha troppi invii alle spalle; e, dopo, lo stesso
+    indirizzo «in attesa» in «Il tuo account» per quello libero e per quello già di un altro (lì il codice non parte e nessun
+    codice lo conferma: la conferma risponde come a un codice sbagliato)."""
     adesso = _ora(adesso)
     email = normalizza_email(email_grezza)
     if not senza_password:
@@ -206,13 +211,14 @@ def chiedi_verifica(db: sqlite3.Connection, utente_id: int, email_grezza, passwo
     gia_mia = db.execute("SELECT 1 FROM utenti WHERE email = ? AND id = ?", (email, utente_id)).fetchone() is not None
     consentito = (_invio_consentito(db, email, _chi_prova(ip, utente_id))
                   and _puo(db, _chiave("email-invio-account", utente_id), *INVII_PER_ACCOUNT))
-    if libero and not gia_mia and consentito:
-        codice = _nuovo_codice(db, "verifica", email, utente_id, adesso)
-        _invia(db, posta.modello_verifica(email, codice, int(DURATA_CODICE.total_seconds() // 60)))
+    if consentito and not gia_mia:
+        codice = _nuovo_codice(db, "verifica", email, utente_id, adesso, spedito=libero)
+        if libero:
+            _invia(db, posta.modello_verifica(email, codice, int(DURATA_CODICE.total_seconds() // 60)))
     else:
         limite.aggiungi(db, _chiave("email-nessun-invio"))       # stessa scrittura sul database di quando si invia
-        if not libero and consentito:
-            _invia(db, posta.modello_gia_registrato(email))
+    if not libero and consentito:
+        _invia(db, posta.modello_gia_registrato(email))
     evento("email_verifica_richiesta", ip=ip)
     return dict(RISPOSTA_INVIO)
 
