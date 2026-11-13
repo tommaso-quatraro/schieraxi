@@ -1,0 +1,11 @@
+{
+  "titolo": "Copie di sicurezza dei dati di ogni utente: la copia di ogni notte non si perde",
+  "voci": [
+    "Server: se l'orologio del server torna indietro, la copia di sicurezza dei dati di ogni utente appena fatta non si perde più, e il server conta una copia fra quelle fatte solo se c'è davvero. Per chi usa l'app non cambia niente."
+  ],
+  "tecnico": [
+    "backup.salva_copia: la copia appena scritta non entra mai fra quelle da togliere; le altre si tengono per data del file (a parità, per nome), le più recenti tieni - 1. Prima si ordinavano per la data nel nome: con l'orologio indietro o copie datate nel futuro la copia di adesso era la prima a uscire. La regola è la stessa di copia_account (#690), ora in una funzione sola (backup._tieni_le_recenti) usata da entrambe.",
+    "backup.salva_copia riceve adesso (obbligatorio, da passare con il suo nome) per il nome del file e lo passa a backup.crea, che lo usa per «creato» (senza adesso: l'ora del momento, come prima, per il file che si scarica e per la copia prima del ripristino). python -m fanta backup legge l'ora una volta sola e la passa alle copie degli utenti e a quella del database degli account.",
+    "python -m fanta backup con gli account: una copia di un utente che dopo il giro non c'è non si conta in «copie salvate» ma fra gli errori (riga «non trovata dopo averla scritta» nel registro del servizio) e il comando esce con errore. Senza account: «copia salvata» solo se il file c'è, altrimenti uscita con errore e il nome del file. Client: nessuna rotta cambia."
+  ]
+}
