@@ -9,7 +9,7 @@ from fanta import avvisi_utenti, consigli, notifiche
 from fanta.regole import Regole
 
 import test_copertura as tc
-from test_avvisi_utenti import ADESSO, PRONTA, mondo, nuovo, registro  # noqa: F401  (mondo e registro = fixture)
+from test_avvisi_utenti import ADESSO, mondo, nuovo, registro  # noqa: F401  (mondo e registro = fixture)
 from test_avviso_scadenza import BASE, Finto, _cambi_ha_visto, _giro, ore
 from test_notifiche import ROSE, _db, _finto
 
@@ -28,15 +28,6 @@ def test_la_giornata_si_calcola_davvero_con_l_ora_data():
     assert consigli.giornata_da_giocare(db, tc.ST, Regole(), datetime(2026, 11, 30, 12, 0)) is None   # a fine novembre è finita
 
 
-def test_formazione_pronta(mondo, registro, monkeypatch):  # noqa: F811
-    _giornata_vera(monkeypatch)
-    nuovo("amico1", (1, "Castro"))
-    esiti, errori = avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
-    assert errori == {} and len(esiti["amico1"]) == 1
-    assert [testo for _, _, testo in registro.web] == [esiti["amico1"][0]]
-    assert "Giornata 9 · 9ª di Serie A: la formazione è pronta" in registro.web[0][2]
-
-
 def test_cambi(mondo, registro, monkeypatch):  # noqa: F811
     _giornata_vera(monkeypatch)
     nuovo("amico1", (1, "Castro"))
@@ -44,7 +35,8 @@ def test_cambi(mondo, registro, monkeypatch):  # noqa: F811
     mondo.prev.loc[1, ["stato", "percentuale"]] = ["panchina", 30.0]
     esiti, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
     assert errori == {} and esiti["amico1"]
-    assert [testo for _, _, testo in registro.web] == ["Giornata 9 · 9ª di Serie A\nCastro: dalla formazione titolare alla panchina"]
+    assert [testo for _, _, testo in registro.web] == [
+        "Castro parte dalla panchina: con la tua rosa non si forma più una squadra. La formazione si chiude il 28/10 alle 18:30."]
 
 
 def test_copertura(tmp_path, monkeypatch):

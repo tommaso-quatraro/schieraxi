@@ -1962,11 +1962,6 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     diff = movimenti.differenze(prima, nuove)
     if prima and any(s.giocatori for s in prima.squadre):      # dopo il passaggio di stagione le rose partono vuote: non sono "acquisti"
         movimenti.registra(ctx.movimenti, diff)
-    try:
-        # un osservato lasciato libero: si può prendere
-        notifiche.osservati_liberi(diff, ctx.osservati, manda=_manda(ctx), opzioni=notifiche.impostazioni(ctx.impostazioni_avvisi))
-    except Exception:                                         # un avviso che non parte non deve far fallire l'importazione
-        pass
     threading.Thread(target=_scalda, args=(ctx,), daemon=True).start()     # le rose sono cambiate: la nuova formazione si prepara subito
     return {"squadre_importate": [s.nome for s in lette], "totale_squadre": len(nuove.squadre),
             "avvisi": avvisi + lega.controlla(nuove, r), "mia_squadra": nuove.mia_squadra,

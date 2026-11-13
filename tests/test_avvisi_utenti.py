@@ -1,4 +1,4 @@
-"""Avvisi per utente (cambi, promemoria, riepilogo, «formazione pronta») e backup per utente, con gli account accesi.
+"""Avvisi per utente (cambi e promemoria: i soli due rimasti, #676) e backup per utente, con gli account accesi.
 Tutto su cartelle temporanee: le notifiche vere (web push, ntfy) sono sostituite da registri, e l'archivio è in memoria."""
 import contextlib
 import json
@@ -17,7 +17,6 @@ from test_notifiche import ST, _db
 
 PASSWORD = "una-password-lunga-9"
 ADESSO = datetime(2026, 10, 27, 9, 0)          # il giorno prima della giornata 9 (prima partita il 28 alle 18:30)
-PRONTA = datetime(2026, 10, 28, 8, 0)            # meno di 30 ore alla prima partita (28 alle 18:30): è il momento di «formazione pronta»
 SUB = {"keys": {"p256dh": "P" * 40, "auth": "A" * 20}}
 
 
@@ -59,9 +58,11 @@ def mondo(multiutente, dati_isolati, monkeypatch):
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+    # la consigliata finta: tutta la rosa, tranne chi è fuori nelle probabili (come la consigliata vera, che lo toglie)
     monkeypatch.setattr(consigli, "formazione", lambda db, regole, rose, *a, **k: calcoli.append(rose.mia_squadra) or {
         "modulo": "4-3-3", "punteggio_atteso": 70.0, "titolari": [{"id": g.id, "nome": g.nome, "titolarita": "titolare", "dubbio": False}
-                                                                  for g in rose.squadra(rose.mia_squadra).giocatori]})
+                                                                  for g in rose.squadra(rose.mia_squadra).giocatori
+                                                                  if prev.at[g.id, "stato"] not in notifiche.MOTIVI_FUORI]})
     return type("M", (), {"prev": prev, "calcoli": calcoli, "db": _db("2026-10-28 18:30")})
 
 
@@ -90,8 +91,10 @@ def test_i_cambi_arrivano_a_ciascuno_con_il_suo_stato(mondo, registro):
     assert registro.web == []
     mondo.prev.loc[1, ["stato", "percentuale"]] = ["panchina", 30.0]  # cambia solo Castro, che è di amico1
     esiti, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
-    assert errori == {} and len(esiti["amico1"]) >= 1 and esiti["amico2"] == []
-    assert [(chi, testo) for chi, _, testo in registro.web] == [(a.cartella.name, "Giornata 9 · 9ª di Serie A\nCastro: dalla formazione titolare alla panchina")]
+    assert errori == {} and len(esiti["amico1"]) == 1 and esiti["amico2"] == []
+    assert [(chi, titolo, testo) for chi, titolo, testo in registro.web] == [
+        (a.cartella.name, "SchieraXI · cambia la formazione consigliata",
+         "Castro parte dalla panchina: con la tua rosa non si forma più una squadra. La formazione si chiude il 28/10 alle 18:30.")]
     assert registro.ntfy == []
     assert json.loads(a.stato_cambi.read_text())["cambi"] and json.loads(b.stato_cambi.read_text())["cambi"]    # ognuno ha il suo stato
     assert a.stato_cambi.parent != b.stato_cambi.parent
@@ -105,7 +108,7 @@ def test_gli_utenti_comuni_non_passano_mai_da_ntfy(mondo, registro, monkeypatch)
     avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
     mondo.prev.loc[1, "stato"] = "infortunato"
     esiti, _ = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
-    assert esiti["amico1"] and registro.ntfy == []
+    assert esiti["amico1"] == [] and registro.ntfy == []              # non arrivato a nessuno: si riprova al giro dopo, mai su ntfy
 
 
 def test_l_amministratore_usa_ntfy_solo_con_l_opzione(mondo, registro, monkeypatch):
@@ -159,11 +162,15 @@ def test_con_le_rose_cambiate_la_formazione_si_ricalcola(mondo, registro):
     assert len(mondo.calcoli) == 2
 
 
-def test_se_l_opzione_e_spenta_non_si_fa_nemmeno_il_confronto(mondo, registro):
+def test_la_vecchia_opzione_dei_cambi_spenta_non_li_ferma_piu(mondo, registro):
+    """#676: decide l'interruttore unico (un dispositivo iscritto), non la scelta `cambi` di prima."""
     ctx = nuovo("amico1", (1, "Castro"))
     notifiche.salva_impostazioni({"cambi": False}, ctx.impostazioni_avvisi)
     esiti, _ = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
-    assert esiti == {"amico1": []} and mondo.calcoli == [] and not ctx.stato_cambi.exists()
+    assert esiti == {"amico1": []} and mondo.calcoli == ["Squadra di amico1"] and ctx.stato_cambi.exists()
+    mondo.prev.loc[1, "stato"] = "squalificato"
+    esiti, _ = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
+    assert len(esiti["amico1"]) == 1 and len(registro.web) == 1
 
 
 def test_un_utente_con_dati_rovinati_non_ferma_gli_altri(mondo, registro):
@@ -283,79 +290,19 @@ def test_avvisi_con_impostazioni_non_finite_di_un_utente_gli_altri_ricevono(mond
     assert errori == {} and set(esiti) == {"amico1", "amico2"}
 
 
-# ---------------------------------------------------------------- promemoria, riepilogo, formazione pronta
-def test_promemoria_per_utente_con_le_sue_impostazioni(mondo, registro):
+# ---------------------------------------------------------------- promemoria
+UN_ORA_PRIMA = datetime(2026, 10, 28, 17, 35)                    # 55 minuti prima della prima partita
+
+
+def test_promemoria_per_ogni_utente_anche_con_le_vecchie_scelte_spente(mondo, registro):
+    """Le scelte per avviso di prima non contano più (#676): B li aveva spenti e li riceve lo stesso, una volta sola."""
     a, b = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
     notifiche.salva_impostazioni({"promemoria_60": False, "promemoria_15": False}, b.impostazioni_avvisi)
-    alle = datetime(2026, 10, 28, 17, 35)                              # 55 minuti prima della prima partita
-    esiti, errori = avvisi_utenti.esegui("promemoria", mondo.db, alle)
-    assert errori == {} and len(esiti["amico1"]) == 1 and esiti["amico2"] == []
-    assert [chi for chi, _, _ in registro.web] == [a.cartella.name]
-    # B ha i promemoria spenti: nessuno segnato come mandato (nel file può esserci solo il riferimento dell'avviso «cambia la formazione»)
-    assert a.stato_promemoria.exists() and not notifiche._json(b.stato_promemoria).get("promemoria")
-    avvisi_utenti.esegui("promemoria", mondo.db, alle)
-    assert len(registro.web) == 1                                      # una volta sola
-
-
-def test_formazione_pronta_una_volta_per_giornata_e_per_utente(mondo, registro):
-    a, b = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
-    esiti, _ = avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
-    assert [chi for chi, _, _ in registro.web] == [a.cartella.name, b.cartella.name]
-    assert all("Giornata 9 · 9ª di Serie A: la formazione è pronta" in testo for _, _, testo in registro.web)
-    assert json.loads(a.stato_avvisi.read_text()) == {"ultimo": f"{ST}/9"}
-    avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
-    assert len(registro.web) == 2
-    assert registro.ntfy == []
-
-
-def test_formazione_pronta_nelle_ore_tranquille_e_se_l_invio_fallisce_si_riprova(mondo, registro, monkeypatch):
-    a = nuovo("amico1", (1, "Castro"))
-    notifiche.salva_impostazioni({"silenzio": True, "silenzio_da": 0, "silenzio_a": 23}, a.impostazioni_avvisi)
-    avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
-    assert registro.web == [] and not a.stato_avvisi.exists()          # non partito e non segnato: riprova dopo le ore tranquille
-    notifiche.salva_impostazioni({"silenzio": False}, a.impostazioni_avvisi)
-    monkeypatch.setattr(push, "invia", lambda *x, **k: 0)
-    avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
-    assert not a.stato_avvisi.exists()                                 # l'invio non è andato a buon fine: non si segna
-    monkeypatch.setattr(push, "invia", lambda titolo, testo, p, t, percorso=None, **k: registro.web.append(1) or 1)
-    avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
-    assert registro.web == [1] and a.stato_avvisi.exists()
-
-
-def test_formazione_pronta_mai_a_formazione_chiusa(mondo, registro, monkeypatch):
-    """#652: la prima partita (28 alle 18:30) è già giocata, la seconda si gioca la sera dopo. Chi si iscrive la mattina del 29 non
-    riceve «la formazione è pronta»: né dal giro per utente né dal comando `avviso` (che con gli account fa lo stesso giro)."""
-    from fanta import archivio
-    mondo.db.execute("UPDATE partite SET giocata = 1 WHERE data = '2026-10-28 18:30'")
-    a = nuovo("amico1", (1, "Castro"))
-    mattina_dopo = datetime(2026, 10, 29, 8, 0)
-    esiti, errori = avvisi_utenti.esegui("pronta", mondo.db, mattina_dopo)
-    assert errori == {} and esiti == {"amico1": []} and registro.web == [] and not a.stato_avvisi.exists()
-
-    class AllaMattinaDopo(datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return mattina_dopo
-    monkeypatch.setattr(avvisi_utenti, "datetime", AllaMattinaDopo)
-    monkeypatch.setattr(archivio, "apri", lambda *x: mondo.db)
-    cli.cmd_avviso(type("A", (), {"prova": False})())
-    assert registro.web == [] and registro.ntfy == []
-
-
-def test_formazione_pronta_non_arriva_dopo_la_scadenza(mondo, registro, monkeypatch):
-    """#652: un telefono spento dalle 8 riceve «la formazione è pronta» quando si riaccende, ma non dopo la scadenza (18:30)."""
-    from datetime import timedelta
-    durate = []
-    monkeypatch.setattr(push, "invia", lambda titolo, testo, priorita, tag, percorso=None, **k: durate.append(k.get("vale_per")) or 1)
-    nuovo("amico1", (1, "Castro"))
-    avvisi_utenti.esegui("pronta", mondo.db, PRONTA)                     # il 28 alle 8:00
-    assert durate == [timedelta(hours=10, minutes=30)]
-
-
-def test_riepilogo_usa_le_opzioni_di_ciascuno(mondo, registro):
-    a = nuovo("amico1", (1, "Castro"))
-    notifiche.salva_impostazioni({"riepilogo": False}, a.impostazioni_avvisi)
-    assert avvisi_utenti.esegui("riepilogo", mondo.db, ADESSO)[0] == {"amico1": []}
+    esiti, errori = avvisi_utenti.esegui("promemoria", mondo.db, UN_ORA_PRIMA)
+    assert errori == {} and len(esiti["amico1"]) == 1 and len(esiti["amico2"]) == 1
+    assert sorted(chi for chi, _, _ in registro.web) == sorted([a.cartella.name, b.cartella.name])
+    avvisi_utenti.esegui("promemoria", mondo.db, UN_ORA_PRIMA)
+    assert len(registro.web) == 2                                      # una volta sola
 
 
 # ---------------------------------------------------------------- comandi
@@ -366,32 +313,19 @@ def test_i_comandi_con_gli_account_chiamano_il_giro_sugli_utenti(mondo, registro
     assert "chiamato cambi" in capsys.readouterr().out
 
 
-class Finto(datetime):
-    @classmethod
-    def now(cls, tz=None):
-        return PRONTA
-
-
 def test_il_giro_stampa_solo_i_numeri(mondo, registro, monkeypatch, capsys):
     from fanta import archivio
-    monkeypatch.setattr(avvisi_utenti, "datetime", Finto)
+
+    class UnOraPrima(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return UN_ORA_PRIMA
+    monkeypatch.setattr(avvisi_utenti, "datetime", UnOraPrima)
     nuovo("amico1", (1, "Castro"))
     monkeypatch.setattr(archivio, "apri", lambda *a: mondo.db)
-    cli._avvisi_per_utente("pronta")
+    cli._avvisi_per_utente("promemoria")
     cattura = capsys.readouterr()
-    fuori = cattura.out
-    assert fuori == ""                                                  # «pronta» non scrive su stdout: lo script ne farebbe un avviso ntfy
-    assert "amico1: 1 avvisi (pronta)" in cattura.err and "Castro" not in cattura.err
-
-
-def test_il_comando_avviso_con_gli_account_non_stampa_niente(mondo, registro, monkeypatch, capsys):
-    """Lo script del server manderebbe quel testo sul canale ntfy del proprietario: con gli account gli avvisi partono da soli, per utente."""
-    from fanta import archivio
-    monkeypatch.setattr(avvisi_utenti, "datetime", Finto)
-    nuovo("amico1", (1, "Castro"))
-    monkeypatch.setattr(archivio, "apri", lambda *a: mondo.db)
-    cli.cmd_avviso(type("A", (), {"prova": False})())
-    assert capsys.readouterr().out.strip() == "" and len(registro.web) == 1
+    assert "amico1: 1 avvisi (promemoria)" in cattura.out and "Castro" not in cattura.out + cattura.err
 
 
 def test_spento_i_comandi_restano_quelli_di_sempre(monkeypatch):

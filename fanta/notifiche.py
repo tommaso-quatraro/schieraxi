@@ -1,8 +1,13 @@
-"""Avvisi sul telefono (ntfy) per le decisioni della formazione.
+"""Avvisi sul telefono (notifiche web, ntfy) per le decisioni della formazione. Solo due (#676):
 
-- cambi: dopo ogni aggiornamento dei dati si confronta lo stato dei TUOI giocatori (titolare, panchina, infortunato, squalificato,
-  in dubbio) con quello dell'aggiornamento precedente e si avvisa solo se cambia qualcosa che conta;
-- promemoria: un'ora e un quarto d'ora prima della prima partita della giornata (quando si chiude la formazione).
+- promemoria: un'ora e un quarto d'ora prima della scadenza della formazione, se non è a posto (`promemoria`; con una scelta
+  salvata dalla web serve la spunta «L'ho messa», #639);
+- cambio della formazione da schierare: un tuo titolare diventa fuori e la consigliata lo toglie (`cambi`, dopo ogni aggiornamento
+  delle probabili), oppure, nell'ultima ora, la consigliata vale almeno un punto atteso in più (`avviso_scadenza`).
+
+Le scelte per avviso delle impostazioni (`cambi`, `promemoria_60`, `promemoria_15`, `riepilogo`, `copertura`, `avviso_prima`) restano
+nel file e la rotta le legge e le scrive come prima (l'app per iPhone di oggi le usa), ma qui non contano più: decide l'interruttore
+unico, cioè se l'utente ha acceso gli avvisi su un dispositivo. Contano ancora le ore tranquille, la lingua e `app_nativa`.
 
 Il canale ntfy sta nella variabile FANTA_CANALE_AVVISI (o FANTA_NTFY_CANALE) oppure nel file dati/canale-avvisi.txt. I testi contengono i nomi dei calciatori:
 passano dal server pubblico ntfy.sh e il nome del canale fa da password.
@@ -50,10 +55,10 @@ FUORI = ("infortunato", "squalificato")
 # scatta quando la passa, in su o in giù, e lo dice a parole (all'utente si mostra una sola percentuale, «gioca N%»)
 PERC_BALLOTTAGGIO = 60
 MAX_RIGHE = 8
-FINESTRE = [("60", 45, 65, "promemoria_60", 3), ("15", 4, 20, "promemoria_15", 4)]   # (nome, da minuti, a minuti, opzione, priorità)
+FINESTRE = [("60", 45, 65, 3), ("15", 4, 20, 4)]   # promemoria: (nome, da minuti, a minuti, priorità)
 # avviso intelligente prima della scadenza (vedi `avviso_scadenza`)
-MINUTI_AVVISO = (0, 30, 60, 90)          # da quanti minuti prima della scadenza si guarda se il consiglio è cambiato (0 = spento)
-AVVISO_PRIMA_PREDEFINITO = 60
+MINUTI_AVVISO = (0, 30, 60, 90)          # valori ammessi di `avviso_prima` nelle impostazioni (la rotta li salva ancora, #676)
+AVVISO_PRIMA_PREDEFINITO = 60            # da quanti minuti prima della scadenza si guarda se il consiglio è cambiato: per tutti
 SOGLIA_AVVISO_PUNTI = 1.0                # punti attesi in più perché valga la pena disturbare: sotto è il su e giù normale
 MAX_AVVISI_SCADENZA = 2                  # al massimo per giornata
 MINUTI_MINIMI = 2                        # a meno di 2 minuti dalla chiusura non serve più
@@ -336,18 +341,55 @@ def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.D
     return risultato
 
 
+def _consigliata_cambiata(prev: pd.DataFrame, vecchio: dict | None, ora: dict, titolari: list[int], modulo: str | None,
+                          chiusura: datetime) -> frasi.Frase | None:
+    """La frase dell'avviso se dall'ultimo controllo (`vecchio`) la consigliata ha cambiato titolari perché uno di loro è diventato
+    fuori (MOTIVI_FUORI: prima non lo era, ora sì, `ora`), altrimenti None: «Castoldi è infortunato: metti Bonvicini e passa al
+    4-4-2. La formazione si chiude il 28/10 alle 18:30.» Senza `titolari` (con la rosa non si forma più una squadra) lo dice.
+    Un cambio di soli punti attesi non passa di qui: nell'ultima ora lo dice `avviso_scadenza`."""
+    prima = [int(i) for i in (vecchio or {}).get("titolari") or []]
+    if not prima or set(prima) == set(titolari):
+        return None
+    giocatori = (vecchio or {}).get("giocatori") or {}
+    motivi = []
+    for i in prima:
+        adesso, allora = ora.get(str(i)) or {}, giocatori.get(str(i)) or {}
+        if i not in titolari and adesso.get("stato") in MOTIVI_FUORI and allora.get("stato") not in MOTIVI_FUORI:
+            motivi.append(F("n.m_" + adesso["stato"], nome=adesso["nome"]))
+    if not motivi:
+        return None
+    entrano = [str(prev.at[i, "nome"]) for i in titolari if i not in prima and i in prev.index]
+    if not titolari:
+        frase = F("n.senza_sostituto", motivi=_elenco(motivi, 2))
+    elif entrano:
+        frase = F("n.metti", motivi=_elenco(motivi, 2), entrano=_elenco(entrano))
+        if modulo and (vecchio or {}).get("modulo") not in (None, modulo):
+            frase = F("n.e_passa", frase=frase, modulo=modulo)
+    else:
+        return None
+    return F("n.testo_cambiata", frase=frase, data=f"{chiusura:%d/%m}", ora=f"{chiusura:%H:%M}")
+
+
 def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_STATO,
-          manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_osservati: Path | None = None,
-          risparmia: bool = False, file_scelte: Path | None = None, file_promemoria: Path | None = None) -> list[str]:
-    """Confronta lo stato dei tuoi giocatori (e di quelli che osservi) con quello dell'ultimo controllo e avvisa se è cambiato
-    qualcosa. Restituisce le righe.
-    Vicino alla scadenza (finestra dell'avviso «cambia la formazione») prova prima quell'avviso; i cambi dei tuoi giocatori tacciono
-    solo se è partito davvero, con i dati di adesso, negli ultimi DOPPIONE_CAMBI minuti. Se non parte (già due avvisi, guadagno
-    piccolo...) i cambi si dicono come sempre: nessuna notizia va persa. `file_promemoria`: lo stato di quell'avviso (di base il
-    file `notifiche-promemoria.json` accanto a `file_stato`).
+          manda: Callable[..., bool] = invia, opzioni: dict | None = None, *, risparmia: bool = False,
+          file_scelte: Path | None = None, file_promemoria: Path | None = None) -> list[str]:
+    """Dopo ogni aggiornamento delle probabili: l'avviso quando cambia la formazione da schierare perché un tuo titolare non gioca
+    più (#676). Restituisce le frasi mandate.
+    - Con una formazione salvata che si può ancora schierare: «cambio pronto» per ogni suo titolare ora infortunato, squalificato o
+      in panchina che la consigliata toglie, con chi mettere (`_cambi_pronti`, una volta sola per giocatore e motivo).
+    - Senza, o se non vale più, conta la consigliata: se dall'ultimo controllo ha cambiato titolari perché uno è diventato fuori,
+      un avviso con il motivo, chi entra e la scadenza (`_consigliata_cambiata`).
+    I cambi delle probabili che non cambiano la formazione da schierare (chi non è titolare, un titolare in dubbio o diffidato) e i
+    giocatori seguiti non si avvisano più; un cambio di soli punti attesi lo dice, nell'ultima ora, `avviso_scadenza`. La vecchia
+    scelta `cambi` delle impostazioni non conta: di `opzioni` contano solo le ore tranquille (che guarda `manda`).
+    Vicino alla scadenza (finestra dell'avviso «cambia la formazione») prova prima quell'avviso; questo tace solo se è partito
+    davvero, con i dati di adesso, negli ultimi DOPPIONE_CAMBI minuti. Se non parte (già due avvisi, guadagno piccolo...) questo
+    si dice come sempre: nessuna notizia va persa. `file_promemoria`: lo stato di quell'avviso (di base il file
+    `notifiche-promemoria.json` accanto a `file_stato`). Nelle ore tranquille o se l'invio fallisce lo stato non cambia: si
+    riprova al giro dopo.
     `risparmia` (per chi ha molti utenti da controllare): il confronto degli stati costa poco, la formazione consigliata molto;
     se non è cambiato niente si tiene quella dell'ultimo controllo invece di ricalcolarla."""
-    from . import consigli
+    from . import consigli, scelte
     adesso = adesso or datetime.now()
     opzioni = opzioni if opzioni is not None else impostazioni()
     ids = _mia_rosa_ids(rose)
@@ -361,75 +403,58 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     prev, giornata, con_probabili = consigli.previsioni(db, regole, giornata)     # la giornata del giro, non cercata di nuovo
     if not con_probabili:
         return []                                  # senza probabili non c'è niente da confrontare
-    ids_oss = [i for i in osservati.leggi(file_osservati) if i not in ids]
-    ora = istantanea(prev, ids + ids_oss)
+    ora = istantanea(prev, ids)
     chiave = f"{stagione}/{giornata}"
     stato = _json(file_stato)
     vecchio = stato.get("cambi", {}).get(chiave)
-    chiavi_oss = {str(i) for i in ids_oss}
-    righe, oss = [], []
-    if vecchio:
-        righe = confronta({k: v for k, v in vecchio["giocatori"].items() if k not in chiavi_oss}, {k: v for k, v in ora.items() if k not in chiavi_oss})
-        oss = [F("n.osservato_riga", riga=r) for r in confronta({k: v for k, v in vecchio["giocatori"].items() if k in chiavi_oss}, {k: v for k, v in ora.items() if k in chiavi_oss})]
-    if risparmia and vecchio and vecchio.get("titolari") and not righe and not oss and set(vecchio["giocatori"]) == set(ora):
-        f, titolari = None, vecchio["titolari"]    # niente è cambiato: la formazione di prima vale ancora
+    cambiato = bool(vecchio) and bool(confronta(vecchio["giocatori"], ora))
+    if risparmia and vecchio and vecchio.get("titolari") and not cambiato and set(vecchio["giocatori"]) == set(ora):
+        f, titolari, modulo = None, vecchio["titolari"], vecchio.get("modulo")     # niente è cambiato: vale quella di prima
     else:
         try:
             f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)
-            titolari = sorted(int(x["id"]) for x in f["titolari"])
-        except ValueError:                         # per esempio nessun portiere disponibile: l'avviso sui cambi serve proprio ora
-            f, titolari = None, []
-    if righe and vecchio and f and vecchio.get("titolari") != titolari:
-        entrano = [prev.at[i, "nome"] for i in set(titolari) - set(vecchio["titolari"]) if i in prev.index]
-        escono = [prev.at[i, "nome"] for i in set(vecchio["titolari"]) - set(titolari) if i in prev.index]
-        righe.append(F("n.formazione_aggiornata", modulo=f["modulo"], entrano=", ".join(entrano) or "–", escono=", ".join(escono) or "–"))
-    pronti = _cambi_pronti(db, regole, rose, prev, ora, titolari, giornata, set(stato.get("pronti", [])), chiave, file_scelte, f) \
-        if opzioni.get("cambi", True) else []
-    singoli = []                                   # un cambio pronto che ha già una riga nell'avviso dei cambi la completa; gli altri vanno da soli
-    for p in pronti:
-        k = next((n for n, r in enumerate(righe) if r.startswith(p["nome"] + ":")), None)
-        if k is None:
-            singoli.append(p)
-        else:
-            righe[k] = F("n.riga_consiglio", riga=righe[k], consiglio=p["consiglio"])
+            titolari, modulo = sorted(int(x["id"]) for x in f["titolari"]), f.get("modulo")
+        except ValueError:                         # per esempio nessun portiere disponibile: con un titolare fuori va detto
+            f, titolari, modulo = None, [], None
+    scelta = scelte.leggi(stagione, giornata, file_scelte)
+    salvata = bool(scelta) and scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole) is not None
+    pronti = _cambi_pronti(db, regole, rose, prev, ora, titolari, giornata, set(stato.get("pronti", [])), chiave, file_scelte, f)
+    cambiata = None if salvata else _consigliata_cambiata(prev, vecchio, ora, titolari, modulo, inizio)
+    singoli = list(pronti)
     gia_detti = []
-    if (righe or singoli) and tocca_all_avviso(inizio, adesso, opzioni):
+    if (singoli or cambiata is not None) and tocca_all_avviso(inizio, adesso):
         file_promemoria = file_promemoria or file_stato.with_name(FILE_PROMEMORIA.name)
         try:                                       # prima l'avviso «cambia la formazione», con i dati appena arrivati
             gia_detti = avviso_scadenza(db, regole, rose, adesso, file_promemoria, manda, opzioni, file_scelte, file_stato)
-        except Exception:                          # noqa: BLE001  (i cambi partono comunque)
+        except Exception:                          # noqa: BLE001  (questo avviso parte comunque)
             gia_detti = []
         if _avviso_scadenza_partito(file_promemoria, chiave, adesso, _versione_dati(db)):
-            righe, singoli = [], []                # l'ha già detto lui (niente doppioni); lo stato si salva lo stesso, così questi
-            #                                        cambi non ripartono più tardi
-    proprie = bool(righe or singoli)
-    righe = righe + oss                            # i giocatori che osservi vengono dopo i tuoi, con la stella
-    cambi_mandato = False
-    if righe and opzioni.get("cambi", True):
-        visibili = righe[:MAX_RIGHE]
-        if len(righe) > MAX_RIGHE:
-            visibili.append(F("n.altre_novita", n=len(righe) - MAX_RIGHE))
-        if not manda(F("n.t_cambi"), frasi.elenco([_giornata(giornata, regole)] + visibili, sep="\n"), 4, "rotating_light",
-                     vale_per=inizio - adesso):   # la notifica web non arriva dopo la scadenza
-            return righe                           # invio fallito: lo stato resta quello vecchio e al prossimo giro si riprova
-        cambi_mandato = True
+            singoli, cambiata = [], None           # l'ha già detto lui (niente doppioni); lo stato si salva lo stesso, così
+            #                                        questa notizia non riparte più tardi
+    detti = []
+    if cambiata is not None:                       # il tocco apre la Formazione; la notifica web non arriva dopo la scadenza
+        if not manda(F("n.t_cambia_consigliata"), cambiata, 4, "rotating_light", vale_per=inizio - adesso):
+            return gia_detti                       # ore tranquille o invio fallito: lo stato resta, al prossimo giro si riprova
+        detti.append(cambiata)
     if singoli:
         testi = [F("n.frase_consiglio", frase=p["frase"], consiglio=p["consiglio"]) for p in singoli[:MAX_RIGHE]]
-        if not manda(F("n.t_cambio_pronto"), frasi.elenco(testi, sep="\n"), 4, "rotating_light",   # il tocco apre la Formazione
-                     vale_per=inizio - adesso):
-            if not cambi_mandato:
-                return righe                       # ore tranquille o invio fallito: si riprova al giro dopo
-            pronti = [p for p in pronti if p not in singoli]     # l'avviso dei cambi è già partito: lo stato si salva (niente doppioni), il «cambio pronto» riprova
+        if manda(F("n.t_cambio_pronto"), frasi.elenco(testi, sep="\n"), 4, "rotating_light", vale_per=inizio - adesso):
+            detti += testi
+        elif not detti:
+            return gia_detti                       # ore tranquille o invio fallito: si riprova al giro dopo
+        else:
+            pronti = [p for p in pronti if p not in singoli]     # l'altro avviso è partito: lo stato si salva, il «cambio pronto» riprova
     if pronti:
         stato["pronti"] = (list(stato.get("pronti", [])) + [p["chiave"] for p in pronti])[-80:]
     cambi_stato = stato.setdefault("cambi", {})
     # quando è partito l'ultimo avviso sui TUOI giocatori: l'avviso «cambia la formazione» non lo ripete (DOPPIONE_CAMBI)
-    inviato = adesso.isoformat(timespec="seconds") if proprie and (cambi_mandato or singoli) else (vecchio or {}).get("inviato")
-    cambi_stato[chiave] = {"giocatori": ora, "titolari": titolari} | ({"inviato": inviato} if inviato else {})
+    inviato = adesso.isoformat(timespec="seconds") if detti else (vecchio or {}).get("inviato")
+    cambi_stato[chiave] = ({"giocatori": ora, "titolari": titolari} | ({"modulo": modulo} if modulo else {})
+                           | ({"inviato": inviato} if inviato else {}))
     for vecchia in chiavi_vecchie(cambi_stato, 6):
         cambi_stato.pop(vecchia, None)
     scrivi_sicuro(file_stato, json.dumps(stato))
-    return gia_detti + righe + [F("n.frase_consiglio", frase=p["frase"], consiglio=p["consiglio"]) for p in singoli]
+    return gia_detti + detti
 
 
 # ---------------------------------------------------------------- copertura della rosa
@@ -507,12 +532,13 @@ def _gia_schierato(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione:
 def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_PROMEMORIA,
                manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_scelte: Path | None = None) -> list[str]:
     """Un avviso un'ora prima e uno un quarto d'ora prima della scadenza della formazione (la prima partita della giornata meno i
-    minuti della regola della lega; una volta sola ciascuno).
-    Se hai già schierato (scelta salvata che si può ancora schierare) e nessuno dei tuoi titolari è diventato indisponibile, non ti
-    disturba; se qualcuno lo è diventato, l'avviso parte e lo dice. Quando tace non segna niente come mandato: se più tardi cambia qualcosa, parte ancora."""
+    minuti della regola della lega; una volta sola ciascuno), per tutti: le vecchie scelte `promemoria_60` e `promemoria_15` non
+    contano più (#676); `opzioni` resta per chi chiama (le ore tranquille le guarda `manda`).
+    Se hai già schierato (scelta salvata che si può ancora schierare, e messa: `_gia_schierato`) e nessuno dei tuoi titolari è
+    diventato indisponibile, non ti disturba; se qualcuno lo è diventato, l'avviso parte e lo dice. Quando tace non segna niente
+    come mandato: se più tardi cambia qualcosa, parte ancora."""
     from . import consigli
     adesso = adesso or datetime.now()
-    opzioni = opzioni if opzioni is not None else impostazioni()
     stagione = consigli.stagione_corrente()
     giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)     # l'ora del giro, non l'orologio vero
     if giornata is None:
@@ -525,9 +551,9 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
     mandati = stato.setdefault("promemoria", [])
     inviati = []
     saltati = False
-    for nome, da, a, opzione, priorita in FINESTRE:
+    for nome, da, a, priorita in FINESTRE:
         chiave = f"{stagione}/{giornata}/{nome}"
-        if not (da < minuti <= a) or chiave in mandati or not opzioni.get(opzione, True):
+        if not (da < minuti <= a) or chiave in mandati:
             continue
         if _avviso_scadenza_recente(stato, f"{stagione}/{giornata}", adesso):
             mandati.append(chiave)                 # l'avviso «cambia la formazione» è appena partito e dice già l'ora: niente doppione
@@ -571,10 +597,10 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
 
 
 # ---------------------------------------------------------------- avviso intelligente prima della scadenza
-def tocca_all_avviso(chiusura: datetime, adesso: datetime, opzioni: dict) -> bool:
-    """Siamo nella finestra dell'avviso «cambia la formazione» (acceso)? Lì i cambi dei tuoi giocatori li dice solo lui."""
-    prima = _minuti_avviso(opzioni.get("avviso_prima", AVVISO_PRIMA_PREDEFINITO), AVVISO_PRIMA_PREDEFINITO)
-    return bool(prima) and 0 < (chiusura - adesso).total_seconds() / 60 <= prima
+def tocca_all_avviso(chiusura: datetime, adesso: datetime) -> bool:
+    """Siamo nella finestra dell'avviso «cambia la formazione» (AVVISO_PRIMA_PREDEFINITO minuti prima della scadenza, per tutti)?
+    Lì l'avviso dei cambi lascia parlare prima lui."""
+    return 0 < (chiusura - adesso).total_seconds() / 60 <= AVVISO_PRIMA_PREDEFINITO
 
 
 def _da_poco(quando, adesso: datetime, minuti: int) -> bool:
@@ -651,8 +677,9 @@ def testo_avviso_scadenza(prev: pd.DataFrame, escono: list[int], entrano: list[s
 def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_PROMEMORIA,
                     manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_scelte: Path | None = None,
                     file_cambi: Path = FILE_STATO) -> list[str]:
-    """Avviso intelligente: da `avviso_prima` minuti (30, 60 o 90; 0 = spento) prima della scadenza della formazione, se le ultime
-    probabili cambiano il consiglio rispetto a quello di riferimento, un avviso con il motivo in una frase (il tocco apre la Formazione).
+    """Avviso intelligente: da AVVISO_PRIMA_PREDEFINITO minuti prima della scadenza della formazione (per tutti: la vecchia scelta
+    `avviso_prima` non conta più, #676), se le ultime probabili cambiano il consiglio rispetto a quello di riferimento, un avviso con
+    il motivo in una frase (il tocco apre la Formazione). Di `opzioni` contano solo le ore tranquille.
 
     Riferimento: la formazione che hai salvato per la giornata (scelta o «ho schierato la consigliata»), se si può ancora schierare
     (regola unica della scelta, come la Formazione); senza, o se non vale più, la consigliata com'era
@@ -663,9 +690,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     from . import consigli, scelte
     adesso = adesso or datetime.now()
     opzioni = opzioni if opzioni is not None else impostazioni()
-    prima = _minuti_avviso(opzioni.get("avviso_prima", AVVISO_PRIMA_PREDEFINITO), AVVISO_PRIMA_PREDEFINITO)
-    if not prima:
-        return []
+    prima = AVVISO_PRIMA_PREDEFINITO
     stagione = consigli.stagione_corrente()
     giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)     # l'ora del giro, non l'orologio vero
     if giornata is None:
