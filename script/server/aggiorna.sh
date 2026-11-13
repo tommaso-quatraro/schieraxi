@@ -1,12 +1,11 @@
 #!/bin/bash
-# aggiorna.sh - Sul server: scarica i dati nuovi per l'app Fanta e avvisa l'iPhone con ntfy.
+# aggiorna.sh - Sul server: scarica i dati nuovi per l'app Fanta, lancia il giro dei cambi e avvisa con ntfy se un passo non riesce.
 #   Dal crontab dell'utente del server:  0 8,13,17,21 * * * /bin/bash $HOME/fantacalcio/script/server/aggiorna.sh >/dev/null 2>&1
 # - Priorita' bassa (nice), così gli altri servizi del server non rallentano.
 # - Guasti contati per passo dell'aggiornamento (listone, calendario, voti, probabili, Understat...), un file per passo rotto in
 #   ~/.cache/fantacalcio/passi/: un avviso con il nome del passo alla seconda volta di fila (uno solo per giro, con tutti i passi),
 #   e «funziona di nuovo» quando torna. Così una fonte rotta da giorni non nasconde il guasto di un'altra (#607). Il promemoria
 #   di ogni giorno per un passo fermo lo manda il controllo di salute del server, non questo script.
-# - "Formazione pronta": quando manca meno di 30 ore alla prossima giornata (una volta sola per giornata).
 # - Canale ntfy: nome in ~/.config/schieraxi/canale (o nel file indicato da SCHIERAXI_CANALE). Messaggi generici, passano da ntfy.sh.
 # - Log: ~/fantacalcio/dati/aggiorna.log (si tengono le ultime 2000 righe).
 set -u
@@ -138,7 +137,7 @@ controlla_passi $? "$righe_prima"
 # (la formazione e il mercato in memoria li prepara il servizio da solo: controlla i dati ogni minuto e,
 # appena sono cambiati, li calcola in anticipo. Funziona anche con gli account e non serve nessuna richiesta da qui.)
 
-# giri degli avvisi (cambi, riepilogo, «formazione pronta»): ognuno al massimo 10 minuti, cosi' un servizio di notifica lento non
+# giro degli avvisi dei cambi: al massimo 10 minuti, cosi' un servizio di notifica lento non
 # ferma il resto dello script. Si cambia con FANTA_MAX_SECONDI_GIRO_AVVISI nelle variabili del servizio (secondi; un valore non valido vale 600).
 giro=${FANTA_MAX_SECONDI_GIRO_AVVISI:-600}; [[ $giro =~ ^[1-9][0-9]{0,4}$ ]] || giro=600
 fermato() {   # comando, uscita: con 124 (tempo finito, vedi timeout) lo scrive nel log
@@ -146,18 +145,13 @@ fermato() {   # comando, uscita: con 124 (tempo finito, vedi timeout) lo scrive 
   return 0
 }
 
-# avvisi sul telefono se sono cambiate le probabili dei miei giocatori
+# avviso sul telefono se cambia la formazione da schierare (un titolare non gioca piu')
 nice -n 10 timeout "$giro" .venv/bin/python -m fanta cambi >> "$LOG" 2>&1 || fermato cambi $?
-# riepilogo di giornata (una volta per giornata, quando sono arrivati i voti)
-nice -n 10 timeout "$giro" .venv/bin/python -m fanta riepilogo >> "$LOG" 2>&1 || fermato riepilogo $?
 # prova del modello sulle ultime giornate (si rifà solo se è finita una giornata nuova)
 nice -n 15 .venv/bin/python -m fanta affidabilita >> "$LOG" 2>&1
 
-testo=$(nice -n 10 timeout "$giro" .venv/bin/python -m fanta avviso 2>>"$LOG") || fermato avviso $?
-[ -n "$testo" ] && avvisa "Fantacalcio" "$testo"
-
 # ritagli dei volti dei calciatori: fino a 80 per giro e al massimo 6 minuti, sempre sotto le 30 richieste al minuto del servizio
-# (le altre arrivano ai giri successivi). In fondo, cosi' non ritardano formazione e avviso.
+# (le altre arrivano ai giri successivi). In fondo, cosi' non ritardano formazione e avvisi.
 # Spento di norma (l'app usa i volti illustrati, nessuna foto): per riaccenderlo FANTA_FOTO=1 nelle variabili del servizio.
 if [ "${FANTA_FOTO:-0}" = "1" ]; then
   nice -n 10 .venv/bin/python -m fanta foto --max 80 --minuti 6 >> "$LOG" 2>&1
