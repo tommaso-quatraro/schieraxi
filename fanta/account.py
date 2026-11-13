@@ -1062,6 +1062,26 @@ def revoca_invito(db: sqlite3.Connection, invito_id: int) -> None:
 INVITO_NON_VALIDO = "Invito non valido o scaduto"
 
 
+def crea_utente(db: sqlite3.Connection, nome: str, nome_visualizzato: str, password_hash: str, recupero_hash: str, ruolo: str,
+                adesso: datetime, email: str | None = None, senza_password: bool = False) -> int:
+    """L'unico punto in cui nasce un account (invito, iscrizione con email, Google), dentro la transazione di chi chiama.
+    Restituisce il numero del nuovo account. Subito dopo la riga in `utenti` il numero riceve una cartella vuota
+    (`contesto.libera_cartella`): se non si riesce a liberarla l'account non nasce (ErroreAccount 503, chi chiama annulla la
+    transazione), perché ritroverebbe i dati di un altro."""
+    cur = db.execute("INSERT INTO utenti (nome_utente, nome_visualizzato, password_hash, recupero_hash, ruolo, creato, email, "
+                     "senza_password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                     (nome, nome_visualizzato, password_hash, recupero_hash, ruolo, _testo(adesso), email, int(senza_password)))
+    from . import contesto                           # contesto usa questo modulo: si importa qui
+    try:
+        contesto.libera_cartella(cur.lastrowid, adesso)
+    except OSError as e:
+        evento("cartella_non_liberata", utente=cur.lastrowid, errore=type(e).__name__)
+        logging.getLogger(__name__).error("Account nuovo con il numero %s non creato: la cartella che c'era già non si sposta (%s)",
+                                          cur.lastrowid, type(e).__name__)
+        raise ErroreAccount(percorsi.NON_VERIFICATO, 503) from None
+    return cur.lastrowid
+
+
 def registra(db: sqlite3.Connection, nome_utente: str, password: str, invito: str, ip: str | None = None, dispositivo: str = "",
              adesso: datetime | None = None, accetto_termini: bool | None = None) -> tuple[Utente, str, str]:
     """Crea l'account (solo con un invito valido, e finché non si è al tetto di utenti) e apre la sessione.
@@ -1107,14 +1127,12 @@ def _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termin
             raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
         if db.execute("SELECT 1 FROM utenti WHERE nome_utente = ?", (nome,)).fetchone():
             raise ErroreAccount("Questo nome utente è già preso: scegline un altro")
-        cur = db.execute("INSERT INTO utenti (nome_utente, nome_visualizzato, password_hash, recupero_hash, ruolo, creato) "
-                         "VALUES (?, ?, ?, ?, ?, ?)",
-                         (nome, nome_da_mostrare(nome_utente, nome), password_hash, _hash_codice(recupero), inv["ruolo"], _testo(adesso)))
-        if not consuma_invito(db, inv["codice_hash"], cur.lastrowid):    # un altro ha appena preso l'ultimo posto
+        nuovo = crea_utente(db, nome, nome_da_mostrare(nome_utente, nome), password_hash, _hash_codice(recupero), inv["ruolo"], adesso)
+        if not consuma_invito(db, inv["codice_hash"], nuovo):    # un altro ha appena preso l'ultimo posto
             raise ErroreAccount(INVITO_NON_VALIDO, 403)
         if termini:
-            segna_termini(db, cur.lastrowid, adesso)
-        _segna_indirizzo(db, cur.lastrowid, ip)
+            segna_termini(db, nuovo, adesso)
+        _segna_indirizzo(db, nuovo, ip)
         db.commit()
     except sqlite3.IntegrityError:                   # il vincolo UNIQUE del database: un nome preso un attimo prima
         db.rollback()
@@ -1126,7 +1144,7 @@ def _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termin
         limite.annulla(db, righe)                    # invito buono (nome preso, tetto...): non è un invito sbagliato
         raise
     limite.annulla(db, righe)
-    utente = trova(db, cur.lastrowid)
+    utente = trova(db, nuovo)
     evento("registrazione", nome=nome, ip=ip, ruolo=utente.ruolo)
     return utente, _apri_sessione(db, utente.id, dispositivo, adesso), recupero
 

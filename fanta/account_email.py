@@ -461,14 +461,13 @@ def conferma_iscrizione(db: sqlite3.Connection, email_grezza, codice, ip: str | 
             _tetto_del_giorno(db, adesso)
         if db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] >= account.max_utenti():
             raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
-        cur = db.execute("INSERT INTO utenti (nome_utente, nome_visualizzato, password_hash, recupero_hash, ruolo, creato, email) "
-                         "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                         (dati["nome"], dati.get("nome_visualizzato") or dati["nome"], dati["password_hash"], _hash_codice(recupero), ruolo, _testo(adesso), email))
-        if dati.get("invito") and not account.consuma_invito(db, dati["invito"], cur.lastrowid):
+        nuovo = account.crea_utente(db, dati["nome"], dati.get("nome_visualizzato") or dati["nome"], dati["password_hash"],
+                                    _hash_codice(recupero), ruolo, adesso, email=email)
+        if dati.get("invito") and not account.consuma_invito(db, dati["invito"], nuovo):
             raise ErroreAccount(account.INVITO_NON_VALIDO, 403)
         if dati.get("termini"):
-            account.segna_termini(db, cur.lastrowid, adesso)
-        account._segna_indirizzo(db, cur.lastrowid, ip)
+            account.segna_termini(db, nuovo, adesso)
+        account._segna_indirizzo(db, nuovo, ip)
         db.commit()
     except sqlite3.IntegrityError:                           # nome o email presi un attimo prima
         db.rollback()
@@ -478,6 +477,6 @@ def conferma_iscrizione(db: sqlite3.Connection, email_grezza, codice, ip: str | 
             db.rollback()
         raise
     limite.azzera(db, _chiave("iscrizione", email, ip or "-"))
-    utente = account.trova(db, cur.lastrowid)
+    utente = account.trova(db, nuovo)
     evento("registrazione", nome=utente.nome_utente, ip=ip, ruolo=utente.ruolo, via="email")
     return utente, account._apri_sessione(db, utente.id, dispositivo, adesso), recupero

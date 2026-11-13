@@ -238,6 +238,20 @@ def test_il_tetto_degli_utenti_vale_anche_con_google(scena, monkeypatch):
     assert r.status_code == 403 and "massimo" in r.json()["detail"]
 
 
+def test_l_account_nato_con_google_parte_da_una_cartella_vuota(scena):
+    """Una cartella rimasta con il numero che l'account sta per ricevere va da parte, come per gli altri modi di iscriversi."""
+    rimasta = percorsi.cartella_utenti() / "1"
+    rimasta.mkdir(parents=True)
+    (rimasta / "rose.json").write_text("{}", encoding="utf-8")
+    c = cliente()
+    nuovo = iscrivi_con_google(c, scena)
+    corpo = {"iscrizione": nuovo["iscrizione"], "nome_utente": "mario", "invito": invito(), "accetto_termini": True}
+    r = c.post("/api/account/social/completa", json=corpo)
+    assert r.status_code == 200 and c.get("/api/account/me").json()["utente"]["id"] == 1
+    assert not (rimasta / "rose.json").exists()
+    assert len(list((percorsi.cartella_account() / "utenti-da-parte").glob("*/rose.json"))) == 1
+
+
 def test_completa_non_si_usa_due_volte(scena):
     c = cliente()
     nuovo = iscrivi_con_google(c, scena)

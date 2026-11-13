@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from fanta import account, account_email, posta, rotte_account
+from fanta import account, account_email, contesto, percorsi, posta, rotte_account
 
 from test_account_http import PASSWORD, cliente, invito
 from test_account_email import codice_di, ultimi
@@ -83,6 +83,20 @@ def test_aperta_iscrizione_in_due_tempi(web, posta_finta, monkeypatch):
     assert me["utente"]["nome_utente"] == "anna" and me["utente"]["ruolo"] == "utente" and me["email"] == "anna@example.com"
     assert conferma(cliente(), "anna@example.com", codice).status_code == 403              # monouso
     assert cliente().post("/api/account/accedi", json={"nome_utente": "anna", "password": PASSWORD}).status_code == 200
+
+
+def test_aperta_l_account_confermato_parte_da_una_cartella_vuota(web, posta_finta, monkeypatch):
+    """Una cartella rimasta con il numero che l'account sta per ricevere (database degli account ricreato o tornato a una copia)
+    va da parte: l'account nato dal codice dell'email parte vuoto, come quello nato da un invito."""
+    modo(monkeypatch, "aperta")
+    rimasta = contesto.cartella_utente(1)
+    rimasta.mkdir(parents=True)
+    (rimasta / "push.json").write_text('[{"endpoint": "https://push.example/altro"}]', encoding="utf-8")
+    iscrivi(web)
+    assert conferma(web, "anna@example.com", codice_di(posta_finta[-1])).status_code == 200
+    assert web.get("/api/account/me").json()["utente"]["id"] == 1
+    assert not (rimasta / "push.json").exists()
+    assert len(list((percorsi.cartella_account() / "utenti-da-parte").glob("*/push.json"))) == 1
 
 
 def test_aperta_app_nativa_riceve_il_token(web, posta_finta, monkeypatch):
