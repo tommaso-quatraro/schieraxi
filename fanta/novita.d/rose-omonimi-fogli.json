@@ -7,6 +7,6 @@
   "tecnico": [
     "Anteprima delle rose: ogni giocatore ha `riga` (posizione nella squadra come letta dal file, da 0). `correzioni` accetta `riga` facoltativa: vale solo per quella riga (che deve avere ancora quel testo, altrimenti 400) e vince sulle scelte senza riga. Senza riga (app già installate) la scelta vale per le righe con quel testo che non sono sicure (tutte, se lo sono tutte), e se l'id è già la proposta di una di loro solo per quelle (prima la conferma della proposta della prima riga faceva diventare la seconda lo stesso giocatore, poi tolto come doppione).",
     "fanta/web/anteprima.js: la chiave delle scelte è squadra più riga, arCorrezioni manda una scelta per riga con `riga`.",
-    "rose.leggi_griglie e il processo che legge l'Excel con gli account (_excel_figlio.py, uscita ora {fogli, nel_file}) dicono quanti fogli ha il file (rose.Fogli.nel_file). Oltre MAX_FOGLI (10, invariato): avviso in cima agli avvisi di anteprima e importazione; con sostituisci_tutto 400 (rose.controlla_sostituzione)."
+    "rose.leggi_griglie e il processo che legge l'Excel con gli account (_excel_figlio.py, uscita ora {fogli, nel_file}) dicono quanti fogli ha il file (rose.Fogli.nel_file). Oltre MAX_FOGLI (10, invariato): avviso in cima agli avvisi di anteprima e importazione; con sostituisci_tutto 400 (rose.controlla_sostituzione). Lo stesso in python -m fanta importa (avviso stampato; con --sostituisci-tutto esce con errore senza salvare)."
   ]
 }
