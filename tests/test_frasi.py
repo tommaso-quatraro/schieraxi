@@ -332,6 +332,17 @@ def test_ogni_avviso_sul_telefono_ha_italiano_e_inglese_con_gli_stessi_segnapost
                 assert f.in_lingua("en") != str(f), chiave           # l'inglese c'è davvero
 
 
+def test_ogni_avviso_sul_telefono_lo_usa_ancora_il_server():
+    """Una frase degli avvisi che il server non manda più è un testo morto da togliere (come `test_nessuna_chiave_dimenticata` di
+    test_testi.py per il catalogo di web e iPhone). Le chiavi costruite al volo, F("n.m_" + stato), contano con il loro inizio;
+    `n.giornata.*` la compone frasi.nome_giornata."""
+    codice = "\n".join(p.read_text(encoding="utf-8") for p in PACCHETTO.glob("*.py") if p.name != "frasi_avvisi.py")
+    al_volo = tuple(re.findall(r'F\("(n\.[a-z_]+)" \+', codice)) + ("n.giornata.",)
+    assert "n.m_" in al_volo                                         # la ricerca delle chiavi al volo funziona
+    morte = sorted(k for k in NOTIFICHE if f'"{re.sub(r"[.](one|other)$", "", k)}"' not in codice and not k.startswith(al_volo))
+    assert not morte, morte
+
+
 def test_una_frase_nella_lingua_dell_utente():
     f = frasi.elenco([F("n.tra_un_ora", giornata=frasi.nome_giornata(9, 6, avviso=True), ora="18:30"),
                       F("n.consigliato", modulo="3-4-3", punti=71.34)], sep=" ")
