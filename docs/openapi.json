@@ -2343,6 +2343,8 @@
       "name": "invito_id",
       "required": true,
       "schema": {
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Invito Id",
        "type": "integer"
       }
@@ -2446,6 +2448,8 @@
       "name": "utente_id",
       "required": true,
       "schema": {
+       "maximum": 2147483647,
+       "minimum": 1,
        "title": "Utente Id",
        "type": "integer"
       }
@@ -3145,6 +3149,7 @@
       "required": true,
       "schema": {
        "maximum": 2147483647,
+       "minimum": 1,
        "title": "Calciatore Id",
        "type": "integer"
       }
