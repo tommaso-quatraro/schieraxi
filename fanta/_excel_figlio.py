@@ -2,7 +2,7 @@
 è ostile o enorme muore questo processo, non il server. Non importa niente del pacchetto fanta: solo la libreria standard e openpyxl.
 
 Uso:  python -I _excel_figlio.py FILE '{"fogli": 10, "righe": 1500, "colonne": 60, "cella": 200, "celle": 90000, "memoria": 1073741824, "cpu": 30}'
-Uscita: 0 = ok (JSON su stdout), 3 = file non leggibile, 4 = troppa memoria, 5 = oltre il tetto di celle (si ferma subito),
+Uscita: 0 = ok (JSON su stdout: {"fogli": [[titolo, griglia], ...], "nel_file": quanti fogli ha il file}), 3 = file non leggibile, 4 = troppa memoria, 5 = oltre il tetto di celle (si ferma subito),
 altro = fermato dai limiti. `celle` è facoltativo (senza, nessun tetto di celle).
 """
 import json
@@ -45,13 +45,14 @@ def main() -> int:
                         return 5
                     griglia.append(riga)
                 fogli.append((ws.title, griglia))
+            nel_file = len(wb.worksheets)                 # oltre il tetto di fogli: chi chiama lo dice all'utente (#662)
         finally:
             wb.close()
     except MemoryError:
         return 4
     except Exception:                                     # noqa: BLE001 - XML rotto, zip rovinato...: per il chiamante è un file non leggibile
         return 3
-    sys.stdout.write(json.dumps(fogli))
+    sys.stdout.write(json.dumps({"fogli": fogli, "nel_file": nel_file}))
     return 0
 
 
