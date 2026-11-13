@@ -107,8 +107,66 @@ def test_aggiorna_risultati_due_richieste_e_segna(monkeypatch, tmp_path):
     assert db.execute("SELECT COUNT(*) FROM aggiornamenti WHERE cosa = ?", (pianificatore.CHIAVE_RISULTATI,)).fetchone()[0] == 1
 
 
-def test_aggiorna_risultati_fonte_spenta_o_cron_in_corso(monkeypatch):
-    from fanta import fonti_attive
+def test_aggiorna_risultati_con_la_rete_giu_lascia_la_riga_con_l_errore(monkeypatch, tmp_path, caplog):
+    """#661: il giro della sera che fallisce lascia la sua riga fra gli aggiornamenti (errore, primo fallimento, ultimo successo),
+    così la vedono «Stato dei dati» e la salute, e una riga nel registro con il tipo d'errore."""
+    import requests
+
+    from fanta import archivio, fonti_attive, stato_dati
+    vero = archivio.apri
+    monkeypatch.setattr(archivio, "apri", lambda *a, **k: vero(tmp_path / "f.sqlite"))
+    monkeypatch.setattr(pianificatore, "blocco_processo", lambda: contextlib.nullcontext(True))
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    ora = ["2026-11-07T17:30:00"]
+    monkeypatch.setattr(aggiorna, "_ora", lambda: ora[0])
+    monkeypatch.setattr(aggiorna.Aggiornamento, "risultati_giornata", lambda self, g: None)
+    assert pianificatore.aggiorna_risultati([11]) is True
+
+    def rete_giu(self, g):
+        raise requests.ConnectionError("rete giù")
+    monkeypatch.setattr(aggiorna.Aggiornamento, "risultati_giornata", rete_giu)
+    for quando in ("2026-11-08T17:30:00", "2026-11-08T19:00:00"):
+        ora[0] = quando
+        assert pianificatore.aggiorna_risultati([12]) is False
+    db = vero(tmp_path / "f.sqlite")
+    passo = next(p for p in archivio.passi(db) if p["passo"] == pianificatore.CHIAVE_RISULTATI)
+    assert (passo["ultimo_successo"], passo["dal"], passo["ultimo"]) == ("2026-11-07T17:30:00", "2026-11-08T17:30:00",
+                                                                         "2026-11-08T19:00:00")
+    assert "ConnectionError" in passo["errore"] and "risultati 12" in passo["errore"]
+    voce = next(a for a in stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 8, 20, 0))["aggiornamenti"]
+                if a["cosa"] == pianificatore.CHIAVE_RISULTATI)
+    assert voce["quando"] == "2026-11-07T17:30:00" and voce["errori"][0].startswith("Non riuscito alle 19:00 del 08/11:")
+    assert [p["passo"] for p in archivio.passi_fermi(db, datetime(2026, 11, 9, 18, 0))] == [pianificatore.CHIAVE_RISULTATI]
+    db.close()
+    righe = [rec.getMessage() for rec in caplog.records if rec.name == "fanta.pianificatore"]
+    assert righe and all("ConnectionError" in r for r in righe)
+
+
+def test_fonte_spenta_apposta_toglie_l_errore_del_giro_della_sera(monkeypatch, tmp_path):
+    """Come gli altri passi seguiti: una fonte spenta apposta non è un guasto, l'errore di prima si toglie (l'ultimo successo resta)
+    e la salute non avvisa più per quel giro."""
+    from fanta import archivio, fonti_attive
+    vero = archivio.apri
+    monkeypatch.setattr(archivio, "apri", lambda *a, **k: vero(tmp_path / "f.sqlite"))
+    monkeypatch.setattr(pianificatore, "blocco_processo", lambda: contextlib.nullcontext(True))
+    db = vero(tmp_path / "f.sqlite")
+    archivio.segna_passo(db, pianificatore.CHIAVE_RISULTATI, "2026-11-07T17:30:00")
+    archivio.segna_passo(db, pianificatore.CHIAVE_RISULTATI, "2026-11-08T17:30:00", "risultati 12: ConnectionError: rete giù")
+    db.commit()
+    db.close()
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: False)
+    assert pianificatore.aggiorna_risultati([12]) is False
+    db = vero(tmp_path / "f.sqlite")
+    passo = next(p for p in archivio.passi(db) if p["passo"] == pianificatore.CHIAVE_RISULTATI)
+    assert passo["errore"] is None and passo["ultimo_successo"] == "2026-11-07T17:30:00"
+    assert archivio.passi_fermi(db, datetime(2026, 11, 12, 9, 0)) == []
+    db.close()
+
+
+def test_aggiorna_risultati_fonte_spenta_o_cron_in_corso(monkeypatch, tmp_path):
+    from fanta import archivio, fonti_attive
+    vero = archivio.apri
+    monkeypatch.setattr(archivio, "apri", lambda *a, **k: vero(tmp_path / "f.sqlite"))     # mai l'archivio vero
     monkeypatch.setattr(pianificatore, "blocco_processo", lambda: contextlib.nullcontext(False))
     assert pianificatore.aggiorna_risultati([11]) is None
     monkeypatch.setattr(pianificatore, "blocco_processo", lambda: contextlib.nullcontext(True))

@@ -233,7 +233,9 @@ def segna(db: sqlite3.Connection, cosa: str, quando: str | None, dettaglio: str 
 # I passi di ogni aggiornamento che hanno una riga loro in `aggiornamenti` (cosa = nome del passo in minuscolo con i trattini,
 # `cosa_passo`: «listone», «voti», «probabili», «understat», «calendario», «dati-extra»). `quando` = ultimo successo (NULL = mai);
 # `dettaglio` vuoto se l'ultima prova è andata, altrimenti JSON {"errore", "dal" (primo fallimento di fila), "ultimo"}.
-PASSI = ("listone", "calendario", "voti", "probabili", "understat", "dati-extra", "controlli")
+# «risultati-rapido» è il giro dei risultati la sera stessa (`pianificatore.aggiorna_risultati`, #661): stessa riga, così un giro
+# fallito si vede in «Stato dei dati» e nella salute.
+PASSI = ("listone", "calendario", "voti", "probabili", "understat", "dati-extra", "controlli", "risultati-rapido")
 PASSO_FERMO = timedelta(hours=24)        # un passo che non riesce da più di così si segnala per nome (salute, Stato dei dati)
 
 
