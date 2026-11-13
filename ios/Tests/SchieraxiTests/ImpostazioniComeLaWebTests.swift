@@ -57,14 +57,15 @@ struct ImpostazioniComeLaWebTests {
     }
 
     @Test("Gestione è invisibile a un utente normale; Informazioni c'è per tutti")
-    func gestione() {
+    func gestione() throws {
         #expect(VociImpostazioni.informazioni(gestisce: false).map(\.id) == ["informazioni"])
         #expect(VociImpostazioni.informazioni(gestisce: true).map(\.id) == ["informazioni", "gestione"])
         let voci = VociImpostazioni.informazioni(gestisce: true)
         #expect(voci.map(\.nome) == [Catalogo.Imp.informazioni, Catalogo.Imp.gestione])
         // la Gestione dell'iPhone non ha inviti né utenti (quelli sono della web): la riga sotto dice solo ciò che c'è
         #expect(voci.map(\.sotto) == [Catalogo.Imp.informazioniSub, "\(Catalogo.Shell.aggiorna) · \(Catalogo.Av.stato)"])
-        #expect(!(voci.last?.sotto ?? "").contains("Inviti"))
+        let sottoGestione = try #require(voci.last?.sotto)
+        #expect(!sottoGestione.contains("Inviti"))
         #expect(voci.map(\.pagina) == [.informazioni, .gestione])
     }
 
