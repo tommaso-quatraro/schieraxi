@@ -413,6 +413,19 @@ def test_le_copie_si_tengono_per_data_del_file_non_per_nome(radice):
     assert nome_vecchio.exists() and not nome_nuovo.exists()
 
 
+def test_il_comando_dice_copia_salvata_solo_se_la_copia_c_e(tmp_path, monkeypatch, capsys):
+    """#709, senza account: se dopo il giro la copia non c'è, `python -m fanta backup` non dice «copia salvata» ma esce con un
+    errore che dice quale file manca."""
+    from fanta import __main__ as cli
+    monkeypatch.delenv("FANTA_MULTIUTENTE", raising=False)
+    sparita = tmp_path / "schieraxi-backup-2026-10-29.json"
+    monkeypatch.setattr(backup, "salva_copia", lambda **k: sparita)
+    with pytest.raises(SystemExit) as uscita:
+        cli.cmd_backup(type("A", (), {"tieni": 7})())
+    assert "copia salvata" not in capsys.readouterr().out
+    assert str(uscita.value.code).startswith("Errore:") and sparita.name in str(uscita.value.code)
+
+
 def test_il_ripristino_non_cambia_le_formazioni_delle_giornate_chiuse(dati_isolati, radice, monkeypatch):
     """Revisione 2/11: dopo la scadenza un backup con `scelte.json` modificato cambiava la scelta di una giornata chiusa
     (aggirava il 409 `formazione_chiusa`). Ora le giornate chiuse restano come sul server, le altre si ripristinano."""
