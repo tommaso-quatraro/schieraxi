@@ -28,10 +28,11 @@ def test_orologio_italiano_riconosce_un_sistema_in_utc(locale, istante, giusto):
 
 
 FIGLIO = r"""
-import runpy, sys, tempfile
+import runpy, sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+cartella = Path(sys.argv[1])                        # la cartella temporanea del test
 sys.argv = ["fanta", "--help"]                       # come sul server: python -m fanta <comando>
 try:
     runpy.run_module("fanta", run_name="__main__", alter_sys=True)
@@ -42,7 +43,7 @@ from fanta.regole import Regole
 italia = datetime.now(ZoneInfo("Europe/Rome")).replace(tzinfo=None)
 inizio = (italia - timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M")      # prima partita cominciata da 30 minuti, ora italiana
 stagione = consigli.stagione_corrente()
-db = archivio.apri(Path(tempfile.mkdtemp()) / "prova.sqlite")
+db = archivio.apri(cartella / "prova.sqlite")
 for k in range(10):
     db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, 1, ?, ?, ?, 0)",
                (k + 1, stagione, inizio, f"casa{k}", f"trasferta{k}"))
@@ -57,7 +58,7 @@ def test_con_il_sistema_in_utc_la_formazione_e_chiusa_all_ora_italiana_giusta(tm
     Prima, con l'ora del sistema, 30 minuti dopo il calcio d'inizio risultava ancora aperta (1 o 2 ore di ritardo). La prova non
     dipende dal giorno: fra UTC e l'ora italiana c'è sempre almeno un'ora."""
     env = os.environ | {"TZ": "UTC", "PYTHONPATH": str(RADICE)}
-    r = subprocess.run([sys.executable, "-c", FIGLIO], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120)
+    r = subprocess.run([sys.executable, "-c", FIGLIO, str(tmp_path)], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stderr
     assert r.stdout.strip().splitlines()[-1] == "CHIUSA True", r.stdout + r.stderr
 
