@@ -17,14 +17,12 @@ giornate.formazione_tua
 giornate.formazione_automatica
 giornate.formazione_consigliata
 giornate.formazione_rifatta
-giornate.rifatta_nota
 giornate.tabella
 giornate.col_giocatore
 giornate.col_atteso
 giornate.col_preso
 giornate.senza_voto
 giornate.al_posto
-giornate.senza_confronto
 giornate.correggi
 giornate.vuoto
 giornate.vuoto_squadra

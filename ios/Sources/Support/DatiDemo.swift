@@ -941,6 +941,14 @@ private extension LegaDemo {
             } else if calcolata[g.serieA] != nil {
                 voce["automatica"] = esito(c, base)
             }
+            // senza l'istantanea la consigliata di allora non era stata salvata: la frase la scrive il server
+            // (`nota_consigliata` di fanta/diario.py, #674), qui il suo testo per la consigliata rifatta o per la tua formazione
+            if calcolata[g.serieA] == nil {
+                voce["consigliata_di_allora"] = "non_salvata"
+                voce["nota_consigliata"] = voce["schierata"] == nil
+                    ? "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata."
+                    : "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata."
+            }
             return voce
         }
         return json([
