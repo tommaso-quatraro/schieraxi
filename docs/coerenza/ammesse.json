@@ -48,8 +48,8 @@
     {
       "titolo": "Pedina sul campo",
       "precisazione": "(Formazione)",
-      "testo": "sulla web la pedina è il numero nel disco, senza volto: un disco bianco da 44 px con il fantavoto atteso, sotto il cognome, «gioca 85%» (o lo stato a partita iniziata, «Rinviata») e «vs NAP» / «@ NAP» con la lineetta del colore sociale; dal 12/11/2026 (#616) «gioca N%» solo sotto l'80%, arancio fra 50 e 79 e rosso sotto 50, con l'anello dello stesso colore attorno al disco. Sull'iPhone la pedina ha il volto, con il fantavoto nella pillola scura e la sigla nei colori sociali; «gioca N%» c'è per tutti (fino alla Formazione unica, #673 passo 1b), sotto l'80% nella pillola arancio con ⚠ e sotto il 50% in quella rossa, con la stessa soglia della web (`SogliaGioca`). Il contenuto è uguale: fantavoto, cognome, «gioca N%» o stato, avversario, e la frase per i lettori di schermo.",
-      "motivo": "scelta 2 del proprietario nella spec della grafica B (5/11/2026, §8.10): sulla web il numero è la pedina e i volti stanno negli elenchi e nella scheda. La legenda della web sta sotto il campo e si riapre con «Cosa vuol dire» (sull'iPhone la prima volta è una scheda sopra il campo, poi «Cosa vuol dire» sotto); testi uguali."
+      "testo": "sulla web la pedina è il numero nel disco, senza volto: un disco bianco da 44 px con il fantavoto atteso e sotto il cognome; «gioca N%» solo sotto l'80%, arancio fra 50 e 79 e rosso sotto 50, con l'anello dello stesso colore attorno al disco (#616). Sull'iPhone la pedina ha il volto, con il fantavoto nella pillola scura; sotto il cognome le stesse cose della web (#673, passo 1b): «gioca N%» solo sotto l'80% nella pillola arancio con ⚠ e sotto il 50% in quella rossa, lo stato a parole, a partita cominciata il suo stato, a formazione chiusa quando gioca. Niente avversario su tutti e due: sta nella scheda. Il contenuto è uguale, e la frase per i lettori di schermo anche.",
+      "motivo": "decisione 2 del proprietario (12/11/2026, #677): sull'iPhone resta il volto; sulla web il numero è la pedina e i volti stanno negli elenchi e nella scheda (scelta 2 della spec della grafica B, 5/11/2026, §8.10)."
     },
     {
       "titolo": "Formazione sul PC",
@@ -81,11 +81,6 @@
       "motivo": "l'iPhone non ha lo zoom della pagina; il suo testo grande lo gestiscono la barra di sistema e `RigaGiocatore`. Testi e numeri restano gli stessi."
     },
     {
-      "titolo": "Oggi, aspetto",
-      "testo": "sulla web la maglia accanto al conto alla rovescia è piccola e dritta (72 px; sull'iPhone 56 pt); le cifre della formazione (modulo | punti attesi) sono separate da un filo; le azioni di Da fare sono testo nel colore delle azioni, a destra nella riga, e il loro numero è grigio accanto al titolo (sull'iPhone pulsanti con il bordo); le righe di Da controllare, Indisponibili e Diffidati hanno la lettera grigia del ruolo e l'etichetta scritta nel colore del tono (sull'iPhone il quadratino del ruolo e la pillola); sul PC due colonne 5:7.",
-      "motivo": "grafica B della web (spec del 5/11/2026, §9), un solo pulsante pieno e meno riquadri. Testi e numeri sono gli stessi. La testa della schermata e la posizione delle sezioni non sono aspetto: riga 49 di «Differenze di oggi»."
-    },
-    {
       "titolo": "Altro, aspetto",
       "testo": "sulla web il ruolo negli Scambi, nel Diario («Correggi a mano») e nei risultati della ricerca è la lettera grigia delle righe (sull'iPhone il quadratino colorato); nel Diario «Ho schierato la consigliata» è un pulsante pieno solo nella giornata più recente da segnare (nelle altre ha il bordo) e sta sulla stessa riga di «Ho schierato un'altra formazione», i punti fatti e «attesi N» stanno in due colonne a destra, i giocatori cambiati sono in grassetto con il filo arancio senza tinta; negli Scambi «Copia bozza del messaggio» e «Vedi il giudizio completo» stanno sulla stessa riga; sul PC le Regole hanno «Importa da Leghe» a sinistra e le sezioni a destra, i Crediti delle squadre due colonne di righe, le Novità una colonna da leggere.",
       "motivo": "grafica B della web (spec del 5/11/2026, §4, §8.7 e §9), un solo pulsante pieno e meno riquadri. Testi, numeri e ordine delle sezioni sono gli stessi."
@@ -93,8 +88,8 @@
     {
       "titolo": "Formazione, scelta cambiata da un altro dispositivo",
       "precisazione": "(salvataggio o «Torna alla consigliata» rifiutati dal server)",
-      "testo": "se dopo il rifiuto l'iPhone non riesce a rileggere la scelta, scrive «La scelta di questa giornata è stata cambiata da un altro dispositivo, ma non riesco a ricaricarla: tira giù per aggiornare e, se serve, rifai la modifica.» e la riga dello stato non dice niente; la web non ha questo messaggio.",
-      "motivo": "la web ricarica da sola la pagina intera, l'iPhone rilegge solo formazione e scelta: se la rilettura non riesce, «ho ricaricato quella salvata» sarebbe falso (#477)."
+      "testo": "se dopo il rifiuto (412) l'iPhone non riesce a rileggere la scelta, resta «Questi dati sono stati cambiati da un altro dispositivo. Sto ricaricando la versione nuova…» e la riga dello stato dice che non riesce a leggere la formazione salvata, con «Riprova» e i comandi spenti; la web mostra la copia salvata con la nota della cache o la pagina d'errore.",
+      "motivo": "l'iPhone rilegge solo formazione e scelta, senza ridisegnare la pagina intera: finché non le rilegge non si può cambiare niente, come sulla web (#477, #673)."
     }
   ]
 }
