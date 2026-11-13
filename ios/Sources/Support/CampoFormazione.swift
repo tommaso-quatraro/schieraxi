@@ -54,6 +54,9 @@ struct PillolaFantavoto: View {
     var body: some View {
         Text(Formato.punti(valore))
             .font(.system(size: max(10, diametro * 0.27) * min(scalaTesto, 1.4), weight: .heavy, design: .rounded)).monospacedDigit()
+            // su una riga sola anche con il testo grande: «10,0» (un fantavoto preso) andava a capo dopo la virgola
+            .lineLimit(1)
+            .fixedSize()
             .foregroundStyle(.white)
             .padding(.horizontal, 6).padding(.vertical, 1)
             .background(Color(red: 0.03, green: 0.06, blue: 0.04).opacity(0.92), in: Capsule())

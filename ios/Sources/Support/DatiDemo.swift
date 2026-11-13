@@ -34,6 +34,10 @@ extension FinteServer {
                                                                      : "https://finto-giornata-in-corso.invalid"
         case "oggi-finita", "formazione-finita":
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
+            if schermata == "formazione-finita", let formazione = server.risposte["/api/formazione"] {
+                // a giornata finita il server manda già la formazione della prossima: la testa la scrive sotto «Com'è andata»
+                server.risposte["/api/formazione"] = DatiDemo.formazioneDellaProssima(formazione)
+            }
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
         case "formazione-salvata", "formazione-modificata":
             // la tua scelta già salvata: gli 11 della consigliata («È la consigliata.»)
@@ -331,6 +335,15 @@ private extension LegaDemo {
         f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         return json(["titolari": moduli[0].titolari, "modulo": moduli[0].nome, "salvata": f.string(from: adesso.addingTimeInterval(-3600)),
                      "tipo": "manuale"])
+    }
+
+    /// La formazione della giornata dopo (foto `formazione-finita`), come la manda il server a giornata finita: la stessa consigliata
+    /// con i numeri della prossima giornata, quelli di `prossima` di Oggi.
+    static func formazioneDellaProssima(_ testo: String) -> String {
+        guard var f = (try? JSONSerialization.jsonObject(with: Data(testo.utf8))) as? [String: Any] else { return testo }
+        f["giornata"] = giornata + 1
+        f["giornata_lega"] = giornataLega + 1
+        return json(f)
     }
 
     /// La scelta salvata diversa dalla consigliata (foto `formazione-cambiata`): gli 11 del secondo modulo, salvati un'ora prima.

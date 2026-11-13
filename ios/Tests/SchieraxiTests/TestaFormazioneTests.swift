@@ -28,7 +28,7 @@ struct TestaFormazioneTests {
         #expect(t.giornata == "Giornata 8 · 11ª di Serie A")
         #expect(t.chiude == "Si chiude oggi 14:50")
         #expect(t.chiude == Catalogo.Formazione.siChiude(quando: "oggi 14:50"))
-        #expect(t.manca == "fra 3 h 10 min")
+        #expect(t.manca == "fra 3\u{00A0}h 10\u{00A0}min", "ogni numero attaccato alla sua unità, come la web")
         #expect(t.punti == nil && t.nota == nil && t.comeAndata == nil && t.prossima == nil && !t.inCorso)
     }
 
@@ -37,7 +37,7 @@ struct TestaFormazioneTests {
         let o = try Self.oggi(#"{"giornata": 11, "giornata_lega": 8, "inizio": "2026-10-31 15:00"}"#)
         let t = TestaFormazione.per(oggi: o, formazione: try Self.formazione(), adesso: try Self.adesso())
         #expect(t.chiude == "Si chiude oggi 15:00")
-        #expect(t.manca == "fra 3 h 20 min")
+        #expect(t.manca == "fra 3\u{00A0}h 20\u{00A0}min")
     }
 
     @Test("Scadenza passata: «Formazione chiusa» senza conto; senza date «Calendario non disponibile»")
@@ -135,7 +135,7 @@ struct TestaFormazioneTests {
         #expect(t.prossima == "Giornata 9 · 12ª di Serie A")
         #expect(t.recuperi == nil)
         #expect(t.chiude == "Si chiude ven 6 14:50", "la scadenza della prossima")
-        #expect(t.manca == "fra 6 giorni 3 h")
+        #expect(t.manca == "fra 6\u{00A0}giorni 3\u{00A0}h")
     }
 
     @Test("Finita con la consigliata (o con gli stessi punti): niente confronto; senza punti attesi solo «punti»")

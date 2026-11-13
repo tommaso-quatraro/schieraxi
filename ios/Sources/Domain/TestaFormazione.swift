@@ -94,10 +94,12 @@ extension TestaFormazione {
     }
 
     /// «Si chiude sab 31 14:50» e «fra 3 h 10 min», come `testoConto` della web; scaduta, «Formazione chiusa»; senza una data,
-    /// «Calendario non disponibile».
+    /// «Calendario non disponibile». Ogni numero resta attaccato alla sua unità (spazio che non va a capo, come la web, #286):
+    /// con il testo grande «min» non va da solo sulla riga dopo.
     static func conto(_ o: Oggi, adesso: Date) -> (chiude: String, manca: String?) {
         guard let testo = scadenza(o), let fine = Quando.data(testo) else { return (Catalogo.Oggi.calendarioNo, nil) }
         guard let tempo = Quando.contoAllaRovescia(fino: fine, adesso: adesso) else { return (Catalogo.Formazione.chiusaBreve, nil) }
-        return (Catalogo.Formazione.siChiude(quando: Quando.relativa(fine, adesso: adesso)), Catalogo.Formazione.fra(tempo: tempo))
+        let unito = tempo.replacingOccurrences(of: #"(\d) "#, with: "$1\u{00A0}", options: .regularExpression)
+        return (Catalogo.Formazione.siChiude(quando: Quando.relativa(fine, adesso: adesso)), Catalogo.Formazione.fra(tempo: unito))
     }
 }

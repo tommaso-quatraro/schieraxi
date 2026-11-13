@@ -41,6 +41,10 @@ struct FormazioneView: View {
                             .animation(Tema.morbida, value: vm.formazione != nil)
                             // fotografie `formazione-chiusa` e `formazione-rinvio`: la riga dello stato e il riquadro stanno sotto la piega
                             .demoScorriA("stato", proxy: proxy, schermate: ["formazione-chiusa"], pronto: vm.formazione != nil)
+                            // fotografia `formazione-cambiata`: la riga dello stato a metà schermo, con sopra il campo e sotto «Copia» e
+                            // «L'ho messa» (quando la scelta è letta, perché solo allora la riga c'è)
+                            .demoScorriA("stato", proxy: proxy, schermate: ["formazione-cambiata"], ancora: .center,
+                                         pronto: vm.formazione != nil && vm.sceltaLetta)
                             .demoScorriA("rinvio", proxy: proxy, schermate: ["formazione-rinvio"],
                                          pronto: vm.formazione != nil && oggi.oggi != nil)
                     }
