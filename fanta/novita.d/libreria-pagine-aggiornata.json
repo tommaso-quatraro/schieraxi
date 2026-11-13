@@ -1,0 +1,9 @@
+{
+  "titolo": "Server: aggiornata una libreria per una correzione di sicurezza",
+  "voci": [
+    "Server: aggiornata la libreria che serve a leggere le pagine delle fonti dei dati, con una correzione di sicurezza. Per chi usa l'app non cambia niente."
+  ],
+  "tecnico": [
+    "soupsieve da 3.0.4 a 4.0 per Python 3.12 e oltre (server e sviluppo): chiude una vulnerabilità nota segnalata da pip-audit. beautifulsoup4 resta 4.15.0 (chiede soupsieve>=1.6.1). Per Python < 3.12 resta soupsieve 2.9.2 da requirements-vincoli.in: la 4.0 chiede Python 3.11.5. requirements.txt rigenerato con script/blocca_dipendenze.py --versioni; requirements-dev.txt invariato."
+  ]
+}
