@@ -752,7 +752,8 @@ def fatti_e_attesi(voce: dict) -> dict | None:
     for t in f.get("titolari") or []:
         if not isinstance(t, dict) or "id" not in t:
             continue
-        atteso, preso = mostrati.get(t["id"], (numeri.get(t["id"]) or {}).get("fv_atteso")), (numeri.get(t["id"]) or {}).get("fv")
+        n = numeri.get(t["id"]) or {}
+        atteso, preso = mostrati.get(t["id"], n.get("fv_atteso")), n.get("fv")
         if _numero(atteso) is None or _numero(preso) is None:
             continue
         righe.append({"id": t["id"], "nome": t.get("nome", ""), "ruolo": t.get("ruolo"), "atteso": atteso, "preso": preso,
@@ -760,8 +761,9 @@ def fatti_e_attesi(voce: dict) -> dict | None:
     meglio = sorted((r for r in righe if r["differenza"] > 0), key=lambda r: -r["differenza"])[:MAX_SCARTI]
     peggio = sorted((r for r in righe if r["differenza"] < 0), key=lambda r: r["differenza"])[:MAX_SCARTI]
     frase = _frase_scarti(meglio, peggio)
-    return {"formazione": nome, "atteso": f["atteso"], "fatti": f["reale"], "differenza": round(_letto(f["reale"]) - _letto(f["atteso"]), 1),
-            "meglio": meglio, "peggio": peggio, "testo": str(frase) if frase else None, "frase": frase.json() if frase else None}
+    return {"formazione": nome, "atteso": f["atteso"], "fatti": f["reale"],
+            "differenza": round(_letto(f["reale"]) - _letto(f["atteso"]), 1), "meglio": meglio, "peggio": peggio,
+            "testo": str(frase) if frase else None, "frase": frase.json() if frase else None}
 
 
 COPERTURA_MINIMA = 0.6          # sotto questa quota di giornate dentro la fascia (dichiarata: 8 su 10) il periodo è «andato peggio del previsto»
