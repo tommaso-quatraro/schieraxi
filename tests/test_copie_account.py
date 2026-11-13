@@ -144,3 +144,44 @@ def test_il_giro_serale_chiede_solo_il_proprietario_per_ogni_copia_che_resta(tmp
     monkeypatch.setattr(os, "chmod", chmod)
     backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
     assert chiesti == {p.name: 0o600 for p in cartella.iterdir()}
+
+
+# ---------------------------------------------------------------- orologio indietro, copie datate nel futuro (#690)
+def test_la_copia_appena_scritta_resta_anche_con_l_orologio_indietro(tmp_path):
+    """L'orologio del server torna indietro (o nella cartella ci sono copie datate nel futuro): la copia di adesso ha un nome che
+    viene prima di tutte le altre. Resta lo stesso, e le copie serali restano `tieni`: esce la più vecchia per data del file."""
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    for giorno in range(13, 20):                                     # sette copie con una data dopo quella di adesso
+        copia = cartella / f"account-2026-11-{giorno}.sqlite"
+        copia.write_bytes(b"serale")
+        _data(copia, datetime(2026, 11, giorno, 3, 30))
+    scritta = backup.copia_account(cartella, _origine(tmp_path), tieni=7, adesso=ADESSO)
+    assert scritta == cartella / "account-2026-11-12.sqlite" and scritta.is_file()
+    serali = sorted(p.name for p in cartella.iterdir() if SERALE.fullmatch(p.name))
+    assert serali == ["account-2026-11-12.sqlite"] + [f"account-2026-11-{g}.sqlite" for g in range(14, 20)]
+
+
+def test_le_copie_serali_si_tengono_per_data_del_file_non_per_nome(tmp_path):
+    """Due copie con il nome e la data del file in disaccordo (per esempio una copia rimessa a mano nella cartella): si tiene la
+    più recente per data del file."""
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    nome_vecchio, nome_nuovo = cartella / "account-2026-11-01.sqlite", cartella / "account-2026-11-02.sqlite"
+    for copia, quando in ((nome_vecchio, ADESSO - timedelta(days=1)), (nome_nuovo, ADESSO - timedelta(days=5))):
+        copia.write_bytes(b"serale")
+        _data(copia, quando)
+    backup.copia_account(cartella, _origine(tmp_path), tieni=2, adesso=ADESSO)
+    assert nome_vecchio.exists() and not nome_nuovo.exists()
+
+
+def test_il_comando_dice_copiato_solo_se_la_copia_c_e(multiutente, monkeypatch, capsys):
+    """Se dopo il giro la copia del database degli account non c'è, il comando non dice «copiato»: lo dice come errore."""
+    from fanta import __main__ as cli
+    account.apri().close()                                           # il database degli account, senza utenti
+    sparita = percorsi.cartella_account() / "backup" / "account-2026-11-12.sqlite"
+    monkeypatch.setattr(backup, "copia_account", lambda *a, **k: sparita)
+    with pytest.raises(SystemExit) as uscita:
+        cli._backup_per_utente(7, ADESSO)
+    assert "copiato" not in capsys.readouterr().out
+    assert uscita.value.code and "account-2026-11-12.sqlite" in str(uscita.value.code)

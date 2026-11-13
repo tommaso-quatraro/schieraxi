@@ -296,9 +296,16 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: date
         sorgente.close()
     # Si contano e si tolgono solo le copie serali (data nel nome): le copie «prima della migrazione» stanno nella stessa
     # cartella e, in ordine di nome, vengono dopo quelle con la data; contate qui toglievano posto alle serali, fino a cancellare
-    # quella appena scritta (#653).
-    serali = sorted(p for p in cartella.glob("account-*.sqlite") if COPIA_SERALE.fullmatch(p.name))
-    for vecchia in serali[:-tieni]:
+    # quella appena scritta (#653). La copia appena scritta non si toglie mai e le altre si tengono per data del file, non per
+    # nome: con l'orologio tornato indietro, o con copie datate nel futuro, il nome di adesso viene prima degli altri (#690).
+    altre = []
+    for serale in cartella.glob("account-*.sqlite"):
+        if serale != destinazione and COPIA_SERALE.fullmatch(serale.name):
+            try:
+                altre.append((serale.stat().st_mtime, serale.name, serale))
+            except FileNotFoundError:
+                pass                                 # già tolta (da un altro giro): va bene
+    for _, _, vecchia in sorted(altre, reverse=True)[max(0, tieni - 1):]:
         vecchia.unlink(missing_ok=True)
     scadenza = (adesso - timedelta(days=GIORNI_COPIE_MIGRAZIONE)).timestamp()
     for copia in cartella.glob(COPIE_MIGRAZIONE):
