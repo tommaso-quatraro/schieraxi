@@ -27,7 +27,7 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// Cmd+1 ... Cmd+3 con la tastiera (iPad con tastiera, iPhone con tastiera Bluetooth).
+    /// Cmd+1 ... Cmd+4 con la tastiera (iPad con tastiera, iPhone con tastiera Bluetooth).
     var scorciatoia: KeyEquivalent {
         switch self {
         case .formazione: return "1"
