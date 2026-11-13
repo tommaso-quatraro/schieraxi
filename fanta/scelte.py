@@ -14,6 +14,8 @@ FILE_SCELTE = RADICE / "dati" / "scelte.json"
 MAX_GIORNATE = 60
 TIPO_AUTOMATICA = "automatica"
 NESSUNA, VALIDA, NON_VALIDA = "nessuna", "valida", "non_valida"      # `stato_scelta` di GET /api/formazione
+DA_WEB, DA_APP = "web", "app"          # campo `da` della scelta salvata: da dove arriva il salvataggio (vedi `salva`)
+DA = (DA_WEB, DA_APP)
 _blocco = threading.Lock()
 
 
@@ -128,7 +130,7 @@ def _messa(prima, titolari: list[int], messa: bool | None, adesso: str) -> str |
 
 
 def salva(stagione: str, giornata: int, titolari: list[int], modulo: str, percorso: Path | None = None, tipo: str = "manuale",
-          panchina: list[int] | None = None, era_consigliata: bool = False, messa: bool | None = None) -> dict:
+          panchina: list[int] | None = None, era_consigliata: bool = False, messa: bool | None = None, da: str | None = None) -> dict:
     """Salva la scelta dell'utente. `tipo`: «manuale» (scelta a mano, anche quando non c'è il campo: file vecchi) o «consigliata»
     (ha detto «ho schierato la consigliata»). `panchina` (facoltativa, per le giornate importate): gli id della panchina nell'ordine
     in cui l'hai schierata; senza, il Diario sceglie la panchina da solo. `era_consigliata`: gli 11 erano quelli della consigliata nel
@@ -137,7 +139,9 @@ def salva(stagione: str, giornata: int, titolari: list[int], modulo: str, percor
     consigliata di adesso: se gli 11 sono gli stessi della scelta di prima, che lo aveva, resta vero (la consigliata può essere
     cambiata nel frattempo, la formazione salvata no: per esempio quando si mette o si toglie la spunta «L'ho messa»).
     `messa` («L'ho messa», #616): l'utente dice di aver messo questi 11 nell'app della lega. Nella voce diventa `messa: true` con
-    `messa_il` (quando l'ha detto), scritti solo se vero. None = chi salva non dice niente: vedi `_messa`."""
+    `messa_il` (quando l'ha detto), scritti solo se vero. None = chi salva non dice niente: vedi `_messa`.
+    `da` (#639): da dove arriva il salvataggio, «web» o «app» (l'app nativa); scritto solo se è uno dei due. Lo usa il promemoria
+    (`notifiche._gia_schierato`): l'app per iPhone di oggi non ha la spunta «L'ho messa», quindi solo le scelte della web la chiedono."""
     with _blocco:
         tutte = _tutte(percorso)
         adesso = datetime.now().isoformat(timespec="seconds")
@@ -150,6 +154,8 @@ def salva(stagione: str, giornata: int, titolari: list[int], modulo: str, percor
         messa_il = _messa(prima, voce["titolari"], messa, adesso)
         if messa_il:
             voce["messa"], voce["messa_il"] = True, messa_il
+        if da in DA:
+            voce["da"] = da
         tutte[f"{stagione}/{giornata}"] = voce
         for vecchia in chiavi_vecchie(tutte, MAX_GIORNATE):
             tutte.pop(vecchia, None)

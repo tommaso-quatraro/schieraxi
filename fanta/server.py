@@ -920,6 +920,17 @@ class FormazioneScelta(BaseModel):
     messa: bool | None = None       # «L'ho messa» (#616), solo con `salva`: vero o falso la scrive, senza resta com'era (scelte.salva)
 
 
+def _da_dove(request: Request) -> str | None:
+    """Da dove arriva un salvataggio della formazione (campo `da` della scelta, #639): «app» se porta il token come «Bearer» (l'app
+    nativa, la regola delle rotte degli account), «web» se porta il cookie della sessione o `Sec-Fetch-Mode`, che ogni browser
+    recente manda e l'app nativa no (senza account non c'è il cookie). Altrimenti None: non si sa, e il promemoria resta com'era."""
+    if request.headers.get("authorization", "")[:7].lower() == "bearer ":
+        return scelte.DA_APP
+    if request.cookies.get(rotte_account.COOKIE) or request.headers.get("sec-fetch-mode"):
+        return scelte.DA_WEB
+    return None
+
+
 def _etag_scelta(ctx: Contesto, giornata: int) -> str:
     return versioni.etag_dati(scelte.leggi(consigli.stagione_corrente(), giornata, ctx.scelte))
 
@@ -992,7 +1003,7 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
                 _non_sposta_i_fermi(ctx, regole_, fermi, dati.titolari)
                 scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era,
-                             messa=dati.messa)
+                             messa=dati.messa, da=_da_dove(request))
                 response.headers["ETag"] = _etag_scelta(ctx, r["giornata"])
         return r
     finally:
@@ -1951,11 +1962,6 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     diff = movimenti.differenze(prima, nuove)
     if prima and any(s.giocatori for s in prima.squadre):      # dopo il passaggio di stagione le rose partono vuote: non sono "acquisti"
         movimenti.registra(ctx.movimenti, diff)
-    try:
-        # un osservato lasciato libero: si può prendere
-        notifiche.osservati_liberi(diff, ctx.osservati, manda=_manda(ctx), opzioni=notifiche.impostazioni(ctx.impostazioni_avvisi))
-    except Exception:                                         # un avviso che non parte non deve far fallire l'importazione
-        pass
     threading.Thread(target=_scalda, args=(ctx,), daemon=True).start()     # le rose sono cambiate: la nuova formazione si prepara subito
     return {"squadre_importate": [s.nome for s in lette], "totale_squadre": len(nuove.squadre),
             "avvisi": avvisi + lega.controlla(nuove, r), "mia_squadra": nuove.mia_squadra,

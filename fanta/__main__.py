@@ -367,13 +367,11 @@ def _avvisi_per_utente(funzione: str) -> None:
         esiti, errori = avvisi_utenti.esegui(funzione, db)
     finally:
         db.close()
-    # «pronta» è il comando di cui lo script del server manda l'uscita su ntfy (il canale del proprietario): qui deve uscire vuota
-    uscita = sys.stderr if funzione == "pronta" else sys.stdout
     for nome, righe in esiti.items():
         if righe:
-            print(f"{nome}: {len(righe)} avvisi ({funzione})", file=uscita)
+            print(f"{nome}: {len(righe)} avvisi ({funzione})")
     for nome, errore in errori.items():
-        print(f"{nome}: errore negli avvisi ({funzione}): {errore}", file=uscita)
+        print(f"{nome}: errore negli avvisi ({funzione}): {errore}")
 
 
 def _avvisi_telefono(funzione: str) -> None:
@@ -394,11 +392,6 @@ def _avvisi_telefono(funzione: str) -> None:
             except Exception as e:                 # noqa: BLE001  (i promemoria partono comunque)
                 print(f"avviso prima della scadenza non controllato: {type(e).__name__}")
         righe += getattr(notifiche, funzione)(db, reg, r_ose)
-        if funzione == "cambi":                    # stesso giro dei cambi: reparti della rosa scoperti (una volta sola ciascuno)
-            try:
-                righe += notifiche.copertura(db, reg, r_ose)
-            except Exception as e:                 # noqa: BLE001  (i cambi sono già partiti)
-                print(f"copertura non controllata: {type(e).__name__}")
     finally:
         db.close()
     for riga in righe:
@@ -414,7 +407,8 @@ def cmd_promemoria(a) -> None:
 
 
 def cmd_riepilogo(a) -> None:
-    _avvisi_telefono("riepilogo")
+    """Il riepilogo della giornata non è più un avviso (#676): sta in testa alla Formazione a giornata finita. Il comando resta
+    perché gli script del server già installati lo lanciano: esce subito, senza scrivere niente."""
 
 
 def cmd_affidabilita(a) -> None:
@@ -588,22 +582,8 @@ def cmd_ingresso(a) -> None:
 
 
 def cmd_avviso(a) -> None:
-    """Stampa il testo dell'avviso "formazione pronta" se è il momento (e lo segna come mandato), altrimenti niente."""
-    from datetime import datetime
-    from . import account, archivio, avvisi, consigli, notifiche
-    if account.multiutente():              # ogni utente riceve il suo avviso direttamente (il canale ntfy dello script non è degli utenti)
-        return _avvisi_per_utente("pronta")
-    if not a.prova and notifiche.in_silenzio(datetime.now(), notifiche.impostazioni()):
-        return                                     # ore tranquille: non lo segno come mandato, riprova al giro dopo
-    db = archivio.apri()
-    try:
-        st = consigli.stagione_corrente()
-        r = regole.carica(FILE_REGOLE)
-        avviso = avvisi.da_mandare(db, st, consigli.giornata_da_giocare(db, st, r), datetime.now(), segna=not a.prova, regole=r)
-    finally:
-        db.close()
-    if avviso:
-        print(avviso["testo"])
+    """L'avviso «formazione pronta» non parte più (#676: solo promemoria e cambio della formazione). Il comando resta perché gli
+    script del server già installati lo lanciano e mandano su ntfy quello che stampa: esce subito, senza scrivere niente."""
 
 
 def cmd_taratura_probabili(a) -> None:
@@ -925,10 +905,10 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--dal", help="obbligatoria: data e ora ISO con il fuso (per esempio 2026-12-10T00:00:00+01:00)")
     x.add_argument("--al", help="data e ora ISO con il fuso (di norma adesso)")
     x.set_defaults(f=cmd_ingresso)
-    x = sub.add_parser("riepilogo", help="riepilogo a giornata finita")
+    x = sub.add_parser("riepilogo", help="non fa più niente: il riepilogo non è più un avviso (resta per gli script del server)")
     x.set_defaults(f=cmd_riepilogo)
-    x = sub.add_parser("avviso", help="stampa l'avviso 'formazione pronta' se è il momento (per le notifiche)")
-    x.add_argument("--prova", action="store_true", help="non segnare l'avviso come mandato")
+    x = sub.add_parser("avviso", help="non fa più niente: «formazione pronta» non è più un avviso (resta per gli script del server)")
+    x.add_argument("--prova", action="store_true", help="non usato (resta per gli script del server)")
     x.set_defaults(f=cmd_avviso)
     x = sub.add_parser("taratura-probabili", help="ritara «gioca N%%» con le probabili sulle giornate giocate e lo usa solo se sbaglia meno")
     scelta = x.add_mutually_exclusive_group()

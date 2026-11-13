@@ -62,15 +62,16 @@ def test_titolare_fuori_avvisa_con_il_sostituto_e_non_si_ripete(tmp_path, monkey
     assert len(mandati) == 1                                                          # stesso cambio: una notifica sola
 
 
-def test_se_c_e_gia_la_riga_dei_cambi_il_consiglio_ci_sta_dentro(tmp_path, monkeypatch):
+def test_dopo_il_primo_controllo_il_cambio_pronto_parte_da_solo(tmp_path, monkeypatch):
+    """Castro squalificato dopo il primo controllo: «cambio pronto» da solo (l'avviso «cambi nelle probabili» non c'è più, #676)."""
     prev, mandati, manda = _scena(monkeypatch, stato="titolare")
     f, db = tmp_path / "n.json", _db()
     notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")      # primo controllo: memorizza
     assert mandati == []
     prev.loc[1, "stato"] = "squalificato"
     notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")
-    assert len(mandati) == 1 and mandati[0][0] != "SchieraXI · cambio pronto"
-    assert "Castro: ora squalificato Meglio Bonny" in mandati[0][1]
+    assert len(mandati) == 1 and mandati[0][0] == "SchieraXI · cambio pronto"
+    assert "Il tuo Castro è squalificato. Meglio Bonny" in mandati[0][1]
     notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")
     assert len(mandati) == 1
 
@@ -86,31 +87,13 @@ def test_panchina_e_scelta_salvata(tmp_path, monkeypatch):
     assert len(mandati) == 1 and "Il tuo Castro parte dalla panchina. Meglio Bonny" in mandati[0][1]
 
 
-def test_senza_sostituto_o_con_cambi_spenti_non_manda(tmp_path, monkeypatch):
+def test_senza_sostituto_non_manda_con_la_vecchia_opzione_spenta_si(tmp_path, monkeypatch):
     prev, mandati, manda = _scena(monkeypatch, con_alternativa=False)
     notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "n.json", manda, file_scelte=tmp_path / "s.json")
     assert mandati == []
     prev, mandati, manda = _scena(monkeypatch)
     notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "m.json", manda, {"cambi": False}, file_scelte=tmp_path / "s.json")
-    assert mandati == []
-
-
-def test_se_parte_l_avviso_dei_cambi_e_fallisce_il_cambio_pronto_i_cambi_non_si_rimandano(tmp_path, monkeypatch):
-    prev, mandati, manda = _scena(monkeypatch)                       # Castro è già infortunato fin dall'inizio
-    voce_castro = {"giocatore": {"id": 1, "nome": "Castro"}, "alternativa": {"id": 2, "nome": "Bonny", "ruolo": "A", "punti_attesi": 6.2}}
-    dubbi = []
-    monkeypatch.setattr(da_fare, "_dubbi", lambda *a, **k: dubbi)
-    f, db = tmp_path / "n.json", _db()
-    notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")          # primo controllo: memorizza
-    prev.loc[2, "stato"] = "infortunato"                                                          # cambio per Bonny (avviso dei cambi)
-    dubbi.append(voce_castro)                                                                     # e un cambio pronto che non c'entra con quella riga
-    solo_cambi = lambda titolo, testo, priorita=3, tag="x", **k: (mandati.append(titolo) or True) if "cambio pronto" not in titolo else False     # noqa: E731
-    notifiche.cambi(db, Regole(), ROSE, ADESSO, f, solo_cambi, file_scelte=tmp_path / "s.json")
-    assert len(mandati) == 1 and "cambi nelle probabili" in mandati[0]
-    notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")         # al giro dopo: solo il cambio pronto
-    assert len(mandati) == 2 and mandati[1][0] == "SchieraXI · cambio pronto"
-    notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")
-    assert len(mandati) == 2
+    assert len(mandati) == 1                               # la scelta `cambi` di prima non conta più (#676)
 
 
 def test_nelle_ore_tranquille_riprova_dopo(tmp_path, monkeypatch):

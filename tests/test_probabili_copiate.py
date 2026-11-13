@@ -83,21 +83,27 @@ def test_la_copia_non_fa_partire_falsi_avvisi_di_cambi(db, monkeypatch, tmp_path
     from datetime import datetime
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
     monkeypatch.setattr(consigli, "giornata_da_giocare", lambda d, st, regole=None, adesso=None: 12)
-    monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {"modulo": "4-3-3", "titolari": []})
-
     def previsioni(d, regole, g):
         prob = pd.read_sql_query("SELECT calciatore_id AS id, stato, percentuale, in_dubbio AS dubbio, diffidato FROM probabili "
                                  "WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio'", d, params=(ST, g))
         prob["nome"] = [f"Finto{i}" for i in prob["id"]]
         return prob.set_index("id"), g, not prob.empty
     monkeypatch.setattr(consigli, "previsioni", previsioni)
+
+    def formazione(d, regole, rose, *a, giornata=None, **k):
+        """La consigliata finta: il giocatore 100 se gioca, come la vera lo toglie quando non gioca più (l'avviso dei cambi parte
+        solo quando la consigliata cambia, #676: se la copia fosse memorizzata, il suo passaggio in panchina lo farebbe partire)."""
+        prev, _, _ = previsioni(d, regole, giornata)
+        gioca = 100 in prev.index and prev.at[100, "stato"] not in notifiche.MOTIVI_FUORI
+        return {"modulo": "4-3-3", "titolari": [{"id": 100, "nome": "Finto100"}] if gioca else []}
+    monkeypatch.setattr(consigli, "formazione", formazione)
     mandati = []
     rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(100, "Finto100", "C", "CAS", 10)])], "Mia")
 
     def giro(ora):
         return notifiche.cambi(db, Regole(), rose, adesso=ora, file_stato=tmp_path / "n.json",
                                manda=lambda *a, **k: mandati.append(a) or True, opzioni={"cambi": True},
-                               file_osservati=tmp_path / "o.json", file_scelte=tmp_path / "s.json")
+                               file_scelte=tmp_path / "s.json")
     _giornata_11_e_copia(db, monkeypatch)
     giro(datetime(2026, 11, 9, 9, 0))
     _leggi(db, monkeypatch, 12, _righe(12, cambiati=6), "2026-11-09T13:03:00")    # il giocatore 100 passa in panchina

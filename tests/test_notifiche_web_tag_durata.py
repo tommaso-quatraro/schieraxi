@@ -5,10 +5,9 @@ import json
 from datetime import datetime, timedelta
 from types import SimpleNamespace as NS
 
-import pandas as pd
 import pytest
 
-from fanta import consigli, notifiche, push
+from fanta import notifiche, push
 from fanta.regole import Regole
 from test_notifiche import ROSE, _db, _finto
 
@@ -57,16 +56,17 @@ def _registro():
     return inviati, lambda titolo, testo, priorita=3, tag="x", **k: inviati.append(k) or True
 
 
-def test_i_cambi_nelle_probabili_valgono_fino_alla_scadenza(monkeypatch, tmp_path):
-    """Due ore e mezza prima della scadenza (18:30) Castro risulta infortunato: l'avviso vale fino alla chiusura della formazione."""
-    _finto(monkeypatch)
-    prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1])
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+def test_i_cambi_della_formazione_valgono_fino_alla_scadenza(monkeypatch, tmp_path):
+    """Due ore e mezza prima della scadenza (18:30) Castro risulta infortunato e la consigliata mette Bonny: l'avviso vale fino alla
+    chiusura della formazione."""
+    from test_notifiche import ROSE_DUE, _consigliata_che_toglie_chi_non_gioca, _due
+    prev = _due(monkeypatch)
+    _consigliata_che_toglie_chi_non_gioca(monkeypatch, prev)
     inviati, manda = _registro()
     db, f, adesso = _db("2026-10-28 18:30"), tmp_path / "n.json", datetime(2026, 10, 28, 16, 0)
-    assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, {"cambi": True}) == []     # primo controllo: solo memorizza
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda, {}) == []     # primo controllo: solo memorizza
     prev.loc[1, "stato"] = "infortunato"
-    assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, {"cambi": True})
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda, {})
     assert inviati and all(k == {"vale_per": timedelta(hours=2, minutes=30)} for k in inviati)
 
 

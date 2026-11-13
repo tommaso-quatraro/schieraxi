@@ -36,8 +36,8 @@
     "en": "Alerts on this device"
   },
   "imp.avvisi_qui_aiuto": {
-    "it": "Il promemoria della scadenza, i cambi della formazione consigliata e gli altri avvisi, se non li avevi spenti",
-    "en": "The deadline reminder, changes to the suggested lineup and the other alerts, unless you had turned them off"
+    "it": "Due avvisi: un promemoria prima della scadenza, se non hai spuntato «L'ho messa», e un avviso quando cambia la formazione da schierare",
+    "en": "Two alerts: a reminder before the deadline, if you haven't ticked «I've entered it», and an alert when the lineup to field changes"
   },
   "imp.avvisi_controllo": {
     "it": "Controllo gli avvisi di questo dispositivo…",
