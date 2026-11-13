@@ -112,6 +112,9 @@ utenti aggiornati), poi il solo archivio dalla più recente che lo contiene (si 
 8. **Sistema**: servizio systemd (`script/server/fantacalcio.service`, il drop-in delle variabili `script/server/ambiente.conf.esempio`
    più quelli del gestore), nginx, certificato, crontab
    (`script/server/LEGGIMI.md`), chiave delle firme e canale degli avvisi in `~/.config/schieraxi/`.
+   Fuso orario: l'app usa da sola l'ora italiana (Europe/Rome) qualunque sia quello del sistema (`fanta/fuso.py`) e la salute
+   avvisa se non ci riesce. Per avere in ora italiana anche le righe dei registri scritte dagli script:
+   `sudo timedatectl set-timezone Europe/Rome` (controllo: `timedatectl`, riga «Time zone»).
 
 ## Spostare le variabili del servizio
 
