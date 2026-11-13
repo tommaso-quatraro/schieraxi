@@ -28,11 +28,12 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid, parseaddr
 from pathlib import Path
 
-from . import percorsi, registro
+from . import fuso, percorsi, registro
 
 MODI = ("spento", "log", "smtp", "resend")
 PREDEFINITO = "spento"
@@ -135,6 +136,14 @@ def _evento(tipo: str, **campi) -> None:
 
 
 # ---------------------------------------------------------------- modelli di email
+def ora_italiana(istante: datetime) -> str:
+    """L'ora di un evento nel testo di un'email: ora italiana, senza sigle («15/06/2027 alle 21:30», #665). Le ore degli account
+    sono in UTC: un'ora senza fuso si intende in UTC."""
+    if istante.tzinfo is None:
+        istante = istante.replace(tzinfo=timezone.utc)
+    return istante.astimezone(fuso.FUSO).strftime("%d/%m/%Y alle %H:%M")
+
+
 def _firma() -> str:
     return "\n\nSchieraXI\nSe non sei stato tu, ignora questo messaggio: non succede niente."
 

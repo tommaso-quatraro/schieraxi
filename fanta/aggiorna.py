@@ -556,6 +556,9 @@ class Aggiornamento:
                 self._passo(f"quotazioni {precedente.codice}", lambda p=precedente: self.quotazioni(p), "fantacalcio")
         self._passo("controlli", self.controlli)
         self._scrivi_a_fine()
+        if {"calendario", "voti"} <= set(self.riusciti):
+            # risultati e voti sono arrivati lo stesso: un giro della sera fallito prima non è più un guasto (#661, revisione #700)
+            archivio.togli_errore(self.db, archivio.PASSO_SERA)
         errori = json.dumps(self.errori, ensure_ascii=False)
         if any(n != "controlli" for n in self.riusciti):
             archivio.segna(self.db, "aggiornamento", _ora(), errori)
