@@ -52,18 +52,18 @@ enum Aggiornamento {
         if Demo.attivo { return }
         if let stato: StatoAvvisi = try? await ServerCorrente.condiviso.get("/api/avvisi", snake: false) {
             ArchivioOreTranquille.salva(stato.impostazioni.oreTranquille)
-            ArchivioPromemoria.salva(sessanta: stato.impostazioni.promemoria_60, quindici: stato.impostazioni.promemoria_15)
         }
     }
 
-    /// I promemoria di un'ora e di un quarto d'ora prima della scadenza di questa giornata (solo quelli accesi negli avvisi).
+    /// I promemoria di un'ora e di un quarto d'ora prima della scadenza di questa giornata (con «Avvisi su questo dispositivo» acceso).
     static func programmaPromemoria(_ oggi: Oggi) async {
         if let inizio = Quando.data(oggi.chiusura), let nome = oggi.nomeGiornata {
             await Notifiche.programma(giornata: nome, inizio: inizio, modulo: oggi.formazione?.modulo)
         }
     }
 
-    /// Dopo che un promemoria si è riacceso negli avvisi: lo rimette in programma con l'ultima giornata salvata, senza rete.
+    /// Dopo che gli avvisi si sono riaccesi o sono cambiate le ore tranquille: rimette in programma i promemoria con l'ultima giornata
+    /// salvata, senza rete.
     /// Senza una copia salvata ci pensa la prossima lettura di Oggi.
     static func riprogrammaPromemoria() async {
         if Demo.attivo { return }

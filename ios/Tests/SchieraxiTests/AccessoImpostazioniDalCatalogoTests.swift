@@ -272,9 +272,9 @@ struct AccessoImpostazioniDalCatalogoTests {
     @MainActor
     @Test("Aspetto: la dimensione del testo si cambia in «Impostazioni > Schermo e luminosità», giusto anche sull'iPad (#563)")
     func aspettoDimensioneDelTesto() {
-        #expect(AspettoView.spiegaTema.hasPrefix(Catalogo.Asp.autoSpiega + " "))
-        #expect(AspettoView.spiegaTema.contains("Impostazioni > Schermo e luminosità > Dimensione del testo"))
-        #expect(!AspettoView.spiegaTema.contains("iPhone"), "sull'iPad le Impostazioni non sono «di iPhone»")
+        #expect(AspettoSezione.spiegaTema.hasPrefix(Catalogo.Asp.autoSpiega + " "))
+        #expect(AspettoSezione.spiegaTema.contains("Impostazioni > Schermo e luminosità > Dimensione del testo"))
+        #expect(!AspettoSezione.spiegaTema.contains("iPhone"), "sull'iPad le Impostazioni non sono «di iPhone»")
     }
 }
 

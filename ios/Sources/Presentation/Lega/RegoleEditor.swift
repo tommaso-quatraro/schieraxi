@@ -301,8 +301,7 @@ struct RegoleEditorView: View {
                 .demoScorriA("rinviate", proxy: proxy, schermate: ["lega-regole"], inFondo: true, pronto: vm.caricato)
             }
         }
-        .ricercaGlobale()   // sull'iPad lente e ingranaggio stanno sulla pagina a destra, non nell'elenco
-        .titoloPagina(Catalogo.Lega.voceRegole)
+        .titoloPagina(Catalogo.Imp.regole)
         .task { await vm.carica() }
         // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga)
         // e tornando indietro si chiede cosa fare, invece di perderle in silenzio.

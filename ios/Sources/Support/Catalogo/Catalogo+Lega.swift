@@ -6,32 +6,14 @@ extension Catalogo {
         /// `lega.voce_squadre`
         static let voceSquadre = "Squadre e rose"
 
-        /// `lega.voce_squadre_sub`
-        static let voceSquadreSub = "La tua squadra, le altre e le loro rose"
-
         /// `lega.voce_miasquadra`
         static let voceMiasquadra = "La mia squadra e rosa"
-
-        /// `lega.voce_miasquadra_sub`
-        static let voceMiasquadraSub = "La tua squadra e i suoi giocatori"
 
         /// `lega.voce_importa`
         static let voceImporta = "Aggiorna le rose"
 
         /// `lega.voce_importa_sub`
         static let voceImportaSub = "Il file Excel o il testo preso da Leghe"
-
-        /// `lega.voce_diario`
-        static let voceDiario = "Diario delle giornate"
-
-        /// `lega.voce_diario_sub`
-        static let voceDiarioSub = "La tua formazione contro quella del modello"
-
-        /// `lega.voce_regole`
-        static let voceRegole = "Regole"
-
-        /// `lega.voce_regole_sub`
-        static let voceRegoleSub = "Punteggi, modificatore difesa, moduli, panchina, rosa"
 
         /// `lega.voce_stagione`
         static let voceStagione = "Nuova stagione"

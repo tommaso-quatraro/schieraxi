@@ -91,30 +91,6 @@ extension ImpostazioniAvvisi {
     }
 }
 
-/// Le scelte di «Avviso se il consiglio cambia» (stessi testi della web: `avv.prima*` del catalogo comune).
-enum AvvisoPrima {
-    static let titolo = Catalogo.Avv.prima
-    static let aiuto = Catalogo.Avv.primaAiuto
-    static let predefinito = 60
-    static let valori = [0, 30, 60, 90]
-
-    static func testo(_ minuti: Int) -> String {
-        switch minuti {
-        case 0: return Catalogo.Avv.prima0
-        case 30: return Catalogo.Avv.prima30
-        case 60: return Catalogo.Avv.prima60
-        case 90: return Catalogo.Avv.prima90
-        default: return minuti > 0 ? "\(minuti) minuti prima" : Catalogo.Avv.prima0
-        }
-    }
-
-    /// Le scelte da mostrare: le quattro di sempre, più il valore salvato se un server più nuovo ne usa uno diverso.
-    static func scelte(attuale: Int?) -> [Int] {
-        guard let a = attuale, !valori.contains(a) else { return valori }
-        return (valori + [a]).sorted()
-    }
-}
-
 struct StatoAvvisi: Decodable {
     let impostazioni: ImpostazioniAvvisi
     let canale: Bool?

@@ -60,32 +60,22 @@ enum ArchivioOreTranquille {
     }
 }
 
-/// Quali promemoria locali (un'ora e 15 minuti prima) l'utente vuole: gli stessi interruttori degli avvisi del server
-/// («Promemoria un'ora prima», «Promemoria 15 minuti prima»). Prima il telefono li mandava comunque, anche spenti.
-enum ArchivioPromemoria {
-    private static let chiave60 = "promemoria_60"
-    private static let chiave15 = "promemoria_15"
+/// «Avvisi su questo dispositivo» (Impostazioni > Avvisi, come la web): un interruttore solo per i promemoria locali (un'ora e 15
+/// minuti prima) e l'avviso quando cambia la consigliata. Senza una scelta salvata è acceso, come prima: chi aveva il permesso
+/// continua a ricevere i promemoria. Le scelte per singolo avviso del server (`promemoria_60`, `promemoria_15`) non si usano più (#693).
+enum ArchivioAvvisiQui {
+    static let chiave = "avvisiQui"
 
-    /// I minuti dei promemoria accesi; senza scelta salvata tutti e due (come prima).
+    static func acceso(_ memoria: UserDefaults = .standard) -> Bool {
+        memoria.object(forKey: chiave) as? Bool ?? true
+    }
+
+    static func salva(_ acceso: Bool, _ memoria: UserDefaults = .standard) {
+        memoria.set(acceso, forKey: chiave)
+    }
+
+    /// I minuti dei promemoria da mandare: tutti e due con gli avvisi accesi, nessuno spenti.
     static func minutiAttivi(_ memoria: UserDefaults = .standard) -> Set<Int> {
-        var attivi: Set<Int> = []
-        if memoria.object(forKey: chiave60) as? Bool ?? true { attivi.insert(60) }
-        if memoria.object(forKey: chiave15) as? Bool ?? true { attivi.insert(15) }
-        return attivi
-    }
-
-    static func salva(sessanta: Bool, quindici: Bool, _ memoria: UserDefaults = .standard) {
-        memoria.set(sessanta, forKey: chiave60)
-        memoria.set(quindici, forKey: chiave15)
-    }
-}
-
-extension ImpostazioniAvvisi {
-    /// I minuti dei promemoria accesi (60 e/o 15).
-    var promemoriaAccesi: Set<Int> {
-        var accesi: Set<Int> = []
-        if promemoria_60 { accesi.insert(60) }
-        if promemoria_15 { accesi.insert(15) }
-        return accesi
+        acceso(memoria) ? [60, 15] : []
     }
 }

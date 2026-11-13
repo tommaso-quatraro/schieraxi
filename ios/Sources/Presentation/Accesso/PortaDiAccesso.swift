@@ -132,15 +132,9 @@ struct ContenitoreApp: View {
         case .importaRose:
             nav.sezione = modello.lega.apri([.importa])
         case .squadre(let nome):
-            var pagine: [PaginaLega] = [.squadre]
-            if let nome { pagine.append(.rosa(nome)) }
-            nav.sezione = modello.lega.apri(pagine)
+            nav.sezione = modello.lega.apri(nome.map { [.rosa($0)] } ?? [.squadre])
         case .impostazioni:
-            // il foglio della guida si sta chiudendo: si aspetta un attimo prima di aprire quello delle Impostazioni
-            Task {
-                try? await Task.sleep(nanoseconds: 600_000_000)
-                nav.impostazioniAperte = true
-            }
+            nav.sezione = .impostazioni
         case .collegaWidget:
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)

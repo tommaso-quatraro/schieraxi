@@ -1,22 +1,30 @@
 import SwiftUI
 
-/// Logica della ricerca di un giocatore per nome (la lente accanto al titolo di ogni schermata).
+/// Logica della ricerca di un giocatore per nome (la voce Cerca della barra), come la web: al massimo 12 risultati da
+/// `/api/giocatori`, con ruolo, nome, club e quotazione.
 @MainActor
 final class RicercaViewModel: ViewModelBase {
+    /// Quanti risultati, come `cercaGiocatori(q, 12)` della web.
+    static let limite = 12
+    /// Sotto le due lettere non si cerca: lo si dice (`avv.scrivi_almeno_due`).
+    static let testoVuoto = Catalogo.Avv.scriviAlmenoDue
+    /// Nessun risultato (`avv.nessun_giocatore_trovato`).
+    static let testoNessuno = Catalogo.Avv.nessunGiocatoreTrovato
+
     private let server: any ServerClient
     @Published var testo = ""
     @Published var risultati: [GiocatoreBreve] = []
     @Published var errore: String?
     @Published var cercando = false
-    /// Fantavoto atteso e «gioca N%» dei risultati, dall'elenco largo della giornata.
-    let previsioni: PrevisioniRicerca
 
     init(server: any ServerClient) {
         self.server = server
-        previsioni = PrevisioniRicerca(server: server)
         super.init()
-        osserva(previsioni)
         if Demo.attivo, let t = Demo.argomento("DEMO_CERCA") { testo = t }   // solo per le fotografie del simulatore
+    }
+
+    static func percorso(_ scritto: String) -> String {
+        "/api/giocatori?limite=\(limite)&q=\(IndirizzoServer.codifica(scritto))"
     }
 
     /// Cerca dopo una breve pausa: se si continua a scrivere, la vista annulla questa ricerca (`.task(id:)`) e ne parte una nuova.
@@ -30,11 +38,10 @@ final class RicercaViewModel: ViewModelBase {
         }
         try? await Task.sleep(nanoseconds: 300_000_000)
         if Task.isCancelled { return }
-        previsioni.avvia()
         cercando = true
         defer { cercando = false }
         do {
-            let trovati: [GiocatoreBreve] = try await server.get("/api/giocatori?limite=25&q=\(IndirizzoServer.codifica(scritto))")
+            let trovati: [GiocatoreBreve] = try await server.get(Self.percorso(scritto))
             if Task.isCancelled { return }
             risultati = trovati
             errore = nil

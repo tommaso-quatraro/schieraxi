@@ -26,9 +26,9 @@ struct NomeConAiuto: View {
 #Preview("Nome con riga d'aiuto") {
     List {
         Toggle(isOn: .constant(true)) {
-            NomeConAiuto(TestiImpostazioni.cambi, aiuto: TestiImpostazioni.cambiAiuto)
+            NomeConAiuto(Catalogo.Imp.avvisiQui, aiuto: Catalogo.Imp.avvisiQuiAiuto)
         }
-        Toggle(isOn: .constant(false)) { NomeConAiuto(TestiImpostazioni.promemoria15) }
+        Toggle(isOn: .constant(false)) { NomeConAiuto(Catalogo.Avv.oreTranq) }
     }
     .dynamicTypeSize(.accessibility1)
 }
