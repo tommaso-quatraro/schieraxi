@@ -113,6 +113,49 @@ def test_esito_chiave_mancante_e_un_problema(cp, riga, chiave):
     assert ok is False and any(chiave in p for p in problemi), problemi
 
 
+def test_l_elemento_senza_i_valori_della_pagina(cp):
+    """Nel selettore di axe restano tag, id, classi e nomi degli attributi; i valori (un nome di squadra o di persona in
+    un'etichetta, un indirizzo) no: il testo finisce in un'issue pubblica."""
+    assert cp.elemento('#foglio-contenuto > .pulsanti > button[data-sostituisci="5520"]') == \
+        "#foglio-contenuto > .pulsanti > button[data-sostituisci]"
+    assert cp.elemento("li:nth-child(2) > button[aria-label='Squadra Inventata FC']") == "li:nth-child(2) > button[aria-label]"
+    assert cp.elemento('a[href="https://prova.esempio.invalid/x?y=1"]') == "a[href]"
+    assert cp.elemento("html[lang=it]") == "html[lang]"
+    assert len(cp.elemento("div > " * 60 + "span")) <= 121
+
+
+def test_esito_dice_regola_ed_elemento_dai_file_di_axe(cp, riga, tmp_path, monkeypatch):
+    """#697: l'issue diceva solo «1 violazione grave di accessibilità», senza la regola. Ora l'esito (artifact e issue) dice la
+    regola di axe e gli elementi, letti dai file axe-<scena>-<larghezza>-<tema>.json di foto.py; senza il file, almeno le regole
+    della riga del riepilogo."""
+    cartella = tmp_path / "misure"
+    cartella.mkdir()
+    (cartella / "riepilogo.txt").write_text(
+        riga("scheda", 390, "chiaro", 1, False, 0, ["color-contrast"]) + "\n"
+        + riga("rosa", 1440, "scuro", 1, False, 0, ["aria-allowed-attr"]) + "\n"
+        + riga("diario", 390, "chiaro", 0, False, 0) + "\n", encoding="utf-8")
+    (cartella / "axe-scheda-390-chiaro.json").write_text(json.dumps([
+        {"id": "color-contrast", "impact": "serious", "help": "contrasto", "n": 4, "nodi": [
+            {"target": '#foglio-contenuto > .pulsanti > button[data-sostituisci="5520"]', "sommario": "2.01"},
+            {"target": "button[aria-label='Squadra Inventata FC']", "sommario": "2.1"},
+            {"target": ".chip", "sommario": "3"}]},
+        {"id": "region", "impact": "moderate", "help": "regioni", "n": 1, "nodi": [{"target": ".x", "sommario": ""}]}]), encoding="utf-8")
+    (cartella / "axe-diario-390-chiaro.json").write_text("[]", encoding="utf-8")
+    uscita = tmp_path / "uscita.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(uscita))
+    assert cp.main(["esito", str(cartella)]) == 0
+    righe = (cartella / "esito.txt").read_text(encoding="utf-8").splitlines()
+    assert righe == [
+        "non passa",
+        "- scheda 390 chiaro: 1 violazione grave di accessibilità (color-contrast su #foglio-contenuto > .pulsanti > "
+        "button[data-sostituisci], button[aria-label] e altri 2)",
+        "- rosa 1440 scuro: 1 violazione grave di accessibilità (aria-allowed-attr)"]
+    dettaglio = next(r for r in uscita.read_text(encoding="utf-8").splitlines() if r.startswith("dettaglio="))
+    assert "color-contrast su #foglio-contenuto" in dettaglio and "aria-allowed-attr" in dettaglio
+    assert len(dettaglio.split("; ")) == 2                # segnala fa una voce dell'issue per ogni «; »
+    assert "5520" not in dettaglio and "Inventata" not in dettaglio and "region" not in dettaglio
+
+
 def test_nessun_testo_fra_i_job_contiene_la_parola_dell_utente(cp, riga, tmp_path, monkeypatch):
     """GitHub scarta le uscite di un job che contengono un segreto: «collaudo» è il nome dell'account (PROVA_UTENTE). Nessun
     testo che passa fra i job (esito, dettaglio) può contenerlo, sennò l'issue P1 resta senza dettagli."""
