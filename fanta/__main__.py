@@ -101,17 +101,17 @@ def cmd_importa(a) -> None:
         if not percorso.exists():
             sys.exit(f"File non trovato: {percorso}")
         griglie = rose.leggi_griglie(percorso)
-    if a.sostituisci_tutto:                     # Excel letto solo in parte: toglierebbe anche le squadre dei fogli non letti
-        try:
-            rose.controlla_sostituzione(griglie)
-        except ValueError as e:
-            sys.exit(str(e))
     avvisi_lettura: list[str] = [x for x in [rose.avviso_fogli(griglie)] if x]
     lette = rose.estrai(griglie, indice, r.rosa, avvisi_lettura)
     if not lette:
         sys.exit(rose.NESSUNA_ROSA)
     precedenti = lega.carica(FILE_ROSE)
     lega.nomi_rinominati(lette, precedenti)
+    if a.sostituisci_tutto:                     # Excel letto solo in parte: non toglie una squadra che può stare in un foglio non letto
+        try:
+            rose.controlla_sostituzione(griglie, {s.nome for s in lette}, [s.nome for s in precedenti.squadre] if precedenti else [])
+        except ValueError as e:
+            sys.exit(str(e))
     nuove = lega.da_import(lette, precedenti, sostituisci_tutto=a.sostituisci_tutto)
     lega.salva(nuove, FILE_ROSE, copia_di_riserva=True)
     diff = movimenti.differenze(precedenti, nuove)

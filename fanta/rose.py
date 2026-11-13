@@ -18,7 +18,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .frasi import F
+from .frasi import F, Frase
 from .nomi import Esito, Indice, normalizza
 from .regole import RUOLI
 
@@ -204,18 +204,19 @@ def _non_letti(griglie) -> int:
     return griglie.nel_file - len(griglie) if isinstance(griglie, Fogli) else 0
 
 
-def avviso_fogli(griglie) -> str | None:
-    """L'avviso per un Excel con più fogli di quelli che leggo (#662), None per gli altri file."""
+def avviso_fogli(griglie) -> Frase | None:
+    """L'avviso per un Excel con più fogli di quelli che leggo (#662), None per gli altri file. I fogli non letti possono
+    essere rose o no (listone, calendario...): non si sa, e l'avviso non lo dà per certo."""
     if _non_letti(griglie) <= 0:
         return None
-    return (f"Ho letto solo i primi {len(griglie)} fogli su {griglie.nel_file}: le squadre degli altri fogli non ci sono. "
-            "Togli dal file i fogli che non sono rose, oppure carica gli altri fogli in un secondo file.")
+    return F("rose.fogli_non_letti", letti=len(griglie), totale=griglie.nel_file)
 
 
-def controlla_sostituzione(griglie) -> None:
-    """«Togli le squadre che non sono nel file» con un Excel letto solo in parte toglierebbe anche le squadre dei fogli non
-    letti: ValueError con il motivo, niente si salva."""
-    if _non_letti(griglie) > 0:
+def controlla_sostituzione(griglie, lette: set[str], salvate: list[str]) -> None:
+    """«Togli le squadre che non sono nel file» con un Excel letto solo in parte: se una squadra già salvata (`salvate`) non è
+    tra quelle lette (`lette`, con i nomi dell'app) potrebbe essere in un foglio non letto, e verrebbe tolta: ValueError con il
+    motivo, niente si salva. Se tutte le salvate sono tra le lette non si toglie niente e si va avanti come sempre."""
+    if _non_letti(griglie) > 0 and any(nome not in lette for nome in salvate):
         raise ValueError(f"Il file ha {griglie.nel_file} fogli e ne leggo al massimo {len(griglie)}: non tolgo le squadre che "
                          "non sono nel file, perché potrebbero essere nei fogli che non ho letto. Togli dal file i fogli che "
                          "non sono rose e riprova.")

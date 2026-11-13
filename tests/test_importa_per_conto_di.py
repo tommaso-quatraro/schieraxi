@@ -7,7 +7,7 @@ import time
 import pytest
 
 from fanta import __main__ as cli
-from fanta import account, blocco, percorsi, server
+from fanta import account, blocco, percorsi, rose, server
 from fanta import contesto
 from test_account_http import PASSWORD, cliente
 
@@ -172,6 +172,18 @@ def test_sostituisci_tutto_lascia_copie_datate(mondo):
     assert "Altra5" in copie[-1].read_text(encoding="utf-8")                      # l'ultima e' lo stato prima dell'ultima sostituzione
     capo.post(f"/api/admin/utenti/{amico[1]}/rose", json={"testo": ROSE})        # senza sostituire: nessuna copia in piu'
     assert len(list(cartella.glob("rose-*.json"))) == server.COPIE_DELLE_ROSE
+
+
+def test_excel_letto_in_parte_rifiutato_non_consuma_le_copie_datate(mondo):
+    """Un Excel con più fogli del tetto e «sostituisci tutto» che toglierebbe una squadra salvata: rifiutato PRIMA della copia
+    datata, altrimenti ogni tentativo aggiungerebbe una copia uguale e toglierebbe la più vecchia delle cinque vere."""
+    capo, amico = mondo["capo"][0], mondo["amico"]
+    assert capo.post(f"/api/admin/utenti/{amico[1]}/rose", json={"testo": ROSE}).status_code == 200
+    cartella = contesto.cartella_utente(amico[1]) / "rose-prima"
+    griglie = rose.Fogli([("Altra", [["Altra"], ["A", "Kean", 30]])], nel_file=12)     # «Squadra dell'amico» non letta
+    with pytest.raises(ValueError, match="12 fogli"):
+        server.importa_per_conto_di(amico[1], griglie, True, None)
+    assert list(cartella.glob("rose-*.json")) == []
 
 
 def test_tetto_di_frequenza(mondo, monkeypatch):

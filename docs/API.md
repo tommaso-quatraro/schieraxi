@@ -401,8 +401,10 @@ C;Kone M.;Roma;9
   il giocatore è `da_controllare`, con l'avviso «ruolo diverso: indicato X, nel listone Y» / «squadra diversa: indicata X, nel listone Y»,
   oppure un dubbio tra gli omonimi con quello che ha ruolo e squadra giusti per primo.
 - Stessi tetti del testo incollato (200 mila caratteri, 1500 righe) e stesse risposte dell'anteprima.
-- Excel con più di 10 fogli: si leggono i primi 10 e un avviso in cima agli `avvisi` lo dice («Ho letto solo i primi 10 fogli su 12: …»), anche
-  nell'importazione; con `sostituisci_tutto` anteprima e importazione rispondono `400` con il motivo (toglierebbero anche le squadre dei fogli non letti).
+- Excel con più di 10 fogli: si leggono i primi 10 e un avviso in cima agli `avvisi` lo dice («Ho letto solo i primi 10 fogli su 12: se negli
+  altri ci sono delle rose, non le ho lette. …», chiave `rose.fogli_non_letti` con `letti` e `totale`), anche nell'importazione. Con
+  `sostituisci_tutto` anteprima e importazione rispondono `400` con il motivo solo se una squadra già salvata non è tra quelle lette (potrebbe
+  stare in un foglio non letto e verrebbe tolta); se ci sono tutte (per esempio 10 fogli di rose più listone, calendario e classifica) si va avanti.
 - in tutto: `avvisi` (lettura del file, rose incomplete o con ruoli che non tornano, giocatori in più squadre, «una sola squadra»), `mia_squadra`
   (suggerita: quella già scelta se è tra le lette o se resta com'era perché il file ha solo le rose degli altri, oppure l'unica letta;
   altrimenti `null`; può quindi non essere tra `squadre`: il client la offre comunque nella scelta), `totale_squadre` (dopo l'importazione),
