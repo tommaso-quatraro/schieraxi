@@ -2,7 +2,7 @@
   "titolo": "Importazione delle rose: due omonimi restano tutti e due, e un Excel con tanti fogli non si taglia in silenzio",
   "voci": [
     "Impostazioni, Aggiorna le rose (e primo avvio): due giocatori con lo stesso cognome nella stessa rosa restano tutti e due. Nel controllo delle rose ognuno ha la sua scelta: scegliere chi è uno non cambia l'altro.",
-    "Excel con più di 10 fogli (per esempio un foglio per squadra in una lega da 12): il controllo delle rose dice che ho letto solo i primi 10 fogli. Con «Togli le squadre che non sono nel file» l'importazione si ferma e lo spiega, così le squadre degli altri fogli non vengono tolte."
+    "Excel con più di 10 fogli: il controllo delle rose dice che ho letto solo i primi 10. Con «Togli le squadre che non sono nel file» l'importazione si ferma, così le squadre degli altri fogli non si perdono."
   ],
   "tecnico": [
     "Anteprima delle rose: ogni giocatore ha `riga` (posizione nella squadra come letta dal file, da 0). `correzioni` accetta `riga` facoltativa: vale solo per quella riga (che deve avere ancora quel testo, altrimenti 400) e vince sulle scelte senza riga. Senza riga (app già installate) la scelta vale per le righe con quel testo che non sono sicure (tutte, se lo sono tutte), e se l'id è già la proposta di una di loro solo per quelle (prima la conferma della proposta della prima riga faceva diventare la seconda lo stesso giocatore, poi tolto come doppione).",
