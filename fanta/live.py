@@ -2,10 +2,11 @@
 
 Un SOLO raccoglitore nel servizio (un thread) interroga la fonte e riempie una cache in memoria condivisa da tutti gli utenti:
 - lavora solo nelle finestre di gioco (da 10 minuti prima del calcio d'inizio a 20 minuti dopo la fine stimata) e smette di
-  chiedere per le partite già segnate come finite o rinviate;
+  chiedere per le partite già segnate come finite o rinviate (una rinviata che il calendario rimette più avanti si segue di nuovo);
 - al massimo UNA richiesta al minuto in totale (qualunque fonte, qualunque numero di utenti o di schede aperte);
-- se la fonte sbaglia, aspetta sempre di più (fino a 10 minuti) e dopo 3 errori di fila prova il ripiego (calendario di
-  Fantacalcio.it) per 10 minuti, poi riprova la fonte principale;
+- se la fonte sbaglia (anche una risposta senza nessuna delle partite seguite), aspetta sempre di più (fino a 10 minuti) e dopo 3
+  errori di fila prova il ripiego (calendario di Fantacalcio.it) per 10 minuti, poi riprova la fonte principale; ogni lettura non
+  riuscita lascia una riga nel registro con il nome della fonte;
 - le richieste degli utenti leggono solo la cache: nessuna richiesta esterna parte mai da un utente;
 - la cache si salva anche su file (`dati/live.json`, formato in `docs/LIVE.md`): un riavvio del servizio dopo la partita non fa
   sparire il risultato finale (1/11/2026: Juventus-Napoli senza punteggio fino al mattino dopo un riavvio alle 23);
@@ -16,6 +17,7 @@ Le funzioni di lettura sono pure (testate su estratti in `tests/dati/`); il temp
 from __future__ import annotations
 
 import json
+import logging
 import re
 import threading
 import time
@@ -49,6 +51,7 @@ ERRORI_PER_RIPIEGO = 3
 DURATA_RIPIEGO = 600.0
 MAX_EVENTI = 20                       # per partita
 MAX_BYTE = 8000                       # tetto della risposta: oltre, si tolgono prima gli assist, poi i marcatori più vecchi
+LOG = logging.getLogger(__name__)
 
 STATI = ("da_giocare", "primo_tempo", "intervallo", "secondo_tempo", "in_corso", "finita", "rinviata", "sospesa")
 IN_GIOCO = ("primo_tempo", "intervallo", "secondo_tempo", "in_corso")
@@ -97,6 +100,35 @@ def data_per_fonte(data: str) -> str | None:
     """Giorno (UTC, AAAAMMGG) da chiedere alla fonte per una partita con questa data italiana."""
     i = _inizio(data)
     return None if i is None else i.replace(tzinfo=FUSO).astimezone(timezone.utc).strftime("%Y%m%d")
+
+
+def rimessa_dopo(visto: str | None, data: str | None) -> bool:
+    """True se la finestra di gioco della data `data` (calendario) si apre dopo `visto` (l'ultima volta che la fonte ha dato la
+    partita): una «rinviata» vista prima di quella finestra non chiude la partita rimessa a questa data (recupero, #661)."""
+    i = _inizio(data or "")
+    try:
+        v = datetime.fromisoformat(str(visto)[:19])
+    except (TypeError, ValueError):
+        return False
+    return i is not None and i - PRIMA > v
+
+
+def _data16(data) -> str:
+    """'2026-11-01T15:00:00' o '2026-11-01 15:00' -> '2026-11-01 15:00' (per confrontare le date della fonte e del calendario)."""
+    return str(data or "")[:16].replace("T", " ")
+
+
+def senza_rinvii_superati(nuove: list[dict], calendario: list[dict]) -> list[dict]:
+    """La lettura senza le partite «rinviate» a una data più vecchia di quella del calendario: la fonte tiene il rinvio alla data
+    vecchia, ma il calendario ha già rimesso la partita più avanti. Contarle farebbe tornare «rinviata» a ogni lettura (o la terrebbe
+    mentre si gioca); così lo stato viene dall'orario della data nuova finché la fonte non dà la partita vera (revisione #700)."""
+    nel_calendario = {(p.get("casa"), p.get("trasferta")): _data16(p.get("data")) for p in calendario}
+    return [p for p in nuove if not (p["stato"] == "rinviata" and p.get("data")
+                                     and _data16(p["data"]) < nel_calendario.get((p["casa"], p["trasferta"]), ""))]
+
+
+class SenzaPartite(ValueError):
+    """La fonte ha risposto, ma nella risposta non c'è nessuna delle partite seguite (forma cambiata o elenco vuoto)."""
 
 
 # ---------------------------------------------------------------- lettura della fonte principale (ESPN)
@@ -293,9 +325,23 @@ class Raccoglitore:
     # ---- raccolta
     def _da_seguire(self, adesso: datetime, calendario: list[dict]) -> list[dict]:
         """Le partite nella finestra di gioco, più quelle con la finestra chiusa che la fonte non ha ancora dato per finite (fino a
-        TETTO_SEGUI e solo se il calendario non le dà già per giocate). Mai quelle già finite o rinviate."""
+        TETTO_SEGUI e solo se il calendario non le dà già per giocate). Mai quelle già finite o rinviate.
+        Eccezione (#661): una «rinviata» che il calendario ha rimesso a una data la cui finestra si apre dopo l'ultima volta che la
+        fonte l'ha data (`rimessa_dopo`) non è più chiusa; se la data è cambiata la voce vecchia esce dalla cache, così fino alla
+        lettura nuova lo stato viene dall'orario della data nuova e non resta «rinviata» con la data vecchia."""
+        nel_calendario = {(p.get("casa"), p.get("trasferta")): p for p in calendario}
         with self._blocco:
-            chiuse = {k for k, p in self._partite.items() if p["stato"] in CHIUSI}
+            chiuse = set()
+            for k, v in list(self._partite.items()):
+                if v["stato"] not in CHIUSI:
+                    continue
+                cal = nel_calendario.get(k)
+                if v["stato"] == "rinviata" and cal and rimessa_dopo(self._visto.get(k), cal.get("data")):
+                    if _data16(v.get("data")) != _data16(cal.get("data")):
+                        del self._partite[k]
+                        self._visto.pop(k, None)
+                    continue
+                chiuse.add(k)
         return [p for p in calendario if p.get("data") and (p["casa"], p["trasferta"]) not in chiuse
                 and (in_finestra(p["data"], adesso) or (dopo_finestra(p["data"], adesso) and not p.get("giocata")))]
 
@@ -310,9 +356,12 @@ class Raccoglitore:
         if ora < self.prossima:
             return "attesa"
         solo_dopo = not any(in_finestra(p["data"], adesso) for p in da_seguire)
-        self.prossima = ora + (INTERVALLO_DOPO if solo_dopo else INTERVALLO)   # mai due richieste a meno di un minuto
+        normale = INTERVALLO_DOPO if solo_dopo else INTERVALLO
+        self.prossima = ora + normale                    # mai due richieste a meno di un minuto (5 minuti dopo la finestra)
         usa_ripiego = ora < self.ripiego_fino
+        fonte = FONTE_RIPIEGO if usa_ripiego else FONTE_ESPN
         slug_noti = {p["casa"] for p in calendario} | {p["trasferta"] for p in calendario}
+        seguite = {(p["casa"], p["trasferta"]) for p in da_seguire}
         try:
             self.richieste += 1
             if usa_ripiego:
@@ -322,15 +371,21 @@ class Raccoglitore:
                 date = sorted({data_per_fonte(p["data"]) for p in da_seguire} - {None})
                 self._giro += 1
                 nuove = leggi_espn(json.loads(self.scarica(URL_ESPN.format(date[self._giro % len(date)]))), slug_noti)
-        except Exception:                                # rete, risposta storta, fonte che cambia forma: mai fermare il servizio
+            nuove = senza_rinvii_superati(nuove, calendario)
+            if not seguite & {(p["casa"], p["trasferta"]) for p in nuove}:
+                raise SenzaPartite                       # risposta arrivata ma inutile: è un errore, non una lettura buona (#661)
+        except Exception as e:                           # rete, risposta storta, fonte che cambia forma: mai fermare il servizio
             self.errori += 1
-            self.prossima = ora + min(INTERVALLO * 2 ** (self.errori - 1), ATTESA_MASSIMA)
+            motivo = "nessuna delle partite seguite nella risposta" if isinstance(e, SenzaPartite) else type(e).__name__
+            LOG.warning("diretta: lettura di %s non riuscita (%s), %d di fila", fonte, motivo, self.errori)
+            # la pausa dopo un errore non è mai più corta di quella normale (dopo la finestra: 5 minuti, anche verso il ripiego)
+            self.prossima = ora + max(normale, min(INTERVALLO * 2 ** (self.errori - 1), ATTESA_MASSIMA))
             if not usa_ripiego and self.errori >= ERRORI_PER_RIPIEGO:
                 self.ripiego_fino = ora + DURATA_RIPIEGO
-                self.prossima = ora + INTERVALLO
+                self.prossima = ora + normale
             return "errore"
         self.errori = 0
-        self._unisci(nuove, FONTE_RIPIEGO if usa_ripiego else FONTE_ESPN, adesso)
+        self._unisci(nuove, fonte, adesso)
         self._salva()
         return "ok"
 

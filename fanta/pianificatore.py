@@ -42,7 +42,7 @@ LOG = logging.getLogger(__name__)
 TENUTI = 60                                        # giri ricordati nello stato
 GIRI_RISULTATI = (("1", timedelta(minutes=150)), ("2", timedelta(hours=4)))   # dopo il calcio d'inizio
 MARGINE_RISULTATI = timedelta(hours=12)            # oltre, ci pensa l'aggiornamento completo
-CHIAVE_RISULTATI = "risultati-rapido"
+CHIAVE_RISULTATI = archivio.PASSO_SERA                # la riga del giro della sera in `aggiornamenti`
 
 
 def acceso() -> bool:
@@ -168,22 +168,31 @@ def giro_risultati(adesso: datetime, db, stato: dict, aggiorna: Callable[[list[i
 
 def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lambda _: None) -> bool | None:
     """Risultati e voti delle giornate indicate (due pagine per giornata) e segna l'aggiornamento (il riscaldamento ricalcola da
-    solo). None se l'aggiornamento completo del server sta girando, False se la fonte è spenta o la lettura non è riuscita."""
+    solo). None se l'aggiornamento completo del server sta girando, False se la fonte è spenta o la lettura non è riuscita.
+    L'esito va nella riga `CHIAVE_RISULTATI` come un passo seguito (`archivio.segna_passo`, #661): riuscito = ultimo successo;
+    non riuscito = errore con il primo fallimento di fila (lo vede «Stato dei dati», non la salute: `archivio.FUORI_SALUTE`) e una riga nel registro."""
     from . import fonti_attive
     from .aggiorna import Aggiornamento, Stagione, _ora
     with blocco_processo() as libero:
         if not libero:
             return None
-        if not fonti_attive.acceso("fantacalcio"):
-            return False                                            # fonte spenta: niente richieste
         db = archivio.apri()
         try:
+            if not fonti_attive.acceso("fantacalcio"):
+                archivio.passo_saltato(db, CHIAVE_RISULTATI)          # spenta apposta: non è un guasto, l'errore di prima si toglie
+                db.commit()
+                return False                                        # fonte spenta: niente richieste
             agg = Aggiornamento(db, Stagione.di(date.today()), scrivi)
             for g in giornate:
                 agg._passo(f"risultati {g}", lambda g=g: agg.risultati_giornata(g))    # noqa: SLF001 - stesso passo dell'aggiornamento completo
             if agg.errori:
+                archivio.segna_passo(db, CHIAVE_RISULTATI, _ora(), "; ".join(agg.errori))   # l'ora dell'ultimo successo resta
+                db.commit()
+                # nel registro solo il passo e il tipo d'errore («risultati 12: ConnectionError»), mai il resto del messaggio
+                LOG.warning("pianificatore: risultati della sera non riusciti (%s)",
+                            ", ".join(": ".join(e.split(": ")[:2]) for e in agg.errori))
                 return False
-            archivio.segna(db, CHIAVE_RISULTATI, _ora())               # cambia la «versione» dei dati: il riscaldamento ricalcola
+            archivio.segna_passo(db, CHIAVE_RISULTATI, _ora())         # cambia la «versione» dei dati: il riscaldamento ricalcola
             db.commit()
             return True
         finally:
