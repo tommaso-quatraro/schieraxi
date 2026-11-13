@@ -249,6 +249,8 @@ struct RadiceView: View {
         .tabViewStyle(.sidebarAdaptable)
         .onAppear { apriPaginaRichiesta() }
         .onChange(of: nav.paginaDaAprire) { _, _ in apriPaginaRichiesta() }
+        // un indirizzo che porta a una parte delle Impostazioni (La mia lega) torna alla pagina, anche se sopra ce n'era un'altra
+        .onChange(of: nav.parteImpostazioni) { _, parte in if parte != nil { modello.lega.percorso = [] } }
         .barraSchedeCheSiRiduce()
         // Il conto alla rovescia sta nell'intestazione di Oggi (e nel widget): sotto la barra delle schede faceva due barre sovrapposte.
         .tint(Color.verde)

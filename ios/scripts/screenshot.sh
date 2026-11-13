@@ -25,20 +25,20 @@ source "$(dirname "$0")/avvisi.sh"
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
 TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-rinvio formazione-chiusa formazione-cambiata formazione-sostituisci
        giocatore giocatore-fondo ricerca
-       squadra squadra-fondo guida marchio giornate giornate-aperta giornate-dettagli
-       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-avvisi impostazioni-novita
+       guida marchio giornate giornate-aperta giornate-dettagli
+       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri impostazioni-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-stagione impostazioni-aspetto
-       impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
+       impostazioni impostazioni-fondo impostazioni-squadra impostazioni-gestione impostazioni-crediti primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
 PER_CHIARO=(formazione formazione-in-corso formazione-finita giornate-aperta
-            lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
-PRINCIPALI=(formazione squadra lega giocatore)
+            impostazioni lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
+PRINCIPALI=(formazione giornate impostazioni giocatore)
 PER_TESTO_GRANDE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-cambiata formazione-sostituisci giornate-aperta
                   lega lega-squadre lega-regole lega-stato
-                  impostazioni-aspetto giocatore giocatore-fondo)
+                  impostazioni impostazioni-fondo impostazioni-aspetto giocatore giocatore-fondo ricerca)
 PER_IPAD=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-cambiata
           giocatore giocatore-fondo
-          lega lega-squadre lega-rosa lega-regole lega-avvisi giornate giornate-dettagli impostazioni-aspetto)
+          impostazioni lega lega-squadre lega-rosa lega-regole giornate giornate-dettagli impostazioni-aspetto ricerca)
 
 # SCATTI=veloce (predefinito dei push su main): solo le schermate principali, per controllare in pochi minuti.
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
@@ -232,11 +232,11 @@ riepilogo() {
 FOTOGRAFIE="${FOTOGRAFIE:-fotografie}"
 VERO_SCENARI=(vero-prima vero-in-corso vero-finita)
 # prima della scadenza: tutte le schermate che mostrano i dati della lega
-VERO_TUTTE=(formazione formazione-fondo squadra squadra-fondo
+VERO_TUTTE=(formazione formazione-fondo impostazioni
             giocatore giocatore-fondo ricerca
             lega lega-squadre lega-rosa lega-regole lega-stato giornate giornate-aperta lega-stagione)
 # giornata in corso e giornata finita: le schermate che cambiano con il momento
-VERO_FASE=(formazione formazione-fondo squadra giocatore giornate)
+VERO_FASE=(formazione formazione-fondo giocatore giornate)
 
 # Copia i file degli scenari nella cartella Documenti dell'app nel simulatore (l'app li legge da lì: non entrano nell'IPA).
 copia_fotografie() {
@@ -322,7 +322,7 @@ if [ "$SCATTI" = "collaudo" ]; then
   giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large "${TUTTE[@]}"
   ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
   RADDRIZZA=1
-  giro "$UDID_IPHONE" iphone_scuro_orizz scuro large formazione squadra giocatore lega giornate impostazioni accesso-accedi
+  giro "$UDID_IPHONE" iphone_scuro_orizz scuro large formazione giocatore giornate impostazioni ricerca accesso-accedi
   RADDRIZZA=0
   ARGOMENTI_EXTRA=()
 elif [ "$SCATTI" != "veloce" ]; then
