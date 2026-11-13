@@ -45,8 +45,9 @@ def test_dodici_amici_dalla_stessa_rete_entrano_tutti(db):
     """La sera dell'asta tutti si iscrivono dalla stessa rete; qualcuno sbaglia prima la password. Entrano tutti e dodici: le
     iscrizioni riuscite e i moduli scritti male non contano fra i tentativi dell'indirizzo."""
     codice = account.crea_invito(db, "amici", usi_max=12, adesso=ADESSO)
-    for i in range(4):
-        assert errore(account.registra, db, f"amico{i:02d}", "password", codice, ip=IP, adesso=ADESSO).stato == 400
+    for i in range(account.REGISTRAZIONI_PER_IP[0]):                # tanti errori quanti il tetto dei tentativi dell'indirizzo
+        sbagliato = ("password", f"amico{i:02d}") if i % 2 else (PASSWORD, f"a {i}")     # password troppo corta o nome non valido
+        assert errore(account.registra, db, sbagliato[1], sbagliato[0], codice, ip=IP, adesso=ADESSO).stato == 400
     for i in range(12):
         assert account.registra(db, f"amico{i:02d}", PASSWORD, codice, ip=IP, adesso=ADESSO)[0].ruolo == "utente"
     assert db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] == 12
@@ -77,6 +78,23 @@ def test_tetto_di_account_nuovi_per_indirizzo(db):
         account.registra(db, f"amico{i:02d}", PASSWORD, codice, ip=IP, adesso=ADESSO)
     assert errore(account.registra, db, "uno-di-troppo", PASSWORD, codice, ip=IP, adesso=ADESSO).stato == 429
     assert db.execute("SELECT usi FROM inviti").fetchone()[0] == account.ACCOUNT_PER_IP[0]      # il posto non si consuma
+
+
+def test_tetto_di_account_controllato_anche_quando_nasce_l_account(db):
+    """Due richieste insieme passano entrambe il primo controllo del tetto: vale quello dentro la transazione che crea l'account,
+    e lì l'account in più non nasce."""
+    codice = account.crea_invito(db, "tutti", usi_max=30, adesso=ADESSO)
+    for i in range(account.ACCOUNT_PER_IP[0]):
+        account.registra(db, f"amico{i:02d}", PASSWORD, codice, ip=IP, adesso=ADESSO)
+    account._transazione(db)                         # come chi ha già passato il primo controllo ed entra nella transazione
+    try:
+        e = errore(account.crea_utente, db, "in-ritardo", "in-ritardo", "impronta", "recupero", "utente", ADESSO, ip=IP)
+        assert e.stato == 429
+        assert db.execute("SELECT COUNT(*) FROM utenti WHERE nome_utente = 'in-ritardo'").fetchone()[0] == 0
+    finally:
+        db.rollback()
+    nuovo = account.crea_utente(db, "altra-rete", "altra-rete", "impronta", "recupero", "utente", ADESSO, ip="6.6.6.6")
+    assert nuovo and db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] == account.ACCOUNT_PER_IP[0] + 1
 
 
 def test_invito_monouso_come_sempre(db):
