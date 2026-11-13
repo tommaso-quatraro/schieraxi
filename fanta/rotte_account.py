@@ -8,6 +8,7 @@ Con l'interruttore spento non cambia niente: nessun accesso, un solo utente loca
 from __future__ import annotations
 
 import ipaddress
+import logging
 import os
 import re
 from contextlib import closing
@@ -19,6 +20,7 @@ from pydantic import BaseModel, Field
 from . import account, account_email, contesto, fonti_attive, funzioni, percorsi, posta, registro, social
 from .account import ErroreAccount, Utente
 
+LOG = logging.getLogger(__name__)
 COOKIE = "fanta_sessione"
 # raggiungibili senza sessione: entrare, iscriversi, recuperare la password
 PUBBLICI_API = {"/api/account/accedi", "/api/account/registra", "/api/account/recupero", "/api/account/recupero-email",
@@ -493,8 +495,22 @@ def elimina_account(dati: SoloPassword, request: Request, risposta: Response, ut
         account.conferma_password(db, utente.id, dati.password, token_della_richiesta(request))
         account.elimina(db, utente.id)
     contesto.elimina_cartella(utente.id)
+    _togli_dalle_consigliate(utente.id)
     _togli_cookie(risposta, request)
     return {"ok": True}
+
+
+def _togli_dalle_consigliate(utente_id: int) -> None:
+    """Account eliminato: il suo numero esce dalle consigliate già mostrate, che stanno in un file comune a tutti (#653). Se non
+    riesce l'account resta eliminato, ma l'errore non è muto: registro di sicurezza (lo vede l'amministratore) e registro del
+    servizio. Il numero rimasto lo toglie `python -m fanta cartelle-senza-account --esegui`."""
+    from . import consigli                           # qui: il modulo dei calcoli non serve alle altre rotte degli account
+    try:
+        consigli.togli_utenti({utente_id})
+    except OSError as e:
+        account.evento("cancellazione_dati_non_riuscita", utente=int(utente_id), errore=type(e).__name__, file="consigliate")
+        LOG.error("Account %s eliminato, ma il suo numero è rimasto nelle consigliate già mostrate (%s): "
+                  "python -m fanta cartelle-senza-account --esegui", int(utente_id), type(e).__name__)
 
 
 @router.post("/api/account/recupero", dependencies=[Depends(_attivo)])

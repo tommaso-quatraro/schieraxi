@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from fanta import account, account_email, posta, rotte_account
+from fanta import account, account_email, contesto, percorsi, posta, rotte_account
 
 from test_account_http import PASSWORD, cliente, invito
 from test_account_email import codice_di, ultimi
@@ -40,6 +40,11 @@ def iscrivi(c, nome="anna", email="anna@example.com", **extra):
 def conferma(c, email, codice, **extra):
     corpo = {"email": email, "codice": codice, "iscrizione": _segreti.get(email.lower(), "")}
     return c.post("/api/account/registra/conferma", json=corpo | extra)
+
+
+def invito_per(posti: int) -> str:
+    with contextlib.closing(account.apri()) as db:
+        return account.crea_invito(db, "amici", usi_max=posti)
 
 
 def utenti() -> list[str]:
@@ -83,6 +88,20 @@ def test_aperta_iscrizione_in_due_tempi(web, posta_finta, monkeypatch):
     assert me["utente"]["nome_utente"] == "anna" and me["utente"]["ruolo"] == "utente" and me["email"] == "anna@example.com"
     assert conferma(cliente(), "anna@example.com", codice).status_code == 403              # monouso
     assert cliente().post("/api/account/accedi", json={"nome_utente": "anna", "password": PASSWORD}).status_code == 200
+
+
+def test_aperta_l_account_confermato_parte_da_una_cartella_vuota(web, posta_finta, monkeypatch):
+    """Una cartella rimasta con il numero che l'account sta per ricevere (database degli account ricreato o tornato a una copia)
+    va da parte: l'account nato dal codice dell'email parte vuoto, come quello nato da un invito."""
+    modo(monkeypatch, "aperta")
+    rimasta = contesto.cartella_utente(1)
+    rimasta.mkdir(parents=True)
+    (rimasta / "push.json").write_text('[{"endpoint": "https://push.example/altro"}]', encoding="utf-8")
+    iscrivi(web)
+    assert conferma(web, "anna@example.com", codice_di(posta_finta[-1])).status_code == 200
+    assert web.get("/api/account/me").json()["utente"]["id"] == 1
+    assert not (rimasta / "push.json").exists()
+    assert len(list((percorsi.cartella_account() / "utenti-da-parte").glob("*/push.json"))) == 1
 
 
 def test_aperta_app_nativa_riceve_il_token(web, posta_finta, monkeypatch):
@@ -212,6 +231,40 @@ def test_email_invito_sbagliato_conta_nei_limiti(web, monkeypatch):
     modo(monkeypatch, "email")
     stati = [iscrivi(web, invito=f"SBAGL-IATO{i}-AAAAA-BBBBB").status_code for i in range(account.INVITI_SBAGLIATI_PER_IP[0] + 2)]
     assert set(stati[:5]) == {403} and stati[-1] == 429
+
+
+def test_email_dodici_amici_dalla_stessa_rete_con_un_invito(web, posta_finta, monkeypatch):
+    """Tutti chiedono il codice insieme dalla stessa rete, poi confermano: entrano tutti e dodici."""
+    modo(monkeypatch, "email")
+    inv = invito_per(12)
+    for i in range(12):
+        assert iscrivi(web, f"amico{i:02d}", f"amico{i:02d}@example.com", invito=inv).status_code == 200
+    for i in range(12):
+        email = f"amico{i:02d}@example.com"
+        assert conferma(cliente(**{"X-Forwarded-For": "4.4.4.4"}), email, codice_di(ultimi(posta_finta, email)[-1])).status_code == 200
+    assert len(utenti()) == 12
+
+
+def test_email_i_posti_in_piu_sono_quelli_ancora_liberi(web, posta_finta, monkeypatch):
+    """Un invito per 30 con 29 posti già usati: da una rete passano le richieste di sempre più una (il posto libero), non trenta."""
+    modo(monkeypatch, "email")
+    inv = invito_per(30)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("UPDATE inviti SET usi = 29")
+        db.commit()
+    tetto = account_email.ISCRIZIONI_PER_IP[0] + 1
+    stati = [iscrivi(web, f"amico{i:02d}", f"amico{i:02d}@example.com", invito=inv).status_code for i in range(tetto + 1)]
+    assert stati == [200] * tetto + [429]
+
+
+def test_email_amici_con_un_invito_a_testa_dalla_stessa_rete(web, posta_finta, monkeypatch):
+    """Un'iscrizione confermata non conta più fra le richieste dell'indirizzo."""
+    modo(monkeypatch, "email")
+    for i in range(account_email.ISCRIZIONI_PER_IP[0] + 3):
+        email = f"amico{i:02d}@example.com"
+        assert iscrivi(web, f"amico{i:02d}", email, invito=invito()).status_code == 200
+        assert conferma(web, email, codice_di(ultimi(posta_finta, email)[-1])).status_code == 200
+    assert len(utenti()) == account_email.ISCRIZIONI_PER_IP[0] + 3
 
 
 def test_email_invito_da_amministratore_da_il_ruolo_alla_conferma(web, posta_finta, monkeypatch):

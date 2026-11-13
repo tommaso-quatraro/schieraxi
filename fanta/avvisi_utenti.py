@@ -1,9 +1,12 @@
-"""Gli avvisi di ogni utente (solo con FANTA_MULTIUTENTE=1): cambi delle probabili, promemoria, riepilogo, «formazione pronta».
+"""Gli avvisi di ogni utente (solo con FANTA_MULTIUTENTE=1). Solo due (#676): il cambio della formazione da schierare (giro
+`cambi`, e nell'ultima ora l'avviso «cambia la formazione» del giro `promemoria`) e il promemoria prima della scadenza.
+Riepilogo della giornata, reparto scoperto e «formazione pronta» non partono più.
 
 Con l'interruttore spento gli avvisi sono quelli di sempre (un solo utente, file globali, ntfy): non passano di qui.
-Con l'interruttore acceso i comandi `cambi`, `promemoria`, `riepilogo` e `avviso` (che il server lancia da cron) chiamano
-`esegui`, che passa uno per uno gli utenti *attivi* (con una squadra indicata e almeno un dispositivo iscritto alle notifiche web)
-e per ciascuno usa i SUOI file: rose, regole, impostazioni, osservati, scelte, iscrizioni e «cosa ho già avvisato».
+Con l'interruttore acceso i comandi `cambi` e `promemoria` (che il server lancia da cron) chiamano `esegui`, che passa uno per
+uno gli utenti *attivi* (con una squadra indicata e almeno un dispositivo iscritto alle notifiche web: è l'interruttore unico
+«Avvisi su questo dispositivo») e per ciascuno usa i SUOI file: rose, regole, impostazioni, scelte, iscrizioni e «cosa ho già
+avvisato». Delle impostazioni contano le ore tranquille, la lingua e `app_nativa`; le scelte per avviso di prima no.
 - Il canale ntfy è uno solo ed è del proprietario del server: gli utenti non ci passano mai. L'unica eccezione è un
   amministratore che ha acceso l'opzione dell'app nativa (come con l'interruttore spento).
 - Un errore con un utente non ferma gli altri.
@@ -24,13 +27,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from . import account, avvisi, consigli, lega, notifiche, percorsi, push, regole
+from . import account, lega, notifiche, percorsi, push, regole
 from .account import Utente
 from .contesto import Contesto
 from .lega import Rose
 from .percorsi import scrivi_sicuro
 
-FUNZIONI = ("cambi", "promemoria", "riepilogo", "pronta")
+FUNZIONI = ("cambi", "promemoria")
 LOG = logging.getLogger(__name__)
 
 
@@ -83,58 +86,30 @@ def utenti_attivi() -> list[Attivo]:
 
 
 def _cambi(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:
-    righe = []
-    if a.opzioni["cambi"]:
-        righe = notifiche.cambi(db, r, a.rose, adesso, a.ctx.stato_cambi, a.manda, a.opzioni, a.ctx.osservati, risparmia=True,
-                                file_scelte=a.ctx.scelte, file_promemoria=a.ctx.stato_promemoria)
-    try:                                           # reparti della rosa scoperti: stesso giro, opzione propria
-        righe += notifiche.copertura(db, r, a.rose, adesso, a.ctx.stato_cambi, a.manda, a.opzioni)
-    except Exception:                              # noqa: BLE001  (i cambi sono già partiti)
-        pass
-    return righe
+    """La formazione da schierare è cambiata per un titolare che non gioca più (`notifiche.cambi`), qualunque fosse la vecchia
+    scelta `cambi` dell'utente."""
+    return notifiche.cambi(db, r, a.rose, adesso, a.ctx.stato_cambi, a.manda, a.opzioni, risparmia=True, file_scelte=a.ctx.scelte,
+                           file_promemoria=a.ctx.stato_promemoria)
 
 
 def _promemoria(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:
-    righe = []
-    if a.opzioni.get("avviso_prima"):              # prima l'avviso «cambia la formazione»: se parte, il promemoria non fa il doppione
-        try:
-            righe = notifiche.avviso_scadenza(db, r, a.rose, adesso, a.ctx.stato_promemoria, a.manda, a.opzioni, a.ctx.scelte,
-                                              a.ctx.stato_cambi)
-        except Exception:                          # noqa: BLE001  (i promemoria partono comunque)
-            righe = []
-    if not (a.opzioni["promemoria_60"] or a.opzioni["promemoria_15"]):
-        return righe
+    """Prima l'avviso «cambia la formazione» (nell'ultima ora): se parte, il promemoria non fa il doppione. Poi il promemoria.
+    Per tutti, qualunque fossero le vecchie scelte `avviso_prima`, `promemoria_60` e `promemoria_15`."""
+    try:
+        righe = notifiche.avviso_scadenza(db, r, a.rose, adesso, a.ctx.stato_promemoria, a.manda, a.opzioni, a.ctx.scelte,
+                                          a.ctx.stato_cambi)
+    except Exception:                              # noqa: BLE001  (i promemoria partono comunque)
+        righe = []
     return righe + notifiche.promemoria(db, r, a.rose, adesso, a.ctx.stato_promemoria, a.manda, a.opzioni, a.ctx.scelte)
 
 
-def _riepilogo(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:
-    if not a.opzioni["riepilogo"]:
-        return []
-    return notifiche.riepilogo(db, r, a.rose, adesso, a.ctx.stato_riepilogo, a.manda, a.opzioni, a.ctx.stato_cambi, a.ctx.scelte,
-                               a.ctx.diario)
-
-
-def _pronta(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:
-    """«La formazione è pronta»: una volta per giornata, e solo se l'avviso è davvero partito (nelle ore tranquille si riprova dopo)."""
-    if notifiche.in_silenzio(adesso, a.opzioni):
-        return []
-    stagione = consigli.stagione_corrente()
-    giornata = consigli.giornata_da_giocare(db, stagione, r, adesso)     # l'ora del giro, non l'orologio vero
-    avviso = avvisi.da_mandare(db, stagione, giornata, adesso, a.ctx.stato_avvisi, segna=False, regole=r)
-    # la notifica web aspetta il telefono spento, ma non oltre la scadenza (#652)
-    if avviso and a.manda(avviso["titolo"], avviso["testo"], 3, "soccer", vale_per=avviso["scadenza"] - adesso):
-        avvisi.segna(stagione, giornata, a.ctx.stato_avvisi)
-        return [avviso["testo"]]
-    return []
-
-
-_LAVORI = {"cambi": _cambi, "promemoria": _promemoria, "riepilogo": _riepilogo, "pronta": _pronta}
+_LAVORI = {"cambi": _cambi, "promemoria": _promemoria}
 
 # ---------------------------------------------------------------- tempo e ordine del giro
 # Gli script del server fermano il comando dopo un tempo massimo (promemoria.sh, aggiorna.sh; le stesse variabili di
 # dati/ambiente.env). Il giro si ferma da solo un po' prima, fra un utente e l'altro, così salva l'ordine e non viene interrotto.
 TEMPO_SCRIPT = {"promemoria": ("FANTA_MAX_SECONDI_GIRO_PROMEMORIA", 480)}
-TEMPO_SCRIPT_ALTRI = ("FANTA_MAX_SECONDI_GIRO_AVVISI", 600)        # cambi, riepilogo, «formazione pronta»
+TEMPO_SCRIPT_ALTRI = ("FANTA_MAX_SECONDI_GIRO_AVVISI", 600)        # cambi
 MARGINE_SECONDI = 120          # il lavoro di un utente può durare un po' (due invii lenti e un calcolo): resta questo margine
 FILE_GIRO = "avvisi-giro.json"  # nella cartella degli account: per ogni giro, l'ordine in cui gli utenti sono stati serviti
 

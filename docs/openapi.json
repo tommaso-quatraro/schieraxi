@@ -4597,7 +4597,7 @@
     "summary": "Togli Immagine Squadra"
    },
    "get": {
-    "description": "Stemma o maglia di una squadra della lega (404 se non c'è).",
+    "description": "Stemma o maglia di una squadra della lega (404 se non c'è). L'indirizzo è sempre lo stesso: il browser ricontrolla ogni\nvolta (`no-cache`) e con l'ETag che ha già riceve 304. Così uno stemma cambiato, o quello di un altro account entrato sullo\nstesso browser, non resta vecchio (#654). L'ETag viene dal contenuto: due file diversi non hanno mai lo stesso.",
     "parameters": [
      {
       "in": "query",

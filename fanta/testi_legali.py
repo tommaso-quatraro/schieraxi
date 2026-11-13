@@ -6,7 +6,10 @@ Si configurano con variabili d'ambiente:
   FANTA_TITOLARE   chi è il titolare del trattamento (nome e recapito); senza, la pagina dice «chi gestisce l'app»;
   FANTA_CONTATTO   a chi scrivere per privacy, richieste e segnalazioni (per esempio un indirizzo email);
   FANTA_SORGENTE   indirizzo https del codice sorgente (AGPL); vuoto nel codice privato;
-  FANTA_BACKUP_GIORNI  per quanti giorni restano le copie di sicurezza (se non indicato: «un tempo limitato»);
+  FANTA_BACKUP_GIORNI  per quanti giorni restano le copie di sicurezza (se non indicato: «un tempo limitato»). Deve coprire la
+                   copia che dura di più: sul server le copie del database degli account restano al massimo 8 giorni (7 serali;
+                   quelle prima di una migrazione scadono dopo backup.GIORNI_COPIE_MIGRAZIONE, al giro serale dopo), i pacchetti di
+                   script/server/backup-dati.sh 14, più le copie portate altrove;
   FANTA_REGISTRO_WEB_GIORNI  per quanti giorni resta il registro del server web davanti all'app, con l'indirizzo completo
                    (per esempio nginx con logrotate «rotate 14»: 15); se non indicato: «un tempo limitato»;
   FANTA_HOSTING    chi ospita il server e dove (per esempio «Aruba S.p.A., in Italia»); se non indicato, una frase generica.

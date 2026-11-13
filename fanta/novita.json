@@ -1,5 +1,88 @@
 [
   {
+    "versione": "1.490",
+    "data": "2026-11-13T10:00:06",
+    "titolo": "Account: controlli più severi, e iscrizioni di gruppo dalla stessa rete",
+    "voci": [
+      "Un gruppo di amici che si iscrive dalla stessa rete, per esempio dal Wi-Fi di casa la sera dell'asta, entra tutto: prima, dopo dieci iscrizioni in un'ora gli altri dovevano aspettare, e ancora prima se qualcuno sbagliava la password. Resta un tetto di 20 account nuovi all'ora dalla stessa rete, quante sono al massimo le squadre di una lega.",
+      "Controlli più severi quando nasce un account nuovo e quando aggiungi un'email in «Il tuo account».",
+      "Lo storico dei movimenti delle rose ha un tetto di spazio: se le importazioni cambiano tutte le rose molte volte, tiene le più recenti."
+    ],
+    "tecnico": [
+      "account.crea_utente: unico punto in cui nasce un account (account.registra, account_email.conferma_iscrizione, social.completa), dentro la transazione di chi chiama. Se utenti/<numero> c'è già, contesto.libera_cartella la sposta in utenti-da-parte/<numero>-<data>-<sigla> (evento cartella_messa_da_parte nel registro di sicurezza, avviso nel registro del servizio); se non si sposta l'account non nasce (503, evento cartella_non_liberata). docs/RIPRISTINO-SERVER.md, passo 2: cartelle-senza-account prima di riavviare il servizio.",
+      "Tetti per indirizzo della registrazione (REGISTRAZIONI_PER_IP, ISCRIZIONI_PER_IP, COMPLETAMENTI_PER_IP e, nell'iscrizione con email, INVII_PER_IP): contano con account.conta_per_indirizzo e crea_utente toglie le righe contate quando l'account nasce (nell'iscrizione con email le righe restano nei dati del codice fino alla conferma). Nuovo ACCOUNT_PER_IP (20 all'ora), controllato dentro la transazione e prima del lavoro (troppi_account). Nome e password si controllano prima dei tetti. Nel modo email i tetti per indirizzo hanno un posto in più per ogni posto ancora libero dell'invito (posti_dell_invito).",
+      "account_email.chiedi_verifica: con l'invio consentito la riga di attesa c'è per ogni indirizzo diverso dal proprio; dove il codice non parte ha un'impronta casuale (_nuovo_codice(spedito=False)) che nessun codice conferma.",
+      "movimenti.MAX_BYTE_STORICO (512 KB): movimenti.registra tiene le voci più recenti entro il tetto (e entro MAX_STORICO), sempre almeno l'ultima.",
+      "Client: nessuna rotta cambia."
+    ]
+  },
+  {
+    "versione": "1.489",
+    "data": "2026-11-13T08:58:55",
+    "titolo": "Avvisi: solo il promemoria e il cambio della formazione",
+    "voci": [
+      "Con «Avvisi su questo dispositivo» acceso ricevi due avvisi. Il primo è il promemoria un'ora e un quarto d'ora prima della scadenza, se non hai ancora spuntato «L'ho messa» nella Formazione.",
+      "Il secondo arriva quando cambia la formazione da schierare: un tuo titolare si fa male, è squalificato o va in panchina e la formazione consigliata lo toglie («cambia un titolare»; con la tua formazione salvata, «cambio pronto» ti dice chi mettere al suo posto). Arriva una volta per ogni titolare, anche giorni prima della scadenza. Nell'ultima ora arriva anche se la consigliata vale almeno un punto in più, al massimo due volte. La stessa notizia non arriva mai due volte.",
+      "La web salva la formazione da sola a ogni tocco: per questo il promemoria tace solo con la spunta «L'ho messa», e se ti arriva ti chiede proprio se l'hai messa nell'app della lega. Se salvi la formazione dall'app per iPhone, che la spunta non ce l'ha ancora, il promemoria resta com'era: tace quando hai salvato la formazione.",
+      "Non arrivano più: i cambi nelle probabili che non cambiano la formazione da schierare, i giocatori che segui, il riepilogo della giornata, il reparto scoperto e «la formazione è pronta». Il riepilogo lo trovi in cima alla Formazione a giornata finita, il reparto scoperto tra le cose da fare.",
+      "Per gli avvisi che manda il server, le scelte di prima per i singoli avvisi (per esempio il promemoria di un quarto d'ora prima spento) non contano più: decide solo l'interruttore, e restano le ore tranquille. I promemoria che l'app per iPhone programma da sola sul telefono seguono ancora quelle scelte, finché l'app non avrà anche lei l'interruttore unico."
+    ],
+    "tecnico": [
+      "notifiche.promemoria: le finestre non guardano più promemoria_60/promemoria_15. _gia_schierato restituisce NON_MESSA per una scelta valida con da='web' senza messa: true e senza titolari fuori; testi n.non_messa_tra_un_ora e n.non_messa_ultimi_minuti (frasi_avvisi). Le scelte con da='app' o senza da tacciono come prima (l'iPhone non ha la spunta finché non arriva il riallineamento, #673).",
+      "scelte.salva(da=...): campo facoltativo da ('web' o 'app') nella voce della scelta; server._da_dove lo deduce dalla richiesta di POST /api/formazione/valuta: 'app' con Authorization Bearer, 'web' con il cookie della sessione o Sec-Fetch-Mode, altrimenti niente. GET /api/scelta lo restituisce.",
+      "notifiche.cambi: solo «cambio pronto» (con una scelta valida) e, senza scelta valida, l'avviso n.t_cambia_titolare («cambia un titolare», titolo suo e fuori dal tetto MAX_AVVISI_SCADENZA: una volta per ogni titolare che diventa fuori) quando i titolari della consigliata cambiano perché uno è diventato fuori (_consigliata_cambiata, MOTIVI_FUORI, prima non lo era); testo n.testo_cambiata con data e ora della scadenza, n.senza_sostituto se con la rosa non si forma più una squadra. Niente più n.t_cambi né osservati; parametri dopo opzioni solo per nome (file_osservati tolto). Lo stato ricorda anche il modulo.",
+      "notifiche.avviso_scadenza e tocca_all_avviso: finestra fissa di AVVISO_PRIMA_PREDEFINITO (60) minuti, avviso_prima ignorato. Tetti invariati: MAX_AVVISI_SCADENZA per giornata, un promemoria per finestra, DOPPIONE_CAMBI e DOPPIONE_PROMEMORIA.",
+      "avvisi_utenti.FUNZIONI = (cambi, promemoria): niente copertura nel giro dei cambi, niente riepilogo né pronta. python -m fanta riepilogo e python -m fanta avviso restano per gli script del server ma escono senza scrivere niente. Importazione delle rose: niente più avviso dell'osservato lasciato libero.",
+      "GET/PUT /api/avvisi invariate: le scelte per avviso si leggono e si salvano come prima (l'iPhone di oggi le usa per i suoi promemoria locali), il server non le usa. Testo imp.avvisi_qui_aiuto aggiornato nel catalogo."
+    ]
+  },
+  {
+    "versione": "1.488",
+    "data": "2026-11-13T08:25:51",
+    "titolo": "App installata: sempre una versione intera, anche mentre il server riparte",
+    "voci": [
+      "Dopo un aggiornamento l'app installata si apre tutta con la versione che hai, mai metà vecchia e metà nuova (con la rete lenta capitava): la versione nuova arriva toccando «Ricarica» nella barra in basso.",
+      "Se apri l'app mentre il server riparte vedi la Formazione con gli ultimi dati salvati del tuo account e «Riprova», non una pagina d'errore; senza rete Privacy, Termini e Crediti dicono «Nessuna connessione».",
+      "Uno stemma o una maglia appena cambiati restano quelli nuovi anche riaprendo l'app; se sullo stesso browser entra un altro account, vede i suoi."
+    ],
+    "tecnico": [
+      "sw.js: la scocca (FILE, e «/» con qualunque query) viene sempre dalla cache della VERSIONE attiva (dallaScocca); un file che manca si chiede alla rete e si salva. Le altre pagine restano prima-la-rete con 2,5 secondi (primaLaRete): con 502, 503 o 504 danno la copia salvata se c'è; senza rete e senza copia la pagina «Nessuna connessione» (503), non più la scocca dell'app.",
+      "app.js, controllaAccesso: un 5xx o una risposta non JSON di /api/account/me valgono come rete assente (si riprende l'account salvato), così durante il riavvio con gli account si apre la copia dei dati dell'utente e Impostazioni non diventa quella di un server senza account.",
+      "GET /api/squadre/immagine: Cache-Control «private, no-cache» (era «private, max-age=3600») con ETag dallo SHA-256 del contenuto e 304 se If-None-Match coincide. In inglese If-None-Match si toglie prima della rotta: _note_in_inglese ora risponde 304 anche per le risposte non JSON con l'ETag uguale.",
+      "Test: tests/browser/test_web_installata.py (fixture installata con Proxy davanti al server finto: rilascio finto con file lenti, 502, rete assente), tests/test_sw_web.py, tests/test_server.py, tests/test_isolamento.py (due account, stessa squadra)."
+    ]
+  },
+  {
+    "versione": "1.487",
+    "data": "2026-11-13T08:17:43",
+    "titolo": "Account eliminato: non restano dati tuoi fuori dalle copie di sicurezza, e le copie scadono",
+    "voci": [
+      "Quando elimini il tuo account, il server cancella subito anche il collegamento fra te e le formazioni consigliate che ti ha mostrato: prima restava in un elenco comune finché non usciva da solo, molto più tardi.",
+      "Le copie di sicurezza degli account che il server fa prima di un aggiornamento ora scadono dopo sette giorni, come quelle di ogni notte: prima restavano sul server senza scadenza, anche con i dati di chi aveva eliminato l'account.",
+      "Le copie di sicurezza di ogni notte sono di nuovo sempre le ultime sette: quelle fatte prima di un aggiornamento non prendono più il loro posto."
+    ],
+    "tecnico": [
+      "backup.copia_account(cartella, origine, tieni, *, adesso): ruota solo le copie con la data nel nome (COPIA_SERALE, account-AAAA-MM-GG.sqlite); prima il glob account-*.sqlite contava anche account-prima-della-migrazione-N.sqlite, che in ordine di nome vengono dopo: con 7 di queste la copia appena scritta si cancellava e il comando diceva lo stesso «copiato».",
+      "Nello stesso giro toglie le account-prima-della-migrazione-*.sqlite con data del file più vecchia di GIORNI_COPIE_MIGRAZIONE (7): restano al massimo 8 giorni. Le copie serali non scadono per età, solo per numero. adesso arriva da cmd_backup (niente orologio nella logica).",
+      "account._copia_prima_di_migrare: il file nasce con os.open(O_CREAT | O_EXCL, 0o600), senza dipendere dall'umask del processo.",
+      "consigli.togli_utenti(numeri): sotto _blocco_consigliate e lo stesso BloccoFile di _ricorda toglie i numeri da utenti e proprie di dati/consigliate.json e cancella le voci rimaste senza nessuno; le voci senza utenti (comandi, app senza account) restano. consigli.numeri_ricordati() li elenca.",
+      "POST /api/account/elimina chiama togli_utenti dopo account.elimina e contesto.elimina_cartella; se non riesce (OSError) l'account resta eliminato, la risposta resta 200 (prima, con il disco pieno, 507) e l'errore va nel registro di sicurezza (cancellazione_dati_non_riuscita, file=consigliate) e in quello del servizio.",
+      "python -m fanta cartelle-senza-account elenca anche i numeri di account eliminati rimasti nelle consigliate (eliminati prima di questa versione, o pulizia non riuscita) e con --esegui li toglie; con il database degli account vuoto non cancella niente, come prima. Sul server va lanciato una volta con --esegui per ripulire gli account eliminati prima.",
+      "Client: nessuna rotta cambia."
+    ]
+  },
+  {
+    "versione": "1.486",
+    "data": "2026-11-13T08:11:49",
+    "titolo": "Server: aggiornata una libreria per una correzione di sicurezza",
+    "voci": [
+      "Server: aggiornata la libreria che serve a leggere le pagine delle fonti dei dati, con una correzione di sicurezza. Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "soupsieve da 3.0.4 a 4.0 per Python 3.12 e oltre (server e sviluppo): chiude una vulnerabilità nota segnalata da pip-audit. beautifulsoup4 resta 4.15.0 (chiede soupsieve>=1.6.1). Per Python < 3.12 resta soupsieve 2.9.2 da requirements-vincoli.in: la 4.0 chiede Python 3.11.5. requirements.txt rigenerato con script/blocca_dipendenze.py --versioni; requirements-dev.txt invariato."
+    ]
+  },
+  {
     "versione": "1.485",
     "data": "2026-11-12T23:35:43",
     "titolo": "Widget dell'iPhone: dati nuovi anche se non apri l'app",

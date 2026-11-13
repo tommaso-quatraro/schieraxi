@@ -80,17 +80,18 @@ def test_pianificatore_giro_a_un_ora_dalla_scadenza(monkeypatch):
 
 # ---------------------------------------------------------------- avvisi (giornata 9: prima partita mercoledì 28/10 alle 18:30)
 def test_cambi(tmp_path, monkeypatch):
-    prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 85.0, "dubbio": False}], index=[1])
-    c = Calcoli(monkeypatch, prev, formazione=lambda *a: {"modulo": "4-3-3", "punteggio_atteso": 71.2,
-                                                           "titolari": [{"id": 1, "nome": "Castro"}]})
+    from test_notifiche import ROSE_DUE
+    prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 85.0, "dubbio": False},
+                         {"nome": "Bonny", "stato": "titolare", "percentuale": 70.0, "dubbio": False}], index=[1, 2])
+    c = Calcoli(monkeypatch, prev, formazione=lambda *a: {"modulo": "4-3-3", "punteggio_atteso": 71.2, "titolari": [
+        {"id": 1, "nome": "Castro"} if prev.at[1, "stato"] == "titolare" else {"id": 2, "nome": "Bonny"}]})
     mandati, manda = _registro()
     adesso, db, f = datetime(2026, 10, 27, 9, 0), _db("2026-10-28 18:30"), tmp_path / "c.json"
-    assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, {}, file_scelte=tmp_path / "s.json") == []   # solo memorizza
-    prev.loc[1, "percentuale"] = 50.0                  # resta titolare, ma in ballottaggio (niente «cambio pronto»)
-    assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, {}, file_scelte=tmp_path / "s.json") == [
-        "Castro: ora in ballottaggio per partire titolare"]
-    assert mandati == [("SchieraXI · cambi nelle probabili",
-                        "Giornata 9 · 9ª di Serie A\nCastro: ora in ballottaggio per partire titolare")]
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda, {}, file_scelte=tmp_path / "s.json") == []   # solo memorizza
+    prev.loc[1, "stato"] = "infortunato"               # la consigliata mette Bonny
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda, {}, file_scelte=tmp_path / "s.json") == [
+        "Castro è infortunato: metti Bonny. La formazione si chiude il 28/10 alle 18:30."]
+    assert [t for t, _ in mandati] == ["SchieraXI · cambia un titolare"]
     assert c.chieste == {("previsioni", 9, None), ("formazione", 9, adesso)}
 
 

@@ -393,14 +393,14 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
     if not google_attivo():
         raise ErroreAccount(NON_ATTIVO, 404)
     adesso = account._ora(adesso)
-    if ip:
-        limite.consuma(db, account._chiave("social-completa-ip", ip), *COMPLETAMENTI_PER_IP)
-    if not accetto_termini:
+    if not accetto_termini:                          # prima dei tetti: un modulo scritto male non consuma tentativi
         raise ErroreAccount("Per iscriverti devi accettare Privacy e Termini")
+    nome = account.valida_nome(nome_utente)
+    account.troppi_account(db, ip)
+    contate = account.conta_per_indirizzo(db, ip, ("social-completa-ip", *COMPLETAMENTI_PER_IP))     # tolte se l'account nasce
     if not (isinstance(iscrizione, str) and _FORMATO_SEGRETO.fullmatch(iscrizione)):
         raise ErroreAccount(CODICE_NON_VALIDO, 403)
     with account.uno_alla_volta(ip):
-        nome = account.valida_nome(nome_utente)
         riga = db.execute("SELECT * FROM flussi_social WHERE iscrizione_hash = ?", (_h(iscrizione),)).fetchone()
         if riga is None or riga["iscrizione_usata"] or riga["iscrizione_scade"] <= _t(adesso) or not riga["esito"]:
             raise ErroreAccount(CODICE_NON_VALIDO, 403)
@@ -411,8 +411,8 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
         inv = None
         if modo in ("invito", "email"):
             inv = account_email._invito_vivo(db, invito, adesso, ip)              # stessi limiti e stesso messaggio di sempre
-        elif ip:
-            limite.consuma(db, account._chiave("registra-ip", ip), *account.REGISTRAZIONI_PER_IP)
+        else:
+            contate += account.conta_per_indirizzo(db, ip, ("registra-ip", *account.REGISTRAZIONI_PER_IP))
         password_hash = account.hash_password(secrets.token_urlsafe(32))          # mai mostrata: nessun accesso con password
         recupero_hash = account._hash_codice(secrets.token_urlsafe(32))
         account._transazione(db)
@@ -427,18 +427,17 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
             if db.execute("SELECT 1 FROM utenti WHERE nome_utente = ?", (nome,)).fetchone():
                 raise ErroreAccount("Questo nome utente è già preso: scegline un altro")
             email = esito["email"] if esito["affidabile"] and not account_email._gia_di_un_account(db, esito["email"]) else None
-            cur = db.execute("INSERT INTO utenti (nome_utente, nome_visualizzato, password_hash, recupero_hash, ruolo, creato, email, senza_password) "
-                             "VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
-                             (nome, account.nome_da_mostrare(nome_utente, nome), password_hash, recupero_hash,
-                              inv["ruolo"] if inv else "utente", _t(adesso), email))
+            nuovo = account.crea_utente(db, nome, account.nome_da_mostrare(nome_utente, nome), password_hash, recupero_hash,
+                                        inv["ruolo"] if inv else "utente", adesso, ip=ip, contate=contate, email=email,
+                                        senza_password=True)
             db.execute("INSERT INTO identita_esterne (utente_id, provider, soggetto, email, email_verificata, creata, ultimo_uso) "
                        "VALUES (?, 'google', ?, ?, ?, ?, ?)",
-                       (cur.lastrowid, esito["sub"], esito["email"] or None, int(esito["verificata"]), _t(adesso), _t(adesso)))
-            if inv and not account.consuma_invito(db, inv["codice_hash"], cur.lastrowid):
+                       (nuovo, esito["sub"], esito["email"] or None, int(esito["verificata"]), _t(adesso), _t(adesso)))
+            if inv and not account.consuma_invito(db, inv["codice_hash"], nuovo):
                 raise ErroreAccount(account.INVITO_NON_VALIDO, 403)
-            account.segna_termini(db, cur.lastrowid, adesso)
+            account.segna_termini(db, nuovo, adesso)
             db.execute("UPDATE flussi_social SET esito = NULL WHERE id = ?", (riga["id"],))
-            account._segna_indirizzo(db, cur.lastrowid, ip)
+            account._segna_indirizzo(db, nuovo, ip)
             db.commit()
         except sqlite3.IntegrityError:
             db.rollback()
@@ -447,7 +446,7 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
             if db.in_transaction:
                 db.rollback()
             raise
-    utente = account.trova(db, cur.lastrowid)
+    utente = account.trova(db, nuovo)
     evento("social_registrazione", provider="google", id=esito["sub"][:6], ip=ip, ruolo=utente.ruolo)
     return utente, account._apri_sessione(db, utente.id, dispositivo, adesso)
 

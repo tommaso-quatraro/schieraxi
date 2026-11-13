@@ -149,6 +149,23 @@ prima della scadenza:
   l'interruttore resta acceso; con il permesso negato niente prova;
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore.
 
+`test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
+- dopo un rilascio finto (ogni file della scocca dice la sua versione, `VERSIONE` di `sw.js` alzata) con `app.js` e `testi.js`
+  lenti oltre i 2,5 secondi, la pagina riaperta è tutta di una versione e un testo nuovo non compare come chiave; la versione
+  nuova arriva intera con «Ricarica»;
+- con il proxy che risponde 502 (il servizio dietro riparte) si apre l'app salvata, non la pagina d'errore del proxy; con gli
+  account (come in produzione) anche «chi sono» riceve 502: la Formazione mostra la copia salvata dell'account e, tornato il
+  server, Impostazioni ha «Il tuo account» e non «Gestione»;
+- senza rete Privacy, mai aperta prima, dice «Nessuna connessione» e non apre un'altra copia dell'app; l'app si apre dalla copia.
+
+La fixture `installata` (al posto di `web`) apre un contesto di Chrome con il service worker permesso, davanti al server finto
+mette `Proxy` (fa la parte di nginx, su 127.0.0.1: senza https la web registra il service worker solo lì e su localhost) e
+serve una copia di `fanta/web/` (`installata.web`) da cambiare per un rilascio finto. `installata.installa()` è la prima
+apertura con la rete buona, `installata.scheda(percorso)` riapre l'app in una scheda nuova; `installata.proxy.modo` vale `"ok"`,
+`"502"` o `"spento"` (niente rete), `installata.proxy.lenti` ritarda i percorsi scelti e `installata.proxy.risposte` dà un
+JSON fisso per un percorso (per esempio `/api/account/me` con un account) finché il modo è `"ok"`. `installata.aspetta(pagina)`
+aspetta l'area principale pronta, come `web.aspetta()`.
+
 ## Aggiungere un test di comportamento (dieci righe)
 Un file `tests/browser/test_<cosa>.py`. Il segno `browser` lo mette da solo `conftest.py` a ogni test di questa cartella:
 non serve scriverlo.

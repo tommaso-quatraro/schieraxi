@@ -73,29 +73,42 @@ def test_promemoria_un_ora_e_un_quarto_d_ora_una_volta_sola(tmp_path, monkeypatc
     assert notifiche.promemoria(db, Regole(), ROSE, datetime(2026, 10, 28, 18, 40), f, manda, opz) == []      # formazione già chiusa
 
 
-def test_promemoria_rispetta_le_impostazioni(tmp_path, monkeypatch):
+ROSE_DUE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(1, "Castro", "A", "ROM", 10), lega.GiocatoreRosa(2, "Bonny", "A", "PAR", 8)])], "Mia")
+
+
+def _consigliata_che_toglie_chi_non_gioca(monkeypatch, prev, impossibile=False):
+    """La consigliata finta: Castro se gioca, altrimenti Bonny (con `impossibile` nessuna squadra senza Castro)."""
+    def formazione(*a, **k):
+        if prev.at[1, "stato"] in notifiche.MOTIVI_FUORI:
+            if impossibile:
+                raise ValueError("nessun attaccante disponibile")
+            return {"modulo": "4-3-3", "punteggio_atteso": 70.0, "titolari": [{"id": 2, "nome": "Bonny"}]}
+        return {"modulo": "4-3-3", "punteggio_atteso": 71.2, "titolari": [{"id": 1, "nome": "Castro"}]}
+    monkeypatch.setattr(consigli, "formazione", formazione)
+
+
+def _due(monkeypatch):
     _finto(monkeypatch)
-    mandati = []
-    manda = lambda *a, **k: mandati.append(a) or True    # noqa: E731
-    opz = {"cambi": True, "promemoria_60": False, "promemoria_15": True}
-    notifiche.promemoria(_db("2026-10-28 18:30"), Regole(), ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "n.json", manda, opz)
-    assert mandati == []
+    prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False},
+                         {"nome": "Bonny", "stato": "titolare", "percentuale": 70.0, "dubbio": False}], index=[1, 2])
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+    return prev
 
 
 def test_cambi_la_prima_volta_non_avvisa_poi_si(tmp_path, monkeypatch):
-    _finto(monkeypatch, titolari=("Castro",))
+    """Il primo controllo ricorda la consigliata; l'avviso parte quando la cambia un titolare che non gioca più (#676)."""
+    prev = _due(monkeypatch)
+    _consigliata_che_toglie_chi_non_gioca(monkeypatch, prev)
     mandati = []
     manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
-    prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1])
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     f, db, adesso = tmp_path / "n.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
-    assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda) == [] and mandati == []         # primo controllo: solo memorizza
-    assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda) == [] and mandati == []         # nessun cambio
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda) == [] and mandati == []         # primo controllo: solo memorizza
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda) == [] and mandati == []         # nessun cambio
     prev.loc[1, ["stato", "percentuale"]] = ["panchina", 30.0]
-    righe = notifiche.cambi(db, Regole(), ROSE, adesso, f, manda)
-    assert righe and "Castro: dalla formazione titolare alla panchina" in righe[0] and len(mandati) == 1
-    assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda) == [] and len(mandati) == 1     # già comunicato
-    assert notifiche.cambi(db, Regole(), ROSE, datetime(2026, 10, 28, 19, 0), f, manda) == []    # giornata già iniziata
+    righe = notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda)
+    assert righe and righe[0].startswith("Castro parte dalla panchina: metti Bonny.") and len(mandati) == 1
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda) == [] and len(mandati) == 1     # già comunicato
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, datetime(2026, 10, 28, 19, 0), f, manda) == []    # giornata già iniziata
 
 
 def test_impostazioni_e_stato_rovinato(tmp_path):
@@ -131,31 +144,29 @@ def test_se_l_invio_fallisce_si_riprova_al_giro_dopo(tmp_path, monkeypatch):
     esito["ok"] = True
     assert len(notifiche.promemoria(db, Regole(), ROSE, adesso, f, manda, opz)) == 1 and len(mandati) == 2
 
-    prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1])
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+    prev = _due(monkeypatch)
+    _consigliata_che_toglie_chi_non_gioca(monkeypatch, prev)
     c, presto = tmp_path / "c.json", datetime(2026, 10, 27, 9, 0)
-    notifiche.cambi(db, Regole(), ROSE, presto, c, manda, opz)                  # primo controllo
+    notifiche.cambi(db, Regole(), ROSE_DUE, presto, c, manda, opz)                  # primo controllo
     prev.loc[1, "stato"] = "infortunato"
     esito["ok"] = False
-    assert notifiche.cambi(db, Regole(), ROSE, presto, c, manda, opz)            # invio fallito
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, presto, c, manda, opz) == []      # invio fallito
     esito["ok"] = True
-    assert notifiche.cambi(db, Regole(), ROSE, presto, c, manda, opz)            # ritentato: il cambio non è andato perso
-    assert notifiche.cambi(db, Regole(), ROSE, presto, c, manda, opz) == []      # ora è comunicato
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, presto, c, manda, opz)            # ritentato: il cambio non è andato perso
+    assert notifiche.cambi(db, Regole(), ROSE_DUE, presto, c, manda, opz) == []      # ora è comunicato
 
 
 def test_cambi_senza_formazione_possibile_avvisa_lo_stesso(tmp_path, monkeypatch):
-    _finto(monkeypatch)
-    def senza(*a, **k):
-        raise ValueError("nessun portiere")
-    monkeypatch.setattr(consigli, "formazione", senza)
-    prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1])
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+    prev = _due(monkeypatch)
+    _consigliata_che_toglie_chi_non_gioca(monkeypatch, prev, impossibile=True)
     mandati = []
     manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
     f, db, adesso = tmp_path / "c.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
-    notifiche.cambi(db, Regole(), ROSE, adesso, f, manda)
+    notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda)
     prev.loc[1, "stato"] = "infortunato"
-    assert notifiche.cambi(db, Regole(), ROSE, adesso, f, manda) == ["Castro: ora infortunato"] and len(mandati) == 1
+    righe = notifiche.cambi(db, Regole(), ROSE_DUE, adesso, f, manda)
+    assert len(righe) == 1 and righe[0].startswith("Castro è infortunato: con la tua rosa non si forma più una squadra.")
+    assert len(mandati) == 1
 
 
 def test_non_torna_disponibile_se_sparisce_dalle_probabili():
@@ -259,21 +270,11 @@ def test_riepilogo_il_massimo_con_le_regole_della_lega_e_mai_sotto_i_tuoi_punti(
     assert len(r) == 1 and f"Il massimo possibile con la tua rosa era {massimo}." in r[0]
 
 
-def test_osservati_avvisano_con_la_stella(tmp_path, monkeypatch):
+def test_gli_osservati_si_aggiungono_una_volta_e_si_tolgono(tmp_path):
+    """(I giocatori seguiti non mandano più avvisi, #676: restano l'elenco e le sue regole.)"""
     from fanta import osservati
-    _finto(monkeypatch)
-    prev = pd.DataFrame([{"nome": "Castro", "stato": "titolare", "percentuale": 80.0, "dubbio": False},
-                         {"nome": "Osservato", "stato": "titolare", "percentuale": 90.0, "dubbio": False}], index=[1, 77])
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     fo = tmp_path / "oss.json"
     assert osservati.aggiungi(77, fo) == [77] and osservati.aggiungi(77, fo) == [77] and osservati.leggi(fo) == [77]
-    mandati = []
-    manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append(testo) or True    # noqa: E731
-    f, db, adesso = tmp_path / "n.json", _db("2026-10-28 18:30"), datetime(2026, 10, 27, 9, 0)
-    notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, file_osservati=fo)
-    prev.loc[77, "stato"] = "infortunato"
-    righe = notifiche.cambi(db, Regole(), ROSE, adesso, f, manda, file_osservati=fo)
-    assert righe == ["★ Osservato: ora infortunato"] and len(mandati) == 1
     assert osservati.togli(77, fo) == [] and osservati.leggi(tmp_path / "non-esiste.json") == []
 
 

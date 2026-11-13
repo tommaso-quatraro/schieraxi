@@ -110,11 +110,27 @@ def test_email_unica_e_nessuna_enumerazione(web, posta_finta):
     assert (esiste.status_code, esiste.json()) == (libero.status_code, libero.json())          # stessa risposta
     assert [m.a for m in posta_finta] == ["marco@example.com", "libero@example.com"]
     assert "già un account" in posta_finta[0].oggetto and not any(re.search(r"\b\d{6}\b", posta_finta[0].testo) for _ in [0])
-    # niente codice per l'indirizzo occupato: non c'è modo di verificarlo
-    with contextlib.closing(account.apri()) as db:
-        assert db.execute("SELECT COUNT(*) FROM codici_email WHERE email = 'marco@example.com' AND utente_id = 2").fetchone()[0] == 0
     assert altro.post("/api/account/email/conferma", json={"codice": "000000"}).status_code == 403
     assert altro.get("/api/account/me").json()["email"] is None
+
+
+def test_il_profilo_mostra_l_attesa_uguale_per_ogni_indirizzo(web, posta_finta, monkeypatch):
+    """Dopo la richiesta «Il tuo account» mostra l'indirizzo in attesa sia se è libero sia se è già di un altro account; quello già
+    di un altro non si conferma con nessun codice (non ne parte nessuno). Si usa una variante dell'indirizzo di Marco: l'indice
+    unico sull'email non la ferma, quindi a rifiutare la conferma è l'attesa senza codice."""
+    utente_con_email(web, posta_finta, "marco", "marco@example.com")
+    monkeypatch.setattr(account_email, "nuovo_codice_numerico", lambda: "123456")
+    uno, due = cliente(), cliente()
+    registra(uno, "luca")
+    registra(due, "sara")
+    assert imposta(uno, "marco+x@example.com").status_code == 200            # una variante dell'indirizzo di Marco
+    assert imposta(due, "libera@example.com").status_code == 200
+    me_uno, me_due = uno.get("/api/account/me").json(), due.get("/api/account/me").json()
+    assert (me_uno["email"], me_uno["email_in_attesa"]) == (None, "marco+x@example.com")
+    assert (me_due["email"], me_due["email_in_attesa"]) == (None, "libera@example.com")
+    assert uno.post("/api/account/email/conferma", json={"codice": "123456"}).status_code == 403
+    assert uno.get("/api/account/me").json()["email"] is None
+    assert due.post("/api/account/email/conferma", json={"codice": "123456"}).json()["email"] == "libera@example.com"
 
 
 def test_chi_occupa_un_indirizzo_non_verificato_non_blocca_il_proprietario(web, posta_finta):

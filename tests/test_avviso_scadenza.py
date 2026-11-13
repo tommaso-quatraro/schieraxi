@@ -156,11 +156,9 @@ def test_ore_tranquille_rimandano_l_avviso(m, tmp_path):
     assert len(mandati) == 1 and "Castoldi è infortunato" in mandati[0][1]
 
 
-def test_spento_e_valori_dell_impostazione(m, tmp_path):
-    _cambi_ha_visto(tmp_path / "cambi.json", BASE)
-    _giro(m, tmp_path, ore(16, 0), {"avviso_prima": 0})
-    m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
-    assert _giro(m, tmp_path, ore(18, 0), {"avviso_prima": 0}) == ([], [])
+def test_valori_dell_impostazione(m, tmp_path):
+    """`avviso_prima` si legge e si salva ancora (l'iPhone di oggi lo mostra), ma l'avviso parte un'ora prima per tutti (#676,
+    test_avvisi_solo_due.py)."""
     f = tmp_path / "av.json"
     assert notifiche.impostazioni(f)["avviso_prima"] == 60                 # di base: un'ora prima
     assert notifiche.salva_impostazioni({"avviso_prima": 30}, f)["avviso_prima"] == 30
@@ -184,9 +182,9 @@ def test_dopo_l_avviso_il_promemoria_della_stessa_finestra_non_fa_il_doppione(m,
 
 
 def _cambi(m, tmp_path, quando, opz, mandati):
-    """Il vecchio avviso «cambi nelle probabili» (stesso file di stato che legge l'avviso «cambia la formazione»)."""
+    """L'avviso dei cambi (stesso file di stato che legge l'avviso «cambia la formazione»)."""
     manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True   # noqa: E731
-    return notifiche.cambi(m.db, Regole(), ROSE, quando, tmp_path / "cambi.json", manda, opz, tmp_path / "oss.json",
+    return notifiche.cambi(m.db, Regole(), ROSE, quando, tmp_path / "cambi.json", manda, opz,
                            file_scelte=tmp_path / "scelte.json", file_promemoria=tmp_path / "prom.json")
 
 
@@ -203,65 +201,56 @@ def test_vicino_alla_scadenza_parla_solo_l_avviso_nuovo(m, tmp_path):
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
     righe = _cambi(m, tmp_path, ore(17, 45), opz, mandati)                  # nella finestra parte prima l'avviso nuovo...
     assert len(righe) == 1 and righe[0].startswith("Castoldi è infortunato: metti Bonvicini")
-    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"]   # ...e il vecchio tace
+    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"]   # ...e quello dei cambi tace
     assert _avviso(m, tmp_path, ore(17, 50), opz, mandati) == []           # il giro dei promemoria non lo ripete
     assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"]
     assert _cambi(m, tmp_path, ore(18, 0), opz, mandati) == [] and len(mandati) == 1    # e non riparte più tardi
 
 
-def test_con_l_avviso_spento_i_cambi_restano_come_prima(m, tmp_path):
-    opz, mandati = {"cambi": True, "avviso_prima": 0}, []
-    _cambi(m, tmp_path, ore(16, 0), opz, mandati)
-    m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
-    righe = _cambi(m, tmp_path, ore(17, 45), opz, mandati)
-    assert "Castoldi: ora infortunato" in righe and mandati[0][0] == "SchieraXI · cambi nelle probabili"
-
-
 def test_se_i_cambi_sono_appena_partiti_l_avviso_nuovo_non_ripete(m, tmp_path):
-    scelte.salva(ST, 9, BASE, "4-3-3", tmp_path / "scelte.json", tipo="consigliata")
-    opz, mandati = {"cambi": True, "avviso_prima": 60}, []
+    opz, mandati = {}, []
     _cambi(m, tmp_path, ore(16, 0), opz, mandati)
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
-    assert "Castoldi: ora infortunato" in _cambi(m, tmp_path, ore(17, 28), opz, mandati)   # 62 minuti: finestra non ancora aperta
+    assert len(_cambi(m, tmp_path, ore(17, 28), opz, mandati)) == 1        # 62 minuti: finestra non ancora aperta, parlano i cambi
     assert _avviso(m, tmp_path, ore(17, 31), opz, mandati) == []           # 3 minuti dopo, stessa notizia: non si ripete
     assert _avviso(m, tmp_path, ore(17, 50), opz, mandati) == []           # né più tardi
-    assert [t for t, _ in mandati] == ["SchieraXI · cambi nelle probabili"]
+    assert [t for t, _ in mandati] == ["SchieraXI · cambia un titolare"]
     m.cambia("v2", esce=10, entra=14, stato={10: "squalificato"}, bonus={10: -3.0})       # una notizia nuova sì
-    assert len(_cambi(m, tmp_path, ore(18, 0), opz, mandati)) == 1        # nella finestra parla l'avviso nuovo, il vecchio tace
-    assert [t for t, _ in mandati][-1] == "SchieraXI · cambia la formazione" and len(mandati) == 2
+    assert len(_cambi(m, tmp_path, ore(18, 0), opz, mandati)) == 1        # nella finestra parla l'avviso nuovo, i cambi tacciono
+    assert "(+3,0 punti attesi)" in mandati[-1][1] and len(mandati) == 2
     assert _avviso(m, tmp_path, ore(18, 5), opz, mandati) == [] and len(mandati) == 2
 
 
 def test_se_l_avviso_nuovo_non_parte_i_cambi_si_dicono(m, tmp_path):
     """Revisione: negli ultimi 60 minuti i cambi tacevano anche quando l'avviso «cambia la formazione» non partiva (già due
-    avvisi, o guadagno sotto un punto): un terzo infortunio non lo diceva nessuno."""
-    opz, mandati = {"cambi": True, "avviso_prima": 60}, []
+    avvisi, o guadagno sotto un punto): un terzo infortunio non lo diceva nessuno. Un cambio che non tocca la consigliata invece
+    non si dice più (#676)."""
+    opz, mandati = {}, []
     _cambi(m, tmp_path, ore(16, 0), opz, mandati)
     _avviso(m, tmp_path, ore(16, 0), opz, mandati)
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
     assert len(_cambi(m, tmp_path, ore(17, 40), opz, mandati)) == 1 and len(mandati) == 1     # primo avviso nuovo
     m.cambia("v2", esce=10, entra=14, stato={10: "squalificato"}, bonus={10: -3.0})
     assert len(_cambi(m, tmp_path, ore(17, 50), opz, mandati)) == 1 and len(mandati) == 2     # secondo (l'ultimo della giornata)
-    # terzo infortunio 5 minuti dopo: l'avviso nuovo ha finito i suoi invii, quindi parla il vecchio
+    # terzo infortunio 5 minuti dopo: l'avviso nuovo ha finito i suoi invii, quindi parla quello dei cambi
     m.cambia("v3", esce=9, entra=13, stato={9: "infortunato"}, bonus={9: -4.0})
     righe = _cambi(m, tmp_path, ore(17, 55), opz, mandati)
-    assert "Lombrici: ora infortunato" in righe
-    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"] * 2 + ["SchieraXI · cambi nelle probabili"]
-    # un cambio piccolo (sotto un punto) che l'avviso nuovo non dice: lo dice il vecchio
-    m.cambia("v4", stato={8: "panchina"}, bonus={8: -0.3})
-    assert "Sartano: dalla formazione titolare alla panchina" in " ".join(_cambi(m, tmp_path, ore(18, 0), opz, mandati))
-    assert len(mandati) == 4
+    assert righe == ["Lombrici è infortunato: metti Attanasi. La formazione si chiude il 28/10 alle 18:30."]
+    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"] * 2 + ["SchieraXI · cambia un titolare"]
+    m.cambia("v4", stato={8: "panchina"}, bonus={8: -0.3})                 # la consigliata non cambia: niente
+    assert _cambi(m, tmp_path, ore(18, 0), opz, mandati) == [] and len(mandati) == 3
 
 
 def test_cambi_zittiti_solo_per_la_notizia_che_l_avviso_conosceva(m, tmp_path):
-    opz, mandati = {"cambi": True, "avviso_prima": 60}, []
+    opz, mandati = {}, []
     _cambi(m, tmp_path, ore(16, 0), opz, mandati)
     _avviso(m, tmp_path, ore(16, 0), opz, mandati)
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
     assert len(_avviso(m, tmp_path, ore(17, 40), opz, mandati)) == 1        # l'avviso nuovo parte dal giro dei promemoria
     assert _cambi(m, tmp_path, ore(17, 42), opz, mandati) == [] and len(mandati) == 1   # stessa notizia: i cambi tacciono
-    m.cambia("v2", stato={7: "panchina"}, bonus={7: -0.2})                  # 3 minuti dopo, dati nuovi e cambio piccolo
-    assert "Pellizza: dalla formazione titolare alla panchina" in " ".join(_cambi(m, tmp_path, ore(17, 45), opz, mandati))
+    m.cambia("v2", esce=7, entra=13, stato={7: "panchina"}, bonus={7: -0.5})            # 3 minuti dopo, dati nuovi: per meno di un punto
+    righe = _cambi(m, tmp_path, ore(17, 45), opz, mandati)
+    assert len(righe) == 1 and righe[0].startswith("Pellizza parte dalla panchina: metti Attanasi.")
     assert len(mandati) == 2
 
 

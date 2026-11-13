@@ -36,7 +36,8 @@
   utente-ruolo --utente NOME --ruolo admin|normale   promuove o declassa un account (non lascia il server senza amministratori)
   importa-per-conto-di --utente NOME FILE     importa le rose di un amico che lo ha chiesto, nel suo archivio (multiutente)
   multiutente-migra --utente NOME [--forza]   COPIA la lega di oggi (lega/ e i file personali di dati/) nella cartella di un account
-  cartelle-senza-account [--esegui]   elenca le cartelle di dati rimaste senza account (una cancellazione non finita); con --esegui le cancella
+  cartelle-senza-account [--esegui]   elenca le cartelle di dati rimaste senza account (una cancellazione non finita) e i numeri di
+                                      account eliminati rimasti nelle consigliate già mostrate; con --esegui li cancella
 """
 from __future__ import annotations
 
@@ -45,6 +46,7 @@ import importlib.util
 import json
 import sys
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
 from . import lega, listone, movimenti, nomi, regole, rose
@@ -365,13 +367,11 @@ def _avvisi_per_utente(funzione: str) -> None:
         esiti, errori = avvisi_utenti.esegui(funzione, db)
     finally:
         db.close()
-    # «pronta» è il comando di cui lo script del server manda l'uscita su ntfy (il canale del proprietario): qui deve uscire vuota
-    uscita = sys.stderr if funzione == "pronta" else sys.stdout
     for nome, righe in esiti.items():
         if righe:
-            print(f"{nome}: {len(righe)} avvisi ({funzione})", file=uscita)
+            print(f"{nome}: {len(righe)} avvisi ({funzione})")
     for nome, errore in errori.items():
-        print(f"{nome}: errore negli avvisi ({funzione}): {errore}", file=uscita)
+        print(f"{nome}: errore negli avvisi ({funzione}): {errore}")
 
 
 def _avvisi_telefono(funzione: str) -> None:
@@ -392,11 +392,6 @@ def _avvisi_telefono(funzione: str) -> None:
             except Exception as e:                 # noqa: BLE001  (i promemoria partono comunque)
                 print(f"avviso prima della scadenza non controllato: {type(e).__name__}")
         righe += getattr(notifiche, funzione)(db, reg, r_ose)
-        if funzione == "cambi":                    # stesso giro dei cambi: reparti della rosa scoperti (una volta sola ciascuno)
-            try:
-                righe += notifiche.copertura(db, reg, r_ose)
-            except Exception as e:                 # noqa: BLE001  (i cambi sono già partiti)
-                print(f"copertura non controllata: {type(e).__name__}")
     finally:
         db.close()
     for riga in righe:
@@ -412,7 +407,8 @@ def cmd_promemoria(a) -> None:
 
 
 def cmd_riepilogo(a) -> None:
-    _avvisi_telefono("riepilogo")
+    """Il riepilogo della giornata non è più un avviso (#676): sta in testa alla Formazione a giornata finita. Il comando resta
+    perché gli script del server già installati lo lanciano: esce subito, senza scrivere niente."""
 
 
 def cmd_affidabilita(a) -> None:
@@ -507,12 +503,12 @@ def _affidabilita_pubblica(file: str | None) -> None:
 def cmd_backup(a) -> None:
     from . import account, backup
     if account.multiutente():
-        return _backup_per_utente(a.tieni)
+        return _backup_per_utente(a.tieni, datetime.now())
     file = backup.salva_copia(tieni=a.tieni)
     print(f"copia salvata: {file}" if file else "niente da salvare")
 
 
-def _backup_per_utente(tieni: int) -> None:
+def _backup_per_utente(tieni: int, adesso: datetime) -> None:
     """Con gli account: una copia dei dati di ogni utente nella sua cartella (le ultime 3) e una del database degli account.
     La copia di un utente che non si scrive (disco, database degli account che non risponde) non ferma gli altri né la copia del
     database: l'errore va nel registro del servizio e alla fine il comando esce con errore."""
@@ -531,7 +527,8 @@ def _backup_per_utente(tieni: int) -> None:
         except (OSError, percorsi.DatabaseAccountNonRisponde) as e:
             errori += 1
             logging.getLogger(__name__).error("Backup dell'account %s non salvato (%s)", i, type(e).__name__)
-    conti = backup.copia_account(percorsi.cartella_account() / "backup", percorsi.cartella_account() / "account.sqlite", tieni)
+    conti = backup.copia_account(percorsi.cartella_account() / "backup", percorsi.cartella_account() / "account.sqlite", tieni,
+                                 adesso=adesso)
     print(f"copie salvate: {fatte} utenti su {len(ids)}; database degli account: {'copiato' if conti else 'niente da copiare'}")
     if errori:
         sys.exit(f"Errore: copia non salvata per {errori} utenti su {len(ids)} (il motivo è nel registro del servizio).")
@@ -585,22 +582,8 @@ def cmd_ingresso(a) -> None:
 
 
 def cmd_avviso(a) -> None:
-    """Stampa il testo dell'avviso "formazione pronta" se è il momento (e lo segna come mandato), altrimenti niente."""
-    from datetime import datetime
-    from . import account, archivio, avvisi, consigli, notifiche
-    if account.multiutente():              # ogni utente riceve il suo avviso direttamente (il canale ntfy dello script non è degli utenti)
-        return _avvisi_per_utente("pronta")
-    if not a.prova and notifiche.in_silenzio(datetime.now(), notifiche.impostazioni()):
-        return                                     # ore tranquille: non lo segno come mandato, riprova al giro dopo
-    db = archivio.apri()
-    try:
-        st = consigli.stagione_corrente()
-        r = regole.carica(FILE_REGOLE)
-        avviso = avvisi.da_mandare(db, st, consigli.giornata_da_giocare(db, st, r), datetime.now(), segna=not a.prova, regole=r)
-    finally:
-        db.close()
-    if avviso:
-        print(avviso["testo"])
+    """L'avviso «formazione pronta» non parte più (#676: solo promemoria e cambio della formazione). Il comando resta perché gli
+    script del server già installati lo lanciano e mandano su ntfy quello che stampa: esce subito, senza scrivere niente."""
 
 
 def cmd_taratura_probabili(a) -> None:
@@ -802,35 +785,52 @@ def cmd_migra(a) -> None:
 
 
 def cmd_cartelle_senza_account(a) -> None:
-    """Le cartelle di dati rimaste senza account (una cancellazione non finita). Senza --esegui le elenca e basta; con --esegui
-    le cancella. Se il database degli account manca o non ha nessun account, non cancella niente: sembrerebbero tutte senza account."""
+    """Le cartelle di dati rimaste senza account (una cancellazione non finita) e i numeri di account eliminati rimasti nelle
+    consigliate già mostrate (file comune a tutti: account eliminati prima di #653 o pulizia non riuscita). Senza --esegui li
+    elenca e basta; con --esegui cancella le cartelle e toglie i numeri. Se il database degli account manca o non ha nessun
+    account, non cancella niente: sembrerebbero tutti senza account."""
     import contextlib
-    from . import account, contesto, percorsi
+    from . import account, consigli, contesto, percorsi
     file = percorsi.cartella_account() / "account.sqlite"
     if not file.is_file():
         sys.exit(f"Il database degli account non c'è ({file}): non so quali cartelle hanno un account. Non ho cancellato niente.")
+    ricordati = consigli.numeri_ricordati()         # prima il file e poi il database: chi si iscrive nel frattempo non è fra questi
     try:
         with contextlib.closing(account.apri(file)) as db:
             orfane = contesto.cartelle_senza_account(db)
-            quanti = db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0]
+            vivi = {r[0] for r in db.execute("SELECT id FROM utenti")}
     except account.ErroreAccount as e:
         sys.exit(f"Errore: {e.messaggio}")
-    if not orfane:
+    numeri = sorted(ricordati - vivi)
+    if not orfane and not numeri:
         print("Nessuna cartella senza account.")
         return
-    print(f"Cartelle senza account: {len(orfane)}")
-    for numero in orfane:
-        print(f"  {contesto.cartella_utente(numero)}")
+    if orfane:
+        print(f"Cartelle senza account: {len(orfane)}")
+        for numero in orfane:
+            print(f"  {contesto.cartella_utente(numero)}")
+    if numeri:
+        print(f"Account eliminati ancora nelle consigliate già mostrate: {', '.join(map(str, numeri))}")
     if not a.esegui:
-        print("Non ho toccato niente. Per cancellarle: python -m fanta cartelle-senza-account --esegui")
+        print("Non ho toccato niente. Per cancellare: python -m fanta cartelle-senza-account --esegui")
         return
-    if quanti == 0:
+    if not vivi:
         sys.exit("Il database degli account non ha nessun account (forse è stato ricreato). Non ho cancellato niente.")
-    rimaste = [numero for numero in orfane if not contesto.elimina_cartella(numero)]
-    print(f"Cancellate: {len(orfane) - len(rimaste)}")
-    if rimaste:
-        sys.exit(f"Non riesco a cancellare del tutto {len(rimaste)} cartelle (file in uso o permessi): "
-                 "il motivo è nel registro del servizio. Riprova più tardi.")
+    errori = []
+    if orfane:
+        rimaste = [numero for numero in orfane if not contesto.elimina_cartella(numero)]
+        print(f"Cancellate: {len(orfane) - len(rimaste)}")
+        if rimaste:
+            errori.append(f"Non riesco a cancellare del tutto {len(rimaste)} cartelle (file in uso o permessi): "
+                          "il motivo è nel registro del servizio.")
+    if numeri:
+        try:
+            consigli.togli_utenti(numeri)
+            print(f"Numeri tolti dalle consigliate già mostrate: {len(numeri)}")
+        except OSError as e:
+            errori.append(f"Non riesco a togliere i numeri dalle consigliate già mostrate ({type(e).__name__}).")
+    if errori:
+        sys.exit(" ".join(errori) + " Riprova più tardi.")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -905,10 +905,10 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--dal", help="obbligatoria: data e ora ISO con il fuso (per esempio 2026-12-10T00:00:00+01:00)")
     x.add_argument("--al", help="data e ora ISO con il fuso (di norma adesso)")
     x.set_defaults(f=cmd_ingresso)
-    x = sub.add_parser("riepilogo", help="riepilogo a giornata finita")
+    x = sub.add_parser("riepilogo", help="non fa più niente: il riepilogo non è più un avviso (resta per gli script del server)")
     x.set_defaults(f=cmd_riepilogo)
-    x = sub.add_parser("avviso", help="stampa l'avviso 'formazione pronta' se è il momento (per le notifiche)")
-    x.add_argument("--prova", action="store_true", help="non segnare l'avviso come mandato")
+    x = sub.add_parser("avviso", help="non fa più niente: «formazione pronta» non è più un avviso (resta per gli script del server)")
+    x.add_argument("--prova", action="store_true", help="non usato (resta per gli script del server)")
     x.set_defaults(f=cmd_avviso)
     x = sub.add_parser("taratura-probabili", help="ritara «gioca N%%» con le probabili sulle giornate giocate e lo usa solo se sbaglia meno")
     scelta = x.add_mutually_exclusive_group()
@@ -938,7 +938,7 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--utente", required=True, help="nome utente dell'account (già registrato)")
     x.add_argument("--forza", action="store_true", help="sovrascrive i dati già presenti nella cartella dell'account")
     x.set_defaults(f=cmd_migra)
-    x = sub.add_parser("cartelle-senza-account", help="elenca le cartelle di dati rimaste senza account; con --esegui le cancella (multiutente)")
+    x = sub.add_parser("cartelle-senza-account", help="elenca le cartelle di dati rimaste senza account e i loro numeri nelle consigliate; con --esegui li cancella (multiutente)")
     x.add_argument("--esegui", action="store_true", help="cancella le cartelle elencate (senza: elenca e basta)")
     x.set_defaults(f=cmd_cartelle_senza_account)
     x = sub.add_parser("formazione", help="formazione consigliata per la prossima giornata")

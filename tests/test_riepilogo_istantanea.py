@@ -5,11 +5,10 @@ Dati finti, file in cartelle temporanee, nessun invio vero."""
 import json
 import re
 from datetime import datetime
-from types import SimpleNamespace as NS
 
 import pytest
 
-from fanta import avvisi_utenti, diario, notifiche, scelte
+from fanta import diario, notifiche, scelte
 from fanta.frasi import CATALOGO, F, nome_giornata
 from fanta.frasi_avvisi import NOTIFICHE
 from fanta.regole import Regole
@@ -100,16 +99,6 @@ def test_riepilogo_con_un_giocatore_non_piu_in_rosa_nell_istantanea_non_parte(tm
     db, rose = _giornata_8_finita(tmp_path, monkeypatch)
     ceduto = _istantanea(tmp_path, CONSIGLIATA_8[:10] + [CEDUTO])
     assert _riepilogo(tmp_path, db, rose, "a", file_diario=ceduto) is None
-
-
-def test_riepilogo_di_ogni_utente_legge_il_suo_diario(tmp_path, monkeypatch):
-    """Con gli account il riepilogo riceve il Diario di QUELL'utente: mai quello comune del server."""
-    chiamate = []
-    monkeypatch.setattr(notifiche, "riepilogo", lambda *a, **k: chiamate.append(a) or [])
-    ctx = NS(stato_riepilogo=tmp_path / "r.json", stato_cambi=tmp_path / "c.json", scelte=tmp_path / "s.json", diario=tmp_path / "d.json")
-    a = NS(opzioni={"riepilogo": True}, rose=None, manda=None, ctx=ctx)
-    avvisi_utenti._riepilogo(a, None, Regole(), ADESSO_8)
-    assert chiamate[0][-2:] == (ctx.scelte, ctx.diario)
 
 
 # ---------------------------------------------------------------- 2. frase propria per la scelta salvata che non vale più

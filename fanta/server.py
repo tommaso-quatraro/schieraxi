@@ -272,7 +272,7 @@ async def _note_in_inglese(request: Request, risposta, if_none_match: str | None
     chiama() l'ha tolto, così il 304 non arriva dall'ETag italiano). Le risposte da scaricare (Content-Disposition) non si toccano."""
     if (not _e_lettura_json(request, risposta) or not hasattr(risposta, "body_iterator")
             or "attachment" in risposta.headers.get("content-disposition", "").lower()):
-        return risposta
+        return await _304_se_non_cambiata(risposta, if_none_match)
     corpo = b"".join([pezzo async for pezzo in risposta.body_iterator])
     compresso = risposta.headers.get("content-encoding") == "gzip"            # la compressione sta più dentro: si apre e si richiude
     nuovo = await run_in_threadpool(_riscrivi_note, corpo, compresso)
@@ -293,6 +293,19 @@ async def _note_in_inglese(request: Request, risposta, if_none_match: str | None
     if risposta.headers.get("vary"):
         nuova.headers["Vary"] = risposta.headers["vary"]
     return nuova
+
+
+async def _304_se_non_cambiata(risposta, if_none_match: str | None):
+    """Una risposta che non si traduce (uno stemma) con l'ETag che il client ha già: 304, come in italiano. Serve perché in
+    inglese If-None-Match si toglie dalla richiesta prima di arrivare alla rotta (#654)."""
+    etag = risposta.headers.get("etag")
+    if risposta.status_code != 200 or not etag or not if_none_match or not _etag_in_if_none_match(if_none_match, etag):
+        return risposta
+    if hasattr(risposta, "body_iterator"):
+        async for _ in risposta.body_iterator:      # il corpo si consuma comunque: chi l'ha prodotto non resta in attesa
+            pass
+    tenute = ("etag", "cache-control", "vary", "last-modified")
+    return Response(status_code=304, headers={k: v for k, v in risposta.headers.items() if k.lower() in tenute})
 
 
 async def _risposta(request: Request, chiama):
@@ -907,6 +920,17 @@ class FormazioneScelta(BaseModel):
     messa: bool | None = None       # «L'ho messa» (#616), solo con `salva`: vero o falso la scrive, senza resta com'era (scelte.salva)
 
 
+def _da_dove(request: Request) -> str | None:
+    """Da dove arriva un salvataggio della formazione (campo `da` della scelta, #639): «app» se porta il token come «Bearer» (l'app
+    nativa, la regola delle rotte degli account), «web» se porta il cookie della sessione o `Sec-Fetch-Mode`, che ogni browser
+    recente manda e l'app nativa no (senza account non c'è il cookie). Altrimenti None: non si sa, e il promemoria resta com'era."""
+    if request.headers.get("authorization", "")[:7].lower() == "bearer ":
+        return scelte.DA_APP
+    if request.cookies.get(rotte_account.COOKIE) or request.headers.get("sec-fetch-mode"):
+        return scelte.DA_WEB
+    return None
+
+
 def _etag_scelta(ctx: Contesto, giornata: int) -> str:
     return versioni.etag_dati(scelte.leggi(consigli.stagione_corrente(), giornata, ctx.scelte))
 
@@ -979,7 +1003,7 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
                 _non_sposta_i_fermi(ctx, regole_, fermi, dati.titolari)
                 scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era,
-                             messa=dati.messa)
+                             messa=dati.messa, da=_da_dove(request))
                 response.headers["ETag"] = _etag_scelta(ctx, r["giornata"])
         return r
     finally:
@@ -1663,13 +1687,23 @@ def squadre(response: Response, ctx: Contesto = Depends(lega_corrente)):
 
 
 @app.get("/api/squadre/immagine")
-def immagine_squadra(squadra: str, tipo: str, ctx: Contesto = Depends(lega_corrente)):
-    """Stemma o maglia di una squadra della lega (404 se non c'è)."""
+def immagine_squadra(request: Request, squadra: str, tipo: str, ctx: Contesto = Depends(lega_corrente)):
+    """Stemma o maglia di una squadra della lega (404 se non c'è). L'indirizzo è sempre lo stesso: il browser ricontrolla ogni
+    volta (`no-cache`) e con l'ETag che ha già riceve 304. Così uno stemma cambiato, o quello di un altro account entrato sullo
+    stesso browser, non resta vecchio (#654). L'ETag viene dal contenuto: due file diversi non hanno mai lo stesso."""
     s = _rose(ctx).squadra(squadra)
     p = immagini.percorso(s.nome, tipo, ctx.immagini) if s else None
-    if p is None:
+    try:
+        dati = p.read_bytes() if p is not None else None
+    except FileNotFoundError:                     # tolta in questo momento (cambio o rimozione)
+        dati = None
+    if dati is None:
         raise HTTPException(404, "Nessuna immagine")
-    return FileResponse(p, media_type=immagini.FORMATI[p.suffix], headers={"Cache-Control": "private, max-age=3600"})
+    etag = '"' + hashlib.sha256(dati).hexdigest()[:32] + '"'
+    intestazioni = {"ETag": etag, "Cache-Control": "private, no-cache"}
+    if _etag_in_if_none_match(request.headers.get("if-none-match", ""), etag):
+        return Response(status_code=304, headers=intestazioni)
+    return Response(content=dati, media_type=immagini.FORMATI[p.suffix], headers=intestazioni)
 
 
 @app.post("/api/squadre/immagine")
@@ -1928,11 +1962,6 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     diff = movimenti.differenze(prima, nuove)
     if prima and any(s.giocatori for s in prima.squadre):      # dopo il passaggio di stagione le rose partono vuote: non sono "acquisti"
         movimenti.registra(ctx.movimenti, diff)
-    try:
-        # un osservato lasciato libero: si può prendere
-        notifiche.osservati_liberi(diff, ctx.osservati, manda=_manda(ctx), opzioni=notifiche.impostazioni(ctx.impostazioni_avvisi))
-    except Exception:                                         # un avviso che non parte non deve far fallire l'importazione
-        pass
     threading.Thread(target=_scalda, args=(ctx,), daemon=True).start()     # le rose sono cambiate: la nuova formazione si prepara subito
     return {"squadre_importate": [s.nome for s in lette], "totale_squadre": len(nuove.squadre),
             "avvisi": avvisi + lega.controlla(nuove, r), "mia_squadra": nuove.mia_squadra,

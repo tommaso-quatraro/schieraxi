@@ -3723,8 +3723,10 @@ async function controllaAccesso() {
   try {
     r = await fetch("/api/account/me", { headers: { "X-Fanta": "1" } });
     try { dati = await r.json(); } catch { /* risposta vuota */ }
-  } catch {
-    // server non raggiungibile: si riparte con l'ultimo utente conosciuto, così le copie salvate si aprono lo stesso
+  } catch { r = null; }
+  // Server non raggiungibile, o che non risponde lui (502-504 del proxy mentre riparte, una pagina d'errore che non è JSON): si
+  // riparte con l'ultimo utente conosciuto, così le copie salvate si aprono lo stesso e l'account resta quello (#654).
+  if (!r || r.status >= 500 || dati === null) {
     try { stato.account = JSON.parse(localStorage.getItem("account") || "null"); } catch { stato.account = null; }
     return true;
   }

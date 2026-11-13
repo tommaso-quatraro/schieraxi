@@ -282,6 +282,31 @@ def test_stemma_e_maglia_della_squadra(client, tmp_path, monkeypatch):
     assert client.post("/api/squadre/immagine", params={"squadra": "Real Esempio", "tipo": "scudo"}, files={"file": ("s.png", png, "image/png")}).status_code == 400
 
 
+@pytest.mark.parametrize("lingua", ["it", "en"])
+def test_stemma_cambiato_non_resta_vecchio_nel_browser(client, tmp_path, monkeypatch, lingua):
+    """Stemma e maglia hanno sempre lo stesso indirizzo: il browser non deve riusare la sua copia senza chiedere (#654), altrimenti
+    dopo un cambio torna quello vecchio. Si ricontrolla con l'ETag: uguale -> 304 senza corpo, cambiato -> l'immagine nuova."""
+    from fanta import immagini
+    monkeypatch.setattr(immagini, "CARTELLA", tmp_path / "immagini")
+    client.post("/api/rose/testo", json={"testo": "Real Esempio\nP\tSommer\t10\n"})
+    q = {"squadra": "Real Esempio", "tipo": "stemma"}
+    vecchio, nuovo = b"\x89PNG\r\n\x1a\n" + b"1" * 40, b"\x89PNG\r\n\x1a\n" + b"2" * 40      # stessa dimensione
+    lingua_h = {"Accept-Language": lingua}
+    assert client.post("/api/squadre/immagine", params=q, files={"file": ("s.png", vecchio, "image/png")}).status_code == 200
+    g = client.get("/api/squadre/immagine", params=q, headers=lingua_h)
+    regole_cache = [v.strip() for v in g.headers["cache-control"].split(",")]
+    assert g.status_code == 200 and g.content == vecchio
+    assert "no-cache" in regole_cache and "private" in regole_cache, g.headers["cache-control"]
+    assert not [v for v in regole_cache if v.startswith("max-age") and v != "max-age=0"], g.headers["cache-control"]
+    etag = g.headers["etag"]
+    uguale = client.get("/api/squadre/immagine", params=q, headers=lingua_h | {"If-None-Match": etag})
+    assert uguale.status_code == 304 and uguale.content == b"", (uguale.status_code, uguale.headers)
+    assert uguale.headers["etag"] == etag and "no-cache" in uguale.headers["cache-control"]
+    assert client.post("/api/squadre/immagine", params=q, files={"file": ("s.png", nuovo, "image/png")}).status_code == 200
+    cambiato = client.get("/api/squadre/immagine", params=q, headers=lingua_h | {"If-None-Match": etag})
+    assert cambiato.status_code == 200 and cambiato.content == nuovo and cambiato.headers["etag"] != etag
+
+
 def test_avvisi_impostazioni_e_prova(client, tmp_path, monkeypatch):
     monkeypatch.setattr(server.notifiche, "FILE_IMPOSTAZIONI", tmp_path / "avvisi.json")
     monkeypatch.setattr(server.notifiche, "canale", lambda: None)

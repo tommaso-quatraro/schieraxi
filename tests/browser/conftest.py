@@ -12,9 +12,14 @@ invece falliscono: lì un test saltato sarebbe un verde finto.
 """
 from __future__ import annotations
 
+import http.client
+import http.server
 import importlib.util
 import json
 import os
+import shutil
+import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -299,4 +304,148 @@ def web(chrome, server_fase):
         yield Web(server_fase, apre_scheda)
     finally:
         for ctx in contesti:
+            ctx.close()
+
+
+# ---------------------------------------------------------------- l'app installata, con il service worker (#654)
+PAGINA_502 = (b"<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n"
+              b"<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n")
+NON_INOLTRATE = {"connection", "keep-alive", "transfer-encoding", "host", "proxy-connection", "upgrade", "content-length"}
+
+
+class Proxy:
+    """Fa la parte di nginx davanti al server finto, su 127.0.0.1 (senza https la web registra il service worker solo lì e su
+    localhost). `modo`: "ok" inoltra; "502" risponde 502 Bad Gateway a tutto, come mentre il servizio dietro riparte;
+    "spento" chiude la connessione senza rispondere, come senza rete. `lenti`: percorso -> secondi di ritardo (una rete debole
+    sui file grossi). `risposte`: percorso -> oggetto JSON dato al posto del server finto quando il modo è "ok" (per esempio
+    `/api/account/me` del server con gli account)."""
+
+    def __init__(self, dietro: str, server_finto):
+        parti = urlsplit(dietro)
+        self.host_dietro, self.porta_dietro = parti.hostname, parti.port
+        self.modo = "ok"
+        self.lenti: dict[str, float] = {}
+        self.risposte: dict[str, object] = {}
+        self._sf = server_finto
+        self._server = None
+
+    @property
+    def indirizzo(self) -> str:
+        return f"http://127.0.0.1:{self._server.server_address[1]}"
+
+    def __enter__(self):
+        proxy = self
+
+        class Gestore(http.server.BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def log_message(self, *argomenti):
+                pass
+
+            def _inoltra(self) -> None:
+                lunghezza = int(self.headers.get("Content-Length") or 0)
+                corpo = self.rfile.read(lunghezza) if lunghezza else None
+                if proxy.modo == "spento":
+                    self.close_connection = True
+                    return
+                if proxy.modo == "502":
+                    self.send_response(502)
+                    self.send_header("Content-Type", "text/html")
+                    self.send_header("Content-Length", str(len(PAGINA_502)))
+                    self.end_headers()
+                    if self.command != "HEAD":
+                        self.wfile.write(PAGINA_502)
+                    return
+                percorso = self.path.split("?", 1)[0]
+                if percorso in proxy.risposte:
+                    dati = json.dumps(proxy.risposte[percorso]).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", str(len(dati)))
+                    self.end_headers()
+                    if self.command != "HEAD":
+                        self.wfile.write(dati)
+                    return
+                ritardo = proxy.lenti.get(percorso)
+                if ritardo:
+                    time.sleep(ritardo)
+                dietro = http.client.HTTPConnection(proxy.host_dietro, proxy.porta_dietro, timeout=30)
+                try:
+                    dietro.request(self.command, self.path, body=corpo,
+                                   headers={k: v for k, v in self.headers.items() if k.lower() not in NON_INOLTRATE})
+                    risposta = dietro.getresponse()
+                    dati = risposta.read()
+                finally:
+                    dietro.close()
+                self.send_response(risposta.status)
+                for k, v in risposta.getheaders():
+                    if k.lower() not in NON_INOLTRATE:
+                        self.send_header(k, v)
+                self.send_header("Content-Length", str(len(dati)))
+                self.end_headers()
+                if self.command != "HEAD":
+                    self.wfile.write(dati)
+
+            do_GET = do_HEAD = do_POST = do_PUT = do_DELETE = do_PATCH = _inoltra
+
+        self._server = self._sf._ServerSenzaNome(("127.0.0.1", 0), Gestore)
+        threading.Thread(target=self._server.serve_forever, name="proxy-finto", daemon=True).start()
+        return self
+
+    def __exit__(self, *errore):
+        self._server.shutdown()
+        self._server.server_close()
+        return False
+
+
+@dataclass
+class Installata:
+    """La web come app installata: Chrome con il service worker acceso, davanti il proxy (`proxy`), dietro il server finto della
+    fase «prima» che serve una copia di fanta/web (`web`), da cambiare per un rilascio finto. `errori`: errori del codice."""
+    contesto: object
+    proxy: Proxy
+    web: Path
+    errori: list[str] = field(default_factory=list)
+
+    def scheda(self, percorso: str = "/"):
+        """Una scheda nuova sull'indirizzo, come riaprire l'app dalla schermata Home; aspetta il caricamento della pagina."""
+        pagina = self.contesto.new_page()
+        pagina.on("pageerror", lambda e: self.errori.append(f"{pagina.url}: {e}"))
+        pagina.goto(self.proxy.indirizzo + percorso, wait_until="load")
+        return pagina
+
+    def aspetta(self, pagina) -> None:
+        """Come `Web.aspetta`, senza la rete ferma: area principale con del testo e senza caricamento (al massimo 10 s), poi
+        DOM fermo. Un'attesa scaduta non ferma il test: lo dicono i controlli dopo."""
+        from playwright.sync_api import TimeoutError as AttesaScaduta
+        try:
+            pagina.wait_for_function(PRONTA, arg=AREA_PRINCIPALE, timeout=LIMITE_AREA_MS)
+        except AttesaScaduta:
+            pass
+        pagina.evaluate(DOM_FERMO)
+
+    def installa(self) -> None:
+        """Prima apertura con la rete buona: il service worker si installa (salva la scocca) e prende la pagina."""
+        pagina = self.scheda("/")
+        pagina.wait_for_function("() => !!navigator.serviceWorker.controller", timeout=20000)
+        pagina.close()
+
+
+@pytest.fixture
+def installata(chrome, tmp_path):
+    """L'app installata (`Installata`), una per test, con l'orologio fermo su «adesso» della fase «prima»."""
+    sf = _server_finto()
+    web = tmp_path / "web"
+    shutil.copytree(WEB, web)
+    scenario = scenario_completo("prima", tmp_path)
+    with sf.ServerFinto(web, scenario, 0) as finto, Proxy(finto.indirizzo, sf) as proxy:
+        ctx = chrome.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1, locale="it-IT",
+                                 timezone_id=FUSO, service_workers="allow", reduced_motion="reduce")
+        try:
+            vuota = ctx.new_page()
+            ctx.clock.set_fixed_time(vuota.evaluate("(s) => new Date(s).getTime()", finto.adesso) / 1000)
+            vuota.close()
+            yield Installata(ctx, proxy, web)
+        finally:
             ctx.close()
