@@ -1,6 +1,5 @@
 """Una partita rinviata rimasta in calendario con la data vecchia (prima del turno: il caso di turno.py) non deve chiudere la
-formazione in anticipo. Oggi, il widget e l'avviso «formazione pronta» usano la stessa regola di promemoria e copia automatica
-(turno.py, avvisi.prima_partita). Trovato dalla sentinella (invariante `fase_incoerente`) il 2/11/2026."""
+formazione in anticipo. Oggi e il widget usano la stessa regola di promemoria e copia automatica (turno.py, avvisi.prima_partita). Trovato dalla sentinella (invariante `fase_incoerente`) il 2/11/2026."""
 import sqlite3
 from datetime import datetime
 from types import SimpleNamespace as NS
@@ -40,17 +39,6 @@ def test_la_prima_partita_gia_giocata_chiude_ancora_la_formazione(monkeypatch):
     o = gestione.oggi_senza_rose(_db(G10[:9] + ["2026-11-02 20:45"], giocate={0}), adesso=datetime(2026, 10, 31, 19, 0),
                                  regole=regole.Regole())
     assert o["scadenza"] == "2026-10-31 15:00" and o["iniziata"] is True
-
-
-def test_avviso_formazione_pronta_non_si_perde_per_la_data_vecchia():
-    db = _db()
-    assert avvisi.inizio_giornata(db, ST, 10) == datetime(2026, 10, 31, 15, 0)
-    venerdi = datetime(2026, 10, 30, 12, 0)                  # 27 ore prima: è il momento dell'avviso
-    assert avvisi.da_mandare(db, ST, 10, venerdi, segna=False) is not None
-    # partite del turno già giocate: conta la prima ancora da giocare; un recupero settimane dopo resta valido come prima
-    db = _db(G10[:9] + ["2026-12-10 20:45"], giocate=set(range(9)))
-    assert avvisi.inizio_giornata(db, ST, 10) == datetime(2026, 12, 10, 20, 45)
-    assert avvisi.inizio_giornata(_db([]), ST, 10) is None
 
 
 def test_widget_prima_partita_e_quella_del_turno(monkeypatch):

@@ -65,12 +65,12 @@ struct TitolareGiornata: Identifiable, Equatable, Sendable {
 struct DettaglioGiornata: Equatable, Sendable {
     /// «La tua formazione (3-4-3)», «La consigliata alla scadenza (…)», «La consigliata (…)», «La consigliata rifatta… (…)».
     let titolo: String
-    /// Sotto il titolo, per la consigliata rifatta a giornata finita.
+    /// Sotto il titolo, quando la formazione non è la tua: la frase del server sulla consigliata di allora (`nota_consigliata`, #674).
     let nota: String?
     let titolari: [TitolareGiornata]
     /// «Al posto di X hai messo Y.» (solo con la consigliata mostrata).
     let cambi: String?
-    /// La tua formazione senza la consigliata di allora: il confronto non c'è, e lo si dice.
+    /// La tua formazione senza la consigliata di allora: il confronto non c'è, e lo dice la frase del server (`nota_consigliata`).
     let senzaConfronto: String?
     /// «Non è quello che ho schierato»: non per le stagioni passate (`modificabile: false`).
     let correggibile: Bool
@@ -167,7 +167,7 @@ struct PaginaGiornate {
     static func dettaglio(_ v: VoceDiario, scelte: [SceltaGiornata]) -> DettaglioGiornata {
         let conta = v.cheConta
         let tipo = conta.tipo, f = conta.formazione
-        let mostrata = v.conMostrata, origine = v.consigliata?.origine
+        let mostrata = v.conMostrata
         let modulo = f?.modulo ?? ""
         let titolo: String
         switch tipo {
@@ -194,13 +194,13 @@ struct PaginaGiornate {
                                     senzaVoto: senza)
         }
         var cambi: String?
-        var senzaConfronto: String?
         if tipo == .tua && mostrata, let s = scelta(v, in: scelte), let dentro = s.haiScelto, !dentro.isEmpty {
             cambi = Catalogo.Giornate.alPosto(dentro: dentro.joined(separator: ", "), fuori: (s.consigliava ?? []).joined(separator: ", "))
-        } else if tipo == .tua && origine == "ricostruita" {
-            senzaConfronto = Catalogo.Giornate.senzaConfronto
         }
-        let nota = tipo == .consigliata && origine == "ricostruita" ? Catalogo.Giornate.rifattaNota : nil
+        // la frase del server sulla consigliata di allora (`nota_consigliata`, #674), così com'è e dove la mette la web: con la tua
+        // formazione al posto dei cambi, altrimenti sotto il titolo. Un server di prima non la manda: niente frase.
+        let senzaConfronto = tipo == .tua && cambi == nil ? v.notaConsigliata : nil
+        let nota = tipo != .tua ? v.notaConsigliata : nil
         return DettaglioGiornata(titolo: titolo, nota: nota, titolari: titolari, cambi: cambi, senzaConfronto: senzaConfronto,
                                  correggibile: v.siPuoCambiare)
     }

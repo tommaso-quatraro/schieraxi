@@ -4,9 +4,11 @@ import Testing
 
 /// La pagina Giornate (#673, passo 2), come `mostraGiornate` della web (#617/#671): la formazione che conta, la frase sotto la riga
 /// (il confronto con la consigliata solo con `consigliata.origine: "mostrata"`), gli 11 con l'atteso mostrato prima della scadenza e
-/// il preso, «senza voto», la pagina vuota secondo `motivo_vuoto`, la correzione solo dove si può. Le fixture `diario-giornate.json`
-/// (server di adesso, con i campi della #642) e `diario-giornate-vecchio.json` (server di prima, senza `origine`, `automatica` e
-/// `giocatori`) sono dati inventati. I testi si confrontano con il catalogo comune (`Catalogo.Giornate`), non con la web.
+/// il preso, «senza voto», la pagina vuota secondo `motivo_vuoto`, la correzione solo dove si può, la frase del server sulla
+/// consigliata di allora (`nota_consigliata`, #674). Le fixture `diario-giornate.json` (server di adesso, con i campi della #642 e
+/// della #674, le frasi come le scrive `diario.nota_consigliata`) e `diario-giornate-vecchio.json` (server di prima, senza `origine`,
+/// `automatica` e `giocatori`) sono dati inventati. I testi fissi si confrontano con il catalogo comune (`Catalogo.Giornate`), le frasi
+/// del server con quelle della fixture.
 @MainActor
 struct GiornateTests {
     private func pagina(_ fixture: String) throws -> PaginaGiornate {
@@ -125,20 +127,43 @@ struct GiornateTests {
         #expect(try dettaglio(p, 11).cambi == Catalogo.Giornate.alPosto(dentro: "Difensore Quattro, Attaccante Cinque",
                                                                          fuori: "Difensore Due, Attaccante Tre"))
         #expect(try dettaglio(p, 10).cambi == nil, "stessi undici della consigliata")
-        // la tua formazione con la consigliata rifatta: il confronto non c'è, e lo si dice
+        // la tua formazione con la consigliata rifatta: il confronto non c'è, e lo dice la frase del server, sotto la tabella
         let rifatta = try dettaglio(p, 7)
         #expect(rifatta.cambi == nil)
-        #expect(rifatta.senzaConfronto == Catalogo.Giornate.senzaConfronto)
+        #expect(rifatta.senzaConfronto
+                == "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata.")
+        #expect(rifatta.nota == nil)
+        #expect(try dettaglio(p, 11).senzaConfronto == nil, "con la consigliata mostrata il confronto c'è")
     }
 
-    @Test("Il titolo dice di chi è la formazione; la consigliata rifatta ha la sua nota")
+    @Test("Il titolo dice di chi è la formazione; sotto la consigliata rifatta la frase del server")
     func titoli() throws {
         let p = try pagina("diario-giornate")
         #expect(try dettaglio(p, 9).titolo == Catalogo.Giornate.formazioneAutomatica(modulo: "4-4-2"))
         #expect(try dettaglio(p, 9).nota == nil)
         let rifatta = try dettaglio(p, 8)
         #expect(rifatta.titolo == Catalogo.Giornate.formazioneRifatta(modulo: "4-3-3"))
-        #expect(rifatta.nota == Catalogo.Giornate.rifattaNota)
+        #expect(rifatta.nota == "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata.")
+        #expect(rifatta.senzaConfronto == nil)
+    }
+
+    @Test("Un server senza `nota_consigliata` (o con la frase vuota): nessuna frase sulla consigliata di allora, anche con `origine`")
+    func senzaLaFraseDelServer() throws {
+        let json = #"""
+            {"giornate": [
+              {"stagione": "2026-27", "giornata": 7, "consigliata": {"modulo": "4-3-3", "origine": "ricostruita", "titolari": []},
+               "schierata": {"modulo": "3-5-2", "titolari": []}},
+              {"stagione": "2026-27", "giornata": 6, "consigliata": {"modulo": "4-3-3", "origine": "ricostruita", "titolari": []},
+               "nota_consigliata": "  "}
+            ]}
+            """#
+        let p = PaginaGiornate(try Decodifica.decodifica(Data(json.utf8)))
+        let tua = try dettaglio(p, 7)
+        #expect(tua.titolo == Catalogo.Giornate.formazioneTua(modulo: "3-5-2"))
+        #expect(tua.senzaConfronto == nil && tua.nota == nil, "l'app non scrive frasi sue sulla consigliata di allora")
+        let rifatta = try dettaglio(p, 6)
+        #expect(rifatta.titolo == Catalogo.Giornate.formazioneRifatta(modulo: "4-3-3"))
+        #expect(rifatta.nota == nil, "una frase vuota vale come nessuna frase")
     }
 
     @Test("«Non è quello che ho schierato» non c'è per le stagioni passate (`modificabile: false`)")
@@ -212,5 +237,45 @@ struct GiornateTests {
         await vm.carica()
         #expect(vm.aperte == ["2026-27-9"])
         #expect(vm.scelta == "2026-27-9")
+    }
+
+    /// Il diario prima e dopo la fine della giornata 11 di Serie A (8 della lega).
+    private static let senzaLaUndicesima = #"{"giornate": [{"stagione": "2026-27", "giornata": 10, "giornata_lega": 7}]}"#
+    private static let conLaUndicesima = #"""
+        {"giornate": [{"stagione": "2026-27", "giornata": 11, "giornata_lega": 8}, {"stagione": "2026-27", "giornata": 10, "giornata_lega": 7}]}
+        """#
+
+    /// Un server che alla prima lettura del diario manda `prima` e poi sempre `dopo`.
+    private static func server(prima: String, dopo: String) -> ServerDiProva {
+        let letture = Scatola<Int>()
+        return ServerDiProva { _, _, _ in
+            let n = (letture.valore ?? 0) + 1
+            letture.valore = n
+            return Data((n == 1 ? prima : dopo).utf8)
+        }
+    }
+
+    @Test("«Com'è andata» con la pagina già letta prima: la giornata nuova si apre quando arriva la risposta fresca che la contiene")
+    func giornataChiestaConLaPaginaGiaLetta() async throws {
+        let vm = GiornateViewModel(server: Self.server(prima: Self.senzaLaUndicesima, dopo: Self.conLaUndicesima))
+        await vm.carica()
+        #expect(vm.aperte.isEmpty)
+        // la pagina era già aperta: i suoi dati sono freschi ma di prima della giornata 11, che non c'è ancora
+        vm.apri(giornata: 11)
+        #expect(vm.aperte.isEmpty, "la 11ª non c'è ancora: la richiesta resta finché non arriva una risposta fresca")
+        await vm.carica()
+        #expect(vm.aperte == ["2026-27-11"])
+        #expect(vm.scelta == "2026-27-11")
+    }
+
+    @Test("Se la giornata chiesta c'è già si apre subito; una risposta fresca senza la giornata chiude la richiesta")
+    func giornataChiestaSubitoOPersa() async throws {
+        let vm = GiornateViewModel(server: Self.server(prima: Self.conLaUndicesima, dopo: Self.senzaLaUndicesima))
+        await vm.carica()
+        vm.apri(giornata: 11)
+        #expect(vm.aperte == ["2026-27-11"], "c'è già: si apre senza aspettare")
+        vm.apri(giornata: 20)
+        await vm.carica()
+        #expect(vm.aperte == ["2026-27-11"], "la 20ª non c'è nemmeno nella risposta fresca: niente cambia")
     }
 }

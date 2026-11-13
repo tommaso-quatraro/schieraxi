@@ -88,6 +88,24 @@ def test_riga_del_riepilogo_e_violazioni_gravi():
     assert m.riga_riepilogo("scheda", 1440, "scuro", 0, False, 3) == "scheda 1440 scuro gravi=0 scorrimento-di-lato=no errori-console=3"
 
 
+def test_il_riepilogo_dice_quali_regole_gravi_sono_violate(tmp_path, monkeypatch):
+    """#697: il riepilogo diceva solo «gravi=1» e il collaudo della prova non diceva quale regola. Ora la riga ha anche le regole
+    gravi violate (gli elementi sono nel file axe-<scena>-<larghezza>-<tema>.json)."""
+    m = _modulo()
+    violazioni = [{"id": "color-contrast", "impact": "serious"}, {"id": "region", "impact": "moderate"},
+                  {"id": "aria-allowed-attr", "impact": "critical"}]
+    assert m.regole_gravi(violazioni) == ["color-contrast", "aria-allowed-attr"]
+    assert m.riga_riepilogo("scheda", 390, "chiaro", 2, False, 0, ["color-contrast", "aria-allowed-attr"]) == \
+        "scheda 390 chiaro gravi=2 scorrimento-di-lato=no errori-console=0 regole=color-contrast,aria-allowed-attr"
+    pagina = _playwright_finto(monkeypatch, m, _Richieste())
+    pagina.violazioni = [{"id": "color-contrast", "impact": "serious", "help": "x", "n": 1,
+                          "nodi": [{"target": 'button[data-sostituisci="12"]', "sommario": "contrasto 2.01"}]}]
+    uscita = tmp_path / "foto"
+    assert m.main(["http://127.0.0.31:8031", str(uscita), "--solo-misure", "--scene", "scheda", "--larghezze", "390", "--temi", "chiaro"]) == 1
+    assert (uscita / "riepilogo.txt").read_text(encoding="utf-8").split() == \
+        ["scheda", "390", "chiaro", "gravi=1", "scorrimento-di-lato=no", "errori-console=0", "regole=color-contrast"]
+
+
 def test_il_foglio_aperto_si_fotografa_a_pezzi_fino_in_fondo():
     """La scheda, il confronto e il diario stanno in un foglio fermo che scorre da sé: la foto della pagina intera ne
     mostrerebbe solo l'inizio. Si fotografa a pezzi, scorrendo il foglio, con un po' di sovrapposizione."""
@@ -251,7 +269,7 @@ class _Richieste:
 
 class _Pagina:
     def __init__(self, m):
-        self.m, self.codici = m, []
+        self.m, self.codici, self.violazioni = m, [], []
 
     def on(self, *a):
         pass
@@ -276,7 +294,7 @@ class _Pagina:
 
     def evaluate(self, codice, *a):
         self.codici.append(codice)
-        return [] if codice == self.m.LANCIA_AXE else False
+        return self.violazioni if codice == self.m.LANCIA_AXE else False
 
     def screenshot(self, path, **k):
         Path(path).write_bytes(b"\x89PNG finta")

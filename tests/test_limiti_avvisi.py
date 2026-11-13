@@ -322,13 +322,14 @@ def _promemoria(tmp_path, ferma="", ambiente_env=None):
 
 @con_bash
 def test_script_con_timeout(tmp_path):
-    """I giri degli avvisi hanno un tempo massimo: 10 minuti in aggiorna.sh (cambi, riepilogo, «formazione pronta»), 8 minuti in
-    promemoria.sh (meno dei 10 minuti fra un giro e l'altro). Se il tempo finisce lo scrivono nel log e vanno avanti."""
+    """I giri degli avvisi hanno un tempo massimo: 10 minuti in aggiorna.sh (cambi), 8 minuti in promemoria.sh (meno dei 10 minuti
+    fra un giro e l'altro). Se il tempo finisce lo scrivono nel log e vanno avanti. Riepilogo e «formazione pronta» non sono più
+    avvisi (#676): aggiorna.sh non li lancia più."""
     chiamate, log = _aggiorna(tmp_path / "a", ferma="cambi")
-    for comando in ("cambi", "riepilogo", "avviso"):
-        assert f"timeout 600 .venv/bin/python -m fanta {comando}" in chiamate, comando
+    assert "timeout 600 .venv/bin/python -m fanta cambi" in chiamate
+    assert "fanta riepilogo" not in chiamate and "fanta avviso" not in chiamate
     assert "cambi: fermato dopo 600 secondi" in log
-    assert "python -m fanta riepilogo" in chiamate and "python -m fanta taratura-probabili" in chiamate      # e si va avanti
+    assert "python -m fanta affidabilita" in chiamate and "python -m fanta taratura-probabili" in chiamate      # e si va avanti
 
     chiamate, log = _promemoria(tmp_path / "p")
     assert "timeout 480 .venv/bin/python -m fanta promemoria" in chiamate

@@ -59,9 +59,6 @@ extension Catalogo {
             "La consigliata rifatta a giornata finita (\(modulo))"
         }
 
-        /// `giornate.rifatta_nota`
-        static let rifattaNota = "Quella mostrata prima della scadenza non era stata salvata: questa è rifatta con i dati di allora."
-
         /// `giornate.tabella`
         static let tabella = "Fantavoto atteso e fantavoto preso dei titolari"
 
@@ -81,9 +78,6 @@ extension Catalogo {
         static func alPosto(dentro: String, fuori: String) -> String {
             "Al posto di \(fuori) hai messo \(dentro)."
         }
-
-        /// `giornate.senza_confronto`
-        static let senzaConfronto = "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata."
 
         /// `giornate.correggi`
         static let correggi = "Non è quello che ho schierato"

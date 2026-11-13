@@ -70,6 +70,24 @@ struct DiarioStagioneTests {
         #expect(annunci == [Catalogo.Diario.salvataManuale])
     }
 
+    @Test("Un nuovo salvataggio toglie l'esito di prima, anche quando poi non va (come il Diario di prima)")
+    func esitoTolto() async throws {
+        let posta = Scatola<Int>()
+        let s = ServerDiProva { metodo, _, _ in
+            guard metodo == "POST" else { return Data(#"{"giornate": []}"#.utf8) }
+            let n = (posta.valore ?? 0) + 1
+            posta.valore = n
+            if n > 1 { throw ErroreApi.server("Servono 11 giocatori della tua rosa con un modulo valido.") }
+            return Data("{}".utf8)
+        }
+        let vm = GiornateViewModel(server: s)
+        let v = try voce(#"{"giornata": 11, "giornata_lega": 8, "stagione": "2026-27"}"#)
+        #expect(await vm.correggi(v, titolari: Array(1...11)) == nil)
+        #expect(vm.esito(per: v.id) == Catalogo.Diario.salvataManuale)
+        #expect(await vm.correggi(v, titolari: Array(2...12)) != nil)
+        #expect(vm.esito(per: v.id) == nil, "«Salvato» non deve restare sotto gli 11 dopo un salvataggio andato male")
+    }
+
     @Test("Se il server rifiuta, l'errore torna al foglio e la pagina non cambia")
     func errorePerIlFoglio() async throws {
         let rifiuto = "Servono 11 giocatori della tua rosa con un modulo valido."

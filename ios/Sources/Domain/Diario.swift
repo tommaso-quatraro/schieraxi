@@ -37,6 +37,10 @@ struct VoceDiario: Decodable, Identifiable {
     let attesoVsFatto: AttesoVsFatto?
     /// Facoltativo: `false` per le voci di una stagione passata, che si leggono e basta. Un server vecchio non lo manda.
     let modificabile: Bool?
+    /// Facoltativo (#674): la frase del server sulla consigliata di allora che non entra nel confronto («Qui il confronto con la
+    /// consigliata non c'è: …», «Questa è rifatta con i dati di allora: …»), da mostrare così com'è. `null`, vuota o assente (server
+    /// di prima) = nessuna frase.
+    let notaConsigliata: String?
 
     /// Stagione e giornata: con due stagioni nel Diario la giornata 10 c'è due volte.
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
@@ -59,6 +63,7 @@ struct VoceDiario: Decodable, Identifiable {
 
     private enum Chiavi: String, CodingKey {
         case stagione, giornata, giornataLega, consigliata, schierata, automatica, giocatori, istantanea, attesoVsFatto, modificabile
+        case notaConsigliata
     }
 
     init(from decoder: Decoder) throws {
@@ -74,6 +79,8 @@ struct VoceDiario: Decodable, Identifiable {
         istantanea = try? c.decodeIfPresent(IstantaneaDiario.self, forKey: .istantanea)
         attesoVsFatto = (try? c.decodeIfPresent(AttesoVsFatto.self, forKey: .attesoVsFatto)) ?? nil
         modificabile = (try? c.decodeIfPresent(Bool.self, forKey: .modificabile)) ?? nil
+        let nota = (try? c.decodeIfPresent(String.self, forKey: .notaConsigliata)) ?? nil
+        notaConsigliata = nota?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? nota : nil
     }
 }
 

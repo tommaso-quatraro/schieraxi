@@ -10,11 +10,7 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     # ---- il numero della giornata (frasi.nome_giornata con avviso=True): lo stesso testo di «giornata.*» di frasi.CATALOGO
     "n.giornata.lega": ("Giornata {n} · {a}ª di Serie A", "Matchday {n} · Serie A matchday {a}"),
     "n.giornata.serie_a": ("{a}ª giornata di Serie A", "Serie A matchday {a}"),
-    # ---- giocatori seguiti
-    "n.t_osservato_libero": ("SchieraXI · un osservato è libero", "SchieraXI · a player you follow is free"),
-    "n.osservato_libero": ("{nome} ({ruolo}): lasciato libero da {squadra}", "{nome} ({ruolo}): released by {squadra}"),
-    # ---- cambi nelle probabili
-    "n.t_cambi": ("SchieraXI · cambi nelle probabili", "SchieraXI · changes in the probable lineups"),
+    # ---- cambi nelle probabili (notifiche.confronta: dice se lo stato di un giocatore è cambiato)
     "n.ora_infortunato": ("{nome}: ora infortunato", "{nome}: now injured"),
     "n.ora_squalificato": ("{nome}: ora squalificato", "{nome}: now suspended"),
     "n.torna_titolare": ("{nome}: torna disponibile (titolare)", "{nome}: back and available (starter)"),
@@ -27,11 +23,6 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.ora_dubbio": ("{nome}: ora in dubbio", "{nome}: now in doubt"),
     "n.diffidato": ("{nome}: diffidato (con un altro giallo salta la partita dopo)",
                     "{nome}: one yellow card from a suspension (another one and they miss the next match)"),
-    "n.osservato_riga": ("★ {riga}", "★ {riga}"),
-    "n.formazione_aggiornata": ("Formazione consigliata aggiornata ({modulo}): entra {entrano}, esce {escono}",
-                                "Recommended lineup updated ({modulo}): in {entrano}, out {escono}"),
-    "n.riga_consiglio": ("{riga} {consiglio}", "{riga} {consiglio}"),
-    "n.altre_novita": ("…e altre {n} novità", "…and {n} more updates"),
     # ---- cambio pronto
     "n.t_cambio_pronto": ("SchieraXI · cambio pronto", "SchieraXI · substitution ready"),
     "n.tuo_infortunato": ("Il tuo {nome} è infortunato.", "Your {nome} is injured."),
@@ -40,9 +31,6 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.meglio": ("Meglio {alt}.", "Better {alt}."),
     "n.meglio_guadagno": ("Meglio {alt} (+{punti} punti attesi).", "Better {alt} (+{punti} expected points)."),
     "n.frase_consiglio": ("{frase} {consiglio}", "{frase} {consiglio}"),
-    # ---- reparto scoperto (il testo viene da copertura.py, già nella lingua)
-    "n.t_reparto_scoperto": ("SchieraXI · un reparto della rosa è scoperto", "SchieraXI · a position in your roster is uncovered"),
-    "n.t_reparto_rischio": ("SchieraXI · un reparto della rosa è a rischio", "SchieraXI · a position in your roster is at risk"),
     # ---- promemoria prima della scadenza
     "n.t_titolare_rischio": ("SchieraXI · un tuo titolare è a rischio", "SchieraXI · one of your starters is at risk"),
     "n.rischio.one": ("Hai già schierato, ma {nomi} non è più sicuro come titolare. {giornata}: la formazione si chiude alle {ora}, controlla.",
@@ -89,20 +77,7 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.t_cambia_titolare": ("SchieraXI · cambia un titolare", "SchieraXI · a starter changes"),
     "n.testo_cambiata": ("{frase}. La formazione si chiude il {data} alle {ora}.", "{frase}. The lineup closes on {data} at {ora}."),
     "n.senza_sostituto": ("{motivi}: con la tua rosa non si forma più una squadra", "{motivi}: your roster can no longer field a team"),
-    # ---- riepilogo di giornata
-    "n.t_riepilogo": ("SchieraXI · riepilogo della giornata", "SchieraXI · matchday recap"),
-    "n.riepilogo": ("{giornata}: {fonte} ha fatto circa {punti} punti (il modello ne aspettava {attesi}). Il massimo possibile con la tua rosa era {massimo}.",
-                    "{giornata}: {fonte} scored about {punti} points (the model expected {attesi}). The maximum possible with your roster was {massimo}."),
-    "n.fonte_scelta": ("la tua scelta salvata", "your saved choice"),
-    "n.fonte_consigliata": ("la formazione consigliata", "the recommended lineup"),
-    "n.migliori": ("Migliori: {elenco}.", "Best: {elenco}."),
-    "n.nome_voto": ("{nome} {voto}", "{nome} {voto}"),
-    "n.senza_voto": ("Senza voto: {nomi}.", "No rating: {nomi}."),
-    "n.prossima": ("Prossima: {giornata}. La formazione si chiude {data} alle {ora}.",
-                   "Next: {giornata}. The lineup closes {data} at {ora}."),
-    # ---- formazione pronta e prova
-    "n.pronta": ("{giornata}: la formazione è pronta. Apri l'app e controlla le probabili.",
-                 "{giornata}: the lineup is ready. Open the app and check the probable lineups."),
+    # ---- avviso di prova
     "n.t_prova": ("SchieraXI · prova", "SchieraXI · test"),
     "n.prova": ("Se leggi questo, gli avvisi funzionano.", "If you can read this, the alerts work."),
 }

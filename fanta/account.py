@@ -1247,7 +1247,7 @@ def _accedi(db, nome_utente, password, ip, dispositivo, adesso, fidato=None) -> 
     evento("accesso", nome=nome, ip=ip)
     if nuovo_dispositivo:                                # avviso all'email verificata: «sei stato tu?»
         from . import posta
-        posta.invia(posta.modello_accesso_nuovo(riga["email"], dispositivo, adesso.strftime("%d/%m/%Y %H:%M UTC")))
+        posta.invia(posta.modello_accesso_nuovo(riga["email"], dispositivo, posta.ora_italiana(adesso)))
     return utente, token, segreto
 
 
@@ -1388,7 +1388,7 @@ def _avvisa_password_cambiata(db: sqlite3.Connection, utente_id: int, adesso: da
     riga = db.execute("SELECT email FROM utenti WHERE id = ?", (utente_id,)).fetchone()
     if riga is not None and riga["email"]:
         from . import posta
-        posta.invia(posta.modello_password_cambiata(riga["email"], adesso.strftime("%d/%m/%Y %H:%M UTC")))
+        posta.invia(posta.modello_password_cambiata(riga["email"], posta.ora_italiana(adesso)))
 
 
 def _controlla_password_attuale(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None = None) -> sqlite3.Row:

@@ -112,7 +112,9 @@ prima della scadenza:
 - a giornata in corso i punti finora e niente da cambiare; a giornata finita «Com'è andata», i recuperi che mancano e la
   scelta sul rinvio, con sotto la formazione della prossima;
 - tablet e PC: campo a sinistra e panchina a destra a 768, 1024 e 1440 px; sul PC la scheda nel pannello a fianco, che
-  si chiude se cambia il modulo; scheda ed elenco dei sostituti senza violazioni gravi di axe, chiaro e scuro.
+  si chiude se cambia il modulo; scheda ed elenco dei sostituti senza violazioni gravi di axe, chiaro e scuro; i pulsanti
+  spenti sulla copia («Sostituisci», «Torna alla consigliata») si accendono già pieni quando arrivano i dati nuovi, mai mezzi
+  trasparenti (#697: axe lanciato in quell'istante trovava un contrasto troppo basso).
 
 `test_giornate.py`, la pagina «Giornate» che ha preso il posto del Diario (#617):
 - si apre con un tocco dalla barra; gli indirizzi vecchi del Diario la aprono; «Com'è andata» della Formazione la apre
@@ -122,6 +124,11 @@ prima della scadenza:
 - il confronto «tu contro la consigliata» solo dove `consigliata.origine` è `"mostrata"`: con la risposta del server di
   oggi (campo assente) non c'è, con quella del server con #614 c'è solo nelle giornate giuste (risposte finte costruite
   su quella registrata);
+- la frase sulla consigliata di allora che non entra nel confronto è quella del server (`nota_consigliata`, #674: anche
+  «c'è chi non è più nella tua rosa»), sotto la tua formazione o sopra la consigliata rifatta; senza la frase, nessuna nota;
+- la riga dice di quanto i punti sono sopra o sotto gli attesi con il numero del server (`fatti_e_attesi.differenza`, #672:
+  «+9,2 sul previsto», «come previsto» a zero, niente senza il campo); nel dettaglio, a 390 e 1440 px, la frase del server su
+  chi ha fatto meglio o peggio del previsto, e nessuna frase se sono tutti come previsto;
 - un solo pulsante di correzione, che fa scegliere gli 11 e li manda con la stagione; non c'è per una stagione passata;
 - errore con «Riprova», pagina vuota che dice perché; chiaro e scuro a 390 e 1440 px senza violazioni gravi; elenco a
   sinistra e giornata a destra a 768 e 1440 px, gli 11 sotto la riga al telefono.
