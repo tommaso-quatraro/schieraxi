@@ -14,6 +14,21 @@ from .lega import GiocatoreRosa, Rose
 from .percorsi import scrivi_sicuro
 
 MAX_STORICO = 300
+# Tetto di spazio dello storico: una voce di un'importazione normale pesa circa un KB, quindi le 300 voci stanno sotto; una che
+# cambia tutte le rose (20 squadre da 40 giocatori) ne pesa circa 200, e ne restano almeno due. Con le 3 copie serali che ogni
+# utente tiene, lo storico occupa al massimo 2 MB dei 5 del suo spazio (limiti.MAX_BYTE_UTENTE).
+MAX_BYTE_STORICO = 512 * 1024
+
+
+def _entro_il_tetto(storico: list[dict]) -> list[dict]:
+    """Le voci più recenti (al massimo MAX_STORICO) che scritte stanno in MAX_BYTE_STORICO; l'ultima resta sempre."""
+    tenute, byte = [], 2                             # le parentesi dell'elenco
+    for voce in reversed(storico[-MAX_STORICO:]):
+        byte += len(json.dumps(voce, ensure_ascii=False).encode("utf-8")) + 2      # la virgola e lo spazio fra le voci
+        if tenute and byte > MAX_BYTE_STORICO:
+            break
+        tenute.append(voce)
+    return tenute[::-1]
 
 
 def _chiave(g: GiocatoreRosa, per_nome: frozenset = frozenset()) -> object:
@@ -96,14 +111,15 @@ def differenze(prima: Rose | None, dopo: Rose) -> dict:
 
 
 def registra(percorso: Path, diff: dict, quando: datetime | None = None) -> None:
-    """Aggiunge i movimenti allo storico (se c'è qualcosa di nuovo)."""
+    """Aggiunge i movimenti allo storico (se c'è qualcosa di nuovo), tenendolo entro MAX_STORICO voci e MAX_BYTE_STORICO byte:
+    escono le più vecchie."""
     if diff.get("nessuna_differenza") or diff.get("prima_importazione"):
         return
     storico = leggi(percorso)
     storico.append({"quando": (quando or datetime.now()).isoformat(timespec="seconds"),
                     **{k: diff[k] for k in ("scambi", "svincolati_presi", "tagliati", "crediti", "squadre_nuove", "squadre_tolte", "testo")
                        if k in diff}})
-    scrivi_sicuro(percorso, json.dumps(storico[-MAX_STORICO:], ensure_ascii=False))
+    scrivi_sicuro(percorso, json.dumps(_entro_il_tetto(storico), ensure_ascii=False))
 
 
 def leggi(percorso: Path, ultimi: int | None = None) -> list[dict]:

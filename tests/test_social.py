@@ -238,6 +238,35 @@ def test_il_tetto_degli_utenti_vale_anche_con_google(scena, monkeypatch):
     assert r.status_code == 403 and "massimo" in r.json()["detail"]
 
 
+def test_l_account_nato_con_google_parte_da_una_cartella_vuota(scena):
+    """Una cartella rimasta con il numero che l'account sta per ricevere va da parte, come per gli altri modi di iscriversi."""
+    rimasta = percorsi.cartella_utenti() / "1"
+    rimasta.mkdir(parents=True)
+    (rimasta / "rose.json").write_text("{}", encoding="utf-8")
+    c = cliente()
+    nuovo = iscrivi_con_google(c, scena)
+    corpo = {"iscrizione": nuovo["iscrizione"], "nome_utente": "mario", "invito": invito(), "accetto_termini": True}
+    r = c.post("/api/account/social/completa", json=corpo)
+    assert r.status_code == 200 and c.get("/api/account/me").json()["utente"]["id"] == 1
+    assert not (rimasta / "rose.json").exists()
+    assert len(list((percorsi.cartella_account() / "utenti-da-parte").glob("*/rose.json"))) == 1
+
+
+def test_dodici_amici_con_google_dalla_stessa_rete(scena):
+    """Un invito per dodici, tutti dalla stessa rete: entrano tutti, perché le iscrizioni riuscite non contano fra i tentativi
+    dell'indirizzo."""
+    with contextlib.closing(account.apri()) as db:
+        inv = account.crea_invito(db, "amici", usi_max=12)
+    for i in range(12):
+        c = cliente("8.8.8.8")
+        nuovo = iscrivi_con_google(c, scena, sub=f"sub-{i:02d}", email=f"amico{i:02d}@gmail.com")
+        corpo = {"iscrizione": nuovo["iscrizione"], "nome_utente": f"amico{i:02d}", "invito": inv, "accetto_termini": True}
+        r = c.post("/api/account/social/completa", json=corpo)
+        assert r.status_code == 200, (i, r.text)
+    with contextlib.closing(account.apri()) as db:
+        assert db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] == 12
+
+
 def test_completa_non_si_usa_due_volte(scena):
     c = cliente()
     nuovo = iscrivi_con_google(c, scena)

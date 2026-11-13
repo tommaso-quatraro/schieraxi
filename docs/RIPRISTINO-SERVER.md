@@ -45,6 +45,19 @@ utenti aggiornati), poi il solo archivio dalla più recente che lo contiene (si 
    Su una cartella nuova, come qui, non c'è altro. Se invece ripristini sopra una cartella già usata: prima ferma il servizio e
    sposta via i file `-wal` e `-shm` accanto ai database (`dati/*.sqlite-wal`, `dati/*.sqlite-shm`), che sono dei database di prima
    e rovinerebbero quelli della copia.
+   Sopra una cartella già usata restano anche le cartelle `dati/utenti/<numero>` degli account nati dopo la notte della copia:
+   quegli account nel database della copia non ci sono, e i loro numeri tornano liberi per i prossimi iscritti. Prima di
+   riavviare il servizio, cioè prima che qualcuno possa iscriversi:
+   - `.venv/bin/python -m fanta cartelle-senza-account` elenca quelle cartelle (e i numeri rimasti nelle consigliate già
+     mostrate). Sono di persone che dovranno iscriversi di nuovo: se vuoi tenerne i dati, sposta la cartella fuori da
+     `dati/utenti/` (per esempio `mkdir -p dati/utenti-da-parte && mv dati/utenti/<numero> dati/utenti-da-parte/<numero>-ripristino`);
+   - `.venv/bin/python -m fanta cartelle-senza-account --esegui` cancella quelle rimaste;
+   - controllo: lo stesso comando senza `--esegui` → `Nessuna cartella senza account.`
+   Con un `dati/account.sqlite` ricreato vuoto il comando non cancella niente (sembrerebbero tutte senza account): lì le cartelle
+   in `dati/utenti/` vanno spostate a mano come sopra. Se una cartella resta lo stesso, il server la sposta da solo in
+   `dati/utenti-da-parte/` quando il suo numero va a un account nuovo, con una riga `cartella_messa_da_parte` nel registro di
+   sicurezza (Amministrazione): il nuovo account parte comunque vuoto. Le cartelle in `dati/utenti-da-parte/` non entrano nella
+   copia notturna e non scadono da sole: hanno dati personali, toglile quando non servono più.
    Controllo: `.venv/bin/python -c "import sqlite3; print(sqlite3.connect('dati/account.sqlite').execute('PRAGMA integrity_check').fetchone()[0])"` → `ok`,
    e lo stesso con `dati/fanta.sqlite` e `PRAGMA quick_check` (se c'è) → `ok`.
 3. **Variabili del servizio** in `/etc/schieraxi/fantacalcio.env`, un file di root che il servizio legge ma non può scrivere
