@@ -117,7 +117,7 @@ def test_cinque_rinviate_oggi_mostra_la_giornata_dopo_aperta(monkeypatch):
 
 def test_quattro_giocate_e_sei_rinviate_la_giornata_resta_finche_si_gioca_il_fine_settimana():
     """4 partite nel fine settimana e 6 rinviate a dicembre: per turno.py il turno è il gruppo di dicembre. Finché le 4 partite non
-    sono giocate tutte, la giornata da giocare resta la 10; dopo si passa alla 11, che comincia prima del recupero."""
+    sono giocate tutte, la giornata da giocare resta la 10; dopo si passa alla 11: quelle che restano sono recuperi settimane dopo."""
     prima = _rinviate(6, giocate=False)
     assert consigli.prossima_giornata(_db(prima, G11, G12), ST, datetime(2026, 10, 30, 12, 0)) == 10
     sabato_sera = [(d, 1 if i < 2 else 0) for i, (d, _) in enumerate(prima)]     # 2 giocate, la terza in corso, la quarta domenica

@@ -241,6 +241,25 @@ def test_giornata_che_salta_avanti(db, monkeypatch):
     assert "giornata_incoerente" in _nomi(sentinella.controlla_comuni(db, ST, giovedi_prima, None))
 
 
+def test_i_recuperi_della_giornata_prima_non_la_rendono_incoerente(tmp_path, monkeypatch):
+    """Revisione della #695: giornata 10 con 4 partite giocate e 6 rinviate a dicembre (per turno.py il turno diventa il recupero),
+    giornata da giocare la 11. I recuperi cominciano dopo la prima partita della 11: non sono partite che la 11 salta, quindi niente
+    «giornata_incoerente» a ogni giro per tutta la settimana. Il caso vero (una partita da cominciare prima) resta: test sopra."""
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    recuperi = ["2026-12-02 18:30", "2026-12-02 20:45", "2026-12-02 20:45", "2026-12-03 18:30", "2026-12-03 20:45", "2026-12-03 20:45"]
+    sette = lambda testo: (datetime.fromisoformat(testo) + timedelta(days=7)).strftime("%Y-%m-%d %H:%M")
+    righe = ([(10, d, c, t, 1) for d, c, t in G10[:4]] + [(10, recuperi[k], c, t, 0) for k, (_, c, t) in enumerate(G10[4:])]
+             + [(11, sette(d), c, t, 0) for d, c, t in G10])
+    d = archivio.apri(tmp_path / "fanta.sqlite")
+    archivio.inserisci(d, "partite", [{"id": n, "stagione": ST, "giornata": g, "data": dt, "casa": c, "trasferta": t,
+                                       "gol_casa": 1 if gi else None, "gol_trasferta": 0 if gi else None, "giocata": gi,
+                                       "understat_id": None} for n, (g, dt, c, t, gi) in enumerate(righe)])
+    d.commit()
+    for adesso in (datetime(2026, 11, 3, 10, 0), datetime(2026, 11, 5, 10, 0)):
+        assert consigli.prossima_giornata(d, ST, adesso) == 11
+        assert [x for x in sentinella.controlla_comuni(d, ST, adesso, None) if x.invariante == "giornata_incoerente"] == []
+
+
 # ---------------------------------------------------------------- avvisi: una volta sola, niente nomi
 def _esito(*rotture, controllati=("utente 3",)):
     return {"rotture": list(rotture), "controllati": list(controllati), "rimandati": 0, "secondi": 1.0, "stagione": ST}
