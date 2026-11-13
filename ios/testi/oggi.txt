@@ -7,24 +7,11 @@ oggi.per_cominciare_importa
 oggi.chiusa
 oggi.chiusa_dettaglio
 oggi.giorni_ore
-oggi.si_chiude
-oggi.prima_partita
-oggi.preparo
 
 # Carte di Oggi (TestiOggi, OggiView, CartaFormazioneOggi)
-oggi.tua_formazione
-oggi.tua_formazione_scelta
 oggi.punti_attesi
-oggi.apri_formazione
-oggi.mancano_probabili_formazioni
-oggi.tuoi_migliori_della
-oggi.da_controllare
-oggi.giocatori_formazione_con
-oggi.indisponibili
-oggi.diffidati
 
 # Il conto alla rovescia senza una data (OggiView)
-oggi.data_da_definire
 oggi.calendario_no
 
 # Giornata in corso, finita e «già iniziata» (TestiFase in Domain/FasiGiornata.swift)
