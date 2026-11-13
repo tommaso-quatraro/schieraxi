@@ -9,8 +9,9 @@ Il conto è quello del Confronto (`consigli._in_formazione`): la formazione com'
 panchina rifatta dal sistema, sulle stesse simulazioni, e la riga non dice mai il contrario del Confronto. I motivi, in quest'ordine:
 1. l'altro quasi certamente non gioca e il titolare sì (la regola dei titolari che giocano, #329 e #341);
 se scambiarli varrebbe di più (il Confronto dice «invertendoli varrebbe di più»): solo con la consigliata già mostrata e tenuta
-(#335) una riga, perché il cambio vale meno della soglia; altrimenti nessuna riga (meglio niente che una scusa: succede con gli
-stili prudenti o rischiosi e con un modulo diverso da quello proposto, che costano punti apposta);
+(#335) una riga, perché il cambio vale meno della soglia (ma se a schermo i due numeri sono uguali, le righe del pari, dal 4 in
+poi: #659); altrimenti nessuna riga (meglio niente che una scusa: succede con gli stili prudenti o rischiosi e con un modulo
+diverso da quello proposto, che costano punti apposta);
 2. titolare anche se incerto: se non gioca, in panchina c'è una riserva che gioca quasi di sicuro, e insieme valgono di più;
 3. con lui la formazione fa più punti attesi;
 se le due formazioni valgono lo stesso (come per il Confronto, o con lo stesso numero a schermo):
@@ -61,12 +62,14 @@ def motivo(t: fz.Giocatore, altro: fz.Giocatore, attuale: float, invertita: floa
     if diff < -PARI:              # scambiarli varrebbe di più: il Confronto dice «esito_peggio» (o «titolare_che_gioca»)
         if t.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
             return F("scelta.titolare_che_gioca", altro=altro.nome, p=percento(altro.p))
-        if tenuta and invertita - attuale < SOGLIA_TENUTA:
+        if not tenuta or invertita - attuale >= SOGLIA_TENUTA:
+            return None           # un altro motivo contraddirebbe il Confronto (stile o modulo che costano punti)
+        if _uno(invertita) > _uno(attuale):
             return F("scelta.stabile", altro=altro.nome, attuale=attuale, invertita=invertita)
-        return None               # un altro motivo contraddirebbe il Confronto (stile o modulo che costano punti)
-    if riserva is not None:
+        # stesso numero a schermo: «farebbe 72,1 invece di 72,1» si contraddice (#659); valgono le righe del caso pari
+    elif riserva is not None:
         return F("scelta.incerto", p=percento(t.p), riserva=riserva.nome)
-    if diff > PARI and _uno(attuale) > _uno(invertita):
+    elif diff > PARI and _uno(attuale) > _uno(invertita):
         return F("scelta.piu_punti", altro=altro.nome, attuale=attuale, invertita=invertita)
     proprio = _motivo_proprio(perche_numero)
     if percento(t.p) > percento(altro.p):

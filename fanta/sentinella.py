@@ -531,7 +531,11 @@ def controlla_comuni(db: sqlite3.Connection, stagione: str, adesso: datetime, li
     if g is None and any((_data(r[1]) or datetime.min) > adesso for r in righe):
         out.append(Rottura("giornata_incoerente", None, None, "nessuna giornata da giocare ma il calendario ha partite future"))
     if g is not None:
-        da_iniziare = [r for r in per_g.get(g - 1) or [] if nel_turno(g - 1, _data(r[1])) and _data(r[1]) > adesso and not r[4]]
+        # contano solo le partite della giornata prima che cominciano prima della prima partita aperta di quella da giocare: con metà
+        # giornata giocata e il resto rinviato a settimane dopo, per turno.py i recuperi sono il turno ma la giornata dopo non li salta
+        primo = min((d for r in per_g.get(g) or [] if not r[4] and (d := _data(r[1])) and nel_turno(g, d)), default=None)
+        da_iniziare = [r for r in per_g.get(g - 1) or [] if nel_turno(g - 1, _data(r[1])) and _data(r[1]) > adesso and not r[4]
+                       and (primo is None or _data(r[1]) < primo)]
         if da_iniziare:
             out.append(Rottura("giornata_incoerente", None, g, f"la giornata {g - 1} ha ancora {len(da_iniziare)} partite da cominciare"))
         del_turno = [_data(r[1]) for r in per_g.get(g) or [] if nel_turno(g, _data(r[1]))]

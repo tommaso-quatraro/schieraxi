@@ -77,5 +77,13 @@ def test_giornata_appena_giocata_senza_risultati_resta_per_mezza_giornata():
 
 
 def test_partite_senza_data_tengono_aperta_la_giornata():
+    """Una giornata ancora tutta senza date (calendario non ancora fissato) resta da giocare, anche se il calendario è fermo."""
+    senza_date = [(None, 0)] * 10
+    assert consigli.prossima_giornata(_db({9: senza_date, 10: G10}), ST, datetime(2026, 11, 1, 10, 0)) == 9
+
+
+def test_in_una_giornata_con_le_date_le_partite_senza_data_sono_rinviate():
+    """Con le date, le partite senza data sono rinviate (rinvii.py) e non tengono aperta la giornata, quante che siano (#659):
+    prima 6 partite senza data tenevano la giornata 9 da giocare finché il calendario non dava loro una data."""
     senza_data = [(None, 0)] * 6 + G9[6:]
-    assert consigli.prossima_giornata(_db({9: senza_data, 10: G10}), ST, datetime(2026, 11, 1, 10, 0)) == 9
+    assert consigli.prossima_giornata(_db({9: senza_data, 10: G10}), ST, datetime(2026, 11, 1, 10, 0)) == 10

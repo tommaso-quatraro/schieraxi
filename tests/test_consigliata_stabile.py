@@ -165,6 +165,23 @@ def test_la_consigliata_tenuta_e_la_stessa_in_ogni_parte_della_risposta():
     assert migliore["titolari"] != f["titolari"]                  # la risposta in cache della migliore non cambia
 
 
+def test_rosa_con_un_giocatore_doppio_nessun_doppione_nella_consigliata_tenuta():
+    """Rosa salvata con il 22 due volte (un file vecchio o un backup ripristinato: l'importazione di oggi i doppioni li toglie).
+    Dopo un ritocco che vale meno di 1 punto la consigliata tenuta mostrava il 22 due volte in panchina e il 23 finiva fuori (#659).
+    Ora la rosa conta il doppione una volta sola: tutto come con la rosa senza doppioni."""
+    doppia = lega.Squadra("Squadra Prova", _squadra().giocatori + [lega.GiocatoreRosa(22, "Giocatore 22", "A", "AAA", 1)])
+    nuove = _prev({8: {"mu": 6.4}})
+    prima = consigli._calcola_formazione(doppia, _prev(), GIORNATA, True, SOLO_442, SIM)
+    migliore = consigli._calcola_formazione(doppia, nuove, GIORNATA, True, SOLO_442, SIM)
+    f = consigli.stabile(migliore, _ricordata(prima), nuove, doppia, SOLO_442, SIM)
+    assert _ids(f) == _ids(prima) and 7 in _ids(f)                # tenuta: il ritocco vale meno di 1 punto
+    panchina = [g["id"] for g in f["panchina"]]
+    assert len(panchina) == len(set(panchina)) == 7 and 23 in panchina
+    assert 22 not in {g["id"] for g in f["fuori"]}
+    pulita = consigli.stabile(_migliore(nuove), _ricordata(_migliore(_prev())), nuove, _squadra(), SOLO_442, SIM)
+    assert panchina == [g["id"] for g in pulita["panchina"]] and f["punteggio_atteso"] == pulita["punteggio_atteso"]
+
+
 # ---------------------------------------------------------------- consigli.formazione: ricorda la consigliata e la rilegge
 ST = "2026-27"
 PRIMA_PARTITA = datetime(2026, 11, 8, 15, 0)            # scadenza della giornata 9 (regole senza minuti di anticipo)

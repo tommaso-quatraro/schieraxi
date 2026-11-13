@@ -96,15 +96,18 @@ def infortunio_lungo(nota: str | None) -> bool:
 
 # ---------------------------------------------------------------- le regole, una per funzione
 def guadagno_significativo(per_giornata: list[float], ruolo: str) -> str | None:
-    """(a) Il motivo per cui il guadagno NON basta, oppure None se basta."""
+    """(a) Il motivo per cui il guadagno NON basta, oppure None se basta. Due motivi distinti (#659): la somma sotto la soglia, oppure
+    la somma basta ma le giornate in guadagno sono poche (le altre sono a zero o in perdita: il guadagno sta tutto in quelle)."""
     if not per_giornata:
         return F("senso.nessuna_giornata")
     breve = sum(per_giornata)
     soglia = SOGLIA_BREVE.get(ruolo, max(SOGLIA_BREVE.values()))
-    positive = sum(1 for x in per_giornata if x > 0) / len(per_giornata)
+    in_guadagno = sum(1 for x in per_giornata if x > 0)
     n = len(per_giornata)
-    if breve < soglia or positive < QUOTA_GIORNATE_POSITIVE:
+    if breve < soglia:
         return F("senso.differenza_piccola", punti=round(breve, 1), giornate=F("tempo.giornate", n=n))
+    if in_guadagno / n < QUOTA_GIORNATE_POSITIVE:
+        return F("senso.guadagno_concentrato", in_guadagno=in_guadagno, totale=n)
     return None
 
 
