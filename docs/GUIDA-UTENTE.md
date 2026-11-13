@@ -174,14 +174,14 @@ La **Formazione** resta la stessa schermata; cambia la testa, con la fase della 
 
 ### Avvisi sul telefono (Impostazioni > Avvisi)
 
-Nella web app gli avvisi si accendono e si spengono con un interruttore solo, **Avvisi su questo dispositivo**, più le **Ore tranquille** (di solito dalle 23 alle 7). Quali avvisi partono lo decide il server: le scelte per i singoli avvisi fatte con le versioni di prima o con l'app per iPhone (per esempio il promemoria di un quarto d'ora prima spento) restano salvate ma non contano più.
+Nella web app gli avvisi si accendono e si spengono con un interruttore solo, **Avvisi su questo dispositivo**, più le **Ore tranquille** (di solito dalle 23 alle 7). Quali avvisi manda il server lo decide lui: le scelte per i singoli avvisi fatte con le versioni di prima o con l'app per iPhone (per esempio il promemoria di un quarto d'ora prima spento) restano salvate ma per i suoi avvisi non contano più. I promemoria che l'app per iPhone programma da sola sul telefono seguono ancora quelle scelte, finché l'app non avrà anche lei l'interruttore unico.
 
 Gli avvisi sono due:
 
 - il **promemoria**, un'ora e un quarto d'ora prima della scadenza della formazione. Non arriva se hai una formazione salvata e hai spuntato **L'ho messa**, a meno che un tuo titolare sia diventato indisponibile. La web salva la formazione da sola a ogni tocco: senza la spunta il promemoria arriva e ti chiede se l'hai messa nell'app della lega. Se salvi la formazione dall'app per iPhone, che la spunta non ce l'ha ancora, il promemoria resta com'era: non arriva quando hai una formazione salvata;
 - il **cambio della formazione da schierare**:
   - con una formazione salvata, **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni (solo se anche la formazione consigliata lo toglie, come nelle decisioni in cima alla Formazione);
-  - senza, **cambia la formazione consigliata**: la consigliata toglie un titolare che è diventato infortunato, squalificato o in panchina; l'avviso dice il motivo, chi entra e quando si chiude la formazione;
+  - senza, **cambia un titolare**: la consigliata toglie un titolare che è diventato infortunato, squalificato o in panchina; l'avviso dice il motivo, chi entra e quando si chiude la formazione. Arriva una volta per ogni titolare che diventa fuori, anche giorni prima della scadenza;
   - **vicino alla scadenza** (da un'ora prima), se le ultime probabili cambiano la formazione da schierare, ti arriva il motivo in una frase, per esempio «Castoldi è infortunato: metti Bonvicini e passa al 3-4-3 (+1,8 punti attesi)». Arriva solo se vale almeno un punto atteso, al massimo due volte per giornata, mai nelle ore tranquille. La stessa notizia non arriva due volte.
 
 Non arrivano più i cambi nelle probabili che non cambiano la formazione da schierare, gli avvisi sui giocatori che segui, il riepilogo della giornata (lo trovi in cima alla **Formazione** a giornata finita), il reparto scoperto (lo trovi tra le cose da fare) e «la formazione è pronta».
