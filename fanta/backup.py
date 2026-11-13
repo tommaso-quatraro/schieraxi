@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
@@ -263,14 +263,27 @@ def salva_copia(radice: Path = RADICE, cartella: Path | None = None, tieni: int 
     return destinazione
 
 
-def copia_account(cartella: Path, origine: Path, tieni: int = 7) -> Path | None:
+COPIA_SERALE = re.compile(r"account-[0-9]{4}-[0-9]{2}-[0-9]{2}\.sqlite")      # account-AAAA-MM-GG.sqlite
+# Copie che account.apri fa prima di cambiare la struttura del database (account-prima-della-migrazione-N.sqlite, nella stessa
+# cartella). Servono solo se una migrazione va storta, e lo si vede nei primi giorni: il servizio riparte subito con la struttura
+# nuova e i controlli girano ogni ora. Scadono come le copie serali (`tieni` = 7, una a notte): dentro ci sono nome, email e
+# impronta della password anche di chi poi elimina l'account, e le pagine Privacy ed «Elimina il tuo account» promettono che nelle
+# copie di sicurezza i dati spariscono quando la copia scade (#653). Le toglie il giro serale (copia_account) appena hanno più di
+# questi giorni (contati dalla data del file): con il giro ogni notte restano al massimo un giorno in più. Per tornare indietro
+# più in là restano le copie notturne di script/server/backup-dati.sh (14, fuori dalla cartella dell'app).
+GIORNI_COPIE_MIGRAZIONE = 7
+COPIE_MIGRAZIONE = "account-prima-della-migrazione-*.sqlite"
+
+
+def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: datetime) -> Path | None:
     """Con gli account: una copia del database degli utenti (account.sqlite) con l'API di backup di SQLite, che è sicura anche
-    mentre il server lo usa. Una al giorno, ne tiene `tieni`. Contiene gli hash delle password: il file lo legge solo chi lo ha creato."""
+    mentre il server lo usa. Una al giorno (`adesso` dà il nome), ne tiene `tieni`. Nello stesso giro toglie le copie «prima della
+    migrazione» più vecchie di GIORNI_COPIE_MIGRAZIONE. Contiene gli hash delle password: il file lo legge solo chi lo ha creato."""
     import sqlite3
     if not origine.exists():
         return None
     cartella.mkdir(parents=True, exist_ok=True)
-    destinazione = cartella / f"account-{datetime.now():%Y-%m-%d}.sqlite"
+    destinazione = cartella / f"account-{adesso:%Y-%m-%d}.sqlite"
     sorgente, copia = sqlite3.connect(origine), sqlite3.connect(destinazione)
     try:
         sorgente.backup(copia)
@@ -281,8 +294,19 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7) -> Path | None:
         destinazione.chmod(0o600)
     except OSError:
         pass
-    for vecchia in sorted(cartella.glob("account-*.sqlite"))[:-tieni]:
+    # Si contano e si tolgono solo le copie serali (data nel nome): le copie «prima della migrazione» stanno nella stessa
+    # cartella e, in ordine di nome, vengono dopo quelle con la data; contate qui toglievano posto alle serali, fino a cancellare
+    # quella appena scritta (#653).
+    serali = sorted(p for p in cartella.glob("account-*.sqlite") if COPIA_SERALE.fullmatch(p.name))
+    for vecchia in serali[:-tieni]:
         vecchia.unlink(missing_ok=True)
+    scadenza = (adesso - timedelta(days=GIORNI_COPIE_MIGRAZIONE)).timestamp()
+    for copia in cartella.glob(COPIE_MIGRAZIONE):
+        try:
+            if copia.stat().st_mtime < scadenza:
+                copia.unlink()
+        except FileNotFoundError:
+            pass                                     # già tolta (da un altro giro): va bene
     return destinazione
 
 

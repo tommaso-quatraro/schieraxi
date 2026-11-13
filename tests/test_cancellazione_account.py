@@ -12,11 +12,12 @@ import json
 import logging
 import os
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from fanta import account, contesto, percorsi, push, registro
+from fanta import account, calcolo, consigli, contesto, percorsi, push, registro
 from fanta.__main__ import main
 
 from test_account_http import PASSWORD, cliente, registra
@@ -322,6 +323,81 @@ def test_database_che_smette_di_rispondere_dopo_la_scrittura_non_chiede_di_rifar
     scrivi(f, '{"a": 1}')
     assert len(aperture) == 2                         # prima e dopo: il secondo controllo c'è stato e non ha risposto
     assert f.read_text(encoding="utf-8") == '{"a": 1}'
+
+
+# ---------------------------------------------------------------- consigliate già mostrate (#653)
+def ricorda(utente_id: int | None, impronta: str, propria: bool = False) -> None:
+    """Come quando `utente_id` apre la Formazione (il server mette il numero per ogni richiesta con gli account): la consigliata
+    mostrata finisce nel file comune, con il suo numero. Con None: un comando senza utente (avvisi, sentinella)."""
+    gettone = calcolo.utente_richiesta.set(utente_id)
+    try:
+        consigli._ricorda(impronta, CONSIGLIATA, "2026-27", 9, consigli._consigliate().get(impronta), propria=propria)
+    finally:
+        calcolo.utente_richiesta.reset(gettone)
+
+
+CONSIGLIATA = {"modulo": "4-4-2", "titolari": [{"id": 1 + i} for i in range(11)], "panchina": [{"id": 900}]}
+
+
+@pytest.fixture
+def ora_fissa(monkeypatch):
+    monkeypatch.setattr(consigli, "_adesso", lambda: datetime(2026, 11, 8, 10, 0))
+
+
+def numeri_nelle_consigliate() -> set[int]:
+    tutte = json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
+    return {u for v in tutte.values() for u in v.get("utenti", []) + v.get("proprie", [])}
+
+
+def test_eliminato_l_account_il_suo_numero_esce_dalle_consigliate_gia_mostrate(ambiente, ora_fissa):
+    c, uid = nuovo_utente("marco")
+    _, altro = nuovo_utente("luca")
+    ricorda(uid, "solo-sua", propria=True)
+    ricorda(uid, "della-stessa-lega", propria=True)                 # stessa squadra, rosa e regole: la stessa voce per due
+    ricorda(altro, "della-stessa-lega", propria=True)
+    ricorda(None, "di-un-comando")
+    assert uid in numeri_nelle_consigliate()
+    elimina(c)
+    tutte = json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
+    assert uid not in numeri_nelle_consigliate()
+    assert "solo-sua" not in tutte                                   # rimasta senza nessuno: via
+    assert tutte["della-stessa-lega"]["utenti"] == [altro] and tutte["della-stessa-lega"]["proprie"] == [altro]
+    assert "di-un-comando" in tutte                                  # mai stata di un account: resta
+
+
+def test_consigliate_che_non_si_riscrivono_errore_registrato(ambiente, ora_fissa, monkeypatch, caplog):
+    """Il file comune non si riscrive (disco, permessi): l'account è eliminato lo stesso, ma l'errore si vede, nel registro di
+    sicurezza (Amministrazione) e in quello del servizio."""
+    c, uid = nuovo_utente("marco")
+    ricorda(uid, "solo-sua")
+
+    def disco_pieno(*a, **k):
+        raise OSError(28, "disco pieno")
+
+    monkeypatch.setattr(consigli, "scrivi_sicuro", disco_pieno)
+    with caplog.at_level(logging.ERROR):
+        elimina(c)
+    assert not contesto.cartella_utente(uid).exists()
+    eventi = [e for e in registro.ultimi(registro.FILE_SICUREZZA) if e["tipo"] == "cancellazione_dati_non_riuscita"]
+    assert len(eventi) == 1 and eventi[0]["utente"] == str(uid) and eventi[0]["file"] == "consigliate"
+    assert any(r.levelno >= logging.ERROR and str(uid) in r.getMessage() and "consigliate" in r.getMessage() for r in caplog.records)
+
+
+def test_cartelle_senza_account_toglie_i_numeri_rimasti_nelle_consigliate(ambiente, ora_fissa, capsys):
+    """Un numero rimasto nelle consigliate (account eliminato prima di #653, o pulizia non riuscita): il comando lo dice e lo
+    toglie solo con --esegui. Quelli degli account vivi restano."""
+    _, vivo = nuovo_utente("marco")
+    via = vivo + 50                                                  # un account che non c'è più, senza cartella
+    ricorda(via, "di-chi-se-ne-e-andato", propria=True)
+    ricorda(vivo, "del-vivo", propria=True)
+    prima = consigli.FILE_CONSIGLIATE.read_bytes()
+    main(["cartelle-senza-account"])
+    uscita = capsys.readouterr().out
+    assert str(via) in uscita and righe_elencate(uscita) == set()    # nessuna cartella: solo il numero
+    assert consigli.FILE_CONSIGLIATE.read_bytes() == prima           # senza --esegui non tocca niente
+    main(["cartelle-senza-account", "--esegui"])
+    assert numeri_nelle_consigliate() == {vivo}
+    assert "di-chi-se-ne-e-andato" not in json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
 
 
 def test_segno_non_scritto_registrato(ambiente):
