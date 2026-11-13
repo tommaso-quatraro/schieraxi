@@ -138,6 +138,22 @@ def test_le_righe_in_italiano():
         "Con Giocatore 2 al suo posto la formazione farebbe 60,4 invece di 60,0: per meno di 1 punto la consigliata già mostrata non cambia.")
 
 
+@pytest.mark.parametrize("t, y, extra, chiave", [
+    (T, Y, {}, "scelta.fantavoto_piu_alto"),
+    (G(1, p=0.9), G(2, p=0.8), {}, "scelta.piu_sicuro"),
+    (G(1, p=0.9, mu=6.05), G(2, p=0.92, mu=6.05), {}, "scelta.pari"),
+    # nemmeno la nota dell'incerto: «insieme valgono di più» non è vero
+    (G(1, p=0.4), G(2, p=0.9), {"riserva": G(2, p=0.9)}, "scelta.pari"),
+])
+def test_consigliata_tenuta_con_lo_stesso_numero_a_schermo_ha_le_righe_del_pari(t, y, extra, chiave):
+    """#659: scambiarli varrebbe 0,08 punti, ma a schermo i due numeri sono uguali. «Farebbe 72,1 invece di 72,1: per meno di 1
+    punto…» si contraddice: valgono le righe del caso pari, come per lo stesso numero a schermo a favore del titolare."""
+    f = perche_scelta.motivo(t, y, 72.06, 72.14, tenuta=True, **extra)
+    assert f is not None and f.chiave == chiave, f
+    assert "72,1 invece di 72,1" not in f
+    assert perche_scelta.motivo(t, y, 72.04, 72.16, tenuta=True, **extra).chiave == "scelta.stabile"     # 72,0 e 72,2
+
+
 def test_le_percentuali_sono_quelle_di_gioca_n():
     """#452: la web scrive «gioca 35%» per 0,345 (Math.round); le righe del perché dicono lo stesso numero."""
     tit, riserva = G(1, p=0.345), G(2, p=0.92)
