@@ -1,5 +1,24 @@
 [
   {
+    "versione": "1.491",
+    "data": "2026-11-13T12:31:42",
+    "titolo": "Formazione: giornate con molte partite rinviate, panchina e frasi più giuste",
+    "voci": [
+      "Partite rinviate o anticipate di settimane: Oggi e la Formazione mostrano la giornata giusta, e un anticipo non chiude più la formazione del resto della giornata.",
+      "Panchina della consigliata: un solo portiere anche se il portiere di riserva ha già giocato l'anticipo, e mai lo stesso giocatore due volte.",
+      "Frasi più giuste: niente più «farebbe 72,1 invece di 72,1» sotto il campo, e nel Mercato il motivo vero quando il guadagno sta in poche giornate."
+    ],
+    "tecnico": [
+      "consigli.prossima_giornata: una giornata con le date la tiene aperta solo una partita del suo turno (turno.nel_turno, non passata da più di MARGINE_RISULTATI); la regola delle 5 partite aperte vale solo per una giornata senza date. Con partite giocate settimane prima del turno si decide dalla posizione: la giornata resta solo se ha una partita da giocare prima dell'inizio del turno della giornata dopo (4 giocate e 6 rinviate: si passa alla giornata dopo e non si torna indietro per il recupero; anticipi di settimane: resta). Test di test_fonti_rotte su 6 partite senza data in una giornata con le date adattato: ora non la tengono aperta.",
+      "turno.lontano (anticipo lontano): partita giocata ANTICIPO_MAX o più prima del turno e prima della fine del turno della giornata precedente, in una giornata il cui turno comincia prima di quello della giornata dopo (avvisi.turni_vicini). Giocata dopo la giornata precedente (per esempio prima di una sosta) è metà giornata e fissa la scadenza come sempre: una scadenza passata non torna indietro. Un anticipo lontano non fissa la scadenza (turno.conta_per_scadenza con `precedente` e `prossimo`, avvisi.prima_partita: prima la giornata risultava iniziata dal giorno dell'anticipo, con 409 al salvataggio e niente copia alla scadenza né promemoria), non è fuori dal turno (rinvii.fuori_turno, id_fuori_turno, ha_fuori_turno: chi l'ha giocato tiene il suo voto nel Diario) e i suoi giocatori restano fermi (fasi.squadre_in_anticipo_iniziato). notifiche._con_la_regola_dei_rinvii non passa i turni vicini: non lo chiama più nessuno (python -m fanta riepilogo esce subito dalla #693).",
+      "sentinella.controlla_comuni: «la giornata precedente ha ancora partite da cominciare» conta solo le partite che cominciano prima della prima partita aperta della giornata da giocare (i recuperi a settimane dopo non sono «giornata_incoerente»).",
+      "formazione._panchina(portiere=False): panchina libera senza il posto del portiere messo per primo; consigli.Fermi.panchina_di lo usa se un portiere fermo è già in panchina.",
+      "consigli._rosa toglie i doppioni per id (il primo): consigliata, consigliata tenuta (stabile), Fermi e Valutatore sulla stessa rosa.",
+      "perche_scelta.motivo: scelta.stabile solo se i due punti a un decimale sono diversi; altrimenti le righe del caso pari (più sicuro, fantavoto più alto, motivo proprio, pari), senza la nota dell'incerto.",
+      "buon_senso.guadagno_significativo: senso.differenza_piccola solo con la somma sotto SOGLIA_BREVE; frase nuova senso.guadagno_concentrato (catalogo frase.json, testi.js rigenerato) quando la somma basta ma le giornate in guadagno sono meno di QUOTA_GIORNATE_POSITIVE."
+    ]
+  },
+  {
     "versione": "1.490",
     "data": "2026-11-13T10:00:06",
     "titolo": "Account: controlli più severi, e iscrizioni di gruppo dalla stessa rete",
