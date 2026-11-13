@@ -1,7 +1,19 @@
-# Voci e gruppi delle Impostazioni (ImpostazioniView, AccountSezione, TestiImpostazioni). Poi: python script/testi.py --scrivi
+# Impostazioni, una pagina sola come la web (#673 passo 3): ImpostazioniView, VociImpostazioni, AvvisiDispositivoSezione,
+# GestionePagina, AccountSezione; «Avanzate» anche nell'accesso (AccessoView). Poi: python script/testi.py --scrivi
+imp.sez_avvisi
+imp.avvisi_qui
+imp.avvisi_qui_aiuto
+imp.ore_tranquille_aiuto
+imp.lega
+imp.regole
+imp.regole_sub
+imp.mia_squadra_nessuna
+imp.altre_squadre
 imp.account
 imp.aspetto
-imp.avvisi
-imp.avvisi_sub
 imp.informazioni
+imp.informazioni_sub
+imp.gestione
+imp.gestione_sub
+imp.aggiorna_spiega
 imp.avanzate

@@ -1,31 +1,19 @@
-# Impostazioni > Notifiche: titoli e righe d'aiuto degli interruttori (TestiImpostazioni) e «Avviso se il consiglio cambia»
-# (AvvisoPrima in Domain/Modelli2.swift).
+# Impostazioni > Avvisi (AvvisiDispositivoSezione, #673 passo 3): ore tranquille, l'avviso quando il server le ha spente, i
+# messaggi dell'interruttore «Avvisi su questo dispositivo»; in Gestione l'interruttore degli avvisi con ntfy (GestionePagina).
 # Le altre chiavi avv.* (Diario, Precisione) le elenca chi cura quelle schermate.
 # Poi: python script/testi.py --scrivi
-avv.cambi
-avv.cambi_aiuto
-avv.prima
-avv.prima_aiuto
-avv.prima_0
-avv.prima_30
-avv.prima_60
-avv.prima_90
-avv.prom_60
-avv.prom_60_aiuto
-avv.prom_15
-avv.riepilogo
-avv.riepilogo_aiuto
-avv.copertura
-avv.copertura_aiuto
-avv.nativa
 avv.ore_tranq
-avv.ore_tranq_aiuto
-
-# La pagina Notifiche (AvvisiServerView in Presentation/Lega/Gestione.swift)
 avv.avevi_scelto_ore
-avv.dalle
-avv.alle
-avv.manda_avviso_prova
+avv.permesso_negato_abilita
+avv.notifiche_disattivate_questo
+avv.nativa
+avv.nativa_aiuto
+
+# La ricerca di un giocatore (la voce Cerca della barra: RicercaGiocatoreView e DatiRigaRicerca), come la web
+avv.nome_del_giocatore
+avv.scrivi_almeno_due
+avv.nessun_giocatore_trovato
+avv.quot
 
 # Il Diario di prima: la spiegazione dentro «Come si legge». La pagina Giornate (#673, passo 2) non la mostra più; resta elencata
 # finché il catalogo comune la tiene (la web non la usa: toglierla è un lavoro sul catalogo, fuori da ios/)
