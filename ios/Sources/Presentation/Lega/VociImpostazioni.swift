@@ -35,12 +35,15 @@ enum VociImpostazioni {
         nome.map { VoceImpostazioni(id: "account", nome: Catalogo.Imp.account, sotto: $0, pagina: .account) }
     }
 
+    /// Sotto «Gestione» solo quello che c'è sull'iPhone (aggiornare i dati e il loro stato): inviti e utenti sono della web.
+    static let sottoGestione = "\(Catalogo.Shell.aggiorna) · \(Catalogo.Av.stato)"
+
     /// Informazioni per tutti; Gestione solo per chi gestisce il server (invisibile a un utente normale).
     static func informazioni(gestisce: Bool) -> [VoceImpostazioni] {
         var voci = [VoceImpostazioni(id: "informazioni", nome: Catalogo.Imp.informazioni, sotto: Catalogo.Imp.informazioniSub,
                                      pagina: .informazioni)]
         if gestisce {
-            voci.append(VoceImpostazioni(id: "gestione", nome: Catalogo.Imp.gestione, sotto: Catalogo.Imp.gestioneSub, pagina: .gestione))
+            voci.append(VoceImpostazioni(id: "gestione", nome: Catalogo.Imp.gestione, sotto: sottoGestione, pagina: .gestione))
         }
         return voci
     }

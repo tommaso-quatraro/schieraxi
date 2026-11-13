@@ -64,7 +64,7 @@ enum Collegamenti {
         }
         if nome == "impostazioni" {
             switch parte {
-            case "installazione", "gestione": return .pagina(.gestione)
+            case "installazione", "gestione", "avanzate": return .pagina(.gestione)   // «avanzate»: i dati vecchi (`da_fare.py`)
             case "account": return .pagina(.account)
             case "informazioni": return .pagina(.informazioni)
             default: return .impostazioni(ParteImpostazioni(rawValue: parte))   // «avvisi», «lega», «aspetto»; altrimenti in cima

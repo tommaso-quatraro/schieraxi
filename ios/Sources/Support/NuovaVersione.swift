@@ -57,24 +57,22 @@ enum NuovaVersione {
         return Esito(build: n, nome: tag)
     }
 
-    /// Avvisa della build se non è ancora stata segnalata (da fare).
+    /// Avvisa della build se non è ancora stata segnalata, e la segna come avvisata solo se l'avviso è partito davvero: con «Avvisi
+    /// su questo dispositivo» spento (o senza permesso) non parte, e riaccendendo arriva al controllo dopo.
     static func avvisaSeServe(_ esito: Esito, memoria: UserDefaults = .standard, manda: (Esito) async -> Bool) async {
-        if memoria.integer(forKey: chiaveAvvisata) < esito.build {
-            _ = await manda(esito)
-            memoria.set(esito.build, forKey: chiaveAvvisata)
-        }
+        guard memoria.integer(forKey: chiaveAvvisata) < esito.build, await manda(esito) else { return }
+        memoria.set(esito.build, forKey: chiaveAvvisata)
     }
 
     /// Controlla e, se c'è una build mai segnalata, manda la notifica (una sola volta per build).
     @discardableResult
     static func controllaEAvvisa() async -> Esito? {
         guard let esito = await controlla() else { return nil }
-        if UserDefaults.standard.integer(forKey: chiaveAvvisata) < esito.build {
+        await avvisaSeServe(esito) { e in
             await Notifiche.avviso(
                 id: "nuova-versione",
                 titolo: "SchieraXI · C'è una versione nuova",
-                corpo: "Aggiorna SchieraXI dall'app con cui l'hai installata (\(esito.nome)).")
-            UserDefaults.standard.set(esito.build, forKey: chiaveAvvisata)
+                corpo: "Aggiorna SchieraXI dall'app con cui l'hai installata (\(e.nome)).")
         }
         return esito
     }

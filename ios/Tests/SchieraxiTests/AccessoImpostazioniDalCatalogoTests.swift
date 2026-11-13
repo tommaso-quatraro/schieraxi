@@ -50,7 +50,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Imp.account, Catalogo.Imp.aspetto, Catalogo.Imp.informazioni, Catalogo.Imp.avanzate, Catalogo.Imp.sezAvvisi,
         Catalogo.Imp.avvisiQui, Catalogo.Imp.avvisiQuiAiuto, Catalogo.Imp.lega, Catalogo.Imp.regole, Catalogo.Imp.regoleSub,
         Catalogo.Imp.miaSquadraNessuna, Catalogo.Imp.altreSquadre, Catalogo.Imp.informazioniSub, Catalogo.Imp.gestione,
-        Catalogo.Imp.gestioneSub, Catalogo.Imp.aggiornaSpiega,
+        Catalogo.Imp.aggiornaSpiega,
         // avv.* (Avvisi), pav.* (Primo avvio)
         Catalogo.Avv.nativa, Catalogo.Avv.nativaAiuto, Catalogo.Avv.oreTranq, Catalogo.Avv.permessoNegatoAbilita,
         Catalogo.Avv.notificheDisattivateQuesto,
@@ -164,7 +164,7 @@ struct AccessoImpostazioniDalCatalogoTests {
             "Catalogo.Lega.voceImporta", "Catalogo.Lega.voceImportaSub", "Catalogo.Lega.miaSquadra", "Catalogo.Imp.miaSquadraNessuna",
             "Catalogo.Imp.regole", "Catalogo.Imp.regoleSub", "Catalogo.Imp.altreSquadre", "Catalogo.Lega.nSquadre(",
             "Catalogo.Imp.account", "Catalogo.Imp.informazioni", "Catalogo.Imp.informazioniSub", "Catalogo.Imp.gestione",
-            "Catalogo.Imp.gestioneSub",
+            "Catalogo.Shell.aggiorna", "Catalogo.Av.stato",
         ]),
         ("Sources/Presentation/Lega/AvvisiDispositivoSezione.swift", [
             "Catalogo.Imp.sezAvvisi", "Catalogo.Imp.avvisiQui", "Catalogo.Imp.avvisiQuiAiuto", "Catalogo.Avv.oreTranq",

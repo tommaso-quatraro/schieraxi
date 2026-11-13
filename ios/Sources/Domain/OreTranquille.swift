@@ -60,13 +60,24 @@ enum ArchivioOreTranquille {
     }
 }
 
-/// La spunta «L'ho messa» della giornata, per i promemoria del telefono (da fare).
+/// La spunta «L'ho messa» della giornata (numero di Serie A), per i promemoria del telefono: con la spunta non partono, come quelli
+/// del server. La scrive la Formazione dopo ogni lettura o salvataggio della scelta; la legge `Aggiornamento.programmaPromemoria`,
+/// anche in background. Si ricorda una giornata sola: quella spuntata.
 enum ArchivioMessa {
     static let chiave = "promemoria.messa"
 
-    static func messa(giornata: Int?, _ memoria: UserDefaults = .standard) -> Bool { false }
+    static func messa(giornata: Int?, _ memoria: UserDefaults = .standard) -> Bool {
+        guard let giornata else { return false }
+        return memoria.object(forKey: chiave) as? Int == giornata
+    }
 
-    static func salva(giornata: Int, messa: Bool, _ memoria: UserDefaults = .standard) {}
+    static func salva(giornata: Int, messa: Bool, _ memoria: UserDefaults = .standard) {
+        if messa {
+            memoria.set(giornata, forKey: chiave)
+        } else if Self.messa(giornata: giornata, memoria) {
+            memoria.removeObject(forKey: chiave)
+        }
+    }
 }
 
 /// «Avvisi su questo dispositivo» (Impostazioni > Avvisi, come la web): un interruttore solo per i promemoria locali (un'ora e 15

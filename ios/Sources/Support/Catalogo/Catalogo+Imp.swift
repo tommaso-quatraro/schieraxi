@@ -47,9 +47,6 @@ extension Catalogo {
         /// `imp.gestione`
         static let gestione = "Gestione"
 
-        /// `imp.gestione_sub`
-        static let gestioneSub = "Inviti, utenti, stato e aggiornamento dei dati"
-
         /// `imp.aggiorna_spiega`
         static let aggiornaSpiega = "Scarica adesso listone, voti e probabili formazioni dalle fonti accese. Di solito succede da solo."
 

@@ -58,7 +58,8 @@ enum Aggiornamento {
     /// I promemoria di un'ora e di un quarto d'ora prima della scadenza di questa giornata (con «Avvisi su questo dispositivo» acceso).
     static func programmaPromemoria(_ oggi: Oggi) async {
         if let inizio = Quando.data(oggi.chiusura), let nome = oggi.nomeGiornata {
-            await Notifiche.programma(giornata: nome, inizio: inizio, modulo: oggi.formazione?.modulo)
+            await Notifiche.programma(giornata: nome, inizio: inizio, modulo: oggi.formazione?.modulo,
+                                      messa: ArchivioMessa.messa(giornata: oggi.giornata))
         }
     }
 

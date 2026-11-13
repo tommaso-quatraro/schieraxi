@@ -60,10 +60,21 @@ final class FormazioneViewModel: ViewModelBase {
     /// Cresce a ogni rilettura: una risposta (lettura o scrittura) partita prima non vale più.
     private var generazione = 0
 
+    /// Dove si ricorda la spunta «L'ho messa» per i promemoria del telefono (`ArchivioMessa`; nei test una memoria a parte).
+    private let memoria: UserDefaults
+    /// Rimette in programma i promemoria del telefono quando la spunta cambia (nei test conta le chiamate).
+    private let promemoria: @MainActor () -> Void
+
+    /// `promemoria`: nil = quelli veri, con l'ultima giornata salvata e senza rete (mai nei test né nella demo).
     init(server: any ServerClient, oggi: OggiViewModel? = nil, memoria: UserDefaults = .standard,
-         promemoria: @escaping @MainActor () -> Void = {}) {
+         promemoria: (@MainActor () -> Void)? = nil) {
         self.server = server
         self.oggi = oggi
+        self.memoria = memoria
+        self.promemoria = promemoria ?? {
+            guard !Ambiente.ospiteDeiTest, !Demo.attivo else { return }
+            Task { await Aggiornamento.riprogrammaPromemoria() }
+        }
         // il comando «Aggiorna» rilegge formazione e scelta insieme (non solo la formazione)
         caricatore = Caricatore<Formazione>("/api/formazione", ascolta: false, server: server)
         super.init()
@@ -392,10 +403,20 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Tiene sul telefono la scelta appena letta o salvata, accanto alla copia della Formazione (`CopiaScelta`).
     private func ricordaSulTelefono(_ f: Formazione) {
-        guard squadraVista == nil,
-              let dati = CopiaScelta(giornata: f.giornata, scelta: salvata, nonValida: salvataNonValida, valutazione: valutazione).dati
+        guard squadraVista == nil else { return }
+        ricordaLaSpunta(f)
+        guard let dati = CopiaScelta(giornata: f.giornata, scelta: salvata, nonValida: salvataNonValida, valutazione: valutazione).dati
         else { return }
         Cache.salva(dati, CopiaScelta.percorso, indirizzo: server.indirizzo)
+    }
+
+    /// La spunta «L'ho messa» della giornata per i promemoria del telefono: quando cambia (spuntata, tolta, o caduta perché gli 11
+    /// sono cambiati) i promemoria si rimettono in programma, così con la spunta non partono e senza tornano.
+    private func ricordaLaSpunta(_ f: Formazione) {
+        let messa = salvata?.messa == true && !salvataNonValida
+        guard ArchivioMessa.messa(giornata: f.giornata, memoria) != messa else { return }
+        ArchivioMessa.salva(giornata: f.giornata, messa: messa, memoria)
+        promemoria()
     }
 
     /// All'apertura, prima della copia della Formazione: la scelta tenuta sul telefono, finché il server non risponde. In campo

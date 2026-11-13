@@ -16,11 +16,12 @@ enum Notifiche {
     }
 
     /// Notifica locale subito (usata dall'aggiornamento in background quando la formazione consigliata cambia), solo con «Avvisi su
-    /// questo dispositivo» acceso. Nelle ore tranquille non suona: arriva alla fine del silenzio.
-    static func avviso(id: String, titolo: String, corpo: String, ore: OreTranquille = ArchivioOreTranquille.leggi(), adesso: Date = Date()) async {
-        guard ArchivioAvvisiQui.acceso() else { return }
+    /// questo dispositivo» acceso. Nelle ore tranquille non suona: arriva alla fine del silenzio. Dice se l'avviso è partito.
+    @discardableResult
+    static func avviso(id: String, titolo: String, corpo: String, ore: OreTranquille = ArchivioOreTranquille.leggi(), adesso: Date = Date()) async -> Bool {
+        guard ArchivioAvvisiQui.acceso() else { return false }
         let stato = await stato()
-        guard stato == .authorized || stato == .provisional else { return }
+        guard stato == .authorized || stato == .provisional else { return false }
         let contenuto = UNMutableNotificationContent()
         contenuto.title = titolo
         contenuto.body = corpo
@@ -30,14 +31,21 @@ enum Notifiche {
             let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fine)
             trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
         }
-        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
+        do {
+            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// I promemoria che cadono nelle ore tranquille si saltano (come fa il server): sono utili solo a quell'ora.
-    /// `attivi`: i minuti dei promemoria da mandare (60 e 15 con gli avvisi accesi, nessuno spenti).
+    /// `attivi`: i minuti dei promemoria da mandare (60 e 15 con gli avvisi accesi, nessuno spenti). `messa`: la formazione della
+    /// giornata è spuntata «L'ho messa»: nessun promemoria, come il server (`imp.avvisi_qui_aiuto`).
     static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, attivi: Set<Int> = [60, 15], messa: Bool = false,
                                      adesso: Date = Date()) -> [(id: String, minuti: Int, quando: Date)] {
         var elenco: [(id: String, minuti: Int, quando: Date)] = []
+        if messa { return elenco }
         for (id, minuti) in [("fanta-60", 60), ("fanta-15", 15)] where attivi.contains(minuti) {
             let quando = inizio.addingTimeInterval(-Double(minuti) * 60)
             guard quando > adesso, !ore.inSilenzio(quando) else { continue }
@@ -79,12 +87,13 @@ enum Notifiche {
                                    ?? "mister, dai un'occhiata alla formazione.")
     }
 
-    static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?) async {
+    static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?, messa: Bool = false) async {
         let centro = UNUserNotificationCenter.current()
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
         centro.removePendingNotificationRequests(withIdentifiers: ["fanta-60", "fanta-15"])
-        for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi(), attivi: ArchivioAvvisiQui.minutiAttivi()) {
+        for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi(), attivi: ArchivioAvvisiQui.minutiAttivi(),
+                                                         messa: messa) {
             let contenuto = UNMutableNotificationContent()
             contenuto.title = minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti"
             contenuto.body = corpoPromemoria(giornata: giornata, modulo: modulo)
