@@ -38,13 +38,12 @@ def test_differenza_e_chi_ha_fatto_meglio_o_peggio_della_tua_formazione(finto): 
     assert fa["formazione"] == "schierata"
     assert (fa["fatti"], fa["atteso"]) == (s["reale"], s["atteso"]) and s["reale"] == 69.0
     assert fa["differenza"] == round(s["reale"] - s["atteso"], 1)
-    # fantavoto atteso come lo scrive la pagina (una cifra): 25 → 6,8 (preso 9), 1 → 5,5, 4 → 5,7; 20 e 21 → 6,5 (presi 6)
-    assert _chi(fa["meglio"]) == [(25, 2.2), (1, 0.5)]
-    assert _chi(fa["peggio"]) == [(20, -0.5), (21, -0.5)]
+    # fantavoto atteso come lo scrive la pagina (una cifra): 25 → 6,8 (preso 9); gli altri presi 6 contro 5,5-6,5, sotto 1 punto
+    assert _chi(fa["meglio"]) == [(25, 2.2)] and fa["peggio"] == []
     assert fa["meglio"][0] == {"id": 25, "nome": "G25", "ruolo": "A", "atteso": 6.75, "preso": 9.0, "differenza": 2.2}
-    assert fa["testo"] == "Meglio del previsto: G25 (+2,2) e G1 (+0,5). Peggio: G20 (−0,5) e G21 (−0,5)."
-    assert fa["frase"]["chiave"] == "diario.meglio_peggio"
-    assert fa["frase"]["param"]["meglio"]["param"]["parti"][0] == {"chiave": "diario.scarto_giocatore", "param": {"nome": "G25", "d": "+2.2"}}
+    assert fa["testo"] == "Meglio del previsto: G25 (+2,2)."
+    assert fa["frase"] == {"chiave": "diario.meglio", "param": {"meglio": {"chiave": "diario.scarto_giocatore",
+                                                                           "param": {"nome": "G25", "d": "+2.2"}}}}
 
 
 def test_chi_non_ha_preso_voto_non_e_fra_meglio_e_peggio(finto):  # noqa: F811 (fixture importata)
@@ -52,7 +51,7 @@ def test_chi_non_ha_preso_voto_non_e_fra_meglio_e_peggio(finto):  # noqa: F811 (
     finto.dati.voti = voti[~((voti["giornata"] == 1) & (voti["calciatore_id"] == 25))].copy()       # il 25 non ha giocato
     fa = _in_elenco(finto.file, _calcola(finto, _scelta(CON_IL_25)))["fatti_e_attesi"]
     assert 25 not in [g["id"] for g in fa["meglio"] + fa["peggio"]]
-    assert _chi(fa["meglio"]) == [(1, 0.5), (4, 0.3)]
+    assert (fa["meglio"], fa["peggio"], fa["testo"]) == ([], [], None)                   # gli altri sono sotto 1 punto
 
 
 def test_il_fantavoto_atteso_e_quello_mostrato_prima_della_scadenza(finto):  # noqa: F811 (fixture importata)
@@ -60,12 +59,12 @@ def test_il_fantavoto_atteso_e_quello_mostrato_prima_della_scadenza(finto):  # n
     come nella tabella della pagina."""
     f = _formazione_finta(ids=CON_IL_25)
     for t in f["titolari"]:
-        t |= {"p_voto": 0.9, "fv_atteso": 8.5 if t["id"] == 25 else 6.0}
+        t |= {"p_voto": 0.9, "fv_atteso": 7.5 if t["id"] == 25 else 6.0}
     diario.salva_istantanea(f, ST, finto.file)
     ist = diario.carica(finto.file)["istantanee"][f"{ST}/1"]
     fa = _in_elenco(finto.file, _calcola(finto, _scelta(CON_IL_25), istantanea=ist))["fatti_e_attesi"]
-    assert _chi(fa["meglio"]) == [(25, 0.5)] and fa["meglio"][0]["atteso"] == 8.5
-    assert fa["peggio"] == [] and fa["testo"] == "Meglio del previsto: G25 (+0,5)." and fa["frase"]["chiave"] == "diario.meglio"
+    assert _chi(fa["meglio"]) == [(25, 1.5)] and fa["meglio"][0]["atteso"] == 7.5          # con il rifatto (6,8) sarebbe +2,2
+    assert fa["peggio"] == [] and fa["testo"] == "Meglio del previsto: G25 (+1,5)." and fa["frase"]["chiave"] == "diario.meglio"
 
 
 def _voce_a_mano(numeri, mostrati=None):
@@ -81,16 +80,37 @@ def _voce_a_mano(numeri, mostrati=None):
 
 def test_le_differenze_sono_quelle_dei_numeri_come_li_scrive_la_pagina():
     """La pagina scrive i fantavoti con una cifra, il mezzo all'insù (6,25 → «6,3»): la differenza è quella dei due numeri scritti,
-    non quella degli arrotondamenti di Python (che darebbe 6,2 e «−0,2»)."""
-    fa = diario.fatti_e_attesi(_voce_a_mano({1: (6.25, 6.0), 2: (5.55, 6.0), 3: (6.0, 6.0)}))
+    non quella degli arrotondamenti di Python (che darebbe 6,2 e «−2,2»)."""
+    fa = diario.fatti_e_attesi(_voce_a_mano({1: (6.25, 4.0), 2: (5.55, 7.0), 3: (6.0, 6.0)}))
     assert fa["formazione"] == "consigliata" and (fa["fatti"], fa["atteso"], fa["differenza"]) == (68.5, 70.0, -1.5)
-    assert _chi(fa["peggio"]) == [(1, -0.3)] and _chi(fa["meglio"]) == [(2, 0.5)]          # 5,55 è 5,549…: «5,5»
-    assert fa["testo"] == "Meglio del previsto: G2 (+0,5). Peggio: G1 (−0,3)."
+    assert _chi(fa["peggio"]) == [(1, -2.3)] and _chi(fa["meglio"]) == [(2, 1.5)]          # 5,55 è 5,549…: «5,5»
+    assert fa["testo"] == "Meglio del previsto: G2 (+1,5). Peggio: G1 (−2,3)."
+
+
+# ---------------------------------------------------------------- la soglia di 1 punto (revisione di #702)
+def test_nessuno_sopra_la_soglia_lista_vuota_e_niente_frase():
+    """Chi si scosta dal suo fantavoto atteso di meno di 1 punto ha fatto come previsto: nessuno in «meglio» o «peggio», e la
+    frase non nomina nessuno."""
+    fa = diario.fatti_e_attesi(_voce_a_mano({1: (6.0, 6.5), 2: (6.5, 5.6), 3: (5.7, 6.0), 4: (6.0, None)}))
+    assert diario.SOGLIA_SCARTO == 1.0
+    assert (fa["meglio"], fa["peggio"], fa["testo"], fa["frase"]) == ([], [], None, None)
+    assert fa["differenza"] == -1.5                                                     # la differenza della squadra resta
+
+
+def test_il_bordo_esatto_di_un_punto():
+    """1,0 entra (in su e in giù), 0,9 no; anche quando 0,9 è la differenza dei numeri come li scrive la pagina e Python farebbe 1,0
+    (atteso 6,25 si scrive «6,3», preso «7,2»)."""
+    fa = diario.fatti_e_attesi(_voce_a_mano({1: (6.0, 7.0), 2: (6.0, 5.0), 3: (6.1, 7.0), 4: (6.25, 7.2), 5: (6.0, 5.1)}))
+    assert _chi(fa["meglio"]) == [(1, 1.0)] and _chi(fa["peggio"]) == [(2, -1.0)]
+    assert fa["testo"] == "Meglio del previsto: G1 (+1,0). Peggio: G2 (−1,0)."
 
 
 def test_al_massimo_due_per_parte_dalla_differenza_piu_grande():
     fa = diario.fatti_e_attesi(_voce_a_mano({1: (6.0, 4.0), 2: (6.0, 5.5), 3: (6.0, 3.0), 4: (6.0, 7.0), 5: (6.0, 10.0), 6: (6.0, 8.0)}))
     assert _chi(fa["meglio"]) == [(5, 4.0), (6, 2.0)] and _chi(fa["peggio"]) == [(3, -3.0), (1, -2.0)]
+    assert fa["testo"] == "Meglio del previsto: G5 (+4,0) e G6 (+2,0). Peggio: G3 (−3,0) e G1 (−2,0)."
+    assert fa["frase"]["chiave"] == "diario.meglio_peggio"
+    assert fa["frase"]["param"]["meglio"]["param"]["parti"][0] == {"chiave": "diario.scarto_giocatore", "param": {"nome": "G5", "d": "+4.0"}}
 
 
 def test_tutti_come_previsto_niente_frase():

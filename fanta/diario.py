@@ -702,6 +702,10 @@ def nota_confronto(giornate: int, stessi: int, senza: int, motivi: dict | None =
 
 
 MAX_SCARTI = 2          # «chi ha fatto meglio o peggio del previsto»: al massimo due giocatori per parte
+# ... e solo chi si scosta dal suo fantavoto atteso di almeno 1 punto (scelta del proprietario, revisione di #702): sotto un punto
+# lo scarto è il rumore di mezzo voto in pagella o di un'ammonizione, e nominare chi ha fatto «come previsto» non dice niente.
+# Se nessuno arriva a 1 punto le liste sono vuote e la frase non c'è.
+SOGLIA_SCARTO = 1.0
 
 
 def _numero(x) -> float | None:
@@ -734,8 +738,8 @@ def _frase_scarti(meglio: list[dict], peggio: list[dict]):
 def fatti_e_attesi(voce: dict) -> dict | None:
     """Per la pagina Giornate (#672): i punti fatti e attesi della formazione che conta (`formazione`: "schierata", "automatica" o
     "consigliata", vedi `_formazione_che_conta`), la `differenza` (fatti meno attesi, positiva = meglio del previsto) e chi dei suoi
-    titolari ha fatto meglio (`meglio`) o peggio (`peggio`) del suo fantavoto atteso, al massimo MAX_SCARTI per parte, dalla
-    differenza più grande: `{id, nome, ruolo, atteso, preso, differenza}`. L'atteso di un giocatore è quello mostrato prima della
+    titolari ha fatto meglio (`meglio`) o peggio (`peggio`) del suo fantavoto atteso di almeno SOGLIA_SCARTO punti, al massimo
+    MAX_SCARTI per parte, dalla differenza più grande: `{id, nome, ruolo, atteso, preso, differenza}`. L'atteso di un giocatore è quello mostrato prima della
     scadenza (istantanea), se c'è, altrimenti quello rifatto con i soli dati di prima (`giocatori`): gli stessi numeri della tabella
     della pagina. Chi non ha preso voto non c'è (senza un fantavoto non si confronta; la tabella lo dice «senza voto»). Le
     differenze sono quelle dei numeri come la pagina li scrive (`_letto`). `testo` e `frase`: la frase su `meglio` e `peggio`, null
@@ -758,8 +762,8 @@ def fatti_e_attesi(voce: dict) -> dict | None:
             continue
         righe.append({"id": t["id"], "nome": t.get("nome", ""), "ruolo": t.get("ruolo"), "atteso": atteso, "preso": preso,
                       "differenza": round(_letto(preso) - _letto(atteso), 1)})
-    meglio = sorted((r for r in righe if r["differenza"] > 0), key=lambda r: -r["differenza"])[:MAX_SCARTI]
-    peggio = sorted((r for r in righe if r["differenza"] < 0), key=lambda r: r["differenza"])[:MAX_SCARTI]
+    meglio = sorted((r for r in righe if r["differenza"] >= SOGLIA_SCARTO), key=lambda r: -r["differenza"])[:MAX_SCARTI]
+    peggio = sorted((r for r in righe if r["differenza"] <= -SOGLIA_SCARTO), key=lambda r: r["differenza"])[:MAX_SCARTI]
     frase = _frase_scarti(meglio, peggio)
     return {"formazione": nome, "atteso": f["atteso"], "fatti": f["reale"],
             "differenza": round(_letto(f["reale"]) - _letto(f["atteso"]), 1), "meglio": meglio, "peggio": peggio,
