@@ -5,7 +5,7 @@ giornata: infortunato, squalificato, diffidato) e dai moduli ammessi in `regole`
 reparto è quello del modulo meno esigente tra quelli ammessi dalla lega (il portiere è sempre 1).
 - «scoperto»: i disponibili non bastano a riempire il reparto in nessun modulo ammesso;
 - «a rischio»: bastano ma senza ricambio, oppure contando i diffidati (che con un giallo salterebbero la partita dopo) non bastano.
-Lo usano «Da fare» in Oggi (`da_fare.py`) e l'avviso facoltativo (`notifiche.copertura`).
+Lo usa «Da fare» in Oggi (`da_fare.py`; l'avviso del reparto scoperto non parte più dalla #693).
 """
 from __future__ import annotations
 

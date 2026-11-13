@@ -1372,7 +1372,7 @@ def test_aggiorna_non_si_ferma_se_la_taratura_fallisce(tmp_path):
     r = _lancia_aggiorna(tmp_path, app, bin_)
     assert r.returncode == 0, r.stderr
     comandi = [c.split(" -m fanta ")[1].split()[0] for c in chiamate.read_text(encoding="utf-8").splitlines()]
-    assert comandi == ["aggiorna", "cambi", "riepilogo", "affidabilita", "avviso", "taratura-probabili"]     # per ultima
+    assert comandi == ["aggiorna", "cambi", "affidabilita", "taratura-probabili"]     # per ultima
     log = (app / "dati" / "aggiorna.log").read_text(encoding="utf-8")
     assert "taratura-probabili: non riuscita (uscita 1)" in log
     assert not (app / "dati" / "aggiorna.log.tmp").exists()                     # lo script è arrivato in fondo (tail del log)

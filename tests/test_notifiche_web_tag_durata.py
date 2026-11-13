@@ -1,5 +1,5 @@
 """Notifiche web (#652): ogni avviso ha un tag suo, così il browser non sostituisce un avviso con il successivo (lo farebbe senza
-suono); il tempo di vita dipende dall'avviso: quelli sulla formazione valgono fino alla scadenza, riepilogo e «formazione pronta»
+suono); il tempo di vita dipende dall'avviso: quelli sulla formazione valgono fino alla scadenza, gli altri (l'avviso di prova)
 aspettano il telefono per qualche ora. Il servizio delle notifiche è finto (nessuna rete), l'invio passa dal codice vero."""
 import json
 from datetime import datetime, timedelta
@@ -96,15 +96,8 @@ def test_cambia_la_formazione_vale_fino_alla_scadenza(monkeypatch, tmp_path):
     assert inviati == [{"vale_per": timedelta(minutes=40)}]
 
 
-def test_il_reparto_scoperto_vale_fino_alla_scadenza(monkeypatch, tmp_path):
-    from test_copertura import _base, _con, _db as db_copertura, _scena
-    rose, _, _ = _scena(monkeypatch, _con(_base(), "P", 2))
-    inviati, manda = _registro()
-    assert notifiche.copertura(db_copertura(), Regole(), rose, datetime(2026, 10, 28, 12, 30), tmp_path / "n.json", manda, {})
-    assert inviati == [{"vale_per": timedelta(hours=6)}]                 # dalle 12:30 alla chiusura delle 18:30
-
-
-def test_il_riepilogo_aspetta_il_telefono_per_qualche_ora(servizio):
-    """Telefono spento dalle 8 alle 9:10: il riepilogo mandato alle 8 deve arrivare lo stesso (prima scadeva dopo un'ora)."""
-    assert servizio.manda("SchieraXI · riepilogo della giornata", "Giornata 8: 70 punti", 3, "bar_chart")
+def test_un_avviso_senza_scadenza_aspetta_il_telefono_per_qualche_ora(servizio):
+    """Telefono spento dalle 8 alle 9:10: un avviso che non parla della formazione (oggi solo quello di prova) mandato alle 8 deve
+    arrivare lo stesso (prima scadeva dopo un'ora)."""
+    assert servizio.manda("SchieraXI · prova", "Se leggi questo, gli avvisi funzionano.", 3, "white_check_mark", ignora_silenzio=True)
     assert servizio.inviati[0]["ttl"] >= 3 * ORA

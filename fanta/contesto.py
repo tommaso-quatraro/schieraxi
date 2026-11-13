@@ -24,8 +24,7 @@ LOG = logging.getLogger(__name__)
 FILE_UTENTE = {"regole": "regole.json", "rose": "rose.json", "movimenti": "movimenti.json", "scelte": "scelte.json",
                "osservati": "osservati.json", "impostazioni_avvisi": "avvisi-impostazioni.json", "icona": "icona.json",
                "iscrizioni_push": "push.json", "diario": "diario.json", "affidabilita": "affidabilita.json",
-               "stato_cambi": "notifiche.json", "stato_promemoria": "notifiche-promemoria.json",
-               "stato_riepilogo": "notifiche-riepilogo.json", "stato_avvisi": "avvisi.json"}
+               "stato_cambi": "notifiche.json", "stato_promemoria": "notifiche-promemoria.json"}
 # gli stessi, ma con il nome che hanno nel backup (e quindi dove stanno oggi, con l'interruttore spento)
 NOMI_BACKUP = {"regole": "lega/regole.json", "rose": "lega/rose.json", "movimenti": "lega/movimenti.json",
                "scelte": "dati/scelte.json", "osservati": "dati/osservati.json", "impostazioni_avvisi": "dati/avvisi-impostazioni.json"}
@@ -35,8 +34,7 @@ DA_MIGRARE = [("lega/regole.json", "regole.json"), ("lega/rose.json", "rose.json
               ("dati/scelte.json", "scelte.json"), ("dati/osservati.json", "osservati.json"),
               ("dati/avvisi-impostazioni.json", "avvisi-impostazioni.json"), ("dati/icona.json", "icona.json"),
               ("dati/push.json", "push.json"), ("dati/diario.json", "diario.json"), ("dati/affidabilita.json", "affidabilita.json"),
-              ("dati/notifiche.json", "notifiche.json"), ("dati/notifiche-promemoria.json", "notifiche-promemoria.json"),
-              ("dati/notifiche-riepilogo.json", "notifiche-riepilogo.json"), ("dati/avvisi.json", "avvisi.json")]
+              ("dati/notifiche.json", "notifiche.json"), ("dati/notifiche-promemoria.json", "notifiche-promemoria.json")]
 
 
 @dataclass(frozen=True)
@@ -52,10 +50,8 @@ class Contesto:
     iscrizioni_push: Path
     diario: Path
     affidabilita: Path
-    stato_cambi: Path              # cosa è già stato avvisato: cambi delle probabili, promemoria, riepilogo, «formazione pronta»
-    stato_promemoria: Path
-    stato_riepilogo: Path
-    stato_avvisi: Path
+    stato_cambi: Path              # cosa è già stato avvisato: cambio della formazione da schierare
+    stato_promemoria: Path         # promemoria e «cambia la formazione»
     immagini: Path                 # cartella degli stemmi e delle maglie
     ntfy: bool = True              # avvisi anche con ntfy: solo per l'app di sempre (il canale è uno, del proprietario)
     file_backup: dict[str, Path] | None = None       # per il backup: nome nel backup -> file (None = quelli di sempre sotto la radice)
