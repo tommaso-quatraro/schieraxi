@@ -1,0 +1,16 @@
+{
+  "titolo": "Giornate: di quanto sei andato sopra o sotto il previsto, e chi ha fatto meglio o peggio",
+  "voci": [
+    "Giornate (web): ogni riga dice di quanto i punti fatti sono andati sopra o sotto quelli attesi, per esempio «+9,2 sul previsto».",
+    "Giornate (web): toccando una giornata, una riga dice chi ha fatto meglio e chi peggio del previsto di almeno un punto, al massimo due per parte, con quanto.",
+    "Quando il confronto con la consigliata non c'è, la frase ora dice il perché vero: la consigliata di allora non era stata salvata, oppure dentro c'è chi non è più nella tua rosa (per esempio un giocatore ceduto)."
+  ],
+  "tecnico": [
+    "GET /api/diario, campi nuovi per voce (nessuno tolto): `fatti_e_attesi` {formazione, atteso, fatti, differenza, meglio[], peggio[], testo, frase} (#672) da diario.fatti_e_attesi; `consigliata_di_allora` (mostrata | non_salvata | fuori_rosa | non_valutabile), `nota_consigliata` e `nota_consigliata_frase` (#674) da diario.consigliata_di_allora e diario.nota_consigliata. Contratto in docs/API.md.",
+    "calcola_giornata scrive `consigliata_di_allora` nella voce: fuori_rosa se un titolare dell'istantanea non è fra i giocatori schierabili della rosa di oggi, non_valutabile se sono tutti in rosa ma la regola unica della scelta la rifiuta (modulo). Le voci di prima lo ricavano dall'istantanea: con l'istantanea non_valutabile, senza non_salvata.",
+    "diario.nota_confronto(giornate, stessi, senza, motivi): frasi nuove diario.confronto_fuori_rosa, diario.confronto_non_valutabili, diario.confronto_stessa_confrontabili; con giornate di due tipi un `elenco` di due frasi. senza_istantanea, sintesi.senza_consigliata_mostrata e affidabilita.senza_istantanea contano come prima.",
+    "In meglio e peggio solo chi si scosta di almeno diario.SOGLIA_SCARTO (1 punto, 1,0 compreso); nessuno sopra la soglia: liste vuote, testo e frase null.",
+    "Le differenze per giocatore sono quelle dei numeri come li scrive la web (Decimal, ROUND_HALF_UP sul valore vero del float, come toFixed(1)): niente scarti di 0,1 fra la frase e la tabella.",
+    "Web: riga di Giornate con `fatti_e_attesi.differenza` (testi giornate.sul_previsto e giornate.come_previsto); nel dettaglio `fatti_e_attesi.testo` e `nota_consigliata` così come arrivano. Tolti dal catalogo giornate.senza_confronto e giornate.rifatta_nota."
+  ]
+}

@@ -943,5 +943,61 @@
   "frase.diario.confronto_stessa_fuori": {
     "it": "Hai schierato gli stessi undici della consigliata in tutte le giornate in cui era stata salvata. {fuori}",
     "en": "You fielded the same eleven as the recommended lineup in every matchday where it had been saved. {fuori}"
+  },
+  "frase.diario.confronto_fuori_rosa.one": {
+    "it": "{n} giornata non entra nel confronto: nella consigliata di allora c'è chi non è più nella tua rosa.",
+    "en": "{n} matchday is left out of the comparison: the recommended lineup of the time has a player who is no longer in your squad."
+  },
+  "frase.diario.confronto_fuori_rosa.other": {
+    "it": "{n} giornate non entrano nel confronto: nella consigliata di allora c'è chi non è più nella tua rosa.",
+    "en": "{n} matchdays are left out of the comparison: the recommended lineup of the time has a player who is no longer in your squad."
+  },
+  "frase.diario.confronto_non_valutabili.one": {
+    "it": "{n} giornata non entra nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
+    "en": "{n} matchday is left out of the comparison: the recommended lineup of the time can no longer be scored with today's squad and rules."
+  },
+  "frase.diario.confronto_non_valutabili.other": {
+    "it": "{n} giornate non entrano nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
+    "en": "{n} matchdays are left out of the comparison: the recommended lineup of the time can no longer be scored with today's squad and rules."
+  },
+  "frase.diario.confronto_stessa_confrontabili": {
+    "it": "Hai schierato gli stessi undici della consigliata in tutte le giornate che si possono confrontare. {fuori}",
+    "en": "You fielded the same eleven as the recommended lineup in every matchday that can be compared. {fuori}"
+  },
+  "frase.diario.senza_confronto": {
+    "it": "Qui il confronto con la consigliata non c'è: {perche}.",
+    "en": "No comparison with the recommended lineup here: {perche}."
+  },
+  "frase.diario.rifatta": {
+    "it": "Questa è rifatta con i dati di allora: {perche}.",
+    "en": "This one is rebuilt with the data of the time: {perche}."
+  },
+  "frase.diario.allora_non_salvata": {
+    "it": "quella mostrata prima della scadenza non era stata salvata",
+    "en": "the one shown before the deadline had not been saved"
+  },
+  "frase.diario.allora_fuori_rosa": {
+    "it": "in quella mostrata prima della scadenza c'è chi non è più nella tua rosa",
+    "en": "the one shown before the deadline has a player who is no longer in your squad"
+  },
+  "frase.diario.allora_non_valutabile": {
+    "it": "quella mostrata prima della scadenza non si può più valutare con la rosa e le regole di oggi",
+    "en": "the one shown before the deadline can no longer be scored with today's squad and rules"
+  },
+  "frase.diario.scarto_giocatore": {
+    "it": "{nome} ({d})",
+    "en": "{nome} ({d})"
+  },
+  "frase.diario.meglio_peggio": {
+    "it": "Meglio del previsto: {meglio}. Peggio: {peggio}.",
+    "en": "Better than expected: {meglio}. Worse: {peggio}."
+  },
+  "frase.diario.meglio": {
+    "it": "Meglio del previsto: {meglio}.",
+    "en": "Better than expected: {meglio}."
+  },
+  "frase.diario.peggio": {
+    "it": "Peggio del previsto: {peggio}.",
+    "en": "Worse than expected: {peggio}."
   }
 }

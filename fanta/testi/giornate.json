@@ -47,6 +47,14 @@
     "it": "Formazione non salvata: sono i punti della consigliata.",
     "en": "Lineup not saved: these are the points of the recommended lineup."
   },
+  "giornate.sul_previsto": {
+    "it": "{d} sul previsto",
+    "en": "{d} vs expected"
+  },
+  "giornate.come_previsto": {
+    "it": "come previsto",
+    "en": "as expected"
+  },
   "giornate.formazione_tua": {
     "it": "La tua formazione ({modulo})",
     "en": "Your lineup ({modulo})"
@@ -62,10 +70,6 @@
   "giornate.formazione_rifatta": {
     "it": "La consigliata rifatta a giornata finita ({modulo})",
     "en": "The recommended lineup rebuilt after the matchday ({modulo})"
-  },
-  "giornate.rifatta_nota": {
-    "it": "Quella mostrata prima della scadenza non era stata salvata: questa è rifatta con i dati di allora.",
-    "en": "The one shown before the deadline had not been saved: this one is rebuilt with the data of the time."
   },
   "giornate.tabella": {
     "it": "Fantavoto atteso e fantavoto preso dei titolari",
@@ -90,10 +94,6 @@
   "giornate.al_posto": {
     "it": "Al posto di {fuori} hai messo {dentro}.",
     "en": "Instead of {fuori} you fielded {dentro}."
-  },
-  "giornate.senza_confronto": {
-    "it": "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata.",
-    "en": "No comparison with the recommended lineup here: the one shown before the deadline had not been saved."
   },
   "giornate.correggi": {
     "it": "Non è quello che ho schierato",
