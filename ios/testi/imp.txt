@@ -17,3 +17,8 @@ imp.gestione
 imp.gestione_sub
 imp.aggiorna_spiega
 imp.avanzate
+
+# Non più mostrate dall'iPhone dal passo 3 di #673: restano elencate finché il catalogo comune le tiene (la web non le usa:
+# toglierle è un lavoro sul catalogo, fuori da ios/; tests/test_testi.py le chiede a chi le usava)
+imp.avvisi
+imp.avvisi_sub

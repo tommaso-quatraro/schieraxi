@@ -55,5 +55,11 @@ extension Catalogo {
 
         /// `imp.avanzate`
         static let avanzate = "Avanzate"
+
+        /// `imp.avvisi`
+        static let avvisi = "Notifiche"
+
+        /// `imp.avvisi_sub`
+        static let avvisiSub = "Cosa ricevere sul telefono e quando"
     }
 }
