@@ -87,7 +87,7 @@
       "web": "parte dal titolo «Oggi», senza nome e slogan (il nome disegnato sta nella testata da 900 px); sotto il conto alla rovescia le cifre della formazione con «Apri la formazione» e le probabili, poi Partita rinviata, Da fare, novità; poi I tuoi migliori, Da controllare, Indisponibili, Diffidati, Partite del turno",
       "iphone": "uguale alla web: niente schermata Oggi; la Formazione con giornata e scadenza, decisioni, modulo, campo, stato della scelta e panchina",
       "forma": "web (grafica B, spec del 5/11/2026, §9: l'azione principale nel primo schermo)",
-      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneView`; tolti `SezioneOggi` e `OggiComeLaWebTests`",
+      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneView`; tolti `SezioneOggi` e `OggiComeLaWebTests`. Prima: web fatto (PR #415); iPhone fatto (#416), con `SezioneOggi.ordine`",
       "stato": "fatto"
     },
     {
