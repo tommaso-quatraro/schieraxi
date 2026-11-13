@@ -4,7 +4,7 @@ Caso vero del 1/11/2026: giornata 10 di Serie A con 6 partite giocate e 4 da gio
 Prima della correzione la giornata «da giocare» era già la 11 (serviva metà delle partite ancora da giocare): Oggi diceva che la
 giornata era finita e contava 5 giorni e 1 ora alla scadenza della successiva."""
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -19,13 +19,14 @@ G11 = [("2026-11-06 20:45", 0), ("2026-11-07 15:00", 0), ("2026-11-07 15:00", 0)
 DOMENICA_SERA = datetime(2026, 11, 1, 19, 35)
 
 
-def _db(g10=G10, g11=G11, g12=()):
+def _db(g10=G10, g11=G11, g12=(), altre: dict | None = None):
+    """Il calendario delle giornate 10, 11 e 12; `altre` = {giornata: partite} per quelle dopo."""
     db = sqlite3.connect(":memory:")
     db.row_factory = sqlite3.Row
     db.execute("CREATE TABLE partite (stagione TEXT, giornata INT, data TEXT, casa TEXT, trasferta TEXT, giocata INT)")
     db.executemany("INSERT INTO partite VALUES (?,?,?,?,?,?)",
                    [(ST, g, d, f"c{g}{i}", f"t{g}{i}", gi)
-                    for g, partite in ((10, g10), (11, g11), (12, g12)) for i, (d, gi) in enumerate(partite)])
+                    for g, partite in ((10, g10), (11, g11), (12, g12), *(altre or {}).items()) for i, (d, gi) in enumerate(partite)])
     return db
 
 
@@ -122,3 +123,31 @@ def test_quattro_giocate_e_sei_rinviate_la_giornata_resta_finche_si_gioca_il_fin
     sabato_sera = [(d, 1 if i < 2 else 0) for i, (d, _) in enumerate(prima)]     # 2 giocate, la terza in corso, la quarta domenica
     assert consigli.prossima_giornata(_db(sabato_sera, G11, G12), ST, datetime(2026, 10, 31, 22, 0)) == 10
     assert consigli.prossima_giornata(_db(_rinviate(6), G11, G12), ST, datetime(2026, 11, 1, 23, 0)) == 11
+
+
+def _sposta(partite: list, giorni: int, giocata: int = 0) -> list:
+    """Le stesse partite `giorni` dopo (un turno uguale qualche settimana più in là)."""
+    return [((datetime.fromisoformat(d) + timedelta(days=giorni)).strftime("%Y-%m-%d %H:%M"), giocata) for d, _ in partite]
+
+
+def test_quattro_giocate_e_sei_rinviate_la_giornata_chiusa_non_torna_prima_del_recupero(monkeypatch):
+    """Revisione della #695: quando i recuperi della 10 (2-3 dicembre) diventano le partite più vicine, la 10, chiusa dal 31/10, non
+    torna «da giocare»: si prepara la 14 (4-7 dicembre), come con 5 giocate e 5 rinviate. Una giornata già cominciata la tengono
+    aperta solo le partite entro turno.FINESTRA dalla sua prima."""
+    finite = {11: [(d, 1) for d, _ in G11], 12: [(d, 1) for d, _ in G12], 13: _sposta(G12, 6, giocata=1)}
+    db = _db(_rinviate(6), finite[11], finite[12], {13: finite[13], 14: _sposta(G12, 13)})
+    for adesso in (datetime(2026, 12, 1, 10, 0), datetime(2026, 12, 2, 19, 0), datetime(2026, 12, 3, 23, 30)):
+        assert consigli.prossima_giornata(db, ST, adesso) == 14, adesso
+    monkeypatch.setattr(consigli, "_adesso", lambda: datetime(2026, 12, 1, 10, 0))
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    o = gestione.oggi_senza_rose(db, adesso=datetime(2026, 12, 1, 10, 0), regole=_regole_scadenza_10())
+    assert o["giornata"] == 14 and o["iniziata"] is False
+
+
+def test_giornata_normale_cominciata_resta_finche_ha_partite_entro_la_finestra():
+    """Le giornate normali non cambiano: una partita da giocare entro turno.FINESTRA dalla prima (un recupero a metà settimana) tiene
+    aperta la giornata; dalla FINESTRA in poi è un recupero e non la tiene."""
+    dentro = [(d, 1) for d, _ in G10[:-1]] + [("2026-11-05 14:59", 0)]      # 5 giorni meno un minuto dopo sabato alle 15:00
+    assert consigli.prossima_giornata(_db(dentro), ST, datetime(2026, 11, 4, 12, 0)) == 10
+    fuori = [(d, 1) for d, _ in G10[:-1]] + [("2026-11-05 15:00", 0)]
+    assert consigli.prossima_giornata(_db(fuori), ST, datetime(2026, 11, 4, 12, 0)) == 11
