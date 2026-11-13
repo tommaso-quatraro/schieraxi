@@ -2239,9 +2239,9 @@ function dettagliPrecisione(p, conConfronto) {
 }
 
 // ---------------------------------------------------------------- Giornate (#617): il Diario come pagina della barra
-// Una riga per giornata finita, dalla più recente: i punti fatti e attesi della formazione che conta e, al tocco, gli 11 con il fantavoto
-// atteso e quello preso. Il confronto «tu contro la consigliata» c'è solo dove la consigliata è quella mostrata prima della scadenza
-// (`consigliata.origine === "mostrata"`, #614): il server di prima non manda `origine`, la sua consigliata è sempre rifatta a giornata
+// Una riga per giornata finita, dalla più recente: i punti fatti e attesi della formazione che conta, di quanto sopra o sotto gli attesi
+// (#672) e, al tocco, gli 11 con il fantavoto atteso e quello preso. Il confronto «tu contro la consigliata» c'è solo dove la
+// consigliata è quella mostrata prima della scadenza (`consigliata.origine === "mostrata"`, #614): il server di prima non manda `origine`, la sua consigliata è sempre rifatta a giornata
 // finita, e lì il confronto non si mostra. Numeri, nomi e frasi vengono da /api/diario: la pagina sceglie cosa mostrare, non calcola.
 // Al telefono gli 11 si aprono sotto la riga (anche più giornate insieme); da 768 px l'elenco sta a sinistra e la giornata scelta a
 // destra, una alla volta, con la più recente già aperta.
@@ -2281,11 +2281,16 @@ function statoGiornata(d, g) {
   return t(tipo === "tua" ? "giornate.tua" : tipo === "automatica" ? "giornate.automatica" : "giornate.non_salvata");
 }
 
+// Una frase del server della giornata ({testo, frase} o {nota_consigliata, nota_consigliata_frase}), passata da esc(); "" se non c'è.
+const fraseGiornata = (oggetto, campo = "testo") => (oggetto && typeof oggetto[campo] === "string" && oggetto[campo].trim() ? esc(testoDi(oggetto, campo)) : "");
+
 // Gli 11 della giornata con il fantavoto atteso e quello preso, cosa hai cambiato rispetto alla consigliata e la correzione.
 // L'atteso è quello mostrato prima della scadenza, se c'è (`istantanea`, titolari e panchina); se no quello rifatto con i soli dati di
 // prima (`giocatori`). Preso: `giocatori[].fv`, «senza voto» se non l'ha preso. Nomi dal server, passati da esc().
+// Due frasi del server: chi ha fatto meglio o peggio del previsto (`fatti_e_attesi`, #672) e perché la consigliata di allora non entra
+// nel confronto (`nota_consigliata`, #674: non salvata, oppure salvata ma con chi non è più nella rosa); la pagina non ne scrive di sue.
 function dettaglioGiornata(d, g, stagioni) {
-  const id = idGiornata(g), { tipo, f } = formazioneDi(g), mostrata = conMostrata(g), origine = (g.consigliata || {}).origine;
+  const id = idGiornata(g), { tipo, f } = formazioneDi(g), mostrata = conMostrata(g);
   const nome = nomeGiornata(g.giornata_lega, g.giornata) + (stagioni ? ` · ${esc(g.stagione)}` : "");
   const modulo = esc(f.modulo || "");
   const titolo = tipo === "tua" ? t("giornate.formazione_tua", { modulo }) : tipo === "automatica" ? t("giornate.formazione_automatica", { modulo })
@@ -2299,13 +2304,14 @@ function dettaglioGiornata(d, g, stagioni) {
     return `<tr><th scope="row">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</th><td>${num(atteso)}</td><td${senza ? ' class="gn-senza"' : ""}>${senza ? t("giornate.senza_voto") : num(n ? n.fv : null)}</td></tr>`;
   }).join("");
   const s = tipo === "tua" && mostrata ? sceltaDi(d, g) : null;
+  const allora = fraseGiornata(g, "nota_consigliata"), scarti = fraseGiornata(g.fatti_e_attesi);
   const cambi = s && Array.isArray(s.hai_scelto) && s.hai_scelto.length
     ? `<p class="gn-cambi">${t("giornate.al_posto", { dentro: esc(s.hai_scelto.join(", ")), fuori: esc((s.consigliava || []).join(", ")) })}</p>`
-    : tipo === "tua" && origine === "ricostruita" ? `<p class="gn-nota">${t("giornate.senza_confronto")}</p>` : "";
-  const nota = tipo === "consigliata" && origine === "ricostruita" ? `<p class="gn-nota">${t("giornate.rifatta_nota")}</p>` : "";
+    : tipo === "tua" && allora ? `<p class="gn-nota">${allora}</p>` : "";
+  const nota = tipo !== "tua" && allora ? `<p class="gn-nota">${allora}</p>` : "";
   const correggi = g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" type="button" data-correggi="${id}">${t("giornate.correggi")}</button></div>`;
   return `<section class="gn-dettaglio" id="gn-d-${id}" aria-label="${nome}">
-    <h2 class="gn-titolo">${titolo}</h2>${nota}
+    <h2 class="gn-titolo">${titolo}</h2>${nota}${scarti ? `<p class="gn-scarti">${scarti}</p>` : ""}
     <table class="gn-tabella"><caption class="solo-lettori">${t("giornate.tabella")}</caption>
       <thead><tr><th scope="col">${t("giornate.col_giocatore")}</th><th scope="col">${t("giornate.col_atteso")}</th><th scope="col">${t("giornate.col_preso")}</th></tr></thead>
       <tbody>${righe}</tbody></table>
@@ -2331,10 +2337,13 @@ function mostraGiornate(d, opz = {}) {
     ${dettagli ? `<details class="gn-dettagli"><summary>${errore ? t("giornate.dettagli") : t("diario.af_titolo")}</summary>${dettagli}</details>` : ""}</div>` : "";
   const riga = g => {
     const id = idGiornata(g), aperta = giornate.aperte.has(id), { f } = formazioneDi(g);
+    // fatti meno attesi, come la dà il server (`fatti_e_attesi.differenza`, #672): solo con il segno, niente conti qui
+    const fa = g.fatti_e_attesi, diff = fa && fa.differenza != null && isFinite(Number(fa.differenza)) ? Number(fa.differenza) : null;
+    const sulPrevisto = diff == null ? "" : ` <span class="gn-diff">${diff === 0 ? t("giornate.come_previsto") : t("giornate.sul_previsto", { d: segno(diff) })}</span>`;
     return `<li class="gn-voce"><button class="gn-riga" type="button" id="gn-r-${id}" data-giornata="${id}" aria-expanded="${aperta}"${aperta ? ` aria-controls="gn-d-${id}"` : ""}>
         <span class="gn-sx"><span class="gn-nome">${nomeGiornata(g.giornata_lega, g.giornata)}${stagioni ? ` <span class="gn-stagione">${esc(g.stagione)}</span>` : ""}</span>
           <span class="gn-stato">${statoGiornata(d, g)}</span></span>
-        <span class="gn-dx"><b class="gn-num">${num(f.reale)}</b> <span class="gn-attesi">${f.atteso != null ? t("formazione.punti_e_attesi", { n: num(f.atteso) }) : t("formazione.punti")}</span></span>
+        <span class="gn-dx"><b class="gn-num">${num(f.reale)}</b> <span class="gn-attesi">${f.atteso != null ? t("formazione.punti_e_attesi", { n: num(f.atteso) }) : t("formazione.punti")}</span>${sulPrevisto}</span>
       </button>${!largo && aperta ? dettaglioGiornata(d, g, stagioni) : ""}</li>`;
   };
   const vuoto = { squadra: t("giornate.vuoto_squadra", { voce: t("lega.mia_squadra") }), giornate: t("giornate.vuoto_giornate"), calcolo: t("giornate.vuoto_calcolo") }[d.motivo_vuoto] || t("giornate.vuoto");

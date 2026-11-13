@@ -2,7 +2,7 @@
 // La scocca arriva tutta dalla copia di questa versione: una pagina non mescola mai file di due versioni (#654). La versione nuova
 // arriva con il service worker nuovo (il job `rilascia` alza VERSIONE), che salva la sua copia e prende il posto del vecchio; la
 // pagina aperta offre «Ricarica». I dati (/api/...) arrivano sempre freschi dal server; se il server non risponde, l'app lo dice.
-const VERSIONE = "fanta-254";
+const VERSIONE = "fanta-256";
 const FILE = ["/", "/stile.css", "/app.js", "/impostazioni.js", "/dafare.js", "/primoavvio.js", "/anteprima.js", "/avatar.js", "/testi.js", "/manifest.webmanifest", "/icona.svg", "/icona-180.png", "/icona-192.png", "/caratteri/archivo.woff2"];
 
 // Risposte del proxy davanti al server quando il servizio dietro non risponde (per esempio mentre riparte dopo un rilascio).

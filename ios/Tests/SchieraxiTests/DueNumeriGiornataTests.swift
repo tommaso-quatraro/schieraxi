@@ -132,15 +132,6 @@ struct DueNumeriGiornataTests {
 
     // MARK: schermate
 
-    @MainActor
-    @Test("Oggi dopo la scadenza: «La formazione si è chiusa …», senza ripetere la giornata scritta sopra")
-    func oggiChiusa() throws {
-        let o: Oggi = try Decodifica.decodifica(Data(#"{"giornata": 11, "giornata_lega": 8, "scadenza": "2026-10-31 14:50"}"#.utf8))
-        let quando = Quando.leggibile("2026-10-31 14:50")
-        #expect(OggiView.siEChiusa(o) == "La formazione si è chiusa \(quando)")
-        #expect(OggiView.siEChiusa(o) == Catalogo.Oggi.chiusaDettaglio(quando: quando))
-    }
-
     @Test("Oggi a giornata finita: «Giornata 8 · 11ª di Serie A: finita», come la web")
     func oggiFinita() {
         let attesa = "Giornata 8 · 11ª di Serie A: finita"

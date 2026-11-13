@@ -26,8 +26,6 @@
   sentinella --giri --dal ISO --al ISO   stampa in JSON i giri della sentinella fra due date con il fuso, senza fare il giro
   ingresso --dal ISO [--al ISO]   minuti di ingresso degli account creati fra due date con il fuso, in sola lettura (usato sul
                                   server; uscita 0 se tutti dentro in meno di 10 minuti, 1 se no, 2 se nessun account, 3 errore)
-  riepilogo                       riepilogo a giornata finita: punti fatti, attesi e massimo possibile (usato sul server)
-  avviso [--prova]                testo dell'avviso "formazione pronta", se è il momento (usato sul server)
   taratura-probabili [--prova | --spegni | --accendi]   ritara «gioca N%» con le probabili sulle giornate giocate e lo usa solo se
                                   sbaglia meno (usato sul server; --prova stampa i numeri e non scrive niente; --spegni torna subito
                                   ai numeri di partenza; --accendi, dopo --spegni, fa ripartire la prova al giro dopo)
@@ -49,7 +47,7 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
-from . import lega, listone, movimenti, nomi, regole, rose
+from . import fuso, lega, listone, movimenti, nomi, regole, rose
 from .percorsi import CARTELLA_LEGA
 
 FILE_REGOLE = CARTELLA_LEGA / "regole.json"
@@ -406,11 +404,6 @@ def cmd_promemoria(a) -> None:
     _avvisi_telefono("promemoria")
 
 
-def cmd_riepilogo(a) -> None:
-    """Il riepilogo della giornata non è più un avviso (#676): sta in testa alla Formazione a giornata finita. Il comando resta
-    perché gli script del server già installati lo lanciano: esce subito, senza scrivere niente."""
-
-
 def cmd_affidabilita(a) -> None:
     from . import account, affidabilita, archivio, diario
     if a.pubblico:
@@ -538,7 +531,7 @@ def cmd_salute(a) -> None:
     from . import archivio, salute
     db = archivio.apri()
     try:
-        for p in salute.controlla(db):
+        for p in salute.controlla(db, orologio_italiano=fuso.orologio_italiano):
             print(p)
     finally:
         db.close()
@@ -579,11 +572,6 @@ def cmd_ingresso(a) -> None:
         print(f"Errore: {e}", file=sys.stderr)
         codice = misura_ingresso.ERRORE
     sys.exit(codice)
-
-
-def cmd_avviso(a) -> None:
-    """L'avviso «formazione pronta» non parte più (#676: solo promemoria e cambio della formazione). Il comando resta perché gli
-    script del server già installati lo lanciano e mandano su ntfy quello che stampa: esce subito, senza scrivere niente."""
 
 
 def cmd_taratura_probabili(a) -> None:
@@ -905,11 +893,6 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--dal", help="obbligatoria: data e ora ISO con il fuso (per esempio 2026-12-10T00:00:00+01:00)")
     x.add_argument("--al", help="data e ora ISO con il fuso (di norma adesso)")
     x.set_defaults(f=cmd_ingresso)
-    x = sub.add_parser("riepilogo", help="non fa più niente: il riepilogo non è più un avviso (resta per gli script del server)")
-    x.set_defaults(f=cmd_riepilogo)
-    x = sub.add_parser("avviso", help="non fa più niente: «formazione pronta» non è più un avviso (resta per gli script del server)")
-    x.add_argument("--prova", action="store_true", help="non usato (resta per gli script del server)")
-    x.set_defaults(f=cmd_avviso)
     x = sub.add_parser("taratura-probabili", help="ritara «gioca N%%» con le probabili sulle giornate giocate e lo usa solo se sbaglia meno")
     scelta = x.add_mutually_exclusive_group()
     scelta.add_argument("--prova", action="store_true", help="stampa giornate, numeri e verdetto senza scrivere niente")
@@ -988,4 +971,9 @@ def main(argv: list[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
+    # ora italiana per tutto il processo, qualunque sia il fuso del sistema (#665): solo qui, all'avvio vero (servizio e comandi
+    # del cron), non nei test che chiamano main()
+    if not fuso.imposta():
+        print("Attenzione: l'orologio non dà l'ora italiana (Europe/Rome): scadenze e promemoria slittano. "
+              "Controlla il fuso orario del sistema.", file=sys.stderr)
     main()

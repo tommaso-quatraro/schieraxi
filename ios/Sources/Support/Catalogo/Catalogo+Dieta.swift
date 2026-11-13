@@ -8,5 +8,8 @@ extension Catalogo {
 
         /// `dieta.torna_oggi`
         static let tornaOggi = "Torna a Oggi"
+
+        /// `dieta.torna_formazione`
+        static let tornaFormazione = "Torna alla Formazione"
     }
 }

@@ -22,53 +22,11 @@ extension Catalogo {
             n == 1 ? "\(n) giorno \(h) h" : "\(n) giorni \(h) h"
         }
 
-        /// `oggi.si_chiude`
-        static func siChiude(min: String, quando: String) -> String {
-            "La formazione si chiude \(quando) (\(min) min prima della prima partita)"
-        }
-
-        /// `oggi.prima_partita`
-        static func primaPartita(quando: String) -> String {
-            "Prima partita \(quando): la formazione va inserita prima"
-        }
-
-        /// `oggi.preparo`
-        static let preparo = "Preparo la giornata…"
-
-        /// `oggi.tua_formazione`
-        static let tuaFormazione = "La tua formazione"
-
-        /// `oggi.tua_formazione_scelta`
-        static let tuaFormazioneScelta = "La tua formazione · la tua scelta"
-
         /// `oggi.punti_attesi`
         static let puntiAttesi = "punti attesi"
 
-        /// `oggi.apri_formazione`
-        static let apriFormazione = "Apri la formazione"
-
-        /// `oggi.mancano_probabili_formazioni`
-        static let mancanoProbabiliFormazioni = "Mancano le probabili formazioni di questa giornata: i consigli usano le presenze recenti."
-
-        /// `oggi.tuoi_migliori_della`
-        static let tuoiMiglioriDella = "I tuoi migliori della giornata"
-
-        /// `oggi.da_controllare`
-        static let daControllare = "Da controllare"
-
-        /// `oggi.giocatori_formazione_con`
-        static let giocatoriFormazioneCon = "Giocatori in formazione con qualche dubbio: riguarda le probabili prima della partita."
-
-        /// `oggi.indisponibili`
-        static func indisponibili(n: String) -> String {
-            "Indisponibili in rosa (\(n))"
-        }
-
-        /// `oggi.diffidati`
-        static let diffidati = "Diffidati"
-
-        /// `oggi.data_da_definire`
-        static let dataDaDefinire = "Data da definire"
+        /// `oggi.calendario_no`
+        static let calendarioNo = "Calendario non disponibile"
 
         /// `oggi.punti_finora`
         static let puntiFinora = "Punti fatti finora"

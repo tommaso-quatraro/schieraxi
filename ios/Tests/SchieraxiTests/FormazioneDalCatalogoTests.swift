@@ -12,21 +12,20 @@ struct FormazioneDalCatalogoTests {
     /// Il segno al posto dei valori nelle frasi con segnaposto: divide la frase nei suoi pezzi fissi.
     private static let segno = "\u{1}"
 
-    /// Le frasi del catalogo che mostrano le viste della Formazione (con il segno al posto dei valori).
+    /// Le frasi del catalogo che mostrano le viste della Formazione unica (#673) e della scheda (con il segno al posto dei valori).
     private static var frasi: [String] {
         [
             Catalogo.Formazione.calcolo, Catalogo.Formazione.puntiAttesi, Catalogo.Formazione.mancanoProbabiliFormazioni,
-            Catalogo.Formazione.staiGuardandoFormazione, Catalogo.Formazione.tornaAllaTua, Catalogo.Formazione.titolari,
-            Catalogo.Formazione.toccaSostituire, Catalogo.Formazione.ballottaggioAlternativeVic,
-            Catalogo.Formazione.quasiPari, Catalogo.Formazione.questOrdineEntra, Catalogo.Formazione.fuoriDalla(n: segno),
+            Catalogo.Formazione.staiGuardandoFormazione, Catalogo.Formazione.tornaAllaTua,
+            Catalogo.Formazione.questOrdineEntra, Catalogo.Formazione.nonSchierati(n: segno), Catalogo.Formazione.indisponibili(n: segno),
             Catalogo.Formazione.senzaDati(nomi: segno),
-            Catalogo.Formazione.copiaFormazione, Catalogo.Formazione.modificaMano,
-            Catalogo.Formazione.rispetto(d: segno, n: segno),
-            Catalogo.Formazione.salvaComeMia, Catalogo.Formazione.salvaModifiche, Catalogo.Formazione.giocatoriDelloStesso,
-            Catalogo.Formazione.nessunAltroGiocatore, Catalogo.Formazione.alPostoDi(nome: segno), Catalogo.Formazione.salvaQuesta,
-            Catalogo.Formazione.annullaModifiche, Catalogo.Formazione.tornaAllaConsigliata, Catalogo.Formazione.chiusa,
-            Catalogo.Formazione.bloccati, Catalogo.Formazione.copiata,
-            Catalogo.Formazione.salvataComeTua,
+            Catalogo.Formazione.tornaAllaConsigliata, Catalogo.Formazione.sceltaNonLetta, Catalogo.Formazione.copiaFerma,
+            Catalogo.Formazione.stoAncoraRicalcolando, Catalogo.Formazione.comeAndata,
+            Catalogo.Formazione.copiaLega, Catalogo.Formazione.copiataLega, Catalogo.Formazione.nonCopio, Catalogo.Formazione.messa,
+            Catalogo.Formazione.usaConsigliata, Catalogo.Formazione.decisionePunti(d: segno),
+            Catalogo.Formazione.opzioneConsigliato(modulo: segno, punti: segno), Catalogo.Formazione.diSolito(a: segno, b: segno),
+            Catalogo.Formazione.nessunAltroGiocatore, Catalogo.Formazione.alPostoDi(nome: segno), Catalogo.Formazione.sostSpiega(nome: segno),
+            Catalogo.Formazione.puntiRispetto(nome: segno), Catalogo.Formazione.chiusa, Catalogo.Formazione.bloccati,
             // la scheda del giocatore unica (#616)
             Catalogo.Formazione.partitaCasa(avv: segno, quando: segno), Catalogo.Formazione.partitaFuori(avv: segno, quando: segno),
             Catalogo.Formazione.seGioca, Catalogo.Formazione.percheTitolare, Catalogo.Formazione.incerto(p: segno, riserva: segno),
@@ -59,33 +58,30 @@ struct FormazioneDalCatalogoTests {
     @Test("Il controllo trova una frase scritta a mano, intera, dentro un altro testo o con un valore in mezzo")
     func ilControlloVede() {
         let codice = Self.senzaCommenti("""
-        Text("Titolari")
+        Text("L'ho messa")
         Text("Al posto di \\(nome)")
-        messaggio = "Formazione copiata: incollala dove vuoi."
-        // Text("Annulla modifiche") in un commento non conta
+        messaggio = "Formazione copiata: ora mettila nell'app della lega"
+        // Text("Torna alla consigliata") in un commento non conta
         """)
         let trovate = Self.frasi.flatMap(Self.daCercare).filter { codice.contains($0) }
-        #expect(trovate == ["\"Titolari\"", "\"Al posto di ", Catalogo.Formazione.copiata])
+        #expect(Set(trovate) == ["\"L'ho messa\"", "\"Al posto di ", Catalogo.Formazione.copiataLega])
+        #expect(trovate.count == 3)
     }
 
     // MARK: dove l'iPhone diceva un'altra cosa, vince la web
 
-    @Test("Copiata la formazione: la frase della web, senza il punto finale")
+    @Test("«Copia per l'app della lega»: la frase della web, e da copiare il testo della formazione in campo")
     func copiata() async throws {
         let vm = try await Self.caricata()
         let f = try #require(vm.formazione)
         vm.copiaTesto(f)
-        #expect(vm.messaggio == Catalogo.Formazione.copiata)
+        #expect(vm.messaggio == Catalogo.Formazione.copiataLega)
+        #expect(vm.testo(f).hasPrefix("9ª giornata di Serie A · 4-3-3\n"), "la fixture non ha `giornata_lega`")
     }
 
     @Test("Mentre carica, la frase della web («Calcolo la formazione migliore…»), non più «Scelgo gli undici…»")
     func caricamento() {
         #expect(FormazioneView.testoCaricamento == Catalogo.Formazione.calcolo)
-    }
-
-    @Test("Salvata la formazione: VoiceOver dice la frase della web («Salvata come tua scelta»)")
-    func annuncioSalvata() {
-        #expect(FormazioneViewModel.annuncioSalvata == Catalogo.Formazione.salvataComeTua)
     }
 
     @Test("La formazione di un'altra squadra: «Stai guardando la formazione di …» con il punto, come la web")

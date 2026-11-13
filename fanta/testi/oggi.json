@@ -27,18 +27,6 @@
     "it": "{n} giorni {h} h",
     "en": "{n} days {h} h"
   },
-  "oggi.si_chiude": {
-    "it": "La formazione si chiude {quando} ({min} min prima della prima partita)",
-    "en": "The lineup closes {quando} ({min} min before the first match)"
-  },
-  "oggi.prima_partita": {
-    "it": "Prima partita {quando}: la formazione va inserita prima",
-    "en": "First match {quando}: set your lineup before then"
-  },
-  "oggi.preparo": {
-    "it": "Preparo la giornata…",
-    "en": "Getting the matchday ready…"
-  },
   "oggi.infortunato": {
     "it": "Infortunato",
     "en": "Injured"
@@ -55,49 +43,9 @@
     "it": "Diffidato",
     "en": "One yellow from a ban"
   },
-  "oggi.data_da_definire": {
-    "it": "Data da definire",
-    "en": "Date to be confirmed"
-  },
-  "oggi.mancano_probabili_formazioni": {
-    "it": "Mancano le probabili formazioni di questa giornata: i consigli usano le presenze recenti.",
-    "en": "The probable lineups for this matchday are missing: the advice uses recent appearances."
-  },
-  "oggi.tua_formazione_scelta": {
-    "it": "La tua formazione · la tua scelta",
-    "en": "Your lineup · your choice"
-  },
-  "oggi.tua_formazione": {
-    "it": "La tua formazione",
-    "en": "Your lineup"
-  },
   "oggi.punti_attesi": {
     "it": "punti attesi",
     "en": "expected points"
-  },
-  "oggi.apri_formazione": {
-    "it": "Apri la formazione",
-    "en": "Open the lineup"
-  },
-  "oggi.da_controllare": {
-    "it": "Da controllare",
-    "en": "To check"
-  },
-  "oggi.giocatori_formazione_con": {
-    "it": "Giocatori in formazione con qualche dubbio: riguarda le probabili prima della partita.",
-    "en": "Players in the lineup with some doubt: check the probable lineups before the match."
-  },
-  "oggi.tuoi_migliori_della": {
-    "it": "I tuoi migliori della giornata",
-    "en": "Your best of the matchday"
-  },
-  "oggi.indisponibili": {
-    "it": "Indisponibili in rosa ({n})",
-    "en": "Unavailable in your roster ({n})"
-  },
-  "oggi.diffidati": {
-    "it": "Diffidati",
-    "en": "Booking risk"
   },
   "oggi.ev_gol": {
     "it": "Gol",

@@ -1,17 +1,16 @@
 """Una scelta salvata che non si può più schierare non conta: vale la consigliata (#321, dopo la #320).
 
 La regola unica della scelta (`scelte.motivo_non_valida`, la stessa di Formazione, Oggi e Diario) vale anche per il promemoria,
-l'avviso «cambia la formazione», il «cambio pronto», il riepilogo mandato dopo la giornata e «Da fare». Prima questi leggevano la
-scelta così com'era e potevano parlare di una formazione che non vale (un giocatore ceduto, un modulo non ammesso).
+l'avviso «cambia la formazione», il «cambio pronto» e «Da fare». Prima questi leggevano la scelta così com'era e potevano parlare
+di una formazione che non vale (un giocatore ceduto, un modulo non ammesso).
 Dati finti, file in cartelle temporanee, nessun invio vero."""
 # ruff: noqa: F811  (le fixture importate da altri file di test arrivano come parametri con lo stesso nome: è il modo di pytest)
-import json
 from datetime import datetime
 
 import pandas as pd
 import pytest
 
-from fanta import archivio, consigli, lega, notifiche, scelte
+from fanta import consigli, lega, notifiche, scelte
 from fanta.regole import Regole
 from test_avviso_scadenza import BASE, _cambi_ha_visto, m, ore  # noqa: F401  (m = fixture del «mondo» finto dell'avviso)
 from test_avviso_scadenza import ROSE as ROSE_AVVISO
@@ -73,7 +72,7 @@ def test_la_scelta_che_vale():
 @NON_VALIDE
 def test_promemoria_parte_anche_con_la_scelta_non_valida(tmp_path, monkeypatch, salvata):
     """Prima: «hai già schierato» e il promemoria taceva. Ora la scelta non conta: il promemoria parte come senza scelta, ma con la
-    frase propria (#331, vedi test_riepilogo_istantanea.py): «quella che hai salvato non è più valida»."""
+    frase propria (#331, vedi test_scelta_non_valida_frasi.py): «quella che hai salvato non è più valida»."""
     _prima_della_scadenza(monkeypatch)
     fs = tmp_path / "scelte.json"
     mandati, manda = _registro()
@@ -128,49 +127,6 @@ def test_cambio_pronto_guarda_i_titolari_della_consigliata(tmp_path, monkeypatch
     assert [t for t, _ in mandati] == ["SchieraXI · cambio pronto"] and "Il tuo Tosi è infortunato. Meglio Dini" in mandati[0][1]
     scelte.salva(ST, 9, salvata, "4-4-2", fs)
     notifiche.cambi(_db(CHIUSURA), Regole(), ROSE, adesso, tmp_path / "b.json", manda, file_scelte=fs)
-    assert len(mandati) == 1
-
-
-# ---------------------------------------------------------------- riepilogo dopo la giornata
-SCELTA_8 = [1, 3, 4, 5, 6, 8, 9, 10, 13, 14, 15]                 # 4-3-3 (vedi _giornata_8_finita)
-CONSIGLIATA_8 = [1, 3, 4, 5, 6, 8, 9, 10, 11, 13, 14]            # 4-4-2
-
-
-def _giornata_8_finita(tmp_path, monkeypatch):
-    """Come `test_notifiche.test_riepilogo_a_giornata_finita`: giornata 8 giocata, voti arrivati, la 9 da giocare.
-    Rosa: 1-2 portieri, 3-7 difensori, 8-12 centrocampisti, 13-16 attaccanti."""
-    db = archivio.apri(tmp_path / "t.sqlite")
-    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (1, ?, 8, '2026-10-20 18:00', 'a', 'b', 1)", (ST,))
-    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (2, ?, 9, '2026-10-28 18:30', 'a', 'b', 0)", (ST,))
-    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
-    righe = [("P1", "P"), ("P2", "P")] + [(f"D{i}", "D") for i in range(5)] + [(f"C{i}", "C") for i in range(5)] + [(f"A{i}", "A") for i in range(4)]
-    prev = pd.DataFrame([{"nome": n, "ruolo": r, "p_voto": 0.9, "mu": 6.5, "mu_voto": 6.0} for n, r in righe], index=range(1, len(righe) + 1))
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, giornata or 9, True))
-    rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], "X", 1) for i in prev.index])], "Mia")
-    for i in range(1, 71):                       # voti delle due squadre che hanno giocato
-        ruolo = prev.at[i, "ruolo"] if i in prev.index else "C"
-        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, gol_subiti, autogol, rig_segnati, rig_sbagliati, "
-                   "rig_parati, assist, mvp, ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, 8, ?, 'x', ?, ?, 6.0, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)",
-                   (ST, i, "ab"[i % 2], ruolo, 1 if i == 13 else 0))
-    return db, rose
-
-
-@pytest.mark.parametrize("salvata", [SCELTA_8[:10] + [CEDUTO], [1, 2, 3, 4, 5, 8, 9, 10, 13, 14, 15]],
-                         ids=["giocatore-ceduto", "modulo-non-ammesso"])
-def test_riepilogo_della_consigliata(tmp_path, monkeypatch, salvata):
-    """Prima: con il giocatore ceduto niente riepilogo, con due portieri «la tua scelta salvata ha fatto…». Ora vale la consigliata
-    (l'ultima vista dall'avviso dei cambi prima della scadenza), come per chi non ha salvato niente."""
-    db, rose = _giornata_8_finita(tmp_path, monkeypatch)
-    fs, cambi_visti = tmp_path / "scelte.json", tmp_path / "cambi.json"
-    scelte.salva(ST, 8, salvata, "4-3-3", fs)
-    cambi_visti.write_text(json.dumps({"cambi": {f"{ST}/8": {"titolari": CONSIGLIATA_8}}}), encoding="utf-8")
-    mandati, manda = _registro()
-    adesso, opz = datetime(2026, 10, 21, 8, 0), {"riepilogo": True}
-    r = notifiche.riepilogo(db, Regole(), rose, adesso, tmp_path / "r.json", manda, opz, cambi_visti, fs)
-    assert len(r) == 1 and str(r[0]).startswith("Giornata 8 · 8ª di Serie A: la formazione consigliata ha fatto circa")
-    # senza sapere quale consigliata c'era non si manda niente: mai il riepilogo di una formazione che non vale
-    assert notifiche.riepilogo(db, Regole(), rose, adesso, tmp_path / "r2.json", manda, opz, tmp_path / "nessun-cambio.json", fs) == []
     assert len(mandati) == 1
 
 

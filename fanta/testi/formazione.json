@@ -3,18 +3,6 @@
     "it": "Calcolo la formazione migliore…",
     "en": "Working out the best lineup…"
   },
-  "formazione.ballottaggio_alternative_vic": {
-    "it": "In ballottaggio con",
-    "en": "Competing with"
-  },
-  "formazione.quasi_pari": {
-    "it": "quasi pari",
-    "en": "about equal"
-  },
-  "formazione.salvata_come_tua": {
-    "it": "Salvata come tua scelta",
-    "en": "Saved as your choice"
-  },
   "formazione.stai_guardando_formazione": {
     "it": "Stai guardando la formazione di",
     "en": "You are looking at the lineup of"
@@ -43,25 +31,9 @@
     "it": "Modulo",
     "en": "Formation"
   },
-  "formazione.salva_come_mia": {
-    "it": "Salva come mia scelta",
-    "en": "Save as my choice"
-  },
   "formazione.torna_alla_consigliata": {
     "it": "Torna alla consigliata",
     "en": "Back to the recommended one"
-  },
-  "formazione.modifica_mano": {
-    "it": "Modifica a mano",
-    "en": "Edit by hand"
-  },
-  "formazione.copia_formazione": {
-    "it": "Copia il testo",
-    "en": "Copy the text"
-  },
-  "formazione.titolari": {
-    "it": "Titolari",
-    "en": "Starters"
   },
   "formazione.quest_ordine_entra": {
     "it": "Entra il primo che può sostituire chi resta senza voto.",
@@ -71,10 +43,6 @@
     "it": "Sto ancora ricalcolando: un attimo",
     "en": "Still recalculating: one moment"
   },
-  "formazione.giocatori_dello_stesso": {
-    "it": "Giocatori dello stesso ruolo della tua rosa. Per cambiare ruolo scegli un altro modulo.",
-    "en": "Players of the same position in your roster. To change position choose another formation."
-  },
   "formazione.nessun_altro_giocatore": {
     "it": "Nessun altro giocatore di questo ruolo in rosa.",
     "en": "No other player in this position in your roster."
@@ -82,10 +50,6 @@
   "formazione.oscilla": {
     "it": "oscilla di ±{n}",
     "en": "swings by ±{n}"
-  },
-  "formazione.la_tua_scelta": {
-    "it": "la tua scelta",
-    "en": "your choice"
   },
   "formazione.voce_fv": {
     "it": "fantavoto atteso {fv}",
@@ -107,47 +71,6 @@
     "it": "in trasferta contro {avv}",
     "en": "away against {avv}"
   },
-  "formazione.alle": {
-    "it": "alle {ora}",
-    "en": "at {ora}"
-  },
-  "formazione.giorno_alle": {
-    "it": "{giorno} alle {ora}",
-    "en": "{giorno} at {ora}"
-  },
-  "formazione.stato_consigliata": {
-    "it": "Stai vedendo la consigliata: non hai salvato una tua formazione.",
-    "en": "You are seeing the recommended lineup: you have not saved one of your own."
-  },
-  "formazione.stato_altro_modulo": {
-    "it": "Stai vedendo un altro modulo, non quello consigliato: non l'hai salvato.",
-    "en": "You are seeing a formation other than the recommended one: not saved.",
-    "nota": "solo iPhone, dal 12/11/2026 (#634, #637): la web non ha più questa riga di stato"
-  },
-  "formazione.stato_salvata": {
-    "it": "La tua formazione è salvata",
-    "en": "Your lineup is saved"
-  },
-  "formazione.stato_salvata_quando": {
-    "it": "La tua formazione è salvata ({quando})",
-    "en": "Your lineup is saved ({quando})"
-  },
-  "formazione.stato_modificata": {
-    "it": "Modifiche non salvate",
-    "en": "Unsaved changes"
-  },
-  "formazione.stato_modificata_quando": {
-    "it": "Modifiche non salvate · salvata {quando}",
-    "en": "Unsaved changes · saved {quando}"
-  },
-  "formazione.stato_mano": {
-    "it": "Modifica a mano non ancora salvata",
-    "en": "Hand edit not saved yet"
-  },
-  "formazione.stato_non_valida": {
-    "it": "La formazione salvata non è più valida: rifalla o torna alla consigliata.",
-    "en": "The saved lineup is no longer valid: redo it or go back to the recommended one."
-  },
   "formazione.stato_chiusa": {
     "it": "Giornata iniziata: la formazione è chiusa",
     "en": "Matchday started: the lineup is closed"
@@ -168,49 +91,13 @@
     "it": "fantavoto {fv}",
     "en": "fantasy score {fv}"
   },
-  "formazione.salva_questa": {
-    "it": "Salva questa",
-    "en": "Save this one"
-  },
-  "formazione.salva_modifiche": {
-    "it": "Salva le modifiche",
-    "en": "Save changes"
-  },
-  "formazione.annulla_modifiche": {
-    "it": "Annulla modifiche",
-    "en": "Undo changes"
-  },
-  "formazione.modulo_consigliato": {
-    "it": "modulo consigliato",
-    "en": "recommended formation"
-  },
-  "formazione.modulo_scelto": {
-    "it": "modulo scelto",
-    "en": "chosen formation"
-  },
-  "formazione.rispetto": {
-    "it": "{d} rispetto alla consigliata con lo stesso modulo ({n}).",
-    "en": "{d} compared with the recommended lineup in the same formation ({n})."
-  },
-  "formazione.tocca_sostituire": {
-    "it": "Tocca ✎ per sostituire un titolare: i punti attesi si ricalcolano.",
-    "en": "Tap ✎ to replace a starter: the expected points are recalculated."
-  },
   "formazione.bloccati": {
     "it": "Chi gioca in una partita già cominciata non si può più spostare.",
     "en": "Players in a match that has already started can no longer be moved."
   },
-  "formazione.fuori_dalla": {
-    "it": "Fuori dalla formazione ({n})",
-    "en": "Not in the lineup ({n})"
-  },
   "formazione.senza_dati": {
     "it": "Senza dati per questa giornata: {nomi}",
     "en": "No data for this matchday: {nomi}"
-  },
-  "formazione.copiata": {
-    "it": "Formazione copiata: incollala dove vuoi",
-    "en": "Lineup copied: paste it wherever you like"
   },
   "formazione.non_copio": {
     "it": "Non riesco a copiare: tieni premuto sul testo",

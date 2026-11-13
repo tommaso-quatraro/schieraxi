@@ -21,9 +21,10 @@ struct RigaGiocatorePuntiTests {
     func comeIlCampo(fv: Double, atteso: String) throws {
         let g = try giocatore(#""fv_atteso": \#(fv), "punti_attesi": 4.1"#)
         #expect(RigaGiocatore.testoPunti(g) == atteso)
-        // il campo (pedina e VoiceOver) scrive lo stesso numero
-        let campo = LetturaPedina.voce(nome: g.nome, ruolo: "attaccante", fvAtteso: g.fvAtteso, pVoto: g.pVoto, avversario: nil, inCasa: nil)
-        #expect(campo.contains("fantavoto atteso \(atteso),"))
+        // il campo (il disco della pedina e VoiceOver) scrive lo stesso numero
+        let campo = LetturaPedina.contenuto(g)
+        #expect(Formato.punti(campo.valore) == atteso)
+        #expect(campo.voce.contains("fantavoto atteso \(atteso),"))
     }
 
     @Test("Server senza `fv_atteso`: i punti attesi, arrotondati allo stesso modo")
