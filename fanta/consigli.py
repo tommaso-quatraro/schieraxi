@@ -127,9 +127,10 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
         elif not any(d and turno.nel_turno(d, inizio) and d >= da for d in aperte):
             continue
         if scelta is None:
-            cominciata = inizio is not None and min(
-                (d for d, giocata in partite if d and turno.conta_per_scadenza(d, giocata, inizio)), default=adesso) <= adesso
-            if not cominciata:
+            # la prima partita che conta per la scadenza (come avvisi.prima_partita): prima che cominci la giornata resta questa
+            prima = min((d for d, giocata in partite if d and turno.conta_per_scadenza(d, giocata, inizio)),
+                        default=None) if inizio else None
+            if prima is None or prima > adesso:
                 return g
             scelta, prossima = g, min((d for d in aperte if d and d >= da), default=None)
             continue
