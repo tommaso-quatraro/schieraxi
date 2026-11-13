@@ -142,8 +142,8 @@ struct TitoloPaginaTests {
     // MARK: lettura dei sorgenti dal repository (il test gira nel checkout)
 
     /// Titoli grandi che restano nella barra: la radice delle schede Squadra e Altro (una parola, ed è l'elenco a sinistra
-    /// sull'iPad) e il Diario (una parola corta: non si taglia).
-    private static let eccezioni = [".navigationTitle(ambito.titolo)", ".navigationTitle(\"Diario\")",
+    /// sull'iPad).
+    private static let eccezioni = [".navigationTitle(ambito.titolo)",
                                     // il foglio «Stemma e maglia»: un testo fisso (quello della web), non viene dai dati
                                     ".navigationTitle(ParoleSquadre.stemmaEMaglia)"]
 

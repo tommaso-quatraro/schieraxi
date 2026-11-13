@@ -154,14 +154,8 @@ struct DueNumeriGiornataTests {
         #expect(LetturaScheda.partita(vecchio, adesso: adesso) == Catalogo.Formazione.partitaFuori(avv: "Milan", quando: "–"))
     }
 
-    @Test("Diario, «Quanto ci abbiamo preso»: VoiceOver legge i due numeri della giornata")
+    @Test("Giornate, «Quanto ci abbiamo preso»: VoiceOver legge i due numeri della giornata")
     func diarioVoce() throws {
-        let v: VoceDiario = try Decodifica.decodifica(Data(#"""
-        {"stagione": "2026-27", "giornata": 11, "giornata_lega": 8, "atteso_vs_fatto": {"atteso": 70.0, "fatti": 72.5}}
-        """#.utf8))
-        let p = try #require(PuntoAttesoFatto.elenco([v]).first)
-        #expect(p.giornata == 8, "nel grafico il numero della lega")
-        #expect(p.voce == "Giornata 8, 11ª di Serie A: attesi 70,0 punti, fatti 72,5")
         let barra = TestoPrecisione.Barra(id: 0, etichetta: "8", errore: 1.4, nome: NomeGiornata(serieA: 11, lega: 8))
         #expect(barra.voce == "Giornata 8, 11ª di Serie A: errore medio 1,4 punti")
     }

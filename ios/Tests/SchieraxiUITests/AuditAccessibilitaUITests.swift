@@ -10,7 +10,8 @@ final class AuditAccessibilitaUITests: XCTestCase {
         "formazione", "formazione-in-corso", "formazione-finita", "formazione-rinvio", "formazione-chiusa", "formazione-cambiata",
         "formazione-sostituisci",
         "squadra", "giocatore",
-        "lega", "lega-squadre", "lega-rosa", "lega-regole", "lega-stato", "lega-avvisi", "lega-diario",
+        "giornate", "giornate-aperta", "giornate-dettagli",
+        "lega", "lega-squadre", "lega-rosa", "lega-regole", "lega-stato", "lega-avvisi",
         "lega-importa", "lega-stagione", "impostazioni", "impostazioni-aspetto", "impostazioni-crediti", "impostazioni-novita",
         "impostazioni-avanzate", "collega-widget", "guida", "primo-avvio",
     ]

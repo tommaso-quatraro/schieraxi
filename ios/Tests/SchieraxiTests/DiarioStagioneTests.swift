@@ -2,10 +2,11 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Diario con due stagioni (#176, parte iPhone; la web l'ha fatto nella #198): la giornata 10 dell'anno scorso e quella di
+/// Giornate con due stagioni (#176, parte iPhone; la web l'ha fatto nella #198): la giornata 10 dell'anno scorso e quella di
 /// quest'anno sono due voci diverse.
-/// - «Ho schierato la consigliata» e «Correggi a mano» mandano la `stagione` della voce (il server rifiuta le stagioni passate);
-/// - i pulsanti per cambiare una voce ci sono solo se il server non dice `modificabile: false` (server vecchio senza il campo: ci sono).
+/// - «Non è quello che ho schierato» (pagina Giornate, #673 passo 2) manda la `stagione` della voce (il server rifiuta le stagioni
+///   passate);
+/// - la correzione c'è solo se il server non dice `modificabile: false` (server vecchio senza il campo: c'è).
 @MainActor
 struct DiarioStagioneTests {
     private func voce(_ json: String) throws -> VoceDiario {
@@ -20,7 +21,7 @@ struct DiarioStagioneTests {
         let stagione: String?
     }
 
-    /// Un server che accetta ogni «Ho schierato…» e rimanda un diario vuoto.
+    /// Un server che accetta ogni correzione e rimanda un diario vuoto.
     private func serverCheAccetta() -> ServerDiProva {
         ServerDiProva { metodo, _, _ in
             metodo == "POST" ? Data("{}".utf8) : Data(#"{"giornate": []}"#.utf8)
@@ -33,65 +34,77 @@ struct DiarioStagioneTests {
 
     // MARK: la stagione nel corpo del POST
 
-    @Test("«Ho schierato la consigliata» manda la stagione della voce: la giornata 10 di due stagioni non si confonde")
-    func laConsigliataMandaLaStagioneDellaVoce() async throws {
+    @Test("La correzione manda la stagione della voce insieme agli 11 titolari, con il tipo «manuale»")
+    func correzioneMandaLaStagioneDellaVoce() async throws {
         let s = serverCheAccetta()
-        let vm = DiarioViewModel(server: s)
-        let annoScorso = try voce(#"{"giornata": 10, "stagione": "2025-26"}"#)
+        let vm = GiornateViewModel(server: s)
+        let annoScorso = try voce(#"{"giornata": 10, "stagione": "2025-26", "schierata": {"modulo": "4-4-2", "tipo": "manuale"}}"#)
         let questAnno = try voce(#"{"giornata": 10, "giornata_lega": 7, "stagione": "2026-27"}"#)
-        await vm.haSchieratoLaConsigliata(annoScorso)
-        await vm.haSchieratoLaConsigliata(questAnno)
+        #expect(await vm.correggi(annoScorso, titolari: Array(21...31)) == nil)
+        #expect(await vm.correggi(questAnno, titolari: Array(1...11)) == nil)
         #expect(try corpi(s) == [
-            CorpoInviato(giornata: 10, tipo: "consigliata", titolari: nil, stagione: "2025-26"),
-            CorpoInviato(giornata: 10, tipo: "consigliata", titolari: nil, stagione: "2026-27"),
+            CorpoInviato(giornata: 10, tipo: "manuale", titolari: Array(21...31), stagione: "2025-26"),
+            CorpoInviato(giornata: 10, tipo: "manuale", titolari: Array(1...11), stagione: "2026-27"),
         ])
-    }
-
-    @Test("«Correggi a mano» manda la stagione della voce insieme agli 11 titolari")
-    func aManoMandaLaStagioneDellaVoce() async throws {
-        let s = serverCheAccetta()
-        let vm = DiarioViewModel(server: s)
-        let v = try voce(#"{"giornata": 10, "stagione": "2025-26", "schierata": {"modulo": "4-4-2", "tipo": "manuale"}}"#)
-        let errore = await vm.haSchieratoAMano(v, titolari: Array(21...31))
-        #expect(errore == nil)
-        #expect(try corpi(s) == [CorpoInviato(giornata: 10, tipo: "manuale", titolari: Array(21...31), stagione: "2025-26")])
     }
 
     @Test("Una voce senza stagione non manda una stagione vuota: il server usa quella in corso")
     func senzaStagioneIlCampoManca() async throws {
         let s = serverCheAccetta()
-        let vm = DiarioViewModel(server: s)
-        await vm.haSchieratoLaConsigliata(try voce(#"{"giornata": 10}"#))
+        let vm = GiornateViewModel(server: s)
+        _ = await vm.correggi(try voce(#"{"giornata": 10}"#), titolari: Array(1...11))
         let corpo = try #require(s.corpiInviati(a: "/api/diario/schierata").first)
         #expect(!String(decoding: corpo, as: UTF8.self).contains("stagione"))
     }
 
-    // MARK: pulsanti «Ho schierato…» e «Correggi a mano»
+    @Test("Dopo la correzione la giornata resta aperta, l'esito si legge sotto i suoi 11 e VoiceOver lo dice")
+    func esitoDellaCorrezione() async throws {
+        let vm = GiornateViewModel(server: serverCheAccetta())
+        var annunci: [String] = []
+        vm.annuncia = { annunci.append($0) }
+        let v = try voce(#"{"giornata": 11, "giornata_lega": 8, "stagione": "2026-27"}"#)
+        #expect(await vm.correggi(v, titolari: Array(1...11)) == nil)
+        #expect(vm.aperte == [v.id])
+        #expect(vm.esito(per: v.id) == Catalogo.Diario.salvataManuale)
+        #expect(vm.esito(per: "2025-26-11") == nil, "con due stagioni l'esito va solo sotto la giornata giusta")
+        #expect(annunci == [Catalogo.Diario.salvataManuale])
+    }
 
-    @Test("I pulsanti per cambiare la voce seguono `modificabile`", arguments: [
+    @Test("Se il server rifiuta, l'errore torna al foglio e la pagina non cambia")
+    func errorePerIlFoglio() async throws {
+        let rifiuto = "Servono 11 giocatori della tua rosa con un modulo valido."
+        let vm = GiornateViewModel(server: ServerDiProva.chePrecipita(.server(rifiuto)))
+        let v = try voce(#"{"giornata": 11, "stagione": "2026-27"}"#)
+        let errore = await vm.correggi(v, titolari: Array(1...11))
+        #expect(errore != nil)
+        #expect(vm.esito(per: v.id) == nil)
+        #expect(vm.aperte.isEmpty)
+    }
+
+    // MARK: la correzione segue `modificabile`
+
+    @Test("La correzione segue `modificabile`", arguments: [
         (#"{"giornata": 10, "stagione": "2026-27", "modificabile": true}"#, true),
         (#"{"giornata": 10, "stagione": "2025-26", "modificabile": false}"#, false),
         (#"{"giornata": 10, "stagione": "2026-27"}"#, true),                        // server vecchio senza il campo: come prima
         (#"{"giornata": 10, "stagione": "2026-27", "modificabile": null}"#, true),
         (#"{"stagione": "2026-27", "modificabile": true}"#, false),                 // senza giornata non c'è niente da salvare
     ])
-    func pulsantiSecondoModificabile(json: String, conPulsanti: Bool) throws {
-        #expect(try voce(json).siPuoCambiare == conPulsanti)
+    func correzioneSecondoModificabile(json: String, conPulsante: Bool) throws {
+        #expect(try voce(json).siPuoCambiare == conPulsante)
     }
 
     @Test("Con `modificabile: false` non parte nessun salvataggio verso il server")
     func stagionePassataNonScrive() async throws {
         let s = serverCheAccetta()
-        let vm = DiarioViewModel(server: s)
+        let vm = GiornateViewModel(server: s)
         let v = try voce(#"{"giornata": 10, "stagione": "2025-26", "modificabile": false}"#)
-        await vm.haSchieratoLaConsigliata(v)
-        let errore = await vm.haSchieratoAMano(v, titolari: Array(1...11))
+        let errore = await vm.correggi(v, titolari: Array(1...11))
         #expect(errore != nil, "il foglio resta aperto con un errore")
         #expect(s.quante("POST /api/diario/schierata") == 0)
-        #expect(vm.inSalvataggio == nil)
     }
 
-    @Test("Due stagioni con la stessa giornata sono due voci, ognuna con i suoi pulsanti")
+    @Test("Due stagioni con la stessa giornata sono due voci, ognuna con la sua correzione")
     func dueStagioniDueVoci() throws {
         let d: DiarioRisposta = try Decodifica.decodifica(Data(#"""
             {"giornate": [{"giornata": 10, "giornata_lega": 7, "stagione": "2026-27", "modificabile": true},
@@ -100,5 +113,7 @@ struct DiarioStagioneTests {
         let voci = try #require(d.giornate)
         #expect(Set(voci.map(\.id)).count == 2)
         #expect(voci.map(\.siPuoCambiare) == [true, false])
+        let p = PaginaGiornate(d)
+        #expect(p.righe.map(\.stagione) == ["2026-27", "2025-26"])
     }
 }

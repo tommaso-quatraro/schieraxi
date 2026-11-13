@@ -9,7 +9,7 @@ import Testing
 @Suite("Squadra e Altro: le parole vengono dal catalogo")
 struct SquadraAltroDalCatalogoTests {
     /// I file generati dei prefissi di quest'area (da `ios/Sources/Support/Catalogo/`).
-    static let generati = ["Aggiorna", "Ar", "Av", "Diario", "Lega", "Mercato", "Novita", "Regole", "Scambio", "Sd"]
+    static let generati = ["Aggiorna", "Ar", "Av", "Diario", "Giornate", "Lega", "Mercato", "Novita", "Regole", "Scambio", "Sd"]
         .map { "Catalogo+\($0).swift" }
 
     /// I file con le sole parole dell'area (da `ios/Sources/Presentation/`): nessun testo del catalogo, nemmeno corto.
@@ -20,11 +20,13 @@ struct SquadraAltroDalCatalogoTests {
     ]
 
     /// Le viste e i modelli dell'area che mostrano testi del catalogo: nessuna frase del catalogo (le parole corte come «Salva» o
-    /// «Tutti» possono servire anche come valori, quindi qui non si guardano).
+    /// «Tutti» possono servire anche come valori, quindi qui non si guardano). Con loro la pagina Giornate (#673 passo 2), che ha
+    /// preso il posto del Diario di Altro.
     static let viste = [
-        "Lega/RegoleEditor.swift", "Lega/ImportaRoseView.swift", "Lega/DiarioView.swift", "Lega/FormazioneManualeDiarioView.swift",
+        "Lega/RegoleEditor.swift", "Lega/ImportaRoseView.swift", "Giornate/GiornateView.swift", "Giornate/GiornateViewModel.swift",
+        "Giornate/DettaglioGiornataView.swift", "Giornate/RigaGiornataView.swift", "Giornate/FormazioneManualeDiarioView.swift",
         "Lega/EsitoRoseSalvate.swift", "Lega/Gestione.swift", "Lega/LegaPagine.swift", "Lega/LegaExtra.swift", "Lega/LegaView.swift",
-        "Lega/LegaViewModels.swift", "Lega/LegaViewModels2.swift", "Lega/RigaRosa.swift", "Lega/QuantoCiAbbiamoPresoView.swift",
+        "Lega/LegaViewModels.swift", "Lega/LegaViewModels2.swift", "Lega/RigaRosa.swift",
         "Mercato/RigaElencoGiocatore.swift", "Mercato/DatiRigaElenco.swift", "Mercato/RicercaGiocatoreView.swift",
     ]
 

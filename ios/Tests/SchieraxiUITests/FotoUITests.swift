@@ -71,17 +71,6 @@ final class FotoUITests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", testo)).firstMatch
     }
 
-    /// `lega-diario-fondo` (#425): la riga «Su tutta la Serie A…» (#378) sta dentro «Quanto ci abbiamo preso», a metà del Diario,
-    /// sopra le giornate. La foto scorre fin dove finisce quel riquadro, così la riga è a video; la cima del Diario no.
-    func testIlFondoDelDiarioMostraLaRigaSuTuttaLaSerieA() {
-        avvia(["-DEMO_SCHERMATA", "lega-diario", "-DEMO_FONDO", "1"])
-        let riga = elemento(cheComincia: "Su tutta la Serie A")
-        XCTAssertTrue(aspetta(30) { riga.exists && riga.isHittable },
-                      "nella foto lega-diario-fondo la riga su tutta la Serie A deve essere a video")
-        XCTAssertFalse(elemento(cheComincia: "Giornata per giornata: la formazione").isHittable,
-                       "nella foto lega-diario-fondo la cima del Diario non deve più essere a video")
-    }
-
     /// `lega-stato-fondo` (#425): in fondo a Stato dei dati ci sono i gol attesi nostri (#404) e, per ultimi, gli indicatori del
     /// consiglio di formazione (#371). L'ultimo indicatore deve essere a video, la cima della pagina no.
     func testIlFondoDelloStatoMostraGliIndicatoriDelConsiglio() {

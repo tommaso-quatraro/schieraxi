@@ -41,13 +41,21 @@ final class FumoUITests: XCTestCase {
               file: file, line: line)
     }
 
-    func testLeTreSezioniSonoRaggiungibili() {
+    func testLeSezioniSonoRaggiungibili() {
         let barra = app.tabBars.firstMatch
         XCTAssertTrue(barra.waitForExistence(timeout: 30), "la barra delle sezioni deve comparire")
-        for nome in ["Formazione", "Squadra", "Altro"] {
+        for nome in ["Formazione", "Giornate", "Squadra", "Altro"] {
             XCTAssertTrue(barra.buttons[nome].exists, "manca la sezione \(nome)")
         }
         XCTAssertFalse(barra.buttons["Oggi"].exists, "Oggi è nella Formazione (#673)")
+    }
+
+    /// La pagina Giornate (#673 passo 2): in cima la riga sulla precisione e «Dettagli», poi una riga per giornata finita.
+    func testGiornateConLaPrecisioneELeRighe() {
+        vaiA("Giornate")
+        attendi("Finora il fantavoto atteso sbaglia", contiene: true)
+        attendi("Dettagli")
+        attendi("Giornata 7", contiene: true)
     }
 
     func testLaFormazioneSiApreConLaGiornataEIlCampo() {
@@ -109,12 +117,10 @@ final class FumoUITests: XCTestCase {
 
     func testAltroConLeSuePagine() {
         vaiA("Altro")
-        // le voci della web (VOCI_LEGA, #634)
-        for voce in ["Diario delle giornate", "Regole"] {
-            attendi(voce, contiene: true)
-        }
+        // le voci della web (VOCI_LEGA, #634): il Diario è la pagina Giornate della barra (#673 passo 2)
+        attendi("Regole", contiene: true)
         // le pagine tolte non hanno più una voce; «Nuova stagione» compare da sola solo quando serve, le novità sono nelle Impostazioni
-        for tolta in ["Movimenti e storico", "Crediti delle squadre", "Nuova stagione", "Valuta un'offerta"] {
+        for tolta in ["Diario delle giornate", "Movimenti e storico", "Crediti delle squadre", "Nuova stagione", "Valuta un'offerta"] {
             XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare in Altro")
         }
         // ogni voce in un posto solo: niente copia di sicurezza, niente rimando alle Impostazioni (c'è l'ingranaggio)
