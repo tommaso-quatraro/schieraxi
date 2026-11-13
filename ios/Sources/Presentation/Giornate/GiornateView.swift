@@ -11,16 +11,13 @@ struct GiornateView: View {
     /// La giornata di «Non è quello che ho schierato».
     @State private var daCorreggere: VoceDiario?
     /// Dopo la correzione VoiceOver torna sulla riga della giornata corretta.
-    @State private var corretta: String?
     @AccessibilityFocusState private var fuoco: String?
 
     var body: some View {
         Group { if classe == .regular { colonne } else { pila } }
-            .sheet(item: $daCorreggere, onDismiss: tornaAllaRiga) { v in
+            .sheet(item: $daCorreggere, onDismiss: { tornaAllaRiga() }) { v in
                 FormazioneManualeDiarioView(voce: v, server: vm.server) { titolari in
-                    let errore = await vm.correggi(v, titolari: titolari)
-                    if errore == nil { corretta = v.id }
-                    return errore
+                    await vm.correggi(v, titolari: titolari)
                 }
             }
             .onAppear { prendiGiornataChiesta() }
@@ -181,10 +178,9 @@ struct GiornateView: View {
         vm.apri(giornata: g)
     }
 
-    /// Chiuso il foglio della correzione, VoiceOver va sulla riga della giornata corretta.
+    /// Chiuso il foglio della correzione, VoiceOver va sulla riga della giornata corretta (se è stata salvata).
     private func tornaAllaRiga() {
-        guard let id = corretta else { return }
-        corretta = nil
+        guard let id = vm.prendiCorretta() else { return }
         fuoco = id
     }
 }

@@ -18,6 +18,8 @@ final class GiornateViewModel: ViewModelBase {
     private(set) var chiesta: Int?
     /// L'esito dell'ultima correzione e la sua giornata: si mostra sotto i suoi 11.
     @Published private(set) var esito: (id: String, testo: String)?
+    /// La giornata appena corretta: chiuso il foglio, VoiceOver torna sulla sua riga (`prendiCorretta`).
+    private var corretta: String?
     /// Fa leggere un esito a VoiceOver. Si sostituisce nei test per contare gli annunci.
     var annuncia: @MainActor (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
 
@@ -82,6 +84,12 @@ final class GiornateViewModel: ViewModelBase {
         if aperte.contains(id) { aperte.remove(id) } else { aperte.insert(id) }
     }
 
+    /// La giornata corretta per ultima, una volta sola (chiuso il foglio con «Annulla» non c'è niente).
+    func prendiCorretta() -> String? {
+        defer { corretta = nil }
+        return corretta
+    }
+
     /// L'esito da mostrare sotto gli 11 di questa giornata, se è suo.
     func esito(per id: String) -> String? {
         esito?.id == id ? esito?.testo : nil
@@ -106,6 +114,7 @@ final class GiornateViewModel: ViewModelBase {
         }
         aperte = [voce.id]
         scelta = voce.id
+        corretta = voce.id
         esito = (voce.id, Catalogo.Diario.salvataManuale)
         Haptics.esito(riuscito: true)
         annuncia(Catalogo.Diario.salvataManuale)
