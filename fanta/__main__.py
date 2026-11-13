@@ -101,7 +101,12 @@ def cmd_importa(a) -> None:
         if not percorso.exists():
             sys.exit(f"File non trovato: {percorso}")
         griglie = rose.leggi_griglie(percorso)
-    avvisi_lettura: list[str] = []
+    if a.sostituisci_tutto:                     # Excel letto solo in parte: toglierebbe anche le squadre dei fogli non letti
+        try:
+            rose.controlla_sostituzione(griglie)
+        except ValueError as e:
+            sys.exit(str(e))
+    avvisi_lettura: list[str] = [x for x in [rose.avviso_fogli(griglie)] if x]
     lette = rose.estrai(griglie, indice, r.rosa, avvisi_lettura)
     if not lette:
         sys.exit(rose.NESSUNA_ROSA)

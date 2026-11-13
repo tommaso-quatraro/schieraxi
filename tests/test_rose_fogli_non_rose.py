@@ -307,6 +307,26 @@ def test_excel_con_piu_fogli_del_tetto_lo_dice_e_non_toglie_squadre(ambiente, tm
     assert len(a.get("/api/squadre").json()) == 10
 
 
+def test_excel_con_piu_fogli_del_tetto_dalla_riga_di_comando(tmp_path, calciatori, monkeypatch, capsys):
+    """`python -m fanta importa`: lo stesso avviso, e con --sostituisci-tutto si ferma senza salvare."""
+    import argparse
+    import shutil
+
+    from fanta import __main__ as comandi
+    regole = tmp_path / "regole.json"
+    shutil.copy(Path(comandi.__file__).parent.parent / "lega" / "esempio" / "regole.json", regole)
+    monkeypatch.setattr(comandi, "FILE_REGOLE", regole)
+    monkeypatch.setattr(comandi, "FILE_ROSE", tmp_path / "rose.json")
+    monkeypatch.setattr(comandi, "FILE_MOVIMENTI", tmp_path / "movimenti.json")
+    monkeypatch.setattr(comandi.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
+    file = str(_excel_dodici(tmp_path))
+    with pytest.raises(SystemExit) as e:
+        comandi.cmd_importa(argparse.Namespace(file=file, sostituisci_tutto=True))
+    assert "12 fogli" in str(e.value) and not (tmp_path / "rose.json").exists()
+    comandi.cmd_importa(argparse.Namespace(file=file, sostituisci_tutto=False))
+    assert TAGLIO in capsys.readouterr().out
+
+
 def test_excel_con_piu_fogli_del_tetto_senza_account(dati_isolati, calciatori, tmp_path, monkeypatch):
     monkeypatch.delenv("FANTA_MULTIUTENTE", raising=False)
     monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
