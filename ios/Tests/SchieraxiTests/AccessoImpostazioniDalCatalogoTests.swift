@@ -47,12 +47,13 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Codice.titolo, Catalogo.Codice.aCosaServe, Catalogo.Codice.salva, Catalogo.Codice.spiega,
         Catalogo.Codice.copia, Catalogo.Codice.copiato, Catalogo.Codice.salvato,
         Catalogo.Legale.privacy, Catalogo.Legale.termini, Catalogo.Legale.crediti,
-        Catalogo.Imp.account, Catalogo.Imp.aspetto, Catalogo.Imp.avvisi, Catalogo.Imp.avvisiSub, Catalogo.Imp.informazioni,
-        Catalogo.Imp.avanzate,
-        // avv.* (Notifiche), pav.* (Primo avvio)
-        Catalogo.Avv.cambi, Catalogo.Avv.cambiAiuto, Catalogo.Avv.prom60, Catalogo.Avv.prom60Aiuto, Catalogo.Avv.prom15,
-        Catalogo.Avv.riepilogo, Catalogo.Avv.riepilogoAiuto, Catalogo.Avv.copertura, Catalogo.Avv.coperturaAiuto,
-        Catalogo.Avv.nativa, Catalogo.Avv.oreTranq, Catalogo.Avv.oreTranqAiuto,
+        Catalogo.Imp.account, Catalogo.Imp.aspetto, Catalogo.Imp.informazioni, Catalogo.Imp.avanzate, Catalogo.Imp.sezAvvisi,
+        Catalogo.Imp.avvisiQui, Catalogo.Imp.avvisiQuiAiuto, Catalogo.Imp.lega, Catalogo.Imp.regole, Catalogo.Imp.regoleSub,
+        Catalogo.Imp.miaSquadraNessuna, Catalogo.Imp.altreSquadre, Catalogo.Imp.informazioniSub, Catalogo.Imp.gestione,
+        Catalogo.Imp.gestioneSub, Catalogo.Imp.aggiornaSpiega,
+        // avv.* (Avvisi), pav.* (Primo avvio)
+        Catalogo.Avv.nativa, Catalogo.Avv.nativaAiuto, Catalogo.Avv.oreTranq, Catalogo.Avv.permessoNegatoAbilita,
+        Catalogo.Avv.notificheDisattivateQuesto,
         Catalogo.Pav.primoAvvio, Catalogo.Pav.salta, Catalogo.Pav.tuttoProntoMister, Catalogo.Pav.haiFinito,
         Catalogo.Pav.nonSonoRiuscito, Catalogo.Pav.permessoNegatoAbilita,
         // parole comuni già nel catalogo (Oggi, #494)
@@ -76,14 +77,15 @@ struct AccessoImpostazioniDalCatalogoTests {
             .filter { $0.trimmingCharacters(in: .whitespaces).count >= 6 }
     }
 
-    /// I file controllati: tutti quelli di `Presentation/Accesso`, la pagina delle Impostazioni e i testi delle Notifiche.
+    /// I file controllati: tutti quelli di `Presentation/Accesso`, la pagina delle Impostazioni con le sue voci, gli avvisi e Gestione.
     static func fileControllati(file: String = #filePath) throws -> [String] {
         let accesso = try FileManager.default.contentsOfDirectory(atPath: SorgenteAccesso.radice(file: file).appendingPathComponent(
             "Sources/Presentation/Accesso").path)
             .filter { $0.hasSuffix(".swift") }
             .sorted()
             .map { "Sources/Presentation/Accesso/\($0)" }
-        return accesso + ["Sources/Presentation/Lega/ImpostazioniView.swift", "Sources/Presentation/Lega/TestiImpostazioni.swift"]
+        return accesso + ["Sources/Presentation/Lega/ImpostazioniView.swift", "Sources/Presentation/Lega/VociImpostazioni.swift",
+                          "Sources/Presentation/Lega/AvvisiDispositivoSezione.swift", "Sources/Presentation/Lega/GestionePagina.swift"]
     }
 
     @Test("Nei file di Accesso e Impostazioni nessun testo del catalogo è scritto a mano")
@@ -157,9 +159,19 @@ struct AccessoImpostazioniDalCatalogoTests {
         ]),
         ("Sources/Presentation/Accesso/ConfiguraLegaView.swift", ["Catalogo.Comune.importaRose"]),
         ("Sources/Presentation/Accesso/SessioneMinima.swift", ["Catalogo.Account.esci"]),
-        ("Sources/Presentation/Lega/ImpostazioniView.swift", [
-            "Catalogo.Shell.impostazioni", "Catalogo.Shell.chiudi", "Catalogo.Imp.aspetto", "Catalogo.Imp.informazioni",
-            "Catalogo.Imp.avanzate",
+        ("Sources/Presentation/Lega/ImpostazioniView.swift", ["Catalogo.Shell.impostazioni", "Catalogo.Imp.lega"]),
+        ("Sources/Presentation/Lega/VociImpostazioni.swift", [
+            "Catalogo.Lega.voceImporta", "Catalogo.Lega.voceImportaSub", "Catalogo.Lega.miaSquadra", "Catalogo.Imp.miaSquadraNessuna",
+            "Catalogo.Imp.regole", "Catalogo.Imp.regoleSub", "Catalogo.Imp.altreSquadre", "Catalogo.Lega.nSquadre(",
+            "Catalogo.Imp.account", "Catalogo.Imp.informazioni", "Catalogo.Imp.informazioniSub", "Catalogo.Imp.gestione",
+            "Catalogo.Imp.gestioneSub",
+        ]),
+        ("Sources/Presentation/Lega/AvvisiDispositivoSezione.swift", [
+            "Catalogo.Imp.sezAvvisi", "Catalogo.Imp.avvisiQui", "Catalogo.Imp.avvisiQuiAiuto", "Catalogo.Avv.oreTranq",
+            "Catalogo.Avv.aveviSceltoOre",
+        ]),
+        ("Sources/Presentation/Lega/GestionePagina.swift", [
+            "Catalogo.Imp.gestione", "Catalogo.Imp.aggiornaSpiega", "Catalogo.Avv.nativa", "Catalogo.Avv.nativaAiuto",
         ]),
     ])
     func vistaUsaIlCatalogo(percorso: String, costanti: [String]) throws {

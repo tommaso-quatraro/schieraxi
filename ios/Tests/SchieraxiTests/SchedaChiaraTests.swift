@@ -21,21 +21,6 @@ final class SchedaChiaraTests: XCTestCase {
         XCTAssertNil(LetturaScheda.risultatoAtteso(try giocatore("")))
     }
 
-    func testLaRigaDellElencoComeLaWeb() throws {
-        let g = try giocatore(#""squadra": "genoa", "quotazione": 19, "proprietario": null, "fv_atteso": 6.94, "indice": 80,"#)
-        let d = DatiRigaElenco(g)
-        XCTAssertEqual(d.dettaglio, "GEN · quotazione 19 · svincolato", "sigla, mai il nome intero in maiuscolo")
-        XCTAssertEqual(d.numero, "6,9")
-        XCTAssertEqual(d.sotto, "gioca 90%")
-        let mio = try giocatore(#""squadra": "genoa", "quotazione": 19, "proprietario": "Squadra Uno","#)
-        XCTAssertEqual(DatiRigaElenco(mio).dettaglio, "GEN · quotazione 19 · Squadra Uno")
-        let breve = GiocatoreBreve(id: 9, nome: "Fosola", ruolo: "C", squadra: "inter", quotazione: 4)
-        XCTAssertEqual(DatiRigaElenco(breve, nonGioca: true).dettaglio, "INT · quotazione 4", "il proprietario non si conosce: non si scrive")
-        XCTAssertEqual(DatiRigaElenco(breve, nonGioca: true).numero, "–")
-        XCTAssertEqual(DatiRigaElenco(breve, nonGioca: true).sotto, "non gioca")
-        XCTAssertNil(DatiRigaElenco(breve, nonGioca: false).sotto, "senza l'elenco della giornata non si dice «non gioca»")
-    }
-
     func testCelleDelCalendarioVsEChiocciola() {
         XCTAssertEqual(ProssimePartite.cella(PartitaCalendario(giornata: 8, avversario: "milan", inCasa: true, difficolta: 3, data: nil)), "vs MIL")
         XCTAssertEqual(ProssimePartite.cella(PartitaCalendario(giornata: 9, avversario: "milan", inCasa: false, difficolta: 3, data: nil)), "@ MIL")

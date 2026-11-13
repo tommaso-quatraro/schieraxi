@@ -14,7 +14,7 @@ struct SquadraAltroDalCatalogoTests {
 
     /// I file con le sole parole dell'area (da `ios/Sources/Presentation/`): nessun testo del catalogo, nemmeno corto.
     static let fileDeiTesti = [
-        "Lega/TestiRegole.swift", "Lega/ParoleSquadre.swift", "Lega/VoceMenuLega.swift",
+        "Lega/TestiRegole.swift", "Lega/ParoleSquadre.swift",
         "Lega/ParoleRegistro.swift", "Lega/ParoleRegistro+Taratura.swift", "Lega/ParoleNostri.swift", "Lega/ParoleConsiglio.swift",
         "Lega/ParoleNovita.swift",
     ]
@@ -25,9 +25,10 @@ struct SquadraAltroDalCatalogoTests {
     static let viste = [
         "Lega/RegoleEditor.swift", "Lega/ImportaRoseView.swift", "Giornate/GiornateView.swift", "Giornate/GiornateViewModel.swift",
         "Giornate/DettaglioGiornataView.swift", "Giornate/RigaGiornataView.swift", "Giornate/FormazioneManualeDiarioView.swift",
-        "Lega/EsitoRoseSalvate.swift", "Lega/Gestione.swift", "Lega/LegaPagine.swift", "Lega/LegaExtra.swift", "Lega/LegaView.swift",
+        "Lega/EsitoRoseSalvate.swift", "Lega/AvvisiDispositivoSezione.swift", "Lega/GestionePagina.swift", "Lega/LegaPagine.swift",
+        "Lega/LegaExtra.swift", "Lega/ImpostazioniView.swift", "Lega/VociImpostazioni.swift",
         "Lega/LegaViewModels.swift", "Lega/LegaViewModels2.swift", "Lega/RigaRosa.swift",
-        "Mercato/RigaElencoGiocatore.swift", "Mercato/DatiRigaElenco.swift", "Mercato/RicercaGiocatoreView.swift",
+        "Mercato/RigaRicerca.swift", "Mercato/DatiRigaRicerca.swift", "Mercato/RicercaGiocatoreView.swift",
     ]
 
     /// Una frase del catalogo con almeno tanti caratteri fissi non si trova per caso in un altro testo.
