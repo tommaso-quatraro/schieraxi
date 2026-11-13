@@ -36,6 +36,10 @@ final class OggiViewModel: ViewModelBase {
     var errore: String? { caricatore.errore }
     var datiSalvati: Date? { caricatore.datiSalvati }
 
+    /// Si vede la giornata salvata sul telefono: all'apertura finché non arriva quella nuova, o perché non è arrivata. Le decisioni
+    /// che scrivono restano spente (`FormazioneViewModel.decisioniSpente`).
+    var copia: Bool { caricatore.dallaCache || caricatore.datiSalvati != nil }
+
     /// Ogni quanto si rilegge la giornata mentre si gioca (i voti escono a fine partita: non serve di più).
     static let ripassoGiornata: TimeInterval = 300
 

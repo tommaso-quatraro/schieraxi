@@ -87,10 +87,12 @@ struct FormazioneCopiaEInCorsoTests {
         let dove = Self.indirizzo()
         let salvati = try SalvataggioAutomaticoTests.altroModulo()
         let scelta = SalvataggioAutomaticoTests.json(salvati)
-        let lettaPrima = await FormazioneViewModel(server: try Self.server(dove, scelta: scelta)).carica()
+        let conRete = try Self.server(dove, scelta: scelta)
+        let lettaPrima = await FormazioneViewModel(server: conRete).carica()
         #expect(lettaPrima)
         let cancello = Cancello()
-        let vm = FormazioneViewModel(server: try Self.server(dove, scelta: scelta, cancello: cancello))
+        let lento = try Self.server(dove, scelta: scelta, cancello: cancello)
+        let vm = FormazioneViewModel(server: lento)
         let apertura = Task { await vm.carica() }
         await cancello.richiestaArrivata()
         let f = try #require(vm.formazione, "la copia della Formazione, subito")
@@ -108,7 +110,8 @@ struct FormazioneCopiaEInCorsoTests {
     func sceltaTolta() async throws {
         let dove = Self.indirizzo()
         let salvata = Scatola<String>()
-        salvata.valore = SalvataggioAutomaticoTests.json(try SalvataggioAutomaticoTests.altroModulo())
+        let salvati = try SalvataggioAutomaticoTests.altroModulo()
+        salvata.valore = SalvataggioAutomaticoTests.json(salvati)
         let giu = Scatola<Bool>()
         let srv = try Self.server(dove, salvata: salvata, giu: giu)
         let prima = FormazioneViewModel(server: srv)
@@ -126,11 +129,13 @@ struct FormazioneCopiaEInCorsoTests {
     @Test("Con la copia della Formazione ma senza quella della scelta, se il server dice che ne hai una salvata la riga lo dice")
     func copiaSenzaScelta() async throws {
         let dove = Self.indirizzo()
-        var json = try #require(try JSONSerialization.jsonObject(with: try Fixture.dati("formazione")) as? [String: Any])
-        json["stato_scelta"] = "valida"
-        let formazione = try JSONSerialization.data(withJSONObject: json)
+        // la Formazione della fixture con `stato_scelta` «valida»: il server sa che c'è una scelta salvata
+        let fixture = try Fixture.testo("formazione")
+        let inizio = try #require(fixture.firstIndex(of: "{"))
+        let formazione = Data(fixture.replacingCharacters(in: inizio...inizio, with: #"{"stato_scelta": "valida", "#).utf8)
         let giu = Scatola<Bool>()
-        let srv = try Self.server(dove, scelta: SalvataggioAutomaticoTests.json(try SalvataggioAutomaticoTests.altroModulo()),
+        let salvati = try SalvataggioAutomaticoTests.altroModulo()
+        let srv = try Self.server(dove, scelta: SalvataggioAutomaticoTests.json(salvati),
                                   formazione: formazione, giu: giu)
         let lettaPrima = await FormazioneViewModel(server: srv).carica()
         #expect(lettaPrima)
@@ -161,7 +166,7 @@ struct FormazioneCopiaEInCorsoTests {
         let vm = FormazioneViewModel(server: srv, oggi: oggi)
         await FormazioneView.ricarica(vm, oggi: oggi)
         #expect(!vm.decisioniSpente)
-        #expect(vm.striscia == nil)
+        #expect(vm.striscia?.data == nil)
         guasto.valore = true
         await FormazioneView.ricarica(vm, oggi: oggi)
         let striscia = try #require(vm.striscia, "la striscia dei dati salvati, anche se è vecchia solo la giornata")

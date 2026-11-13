@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// I giocatori da mostrare in questo momento: la consigliata, la tua scelta salvata o, per un'altra squadra, un altro modulo.
+/// I giocatori da mostrare in questo momento: la consigliata, la tua scelta salvata, a giornata in corso la formazione schierata o,
+/// per un'altra squadra, un altro modulo.
 struct VistaFormazione {
     let titolari: [Giocatore]
     let panchina: [Giocatore]
     let modulo: String
-    /// nil finché il server non ha valutato quegli 11 (allora niente numero, mai i punti della consigliata).
+    /// nil finché il server non ha valutato quegli 11 (allora niente numero, mai i punti della consigliata) e a giornata in corso
+    /// (contano i punti fatti, nella testa).
     let punti: Double?
 }
 
@@ -14,11 +16,15 @@ struct VistaFormazione {
 /// `POST /api/formazione/valuta` (`salva: true`, If-Match della scelta), «Torna alla consigliata» è `DELETE /api/scelta`. Una
 /// scrittura alla volta; una risposta arrivata dopo una rilettura non vale e si rilegge. I comandi che scrivono restano spenti sulla
 /// copia del telefono, con la scelta non letta e con una scrittura in volo. La formazione di un'altra squadra si guarda e basta.
-/// Vive nell'`AppModel`: cambiando sezione non si perde niente.
+/// A giornata in corso in campo c'è la formazione schierata di `/api/oggi` (`in_corso.giocatori`), come la web; prima della scadenza
+/// la scelta letta resta sul telefono accanto alla copia della Formazione (`CopiaScelta`), così riaprendo senza rete in campo c'è
+/// la formazione salvata e non la consigliata. Vive nell'`AppModel`: cambiando sezione non si perde niente.
 @MainActor
 final class FormazioneViewModel: ViewModelBase {
     let caricatore: Caricatore<Formazione>
     let server: any ServerClient
+    /// La giornata (`/api/oggi`): a giornata in corso dice la formazione schierata; le sue copie spengono le decisioni che scrivono.
+    let oggi: OggiViewModel?
 
     /// L'ultimo avviso (un salvataggio non riuscito, la scelta cambiata da un altro dispositivo, la formazione copiata).
     @Published var messaggio: String?
@@ -33,6 +39,9 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// La scelta della giornata è stata letta dal server (anche «nessuna»): finché no, non si può cambiare niente.
     @Published private(set) var sceltaLetta = false
+    /// Scelta, 11 in campo e valutazione vengono dalla copia del telefono (`CopiaScelta`), non ancora dal server: si mostrano finché
+    /// si vede la copia della Formazione o si sta rileggendo, ma non si scrive niente (`sceltaLetta` resta falso).
+    @Published private(set) var sceltaInCopia = false
     /// La scelta salvata (nil = nessuna, vale la consigliata).
     @Published private(set) var salvata: SceltaSalvata?
     /// La scelta salvata non si può più schierare (lo dice il server): in campo la consigliata, finché non la cambi.
@@ -51,12 +60,15 @@ final class FormazioneViewModel: ViewModelBase {
     /// Cresce a ogni rilettura: una risposta (lettura o scrittura) partita prima non vale più.
     private var generazione = 0
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, oggi: OggiViewModel? = nil) {
         self.server = server
+        self.oggi = oggi
         // il comando «Aggiorna» rilegge formazione e scelta insieme (non solo la formazione)
         caricatore = Caricatore<Formazione>("/api/formazione", ascolta: false, server: server)
         super.init()
         osserva(caricatore)
+        // campo, striscia e decisioni dipendono anche dalla giornata: chi guarda solo questo ViewModel si ridisegna lo stesso
+        if let oggi { osserva(oggi) }
         alComandoAggiorna { [weak self] in
             _ = await self?.carica()
         }
@@ -68,8 +80,9 @@ final class FormazioneViewModel: ViewModelBase {
 
     // MARK: stato della schermata
 
-    /// La giornata è chiusa (dopo la scadenza, `iniziata` del server): la formazione si vede in sola lettura.
-    var chiusa: Bool { formazione?.iniziata == true }
+    /// La giornata è chiusa (dopo la scadenza, `iniziata` del server, o a giornata in corso come la web): la formazione si vede in
+    /// sola lettura.
+    var chiusa: Bool { formazione.map { $0.iniziata == true || dalVivo($0) != nil } ?? false }
 
     /// Si vedono i dati salvati sul telefono: all'apertura finché non arriva la risposta nuova, o perché non è arrivata.
     var copia: Bool { caricatore.dallaCache || caricatore.datiSalvati != nil }
@@ -84,13 +97,45 @@ final class FormazioneViewModel: ViewModelBase {
     /// Si può scrivere sulla scelta: la tua formazione, aperta, con i comandi accesi.
     private var puoScrivere: Bool { squadraVista == nil && !chiusa && !comandiSpenti }
 
-    /// La riga dello stato sotto il campo (vedi `StatoScelta`).
+    /// La scelta da mostrare è nota: letta dal server o, mentre si vede la copia della Formazione o si sta rileggendo, dalla copia del
+    /// telefono. Sempre della giornata in pagina.
+    var sceltaNota: Bool {
+        guard let f = formazione, giornata == f.giornata else { return false }
+        return sceltaLetta || (sceltaInCopia && (copia || leggendo))
+    }
+
+    /// La riga dello stato sotto il campo (vedi `StatoScelta`). Mentre si rilegge non si dice che la scelta non è letta (sta
+    /// arrivando); se il server dice che ce n'è una salvata e non si è letta lo si dice sempre, tranne a giornata in corso, quando in
+    /// campo c'è già la formazione schierata.
     var statoScelta: StatoScelta {
         guard let f = formazione else { return .nessuno }
         let v = vista(f)
-        return StatoScelta.calcola(mia: squadraVista == nil, letta: sceltaLetta, copia: copia, chiusa: chiusa, salvata: salvata,
+        return StatoScelta.calcola(mia: squadraVista == nil, letta: sceltaNota, copia: copia || leggendo, chiusa: chiusa, salvata: salvata,
                                    nonValida: salvataNonValida, titolari: v.titolari.map(\.id), consigliati: consigliati(f),
-                                   punti: v.punti, puntiConsigliata: consigliato(f)?.punteggioAtteso ?? f.punteggioAtteso)
+                                   punti: v.punti, puntiConsigliata: consigliato(f)?.punteggioAtteso ?? f.punteggioAtteso,
+                                   salvataNonLetta: !leggendo && dalVivo(f) == nil && f.statoScelta == Self.statoValida)
+    }
+
+    /// `stato_scelta` del server quando c'è una scelta salvata che vale.
+    static let statoValida = "valida"
+
+    /// Le decisioni in cima che scrivono sono spente: come gli altri comandi e, in più, quando la giornata da cui vengono
+    /// (`/api/oggi`) è la copia del telefono.
+    var decisioniSpente: Bool { comandiSpenti || (squadraVista == nil && oggi?.copia == true) }
+
+    /// La striscia dei dati salvati: la Formazione o la giornata (`/api/oggi`) non sono arrivate fresche. La data più vecchia delle
+    /// due, con il suo motivo (nil = server non raggiungibile).
+    var striscia: (data: Date, motivo: String?)? {
+        var vecchi: [(data: Date, motivo: String?)] = []
+        if let d = caricatore.datiSalvati { vecchi.append((d, caricatore.motivoDatiSalvati)) }
+        if squadraVista == nil, let o = oggi, let d = o.datiSalvati { vecchi.append((d, o.caricatore.motivoDatiSalvati)) }
+        return vecchi.min { $0.data < $1.data }
+    }
+
+    /// L'errore di `/api/oggi` quando non c'è nemmeno una copia da mostrare: mancano testa e decisioni, e lo si dice.
+    var erroreGiornata: String? {
+        guard squadraVista == nil, let o = oggi, o.oggi == nil else { return nil }
+        return o.errore
     }
 
     /// La spunta «L'ho messa»: vale per gli 11 salvati.
@@ -129,12 +174,41 @@ final class FormazioneViewModel: ViewModelBase {
 
     // MARK: cosa mostrare
 
+    /// A giornata in corso la formazione che vale la dice `/api/oggi` (`in_corso.giocatori`: titolari e panchina in ordine, con chi è
+    /// entrato), come `live` di `mostraFormazione` della web: anche sulla copia del telefono, ed è quella dei punti della testa. Solo
+    /// per la tua squadra e per la giornata in pagina.
+    func dalVivo(_ f: Formazione) -> GiornataInCorso? {
+        guard squadraVista == nil, let o = oggi?.oggi, !o.senzaFormazioneInCorso, let c = o.giornataInCorso,
+              c.giocatori.contains(where: \.titolare), (c.giornata ?? o.giornata).map({ $0 == f.giornata }) ?? true else { return nil }
+        return c
+    }
+
+    /// Il modulo e i punti attesi sopra il campo: non a giornata in corso, quando contano i punti fatti (la web li nasconde).
+    func conModulo(_ f: Formazione) -> Bool { dalVivo(f) == nil }
+
+    /// La scheda di un giocatore schierato con lo stato vero della sua partita (`scheda` della web a giornata in corso).
+    private func scheda(_ g: GiocatoreInCorso, _ f: Formazione) -> Giocatore? {
+        let x = f.schede?[String(g.id)] ?? (f.titolari + f.panchina).first { $0.id == g.id }
+        return x.map { $0.dalVivo(g) } ?? Giocatore.soloDalVivo(g)
+    }
+
+    /// Gli 11 della tua scelta da mettere in campo, se sono della giornata in pagina.
+    private func manualeDi(_ f: Formazione) -> [Int]? {
+        guard let manuale, giornata == f.giornata else { return nil }
+        return manuale
+    }
+
     /// Titolari, panchina, modulo e punti attesi in campo.
     func vista(_ f: Formazione) -> VistaFormazione {
         let base = VistaFormazione(titolari: f.titolari, panchina: f.panchina, modulo: f.modulo, punti: f.punteggioAtteso)
+        if let live = dalVivo(f) {
+            return VistaFormazione(titolari: live.giocatori.filter(\.titolare).compactMap { scheda($0, f) },
+                                   panchina: live.giocatori.filter { !$0.titolare }.compactMap { scheda($0, f) },
+                                   modulo: oggi?.oggi?.formazione?.modulo ?? consigliato(f)?.modulo ?? f.modulo, punti: nil)
+        }
         guard let schede = f.schede else { return base }
         func giocatori(_ ids: [Int]) -> [Giocatore] { ids.compactMap { schede[String($0)] } }
-        if squadraVista == nil, let manuale {
+        if squadraVista == nil, let manuale = manualeDi(f) {
             let titolari = giocatori(manuale)
             if let m = moduloDi(f, manuale) {
                 return VistaFormazione(titolari: titolari, panchina: giocatori(m.panchina), modulo: m.modulo, punti: m.punteggioAtteso)
@@ -155,7 +229,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// «di solito fra 65 e 82» (la fascia del server, 8 volte su 10) o, con una risposta vecchia, «oscilla di ±N», come
     /// `fraseDiSolito` della web. Nil se il server non manda niente.
     func fascia(_ f: Formazione) -> String? {
-        if squadraVista == nil, let manuale {
+        if squadraVista == nil, let manuale = manualeDi(f) {
             if let m = moduloDi(f, manuale) { return Self.diSolito(m.intervallo, dev: m.dev) }
             return Self.diSolito(valutazione?.intervallo, dev: valutazione?.dev)
         }
@@ -227,6 +301,8 @@ final class FormazioneViewModel: ViewModelBase {
         let g = generazione
         leggendo = true
         defer { if g == generazione { leggendo = false } }
+        // all'apertura, prima della copia della Formazione, la scelta tenuta sul telefono: in campo subito la formazione salvata
+        if squadraVista == nil, giornata == nil { await riprendiSceltaDalTelefono() }
         await caricatore.ricarica(percorso)
         // la risposta nuova non è arrivata: resta la copia, con la scelta di prima
         guard g == generazione, let f = caricatore.dato, caricatore.datiSalvati == nil else { return false }
@@ -255,6 +331,7 @@ final class FormazioneViewModel: ViewModelBase {
         guard let s = letta else {
             dimentica()
             sceltaLetta = true
+            ricordaSulTelefono(f)
             return true
         }
         let nonValida = f.statoScelta == "non_valida"
@@ -286,6 +363,8 @@ final class FormazioneViewModel: ViewModelBase {
         salvataNonValida = nonValida
         metti(nonValida ? nil : s.titolari, f, valutazione: r)
         sceltaLetta = true
+        sceltaInCopia = false
+        ricordaSulTelefono(f)
     }
 
     /// Mette in campo questi 11 (nil = la consigliata).
@@ -305,6 +384,30 @@ final class FormazioneViewModel: ViewModelBase {
         salvataNonValida = false
         manuale = nil
         valutazione = nil
+        sceltaInCopia = false
+    }
+
+    // MARK: la scelta sul telefono
+
+    /// Tiene sul telefono la scelta appena letta o salvata, accanto alla copia della Formazione (`CopiaScelta`).
+    private func ricordaSulTelefono(_ f: Formazione) {
+        guard squadraVista == nil,
+              let dati = CopiaScelta(giornata: f.giornata, scelta: salvata, nonValida: salvataNonValida, valutazione: valutazione).dati
+        else { return }
+        Cache.salva(dati, CopiaScelta.percorso, indirizzo: server.indirizzo)
+    }
+
+    /// All'apertura, prima della copia della Formazione: la scelta tenuta sul telefono, finché il server non risponde. In campo
+    /// subito la formazione salvata, mai la consigliata al suo posto; i comandi restano spenti (`sceltaLetta` è falso).
+    private func riprendiSceltaDalTelefono() async {
+        guard let salvato = await Cache.leggi(CopiaScelta.percorso, indirizzo: server.indirizzo),
+              let c = CopiaScelta.da(salvato.dati), squadraVista == nil, giornata == nil else { return }
+        giornata = c.giornata
+        salvata = c.scelta
+        salvataNonValida = c.nonValida
+        manuale = c.nonValida ? nil : c.titolari
+        valutazione = c.valutazioneManuale
+        sceltaInCopia = true
     }
 
     // MARK: formazione di un'altra squadra
@@ -377,6 +480,7 @@ final class FormazioneViewModel: ViewModelBase {
                 return
             }
             dimentica()
+            ricordaSulTelefono(f)
             Haptics.esito(riuscito: true)
         } catch {
             await nonRiuscita(error, generazione: g)
@@ -459,7 +563,9 @@ final class FormazioneViewModel: ViewModelBase {
     func contestoScheda(_ id: Int) -> ContestoScheda? {
         guard let f = formazione,
               let g = f.schede?[String(id)] ?? (f.titolari + f.panchina).first(where: { $0.id == id }) else { return nil }
-        return ContestoScheda(previsione: g, perche: percheTitolare(id), sostituibile: sostituibile(id), fermo: fermo(id))
+        // a giornata in corso con lo stato vero della sua partita, come sul campo
+        let previsione = dalVivo(f)?.giocatori.first { $0.id == id }.map { g.dalVivo($0) } ?? g
+        return ContestoScheda(previsione: previsione, perche: percheTitolare(id), sostituibile: sostituibile(id), fermo: fermo(id))
     }
 
     /// «Perché è titolare» (`PercheTitolare`): solo con la consigliata in campo e a formazione aperta, come la web.

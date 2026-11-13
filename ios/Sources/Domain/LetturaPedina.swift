@@ -60,6 +60,9 @@ enum LetturaPedina {
     struct Contenuto: Equatable {
         /// Il numero nel disco.
         let valore: Double?
+        /// Il numero è l'atteso mentre la partita è cominciata senza voto, è rinviata o, a formazione chiusa, deve ancora giocare: il
+        /// disco è vuoto (solo il bordo), come la classe `attesa` della pedina della web; pieno con il voto preso e prima della scadenza.
+        let attesa: Bool
         let pezzi: [Pezzo]
         /// La frase per VoiceOver, come `vocePedina` della web: «Rossi, fantavoto atteso 6,8, gioca al 45 per cento, In dubbio».
         let voce: String
@@ -87,7 +90,8 @@ enum LetturaPedina {
         if gioca { frase.append(voceGioca(Formato.percento(g.pVoto))) }
         if let stato { frase.append(stato.testo) }
         if let quando { frase.append(quando) }
-        return Contenuto(valore: preso ?? g.fvAtteso, pezzi: pezzi, voce: frase.filter { !$0.isEmpty }.joined(separator: ", "))
+        return Contenuto(valore: preso ?? g.fvAtteso, attesa: (partita != nil && preso == nil) || daGiocare, pezzi: pezzi,
+                         voce: frase.filter { !$0.isEmpty }.joined(separator: ", "))
     }
 
     /// La partita al posto di «gioca N%» (`esitoPedina` della web): a partita cominciata il fantavoto preso (`fv`) o lo stato; prima,

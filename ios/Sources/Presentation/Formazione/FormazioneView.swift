@@ -51,7 +51,8 @@ struct FormazioneView: View {
                 }
                 .demoInFondo()
                 .refreshable { await ricarica() }
-                .avvisoDatiSalvati(vm.caricatore)
+                // la striscia vale per la Formazione e per la giornata (`/api/oggi`): anche una sola delle due può essere vecchia
+                .avvisoDatiSalvati(vm.striscia?.data, motivo: vm.striscia?.motivo)
                 .bordiMorbidi()
             }
             .navigationTitle(Catalogo.Nav.formazione)
@@ -190,17 +191,32 @@ struct FormazioneView: View {
                 // fino alla pagina Giornate (passo 2 di #673) «Com'è andata» apre il Diario
                 nav.vai(a: .pagina(.diario))
             }
+            if let errore = vm.erroreGiornata { erroreGiornata(errore) }
         }
     }
 
+    /// `/api/oggi` non è arrivata e non c'è una copia: mancano testa e decisioni, e lo si dice, con «Riprova».
+    private func erroreGiornata(_ messaggio: String) -> some View {
+        Carta {
+            Label(messaggio, systemImage: "exclamationmark.triangle")
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(Catalogo.Comune.riprova) { Task { await ricarica() } }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.bordered)
+                .frame(minHeight: Tema.areaTocco)
+        }
+    }
+
+    /// Le decisioni che scrivono sono spente anche quando la giornata da cui vengono è la copia del telefono (`decisioniSpente`).
     private func decisioniInCima(_ voci: [DaFareVoce]) -> some View {
-        DecisioniFormazione(voci: voci, guadagno: { vm.guadagno($0) }, spento: vm.comandiSpenti) { v in esegui(v) }
+        DecisioniFormazione(voci: voci, guadagno: { vm.guadagno($0) }, spento: vm.decisioniSpente) { v in esegui(v) }
     }
 
     /// L'azione di una decisione, come i gestori di `#decisioni` della web: il cambio di un titolare (se non si può più fare da qui,
     /// la sua scheda), «Usa la consigliata», oppure la pagina dove si fa la cosa.
     private func esegui(_ v: DaFareVoce) {
-        if v.scrive && vm.comandiSpenti { return }
+        if v.scrive && vm.decisioniSpente { return }
         if let cambio = v.cambio {
             Task {
                 let fatto = await vm.sostituisciTitolare(cambio.esce, con: cambio.entra)
@@ -247,15 +263,18 @@ struct FormazioneView: View {
 
     private func campo(_ f: Formazione, _ v: VistaFormazione) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 12) {
-                    modulo(f, v)
-                    Spacer(minLength: 8)
-                    punti(f, v, allineamento: .trailing)
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    modulo(f, v)
-                    punti(f, v, allineamento: .leading)
+            // a giornata in corso contano i punti fatti, nella testa: niente modulo né punti attesi, come la web
+            if vm.conModulo(f) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 12) {
+                        modulo(f, v)
+                        Spacer(minLength: 8)
+                        punti(f, v, allineamento: .trailing)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        modulo(f, v)
+                        punti(f, v, allineamento: .leading)
+                    }
                 }
             }
             CampoFormazione(titolari: v.titolari, apribile: true)
@@ -360,7 +379,8 @@ struct FormazioneView: View {
         }
         .buttonStyle(.bordered)
         .tint(Color.verde)
-        .disabled(!vm.sceltaLetta)
+        // copiare non scrive sul server: basta sapere quale formazione è (anche dalla copia del telefono), come la web
+        .disabled(!vm.sceltaNota)
     }
 
     /// Una spunta, non un interruttore: su iOS lo stile «casella» non c'è, quindi un pulsante con il cerchio che si riempie.
@@ -458,7 +478,8 @@ struct FormazioneView: View {
 }
 
 #Preview("Formazione") {
-    FormazioneView(vm: FormazioneViewModel(server: FinteServer.esempio), oggi: OggiViewModel(server: FinteServer.esempio, conPromemoria: false))
+    let oggi = OggiViewModel(server: FinteServer.esempio, conPromemoria: false)
+    FormazioneView(vm: FormazioneViewModel(server: FinteServer.esempio, oggi: oggi), oggi: oggi)
         .environmentObject(Navigazione())
         .environmentObject(SessioneAccount(server: FinteServer.esempio))
 }

@@ -1,10 +1,11 @@
 import SwiftUI
 
 /// Una «pedina» sul campo, come `pedina` della web (#616, #673) con in più il volto (decisione 2 del proprietario): il volto (fondo
-/// con i colori della SUA squadra) con il fantavoto atteso in una pillola scura (a partita finita quello preso), il cognome, «gioca
-/// N%» solo sotto l'80% (pillola arancio con l'icona di avviso, rossa sotto il 50%, `SogliaGioca`), lo stato a parole («In dubbio»,
-/// «Infortunato» in rosso), a partita cominciata il suo stato, a formazione chiusa quando gioca chi deve ancora giocare. Niente
-/// avversario: sta nella scheda. Testi e frase per VoiceOver in `LetturaPedina.contenuto`.
+/// con i colori della SUA squadra) con il fantavoto atteso in una pillola scura (a partita finita quello preso; vuota, solo il bordo,
+/// quando a formazione chiusa il numero è ancora l'atteso), il cognome, «gioca N%» solo sotto l'80% (pillola arancio con l'icona di
+/// avviso, rossa sotto il 50%, `SogliaGioca`), lo stato a parole («In dubbio», «Infortunato» in rosso), a partita cominciata il suo
+/// stato, a formazione chiusa quando gioca chi deve ancora giocare. Niente avversario: sta nella scheda. Testi e frase per VoiceOver
+/// in `LetturaPedina.contenuto`.
 struct PedinaCampo: View {
     let g: Giocatore
     var diametro: CGFloat = 44
@@ -29,7 +30,7 @@ struct PedinaCampo: View {
         return VStack(spacing: 2) {
             AvatarGiocatore(id: g.id, squadra: g.squadra, dimensione: diametro, nome: g.nome, ruolo: g.ruolo)
                 .overlay(alignment: .bottom) {
-                    PillolaFantavoto(valore: c.valore, diametro: diametro).offset(y: 8)
+                    PillolaFantavoto(valore: c.valore, vuota: c.attesa, diametro: diametro).offset(y: 8)
                 }
                 .padding(.bottom, 8)
             // intero e a capo, mai rimpicciolito (12 punti al minimo): vedi `CognomePedina`
@@ -44,23 +45,33 @@ struct PedinaCampo: View {
     }
 }
 
-/// Il fantavoto atteso sotto il volto: pillola scura con il numero bianco, uguale per tutti i ruoli (il ruolo si legge dalla fila).
+/// Il fantavoto sotto il volto, uguale per tutti i ruoli (il ruolo si legge dalla fila): pillola scura piena con il numero bianco;
+/// vuota, solo il bordo bianco, quando il numero è l'atteso a partita cominciata o da giocare a formazione chiusa (`vuota`), come il
+/// disco della pedina «attesa» della web: così il fantavoto preso e quello atteso non si confondono. Il fondo della pillola vuota è
+/// il verde del prato, non trasparente: sopra il volto la scritta resta leggibile. VoiceOver li distingue già a parole
+/// (`LetturaPedina.contenuto`).
 struct PillolaFantavoto: View {
     let valore: Double?
+    /// Il numero è l'atteso mentre la partita è cominciata o deve ancora giocare (`LetturaPedina.Contenuto.attesa`).
+    var vuota = false
     var diametro: CGFloat = 44
     /// 1 a misura normale; cresce con il testo grande (Dynamic Type), fino a 1,4 volte.
     @ScaledMetric(relativeTo: .caption2) private var scalaTesto: CGFloat = 1
 
+    /// Il verde del prato a metà campo (fra i due colori del `CampoFormazione`).
+    static let prato = Color(red: 0.10, green: 0.40, blue: 0.24)
+
     var body: some View {
         Text(Formato.punti(valore))
-            .font(.system(size: max(10, diametro * 0.27) * min(scalaTesto, 1.4), weight: .heavy, design: .rounded)).monospacedDigit()
+            .font(.system(size: max(10, diametro * 0.27) * min(scalaTesto, 1.4), weight: vuota ? .bold : .heavy, design: .rounded))
+            .monospacedDigit()
             // su una riga sola anche con il testo grande: «10,0» (un fantavoto preso) andava a capo dopo la virgola
             .lineLimit(1)
             .fixedSize()
             .foregroundStyle(.white)
             .padding(.horizontal, 6).padding(.vertical, 1)
-            .background(Color(red: 0.03, green: 0.06, blue: 0.04).opacity(0.92), in: Capsule())
-            .overlay(Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 0.5))
+            .background(vuota ? Self.prato : Color(red: 0.03, green: 0.06, blue: 0.04).opacity(0.92), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.white.opacity(vuota ? 0.9 : 0.35), lineWidth: vuota ? 1.5 : 0.5))
             .numerico(valore ?? 0)
     }
 }

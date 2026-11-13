@@ -8,7 +8,8 @@ enum StatoScelta: Equatable {
     /// Non si dice niente: la formazione di un'altra squadra, o la copia sul telefono mentre arrivano i dati nuovi.
     case nessuno
     /// La scelta salvata non si è letta: un errore con «Riprova», e i comandi che scrivono restano spenti (si scriverebbe sopra una
-    /// scelta che non si è vista).
+    /// scelta che non si è vista). Anche sulla copia e a giornata chiusa se il server dice che ce n'è una: in campo c'è la
+    /// consigliata, e non va presa per la tua.
     case nonLetta
     /// Gli 11 in campo sono quelli della consigliata.
     case consigliata
@@ -41,11 +42,15 @@ enum StatoScelta: Equatable {
     ///   - nonValida: la scelta salvata non si può più schierare.
     ///   - titolari: gli 11 in campo; `consigliati`: quelli della consigliata. L'ordine non conta.
     ///   - punti, puntiConsigliata: i punti attesi degli 11 in campo e della consigliata.
+    ///   - salvataNonLetta: il server dice che c'è una scelta salvata che vale (`stato_scelta` «valida») e non si è letta: in campo
+    ///     non c'è la formazione che conta, e lo si dice anche sulla copia e a giornata chiusa.
     static func calcola(mia: Bool, letta: Bool, copia: Bool, chiusa: Bool, salvata: SceltaSalvata?, nonValida: Bool,
-                        titolari: [Int], consigliati: [Int], punti: Double?, puntiConsigliata: Double?) -> StatoScelta {
+                        titolari: [Int], consigliati: [Int], punti: Double?, puntiConsigliata: Double?,
+                        salvataNonLetta: Bool = false) -> StatoScelta {
         guard mia else { return .nessuno }
-        // non letta: lo si dice, tranne sulla copia del telefono (i dati nuovi stanno arrivando) e a giornata chiusa
-        guard letta else { return chiusa || copia ? .nessuno : .nonLetta }
+        // non letta: lo si dice, tranne sulla copia del telefono (i dati nuovi stanno arrivando) e a giornata chiusa, se non si sa
+        // che c'è una scelta salvata
+        guard letta else { return (chiusa || copia) && !salvataNonLetta ? .nessuno : .nonLetta }
         if chiusa { return .chiusa(nonValida ? .nonValida : salvata != nil ? .tua : .senzaScelta) }
         if nonValida { return .nonValida }
         let dentro = Set(consigliati)
