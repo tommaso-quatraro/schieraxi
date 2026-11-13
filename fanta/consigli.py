@@ -842,7 +842,8 @@ class Fermi:
 
     def panchina_di(self, rosa: list[fz.Giocatore], titolari: list[fz.Giocatore], regole: Regole) -> list[fz.Giocatore]:
         """La panchina di sempre (formazione._panchina) fra chi si può ancora spostare, nei posti che restano (per ruolo se la lega
-        li fissa); chi è fermo in panchina torna al suo posto."""
+        li fissa); chi è fermo in panchina torna al suo posto. Se fra i fermi c'è già un portiere, gli altri posti non tengono il
+        posto del portiere (panchina libera): altrimenti entrava un altro portiere al posto di un giocatore di movimento (#659)."""
         ids = {g.id for g in titolari}
         fermi = sorted(((self.panchina[g.id], g) for g in rosa if g.id in self.panchina and g.id not in ids), key=lambda x: x[0])
         liberi = [g for g in rosa if g.id not in ids and g.id not in self.panchina and g.id not in self.fuori]
@@ -852,7 +853,8 @@ class Fermi:
             meno = replace(pr, posti=posti, numero=sum(posti.values()))
         else:
             meno = replace(pr, numero=max(0, pr.numero - len(fermi)))
-        scelti = fz._panchina(liberi, titolari, replace(regole, panchina=meno))
+        scelti = fz._panchina(liberi, titolari, replace(regole, panchina=meno),
+                              portiere=not any(g.ruolo == "P" for _, g in fermi))
         for k, g in fermi:
             scelti.insert(min(k, len(scelti)), g)
         return scelti

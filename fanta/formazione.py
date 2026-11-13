@@ -708,14 +708,16 @@ def _moduli_ammessi(regole: Regole) -> frozenset:
 
 
 def _panchina(rosa: list[Giocatore], titolari: list[Giocatore], regole: Regole,
-              ordinati: list[Giocatore] | None = None) -> list[Giocatore]:
+              ordinati: list[Giocatore] | None = None, portiere: bool = True) -> list[Giocatore]:
     """I migliori non titolari per valore (gioca N% x fantavoto atteso; almeno un portiere se c'è), messi in ordine di fantavoto
     atteso: una riserva entra solo se ha preso voto, e a quel punto conta quanto vale se gioca (#612). Panchina per ruolo: prima
     i ruoli nell'ordine della lega (P, D, C, A), dentro il ruolo chi vale di più; panchina libera: chi vale di più, di ogni ruolo.
     Chi quasi certamente non gioca (meno di IMPROBABILE_SOTTO: infortunati, squalificati, chi non è tra i convocati) sta dopo chi
     gioca: per i punti attesi non cambia quasi niente, ma un infortunato per primo in panchina a chi legge sembra un errore, come
     tra i titolari (#329). Con le probabili del 12/11/2026 senza questa regola succedeva in 9 squadre su 10.
-    `ordinati` (facoltativo) = la rosa già ordinata con `_per_valore`, per non riordinarla a ogni chiamata."""
+    `ordinati` (facoltativo) = la rosa già ordinata con `_per_valore`, per non riordinarla a ogni chiamata.
+    `portiere` = False: panchina libera senza il posto del portiere messo per primo (un portiere di riserva è già in panchina, fermo
+    per un anticipo cominciato: `consigli.Fermi.panchina_di`)."""
     ids = {t.id for t in titolari}
     resto = [g for g in (ordinati if ordinati is not None else _per_valore(rosa)) if g.id not in ids]
     posti = regole.panchina.posti
@@ -723,7 +725,7 @@ def _panchina(rosa: list[Giocatore], titolari: list[Giocatore], regole: Regole,
         scelti = [g for r in RUOLI for g in [x for x in resto if x.ruolo == r][:posti.get(r, 0)]]
     else:
         n = regole.panchina.numero
-        portieri = [g for g in resto if g.ruolo == "P"][:1]
+        portieri = [g for g in resto if g.ruolo == "P"][:1 if portiere else 0]
         altri = [g for g in resto if g.id not in {p.id for p in portieri}]
         scelti = (portieri + altri)[:n]
     # a pari fantavoto atteso resta davanti chi ha più valore (ordinamento stabile: `scelti` è già in ordine di valore nel ruolo)
