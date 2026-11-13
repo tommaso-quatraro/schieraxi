@@ -66,28 +66,6 @@ struct NomiInteriTests {
     }
 
     @MainActor
-    @Test("Oggi durante la giornata: il nome va a capo intero")
-    func rigaInCorsoNome() {
-        Self.cresceIntero("RigaGiocatoreInCorso") { nome in
-            RigaGiocatoreInCorso(g: GiocatoreInCorso(id: 32, nome: nome, ruolo: "D", squadra: "genoa", stato: "fatto", fantavoto: 7.5),
-                                 nota: "Dalla panchina", apri: { _ in })
-        }
-    }
-
-    /// La nota vera è corta («GEN · Dalla panchina»), ma con il testo massimo, accanto al ruolo e al fantavoto, va già oltre due
-    /// righe. Qui si misura con due note più lunghe.
-    @MainActor
-    @Test("Oggi durante la giornata: la riga sotto il nome va a capo intera")
-    func rigaInCorsoNota() {
-        let nota = "Dalla panchina, al posto di un titolare rimasto senza voto"
-        Self.cresceIntero("RigaGiocatoreInCorso, nota", font: .caption, corto: nota,
-                          lungo: nota + " perché la sua partita è stata rinviata") { testo in
-            RigaGiocatoreInCorso(g: GiocatoreInCorso(id: 33, nome: "Aldo Pinarotti", ruolo: "A", stato: "fatto", fantavoto: 6),
-                                 nota: testo, apri: { _ in })
-        }
-    }
-
-    @MainActor
     @Test("Rosa di una squadra: il nome va a capo intero")
     func rigaRosa() {
         Self.cresceIntero("RigaRosa") { nome in

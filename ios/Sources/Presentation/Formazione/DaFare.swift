@@ -1,6 +1,7 @@
 import Foundation
 
-// Parti dell'app (non del widget) per le cose da fare di Oggi: dove portano e in che ordine.
+// Parti dell'app (non del widget) per le voci di «Da fare» (le decisioni in cima alla Formazione): dove portano e cosa dice il
+// pulsante.
 
 extension DestinazioneDaFare {
     /// Dove porta: prima il collegamento `schieraxi://`, poi la sezione scritta a parole; altrimenti da nessuna parte.
@@ -22,8 +23,13 @@ extension DaFareVoce {
     /// squadra, e il pulsante lo dice (come `dfAllaRosa` della web).
     var allaRosa: Bool { Self.schedeTolte.contains(destinazione?.scheda ?? "") }
 
-    /// Cosa dice il pulsante: quello del server, «Vedi la rosa» per le righe che aprono la rosa, «Apri» se il server non lo dice.
-    var testoPulsante: String { allaRosa ? Catalogo.Lega.vediRosa : (azione ?? Catalogo.Df.apri) }
+    /// Cosa dice il pulsante, come `dfRiga` della web: «Vedi la rosa» per le righe che aprono la rosa, «Usa la consigliata» per la
+    /// consigliata cambiata, altrimenti quello del server, «Apri» se il server non lo dice.
+    var testoPulsante: String {
+        if allaRosa { return Catalogo.Lega.vediRosa }
+        if consigliataCambiata { return Catalogo.Formazione.usaConsigliata }
+        return azione ?? Catalogo.Df.apri
+    }
 }
 
 extension Oggi {

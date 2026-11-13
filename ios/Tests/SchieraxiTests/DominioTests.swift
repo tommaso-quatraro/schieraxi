@@ -38,27 +38,7 @@ final class DominioTests: XCTestCase {
 
     // Le etichette sono passate a Swift Testing: `EtichetteGiocatoreTests`.
 
-    // MARK: ballottaggi, testo, nome corto
-
-    func testBallottaggioSoloPerITitolariIncerti() throws {
-        let titolare = try giocatore(1, "Sicuro", titolarita: "titolare", punti: 6)
-        let incerto = try giocatore(2, "Incerto", titolarita: "ballottaggio", punti: 5)
-        let a = try giocatore(3, "Alt A", punti: 5.2)
-        let b = try giocatore(4, "Alt B", punti: 4.1)
-        let c = try giocatore(5, "Alt C", punti: 3.0)
-        let fuoriRuolo = try giocatore(6, "Attaccante", ruolo: "A", punti: 9)
-        let improbabile = try giocatore(7, "Mai", punti: 8, pVoto: 0.1)
-        let rosa = [titolare, incerto, a, b, c, fuoriRuolo, improbabile]
-        XCTAssertTrue(Ballottaggio.alternative(per: titolare, rosa: rosa, titolari: [titolare, incerto]).isEmpty)
-        let alt = Ballottaggio.alternative(per: incerto, rosa: rosa, titolari: [titolare, incerto])
-        XCTAssertEqual(alt.map(\.giocatore.nome), ["Alt A", "Alt B"], "due al massimo, i più forti dello stesso ruolo, senza chi gioca poco")
-        XCTAssertEqual(alt[0].differenza, 0.2, accuracy: 0.001)
-        XCTAssertTrue(alt[0].quasiPari)
-        XCTAssertFalse(alt[1].quasiPari)
-        // senza titolarità indicata (server vecchio) non c'è ballottaggio
-        let senza = try giocatore(8, "Senza", titolarita: nil)
-        XCTAssertTrue(Ballottaggio.alternative(per: senza, rosa: rosa, titolari: []).isEmpty)
-    }
+    // MARK: testo, nome corto
 
     func testTestoDellaFormazione() throws {
         let p = try giocatore(1, "Noraldi", ruolo: "P")
@@ -159,7 +139,7 @@ final class DominioTests: XCTestCase {
 
     func testCollegamentiSchieraxi() {
         func vai(_ testo: String) -> Destinazione? { URL(string: testo).flatMap { Collegamenti.interpreta($0) } }
-        XCTAssertEqual(vai("schieraxi://oggi"), .sezione(.oggi))
+        XCTAssertEqual(vai("schieraxi://oggi"), .sezione(.formazione), "Oggi è nella Formazione (#673): widget e avvisi vecchi la aprono")
         XCTAssertEqual(vai("schieraxi://formazione"), .sezione(.formazione))
         XCTAssertEqual(vai("schieraxi://mercato"), .sezione(.squadra), "Mercato è diventato Squadra")
         XCTAssertEqual(vai("schieraxi://squadra"), .sezione(.squadra))
@@ -182,13 +162,15 @@ final class DominioTests: XCTestCase {
     @MainActor
     func testSezioneDiAvvio() throws {
         let memoria = try XCTUnwrap(UserDefaults(suiteName: "prova-avvio-\(UUID().uuidString)"))
-        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .oggi, "senza scelte si parte da Oggi")
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione, "senza scelte si parte dalla Formazione, come la web")
+        memoria.set("oggi", forKey: "ultimaSezione")
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione, "chi era su Oggi si ritrova nella Formazione (#673)")
         memoria.set("scambi", forKey: "ultimaSezione")
         XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .altro, "predefinito: l'ultima sezione")
         memoria.set("mercato", forKey: "sezioneAvvio")
         XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .squadra, "una sezione scelta vince sull'ultima")
         memoria.set("boh", forKey: "sezioneAvvio")
-        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .oggi)
+        XCTAssertEqual(Navigazione.sezioneDiAvvio(memoria), .formazione)
     }
 
     func testColoriESigleDelleSquadre() {

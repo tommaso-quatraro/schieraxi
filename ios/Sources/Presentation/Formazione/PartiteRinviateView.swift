@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Oggi, riquadro «Partita rinviata» (campo `rinvio` di Oggi): quali partite, la data del recupero, i miei giocatori coinvolti e il
-/// menu «Per questa giornata i loro giocatori…», che vale solo per questa giornata. Come la web app.
+/// Formazione, riquadro «Partita rinviata» (campo `rinvio` di `GET /api/oggi`, `cardRinvio` della web): quali partite, la data del
+/// recupero, i miei giocatori coinvolti e il menu «Per questa giornata i loro giocatori…», che vale solo per questa giornata.
 struct CartaPartitaRinviata: View {
     let scelta: SceltaRinvio
     var inCorso = false
@@ -30,7 +30,7 @@ struct CartaPartitaRinviata: View {
 }
 
 /// Il menu «Per questa giornata i loro giocatori…» con la riga sotto (regola della lega o scelta solo per questa giornata).
-/// Uguale nel riquadro di Oggi e nel riepilogo della giornata finita.
+/// Uguale nel riquadro della partita rinviata e, a giornata finita con un recupero che manca, sotto la testa della Formazione.
 struct MenuRinvio: View {
     let scelta: SceltaRinvio
     var inCorso = false

@@ -1,7 +1,4 @@
 # Da fare in Oggi (`cardDaFare` della web). Poi: python script/testi.py --scrivi
 df.da_fare
 df.urgente
-df.altre
-df.tutto_posto_mister
-df.non_niente_sbrigare
 df.apri
