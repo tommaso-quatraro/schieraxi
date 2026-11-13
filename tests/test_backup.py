@@ -1,5 +1,6 @@
 """Backup e ripristino dei dati della lega, su una cartella temporanea."""
 import json
+import os
 from datetime import datetime
 
 import pytest
@@ -378,6 +379,38 @@ def test_copia_serale_una_al_giorno_e_si_tengono_le_ultime(radice):
 
 def test_copia_serale_senza_dati_non_scrive(tmp_path):
     assert backup.salva_copia(tmp_path, adesso=GIRO_SERALE) is None and not (tmp_path / "dati" / "backup").exists()
+
+
+def _data(p, quando: datetime) -> None:
+    os.utime(p, (quando.timestamp(), quando.timestamp()))
+
+
+def test_la_copia_appena_scritta_resta_anche_con_l_orologio_indietro(radice):
+    """#709: l'orologio del server torna indietro (o nella cartella ci sono copie datate nel futuro): la copia di adesso ha un
+    nome che viene prima di tutte le altre. Resta lo stesso, e le copie restano `tieni`: esce la più vecchia per data del file."""
+    cartella = radice / "dati" / "backup"
+    cartella.mkdir()
+    for giorno in range(1, 8):                                       # sette copie con una data dopo quella di adesso
+        copia = cartella / f"schieraxi-backup-2026-11-0{giorno}.json"
+        copia.write_text("{}")
+        _data(copia, datetime(2026, 11, giorno, 3, 30))
+    scritta = backup.salva_copia(radice, tieni=7, adesso=GIRO_SERALE)
+    assert scritta == cartella / "schieraxi-backup-2026-10-29.json" and scritta.is_file()
+    assert sorted(p.name for p in cartella.iterdir()) == (["schieraxi-backup-2026-10-29.json"]
+                                                          + [f"schieraxi-backup-2026-11-0{g}.json" for g in range(2, 8)])
+
+
+def test_le_copie_si_tengono_per_data_del_file_non_per_nome(radice):
+    """Due copie con il nome e la data del file in disaccordo (per esempio una copia rimessa a mano nella cartella): si tiene la
+    più recente per data del file."""
+    cartella = radice / "dati" / "backup"
+    cartella.mkdir()
+    nome_vecchio, nome_nuovo = cartella / "schieraxi-backup-2026-10-01.json", cartella / "schieraxi-backup-2026-10-02.json"
+    for copia, quando in ((nome_vecchio, datetime(2026, 10, 28, 3, 30)), (nome_nuovo, datetime(2026, 10, 24, 3, 30))):
+        copia.write_text("{}")
+        _data(copia, quando)
+    backup.salva_copia(radice, tieni=2, adesso=GIRO_SERALE)
+    assert nome_vecchio.exists() and not nome_nuovo.exists()
 
 
 def test_il_ripristino_non_cambia_le_formazioni_delle_giornate_chiuse(dati_isolati, radice, monkeypatch):
