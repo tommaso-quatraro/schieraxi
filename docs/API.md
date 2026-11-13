@@ -601,8 +601,9 @@ formazione non si spostano più (dal 5/11/2026, #373): `GET /api/formazione` li 
 alla consigliata che li sposta risponde `400` `giocatore_bloccato` (vedi `POST /api/formazione/valuta`). Partite
 giocate 7 giorni o più prima del gruppo principale (metà giornata giocata e il resto rinviato) fissano la scadenza come prima.
 Le partite rinviate non tengono ferma la giornata da giocare (`giornata` di `/api/oggi`, `prossima_giornata` di `/api/stato`), quante
-che siano (#659): una giornata già cominciata la tengono aperta solo le partite entro 5 giorni dalla sua prima, quindi con metà
-giornata giocata e il resto rinviato a settimane dopo si passa alla giornata successiva e non si torna indietro per il recupero.
+che siano (#659): con metà giornata giocata (più di 2 partite giocate settimane prima del turno) e il resto rinviato a settimane
+dopo si passa alla giornata successiva e non si torna indietro per il recupero; una o due partite anticipate di settimane
+(Supercoppa, coppe) invece non fanno saltare la giornata, che resta da giocare finché il suo turno ha partite da cominciare.
 
 Una partita della giornata è **rinviata** se non è stata giocata e non sta nel turno (regola unica di `fanta/turno.py`): senza data
 o spostata a un recupero, anche settimane dopo. Appena il recupero è giocato non è più rinviata: i suoi voti valgono per la sua
