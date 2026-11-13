@@ -11,7 +11,6 @@ import pandas as pd
 from fanta import consigli, libero, notifiche, pianificatore, regole, scelte
 from fanta.regole import Regole
 
-import test_copertura as tc
 import test_libero as tl
 import test_pianificatore as tp
 from test_avviso_scadenza import BASE, Finto, _cambi_ha_visto, _giro, ore
@@ -93,15 +92,6 @@ def test_cambi(tmp_path, monkeypatch):
         "Castro è infortunato: metti Bonny. La formazione si chiude il 28/10 alle 18:30."]
     assert [t for t, _ in mandati] == ["SchieraXI · cambia un titolare"]
     assert c.chieste == {("previsioni", 9, None), ("formazione", 9, adesso)}
-
-
-def test_copertura(tmp_path, monkeypatch):
-    prev, rose = tc._rosa(tc._con(tc._base(), "P", 2))
-    c = Calcoli(monkeypatch, prev)
-    mandati, manda = _registro()
-    assert notifiche.copertura(tc._db(), Regole(), rose, tc.ADESSO, tmp_path / "n.json", manda, {})
-    assert len(mandati) == 1 and "1 portiere disponibile" in mandati[0][1]
-    assert c.chieste == {("previsioni", 9, None)}
 
 
 def test_promemoria_di_un_ora(tmp_path, monkeypatch):
