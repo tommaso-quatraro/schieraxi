@@ -127,6 +127,30 @@ def test_partita_giocata_nel_calendario_non_si_chiede_piu():
     assert r.passo() == "ferma" and m.url == []
 
 
+def test_rinviata_e_rimessa_il_giorno_dopo_si_segue_quando_si_gioca():
+    """#661: domenica alle 20:40 la fonte dà la partita rinviata; il calendario la rimette a lunedì alle 18:30. Lunedì la diretta
+    chiede di nuovo e lo stato segue l'orario: non resta «rinviata» con la data vecchia (Oggi farebbe entrare la riserva)."""
+    from fanta import fasi
+    m = Mondo("2026-11-01 20:40", _espn("STATUS_POSTPONED", "post", ("0", "0"), "0"))
+    cal = [dict(CAL[0])]
+    r = m.raccoglitore(cal=cal)
+    assert r.passo() == "ok" and _juve(r)["stato"] == "rinviata"
+    m.avanza(120)
+    assert r.passo() == "ferma" and len(m.url) == 1                 # stessa data nel calendario: chiusa, nessuna richiesta
+    cal[0]["data"] = "2026-11-02 18:30"                              # il calendario la rimette a lunedì
+    m.avanza((datetime(2026, 11, 2, 12, 0) - m.t).total_seconds())
+    assert r.passo() == "ferma" and len(m.url) == 1                 # lunedì mattina: fuori dalla finestra
+    p = live.risposta(r, cal)["partite"][0]
+    assert (p["stato"], p["data"]) == ("da_giocare", "2026-11-02 18:30")
+    assert fasi.stato_partita(cal[0], m.t, r.istantanea()["partite"]) == "da_giocare"
+    m.avanza((datetime(2026, 11, 2, 18, 25) - m.t).total_seconds())  # si apre la finestra della data nuova
+    m.corpo = _espn("STATUS_FIRST_HALF", "in", ("1", "0"), "5'")
+    m.corpo["events"][0]["date"] = "2026-11-02T17:30Z"
+    assert r.passo() == "ok" and len(m.url) == 2 and "dates=20261102" in m.url[-1]
+    p = live.risposta(r, cal)["partite"][0]
+    assert (p["stato"], p["gol_casa"], p["data"]) == ("primo_tempo", 1, "2026-11-02 18:30")
+
+
 def _riga(**k):
     db = sqlite3.connect(":memory:")
     db.row_factory = sqlite3.Row
