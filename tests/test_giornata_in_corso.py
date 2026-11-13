@@ -6,6 +6,8 @@ giornata era finita e contava 5 giorni e 1 ora alla scadenza della successiva.""
 import sqlite3
 from datetime import datetime
 
+import pytest
+
 from fanta import consigli, gestione, regole
 from fanta.regole import Regole
 
@@ -17,12 +19,13 @@ G11 = [("2026-11-06 20:45", 0), ("2026-11-07 15:00", 0), ("2026-11-07 15:00", 0)
 DOMENICA_SERA = datetime(2026, 11, 1, 19, 35)
 
 
-def _db(g10=G10, g11=G11):
+def _db(g10=G10, g11=G11, g12=()):
     db = sqlite3.connect(":memory:")
     db.row_factory = sqlite3.Row
     db.execute("CREATE TABLE partite (stagione TEXT, giornata INT, data TEXT, casa TEXT, trasferta TEXT, giocata INT)")
     db.executemany("INSERT INTO partite VALUES (?,?,?,?,?,?)",
-                   [(ST, g, d, f"c{g}{i}", f"t{g}{i}", gi) for g, partite in ((10, g10), (11, g11)) for i, (d, gi) in enumerate(partite)])
+                   [(ST, g, d, f"c{g}{i}", f"t{g}{i}", gi)
+                    for g, partite in ((10, g10), (11, g11), (12, g12)) for i, (d, gi) in enumerate(partite)])
     return db
 
 
@@ -76,3 +79,46 @@ def test_recupero_isolato_non_tiene_ferma_la_giornata():
 def test_giornata_ancora_quasi_tutta_da_giocare():
     sabato = [(d, 1 if i < 2 else 0) for i, (d, _) in enumerate(G10)]
     assert consigli.prossima_giornata(_db(sabato), ST, datetime(2026, 10, 31, 19, 0)) == 10
+
+
+# ---------------------------------------------------------------- metà giornata rinviata a un mese dopo (#659)
+# La giornata 10 giocata in parte nel fine settimana e il resto rinviato ai primi di dicembre (o senza data): la giornata da giocare
+# deve passare alla 11 e poi alla 12, che intanto si giocano. Prima, con 5 o più partite rinviate, restava la 10 fino al recupero.
+G12 = [("2026-11-21 15:00", 0), ("2026-11-21 18:00", 0), ("2026-11-21 20:45", 0), ("2026-11-22 12:30", 0), ("2026-11-22 15:00", 0),
+       ("2026-11-22 15:00", 0), ("2026-11-22 18:00", 0), ("2026-11-22 20:45", 0), ("2026-11-23 18:30", 0), ("2026-11-23 20:45", 0)]
+RECUPERI = ["2026-12-02 18:30", "2026-12-02 20:45", "2026-12-02 20:45", "2026-12-03 18:30", "2026-12-03 20:45", "2026-12-03 20:45"]
+MARTEDI = datetime(2026, 11, 3, 10, 0)
+MARTEDI_DOPO = datetime(2026, 11, 10, 10, 0)
+
+
+def _rinviate(n: int, con_data: bool = True, giocate: bool = True) -> list:
+    """La giornata 10 con le prime 10 - n partite nel fine settimana (giocate) e le altre n rinviate a dicembre (o senza data)."""
+    return [(d, int(giocate)) for d, _ in G10[:10 - n]] + [(RECUPERI[k] if con_data else None, 0) for k in range(n)]
+
+
+@pytest.mark.parametrize("con_data", [True, False], ids=["recupero a dicembre", "senza data"])
+@pytest.mark.parametrize("n", [4, 5, 6])
+def test_partite_rinviate_a_un_mese_dopo_non_tengono_ferma_la_giornata(n, con_data):
+    g10 = _rinviate(n, con_data)
+    assert consigli.prossima_giornata(_db(g10, G11, G12), ST, MARTEDI) == 11
+    g11_finita = [(d, 1) for d, _ in G11]
+    assert consigli.prossima_giornata(_db(g10, g11_finita, G12), ST, MARTEDI_DOPO) == 12
+    assert consigli.giornata_da_giocare(_db(g10, g11_finita, G12), ST, _regole_scadenza_10(), MARTEDI_DOPO) == 12
+
+
+def test_cinque_rinviate_oggi_mostra_la_giornata_dopo_aperta(monkeypatch):
+    monkeypatch.setattr(consigli, "_adesso", lambda: MARTEDI)
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    o = gestione.oggi_senza_rose(_db(_rinviate(5), G11, G12), adesso=MARTEDI, regole=_regole_scadenza_10())
+    assert o["giornata"] == 11 and o["iniziata"] is False
+    assert o["scadenza"] == "2026-11-06 20:35"
+
+
+def test_quattro_giocate_e_sei_rinviate_la_giornata_resta_finche_si_gioca_il_fine_settimana():
+    """4 partite nel fine settimana e 6 rinviate a dicembre: per turno.py il turno è il gruppo di dicembre. Finché le 4 partite non
+    sono giocate tutte, la giornata da giocare resta la 10; dopo si passa alla 11, che comincia prima del recupero."""
+    prima = _rinviate(6, giocate=False)
+    assert consigli.prossima_giornata(_db(prima, G11, G12), ST, datetime(2026, 10, 30, 12, 0)) == 10
+    sabato_sera = [(d, 1 if i < 2 else 0) for i, (d, _) in enumerate(prima)]     # 2 giocate, la terza in corso, la quarta domenica
+    assert consigli.prossima_giornata(_db(sabato_sera, G11, G12), ST, datetime(2026, 10, 31, 22, 0)) == 10
+    assert consigli.prossima_giornata(_db(_rinviate(6), G11, G12), ST, datetime(2026, 11, 1, 23, 0)) == 11

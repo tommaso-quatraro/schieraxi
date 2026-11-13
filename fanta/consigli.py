@@ -102,26 +102,41 @@ def _data(testo) -> datetime | None:
 
 
 def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | None = None) -> int | None:
-    """La giornata in corso o, se non ce n'è una, la prossima. È la prima con almeno metà delle partite ancora da giocare,
-    oppure con anche una sola partita da giocare nel suo turno (regola unica in turno.py, come la scadenza) e non passata da più di
-    MARGINE_RISULTATI: così la domenica sera e i posticipi del lunedì tengono aperta la giornata finché non sono finite tutte.
-    Un recupero isolato (rinviato a settimane dopo, o rimasto con la vecchia data) non tiene ferma la giornata."""
+    """La giornata in corso o, se non ce n'è una, la prossima. È la prima con anche una sola partita da giocare nel suo turno (regola
+    unica in turno.py, come la scadenza) e non passata da più di MARGINE_RISULTATI: così la domenica sera e i posticipi del lunedì
+    tengono aperta la giornata finché non sono finite tutte. Una giornata ancora senza date la tengono 5 o più partite da giocare.
+    Le partite rinviate (fuori dal turno o senza data, come in rinvii.py) non tengono ferma la giornata, quante che siano (#659).
+    Se quella giornata è già cominciata e una giornata dopo comincia prima della prossima partita ancora da giocare della prima
+    (metà giornata giocata e il resto rinviato a settimane dopo: per turno.py il turno diventa il recupero), vale quella dopo."""
     adesso = adesso or _adesso()
+    da = adesso - MARGINE_RISULTATI        # una partita non giocata e cominciata prima: calendario fermo, non tiene la giornata
     per_giornata: dict[int, list[tuple[datetime | None, bool]]] = {}
     for g, testo, giocata in db.execute("SELECT giornata, data, giocata FROM partite WHERE stagione = ? ORDER BY giornata",
                                         (stagione,)):
         per_giornata.setdefault(g, []).append((_data(testo) if testo else None, bool(giocata)))
+    scelta: int | None = None
+    prossima: datetime | None = None      # la prossima partita da giocare della giornata scelta, se è già cominciata
+    dopo: tuple[datetime, int] | None = None
     for g in sorted(per_giornata):
         partite = per_giornata[g]
         aperte = [d for d, giocata in partite if not giocata]
-        # 5 o più partite aperte tengono la giornata, ma non se sono TUTTE passate da più di MARGINE_RISULTATI: vuol dire che
-        # il calendario non si aggiorna (fonte giù) e quella giornata è già stata giocata
-        if len(aperte) >= 5 and any(d is None or d >= adesso - MARGINE_RISULTATI for d in aperte):
-            return g
         inizio = turno.inizio(d for d, _ in partite)
-        if aperte and inizio and any(d and turno.nel_turno(d, inizio) and d >= adesso - MARGINE_RISULTATI for d in aperte):
-            return g
-    return None
+        if inizio is None:
+            if len(aperte) < 5:
+                continue
+        elif not any(d and turno.nel_turno(d, inizio) and d >= da for d in aperte):
+            continue
+        if scelta is None:
+            cominciata = inizio is not None and min(
+                (d for d, giocata in partite if d and turno.conta_per_scadenza(d, giocata, inizio)), default=adesso) <= adesso
+            if not cominciata:
+                return g
+            scelta, prossima = g, min((d for d in aperte if d and d >= da), default=None)
+            continue
+        primo = min((d for d in aperte if d and turno.della_giornata(d, inizio) and d >= da), default=None) if inizio else None
+        if primo is not None and prossima is not None and primo < prossima and (dopo is None or primo < dopo[0]):
+            dopo = (primo, g)
+    return dopo[1] if dopo else scelta
 
 
 def giornata_da_giocare(db: sqlite3.Connection, stagione: str, regole: Regole | None, adesso: datetime | None = None) -> int | None:
