@@ -60,14 +60,17 @@ struct ImpostazioniView: View {
                     NuovaVersioneSezione()
                     Section {
                         ForEach(VociImpostazioni.informazioni(gestisce: sessione.puoAmministrare)) { voce in
-                            RigaVoceImpostazioni(voce: voce)
+                            RigaVoceImpostazioni(voce: voce).id("imp-\(voce.id)")
                         }
                     }
                 }
                 .scrollContentBackground(.hidden)
                 .contentMargins(.bottom, 24, for: .scrollContent)
                 .background(Sfondo())
-                .demoInFondo()
+                // fotografia `impostazioni-fondo`: la fine della pagina, quando le righe della lega sono arrivate (con le righe che
+                // arrivano dopo, `demoInFondo` da solo restava in cima)
+                .demoScorriA("imp-informazioni", proxy: proxy, schermate: ["impostazioni"], inFondo: true, ancora: .bottom,
+                             pronto: vm.squadre.dato != nil)
                 .refreshable {
                     await vm.carica()
                     await avvisi.carica()
