@@ -1,0 +1,15 @@
+{
+  "titolo": "Formazione: giornate con molte partite rinviate, panchina e frasi più giuste",
+  "voci": [
+    "Se metà giornata si gioca e il resto è rinviato a settimane dopo, Oggi e la Formazione passano alla giornata successiva, con la sua consigliata.",
+    "Panchina della consigliata: un solo portiere anche se il portiere di riserva ha già giocato l'anticipo, e mai lo stesso giocatore due volte.",
+    "Frasi più giuste: niente più «farebbe 72,1 invece di 72,1» sotto il campo, e nel Mercato il motivo vero quando il guadagno sta in poche giornate."
+  ],
+  "tecnico": [
+    "consigli.prossima_giornata: una giornata con le date la tiene aperta solo una partita del suo turno (turno.nel_turno, non passata da più di MARGINE_RISULTATI); la regola delle 5 partite aperte vale solo per una giornata senza date. Se la prima giornata aperta è già cominciata (prima partita che conta per la scadenza, turno.conta_per_scadenza, passata) e una giornata dopo ha una partita della giornata (turno.della_giornata) prima della prossima partita da giocare della prima, vale quella dopo (caso 4 giocate e 6 rinviate, dove per turno.py il turno è il recupero). Test di test_fonti_rotte su 6 partite senza data in una giornata con le date adattato: ora non la tengono aperta.",
+    "formazione._panchina(portiere=False): panchina libera senza il posto del portiere messo per primo; consigli.Fermi.panchina_di lo usa se un portiere fermo è già in panchina.",
+    "consigli._rosa toglie i doppioni per id (il primo): consigliata, consigliata tenuta (stabile), Fermi e Valutatore sulla stessa rosa.",
+    "perche_scelta.motivo: scelta.stabile solo se i due punti a un decimale sono diversi; altrimenti le righe del caso pari (più sicuro, fantavoto più alto, motivo proprio, pari), senza la nota dell'incerto.",
+    "buon_senso.guadagno_significativo: senso.differenza_piccola solo con la somma sotto SOGLIA_BREVE; frase nuova senso.guadagno_concentrato (catalogo frase.json, testi.js rigenerato) quando la somma basta ma le giornate in guadagno sono meno di QUOTA_GIORNATE_POSITIVE."
+  ]
+}
