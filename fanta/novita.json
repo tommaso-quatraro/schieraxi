@@ -1,5 +1,24 @@
 [
   {
+    "versione": "1.487",
+    "data": "2026-11-13T08:17:43",
+    "titolo": "Account eliminato: non restano dati tuoi fuori dalle copie di sicurezza, e le copie scadono",
+    "voci": [
+      "Quando elimini il tuo account, il server cancella subito anche il collegamento fra te e le formazioni consigliate che ti ha mostrato: prima restava in un elenco comune finché non usciva da solo, molto più tardi.",
+      "Le copie di sicurezza degli account che il server fa prima di un aggiornamento ora scadono dopo sette giorni, come quelle di ogni notte: prima restavano sul server senza scadenza, anche con i dati di chi aveva eliminato l'account.",
+      "Le copie di sicurezza di ogni notte sono di nuovo sempre le ultime sette: quelle fatte prima di un aggiornamento non prendono più il loro posto."
+    ],
+    "tecnico": [
+      "backup.copia_account(cartella, origine, tieni, *, adesso): ruota solo le copie con la data nel nome (COPIA_SERALE, account-AAAA-MM-GG.sqlite); prima il glob account-*.sqlite contava anche account-prima-della-migrazione-N.sqlite, che in ordine di nome vengono dopo: con 7 di queste la copia appena scritta si cancellava e il comando diceva lo stesso «copiato».",
+      "Nello stesso giro toglie le account-prima-della-migrazione-*.sqlite con data del file più vecchia di GIORNI_COPIE_MIGRAZIONE (7): restano al massimo 8 giorni. Le copie serali non scadono per età, solo per numero. adesso arriva da cmd_backup (niente orologio nella logica).",
+      "account._copia_prima_di_migrare: il file nasce con os.open(O_CREAT | O_EXCL, 0o600), senza dipendere dall'umask del processo.",
+      "consigli.togli_utenti(numeri): sotto _blocco_consigliate e lo stesso BloccoFile di _ricorda toglie i numeri da utenti e proprie di dati/consigliate.json e cancella le voci rimaste senza nessuno; le voci senza utenti (comandi, app senza account) restano. consigli.numeri_ricordati() li elenca.",
+      "POST /api/account/elimina chiama togli_utenti dopo account.elimina e contesto.elimina_cartella; se non riesce (OSError) l'account resta eliminato, la risposta resta 200 (prima, con il disco pieno, 507) e l'errore va nel registro di sicurezza (cancellazione_dati_non_riuscita, file=consigliate) e in quello del servizio.",
+      "python -m fanta cartelle-senza-account elenca anche i numeri di account eliminati rimasti nelle consigliate (eliminati prima di questa versione, o pulizia non riuscita) e con --esegui li toglie; con il database degli account vuoto non cancella niente, come prima. Sul server va lanciato una volta con --esegui per ripulire gli account eliminati prima.",
+      "Client: nessuna rotta cambia."
+    ]
+  },
+  {
     "versione": "1.486",
     "data": "2026-11-13T08:11:49",
     "titolo": "Server: aggiornata una libreria per una correzione di sicurezza",
