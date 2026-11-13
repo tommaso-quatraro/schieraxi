@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Scegli a mano gli undici che hai schierato in una giornata già finita (per il Diario). Si parte da quelli già salvati o, in mancanza,
-/// da quelli della consigliata; il server controlla che siano undici della tua rosa con un modulo valido.
-/// Se il server rifiuta, l'errore si vede qui dentro, sopra il conto «N di 11»: la lista del Diario sotto il foglio non si vede.
+/// «Non è quello che ho schierato» (pagina Giornate): scegli a mano gli undici che hai schierato in una giornata già finita. Si parte
+/// dagli 11 della riga (la formazione che conta: la tua, la copia alla scadenza o la consigliata), come la web; il server controlla che
+/// siano undici della tua rosa con un modulo valido.
+/// Se il server rifiuta, l'errore si vede qui dentro, sopra il conto «N di 11»: la pagina sotto il foglio non si vede.
 struct FormazioneManualeDiarioView: View {
     let voce: VoceDiario
     /// Salva i titolari scelti: nil se è andata bene (il foglio si chiude), altrimenti l'errore da mostrare.
@@ -22,10 +23,9 @@ struct FormazioneManualeDiarioView: View {
 
     private let reparti = [("P", "Portieri"), ("D", "Difensori"), ("C", "Centrocampisti"), ("A", "Attaccanti")]
 
-    /// Chi era titolare: la formazione schierata se c'è, altrimenti la consigliata.
+    /// Chi era titolare nella riga: la formazione che conta per la giornata.
     private var iniziali: Set<Int> {
-        let titolari = (voce.schierata ?? voce.consigliata)?.titolari ?? []
-        return Set(titolari.compactMap(\.id))
+        Set((voce.cheConta.formazione?.titolari ?? []).compactMap(\.id))
     }
 
     var body: some View {
@@ -75,7 +75,7 @@ struct FormazioneManualeDiarioView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Text("\(scelti.count) di 11")
+                    Text(Catalogo.Avv.nDi11(n: String(scelti.count)))
                         .font(.subheadline.weight(.semibold)).monospacedDigit()
                         .foregroundStyle(scelti.count == 11 ? Color.verde : (scelti.count > 11 ? Color.attenzione : Color.testoSecondario))
                         .frame(maxWidth: .infinity)

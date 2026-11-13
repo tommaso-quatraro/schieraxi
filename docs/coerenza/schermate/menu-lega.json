@@ -6,7 +6,7 @@
       "web": "«Aggiorna le rose» per ultima, «Calendario» con l'elenco dei giocatori, «Nuova stagione» sempre, riga sotto ogni voce; Calendario «Calendario e difficoltà»",
       "iphone": "«Aggiorna le rose» per prima, niente «Calendario» né «Nuova stagione», senza righe sotto; «Difficoltà delle prossime partite»",
       "forma": "web",
-      "chi": "**fatto** (#634): dal 12/11/2026 la web (#615) e l'iPhone hanno le stesse quattro voci: Squadra «Squadre e rose» e «Aggiorna le rose», Altro «Diario delle giornate» e «Regole» (`VoceMenuLega`, `MenuLegaComeLaWebTests`). Via Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Scambi, Movimenti, Crediti e la voce Nuova stagione, che compare da sola in cima alle due schede quando le rose sono dell'anno prima (sulla web apre un foglio, sull'iPhone la pagina con i passi). Prima: fatto con #304 (test contro `VOCI_LEGA`); nomi e righe sotto dal catalogo dei testi (`Catalogo.Lega`, #496)",
+      "chi": "**fatto** (#634): dal 12/11/2026 la web (#615) e l'iPhone hanno le stesse quattro voci: Squadra «Squadre e rose» e «Aggiorna le rose», Altro «Diario delle giornate» e «Regole»; dal passo 2 di #673 il Diario è la pagina Giornate della barra, come la web (#671), e in Altro resta «Regole» (`VoceMenuLega`, `MenuLegaComeLaWebTests`). Via Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Scambi, Movimenti, Crediti e la voce Nuova stagione, che compare da sola in cima alle due schede quando le rose sono dell'anno prima (sulla web apre un foglio, sull'iPhone la pagina con i passi). Prima: fatto con #304 (test contro `VOCI_LEGA`); nomi e righe sotto dal catalogo dei testi (`Catalogo.Lega`, #496)",
       "stato": "fatto"
     },
     {
@@ -15,7 +15,7 @@
       "web": "niente asta",
       "iphone": "«Asta e riparazione»",
       "forma": "come la web",
-      "chi": "**fatto** (#634): dal 12/11/2026 Altro ha «Diario delle giornate» e «Regole» sulla web (#615) e sull'iPhone; via le voci Scambi, Movimenti, Crediti, Nuova stagione e Novità (le novità sono in Impostazioni > Informazioni). Prima: fatto (rassegna 6/11): l'iPhone ha tolto la pagina (`LegaPagine.swift`); le voci di Altro sono quelle di `VOCI_LEGA` (`VoceMenuLega`, `MenuLegaComeLaWebTests`). Non serve più una decisione",
+      "chi": "**fatto** (#634): dal 12/11/2026 Altro ha «Diario delle giornate» e «Regole» sulla web (#615) e sull'iPhone (dal passo 2 di #673 il Diario è la pagina Giornate della barra, come la web con #671); via le voci Scambi, Movimenti, Crediti, Nuova stagione e Novità (le novità sono in Impostazioni > Informazioni). Prima: fatto (rassegna 6/11): l'iPhone ha tolto la pagina (`LegaPagine.swift`); le voci di Altro sono quelle di `VOCI_LEGA` (`VoceMenuLega`, `MenuLegaComeLaWebTests`). Non serve più una decisione",
       "stato": "fatto"
     },
     {

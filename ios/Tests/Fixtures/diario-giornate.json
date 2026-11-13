@@ -1,0 +1,95 @@
+{
+  "giornate": [
+    {
+      "stagione": "2026-27", "giornata": 11, "giornata_lega": 8, "modificabile": true,
+      "consigliata": {"modulo": "3-4-3", "atteso": 72.5, "reale": 76.0, "origine": "mostrata",
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 2, "nome": "Difensore Due", "ruolo": "D"},
+                                   {"id": 3, "nome": "Attaccante Tre", "ruolo": "A"}]},
+      "schierata": {"modulo": "4-4-2", "atteso": 71.7, "reale": 74.5, "tipo": "manuale", "confermata": true,
+                    "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 4, "nome": "Difensore Quattro", "ruolo": "D"},
+                                 {"id": 5, "nome": "Attaccante Cinque", "ruolo": "A"}]},
+      "automatica": null,
+      "istantanea": {"giornata": 11, "modulo": "3-4-3", "atteso": 72.5, "stile": null, "calcolata": "2026-11-06T15:20:00",
+                     "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P", "p_voto": 0.98, "fv_atteso": 6.1},
+                                  {"id": 2, "nome": "Difensore Due", "ruolo": "D", "p_voto": 0.9, "fv_atteso": 6.0},
+                                  {"id": 3, "nome": "Attaccante Tre", "ruolo": "A", "p_voto": 0.85, "fv_atteso": 7.4}],
+                     "panchina": [{"id": 4, "nome": "Difensore Quattro", "ruolo": "D", "p_voto": 0.7, "fv_atteso": 5.8}]},
+      "giocatori": [{"id": 1, "p_voto": 0.97, "fv_atteso": 6.3, "fv": 5.5}, {"id": 4, "p_voto": 0.6, "fv_atteso": 5.6, "fv": 6.5},
+                    {"id": 5, "p_voto": 0.8, "fv_atteso": 6.9, "fv": null}, {"id": 2, "p_voto": 0.9, "fv_atteso": 6.0, "fv": 7.0}],
+      "consigliata_di_allora": "mostrata", "nota_consigliata": null, "nota_consigliata_frase": null
+    },
+    {
+      "stagione": "2026-27", "giornata": 10, "giornata_lega": 7, "modificabile": true,
+      "consigliata": {"modulo": "4-3-3", "atteso": 70.0, "reale": 68.0, "origine": "mostrata",
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
+      "schierata": {"modulo": "4-3-3", "atteso": 70.0, "reale": 68.0, "tipo": "manuale", "confermata": null,
+                    "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
+      "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.2, "fv": 6.0}]
+    },
+    {
+      "stagione": "2026-27", "giornata": 9, "giornata_lega": 6, "modificabile": true,
+      "consigliata": {"modulo": "4-4-2", "atteso": 69.5, "reale": 71.0, "origine": "mostrata",
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
+      "schierata": null,
+      "automatica": {"modulo": "4-4-2", "atteso": 69.5, "reale": 71.0, "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
+      "istantanea": null, "giocatori": []
+    },
+    {
+      "stagione": "2026-27", "giornata": 8, "giornata_lega": 5, "modificabile": true,
+      "consigliata": {"modulo": "4-3-3", "atteso": 74.0, "reale": 78.5, "origine": "ricostruita",
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 9, "nome": "Senza Numeri", "ruolo": "C"}]},
+      "schierata": null, "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.4, "fv": 7.0}],
+      "consigliata_di_allora": "non_salvata",
+      "nota_consigliata": "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata.",
+      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
+    },
+    {
+      "stagione": "2026-27", "giornata": 7, "giornata_lega": 4, "modificabile": true,
+      "consigliata": {"modulo": "4-3-3", "atteso": 73.8, "reale": 66.0, "origine": "ricostruita",
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
+      "schierata": {"modulo": "3-5-2", "reale": 64.0, "tipo": "manuale",
+                    "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
+      "automatica": null, "istantanea": null,
+      "consigliata_di_allora": "non_salvata",
+      "nota_consigliata": "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata.",
+      "nota_consigliata_frase": {"chiave": "diario.senza_confronto", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
+    },
+    {
+      "stagione": "2026-27", "giornata": 6, "giornata_lega": 3, "modificabile": true,
+      "consigliata": {"modulo": "4-3-3", "atteso": 70.5, "reale": 70.0, "origine": "mostrata",
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 2, "nome": "Difensore Due", "ruolo": "D"}]},
+      "schierata": {"modulo": "4-3-3", "atteso": 70.1, "reale": 70.0, "tipo": "manuale",
+                    "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 4, "nome": "Difensore Quattro", "ruolo": "D"}]},
+      "automatica": null, "istantanea": null
+    },
+    {
+      "stagione": "2025-26", "giornata": 38, "giornata_lega": null, "modificabile": false,
+      "consigliata": {"modulo": "4-4-2", "atteso": 68.0, "reale": 61.5, "origine": "ricostruita",
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
+      "schierata": null, "automatica": null, "istantanea": null,
+      "consigliata_di_allora": "non_salvata",
+      "nota_consigliata": "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata.",
+      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
+    }
+  ],
+  "scelte_tue": {
+    "giornate": 2, "meglio_tua": 0, "meglio_consigliata": 1, "pari": 1, "punti_differenza": -1.5, "percentuale_tua": 0,
+    "pochi_dati": true, "senza_istantanea": 1, "stessi_titolari": 1, "nota": "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata.",
+    "per_giornata": [
+      {"stagione": "2026-27", "giornata": 11, "giornata_lega": 8, "hai_scelto": ["Difensore Quattro", "Attaccante Cinque"],
+       "consigliava": ["Difensore Due", "Attaccante Tre"], "punti_tua": 74.5, "punti_consigliata": 76.0, "differenza": -1.5,
+       "esito": "consigliata"},
+      {"stagione": "2026-27", "giornata": 6, "giornata_lega": 3, "hai_scelto": ["Difensore Quattro"], "consigliava": ["Difensore Due"],
+       "punti_tua": 70.0, "punti_consigliata": 70.0, "differenza": 0.0, "esito": "pari"}
+    ]
+  },
+  "precisione": {
+    "giornate": 6, "pochi_dati": true, "giornate_minime": 8, "fonti": {"mostrati": 4, "ricostruiti": 2},
+    "fantavoto": {"errore_medio": 1.42, "scostamento": -0.2, "entro_un_punto": 58, "voti": 60},
+    "gioca": null,
+    "confronto": {"giornate": 2, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 1, "punti": 1.5, "media_consigliata": 73.0,
+                  "media_tua": 72.3, "nota": "1 giornata non entra nel confronto: la consigliata di allora non era stata salvata."},
+    "squadra": null,
+    "per_giornata": []
+  }
+}

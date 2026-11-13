@@ -30,12 +30,6 @@ struct GiornataLegaDiarioTests {
         #expect(try voce("{}").titolo == "Giornata", "mai «Giornata 0»")
     }
 
-    @Test("I punti del grafico usano il numero della lega")
-    func iPuntiDelGraficoUsanoIlNumeroDellaLega() throws {
-        let v = try voce(#"{"giornata": 11, "giornata_lega": 8, "stagione": "2026-27", "atteso_vs_fatto": {"atteso": 70, "fatti": 72, "basso": 60, "alto": 80, "dentro": true}}"#)
-        #expect(PuntoAttesoFatto.elenco([v]).map(\.giornata) == [8])
-    }
-
     @Test("Widget: le giornate del diario con lo scarto della giornata attuale")
     func ilWidgetRiportaLeGiornateDelDiarioAlNumeroDellaLega() throws {
         // giornata 11 di Serie A = giornata 8 della lega: la lega è partita alla giornata 4 di Serie A

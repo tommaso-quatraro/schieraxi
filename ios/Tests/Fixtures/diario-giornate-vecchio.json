@@ -1,0 +1,36 @@
+{
+  "giornate": [
+    {
+      "stagione": "2026-27", "giornata": 11, "giornata_lega": 8,
+      "consigliata": {"modulo": "3-4-3", "atteso": 72.5, "reale": 76.0, "dev_simulata": 2.1,
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 2, "nome": "Difensore Due", "ruolo": "D"}]},
+      "schierata": {"modulo": "4-4-2", "atteso": 71.7, "reale": 74.5, "tipo": "manuale",
+                    "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 4, "nome": "Difensore Quattro", "ruolo": "D"}]},
+      "istantanea": {"giornata": 11, "modulo": "3-4-3", "atteso": 72.5, "stile": "Equilibrata", "calcolata": "2026-11-06T15:20:00",
+                     "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 2, "nome": "Difensore Due", "ruolo": "D"}],
+                     "panchina": []}
+    },
+    {
+      "stagione": "2026-27", "giornata": 10, "giornata_lega": 7,
+      "consigliata": {"modulo": "4-3-3", "atteso": 70.0, "reale": 68.0, "dev_simulata": 2.0,
+                      "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
+      "schierata": null, "istantanea": null
+    }
+  ],
+  "sintesi": {"giornate": 1, "punti_schierata": 74.5, "punti_consigliata": 76.0, "attesi_schierata": 71.7, "meglio_tua": 0,
+              "meglio_consigliata": 1},
+  "scelte_tue": {
+    "giornate": 1, "meglio_tua": 0, "meglio_consigliata": 1, "pari": 0, "punti_differenza": -1.5, "percentuale_tua": 0,
+    "pochi_dati": true,
+    "per_giornata": [
+      {"stagione": "2026-27", "giornata": 11, "giornata_lega": 8, "hai_scelto": ["Difensore Quattro"], "consigliava": ["Difensore Due"],
+       "punti_tua": 74.5, "punti_consigliata": 76.0, "differenza": -1.5, "esito": "consigliata"}
+    ]
+  },
+  "precisione": {
+    "giornate": 2, "pochi_dati": true, "giornate_minime": 8,
+    "fantavoto": {"errore_medio": 1.3, "scostamento": 0.1, "entro_un_punto": 60, "voti": 20},
+    "confronto": {"giornate": 1, "meglio_consigliata": 1, "meglio_tua": 0, "pari": 0, "punti": 1.5},
+    "per_giornata": []
+  }
+}

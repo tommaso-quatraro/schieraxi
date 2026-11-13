@@ -1,8 +1,9 @@
-"""Le foto iOS «-fondo» della Lega: Diario, Stato dei dati e Rosa (issue #425).
+"""Le foto iOS «-fondo» della Lega: Stato dei dati e Rosa (issue #425).
 
-`lega-diario-fondo`, `lega-stato-fondo` e `lega-rosa-fondo` non scorrevano: la foto usciva uguale a quella senza «-fondo» e le parti
-nuove in basso (la riga su tutta la Serie A del Diario, gli indicatori del consiglio e i gol attesi nostri di Stato dei dati,
-l'ultima riga della Rosa) non si vedevano. Lo script toglie «-fondo» dal nome e manda `-DEMO_FONDO 1`; la demo (`Demo.applica`)
+`lega-stato-fondo` e `lega-rosa-fondo` non scorrevano: la foto usciva uguale a quella senza «-fondo» e le parti nuove in basso (gli
+indicatori del consiglio e i gol attesi nostri di Stato dei dati, l'ultima riga della Rosa) non si vedevano. Il Diario, che aveva
+`lega-diario-fondo`, è la pagina Giornate (#673 passo 2): la riga su tutta la Serie A sta nei suoi «Dettagli» (foto
+`giornate-dettagli`). Lo script toglie «-fondo» dal nome e manda `-DEMO_FONDO 1`; la demo (`Demo.applica`)
 apre la pagina e la vista scorre con `demoScorriA` (solo in demo). Qui si controlla che i nomi, la demo e le viste dicano la stessa cosa:
 un nome scritto male non darebbe errore, solo una foto uguale a quella di prima.
 """
@@ -18,7 +19,6 @@ LEGA = RADICE / "ios" / "Sources" / "Presentation" / "Lega"
 
 # nome della foto -> (pagina che apre la demo, file della vista che scorre)
 FOTO = {
-    "lega-diario-fondo": ("lega-diario", LEGA / "DiarioView.swift"),
     "lega-stato-fondo": ("lega-stato", LEGA / "LegaExtra.swift"),
     "lega-stato-nostri": ("lega-stato", LEGA / "LegaExtra.swift"),   # #430: i gol attesi nostri non stanno nella foto del fondo
     "lega-rosa-fondo": ("lega-rosa", LEGA / "LegaExtra.swift"),
@@ -72,9 +72,8 @@ def test_la_vista_scorre_solo_in_demo_con_la_foto_fondo(foto):
 def test_la_riga_del_fondo_c_e_solo_in_demo_con_il_fondo_e_solo_in_stato_e_rosa():
     regola = (LEGA / "FondoDemo.swift").read_text(encoding="utf-8")
     assert 'Demo.argomento("DEMO_FONDO", in: argomenti)' in regola
-    # Stato dei dati e Rosa finiscono con la riga; il Diario scorre a un riquadro che c'è già (la riga su tutta la Serie A non è in fondo)
+    # Stato dei dati e Rosa finiscono con la riga
     assert (LEGA / "LegaExtra.swift").read_text(encoding="utf-8").count("RigaFondoDemo()") == 2
-    assert "RigaFondoDemo" not in (LEGA / "DiarioView.swift").read_text(encoding="utf-8")
 
 
 def test_il_punto_delle_nostri_sta_sulla_prima_riga_del_riquadro_e_la_lista_lo_usa():

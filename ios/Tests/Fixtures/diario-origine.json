@@ -10,7 +10,8 @@
                     "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
       "automatica": null,
       "istantanea": {"giornata": 11, "modulo": "3-4-3", "atteso": 72.5, "stile": "Equilibrata", "calcolata": "2026-11-06T15:20:00",
-                     "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 4, "nome": "G4", "ruolo": "D"}], "panchina": []}
+                     "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 4, "nome": "G4", "ruolo": "D"}], "panchina": []},
+      "consigliata_di_allora": "mostrata", "nota_consigliata": null, "nota_consigliata_frase": null
     },
     {
       "stagione": "2026-27", "giornata": 10, "giornata_lega": 7, "modificabile": true,
@@ -20,7 +21,10 @@
                       "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
       "schierata": null, "automatica": null,
       "istantanea": {"giornata": 10, "modulo": "3-5-2", "atteso": 71.5, "stile": null, "calcolata": "2026-10-30T19:05:00",
-                     "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 99, "nome": "G99", "ruolo": "D"}], "panchina": []}
+                     "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 99, "nome": "G99", "ruolo": "D"}], "panchina": []},
+      "consigliata_di_allora": "fuori_rosa",
+      "nota_consigliata": "Questa è rifatta con i dati di allora: in quella mostrata prima della scadenza c'è chi non è più nella tua rosa.",
+      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_fuori_rosa", "param": {}}}}
     },
     {
       "stagione": "2026-27", "giornata": 9, "giornata_lega": 6, "modificabile": true,
@@ -28,7 +32,10 @@
                       "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
       "ricostruita": {"modulo": "4-4-2", "atteso": 73.5, "reale": 76.5, "dev_simulata": 2.0, "origine": "ricostruita",
                       "titolari": [{"id": 1, "nome": "G1", "ruolo": "P"}, {"id": 5, "nome": "G5", "ruolo": "D"}]},
-      "schierata": null, "automatica": null, "istantanea": null
+      "schierata": null, "automatica": null, "istantanea": null,
+      "consigliata_di_allora": "non_salvata",
+      "nota_consigliata": "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata.",
+      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
     },
     {
       "stagione": "2026-27", "giornata": 8, "giornata_lega": 5, "modificabile": true,

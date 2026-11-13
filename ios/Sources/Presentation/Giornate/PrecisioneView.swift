@@ -1,8 +1,8 @@
 import SwiftUI
 import Charts
 
-/// «Quanto ci abbiamo preso» (Diario, campo `precisione` del server): quattro numeri con una frase, l'errore del fantavoto atteso
-/// giornata per giornata e le note. Tutto viene dal server e si mostra anche quando i numeri sono brutti.
+/// «Quanto ci abbiamo preso» («Dettagli» della pagina Giornate, campo `precisione` del server): i numeri con una frase, l'errore del
+/// fantavoto atteso giornata per giornata e le note. Tutto viene dal server e si mostra anche quando i numeri sono brutti.
 struct PrecisioneView: View {
     let testo: TestoPrecisione
     /// Su iPhone una voce sotto l'altra; dove c'è spazio (iPad, orizzontale) due colonne. Cresce con il testo grande.
@@ -56,6 +56,12 @@ struct PrecisioneView: View {
                 .frame(minHeight: Tema.areaTocco)
             }
             if let nota = testo.notaRicostruiti {
+                Text(nota)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let nota = testo.nota {
+                // la frase del server sulle giornate con la tua formazione senza verdetto, in fondo e così com'è (come la web)
                 Text(nota)
                     .font(.caption).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)

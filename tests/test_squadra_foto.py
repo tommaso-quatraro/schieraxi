@@ -37,7 +37,7 @@ def test_schermate_dai_file():
                             "ios/Tests/SchieraxiTests/ViewModelTests.swift",
                             "fanta/server.py"])
     assert esito["schermate"][:5] == ["formazione", "formazione-fondo", "formazione-in-corso", "formazione-finita", "formazione-rinvio"]
-    assert "giocatore" in esito["schermate"] and "lega-diario" not in esito["schermate"]
+    assert "giocatore" in esito["schermate"] and "giornate" not in esito["schermate"]
     assert esito["widget"] is False and esito["senza"] == []
 
 
@@ -49,27 +49,27 @@ def test_parte_comune_porta_le_principali_e_widget_la_sua_foto():
 
 def test_file_ios_senza_schermata_avvisa_ed_esce_con_3(capsys):
     f = Finto({"gh pr view 7": {"files": [{"path": "ios/scripts/nuovo.sh"},
-                                          {"path": "ios/Sources/Presentation/Lega/DiarioView.swift"}]}})
+                                          {"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}]}})
     assert foto.main(f, pr=7) == 3
     cattura = capsys.readouterr()
     assert "ios/scripts/nuovo.sh" in cattura.err and "foto.json" in cattura.err
-    assert 'gh workflow run screenshot.yml --ref main -f dispositivi=iphone -f schermate="lega-diario' in cattura.out
+    assert 'gh workflow run screenshot.yml --ref main -f dispositivi=iphone -f schermate="giornate' in cattura.out
 
 
 def test_di_default_non_lancia_niente():
-    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Lega/DiarioView.swift"}]}})
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}]}})
     assert foto.main(f, pr=7) == 0
     assert not f.lanciati("gh workflow")
 
 
 def test_lancia_solo_con_lancia():
     f = Finto({"gh pr view 7": {"files": [{"path": "ios/WidgetSources/W.swift"},
-                                          {"path": "ios/Sources/Presentation/Lega/DiarioView.swift"}]},
+                                          {"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}]},
                "gh workflow run screenshot.yml": ""})
     assert foto.main(f, pr=7, lancia=True) == 0
     [c] = [c for c in f.chiamate if c[:3] == ["gh", "workflow", "run"]]
     assert c[c.index("-f") + 1] == "dispositivi=iphone"
-    assert "widget=si" in c and any(a.startswith("schermate=lega-diario ") for a in c)
+    assert "widget=si" in c and any(a.startswith("schermate=giornate ") for a in c)
 
 
 def test_da_commit_usa_git_diff():
@@ -85,10 +85,10 @@ def test_niente_ios(capsys):
 
 
 def test_json(capsys):
-    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Lega/DiarioView.swift"}]}})
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}]}})
     foto.main(f, pr=7, json_=True)
     dati = json.loads(capsys.readouterr().out)
-    assert dati["schermate"][0] == "lega-diario" and dati["comando"][:4] == ["gh", "workflow", "run", "screenshot.yml"]
+    assert dati["schermate"][0] == "giornate" and dati["comando"][:4] == ["gh", "workflow", "run", "screenshot.yml"]
 
 
 def test_righe_dei_crediti_portano_solo_la_rosa():

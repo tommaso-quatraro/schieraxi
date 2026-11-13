@@ -50,14 +50,14 @@ struct LegaView: View {
         }
         // Sull'iPad la colonna di destra non resta vuota («Scegli una voce»): si apre la prima voce utile della scheda.
         .onAppear {
-            if percorso.wrappedValue.isEmpty { percorso.wrappedValue = [ambito == .squadra ? .squadre : .diario] }
+            if percorso.wrappedValue.isEmpty { percorso.wrappedValue = [ambito == .squadra ? .squadre : .regole] }
         }
     }
 
     private var testoVuoto: String {
         ambito == .squadra
             ? "La tua squadra e le rose si aprono qui."
-            : "Il diario delle giornate e le regole della tua lega si aprono qui."
+            : "Le regole della tua lega si aprono qui."
     }
 
     private var voceScelta: Binding<PaginaLega?> {
@@ -104,7 +104,6 @@ struct LegaView: View {
         case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .stagione: StagioneView(server: vm.server)
-        case .diario: DiarioView(server: vm.server)
         }
     }
 
@@ -131,7 +130,7 @@ struct LegaView: View {
         }
     }
 
-    /// Altro: le voci di `VOCI_LEGA` della web (il diario e le regole).
+    /// Altro: le voci di `VOCI_LEGA` della web (le regole; il diario è la pagina Giornate).
     private var sezioneAltro: some View {
         Section {
             ForEach(VoceMenuLega.voci(.altro, funzioni: funzioni), id: \.pagina) { RigaVoceMenuLega(voce: $0) }
