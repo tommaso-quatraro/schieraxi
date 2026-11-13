@@ -261,14 +261,18 @@ final class DiarioEBackupTests: XCTestCase {
         let d: DiarioRisposta = try Decodifica.decodifica(dati)
         XCTAssertEqual(d.giornate?.count, 2)
         XCTAssertEqual(d.sintesi?.puntiSchierata, 63.5)
-        XCTAssertEqual(d.giornate?.first?.confronto?.fraseCambi, "Hai cambiato 1: Orsetti al posto di Lemao.")
-        XCTAssertNil(d.giornate?.last?.confronto, "senza formazioni non c'è un confronto")
+        // la pagina Giornate (#673 passo 2) la legge lo stesso: senza `origine` niente confronto, una voce senza formazioni è una
+        // riga senza punti
+        let p = PaginaGiornate(d)
+        XCTAssertEqual(p.righe.first?.stato, Catalogo.Giornate.tua)
+        XCTAssertEqual(p.righe.last?.punti, "–")
+        XCTAssertEqual(p.dettaglio(try XCTUnwrap(p.righe.last?.id))?.titolari.count, 0)
     }
 
-    func testStessiSchieraxiDelModello() throws {
-        let dati = Data(#"{"giornate": [{"giornata": 1, "consigliata": {"titolari": [{"id": 1, "nome": "A"}]}, "schierata": {"titolari": [{"id": 1, "nome": "A"}]}}]}"#.utf8)
+    func testConsigliataMostrataEStessiTitolari() throws {
+        let dati = Data(#"{"giornate": [{"giornata": 1, "consigliata": {"origine": "mostrata", "titolari": [{"id": 1, "nome": "A"}]}, "schierata": {"titolari": [{"id": 1, "nome": "A"}]}}]}"#.utf8)
         let d: DiarioRisposta = try Decodifica.decodifica(dati)
-        XCTAssertEqual(d.giornate?.first?.confronto?.fraseCambi, "Hai schierato gli stessi 11 consigliati.")
+        XCTAssertEqual(PaginaGiornate(d).righe.first?.stato, Catalogo.Giornate.haiConsigliata)
     }
 
     func testIlDiarioVuotoNonRompeNiente() throws {
