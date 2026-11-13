@@ -24,7 +24,7 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
 | Rotte | `server.py` (tutte le `/api/...`), `rotte_account.py`, `versioni.py` (ETag), `calcolo.py` (coda dei calcoli), `contesto.py` (cartelle per utente), `limiti.py` |
 | Fantavoto atteso | `modello.py` (fantavoto atteso e probabilità di giocare), `incertezza.py`, `nostri.py` (gol e assist attesi calcolati in casa), `taratura_probabili.py` |
 | Formazione | `formazione.py` (11 titolari e panchina), `consigli.py` (consigliata stabile e spiegazioni), `perche_scelta.py`, `scelte.py` (formazione salvata), `copia_scadenza.py` |
-| Giornata | `turno.py`, `avvisi.py` (quando si chiude la formazione), `fasi.py` (prima, in corso, finita), `rinvii.py`, `punteggio.py` (fantavoto con le regole della lega), `diario.py`, `da_fare.py` |
+| Giornata | `turno.py`, `avvisi.py` (scadenza), `fasi.py` (prima, in corso, finita), `rinvii.py`, `punteggio.py` (fantavoto con le regole della lega), `diario.py`, `da_fare.py` |
 | Lega | `regole.py`, `regole_testo.py`, `rose.py` (Excel, CSV, testo), `lega.py`, `squadre.py`, `movimenti.py`, `nomi.py` (riconoscimento dei nomi), `listone.py`, `stagione.py` |
 | Fonti e archivio | `fonti/` (un lettore per fonte), `aggiorna.py` (riempie `dati/fanta.sqlite`), `archivio.py`, `rete.py`, `fonti_attive.py`, `controlli.py`, `stato_dati.py` |
 | Avvisi | `notifiche.py` (promemoria e cambio della formazione), `push.py`, `avvisi_utenti.py`, `pianificatore.py`, `frasi.py` e `frasi_avvisi.py` (frasi con chiave) |
