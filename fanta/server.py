@@ -1529,7 +1529,7 @@ def classifica(ruolo: str | None = None, liberi: bool = False, limite: int = 60,
 
 
 @app.get("/api/giocatore/{calciatore_id}")
-def giocatore(calciatore_id: int = FPath(le=MAX_ID_CALCIATORE), ctx: Contesto = Depends(lega_corrente)):
+def giocatore(calciatore_id: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Contesto = Depends(lega_corrente)):
     db = _db()
     try:
         r = _regole(ctx)
@@ -2139,7 +2139,7 @@ def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_ch
 
 
 @app.post("/api/admin/utenti/{utente_id}/rose")
-def importa_rose_di_un_amico(utente_id: int, dati: RoseDiUnAmico, admin: account.Utente = Depends(rotte_account.solo_amministratore)):
+def importa_rose_di_un_amico(dati: RoseDiUnAmico, utente_id: int = FPath(ge=1, le=rotte_account.MAX_ID), admin: account.Utente = Depends(rotte_account.solo_amministratore)):
     """Solo l'amministratore dell'app: importa le rose di un utente che l'ha chiesto. Risponde come l'importazione normale."""
     importa_sicuro.controlla_testo(dati.testo)
     return importa_per_conto_di(utente_id, [("testo", rose.griglia_da_testo(dati.testo))], dati.sostituisci_tutto, admin.id)
