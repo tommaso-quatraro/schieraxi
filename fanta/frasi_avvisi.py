@@ -10,8 +10,7 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     # ---- il numero della giornata (frasi.nome_giornata con avviso=True): lo stesso testo di «giornata.*» di frasi.CATALOGO
     "n.giornata.lega": ("Giornata {n} · {a}ª di Serie A", "Matchday {n} · Serie A matchday {a}"),
     "n.giornata.serie_a": ("{a}ª giornata di Serie A", "Serie A matchday {a}"),
-    # ---- cambi nelle probabili
-    "n.t_cambi": ("SchieraXI · cambi nelle probabili", "SchieraXI · changes in the probable lineups"),
+    # ---- cambi nelle probabili (notifiche.confronta: dice se lo stato di un giocatore è cambiato)
     "n.ora_infortunato": ("{nome}: ora infortunato", "{nome}: now injured"),
     "n.ora_squalificato": ("{nome}: ora squalificato", "{nome}: now suspended"),
     "n.torna_titolare": ("{nome}: torna disponibile (titolare)", "{nome}: back and available (starter)"),
@@ -24,11 +23,6 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.ora_dubbio": ("{nome}: ora in dubbio", "{nome}: now in doubt"),
     "n.diffidato": ("{nome}: diffidato (con un altro giallo salta la partita dopo)",
                     "{nome}: one yellow card from a suspension (another one and they miss the next match)"),
-    "n.osservato_riga": ("★ {riga}", "★ {riga}"),
-    "n.formazione_aggiornata": ("Formazione consigliata aggiornata ({modulo}): entra {entrano}, esce {escono}",
-                                "Recommended lineup updated ({modulo}): in {entrano}, out {escono}"),
-    "n.riga_consiglio": ("{riga} {consiglio}", "{riga} {consiglio}"),
-    "n.altre_novita": ("…e altre {n} novità", "…and {n} more updates"),
     # ---- cambio pronto
     "n.t_cambio_pronto": ("SchieraXI · cambio pronto", "SchieraXI · substitution ready"),
     "n.tuo_infortunato": ("Il tuo {nome} è infortunato.", "Your {nome} is injured."),
