@@ -27,6 +27,19 @@ def test_guadagno_piccolo_si_boccia():
     assert not ok and "piccola" in motivo
 
 
+def test_guadagno_in_poche_giornate_ha_il_suo_motivo():
+    """#659: 5,1 punti in 5 giornate superano la soglia degli attaccanti (3,0), ma il guadagno sta in 2 giornate su 5. Prima il motivo
+    era «La differenza è piccola (5,1 punti in 5 giornate)», smentito dal numero che scriveva."""
+    m = bs.guadagno_significativo([3.0, 2.6, -0.1, -0.2, -0.2], "A")
+    assert m.chiave == "senso.guadagno_concentrato"
+    assert m == "Il guadagno sta tutto in 2 delle 5 giornate: nelle altre il cambio non dà punti in più."
+    assert bs.guadagno_significativo([5.0, -0.5, -0.5, -0.5, -0.5], "A") == (
+        "Il guadagno sta tutto in 1 delle 5 giornate: nelle altre il cambio non dà punti in più.")
+    # sotto la soglia resta la differenza piccola, anche con poche giornate in guadagno
+    assert bs.guadagno_significativo([1.5, 0.5, -0.1, -0.2, -0.2], "A").chiave == "senso.differenza_piccola"
+    assert bs.guadagno_significativo([1.0, 1.0, 1.0, 0.5, -0.2], "A") is None
+
+
 def test_chi_entra_deve_giocare():
     for y in (g("Beta", p_voto=0.4), g("Beta", quota_titolare=0.3), g("Beta", stato="infortunato"), g("Beta", dubbio=True),
               g("Beta", p_lungo=0.3, stato="possibile", percentuale=50.0)):
