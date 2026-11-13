@@ -112,6 +112,20 @@ struct StatoSceltaTests {
         #expect(Self.stato(letta: false, chiusa: true) == .nessuno)
     }
 
+    @Test("Scelta non letta ma il server dice che ce n'è una salvata: lo si dice anche sulla copia e a giornata chiusa (mai la consigliata come se fosse la tua)")
+    func nonLettaMaSalvata() {
+        for (copia, chiusa) in [(true, false), (false, true), (false, false)] {
+            let s = StatoScelta.calcola(mia: true, letta: false, copia: copia, chiusa: chiusa, salvata: nil, nonValida: false,
+                                        titolari: Self.consigliati, consigliati: Self.consigliati, punti: 70, puntiConsigliata: 70.5,
+                                        salvataNonLetta: true)
+            #expect(s == .nonLetta, "copia \(copia), chiusa \(chiusa)")
+        }
+        let letta = StatoScelta.calcola(mia: true, letta: true, copia: true, chiusa: false, salvata: nil, nonValida: false,
+                                        titolari: Self.consigliati, consigliati: Self.consigliati, punti: 70, puntiConsigliata: 70.5,
+                                        salvataNonLetta: true)
+        #expect(letta == .consigliata, "letta: vale quello che si è letto")
+    }
+
     @Test("La formazione di un'altra squadra non ha la riga dello stato")
     func altraSquadra() {
         #expect(Self.stato(mia: false, titolari: Self.dueDiversi) == .nessuno)

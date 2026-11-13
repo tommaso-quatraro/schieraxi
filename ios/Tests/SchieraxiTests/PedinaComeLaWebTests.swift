@@ -92,6 +92,30 @@ struct PedinaComeLaWebTests {
         #expect(c.voce == "Mario Prova, fantavoto atteso 6,5, \(quando)")
     }
 
+    // MARK: disco pieno o vuoto
+
+    @Test("Disco vuoto (solo il bordo) quando il numero è l'atteso a partita cominciata, rinviata o da giocare a formazione chiusa, come la classe «attesa» della web",
+          arguments: [
+              (#""stato_partita": "in_corso", "etichetta": {"codice": "in_corso", "testo": "Partita in corso", "tono": "positivo"}"#, true),
+              (#""stato_partita": "senza_voto""#, true),
+              (#""rinvio": "aspetta""#, true),
+              (#""stato_partita": "da_giocare", "data_partita": "2026-10-31T18:00:00""#, true),
+              (#""stato_partita": "fatto", "fv_preso": 7"#, false),
+              (#""titolarita": "titolare""#, false),
+          ])
+    func discoVuoto(altro: String, vuoto: Bool) throws {
+        let c = LetturaPedina.contenuto(try giocatore(#""p_voto": 0.9, \#(altro)"#))
+        #expect(c.attesa == vuoto)
+    }
+
+    @Test("Disco pieno o vuoto, VoiceOver dice sempre se è il fantavoto preso o quello atteso")
+    func voceDistingue() throws {
+        let preso = LetturaPedina.contenuto(try giocatore(#""stato_partita": "fatto", "fv_preso": 7"#))
+        let atteso = LetturaPedina.contenuto(try giocatore(#""stato_partita": "da_giocare""#))
+        #expect(preso.voce == "Mario Prova, fantavoto 7,0" && !preso.attesa)
+        #expect(atteso.voce == "Mario Prova, \(Catalogo.Formazione.voceFv(fv: "6,5"))" && atteso.attesa)
+    }
+
     // MARK: parole per VoiceOver
 
     @Test("«gioca al 45 per cento», con l'apostrofo davanti a 8, 11 e agli ottanta")
