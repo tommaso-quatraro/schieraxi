@@ -1067,9 +1067,9 @@ INVITO_NON_VALIDO = "Invito non valido o scaduto"
 
 
 def posti_dell_invito(inv) -> int:
-    """Le persone che possono entrare con un invito valido (riga di `inviti`), se sono più di una; altrimenti 0. I tetti per
-    indirizzo e per invito hanno un posto in più per ognuna (vedi `prove_per_invito`)."""
-    return inv["usi_max"] if inv is not None and inv["usi_max"] > 1 else 0
+    """I posti ancora liberi di un invito valido per più persone (riga di `inviti`); 0 per un invito monouso o senza invito.
+    I tetti per indirizzo dell'iscrizione con email hanno un posto in più per ognuno."""
+    return max(0, inv["usi_max"] - inv["usi"]) if inv is not None and inv["usi_max"] > 1 else 0
 
 
 def conta_per_indirizzo(db: sqlite3.Connection, ip: str | None, *tetti: tuple[str, int, float]) -> list[list]:

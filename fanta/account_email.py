@@ -99,7 +99,7 @@ def _puo(db: sqlite3.Connection, chiave: str, massimo: int, finestra: float) -> 
 def _tetti_ip(db: sqlite3.Connection, ip: str | None, posti: int = 0) -> list[list]:
     """Limiti che riguardano chi sta chiedendo: 429 vero (non rivelano niente su altri). Il tetto globale qui si guarda soltanto:
     si conta in `_invia`, sulle email che partono davvero (le richieste a vuoto non lo esauriscono a danno di tutti).
-    `posti`: quelli in più dell'invito per più amici (iscrizione nel modo `email`). Restituisce la riga contata per l'indirizzo
+    `posti`: quelli ancora liberi dell'invito per più amici (iscrizione nel modo `email`). Restituisce la riga contata per l'indirizzo
     (vedi `account.conta_per_indirizzo`)."""
     limite.troppi(db, _chiave("email-invii-globali"), *INVII_GLOBALI)
     return account.conta_per_indirizzo(db, ip, ("email-invii-ip", INVII_PER_IP[0] + posti, INVII_PER_IP[1]))
@@ -395,8 +395,8 @@ def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accett
     email = normalizza_email(email_grezza)
     limite.troppi(db, _chiave("iscrizioni-globali"), *ISCRIZIONI_GLOBALI)     # si conta solo quando parte davvero un codice
     inv = _invito_vivo(db, invito, adesso, ip) if modo == "email" else None
-    # Tetti per indirizzo: un posto in più per ogni persona dell'invito (tutti gli amici chiedono il codice insieme dalla stessa
-    # rete); le righe contate si tolgono quando l'account nasce (conferma_iscrizione).
+    # Tetti per indirizzo: un posto in più per ogni posto ancora libero dell'invito (tutti gli amici chiedono il codice insieme
+    # dalla stessa rete); le righe contate si tolgono quando l'account nasce (conferma_iscrizione).
     posti = account.posti_dell_invito(inv)
     contate = account.conta_per_indirizzo(db, ip, ("iscrizioni-ip", ISCRIZIONI_PER_IP[0] + posti, ISCRIZIONI_PER_IP[1]),
                                           ("registra-ip", account.REGISTRAZIONI_PER_IP[0] + posti, account.REGISTRAZIONI_PER_IP[1]))

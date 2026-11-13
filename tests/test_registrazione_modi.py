@@ -245,6 +245,18 @@ def test_email_dodici_amici_dalla_stessa_rete_con_un_invito(web, posta_finta, mo
     assert len(utenti()) == 12
 
 
+def test_email_i_posti_in_piu_sono_quelli_ancora_liberi(web, posta_finta, monkeypatch):
+    """Un invito per 30 con 29 posti già usati: da una rete passano le richieste di sempre più una (il posto libero), non trenta."""
+    modo(monkeypatch, "email")
+    inv = invito_per(30)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("UPDATE inviti SET usi = 29")
+        db.commit()
+    tetto = account_email.ISCRIZIONI_PER_IP[0] + 1
+    stati = [iscrivi(web, f"amico{i:02d}", f"amico{i:02d}@example.com", invito=inv).status_code for i in range(tetto + 1)]
+    assert stati == [200] * tetto + [429]
+
+
 def test_email_amici_con_un_invito_a_testa_dalla_stessa_rete(web, posta_finta, monkeypatch):
     """Un'iscrizione confermata non conta più fra le richieste dell'indirizzo."""
     modo(monkeypatch, "email")
