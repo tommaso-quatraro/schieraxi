@@ -14,7 +14,8 @@ final class GiornateViewModel: ViewModelBase {
     /// «Dettagli» aperto.
     @Published var dettagliAperti = false
     /// La giornata (numero di Serie A) da aprire quando arrivano le giornate che la contengono («Com'è andata»), come `chiesta`
-    /// della web: vale finché non arriva una risposta che la contiene; la copia del telefono può non averla ancora.
+    /// della web: vale fino alla prossima risposta fresca del server; i dati già in pagina o la copia del telefono possono non
+    /// averla ancora.
     private(set) var chiesta: Int?
     /// L'esito dell'ultima correzione e la sua giornata: si mostra sotto i suoi 11.
     @Published private(set) var esito: (id: String, testo: String)?
@@ -33,12 +34,16 @@ final class GiornateViewModel: ViewModelBase {
     /// La pagina pronta da mostrare (nil finché non c'è una risposta, anche dalla copia del telefono).
     var pagina: PaginaGiornate? { caricatore.dato.map(PaginaGiornate.init) }
 
+    /// Rilegge le giornate. Solo una risposta fresca del server chiude la richiesta di «Com'è andata», come la web: la copia del
+    /// telefono, o una lettura non riuscita, possono essere di prima della giornata chiesta.
     func carica() async {
         await caricatore.ricarica()
         applicaChiesta()
+        if caricatore.dato != nil, caricatore.errore == nil, !caricatore.dallaCache { chiesta = nil }
     }
 
-    /// «Com'è andata» o un indirizzo: apre la giornata `giornata` (numero di Serie A) appena c'è; nil = la pagina com'è.
+    /// «Com'è andata» o un indirizzo: apre la giornata `giornata` (numero di Serie A) se c'è già; altrimenti la apre `carica()`
+    /// quando arriva. Qui la richiesta non si chiude mai: i dati in pagina possono essere di prima della giornata.
     func apri(giornata: Int?) {
         guard let giornata, giornata > 0 else { return }
         chiesta = giornata
@@ -61,22 +66,17 @@ final class GiornateViewModel: ViewModelBase {
         }
     }
 
-    /// La giornata chiesta, se le giornate arrivate la contengono: la sola aperta, e quella a destra sull'iPad. La richiesta resta
-    /// finché non arriva una risposta fresca del server (la copia del telefono può essere di prima della giornata).
-    func applicaChiesta() {
+    /// La giornata chiesta, se le giornate in pagina la contengono: la sola aperta, e quella a destra sull'iPad. Non chiude la
+    /// richiesta: lo fa `carica()` dopo una risposta fresca.
+    private func applicaChiesta() {
         if piuRecenteDaAprire, let id = pagina?.righe.first?.id {
             piuRecenteDaAprire = false
             aperte = [id]
             scelta = id
         }
-        guard let g = chiesta, let p = pagina else { return }
-        if let id = p.id(giornata: g) {
-            aperte = [id]
-            scelta = id
-            chiesta = nil
-        } else if !caricatore.dallaCache, !caricatore.inCorso {
-            chiesta = nil
-        }
+        guard let g = chiesta, let id = pagina?.id(giornata: g) else { return }
+        aperte = [id]
+        scelta = id
     }
 
     /// Un tocco su una riga del telefono: apre o chiude i suoi 11 sotto di lei.
@@ -99,6 +99,8 @@ final class GiornateViewModel: ViewModelBase {
     /// quelle passate). Nil se è andata bene (il foglio si chiude e la pagina rilegge, con quella giornata aperta), altrimenti
     /// l'errore da mostrare nel foglio.
     func correggi(_ voce: VoceDiario, titolari: [Int]) async -> String? {
+        // un salvataggio nuovo: l'esito di prima non vale più, nemmeno se questo non va (come il Diario di prima)
+        esito = nil
         guard voce.siPuoCambiare, let giornata = voce.giornata else {
             return "Non riesco a salvare adesso: riprova tra poco."
         }
