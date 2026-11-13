@@ -211,7 +211,8 @@ def test_errori_aspettano_sempre_di_piu_poi_il_ripiego():
     o = Orologio("2026-10-31 15:05")
     f = FonteFinta(o, {"json": _corpo(), "html": (DATI / "calendario_1.html").read_text(encoding="utf8")})
     f.errore = OSError("rete giu")
-    r = _racc(o, f)
+    # una partita che c'è nella pagina d'esempio del ripiego (giornata 1): una lettura senza la partita seguita sarebbe un errore
+    r = _racc(o, f, [{"data": "2026-10-31 15:00", "casa": "inter", "trasferta": "monza", "giornata": 1, "stagione": "2026-27"}])
     attese = []
     for _ in range(2):
         assert r.passo() == "errore"
@@ -222,11 +223,36 @@ def test_errori_aspettano_sempre_di_piu_poi_il_ripiego():
     assert r.prossima - o.mono == 60 and r.ripiego_fino > o.mono
     o.avanza(60)
     f.errore = None
-    assert r.passo() == "ok" and "fantacalcio" in f.url[-1]       # calendario della giornata 10, la pagina d'esempio è la 1
+    assert r.passo() == "ok" and "fantacalcio" in f.url[-1]       # calendario della giornata 1
+    assert r.fonte == "fantacalcio"
     o.avanza(600)
     r.passo()
     assert "espn" in f.url[-1]                                    # finito il periodo, si torna alla fonte principale
     assert all(b - a >= 60 for a, b in zip(f.quando, f.quando[1:]))
+
+
+def _forma_cambiata():
+    c = _corpo()
+    c["events"] = [{("gare" if k == "competitions" else k): v for k, v in e.items()} for e in c["events"]]   # un campo rinominato
+    return c
+
+
+@pytest.mark.parametrize("corpo", [lambda: {"events": []}, _forma_cambiata], ids=["elenco vuoto", "forma cambiata"])
+def test_risposta_senza_le_partite_seguite_conta_come_errore_e_porta_al_ripiego(corpo, caplog):
+    """#661: la fonte risponde ma senza nessuna delle partite seguite. Non è una lettura buona: dopo tre letture parte il ripiego,
+    l'ora dell'ultimo aggiornamento e la fonte restano quelle dell'ultima lettura vera, e nel registro c'è il nome della fonte."""
+    o = Orologio("2026-10-31 15:05")
+    f = FonteFinta(o, {"json": corpo(), "html": (DATI / "calendario_1.html").read_text(encoding="utf8")})
+    r = _racc(o, f)
+    r.aggiornato_il, r.fonte = "2026-10-31 14:00:00", "espn"
+    for _ in range(3):
+        assert r.passo() == "errore"
+        o.avanza(r.prossima - o.mono)
+    assert r.ripiego_fino > o.mono and len(f.url) == 3 and all("espn" in u for u in f.url)
+    assert (r.aggiornato_il, r.fonte, r.istantanea()["partite"]) == ("2026-10-31 14:00:00", "espn", {})
+    r.passo()
+    assert "fantacalcio" in f.url[-1]                             # il ripiego
+    assert any("espn" in rec.getMessage() for rec in caplog.records if rec.name == "fanta.live")
 
 
 def test_ripiego_legge_punteggi_del_calendario():

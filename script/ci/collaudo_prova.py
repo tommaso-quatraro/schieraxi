@@ -10,7 +10,8 @@ Tre comandi, usati dal workflow:
         anche senza versione nuova (#549).
     python script/ci/collaudo_prova.py esito <cartella>
         Legge `<cartella>/riepilogo.txt` di prove/foto_web/foto.py e scrive in $GITHUB_OUTPUT `ok` (true/false) e `dettaglio`,
-        e in `<cartella>/esito.txt` lo stesso per l'artifact.
+        e in `<cartella>/esito.txt` lo stesso per l'artifact. Per le violazioni gravi di accessibilità dice anche la regola di axe
+        e gli elementi (dai file `axe-<scena>-<larghezza>-<tema>.json`), senza i valori degli attributi (#697).
     python script/ci/collaudo_prova.py segnala
         Dalle variabili DECISIONE, VERSIONE, PROVA, MINUTI, OK, DETTAGLIO e CORSA (le uscite dei job): apre, commenta o chiude
         le issue «Collaudo della prova: v<N> non passa» (una sola per versione) e «La prova non si aggiorna».
@@ -45,6 +46,9 @@ MISURE = ("gravi", "scorrimento-di-lato", "errori-console")      # le chiavi di 
 # dell'account di prova (segreto PROVA_UTENTE) e GitHub scarta le uscite che contengono un segreto.
 _VERSIONE = re.compile(r"v?(\d+(?:\.\d+)*)")
 _INDIRIZZO = re.compile(r"https?://\S+")
+# Il valore di un attributo in un selettore di axe: [nome="valore"], [nome='valore'], [nome=valore] (anche ~= |= ^= $= *=)
+_VALORE_ATTRIBUTO = re.compile(r"""\[\s*([^\]\s~|^$*=]+)\s*[~|^$*]?=\s*(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\]]*)\s*\]""")
+ELEMENTI_PER_REGOLA = 2      # quanti elementi per regola nell'esito: bastano per trovarli, il resto è «e altri N»
 
 
 # =========================== parti senza rete ===========================
@@ -86,10 +90,56 @@ def _quanti(n: int, uno: str, tanti: str) -> str:
     return f"{n} {uno if n == 1 else tanti}"
 
 
-def esito(riepilogo: str) -> tuple[bool, list[str]]:
+def elemento(selettore: str) -> str:
+    """Il selettore di un elemento trovato da axe senza i valori degli attributi (`button[data-x="5"]` -> `button[data-x]`): un
+    valore può essere un nome di squadra o di persona, o un indirizzo, e il testo finisce in un'issue pubblica. Al massimo 120
+    caratteri."""
+    pulito = _VALORE_ATTRIBUTO.sub(lambda m: f"[{m.group(1)}]", str(selettore)).strip()
+    return pulito if len(pulito) <= 120 else pulito[:119] + "…"
+
+
+def _regole_ed_elementi(violazioni: list) -> list[str]:
+    """«<regola> su <elemento>, <elemento> e altri N» per ogni violazione grave di un file di axe di foto.py."""
+    voci = []
+    for v in violazioni if isinstance(violazioni, list) else []:
+        if not isinstance(v, dict) or v.get("impact") not in ("critical", "serious"):
+            continue
+        nodi = [elemento(n.get("target", "") if isinstance(n, dict) else n) for n in v.get("nodi") or []]
+        nodi = [n for n in nodi if n]
+        quanti = max(v.get("n") if isinstance(v.get("n"), int) else 0, len(nodi))
+        testo = str(v.get("id"))
+        if nodi:
+            testo += " su " + ", ".join(nodi[:ELEMENTI_PER_REGOLA])
+            if quanti > ELEMENTI_PER_REGOLA:
+                testo += f" e altri {quanti - ELEMENTI_PER_REGOLA}"
+        voci.append(testo)
+    return voci
+
+
+def dettagli_axe(cartella: Path) -> dict[str, list[str]]:
+    """Per ogni foto con un file di axe («scheda 390 chiaro»), le regole gravi violate con i loro elementi. Un file illeggibile
+    si salta: resta il conteggio del riepilogo."""
+    dettagli = {}
+    for file in sorted(Path(cartella).glob("axe-*.json")):
+        parti = file.stem.split("-")                           # axe-<scena>-<larghezza>-<tema>
+        if len(parti) != 4:
+            continue
+        try:
+            violazioni = json.loads(file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        voci = _regole_ed_elementi(violazioni)
+        if voci:
+            dettagli[" ".join(parti[1:])] = voci
+    return dettagli
+
+
+def esito(riepilogo: str, dettagli: dict[str, list[str]] | None = None) -> tuple[bool, list[str]]:
     """(tutto a posto, problemi) dalle righe di riepilogo.txt di foto.py: violazioni gravi di accessibilità, errori della
     console (comprese le risposte 4xx e 5xx, che Chrome scrive nella console), scorrimento di lato, scene che non si aprono.
+    Per le violazioni gravi tra parentesi le regole e gli elementi (`dettagli`, da dettagli_axe), o almeno le regole della riga.
     Gli indirizzi nei messaggi diventano «<indirizzo>»: i problemi finiscono in un'issue pubblica."""
+    dettagli = dettagli or {}
     problemi = []
     righe = [r.strip() for r in riepilogo.splitlines() if r.strip()]
     for riga in righe:
@@ -102,7 +152,10 @@ def esito(riepilogo: str) -> tuple[bool, list[str]]:
         difetti = [f"misura assente nel riepilogo ({', '.join(mancanti)})"] if mancanti else []
         n_gravi, n_console = (_numero(valori.get(k, "0")) for k in ("gravi", "errori-console"))
         if n_gravi:
-            difetti.append(_quanti(n_gravi, "violazione grave di accessibilità", "violazioni gravi di accessibilità"))
+            regole = dettagli.get(chi) or [r for r in valori.get("regole", "").split(",") if r]
+            # mai «; » qui dentro: segnala fa una voce dell'issue per ogni «; » del dettaglio
+            tra_parentesi = f" ({' / '.join(regole)})".replace(";", ",") if regole else ""
+            difetti.append(_quanti(n_gravi, "violazione grave di accessibilità", "violazioni gravi di accessibilità") + tra_parentesi)
         if n_console:
             difetti.append(_quanti(n_console, "errore della console", "errori della console"))
         if valori.get("scorrimento-di-lato", "no") != "no":
@@ -272,7 +325,7 @@ def comando_esito(cartella: Path) -> int:
     riepilogo = cartella / "riepilogo.txt"
     fatto = riepilogo.is_file()          # senza riepilogo le misure non sono partite: niente artifact, la corsa dopo riprova
     if fatto:
-        ok, problemi = esito(riepilogo.read_text(encoding="utf-8", errors="replace"))
+        ok, problemi = esito(riepilogo.read_text(encoding="utf-8", errors="replace"), dettagli_axe(cartella))
     else:
         ok, problemi = False, ["nessun riepilogo: le misure non sono partite (prova irraggiungibile, accesso rifiutato o "
                                "Playwright non installato; il perché è nel registro della corsa)"]

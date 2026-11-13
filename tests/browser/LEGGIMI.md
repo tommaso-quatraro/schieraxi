@@ -112,7 +112,9 @@ prima della scadenza:
 - a giornata in corso i punti finora e niente da cambiare; a giornata finita «Com'è andata», i recuperi che mancano e la
   scelta sul rinvio, con sotto la formazione della prossima;
 - tablet e PC: campo a sinistra e panchina a destra a 768, 1024 e 1440 px; sul PC la scheda nel pannello a fianco, che
-  si chiude se cambia il modulo; scheda ed elenco dei sostituti senza violazioni gravi di axe, chiaro e scuro.
+  si chiude se cambia il modulo; scheda ed elenco dei sostituti senza violazioni gravi di axe, chiaro e scuro; i pulsanti
+  spenti sulla copia («Sostituisci», «Torna alla consigliata») si accendono già pieni quando arrivano i dati nuovi, mai mezzi
+  trasparenti (#697: axe lanciato in quell'istante trovava un contrasto troppo basso).
 
 `test_giornate.py`, la pagina «Giornate» che ha preso il posto del Diario (#617):
 - si apre con un tocco dalla barra; gli indirizzi vecchi del Diario la aprono; «Com'è andata» della Formazione la apre
