@@ -98,7 +98,7 @@ def test_ogni_numero_ha_i_suoi_limiti(chiave, minimo, massimo, parole):
     for fuori in (minimo - 1, massimo + 1, ENORME, -ENORME):
         with pytest.raises(ValueError) as e:
             regole.da_dict(_con(base, chiave, fuori))
-        assert type(e.value) is ValueError                     # 400, non 422 dei tetti di misura
+        assert type(e.value) is regole.RegoleFuoriIntervallo and e.value.stato == 400      # non 422 dei tetti di misura
         assert parole in str(e.value) and f"tra {minimo:,} e {massimo:,}".replace(",", ".") in str(e.value), str(e.value)
 
 

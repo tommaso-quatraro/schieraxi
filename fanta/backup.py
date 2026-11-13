@@ -180,11 +180,15 @@ def _movimenti(d: Any) -> list[dict]:
 REGOLE_OLTRE_I_TETTI = ("Le regole di questo backup superano i limiti dell'app (per esempio troppi moduli o fasce del modificatore, "
                         "oppure testi troppo lunghi) e non è stato cambiato niente: riporta le regole nei limiti dall'app e "
                         "scarica un backup nuovo.")
+REGOLE_FUORI_INTERVALLO = ("Le regole di questo backup hanno numeri fuori dai limiti dell'app e non è stato cambiato niente: "
+                           "riporta le regole nei limiti dall'app e scarica un backup nuovo.")
 
 
 def _regole(d: Any) -> None:
     """Le regole del backup si controllano come quelle salvate dall'app, con i tetti di misura (#480), anche in un backup fatto
-    prima dei tetti: oltre i tetti `regole.RegoleTroppoGrandi` (il ripristino lo dice con REGOLE_OLTRE_I_TETTI e non scrive niente)."""
+    prima dei tetti: oltre i tetti `regole.RegoleTroppoGrandi` (il ripristino lo dice con REGOLE_OLTRE_I_TETTI e non scrive niente).
+    Lo stesso per i numeri fuori dagli intervalli (#663): `regole.RegoleFuoriIntervallo`, detto con REGOLE_FUORI_INTERVALLO seguito
+    dalle righe con il campo e l'intervallo."""
     regole.da_dict(d)
 
 
@@ -349,6 +353,8 @@ def controlla(backup: Any) -> dict[str, Any]:
             nuovo = CONTROLLI[nome](contenuto)
         except regole.RegoleTroppoGrandi:
             raise ValueError(REGOLE_OLTRE_I_TETTI) from None
+        except regole.RegoleFuoriIntervallo as e:          # le righe dicono campo e intervallo, mai il valore ricevuto
+            raise ValueError(REGOLE_FUORI_INTERVALLO + str(e).removeprefix("Regole non valide:")) from None
         except (ValueError, TypeError, KeyError, AttributeError, OverflowError):      # OverflowError: «Infinity» o 1e999 dove serve un intero
             raise ValueError(_non_valido(nome)) from None
         pulito[nome] = contenuto if nuovo is None else nuovo

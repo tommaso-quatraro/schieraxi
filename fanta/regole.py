@@ -70,6 +70,12 @@ class RegoleTroppoGrandi(ValueError):
     stato = 422
 
 
+class RegoleFuoriIntervallo(ValueError):
+    """Numeri fuori dagli intervalli (MAX_BONUS e gli altri): il messaggio dice il campo e l'intervallo, non il valore ricevuto
+    (il server risponde 400; il ripristino di un backup lo riporta invece di dare la colpa al file)."""
+    stato = 400
+
+
 @dataclass
 class Bonus:
     gol: dict[str, float] = field(default_factory=lambda: {"P": 3.0, "D": 3.0, "C": 3.0, "A": 3.0})
@@ -407,14 +413,17 @@ def _da_dict(classe, dati: dict[str, Any]):
 
 
 def _controlla(regole: Regole, misure: bool = True) -> Regole:
-    """Errore se le regole non vanno: RegoleTroppoGrandi oltre i tetti di misura (se `misure`), ValueError per il resto (anche
-    per i numeri fuori dagli intervalli, controllati solo con `misure`: il server risponde 400 con la frase)."""
+    """Errore se le regole non vanno: RegoleTroppoGrandi oltre i tetti di misura e RegoleFuoriIntervallo per i numeri fuori dagli
+    intervalli (tutti e due solo se `misure`), ValueError per il resto."""
     troppo = regole.problemi_di_misura() if misure else []
     if troppo:
         raise RegoleTroppoGrandi("Regole non valide:\n- " + "\n- ".join(troppo))
-    problemi = regole._problemi_di_valore(intervalli=misure)
+    problemi = regole._problemi_di_valore(intervalli=False)
     if problemi:
         raise ValueError("Regole non valide:\n- " + "\n- ".join(problemi))
+    fuori = regole.problemi_di_intervallo() if misure else []      # solo con i tipi e gli altri valori a posto
+    if fuori:
+        raise RegoleFuoriIntervallo("Regole non valide:\n- " + "\n- ".join(fuori))
     return regole
 
 
