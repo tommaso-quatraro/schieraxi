@@ -42,7 +42,7 @@ LOG = logging.getLogger(__name__)
 TENUTI = 60                                        # giri ricordati nello stato
 GIRI_RISULTATI = (("1", timedelta(minutes=150)), ("2", timedelta(hours=4)))   # dopo il calcio d'inizio
 MARGINE_RISULTATI = timedelta(hours=12)            # oltre, ci pensa l'aggiornamento completo
-CHIAVE_RISULTATI = "risultati-rapido"
+CHIAVE_RISULTATI = archivio.PASSO_SERA                # la riga del giro della sera in `aggiornamenti`
 
 
 def acceso() -> bool:
@@ -170,7 +170,7 @@ def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lamb
     """Risultati e voti delle giornate indicate (due pagine per giornata) e segna l'aggiornamento (il riscaldamento ricalcola da
     solo). None se l'aggiornamento completo del server sta girando, False se la fonte è spenta o la lettura non è riuscita.
     L'esito va nella riga `CHIAVE_RISULTATI` come un passo seguito (`archivio.segna_passo`, #661): riuscito = ultimo successo;
-    non riuscito = errore con il primo fallimento di fila (lo vedono «Stato dei dati» e la salute) e una riga nel registro."""
+    non riuscito = errore con il primo fallimento di fila (lo vede «Stato dei dati», non la salute: `archivio.FUORI_SALUTE`) e una riga nel registro."""
     from . import fonti_attive
     from .aggiorna import Aggiornamento, Stagione, _ora
     with blocco_processo() as libero:
