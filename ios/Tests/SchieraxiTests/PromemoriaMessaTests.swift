@@ -87,6 +87,70 @@ struct PromemoriaMessaTests {
         #expect(contatore.volte == 0)
     }
 
+    /// Le letture della giornata passate a promemoria e widget (l'ora in cui sono partite) e quelle non riuscite.
+    @MainActor
+    final class Letture {
+        var fresche: [Date] = []
+        var nonRiuscite = 0
+    }
+
+    /// Il server dei salvataggi (`SalvataggioAutomaticoTests.server`) con in più la giornata della fixture; `giornataGiu`: `/api/oggi`
+    /// non risponde.
+    static func conGiornata(giornataGiu: Bool = false) throws -> ServerDiProva {
+        let base = try SalvataggioAutomaticoTests.server()
+        let datiGiornata = try Fixture.dati("oggi")
+        return ServerDiProva { metodo, percorso, corpo in
+            if percorso.hasPrefix("/api/oggi") {
+                if giornataGiu { throw ErroreApi.rete("spento") }
+                return datiGiornata
+            }
+            return try await base.richiesta(metodo, percorso, corpo: corpo)
+        }
+    }
+
+    /// La giornata come nell'app, ma quello che andrebbe a promemoria e widget finisce in `letture`.
+    private func giornata(_ srv: ServerDiProva, _ letture: Letture) -> OggiViewModel {
+        let oggi = OggiViewModel(server: srv, conPromemoria: false)
+        oggi.dopoLetturaFresca = { _, chiestaIl in letture.fresche.append(chiestaIl) }
+        oggi.dopoLetturaNonRiuscita = { letture.nonRiuscite += 1 }
+        return oggi
+    }
+
+    @Test("Dopo ogni salvataggio e «Torna alla consigliata» la giornata si rilegge, anche se la spunta non cambia: decide il server")
+    func salvataggioRileggeLaGiornata() async throws {
+        let m = try memoria()
+        let srv = try Self.conGiornata()
+        let letture = Letture()
+        let vm = FormazioneViewModel(server: srv, oggi: giornata(srv, letture), memoria: m, promemoria: {})
+        await vm.carica()
+        let f = try #require(vm.formazione)
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        await vm.sostituisciTitolare(esce, con: entra)
+        #expect(letture.fresche.count == 1, "la spunta non c'era e non c'è: la giornata si rilegge lo stesso")
+        await vm.segnaMessa(true)
+        #expect(letture.fresche.count == 2)
+        let tocco = try #require(m.dictionary(forKey: ArchivioMessa.chiave)?["il"] as? Double)
+        let lettura = try #require(letture.fresche.last)
+        #expect(lettura.timeIntervalSince1970 >= tocco, "la lettura parte dopo il tocco: da lì decide il server")
+        await vm.tornaAllaConsigliata()
+        #expect(letture.fresche.count == 3)
+        #expect(srv.quante("GET /api/oggi") == 3)
+        #expect(letture.nonRiuscite == 0)
+    }
+
+    @Test("Se dopo il salvataggio la giornata non si rilegge, i promemoria tornano in programma con la copia salvata e partono")
+    func riletturaNonRiuscita() async throws {
+        let srv = try Self.conGiornata(giornataGiu: true)
+        let letture = Letture()
+        let vm = FormazioneViewModel(server: srv, oggi: giornata(srv, letture), memoria: try memoria(), promemoria: {})
+        await vm.carica()
+        let f = try #require(vm.formazione)
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        await vm.sostituisciTitolare(esce, con: entra)
+        #expect(letture.fresche.isEmpty)
+        #expect(letture.nonRiuscite == 1)
+    }
+
     @Test("«C'è una versione nuova» si segna come avvisata solo se l'avviso è partito davvero")
     func versioneNuova() async throws {
         let m = try memoria()

@@ -14,6 +14,9 @@ final class OggiViewModel: ViewModelBase {
     /// permesso per le notifiche la prima volta, promemoria e widget (`passaAWidgetEPromemoria`). Senza promemoria (test) niente;
     /// `OggiPerWidgetTests` la sostituisce per vedere che la giornata arriva.
     var dopoLetturaFresca: @MainActor (Oggi, Date) async -> Void
+    /// PROVVISORIO (test prima del codice, #710): firme vuote.
+    var dopoLetturaNonRiuscita: @MainActor () async -> Void = {}
+    func rileggiDopoUnSalvataggio() async {}
 
     /// `conPromemoria: false` nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
     init(server: any ServerClient, conPromemoria: Bool = true) {
