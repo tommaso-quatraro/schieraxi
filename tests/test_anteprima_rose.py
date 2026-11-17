@@ -1,13 +1,15 @@
 """Anteprima delle rose (piano «Ingresso facile», S1+S2): legge come l'importazione ma non salva niente; le scelte dell'utente sui
 dubbi (`correzioni`) e la sua squadra (`mia_squadra`) arrivano insieme all'importazione. Dati finti, cartelle temporanee."""
 import dataclasses
+import errno
 import json
 import time
 from datetime import datetime
 
 import pytest
+from fastapi.testclient import TestClient
 
-from fanta import contesto, lega, limiti, nomi, rose, server
+from fanta import contesto, lega, limiti, nomi, percorsi, rose, server
 from fanta.anteprima_rose import anteprima, applica_correzioni
 from fanta.listone import Calciatore
 from fanta.regole import Regole
@@ -449,6 +451,30 @@ def test_importazione_rifiutata_non_sposta_il_file_rovinato(ambiente):
     r = a.post("/api/rose/testo", json={"testo": "Nuova\nD\tBastoni\t5\n", "mia_squadra": "Non c'è"})
     assert r.status_code == 400, r.text
     assert file_rose.read_text(encoding="utf-8") == '{"squadre": [' and not file_rose.with_name("rose.json.rovinato").exists()
+
+
+@pytest.mark.parametrize("errore, stato", [(OSError(errno.ENOSPC, "No space left on device"), 507),
+                                           (percorsi.DatabaseAccountNonRisponde(), 503)], ids=["disco-pieno", "database"])
+def test_salvataggio_fallito_lascia_il_file_rovinato_al_suo_posto(ambiente, monkeypatch, errore, stato):
+    """#683: il salvataggio delle rose nuove fallisce dopo i controlli (disco pieno, database che non risponde). Il file rovinato
+    resta (o torna) al suo posto: l'importazione risponde con l'errore e le schermate dicono ancora che le rose non si leggono,
+    non «nessuna rosa»."""
+    a, uid = nuovo_utente("utentea")
+    file_rose = contesto.Contesto.per_utente(uid).rose
+    assert importa(a).status_code == 200
+    file_rose.write_text('{"squadre": [', encoding="utf-8")
+    vera = server.lega.scrivi_sicuro
+
+    def fallisce(*_a, **_k):
+        raise errore
+    monkeypatch.setattr(server.lega, "scrivi_sicuro", fallisce)
+    c = TestClient(server.app, headers={"X-Fanta": "1"}, cookies=a.cookies, raise_server_exceptions=False)
+    r = c.post("/api/rose/testo", json={"testo": "Nuova\nD\tBastoni\t5\n"})
+    monkeypatch.setattr(server.lega, "scrivi_sicuro", vera)
+    assert r.status_code == stato, r.text
+    assert file_rose.read_text(encoding="utf-8") == '{"squadre": [' and not file_rose.with_name("rose.json.rovinato").exists()
+    r = a.get("/api/squadre")
+    assert r.status_code == 400 and "rovinato" in r.json()["detail"], r.text
 
 
 # ---------------------------------------------------------------- due omonimi nella stessa rosa (#662)
