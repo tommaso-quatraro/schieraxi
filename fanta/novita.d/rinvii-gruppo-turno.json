@@ -1,0 +1,11 @@
+{
+  "titolo": "Giornata con metà partite rinviate a settimane dopo: scadenza e regola dei rinvii sulle partite giuste",
+  "voci": [
+    "Oggi e Formazione, giornata con poche partite giocate nel fine settimana e le altre rinviate a dopo la giornata successiva: la formazione si chiude con la prima partita del fine settimana anche se i recuperi sono già in calendario, le partite del fine settimana non risultano più «Rinviata» e la regola della lega sulle partite rinviate vale per i recuperi.",
+    "Diario, la stessa giornata finita: con «senza voto» o «voto d'ufficio» la regola vale per chi aveva il recupero, non più per chi ha giocato nel fine settimana. Con queste due regole la giornata si chiude appena finito il fine settimana, senza aspettare i recuperi."
+  ],
+  "tecnico": [
+    "turno.inizio(date, prossimo): con l'inizio del turno della giornata dopo, un turno non comincia mai da lì in poi; se la regola di sempre lo fa cominciare dopo (4 giocate e 6 rinviate a settimane dopo: il gruppo più numeroso sono i recuperi), il turno si cerca fra le partite prima della giornata dopo (#698). Senza prossimo, o con il turno che comincia prima della giornata dopo, nulla cambia: giornate normali, anticipi, anticipi lontani, metà giornata rinviata dentro la sosta.",
+    "prossimo passato da avvisi.prima_partita (scadenza), rinvii.fuori_turno, rinviate, id_rinviate e giornate_chiuse (Diario, formazione, giornata chiusa per la lega), fasi.inizio_turno, fine_giornata, recuperi_mancanti, stati_giocatori, squadre_in_anticipo_iniziato e aggiungi, gestione.oggi_senza_rose e live.risposta (GET /api/live). Nuova avvisi.turno_dopo. Nessun campo dell'API cambia."
+  ]
+}
