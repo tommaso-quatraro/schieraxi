@@ -144,9 +144,9 @@ Amministratore (sessione con ruolo amministratore; altrimenti `403` «Solo per l
 |---|---|---|
 | `POST /api/admin/inviti` | `{etichetta, amministratore?, usi?}` | `{codice, etichetta, valido_giorni, usi_max}`. `usi` (1-30, predefinito 1) = quanti amici possono entrare con lo stesso codice; un invito da amministratore è sempre monouso |
 | `GET /api/admin/inviti` | — | `{inviti: [{id, etichetta, ruolo, creato, scade, usi, usi_max, stato}]}`, `stato` = `attivo`, `finito`, `scaduto` o `revocato`. I codici non si rileggono |
-| `DELETE /api/admin/inviti/{id}` | — | `{ok}`; 404 se non esiste. Chi è già entrato tiene l'account, il codice non vale più |
+| `DELETE /api/admin/inviti/{id}` | — | `{ok}`; 404 se non esiste; `id` da 1 a 2147483647, altrimenti 422 (dal 13/11/2026, prima un numero enorme dava `500`). Chi è già entrato tiene l'account, il codice non vale più |
 | `GET /api/admin/utenti` | — | `{utenti, massimo}` |
-| `POST /api/admin/utenti/{id}/rose` | `{testo, sostituisci_tutto?}` | Solo amministratore: importa le rose di un utente che l'ha chiesto, nel SUO archivio. Stessa risposta di `POST /api/rose/testo`; non consuma le importazioni al giorno dell'utente; 404 se l'utente non esiste; lascia una riga nel registro di sicurezza (chi, per chi, quante squadre). Corpo fino a 600 KB (le altre rotte admin 8 KB). Al massimo 30 all'ora (429); con `sostituisci_tutto` le rose di prima restano in una copia datata (ultime 5). 409 se gli account non sono attivi sul server |
+| `POST /api/admin/utenti/{id}/rose` | `{testo, sostituisci_tutto?}` | Solo amministratore: importa le rose di un utente che l'ha chiesto, nel SUO archivio. Stessa risposta di `POST /api/rose/testo`; non consuma le importazioni al giorno dell'utente; 404 se l'utente non esiste; `id` da 1 a 2147483647, altrimenti 422 (dal 13/11/2026, prima un numero enorme dava `500`); lascia una riga nel registro di sicurezza (chi, per chi, quante squadre). Corpo fino a 600 KB (le altre rotte admin 8 KB). Al massimo 30 all'ora (429); con `sostituisci_tutto` le rose di prima restano in una copia datata (ultime 5). 409 se gli account non sono attivi sul server |
 | `GET /api/admin/registro` | — | contatori, ultimi errori, ultimi eventi di sicurezza (indirizzi nascosti) |
 | `GET /api/admin/funzioni` | — | `{funzioni: [{id, nome, serve, acceso, scelta_da, predefinito_pubblico, blocca_rotte}]}`: un interruttore per funzione (vedi «Funzioni» in fondo) |
 | `PUT /api/admin/funzioni` | `{funzione, acceso}` (`acceso: null` toglie la scelta) | stesso elenco. Ordine di scelta: amministratore, variabile `FANTA_FUNZIONE_<NOME>`, predefinito (acceso nel codice privato, quello pubblico della tabella nell'esportazione) |
@@ -303,7 +303,7 @@ Indicatori del consiglio (C1-C4 di #166, `fanta/indicatori_consiglio.py`), tutti
 | Metodo e percorso | Parametri | Risposta principale |
 |---|---|---|
 | `GET /api/giocatori` | `q`, `limite?`, `tutti?` | ricerca nel listone (anche senza accenti, e per nome proprio: «Lautaro»). Ogni elemento può avere `nome_completo` (facoltativo, solo per chi lo ha: nome e cognome per esteso, es. «Lautaro Martínez» per «Martinez L.»): un client che cerca sul dispositivo con `tutti=1` lo usa come secondo nome da confrontare |
-| `GET /api/giocatore/{id}` | — | scheda del giocatore: previsione, forma, voti, statistiche (`id` oltre 2147483647: 422) |
+| `GET /api/giocatore/{id}` | — | scheda del giocatore: previsione, forma, voti, statistiche (`id` da 1 a 2147483647, altrimenti 422 con `campi: ["calciatore_id"]`; dal 13/11/2026 anche sotto 1, che prima dava `500`) |
 | `GET /api/avatar` | — | `{versione: 3, tratti: {"<id>": {p?, c?, a?, b?, f?}}}`: tratti dei volti illustrati di tutti i giocatori che li hanno (dati comuni; vedi «GET /api/avatar» più sotto) |
 | `GET /api/mercato` | `squadra?` | Consigliati e proposte di cambio. `proposte` ha solo i cambi che passano il buon senso (campi facoltativi `sensato` = true e `motivo`, una frase); `scartate` (facoltativo, al massimo 5) i cambi che i numeri promuovono ma che un allenatore non farebbe, con `sensato` = false e il `motivo` per cui no. I client vecchi li ignorano |
 | `GET /api/classifica` | `ruolo?`, `liberi?`, `limite?` | giocatori della giornata per punti attesi |
@@ -334,7 +334,7 @@ Gli scambi usano gli id dei giocatori, separati da virgola (per esempio `do=101,
 | `POST /api/rose/correggi` | `{squadra, nome, id}` (X-Fanta, If-Match) | abbina a mano un giocatore non riconosciuto |
 | `GET /api/movimenti` | `limite?` (massimo 300) | storico di scambi, svincoli e tagli, dal più recente |
 | `GET /api/regole` | — | regole della lega (ETag) |
-| `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict`. Valori non validi: `400`. Oltre i tetti di misura (vedi «Tetti delle regole» qui sotto): `422` con `detail` «Regole non valide:» e una riga per ogni tetto superato, senza ripetere i valori mandati |
+| `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict`. Valori non validi: `400`, anche i numeri fuori dagli intervalli (vedi «Intervalli dei numeri delle regole» qui sotto). Oltre i tetti di misura (vedi «Tetti delle regole» qui sotto): `422` con `detail` «Regole non valide:» e una riga per ogni tetto superato, senza ripetere i valori mandati |
 | `POST /api/regole/riconosci` | `{testo}` (massimo 30000 caratteri, ogni riga al massimo 2000) | propone i valori letti dal regolamento incollato. Non salva niente. Testo o riga oltre il tetto: `422` con una frase in italiano in `detail` (dal 6/11/2026; prima il testo oltre 30000 caratteri si tagliava senza dirlo) |
 | `PUT /api/regole/rinvio` | `{giornata, modo, stagione?}` (X-Fanta, If-Match facoltativo, stesso ETag delle regole) | partite rinviate: decisione per UNA giornata, che vince sulla regola della lega (vedi «Partite rinviate» qui sotto) |
 
@@ -356,7 +356,8 @@ Risposta dell'anteprima:
   `sicuri`, `da_controllare`, `non_trovati` (conteggi), `totale` e `attesi` (giocatori letti e quelli della rosa nelle regole),
   `ruoli` (`{"P": n, "D": n, "C": n, "A": n}`), `mancano` e `in_piu` (solo i ruoli che non tornano, es. `{"P": 1}`), `senza_ruolo`,
   `completa` (bool), `avvisi` (frasi brevi senza il nome della squadra), `giocatori`.
-- ogni giocatore: `testo` (il nome come scritto nel file: è la chiave per le `correzioni`), `stato`, `metodo` (`esatto`, `abbreviato`,
+- ogni giocatore: `testo` (il nome come scritto nel file), `riga` (la sua posizione nella squadra come letta dal file, da 0: con la squadra è
+  la chiave per le `correzioni`, perché due omonimi possono avere lo stesso `testo`), `stato`, `metodo` (`esatto`, `abbreviato`,
   `simile`, `ambiguo`, `non trovato`, `manuale`), `id`/`nome`/`ruolo`/`squadra` (il giocatore proposto; `id` e `nome` `null` se nessuno),
   `costo`, `avviso` (es. «squadra diversa: …», può essere vuoto), `alternative` (`[{id, nome, ruolo, squadra}]`: per `da_controllare`
   i candidati, se c'è una proposta è la prima; per `non_trovato` fino a 3 nomi somiglianti da suggerire, nessuno scelto in partenza; vuoto per `sicuro`).
@@ -400,6 +401,10 @@ C;Kone M.;Roma;9
   il giocatore è `da_controllare`, con l'avviso «ruolo diverso: indicato X, nel listone Y» / «squadra diversa: indicata X, nel listone Y»,
   oppure un dubbio tra gli omonimi con quello che ha ruolo e squadra giusti per primo.
 - Stessi tetti del testo incollato (200 mila caratteri, 1500 righe) e stesse risposte dell'anteprima.
+- Excel con più di 10 fogli: si leggono i primi 10 e un avviso in cima agli `avvisi` lo dice («Ho letto solo i primi 10 fogli su 12: se negli
+  altri ci sono delle rose, non le ho lette. …», chiave `rose.fogli_non_letti` con `letti` e `totale`), anche nell'importazione. Con
+  `sostituisci_tutto` anteprima e importazione rispondono `400` con il motivo solo se una squadra già salvata non è tra quelle lette (potrebbe
+  stare in un foglio non letto e verrebbe tolta); se ci sono tutte (per esempio 10 fogli di rose più listone, calendario e classifica) si va avanti.
 - in tutto: `avvisi` (lettura del file, rose incomplete o con ruoli che non tornano, giocatori in più squadre, «una sola squadra»), `mia_squadra`
   (suggerita: quella già scelta se è tra le lette o se resta com'era perché il file ha solo le rose degli altri, oppure l'unica letta;
   altrimenti `null`; può quindi non essere tra `squadre`: il client la offre comunque nella scelta), `totale_squadre` (dopo l'importazione),
@@ -407,8 +412,13 @@ C;Kone M.;Roma;9
   `differenze` ha anche `squadre_nuove` e `squadre_tolte` (elenchi di nomi): con squadre aggiunte o tolte `nessuna_differenza` è falso.
   Un giocatore ripetuto nella stessa rosa si tiene una volta sola, con un avviso («… compare due volte, l'ho tenuto una volta sola»).
 
-`correzioni` (anteprima e importazione): `[{squadra, testo, id}]`, al massimo 800; `squadra` e `testo` come nell'anteprima, `id` = codice
-del listone oppure `null` per togliere quella riga. Il giocatore scelto entra con il ruolo e la squadra del listone e `riconosciuto: "manuale"`.
+`correzioni` (anteprima e importazione): `[{squadra, testo, id, riga?}]`, al massimo 800; `squadra`, `testo` e `riga` come nell'anteprima, `id` = codice
+del listone oppure `null` per togliere quella riga. Con `riga` la scelta vale solo per quella riga (che deve avere ancora quel `testo`) e vince
+sulle scelte senza `riga`: i client mandano una scelta per riga. Senza `riga` (app già installate) vale per le righe della squadra con quel
+`testo` che non sono `sicuro` (per tutte, se lo sono tutte), e se l'`id` è già la proposta di una di loro solo per quelle: due omonimi con
+proposte diverse restano tutti e due.
+Se due righe finiscono sullo stesso giocatore resta la prima, con l'avviso «compare due volte».
+Il giocatore scelto entra con il ruolo e la squadra del listone e `riconosciuto: "manuale"`.
 Nel multipart il campo `correzioni` è lo stesso elenco scritto come testo JSON (JSON non valido: `422`). Una scelta che non corrisponde più al
 testo, o un `id` fuori listone: `400` con il messaggio, e niente si salva. `mia_squadra` che non c'è tra le rose: `400`.
 Si può cominciare con la sola propria rosa: una squadra sola non è un errore (solo un avviso, testo `lega.UNA_SQUADRA`: «Con una sola squadra funzionano formazione e consigli; per gli scambi servono le rose degli altri: potrai aggiungerle quando vuoi.»).
@@ -556,6 +566,30 @@ leghe vere. Oltre un tetto la risposta è `422` con `detail` «Regole non valide
 I tetti su moduli, eccezioni e finestre c'erano già (prima rispondevano `400`). Gli altri errori delle regole restano `400`.
 Le regole salvate prima dei tetti si leggono come prima (`GET /api/regole`, calcoli); per salvarle di nuovo vanno riportate dentro
 i tetti. I client mostrano `detail` come per ogni errore: nessun cambio richiesto.
+
+## Intervalli dei numeri delle regole (dal 13/11/2026, #663)
+
+Prima `PUT /api/regole` accettava numeri finiti ma enormi (un bonus di 1e308, crediti negativi o di 10^30): la risposta era `200` e
+poi Formazione, Oggi, Rosa e widget rispondevano `400` finché le regole non si correggevano. Ora ogni salvataggio delle regole
+(anche `PUT /api/regole/rinvio`) controlla questi intervalli, larghi rispetto ai regolamenti veri (la web e l'iPhone stanno molto più
+stretti). Fuori: `400` con `detail` «Regole non valide:» e una riga che dice il campo e l'intervallo (per esempio «i crediti
+iniziali devono essere tra 0 e 100.000»); le regole salvate non cambiano.
+
+| Campo | Intervallo |
+|---|---|
+| `bonus.gol.P`, `.D`, `.C`, `.A` e gli altri `bonus.*` (anche i malus, che sono negativi) | da -100 a 100 |
+| `voto_senza_sostituto` (se non è `null`) | da 0 a 10 |
+| `crediti_iniziali` | da 0 a 100.000 (come i crediti delle squadre) |
+| `modificatore_difesa.min_difensori` | da 0 a 10 |
+| `modificatore_difesa.soglie` | media di ogni fascia da 0 a 10, bonus da -100 a 100 |
+| `fattore_campo` | da -100 a 100 |
+| `soglia_primo_gol` | da 0 a 200 |
+| `ampiezza_fascia_gol` | da 0 a 100 |
+
+Gli altri numeri avevano già i loro limiti (`rosa`, `panchina`, `rimborso_svincolo`, `scadenza_minuti`, `prima_giornata_lega`,
+`voto_ufficio_rinviate`). Come per i tetti, le regole salvate prima si leggono come prima (`GET /api/regole`, così la schermata
+Regole le mostra e le si corregge); per salvarle di nuovo vanno riportate negli intervalli. I client mostrano `detail` come per
+ogni errore: nessun cambio richiesto.
 
 ## Numero della giornata: `giornata` e `giornata_lega` (dal 5/11/2026, #299)
 

@@ -225,6 +225,23 @@ def test_backup_regole_oltre_i_tetti_danno_un_errore_chiaro_e_niente_scritto(rad
     assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
 
 
+@pytest.mark.parametrize("campi, frase", [
+    ({"crediti_iniziali": 10 ** 30}, "i crediti iniziali devono essere tra 0 e 100.000"),
+    ({"soglie": [[6, 1e30]]}, "il bonus di ogni fascia del modificatore difesa deve essere tra -100 e 100"),
+])
+def test_backup_regole_fuori_intervallo_dicono_campo_e_intervallo_e_niente_scritto(radice, campi, frase):
+    """Regole salvate con un numero enorme prima degli intervalli (#663), backup scaricato, ripristino dopo: l'errore dice quale
+    regola e fra quali numeri, non «controlla di aver scelto il file di backup giusto». Niente scritto, nemmeno gli altri file."""
+    prima = backup.crea(radice)
+    b = {"formato": backup.FORMATO, "versione": 1, "file": {"lega/regole.json": _regole_con(**campi), "dati/osservati.json": [1]}}
+    with pytest.raises(ValueError) as e:
+        backup.ripristina(b, radice)
+    assert frase in str(e.value) and "file di backup giusto" not in str(e.value), str(e.value)
+    assert str(e.value).startswith(backup.REGOLE_FUORI_INTERVALLO)
+    dopo = backup.crea(radice)
+    assert dopo == {**prima, "creato": dopo["creato"]} and not (radice / backup.COPIA_PRIMA).exists()
+
+
 def test_backup_regole_ai_tetti_si_ripristinano(radice):
     from fanta import regole
     b = _solo("lega/regole.json", _regole_con(nome_lega="L" * regole.MAX_NOME_LEGA,
@@ -339,6 +356,16 @@ def test_indirizzi_del_server(dati_isolati, radice, monkeypatch):
     assert json.loads((radice / "dati" / "osservati.json").read_text()) == [5, 7]
     assert client.post("/api/backup/ripristina", json={"formato": "x"}).status_code == 400
     assert TestClient(server.app).post("/api/backup/ripristina", json=b).status_code == 403
+
+
+def test_il_server_dice_quale_regola_del_backup_e_fuori_intervallo(dati_isolati, radice, monkeypatch):
+    monkeypatch.setattr(server, "RADICE", radice)
+    client = TestClient(server.app, headers={"X-Fanta": "1"})
+    b = client.get("/api/backup").json()
+    b["file"]["lega/regole.json"] = _regole_con(crediti_iniziali=10 ** 30)
+    r = client.post("/api/backup/ripristina", json=b)
+    assert r.status_code == 400 and "id_errore" not in r.json(), r.text
+    assert "i crediti iniziali devono essere tra 0 e 100.000" in r.json()["detail"]
 
 
 def test_il_ripristino_rifiuta_rose_con_una_stagione_strana(dati_isolati, radice, monkeypatch):

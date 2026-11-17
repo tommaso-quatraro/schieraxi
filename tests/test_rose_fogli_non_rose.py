@@ -9,7 +9,7 @@ from pathlib import Path
 import openpyxl
 import pytest
 
-from fanta import importa_sicuro, rose, server
+from fanta import frasi, importa_sicuro, rose, server
 from fanta.listone import Calciatore
 from fanta.nomi import Indice
 
@@ -271,3 +271,89 @@ def test_il_messaggio_senza_rose_arriva_intero(ambiente):  # noqa: F811
     a, _ = nuovo_utente("utentea")
     r = a.post("/api/rose/testo", json={"testo": "Data;Nota\n1 settembre;Asta di riparazione\n2 settembre;Mercato chiuso\n"})
     assert r.status_code == 400 and r.json()["detail"] == rose.NESSUNA_ROSA
+
+
+# ---------------------------------------------------------------- più fogli del tetto: mai tagliati in silenzio (#662)
+DODICI = ["Lupi Grigi", "Orsi Bianchi", "Gufi Neri", "Volpi Rosse", "Aquile Blu", "Falchi Verdi",
+          "Tigri Gialle", "Leoni Rossi", "Cervi Bianchi", "Lepri Nere", "Delfini Blu", "Squali Grigi"]
+TAGLIO = "Ho letto solo i primi 10 fogli su 12"
+
+
+def _excel_dodici(cartella):
+    """Una lega da 12 squadre con un foglio per squadra: due fogli oltre il tetto (rose.MAX_FOGLI = 10)."""
+    return _excel(cartella, {nome: [[nome], ["P", "Sommer", 10], ["D", "Bastoni", 15]] for nome in DODICI})
+
+
+@pytest.mark.parametrize("leggi", [rose.leggi_griglie, importa_sicuro.leggi_excel], ids=["senza-account", "con-account"])
+def test_chi_legge_l_excel_dice_quanti_fogli_ha(tmp_path, leggi):
+    griglie = leggi(_excel_dodici(tmp_path))
+    assert len(griglie) == rose.MAX_FOGLI == 10                    # il tetto resta
+    avviso = rose.avviso_fogli(griglie)
+    assert avviso.startswith(TAGLIO) and frasi.di(avviso) == {"chiave": "rose.fogli_non_letti", "param": {"letti": 10, "totale": 12}}
+    assert "non ci sono" not in avviso                             # i fogli non letti possono non essere rose: non si sa
+    assert rose.avviso_fogli(leggi(_excel(tmp_path, {n: [[n], ["P", "Sommer", 10]] for n in DODICI[:10]}))) is None
+
+
+def test_excel_con_piu_fogli_del_tetto_lo_dice_e_non_toglie_squadre(ambiente, tmp_path):  # noqa: F811
+    a, _ = nuovo_utente("utentea")
+    assert a.post("/api/rose/testo", json={"testo": "Squali Grigi\nP\tSommer\t10\n"}).status_code == 200    # nel dodicesimo foglio
+    file = {"file": ("lega.xlsx", _excel_dodici(tmp_path).read_bytes(), "application/octet-stream")}
+    r = a.post("/api/rose/anteprima/file", files=file)
+    assert r.status_code == 200, r.text
+    assert r.json()["totale_squadre"] == 11 and any(x.startswith(TAGLIO) for x in r.json()["avvisi"])
+    assert {"chiave": "rose.fogli_non_letti", "param": {"letti": 10, "totale": 12}} in r.json()["avvisi_frasi"]
+    r = a.post("/api/rose/file", files=file)                      # le squadre degli altri fogli non si toccano: si salva, e lo dice
+    assert r.status_code == 200, r.text
+    assert any(x.startswith(TAGLIO) for x in r.json()["avvisi"])
+    for rotta in ("/api/rose/anteprima/file", "/api/rose/file"):   # «togli le squadre che non sono nel file»: toglierebbe «Squali Grigi»
+        r = a.post(f"{rotta}?sostituisci_tutto=true", files=file)
+        assert r.status_code == 400 and "12 fogli" in r.json()["detail"], r.text
+    assert len(a.get("/api/squadre").json()) == 11
+
+
+def test_excel_con_dieci_rose_e_altri_fogli_si_sostituisce_come_prima(ambiente, tmp_path):  # noqa: F811
+    """Dieci fogli di rose più listone, calendario e classifica (13 fogli): «Togli le squadre che non sono nel file» non toglie
+    niente che non sia tra le squadre lette, quindi si fa, come prima; l'avviso resta."""
+    a, _ = nuovo_utente("utentea")
+    fogli = {nome: [[nome], ["P", "Sommer", 10]] for nome in DODICI[:10]}
+    fogli |= {"Listone": [["Quotazioni"], ["Id", "R", "Nome"]], "Calendario": CALENDARIO, "Classifica": CLASSIFICA}
+    file = {"file": ("lega.xlsx", _excel(tmp_path, fogli).read_bytes(), "application/octet-stream")}
+    for _ in range(2):                                             # la prima volta senza rose salvate, la seconda sopra le stesse
+        r = a.post("/api/rose/file?sostituisci_tutto=true", files=file)
+        assert r.status_code == 200, r.text
+        assert any(x.startswith("Ho letto solo i primi 10 fogli su 13") for x in r.json()["avvisi"])
+    assert len(a.get("/api/squadre").json()) == 10
+
+
+def test_excel_con_piu_fogli_del_tetto_dalla_riga_di_comando(tmp_path, calciatori, monkeypatch, capsys):
+    """`python -m fanta importa`: lo stesso avviso, e con --sostituisci-tutto si ferma senza salvare."""
+    import argparse
+    import shutil
+
+    from fanta import __main__ as comandi
+    regole = tmp_path / "regole.json"
+    shutil.copy(Path(comandi.__file__).parent.parent / "lega" / "esempio" / "regole.json", regole)
+    monkeypatch.setattr(comandi, "FILE_REGOLE", regole)
+    monkeypatch.setattr(comandi, "FILE_ROSE", tmp_path / "rose.json")
+    monkeypatch.setattr(comandi, "FILE_MOVIMENTI", tmp_path / "movimenti.json")
+    monkeypatch.setattr(comandi.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
+    testo = tmp_path / "squali.txt"
+    testo.write_text("Squali Grigi\nP\tSommer\t10\n", encoding="utf-8")
+    comandi.cmd_importa(argparse.Namespace(file=str(testo), sostituisci_tutto=False))       # la squadra del dodicesimo foglio
+    salvate = (tmp_path / "rose.json").read_text(encoding="utf-8")
+    file = str(_excel_dodici(tmp_path))
+    with pytest.raises(SystemExit) as e:
+        comandi.cmd_importa(argparse.Namespace(file=file, sostituisci_tutto=True))
+    assert "12 fogli" in str(e.value) and (tmp_path / "rose.json").read_text(encoding="utf-8") == salvate
+    comandi.cmd_importa(argparse.Namespace(file=file, sostituisci_tutto=False))
+    assert TAGLIO in capsys.readouterr().out
+
+
+def test_excel_con_piu_fogli_del_tetto_senza_account(dati_isolati, calciatori, tmp_path, monkeypatch):
+    monkeypatch.delenv("FANTA_MULTIUTENTE", raising=False)
+    monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
+    from test_account_http import cliente
+    r = cliente().post("/api/rose/anteprima/file",
+                       files={"file": ("lega.xlsx", _excel_dodici(tmp_path).read_bytes(), "application/octet-stream")})
+    assert r.status_code == 200, r.text
+    assert any(x.startswith(TAGLIO) for x in r.json()["avvisi"])

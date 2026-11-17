@@ -238,6 +238,8 @@ CATALOGO: dict[str, str] = {
     "rose.piu_giocatori_riga": "Riga {riga}: più giocatori sulla stessa riga ({nomi}). Se sono squadre affiancate, lascia una colonna vuota tra una squadra e l'altra.",
     "rose.riga_non_chiara": "Riga {riga}: ignorata ({celle}): non è chiaro se sia un'intestazione o il nome di più squadre.",
     "rose.nome_doppio": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
+    "rose.fogli_non_letti": "Ho letto solo i primi {letti} fogli su {totale}: se negli altri ci sono delle rose, non le ho lette. "
+                            "Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
     "rose.codice_assente": "codice {codice} non presente nel listone",
     "rose.diversa": "{squadra}: rosa diversa dalle regole ({dettaglio})",
     "rose.doppione": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",

@@ -504,6 +504,10 @@
     "it": "Il file ha troppe colonne (massimo {1}): carica solo le rose",
     "en": "The file has too many columns (at most {1}): upload only the rosters"
   },
+  "err.file_fogli_sostituisci": {
+    "it": "Il file ha {1} fogli e ne leggo al massimo {2}: non tolgo le squadre che non sono nel file, perché potrebbero essere nei fogli che non ho letto. Togli dal file i fogli che non sono rose e riprova.",
+    "en": "The file has {1} sheets and I read at most {2}: I won't remove the teams that are not in the file, because they could be in the sheets I didn't read. Remove the sheets that are not rosters from the file and try again."
+  },
   "err.excel_password": {
     "it": "Il file Excel è protetto da password: toglila e riprova",
     "en": "The Excel file is password-protected: remove the password and try again"

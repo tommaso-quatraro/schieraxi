@@ -14,6 +14,7 @@ import re
 from contextlib import closing
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import Path as FPath
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -44,6 +45,7 @@ PERMESSI_WIDGET = {"/api/oggi", "/api/widget", "/api/live"}
 LETTURE_WIDGET_ALL_ORA = (240, account.ORA)          # tetto per utente: un widget si aggiorna ogni 15-30 minuti
 
 router = APIRouter()
+MAX_ID = 2**31 - 1        # numeri di utenti e inviti nei percorsi: oltre, o sotto 1, si risponde 422 (sqlite non sa cercare un numero enorme: era un 500)
 
 
 # ---------------------------------------------------------------- chi è che chiede
@@ -583,7 +585,7 @@ def elenco_inviti():
 
 
 @router.delete("/api/admin/inviti/{invito_id}", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
-def revoca_invito(invito_id: int):
+def revoca_invito(invito_id: int = FPath(ge=1, le=MAX_ID)):
     with closing(account.apri()) as db:
         account.revoca_invito(db, invito_id)
     return {"ok": True}
