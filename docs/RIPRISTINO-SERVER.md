@@ -40,10 +40,11 @@ produzione (passo 3) le fonti e le funzioni che l'amministratore aveva spento to
 la funzione che scarica immagini da indirizzi scritti dagli utenti), e il passo 4 richiama anche le fonti che erano spente. Con una
 copia così, una fonte che era spenta si rispegne prima del passo 4, dalla cartella dell'app:
 `.venv/bin/python -c "from fanta import fonti_attive; fonti_attive.imposta('<fonte>', False)"` (`<fonte>` fra `fantacalcio`,
-`understat`, `footballdata`, `espn`, `foto`). Le funzioni si rispengono dall'app, da amministratore, prima di aprire al pubblico.
-Controllo: `GET /api/admin/fonti` e `GET /api/admin/funzioni` (`scelta_da` dice chi ha deciso). Senza `dati/consigliate.json`
-le consigliate già mostrate si rifanno da capo (possono cambiare anche per meno di un punto atteso); senza `dati/sentinella.json`
-la storia dei giri della sentinella riparte vuota.
+`understat`, `footballdata`, `espn`, `foto`). Le funzioni si rispengono dall'app, da amministratore, prima di aprire al pubblico
+(controllo al passo 7). Senza `dati/consigliate.json` le consigliate già mostrate si rifanno da capo (possono cambiare anche per
+meno di un punto atteso); senza `dati/sentinella.json` la storia dei giri della sentinella riparte vuota.
+Con una copia che li ha, le consigliate già mostrate tornano quelle della notte della copia: una consigliata cambiata dopo quella
+notte può tornare indietro.
 
 ## Passi (utente del server, nella sua home)
 
@@ -55,6 +56,10 @@ la storia dei giri della sentinella riparte vuota.
    Su una cartella nuova, come qui, non c'è altro. Se invece ripristini sopra una cartella già usata: prima ferma il servizio e
    sposta via i file `-wal` e `-shm` accanto ai database (`dati/*.sqlite-wal`, `dati/*.sqlite-shm`), che sono dei database di prima
    e rovinerebbero quelli della copia.
+   Sopra una cartella già usata il pacchetto sovrascrive anche `dati/fonti.json`, `dati/funzioni.json` e `dati/consigliate.json`
+   con quelli della notte della copia: una fonte o una funzione spenta dopo quella notte torna accesa (una fonte così si rispegne
+   prima del passo 4 con il comando `fonti_attive.imposta` di «Cosa c'è nella copia notturna e cosa no»; le funzioni al passo 7),
+   e una consigliata cambiata dopo torna quella di allora.
    Sopra una cartella già usata restano anche le cartelle `dati/utenti/<numero>` degli account nati dopo la notte della copia:
    quegli account nel database della copia non ci sono, e i loro numeri tornano liberi per i prossimi iscritti. Prima di
    riavviare il servizio, cioè prima che qualcuno possa iscriversi:
@@ -118,7 +123,11 @@ la storia dei giri della sentinella riparte vuota.
    - avviato il servizio: `curl -s -H "X-Fanta: 1" http://127.0.0.1:8000/api/account/me` contiene `"multiutente":true`,
      e `curl -s -o /dev/null -w "%{http_code}" -H "X-Fanta: 1" http://127.0.0.1:8000/api/formazione` dà `401`;
    - accesso: per non usare password vere crea un account di prova con `.venv/bin/python -m fanta invito --etichetta prova --admin`
-     e iscriviti con quel codice; da amministratore `GET /api/admin/utenti` deve elencare gli account della copia (più quello di prova). Poi elimina l'account di prova.
+     e iscriviti con quel codice; da amministratore `GET /api/admin/utenti` deve elencare gli account della copia (più quello di prova);
+   - fonti e funzioni, a ogni ripristino: con lo stesso account, `GET /api/admin/fonti` e `GET /api/admin/funzioni`. Le spente
+     devono essere quelle che l'amministratore aveva spento, con `scelta_da` uguale a `amministratore`. Il pacchetto ha le scelte
+     della notte della copia (le copie di prima della #664 nessuna): quello che era stato spento dopo, o che con una copia vecchia
+     risulta acceso, si rispegne adesso dall'app, prima di aprire al pubblico. Poi elimina l'account di prova.
 8. **Sistema**: servizio systemd (`script/server/fantacalcio.service`, il drop-in delle variabili `script/server/ambiente.conf.esempio`
    più quelli del gestore), nginx, certificato, crontab
    (`script/server/LEGGIMI.md`), chiave delle firme e canale degli avvisi in `~/.config/schieraxi/`.
