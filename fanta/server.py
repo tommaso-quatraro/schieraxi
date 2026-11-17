@@ -1954,8 +1954,10 @@ def _controlla_sostituzione(riconosciute: _Riconosciute, prima: lega.Rose | None
 
 
 def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto, correzioni: list[dict] | None = None,
-             mia_squadra: str | None = None) -> dict:
-    """Salva le rose già riconosciute (`_riconosci`). Da chiamare con il blocco delle rose preso."""
+             mia_squadra: str | None = None, copia_datata: bool = False) -> dict:
+    """Salva le rose già riconosciute (`_riconosci`). Da chiamare con il blocco delle rose preso. `copia_datata`: prima di
+    salvare, una copia datata delle rose di adesso (`_copia_datata_delle_rose`), fatta solo dopo tutti i controlli che possono
+    rifiutare l'importazione: un rifiuto non aggiunge copie e non toglie la più vecchia (#718)."""
     r = _regole(ctx)
     prima, rovinate = _rose_di_prima(ctx)
     if sostituisci_tutto:
@@ -1965,6 +1967,8 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     anteprima_rose.scegli_mia(nuove, mia_squadra)              # facoltativa: la squadra dell'utente scelta nell'anteprima
     limiti.controlla_rose(ctx, nuove)                          # con gli account: al massimo 20 squadre da 40 giocatori
     nuove.stagione = consigli.stagione_corrente()
+    if copia_datata:                                           # dopo i controlli, prima di spostare il file rovinato
+        _copia_datata_delle_rose(ctx)
     if rovinate:                                               # solo ora: un'importazione rifiutata non sposta niente
         _metti_da_parte(ctx.rose)
         avvisi.insert(0, lega.ROSE_ROVINATE)
@@ -2128,11 +2132,8 @@ def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_ch
     ctx = Contesto.per_utente(utente_id)
     # fuori dal blocco, come le importazioni dall'app; il comando da riga di comando passa anche gli Excel letti da leggi_excel
     riconosciute = _riconosci(griglie, ctx, excel=isinstance(griglie, importa_sicuro.FogliExcel))
-    with _scrittura_rose:
-        if sostituisci_tutto:
-            _controlla_sostituzione(riconosciute, _rose_di_prima(ctx)[0])    # un rifiuto non aggiunge copie (non toglie le vecchie)
-            _copia_datata_delle_rose(ctx)
-        risposta = _importa(riconosciute, sostituisci_tutto, ctx)
+    with _scrittura_rose:              # la copia datata (con sostituisci_tutto) parte dentro _importa, dopo tutti i controlli
+        risposta = _importa(riconosciute, sostituisci_tutto, ctx, copia_datata=sostituisci_tutto)
     account.evento("importazione_per_conto_di", admin=da_chi if da_chi is not None else "riga-di-comando", utente=utente_id,
                    squadre=len(risposta["squadre_importate"]), sostituisci=int(bool(sostituisci_tutto)))
     return risposta

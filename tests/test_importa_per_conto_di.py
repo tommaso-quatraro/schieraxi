@@ -186,6 +186,22 @@ def test_excel_letto_in_parte_rifiutato_non_consuma_le_copie_datate(mondo):
     assert list(cartella.glob("rose-*.json")) == []
 
 
+@pytest.mark.parametrize("tetto", ["MAX_SQUADRE", "MAX_GIOCATORI_SQUADRA"])
+def test_rifiutata_per_un_tetto_non_consuma_le_copie_datate(mondo, monkeypatch, tetto):
+    """#718: «sostituisci tutto» rifiutato per il tetto di squadre o di giocatori: nessuna copia datata in più (prima la copia
+    partiva prima del controllo, e ogni tentativo toglieva la più vecchia delle cinque)."""
+    capo, amico = mondo["capo"][0], mondo["amico"]
+    cartella = contesto.cartella_utente(amico[1]) / "rose-prima"
+    assert capo.post(f"/api/admin/utenti/{amico[1]}/rose", json={"testo": ROSE, "sostituisci_tutto": True}).status_code == 200
+    copie = sorted(p.name for p in cartella.glob("rose-*.json"))
+    salvate = (contesto.cartella_utente(amico[1]) / "rose.json").read_bytes()
+    monkeypatch.setattr(server.limiti, tetto, 1)                   # ROSE ha 2 squadre, e 2 giocatori nella prima
+    r = capo.post(f"/api/admin/utenti/{amico[1]}/rose", json={"testo": ROSE, "sostituisci_tutto": True})
+    assert r.status_code == 413, r.text
+    assert sorted(p.name for p in cartella.glob("rose-*.json")) == copie
+    assert (contesto.cartella_utente(amico[1]) / "rose.json").read_bytes() == salvate
+
+
 def test_tetto_di_frequenza(mondo, monkeypatch):
     capo, amico = mondo["capo"][0], mondo["amico"]
     monkeypatch.setattr(server, "IMPORTAZIONI_PER_CONTO_DI", (3, 3600))
