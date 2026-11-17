@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.506",
+    "data": "2026-11-17T23:11:56",
+    "titolo": "A campionato finito l'app lo dice, invece di aspettare un calendario che non serve",
+    "voci": [
+      "Web app, Formazione, dopo l'ultima giornata del campionato: per due giorni si vede com'è andata l'ultima giornata (e, se manca un suo recupero, si sceglie come contarlo), poi la frase «Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.».",
+      "Prima, appena finita l'ultima partita, compariva un errore che parlava del calendario della stagione non ancora disponibile, anche aprendo l'avviso del riepilogo dell'ultima giornata. L'app per iPhone e i suoi widget non mostrano ancora la frase nuova.",
+      "D'estate, dal 1° luglio all'uscita del calendario nuovo, resta il messaggio di sempre sul calendario."
+    ],
+    "tecnico": [
+      "consigli.stagione_finita(db, stagione, adesso): nessuna giornata da giocare e almeno una partita giocata. consigli.senza_giornata sceglie l'errore: CampionatoFinito (409, codice campionato_finito, frase campionato.finito) o SenzaCalendario (400, il messaggio di sempre); il gestore dei ValueError ammette anche 409.",
+      "GET /api/oggi a campionato finito: 200 con i campi vuoti come senza rose, fase finita, prossima null, riepilogo dell'ultima giornata nelle 48 ore (fasi.calcola_fase) e il campo nuovo facoltativo campionato_finito {testo, frase} (gestione.oggi_campionato_finito). GET /api/widget: 200 con lo stesso campo e formazione, rosa, avvisi e seguiti vuoti. GET /api/formazione, /api/formazione/testo, /api/osservati, /api/mercato: 409 con la stessa frase (err.campionato_finito per la web in inglese).",
+      "Sentinella: il rifiuto per mancanza di giornata (gravità senza_giornata) non è una rottura a campionato finito né d'estate (dal 1° luglio al 31 agosto, ESTATE_FINO_A, con la stagione nuova senza partite e quella prima finita: sentinella.senza_giornata_normale); resta risposta_rifiutata quando il calendario manca davvero, anche da settembre con la stagione nuova ancora vuota. Fase finita senza prossima e widget senza formazione non sono rotture a campionato finito.",
+      "Web: con campionato_finito la Formazione mostra la testa della giornata finita (riepilogoGiornata), il menu di riepilogo.rinvio se c'è e la frase del server; con prossima_giornata null in /api/stato non chiede /api/formazione. Contratto in docs/API.md, «Campionato finito» (#656)."
+    ]
+  },
+  {
     "versione": "1.505",
     "data": "2026-11-17T22:51:51",
     "titolo": "Copia notturna: dentro anche le fonti e le funzioni spente dall'amministratore",
