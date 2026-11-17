@@ -14,9 +14,9 @@ final class OggiViewModel: ViewModelBase {
     /// permesso per le notifiche la prima volta, promemoria e widget (`passaAWidgetEPromemoria`). Senza promemoria (test) niente;
     /// `OggiPerWidgetTests` la sostituisce per vedere che la giornata arriva.
     var dopoLetturaFresca: @MainActor (Oggi, Date) async -> Void
-    /// PROVVISORIO (test prima del codice, #710): firme vuote.
-    var dopoLetturaNonRiuscita: @MainActor () async -> Void = {}
-    func rileggiDopoUnSalvataggio() async {}
+    /// Cosa si fa se la giornata riletta dopo un tuo salvataggio non arriva dal server (`rileggiDopoUnSalvataggio`): i promemoria
+    /// tornano in programma con la copia salvata e partono, mai tacere per un dato incerto. Nei test la sostituisce chi conta.
+    var dopoLetturaNonRiuscita: @MainActor () async -> Void
 
     /// `conPromemoria: false` nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
     init(server: any ServerClient, conPromemoria: Bool = true) {
@@ -25,8 +25,10 @@ final class OggiViewModel: ViewModelBase {
         caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
         if conPromemoria {
             dopoLetturaFresca = { oggi, chiestaIl in await OggiViewModel.passaAWidgetEPromemoria(oggi, chiestaIl: chiestaIl) }
+            dopoLetturaNonRiuscita = { await Aggiornamento.riprogrammaPromemoria(lettura: .nonRiuscita) }
         } else {
             dopoLetturaFresca = { _, _ in }
+            dopoLetturaNonRiuscita = {}
         }
         super.init()
         osserva(caricatore)
@@ -77,11 +79,28 @@ final class OggiViewModel: ViewModelBase {
     }
 
     func carica() async {
-        let chiesta = Date()   // una spunta toccata dopo quest'ora vale ancora (`ArchivioMessa`)
-        await caricatore.ricarica()
         // Con dati vecchi (server irraggiungibile, o ancora la cache) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
-        guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
-        await dopoLetturaFresca(oggi, chiesta)
+        if let letta = await leggiFresca() { await dopoLetturaFresca(letta.oggi, letta.chiestaIl) }
+    }
+
+    /// Dopo un tuo salvataggio riuscito (o «Torna alla consigliata»): la giornata si rilegge e i promemoria del telefono li decide il
+    /// server (`serve_promemoria`), che sa della spunta e dei titolari a rischio meglio della spunta ricordata qui (#710). Se la
+    /// giornata non arriva, tornano in programma con la copia salvata e partono (`dopoLetturaNonRiuscita`).
+    func rileggiDopoUnSalvataggio() async {
+        if let letta = await leggiFresca() {
+            await dopoLetturaFresca(letta.oggi, letta.chiestaIl)
+        } else {
+            await dopoLetturaNonRiuscita()
+        }
+    }
+
+    /// Rilegge la giornata: quella arrivata fresca dal server, con l'ora in cui è partita la lettura (una spunta toccata dopo
+    /// quest'ora vale ancora, `ArchivioMessa`), o nil se è rimasta la copia salvata.
+    private func leggiFresca() async -> (oggi: Oggi, chiestaIl: Date)? {
+        let chiesta = Date()
+        await caricatore.ricarica()
+        guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return nil }
+        return (oggi, chiesta)
     }
 
     /// Una giornata fresca per i promemoria e i widget: la prima volta il permesso per le notifiche, poi `Aggiornamento.elabora`

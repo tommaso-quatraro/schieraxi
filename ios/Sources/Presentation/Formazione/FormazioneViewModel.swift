@@ -494,29 +494,43 @@ final class FormazioneViewModel: ViewModelBase {
             return
         }
         guard let f = formazione, puoScrivere else { return }
+        if await togliLaScelta(f) { await oggi?.rileggiDopoUnSalvataggio() }
+    }
+
+    /// `DELETE /api/scelta`, se c'è una scelta salvata. true se il server l'ha tolta e la risposta vale (allora si rilegge la giornata).
+    private func togliLaScelta(_ f: Formazione) async -> Bool {
         let g = generazione
+        let cera = salvata != nil
         occupato = true
         defer { occupato = false }
         do {
-            if salvata != nil { try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)") }
+            if cera { try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)") }
             guard g == generazione else {
                 await carica()
-                return
+                return false
             }
             let spuntaPrima = spuntaValida
             dimentica()
             ricordaSulTelefono(f)
             ricordaLaSpunta(f, prima: spuntaPrima)
             Haptics.esito(riuscito: true)
+            return cera
         } catch {
             await nonRiuscita(error, generazione: g)
+            return false
         }
     }
 
-    /// Salva questi 11 come tua scelta (`salvaTitolari` della web). `messa`: la spunta; senza, il server la lascia com'era finché
-    /// gli 11 sono gli stessi (la stessa regola qui, per la riga e la spunta).
+    /// Salva questi 11 come tua scelta e poi rilegge la giornata, a comandi già riaccesi: i promemoria del telefono li decide il
+    /// server (`OggiViewModel.rileggiDopoUnSalvataggio`), anche se la spunta che conosce il telefono non è cambiata (#710).
     private func salva(_ ids: [Int], messa: Bool? = nil) async {
-        guard let f = formazione, puoScrivere else { return }
+        if await scrivi(ids, messa: messa) { await oggi?.rileggiDopoUnSalvataggio() }
+    }
+
+    /// Salva questi 11 come tua scelta (`salvaTitolari` della web). `messa`: la spunta; senza, il server la lascia com'era finché
+    /// gli 11 sono gli stessi (la stessa regola qui, per la riga e la spunta). true se il server l'ha salvata e la risposta vale.
+    private func scrivi(_ ids: [Int], messa: Bool?) async -> Bool {
+        guard let f = formazione, puoScrivere else { return false }
         let g = generazione
         occupato = true
         defer { occupato = false }
@@ -526,7 +540,7 @@ final class FormazioneViewModel: ViewModelBase {
             // nel frattempo la schermata si è riletta: questa risposta non vale, si rilegge dal server (mai una scelta che non si vede)
             guard g == generazione else {
                 await carica()
-                return
+                return false
             }
             let stessi = salvata.map { Set($0.titolari) == Set(ids) } ?? false
             let eraConsigliata = Set(ids) == Set(consigliati(f)) || (stessi && salvata?.eraConsigliata == true)
@@ -536,8 +550,10 @@ final class FormazioneViewModel: ViewModelBase {
                     nonValida: false, f, valutazione: r)
             ricordaLaSpunta(f, prima: spuntaPrima)
             Haptics.esito(riuscito: true)
+            return true
         } catch {
             await nonRiuscita(error, generazione: g)
+            return false
         }
     }
 

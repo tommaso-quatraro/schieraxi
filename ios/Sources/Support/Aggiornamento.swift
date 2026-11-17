@@ -98,12 +98,12 @@ enum Aggiornamento {
     }
 
     /// Dopo che gli avvisi si sono riaccesi o sono cambiate le ore tranquille: rimette in programma i promemoria con l'ultima giornata
-    /// salvata, senza rete.
+    /// salvata, senza rete. `lettura: .nonRiuscita` quando una rilettura della giornata non è riuscita: allora partono.
     /// Senza una copia salvata ci pensa la prossima lettura di Oggi.
-    static func riprogrammaPromemoria() async {
+    static func riprogrammaPromemoria(lettura: Lettura = .salvata) async {
         if Demo.attivo { return }
         guard let oggi = await OggiRepository(server: ServerCorrente.condiviso).salvato() else { return }
-        await programmaPromemoria(oggi, lettura: .salvata)
+        await programmaPromemoria(oggi, lettura: lettura)
     }
 
     /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata. `chiestaIl`: quando
