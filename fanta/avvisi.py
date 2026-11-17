@@ -26,8 +26,13 @@ def _date(db: sqlite3.Connection, stagione: str, giornata: int) -> list[tuple[da
 def turni_vicini(db: sqlite3.Connection, stagione: str, giornata: int) -> tuple[datetime | None, datetime | None]:
     """(inizio del turno della giornata prima, inizio del turno della giornata dopo), per riconoscere gli anticipi lontani
     (turno.lontano). None dove la giornata non c'è o non ha date."""
-    return (turno.inizio(d for d, _ in _date(db, stagione, giornata - 1)),
-            turno.inizio(d for d, _ in _date(db, stagione, giornata + 1)))
+    return turno.inizio(d for d, _ in _date(db, stagione, giornata - 1)), turno_dopo(db, stagione, giornata)
+
+
+def turno_dopo(db: sqlite3.Connection, stagione: str, giornata: int) -> datetime | None:
+    """L'inizio del turno della giornata dopo (`prossimo` di turno.inizio: un turno non comincia dopo la giornata dopo, #698).
+    None se la giornata dopo non c'è o non ha date."""
+    return turno.inizio(d for d, _ in _date(db, stagione, giornata + 1))
 
 
 def prima_partita(db: sqlite3.Connection, stagione: str, giornata: int) -> datetime | None:
@@ -40,9 +45,10 @@ def prima_partita(db: sqlite3.Connection, stagione: str, giornata: int) -> datet
     # formazione risultava aperta fino a gennaio.
     # Un anticipo (da 36 ore a 7 giorni prima del gruppo principale) non la fissa, e nemmeno un anticipo lontano (partita giocata
     # settimane prima, entro la giornata precedente, con il turno che comincia prima della giornata dopo, #659): regola in
-    # turno.conta_per_scadenza.
-    inizio_turno = turno.inizio(d for d, _ in date)
+    # turno.conta_per_scadenza. Il turno non comincia dopo la giornata dopo (#698): con 4 partite nel fine settimana e 6 recuperi già
+    # in calendario settimane dopo, la scadenza è il fine settimana anche prima che le 4 partite si giochino.
     precedente, prossimo = turni_vicini(db, stagione, giornata)
+    inizio_turno = turno.inizio((d for d, _ in date), prossimo)
     valide = [d for d, giocata in date if turno.conta_per_scadenza(d, giocata, inizio_turno, precedente, prossimo)]
     return min(valide)
 

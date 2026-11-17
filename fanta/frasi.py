@@ -240,6 +240,8 @@ CATALOGO: dict[str, str] = {
     "rose.nome_doppio": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
     "rose.fogli_non_letti": "Ho letto solo i primi {letti} fogli su {totale}: se negli altri ci sono delle rose, non le ho lette. "
                             "Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
+    # una lega già mista (squadre di esempio rimaste insieme a quelle vere, #683): server._rose_di_prima
+    "rose.esempi_tolti": "Le squadre di esempio ({squadre}) erano rimaste nella lega insieme alle tue: l'importazione le toglie.",
     "rose.codice_assente": "codice {codice} non presente nel listone",
     "rose.diversa": "{squadra}: rosa diversa dalle regole ({dettaglio})",
     "rose.doppione": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",

@@ -196,3 +196,23 @@ def test_turno_diviso_con_gruppo_principale_cinque_giorni_dopo():
         db = _db([(venerdi, giocata)] * 3 + [(mercoledi, 0)] * 4)
         assert avvisi.prima_partita(db, ST, 9) == d(venerdi)
         assert fasi.iniziata(db, reg, ST, 9, d("2026-08-21 12:20"))
+
+
+def test_il_turno_non_comincia_dopo_la_giornata_dopo():
+    """#698: con `prossimo` (l'inizio del turno della giornata dopo) il turno è il gruppo giocato nella data della giornata. 4 partite
+    il 31/10-1/11 e 6 rinviate al 2-3 dicembre, la giornata dopo dal 6/11: il turno comincia il 31/10, non coi recuperi. Senza
+    `prossimo`, o quando il turno comincia comunque prima della giornata dopo, nulla cambia: giornata normale, recuperi a gennaio
+    (Supercoppa), anticipi di settimane, metà giornata rinviata dentro la sosta."""
+    quattro = ["2026-10-31 15:00", "2026-10-31 18:00", "2026-10-31 20:45", "2026-11-01 12:30"]
+    sei = ["2026-12-02 18:30", "2026-12-02 20:45", "2026-12-02 20:45", "2026-12-03 18:30", "2026-12-03 20:45", "2026-12-03 20:45"]
+    giornata_dopo = d("2026-11-06 20:45")
+    assert turno.inizio((d(x) for x in quattro + sei), giornata_dopo) == d("2026-10-31 15:00")
+    assert turno.inizio(d(x) for x in quattro + sei) == d("2026-12-02 18:30")                  # senza la giornata dopo: come prima
+    assert turno.inizio((d(x) for x in sei), giornata_dopo) == d("2026-12-02 18:30")           # nessuna partita prima: come prima
+    assert turno.inizio((d(x) for x in NORMALE), d("2026-11-14 15:00")) == d("2026-11-07 15:00")
+    supercoppa = [d("2025-12-20 15:00")] * 3 + [d("2025-12-21 18:00")] * 3 + [d("2026-01-14 20:45")] * 4
+    assert turno.inizio(supercoppa, d("2025-12-27 15:00")) == d("2025-12-20 15:00")
+    anticipi = [d("2026-10-20 20:45"), d("2026-10-21 20:45"), d("2026-10-22 20:45"), d("2026-10-23 20:45")] + [d(x) for x in NORMALE]
+    assert turno.inizio(anticipi, d("2026-11-14 15:00")) == d("2026-11-07 15:00")
+    sosta = [d(x) for x in quattro] + [d("2026-11-11 18:30")] * 3 + [d("2026-11-12 20:45")] * 3
+    assert turno.inizio(sosta, d("2026-11-20 20:45")) == d("2026-11-11 18:30")

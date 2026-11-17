@@ -355,6 +355,54 @@ def test_diario_chi_ha_giocato_un_anticipo_di_settimane_tiene_il_suo_voto(monkey
     assert v["schierata"]["reale"] == 11 * 6 + 3                     # il 9 del 25, che ha giocato l'anticipo
 
 
+# 4 partite della giornata 10 giocate nella sua data (31/10-1/11), le altre 6 rinviate e recuperate il 2-3 dicembre, dopo la 11
+# (6-8 novembre). Il turno è il gruppo giocato nella data della giornata: fuori dal turno sono i 6 recuperi (#698).
+QUATTRO_PIU_SEI = ([(90 + k, 9, d, 1) for k, d in enumerate(("2026-10-24 15:00", "2026-10-24 18:00", "2026-10-25 15:00",
+                                                              "2026-10-25 20:45"))]
+                   + [(1 + k, 10, d, 1) for k, d in enumerate(("2026-10-31 15:00", "2026-10-31 18:00", "2026-10-31 20:45",
+                                                               "2026-11-01 12:30"))]
+                   + [(5 + k, 10, d, 1) for k, d in enumerate(("2026-12-02 18:30", "2026-12-02 20:45", "2026-12-02 20:45",
+                                                               "2026-12-03 18:30", "2026-12-03 20:45", "2026-12-03 20:45"))]
+                   + [(110 + k, 11, d, 0) for k, d in enumerate(("2026-11-06 20:45", "2026-11-07 15:00", "2026-11-08 15:00",
+                                                                 "2026-11-08 20:45"))])
+
+
+@pytest.mark.parametrize("modo, reale", [("aspetta", 11 * 6 + 3), ("voto_ufficio", 11 * 6), ("senza_voto", 9 * 6)])
+def test_diario_quattro_giocate_e_sei_recuperate_settimane_dopo_la_regola_cade_sui_recuperi(monkeypatch, modo, reale):
+    """#698: con 4 partite giocate nella data della giornata e 6 recuperate settimane dopo, dopo la giornata 11, il Diario trattava
+    come «fuori dal turno» le 4 giocate (per turno.py il turno era il gruppo più numeroso, i recuperi): con «senza voto» o «voto
+    d'ufficio» la regola colpiva chi aveva giocato nel turno e lasciava il voto vero a chi aveva il recupero. Ora la regola cade sui
+    recuperi: gli attaccanti 21-25 giocano il recupero (partita 5), gli altri la partita 1 del 31 ottobre (numeri come nel test
+    della partita rinviata sopra)."""
+    from fanta import diario
+    partite = pd.DataFrame([{"id": i, "stagione": ST, "giornata": g, "data": d, "giocata": gi} for i, g, d, gi in QUATTRO_PIU_SEI])
+    assert rinvii.id_fuori_turno(partite, ST, 10) == {5, 6, 7, 8, 9, 10}
+    voti = pd.DataFrame([{"stagione": ST, "giornata": 10, "calciatore_id": i, "voto_red": 9.0 if i == 25 else 6.0} for i in range(1, 26)])
+    monkeypatch.setattr(diario, "previsioni", lambda d, stagione, giornata, regole, par: pd.DataFrame([
+        {"id": i, "nome": f"G{i}", "ruolo": RUOLI_D[i - 1], "p_voto": 0.9, "mu": 5.5 + i * 0.05, "mu_voto": 6.0, "atteso": 5.0,
+         "partita": 5 if i > 20 else 1} for i in range(1, 26)]))
+    monkeypatch.setattr(diario, "fantavoto", lambda r, ruolo, regole: float(r["voto_red"]))
+    scelti = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]               # 3-4-3 con due attaccanti del recupero
+    v = diario.calcola_giornata(NS(partite=partite, voti=voti), ST, 10, replace(Regole(), partite_rinviate=modo), None,
+                                list(range(1, 26)), {"titolari": scelti, "panchina": [2, 22]}, simulazioni=50)
+    assert v["schierata"]["reale"] == reale          # senza voto: 21 e 25 a zero, in panchina nessuno può entrare
+
+
+@pytest.mark.parametrize("modo", ["aspetta", "senza_voto", "voto_ufficio"])
+def test_quattro_giocate_e_sei_rinviate_la_giornata_finisce_col_turno(tmp_path, modo):
+    """#698: gli stessi 4 + 6 con i recuperi ancora da giocare. La giornata è finita col turno del 31/10-1/11, come con 5 giocate e
+    5 rinviate: i 6 recuperi sono le partite che mancano e, se la regola non è «aspetta», la giornata è chiusa per la lega (il Diario
+    la scrive subito). Prima i recuperi erano il turno: giornata aperta fino a dicembre, nessun recupero da aspettare."""
+    db = archivio.apri(tmp_path / "f.sqlite")
+    archivio.inserisci(db, "partite", [{"id": i, "stagione": ST, "giornata": g, "data": d, "casa": f"c{i}", "trasferta": f"t{i}",
+                                        "gol_casa": None, "gol_trasferta": None, "giocata": 0 if i in range(5, 11) else gi,
+                                        "understat_id": None} for i, g, d, gi in QUATTRO_PIU_SEI])
+    regole = replace(Regole(), partite_rinviate=modo)
+    assert (10 in rinvii.giornate_chiuse(db, ST, regole)) is (modo != "aspetta")
+    assert {p["casa"] for p in fasi.recuperi_mancanti(db, ST, 10)} == {f"c{i}" for i in range(5, 11)}
+    assert fasi.fine_giornata(db, ST, 10) == pd.Timestamp("2026-11-01 12:30").to_pydatetime() + fasi.DURATA_PARTITA
+
+
 def test_diario_chi_non_ha_previsione_e_ha_la_partita_rinviata_prende_il_voto_d_ufficio(monkeypatch):
     """Revisione di #461: il portiere di riserva senza previsione (#447) gioca con la Roma, partita rinviata e recuperata dopo;
     con la regola «voto d'ufficio» la lega gli dà il voto fisso, come agli altri della stessa partita. La partita si trova dal club."""
