@@ -319,6 +319,81 @@ def test_dopo_gli_esempi_regole_formazione_e_seguiti_salvati_non_cambiano(con_es
     assert {f: f.read_bytes() for f in prima} == prima
 
 
+# ---------------------------------------------------------------- leghe già miste: esempi rimasti insieme alle squadre vere (#683)
+def _lega_mista(ctx, cambia=None):
+    """Le rose come le lasciava un'importazione senza «Togli le squadre che non sono nel file» prima della #682: le quattro
+    squadre di esempio intatte (con «la tua squadra» finta) e dopo di loro due squadre vere, con i costi del file.
+    `cambia(rose)` ritocca le squadre di esempio prima di salvare."""
+    mista = lega.carica(ctx.rose)
+    mista.squadre += [lega.Squadra("Vera Uno", [lega.GiocatoreRosa(1, "P00 Prova", "P", "ROM", 5),
+                                                lega.GiocatoreRosa(15, "D00 Prova", "D", "ROM", 7)]),
+                      lega.Squadra("Vera Due", [lega.GiocatoreRosa(2, "P01 Prova", "P", "ROM", 3)])]
+    assert mista.mia_squadra == onboarding.SQUADRE_DEMO[0]
+    if cambia:
+        cambia(mista)
+    lega.salva(mista, ctx.rose)
+    return ctx.rose.read_bytes()
+
+
+ESEMPI_TOLTI = "rose.esempi_tolti"
+
+
+def _con_chiave(risposta: dict, chiave: str) -> list[dict]:
+    return [f for f in risposta.get("avvisi_frasi") or [] if f and f["chiave"] == chiave]
+
+
+def test_lega_mista_perde_gli_esempi_alla_prossima_importazione(con_esempi):
+    """Anche senza «Togli le squadre che non sono nel file» e con una sola squadra nel file: le quattro squadre di esempio se ne
+    vanno, l'anteprima e l'importazione lo dicono, le squadre vere restano tutte."""
+    a, ctx = con_esempi
+    salvate = _lega_mista(ctx)
+    testo = _rosa("Vera Uno", "P00 Prova", "D00 Prova", "C00 Prova")
+    r = a.post("/api/rose/anteprima", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    anteprima = r.json()
+    assert anteprima["totale_squadre"] == 2 and anteprima["mia_squadra"] not in onboarding.SQUADRE_DEMO
+    avviso = _con_chiave(anteprima, ESEMPI_TOLTI)
+    assert avviso == [{"chiave": ESEMPI_TOLTI, "param": {"squadre": ", ".join(onboarding.SQUADRE_DEMO)}}]
+    assert all(nome in anteprima["avvisi"][0] for nome in onboarding.SQUADRE_DEMO)
+    assert ctx.rose.read_bytes() == salvate                                 # l'anteprima non scrive niente
+    r = a.post("/api/rose/testo", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    importate = r.json()
+    assert importate["avvisi"][0] == anteprima["avvisi"][0] and importate["totale_squadre"] == 2
+    assert importate["mia_squadra"] is None and _in_piu_squadre(importate["avvisi"]) == []
+    assert _nomi(a) == ["Vera Uno", "Vera Due"]
+    assert ctx.rose.with_name("rose.json.bak").read_bytes() == salvate      # la lega di prima resta nella copia di riserva
+    r = a.post("/api/rose/testo", json={"testo": testo})                   # la volta dopo non c'è più niente da togliere
+    assert r.status_code == 200 and not any(nome in x for x in r.json()["avvisi"] for nome in onboarding.SQUADRE_DEMO)
+
+
+def _togli_un_esempio(rose):
+    rose.squadre = [s for s in rose.squadre if s.nome != onboarding.SQUADRE_DEMO[3]]
+
+
+def _un_costo(rose):
+    rose.squadre[1].giocatori[0].costo = 12            # una squadra che ha il nome di un esempio ma viene da un file vero
+
+
+def _rinominato(rose):
+    rose.squadre[2].nome_importato, rose.squadre[2].nome = rose.squadre[2].nome, "I Leoni di Quartiere"
+
+
+@pytest.mark.parametrize("cambia", [_togli_un_esempio, _un_costo, _rinominato], ids=["tre-esempi", "con-costo", "rinominato"])
+def test_lega_mista_tocca_solo_esempi_identici(con_esempi, cambia):
+    """Solo se ci sono tutte e quattro le squadre di esempio, ognuna con il suo nome e ancora come la crea la demo: con una sola
+    diversa non si toglie niente e niente avviso (meglio una squadra finta in più che una vera in meno)."""
+    a, ctx = con_esempi
+    _lega_mista(ctx, cambia)
+    prima = _nomi(a)
+    testo = _rosa("Vera Uno", "P00 Prova", "D00 Prova")
+    r = a.post("/api/rose/anteprima", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    assert r.json()["totale_squadre"] == len(prima) and _con_chiave(r.json(), ESEMPI_TOLTI) == []
+    assert a.post("/api/rose/testo", json={"testo": testo}).status_code == 200
+    assert _nomi(a) == prima
+
+
 def test_con_rose_vere_le_squadre_di_prima_e_la_mia_squadra_restano(ambiente):
     """Il caso di sempre: rose vere, poi un file con una squadra sola, senza «Togli le squadre che non sono nel file»."""
     a, _ = nuovo_utente("utentea")

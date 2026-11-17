@@ -1085,13 +1085,20 @@ function mostraFormazione(b, squadra, opz = {}) {
   // dopo un salvataggio la copia sul telefono di questa schermata è già vecchia: la si aggiorna, così tornando qui non si rivede quella di prima
   // La scrittura è tornata (riuscita o no) ma la schermata nel frattempo è stata ridisegnata (riaperta, o lasciata): la copia sul
   // telefono è vecchia e, se si è ancora nella Formazione, in pagina c'è altro, con i comandi spenti finché la scrittura era in
-  // volo. Si rilegge dal server: mai una scelta salvata che non si vede. Restituisce se ha riletto.
+  // volo. Si rilegge dal server: mai una scelta salvata che non si vede. Restituisce se è l'ultima scrittura partita da questa
+  // schermata: allora il suo errore si dice con un avviso, riletta la Formazione o lasciata (#667: lasciata la schermata, un
+  // salvataggio fallito non lo diceva nessuno, e tornando sembrava fatto). Di una scrittura superata da una dopo conta quella dopo.
   const altrove = n => {
     rimuoviCache("giornata");
-    const rilegge = n === sc.richiesta && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista;
-    if (rilegge) rileggiFormazione();
-    return rilegge;
+    const ultima = n === sc.richiesta;
+    if (ultima && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista) rileggiFormazione();
+    return ultima;
   };
+  // L'avviso di una scrittura non riuscita a schermata già ridisegnata: nella Formazione il motivo (rete, rifiuto del server); su
+  // un'altra schermata una frase del catalogo che nomina la formazione («Non riesco a collegarmi» da solo, su Giornate, sembrava
+  // parlare di Giornate). La rete si nomina solo se è lei il motivo.
+  const nonSalvata = e => stato.vista === "formazione" && !stato.squadraVista ? e.message
+    : t(e.rete ? "formazione.non_salvata_rete" : "formazione.non_salvata");
   const ricorda = valutata => { if (mia) salvaCache("giornata", { ...b, scelta: sc.salvata, valutata: valutata || undefined, non_valida: false, f: { ...f, stato_scelta: sc.salvata ? "valida" : "nessuna" } }); };
   // 412: nel frattempo la scelta è stata cambiata su un altro dispositivo, e la scrittura non è stata fatta. La schermata si
   // rilegge subito dal server (niente ricarica della pagina dopo 2,5 secondi: fino ad allora i comandi restavano accesi su una
@@ -1126,7 +1133,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       return true;
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return false; }
-      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return false; }      // la pagina riletta nel frattempo: lo si dice lì
+      if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return false; }   // pagina riletta o lasciata nel frattempo: lo si dice lo stesso
       avviso(e.message, 5000);
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
       return false;
@@ -1145,7 +1152,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       disegna(true);
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return; }
-      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return; }
+      if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return; }
       avviso(e.message, 5000);                              // per esempio la consigliata sposterebbe chi gioca un anticipo già cominciato (#373)
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);
     } finally { if (n === sc.richiesta) sc.occupato = false; }

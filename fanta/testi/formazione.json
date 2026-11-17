@@ -259,6 +259,16 @@
     "it": "Non riesco a leggere la formazione che hai salvato: finché non la leggo non si può cambiare niente.",
     "en": "I can't read your saved lineup: nothing can be changed until I can."
   },
+  "formazione.non_salvata_rete": {
+    "it": "La formazione non è stata salvata perché non riesco a collegarmi: torna sulla Formazione e riprova.",
+    "en": "Your lineup was not saved because I can't connect: go back to Lineup and try again.",
+    "nota": "avviso quando un salvataggio non riesce per la rete e l'utente è già su un'altra schermata (#667)"
+  },
+  "formazione.non_salvata": {
+    "it": "La formazione non è stata salvata: torna sulla Formazione e controllala.",
+    "en": "Your lineup was not saved: go back to Lineup and check it.",
+    "nota": "avviso quando il server rifiuta un salvataggio e l'utente è già su un'altra schermata (#667)"
+  },
   "formazione.copia_ferma": {
     "it": "Finché non arrivano quelli nuovi la formazione non si può cambiare.",
     "en": "Until fresh data arrive the lineup can't be changed."

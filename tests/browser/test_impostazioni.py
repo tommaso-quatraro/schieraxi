@@ -411,6 +411,92 @@ def test_la_scadenza_si_cambia_e_si_salva_subito(web):
     assert salvate and salvate[-1]["scadenza_minuti"] == 30
 
 
+# ---------------------------------------------------------------- conflitto (412) su regole e rose (#667)
+CONFLITTO = {"detail": "Questi dati sono stati cambiati da un altro dispositivo. Ho ricaricato la versione nuova: controlla e rifai la modifica."}
+
+
+def risorsa_con_etag(web, letture: tuple[str, ...], scritture: tuple[str, ...]) -> dict:
+    """Fa la parte del server vero su una risorsa con ETag (fanta/versioni.py): ogni lettura dà la risposta registrata con l'ETag
+    di adesso; una scrittura con un If-Match vecchio è rifiutata (412), una senza If-Match è accettata, anche sopra ciò che ha
+    salvato un altro dispositivo. `srv["cambia"]()`: un altro dispositivo salva; `srv["if_match"]`: l'If-Match di ogni scrittura."""
+    srv = {"versione": 0, "if_match": []}
+    js = "application/json"
+
+    def etag() -> str:
+        return f'"v{srv["versione"]}"'
+
+    def cambia() -> None:
+        srv["versione"] += 1
+
+    def leggi(route):
+        if route.request.method != "GET":
+            return route.fallback()
+        from playwright.sync_api import Error as ErrorePlaywright
+        try:
+            risposta = route.fetch()
+            route.fulfill(response=risposta, headers={**risposta.headers, "etag": etag()})
+        except ErrorePlaywright:                                       # la scheda si è chiusa (fine del test) a lettura in volo
+            pass
+
+    def scrivi(route):
+        if route.request.method == "GET":
+            return route.fallback()
+        voluto = route.request.headers.get("if-match")
+        srv["if_match"].append(voluto)
+        if voluto is not None and voluto != etag():
+            return route.fulfill(status=412, content_type=js, headers={"ETag": etag()}, body=json.dumps(CONFLITTO))
+        cambia()
+        route.fulfill(status=200, content_type=js, headers={"ETag": etag()}, body='{"ok": true}')
+
+    srv["cambia"] = cambia
+    web.pagina.route(lambda u: urlsplit(u).path in letture, leggi)
+    web.pagina.route(lambda u: urlsplit(u).path in scritture, scrivi)
+    return srv
+
+
+@pytest.mark.parametrize("dove", ["regole", "rose"])
+def test_dopo_un_412_la_modifica_rifatta_porta_l_if_match_riletto_e_mai_nessuno(web, dove):
+    """Un altro dispositivo ha cambiato le regole (o le rose): la modifica fatta qui è rifiutata (412), l'avviso lo dice e la pagina
+    si ricarica da sola. Rifatta prima della ricarica parte con l'If-Match vecchio ed è rifiutata ancora: mai senza If-Match, che il
+    server accetterebbe sopra ciò che ha salvato l'altro dispositivo. Rifatta dopo la ricarica porta l'ETag riletto e passa."""
+    solo(web, "prima")
+    if dove == "regole":
+        srv = risorsa_con_etag(web, ("/api/regole",), ("/api/regole",))
+        indirizzo, valori = "/?vista=impostazioni&gruppo=regole", ("30", "60", "30")
+
+        def modifica(valore):
+            principale(web).get_by_label("Quando si chiude la formazione?").select_option(valore)
+    else:
+        srv = risorsa_con_etag(web, ("/api/squadre", "/api/rosa"), ("/api/crediti",))
+        indirizzo, valori = "/?vista=impostazioni&gruppo=squadra", ("20", "21", "20")
+
+        def modifica(valore):
+            principale(web).get_by_label("Crediti residui").fill(valore)
+            principale(web).get_by_role("button", name="Salva", exact=True).click()
+
+    def scrive(r) -> bool:
+        return r.request.method == "PUT" and urlsplit(r.url).path in ("/api/regole", "/api/crediti")
+
+    web.apri(indirizzo)
+    srv["cambia"]()                                                    # dall'altro dispositivo
+    avviso = web.pagina.get_by_role("status").filter(has_text="cambiati da un altro dispositivo")
+    with web.pagina.expect_event("load", timeout=10000):              # dopo il 412 la pagina si ricarica da sola
+        with web.pagina.expect_response(scrive, timeout=10000) as prima:
+            modifica(valori[0])
+        assert prima.value.status == 412
+        avviso.first.wait_for(timeout=10000)
+        with web.pagina.expect_response(scrive, timeout=10000) as rifatta:
+            modifica(valori[1])                                        # rifatta subito, prima della ricarica
+        assert rifatta.value.status == 412, "la modifica rifatta prima della ricarica è passata sopra l'altro dispositivo"
+    web.aspetta()
+    with web.pagina.expect_response(scrive, timeout=10000) as dopo:
+        modifica(valori[2])                                            # rifatta dopo la ricarica
+    assert dopo.value.status == 200
+    web.aspetta()
+    assert srv["if_match"] == ['"v0"', '"v0"', '"v1"'], srv["if_match"]
+    assert not web.errori_mostrati()
+
+
 # ---------------------------------------------------------------- Avvisi
 def test_avvisi_un_interruttore_e_le_ore_tranquille_senza_altri_controlli(web):
     solo(web, "prima")
