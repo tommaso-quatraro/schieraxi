@@ -54,6 +54,11 @@ MAX_RIGHE_AVVISO = 6
 MAX_DETTAGLIO = 600                                       # caratteri del dettaglio in «Stato dei dati»
 FILE_STATO = percorsi.RADICE / "dati" / "sentinella.json"
 FILE_LIVE = percorsi.RADICE / "dati" / "live.json"        # copia su file della cache della diretta, scritta dal servizio (se c'è)
+# Fino a quando (mese, giorno) una stagione nuova senza calendario è l'estate e non una rottura (#656). Dal 1° luglio la stagione è
+# quella nuova (aggiorna.Stagione.di). La Serie A comincia nella seconda metà di agosto e il calendario esce settimane prima (giugno o
+# luglio): dal 1° settembre una stagione ancora senza partite in archivio vuol dire fonte o aggiornamento fermi, e si deve vedere.
+# Un calendario uscito in ritardo davvero (come nel 2020) fa partire l'avviso: è un'anomalia che conviene sapere.
+ESTATE_FINO_A = (8, 31)
 NTFY = "https://ntfy.sh"
 
 # nome -> (esito quando è rotta, cosa garantisce). «errore» = l'utente vede una cosa sbagliata; «avviso» = da guardare.
@@ -688,21 +693,25 @@ def _prepara_live() -> None:
 
 
 def senza_giornata_normale(db: sqlite3.Connection, stagione: str, adesso: datetime) -> bool:
-    """Nessuna giornata da giocare per una ragione normale (#656): il campionato è finito (consigli.stagione_finita), oppure d'estate
-    la stagione nuova non ha ancora nessuna partita in archivio e quella prima è finita (il calendario nuovo deve ancora uscire).
-    Allora il 409 o il 400 di Oggi, Formazione e widget è la risposta giusta. Negli altri casi (archivio senza calendario, stagione
-    con le partite ferme) il calendario manca davvero e il rifiuto resta una rottura."""
+    """Nessuna giornata da giocare per una ragione normale (#656): il campionato è finito (consigli.stagione_finita), oppure è
+    l'estate (ESTATE_FINO_A) e la stagione nuova non ha ancora nessuna partita in archivio, con quella prima finita: il calendario
+    nuovo deve ancora uscire. Allora il 409 o il 400 di Oggi, Formazione e widget è la risposta giusta. Negli altri casi (archivio
+    senza calendario, stagione con le partite ferme, stagione nuova ancora vuota da settembre in poi) il calendario manca davvero e il
+    rifiuto resta una rottura. La stagione prima finita da sola non basta: sul server c'è sempre (la scrivono le pagine dei voti)."""
+    from datetime import date
     from . import consigli
     from .aggiorna import Stagione
     if consigli.stagione_finita(db, stagione, adesso):
         return True
-    if db.execute("SELECT 1 FROM partite WHERE stagione = ? LIMIT 1", (stagione,)).fetchone() is not None:
-        return False
     try:
-        precedente = Stagione(int(stagione[:4])).precedente().codice
+        nuova = Stagione(int(stagione[:4]))
     except ValueError:
         return False
-    return consigli.stagione_finita(db, precedente, adesso)
+    if not date(nuova.anno, 7, 1) <= adesso.date() <= date(nuova.anno, *ESTATE_FINO_A):
+        return False
+    if db.execute("SELECT 1 FROM partite WHERE stagione = ? LIMIT 1", (stagione,)).fetchone() is not None:
+        return False
+    return consigli.stagione_finita(db, nuova.precedente().codice, adesso)
 
 
 def _controlla_un_utente(etichetta: str, ctx, db: sqlite3.Connection, r_regole, rose_, rotture: list[Rottura], stagione: str,

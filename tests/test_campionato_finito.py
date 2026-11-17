@@ -133,6 +133,36 @@ def test_due_giri_a_campionato_finito_e_d_estate_niente_rotture_ne_avvisi(lega_f
     assert [e["rotture"] for e in esiti] == [[], []] and inviati == []
 
 
+@pytest.mark.parametrize("adesso, normale", [
+    (datetime(2021, 6, 10, 12, 0), True),           # stagione 2020-21: il campionato è finito
+    (datetime(2021, 7, 1, 0, 0), True),             # stagione nuova 2021-22 senza calendario: estate
+    (datetime(2021, 8, 31, 23, 59), True),
+    (datetime(2021, 9, 1, 0, 0), False),            # da settembre la stagione è cominciata: il calendario manca davvero
+    (datetime(2021, 10, 20, 12, 0), False),
+    (datetime(2022, 3, 1, 12, 0), False),
+])
+def test_senza_giornata_normale_solo_a_campionato_finito_e_d_estate(lega_finita, adesso, normale):
+    """La stagione prima è sempre in archivio e finita (le pagine dei voti passati ne scrivono le partite): da sola non basta a dire
+    «estate». Serve anche la data, fra il 1° luglio e il 31 agosto dell'anno in cui comincia la stagione nuova."""
+    from fanta.aggiorna import Stagione
+    db = archivio.apri(lega_finita)
+    try:
+        assert sentinella.senza_giornata_normale(db, Stagione.di(adesso.date()).codice, adesso) is normale
+    finally:
+        db.close()
+
+
+def test_a_ottobre_senza_calendario_la_sentinella_avvisa_anche_con_la_stagione_prima_finita(lega_finita, tmp_path, monkeypatch):
+    """Il caso visto in revisione: a ottobre il sito mostra ancora la stagione vecchia e la nuova non ha partite. Tutti vedono
+    «calendario non disponibile»: la sentinella deve dirlo, anche se la stagione prima è in archivio e finita."""
+    monkeypatch.setattr(sentinella, "_prepara_live", lambda: None)
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: "2021-22")
+    esiti, inviati = _due_giri(tmp_path, lega_finita, datetime(2021, 10, 20, 12, 0))
+    rifiuti = {r.dettaglio.split(":")[0] for r in esiti[1]["rotture"] if r.invariante == "risposta_rifiutata"}
+    assert {"oggi", "formazione", "widget"} <= rifiuti
+    assert len(inviati) == 1 and "risposta_rifiutata" in inviati[0]
+
+
 def test_la_sentinella_avvisa_ancora_se_il_calendario_manca_davvero(lega_finita, tmp_path, monkeypatch):
     """Stagione in corso senza nessuna partita e nessuna stagione finita prima (archivio senza calendario): il rifiuto è una
     rottura vera e alla seconda volta parte l'avviso."""
