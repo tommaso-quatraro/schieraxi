@@ -13,7 +13,7 @@ final class OggiViewModel: ViewModelBase {
     /// Cosa si fa con una giornata appena letta dal server (mai con la copia sul telefono): permesso per le notifiche la prima
     /// volta, promemoria e widget (`passaAWidgetEPromemoria`). Senza promemoria (test) niente; `OggiPerWidgetTests` la sostituisce
     /// per vedere che la giornata arriva.
-    var dopoLetturaFresca: @MainActor (Oggi) async -> Void
+    var dopoLetturaFresca: @MainActor (Oggi, Date) async -> Void
 
     /// `conPromemoria: false` nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
     init(server: any ServerClient, conPromemoria: Bool = true) {
@@ -21,9 +21,9 @@ final class OggiViewModel: ViewModelBase {
         // Il comando «Aggiorna» lo gestisce questo ViewModel (deve anche riprogrammare i promemoria), non il Caricatore.
         caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
         if conPromemoria {
-            dopoLetturaFresca = { oggi in await OggiViewModel.passaAWidgetEPromemoria(oggi) }
+            dopoLetturaFresca = { oggi, _ in await OggiViewModel.passaAWidgetEPromemoria(oggi) }
         } else {
-            dopoLetturaFresca = { _ in }
+            dopoLetturaFresca = { _, _ in }
         }
         super.init()
         osserva(caricatore)
@@ -77,7 +77,7 @@ final class OggiViewModel: ViewModelBase {
         await caricatore.ricarica()
         // Con dati vecchi (server irraggiungibile, o ancora la cache) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
         guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
-        await dopoLetturaFresca(oggi)
+        await dopoLetturaFresca(oggi, Date())
     }
 
     /// Una giornata fresca per i promemoria e i widget: la prima volta il permesso per le notifiche, poi `Aggiornamento.elabora`

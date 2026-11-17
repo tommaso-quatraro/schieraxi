@@ -5,6 +5,8 @@ import Testing
 /// I promemoria del telefono seguono la riga sotto «Avvisi su questo dispositivo» (`imp.avvisi_qui_aiuto`: «un promemoria prima
 /// della scadenza, se non hai spuntato "L'ho messa"»), come il server (`promemoria` di `fanta/notifiche.py`): con la spunta della
 /// giornata i promemoria di un'ora e di un quarto d'ora non partono; togliendola, o cambiando gli 11 (che la tolgono), tornano.
+/// La decisione è del server (`serve_promemoria` di Oggi, `PromemoriaDalServerTests`): il telefono ricorda solo la spunta appena
+/// toccata, finché non arriva una lettura di Oggi partita dopo il tocco.
 @MainActor
 @Suite("Promemoria del telefono e «L'ho messa»")
 struct PromemoriaMessaTests {
@@ -18,25 +20,30 @@ struct PromemoriaMessaTests {
         var volte = 0
     }
 
-    @Test("Con la spunta della giornata i promemoria non partono; senza sì")
+    @Test("Quando il promemoria tace (spunta della giornata) non ne parte nessuno; altrimenti sì")
     func spuntaFermaIPromemoria() {
         let adesso = Date(timeIntervalSince1970: 1_793_500_000)
         let inizio = adesso.addingTimeInterval(5 * 3600)
-        #expect(Notifiche.promemoriaConsentiti(inizio: inizio, ore: .predefinite, attivi: [60, 15], messa: false, adesso: adesso)
+        #expect(Notifiche.promemoriaConsentiti(inizio: inizio, ore: .predefinite, attivi: [60, 15], tace: false, adesso: adesso)
             .map(\.minuti) == [60, 15])
-        #expect(Notifiche.promemoriaConsentiti(inizio: inizio, ore: .predefinite, attivi: [60, 15], messa: true, adesso: adesso).isEmpty)
+        #expect(Notifiche.promemoriaConsentiti(inizio: inizio, ore: .predefinite, attivi: [60, 15], tace: true, adesso: adesso).isEmpty)
     }
 
-    @Test("La spunta si ricorda per la sua giornata, e solo per quella")
+    @Test("Il tocco si ricorda per la sua giornata, e una lettura di Oggi partita dopo lo dimentica")
     func archivio() throws {
         let m = try memoria()
-        #expect(!ArchivioMessa.messa(giornata: 9, m))
-        ArchivioMessa.salva(giornata: 9, messa: true, m)
-        #expect(ArchivioMessa.messa(giornata: 9, m))
-        #expect(!ArchivioMessa.messa(giornata: 10, m), "un'altra giornata: i promemoria partono")
-        #expect(!ArchivioMessa.messa(giornata: nil, m))
-        ArchivioMessa.salva(giornata: 9, messa: false, m)
-        #expect(!ArchivioMessa.messa(giornata: 9, m))
+        let tocco = Date(timeIntervalSince1970: 1_793_500_000)
+        #expect(ArchivioMessa.toccata(giornata: 9, m) == nil)
+        ArchivioMessa.ricorda(giornata: 9, messa: true, m, il: tocco)
+        #expect(ArchivioMessa.toccata(giornata: 9, m) == true)
+        #expect(ArchivioMessa.toccata(giornata: 10, m) == nil, "un'altra giornata: decide il server")
+        #expect(ArchivioMessa.toccata(giornata: nil, m) == nil)
+        ArchivioMessa.ricorda(giornata: 9, messa: false, m, il: tocco)
+        #expect(ArchivioMessa.toccata(giornata: 9, m) == false, "spunta tolta: si ricorda anche questo")
+        ArchivioMessa.dimentica(primaDi: tocco.addingTimeInterval(-1), m)
+        #expect(ArchivioMessa.toccata(giornata: 9, m) == false, "una lettura partita prima del tocco non lo cancella")
+        ArchivioMessa.dimentica(primaDi: tocco.addingTimeInterval(1), m)
+        #expect(ArchivioMessa.toccata(giornata: 9, m) == nil)
     }
 
     @Test("Spuntare, togliere la spunta o cambiare gli 11 la ricorda e rimette in programma i promemoria")
@@ -49,17 +56,35 @@ struct PromemoriaMessaTests {
         let f = try #require(vm.formazione)
         let prima = contatore.volte
         await vm.segnaMessa(true)
-        #expect(ArchivioMessa.messa(giornata: f.giornata, m))
+        #expect(ArchivioMessa.toccata(giornata: f.giornata, m) == true)
         #expect(contatore.volte == prima + 1, "spuntata: i promemoria si tolgono")
         await vm.segnaMessa(false)
-        #expect(!ArchivioMessa.messa(giornata: f.giornata, m))
+        #expect(ArchivioMessa.toccata(giornata: f.giornata, m) == false)
         #expect(contatore.volte == prima + 2, "tolta la spunta: i promemoria tornano")
         await vm.segnaMessa(true)
         let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
         await vm.sostituisciTitolare(esce, con: entra)
         #expect(!vm.messa)
-        #expect(!ArchivioMessa.messa(giornata: f.giornata, m), "gli 11 cambiati tolgono la spunta: i promemoria tornano")
+        #expect(ArchivioMessa.toccata(giornata: f.giornata, m) == false, "gli 11 cambiati tolgono la spunta: i promemoria tornano")
         #expect(contatore.volte == prima + 4)
+    }
+
+    @Test("Leggere la scelta salvata non tocca la spunta del telefono né i promemoria: per quelli vale il server")
+    func letturaNonTocca() async throws {
+        let m = try memoria()
+        let salvata = Scatola<String>()
+        let srv = try SalvataggioAutomaticoTests.server(salvata: salvata)
+        let primo = FormazioneViewModel(server: srv, memoria: m, promemoria: {})
+        await primo.carica()
+        let f = try #require(primo.formazione)
+        let ids = primo.vista(f).titolari.map(\.id).map(String.init).joined(separator: ",")
+        salvata.valore = "{\"titolari\": [\(ids)], \"salvata\": \"2026-11-02T21:40:00\", \"messa\": true}"
+        let contatore = Contatore()
+        let vm = FormazioneViewModel(server: srv, memoria: m, promemoria: { contatore.volte += 1 })
+        await vm.carica()
+        #expect(vm.messa, "la spunta letta dal server si vede")
+        #expect(ArchivioMessa.toccata(giornata: f.giornata, m) == nil)
+        #expect(contatore.volte == 0)
     }
 
     @Test("«C'è una versione nuova» si segna come avvisata solo se l'avviso è partito davvero")

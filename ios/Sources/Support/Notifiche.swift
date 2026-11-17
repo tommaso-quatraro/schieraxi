@@ -42,10 +42,10 @@ enum Notifiche {
     /// I promemoria che cadono nelle ore tranquille si saltano (come fa il server): sono utili solo a quell'ora.
     /// `attivi`: i minuti dei promemoria da mandare (60 e 15 con gli avvisi accesi, nessuno spenti). `messa`: la formazione della
     /// giornata è spuntata «L'ho messa»: nessun promemoria, come il server (`imp.avvisi_qui_aiuto`).
-    static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, attivi: Set<Int> = [60, 15], messa: Bool = false,
+    static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, attivi: Set<Int> = [60, 15], tace: Bool = false,
                                      adesso: Date = Date()) -> [(id: String, minuti: Int, quando: Date)] {
         var elenco: [(id: String, minuti: Int, quando: Date)] = []
-        if messa { return elenco }
+        if tace { return elenco }
         for (id, minuti) in [("fanta-60", 60), ("fanta-15", 15)] where attivi.contains(minuti) {
             let quando = inizio.addingTimeInterval(-Double(minuti) * 60)
             guard quando > adesso, !ore.inSilenzio(quando) else { continue }
@@ -87,13 +87,16 @@ enum Notifiche {
                                    ?? "mister, dai un'occhiata alla formazione.")
     }
 
-    static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?, messa: Bool = false) async {
+    // PROVVISORIO (test prima del codice, #710): firma vuota.
+    static func tacePromemoria(serve: Bool?, toccata: Bool?) -> Bool { false }
+
+    static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?, tace: Bool = false) async {
         let centro = UNUserNotificationCenter.current()
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
         centro.removePendingNotificationRequests(withIdentifiers: ["fanta-60", "fanta-15"])
         for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi(), attivi: ArchivioAvvisiQui.minutiAttivi(),
-                                                         messa: messa) {
+                                                         tace: tace) {
             let contenuto = UNMutableNotificationContent()
             contenuto.title = minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti"
             contenuto.body = corpoPromemoria(giornata: giornata, modulo: modulo)

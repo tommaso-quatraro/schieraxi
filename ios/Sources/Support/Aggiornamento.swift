@@ -59,9 +59,18 @@ enum Aggiornamento {
     static func programmaPromemoria(_ oggi: Oggi) async {
         if let inizio = Quando.data(oggi.chiusura), let nome = oggi.nomeGiornata {
             await Notifiche.programma(giornata: nome, inizio: inizio, modulo: oggi.formazione?.modulo,
-                                      messa: ArchivioMessa.messa(giornata: oggi.giornata))
+                                      tace: ArchivioMessa.messa(giornata: oggi.giornata))
         }
     }
+
+    // PROVVISORIO (test prima del codice, #710): firme vuote.
+    enum Lettura: Equatable {
+        case fresca(chiestaIl: Date)
+        case salvata
+        case nonRiuscita
+    }
+
+    static func promemoriaTace(_ oggi: Oggi, lettura: Lettura, memoria: UserDefaults = .standard) -> Bool { false }
 
     /// Dopo che gli avvisi si sono riaccesi o sono cambiate le ore tranquille: rimette in programma i promemoria con l'ultima giornata
     /// salvata, senza rete.

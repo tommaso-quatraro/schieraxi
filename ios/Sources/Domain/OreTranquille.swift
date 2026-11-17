@@ -78,6 +78,11 @@ enum ArchivioMessa {
             memoria.removeObject(forKey: chiave)
         }
     }
+
+    // PROVVISORIO (test prima del codice, #710): firme vuote.
+    static func toccata(giornata: Int?, _ memoria: UserDefaults = .standard) -> Bool? { nil }
+    static func ricorda(giornata: Int, messa: Bool, _ memoria: UserDefaults = .standard, il quando: Date = Date()) {}
+    static func dimentica(primaDi data: Date, _ memoria: UserDefaults = .standard) {}
 }
 
 /// «Avvisi su questo dispositivo» (Impostazioni > Avvisi, come la web): un interruttore solo per i promemoria locali (un'ora e 15
