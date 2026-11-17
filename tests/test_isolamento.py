@@ -439,11 +439,12 @@ def test_eliminare_l_account_cancella_solo_i_suoi_dati(due, dati_isolati):
     assert nuovo.post("/api/account/accedi", json={"nome_utente": "utentea", "password": PASSWORD}).status_code == 401
 
 
-def test_nuova_stagione_archivia_nella_cartella_dell_utente(due, dati_isolati):
+def test_nuova_stagione_archivia_nella_cartella_dell_utente(due, dati_isolati, monkeypatch):
     (ca, _), (cb, _) = due["A"], due["B"]
     esegui_tutto(ca, scritture("A"))
     esegui_tutto(cb, scritture("B"))
     prima_b = albero(cartella_di(due, "B"))
+    monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: "2027-28")      # luglio: le rose del 2026-27 sono passate (#657)
     r = ca.post("/api/nuova-stagione")
     assert r.status_code == 200, r.text
     assert (cartella_di(due, "A") / "archivio").is_dir()

@@ -1260,10 +1260,20 @@ def stato_stagione(ctx: Contesto = Depends(lega_corrente)):
 
 
 @app.post("/api/nuova-stagione")
-def nuova_stagione(ctx: Contesto = Depends(lega_corrente)):
-    """Archivia rose, regole, movimenti, scelte e osservati della stagione finita in lega/archivio/ e riparte da rose vuote."""
-    return cambio_stagione.archivia_e_riparti(_rose(ctx), ctx.rose, consigli.stagione_corrente(), _regole(ctx).crediti_iniziali,
-                                              [ctx.scelte, ctx.osservati])
+def nuova_stagione(request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
+    """Archivia rose, regole, movimenti, scelte e osservati della stagione finita in lega/archivio/ e riparte da rose vuote.
+    Solo con rose di una stagione passata, rilette dentro il blocco delle rose: altrimenti 409 senza scrivere niente (un secondo
+    dispositivo con l'avviso ancora a schermo svuotava le rose appena importate, #657). If-Match come le altre scritture sulle rose
+    (412 se sono cambiate da un altro dispositivo); la risposta porta l'ETag delle rose ripartite."""
+    with _scrittura_rose:
+        versioni.controlla(request, versioni.etag_file(ctx.rose))
+        try:
+            risposta = cambio_stagione.archivia_e_riparti(_rose(ctx), ctx.rose, consigli.stagione_corrente(),
+                                                          _regole(ctx).crediti_iniziali, [ctx.scelte, ctx.osservati])
+        except cambio_stagione.NienteDaArchiviare as e:
+            raise HTTPException(409, str(e)) from None
+        response.headers["ETag"] = versioni.etag_file(ctx.rose)
+        return risposta
 
 
 @app.get("/api/asta")

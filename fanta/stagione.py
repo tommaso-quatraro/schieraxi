@@ -13,6 +13,13 @@ from . import lega
 from .aggiorna import Stagione
 from .percorsi import dentro
 
+GIA_DELLA_STAGIONE = "Le rose sono già della stagione in corso: non c'è niente da archiviare."
+
+
+class NienteDaArchiviare(Exception):
+    """Le rose non sono di una stagione passata: archiviarle svuoterebbe le rose buone (per esempio quelle appena importate da un
+    altro dispositivo, che aveva già archiviato, #657). Il server risponde 409 con il messaggio."""
+
 
 def stagione_delle_rose(rose: lega.Rose, file: Path) -> str:
     """La stagione a cui appartengono le rose: quella segnata all'importazione, altrimenti quella del file."""
@@ -33,11 +40,14 @@ def stato(rose: lega.Rose | None, file: Path, corrente: str) -> dict:
 
 def archivia_e_riparti(rose: lega.Rose, file: Path, corrente: str, crediti_iniziali: int, da_spostare: list[Path] | None = None) -> dict:
     """Copia i file della stagione in `archivio/<stagione>/` accanto alle rose e riparte da rose vuote. La stagione deve essere un
-    nome come «2026-27» e la cartella deve restare dentro `archivio/`: altrimenti ValueError, senza scrivere niente.
-    La risposta dice il nome della stagione archiviata, non dove sta sul server."""
+    nome come «2026-27» e la cartella deve restare dentro `archivio/`: altrimenti ValueError, senza scrivere niente. Rose della
+    stagione `corrente` (o dopo): NienteDaArchiviare, senza scrivere niente. Chi chiama tiene il blocco delle rose, così le rose
+    controllate sono quelle che si archiviano. La risposta dice il nome della stagione archiviata, non dove sta sul server."""
     vecchia = stagione_delle_rose(rose, file)
     if vecchia and not lega.stagione_valida(vecchia):
         raise ValueError(lega.FORMA_SBAGLIATA)
+    if vecchia >= corrente:                           # «AAAA-AA»: l'ordine delle parole è quello delle stagioni
+        raise NienteDaArchiviare(GIA_DELLA_STAGIONE)
     vecchia = vecchia or "precedente"
     archivio = file.parent / "archivio"
     cartella = archivio / vecchia
