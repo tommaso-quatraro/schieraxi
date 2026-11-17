@@ -102,7 +102,7 @@ def test_a_campionato_finito_oggi_e_widget_200_formazione_dice_la_frase(lega_fin
     assert w["campionato_finito"] == o["campionato_finito"] and w["fase"] == "finita" and w["giornata"] is None
     assert w["formazione"]["titolari"] == [] and w["rosa"] == [] and "prossima" not in w
     # Formazione e le rotte che vogliono una giornata: la stessa frase, non quella del calendario che deve ancora uscire
-    for percorso in ("/api/formazione", "/api/formazione/testo", "/api/osservati"):
+    for percorso in ("/api/formazione", "/api/formazione/testo", "/api/osservati", "/api/mercato", "/api/calendario"):
         r = c.get(percorso)
         assert r.status_code == 409, (percorso, r.status_code, r.text)
         assert r.json() == {"detail": o["campionato_finito"]["testo"], "codice": "campionato_finito"}, percorso

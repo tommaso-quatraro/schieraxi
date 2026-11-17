@@ -25,7 +25,7 @@ def calendario(db: sqlite3.Connection, n: int = GIORNATE_CALENDARIO, regole: Reg
     stagione = consigli.stagione_corrente()
     prima = consigli.giornata_da_giocare(db, stagione, regole)
     if prima is None:
-        raise ValueError("Il calendario della stagione non è ancora disponibile (di solito esce a luglio): previsioni e asta partono appena arriva. Aggiorna i dati più avanti.")
+        raise consigli.senza_giornata(db, stagione)         # campionato finito (409) o calendario che manca (400), #656
     d = consigli.dati(db)
     chiave = ("calendario", consigli._versione(db), prima, n)
     pronto = consigli._cache.get(chiave, calcolo.MANCA)
