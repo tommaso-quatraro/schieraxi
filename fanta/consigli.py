@@ -136,6 +136,32 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
     return None
 
 
+def stagione_finita(db: sqlite3.Connection, stagione: str, adesso: datetime | None = None) -> bool:
+    """Il campionato è finito (#656): nessuna giornata da giocare (`prossima_giornata`) e almeno una partita della stagione giocata.
+    Una stagione senza partite in archivio non è finita: il suo calendario deve ancora arrivare (SENZA_CALENDARIO)."""
+    return (prossima_giornata(db, stagione, adesso) is None
+            and db.execute("SELECT 1 FROM partite WHERE stagione = ? AND giocata = 1 LIMIT 1", (stagione,)).fetchone() is not None)
+
+
+class SenzaCalendario(ValueError):
+    """Nessuna giornata da giocare perché il calendario della stagione non c'è ancora: 400 con SENZA_CALENDARIO, come sempre."""
+
+
+class CampionatoFinito(ValueError):
+    """Nessuna giornata da giocare perché il campionato è finito (#656): la frase `campionato.finito`. 409, non 400: la richiesta
+    non è sbagliata, è la stagione che non ha più giornate. Oggi e widget a campionato finito rispondono 200 (`campionato_finito`)."""
+    codice = "campionato_finito"
+    stato = 409
+
+
+def senza_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | None = None) -> ValueError:
+    """L'errore da alzare quando non c'è una giornata da giocare: CampionatoFinito se la stagione è finita, altrimenti
+    SenzaCalendario. Così il server non dice «il calendario non è ancora disponibile» quando il campionato è appena finito."""
+    if stagione_finita(db, stagione, adesso):
+        return CampionatoFinito(F("campionato.finito"))
+    return SenzaCalendario(SENZA_CALENDARIO)
+
+
 def giornata_da_giocare(db: sqlite3.Connection, stagione: str, regole: Regole | None, adesso: datetime | None = None) -> int | None:
     """La prossima giornata PER LA LEGA: come `prossima_giornata`, ma mai prima della prima giornata della lega
     (regole.prima_giornata_lega). Prima che la lega parta, la «giornata da giocare» è la sua prima.
@@ -151,7 +177,7 @@ def previsioni(db: sqlite3.Connection, regole: Regole, giornata: int | None = No
     stagione = stagione_corrente()
     giornata = giornata or giornata_da_giocare(db, stagione, regole)
     if giornata is None:
-        raise ValueError(SENZA_CALENDARIO)
+        raise senza_giornata(db, stagione)
     chiave = ("prev", _versione(db), giornata, repr(regole))
     return calcolo.ottieni(chiave, lambda d: _calcola_previsioni(d, dati(d), regole, stagione, giornata, chiave), db)
 
@@ -367,7 +393,7 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     stagione = stagione_corrente()
     giornata = giornata or giornata_da_giocare(db, stagione, regole, adesso)
     if giornata is None:
-        raise ValueError(SENZA_CALENDARIO)
+        raise senza_giornata(db, stagione, adesso)
     # La consigliata già mostrata per questa squadra e giornata (#335): resta finché la migliore non vale almeno SOGLIA_CAMBIO_PUNTI in
     # più o un suo titolare non gioca più (`stabile`); dopo la scadenza resta e basta. Tutti passano di qui (Formazione, Oggi, widget,
     # Da fare, avvisi, copia alla scadenza): leggono la stessa.
@@ -875,7 +901,7 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
     if giornata is None and adesso is not None:     # con l'ora data la giornata si cerca con quella (senza: `previsioni`, ora vera)
         giornata = giornata_da_giocare(db, stagione_corrente(), regole, adesso)
         if giornata is None:
-            raise ValueError(SENZA_CALENDARIO)
+            raise senza_giornata(db, stagione_corrente(), adesso)
     prev, giornata, _ = previsioni(db, regole, giornata)
     ids = [g.id for g in s.giocatori if g.id is not None and g.id in prev.index]
     rosa = {int(i): fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),

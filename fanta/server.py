@@ -507,8 +507,9 @@ def _messaggio_per_l_utente(e: ValueError) -> bool:
 def _errore_valore(request: Request, e: ValueError):
     if _messaggio_per_l_utente(e):
         codice = getattr(type(e), "codice", None)           # nome breve dell'errore per i client (es. «formazione_non_valida»), facoltativo
-        stato = getattr(type(e), "stato", 400)              # 422 per i dati oltre i tetti (regole_testo.TestoTroppoLungo, regole.RegoleTroppoGrandi)
-        return JSONResponse(status_code=stato if stato in (400, 422) else 400,
+        # 422 per i dati oltre i tetti (regole_testo.TestoTroppoLungo, regole.RegoleTroppoGrandi); 409 a campionato finito (consigli.CampionatoFinito)
+        stato = getattr(type(e), "stato", 400)
+        return JSONResponse(status_code=stato if stato in (400, 409, 422) else 400,
                             content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
     codice = secrets.token_hex(4)               # lo stesso codice nel log del servizio: chi gestisce l'app ritrova il caso
     passi = traceback.extract_tb(e.__traceback__)

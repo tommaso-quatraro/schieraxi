@@ -4,6 +4,7 @@ Tutto parte dai calcoli già fatti per la formazione e per gli scambi (stesse pr
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import datetime
 
@@ -254,6 +255,33 @@ def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, rego
             "rinvio": None}
 
 
+def oggi_campionato_finito(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, adesso: datetime, file_scelte=None,
+                           file_diario=None) -> dict:
+    """Oggi a campionato finito (#656, consigli.stagione_finita): stessi campi di `oggi` ma vuoti (come `oggi_senza_rose`), fase
+    `finita` senza `prossima` e `campionato_finito` = {testo, frase} con la frase `campionato.finito`. Nelle solite 48 ore dalla fine
+    dell'ultima giornata (fasi.calcola_fase) c'è il suo `riepilogo`, poi null. Prima qui c'era il 400 «calendario non ancora
+    disponibile», anche dopo l'avviso del riepilogo dell'ultima giornata, che apre proprio Oggi."""
+    s = rose.squadra(rose.mia_squadra or "")
+    riepilogo = None
+    try:
+        r = db.execute("SELECT MAX(giornata) FROM partite WHERE stagione = ? AND giocata = 1", (stagione,)).fetchone()
+        ultima = r[0] if r else None
+        fine = fasi.fine_giornata(db, stagione, ultima) if ultima and ultima >= getattr(regole, "prima_giornata_lega", 1) else None
+        if fasi.calcola_fase(False, None, fine, adesso) == fasi.FINITA:
+            riepilogo = fasi.blocco_riepilogo(db, regole, rose, stagione, ultima, file_scelte, file_diario)
+    except Exception as e:                              # noqa: BLE001  (Oggi si apre comunque, come in fasi.aggiungi; il guasto va nel registro)
+        logging.getLogger(__name__).warning("Oggi a campionato finito: riepilogo dell'ultima giornata non calcolato (%s)", type(e).__name__)
+        riepilogo = None
+    testo = F("campionato.finito")
+    return {"giornata": None, "giornata_lega": None} | _tempi(None, adesso, regole) | {
+            "con_probabili": False, "probabili": None,
+            "formazione": {"modulo": "–", "punteggio_atteso": None, "squadra": s.nome if s else "", "dev": None, "intervallo": None,
+                           "tua_scelta": False},
+            "avvisi": [], "migliori": [], "partite": [], "miei_titolari": {},
+            "fase": fasi.FINITA, "in_corso": None, "riepilogo": riepilogo, "prossima": None, "rinvio": None,
+            "campionato_finito": {"testo": testo, "frase": frasi.di(testo)}}
+
+
 def migliori_della_giornata(titolari: list[dict]) -> list[dict]:
     """«I tuoi migliori della giornata» di Oggi: i tre titolari con più punti attesi (contano anche «gioca N%»), mostrati in ordine di
     fantavoto atteso, il numero che si vede accanto (a pari, prima chi ha più punti attesi). Prima uscivano 8,3 · 6,5 · 6,6 (#457).
@@ -287,6 +315,8 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
     if not s:
         raise ValueError("Indica la tua squadra in «La mia squadra»")
     stagione = consigli.stagione_corrente()
+    if consigli.stagione_finita(db, stagione, adesso):          # niente giornata da giocare: il riepilogo dell'ultima, poi la frase (#656)
+        return oggi_campionato_finito(db, regole, rose, stagione, adesso, file_scelte, file_diario)
     f = formazione if formazione is not None else formazione_di_oggi(db, regole, rose)
     prev, giornata, con_probabili = consigli.previsioni(db, regole)
     tua_scelta, f_extra = False, {}
