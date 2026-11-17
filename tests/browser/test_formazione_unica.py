@@ -774,6 +774,44 @@ def test_se_il_salvataggio_in_volo_non_riesce_la_pagina_riletta_lo_dice_e_si_ria
     assert not web.errori_mostrati()
 
 
+@pytest.mark.parametrize("comando, guasto", [("un altro modulo", "rete"), ("torna alla consigliata", "rete"), ("un altro modulo", "server")])
+def test_se_il_salvataggio_non_riesce_dopo_aver_lasciato_la_formazione_un_avviso_lo_dice(web, comando, guasto):
+    """#667: un cambio, poi subito un'altra schermata, e la rete cade. Nessun avviso: tornando, la Formazione mostrava ciò che è
+    salvato e l'utente credeva di aver salvato il cambio. L'avviso del salvataggio fallito compare anche fuori dalla Formazione, e
+    lì nomina la formazione («Non riesco a collegarmi» da solo, su Giornate, sembrava parlare di Giornate). Con un rifiuto del
+    server non dice che la rete è caduta."""
+    solo(web, "prima")
+    altro = _altro_modulo(web)
+    mia = {"titolari": altro["titolari"], "modulo": altro["modulo"], "salvata": "2026-10-27T09:00:00", "tipo": "manuale"}
+    mem = server_con_memoria(web, mia if comando == "torna alla consigliata" else None)
+    web.apri("/")
+    if comando == "un altro modulo":
+        fermi = _trattieni_i_salvataggi(web)
+        principale(web).get_by_label("Modulo").select_option(altro["modulo"])
+    else:
+        fermi = []
+        web.pagina.route(lambda u: urlsplit(u).path == "/api/scelta",
+                         lambda r: fermi.append(r) if r.request.method == "DELETE" else r.fallback())
+        principale(web).get_by_role("button", name="Torna alla consigliata").click()
+    tocca(web, web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Giornate"))
+    assert len(fermi) == 1, "la scrittura non è partita"
+    if guasto == "rete":
+        fermi.pop(0).abort()                                           # la rete cade con la Formazione già lasciata
+        frase = "La formazione non è stata salvata perché non riesco a collegarmi: torna sulla Formazione e riprova."
+    else:
+        mem["rifiuto"] = (500, {"detail": "Errore interno"})
+        fermi.pop(0).fallback()                                        # il server rifiuta, con la Formazione già lasciata
+        frase = "La formazione non è stata salvata: torna sulla Formazione e controllala."
+    avviso = web.pagina.get_by_role("status").filter(has_text="La formazione non è stata salvata")
+    _aspetta(avviso.first, testo=frase)
+    assert mem["scelta"] == (mia if comando == "torna alla consigliata" else None)
+    tocca(web, web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Formazione"))
+    atteso = altro["modulo"] if comando == "torna alla consigliata" else web.registrata("/api/formazione")["modulo"]
+    assert principale(web).get_by_label("Modulo").input_value() == atteso, "tornando, in pagina non c'è ciò che è salvato"
+    assert not web.errori_mostrati()
+    assert not [e for e in web.errori_console if e.startswith("errore nel codice")], web.errori_console   # la richiesta interrotta sì
+
+
 def test_togliere_la_spunta_non_cancella_una_scelta_salvata_altrove(web):
     """Gli 11 salvati (per esempio dall'iPhone) sono quelli della consigliata: mettere e togliere la spunta non cancella la
     scelta. Una scelta salvata non cambia mai da sola: si toglie solo con «Torna alla consigliata»."""
