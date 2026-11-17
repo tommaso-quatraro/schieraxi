@@ -2,9 +2,10 @@
 nell'app della lega. La web salva da sola a ogni tocco: una scelta salvata dalla web ma non segnata riceve il promemoria, con una
 frase che chiede proprio questo.
 
-L'app per iPhone di oggi non ha la spunta: per le scelte salvate dall'iPhone (e per quelle di cui non si sa da dove vengono, per
-esempio salvate prima di questa versione) il promemoria resta com'era, cioè tace con una scelta salvata. Per saperlo la scelta
-salvata ricorda da dove arriva (`da`: «web» o «app»), un campo in più che i client di prima ignorano.
+La scelta salvata ricorda da dove arriva (`da`: «web» o «app»), un campo in più che i client di prima ignorano. Dal
+riallineamento dell'iPhone (#673) anche l'app ha la spunta: una scelta salvata dall'iPhone senza la spunta riceve il promemoria come
+una della web. Solo per le scelte di cui non si sa da dove vengono (salvate prima del 13/11) il promemoria resta com'era, cioè tace
+con una scelta salvata.
 Mai l'orologio vero: `adesso` è un argomento. Dati inventati e cartelle temporanee."""
 from datetime import datetime, timedelta
 
@@ -156,12 +157,19 @@ def test_senza_scelta_il_promemoria_e_quello_di_sempre(tmp_path, monkeypatch):
     assert "Consigliato: 4-4-2" in mandati[0][1] and DOMANDA not in mandati[0][1]
 
 
-@pytest.mark.parametrize("da", ["app", None])
-def test_scelta_dell_iphone_o_di_prima_tace_come_oggi(tmp_path, monkeypatch, da):
-    """L'iPhone di oggi non ha la spunta (arriverà con il riallineamento, #673): chi salva da lì non riceve promemoria in più.
-    Lo stesso per una scelta salvata prima di questa versione, che non dice da dove arriva."""
+def test_scelta_dell_iphone_senza_spunta_riceve_il_promemoria_che_chiede_della_spunta(tmp_path, monkeypatch):
+    """L'iPhone ha la spunta (#673): chi salva da lì senza spuntare riceve la stessa domanda della web; con la spunta tace."""
     promemoria, mandati = _mondo(tmp_path, monkeypatch)
-    _salvata(tmp_path, da=da)
+    _salvata(tmp_path, da="app")
+    assert len(promemoria(UN_ORA)) == 1 and DOMANDA in mandati[0][1]
+    _salvata(tmp_path, da="app", messa=True)
+    assert promemoria(QUARTO) == [] and len(mandati) == 1
+
+
+def test_scelta_di_prima_tace_come_prima(tmp_path, monkeypatch):
+    """Una scelta salvata prima del 13/11, che non dice da dove arriva: il promemoria tace come allora."""
+    promemoria, mandati = _mondo(tmp_path, monkeypatch)
+    _salvata(tmp_path)
     assert promemoria(UN_ORA) == [] and promemoria(QUARTO) == [] and mandati == []
 
 
