@@ -23,8 +23,8 @@ con gli stessi dati, e il passo 5 che non aggiunge niente.
 | `lega/` (regole, rose, immagini) | `dati/smtp.password` (password della casella email) | niente email finché non la riscrivi: passo 3 |
 | `dati/scelte.json`, `diario.json`, `affidabilita.json`, ecc. | `dati/avatar_tratti.json` (non è pubblico) | volti con la carnagione neutra |
 | `dati/registro-giornate.json` (registro delle giornate: le tabelle `registro_*` dell'archivio, i numeri mostrati prima di ogni giornata; NON si ricostruiscono) | `~/.config/schieraxi/canale` (canale degli avvisi) | niente avvisi al gestore finché non lo rimetti |
-| | `~/.config/schieraxi/chiavi-firma.asc` | si ricopia da `script/server/chiavi/` (vedi `script/server/LEGGIMI.md`, «Accendere») |
-| | configurazione di sistema (nginx, systemd, fail2ban, ufw, crontab) | va tenuta dal gestore fuori da questo repository |
+| `dati/fonti.json` e `dati/funzioni.json` (fonti e funzioni spente o accese dall'amministratore; solo nomi e acceso/spento, niente segreti; nelle copie dalla #664) | `~/.config/schieraxi/chiavi-firma.asc` | si ricopia da `script/server/chiavi/` (vedi `script/server/LEGGIMI.md`, «Accendere») |
+| `dati/consigliate.json` (consigliate già mostrate) e `dati/sentinella.json` (storia dei giri della sentinella); nelle copie dalla #664 | configurazione di sistema (nginx, systemd, fail2ban, ufw, crontab) | va tenuta dal gestore fuori da questo repository |
 | | le statistiche arrivate dopo la notte della copia | si scaricano: passo 4 |
 
 Le statistiche non si riscaricano tutte: una fonte che chiude o cambia non ridà le stagioni e le partite di prima. Per questo
@@ -34,6 +34,16 @@ Una notte in cui la copia dell'archivio non riesce, il pacchetto si salva lo ste
 copie di prima restano (quella notte non se ne toglie nessuna). In quel caso, al passo 2 estrai la copia più recente (account e
 utenti aggiornati), poi il solo archivio dalla più recente che lo contiene (si vede con `tar -tzf ~/dati-AAAA-MM-GG.tar.gz`):
 `tar -xzf ~/dati-AAAA-MM-GG.tar.gz -C ~/fantacalcio ./dati/fanta.sqlite`.
+
+Le copie fatte prima della #664 non hanno `dati/fonti.json` e `dati/funzioni.json`: ripristinate così, con le variabili di
+produzione (passo 3) le fonti e le funzioni che l'amministratore aveva spento tornano **accese per tutti**, senza avviso (anche
+la funzione che scarica immagini da indirizzi scritti dagli utenti), e il passo 4 richiama anche le fonti che erano spente. Con una
+copia così, una fonte che era spenta si rispegne prima del passo 4, dalla cartella dell'app:
+`.venv/bin/python -c "from fanta import fonti_attive; fonti_attive.imposta('<fonte>', False)"` (`<fonte>` fra `fantacalcio`,
+`understat`, `footballdata`, `espn`, `foto`). Le funzioni si rispengono dall'app, da amministratore, prima di aprire al pubblico.
+Controllo: `GET /api/admin/fonti` e `GET /api/admin/funzioni` (`scelta_da` dice chi ha deciso). Senza `dati/consigliate.json`
+le consigliate già mostrate si rifanno da capo (possono cambiare anche per meno di un punto atteso); senza `dati/sentinella.json`
+la storia dei giri della sentinella riparte vuota.
 
 ## Passi (utente del server, nella sua home)
 

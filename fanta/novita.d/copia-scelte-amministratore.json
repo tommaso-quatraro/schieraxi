@@ -1,0 +1,9 @@
+{
+  "titolo": "Copia notturna: dentro anche le fonti e le funzioni spente dall'amministratore",
+  "voci": [
+    "Se il server va rifatto da una copia notturna, le fonti dei dati e le funzioni che l'amministratore aveva spento restano spente, e le consigliate già mostrate restano quelle."
+  ],
+  "tecnico": [
+    "script/server/backup-dati.sh copia anche dati/fonti.json, dati/funzioni.json (scelte dell'amministratore: solo nomi e acceso/spento, niente segreti), dati/consigliate.json e dati/sentinella.json (#664). docs/RIPRISTINO-SERVER.md li elenca nella tabella della copia e dice cosa fare con una copia di prima, che non li ha."
+  ]
+}
