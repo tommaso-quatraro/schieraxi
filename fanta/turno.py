@@ -7,6 +7,11 @@ il gruppo più grande). Né una partita rinviata con la vecchia data mai aggiorn
 calendario settimane dopo (Supercoppa: giornata 16 del 2025-26, sei partite il 20-21 dicembre e quattro il 14-15 gennaio)
 spostano il turno. Una partita è del turno se comincia da `inizio` (compreso) a `inizio + FINESTRA` (escluso).
 
+GIORNATA DOPO (#698): un turno non comincia mai dopo quello della giornata dopo. Se la regola sopra dà un inizio da lì in poi, il
+turno è il gruppo giocato nella data della giornata (le sue partite prima della giornata dopo) e le altre sono recuperi: è il caso
+di 4 partite giocate e 6 rinviate a settimane dopo, dove il gruppo più numeroso sono i recuperi. Serve l'inizio del turno della
+giornata dopo (`prossimo` di `inizio`); chi non ce l'ha (calendario della sola giornata) usa la regola di sempre.
+
 ANTICIPI (decisione del 2/11/2026): il turno comincia dal GRUPPO PRINCIPALE, cioè il primo gruppo di partite vicine (fra una e
 l'altra al massimo ANTICIPO_MIN) con almeno metà delle partite. Una partita da più di ANTICIPO_MIN a meno di ANTICIPO_MAX prima del
 gruppo principale è un ANTICIPO: è della giornata (mai «Rinviata»), ma non fissa la scadenza della formazione. Una partita
@@ -34,12 +39,24 @@ def nel_turno(quando: datetime, inizio: datetime) -> bool:
     return inizio <= quando < inizio + FINESTRA
 
 
-def inizio(date: Iterable[datetime | None]) -> datetime | None:
+def inizio(date: Iterable[datetime | None], prossimo: datetime | None = None) -> datetime | None:
     """Quando comincia il turno, dalle date delle partite della giornata (quelle senza data si ignorano). None se non ce n'è.
     Il primo gruppo principale (partite a meno di ANTICIPO_MIN l'una dall'altra, almeno metà del totale) se prima ha al massimo
     MAX_ANTICIPI anticipi; altrimenti il primo intervallo di FINESTRA con almeno metà delle partite, o quello più pieno, fra
-    quelli che non lasciano prima più di MAX_ANTICIPI anticipi (issue #139: venerdì 3 partite e mercoledì dopo 4 → venerdì)."""
+    quelli che non lasciano prima più di MAX_ANTICIPI anticipi (issue #139: venerdì 3 partite e mercoledì dopo 4 → venerdì).
+    Con `prossimo` (l'inizio del turno della giornata dopo) mai da `prossimo` in poi: se capita, il turno si cerca fra le partite
+    prima di `prossimo`, cioè quelle giocate nella data della giornata (#698: 4 giocate e 6 rinviate a settimane dopo)."""
     ordinate = sorted(d for d in date if d is not None)
+    primo = _inizio(ordinate)
+    if primo is not None and prossimo is not None and primo >= prossimo:
+        prima = [d for d in ordinate if d < prossimo]
+        if prima:
+            return _inizio(prima)
+    return primo
+
+
+def _inizio(ordinate: list[datetime]) -> datetime | None:
+    """`inizio` dalle date già ordinate, senza la giornata dopo."""
     if not ordinate:
         return None
     gruppi: list[list[datetime]] = [[ordinate[0]]]
@@ -73,10 +90,10 @@ def lontano(quando: datetime | None, giocata: bool, inizio: datetime | None, pre
     del turno della giornata precedente (`precedente` = il suo inizio, più FINESTRA), in una giornata il cui turno comincia prima di
     quello della giornata dopo (`prossimo`). È una partita anticipata di settimane (Supercoppa, coppe), quante che siano: è della
     giornata (mai «fuori dal turno»: chi l'ha giocata tiene il suo voto), non fissa la scadenza e i suoi giocatori restano fermi come
-    per un anticipo. Altrimenti è metà giornata giocata e il resto rinviato (il turno è un recupero dopo la giornata dopo, oppure le
-    partite sono state giocate dopo la giornata precedente, per esempio prima di una sosta): fissano la scadenza come sempre, e una
-    scadenza passata non torna mai indietro. Si decide dalla posizione, non dal numero. Senza `precedente` o senza `prossimo` (prima o
-    ultima giornata, calendario vicino senza date) mai."""
+    per un anticipo. Altrimenti è metà giornata giocata e il resto rinviato (il turno è un recupero dopo la giornata dopo, se
+    `inizio` è stato calcolato senza la giornata dopo, oppure le partite sono state giocate dopo la giornata precedente, per esempio
+    prima di una sosta): fissano la scadenza come sempre, e una scadenza passata non torna mai indietro. Si decide dalla posizione,
+    non dal numero. Senza `precedente` o senza `prossimo` (prima o ultima giornata, calendario vicino senza date) mai."""
     return (bool(giocata) and quando is not None and inizio is not None and precedente is not None and prossimo is not None
             and inizio < prossimo and quando <= inizio - ANTICIPO_MAX and quando < precedente + FINESTRA)
 
