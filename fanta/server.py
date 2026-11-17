@@ -468,10 +468,22 @@ def _regole(ctx: Contesto) -> regole.Regole:
     return regole.carica(ctx.regole)
 
 
+NESSUNA_ROSA = "Nessuna rosa importata: importale con «Aggiorna le rose»"
+
+
 def _rose(ctx: Contesto) -> lega.Rose:
     r = lega.carica(ctx.rose)
     if not r:
-        raise HTTPException(409, "Nessuna rosa importata: importale con «Aggiorna le rose»")
+        raise HTTPException(409, NESSUNA_ROSA)
+    return r
+
+
+def _rose_da_schierare(ctx: Contesto) -> lega.Rose:
+    """Le rose per Oggi e Formazione. Rose senza nessun giocatore (dopo «Nuova stagione», finché non si importano le nuove) valgono
+    come nessuna rosa, la regola del primo avvio (`_ha_rose`): 409 con l'invito a importarle, non una formazione impossibile (#657)."""
+    r = _rose(ctx)
+    if not any(s.giocatori for s in r.squadre):
+        raise HTTPException(409, NESSUNA_ROSA)
     return r
 
 
@@ -838,7 +850,7 @@ def formazione(request: Request, squadra: str | None = None, giornata: int | Non
     try:
         r = _regole(ctx)
         saltata = None if squadra or giornata else _giornata_saltata(db, r, ctx, request)
-        f = consigli.formazione(db, r, _rose(ctx), squadra, saltata + 1 if saltata else giornata)
+        f = consigli.formazione(db, r, _rose_da_schierare(ctx), squadra, saltata + 1 if saltata else giornata)
         if saltata:
             f = f | {"giornata_saltata": saltata, "giornata_saltata_lega": regole.serie_a_a_lega(saltata, r)}
         if not squadra:
@@ -1370,11 +1382,11 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
     db = _db()
     try:
         try:
-            rose_ = _rose(ctx)
+            rose_ = _rose_da_schierare(ctx)
         except HTTPException as e:
             if e.status_code != 409:
                 raise
-            corpo = gestione.oggi_senza_rose(db, regole=_regole(ctx))           # account nuovo: un benvenuto, non un errore (200 con `senza_rose`)
+            corpo = gestione.oggi_senza_rose(db, regole=_regole(ctx))           # account nuovo o rose vuote: un benvenuto, non un errore (200 con `senza_rose`)
             corpo["da_fare"] = da_fare.senza_rose(getattr(ctx, "impostazioni_avvisi", None))
             return corpo
         r = _regole(ctx)

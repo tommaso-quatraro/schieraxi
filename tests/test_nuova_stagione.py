@@ -88,3 +88,17 @@ def test_la_squadra_rinominata_tiene_il_nome_di_leghe_nella_stagione_nuova(lugli
     squadre = {s["nome"]: s for s in a.get("/api/squadre").json()}
     assert sorted(squadre) == ["Altra", "I Lupi"]                     # le stesse squadre di prima, nessuna «Mia» in più
     assert squadre["I Lupi"]["mia"] and squadre["I Lupi"]["giocatori"] == 1      # «la tua squadra» con i giocatori nuovi
+
+
+# ---------------------------------------------------------------- 3. rose vuote = senza rose
+def test_dopo_la_nuova_stagione_oggi_e_formazione_dicono_di_importare_le_rose(luglio):
+    a, _ = nuovo_utente("utentea")
+    assert a.post("/api/rose/testo", json={"testo": ROSE_VECCHIE}).status_code == 200
+    assert a.put("/api/mia-squadra", json={"nome": "Mia"}).status_code == 200
+    luglio[0] = "2027-28"
+    assert a.post("/api/nuova-stagione").status_code == 200       # squadre ancora lì, ma senza nessun giocatore
+    o = a.get("/api/oggi")
+    assert o.status_code == 200 and o.json()["senza_rose"] is True, o.text      # come al primo avvio: l'invito a importarle
+    assert "rose" in [v["tipo"] for v in o.json()["da_fare"]]
+    f = a.get("/api/formazione")
+    assert f.status_code == 409 and f.json()["detail"] == "Nessuna rosa importata: importale con «Aggiorna le rose»", f.text
