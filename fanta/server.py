@@ -1418,16 +1418,18 @@ def _calendario_live() -> list[dict]:
 def _risposta_live() -> dict:
     """Le partite del turno con lo stato in diretta. Legge solo la cache del raccoglitore: nessuna richiesta esterna."""
     db = _db()
+    dopo = None
     try:
         stagione = consigli.stagione_corrente()
         giornata = consigli.prossima_giornata(db, stagione)
         righe = db.execute("SELECT data, casa, trasferta, giornata, giocata, gol_casa, gol_trasferta FROM partite "
                            "WHERE stagione = ? AND giornata = ? ORDER BY data", (stagione, giornata)).fetchall() if giornata else []
+        dopo = avvisi_pronta.turno_dopo(db, stagione, giornata) if giornata else None     # il turno non comincia dopo (#698)
     except sqlite3.Error:                                  # archivio non ancora pronto: nessuna partita, non un errore
         righe = []
     finally:
         db.close()
-    return live.risposta(live.unico or live.Raccoglitore(lambda: []), righe)
+    return live.risposta(live.unico or live.Raccoglitore(lambda: []), righe, dopo)
 
 
 @app.get("/api/live")

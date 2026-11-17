@@ -4,11 +4,13 @@ Caso vero del 1/11/2026: giornata 10 di Serie A con 6 partite giocate e 4 da gio
 Prima della correzione la giornata «da giocare» era già la 11 (serviva metà delle partite ancora da giocare): Oggi diceva che la
 giornata era finita e contava 5 giorni e 1 ora alla scadenza della successiva."""
 import sqlite3
+from dataclasses import replace
 from datetime import datetime, timedelta
 
+import pandas as pd
 import pytest
 
-from fanta import avvisi, consigli, fasi, gestione, regole
+from fanta import avvisi, consigli, fasi, gestione, live, regole, rinvii
 from fanta.regole import Regole
 
 ST = "2026-27"
@@ -123,6 +125,118 @@ def test_quattro_giocate_e_sei_rinviate_la_giornata_resta_finche_si_gioca_il_fin
     sabato_sera = [(d, 1 if i < 2 else 0) for i, (d, _) in enumerate(prima)]     # 2 giocate, la terza in corso, la quarta domenica
     assert consigli.prossima_giornata(_db(sabato_sera, G11, G12), ST, datetime(2026, 10, 31, 22, 0)) == 10
     assert consigli.prossima_giornata(_db(_rinviate(6), G11, G12), ST, datetime(2026, 11, 1, 23, 0)) == 11
+
+
+@pytest.mark.parametrize("modo", ["aspetta", "senza_voto", "voto_ufficio"])
+def test_quattro_giocate_e_sei_rinviate_con_i_recuperi_gia_in_calendario_la_scadenza_e_quella_del_turno(monkeypatch, modo):
+    """#698: 4 partite della 10 nel fine settimana e 6 rinviate al 2-3 dicembre, dopo la 11, già in calendario il venerdì. Prima che
+    le 4 partite si giochino il turno è il loro fine settimana, non i recuperi: la scadenza è il 31/10 alle 15:00 (prima: il recupero
+    del 2/12, e la formazione restava aperta mentre si giocava), le 4 partite sono «da giocare» e i 6 recuperi «rinviata» (prima il
+    contrario), e la regola dei rinvii della lega cade su chi ha il recupero, non su chi gioca nel fine settimana."""
+    db = _db(_rinviate(6, giocate=False), G11, G12)
+    venerdi, reg = datetime(2026, 10, 30, 12, 0), replace(_regole_scadenza_10(), partite_rinviate=modo)
+    assert avvisi.prima_partita(db, ST, 10) == datetime(2026, 10, 31, 15, 0)
+    assert not fasi.iniziata(db, reg, ST, 10, venerdi)
+    assert fasi.iniziata(db, reg, ST, 10, datetime(2026, 10, 31, 14, 50))
+    monkeypatch.setattr(consigli, "_adesso", lambda: venerdi)
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    o = gestione.oggi_senza_rose(db, adesso=venerdi, regole=reg)
+    assert o["giornata"] == 10 and o["scadenza"] == "2026-10-31 14:50" and o["iniziata"] is False
+    assert [p["stato"] for p in o["partite"]] == ["da_giocare"] * 4 + ["rinviata"] * 6
+    partite = pd.read_sql_query("SELECT rowid AS id, stagione, giornata, data, giocata FROM partite", db)
+    recuperi = set(partite[(partite["giornata"] == 10) & (partite["data"] >= "2026-12")]["id"])
+    assert len(recuperi) == 6 and rinvii.id_rinviate(partite, ST, 10) == recuperi
+    sabato, recupero = (int(partite[(partite["giornata"] == 10) & (partite["data"] == d)]["id"].iloc[0])
+                        for d in ("2026-10-31 15:00", RECUPERI[0]))
+    prev = pd.DataFrame([{"id": 1, "partita": sabato, "p_voto": 0.9, "mu": 7.0, "mu_voto": 6.4, "atteso": 6.3, "quota_titolare": 0.9},
+                         {"id": 2, "partita": recupero, "p_voto": 0.8, "mu": 7.0, "mu_voto": 6.4, "atteso": 5.6,
+                          "quota_titolare": 0.8}]).set_index("id")
+    p = rinvii.applica(prev, rinvii.id_rinviate(partite, ST, 10), rinvii.regola(reg, ST, 10))      # come consigli._calcola_previsioni
+    assert p.at[1, "rinvio"] is None and p.at[1, "p_voto"] == 0.9                 # gioca sabato: numeri di sempre
+    assert p.at[2, "rinvio"] == modo
+    # GET /api/live (server._risposta_live) con l'inizio della giornata dopo: stessi stati di Oggi
+    righe = db.execute("SELECT data, casa, trasferta, giornata, giocata FROM partite WHERE giornata = 10 ORDER BY data").fetchall()
+    corpo = live.risposta(live.Raccoglitore(lambda: [], adesso=lambda: venerdi), righe, avvisi.turno_dopo(db, ST, 10))
+    assert [p["stato"] for p in corpo["partite"]] == ["da_giocare"] * 4 + ["rinviata"] * 6
+
+
+VENERDI = datetime(2026, 10, 30, 12, 0)
+
+
+def _archivio(tmp_path, g10: list, g11: list = G11, g12: list = G12):
+    """Le giornate 10, 11 e 12 in un archivio vero (con le tabelle dei voti e dei gol); il percorso: le rotte chiudono la connessione."""
+    from fanta import archivio
+    percorso = tmp_path / "fanta.sqlite"
+    db = archivio.apri(percorso)
+    archivio.inserisci(db, "partite", [{"id": 100 * g + i, "stagione": ST, "giornata": g, "data": d, "casa": f"c{g}{i}",
+                                        "trasferta": f"t{g}{i}", "gol_casa": None, "gol_trasferta": None, "giocata": gi,
+                                        "understat_id": None}
+                                       for g, partite in ((10, g10), (11, g11), (12, g12)) for i, (d, gi) in enumerate(partite)])
+    db.commit()
+    db.close()
+    return percorso
+
+
+def _partite_oggi(db, giornata: int) -> list[dict]:
+    return [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": bool(r[3])} for r in
+            db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
+                       (ST, giornata))]
+
+
+def test_quattro_giocate_e_sei_rinviate_oggi_con_le_rose_ha_gli_stati_del_turno(tmp_path):
+    """#698, revisione della #721: Oggi con le rose (`fasi.aggiungi`) il venerdì, recuperi già in calendario: 4 partite «da_giocare»
+    e 6 «rinviata», come Oggi senza rose (prima il contrario)."""
+    from fanta import archivio
+    db = archivio.apri(_archivio(tmp_path, _rinviate(6, giocate=False)))
+    corpo = {"giornata": 10, "iniziata": False, "ore_mancanti": 26.8, "partite": _partite_oggi(db, 10)}
+    corpo = fasi.aggiungi(corpo, db, _regole_scadenza_10(), None, None, {}, ST, VENERDI)
+    assert [p["stato"] for p in corpo["partite"]] == ["da_giocare"] * 4 + ["rinviata"] * 6
+
+
+def test_quattro_giocate_e_sei_rinviate_dopo_la_scadenza_il_giocatore_del_recupero_e_rinviato(tmp_path):
+    """#698, revisione della #721: lo stato dei giocatori a formazione chiusa (`fasi.stati_giocatori`, Formazione e Oggi in corso):
+    chi gioca sabato «da_giocare», chi ha il recupero di dicembre «rinviata» (prima il contrario)."""
+    from fanta import archivio
+    db = archivio.apri(_archivio(tmp_path, _rinviate(6, giocate=False)))
+    giocatori = [{"id": 1, "ruolo": "A", "squadra": "c100"}, {"id": 2, "ruolo": "A", "squadra": "c104"}]   # sabato 15:00, recupero
+    assert fasi.stati_giocatori(db, _regole_scadenza_10(), ST, 10, giocatori, datetime(2026, 10, 31, 14, 55)) == {
+        1: "da_giocare", 2: "rinviata"}
+
+
+def test_quattro_giocate_e_sei_rinviate_api_live_ha_gli_stati_del_turno(tmp_path, monkeypatch):
+    """#698, revisione della #721: GET /api/live (`server._risposta_live`) il venerdì: 4 partite «da_giocare» e 6 «rinviata», come in
+    Oggi (prima il contrario)."""
+    from fanta import archivio, server
+    percorso = _archivio(tmp_path, _rinviate(6, giocate=False))
+    monkeypatch.setattr(server, "_db", lambda: archivio.apri(percorso))
+    monkeypatch.setattr(consigli, "_adesso", lambda: VENERDI)
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    monkeypatch.setattr(live, "unico", live.Raccoglitore(lambda: [], adesso=lambda: VENERDI))
+    assert [p["stato"] for p in server._risposta_live()["partite"]] == ["da_giocare"] * 4 + ["rinviata"] * 6
+
+
+def test_quattro_giocate_e_sei_rinviate_oggi_finita_dopo_il_fine_settimana(tmp_path):
+    """#698, revisione della #721: lunedì, giocate le 4 partite del fine settimana e con i 6 recuperi a dicembre, Oggi della giornata
+    11 è in fase «finita» (riepilogo della 10, finita col suo turno), come con 5 giocate e 5 rinviate. Prima la 10 non finiva fino al
+    recupero e Oggi restava in fase «prima»."""
+    from fanta import archivio
+    db = archivio.apri(_archivio(tmp_path, _rinviate(6)))
+    lunedi = datetime(2026, 11, 2, 12, 0)
+    corpo = {"giornata": 11, "iniziata": False, "ore_mancanti": 104.6, "partite": _partite_oggi(db, 11)}
+    assert fasi.aggiungi(corpo, db, _regole_scadenza_10(), None, None, {}, ST, lunedi)["fase"] == fasi.FINITA
+
+
+def test_quattro_giocate_e_sei_rinviate_con_un_anticipo_i_suoi_giocatori_restano_fermi(tmp_path):
+    """#698, revisione della #721: nel 4 + 6 una delle 4 partite si gioca il mercoledì prima (anticipo del turno del fine settimana).
+    A partita cominciata le sue squadre sono quelle di un anticipo (`fasi.squadre_in_anticipo_iniziato`: giocatori fermi, stato vero)
+    e la formazione resta aperta fino al sabato; prima il turno era il recupero di dicembre e l'anticipo non si riconosceva."""
+    from fanta import archivio
+    g10 = [("2026-10-28 20:45", 0)] + [(d, 0) for d, _ in G10[:3]] + [(d, 0) for d in RECUPERI]
+    db = archivio.apri(_archivio(tmp_path, g10))
+    mercoledi_sera = datetime(2026, 10, 28, 21, 30)
+    assert fasi.squadre_in_anticipo_iniziato(db, ST, 10, mercoledi_sera) == {"c100", "t100"}
+    assert avvisi.prima_partita(db, ST, 10) == datetime(2026, 10, 31, 15, 0)
+    assert not fasi.iniziata(db, _regole_scadenza_10(), ST, 10, mercoledi_sera)
 
 
 def _sposta(partite: list, giorni: int, giocata: int = 0) -> list:

@@ -44,10 +44,11 @@ def _data(testo) -> datetime | None:
         return None
 
 
-def inizio_turno(partite: list[dict]) -> datetime | None:
+def inizio_turno(partite: list[dict], prossimo: datetime | None = None) -> datetime | None:
     """Quando comincia il turno (regola unica in turno.py, la stessa della scadenza): un recupero con la data vecchia non sposta
-    l'inizio. None se il calendario non ha date."""
-    return turni.inizio(_data(p.get("data")) for p in partite)
+    l'inizio. `prossimo` = inizio del turno della giornata dopo (`avvisi.turno_dopo`): il turno non comincia dopo (#698). None se il
+    calendario non ha date."""
+    return turni.inizio((_data(p.get("data")) for p in partite), prossimo)
 
 
 def stato_partita(p: dict, adesso: datetime, live: dict | None = None, turno: datetime | None = None) -> str:
@@ -86,7 +87,7 @@ def fine_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> datet
     date = [d for d in (_data(r[0]) for r in righe) if d]
     if not date:
         return None
-    primo = turni.inizio(date)
+    primo = turni.inizio(date, avvisi.turno_dopo(db, stagione, giornata))
     del_turno = [(d, g) for d, g in ((_data(r[0]), r[1]) for r in righe) if d and turni.nel_turno(d, primo)]
     if not del_turno or not all(g for _, g in del_turno):
         return None
@@ -98,7 +99,8 @@ def recuperi_mancanti(db: sqlite3.Connection, stagione: str, giornata: int) -> l
     righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
                        (stagione, giornata)).fetchall()
     partite = [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": r[3]} for r in righe]
-    return [{"casa": p["casa"], "trasferta": p["trasferta"], "data": p["data"]} for p in rinvii.rinviate(partite)]
+    return [{"casa": p["casa"], "trasferta": p["trasferta"], "data": p["data"]}
+            for p in rinvii.rinviate(partite, avvisi.turno_dopo(db, stagione, giornata))]
 
 
 # ---------------------------------------------------------------- la formazione schierata
@@ -445,7 +447,7 @@ def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str
     corpo["in_corso"] = corpo["riepilogo"] = corpo["prossima"] = None
     giornata = corpo.get("giornata")
     try:
-        turno = inizio_turno(corpo.get("partite") or [])
+        turno = inizio_turno(corpo.get("partite") or [], avvisi.turno_dopo(db, stagione, giornata) if giornata else None)
         for p in corpo.get("partite") or []:
             p["stato"] = stato_partita(p, adesso, live, turno)
         precedente = None
@@ -481,7 +483,7 @@ def stati_giocatori(db: sqlite3.Connection, regole: Regole, stagione: str, giorn
     righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
                        (stagione, giornata)).fetchall()
     partite = [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": bool(r[3])} for r in righe]
-    turno = inizio_turno(partite)
+    turno = inizio_turno(partite, avvisi.turno_dopo(db, stagione, giornata))
     per_squadra: dict[str, dict] = {}
     for p in partite:
         p["stato"] = stato_partita(p, adesso, live, turno)
@@ -554,8 +556,8 @@ def squadre_in_anticipo_iniziato(db: sqlite3.Connection, stagione: str, giornata
     righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ?",
                        (stagione, giornata)).fetchall()
     partite = [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": bool(r[3])} for r in righe]
-    inizio = inizio_turno(partite)
     precedente, prossimo = avvisi.turni_vicini(db, stagione, giornata)
+    inizio = inizio_turno(partite, prossimo)
     squadre: set[str] = set()
     for p in partite:
         d = _data(p["data"])
