@@ -40,8 +40,8 @@ enum Notifiche {
     }
 
     /// I promemoria che cadono nelle ore tranquille si saltano (come fa il server): sono utili solo a quell'ora.
-    /// `attivi`: i minuti dei promemoria da mandare (60 e 15 con gli avvisi accesi, nessuno spenti). `messa`: la formazione della
-    /// giornata è spuntata «L'ho messa»: nessun promemoria, come il server (`imp.avvisi_qui_aiuto`).
+    /// `attivi`: i minuti dei promemoria da mandare (60 e 15 con gli avvisi accesi, nessuno spenti). `tace`: il promemoria della
+    /// giornata non serve (`tacePromemoria`: la regola del server, «L'ho messa» e nessun titolare a rischio): nessuno.
     static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, attivi: Set<Int> = [60, 15], tace: Bool = false,
                                      adesso: Date = Date()) -> [(id: String, minuti: Int, quando: Date)] {
         var elenco: [(id: String, minuti: Int, quando: Date)] = []
@@ -87,8 +87,13 @@ enum Notifiche {
                                    ?? "mister, dai un'occhiata alla formazione.")
     }
 
-    // PROVVISORIO (test prima del codice, #710): firma vuota.
-    static func tacePromemoria(serve: Bool?, toccata: Bool?) -> Bool { false }
+    /// Il promemoria della scadenza tace? Una spunta toccata sul telefono dopo l'ultima lettura di Oggi vale subito (`toccata`: vero
+    /// messa, falso tolta); altrimenti decide il server (`serve`, il campo `serve_promemoria` di Oggi): tace solo se dice che non
+    /// serve. Senza il campo (server di prima, lettura non riuscita) il promemoria parte: mai tacere per un dato incerto.
+    static func tacePromemoria(serve: Bool?, toccata: Bool?) -> Bool {
+        if let toccata { return toccata }
+        return serve == false
+    }
 
     static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?, tace: Bool = false) async {
         let centro = UNUserNotificationCenter.current()

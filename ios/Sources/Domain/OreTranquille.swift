@@ -60,29 +60,31 @@ enum ArchivioOreTranquille {
     }
 }
 
-/// La spunta «L'ho messa» della giornata (numero di Serie A), per i promemoria del telefono: con la spunta non partono, come quelli
-/// del server. La scrive la Formazione dopo ogni lettura o salvataggio della scelta; la legge `Aggiornamento.programmaPromemoria`,
-/// anche in background. Si ricorda una giornata sola: quella spuntata.
+/// La spunta «L'ho messa» appena toccata sul telefono, per i promemoria locali (un'ora e un quarto d'ora prima): vale subito dopo il
+/// tocco (spuntata, tolta, o caduta perché gli 11 sono cambiati), finché non arriva una lettura di Oggi partita dopo il tocco; da lì
+/// decide il server (`serve_promemoria`, `Aggiornamento.promemoriaTace`). La scrive la Formazione dopo un tuo salvataggio, mai dopo
+/// una semplice lettura. Si ricorda un tocco solo: la giornata (numero di Serie A), la spunta e l'ora.
 enum ArchivioMessa {
     static let chiave = "promemoria.messa"
 
-    static func messa(giornata: Int?, _ memoria: UserDefaults = .standard) -> Bool {
-        guard let giornata else { return false }
-        return memoria.object(forKey: chiave) as? Int == giornata
+    /// La spunta toccata per questa giornata (vero messa, falso tolta), o nil se dall'ultima lettura di Oggi non è stata toccata.
+    static func toccata(giornata: Int?, _ memoria: UserDefaults = .standard) -> Bool? {
+        guard let giornata, let voce = memoria.dictionary(forKey: chiave), (voce["giornata"] as? Int) == giornata else { return nil }
+        return voce["messa"] as? Bool
     }
 
-    static func salva(giornata: Int, messa: Bool, _ memoria: UserDefaults = .standard) {
-        if messa {
-            memoria.set(giornata, forKey: chiave)
-        } else if Self.messa(giornata: giornata, memoria) {
+    static func ricorda(giornata: Int, messa: Bool, _ memoria: UserDefaults = .standard, il quando: Date = Date()) {
+        let voce: [String: Any] = ["giornata": giornata, "messa": messa, "il": quando.timeIntervalSince1970]
+        memoria.set(voce, forKey: chiave)
+    }
+
+    /// Una lettura di Oggi partita a `data` comprende già i tocchi di prima: quelli si dimenticano, i più recenti restano.
+    static func dimentica(primaDi data: Date, _ memoria: UserDefaults = .standard) {
+        guard let voce = memoria.dictionary(forKey: chiave) else { return }
+        if ((voce["il"] as? Double) ?? 0) < data.timeIntervalSince1970 {
             memoria.removeObject(forKey: chiave)
         }
     }
-
-    // PROVVISORIO (test prima del codice, #710): firme vuote.
-    static func toccata(giornata: Int?, _ memoria: UserDefaults = .standard) -> Bool? { nil }
-    static func ricorda(giornata: Int, messa: Bool, _ memoria: UserDefaults = .standard, il quando: Date = Date()) {}
-    static func dimentica(primaDi data: Date, _ memoria: UserDefaults = .standard) {}
 }
 
 /// «Avvisi su questo dispositivo» (Impostazioni > Avvisi, come la web): un interruttore solo per i promemoria locali (un'ora e 15

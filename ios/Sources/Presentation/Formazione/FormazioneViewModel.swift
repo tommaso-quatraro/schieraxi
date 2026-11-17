@@ -404,18 +404,20 @@ final class FormazioneViewModel: ViewModelBase {
     /// Tiene sul telefono la scelta appena letta o salvata, accanto alla copia della Formazione (`CopiaScelta`).
     private func ricordaSulTelefono(_ f: Formazione) {
         guard squadraVista == nil else { return }
-        ricordaLaSpunta(f)
         guard let dati = CopiaScelta(giornata: f.giornata, scelta: salvata, nonValida: salvataNonValida, valutazione: valutazione).dati
         else { return }
         Cache.salva(dati, CopiaScelta.percorso, indirizzo: server.indirizzo)
     }
 
-    /// La spunta «L'ho messa» della giornata per i promemoria del telefono: quando cambia (spuntata, tolta, o caduta perché gli 11
-    /// sono cambiati) i promemoria si rimettono in programma, così con la spunta non partono e senza tornano.
-    private func ricordaLaSpunta(_ f: Formazione) {
-        let messa = salvata?.messa == true && !salvataNonValida
-        guard ArchivioMessa.messa(giornata: f.giornata, memoria) != messa else { return }
-        ArchivioMessa.salva(giornata: f.giornata, messa: messa, memoria)
+    /// La spunta «L'ho messa» che vale: sugli 11 salvati, se la scelta si può ancora schierare.
+    private var spuntaValida: Bool { salvata?.messa == true && !salvataNonValida }
+
+    /// La spunta dopo un tuo salvataggio (o «Torna alla consigliata»): se è cambiata (spuntata, tolta, o caduta perché gli 11 sono
+    /// cambiati) il telefono la ricorda per i promemoria locali e li rimette in programma, così vale subito; alla prossima lettura di
+    /// Oggi decide il server (`serve_promemoria`, `ArchivioMessa`). Una semplice lettura della scelta non la tocca: lì vale il server.
+    private func ricordaLaSpunta(_ f: Formazione, prima: Bool) {
+        guard squadraVista == nil, spuntaValida != prima else { return }
+        ArchivioMessa.ricorda(giornata: f.giornata, messa: spuntaValida, memoria)
         promemoria()
     }
 
@@ -501,8 +503,10 @@ final class FormazioneViewModel: ViewModelBase {
                 await carica()
                 return
             }
+            let spuntaPrima = spuntaValida
             dimentica()
             ricordaSulTelefono(f)
+            ricordaLaSpunta(f, prima: spuntaPrima)
             Haptics.esito(riuscito: true)
         } catch {
             await nonRiuscita(error, generazione: g)
@@ -527,8 +531,10 @@ final class FormazioneViewModel: ViewModelBase {
             let stessi = salvata.map { Set($0.titolari) == Set(ids) } ?? false
             let eraConsigliata = Set(ids) == Set(consigliati(f)) || (stessi && salvata?.eraConsigliata == true)
             let messaOra = messa ?? (stessi && salvata?.messa == true)
+            let spuntaPrima = spuntaValida
             ricorda(SceltaSalvata(titolari: ids, modulo: r.modulo, eraConsigliata: eraConsigliata ? true : nil, messa: messaOra ? true : nil),
                     nonValida: false, f, valutazione: r)
+            ricordaLaSpunta(f, prima: spuntaPrima)
             Haptics.esito(riuscito: true)
         } catch {
             await nonRiuscita(error, generazione: g)

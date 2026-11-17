@@ -10,9 +10,9 @@ final class OggiViewModel: ViewModelBase {
     /// Partite rinviate: la scelta «per questa giornata» è in viaggio (il menu si blocca) e l'eventuale errore da mostrare.
     @Published private(set) var rinvioInCorso = false
     @Published var erroreRinvio: String?
-    /// Cosa si fa con una giornata appena letta dal server (mai con la copia sul telefono): permesso per le notifiche la prima
-    /// volta, promemoria e widget (`passaAWidgetEPromemoria`). Senza promemoria (test) niente; `OggiPerWidgetTests` la sostituisce
-    /// per vedere che la giornata arriva.
+    /// Cosa si fa con una giornata appena letta dal server (mai con la copia sul telefono) e l'ora in cui è partita la lettura:
+    /// permesso per le notifiche la prima volta, promemoria e widget (`passaAWidgetEPromemoria`). Senza promemoria (test) niente;
+    /// `OggiPerWidgetTests` la sostituisce per vedere che la giornata arriva.
     var dopoLetturaFresca: @MainActor (Oggi, Date) async -> Void
 
     /// `conPromemoria: false` nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
@@ -21,7 +21,7 @@ final class OggiViewModel: ViewModelBase {
         // Il comando «Aggiorna» lo gestisce questo ViewModel (deve anche riprogrammare i promemoria), non il Caricatore.
         caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
         if conPromemoria {
-            dopoLetturaFresca = { oggi, _ in await OggiViewModel.passaAWidgetEPromemoria(oggi) }
+            dopoLetturaFresca = { oggi, chiestaIl in await OggiViewModel.passaAWidgetEPromemoria(oggi, chiestaIl: chiestaIl) }
         } else {
             dopoLetturaFresca = { _, _ in }
         }
@@ -74,15 +74,16 @@ final class OggiViewModel: ViewModelBase {
     }
 
     func carica() async {
+        let chiesta = Date()   // una spunta toccata dopo quest'ora vale ancora (`ArchivioMessa`)
         await caricatore.ricarica()
         // Con dati vecchi (server irraggiungibile, o ancora la cache) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
         guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
-        await dopoLetturaFresca(oggi, Date())
+        await dopoLetturaFresca(oggi, chiesta)
     }
 
     /// Una giornata fresca per i promemoria e i widget: la prima volta il permesso per le notifiche, poi `Aggiornamento.elabora`
-    /// (promemoria, riassunto per il widget, memoria dell'ultima formazione). In demo niente.
-    static func passaAWidgetEPromemoria(_ oggi: Oggi) async {
+    /// (promemoria, riassunto per il widget, memoria dell'ultima formazione). `chiestaIl`: quando è partita la lettura. In demo niente.
+    static func passaAWidgetEPromemoria(_ oggi: Oggi, chiestaIl: Date) async {
         guard !Demo.attivo else { return }
         let memoria = UserDefaults.standard
         if !memoria.bool(forKey: "permessoChiesto") {
@@ -91,6 +92,6 @@ final class OggiViewModel: ViewModelBase {
             await Aggiornamento.riprogrammaScadenza()
         }
         // Promemoria, widget e memoria dell'ultima formazione (per accorgersi dei cambiamenti in background).
-        await Aggiornamento.elabora(oggi, avvisaSeCambia: false)
+        await Aggiornamento.elabora(oggi, avvisaSeCambia: false, chiestaIl: chiestaIl)
     }
 }
