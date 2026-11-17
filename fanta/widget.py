@@ -93,6 +93,8 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     f = gestione.formazione_di_oggi(db, regole, rose)
     o = gestione.oggi(db, regole, rose, file_scelte=file_scelte, file_diario=file_diario, live_partite=live_partite, dal=dal,
                       formazione=f)
+    if o.get("campionato_finito"):
+        return _campionato_finito(db, regole, rose, o, file_diario)
     prev, giornata, _ = consigli.previsioni(db, regole)
     consigliata = {"modulo": f["modulo"], "punti_attesi": f["punteggio_atteso"]}
     tua = _tua_scelta(db, regole, rose, f, giornata, file_scelte)
@@ -134,13 +136,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     if isinstance(corpo.get("in_corso"), dict):              # una copia: il blocco di gestione.oggi non si tocca
         corpo["in_corso"] = {k: v for k, v in corpo["in_corso"].items() if k not in SENZA_IN_CORSO}
 
-    # punti attesi contro punti fatti nelle ultime giornate (dal diario; con la formazione schierata se c'è, altrimenti la consigliata).
-    # `giornata_lega` e `stagione` come in /api/diario: il widget scrive lo stesso numero dell'app (null fuori dalla stagione in corso)
-    voci = diario.elenco(file_diario, regole)["giornate"][:MAX_DIARIO]
-    corpo["diario"] = [{"giornata": v["giornata"], "giornata_lega": v.get("giornata_lega"), "stagione": v["stagione"],
-                        "attesi": (v.get("schierata") or v["consigliata"])["atteso"],
-                        "fatti": (v.get("schierata") or v["consigliata"])["reale"],
-                        "intervallo": (v.get("schierata") or v["consigliata"]).get("intervallo")} for v in voci]
+    corpo["diario"] = _diario(file_diario, regole)
 
     ossv = []
     for i in osservati.leggi(file_osservati)[:MAX_OSSERVATI]:
@@ -149,9 +145,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
             ossv.append(_g(x, tratti, "voto_atteso", "fv_atteso", "punti_attesi", "avversario", "in_casa", "data_partita", "stato",
                            "percentuale", "dubbio", "p_voto"))       # «In dubbio · gioca N%» come la rosa e Oggi (stessa scheda); facoltativi: se mancano, mancano
     corpo["osservati"] = ossv
-
-    ultimo = db.execute("SELECT MAX(quando) FROM aggiornamenti WHERE cosa = 'aggiornamento'").fetchone()[0]
-    corpo["dati"] = {"ultimo_aggiornamento": ultimo}
+    corpo["dati"] = _dati(db)
 
     mancano: list[str] = []
 
@@ -171,6 +165,38 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
                                "fattibile": m.get("fattibile")}
     if mancano:
         corpo["mancano"] = mancano
+    return corpo
+
+
+def _diario(file_diario, regole: Regole) -> list[dict]:
+    """Punti attesi contro punti fatti nelle ultime giornate (dal diario; con la formazione schierata se c'è, altrimenti la
+    consigliata). `giornata_lega` e `stagione` come in /api/diario: il widget scrive lo stesso numero dell'app (null fuori dalla
+    stagione in corso)."""
+    voci = diario.elenco(file_diario, regole)["giornate"][:MAX_DIARIO]
+    return [{"giornata": v["giornata"], "giornata_lega": v.get("giornata_lega"), "stagione": v["stagione"],
+             "attesi": (v.get("schierata") or v["consigliata"])["atteso"],
+             "fatti": (v.get("schierata") or v["consigliata"])["reale"],
+             "intervallo": (v.get("schierata") or v["consigliata"]).get("intervallo")} for v in voci]
+
+
+def _dati(db: sqlite3.Connection) -> dict:
+    return {"ultimo_aggiornamento": db.execute("SELECT MAX(quando) FROM aggiornamenti WHERE cosa = 'aggiornamento'").fetchone()[0]}
+
+
+def _campionato_finito(db: sqlite3.Connection, regole: Regole, rose: Rose, o: dict, file_diario) -> dict:
+    """Il widget a campionato finito (#656), coerente con Oggi (`gestione.oggi_campionato_finito`): stessi campi di sempre, vuoti
+    dove servirebbe una giornata (formazione, avvisi, rosa, seguiti), `campionato_finito` e la fase con i suoi blocchi come in Oggi
+    (il `riepilogo` dell'ultima giornata nelle 48 ore), le ultime giornate del diario. Prima: 400 «calendario non ancora disponibile»."""
+    s = rose.squadra(rose.mia_squadra or "")
+    corpo = {"giornata": None, "giornata_lega": None, "prima_partita": None, "scadenza": None, "ore_mancanti": None, "iniziata": False,
+             "con_probabili": False, "squadra": s.nome, "crediti_residui": s.crediti_residui,
+             "formazione": {"modulo": "–", "punti_attesi": None, "intervallo": None, "titolari": [], "panchina": []},
+             "avvisi": [], "rosa": [], "squalificati": [], "diffidati": [], "rigoristi": [],
+             "campionato_finito": o["campionato_finito"]}
+    corpo |= {k: o[k] for k in CAMPI_FASE if o.get(k) is not None}
+    corpo["diario"] = _diario(file_diario, regole)
+    corpo["osservati"] = []
+    corpo["dati"] = _dati(db)
     return corpo
 
 

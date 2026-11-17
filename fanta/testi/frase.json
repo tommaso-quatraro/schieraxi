@@ -60,6 +60,10 @@
     "it": " e ",
     "en": " and "
   },
+  "frase.campionato.finito": {
+    "it": "Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.",
+    "en": "The season is over: forecasts and advice start again with next season's calendar."
+  },
   "frase.dafare.dubbio_squalificato": {
     "it": "{nome} non può giocare.",
     "en": "{nome} cannot play."

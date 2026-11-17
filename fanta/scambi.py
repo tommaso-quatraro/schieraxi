@@ -50,7 +50,7 @@ def valori(db: sqlite3.Connection, regole: Regole, orizzonte: int = ORIZZONTE) -
     stagione = consigli.stagione_corrente()
     prima = consigli.giornata_da_giocare(db, stagione, regole)
     if prima is None:
-        raise ValueError("Il calendario della stagione non è ancora disponibile (di solito esce a luglio): previsioni e asta partono appena arriva. Aggiorna i dati più avanti.")
+        raise consigli.senza_giornata(db, stagione)         # campionato finito (409) o calendario che manca (400), #656
     d = consigli.dati(db)
     giornate = [g for g in range(prima, prima + orizzonte)
                 if not d.partite[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == g)].empty]
