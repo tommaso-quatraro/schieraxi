@@ -62,6 +62,8 @@ def archivia_e_riparti(rose: lega.Rose, file: Path, corrente: str, crediti_inizi
         if f.exists():
             shutil.copy2(f, cartella / f.name)
             f.unlink()
-    nuove = lega.Rose([lega.Squadra(s.nome, [], crediti_iniziali) for s in rose.squadre], rose.mia_squadra, "", corrente)
+    # le squadre rinominate nell'app tengono il nome di Leghe: alla prima importazione della stagione nuova si riconoscono (#657)
+    nuove = lega.Rose([lega.Squadra(s.nome, [], crediti_iniziali, s.nome_importato) for s in rose.squadre], rose.mia_squadra, "",
+                      corrente)
     lega.salva(nuove, file)
     return {"archivio": vecchia, "squadre": len(nuove.squadre), "stagione": corrente}

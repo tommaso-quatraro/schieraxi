@@ -74,3 +74,17 @@ def test_la_nuova_stagione_guarda_l_etag_delle_rose(luglio):
     r = a.post("/api/nuova-stagione", headers={"If-Match": a.get("/api/squadre").headers["etag"]})
     assert r.status_code == 200, r.text
     assert r.headers["etag"] == a.get("/api/squadre").headers["etag"]          # l'ETag delle rose ripartite, per la scrittura dopo
+
+
+# ---------------------------------------------------------------- 2. il nome di Leghe di una squadra rinominata
+def test_la_squadra_rinominata_tiene_il_nome_di_leghe_nella_stagione_nuova(luglio):
+    a, _ = nuovo_utente("utentea")
+    assert a.post("/api/rose/testo", json={"testo": ROSE_VECCHIE}).status_code == 200
+    assert a.put("/api/mia-squadra", json={"nome": "Mia"}).status_code == 200
+    assert a.put("/api/squadre/nome", json={"nome": "Mia", "nuovo": "I Lupi"}).status_code == 200      # su Leghe resta «Mia»
+    luglio[0] = "2027-28"
+    assert a.post("/api/nuova-stagione").status_code == 200
+    assert a.post("/api/rose/testo", json={"testo": ROSE_NUOVE}).status_code == 200                   # il file di Leghe dice «Mia»
+    squadre = {s["nome"]: s for s in a.get("/api/squadre").json()}
+    assert sorted(squadre) == ["Altra", "I Lupi"]                     # le stesse squadre di prima, nessuna «Mia» in più
+    assert squadre["I Lupi"]["mia"] and squadre["I Lupi"]["giocatori"] == 1      # «la tua squadra» con i giocatori nuovi
