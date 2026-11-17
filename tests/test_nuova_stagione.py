@@ -17,8 +17,9 @@ GIA_DELLA_STAGIONE = "Le rose sono già della stagione in corso: non c'è niente
 
 
 @pytest.fixture
-def luglio(ambiente, listone_in_archivio, monkeypatch):
+def luglio(request, listone_in_archivio, monkeypatch):
     """Rose importate nella stagione 2026-27; il test sposta la stagione in corso scrivendo in `luglio[0]` (niente orologio vero)."""
+    request.getfixturevalue("ambiente")                  # account attivi, listone finto (test_limiti); per nome: niente F811
     stagione = ["2026-27"]
     monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: stagione[0])
     monkeypatch.setattr(server.consigli, "valuta", lambda db, regole, rose, titolari, squadra=None, giornata=None, simulazioni=600:

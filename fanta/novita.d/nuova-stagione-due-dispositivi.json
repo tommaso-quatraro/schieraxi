@@ -1,0 +1,14 @@
+{
+  "titolo": "Nuova stagione: un secondo telefono o computer non svuota più le rose appena importate",
+  "voci": [
+    "Impostazioni, La mia lega, Nuova stagione: se hai già archiviato la stagione da un altro dispositivo, toccare l'avviso rimasto a schermo non cancella più le rose nuove. L'app dice «Le rose sono già della stagione in corso: non c'è niente da archiviare.» e l'avviso sparisce.",
+    "Se nell'app avevi cambiato il nome della tua squadra, con la nuova stagione la squadra tiene anche il nome di Leghe: alla prima importazione delle rose nuove i giocatori arrivano nella tua squadra, senza una squadra doppia.",
+    "Dopo Nuova stagione, finché non importi le rose nuove, Formazione ti invita a importarle con «Aggiorna le rose», come al primo avvio."
+  ],
+  "tecnico": [
+    "POST /api/nuova-stagione (#657): dentro il blocco delle rose rilegge le rose e, se non sono di una stagione passata (stagione.NienteDaArchiviare, stagione delle rose >= stagione in corso), risponde 409 con stagione.GIA_DELLA_STAGIONE senza scrivere niente. Accetta If-Match sull'ETag delle rose (412) e risponde con l'ETag delle rose ripartite. Messaggio tradotto in err.gia_della_stagione.",
+    "stagione.archivia_e_riparti ricrea le squadre con nome_importato: alla reimportazione lega.nomi_rinominati riconosce la squadra rinominata.",
+    "server._rose_da_schierare: per /api/oggi e /api/formazione le rose senza nessun giocatore valgono «senza rose» (la regola di _ha_rose): Oggi risponde con senza_rose e Formazione con 409 «Nessuna rosa importata: importale con «Aggiorna le rose»». rose_importate di /api/stato non cambia.",
+    "Web: al 409 di «Archivia e riparti» si chiude il foglio e si toglie l'avviso «Nuova stagione»."
+  ]
+}
