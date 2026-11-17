@@ -97,6 +97,25 @@ def test_un_account_senza_rose_vede_il_benvenuto_e_nessuna_richiesta_fallisce(we
     assert not web.richieste_fallite and not web.errori_console and not web.errori_mostrati()
 
 
+def test_a_campionato_finito_il_riepilogo_e_la_frase_del_server_senza_errori(web):
+    """#656: dopo l'ultima giornata non c'è una giornata da preparare (`prossima_giornata` nullo in /api/stato) e /api/oggi dice
+    `campionato_finito` (200). La Formazione mostra il riepilogo dell'ultima giornata e la frase del server, non un errore con
+    «Riprova», e non chiede la formazione, che il server rifiuterebbe (409)."""
+    solo(web, "finita")
+    frase = "Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione."
+    web.risposta("/api/stato", {**web.registrata("/api/stato"), "prossima_giornata": None, "prossima_giornata_lega": None})
+    web.risposta("/api/oggi", {**web.registrata("/api/oggi"), "giornata": None, "giornata_lega": None, "inizio": None, "scadenza": None,
+                               "ore_mancanti": None, "partite": [], "avvisi": [], "migliori": [], "miei_titolari": {}, "prossima": None,
+                               "da_fare": [], "campionato_finito": {"testo": frase, "frase": {"chiave": "campionato.finito", "param": {}}}})
+    web.risposta("/api/formazione", {"detail": frase, "codice": "campionato_finito"}, stato=409)
+    web.apri("/")
+    testo = " ".join(web.testo_principale().split())
+    assert frase in testo and ": finita" in testo                                    # la frase e la testa della giornata finita
+    assert principale(web).get_by_role("button", name="Com'è andata").is_visible()
+    assert campo(web).count() == 0 and "/api/formazione" not in web.richieste
+    assert not web.richieste_fallite and not web.errori_console and not web.errori_mostrati()
+
+
 # ---------------------------------------------------------------- il giocatore: due numeri, e parole solo se servono
 def test_gioca_si_vede_solo_sotto_l_80_per_cento_e_niente_etichette_di_titolarita(web):
     solo(web, "prima")
