@@ -2782,7 +2782,12 @@ function apriNuovaStagione(s) {
           <li><b>${t("lega.controlla_regole")}</b>${t("lega.bonus_moduli_crediti")}</li></ol></div>
         <div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div>`);
       vai("impostazioni", "rose");
-    } catch (e) { avviso(e.message, 5000); }
+    } catch (e) {
+      // 409: un altro dispositivo ha già archiviato (o non ci sono rose), il server non ha scritto niente e lo dice: l'avviso
+      // rimasto a schermo non vale più, quindi si chiude il foglio e sparisce l'avviso (#657)
+      if (e.status === 409) { chiudiFoglio(); const b = $("#banner-stagione"); if (b) b.closest("li").remove(); }
+      avviso(e.message, 5000);
+    }
   });
 }
 
