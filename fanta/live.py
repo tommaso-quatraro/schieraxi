@@ -457,15 +457,16 @@ def _da_database(r, adesso: datetime | None = None, inizio_turno: datetime | Non
             "gol_casa": r["gol_casa"] if finita else None, "gol_trasferta": r["gol_trasferta"] if finita else None, "eventi": []}
 
 
-def risposta(raccoglitore: Raccoglitore, righe_turno: list) -> dict:
+def risposta(raccoglitore: Raccoglitore, righe_turno: list, prossimo: datetime | None = None) -> dict:
     """Le partite del turno (righe della tabella `partite`) con lo stato live dove c'è, più le partite live fuori turno (recuperi).
+    `prossimo` = inizio del turno della giornata dopo (`avvisi.turno_dopo`): il turno non comincia dopo (#698).
     Corpo: {aggiornato_il, fonte, in_corso, partite: [{casa, trasferta, data, stato, minuto, gol_casa, gol_trasferta, eventi}]}."""
     snap = raccoglitore.istantanea()
     viste = dict(snap["partite"])
     # senza diretta lo stato viene dall'orario: quello del raccoglitore (lo stesso orologio della cache) e l'inizio del turno (fuori
     # dal turno = rinviata), come in Oggi
     adesso = raccoglitore.adesso()
-    inizio_turno = turno.inizio(_inizio((r["data"] or "")[:16]) if r["data"] else None for r in righe_turno)
+    inizio_turno = turno.inizio((_inizio((r["data"] or "")[:16]) if r["data"] else None for r in righe_turno), prossimo)
     partite = []
     for r in righe_turno:
         k = (r["casa"], r["trasferta"])

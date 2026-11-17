@@ -651,8 +651,11 @@ formazione non si spostano più (dal 5/11/2026, #373): `GET /api/formazione` li 
 alla consigliata che li sposta risponde `400` `giocatore_bloccato` (vedi `POST /api/formazione/valuta`). Partite
 giocate 7 giorni o più prima del gruppo principale (metà giornata giocata e il resto rinviato) fissano la scadenza come prima.
 Le partite rinviate non tengono ferma la giornata da giocare (`giornata` di `/api/oggi`, `prossima_giornata` di `/api/stato`), quante
-che siano (#659): con metà giornata giocata e il resto rinviato a settimane dopo (il turno, cioè il recupero, comincia dopo
-la giornata successiva) si passa alla giornata successiva e non si torna indietro per il recupero. Partite giocate settimane
+che siano (#659): con metà giornata giocata e il resto rinviato a settimane dopo, oltre la giornata successiva, si passa alla
+giornata successiva e non si torna indietro per il recupero. In quel caso il turno è il gruppo giocato nella data della giornata,
+perché un turno non comincia mai dopo quello della giornata successiva (#698): `inizio` e `scadenza` vengono da lì anche prima che
+si giochi, quelle partite non sono mai `rinviata` e la regola dei rinvii (formazione, Diario, riepilogo) vale per i recuperi, anche
+se sono di più. Partite giocate settimane
 prima di un turno che comincia prima della giornata successiva, ed entro la fine del turno della giornata precedente, sono
 **anticipi lontani** (Supercoppa, coppe; `turno.lontano`); giocate dopo la giornata precedente (per esempio prima di una sosta)
 sono metà giornata e fissano la scadenza, che non torna mai indietro. Con gli anticipi lontani:

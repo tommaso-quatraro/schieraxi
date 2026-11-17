@@ -73,18 +73,20 @@ def fuori_turno(partite: Iterable[dict], precedente: datetime | None = None, pro
     """Le partite di una giornata ({data, giocata, ...}) fuori dal turno o senza data: rinviate, giocate o no (una già recuperata ha
     la data del recupero). Se il calendario non ha date (inizio stagione) nessuna. Un anticipo resta della giornata, e anche un
     anticipo lontano (turno.lontano, con `precedente` e `prossimo` = inizio del turno della giornata prima e di quella dopo, #659):
-    chi l'ha giocato tiene il suo voto, qualunque sia la regola dei rinvii."""
+    chi l'ha giocato tiene il suo voto, qualunque sia la regola dei rinvii. Con `prossimo` il turno non comincia dopo la giornata
+    dopo (turno.inizio, #698): con 4 partite giocate nella data della giornata e 6 recuperi settimane dopo, fuori sono i recuperi."""
     partite = list(partite)
-    inizio = turno.inizio(_data(p.get("data")) for p in partite)
+    inizio = turno.inizio((_data(p.get("data")) for p in partite), prossimo)
     if inizio is None:
         return []
     return [p for p in partite if not turno.della_giornata(_data(p.get("data")), inizio)
             and not turno.lontano(_data(p.get("data")), bool(p.get("giocata")), inizio, precedente, prossimo)]
 
 
-def rinviate(partite: Iterable[dict]) -> list[dict]:
-    """Le partite rinviate tra quelle di una giornata ({data, giocata, ...}) ancora da recuperare: fuori dal turno e non giocate."""
-    return [p for p in fuori_turno(partite) if not bool(p.get("giocata"))]
+def rinviate(partite: Iterable[dict], prossimo: datetime | None = None) -> list[dict]:
+    """Le partite rinviate tra quelle di una giornata ({data, giocata, ...}) ancora da recuperare: fuori dal turno e non giocate.
+    `prossimo` = inizio del turno della giornata dopo, come in `fuori_turno`."""
+    return [p for p in fuori_turno(partite, prossimo=prossimo) if not bool(p.get("giocata"))]
 
 
 def _della_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> list[dict]:
@@ -96,11 +98,13 @@ def _della_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> list
 
 def id_rinviate(partite: pd.DataFrame, stagione: str, giornata: int) -> set[int]:
     """Gli id delle partite rinviate (da recuperare) di una giornata, dalla tabella delle partite del modello (`Dati.partite`)."""
-    return {int(p["id"]) for p in rinviate(_della_giornata(partite, stagione, giornata))}
+    prossimo = _inizio(_della_giornata(partite, stagione, giornata + 1))
+    return {int(p["id"]) for p in rinviate(_della_giornata(partite, stagione, giornata), prossimo)}
 
 
 def _inizio(partite: list[dict]) -> datetime | None:
-    """L'inizio del turno di una giornata vicina (prima o dopo), dalle sue partite ({data, ...}), per turno.lontano."""
+    """L'inizio del turno di una giornata vicina (prima o dopo), dalle sue partite ({data, ...}), per turno.lontano e per il
+    `prossimo` di turno.inizio."""
     return turno.inizio(_data(p.get("data")) for p in partite)
 
 
@@ -134,7 +138,8 @@ def giornate_chiuse(db: sqlite3.Connection, stagione: str, regole: Regole) -> li
         aperte = [p for p in partite if not p["giocata"]]
         if not aperte:
             out.append(g)
-        elif regola(regole, stagione, g)["modo"] != "aspetta" and len(rinviate(partite)) == len(aperte):
+        elif (regola(regole, stagione, g)["modo"] != "aspetta"
+              and len(rinviate(partite, _inizio(per_giornata.get(g + 1, [])))) == len(aperte)):
             out.append(g)
     return out
 
