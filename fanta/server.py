@@ -1935,11 +1935,19 @@ def _rose_di_prima(ctx: Contesto) -> tuple[lega.Rose | None, bool]:
     return (None if onboarding.e_demo(prima) else prima), False
 
 
-def _metti_da_parte(percorso: Path) -> None:
-    """Il file delle rose che non si legge va da parte (rose.json.rovinato) PRIMA di salvare le nuove: il salvataggio con la
-    copia di riserva lo copierebbe sopra rose.json.bak, che è la copia buona."""
+def _salva_mettendo_da_parte(nuove: lega.Rose, percorso: Path) -> None:
+    """Le rose nuove al posto di un file delle rose che non si legge. Il file rovinato va da parte (rose.json.rovinato) PRIMA
+    di salvare: il salvataggio con la copia di riserva lo copierebbe sopra rose.json.bak, che è la copia buona. Se il
+    salvataggio fallisce (disco pieno, database degli account che non risponde) il file rovinato torna al suo posto e l'errore
+    arriva a chi importa: senza, rose.json non ci sarebbe più e le schermate direbbero «nessuna rosa» (#683)."""
     da_parte = percorso.with_name(percorso.name + ".rovinato")
     percorso.replace(da_parte)
+    try:
+        lega.salva(nuove, percorso, copia_di_riserva=True)
+    except BaseException:
+        if not percorso.exists():                     # le rose nuove non sono arrivate su disco: si torna a com'era
+            da_parte.replace(percorso)
+        raise
     logging.getLogger("uvicorn.error").warning("Importazione delle rose: il file delle rose non si leggeva, messo da parte in %s",
                                                da_parte.name)
 
@@ -1970,9 +1978,10 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     if copia_datata:                                           # dopo i controlli, prima di spostare il file rovinato
         _copia_datata_delle_rose(ctx)
     if rovinate:                                               # solo ora: un'importazione rifiutata non sposta niente
-        _metti_da_parte(ctx.rose)
+        _salva_mettendo_da_parte(nuove, ctx.rose)
         avvisi.insert(0, lega.ROSE_ROVINATE)
-    lega.salva(nuove, ctx.rose, copia_di_riserva=True)
+    else:
+        lega.salva(nuove, ctx.rose, copia_di_riserva=True)
     try:                                                       # stemmi e maglie di squadre tolte: una nuova con lo stesso nome non li eredita
         immagini.pulisci([s.nome for s in nuove.squadre], ctx.immagini)
     except OSError:
