@@ -94,6 +94,32 @@ def test_senza_account_la_web_si_riconosce_dalle_intestazioni_del_browser(client
     assert "da" not in _scelta(client)
 
 
+IPHONE = {"X-Schieraxi-Client": "ios"}
+
+
+def test_senza_account_l_iphone_si_riconosce_dalla_sua_intestazione(client, monkeypatch, tmp_path):  # noqa: F811
+    """Senza account l'iPhone non ha il token: manda `X-Schieraxi-Client: ios` e la scelta è dell'app. Così senza la spunta il
+    promemoria serve anche lì (prima la scelta restava senza `da` e il promemoria taceva, #710)."""
+    _finti(monkeypatch)
+    monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: ST)
+    client.post("/api/rose/testo", json={"testo": ROSE_TESTO})
+    client.put("/api/mia-squadra", json={"nome": "Mia"})
+    assert client.post("/api/formazione/valuta", json={"titolari": TITOLARI, "giornata": 9, "salva": True}, headers=IPHONE).status_code == 200
+    assert _scelta(client)["da"] == "app"
+    _mondo(tmp_path, monkeypatch)
+    scelte.salva(ST, 9, SCHIERATI, "4-4-2", tmp_path / "scelte.json", da=_scelta(client)["da"])
+    assert notifiche.serve_promemoria(_db(), Regole(), ROSA_12, ST, 9, tmp_path / "scelte.json") is True
+
+
+def test_l_intestazione_dell_iphone_dice_solo_da_dove_arriva(prova):
+    """`X-Schieraxi-Client` non apre niente: senza sessione con gli account resta 401, e con la sessione della web la scelta è
+    dell'app solo perché lo dice chi la manda (vale per la sua scelta e basta)."""
+    estraneo = TestClient(server.app, headers={"X-Fanta": "1", **IPHONE})
+    assert estraneo.get("/api/scelta", params={"giornata": 9}).status_code == 401
+    assert estraneo.post("/api/formazione/valuta", json={"titolari": TITOLARI, "giornata": 9, "salva": True}).status_code == 401
+    assert _salva(prova).status_code == 200 and _scelta(prova)["da"] == "web"
+
+
 # ---------------------------------------------------------------- il promemoria
 UN_ORA, QUARTO = datetime(2026, 10, 28, 17, 35), datetime(2026, 10, 28, 18, 20)      # la formazione si chiude alle 18:30
 DOMANDA = "Hai messo la formazione nell'app della lega?"

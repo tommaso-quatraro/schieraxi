@@ -919,11 +919,18 @@ class FormazioneScelta(BaseModel):
     messa: bool | None = None       # «L'ho messa» (#616), solo con `salva`: vero o falso la scrive, senza resta com'era (scelte.salva)
 
 
+INTESTAZIONE_APP = "x-schieraxi-client"     # l'app nativa la manda sempre con il valore «ios», anche senza account (#710)
+
+
 def _da_dove(request: Request) -> str | None:
     """Da dove arriva un salvataggio della formazione (campo `da` della scelta, #639): «app» se porta il token come «Bearer» (l'app
-    nativa, la regola delle rotte degli account), «web» se porta il cookie della sessione o `Sec-Fetch-Mode`, che ogni browser
-    recente manda e l'app nativa no (senza account non c'è il cookie). Altrimenti None: non si sa, e il promemoria resta com'era."""
+    nativa, la regola delle rotte degli account) o l'intestazione `X-Schieraxi-Client: ios`, che l'app manda sempre, anche senza
+    account (#710); «web» se porta il cookie della sessione o `Sec-Fetch-Mode`, che ogni browser recente manda e l'app nativa no
+    (senza account non c'è il cookie). Altrimenti None: non si sa, e il promemoria resta com'era. Serve solo a etichettare la
+    scelta di chi salva (il promemoria chiede la spunta): non dà permessi né fiducia in più."""
     if request.headers.get("authorization", "")[:7].lower() == "bearer ":
+        return scelte.DA_APP
+    if request.headers.get(INTESTAZIONE_APP, "").strip().lower() == "ios":
         return scelte.DA_APP
     if request.cookies.get(rotte_account.COOKIE) or request.headers.get("sec-fetch-mode"):
         return scelte.DA_WEB
