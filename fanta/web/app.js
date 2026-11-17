@@ -980,7 +980,8 @@ async function caricaGiornata() {
   const senzaRose = !!stato.info && stato.info.rose_importate === false;
   const senzaGiornata = !!stato.info && stato.info.prossima_giornata === null;
   const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata ? null : api("/api/formazione").catch(e => e)]);
-  if (o.senza_rose || o.campionato_finito) return { o, f: null };
+  if (o.senza_rose) return { o, f: null };
+  if (o.campionato_finito) return { o, f: null };
   const f = letta || await api("/api/formazione");
   if (f instanceof Error) throw f;
   const b = { o, f };
