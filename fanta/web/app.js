@@ -811,11 +811,15 @@ function mostraSenzaRose(opz) {
 }
 
 // Campionato finito (#656, campo `campionato_finito` di /api/oggi): nessuna giornata da preparare fino al calendario nuovo. La testa
-// della giornata finita con il riepilogo dell'ultima (nelle 48 ore, se il server lo manda) e la frase del server al posto della prossima.
+// della giornata finita con il riepilogo dell'ultima (nelle 48 ore, se il server lo manda) e la frase del server al posto della prossima;
+// con un recupero dell'ultima giornata ancora da giocare, lo stesso menu della fase «finita» per scegliere come contarlo.
 function mostraCampionatoFinito(o, opz) {
   clearInterval(timerConto);
+  const r = o.riepilogo;
   const frase = `<p class="tg-nota" role="status" id="campionato-finito">${esc(testoDi(o.campionato_finito))}</p>`;
-  pagina(`<div class="fz-testa">${o.riepilogo ? `${riepilogoGiornata(o.riepilogo)}<div class="tg-prossima">${frase}</div>` : frase}</div>`, opz);
+  pagina(`<div class="fz-testa">${r ? `${riepilogoGiornata(r)}<div class="tg-prossima">${frase}</div>` : frase}</div>
+    ${r && r.rinvio ? `<div class="carta rinvio">${menuRinvio(r.rinvio)}</div>` : ""}`, opz);
+  collegaRinvio();
   const comeAndata = $("[data-apri-giornata]");
   if (comeAndata) comeAndata.addEventListener("click", () => vaiGiornate(Number(comeAndata.dataset.apriGiornata) || undefined));
 }

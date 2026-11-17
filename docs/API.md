@@ -767,8 +767,9 @@ fase `finita`), dopo è `null`. `da_fare` c'è come sempre (senza le voci che vo
 stesso modo (vedi la sua riga); `GET /api/formazione` e le altre rotte che vogliono una giornata rispondono `409` con
 `codice: "campionato_finito"` e la stessa frase in `detail`. `GET /api/stato` ha già `prossima_giornata: null`. D'estate, dal 1° luglio
 (stagione nuova) al calendario nuovo, resta il `400` di sempre con la frase del calendario: è la risposta giusta.
-La web (dal 17/11/2026) con `campionato_finito` mostra nella Formazione la testa della giornata finita con il riepilogo (se c'è) e la
-frase del server al posto della prossima giornata, senza campo né decisioni; con `prossima_giornata: null` in `GET /api/stato` non
+La web (dal 17/11/2026) con `campionato_finito` mostra nella Formazione la testa della giornata finita con il riepilogo (se c'è, con il
+menu di `riepilogo.rinvio` quando un recupero è ancora da giocare) e la frase del server al posto della prossima giornata, senza campo
+né decisioni; con `prossima_giornata: null` in `GET /api/stato` non
 chiede `GET /api/formazione`.
 
 Cosa devono fare iOS e Android: leggere `fase` (se manca: comportamento di sempre). Con `campionato_finito`: al posto della
