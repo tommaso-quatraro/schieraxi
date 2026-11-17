@@ -98,7 +98,8 @@ prima della scadenza:
   nuovi; se non arrivano (rete caduta) la nota dice perché non si può cambiare e ha «Riprova», e quando il browser segnala
   che la rete è tornata la pagina riprova da sola, una volta; un salvataggio che torna a schermata già ridisegnata fa rileggere,
   e finché è in volo la pagina riletta ha i comandi spenti (un cambio fatto lì gli scriveva sopra); se quel salvataggio non
-  riesce un avviso lo dice e i comandi si riaccendono; togliere la spunta non cancella una scelta
+  riesce un avviso lo dice e i comandi si riaccendono; un salvataggio (o «Torna alla consigliata») che non riesce quando si è
+  già passati a un'altra schermata lo dice lo stesso con un avviso (#667); togliere la spunta non cancella una scelta
   salvata altrove; se la scelta non si legge c'è un errore con «Riprova» e niente si può cambiare; rete caduta, rifiuto
   del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono; dopo un 412 i
   comandi restano spenti finché la pagina non ha riletto dal server (l'avviso dice prima «Sto ricaricando…», poi di rifare
@@ -147,6 +148,9 @@ prima della scadenza:
   squadra della pagina, con «Rimuovi» (che cancella l'immagine giusta) e «Da indirizzo web»;
 - Regole e scadenza: il regolamento incollato si salva con «Salva queste regole»; i singoli valori stanno dietro «Modifica i
   valori»; la scadenza si salva appena cambia; la frase sulla prima giornata parla di Giornate, non del Diario;
+- conflitto (412) su Regole (la scadenza) e rose (i crediti della mia squadra), con un server finto che dà l'ETag: l'avviso lo
+  dice e la pagina si ricarica; la modifica rifatta prima della ricarica porta l'If-Match vecchio ed è rifiutata ancora, mai
+  senza If-Match; rifatta dopo porta l'ETag riletto e passa (#667);
 - Avvisi: niente interruttori di prima, le ore tranquille con la loro fascia, e un cambio manda solo `silenzio`. Senza un
   service worker registrato (il browser di prova) la frase che lo dice arriva subito, senza i 4 secondi di attesa; con una
   registrazione finta in attivazione il riquadro dice «Controllo gli avvisi…» con `aria-busy` e la riga sotto non si sposta
