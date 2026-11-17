@@ -1,9 +1,0 @@
-{
-  "titolo": "Formazione: un salvataggio non riuscito si dice anche se sei già in un'altra schermata",
-  "voci": [
-    "Formazione: se cambi la formazione, passi subito a un'altra schermata e il salvataggio non riesce, ora un avviso lo dice lì. Prima non compariva niente e sembrava salvato."
-  ],
-  "tecnico": [
-    "fanta/web/app.js, mostraFormazione: altrove(n) restituisce se la scrittura è l'ultima partita dalla schermata (non più se ha riletto); salvaTitolari e tornaConsigliata mostrano l'avviso del loro errore anche con la Formazione lasciata o riletta. Nella Formazione l'avviso resta il motivo (e.message); su un'altra schermata (o sulla formazione di un'altra squadra) le frasi nuove del catalogo formazione.non_salvata_rete (errore di rete) e formazione.non_salvata (rifiuto del server). Una scrittura superata da una dopo resta senza avviso. Nuovi test nel browser: questo caso (#667) e il conflitto (412) su Regole e rose, con la modifica rifatta che porta l'If-Match riletto, mai nessuno."
-  ]
-}
