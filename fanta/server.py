@@ -1923,16 +1923,42 @@ def _leggi_rose(lette: _Riconosciute, correzioni: list[dict] | None = None, prim
     return squadre, avvisi
 
 
-def _rose_di_prima(ctx: Contesto) -> tuple[lega.Rose | None, bool]:
-    """(rose salvate da cui parte un'importazione o un'anteprima, file rovinato). Le rose sono None, come alla prima
-    importazione, se sono solo le squadre di esempio (non si mescolano con quelle vere: niente squadre finte che restano,
-    «la tua squadra» finta o giocatori «in più squadre») o se il file non si legge più: il messaggio di errore di ogni
-    schermata propone proprio di importare di nuovo le rose (lega.carica)."""
+def _esempi_rimasti(rose: lega.Rose) -> list[str]:
+    """Le quattro squadre di esempio rimaste in una lega insieme a squadre vere: chi importava le sue rose sopra gli esempi
+    prima della #682, senza «Togli le squadre che non sono nel file», se le è tenute (#683). Solo se ci sono tutte e quattro,
+    una volta sola, con il loro nome (mai rinominate) e ancora come le crea onboarding.crea_demo: giocatori tutti trovati nel
+    listone, senza costo, riconosciuti esatti, senza avvisi, nessuno in due esempi. Con una sola diversa: nessuna (una squadra
+    vera non si tocca mai; una squadra finta in più è il male minore)."""
+    esempi = [s for s in rose.squadre if s.nome in onboarding.SQUADRE_DEMO]
+    if len(esempi) == len(rose.squadre) or sorted(s.nome for s in esempi) != sorted(onboarding.SQUADRE_DEMO):
+        return []
+    giocatori = [g for s in esempi for g in s.giocatori]
+    come_la_demo = (all(s.giocatori and s.nome_importato is None for s in esempi)
+                    and all(g.id is not None and g.costo is None and g.riconosciuto == "esatto" and not g.avviso for g in giocatori)
+                    and len({g.id for g in giocatori}) == len(giocatori))
+    return list(onboarding.SQUADRE_DEMO) if come_la_demo else []
+
+
+def _rose_di_prima(ctx: Contesto) -> tuple[lega.Rose | None, bool, str | None]:
+    """(rose salvate da cui parte un'importazione o un'anteprima, file rovinato, avviso da mettere in cima agli avvisi). Le
+    rose sono None, come alla prima importazione, se sono solo le squadre di esempio (non si mescolano con quelle vere: niente
+    squadre finte che restano, «la tua squadra» finta o giocatori «in più squadre») o se il file non si legge più: il messaggio
+    di errore di ogni schermata propone proprio di importare di nuovo le rose (lega.carica), e l'avviso lo dice.
+    In una lega già mista (`_esempi_rimasti`) le rose sono quelle vere, senza gli esempi (e senza «la tua squadra» se era un
+    esempio): l'importazione li toglie, e l'avviso dice quali."""
     try:
         prima = lega.carica(ctx.rose)
     except ValueError:
-        return None, True
-    return (None if onboarding.e_demo(prima) else prima), False
+        return None, True, lega.ROSE_ROVINATE
+    if onboarding.e_demo(prima):
+        return None, False, None
+    esempi = _esempi_rimasti(prima) if prima else []
+    if not esempi:
+        return prima, False, None
+    prima.squadre = [s for s in prima.squadre if s.nome not in esempi]
+    if prima.mia_squadra in esempi:
+        prima.mia_squadra = None
+    return prima, False, frasi.F("rose.esempi_tolti", squadre=", ".join(esempi))
 
 
 def _salva_mettendo_da_parte(nuove: lega.Rose, percorso: Path) -> None:
@@ -1967,7 +1993,7 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     salvare, una copia datata delle rose di adesso (`_copia_datata_delle_rose`), fatta solo dopo tutti i controlli che possono
     rifiutare l'importazione: un rifiuto non aggiunge copie e non toglie la più vecchia (#718)."""
     r = _regole(ctx)
-    prima, rovinate = _rose_di_prima(ctx)
+    prima, rovinate, avviso = _rose_di_prima(ctx)
     if sostituisci_tutto:
         _controlla_sostituzione(riconosciute, prima)
     lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
@@ -1979,9 +2005,10 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
         _copia_datata_delle_rose(ctx)
     if rovinate:                                               # solo ora: un'importazione rifiutata non sposta niente
         _salva_mettendo_da_parte(nuove, ctx.rose)
-        avvisi.insert(0, lega.ROSE_ROVINATE)
     else:
         lega.salva(nuove, ctx.rose, copia_di_riserva=True)
+    if avviso:                                                 # rose rovinate, o squadre di esempio tolte da una lega mista
+        avvisi.insert(0, avviso)
     try:                                                       # stemmi e maglie di squadre tolte: una nuova con lo stesso nome non li eredita
         immagini.pulisci([s.nome for s in nuove.squadre], ctx.immagini)
     except OSError:
@@ -2080,13 +2107,13 @@ def _anteprima(griglie, sostituisci_tutto: bool, correzioni: list[dict] | None, 
     """Come l'importazione ma senza scrivere niente: legge le rose salvate (per dire cosa cambierebbe) e basta."""
     etag = versioni.etag_file(ctx.rose)          # PRIMA di leggere le rose: se cambiano subito dopo, l'importazione darà 412
     r = _regole(ctx)
-    prima, rovinate = _rose_di_prima(ctx)                          # come l'importazione, ma il file rovinato resta dov'è
+    prima, _, avviso = _rose_di_prima(ctx)                         # come l'importazione, ma il file rovinato resta dov'è
     riconosciute = _riconosci(griglie, ctx, excel)
     if sostituisci_tutto:                                          # stesso rifiuto dell'importazione
         _controlla_sostituzione(riconosciute, prima)
     lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
-    if rovinate:
-        avvisi.insert(0, lega.ROSE_ROVINATE)
+    if avviso:                                                     # gli stessi avvisi dell'importazione: rose rovinate, esempi tolti
+        avvisi.insert(0, avviso)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     limiti.controlla_rose(ctx, nuove)                              # stessi tetti dell'importazione
     risposta = anteprima_rose.anteprima(lette, avvisi, r, prima, nuove)
