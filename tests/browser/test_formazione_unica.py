@@ -774,10 +774,12 @@ def test_se_il_salvataggio_in_volo_non_riesce_la_pagina_riletta_lo_dice_e_si_ria
     assert not web.errori_mostrati()
 
 
-@pytest.mark.parametrize("comando", ["un altro modulo", "torna alla consigliata"])
-def test_se_il_salvataggio_non_riesce_dopo_aver_lasciato_la_formazione_un_avviso_lo_dice(web, comando):
+@pytest.mark.parametrize("comando, guasto", [("un altro modulo", "rete"), ("torna alla consigliata", "rete"), ("un altro modulo", "server")])
+def test_se_il_salvataggio_non_riesce_dopo_aver_lasciato_la_formazione_un_avviso_lo_dice(web, comando, guasto):
     """#667: un cambio, poi subito un'altra schermata, e la rete cade. Nessun avviso: tornando, la Formazione mostrava ciò che è
-    salvato e l'utente credeva di aver salvato il cambio. L'avviso del salvataggio fallito compare anche fuori dalla Formazione."""
+    salvato e l'utente credeva di aver salvato il cambio. L'avviso del salvataggio fallito compare anche fuori dalla Formazione, e
+    lì nomina la formazione («Non riesco a collegarmi» da solo, su Giornate, sembrava parlare di Giornate). Con un rifiuto del
+    server non dice che la rete è caduta."""
     solo(web, "prima")
     altro = _altro_modulo(web)
     mia = {"titolari": altro["titolari"], "modulo": altro["modulo"], "salvata": "2026-10-27T09:00:00", "tipo": "manuale"}
@@ -793,8 +795,15 @@ def test_se_il_salvataggio_non_riesce_dopo_aver_lasciato_la_formazione_un_avviso
         principale(web).get_by_role("button", name="Torna alla consigliata").click()
     tocca(web, web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Giornate"))
     assert len(fermi) == 1, "la scrittura non è partita"
-    fermi.pop(0).abort()                                               # la rete cade con la Formazione già lasciata
-    _aspetta(web.pagina.get_by_role("status").filter(has_text="Non riesco a collegarmi").first, testo="Non riesco a collegarmi")
+    if guasto == "rete":
+        fermi.pop(0).abort()                                           # la rete cade con la Formazione già lasciata
+        frase = "La formazione non è stata salvata perché non riesco a collegarmi: torna sulla Formazione e riprova."
+    else:
+        mem["rifiuto"] = (500, {"detail": "Errore interno"})
+        fermi.pop(0).fallback()                                        # il server rifiuta, con la Formazione già lasciata
+        frase = "La formazione non è stata salvata: torna sulla Formazione e controllala."
+    avviso = web.pagina.get_by_role("status").filter(has_text="La formazione non è stata salvata")
+    _aspetta(avviso.first, testo=frase)
     assert mem["scelta"] == (mia if comando == "torna alla consigliata" else None)
     tocca(web, web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Formazione"))
     atteso = altro["modulo"] if comando == "torna alla consigliata" else web.registrata("/api/formazione")["modulo"]

@@ -99,7 +99,8 @@ prima della scadenza:
   che la rete è tornata la pagina riprova da sola, una volta; un salvataggio che torna a schermata già ridisegnata fa rileggere,
   e finché è in volo la pagina riletta ha i comandi spenti (un cambio fatto lì gli scriveva sopra); se quel salvataggio non
   riesce un avviso lo dice e i comandi si riaccendono; un salvataggio (o «Torna alla consigliata») che non riesce quando si è
-  già passati a un'altra schermata lo dice lo stesso con un avviso (#667); togliere la spunta non cancella una scelta
+  già passati a un'altra schermata lo dice lo stesso con un avviso che nomina la formazione (la rete solo se è lei il motivo,
+  #667); togliere la spunta non cancella una scelta
   salvata altrove; se la scelta non si legge c'è un errore con «Riprova» e niente si può cambiare; rete caduta, rifiuto
   del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono; dopo un 412 i
   comandi restano spenti finché la pagina non ha riletto dal server (l'avviso dice prima «Sto ricaricando…», poi di rifare
