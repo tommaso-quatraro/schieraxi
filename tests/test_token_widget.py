@@ -42,7 +42,7 @@ def due_utenti(multiutente, dati_isolati, monkeypatch):
         return db
     monkeypatch.setattr(server, "_db", nuovo_db)
     squadra = NS(nome="Real Esempio", crediti_residui=12, giocatori=[NS(id=i) for i in range(1, 15)])
-    monkeypatch.setattr(server, "_rose", lambda ctx: NS(mia_squadra="Real Esempio", squadra=lambda n: squadra))
+    monkeypatch.setattr(server, "_rose", lambda ctx: NS(mia_squadra="Real Esempio", squadra=lambda n: squadra, squadre=[squadra]))
     monkeypatch.setattr(server, "_regole", lambda ctx: object())
     monkeypatch.setattr(w.gestione, "oggi", lambda db, regole, rose, *a, **k: OGGI)
     monkeypatch.setattr(w.consigli, "formazione", lambda db, regole, rose, *a, **k: {
