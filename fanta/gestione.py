@@ -232,18 +232,20 @@ def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, rego
     e la giornata con la scadenza se il calendario c'è."""
     adesso = adesso or datetime.now()
     stagione = consigli.stagione_corrente()
-    giornata, partite, inizio_dt = None, [], None
+    giornata, partite, inizio_dt, dopo = None, [], None, None
     try:
         giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)
         righe = db.execute("SELECT * FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
                            (stagione, giornata)).fetchall() if giornata else []
         partite = [_partita_turno(r) for r in righe]
         inizio_dt = prima_partita(db, stagione, giornata) if giornata else None     # regola unica (turno.py), come i promemoria
+        dopo = avvisi.turno_dopo(db, stagione, giornata) if giornata else None     # il turno non comincia dopo (#698)
     except (sqlite3.Error, ValueError):                     # archivio non pronto: Oggi si apre lo stesso
         pass
     tempi = _tempi(inizio_dt, adesso, regole)
+    turno = fasi.inizio_turno(partite, dopo)
     for p in partite:
-        p["stato"] = fasi.stato_partita(p, adesso, turno=fasi.inizio_turno(partite))
+        p["stato"] = fasi.stato_partita(p, adesso, turno=turno)
     return {"senza_rose": True, "giornata": giornata, "giornata_lega": _giornata_lega(giornata, regole)} | tempi | {
             "con_probabili": False, "probabili": None,
             "formazione": {"modulo": "–", "punteggio_atteso": None, "squadra": "", "dev": None, "intervallo": None},
