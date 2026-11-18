@@ -264,12 +264,24 @@ def test_fra_i_moduli_vince_il_migliore_senza_improbabili_titolari(stile):
     assert [m for m, _ in f.alternative] == ["3-4-3"]
 
 
-def test_fra_i_moduli_tutti_con_un_improbabile_vince_il_migliore():
-    """Se ogni modulo ha un titolare improbabile (qui il portiere: l'altro gioca il 5%), la regola non sceglie niente: vince
-    il modulo con più punti attesi, come prima."""
+def test_fra_i_moduli_vince_il_migliore_con_meno_titolari_improbabili():
+    """Decisione sulla revisione di #736: conta quanti improbabili ha ogni modulo, non solo se ne ha. Con i portieri al 15% e al 5%
+    ogni modulo ha un portiere improbabile, ma il 3-4-3 aggiunge l'attaccante al 10%, che si può evitare: vince il 4-4-2, anche
+    se il 3-4-3 ha più punti attesi."""
     rosa = [G(1, "P", 0.15, 6), G(2, "P", 0.05, 5)] + _rosa_attaccante_improbabile_forte()[2:]
-    r = Regole(moduli=["3-4-3", "4-4-2"])
-    f = fz.migliore(rosa, r)
+    f = fz.migliore(rosa, Regole(moduli=["3-4-3", "4-4-2"]))
+    con_due = next(x for x in f.tutte if x.modulo == "3-4-3")
+    assert {1, 40} <= _titolari(con_due) and con_due.atteso > f.atteso
+    assert f.modulo == "4-4-2" and [g.id for g in f.titolari if g.p < 0.2] == [1]
+
+
+def test_fra_i_moduli_con_gli_stessi_improbabili_vince_il_migliore():
+    """Se ogni modulo ha lo stesso numero di titolari improbabili (qui solo il portiere: gli attaccanti giocano tutti), la regola
+    non sceglie niente: vince il modulo con più punti attesi, come prima."""
+    rosa = ([G(1, "P", 0.15, 6), G(2, "P", 0.05, 5)] + _rosa_attaccante_improbabile_forte()[2:-2]
+            + [G(32, "A", 0.95, 7.5)])
+    f = fz.migliore(rosa, Regole(moduli=["3-4-3", "4-4-2"]))
+    assert all([g.id for g in x.titolari if g.p < 0.2] == [1] for x in f.tutte)
     assert f.atteso == max(x.atteso for x in f.tutte) and f.modulo == "3-4-3"
 
 

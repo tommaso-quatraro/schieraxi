@@ -205,7 +205,7 @@ Campo `intervallo` (in `/api/formazione`, `/api/oggi`, `/api/widget` e `/api/dia
 `/api/formazione`, `/api/oggi`, `/api/widget`, `da_fare`, avvisi e copia alla scadenza) una volta calcolata resta la stessa finché
 la migliore con i dati nuovi non vale almeno 1 punto atteso in più (la soglia dell'avviso alla scadenza), o finché un suo titolare
 non gioca più (uscito dalla rosa, o diventato infortunato, squalificato o improbabile, sotto il 20%; chi lo era già quando la
-consigliata è stata mostrata non conta, a meno che la migliore metta nel suo ruolo un compagno che gioca almeno il 20%, #632).
+consigliata è stata mostrata non conta, a meno che nel suo ruolo ci sia ora un compagno fuori dagli 11, non fermo per un anticipo, che gioca almeno il 20%, #632).
 Tenuta quella di prima, i suoi punti attesi e la sua
 panchina si rifanno con i dati nuovi; dopo la scadenza della lega resta com'è, panchina compresa. Gli altri moduli e gli altri
 stili sono sempre i migliori del momento: la voce di un altro modulo può avere qualche decimo di punti attesi più della

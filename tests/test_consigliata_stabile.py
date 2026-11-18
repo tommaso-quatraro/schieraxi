@@ -128,8 +128,8 @@ def test_titolare_gia_improbabile_quando_era_mostrata_non_basta_per_cambiare():
 def test_titolare_gia_improbabile_cambia_se_la_migliore_mette_nel_ruolo_un_compagno_che_gioca(p_secondo):
     """#632, primo caso: tre portieri al 10%, 5% e 3% alla prima apertura (titolare il 10%, già improbabile); poi il secondo
     passa al 92% (o proprio al 20%). La migliore lo schiera e vale meno di 1 punto in più: prima restava titolare il 10%, perché
-    era improbabile già quando la consigliata è stata mostrata. Quell'esenzione non vale se la migliore mette nel suo ruolo un
-    compagno che gioca almeno il 20%."""
+    era improbabile già quando la consigliata è stata mostrata. Quell'esenzione non vale se nel suo ruolo c'è un compagno che
+    gioca almeno il 20% (qui la migliore lo mette titolare; con un altro modulo vedi il test che segue)."""
     prima = _migliore(_prev(_portieri(0.10, 0.05, 0.03)))
     assert 1 in _ids(prima)
     nuove = _prev(_portieri(0.10, p_secondo, 0.03))

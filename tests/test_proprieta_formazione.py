@@ -125,9 +125,10 @@ def test_nessun_titolare_sotto_il_20_per_cento_se_un_compagno_gioca(caso, stile,
             assert not compagni, (x.modulo, t, compagni)
             piu_probabili = [alt for alt in rosa if alt.ruolo == t.ruolo and alt.id not in ids and (alt.p, alt.mu) > (t.p, t.mu)]
             assert not piu_probabili, (x.modulo, t, piu_probabili)
-    # fra i moduli (#632): se un modulo proposto non ha titolari improbabili, nemmeno quello scelto ne ha
-    if any(all(g.p >= 0.2 for g in x.titolari) for x in f.tutte):
-        assert all(g.p >= 0.2 for g in f.titolari), (f.modulo, [g for g in f.titolari if g.p < 0.2])
+    # fra i moduli (#632): quello scelto ha meno titolari improbabili, o tanti quanti, di ogni altro modulo proposto
+    def improbabili(x):
+        return sum(g.p < 0.2 for g in x.titolari)
+    assert improbabili(f) == min(improbabili(x) for x in f.tutte), [(x.modulo, improbabili(x)) for x in f.tutte]
 
 
 # ---------------------------------------------------------------- sostituzioni
