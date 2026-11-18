@@ -173,9 +173,10 @@ def test_titolare_improbabile_che_non_si_puo_spostare_resta():
 
 
 def test_titolare_improbabile_resta_senza_un_compagno_che_gioca():
-    """Anche Y gioca meno del 20%: nessun compagno di ruolo che gioca, resta la scelta della ricerca (X)."""
+    """Anche Y gioca meno del 20%: nessun compagno di ruolo che gioca. Fra due improbabili parte chi è più probabile che giochi
+    (#632): Y al 19%, non X al 15% che vale di più quando gioca (prima restava la scelta della ricerca, X)."""
     f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.19, 6), Regole())
-    assert X in _titolari(f) and Y not in _titolari(f)
+    assert Y in _titolari(f) and X not in _titolari(f)
 
 
 def _rosa_tre_portieri(*portieri):
@@ -210,6 +211,23 @@ def test_tra_tre_portieri_la_consigliata_schiera_il_22_e_tiene_il_92_primo_in_pa
     f = fz.migliore(_rosa_tre_portieri((0.04, 6.0), (0.22, 6.0), (0.92, 4.4)), _due_portieri_in_panchina())
     assert next(g.id for g in f.titolari if g.ruolo == "P") == 2
     assert [g.id for g in f.panchina if g.ruolo == "P"] == [3, 1]
+
+
+@pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
+def test_tutti_improbabili_nel_ruolo_parte_chi_e_piu_probabile_che_giochi(stile):
+    """#632, terzo caso: portieri al 19%, 5% e 0%, nessuno arriva al 20%. Il 5% vale di più quando gioca (6,5 contro 5,0) e
+    con lui titolare la formazione ha qualche millesimo di punti attesi in più: prima la consigliata schierava lui. Deve
+    partire chi è più probabile che giochi, con ogni stile."""
+    _, _, peso, inclinazione, _ = stile
+    f = fz.migliore(_rosa_tre_portieri((0.19, 5.0), (0.05, 6.5), (0.0, 6.0)), _due_portieri_in_panchina(),
+                    peso=peso, inclinazione=inclinazione)
+    assert next(g.id for g in f.titolari if g.ruolo == "P") == 1
+
+
+def test_tutti_improbabili_a_parita_di_probabilita_parte_chi_vale_di_piu():
+    """Stesso caso con due portieri al 10%: a parità parte chi vale di più quando gioca (il 2, 6,5 contro 5,0)."""
+    f = fz.migliore(_rosa_tre_portieri((0.1, 5.0), (0.1, 6.5), (0.0, 7.0)), _due_portieri_in_panchina())
+    assert next(g.id for g in f.titolari if g.ruolo == "P") == 2
 
 
 def test_nessun_improbabile_titolare_in_nessun_modulo_se_un_compagno_gioca():

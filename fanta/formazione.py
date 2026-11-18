@@ -746,9 +746,13 @@ def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per
                        fissi: Collection[int] = ()) -> tuple[list[Giocatore], list[Giocatore]]:
     """Toglie dagli 11 chi gioca meno di IMPROBABILE_SOTTO, se fuori dagli 11 c'è un compagno di ruolo che gioca almeno
     COMPAGNO_ALMENO, qualunque sia il costo in punti attesi. Tra i compagni che si possono mettere vince il migliore per lo stile
-    (`peso`), come nella ricerca. Si parte dal titolare meno probabile e dopo ogni cambio si ricomincia: alla fine nessun
-    improbabile rimasto ha un compagno così (ogni cambio toglie un improbabile, quindi i giri finiscono). Chi sta in `fissi`
-    resta dov'è; chi non si può schierare non è in `per_ruolo` (lo lascia fuori chi chiama `migliore`)."""
+    (`peso`), come nella ricerca. Se nel ruolo fuori dagli 11 sono tutti improbabili (#632), al suo posto va il compagno più
+    probabile che giochi, se lo è più di lui; a parità di probabilità chi vale di più quando gioca (fantavoto atteso). Prima
+    partiva chi dava più punti attesi: con portieri al 19%, 5% e 0% il 5%, per qualche millesimo.
+    Si parte dal titolare meno probabile e dopo ogni cambio si ricomincia. I giri finiscono: un cambio con un compagno che gioca
+    toglie un improbabile; uno fra improbabili mette nel ruolo uno più probabile (o, a parità, che vale di più) e non fa
+    comparire fuori dagli 11 nessun compagno che gioca. Chi sta in `fissi` resta dov'è; chi non si può schierare non è in
+    `per_ruolo` (lo lascia fuori chi chiama `migliore`)."""
     cambiato = True
     while cambiato:
         cambiato = False
@@ -758,15 +762,21 @@ def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per
                 break
             if t.id in fissi:
                 continue
+            fuori = [alt for alt in per_ruolo[t.ruolo] if alt.id not in ids]
             meglio = None
-            for alt in per_ruolo[t.ruolo]:
-                if alt.id in ids or alt.p < COMPAGNO_ALMENO:
+            for alt in fuori:
+                if alt.p < COMPAGNO_ALMENO:
                     continue
                 prova = titolari[:i] + [alt] + titolari[i + 1:]
                 pp = panchina_di(prova)
                 v = val.scelta(prova, pp, peso)
                 if meglio is None or v > meglio[2] + 1e-9:
                     meglio = (prova, pp, v)
+            if meglio is None and fuori:            # tutti improbabili nel ruolo: chi è più probabile che giochi
+                alt = max(fuori, key=lambda g: (g.p, g.mu))
+                if (alt.p, alt.mu) > (t.p, t.mu):
+                    prova = titolari[:i] + [alt] + titolari[i + 1:]
+                    meglio = (prova, panchina_di(prova))
             if meglio is not None:
                 titolari, panchina = meglio[0], meglio[1]
                 cambiato = True

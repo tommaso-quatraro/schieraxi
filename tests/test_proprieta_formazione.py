@@ -110,7 +110,8 @@ def test_la_formazione_migliore_usa_un_modulo_ammesso_e_rispetta_i_ruoli(caso, r
 @given(rosa_e_regole(), st.sampled_from(fz.LIVELLI_RISCHIO), st.booleans())
 def test_nessun_titolare_sotto_il_20_per_cento_se_un_compagno_gioca(caso, stile, ricerca):
     """In ogni modulo e con ogni stile, un titolare che gioca meno del 20% resta solo se nessun compagno di ruolo fuori dagli 11
-    gioca almeno il 20%, qualunque sia il costo in punti attesi (#329, regola decisa alla revisione di #612)."""
+    gioca almeno il 20%, qualunque sia il costo in punti attesi (#329, regola decisa alla revisione di #612); e nessun compagno
+    fuori è più probabile che giochi, o a parità vale di più quando gioca (#632)."""
     rosa, r = caso
     _, _, peso, inclinazione, _ = stile
     val = fz.Valutatore(rosa, r, simulazioni=40)
@@ -122,6 +123,8 @@ def test_nessun_titolare_sotto_il_20_per_cento_se_un_compagno_gioca(caso, stile,
                 continue
             compagni = [alt for alt in rosa if alt.ruolo == t.ruolo and alt.id not in ids and alt.p >= 0.2]
             assert not compagni, (x.modulo, t, compagni)
+            piu_probabili = [alt for alt in rosa if alt.ruolo == t.ruolo and alt.id not in ids and (alt.p, alt.mu) > (t.p, t.mu)]
+            assert not piu_probabili, (x.modulo, t, piu_probabili)
 
 
 # ---------------------------------------------------------------- sostituzioni
