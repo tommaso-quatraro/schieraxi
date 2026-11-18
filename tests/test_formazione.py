@@ -240,6 +240,39 @@ def test_nessun_improbabile_titolare_in_nessun_modulo_se_un_compagno_gioca():
         assert [g.id for g in x.titolari if g.p < 0.2] == [], x.modulo
 
 
+def _rosa_attaccante_improbabile_forte():
+    """Quattro difensori, due attaccanti sicuri e due improbabili: il 40 gioca il 10% ma quando gioca fa 14. Nel 3-4-3 il terzo
+    attaccante è per forza un improbabile; nel 4-4-2 nessuno lo è."""
+    return ([G(1, "P", 0.95, 6), G(2, "P", 0.5, 5)] + [G(10 + i, "D", 0.95, 6) for i in range(4)]
+            + [G(20 + i, "C", 0.95, 6.5) for i in range(5)]
+            + [G(30, "A", 0.95, 7), G(31, "A", 0.95, 7), G(40, "A", 0.1, 14), G(41, "A", 0.05, 5)])
+
+
+@pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
+def test_fra_i_moduli_vince_il_migliore_senza_improbabili_titolari(stile):
+    """#632, secondo caso: la regola guardava solo dentro il ruolo. Il 3-4-3 con l'attaccante al 10% vale qualche decimo più
+    del 4-4-2 (se il 40 non gioca entra una riserva sicura con il cambio di modulo), ma fra le formazioni senza improbabili
+    titolari, se ce n'è una, si sceglie la migliore: il 4-4-2, con ogni stile."""
+    _, _, peso, inclinazione, _ = stile
+    r = Regole(moduli=["3-4-3", "4-4-2"])
+    f = fz.migliore(_rosa_attaccante_improbabile_forte(), r, peso=peso, inclinazione=inclinazione)
+    con_improbabile = next(x for x in f.tutte if x.modulo == "3-4-3")
+    assert 40 in _titolari(con_improbabile)                         # il 3-4-3 resta proposto, con l'improbabile
+    if (peso, inclinazione) == (fz.PESO_BASE, (0.0, 0.0)):
+        assert con_improbabile.atteso > f.atteso                    # e ha più punti attesi del modulo scelto
+    assert f.modulo == "4-4-2" and [g.id for g in f.titolari if g.p < 0.2] == []
+    assert [m for m, _ in f.alternative] == ["3-4-3"]
+
+
+def test_fra_i_moduli_tutti_con_un_improbabile_vince_il_migliore():
+    """Se ogni modulo ha un titolare improbabile (qui il portiere: l'altro gioca il 5%), la regola non sceglie niente: vince
+    il modulo con più punti attesi, come prima."""
+    rosa = [G(1, "P", 0.15, 6), G(2, "P", 0.05, 5)] + _rosa_attaccante_improbabile_forte()[2:]
+    r = Regole(moduli=["3-4-3", "4-4-2"])
+    f = fz.migliore(rosa, r)
+    assert f.atteso == max(x.atteso for x in f.tutte) and f.modulo == "3-4-3"
+
+
 def test_titolare_al_20_per_cento_non_e_improbabile():
     """X gioca proprio al 20%: non è sotto la soglia, resta anche se lo scambio costerebbe poco (0,2 x 0,6 x 2 = 0,24)."""
     f = fz.migliore(_rosa_terzo_attaccante(0.2, 8, 0.6, 6), Regole())

@@ -794,7 +794,8 @@ def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, rice
     `inclinazione` = (punti per ogni difensore, punti per ogni attaccante) oltre il 4-?-3 neutro: sposta la scelta del MODULO
     (non dei giocatori) verso le difese folte o gli attacchi folti; (0, 0) = solo punti attesi.
     In ogni modulo, dopo la ricerca (anche senza), un titolare che quasi certamente non gioca lascia il posto a un compagno che
-    gioca, se c'è (`_senza_improbabili`).
+    gioca, se c'è, o al compagno più probabile che giochi (`_senza_improbabili`); fra i moduli vince il migliore fra quelli senza
+    titolari improbabili, se ce n'è uno.
     Giocatori che non si possono più spostare (anticipo già cominciato, consigli.py): chi sta in `fissi` resta titolare, la panchina
     la sceglie `scegli_panchina` e chi non deve diventare titolare si lascia fuori da `rosa` (allora `valutatore`, fatto sulla rosa
     intera, serve). Senza questi due il calcolo è quello di sempre."""
@@ -847,7 +848,10 @@ def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, rice
         risultati[-1].scelto = valore + inclinazione[0] * (d - MODULO_NEUTRO[0]) + inclinazione[1] * (a - MODULO_NEUTRO[1])
     if not risultati:
         raise ValueError("Nessun modulo ammesso è compatibile con la rosa")
-    risultati.sort(key=lambda f: -f.scelto)
+    # Fra i moduli (#632): `_senza_improbabili` guarda solo dentro il ruolo, e un modulo con un improbabile titolare (un
+    # attaccante al 10% che quando gioca fa molti punti) poteva vincere per pochi decimi su uno senza. Se c'è almeno una
+    # formazione senza titolari improbabili, vince la migliore di quelle; chi non si può più spostare (`fissi`) non conta.
+    risultati.sort(key=lambda f: (any(g.p < IMPROBABILE_SOTTO and g.id not in fissi for g in f.titolari), -f.scelto))
     scelta = risultati[0]
     scelta.alternative = [(f.modulo, round(f.atteso, 2)) for f in risultati[1:]]
     scelta.tutte = risultati
