@@ -360,7 +360,7 @@ def test_nuova_stagione_compare_in_la_mia_lega_quando_serve(web):
 # ---------------------------------------------------------------- Regole e scadenza
 RICONOSCIUTE = {"modifiche": [{"chiave": "crediti_iniziali", "etichetta": "Crediti iniziali", "valore": 500, "riga": "Crediti: 500"},
                               {"chiave": "bonus.assist", "etichetta": "Assist", "valore": 1.5, "riga": "Assist +1,5"}],
-                "non_riconosciute": [], "dubbie": []}
+                "non_riconosciute": [], "da_controllare": []}
 
 
 def _scritture(web, rotta: str) -> list[dict]:
@@ -385,18 +385,25 @@ def test_il_regolamento_incollato_si_salva_con_un_tocco(web):
     assert not web.errori_mostrati()
 
 
-def test_le_righe_dubbie_senza_numeri_stanno_fra_quelle_da_controllare_a_mano(web):
-    """Le righe con numeri non lette e quelle dubbie senza numeri compaiono insieme, sotto un titolo solo (#684)."""
+def test_le_righe_da_controllare_a_mano_dicono_la_regola_e_seguono_il_testo(web):
+    """Le righe non lette, anche quelle dubbie senza numeri, stanno sotto un titolo solo, nell'ordine del testo (lo dà il server),
+    e quelle dubbie dicono quale regola impostare a mano (#684)."""
     solo(web, "prima")
-    righe = ["Media 6-6,5: +1", "Non è vietato il cambio modulo"]
-    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "non_riconosciute": righe[:1], "dubbie": righe[1:]})
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "non_riconosciute": ["Media 6-6,5: +1"], "da_controllare": [
+        {"riga": "Non è vietato il cambio modulo",
+         "regole": [{"chiave": "panchina.cambio_modulo", "etichetta": "Cambio modulo nelle sostituzioni"}]},
+        {"riga": "Media 6-6,5: +1", "regole": []}]})
     web.apri("/?vista=impostazioni&gruppo=regole")
     principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
     tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
     titolo = principale(web).get_by_text("Righe da controllare a mano (2)", exact=True)
-    assert titolo.is_visible() and not principale(web).get_by_text(righe[1]).is_visible()
+    assert titolo.is_visible() and not principale(web).get_by_text("Non è vietato il cambio modulo").is_visible()
     tocca(web, titolo)
-    assert all(principale(web).get_by_text(riga).is_visible() for riga in righe)
+    elenco = principale(web).locator("details", has_text="Righe da controllare a mano (2)")
+    regola = elenco.get_by_text("da impostare: Cambio modulo nelle sostituzioni", exact=True)
+    assert regola.is_visible() and elenco.get_by_text("Media 6-6,5: +1", exact=True).is_visible()
+    testo = elenco.inner_text()
+    assert testo.index("Non è vietato il cambio modulo") < testo.index("Cambio modulo nelle sostituzioni") < testo.index("Media 6-6,5")
     assert not web.errori_mostrati()
 
 
