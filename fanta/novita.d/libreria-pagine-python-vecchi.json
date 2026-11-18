@@ -1,0 +1,9 @@
+{
+  "titolo": "Controlli: aggiornata una libreria per i Python più vecchi",
+  "voci": [
+    "Aggiornata, solo nei controlli automatici che girano con una versione di Python più vecchia, la libreria che serve a leggere le pagine delle fonti dei dati. Per chi usa l'app non cambia niente."
+  ],
+  "tecnico": [
+    "soupsieve da 2.9.2 a 2.10 per Python < 3.12 (requirements-vincoli.in, requirements.txt rigenerato con script/blocca_dipendenze.py): chiude CVE-2026-126192. Restano CVE-2026-126190, -126191 e -126193, corrette solo dalla 3.0.2 e dalla 4.0, che chiedono Python 3.11.5 (Debian 12 ha 3.11.2). Il server (Python 3.12) resta su soupsieve 4.0."
+  ]
+}
