@@ -326,6 +326,32 @@ def test_nel_riconoscimento_delle_rose_l_avviso_delle_rose_cambiate_viene_letto(
     assert avvisi_di_errore(web).count() == 0 and not web.errori_mostrati()
 
 
+ESEMPI_TOLTI = "Le squadre di esempio (Esempio Uno, Esempio Due) erano rimaste nella lega insieme alle tue: l'importazione le toglie."
+ESITO = {"squadre_importate": ["Atletico Prova"], "totale_squadre": 1, "mia_squadra": "Atletico Prova",
+         "avvisi": [ESEMPI_TOLTI], "avvisi_frasi": [{"chiave": "rose.esempi_tolti", "param": {"squadre": "Esempio Uno, Esempio Due"}}],
+         "differenze": {"nessuna_differenza": True, "testo": "Nessuna differenza"}, "riepilogo": "Nessuna differenza"}
+
+
+def test_in_inglese_gli_avvisi_dopo_conferma_e_salva_sono_tradotti(web):
+    """#723: con la web in inglese gli avvisi della risposta dell'importazione si leggono in inglese (da `avvisi_frasi`), come
+    quelli dell'anteprima, e non nell'italiano del server."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    web.risposta("/api/rose/anteprima", ANTEPRIMA)
+    web.risposta("/api/rose/testo", ESITO)
+    web.apri("/?vista=impostazioni&gruppo=rose")
+    principale(web).locator("summary", has_text="Paste the roster text").click()
+    principale(web).get_by_placeholder("Paste the roster text here").fill("Atletico Prova\nRossi\nBianki")
+    principale(web).get_by_role("button", name="Check the text").click()
+    principale(web).get_by_role("heading", name="Check before saving").wait_for(timeout=10000)
+    web.aspetta()
+    tocca(web, principale(web).get_by_role("button", name="Confirm and save"))
+    principale(web).get_by_role("heading", name="What has changed").wait_for(timeout=10000)
+    testo = web.testo_principale()
+    assert "The example teams (Esempio Uno, Esempio Due) were still in the league together with yours: the import removes them." in testo, testo
+    assert "Le squadre di esempio" not in testo and not web.errori_mostrati()
+
+
 def test_nel_riconoscimento_delle_rose_un_salvataggio_fallito_e_un_errore(web):
     solo(web, "prima")
     _apri_il_riconoscimento(web)

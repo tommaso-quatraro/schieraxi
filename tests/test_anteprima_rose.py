@@ -389,11 +389,23 @@ def test_senza_i_campi_nuovi_tutto_come_prima(ambiente):
     a, _ = nuovo_utente("utentea")
     r = importa(a, TESTO)
     assert r.status_code == 200
-    assert set(r.json()) == {"squadre_importate", "totale_squadre", "avvisi", "mia_squadra", "differenze", "riepilogo"}
+    assert set(r.json()) == {"squadre_importate", "totale_squadre", "avvisi", "avvisi_frasi", "mia_squadra", "differenze", "riepilogo"}
     assert r.json()["mia_squadra"] is None
     rossi = next(g for g in a.get("/api/rosa", params={"squadra": "Mia"}).json()["giocatori"] if g["nome"] == "Rossi")
     assert rossi["id"] is None and rossi["riconosciuto"] == "ambiguo"
     assert a.post("/api/rose/file", files={"file": ("rose.txt", TESTO.encode(), "text/plain")}).status_code == 200
+
+
+def test_l_importazione_manda_le_frasi_degli_avvisi_come_l_anteprima(ambiente):
+    """#723: la risposta dell'importazione ha `avvisi_frasi`, una voce per ogni avviso come nell'anteprima, così la web in
+    inglese traduce anche gli avvisi dopo «Conferma e salva». Dal testo incollato e dal file."""
+    a, _ = nuovo_utente("utentea")
+    for r in (importa(a, TESTO), a.post("/api/rose/file", files={"file": ("rose.txt", TESTO.encode(), "text/plain")})):
+        assert r.status_code == 200, r.text
+        esito = r.json()
+        assert len(esito["avvisi_frasi"]) == len(esito["avvisi"]) > 0
+        pinco = esito["avvisi_frasi"][next(i for i, x in enumerate(esito["avvisi"]) if "'Pinco Pallino'" in x)]
+        assert pinco["chiave"] == "rose.non_riconosciuto" and pinco["param"]["nome"] == "Pinco Pallino"
 
 
 def test_senza_account_l_anteprima_funziona_e_non_salva(dati_isolati, calciatori, monkeypatch):

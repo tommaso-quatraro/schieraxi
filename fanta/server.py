@@ -2020,8 +2020,9 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     if prima and any(s.giocatori for s in prima.squadre):      # dopo il passaggio di stagione le rose partono vuote: non sono "acquisti"
         movimenti.registra(ctx.movimenti, diff)
     threading.Thread(target=_scalda, args=(ctx,), daemon=True).start()     # le rose sono cambiate: la nuova formazione si prepara subito
+    avvisi += lega.controlla(nuove, r)
     return {"squadre_importate": [s.nome for s in lette], "totale_squadre": len(nuove.squadre),
-            "avvisi": avvisi + lega.controlla(nuove, r), "mia_squadra": nuove.mia_squadra,
+            "avvisi": avvisi, "avvisi_frasi": frasi.lista(avvisi), "mia_squadra": nuove.mia_squadra,   # come l'anteprima (#723)
             "differenze": diff, "riepilogo": diff["testo"]}
 
 
