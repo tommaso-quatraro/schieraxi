@@ -151,6 +151,87 @@ struct PromemoriaMessaTests {
         #expect(letture.nonRiuscite == 1)
     }
 
+    /// Le decisioni sui promemoria prese con le letture di Oggi arrivate a promemoria e widget (vero = tacciono), nell'ordine.
+    @MainActor
+    final class Esiti {
+        var tace: [Bool] = []
+        var nonRiuscite = 0
+    }
+
+    /// La giornata della fixture con `serve_promemoria` = `serve`.
+    static func giornataCon(serve: Bool) throws -> Data {
+        guard var o = try JSONSerialization.jsonObject(with: Fixture.dati("oggi")) as? [String: Any] else {
+            throw ErroreApi.server("fixture della giornata")
+        }
+        o["serve_promemoria"] = serve
+        return try JSONSerialization.data(withJSONObject: o)
+    }
+
+    /// Un server che risponde a `/api/oggi` con `risposte`, nell'ordine; la richiesta numero i aspetta `cancelli[i]`, se c'è.
+    static func giornate(_ risposte: [Data], cancelli: [Cancello?]) -> ServerDiProva {
+        let arrivate = Scatola<Int>()
+        return ServerDiProva { _, percorso, _ in
+            guard percorso.hasPrefix("/api/oggi") else { throw ErroreApi.server("solo la giornata") }
+            let i = arrivate.valore ?? 0
+            arrivate.valore = i + 1
+            if i < cancelli.count, let cancello = cancelli[i] { await cancello.passa() }
+            return risposte[min(i, risposte.count - 1)]
+        }
+    }
+
+    /// La giornata come nell'app, ma ogni lettura arrivata a promemoria e widget decide con la regola vera (`promemoriaTace`) e la
+    /// decisione finisce in `esiti`.
+    private func giornata(_ srv: ServerDiProva, _ esiti: Esiti, _ m: UserDefaults) -> OggiViewModel {
+        let oggi = OggiViewModel(server: srv, conPromemoria: false)
+        oggi.dopoLetturaFresca = { giornata, chiestaIl in
+            esiti.tace.append(Aggiornamento.promemoriaTace(giornata, lettura: .fresca(chiestaIl: chiestaIl), memoria: m))
+        }
+        oggi.dopoLetturaNonRiuscita = { esiti.nonRiuscite += 1 }
+        return oggi
+    }
+
+    @Test("Due letture di Oggi insieme: quella partita prima e arrivata dopo non decide i promemoria")
+    func letturaVecchiaArrivataDopo() async throws {
+        let m = try memoria()
+        let cancello = Cancello()
+        let srv = try Self.giornate([Self.giornataCon(serve: false), Self.giornataCon(serve: true)], cancelli: [cancello])
+        let esiti = Esiti()
+        let oggi = giornata(srv, esiti, m)
+        let a = Task { await oggi.carica() }                    // A: apro la Formazione con la spunta messa (vedrà «non serve»)
+        await cancello.richiestaArrivata()
+        ArchivioMessa.ricorda(giornata: 9, messa: false, m)     // cambio un titolare dal telefono: la spunta cade
+        await oggi.rileggiDopoUnSalvataggio()                   // B: parte dopo il salvataggio e torna prima di A
+        #expect(esiti.tace == [false], "B dice che il promemoria serve")
+        await cancello.apri()
+        await a.value
+        #expect(esiti.tace == [false], "A, partita prima e arrivata dopo, non toglie i promemoria")
+        #expect(esiti.nonRiuscite == 0, "una lettura superata non è una lettura non riuscita")
+    }
+
+    @Test("Due letture di Oggi insieme: quella partita prima, se arriva mentre l'altra è in viaggio, non cancella il tocco")
+    func letturaVecchiaArrivataPrima() async throws {
+        let m = try memoria()
+        let cancelloA = Cancello()
+        let cancelloB = Cancello()
+        let srv = try Self.giornate([Self.giornataCon(serve: false), Self.giornataCon(serve: true)], cancelli: [cancelloA, cancelloB])
+        let esiti = Esiti()
+        let oggi = giornata(srv, esiti, m)
+        let a = Task { await oggi.carica() }
+        await cancelloA.richiestaArrivata()
+        ArchivioMessa.ricorda(giornata: 9, messa: false, m)
+        let b = Task { await oggi.rileggiDopoUnSalvataggio() }
+        await cancelloB.richiestaArrivata()
+        await cancelloA.apri()
+        await a.value
+        #expect(esiti.tace.isEmpty, "A è superata da B: non decide niente")
+        #expect(ArchivioMessa.toccata(giornata: 9, m) == false, "il tocco resta finché non arriva B")
+        await cancelloB.apri()
+        await b.value
+        #expect(esiti.tace == [false])
+        #expect(ArchivioMessa.toccata(giornata: 9, m) == nil, "B, partita dopo il tocco, lo comprende")
+        #expect(esiti.nonRiuscite == 0)
+    }
+
     @Test("«C'è una versione nuova» si segna come avvisata solo se l'avviso è partito davvero")
     func versioneNuova() async throws {
         let m = try memoria()
