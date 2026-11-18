@@ -41,11 +41,14 @@ STATO_CAMBIO_MODULO = (r"consent|ammess|ammett|permess|permett|possibil|previst|
 STATO_MODIFICATORE = (r"attiv|previst|utilizz|applic|abilitat|consent|ammess|valid|vigore|present|esist|c'e"
                       r"|us(?:a|o|at)")
 # Le parole che dicono «no» da sole. «Non è vietato» (un no negato) è dubbio: si lascia da controllare.
-# «Nessun» dice no («Nessun cambio modulo», «in nessun caso»), ma non in «nessun limite», «senza nessuna eccezione» e simili;
-# dentro una condizione vale come un «non».
-NESSUN = r"(?<!senza )\bnessun[oa]?\b(?!\s+(?:limit|restrizion|vincol|eccezion))"
-NO_CAMBIO_MODULO = rf"\bno\b|\boff\b|disattiv|disabilit|vietat|{NESSUN}"
-NO_MODIFICATORE = rf"\bno\b|\boff\b|disattiv|disabilit|vietat|assent|{NESSUN}"
+# «Nessun» dice no solo subito prima del nome della regola («Nessun cambio modulo», «nessun modificatore»), in «in nessun caso»
+# e da solo alla fine («Cambio modulo: nessuno»). Dentro una condizione vale come un «non» (_senza_condizione); altrove non si
+# sa a cosa risponda («nessun divieto», «nessun limite» vogliono dire sì): la lettura è dubbia (_detto).
+NESSUN = r"\bnessun[oa]?\b"
+NESSUN_NO = r"\bin\s+nessun\s+caso\b|\bnessun[oa]\W*$"
+NESSUN_DICE_NO = rf"\bnessun[oa]?\s+(?:cambi|modificator)|{NESSUN_NO}"     # i «nessun» che dicono no; un altro rende dubbio
+NO_CAMBIO_MODULO = rf"\bno\b|\boff\b|disattiv|disabilit|vietat|\bnessun[oa]?\s+cambi|{NESSUN_NO}"
+NO_MODIFICATORE = rf"\bno\b|\boff\b|disattiv|disabilit|vietat|assent|\bnessun[oa]?\s+modificator|{NESSUN_NO}"
 NO_NEGATO = r"vietat|disattiv|disabilit"
 # Da «se», «quando»... alla fine del pezzo c'è una condizione: un suo «non» («cambio modulo quando non è possibile sostituire
 # nel ruolo») dice quando scatta la regola, non la spegne (regole_testo._senza_condizione).
@@ -157,6 +160,10 @@ def _detto(testo: str | None, stato: str, no: str) -> bool | None | str:
     tutte, negate = _negate(testo, stato)
     if negate:
         return False if negate == tutte else None
+    if re.search(no, re.sub(NESSUN, " ", testo)):
+        return False                        # un no detto senza «nessun»: «vietato», «assente», «no» (anche «…, nessuna eccezione»)
+    if re.search(NESSUN, re.sub(NESSUN_DICE_NO, " ", testo)):
+        return None                         # un «nessun» che non dice no («nessun divieto», «con nessun difensore»): dubbio
     if re.search(no, testo):
         return False
     if tutte:

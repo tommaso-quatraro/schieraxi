@@ -417,30 +417,57 @@ def test_tipo_di_panchina_al_plurale_come_al_singolare(singolare, plurale, attes
     assert bool(_dubbie(s)) is bool(_dubbie(p)) is (atteso is None)
 
 
-# «nessun» prima della regola dice no anche per il cambio modulo, come per il modificatore; dentro una condizione dice
-# quando scatta la regola e non la spegne; «nessun limite» non è un no.
+# «nessun» dice no solo subito prima del nome della regola («Nessun cambio modulo», «Non c'è nessun modificatore della difesa»),
+# in «in nessun caso» e da solo («Cambio modulo: nessuno»). Dentro una condizione dice quando scatta la regola, come un «non».
+# Altrove non si sa a cosa risponda («nessun divieto» vuol dire sì): la riga è da controllare, senza proposta.
 NESSUNO = {
     "Nessun cambio modulo": ("panchina.cambio_modulo", False),
     "Nessun cambio di modulo consentito": ("panchina.cambio_modulo", False),
     "Cambio modulo: nessuno": ("panchina.cambio_modulo", False),
-    "Nessuna sostituzione con cambio modulo": ("panchina.cambio_modulo", False),
-    "Cambio modulo consentito se non c'è nessun sostituto nel ruolo": ("panchina.cambio_modulo", True),
-    "Il cambio modulo avviene quando nessun giocatore della panchina può sostituire il titolare": ("panchina.cambio_modulo", True),
-    "Cambio modulo: nessun limite": ("panchina.cambio_modulo", True),
-    "Cambio modulo consentito senza nessuna eccezione": ("panchina.cambio_modulo", True),
     "Cambio modulo consentito in nessun caso": ("panchina.cambio_modulo", False),
     "Nessun modificatore difesa": ("modificatore_difesa.attivo", False),
+    "Modificatore difesa: nessuno": ("modificatore_difesa.attivo", False),
+    "Cambio modulo consentito se non c'è nessun sostituto nel ruolo": ("panchina.cambio_modulo", True),
+    "Il cambio modulo avviene quando nessun giocatore della panchina può sostituire il titolare": ("panchina.cambio_modulo", True),
     "Modificatore della difesa attivo quando nessun difensore resta senza voto": ("modificatore_difesa.attivo", True),
     # un no che vale solo in un caso, come «non è consentito quando non ci sono riserve»: nessuna proposta
     "Nessun cambio modulo quando non ci sono riserve": ("panchina.cambio_modulo", None),
     "Nessun cambio modulo se il titolare gioca": ("panchina.cambio_modulo", None),
+    # «nessun» davanti ad altro: su main molte davano sì (giusto); un no qui salverebbe la regola al contrario
+    "Nessun divieto di cambio modulo": ("panchina.cambio_modulo", None),
+    "Cambio modulo: nessun divieto": ("panchina.cambio_modulo", None),
+    "Cambio modulo consentito: nessun divieto": ("panchina.cambio_modulo", None),
+    "Nessun impedimento al cambio modulo": ("panchina.cambio_modulo", None),
+    "Cambio modulo: nessun ostacolo": ("panchina.cambio_modulo", None),
+    "Nessun problema per il cambio modulo": ("panchina.cambio_modulo", None),
+    "Nessun tetto al cambio modulo": ("panchina.cambio_modulo", None),
+    "Cambio modulo: nessun obbligo": ("panchina.cambio_modulo", None),
+    "Cambio modulo: nessuna condizione": ("panchina.cambio_modulo", None),
+    "Non c'è nessun divieto al cambio modulo": ("panchina.cambio_modulo", None),
+    "Cambio modulo: nessun limite": ("panchina.cambio_modulo", None),
+    "Cambio modulo consentito senza nessuna eccezione": ("panchina.cambio_modulo", None),
+    "Nessuna sostituzione con cambio modulo": ("panchina.cambio_modulo", None),
+    "Modificatore difesa attivo con nessun difensore sotto il 6": ("modificatore_difesa.attivo", None),
+    # «in nessun caso» con un altro «nessun» (doppia negazione): non è un no sicuro
+    "Nessun divieto di cambio modulo in nessun caso": ("panchina.cambio_modulo", None),
+    "Cambio modulo: nessun divieto in nessun caso": ("panchina.cambio_modulo", None),
+    "Non c'è nessun divieto al cambio modulo in nessun caso": ("panchina.cambio_modulo", None),
+    "Nessun cambio modulo in nessun caso": ("panchina.cambio_modulo", False),
+    "Il cambio modulo non è consentito senza nessuna eccezione": ("panchina.cambio_modulo", False),
+    # un no detto con altre parole resta no anche con un «nessun» accanto (su main era già no)
+    "Cambio modulo vietato senza nessuna eccezione": ("panchina.cambio_modulo", False),
+    "Modificatore difesa assente senza nessuna eccezione": ("modificatore_difesa.attivo", False),
+    "Modificatore difesa: no senza nessuna eccezione": ("modificatore_difesa.attivo", False),
 }
 
 
 @pytest.mark.parametrize("riga", sorted(NESSUNO))
-def test_nessun_dice_no_prima_della_regola_non_nella_condizione(riga):
+def test_nessun_dice_no_solo_prima_della_regola(riga):
     chiave, atteso = NESSUNO[riga]
-    assert _per_chiave(regole_testo.interpreta(riga)).get(chiave) is atteso
+    r = regole_testo.interpreta(riga)
+    assert _per_chiave(r).get(chiave) is atteso
+    if atteso is None:                              # senza proposta: la riga è fra quelle da controllare, con la sua regola
+        assert any(x["riga"] == riga and chiave in [g["chiave"] for g in x["regole"]] for x in r["da_controllare"])
 
 
 def test_righe_da_controllare_nell_ordine_del_testo():
