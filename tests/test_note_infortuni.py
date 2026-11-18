@@ -58,6 +58,21 @@ def test_parola_incerta_resta_italiana(nota):
     assert ni.traduci(nota) == nota
 
 
+@pytest.mark.parametrize("it,en", [
+    ("Influenza.", "Flu."),                                                    # non «Flu in the .»
+    ("Lombalgia;", "Lower back pain;"),
+    ("Influenza ;", "Flu;"),
+    ("Frattura al dito della mano.", "Fracture in the finger of the hand."),
+    ("lombalgia, da valutare.", "Lower back pain, to be assessed."),
+])
+def test_punteggiatura_finale_non_fa_un_in_the_vuoto(it, en):
+    assert ni.traduci(it) == en
+
+
+def test_punteggiatura_in_mezzo_resta_italiana():
+    assert ni.traduci("trauma . al ginocchio") == "trauma . al ginocchio"         # non «Trauma in the . of the knee»
+
+
 def test_ogni_nota_vera_o_si_traduce_o_resta_uguale():
     # nessuna parola italiana a metà: un risultato tradotto non contiene i pezzi tipici dell'italiano
     for nota in ["problema alla spalla destra, rientro da metà novembre", "frattura a un dito del piede, rientro inizio novembre",

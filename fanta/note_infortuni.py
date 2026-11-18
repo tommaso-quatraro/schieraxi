@@ -166,6 +166,8 @@ def _causa(p: str) -> str | None:
         resto = re.sub(rf"\b{re.escape(it)}\b", CORPO[it], resto)
     resto = re.sub(r"\b([a-z_]+) (destra|destro|sinistra|sinistro)\b", lambda x: f"{LATI[x.group(2)]} {x.group(1)}", resto)
     pezzi = [x.strip() for x in re.split(CONNETTORI, resto) if x.strip()]
+    if any(not re.search(r"[^\W\d_]", x) for x in pezzi):     # un pezzo di sola punteggiatura non diventa «in the .»
+        return None
     corpo = ""
     for k, x in enumerate(pezzi):
         corpo += (" in the " if k == 0 else " of the ") + x
@@ -233,7 +235,11 @@ def traduci(nota: str | None) -> str | None:
     """La nota in inglese; se non si riconosce tutta, la nota com'è (italiano)."""
     if not isinstance(nota, str) or not nota.strip() or len(nota) > 300:
         return nota
-    parti = [x.strip() for x in nota.strip().split(",")]
+    # la punteggiatura finale («Influenza.», «Lombalgia;») non si traduce: si toglie e si rimette in fondo
+    testa, coda = re.fullmatch(r"(.*?)([\s.;,]*)", nota.strip(), re.S).groups()
+    if not testa:
+        return nota
+    parti = [x.strip() for x in testa.split(",")]
     fuori = []
     for x in parti:
         x = x[:1].lower() + x[1:]                      # solo la prima lettera: i nomi delle squadre tengono la maiuscola
@@ -242,4 +248,4 @@ def traduci(nota: str | None) -> str | None:
             return nota
         fuori.append(t)
     testo = ", ".join(fuori)
-    return testo[0].upper() + testo[1:] if _tutte_note(testo) and testo else nota
+    return testo[0].upper() + testo[1:] + re.sub(r"\s", "", coda) if _tutte_note(testo) and testo else nota
