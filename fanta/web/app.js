@@ -80,7 +80,8 @@ function risorsaDi(percorso, opzioni) {
   const [p, qs] = percorso.split("?");
   const metodo = (opzioni.method || "GET").toUpperCase();
   if (p === "/api/regole" || p === "/api/regole/rinvio") return "regole";
-  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file", "/api/rose/correggi"].includes(p)) return "rose";
+  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file", "/api/rose/correggi",
+       "/api/nuova-stagione"].includes(p)) return "rose";
   if (p === "/api/avvisi") return "avvisi";
   if (p === "/api/scelta") { const g = new URLSearchParams(qs || "").get("giornata"); return g ? `scelta:${g}` : null; }
   if (p === "/api/formazione/valuta" && metodo === "POST") {
@@ -2747,7 +2748,7 @@ function vistaImportaRose() {
     svuotaCache();
     $("#esito-import").innerHTML = `<h3>${t("lega.cosa_cambiato")}</h3>${htmlDifferenze(esito.differenze)}
       <div class="debole piccolo" style="margin-top:10px">${t("lega.importate", { nomi: esito.squadre_importate.map(esc).join(", "), n: tp("lega.n_squadre", esito.totale_squadre) })}</div>
-      ${esito.avvisi.length ? `<div class="attenzione" style="margin-top:12px"><b>${t("lega.da_controllare")}</b><br>${esito.avvisi.map(esc).join("<br>")}</div>` : `<div class="debole piccolo">${t("lega.rose_controllate_tutto")}</div>`}`;
+      ${esito.avvisi.length ? `<div class="attenzione" style="margin-top:12px"><b>${t("lega.da_controllare")}</b><br>${testiDi(esito, "avvisi").map(esc).join("<br>")}</div>` : `<div class="debole piccolo">${t("lega.rose_controllate_tutto")}</div>`}`;
     caricaInfo(); caricaSquadre();
   };
   // in due passi (anteprima.js): prima si controlla cosa ha capito l'app, poi «Conferma e salva»
@@ -2803,7 +2804,12 @@ function apriNuovaStagione(s) {
           <li><b>${t("lega.controlla_regole")}</b>${t("lega.bonus_moduli_crediti")}</li></ol></div>
         <div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div>`);
       vai("impostazioni", "rose");
-    } catch (e) { avviso(e.message, 5000); }
+    } catch (e) {
+      // 409: un altro dispositivo ha già archiviato (o non ci sono rose), il server non ha scritto niente e lo dice: l'avviso
+      // rimasto a schermo non vale più, quindi si chiude il foglio e sparisce l'avviso (#657)
+      if (e.status === 409) { chiudiFoglio(); const b = $("#banner-stagione"); if (b) b.closest("li").remove(); }
+      avviso(e.message, 5000);
+    }
   });
 }
 

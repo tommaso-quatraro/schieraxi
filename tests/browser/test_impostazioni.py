@@ -357,6 +357,24 @@ def test_nuova_stagione_compare_in_la_mia_lega_quando_serve(web):
     assert web.pagina.get_by_role("dialog").get_by_role("button", name="Archivia e riparti").is_visible()
 
 
+def test_nuova_stagione_gia_archiviata_altrove_toglie_l_avviso(web):
+    """Un altro dispositivo ha già archiviato e importato le rose nuove: il server risponde 409 senza scrivere niente (#657). Il
+    foglio si chiude, l'avviso rimasto a schermo sparisce e si legge il messaggio del server."""
+    solo(web, "prima")
+    messaggio = "Le rose sono già della stagione in corso: non c'è niente da archiviare."
+    web.risposta("/api/stagione", {"corrente": "2027-28", "rose": "2026-27", "nuova": True})
+    web.risposta("/api/nuova-stagione", {"detail": messaggio}, stato=409)
+    web.apri("/?vista=impostazioni")
+    avviso = sezione(web, "La mia lega").get_by_role("button", name=re.compile("Nuova stagione 2027-28"))
+    avviso.wait_for(timeout=10000)
+    tocca(web, avviso)
+    web.pagina.once("dialog", lambda d: d.accept())                     # «Archivio la stagione…?»: sì
+    tocca(web, web.pagina.get_by_role("dialog").get_by_role("button", name="Archivia e riparti"))
+    web.pagina.locator("#avviso").get_by_text(messaggio).wait_for(timeout=5000)
+    web.pagina.locator("#foglio").wait_for(state="hidden", timeout=5000)
+    assert avviso.count() == 0
+
+
 # ---------------------------------------------------------------- Regole e scadenza
 RICONOSCIUTE = {"modifiche": [{"chiave": "crediti_iniziali", "etichetta": "Crediti iniziali", "valore": 500, "riga": "Crediti: 500"},
                               {"chiave": "bonus.assist", "etichetta": "Assist", "valore": 1.5, "riga": "Assist +1,5"}],
