@@ -3,8 +3,9 @@
 Non conosce il formato esatto: cerca le parole chiave di ogni regola ("assist", "ammonizione", "modificatore difesa"...) e il numero
 che le segue. Per questo NON applica nulla da solo: restituisce le modifiche proposte, ognuna con la riga da cui viene, e l'app le mostra
 per controllarle. Nei casi dubbi (una riga con più numeri e ruoli, intervalli, negazioni) preferisce non riconoscere: le righe con numeri
-non riconosciute vengono elencate, così si vede cosa manca; a parte (`dubbie`) le righe, anche senza numeri, che nominano il cambio
-modulo, il modificatore della difesa o il tipo di panchina senza dirne il valore con sicurezza.
+non riconosciute vengono elencate, così si vede cosa manca. `da_controllare` le mette insieme alle righe dubbie, anche senza numeri
+(nominano il cambio modulo, il modificatore della difesa o il tipo di panchina senza dirne il valore con sicurezza), nell'ordine del
+testo e con le regole da impostare a mano.
 """
 from __future__ import annotations
 
@@ -57,6 +58,11 @@ PANCHINA_PER_RUOLO = rf"per ruolo|fissa|vincolat{SUFFISSO} (?:al|dal) ruolo|ruol
 # Il tipo detto al plurale («Riserve libere», «riserve fisse») non si legge, ma la riga lo nomina: senza un valore sicuro è dubbia
 PANCHINA_PLURALE = r"\blibere\b|\bfisse\b"
 NIENTE = "niente"                        # un pezzo di riga che nomina una regola sì/no senza dire se c'è
+# Le regole che una riga dubbia lascia da impostare a mano: (chiave, etichetta), come in «modifiche»
+MODIFICATORE_ATTIVO = ("modificatore_difesa.attivo", "Modificatore difesa attivo")
+TIPO_PANCHINA = ("panchina.tipo", "Ordine dei cambi")
+CAMBIO_MODULO_SI_NO = ("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni")
+MAX_DUBBIE = 30                          # righe dubbie in «da_controllare» oltre a quelle con numeri non lette (anche loro 30)
 
 # (chiave, etichetta, schemi, segno) in ordine: le regole più specifiche prima. segno: +1 bonus, -1 malus.
 BONUS = [
@@ -207,11 +213,14 @@ def interpreta(testo: str) -> dict:
     righe = [_normalizza(r) for r in originali]
     modifiche: dict[str, dict] = {}
     usate: set[int] = set()
-    dubbie: set[int] = set()        # nominano una regola sì/no o il tipo di panchina, ma non ne dicono il valore con sicurezza
+    dubbie: dict[int, list[dict]] = {}   # riga -> regole che nomina senza dirne il valore con sicurezza
 
     def imposta(chiave, etichetta, valore, n):
         modifiche[chiave] = {"chiave": chiave, "etichetta": etichetta, "valore": valore, "riga": originali[n][:120]}
         usate.add(n)
+
+    def dubbia(chiave, etichetta, n):
+        dubbie.setdefault(n, []).append({"chiave": chiave, "etichetta": etichetta})
 
     in_modificatore = False
     soglie: list[list[float]] = []
@@ -222,9 +231,9 @@ def interpreta(testo: str) -> dict:
             in_modificatore = True
             attivo = _si_no(riga, lambda p: "modificator" in p and "difes" in p, STATO_MODIFICATORE, NO_MODIFICATORE)
             if attivo is None:
-                dubbie.add(n)
+                dubbia(*MODIFICATORE_ATTIVO, n)
             else:
-                imposta("modificatore_difesa.attivo", "Modificatore difesa attivo", attivo, n)
+                imposta(*MODIFICATORE_ATTIVO, attivo, n)
             continue
         if in_modificatore:
             m = re.search(rf"difensor{SUFFISSO}\s*(?:minim{SUFFISSO}|almeno)\D{{0,6}}\b([3-6])\b(?![.,]\d)"
@@ -293,9 +302,9 @@ def interpreta(testo: str) -> dict:
                 imposta("panchina.numero", "Giocatori in panchina", numero, n)
             tipo = _tipo_panchina(riga)
             if tipo is None:
-                dubbie.add(n)
+                dubbia(*TIPO_PANCHINA, n)
             elif tipo != NIENTE:
-                imposta("panchina.tipo", "Ordine dei cambi", tipo, n)
+                imposta(*TIPO_PANCHINA, tipo, n)
         if re.search(r"sostituzion|cambi", riga) \
                 and (ns := re.search(rf"(?:massim{SUFFISSO}|max|consentit{SUFFISSO}|fino a|al massimo)\D{{0,15}}(\d+)"
                                      r"|(?<!\d)(\d+)\s*(?:sostituzion|cambi)", riga)) \
@@ -304,9 +313,9 @@ def interpreta(testo: str) -> dict:
         if re.search(CAMBIO_MODULO, riga):
             cambio = _si_no(riga, lambda p: re.search(CAMBIO_MODULO, p) is not None, STATO_CAMBIO_MODULO, NO_CAMBIO_MODULO)
             if cambio is None:
-                dubbie.add(n)
+                dubbia(*CAMBIO_MODULO_SI_NO, n)
             else:
-                imposta("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", cambio, n)
+                imposta(*CAMBIO_MODULO_SI_NO, cambio, n)
         if re.search(r"credit", riga) and re.search(r"inizial|a disposizione|parte con|budget", riga) and not re.search(r"residu|giornata|speso", riga) \
                 and (nc := re.search(r"\d+", riga)) and (numero := _intero(nc.group())) is not None:
             imposta("crediti_iniziali", "Crediti iniziali", numero, n)
@@ -320,7 +329,8 @@ def interpreta(testo: str) -> dict:
         modifiche.setdefault("modificatore_difesa.attivo", {"chiave": "modificatore_difesa.attivo", "etichetta": "Modificatore difesa attivo",
                                                            "valore": True, "riga": originali[riga_soglie][:120]})
     non = [n for n in range(len(righe)) if n not in usate and re.search(r"\d", righe[n]) and len(righe[n]) < 140][:30]
-    # le righe dubbie che non sono già fra quelle con numeri non lette: anche senza numeri vanno impostate a mano (#684)
-    dubbie_sole = [n for n in sorted(dubbie) if n not in non][:30]
+    # da controllare a mano (#684): le righe con numeri non lette e quelle dubbie, anche senza numeri, nell'ordine del testo;
+    # ognuna con le regole che lascia da impostare (vuoto per una riga con numeri che non nomina regole dubbie)
+    altre = [n for n in sorted(dubbie) if n not in non][:MAX_DUBBIE]
     return {"modifiche": list(modifiche.values()), "non_riconosciute": [originali[n] for n in non],
-            "dubbie": [originali[n] for n in dubbie_sole]}
+            "da_controllare": [{"riga": originali[n], "regole": dubbie.get(n, [])} for n in sorted({*non, *altre})]}

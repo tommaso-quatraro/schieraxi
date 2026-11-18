@@ -100,7 +100,7 @@ def test_intervalli_e_negazioni_non_creano_valori_sbagliati():
 def test_modificatore_disattivato_e_testo_vuoto():
     v = _per_chiave(regole_testo.interpreta("Modificatore difesa: non attivo"))
     assert v["modificatore_difesa.attivo"] is False
-    assert regole_testo.interpreta("") == {"modifiche": [], "non_riconosciute": [], "dubbie": []}
+    assert regole_testo.interpreta("") == {"modifiche": [], "non_riconosciute": [], "da_controllare": []}
 
 
 def test_posti_della_panchina_dal_testo():
@@ -313,58 +313,80 @@ def test_altri_modi_di_dire_si_e_no(riga):
     assert _per_chiave(r).get(chiave) == atteso and (atteso is not None or chiave != "moduli" or r["non_riconosciute"] == [riga])
 
 
-# ---------------------------------------------------------------- righe dubbie da controllare a mano (#684)
-# Una riga che nomina il cambio modulo, il modificatore della difesa o il tipo di panchina ma non dice con sicurezza il valore
-# non propone niente: deve finire fra le righe da controllare, anche senza numeri (in `dubbie`, perché `non_riconosciute`
-# resta l'elenco delle righe con numeri non lette).
-DUBBIE_SENZA_NUMERI = [
-    "Non è vietato il cambio modulo",
-    "Il cambio modulo non è consentito se non quando manca un sostituto",
-    "Il cambio modulo non è consentito quando non ci sono riserve",
-    "Le riserve non sono ammesse oltre la terza e il cambio modulo è consentito",
-    "Cambio modulo: non",
-    "Modificatore difesa: non in questa lega",
-    "Il modificatore difesa non si applica se il portiere non gioca",
-    "Panchina non libera",
-    "La panchina non è fissa",
-    "Panchina libera: no",
-    "Panchina libera o per ruolo, a scelta della lega",
-]
+# ---------------------------------------------------------------- righe da controllare a mano (#684)
+# `da_controllare`: le righe che l'app non ha letto, nell'ordine del testo, ognuna con le regole da impostare a mano. Ci sono le
+# righe con numeri non lette (quelle di `non_riconosciute`, che resta per i client di prima) e le righe dubbie anche senza
+# numeri: nominano il cambio modulo, il modificatore della difesa o il tipo di panchina senza dirne il valore con sicurezza.
+CAMBIO = {"chiave": "panchina.cambio_modulo", "etichetta": "Cambio modulo nelle sostituzioni"}
+MODIFICATORE = {"chiave": "modificatore_difesa.attivo", "etichetta": "Modificatore difesa attivo"}
+TIPO = {"chiave": "panchina.tipo", "etichetta": "Ordine dei cambi"}
 
 
-@pytest.mark.parametrize("riga", DUBBIE_SENZA_NUMERI)
-def test_riga_dubbia_senza_numeri_e_da_controllare(riga):
+def _dubbie(r):
+    """Le righe da controllare che hanno almeno una regola da impostare a mano."""
+    return [x["riga"] for x in r["da_controllare"] if x["regole"]]
+
+
+DUBBIE_SENZA_NUMERI = {
+    "Non è vietato il cambio modulo": CAMBIO,
+    "Il cambio modulo non è consentito se non quando manca un sostituto": CAMBIO,
+    "Il cambio modulo non è consentito quando non ci sono riserve": CAMBIO,
+    "Le riserve non sono ammesse oltre la terza e il cambio modulo è consentito": CAMBIO,
+    "Cambio modulo: non": CAMBIO,
+    "Modificatore difesa: non in questa lega": MODIFICATORE,
+    "Il modificatore difesa non si applica se il portiere non gioca": MODIFICATORE,
+    "Panchina non libera": TIPO,
+    "La panchina non è fissa": TIPO,
+    "Panchina libera: no": TIPO,
+    "Panchina libera o per ruolo, a scelta della lega": TIPO,
+}
+
+
+@pytest.mark.parametrize("riga", sorted(DUBBIE_SENZA_NUMERI))
+def test_riga_dubbia_senza_numeri_e_da_controllare_con_la_sua_regola(riga):
     r = regole_testo.interpreta(riga)
-    assert r["dubbie"] == [riga] and r["non_riconosciute"] == [] and r["modifiche"] == []
+    assert r["da_controllare"] == [{"riga": riga, "regole": [DUBBIE_SENZA_NUMERI[riga]]}]
+    assert r["non_riconosciute"] == [] and r["modifiche"] == []
 
 
-@pytest.mark.parametrize("riga, letto", [
-    ("Panchina di 7 giocatori, non libera", {"panchina.numero": 7}),
-    ("In caso di cambio modulo non sono consentite più di 3 sostituzioni", {"panchina.max_sostituzioni": 3}),
+@pytest.mark.parametrize("riga, letto, regola", [
+    ("Panchina di 7 giocatori, non libera", {"panchina.numero": 7}, TIPO),
+    ("In caso di cambio modulo non sono consentite più di 3 sostituzioni", {"panchina.max_sostituzioni": 3}, CAMBIO),
 ])
-def test_riga_dubbia_letta_in_parte_resta_da_controllare(riga, letto):
+def test_riga_dubbia_letta_in_parte_resta_da_controllare(riga, letto, regola):
     """Il numero si propone; la regola dubbia della stessa riga va impostata a mano: la riga resta da controllare."""
     r = regole_testo.interpreta(riga)
-    assert _per_chiave(r) == letto and r["dubbie"] == [riga] and r["non_riconosciute"] == []
+    assert _per_chiave(r) == letto and r["da_controllare"] == [{"riga": riga, "regole": [regola]}]
+    assert r["non_riconosciute"] == []
+
+
+def test_una_riga_con_due_regole_dubbie_le_dice_tutte_e_due():
+    riga = "Cambio modulo: non; panchina non libera"
+    assert regole_testo.interpreta(riga)["da_controllare"] == [{"riga": riga, "regole": [TIPO, CAMBIO]}]
 
 
 @pytest.mark.parametrize("riga", [r for r, v in CONDIZIONI.items() if v is None] + PANCHINA_NEGATA
                          + [r for r, (_, v) in ALTRE_FORME.items() if v is None])
 def test_ogni_riga_senza_proposta_compare_una_volta_fra_quelle_da_controllare(riga):
     r = regole_testo.interpreta(riga)
-    assert (r["non_riconosciute"] + r["dubbie"]).count(riga) == 1
+    assert [x["riga"] for x in r["da_controllare"]].count(riga) == 1
 
 
-def test_riga_dubbia_con_numeri_non_letti_compare_una_volta_sola():
+def test_riga_con_numeri_non_letti_e_dubbia_compare_una_volta_con_la_regola():
     riga = "Il modificatore difesa non si applica se in campo ci sono meno di 4 difensori"
     r = regole_testo.interpreta(riga)
-    assert r["non_riconosciute"] == [riga] and r["dubbie"] == []
+    assert r["non_riconosciute"] == [riga] and r["da_controllare"] == [{"riga": riga, "regole": [MODIFICATORE]}]
+
+
+def test_riga_con_numeri_non_letti_senza_regole_dubbie():
+    r = regole_testo.interpreta("Media 6-6,5: +1")
+    assert r["da_controllare"] == [{"riga": "Media 6-6,5: +1", "regole": []}] and r["non_riconosciute"] == ["Media 6-6,5: +1"]
 
 
 @pytest.mark.parametrize("riga", sorted(COME_PRIMA) + CAMBIO_MODULO_NEGATO + MODIFICATORE_NEGATO + [
     "Panchina: le riserve entrano liberamente", "Panchina: 7 giocatori, no doppioni", "Le riserve non sono ammesse oltre la terza"])
 def test_righe_lette_con_sicurezza_o_senza_quelle_regole_non_sono_dubbie(riga):
-    assert regole_testo.interpreta(riga)["dubbie"] == []
+    assert _dubbie(regole_testo.interpreta(riga)) == []
 
 
 @pytest.mark.parametrize("riga", ["Riserve libere: no", "Riserve libere: off", "Riserve fisse: no", "Panchina: riserve fisse, no",
@@ -372,7 +394,7 @@ def test_righe_lette_con_sicurezza_o_senza_quelle_regole_non_sono_dubbie(riga):
 def test_tipo_di_panchina_al_plurale_e_dubbio(riga):
     """«libere», «fisse» nominano il tipo di panchina anche al plurale, che non si legge: la riga è dubbia, non ignorata."""
     r = regole_testo.interpreta(riga)
-    assert "panchina.tipo" not in _per_chiave(r) and r["dubbie"] == [riga]
+    assert "panchina.tipo" not in _per_chiave(r) and r["da_controllare"] == [{"riga": riga, "regole": [TIPO]}]
 
 
 # «nessun» prima della regola dice no anche per il cambio modulo, come per il modificatore; dentro una condizione dice
@@ -401,10 +423,18 @@ def test_nessun_dice_no_prima_della_regola_non_nella_condizione(riga):
     assert _per_chiave(regole_testo.interpreta(riga)).get(chiave) is atteso
 
 
-def test_righe_dubbie_nell_ordine_del_testo_e_al_massimo_30():
-    r = regole_testo.interpreta(ESEMPIO + "\nPanchina non libera\nNon è vietato il cambio modulo")
-    assert r["dubbie"] == ["Panchina non libera", "Non è vietato il cambio modulo"]
-    assert regole_testo.interpreta("Cambio modulo: non\n" * 40)["dubbie"] == ["Cambio modulo: non"] * 30
+def test_righe_da_controllare_nell_ordine_del_testo():
+    """Righe con numeri non lette e righe dubbie mescolate come nel testo incollato, non un elenco dopo l'altro."""
+    r = regole_testo.interpreta(ESEMPIO + "\nPanchina non libera\nMedia 6-6,5: +1\nNon è vietato il cambio modulo")
+    assert [x["riga"] for x in r["da_controllare"]] == [
+        "Il campionato inizia il 24 agosto 2026", "Panchina non libera", "Media 6-6,5: +1", "Non è vietato il cambio modulo"]
+    assert r["non_riconosciute"] == ["Il campionato inizia il 24 agosto 2026", "Media 6-6,5: +1"]
+
+
+def test_righe_dubbie_al_massimo_30_oltre_a_quelle_con_numeri():
+    testo = "Telefono 081 1234\n" * 30 + "Cambio modulo: non\n" * 40
+    r = regole_testo.interpreta(testo)
+    assert len(r["non_riconosciute"]) == 30 and len(r["da_controllare"]) == 60 and len(_dubbie(r)) == 30
 
 
 # ---------------------------------------------------------------- testi costruiti male: la lettura resta veloce
