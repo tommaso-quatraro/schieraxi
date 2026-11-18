@@ -104,16 +104,40 @@ def test_titolare_diventato_fuori_o_improbabile_cambia_anche_sotto_un_punto(rito
     assert f is migliore
 
 
+def _portieri(*p) -> dict:
+    """I ritocchi che danno ai portieri 1, 2 e 3 queste probabilità di giocare (sotto il 20%: non tra i convocati previsti)."""
+    return {i + 1: ({"p_voto": x} if x >= 0.2 else {"stato": "non_citato", "p_voto": x}) for i, x in enumerate(p)}
+
+
 def test_titolare_gia_improbabile_quando_era_mostrata_non_basta_per_cambiare():
-    """D2: cambia sempre un titolare DIVENTATO fuori o improbabile. Se lo era già quando la consigliata è stata mostrata (il sistema
-    lo teneva titolare con una riserva sicura dietro), un ritocco che lo toglie dalla migliore vale come gli altri: sotto 1 punto resta."""
-    nuove = _prev({7: {"stato": "non_citato", "p_voto": 0.1}})
-    prima = _migliore(_prev())
+    """D2: cambia sempre un titolare DIVENTATO fuori o improbabile. Se lo era già quando la consigliata è stata mostrata (tre
+    portieri al 10%, 5% e 3%: titolare il primo), un ritocco che lo toglie dalla migliore per un altro improbabile (il secondo sale
+    al 15%) vale come gli altri: sotto 1 punto resta."""
+    prima = _migliore(_prev(_portieri(0.10, 0.05, 0.03)))
+    assert 1 in _ids(prima)
+    nuove = _prev(_portieri(0.10, 0.15, 0.03))
     migliore = _migliore(nuove)
-    assert 7 not in _ids(migliore)
-    ricordata = _ricordata(prima) | {"non_giocano": [7]}
+    assert 2 in _ids(migliore) and 1 not in _ids(migliore)
+    assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
+    ricordata = _ricordata(prima) | {"non_giocano": [1]}
     f = consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, SIM)
     assert _ids(f) == _ids(prima)
+
+
+@pytest.mark.parametrize("p_secondo", [0.92, 0.2])
+def test_titolare_gia_improbabile_cambia_se_la_migliore_mette_nel_ruolo_un_compagno_che_gioca(p_secondo):
+    """#632, primo caso: tre portieri al 10%, 5% e 3% alla prima apertura (titolare il 10%, già improbabile); poi il secondo
+    passa al 92% (o proprio al 20%). La migliore lo schiera e vale meno di 1 punto in più: prima restava titolare il 10%, perché
+    era improbabile già quando la consigliata è stata mostrata. Quell'esenzione non vale se la migliore mette nel suo ruolo un
+    compagno che gioca almeno il 20%."""
+    prima = _migliore(_prev(_portieri(0.10, 0.05, 0.03)))
+    assert 1 in _ids(prima)
+    nuove = _prev(_portieri(0.10, p_secondo, 0.03))
+    migliore = _migliore(nuove)
+    assert 2 in _ids(migliore) and 1 not in _ids(migliore)
+    assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
+    ricordata = _ricordata(prima) | {"non_giocano": [1]}
+    assert consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, SIM) is migliore
 
 
 def test_titolare_uscito_dalla_rosa_cambia():
