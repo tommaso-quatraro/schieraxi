@@ -40,8 +40,11 @@ STATO_CAMBIO_MODULO = (r"consent|ammess|ammett|permess|permett|possibil|previst|
 STATO_MODIFICATORE = (r"attiv|previst|utilizz|applic|abilitat|consent|ammess|valid|vigore|present|esist|c'e"
                       r"|us(?:a|o|at)")
 # Le parole che dicono «no» da sole. «Non è vietato» (un no negato) è dubbio: si lascia da controllare.
-NO_CAMBIO_MODULO = r"\bno\b|\boff\b|disattiv|disabilit|vietat"
-NO_MODIFICATORE = r"\bno\b|\boff\b|disattiv|disabilit|vietat|assent|nessun"
+# «Nessun» dice no («Nessun cambio modulo», «in nessun caso»), ma non in «nessun limite», «senza nessuna eccezione» e simili;
+# dentro una condizione vale come un «non».
+NESSUN = r"(?<!senza )\bnessun[oa]?\b(?!\s+(?:limit|restrizion|vincol|eccezion))"
+NO_CAMBIO_MODULO = rf"\bno\b|\boff\b|disattiv|disabilit|vietat|{NESSUN}"
+NO_MODIFICATORE = rf"\bno\b|\boff\b|disattiv|disabilit|vietat|assent|{NESSUN}"
 NO_NEGATO = r"vietat|disattiv|disabilit"
 # Da «se», «quando»... alla fine del pezzo c'è una condizione: un suo «non» («cambio modulo quando non è possibile sostituire
 # nel ruolo») dice quando scatta la regola, non la spegne (regole_testo._senza_condizione).
@@ -51,6 +54,8 @@ SE_NON_TRANNE = rf"\bse{SEP}non{SEP}(?:quando|qualora|in|nel|nei|per|dopo|con)\b
 CAMBIO_MODULO = r"cambio (?:di )?modulo|cambi di modulo"
 PANCHINA_LIBERA = r"\blibera\b|senza vincol|nessun vincolo|qualsiasi ruolo"     # «liberamente» non è «libera»
 PANCHINA_PER_RUOLO = rf"per ruolo|fissa|vincolat{SUFFISSO} (?:al|dal) ruolo|ruoli? fiss"
+# Il tipo detto al plurale («Riserve libere», «riserve fisse») non si legge, ma la riga lo nomina: senza un valore sicuro è dubbia
+PANCHINA_PLURALE = r"\blibere\b|\bfisse\b"
 NIENTE = "niente"                        # un pezzo di riga che nomina una regola sì/no senza dire se c'è
 
 # (chiave, etichetta, schemi, segno) in ordine: le regole più specifiche prima. segno: +1 bonus, -1 malus.
@@ -130,16 +135,18 @@ def _senza_condizione(pezzo: str, soggetto: Callable[[str], bool], no: str) -> s
     qualsiasi distanza, dice quando scatta la regola («il cambio modulo avviene quando il titolare non può essere sostituito»:
     conta «il cambio modulo avviene»). None, dubbio: un «non» prima della condizione (un no che vale solo in quel caso: «non
     si applica se il portiere non gioca»), la regola dentro la condizione («in caso di cambio modulo non sono consentite più di
-    3 sostituzioni») o un «no» nella condizione («si applica se...? No»). Senza «non» il pezzo si legge tutto, come sempre."""
+    3 sostituzioni») o un «no» nella condizione («si applica se...? No»). Senza «non» il pezzo si legge tutto, come sempre.
+    «Nessun» vale come «non»: prima della condizione è un no che vale solo in quel caso, dentro dice quando scatta la regola
+    («il cambio modulo avviene quando nessun giocatore della panchina può sostituire il titolare»)."""
     m = re.search(CONDIZIONE, pezzo)
     if not m:
         return pezzo
     prima, condizione = pezzo[:m.start()], pezzo[m.start():]
-    if re.search(r"\bnon\b", prima):
+    if re.search(rf"\bnon\b|{NESSUN}", prima):
         return None
-    if not re.search(r"\bnon\b", condizione):
+    if not re.search(rf"\bnon\b|{NESSUN}", condizione):
         return pezzo
-    return prima if soggetto(prima) and not re.search(no, condizione) else None
+    return prima if soggetto(prima) and not re.search(no, re.sub(NESSUN, " ", condizione)) else None
 
 
 def _detto(testo: str | None, stato: str, no: str) -> bool | None | str:
@@ -164,7 +171,7 @@ def _tipo_panchina(riga: str) -> str | None:
     libera, per_ruolo = re.search(PANCHINA_LIBERA, testo), re.search(PANCHINA_PER_RUOLO, testo)
     libera_negata = _negate(testo, r"liber|qualsiasi ruolo")[1]
     ruolo_negato = _negate(testo, r"per ruolo|fiss|vincolat")[1]
-    if not (libera or per_ruolo or libera_negata or ruolo_negato):
+    if not (libera or per_ruolo or libera_negata or ruolo_negato or re.search(PANCHINA_PLURALE, testo)):
         return NIENTE
     if re.search(r"\bno\b|\boff\b", riga):
         return None

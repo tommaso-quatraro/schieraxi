@@ -367,6 +367,40 @@ def test_righe_lette_con_sicurezza_o_senza_quelle_regole_non_sono_dubbie(riga):
     assert regole_testo.interpreta(riga)["dubbie"] == []
 
 
+@pytest.mark.parametrize("riga", ["Riserve libere: no", "Riserve libere: off", "Riserve fisse: no", "Panchina: riserve fisse, no",
+                                  "Riserve libere"])
+def test_tipo_di_panchina_al_plurale_e_dubbio(riga):
+    """«libere», «fisse» nominano il tipo di panchina anche al plurale, che non si legge: la riga è dubbia, non ignorata."""
+    r = regole_testo.interpreta(riga)
+    assert "panchina.tipo" not in _per_chiave(r) and r["dubbie"] == [riga]
+
+
+# «nessun» prima della regola dice no anche per il cambio modulo, come per il modificatore; dentro una condizione dice
+# quando scatta la regola e non la spegne; «nessun limite» non è un no.
+NESSUNO = {
+    "Nessun cambio modulo": ("panchina.cambio_modulo", False),
+    "Nessun cambio di modulo consentito": ("panchina.cambio_modulo", False),
+    "Cambio modulo: nessuno": ("panchina.cambio_modulo", False),
+    "Nessuna sostituzione con cambio modulo": ("panchina.cambio_modulo", False),
+    "Cambio modulo consentito se non c'è nessun sostituto nel ruolo": ("panchina.cambio_modulo", True),
+    "Il cambio modulo avviene quando nessun giocatore della panchina può sostituire il titolare": ("panchina.cambio_modulo", True),
+    "Cambio modulo: nessun limite": ("panchina.cambio_modulo", True),
+    "Cambio modulo consentito senza nessuna eccezione": ("panchina.cambio_modulo", True),
+    "Cambio modulo consentito in nessun caso": ("panchina.cambio_modulo", False),
+    "Nessun modificatore difesa": ("modificatore_difesa.attivo", False),
+    "Modificatore della difesa attivo quando nessun difensore resta senza voto": ("modificatore_difesa.attivo", True),
+    # un no che vale solo in un caso, come «non è consentito quando non ci sono riserve»: nessuna proposta
+    "Nessun cambio modulo quando non ci sono riserve": ("panchina.cambio_modulo", None),
+    "Nessun cambio modulo se il titolare gioca": ("panchina.cambio_modulo", None),
+}
+
+
+@pytest.mark.parametrize("riga", sorted(NESSUNO))
+def test_nessun_dice_no_prima_della_regola_non_nella_condizione(riga):
+    chiave, atteso = NESSUNO[riga]
+    assert _per_chiave(regole_testo.interpreta(riga)).get(chiave) is atteso
+
+
 def test_righe_dubbie_nell_ordine_del_testo_e_al_massimo_30():
     r = regole_testo.interpreta(ESEMPIO + "\nPanchina non libera\nNon è vietato il cambio modulo")
     assert r["dubbie"] == ["Panchina non libera", "Non è vietato il cambio modulo"]
@@ -401,6 +435,8 @@ CATTIVI = {
     "cambio modulo in tanti pezzi": "cambio modulo, " * (N // 15) + "non e consentito",
     "modificatore in tanti pezzi": "modificatore difesa; " * (N // 21) + "attivo",
     "condizioni ripetute": "cambio modulo consentito " + "quando se non " * (N // 14),
+    "parola nessun ripetuta": "cambio modulo consentito se " + "nessun " * (N // 7),
+    "nessun e limite ripetuti": "nessun cambio modulo " + "nessun limite " * (N // 14),
 }
 
 
