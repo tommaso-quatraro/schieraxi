@@ -58,10 +58,6 @@ PANCHINA_PER_RUOLO = rf"per ruolo|fissa|vincolat{SUFFISSO} (?:al|dal) ruolo|ruol
 # Il tipo detto al plurale («Riserve libere», «riserve fisse») non si legge, ma la riga lo nomina: senza un valore sicuro è dubbia
 PANCHINA_PLURALE = r"\blibere\b|\bfisse\b"
 NIENTE = "niente"                        # un pezzo di riga che nomina una regola sì/no senza dire se c'è
-# Le regole che una riga dubbia lascia da impostare a mano: (chiave, etichetta), come in «modifiche»
-MODIFICATORE_ATTIVO = ("modificatore_difesa.attivo", "Modificatore difesa attivo")
-TIPO_PANCHINA = ("panchina.tipo", "Ordine dei cambi")
-CAMBIO_MODULO_SI_NO = ("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni")
 MAX_DUBBIE = 30                          # righe dubbie in «da_controllare» oltre a quelle con numeri non lette (anche loro 30)
 
 # (chiave, etichetta, schemi, segno) in ordine: le regole più specifiche prima. segno: +1 bonus, -1 malus.
@@ -219,7 +215,7 @@ def interpreta(testo: str) -> dict:
         modifiche[chiave] = {"chiave": chiave, "etichetta": etichetta, "valore": valore, "riga": originali[n][:120]}
         usate.add(n)
 
-    def dubbia(chiave, etichetta, n):
+    def dubbia(chiave, etichetta, n):           # chiave ed etichetta come in imposta (tests/test_frasi.py le legge da qui)
         dubbie.setdefault(n, []).append({"chiave": chiave, "etichetta": etichetta})
 
     in_modificatore = False
@@ -231,9 +227,9 @@ def interpreta(testo: str) -> dict:
             in_modificatore = True
             attivo = _si_no(riga, lambda p: "modificator" in p and "difes" in p, STATO_MODIFICATORE, NO_MODIFICATORE)
             if attivo is None:
-                dubbia(*MODIFICATORE_ATTIVO, n)
+                dubbia("modificatore_difesa.attivo", "Modificatore difesa attivo", n)
             else:
-                imposta(*MODIFICATORE_ATTIVO, attivo, n)
+                imposta("modificatore_difesa.attivo", "Modificatore difesa attivo", attivo, n)
             continue
         if in_modificatore:
             m = re.search(rf"difensor{SUFFISSO}\s*(?:minim{SUFFISSO}|almeno)\D{{0,6}}\b([3-6])\b(?![.,]\d)"
@@ -302,9 +298,9 @@ def interpreta(testo: str) -> dict:
                 imposta("panchina.numero", "Giocatori in panchina", numero, n)
             tipo = _tipo_panchina(riga)
             if tipo is None:
-                dubbia(*TIPO_PANCHINA, n)
+                dubbia("panchina.tipo", "Ordine dei cambi", n)
             elif tipo != NIENTE:
-                imposta(*TIPO_PANCHINA, tipo, n)
+                imposta("panchina.tipo", "Ordine dei cambi", tipo, n)
         if re.search(r"sostituzion|cambi", riga) \
                 and (ns := re.search(rf"(?:massim{SUFFISSO}|max|consentit{SUFFISSO}|fino a|al massimo)\D{{0,15}}(\d+)"
                                      r"|(?<!\d)(\d+)\s*(?:sostituzion|cambi)", riga)) \
@@ -313,9 +309,9 @@ def interpreta(testo: str) -> dict:
         if re.search(CAMBIO_MODULO, riga):
             cambio = _si_no(riga, lambda p: re.search(CAMBIO_MODULO, p) is not None, STATO_CAMBIO_MODULO, NO_CAMBIO_MODULO)
             if cambio is None:
-                dubbia(*CAMBIO_MODULO_SI_NO, n)
+                dubbia("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", n)
             else:
-                imposta(*CAMBIO_MODULO_SI_NO, cambio, n)
+                imposta("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", cambio, n)
         if re.search(r"credit", riga) and re.search(r"inizial|a disposizione|parte con|budget", riga) and not re.search(r"residu|giornata|speso", riga) \
                 and (nc := re.search(r"\d+", riga)) and (numero := _intero(nc.group())) is not None:
             imposta("crediti_iniziali", "Crediti iniziali", numero, n)
