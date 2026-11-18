@@ -181,6 +181,36 @@ def test_titolare_gia_improbabile_resta_se_il_compagno_che_gioca_e_fermo_per_un_
     assert 22 in _ids(f) and 23 not in _ids(f)
 
 
+@pytest.mark.parametrize("titolare, oscilla", [(0.15, (0.20, 0.02)), (0.195, (0.21, 0.19)), (0.15, (0.25, 0.14))])
+def test_un_compagno_che_sale_e_scende_attorno_al_20_per_cento_non_fa_oscillare_la_consigliata(titolare, oscilla):
+    """Rilievo della revisione di #736: portiere 1 titolare già improbabile, il portiere 2 che a ogni giro sale sopra il 20% e
+    riscende. Al primo giro la consigliata passa al 2 (un compagno che gioca); quando il 2 riscende diventava «titolare diventato
+    improbabile» e tornava l'1, di nuovo già improbabile, e così via: un cambio a ogni giro. Un titolare improbabile fa cambiare
+    la consigliata solo se nel suo ruolo c'è un compagno che gioca almeno il 20%; altrimenti vale la soglia di 1 punto."""
+    ricordata = consigli.da_ricordare(_migliore(_prev(_portieri(titolare, 0.02, 0.01))))
+    assert 1 in ricordata["titolari"] and ricordata["non_giocano"] == [1]
+    cambi = 0
+    for giro in range(6):
+        nuove = _prev(_portieri(titolare, oscilla[giro % 2], 0.01))
+        f = consigli.stabile(_migliore(nuove), ricordata, nuove, _squadra(), SOLO_442, SIM)
+        mostrata = consigli.da_ricordare(f, ricordata)
+        cambi += set(mostrata["titolari"]) != set(ricordata["titolari"])
+        ricordata = mostrata
+    assert cambi <= 1                                   # al più il primo passaggio al portiere che gioca
+
+
+def test_titolare_diventato_fuori_cambia_anche_senza_un_compagno_che_gioca():
+    """Il portiere 1 si infortuna e gli altri due giocano il 10% e il 5%: nessun compagno arriva al 20%, ma un titolare fuori non
+    resta nella consigliata (al suo posto il 2, più probabile che giochi). Con un improbabile, invece, vale la soglia di punti."""
+    prima = _migliore(_prev(_portieri(0.95, 0.10, 0.05)))
+    assert 1 in _ids(prima)
+    nuove = _prev(_portieri(0.95, 0.10, 0.05) | {1: {"stato": "infortunato", "p_voto": 0.0}})
+    migliore = _migliore(nuove)
+    assert 2 in _ids(migliore)
+    assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
+    assert consigli.stabile(migliore, consigli.da_ricordare(prima), nuove, _squadra(), SOLO_442, SIM) is migliore
+
+
 def test_titolare_uscito_dalla_rosa_cambia():
     prima = _migliore(_prev())
     migliore = _migliore(_prev(), senza=(7,))

@@ -2,14 +2,15 @@
   "titolo": "Formazione: chi quasi certamente non gioca è titolare ancora meno spesso",
   "voci": [
     "Web, iPhone e iPad: se in un ruolo giocano tutti meno del 20%, nella consigliata parte chi è più probabile che giochi; a parità, chi vale di più quando gioca. Prima partiva chi dava più punti attesi, anche se giocava meno.",
-    "Web, iPhone e iPad: fra i moduli la consigliata è il migliore fra quelli con meno titolari che quasi certamente non giocano, anche se un altro modulo ha qualche decimo di punti attesi in più.",
-    "La consigliata che hai già visto cambia anche quando un suo titolare quasi certamente non giocava già allora, se ora nel suo ruolo c'è un compagno che gioca almeno il 20%, anche quando la nuova formazione ha un altro modulo. Prima restava, se il cambio valeva meno di un punto. Una formazione che hai salvato tu non cambia mai da sola.",
+    "Web, iPhone e iPad: fra i moduli la consigliata è il migliore fra quelli con meno titolari che quasi certamente non giocano, anche se un altro modulo ha più punti attesi (di solito qualche decimo, a volte quasi un punto).",
+    "La consigliata che hai già visto cambia quando un suo titolare quasi certamente non gioca e nel suo ruolo c'è un compagno che gioca almeno il 20%, anche se quel titolare non giocava già allora e anche quando la nuova formazione ha un altro modulo. Prima, se non giocava già allora, restava quando il cambio valeva meno di un punto.",
+    "Un titolare che scende sotto il 20% senza un compagno del suo ruolo che gioca almeno il 20% non fa più cambiare da solo la consigliata che hai già visto: serve almeno un punto in più. Così non va avanti e indietro quando un giocatore sale e scende attorno al 20%. Un titolare che si infortuna o viene squalificato la fa cambiare come prima. Una formazione che hai salvato tu non cambia mai da sola.",
     "Sotto il campo e nel confronto fra due giocatori dello stesso ruolo: quando tutti e due giocano meno del 20%, il motivo detto è che l'altro quasi certamente non gioca, e non più che il modulo «non è il migliore»."
   ],
   "tecnico": [
     "formazione._senza_improbabili: se nel ruolo fuori dagli 11 nessuno gioca almeno COMPAGNO_ALMENO, l'improbabile lascia il posto al compagno fuori con (p, fantavoto atteso) più alti, se sono più alti dei suoi (#632, terzo caso).",
     "formazione.migliore: i moduli si ordinano per (quanti titolari hanno p < IMPROBABILE_SOTTO senza stare in `fissi`, -punteggio scelto); cambia anche l'ordine di `alternative` e di `moduli` nella risposta (#632, secondo caso).",
-    "consigli.stabile: un titolare in `non_giocano` non è più esente se nel suo ruolo c'è un compagno con p >= COMPAGNO_ALMENO fuori dagli 11 di prima e non fermo per un anticipo (`Fermi.fuori`, `Fermi.panchina`), anche quando la migliore cambia modulo e in quel ruolo non mette nessuno (#632, primo caso).",
+    "consigli.stabile (`fa_cambiare`): un titolare che la migliore lascia fuori forza il cambio sotto la soglia se è fuori o improbabile e nel suo ruolo c'è un compagno con p >= COMPAGNO_ALMENO fuori dagli 11 di prima e non fermo per un anticipo (`Fermi.fuori`, `Fermi.panchina`), anche se era in `non_giocano` e anche quando la migliore cambia modulo (#632, primo caso); oppure se è diventato fuori (non in `non_giocano`). Un improbabile senza un compagno così non forza più il cambio, nemmeno se lo è diventato: prima un compagno che oscillava attorno al 20% faceva cambiare la consigliata a ogni giro.",
     "formazione.titolare_perche_gioca: la condizione delle frasi `confronto.titolare_che_gioca` e `scelta.titolare_che_gioca` vale anche quando il titolare è improbabile ma più probabile dell'altro. Nessun campo nuovo e nessuna frase nuova."
   ]
 }
