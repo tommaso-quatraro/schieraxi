@@ -53,10 +53,9 @@ CONDIZIONE = r"\b(?:se|quando|qualora|purche|in caso|nel caso|a meno che|salvo c
 # «se non» come «tranne» («non è consentito se non quando manca un sostituto»): la regola vale solo in parte, non si propone
 SE_NON_TRANNE = rf"\bse{SEP}non{SEP}(?:quando|qualora|in|nel|nei|per|dopo|con)\b"
 CAMBIO_MODULO = r"cambio (?:di )?modulo|cambi di modulo"
-PANCHINA_LIBERA = r"\blibera\b|senza vincol|nessun vincolo|qualsiasi ruolo"     # «liberamente» non è «libera»
-PANCHINA_PER_RUOLO = rf"per ruolo|fissa|vincolat{SUFFISSO} (?:al|dal) ruolo|ruoli? fiss"
-# Il tipo detto al plurale («Riserve libere», «riserve fisse») non si legge, ma la riga lo nomina: senza un valore sicuro è dubbia
-PANCHINA_PLURALE = r"\blibere\b|\bfisse\b"
+# Anche al plurale («Riserve libere», «riserve fisse»); «liberamente» non è «libera»
+PANCHINA_LIBERA = r"\bliber[ae]\b|senza vincol|nessun vincolo|qualsiasi ruolo"
+PANCHINA_PER_RUOLO = rf"per ruolo|fiss[ae]|vincolat{SUFFISSO} (?:al|dal) ruolo|ruoli? fiss"
 NIENTE = "niente"                        # un pezzo di riga che nomina una regola sì/no senza dire se c'è
 MAX_DUBBIE = 30                          # righe dubbie in «da_controllare» oltre a quelle con numeri non lette (anche loro 30)
 
@@ -173,7 +172,7 @@ def _tipo_panchina(riga: str) -> str | None:
     libera, per_ruolo = re.search(PANCHINA_LIBERA, testo), re.search(PANCHINA_PER_RUOLO, testo)
     libera_negata = _negate(testo, r"liber|qualsiasi ruolo")[1]
     ruolo_negato = _negate(testo, r"per ruolo|fiss|vincolat")[1]
-    if not (libera or per_ruolo or libera_negata or ruolo_negato or re.search(PANCHINA_PLURALE, testo)):
+    if not (libera or per_ruolo or libera_negata or ruolo_negato):
         return NIENTE
     if re.search(r"\bno\b|\boff\b", riga):
         return None

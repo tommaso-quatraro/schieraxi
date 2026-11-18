@@ -389,12 +389,32 @@ def test_righe_lette_con_sicurezza_o_senza_quelle_regole_non_sono_dubbie(riga):
     assert _dubbie(regole_testo.interpreta(riga)) == []
 
 
-@pytest.mark.parametrize("riga", ["Riserve libere: no", "Riserve libere: off", "Riserve fisse: no", "Panchina: riserve fisse, no",
-                                  "Riserve libere"])
-def test_tipo_di_panchina_al_plurale_e_dubbio(riga):
-    """«libere», «fisse» nominano il tipo di panchina anche al plurale, che non si legge: la riga è dubbia, non ignorata."""
+@pytest.mark.parametrize("riga", ["Riserve libere: no", "Riserve libere: off", "Riserve fisse: no", "Panchina: riserve fisse, no"])
+def test_tipo_di_panchina_al_plurale_con_un_no_e_dubbio(riga):
+    """Come «Panchina libera: no»: un «no» sul tipo di panchina non dice quale dei due vale, la riga è dubbia, non ignorata."""
     r = regole_testo.interpreta(riga)
     assert "panchina.tipo" not in _per_chiave(r) and r["da_controllare"] == [{"riga": riga, "regole": [TIPO]}]
+
+
+# Il tipo di panchina al plurale si legge come al singolare: stessa proposta, o stessa riga dubbia.
+SINGOLARE_PLURALE = [
+    ("Panchina libera", "Riserve libere", "libera"),
+    ("La riserva è libera", "Le riserve sono libere", "libera"),
+    ("Panchina fissa", "Riserve fisse", "per_ruolo"),
+    ("La panchina è fissa", "Le panchine sono fisse", "per_ruolo"),
+    ("Riserva non libera: entra per ruolo", "Riserve non libere: entrano per ruolo", "per_ruolo"),
+    ("Panchina non fissa: riserva libera", "Riserve non fisse: libere", "libera"),
+    ("Panchina libera: no", "Riserve libere: no", None),
+    ("Panchina non libera", "Riserve non libere", None),
+    ("La panchina non è fissa", "Le riserve non sono fisse", None),
+]
+
+
+@pytest.mark.parametrize("singolare, plurale, atteso", SINGOLARE_PLURALE)
+def test_tipo_di_panchina_al_plurale_come_al_singolare(singolare, plurale, atteso):
+    s, p = regole_testo.interpreta(singolare), regole_testo.interpreta(plurale)
+    assert _per_chiave(s).get("panchina.tipo") == atteso and _per_chiave(p).get("panchina.tipo") == atteso
+    assert bool(_dubbie(s)) is bool(_dubbie(p)) is (atteso is None)
 
 
 # «nessun» prima della regola dice no anche per il cambio modulo, come per il modificatore; dentro una condizione dice

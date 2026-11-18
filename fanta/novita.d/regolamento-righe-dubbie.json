@@ -3,10 +3,11 @@
   "voci": [
     "Web app, Impostazioni, Regole e scadenza, «Riconosci le regole»: le righe che SchieraXI non sa leggere con sicurezza ora stanno tutte sotto «Righe da controllare a mano», nell'ordine del regolamento incollato, anche quelle senza numeri, per esempio «Non è vietato il cambio modulo» o «Riserve libere: no». Sotto ognuna «da impostare» dice quale regola mettere a mano. Prima comparivano solo le righe con numeri, e una regola da impostare a mano poteva passare inosservata.",
     "«Nessun cambio modulo» ora vuol dire che il cambio modulo non c'è: prima veniva letto come consentito.",
+    "«Riserve libere» e «Riserve fisse» si leggono come «Panchina libera» e «Panchina fissa»: prima non proponevano niente.",
     "L'app per iPhone mostra ancora solo le righe con numeri, con il titolo di prima."
   ],
   "tecnico": [
-    "POST /api/regole/riconosci: campo nuovo e facoltativo da_controllare, [{riga, regole: [{chiave, etichetta}]}] nell'ordine del testo: le righe di non_riconosciute più al massimo 30 righe dubbie (regole_testo._si_no None per cambio modulo e modificatore della difesa, regole_testo._tipo_panchina None: ora distingue None, dubbia, da NIENTE, tipo non detto; il tipo al plurale «libere», «fisse» conta come detto). Nessun campo tolto o rinominato; /api/onboarding/regole non cambia.",
+    "POST /api/regole/riconosci: campo nuovo e facoltativo da_controllare, [{riga, regole: [{chiave, etichetta}]}] nell'ordine del testo: le righe di non_riconosciute più al massimo 30 righe dubbie (regole_testo._si_no None per cambio modulo e modificatore della difesa, regole_testo._tipo_panchina None: ora distingue None, dubbia, da NIENTE, tipo non detto). Il tipo di panchina al plurale («libere», «fisse») si legge come al singolare (PANCHINA_LIBERA, PANCHINA_PER_RUOLO). Nessun campo tolto o rinominato; /api/onboarding/regole non cambia.",
     "Lettore del regolamento: «nessun», «nessuno», «nessuna» dicono no anche per il cambio modulo (non in «nessun limite», «senza nessuna eccezione»); dentro una condizione valgono come «non» (regole_testo._senza_condizione), così «modificatore attivo quando nessun difensore…» resta sì.",
     "Web: chiavi nuove regole.da_controllare e regole.da_impostare; regole.non_riconosciute resta per l'iPhone. Contratto in docs/API.md (#684)."
   ]
