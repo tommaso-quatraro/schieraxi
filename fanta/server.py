@@ -1994,7 +1994,8 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
              mia_squadra: str | None = None, copia_datata: bool = False) -> dict:
     """Salva le rose già riconosciute (`_riconosci`). Da chiamare con il blocco delle rose preso. `copia_datata`: prima di
     salvare, una copia datata delle rose di adesso (`_copia_datata_delle_rose`), fatta solo dopo tutti i controlli che possono
-    rifiutare l'importazione: un rifiuto non aggiunge copie e non toglie la più vecchia (#718)."""
+    rifiutare l'importazione: un rifiuto non aggiunge copie e non toglie la più vecchia (#718). Niente copia se il file di prima
+    non si legge: va già da parte in rose.json.rovinato, e una sua copia farebbe uscire la più vecchia delle copie buone (#723)."""
     r = _regole(ctx)
     prima, rovinate, avviso = _rose_di_prima(ctx)
     if sostituisci_tutto:
@@ -2004,7 +2005,7 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     anteprima_rose.scegli_mia(nuove, mia_squadra)              # facoltativa: la squadra dell'utente scelta nell'anteprima
     limiti.controlla_rose(ctx, nuove)                          # con gli account: al massimo 20 squadre da 40 giocatori
     nuove.stagione = consigli.stagione_corrente()
-    if copia_datata:                                           # dopo i controlli, prima di spostare il file rovinato
+    if copia_datata and not rovinate:                          # dopo i controlli; un file rovinato lo tiene già rose.json.rovinato (#723)
         _copia_datata_delle_rose(ctx)
     if rovinate:                                               # solo ora: un'importazione rifiutata non sposta niente
         _salva_mettendo_da_parte(nuove, ctx.rose)
