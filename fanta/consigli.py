@@ -1128,8 +1128,9 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
     scritta = frasi.differenza(invertita, attuale)          # tra parentesi: la differenza dei due numeri scritti, «72,1 (−0,6)» (#392)
     if diff > 0.04:
         esito = F("confronto.esito_meglio", titolare=titolare.nome, attuale=attuale, invertita=invertita, d=scritta)
-    elif diff < -0.04 and titolare.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
-        # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341)
+    elif diff < -0.04 and fz.titolare_perche_gioca(titolare, altro):
+        # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341);
+        # anche quando lo è il titolare, che è più probabile che giochi (#632)
         return scrivi(F("confronto.titolare_che_gioca", altro=altro.nome, p=etichette.percento(altro.p), titolare=titolare.nome,
                         pt=etichette.percento(titolare.p), d=-diff, entrata=entrata))
     elif diff < -0.04:

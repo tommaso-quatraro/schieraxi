@@ -784,6 +784,13 @@ def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per
     return titolari, panchina
 
 
+def titolare_perche_gioca(titolare: Giocatore, altro: Giocatore) -> bool:
+    """La regola degli improbabili (`_senza_improbabili`) spiega perché `titolare` gioca al posto di `altro`, dello stesso ruolo:
+    `altro` è improbabile e `titolare` gioca almeno COMPAGNO_ALMENO o, improbabile anche lui, è più probabile che giochi (#632).
+    La usano il Confronto (`consigli._in_formazione`) e il perché della scelta (`perche_scelta.motivo`)."""
+    return altro.p < IMPROBABILE_SOTTO and (titolare.p >= COMPAGNO_ALMENO or titolare.p > altro.p)
+
+
 def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, ricerca: bool = True,
              peso: tuple[float, float] = PESO_BASE, valutatore: Valutatore | None = None,
              inclinazione: tuple[float, float] = (0.0, 0.0), fissi: Collection[int] = (),

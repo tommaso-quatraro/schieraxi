@@ -314,6 +314,16 @@ def test_confronto_dice_lo_stesso_quando_il_titolare_gioca_poco_ma_non_e_improba
     assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 30%" in r["testo"]
 
 
+def test_confronto_fra_due_improbabili_dice_che_parte_il_piu_probabile(monkeypatch):
+    """#632: X al 15% che fa 14 e Y al 19% che fa 6, nessuno arriva al 20%: è titolare Y, più probabile che giochi, e invertirli
+    varrebbe di più. Il Confronto dà il motivo vero con i due «gioca N%», non «con il modulo 4-3-3 (non il migliore)…»."""
+    r = _confronto_x_y(monkeypatch, 0.15, 14, 0.19, 6)
+    assert (r["posto_a"], r["posto_b"]) == ("panchina 1", "titolare") and r["differenza"] < -0.04
+    assert r["frase"]["chiave"] == "confronto.titolare_che_gioca"
+    assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 19%" in r["testo"]
+    assert "non il migliore" not in r["testo"]
+
+
 def test_confronto_senza_improbabile_resta_come_prima(monkeypatch):
     """X al 15% che fa poco (4) quando gioca: Y è titolare perché vale di più anche da solo, e il Confronto lo dice come prima."""
     r = _confronto_x_y(monkeypatch, 0.15, 4, 0.6, 6)

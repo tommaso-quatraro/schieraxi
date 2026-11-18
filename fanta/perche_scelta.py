@@ -7,7 +7,8 @@ il loro perché sta al tocco sul giocatore.
 
 Il conto è quello del Confronto (`consigli._in_formazione`): la formazione com'è contro la stessa con i due scambiati di posto e la
 panchina rifatta dal sistema, sulle stesse simulazioni, e la riga non dice mai il contrario del Confronto. I motivi, in quest'ordine:
-1. l'altro quasi certamente non gioca e il titolare sì (la regola dei titolari che giocano, #329 e #341);
+1. l'altro quasi certamente non gioca e il titolare sì, o è più probabile che giochi (la regola dei titolari che giocano, #329,
+#341 e #632: `formazione.titolare_perche_gioca`);
 se scambiarli varrebbe di più (il Confronto dice «invertendoli varrebbe di più»): solo con la consigliata già mostrata e tenuta
 (#335) una riga, perché il cambio vale meno della soglia (ma se a schermo i due numeri sono uguali, le righe del pari, dal 4 in
 poi: #659); altrimenti nessuna riga (meglio niente che una scusa: succede con gli stili prudenti o rischiosi e con un modulo
@@ -60,7 +61,7 @@ def motivo(t: fz.Giocatore, altro: fz.Giocatore, attuale: float, invertita: floa
     motivo da dire."""
     diff = attuale - invertita
     if diff < -PARI:              # scambiarli varrebbe di più: il Confronto dice «esito_peggio» (o «titolare_che_gioca»)
-        if t.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
+        if fz.titolare_perche_gioca(t, altro):
             return F("scelta.titolare_che_gioca", altro=altro.nome, p=percento(altro.p))
         if not tenuta or invertita - attuale >= SOGLIA_TENUTA:
             return None           # un altro motivo contraddirebbe il Confronto (stile o modulo che costano punti)
