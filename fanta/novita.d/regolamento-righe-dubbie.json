@@ -1,0 +1,11 @@
+{
+  "titolo": "Regolamento incollato: anche le righe dubbie senza numeri sono da controllare",
+  "voci": [
+    "Web app, Impostazioni, Regole e scadenza, «Riconosci le regole»: le righe che SchieraXI non sa leggere con sicurezza ora stanno tutte sotto «Righe da controllare a mano», anche quelle senza numeri, per esempio «Non è vietato il cambio modulo» o «Panchina non libera». Prima comparivano solo le righe con numeri, e una regola da impostare a mano poteva passare inosservata.",
+    "L'app per iPhone mostra ancora solo le righe con numeri, con il titolo di prima."
+  ],
+  "tecnico": [
+    "POST /api/regole/riconosci: campo nuovo e facoltativo dubbie (elenco di righe, al massimo 30, nell'ordine del testo, senza ripetere quelle di non_riconosciute): righe in cui cambio modulo o modificatore della difesa danno una lettura dubbia (regole_testo._si_no None) o il tipo di panchina è nominato ma dubbio (regole_testo._tipo_panchina ora distingue None, dubbia, da NIENTE, tipo non detto). Nessun campo tolto o rinominato; /api/onboarding/regole non cambia.",
+    "Web: chiave nuova regole.da_controllare per il titolo; regole.non_riconosciute resta per l'iPhone. Contratto in docs/API.md (#684)."
+  ]
+}
