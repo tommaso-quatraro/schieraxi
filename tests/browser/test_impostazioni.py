@@ -360,7 +360,7 @@ def test_nuova_stagione_compare_in_la_mia_lega_quando_serve(web):
 # ---------------------------------------------------------------- Regole e scadenza
 RICONOSCIUTE = {"modifiche": [{"chiave": "crediti_iniziali", "etichetta": "Crediti iniziali", "valore": 500, "riga": "Crediti: 500"},
                               {"chiave": "bonus.assist", "etichetta": "Assist", "valore": 1.5, "riga": "Assist +1,5"}],
-                "non_riconosciute": []}
+                "non_riconosciute": [], "dubbie": []}
 
 
 def _scritture(web, rotta: str) -> list[dict]:
@@ -382,6 +382,21 @@ def test_il_regolamento_incollato_si_salva_con_un_tocco(web):
     tocca(web, principale(web).get_by_role("button", name="Salva queste regole"))
     assert salvate, "le regole riconosciute non sono state salvate"
     assert salvate[-1]["crediti_iniziali"] == 500 and salvate[-1]["bonus"]["assist"] == 1.5
+    assert not web.errori_mostrati()
+
+
+def test_le_righe_dubbie_senza_numeri_stanno_fra_quelle_da_controllare_a_mano(web):
+    """Le righe con numeri non lette e quelle dubbie senza numeri compaiono insieme, sotto un titolo solo (#684)."""
+    solo(web, "prima")
+    righe = ["Media 6-6,5: +1", "Non è vietato il cambio modulo"]
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "non_riconosciute": righe[:1], "dubbie": righe[1:]})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    titolo = principale(web).get_by_text("Righe da controllare a mano (2)", exact=True)
+    assert titolo.is_visible() and not principale(web).get_by_text(righe[1]).is_visible()
+    tocca(web, titolo)
+    assert all(principale(web).get_by_text(riga).is_visible() for riga in righe)
     assert not web.errori_mostrati()
 
 

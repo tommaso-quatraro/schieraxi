@@ -3051,8 +3051,10 @@ async function vistaRegole() {
         return;
       }
       const vedi = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
+      // da controllare a mano: le righe con numeri non lette e quelle dubbie, anche senza numeri (#684)
+      const daControllare = [...esito.non_riconosciute, ...esito.dubbie];
       dove.innerHTML = `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(etichettaRegola(m))}: <b>${esc(vedi(m.valore))}</b>${m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : ""}</span></div>`).join("")}
-        ${esito.non_riconosciute.length ? `<details><summary style="font-size:var(--t-corpo)">${t("regole.non_riconosciute", { n: esito.non_riconosciute.length })}</summary><div class="debole piccolo">${esito.non_riconosciute.map(esc).join("<br>")}</div></details>` : ""}
+        ${daControllare.length ? `<details><summary style="font-size:var(--t-corpo)">${t("regole.da_controllare", { n: daControllare.length })}</summary><div class="debole piccolo">${daControllare.map(esc).join("<br>")}</div></details>` : ""}
         <div class="pulsanti"><button class="bottone" id="salva-riconosciute" type="button">${t("regole.salva_queste")}</button></div>`;
       // un tocco: i valori riconosciuti vanno nei campi (dietro «Modifica i valori») e le regole si salvano come con «Salva le regole»
       $("#salva-riconosciute").addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });

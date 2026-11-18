@@ -375,7 +375,13 @@
   },
   "regole.non_riconosciute": {
     "it": "Righe con numeri non riconosciute ({n})",
-    "en": "Lines with numbers not recognised ({n})"
+    "en": "Lines with numbers not recognised ({n})",
+    "nota": "solo iPhone, finché non mostra anche le righe dubbie (`dubbie`): la web usa regole.da_controllare"
+  },
+  "regole.da_controllare": {
+    "it": "Righe da controllare a mano ({n})",
+    "en": "Lines to check by hand ({n})",
+    "nota": "righe del regolamento che l'app non ha letto: con numeri (`non_riconosciute`) o dubbie anche senza numeri (`dubbie`)"
   },
   "regole.da_riga": {
     "it": "da: «{r}»",
