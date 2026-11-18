@@ -97,6 +97,56 @@ def test_un_account_senza_rose_vede_il_benvenuto_e_nessuna_richiesta_fallisce(we
     assert not web.richieste_fallite and not web.errori_console and not web.errori_mostrati()
 
 
+FRASE_FINITO = "Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione."
+
+
+def campionato_finito(web, riepilogo=None) -> None:
+    """Prima di `apri`: le risposte di una lega a campionato finito (#656), dalla fase «finita» registrata. /api/stato senza giornata da
+    giocare, /api/oggi con `campionato_finito` e il `riepilogo` dell'ultima giornata (quello registrato, o `riepilogo`), /api/formazione
+    rifiutata con 409 come fa il server."""
+    oggi = web.registrata("/api/oggi")
+    web.risposta("/api/stato", {**web.registrata("/api/stato"), "prossima_giornata": None, "prossima_giornata_lega": None})
+    web.risposta("/api/oggi", {**oggi, "giornata": None, "giornata_lega": None, "inizio": None, "scadenza": None, "ore_mancanti": None,
+                               "partite": [], "avvisi": [], "migliori": [], "miei_titolari": {}, "prossima": None, "da_fare": [],
+                               "riepilogo": riepilogo or oggi["riepilogo"],
+                               "campionato_finito": {"testo": FRASE_FINITO, "frase": {"chiave": "campionato.finito", "param": {}}}})
+    web.risposta("/api/formazione", {"detail": FRASE_FINITO, "codice": "campionato_finito"}, stato=409)
+
+
+def test_a_campionato_finito_il_riepilogo_e_la_frase_del_server_senza_errori(web):
+    """#656: dopo l'ultima giornata non c'è una giornata da preparare (`prossima_giornata` nullo in /api/stato) e /api/oggi dice
+    `campionato_finito` (200). La Formazione mostra il riepilogo dell'ultima giornata e la frase del server, non un errore con
+    «Riprova», e non chiede la formazione, che il server rifiuterebbe (409)."""
+    solo(web, "finita")
+    campionato_finito(web)
+    web.apri("/")
+    testo = " ".join(web.testo_principale().split())
+    assert FRASE_FINITO in testo and ": finita" in testo                             # la frase e la testa della giornata finita
+    assert principale(web).get_by_role("button", name="Com'è andata").is_visible()
+    assert campo(web).count() == 0 and "/api/formazione" not in web.richieste
+    assert not web.richieste_fallite and not web.errori_console and not web.errori_mostrati()
+
+
+def test_a_campionato_finito_con_un_recupero_che_manca_si_sceglie_cosa_vale(web):
+    """#656: nelle 48 ore dopo l'ultima giornata, con un suo recupero ancora da giocare, il riepilogo porta `rinvio` come nella fase
+    «finita» di sempre: anche a campionato finito si sceglie come contano i giocatori della partita rinviata (stesso menu)."""
+    solo(web, "finita")
+    oggi = web.registrata("/api/oggi")
+    giornata = oggi["riepilogo"]["giornata"]
+    rinvio = {"giornata": giornata, "stagione": "2026-27", "modo": "aspetta", "modi": ["aspetta", "senza_voto", "voto_ufficio"],
+              "voto_ufficio": 6, "predefinito": "aspetta", "eccezione": False}
+    campionato_finito(web, {**oggi["riepilogo"], "rinvio": rinvio, "recuperi": [{"casa": "udinese", "trasferta": "milan", "data": None}]})
+    web.risposta("/api/regole/rinvio", {"ok": True})
+    web.apri("/")
+    testo = " ".join(web.testo_principale().split())
+    assert FRASE_FINITO in testo and "Manca il recupero di UDI vs MIL" in testo
+    scritte = scritture(web)
+    principale(web).get_by_label("Per questa giornata i loro giocatori").select_option("senza_voto")
+    web.aspetta()
+    assert scritte == [("PUT", "/api/regole/rinvio", {"giornata": giornata, "modo": "senza_voto", "stagione": "2026-27"})]
+    assert not web.errori_mostrati() and not web.errori_console
+
+
 # ---------------------------------------------------------------- il giocatore: due numeri, e parole solo se servono
 def test_gioca_si_vede_solo_sotto_l_80_per_cento_e_niente_etichette_di_titolarita(web):
     solo(web, "prima")

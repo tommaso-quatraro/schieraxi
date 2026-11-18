@@ -23,8 +23,8 @@ con gli stessi dati, e il passo 5 che non aggiunge niente.
 | `lega/` (regole, rose, immagini) | `dati/smtp.password` (password della casella email) | niente email finché non la riscrivi: passo 3 |
 | `dati/scelte.json`, `diario.json`, `affidabilita.json`, ecc. | `dati/avatar_tratti.json` (non è pubblico) | volti con la carnagione neutra |
 | `dati/registro-giornate.json` (registro delle giornate: le tabelle `registro_*` dell'archivio, i numeri mostrati prima di ogni giornata; NON si ricostruiscono) | `~/.config/schieraxi/canale` (canale degli avvisi) | niente avvisi al gestore finché non lo rimetti |
-| | `~/.config/schieraxi/chiavi-firma.asc` | si ricopia da `script/server/chiavi/` (vedi `script/server/LEGGIMI.md`, «Accendere») |
-| | configurazione di sistema (nginx, systemd, fail2ban, ufw, crontab) | va tenuta dal gestore fuori da questo repository |
+| `dati/fonti.json` e `dati/funzioni.json` (fonti e funzioni spente o accese dall'amministratore; solo nomi e acceso/spento, niente segreti; nelle copie dalla #664) | `~/.config/schieraxi/chiavi-firma.asc` | si ricopia da `script/server/chiavi/` (vedi `script/server/LEGGIMI.md`, «Accendere») |
+| `dati/consigliate.json` (consigliate già mostrate) e `dati/sentinella.json` (storia dei giri della sentinella); nelle copie dalla #664 | configurazione di sistema (nginx, systemd, fail2ban, ufw, crontab) | va tenuta dal gestore fuori da questo repository |
 | | le statistiche arrivate dopo la notte della copia | si scaricano: passo 4 |
 
 Le statistiche non si riscaricano tutte: una fonte che chiude o cambia non ridà le stagioni e le partite di prima. Per questo
@@ -34,6 +34,17 @@ Una notte in cui la copia dell'archivio non riesce, il pacchetto si salva lo ste
 copie di prima restano (quella notte non se ne toglie nessuna). In quel caso, al passo 2 estrai la copia più recente (account e
 utenti aggiornati), poi il solo archivio dalla più recente che lo contiene (si vede con `tar -tzf ~/dati-AAAA-MM-GG.tar.gz`):
 `tar -xzf ~/dati-AAAA-MM-GG.tar.gz -C ~/fantacalcio ./dati/fanta.sqlite`.
+
+Le copie fatte prima della #664 non hanno `dati/fonti.json` e `dati/funzioni.json`: ripristinate così, con le variabili di
+produzione (passo 3) le fonti e le funzioni che l'amministratore aveva spento tornano **accese per tutti**, senza avviso (anche
+la funzione che scarica immagini da indirizzi scritti dagli utenti), e il passo 4 richiama anche le fonti che erano spente. Con una
+copia così, una fonte che era spenta si rispegne prima del passo 4, dalla cartella dell'app:
+`.venv/bin/python -c "from fanta import fonti_attive; fonti_attive.imposta('<fonte>', False)"` (`<fonte>` fra `fantacalcio`,
+`understat`, `footballdata`, `espn`, `foto`). Le funzioni si rispengono dall'app, da amministratore, prima di aprire al pubblico
+(controllo al passo 7). Senza `dati/consigliate.json` le consigliate già mostrate si rifanno da capo (possono cambiare anche per
+meno di un punto atteso); senza `dati/sentinella.json` la storia dei giri della sentinella riparte vuota.
+Con una copia che li ha, le consigliate già mostrate tornano quelle della notte della copia: una consigliata cambiata dopo quella
+notte può tornare indietro.
 
 ## Passi (utente del server, nella sua home)
 
@@ -45,6 +56,10 @@ utenti aggiornati), poi il solo archivio dalla più recente che lo contiene (si 
    Su una cartella nuova, come qui, non c'è altro. Se invece ripristini sopra una cartella già usata: prima ferma il servizio e
    sposta via i file `-wal` e `-shm` accanto ai database (`dati/*.sqlite-wal`, `dati/*.sqlite-shm`), che sono dei database di prima
    e rovinerebbero quelli della copia.
+   Sopra una cartella già usata il pacchetto sovrascrive anche `dati/fonti.json`, `dati/funzioni.json` e `dati/consigliate.json`
+   con quelli della notte della copia: una fonte o una funzione spenta dopo quella notte torna accesa (una fonte così si rispegne
+   prima del passo 4 con il comando `fonti_attive.imposta` di «Cosa c'è nella copia notturna e cosa no»; le funzioni al passo 7),
+   e una consigliata cambiata dopo torna quella di allora.
    Sopra una cartella già usata restano anche le cartelle `dati/utenti/<numero>` degli account nati dopo la notte della copia:
    quegli account nel database della copia non ci sono, e i loro numeri tornano liberi per i prossimi iscritti. Prima di
    riavviare il servizio, cioè prima che qualcuno possa iscriversi:
@@ -108,7 +123,11 @@ utenti aggiornati), poi il solo archivio dalla più recente che lo contiene (si 
    - avviato il servizio: `curl -s -H "X-Fanta: 1" http://127.0.0.1:8000/api/account/me` contiene `"multiutente":true`,
      e `curl -s -o /dev/null -w "%{http_code}" -H "X-Fanta: 1" http://127.0.0.1:8000/api/formazione` dà `401`;
    - accesso: per non usare password vere crea un account di prova con `.venv/bin/python -m fanta invito --etichetta prova --admin`
-     e iscriviti con quel codice; da amministratore `GET /api/admin/utenti` deve elencare gli account della copia (più quello di prova). Poi elimina l'account di prova.
+     e iscriviti con quel codice; da amministratore `GET /api/admin/utenti` deve elencare gli account della copia (più quello di prova);
+   - fonti e funzioni, a ogni ripristino: con lo stesso account, `GET /api/admin/fonti` e `GET /api/admin/funzioni`. Le spente
+     devono essere quelle che l'amministratore aveva spento, con `scelta_da` uguale a `amministratore`. Il pacchetto ha le scelte
+     della notte della copia (le copie di prima della #664 nessuna): quello che era stato spento dopo, o che con una copia vecchia
+     risulta acceso, si rispegne adesso dall'app, prima di aprire al pubblico. Poi elimina l'account di prova.
 8. **Sistema**: servizio systemd (`script/server/fantacalcio.service`, il drop-in delle variabili `script/server/ambiente.conf.esempio`
    più quelli del gestore), nginx, certificato, crontab
    (`script/server/LEGGIMI.md`), chiave delle firme e canale degli avvisi in `~/.config/schieraxi/`.

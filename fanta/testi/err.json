@@ -280,6 +280,11 @@
     "it": "Il calendario della stagione non è ancora disponibile (di solito esce a luglio): previsioni e asta partono appena arriva. Aggiorna i dati più avanti.",
     "en": "The season calendar is not available yet (it usually comes out in July): forecasts and auction start as soon as it arrives. Update the data later."
   },
+  "err.campionato_finito": {
+    "it": "Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.",
+    "en": "The season is over: forecasts and advice start again with next season's calendar.",
+    "nota": "il 409 delle rotte che vogliono una giornata a campionato finito (#656): stessa frase di frase.campionato.finito"
+  },
   "err.squadra_non_trovata_indica": {
     "it": "Squadra non trovata: indica la tua squadra in «La mia squadra»",
     "en": "Team not found: choose your team in «My team»"
