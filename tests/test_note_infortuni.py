@@ -36,6 +36,28 @@ def test_nota_sconosciuta_resta_italiana(nota):
     assert ni.traduci(nota) == nota
 
 
+@pytest.mark.parametrize("it,en", [
+    ("Frattura al dito della mano destra", "Fracture in the finger of the right hand"),     # «dito» non è sempre «toe»
+    ("Problema al dito della mano", "Problem in the finger of the hand"),
+    ("contusione al dito del piede sinistro", "Bruise in the toe of the left foot"),
+    ("Trauma al collo del piede", "Trauma in the instep"),                                  # non «neck of the foot»
+    ("lesione al legamento crociato anteriore", "Injury in the anterior cruciate ligament"),  # non «ligament ... ligament»
+    ("distorsione al ginocchio con lesione del legamento collaterale mediale",
+     "Sprain in the knee with injury in the medial collateral ligament"),
+])
+def test_parti_del_corpo_di_piu_parole(it, en):
+    assert ni.traduci(it) == en
+
+
+@pytest.mark.parametrize("nota", [
+    "Influenzato, da valutare",          # la causa «influenza» è solo l'inizio della parola: niente «Flu in the to»
+    "Fratturato",
+    "frattura al dito",                  # «dito» senza «della mano» o «del piede»: non si sa se è finger o toe
+])
+def test_parola_incerta_resta_italiana(nota):
+    assert ni.traduci(nota) == nota
+
+
 def test_ogni_nota_vera_o_si_traduce_o_resta_uguale():
     # nessuna parola italiana a metà: un risultato tradotto non contiene i pezzi tipici dell'italiano
     for nota in ["problema alla spalla destra, rientro da metà novembre", "frattura a un dito del piede, rientro inizio novembre",
