@@ -245,6 +245,12 @@ def test_riconosci_regole_non_cambia_nulla(client):
     assert client.get("/api/regole").json() == prima       # solo una proposta: le regole restano com'erano
 
 
+def test_riconosci_regole_segnala_le_righe_dubbie_senza_numeri(client):
+    """Una riga che l'app non sa leggere con sicurezza, anche senza numeri, arriva ai client fra quelle da controllare (#684)."""
+    r = client.post("/api/regole/riconosci", json={"testo": "Assist +2\nNon è vietato il cambio modulo\nMedia 6-6,5: +1"}).json()
+    assert r["dubbie"] == ["Non è vietato il cambio modulo"] and r["non_riconosciute"] == ["Media 6-6,5: +1"]
+
+
 def test_regole_salvate_oltre_i_tetti_rispondono_422(client):
     regole = client.get("/api/regole").json()
     regole["modificatore_difesa"]["soglie"] = [[6 + i / 100, 1] for i in range(21)]
