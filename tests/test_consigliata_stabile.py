@@ -140,6 +140,47 @@ def test_titolare_gia_improbabile_cambia_se_la_migliore_mette_nel_ruolo_un_compa
     assert consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, SIM) is migliore
 
 
+CON_IL_4_4_2 = Regole(moduli=["3-4-3", "4-4-2"])
+
+
+def _attaccante_improbabile_mostrato(anticipo=()):
+    """Il 3-4-3 mostrato con l'attaccante 22 al 10% titolare: solo tre difensori e due attaccanti giocano, quindi ogni modulo
+    ha un improbabile e vince il 3-4-3 (il 22 quando gioca fa 14). Poi il difensore 7 sale al 95% e l'attaccante 23 al 30%: la
+    migliore è un 4-4-2 che non mette nessun attaccante nuovo. `anticipo` = chi gioca un anticipo già cominciato.
+    Restituisce (consigliata ricordata, previsioni nuove, migliore con le previsioni nuove)."""
+    improbabile = {"stato": "non_citato"}
+    allora = {i: improbabile | {"p_voto": p} for i, p in ((7, 0.15), (8, 0.12), (9, 0.05), (10, 0.04), (11, 0.03),
+                                                         (22, 0.10), (23, 0.05), (24, 0.04), (25, 0.03))}
+    allora[22]["mu"] = 14.0
+    prima = _migliore(_prev(allora), CON_IL_4_4_2)
+    assert prima["modulo"] == "3-4-3" and 22 in _ids(prima) and 23 not in _ids(prima)
+    ricordata = consigli.da_ricordare(prima)
+    assert 22 in ricordata["non_giocano"]
+    nuove = _prev(allora | {7: {"p_voto": 0.95, "stato": "titolare"}, 23: {"p_voto": 0.30, "stato": "panchina", "quota_titolare": 0.3}}
+                  | {i: {"squadra": "ANT"} for i in anticipo})
+    migliore = _migliore(nuove, CON_IL_4_4_2)
+    assert migliore["modulo"] == "4-4-2" and not {22, 23} & _ids(migliore)        # nessun attaccante nuovo fra i titolari
+    assert _valore(nuove, _ids(migliore), CON_IL_4_4_2) - _valore(nuove, _ids(prima), CON_IL_4_4_2) < consigli.SOGLIA_CAMBIO_PUNTI
+    return ricordata, nuove, migliore
+
+
+def test_titolare_gia_improbabile_cambia_anche_se_la_migliore_cambia_modulo():
+    """Rilievo della revisione di #736: l'esenzione guardava solo i titolari nuovi della migliore, e un 4-4-2 non ne mette nessuno
+    in attacco: restava il 22 (10%) titolare e il 23 (30%) fuori. Basta un compagno di ruolo fuori dagli 11 di prima che gioca
+    almeno il 20%."""
+    ricordata, nuove, migliore = _attaccante_improbabile_mostrato()
+    f = consigli.stabile(migliore, ricordata, nuove, _squadra(), CON_IL_4_4_2, SIM)
+    assert 22 not in _ids(f)
+
+
+def test_titolare_gia_improbabile_resta_se_il_compagno_che_gioca_e_fermo_per_un_anticipo():
+    """Lo stesso, ma il 23 gioca un anticipo già cominciato: era fuori e non si può più mettere titolare, quindi non conta e sotto
+    1 punto la consigliata di prima resta."""
+    ricordata, nuove, migliore = _attaccante_improbabile_mostrato(anticipo=(23,))
+    f = consigli.stabile(migliore, ricordata, nuove, _squadra(), CON_IL_4_4_2, SIM, iniziate=("ANT",))
+    assert 22 in _ids(f) and 23 not in _ids(f)
+
+
 def test_titolare_uscito_dalla_rosa_cambia():
     prima = _migliore(_prev())
     migliore = _migliore(_prev(), senza=(7,))

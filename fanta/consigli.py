@@ -745,8 +745,8 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
     migliore di adesso (`migliore`, la risposta di `_calcola_formazione`, restituita così com'è).
     Prima della scadenza la migliore prende il posto di quella di prima se vale almeno SOGLIA_CAMBIO_PUNTI punti attesi in più (sulle
     stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più (uscito dalla rosa, diventato fuori o improbabile:
-    non chi lo era già quando è stata mostrata, `prima["non_giocano"]`, a meno che la migliore metta nel suo ruolo un compagno che
-    gioca almeno il 20%, #632) e la migliore lo lascia fuori; tenuta quella di prima, la
+    non chi lo era già quando è stata mostrata, `prima["non_giocano"]`, a meno che nel suo ruolo ci sia ora un compagno fuori dagli
+    11 di prima, non fermo per un anticipo, che gioca almeno il 20%, #632) e la migliore lo lascia fuori; tenuta quella di prima, la
     sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
     resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui.
     `iniziate` (squadre di Serie A con un anticipo già cominciato, #368): prima della scadenza i loro giocatori restano dove erano
@@ -769,12 +769,16 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
             return migliore
     nuovi = {int(g["id"]) for g in migliore["titolari"]}
     gia = set(_ids(prima, "non_giocano") or [])           # chi non giocava già quando la consigliata è stata mostrata
-    entrati = [per_id[i] for i in nuovi - set(titolari) if i in per_id]
+    # i compagni che si potrebbero mettere titolari: fuori dagli 11 di prima, e non fermi per un anticipo già cominciato
+    non_liberi = set(titolari) | (set() if fermi is None else set(fermi.fuori) | set(fermi.panchina))
+    liberi = [g for g in rosa if g.id not in non_liberi]
 
     def esente(i: int) -> bool:
-        """Non giocava già quando la consigliata è stata mostrata, e la migliore non mette nel suo ruolo un compagno che gioca
-        almeno COMPAGNO_ALMENO (#632: con tre portieri al 10%, 5% e 3% restava il 10% anche dopo che il secondo era salito al 92%)."""
-        return i in gia and not any(g.ruolo == per_id[i].ruolo and g.p >= fz.COMPAGNO_ALMENO for g in entrati)
+        """Non giocava già quando la consigliata è stata mostrata, e nel suo ruolo nessun compagno che si può mettere titolare
+        gioca almeno COMPAGNO_ALMENO (#632: con tre portieri al 10%, 5% e 3% restava il 10% anche dopo che il secondo era salito al
+        92%). Conta ogni compagno, non solo i titolari nuovi della migliore: una migliore con un altro modulo può non metterne
+        nessuno in quel ruolo (revisione di #736)."""
+        return i in gia and not any(g.ruolo == per_id[i].ruolo and g.p >= fz.COMPAGNO_ALMENO for g in liberi)
     if not chiusa and any(titolarita(prev.loc[i]) in NON_GIOCA and i not in nuovi and not esente(i) for i in titolari):
         return migliore
     tit = sorted((per_id[i] for i in titolari), key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore))
