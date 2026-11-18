@@ -3,7 +3,9 @@
 Non conosce il formato esatto: cerca le parole chiave di ogni regola ("assist", "ammonizione", "modificatore difesa"...) e il numero
 che le segue. Per questo NON applica nulla da solo: restituisce le modifiche proposte, ognuna con la riga da cui viene, e l'app le mostra
 per controllarle. Nei casi dubbi (una riga con più numeri e ruoli, intervalli, negazioni) preferisce non riconoscere: le righe con numeri
-non riconosciute vengono elencate, così si vede cosa manca.
+non riconosciute vengono elencate, così si vede cosa manca. `da_controllare` le mette insieme alle righe dubbie, anche senza numeri
+(nominano il cambio modulo, il modificatore della difesa o il tipo di panchina senza dirne il valore con sicurezza), nell'ordine del
+testo e con le regole da impostare a mano.
 """
 from __future__ import annotations
 
@@ -39,8 +41,14 @@ STATO_CAMBIO_MODULO = (r"consent|ammess|ammett|permess|permett|possibil|previst|
 STATO_MODIFICATORE = (r"attiv|previst|utilizz|applic|abilitat|consent|ammess|valid|vigore|present|esist|c'e"
                       r"|us(?:a|o|at)")
 # Le parole che dicono «no» da sole. «Non è vietato» (un no negato) è dubbio: si lascia da controllare.
-NO_CAMBIO_MODULO = r"\bno\b|\boff\b|disattiv|disabilit|vietat"
-NO_MODIFICATORE = r"\bno\b|\boff\b|disattiv|disabilit|vietat|assent|nessun"
+# «Nessun» dice no solo subito prima del nome della regola («Nessun cambio modulo», «nessun modificatore»), in «in nessun caso»
+# e da solo alla fine («Cambio modulo: nessuno»). Dentro una condizione vale come un «non» (_senza_condizione); altrove non si
+# sa a cosa risponda («nessun divieto», «nessun limite» vogliono dire sì): la lettura è dubbia (_detto).
+NESSUN = r"\bnessun[oa]?\b"
+NESSUN_NO = r"\bin\s+nessun\s+caso\b|\bnessun[oa]\W*$"
+NESSUN_DICE_NO = rf"\bnessun[oa]?\s+(?:cambi|modificator)|{NESSUN_NO}"     # i «nessun» che dicono no; un altro rende dubbio
+NO_CAMBIO_MODULO = rf"\bno\b|\boff\b|disattiv|disabilit|vietat|\bnessun[oa]?\s+cambi|{NESSUN_NO}"
+NO_MODIFICATORE = rf"\bno\b|\boff\b|disattiv|disabilit|vietat|assent|\bnessun[oa]?\s+modificator|{NESSUN_NO}"
 NO_NEGATO = r"vietat|disattiv|disabilit"
 # Da «se», «quando»... alla fine del pezzo c'è una condizione: un suo «non» («cambio modulo quando non è possibile sostituire
 # nel ruolo») dice quando scatta la regola, non la spegne (regole_testo._senza_condizione).
@@ -48,9 +56,11 @@ CONDIZIONE = r"\b(?:se|quando|qualora|purche|in caso|nel caso|a meno che|salvo c
 # «se non» come «tranne» («non è consentito se non quando manca un sostituto»): la regola vale solo in parte, non si propone
 SE_NON_TRANNE = rf"\bse{SEP}non{SEP}(?:quando|qualora|in|nel|nei|per|dopo|con)\b"
 CAMBIO_MODULO = r"cambio (?:di )?modulo|cambi di modulo"
-PANCHINA_LIBERA = r"\blibera\b|senza vincol|nessun vincolo|qualsiasi ruolo"     # «liberamente» non è «libera»
-PANCHINA_PER_RUOLO = rf"per ruolo|fissa|vincolat{SUFFISSO} (?:al|dal) ruolo|ruoli? fiss"
+# Anche al plurale («Riserve libere», «riserve fisse»); «liberamente» non è «libera»
+PANCHINA_LIBERA = r"\bliber[ae]\b|senza vincol|nessun vincolo|qualsiasi ruolo"
+PANCHINA_PER_RUOLO = rf"per ruolo|fiss[ae]|vincolat{SUFFISSO} (?:al|dal) ruolo|ruoli? fiss"
 NIENTE = "niente"                        # un pezzo di riga che nomina una regola sì/no senza dire se c'è
+MAX_DUBBIE = 30                          # righe dubbie in «da_controllare» oltre a quelle con numeri non lette (anche loro 30)
 
 # (chiave, etichetta, schemi, segno) in ordine: le regole più specifiche prima. segno: +1 bonus, -1 malus.
 BONUS = [
@@ -129,16 +139,18 @@ def _senza_condizione(pezzo: str, soggetto: Callable[[str], bool], no: str) -> s
     qualsiasi distanza, dice quando scatta la regola («il cambio modulo avviene quando il titolare non può essere sostituito»:
     conta «il cambio modulo avviene»). None, dubbio: un «non» prima della condizione (un no che vale solo in quel caso: «non
     si applica se il portiere non gioca»), la regola dentro la condizione («in caso di cambio modulo non sono consentite più di
-    3 sostituzioni») o un «no» nella condizione («si applica se...? No»). Senza «non» il pezzo si legge tutto, come sempre."""
+    3 sostituzioni») o un «no» nella condizione («si applica se...? No»). Senza «non» il pezzo si legge tutto, come sempre.
+    «Nessun» vale come «non»: prima della condizione è un no che vale solo in quel caso, dentro dice quando scatta la regola
+    («il cambio modulo avviene quando nessun giocatore della panchina può sostituire il titolare»)."""
     m = re.search(CONDIZIONE, pezzo)
     if not m:
         return pezzo
     prima, condizione = pezzo[:m.start()], pezzo[m.start():]
-    if re.search(r"\bnon\b", prima):
+    if re.search(rf"\bnon\b|{NESSUN}", prima):
         return None
-    if not re.search(r"\bnon\b", condizione):
+    if not re.search(rf"\bnon\b|{NESSUN}", condizione):
         return pezzo
-    return prima if soggetto(prima) and not re.search(no, condizione) else None
+    return prima if soggetto(prima) and not re.search(no, re.sub(NESSUN, " ", condizione)) else None
 
 
 def _detto(testo: str | None, stato: str, no: str) -> bool | None | str:
@@ -148,6 +160,10 @@ def _detto(testo: str | None, stato: str, no: str) -> bool | None | str:
     tutte, negate = _negate(testo, stato)
     if negate:
         return False if negate == tutte else None
+    if re.search(no, re.sub(NESSUN, " ", testo)):
+        return False                        # un no detto senza «nessun»: «vietato», «assente», «no» (anche «…, nessuna eccezione»)
+    if re.search(NESSUN, re.sub(NESSUN_DICE_NO, " ", testo)):
+        return None                         # un «nessun» che non dice no («nessun divieto», «con nessun difensore»): dubbio
     if re.search(no, testo):
         return False
     if tutte:
@@ -156,15 +172,17 @@ def _detto(testo: str | None, stato: str, no: str) -> bool | None | str:
 
 
 def _tipo_panchina(riga: str) -> str | None:
-    """«libera», «per_ruolo» o None. «non (è) vincolata» vuol dire libera; un tipo negato («non libera», «non è fissa») vale
-    solo se la riga dice l'altro («riserve non libere: entrano per ruolo»), altrimenti la riga non si riconosce. Non si
-    riconosce nemmeno una riga che dice tutti e due i tipi o che ha un «no» («Panchina libera: no»)."""
-    if re.search(r"\bno\b|\boff\b", riga):
-        return None
+    """«libera», «per_ruolo», None se la riga è dubbia, NIENTE se non dice il tipo. «non (è) vincolata» vuol dire libera; un
+    tipo negato («non libera», «non è fissa») vale solo se la riga dice l'altro («riserve non libere: entrano per ruolo»),
+    altrimenti è dubbia. Dubbia anche una riga che dice tutti e due i tipi o che ha un «no» («Panchina libera: no»)."""
     testo = re.sub(rf"\bnon(?:{SEP}(?:{PASSAGGIO})\b){{0,4}}{SEP}vincolat{SUFFISSO}", "libera", riga)
     libera, per_ruolo = re.search(PANCHINA_LIBERA, testo), re.search(PANCHINA_PER_RUOLO, testo)
     libera_negata = _negate(testo, r"liber|qualsiasi ruolo")[1]
     ruolo_negato = _negate(testo, r"per ruolo|fiss|vincolat")[1]
+    if not (libera or per_ruolo or libera_negata or ruolo_negato):
+        return NIENTE
+    if re.search(r"\bno\b|\boff\b", riga):
+        return None
     if libera_negata or ruolo_negato:
         if libera_negata and not ruolo_negato and per_ruolo:
             return "per_ruolo"
@@ -197,10 +215,14 @@ def interpreta(testo: str) -> dict:
     righe = [_normalizza(r) for r in originali]
     modifiche: dict[str, dict] = {}
     usate: set[int] = set()
+    dubbie: dict[int, list[dict]] = {}   # riga -> regole che nomina senza dirne il valore con sicurezza
 
     def imposta(chiave, etichetta, valore, n):
         modifiche[chiave] = {"chiave": chiave, "etichetta": etichetta, "valore": valore, "riga": originali[n][:120]}
         usate.add(n)
+
+    def dubbia(chiave, etichetta, n):           # chiave ed etichetta come in imposta (tests/test_frasi.py le legge da qui)
+        dubbie.setdefault(n, []).append({"chiave": chiave, "etichetta": etichetta})
 
     in_modificatore = False
     soglie: list[list[float]] = []
@@ -210,7 +232,9 @@ def interpreta(testo: str) -> dict:
         if "modificator" in riga and "difes" in riga:
             in_modificatore = True
             attivo = _si_no(riga, lambda p: "modificator" in p and "difes" in p, STATO_MODIFICATORE, NO_MODIFICATORE)
-            if attivo is not None:
+            if attivo is None:
+                dubbia("modificatore_difesa.attivo", "Modificatore difesa attivo", n)
+            else:
                 imposta("modificatore_difesa.attivo", "Modificatore difesa attivo", attivo, n)
             continue
         if in_modificatore:
@@ -278,17 +302,22 @@ def interpreta(testo: str) -> dict:
             if (nm := re.search(rf"(?:panchin{SUFFISSO}|riserv{SUFFISSO})\D{{0,25}}(\d+)|(?<!\d)(\d+)\s*(?:panchin|riserv)", riga)) \
                     and (numero := _intero(nm.group(1) or nm.group(2))) is not None:
                 imposta("panchina.numero", "Giocatori in panchina", numero, n)
-            if tipo := _tipo_panchina(riga):
+            tipo = _tipo_panchina(riga)
+            if tipo is None:
+                dubbia("panchina.tipo", "Ordine dei cambi", n)
+            elif tipo != NIENTE:
                 imposta("panchina.tipo", "Ordine dei cambi", tipo, n)
         if re.search(r"sostituzion|cambi", riga) \
                 and (ns := re.search(rf"(?:massim{SUFFISSO}|max|consentit{SUFFISSO}|fino a|al massimo)\D{{0,15}}(\d+)"
                                      r"|(?<!\d)(\d+)\s*(?:sostituzion|cambi)", riga)) \
                 and (numero := _intero(ns.group(1) or ns.group(2))) is not None:
             imposta("panchina.max_sostituzioni", "Sostituzioni massime", numero, n)
-        if re.search(CAMBIO_MODULO, riga) \
-                and (cambio := _si_no(riga, lambda p: re.search(CAMBIO_MODULO, p) is not None, STATO_CAMBIO_MODULO,
-                                      NO_CAMBIO_MODULO)) is not None:
-            imposta("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", cambio, n)
+        if re.search(CAMBIO_MODULO, riga):
+            cambio = _si_no(riga, lambda p: re.search(CAMBIO_MODULO, p) is not None, STATO_CAMBIO_MODULO, NO_CAMBIO_MODULO)
+            if cambio is None:
+                dubbia("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", n)
+            else:
+                imposta("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", cambio, n)
         if re.search(r"credit", riga) and re.search(r"inizial|a disposizione|parte con|budget", riga) and not re.search(r"residu|giornata|speso", riga) \
                 and (nc := re.search(r"\d+", riga)) and (numero := _intero(nc.group())) is not None:
             imposta("crediti_iniziali", "Crediti iniziali", numero, n)
@@ -301,5 +330,9 @@ def interpreta(testo: str) -> dict:
                                                    "valore": sorted(soglie), "riga": originali[riga_soglie][:120]}
         modifiche.setdefault("modificatore_difesa.attivo", {"chiave": "modificatore_difesa.attivo", "etichetta": "Modificatore difesa attivo",
                                                            "valore": True, "riga": originali[riga_soglie][:120]})
-    non = [originali[n] for n in range(len(righe)) if n not in usate and re.search(r"\d", righe[n]) and len(righe[n]) < 140]
-    return {"modifiche": list(modifiche.values()), "non_riconosciute": non[:30]}
+    non = [n for n in range(len(righe)) if n not in usate and re.search(r"\d", righe[n]) and len(righe[n]) < 140][:30]
+    # da controllare a mano (#684): le righe con numeri non lette e quelle dubbie, anche senza numeri, nell'ordine del testo;
+    # ognuna con le regole che lascia da impostare (vuoto per una riga con numeri che non nomina regole dubbie)
+    altre = [n for n in sorted(dubbie) if n not in non][:MAX_DUBBIE]
+    return {"modifiche": list(modifiche.values()), "non_riconosciute": [originali[n] for n in non],
+            "da_controllare": [{"riga": originali[n], "regole": dubbie.get(n, [])} for n in sorted({*non, *altre})]}

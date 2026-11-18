@@ -1,5 +1,44 @@
 [
   {
+    "versione": "1.511",
+    "data": "2026-11-19T00:54:15",
+    "titolo": "Regolamento incollato: anche le righe dubbie senza numeri sono da controllare",
+    "voci": [
+      "Web app, Impostazioni, Regole e scadenza, «Riconosci le regole»: le righe che SchieraXI non sa leggere con sicurezza ora stanno tutte sotto «Righe da controllare a mano», nell'ordine del regolamento incollato, anche quelle senza numeri, per esempio «Non è vietato il cambio modulo» o «Riserve libere: no». Sotto ognuna «da impostare» dice quale regola mettere a mano. Prima comparivano solo le righe con numeri, e una regola da impostare a mano poteva passare inosservata.",
+      "«Nessun cambio modulo» ora vuol dire che il cambio modulo non c'è: prima veniva letto come consentito. Una riga con «nessun» davanti ad altro, per esempio «Cambio modulo: nessun divieto», non propone niente e sta fra le righe da controllare a mano.",
+      "«Riserve libere» e «Riserve fisse» si leggono come «Panchina libera» e «Panchina fissa»: prima non proponevano niente.",
+      "L'app per iPhone mostra ancora solo le righe con numeri, con il titolo di prima."
+    ],
+    "tecnico": [
+      "POST /api/regole/riconosci: campo nuovo e facoltativo da_controllare, [{riga, regole: [{chiave, etichetta}]}] nell'ordine del testo: le righe di non_riconosciute più al massimo 30 righe dubbie (regole_testo._si_no None per cambio modulo e modificatore della difesa, regole_testo._tipo_panchina None: ora distingue None, dubbia, da NIENTE, tipo non detto). Il tipo di panchina al plurale («libere», «fisse») si legge come al singolare (PANCHINA_LIBERA, PANCHINA_PER_RUOLO). Nessun campo tolto o rinominato; /api/onboarding/regole non cambia.",
+      "Lettore del regolamento (regole_testo.NESSUN_DICE_NO, _detto): «nessun», «nessuno», «nessuna» dicono no solo subito prima del nome della regola («nessun cambio modulo», «nessun modificatore»), in «in nessun caso» e da soli alla fine («Cambio modulo: nessuno»); un altro «nessun» («nessun divieto», «con nessun difensore») rende la lettura dubbia, tranne quando la riga dice no con altre parole («vietato», «assente», «no»). Dentro una condizione «nessun» vale come «non» (_senza_condizione), così «modificatore attivo quando nessun difensore…» resta sì.",
+      "Web: chiavi nuove regole.da_controllare e regole.da_impostare; regole.non_riconosciute resta per l'iPhone. Contratto in docs/API.md (#684)."
+    ]
+  },
+  {
+    "versione": "1.510",
+    "data": "2026-11-19T00:06:49",
+    "titolo": "Controlli: aggiornata una libreria per i Python più vecchi",
+    "voci": [
+      "Aggiornata, solo nei controlli automatici che girano con una versione di Python più vecchia, la libreria che serve a leggere le pagine delle fonti dei dati. Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "soupsieve da 2.9.2 a 2.10 per Python < 3.12 (requirements-vincoli.in, requirements.txt rigenerato con script/blocca_dipendenze.py): chiude CVE-2026-126192. Restano CVE-2026-126190, -126191 e -126193, corrette solo dalla 3.0.2 e dalla 4.0, che chiedono Python 3.11.5 (Debian 12 ha 3.11.2). Il server (Python 3.12) resta su soupsieve 4.0."
+    ]
+  },
+  {
+    "versione": "1.509",
+    "data": "2026-11-19T00:04:03",
+    "titolo": "Rose: con l'app in inglese anche gli avvisi dopo il salvataggio sono in inglese",
+    "voci": [
+      "Impostazioni, Aggiorna le rose: con l'app in inglese, gli avvisi che compaiono dopo «Conferma e salva» sono in inglese come quelli del controllo, invece di restare in italiano."
+    ],
+    "tecnico": [
+      "#723: la risposta di POST /api/rose/testo, /api/rose/file e /api/admin/utenti/{id}/rose ha il campo nuovo facoltativo avvisi_frasi (frasi.lista degli avvisi, come l'anteprima). La web lo legge con testiDi(esito, \"avvisi\") in vistaImportaRose. Nessun campo tolto o rinominato.",
+      "#723: importazione per conto di con sostituisci_tutto sopra un rose.json che non si legge più: niente copia datata del file rovinato (lo tiene già rose.json.rovinato), così le cinque copie buone in rose-prima restano tutte."
+    ]
+  },
+  {
     "versione": "1.508",
     "data": "2026-11-18T23:51:09",
     "titolo": "App in inglese: le note sugli infortuni non sbagliano più dito, collo del piede e legamenti",
