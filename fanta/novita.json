@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.508",
+    "data": "2026-11-18T23:51:09",
+    "titolo": "App in inglese: le note sugli infortuni non sbagliano più dito, collo del piede e legamenti",
+    "voci": [
+      "Con l'app in inglese, sulla scheda del giocatore, la nota sull'infortunio distingue il dito della mano («finger») da quello del piede («toe»); un «dito» senza altro resta in italiano.",
+      "«Collo del piede» diventa «instep» e non più «neck of the foot»; «legamento crociato anteriore» non ripete più due volte «ligament».",
+      "Note come «Influenzato, da valutare» o «Fratturato» restano in italiano invece di diventare un inglese senza senso («Flu in the to»); «Influenza.» con il punto finale diventa «Flu.» e non più «Flu in the .»."
+    ],
+    "tecnico": [
+      "note_infortuni.traduci: la causa si riconosce solo se finisce a un confine di parola (re.match con \\b, prima p.startswith).",
+      "«dito» tolto da CORPO: si traduce solo davanti a «della mano» (finger) o «del piede» (toe), dizionario DITO; voci nuove di CORPO «collo del piede» (instep), «legamento crociato anteriore», «legamento crociato», «legamento collaterale mediale» (#666).",
+      "La punteggiatura finale della nota (punto, punto e virgola, virgola, spazi) si toglie prima di tradurre e si rimette in fondo; in _causa un pezzo di sola punteggiatura fa restare la nota in italiano."
+    ]
+  },
+  {
     "versione": "1.507",
     "data": "2026-11-18T23:47:51",
     "titolo": "Nuova stagione: un secondo telefono o computer non svuota più le rose appena importate",
