@@ -3448,7 +3448,7 @@
   },
   "/api/nuova-stagione": {
    "post": {
-    "description": "Archivia rose, regole, movimenti, scelte e osservati della stagione finita in lega/archivio/ e riparte da rose vuote.",
+    "description": "Archivia rose, regole, movimenti, scelte e osservati della stagione finita in lega/archivio/ e riparte da rose vuote.\nSolo con rose di una stagione passata, rilette dentro il blocco delle rose: altrimenti 409 senza scrivere niente (un secondo\ndispositivo con l'avviso ancora a schermo svuotava le rose appena importate, #657). If-Match come le altre scritture sulle rose\n(412 se sono cambiate da un altro dispositivo); la risposta porta l'ETag delle rose ripartite.",
     "responses": {
      "200": {
       "content": {

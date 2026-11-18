@@ -468,10 +468,22 @@ def _regole(ctx: Contesto) -> regole.Regole:
     return regole.carica(ctx.regole)
 
 
+NESSUNA_ROSA = "Nessuna rosa importata: importale con «Aggiorna le rose»"
+
+
 def _rose(ctx: Contesto) -> lega.Rose:
     r = lega.carica(ctx.rose)
     if not r:
-        raise HTTPException(409, "Nessuna rosa importata: importale con «Aggiorna le rose»")
+        raise HTTPException(409, NESSUNA_ROSA)
+    return r
+
+
+def _rose_da_schierare(ctx: Contesto) -> lega.Rose:
+    """Le rose per Oggi e Formazione. Rose senza nessun giocatore (dopo «Nuova stagione», finché non si importano le nuove) valgono
+    come nessuna rosa, la regola del primo avvio (`_ha_rose`): 409 con l'invito a importarle, non una formazione impossibile (#657)."""
+    r = _rose(ctx)
+    if not any(s.giocatori for s in r.squadre):
+        raise HTTPException(409, NESSUNA_ROSA)
     return r
 
 
@@ -839,7 +851,7 @@ def formazione(request: Request, squadra: str | None = None, giornata: int | Non
     try:
         r = _regole(ctx)
         saltata = None if squadra or giornata else _giornata_saltata(db, r, ctx, request)
-        f = consigli.formazione(db, r, _rose(ctx), squadra, saltata + 1 if saltata else giornata)
+        f = consigli.formazione(db, r, _rose_da_schierare(ctx), squadra, saltata + 1 if saltata else giornata)
         if saltata:
             f = f | {"giornata_saltata": saltata, "giornata_saltata_lega": regole.serie_a_a_lega(saltata, r)}
         if not squadra:
@@ -1268,10 +1280,20 @@ def stato_stagione(ctx: Contesto = Depends(lega_corrente)):
 
 
 @app.post("/api/nuova-stagione")
-def nuova_stagione(ctx: Contesto = Depends(lega_corrente)):
-    """Archivia rose, regole, movimenti, scelte e osservati della stagione finita in lega/archivio/ e riparte da rose vuote."""
-    return cambio_stagione.archivia_e_riparti(_rose(ctx), ctx.rose, consigli.stagione_corrente(), _regole(ctx).crediti_iniziali,
-                                              [ctx.scelte, ctx.osservati])
+def nuova_stagione(request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
+    """Archivia rose, regole, movimenti, scelte e osservati della stagione finita in lega/archivio/ e riparte da rose vuote.
+    Solo con rose di una stagione passata, rilette dentro il blocco delle rose: altrimenti 409 senza scrivere niente (un secondo
+    dispositivo con l'avviso ancora a schermo svuotava le rose appena importate, #657). If-Match come le altre scritture sulle rose
+    (412 se sono cambiate da un altro dispositivo); la risposta porta l'ETag delle rose ripartite."""
+    with _scrittura_rose:
+        versioni.controlla(request, versioni.etag_file(ctx.rose))
+        try:
+            risposta = cambio_stagione.archivia_e_riparti(_rose(ctx), ctx.rose, consigli.stagione_corrente(),
+                                                          _regole(ctx).crediti_iniziali, [ctx.scelte, ctx.osservati])
+        except cambio_stagione.NienteDaArchiviare as e:
+            raise HTTPException(409, str(e)) from None
+        response.headers["ETag"] = versioni.etag_file(ctx.rose)
+        return risposta
 
 
 @app.get("/api/asta")
@@ -1369,11 +1391,11 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
     db = _db()
     try:
         try:
-            rose_ = _rose(ctx)
+            rose_ = _rose_da_schierare(ctx)
         except HTTPException as e:
             if e.status_code != 409:
                 raise
-            corpo = gestione.oggi_senza_rose(db, regole=_regole(ctx))           # account nuovo: un benvenuto, non un errore (200 con `senza_rose`)
+            corpo = gestione.oggi_senza_rose(db, regole=_regole(ctx))           # account nuovo o rose vuote: un benvenuto, non un errore (200 con `senza_rose`)
             corpo["da_fare"] = da_fare.senza_rose(getattr(ctx, "impostazioni_avvisi", None))
             return corpo
         r = _regole(ctx)

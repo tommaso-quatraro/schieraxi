@@ -131,6 +131,10 @@
     "it": "Nessuna rosa importata: importale con «Aggiorna le rose»",
     "en": "No roster imported: import them with «Update the rosters»"
   },
+  "err.gia_della_stagione": {
+    "it": "Le rose sono già della stagione in corso: non c'è niente da archiviare.",
+    "en": "The rosters are already from the current season: there is nothing to archive."
+  },
   "err.limite_oggi": {
     "it": "Hai raggiunto il limite di {1} di oggi ({2}). Si azzera tra {3}.",
     "en": "You have reached today's limit for {1} ({2}). It resets in {3}."

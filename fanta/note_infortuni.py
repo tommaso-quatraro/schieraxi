@@ -43,13 +43,16 @@ CORPO = {
     "gamba": "leg", "coscia": "thigh", "polpaccio": "calf", "caviglia": "ankle", "ginocchio": "knee", "spalla": "shoulder", "schiena": "back",
     "anca": "hip", "inguine": "groin", "addome": "abdomen", "piede": "foot", "menisco": "meniscus", "rotula": "kneecap",
     "tendine": "tendon", "polso": "wrist", "mano": "hand", "braccio": "arm", "gomito": "elbow", "costole": "ribs", "testa": "head",
-    "collo": "neck", "fianco": "flank", "quadricipite": "quadriceps", "tallone": "heel", "alluce": "big_toe", "dito": "toe", "bacino": "pelvis",
+    "collo": "neck", "fianco": "flank", "quadricipite": "quadriceps", "tallone": "heel", "alluce": "big_toe", "bacino": "pelvis",
     "tibia": "tibia", "perone": "fibula", "femore": "femur", "gluteo": "glute", "glutei": "glutes", "legamento": "ligament",
     "crociato anteriore": "anterior_cruciate_ligament", "crociato": "cruciate_ligament", "collaterale mediale": "medial_collateral_ligament",
     "menisco esterno": "lateral_meniscus", "menisco interno": "medial_meniscus", "malleolo mediale": "medial_malleolus",
     "soleo": "soleus", "semimembranoso": "semimembranosus", "muscolo semimembranoso": "semimembranosus_muscle", "metatarso": "metatarsus",
-    "tendine prossimale": "proximal_tendon",
+    "tendine prossimale": "proximal_tendon", "collo del piede": "instep", "legamento crociato anteriore": "anterior_cruciate_ligament",
+    "legamento crociato": "cruciate_ligament", "legamento collaterale mediale": "medial_collateral_ligament",
 }
+# «dito» si traduce solo se si sa di cosa: «dito della mano» è finger, «dito del piede» è toe; da solo resta in italiano.
+DITO = {"della mano": "finger", "del piede": "toe"}
 LATI = {"destra": "right", "destro": "right", "sinistra": "left", "sinistro": "left"}
 ARTICOLI_NOME = r"(?:il |lo |la |l'|i |gli |le |l’)?"
 NOME = r"([A-ZÀ-Ý][\wÀ-ÿ'’.\-]*(?: [A-ZÀ-Ý][\wÀ-ÿ'’.\-]*)*)"
@@ -140,7 +143,8 @@ def _lunghe_prima(d: dict) -> list[str]:
 
 def _causa(p: str) -> str | None:
     """«risentimento muscolare al polpaccio destro» -> «muscle strain in the right calf»."""
-    cause = [c for c in _lunghe_prima(CAUSE) if p.startswith(c)]
+    # la causa finisce a un confine di parola: «influenzato» non è «influenza» + «to»
+    cause = [c for c in _lunghe_prima(CAUSE) if re.match(rf"{re.escape(c)}\b", p)]
     if not cause:
         return None
     c = cause[0]
@@ -157,10 +161,13 @@ def _causa(p: str) -> str | None:
     if m:
         grado = GRADI_PAROLA[m.group(1)] + " "
         resto = (resto[:m.start()] + " " + resto[m.end():]).strip()
+    resto = re.sub(r"\bdito\b(?= (della mano|del piede)\b)", lambda x: DITO[x.group(1)], resto)
     for it in _lunghe_prima(CORPO):
         resto = re.sub(rf"\b{re.escape(it)}\b", CORPO[it], resto)
     resto = re.sub(r"\b([a-z_]+) (destra|destro|sinistra|sinistro)\b", lambda x: f"{LATI[x.group(2)]} {x.group(1)}", resto)
     pezzi = [x.strip() for x in re.split(CONNETTORI, resto) if x.strip()]
+    if any(not re.search(r"[^\W\d_]", x) for x in pezzi):     # un pezzo di sola punteggiatura non diventa «in the .»
+        return None
     corpo = ""
     for k, x in enumerate(pezzi):
         corpo += (" in the " if k == 0 else " of the ") + x
@@ -186,6 +193,7 @@ def _causa_con(p: str) -> str | None:
 
 def _conosciute() -> set[str]:
     testi = list(CAUSE.values()) + list(GRADI.values()) + [v.replace("_", " ") for v in CORPO.values()] + list(LATI.values()) + _GLUE
+    testi += list(DITO.values())
     testi += list(FASE.values()) + list(MESI.values()) + list(GRADI_PAROLA.values()) + ["partial", "tendon involvement", "could"]
     return {w.lower() for t in testi for w in re.findall(r"[A-Za-z]+", t)}
 
@@ -227,7 +235,11 @@ def traduci(nota: str | None) -> str | None:
     """La nota in inglese; se non si riconosce tutta, la nota com'è (italiano)."""
     if not isinstance(nota, str) or not nota.strip() or len(nota) > 300:
         return nota
-    parti = [x.strip() for x in nota.strip().split(",")]
+    # la punteggiatura finale («Influenza.», «Lombalgia;») non si traduce: si toglie e si rimette in fondo
+    testa, coda = re.fullmatch(r"(.*?)([\s.;,]*)", nota.strip(), re.S).groups()
+    if not testa:
+        return nota
+    parti = [x.strip() for x in testa.split(",")]
     fuori = []
     for x in parti:
         x = x[:1].lower() + x[1:]                      # solo la prima lettera: i nomi delle squadre tengono la maiuscola
@@ -236,4 +248,4 @@ def traduci(nota: str | None) -> str | None:
             return nota
         fuori.append(t)
     testo = ", ".join(fuori)
-    return testo[0].upper() + testo[1:] if _tutte_note(testo) and testo else nota
+    return testo[0].upper() + testo[1:] + re.sub(r"\s", "", coda) if _tutte_note(testo) and testo else nota

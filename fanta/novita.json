@@ -1,5 +1,36 @@
 [
   {
+    "versione": "1.508",
+    "data": "2026-11-18T23:51:09",
+    "titolo": "App in inglese: le note sugli infortuni non sbagliano più dito, collo del piede e legamenti",
+    "voci": [
+      "Con l'app in inglese, sulla scheda del giocatore, la nota sull'infortunio distingue il dito della mano («finger») da quello del piede («toe»); un «dito» senza altro resta in italiano.",
+      "«Collo del piede» diventa «instep» e non più «neck of the foot»; «legamento crociato anteriore» non ripete più due volte «ligament».",
+      "Note come «Influenzato, da valutare» o «Fratturato» restano in italiano invece di diventare un inglese senza senso («Flu in the to»); «Influenza.» con il punto finale diventa «Flu.» e non più «Flu in the .»."
+    ],
+    "tecnico": [
+      "note_infortuni.traduci: la causa si riconosce solo se finisce a un confine di parola (re.match con \\b, prima p.startswith).",
+      "«dito» tolto da CORPO: si traduce solo davanti a «della mano» (finger) o «del piede» (toe), dizionario DITO; voci nuove di CORPO «collo del piede» (instep), «legamento crociato anteriore», «legamento crociato», «legamento collaterale mediale» (#666).",
+      "La punteggiatura finale della nota (punto, punto e virgola, virgola, spazi) si toglie prima di tradurre e si rimette in fondo; in _causa un pezzo di sola punteggiatura fa restare la nota in italiano."
+    ]
+  },
+  {
+    "versione": "1.507",
+    "data": "2026-11-18T23:47:51",
+    "titolo": "Nuova stagione: un secondo telefono o computer non svuota più le rose appena importate",
+    "voci": [
+      "Impostazioni, La mia lega, Nuova stagione: se hai già archiviato la stagione da un altro dispositivo, toccare l'avviso rimasto a schermo non cancella più le rose nuove: l'app ti dice che le rose sono già della stagione in corso, o che sono cambiate su un altro dispositivo. Sulla web l'avviso sparisce; sull'iPhone resta finché non si ricarica la pagina.",
+      "Se nell'app avevi cambiato il nome della tua squadra, con la nuova stagione la squadra tiene anche il nome di Leghe: alla prima importazione delle rose nuove i giocatori arrivano nella tua squadra, senza una squadra doppia.",
+      "Dopo Nuova stagione, finché non importi le rose nuove, Formazione ti invita a importarle con «Aggiorna le rose», come al primo avvio."
+    ],
+    "tecnico": [
+      "POST /api/nuova-stagione (#657): dentro il blocco delle rose rilegge le rose e, se non sono di una stagione passata (stagione.NienteDaArchiviare, stagione delle rose >= stagione in corso), risponde 409 con stagione.GIA_DELLA_STAGIONE senza scrivere niente. Accetta If-Match sull'ETag delle rose (412) e risponde con l'ETag delle rose ripartite. Messaggio tradotto in err.gia_della_stagione.",
+      "stagione.archivia_e_riparti ricrea le squadre con nome_importato: alla reimportazione lega.nomi_rinominati riconosce la squadra rinominata.",
+      "server._rose_da_schierare: per /api/oggi e /api/formazione le rose senza nessun giocatore valgono «senza rose» (la regola di _ha_rose): Oggi risponde con senza_rose e Formazione con 409 «Nessuna rosa importata: importale con «Aggiorna le rose»». rose_importate di /api/stato non cambia.",
+      "Web: POST /api/nuova-stagione è una scrittura sulla risorsa «rose» (risorsaDi), quindi manda If-Match con l'ultimo ETag delle rose (al 412 ricarica). Al 409 di «Archivia e riparti» si chiude il foglio e si toglie l'avviso «Nuova stagione»."
+    ]
+  },
+  {
     "versione": "1.506",
     "data": "2026-11-17T23:11:56",
     "titolo": "A campionato finito l'app lo dice, invece di aspettare un calendario che non serve",
