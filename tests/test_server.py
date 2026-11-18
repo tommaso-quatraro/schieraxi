@@ -379,7 +379,7 @@ def test_formazione_dopo_la_scadenza_senza_etichette_delle_probabili(client, mon
     f = {"squadra": "Mia", "giornata": 9, "titolari": [x], "panchina": [], "fuori": [], "schede": {"1": x}}
     monkeypatch.setattr(server.consigli, "formazione", lambda *a, **k: f)
     monkeypatch.setattr(server, "_copia_automatica", lambda *a: None)
-    monkeypatch.setattr(server, "_rose", lambda *a: object())
+    monkeypatch.setattr(server, "_rose_da_schierare", lambda *a: object())
     monkeypatch.setattr(server.fasi, "stati_giocatori", lambda *a, **k: {1: "in_corso"})
     monkeypatch.setattr(server.fasi, "iniziata", lambda *a: False)
     r = client.get("/api/formazione").json()

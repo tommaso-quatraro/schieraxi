@@ -240,6 +240,7 @@ def test_salva_questa_dopo_un_aggiornamento_resta_la_consigliata(dati_isolati, m
     monkeypatch.setattr(server.consigli, "valuta", lambda db, regole, rose, titolari, squadra=None, giornata=None, simulazioni=600:
                         {"modulo": "3-5-2", "giornata": 9, "punteggio_atteso": 70.0, "dev": 4.0, "panchina": [], "differenza": 0.0})
     monkeypatch.setattr(server, "_rose", lambda *a: object())
+    monkeypatch.setattr(server, "_rose_da_schierare", lambda *a: object())        # GET /api/formazione legge le rose da qui
     monkeypatch.setattr(server.fasi, "iniziata", lambda *a, **k: False)
     monkeypatch.setattr(server.fasi, "formazione_a_giornata_iniziata", lambda f, *a, **k: f)
     monkeypatch.setattr(server.avvisi_pronta, "prima_partita", lambda *a, **k: datetime(2100, 1, 1, 15, 0))     # formazione aperta

@@ -80,7 +80,8 @@ function risorsaDi(percorso, opzioni) {
   const [p, qs] = percorso.split("?");
   const metodo = (opzioni.method || "GET").toUpperCase();
   if (p === "/api/regole" || p === "/api/regole/rinvio") return "regole";
-  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file", "/api/rose/correggi"].includes(p)) return "rose";
+  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file", "/api/rose/correggi",
+       "/api/nuova-stagione"].includes(p)) return "rose";
   if (p === "/api/avvisi") return "avvisi";
   if (p === "/api/scelta") { const g = new URLSearchParams(qs || "").get("giornata"); return g ? `scelta:${g}` : null; }
   if (p === "/api/formazione/valuta" && metodo === "POST") {
@@ -2803,7 +2804,12 @@ function apriNuovaStagione(s) {
           <li><b>${t("lega.controlla_regole")}</b>${t("lega.bonus_moduli_crediti")}</li></ol></div>
         <div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div>`);
       vai("impostazioni", "rose");
-    } catch (e) { avviso(e.message, 5000); }
+    } catch (e) {
+      // 409: un altro dispositivo ha già archiviato (o non ci sono rose), il server non ha scritto niente e lo dice: l'avviso
+      // rimasto a schermo non vale più, quindi si chiude il foglio e sparisce l'avviso (#657)
+      if (e.status === 409) { chiudiFoglio(); const b = $("#banner-stagione"); if (b) b.closest("li").remove(); }
+      avviso(e.message, 5000);
+    }
   });
 }
 
