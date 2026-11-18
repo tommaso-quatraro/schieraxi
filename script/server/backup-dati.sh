@@ -3,6 +3,8 @@
 # che non si rigenerano: account (account.sqlite, copiato con l'API di backup di SQLite), cartelle degli utenti,
 # lega/ (regole, rose, movimenti, immagini), scelte, osservati, impostazioni degli avvisi, icona, diario, affidabilità,
 # formazioni delle altre squadre, calendario della lega, stato del pianificatore, chiave delle impronte (chiave-impronte.key, 600),
+# scelte dell'amministratore su fonti e funzioni (fonti.json, funzioni.json), consigliate già mostrate (consigliate.json), storia
+# dei giri della sentinella (sentinella.json),
 # registro delle giornate (le tabelle registro_* dell'archivio, esportate in dati/registro-giornate.json: non si ricostruiscono),
 # archivio delle statistiche (fanta.sqlite, copiato con l'API di backup di SQLite: non tutto si riscarica, una fonte che non risponde
 # più non ridà i suoi dati storici).
@@ -60,8 +62,11 @@ mkdir -p "$stage/dati"
 # 1. Cose che esistono solo se l'app è installata: copia ciò che c'è, senza sbandierare errori per le mancanti.
 [ -d lega ] && cp -a lega "$stage/"
 [ -d dati/utenti ] && cp -a dati/utenti "$stage/dati/"
+# fonti.json e funzioni.json: fonti e funzioni spente dall'amministratore (solo nomi e acceso/spento, niente segreti). Senza, dopo un
+# ripristino tornerebbero accese per tutti senza avviso.
 for f in scelte.json osservati.json avvisi-impostazioni.json icona.json diario.json affidabilita.json \
-         formazioni_altre_squadre.json calendario_lega.json pianificatore.json; do
+         formazioni_altre_squadre.json calendario_lega.json pianificatore.json \
+         fonti.json funzioni.json consigliate.json sentinella.json; do
   [ -f "dati/$f" ] && cp -a "dati/$f" "$stage/dati/"
 done
 # La chiave delle impronte va insieme ad account.sqlite: senza, dopo un ripristino indirizzi e dispositivi noti non valgono più.

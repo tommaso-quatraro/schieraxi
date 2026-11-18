@@ -810,6 +810,20 @@ function mostraSenzaRose(opz) {
   if (typeof primoAvvioSeServe === "function") primoAvvioSeServe();
 }
 
+// Campionato finito (#656, campo `campionato_finito` di /api/oggi): nessuna giornata da preparare fino al calendario nuovo. La testa
+// della giornata finita con il riepilogo dell'ultima (nelle 48 ore, se il server lo manda) e la frase del server al posto della prossima;
+// con un recupero dell'ultima giornata ancora da giocare, lo stesso menu della fase «finita» per scegliere come contarlo.
+function mostraCampionatoFinito(o, opz) {
+  clearInterval(timerConto);
+  const r = o.riepilogo;
+  const frase = `<p class="tg-nota" role="status" id="campionato-finito">${esc(testoDi(o.campionato_finito))}</p>`;
+  pagina(`<div class="fz-testa">${r ? `${riepilogoGiornata(r)}<div class="tg-prossima">${frase}</div>` : frase}</div>
+    ${r && r.rinvio ? `<div class="carta rinvio">${menuRinvio(r.rinvio)}</div>` : ""}`, opz);
+  collegaRinvio();
+  const comeAndata = $("[data-apri-giornata]");
+  if (comeAndata) comeAndata.addEventListener("click", () => vaiGiornate(Number(comeAndata.dataset.apriGiornata) || undefined));
+}
+
 // Partite rinviate della giornata (campo `rinvio` di /api/oggi, docs/API.md): quali, i miei giocatori coinvolti e cosa vale per
 // questa giornata, cambiabile solo per lei (PUT /api/regole/rinvio). Server vecchio senza il campo: niente riquadro.
 const MODI_RINVIO = ["aspetta", "senza_voto", "voto_ufficio"];
@@ -965,9 +979,13 @@ function vistaFormazione() {
 async function caricaGiornata() {
   // Account nuovo, senza rose (lo dice /api/stato, letto all'avvio): /api/formazione risponderebbe 409 e il browser lo scriverebbe fra
   // gli errori, quindi si chiede solo /api/oggi, che dà il benvenuto. Se le rose nel frattempo ci sono, la formazione si chiede dopo.
+  // Lo stesso senza una giornata da giocare (`prossima_giornata` nullo): a campionato finito /api/oggi dice `campionato_finito` e
+  // /api/formazione risponderebbe 409 (#656); d'estate, senza calendario, è /api/oggi a dire che il calendario non c'è ancora.
   const senzaRose = !!stato.info && stato.info.rose_importate === false;
-  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose ? null : api("/api/formazione").catch(e => e)]);
+  const senzaGiornata = !!stato.info && stato.info.prossima_giornata === null;
+  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata ? null : api("/api/formazione").catch(e => e)]);
   if (o.senza_rose) return { o, f: null };
+  if (o.campionato_finito) return { o, f: null };
   const f = letta || await api("/api/formazione");
   if (f instanceof Error) throw f;
   const b = { o, f };
@@ -1001,17 +1019,19 @@ function testaGiornata(o, f) {
       <p class="tg-punti"><b class="tg-numero" id="oggi-fatti">${num(c2.punti_fatti)}</b> ${t("formazione.punti_finora")}${c2.punti_previsti != null ? ` · ${t("formazione.circa_fine", { n: num(c2.punti_previsti, 0) })}` : ""}</p>
       <p class="tg-sotto">${c2.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c2.ancora_da_giocare) : t("oggi.tutti_giocato")}</p>`;
   }
-  if (fase === "finita" && o.riepilogo) {
-    const r = o.riepilogo, tua = r.formazione_di === "tua";
-    return `<div class="tg-finita" id="oggi-riepilogo"><div>
-        <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
-        <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
-        <button class="bottone secondario" type="button" data-apri-giornata="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
-      ${tua && r.consigliata && r.consigliata.punti_fatti !== r.punti_fatti ? `<p class="tg-sotto">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
-      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
-      <div class="tg-prossima">${giornata}${chiusura}</div>`;
-  }
+  if (fase === "finita" && o.riepilogo) return `${riepilogoGiornata(o.riepilogo)}<div class="tg-prossima">${giornata}${chiusura}</div>`;
   return giornata + (f.iniziata ? "" : chiusura);
+}
+
+// La giornata appena finita (campo `riepilogo` di /api/oggi): punti fatti e attesi, «Com'è andata», la consigliata, i recuperi.
+function riepilogoGiornata(r) {
+  const tua = r.formazione_di === "tua";
+  return `<div class="tg-finita" id="oggi-riepilogo"><div>
+      <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
+      <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
+      <button class="bottone secondario" type="button" data-apri-giornata="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
+    ${tua && r.consigliata && r.consigliata.punti_fatti !== r.punti_fatti ? `<p class="tg-sotto">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
+    ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}`;
 }
 
 // A giornata in corso: i cambi dalla panchina già fatti o probabili (campo `sostituzioni` di `in_corso`).
@@ -1025,6 +1045,7 @@ function cambiInCorso(c) {
 function mostraFormazione(b, squadra, opz = {}) {
   const { o, f } = b;
   if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
+  if (o && o.campionato_finito) { mostraCampionatoFinito(o, opz); return; }
   const l = livelloBase(f);
   const consigliato = l.moduli.find(m => m.modulo === l.modulo) || l.moduli[0];
   const fermi = giocatoriFermi(f);
@@ -1064,13 +1085,20 @@ function mostraFormazione(b, squadra, opz = {}) {
   // dopo un salvataggio la copia sul telefono di questa schermata è già vecchia: la si aggiorna, così tornando qui non si rivede quella di prima
   // La scrittura è tornata (riuscita o no) ma la schermata nel frattempo è stata ridisegnata (riaperta, o lasciata): la copia sul
   // telefono è vecchia e, se si è ancora nella Formazione, in pagina c'è altro, con i comandi spenti finché la scrittura era in
-  // volo. Si rilegge dal server: mai una scelta salvata che non si vede. Restituisce se ha riletto.
+  // volo. Si rilegge dal server: mai una scelta salvata che non si vede. Restituisce se è l'ultima scrittura partita da questa
+  // schermata: allora il suo errore si dice con un avviso, riletta la Formazione o lasciata (#667: lasciata la schermata, un
+  // salvataggio fallito non lo diceva nessuno, e tornando sembrava fatto). Di una scrittura superata da una dopo conta quella dopo.
   const altrove = n => {
     rimuoviCache("giornata");
-    const rilegge = n === sc.richiesta && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista;
-    if (rilegge) rileggiFormazione();
-    return rilegge;
+    const ultima = n === sc.richiesta;
+    if (ultima && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista) rileggiFormazione();
+    return ultima;
   };
+  // L'avviso di una scrittura non riuscita a schermata già ridisegnata: nella Formazione il motivo (rete, rifiuto del server); su
+  // un'altra schermata una frase del catalogo che nomina la formazione («Non riesco a collegarmi» da solo, su Giornate, sembrava
+  // parlare di Giornate). La rete si nomina solo se è lei il motivo.
+  const nonSalvata = e => stato.vista === "formazione" && !stato.squadraVista ? e.message
+    : t(e.rete ? "formazione.non_salvata_rete" : "formazione.non_salvata");
   const ricorda = valutata => { if (mia) salvaCache("giornata", { ...b, scelta: sc.salvata, valutata: valutata || undefined, non_valida: false, f: { ...f, stato_scelta: sc.salvata ? "valida" : "nessuna" } }); };
   // 412: nel frattempo la scelta è stata cambiata su un altro dispositivo, e la scrittura non è stata fatta. La schermata si
   // rilegge subito dal server (niente ricarica della pagina dopo 2,5 secondi: fino ad allora i comandi restavano accesi su una
@@ -1105,7 +1133,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       return true;
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return false; }
-      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return false; }      // la pagina riletta nel frattempo: lo si dice lì
+      if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return false; }   // pagina riletta o lasciata nel frattempo: lo si dice lo stesso
       avviso(e.message, 5000);
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
       return false;
@@ -1124,7 +1152,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       disegna(true);
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return; }
-      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return; }
+      if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return; }
       avviso(e.message, 5000);                              // per esempio la consigliata sposterebbe chi gioca un anticipo già cominciato (#373)
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);
     } finally { if (n === sc.richiesta) sc.occupato = false; }

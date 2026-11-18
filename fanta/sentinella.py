@@ -54,6 +54,11 @@ MAX_RIGHE_AVVISO = 6
 MAX_DETTAGLIO = 600                                       # caratteri del dettaglio in «Stato dei dati»
 FILE_STATO = percorsi.RADICE / "dati" / "sentinella.json"
 FILE_LIVE = percorsi.RADICE / "dati" / "live.json"        # copia su file della cache della diretta, scritta dal servizio (se c'è)
+# Fino a quando (mese, giorno) una stagione nuova senza calendario è l'estate e non una rottura (#656). Dal 1° luglio la stagione è
+# quella nuova (aggiorna.Stagione.di). La Serie A comincia nella seconda metà di agosto e il calendario esce settimane prima (giugno o
+# luglio): dal 1° settembre una stagione ancora senza partite in archivio vuol dire fonte o aggiornamento fermi, e si deve vedere.
+# Un calendario uscito in ritardo davvero (come nel 2020) fa partire l'avviso: è un'anomalia che conviene sapere.
+ESTATE_FINO_A = (8, 31)
 NTFY = "https://ntfy.sh"
 
 # nome -> (esito quando è rotta, cosa garantisce). «errore» = l'utente vede una cosa sbagliata; «avviso» = da guardare.
@@ -275,8 +280,8 @@ def controlla_utente(utente: str, r: dict, regole, rosa: set, scelta: dict | Non
                 if set(miei) != set(_ids(form.get("titolari"))):
                     rompi("punti_diversi", "oggi mostra titolari diversi dalla formazione consigliata")
 
-    # ---- widget
-    if isinstance(wid, dict):
+    # ---- widget (a campionato finito, #656, non ha formazione né rosa da controllare: resta il peso)
+    if isinstance(wid, dict) and not wid.get("campionato_finito"):
         wf = wid.get("formazione") or {}
         if not _num(wf.get("punti_attesi")):
             rompi("numero_mancante", "widget.formazione.punti_attesi")
@@ -305,6 +310,7 @@ def controlla_utente(utente: str, r: dict, regole, rosa: set, scelta: dict | Non
             if isinstance(cons, dict):
                 _stessi_punti("widget (consigliata)", cons.get("punti_attesi"), cons.get("modulo"), "formazione",
                               form.get("punteggio_atteso"), form.get("modulo"), rompi)
+    if isinstance(wid, dict):
         dimensione = len(json.dumps(wid, ensure_ascii=False).encode())
         if dimensione > MAX_BYTE_WIDGET:
             rompi("widget_troppo_grande", f"{dimensione} byte")
@@ -459,7 +465,7 @@ def _controlla_fase(utente, oggi: dict, regole, db, stagione: str, adesso: datet
             rompi("stato_partita_incoerente", f"oggi.partite[{i}] «{stato}» ma comincia tra {_ore(d - adesso)}")
     if fase == fasi.IN_CORSO and ha_formazione and oggi.get("in_corso") is None:
         rompi("fase_incoerente", "fase «in_corso» senza il blocco in_corso")
-    if fase == fasi.FINITA and oggi.get("prossima") is None:
+    if fase == fasi.FINITA and oggi.get("prossima") is None and not oggi.get("campionato_finito"):     # a campionato finito non c'è (#656)
         rompi("fase_incoerente", "fase «finita» senza il blocco prossima")
     if fase != fasi.IN_CORSO and oggi.get("in_corso") is not None:
         rompi("fase_incoerente", f"blocco in_corso con fase «{fase}»")
@@ -607,7 +613,8 @@ def _da_risposta(risposta) -> dict:
 
 def risposte_utente(ctx, db) -> tuple[dict, dict, dict | None]:
     """({rotta: corpo}, {rotta: (tipo d'errore, gravità)}, scelta salvata della giornata). Gravità: `senza_rose` (409, normale per
-    un account nuovo), `rifiutata` (400 con il messaggio per l'utente), `errore` (sarebbe un 500), `json` (non si scrive in JSON)."""
+    un account nuovo), `senza_giornata` (nessuna giornata da giocare: campionato finito o calendario che manca),
+    `rifiutata` (400 con il messaggio per l'utente), `errore` (sarebbe un 500), `json` (non si scrive in JSON)."""
     from fastapi import HTTPException
     from fastapi.responses import Response
     from . import consigli, server
@@ -619,6 +626,8 @@ def risposte_utente(ctx, db) -> tuple[dict, dict, dict | None]:
             corpi[nome] = funzione()
         except HTTPException as e:
             errori[nome] = (f"HTTP {e.status_code}", "senza_rose" if e.status_code == 409 else "errore" if e.status_code >= 500 else "rifiutata")
+        except (consigli.SenzaCalendario, consigli.CampionatoFinito) as e:     # nessuna giornata da giocare: vedi _controlla_un_utente
+            errori[nome] = (type(e).__name__, "senza_giornata")
         except ValueError as e:              # il server la trasforma in 400 con il messaggio per l'utente
             errori[nome] = (type(e).__name__, "rifiutata")
         except Exception as e:               # noqa: BLE001 - sarebbe un 500: è proprio quello che si cerca
@@ -683,6 +692,28 @@ def _prepara_live() -> None:
         live.unico = leggi_live()
 
 
+def senza_giornata_normale(db: sqlite3.Connection, stagione: str, adesso: datetime) -> bool:
+    """Nessuna giornata da giocare per una ragione normale (#656): il campionato è finito (consigli.stagione_finita), oppure è
+    l'estate (ESTATE_FINO_A) e la stagione nuova non ha ancora nessuna partita in archivio, con quella prima finita: il calendario
+    nuovo deve ancora uscire. Allora il 409 o il 400 di Oggi, Formazione e widget è la risposta giusta. Negli altri casi (archivio
+    senza calendario, stagione con le partite ferme, stagione nuova ancora vuota da settembre in poi) il calendario manca davvero e il
+    rifiuto resta una rottura. La stagione prima finita da sola non basta: sul server c'è sempre (la scrivono le pagine dei voti)."""
+    from datetime import date
+    from . import consigli
+    from .aggiorna import Stagione
+    if consigli.stagione_finita(db, stagione, adesso):
+        return True
+    try:
+        nuova = Stagione(int(stagione[:4]))
+    except ValueError:
+        return False
+    if not date(nuova.anno, 7, 1) <= adesso.date() <= date(nuova.anno, *ESTATE_FINO_A):
+        return False
+    if db.execute("SELECT 1 FROM partite WHERE stagione = ? LIMIT 1", (stagione,)).fetchone() is not None:
+        return False
+    return consigli.stagione_finita(db, nuova.precedente().codice, adesso)
+
+
 def _controlla_un_utente(etichetta: str, ctx, db: sqlite3.Connection, r_regole, rose_, rotture: list[Rottura], stagione: str,
                          adesso: datetime):
     """Le risposte e i controlli di un utente; le rotte trovate si aggiungono a `rotture`. Restituisce il corpo di /api/live
@@ -690,9 +721,14 @@ def _controlla_un_utente(etichetta: str, ctx, db: sqlite3.Connection, r_regole, 
     squadra = rose_.squadra(rose_.mia_squadra or "") if rose_ else None
     corpi, errori, scelta = risposte_utente(ctx, db)
     g = (corpi.get("oggi") or {}).get("giornata")
+    normale = None                       # nessuna giornata da giocare per una ragione normale: si chiede solo se serve
     for nome, (tipo, gravita) in sorted(errori.items()):
         if gravita == "json":
             rotture.append(Rottura("json_non_valido", etichetta, g, f"{nome.split(':')[0]}: {tipo} nel trasformarla in JSON"))
+        elif gravita == "senza_giornata" and squadra is not None:
+            normale = senza_giornata_normale(db, stagione, adesso) if normale is None else normale
+            if not normale:                                     # il calendario manca davvero
+                rotture.append(Rottura("risposta_rifiutata", etichetta, g, f"{nome}: {tipo}, nessuna giornata da giocare"))
         elif gravita == "rifiutata" and squadra is not None:     # senza la propria squadra il rifiuto è giusto (lo dice l'app)
             rotture.append(Rottura("risposta_rifiutata", etichetta, g, f"{nome}: {tipo}"))
         elif gravita == "errore":
