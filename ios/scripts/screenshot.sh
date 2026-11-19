@@ -126,7 +126,7 @@ scatta() {
     echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"
     ERRORI=$((ERRORI + 1))
   fi
-  local file="$USCITA/${etichetta}_${nome}.png" esito inizio giri=0
+  local file="$USCITA/${etichetta}_${nome}.png" esito inizio
   inizio=$(date +%s)
   # Si fotografa quando lo schermo è fermo (due foto di fila uguali): non mentre la schermata carica o i numeri salgono.
   # Prima bastavano i secondi fissi qui sopra, e la Formazione in orizzontale usciva con lo scheletro del caricamento.
@@ -145,6 +145,8 @@ scatta() {
     ERRORI=$((ERRORI + 1))
     return
   fi
+  # Un avviso di sistema comparso durante la foto (#601): si aspetta che sparisca e si rifà (avvisi.sh).
+  avvisi_rifai "$udid" "$file" "$inizio"
   # Se la foto è quasi vuota (nera) l'app non aveva ancora finito di disegnarsi: si riprova dopo qualche secondo.
   local peso
   peso=$(stat -f%z "$file" 2>/dev/null || echo 999999)
@@ -152,12 +154,6 @@ scatta() {
     sleep 5
     xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1
   fi
-  # Un avviso di sistema comparso durante la foto (#601): si aspetta che sparisca e si rifà la foto (al massimo due volte).
-  while [ "$giri" -lt 2 ] && avvisi_coprono "$udid" "$inizio"; do
-    giri=$((giri + 1))
-    inizio=$(date +%s)
-    xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1
-  done
   # Il simulatore fotografa sempre lo schermo "in verticale": con l'app in orizzontale la foto esce girata di 90 gradi.
   if [ "$RADDRIZZA" = "1" ]; then
     sips -r 270 "$file" >/dev/null 2>&1
