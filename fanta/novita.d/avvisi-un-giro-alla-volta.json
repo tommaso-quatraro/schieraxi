@@ -1,0 +1,12 @@
+{
+  "titolo": "Avvisi: niente più doppioni vicino alla scadenza, e «Aggiorna i dati» non parte due volte",
+  "voci": [
+    "Nell'ultima ora prima della scadenza «formazione tra un'ora» e «cambia la formazione» arrivano una volta sola, anche quando due giri di controllo cadono nello stesso momento.",
+    "Impostazioni, «Aggiorna i dati» (solo per l'amministratore): mentre il server sta già aggiornando da solo, il pulsante risponde «Aggiornamento già in corso» invece di farne partire un secondo."
+  ],
+  "tecnico": [
+    "avvisi_utenti.esegui (#660): il lavoro di ogni utente sta dentro un blocco su file fra processi (avvisi.lock nella sua cartella, blocco.BloccoFile, senza creare la cartella): il giro dei promemoria dal cron e quello dei cambi del pianificatore non leggono e riscrivono più insieme gli stessi stati. Occupato oltre ATTESA_BLOCCO (30 secondi): l'utente passa al giro dopo, senza segnarsi come servito, con una riga nel registro.",
+    "Errori che lasciano traccia: ogni utente in errore scrive una riga nel registro (numero dell'utente e tipo d'errore, mai nomi né messaggi), anche nei giri a 60, 30 e 15 minuti del servizio. Gli errori dell'avviso «cambia la formazione» (in notifiche.cambi e nel giro dei promemoria) e dei dettagli del promemoria non si ingoiano più (notifiche.segna_guasto): l'avviso parte lo stesso e il guasto va nel ritorno di esegui, che il comando stampa; senza account, una riga nel registro.",
+    "POST /api/aggiorna prende anche pianificatore.blocco_processo (lo stesso blocco di aggiorna.sh) e lo tiene fino alla fine del lavoro; occupato: la risposta di sempre {\"avviato\": false, \"messaggio\": \"Aggiornamento già in corso\"}. Nessun campo dell'API nuovo o tolto."
+  ]
+}
