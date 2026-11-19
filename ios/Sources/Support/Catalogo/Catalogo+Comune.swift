@@ -12,6 +12,9 @@ extension Catalogo {
         /// `comune.cambiato_ricarico`
         static let cambiatoRicarico = "Questi dati sono stati cambiati da un altro dispositivo. Sto ricaricando la versione nuova…"
 
+        /// `comune.cambiato_altrove`
+        static let cambiatoAltrove = "Questi dati sono stati cambiati da un altro dispositivo."
+
         /// `comune.prima_rose`
         static let primaRose = "Prima le tue rose"
 
