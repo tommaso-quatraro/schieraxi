@@ -1,0 +1,10 @@
+{
+  "titolo": "Testi: via le frasi che nessuna schermata mostrava più",
+  "voci": [
+    "Nessun cambiamento visibile: dai testi di web e iPhone sono uscite 40 frasi di schermate che non ci sono più (il Diario di prima e le vecchie scelte degli avvisi)."
+  ],
+  "tecnico": [
+    "Catalogo dei testi (#712): tolte 40 chiavi che né la web, né l'iPhone, né il server usavano (asp.avvisi_titolo; avv.cambi*, avv.prima*, avv.prom_*, avv.riepilogo*, avv.copertura*, avv.ore_tranq_aiuto, avv.dalle, avv.alle, avv.manda_avviso_prova, avv.per_ogni_giornata; diario.salvata, diario.non_salvata, diario.ho_schierato_*, diario.correggi, diario.tua, diario.tua_consigliata, diario.la_consigliata; imp.avvisi, imp.avvisi_sub; lega.voce_*_sub, lega.voce_diario, lega.voce_regole; mercato.come_legge, mercato.non_gioca; perche.definizione).",
+    "ios/testi: tolte le eccezioni tenute solo perché tests/test_testi.py::test_nessuna_chiave_dimenticata non le segnalasse. fanta/web/testi.js e ios/Sources/Support/Catalogo/ rigenerati con script/testi.py --scrivi. Nessuna rotta né campo dell'API cambia; nessuna di queste chiavi era una frase mandata dal server."
+  ]
+}
