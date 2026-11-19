@@ -149,8 +149,8 @@ def controlla_conguaglio(conguaglio: int, mia: Squadra, loro: Squadra, lingua: s
         paga, nome_paga, riceve = ("mio", mia.nome, "loro") if conguaglio < 0 else ("loro", loro.nome, "mio")
         x = abs(conguaglio)
         if residui[paga] is None:
-            problema = (f"The remaining credits of {nome_paga} are not set in League: I cannot check that they are enough" if en
-                        else f"I crediti residui di {nome_paga} non sono indicati in Lega: non posso controllare che bastino")
+            problema = (f"The remaining credits of {nome_paga} are not set in Settings: I cannot check that they are enough" if en
+                        else f"I crediti residui di {nome_paga} non sono indicati nelle Impostazioni: non posso controllare che bastino")
         elif residui[paga] < x:
             valido = False
             problema = (f"{nome_paga} has {residui[paga]} credits and cannot pay {x}" if en

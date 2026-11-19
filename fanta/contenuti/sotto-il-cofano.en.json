@@ -71,7 +71,7 @@
         "titolo": "A real case: Thuram, matchday 8 of 2026-27 (Inter-Fiorentina)",
         "testo": "Recalculated on 30/10/2026 with only the data before matchday 8 (no probable line-ups, so p comes from recent appearances: 1.0). The match is worth 2.46 expected goals for Inter against 0.99 for Fiorentina. Expected rating 6.46; expected goals 0.505, at 3 points each, add +1.52; expected assists 0.144 add +0.14; cards and the rest about -0.06. Total mu = 8.06. The probability of scoring at least one goal is 1 - e^(-0.505) = 39.7%."
       },
-      "rimandi": ["Line-up (tap a player to see the pieces)", "League > Rules"]
+      "rimandi": ["Line-up (tap a player to see the pieces)", "Settings > Rules and deadline"]
     },
     "voto-base": {
       "titolo": "The expected rating",
@@ -268,12 +268,12 @@
     "conguagli": {
       "titolo": "Balancing with credits",
       "paragrafi": [
-        "A trade can include credits (positive if you receive them, negative if you pay them). The app checks that whoever pays has them, according to the remaining credits saved in League, and that nobody exceeds the limit of 100,000.",
+        "A trade can include credits (positive if you receive them, negative if you pay them). The app checks that whoever pays has them, according to the remaining credits saved in Settings, and that nobody exceeds the limit of 100,000.",
         "To give a value in points to credits, it uses the team's free-agent market: it adds up the gains in points of its best moves and divides them by what they cost (price of the incoming player minus the refund for the outgoing one). The result is a rate: expected points over the season for each credit. The value of the credits exchanged is balance × rate, and the final verdict uses the net gain. Without a rate (no useful move) the credits are shown but do not enter the verdict.",
         "It is a rough estimate: it depends on which free agents there are today."
       ],
       "formula": "rate = Σ gain of the useful moves / Σ (price of the incoming - refund)\nnet = gain in points + balance × rate",
-      "rimandi": ["Trades > Balance", "League > Credits"]
+      "rimandi": ["Trades > Balance", "Settings > My team"]
     },
     "svincoli": {
       "titolo": "Releases and refund",
