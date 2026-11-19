@@ -453,3 +453,24 @@ def test_installazione_rimasta_a_meta_non_sovrascrive_la_copia_di_sicurezza(s):
     assert s.codice() == "V1" and base._venv(s) == "vecchia"
     assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
     assert _righe(s, "non era finita")
+
+
+@con_bash
+def test_installazione_interrotta_il_giro_dopo_rimette_subito_la_versione_di_prima(s):
+    """Revisione di #647: un giro fermato a metà (qui: ucciso subito dopo il riavvio, con il codice e l'ambiente Python nuovi già al
+    loro posto). Il giro dopo rimette subito codice e ambiente di prima dalla copia di sicurezza, lo scrive e avvisa; la copia
+    resta quella buona, quindi anche un altro ritorno indietro porta alla versione di prima."""
+    sudo_normale = f'echo "sudo $*" >> "{base._msys(s.chiamate)}"'
+    _stub(s.bin, "sudo", sudo_normale + '\nkill -9 "$PPID"')                # il giro muore dopo il riavvio
+    c2 = _commit(s.lavoro, "librerie", **{"requirements.txt": "r2", "fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode != 0 and s.codice() == "V2" and base._venv(s) == "nuova"
+    assert (s.stato / "installazione-in-corso").exists()
+    _stub(s.bin, "sudo", sudo_normale)
+    s.codice_curl.write_text("500", encoding="utf-8")                      # la reinstallazione non parte: si torna indietro
+    s.giro(10)
+    assert s.codice() == "V1" and base._venv(s) == "vecchia"
+    assert (s.app / "requirements.txt").read_text(encoding="utf-8") == "r1"
+    assert not (s.stato / "installazione-in-corso").exists()
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert _righe(s, "non era finita") and any("a metà" in a for a in s.avvisi())
