@@ -39,7 +39,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Account.datiSpiega, Catalogo.Account.datiScarica, Catalogo.Account.eliminaTitolo, Catalogo.Account.elimina,
         Catalogo.Account.eliminaConferma,
         // social.*
-        Catalogo.Social.continua, Catalogo.Social.oppure, Catalogo.Social.scegliNome, Catalogo.Social.crea,
+        Catalogo.Social.continua, Catalogo.Social.oppure, Catalogo.Social.scegliNome, Catalogo.Social.scegliSpiega, Catalogo.Social.crea,
         Catalogo.Social.accessi, Catalogo.Social.passwordSi, Catalogo.Social.passwordNo, Catalogo.Social.googleAccount,
         Catalogo.Social.googleNonCollegato, Catalogo.Social.collega, Catalogo.Social.scollega, Catalogo.Social.scollegaConferma,
         Catalogo.Social.scollegatoOk, Catalogo.Social.collegatoOk, Catalogo.Social.servePassword, Catalogo.Social.conferma,
@@ -135,7 +135,8 @@ struct AccessoImpostazioniDalCatalogoTests {
             "Catalogo.Accesso.recuperoCodiceEmailSpiega(", "Catalogo.Accesso.recuperoConEmail", "Catalogo.Accesso.invioVerifica",
         ]),
         ("Sources/Presentation/Accesso/AccessoGoogleView.swift", [
-            "Catalogo.Accesso.nomeUtente", "Catalogo.Social.scegliNome", "Catalogo.Accesso.codiceInvito", "Catalogo.Social.crea",
+            "Catalogo.Accesso.nomeUtente", "Catalogo.Social.scegliNome", "Catalogo.Social.scegliSpiega",
+            "Catalogo.Accesso.codiceInvito", "Catalogo.Social.crea",
             "Catalogo.Social.accessi", "Catalogo.Social.scollega", "Catalogo.Social.scollegaConferma", "Catalogo.Social.collega",
             "Catalogo.Social.aggiungiPassword", "Catalogo.Social.servePassword", "Catalogo.Social.continua",
             "Catalogo.Social.conferma", "Catalogo.Social.confermaSpiega", "Catalogo.Social.riconfermatoOk",
@@ -184,6 +185,45 @@ struct AccessoImpostazioniDalCatalogoTests {
         for costante in costanti {
             #expect(codice.contains(costante), "\(percorso) non usa \(costante)")
         }
+    }
+
+    // MARK: la schermata del nome dopo «Continua con Google» (#775)
+
+    /// I soli testi fra virgolette che la schermata del nome può avere: quelli che ha solo l'iPhone. «Un attimo…» mentre il
+    /// server crea l'account (come le altre schermate di Accesso), «Annulla» per chiudere il foglio (la web ha la pagina, non un
+    /// foglio) e il simbolo dell'errore. Tutto il resto viene dal catalogo, come `mostraNuovoGoogle` della web.
+    static let soloIPhoneNelNome: Set<String> = ["Un attimo…", "Annulla", "exclamationmark.triangle.fill"]
+
+    /// Il codice di `ScegliNomeGoogleView`, fino alla vista che viene dopo nel file.
+    static func codiceScegliNome() throws -> String {
+        let codice = try SorgenteAccesso.codice("Sources/Presentation/Accesso/AccessoGoogleView.swift")
+        let inizio = try #require(codice.range(of: "struct ScegliNomeGoogleView"), "manca ScegliNomeGoogleView")
+        let resto = codice[inizio.upperBound...]
+        let fine = resto.range(of: "\nstruct ")?.lowerBound ?? resto.endIndex
+        return String(resto[..<fine])
+    }
+
+    @Test("Dopo Google la schermata del nome ha i testi della web: titolo, spiegazione e campi dal catalogo, niente frasi a mano")
+    func scegliNomeComeLaWeb() throws {
+        let codice = try Self.codiceScegliNome()
+        // il titolo è quello della web («Scegli il tuo nome utente»), intero anche con il testo grande: mai «Quasi fatto»
+        #expect(codice.contains(".titoloPagina(Catalogo.Social.scegliNome"), "il titolo della pagina deve essere social.scegli_nome")
+        #expect(codice.contains("TitoloNellaPagina()"), "con il testo grande il titolo intero sta nella pagina")
+        #expect(codice.contains("Catalogo.Social.scegliSpiega"), "la spiegazione della web (social.scegli_spiega)")
+        let letterali = Set(try RestiDalCatalogoTests.letterali(codice))
+        #expect(letterali.isSubset(of: Self.soloIPhoneNelNome),
+                "testi scritti a mano nella schermata del nome: \(letterali.subtracting(Self.soloIPhoneNelNome).sorted())")
+    }
+
+    @Test("Il controllo della schermata del nome trova davvero una frase scritta a mano")
+    func scegliNomeIlControlloFunziona() throws {
+        let finto = SorgenteAccesso.soloCodice(#"""
+        struct ScegliNomeGoogleView: View {
+            var body: some View { Form { Text("Invito") }.navigationTitle("Quasi fatto") }
+        }
+        """#)
+        let letterali = Set(try RestiDalCatalogoTests.letterali(finto))
+        #expect(letterali.subtracting(Self.soloIPhoneNelNome) == ["Invito", "Quasi fatto"])
     }
 
     // MARK: frasi con un valore e testi composti

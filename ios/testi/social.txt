@@ -4,6 +4,7 @@
 social.continua
 social.oppure
 social.scegli_nome
+social.scegli_spiega
 social.crea
 social.accessi
 social.password_si
