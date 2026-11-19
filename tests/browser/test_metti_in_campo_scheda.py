@@ -108,6 +108,27 @@ def test_con_un_cambio_di_modulo_il_campo_e_il_menu_passano_al_modulo_nuovo(web)
     assert len(salvate) == 1 and entra["id"] in salvate[0]["titolari"] and attaccante["id"] not in salvate[0]["titolari"]
 
 
+def test_fra_chi_esce_chi_gioca_meno_dell_80_per_cento_lo_dice(web):
+    """Come fra i sostituti: un numero grande alto perché il titolare gioca poco si spiega nella riga, con «gioca N%»."""
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    f = web.registrata("/api/formazione")
+    letto = lambda x: int(x["p_voto"] * 100 + 0.5)                             # noqa: E731 («gioca N%» come si legge)
+    titolari = [f["schede"][str(i)] for i in _consigliato(f)["titolari"] if f["schede"][str(i)]["ruolo"] != "P"]
+    incerto = next(x for x in titolari if letto(x) < 80)
+    sicuro = next(x for x in titolari if letto(x) >= 80)
+    entra = _panchinaro(f, incerto["ruolo"])
+    web.risposta(ROTTA, {"giornata": 9, "entra": entra["id"], "uscite": [
+        {"esce": incerto["id"], "modulo": f["modulo"], "cambia_modulo": False, "differenza": 0.8},
+        {"esce": sicuro["id"], "modulo": "4-4-2", "cambia_modulo": True, "differenza": -0.3}]})
+    web.apri("/")
+    tocca(web, _riga_panchina(web, entra["nome"]))
+    tocca(web, scheda(web).get_by_role("button", name="Metti in campo"))
+    riga = lambda x: " ".join(_scelte(web).filter(has_text=x["nome"]).first.inner_text().split())   # noqa: E731
+    assert f"gioca {letto(incerto)}%" in riga(incerto), riga(incerto)
+    assert not re.search(r"gioca \d+%", riga(sicuro)), riga(sicuro)
+
+
 def test_se_il_server_non_risponde_la_scheda_lo_dice_e_non_cambia_niente(web):
     solo(web, "prima")
     f, entra, _, _ = _prepara(web)

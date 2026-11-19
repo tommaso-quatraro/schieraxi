@@ -125,8 +125,9 @@ prima della scadenza:
 hanno ancora la rotta `POST /api/formazione/metti-in-campo`: la risposta la dà il test con `web.risposta`, costruita sulla
 formazione registrata (finché non li si registra di nuovo, la web la chiama solo al tocco sul pulsante):
 - dalla scheda di un panchinaro «Metti in campo» chiede al server chi può uscire (con gli 11 in pagina), l'elenco ha la
-  differenza di punti attesi e, se il modulo cambia, il modulo nuovo («Si passa al 5-3-2»); un tocco cambia il campo, lo stato dice «L'hai cambiata
-  tu» e la scelta è salvata; con un cambio di modulo il campo e il menu del modulo passano a quello nuovo;
+  differenza di punti attesi, «gioca N%» per chi gioca meno dell'80% e, se il modulo cambia, il modulo nuovo («Si passa al
+  5-3-2»); un tocco cambia il campo, lo stato dice «L'hai cambiata tu» e la scelta è salvata; con un cambio di modulo il campo
+  e il menu del modulo passano a quello nuovo;
 - se la rotta non risponde la scheda ha un errore `role="alert"` e niente cambia; scheda ed elenco senza violazioni gravi di
   axe, chiaro e scuro;
 - il pulsante non c'è per i titolari (che hanno «Sostituisci»), per infortunati e squalificati, per chi gioca un anticipo già

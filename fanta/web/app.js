@@ -1537,6 +1537,14 @@ async function apriGiocatore(id) {
   }
 }
 
+// Nelle righe di «Sostituisci» e di «Metti in campo», sotto il nome anche «gioca N%», se è sotto l'80%: spiega il numero grande (basso
+// per un sostituto che, quando gioca, vale quanto il titolare; alto per un titolare che rischia di non giocare).
+const giocaPoco = x => {
+  const q = giocaLetto(x);
+  return !esitoPartita(x) && !nonGiocaDiSicuro(parolaStato(x)) && q < SOGLIA_GIOCA
+    ? `<span class="etichetta ${classeGioca(q) === "basso" ? "rossa" : "arancio"}">${t("giocatore.gioca", { p: perc(q) })}</span>` : "";
+};
+
 // «Sostituisci» (dalla scheda di un titolare): i compagni dello stesso ruolo che non sono titolari, il migliore in cima, ognuno con
 // i punti attesi in più o in meno rispetto a lui: è già il confronto, in una riga. Un tocco fa il cambio, che si salva da solo.
 function apriSostituzione(id) {
@@ -1544,12 +1552,6 @@ function apriSostituzione(id) {
   if (!base || !fz.sostituibile(Number(id)) || !fz.pronta()) return;
   ultimaScheda++;                                                         // una scheda ancora in arrivo non prende il posto dell'elenco
   const candidati = sostituti(fz.f, base, new Set(fz.modulo.titolari)).map(x => fz.scheda(x.id));
-  // sotto il nome anche «gioca N%», se è sotto l'80%: spiega un numero grande basso per chi, quando gioca, vale quanto il titolare
-  const giocaPoco = x => {
-    const q = giocaLetto(x);
-    return !esitoPartita(x) && !nonGiocaDiSicuro(parolaStato(x)) && q < SOGLIA_GIOCA
-      ? `<span class="etichetta ${classeGioca(q) === "basso" ? "rossa" : "arancio"}">${t("giocatore.gioca", { p: perc(q) })}</span>` : "";
-  };
   const riga = x => {
     const d = x.punti_attesi - base.punti_attesi;
     return `<li class="riga-gioc"><button class="voce voce-g" data-entra="${x.id}">${volto(x)}
@@ -1606,7 +1608,7 @@ async function apriMettiInCampo(id) {
     return `<li class="riga-gioc"><button class="voce voce-g" data-esce="${Number(x.id)}">${volto(x)}
       <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
         <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra)])}</span>
-        <span class="etichette">${etichetteGiocatore(x, nuovo)}</span></span>
+        <span class="etichette">${etichetteGiocatore(x, giocaPoco(x) + nuovo)}</span></span>
       ${Number.isFinite(d) ? `<span class="valore"><b class="${d > 0.04 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_con", { nome: esc(base.nome) })}</span></span>` : ""}
       <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
   };
