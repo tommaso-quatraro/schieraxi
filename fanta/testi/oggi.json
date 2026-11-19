@@ -132,8 +132,8 @@
     "en": "get the official grade ({v})"
   },
   "oggi.rinvio_regola_lega": {
-    "it": "È la regola della tua lega (Impostazioni › Regole). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata.",
-    "en": "This is your league's rule (Settings › Rules). If your league decides otherwise for this round, change it here: it only applies to this round."
+    "it": "È la regola della tua lega (Impostazioni › Regole e scadenza). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata.",
+    "en": "This is your league's rule (Settings › Rules and deadline). If your league decides otherwise for this round, change it here: it only applies to this round."
   },
   "oggi.rinvio_eccezione": {
     "it": "Scelta solo per questa giornata. Di solito la tua lega: {regola}.",

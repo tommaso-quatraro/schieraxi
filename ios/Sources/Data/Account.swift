@@ -229,7 +229,8 @@ enum DatiLocali {
         VersioniRisorse.condivise.azzera()
         dimenticaIlWidget()
         let memoria = UserDefaults.standard
-        for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto"] + OpzioniTolte.chiaviFunzioni {
+        for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto", ArchivioMessa.chiave]
+            + OpzioniTolte.chiaviFunzioni {
             memoria.removeObject(forKey: chiave)
         }
         if !Demo.attivo {
@@ -675,6 +676,18 @@ final class SessioneAccount: ObservableObject {
         rinnovoWidget?.cancel()   // un token del widget che arriva adesso non si tiene
         await TokenWidget.revoca(server: server, luoghi: luoghiWidget)   // serve ancora la sessione: prima di chiuderla
         _ = try? await server.corpoJSON("POST", "/api/account/esci", [String: String]())
+        chiudiLocale()
+    }
+
+    /// «Esci da tutti i dispositivi» (#765): il server chiude tutte le sessioni (anche questa), il widget, le notifiche e scollega
+    /// Google a chi ha una password (lo cancella lui: niente revoca del widget da qui); poi si svuota il telefono come con «Esci».
+    /// Al contrario di `esci()` senza il server non riesce: se la richiesta non va l'errore arriva a chi ha chiesto e qui non cambia
+    /// niente, perché gli altri dispositivi sono ancora dentro. Senza password nel corpo: il codice di recupero nuovo che il server
+    /// manderebbe in risposta andrebbe perso.
+    func esciDaTutti() async throws {
+        try inizia()
+        defer { inCorso = false }
+        _ = try await server.corpoJSON("POST", "/api/account/esci-da-tutti", [String: String]())
         chiudiLocale()
     }
 

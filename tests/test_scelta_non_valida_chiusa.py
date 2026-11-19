@@ -154,7 +154,7 @@ def test_formazione_dice_lo_stato_della_scelta(client, monkeypatch, tmp_path):
     monkeypatch.setattr(server.consigli, "formazione", lambda *a, **k: f)
     monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: ST)
     monkeypatch.setattr(server, "_copia_automatica", lambda *a: None)
-    monkeypatch.setattr(server, "_rose", lambda *a: object())
+    monkeypatch.setattr(server, "_rose_da_schierare", lambda *a: object())
     monkeypatch.setattr(server.fasi, "iniziata", lambda *a: True)
     monkeypatch.setattr(server.fasi, "stati_giocatori", lambda *a, **k: {})
     monkeypatch.setattr(scelte, "FILE_SCELTE", tmp_path / "scelte.json")

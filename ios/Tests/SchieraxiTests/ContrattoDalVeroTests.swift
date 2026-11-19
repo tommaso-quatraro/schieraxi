@@ -41,19 +41,26 @@ struct ContrattoDalVeroTests {
     }
 
     /// Rotta (indirizzo senza parametri, `{id}` al posto dei numeri) → come la legge l'app; dove la legge in più modi, tutti.
-    /// Manca solo `StatoLega` della configurazione guidata (`/api/stato`): è privato e legge ogni campo con `try?`, non può fallire.
+    /// Mancano, fra quelle che l'app chiede: `StatoLega` della configurazione guidata (`/api/stato`) e `ProceduraVecchia`
+    /// (`/api/onboarding`, solo con gli account), che leggono ogni campo con `try?` e non possono fallire; `/api/avatar`, i tratti
+    /// dei volti che vengono dalle foto vere (le fotografie non li registrano); `/api/backup`, il file da condividere, di cui l'app
+    /// guarda solo `formato`.
     static let letture: [String: [Lettura]] = [
         "/api/account/me": [.modello(RispostaAccount.self)],
+        "/api/account/social/accessi": [.modello(AccessiAccount.self)],
         "/api/affidabilita": [.modello(Affidabilita.self)],
+        "/api/aggiorna": [.modello(StatoAggiornamento.self)],
         "/api/avvisi": [.modello(StatoAvvisi.self, snake: false)],
         "/api/calendario": [.modello(Calendario.self)],
         "/api/classifica": [.modello(ElencoGiocatori.self)],
         "/api/diario": [.modello(DiarioRisposta.self)],
         "/api/formazione": [.modello(Formazione.self)],
         "/api/formazione/valuta": [.modello(ValutazioneManuale.self)],
+        "/api/foto-disponibili": [.modello(FotoDisponibili.self)],
         "/api/funzioni": [.modello(RispostaFunzioni.self, snake: false)],
         "/api/giocatore/{id}": [.modello(SchedaGiocatore.self)],
         "/api/giocatori": [.modello([GiocatoreBreve].self)],
+        "/api/novita": [.modello([VoceNovita].self)],
         "/api/oggi": [.modello(Oggi.self)],   // anche il ripiego del widget senza `/api/widget` (stesse chiavi)
         "/api/primo-avvio": [.modello(PrimoAvvioRisposta.self)],
         "/api/regole": [.modello(JSONValue.self, snake: false)],
@@ -85,6 +92,11 @@ struct ContrattoDalVeroTests {
     /// Il motivo delle rotte delle schermate tolte il 12/11/2026 (#634): le fotografie le hanno ancora, l'app non le chiede più.
     static let tolta = "la schermata non c'è più dal 12/11/2026 (#634): l'app non la chiede"
 
+    /// Rotte di `letture` che le fotografie possono non avere, con il motivo: quando ci sono si leggono come le altre.
+    static let facoltative: [String: String] = [
+        "/api/foto-disponibili": "c'è solo sui server con le foto dei calciatori, non in quello del repository: lì risponde 404 e prove/fotografie_dal_vero.py non la scrive",
+    ]
+
     // MARK: test
 
     @Test("Ogni risposta vera si legge come la legge l'app", arguments: ContrattoDalVeroTests.scenari)
@@ -113,9 +125,11 @@ struct ContrattoDalVeroTests {
         }
         let doppie = Set(Self.letture.keys).intersection(Self.nonLette.keys)
         #expect(doppie.isEmpty, "rotte sia in `letture` sia in `nonLette`: \(doppie.sorted())")
-        let senzaRisposta = Set(Self.letture.keys).union(Self.nonLette.keys).subtracting(registrate)
+        let senzaRisposta = Set(Self.letture.keys).union(Self.nonLette.keys).subtracting(registrate).subtracting(Self.facoltative.keys)
         #expect(senzaRisposta.isEmpty,
                 "rotte senza una risposta vera nelle fotografie: \(senzaRisposta.sorted()). Rifai le fotografie con prove/fotografie_dal_vero.py, oppure togli la riga.")
+        let facoltativeFuori = Set(Self.facoltative.keys).subtracting(Self.letture.keys)
+        #expect(facoltativeFuori.isEmpty, "rotte in `facoltative` che non stanno in `letture`: \(facoltativeFuori.sorted())")
     }
 
     /// Il controllo sa fallire: un campo che manca o che cambia tipo dà un problema con il suo percorso (risposte inventate).

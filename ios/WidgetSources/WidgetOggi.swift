@@ -55,24 +55,35 @@ struct VistaWidget: View {
 
     var body: some View {
         Group {
-            if let r = voce.riassunto, r.mostraFase {
-                // giornata in corso (punti fatti e previsti) o appena finita (riepilogo e prossima): niente «Da controllare»
-                vistaFase(r)
-            } else if let r = voce.riassunto {
-                switch famiglia {
-                case .systemMedium: medio(r)
-                case .accessoryCircular: circolare(r)
-                case .accessoryRectangular: rettangolare(r)
-                case .accessoryInline: riga(r)
-                default: piccolo(r)
+            switch voce.caso {
+            case .campionatoFinito(let testo):
+                // campionato finito (#727): la frase del server, niente giornata né «Nessun dato»
+                CampionatoFinitoWidget(testo: testo)
+            case .senzaFormazione(let r):
+                // entrato a giornata già iniziata senza una formazione (#687): niente consigliata né punti di questa giornata, la
+                // prossima da preparare (la stessa vista di Formazione consigliata e Da controllare, #752)
+                SenzaFormazioneWidget(riassunto: r, voce: voce)
+            case .normale:
+                if let r = voce.riassunto, r.mostraFase {
+                    // giornata in corso (punti fatti e previsti) o appena finita (riepilogo e prossima): niente «Da controllare»
+                    vistaFase(r)
+                } else if let r = voce.riassunto {
+                    switch famiglia {
+                    case .systemMedium: medio(r)
+                    case .accessoryCircular: circolare(r)
+                    case .accessoryRectangular: rettangolare(r)
+                    case .accessoryInline: riga(r)
+                    default: piccolo(r)
+                    }
+                } else {
+                    senzaDati
                 }
-            } else {
-                senzaDati
             }
         }
         .sfondoWidget(accessorio: accessorio)
         // Un tocco sul widget apre l'app sulla formazione (o su «Collega il widget» se non è collegato); durante la giornata
-        // in corso o appena finita apre Oggi, dove ci sono i punti fatti e il riepilogo.
+        // in corso o appena finita apre Oggi, dove ci sono i punti fatti e il riepilogo. Per chi è entrato a giornata iniziata
+        // (niente punti fatti, `mostraFase` falso) la formazione, che è già quella della prossima.
         .widgetURL(voce.tocco(URL(string: voce.riassunto?.mostraFase == true ? "schieraxi://oggi" : "schieraxi://formazione")))
     }
 
@@ -229,9 +240,10 @@ struct VistaWidget: View {
         Formato.punti(r.punti)
     }
 
-    /// Conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»); «Chiusa» a scadenza passata.
+    /// Conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»); «Chiusa» a scadenza passata. Per chi è entrato a giornata
+    /// iniziata va alla scadenza della prossima (`scadenzaDelConto`), altrimenti è `inizio`.
     private func conto(_ r: RiassuntoOggi) -> some View {
-        ContoWidget(inizio: r.inizio, adesso: voce.date)
+        ContoWidget(inizio: r.scadenzaDelConto, adesso: voce.date)
     }
 
     /// «alla scadenza, oggi 05:30» / «… ven 6 03:32»: la data come `quando` della web, contata dall'istante della voce.

@@ -11,9 +11,9 @@ Da dove vengono i dati (niente librerie in più: solo `packaging`, che c'è già
 - elenco: `requirements.in` (app) e `requirements-dev.in` (test), senza versioni, scritti a mano;
 - versioni, in quest'ordine: `requirements-vincoli.in`; il file di --versioni; i requirements*.txt di adesso (salvo --aggiorna);
   la .venv che lancia lo script. Un vincolo con il marcatore `python_version < "X.Y"` aggiunge una seconda versione solo per i
-  Python più vecchi (oggi parte della CI usa ancora 3.11): il server e lo sviluppo restano sulla versione principale;
+  Python più vecchi (oggi nessuno: si va da 3.12 in su): il server e lo sviluppo restano sulla versione principale;
 - dipendenze: i metadati della versione installata (o di PyPI se nella .venv c'è un'altra versione), con i marcatori valutati per
-  tutti i posti dove gira l'app (Python 3.11-3.13, Linux x86_64 e ARM64, Windows): si prende l'unione;
+  tutti i posti dove gira l'app (Python 3.12-3.13, Linux x86_64 e ARM64, Windows): si prende l'unione;
 - hash: tutti i file pubblicati su PyPI per quella versione (wheel di ogni sistema e sorgente), come `pip-compile --generate-hashes`.
 
 PyPI si interroga con calma (una richiesta ogni 0,3 secondi, risposte salvate in una cache nella cartella temporanea).
@@ -48,9 +48,9 @@ PAUSA = 0.3
 
 # (python, sys_platform, platform_machine): i posti dove l'app gira o si prova
 OBIETTIVI = [("3.12", "linux", "x86_64"), ("3.12", "linux", "aarch64"), ("3.12", "win32", "AMD64"), ("3.13", "linux", "x86_64"),
-             ("3.13", "win32", "AMD64"), ("3.11", "linux", "x86_64"), ("3.11", "linux", "aarch64"), ("3.11", "win32", "AMD64")]
-# la versione più vecchia in uso per ogni Python: 3.11.2 è quella di Debian 12, 3.12.3 quella di Ubuntu 24.04
-PIENA = {"3.11": "3.11.2", "3.12": "3.12.3", "3.13": "3.13.0"}
+             ("3.13", "win32", "AMD64")]
+# la versione più vecchia in uso per ogni Python: 3.12.3 è quella di Ubuntu 24.04
+PIENA = {"3.12": "3.12.3", "3.13": "3.13.0"}
 VECCHI = re.compile(r'^python_version\s*<\s*"(\d+\.\d+)"$')
 
 
@@ -149,7 +149,7 @@ def etichette(py: str, piattaforma: str, macchina: str) -> set[Tag]:
     v = tuple(int(x) for x in py.split("."))
     if piattaforma == "win32":
         piatt = ["win_amd64"]
-    else:   # glibc di Debian 12 (2.36) e di Ubuntu 24.04 (2.39): basta fino a 2.36
+    else:   # glibc di Ubuntu 24.04 (2.39): si chiede fino a 2.36, con margine
         piatt = [f"manylinux_2_{n}_{macchina}" for n in range(36, 4, -1)] + [f"manylinux2014_{macchina}", f"manylinux2010_{macchina}",
                                                                             f"manylinux1_{macchina}", f"linux_{macchina}"]
     return set(cpython_tags(v, platforms=piatt)) | set(compatible_tags(v, platforms=piatt))

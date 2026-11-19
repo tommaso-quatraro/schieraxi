@@ -16,7 +16,7 @@ import pandas as pd
 
 from . import calcolo, etichette, frasi, incertezza, limiti, perche
 from . import formazione as fz
-from . import modello, perche_scelta, rinvii, scelte, stato_dati, turno
+from . import modello, perche_scelta, rinvii, scelte, squalifiche, stato_dati, turno
 from .aggiorna import Stagione
 from .blocco import BloccoFile
 from .frasi import F
@@ -136,6 +136,32 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
     return None
 
 
+def stagione_finita(db: sqlite3.Connection, stagione: str, adesso: datetime | None = None) -> bool:
+    """Il campionato è finito (#656): nessuna giornata da giocare (`prossima_giornata`) e almeno una partita della stagione giocata.
+    Una stagione senza partite in archivio non è finita: il suo calendario deve ancora arrivare (SENZA_CALENDARIO)."""
+    return (prossima_giornata(db, stagione, adesso) is None
+            and db.execute("SELECT 1 FROM partite WHERE stagione = ? AND giocata = 1 LIMIT 1", (stagione,)).fetchone() is not None)
+
+
+class SenzaCalendario(ValueError):
+    """Nessuna giornata da giocare perché il calendario della stagione non c'è ancora: 400 con SENZA_CALENDARIO, come sempre."""
+
+
+class CampionatoFinito(ValueError):
+    """Nessuna giornata da giocare perché il campionato è finito (#656): la frase `campionato.finito`. 409, non 400: la richiesta
+    non è sbagliata, è la stagione che non ha più giornate. Oggi e widget a campionato finito rispondono 200 (`campionato_finito`)."""
+    codice = "campionato_finito"
+    stato = 409
+
+
+def senza_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | None = None) -> ValueError:
+    """L'errore da alzare quando non c'è una giornata da giocare: CampionatoFinito se la stagione è finita, altrimenti
+    SenzaCalendario. Così il server non dice «il calendario non è ancora disponibile» quando il campionato è appena finito."""
+    if stagione_finita(db, stagione, adesso):
+        return CampionatoFinito(F("campionato.finito"))
+    return SenzaCalendario(SENZA_CALENDARIO)
+
+
 def giornata_da_giocare(db: sqlite3.Connection, stagione: str, regole: Regole | None, adesso: datetime | None = None) -> int | None:
     """La prossima giornata PER LA LEGA: come `prossima_giornata`, ma mai prima della prima giornata della lega
     (regole.prima_giornata_lega). Prima che la lega parta, la «giornata da giocare» è la sua prima.
@@ -151,7 +177,7 @@ def previsioni(db: sqlite3.Connection, regole: Regole, giornata: int | None = No
     stagione = stagione_corrente()
     giornata = giornata or giornata_da_giocare(db, stagione, regole)
     if giornata is None:
-        raise ValueError(SENZA_CALENDARIO)
+        raise senza_giornata(db, stagione)
     chiave = ("prev", _versione(db), giornata, repr(regole))
     return calcolo.ottieni(chiave, lambda d: _calcola_previsioni(d, dati(d), regole, stagione, giornata, chiave), db)
 
@@ -164,8 +190,11 @@ def _calcola_previsioni(db, d, regole, stagione, giornata, chiave):
     # queste previsioni si rifanno. Se il registro non si legge: numeri di partenza, e `_versione` lo dice (vedi `_ripieghi`)
     taratura, fattori, ripiego = stato_dati.taratura_e_fattori(db, stagione)
     _segna_ripiego(db, ripiego)
+    # squalificati per espulsione dai cartellini (#668), solo se la giornata non ha una lettura buona delle probabili (nella
+    # tabella `probabili` arriva solo quella: una pagina fallita o copiata dalla giornata prima non ci arriva)
     p = modello.previsioni(d, stagione, giornata, regole, probabili=None if prob.empty else prob,
-                           giocatori=d.calciatori, fattori_probabili=fattori, taratura=taratura)
+                           giocatori=d.calciatori, fattori_probabili=fattori, taratura=taratura,
+                           dai_cartellini=squalifiche.in_uso(db, stagione, giornata) if prob.empty else None)
     if p.empty:
         raise ValueError(frasi.elidi_ordinali(f"Non ci sono ancora previsioni per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))}: riprova più tardi."))
     p = p.set_index("id")
@@ -367,7 +396,7 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     stagione = stagione_corrente()
     giornata = giornata or giornata_da_giocare(db, stagione, regole, adesso)
     if giornata is None:
-        raise ValueError(SENZA_CALENDARIO)
+        raise senza_giornata(db, stagione, adesso)
     # La consigliata già mostrata per questa squadra e giornata (#335): resta finché la migliore non vale almeno SOGLIA_CAMBIO_PUNTI in
     # più o un suo titolare non gioca più (`stabile`); dopo la scadenza resta e basta. Tutti passano di qui (Formazione, Oggi, widget,
     # Da fare, avvisi, copia alla scadenza): leggono la stessa.
@@ -479,6 +508,12 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, f
 # (misura del 5/11/2026: quando 3 o più titolari cambiano per un ritocco, la nuova vale in mediana 3-4 centesimi di punto).
 SOGLIA_CAMBIO_PUNTI = SOGLIA_AVVISO_PUNTI
 NON_GIOCA = ("fuori", "improbabile")      # `titolarita`: infortunato, squalificato, senza voto per il rinvio, o gioca meno del 20%
+# Un titolare DIVENTATO improbabile (giocava almeno il 20% quando la consigliata è stata mostrata) ma sceso di poco (gioca ancora
+# almeno MARGINE_SE_ALMENO) la fa cambiare sotto la soglia di punti solo se un compagno gioca almeno MARGINE_COMPAGNO più di lui
+# (#737): con due compagni che si scambiano sopra e sotto il 20% (21% e 19%, o 25% e 12%) la consigliata cambiava a ogni
+# aggiornamento. Sotto il 10% non vale (revisione di #738): chi è passato dal 95% al 2% non resta titolare con un compagno al 20%.
+MARGINE_COMPAGNO = 0.20
+MARGINE_SE_ALMENO = 0.10
 # Le consigliate già mostrate, una per squadra e giornata:
 # {impronta: {stagione, giornata, modulo, titolari, panchina, non_giocano, quando}} (`da_ricordare`).
 # Comune a tutti come la cache dei calcoli (stessa squadra, rosa e regole: stessa consigliata), ma sopravvive ai riavvii e vale
@@ -718,10 +753,12 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
     """La consigliata da mostrare: quella di prima (`prima` = {"titolari": [id], "panchina": [id]}) se c'è e regge, altrimenti la
     migliore di adesso (`migliore`, la risposta di `_calcola_formazione`, restituita così com'è).
     Prima della scadenza la migliore prende il posto di quella di prima se vale almeno SOGLIA_CAMBIO_PUNTI punti attesi in più (sulle
-    stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più (uscito dalla rosa, diventato fuori o improbabile:
-    non chi lo era già quando è stata mostrata, `prima["non_giocano"]`) e la migliore lo lascia fuori; tenuta quella di prima, la
-    sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
-    resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui.
+    stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più e la migliore lo lascia fuori: uscito dalla rosa,
+    diventato fuori (non chi lo era già quando è stata mostrata, `prima["non_giocano"]`), oppure fuori o improbabile con nel suo
+    ruolo un compagno fuori dagli 11 di prima, non fermo per un anticipo, che gioca almeno il 20% (#632, `fa_cambiare`) e, se il
+    titolare è diventato improbabile ma gioca ancora almeno MARGINE_SE_ALMENO, almeno MARGINE_COMPAGNO più di lui (#737); tenuta
+    quella di prima, la sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`) resta quella di prima, panchina
+    compresa. La scelta salvata dall'utente non passa di qui.
     `iniziate` (squadre di Serie A con un anticipo già cominciato, #368): prima della scadenza i loro giocatori restano dove erano
     nella consigliata di prima (titolari, stesso posto in panchina, fuori), anche quando la migliore li sposterebbe: al posto della
     migliore si confronta la migliore che li lascia lì, con le stesse regole."""
@@ -742,7 +779,33 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
             return migliore
     nuovi = {int(g["id"]) for g in migliore["titolari"]}
     gia = set(_ids(prima, "non_giocano") or [])           # chi non giocava già quando la consigliata è stata mostrata
-    if not chiusa and any(titolarita(prev.loc[i]) in NON_GIOCA and i not in nuovi and i not in gia for i in titolari):
+    # i compagni che si potrebbero mettere titolari: fuori dagli 11 di prima, e non fermi per un anticipo già cominciato
+    non_liberi = set(titolari) | (set() if fermi is None else set(fermi.fuori) | set(fermi.panchina))
+    liberi = [g for g in rosa if g.id not in non_liberi]
+
+    def fa_cambiare(i: int) -> bool:
+        """Il titolare di prima `i`, che la migliore lascia fuori, fa cambiare la consigliata anche sotto la soglia di punti:
+        - fuori o improbabile, con nel suo ruolo un compagno che si può mettere titolare e gioca almeno COMPAGNO_ALMENO (#632:
+          con tre portieri al 10%, 5% e 3% restava il 10% anche dopo che il secondo era salito al 92%). Conta ogni compagno, non
+          solo i titolari nuovi della migliore: una migliore con un altro modulo può non metterne nessuno in quel ruolo.
+          Se è DIVENTATO improbabile (non era in `prima["non_giocano"]`) e gioca ancora almeno MARGINE_SE_ALMENO, il compagno
+          deve anche giocare almeno MARGINE_COMPAGNO più di lui (#737: con il 2 e il 3 che si scambiavano 21% e 19%, o 25% e
+          12%, il titolare appena messo scendeva sotto il 20%, l'altro saliva e la consigliata cambiava a ogni giro). Sotto
+          MARGINE_SE_ALMENO basta il compagno al 20% (revisione di #738: dal 95% al 2% restava titolare, con il 2 al 20%);
+        - diventato fuori dopo che la consigliata è stata mostrata (infortunato, squalificato, senza voto per il rinvio).
+        Un improbabile senza un compagno così non basta, né se lo era già né se lo è diventato: al suo posto andrebbe un altro
+        improbabile, e quando un compagno sale e scende attorno al 20% la consigliata cambiava a ogni giro (revisione di #736:
+        il 2 al 20% prendeva il posto dell'1 già improbabile, poi riscendeva al 2% e tornava l'1). Lì vale la soglia di punti."""
+        stato = titolarita(prev.loc[i])
+        if stato not in NON_GIOCA:
+            return False
+        almeno = fz.COMPAGNO_ALMENO
+        if stato == "improbabile" and i not in gia and per_id[i].p >= MARGINE_SE_ALMENO:
+            almeno = max(almeno, round(per_id[i].p + MARGINE_COMPAGNO, 3))   # al millesimo: 0,12 + 0,20 non dia 0,32000000000000006
+        if any(g.ruolo == per_id[i].ruolo and g.p >= almeno for g in liberi):
+            return True
+        return stato == "fuori" and i not in gia
+    if not chiusa and any(i not in nuovi and fa_cambiare(i) for i in titolari):
         return migliore
     tit = sorted((per_id[i] for i in titolari), key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore))
     if chiusa and panchina_prima:
@@ -875,7 +938,7 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
     if giornata is None and adesso is not None:     # con l'ora data la giornata si cerca con quella (senza: `previsioni`, ora vera)
         giornata = giornata_da_giocare(db, stagione_corrente(), regole, adesso)
         if giornata is None:
-            raise ValueError(SENZA_CALENDARIO)
+            raise senza_giornata(db, stagione_corrente(), adesso)
     prev, giornata, _ = previsioni(db, regole, giornata)
     ids = [g.id for g in s.giocatori if g.id is not None and g.id in prev.index]
     rosa = {int(i): fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
@@ -1095,8 +1158,9 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
     scritta = frasi.differenza(invertita, attuale)          # tra parentesi: la differenza dei due numeri scritti, «72,1 (−0,6)» (#392)
     if diff > 0.04:
         esito = F("confronto.esito_meglio", titolare=titolare.nome, attuale=attuale, invertita=invertita, d=scritta)
-    elif diff < -0.04 and titolare.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
-        # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341)
+    elif diff < -0.04 and fz.titolare_perche_gioca(titolare, altro):
+        # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341);
+        # anche quando lo è il titolare, che è più probabile che giochi (#632)
         return scrivi(F("confronto.titolare_che_gioca", altro=altro.nome, p=etichette.percento(altro.p), titolare=titolare.nome,
                         pt=etichette.percento(titolare.p), d=-diff, entrata=entrata))
     elif diff < -0.04:

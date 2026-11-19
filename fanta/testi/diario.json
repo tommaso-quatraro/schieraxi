@@ -1,37 +1,4 @@
 {
-  "diario.non_salvata": {
-    "it": "Non avevi salvato la tua formazione per questa giornata.",
-    "en": "You had not saved your lineup for this matchday."
-  },
-  "diario.tua": {
-    "it": "La tua ({modulo})",
-    "en": "Yours ({modulo})"
-  },
-  "diario.tua_consigliata": {
-    "it": "La tua, la consigliata ({modulo})",
-    "en": "Yours, the recommended one ({modulo})"
-  },
-  "diario.la_consigliata": {
-    "it": "La consigliata ({modulo})",
-    "en": "The recommended one ({modulo})",
-    "nota": "riga dei punti della consigliata mostrata prima della scadenza (consigliata.origine = mostrata)"
-  },
-  "diario.salvata": {
-    "it": "Salvato: ho segnato che hai schierato la consigliata",
-    "en": "Saved: I noted that you fielded the recommended lineup"
-  },
-  "diario.ho_schierato_questa": {
-    "it": "Ho schierato la consigliata",
-    "en": "I fielded the recommended one"
-  },
-  "diario.ho_schierato_altra": {
-    "it": "Ho schierato un'altra formazione",
-    "en": "I fielded a different lineup"
-  },
-  "diario.correggi": {
-    "it": "Correggi a mano",
-    "en": "Correct by hand"
-  },
   "diario.cosa_hai_schierato_titolo": {
     "it": "Cosa hai schierato",
     "en": "What you fielded"

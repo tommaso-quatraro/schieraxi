@@ -26,7 +26,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Accesso.codiceInviato, Catalogo.Accesso.passwordCambiata, Catalogo.Accesso.passwordCambiataAccedi,
         Catalogo.Accesso.vaiAccesso, Catalogo.Accesso.rispostaIncompleta,
         // account.*
-        Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.cambiaPassword,
+        Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.esciTutti,
+        Catalogo.Account.esciTuttiConferma, Catalogo.Account.esciTuttiGoogle, Catalogo.Account.cambiaPassword,
         Catalogo.Account.passwordAttuale, Catalogo.Account.ripetiPassword, Catalogo.Account.passwordDiverse,
         Catalogo.Account.altriScollegati, Catalogo.Account.passwordCambiataOk, Catalogo.Account.passwordCambiataCodice,
         Catalogo.Account.laTuaPassword,
@@ -47,12 +48,13 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Codice.titolo, Catalogo.Codice.aCosaServe, Catalogo.Codice.salva, Catalogo.Codice.spiega,
         Catalogo.Codice.copia, Catalogo.Codice.copiato, Catalogo.Codice.salvato,
         Catalogo.Legale.privacy, Catalogo.Legale.termini, Catalogo.Legale.crediti,
-        Catalogo.Imp.account, Catalogo.Imp.aspetto, Catalogo.Imp.avvisi, Catalogo.Imp.avvisiSub, Catalogo.Imp.informazioni,
-        Catalogo.Imp.avanzate,
-        // avv.* (Notifiche), pav.* (Primo avvio)
-        Catalogo.Avv.cambi, Catalogo.Avv.cambiAiuto, Catalogo.Avv.prom60, Catalogo.Avv.prom60Aiuto, Catalogo.Avv.prom15,
-        Catalogo.Avv.riepilogo, Catalogo.Avv.riepilogoAiuto, Catalogo.Avv.copertura, Catalogo.Avv.coperturaAiuto,
-        Catalogo.Avv.nativa, Catalogo.Avv.oreTranq, Catalogo.Avv.oreTranqAiuto,
+        Catalogo.Imp.account, Catalogo.Imp.aspetto, Catalogo.Imp.informazioni, Catalogo.Imp.avanzate, Catalogo.Imp.sezAvvisi,
+        Catalogo.Imp.avvisiQui, Catalogo.Imp.avvisiQuiAiuto, Catalogo.Imp.lega, Catalogo.Imp.regole, Catalogo.Imp.regoleSub,
+        Catalogo.Imp.miaSquadraNessuna, Catalogo.Imp.altreSquadre, Catalogo.Imp.informazioniSub, Catalogo.Imp.gestione,
+        Catalogo.Imp.aggiornaSpiega,
+        // avv.* (Avvisi), pav.* (Primo avvio)
+        Catalogo.Avv.nativa, Catalogo.Avv.nativaAiuto, Catalogo.Avv.oreTranq, Catalogo.Avv.permessoNegatoAbilita,
+        Catalogo.Avv.notificheDisattivateQuesto,
         Catalogo.Pav.primoAvvio, Catalogo.Pav.salta, Catalogo.Pav.tuttoProntoMister, Catalogo.Pav.haiFinito,
         Catalogo.Pav.nonSonoRiuscito, Catalogo.Pav.permessoNegatoAbilita,
         // parole comuni già nel catalogo (Oggi, #494)
@@ -67,6 +69,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Accesso.letto(eta: "§", privacy: "§", termini: "§"), Catalogo.Accesso.spuntaLetto(eta: "§"),
         Catalogo.Account.dal(data: "§", ruolo: "§"), Catalogo.Account.emailVerificata(email: "§"),
         Catalogo.Account.emailGoogle(email: "§"), Catalogo.Account.eliminaAvviso, Catalogo.Social.googleCollegato(email: "§"),
+        Catalogo.Account.esciTuttiNo(motivo: "§"),
     ]
 
     /// Le parti fisse di una frase (almeno 6 caratteri senza spazi ai lati: le più corte potrebbero stare in tutt'altro codice).
@@ -76,14 +79,15 @@ struct AccessoImpostazioniDalCatalogoTests {
             .filter { $0.trimmingCharacters(in: .whitespaces).count >= 6 }
     }
 
-    /// I file controllati: tutti quelli di `Presentation/Accesso`, la pagina delle Impostazioni e i testi delle Notifiche.
+    /// I file controllati: tutti quelli di `Presentation/Accesso`, la pagina delle Impostazioni con le sue voci, gli avvisi e Gestione.
     static func fileControllati(file: String = #filePath) throws -> [String] {
         let accesso = try FileManager.default.contentsOfDirectory(atPath: SorgenteAccesso.radice(file: file).appendingPathComponent(
             "Sources/Presentation/Accesso").path)
             .filter { $0.hasSuffix(".swift") }
             .sorted()
             .map { "Sources/Presentation/Accesso/\($0)" }
-        return accesso + ["Sources/Presentation/Lega/ImpostazioniView.swift", "Sources/Presentation/Lega/TestiImpostazioni.swift"]
+        return accesso + ["Sources/Presentation/Lega/ImpostazioniView.swift", "Sources/Presentation/Lega/VociImpostazioni.swift",
+                          "Sources/Presentation/Lega/AvvisiDispositivoSezione.swift", "Sources/Presentation/Lega/GestionePagina.swift"]
     }
 
     @Test("Nei file di Accesso e Impostazioni nessun testo del catalogo è scritto a mano")
@@ -140,6 +144,9 @@ struct AccessoImpostazioniDalCatalogoTests {
         ]),
         ("Sources/Presentation/Accesso/AccountSezione.swift", [
             "Catalogo.Imp.account", "Catalogo.Account.esci", "Catalogo.Social.collegatoOk", "Catalogo.Social.scollegatoOk",
+            // «Esci da tutti i dispositivi» con la sua conferma e il suo errore (#765)
+            "Catalogo.Account.esciTutti", "Catalogo.Account.esciTuttiConferma", "Catalogo.Account.esciTuttiNo(",
+            "TestiAccount.esciTuttiGoogle(",
             "Catalogo.Shell.chiudi",
             // dopo il cambio della password: il codice nuovo sotto «Password cambiata» e l'esito dal catalogo (#590)
             "TestiAccesso.passwordCambiata", "TestiAccount.esitoCambioPassword(",
@@ -157,9 +164,19 @@ struct AccessoImpostazioniDalCatalogoTests {
         ]),
         ("Sources/Presentation/Accesso/ConfiguraLegaView.swift", ["Catalogo.Comune.importaRose"]),
         ("Sources/Presentation/Accesso/SessioneMinima.swift", ["Catalogo.Account.esci"]),
-        ("Sources/Presentation/Lega/ImpostazioniView.swift", [
-            "Catalogo.Shell.impostazioni", "Catalogo.Shell.chiudi", "Catalogo.Imp.aspetto", "Catalogo.Imp.informazioni",
-            "Catalogo.Imp.avanzate",
+        ("Sources/Presentation/Lega/ImpostazioniView.swift", ["Catalogo.Shell.impostazioni", "Catalogo.Imp.lega"]),
+        ("Sources/Presentation/Lega/VociImpostazioni.swift", [
+            "Catalogo.Lega.voceImporta", "Catalogo.Lega.voceImportaSub", "Catalogo.Lega.miaSquadra", "Catalogo.Imp.miaSquadraNessuna",
+            "Catalogo.Imp.regole", "Catalogo.Imp.regoleSub", "Catalogo.Imp.altreSquadre", "Catalogo.Lega.nSquadre(",
+            "Catalogo.Imp.account", "Catalogo.Imp.informazioni", "Catalogo.Imp.informazioniSub", "Catalogo.Imp.gestione",
+            "Catalogo.Shell.aggiorna", "Catalogo.Av.stato",
+        ]),
+        ("Sources/Presentation/Lega/AvvisiDispositivoSezione.swift", [
+            "Catalogo.Imp.sezAvvisi", "Catalogo.Imp.avvisiQui", "Catalogo.Imp.avvisiQuiAiuto", "Catalogo.Avv.oreTranq",
+            "Catalogo.Avv.aveviSceltoOre",
+        ]),
+        ("Sources/Presentation/Lega/GestionePagina.swift", [
+            "Catalogo.Imp.gestione", "Catalogo.Imp.aggiornaSpiega", "Catalogo.Avv.nativa", "Catalogo.Avv.nativaAiuto",
         ]),
     ])
     func vistaUsaIlCatalogo(percorso: String, costanti: [String]) throws {
@@ -244,6 +261,20 @@ struct AccessoImpostazioniDalCatalogoTests {
         #expect(TestiAccount.rigaGoogle(AccessiAccount(password: true)) == Catalogo.Social.googleNonCollegato)
     }
 
+    /// Il server toglie il collegamento con Google a chi ha una password; chi entra solo con Google lo tiene (#765). La conferma lo
+    /// dice solo a chi lo perde, come la web, leggendo come si entra dal server (`accessi`): finché non si sa, niente frase.
+    @Test("«Esci da tutti i dispositivi»: la frase su Google solo a chi ha Google collegato e una password (#765)")
+    func esciTuttiGoogle() {
+        let google = [AccessoCollegato(provider: "google", email: "g@example.invalid")]
+        #expect(TestiAccount.esciTuttiGoogle(accessi: AccessiAccount(password: true, social: google)) == Catalogo.Account.esciTuttiGoogle)
+        #expect(TestiAccount.esciTuttiGoogle(accessi: AccessiAccount(password: false, social: google)) == nil,
+                "chi entra solo con Google resta collegato")
+        #expect(TestiAccount.esciTuttiGoogle(accessi: AccessiAccount(password: true)) == nil, "senza Google niente frase")
+        #expect(TestiAccount.esciTuttiGoogle(accessi: AccessiAccount(password: nil, social: google)) == nil,
+                "se il server non dice della password non si sa se Google si toglie")
+        #expect(TestiAccount.esciTuttiGoogle(accessi: nil) == nil)
+    }
+
     @MainActor
     @Test("Primo avvio: il salvataggio non riuscito si dice con la frase della web")
     func primoAvvioSalvataggio() {
@@ -260,9 +291,9 @@ struct AccessoImpostazioniDalCatalogoTests {
     @MainActor
     @Test("Aspetto: la dimensione del testo si cambia in «Impostazioni > Schermo e luminosità», giusto anche sull'iPad (#563)")
     func aspettoDimensioneDelTesto() {
-        #expect(AspettoView.spiegaTema.hasPrefix(Catalogo.Asp.autoSpiega + " "))
-        #expect(AspettoView.spiegaTema.contains("Impostazioni > Schermo e luminosità > Dimensione del testo"))
-        #expect(!AspettoView.spiegaTema.contains("iPhone"), "sull'iPad le Impostazioni non sono «di iPhone»")
+        #expect(AspettoSezione.spiegaTema.hasPrefix(Catalogo.Asp.autoSpiega + " "))
+        #expect(AspettoSezione.spiegaTema.contains("Impostazioni > Schermo e luminosità > Dimensione del testo"))
+        #expect(!AspettoSezione.spiegaTema.contains("iPhone"), "sull'iPad le Impostazioni non sono «di iPhone»")
     }
 }
 

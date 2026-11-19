@@ -56,9 +56,17 @@
     "it": "{a}ª giornata di Serie A",
     "en": "Serie A matchday {a}"
   },
+  "frase.giornata.senza_data": {
+    "it": "Data da definire",
+    "en": "Date to be confirmed"
+  },
   "frase.elenco.e": {
     "it": " e ",
     "en": " and "
+  },
+  "frase.campionato.finito": {
+    "it": "Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.",
+    "en": "The season is over: forecasts and advice start again with next season's calendar."
   },
   "frase.dafare.dubbio_squalificato": {
     "it": "{nome} non può giocare.",
@@ -783,6 +791,10 @@
   "frase.rose.fogli_non_letti": {
     "it": "Ho letto solo i primi {letti} fogli su {totale}: se negli altri ci sono delle rose, non le ho lette. Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
     "en": "I only read the first {letti} sheets out of {totale}: if the others contain rosters, I didn't read them. Remove the sheets you don't need from the file, or upload the others in a second file."
+  },
+  "frase.rose.esempi_tolti": {
+    "it": "Le squadre di esempio ({squadre}) erano rimaste nella lega insieme alle tue: l'importazione le toglie.",
+    "en": "The example teams ({squadre}) were still in the league together with yours: the import removes them."
   },
   "frase.rose.nome_doppio": {
     "it": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",

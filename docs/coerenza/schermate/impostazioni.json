@@ -13,16 +13,16 @@
       "id": 53,
       "schermata": "Impostazioni, Notifiche e Avanzate",
       "web": "la voce si chiama «Notifiche» («Cosa ricevere sul telefono e quando»); righe d'aiuto sotto «Cambi di formazione e probabili», «Promemoria un'ora prima» e «Riepilogo a giornata finita»; ore tranquille «Niente avvisi nella fascia scelta: …»; Avanzate «vedi anche il resto» (`impostazioni.js`, `avvisiTelefono`, testi `imp.*`, `avv.*`, `av.*`)",
-      "iphone": "«Notifiche» («Cosa ricevere sul telefono e quando»); righe d'aiuto sotto i tre interruttori; ore tranquille «Niente avvisi nella fascia scelta: …»; Avanzate «vedi anche il resto» (`TestiImpostazioni`, `NomeConAiuto`, `ImpostazioniView.swift`, `Gestione.swift`). Il permesso di iOS sta solo dentro la pagina. La sezione «Promemoria sul telefono» è solo dell'iPhone (promemoria del telefono): resta",
+      "iphone": "come la web: la sezione «Avvisi» con «Avvisi su questo dispositivo» (con la riga `imp.avvisi_qui_aiuto`) e «Ore tranquille» («Niente avvisi dalle 23 alle 7», `imp.ore_tranquille_aiuto`); niente più interruttori per singolo avviso né «Avviso se il consiglio cambia»; i promemoria locali seguono l'interruttore unico (`AvvisiDispositivoSezione`, `AvvisiDispositivoViewModel`, `ArchivioAvvisiQui`). Gestione al posto di Avanzate (`GestionePagina`)",
       "forma": "web",
-      "chi": "**fatto** (#634): dal 12/11/2026 la web non ha più «Mostra tutte le funzioni» in Avanzate (#615) e nemmeno l'iPhone. Prima: **fatto** (#439, `NotificheComeLaWebTests`)",
+      "chi": "**fatto** (#673 passo 3, dopo #693): prova `AvvisiDispositivoTests`. Prima: dal 12/11/2026 la web non ha più «Mostra tutte le funzioni» in Avanzate (#615) e nemmeno l'iPhone (#634); **fatto** con #439",
       "stato": "fatto"
     },
     {
       "id": 58,
       "schermata": "Impostazioni, Aspetto",
       "web": "Lingua (italiano, inglese), Tema, Dimensione del testo (Normale, Grande, Molto grande) (`schedaAspetto`)",
-      "iphone": "Tema e «Animazioni ridotte»; niente lingua (l'app è solo in italiano) né dimensione del testo (la prende da iOS) (`AspettoView` in `LegaPagine.swift`)",
+      "iphone": "Tema e «Animazioni ridotte»; niente lingua (l'app è solo in italiano) né dimensione del testo (la prende da iOS) (`AspettoSezione` in `LegaPagine.swift`, una sezione della pagina Impostazioni dal passo 3 di #673)",
       "forma": "differenza ammessa",
       "chi": "**fatto**: dal 12/11/2026 la web non ha più la dimensione del testo (#615); l'iPhone non l'ha mai avuta (la prende da iOS). Restano, tra le «Differenze ammesse», la Lingua (solo web) e «Animazioni ridotte» (solo iPhone). Prima: decisa dal proprietario il 6/11/2026: tra le «Differenze ammesse» (riga «Impostazioni, Aspetto»)",
       "stato": "fatto"
@@ -52,6 +52,33 @@
       "iphone": "niente link d'invito (il codice si scrive a mano): la riga «già inserito» non serve; il messaggio dell'invito arriva dal server e la password resta già oggi; in Importa le rose il pulsante «Scegli il file (Excel o CSV)» (`Catalogo.Pav.scegliFile`); la configurazione guidata parte da sola se mai iniziata e senza rose, e si riprende all'apertura dell'app (una volta) se era stata cominciata, anche sulla web, e lasciata prima delle rose, con la stessa regola (`PrimoAvvioLogica.daAvviare`, `daRiprendere`); mai se l'app si apre con un file o un'immagine da Condividi o «Apri con»; «Più tardi» e il foglio trascinato giù segnano saltati i passi rimasti, come la ✕ della web (`ConfigurazioneGuidataViewModel.chiusa`)",
       "forma": "web",
       "chi": "**fatto** (#580 web; #594 pulsante del file sulla web e sull'iPhone; #595 ripresa della guida sull'iPhone, prova `IngressoComeLaWebTests`)",
+      "stato": "fatto"
+    },
+    {
+      "id": 74,
+      "schermata": "Impostazioni, Aggiorna le rose: due omonimi nella stessa rosa (#662)",
+      "web": "nel controllo delle rose ogni dubbio è una riga: due giocatori scritti uguali nella stessa rosa hanno ciascuno la sua scelta, e «Conferma e salva» manda una correzione per riga con la `riga` dell'anteprima (`arChiave`, `arCorrezioni` in `anteprima.js`, dal #715)",
+      "iphone": "prima: un solo dubbio per nome e correzioni senza `riga`: la scelta fatta a mano valeva per tutti e due gli omonimi e uno dei due si perdeva. Ora come la web: un dubbio e una scelta per riga, il giocatore cercato vale solo per quel dubbio, ogni correzione porta la sua `riga` (`GiocatoreAnteprima.riga`, `AnteprimaLogica.chiave`, `AnteprimaLogica.correzioni`); con un server di prima, che non manda la `riga`, come prima: un dubbio per nome",
+      "forma": "web",
+      "chi": "**fatto** (#716): prove `AnteprimaRoseTests` e `AnteprimaRoseViewModelTests` con due omonimi",
+      "stato": "fatto"
+    },
+    {
+      "id": 77,
+      "schermata": "Impostazioni, Nuova stagione: il server rifiuta «Archivia e riparti» (#731)",
+      "web": "al 409 («Le rose sono già della stagione in corso: non c'è niente da archiviare.», per esempio un altro dispositivo ha già archiviato) il foglio si chiude, l'avviso «Nuova stagione» sparisce e si legge il messaggio del server; al 412 (rose cambiate da un altro dispositivo, la web manda If-Match) il messaggio del server e la pagina si ricarica (`apriNuovaStagione` e `api` in `app.js`, dal #729)",
+      "iphone": "prima: il messaggio del server sotto «Archivia e riparti», ma il passaggio e il pulsante restavano a schermo finché la pagina non si ricaricava. Ora dopo un rifiuto del server lo stato della stagione si rilegge: al 409 il passaggio sparisce e resta il messaggio del server; al 412 «Nel frattempo le rose sono cambiate, forse da un altro dispositivo: le ho rilette. Ricontrolla e conferma di nuovo.» (`ar.cambiate`, la frase dell'importazione delle rose); senza risposta (rete) non si rilegge (`StagioneViewModel.archiviaERiparti`, `StagioneView`). L'iPhone non manda If-Match a questa rotta, quindi oggi il 412 non arriva. L'avviso in cima a Impostazioni (`LegaViewModel.stagione`) non è cambiato: si rilegge con la pagina, come dopo un archivio riuscito",
+      "forma": "web",
+      "chi": "**fatto** (#731): prove in `LegaViewModelTests` (409, 412, rete giù)",
+      "stato": "fatto"
+    },
+    {
+      "id": 84,
+      "schermata": "Il tuo account: «Esci da tutti i dispositivi» (#765)",
+      "web": "il secondo pulsante accanto a «Esci» (`account.esci_tutti`); la conferma del browser «Esci da tutti i dispositivi, anche da questo? Dovrai accedere di nuovo su ognuno.» (`account.esci_tutti_conferma`), e solo a chi ha Google collegato e una password (`accessi` del server) anche «Il collegamento con Google si toglie: per entrare con Google dovrai ricollegarlo.» (`account.esci_tutti_google`, `perdeGoogle`); poi `POST /api/account/esci-da-tutti` senza password, la pagina d'accesso e nessuna copia dei dati nel browser; se la richiesta non riesce l'avviso «Non riesco a farti uscire da tutti i dispositivi.» con il motivo (`account.esci_tutti_no`) e si resta dentro (`esciDaTutti` in `app.js`)",
+      "iphone": "prima: il pulsante non c'era (tolto con «Esci da tutti i telefoni» il 1/11/2026), ma le email di sicurezza lo consigliavano. Ora come la web: l'ultima riga di «Il tuo account», sotto «Esci», con la stessa conferma (la frase su Google sotto il titolo, alle stesse condizioni: `TestiAccount.esciTuttiGoogle`) e lo stesso errore sotto la riga; dopo l'uscita lo schermo d'accesso e il telefono svuotato come con «Esci» (`RigaEsciDaTutti`, `SessioneAccount.esciDaTutti`)",
+      "forma": "web",
+      "chi": "**fatto** (#765): prove nel browser in `tests/browser/test_impostazioni.py`, sull'iPhone `SessioneAccountTests` e `AccessoImpostazioniDalCatalogoTests`; il nome fra «» delle email e della Privacy è legato al catalogo da `tests/test_consiglio_esci_da_tutti.py`",
       "stato": "fatto"
     }
   ]

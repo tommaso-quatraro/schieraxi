@@ -71,7 +71,7 @@
         "titolo": "A real case: Thuram, matchday 8 of 2026-27 (Inter-Fiorentina)",
         "testo": "Recalculated on 30/10/2026 with only the data before matchday 8 (no probable line-ups, so p comes from recent appearances: 1.0). The match is worth 2.46 expected goals for Inter against 0.99 for Fiorentina. Expected rating 6.46; expected goals 0.505, at 3 points each, add +1.52; expected assists 0.144 add +0.14; cards and the rest about -0.06. Total mu = 8.06. The probability of scoring at least one goal is 1 - e^(-0.505) = 39.7%."
       },
-      "rimandi": ["Line-up (tap a player to see the pieces)", "League > Rules"]
+      "rimandi": ["Line-up (tap a player to see the pieces)", "Settings > Rules and deadline"]
     },
     "voto-base": {
       "titolo": "The expected rating",
@@ -160,6 +160,7 @@
       "titolo": "The probability of playing and the probable line-ups",
       "paragrafi": [
         "This is the most delicate part, because a star who stays on the bench brings zero points. When the probable line-ups of Fantacalcio.it are available (they update several times a day) the model reads them: starter with a percentage, bench with a percentage, injured, suspended, doubtful, at risk of suspension.",
+        "Injured, suspended and at-risk-of-suspension players come from the same page. When the probable line-ups for the matchday are not out yet, a player who was sent off and has not missed a match since is shown as suspended anyway, and is worth 0: SchieraXI works it out from the cards in the ratings and from the fixture list. Suspensions for accumulated yellow cards and players at risk of suspension come only from the page, because worked out from the cards they would be wrong too often (measured on 19/11/2026 on past matchdays: for accumulated yellow cards 1 wrong suspension out of 92, for red cards none out of 68). If the results are stuck the cards are not used; when the page is there, the page counts.",
         "A starter at 90% does not play with probability 0.90: if he does not start he often comes on from the bench anyway, and the rating is missing only if he comes on for a few minutes. An injured or suspended player is worth 0. A doubtful one is worth a quarter less. A player not mentioned is worth 2%.",
         "These starting numbers are chosen by hand. From 4 matchdays played with the probable line-ups saved shortly before the first match the server re-tunes them by itself on half of the matchdays and tests them on the other half; it uses them only from 8 matchdays and if they are less wrong; if they then get worse it goes back to the starting numbers."
       ],
@@ -188,7 +189,7 @@
       "titolo": "How the line-up is chosen",
       "paragrafi": [
         "For every formation allowed by your league the system builds the best eleven and then tries to improve it by swapping a starter with the best left-out players of the same role, until it finds no more advantage. In the end it picks the formation with the most expected points.",
-        "\"Best\" means more expected points, counting those who come in from the bench too. That is why a starter may play less often than a team-mate who is left out: when he plays he is worth more, and when he does not the substitute comes in. A player who almost certainly does not play (less than 20%) gives way to a team-mate who plays at least 20% of the time, if the squad has one, whatever it costs in expected points.",
+        "\"Best\" means more expected points, counting those who come in from the bench too. That is why a starter may play less often than a team-mate who is left out: when he plays he is worth more, and when he does not the substitute comes in. A player who almost certainly does not play (less than 20%) gives way to a team-mate who plays at least 20% of the time, if the squad has one, whatever it costs in expected points. If everyone in the role plays less than 20% of the time, the one most likely to play starts (if tied, the one worth more when he plays). And among the formations, the best one with the fewest starters below 20% is chosen.",
         "Every formation has its own best line-up, and you can see them all in the app with their expected points."
       ],
       "rimandi": ["Line-up", "Today"]
@@ -267,12 +268,12 @@
     "conguagli": {
       "titolo": "Balancing with credits",
       "paragrafi": [
-        "A trade can include credits (positive if you receive them, negative if you pay them). The app checks that whoever pays has them, according to the remaining credits saved in League, and that nobody exceeds the limit of 100,000.",
+        "A trade can include credits (positive if you receive them, negative if you pay them). The app checks that whoever pays has them, according to the remaining credits saved in Settings, and that nobody exceeds the limit of 100,000.",
         "To give a value in points to credits, it uses the team's free-agent market: it adds up the gains in points of its best moves and divides them by what they cost (price of the incoming player minus the refund for the outgoing one). The result is a rate: expected points over the season for each credit. The value of the credits exchanged is balance × rate, and the final verdict uses the net gain. Without a rate (no useful move) the credits are shown but do not enter the verdict.",
         "It is a rough estimate: it depends on which free agents there are today."
       ],
       "formula": "rate = Σ gain of the useful moves / Σ (price of the incoming - refund)\nnet = gain in points + balance × rate",
-      "rimandi": ["Trades > Balance", "League > Credits"]
+      "rimandi": ["Trades > Balance", "Settings > My team"]
     },
     "svincoli": {
       "titolo": "Releases and refund",

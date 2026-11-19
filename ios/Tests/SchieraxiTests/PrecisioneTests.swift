@@ -2,7 +2,7 @@ import XCTest
 @testable import Schieraxi
 
 /// «Quanto ci abbiamo preso» (campo `precisione` di `/api/diario`) e «Avviso se il consiglio cambia» (`avviso_prima` degli avvisi).
-/// Dati inventati; le frasi devono essere quelle della web (`diario.qp_*` e `avv.prima*` di `fanta/web/testi.js`).
+/// Dati inventati; le frasi devono essere quelle della web (`diario.qp_*` di `fanta/web/testi.js`).
 final class PrecisioneTests: XCTestCase {
 
     private func diario(_ json: String) throws -> DiarioRisposta {
@@ -128,7 +128,7 @@ final class PrecisioneTests: XCTestCase {
         XCTAssertNil(misto.perGiornata.first?.erroreFantavoto)
     }
 
-    // MARK: Avviso se il consiglio cambia
+    // MARK: Avviso se il consiglio cambia (il campo resta nel modello: la scelta non si mostra più, #673 passo 3)
 
     func testAvvisoPrimaSiLeggeESiRimandaSoloSeCeraNelServer() throws {
         let nuovo = Data(#"{"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "avviso_prima": 90}"#.utf8)
@@ -147,14 +147,6 @@ final class PrecisioneTests: XCTestCase {
         XCTAssertNil(s.avviso_prima)
         XCTAssertNil(s.silenzio)
         XCTAssertFalse(s.cambi)
-    }
-
-    func testAvvisoPrimaTestiEScelte() {
-        XCTAssertEqual(AvvisoPrima.valori.map(AvvisoPrima.testo), ["Spento", "30 minuti prima", "1 ora prima", "1 ora e mezza prima"])
-        XCTAssertEqual(AvvisoPrima.scelte(attuale: 60), [0, 30, 60, 90])
-        XCTAssertEqual(AvvisoPrima.scelte(attuale: 45), [0, 30, 45, 60, 90], "un valore nuovo del server resta scelto")
-        XCTAssertEqual(AvvisoPrima.testo(45), "45 minuti prima")
-        XCTAssertEqual(AvvisoPrima.predefinito, 60)
     }
 
     func testDemoHaEntrambeLeFunzioni() throws {

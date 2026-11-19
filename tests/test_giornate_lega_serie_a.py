@@ -65,6 +65,7 @@ def _errore_senza_previsioni(monkeypatch, regole, giornata):
     monkeypatch.setattr(consigli.modello, "previsioni", lambda *a, **k: pd.DataFrame())
     db = sqlite3.connect(":memory:")
     db.execute("CREATE TABLE probabili (stagione TEXT, giornata INT, fonte TEXT)")
+    db.execute("CREATE TABLE aggiornamenti (cosa TEXT PRIMARY KEY, quando TEXT, dettaglio TEXT)")   # calendario mai aggiornato: niente cartellini
     d = type("D", (), {"calciatori": None})()
     monkeypatch.setattr(consigli.stato_dati, "taratura_e_fattori", lambda *a, **k: (None, None, False))
     with pytest.raises(ValueError) as e:

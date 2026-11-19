@@ -46,7 +46,12 @@ CATALOGO: dict[str, str] = {
     # il numero della giornata, lega e Serie A insieme (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»): si usa con nome_giornata
     "giornata.lega": "Giornata {n} · {a}ª di Serie A",
     "giornata.serie_a": "{a}ª giornata di Serie A",
+    # la giornata da preparare non ha ancora le date (#552): Oggi (`senza_data`) al posto di «Si chiude …»
+    "giornata.senza_data": "Data da definire",
     "elenco.e": " e ",
+    # nessuna giornata da giocare perché l'ultima è tutta giocata (#656): Oggi e widget (`campionato_finito`), Formazione e le rotte
+    # che vogliono una giornata (409); d'estate, con la stagione nuova senza calendario, resta il messaggio del calendario
+    "campionato.finito": "Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.",
     "dafare.dubbio_squalificato": "{nome} non può giocare.",
     "dafare.dubbio_squalificato_alt": "{nome} non può giocare. Meglio {alt}.",
     "dafare.dubbio_infortunato": "{nome} è infortunato.",
@@ -240,6 +245,8 @@ CATALOGO: dict[str, str] = {
     "rose.nome_doppio": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
     "rose.fogli_non_letti": "Ho letto solo i primi {letti} fogli su {totale}: se negli altri ci sono delle rose, non le ho lette. "
                             "Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
+    # una lega già mista (squadre di esempio rimaste insieme a quelle vere, #683): server._rose_di_prima
+    "rose.esempi_tolti": "Le squadre di esempio ({squadre}) erano rimaste nella lega insieme alle tue: l'importazione le toglie.",
     "rose.codice_assente": "codice {codice} non presente nel listone",
     "rose.diversa": "{squadra}: rosa diversa dalle regole ({dettaglio})",
     "rose.doppione": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",

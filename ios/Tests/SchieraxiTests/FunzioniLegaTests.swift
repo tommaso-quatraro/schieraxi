@@ -51,7 +51,7 @@ final class FunzioniLegaTests: XCTestCase {
         let scoperto = try XCTUnwrap(cose.first { $0.tipo == "copertura" })
         XCTAssertTrue(scoperto.allaRosa)
         XCTAssertEqual(scoperto.testoPulsante, Catalogo.Lega.vediRosa)
-        XCTAssertEqual(scoperto.destinazione?.destinazione, .sezione(.squadra), "l'indirizzo vecchio apre la scheda più vicina che resta")
+        XCTAssertEqual(scoperto.destinazione?.destinazione, .impostazioni(.lega), "l'indirizzo vecchio apre La mia lega delle Impostazioni")
         let dubbio = try XCTUnwrap(cose.first { $0.tipo == "dubbio" })
         XCTAssertFalse(dubbio.allaRosa)
         XCTAssertEqual(dubbio.testoPulsante, "Apri la formazione")

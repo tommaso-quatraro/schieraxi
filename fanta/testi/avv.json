@@ -1,16 +1,8 @@
 {
-  "avv.alle": {
-    "it": "Alle",
-    "en": "To",
-    "nota": "---- [avvisi] ----"
-  },
   "avv.avevi_scelto_ore": {
-    "it": "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7).",
-    "en": "You had chosen quiet hours starting and ending at the same hour: they are not valid, so I turned them off. Turn them on again choosing two different hours (for example from 23 to 7)."
-  },
-  "avv.dalle": {
-    "it": "Dalle",
-    "en": "From"
+    "it": "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Se le riaccendi valgono dalle 23 alle 7.",
+    "en": "You had chosen quiet hours starting and ending at the same hour: they are not valid, so I turned them off. If you turn them on again, they will be from 23 to 7.",
+    "nota": "---- [avvisi] ----"
   },
   "avv.errore_fantamedia": {
     "it": "errore (da fantamedia)",
@@ -23,10 +15,6 @@
   "avv.fantamedia_nbsp": {
     "it": "da fantamedia &nbsp;",
     "en": "fantasy-average pick &nbsp;"
-  },
-  "avv.manda_avviso_prova": {
-    "it": "Manda un avviso di prova",
-    "en": "Send a test alert"
   },
   "avv.modello_nbsp": {
     "it": "modello &nbsp;",
@@ -59,10 +47,6 @@
   "avv.diario_riga": {
     "it": "Giornata per giornata: la formazione che hai schierato contro la consigliata.",
     "en": "Matchday by matchday: the lineup you fielded against the recommended one."
-  },
-  "avv.per_ogni_giornata": {
-    "it": "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e dalla consigliata che SchieraXI ti ha mostrato prima della scadenza, con in evidenza i giocatori che hai cambiato. Il confronto conta le giornate in cui hai schierato undici diversi dalla consigliata. Se la consigliata di allora non era stata salvata, SchieraXI la ricostruisce con i dati di allora e la rosa di oggi: i suoi punti si vedono, ma quella giornata non entra nel confronto. Se non conosciamo la tua panchina la sceglie SchieraXI; con gli stessi titolari della consigliata, è la sua. Si aggiorna da solo dopo ogni giornata.",
-    "en": "For every finished matchday: the points scored (and those forecast beforehand) by the lineup you fielded and by the recommended lineup SchieraXI showed you before the deadline, with the players you changed highlighted. The comparison counts the matchdays in which you fielded an eleven different from the recommended one. If the recommended lineup of the time had not been saved, SchieraXI rebuilds it with the data of the time and today's roster: its points are shown, but that matchday is left out of the comparison. If we don't know your bench, SchieraXI picks it; with the same starters as the recommended lineup, it is that lineup's bench. It updates by itself after every matchday."
   },
   "avv.permesso_negato_abilita": {
     "it": "Permesso negato: abilita le notifiche per l'app nelle impostazioni del telefono",
@@ -124,66 +108,6 @@
     "it": "Non riesco a disattivarle",
     "en": "I cannot turn them off"
   },
-  "avv.cambi": {
-    "it": "Cambi di formazione e probabili",
-    "en": "Lineup and probable-lineup changes"
-  },
-  "avv.cambi_aiuto": {
-    "it": "Infortunati, squalificati, titolari in panchina, forti cali",
-    "en": "Injured, suspended, starters on the bench, big drops"
-  },
-  "avv.prima": {
-    "it": "Avviso se il consiglio cambia",
-    "en": "Alert if the advice changes"
-  },
-  "avv.prima_aiuto": {
-    "it": "Prima della scadenza, solo se le ultime notizie cambiano la formazione da schierare (per esempio un titolare non gioca): ti dice chi mettere. Al massimo due per giornata",
-    "en": "Before the deadline, only if the latest news changes the lineup to field (for example a starter is out): it tells you who to put in. At most two per matchday"
-  },
-  "avv.prima_0": {
-    "it": "Spento",
-    "en": "Off"
-  },
-  "avv.prima_30": {
-    "it": "30 minuti prima",
-    "en": "30 minutes before"
-  },
-  "avv.prima_60": {
-    "it": "1 ora prima",
-    "en": "1 hour before"
-  },
-  "avv.prima_90": {
-    "it": "1 ora e mezza prima",
-    "en": "90 minutes before"
-  },
-  "avv.prom_60": {
-    "it": "Promemoria un'ora prima",
-    "en": "Reminder one hour before"
-  },
-  "avv.prom_60_aiuto": {
-    "it": "Con la formazione consigliata e i giocatori da controllare",
-    "en": "With the recommended lineup and the players to check"
-  },
-  "avv.prom_15": {
-    "it": "Promemoria 15 minuti prima",
-    "en": "Reminder 15 minutes before"
-  },
-  "avv.riepilogo": {
-    "it": "Riepilogo a giornata finita",
-    "en": "Summary when the matchday is over"
-  },
-  "avv.riepilogo_aiuto": {
-    "it": "Punti fatti, attesi e massimo possibile con la tua rosa",
-    "en": "Points scored, expected and maximum possible with your roster"
-  },
-  "avv.copertura": {
-    "it": "Reparto della rosa scoperto",
-    "en": "Uncovered position in the roster"
-  },
-  "avv.copertura_aiuto": {
-    "it": "Ti avvisa se in un reparto hai pochi giocatori disponibili (infortunati, squalificati, diffidati)",
-    "en": "Warns you if you have few players available in a position (injured, suspended, on a booking)"
-  },
   "avv.nativa": {
     "it": "Avvisi anche per l'app nativa",
     "en": "Alerts for the native app too"
@@ -195,10 +119,6 @@
   "avv.ore_tranq": {
     "it": "Ore tranquille",
     "en": "Quiet hours"
-  },
-  "avv.ore_tranq_aiuto": {
-    "it": "Niente avvisi nella fascia scelta: cambi e riepilogo arrivano appena finisce. Un promemoria che cade lì non viene mandato",
-    "en": "No alerts in the chosen range: changes and summary arrive as soon as it ends. A reminder that falls in it is not sent"
   },
   "avv.notifiche_attivate_qui": {
     "it": "Avvisi attivi su questo dispositivo: ti ho mandato un avviso di prova",

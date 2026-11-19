@@ -12,6 +12,8 @@ import comune
 import giro
 
 SW = 'const VERSIONE = "fanta-230";\n'
+FOTO = "git log -1 --format=%H origin/main -- ios/fotografie"
+API = "git log -1 --format=%cs f0t0..origin/main -- docs/openapi.json"
 
 
 def risposte(**extra):
@@ -26,6 +28,9 @@ def risposte(**extra):
         "gh run view 50 --json attempt": {"attempt": 1},
         "gh run rerun": "",
         "gh run cancel": "",
+        # fotografie dal vero (#508): di default l'API non è cambiata dopo l'ultimo commit sulle fotografie
+        FOTO: "f0t0\n",
+        API: "",
     })
     for c in r["gh run list --status in_progress"] + r["gh run list --status queued"]:
         c["headSha"] = {"a": "testa-a", "b": "testa-b"}.get(c["headBranch"], "x")
@@ -160,3 +165,24 @@ def test_errore_di_gh_esce_con_1(tmp_path, capsys):
     r["gh pr list --state open"] = comune.Risposta(1, "", "non autenticato")
     assert lancia(tmp_path, r)[0] == 1
     assert "non autenticato" in capsys.readouterr().err
+
+
+def test_avviso_fotografie_piu_vecchie_dell_api(tmp_path, capsys):
+    # #508: docs/openapi.json cambiata dopo l'ultimo commit su ios/fotografie -> una riga che dice come rifarle
+    codice, _ = lancia(tmp_path, risposte(**{API: "2026-11-19\n"}))
+    assert codice == 10
+    [riga] = [x for x in capsys.readouterr().out.splitlines() if "fotografie dal vero" in x]
+    assert "prove/fotografie_dal_vero.py" in riga and "copia dei dati sul PC" in riga and "2026-11-19" in riga
+    assert lancia(tmp_path, risposte(**{API: "2026-11-19\n"}))[0] == 0        # stampata una volta sola
+    assert capsys.readouterr().out == ""
+
+
+def test_fotografie_piu_nuove_dell_api_niente_avviso(tmp_path, capsys):
+    lancia(tmp_path)
+    assert "fotografie dal vero" not in capsys.readouterr().out
+
+
+def test_fotografie_senza_storia_o_git_rotto_non_fermano_il_giro(tmp_path, capsys):
+    assert lancia(tmp_path / "a", risposte(**{FOTO: ""}))[0] == 10            # nessun commit sulle fotografie
+    assert lancia(tmp_path / "b", risposte(**{FOTO: comune.Risposta(128, "", "unknown revision origin/main")}))[0] == 10
+    assert "fotografie dal vero" not in capsys.readouterr().out

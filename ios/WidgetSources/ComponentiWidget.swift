@@ -141,6 +141,11 @@ struct SenzaDatiWidget: View {
 extension Voce {
     /// Il riassunto completo, o nil se il server non lo ha ancora (si ricade sui widget «vecchi»).
     var completo: RiassuntoWidget? { widget }
+
+    /// Cosa mostrano i tre widget prima del loro contenuto di sempre, nello stesso ordine (`CasoWidget`, provato dai test): a
+    /// campionato finito la frase del server (#727, `CampionatoFinitoWidget`), per chi è entrato a giornata già iniziata senza una
+    /// formazione la prossima da preparare (#687, #752, `SenzaFormazioneWidget`), dal riassunto o dalla risposta completa.
+    var caso: CasoWidget { CasoWidget.di(riassunto: riassunto, widget: widget) }
 }
 
 // Solo per l'app di anteprima (galleria per gli screenshot): `widgetFamily` e `widgetRenderingMode` di WidgetKit si possono solo leggere,

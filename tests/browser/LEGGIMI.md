@@ -44,6 +44,9 @@ hanno il loro `role="alert"`. Il controllo non conta ancora come errori gli elem
   girano in 4 processi (`pytest-xdist`, `-n 4 --dist worksteal`, #680), ognuno con il suo Chrome e i suoi server finti, e
   il registro del job elenca i dieci test più lenti (`--durations=10`).
 - **A mano su un ramo**: `gh workflow run test.yml --ref <ramo>` (girano tutti i controlli, questo compreso).
+- **Su `main` dopo un'unione** (#630): nella corsa lanciata da `prova-main`, se dall'ultima corsa verde su `main` sono
+  cambiati gli stessi file (lo decide il job `cambi`; se non si sa, girano). Se falliscono, `main-rosso` apre o commenta
+  l'issue P1 «CI: main rosso».
 - **Nella suite normale no**: senza `-m browser` si saltano. Si saltano anche se mancano Playwright o Chrome; nel job dei
   controlli (variabile `BROWSER_OBBLIGATORIO=1`) invece falliscono, perché lì un test saltato sarebbe un verde finto.
 
@@ -98,7 +101,9 @@ prima della scadenza:
   nuovi; se non arrivano (rete caduta) la nota dice perché non si può cambiare e ha «Riprova», e quando il browser segnala
   che la rete è tornata la pagina riprova da sola, una volta; un salvataggio che torna a schermata già ridisegnata fa rileggere,
   e finché è in volo la pagina riletta ha i comandi spenti (un cambio fatto lì gli scriveva sopra); se quel salvataggio non
-  riesce un avviso lo dice e i comandi si riaccendono; togliere la spunta non cancella una scelta
+  riesce un avviso lo dice e i comandi si riaccendono; un salvataggio (o «Torna alla consigliata») che non riesce quando si è
+  già passati a un'altra schermata lo dice lo stesso con un avviso che nomina la formazione (la rete solo se è lei il motivo,
+  #667); togliere la spunta non cancella una scelta
   salvata altrove; se la scelta non si legge c'è un errore con «Riprova» e niente si può cambiare; rete caduta, rifiuto
   del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono; dopo un 412 i
   comandi restano spenti finché la pagina non ha riletto dal server (l'avviso dice prima «Sto ricaricando…», poi di rifare
@@ -147,6 +152,9 @@ prima della scadenza:
   squadra della pagina, con «Rimuovi» (che cancella l'immagine giusta) e «Da indirizzo web»;
 - Regole e scadenza: il regolamento incollato si salva con «Salva queste regole»; i singoli valori stanno dietro «Modifica i
   valori»; la scadenza si salva appena cambia; la frase sulla prima giornata parla di Giornate, non del Diario;
+- conflitto (412) su Regole (la scadenza) e rose (i crediti della mia squadra), con un server finto che dà l'ETag: l'avviso lo
+  dice e la pagina si ricarica; la modifica rifatta prima della ricarica porta l'If-Match vecchio ed è rifiutata ancora, mai
+  senza If-Match; rifatta dopo porta l'ETag riletto e passa (#667);
 - Avvisi: niente interruttori di prima, le ore tranquille con la loro fascia, e un cambio manda solo `silenzio`. Senza un
   service worker registrato (il browser di prova) la frase che lo dice arriva subito, senza i 4 secondi di attesa; con una
   registrazione finta in attivazione il riquadro dice «Controllo gli avvisi…» con `aria-busy` e la riga sotto non si sposta
@@ -154,7 +162,18 @@ prima della scadenza:
   `/api/avvisi/prova` con risposte finte): la frase dell'interruttore dice che arrivano anche gli altri avvisi; accenderlo
   manda un avviso di prova e lo dice; se la prova non parte (429 o `inviato: false`) lo dice un avviso `role="status"` e
   l'interruttore resta acceso; con il permesso negato niente prova;
+- Il tuo account: «Esci da tutti i dispositivi» chiede conferma con una frase che dice che si esce ovunque, anche da qui, e che si
+  dovrà rientrare (e, solo a chi ha Google collegato e una password, che il collegamento con Google si toglie); confermato
+  manda la richiesta e torna alla pagina d'accesso senza copie dei dati né account nel browser;
+  annullato non manda niente; se la richiesta non riesce (errore del server o rete giù) lo dice un avviso, si resta nella pagina
+  e le copie restano (#765);
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore.
+
+`test_accesso_all_avvio.py`, l'avvio con gli account quando la sessione non vale più (401 da «chi sono»). Gira solo prima della
+scadenza:
+- le copie di un account rimaste nel browser (`localStorage` dei dati e dell'account, copie del service worker) si tolgono
+  prima della schermata di accesso, come all'uscita; riaperta senza rete, la Formazione salvata non compare;
+- il codice di un link d'invito resta e compare nel modulo di registrazione.
 
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
 - dopo un rilascio finto (ogni file della scocca dice la sua versione, `VERSIONE` di `sw.js` alzata) con `app.js` e `testi.js`
@@ -225,5 +244,5 @@ apposta (come `/api/avatar`, che viene dalle foto vere dei calciatori), la sua r
 
 ## Sono bloccanti
 In `test.yml` `browser` sta nei `needs` del job `unisci`, con `needs.browser.result == 'success'` nella sua condizione.
-Nelle PR il job non si salta mai (se la PR non tocca la web salta solo i passi e resta verde). Su `main` non gira: se due
-pull request verdi da sole rompono insieme una schermata, lo vede la pull request successiva che tocca la web.
+Nelle PR il job non si salta mai (se la PR non tocca la web salta solo i passi e resta verde). Su `main` gira dopo
+un'unione che tocca la web: se due pull request verdi da sole rompono insieme una schermata, `main-rosso` apre l'issue P1.

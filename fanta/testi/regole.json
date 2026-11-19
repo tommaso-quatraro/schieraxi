@@ -19,11 +19,6 @@
     "it": "Come entrano le riserve",
     "en": "How substitutes come on"
   },
-  "regole.con_prima_giornata": {
-    "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Diario e promemoria contano da lì.",
-    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Journal and reminders count from there.",
-    "nota": "Solo per l'iPhone, che ha ancora il Diario: la web (Regole e scadenza, #618) usa regole.prima_giornata_conta"
-  },
   "regole.prima_giornata_conta": {
     "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Giornate e promemoria contano da lì.",
     "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Matchdays and reminders count from there."
@@ -309,10 +304,6 @@
     "it": "Partite rinviate",
     "en": "Postponed matches"
   },
-  "regole.rinviate_aiuto": {
-    "it": "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo da Oggi.",
-    "en": "What your league does with the players of a postponed match, even weeks later. You can change it for a single round from Today."
-  },
   "regole.rv_aspetta": {
     "it": "Aspetta il recupero",
     "en": "Wait for make-up"
@@ -375,7 +366,18 @@
   },
   "regole.non_riconosciute": {
     "it": "Righe con numeri non riconosciute ({n})",
-    "en": "Lines with numbers not recognised ({n})"
+    "en": "Lines with numbers not recognised ({n})",
+    "nota": "solo iPhone, finché non mostra `da_controllare` di /api/regole/riconosci: la web usa regole.da_controllare"
+  },
+  "regole.da_controllare": {
+    "it": "Righe da controllare a mano ({n})",
+    "en": "Lines to check by hand ({n})",
+    "nota": "titolo di `da_controllare`: righe del regolamento non lette, con numeri o dubbie anche senza numeri"
+  },
+  "regole.da_impostare": {
+    "it": "da impostare: {r}",
+    "en": "to set by hand: {r}",
+    "nota": "sotto una riga da controllare: le regole che lascia da impostare a mano (etichette regola.et.*, separate da virgole)"
   },
   "regole.da_riga": {
     "it": "da: «{r}»",

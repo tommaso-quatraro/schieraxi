@@ -80,7 +80,8 @@ function risorsaDi(percorso, opzioni) {
   const [p, qs] = percorso.split("?");
   const metodo = (opzioni.method || "GET").toUpperCase();
   if (p === "/api/regole" || p === "/api/regole/rinvio") return "regole";
-  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file", "/api/rose/correggi"].includes(p)) return "rose";
+  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file", "/api/rose/correggi",
+       "/api/nuova-stagione"].includes(p)) return "rose";
   if (p === "/api/avvisi") return "avvisi";
   if (p === "/api/scelta") { const g = new URLSearchParams(qs || "").get("giornata"); return g ? `scelta:${g}` : null; }
   if (p === "/api/formazione/valuta" && metodo === "POST") {
@@ -789,8 +790,10 @@ async function aggiornaDati() {
 
 // Quando si chiude la formazione che la schermata mostra: a giornata finita, o per chi è arrivato a giornata iniziata, la prossima.
 const scadenzaDi = o => (o.prossima && (o.fase === "finita" || o.senza_formazione) && o.prossima.scadenza) || o.scadenza || o.inizio;
-// «Si chiude oggi 18:20» e «fra 3 h 10 min»: il conto resta, piccolo, accanto alla scadenza.
+// «Si chiude oggi 18:20» e «fra 3 h 10 min»: il conto resta, piccolo, accanto alla scadenza. Con la giornata ancora senza date la
+// frase del server (`senza_data` di /api/oggi, #552: «Data da definire»); un server di prima non la manda e resta il testo di sempre.
 function testoConto(o) {
+  if (o.senza_data && typeof o.senza_data.testo === "string" && o.senza_data.testo.trim()) return { chiude: testoDi(o.senza_data), manca: "" };
   const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude);
   if (!fine) return { chiude: t("oggi.calendario_no"), manca: "" };
   const min = Math.round((fine - new Date()) / 60000);
@@ -808,6 +811,20 @@ function mostraSenzaRose(opz) {
     <p class="debole">${t("oggi.per_cominciare_importa")}</p>
     <div class="pulsanti"><button class="bottone" type="button" data-importa-rose>${t("comune.importa_rose")}</button></div></div>`, { ...opz, stato: false });
   if (typeof primoAvvioSeServe === "function") primoAvvioSeServe();
+}
+
+// Campionato finito (#656, campo `campionato_finito` di /api/oggi): nessuna giornata da preparare fino al calendario nuovo. La testa
+// della giornata finita con il riepilogo dell'ultima (nelle 48 ore, se il server lo manda) e la frase del server al posto della prossima;
+// con un recupero dell'ultima giornata ancora da giocare, lo stesso menu della fase «finita» per scegliere come contarlo.
+function mostraCampionatoFinito(o, opz) {
+  clearInterval(timerConto);
+  const r = o.riepilogo;
+  const frase = `<p class="tg-nota" role="status" id="campionato-finito">${esc(testoDi(o.campionato_finito))}</p>`;
+  pagina(`<div class="fz-testa">${r ? `${riepilogoGiornata(r)}<div class="tg-prossima">${frase}</div>` : frase}</div>
+    ${r && r.rinvio ? `<div class="carta rinvio">${menuRinvio(r.rinvio)}</div>` : ""}`, opz);
+  collegaRinvio();
+  const comeAndata = $("[data-apri-giornata]");
+  if (comeAndata) comeAndata.addEventListener("click", () => vaiGiornate(Number(comeAndata.dataset.apriGiornata) || undefined));
 }
 
 // Partite rinviate della giornata (campo `rinvio` di /api/oggi, docs/API.md): quali, i miei giocatori coinvolti e cosa vale per
@@ -965,9 +982,13 @@ function vistaFormazione() {
 async function caricaGiornata() {
   // Account nuovo, senza rose (lo dice /api/stato, letto all'avvio): /api/formazione risponderebbe 409 e il browser lo scriverebbe fra
   // gli errori, quindi si chiede solo /api/oggi, che dà il benvenuto. Se le rose nel frattempo ci sono, la formazione si chiede dopo.
+  // Lo stesso senza una giornata da giocare (`prossima_giornata` nullo): a campionato finito /api/oggi dice `campionato_finito` e
+  // /api/formazione risponderebbe 409 (#656); d'estate, senza calendario, è /api/oggi a dire che il calendario non c'è ancora.
   const senzaRose = !!stato.info && stato.info.rose_importate === false;
-  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose ? null : api("/api/formazione").catch(e => e)]);
+  const senzaGiornata = !!stato.info && stato.info.prossima_giornata === null;
+  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata ? null : api("/api/formazione").catch(e => e)]);
   if (o.senza_rose) return { o, f: null };
+  if (o.campionato_finito) return { o, f: null };
   const f = letta || await api("/api/formazione");
   if (f instanceof Error) throw f;
   const b = { o, f };
@@ -1001,17 +1022,19 @@ function testaGiornata(o, f) {
       <p class="tg-punti"><b class="tg-numero" id="oggi-fatti">${num(c2.punti_fatti)}</b> ${t("formazione.punti_finora")}${c2.punti_previsti != null ? ` · ${t("formazione.circa_fine", { n: num(c2.punti_previsti, 0) })}` : ""}</p>
       <p class="tg-sotto">${c2.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c2.ancora_da_giocare) : t("oggi.tutti_giocato")}</p>`;
   }
-  if (fase === "finita" && o.riepilogo) {
-    const r = o.riepilogo, tua = r.formazione_di === "tua";
-    return `<div class="tg-finita" id="oggi-riepilogo"><div>
-        <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
-        <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
-        <button class="bottone secondario" type="button" data-apri-giornata="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
-      ${tua && r.consigliata && r.consigliata.punti_fatti !== r.punti_fatti ? `<p class="tg-sotto">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
-      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
-      <div class="tg-prossima">${giornata}${chiusura}</div>`;
-  }
+  if (fase === "finita" && o.riepilogo) return `${riepilogoGiornata(o.riepilogo)}<div class="tg-prossima">${giornata}${chiusura}</div>`;
   return giornata + (f.iniziata ? "" : chiusura);
+}
+
+// La giornata appena finita (campo `riepilogo` di /api/oggi): punti fatti e attesi, «Com'è andata», la consigliata, i recuperi.
+function riepilogoGiornata(r) {
+  const tua = r.formazione_di === "tua";
+  return `<div class="tg-finita" id="oggi-riepilogo"><div>
+      <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
+      <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
+      <button class="bottone secondario" type="button" data-apri-giornata="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
+    ${tua && r.consigliata && r.consigliata.punti_fatti !== r.punti_fatti ? `<p class="tg-sotto">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
+    ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}`;
 }
 
 // A giornata in corso: i cambi dalla panchina già fatti o probabili (campo `sostituzioni` di `in_corso`).
@@ -1025,6 +1048,7 @@ function cambiInCorso(c) {
 function mostraFormazione(b, squadra, opz = {}) {
   const { o, f } = b;
   if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
+  if (o && o.campionato_finito) { mostraCampionatoFinito(o, opz); return; }
   const l = livelloBase(f);
   const consigliato = l.moduli.find(m => m.modulo === l.modulo) || l.moduli[0];
   const fermi = giocatoriFermi(f);
@@ -1064,13 +1088,20 @@ function mostraFormazione(b, squadra, opz = {}) {
   // dopo un salvataggio la copia sul telefono di questa schermata è già vecchia: la si aggiorna, così tornando qui non si rivede quella di prima
   // La scrittura è tornata (riuscita o no) ma la schermata nel frattempo è stata ridisegnata (riaperta, o lasciata): la copia sul
   // telefono è vecchia e, se si è ancora nella Formazione, in pagina c'è altro, con i comandi spenti finché la scrittura era in
-  // volo. Si rilegge dal server: mai una scelta salvata che non si vede. Restituisce se ha riletto.
+  // volo. Si rilegge dal server: mai una scelta salvata che non si vede. Restituisce se è l'ultima scrittura partita da questa
+  // schermata: allora il suo errore si dice con un avviso, riletta la Formazione o lasciata (#667: lasciata la schermata, un
+  // salvataggio fallito non lo diceva nessuno, e tornando sembrava fatto). Di una scrittura superata da una dopo conta quella dopo.
   const altrove = n => {
     rimuoviCache("giornata");
-    const rilegge = n === sc.richiesta && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista;
-    if (rilegge) rileggiFormazione();
-    return rilegge;
+    const ultima = n === sc.richiesta;
+    if (ultima && stato.scelta !== sc && stato.vista === "formazione" && !stato.squadraVista) rileggiFormazione();
+    return ultima;
   };
+  // L'avviso di una scrittura non riuscita a schermata già ridisegnata: nella Formazione il motivo (rete, rifiuto del server); su
+  // un'altra schermata una frase del catalogo che nomina la formazione («Non riesco a collegarmi» da solo, su Giornate, sembrava
+  // parlare di Giornate). La rete si nomina solo se è lei il motivo.
+  const nonSalvata = e => stato.vista === "formazione" && !stato.squadraVista ? e.message
+    : t(e.rete ? "formazione.non_salvata_rete" : "formazione.non_salvata");
   const ricorda = valutata => { if (mia) salvaCache("giornata", { ...b, scelta: sc.salvata, valutata: valutata || undefined, non_valida: false, f: { ...f, stato_scelta: sc.salvata ? "valida" : "nessuna" } }); };
   // 412: nel frattempo la scelta è stata cambiata su un altro dispositivo, e la scrittura non è stata fatta. La schermata si
   // rilegge subito dal server (niente ricarica della pagina dopo 2,5 secondi: fino ad allora i comandi restavano accesi su una
@@ -1105,7 +1136,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       return true;
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return false; }
-      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return false; }      // la pagina riletta nel frattempo: lo si dice lì
+      if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return false; }   // pagina riletta o lasciata nel frattempo: lo si dice lo stesso
       avviso(e.message, 5000);
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
       return false;
@@ -1124,7 +1155,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       disegna(true);
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return; }
-      if (!qui(n)) { if (altrove(n)) avviso(e.message, 5000); return; }
+      if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return; }
       avviso(e.message, 5000);                              // per esempio la consigliata sposterebbe chi gioca un anticipo già cominciato (#373)
       if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);
     } finally { if (n === sc.richiesta) sc.occupato = false; }
@@ -2719,7 +2750,7 @@ function vistaImportaRose() {
     svuotaCache();
     $("#esito-import").innerHTML = `<h3>${t("lega.cosa_cambiato")}</h3>${htmlDifferenze(esito.differenze)}
       <div class="debole piccolo" style="margin-top:10px">${t("lega.importate", { nomi: esito.squadre_importate.map(esc).join(", "), n: tp("lega.n_squadre", esito.totale_squadre) })}</div>
-      ${esito.avvisi.length ? `<div class="attenzione" style="margin-top:12px"><b>${t("lega.da_controllare")}</b><br>${esito.avvisi.map(esc).join("<br>")}</div>` : `<div class="debole piccolo">${t("lega.rose_controllate_tutto")}</div>`}`;
+      ${esito.avvisi.length ? `<div class="attenzione" style="margin-top:12px"><b>${t("lega.da_controllare")}</b><br>${testiDi(esito, "avvisi").map(esc).join("<br>")}</div>` : `<div class="debole piccolo">${t("lega.rose_controllate_tutto")}</div>`}`;
     caricaInfo(); caricaSquadre();
   };
   // in due passi (anteprima.js): prima si controlla cosa ha capito l'app, poi «Conferma e salva»
@@ -2775,7 +2806,12 @@ function apriNuovaStagione(s) {
           <li><b>${t("lega.controlla_regole")}</b>${t("lega.bonus_moduli_crediti")}</li></ol></div>
         <div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div>`);
       vai("impostazioni", "rose");
-    } catch (e) { avviso(e.message, 5000); }
+    } catch (e) {
+      // 409: un altro dispositivo ha già archiviato (o non ci sono rose), il server non ha scritto niente e lo dice: l'avviso
+      // rimasto a schermo non vale più, quindi si chiude il foglio e sparisce l'avviso (#657)
+      if (e.status === 409) { chiudiFoglio(); const b = $("#banner-stagione"); if (b) b.closest("li").remove(); }
+      avviso(e.message, 5000);
+    }
   });
 }
 
@@ -3023,8 +3059,11 @@ async function vistaRegole() {
         return;
       }
       const vedi = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
+      // da controllare a mano (#684): le righe non lette, già nell'ordine del testo, con le regole da impostare (le dà il server)
+      const daControllare = esito.da_controllare;
+      const rigaDaControllare = x => `<div style="margin-top:6px"><span class="debole">${esc(x.riga)}</span>${x.regole.length ? `<span style="display:block">${t("regole.da_impostare", { r: esc(x.regole.map(etichettaRegola).join(", ")) })}</span>` : ""}</div>`;
       dove.innerHTML = `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(etichettaRegola(m))}: <b>${esc(vedi(m.valore))}</b>${m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : ""}</span></div>`).join("")}
-        ${esito.non_riconosciute.length ? `<details><summary style="font-size:var(--t-corpo)">${t("regole.non_riconosciute", { n: esito.non_riconosciute.length })}</summary><div class="debole piccolo">${esito.non_riconosciute.map(esc).join("<br>")}</div></details>` : ""}
+        ${daControllare.length ? `<details><summary style="font-size:var(--t-corpo)">${t("regole.da_controllare", { n: daControllare.length })}</summary><div class="piccolo">${daControllare.map(rigaDaControllare).join("")}</div></details>` : ""}
         <div class="pulsanti"><button class="bottone" id="salva-riconosciute" type="button">${t("regole.salva_queste")}</button></div>`;
       // un tocco: i valori riconosciuti vanno nei campi (dietro «Modifica i valori») e le regole si salvano come con «Salva le regole»
       $("#salva-riconosciute").addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
@@ -3104,18 +3143,25 @@ async function vistaRegole() {
 const soloAmministratore = () => !stato.account || stato.account.ruolo === "amministratore";
 
 // All'uscita su questo dispositivo non deve restare niente dell'utente: copie dei dati, archivio scambi, copie dell'app del service worker.
-async function svuotaDatiLocali() {
+// `tieniAccesso`: resta sessionStorage, che tiene solo i passi dell'accesso in corso (codice d'invito, ritorno da Google).
+async function svuotaDatiLocali({ tieniAccesso = false } = {}) {
   try { Object.keys(localStorage).filter(k => k.startsWith("cache:") || ["archivio-scambi", "vista", "account"].includes(k)).forEach(k => localStorage.removeItem(k)); }
   catch { /* niente memoria */ }
-  try { sessionStorage.clear(); } catch { /* niente memoria */ }
+  if (!tieniAccesso) try { sessionStorage.clear(); } catch { /* niente memoria */ }
   try { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch { /* niente copie */ }
+}
+// C'è ancora qualcosa di un account in questo browser (l'account stesso, copie dei dati, archivio scambi)?
+function restanoCopie() {
+  try { return Object.keys(localStorage).some(k => k.startsWith("cache:") || ["archivio-scambi", "account"].includes(k)); }
+  catch { return false; }
 }
 // Il tasto Indietro del browser può rimettere una pagina dalla sua memoria: con gli account si ricarica, così dopo un'uscita
 // non ricompaiono i dati di chi è uscito.
 window.addEventListener("pageshow", ev => { if (ev.persisted && (stato.account || accessoAperto)) location.reload(); });
 
 // Le notifiche di questo dispositivo sono dell'utente che esce: si tolgono, così non arrivano a chi entra dopo di lui.
-async function lasciaNotifiche() {
+// `alServer` falso: la sessione è già chiusa e il server ha già tolto le iscrizioni (Esci da tutti), si toglie solo quella del browser.
+async function lasciaNotifiche(alServer = true) {
   try {
     if (!("serviceWorker" in navigator && "PushManager" in window)) return;
     const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(no, 2000))]);
@@ -3123,7 +3169,7 @@ async function lasciaNotifiche() {
     if (!sub) return;
     const ep = sub.endpoint;
     await sub.unsubscribe();
-    await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) });
+    if (alServer) await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) });
   } catch { /* non è un motivo per restare dentro */ }
 }
 
@@ -3489,6 +3535,26 @@ async function esciDa(percorso) {
   location.reload();
 }
 
+// Impostazioni > Il tuo account > «Esci da tutti i dispositivi» (#765), il pulsante che consigliano le email di sicurezza: il server
+// chiude tutte le sessioni (anche questa), il widget, le notifiche web di ogni dispositivo e scollega Google a chi ha una password.
+// Al contrario di «Esci» non riesce senza il server: se la richiesta non va, gli altri dispositivi sono ancora dentro e lo si dice.
+// Niente password nel corpo: il codice di recupero nuovo che il server manderebbe si perderebbe con la ricarica.
+// Il server toglie il collegamento con Google a chi ha una password; chi entra solo con Google lo tiene (sarebbe chiuso fuori).
+// Lo si legge da `accessi` del server: senza, niente frase.
+const perdeGoogle = () => !!(stato.accessi && stato.accessi.password === true
+  && (stato.accessi.social || []).some(s => s.provider === "google"));
+async function esciDaTutti() {
+  if (!confirm(t("account.esci_tutti_conferma") + (perdeGoogle() ? " " + t("account.esci_tutti_google") : ""))) return;
+  try { await api("/api/account/esci-da-tutti", { method: "POST" }); }
+  catch (e) {
+    if (e.status !== 401) avviso(t("account.esci_tutti_no", { motivo: e.message || "" }).trim(), 8000);     // 401: c'è già l'accesso
+    return;
+  }
+  await lasciaNotifiche(false);                       // le iscrizioni sul server le ha già tolte lui: qui solo quella del browser
+  await svuotaDatiLocali();
+  location.reload();
+}
+
 // Email dell'account: aggiungere/cambiare (codice a 6 cifre per posta), confermare, togliere. Tutti i valori dell'utente passano da esc().
 function htmlEmailAccount() {
   const e = stato.emailAccount || {};
@@ -3561,7 +3627,8 @@ function schedaAccount() {
       <div class="attenzione">${t("account.elimina_avviso")}</div>
       ${soloGoogle() ? `<div class="debole piccolo">${t("social.elimina_spiega")}</div>` : campo("acc-pw-elimina", t("account.la_tua_password"), 'autocomplete="current-password"')}
       <div class="pulsanti"><button class="bottone secondario" id="acc-elimina" style="color:var(--rosso)">${t("account.elimina")}</button></div></details>
-    <div class="pulsanti"><button class="bottone secondario" id="acc-esci">${t("account.esci")}</button></div>
+    <div class="pulsanti"><button class="bottone secondario" id="acc-esci">${t("account.esci")}</button>
+      <button class="bottone secondario" id="acc-esci-tutti" type="button">${t("account.esci_tutti")}</button></div>
   </div>`;
 }
 
@@ -3617,6 +3684,7 @@ function collegaAccount() {
   const provaCosi = async (cosa, fai) => { try { await fai(); } catch (e) { avviso(e.message || cosa, 6000); } };
   collegaEmailAccount();
   $("#acc-esci").addEventListener("click", () => esciDa("/api/account/esci"));
+  $("#acc-esci-tutti").addEventListener("click", () => esciDaTutti());
   $("#acc-scarica-dati").addEventListener("click", () => scaricaIMieiDati());
   if ($("#acc-accessi")) collegaAccessi();
   const passwordDiverse = () => valore("#acc-ripeti") !== "" && valore("#acc-nuova") !== valore("#acc-ripeti");
@@ -3746,6 +3814,8 @@ async function controllaAccesso() {
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
   const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
   if (r.status === 401 && dati && dati.multiutente) {
+    // la sessione non vale più: via le copie rimaste, come all'uscita, prima della schermata di accesso
+    if (restanoCopie()) await svuotaDatiLocali({ tieniAccesso: true });
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false); else mostraAccesso("", invito ? "registra" : "accedi");
     return false;
   }

@@ -149,19 +149,20 @@ final class ImportaExcelViewModel: ViewModelBase {
         AnteprimaLogica.scelta(g, squadra: squadra, scelte: scelte)
     }
 
-    func scegli(_ scelta: SceltaDubbio, squadra: String, testo: String) {
-        scelte[AnteprimaLogica.chiave(squadra, testo)] = scelta
+    /// La scelta per un dubbio: vale solo per la sua riga (due omonimi si scelgono uno per uno), con un server di prima per il nome.
+    func scegli(_ scelta: SceltaDubbio, per g: GiocatoreAnteprima, squadra: String) {
+        scelte[AnteprimaLogica.chiave(squadra, g)] = scelta
     }
 
-    /// Un giocatore trovato con la ricerca diventa la scelta (e un'opzione del menu).
-    func scegli(trovato c: CandidatoAnteprima, squadra: String, testo: String) {
-        let k = AnteprimaLogica.chiave(squadra, testo)
+    /// Un giocatore trovato con la ricerca diventa la scelta (e un'opzione del menu) di quel dubbio.
+    func scegli(trovato c: CandidatoAnteprima, per g: GiocatoreAnteprima, squadra: String) {
+        let k = AnteprimaLogica.chiave(squadra, g)
         trovati[k] = c
         scelte[k] = .giocatore(c.id)
     }
 
     func opzioni(per g: GiocatoreAnteprima, squadra: String) -> [CandidatoAnteprima] {
-        AnteprimaLogica.opzioni(g, trovato: trovati[AnteprimaLogica.chiave(squadra, g.testo)])
+        AnteprimaLogica.opzioni(g, trovato: trovati[AnteprimaLogica.chiave(squadra, g)])
     }
 
     /// Le correzioni che partiranno con «Conferma e salva».
@@ -341,8 +342,23 @@ final class StagioneViewModel: ViewModelBase {
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
         } catch {
-            errore = error.localizedDescription
+            // 412: le rose sono cambiate su un altro dispositivo, detto con la frase che l'importazione delle rose usa per lo stesso
+            // caso; gli altri rifiuti con il messaggio del server, così com'è (il 409 dice che le rose sono già della stagione in corso).
+            errore = (error as? ErroreApi)?.eConflitto == true ? Catalogo.Ar.cambiate : error.localizedDescription
             Haptics.esito(riuscito: false)
+            // Il server ha risposto senza scrivere niente: un altro dispositivo può aver già archiviato (409) o cambiato le rose
+            // (412). Si rilegge lo stato, così il passaggio sparisce se non serve più, come sulla web (#731). Senza risposta (rete,
+            // tempo scaduto) non si rilegge: sarebbe un'altra attesa a vuoto.
+            if Self.haRisposto(error) { await stato.ricarica() }
+        }
+    }
+
+    /// Il server ha risposto con un rifiuto (il suo messaggio, un 412, un errore con codice): non la rete né una pagina d'altri.
+    private static func haRisposto(_ errore: Error) -> Bool {
+        guard let e = errore as? ErroreApi else { return false }
+        switch e {
+        case .server, .codificato, .conflitto: return true
+        default: return false
         }
     }
 }

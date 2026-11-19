@@ -13,6 +13,8 @@ giornate.cambi_pari.other
 giornate.tua
 giornate.automatica
 giornate.non_salvata
+giornate.sul_previsto
+giornate.come_previsto
 giornate.formazione_tua
 giornate.formazione_automatica
 giornate.formazione_consigliata

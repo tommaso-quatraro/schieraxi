@@ -363,18 +363,22 @@ def cmd_foto(a) -> None:
 
 
 def _avvisi_per_utente(funzione: str) -> None:
-    """Con gli account: gli avvisi di ogni utente attivo, con i suoi file (vedi avvisi_utenti.py). Nel log solo i numeri."""
-    from . import archivio, avvisi_utenti
+    """Con gli account: gli avvisi di ogni utente attivo, con i suoi file (vedi avvisi_utenti.py). Nel log solo numeri: quello
+    dell'utente (mai il nome, come nelle righe del registro) e quanti avvisi; degli errori il solo tipo."""
+    import contextlib
+    from . import account, archivio, avvisi_utenti
     db = archivio.apri()
     try:
         esiti, errori = avvisi_utenti.esegui(funzione, db)
     finally:
         db.close()
+    with contextlib.closing(account.apri()) as db_account:
+        numero = {u["nome_utente"]: u["id"] for u in account.elenco(db_account)}     # «?»: account eliminato durante il giro
     for nome, righe in esiti.items():
         if righe:
-            print(f"{nome}: {len(righe)} avvisi ({funzione})")
+            print(f"utente {numero.get(nome, '?')}: {len(righe)} avvisi ({funzione})")
     for nome, errore in errori.items():
-        print(f"{nome}: errore negli avvisi ({funzione}): {errore}")
+        print(f"utente {numero.get(nome, '?')}: errore negli avvisi ({funzione}): {errore}")
 
 
 def _avvisi_telefono(funzione: str) -> None:

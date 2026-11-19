@@ -120,6 +120,9 @@ struct StagioneView: View {
                             Label("Le rose sono della stagione in corso (\(s.corrente ?? "")): non c'è niente da fare.", systemImage: "checkmark.circle")
                                 .font(.subheadline)
                             Text("Quando la stagione finisce e inizia la successiva, qui compare il passaggio guidato.").font(.footnote).foregroundStyle(Color.testoSecondario)
+                            // dopo un rifiuto (un altro dispositivo ha già archiviato) lo stato riletto toglie il passaggio: resta il
+                            // messaggio del server, come l'avviso della web (#731)
+                            if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
                         }
                     }
                 } else if let e = vm.stato.errore {
@@ -131,7 +134,6 @@ struct StagioneView: View {
             .scrollContentBackground(.hidden)
         }
         .titoloPagina(Catalogo.Lega.voceStagione)
-        .ricercaGlobale()
         .task { await vm.carica() }
         // Conferma esplicita: archiviare cambia le rose, le regole e le scelte salvate.
         .confirmationDialog(Catalogo.Lega.confermaArchivio(s: vm.stato.dato?.rose ?? ""), isPresented: $conferma, titleVisibility: .visible) {
@@ -168,15 +170,15 @@ struct PassoStagione: Identifiable, Equatable {
     let numero: Int
     let titolo: String
     let dettaglio: String
-    let pagina: PaginaLega
-    var id: PaginaLega { pagina }
+    let pagina: PaginaImpostazioni
+    var id: PaginaImpostazioni { pagina }
 }
 
 /// I passi dopo l'archivio della stagione, gli stessi della web (`nuovaStagione` di `app.js`), senza l'asta: la pagina
 /// «Asta e riparazione» sull'iPhone non c'è più. Logica pura, provata nei test.
 enum PassiNuovaStagione {
     static func elenco(amministratore: Bool) -> [PassoStagione] {
-        var passi: [(titolo: String, dettaglio: String, pagina: PaginaLega)] = [
+        var passi: [(titolo: String, dettaglio: String, pagina: PaginaImpostazioni)] = [
             (Catalogo.Lega.importaNuoveRose, "Con l'Excel di Leghe, da «Aggiorna le rose».", .importa),
             (Catalogo.Lega.controllaRegole, "Bonus, moduli e crediti possono cambiare da un anno all'altro.", .regole),
         ]
@@ -190,9 +192,10 @@ enum PassiNuovaStagione {
 
 // MARK: - Aspetto
 
-/// Impostazioni > Aspetto: il tema (automatico, chiaro, scuro) e le animazioni. Le scelte stanno sul telefono (`@AppStorage`).
-/// Le parole del tema sono quelle della web (`asp.*` del catalogo comune); lingua e dimensione del testo sono solo della web.
-struct AspettoView: View {
+/// Le scelte stanno sul telefono (`@AppStorage`); le parole del tema sono quelle della web (`asp.*` del catalogo comune).
+/// La sezione Aspetto delle Impostazioni (come `schedaAspetto` della web, #673 passo 3): il tema e, solo sull'iPhone, «Animazioni
+/// ridotte». La lingua della web qui non c'è: l'app è in italiano.
+struct AspettoSezione: View {
     @AppStorage("tema") private var tema = "auto"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
 
@@ -202,33 +205,35 @@ struct AspettoView: View {
         + " La dimensione del testo si cambia in Impostazioni > Schermo e luminosità > Dimensione del testo: l'app la segue."
 
     var body: some View {
-        ZStack {
-            Sfondo()
-            List {
-                TitoloNellaPagina()
-                Section {
-                    Picker(Catalogo.Asp.tema, selection: $tema) {
-                        Text(Catalogo.Asp.temaAuto).tag("auto")
-                        Text(Catalogo.Asp.temaChiaro).tag("chiaro")
-                        Text(Catalogo.Asp.temaScuro).tag("scuro")
-                    }
-                    .pickerStyle(.segmented)
-                    .sensoryFeedback(.selection, trigger: tema)
-                } header: {
-                    Text(Catalogo.Asp.tema).foregroundStyle(Color.testoSecondario)
-                } footer: {
-                    Text(Self.spiegaTema).foregroundStyle(Color.testoSecondario)
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(Catalogo.Asp.tema).font(.subheadline.weight(.semibold))
+                Picker(Catalogo.Asp.tema, selection: $tema) {
+                    Text(Catalogo.Asp.temaAuto).tag("auto")
+                    Text(Catalogo.Asp.temaChiaro).tag("chiaro")
+                    Text(Catalogo.Asp.temaScuro).tag("scuro")
                 }
-                Section {
-                    Toggle("Animazioni ridotte", isOn: $animazioniRidotte).tint(Color.verde).frame(minHeight: 44)
-                } header: { Text("Movimento").foregroundStyle(Color.testoSecondario) } footer: { Text("Toglie le animazioni dell'app (oltre a quelle che iOS già riduce se attivi «Riduci movimento»).").foregroundStyle(Color.testoSecondario) }
+                .pickerStyle(.segmented)
+                .sensoryFeedback(.selection, trigger: tema)
+                Text(Self.spiegaTema)
+                    .font(.caption)
+                    .foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .scrollContentBackground(.hidden)
+            .padding(.vertical, 4)
+            .id(ParteImpostazioni.aspetto.ancora)
+            Toggle(isOn: $animazioniRidotte) {
+                NomeConAiuto("Animazioni ridotte",
+                             aiuto: "Toglie le animazioni dell'app (oltre a quelle che iOS già riduce se attivi «Riduci movimento»)")
+            }
+            .tint(Color.verde)
+            .frame(minHeight: Tema.areaTocco)
+        } header: {
+            Text(Catalogo.Imp.aspetto).foregroundStyle(Color.testoSecondario)
         }
-        .titoloPagina(Catalogo.Imp.aspetto)
     }
 }
 
 #Preview("Aspetto") {
-    NavigationStack { AspettoView() }
+    List { AspettoSezione() }
 }

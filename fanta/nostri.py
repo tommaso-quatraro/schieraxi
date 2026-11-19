@@ -10,6 +10,7 @@ solo le giornate della stessa versione.
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Mapping
 
 import numpy as np
 import pandas as pd
@@ -18,6 +19,7 @@ from . import modello as _modello
 from .modello import Dati, Parametri
 from .modello import previsioni as _previsioni_modello
 from .regole import Regole
+from .squalifiche import Stato
 
 # 2: rigori con memoria lunga divisi nella squadra, minuti dalle presenze con voto (Fase B)
 # 3: forza delle squadre tarata sui soli gol, livello recente del campionato, medie del ruolo pesate (Fase C)
@@ -69,7 +71,7 @@ def gol_attesi(prev: pd.DataFrame, par: Parametri) -> pd.Series:
 
 def previsioni(d: Dati, stagione: str, giornata: int, regole: Regole, probabili: pd.DataFrame | None = None,
                giocatori: pd.DataFrame | None = None, fattori_probabili: dict[str, float] | None = None,
-               taratura: dict | None = None) -> pd.DataFrame:
+               taratura: dict | None = None, dai_cartellini: Mapping[int, Stato] | None = None) -> pd.DataFrame:
     """`modello.previsioni` con i dati e i parametri dei nostri (gli argomenti hanno lo stesso significato)."""
     return _previsioni_modello(dati(d), stagione, giornata, regole, parametri(), probabili=probabili, giocatori=giocatori,
-                               fattori_probabili=fattori_probabili, taratura=taratura)
+                               fattori_probabili=fattori_probabili, taratura=taratura, dai_cartellini=dai_cartellini)

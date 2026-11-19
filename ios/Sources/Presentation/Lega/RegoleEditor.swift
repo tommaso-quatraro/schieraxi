@@ -301,8 +301,7 @@ struct RegoleEditorView: View {
                 .demoScorriA("rinviate", proxy: proxy, schermate: ["lega-regole"], inFondo: true, pronto: vm.caricato)
             }
         }
-        .ricercaGlobale()   // sull'iPad lente e ingranaggio stanno sulla pagina a destra, non nell'elenco
-        .titoloPagina(Catalogo.Lega.voceRegole)
+        .titoloPagina(Catalogo.Imp.regole)
         .task { await vm.carica() }
         // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga)
         // e tornando indietro si chiede cosa fare, invece di perderle in silenzio.
@@ -388,9 +387,17 @@ struct RegoleEditorView: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-            if let non = r.nonRiconosciute, !non.isEmpty {
-                DisclosureGroup(Catalogo.Regole.nonRiconosciute(n: String(non.count))) {
-                    Text(non.joined(separator: "\n")).font(.caption).foregroundStyle(Color.testoSecondario)
+            // le righe da rileggere, come la web (#733): ognuna con la regola da impostare a mano sotto, se il server ne nomina
+            if let gruppo = RegolamentoDaControllare(r) {
+                DisclosureGroup(gruppo.titolo) {
+                    ForEach(gruppo.righe) { riga in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(riga.testo).foregroundStyle(Color.testoSecondario)
+                            if let daImpostare = riga.daImpostare { Text(daImpostare) }
+                        }
+                        .font(.caption)
+                        .accessibilityElement(children: .combine)
+                    }
                 }
             }
             Button { vm.applicaRiconosciute() } label: { Text(Catalogo.Regole.applicaCampi).frame(maxWidth: .infinity, minHeight: 44) }

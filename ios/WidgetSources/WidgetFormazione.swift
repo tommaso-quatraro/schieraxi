@@ -66,13 +66,24 @@ struct VistaFormazione: View {
 
     var body: some View {
         Group {
-            if let w = voce.completo, let f = w.formazione, let tit = f.titolari, !tit.isEmpty {
-                contenuto(w, f, tit)
-            } else if let r = voce.riassunto, r.modulo != nil {
-                // un server senza /api/widget: solo modulo e punti
-                contenutoMinimo(r)
-            } else {
-                SenzaDatiWidget(voce: voce, compatto: accessorio)
+            switch voce.caso {
+            case .campionatoFinito(let testo):
+                // campionato finito (#727): nessuna formazione da mostrare, la frase del server
+                CampionatoFinitoWidget(testo: testo)
+            case .senzaFormazione(let r):
+                // entrato a giornata già iniziata senza una formazione (#752): `formazione` di /api/widget è ancora la consigliata di
+                // quella giornata, che non può più schierare; la prossima da preparare come Prossima giornata (il tocco apre la
+                // Formazione, già quella della prossima)
+                SenzaFormazioneWidget(riassunto: r, voce: voce)
+            case .normale:
+                if let w = voce.completo, let f = w.formazione, let tit = f.titolari, !tit.isEmpty {
+                    contenuto(w, f, tit)
+                } else if let r = voce.riassunto, r.modulo != nil {
+                    // un server senza /api/widget: solo modulo e punti
+                    contenutoMinimo(r)
+                } else {
+                    SenzaDatiWidget(voce: voce, compatto: accessorio)
+                }
             }
         }
         .sfondoWidget(accessorio: accessorio)

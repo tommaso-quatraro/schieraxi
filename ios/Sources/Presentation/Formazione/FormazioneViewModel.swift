@@ -28,6 +28,22 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// L'ultimo avviso (un salvataggio non riuscito, la scelta cambiata da un altro dispositivo, la formazione copiata).
     @Published var messaggio: String?
+    /// Un salvataggio partito da qui non è riuscito quando eri già su un'altra scheda (#726): l'avviso che la radice mostra sulle
+    /// altre schede (`AvvisoNonSalvata`), con una frase del catalogo che nomina la formazione (`testoNonSalvata`).
+    @Published var avvisoAltrove: String?
+    /// La Formazione è la scheda aperta (lo dice la radice a ogni cambio di scheda). Decide dove si dice una scrittura che non
+    /// riesce: qui sotto il campo (`messaggio`) o sulle altre schede (`avvisoAltrove`). Tornando qui l'avviso delle altre schede se
+    /// ne va e, se c'è un guasto, compare quello di sempre.
+    var inVista = true {
+        didSet {
+            guard inVista else { return }
+            avvisoAltrove = nil
+            if let guasto { messaggio = testoQui(guasto) }
+        }
+    }
+    /// L'errore dell'ultima scrittura non riuscita a scheda lasciata, finché una dopo non riesce o arriva un'altra giornata: tornando
+    /// sulla Formazione se ne rivede l'avviso, anche se quello delle altre schede è passato senza che lo vedessi (sotto un foglio).
+    private var guasto: Error?
     /// Nome di un'altra squadra della lega, se se ne sta guardando la formazione consigliata (nil = la mia).
     @Published private(set) var squadraVista: String?
     /// Un altro modulo guardato nella formazione di un'altra squadra: solo sullo schermo, non si salva niente.
@@ -60,9 +76,21 @@ final class FormazioneViewModel: ViewModelBase {
     /// Cresce a ogni rilettura: una risposta (lettura o scrittura) partita prima non vale più.
     private var generazione = 0
 
-    init(server: any ServerClient, oggi: OggiViewModel? = nil) {
+    /// Dove si ricorda la spunta «L'ho messa» per i promemoria del telefono (`ArchivioMessa`; nei test una memoria a parte).
+    private let memoria: UserDefaults
+    /// Rimette in programma i promemoria del telefono quando la spunta cambia (nei test conta le chiamate).
+    private let promemoria: @MainActor () -> Void
+
+    /// `promemoria`: nil = quelli veri, con l'ultima giornata salvata e senza rete (mai nei test né nella demo).
+    init(server: any ServerClient, oggi: OggiViewModel? = nil, memoria: UserDefaults = .standard,
+         promemoria: (@MainActor () -> Void)? = nil) {
         self.server = server
         self.oggi = oggi
+        self.memoria = memoria
+        self.promemoria = promemoria ?? {
+            guard !Ambiente.ospiteDeiTest, !Demo.attivo else { return }
+            Task { await Aggiornamento.riprogrammaPromemoria() }
+        }
         // il comando «Aggiorna» rilegge formazione e scelta insieme (non solo la formazione)
         caricatore = Caricatore<Formazione>("/api/formazione", ascolta: false, server: server)
         super.init()
@@ -124,10 +152,11 @@ final class FormazioneViewModel: ViewModelBase {
     var decisioniSpente: Bool { comandiSpenti || (squadraVista == nil && oggi?.copia == true) }
 
     /// La striscia dei dati salvati: la Formazione o la giornata (`/api/oggi`) non sono arrivate fresche. La data più vecchia delle
-    /// due, con il suo motivo (nil = server non raggiungibile).
+    /// due, con il suo motivo (nil = server non raggiungibile). A campionato finito la Formazione non si mostra (il server risponde
+    /// 409 e resta in memoria quella di prima): conta solo la giornata.
     var striscia: (data: Date, motivo: String?)? {
         var vecchi: [(data: Date, motivo: String?)] = []
-        if let d = caricatore.datiSalvati { vecchi.append((d, caricatore.motivoDatiSalvati)) }
+        if !campionatoFinito, let d = caricatore.datiSalvati { vecchi.append((d, caricatore.motivoDatiSalvati)) }
         if squadraVista == nil, let o = oggi, let d = o.datiSalvati { vecchi.append((d, o.caricatore.motivoDatiSalvati)) }
         return vecchi.min { $0.data < $1.data }
     }
@@ -136,6 +165,17 @@ final class FormazioneViewModel: ViewModelBase {
     var erroreGiornata: String? {
         guard squadraVista == nil, let o = oggi, o.oggi == nil else { return nil }
         return o.errore
+    }
+
+    /// Il campionato è finito (`campionato_finito` di `/api/oggi`, #656): non c'è una giornata da preparare e `/api/formazione`
+    /// risponde 409. La Formazione mostra il riepilogo dell'ultima giornata, se c'è, e la frase del server, senza errore né
+    /// «Riprova», come `mostraCampionatoFinito` della web (#727). Solo per la tua squadra. Se di `/api/oggi` c'è solo la copia del
+    /// telefono (a inizio stagione può essere quella di giugno) e la Formazione è arrivata fresca, vince il dato fresco: si mostra la
+    /// formazione, non la frase vecchia.
+    var campionatoFinito: Bool {
+        guard squadraVista == nil, let o = oggi, o.oggi?.testoCampionatoFinito != nil else { return false }
+        let formazioneFresca = formazione != nil && !copia
+        return !(o.copia && formazioneFresca)
     }
 
     /// La spunta «L'ho messa»: vale per gli 11 salvati.
@@ -318,6 +358,7 @@ final class FormazioneViewModel: ViewModelBase {
             giornata = f.giornata
             dimentica()
             sceltaLetta = false
+            guasto = nil        // era della giornata di prima
         }
         let letta: SceltaSalvata?
         do {
@@ -391,10 +432,22 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Tiene sul telefono la scelta appena letta o salvata, accanto alla copia della Formazione (`CopiaScelta`).
     private func ricordaSulTelefono(_ f: Formazione) {
-        guard squadraVista == nil,
-              let dati = CopiaScelta(giornata: f.giornata, scelta: salvata, nonValida: salvataNonValida, valutazione: valutazione).dati
+        guard squadraVista == nil else { return }
+        guard let dati = CopiaScelta(giornata: f.giornata, scelta: salvata, nonValida: salvataNonValida, valutazione: valutazione).dati
         else { return }
         Cache.salva(dati, CopiaScelta.percorso, indirizzo: server.indirizzo)
+    }
+
+    /// La spunta «L'ho messa» che vale: sugli 11 salvati, se la scelta si può ancora schierare.
+    private var spuntaValida: Bool { salvata?.messa == true && !salvataNonValida }
+
+    /// La spunta dopo un tuo salvataggio (o «Torna alla consigliata»): se è cambiata (spuntata, tolta, o caduta perché gli 11 sono
+    /// cambiati) il telefono la ricorda per i promemoria locali e li rimette in programma, così vale subito; alla prossima lettura di
+    /// Oggi decide il server (`serve_promemoria`, `ArchivioMessa`). Una semplice lettura della scelta non la tocca: lì vale il server.
+    private func ricordaLaSpunta(_ f: Formazione, prima: Bool) {
+        guard squadraVista == nil, spuntaValida != prima else { return }
+        ArchivioMessa.ricorda(giornata: f.giornata, messa: spuntaValida, memoria)
+        promemoria()
     }
 
     /// All'apertura, prima della copia della Formazione: la scelta tenuta sul telefono, finché il server non risponde. In campo
@@ -470,58 +523,88 @@ final class FormazioneViewModel: ViewModelBase {
             return
         }
         guard let f = formazione, puoScrivere else { return }
+        if await togliLaScelta(f) { await oggi?.rileggiDopoUnSalvataggio() }
+    }
+
+    /// `DELETE /api/scelta`, se c'è una scelta salvata. true se il server l'ha tolta e la risposta vale (allora si rilegge la giornata).
+    private func togliLaScelta(_ f: Formazione) async -> Bool {
         let g = generazione
+        let cera = salvata != nil
         occupato = true
         defer { occupato = false }
         do {
-            if salvata != nil { try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)") }
+            if cera { try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)") }
+            riuscita()
             guard g == generazione else {
                 await carica()
-                return
+                return false
             }
+            let spuntaPrima = spuntaValida
             dimentica()
             ricordaSulTelefono(f)
+            ricordaLaSpunta(f, prima: spuntaPrima)
             Haptics.esito(riuscito: true)
+            return cera
         } catch {
             await nonRiuscita(error, generazione: g)
+            return false
         }
     }
 
-    /// Salva questi 11 come tua scelta (`salvaTitolari` della web). `messa`: la spunta; senza, il server la lascia com'era finché
-    /// gli 11 sono gli stessi (la stessa regola qui, per la riga e la spunta).
+    /// Salva questi 11 come tua scelta e poi rilegge la giornata, a comandi già riaccesi: i promemoria del telefono li decide il
+    /// server (`OggiViewModel.rileggiDopoUnSalvataggio`), anche se la spunta che conosce il telefono non è cambiata (#710).
     private func salva(_ ids: [Int], messa: Bool? = nil) async {
-        guard let f = formazione, puoScrivere else { return }
+        if await scrivi(ids, messa: messa) { await oggi?.rileggiDopoUnSalvataggio() }
+    }
+
+    /// Salva questi 11 come tua scelta (`salvaTitolari` della web). `messa`: la spunta; senza, il server la lascia com'era finché
+    /// gli 11 sono gli stessi (la stessa regola qui, per la riga e la spunta). true se il server l'ha salvata e la risposta vale.
+    private func scrivi(_ ids: [Int], messa: Bool?) async -> Bool {
+        guard let f = formazione, puoScrivere else { return false }
         let g = generazione
         occupato = true
         defer { occupato = false }
         do {
             let corpo = RichiestaValutazione(titolari: ids, salva: true, giornata: f.giornata, messa: messa)
             let r: ValutazioneManuale = try await server.posta("POST", "/api/formazione/valuta", corpo)
+            riuscita()
             // nel frattempo la schermata si è riletta: questa risposta non vale, si rilegge dal server (mai una scelta che non si vede)
             guard g == generazione else {
                 await carica()
-                return
+                return false
             }
             let stessi = salvata.map { Set($0.titolari) == Set(ids) } ?? false
             let eraConsigliata = Set(ids) == Set(consigliati(f)) || (stessi && salvata?.eraConsigliata == true)
             let messaOra = messa ?? (stessi && salvata?.messa == true)
+            let spuntaPrima = spuntaValida
             ricorda(SceltaSalvata(titolari: ids, modulo: r.modulo, eraConsigliata: eraConsigliata ? true : nil, messa: messaOra ? true : nil),
                     nonValida: false, f, valutazione: r)
+            ricordaLaSpunta(f, prima: spuntaPrima)
             Haptics.esito(riuscito: true)
+            return true
         } catch {
             await nonRiuscita(error, generazione: g)
+            return false
         }
     }
 
     /// Una scrittura non riuscita: 412 rilegge e lo dice (`comune.cambiato_ricarico`); 409 `formazione_chiusa` rilegge (la scadenza
     /// è passata con la schermata aperta); gli altri errori (per esempio 400 `giocatore_bloccato`) dicono il messaggio del server.
+    /// Come `nonSalvata` della web (#667, #726): nella tua Formazione il motivo; lasciata la scheda, o guardando la formazione di
+    /// un'altra squadra, una frase che nomina la formazione (lì «Non riesco a collegarmi» da solo sembrerebbe parlare d'altro). Le
+    /// scritture sono una alla volta, quindi questa è sempre l'ultima partita da qui.
     private func nonRiuscita(_ error: Error, generazione g: Int) async {
         if let e = error as? ErroreApi, e.eConflitto {
             await cambiataAltrove()
             return
         }
         Haptics.esito(riuscito: false)
-        messaggio = error.localizedDescription
+        if !inVista {
+            avvisoAltrove = Self.testoNonSalvata(error)
+            guasto = error
+        } else {
+            messaggio = testoQui(error)
+        }
         if g != generazione {
             await carica()
         } else if case .codificato(let codice, _)? = error as? ErroreApi, codice == Self.codiceChiusa {
@@ -531,6 +614,26 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Il codice del server per una scrittura arrivata dopo la scadenza (409).
     static let codiceChiusa = "formazione_chiusa"
+
+    /// L'avviso di una scrittura non riuscita nella Formazione: il motivo per la tua; guardando la formazione di un'altra squadra la
+    /// frase che nomina la formazione, come la web.
+    private func testoQui(_ error: Error) -> String {
+        squadraVista == nil ? error.localizedDescription : Self.testoNonSalvata(error)
+    }
+
+    /// Una scrittura è riuscita (anche se la sua risposta arriva dopo una rilettura): il guasto di prima non vale più, nemmeno il
+    /// suo avviso.
+    private func riuscita() {
+        guard guasto != nil else { return }
+        guasto = nil
+        messaggio = nil
+    }
+
+    /// La frase di una scrittura non riuscita fuori dalla tua Formazione: la rete solo se è lei il motivo (rete giù o server troppo
+    /// lento, come `e.rete` della web), altrimenti il rifiuto del server, che chiede di controllare.
+    static func testoNonSalvata(_ error: Error) -> String {
+        DatiVecchi.eDiRete(error) ? Catalogo.Formazione.nonSalvataRete : Catalogo.Formazione.nonSalvata
+    }
 
     /// 412: la scelta è stata cambiata su un altro dispositivo e la scrittura non è stata fatta. Si dice che si sta ricaricando, si
     /// rilegge tutto (formazione e scelta, con l'ETag nuovo) e, a dati riletti, si chiede di controllare e rifare la modifica.

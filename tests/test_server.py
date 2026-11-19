@@ -169,6 +169,44 @@ def test_altri_siti_non_possono_modificare(client):
     assert estraneo.get("/api/regole").status_code == 200      # leggere si può
 
 
+def _fine_aggiornamento():
+    """Aspetta che il lavoro avviato da POST /api/aggiorna finisca e lasci i blocchi (un thread del server). Il lavoro mette
+    `in_corso` a falso, poi lascia il blocco su file e per ultimo il lucchetto interno: lucchetto libero = tutto lasciato.
+    Il tempo massimo evita solo il test appeso."""
+    import time
+    fine = time.monotonic() + 30
+    while time.monotonic() < fine:
+        if not server._aggiornamento["in_corso"] and server._blocco.acquire(blocking=False):
+            server._blocco.release()
+            return
+        time.sleep(0.01)
+    raise AssertionError("il lavoro di POST /api/aggiorna non ha lasciato i blocchi in 30 secondi")
+
+
+def test_aggiorna_dall_app_non_parte_con_l_aggiornamento_programmato_in_corso(client, monkeypatch):
+    """«Aggiorna i dati» mentre gira l'aggiornamento programmato del server (o un giro leggero di un altro processo): il blocco su file
+    è occupato, quindi niente secondo aggiornamento insieme (le stesse pagine chieste due volte alle fonti, #660). Libero, parte; e il
+    blocco resta preso fino alla fine del lavoro."""
+    import contextlib
+    chiamate, tenuto = [], []
+    monkeypatch.setattr(server.aggiorna, "esegui", lambda **k: chiamate.append(bool(tenuto)) or [])
+    monkeypatch.setattr(server.pianificatore, "blocco_processo", lambda: contextlib.nullcontext(False))
+    assert client.post("/api/aggiorna").json() == {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+    assert chiamate == [] and not server._aggiornamento["in_corso"]
+
+    @contextlib.contextmanager
+    def libero():
+        tenuto.append(1)
+        try:
+            yield True
+        finally:
+            tenuto.clear()
+    monkeypatch.setattr(server.pianificatore, "blocco_processo", libero)
+    assert client.post("/api/aggiorna").json() == {"avviato": True}          # il lucchetto interno non è rimasto preso
+    _fine_aggiornamento()
+    assert chiamate == [True] and tenuto == []                              # tenuto durante il lavoro, lasciato alla fine
+
+
 def test_app_sempre_aggiornata_sul_telefono(client):
     assert client.get("/app.js").headers["cache-control"] == "no-cache"
 
@@ -243,6 +281,16 @@ def test_riconosci_regole_non_cambia_nulla(client):
     r = client.post("/api/regole/riconosci", json={"testo": "Assist +2\nAmmonizione -1"}).json()
     assert {m["chiave"]: m["valore"] for m in r["modifiche"]} == {"bonus.assist": 2.0, "bonus.ammonizione": -1.0}
     assert client.get("/api/regole").json() == prima       # solo una proposta: le regole restano com'erano
+
+
+def test_riconosci_regole_segnala_le_righe_dubbie_senza_numeri(client):
+    """Una riga che l'app non sa leggere con sicurezza, anche senza numeri, arriva ai client fra quelle da controllare (#684)."""
+    r = client.post("/api/regole/riconosci", json={"testo": "Assist +2\nNon è vietato il cambio modulo\nMedia 6-6,5: +1"}).json()
+    assert r["da_controllare"] == [
+        {"riga": "Non è vietato il cambio modulo",
+         "regole": [{"chiave": "panchina.cambio_modulo", "etichetta": "Cambio modulo nelle sostituzioni"}]},
+        {"riga": "Media 6-6,5: +1", "regole": []}]
+    assert r["non_riconosciute"] == ["Media 6-6,5: +1"] and "dubbie" not in r
 
 
 def test_regole_salvate_oltre_i_tetti_rispondono_422(client):
@@ -354,6 +402,28 @@ def test_ore_tranquille_uguali_salvate_prima_sono_spente_con_avviso(client, tmp_
         assert g["impostazioni"]["silenzio"] is True and "ore_tranquille_spente" not in g
 
 
+def test_ore_tranquille_uguali_riaccese_tornano_quelle_predefinite(client, tmp_path, monkeypatch):
+    """#711: web e iPhone non hanno più i selettori delle ore e riaccendendo mandano il solo `silenzio`. Con ore salvate che
+    iniziano e finiscono alla stessa ora il server le corregge da solo (dalle 23 alle 7): niente 422, e la fascia mostrata è giusta."""
+    from datetime import datetime
+    f = tmp_path / "avvisi.json"
+    monkeypatch.setattr(server.notifiche, "FILE_IMPOSTAZIONI", f)
+    monkeypatch.setattr(server.notifiche, "canale", lambda: None)
+    monkeypatch.setattr(server.notifiche_web, "FILE_ISCRIZIONI", tmp_path / "push-vuoto.json")
+    for salvate in ('{"silenzio": true, "silenzio_da": 23, "silenzio_a": 23}', '{"silenzio": false, "silenzio_da": 5, "silenzio_a": 5}'):
+        f.write_text(salvate)
+        g = client.get("/api/avvisi").json()["impostazioni"]
+        assert (g["silenzio"], g["silenzio_da"], g["silenzio_a"]) == (False, 23, 7)           # la riga sotto dice «dalle 23 alle 7»
+        r = client.put("/api/avvisi", json={"silenzio": True})                               # la richiesta di oggi di web e iPhone
+        assert r.status_code == 200, r.text
+        o = r.json()["impostazioni"]
+        assert (o["silenzio"], o["silenzio_da"], o["silenzio_a"]) == (True, 23, 7)
+        g = client.get("/api/avvisi").json()
+        assert "ore_tranquille_spente" not in g and server.notifiche.in_silenzio(datetime(2026, 1, 1, 2), g["impostazioni"])
+    r = client.put("/api/avvisi", json={"silenzio_da": 4, "silenzio_a": 4})                  # due ore uguali scelte apposta: rifiutate
+    assert r.status_code == 422 and "stessa ora" in r.json()["detail"]
+
+
 def test_valuta_formazione_e_la_mia_scelta(client, tmp_path, monkeypatch):
     monkeypatch.setattr(server.scelte, "FILE_SCELTE", tmp_path / "scelte.json")
     monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: "2026-27")
@@ -379,7 +449,7 @@ def test_formazione_dopo_la_scadenza_senza_etichette_delle_probabili(client, mon
     f = {"squadra": "Mia", "giornata": 9, "titolari": [x], "panchina": [], "fuori": [], "schede": {"1": x}}
     monkeypatch.setattr(server.consigli, "formazione", lambda *a, **k: f)
     monkeypatch.setattr(server, "_copia_automatica", lambda *a: None)
-    monkeypatch.setattr(server, "_rose", lambda *a: object())
+    monkeypatch.setattr(server, "_rose_da_schierare", lambda *a: object())
     monkeypatch.setattr(server.fasi, "stati_giocatori", lambda *a, **k: {1: "in_corso"})
     monkeypatch.setattr(server.fasi, "iniziata", lambda *a: False)
     r = client.get("/api/formazione").json()

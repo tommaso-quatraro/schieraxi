@@ -49,7 +49,7 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
   prova). Guida: `script/server/LEGGIMI.md`.
 - `script/ci/`: `controlla_pr.py`, `controlla_ambito.py`, `controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`,
   `aggiorna_openapi.py`, `aspetto_web.py` (confronto delle foto della web con `main`), `server_finto.py` (la web con le
-  risposte registrate, per foto e test del browser), `collaudo_prova.py`, `metriche.py`.
+  risposte registrate, per foto e test del browser), `collaudo_prova.py`, `metriche.py`, `sentinella_understat.py`.
 - `script/squadra/`: `squadra.py <comando>` (`stato`, `brief`, `pr-pronta`, `attendi`, `foto`, `giro`, `pulisci`,
   `annulla-superate`, `giornata`), `aree.json`, `foto.json`, `modello-brief.md`, `LEGGIMI.md`.
 - `prove/`: `foto_web/foto.py` (foto e accessibilità della web), `amico_nuovo/percorso.py` (ingresso di un utente nuovo),
@@ -65,4 +65,4 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
 ## `.github/workflows/`
 `test.yml` (controlli, `ambito`, `versione`, `ios`, `unisci`, `rilascia`, `prova-main`), `revisione.yml` (revisione IA),
 `ios.yml`, `ipa.yml` (build per SideStore), `screenshot.yml` (foto dell'iPhone), `ios-simulatore.yml`, `aspetto-web.yml`,
-`collaudo-prova.yml`, `salute.yml`.
+`collaudo-prova.yml`, `salute.yml`, `sentinella-understat.yml` (ritorno di Understat, issue #756).

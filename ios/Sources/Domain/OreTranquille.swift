@@ -60,32 +60,49 @@ enum ArchivioOreTranquille {
     }
 }
 
-/// Quali promemoria locali (un'ora e 15 minuti prima) l'utente vuole: gli stessi interruttori degli avvisi del server
-/// («Promemoria un'ora prima», «Promemoria 15 minuti prima»). Prima il telefono li mandava comunque, anche spenti.
-enum ArchivioPromemoria {
-    private static let chiave60 = "promemoria_60"
-    private static let chiave15 = "promemoria_15"
+/// La spunta «L'ho messa» appena toccata sul telefono, per i promemoria locali (un'ora e un quarto d'ora prima): vale subito dopo il
+/// tocco (spuntata, tolta, o caduta perché gli 11 sono cambiati), finché non arriva una lettura di Oggi partita dopo il tocco; da lì
+/// decide il server (`serve_promemoria`, `Aggiornamento.promemoriaTace`). La scrive la Formazione dopo un tuo salvataggio, mai dopo
+/// una semplice lettura. Si ricorda un tocco solo: la giornata (numero di Serie A), la spunta e l'ora.
+enum ArchivioMessa {
+    static let chiave = "promemoria.messa"
 
-    /// I minuti dei promemoria accesi; senza scelta salvata tutti e due (come prima).
-    static func minutiAttivi(_ memoria: UserDefaults = .standard) -> Set<Int> {
-        var attivi: Set<Int> = []
-        if memoria.object(forKey: chiave60) as? Bool ?? true { attivi.insert(60) }
-        if memoria.object(forKey: chiave15) as? Bool ?? true { attivi.insert(15) }
-        return attivi
+    /// La spunta toccata per questa giornata (vero messa, falso tolta), o nil se dall'ultima lettura di Oggi non è stata toccata.
+    static func toccata(giornata: Int?, _ memoria: UserDefaults = .standard) -> Bool? {
+        guard let giornata, let voce = memoria.dictionary(forKey: chiave), (voce["giornata"] as? Int) == giornata else { return nil }
+        return voce["messa"] as? Bool
     }
 
-    static func salva(sessanta: Bool, quindici: Bool, _ memoria: UserDefaults = .standard) {
-        memoria.set(sessanta, forKey: chiave60)
-        memoria.set(quindici, forKey: chiave15)
+    static func ricorda(giornata: Int, messa: Bool, _ memoria: UserDefaults = .standard, il quando: Date = Date()) {
+        let voce: [String: Any] = ["giornata": giornata, "messa": messa, "il": quando.timeIntervalSince1970]
+        memoria.set(voce, forKey: chiave)
+    }
+
+    /// Una lettura di Oggi partita a `data` comprende già i tocchi di prima: quelli si dimenticano, i più recenti restano.
+    static func dimentica(primaDi data: Date, _ memoria: UserDefaults = .standard) {
+        guard let voce = memoria.dictionary(forKey: chiave) else { return }
+        if ((voce["il"] as? Double) ?? 0) < data.timeIntervalSince1970 {
+            memoria.removeObject(forKey: chiave)
+        }
     }
 }
 
-extension ImpostazioniAvvisi {
-    /// I minuti dei promemoria accesi (60 e/o 15).
-    var promemoriaAccesi: Set<Int> {
-        var accesi: Set<Int> = []
-        if promemoria_60 { accesi.insert(60) }
-        if promemoria_15 { accesi.insert(15) }
-        return accesi
+/// «Avvisi su questo dispositivo» (Impostazioni > Avvisi, come la web): un interruttore solo per i promemoria locali (un'ora e 15
+/// minuti prima) e l'avviso quando cambia la consigliata. Senza una scelta salvata è acceso, come prima: chi aveva il permesso
+/// continua a ricevere i promemoria. Le scelte per singolo avviso del server (`promemoria_60`, `promemoria_15`) non si usano più (#693).
+enum ArchivioAvvisiQui {
+    static let chiave = "avvisiQui"
+
+    static func acceso(_ memoria: UserDefaults = .standard) -> Bool {
+        memoria.object(forKey: chiave) as? Bool ?? true
+    }
+
+    static func salva(_ acceso: Bool, _ memoria: UserDefaults = .standard) {
+        memoria.set(acceso, forKey: chiave)
+    }
+
+    /// I minuti dei promemoria da mandare: tutti e due con gli avvisi accesi, nessuno spenti.
+    static func minutiAttivi(_ memoria: UserDefaults = .standard) -> Set<Int> {
+        acceso(memoria) ? [60, 15] : []
     }
 }

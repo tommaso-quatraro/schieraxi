@@ -5,11 +5,21 @@ import WidgetKit
 /// dell'app (`LegaDemo`, la stessa fonte): nelle foto widget e app dicono le stesse cose (nomi, «gioca 62%», scadenza, Diario).
 enum DatiGalleria {
     /// `-DATI`: pieni (prima della scadenza), parziali (un server senza scambio, svincolo e Diario), salvati (copia vecchia),
-    /// in_corso, finita, vuoto (widget da collegare).
+    /// in_corso, finita, campionato_finito (la frase del server al posto della giornata, #727), senza_formazione (entrato a
+    /// giornata iniziata: la prossima da preparare, #687), vuoto (widget da collegare).
     static func voce(_ tipo: String) -> Voce {
         let adesso = Date()
         if tipo == "vuoto" {
             return Voce(date: adesso, riassunto: nil, datiSalvati: false, indirizzoMancante: true)
+        }
+        if tipo == "campionato_finito" {
+            let w = RiassuntoWidget.leggi(LegaDemo.widgetCampionatoFinito(adesso: adesso))
+            return Voce(date: adesso, riassunto: w?.comeRiassuntoOggi(scaricatoIl: adesso), datiSalvati: false, widget: w)
+        }
+        if tipo == "senza_formazione" {
+            let quando = LegaDemo.momento(adesso: adesso, fase: .inCorso)
+            let w = RiassuntoWidget.leggi(senzaFormazione(LegaDemo.widget(adesso: quando, fase: .inCorso), adesso: quando))
+            return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: false, widget: w)
         }
         let fase: LegaDemo.Fase
         switch tipo {
@@ -22,6 +32,16 @@ enum DatiGalleria {
         let quando = LegaDemo.momento(adesso: adesso, fase: fase)
         let w = RiassuntoWidget.leggi(LegaDemo.widget(adesso: quando, fase: fase, parziali: tipo == "parziali"))
         return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: tipo == "salvati", widget: w)
+    }
+
+    /// La giornata in corso della demo come la vede chi è entrato dopo la scadenza senza una formazione (`fanta/fasi.py`, #651):
+    /// senza `in_corso` (niente punti di una formazione che non ha schierato), con `senza_formazione` e la `prossima` da preparare.
+    private static func senzaFormazione(_ dati: Data, adesso: Date) -> Data {
+        guard var w = (try? JSONSerialization.jsonObject(with: dati)) as? [String: Any] else { return dati }
+        w["in_corso"] = nil
+        w["senza_formazione"] = true
+        w["prossima"] = LegaDemo.prossimaDopoFinita(adesso: adesso)
+        return (try? JSONSerialization.data(withJSONObject: w)) ?? dati
     }
 
     static func famiglie(_ widget: String) -> [WidgetFamily] {

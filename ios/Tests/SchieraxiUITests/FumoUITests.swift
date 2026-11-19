@@ -1,6 +1,6 @@
 import XCTest
 
-/// Test di fumo dell'interfaccia: l'app parte in modalità demo (dati finti, senza rete, tutte le funzioni accese), le tre sezioni si raggiungono
+/// Test di fumo dell'interfaccia: l'app parte in modalità demo (dati finti, senza rete, tutte le funzioni accese), le tre voci si raggiungono
 /// e le schermate principali mostrano il testo atteso. Si cerca per testo (etichetta di accessibilità), non per posizione.
 /// Ogni tocco che apre qualcosa passa da `tocca(_:finchéCompare:_:)` (Tocchi.swift): se il tocco si perde, si ritocca (#212).
 final class FumoUITests: XCTestCase {
@@ -44,10 +44,13 @@ final class FumoUITests: XCTestCase {
     func testLeSezioniSonoRaggiungibili() {
         let barra = app.tabBars.firstMatch
         XCTAssertTrue(barra.waitForExistence(timeout: 30), "la barra delle sezioni deve comparire")
-        for nome in ["Formazione", "Giornate", "Squadra", "Altro"] {
+        for nome in ["Formazione", "Giornate", "Impostazioni"] {
             XCTAssertTrue(barra.buttons[nome].exists, "manca la sezione \(nome)")
         }
-        XCTAssertFalse(barra.buttons["Oggi"].exists, "Oggi è nella Formazione (#673)")
+        // la barra a tre voci come la web (#673 passo 3): Squadra e Altro stanno in Impostazioni > La mia lega
+        for tolta in ["Oggi", "Squadra", "Altro"] {
+            XCTAssertFalse(barra.buttons[tolta].exists, "«\(tolta)» non è più una voce della barra")
+        }
     }
 
     /// La pagina Giornate (#673 passo 2): in cima la riga sulla precisione e «Dettagli», poi una riga per giornata finita.
@@ -87,68 +90,53 @@ final class FumoUITests: XCTestCase {
         tocca(torna, finchéCompare: elemento("È la consigliata."), "«Torna alla consigliata» rimette la consigliata")
     }
 
-    func testSquadraConLeSuePagine() {
-        vaiA("Squadra")
-        attendi("Squadre e rose", contiene: true)
-        // le voci e l'ordine della web (VOCI_LEGA, #634): «Aggiorna le rose» per ultima
-        for voce in ["Squadre e rose", "Aggiorna le rose"] {
-            attendi(voce, contiene: true)
+    /// La mia lega nelle Impostazioni (#673 passo 3, come la web): Aggiorna le rose, La mia squadra, Regole e scadenza, Le altre squadre.
+    func testLaMiaLegaNelleImpostazioni() {
+        vaiA("Impostazioni")
+        attendiScorrendo("La mia lega")
+        for voce in ["Aggiorna le rose", "La mia squadra", "Regole e scadenza", "Le altre squadre"] {
+            attendiScorrendo(voce, contiene: true)
         }
-        // le pagine tolte non hanno più una voce. «Calendario» qui non si cerca: la parola c'è comunque a video (con ogni
-        // probabilità è il nome che l'accessibilità dà all'icona della scheda Oggi, il simbolo «calendar», nella barra in basso) e
-        // il controllo falliva senza una voce di menu. Che la voce non ci sia lo prova `MenuLegaComeLaWebTests.nienteVociTolte`
-        for tolta in ["Cambi consigliati", "Seguiti", "Elenco dei giocatori"] {
-            XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare in Squadra")
+        // le pagine tolte non hanno più una voce
+        for tolta in ["Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Diario delle giornate", "Movimenti e storico"] {
+            XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare nelle Impostazioni")
         }
     }
 
-    /// Il rimedio di #212 funziona davvero: il primo tocco sull'ingranaggio si perde (non lo si manda all'app) e `tocca` deve
-    /// accorgersene e ritoccare finché compare «Aspetto». Senza il nuovo tocco questo test fallisce.
+    /// Il rimedio di #212 funziona davvero: il primo tocco su «Regole e scadenza» si perde (non lo si manda all'app) e `tocca` deve
+    /// accorgersene e ritoccare finché si apre la pagina. Senza il nuovo tocco questo test fallisce.
     func testUnToccoPersoSiRitocca() {
-        vaiA("Altro")
+        vaiA("Impostazioni")
+        attendiScorrendo("Regole e scadenza", contiene: true)
         var tocchi = 0
-        tocca(app.buttons["Impostazioni"], finchéCompare: elemento("Aspetto"), "dopo un tocco perso si ritocca",
-              entro: 5, tap: { riga in
+        tocca(elemento("Regole e scadenza", contiene: true), finchéCompare: app.navigationBars["Regole e scadenza"],
+              "dopo un tocco perso si ritocca", entro: 5, tap: { riga in
                   tocchi += 1
                   if tocchi > 1 { riga.tap() }   // il primo tocco «si perde»
               })
         XCTAssertGreaterThanOrEqual(tocchi, 2, "un tocco perso e almeno uno arrivato")
     }
 
-    func testAltroConLeSuePagine() {
-        vaiA("Altro")
-        // le voci della web (VOCI_LEGA, #634): il Diario è la pagina Giornate della barra (#673 passo 2)
-        attendi("Regole", contiene: true)
-        // le pagine tolte non hanno più una voce; «Nuova stagione» compare da sola solo quando serve, le novità sono nelle Impostazioni
-        for tolta in ["Diario delle giornate", "Movimenti e storico", "Crediti delle squadre", "Nuova stagione", "Valuta un'offerta"] {
-            XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare in Altro")
-        }
-        // ogni voce in un posto solo: niente copia di sicurezza, niente rimando alle Impostazioni (c'è l'ingranaggio)
-        XCTAssertFalse(elemento("Copia di sicurezza", contiene: true).exists)
-        XCTAssertFalse(elemento("Impostazioni dell'app e dell'account").exists)
-    }
-
-    func testImpostazioniDallIngranaggio() {
-        vaiA("Altro")
-        // l'ingranaggio sta accanto alla lente
-        tocca(app.buttons["Impostazioni"], finchéCompare: elemento("Aspetto"), "l'ingranaggio apre le Impostazioni")
-        attendi("Notifiche", contiene: true)
-        // le voci tolte non ci sono più
-        for tolta in ["Icona dell'app", "Sotto il cofano", "Copia di sicurezza", "Configurazione guidata", "Copia il codice per il widget",
-                      "Mostra tutte le funzioni"] {
+    /// Le Impostazioni in una pagina sola (#673 passo 3): un interruttore unico per gli avvisi e le ore tranquille, poi Aspetto.
+    func testImpostazioniInUnaPagina() {
+        vaiA("Impostazioni")
+        attendi("Avvisi su questo dispositivo", contiene: true)
+        attendi("Ore tranquille", contiene: true)
+        // gli interruttori per singolo avviso e le voci tolte non ci sono più
+        for tolta in ["Promemoria un'ora prima", "Avviso se il consiglio cambia", "Riepilogo della giornata", "Icona dell'app",
+                      "Sotto il cofano", "Copia di sicurezza", "Configurazione guidata", "Mostra tutte le funzioni"] {
             XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare nelle Impostazioni")
         }
-        tocca(elemento("Aspetto"), finchéCompare: elemento("Automatico"), "«Aspetto» apre tema e animazioni")
+        attendiScorrendo("Automatico")
         attendiScorrendo("Animazioni ridotte", contiene: true)
         XCTAssertFalse(elemento("Colore principale").exists, "l'aspetto ha solo tema e animazioni")
     }
 
-    /// Le novità non sono più una voce di Altro né un banner di Oggi: si leggono in Impostazioni > Informazioni (#634, come la web).
+    /// Le novità si leggono in Impostazioni > Informazioni (#634, come la web).
     func testLeNovitaSiLeggonoNelleImpostazioni() {
-        vaiA("Altro")
-        XCTAssertFalse(elemento("Novità", contiene: true).exists, "«Novità» non è più una voce di Altro")
-        tocca(app.buttons["Impostazioni"], finchéCompare: elemento("Aspetto"), "l'ingranaggio apre le Impostazioni")
-        attendiScorrendo("Novità")
+        vaiA("Impostazioni")
+        attendiScorrendo("Informazioni", contiene: true)
+        tocca(elemento("Informazioni", contiene: true), finchéCompare: elemento("Novità"), "«Informazioni» apre la sua pagina")
     }
 
     func testSchedaDiUnGiocatoreSiApreEDiChiude() {
@@ -215,9 +203,13 @@ final class FumoUITests: XCTestCase {
         tocca(app.buttons["Collega"].firstMatch, finchéCompare: elemento("Codice copiato"), "il tocco su «Collega» collega il widget")
     }
 
-    func testLaLenteApreLaRicerca() {
-        let lente = app.buttons["Cerca un giocatore"]
-        XCTAssertTrue(lente.waitForExistence(timeout: 30), "la lente della ricerca deve esserci nella Formazione")
-        tocca(lente, finchéCompare: elemento("Scrivi almeno due lettere del nome."), "la lente apre la ricerca")
+    /// La ricerca è una voce della barra (#673 passo 3, come la lente della web): il nome lo dà iOS.
+    func testLaRicercaEUnaVoceDellaBarra() {
+        let barra = app.tabBars.firstMatch
+        XCTAssertTrue(barra.waitForExistence(timeout: 30), "la barra delle sezioni deve comparire")
+        // con iOS 26 la voce della ricerca è il tondo accanto alla barra: si cerca fra tutti i pulsanti, non solo dentro la barra
+        let cerca = app.buttons.matching(NSPredicate(format: "label IN %@", ["Cerca", "Search"])).firstMatch
+        XCTAssertTrue(cerca.waitForExistence(timeout: 10), "la voce della ricerca deve esserci nella barra")
+        tocca(cerca, finchéCompare: elemento("Scrivi almeno due lettere."), "la voce apre la ricerca")
     }
 }

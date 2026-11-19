@@ -468,10 +468,22 @@ def _regole(ctx: Contesto) -> regole.Regole:
     return regole.carica(ctx.regole)
 
 
+NESSUNA_ROSA = "Nessuna rosa importata: importale con «Aggiorna le rose»"
+
+
 def _rose(ctx: Contesto) -> lega.Rose:
     r = lega.carica(ctx.rose)
     if not r:
-        raise HTTPException(409, "Nessuna rosa importata: importale con «Aggiorna le rose»")
+        raise HTTPException(409, NESSUNA_ROSA)
+    return r
+
+
+def _rose_da_schierare(ctx: Contesto) -> lega.Rose:
+    """Le rose per Oggi e Formazione. Rose senza nessun giocatore (dopo «Nuova stagione», finché non si importano le nuove) valgono
+    come nessuna rosa, la regola del primo avvio (`_ha_rose`): 409 con l'invito a importarle, non una formazione impossibile (#657)."""
+    r = _rose(ctx)
+    if not any(s.giocatori for s in r.squadre):
+        raise HTTPException(409, NESSUNA_ROSA)
     return r
 
 
@@ -507,8 +519,9 @@ def _messaggio_per_l_utente(e: ValueError) -> bool:
 def _errore_valore(request: Request, e: ValueError):
     if _messaggio_per_l_utente(e):
         codice = getattr(type(e), "codice", None)           # nome breve dell'errore per i client (es. «formazione_non_valida»), facoltativo
-        stato = getattr(type(e), "stato", 400)              # 422 per i dati oltre i tetti (regole_testo.TestoTroppoLungo, regole.RegoleTroppoGrandi)
-        return JSONResponse(status_code=stato if stato in (400, 422) else 400,
+        # 422 per i dati oltre i tetti (regole_testo.TestoTroppoLungo, regole.RegoleTroppoGrandi); 409 a campionato finito (consigli.CampionatoFinito)
+        stato = getattr(type(e), "stato", 400)
+        return JSONResponse(status_code=stato if stato in (400, 409, 422) else 400,
                             content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
     codice = secrets.token_hex(4)               # lo stesso codice nel log del servizio: chi gestisce l'app ritrova il caso
     passi = traceback.extract_tb(e.__traceback__)
@@ -796,10 +809,26 @@ def stato_dei_dati():
         db.close()
 
 
+GIA_IN_CORSO = {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+
+
+# «Aggiorna i dati» (solo l'amministratore). Mai insieme a un altro aggiornamento: né del servizio (`_blocco`) né all'aggiornamento
+# programmato del server o ai giri leggeri di un altro processo (il blocco su file `pianificatore.blocco_processo`, tenuto fino alla
+# fine del lavoro, #660): una richiesta alla volta alle fonti. (Commento e non docstring: la docstring finirebbe in docs/openapi.json.)
 @app.post("/api/aggiorna")
 def avvia_aggiornamento():
     if not _blocco.acquire(blocking=False):
-        return {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+        return GIA_IN_CORSO
+    pila = contextlib.ExitStack()
+    try:
+        libero = pila.enter_context(pianificatore.blocco_processo())
+    except BaseException:
+        _blocco.release()
+        raise
+    if not libero:
+        pila.close()
+        _blocco.release()
+        return GIA_IN_CORSO
 
     def lavoro():
         try:
@@ -809,7 +838,10 @@ def avvia_aggiornamento():
             _aggiornamento["errori"].append(str(e))
         finally:
             _aggiornamento["in_corso"] = False
-            _blocco.release()
+            try:
+                pila.close()
+            finally:
+                _blocco.release()
 
     _aggiornamento.update(in_corso=True, righe=[], errori=[])
     threading.Thread(target=lavoro, daemon=True).start()
@@ -838,7 +870,7 @@ def formazione(request: Request, squadra: str | None = None, giornata: int | Non
     try:
         r = _regole(ctx)
         saltata = None if squadra or giornata else _giornata_saltata(db, r, ctx, request)
-        f = consigli.formazione(db, r, _rose(ctx), squadra, saltata + 1 if saltata else giornata)
+        f = consigli.formazione(db, r, _rose_da_schierare(ctx), squadra, saltata + 1 if saltata else giornata)
         if saltata:
             f = f | {"giornata_saltata": saltata, "giornata_saltata_lega": regole.serie_a_a_lega(saltata, r)}
         if not squadra:
@@ -919,11 +951,18 @@ class FormazioneScelta(BaseModel):
     messa: bool | None = None       # «L'ho messa» (#616), solo con `salva`: vero o falso la scrive, senza resta com'era (scelte.salva)
 
 
+INTESTAZIONE_APP = "x-schieraxi-client"     # l'app nativa la manda sempre con il valore «ios», anche senza account (#710)
+
+
 def _da_dove(request: Request) -> str | None:
     """Da dove arriva un salvataggio della formazione (campo `da` della scelta, #639): «app» se porta il token come «Bearer» (l'app
-    nativa, la regola delle rotte degli account), «web» se porta il cookie della sessione o `Sec-Fetch-Mode`, che ogni browser
-    recente manda e l'app nativa no (senza account non c'è il cookie). Altrimenti None: non si sa, e il promemoria resta com'era."""
+    nativa, la regola delle rotte degli account) o l'intestazione `X-Schieraxi-Client: ios`, che l'app manda sempre, anche senza
+    account (#710); «web» se porta il cookie della sessione o `Sec-Fetch-Mode`, che ogni browser recente manda e l'app nativa no
+    (senza account non c'è il cookie). Altrimenti None: non si sa, e il promemoria resta com'era. Serve solo a etichettare la
+    scelta di chi salva (il promemoria chiede la spunta): non dà permessi né fiducia in più."""
     if request.headers.get("authorization", "")[:7].lower() == "bearer ":
+        return scelte.DA_APP
+    if request.headers.get(INTESTAZIONE_APP, "").strip().lower() == "ios":
         return scelte.DA_APP
     if request.cookies.get(rotte_account.COOKIE) or request.headers.get("sec-fetch-mode"):
         return scelte.DA_WEB
@@ -1260,10 +1299,20 @@ def stato_stagione(ctx: Contesto = Depends(lega_corrente)):
 
 
 @app.post("/api/nuova-stagione")
-def nuova_stagione(ctx: Contesto = Depends(lega_corrente)):
-    """Archivia rose, regole, movimenti, scelte e osservati della stagione finita in lega/archivio/ e riparte da rose vuote."""
-    return cambio_stagione.archivia_e_riparti(_rose(ctx), ctx.rose, consigli.stagione_corrente(), _regole(ctx).crediti_iniziali,
-                                              [ctx.scelte, ctx.osservati])
+def nuova_stagione(request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
+    """Archivia rose, regole, movimenti, scelte e osservati della stagione finita in lega/archivio/ e riparte da rose vuote.
+    Solo con rose di una stagione passata, rilette dentro il blocco delle rose: altrimenti 409 senza scrivere niente (un secondo
+    dispositivo con l'avviso ancora a schermo svuotava le rose appena importate, #657). If-Match come le altre scritture sulle rose
+    (412 se sono cambiate da un altro dispositivo); la risposta porta l'ETag delle rose ripartite."""
+    with _scrittura_rose:
+        versioni.controlla(request, versioni.etag_file(ctx.rose))
+        try:
+            risposta = cambio_stagione.archivia_e_riparti(_rose(ctx), ctx.rose, consigli.stagione_corrente(),
+                                                          _regole(ctx).crediti_iniziali, [ctx.scelte, ctx.osservati])
+        except cambio_stagione.NienteDaArchiviare as e:
+            raise HTTPException(409, str(e)) from None
+        response.headers["ETag"] = versioni.etag_file(ctx.rose)
+        return risposta
 
 
 @app.get("/api/asta")
@@ -1355,16 +1404,17 @@ def tratti_avatar():
 
 @app.get("/api/oggi")
 def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650, le=3650), ctx: Contesto = Depends(lega_corrente)):
-    """La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md). `certificato_giorni`
-    (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo)."""
+    """La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), e `serve_promemoria`: se
+    il promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi).
+    `certificato_giorni` (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo)."""
     db = _db()
     try:
         try:
-            rose_ = _rose(ctx)
+            rose_ = _rose_da_schierare(ctx)
         except HTTPException as e:
             if e.status_code != 409:
                 raise
-            corpo = gestione.oggi_senza_rose(db, regole=_regole(ctx))           # account nuovo: un benvenuto, non un errore (200 con `senza_rose`)
+            corpo = gestione.oggi_senza_rose(db, regole=_regole(ctx))           # account nuovo o rose vuote: un benvenuto, non un errore (200 con `senza_rose`)
             corpo["da_fare"] = da_fare.senza_rose(getattr(ctx, "impostazioni_avvisi", None))
             return corpo
         r = _regole(ctx)
@@ -1375,6 +1425,8 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
             admin, dal = False, None
         corpo = dict(gestione.oggi(db, r, rose_, file_scelte=ctx.scelte, file_diario=getattr(ctx, "diario", None),
                                    live_partite=_stati_live(), dal=dal))
+        if isinstance(corpo.get("giornata"), int):        # la regola dei promemoria del server, per quelli locali dell'iPhone (#710)
+            corpo["serve_promemoria"] = notifiche.serve_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], ctx.scelte)
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
                                               lingua=lingua_testi.della_richiesta(request), dal=dal)
@@ -1418,16 +1470,18 @@ def _calendario_live() -> list[dict]:
 def _risposta_live() -> dict:
     """Le partite del turno con lo stato in diretta. Legge solo la cache del raccoglitore: nessuna richiesta esterna."""
     db = _db()
+    dopo = None
     try:
         stagione = consigli.stagione_corrente()
         giornata = consigli.prossima_giornata(db, stagione)
         righe = db.execute("SELECT data, casa, trasferta, giornata, giocata, gol_casa, gol_trasferta FROM partite "
                            "WHERE stagione = ? AND giornata = ? ORDER BY data", (stagione, giornata)).fetchall() if giornata else []
+        dopo = avvisi_pronta.turno_dopo(db, stagione, giornata) if giornata else None     # il turno non comincia dopo (#698)
     except sqlite3.Error:                                  # archivio non ancora pronto: nessuna partita, non un errore
         righe = []
     finally:
         db.close()
-    return live.risposta(live.unico or live.Raccoglitore(lambda: []), righe)
+    return live.risposta(live.unico or live.Raccoglitore(lambda: []), righe, dopo)
 
 
 @app.get("/api/live")
@@ -1923,23 +1977,57 @@ def _leggi_rose(lette: _Riconosciute, correzioni: list[dict] | None = None, prim
     return squadre, avvisi
 
 
-def _rose_di_prima(ctx: Contesto) -> tuple[lega.Rose | None, bool]:
-    """(rose salvate da cui parte un'importazione o un'anteprima, file rovinato). Le rose sono None, come alla prima
-    importazione, se sono solo le squadre di esempio (non si mescolano con quelle vere: niente squadre finte che restano,
-    «la tua squadra» finta o giocatori «in più squadre») o se il file non si legge più: il messaggio di errore di ogni
-    schermata propone proprio di importare di nuovo le rose (lega.carica)."""
+def _esempi_rimasti(rose: lega.Rose) -> list[str]:
+    """Le quattro squadre di esempio rimaste in una lega insieme a squadre vere: chi importava le sue rose sopra gli esempi
+    prima della #682, senza «Togli le squadre che non sono nel file», se le è tenute (#683). Solo se ci sono tutte e quattro,
+    una volta sola, con il loro nome (mai rinominate) e ancora come le crea onboarding.crea_demo: giocatori tutti trovati nel
+    listone, senza costo, riconosciuti esatti, senza avvisi, nessuno in due esempi. Con una sola diversa: nessuna (una squadra
+    vera non si tocca mai; una squadra finta in più è il male minore)."""
+    esempi = [s for s in rose.squadre if s.nome in onboarding.SQUADRE_DEMO]
+    if len(esempi) == len(rose.squadre) or sorted(s.nome for s in esempi) != sorted(onboarding.SQUADRE_DEMO):
+        return []
+    giocatori = [g for s in esempi for g in s.giocatori]
+    come_la_demo = (all(s.giocatori and s.nome_importato is None for s in esempi)
+                    and all(g.id is not None and g.costo is None and g.riconosciuto == "esatto" and not g.avviso for g in giocatori)
+                    and len({g.id for g in giocatori}) == len(giocatori))
+    return list(onboarding.SQUADRE_DEMO) if come_la_demo else []
+
+
+def _rose_di_prima(ctx: Contesto) -> tuple[lega.Rose | None, bool, str | None]:
+    """(rose salvate da cui parte un'importazione o un'anteprima, file rovinato, avviso da mettere in cima agli avvisi). Le
+    rose sono None, come alla prima importazione, se sono solo le squadre di esempio (non si mescolano con quelle vere: niente
+    squadre finte che restano, «la tua squadra» finta o giocatori «in più squadre») o se il file non si legge più: il messaggio
+    di errore di ogni schermata propone proprio di importare di nuovo le rose (lega.carica), e l'avviso lo dice.
+    In una lega già mista (`_esempi_rimasti`) le rose sono quelle vere, senza gli esempi (e senza «la tua squadra» se era un
+    esempio): l'importazione li toglie, e l'avviso dice quali."""
     try:
         prima = lega.carica(ctx.rose)
     except ValueError:
-        return None, True
-    return (None if onboarding.e_demo(prima) else prima), False
+        return None, True, lega.ROSE_ROVINATE
+    if onboarding.e_demo(prima):
+        return None, False, None
+    esempi = _esempi_rimasti(prima) if prima else []
+    if not esempi:
+        return prima, False, None
+    prima.squadre = [s for s in prima.squadre if s.nome not in esempi]
+    if prima.mia_squadra in esempi:
+        prima.mia_squadra = None
+    return prima, False, frasi.F("rose.esempi_tolti", squadre=", ".join(esempi))
 
 
-def _metti_da_parte(percorso: Path) -> None:
-    """Il file delle rose che non si legge va da parte (rose.json.rovinato) PRIMA di salvare le nuove: il salvataggio con la
-    copia di riserva lo copierebbe sopra rose.json.bak, che è la copia buona."""
+def _salva_mettendo_da_parte(nuove: lega.Rose, percorso: Path) -> None:
+    """Le rose nuove al posto di un file delle rose che non si legge. Il file rovinato va da parte (rose.json.rovinato) PRIMA
+    di salvare: il salvataggio con la copia di riserva lo copierebbe sopra rose.json.bak, che è la copia buona. Se il
+    salvataggio fallisce (disco pieno, database degli account che non risponde) il file rovinato torna al suo posto e l'errore
+    arriva a chi importa: senza, rose.json non ci sarebbe più e le schermate direbbero «nessuna rosa» (#683)."""
     da_parte = percorso.with_name(percorso.name + ".rovinato")
     percorso.replace(da_parte)
+    try:
+        lega.salva(nuove, percorso, copia_di_riserva=True)
+    except BaseException:
+        if not percorso.exists():                     # le rose nuove non sono arrivate su disco: si torna a com'era
+            da_parte.replace(percorso)
+        raise
     logging.getLogger("uvicorn.error").warning("Importazione delle rose: il file delle rose non si leggeva, messo da parte in %s",
                                                da_parte.name)
 
@@ -1954,10 +2042,13 @@ def _controlla_sostituzione(riconosciute: _Riconosciute, prima: lega.Rose | None
 
 
 def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto, correzioni: list[dict] | None = None,
-             mia_squadra: str | None = None) -> dict:
-    """Salva le rose già riconosciute (`_riconosci`). Da chiamare con il blocco delle rose preso."""
+             mia_squadra: str | None = None, copia_datata: bool = False) -> dict:
+    """Salva le rose già riconosciute (`_riconosci`). Da chiamare con il blocco delle rose preso. `copia_datata`: prima di
+    salvare, una copia datata delle rose di adesso (`_copia_datata_delle_rose`), fatta solo dopo tutti i controlli che possono
+    rifiutare l'importazione: un rifiuto non aggiunge copie e non toglie la più vecchia (#718). Niente copia se il file di prima
+    non si legge: va già da parte in rose.json.rovinato, e una sua copia farebbe uscire la più vecchia delle copie buone (#723)."""
     r = _regole(ctx)
-    prima, rovinate = _rose_di_prima(ctx)
+    prima, rovinate, avviso = _rose_di_prima(ctx)
     if sostituisci_tutto:
         _controlla_sostituzione(riconosciute, prima)
     lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
@@ -1965,10 +2056,14 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     anteprima_rose.scegli_mia(nuove, mia_squadra)              # facoltativa: la squadra dell'utente scelta nell'anteprima
     limiti.controlla_rose(ctx, nuove)                          # con gli account: al massimo 20 squadre da 40 giocatori
     nuove.stagione = consigli.stagione_corrente()
+    if copia_datata and not rovinate:                          # dopo i controlli; un file rovinato lo tiene già rose.json.rovinato (#723)
+        _copia_datata_delle_rose(ctx)
     if rovinate:                                               # solo ora: un'importazione rifiutata non sposta niente
-        _metti_da_parte(ctx.rose)
-        avvisi.insert(0, lega.ROSE_ROVINATE)
-    lega.salva(nuove, ctx.rose, copia_di_riserva=True)
+        _salva_mettendo_da_parte(nuove, ctx.rose)
+    else:
+        lega.salva(nuove, ctx.rose, copia_di_riserva=True)
+    if avviso:                                                 # rose rovinate, o squadre di esempio tolte da una lega mista
+        avvisi.insert(0, avviso)
     try:                                                       # stemmi e maglie di squadre tolte: una nuova con lo stesso nome non li eredita
         immagini.pulisci([s.nome for s in nuove.squadre], ctx.immagini)
     except OSError:
@@ -1977,8 +2072,9 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     if prima and any(s.giocatori for s in prima.squadre):      # dopo il passaggio di stagione le rose partono vuote: non sono "acquisti"
         movimenti.registra(ctx.movimenti, diff)
     threading.Thread(target=_scalda, args=(ctx,), daemon=True).start()     # le rose sono cambiate: la nuova formazione si prepara subito
+    avvisi += lega.controlla(nuove, r)
     return {"squadre_importate": [s.nome for s in lette], "totale_squadre": len(nuove.squadre),
-            "avvisi": avvisi + lega.controlla(nuove, r), "mia_squadra": nuove.mia_squadra,
+            "avvisi": avvisi, "avvisi_frasi": frasi.lista(avvisi), "mia_squadra": nuove.mia_squadra,   # come l'anteprima (#723)
             "differenze": diff, "riepilogo": diff["testo"]}
 
 
@@ -2067,13 +2163,13 @@ def _anteprima(griglie, sostituisci_tutto: bool, correzioni: list[dict] | None, 
     """Come l'importazione ma senza scrivere niente: legge le rose salvate (per dire cosa cambierebbe) e basta."""
     etag = versioni.etag_file(ctx.rose)          # PRIMA di leggere le rose: se cambiano subito dopo, l'importazione darà 412
     r = _regole(ctx)
-    prima, rovinate = _rose_di_prima(ctx)                          # come l'importazione, ma il file rovinato resta dov'è
+    prima, _, avviso = _rose_di_prima(ctx)                         # come l'importazione, ma il file rovinato resta dov'è
     riconosciute = _riconosci(griglie, ctx, excel)
     if sostituisci_tutto:                                          # stesso rifiuto dell'importazione
         _controlla_sostituzione(riconosciute, prima)
     lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
-    if rovinate:
-        avvisi.insert(0, lega.ROSE_ROVINATE)
+    if avviso:                                                     # gli stessi avvisi dell'importazione: rose rovinate, esempi tolti
+        avvisi.insert(0, avviso)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     limiti.controlla_rose(ctx, nuove)                              # stessi tetti dell'importazione
     risposta = anteprima_rose.anteprima(lette, avvisi, r, prima, nuove)
@@ -2128,11 +2224,8 @@ def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_ch
     ctx = Contesto.per_utente(utente_id)
     # fuori dal blocco, come le importazioni dall'app; il comando da riga di comando passa anche gli Excel letti da leggi_excel
     riconosciute = _riconosci(griglie, ctx, excel=isinstance(griglie, importa_sicuro.FogliExcel))
-    with _scrittura_rose:
-        if sostituisci_tutto:
-            _controlla_sostituzione(riconosciute, _rose_di_prima(ctx)[0])    # un rifiuto non aggiunge copie (non toglie le vecchie)
-            _copia_datata_delle_rose(ctx)
-        risposta = _importa(riconosciute, sostituisci_tutto, ctx)
+    with _scrittura_rose:              # la copia datata (con sostituisci_tutto) parte dentro _importa, dopo tutti i controlli
+        risposta = _importa(riconosciute, sostituisci_tutto, ctx, copia_datata=sostituisci_tutto)
     account.evento("importazione_per_conto_di", admin=da_chi if da_chi is not None else "riga-di-comando", utente=utente_id,
                    squadre=len(risposta["squadre_importate"]), sostituisci=int(bool(sostituisci_tutto)))
     return risposta

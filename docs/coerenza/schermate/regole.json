@@ -17,6 +17,15 @@
       "forma": "il nome del pulsante, «Salva le regole», in tutti i testi d'aiuto: «… finché non tocchi «Salva le regole».», «Valori applicati: controlla e tocca «Salva le regole»», «Controlla i valori qui sotto e tocca «Salva le regole» in fondo.»",
       "chi": "fatto (#559): i tre testi vengono dal catalogo (`Catalogo.Regole.legheApriRegolamento`, `controllaValoriQui`, `valoriApplicatiControlla`), prova `RestiDalCatalogoTests` e `LegaViewModelTests`. Il pulsante «Salva» della barra delle modifiche non salvate dell'iPhone resta com'è",
       "stato": "fatto"
+    },
+    {
+      "id": 73,
+      "schermata": "Regole, importazione da Leghe: righe da controllare a mano (#733)",
+      "web": "dopo «Riconosci le regole» un gruppo che si apre, «Righe da controllare a mano (N)» (`regole.da_controllare`, N = righe di `da_controllare` di `POST /api/regole/riconosci`): le righe nell'ordine del testo e, sotto una riga dubbia, «da impostare: <regole separate da virgole>» (`regole.da_impostare`) (`vistaRegole`, #734)",
+      "iphone": "prima: «Righe con numeri non riconosciute (N)» con le sole righe di `non_riconosciute`, senza le righe dubbie senza numeri né la regola da impostare (`RegoleEditor.swift`)",
+      "forma": "web",
+      "chi": "fatto (#733): l'iPhone legge `da_controllare` e mostra «Righe da controllare a mano (N)» con «da impostare: …» sotto le righe dubbie, testi dal catalogo (`Catalogo.Regole.daControllare`, `daImpostare`) attraverso `RegolamentoDaControllare` (`Presentation/Lega/RegolamentoDaControllare.swift`), prova `RegoleDaControllareComeLaWebTests`. Con un server che non manda `da_controllare` resta il gruppo di prima (`regole.non_riconosciute`). Le etichette delle regole sono quelle del server, come per i valori riconosciuti (in italiano uguali a `regola.et.<chiave>` della web)",
+      "stato": "fatto"
     }
   ]
 }

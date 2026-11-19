@@ -51,9 +51,10 @@ def test_scarica_i_tuoi_dati_nell_account_solo_scarico():
 def test_account_un_solo_nome_e_solo_le_voci_utili():
     acc = APP[APP.index("function schedaAccount()"):APP.index("function schedaAmministratore()")]
     assert "esc(a.nome_visualizzato || a.nome_utente)" in acc                   # un solo nome mostrato
-    for vecchio in ("acc-esci-tutti", "acc-nome-vis", "acc-nome-salva", "acc-esporta", "Esci da tutti"):
+    for vecchio in ("acc-nome-vis", "acc-nome-salva", "acc-esporta"):
         assert vecchio not in acc and vecchio not in APP, vecchio
-    for resta in ('id="acc-email"', 'id="acc-accessi"', 'id="acc-cambia"', 'id="acc-elimina"', 'id="acc-esci"'):
+    # «Esci da tutti i dispositivi» è tornato (#765): lo consigliano le email di sicurezza (prova nel browser: test_impostazioni.py)
+    for resta in ('id="acc-email"', 'id="acc-accessi"', 'id="acc-cambia"', 'id="acc-elimina"', 'id="acc-esci"', 'id="acc-esci-tutti"'):
         assert resta in acc, resta
     assert "scheda-admin" not in acc                                            # l'amministrazione sta in Gestione
     assert "schedaAmministratore()" in IMP and "collegaAmministratore();" in IMP

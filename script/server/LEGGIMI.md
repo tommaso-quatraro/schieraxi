@@ -67,7 +67,8 @@ Installare una versione nuova riavvia il servizio. Per questo `aggiorna-app.sh` 
   un controllo guasto non deve fermare gli aggiornamenti.
 
 Emergenza (correzione urgente durante una partita): `touch ~/.cache/fantacalcio/installa-subito` (installa al prossimo giro e il
-file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`. Nel log:
+file si cancella da solo quando l'installazione riesce: se non riesce, per esempio per le librerie, resta e il giro dopo riprova,
+anche con la versione seguente, e l'avviso del rifiuto lo dice) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`. Nel log:
 «installazione forzata». Per vedere cosa direbbe adesso: `cd ~/fantacalcio && .venv/bin/python -m fanta momento-libero`.
 
 ## Rilasci raggruppati: al massimo un'installazione all'ora
@@ -103,16 +104,18 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   cade in mezzo (in `main` c'è ancora un file in `fanta/novita.d/`) si aspetta il giro dopo, invece di installare l'unione con numero
   di versione e novità vecchi. Al massimo mezz'ora, contata dal primo giro che ha aspettato (stato in `attesa-versione`), non dall'ora
   dei commit: le unioni che arrivano nel frattempo non la fanno ripartire. Poi (job `rilascia` fermo) si installa lo stesso, con una
-  riga nel registro e un avviso «aggiornamento non riuscito», e «di nuovo a posto» quando il commit di versione arriva.
-  L'installazione forzata (`installa-subito`) non aspetta.
+  riga nel registro (una sola, anche se poi l'installazione è rimandata per una partita o per l'intervallo) e un avviso
+  «aggiornamento non riuscito», e «di nuovo a posto» quando il commit di versione arriva. Una versione rifiutata toglie l'attesa: la
+  versione dopo aspetta di nuovo il suo commit di versione. L'installazione forzata (`installa-subito`) non aspetta.
 - **L'ultima versione rifiutata non lascia passare quelle sotto**: se la versione da installare viene rifiutata (firma, cartelle,
   librerie, ritorno alla versione di prima), le versioni buone arrivate prima e raggruppate con lei restano fuori anche loro. Non si
   installano da sole: un ripiego automatico su una versione mai provata potrebbe alternare due versioni rotte, con un riavvio a ogni
-  giro. L'avviso del rifiuto lo dice quando sotto ci sono commit di versione («Anche la versione arrivata prima, in attesa, non è
-  installata»; i commit di soli documenti non contano); entrano con la prossima versione buona (una pull request che corregge o toglie
+  giro. L'avviso del rifiuto lo dice quando le cartelle del server cambiano fra l'ultima versione installata e il commit prima di
+  quella rifiutata («Anche la versione arrivata prima, in attesa, non è installata», o «le modifiche arrivate prima» se non hanno un
+  commit di versione; i commit di soli documenti e le unioni numerate dal commit di versione rifiutato non contano); entrano con la prossima versione buona (una pull request che corregge o toglie
   quella rotta) oppure, per una firma, con `--fidati origin/main` dopo il controllo (l'avviso lo nomina).
 - Stato in `~/.cache/fantacalcio/`: `ultima-installazione` (ora d'inizio del giro dell'ultima installazione riuscita, in secondi),
-  `raggruppata` (la versione rimandata), `intervallo-letto`, `attesa-versione` (ora del primo giro che aspetta il commit di versione). Senza `ultima-installazione` (la prima volta) si installa subito; se
+  `raggruppata` (la versione rimandata), `intervallo-letto`, `attesa-versione` (ora del primo giro che aspetta il commit di versione, poi `scaduta` dopo la mezz'ora). Senza `ultima-installazione` (la prima volta) si installa subito; se
   l'orologio del server è indietro rispetto a quell'ora non si aspetta (una riga nel registro).
 
 ## Aggiornamenti sicuri: firme dei commit e librerie bloccate
@@ -144,8 +147,28 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
     riavviato) e **riprova ai giri dopo**: stato in `~/.cache/fantacalcio/librerie-fallite`, un avviso «rimandato» la prima volta;
     alla terza volta di fila rinuncia, scrive `rifiutato` e avvisa.
   - Se dopo il riavvio il servizio non risponde torna anche all'ambiente di prima.
+  - Se lo scambio delle cartelle non riesce rimette subito l'ambiente in uso e i file della versione di prima, e avvisa.
   - Le versioni in `requirements.txt` sono quelle in produzione sul server (Python 3.12) al momento del blocco: il primo giro
     non cambia nessuna libreria, crea solo l'ambiente nuovo.
+- **Copia di sicurezza** (`~/.cache/fantacalcio/versione-precedente.tar.gz`): si rifà a ogni installazione e prende il posto della
+  vecchia solo se riesce tutta. Finché i file nuovi non hanno superato l'installazione c'è il segno `installazione-in-corso`, con la
+  versione che si stava installando. Se un giro si ferma a metà (server spento, processo fermato), il giro dopo lo trova e, prima di
+  tutto, rimette file e ambiente Python della versione di prima da quella copia, riavvia il servizio, lo scrive nel registro e avvisa
+  (al massimo una volta al giorno); poi riprova la versione nuova. Se la stessa versione si ferma a metà una seconda volta diventa
+  `rifiutato`, con un avviso, e non si riprova più (neanche con `installa-subito`). Un giro ancora vivo tiene il blocco dello script,
+  quindi non viene scambiato per interrotto.
+
+#### Aggiornamento interrotto senza copia di sicurezza
+Se c'è il segno ma la copia di sicurezza manca o è rovinata, lo script non installa più niente e avvisa (una volta al giorno). Per
+ripartire, sul server (`ssh <utente>@<indirizzo-del-server>`), con l'utente del servizio:
+1. Rimetti i file dell'ultima versione installata, presi dalla copia di GitHub (il file dei tratti dei volti resta quello del server):
+   `cd ~/schieraxi-src && git archive "$(cat ~/.cache/fantacalcio/ultimo-rilascio)" fanta tests script requirements.txt requirements-dev.txt | tar -x -C ~/fantacalcio --exclude=fanta/avatar_tratti.json`
+2. Ambiente Python: `cat ~/.cache/fantacalcio/installazione-in-corso`. Se comincia con `ambiente` e c'è `~/fantacalcio/.venv.precedente`:
+   `cd ~/fantacalcio && mv .venv .venv.scartata && mv .venv.precedente .venv && rm -rf .venv.scartata`. Se manca `.venv` ma c'è
+   `.venv.precedente`: `cd ~/fantacalcio && mv .venv.precedente .venv`.
+3. `sudo systemctl restart fantacalcio`, poi `curl -s -o /dev/null -w '%{http_code}\n' -H 'X-Fanta: 1' http://127.0.0.1:8000/api/account/me`:
+   deve rispondere `200` o `401`.
+4. Togli il segno: `rm ~/.cache/fantacalcio/installazione-in-corso`. Il giro dopo rifà la copia di sicurezza e riprova la versione nuova.
 
 ### Cosa protegge e cosa no
 - Protegge da: commit senza firma, o firmati da un'altra chiave, spinti su `main` con `git push` (per esempio per errore), anche se
@@ -216,13 +239,12 @@ per il passaggio e si riaccende dopo il `--fidati`. Il workflow del repository p
 
 ### Librerie bloccate: come si cambiano
 - Elenchi scritti a mano: `requirements.in` (app), `requirements-dev.in` (test), `requirements-vincoli.in` (versioni imposte, col motivo;
-  con `; python_version < "3.12"` valgono solo per i Python vecchi della CI, il server resta sulla versione principale).
+  con `; python_version < "X.Y"` valgono solo per i Python più vecchi, il server resta sulla versione principale; oggi non ce ne sono).
 - Rigenerare in locale: `.venv\Scripts\python.exe script\blocca_dipendenze.py`. Tiene le versioni che ci sono già; una libreria nuova prende
   la versione della `.venv`. Per allinearsi al server: `ssh <server> '~/fantacalcio/.venv/bin/python -m pip freeze' > freeze.txt`
   (sola lettura) e `... blocca_dipendenze.py --versioni freeze.txt`; per aggiornare tutto alla `.venv`: `--aggiorna`.
   Hash = tutti i file di PyPI per quella versione, così vale su ogni server Linux, in locale (Windows) e su GitHub. `--controlla` dice se i file sono da rifare.
-- La CI prova con Python 3.12 come il server dove c'è (GitHub; sui runner propri con `CI_PYTHON312` nel `.env` del runner o con
-  `python3.12`), altrimenti con 3.11 e un avviso: in quel caso numpy e soupsieve sono le versioni per i Python vecchi.
+- La CI prova con Python 3.12 come il server (runner di GitHub `ubuntu-latest`): l'app non supporta più Python 3.11.
 - Dependabot (repository pubblico) apre PR che cambiano versione e hash di una libreria; i controlli le installano con gli hash. Se la
   libreria nuova porta dipendenze nuove la PR non passa: si rigenera con lo script.
 

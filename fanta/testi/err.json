@@ -131,6 +131,10 @@
     "it": "Nessuna rosa importata: importale con «Aggiorna le rose»",
     "en": "No roster imported: import them with «Update the rosters»"
   },
+  "err.gia_della_stagione": {
+    "it": "Le rose sono già della stagione in corso: non c'è niente da archiviare.",
+    "en": "The rosters are already from the current season: there is nothing to archive."
+  },
   "err.limite_oggi": {
     "it": "Hai raggiunto il limite di {1} di oggi ({2}). Si azzera tra {3}.",
     "en": "You have reached today's limit for {1} ({2}). It resets in {3}."
@@ -275,6 +279,11 @@
   "err.calendario": {
     "it": "Il calendario della stagione non è ancora disponibile (di solito esce a luglio): previsioni e asta partono appena arriva. Aggiorna i dati più avanti.",
     "en": "The season calendar is not available yet (it usually comes out in July): forecasts and auction start as soon as it arrives. Update the data later."
+  },
+  "err.campionato_finito": {
+    "it": "Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.",
+    "en": "The season is over: forecasts and advice start again with next season's calendar.",
+    "nota": "il 409 delle rotte che vogliono una giornata a campionato finito (#656): stessa frase di frase.campionato.finito"
   },
   "err.squadra_non_trovata_indica": {
     "it": "Squadra non trovata: indica la tua squadra in «La mia squadra»",
@@ -855,10 +864,5 @@
   "err.passo_sconosciuto": {
     "it": "Passo sconosciuto della configurazione",
     "en": "Unknown setup step"
-  },
-  "err.indica_prima_squadra_diario": {
-    "it": "Indica prima la tua squadra in Squadra > Squadre e rose",
-    "en": "First choose your team in «My team»",
-    "nota": "Frase di fanta/diario.py con il nome di prima della voce (#618): si toglie quando diario.py dice come server.py «Indica prima la tua squadra in «La mia squadra»»"
   }
 }

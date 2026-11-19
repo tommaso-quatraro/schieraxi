@@ -239,6 +239,9 @@ struct ServerHTTP: ServerClient {
         let attesa: TimeInterval = percorso.hasPrefix("/api/account/") ? 20 : 25
         var r = URLRequest(url: url, timeoutInterval: attesa)
         r.setValue("1", forHTTPHeaderField: "X-Fanta")
+        // Dice al server che la richiesta arriva dall'app, anche senza account (senza token): una formazione salvata da qui chiede
+        // la spunta «L'ho messa» per far tacere il promemoria (#710). Etichetta e basta: non apre niente.
+        r.setValue("ios", forHTTPHeaderField: "X-Schieraxi-Client")
         LinguaServer.applica(&r)
         // Account: l'app nativa manda il token come «Bearer» (niente cookie). Il token non si scrive mai nei log.
         if let token, !token.isEmpty {

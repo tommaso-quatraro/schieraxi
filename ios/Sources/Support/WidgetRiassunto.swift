@@ -243,6 +243,12 @@ struct RiassuntoWidget: Decodable {
     var fase: String? { faseLetta?.valore }
     private var inCorsoLetto: Facoltativo<GiornataInCorso>?
     private var riepilogoLetto: Facoltativo<RiepilogoGiornata>?
+    /// Entrato a giornata già iniziata senza formazione (#651, #687): `senza_formazione` e la `prossima` da preparare, come in
+    /// `/api/oggi` (facoltativi: un server di prima non li manda, un valore strano vale «no»).
+    private var senzaFormazioneLetto: Facoltativo<Bool>?
+    private var prossimaLetta: Facoltativo<ProssimaGiornata>?
+    /// Il campionato è finito (#656): la frase del server, come in `/api/oggi` (facoltativo: un server di prima non lo manda).
+    private var campionatoFinitoLetto: Facoltativo<CampionatoFinito>?
     var mancano: [String]?
     /// Quali funzioni sono accese per questo utente (facoltativo: un server vecchio non lo manda). Chiave assente = acceso.
     var funzioni: [String: Bool]?
@@ -267,10 +273,16 @@ struct RiassuntoWidget: Decodable {
         case faseLetta = "fase"
         case inCorsoLetto = "inCorso"
         case riepilogoLetto = "riepilogo"
+        case campionatoFinitoLetto = "campionatoFinito"
+        case senzaFormazioneLetto = "senzaFormazione"
+        case prossimaLetta = "prossima"
     }
 
     /// La fase con i suoi blocchi (ognuno solo nella sua fase).
-    var faseGiornata: FaseRiassunto { FaseRiassunto(fase: fase, inCorso: inCorsoLetto?.valore, riepilogo: riepilogoLetto?.valore) }
+    var faseGiornata: FaseRiassunto {
+        FaseRiassunto(fase: fase, inCorso: inCorsoLetto?.valore, riepilogo: riepilogoLetto?.valore,
+                      senzaFormazione: senzaFormazioneLetto?.valore == true, prossima: prossimaLetta?.valore)
+    }
 
     /// La giornata con i due numeri (#299); nil se la giornata non si conosce.
     var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
@@ -290,16 +302,17 @@ struct RiassuntoWidget: Decodable {
             .prefix(massimo).map { $0 }
     }
 
-    /// Per i widget «vecchi» (Prossima giornata, Da controllare): lo stesso riassunto di prima, dal nuovo contenuto.
+    /// Per i widget «vecchi» (Prossima giornata, Da controllare): lo stesso riassunto di prima, dal nuovo contenuto. Senza giornata
+    /// c'è solo a campionato finito, con la frase del server (#727): prima era nil anche lì, e i widget dicevano «Nessun dato».
     func comeRiassuntoOggi(scaricatoIl: Date = Date()) -> RiassuntoOggi? {
-        guard let giornata else { return nil }
+        guard giornata != nil || campionatoFinito != nil else { return nil }
         let dubbi = daControllare
         return RiassuntoOggi(giornata: giornata, inizio: inizio, modulo: formazione?.modulo, punti: formazione?.puntiAttesi,
                              daControllare: dubbi.count, probabili: conProbabili, scaricatoIl: scaricatoIl,
                              dubbi: dubbi.prefix(6).map {
                                  DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto, etichetta: $0.etichetta?.testoPronto)
                              },
-                             giornataLega: giornataLega, fase: faseGiornata)
+                             giornataLega: giornataLega, fase: faseGiornata, campionatoFinito: campionatoFinito)
     }
 
     static func leggi(_ dati: Data) -> RiassuntoWidget? {
@@ -308,6 +321,10 @@ struct RiassuntoWidget: Decodable {
         d.keyDecodingStrategy = .convertFromSnakeCase
         return try? d.decode(RiassuntoWidget.self, from: dati)
     }
+
+    /// La frase del server a campionato finito («Il campionato è finito: …», #727), da mostrare al posto della giornata; nil fuori da
+    /// quel caso, con un server di prima o con un testo vuoto.
+    var campionatoFinito: String? { campionatoFinitoLetto?.valore?.testoPronto }
 }
 
 /// Lo scarico di `/api/widget` (nel widget e nell'app): sempre con `If-None-Match`, mai calcoli.
@@ -950,6 +967,11 @@ enum ParoleWidget {
     /// Il conto alla rovescia dopo la scadenza, come la web (`oggi.chiusa`): per la giornata mai «In corso».
     static let chiusa = "Chiusa"
 
+    /// Per chi è entrato a giornata già iniziata senza una formazione (#687), come la web e la Formazione dell'app
+    /// (`oggi.gia_iniziata` e `oggi.prepara_prossima` del catalogo comune, che il widget non compila: li confrontano i test).
+    static let giaIniziata = "Questa giornata è già iniziata"
+    static let preparaProssima = "Prepara la prossima"
+
     /// Il simbolo dei crediti, lo stesso dell'app («C» nel cerchio): i crediti non sono euro.
     static let simboloCrediti = "c.circle"
 
@@ -967,6 +989,16 @@ enum ParoleWidget {
         let quando = inizio > adesso ? "alla scadenza, \(Quando.relativa(inizio, adesso: adesso))"
             : "si è chiusa \(Quando.relativa(inizio, adesso: adesso))"
         return conProbabili == false ? ["probabili non uscite · \(quando)", "probabili non uscite"] : [quando]
+    }
+
+    /// La frase del server a campionato finito nelle sue forme, dalla più lunga (#727): intera («Il campionato è finito: previsioni e
+    /// consigli ripartono con il calendario della prossima stagione.») e, dove non entra, la sua prima parte, fino ai due punti («Il
+    /// campionato è finito»). Il testo resta quello del server, anche in inglese: qui si sceglie solo quanto ne entra, mai a metà.
+    static func formeCampionatoFinito(_ testo: String) -> [String] {
+        let intera = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let duePunti = intera.firstIndex(of: ":") else { return [intera] }
+        let prima = intera[..<duePunti].trimmingCharacters(in: .whitespaces)
+        return prima.isEmpty ? [intera] : [intera, prima]
     }
 
     /// «4 da controllare» → «4»; senza niente da controllare «titolari a posto» → «a posto».
@@ -1209,7 +1241,7 @@ extension RiassuntoOggi {
         if inCorso {
             var t = "La formazione si è chiusa"
             if let inizio { t += " \(Quando.relativa(inizio, adesso: adesso))" }
-            return t + ". I punti fatti sono in Oggi."
+            return t + ". I punti fatti sono nella Formazione."
         }
         return finita ? "Si ricomincia con la prossima giornata." : nil
     }
@@ -1245,6 +1277,69 @@ extension RiassuntoOggi {
     var voceSottotitoloRettangolo: String { finita ? "Prossima: \(voceGiornata)" : voceGiornata }
 }
 
+// MARK: Entrato a giornata già iniziata senza formazione (`senza_formazione`, #687): parole della web (`oggi.gia_iniziata`, `oggi.prepara_prossima`)
+
+extension RiassuntoOggi {
+    /// La giornata da preparare nelle sue forme, dalla più lunga: «Giornata 9 · 12ª di Serie A», «Giornata 9»; mai «G9» (#299).
+    /// Vuoto se il server non dice quale.
+    var formeProssimaDaPreparare: [String] { ParoleWidget.formeGiornata(prossimaDaPreparare?.nomeGiornata) }
+
+    /// La giornata da preparare per VoiceOver, con i due numeri («Giornata 9, 12ª di Serie A»), o «Prossima giornata».
+    var voceProssimaDaPreparare: String { prossimaDaPreparare?.nomeGiornata?.voce ?? "Prossima giornata" }
+
+    /// La riga in linea della schermata di blocco, dalla più lunga: «Prepara la prossima: 4 giorni 2 h» → «Prepara la prossima».
+    /// Vuoto fuori da quel caso.
+    func formeRigaInLineaSenzaFormazione(adesso: Date) -> [String] {
+        guard senzaFormazioneInCorso else { return [] }
+        guard let scadenza = scadenzaDelConto, let conto = Quando.contoAllaRovescia(fino: scadenza, adesso: adesso) else {
+            return [ParoleWidget.preparaProssima]
+        }
+        return ["\(ParoleWidget.preparaProssima): \(conto)", ParoleWidget.preparaProssima]
+    }
+
+    /// La frase per VoiceOver: «Giornata 8, 11ª di Serie A. Questa giornata è già iniziata. Prepara la prossima: Giornata 9, 12ª di
+    /// Serie A, scadenza sab 14 nov, 14:50.». Nil fuori da quel caso.
+    var descrizioneSenzaFormazione: String? {
+        guard senzaFormazioneInCorso else { return nil }
+        var t = "\(voceGiornata). \(ParoleWidget.giaIniziata). \(ParoleWidget.preparaProssima)"
+        if let nome = prossimaDaPreparare?.nomeGiornata { t += ": \(nome.voce)" }
+        if let scadenza = scadenzaDelConto { t += ", scadenza \(Quando.leggibile(scadenza))" }
+        return t + "."
+    }
+}
+
+// MARK: Il caso che i tre widget mostrano prima del loro contenuto di sempre (#727, #687, #752)
+
+/// Cosa mostrano Prossima giornata, Formazione consigliata e Da controllare, nello stesso ordine per i tre: a campionato finito la
+/// frase del server (#727, prima di tutto, #745); per chi è entrato a giornata già iniziata senza una formazione la prossima da
+/// preparare (#687, #752); altrimenti il widget di sempre.
+enum CasoWidget: Equatable {
+    /// La frase del server a campionato finito.
+    case campionatoFinito(String)
+    /// Entrato a giornata già iniziata senza una formazione: il riassunto, con la giornata già iniziata e la prossima da preparare.
+    case senzaFormazione(RiassuntoOggi)
+    /// Il contenuto di sempre del widget.
+    case normale
+
+    /// Dal riassunto (dell'app o del widget) e dalla risposta completa di `/api/widget`, se c'è. Senza riassunto vale la risposta
+    /// completa: la sua `formazione` (e i suoi `avvisi`) sono ancora della giornata già iniziata, non si mostrano a chi non l'ha
+    /// schierata.
+    static func di(riassunto: RiassuntoOggi?, widget: RiassuntoWidget?) -> CasoWidget {
+        if let testo = riassunto?.campionatoFinito ?? widget?.campionatoFinito { return .campionatoFinito(testo) }
+        if let r = riassunto ?? widget?.comeRiassuntoOggi(), r.senzaFormazioneInCorso { return .senzaFormazione(r) }
+        return .normale
+    }
+
+    /// Dove porta il tocco su «Da controllare»: di solito `schieraxi://oggi`, come prima; per chi è entrato a
+    /// giornata iniziata la Formazione, che è già quella della prossima, come il tocco su Prossima giornata.
+    var indirizzoDaControllare: String {
+        switch self {
+        case .senzaFormazione: return "schieraxi://formazione"
+        case .campionatoFinito, .normale: return "schieraxi://oggi"
+        }
+    }
+}
+
 // MARK: Widget «Osservato»: una sola percentuale, e i seguiti tolti dal server per il peso
 
 extension GiocatoreWidget {
@@ -1263,53 +1358,6 @@ extension GiocatoreWidget {
         if let fvAtteso { return ParoleWidget.fantavoto(fvAtteso) }
         return votoAtteso.map(ParoleWidget.votoInPagella)
     }
-}
-
-/// Il widget «Osservato» senza un giocatore da mostrare: nessun seguito, oppure seguiti tolti dal server perché la risposta era
-/// troppo grande (`mancano` contiene «osservati»). Nel secondo caso il widget non resta vuoto: manda nell'app.
-enum VuotoOsservato: Equatable {
-    case nessunSeguito
-    case seguitiNellApp
-
-    /// La riga grande.
-    var titolo: String {
-        switch self {
-        case .nessunSeguito: return "Nessun giocatore"
-        case .seguitiNellApp: return "Apri l'app per vederli"
-        }
-    }
-
-    /// La riga piccola sotto.
-    var frase: String {
-        switch self {
-        case .nessunSeguito: return "Aggiungi un giocatore ai Seguiti (Squadra), poi scegli qui."
-        case .seguitiNellApp: return "I tuoi seguiti sono in Squadra > Seguiti."
-        }
-    }
-
-    /// La riga della schermata di blocco (una riga sola, accanto all'occhio).
-    var riga: String {
-        switch self {
-        case .nessunSeguito: return "Nessun seguito"
-        case .seguitiNellApp: return "Seguiti: apri l'app"
-        }
-    }
-
-    /// Nel cerchio della schermata di blocco: una o due parole.
-    var cerchio: String {
-        switch self {
-        case .nessunSeguito: return "Nessuno"
-        case .seguitiNellApp: return "Apri l'app"
-        }
-    }
-}
-
-extension RiassuntoWidget {
-    /// true se il server ha tolto i seguiti per stare nel peso della risposta (`mancano`, dalla #180).
-    var seguitiMancanti: Bool { mancano?.contains("osservati") == true }
-
-    /// Cosa dice il widget «Osservato» quando non ha un giocatore da mostrare.
-    var vuotoOsservato: VuotoOsservato { seguitiMancanti ? .seguitiNellApp : .nessunSeguito }
 }
 
 // MARK: Widget «Chi gioca»: l'ora una volta sola, ogni colore e ogni segno con la sua parola

@@ -129,6 +129,15 @@ struct RiassuntoOggi: Codable, Equatable {
     /// `finita`: la giornata appena chiusa (Serie A e lega); `giornata` e `inizio` sono già quelli della prossima.
     var giornataChiusa: Int?
     var giornataChiusaLega: Int?
+    /// A campionato finito la frase del server (`campionato_finito` di `/api/oggi` e `/api/widget`, #727): i widget la mostrano al
+    /// posto della giornata. Nil fuori da quel caso e nei riassunti salvati da una versione di prima.
+    var campionatoFinito: String?
+    /// `in_corso` con `senza_formazione` del server (#651, #687): entrato in SchieraXI a giornata già iniziata, senza una formazione
+    /// per lei. `giornata`, `inizio` e `modulo` restano quelli della giornata già iniziata; il widget mostra la prossima. Nil fuori
+    /// da quel caso, con un server di prima e nei riassunti salvati da una versione di prima.
+    var senzaFormazione: Bool?
+    /// Con `senzaFormazione`: la giornata da preparare (`prossima` del server). Nil se il server non la manda.
+    var prossimaDaPreparare: ProssimaDaPreparare?
 
     /// La giornata con i due numeri (#299); nil senza giornata.
     var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
@@ -143,7 +152,7 @@ struct RiassuntoOggi: Codable, Equatable {
                                        daControllare: 2, probabili: true, scaricatoIl: Date())
 
     init(giornata: Int?, inizio: Date?, modulo: String?, punti: Double?, daControllare: Int, probabili: Bool?, scaricatoIl: Date,
-         dubbi: [DubbioRiassunto]? = nil, giornataLega: Int? = nil, fase: FaseRiassunto? = nil) {
+         dubbi: [DubbioRiassunto]? = nil, giornataLega: Int? = nil, fase: FaseRiassunto? = nil, campionatoFinito: String? = nil) {
         self.giornata = giornata
         self.inizio = inizio
         self.modulo = modulo
@@ -153,15 +162,22 @@ struct RiassuntoOggi: Codable, Equatable {
         self.scaricatoIl = scaricatoIl
         self.dubbi = dubbi
         self.giornataLega = giornataLega
+        self.campionatoFinito = campionatoFinito
         if let fase { applica(fase) }
     }
 
     /// Mette i dati della fase. Fuori dalla fase `prima` i «Da controllare» non hanno senso (la formazione è chiusa): si azzerano.
+    /// Per chi è entrato a giornata iniziata niente punti fatti (non ha schierato una formazione): la prossima da preparare.
     private mutating func applica(_ f: FaseRiassunto) {
         fase = f.fase
         guard f.chiusa else { return }
         daControllare = 0
         dubbi = []
+        if f.senzaFormazione {
+            senzaFormazione = true
+            prossimaDaPreparare = f.prossima.map { ProssimaDaPreparare($0) }
+            return
+        }
         if let c = f.inCorso {
             puntiFatti = c.puntiFatti
             puntiFine = c.puntiPrevisti
@@ -178,10 +194,17 @@ struct RiassuntoOggi: Codable, Equatable {
     var inCorso: Bool { fase == FaseRiassunto.faseInCorso }
     /// La giornata di prima è finita da poco: riepilogo e prossima.
     var finita: Bool { fase == FaseRiassunto.faseFinita }
+    /// Entrato a giornata già iniziata senza una formazione (`senza_formazione`, solo a giornata in corso, come
+    /// `Oggi.senzaFormazioneInCorso` nell'app): il widget mostra la prossima giornata da preparare, non la consigliata di questa.
+    var senzaFormazioneInCorso: Bool { inCorso && senzaFormazione == true }
+    /// La scadenza a cui va il conto alla rovescia dei widget: per chi è entrato a giornata iniziata quella della prossima (come
+    /// `scadenzaDi` della web), altrimenti `inizio` (a giornata finita è già quella della prossima).
+    var scadenzaDelConto: Date? { senzaFormazioneInCorso ? prossimaDaPreparare?.scadenza : inizio }
 
     /// Dalla risposta di «oggi» (la stessa per l'app e per il widget).
     init(oggi: Oggi, scaricatoIl: Date = Date()) {
-        let fase = FaseRiassunto(fase: oggi.fase?.valore, inCorso: oggi.inCorso?.valore, riepilogo: oggi.riepilogo?.valore)
+        let fase = FaseRiassunto(fase: oggi.fase?.valore, inCorso: oggi.inCorso?.valore, riepilogo: oggi.riepilogo?.valore,
+                                 senzaFormazione: oggi.senzaFormazione?.valore == true, prossima: oggi.prossima?.valore)
         let daControllare = fase.chiusa ? [] : (oggi.avvisi ?? []).filter { $0.inFormazione == true }
         self.init(giornata: oggi.giornata,
                   inizio: Quando.data(oggi.chiusura),
@@ -194,7 +217,8 @@ struct RiassuntoOggi: Codable, Equatable {
                       DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto, etichetta: $0.etichetta?.testo)
                   },
                   giornataLega: oggi.giornataLega,
-                  fase: fase)
+                  fase: fase,
+                  campionatoFinito: oggi.testoCampionatoFinito)
     }
 }
 
@@ -206,16 +230,45 @@ struct FaseRiassunto: Equatable {
     var fase: String?
     var inCorso: GiornataInCorso?
     var riepilogo: RiepilogoGiornata?
+    /// `senza_formazione` del server (#651): entrato a giornata già iniziata senza una formazione per lei.
+    var senzaFormazione: Bool
+    /// Con `senzaFormazione`, la giornata da preparare (`prossima`).
+    var prossima: ProssimaGiornata?
 
-    /// I blocchi valgono solo nella loro fase (come `Oggi.giornataInCorso` e `Oggi.riepilogoGiornata` nell'app).
-    init(fase: String?, inCorso: GiornataInCorso?, riepilogo: RiepilogoGiornata?) {
+    /// I blocchi valgono solo nella loro fase (come `Oggi.giornataInCorso`, `Oggi.riepilogoGiornata` e
+    /// `Oggi.senzaFormazioneInCorso` nell'app): `senza_formazione` e la sua `prossima` solo a giornata in corso.
+    init(fase: String?, inCorso: GiornataInCorso?, riepilogo: RiepilogoGiornata?, senzaFormazione: Bool = false,
+         prossima: ProssimaGiornata? = nil) {
         self.fase = fase
         self.inCorso = fase == Self.faseInCorso ? inCorso : nil
         self.riepilogo = fase == Self.faseFinita ? riepilogo : nil
+        self.senzaFormazione = fase == Self.faseInCorso && senzaFormazione
+        self.prossima = self.senzaFormazione ? prossima : nil
     }
 
     /// true se la formazione della giornata è chiusa (in corso o finita): niente «Da controllare».
     var chiusa: Bool { fase == Self.faseInCorso || fase == Self.faseFinita }
+}
+
+/// La giornata da preparare per chi è entrato a giornata già iniziata (`prossima` di `/api/oggi` e `/api/widget` con
+/// `senza_formazione`, #687), in forma salvabile.
+struct ProssimaDaPreparare: Codable, Equatable {
+    var giornata: Int?
+    var giornataLega: Int?
+    var scadenza: Date?
+
+    init(giornata: Int?, giornataLega: Int?, scadenza: Date?) {
+        self.giornata = giornata
+        self.giornataLega = giornataLega
+        self.scadenza = scadenza
+    }
+
+    init(_ p: ProssimaGiornata) {
+        self.init(giornata: p.giornata, giornataLega: p.giornataLega, scadenza: Quando.data(p.scadenza))
+    }
+
+    /// La giornata con i due numeri (#299); nil se il server non dice quale.
+    var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
 }
 
 // MARK: testi delle fasi per i widget (qui perché si provano con i test)

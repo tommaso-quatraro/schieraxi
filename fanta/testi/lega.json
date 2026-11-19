@@ -4,10 +4,6 @@
     "en": "Teams and rosters",
     "nota": "---- [lega] ----"
   },
-  "lega.voce_squadre_sub": {
-    "it": "La tua squadra, le altre e le loro rose",
-    "en": "Your team, the others and their rosters"
-  },
   "lega.voce_importa": {
     "it": "Aggiorna le rose",
     "en": "Update the rosters"
@@ -15,22 +11,6 @@
   "lega.voce_importa_sub": {
     "it": "Il file Excel o il testo preso da Leghe",
     "en": "The Excel file or the text taken from Leghe"
-  },
-  "lega.voce_diario": {
-    "it": "Diario delle giornate",
-    "en": "Matchday journal"
-  },
-  "lega.voce_diario_sub": {
-    "it": "La tua formazione contro quella del modello",
-    "en": "Your lineup against the model's"
-  },
-  "lega.voce_regole": {
-    "it": "Regole",
-    "en": "Rules"
-  },
-  "lega.voce_regole_sub": {
-    "it": "Punteggi, modificatore difesa, moduli, panchina, rosa",
-    "en": "Scoring, defence modifier, formations, bench, roster"
   },
   "lega.voce_stagione": {
     "it": "Nuova stagione",
@@ -291,10 +271,6 @@
   "lega.voce_miasquadra": {
     "it": "La mia squadra e rosa",
     "en": "My team and roster"
-  },
-  "lega.voce_miasquadra_sub": {
-    "it": "La tua squadra e i suoi giocatori",
-    "en": "Your team and its players"
   },
   "lega.nuova_stagione_n": {
     "it": "Nuova stagione {s}",

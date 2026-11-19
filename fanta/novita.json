@@ -1,5 +1,332 @@
 [
   {
+    "versione": "1.525",
+    "data": "2026-11-19T23:53:14",
+    "titolo": "Account: messaggi e pulizia dopo l'uscita più chiari",
+    "voci": [
+      "Il tuo account, cambio dell'email: quando confermi un indirizzo nuovo al posto di quello di prima, gli altri dispositivi escono e resta dentro solo quello che stai usando.",
+      "L'indirizzo di prima riceve un messaggio più chiaro, con i passi da fare in ordine se non sei stato tu. Lo stesso messaggio arriva anche quando togli l'email dall'account.",
+      "Web: se all'apertura il tuo accesso non vale più, la pagina toglie dal browser le copie dei tuoi dati, come quando premi «Esci»."
+    ],
+    "tecnico": [
+      "POST /api/account/email/conferma: se l'email confermata prende il posto di un'altra, account.esci_da_tutti(tranne=sessione di chi conferma) e avviso al vecchio indirizzo (testo nuovo di posta.modello_email_cambiata). POST /api/account/email/togli: stesso avviso all'indirizzo tolto. Contratto in docs/API.md.",
+      "Web, controllaAccesso: a 401 con multiutente, se in localStorage resta qualcosa di un account (restanoCopie), svuotaDatiLocali({tieniAccesso: true}) prima della schermata di accesso; sessionStorage resta (codice d'invito, ritorno da Google)."
+    ]
+  },
+  {
+    "versione": "1.524",
+    "data": "2026-11-19T23:42:35",
+    "titolo": "Torna «Esci da tutti i dispositivi»",
+    "voci": [
+      "In Impostazioni > Il tuo account, sotto «Esci», c'è di nuovo «Esci da tutti i dispositivi», sulla web e sull'iPhone. È il pulsante che consigliano le email di sicurezza quando c'è un accesso che non riconosci.",
+      "Prima di agire chiede conferma: esci da ogni telefono e computer, anche da quello che stai usando, e poi rientri come sempre. Si chiudono anche il widget e le notifiche. Se hai una password e Google collegato, la conferma ti dice anche che il collegamento con Google si toglie: per entrare con Google dovrai ricollegarlo.",
+      "Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: puoi riprovare."
+    ],
+    "tecnico": [
+      "Web e iPhone usano la rotta di sempre `POST /api/account/esci-da-tutti`, senza password nel corpo (con la password il server cambierebbe il codice di recupero, che dopo l'uscita andrebbe perso). Nessuna rotta né campo dell'API cambia.",
+      "Web: pulsante `#acc-esci-tutti` accanto a `#acc-esci`, `esciDaTutti()` in `app.js` (confirm, richiesta, poi `lasciaNotifiche(false)`, `svuotaDatiLocali()` e ricarica; con un errore diverso da 401 un avviso e nient'altro). iPhone: `RigaEsciDaTutti` in `AccountSezione.swift`, `SessioneAccount.esciDaTutti()` che svuota il telefono solo dopo la risposta del server.",
+      "Catalogo: chiavi nuove `account.esci_tutti`, `account.esci_tutti_conferma`, `account.esci_tutti_no` (anche in ios/testi/account.txt). `tests/test_consiglio_esci_da_tutti.py` lega il nome fra «» delle email (`posta.modello_*`) e della Privacy, in italiano e in inglese, a `account.esci_tutti`.",
+      "La frase su Google (`account.esci_tutti_google`) si aggiunge alla conferma solo se `accessi` del server dice password vera e un accesso Google (web: `perdeGoogle()`; iPhone: `TestiAccount.esciTuttiGoogle(accessi:)`, nel messaggio della conferma). Chi entra solo con Google resta collegato e non la vede."
+    ]
+  },
+  {
+    "versione": "1.523",
+    "data": "2026-11-19T21:43:41",
+    "titolo": "Giornata senza date: «Data da definire», uguale sulla web e sull'iPhone",
+    "voci": [
+      "Formazione, quando la Serie A non ha ancora fissato le date della giornata da preparare: al posto dell'ora in cui si chiude la formazione ora c'è scritto «Data da definire», sulla web e sull'app per iPhone. Prima c'era «Calendario non disponibile», che non era vero: il calendario c'è, manca solo la data.",
+      "Vale anche a giornata finita, sotto com'è andata, quando è la giornata dopo a non avere ancora le date."
+    ],
+    "tecnico": [
+      "GET /api/oggi: campo nuovo facoltativo senza_data = {testo, frase} (chiave giornata.senza_data), solo quando la scadenza della formazione mostrata manca (gestione.scadenza_mostrata, la regola di scadenzaDi della web: prossima.scadenza a giornata finita o con senza_formazione, altrimenti scadenza o inizio). Non c'è a campionato finito (campionato_finito), senza rose né in GET /api/widget.",
+      "Web (testoConto) e iPhone (TestaFormazione.conto, Oggi.testoSenzaData) mostrano la frase così com'è; senza il campo resta oggi.calendario_no. Contratto in docs/API.md, «fasi della giornata» (#552)."
+    ]
+  },
+  {
+    "versione": "1.522",
+    "data": "2026-11-19T21:25:09",
+    "titolo": "Aggiornamenti del server più ordinati",
+    "voci": [
+      "Nessun cambiamento visibile: l'aggiornamento automatico del server tiene un registro più pulito e manda avvisi più precisi."
+    ],
+    "tecnico": [
+      "aggiorna-app.sh (#647): la riga «installo lo stesso» dopo la mezz'ora di attesa del commit di versione si scrive una volta sola anche se l'installazione è rimandata; attesa-versione si toglie quando una versione è rifiutata; installa-subito si toglie solo a installazione riuscita; l'avviso del rifiuto nomina anche le modifiche al server senza commit di versione rimaste sotto (confronto delle cartelle del server fino all'ultimo commit senza novità in attesa) e dice se la richiesta di installare subito resta attiva.",
+      "Scambio degli ambienti Python non riuscito: si rimettono subito ambiente e file della versione di prima; la copia di sicurezza si sostituisce solo se riesce e non si rifà mai con un codice rimasto a metà (segno installazione-in-corso).",
+      "Installazione interrotta (server spento, processo fermato): il giro dopo rimette subito file e ambiente Python della versione di prima dalla copia di sicurezza, riavvia il servizio e avvisa (una volta al giorno); la stessa versione interrotta due volte diventa rifiutata. Senza copia di sicurezza non installa e l'avviso rimanda ai passi del LEGGIMI."
+    ]
+  },
+  {
+    "versione": "1.521",
+    "data": "2026-11-19T21:21:27",
+    "titolo": "Testi: le indicazioni portano alle schermate di oggi",
+    "voci": [
+      "Avvisi, email di sicurezza e messaggi di errore non nominano più le schede Lega, Squadra e Altro, che non ci sono più: dicono dove trovare la cosa nelle Impostazioni.",
+      "Sull'iPhone la frase sulla regola delle partite rinviate, l'aiuto delle regole e la fine della configurazione guidata parlano della Formazione e di Giornate, come la web."
+    ],
+    "tecnico": [
+      "Percorsi vecchi corretti in salute.py (Impostazioni > Gestione > Stato dei dati), posta.py (Impostazioni > Il tuo account), diario.py (stessa frase delle altre rotte, «La mia squadra»), asta.py e scambi_multi.py (crediti nelle Impostazioni), docstring dell'eliminazione dell'account (openapi.json rigenerato), onb.valori_piu_comuni, oggi.rinvio_regola_lega, etichette e paragrafo di Sotto il cofano (italiano e inglese).",
+      "iPhone: TestiRinvio.nota usa oggi.rinvio_regola_lega; aiuto delle regole e riga della prima giornata usano regole.rinviate_aiuto_formazione e regole.prima_giornata_conta della web; tolte dal catalogo regole.con_prima_giornata, regole.rinviate_aiuto ed err.indica_prima_squadra_diario; tolto VuotoOsservato del widget, senza chiamanti.",
+      "Nuovo tests/test_testi_percorsi.py: catalogo, stringhe del server, contenuti, stringhe Swift fuori dai commenti, guida e Sotto il cofano non devono contenere i percorsi delle schede tolte (anche con › e in inglese)."
+    ]
+  },
+  {
+    "versione": "1.520",
+    "data": "2026-11-19T21:11:08",
+    "titolo": "Avvisi: niente più doppioni vicino alla scadenza, e «Aggiorna i dati» non parte due volte",
+    "voci": [
+      "Nell'ultima ora prima della scadenza «formazione tra un'ora» e «cambia la formazione» arrivano una volta sola, anche quando due giri di controllo cadono nello stesso momento.",
+      "Impostazioni, «Aggiorna i dati» (solo per l'amministratore): mentre il server sta già aggiornando da solo, il pulsante risponde «Aggiornamento già in corso» invece di farne partire un secondo."
+    ],
+    "tecnico": [
+      "avvisi_utenti.esegui (#660): il lavoro di ogni utente sta dentro un blocco su file fra processi (avvisi.lock nella sua cartella, blocco.BloccoFile, senza creare la cartella): il giro dei promemoria dal cron e quello dei cambi del pianificatore non leggono e riscrivono più insieme gli stessi stati. Occupato oltre ATTESA_BLOCCO (30 secondi): l'utente passa al giro dopo, senza segnarsi come servito, con una riga nel registro. Senza un'ora fissa (adesso), l'ora di ogni utente si prende dopo averne preso il blocco: un giro partito prima ma arrivato dopo vede come recente l'avviso appena mandato dall'altro. Anche l'ordine del giro (avvisi-giro.json, uno per tutti e due i giri) si legge e riscrive dentro un blocco su file (ATTESA_GIRO, 5 secondi; occupato: per quel giro non si salva).",
+      "Errori che lasciano traccia: ogni utente in errore scrive una riga nel registro (numero dell'utente e tipo d'errore, mai nomi né messaggi), anche nei giri a 60, 30 e 15 minuti del servizio. Gli errori dell'avviso «cambia la formazione» (in notifiche.cambi e nel giro dei promemoria) e dei dettagli del promemoria non si ingoiano più (notifiche.segna_guasto): l'avviso parte lo stesso e il guasto va nel ritorno di esegui, che il comando stampa; senza account, una riga nel registro. I comandi cambi e promemoria con gli account stampano il numero dell'utente, non più il nome.",
+      "POST /api/aggiorna prende anche pianificatore.blocco_processo (lo stesso blocco di aggiorna.sh) e lo tiene fino alla fine del lavoro; occupato: la risposta di sempre {\"avviato\": false, \"messaggio\": \"Aggiornamento già in corso\"}. Nessun campo dell'API nuovo o tolto.",
+      "script/server/aggiorna.sh: con il blocco occupato aspetta fino a 2 minuti (flock -w 120: un giro leggero del servizio dura pochi secondi); oltre, salta il turno e lo scrive in dati/aggiorna.log invece di uscire muto. Durante «Aggiorna i dati» il turno salta tutto (anche cambi, affidabilità e taratura, rifatti al giro dopo)."
+    ]
+  },
+  {
+    "versione": "1.519",
+    "data": "2026-11-19T20:37:14",
+    "titolo": "Statistiche avanzate: quando Understat non dà i dati, l'errore dice cosa mostra il sito",
+    "voci": [
+      "Stato dei dati, riga «Statistiche avanzate»: se Understat risponde con una pagina al posto dei dati, l'errore riporta anche la frase scritta sulla pagina (in questi giorni dice che il sito tornerà presto), non più solo il nome del sito."
+    ],
+    "tecnico": [
+      "fonti/understat.dati_json (#756): RispostaNonDati per una pagina web aggiunge al titolo il testo visibile della pagina (senza head, style, script, svg, commenti e tag; al massimo 120 caratteri). Il 19/11 ogni indirizzo di Understat provato, robots.txt compreso, dà la stessa pagina statica «We will come back soon» (al nostro lettore dal 12/11, ad altri progetti dal 2/11): nessun endpoint nuovo né dati nella pagina della lega. Il modo di leggere i dati non cambia; quando il sito torna, il lettore recupera da solo le partite senza statistiche."
+    ]
+  },
+  {
+    "versione": "1.518",
+    "data": "2026-11-19T18:19:49",
+    "titolo": "Librerie: solo Python 3.12 e successivi",
+    "voci": [
+      "Nessun cambiamento visibile: l'app usa solo le versioni aggiornate delle sue librerie."
+    ],
+    "tecnico": [
+      "Tolto il supporto a Python 3.11: via le righe numpy 2.4.6 e soupsieve 2.10 per Python < 3.12 da requirements.txt, gli obiettivi 3.11 di script/blocca_dipendenze.py e i residui sui runner propri con Debian 12 (#692).",
+      "ruff e pyright ora puntano a Python 3.12."
+    ]
+  },
+  {
+    "versione": "1.517",
+    "data": "2026-11-19T05:55:00",
+    "titolo": "Testi: via le frasi che nessuna schermata mostrava più",
+    "voci": [
+      "Nessun cambiamento visibile: dai testi di web e iPhone sono uscite 40 frasi di schermate che non ci sono più (il Diario di prima e le vecchie scelte degli avvisi)."
+    ],
+    "tecnico": [
+      "Catalogo dei testi (#712): tolte 40 chiavi che né la web, né l'iPhone, né il server usavano (asp.avvisi_titolo; avv.cambi*, avv.prima*, avv.prom_*, avv.riepilogo*, avv.copertura*, avv.ore_tranq_aiuto, avv.dalle, avv.alle, avv.manda_avviso_prova, avv.per_ogni_giornata; diario.salvata, diario.non_salvata, diario.ho_schierato_*, diario.correggi, diario.tua, diario.tua_consigliata, diario.la_consigliata; imp.avvisi, imp.avvisi_sub; lega.voce_*_sub, lega.voce_diario, lega.voce_regole; mercato.come_legge, mercato.non_gioca; perche.definizione).",
+      "ios/testi: tolte le eccezioni tenute solo perché tests/test_testi.py::test_nessuna_chiave_dimenticata non le segnalasse. fanta/web/testi.js e ios/Sources/Support/Catalogo/ rigenerati con script/testi.py --scrivi. Nessuna rotta né campo dell'API cambia; nessuna di queste chiavi era una frase mandata dal server."
+    ]
+  },
+  {
+    "versione": "1.516",
+    "data": "2026-11-19T03:15:45",
+    "titolo": "Ore tranquille: si riaccendono anche se le avevi salvate con inizio e fine alla stessa ora",
+    "voci": [
+      "Impostazioni, Avvisi: chi aveva salvato le ore tranquille con inizio e fine alla stessa ora le trova spente e, sotto l'interruttore, «dalle 23 alle 7». Riaccendendole valgono dalle 23 alle 7, sulla web e sull'iPhone. Prima riaccenderle dava errore e non c'era modo di scegliere due ore diverse."
+    ],
+    "tecnico": [
+      "notifiche.impostazioni (#711): con silenzio_da uguale a silenzio_a (salvataggi di prima del controllo, accese o spente) restituisce silenzio falso e le ore predefinite (23 e 7); PUT /api/avvisi con il solo silenzio acceso non dà più 422. Due ore uguali mandate apposta con l'interruttore acceso restano rifiutate (422). ore_tranquille_spente di GET /api/avvisi non cambia. Nessun campo dell'API nuovo o tolto; i client mandano la stessa richiesta di prima.",
+      "Catalogo: avv.avevi_scelto_ore dice che riaccendendole valgono dalle 23 alle 7 (web e iPhone rigenerati con script/testi.py --scrivi)."
+    ]
+  },
+  {
+    "versione": "1.515",
+    "data": "2026-11-19T02:22:38",
+    "titolo": "Promemoria della scadenza: sull'iPhone seguono «L'ho messa» anche quando la spunta cambia dalla web",
+    "voci": [
+      "iPhone: i promemoria di un'ora e di un quarto d'ora prima della scadenza seguono la spunta «L'ho messa» anche quando la metti, la togli o cambi un titolare dalla web, senza riaprire l'app (quando l'iPhone aggiorna i dati da solo).",
+      "Chi salva la formazione dall'iPhone senza spuntare «L'ho messa» riceve il promemoria che chiede se l'ha messa nell'app della lega, come chi la salva dalla web."
+    ],
+    "tecnico": [
+      "GET /api/oggi: campo nuovo e facoltativo `serve_promemoria` (booleano) = notifiche.serve_promemoria sulla giornata di Oggi e sulle scelte di chi chiede, cioè la regola di notifiche._gia_schierato usata dal promemoria (falso solo con una scelta schierabile, messa e senza titolari fuori, in panchina o non citati). Manca senza rose.",
+      "notifiche._gia_schierato: NON_MESSA anche per le scelte con da='app' (prima solo da='web'): l'iPhone ha la spunta dal riallineamento (#673, come annunciato nella #693). Le scelte senza `da` (salvate prima del 13/11) tacciono come prima.",
+      "server._da_dove: `da: \"app\"` anche con l'intestazione `X-Schieraxi-Client: ios`, che l'app manda sempre: senza account l'iPhone non ha il token Bearer e le sue scelte restavano senza `da` (promemoria muto anche senza spunta). L'intestazione etichetta soltanto la scelta di chi salva, nessun permesso in più.",
+      "docs/API.md e docs/openapi.json (descrizione di GET /api/oggi) aggiornati."
+    ]
+  },
+  {
+    "versione": "1.514",
+    "data": "2026-11-19T02:07:48",
+    "titolo": "Squalificati: gli espulsi li riconosce SchieraXI anche senza probabili",
+    "voci": [
+      "Formazione, Oggi e schede: quando le probabili non sono ancora uscite, chi è stato espulso e non ha ancora saltato una partita risulta «Squalificato», come quando lo dicono le probabili. Prima, senza probabili, non lo era nessuno.",
+      "Con le probabili vale sempre quello che dicono loro. Le squalifiche per somma di ammonizioni e i diffidati arrivano ancora solo dalle probabili."
+    ],
+    "tecnico": [
+      "squalifiche.in_uso (#668): solo le espulsioni (misura sull'archivio locale, 44 giornate: per somma di ammonizioni 1 falso su 92, 1,09%, sopra la soglia dell'1%; per espulsione 0 su 68). L'ora è quella dell'ultimo aggiornamento riuscito del calendario (aggiornamenti, passo calendario), mai l'ora vera; con i risultati fermi (partita cominciata da più di 12 ore nelle ultime due settimane e non segnata giocata) o senza un aggiornamento riuscito la regola non si usa.",
+      "modello.previsioni(dai_cartellini=...): vale solo se la giornata non ha nessuna lettura buona delle probabili (tabella probabili vuota per la giornata: pagina non uscita, fallita o copiata); per le squadre che una lettura buona non copre restano le presenze. Stato «squalificato», p_voto 0, percentuale null. Nessun campo dell'API nuovo o tolto; docs/API.md dice da dove vengono squalificati e diffidati.",
+      "Registro dei controlli: squalificati_cartellini («Squalificati: cartellini e probabili») confronta, a giornata cominciata, gli squalificati della regola con quelli della fonte; uno solo dai cartellini è un avviso."
+    ]
+  },
+  {
+    "versione": "1.513",
+    "data": "2026-11-19T01:38:24",
+    "titolo": "Formazione: la consigliata non va avanti e indietro fra due giocatori attorno al 20%",
+    "voci": [
+      "Web, iPhone e iPad: se due giocatori dello stesso ruolo si scambiano a ogni aggiornamento sopra e sotto il 20% di probabilità di giocare, la consigliata che hai già visto non passa più dall'uno all'altro ogni volta.",
+      "Un titolare che giocava quando hai visto la consigliata e poi scende di poco sotto il 20% (gioca ancora almeno il 10%) la fa cambiare solo se un compagno del suo ruolo gioca almeno il 20% e almeno 20 punti percentuali più di lui (con lui al 12%, almeno il 32%); altrimenti serve almeno un punto atteso in più. Sotto il 10% basta, come prima, un compagno che gioca almeno il 20%. Un titolare che si infortuna o viene squalificato la fa cambiare come prima. Una formazione che hai salvato tu non cambia mai da sola."
+    ],
+    "tecnico": [
+      "consigli.stabile (`fa_cambiare`): un titolare diventato improbabile (non in `non_giocano`) con p >= MARGINE_SE_ALMENO (0,10) forza il cambio sotto la soglia di punti solo con un compagno di ruolo libero con p >= max(COMPAGNO_ALMENO, p del titolare + MARGINE_COMPAGNO), MARGINE_COMPAGNO = 0,20 (#737). Sotto MARGINE_SE_ALMENO, per chi era già fuori o improbabile quando la consigliata è stata mostrata e per chi è diventato fuori nulla cambia. Nessun campo nuovo nelle risposte."
+    ]
+  },
+  {
+    "versione": "1.512",
+    "data": "2026-11-19T01:02:28",
+    "titolo": "Formazione: chi quasi certamente non gioca è titolare ancora meno spesso",
+    "voci": [
+      "Web, iPhone e iPad: se in un ruolo giocano tutti meno del 20%, nella consigliata parte chi è più probabile che giochi; a parità, chi vale di più quando gioca. Prima partiva chi dava più punti attesi, anche se giocava meno.",
+      "Web, iPhone e iPad: fra i moduli la consigliata è il migliore fra quelli con meno titolari che quasi certamente non giocano, anche se un altro modulo ha più punti attesi (di solito qualche decimo, a volte quasi un punto).",
+      "La consigliata che hai già visto cambia quando un suo titolare quasi certamente non gioca e nel suo ruolo c'è un compagno che gioca almeno il 20%, anche se quel titolare non giocava già allora e anche quando la nuova formazione ha un altro modulo. Prima, se non giocava già allora, restava quando il cambio valeva meno di un punto.",
+      "Un titolare che scende sotto il 20% senza un compagno del suo ruolo che gioca almeno il 20% non fa più cambiare da solo la consigliata che hai già visto: serve almeno un punto in più. Così non va avanti e indietro quando un giocatore sale e scende attorno al 20%. Un titolare che si infortuna o viene squalificato la fa cambiare come prima. Una formazione che hai salvato tu non cambia mai da sola.",
+      "Sotto il campo e nel confronto fra due giocatori dello stesso ruolo: quando tutti e due giocano meno del 20%, il motivo detto è che l'altro quasi certamente non gioca, e non più che il modulo «non è il migliore»."
+    ],
+    "tecnico": [
+      "formazione._senza_improbabili: se nel ruolo fuori dagli 11 nessuno gioca almeno COMPAGNO_ALMENO, l'improbabile lascia il posto al compagno fuori con (p, fantavoto atteso) più alti, se sono più alti dei suoi (#632, terzo caso).",
+      "formazione.migliore: i moduli si ordinano per (quanti titolari hanno p < IMPROBABILE_SOTTO senza stare in `fissi`, -punteggio scelto); cambia anche l'ordine di `alternative` e di `moduli` nella risposta (#632, secondo caso).",
+      "consigli.stabile (`fa_cambiare`): un titolare che la migliore lascia fuori forza il cambio sotto la soglia se è fuori o improbabile e nel suo ruolo c'è un compagno con p >= COMPAGNO_ALMENO fuori dagli 11 di prima e non fermo per un anticipo (`Fermi.fuori`, `Fermi.panchina`), anche se era in `non_giocano` e anche quando la migliore cambia modulo (#632, primo caso); oppure se è diventato fuori (non in `non_giocano`). Un improbabile senza un compagno così non forza più il cambio, nemmeno se lo è diventato: prima un compagno che oscillava attorno al 20% faceva cambiare la consigliata a ogni giro.",
+      "formazione.titolare_perche_gioca: la condizione delle frasi `confronto.titolare_che_gioca` e `scelta.titolare_che_gioca` vale anche quando il titolare è improbabile ma più probabile dell'altro. Nessun campo nuovo e nessuna frase nuova."
+    ]
+  },
+  {
+    "versione": "1.511",
+    "data": "2026-11-19T00:54:15",
+    "titolo": "Regolamento incollato: anche le righe dubbie senza numeri sono da controllare",
+    "voci": [
+      "Web app, Impostazioni, Regole e scadenza, «Riconosci le regole»: le righe che SchieraXI non sa leggere con sicurezza ora stanno tutte sotto «Righe da controllare a mano», nell'ordine del regolamento incollato, anche quelle senza numeri, per esempio «Non è vietato il cambio modulo» o «Riserve libere: no». Sotto ognuna «da impostare» dice quale regola mettere a mano. Prima comparivano solo le righe con numeri, e una regola da impostare a mano poteva passare inosservata.",
+      "«Nessun cambio modulo» ora vuol dire che il cambio modulo non c'è: prima veniva letto come consentito. Una riga con «nessun» davanti ad altro, per esempio «Cambio modulo: nessun divieto», non propone niente e sta fra le righe da controllare a mano.",
+      "«Riserve libere» e «Riserve fisse» si leggono come «Panchina libera» e «Panchina fissa»: prima non proponevano niente.",
+      "L'app per iPhone mostra ancora solo le righe con numeri, con il titolo di prima."
+    ],
+    "tecnico": [
+      "POST /api/regole/riconosci: campo nuovo e facoltativo da_controllare, [{riga, regole: [{chiave, etichetta}]}] nell'ordine del testo: le righe di non_riconosciute più al massimo 30 righe dubbie (regole_testo._si_no None per cambio modulo e modificatore della difesa, regole_testo._tipo_panchina None: ora distingue None, dubbia, da NIENTE, tipo non detto). Il tipo di panchina al plurale («libere», «fisse») si legge come al singolare (PANCHINA_LIBERA, PANCHINA_PER_RUOLO). Nessun campo tolto o rinominato; /api/onboarding/regole non cambia.",
+      "Lettore del regolamento (regole_testo.NESSUN_DICE_NO, _detto): «nessun», «nessuno», «nessuna» dicono no solo subito prima del nome della regola («nessun cambio modulo», «nessun modificatore»), in «in nessun caso» e da soli alla fine («Cambio modulo: nessuno»); un altro «nessun» («nessun divieto», «con nessun difensore») rende la lettura dubbia, tranne quando la riga dice no con altre parole («vietato», «assente», «no»). Dentro una condizione «nessun» vale come «non» (_senza_condizione), così «modificatore attivo quando nessun difensore…» resta sì.",
+      "Web: chiavi nuove regole.da_controllare e regole.da_impostare; regole.non_riconosciute resta per l'iPhone. Contratto in docs/API.md (#684)."
+    ]
+  },
+  {
+    "versione": "1.510",
+    "data": "2026-11-19T00:06:49",
+    "titolo": "Controlli: aggiornata una libreria per i Python più vecchi",
+    "voci": [
+      "Aggiornata, solo nei controlli automatici che girano con una versione di Python più vecchia, la libreria che serve a leggere le pagine delle fonti dei dati. Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "soupsieve da 2.9.2 a 2.10 per Python < 3.12 (requirements-vincoli.in, requirements.txt rigenerato con script/blocca_dipendenze.py): chiude CVE-2026-126192. Restano CVE-2026-126190, -126191 e -126193, corrette solo dalla 3.0.2 e dalla 4.0, che chiedono Python 3.11.5 (Debian 12 ha 3.11.2). Il server (Python 3.12) resta su soupsieve 4.0."
+    ]
+  },
+  {
+    "versione": "1.509",
+    "data": "2026-11-19T00:04:03",
+    "titolo": "Rose: con l'app in inglese anche gli avvisi dopo il salvataggio sono in inglese",
+    "voci": [
+      "Impostazioni, Aggiorna le rose: con l'app in inglese, gli avvisi che compaiono dopo «Conferma e salva» sono in inglese come quelli del controllo, invece di restare in italiano."
+    ],
+    "tecnico": [
+      "#723: la risposta di POST /api/rose/testo, /api/rose/file e /api/admin/utenti/{id}/rose ha il campo nuovo facoltativo avvisi_frasi (frasi.lista degli avvisi, come l'anteprima). La web lo legge con testiDi(esito, \"avvisi\") in vistaImportaRose. Nessun campo tolto o rinominato.",
+      "#723: importazione per conto di con sostituisci_tutto sopra un rose.json che non si legge più: niente copia datata del file rovinato (lo tiene già rose.json.rovinato), così le cinque copie buone in rose-prima restano tutte."
+    ]
+  },
+  {
+    "versione": "1.508",
+    "data": "2026-11-18T23:51:09",
+    "titolo": "App in inglese: le note sugli infortuni non sbagliano più dito, collo del piede e legamenti",
+    "voci": [
+      "Con l'app in inglese, sulla scheda del giocatore, la nota sull'infortunio distingue il dito della mano («finger») da quello del piede («toe»); un «dito» senza altro resta in italiano.",
+      "«Collo del piede» diventa «instep» e non più «neck of the foot»; «legamento crociato anteriore» non ripete più due volte «ligament».",
+      "Note come «Influenzato, da valutare» o «Fratturato» restano in italiano invece di diventare un inglese senza senso («Flu in the to»); «Influenza.» con il punto finale diventa «Flu.» e non più «Flu in the .»."
+    ],
+    "tecnico": [
+      "note_infortuni.traduci: la causa si riconosce solo se finisce a un confine di parola (re.match con \\b, prima p.startswith).",
+      "«dito» tolto da CORPO: si traduce solo davanti a «della mano» (finger) o «del piede» (toe), dizionario DITO; voci nuove di CORPO «collo del piede» (instep), «legamento crociato anteriore», «legamento crociato», «legamento collaterale mediale» (#666).",
+      "La punteggiatura finale della nota (punto, punto e virgola, virgola, spazi) si toglie prima di tradurre e si rimette in fondo; in _causa un pezzo di sola punteggiatura fa restare la nota in italiano."
+    ]
+  },
+  {
+    "versione": "1.507",
+    "data": "2026-11-18T23:47:51",
+    "titolo": "Nuova stagione: un secondo telefono o computer non svuota più le rose appena importate",
+    "voci": [
+      "Impostazioni, La mia lega, Nuova stagione: se hai già archiviato la stagione da un altro dispositivo, toccare l'avviso rimasto a schermo non cancella più le rose nuove: l'app ti dice che le rose sono già della stagione in corso, o che sono cambiate su un altro dispositivo. Sulla web l'avviso sparisce; sull'iPhone resta finché non si ricarica la pagina.",
+      "Se nell'app avevi cambiato il nome della tua squadra, con la nuova stagione la squadra tiene anche il nome di Leghe: alla prima importazione delle rose nuove i giocatori arrivano nella tua squadra, senza una squadra doppia.",
+      "Dopo Nuova stagione, finché non importi le rose nuove, Formazione ti invita a importarle con «Aggiorna le rose», come al primo avvio."
+    ],
+    "tecnico": [
+      "POST /api/nuova-stagione (#657): dentro il blocco delle rose rilegge le rose e, se non sono di una stagione passata (stagione.NienteDaArchiviare, stagione delle rose >= stagione in corso), risponde 409 con stagione.GIA_DELLA_STAGIONE senza scrivere niente. Accetta If-Match sull'ETag delle rose (412) e risponde con l'ETag delle rose ripartite. Messaggio tradotto in err.gia_della_stagione.",
+      "stagione.archivia_e_riparti ricrea le squadre con nome_importato: alla reimportazione lega.nomi_rinominati riconosce la squadra rinominata.",
+      "server._rose_da_schierare: per /api/oggi e /api/formazione le rose senza nessun giocatore valgono «senza rose» (la regola di _ha_rose): Oggi risponde con senza_rose e Formazione con 409 «Nessuna rosa importata: importale con «Aggiorna le rose»». rose_importate di /api/stato non cambia.",
+      "Web: POST /api/nuova-stagione è una scrittura sulla risorsa «rose» (risorsaDi), quindi manda If-Match con l'ultimo ETag delle rose (al 412 ricarica). Al 409 di «Archivia e riparti» si chiude il foglio e si toglie l'avviso «Nuova stagione»."
+    ]
+  },
+  {
+    "versione": "1.506",
+    "data": "2026-11-17T23:11:56",
+    "titolo": "A campionato finito l'app lo dice, invece di aspettare un calendario che non serve",
+    "voci": [
+      "Web app, Formazione, dopo l'ultima giornata del campionato: per due giorni si vede com'è andata l'ultima giornata (e, se manca un suo recupero, si sceglie come contarlo), poi la frase «Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.».",
+      "Prima, appena finita l'ultima partita, compariva un errore che parlava del calendario della stagione non ancora disponibile, anche aprendo l'avviso del riepilogo dell'ultima giornata. L'app per iPhone e i suoi widget non mostrano ancora la frase nuova.",
+      "D'estate, dal 1° luglio all'uscita del calendario nuovo, resta il messaggio di sempre sul calendario."
+    ],
+    "tecnico": [
+      "consigli.stagione_finita(db, stagione, adesso): nessuna giornata da giocare e almeno una partita giocata. consigli.senza_giornata sceglie l'errore: CampionatoFinito (409, codice campionato_finito, frase campionato.finito) o SenzaCalendario (400, il messaggio di sempre); il gestore dei ValueError ammette anche 409.",
+      "GET /api/oggi a campionato finito: 200 con i campi vuoti come senza rose, fase finita, prossima null, riepilogo dell'ultima giornata nelle 48 ore (fasi.calcola_fase) e il campo nuovo facoltativo campionato_finito {testo, frase} (gestione.oggi_campionato_finito). GET /api/widget: 200 con lo stesso campo e formazione, rosa, avvisi e seguiti vuoti. GET /api/formazione, /api/formazione/testo, /api/osservati, /api/mercato: 409 con la stessa frase (err.campionato_finito per la web in inglese).",
+      "Sentinella: il rifiuto per mancanza di giornata (gravità senza_giornata) non è una rottura a campionato finito né d'estate (dal 1° luglio al 31 agosto, ESTATE_FINO_A, con la stagione nuova senza partite e quella prima finita: sentinella.senza_giornata_normale); resta risposta_rifiutata quando il calendario manca davvero, anche da settembre con la stagione nuova ancora vuota. Fase finita senza prossima e widget senza formazione non sono rotture a campionato finito.",
+      "Web: con campionato_finito la Formazione mostra la testa della giornata finita (riepilogoGiornata), il menu di riepilogo.rinvio se c'è e la frase del server; con prossima_giornata null in /api/stato non chiede /api/formazione. Contratto in docs/API.md, «Campionato finito» (#656)."
+    ]
+  },
+  {
+    "versione": "1.505",
+    "data": "2026-11-17T22:51:51",
+    "titolo": "Copia notturna: dentro anche le fonti e le funzioni spente dall'amministratore",
+    "voci": [
+      "Se il server va rifatto da una copia notturna, le fonti dei dati e le funzioni che l'amministratore aveva spento restano spente, e le consigliate già mostrate tornano quelle della notte della copia."
+    ],
+    "tecnico": [
+      "script/server/backup-dati.sh copia anche dati/fonti.json, dati/funzioni.json (scelte dell'amministratore: solo nomi e acceso/spento, niente segreti), dati/consigliate.json e dati/sentinella.json (#664). docs/RIPRISTINO-SERVER.md li elenca nella tabella della copia e dice cosa fare con una copia di prima, che non li ha."
+    ]
+  },
+  {
+    "versione": "1.504",
+    "data": "2026-11-17T22:18:20",
+    "titolo": "Formazione: un salvataggio non riuscito si dice anche se sei già in un'altra schermata",
+    "voci": [
+      "Formazione: se cambi la formazione, passi subito a un'altra schermata e il salvataggio non riesce, ora un avviso lo dice lì. Prima non compariva niente e sembrava salvato."
+    ],
+    "tecnico": [
+      "fanta/web/app.js, mostraFormazione: altrove(n) restituisce se la scrittura è l'ultima partita dalla schermata (non più se ha riletto); salvaTitolari e tornaConsigliata mostrano l'avviso del loro errore anche con la Formazione lasciata o riletta. Nella Formazione l'avviso resta il motivo (e.message); su un'altra schermata (o sulla formazione di un'altra squadra) le frasi nuove del catalogo formazione.non_salvata_rete (errore di rete) e formazione.non_salvata (rifiuto del server). Una scrittura superata da una dopo resta senza avviso. Nuovi test nel browser: questo caso (#667) e il conflitto (412) su Regole e rose, con la modifica rifatta che porta l'If-Match riletto, mai nessuno."
+    ]
+  },
+  {
+    "versione": "1.503",
+    "data": "2026-11-17T21:56:34",
+    "titolo": "Importazione delle rose: via le squadre di esempio rimaste, e un salvataggio fallito non fa sparire le rose",
+    "voci": [
+      "Impostazioni, Aggiorna le rose: se nella lega erano rimaste le quattro squadre di esempio insieme alle tue, la prossima importazione le toglie e il controllo delle rose lo dice. Le tue squadre restano tutte.",
+      "Se le rose salvate non si leggono più e il server non riesce a salvare quelle nuove, vedi l'errore e le rose di prima restano dove sono, invece di «nessuna rosa»."
+    ],
+    "tecnico": [
+      "server._rose_di_prima restituisce anche l'avviso da mettere in cima agli avvisi. Lega già mista (#683): se ci sono tutte e quattro le squadre di onboarding.SQUADRE_DEMO, una volta sola, mai rinominate e ancora come le crea onboarding.crea_demo (giocatori con id, costo null, riconosciuto «esatto», nessun avviso, nessuno in due esempi) insieme ad altre squadre, anteprima e importazione partono dalle rose senza gli esempi (e senza mia_squadra se era un esempio), con l'avviso rose.esempi_tolti (param squadre, tradotto in testi.js). Con un solo esempio diverso non si tocca niente. Scelta: alla prossima importazione e non all'avvio, perché l'utente agisce, vede l'avviso nell'anteprima prima di salvare e rose.json.bak tiene la lega di prima.",
+      "File delle rose rovinato (#683): server._salva_mettendo_da_parte sposta rose.json in rose.json.rovinato, salva e, se il salvataggio fallisce senza aver scritto rose.json (disco pieno 507, database degli account che non risponde 503), lo rimette al suo posto e rilancia l'errore. La riga nel registro del server si scrive solo dopo il salvataggio riuscito.",
+      "Importazione per conto di (#718): la copia datata delle rose con sostituisci_tutto la fa _importa (parametro copia_datata) dopo tutti i controlli che possono rifiutare, compresi i tetti di squadre e giocatori di limiti.controlla_rose: un rifiuto non aggiunge copie e non toglie la più vecchia delle cinque."
+    ]
+  },
+  {
+    "versione": "1.502",
+    "data": "2026-11-17T21:23:53",
+    "titolo": "Giornata con metà partite rinviate a settimane dopo: scadenza e regola dei rinvii sulle partite giuste",
+    "voci": [
+      "Oggi e Formazione, giornata con poche partite nel fine settimana e le altre rinviate a dopo la giornata successiva: la formazione si chiude con la prima partita del fine settimana, anche con i recuperi già in calendario.",
+      "Le partite di quel fine settimana non risultano più «Rinviata», e la regola della lega sulle partite rinviate vale per chi ha il recupero, in Formazione e nel Diario, non per chi gioca nel fine settimana.",
+      "Diario: con «senza voto» o «voto d'ufficio» quella giornata si chiude appena finito il fine settimana, senza aspettare i recuperi."
+    ],
+    "tecnico": [
+      "turno.inizio(date, prossimo): con l'inizio del turno della giornata dopo, un turno non comincia mai da lì in poi; se la regola di sempre lo fa cominciare dopo (4 giocate e 6 rinviate a settimane dopo: il gruppo più numeroso sono i recuperi), il turno si cerca fra le partite prima della giornata dopo (#698). Senza prossimo, o con il turno che comincia prima della giornata dopo, nulla cambia: giornate normali, anticipi, anticipi lontani, metà giornata rinviata dentro la sosta.",
+      "prossimo passato da avvisi.prima_partita (scadenza), rinvii.fuori_turno, rinviate, id_rinviate e giornate_chiuse (Diario, formazione, giornata chiusa per la lega), fasi.inizio_turno, fine_giornata, recuperi_mancanti, stati_giocatori, squadre_in_anticipo_iniziato e aggiungi, gestione.oggi_senza_rose e live.risposta (GET /api/live). Nuova avvisi.turno_dopo. Nessun campo dell'API cambia."
+    ]
+  },
+  {
     "versione": "1.501",
     "data": "2026-11-13T17:11:35",
     "titolo": "Importazione delle rose: due omonimi restano tutti e due, e un Excel con tanti fogli non si taglia in silenzio",

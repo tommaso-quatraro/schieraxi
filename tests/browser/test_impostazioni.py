@@ -214,7 +214,122 @@ def test_con_un_account_l_indirizzo_dell_account_apre_l_account(web):
     da_utente(web)
     web.apri("/?vista=impostazioni&gruppo=account")
     assert titolo(web) == "Il tuo account"
-    assert principale(web).get_by_role("button", name="Esci").is_visible()
+    assert principale(web).get_by_role("button", name="Esci", exact=True).is_visible()
+
+
+# ---------------------------------------------------------------- Esci da tutti i dispositivi (#765)
+ESCI_TUTTI = "Esci da tutti i dispositivi"
+
+
+def uscita_ovunque(web, stato: int | None = 200) -> list[str]:
+    """Il server di «Esci da tutti»: la rotta risponde con `stato` (None: la richiesta non arriva). Se riesce, da lì ogni
+    /api/... risponde 401 come il server vero a sessioni chiuse. Restituisce i metodi delle richieste arrivate alla rotta."""
+    arrivate, uscito = [], []
+    a_sessione_chiusa = json.dumps({"detail": "Serve l'accesso", "multiutente": True})
+
+    def altre(route):
+        if uscito:
+            route.fulfill(status=401, content_type="application/json; charset=utf-8", body=a_sessione_chiusa)
+        else:
+            route.fallback()
+
+    def esci(route):
+        arrivate.append(route.request.method)
+        if stato is None:
+            route.abort()
+            return
+        if stato == 200:
+            uscito.append(True)
+        route.fulfill(status=stato, content_type="application/json; charset=utf-8",
+                      body=json.dumps({"sessioni_chiuse": 3} if stato == 200 else {}))
+
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), altre)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci-da-tutti", esci)
+    return arrivate
+
+
+def chiavi_salvate(web) -> list[str]:
+    """Le copie dei dati e l'account lasciati nel browser (localStorage)."""
+    return [k for k in web.pagina.evaluate("Object.keys(localStorage)") if k.startswith("cache:") or k == "account"]
+
+
+def test_esci_da_tutti_chiede_conferma_ed_esce_ovunque(web):
+    """Il pulsante consigliato dalle email di sicurezza c'è in Il tuo account. La conferma dice che si esce ovunque, anche da qui,
+    e che si dovrà rientrare; dopo l'uscita si torna alla pagina d'accesso e nel browser non restano copie dei dati né l'account."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/")                                              # la Formazione lascia nel browser le sue copie
+    assert chiavi_salvate(web), "la prova vuole delle copie da togliere"
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    domande = []
+
+    def rispondi(dialogo):
+        domande.append(dialogo.message)
+        dialogo.accept()
+
+    web.pagina.on("dialog", rispondi)
+    principale(web).get_by_role("button", name=ESCI_TUTTI).click(timeout=10000)
+    web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).wait_for(timeout=10000)
+    assert len(domande) == 1, domande
+    assert all(parte in domande[0] for parte in ("tutti i dispositivi", "anche da questo", "accedere di nuovo")), domande
+    assert arrivate == ["POST"]
+    assert chiavi_salvate(web) == []
+
+
+GOOGLE = [{"provider": "google", "email": "nome@example.invalid", "creata": "2026-10-01T10:00:00", "ultimo_uso": None}]
+
+
+@pytest.mark.parametrize("password, social, dice_google", [(True, GOOGLE, True), (False, GOOGLE, False), (True, [], False)],
+                         ids=["google-e-password", "solo-google", "senza-google"])
+def test_esci_da_tutti_dice_di_google_solo_a_chi_perde_il_collegamento(web, password, social, dice_google):
+    """Il server toglie il collegamento con Google a chi ha una password (dopo, «Continua con Google» non fa entrare finché non si
+    ricollega); chi entra solo con Google lo tiene. La conferma lo dice solo a chi lo perde, leggendo `accessi` del server."""
+    solo(web, "prima")
+    da_utente(web, {**UTENTE, "social": ["google"], "accessi": {"password": password, "social": social, "disponibili": ["google"]}})
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    domande = []
+
+    def rispondi(dialogo):
+        domande.append(dialogo.message)
+        dialogo.dismiss()
+
+    web.pagina.on("dialog", rispondi)
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    assert len(domande) == 1 and "anche da questo" in domande[0], domande
+    assert ("Il collegamento con Google si toglie" in domande[0]) is dice_google, domande
+    assert arrivate == []
+
+
+def test_esci_da_tutti_annullato_non_fa_niente(web):
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    web.pagina.on("dialog", lambda dialogo: dialogo.dismiss())
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    assert arrivate == []
+    assert titolo(web) == "Il tuo account"
+
+
+@pytest.mark.parametrize("stato", [500, None], ids=["errore-del-server", "rete-giu"])
+def test_esci_da_tutti_non_riuscito_lo_dice_e_resta_dentro(web, stato):
+    """Se la richiesta non riesce gli altri dispositivi sono ancora dentro: un avviso lo dice, si resta nella pagina e le copie
+    restano (al contrario di «Esci», che esce anche con il server spento)."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/")
+    web.apri("/?vista=impostazioni&gruppo=account")
+    prima = chiavi_salvate(web)
+    arrivate = uscita_ovunque(web, stato)
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    web.pagina.get_by_role("status").filter(has_text="Non riesco a farti uscire da tutti i dispositivi").wait_for(timeout=10000)
+    assert arrivate == ["POST"]
+    assert titolo(web) == "Il tuo account"
+    assert principale(web).get_by_role("button", name=ESCI_TUTTI).is_visible()
+    assert chiavi_salvate(web) == prima
 
 
 # ---------------------------------------------------------------- valori salvati da versioni di prima
@@ -357,10 +472,28 @@ def test_nuova_stagione_compare_in_la_mia_lega_quando_serve(web):
     assert web.pagina.get_by_role("dialog").get_by_role("button", name="Archivia e riparti").is_visible()
 
 
+def test_nuova_stagione_gia_archiviata_altrove_toglie_l_avviso(web):
+    """Un altro dispositivo ha già archiviato e importato le rose nuove: il server risponde 409 senza scrivere niente (#657). Il
+    foglio si chiude, l'avviso rimasto a schermo sparisce e si legge il messaggio del server."""
+    solo(web, "prima")
+    messaggio = "Le rose sono già della stagione in corso: non c'è niente da archiviare."
+    web.risposta("/api/stagione", {"corrente": "2027-28", "rose": "2026-27", "nuova": True})
+    web.risposta("/api/nuova-stagione", {"detail": messaggio}, stato=409)
+    web.apri("/?vista=impostazioni")
+    avviso = sezione(web, "La mia lega").get_by_role("button", name=re.compile("Nuova stagione 2027-28"))
+    avviso.wait_for(timeout=10000)
+    tocca(web, avviso)
+    web.pagina.once("dialog", lambda d: d.accept())                     # «Archivio la stagione…?»: sì
+    tocca(web, web.pagina.get_by_role("dialog").get_by_role("button", name="Archivia e riparti"))
+    web.pagina.locator("#avviso").get_by_text(messaggio).wait_for(timeout=5000)
+    web.pagina.locator("#foglio").wait_for(state="hidden", timeout=5000)
+    assert avviso.count() == 0
+
+
 # ---------------------------------------------------------------- Regole e scadenza
 RICONOSCIUTE = {"modifiche": [{"chiave": "crediti_iniziali", "etichetta": "Crediti iniziali", "valore": 500, "riga": "Crediti: 500"},
                               {"chiave": "bonus.assist", "etichetta": "Assist", "valore": 1.5, "riga": "Assist +1,5"}],
-                "non_riconosciute": []}
+                "non_riconosciute": [], "da_controllare": []}
 
 
 def _scritture(web, rotta: str) -> list[dict]:
@@ -382,6 +515,28 @@ def test_il_regolamento_incollato_si_salva_con_un_tocco(web):
     tocca(web, principale(web).get_by_role("button", name="Salva queste regole"))
     assert salvate, "le regole riconosciute non sono state salvate"
     assert salvate[-1]["crediti_iniziali"] == 500 and salvate[-1]["bonus"]["assist"] == 1.5
+    assert not web.errori_mostrati()
+
+
+def test_le_righe_da_controllare_a_mano_dicono_la_regola_e_seguono_il_testo(web):
+    """Le righe non lette, anche quelle dubbie senza numeri, stanno sotto un titolo solo, nell'ordine del testo (lo dà il server),
+    e quelle dubbie dicono quale regola impostare a mano (#684)."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "non_riconosciute": ["Media 6-6,5: +1"], "da_controllare": [
+        {"riga": "Non è vietato il cambio modulo",
+         "regole": [{"chiave": "panchina.cambio_modulo", "etichetta": "Cambio modulo nelle sostituzioni"}]},
+        {"riga": "Media 6-6,5: +1", "regole": []}]})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    titolo = principale(web).get_by_text("Righe da controllare a mano (2)", exact=True)
+    assert titolo.is_visible() and not principale(web).get_by_text("Non è vietato il cambio modulo").is_visible()
+    tocca(web, titolo)
+    elenco = principale(web).locator("details", has_text="Righe da controllare a mano (2)")
+    regola = elenco.get_by_text("da impostare: Cambio modulo nelle sostituzioni", exact=True)
+    assert regola.is_visible() and elenco.get_by_text("Media 6-6,5: +1", exact=True).is_visible()
+    testo = elenco.inner_text()
+    assert testo.index("Non è vietato il cambio modulo") < testo.index("Cambio modulo nelle sostituzioni") < testo.index("Media 6-6,5")
     assert not web.errori_mostrati()
 
 
@@ -409,6 +564,92 @@ def test_la_scadenza_si_cambia_e_si_salva_subito(web):
     principale(web).get_by_label("Quando si chiude la formazione?").select_option("30")
     web.aspetta()
     assert salvate and salvate[-1]["scadenza_minuti"] == 30
+
+
+# ---------------------------------------------------------------- conflitto (412) su regole e rose (#667)
+CONFLITTO = {"detail": "Questi dati sono stati cambiati da un altro dispositivo. Ho ricaricato la versione nuova: controlla e rifai la modifica."}
+
+
+def risorsa_con_etag(web, letture: tuple[str, ...], scritture: tuple[str, ...]) -> dict:
+    """Fa la parte del server vero su una risorsa con ETag (fanta/versioni.py): ogni lettura dà la risposta registrata con l'ETag
+    di adesso; una scrittura con un If-Match vecchio è rifiutata (412), una senza If-Match è accettata, anche sopra ciò che ha
+    salvato un altro dispositivo. `srv["cambia"]()`: un altro dispositivo salva; `srv["if_match"]`: l'If-Match di ogni scrittura."""
+    srv = {"versione": 0, "if_match": []}
+    js = "application/json"
+
+    def etag() -> str:
+        return f'"v{srv["versione"]}"'
+
+    def cambia() -> None:
+        srv["versione"] += 1
+
+    def leggi(route):
+        if route.request.method != "GET":
+            return route.fallback()
+        from playwright.sync_api import Error as ErrorePlaywright
+        try:
+            risposta = route.fetch()
+            route.fulfill(response=risposta, headers={**risposta.headers, "etag": etag()})
+        except ErrorePlaywright:                                       # la scheda si è chiusa (fine del test) a lettura in volo
+            pass
+
+    def scrivi(route):
+        if route.request.method == "GET":
+            return route.fallback()
+        voluto = route.request.headers.get("if-match")
+        srv["if_match"].append(voluto)
+        if voluto is not None and voluto != etag():
+            return route.fulfill(status=412, content_type=js, headers={"ETag": etag()}, body=json.dumps(CONFLITTO))
+        cambia()
+        route.fulfill(status=200, content_type=js, headers={"ETag": etag()}, body='{"ok": true}')
+
+    srv["cambia"] = cambia
+    web.pagina.route(lambda u: urlsplit(u).path in letture, leggi)
+    web.pagina.route(lambda u: urlsplit(u).path in scritture, scrivi)
+    return srv
+
+
+@pytest.mark.parametrize("dove", ["regole", "rose"])
+def test_dopo_un_412_la_modifica_rifatta_porta_l_if_match_riletto_e_mai_nessuno(web, dove):
+    """Un altro dispositivo ha cambiato le regole (o le rose): la modifica fatta qui è rifiutata (412), l'avviso lo dice e la pagina
+    si ricarica da sola. Rifatta prima della ricarica parte con l'If-Match vecchio ed è rifiutata ancora: mai senza If-Match, che il
+    server accetterebbe sopra ciò che ha salvato l'altro dispositivo. Rifatta dopo la ricarica porta l'ETag riletto e passa."""
+    solo(web, "prima")
+    if dove == "regole":
+        srv = risorsa_con_etag(web, ("/api/regole",), ("/api/regole",))
+        indirizzo, valori = "/?vista=impostazioni&gruppo=regole", ("30", "60", "30")
+
+        def modifica(valore):
+            principale(web).get_by_label("Quando si chiude la formazione?").select_option(valore)
+    else:
+        srv = risorsa_con_etag(web, ("/api/squadre", "/api/rosa"), ("/api/crediti",))
+        indirizzo, valori = "/?vista=impostazioni&gruppo=squadra", ("20", "21", "20")
+
+        def modifica(valore):
+            principale(web).get_by_label("Crediti residui").fill(valore)
+            principale(web).get_by_role("button", name="Salva", exact=True).click()
+
+    def scrive(r) -> bool:
+        return r.request.method == "PUT" and urlsplit(r.url).path in ("/api/regole", "/api/crediti")
+
+    web.apri(indirizzo)
+    srv["cambia"]()                                                    # dall'altro dispositivo
+    avviso = web.pagina.get_by_role("status").filter(has_text="cambiati da un altro dispositivo")
+    with web.pagina.expect_event("load", timeout=10000):              # dopo il 412 la pagina si ricarica da sola
+        with web.pagina.expect_response(scrive, timeout=10000) as prima:
+            modifica(valori[0])
+        assert prima.value.status == 412
+        avviso.first.wait_for(timeout=10000)
+        with web.pagina.expect_response(scrive, timeout=10000) as rifatta:
+            modifica(valori[1])                                        # rifatta subito, prima della ricarica
+        assert rifatta.value.status == 412, "la modifica rifatta prima della ricarica è passata sopra l'altro dispositivo"
+    web.aspetta()
+    with web.pagina.expect_response(scrive, timeout=10000) as dopo:
+        modifica(valori[2])                                            # rifatta dopo la ricarica
+    assert dopo.value.status == 200
+    web.aspetta()
+    assert srv["if_match"] == ['"v0"', '"v0"', '"v1"'], srv["if_match"]
+    assert not web.errori_mostrati()
 
 
 # ---------------------------------------------------------------- Avvisi

@@ -64,8 +64,8 @@ extension Catalogo {
         /// `regole.prima_giornata_aiuto`
         static let primaGiornataAiuto = "la giornata di Serie A da cui parte la lega (1 se è partita con il campionato)"
 
-        /// `regole.con_prima_giornata`
-        static let conPrimaGiornata = "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Diario e promemoria contano da lì."
+        /// `regole.prima_giornata_conta`
+        static let primaGiornataConta = "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Giornate e promemoria contano da lì."
 
         /// `regole.nome_della_lega`
         static let nomeDellaLega = "Nome della lega"
@@ -94,6 +94,16 @@ extension Catalogo {
         /// `regole.da_riga`
         static func daRiga(r: String) -> String {
             "da: «\(r)»"
+        }
+
+        /// `regole.da_controllare`
+        static func daControllare(n: String) -> String {
+            "Righe da controllare a mano (\(n))"
+        }
+
+        /// `regole.da_impostare`
+        static func daImpostare(r: String) -> String {
+            "da impostare: \(r)"
         }
 
         /// `regole.non_riconosciute`
@@ -232,8 +242,8 @@ extension Catalogo {
         /// `regole.rinviate`
         static let rinviate = "Partite rinviate"
 
-        /// `regole.rinviate_aiuto`
-        static let rinviateAiuto = "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo da Oggi."
+        /// `regole.rinviate_aiuto_formazione`
+        static let rinviateAiutoFormazione = "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo dalla Formazione."
 
         /// `regole.rv_aspetta`
         static let rvAspetta = "Aspetta il recupero"

@@ -57,6 +57,12 @@ extension FinteServer {
         case "oggi-finita-recupero":
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso, recupero: true)
             server.indirizzoFinto = "https://finto-recupero-da-giocare.invalid"
+        case "formazione-campionato-finito":
+            // a campionato finito (#727), come il server: Oggi con il riepilogo dell'ultima giornata (le prime 48 ore) e la frase
+            // `campionato_finito`; la Formazione, e ogni rotta che vuole una giornata, 409 con il codice `campionato_finito`
+            server.risposte["/api/oggi"] = DatiDemo.oggiCampionatoFinito()
+            server.fallimenti["/api/formazione"] = .codificato(codice: "campionato_finito", messaggio: DatiDemo.testoCampionatoFinito)
+            server.indirizzoFinto = "https://finto-campionato-finito.invalid"
         default:
             return nil
         }
@@ -69,7 +75,7 @@ extension FinteServer {
     static func faseDemo(_ schermata: String?) -> LegaDemo.Fase {
         switch schermata ?? "" {
         case "oggi-in-corso", "formazione-in-corso", "formazione-chiusa": return .inCorso
-        case "oggi-finita", "oggi-finita-recupero", "formazione-finita": return .finita
+        case "oggi-finita", "oggi-finita-recupero", "formazione-finita", "formazione-campionato-finito": return .finita
         default: return .prima
         }
     }
@@ -652,6 +658,20 @@ private extension LegaDemo {
         return json(o)
     }
 
+    /// Oggi a campionato finito come il server (`oggi_campionato_finito` di `fanta/gestione.py`, #656): i campi di sempre vuoti,
+    /// la fase `finita` senza `prossima`, il riepilogo dell'ultima giornata (`riepilogoCampionatoFinito`) e `campionato_finito`.
+    static func oggiCampionatoFinito() -> String {
+        json([
+            "giornata": NSNull(), "giornata_lega": NSNull(), "inizio": NSNull(), "scadenza": NSNull(), "minuti_scadenza": minutiScadenza,
+            "ore_mancanti": NSNull(), "iniziata": false, "con_probabili": false, "probabili": NSNull(),
+            "formazione": ["modulo": "–", "punteggio_atteso": NSNull(), "squadra": nomeMia, "dev": NSNull(), "intervallo": NSNull(),
+                           "tua_scelta": false] as [String: Any],
+            "avvisi": [Any](), "migliori": [Any](), "partite": [Any](), "miei_titolari": [String: Any](), "da_fare": [Any](),
+            "fase": Fase.finita.rawValue, "in_corso": NSNull(), "riepilogo": riepilogoCampionatoFinito(), "prossima": NSNull(),
+            "rinvio": NSNull(), "campionato_finito": campionatoFinito,
+        ] as [String: Any])
+    }
+
     // MARK: - Elenco dei giocatori (per i risultati della ricerca)
 
     /// L'elenco dei giocatori della giornata (`/api/classifica`) come il server: chi ha almeno il 20% di giocare, dal più atteso,
@@ -821,7 +841,13 @@ private extension LegaDemo {
             ["chiave": "bonus.ammonizione", "etichetta": "Ammonizione", "valore": -0.5, "riga": "Ammonizione: -0.5"],
             ["chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 7, "riga": "Panchina: 7 giocatori"],
             ["chiave": "moduli", "etichetta": "Moduli ammessi", "valore": ["3-4-3", "4-3-3", "4-4-2"], "riga": "Moduli: 3-4-3, 4-3-3, 4-4-2"],
-        ] as [[String: Any]], "non_riconosciute": ["Il bonus per il rigore parato vale 3 punti, tranne in coppa"]])
+        ] as [[String: Any]], "non_riconosciute": ["Il bonus per il rigore parato vale 3 punti, tranne in coppa"],
+        // come il server dal 19/11/2026 (#733): le righe con numeri non lette e quelle dubbie, con la regola da impostare a mano
+        "da_controllare": [
+            ["riga": "Il bonus per il rigore parato vale 3 punti, tranne in coppa", "regole": [[String: Any]]()],
+            ["riga": "Non è vietato il cambio modulo",
+             "regole": [["chiave": "panchina.cambio_modulo", "etichetta": "Cambio modulo nelle sostituzioni"]]],
+        ] as [[String: Any]]])
     }
 
     static func novita() -> String {
@@ -837,9 +863,11 @@ private extension LegaDemo {
     }
 
     static func avvisi() -> String {
-        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true, "copertura": true, "app_nativa": true,
-                              "silenzio": false, "silenzio_da": 23, "silenzio_a": 23, "avviso_prima": 60],
-              "canale": true, "dispositivi": 2, "ore_tranquille_spente": true])
+        // come le manda il server a chi ha le ore tranquille di sempre (dalle 23 alle 7) accese (#673 passo 3: la sezione Avvisi delle
+        // Impostazioni le mostra); le scelte per singolo avviso restano, l'app non le usa più
+        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "copertura": true, "app_nativa": true,
+                              "silenzio": true, "silenzio_da": 23, "silenzio_a": 7, "avviso_prima": 60],
+              "canale": true, "dispositivi": 2])
     }
 
     /// Diario delle giornate: le quattro giornate finite prima di quella di Oggi (la 4, 5, 6 e 7 della lega, Serie A 7-10),
@@ -923,6 +951,14 @@ private extension LegaDemo {
         // quando è stata calcolata la consigliata (Serie A 10, 9, 8: l'istantanea; Serie A 7 no)
         let calcolata: [Int: String] = [10: "2026-10-31T10:05:00", 9: "2026-10-24T09:40:00", 8: "2026-10-17T11:20:00"]
         let tuoi: [Int: [String]] = [9: altra, 8: altra2]
+        // chi ha fatto meglio o peggio del previsto (`fatti_e_attesi.testo` di fanta/diario.py, #672): la frase la scrive il server,
+        // qui il suo testo per i numeri della tabella qui sopra (`DemoDiarioTests` controlla che siano quelli)
+        let frasiScarti: [Int: String] = [
+            10: "Meglio del previsto: Leonel (+2,6) e Bastrani (+1,5). Peggio: Thorvan (\u{2212}1,5) e Kloosmeijer (\u{2212}1,2).",
+            9: "Meglio del previsto: Thorvan (+2,7) e Dimarzi (+1,6). Peggio: Pulinski (\u{2212}1,4).",
+            8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Orsetti (\u{2212}1,5).",
+            7: "Meglio del previsto: Lemão (+2,0). Peggio: Kloosmeijer (\u{2212}2,1) e Pulinski (\u{2212}1,5).",
+        ]
         func esito(_ e: EsitoGiornata, _ nomi: [String]) -> [String: Any] {
             ["modulo": e.modulo, "atteso": e.atteso, "reale": e.fatti, "intervallo": fascia(e.atteso), "titolari": titolari(nomi)]
         }
@@ -949,6 +985,15 @@ private extension LegaDemo {
                     ? "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata."
                     : "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata."
             }
+            // fatti contro attesi della formazione che conta (la tua, poi la copia alla scadenza, poi la consigliata), come il server
+            let tua = voce["schierata"] != nil
+            let conta: EsitoGiornata = tua ? (g.schierata ?? c) : c
+            let formazione: String = tua ? "schierata" : (calcolata[g.serieA] != nil ? "automatica" : "consigliata")
+            let differenza: Double = ((conta.fatti - conta.atteso) * 10).rounded() / 10
+            var fatti: [String: Any] = ["formazione": formazione, "atteso": conta.atteso, "fatti": conta.fatti,
+                                        "differenza": differenza, "testo": NSNull()]
+            if let frase = frasiScarti[g.serieA] { fatti["testo"] = frase }
+            voce["fatti_e_attesi"] = fatti
             return voce
         }
         return json([

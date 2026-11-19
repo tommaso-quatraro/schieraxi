@@ -4,6 +4,7 @@ import SwiftUI
 /// massimo due decisioni, il modulo come menu con i punti attesi, il campo, la riga dello stato con «Torna alla consigliata», «Copia
 /// per l'app della lega» e «L'ho messa», la panchina nell'ordine in cui entra, i non schierati, gli infortunati e squalificati e le
 /// partite rinviate. Il salvataggio è automatico. Sull'iPad due colonne: a sinistra testa e campo, a destra decisioni ed elenchi.
+/// A campionato finito il riepilogo dell'ultima giornata, se c'è, e la frase del server (#727).
 /// Solo presentazione: la logica è in `FormazioneViewModel` (formazione e scelta) e `OggiViewModel` (la giornata).
 struct FormazioneView: View {
     @ObservedObject var vm: FormazioneViewModel
@@ -13,7 +14,6 @@ struct FormazioneView: View {
     @Environment(\.apriGiocatore) private var apriGiocatore
     @Environment(\.vaiASezione) private var vaiASezione
     @Environment(\.apriRosaDi) private var apriRosaDi
-    @Environment(\.apriImpostazioni) private var apriImpostazioni
     @Environment(\.horizontalSizeClass) private var classe
     @Environment(\.dynamicTypeSize) private var taglia
     @Environment(\.scenePhase) private var fase
@@ -56,7 +56,6 @@ struct FormazioneView: View {
                 .bordiMorbidi()
             }
             .navigationTitle(Catalogo.Nav.formazione)
-            .ricercaGlobale()
             .sheet(item: $vm.daSostituire) { g in
                 if let f = vm.formazione {
                     SceltaSostituto(uscente: g, candidati: vm.sostituti(di: g, f)) { nuovo in
@@ -123,6 +122,8 @@ struct FormazioneView: View {
     private var contenuto: some View {
         if vm.squadraVista == nil, oggi.oggi?.senzaRose == true {
             benvenuto
+        } else if vm.campionatoFinito {
+            campionatoFinito
         } else if let f = vm.formazione {
             pagina(f)
         } else if let errore = vm.errore {
@@ -172,6 +173,21 @@ struct FormazioneView: View {
             }
             .pulsanteVetro(prominente: true)
         }
+    }
+
+    /// A campionato finito, come `mostraCampionatoFinito` della web: la testa con il riepilogo dell'ultima giornata, se il server lo
+    /// manda ancora, e la sua frase al posto della prossima giornata; con un recupero dell'ultima giornata da giocare il menu per
+    /// scegliere come contarlo. Niente campo né decisioni, e niente errore: il 409 di `/api/formazione` qui è la risposta giusta.
+    /// Sull'iPad non si allarga a tutta la pagina.
+    private var campionatoFinito: some View {
+        VStack(alignment: .leading, spacing: Tema.spazioSchede) {
+            TestaFormazioneView(oggi: oggi.oggi, formazione: nil) { giornata in
+                nav.apriGiornate(giornata)
+            }
+            menuRinvioRiepilogo
+        }
+        .frame(maxWidth: 720, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: testa e decisioni
@@ -232,18 +248,19 @@ struct FormazioneView: View {
     }
 
     /// Dove porta una decisione che non scrive (`dfApri` della web): la guida, la rosa della tua squadra, le rose da aggiornare, le
-    /// Impostazioni, una pagina di Squadra o di Altro.
+    /// Impostazioni o una loro pagina.
     private func apri(_ v: DaFareVoce) {
         if v.tipo == "primo_avvio" {
             nav.guidaAperta = true
             return
         }
         if v.allaRosa {
-            if let nome = vm.formazione?.squadra ?? oggi.oggi?.formazione?.squadra, let apriRosaDi { apriRosaDi(nome) } else { vaiASezione(.squadra) }
+            if let nome = vm.formazione?.squadra ?? oggi.oggi?.formazione?.squadra, let apriRosaDi { apriRosaDi(nome) } else { nav.vai(a: .impostazioni(.lega)) }
             return
         }
         guard let d = v.destinazione?.destinazione else { return }
-        if v.tipo == "rose", case .sezione = d {
+        // le rose da aggiornare aprono «Aggiorna le rose» anche se il server dice solo la sezione
+        if v.tipo == "rose", d.portaAlleImpostazioni {
             nav.vai(a: .pagina(.importa))
             return
         }
@@ -252,9 +269,7 @@ struct FormazioneView: View {
             if s != .formazione { vaiASezione(s) }
         case .giocatore(let id):
             apriGiocatore(id)
-        case .impostazioni:
-            apriImpostazioni?()
-        case .pagina, .collegaWidget:
+        case .impostazioni, .pagina, .collegaWidget:
             nav.vai(a: d)
         }
     }
@@ -447,7 +462,13 @@ struct FormazioneView: View {
             }
             .id("rinvio")
         }
-        if mia, let s = oggi.oggi?.riepilogoGiornata?.rinvio {
+        if mia { menuRinvioRiepilogo }
+    }
+
+    /// Il recupero dell'ultima giornata finita ancora da giocare: come contarlo per quella giornata (`riepilogo.rinvio`).
+    @ViewBuilder
+    private var menuRinvioRiepilogo: some View {
+        if let s = oggi.oggi?.riepilogoGiornata?.rinvio {
             Carta {
                 MenuRinvio(scelta: s, inCorso: oggi.rinvioInCorso) { scelta, m in await oggi.cambiaRinvio(scelta, modo: m) }
             }
@@ -482,4 +503,12 @@ struct FormazioneView: View {
     FormazioneView(vm: FormazioneViewModel(server: FinteServer.esempio, oggi: oggi), oggi: oggi)
         .environmentObject(Navigazione())
         .environmentObject(SessioneAccount(server: FinteServer.esempio))
+}
+
+#Preview("Campionato finito") {
+    let server = FinteServer.demoFase("formazione-campionato-finito") ?? FinteServer.esempio
+    let oggi = OggiViewModel(server: server, conPromemoria: false)
+    FormazioneView(vm: FormazioneViewModel(server: server, oggi: oggi), oggi: oggi)
+        .environmentObject(Navigazione())
+        .environmentObject(SessioneAccount(server: server))
 }

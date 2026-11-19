@@ -158,7 +158,7 @@ struct DecisioniTests {
         let r = try Self.rose()
         #expect(!r.urgente && !r.scrive)
         #expect(r.testoPulsante == "Aggiorna le rose")
-        #expect(r.destinazione?.destinazione == .sezione(.altro), "«lega» è Altro")
+        #expect(r.destinazione?.destinazione == .impostazioni(.lega), "«lega» è La mia lega delle Impostazioni")
     }
 
     // MARK: dalla Formazione

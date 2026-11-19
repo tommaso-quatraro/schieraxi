@@ -125,7 +125,7 @@ mu = voto in pagella atteso
 
 > **Un caso vero: Thuram, giornata 8 del 2026-27 (Inter-Fiorentina)** (numeri veri del modello). Calcolo rifatto il 30/10/2026 con i soli dati precedenti alla giornata 8 (senza probabili, quindi p viene dalle presenze, vedi la sezione 11: ha preso voto in tutte le ultime 6 partite, ma p = 0,86, ricalcolata il 2/11/2026). La partita vale 2,46 gol attesi per l'Inter contro 0,99 della Fiorentina. Voto in pagella atteso 6,46; gol attesi 0,505 e a 3 punti l'uno fanno +1,52; assist attesi 0,144 fanno +0,14; cartellini e altro circa -0,06. Totale mu = 8,06. La probabilità di segnare almeno un gol è 1 - e^(-0,505) = 39,7%.
 
-Nell'app: Formazione (tocca un giocatore per vedere i pezzi); Lega > Regole.
+Nell'app: Formazione (tocca un giocatore per vedere i pezzi); Impostazioni > Regole e scadenza.
 
 Codice: `fanta/modello.py:previsioni`, `fanta/punteggio.py:fantavoto`, `fanta/consigli.py:_componenti`
 
@@ -258,6 +258,8 @@ Codice: `fanta/modello.py:previsioni`
 
 È la parte più delicata, perché un campione che resta in panchina porta zero punti. Quando ci sono le probabili formazioni di Fantacalcio.it (si aggiornano più volte al giorno) il modello le legge: titolare con una percentuale, panchina con una percentuale, infortunato, squalificato, in dubbio, diffidato.
 
+Infortunati, squalificati e diffidati li dice la stessa pagina. Quando le probabili della giornata non ci sono ancora, chi è stato espulso e da allora non ha ancora saltato una partita risulta squalificato lo stesso, e vale 0: lo ricava SchieraXI dai cartellini dei voti e dal calendario. Le squalifiche per somma di ammonizioni e i diffidati arrivano solo dalla pagina, perché ricavati dai cartellini sbaglierebbero troppo spesso (misura del 19/11/2026 sulle giornate passate: per somma di ammonizioni 1 squalificato sbagliato su 92, per espulsione nessuno su 68). Se i risultati sono fermi i cartellini non si usano; quando la pagina c'è, vale la pagina.
+
 Un titolare al 90% non gioca con probabilità 0,90: se non parte spesso entra comunque dalla panchina, e il voto manca solo se entra per pochi minuti. Un infortunato o squalificato vale 0. Chi è in dubbio vale un quarto in meno. Un giocatore non citato vale 2%.
 
 Questi numeri di partenza sono scelti a mano. Da 4 giornate giocate con le probabili salvate poco prima della prima partita il server li ritara da solo su metà delle giornate e li prova sull'altra metà; li usa solo da 8 giornate e se sbagliano meno; se poi peggiorano torna ai numeri di partenza.
@@ -274,7 +276,7 @@ in dubbio: p × 0,75 · infortunato o squalificato: 0 · non citato: 0,02
 
 Nell'app: Formazione (stato e percentuale accanto a ogni giocatore).
 
-Codice: `fanta/modello.py:_p_da_probabili`, `fanta/modello.py:P_SUBENTRO_TITOLARE`, `fanta/modello.py:P_SENZA_VOTO`, `fanta/fonti/fantacalcio.py:leggi_probabili`, `fanta/taratura_probabili.py:esegui`
+Codice: `fanta/modello.py:_p_da_probabili`, `fanta/modello.py:P_SUBENTRO_TITOLARE`, `fanta/modello.py:P_SENZA_VOTO`, `fanta/fonti/fantacalcio.py:leggi_probabili`, `fanta/squalifiche.py:in_uso`, `fanta/taratura_probabili.py:esegui`
 
 ## 11. Senza probabili: presenze recenti, coppe e calibrazione  [nerd]
 
@@ -306,7 +308,7 @@ Codice: `fanta/modello.py:_presenze_recenti_varie`, `fanta/modello.py:p_senza_pr
 
 Per ogni modulo ammesso dalla tua lega il sistema compone i migliori undici e poi prova a migliorarli scambiando un titolare con i migliori esclusi dello stesso ruolo, finché non trova più vantaggi. Alla fine sceglie il modulo con più punti attesi.
 
-«Migliore» vuol dire più punti attesi, contando anche chi entra dalla panchina. Per questo tra i titolari può esserci uno che gioca meno di un compagno escluso: quando gioca vale di più, e quando non gioca entra la riserva. Chi quasi certamente non gioca (meno del 20%) lascia invece il posto a un compagno che gioca almeno il 20%, se in rosa c'è, qualunque sia il costo in punti attesi.
+«Migliore» vuol dire più punti attesi, contando anche chi entra dalla panchina. Per questo tra i titolari può esserci uno che gioca meno di un compagno escluso: quando gioca vale di più, e quando non gioca entra la riserva. Chi quasi certamente non gioca (meno del 20%) lascia invece il posto a un compagno che gioca almeno il 20%, se in rosa c'è, qualunque sia il costo in punti attesi. Se nel ruolo giocano tutti meno del 20%, parte chi è più probabile che giochi (a parità, chi vale di più quando gioca). E fra i moduli si sceglie il migliore fra quelli con meno titolari sotto il 20%.
 
 Ogni modulo ha la sua formazione migliore, e puoi vederli tutti nell'app con i punti attesi.
 
@@ -414,7 +416,7 @@ Codice: `fanta/scambi_multi.py:analizza_completo`, `fanta/scambi_multi.py:cerca_
 
 ## 20. Conguagli in crediti  [nerd]
 
-Uno scambio può includere crediti (positivi se li ricevi, negativi se li paghi). L'app controlla che chi paga li abbia, secondo i crediti residui salvati in Lega, e che nessuno superi il limite di 100.000.
+Uno scambio può includere crediti (positivi se li ricevi, negativi se li paghi). L'app controlla che chi paga li abbia, secondo i crediti residui salvati nelle Impostazioni, e che nessuno superi il limite di 100.000.
 
 Per dare un valore in punti ai crediti, usa il mercato degli svincolati della squadra: somma i guadagni in punti delle sue migliori mosse e li divide per quanto costano (quotazione di chi entra meno il rimborso di chi esce). Il risultato è un tasso: punti attesi in stagione per ogni credito. Il valore dei crediti scambiati è conguaglio × tasso, e il giudizio finale usa il guadagno netto. Senza tasso (nessuna mossa utile) i crediti si mostrano ma non entrano nel giudizio.
 
@@ -427,7 +429,7 @@ tasso = Σ guadagno delle mosse utili / Σ (quotazione di chi entra - rimborso)
 netto = guadagno in punti + conguaglio × tasso
 ```
 
-Nell'app: Scambi > Conguaglio; Lega > Crediti.
+Nell'app: Scambi > Conguaglio; Impostazioni > La mia squadra.
 
 Codice: `fanta/scambi_multi.py:tasso_da_mercato`, `fanta/scambi_multi.py:controlla_conguaglio`, `fanta/scambi_multi.py:analizza_completo`
 

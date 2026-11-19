@@ -7,7 +7,8 @@
   L'uscita del finto Python è quella VERA di fanta/aggiorna.py (passi finti, niente rete): se cambia il formato delle righe
   «non riuscito», queste prove se ne accorgono.
 - backup-dati.sh: l'archivio delle statistiche (dati/fanta.sqlite) va nella copia notturna, preso con l'API di backup di SQLite a
-  servizio acceso, e il ripristino di docs/RIPRISTINO-SERVER.md (pacchetto estratto nella cartella dell'app) lo rimette.
+  servizio acceso, e il ripristino di docs/RIPRISTINO-SERVER.md (pacchetto estratto nella cartella dell'app) lo rimette. Lo stesso
+  per le scelte dell'amministratore su fonti e funzioni, le consigliate già mostrate e la storia della sentinella (#664).
 Case finte in cartelle temporanee, finti curl, date e flock: niente server vero, niente rete."""
 import contextlib
 import json
@@ -335,3 +336,44 @@ def test_backup_dati_se_la_copia_dell_archivio_non_riesce_salva_il_resto_tiene_l
     assert "./dati/fanta.sqlite" in _nomi_nel_pacchetto(pacchetto)
     assert len(list(dest.glob("dati-*.tar.gz"))) == 14
     assert len(mandati()) == 2 and "di nuovo" in mandati()[1]
+
+
+# ---------------------------------------------------------------- backup-dati.sh: le scelte dell'amministratore nella copia (#664)
+
+# dati inventati, nella forma che scrivono fonti_attive.imposta, funzioni.imposta, consigli e sentinella
+STATO_DEL_SERVER = {
+    "dati/fonti.json": {"understat": False, "foto": False},
+    "dati/funzioni.json": {"immagini_web": False, "live": False},
+    "dati/consigliate.json": {"0" * 32: {"stagione": "2026-27", "giornata": 12, "modulo": "3-4-3", "titolari": list(range(101, 112)),
+                                         "panchina": [201, 202], "non_giocano": [], "quando": "2026-11-15T10:00:00",
+                                         "utenti": [3]}},
+    "dati/sentinella.json": {"aperte": {}, "utenti": {"utente 3": "2026-11-15T10:00:00"}, "ultimo_giro": "2026-11-15T10:00:00",
+                             "giri": [{"quando": "2026-11-15T10:00:00+01:00", "rotte": [], "inviato": False}]},
+}
+
+
+@con_bash
+def test_backup_dati_mette_le_scelte_dell_amministratore_e_il_ripristino_le_rimette(tmp_path):
+    """Fonti e funzioni spente dall'amministratore (dati/fonti.json, dati/funzioni.json) non si rifanno da sole: senza la copia, dopo
+    un ripristino con le variabili di produzione tornano accese per tutti, anche la funzione che scarica immagini da indirizzi scritti
+    dagli utenti. Nella copia anche le consigliate già mostrate (dati/consigliate.json) e la storia dei giri della sentinella
+    (dati/sentinella.json). Il ripristino è quello di docs/RIPRISTINO-SERVER.md, passo 2: il pacchetto estratto nella cartella nuova."""
+    from fanta import fonti_attive, funzioni
+    app = tmp_path / "app"
+    _scrivi(app, "dati/scelte.json", "SCELTE")
+    for rel, contenuto in STATO_DEL_SERVER.items():
+        _scrivi(app, rel, json.dumps(contenuto))
+    r, dest, _ = _lancia_backup_dati(tmp_path, app)
+    assert r.returncode == 0, r.stderr
+    [pacchetto] = dest.glob("dati-*.tar.gz")
+    nuova = tmp_path / "nuova"
+    with tarfile.open(pacchetto) as t:
+        nomi = t.getnames()
+        t.extractall(nuova, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+    assert [f"./{rel}" for rel in STATO_DEL_SERVER if f"./{rel}" not in nomi] == [], nomi
+    for rel, contenuto in STATO_DEL_SERVER.items():
+        assert json.loads((nuova / rel).read_text(encoding="utf-8")) == contenuto, rel
+    # rimesse dove il server le legge, valgono di nuovo come scelte dell'amministratore (non come predefinito)
+    assert fonti_attive.origine("understat", nuova / "dati" / "fonti.json") == (False, "amministratore")
+    assert funzioni.origine("immagini_web", nuova / "dati" / "funzioni.json") == (False, "amministratore")
+    assert funzioni.origine("live", nuova / "dati" / "funzioni.json") == (False, "amministratore")

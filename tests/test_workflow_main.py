@@ -67,11 +67,15 @@ def test_main_rosso_apre_un_issue_p1_con_permesso_minimo():
     assert "github.event_name != 'pull_request'" in cond          # solo corse su main: le PR hanno già il loro esito
     assert "github.ref == 'refs/heads/main'" in cond              # una corsa lanciata a mano su un ramo non apre issue
     assert "contains(needs.*.result, 'failure')" in cond
+    # un job oltre il suo tetto di minuti (timeout-minutes) finisce «cancelled», non «failure»: è un rosso anche quello.
+    # Se è annullata l'intera corsa, !cancelled() è falso e nessuna issue nasce (su main nessuna corsa si annulla da sola).
+    assert "contains(needs.*.result, 'cancelled')" in cond
     assert "!cancelled()" in cond or "always()" in cond
     needs = re.search(r"^    needs:\s*\[([^\]]*)\]", j, re.M).group(1)
-    for lavoro in ("test", "script-server", "cambi", "ios", "pip-audit"):
+    for lavoro in ("test", "script-server", "cambi", "ios", "pip-audit", "browser"):    # browser: issue #630
         assert lavoro in [n.strip() for n in needs.split(",")], lavoro
     comandi = _comandi(j)
+    assert "browser ${{ needs.browser.result }}" in comandi        # l'issue dice quale job è rosso
     assert "gh issue create" in comandi and "P1" in comandi and "gh issue comment" in comandi
     assert _permessi(j) == {"issues": "write"}
 
