@@ -8,34 +8,86 @@ in foto.json (avviso su stderr: il comando stampato non li copre)."""
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import sys
+from functools import lru_cache
 
 import aree
 import comune
+import grafo_ios
 
 
 def _corrisponde(file: str, percorsi: list[str]) -> bool:
     return any(aree.corrisponde(file, p) for p in percorsi)
 
 
-def schermate(file: list[str]) -> dict:
-    dati = comune.leggi_json("foto.json")
+def scene_di_screenshot() -> list[str]:
+    """I nomi delle schermate (variabile TUTTE di ios/scripts/screenshot.sh, letto e mai cambiato)."""
+    testo = (comune.RADICE / "ios" / "scripts" / "screenshot.sh").read_text(encoding="utf-8")
+    trovato = re.search(r"^TUTTE=\((.*?)\)", testo, re.S | re.M)
+    return trovato.group(1).split() if trovato else []
+
+
+@lru_cache(maxsize=1)
+def grafo_del_repository() -> grafo_ios.Grafo:
+    return grafo_ios.Grafo(grafo_ios.leggi(comune.RADICE))
+
+
+def _nomi(dati: dict, schermate) -> list[str]:
+    return list(dati["principali"] if schermate == "principali" else schermate)
+
+
+def scegli(file: str, dati: dict, grafo: grafo_ios.Grafo, scene: list[str]) -> dict:
+    """Come si sceglie per un file: «ignora», «widget», «regola» (a mano, stretta: vince), «grafo» (viste radice raggiunte,
+    al massimo «soglia_radici»), «ripiego» (regola larga), «senza». Restituisce modo, schermate e perché."""
+    if not file.startswith("ios/") or _corrisponde(file, dati["ignora"]):
+        return {"modo": "ignora", "schermate": [], "perche": "non cambia l'aspetto"}
+    if _corrisponde(file, dati["widget"]):
+        return {"modo": "widget", "schermate": [], "perche": "foto dei widget"}
+    regola = next((r for r in dati["regole"] if _corrisponde(file, r["percorsi"])), None)
+    if regola is not None and not regola.get("ripiego"):
+        return {"modo": "regola", "schermate": _nomi(dati, regola["schermate"]), "perche": "regola a mano di foto.json"}
+    radici_scena: dict[str, list[str]] = {}
+    for s in scene:
+        for modello, tipi in dati.get("radici", {}).items():
+            if aree.corrisponde(s, modello):
+                for t in tipi:
+                    radici_scena.setdefault(t, []).append(s)
+    trovate = grafo.radici(file, set(radici_scena), set(dati.get("barriere", [])))
+    soglia = dati.get("soglia_radici", 4)
+    if 0 < len(trovate) <= soglia:
+        scelte = {s for t in trovate for s in radici_scena[t]}
+        strade = "; ".join(" ← ".join(strada) for strada in trovate.values())
+        return {"modo": "grafo", "schermate": [s for s in scene if s in scelte], "perche": f"dal codice: {strade}"}
+    motivo = (f"il codice arriva a {len(trovate)} viste radice (più di {soglia})" if trovate
+              else "il codice non arriva a nessuna vista radice")
+    if regola is not None:
+        return {"modo": "ripiego", "schermate": _nomi(dati, regola["schermate"]), "perche": f"{motivo}: regola larga"}
+    return {"modo": "senza", "schermate": [], "perche": motivo}
+
+
+def schermate(file: list[str], dati: dict | None = None, grafo: grafo_ios.Grafo | None = None,
+              scene: list[str] | None = None) -> dict:
+    dati = dati if dati is not None else comune.leggi_json("foto.json")
     scelte: list[str] = []
-    widget, senza = False, []
+    widget, senza, perche = False, [], {}
     for f in file:
         if not f.startswith("ios/") or _corrisponde(f, dati["ignora"]):
             continue
-        if _corrisponde(f, dati["widget"]):
+        if grafo is None and not _corrisponde(f, dati["widget"]):
+            grafo = grafo_del_repository()
+        if scene is None:
+            scene = scene_di_screenshot()
+        s = scegli(f, dati, grafo, scene)
+        perche[f] = f"{s['modo']}: {s['perche']}"
+        if s["modo"] == "widget":
             widget = True
-            continue
-        regola = next((r for r in dati["regole"] if _corrisponde(f, r["percorsi"])), None)
-        if regola is None:
+        elif s["modo"] == "senza":
             senza.append(f)
-            continue
-        nomi = dati["principali"] if regola["schermate"] == "principali" else regola["schermate"]
-        scelte += [n for n in nomi if n not in scelte]
-    return {"schermate": scelte, "widget": widget, "senza": senza}
+        else:
+            scelte += [n for n in s["schermate"] if n not in scelte]
+    return {"schermate": scelte, "widget": widget, "senza": senza, "perche": perche}
 
 
 def comando(esito: dict, ref: str = "main", dispositivi: str = "iphone") -> list[str]:

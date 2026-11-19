@@ -98,19 +98,17 @@ def test_righe_dei_crediti_portano_solo_la_rosa():
 
 
 def test_ogni_file_di_presentation_ha_una_voce_o_un_ripiego_dichiarato():
-    """Le regole «ripiego» (larghe) valgono per un file di ios/Sources/Presentation solo se è scritto in «ripiego_dichiarato»:
-    un file nuovo chiede di scegliere le sue schermate invece di prendere tutte quelle di una sezione."""
+    """Un file di ios/Sources/Presentation non prende in silenzio tutte le schermate di una sezione: ha una regola stretta, o il
+    codice lo porta a poche viste radice («radici» di foto.json, #505), o è scritto in «ripiego_dichiarato» (parti comuni)."""
     dati = comune.leggi_json("foto.json")
     dichiarati = set(dati["ripiego_dichiarato"])
     file = sorted(str(p.relative_to(RADICE)).replace("\\", "/")
                   for p in (RADICE / "ios" / "Sources" / "Presentation").rglob("*.swift"))
     assert file
-    senza_voce = []
-    for f in file:
-        regola = next(r for r in dati["regole"] if any(foto.aree.corrisponde(f, p) for p in r["percorsi"]))
-        if regola.get("ripiego") and f not in dichiarati:
-            senza_voce.append(f)
-    assert senza_voce == [], ("aggiungi una regola in script/squadra/foto.json o il file in «ripiego_dichiarato», "
+    grafo, scene = foto.grafo_del_repository(), foto.scene_di_screenshot()
+    senza_voce = [f for f in file if f not in dichiarati and foto.scegli(f, dati, grafo, scene)["modo"] in ("ripiego", "senza")]
+    assert senza_voce == [], ("il codice non porta questi file a nessuna vista radice (o a troppe): aggiungi una regola in "
+                              "script/squadra/foto.json, le viste radice in «radici» o il file in «ripiego_dichiarato», "
                               "e script/squadra nella riga «Aree:» della PR")
     assert dichiarati - set(file) == set(), ("in «ripiego_dichiarato» di script/squadra/foto.json ci sono file che non "
                                              "esistono più (e script/squadra va nella riga «Aree:» della PR)")
@@ -157,11 +155,13 @@ def test_pr_aperta_da_riga_di_comando_usa_il_ramo(capsys):
 def test_gli_strumenti_di_ios_scripts_non_chiedono_foto():
     """#717: ios/scripts/screenshot.sh (lo strumento delle foto, non l'app) dava l'avviso «aggiungi una regola»."""
     esito = foto.schermate(["ios/scripts/screenshot.sh", "ios/scripts/schermo_fermo.py"])
+    esito.pop("perche")
     assert esito == {"schermate": [], "widget": False, "senza": []}
 
 
 def test_gli_script_dei_widget_chiedono_le_foto_dei_widget():
     esito = foto.schermate(["ios/scripts/screenshot_widget.sh"])
+    esito.pop("perche")
     assert esito == {"schermate": [], "widget": True, "senza": []}
 
 
