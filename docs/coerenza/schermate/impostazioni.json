@@ -53,6 +53,15 @@
       "forma": "web",
       "chi": "**fatto** (#580 web; #594 pulsante del file sulla web e sull'iPhone; #595 ripresa della guida sull'iPhone, prova `IngressoComeLaWebTests`)",
       "stato": "fatto"
+    },
+    {
+      "id": 73,
+      "schermata": "Impostazioni, Aggiorna le rose: due omonimi nella stessa rosa (#662)",
+      "web": "nel controllo delle rose ogni dubbio è una riga: due giocatori scritti uguali nella stessa rosa hanno ciascuno la sua scelta, e «Conferma e salva» manda una correzione per riga con la `riga` dell'anteprima (`arChiave`, `arCorrezioni` in `anteprima.js`, dal #715)",
+      "iphone": "prima: un solo dubbio per nome e correzioni senza `riga`: la scelta fatta a mano valeva per tutti e due gli omonimi e uno dei due si perdeva. Ora come la web: un dubbio e una scelta per riga, il giocatore cercato vale solo per quel dubbio, ogni correzione porta la sua `riga` (`GiocatoreAnteprima.riga`, `AnteprimaLogica.chiave`, `AnteprimaLogica.correzioni`); con un server di prima, che non manda la `riga`, come prima: un dubbio per nome",
+      "forma": "web",
+      "chi": "**fatto** (#716): prove `AnteprimaRoseTests` e `AnteprimaRoseViewModelTests` con due omonimi",
+      "stato": "fatto"
     }
   ]
 }
