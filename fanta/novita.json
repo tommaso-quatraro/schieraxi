@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.521",
+    "data": "2026-11-19T21:21:27",
+    "titolo": "Testi: le indicazioni portano alle schermate di oggi",
+    "voci": [
+      "Avvisi, email di sicurezza e messaggi di errore non nominano più le schede Lega, Squadra e Altro, che non ci sono più: dicono dove trovare la cosa nelle Impostazioni.",
+      "Sull'iPhone la frase sulla regola delle partite rinviate, l'aiuto delle regole e la fine della configurazione guidata parlano della Formazione e di Giornate, come la web."
+    ],
+    "tecnico": [
+      "Percorsi vecchi corretti in salute.py (Impostazioni > Gestione > Stato dei dati), posta.py (Impostazioni > Il tuo account), diario.py (stessa frase delle altre rotte, «La mia squadra»), asta.py e scambi_multi.py (crediti nelle Impostazioni), docstring dell'eliminazione dell'account (openapi.json rigenerato), onb.valori_piu_comuni, oggi.rinvio_regola_lega, etichette e paragrafo di Sotto il cofano (italiano e inglese).",
+      "iPhone: TestiRinvio.nota usa oggi.rinvio_regola_lega; aiuto delle regole e riga della prima giornata usano regole.rinviate_aiuto_formazione e regole.prima_giornata_conta della web; tolte dal catalogo regole.con_prima_giornata, regole.rinviate_aiuto ed err.indica_prima_squadra_diario; tolto VuotoOsservato del widget, senza chiamanti.",
+      "Nuovo tests/test_testi_percorsi.py: catalogo, stringhe del server, contenuti, stringhe Swift fuori dai commenti, guida e Sotto il cofano non devono contenere i percorsi delle schede tolte (anche con › e in inglese)."
+    ]
+  },
+  {
     "versione": "1.520",
     "data": "2026-11-19T21:11:08",
     "titolo": "Avvisi: niente più doppioni vicino alla scadenza, e «Aggiorna i dati» non parte due volte",
