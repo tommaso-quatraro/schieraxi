@@ -136,10 +136,11 @@ final class FormazioneViewModel: ViewModelBase {
     var decisioniSpente: Bool { comandiSpenti || (squadraVista == nil && oggi?.copia == true) }
 
     /// La striscia dei dati salvati: la Formazione o la giornata (`/api/oggi`) non sono arrivate fresche. La data più vecchia delle
-    /// due, con il suo motivo (nil = server non raggiungibile).
+    /// due, con il suo motivo (nil = server non raggiungibile). A campionato finito la Formazione non si mostra (il server risponde
+    /// 409 e resta in memoria quella di prima): conta solo la giornata.
     var striscia: (data: Date, motivo: String?)? {
         var vecchi: [(data: Date, motivo: String?)] = []
-        if let d = caricatore.datiSalvati { vecchi.append((d, caricatore.motivoDatiSalvati)) }
+        if !campionatoFinito, let d = caricatore.datiSalvati { vecchi.append((d, caricatore.motivoDatiSalvati)) }
         if squadraVista == nil, let o = oggi, let d = o.datiSalvati { vecchi.append((d, o.caricatore.motivoDatiSalvati)) }
         return vecchi.min { $0.data < $1.data }
     }
@@ -148,6 +149,17 @@ final class FormazioneViewModel: ViewModelBase {
     var erroreGiornata: String? {
         guard squadraVista == nil, let o = oggi, o.oggi == nil else { return nil }
         return o.errore
+    }
+
+    /// Il campionato è finito (`campionato_finito` di `/api/oggi`, #656): non c'è una giornata da preparare e `/api/formazione`
+    /// risponde 409. La Formazione mostra il riepilogo dell'ultima giornata, se c'è, e la frase del server, senza errore né
+    /// «Riprova», come `mostraCampionatoFinito` della web (#727). Solo per la tua squadra. Se di `/api/oggi` c'è solo la copia del
+    /// telefono (a inizio stagione può essere quella di giugno) e la Formazione è arrivata fresca, vince il dato fresco: si mostra la
+    /// formazione, non la frase vecchia.
+    var campionatoFinito: Bool {
+        guard squadraVista == nil, let o = oggi, o.oggi?.testoCampionatoFinito != nil else { return false }
+        let formazioneFresca = formazione != nil && !copia
+        return !(o.copia && formazioneFresca)
     }
 
     /// La spunta «L'ho messa»: vale per gli 11 salvati.

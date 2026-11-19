@@ -37,6 +37,9 @@ struct VistaDubbi: View {
         Group {
             if voce.widget?.acceso(FunzioneWidget.extra) == false {
                 spento
+            } else if let testo = voce.campionatoFinito {
+                // campionato finito (#727): niente da controllare, la frase del server
+                CampionatoFinitoWidget(testo: testo)
             } else if let r = voce.riassunto {
                 if accessorio { rettangolare(r) } else { contenuto(r) }
             } else {
