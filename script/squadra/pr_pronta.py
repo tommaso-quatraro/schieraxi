@@ -122,7 +122,8 @@ def foto_non_coperte(esegui: comune.Esegui, numero: int, testa: str, file: list[
         if swift and not commit_preso:
             comune.chiama(esegui, ["git", "fetch", "origin", f"refs/pull/{numero}/head"])
         for voce in swift:
-            testi.pop(voce[1], None)                      # nome di prima di un file rinominato (o il file stesso)
+            if voce[0] == "renamed":
+                testi.pop(voce[1], None)                  # il nome di prima di un file rinominato non c'è più
             testi[voce[-1]] = comune.chiama(esegui, ["git", "show", f"{testa}:{voce[-1]}"])
         dati, scene, grafo = comune.leggi_json("foto.json"), foto.scene_di_screenshot(), grafo_ios.Grafo(testi)
         for voce in ios:
