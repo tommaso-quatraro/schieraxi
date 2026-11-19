@@ -183,21 +183,31 @@ risolto() {   # motivi tornati a posto
 }
 TESTO_RETE="Da tre giri di fila non riesco a scaricare da GitHub (rete?): le versioni nuove non arrivano."
 
-# Installazione interrotta (#647). Mentre i file nuovi non hanno superato l'installazione c'e' il segno installazione-in-corso («file»,
-# poi «ambiente» dopo lo scambio degli ambienti Python). Se c'e' all'inizio di un giro, il giro che l'ha scritto si e' fermato a meta'
-# (server spento, processo ucciso): un giro ancora vivo terrebbe il blocco preso qui sopra e questo non sarebbe partito. Si rimettono
-# subito file e ambiente della versione di prima dalla copia di sicurezza (mai rifatta mentre c'e' il segno), si riavvia il servizio e
-# si avvisa; poi il giro continua e la versione nuova si riprova come sempre. Se non si riesce: niente installazioni, guasto e avviso.
+# La richiesta d'emergenza resta finche' un'installazione non riesce (#647): l'avviso di un rifiuto lo dice
+ancora_subito() {
+  [ -e "$STATO/installa-subito" ] && printf ' La richiesta di installare subito resta attiva: la prossima versione si installa appena arriva, anche durante una partita.'
+  return 0
+}
+# Installazione interrotta (#647). Mentre i file nuovi non hanno superato l'installazione c'e' il segno installazione-in-corso: «file
+# <commit>», poi «ambiente <commit>» appena prima dello scambio degli ambienti Python. Se c'e' all'inizio di un giro, il giro che l'ha
+# scritto si e' fermato a meta' (server spento, processo ucciso): un giro ancora vivo terrebbe il blocco preso qui sopra e questo non
+# sarebbe partito. Si rimettono subito file e ambiente della versione di prima dalla copia di sicurezza (mai rifatta mentre c'e' il
+# segno), si riavvia il servizio e si avvisa (uno al giorno, come gli altri guasti); poi il giro continua e la versione nuova si riprova.
+# La stessa versione interrotta una seconda volta (stato in interrotta) diventa rifiutata: niente ciclo di installazioni a meta'.
+# Senza copia di sicurezza (o rovinata) non si installa niente: l'avviso rimanda al LEGGIMI, che dice come ripartire a mano.
 copia="$STATO/versione-precedente.tar.gz"
 A_META="$STATO/installazione-in-corso"
+TESTO_SENZA_COPIA="Un aggiornamento si era fermato a metà e non riesco a rimettere la versione di prima dalla copia di sicurezza: gli aggiornamenti sono fermi. Come ripartire: script/server/LEGGIMI.md, «Aggiornamento interrotto senza copia di sicurezza»."
 if [ -e "$A_META" ]; then
+  stadio=""; interrotto=""
+  read -r stadio interrotto _ < "$A_META" 2>/dev/null
   if [ "$PROVA" = 1 ]; then
-    log "un'installazione di prima si e' fermata a meta': rimetterei la versione di prima dalla copia di sicurezza"
+    log "un'installazione di prima (${interrotto:0:7}) si e' fermata a meta': rimetterei la versione di prima dalla copia di sicurezza"
   else
-    log "l'installazione di prima non era finita (server spento o processo fermato?): rimetto la versione di prima dalla copia di sicurezza"
+    log "l'installazione di prima (${interrotto:0:7}) non era finita (server spento o processo fermato?): rimetto la versione di prima dalla copia di sicurezza"
     rimessa=0
     if [ -s "$copia" ] && tar xzf "$copia" -C "$DEST"; then
-      if [ "$(cat "$A_META" 2>/dev/null)" = ambiente ] && [ -d "$DEST/.venv.precedente" ]; then
+      if [ "$stadio" = ambiente ] && [ -d "$DEST/.venv.precedente" ]; then
         rm -rf "$DEST/.venv.scartata"
         mv "$DEST/.venv" "$DEST/.venv.scartata" && mv "$DEST/.venv.precedente" "$DEST/.venv" && rm -rf "$DEST/.venv.scartata"
       fi
@@ -205,16 +215,22 @@ if [ -e "$A_META" ]; then
       rm -rf "$DEST/.venv.nuova"
       [ -x "$DEST/.venv/bin/python" ] && rimessa=1
     fi
-    if [ "$rimessa" = 1 ]; then
-      rm -f "$A_META"
-      sudo systemctl restart "$SERVIZIO"
-      log "versione di prima rimessa e servizio riavviato"
-      avvisa "SchieraXI: aggiornamento interrotto" "Un aggiornamento si era fermato a metà: ho rimesso la versione di prima e riprovo la nuova. Dettagli in dati/pubblicazione.log." 4
-    else
-      log "non riesco a rimettere la versione di prima dalla copia di sicurezza: non installo niente, controlla $DEST"
-      guasto ambienti "Un aggiornamento si era fermato a metà e non riesco a rimettere la versione di prima: va controllato il server."
+    if [ "$rimessa" = 0 ]; then
+      log "non riesco a rimettere la versione di prima dalla copia di sicurezza (manca o e' rovinata): non installo niente, controlla $DEST (script/server/LEGGIMI.md)"
+      guasto copia-sicurezza "$TESTO_SENZA_COPIA"
       fine; exit 1
     fi
+    sudo systemctl restart "$SERVIZIO"
+    rm -f "$A_META"
+    log "versione di prima rimessa e servizio riavviato"
+    if [ -n "$interrotto" ] && [ "$(cat "$STATO/interrotta" 2>/dev/null)" = "$interrotto" ]; then
+      log "versione ${interrotto:0:7} interrotta due volte: non la riprovo"
+      echo "$interrotto" > "$STATO/rifiutato"; rm -f "$STATO/interrotta" "$STATO/attesa-versione"
+      avvisa "SchieraXI: aggiornamento annullato" "La versione nuova si è interrotta due volte a metà dell'installazione: ho rimesso quella di prima e non la riprovo.$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
+    else
+      [ -n "$interrotto" ] && echo "$interrotto" > "$STATO/interrotta"
+    fi
+    guasto interrotta "Un aggiornamento si era fermato a metà: ho rimesso la versione di prima."
   fi
 fi
 
@@ -280,11 +296,6 @@ anche_prima() {
   else
     printf ' Anche le %s versioni arrivate prima, in attesa, non sono installate: entrano con la prossima versione buona.' "$n"
   fi
-  return 0
-}
-# La richiesta d'emergenza resta finche' un'installazione non riesce (#647): l'avviso di un rifiuto lo dice
-ancora_subito() {
-  [ -e "$STATO/installa-subito" ] && printf ' La richiesta di installare subito resta attiva: la prossima versione si installa appena arriva, anche durante una partita.'
   return 0
 }
 # Firme: dall'ultimo commit verificato (o, la prima volta, dall'ultimo installato) fino a quello nuovo, tutti firmati da una chiave fidata
@@ -466,7 +477,7 @@ if [ -e "$A_META" ] || ! tar czf "$copia.nuova" -C "$DEST" $CARTELLE 2>/dev/null
   rm -f "$copia.nuova"; log "copia di sicurezza della versione in uso non riuscita (disco pieno?): non installo"
   guasto copia-file "Non riesco a fare la copia di sicurezza della versione in uso (disco pieno?): resta quella di prima."; fine; exit 1
 fi
-echo file > "$A_META"
+echo "file $nuovo" > "$A_META"
 vecchi_req=$(md5sum "$DEST/requirements.txt" 2>/dev/null | cut -d' ' -f1)
 
 prova=$(mktemp -d)
@@ -498,8 +509,8 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
      && "$DEST/.venv.nuova/bin/python" -m pip install -q --require-hashes -r "$DEST/requirements.txt" >> "$LOG" 2>&1; then
     rm -f "$STATO/librerie-fallite"
     rm -rf "$DEST/.venv.precedente"
+    echo "ambiente $nuovo" > "$A_META"     # prima dello scambio: un'interruzione da qui rimette anche l'ambiente di prima
     mv "$DEST/.venv" "$DEST/.venv.precedente" && mv "$DEST/.venv.nuova" "$DEST/.venv" && venv_cambiata=1
-    [ "$venv_cambiata" = 1 ] && echo ambiente > "$A_META"     # un'interruzione da qui rimette anche l'ambiente di prima
     if [ "$venv_cambiata" = 0 ]; then
       # il servizio non e' stato riavviato: si rimettono subito l'ambiente in uso e i file della versione di prima (#647)
       log "scambio degli ambienti Python non riuscito: rimetto la versione di prima"
@@ -543,15 +554,17 @@ for i in $(seq 1 "${SCHIERAXI_ATTESE_AVVIO:-25}"); do
 done
 
 if [ "$risponde" = 1 ]; then
+  # prima il segno, poi lo stato: un'interruzione fra i due fa solo reinstallare la stessa versione al giro dopo (#647)
+  rm -f "$A_META"
   echo "$nuovo" > "$STATO/ultimo-rilascio"
   echo "$INIZIO" > "$STATO/ultima-installazione"     # da qui parte l'intervallo fra due installazioni (#635)
-  rm -f "$STATO/attesa-versione" "$A_META"
+  rm -f "$STATO/attesa-versione" "$STATO/interrotta"
   [ "$installa_subito" = 1 ] && rm -f "$STATO/installa-subito"     # la richiesta d'emergenza e' soddisfatta (#647)
   versione=$(cd "$DEST" && .venv/bin/python -c "import json; print(json.load(open('fanta/novita.json', encoding='utf-8'))[0]['versione'])" 2>/dev/null)
   # solo la riga nel registro, niente avviso: con tante versioni al giorno gli avvisi veri (fallita, rifiutata, tornata indietro) si
   # perdevano tra quelli di routine (#607)
   log "installata ${nuovo:0:7} (versione $versione): il servizio risponde"
-  risolto cartelle copia-file ambienti           # «di nuovo a posto» se un guasto dell'installazione era stato segnalato
+  risolto cartelle copia-file ambienti interrotta copia-sicurezza     # «di nuovo a posto» se un guasto dell'installazione era stato segnalato
 else
   log "il servizio NON risponde con ${nuovo:0:7} (ultimo codice HTTP: ${codice:-nessuno}): torno alla versione di prima"
   rimessa=1

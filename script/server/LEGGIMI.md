@@ -148,13 +148,27 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
     alla terza volta di fila rinuncia, scrive `rifiutato` e avvisa.
   - Se dopo il riavvio il servizio non risponde torna anche all'ambiente di prima.
   - Se lo scambio delle cartelle non riesce rimette subito l'ambiente in uso e i file della versione di prima, e avvisa.
-- **Copia di sicurezza** (`~/.cache/fantacalcio/versione-precedente.tar.gz`): si rifà a ogni installazione e prende il posto della
-  vecchia solo se riesce tutta. Finché i file nuovi non hanno superato l'installazione c'è il segno `installazione-in-corso`. Se un giro
-  si ferma a metà (server spento, processo fermato), il giro dopo lo trova e, prima di tutto, rimette file e ambiente Python della
-  versione di prima da quella copia, riavvia il servizio, lo scrive nel registro e avvisa («aggiornamento interrotto»); poi riprova la
-  versione nuova come sempre. Un giro ancora vivo tiene il blocco dello script, quindi non viene scambiato per interrotto.
   - Le versioni in `requirements.txt` sono quelle in produzione sul server (Python 3.12) al momento del blocco: il primo giro
     non cambia nessuna libreria, crea solo l'ambiente nuovo.
+- **Copia di sicurezza** (`~/.cache/fantacalcio/versione-precedente.tar.gz`): si rifà a ogni installazione e prende il posto della
+  vecchia solo se riesce tutta. Finché i file nuovi non hanno superato l'installazione c'è il segno `installazione-in-corso`, con la
+  versione che si stava installando. Se un giro si ferma a metà (server spento, processo fermato), il giro dopo lo trova e, prima di
+  tutto, rimette file e ambiente Python della versione di prima da quella copia, riavvia il servizio, lo scrive nel registro e avvisa
+  (al massimo una volta al giorno); poi riprova la versione nuova. Se la stessa versione si ferma a metà una seconda volta diventa
+  `rifiutato`, con un avviso, e non si riprova più (neanche con `installa-subito`). Un giro ancora vivo tiene il blocco dello script,
+  quindi non viene scambiato per interrotto.
+
+#### Aggiornamento interrotto senza copia di sicurezza
+Se c'è il segno ma la copia di sicurezza manca o è rovinata, lo script non installa più niente e avvisa (una volta al giorno). Per
+ripartire, sul server (`ssh <utente>@<indirizzo-del-server>`), con l'utente del servizio:
+1. Rimetti i file dell'ultima versione installata, presi dalla copia di GitHub (il file dei tratti dei volti resta quello del server):
+   `cd ~/schieraxi-src && git archive "$(cat ~/.cache/fantacalcio/ultimo-rilascio)" fanta tests script requirements.txt requirements-dev.txt | tar -x -C ~/fantacalcio --exclude=fanta/avatar_tratti.json`
+2. Ambiente Python: `cat ~/.cache/fantacalcio/installazione-in-corso`. Se comincia con `ambiente` e c'è `~/fantacalcio/.venv.precedente`:
+   `cd ~/fantacalcio && mv .venv .venv.scartata && mv .venv.precedente .venv && rm -rf .venv.scartata`. Se manca `.venv` ma c'è
+   `.venv.precedente`: `cd ~/fantacalcio && mv .venv.precedente .venv`.
+3. `sudo systemctl restart fantacalcio`, poi `curl -s -o /dev/null -w '%{http_code}\n' -H 'X-Fanta: 1' http://127.0.0.1:8000/api/account/me`:
+   deve rispondere `200` o `401`.
+4. Togli il segno: `rm ~/.cache/fantacalcio/installazione-in-corso`. Il giro dopo rifà la copia di sicurezza e riprova la versione nuova.
 
 ### Cosa protegge e cosa no
 - Protegge da: commit senza firma, o firmati da un'altra chiave, spinti su `main` con `git push` (per esempio per errore), anche se
