@@ -50,7 +50,7 @@ def test_gli_script_periodici_leggono_l_ambiente_del_servizio_e_restano_prudenti
     for nome in ("aggiorna.sh", "promemoria.sh", "backup-serale.sh", "sentinella.sh"):
         t = (SCRIPT / nome).read_text(encoding="utf-8")
         assert '. script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env' in t, nome          # letto riga per riga, mai eseguito
-        assert "set -u" in t and "flock -n" in t and "PYTHONUTF8=1" in t, nome
+        assert "set -u" in t and ("flock -n" in t or "flock -w" in t) and "PYTHONUTF8=1" in t, nome
         assert t.index("ambiente.env") > t.index("cd \"$HOME/fantacalcio\""), nome        # si legge dalla cartella dell'app
         assert "rm -r" not in t and "rm -f dati" not in t, nome
 
@@ -1364,6 +1364,20 @@ def _lancia_aggiorna(tmp_path, app, bin_):
     env = {**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "HOME": _msys(tmp_path / "casa"),
            "SCHIERAXI_CANALE": _msys(tmp_path / "nessun-canale")}
     return _lancia([BASH, (app / "script" / "server" / "aggiorna.sh").as_posix()], env=env)
+
+
+@con_bash
+def test_aggiorna_col_blocco_occupato_aspetta_e_poi_lo_scrive_nel_log(tmp_path):
+    """Un altro aggiornamento tiene il blocco («Aggiorna i dati» dall'app, un giro leggero del servizio, #660): lo script aspetta un
+    poco (un giro leggero dura pochi secondi) e, se resta occupato, salta il turno con una riga nel log invece di uscire muto."""
+    app, bin_, chiamate = _casa_aggiorna(tmp_path, "exit 0")
+    _stub(bin_, "flock", f'echo "flock $*" >> "{_msys(chiamate)}"\nexit 1')         # occupato anche dopo l'attesa
+    r = _lancia_aggiorna(tmp_path, app, bin_)
+    assert r.returncode == 0, r.stderr
+    fatte = chiamate.read_text(encoding="utf-8")
+    assert "flock -w 120 9" in fatte and "python" not in fatte          # ha aspettato; niente aggiornamento né avvisi
+    log = (app / "dati" / "aggiorna.log").read_text(encoding="utf-8")
+    assert "aggiornamento saltato: un altro aggiornamento ha il blocco" in log
 
 
 @con_bash
