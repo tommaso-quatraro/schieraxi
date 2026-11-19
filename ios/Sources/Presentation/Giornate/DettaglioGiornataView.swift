@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Gli 11 di una giornata finita (`dettaglioGiornata` della web): il titolo con il modulo, i titolari con il fantavoto atteso e quello
-/// preso, cosa hai cambiato rispetto alla consigliata e un solo pulsante, «Non è quello che ho schierato». Tutto viene già pronto da
-/// `PaginaGiornate.dettaglio`: qui non si calcola niente.
+/// Gli 11 di una giornata finita (`dettaglioGiornata` della web): il titolo con il modulo, chi ha fatto meglio o peggio del previsto,
+/// i titolari con il fantavoto atteso e quello preso, cosa hai cambiato rispetto alla consigliata e un solo pulsante, «Non è quello
+/// che ho schierato». Tutto viene già pronto da `PaginaGiornate.dettaglio`: qui non si calcola niente.
 struct DettaglioGiornataView: View {
     let dettaglio: DettaglioGiornata
     /// L'esito dell'ultima correzione di questa giornata («Salvato: …»), se c'è.
@@ -19,6 +19,11 @@ struct DettaglioGiornataView: View {
             if let nota = dettaglio.nota {
                 Text(nota)
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let scarti = dettaglio.scarti {
+                Text(scarti)
+                    .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
             }
             // con il testo molto grande tre colonne non ci stanno: un giocatore per riga, i due numeri sotto il nome
@@ -116,6 +121,7 @@ struct DettaglioGiornataView: View {
     List {
         DettaglioGiornataView(dettaglio: DettaglioGiornata(
             titolo: Catalogo.Giornate.formazioneTua(modulo: "3-4-3"), nota: nil,
+            scarti: "Meglio del previsto: Leonel (+3,1).",
             titolari: [TitolareGiornata(id: 1, nome: "Sorvani", ruolo: "P", atteso: "6,1", preso: "5,5", senzaVoto: false),
                        TitolareGiornata(id: 2, nome: "Bastrani", ruolo: "D", atteso: "6,0", preso: Catalogo.Giornate.senzaVoto,
                                         senzaVoto: true),

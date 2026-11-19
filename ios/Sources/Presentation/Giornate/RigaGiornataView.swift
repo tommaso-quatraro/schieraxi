@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Una riga della pagina Giornate: a sinistra la giornata (e la stagione, se ce n'è più di una) con la frase di chi sono i punti, a
-/// destra i punti fatti grandi e sotto «punti (attesi 71,7)». Con il testo molto grande le due parti vanno una sotto l'altra.
+/// destra i punti fatti grandi, sotto «punti (attesi 71,7)» e «+2,8 sul previsto» (senza colore: lo dice il segno, come la web).
+/// Con il testo molto grande le due parti vanno una sotto l'altra.
 struct RigaGiornataView: View {
     let riga: RigaGiornata
     @Environment(\.dynamicTypeSize) private var dimensione
@@ -32,6 +33,12 @@ struct RigaGiornataView: View {
                     .font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit()
                     .multilineTextAlignment(impilata ? .leading : .trailing)
                     .fixedSize(horizontal: false, vertical: true)
+                if let sulPrevisto = riga.sulPrevisto {
+                    Text(sulPrevisto)
+                        .font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit()
+                        .multilineTextAlignment(impilata ? .leading : .trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .frame(minHeight: Tema.areaTocco)
@@ -45,9 +52,11 @@ struct RigaGiornataView: View {
     List {
         RigaGiornataView(riga: RigaGiornata(id: "a", nome: NomeGiornata(serieA: 11, lega: 8).intero, stagione: nil,
                                             stato: Catalogo.Giornate.cambi(2, d: Formato.conSegno(-1.5)), punti: "74,5",
-                                            attesi: Catalogo.Formazione.puntiEAttesi(n: "71,7"), voce: NomeGiornata(serieA: 11, lega: 8).voce))
+                                            attesi: Catalogo.Formazione.puntiEAttesi(n: "71,7"),
+                                            sulPrevisto: Catalogo.Giornate.sulPrevisto(d: Formato.conSegno(2.8)),
+                                            voce: NomeGiornata(serieA: 11, lega: 8).voce))
         RigaGiornataView(riga: RigaGiornata(id: "b", nome: NomeGiornata(serieA: 38, lega: nil).intero, stagione: "2025-26",
                                             stato: Catalogo.Giornate.nonSalvata, punti: "66,0",
-                                            attesi: Catalogo.Formazione.punti, voce: NomeGiornata(serieA: 38, lega: nil).voce))
+                                            attesi: Catalogo.Formazione.punti, sulPrevisto: nil, voce: NomeGiornata(serieA: 38, lega: nil).voce))
     }
 }
