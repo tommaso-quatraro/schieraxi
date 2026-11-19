@@ -89,6 +89,15 @@
       "forma": "web (frase del server `campionato.finito`)",
       "chi": "fatto sull'iPhone con #727: `TestaFormazione.per`, `FormazioneViewModel.campionatoFinito`, `CampionatoFinitoWidget`, `RiassuntoWidget.comeRiassuntoOggi`; prove `CampionatoFinitoTests`, `WidgetCampionatoFinitoTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 80,
+      "schermata": "Formazione, giornata da preparare senza date (#552)",
+      "web": "al posto di «Si chiude …» la frase del server «Data da definire» (`senza_data` di `GET /api/oggi`, chiave `giornata.senza_data`), senza conto alla rovescia; anche a giornata finita, sotto il riepilogo, se la prossima non ha ancora le date. Con un server di prima «Calendario non disponibile». A campionato finito vale `campionato_finito` (riga 76)",
+      "iphone": "uguale alla web: la frase del server così com'è, senza conto; con un server di prima, un testo vuoto o una forma strana «Calendario non disponibile»",
+      "forma": "web (frase del server `giornata.senza_data`)",
+      "chi": "fatto con #552: server `gestione.scadenza_mostrata` (la regola di `scadenzaDi`), web `testoConto`, iPhone `TestaFormazione.conto` e `Oggi.testoSenzaData`; prove `tests/test_oggi_senza_data.py`, `tests/browser/test_formazione_unica.py`, `TestaFormazioneTests`. Prima l'iPhone diceva «Data da definire» e la web «Calendario non disponibile», poi tutti e due il testo del catalogo",
+      "stato": "fatto"
     }
   ]
 }
