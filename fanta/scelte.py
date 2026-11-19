@@ -7,6 +7,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
+from . import etichette
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
 from .punteggio import modulo_valido
 
@@ -75,6 +76,36 @@ def controlla_bloccati(fermi, prima, nuovi, nomi: dict[int, str]) -> None:
     for i in fermi:
         if (i in prima) != (i in nuovi):
             raise GiocatoreBloccato(f"{nomi.get(i) or 'Un giocatore'} gioca in una partita già cominciata: non si può più spostare.")
+
+
+# ---------------------------------------------------------------- «Metti in campo» (#643)
+NON_ENTRANO = ("infortunato", "squalificato")      # stato del giocatore (etichette.codice) che non si mette in campo
+
+
+def chi_lascia_il_posto(entra: int, titolari, schede: dict, regole, fermi=()) -> list[dict]:
+    """Chi può lasciare il posto a `entra`, un giocatore delle `schede` della Formazione ({id: scheda}) che non è fra i `titolari`:
+    i titolari che, tolti per far entrare lui, lasciano una formazione schierabile per la regola unica della scelta
+    (`motivo_non_valida`: lo stesso ruolo, oppure un altro modulo ammesso dalla lega). Per ognuno {esce, modulo, cambia_modulo,
+    differenza}: il modulo dopo il cambio e i punti attesi di chi entra meno quelli di chi esce (lo stesso numero di «Sostituisci»
+    dalla scheda del titolare, con il segno girato), il cambio migliore in cima. Vuoto se `entra` è già titolare, non è nelle
+    schede, è fra i `fermi` (anticipo già cominciato, `bloccati`), infortunato o squalificato; i fermi non escono."""
+    sch = {int(k): x for k, x in schede.items() if isinstance(x, dict)}
+    dentro = [int(i) for i in titolari]
+    fermi = {int(i) for i in fermi}
+    nuovo = sch.get(int(entra))
+    if nuovo is None or int(entra) in dentro or int(entra) in fermi or etichette.codice(nuovo) in NON_ENTRANO:
+        return []
+    ruoli = {i: x.get("ruolo") for i, x in sch.items()}
+    modulo = lambda ids: "-".join(str(sum(1 for i in ids if ruoli[i] == r)) for r in "DCA")     # noqa: E731
+    prima = modulo(dentro) if motivo_non_valida(dentro, ruoli, regole) is None else None
+    uscite = []
+    for esce in dentro:
+        dopo = [int(entra) if i == esce else i for i in dentro]
+        if esce in fermi or motivo_non_valida(dopo, ruoli, regole):
+            continue
+        uscite.append({"esce": esce, "modulo": modulo(dopo), "cambia_modulo": modulo(dopo) != prima,
+                       "differenza": round(float(nuovo["punti_attesi"]) - float(sch[esce]["punti_attesi"]), 2)})
+    return sorted(uscite, key=lambda u: -u["differenza"])
 
 
 def ruoli_schierabili(rose, prev=None) -> dict[int, str]:
