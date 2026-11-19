@@ -75,6 +75,8 @@ T, Y = G(1, p=0.8, mu=6.5), G(2, p=0.9, mu=5.8)
     (G(1, p=0.9), G(2, p=0.1, mu=9.0), 60.0, 60.3, {}, "scelta.titolare_che_gioca"),
     # ...anche quando il titolare gioca poco ma non è «improbabile» (dalla revisione di #612 basta il 20%, non più il 50%)
     (G(1, p=0.22), G(2, p=0.04, mu=9.0), 60.0, 60.05, {}, "scelta.titolare_che_gioca"),
+    # ...e quando sono improbabili tutti e due: parte chi è più probabile che giochi (#632)
+    (G(1, p=0.19), G(2, p=0.15, mu=14.0), 60.0, 60.23, {}, "scelta.titolare_che_gioca"),
     # ...ma se con il titolare la formazione vale di più, si dice quello (come il Confronto)
     (G(1, p=0.9), G(2, p=0.1, mu=9.0), 60.3, 60.0, {}, "scelta.piu_punti"),
     # 2. titolare incerto con la riserva sicura: la nota che c'era già (con lui la formazione vale di più o lo stesso)
@@ -114,6 +116,8 @@ def test_il_motivo_della_scelta_in_ordine(t, y, attuale, invertita, extra, chiav
     (G(1, p=0.4), G(2, p=0.9), 60.0, 60.5, {"riserva": G(2, p=0.9)}),
     # lo stesso numero a schermo non cambia il verdetto del Confronto: oltre 0,04 a sfavore, scambiarli varrebbe di più
     (G(1, p=0.9), G(2, p=0.8), 60.39, 60.44, {}),
+    # due improbabili che giocano uguale: la regola non spiega niente (#632)
+    (G(1, p=0.15), G(2, p=0.15, mu=9.0), 60.0, 60.3, {}),
 ])
 def test_senza_un_motivo_vero_nessuna_riga(t, y, attuale, invertita, extra):
     """Scambiarli varrebbe di più e non è la consigliata tenuta: nessuna riga, meglio niente che una scusa."""

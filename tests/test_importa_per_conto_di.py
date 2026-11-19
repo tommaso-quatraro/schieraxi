@@ -202,6 +202,24 @@ def test_rifiutata_per_un_tetto_non_consuma_le_copie_datate(mondo, monkeypatch, 
     assert (contesto.cartella_utente(amico[1]) / "rose.json").read_bytes() == salvate
 
 
+def test_sostituisci_tutto_sopra_rose_rovinate_non_consuma_le_copie_datate(mondo):
+    """#723: «sostituisci tutto» sopra un rose.json che non si legge più: niente copia datata del file rovinato (lo tiene già
+    rose.json.rovinato). Prima la copia partiva lo stesso e faceva uscire la più vecchia delle cinque copie buone."""
+    capo, amico = mondo["capo"][0], mondo["amico"]
+    cartella = contesto.cartella_utente(amico[1]) / "rose-prima"
+    file_rose = contesto.cartella_utente(amico[1]) / "rose.json"
+    for i in range(server.COPIE_DELLE_ROSE + 1):
+        r = capo.post(f"/api/admin/utenti/{amico[1]}/rose", json={"testo": ROSE.replace("Altra", f"Altra{i}"), "sostituisci_tutto": True})
+        assert r.status_code == 200, r.text
+    copie = sorted(p.name for p in cartella.glob("rose-*.json"))
+    assert len(copie) == server.COPIE_DELLE_ROSE
+    file_rose.write_text('{"squadre": [', encoding="utf-8")
+    r = capo.post(f"/api/admin/utenti/{amico[1]}/rose", json={"testo": ROSE, "sostituisci_tutto": True})
+    assert r.status_code == 200, r.text
+    assert sorted(p.name for p in cartella.glob("rose-*.json")) == copie          # le cinque copie buone, tutte
+    assert file_rose.with_name("rose.json.rovinato").read_text(encoding="utf-8") == '{"squadre": ['
+
+
 def test_tetto_di_frequenza(mondo, monkeypatch):
     capo, amico = mondo["capo"][0], mondo["amico"]
     monkeypatch.setattr(server, "IMPORTAZIONI_PER_CONTO_DI", (3, 3600))
