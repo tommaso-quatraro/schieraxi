@@ -3143,11 +3143,17 @@ async function vistaRegole() {
 const soloAmministratore = () => !stato.account || stato.account.ruolo === "amministratore";
 
 // All'uscita su questo dispositivo non deve restare niente dell'utente: copie dei dati, archivio scambi, copie dell'app del service worker.
-async function svuotaDatiLocali() {
+// `tieniAccesso`: resta sessionStorage, che tiene solo i passi dell'accesso in corso (codice d'invito, ritorno da Google).
+async function svuotaDatiLocali({ tieniAccesso = false } = {}) {
   try { Object.keys(localStorage).filter(k => k.startsWith("cache:") || ["archivio-scambi", "vista", "account"].includes(k)).forEach(k => localStorage.removeItem(k)); }
   catch { /* niente memoria */ }
-  try { sessionStorage.clear(); } catch { /* niente memoria */ }
+  if (!tieniAccesso) try { sessionStorage.clear(); } catch { /* niente memoria */ }
   try { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch { /* niente copie */ }
+}
+// C'è ancora qualcosa di un account in questo browser (l'account stesso, copie dei dati, archivio scambi)?
+function restanoCopie() {
+  try { return Object.keys(localStorage).some(k => k.startsWith("cache:") || ["archivio-scambi", "account"].includes(k)); }
+  catch { return false; }
 }
 // Il tasto Indietro del browser può rimettere una pagina dalla sua memoria: con gli account si ricarica, così dopo un'uscita
 // non ricompaiono i dati di chi è uscito.
@@ -3808,6 +3814,8 @@ async function controllaAccesso() {
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
   const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
   if (r.status === 401 && dati && dati.multiutente) {
+    // la sessione non vale più: via le copie rimaste, come all'uscita, prima della schermata di accesso
+    if (restanoCopie()) await svuotaDatiLocali({ tieniAccesso: true });
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false); else mostraAccesso("", invito ? "registra" : "accedi");
     return false;
   }

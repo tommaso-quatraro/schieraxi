@@ -112,8 +112,8 @@ Tutte le rotte sotto `/api/account/` rispondono `404` con `{"detail": "Gli accou
 | `POST /api/account/elimina` | `{password}` | `{ok: true}`: cancella account e dati |
 | `POST /api/account/recupero` | `{nome_utente, codice, nuova, endpoint_push?}` | `{ok, codice_recupero}`. Come il cambio password: notifiche web solo per `endpoint_push` (se c'è) e avviso all'email verificata |
 | `POST /api/account/email` | `{email, password}` | risposta di verifica (stessa in ogni caso). Con la posta spenta sul server (`email_attiva: false`): `503` con `codice: "posta_spenta"`, niente email in attesa (dal 2/11/2026) |
-| `POST /api/account/email/conferma` | `{codice}` | `{ok, email}` |
-| `POST /api/account/email/togli` | `{password}` | `{ok}` |
+| `POST /api/account/email/conferma` | `{codice}` | `{ok, email}`. Se prende il posto di un'altra email, gli altri dispositivi escono (resta dentro solo questa sessione) e il vecchio indirizzo riceve un avviso (dal 19/11/2026) |
+| `POST /api/account/email/togli` | `{password}` | `{ok}`. L'indirizzo tolto riceve lo stesso avviso (dal 19/11/2026) |
 | `POST /api/account/recupero-email` | `{email}` | risposta identica se l'indirizzo esiste o no. Con la posta spenta: `503` `posta_spenta`, uguale per ogni indirizzo (dal 2/11/2026) |
 | `POST /api/account/recupero-email/conferma` | `{email, codice, nuova, endpoint_push?}` | `{ok, codice_recupero}`. Come il cambio password: notifiche web solo per `endpoint_push` (se c'è) e avviso all'email verificata |
 | `POST /api/account/token-widget` | — | `{token, scade, etichetta: "widget"}`: il token si vede una volta sola |
