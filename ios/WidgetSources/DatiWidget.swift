@@ -231,8 +231,11 @@ struct Fornitore: AppIntentTimelineProvider {
         let scadenza = primo.riassunto?.scadenzaDelConto
         if let scadenza, scadenza > adesso, scadenza < prossimo { prossimo = scadenza.addingTimeInterval(60) }
         // senza voci il testo resterebbe fermo fino alla prossima ricarica, che iOS può rimandare (di notte anche di ore): voci per
-        // il conto alla rovescia, la scadenza e la mezzanotte, dove «domani 12:30» diventa «oggi 12:30»
-        voci += VociTimeline.istanti(adesso: adesso, scadenza: scadenza, conConto: conConto).map { primo.spostata(a: $0) }
+        // il conto alla rovescia, la scadenza e la mezzanotte, dove «domani 12:30» diventa «oggi 12:30». Per chi è entrato a giornata
+        // iniziata il conto alla rovescia alla prossima c'è anche in Formazione consigliata e Da controllare (#752)
+        var contoQui = conConto
+        if case .senzaFormazione = primo.caso { contoQui = true }
+        voci += VociTimeline.istanti(adesso: adesso, scadenza: scadenza, conConto: contoQui).map { primo.spostata(a: $0) }
         return Timeline(entries: voci, policy: .after(prossimo))
     }
 

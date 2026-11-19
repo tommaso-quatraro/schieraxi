@@ -17,6 +17,15 @@
       "forma": "web",
       "chi": "fatto sull'iPhone con #687: `RiassuntoOggi.senzaFormazione`, `prossimaDaPreparare`, `scadenzaDelConto`, `VistaWidget`; prova `WidgetSenzaFormazioneTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 81,
+      "schermata": "Widget «Formazione consigliata» e «Da controllare», entrato a giornata iniziata",
+      "web": "con `senza_formazione` niente consigliata né dubbi della giornata iniziata: «Questa giornata è già iniziata», «Prepara la prossima» e quando si chiude la prossima (`prossima` di `/api/oggi` e `/api/widget`)",
+      "iphone": "uguale alla web e a «Prossima giornata» (riga 79), in ogni misura: la giornata già iniziata con «Questa giornata è già iniziata», «Prepara la prossima» e il conto alla rovescia alla scadenza della prossima; il tocco apre la Formazione, già quella della prossima. Prima «Formazione consigliata» mostrava la consigliata della giornata iniziata e «Da controllare» «Chiusa · … I punti fatti sono nella Formazione.»",
+      "forma": "web",
+      "chi": "fatto sull'iPhone con #752: `CasoWidget`, `SenzaFormazioneWidget`, `VistaFormazione`, `VistaDubbi`; prova `WidgetAltriSenzaFormazioneTests`",
+      "stato": "fatto"
     }
   ]
 }
