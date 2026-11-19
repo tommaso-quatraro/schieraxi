@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.513",
+    "data": "2026-11-19T01:38:24",
+    "titolo": "Formazione: la consigliata non va avanti e indietro fra due giocatori attorno al 20%",
+    "voci": [
+      "Web, iPhone e iPad: se due giocatori dello stesso ruolo si scambiano a ogni aggiornamento sopra e sotto il 20% di probabilità di giocare, la consigliata che hai già visto non passa più dall'uno all'altro ogni volta.",
+      "Un titolare che giocava quando hai visto la consigliata e poi scende di poco sotto il 20% (gioca ancora almeno il 10%) la fa cambiare solo se un compagno del suo ruolo gioca almeno il 20% e almeno 20 punti percentuali più di lui (con lui al 12%, almeno il 32%); altrimenti serve almeno un punto atteso in più. Sotto il 10% basta, come prima, un compagno che gioca almeno il 20%. Un titolare che si infortuna o viene squalificato la fa cambiare come prima. Una formazione che hai salvato tu non cambia mai da sola."
+    ],
+    "tecnico": [
+      "consigli.stabile (`fa_cambiare`): un titolare diventato improbabile (non in `non_giocano`) con p >= MARGINE_SE_ALMENO (0,10) forza il cambio sotto la soglia di punti solo con un compagno di ruolo libero con p >= max(COMPAGNO_ALMENO, p del titolare + MARGINE_COMPAGNO), MARGINE_COMPAGNO = 0,20 (#737). Sotto MARGINE_SE_ALMENO, per chi era già fuori o improbabile quando la consigliata è stata mostrata e per chi è diventato fuori nulla cambia. Nessun campo nuovo nelle risposte."
+    ]
+  },
+  {
     "versione": "1.512",
     "data": "2026-11-19T01:02:28",
     "titolo": "Formazione: chi quasi certamente non gioca è titolare ancora meno spesso",

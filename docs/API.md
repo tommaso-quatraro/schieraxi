@@ -206,8 +206,11 @@ Campo `intervallo` (in `/api/formazione`, `/api/oggi`, `/api/widget` e `/api/dia
 la migliore con i dati nuovi non vale almeno 1 punto atteso in più (la soglia dell'avviso alla scadenza), o finché un suo titolare
 non gioca più: uscito dalla rosa, diventato infortunato o squalificato (chi lo era già quando la consigliata è stata mostrata non
 conta), oppure fuori o improbabile (sotto il 20%) con nel suo ruolo un compagno fuori dagli 11, non fermo per un anticipo, che gioca
-almeno il 20% (#632). Un improbabile senza un compagno così non basta: vale la soglia di 1 punto, così un compagno che sale e scende
-attorno al 20% non fa cambiare la consigliata a ogni giro.
+almeno il 20% (#632); se il titolare è diventato improbabile dopo che la consigliata è stata mostrata ma gioca ancora almeno il 10%
+(`consigli.MARGINE_SE_ALMENO`), il compagno deve giocare anche almeno 20 punti percentuali più di lui (#737,
+`consigli.MARGINE_COMPAGNO`); sotto il 10% basta il compagno al 20%. Un improbabile senza un compagno così non basta: vale la
+soglia di 1 punto, così un compagno che sale e scende attorno al 20%, o due compagni che si scambiano sopra e sotto il 20%, non fanno
+cambiare la consigliata a ogni giro.
 Tenuta quella di prima, i suoi punti attesi e la sua
 panchina si rifanno con i dati nuovi; dopo la scadenza della lega resta com'è, panchina compresa. Gli altri moduli e gli altri
 stili sono sempre i migliori del momento: la voce di un altro modulo può avere qualche decimo di punti attesi più della
