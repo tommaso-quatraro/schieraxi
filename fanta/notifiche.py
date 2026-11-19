@@ -163,8 +163,10 @@ def impostazioni(percorso: Path | None = None) -> dict:
     ok |= {k: _ora(d.get(k, v), v) for k, v in ORE_PREDEFINITE.items()}
     ok["avviso_prima"] = _minuti_avviso(d.get("avviso_prima", AVVISO_PRIMA_PREDEFINITO), AVVISO_PRIMA_PREDEFINITO)
     ok["lingua"] = _lingua(d.get("lingua"), LINGUA_PREDEFINITA)
-    if ok["silenzio"] and ok["silenzio_da"] == ok["silenzio_a"]:
-        ok["silenzio"] = False      # salvate prima del controllo: inizio = fine non è una fascia, si trattano come spente
+    if ok["silenzio_da"] == ok["silenzio_a"]:
+        # inizio = fine non è una fascia (salvate prima del controllo): spente e con le ore predefinite, così riaccendendole con
+        # il solo `silenzio` (web e iPhone non scelgono le ore) valgono dalle 23 alle 7 invece di dare errore (#711)
+        ok |= {"silenzio": False, **ORE_PREDEFINITE}
     return ok
 
 
