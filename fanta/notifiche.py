@@ -124,6 +124,17 @@ def manda_di(file_impostazioni: Path, file_iscrizioni: Path, ntfy: bool) -> Call
     return lambda *a, **k: invia(*a, file_impostazioni=file_impostazioni, file_iscrizioni=file_iscrizioni, ntfy=ntfy, **k)
 
 
+def segna_guasto(guasti: list[str] | None, cosa: str, errore: Exception) -> None:
+    """Un pezzo di un avviso non riuscito mentre il resto parte lo stesso: il guasto non si ingoia (#660). Con `guasti` (il giro
+    degli utenti, che sa di chi è) va nell'elenco e lo scrive chi chiama, con il numero dell'utente; senza, una riga nel registro.
+    Solo il tipo d'errore: il messaggio può contenere dati."""
+    testo = f"{cosa} ({type(errore).__name__})"
+    if guasti is None:
+        LOG.warning("Avvisi: %s", testo)
+    else:
+        guasti.append(testo)
+
+
 # ---------------------------------------------------------------- impostazioni e stato su file
 def _json(percorso: Path) -> dict:
     try:
@@ -357,7 +368,7 @@ def _consigliata_cambiata(prev: pd.DataFrame, vecchio: dict | None, ora: dict, t
 
 def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_STATO,
           manda: Callable[..., bool] = invia, opzioni: dict | None = None, *, risparmia: bool = False,
-          file_scelte: Path | None = None, file_promemoria: Path | None = None) -> list[str]:
+          file_scelte: Path | None = None, file_promemoria: Path | None = None, guasti: list[str] | None = None) -> list[str]:
     """Dopo ogni aggiornamento delle probabili: l'avviso quando cambia la formazione da schierare perché un tuo titolare non gioca
     più (#676). Restituisce le frasi mandate.
     - Con una formazione salvata che si può ancora schierare: «cambio pronto» per ogni suo titolare ora infortunato, squalificato o
@@ -373,7 +384,9 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     `notifiche-promemoria.json` accanto a `file_stato`). Nelle ore tranquille o se l'invio fallisce lo stato non cambia: si
     riprova al giro dopo.
     `risparmia` (per chi ha molti utenti da controllare): il confronto degli stati costa poco, la formazione consigliata molto;
-    se non è cambiato niente si tiene quella dell'ultimo controllo invece di ricalcolarla."""
+    se non è cambiato niente si tiene quella dell'ultimo controllo invece di ricalcolarla.
+    Se l'avviso «cambia la formazione» alza un errore questo parte lo stesso, e il guasto va in `guasti` o nel registro
+    (`segna_guasto`)."""
     from . import consigli, scelte
     adesso = adesso or datetime.now()
     opzioni = opzioni if opzioni is not None else impostazioni()
@@ -411,8 +424,9 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         file_promemoria = file_promemoria or file_stato.with_name(FILE_PROMEMORIA.name)
         try:                                       # prima l'avviso «cambia la formazione», con i dati appena arrivati
             gia_detti = avviso_scadenza(db, regole, rose, adesso, file_promemoria, manda, opzioni, file_scelte, file_stato)
-        except Exception:                          # noqa: BLE001  (questo avviso parte comunque)
+        except Exception as e:                     # noqa: BLE001  (questo avviso parte comunque; il guasto si vede)
             gia_detti = []
+            segna_guasto(guasti, "avviso «cambia la formazione» non controllato", e)
         if _avviso_scadenza_partito(file_promemoria, chiave, adesso, _versione_dati(db)):
             singoli, cambiata = [], None           # l'ha già detto lui (niente doppioni); lo stato si salva lo stesso, così
             #                                        questa notizia non riparte più tardi
@@ -489,13 +503,15 @@ def serve_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagion
 
 
 def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_PROMEMORIA,
-               manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_scelte: Path | None = None) -> list[str]:
+               manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_scelte: Path | None = None,
+               guasti: list[str] | None = None) -> list[str]:
     """Un avviso un'ora prima e uno un quarto d'ora prima della scadenza della formazione (la prima partita della giornata meno i
     minuti della regola della lega; una volta sola ciascuno), per tutti: le vecchie scelte `promemoria_60` e `promemoria_15` non
     contano più (#676); `opzioni` resta per chi chiama (le ore tranquille le guarda `manda`).
     Se hai già schierato (scelta salvata che si può ancora schierare, e messa: `_gia_schierato`) e nessuno dei tuoi titolari è
     diventato indisponibile, non ti disturba; se qualcuno lo è diventato, l'avviso parte e lo dice. Quando tace non segna niente
-    come mandato: se più tardi cambia qualcosa, parte ancora."""
+    come mandato: se più tardi cambia qualcosa, parte ancora.
+    Se i dettagli della formazione non si calcolano il promemoria parte senza, e il guasto va in `guasti` o nel registro."""
     from . import consigli
     adesso = adesso or datetime.now()
     stagione = consigli.stagione_corrente()
@@ -538,8 +554,10 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
                 parti.append(F("n.consigliato", modulo=f["modulo"], punti=float(f["punteggio_atteso"])))
                 if dubbi:
                     parti.append(F("n.da_controllare", nomi=", ".join(dubbi)))
-            except Exception:                      # il promemoria parte comunque, anche senza i dettagli della formazione
+            except ValueError:                     # nessuna formazione possibile con la rosa: non è un guasto, parte senza dettagli
                 pass
+            except Exception as e:                 # noqa: BLE001  (il promemoria parte comunque, anche senza i dettagli)
+                segna_guasto(guasti, "promemoria senza i dettagli della formazione", e)
             testo = frasi.elenco(parti, sep=" ")
             titolo = F("n.t_un_ora")
         else:
