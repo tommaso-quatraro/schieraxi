@@ -58,6 +58,10 @@ struct VistaWidget: View {
             if let testo = voce.campionatoFinito {
                 // campionato finito (#727): la frase del server, niente giornata né «Nessun dato»
                 CampionatoFinitoWidget(testo: testo)
+            } else if let r = voce.riassunto, r.senzaFormazioneInCorso {
+                // entrato a giornata già iniziata senza una formazione (#687): niente consigliata né punti di questa giornata, la
+                // prossima da preparare
+                vistaSenzaFormazione(r)
             } else if let r = voce.riassunto, r.mostraFase {
                 // giornata in corso (punti fatti e previsti) o appena finita (riepilogo e prossima): niente «Da controllare»
                 vistaFase(r)
@@ -75,7 +79,8 @@ struct VistaWidget: View {
         }
         .sfondoWidget(accessorio: accessorio)
         // Un tocco sul widget apre l'app sulla formazione (o su «Collega il widget» se non è collegato); durante la giornata
-        // in corso o appena finita apre Oggi, dove ci sono i punti fatti e il riepilogo.
+        // in corso o appena finita apre Oggi, dove ci sono i punti fatti e il riepilogo. Per chi è entrato a giornata iniziata
+        // (niente punti fatti, `mostraFase` falso) la formazione, che è già quella della prossima.
         .widgetURL(voce.tocco(URL(string: voce.riassunto?.mostraFase == true ? "schieraxi://oggi" : "schieraxi://formazione")))
     }
 
@@ -221,6 +226,93 @@ struct VistaWidget: View {
         RigaInLinea(r.formeRigaInLineaFase, icona: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
     }
 
+    // MARK: entrato a giornata già iniziata senza formazione (#687)
+
+    /// Come la web per chi è entrato a giornata già iniziata senza una formazione (`senza_formazione`): la giornata già iniziata
+    /// con «Questa giornata è già iniziata», l'invito «Prepara la prossima» e il conto alla rovescia alla scadenza della prossima.
+    /// Niente consigliata né punti di questa giornata (non l'ha schierata).
+    private func vistaSenzaFormazione(_ r: RiassuntoOggi) -> some View {
+        Group {
+            switch famiglia {
+            case .systemMedium: senzaFormazioneMedio(r)
+            case .accessoryCircular: senzaFormazioneCircolare(r)
+            case .accessoryRectangular: senzaFormazioneRettangolare(r)
+            // «Prepara la prossima: 4 giorni 2 h» → «Prepara la prossima», mai tagliata
+            case .accessoryInline: RigaInLinea(r.formeRigaInLineaSenzaFormazione(adesso: voce.date), icona: "calendar")
+            default: colonnaSenzaFormazione(r, corta: true, invito: .headline, conConto: true)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(r.descrizioneSenzaFormazione ?? ParoleWidget.preparaProssima)
+    }
+
+    /// La giornata già iniziata, «Questa giornata è già iniziata» e «Prepara la prossima» (`conConto`: sotto, «Prossima: 4 giorni
+    /// 2 h»). Dove con il testo grande non entra tutto va via la riga «Questa giornata è già iniziata» (VoiceOver la legge
+    /// comunque): mai una riga tagliata.
+    private func colonnaSenzaFormazione(_ r: RiassuntoOggi, corta: Bool, invito: Font, conConto: Bool) -> some View {
+        PrimaCheEntra(2, in: .vertical) { i in
+            VStack(alignment: .leading, spacing: 2) {
+                titoloFase(r, corta: corta)
+                if i == 0 {
+                    Text(ParoleWidget.giaIniziata).font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Text(ParoleWidget.preparaProssima).font(invito)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .widgetAccentable()
+                if conConto, r.scadenzaDelConto != nil {
+                    prossimaBreve(r).font(.caption2).foregroundStyle(.white.opacity(0.8))
+                }
+                statoDati(r)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func senzaFormazioneMedio(_ r: RiassuntoOggi) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            colonnaSenzaFormazione(r, corta: false, invito: .system(.title3, design: .rounded).weight(.bold), conConto: false)
+            // a destra la prossima come a giornata finita: la giornata, il conto alla rovescia e quando si chiude
+            VStack(alignment: .leading, spacing: 4) {
+                if let prossima = r.prossimaDaPreparare {
+                    GiornataInRiga(forme: r.formeProssimaDaPreparare, voce: r.voceProssimaDaPreparare, simbolo: "calendar")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).minimumScaleFactor(0.7)
+                    conto(r).font(.system(.title2, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
+                    if let scadenza = prossima.scadenza {
+                        Text(allaScadenza(scadenza)).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func senzaFormazioneCircolare(_ r: RiassuntoOggi) -> some View {
+        CerchioWidget {
+            Image(systemName: "calendar").font(.caption2)
+            // la prossima: «Giornata 9», rimpicciolita se serve, mai «G9» (#299)
+            Text(ParoleWidget.giornataNelCerchio(r.prossimaDaPreparare?.nomeGiornata)).font(.caption2).lineLimit(1).minimumScaleFactor(0.5)
+            if r.scadenzaDelConto != nil {
+                conto(r).font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.5).widgetAccentable()
+            }
+        }
+    }
+
+    private func senzaFormazioneRettangolare(_ r: RiassuntoOggi) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(ParoleWidget.giaIniziata).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
+            Text(ParoleWidget.preparaProssima).font(.headline).lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
+            if r.scadenzaDelConto != nil {
+                prossimaBreve(r).font(.caption2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     // MARK: pezzi comuni
 
     private func inCorso(_ r: RiassuntoOggi) -> Bool {
@@ -232,9 +324,10 @@ struct VistaWidget: View {
         Formato.punti(r.punti)
     }
 
-    /// Conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»); «Chiusa» a scadenza passata.
+    /// Conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»); «Chiusa» a scadenza passata. Per chi è entrato a giornata
+    /// iniziata va alla scadenza della prossima (`scadenzaDelConto`), altrimenti è `inizio`.
     private func conto(_ r: RiassuntoOggi) -> some View {
-        ContoWidget(inizio: r.inizio, adesso: voce.date)
+        ContoWidget(inizio: r.scadenzaDelConto, adesso: voce.date)
     }
 
     /// «alla scadenza, oggi 05:30» / «… ven 6 03:32»: la data come `quando` della web, contata dall'istante della voce.

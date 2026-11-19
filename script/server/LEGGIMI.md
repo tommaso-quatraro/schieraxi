@@ -216,13 +216,12 @@ per il passaggio e si riaccende dopo il `--fidati`. Il workflow del repository p
 
 ### Librerie bloccate: come si cambiano
 - Elenchi scritti a mano: `requirements.in` (app), `requirements-dev.in` (test), `requirements-vincoli.in` (versioni imposte, col motivo;
-  con `; python_version < "3.12"` valgono solo per i Python vecchi della CI, il server resta sulla versione principale).
+  con `; python_version < "X.Y"` valgono solo per i Python più vecchi, il server resta sulla versione principale; oggi non ce ne sono).
 - Rigenerare in locale: `.venv\Scripts\python.exe script\blocca_dipendenze.py`. Tiene le versioni che ci sono già; una libreria nuova prende
   la versione della `.venv`. Per allinearsi al server: `ssh <server> '~/fantacalcio/.venv/bin/python -m pip freeze' > freeze.txt`
   (sola lettura) e `... blocca_dipendenze.py --versioni freeze.txt`; per aggiornare tutto alla `.venv`: `--aggiorna`.
   Hash = tutti i file di PyPI per quella versione, così vale su ogni server Linux, in locale (Windows) e su GitHub. `--controlla` dice se i file sono da rifare.
-- La CI prova con Python 3.12 come il server dove c'è (GitHub; sui runner propri con `CI_PYTHON312` nel `.env` del runner o con
-  `python3.12`), altrimenti con 3.11 e un avviso: in quel caso numpy e soupsieve sono le versioni per i Python vecchi.
+- La CI prova con Python 3.12 come il server (runner di GitHub `ubuntu-latest`): l'app non supporta più Python 3.11.
 - Dependabot (repository pubblico) apre PR che cambiano versione e hash di una libreria; i controlli le installano con gli hash. Se la
   libreria nuova porta dipendenze nuove la PR non passa: si rigenera con lo script.
 

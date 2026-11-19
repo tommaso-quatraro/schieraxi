@@ -75,3 +75,16 @@ def test_i_file_dicono_come_si_rigenerano_e_installano():
 def test_il_server_installa_le_librerie_solo_con_gli_hash():
     t = (RADICE / "script" / "server" / "aggiorna-app.sh").read_text(encoding="utf-8")
     assert "-m pip install -q --require-hashes -r" in t
+
+
+def test_l_app_gira_da_python_312_in_su():
+    """Python 3.11 non è più supportato (#692): né obiettivi dello script né righe di requisiti per Python più vecchi di 3.12."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("blocca_dipendenze", RADICE / "script" / "blocca_dipendenze.py")
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    assert min(tuple(map(int, py.split("."))) for py, _, _ in modulo.OBIETTIVI) == (3, 12)
+    for f in ("requirements.txt", "requirements-dev.txt"):
+        assert 'python_version < "3.12"' not in (RADICE / f).read_text(encoding="utf-8"), f
+    assert 'target-version = "py312"' in (RADICE / "ruff.toml").read_text(encoding="utf-8")
