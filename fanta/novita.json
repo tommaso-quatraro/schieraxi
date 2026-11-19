@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.515",
+    "data": "2026-11-19T02:22:38",
+    "titolo": "Promemoria della scadenza: sull'iPhone seguono «L'ho messa» anche quando la spunta cambia dalla web",
+    "voci": [
+      "iPhone: i promemoria di un'ora e di un quarto d'ora prima della scadenza seguono la spunta «L'ho messa» anche quando la metti, la togli o cambi un titolare dalla web, senza riaprire l'app (quando l'iPhone aggiorna i dati da solo).",
+      "Chi salva la formazione dall'iPhone senza spuntare «L'ho messa» riceve il promemoria che chiede se l'ha messa nell'app della lega, come chi la salva dalla web."
+    ],
+    "tecnico": [
+      "GET /api/oggi: campo nuovo e facoltativo `serve_promemoria` (booleano) = notifiche.serve_promemoria sulla giornata di Oggi e sulle scelte di chi chiede, cioè la regola di notifiche._gia_schierato usata dal promemoria (falso solo con una scelta schierabile, messa e senza titolari fuori, in panchina o non citati). Manca senza rose.",
+      "notifiche._gia_schierato: NON_MESSA anche per le scelte con da='app' (prima solo da='web'): l'iPhone ha la spunta dal riallineamento (#673, come annunciato nella #693). Le scelte senza `da` (salvate prima del 13/11) tacciono come prima.",
+      "server._da_dove: `da: \"app\"` anche con l'intestazione `X-Schieraxi-Client: ios`, che l'app manda sempre: senza account l'iPhone non ha il token Bearer e le sue scelte restavano senza `da` (promemoria muto anche senza spunta). L'intestazione etichetta soltanto la scelta di chi salva, nessun permesso in più.",
+      "docs/API.md e docs/openapi.json (descrizione di GET /api/oggi) aggiornati."
+    ]
+  },
+  {
     "versione": "1.514",
     "data": "2026-11-19T02:07:48",
     "titolo": "Squalificati: gli espulsi li riconosce SchieraXI anche senza probabili",
