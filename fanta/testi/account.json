@@ -87,6 +87,18 @@
     "it": "Esci",
     "en": "Sign out"
   },
+  "account.esci_tutti": {
+    "it": "Esci da tutti i dispositivi",
+    "en": "Sign out of all devices"
+  },
+  "account.esci_tutti_conferma": {
+    "it": "Esci da tutti i dispositivi, anche da questo? Dovrai accedere di nuovo su ognuno.",
+    "en": "Sign out of all devices, this one included? You will need to sign in again on each of them."
+  },
+  "account.esci_tutti_no": {
+    "it": "Non riesco a farti uscire da tutti i dispositivi. {motivo}",
+    "en": "I cannot sign you out of all devices. {motivo}"
+  },
   "account.cambia_password": {
     "it": "Cambia la password",
     "en": "Change the password"
