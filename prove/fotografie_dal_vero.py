@@ -52,6 +52,11 @@ ATTESA_VOTI = timedelta(hours=3)           # i voti escono qualche ora dopo la f
 RINVIO = timedelta(days=24)                # la partita rinviata si gioca settimane dopo (recupero)
 CERCA = "ma"                               # il testo che gli screenshot scrivono nella ricerca (-DEMO_CERCA)
 FORMATO_DATA = "%Y-%m-%d %H:%M"
+NOVITA = 20                                # le novità registrate: le più recenti (tutte sono 500 kB, e le vecchie citano indirizzi
+                                           # locali ed email, che il controllo dei nomi rifiuta)
+# Google finto per `/api/account/social/accessi` (registra_accessi): nessuna rete, si legge solo come si entra nell'account
+GOOGLE_FINTO = {"FANTA_GOOGLE_CLIENT_ID": "id-di-prova.apps.googleusercontent.com", "FANTA_GOOGLE_CLIENT_SECRET": "segreto-di-prova",
+                "FANTA_GOOGLE_REDIRECT": "https://esempio.invalid/api/account/social/google/ritorno"}
 
 
 # =========================== nomi inventati ===========================
@@ -426,6 +431,28 @@ def diretta_finta(db_file: Path, info: dict, adesso: _datetime_vera):
     live.unico = raccoglitore
 
 
+def registra_accessi(chiedi, cartella: Path) -> None:
+    """`/api/account/social/accessi` risponde solo con gli account e l'accesso con Google accesi: per questa sola richiesta si
+    accendono (Google finto, senza rete) con un account di prova in una cartella della copia, poi l'ambiente torna com'era.
+    Va chiamata per ultima: con gli account accesi ogni altra rotta vorrebbe l'accesso."""
+    from contextlib import closing
+
+    from fanta import account
+    nuove = {"FANTA_MULTIUTENTE": "1", "FANTA_DATI_UTENTI": str(cartella / "account-prova")} | GOOGLE_FINTO
+    prima = {k: os.environ.get(k) for k in nuove}
+    os.environ.update(nuove)
+    try:
+        with closing(account.apri()) as db:
+            _, token, _ = account.registra(db, "prova", "una-password-lunga-9", account.crea_invito(db, "prova"), accetto_termini=True)
+        chiedi("/api/account/social/accessi", intestazioni={"Authorization": f"Bearer {token}"})
+    finally:
+        for k, v in prima.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def fotografa(cartella: Path, info: dict) -> dict:
     """Chiama le rotte dell'app sul server della copia. Restituisce {percorso: {stato, tipo, corpo}} e i dati per la demo."""
     adesso = _datetime_vera.fromisoformat(info["adesso"])
@@ -448,8 +475,8 @@ def fotografa(cartella: Path, info: dict) -> dict:
     cliente = TestClient(server.app, headers={"X-Fanta": "1"})
     risposte: dict[str, dict] = {}
 
-    def chiedi(percorso: str, metodo: str = "GET", corpo=None, chiave: str | None = None):
-        r = cliente.request(metodo, percorso, json=corpo)
+    def chiedi(percorso: str, metodo: str = "GET", corpo=None, chiave: str | None = None, intestazioni: dict | None = None):
+        r = cliente.request(metodo, percorso, json=corpo, headers=intestazioni)
         tipo = "json" if "json" in r.headers.get("content-type", "") else "testo"
         valore = r.json() if tipo == "json" else r.text
         if r.status_code >= 400:
@@ -479,11 +506,13 @@ def fotografa(cartella: Path, info: dict) -> dict:
         voci = (liberi.get("giocatori") if isinstance(liberi, dict) else liberi) or []
         for v in voci[:3]:
             cliente.put(f"/api/osservati/{v['id']}")
-    # le rotte che l'app chiede di solito (percorsi uguali a quelli dell'app: il server finto risponde per prefisso)
+    # le rotte che l'app chiede di solito (percorsi uguali a quelli dell'app: il server finto risponde per prefisso).
+    # /api/foto-disponibili c'è solo sui server con le foto dei calciatori: altrove risponde 404 e non si scrive.
     for p in ("/api/stato-dati", "/api/oggi", "/api/live", "/api/formazione/testo", f"/api/scelta?giornata={g}", "/api/squadre",
               "/api/rosa", "/api/calendario", "/api/osservati", "/api/regole", "/api/avvisi", "/api/diario", "/api/asta",
               "/api/asta?modo=riparazione", "/api/affidabilita", "/api/movimenti?limite=30", "/api/stagione",
-              "/api/funzioni", "/api/primo-avvio", "/api/account/me", "/api/widget", "/api/scambi/limite"):
+              "/api/funzioni", "/api/primo-avvio", "/api/account/me", "/api/widget", "/api/scambi/limite",
+              "/api/novita", "/api/aggiorna", "/api/foto-disponibili"):
         chiedi(p)
     chiedi("/api/formazione")                                  # di nuovo: dopo la scelta salvata
     squadre = risposte.get("/api/squadre", {}).get("corpo") or []
@@ -527,6 +556,7 @@ def fotografa(cartella: Path, info: dict) -> dict:
             chiedi(f"/api/confronto?a={t['id']}&b={b['id']}", chiave="/api/confronto")
             break
     chiedi("/api/giocatori?q=a&limite=60", chiave="/api/giocatori")
+    registra_accessi(chiedi, cartella)                         # per ultima: accende gli account per una richiesta sola
     # foto: solo QUALI giocatori ce l'hanno (l'app ne disegna una finta); le foto vere non escono mai dalla cartella dei dati
     # (solo se questo server ha le foto: nella versione pubblica non ci sono e l'app disegna i volti)
     con_foto = (cartella / "fanta" / "foto.py").is_file()
@@ -653,6 +683,8 @@ def scrivi_scenario(grezzo: dict, info: dict, cartella: Path, uscita: Path, viet
             chiave = ("/api/rosa?squadra=" if tipo == "ROSA" else "/api/formazione?squadra=") + quote(nome_finto, safe="!$'()*,-./:;@_~")
         elif chiave == "/api/giocatori" and isinstance(corpo, list):
             corpo = [x for x in corpo if CERCA in piega(str(x.get("nome", "")))][:25]
+        elif chiave == "/api/novita" and isinstance(corpo, list):
+            corpo = corpo[:NOVITA]
         risposte_finte[chiave] = corpo if r["tipo"] == "testo" else json.dumps(corpo, ensure_ascii=False, separators=(",", ":"))
     d = grezzo["demo"]
     demo = {"giocatore": d.get("giocatore"), "confronto": d.get("confronto"), "foto": d.get("foto") or [],
