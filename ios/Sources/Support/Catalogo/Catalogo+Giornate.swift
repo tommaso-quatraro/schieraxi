@@ -39,6 +39,14 @@ extension Catalogo {
         /// `giornate.non_salvata`
         static let nonSalvata = "Formazione non salvata: sono i punti della consigliata."
 
+        /// `giornate.sul_previsto`
+        static func sulPrevisto(d: String) -> String {
+            "\(d) sul previsto"
+        }
+
+        /// `giornate.come_previsto`
+        static let comePrevisto = "come previsto"
+
         /// `giornate.formazione_tua`
         static func formazioneTua(modulo: String) -> String {
             "La tua formazione (\(modulo))"

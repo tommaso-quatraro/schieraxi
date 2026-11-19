@@ -41,6 +41,9 @@ struct VoceDiario: Decodable, Identifiable {
     /// consigliata non c'è: …», «Questa è rifatta con i dati di allora: …»), da mostrare così com'è. `null`, vuota o assente (server
     /// di prima) = nessuna frase.
     let notaConsigliata: String?
+    /// Facoltativo (#672): punti fatti contro attesi della formazione che conta, con la differenza e la frase su chi ha fatto meglio
+    /// o peggio del previsto, da mostrare così come sono. `null` (formazione senza punti) o assente (server di prima) = niente.
+    let fattiEAttesi: FattiEAttesiDiario?
 
     /// Stagione e giornata: con due stagioni nel Diario la giornata 10 c'è due volte.
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
@@ -63,7 +66,7 @@ struct VoceDiario: Decodable, Identifiable {
 
     private enum Chiavi: String, CodingKey {
         case stagione, giornata, giornataLega, consigliata, schierata, automatica, giocatori, istantanea, attesoVsFatto, modificabile
-        case notaConsigliata
+        case notaConsigliata, fattiEAttesi
     }
 
     init(from decoder: Decoder) throws {
@@ -81,6 +84,25 @@ struct VoceDiario: Decodable, Identifiable {
         modificabile = (try? c.decodeIfPresent(Bool.self, forKey: .modificabile)) ?? nil
         let nota = (try? c.decodeIfPresent(String.self, forKey: .notaConsigliata)) ?? nil
         notaConsigliata = nota?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? nota : nil
+        fattiEAttesi = (try? c.decodeIfPresent(FattiEAttesiDiario.self, forKey: .fattiEAttesi)) ?? nil
+    }
+}
+
+/// Fatti contro attesi della formazione che conta in una giornata (`fatti_e_attesi` di `GET /api/diario`, #672): si leggono solo
+/// i due campi che la pagina Giornate mostra. Tollerante: un campo di un tipo strano, o una frase vuota, vale «manca».
+struct FattiEAttesiDiario: Decodable, Equatable {
+    /// Fatti meno attesi come li dà il server, a una cifra (positiva: meglio del previsto).
+    var differenza: Double?
+    /// «Meglio del previsto: Rossi (+3,9) e Verdi (+2,0). Peggio: Bianchi (−2,5).»; nil se nessuno si è scostato di un punto.
+    var testo: String?
+
+    private enum Chiavi: String, CodingKey { case differenza, testo }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        differenza = numeroDiario(k, .differenza)
+        let frase = (try? k.decodeIfPresent(String.self, forKey: .testo)) ?? nil
+        testo = frase?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? frase : nil
     }
 }
 

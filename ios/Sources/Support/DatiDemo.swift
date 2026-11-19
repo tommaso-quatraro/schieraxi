@@ -925,6 +925,14 @@ private extension LegaDemo {
         // quando è stata calcolata la consigliata (Serie A 10, 9, 8: l'istantanea; Serie A 7 no)
         let calcolata: [Int: String] = [10: "2026-10-31T10:05:00", 9: "2026-10-24T09:40:00", 8: "2026-10-17T11:20:00"]
         let tuoi: [Int: [String]] = [9: altra, 8: altra2]
+        // chi ha fatto meglio o peggio del previsto (`fatti_e_attesi.testo` di fanta/diario.py, #672): la frase la scrive il server,
+        // qui il suo testo per i numeri della tabella qui sopra (`DemoDiarioTests` controlla che siano quelli)
+        let frasiScarti: [Int: String] = [
+            10: "Meglio del previsto: Leonel (+2,6) e Bastrani (+1,5). Peggio: Thorvan (\u{2212}1,5) e Kloosmeijer (\u{2212}1,2).",
+            9: "Meglio del previsto: Thorvan (+2,7) e Dimarzi (+1,6). Peggio: Pulinski (\u{2212}1,4).",
+            8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Orsetti (\u{2212}1,5).",
+            7: "Meglio del previsto: Lemão (+2,0). Peggio: Kloosmeijer (\u{2212}2,1) e Pulinski (\u{2212}1,5).",
+        ]
         func esito(_ e: EsitoGiornata, _ nomi: [String]) -> [String: Any] {
             ["modulo": e.modulo, "atteso": e.atteso, "reale": e.fatti, "intervallo": fascia(e.atteso), "titolari": titolari(nomi)]
         }
@@ -951,6 +959,15 @@ private extension LegaDemo {
                     ? "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata."
                     : "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata."
             }
+            // fatti contro attesi della formazione che conta (la tua, poi la copia alla scadenza, poi la consigliata), come il server
+            let tua = voce["schierata"] != nil
+            let conta: EsitoGiornata = tua ? (g.schierata ?? c) : c
+            let formazione: String = tua ? "schierata" : (calcolata[g.serieA] != nil ? "automatica" : "consigliata")
+            let differenza: Double = ((conta.fatti - conta.atteso) * 10).rounded() / 10
+            var fatti: [String: Any] = ["formazione": formazione, "atteso": conta.atteso, "fatti": conta.fatti,
+                                        "differenza": differenza, "testo": NSNull()]
+            if let frase = frasiScarti[g.serieA] { fatti["testo"] = frase }
+            voce["fatti_e_attesi"] = fatti
             return voce
         }
         return json([
