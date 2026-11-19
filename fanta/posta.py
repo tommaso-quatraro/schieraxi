@@ -286,7 +286,12 @@ def modello_password_cambiata(a: str, quando: str) -> Messaggio:
 
 
 def modello_email_cambiata(a: str) -> Messaggio:
+    """All'indirizzo che lascia l'account (sostituito con un altro o tolto), con i passi da fare se non è stato il proprietario."""
     return Messaggio(a, "SchieraXI: l'email del tuo account è cambiata",
-                     "Ciao,\nl'indirizzo email del tuo account SchieraXI è stato sostituito con un altro: da ora i messaggi "
-                     "non arriveranno più qui.\n\nSe non sei stato tu, cambia subito la password e usa «Esci da tutti i "
-                     "dispositivi» (Impostazioni > Il tuo account).")
+                     "Ciao,\nquesto indirizzo email non è più collegato al tuo account SchieraXI: da ora i messaggi non "
+                     "arriveranno più qui.\n\n"
+                     "Se non sei stato tu, fai subito questi passi da Impostazioni > Il tuo account, in quest'ordine:\n"
+                     "1. rimetti questo indirizzo (ti arriva qui un codice da scrivere nell'app);\n"
+                     "2. cambia la password;\n"
+                     "3. usa «Esci da tutti i dispositivi».\n\n"
+                     "Se non riesci più a entrare, scrivi al recapito nella pagina Privacy dell'app.")

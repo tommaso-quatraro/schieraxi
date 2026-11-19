@@ -169,6 +169,12 @@ prima della scadenza:
   e le copie restano (#765);
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore.
 
+`test_accesso_all_avvio.py`, l'avvio con gli account quando la sessione non vale più (401 da «chi sono»). Gira solo prima della
+scadenza:
+- le copie di un account rimaste nel browser (`localStorage` dei dati e dell'account, copie del service worker) si tolgono
+  prima della schermata di accesso, come all'uscita; riaperta senza rete, la Formazione salvata non compare;
+- il codice di un link d'invito resta e compare nel modulo di registrazione.
+
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
 - dopo un rilascio finto (ogni file della scocca dice la sua versione, `VERSIONE` di `sw.js` alzata) con `app.js` e `testi.js`
   lenti oltre i 2,5 secondi, la pagina riaperta è tutta di una versione e un testo nuovo non compare come chiave; la versione
