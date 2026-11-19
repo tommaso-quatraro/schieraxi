@@ -67,7 +67,7 @@ struct RestiDalCatalogoTests {
              frasi: [Catalogo.Formazione.incerto(p: "§", riserva: "§")],
              usa: ["Catalogo.Formazione.incerto("]),
         Caso(file: "Sources/Domain/FantavotoAtteso.swift",
-             testi: [Catalogo.Perche.titolo, Catalogo.Perche.definizione],
+             testi: [Catalogo.Perche.titolo],
              frasi: [Catalogo.Perche.rispetto(n: "§"), Catalogo.Perche.nessuno(n: "§")],
              usa: ["Catalogo.Perche.titolo", "Catalogo.Perche.rispetto(", "Catalogo.Perche.nessuno("]),
         Caso(file: "Sources/Domain/FasiGiornata.swift",

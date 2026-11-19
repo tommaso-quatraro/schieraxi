@@ -3,10 +3,6 @@
     "it": "Perché questo numero",
     "en": "Why this number"
   },
-  "perche.definizione": {
-    "it": "Il fantavoto atteso è quello che SchieraXI si aspetta da questo giocatore in questa partita, se gioca, con le regole della tua lega.",
-    "en": "The expected fantasy score is what SchieraXI expects from this player in this match, if he plays, with your league's rules."
-  },
   "perche.rispetto": {
     "it": "Un giocatore medio del suo ruolo ha {n}. Il resto sono differenze piccole.",
     "en": "An average player in his position has {n}. The rest are small differences."
