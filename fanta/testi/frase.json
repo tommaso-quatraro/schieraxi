@@ -56,6 +56,10 @@
     "it": "{a}ª giornata di Serie A",
     "en": "Serie A matchday {a}"
   },
+  "frase.giornata.senza_data": {
+    "it": "Data da definire",
+    "en": "Date to be confirmed"
+  },
   "frase.elenco.e": {
     "it": " e ",
     "en": " and "

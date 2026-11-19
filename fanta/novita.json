@@ -1,5 +1,18 @@
 [
   {
+    "versione": "1.523",
+    "data": "2026-11-19T21:43:41",
+    "titolo": "Giornata senza date: «Data da definire», uguale sulla web e sull'iPhone",
+    "voci": [
+      "Formazione, quando la Serie A non ha ancora fissato le date della giornata da preparare: al posto dell'ora in cui si chiude la formazione ora c'è scritto «Data da definire», sulla web e sull'app per iPhone. Prima c'era «Calendario non disponibile», che non era vero: il calendario c'è, manca solo la data.",
+      "Vale anche a giornata finita, sotto com'è andata, quando è la giornata dopo a non avere ancora le date."
+    ],
+    "tecnico": [
+      "GET /api/oggi: campo nuovo facoltativo senza_data = {testo, frase} (chiave giornata.senza_data), solo quando la scadenza della formazione mostrata manca (gestione.scadenza_mostrata, la regola di scadenzaDi della web: prossima.scadenza a giornata finita o con senza_formazione, altrimenti scadenza o inizio). Non c'è a campionato finito (campionato_finito), senza rose né in GET /api/widget.",
+      "Web (testoConto) e iPhone (TestaFormazione.conto, Oggi.testoSenzaData) mostrano la frase così com'è; senza il campo resta oggi.calendario_no. Contratto in docs/API.md, «fasi della giornata» (#552)."
+    ]
+  },
+  {
     "versione": "1.522",
     "data": "2026-11-19T21:25:09",
     "titolo": "Aggiornamenti del server più ordinati",

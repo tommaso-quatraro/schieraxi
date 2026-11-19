@@ -790,8 +790,10 @@ async function aggiornaDati() {
 
 // Quando si chiude la formazione che la schermata mostra: a giornata finita, o per chi è arrivato a giornata iniziata, la prossima.
 const scadenzaDi = o => (o.prossima && (o.fase === "finita" || o.senza_formazione) && o.prossima.scadenza) || o.scadenza || o.inizio;
-// «Si chiude oggi 18:20» e «fra 3 h 10 min»: il conto resta, piccolo, accanto alla scadenza.
+// «Si chiude oggi 18:20» e «fra 3 h 10 min»: il conto resta, piccolo, accanto alla scadenza. Con la giornata ancora senza date la
+// frase del server (`senza_data` di /api/oggi, #552: «Data da definire»); un server di prima non la manda e resta il testo di sempre.
 function testoConto(o) {
+  if (o.senza_data && typeof o.senza_data.testo === "string" && o.senza_data.testo.trim()) return { chiude: testoDi(o.senza_data), manca: "" };
   const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude);
   if (!fine) return { chiude: t("oggi.calendario_no"), manca: "" };
   const min = Math.round((fine - new Date()) / 60000);
