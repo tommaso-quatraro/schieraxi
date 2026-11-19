@@ -113,7 +113,7 @@ const NOVITA_VISIBILI = 10;
 function dataNovita(d) {
   const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}:\d{2}))?/.exec(String(d || ""));
   if (!m) return "";
-  const giorno = fData(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])), { day: "numeric", month: "short", year: "numeric" });
+  const giorno = fData(parseData(`${m[1]}-${m[2]}-${m[3]}`), { day: "numeric", month: "short", year: "numeric" });
   return `${giorno}${m[4] ? ", " + m[4] : ""}`;
 }
 async function mostraNovita(dove) {

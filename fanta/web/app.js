@@ -53,19 +53,49 @@ function segnaMovimento() {
 segnaMovimento();
 
 function parseData(s) {
+  // Le date del server sono in ora italiana senza fuso (docs/API.md, «Date e ore»): «2026-10-27 18:30», «2026-10-26T23:55:13», solo
+  // «2026-11-01» (la mezzanotte). Si leggono come ora italiana qualunque sia il fuso del browser (#776), anche la notte del cambio
+  // dell'ora. Una data con il fuso («…+01:00», «…Z») è già un istante preciso. null se non è una data.
   if (!s) return null;
-  const d = new Date(String(s).replace(" ", "T"));
+  const testo = String(s).trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/.exec(testo);
+  if (m) {
+    const [anno, mese, giorno, ore, minuti, secondi] = m.slice(1).map(x => Number(x || 0));
+    if (mese < 1 || mese > 12 || giorno < 1 || giorno > 31 || ore > 23 || minuti > 59 || secondi > 59) return null;
+    return daOraItaliana(anno, mese, giorno, ore, minuti, secondi);
+  }
+  const d = new Date(testo.replace(" ", "T"));
   return Number.isNaN(d.getTime()) ? null : d;
 }
-// "oggi 20:45", "domani 18:30", "sab 31 15:00"
+// Anno, mese (1-12), giorno, ore, minuti e secondi di un istante sull'orologio italiano.
+const PEZZI_ITALIA = new Intl.DateTimeFormat("en-US", { timeZone: FUSO_ITALIA, hourCycle: "h23", year: "numeric", month: "numeric",
+  day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" });
+function inItalia(d) {
+  const p = {};
+  for (const x of PEZZI_ITALIA.formatToParts(d)) p[x.type] = Number(x.value);
+  return { anno: p.year, mese: p.month, giorno: p.day, ore: p.hour % 24, minuti: p.minute, secondi: p.second };
+}
+// Quanto l'ora italiana è avanti rispetto a UTC in un istante (millisecondi): un'ora d'inverno, due d'estate.
+function scartoItalia(ms) {
+  const p = inItalia(new Date(ms));
+  return Date.UTC(p.anno, p.mese - 1, p.giorno, p.ore, p.minuti, p.secondi) - Math.floor(ms / 1000) * 1000;
+}
+// L'istante di un'ora scritta sull'orologio italiano. Lo scarto si prende due volte: la seconda sull'istante trovato, che
+// nelle notti del cambio dell'ora può stare dall'altra parte del cambio. Un'ora che c'è due volte (fine ottobre) è la seconda;
+// una che non c'è (fine marzo, dalle 2 alle 3) passa all'ora dopo.
+function daOraItaliana(anno, mese, giorno, ore = 0, minuti = 0, secondi = 0) {
+  const comeUtc = Date.UTC(anno, mese - 1, giorno, ore, minuti, secondi);
+  return new Date(comeUtc - scartoItalia(comeUtc - scartoItalia(comeUtc)));
+}
+// "oggi 20:45", "domani 18:30", "sab 31 15:00": giorni contati sul calendario italiano, come l'ora
 function quando(s) {
   const d = parseData(s);
   if (!d) return "–";
-  const inizio = x => new Date(x.getFullYear(), x.getMonth(), x.getDate());
-  const diff = Math.round((inizio(d) - inizio(new Date())) / 864e5);
+  const giornoDi = x => { const p = inItalia(x); return Date.UTC(p.anno, p.mese - 1, p.giorno); };      // mezzanotte, come se fosse UTC
+  const il = giornoDi(d), diff = Math.round((il - giornoDi(new Date())) / 864e5);
   const ora = fOra(d);
-  const giorno = Math.abs(diff) > 6 ? fData(d) : d.getDate();          // oltre la settimana anche il mese
-  return `${diff === 0 ? t("tempo.oggi") : diff === 1 ? t("tempo.domani") : diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + d.getDay())} ${giorno}`} ${ora}`;
+  const giorno = Math.abs(diff) > 6 ? fData(d) : new Date(il).getUTCDate();          // oltre la settimana anche il mese
+  return `${diff === 0 ? t("tempo.oggi") : diff === 1 ? t("tempo.domani") : diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + new Date(il).getUTCDay())} ${giorno}`} ${ora}`;
 }
 
 // ETag e If-Match: il server dà a ogni risorsa personale (regole, rose, scelta di una giornata, avvisi) un ETag. L'app
@@ -726,7 +756,7 @@ async function caricaInfo() {
   try {
     stato.info = await api("/api/stato");
     const i = stato.info;
-    const quandoAgg = i.ultimo_aggiornamento ? new Date(i.ultimo_aggiornamento) : null;
+    const quandoAgg = parseData(i.ultimo_aggiornamento);
     // giornata, nome della mia squadra e data dei dati: la riga di stato sotto il titolo di ogni schermata (pagina())
     stato.rigaStato = {
       giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
@@ -1994,6 +2024,7 @@ async function apriStatoDati() {
       <span class="debole piccolo">${a.quando ? esc(quando(a.quando)) : t("sd.mai")}</span></div>
       ${a.errori.map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
     const c = s.calibrazione;
+    const usoDal = s.uso ? parseData(s.uso.dal) : null, coppeFino = parseData(s.coppe_fino);        // solo il giorno
     const gruppi = c.gruppi.map(g => `<div class="riga"><span>${esc(g.gruppo)}</span>
       <span class="debole piccolo">${g.n ? `${tp("sd.n_giocatori", g.n)} · ${t("sd.hanno_giocato", { o: perc(g.osservato), p: perc(g.previsto) })}${g.indicativo ? t("sd.pochi_dati") : ""}${c.fattori && c.fattori[g.gruppo] ? ` · ${t("sd.correzione", { f: fNum(c.fattori[g.gruppo], { maximumFractionDigits: 3 }) })}` : ""}` : t("sd.nessun_dato")}</span></div>`).join("");
     apriFoglio(`
@@ -2006,12 +2037,12 @@ async function apriStatoDati() {
           ${f.acceso ? "" : `<div class="debole piccolo">${esc(f.messaggio || "")}</div>`}`).join("")}
         <div class="debole piccolo">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
-        <div class="debole piccolo">${t("sd.uso_spiega", { dal: s.uso.dal ? ` (${t("sd.dal", { d: esc(fData(new Date(s.uso.dal + "T12:00:00"), {})) })})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
+        <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${t("sd.dal", { d: esc(fData(usoDal, {})) })})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
         ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
         <details><summary class="debole piccolo">${t("scambio.schermate_piu_usate")}</summary>
           ${(s.uso.per_rotta || []).slice(0, 15).map(r => `<div class="riga"><span class="piccolo">${esc(r.rotta)}</span><span class="debole piccolo">${tp("sd.n_volte", r.richieste)}</span></div>`).join("")}</details></div>` : ""}
       <div class="carta"><h2>${t("scambio.date_delle_coppe")}</h2>
-        <div class="debole piccolo">${t("sd.coppe_spiega", { d: esc(fData(new Date(s.coppe_fino + "T12:00:00"), {})) })}${new Date(s.coppe_fino) < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
+        <div class="debole piccolo">${t("sd.coppe_spiega", { d: coppeFino ? esc(fData(coppeFino, {})) : "–" })}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
         ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${nomeGiornata(null, p.giornata)}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
       <div class="carta"><h2>${t("scambio.controlli_sui_dati")}</h2>
@@ -3602,7 +3633,7 @@ function schedaAccount() {
   const a = stato.account;
   if (!a) return "";
   const campo = (id, etichetta, extra = "") => `<label class="accesso-campo"><span class="debole piccolo">${etichetta}</span><input class="campo-testo" id="${id}" type="password" ${extra}></label>`;
-  const data = new Date(a.creato).toLocaleDateString(t("lingua.locale"), { day: "numeric", month: "long", year: "numeric" });
+  const creato = parseData(a.creato), data = creato ? fData(creato, { day: "numeric", month: "long", year: "numeric" }) : "–";
   return `<div class="carta" id="scheda-account">
     <div><b class="nome-account">${esc(a.nome_visualizzato || a.nome_utente)}</b><span class="debole piccolo" style="display:block">${t("account.dal", { ruolo: a.ruolo === "amministratore" ? t("account.ruolo_admin") : t("account.ruolo_utente"), data })}</span></div>
     ${socialPronto() || (stato.accessi && stato.accessi.social && stato.accessi.social.length) ? `<details style="margin-top:14px"${soloGoogle() ? " open" : ""}><summary>${t("social.accessi")}</summary>
