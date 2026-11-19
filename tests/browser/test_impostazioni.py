@@ -123,6 +123,107 @@ def test_gestione_solo_per_chi_gestisce_il_server(web):
     assert principale(web).get_by_role("button", name="Aggiorna i dati").is_visible()   # le frecce della testata stanno qui
 
 
+# ---------------------------------------------------------------- «Aggiorna i dati» mentre il server aggiorna da solo (#763)
+FRASE_IN_CORSO = re.compile("sta già aggiornando")
+
+
+def stato_aggiornamento(web, in_corso: bool) -> None:
+    """Da qui /api/stato risponde come quello registrato, con `aggiornamento_in_corso` scelto."""
+    s = web.registrata("/api/stato")
+    s["aggiornamento_in_corso"] = in_corso
+    web.risposta("/api/stato", s)
+
+
+def orologio_comandato(web) -> None:
+    """Il tempo della pagina parte da «adesso» dello scenario, scorre da sé e si porta avanti con `clock.fast_forward`."""
+    istante = web.pagina.evaluate("(s) => new Date(s).getTime()", web.server.adesso)
+    web.pagina.clock.install(time=istante / 1000)
+
+
+def letture_stato(web) -> int:
+    return web.richieste.count("/api/stato")
+
+
+def test_aggiorna_i_dati_spento_finche_il_server_aggiorna_da_solo(web):
+    """L'aggiornamento programmato del server è in corso (`aggiornamento_in_corso` di /api/stato): in Gestione «Aggiorna i dati»
+    è spento e una frase dice perché. Con la schermata aperta lo stato si rilegge ogni 15-20 secondi; quando l'aggiornamento è
+    finito il pulsante si riaccende, la frase sparisce e le letture smettono."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, True)
+    orologio_comandato(web)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    pulsante = principale(web).get_by_role("button", name="Aggiorna i dati")
+    assert pulsante.is_disabled()
+    assert principale(web).get_by_text(FRASE_IN_CORSO).is_visible()
+    prima = letture_stato(web)
+    web.pagina.clock.fast_forward(20_000)
+    web.aspetta()
+    assert letture_stato(web) == prima + 1                    # ancora in corso: spento, si rilegge ancora
+    assert pulsante.is_disabled() and principale(web).get_by_text(FRASE_IN_CORSO).is_visible()
+    stato_aggiornamento(web, False)
+    web.pagina.clock.fast_forward(20_000)
+    web.aspetta()
+    assert letture_stato(web) == prima + 2
+    assert pulsante.is_enabled()
+    assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
+    web.pagina.clock.fast_forward(60_000)
+    web.aspetta()
+    assert letture_stato(web) == prima + 2                    # finito: niente altre letture
+    # (inviti e utenti di Gestione non sono nello scenario registrato: le loro 404 qui non contano)
+    assert not [e for e in web.errori_console if e.startswith("errore nel codice")], web.errori_console
+    assert not [r for r in web.richieste_fallite if "/api/stato" in r], web.richieste_fallite
+
+
+def test_fuori_da_gestione_lo_stato_non_si_rilegge(web):
+    """Con l'aggiornamento in corso si esce da Gestione: lo stato non si rilegge più (la lettura serve solo al pulsante)."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, True)
+    orologio_comandato(web)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    assert principale(web).get_by_role("button", name="Aggiorna i dati").is_disabled()
+    tocca(web, barra(web).get_by_role("link", name="Formazione"))
+    prima = letture_stato(web)
+    for _ in range(3):
+        web.pagina.clock.fast_forward(20_000)
+        web.aspetta()
+    assert letture_stato(web) == prima
+
+
+def test_una_lettura_dello_stato_alla_volta(web):
+    """Una lettura dello stato che tarda non ne fa partire altre: la prossima si prepara solo quando la risposta è arrivata."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, True)
+    orologio_comandato(web)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    ferme = []
+    web.pagina.route("**/api/stato", lambda r: ferme.append(r))     # le letture da qui restano senza risposta finché non si sblocca
+    for _ in range(4):
+        web.pagina.clock.fast_forward(20_000)
+        web.pagina.evaluate("() => new Promise(fatto => setTimeout(fatto, 0))")
+    assert len(ferme) == 1, f"{len(ferme)} letture insieme"
+    s = web.registrata("/api/stato")
+    s["aggiornamento_in_corso"] = False
+    ferme[0].fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps(s))
+    web.aspetta()
+    assert principale(web).get_by_role("button", name="Aggiorna i dati").is_enabled()
+
+
+def test_aggiorna_i_dati_con_il_server_gia_occupato_lo_dice(web):
+    """Il pulsante acceso, ma il server risponde che un aggiornamento è già in corso: lo dice un avviso, come prima (#760)."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    web.risposta("/api/aggiorna", {"avviato": False, "messaggio": "Aggiornamento già in corso"})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    principale(web).get_by_role("button", name="Aggiorna i dati").click(timeout=10000)
+    web.pagina.get_by_role("status").filter(has_text="Aggiornamento già in corso").first.wait_for(timeout=5000)
+    assert principale(web).get_by_role("button", name="Aggiorna i dati").is_enabled()
+    assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
+
+
 @pytest.mark.parametrize("indirizzo", ["/?vista=impostazioni&gruppo=gestione", "/?vista=impostazioni&gruppo=avanzate"])
 def test_chi_non_gestisce_il_server_non_apre_gestione_neanche_con_l_indirizzo(web, indirizzo):
     solo(web, "prima")
