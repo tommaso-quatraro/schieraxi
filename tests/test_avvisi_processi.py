@@ -99,6 +99,21 @@ def test_utente_tenuto_da_un_altro_processo_passa_al_giro_dopo_e_gli_altri_ricev
     assert sorted(chi for chi, _, _ in registro.web) == sorted([a.cartella.name, b.cartella.name])
 
 
+def test_ordine_del_giro_tenuto_da_un_altro_processo_non_si_sovrascrive(mondo, registro, monkeypatch, caplog, tmp_path):  # noqa: F811
+    """L'ordine del giro sta in un file solo per i due giri (cambi e promemoria): chi lo riscrive mentre l'altro lo tiene
+    cancellerebbe l'ordine dell'altro. Occupato: non si scrive, una riga nel registro, e gli avvisi partono lo stesso."""
+    from fanta.blocco import BloccoFile
+    nuovo("amico1", (1, "Castro"))
+    giro = tmp_path / "giro.json"
+    giro.write_text('{"cambi": {"1": 7}}', encoding="utf-8")
+    monkeypatch.setattr(avvisi_utenti, "ATTESA_GIRO", 0, raising=False)
+    with caplog.at_level("WARNING", logger="fanta.avvisi_utenti"), BloccoFile(tmp_path / "giro.json.lock"):
+        esiti, errori = avvisi_utenti.esegui("promemoria", mondo.db, UN_ORA_PRIMA, avvisi_utenti.utenti_attivi(), file_giro=giro)
+    assert errori == {} and len(esiti["amico1"]) == 1
+    assert giro.read_text(encoding="utf-8") == '{"cambi": {"1": 7}}'
+    assert "TimeoutError" in caplog.text
+
+
 # ---------------------------------------------------------------- errori che lasciano traccia
 def test_promemoria_con_l_avviso_prima_della_scadenza_rotto_lascia_traccia_e_parte(mondo, registro, monkeypatch, caplog):  # noqa: F811
     """L'avviso «cambia la formazione» di amico1 alza un errore: il suo promemoria parte lo stesso, quello di amico2 anche;

@@ -133,6 +133,7 @@ TEMPO_SCRIPT = {"promemoria": ("FANTA_MAX_SECONDI_GIRO_PROMEMORIA", 480)}
 TEMPO_SCRIPT_ALTRI = ("FANTA_MAX_SECONDI_GIRO_AVVISI", 600)        # cambi
 MARGINE_SECONDI = 120          # il lavoro di un utente può durare un po' (due invii lenti e un calcolo): resta questo margine
 FILE_GIRO = "avvisi-giro.json"  # nella cartella degli account: per ogni giro, l'ordine in cui gli utenti sono stati serviti
+ATTESA_GIRO = 5.0              # secondi: leggere e riscrivere FILE_GIRO dura millisecondi; oltre, per questo giro l'ordine non si salva
 
 
 def secondi_del_giro(funzione: str) -> float:
@@ -155,16 +156,19 @@ def _leggi_giro(file: Path, funzione: str) -> dict[str, int]:
 
 
 def _scrivi_giro(file: Path, funzione: str, serviti: dict[str, int]) -> bool:
-    """Salva l'ordine del giro `funzione` lasciando com'è quello degli altri giri. Falso se non si riesce (disco pieno, permessi):
-    lo dice il registro, con il solo tipo d'errore, e gli avvisi partono lo stesso."""
+    """Salva l'ordine del giro `funzione` lasciando com'è quello degli altri giri. Falso se non si riesce (disco pieno, permessi,
+    file tenuto da un altro giro oltre ATTESA_GIRO secondi): lo dice il registro, con il solo tipo d'errore, e gli avvisi partono
+    lo stesso. Il file è uno per tutti i giri, che possono girare insieme in processi diversi: leggere e riscrivere sta dentro un
+    blocco su file (`<file>.lock`), così nessuno cancella l'ordine scritto dall'altro."""
     try:
-        try:
-            tutto = json.loads(file.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            tutto = {}
-        tutto = (tutto if isinstance(tutto, dict) else {}) | {funzione: serviti}
-        scrivi_sicuro(file, json.dumps(tutto))
-    except OSError as e:
+        with BloccoFile(file.with_name(file.name + ".lock"), ATTESA_GIRO):
+            try:
+                tutto = json.loads(file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                tutto = {}
+            tutto = (tutto if isinstance(tutto, dict) else {}) | {funzione: serviti}
+            scrivi_sicuro(file, json.dumps(tutto))
+    except OSError as e:                              # anche TimeoutError (blocco occupato), che è un OSError
         LOG.warning("Avvisi (%s): ordine del giro non salvato (%s), si continua senza", funzione, type(e).__name__)
         return False
     return True
