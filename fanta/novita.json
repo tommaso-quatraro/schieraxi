@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.524",
+    "data": "2026-11-19T23:42:35",
+    "titolo": "Torna «Esci da tutti i dispositivi»",
+    "voci": [
+      "In Impostazioni > Il tuo account, sotto «Esci», c'è di nuovo «Esci da tutti i dispositivi», sulla web e sull'iPhone. È il pulsante che consigliano le email di sicurezza quando c'è un accesso che non riconosci.",
+      "Prima di agire chiede conferma: esci da ogni telefono e computer, anche da quello che stai usando, e poi rientri come sempre. Si chiudono anche il widget e le notifiche. Se hai una password e Google collegato, la conferma ti dice anche che il collegamento con Google si toglie: per entrare con Google dovrai ricollegarlo.",
+      "Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: puoi riprovare."
+    ],
+    "tecnico": [
+      "Web e iPhone usano la rotta di sempre `POST /api/account/esci-da-tutti`, senza password nel corpo (con la password il server cambierebbe il codice di recupero, che dopo l'uscita andrebbe perso). Nessuna rotta né campo dell'API cambia.",
+      "Web: pulsante `#acc-esci-tutti` accanto a `#acc-esci`, `esciDaTutti()` in `app.js` (confirm, richiesta, poi `lasciaNotifiche(false)`, `svuotaDatiLocali()` e ricarica; con un errore diverso da 401 un avviso e nient'altro). iPhone: `RigaEsciDaTutti` in `AccountSezione.swift`, `SessioneAccount.esciDaTutti()` che svuota il telefono solo dopo la risposta del server.",
+      "Catalogo: chiavi nuove `account.esci_tutti`, `account.esci_tutti_conferma`, `account.esci_tutti_no` (anche in ios/testi/account.txt). `tests/test_consiglio_esci_da_tutti.py` lega il nome fra «» delle email (`posta.modello_*`) e della Privacy, in italiano e in inglese, a `account.esci_tutti`.",
+      "La frase su Google (`account.esci_tutti_google`) si aggiunge alla conferma solo se `accessi` del server dice password vera e un accesso Google (web: `perdeGoogle()`; iPhone: `TestiAccount.esciTuttiGoogle(accessi:)`, nel messaggio della conferma). Chi entra solo con Google resta collegato e non la vede."
+    ]
+  },
+  {
     "versione": "1.523",
     "data": "2026-11-19T21:43:41",
     "titolo": "Giornata senza date: «Data da definire», uguale sulla web e sull'iPhone",

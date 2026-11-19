@@ -132,10 +132,9 @@ final class AccessoUITests: XCTestCase {
         attendi("Cambia la password")
         attendi("Codice di recupero")
         attendi("Elimina l'account")
-        // un solo nome e niente voci tolte (maiuscole del nome, esci da tutti i telefoni)
+        // un solo nome e niente voci tolte (maiuscole del nome)
         XCTAssertFalse(elemento("Per accedere").exists)
         XCTAssertFalse(elemento("Cambia le maiuscole del nome").exists)
-        XCTAssertFalse(elemento("Esci da tutti", contiene: true).exists)
         // «Esci» è l'ultima riga di «Il tuo account», subito sotto «Elimina l'account» (come sulla web), non una sezione a parte in fondo
         let esci = app.buttons["Esci"].firstMatch   // con la conferma aperta i pulsanti «Esci» sono due
         for _ in 0..<8 where !(esci.exists && esci.isHittable) { app.swipeUp() }
@@ -145,8 +144,25 @@ final class AccessoUITests: XCTestCase {
         let fraLeDue = esci.frame.minY - elimina.frame.maxY
         // stessa sezione: fra le due righe al massimo il margine delle righe; una sezione nuova aggiunge lo spazio fra le sezioni (oltre 30 punti)
         XCTAssertTrue(fraLeDue > -1 && fraLeDue < 20, "«Esci» deve seguire «Elimina l'account» nella stessa sezione (spazio: \(fraLeDue))")
+        // subito sotto «Esci», nella stessa sezione, «Esci da tutti i dispositivi» (#765, come sulla web)
+        let tutti = app.buttons["account-esci-tutti"]
+        for _ in 0..<3 where !(tutti.exists && tutti.isHittable) { app.swipeUp() }
+        XCTAssertTrue(tutti.waitForExistence(timeout: 5), "manca «Esci da tutti i dispositivi»")
+        XCTAssertEqual(tutti.label, "Esci da tutti i dispositivi")
+        let sotto = tutti.frame.minY - esci.frame.maxY
+        XCTAssertTrue(sotto > -1 && sotto < 20, "«Esci da tutti i dispositivi» deve seguire «Esci» nella stessa sezione (spazio: \(sotto))")
         // il tocco chiede conferma (il tocco perso sul simulatore carico si ripete, al massimo 3 volte)
         tocca(esci, finchéCompare: elemento("Esci da SchieraXI su questo telefono?"), "toccando «Esci» compare la conferma", entro: 5)
+    }
+
+    /// «Esci da tutti i dispositivi» chiede conferma con la frase della web (#765). Nella demo non si conferma: niente server.
+    func testEsciDaTuttiChiedeConferma() {
+        avvia("account")
+        attendi("Il tuo account")
+        let tutti = app.buttons["account-esci-tutti"]
+        for _ in 0..<8 where !(tutti.exists && tutti.isHittable) { app.swipeUp() }
+        tocca(tutti, finchéCompare: elemento("Esci da tutti i dispositivi, anche da questo?", contiene: true),
+              "toccando «Esci da tutti i dispositivi» compare la conferma", entro: 5)
     }
 
     /// Apre un foglio dell'account toccando `voce` e aspetta `segno` (un elemento del foglio). Il tocco perso sul simulatore
