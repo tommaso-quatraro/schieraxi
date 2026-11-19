@@ -6,6 +6,10 @@ account.ruolo_admin
 account.ruolo_utente
 account.dal
 account.esci
+account.esci_tutti
+account.esci_tutti_conferma
+account.esci_tutti_google
+account.esci_tutti_no
 
 # Password e codice di recupero
 account.cambia_password
