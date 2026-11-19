@@ -3,6 +3,8 @@ comune.importa_rose
 comune.riprova
 # la scelta della Formazione cambiata da un altro dispositivo (412): rileggo
 comune.cambiato_ricarico
+# lo stesso 412 a scheda lasciata o guardando un'altra squadra, come la web (FormazioneViewModel.cambiataAltrove), #751
+comune.cambiato_altrove
 
 # Lega senza rose (ConfiguraLegaVista): titolo e frase della carta della web
 comune.prima_rose
