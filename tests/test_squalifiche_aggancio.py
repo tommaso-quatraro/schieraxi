@@ -93,6 +93,20 @@ def test_previsioni_senza_lettura_buona_vale_la_regola_con_lettura_buona_vince_l
     assert con_probabili and p.at[3, "stato"] == "titolare" and p.at[3, "p_voto"] > 0.8
 
 
+def test_numeri_nostri_dal_vivo_con_gli_stessi_squalificati(tmp_path, monkeypatch):
+    """I numeri «nostri» (registro_nostri, confronto I4) si fanno come i mostrati: senza probabili l'espulso è squalificato
+    anche lì, altrimenti avrebbe p_voto 0 nei mostrati e alto nei nostri e il confronto penalizzerebbe i nostri."""
+    from fanta import registro_nostri
+    db, d = _archivio(tmp_path)
+    monkeypatch.setattr(registro_nostri.consigli, "dati", lambda db: d)
+    monkeypatch.setattr(registro_nostri.consigli, "stagione_corrente", lambda: ST)
+    nostri = registro_nostri.previsioni_dal_vivo(db, 5)
+    assert (nostri.at[3, "stato"], nostri.at[3, "p_voto"]) == ("squalificato", 0.0)
+    _probabili(db, "probabili", [_riga(1, "alfa", "titolare"), _riga(2, "beta", "titolare"), _riga(3, "beta", "titolare")])
+    nostri = registro_nostri.previsioni_dal_vivo(db, 5)                 # una lettura buona: vince la fonte
+    assert nostri.at[3, "stato"] == "titolare" and nostri.at[3, "p_voto"] > 0.8
+
+
 # ---------------------------------------------------------------- il registro dei controlli
 def test_controllo_differenza_fra_cartellini_e_fonte_a_giornata_cominciata(tmp_path):
     """La fonte dà titolare il mediano espulso (solo dai cartellini) e squalificato il 9 (solo della fonte: per esempio una

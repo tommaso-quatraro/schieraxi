@@ -26,7 +26,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from . import archivio, avvisi, consigli, nostri, stato_dati
+from . import archivio, avvisi, consigli, nostri, squalifiche, stato_dati
 from . import formazione as fz
 from . import registro_giornate as rg
 from .modello import Parametri
@@ -71,14 +71,16 @@ def _non_salvati(stagione: str, giornata: int, motivo: str, nel_log: bool = True
 def previsioni_dal_vivo(db: sqlite3.Connection, giornata: int) -> pd.DataFrame:
     """I numeri nostri della giornata (indice = id), come `consigli._calcola_previsioni` fa per i mostrati: stessi dati
     (`consigli.dati`, già in memoria), stesse probabili formazioni, stesse correzioni di «gioca N%» (correzione per gruppi e riga
-    attiva della taratura: così I4 confronta numeri con lo stesso «gioca N%»)."""
+    attiva della taratura: così I4 confronta numeri con lo stesso «gioca N%») e gli stessi squalificati dai cartellini senza
+    probabili (#668)."""
     stagione = consigli.stagione_corrente()
     d = consigli.dati(db)
     prob = pd.read_sql_query("SELECT * FROM probabili WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio'",
                              db, params=(stagione, giornata))
     taratura, fattori, _ = stato_dati.taratura_e_fattori(db, stagione)
     p = nostri.previsioni(d, stagione, giornata, REGOLE, probabili=None if prob.empty else prob, giocatori=d.calciatori,
-                          fattori_probabili=fattori, taratura=taratura)
+                          fattori_probabili=fattori, taratura=taratura,
+                          dai_cartellini=squalifiche.in_uso(db, stagione, giornata) if prob.empty else None)
     return p.set_index("id") if "id" in p.columns else p
 
 
