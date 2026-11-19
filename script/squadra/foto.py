@@ -1,6 +1,7 @@
 """`foto <PR>` (o `foto --da <commit>`): dai file iOS cambiati ricava le schermate da fotografare (foto.json) e stampa il comando
 `gh workflow run screenshot.yml …`. Lo lancia solo con --lancia (solo il fotografo). Fotografa il ramo della PR se è aperta,
-main se è unita o con --da; --ref sceglie un altro ramo.
+main se è unita o con --da; --ref sceglie un altro ramo. Per un file senza regola a mano stretta le schermate vengono dal codice
+Swift (grafo_ios.py, #505); --spiega dice per ogni file come sono state scelte.
 
 Codici di uscita: 0 fatto (anche se non c'è nulla da fotografare); 1 errore di gh o git, o PR da un fork o chiusa senza
 unione; 3 ci sono file iOS senza schermata
@@ -122,7 +123,7 @@ def file_cambiati(esegui: comune.Esegui, pr: int | None, da: str | None) -> tupl
 
 
 def main(esegui: comune.Esegui, pr: int | None = None, da: str | None = None, lancia: bool = False, ref: str | None = None,
-         dispositivi: str = "iphone", json_: bool = False) -> int:
+         dispositivi: str = "iphone", json_: bool = False, spiega: bool = False) -> int:
     try:
         file, ramo, perche = file_cambiati(esegui, pr, da)
         esito = schermate(file)
@@ -149,6 +150,9 @@ def main(esegui: comune.Esegui, pr: int | None = None, da: str | None = None, la
     else:
         print(f"Foto da fare: {' '.join(esito['schermate']) or '(solo widget)'}" + (" + widget" if esito["widget"] else ""))
         print(("Lanciato: " if lanciato else "Comando (aggiungi --lancia per lanciarlo): ") + _per_persone(c))
+    if spiega and not json_:
+        for f, motivo in esito["perche"].items():
+            print(f"  {f}: {motivo}")
     for f in esito["senza"]:
         print(f"foto: attenzione, {f} non ha una schermata in script/squadra/foto.json: aggiungi una regola.", file=sys.stderr)
     return 3 if esito["senza"] else 0
@@ -167,8 +171,10 @@ def opzioni(p) -> None:
     p.add_argument("--ref", default=None, help="ramo su cui fotografare (predefinito: quello della PR se è aperta, altrimenti main)")
     p.add_argument("--dispositivi", default="iphone", choices=["iphone", "ipad", "tutti"], help="predefinito: iphone")
     p.add_argument("--json", action="store_true", help="uscita in JSON per altri script")
+    p.add_argument("--spiega", action="store_true",
+                   help="per ogni file: regola a mano, codice (con la strada fino alla vista radice) o regola larga")
 
 
 def da_riga(args, esegui: comune.Esegui) -> int:
     return main(esegui, pr=args.pr, da=args.da, lancia=args.lancia, ref=args.ref, dispositivi=args.dispositivi,
-                json_=args.json)
+                json_=args.json, spiega=args.spiega)

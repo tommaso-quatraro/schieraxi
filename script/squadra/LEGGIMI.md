@@ -23,10 +23,16 @@ Regole comuni:
 - `aree.json`: aree del repository (percorsi, primo che corrisponde vince), gruppi con il tetto delle PR aperte
   (`server-web` 4, `ios` 3), aree neutre (documenti e test: non contano nel tetto), workflow con job sui Mac,
   etichetta degli obiettivi. Una PR che tocca `ios/` e un'altra area conta nel gruppo `ios`.
-- `foto.json`: dai file iOS alle schermate di `ios/scripts/screenshot.sh`. Un test controlla che i nomi esistano e che ogni
-  file Swift di oggi abbia una regola. Le regole larghe hanno `"ripiego": true`: un file di `ios/Sources/Presentation/` ci
-  finisce solo se è scritto in `ripiego_dichiarato` (parti usate da più schermate); per gli altri una regola per file o per
-  cartella stretta (anche questo lo controlla un test).
+- `foto.json`: dai file iOS alle schermate di `ios/scripts/screenshot.sh`. Per ogni file vince una regola a mano stretta; se
+  non c'è, `grafo_ios.py` legge il codice Swift (`ios/Sources`) e risale dai tipi del file alle viste che lo usano, fino alle
+  viste «radice» delle schermate (sezione `radici`), fermandosi alle `barriere` (AppModel, Navigazione…: da lì ogni schermata
+  sarebbe raggiunta). Se arriva ad almeno una e al massimo `soglia_radici` viste radice prende le loro schermate, altrimenti
+  vale la regola larga (`"ripiego": true`). I test controllano che ogni schermata di `TUTTE` abbia una radice, che ogni nome
+  di `radici` e delle regole esista in `screenshot.sh`, che ogni tipo esista nel codice e che ogni file Swift abbia una
+  scelta. Un file di `ios/Sources/Presentation/` che il codice non porta a poche viste radice chiede una regola stretta, le
+  sue radici o una riga in `ripiego_dichiarato` (parti usate da più schermate). Il grafo legge i file sul disco: un file
+  nuovo di una PR aperta che qui non c'è usa le regole. Sbaglia per eccesso (nomi uguali in file diversi), non per difetto,
+  salvo usi che il testo non mostra (per esempio un tipo scelto con una stringa).
 - `modello-brief.md`: modello pubblico del brief per un agente.
 
 ## stato
@@ -97,6 +103,7 @@ con `--lancia`: sul ramo della PR se è aperta, su `main` se è unita o con `--d
 ```
 python script/squadra/squadra.py foto 123
 python script/squadra/squadra.py foto --da abc1234 --lancia
+python script/squadra/squadra.py foto 123 --spiega     # per ogni file: regola a mano, codice (con la strada) o regola larga
 ```
 
 ## giro

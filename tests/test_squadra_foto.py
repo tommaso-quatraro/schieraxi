@@ -194,3 +194,21 @@ def test_pr_chiusa_senza_unione_non_lancia(capsys):
     assert foto.main(f, pr=7, lancia=True) == 1
     assert not f.lanciati("gh workflow")
     assert "chiusa senza unione" in capsys.readouterr().err
+
+
+def test_spiega_dice_per_ogni_file_come_ha_scelto(capsys):
+    """#505: con --spiega ogni file dice se ha deciso una regola a mano, il codice (con la strada) o la regola larga."""
+    import squadra
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Lega/NomeConPillola.swift"},
+                                          {"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}],
+                                "state": "MERGED"}})
+    squadra.main(["foto", "7", "--spiega"], esegui=f)
+    out = capsys.readouterr().out
+    assert "ios/Sources/Presentation/Lega/NomeConPillola.swift: grafo: dal codice: SquadreView ←" in out
+    assert "ios/Sources/Presentation/Giornate/GiornateView.swift: regola:" in out
+
+
+def test_senza_spiega_niente_perche(capsys):
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}], "state": "MERGED"}})
+    foto.main(f, pr=7)
+    assert "regola a mano" not in capsys.readouterr().out
