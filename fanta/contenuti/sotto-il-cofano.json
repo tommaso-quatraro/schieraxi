@@ -85,7 +85,7 @@
       },
       "rimandi": [
         {"schermata": "formazione", "etichetta": "Formazione (tocca un giocatore per vedere i pezzi)"},
-        {"schermata": "regole", "etichetta": "Lega > Regole"}
+        {"schermata": "regole", "etichetta": "Impostazioni > Regole e scadenza"}
       ],
       "fonte_codice": ["fanta/modello.py:previsioni", "fanta/punteggio.py:fantavoto", "fanta/consigli.py:_componenti"]
     },
@@ -348,12 +348,12 @@
       "titolo": "Conguagli in crediti",
       "livello": "nerd",
       "paragrafi": [
-        "Uno scambio può includere crediti (positivi se li ricevi, negativi se li paghi). L'app controlla che chi paga li abbia, secondo i crediti residui salvati in Lega, e che nessuno superi il limite di 100.000.",
+        "Uno scambio può includere crediti (positivi se li ricevi, negativi se li paghi). L'app controlla che chi paga li abbia, secondo i crediti residui salvati nelle Impostazioni, e che nessuno superi il limite di 100.000.",
         "Per dare un valore in punti ai crediti, usa il mercato degli svincolati della squadra: somma i guadagni in punti delle sue migliori mosse e li divide per quanto costano (quotazione di chi entra meno il rimborso di chi esce). Il risultato è un tasso: punti attesi in stagione per ogni credito. Il valore dei crediti scambiati è conguaglio × tasso, e il giudizio finale usa il guadagno netto. Senza tasso (nessuna mossa utile) i crediti si mostrano ma non entrano nel giudizio.",
         "È una stima grossolana: dipende da quali svincolati ci sono oggi."
       ],
       "formula": "tasso = Σ guadagno delle mosse utili / Σ (quotazione di chi entra - rimborso)\nnetto = guadagno in punti + conguaglio × tasso",
-      "rimandi": [{"schermata": "scambi", "etichetta": "Scambi > Conguaglio"}, {"schermata": "lega", "etichetta": "Lega > Crediti"}],
+      "rimandi": [{"schermata": "scambi", "etichetta": "Scambi > Conguaglio"}, {"schermata": "lega", "etichetta": "Impostazioni > La mia squadra"}],
       "fonte_codice": ["fanta/scambi_multi.py:tasso_da_mercato", "fanta/scambi_multi.py:controlla_conguaglio", "fanta/scambi_multi.py:analizza_completo"]
     },
     {

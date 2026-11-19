@@ -541,7 +541,6 @@ const TESTI = {
     "err.modulo_forma": "modulo non valido: {1} (formato atteso tipo 3-4-3)",
     "err.modulo_somma": "il modulo {1} non somma a 10 giocatori di movimento",
     "err.passo_sconosciuto": "Passo sconosciuto della configurazione",
-    "err.indica_prima_squadra_diario": "Indica prima la tua squadra in Squadra > Squadre e rose",
 
     "errori.titolo": "Errori recenti",
     "errori.spiega": "Gli errori del server (risposte 5xx) e gli ultimi eventi di sicurezza. Nessuna password, nessun dato delle richieste: solo quando, dove e che tipo di errore.",
@@ -1140,7 +1139,7 @@ const TESTI = {
     "oggi.rinvio_aspetta": "aspettano il recupero (conta il suo voto)",
     "oggi.rinvio_senza_voto": "restano senza voto (entra la riserva)",
     "oggi.rinvio_ufficio": "prendono il voto d'ufficio ({v})",
-    "oggi.rinvio_regola_lega": "È la regola della tua lega (Impostazioni › Regole). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata.",
+    "oggi.rinvio_regola_lega": "È la regola della tua lega (Impostazioni › Regole e scadenza). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata.",
     "oggi.rinvio_eccezione": "Scelta solo per questa giornata. Di solito la tua lega: {regola}.",
     "oggi.rinvio_salvato": "Fatto: consigli aggiornati per questa giornata",
     "oggi.recupero_manca": "Manca il recupero di {partite}: i punti possono ancora cambiare.",
@@ -1165,7 +1164,7 @@ const TESTI = {
 
     "onb.prova_con_una": "Prova con gli esempi",
     "onb.quattro_squadre_inventate": "Quattro squadre inventate per vedere l'app al lavoro, senza importare niente.",
-    "onb.valori_piu_comuni": "I valori più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5...). Li puoi cambiare quando vuoi in Altro, alla voce Regole.",
+    "onb.valori_piu_comuni": "I valori più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5...). Li puoi cambiare quando vuoi in Impostazioni, alla voce Regole e scadenza.",
     "onb.avvisi_attivi_questo": "✓ Avvisi attivi su questo dispositivo.",
     "onb.avanti": "Avanti",
     "onb.attiva_gli_avvisi_b": "Attiva gli avvisi",
@@ -2120,7 +2119,6 @@ const TESTI = {
     "err.modulo_forma": "invalid formation: {1} (expected format like 3-4-3)",
     "err.modulo_somma": "the formation {1} does not add up to 10 outfield players",
     "err.passo_sconosciuto": "Unknown setup step",
-    "err.indica_prima_squadra_diario": "First choose your team in «My team»",
 
     "errori.titolo": "Recent errors",
     "errori.spiega": "Server errors (5xx replies) and the latest security events. No passwords, no request data: only when, where and what kind of error.",
@@ -2719,7 +2717,7 @@ const TESTI = {
     "oggi.rinvio_aspetta": "wait for the make-up game (its grade counts)",
     "oggi.rinvio_senza_voto": "get no grade (a substitute comes in)",
     "oggi.rinvio_ufficio": "get the official grade ({v})",
-    "oggi.rinvio_regola_lega": "This is your league's rule (Settings › Rules). If your league decides otherwise for this round, change it here: it only applies to this round.",
+    "oggi.rinvio_regola_lega": "This is your league's rule (Settings › Rules and deadline). If your league decides otherwise for this round, change it here: it only applies to this round.",
     "oggi.rinvio_eccezione": "Chosen for this round only. Your league usually: {regola}.",
     "oggi.rinvio_salvato": "Done: advice updated for this round",
     "oggi.recupero_manca": "The make-up game {partite} is still to be played: the points may still change.",
@@ -2744,7 +2742,7 @@ const TESTI = {
 
     "onb.prova_con_una": "Try the examples",
     "onb.quattro_squadre_inventate": "Four invented teams to see the app at work, without importing anything.",
-    "onb.valori_piu_comuni": "The most common values of classic leagues (goal 3, assist 1, yellow card −0.5...). You can change them whenever you like in More, under Rules.",
+    "onb.valori_piu_comuni": "The most common values of classic leagues (goal 3, assist 1, yellow card −0.5...). You can change them whenever you like in Settings, under Rules and deadline.",
     "onb.avvisi_attivi_questo": "✓ Alerts on for this device.",
     "onb.avanti": "Next",
     "onb.attiva_gli_avvisi_b": "Turn on alerts",
