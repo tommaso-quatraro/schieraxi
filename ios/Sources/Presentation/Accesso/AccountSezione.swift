@@ -136,7 +136,8 @@ private struct PresentaFogliAccount: ViewModifier {
 }
 
 /// «Il tuo account» nelle Impostazioni, con i testi della web: il nome con «Utente · dal …», l'email (quella di Google se è
-/// collegato), cambia la password, codice di recupero, scarica i tuoi dati, elimina l'account ed «Esci» (l'ultima riga, come sulla web).
+/// collegato), cambia la password, codice di recupero, scarica i tuoi dati, elimina l'account, «Esci» ed «Esci da tutti i dispositivi»
+/// (le ultime righe, come sulla web).
 /// Si vede solo se il server ha gli account (multiutente); con il server di sempre non compare.
 /// I fogli si aprono da `fogli` (vedi `FoglioAccount`): qui niente `.sheet`.
 struct AccountSezione: View {
@@ -207,6 +208,7 @@ struct AccountSezione: View {
                 }
                 .accessibilityIdentifier("account-elimina")
                 RigaEsci().id(RigaEsci.idDemo)
+                RigaEsciDaTutti()
                 if let messaggio = fogli.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
             }
             // niente .sheet qui: su una Section dentro una List finirebbe su ogni riga (vedi `FoglioAccount`)
@@ -215,8 +217,8 @@ struct AccountSezione: View {
     }
 }
 
-/// «Esci», l'ultima riga di «Il tuo account», come sulla web. Sta dentro la sezione dell'account (che c'è solo con un account:
-/// senza account c'è `SessioneMinimaSezione`).
+/// «Esci», in fondo a «Il tuo account» (sotto c'è solo «Esci da tutti i dispositivi»), come sulla web. Sta dentro la sezione
+/// dell'account (che c'è solo con un account: senza account c'è `SessioneMinimaSezione`).
 struct RigaEsci: View {
     /// Dove scorre la foto `accesso-account-fondo` (vedi `ImpostazioniView`); è anche l'identificativo per i test.
     static let idDemo = "account-esci"
@@ -234,6 +236,49 @@ struct RigaEsci: View {
             Button(Catalogo.Account.esci, role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
         } message: {
             Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
+        }
+    }
+}
+
+/// «Esci da tutti i dispositivi» (#765), l'ultima riga di «Il tuo account», subito sotto «Esci» come sulla web: è il pulsante che
+/// consigliano le email di sicurezza quando c'è un accesso che non si riconosce. Chiede conferma con la frase della web; dopo
+/// l'uscita l'app torna allo schermo d'accesso (`SessioneAccount.esciDaTutti`). Se non riesce lo dice qui sotto e si resta dentro.
+struct RigaEsciDaTutti: View {
+    /// Identificativo per i test di interfaccia.
+    static let id = "account-esci-tutti"
+    @EnvironmentObject private var sessione: SessioneAccount
+    @State private var chiedi = false
+    @State private var errore: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button { chiedi = true } label: {
+                Label(Catalogo.Account.esciTutti, systemImage: "iphone.slash").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
+            }
+            .accessibilityHint("Chiude l'accesso su tutti i telefoni e i computer, anche su questo")
+            .accessibilityIdentifier(Self.id)
+            // sul pulsante, non sulla Section (vedi `FoglioAccount`)
+            .confirmationDialog(Catalogo.Account.esciTuttiConferma, isPresented: $chiedi, titleVisibility: .visible) {
+                Button(Catalogo.Account.esciTutti, role: .destructive) { Task { await esci() } }
+            }
+            if let errore {
+                Text(errore)
+                    .font(.footnote)
+                    .foregroundStyle(Color.attenzione)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func esci() async {
+        errore = nil
+        do {
+            try await sessione.esciDaTutti()
+            DatiPersonali.pulisci()
+        } catch {
+            let testo = Catalogo.Account.esciTuttiNo(motivo: SchermataAccesso.testoErrore(error))
+            errore = testo
+            AccessibilityNotification.Announcement(testo).post()
         }
     }
 }

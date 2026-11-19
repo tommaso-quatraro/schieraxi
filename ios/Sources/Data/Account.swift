@@ -679,8 +679,17 @@ final class SessioneAccount: ObservableObject {
         chiudiLocale()
     }
 
-    /// «Esci da tutti i dispositivi» (#765): da scrivere.
-    func esciDaTutti() async throws {}
+    /// «Esci da tutti i dispositivi» (#765): il server chiude tutte le sessioni (anche questa), il widget, le notifiche e scollega
+    /// Google a chi ha una password (lo cancella lui: niente revoca del widget da qui); poi si svuota il telefono come con «Esci».
+    /// Al contrario di `esci()` senza il server non riesce: se la richiesta non va l'errore arriva a chi ha chiesto e qui non cambia
+    /// niente, perché gli altri dispositivi sono ancora dentro. Senza password nel corpo: il codice di recupero nuovo che il server
+    /// manderebbe in risposta andrebbe perso.
+    func esciDaTutti() async throws {
+        try inizia()
+        defer { inCorso = false }
+        _ = try await server.corpoJSON("POST", "/api/account/esci-da-tutti", [String: String]())
+        chiudiLocale()
+    }
 
     /// Cambia la password. Il server chiude TUTTE le sessioni, anche questa, e ne apre una nuova: il token nuovo arriva nella
     /// risposta e si tiene (senza, alla richiesta dopo si tornerebbe all'accesso). Cambia anche il codice di recupero (#589:
