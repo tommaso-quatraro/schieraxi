@@ -364,6 +364,28 @@ def test_ore_tranquille_uguali_salvate_prima_sono_spente_con_avviso(client, tmp_
         assert g["impostazioni"]["silenzio"] is True and "ore_tranquille_spente" not in g
 
 
+def test_ore_tranquille_uguali_riaccese_tornano_quelle_predefinite(client, tmp_path, monkeypatch):
+    """#711: web e iPhone non hanno più i selettori delle ore e riaccendendo mandano il solo `silenzio`. Con ore salvate che
+    iniziano e finiscono alla stessa ora il server le corregge da solo (dalle 23 alle 7): niente 422, e la fascia mostrata è giusta."""
+    from datetime import datetime
+    f = tmp_path / "avvisi.json"
+    monkeypatch.setattr(server.notifiche, "FILE_IMPOSTAZIONI", f)
+    monkeypatch.setattr(server.notifiche, "canale", lambda: None)
+    monkeypatch.setattr(server.notifiche_web, "FILE_ISCRIZIONI", tmp_path / "push-vuoto.json")
+    for salvate in ('{"silenzio": true, "silenzio_da": 23, "silenzio_a": 23}', '{"silenzio": false, "silenzio_da": 5, "silenzio_a": 5}'):
+        f.write_text(salvate)
+        g = client.get("/api/avvisi").json()["impostazioni"]
+        assert (g["silenzio"], g["silenzio_da"], g["silenzio_a"]) == (False, 23, 7)           # la riga sotto dice «dalle 23 alle 7»
+        r = client.put("/api/avvisi", json={"silenzio": True})                               # la richiesta di oggi di web e iPhone
+        assert r.status_code == 200, r.text
+        o = r.json()["impostazioni"]
+        assert (o["silenzio"], o["silenzio_da"], o["silenzio_a"]) == (True, 23, 7)
+        g = client.get("/api/avvisi").json()
+        assert "ore_tranquille_spente" not in g and server.notifiche.in_silenzio(datetime(2026, 1, 1, 2), g["impostazioni"])
+    r = client.put("/api/avvisi", json={"silenzio_da": 4, "silenzio_a": 4})                  # due ore uguali scelte apposta: rifiutate
+    assert r.status_code == 422 and "stessa ora" in r.json()["detail"]
+
+
 def test_valuta_formazione_e_la_mia_scelta(client, tmp_path, monkeypatch):
     monkeypatch.setattr(server.scelte, "FILE_SCELTE", tmp_path / "scelte.json")
     monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: "2026-27")

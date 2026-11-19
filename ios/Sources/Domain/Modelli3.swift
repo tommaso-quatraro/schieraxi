@@ -42,9 +42,25 @@ struct ModificaRegola: Decodable, Identifiable {
     var id: String { chiave }
 }
 
+/// Una regola che il server lascia da impostare a mano sotto una riga dubbia (in `da_controllare` arrivano `chiave` ed `etichetta`,
+/// come in `modifiche`; l'app mostra l'etichetta).
+struct RegolaDaImpostare: Decodable, Equatable {
+    let etichetta: String?
+}
+
+/// Una riga del regolamento incollato da controllare a mano (#684, #733): con numeri non letti, o dubbia anche senza numeri.
+/// `regole` è vuoto per una riga che non nomina regole da impostare.
+struct RigaDaControllare: Decodable, Equatable {
+    let riga: String?
+    let regole: [RegolaDaImpostare]?
+}
+
 struct RiconoscimentoRegole: Decodable {
     let modifiche: [ModificaRegola]
+    /// Le righe con numeri non lette: le mostra solo chi non riceve `da_controllare` (un server di prima del 19/11/2026).
     let nonRiconosciute: [String]?
+    /// Le righe da controllare a mano, nell'ordine del testo incollato (dal 19/11/2026). Un server di prima non lo manda.
+    let daControllare: [RigaDaControllare]?
 }
 
 struct RichiestaTesto: Encodable {
