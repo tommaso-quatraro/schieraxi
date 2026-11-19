@@ -5,10 +5,11 @@ import Testing
 /// La pagina Giornate (#673, passo 2), come `mostraGiornate` della web (#617/#671): la formazione che conta, la frase sotto la riga
 /// (il confronto con la consigliata solo con `consigliata.origine: "mostrata"`), gli 11 con l'atteso mostrato prima della scadenza e
 /// il preso, «senza voto», la pagina vuota secondo `motivo_vuoto`, la correzione solo dove si può, la frase del server sulla
-/// consigliata di allora (`nota_consigliata`, #674). Le fixture `diario-giornate.json` (server di adesso, con i campi della #642 e
-/// della #674, le frasi come le scrive `diario.nota_consigliata`) e `diario-giornate-vecchio.json` (server di prima, senza `origine`,
-/// `automatica` e `giocatori`) sono dati inventati. I testi fissi si confrontano con il catalogo comune (`Catalogo.Giornate`), le frasi
-/// del server con quelle della fixture.
+/// consigliata di allora (`nota_consigliata`, #674), la differenza fra punti fatti e attesi e chi ha fatto meglio o peggio del previsto
+/// (`fatti_e_attesi`, #672 e #705). Le fixture `diario-giornate.json` (server di adesso, con i campi della #642, della #674 e della
+/// #672, le frasi come le scrivono `diario.nota_consigliata` e `diario.fatti_e_attesi`) e `diario-giornate-vecchio.json` (server di
+/// prima, senza `origine`, `automatica`, `giocatori` e `fatti_e_attesi`) sono dati inventati. I testi fissi si confrontano con il
+/// catalogo comune (`Catalogo.Giornate`), le frasi del server con quelle della fixture.
 @MainActor
 struct GiornateTests {
     private func pagina(_ fixture: String) throws -> PaginaGiornate {
@@ -44,8 +45,11 @@ struct GiornateTests {
         #expect(r.attesi == Catalogo.Formazione.puntiEAttesi(n: "71,7"))
         // senza punti attesi resta «punti», come la web
         #expect(try riga(p, 7).attesi == Catalogo.Formazione.punti)
-        // con due stagioni nella pagina VoiceOver dice anche la stagione
-        #expect(r.voce == "Giornata 8, 11ª di Serie A, 2026-27: 74,5 \(Catalogo.Formazione.puntiEAttesi(n: "71,7")). \(r.stato)")
+        // con due stagioni nella pagina VoiceOver dice anche la stagione, e di quanto i punti sono sopra o sotto gli attesi
+        #expect(r.voce == "Giornata 8, 11ª di Serie A, 2026-27: 74,5 \(Catalogo.Formazione.puntiEAttesi(n: "71,7")), "
+                + "\(Catalogo.Giornate.sulPrevisto(d: "+2,8")). \(r.stato)")
+        // senza `fatti_e_attesi` la frase resta quella di prima
+        #expect(try riga(p, 7).voce.hasSuffix(": 64,0 \(Catalogo.Formazione.punti). \(Catalogo.Giornate.tua)"))
     }
 
     @Test("Con due stagioni nella pagina la riga dice la stagione; con una sola no")
@@ -164,6 +168,67 @@ struct GiornateTests {
         let rifatta = try dettaglio(p, 6)
         #expect(rifatta.titolo == Catalogo.Giornate.formazioneRifatta(modulo: "4-3-3"))
         #expect(rifatta.nota == nil, "una frase vuota vale come nessuna frase")
+    }
+
+    // MARK: fatti contro attesi (#672, #705)
+
+    @Test("La riga dice di quanto i punti fatti sono sopra o sotto gli attesi: la differenza del server, con il segno")
+    func sulPrevisto() throws {
+        let p = try pagina("diario-giornate")
+        #expect(try riga(p, 11).sulPrevisto == Catalogo.Giornate.sulPrevisto(d: "+2,8"))
+        #expect(try riga(p, 11).sulPrevisto == "+2,8 sul previsto")
+        #expect(try riga(p, 10).sulPrevisto == "\u{2212}2,0 sul previsto")
+        #expect(try riga(p, 9).sulPrevisto == "+1,5 sul previsto", "anche con la copia alla scadenza")
+        #expect(try riga(p, 6).sulPrevisto == "\u{2212}0,1 sul previsto")
+        #expect(try riga(p, 38, stagione: "2025-26").sulPrevisto == "\u{2212}6,5 sul previsto")
+        // la tua formazione senza punti attesi: il server manda `fatti_e_attesi: null` e la riga non lo dice
+        #expect(try riga(p, 7).sulPrevisto == nil)
+    }
+
+    @Test("A zero «come previsto»; senza una differenza del server niente, anche con i punti fatti e attesi")
+    func comePrevistoESenzaDifferenza() throws {
+        let json = #"""
+            {"giornate": [
+              {"stagione": "2026-27", "giornata": 9, "schierata": {"modulo": "4-4-2", "atteso": 70.0, "reale": 70.0, "titolari": []},
+               "fatti_e_attesi": {"formazione": "schierata", "atteso": 70.0, "fatti": 70.0, "differenza": 0.0, "meglio": [], "peggio": [],
+                                  "testo": null, "frase": null}},
+              {"stagione": "2026-27", "giornata": 8, "schierata": {"modulo": "4-4-2", "atteso": 70.0, "reale": 75.0, "titolari": []},
+               "fatti_e_attesi": {"differenza": "+5,0", "testo": "  "}},
+              {"stagione": "2026-27", "giornata": 7, "schierata": {"modulo": "4-4-2", "atteso": 70.0, "reale": 75.0, "titolari": []},
+               "fatti_e_attesi": "boh"},
+              {"stagione": "2026-27", "giornata": 6, "schierata": {"modulo": "4-4-2", "atteso": 70.0, "reale": 75.0, "titolari": []}}
+            ]}
+            """#
+        let p = PaginaGiornate(try Decodifica.decodifica(Data(json.utf8)))
+        #expect(try riga(p, 9).sulPrevisto == Catalogo.Giornate.comePrevisto)
+        #expect(try riga(p, 9).sulPrevisto == "come previsto")
+        for g in [8, 7, 6] {
+            #expect(try riga(p, g).sulPrevisto == nil, "giornata \(g): l'app non fa la differenza da sé")
+            #expect(try dettaglio(p, g).scarti == nil, "giornata \(g): nessuna frase sua")
+            #expect(try riga(p, g).punti == "75,0", "giornata \(g): un `fatti_e_attesi` strano non rompe la riga")
+        }
+    }
+
+    @Test("Nella giornata aperta la frase del server su chi ha fatto meglio o peggio del previsto, così com'è")
+    func meglioEPeggio() throws {
+        let p = try pagina("diario-giornate")
+        #expect(try dettaglio(p, 6).scarti == "Meglio del previsto: Portiere Uno (+1,5). Peggio: Difensore Quattro (\u{2212}1,7).")
+        #expect(try dettaglio(p, 9).scarti == "Meglio del previsto: Portiere Uno (+2,1).", "anche con la copia alla scadenza")
+        let rifatta = try dettaglio(p, 38, stagione: "2025-26")
+        #expect(rifatta.scarti == "Peggio del previsto: Portiere Uno (\u{2212}2,5).")
+        #expect(rifatta.nota != nil, "con la consigliata rifatta ci sono tutte e due le frasi del server")
+        // nessuno a un punto dal suo atteso: il server manda `testo: null`, e la frase non c'è
+        #expect(try dettaglio(p, 11).scarti == nil)
+        #expect(try dettaglio(p, 7).scarti == nil, "`fatti_e_attesi: null`")
+    }
+
+    @Test("Un server di prima, senza `fatti_e_attesi`: niente differenza nella riga né frase nella giornata aperta")
+    func serverDiPrimaSenzaFattiEAttesi() throws {
+        let p = try pagina("diario-giornate-vecchio")
+        #expect(!p.righe.isEmpty)
+        #expect(p.righe.allSatisfy { $0.sulPrevisto == nil })
+        #expect(p.righe.allSatisfy { p.dettaglio($0.id)?.scarti == nil })
+        #expect(try riga(p, 11).voce.hasSuffix("74,5 \(Catalogo.Formazione.puntiEAttesi(n: "71,7")). \(Catalogo.Giornate.tua)"))
     }
 
     @Test("«Non è quello che ho schierato» non c'è per le stagioni passate (`modificabile: false`)")
