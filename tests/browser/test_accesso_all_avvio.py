@@ -33,12 +33,12 @@ def test_all_avvio_senza_sessione_le_copie_salvate_si_tolgono(web):
     web.pagina.evaluate("() => caches.open('prova-copie').then(c => c.put('/prova-copia', new Response('dati')))")
     prima = web.pagina.evaluate(COPIE)
     assert "account" in prima["memoria"] and any(k.startswith("cache:") for k in prima["memoria"]) and prima["cache"], prima
-    web.risposta("/api/account/me", SENZA_SESSIONE, stato=401)        # la sessione è stata chiusa da un altro dispositivo
+    web.risposta("/api/account/me", SENZA_SESSIONE, stato=401)        # da qui la sessione non vale più
     web.pagina.goto(web.server.indirizzo + "/?vista=formazione", wait_until="load")
     aspetta_accesso(web)
     dopo = web.pagina.evaluate(COPIE)
     assert dopo == {"memoria": [], "cache": []}, f"restano copie di chi non è più dentro: {dopo}"
-    # riaperta senza rete, la web non ha più niente dell'account da mostrare
+    # riaperta senza rete: nessun dato dell'account
     web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), lambda r: r.abort())
     web.pagina.goto(web.server.indirizzo + "/?vista=formazione", wait_until="load")
     web.aspetta()

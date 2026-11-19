@@ -3791,7 +3791,7 @@ async function controllaAccesso() {
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
   const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
   if (r.status === 401 && dati && dati.multiutente) {
-    // la sessione non vale più (chiusa da un altro dispositivo o scaduta): via le copie rimaste, come all'uscita, prima dell'accesso
+    // la sessione non vale più: via le copie rimaste, come all'uscita, prima della schermata di accesso
     if (restanoCopie()) await svuotaDatiLocali({ tieniAccesso: true });
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false); else mostraAccesso("", invito ? "registra" : "accedi");
     return false;

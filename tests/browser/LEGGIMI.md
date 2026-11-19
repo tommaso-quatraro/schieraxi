@@ -167,7 +167,7 @@ prima della scadenza:
 `test_accesso_all_avvio.py`, l'avvio con gli account quando la sessione non vale più (401 da «chi sono»). Gira solo prima della
 scadenza:
 - le copie di un account rimaste nel browser (`localStorage` dei dati e dell'account, copie del service worker) si tolgono
-  prima della schermata di accesso, come all'uscita; riaperta senza rete, la web non mostra più la Formazione salvata;
+  prima della schermata di accesso, come all'uscita; riaperta senza rete, la Formazione salvata non compare;
 - il codice di un link d'invito resta e compare nel modulo di registrazione.
 
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
