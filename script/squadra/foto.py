@@ -1,6 +1,7 @@
 """`foto <PR>` (o `foto --da <commit>`): dai file iOS cambiati ricava le schermate da fotografare (foto.json) e stampa il comando
 `gh workflow run screenshot.yml …`. Lo lancia solo con --lancia (solo il fotografo). Fotografa il ramo della PR se è aperta,
-main se è unita o con --da; --ref sceglie un altro ramo.
+main se è unita o con --da; --ref sceglie un altro ramo. Per un file senza regola a mano stretta le schermate vengono dal codice
+Swift (grafo_ios.py, #505); --spiega dice per ogni file come sono state scelte.
 
 Codici di uscita: 0 fatto (anche se non c'è nulla da fotografare); 1 errore di gh o git, o PR da un fork o chiusa senza
 unione; 3 ci sono file iOS senza schermata
@@ -8,34 +9,94 @@ in foto.json (avviso su stderr: il comando stampato non li copre)."""
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import sys
+from functools import lru_cache
 
 import aree
 import comune
+import grafo_ios
 
 
 def _corrisponde(file: str, percorsi: list[str]) -> bool:
     return any(aree.corrisponde(file, p) for p in percorsi)
 
 
-def schermate(file: list[str]) -> dict:
-    dati = comune.leggi_json("foto.json")
+def scene_di_screenshot() -> list[str]:
+    """I nomi delle schermate (variabile TUTTE di ios/scripts/screenshot.sh, letto e mai cambiato)."""
+    testo = (comune.RADICE / "ios" / "scripts" / "screenshot.sh").read_text(encoding="utf-8")
+    trovato = re.search(r"^TUTTE=\((.*?)\)", testo, re.S | re.M)
+    return trovato.group(1).split() if trovato else []
+
+
+@lru_cache(maxsize=1)
+def grafo_del_repository() -> grafo_ios.Grafo:
+    return grafo_ios.Grafo(grafo_ios.leggi(comune.RADICE))
+
+
+def _nomi(dati: dict, schermate) -> list[str]:
+    return list(dati["principali"] if schermate == "principali" else schermate)
+
+
+def scegli(file: str, dati: dict, grafo: grafo_ios.Grafo, scene: list[str]) -> dict:
+    """Come si sceglie per un file: «ignora», «widget», «regola» (a mano, stretta: vince), «grafo» (viste radice raggiunte,
+    al massimo «soglia_radici»), «ripiego» (regola larga), «senza». Restituisce modo, schermate e perché."""
+    if not file.startswith("ios/") or _corrisponde(file, dati["ignora"]):
+        return {"modo": "ignora", "schermate": [], "perche": "non cambia l'aspetto"}
+    if _corrisponde(file, dati["widget"]):
+        return {"modo": "widget", "schermate": [], "perche": "foto dei widget"}
+    regola = next((r for r in dati["regole"] if _corrisponde(file, r["percorsi"])), None)
+    if regola is not None and not regola.get("ripiego"):
+        return {"modo": "regola", "schermate": _nomi(dati, regola["schermate"]), "perche": "regola a mano di foto.json"}
+    radici_scena: dict[str, list[str]] = {}
+    for s in scene:
+        for modello, tipi in dati.get("radici", {}).items():
+            if aree.corrisponde(s, modello):
+                for t in tipi:
+                    radici_scena.setdefault(t, []).append(s)
+    # i contenitori (RadiceView...) mostrano le loro parti su ogni schermata: arrivarci vale «troppe radici»
+    contenitori = set(dati.get("contenitori", []))
+    trovate = grafo.radici(file, set(radici_scena) | contenitori, set(dati.get("barriere", [])),
+                           set(dati.get("annidate", [])))
+    soglia = dati.get("soglia_radici", 4)
+    dentro = [t for t in trovate if t in contenitori]
+    if dentro and regola is not None:
+        strade = "; ".join(" ← ".join(trovate[t]) for t in dentro)
+        return {"modo": "ripiego", "schermate": _nomi(dati, regola["schermate"]),
+                "perche": f"il codice arriva a un contenitore di tutte le schermate ({strade}): regola larga"}
+    if not dentro and 0 < len(trovate) <= soglia:
+        scelte = {s for t in trovate for s in radici_scena[t]}
+        strade = "; ".join(" ← ".join(strada) for strada in trovate.values())
+        return {"modo": "grafo", "schermate": [s for s in scene if s in scelte], "perche": f"dal codice: {strade}"}
+    motivo = (f"il codice arriva a {len(trovate)} viste radice (più di {soglia})" if trovate
+              else "il codice non arriva a nessuna vista radice")
+    if regola is not None:
+        return {"modo": "ripiego", "schermate": _nomi(dati, regola["schermate"]), "perche": f"{motivo}: regola larga"}
+    return {"modo": "senza", "schermate": [], "perche": motivo}
+
+
+def schermate(file: list[str], dati: dict | None = None, grafo: grafo_ios.Grafo | None = None,
+              scene: list[str] | None = None) -> dict:
+    dati = dati if dati is not None else comune.leggi_json("foto.json")
     scelte: list[str] = []
-    widget, senza = False, []
+    widget, senza, perche = False, [], {}
     for f in file:
         if not f.startswith("ios/") or _corrisponde(f, dati["ignora"]):
             continue
-        if _corrisponde(f, dati["widget"]):
+        if grafo is None and not _corrisponde(f, dati["widget"]):
+            grafo = grafo_del_repository()
+        if scene is None:
+            scene = scene_di_screenshot()
+        s = scegli(f, dati, grafo, scene)
+        perche[f] = f"{s['modo']}: {s['perche']}"
+        if s["modo"] == "widget":
             widget = True
-            continue
-        regola = next((r for r in dati["regole"] if _corrisponde(f, r["percorsi"])), None)
-        if regola is None:
+        elif s["modo"] == "senza":
             senza.append(f)
-            continue
-        nomi = dati["principali"] if regola["schermate"] == "principali" else regola["schermate"]
-        scelte += [n for n in nomi if n not in scelte]
-    return {"schermate": scelte, "widget": widget, "senza": senza}
+        else:
+            scelte += [n for n in s["schermate"] if n not in scelte]
+    return {"schermate": scelte, "widget": widget, "senza": senza, "perche": perche}
 
 
 def comando(esito: dict, ref: str = "main", dispositivi: str = "iphone") -> list[str]:
@@ -70,7 +131,7 @@ def file_cambiati(esegui: comune.Esegui, pr: int | None, da: str | None) -> tupl
 
 
 def main(esegui: comune.Esegui, pr: int | None = None, da: str | None = None, lancia: bool = False, ref: str | None = None,
-         dispositivi: str = "iphone", json_: bool = False) -> int:
+         dispositivi: str = "iphone", json_: bool = False, spiega: bool = False) -> int:
     try:
         file, ramo, perche = file_cambiati(esegui, pr, da)
         esito = schermate(file)
@@ -97,6 +158,9 @@ def main(esegui: comune.Esegui, pr: int | None = None, da: str | None = None, la
     else:
         print(f"Foto da fare: {' '.join(esito['schermate']) or '(solo widget)'}" + (" + widget" if esito["widget"] else ""))
         print(("Lanciato: " if lanciato else "Comando (aggiungi --lancia per lanciarlo): ") + _per_persone(c))
+    if spiega and not json_:
+        for f, motivo in esito["perche"].items():
+            print(f"  {f}: {motivo}")
     for f in esito["senza"]:
         print(f"foto: attenzione, {f} non ha una schermata in script/squadra/foto.json: aggiungi una regola.", file=sys.stderr)
     return 3 if esito["senza"] else 0
@@ -115,8 +179,10 @@ def opzioni(p) -> None:
     p.add_argument("--ref", default=None, help="ramo su cui fotografare (predefinito: quello della PR se è aperta, altrimenti main)")
     p.add_argument("--dispositivi", default="iphone", choices=["iphone", "ipad", "tutti"], help="predefinito: iphone")
     p.add_argument("--json", action="store_true", help="uscita in JSON per altri script")
+    p.add_argument("--spiega", action="store_true",
+                   help="per ogni file: regola a mano, codice (con la strada fino alla vista radice) o regola larga")
 
 
 def da_riga(args, esegui: comune.Esegui) -> int:
     return main(esegui, pr=args.pr, da=args.da, lancia=args.lancia, ref=args.ref, dispositivi=args.dispositivi,
-                json_=args.json)
+                json_=args.json, spiega=args.spiega)
