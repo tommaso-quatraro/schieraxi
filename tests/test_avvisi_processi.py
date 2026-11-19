@@ -154,22 +154,35 @@ def test_cambi_vicino_alla_scadenza_con_l_avviso_rotto_lascia_traccia_e_parte(mo
     assert SEGRETO not in caplog.text
 
 
-def test_promemoria_senza_account_coi_dettagli_rotti_lascia_una_riga(tmp_path, monkeypatch, caplog):
-    """Senza account: se i dettagli della formazione non si calcolano il promemoria parte lo stesso, e nel registro resta una riga
-    con il tipo d'errore (mai il messaggio)."""
+def _promemoria_con_formazione_che_alza(errore, tmp_path, monkeypatch, caplog) -> tuple[list, list]:
     from test_notifiche import ROSE
     mandati = []
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: "2026-27")
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
 
     def rotta(*a, **k):
-        raise RuntimeError(f"formazione: {SEGRETO}")
+        raise errore
     monkeypatch.setattr(consigli, "formazione", rotta)
     with caplog.at_level("WARNING", logger="fanta.notifiche"):
         righe = notifiche.promemoria(_db("2026-10-28 18:30"), Regole(), ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "p.json",
                                      lambda *a, **k: mandati.append(a) or True, {})
+    return righe, mandati
+
+
+def test_promemoria_senza_account_coi_dettagli_rotti_lascia_una_riga(dati_isolati, tmp_path, monkeypatch, caplog):
+    """Senza account: se i dettagli della formazione non si calcolano il promemoria parte lo stesso, e nel registro resta una riga
+    con il tipo d'errore (mai il messaggio)."""
+    righe, mandati = _promemoria_con_formazione_che_alza(RuntimeError(f"formazione: {SEGRETO}"), tmp_path, monkeypatch, caplog)
     assert len(righe) == 1 and len(mandati) == 1
     assert "RuntimeError" in caplog.text and SEGRETO not in caplog.text
+
+
+def test_promemoria_con_una_rosa_che_non_forma_una_squadra_non_e_un_guasto(dati_isolati, tmp_path, monkeypatch, caplog):
+    """Nessuna formazione possibile con la rosa (ValueError, per esempio senza portiere): come per i cambi e per l'avviso prima della
+    scadenza non è un guasto. Il promemoria parte senza i dettagli e il registro resta pulito."""
+    righe, mandati = _promemoria_con_formazione_che_alza(ValueError("nessun portiere"), tmp_path, monkeypatch, caplog)
+    assert len(righe) == 1 and len(mandati) == 1
+    assert caplog.text == ""
 
 
 def test_giro_vicino_alla_scadenza_un_utente_in_errore_lascia_la_riga_e_gli_altri_ricevono(mondo, registro, monkeypatch, caplog):  # noqa: F811

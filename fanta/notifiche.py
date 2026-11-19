@@ -554,6 +554,8 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
                 parti.append(F("n.consigliato", modulo=f["modulo"], punti=float(f["punteggio_atteso"])))
                 if dubbi:
                     parti.append(F("n.da_controllare", nomi=", ".join(dubbi)))
+            except ValueError:                     # nessuna formazione possibile con la rosa: non è un guasto, parte senza dettagli
+                pass
             except Exception as e:                 # noqa: BLE001  (il promemoria parte comunque, anche senza i dettagli)
                 segna_guasto(guasti, "promemoria senza i dettagli della formazione", e)
             testo = frasi.elenco(parti, sep=" ")
