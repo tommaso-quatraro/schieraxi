@@ -1,0 +1,75 @@
+name: Sentinella di Understat
+
+# Issue #756: Understat risponde a tutti con «We will come back soon» e la fonte è spenta sul server (che non le fa più richieste).
+# Una volta al giorno, alle 4:23 UTC (poco affollata), fa UNA richiesta ai dati della Serie A con lo stesso indirizzo e le stesse
+# intestazioni del lettore (script/ci/sentinella_understat.py): nessun nuovo tentativo, timeout di 20 secondi. Se arrivano dati
+# veri commenta l'issue #756 «Understat è tornato: riaccendere la fonte» e la riapre se è chiusa; ancora la pagina, nessuna
+# risposta o un errore: non fa niente e resta verde. Il commento si scrive una volta sola (un segno fisso del bot dei workflow):
+# dopo, la sentinella non fa più nemmeno la richiesta. Niente lancio a mano: ogni lancio sarebbe una richiesta in più.
+# Quando la fonte è riaccesa, questo workflow e lo script si tolgono.
+# Sicurezza: nessun segreto; le librerie dell'app (versioni e hash fissati) solo nel job che non scrive; il permesso di scrivere
+# sulle issue solo nel job che commenta, con un testo fisso; niente testo di Understat nei comandi né nelle issue.
+on:
+  schedule:
+    - cron: "23 4 * * *"
+
+permissions: {}
+
+concurrency:
+  group: sentinella-understat
+  cancel-in-progress: false
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  controlla:
+    name: Understat è tornato?
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read   # il codice del lettore
+      issues: read     # già avvisato? (i commenti dell'issue #756)
+    outputs:
+      esito: ${{ steps.controlla.outputs.esito }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+      - id: gia
+        name: Già avvisato?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python script/ci/sentinella_understat.py gia-avvisato
+      - name: Librerie dell'app
+        if: ${{ steps.gia.outputs.avvisato == 'no' }}
+        run: python -m pip install -q --require-hashes -r requirements.txt
+      - id: controlla
+        name: Una richiesta a Understat
+        if: ${{ steps.gia.outputs.avvisato == 'no' }}
+        run: python script/ci/sentinella_understat.py controlla
+
+  avvisa:
+    name: Commenta l'issue
+    needs: controlla
+    if: ${{ needs.controlla.outputs.esito == 'tornato' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read   # lo script
+      issues: write    # solo per commentare e riaprire l'issue #756
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          sparse-checkout: script/ci
+          persist-credentials: false
+      - name: Commenta e riapre, se non è già stato fatto
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CORSA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 script/ci/sentinella_understat.py avvisa
