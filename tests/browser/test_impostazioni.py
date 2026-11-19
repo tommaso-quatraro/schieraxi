@@ -124,7 +124,7 @@ def test_gestione_solo_per_chi_gestisce_il_server(web):
 
 
 # ---------------------------------------------------------------- «Aggiorna i dati» mentre il server aggiorna da solo (#763)
-FRASE_IN_CORSO = re.compile("sta già aggiornando")
+FRASE_IN_CORSO = re.compile("occupato con un aggiornamento")
 
 
 def stato_aggiornamento(web, in_corso: bool) -> None:
@@ -173,6 +173,21 @@ def test_aggiorna_i_dati_spento_finche_il_server_aggiorna_da_solo(web):
     # (inviti e utenti di Gestione non sono nello scenario registrato: le loro 404 qui non contano)
     assert not [e for e in web.errori_console if e.startswith("errore nel codice")], web.errori_console
     assert not [r for r in web.richieste_fallite if "/api/stato" in r], web.richieste_fallite
+
+
+def test_gestione_rilegge_subito_lo_stato_letto_prima(web):
+    """Lo stato letto prima, all'apertura dell'app, diceva «aggiornamento in corso»; nel frattempo è finito. Entrando in Gestione
+    lo stato si rilegge subito, non dopo 15 secondi: il pulsante è già acceso e la frase non c'è."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, True)
+    web.apri("/?vista=impostazioni")
+    prima = letture_stato(web)
+    stato_aggiornamento(web, False)
+    tocca(web, voce(web, "Gestione"))
+    assert letture_stato(web) == prima + 1
+    assert principale(web).get_by_role("button", name="Aggiorna i dati").is_enabled()
+    assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
 
 
 def test_fuori_da_gestione_lo_stato_non_si_rilegge(web):

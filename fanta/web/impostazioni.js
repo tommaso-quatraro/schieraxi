@@ -85,7 +85,7 @@ function paginaGestione() {
     ${stato.account ? "" : `<div class="carta" id="avvisi-nativa" aria-busy="true"><div class="caricamento">${t("comune.carico")}</div></div>`}
     ${schedaAmministratore()}</div>`, { titolo: t("imp.gestione"), stato: false, indietro: indietroImp() });
   $("#aggiorna-dati").addEventListener("click", aggiornaDati);
-  segnaAggiornamento(!!stato.aggiornoDati);            // aggiornamento in corso: da qui lo stato si rilegge finché non finisce (#763)
+  segnaAggiornamento(!!stato.aggiornoDati, true);      // server già occupato (letto prima): si rilegge subito, poi finché non finisce (#763)
   $("#apri-stato-dati").addEventListener("click", apriStatoDati);
   collegaAmministratore();
   avvisiNativa();

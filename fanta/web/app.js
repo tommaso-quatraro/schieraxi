@@ -748,28 +748,33 @@ function vaiQui(opz = {}) {
 // ---------------------------------------------------------------- aggiornamento dati
 // In Impostazioni > Gestione (#618: prima erano le frecce in testata). Mentre il server scarica il pulsante è spento; si può lasciare
 // la pagina, l'avviso arriva lo stesso.
-// Spento, con la frase che dice perché, anche quando il server aggiorna da solo (aggiornamento programmato, giro leggero:
-// `aggiornamento_in_corso` di /api/stato, #763). Con Gestione aperta lo stato si rilegge ogni 15 secondi finché l'aggiornamento non
-// è finito: una lettura alla volta (la prossima si prepara solo a lettura finita); fuori da Gestione non si rilegge più.
+// Spento, con la frase che dice perché, anche quando il server è occupato da un altro aggiornamento (aggiornamento programmato,
+// giro leggero, installazione di una versione: `aggiornamento_in_corso` di /api/stato, #763). Con Gestione aperta lo stato si rilegge
+// ogni 15 secondi finché non torna libero, e subito entrando in Gestione se era già occupato (letto prima, magari da minuti): una
+// lettura alla volta (la prossima si prepara solo a lettura finita); fuori da Gestione non si rilegge più.
 const RILEGGI_AGGIORNAMENTO_MS = 15000;
 let rileggoAggiornamento = null, leggoAggiornamento = false;
-function segnaAggiornamento(inCorso) {
+function segnaAggiornamento(inCorso, subito = false) {
   stato.aggiornoDati = inCorso;
   const b = $("#aggiorna-dati");
   if (b) b.disabled = inCorso;
   const nota = $("#aggiorna-in-corso");
   if (nota) nota.textContent = inCorso ? t("aggiorna.in_corso") : "";
-  if (inCorso && b) seguiAggiornamento();
+  if (inCorso && b) seguiAggiornamento(subito);
 }
-function seguiAggiornamento() {
-  if (rileggoAggiornamento || leggoAggiornamento) return;
-  rileggoAggiornamento = setTimeout(async () => {
-    rileggoAggiornamento = null;
-    if (!$("#aggiorna-dati") || !stato.aggiornoDati) return;      // uscito da Gestione, o già finito: si smette
-    leggoAggiornamento = true;
-    try { await caricaInfo(); } finally { leggoAggiornamento = false; }
-    if (stato.aggiornoDati) seguiAggiornamento();
-  }, RILEGGI_AGGIORNAMENTO_MS);
+function seguiAggiornamento(subito = false) {
+  if (leggoAggiornamento || (rileggoAggiornamento && !subito)) return;
+  clearTimeout(rileggoAggiornamento);
+  rileggoAggiornamento = null;
+  if (subito) rileggiAggiornamento();
+  else rileggoAggiornamento = setTimeout(rileggiAggiornamento, RILEGGI_AGGIORNAMENTO_MS);
+}
+async function rileggiAggiornamento() {
+  rileggoAggiornamento = null;
+  if (!$("#aggiorna-dati") || !stato.aggiornoDati) return;        // uscito da Gestione, o già finito: si smette
+  leggoAggiornamento = true;
+  try { await caricaInfo(); } finally { leggoAggiornamento = false; }
+  if (stato.aggiornoDati) seguiAggiornamento();
 }
 async function aggiornaDati() {
   try {
