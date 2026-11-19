@@ -202,7 +202,7 @@ struct SalvataggioFuoriDallaFormazioneTests {
 
     // MARK: 412 a scheda lasciata (#751)
 
-    @Test("412 a scheda lasciata: l'avviso in basso con la frase della web, la tua formazione già riletta e, tornando, nessun avviso vecchio")
+    @Test("412 a scheda lasciata: l'avviso in basso con la frase della web e la tua formazione già riletta; tornando la frase di sempre del 412, a ogni ritorno finché non fai una nuova modifica")
     func cambiataAltroveFuori() async throws {
         let cancello = Cancello()
         let esito = Scatola<ErroreApi>()
@@ -223,10 +223,71 @@ struct SalvataggioFuoriDallaFormazioneTests {
         #expect(Set(vm.vista(f).titolari.map(\.id)) == Set(altroDispositivo), "in campo la scelta dell'altro dispositivo")
         #expect(!vm.comandiSpenti)
         vm.inVista = true                       // torna sulla Formazione
-        #expect(vm.avvisoAltrove == nil && vm.messaggio == nil)
+        #expect(vm.avvisoAltrove == nil)
+        #expect(vm.messaggio == ErroreApi.conflitto.localizedDescription,
+                "chi non ha visto l'avviso in basso sa perché in campo c'è un'altra formazione")
+        vm.messaggio = nil                      // passati gli 8 secondi
+        vm.inVista = false
+        vm.inVista = true
+        #expect(vm.messaggio == ErroreApi.conflitto.localizedDescription, "a ogni ritorno, finché non fai una nuova modifica")
+        esito.valore = nil                      // il server ora accetta
+        let (esce2, entra2) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let fatto = await vm.sostituisciTitolare(esce2, con: entra2)
+        #expect(fatto)
+        #expect(vm.messaggio == nil, "una nuova modifica: la frase del 412 non vale più, nemmeno a schermo")
+        vm.inVista = false
+        vm.inVista = true
+        #expect(vm.messaggio == nil && vm.avvisoAltrove == nil)
     }
 
-    @Test("Dopo un 412 a scheda lasciata, tornando non ricompare l'avviso di un salvataggio non riuscito prima: l'ultimo è il 412")
+    @Test("Con la giornata dopo la frase del 412 a scheda lasciata non torna più: era della giornata di prima")
+    func cambiataAltroveGiornataDopo() async throws {
+        let cancello = Cancello()
+        let esito = Scatola<ErroreApi>()
+        esito.valore = .conflitto
+        let prossima = Scatola<Bool>()
+        let srv = try Self.server(cancello: cancello, esito: esito, prossima: prossima,
+                                  altroDispositivo: try SalvataggioAutomaticoTests.altroModulo())
+        let (vm, f) = try await Self.caricata(srv)
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let salvataggio = Task { await vm.sostituisciTitolare(esce, con: entra) }
+        await cancello.richiestaArrivata()
+        vm.inVista = false
+        await cancello.apri()
+        _ = await salvataggio.value
+        vm.inVista = true
+        #expect(vm.messaggio == ErroreApi.conflitto.localizedDescription)
+        vm.messaggio = nil
+        prossima.valore = true                  // scadenza passata: il server prepara la giornata dopo
+        await vm.carica()
+        #expect(vm.formazione?.giornata == f.giornata + 1)
+        vm.inVista = false
+        vm.inVista = true
+        #expect(vm.messaggio == nil)
+    }
+
+    @Test("412 a scheda lasciata mentre guardi la formazione di un'altra squadra: l'avviso in basso, la tua non si rilegge da qui; tornando la frase della web sotto il campo")
+    func cambiataAltroveFuoriAltraSquadra() async throws {
+        let cancello = Cancello()
+        let esito = Scatola<ErroreApi>()
+        esito.valore = .conflitto
+        let srv = try Self.server(cancello: cancello, esito: esito, altroDispositivo: try SalvataggioAutomaticoTests.altroModulo())
+        let (vm, f) = try await Self.caricata(srv)
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let salvataggio = Task { await vm.sostituisciTitolare(esce, con: entra) }
+        await cancello.richiestaArrivata()
+        vm.vediSquadra("Squadra di prova")      // Impostazioni › Le altre squadre: la Formazione si apre con la loro
+        vm.inVista = false                      // poi tocca Giornate
+        await cancello.apri()
+        _ = await salvataggio.value
+        #expect(vm.avvisoAltrove == Catalogo.Comune.cambiatoAltrove)
+        #expect(vm.messaggio == nil)
+        #expect(srv.quante("GET /api/scelta") == 1, "guardando un'altra squadra la tua non si rilegge: si rilegge con «Torna alla tua»")
+        vm.inVista = true
+        #expect(vm.messaggio == Catalogo.Comune.cambiatoAltrove, "tornando, sotto la loro formazione la frase della web")
+    }
+
+    @Test("Dopo un 412 a scheda lasciata, tornando c'è la frase del 412 e non l'avviso di un salvataggio non riuscito prima: l'ultimo è il 412")
     func cambiataAltroveTogliIlGuasto() async throws {
         let cancello = Cancello()
         let esito = Scatola<ErroreApi>()
@@ -247,7 +308,7 @@ struct SalvataggioFuoriDallaFormazioneTests {
         await vm.sostituisciTitolare(esce, con: entra)
         #expect(vm.avvisoAltrove == Catalogo.Comune.cambiatoAltrove)
         vm.inVista = true
-        #expect(vm.messaggio == nil, "l'ultima scrittura è quella del 412, e la formazione è già riletta")
+        #expect(vm.messaggio == ErroreApi.conflitto.localizedDescription, "l'ultima scrittura è quella del 412, non il guasto di prima")
         #expect(Set(vm.vista(f).titolari.map(\.id)) == Set(altroDispositivo))
     }
 
