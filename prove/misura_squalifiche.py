@@ -7,6 +7,8 @@ segnalato si conta a parte). Il tasso dei falsi è un minimo: chi è segnalato a
 `probabili`, l'ultima lettura della giornata) si confrontano anche squalificati e diffidati con quell'elenco.
 La squadra di un giocatore è quella della sua ultima riga dei voti prima della partita. L'ora usata è quella vera, al momento
 della misura: sulle giornate passate una partita non giocata è sempre rinviata.
+I segnalati «per espulsione» sono quelli della regola usata nel calcolo (`squalifiche.espulsioni`, #668); quelli «per somma»
+di ammonizioni sono della regola intera e nel calcolo non si usano finché i loro falsi superano l'1%.
 
 Apre l'archivio in sola lettura e stampa solo numeri: nessun nome di giocatore o di squadra.
 
@@ -53,7 +55,7 @@ def misura(db: sqlite3.Connection, stagione: str, adesso: datetime) -> dict[str,
     squadra non ha giocato (rinviata) non è né giusto né falso: si conta a parte, in `non_giocate`."""
     partite = _righe(db, "partite", _PARTITE, stagione)
     voti = _righe(db, "voti", _VOTI, stagione)
-    rossi = [v for v in voti if v["espulsioni"]]
+    rossi = squalifiche.espulsioni(voti)                     # la regola usata nel calcolo
     giocata = {(p["giornata"], s): bool(p["giocata"]) for p in partite for s in (p["casa"], p["trasferta"])}
     nel_tabellino: dict[int, set[int]] = {}
     for v in voti:
@@ -117,6 +119,10 @@ def main() -> None:
         print(f"{stagione}: {conti}")
     if totale.get("segnalati"):
         print(f"in tutto: {totale}; falsi {100 * totale['falsi'] / totale['segnalati']:.2f}% dei segnalati")
+        for motivo, nome in (("per_espulsione", "regola nel calcolo, per espulsione"), ("per_somma", "per somma, non usata")):
+            if totale[motivo]:
+                print(f"{nome}: {totale['falsi_' + motivo]} falsi su {totale[motivo]} segnalati "
+                      f"({100 * totale['falsi_' + motivo] / totale[motivo]:.2f}%)")
     for stagione in stagioni:
         for riga in confronto_con_la_fonte(db, stagione, adesso):
             print(f"fonte {stagione}: {riga}")

@@ -12,7 +12,7 @@ import sqlite3
 from datetime import datetime
 from typing import Callable
 
-from . import fonti_attive
+from . import fonti_attive, squalifiche
 
 PARTITE_PER_GIORNATA = 10
 SOGLIA_XG = 1.0                  # differenza massima tra l'xG della partita e la somma di quello dei giocatori
@@ -164,6 +164,40 @@ def partite_senza_statistiche(db: sqlite3.Connection, stagione: str) -> Esito | 
     return "ok", 0.0, f"{partite} partite giocate, tutte con le statistiche"
 
 
+def squalificati_cartellini(db: sqlite3.Connection, stagione: str) -> Esito | None:
+    """Gli squalificati della regola dei cartellini (`squalifiche.in_uso`, solo espulsioni) contro quelli della fonte delle
+    probabili, a giornata cominciata (#668). Con una lettura buona delle probabili nel calcolo vince la fonte: qui si segna
+    soltanto se le due dicono cose diverse. Si guarda l'ultima giornata con le probabili e almeno una partita giocata (la sua
+    ultima lettura) e solo le squadre che la lettura copre. Chi è squalificato solo per i cartellini è un avviso (la regola o la
+    fonte sbaglia); chi solo per la fonte è normale (somma di ammonizioni o squalifiche di più giornate, che la regola in uso non
+    vede) e si conta e basta. Solo la stagione più recente del calendario, perché la squadra di un giocatore è quella di oggi;
+    niente se la regola non si può usare (calendario mai aggiornato o risultati fermi)."""
+    if stagione != db.execute("SELECT MAX(stagione) FROM partite").fetchone()[0]:
+        return None
+    giornata = db.execute("""
+        SELECT MAX(p.giornata) FROM probabili p WHERE p.stagione = ? AND p.fonte = 'fantacalcio'
+          AND EXISTS (SELECT 1 FROM partite c WHERE c.stagione = p.stagione AND c.giornata = p.giornata AND c.giocata = 1)""",
+                          (stagione,)).fetchone()[0]
+    if giornata is None:
+        return None
+    nostri = squalifiche.in_uso(db, stagione, giornata)
+    if nostri is None:
+        return None
+    lettura = db.execute("SELECT calciatore_id, squadra, stato FROM probabili WHERE stagione = ? AND giornata = ? "
+                         "AND fonte = 'fantacalcio'", (stagione, giornata)).fetchall()
+    coperte = {squadra for _, squadra, _ in lettura}
+    di_oggi = {cid: (nome, squadra) for cid, nome, squadra in db.execute("SELECT id, nome, squadra_slug FROM calciatori")}
+    fonte = {cid for cid, _, stato in lettura if stato == "squalificato"}
+    cartellini = {cid for cid, s in nostri.items() if s.squalificato and di_oggi.get(cid, (None, None))[1] in coperte}
+    solo_nostri = cartellini - fonte
+    dettaglio = (f"giornata {giornata}: squalificati per espulsione dai cartellini {len(cartellini)}, squalificati per la fonte "
+                 f"{len(fonte)}, in comune {len(cartellini & fonte)}")
+    if solo_nostri:
+        nomi = sorted(str(di_oggi.get(cid, (None,))[0] or cid) for cid in solo_nostri)
+        return "avviso", float(len(solo_nostri)), f"{dettaglio}; solo dai cartellini: {', '.join(nomi[:5])}"
+    return "ok", 0.0, dettaglio
+
+
 CONTROLLI: dict[str, Callable[[sqlite3.Connection, str], Esito | None]] = {
     "partite_per_giornata": partite_per_giornata,
     "voti_per_giornata": voti_per_giornata,
@@ -172,6 +206,7 @@ CONTROLLI: dict[str, Callable[[sqlite3.Connection, str], Esito | None]] = {
     "gol_dei_voti": gol_dei_voti,
     "gol_subiti_portieri": gol_subiti_portieri,
     "partite_senza_statistiche": partite_senza_statistiche,
+    "squalificati_cartellini": squalificati_cartellini,
 }
 # Il nome di ogni controllo per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui, i client le mostrano)
 ETICHETTE = {
@@ -182,6 +217,7 @@ ETICHETTE = {
     "gol_dei_voti": "Gol dei voti uguali al risultato",
     "gol_subiti_portieri": "Gol presi dai portieri uguali al risultato",
     "partite_senza_statistiche": "Statistiche delle partite giocate",
+    "squalificati_cartellini": "Squalificati: cartellini e probabili",
     "sentinella": "Sentinella: risposte dell'app",
 }
 

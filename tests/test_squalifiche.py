@@ -138,6 +138,18 @@ def test_cambio_squadra_il_conto_e_la_squalifica_seguono_il_giocatore():
     assert sq.calcola(gialli(2, [1, 2, 3, 4, 5], "alfa"), partite, ST, 6, {2: "gamma"}, ADESSO) == {2: (True, False)}
 
 
+def test_cambio_squadra_sconta_anche_nella_squadra_di_allora():
+    """Espulso alla 19 con alfa, che gioca la 20: la squalifica si sconta lì. A gennaio passa a gamma, che ha la 20 rinviata
+    (ancora da giocare, con la data vecchia). Alla 21 gioca: contando solo le partite della squadra nuova risulterebbe
+    squalificato. La data del trasferimento non la sappiamo: una partita della squadra di allora giocata dopo il cartellino
+    conta sempre come scontata (al peggio un mancato, mai un falso)."""
+    partite = calendario(20) + calendario(19, "gamma", "delta", giorni=1)
+    assert sq.calcola([cartellino(1, 19, rosso=1)], partite, ST, 21, {1: "gamma"}, ADESSO) == {}
+    # la squadra di allora non ha ancora giocato dopo il cartellino: la squalifica resta
+    partite = calendario(19) + calendario(19, "gamma", "delta", giorni=1)
+    assert sq.calcola([cartellino(1, 19, rosso=1)], partite, ST, 21, {1: "gamma"}, ADESSO) == {1: (True, False)}
+
+
 def test_inizio_stagione_il_conto_riparte_da_zero():
     """Art. 19 comma 9: le ammonizioni che non hanno portato a una squalifica decadono a fine stagione. Quattro nelle prime
     giornate della stagione prima e una alla 5 di questa: alla 6 né squalificato né diffidato. (Gialli della stagione prima
@@ -175,6 +187,71 @@ def test_senza_squadra_o_senza_partita_nella_giornata_nessun_esito():
     assert sq.calcola(carte, calendario(5), ST, 6, {1: "zeta"}, ADESSO) == {}        # 1: la sua squadra non gioca; 2: non è in elenco
 
 
+# ---------------------------------------------------------------- la regola usata nel calcolo (#668)
+def _archivio_regola(tmp_path, partite, carte, ora_calendario):
+    """Archivio con il calendario, i cartellini, la squadra di oggi di ogni giocatore (quella dei suoi cartellini) e l'ora
+    dell'ultimo aggiornamento riuscito del calendario (passo «calendario»; None = mai riuscito)."""
+    db = archivio.apri(tmp_path / "regola.sqlite")
+    archivio.inserisci(db, "partite", [{"id": i, **p} for i, p in enumerate(partite, 1)])
+    archivio.inserisci(db, "voti", [{**c, "voto_red": 6.0} for c in carte])
+    archivio.inserisci(db, "calciatori", [{"id": cid, "squadra_slug": s} for cid, s in
+                                          {c["calciatore_id"]: c["squadra"] for c in carte}.items()])
+    if ora_calendario is not None:
+        archivio.segna_passo(db, "calendario", ora_calendario.isoformat(timespec="seconds"))
+    db.commit()
+    return db
+
+
+def con_la_6(data, giocata=False):
+    """Il calendario con la partita della 6 di alfa-beta come detto (data e se è giocata); giocate le prime 5."""
+    return [p for p in calendario(5) if p["giornata"] != 6] + [partita(6, data=data, giocata=giocata)]
+
+
+def test_regola_in_uso_l_ora_e_quella_dell_ultimo_aggiornamento_del_calendario(tmp_path):
+    """Espulso alla 5. La partita della 6 è cominciata, ma il calendario si è aggiornato l'ultima volta tre ore prima del calcio
+    d'inizio: per quel calendario la partita è in programma e la squalifica si sconta lì, quindi alla 7 gioca. Con l'ora vera
+    (settimane dopo) la partita non segnata sembrerebbe rinviata e alla 7 risulterebbe squalificato a torto."""
+    db = _archivio_regola(tmp_path, con_la_6(quando(6)), [cartellino(1, 5, rosso=1)], ora(6, ore=-3))
+    assert sq.in_uso(db, ST, 6) == {1: (True, False)}
+    assert sq.in_uso(db, ST, 7) == {}
+
+
+@pytest.mark.parametrize("data_6, atteso", [
+    (quando(6), None),                       # 20 ore dopo l'inizio non è segnata giocata: risultato fermo o rinvio, non si sa
+    (quando(7, giorni=3), {1: (True, False)}),   # spostata a dopo la 7: rinviata, la squalifica vale alla 7
+    (None, {1: (True, False)})])             # senza data: rinviata
+def test_regola_non_si_usa_con_i_risultati_fermi(tmp_path, data_6, atteso):
+    """Espulso alla 5; il calendario si è aggiornato 20 ore dopo l'inizio della 6. Una partita cominciata da più di mezza
+    giornata e non segnata giocata può essere un risultato fermo (squalifica scontata) o un rinvio con la data vecchia (non
+    scontata): la regola non si usa (None). Rinviata con una data nuova o senza data: si usa."""
+    db = _archivio_regola(tmp_path, con_la_6(data_6), [cartellino(1, 5, rosso=1)], ora(6, ore=20))
+    assert sq.in_uso(db, ST, 7) == atteso
+
+
+def test_risultati_fermi_si_cercano_nelle_ultime_due_settimane(tmp_path):
+    """La partita della 2 non è mai stata segnata giocata e ha ancora la sua data, di un mese prima: non ferma la regola."""
+    partite = [p if p["giornata"] != 2 else {**p, "giocata": 0} for p in calendario(6)]
+    db = _archivio_regola(tmp_path, partite, [cartellino(1, 6, rosso=1)], ora(6, ore=3))
+    assert sq.in_uso(db, ST, 7) == {1: (True, False)}
+
+
+def test_regola_senza_un_aggiornamento_riuscito_del_calendario_non_si_usa(tmp_path):
+    db = _archivio_regola(tmp_path, calendario(5), [cartellino(1, 5, rosso=1)], None)
+    assert sq.in_uso(db, ST, 6) is None
+    archivio.segna_passo(db, "calendario", ora(5, ore=3).isoformat(timespec="seconds"), "ConnectionError")   # fallito: mai riuscito
+    assert sq.in_uso(db, ST, 6) is None
+
+
+def test_regola_in_uso_solo_le_espulsioni(tmp_path):
+    """Misura sull'archivio: per somma di ammonizioni i falsi squalificati superano l'1%, per espulsione nessuno. Nel calcolo
+    quindi solo le espulsioni, e niente diffidati (vengono dallo stesso conto delle ammonizioni)."""
+    carte = [cartellino(1, 5, rosso=1)] + gialli(2, [1, 2, 3, 4, 5]) + gialli(3, [1, 2, 3, 4])
+    squadre = {1: "alfa", 2: "alfa", 3: "alfa"}
+    assert sq.calcola(carte, calendario(5), ST, 6, squadre, ADESSO) == {1: (True, False), 2: (True, False), 3: (False, True)}
+    db = _archivio_regola(tmp_path, calendario(5), carte, ora(5, ore=3))
+    assert sq.in_uso(db, ST, 6) == {1: (True, False)}
+
+
 # ---------------------------------------------------------------- la misura sull'archivio (prove/misura_squalifiche.py)
 def _strumento():
     spec = importlib.util.spec_from_file_location("misura_squalifiche", RADICE / "prove" / "misura_squalifiche.py")
@@ -198,6 +275,16 @@ def _archivio_di_prova(tmp_path):
         for cid, giornate in presenze.items() for g in giornate])
     db.commit()
     return db
+
+
+def test_misura_la_squadra_e_quella_dell_ultima_riga_prima_della_partita():
+    """Il 7 gioca dalla 1 alla 4 con alfa, poi passa a gamma (che gioca un giorno dopo). Per la 5 la sua squadra è alfa: le righe
+    della 5 e della 6 sono più recenti ma non sono di prima della partita. Per la 6 è gamma (conta la riga della 5)."""
+    partite = calendario(38) + calendario(38, "gamma", "delta", giorni=1)
+    voti = ([{"giornata": g, "calciatore_id": 7, "squadra": "alfa"} for g in range(1, 5)]
+            + [{"giornata": g, "calciatore_id": 7, "squadra": "gamma"} for g in (5, 6)])
+    assert _strumento()._squadre(voti, partite, 5) == {7: "alfa"}
+    assert _strumento()._squadre(voti, partite, 6) == {7: "gamma"}
 
 
 def test_misura_conta_segnalati_e_falsi_dal_tabellino(tmp_path):
