@@ -9,7 +9,11 @@ uno gli utenti *attivi* (con una squadra indicata e almeno un dispositivo iscrit
 avvisato». Delle impostazioni contano le ore tranquille, la lingua e `app_nativa`; le scelte per avviso di prima no.
 - Il canale ntfy è uno solo ed è del proprietario del server: gli utenti non ci passano mai. L'unica eccezione è un
   amministratore che ha acceso l'opzione dell'app nativa (come con l'interruttore spento).
-- Un errore con un utente non ferma gli altri.
+- Un errore con un utente non ferma gli altri, e non resta muto: una riga nel registro (numero dell'utente e tipo d'errore) e
+  l'errore nel ritorno di `esegui`, che il comando stampa. Lo stesso per un pezzo di un avviso che non riesce mentre il resto
+  parte (`notifiche.segna_guasto`).
+- Due giri insieme (i promemoria dal cron e i cambi del pianificatore dentro il servizio) non lavorano mai sullo stesso utente:
+  «leggi lo stato, decidi, manda, scrivi» di un utente sta dentro un blocco su file fra processi (`blocco_avvisi`, #660).
 - Il giro ha un tempo massimo e un ordine a rotazione: chi resta fuori per il tempo finito passa per primo al giro dopo.
 - Lavoro pesante: i cambi confrontano prima gli stati dei giocatori (poco costoso) e ricalcolano la formazione solo se qualcosa è cambiato.
 """
@@ -22,19 +26,25 @@ import os
 import re
 import sqlite3
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
 from . import account, lega, notifiche, percorsi, push, regole
 from .account import Utente
+from .blocco import BloccoFile
 from .contesto import Contesto
 from .lega import Rose
 from .percorsi import scrivi_sicuro
 
 FUNZIONI = ("cambi", "promemoria")
 LOG = logging.getLogger(__name__)
+FILE_BLOCCO = "avvisi.lock"    # accanto agli stati degli avvisi dell'utente
+# secondi: il lavoro di un utente dura di solito pochi secondi (un calcolo e un invio, al massimo `limiti.MAX_SECONDI_INVIO`).
+# Si aspetta un po' invece di saltarlo subito, così il promemoria di un quarto d'ora prima non va perso per un incrocio di un attimo;
+# oltre, l'utente passa al giro dopo. Resta dentro MARGINE_SECONDI, il margine del giro per il lavoro di un utente.
+ATTESA_BLOCCO = 30.0
 
 
 @dataclass
@@ -44,6 +54,7 @@ class Attivo:
     rose: Rose
     opzioni: dict
     ntfy: bool
+    guasti: list[str] = field(default_factory=list)      # i pezzi non riusciti nel lavoro di questo giro (`notifiche.segna_guasto`)
 
     @property
     def manda(self) -> Callable[..., bool]:
@@ -53,6 +64,13 @@ class Attivo:
 def ntfy_consentito(utente: Utente, opzioni: dict) -> bool:
     """Il canale ntfy è del proprietario del server: solo un amministratore, e solo se ha acceso l'opzione dell'app nativa."""
     return utente.amministratore and bool(opzioni.get("app_nativa"))
+
+
+def blocco_avvisi(ctx: Contesto) -> BloccoFile:
+    """Il blocco fra processi degli avvisi di un utente: lo tiene chi legge, decide, manda e scrive i suoi stati (cambi e
+    promemoria insieme: tutti e due leggono e scrivono tutti e due i file). La cartella non si crea: quella di un account eliminato
+    non rinasce per il file del blocco (FileNotFoundError). Occupato oltre ATTESA_BLOCCO secondi: TimeoutError."""
+    return BloccoFile(ctx.stato_promemoria.with_name(FILE_BLOCCO), ATTESA_BLOCCO, crea_cartella=False)
 
 
 def _attivo(utente: Utente) -> Attivo | None:
@@ -89,18 +107,21 @@ def _cambi(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime
     """La formazione da schierare è cambiata per un titolare che non gioca più (`notifiche.cambi`), qualunque fosse la vecchia
     scelta `cambi` dell'utente."""
     return notifiche.cambi(db, r, a.rose, adesso, a.ctx.stato_cambi, a.manda, a.opzioni, risparmia=True, file_scelte=a.ctx.scelte,
-                           file_promemoria=a.ctx.stato_promemoria)
+                           file_promemoria=a.ctx.stato_promemoria, guasti=a.guasti)
 
 
 def _promemoria(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:
     """Prima l'avviso «cambia la formazione» (nell'ultima ora): se parte, il promemoria non fa il doppione. Poi il promemoria.
-    Per tutti, qualunque fossero le vecchie scelte `avviso_prima`, `promemoria_60` e `promemoria_15`."""
+    Per tutti, qualunque fossero le vecchie scelte `avviso_prima`, `promemoria_60` e `promemoria_15`. Se l'avviso alza un errore
+    il promemoria parte lo stesso e il guasto va in `a.guasti`."""
     try:
         righe = notifiche.avviso_scadenza(db, r, a.rose, adesso, a.ctx.stato_promemoria, a.manda, a.opzioni, a.ctx.scelte,
                                           a.ctx.stato_cambi)
-    except Exception:                              # noqa: BLE001  (i promemoria partono comunque)
+    except Exception as e:                         # noqa: BLE001  (i promemoria partono comunque; il guasto si vede)
         righe = []
-    return righe + notifiche.promemoria(db, r, a.rose, adesso, a.ctx.stato_promemoria, a.manda, a.opzioni, a.ctx.scelte)
+        notifiche.segna_guasto(a.guasti, "avviso «cambia la formazione» non controllato", e)
+    return righe + notifiche.promemoria(db, r, a.rose, adesso, a.ctx.stato_promemoria, a.manda, a.opzioni, a.ctx.scelte,
+                                        guasti=a.guasti)
 
 
 _LAVORI = {"cambi": _cambi, "promemoria": _promemoria}
@@ -153,7 +174,10 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
            attivi: list[Attivo] | None = None, *, max_secondi: float | None = None,
            orologio: Callable[[], float] = time.monotonic, file_giro: Path | None = None) -> tuple[dict[str, list[str]], dict[str, str]]:
     """Esegue `funzione` (una di FUNZIONI) per ogni utente attivo. Restituisce ({nome utente: righe mandate}, {nome utente: errore}).
-    Dell'errore si dice solo il tipo (niente dati personali nei log).
+    Dell'errore si dice solo il tipo (niente dati personali nei log). Un utente può stare in tutti e due: un pezzo dei suoi avvisi
+    non è riuscito e il resto è partito. Ogni utente in errore lascia anche una riga nel registro, con il suo numero.
+    Il lavoro di un utente sta dentro il suo blocco fra processi (`blocco_avvisi`): se un altro giro lo tiene oltre ATTESA_BLOCCO
+    secondi, l'utente passa al giro dopo (una riga nel registro, nessun errore) senza segnarsi come servito.
     Il giro dura al massimo `max_secondi` (di base `secondi_del_giro`): il tempo si guarda fra un utente e l'altro (almeno uno si
     serve sempre); chi resta passa al giro dopo. L'ordine è a rotazione: prima chi è stato servito meno di recente (o mai), in fondo
     chi è stato servito per ultimo. Ogni utente si segna come servito PRIMA del suo lavoro, così se il giro si ferma mentre lavora
@@ -179,13 +203,24 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
         if n and orologio() - inizio > limite:
             LOG.warning("Avvisi (%s): tempo del giro finito, %d utenti al prossimo giro", funzione, len(ordinati) - n)
             break
-        if file_giro:
-            posizione += 1
-            serviti[str(a.utente.id)] = posizione
-            if not _scrivi_giro(file_giro, funzione, serviti):
-                file_giro = None                      # una riga sola nel registro: per questo giro non si riprova
-        try:
-            esiti[a.utente.nome_utente] = lavoro(a, db, regole.carica(a.ctx.regole), adesso)
-        except Exception as e:  # noqa: BLE001 - un utente con dati strani non deve fermare gli avvisi degli altri
-            errori[a.utente.nome_utente] = type(e).__name__
+        with contextlib.ExitStack() as pila:
+            try:
+                pila.enter_context(blocco_avvisi(a.ctx))
+            except OSError as e:                      # TimeoutError: un altro giro lavora per lui; o la cartella non c'è più
+                LOG.warning("Avvisi (%s): utente %s al prossimo giro, blocco dei suoi avvisi non preso (%s)", funzione,
+                            a.utente.id, type(e).__name__)
+                continue
+            if file_giro:
+                posizione += 1
+                serviti[str(a.utente.id)] = posizione
+                if not _scrivi_giro(file_giro, funzione, serviti):
+                    file_giro = None                  # una riga sola nel registro: per questo giro non si riprova
+            a.guasti = []
+            try:
+                esiti[a.utente.nome_utente] = lavoro(a, db, regole.carica(a.ctx.regole), adesso)
+            except Exception as e:  # noqa: BLE001 - un utente con dati strani non deve fermare gli avvisi degli altri
+                a.guasti.append(type(e).__name__)
+        if a.guasti:
+            errori[a.utente.nome_utente] = "; ".join(a.guasti)
+            LOG.warning("Avvisi (%s): utente %s in errore: %s", funzione, a.utente.id, errori[a.utente.nome_utente])
     return esiti, errori
