@@ -106,8 +106,9 @@ def _foto_scritte(corpo: str) -> bool:
 def foto_non_coperte(esegui: comune.Esegui, numero: int, testa: str, file: list[tuple], corpo: str,
                      commit_preso: bool) -> list[str]:
     """Avviso, mai rifiuto (#505): le schermate che «squadra.py foto» ricava dai file iOS della PR e che nessuna riga «Foto da
-    fare» nomina, con i file da cui arrivano. Il grafo è quello del codice della PR: i file Swift cambiati si leggono dal suo
-    commit (solo testo, mai eseguiti), gli altri dal disco. Se il confronto non riesce, un avviso corto e si va avanti."""
+    fare» nomina, con i file da cui arrivano. Nel grafo i file Swift aggiunti, cambiati o rinominati dalla PR si leggono dal
+    suo commit (solo testo, mai eseguiti); gli altri dal disco, anche quelli che la PR toglie (portano le schermate dove si
+    vedevano). Se il confronto non riesce, un avviso corto e si va avanti."""
     righe = _righe_foto(corpo)
     ios = [voce for voce in file if voce[-1].startswith("ios/")]
     if not righe or not ios:

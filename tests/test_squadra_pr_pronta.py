@@ -125,7 +125,8 @@ def test_ios_senza_foto_da_fare(capsys):
     file = [{"filename": "ios/Sources/Presentation/Oggi/OggiView.swift", "status": "modified"}]
     assert lancia(risposte(file=file))[0] == 1
     assert "Foto da fare" in capsys.readouterr().out
-    assert lancia(risposte(p=pr(corpo=CORPO + "\nFoto da fare: oggi oggi-fondo\n"), file=file))[0] == 0
+    show = {"git show t1:ios/Sources/Presentation/Oggi/OggiView.swift": "struct OggiView: View {}\n"}   # per l'avviso (#505)
+    assert lancia(risposte(p=pr(corpo=CORPO + "\nFoto da fare: oggi oggi-fondo\n"), file=file, **show))[0] == 0
 
 
 def test_foto_nel_commento_html_non_conta():
