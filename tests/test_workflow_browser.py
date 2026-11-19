@@ -118,6 +118,21 @@ def test_i_test_del_browser_girano_in_parallelo():
     assert "--dist worksteal" in comando, "test lunghi e corti: chi finisce prima prende i test rimasti agli altri"
 
 
+def test_i_test_del_browser_falliscono_prima_del_tetto_del_job():
+    """Oltre timeout-minutes il job finisce «annullato», che non è un rosso per chi legge gli esiti: con `timeout` davanti a
+    pytest il passo fallisce prima del tetto e il job è «fallito» (PR ferma, issue «CI: main rosso» su main)."""
+    j = _senza_commenti(_job("browser"))
+    tetto = int(re.search(r"^    timeout-minutes: (\d+)\s*$", j, re.M).group(1))
+    m = re.search(r"run: '?timeout (?:--\S+ )*(\d+)m \"\$RUNNER_TEMP/browser/bin/python\" -I -m pytest", j)
+    assert m, "il comando dei test non comincia con «timeout <minuti>m»"
+    assert int(m.group(1)) <= tetto - 2, "servono almeno due minuti per checkout, Python e installazione"
+
+
+def test_cambi_nel_push_con_troppi_file_fa_girare_tutto():
+    j = _senza_commenti(_job("cambi"))
+    assert j.count('-ge 300 ]; then file="ios/"; tutto=true; fi') == 2, "lancio su main e push"
+
+
 def _librerie(testo: str) -> dict[str, tuple[str, set[str]]]:
     """{nome minuscolo: (versione, hash)} di un file di requisiti con «nome==versione [; condizione] \\» e righe --hash."""
     voci = {}

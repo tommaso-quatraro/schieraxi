@@ -167,11 +167,13 @@ jobs:
       # server di GitHub nei repository pubblici), ognuno con il suo Chrome e i suoi server finti su una porta sua (le fixture
       # di sessione di tests/browser/conftest.py valgono per processo). --dist worksteal: un processo rimasto senza test prende
       # quelli che un altro non ha ancora cominciato (i test durano da meno di un secondo a decine di secondi).
+      # `timeout 8m`: oltre timeout-minutes il job finirebbe «annullato», che non ferma «main-rosso» né chi legge gli esiti;
+      # così il passo fallisce prima del tetto e il job è «fallito» (due minuti restano a checkout, Python e installazione).
       - name: La web nel browser, nelle tre fasi della giornata
         if: steps.decidi.outputs.serve == 'true'
         env:
           BROWSER_OBBLIGATORIO: "1"
-        run: '"$RUNNER_TEMP/browser/bin/python" -I -m pytest -q -p no:cacheprovider -n 4 --dist worksteal --durations=10 -m browser --confcutdir tests/browser tests/browser'
+        run: 'timeout --kill-after=20s 8m "$RUNNER_TEMP/browser/bin/python" -I -m pytest -q -p no:cacheprovider -n 4 --dist worksteal --durations=10 -m browser --confcutdir tests/browser tests/browser'
 
   # Contro il lavoro fuori piano: la descrizione della PR dichiara le aree («Aree: fanta/web, tests, docs») e i file cambiati
   # devono stare lì dentro (script/ci/controlla_ambito.py, preso da main). Esenti: PR dei bot e PR di soli documenti.
@@ -300,6 +302,7 @@ jobs:
             file="ios/"; tutto=true
           else
             file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$PRIMA...$DOPO" --jq '.files[] | .filename, (.previous_filename // empty)')
+            if [ "$(printf '%s\n' "$file" | wc -l)" -ge 300 ]; then file="ios/"; tutto=true; fi
           fi
           if printf '%s\n' "$file" | grep -qE '^(ios/|\.github/workflows/ios\.yml$)'; then
             ios=true
@@ -573,9 +576,11 @@ jobs:
   # Solo nelle corse su main (push o lancio dopo l'unione), mai nelle PR né nei lanci a mano su un ramo. L'issue non si chiude
   # da sola: la chiude chi ha corretto, quando una corsa nuova su main è verde. Dentro i comandi solo dati nostri (esiti dei job,
   # commit, indirizzo della corsa) passati per variabili d'ambiente, mai testo di PR o issue.
+  # Rosso è anche un job «cancelled»: così finisce un job oltre il suo timeout-minutes. Un annullamento dell'intera corsa (solo a
+  # mano: su main nessuna corsa si annulla da sola, vedi concurrency) rende falso !cancelled() e non apre issue.
   main-rosso:
     needs: [test, script-server, pip-audit, cambi, ios, browser]
-    if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # uno alla volta: due corse rosse quasi insieme non aprono due issue uguali (la seconda trova la prima e la commenta)
