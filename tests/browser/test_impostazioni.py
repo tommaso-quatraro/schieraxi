@@ -214,7 +214,97 @@ def test_con_un_account_l_indirizzo_dell_account_apre_l_account(web):
     da_utente(web)
     web.apri("/?vista=impostazioni&gruppo=account")
     assert titolo(web) == "Il tuo account"
-    assert principale(web).get_by_role("button", name="Esci").is_visible()
+    assert principale(web).get_by_role("button", name="Esci", exact=True).is_visible()
+
+
+# ---------------------------------------------------------------- Esci da tutti i dispositivi (#765)
+ESCI_TUTTI = "Esci da tutti i dispositivi"
+
+
+def uscita_ovunque(web, stato: int | None = 200) -> list[str]:
+    """Il server di «Esci da tutti»: la rotta risponde con `stato` (None: la richiesta non arriva). Se riesce, da lì ogni
+    /api/... risponde 401 come il server vero a sessioni chiuse. Restituisce i metodi delle richieste arrivate alla rotta."""
+    arrivate, uscito = [], []
+    a_sessione_chiusa = json.dumps({"detail": "Serve l'accesso", "multiutente": True})
+
+    def altre(route):
+        if uscito:
+            route.fulfill(status=401, content_type="application/json; charset=utf-8", body=a_sessione_chiusa)
+        else:
+            route.fallback()
+
+    def esci(route):
+        arrivate.append(route.request.method)
+        if stato is None:
+            route.abort()
+            return
+        if stato == 200:
+            uscito.append(True)
+        route.fulfill(status=stato, content_type="application/json; charset=utf-8",
+                      body=json.dumps({"sessioni_chiuse": 3} if stato == 200 else {}))
+
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), altre)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci-da-tutti", esci)
+    return arrivate
+
+
+def chiavi_salvate(web) -> list[str]:
+    """Le copie dei dati e l'account lasciati nel browser (localStorage)."""
+    return [k for k in web.pagina.evaluate("Object.keys(localStorage)") if k.startswith("cache:") or k == "account"]
+
+
+def test_esci_da_tutti_chiede_conferma_ed_esce_ovunque(web):
+    """Il pulsante consigliato dalle email di sicurezza c'è in Il tuo account. La conferma dice che si esce ovunque, anche da qui,
+    e che si dovrà rientrare; dopo l'uscita si torna alla pagina d'accesso e nel browser non restano copie dei dati né l'account."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/")                                              # la Formazione lascia nel browser le sue copie
+    assert chiavi_salvate(web), "la prova vuole delle copie da togliere"
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    domande = []
+
+    def rispondi(dialogo):
+        domande.append(dialogo.message)
+        dialogo.accept()
+
+    web.pagina.on("dialog", rispondi)
+    principale(web).get_by_role("button", name=ESCI_TUTTI).click(timeout=10000)
+    web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).wait_for(timeout=10000)
+    assert len(domande) == 1, domande
+    assert all(parte in domande[0] for parte in ("tutti i dispositivi", "anche da questo", "accedere di nuovo")), domande
+    assert arrivate == ["POST"]
+    assert chiavi_salvate(web) == []
+
+
+def test_esci_da_tutti_annullato_non_fa_niente(web):
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    web.pagina.on("dialog", lambda dialogo: dialogo.dismiss())
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    assert arrivate == []
+    assert titolo(web) == "Il tuo account"
+
+
+@pytest.mark.parametrize("stato", [500, None], ids=["errore-del-server", "rete-giu"])
+def test_esci_da_tutti_non_riuscito_lo_dice_e_resta_dentro(web, stato):
+    """Se la richiesta non riesce gli altri dispositivi sono ancora dentro: un avviso lo dice, si resta nella pagina e le copie
+    restano (al contrario di «Esci», che esce anche con il server spento)."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/")
+    web.apri("/?vista=impostazioni&gruppo=account")
+    prima = chiavi_salvate(web)
+    arrivate = uscita_ovunque(web, stato)
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    web.pagina.get_by_role("status").filter(has_text="Non riesco a farti uscire da tutti i dispositivi").wait_for(timeout=10000)
+    assert arrivate == ["POST"]
+    assert titolo(web) == "Il tuo account"
+    assert principale(web).get_by_role("button", name=ESCI_TUTTI).is_visible()
+    assert chiavi_salvate(web) == prima
 
 
 # ---------------------------------------------------------------- valori salvati da versioni di prima

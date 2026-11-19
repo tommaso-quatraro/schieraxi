@@ -10,9 +10,10 @@ def test_la_password_resta_dopo_un_errore_di_compilazione():
 
 
 def test_un_solo_nome_e_niente_maiuscole_da_cambiare():
-    """Dal 1/11/2026 (come sull'iPhone) il nome si mostra e basta: niente «Maiuscole del nome» né «Esci da tutti i dispositivi»."""
+    """Dal 1/11/2026 (come sull'iPhone) il nome si mostra e basta: niente «Maiuscole del nome». «Esci da tutti i dispositivi», tolto
+    lo stesso giorno, è tornato con il #765 (prova nel browser: tests/browser/test_impostazioni.py)."""
     assert "esc(a.nome_visualizzato || a.nome_utente)" in APP
-    assert "acc-nome-vis" not in APP and "esci-da-tutti" not in APP
+    assert "acc-nome-vis" not in APP
 
 
 def test_web_cambio_password_mostra_subito_il_codice_nuovo():
