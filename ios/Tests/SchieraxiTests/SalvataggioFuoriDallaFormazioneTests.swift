@@ -5,8 +5,10 @@ import Testing
 /// Un salvataggio automatico della Formazione che non riesce quando sei già su un'altra scheda (#726), come `nonSalvata` di
 /// `mostraFormazione` della web (#667, PR #724): lasciata la Formazione l'avviso nomina la formazione, con le frasi del catalogo
 /// `formazione.non_salvata_rete` (rete giù o server troppo lento) e `formazione.non_salvata` (rifiuto del server); nella tua
-/// Formazione resta l'avviso di prima, con il motivo. Tornando sulla Formazione l'avviso se ne va e un salvataggio che riesce non
-/// ne lascia. Le scritture sono una alla volta, quindi quella che non riesce è sempre l'ultima partita dalla Formazione.
+/// Formazione resta l'avviso di prima, con il motivo. Tornando sulla Formazione l'avviso delle altre schede se ne va e lì compare
+/// quello di sempre, a ogni ritorno, finché un salvataggio non riesce (o arriva la giornata dopo): un guasto resta visibile anche
+/// se l'avviso in basso è passato sotto un foglio. Un salvataggio che riesce non lascia avvisi. Le scritture sono una alla volta,
+/// quindi quella che non riesce è sempre l'ultima partita dalla Formazione.
 /// Il cambio di scheda è `inVista`, che nell'app imposta la radice. Dati inventati (fixture).
 @MainActor
 @Suite("Formazione: salvataggio non riuscito a scheda lasciata, come la web (#726)", .timeLimit(.minutes(1)))
@@ -31,7 +33,7 @@ struct SalvataggioFuoriDallaFormazioneTests {
         await cancello.apri()
         _ = await salvataggio.value
         #expect(vm.avvisoAltrove == frase)
-        #expect(vm.messaggio == nil, "tornando sulla Formazione non si ripete: lì c'è la formazione salvata")
+        #expect(vm.messaggio == nil, "finché sei sull'altra scheda l'avviso è quello in basso, non quello della Formazione")
     }
 
     @Test("«Torna alla consigliata» che non riesce a scheda lasciata: lo stesso avviso")
@@ -118,13 +120,95 @@ struct SalvataggioFuoriDallaFormazioneTests {
         #expect(vm.vista(f).titolari.map(\.id).contains(entra))
     }
 
+    // MARK: il guasto resta visibile
+
+    @Test("Un salvataggio non riuscito a scheda lasciata resta visibile: tornando sulla Formazione l'avviso di sempre, a ogni ritorno, finché uno dopo non riesce")
+    func guastoAlRitorno() async throws {
+        let cancello = Cancello()
+        let esito = Scatola<ErroreApi>()
+        esito.valore = .rete("spento")
+        let (vm, f) = try await Self.caricata(try Self.server(cancello: cancello, esito: esito))
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let primo = Task { await vm.sostituisciTitolare(esce, con: entra) }
+        await cancello.richiestaArrivata()
+        vm.inVista = false                      // su Giornate, magari con un foglio aperto sopra l'avviso in basso
+        await cancello.apri()
+        _ = await primo.value
+        vm.avvisoAltrove = nil                  // passati gli 8 secondi senza vederlo
+        vm.inVista = true                       // torna sulla Formazione
+        #expect(vm.messaggio == ErroreApi.testoNonRaggiungibile, "l'avviso di sempre, con il motivo")
+        vm.messaggio = nil                      // passati gli 8 secondi anche qui
+        vm.inVista = false
+        vm.inVista = true
+        #expect(vm.messaggio == ErroreApi.testoNonRaggiungibile, "finché non riesce un salvataggio, a ogni ritorno")
+        esito.valore = nil                      // la rete è tornata
+        let fatto = await vm.sostituisciTitolare(esce, con: entra)
+        #expect(fatto)
+        #expect(vm.messaggio == nil, "salvata: l'avviso non vale più")
+        vm.inVista = false
+        vm.inVista = true
+        #expect(vm.messaggio == nil && vm.avvisoAltrove == nil)
+    }
+
+    @Test("Anche «Torna alla consigliata» riuscito toglie la traccia del salvataggio non riuscito")
+    func guastoTolto() async throws {
+        let cancello = Cancello()
+        let esito = Scatola<ErroreApi>()
+        esito.valore = .rete("spento")
+        let srv = try Self.server(cancello: cancello, esito: esito, salvata: try SalvataggioAutomaticoTests.altroModulo())
+        let (vm, _) = try await Self.caricata(srv)
+        try #require(vm.salvata != nil, "c'è una scelta salvata: «Torna alla consigliata» la toglie")
+        let togli = Task { await vm.tornaAllaConsigliata() }
+        await cancello.richiestaArrivata()
+        vm.inVista = false
+        await cancello.apri()
+        await togli.value
+        vm.inVista = true
+        #expect(vm.messaggio == ErroreApi.testoNonRaggiungibile)
+        esito.valore = nil
+        await vm.tornaAllaConsigliata()
+        #expect(vm.salvata == nil)
+        #expect(vm.messaggio == nil)
+        vm.inVista = false
+        vm.inVista = true
+        #expect(vm.messaggio == nil)
+    }
+
+    @Test("Con la giornata dopo la traccia del salvataggio non riuscito se ne va: era della giornata di prima")
+    func guastoDellaGiornataPrima() async throws {
+        let cancello = Cancello()
+        let esito = Scatola<ErroreApi>()
+        esito.valore = .rete("spento")
+        let prossima = Scatola<Bool>()
+        let (vm, f) = try await Self.caricata(try Self.server(cancello: cancello, esito: esito, prossima: prossima))
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let primo = Task { await vm.sostituisciTitolare(esce, con: entra) }
+        await cancello.richiestaArrivata()
+        vm.inVista = false
+        await cancello.apri()
+        _ = await primo.value
+        vm.inVista = true
+        #expect(vm.messaggio == ErroreApi.testoNonRaggiungibile)
+        vm.messaggio = nil
+        prossima.valore = true                  // scadenza passata: il server prepara la giornata dopo
+        await vm.carica()
+        #expect(vm.formazione?.giornata == f.giornata + 1)
+        vm.inVista = false
+        vm.inVista = true
+        #expect(vm.messaggio == nil)
+    }
+
     // MARK: aiuti
 
     /// La formazione della fixture e la scelta `salvata` (nil = nessuna). Ogni scrittura (salvataggio o «Torna alla consigliata»)
     /// passa dal `cancello`, così il test cambia scheda mentre è in volo; poi, se `esito` ha un errore, non riesce con quello,
-    /// altrimenti riesce come il server vero.
-    static func server(cancello: Cancello, esito: Scatola<ErroreApi>, salvata titolari: [Int]? = nil) throws -> ServerDiProva {
-        let dati = try Fixture.dati("formazione")
+    /// altrimenti riesce come il server vero. Con `prossima` vera la formazione è della giornata dopo (10 invece di 9).
+    static func server(cancello: Cancello, esito: Scatola<ErroreApi>, salvata titolari: [Int]? = nil,
+                       prossima: Scatola<Bool> = Scatola()) throws -> ServerDiProva {
+        let questa = try Fixture.dati("formazione")
+        let testo = String(decoding: questa, as: UTF8.self)
+        try #require(testo.contains("\"giornata\":9"), "la fixture è della giornata 9")
+        let dopo = Data(testo.replacingOccurrences(of: "\"giornata\":9", with: "\"giornata\":10").utf8)
         let salvata = Scatola<String>()
         salvata.valore = titolari.map { SalvataggioAutomaticoTests.json($0) }
         return ServerDiProva { metodo, percorso, corpo in
@@ -147,7 +231,7 @@ struct SalvataggioFuoriDallaFormazioneTests {
                 }
                 return Data((salvata.valore ?? "null").utf8)
             }
-            return dati
+            return prossima.valore == true ? dopo : questa
         }
     }
 
