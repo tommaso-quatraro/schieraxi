@@ -369,5 +369,67 @@ def test_foto_non_confrontabili_non_fermano_pr_pronta(monkeypatch, capsys):
     uscita = capsys.readouterr().out
     assert codice == 0 and f.lanciati("gh pr ready")
     [avviso] = _avvisi_foto(uscita)
-    assert "Foto da fare" in avviso and "squadra.py foto 7" in avviso
+    assert "non ho potuto confrontare" in avviso                      # non un ripiego in silenzio sul disco
     assert not any(p in avviso for p in PAROLE_DI_CHI_ASPETTA)
+
+
+def _grafi_costruiti(monkeypatch) -> list[set[str]]:
+    """Registra i file di ogni grafo costruito."""
+    grafi, vero = [], grafo_ios.Grafo
+
+    def registra(testi):
+        grafi.append(set(testi))
+        return vero(testi)
+    monkeypatch.setattr(grafo_ios, "Grafo", registra)
+    return grafi
+
+
+def test_file_rinominato_esce_dal_grafo_col_nome_vecchio_e_il_copiato_resta(monkeypatch, capsys):
+    _foto_finte(monkeypatch)
+    grafi = _grafi_costruiti(monkeypatch)
+    cornice, copia = "ios/Sources/Presentation/A/Cornice.swift", "ios/Sources/Presentation/B/Copia.swift"
+    file = [{"filename": cornice, "previous_filename": RIQUADRO, "status": "renamed"},
+            {"filename": copia, "previous_filename": VISTA_B, "status": "copied"}]
+    r = risposte(p=pr(corpo=CORPO + "\nFoto da fare: a a-fondo b\n"), file=file,
+                 **{f"git show t1:{cornice}": TESTI[RIQUADRO], f"git show t1:{copia}": TESTI[VISTA_B]})
+    codice, f, _ = lancia(r, json_=True)
+    assert codice == 0 and _avvisi_foto(capsys.readouterr().out) == []
+    [nel_grafo] = grafi
+    assert cornice in nel_grafo and RIQUADRO not in nel_grafo          # rinominato: il nome vecchio non c'è più
+    assert copia in nel_grafo and VISTA_B in nel_grafo                 # copiato: l'originale resta
+    assert not f.lanciati(f"git show t1:{RIQUADRO}")
+
+
+@pytest.mark.parametrize("testo", ["struct Riquadro: View {}\n" + "@a\n" * 3000,              # troppe righe, pochi byte
+                                   "struct Riquadro: View {}\n// " + "x" * 200_000 + "\n"])  # una riga, troppi byte
+def test_file_swift_troppo_grande_salta_il_confronto(testo, monkeypatch, capsys):
+    """Il grafo legge il testo con espressioni regolari: un file enorme (32000 righe «@a» = 42 secondi) non si legge,
+    pr-pronta stampa l'avviso corto e va avanti."""
+    _foto_finte(monkeypatch)
+    grafi = _grafi_costruiti(monkeypatch)
+    codice, f, _ = lancia(_pr_ios("\nFoto da fare: a\n", [RIQUADRO], testi={RIQUADRO: testo}), esegui_davvero=True, json_=True)
+    uscita = capsys.readouterr().out
+    assert codice == 0 and f.lanciati("gh pr ready") and grafi == []
+    [avviso] = _avvisi_foto(uscita)
+    assert "non ho potuto confrontare" in avviso and RIQUADRO in avviso
+    assert not any(p in avviso for p in PAROLE_DI_CHI_ASPETTA)
+
+
+def test_i_motivi_restano_in_fondo_anche_con_un_avviso_lungo(capsys):
+    """Chi rilancia pr-pronta da uno script ne mostra la coda (gli ultimi 1200 caratteri): gli avvisi vanno prima dei motivi,
+    o un avviso lungo li spinge fuori. Repository vero: 40 file di Lega e Accesso con «Foto da fare: impostazioni»."""
+    cartella = Path(comune.RADICE) / "ios" / "Sources" / "Presentation"
+    file = sorted(p.relative_to(comune.RADICE).as_posix() for d in ("Lega", "Accesso") for p in (cartella / d).glob("*.swift"))[:40]
+    show = {f"git show t1:{f}": (comune.RADICE / f).read_text(encoding="utf-8") for f in file}
+    r = risposte(p=pr(mergeable="CONFLICTING", corpo=CORPO + "\nFoto da fare: impostazioni\n"), corse=[],
+                 file=[{"filename": f, "status": "modified"} for f in file], **show)
+    problemi = ["manca la sezione «## Revisione»: fuori dalla bozza serve una riga per revisione, con chi ha rivisto e l'esito",
+                "in fanta/novita.d ci sono due file: al massimo uno per pull request, solo aggiunto (niente file cambiati)",
+                "la riga «Aree:» non copre tutti i file della pull request: aggiungi le cartelle o i file toccati"]
+    assert lancia(r, problemi=problemi)[0] == 1
+    uscita = capsys.readouterr().out
+    [lungo] = [riga for riga in uscita.splitlines() if "non nomina schermate" in riga]
+    assert len(lungo) > 800, "l'avviso di prova non è più lungo: servono altri file"
+    motivi = [riga for riga in uscita.splitlines() if riga.startswith("  - ")]
+    assert len(motivi) == 5 and len(lungo) + sum(map(len, motivi)) > 1200      # insieme non stanno nella coda
+    assert [m for m in motivi if m not in uscita[-1200:]] == []

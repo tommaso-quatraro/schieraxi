@@ -30,6 +30,10 @@ import grafo_ios
 
 FILE_COERENZA = ("script/coerenza.py", "docs/coerenza", "docs/COERENZA-WEB-IPHONE.md")
 NON_DISPONIBILE = "controllo non disponibile su questo main"
+# Un file Swift della PR più grande di così non entra nel grafo (lo legge con espressioni regolari, lente su file enormi:
+# 32000 righe «@a» sono 96 KB e 42 secondi). Il file vero più grande oggi: 83 KB, 1469 righe.
+MASSIMO_BYTE_SWIFT = 200_000
+MASSIMO_RIGHE_SWIFT = 3000
 
 
 def _carica_da_ci(nome: str):
@@ -103,6 +107,11 @@ def _foto_scritte(corpo: str) -> bool:
     return bool(_righe_foto(corpo))
 
 
+def _non_confrontate(numero: int, perche: str) -> list[str]:
+    return [f"non ho potuto confrontare «Foto da fare» con i file iOS della PR ({perche}): "
+            f"le schermate le ricava «squadra.py foto {numero} --spiega»"]
+
+
 def foto_non_coperte(esegui: comune.Esegui, numero: int, testa: str, file: list[tuple], corpo: str,
                      commit_preso: bool) -> list[str]:
     """Avviso, mai rifiuto (#505): le schermate che «squadra.py foto» ricava dai file iOS della PR e che nessuna riga «Foto da
@@ -124,7 +133,11 @@ def foto_non_coperte(esegui: comune.Esegui, numero: int, testa: str, file: list[
         for voce in swift:
             if voce[0] == "renamed":
                 testi.pop(voce[1], None)                  # il nome di prima di un file rinominato non c'è più
-            testi[voce[-1]] = comune.chiama(esegui, ["git", "show", f"{testa}:{voce[-1]}"])
+            testo = comune.chiama(esegui, ["git", "show", f"{testa}:{voce[-1]}"])
+            if len(testo.encode("utf-8")) > MASSIMO_BYTE_SWIFT or testo.count("\n") > MASSIMO_RIGHE_SWIFT:
+                return _non_confrontate(numero, f"{voce[-1]} supera {MASSIMO_BYTE_SWIFT // 1000} KB "
+                                                f"o {MASSIMO_RIGHE_SWIFT} righe")
+            testi[voce[-1]] = testo
         dati, scene, grafo = comune.leggi_json("foto.json"), foto.scene_di_screenshot(), grafo_ios.Grafo(testi)
         for voce in ios:
             esito = foto.schermate([voce[-1]], dati, grafo, scene)
@@ -132,8 +145,7 @@ def foto_non_coperte(esegui: comune.Esegui, numero: int, testa: str, file: list[
             if manca:
                 mancanti.setdefault(manca, []).append(voce[-1])
     except Exception as e:   # un avviso non ferma mai pr-pronta; il testo dell'errore non si stampa (vedi il test)
-        return [f"non ho potuto confrontare «Foto da fare» con i file iOS della PR ({type(e).__name__}): "
-                f"le schermate le ricava «squadra.py foto {numero} --spiega»"]
+        return _non_confrontate(numero, type(e).__name__)
     if not mancanti:
         return []
     gruppi = []
@@ -272,6 +284,9 @@ def main(esegui: comune.Esegui, numero: int, esegui_davvero: bool = False, json_
                           "bozza_tolta": tolta, "controlli_ripartiti": ripartiti, "nota": nota},
                          ensure_ascii=False, indent=2))
     else:
+        # prima gli avvisi: chi rilancia pr-pronta da uno script ne mostra la coda, e lì devono restare esito e motivi
+        for a in avvisi:
+            print(f"  avviso: {a}")
         if ripartiti:
             print(f"PR #{numero}: {nota}.")
         elif motivi:
@@ -280,8 +295,6 @@ def main(esegui: comune.Esegui, numero: int, esegui_davvero: bool = False, json_
                 print(f"  - {m}")
         else:
             print(f"PR #{numero}: {nota}.")
-        for a in avvisi:
-            print(f"  avviso: {a}")
     if ripartiti:
         return RIPARTITI
     return 1 if motivi else 0
