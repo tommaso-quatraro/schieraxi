@@ -1,0 +1,12 @@
+{
+  "titolo": "Account: messaggi e pulizia dopo l'uscita più chiari",
+  "voci": [
+    "Il tuo account, cambio dell'email: quando confermi un indirizzo nuovo al posto di quello di prima, gli altri dispositivi escono e resta dentro solo quello che stai usando.",
+    "L'indirizzo di prima riceve un messaggio più chiaro, con i passi da fare in ordine se non sei stato tu. Lo stesso messaggio arriva anche quando togli l'email dall'account.",
+    "Web: se all'apertura il tuo accesso non vale più, la pagina toglie dal browser le copie dei tuoi dati, come quando premi «Esci»."
+  ],
+  "tecnico": [
+    "POST /api/account/email/conferma: se l'email confermata prende il posto di un'altra, account.esci_da_tutti(tranne=sessione di chi conferma) e avviso al vecchio indirizzo (testo nuovo di posta.modello_email_cambiata). POST /api/account/email/togli: stesso avviso all'indirizzo tolto. Contratto in docs/API.md.",
+    "Web, controllaAccesso: a 401 con multiutente, se in localStorage resta qualcosa di un account (restanoCopie), svuotaDatiLocali({tieniAccesso: true}) prima della schermata di accesso; sessionStorage resta (codice d'invito, ritorno da Google)."
+  ]
+}
