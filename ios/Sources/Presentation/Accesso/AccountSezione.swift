@@ -260,6 +260,9 @@ struct RigaEsciDaTutti: View {
             // sul pulsante, non sulla Section (vedi `FoglioAccount`)
             .confirmationDialog(Catalogo.Account.esciTuttiConferma, isPresented: $chiedi, titleVisibility: .visible) {
                 Button(Catalogo.Account.esciTutti, role: .destructive) { Task { await esci() } }
+            } message: {
+                // solo a chi perde il collegamento con Google (Google collegato e una password), come la web
+                if let frase = TestiAccount.esciTuttiGoogle(accessi: sessione.accessi) { Text(frase) }
             }
             if let errore {
                 Text(errore)

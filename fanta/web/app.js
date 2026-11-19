@@ -3531,8 +3531,12 @@ async function esciDa(percorso) {
 // chiude tutte le sessioni (anche questa), il widget, le notifiche web di ogni dispositivo e scollega Google a chi ha una password.
 // Al contrario di «Esci» non riesce senza il server: se la richiesta non va, gli altri dispositivi sono ancora dentro e lo si dice.
 // Niente password nel corpo: il codice di recupero nuovo che il server manderebbe si perderebbe con la ricarica.
+// Il server toglie il collegamento con Google a chi ha una password; chi entra solo con Google lo tiene (sarebbe chiuso fuori).
+// Lo si legge da `accessi` del server: senza, niente frase.
+const perdeGoogle = () => !!(stato.accessi && stato.accessi.password === true
+  && (stato.accessi.social || []).some(s => s.provider === "google"));
 async function esciDaTutti() {
-  if (!confirm(t("account.esci_tutti_conferma"))) return;
+  if (!confirm(t("account.esci_tutti_conferma") + (perdeGoogle() ? " " + t("account.esci_tutti_google") : ""))) return;
   try { await api("/api/account/esci-da-tutti", { method: "POST" }); }
   catch (e) {
     if (e.status !== 401) avviso(t("account.esci_tutti_no", { motivo: e.message || "" }).trim(), 8000);     // 401: c'è già l'accesso

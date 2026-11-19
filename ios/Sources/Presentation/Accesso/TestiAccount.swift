@@ -50,8 +50,13 @@ enum TestiAccount {
     static let elimina = Catalogo.Account.elimina
     static let eliminaConferma = Catalogo.Account.eliminaConferma
 
-    /// «Esci da tutti i dispositivi» (#765): la frase su Google sotto la conferma. Da scrivere.
-    static func esciTuttiGoogle(accessi: AccessiAccount?) -> String? { nil }
+    /// «Esci da tutti i dispositivi» (#765): la frase sotto la conferma per chi perde il collegamento con Google, come la web
+    /// (`perdeGoogle` in `app.js`). Il server lo toglie a chi ha una password; chi entra solo con Google lo tiene. Si legge da come
+    /// si entra secondo il server (`accessi`): finché non si sa (o il server non dice della password) niente frase.
+    static func esciTuttiGoogle(accessi: AccessiAccount?) -> String? {
+        guard let accessi, accessi.password == true, accessi.google != nil else { return nil }
+        return Catalogo.Account.esciTuttiGoogle
+    }
 
     /// La riga sotto il nome: «Utente · dal 1 settembre 2026» (o «Amministratore · …»). Senza una data leggibile resta il ruolo.
     static func ruoloEData(ruolo: String, creato: String?) -> String {
