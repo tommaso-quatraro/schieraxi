@@ -24,10 +24,15 @@ def _pulito(testo: str, quanti: int) -> str:
     return "".join(c for c in " ".join(testo.split()) if c.isprintable())[:quanti]
 
 
+PAGINA_LETTA = 20_000      # caratteri di una pagina web al posto dei dati che si guardano per il messaggio (rete.scarica non ha tetti)
+
+
 def _testo_visibile(pagina: str) -> str:
-    """Il testo che una pagina web mostra: senza intestazione (titolo compreso), stile, codice, disegni, commenti e tag."""
-    corpo = re.sub(r"<(head|style|script|svg)\b.*?</\1\s*>", " ", pagina[:200_000], flags=re.IGNORECASE | re.DOTALL)
-    return html.unescape(re.sub(r"<!--.*?-->|<\?.*?\?>|<[^>]*>", " ", corpo, flags=re.DOTALL))
+    """Il testo che una pagina web mostra: senza intestazione (titolo compreso), stile, codice, disegni, commenti e tag.
+    Un'apertura mai chiusa nasconde il resto della pagina (`\\Z`): così ogni ricerca va avanti e non riparte da capo per ogni
+    apertura (prima 200 KB di `<svg>` costavano decine di secondi)."""
+    corpo = re.sub(r"<(head|style|script|svg)\b.*?(?:</\1\s*>|\Z)", " ", pagina, flags=re.IGNORECASE | re.DOTALL)
+    return html.unescape(re.sub(r"<!--.*?(?:-->|\Z)|<\?.*?(?:\?>|\Z)|<[^>]*(?:>|\Z)", " ", corpo, flags=re.DOTALL))
 
 
 def dati_json(contenuto: bytes | str) -> dict:
@@ -38,10 +43,12 @@ def dati_json(contenuto: bytes | str) -> dict:
     if not testo:
         raise RispostaNonDati("Understat ha risposto con una pagina vuota al posto dei dati")
     if testo.startswith("<"):
-        titolo = re.search(r"<title[^>]*>(.*?)</title>", testo, re.IGNORECASE | re.DOTALL)
-        titolo = _pulito(titolo.group(1), 80) if titolo else ""
+        pagina = testo[:PAGINA_LETTA]           # una risposta enorme o storta non costa minuti di espressioni regolari
+        apertura = re.search(r"<title[^>]*>", pagina, re.IGNORECASE)    # la chiusura con find: una sola passata
+        chiusura = pagina.lower().find("</title>", apertura.end()) if apertura else -1
+        titolo = _pulito(pagina[apertura.end():chiusura], 80) if apertura and chiusura >= 0 else ""
         parti = [f"titolo «{titolo}»"] if titolo else []
-        if visibile := _pulito(_testo_visibile(testo), 120):
+        if visibile := _pulito(_testo_visibile(pagina), 120):
             parti.append(f"testo «{visibile}»")
         raise RispostaNonDati("Understat ha risposto con una pagina web al posto dei dati" + (f" ({', '.join(parti)})" if parti else "")
                               + ": il sito è fermo o ha cambiato indirizzo")

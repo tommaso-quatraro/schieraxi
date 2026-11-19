@@ -282,6 +282,19 @@ def test_understat_pagina_web_dice_anche_il_testo_che_mostra():
     assert "(titolo «Vuota»): " in str(e.value) and "testo" not in str(e.value)
 
 
+@pytest.mark.parametrize("pezzo", [b"<svg>", b"<title>", b"<title", b"<title>x</titl", b"<!--", b"<?", b"<", b"<style>x"])
+def test_understat_pagina_web_enorme_o_storta_si_legge_subito(pezzo):
+    """Una risposta grande fatta di aperture mai chiuse (rete.scarica non ha un tetto di dimensione) prima costava decine di
+    secondi di espressioni regolari: si guarda solo l'inizio della pagina. Limite largo: dopo la correzione bastano millesimi."""
+    import time
+    pagina = b"<html><body><p>Fermi</p>" + pezzo * (300_000 // len(pezzo))
+    inizio = time.perf_counter()
+    with pytest.raises(us.RispostaNonDati, match="pagina web al posto dei dati") as e:
+        us.dati_json(pagina)
+    assert time.perf_counter() - inizio < 1.0
+    assert "testo «Fermi" in str(e.value)
+
+
 def test_aggiornamento_understat_con_pagina_web_una_richiesta_sola_e_errore_chiaro(db, monkeypatch):
     chiamate = []
     monkeypatch.setattr(aggiorna.rete, "scarica", lambda url, *a, **k: chiamate.append(url) or SimpleNamespace(content=MANUTENZIONE))
