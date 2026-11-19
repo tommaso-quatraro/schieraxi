@@ -733,8 +733,8 @@ def stato(request: Request, ctx: Contesto = Depends(lega_corrente)):
         r = lega.carica(ctx.rose)
         rg = _regole(ctx)
         prossima = consigli.giornata_da_giocare(db, st, rg)
-        # in corso anche se i dati li aggiorna un altro (aggiornamento programmato, giro leggero): il blocco su file, letto senza
-        # aspettare (#763). Con «Aggiorna i dati» partito da qui il blocco non si legge nemmeno.
+        # in corso anche se il blocco dell'aggiornamento lo tiene un altro (aggiornamento programmato, giro leggero, aggiorna-app.sh che
+        # installa le versioni): letto senza aspettare (#763). Con «Aggiorna i dati» partito da qui il blocco non si legge nemmeno.
         in_corso = _aggiornamento["in_corso"] or pianificatore.blocco_tenuto()
         return {
             "stagione": st, "prossima_giornata": prossima,

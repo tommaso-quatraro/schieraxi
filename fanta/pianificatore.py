@@ -201,7 +201,8 @@ def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lamb
 
 
 def file_blocco() -> Path:
-    """Il blocco dell'aggiornamento dei dati, lo stesso di `script/server/aggiorna.sh` (`exec 9>>"$HOME/.cache/fantacalcio/blocco"`)."""
+    """Il blocco dell'aggiornamento, lo stesso di `script/server/aggiorna.sh` (`exec 9>>"$HOME/.cache/fantacalcio/blocco"`) e di
+    `script/server/aggiorna-app.sh` in produzione (`exec 9>>"$STATO/blocco"`)."""
     return Path.home() / ".cache" / "fantacalcio" / "blocco"
 
 
@@ -235,11 +236,15 @@ def blocco_processo() -> Iterator[bool]:
 
 
 def blocco_tenuto() -> bool:
-    """Vero se qualcuno tiene il blocco dell'aggiornamento: l'aggiornamento programmato del server, un giro leggero o «Aggiorna i
-    dati» (`aggiornamento_in_corso` di /api/stato, #763). Non aspetta mai e non crea niente: prova un blocco condiviso senza
-    attesa su un descrittore in sola lettura e lo lascia subito. Condiviso, così due letture insieme non si vedono a vicenda come
-    un aggiornamento. Il cron aspetta il blocco (`flock -w 120`): questi microsecondi non lo fanno saltare; i tentativi senza attesa
-    di questo processo (giri leggeri, «Aggiorna i dati») si mettono in fila con la lettura (`_tentativo`).
+    """Vero se qualcuno tiene il blocco dell'aggiornamento (`aggiornamento_in_corso` di /api/stato, #763): l'aggiornamento
+    programmato dei dati (`aggiorna.sh`), un giro leggero, «Aggiorna i dati», e anche `script/server/aggiorna-app.sh`, lo script che
+    installa le versioni nuove, che lo prende a ogni giro (ogni 10 minuti, per il `git fetch`) e per tutta un'installazione: allora
+    è vero anche se nessuno aggiorna i dati, e la frase dei client dice solo che il server è occupato con un aggiornamento.
+    Non aspetta mai e non crea niente: prova un blocco condiviso senza attesa su un descrittore in sola lettura e lo lascia subito.
+    Condiviso, così due letture insieme non si vedono a vicenda come un aggiornamento. `aggiorna.sh` aspetta il blocco
+    (`flock -w 120`): questi microsecondi non lo fanno saltare. I tentativi senza attesa di questo processo (giri leggeri, «Aggiorna i
+    dati») si mettono in fila con la lettura (`_tentativo`); `aggiorna-app.sh` invece è un altro processo e prova senza attesa
+    (`flock -n`): se cade proprio in quei microsecondi salta quel giro e riprova al successivo.
     Senza `fcntl` (Windows) o senza il file nessuno lo tiene: falso, come per `blocco_processo`."""
     try:
         import fcntl
