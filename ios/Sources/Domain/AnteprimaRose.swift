@@ -63,8 +63,11 @@ struct CandidatoAnteprima: Decodable, Hashable, Identifiable {
 
 /// Un giocatore così come l'ha letto l'anteprima.
 struct GiocatoreAnteprima: Decodable, Equatable {
-    /// Il nome come scritto nel file: è la chiave delle `correzioni`.
+    /// Il nome come scritto nel file: con la `riga` (o da solo, con un server di prima) è la chiave delle `correzioni`.
     var testo: String
+    /// La posizione del giocatore nella sua squadra come l'ha letta il server (da 0): due omonimi possono avere lo stesso
+    /// `testo`, la riga li distingue (#662, #716). Nil con un server di prima.
+    var riga: Int?
     var stato: StatoAnteprima
     var metodo: String?
     /// Il giocatore proposto (nil se nessuno).
@@ -76,19 +79,24 @@ struct GiocatoreAnteprima: Decodable, Equatable {
     var avviso: String?
     var alternative: [CandidatoAnteprima]
 
-    init(testo: String, stato: StatoAnteprima, metodo: String? = nil, id: Int? = nil, nome: String? = nil, ruolo: String? = nil,
-         squadra: String? = nil, costo: Double? = nil, avviso: String? = nil, alternative: [CandidatoAnteprima] = []) {
-        self.testo = testo; self.stato = stato; self.metodo = metodo; self.id = id; self.nome = nome; self.ruolo = ruolo
-        self.squadra = squadra; self.costo = costo; self.avviso = avviso; self.alternative = alternative
+    init(testo: String, riga: Int? = nil, stato: StatoAnteprima, metodo: String? = nil, id: Int? = nil, nome: String? = nil,
+         ruolo: String? = nil, squadra: String? = nil, costo: Double? = nil, avviso: String? = nil, alternative: [CandidatoAnteprima] = []) {
+        self.testo = testo; self.riga = riga; self.stato = stato; self.metodo = metodo; self.id = id; self.nome = nome
+        self.ruolo = ruolo; self.squadra = squadra; self.costo = costo; self.avviso = avviso; self.alternative = alternative
     }
 
-    private enum Chiavi: String, CodingKey { case testo, stato, metodo, id, nome, ruolo, squadra, costo, avviso, alternative }
+    /// Chi è nella sua squadra: la riga o, con un server di prima, il nome come scritto. Diverso per ogni dubbio di una squadra
+    /// (`AnteprimaLogica.dubbi`): è l'identità nell'elenco e, con il nome della squadra, la chiave delle scelte.
+    var chiaveInSquadra: String { riga.map { "\u{1}\($0)" } ?? testo }
+
+    private enum Chiavi: String, CodingKey { case testo, riga, stato, metodo, id, nome, ruolo, squadra, costo, avviso, alternative }
 
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
         let nome = k.valore(String.self, .nome)
         // senza `testo` non si può correggere: si ripiega sul nome (il server lo manda sempre)
         testo = k.valore(String.self, .testo) ?? nome ?? ""
+        riga = k.valore(Int.self, .riga)
         stato = StatoAnteprima(server: k.valore(String.self, .stato))
         metodo = k.valore(String.self, .metodo)
         id = k.valore(Int.self, .id)
@@ -201,20 +209,28 @@ enum SceltaDubbio: Hashable {
     case togli
 }
 
-/// Una scelta da mandare con l'importazione: `id` nil = togli la riga. Chiavi identiche a quelle del server.
+/// Una scelta da mandare con l'importazione: `id` nil = togli la riga; `riga` (quella dell'anteprima) fa valere la scelta solo
+/// per quella riga. Chiavi identiche a quelle del server.
 struct CorrezioneRosa: Encodable, Equatable {
     let squadra: String
     let testo: String
     let id: Int?
+    let riga: Int?
 
-    private enum CodingKeys: String, CodingKey { case squadra, testo, id }
+    init(squadra: String, testo: String, id: Int?, riga: Int? = nil) {
+        self.squadra = squadra; self.testo = testo; self.id = id; self.riga = riga
+    }
 
-    /// `id` si manda sempre, anche `null` (vuol dire «togli»): la codifica automatica lo ometterebbe.
+    private enum CodingKeys: String, CodingKey { case squadra, testo, id, riga }
+
+    /// `id` si manda sempre, anche `null` (vuol dire «togli»): la codifica automatica lo ometterebbe. `riga` solo se l'anteprima
+    /// l'ha data: un server di prima non la conosce.
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(squadra, forKey: .squadra)
         try c.encode(testo, forKey: .testo)
         if let id { try c.encode(id, forKey: .id) } else { try c.encodeNil(forKey: .id) }
+        try c.encodeIfPresent(riga, forKey: .riga)
     }
 }
 
@@ -225,7 +241,11 @@ struct RichiestaAnteprimaRose: Encodable {
 }
 
 enum AnteprimaLogica {
-    /// La chiave di un dubbio: squadra e nome come scritto (lo stesso nome in due squadre sono due dubbi diversi).
+    /// La chiave di un dubbio, come `arChiave` della web: squadra e riga, così due omonimi scritti uguali nella stessa rosa si
+    /// scelgono uno per uno (#716). Con un server di prima, senza `riga`, squadra e nome come scritto.
+    static func chiave(_ squadra: String, _ g: GiocatoreAnteprima) -> String { chiave(squadra, g.chiaveInSquadra) }
+
+    /// La chiave per nome come scritto (lo stesso nome in due squadre sono due dubbi diversi).
     static func chiave(_ squadra: String, _ testo: String) -> String { squadra + "\u{0}" + testo }
 
     /// La scelta di partenza: la proposta del server per un «da controllare», altrimenti nessuna.
@@ -235,19 +255,20 @@ enum AnteprimaLogica {
     }
 
     static func scelta(_ g: GiocatoreAnteprima, squadra: String, scelte: [String: SceltaDubbio]) -> SceltaDubbio {
-        scelte[chiave(squadra, g.testo)] ?? iniziale(g)
+        scelte[chiave(squadra, g)] ?? iniziale(g)
     }
 
-    /// Le correzioni da mandare: una per ogni dubbio deciso (come `arCorrezioni` della web app).
+    /// Le correzioni da mandare: una per ogni dubbio deciso, con la sua `riga` (come `arCorrezioni` della web app). Con un
+    /// server di prima una per nome, senza riga: lui la applica a tutte le righe con quel nome.
     static func correzioni(_ squadre: [SquadraAnteprima], scelte: [String: SceltaDubbio]) -> [CorrezioneRosa] {
         var fuori: [CorrezioneRosa] = []
         var viste = Set<String>()
         for s in squadre {
             for g in s.giocatori where g.stato != .sicuro {
-                guard viste.insert(chiave(s.nome, g.testo)).inserted else { continue }
+                guard viste.insert(chiave(s.nome, g)).inserted else { continue }
                 switch scelta(g, squadra: s.nome, scelte: scelte) {
-                case .giocatore(let id): fuori.append(CorrezioneRosa(squadra: s.nome, testo: g.testo, id: id))
-                case .togli: fuori.append(CorrezioneRosa(squadra: s.nome, testo: g.testo, id: nil))
+                case .giocatore(let id): fuori.append(CorrezioneRosa(squadra: s.nome, testo: g.testo, id: id, riga: g.riga))
+                case .togli: fuori.append(CorrezioneRosa(squadra: s.nome, testo: g.testo, id: nil, riga: g.riga))
                 case .lascia: break
                 }
             }
@@ -255,11 +276,11 @@ enum AnteprimaLogica {
         return fuori
     }
 
-    /// I dubbi di una squadra, una volta sola per nome: prima quelli da controllare, poi i non trovati.
+    /// I dubbi di una squadra, uno per riga (con un server di prima uno per nome): prima quelli da controllare, poi i non trovati.
     static func dubbi(_ s: SquadraAnteprima) -> [GiocatoreAnteprima] {
         var visti = Set<String>()
         let ordinati = s.giocatori.filter { $0.stato == .daControllare } + s.giocatori.filter { $0.stato == .nonTrovato }
-        return ordinati.filter { visti.insert($0.testo).inserted }
+        return ordinati.filter { visti.insert($0.chiaveInSquadra).inserted }
     }
 
     /// Le opzioni del menu di un dubbio: le alternative del server più quella trovata con la ricerca (se non c'è già).
