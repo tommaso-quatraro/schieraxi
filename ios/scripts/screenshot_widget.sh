@@ -74,6 +74,9 @@ giro "$UDID_IPHONE" iphone_fasi dark 600 oggi:in_corso oggi-blocco:in_corso dubb
 giro "$UDID_IPHONE" iphone_fasi_chiaro light 600 oggi:in_corso oggi:finita
 # Stato vuoto (nessun dato dal server) e testo molto grande (impostazione di accessibilita'): niente deve tagliarsi o sovrapporsi.
 giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto formazione-blocco:vuoto oggi:vuoto dubbi:vuoto
+# Campionato finito (#727): la frase del server al posto della giornata, anche con il testo molto grande.
+giro "$UDID_IPHONE" iphone_campionato_finito dark 600 oggi:campionato_finito oggi-blocco:campionato_finito formazione:campionato_finito formazione-blocco:campionato_finito dubbi:campionato_finito dubbi-blocco:campionato_finito
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_campionato_finito_testo_grande dark 600 oggi:campionato_finito formazione:campionato_finito oggi-blocco:campionato_finito
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione oggi dubbi formazione-blocco oggi-blocco
 giro "$UDID_IPHONE" iphone_accentato dark 600 formazione:pieni+accentato oggi:pieni+accentato dubbi:pieni+accentato oggi-blocco:pieni+vivido
 avvisi_ferma

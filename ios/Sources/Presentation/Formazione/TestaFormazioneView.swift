@@ -2,11 +2,13 @@ import SwiftUI
 
 /// La testa della Formazione (`TestaFormazione`), come `testaGiornata` della web: prima della scadenza «Giornata 8 · 11ª di Serie A»
 /// e «Si chiude sab 31 14:50 fra 3 h 10 min»; in corso i punti fatti finora; finita com'è andata con «Com'è andata» e sotto la
-/// prossima giornata; arrivato a partite cominciate la frase della prossima. Il conto si aggiorna ogni 30 secondi.
+/// prossima giornata; arrivato a partite cominciate la frase della prossima; a campionato finito il riepilogo dell'ultima giornata,
+/// se c'è, e la frase del server (#727). Il conto si aggiorna ogni 30 secondi.
 struct TestaFormazioneView: View {
     /// Nil per la formazione di un'altra squadra: solo la giornata.
     let oggi: Oggi?
-    let formazione: Formazione
+    /// Nil a campionato finito, quando la Formazione non c'è: decide `oggi`.
+    let formazione: Formazione?
     /// «Com'è andata»: apre le giornate su quella appena finita.
     let comeAndata: (Int?) -> Void
     @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 40
@@ -33,6 +35,12 @@ struct TestaFormazioneView: View {
                 if let recuperi = t.recuperi {
                     Label(recuperi, systemImage: "calendar.badge.clock")
                         .font(.subheadline).foregroundStyle(Color.attenzione)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                // a campionato finito la frase del server, al posto della giornata da preparare (sotto il riepilogo, se c'è)
+                if let finito = t.campionatoFinito {
+                    Text(finito).font(.subheadline)
+                        .padding(.top, t.comeAndata == nil ? 0 : 6)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let prossima = t.prossima {

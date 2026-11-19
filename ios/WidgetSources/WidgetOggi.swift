@@ -55,7 +55,10 @@ struct VistaWidget: View {
 
     var body: some View {
         Group {
-            if let r = voce.riassunto, r.mostraFase {
+            if let testo = voce.campionatoFinito {
+                // campionato finito (#727): la frase del server, niente giornata né «Nessun dato»
+                CampionatoFinitoWidget(testo: testo)
+            } else if let r = voce.riassunto, r.mostraFase {
                 // giornata in corso (punti fatti e previsti) o appena finita (riepilogo e prossima): niente «Da controllare»
                 vistaFase(r)
             } else if let r = voce.riassunto {

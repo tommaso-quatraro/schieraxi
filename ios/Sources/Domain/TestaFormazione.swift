@@ -2,8 +2,9 @@ import Foundation
 
 /// La testa della Formazione, diversa per fase della giornata (`fase` di `GET /api/oggi`), come `testaGiornata` e `testoConto` di
 /// app.js (#616): prima della scadenza la giornata e quando si chiude; in corso i punti fatti finora; finita com'è andata e sotto la
-/// formazione della prossima; arrivato a partite cominciate la frase della prossima. Numeri e frasi sono quelli del server, scritti
-/// con le parole del catalogo comune. Logica pura, provata in `TestaFormazioneTests`.
+/// formazione della prossima; arrivato a partite cominciate la frase della prossima; a campionato finito il riepilogo dell'ultima
+/// giornata, se c'è, e la frase del server. Numeri e frasi sono quelli del server, scritti con le parole del catalogo comune. Logica
+/// pura, provata in `TestaFormazioneTests` e `CampionatoFinitoTests`.
 struct TestaFormazione: Equatable {
     /// «Giornata 8 · 11ª di Serie A»; a giornata finita «Giornata 7 · 10ª di Serie A: finita». Nil per chi è arrivato a partite
     /// cominciate (lo dice la nota).
@@ -27,12 +28,25 @@ struct TestaFormazione: Equatable {
     /// accanto, piccolo, «fra 3 h 10 min». Nil dove la web non lo scrive (giornata in corso, formazione già chiusa).
     var chiude: String?
     var manca: String?
+    /// A campionato finito la frase del server («Il campionato è finito: previsioni e consigli ripartono con il calendario della
+    /// prossima stagione.»), sotto il riepilogo dell'ultima giornata se c'è, al posto della giornata da preparare (#727).
+    var campionatoFinito: String?
 }
 
 extension TestaFormazione {
     /// La testa per la tua formazione (`oggi` di `GET /api/oggi`) o, senza `oggi`, per quella di un'altra squadra (solo la giornata).
-    /// `adesso`: l'ora dell'app, per il conto alla rovescia.
-    static func per(oggi o: Oggi?, formazione f: Formazione, adesso: Date) -> TestaFormazione {
+    /// A campionato finito (`campionato_finito` di Oggi, #727) la Formazione non mostra una formazione (`formazione` nil: lo decide
+    /// `FormazioneViewModel.campionatoFinito`): il riepilogo dell'ultima giornata, se c'è, e la frase del server, come
+    /// `mostraCampionatoFinito` della web. Con una formazione da mostrare la testa segue lei, anche se una copia vecchia di Oggi dice
+    /// ancora che il campionato è finito. `adesso`: l'ora dell'app, per il conto alla rovescia.
+    static func per(oggi o: Oggi?, formazione: Formazione?, adesso: Date) -> TestaFormazione {
+        if formazione == nil, let o, let testo = o.testoCampionatoFinito {
+            guard let r = o.riepilogoGiornata else { return TestaFormazione(campionatoFinito: testo) }
+            var testa = riepilogo(r)
+            testa.campionatoFinito = testo
+            return testa
+        }
+        guard let f = formazione else { return TestaFormazione() }
         let giornata = f.etichettaGiornata
         guard let o else { return TestaFormazione(giornata: giornata) }
         let conto = Self.conto(o, adesso: adesso)
@@ -57,15 +71,10 @@ extension TestaFormazione {
             }
         case .finita:
             if let r = o.riepilogoGiornata {
-                var testa = TestaFormazione(giornata: Catalogo.Oggi.giornataFinita(g: nome(serieA: r.giornata, lega: r.giornataLega)),
-                                            punti: Formato.punti(r.puntiFatti),
-                                            testoPunti: r.puntiAttesi.map { Catalogo.Formazione.puntiEAttesi(n: Formato.punti($0)) }
-                                                ?? Catalogo.Formazione.punti,
-                                            comeAndata: r.giornata, prossima: giornata, chiude: conto.chiude, manca: conto.manca)
-                if r.formazioneDi == "tua", let c = r.consigliata, c.puntiFatti != r.puntiFatti {
-                    testa.sotto = Catalogo.Oggi.conConsigliata(attesi: Formato.punti(c.puntiAttesi), fatti: Formato.punti(c.puntiFatti))
-                }
-                testa.recuperi = TestiRinvio.recuperoManca(r.recuperi)
+                var testa = riepilogo(r)
+                testa.prossima = giornata
+                testa.chiude = conto.chiude
+                testa.manca = conto.manca
                 return testa
             }
         case .prima:
@@ -74,6 +83,21 @@ extension TestaFormazione {
         // prima della scadenza (o senza i dati della fase): la giornata e, se la formazione è ancora aperta, quando si chiude
         if f.iniziata == true { return TestaFormazione(giornata: giornata) }
         return TestaFormazione(giornata: giornata, chiude: conto.chiude, manca: conto.manca)
+    }
+
+    /// La giornata appena finita (`riepilogo` di Oggi), come `riepilogoGiornata` della web: «Giornata 7 · 10ª di Serie A: finita»,
+    /// «83,0 punti (attesi 71,7)», «Com'è andata», la consigliata se hai schierato un'altra formazione e il recupero che manca.
+    private static func riepilogo(_ r: RiepilogoGiornata) -> TestaFormazione {
+        var testa = TestaFormazione(giornata: Catalogo.Oggi.giornataFinita(g: nome(serieA: r.giornata, lega: r.giornataLega)),
+                                    punti: Formato.punti(r.puntiFatti),
+                                    testoPunti: r.puntiAttesi.map { Catalogo.Formazione.puntiEAttesi(n: Formato.punti($0)) }
+                                        ?? Catalogo.Formazione.punti,
+                                    comeAndata: r.giornata)
+        if r.formazioneDi == "tua", let c = r.consigliata, c.puntiFatti != r.puntiFatti {
+            testa.sotto = Catalogo.Oggi.conConsigliata(attesi: Formato.punti(c.puntiAttesi), fatti: Formato.punti(c.puntiFatti))
+        }
+        testa.recuperi = TestiRinvio.recuperoManca(r.recuperi)
+        return testa
     }
 
     /// Il nome di una giornata dai suoi due numeri, come `nomeGiornata` della web: con un numero solo quello che c'è.
