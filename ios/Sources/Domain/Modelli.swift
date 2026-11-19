@@ -369,11 +369,16 @@ struct Oggi: Decodable {
     /// «L'ho messa» e nessun titolare diventato indisponibile; la usa `Aggiornamento.promemoriaTace`). Facoltativo e tollerante: senza
     /// (server di prima) o con un valore strano i promemoria partono.
     let servePromemoria: Tollerante<Bool>?
+    /// Il campionato è finito (#656): `{testo, frase}`, solo in quel caso (fase `finita` senza `prossima`; nelle 48 ore dopo
+    /// l'ultima giornata c'è anche il suo `riepilogo`). Facoltativo e tollerante: un server di prima non lo manda, una forma strana
+    /// vale «no».
+    let campionatoFinito: Tollerante<CampionatoFinito>?
 }
 
 extension Oggi {
-    /// Da fare (#727): la frase del server a campionato finito.
-    var testoCampionatoFinito: String? { nil }
+    /// La frase del server a campionato finito («Il campionato è finito: previsioni e consigli ripartono con il calendario della
+    /// prossima stagione.»), da mostrare così com'è (#727). Nil fuori da quel caso, con un server di prima o con un testo vuoto.
+    var testoCampionatoFinito: String? { campionatoFinito?.valore?.testoPronto }
 }
 
 /// Quando sono state lette le probabili formazioni (campo `probabili` di Oggi). Ogni campo è facoltativo.
@@ -1183,6 +1188,18 @@ struct PuntiConsigliata: Decodable, Equatable {
         let k = try decoder.container(keyedBy: Chiavi.self)
         puntiFatti = k.facoltativo(Double.self, .puntiFatti)
         puntiAttesi = k.facoltativo(Double.self, .puntiAttesi)
+    }
+}
+
+/// Il campo `campionato_finito` di `GET /api/oggi` e `GET /api/widget` (#656): la frase del server, già nella lingua chiesta.
+/// `frase` (chiave e parametri per tradurla) all'iPhone non serve e non si legge.
+struct CampionatoFinito: Decodable, Equatable {
+    let testo: String?
+
+    /// Il testo senza spazi ai lati; nil se manca o è vuoto.
+    var testoPronto: String? {
+        let t = testo?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return t.isEmpty ? nil : t
     }
 }
 

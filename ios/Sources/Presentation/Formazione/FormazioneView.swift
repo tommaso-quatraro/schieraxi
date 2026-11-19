@@ -4,6 +4,7 @@ import SwiftUI
 /// massimo due decisioni, il modulo come menu con i punti attesi, il campo, la riga dello stato con «Torna alla consigliata», «Copia
 /// per l'app della lega» e «L'ho messa», la panchina nell'ordine in cui entra, i non schierati, gli infortunati e squalificati e le
 /// partite rinviate. Il salvataggio è automatico. Sull'iPad due colonne: a sinistra testa e campo, a destra decisioni ed elenchi.
+/// A campionato finito il riepilogo dell'ultima giornata, se c'è, e la frase del server (#727).
 /// Solo presentazione: la logica è in `FormazioneViewModel` (formazione e scelta) e `OggiViewModel` (la giornata).
 struct FormazioneView: View {
     @ObservedObject var vm: FormazioneViewModel
@@ -121,6 +122,8 @@ struct FormazioneView: View {
     private var contenuto: some View {
         if vm.squadraVista == nil, oggi.oggi?.senzaRose == true {
             benvenuto
+        } else if vm.campionatoFinito {
+            campionatoFinito
         } else if let f = vm.formazione {
             pagina(f)
         } else if let errore = vm.errore {
@@ -170,6 +173,21 @@ struct FormazioneView: View {
             }
             .pulsanteVetro(prominente: true)
         }
+    }
+
+    /// A campionato finito, come `mostraCampionatoFinito` della web: la testa con il riepilogo dell'ultima giornata, se il server lo
+    /// manda ancora, e la sua frase al posto della prossima giornata; con un recupero dell'ultima giornata da giocare il menu per
+    /// scegliere come contarlo. Niente campo né decisioni, e niente errore: il 409 di `/api/formazione` qui è la risposta giusta.
+    /// Sull'iPad non si allarga a tutta la pagina.
+    private var campionatoFinito: some View {
+        VStack(alignment: .leading, spacing: Tema.spazioSchede) {
+            TestaFormazioneView(oggi: oggi.oggi, formazione: nil) { giornata in
+                nav.apriGiornate(giornata)
+            }
+            menuRinvioRiepilogo
+        }
+        .frame(maxWidth: 720, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: testa e decisioni
@@ -444,7 +462,13 @@ struct FormazioneView: View {
             }
             .id("rinvio")
         }
-        if mia, let s = oggi.oggi?.riepilogoGiornata?.rinvio {
+        if mia { menuRinvioRiepilogo }
+    }
+
+    /// Il recupero dell'ultima giornata finita ancora da giocare: come contarlo per quella giornata (`riepilogo.rinvio`).
+    @ViewBuilder
+    private var menuRinvioRiepilogo: some View {
+        if let s = oggi.oggi?.riepilogoGiornata?.rinvio {
             Carta {
                 MenuRinvio(scelta: s, inCorso: oggi.rinvioInCorso) { scelta, m in await oggi.cambiaRinvio(scelta, modo: m) }
             }
@@ -479,4 +503,12 @@ struct FormazioneView: View {
     FormazioneView(vm: FormazioneViewModel(server: FinteServer.esempio, oggi: oggi), oggi: oggi)
         .environmentObject(Navigazione())
         .environmentObject(SessioneAccount(server: FinteServer.esempio))
+}
+
+#Preview("Campionato finito") {
+    let server = FinteServer.demoFase("formazione-campionato-finito") ?? FinteServer.esempio
+    let oggi = OggiViewModel(server: server, conPromemoria: false)
+    FormazioneView(vm: FormazioneViewModel(server: server, oggi: oggi), oggi: oggi)
+        .environmentObject(Navigazione())
+        .environmentObject(SessioneAccount(server: server))
 }

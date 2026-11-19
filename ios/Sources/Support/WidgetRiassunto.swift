@@ -243,6 +243,8 @@ struct RiassuntoWidget: Decodable {
     var fase: String? { faseLetta?.valore }
     private var inCorsoLetto: Facoltativo<GiornataInCorso>?
     private var riepilogoLetto: Facoltativo<RiepilogoGiornata>?
+    /// Il campionato è finito (#656): la frase del server, come in `/api/oggi` (facoltativo: un server di prima non lo manda).
+    private var campionatoFinitoLetto: Facoltativo<CampionatoFinito>?
     var mancano: [String]?
     /// Quali funzioni sono accese per questo utente (facoltativo: un server vecchio non lo manda). Chiave assente = acceso.
     var funzioni: [String: Bool]?
@@ -267,6 +269,7 @@ struct RiassuntoWidget: Decodable {
         case faseLetta = "fase"
         case inCorsoLetto = "inCorso"
         case riepilogoLetto = "riepilogo"
+        case campionatoFinitoLetto = "campionatoFinito"
     }
 
     /// La fase con i suoi blocchi (ognuno solo nella sua fase).
@@ -290,16 +293,17 @@ struct RiassuntoWidget: Decodable {
             .prefix(massimo).map { $0 }
     }
 
-    /// Per i widget «vecchi» (Prossima giornata, Da controllare): lo stesso riassunto di prima, dal nuovo contenuto.
+    /// Per i widget «vecchi» (Prossima giornata, Da controllare): lo stesso riassunto di prima, dal nuovo contenuto. Senza giornata
+    /// c'è solo a campionato finito, con la frase del server (#727): prima era nil anche lì, e i widget dicevano «Nessun dato».
     func comeRiassuntoOggi(scaricatoIl: Date = Date()) -> RiassuntoOggi? {
-        guard let giornata else { return nil }
+        guard giornata != nil || campionatoFinito != nil else { return nil }
         let dubbi = daControllare
         return RiassuntoOggi(giornata: giornata, inizio: inizio, modulo: formazione?.modulo, punti: formazione?.puntiAttesi,
                              daControllare: dubbi.count, probabili: conProbabili, scaricatoIl: scaricatoIl,
                              dubbi: dubbi.prefix(6).map {
                                  DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto, etichetta: $0.etichetta?.testoPronto)
                              },
-                             giornataLega: giornataLega, fase: faseGiornata)
+                             giornataLega: giornataLega, fase: faseGiornata, campionatoFinito: campionatoFinito)
     }
 
     static func leggi(_ dati: Data) -> RiassuntoWidget? {
@@ -309,8 +313,9 @@ struct RiassuntoWidget: Decodable {
         return try? d.decode(RiassuntoWidget.self, from: dati)
     }
 
-    /// Da fare (#727): la frase del server a campionato finito.
-    var campionatoFinito: String? { nil }
+    /// La frase del server a campionato finito («Il campionato è finito: …», #727), da mostrare al posto della giornata; nil fuori da
+    /// quel caso, con un server di prima o con un testo vuoto.
+    var campionatoFinito: String? { campionatoFinitoLetto?.valore?.testoPronto }
 }
 
 /// Lo scarico di `/api/widget` (nel widget e nell'app): sempre con `If-None-Match`, mai calcoli.
@@ -972,8 +977,15 @@ enum ParoleWidget {
         return conProbabili == false ? ["probabili non uscite · \(quando)", "probabili non uscite"] : [quando]
     }
 
-    /// Da fare (#727): le forme della frase del server a campionato finito.
-    static func formeCampionatoFinito(_ testo: String) -> [String] { [testo] }
+    /// La frase del server a campionato finito nelle sue forme, dalla più lunga (#727): intera («Il campionato è finito: previsioni e
+    /// consigli ripartono con il calendario della prossima stagione.») e, dove non entra, la sua prima parte, fino ai due punti («Il
+    /// campionato è finito»). Il testo resta quello del server, anche in inglese: qui si sceglie solo quanto ne entra, mai a metà.
+    static func formeCampionatoFinito(_ testo: String) -> [String] {
+        let intera = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let duePunti = intera.firstIndex(of: ":") else { return [intera] }
+        let prima = intera[..<duePunti].trimmingCharacters(in: .whitespaces)
+        return prima.isEmpty ? [intera] : [intera, prima]
+    }
 
     /// «4 da controllare» → «4»; senza niente da controllare «titolari a posto» → «a posto».
     static func daControllare(_ n: Int) -> [String] {

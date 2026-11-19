@@ -141,6 +141,10 @@ struct SenzaDatiWidget: View {
 extension Voce {
     /// Il riassunto completo, o nil se il server non lo ha ancora (si ricade sui widget «vecchi»).
     var completo: RiassuntoWidget? { widget }
+
+    /// A campionato finito la frase del server (#727), dal riassunto o dalla risposta completa: i widget la mostrano al posto della
+    /// giornata (`CampionatoFinitoWidget`). Nil fuori da quel caso.
+    var campionatoFinito: String? { riassunto?.campionatoFinito ?? widget?.campionatoFinito }
 }
 
 // Solo per l'app di anteprima (galleria per gli screenshot): `widgetFamily` e `widgetRenderingMode` di WidgetKit si possono solo leggere,

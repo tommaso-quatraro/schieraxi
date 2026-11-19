@@ -5,11 +5,15 @@ import WidgetKit
 /// dell'app (`LegaDemo`, la stessa fonte): nelle foto widget e app dicono le stesse cose (nomi, «gioca 62%», scadenza, Diario).
 enum DatiGalleria {
     /// `-DATI`: pieni (prima della scadenza), parziali (un server senza scambio, svincolo e Diario), salvati (copia vecchia),
-    /// in_corso, finita, vuoto (widget da collegare).
+    /// in_corso, finita, campionato_finito (la frase del server al posto della giornata, #727), vuoto (widget da collegare).
     static func voce(_ tipo: String) -> Voce {
         let adesso = Date()
         if tipo == "vuoto" {
             return Voce(date: adesso, riassunto: nil, datiSalvati: false, indirizzoMancante: true)
+        }
+        if tipo == "campionato_finito" {
+            let w = RiassuntoWidget.leggi(LegaDemo.widgetCampionatoFinito(adesso: adesso))
+            return Voce(date: adesso, riassunto: w?.comeRiassuntoOggi(scaricatoIl: adesso), datiSalvati: false, widget: w)
         }
         let fase: LegaDemo.Fase
         switch tipo {

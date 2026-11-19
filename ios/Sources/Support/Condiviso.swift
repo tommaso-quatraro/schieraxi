@@ -129,7 +129,8 @@ struct RiassuntoOggi: Codable, Equatable {
     /// `finita`: la giornata appena chiusa (Serie A e lega); `giornata` e `inizio` sono già quelli della prossima.
     var giornataChiusa: Int?
     var giornataChiusaLega: Int?
-    /// Da fare (#727): la frase del server a campionato finito.
+    /// A campionato finito la frase del server (`campionato_finito` di `/api/oggi` e `/api/widget`, #727): i widget la mostrano al
+    /// posto della giornata. Nil fuori da quel caso e nei riassunti salvati da una versione di prima.
     var campionatoFinito: String?
 
     /// La giornata con i due numeri (#299); nil senza giornata.
@@ -145,7 +146,7 @@ struct RiassuntoOggi: Codable, Equatable {
                                        daControllare: 2, probabili: true, scaricatoIl: Date())
 
     init(giornata: Int?, inizio: Date?, modulo: String?, punti: Double?, daControllare: Int, probabili: Bool?, scaricatoIl: Date,
-         dubbi: [DubbioRiassunto]? = nil, giornataLega: Int? = nil, fase: FaseRiassunto? = nil) {
+         dubbi: [DubbioRiassunto]? = nil, giornataLega: Int? = nil, fase: FaseRiassunto? = nil, campionatoFinito: String? = nil) {
         self.giornata = giornata
         self.inizio = inizio
         self.modulo = modulo
@@ -155,6 +156,7 @@ struct RiassuntoOggi: Codable, Equatable {
         self.scaricatoIl = scaricatoIl
         self.dubbi = dubbi
         self.giornataLega = giornataLega
+        self.campionatoFinito = campionatoFinito
         if let fase { applica(fase) }
     }
 
@@ -196,7 +198,8 @@ struct RiassuntoOggi: Codable, Equatable {
                       DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto, etichetta: $0.etichetta?.testo)
                   },
                   giornataLega: oggi.giornataLega,
-                  fase: fase)
+                  fase: fase,
+                  campionatoFinito: oggi.testoCampionatoFinito)
     }
 }
 

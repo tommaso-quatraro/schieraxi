@@ -82,8 +82,8 @@
     },
     {
       "cosa": "Testa della Formazione",
-      "forma": "Prima della scadenza la giornata («Giornata 8 · 11ª di Serie A») e «**Si chiude sab 31 14:50** fra 3 h 10 min»; scaduta «Formazione chiusa»; in corso «40,0 punti finora · circa 75 a fine giornata» e quanti devono ancora giocare; finita «Giornata 7 · 10ª di Serie A: finita», «83,0 punti (attesi 71,7)» e «Com'è andata». Senza data: «Calendario non disponibile».",
-      "mai": "«In corso» al posto di «Formazione chiusa»"
+      "forma": "Prima della scadenza la giornata («Giornata 8 · 11ª di Serie A») e «**Si chiude sab 31 14:50** fra 3 h 10 min»; scaduta «Formazione chiusa»; in corso «40,0 punti finora · circa 75 a fine giornata» e quanti devono ancora giocare; finita «Giornata 7 · 10ª di Serie A: finita», «83,0 punti (attesi 71,7)» e «Com'è andata». Senza data: «Calendario non disponibile». A campionato finito (`campionato_finito` di `GET /api/oggi`, #656, #727) il riepilogo dell'ultima giornata, se il server lo manda ancora, e sotto la frase del server «Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.», senza campo né errore.",
+      "mai": "«In corso» al posto di «Formazione chiusa»; a campionato finito un errore con «Riprova», «Calendario non disponibile» o la formazione di prima"
     },
     {
       "cosa": "Fantavoto atteso",

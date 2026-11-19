@@ -730,6 +730,42 @@ enum LegaDemo {
         return Data(json(w).utf8)
     }
 
-    /// Da fare (#727): il widget a campionato finito.
-    static func widgetCampionatoFinito(adesso: Date) -> Data { Data() }
+    // MARK: - Campionato finito (fotografia `formazione-campionato-finito` e widget con `-DATI campionato_finito`, #727)
+
+    /// La frase del server a campionato finito (`frase.campionato.finito` di `fanta/testi/frase.json`), la stessa in app e widget.
+    static let testoCampionatoFinito = "Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione."
+
+    /// L'ultima giornata della stagione: la 38ª di Serie A, nella lega la 35.
+    static let ultimaGiornata = 38
+
+    /// Il campo `campionato_finito` come lo manda il server: il testo e la frase con la chiave per tradurlo.
+    static var campionatoFinito: [String: Any] {
+        ["testo": testoCampionatoFinito, "frase": ["chiave": "campionato.finito", "param": [String: Any]()] as [String: Any]]
+    }
+
+    /// Il riepilogo dell'ultima giornata, che il server manda ancora nelle 48 ore dopo la sua fine: gli stessi punti del riepilogo
+    /// della demo (`riepilogoFinita`), sulla 38ª.
+    static func riepilogoCampionatoFinito() -> [String: Any] {
+        riepilogoFinita().merging(["giornata": ultimaGiornata, "giornata_lega": ultimaGiornata - (giornata - giornataLega)]) { _, nuovo in nuovo }
+    }
+
+    /// Il widget a campionato finito come il server (`_campionato_finito` di `fanta/widget.py`): niente giornata né formazione,
+    /// `campionato_finito`, la fase `finita` con il riepilogo dell'ultima giornata e il Diario di sempre.
+    static func widgetCampionatoFinito(adesso: Date) -> Data {
+        let w: [String: Any] = [
+            "giornata": NSNull(), "giornata_lega": NSNull(), "prima_partita": NSNull(), "scadenza": NSNull(), "ore_mancanti": NSNull(),
+            "iniziata": false, "con_probabili": false, "squadra": nomeMia, "crediti_residui": creditiResidui,
+            "formazione": ["modulo": "–", "punti_attesi": NSNull(), "intervallo": NSNull(), "titolari": [Any](), "panchina": [Any]()]
+                as [String: Any],
+            "avvisi": [Any](), "rosa": [Any](), "squalificati": [Int](), "diffidati": [Int](), "rigoristi": [Int](),
+            "campionato_finito": campionatoFinito, "fase": Fase.finita.rawValue, "riepilogo": riepilogoCampionatoFinito(),
+            "diario": giornateFinite.map { g -> [String: Any] in
+                let e = g.schierata ?? g.consigliata
+                return ["giornata": g.serieA, "giornata_lega": g.serieA - (giornata - giornataLega), "stagione": stagioneInCorso,
+                        "attesi": e.atteso, "fatti": e.fatti, "intervallo": fascia(e.atteso)]
+            },
+            "osservati": [Any](), "dati": ["ultimo_aggiornamento": ultimoAggiornamento(adesso: adesso)],
+        ]
+        return Data(json(w).utf8)
+    }
 }

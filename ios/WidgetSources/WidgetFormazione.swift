@@ -66,7 +66,10 @@ struct VistaFormazione: View {
 
     var body: some View {
         Group {
-            if let w = voce.completo, let f = w.formazione, let tit = f.titolari, !tit.isEmpty {
+            if let testo = voce.campionatoFinito {
+                // campionato finito (#727): nessuna formazione da mostrare, la frase del server
+                CampionatoFinitoWidget(testo: testo)
+            } else if let w = voce.completo, let f = w.formazione, let tit = f.titolari, !tit.isEmpty {
                 contenuto(w, f, tit)
             } else if let r = voce.riassunto, r.modulo != nil {
                 // un server senza /api/widget: solo modulo e punti

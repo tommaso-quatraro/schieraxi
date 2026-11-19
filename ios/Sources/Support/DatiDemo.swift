@@ -57,6 +57,12 @@ extension FinteServer {
         case "oggi-finita-recupero":
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso, recupero: true)
             server.indirizzoFinto = "https://finto-recupero-da-giocare.invalid"
+        case "formazione-campionato-finito":
+            // a campionato finito (#727), come il server: Oggi con il riepilogo dell'ultima giornata (le prime 48 ore) e la frase
+            // `campionato_finito`; la Formazione, e ogni rotta che vuole una giornata, 409 con il codice `campionato_finito`
+            server.risposte["/api/oggi"] = DatiDemo.oggiCampionatoFinito()
+            server.fallimenti["/api/formazione"] = .codificato(codice: "campionato_finito", messaggio: DatiDemo.testoCampionatoFinito)
+            server.indirizzoFinto = "https://finto-campionato-finito.invalid"
         default:
             return nil
         }
@@ -69,7 +75,7 @@ extension FinteServer {
     static func faseDemo(_ schermata: String?) -> LegaDemo.Fase {
         switch schermata ?? "" {
         case "oggi-in-corso", "formazione-in-corso", "formazione-chiusa": return .inCorso
-        case "oggi-finita", "oggi-finita-recupero", "formazione-finita": return .finita
+        case "oggi-finita", "oggi-finita-recupero", "formazione-finita", "formazione-campionato-finito": return .finita
         default: return .prima
         }
     }
@@ -650,6 +656,20 @@ private extension LegaDemo {
         }
         o["prossima"] = prossimaDopoFinita(adesso: adesso)
         return json(o)
+    }
+
+    /// Oggi a campionato finito come il server (`oggi_campionato_finito` di `fanta/gestione.py`, #656): i campi di sempre vuoti,
+    /// la fase `finita` senza `prossima`, il riepilogo dell'ultima giornata (`riepilogoCampionatoFinito`) e `campionato_finito`.
+    static func oggiCampionatoFinito() -> String {
+        json([
+            "giornata": NSNull(), "giornata_lega": NSNull(), "inizio": NSNull(), "scadenza": NSNull(), "minuti_scadenza": minutiScadenza,
+            "ore_mancanti": NSNull(), "iniziata": false, "con_probabili": false, "probabili": NSNull(),
+            "formazione": ["modulo": "–", "punteggio_atteso": NSNull(), "squadra": nomeMia, "dev": NSNull(), "intervallo": NSNull(),
+                           "tua_scelta": false] as [String: Any],
+            "avvisi": [Any](), "migliori": [Any](), "partite": [Any](), "miei_titolari": [String: Any](), "da_fare": [Any](),
+            "fase": Fase.finita.rawValue, "in_corso": NSNull(), "riepilogo": riepilogoCampionatoFinito(), "prossima": NSNull(),
+            "rinvio": NSNull(), "campionato_finito": campionatoFinito,
+        ] as [String: Any])
     }
 
     // MARK: - Elenco dei giocatori (per i risultati della ricerca)

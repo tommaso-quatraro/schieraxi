@@ -24,6 +24,7 @@ source "$(dirname "$0")/avvisi.sh"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
 TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-rinvio formazione-chiusa formazione-cambiata formazione-sostituisci
+       formazione-campionato-finito
        giocatore giocatore-fondo ricerca
        guida marchio giornate giornate-aperta giornate-dettagli
        lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri impostazioni-novita
