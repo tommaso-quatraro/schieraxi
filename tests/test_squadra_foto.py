@@ -154,7 +154,43 @@ def test_pr_aperta_da_riga_di_comando_usa_il_ramo(capsys):
     assert "--ref ramo-della-pr" in capsys.readouterr().out
 
 
-def test_gli_script_di_ios_non_chiedono_foto():
+def test_gli_strumenti_di_ios_scripts_non_chiedono_foto():
     """#717: ios/scripts/screenshot.sh (lo strumento delle foto, non l'app) dava l'avviso «aggiungi una regola»."""
-    esito = foto.schermate(["ios/scripts/screenshot.sh", "ios/scripts/scegli_simulatore.py"])
+    esito = foto.schermate(["ios/scripts/screenshot.sh", "ios/scripts/schermo_fermo.py"])
     assert esito == {"schermate": [], "widget": False, "senza": []}
+
+
+def test_gli_script_dei_widget_chiedono_le_foto_dei_widget():
+    esito = foto.schermate(["ios/scripts/screenshot_widget.sh"])
+    assert esito == {"schermate": [], "widget": True, "senza": []}
+
+
+def test_ios_scripts_come_file_widget_di_screenshot_yml():
+    """Ogni file di ios/scripts chiede le foto dei widget se e solo se FILE_WIDGET di screenshot.yml lo fa ripartire, e nessuno
+    resta senza regola."""
+    flusso = (RADICE / ".github" / "workflows" / "screenshot.yml").read_text(encoding="utf-8")
+    schema = re.compile(re.search(r"FILE_WIDGET: '(.*)'", flusso).group(1))
+    file = sorted(f"ios/scripts/{p.name}" for p in (RADICE / "ios" / "scripts").iterdir() if p.is_file())
+    assert file
+    for f in file:
+        esito = foto.schermate([f])
+        assert esito["senza"] == [], f
+        assert esito["widget"] is bool(schema.search(f)), f
+
+
+def test_pr_da_un_fork_non_lancia(capsys):
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}],
+                                "headRefName": "ramo", "state": "OPEN", "isCrossRepository": True},
+               "gh workflow run screenshot.yml": ""})
+    assert foto.main(f, pr=7, lancia=True) == 1
+    assert not f.lanciati("gh workflow")
+    assert "PR da un fork: le foto si lanciano dal ramo di questo repository" in capsys.readouterr().err
+
+
+def test_pr_chiusa_senza_unione_non_lancia(capsys):
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}],
+                                "headRefName": "ramo", "state": "CLOSED", "isCrossRepository": False},
+               "gh workflow run screenshot.yml": ""})
+    assert foto.main(f, pr=7, lancia=True) == 1
+    assert not f.lanciati("gh workflow")
+    assert "chiusa senza unione" in capsys.readouterr().err

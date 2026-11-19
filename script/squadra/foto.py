@@ -2,7 +2,8 @@
 `gh workflow run screenshot.yml …`. Lo lancia solo con --lancia (solo il fotografo). Fotografa il ramo della PR se è aperta,
 main se è unita o con --da; --ref sceglie un altro ramo.
 
-Codici di uscita: 0 fatto (anche se non c'è nulla da fotografare); 1 errore di gh o git; 3 ci sono file iOS senza schermata
+Codici di uscita: 0 fatto (anche se non c'è nulla da fotografare); 1 errore di gh o git, o PR da un fork o chiusa senza
+unione; 3 ci sono file iOS senza schermata
 in foto.json (avviso su stderr: il comando stampato non li copre)."""
 from __future__ import annotations
 
@@ -50,25 +51,36 @@ def _per_persone(c: list[str]) -> str:
     return " ".join(f'{a.split("=", 1)[0]}="{a.split("=", 1)[1]}"' if a.startswith("schermate=") else shlex.quote(a) for a in c)
 
 
-def file_cambiati(esegui: comune.Esegui, pr: int | None, da: str | None) -> tuple[list[str], str]:
-    """File cambiati e ramo da fotografare: quello della PR se è ancora aperta (#717), altrimenti main."""
+def file_cambiati(esegui: comune.Esegui, pr: int | None, da: str | None) -> tuple[list[str], str, str]:
+    """File cambiati, ramo da fotografare (quello della PR se è ancora aperta, #717, altrimenti main) e, se la PR non si può
+    fotografare (da un fork o chiusa senza unione), il perché."""
     if pr is not None:
-        dati = comune.chiama_json(esegui, ["gh", "pr", "view", str(pr), "--json", "files,headRefName,state"]) or {}
-        ramo = dati.get("headRefName") if dati.get("state") == "OPEN" else None
-        return [f["path"] for f in dati.get("files") or []], ramo or "main"
+        dati = comune.chiama_json(esegui, ["gh", "pr", "view", str(pr), "--json",
+                                            "files,headRefName,state,isCrossRepository"]) or {}
+        stato, ramo, perche = dati.get("state"), None, ""
+        if stato == "CLOSED":
+            perche = f"la PR {pr} è chiusa senza unione: niente da fotografare"
+        elif stato == "OPEN" and dati.get("isCrossRepository"):
+            perche = "PR da un fork: le foto si lanciano dal ramo di questo repository"
+        elif stato == "OPEN":
+            ramo = dati.get("headRefName")
+        return [f["path"] for f in dati.get("files") or []], ramo or "main", perche
     return [r for r in comune.chiama(esegui, ["git", "diff", "--name-only", f"{da}..origin/main", "--", "ios/"]).splitlines()
-            if r.strip()], "main"
+            if r.strip()], "main", ""
 
 
 def main(esegui: comune.Esegui, pr: int | None = None, da: str | None = None, lancia: bool = False, ref: str | None = None,
          dispositivi: str = "iphone", json_: bool = False) -> int:
     try:
-        file, ramo = file_cambiati(esegui, pr, da)
+        file, ramo, perche = file_cambiati(esegui, pr, da)
         esito = schermate(file)
-        ref = ref or ramo
     except comune.ErroreComando as e:
         print(f"foto: {e}", file=sys.stderr)
         return 1
+    if ref is None and perche:
+        print(f"foto: {perche} (con --ref si sceglie un ramo a mano).", file=sys.stderr)
+        return 1
+    ref = ref or ramo
     da_fare = bool(esito["schermate"] or esito["widget"])
     c = comando(esito, ref, dispositivi) if da_fare else []
     lanciato = False
@@ -92,7 +104,7 @@ def main(esegui: comune.Esegui, pr: int | None = None, da: str | None = None, la
 
 NOME = "foto"
 AIUTO = "Schermate da fotografare per una PR (o dai commit dopo --da) e comando screenshot.yml; lo lancia solo con --lancia."
-USCITE = "0 fatto; 1 errore di gh o git, o lancio non riuscito; 3 file iOS senza schermata in foto.json (avviso)."
+USCITE = "0 fatto; 1 errore di gh o git, lancio non riuscito, PR da un fork o chiusa senza unione; 3 file iOS senza schermata in foto.json (avviso)."
 
 
 def opzioni(p) -> None:
