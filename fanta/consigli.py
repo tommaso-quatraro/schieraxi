@@ -744,8 +744,9 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
     """La consigliata da mostrare: quella di prima (`prima` = {"titolari": [id], "panchina": [id]}) se c'è e regge, altrimenti la
     migliore di adesso (`migliore`, la risposta di `_calcola_formazione`, restituita così com'è).
     Prima della scadenza la migliore prende il posto di quella di prima se vale almeno SOGLIA_CAMBIO_PUNTI punti attesi in più (sulle
-    stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più (uscito dalla rosa, diventato fuori o improbabile:
-    non chi lo era già quando è stata mostrata, `prima["non_giocano"]`) e la migliore lo lascia fuori; tenuta quella di prima, la
+    stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più e la migliore lo lascia fuori: uscito dalla rosa,
+    diventato fuori (non chi lo era già quando è stata mostrata, `prima["non_giocano"]`), oppure fuori o improbabile con nel suo
+    ruolo un compagno fuori dagli 11 di prima, non fermo per un anticipo, che gioca almeno il 20% (#632, `fa_cambiare`); tenuta quella di prima, la
     sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
     resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui.
     `iniziate` (squadre di Serie A con un anticipo già cominciato, #368): prima della scadenza i loro giocatori restano dove erano
@@ -768,7 +769,26 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
             return migliore
     nuovi = {int(g["id"]) for g in migliore["titolari"]}
     gia = set(_ids(prima, "non_giocano") or [])           # chi non giocava già quando la consigliata è stata mostrata
-    if not chiusa and any(titolarita(prev.loc[i]) in NON_GIOCA and i not in nuovi and i not in gia for i in titolari):
+    # i compagni che si potrebbero mettere titolari: fuori dagli 11 di prima, e non fermi per un anticipo già cominciato
+    non_liberi = set(titolari) | (set() if fermi is None else set(fermi.fuori) | set(fermi.panchina))
+    liberi = [g for g in rosa if g.id not in non_liberi]
+
+    def fa_cambiare(i: int) -> bool:
+        """Il titolare di prima `i`, che la migliore lascia fuori, fa cambiare la consigliata anche sotto la soglia di punti:
+        - fuori o improbabile, con nel suo ruolo un compagno che si può mettere titolare e gioca almeno COMPAGNO_ALMENO (#632:
+          con tre portieri al 10%, 5% e 3% restava il 10% anche dopo che il secondo era salito al 92%). Conta ogni compagno, non
+          solo i titolari nuovi della migliore: una migliore con un altro modulo può non metterne nessuno in quel ruolo;
+        - diventato fuori dopo che la consigliata è stata mostrata (infortunato, squalificato, senza voto per il rinvio).
+        Un improbabile senza un compagno così non basta, né se lo era già né se lo è diventato: al suo posto andrebbe un altro
+        improbabile, e quando un compagno sale e scende attorno al 20% la consigliata cambiava a ogni giro (revisione di #736:
+        il 2 al 20% prendeva il posto dell'1 già improbabile, poi riscendeva al 2% e tornava l'1). Lì vale la soglia di punti."""
+        stato = titolarita(prev.loc[i])
+        if stato not in NON_GIOCA:
+            return False
+        if any(g.ruolo == per_id[i].ruolo and g.p >= fz.COMPAGNO_ALMENO for g in liberi):
+            return True
+        return stato == "fuori" and i not in gia
+    if not chiusa and any(i not in nuovi and fa_cambiare(i) for i in titolari):
         return migliore
     tit = sorted((per_id[i] for i in titolari), key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore))
     if chiusa and panchina_prima:
@@ -1121,8 +1141,9 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
     scritta = frasi.differenza(invertita, attuale)          # tra parentesi: la differenza dei due numeri scritti, «72,1 (−0,6)» (#392)
     if diff > 0.04:
         esito = F("confronto.esito_meglio", titolare=titolare.nome, attuale=attuale, invertita=invertita, d=scritta)
-    elif diff < -0.04 and titolare.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
-        # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341)
+    elif diff < -0.04 and fz.titolare_perche_gioca(titolare, altro):
+        # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341);
+        # anche quando lo è il titolare, che è più probabile che giochi (#632)
         return scrivi(F("confronto.titolare_che_gioca", altro=altro.nome, p=etichette.percento(altro.p), titolare=titolare.nome,
                         pt=etichette.percento(titolare.p), d=-diff, entrata=entrata))
     elif diff < -0.04:

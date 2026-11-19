@@ -104,16 +104,111 @@ def test_titolare_diventato_fuori_o_improbabile_cambia_anche_sotto_un_punto(rito
     assert f is migliore
 
 
+def _portieri(*p) -> dict:
+    """I ritocchi che danno ai portieri 1, 2 e 3 queste probabilità di giocare (sotto il 20%: non tra i convocati previsti)."""
+    return {i + 1: ({"p_voto": x} if x >= 0.2 else {"stato": "non_citato", "p_voto": x}) for i, x in enumerate(p)}
+
+
 def test_titolare_gia_improbabile_quando_era_mostrata_non_basta_per_cambiare():
-    """D2: cambia sempre un titolare DIVENTATO fuori o improbabile. Se lo era già quando la consigliata è stata mostrata (il sistema
-    lo teneva titolare con una riserva sicura dietro), un ritocco che lo toglie dalla migliore vale come gli altri: sotto 1 punto resta."""
-    nuove = _prev({7: {"stato": "non_citato", "p_voto": 0.1}})
-    prima = _migliore(_prev())
+    """D2: cambia sempre un titolare DIVENTATO fuori o improbabile. Se lo era già quando la consigliata è stata mostrata (tre
+    portieri al 10%, 5% e 3%: titolare il primo), un ritocco che lo toglie dalla migliore per un altro improbabile (il secondo sale
+    al 15%) vale come gli altri: sotto 1 punto resta."""
+    prima = _migliore(_prev(_portieri(0.10, 0.05, 0.03)))
+    assert 1 in _ids(prima)
+    nuove = _prev(_portieri(0.10, 0.15, 0.03))
     migliore = _migliore(nuove)
-    assert 7 not in _ids(migliore)
-    ricordata = _ricordata(prima) | {"non_giocano": [7]}
+    assert 2 in _ids(migliore) and 1 not in _ids(migliore)
+    assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
+    ricordata = _ricordata(prima) | {"non_giocano": [1]}
     f = consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, SIM)
     assert _ids(f) == _ids(prima)
+
+
+@pytest.mark.parametrize("p_secondo", [0.92, 0.2])
+def test_titolare_gia_improbabile_cambia_se_la_migliore_mette_nel_ruolo_un_compagno_che_gioca(p_secondo):
+    """#632, primo caso: tre portieri al 10%, 5% e 3% alla prima apertura (titolare il 10%, già improbabile); poi il secondo
+    passa al 92% (o proprio al 20%). La migliore lo schiera e vale meno di 1 punto in più: prima restava titolare il 10%, perché
+    era improbabile già quando la consigliata è stata mostrata. Quell'esenzione non vale se nel suo ruolo c'è un compagno che
+    gioca almeno il 20% (qui la migliore lo mette titolare; con un altro modulo vedi il test che segue)."""
+    prima = _migliore(_prev(_portieri(0.10, 0.05, 0.03)))
+    assert 1 in _ids(prima)
+    nuove = _prev(_portieri(0.10, p_secondo, 0.03))
+    migliore = _migliore(nuove)
+    assert 2 in _ids(migliore) and 1 not in _ids(migliore)
+    assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
+    ricordata = _ricordata(prima) | {"non_giocano": [1]}
+    assert consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, SIM) is migliore
+
+
+CON_IL_4_4_2 = Regole(moduli=["3-4-3", "4-4-2"])
+
+
+def _attaccante_improbabile_mostrato(anticipo=()):
+    """Il 3-4-3 mostrato con l'attaccante 22 al 10% titolare: solo tre difensori e due attaccanti giocano, quindi ogni modulo
+    ha un improbabile e vince il 3-4-3 (il 22 quando gioca fa 14). Poi il difensore 7 sale al 95% e l'attaccante 23 al 30%: la
+    migliore è un 4-4-2 che non mette nessun attaccante nuovo. `anticipo` = chi gioca un anticipo già cominciato.
+    Restituisce (consigliata ricordata, previsioni nuove, migliore con le previsioni nuove)."""
+    improbabile = {"stato": "non_citato"}
+    allora = {i: improbabile | {"p_voto": p} for i, p in ((7, 0.15), (8, 0.12), (9, 0.05), (10, 0.04), (11, 0.03),
+                                                         (22, 0.10), (23, 0.05), (24, 0.04), (25, 0.03))}
+    allora[22]["mu"] = 14.0
+    prima = _migliore(_prev(allora), CON_IL_4_4_2)
+    assert prima["modulo"] == "3-4-3" and 22 in _ids(prima) and 23 not in _ids(prima)
+    ricordata = consigli.da_ricordare(prima)
+    assert 22 in ricordata["non_giocano"]
+    nuove = _prev(allora | {7: {"p_voto": 0.95, "stato": "titolare"}, 23: {"p_voto": 0.30, "stato": "panchina", "quota_titolare": 0.3}}
+                  | {i: {"squadra": "ANT"} for i in anticipo})
+    migliore = _migliore(nuove, CON_IL_4_4_2)
+    assert migliore["modulo"] == "4-4-2" and not {22, 23} & _ids(migliore)        # nessun attaccante nuovo fra i titolari
+    assert _valore(nuove, _ids(migliore), CON_IL_4_4_2) - _valore(nuove, _ids(prima), CON_IL_4_4_2) < consigli.SOGLIA_CAMBIO_PUNTI
+    return ricordata, nuove, migliore
+
+
+def test_titolare_gia_improbabile_cambia_anche_se_la_migliore_cambia_modulo():
+    """Rilievo della revisione di #736: l'esenzione guardava solo i titolari nuovi della migliore, e un 4-4-2 non ne mette nessuno
+    in attacco: restava il 22 (10%) titolare e il 23 (30%) fuori. Basta un compagno di ruolo fuori dagli 11 di prima che gioca
+    almeno il 20%."""
+    ricordata, nuove, migliore = _attaccante_improbabile_mostrato()
+    f = consigli.stabile(migliore, ricordata, nuove, _squadra(), CON_IL_4_4_2, SIM)
+    assert 22 not in _ids(f)
+
+
+def test_titolare_gia_improbabile_resta_se_il_compagno_che_gioca_e_fermo_per_un_anticipo():
+    """Lo stesso, ma il 23 gioca un anticipo già cominciato: era fuori e non si può più mettere titolare, quindi non conta e sotto
+    1 punto la consigliata di prima resta."""
+    ricordata, nuove, migliore = _attaccante_improbabile_mostrato(anticipo=(23,))
+    f = consigli.stabile(migliore, ricordata, nuove, _squadra(), CON_IL_4_4_2, SIM, iniziate=("ANT",))
+    assert 22 in _ids(f) and 23 not in _ids(f)
+
+
+@pytest.mark.parametrize("titolare, oscilla", [(0.15, (0.20, 0.02)), (0.195, (0.21, 0.19)), (0.15, (0.25, 0.14))])
+def test_un_compagno_che_sale_e_scende_attorno_al_20_per_cento_non_fa_oscillare_la_consigliata(titolare, oscilla):
+    """Rilievo della revisione di #736: portiere 1 titolare già improbabile, il portiere 2 che a ogni giro sale sopra il 20% e
+    riscende. Al primo giro la consigliata passa al 2 (un compagno che gioca); quando il 2 riscende diventava «titolare diventato
+    improbabile» e tornava l'1, di nuovo già improbabile, e così via: un cambio a ogni giro. Un titolare improbabile fa cambiare
+    la consigliata solo se nel suo ruolo c'è un compagno che gioca almeno il 20%; altrimenti vale la soglia di 1 punto."""
+    ricordata = consigli.da_ricordare(_migliore(_prev(_portieri(titolare, 0.02, 0.01))))
+    assert 1 in ricordata["titolari"] and ricordata["non_giocano"] == [1]
+    cambi = 0
+    for giro in range(6):
+        nuove = _prev(_portieri(titolare, oscilla[giro % 2], 0.01))
+        f = consigli.stabile(_migliore(nuove), ricordata, nuove, _squadra(), SOLO_442, SIM)
+        mostrata = consigli.da_ricordare(f, ricordata)
+        cambi += set(mostrata["titolari"]) != set(ricordata["titolari"])
+        ricordata = mostrata
+    assert cambi <= 1                                   # al più il primo passaggio al portiere che gioca
+
+
+def test_titolare_diventato_fuori_cambia_anche_senza_un_compagno_che_gioca():
+    """Il portiere 1 si infortuna e gli altri due giocano il 10% e il 5%: nessun compagno arriva al 20%, ma un titolare fuori non
+    resta nella consigliata (al suo posto il 2, più probabile che giochi). Con un improbabile, invece, vale la soglia di punti."""
+    prima = _migliore(_prev(_portieri(0.95, 0.10, 0.05)))
+    assert 1 in _ids(prima)
+    nuove = _prev(_portieri(0.95, 0.10, 0.05) | {1: {"stato": "infortunato", "p_voto": 0.0}})
+    migliore = _migliore(nuove)
+    assert 2 in _ids(migliore)
+    assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
+    assert consigli.stabile(migliore, consigli.da_ricordare(prima), nuove, _squadra(), SOLO_442, SIM) is migliore
 
 
 def test_titolare_uscito_dalla_rosa_cambia():

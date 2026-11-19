@@ -173,9 +173,10 @@ def test_titolare_improbabile_che_non_si_puo_spostare_resta():
 
 
 def test_titolare_improbabile_resta_senza_un_compagno_che_gioca():
-    """Anche Y gioca meno del 20%: nessun compagno di ruolo che gioca, resta la scelta della ricerca (X)."""
+    """Anche Y gioca meno del 20%: nessun compagno di ruolo che gioca. Fra due improbabili parte chi è più probabile che giochi
+    (#632): Y al 19%, non X al 15% che vale di più quando gioca (prima restava la scelta della ricerca, X)."""
     f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.19, 6), Regole())
-    assert X in _titolari(f) and Y not in _titolari(f)
+    assert Y in _titolari(f) and X not in _titolari(f)
 
 
 def _rosa_tre_portieri(*portieri):
@@ -212,6 +213,23 @@ def test_tra_tre_portieri_la_consigliata_schiera_il_22_e_tiene_il_92_primo_in_pa
     assert [g.id for g in f.panchina if g.ruolo == "P"] == [3, 1]
 
 
+@pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
+def test_tutti_improbabili_nel_ruolo_parte_chi_e_piu_probabile_che_giochi(stile):
+    """#632, terzo caso: portieri al 19%, 5% e 0%, nessuno arriva al 20%. Il 5% vale di più quando gioca (6,5 contro 5,0) e
+    con lui titolare la formazione ha qualche millesimo di punti attesi in più: prima la consigliata schierava lui. Deve
+    partire chi è più probabile che giochi, con ogni stile."""
+    _, _, peso, inclinazione, _ = stile
+    f = fz.migliore(_rosa_tre_portieri((0.19, 5.0), (0.05, 6.5), (0.0, 6.0)), _due_portieri_in_panchina(),
+                    peso=peso, inclinazione=inclinazione)
+    assert next(g.id for g in f.titolari if g.ruolo == "P") == 1
+
+
+def test_tutti_improbabili_a_parita_di_probabilita_parte_chi_vale_di_piu():
+    """Stesso caso con due portieri al 10%: a parità parte chi vale di più quando gioca (il 2, 6,5 contro 5,0)."""
+    f = fz.migliore(_rosa_tre_portieri((0.1, 5.0), (0.1, 6.5), (0.0, 7.0)), _due_portieri_in_panchina())
+    assert next(g.id for g in f.titolari if g.ruolo == "P") == 2
+
+
 def test_nessun_improbabile_titolare_in_nessun_modulo_se_un_compagno_gioca():
     """La regola per chi legge il consiglio: chi gioca meno del 20% non è proposto titolare se un compagno di ruolo escluso
     gioca almeno il 20%, in ogni modulo proposto."""
@@ -220,6 +238,51 @@ def test_nessun_improbabile_titolare_in_nessun_modulo_se_un_compagno_gioca():
     assert len(f.tutte) > 1
     for x in f.tutte:
         assert [g.id for g in x.titolari if g.p < 0.2] == [], x.modulo
+
+
+def _rosa_attaccante_improbabile_forte():
+    """Quattro difensori, due attaccanti sicuri e due improbabili: il 40 gioca il 10% ma quando gioca fa 14. Nel 3-4-3 il terzo
+    attaccante è per forza un improbabile; nel 4-4-2 nessuno lo è."""
+    return ([G(1, "P", 0.95, 6), G(2, "P", 0.5, 5)] + [G(10 + i, "D", 0.95, 6) for i in range(4)]
+            + [G(20 + i, "C", 0.95, 6.5) for i in range(5)]
+            + [G(30, "A", 0.95, 7), G(31, "A", 0.95, 7), G(40, "A", 0.1, 14), G(41, "A", 0.05, 5)])
+
+
+@pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
+def test_fra_i_moduli_vince_il_migliore_senza_improbabili_titolari(stile):
+    """#632, secondo caso: la regola guardava solo dentro il ruolo. Il 3-4-3 con l'attaccante al 10% vale qualche decimo più
+    del 4-4-2 (se il 40 non gioca entra una riserva sicura con il cambio di modulo), ma fra le formazioni senza improbabili
+    titolari, se ce n'è una, si sceglie la migliore: il 4-4-2, con ogni stile."""
+    _, _, peso, inclinazione, _ = stile
+    r = Regole(moduli=["3-4-3", "4-4-2"])
+    f = fz.migliore(_rosa_attaccante_improbabile_forte(), r, peso=peso, inclinazione=inclinazione)
+    con_improbabile = next(x for x in f.tutte if x.modulo == "3-4-3")
+    assert 40 in _titolari(con_improbabile)                         # il 3-4-3 resta proposto, con l'improbabile
+    if (peso, inclinazione) == (fz.PESO_BASE, (0.0, 0.0)):
+        assert con_improbabile.atteso > f.atteso                    # e ha più punti attesi del modulo scelto
+    assert f.modulo == "4-4-2" and [g.id for g in f.titolari if g.p < 0.2] == []
+    assert [m for m, _ in f.alternative] == ["3-4-3"]
+
+
+def test_fra_i_moduli_vince_il_migliore_con_meno_titolari_improbabili():
+    """Decisione sulla revisione di #736: conta quanti improbabili ha ogni modulo, non solo se ne ha. Con i portieri al 15% e al 5%
+    ogni modulo ha un portiere improbabile, ma il 3-4-3 aggiunge l'attaccante al 10%, che si può evitare: vince il 4-4-2, anche
+    se il 3-4-3 ha più punti attesi."""
+    rosa = [G(1, "P", 0.15, 6), G(2, "P", 0.05, 5)] + _rosa_attaccante_improbabile_forte()[2:]
+    f = fz.migliore(rosa, Regole(moduli=["3-4-3", "4-4-2"]))
+    con_due = next(x for x in f.tutte if x.modulo == "3-4-3")
+    assert {1, 40} <= _titolari(con_due) and con_due.atteso > f.atteso
+    assert f.modulo == "4-4-2" and [g.id for g in f.titolari if g.p < 0.2] == [1]
+
+
+def test_fra_i_moduli_con_gli_stessi_improbabili_vince_il_migliore():
+    """Se ogni modulo ha lo stesso numero di titolari improbabili (qui solo il portiere: gli attaccanti giocano tutti), la regola
+    non sceglie niente: vince il modulo con più punti attesi, come prima."""
+    rosa = ([G(1, "P", 0.15, 6), G(2, "P", 0.05, 5)] + _rosa_attaccante_improbabile_forte()[2:-2]
+            + [G(32, "A", 0.95, 7.5)])
+    f = fz.migliore(rosa, Regole(moduli=["3-4-3", "4-4-2"]))
+    assert all([g.id for g in x.titolari if g.p < 0.2] == [1] for x in f.tutte)
+    assert f.atteso == max(x.atteso for x in f.tutte) and f.modulo == "3-4-3"
 
 
 def test_titolare_al_20_per_cento_non_e_improbabile():
@@ -261,6 +324,16 @@ def test_confronto_dice_lo_stesso_quando_il_titolare_gioca_poco_ma_non_e_improba
     assert (r["posto_a"], r["posto_b"]) == ("panchina 1", "titolare") and r["differenza"] < -0.04
     assert r["frase"]["chiave"] == "confronto.titolare_che_gioca"
     assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 30%" in r["testo"]
+
+
+def test_confronto_fra_due_improbabili_dice_che_parte_il_piu_probabile(monkeypatch):
+    """#632: X al 15% che fa 14 e Y al 19% che fa 6, nessuno arriva al 20%: è titolare Y, più probabile che giochi, e invertirli
+    varrebbe di più. Il Confronto dà il motivo vero con i due «gioca N%», non «con il modulo 4-3-3 (non il migliore)…»."""
+    r = _confronto_x_y(monkeypatch, 0.15, 14, 0.19, 6)
+    assert (r["posto_a"], r["posto_b"]) == ("panchina 1", "titolare") and r["differenza"] < -0.04
+    assert r["frase"]["chiave"] == "confronto.titolare_che_gioca"
+    assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 19%" in r["testo"]
+    assert "non il migliore" not in r["testo"]
 
 
 def test_confronto_senza_improbabile_resta_come_prima(monkeypatch):
