@@ -9,6 +9,8 @@ import Testing
 /// quello di sempre, a ogni ritorno, finché un salvataggio non riesce (o arriva la giornata dopo): un guasto resta visibile anche
 /// se l'avviso in basso è passato sotto un foglio. Un salvataggio che riesce non lascia avvisi. Le scritture sono una alla volta,
 /// quindi quella che non riesce è sempre l'ultima partita dalla Formazione.
+/// Il 412 (scelta cambiata da un altro dispositivo) a scheda lasciata ha la frase della web, `comune.cambiato_altrove`, nello stesso
+/// avviso in basso (#751); guardando un'altra squadra la stessa frase sotto il campo.
 /// Il cambio di scheda è `inVista`, che nell'app imposta la radice. Dati inventati (fixture).
 @MainActor
 @Suite("Formazione: salvataggio non riuscito a scheda lasciata, come la web (#726)", .timeLimit(.minutes(1)))
@@ -198,13 +200,82 @@ struct SalvataggioFuoriDallaFormazioneTests {
         #expect(vm.messaggio == nil)
     }
 
+    // MARK: 412 a scheda lasciata (#751)
+
+    @Test("412 a scheda lasciata: l'avviso in basso con la frase della web, la tua formazione già riletta e, tornando, nessun avviso vecchio")
+    func cambiataAltroveFuori() async throws {
+        let cancello = Cancello()
+        let esito = Scatola<ErroreApi>()
+        esito.valore = .conflitto
+        let altroDispositivo = try SalvataggioAutomaticoTests.altroModulo()
+        let srv = try Self.server(cancello: cancello, esito: esito, altroDispositivo: altroDispositivo)
+        let (vm, f) = try await Self.caricata(srv)
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let salvataggio = Task { await vm.sostituisciTitolare(esce, con: entra) }
+        await cancello.richiestaArrivata()
+        vm.inVista = false                      // tocca Giornate mentre il salvataggio è in volo
+        await cancello.apri()
+        _ = await salvataggio.value
+        #expect(vm.avvisoAltrove == Catalogo.Comune.cambiatoAltrove, "la frase della web, nell'avviso in basso")
+        #expect(vm.messaggio == nil, "niente «Sto ricaricando…» né «Controlla e rifai la modifica» nella Formazione lasciata")
+        // dopo il 412 il telefono ha già la versione nuova della scelta: una scrittura partita dalla scelta vecchia passerebbe
+        #expect(srv.quante("GET /api/formazione") == 2, "la tua formazione si rilegge subito, non al ritorno")
+        #expect(Set(vm.vista(f).titolari.map(\.id)) == Set(altroDispositivo), "in campo la scelta dell'altro dispositivo")
+        #expect(!vm.comandiSpenti)
+        vm.inVista = true                       // torna sulla Formazione
+        #expect(vm.avvisoAltrove == nil && vm.messaggio == nil)
+    }
+
+    @Test("Dopo un 412 a scheda lasciata, tornando non ricompare l'avviso di un salvataggio non riuscito prima: l'ultimo è il 412")
+    func cambiataAltroveTogliIlGuasto() async throws {
+        let cancello = Cancello()
+        let esito = Scatola<ErroreApi>()
+        esito.valore = .rete("spento")
+        let altroDispositivo = try SalvataggioAutomaticoTests.altroModulo()
+        let (vm, f) = try await Self.caricata(try Self.server(cancello: cancello, esito: esito, altroDispositivo: altroDispositivo))
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let primo = Task { await vm.sostituisciTitolare(esce, con: entra) }
+        await cancello.richiestaArrivata()
+        vm.inVista = false
+        await cancello.apri()
+        _ = await primo.value
+        vm.inVista = true
+        try #require(vm.messaggio == ErroreApi.testoNonRaggiungibile, "il guasto di prima, tornando sulla Formazione")
+        vm.messaggio = nil                      // passati gli 8 secondi
+        esito.valore = .conflitto               // intanto un altro dispositivo ha salvato la sua scelta
+        vm.inVista = false                      // la risposta del secondo salvataggio arriva a scheda lasciata
+        await vm.sostituisciTitolare(esce, con: entra)
+        #expect(vm.avvisoAltrove == Catalogo.Comune.cambiatoAltrove)
+        vm.inVista = true
+        #expect(vm.messaggio == nil, "l'ultima scrittura è quella del 412, e la formazione è già riletta")
+        #expect(Set(vm.vista(f).titolari.map(\.id)) == Set(altroDispositivo))
+    }
+
+    @Test("412 guardando la formazione di un'altra squadra: la frase della web sotto il campo, come la web")
+    func cambiataAltroveAltraSquadra() async throws {
+        let cancello = Cancello()
+        let esito = Scatola<ErroreApi>()
+        esito.valore = .conflitto
+        let altroDispositivo = try SalvataggioAutomaticoTests.altroModulo()
+        let (vm, f) = try await Self.caricata(try Self.server(cancello: cancello, esito: esito, altroDispositivo: altroDispositivo))
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let salvataggio = Task { await vm.sostituisciTitolare(esce, con: entra) }
+        await cancello.richiestaArrivata()
+        vm.vediSquadra("Squadra di prova")      // da Impostazioni › Le altre squadre: la Formazione si apre con la loro
+        await cancello.apri()
+        _ = await salvataggio.value
+        #expect(vm.messaggio == Catalogo.Comune.cambiatoAltrove, "non «Sto ricaricando…»: la loro formazione non è cambiata")
+        #expect(vm.avvisoAltrove == nil)
+    }
+
     // MARK: aiuti
 
     /// La formazione della fixture e la scelta `salvata` (nil = nessuna). Ogni scrittura (salvataggio o «Torna alla consigliata»)
     /// passa dal `cancello`, così il test cambia scheda mentre è in volo; poi, se `esito` ha un errore, non riesce con quello,
-    /// altrimenti riesce come il server vero. Con `prossima` vera la formazione è della giornata dopo (10 invece di 9).
+    /// altrimenti riesce come il server vero. Con `prossima` vera la formazione è della giornata dopo (10 invece di 9). Con un 412
+    /// la scelta diventa `altroDispositivo`, se c'è: l'ha salvata un altro dispositivo.
     static func server(cancello: Cancello, esito: Scatola<ErroreApi>, salvata titolari: [Int]? = nil,
-                       prossima: Scatola<Bool> = Scatola()) throws -> ServerDiProva {
+                       prossima: Scatola<Bool> = Scatola(), altroDispositivo: [Int]? = nil) throws -> ServerDiProva {
         let questa = try Fixture.dati("formazione")
         let testo = String(decoding: questa, as: UTF8.self)
         try #require(testo.contains("\"giornata\":9"), "la fixture è della giornata 9")
@@ -215,7 +286,10 @@ struct SalvataggioFuoriDallaFormazioneTests {
             let scrive = metodo == "DELETE" || SalvataggioAutomaticoTests.salva(corpo)
             if scrive {
                 await cancello.passa()
-                if let errore = esito.valore { throw errore }
+                if let errore = esito.valore {
+                    if errore.eConflitto, let altroDispositivo { salvata.valore = SalvataggioAutomaticoTests.json(altroDispositivo) }
+                    throw errore
+                }
             }
             if percorso.hasPrefix("/api/formazione/valuta") {
                 if scrive, let corpo, let o = try? JSONSerialization.jsonObject(with: corpo) as? [String: Any],
