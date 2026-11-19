@@ -237,6 +237,21 @@ def test_titolare_diventato_improbabile_cambia_se_un_compagno_gioca_almeno_20_pu
     assert (1 in _ids(f)) != cambia
 
 
+@pytest.mark.parametrize("p_titolare, p_compagno", [(0.02, 0.20), (0.05, 0.22)])
+def test_titolare_sceso_sotto_il_10_per_cento_cambia_con_un_compagno_al_20_per_cento(p_titolare, p_compagno):
+    """Revisione di #738: il margine vale solo per chi è sceso di poco. Il portiere 1 giocava il 95% quando la consigliata è stata
+    mostrata, ora non è citato (2% o 5%); il 2 gioca il 20% o il 22%. Chi quasi certamente non gioca non resta titolare con un
+    compagno al 20%: con il margine di 20 punti restava."""
+    prima = _migliore(_prev(_portieri(0.95, p_compagno, 0.01)))
+    ricordata = consigli.da_ricordare(prima)
+    assert 1 in ricordata["titolari"] and ricordata["non_giocano"] == []
+    nuove = _prev(_portieri(p_titolare, p_compagno, 0.01))
+    migliore = _migliore(nuove)
+    assert 2 in _ids(migliore) and 1 not in _ids(migliore)
+    assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
+    assert consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, SIM) is migliore
+
+
 def test_titolare_diventato_fuori_cambia_anche_senza_un_compagno_che_gioca():
     """Il portiere 1 si infortuna e gli altri due giocano il 10% e il 5%: nessun compagno arriva al 20%, ma un titolare fuori non
     resta nella consigliata (al suo posto il 2, più probabile che giochi). Con un improbabile, invece, vale la soglia di punti."""
