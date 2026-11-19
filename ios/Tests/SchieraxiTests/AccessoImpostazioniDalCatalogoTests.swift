@@ -26,7 +26,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Accesso.codiceInviato, Catalogo.Accesso.passwordCambiata, Catalogo.Accesso.passwordCambiataAccedi,
         Catalogo.Accesso.vaiAccesso, Catalogo.Accesso.rispostaIncompleta,
         // account.*
-        Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.cambiaPassword,
+        Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.esciTutti,
+        Catalogo.Account.esciTuttiConferma, Catalogo.Account.cambiaPassword,
         Catalogo.Account.passwordAttuale, Catalogo.Account.ripetiPassword, Catalogo.Account.passwordDiverse,
         Catalogo.Account.altriScollegati, Catalogo.Account.passwordCambiataOk, Catalogo.Account.passwordCambiataCodice,
         Catalogo.Account.laTuaPassword,
@@ -68,6 +69,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Accesso.letto(eta: "§", privacy: "§", termini: "§"), Catalogo.Accesso.spuntaLetto(eta: "§"),
         Catalogo.Account.dal(data: "§", ruolo: "§"), Catalogo.Account.emailVerificata(email: "§"),
         Catalogo.Account.emailGoogle(email: "§"), Catalogo.Account.eliminaAvviso, Catalogo.Social.googleCollegato(email: "§"),
+        Catalogo.Account.esciTuttiNo(motivo: "§"),
     ]
 
     /// Le parti fisse di una frase (almeno 6 caratteri senza spazi ai lati: le più corte potrebbero stare in tutt'altro codice).
@@ -142,6 +144,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         ]),
         ("Sources/Presentation/Accesso/AccountSezione.swift", [
             "Catalogo.Imp.account", "Catalogo.Account.esci", "Catalogo.Social.collegatoOk", "Catalogo.Social.scollegatoOk",
+            // «Esci da tutti i dispositivi» con la sua conferma e il suo errore (#765)
+            "Catalogo.Account.esciTutti", "Catalogo.Account.esciTuttiConferma", "Catalogo.Account.esciTuttiNo(",
             "Catalogo.Shell.chiudi",
             // dopo il cambio della password: il codice nuovo sotto «Password cambiata» e l'esito dal catalogo (#590)
             "TestiAccesso.passwordCambiata", "TestiAccount.esitoCambioPassword(",

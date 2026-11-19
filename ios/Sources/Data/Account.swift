@@ -679,6 +679,9 @@ final class SessioneAccount: ObservableObject {
         chiudiLocale()
     }
 
+    /// «Esci da tutti i dispositivi» (#765): da scrivere.
+    func esciDaTutti() async throws {}
+
     /// Cambia la password. Il server chiude TUTTE le sessioni, anche questa, e ne apre una nuova: il token nuovo arriva nella
     /// risposta e si tiene (senza, alla richiesta dopo si tornerebbe all'accesso). Cambia anche il codice di recupero (#589:
     /// quello di prima non vale più): si restituisce il nuovo, da mostrare una volta sola come la web. nil = nessun codice
