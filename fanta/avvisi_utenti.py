@@ -182,13 +182,15 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
     non è riuscito e il resto è partito. Ogni utente in errore lascia anche una riga nel registro, con il suo numero.
     Il lavoro di un utente sta dentro il suo blocco fra processi (`blocco_avvisi`): se un altro giro lo tiene oltre ATTESA_BLOCCO
     secondi, l'utente passa al giro dopo (una riga nel registro, nessun errore) senza segnarsi come servito.
+    `adesso`: un'ora fissa per tutto il giro (le prove). Senza, l'ora di ogni utente si prende DOPO aver preso il suo blocco: un
+    altro giro, partito dopo questo ma arrivato prima, può aver appena scritto nei suoi stati un avviso con un'ora più recente della
+    partenza di questo; con l'ora della partenza quell'avviso sembrerebbe «nel futuro», non recente, e ne partirebbe un altro.
     Il giro dura al massimo `max_secondi` (di base `secondi_del_giro`): il tempo si guarda fra un utente e l'altro (almeno uno si
     serve sempre); chi resta passa al giro dopo. L'ordine è a rotazione: prima chi è stato servito meno di recente (o mai), in fondo
     chi è stato servito per ultimo. Ogni utente si segna come servito PRIMA del suo lavoro, così se il giro si ferma mentre lavora
     per lui, al giro dopo va in fondo. L'ordine sta in `file_giro` (di base FILE_GIRO nella cartella degli account; con `attivi`
     indicato da chi chiama, solo se si passa `file_giro`)."""
     lavoro = _LAVORI[funzione]
-    adesso = adesso or datetime.now()
     inizio = orologio()
     limite = secondi_del_giro(funzione) if max_secondi is None else max_secondi
     if attivi is None:
@@ -221,7 +223,7 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
                     file_giro = None                  # una riga sola nel registro: per questo giro non si riprova
             a.guasti = []
             try:
-                esiti[a.utente.nome_utente] = lavoro(a, db, regole.carica(a.ctx.regole), adesso)
+                esiti[a.utente.nome_utente] = lavoro(a, db, regole.carica(a.ctx.regole), adesso or datetime.now())   # dopo il blocco
             except Exception as e:  # noqa: BLE001 - un utente con dati strani non deve fermare gli avvisi degli altri
                 a.guasti.append(type(e).__name__)
         if a.guasti:
