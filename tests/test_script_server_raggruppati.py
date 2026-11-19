@@ -309,3 +309,79 @@ def test_installazione_forzata_non_aspetta_il_commit_di_versione(s, come, monkey
     c2 = _commit(s.lavoro, "Correzione urgente (#50)", **{"fanta/__init__.py": "V2", "fanta/novita.d/correzione.json": "{}"})
     s.giro(10, **env)
     assert s.riavvii() == 1 and s.ultimo() == c2 and not (s.stato / "installa-subito").exists()
+
+
+# ---------------------------------------------------------------- rifiniture (#647)
+
+@con_bash
+@pytest.mark.parametrize("perche", ["partita", "intervallo"])
+def test_rilascia_fermo_e_installazione_rimandata_installo_lo_stesso_una_volta_sola(s, perche):
+    """#647, 1: finita la mezz'ora di attesa del commit di versione, se l'installazione è rimandata (partita o intervallo) i giri dopo
+    non riscrivono «installo lo stesso» senza installare: la riga è una, l'installazione arriva al primo giro libero."""
+    env = {"SCHIERAXI_INTERVALLO_MINUTI": "0"} if perche == "partita" else {}
+    _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.giro(0, **env)
+    assert s.riavvii() == 1
+    c3 = _commit(s.lavoro, "Correzione (#50)", **{"fanta/__init__.py": "V3", "fanta/novita.d/correzione.json": "{}"})
+    s.giro(10, **env)                                                       # aspetta il commit di versione
+    if perche == "partita":
+        s.esito_libero.write_text("3", encoding="utf-8")
+    s.giro(40, **env)                                                       # mezz'ora passata, ma rimandata
+    s.giro(50, **env)
+    assert s.riavvii() == 1 and s.codice() == "V2"
+    assert len(_righe(s, "installo lo stesso")) == 1
+    s.esito_libero.write_text("0", encoding="utf-8")
+    s.giro(60, **env)
+    assert s.riavvii() == 2 and s.ultimo() == c3 and s.codice() == "V3"
+    assert len(_righe(s, "installo lo stesso")) == 1
+
+
+@con_bash
+def test_dopo_una_versione_rifiutata_la_successiva_aspetta_di_nuovo_il_commit_di_versione(s):
+    """#647, 2: una versione rifiutata (qui: installata a forza, non risponde, si torna indietro) non lascia l'attesa del commit di
+    versione: la versione dopo aspetta il suo commit di versione e non parte un avviso «rilascia fermo» non vero."""
+    env = {"SCHIERAXI_INTERVALLO_MINUTI": "0"}
+    c2 = _commit(s.lavoro, "Correzione (#50)", **{"fanta/__init__.py": "V2", "fanta/novita.d/correzione.json": "{}"})
+    s.giro(10, **env)                                                       # aspetta il commit di versione
+    s.codice_curl.write_text("500", encoding="utf-8")
+    s.giro(20, SCHIERAXI_INSTALLA_SUBITO="1", **env)                        # forzata, non risponde: si torna indietro
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2 and s.codice() == "V1"
+    assert not (s.stato / "attesa-versione").exists()
+    s.codice_curl.write_text("200", encoding="utf-8")
+    _commit(s.lavoro, "Altra correzione (#51)", **{"fanta/__init__.py": "V3", "fanta/novita.d/altra.json": "{}"})
+    s.giro(45, **env)                                                       # 35 minuti dal primo giro che aveva aspettato
+    assert s.riavvii() == 2 and s.codice() == "V1"
+    assert len(_righe(s, "senza ancora il commit di versione")) == 2 and not _righe(s, "installo lo stesso")
+    assert not [a for a in s.avvisi() if "rilascia" in a]
+
+
+@con_bash
+def test_installazione_forzata_non_riuscita_resta_richiesta_fino_a_quella_riuscita(s):
+    """#647, 3: il file installa-subito si toglie solo a installazione riuscita. Se le librerie non si installano, al giro dopo la
+    richiesta c'è ancora: si installa anche durante la partita."""
+    s.esito_libero.write_text("3", encoding="utf-8")                       # partita in corso
+    (s.stato / "installa-subito").write_text("", encoding="utf-8")
+    s.esito_pip.write_text("1", encoding="utf-8")
+    c2 = _commit(s.lavoro, "librerie", **{"requirements.txt": "r2", "fanta/__init__.py": "V2"})
+    s.giro(0, uscita=1)
+    assert s.riavvii() == 0 and s.codice() == "V1"
+    assert (s.stato / "installa-subito").exists()
+    s.esito_pip.write_text("0", encoding="utf-8")
+    s.giro(10)
+    assert s.riavvii() == 1 and s.ultimo() == c2 and s.codice() == "V2"
+    assert not (s.stato / "installa-subito").exists()
+
+
+@con_bash
+def test_versione_rifiutata_con_sotto_una_modifica_al_server_senza_commit_di_versione_l_avviso_la_nomina(s):
+    """#647, 4: sotto la versione rifiutata c'è una modifica al server rimasta senza commit di versione (job rilascia saltato): non
+    è installata e l'avviso lo dice. Conta il confronto delle cartelle del server, non i soli commit «Versione …»."""
+    _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.giro(0)
+    _commit(s.lavoro, "Correzione (#61)", **{"fanta/__init__.py": "V3"})
+    s.giro(10)                                                              # raggruppata
+    _commit(s.lavoro, "Versione 1.6: codice 4, non parte", **{"fanta/__init__.py": "V4"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    s.giro(70)
+    assert s.codice() == "V2"
+    assert "La versione nuova non partiva" in s.avvisi()[-1] and "arrivat" in s.avvisi()[-1]
