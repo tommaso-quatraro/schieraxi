@@ -236,7 +236,7 @@ struct TestiCortiWidgetTests {
         let adesso = try #require(Quando.data("2026-10-31 18:00"))
         // docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»: la giornata è scritta sopra e non si ripete
         let attesa = "La formazione si è chiusa oggi 14:50"
-        #expect(r.fraseFase(adesso: adesso) == attesa + ". I punti fatti sono in Oggi.")
+        #expect(r.fraseFase(adesso: adesso) == attesa + ". I punti fatti sono nella Formazione.")
         #expect(Catalogo.Oggi.chiusaDettaglio(quando: "oggi 14:50") == attesa)
     }
 

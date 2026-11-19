@@ -67,7 +67,7 @@ Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le ril
 Limiti: file fino a 5 MB, al massimo 20 squadre da 40 giocatori, 10 importazioni al giorno (controllare e poi salvare lo stesso file conta una volta). Se dice che non trova nessuna rosa, controlla di aver preso il file delle rose e non il calendario o la classifica.
 Se il file Excel della lega ha anche altri fogli (listone, calendario, classifica), SchieraXI li salta e legge solo le rose; se ci sono solo quelli, il messaggio dice quali fogli ha saltato.
 
-Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo) va bene. Un codice sconosciuto compare tra i non trovati; se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone, in Lega, **Non riconosciuti**).
+Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo) va bene. Un codice sconosciuto compare tra i non trovati; se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone anche dopo, in fondo a **Impostazioni > Aggiorna le rose**).
 
 Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Impostazioni > Aggiorna le rose**.
 
@@ -192,7 +192,7 @@ Gli avvisi dicono le cose a parole e sono nella lingua scelta nell'app: se la me
 
 Attivazione: nella web app, **Impostazioni > Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo.
 
-Nell'app per iPhone e iPad (Impostazioni > Notifiche) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
+Nell'app per iPhone e iPad (Impostazioni > Avvisi) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
 Se le notifiche smettono di arrivare dopo un cambio di chiave del server: spegni e riaccendi **Avvisi su questo dispositivo**.
 

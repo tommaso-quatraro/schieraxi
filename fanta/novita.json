@@ -1,5 +1,47 @@
 [
   {
+    "versione": "1.522",
+    "data": "2026-11-19T21:25:09",
+    "titolo": "Aggiornamenti del server più ordinati",
+    "voci": [
+      "Nessun cambiamento visibile: l'aggiornamento automatico del server tiene un registro più pulito e manda avvisi più precisi."
+    ],
+    "tecnico": [
+      "aggiorna-app.sh (#647): la riga «installo lo stesso» dopo la mezz'ora di attesa del commit di versione si scrive una volta sola anche se l'installazione è rimandata; attesa-versione si toglie quando una versione è rifiutata; installa-subito si toglie solo a installazione riuscita; l'avviso del rifiuto nomina anche le modifiche al server senza commit di versione rimaste sotto (confronto delle cartelle del server fino all'ultimo commit senza novità in attesa) e dice se la richiesta di installare subito resta attiva.",
+      "Scambio degli ambienti Python non riuscito: si rimettono subito ambiente e file della versione di prima; la copia di sicurezza si sostituisce solo se riesce e non si rifà mai con un codice rimasto a metà (segno installazione-in-corso).",
+      "Installazione interrotta (server spento, processo fermato): il giro dopo rimette subito file e ambiente Python della versione di prima dalla copia di sicurezza, riavvia il servizio e avvisa (una volta al giorno); la stessa versione interrotta due volte diventa rifiutata. Senza copia di sicurezza non installa e l'avviso rimanda ai passi del LEGGIMI."
+    ]
+  },
+  {
+    "versione": "1.521",
+    "data": "2026-11-19T21:21:27",
+    "titolo": "Testi: le indicazioni portano alle schermate di oggi",
+    "voci": [
+      "Avvisi, email di sicurezza e messaggi di errore non nominano più le schede Lega, Squadra e Altro, che non ci sono più: dicono dove trovare la cosa nelle Impostazioni.",
+      "Sull'iPhone la frase sulla regola delle partite rinviate, l'aiuto delle regole e la fine della configurazione guidata parlano della Formazione e di Giornate, come la web."
+    ],
+    "tecnico": [
+      "Percorsi vecchi corretti in salute.py (Impostazioni > Gestione > Stato dei dati), posta.py (Impostazioni > Il tuo account), diario.py (stessa frase delle altre rotte, «La mia squadra»), asta.py e scambi_multi.py (crediti nelle Impostazioni), docstring dell'eliminazione dell'account (openapi.json rigenerato), onb.valori_piu_comuni, oggi.rinvio_regola_lega, etichette e paragrafo di Sotto il cofano (italiano e inglese).",
+      "iPhone: TestiRinvio.nota usa oggi.rinvio_regola_lega; aiuto delle regole e riga della prima giornata usano regole.rinviate_aiuto_formazione e regole.prima_giornata_conta della web; tolte dal catalogo regole.con_prima_giornata, regole.rinviate_aiuto ed err.indica_prima_squadra_diario; tolto VuotoOsservato del widget, senza chiamanti.",
+      "Nuovo tests/test_testi_percorsi.py: catalogo, stringhe del server, contenuti, stringhe Swift fuori dai commenti, guida e Sotto il cofano non devono contenere i percorsi delle schede tolte (anche con › e in inglese)."
+    ]
+  },
+  {
+    "versione": "1.520",
+    "data": "2026-11-19T21:11:08",
+    "titolo": "Avvisi: niente più doppioni vicino alla scadenza, e «Aggiorna i dati» non parte due volte",
+    "voci": [
+      "Nell'ultima ora prima della scadenza «formazione tra un'ora» e «cambia la formazione» arrivano una volta sola, anche quando due giri di controllo cadono nello stesso momento.",
+      "Impostazioni, «Aggiorna i dati» (solo per l'amministratore): mentre il server sta già aggiornando da solo, il pulsante risponde «Aggiornamento già in corso» invece di farne partire un secondo."
+    ],
+    "tecnico": [
+      "avvisi_utenti.esegui (#660): il lavoro di ogni utente sta dentro un blocco su file fra processi (avvisi.lock nella sua cartella, blocco.BloccoFile, senza creare la cartella): il giro dei promemoria dal cron e quello dei cambi del pianificatore non leggono e riscrivono più insieme gli stessi stati. Occupato oltre ATTESA_BLOCCO (30 secondi): l'utente passa al giro dopo, senza segnarsi come servito, con una riga nel registro. Senza un'ora fissa (adesso), l'ora di ogni utente si prende dopo averne preso il blocco: un giro partito prima ma arrivato dopo vede come recente l'avviso appena mandato dall'altro. Anche l'ordine del giro (avvisi-giro.json, uno per tutti e due i giri) si legge e riscrive dentro un blocco su file (ATTESA_GIRO, 5 secondi; occupato: per quel giro non si salva).",
+      "Errori che lasciano traccia: ogni utente in errore scrive una riga nel registro (numero dell'utente e tipo d'errore, mai nomi né messaggi), anche nei giri a 60, 30 e 15 minuti del servizio. Gli errori dell'avviso «cambia la formazione» (in notifiche.cambi e nel giro dei promemoria) e dei dettagli del promemoria non si ingoiano più (notifiche.segna_guasto): l'avviso parte lo stesso e il guasto va nel ritorno di esegui, che il comando stampa; senza account, una riga nel registro. I comandi cambi e promemoria con gli account stampano il numero dell'utente, non più il nome.",
+      "POST /api/aggiorna prende anche pianificatore.blocco_processo (lo stesso blocco di aggiorna.sh) e lo tiene fino alla fine del lavoro; occupato: la risposta di sempre {\"avviato\": false, \"messaggio\": \"Aggiornamento già in corso\"}. Nessun campo dell'API nuovo o tolto.",
+      "script/server/aggiorna.sh: con il blocco occupato aspetta fino a 2 minuti (flock -w 120: un giro leggero del servizio dura pochi secondi); oltre, salta il turno e lo scrive in dati/aggiorna.log invece di uscire muto. Durante «Aggiorna i dati» il turno salta tutto (anche cambi, affidabilità e taratura, rifatti al giro dopo)."
+    ]
+  },
+  {
     "versione": "1.519",
     "data": "2026-11-19T20:37:14",
     "titolo": "Statistiche avanzate: quando Understat non dà i dati, l'errore dice cosa mostra il sito",

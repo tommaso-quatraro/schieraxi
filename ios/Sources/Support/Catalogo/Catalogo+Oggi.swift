@@ -165,6 +165,9 @@ extension Catalogo {
         /// `oggi.rinvio_salvato`
         static let rinvioSalvato = "Fatto: consigli aggiornati per questa giornata"
 
+        /// `oggi.rinvio_regola_lega`
+        static let rinvioRegolaLega = "È la regola della tua lega (Impostazioni › Regole e scadenza). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata."
+
         /// `oggi.recupero_manca`
         static func recuperoManca(partite: String) -> String {
             "Manca il recupero di \(partite): i punti possono ancora cambiare."
