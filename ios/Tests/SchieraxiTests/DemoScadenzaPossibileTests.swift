@@ -177,7 +177,7 @@ struct DemoScadenzaPossibileTests {
         let w = try #require(RiassuntoWidget.leggi(LegaDemo.widget(adesso: telefono, fase: .inCorso)), "il widget in corso non si legge")
         #expect(ParoleWidget.sottoScadenza(w.inizio, adesso: adesso, conProbabili: w.conProbabili) == ["si è chiusa ieri 20:35"])
         let r = try #require(w.comeRiassuntoOggi(scaricatoIl: adesso), "il riassunto di Oggi del widget non si legge")
-        #expect(r.fraseFase(adesso: adesso) == "La formazione si è chiusa ieri 20:35. I punti fatti sono in Oggi.")
+        #expect(r.fraseFase(adesso: adesso) == "La formazione si è chiusa ieri 20:35. I punti fatti sono nella Formazione.")
     }
 
     // MARK: - Prima della scadenza e a giornata finita

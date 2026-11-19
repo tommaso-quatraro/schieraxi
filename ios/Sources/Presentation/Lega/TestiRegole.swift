@@ -62,5 +62,5 @@ enum TestiRegole {
     static let primaGiornata = Catalogo.Regole.primaGiornata
     static let primaGiornataAiuto = Catalogo.Regole.primaGiornataAiuto
     /// In fondo alla sezione: un esempio fisso («a 4»), che non cambia con il numero scelto.
-    static let conPrimaGiornata = Catalogo.Regole.conPrimaGiornata
+    static let conPrimaGiornata = Catalogo.Regole.primaGiornataConta
 }

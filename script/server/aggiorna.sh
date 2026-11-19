@@ -126,7 +126,13 @@ controlla_passi() {   # uscita del comando, righe del registro prima del giro
 }
 
 exec 9>>"$HOME/.cache/fantacalcio/blocco"
-flock -n 9 || exit 0          # un altro aggiornamento e' gia' in corso
+# Un altro aggiornamento tiene il blocco: il giro di prima, un giro leggero del servizio (probabili o risultati, pochi secondi) o
+# «Aggiorna i dati» dall'app, che lo tiene per tutto l'aggiornamento (#660). Si aspetta fino a 2 minuti, cosi' un giro leggero non fa
+# saltare il turno; oltre, il turno salta tutto (anche cambi, affidabilita' e taratura: li rifa' il giro dopo) e lo dice il log.
+if ! flock -w 120 9; then
+  { echo "=== $(date '+%F %T')"; echo "aggiornamento saltato: un altro aggiornamento ha il blocco da piu' di 2 minuti"; } >> "$LOG"
+  exit 0
+fi
 rm -f "$HOME/.cache/fantacalcio/errori"     # il contatore unico di prima (fino a novembre 2026): non serve più
 
 echo "=== $(date '+%F %T')" >> "$LOG"
