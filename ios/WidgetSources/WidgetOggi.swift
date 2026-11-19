@@ -144,7 +144,7 @@ struct VistaWidget: View {
             Text(r.inCorso ? ParoleWidget.chiusa : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
             Spacer(minLength: 0)
             puntiFattiGrandi(r, stile: .largeTitle)
-            Text("punti fatti").font(.caption2).foregroundStyle(.white.opacity(0.8))
+            Text(paroleSottoPunti(r)).font(.caption2).foregroundStyle(.white.opacity(0.8))
             if let fine = r.puntiFineTesto {
                 Text(fine).font(.caption2.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -163,7 +163,7 @@ struct VistaWidget: View {
                 Text(r.inCorso ? ParoleWidget.chiusa : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
                 Spacer(minLength: 0)
                 puntiFattiGrandi(r, stile: .largeTitle)
-                Text("punti fatti").font(.caption).foregroundStyle(.white.opacity(0.8))
+                Text(paroleSottoPunti(r)).font(.caption).foregroundStyle(.white.opacity(0.8))
                 if r.finita, let fine = r.puntiFineTesto {
                     Text(fine).font(.caption.weight(.semibold)).monospacedDigit().foregroundStyle(.white.opacity(0.9))
                 }
@@ -173,17 +173,20 @@ struct VistaWidget: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) {
                 if r.inCorso {
-                    Label("A fine giornata", systemImage: "chart.line.uptrend.xyaxis").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                    Text(r.puntiFine.map { "circa \(Formato.punti($0))" } ?? "—")
+                    // «circa 75 a fine giornata» (`formazione.circa_fine`) in mezza larghezza non entra con il numero grande: sopra
+                    // «A fine giornata», sotto il numero senza decimali come la testa della Formazione («Differenze ammesse», #774)
+                    Label(Catalogo.Oggi.aFineGiornata, systemImage: "chart.line.uptrend.xyaxis").font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(r.puntiFine.map { "circa \(Formato.decimali($0, cifre: 0))" } ?? "—")
                         .font(.system(.title2, design: .rounded).weight(.bold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
                     if r.punti != nil {
-                        Text("attesi prima: \(puntiTesto(r))").font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.85))
-                            .lineLimit(1).minimumScaleFactor(0.7)
+                        Text(Catalogo.Oggi.attesiPrima(n: puntiTesto(r))).font(.caption).monospacedDigit()
+                            .foregroundStyle(.white.opacity(0.85)).lineLimit(1).minimumScaleFactor(0.7)
                     }
                     Spacer(minLength: 0)
+                    // la frase intera del catalogo («Hanno giocato tutti: mancano solo i voti ufficiali.») va a capo, non si taglia
                     if let a = r.ancoraDaGiocareTesto {
-                        Text(a).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
+                        Text(a).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(3).minimumScaleFactor(0.8)
                     }
                 } else {
                     GiornataInRiga(forme: r.formeGiornata, voce: r.voceGiornata, simbolo: "calendar")
@@ -214,7 +217,7 @@ struct VistaWidget: View {
     private func faseRettangolare(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(r.testaRettangoloFase).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
-            Text("\(r.puntiFattiTesto) punti fatti").font(.headline).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
+            Text("\(r.puntiFattiTesto) \(paroleSottoPunti(r))").font(.headline).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
             if r.finita, r.inizio != nil {
                 prossimaBreve(r).font(.caption2)
             } else if let fine = r.puntiFineTesto {
@@ -225,11 +228,17 @@ struct VistaWidget: View {
     }
 
     private func faseRiga(_ r: RiassuntoOggi) -> some View {
-        // si accorcia di parole intere, mai la giornata: «Giornata 8: 41,5 punti fatti finora» → … → «Giornata 8: 41,5»
+        // si accorcia di parole intere, mai la giornata: «Giornata 8: 41,5 punti finora» → «Giornata 8: 41,5»
         RigaInLinea(r.formeRigaInLineaFase, icona: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
     }
 
     // MARK: pezzi comuni
+
+    /// Accanto ai punti fatti: a giornata in corso «punti finora», come la testa della Formazione (#774); a giornata finita
+    /// «punti fatti». Nel cerchio della schermata di blocco ci sta solo «fatti» («Differenze ammesse»).
+    private func paroleSottoPunti(_ r: RiassuntoOggi) -> String {
+        r.inCorso ? Catalogo.Formazione.puntiFinora : Catalogo.Oggi.puntiFatti
+    }
 
     private func inCorso(_ r: RiassuntoOggi) -> Bool {
         guard let inizio = r.inizio else { return false }
