@@ -17,6 +17,20 @@ extension Catalogo {
         /// `account.esci`
         static let esci = "Esci"
 
+        /// `account.esci_tutti`
+        static let esciTutti = "Esci da tutti i dispositivi"
+
+        /// `account.esci_tutti_conferma`
+        static let esciTuttiConferma = "Esci da tutti i dispositivi, anche da questo? Dovrai accedere di nuovo su ognuno."
+
+        /// `account.esci_tutti_google`
+        static let esciTuttiGoogle = "Il collegamento con Google si toglie: per entrare con Google dovrai ricollegarlo."
+
+        /// `account.esci_tutti_no`
+        static func esciTuttiNo(motivo: String) -> String {
+            "Non riesco a farti uscire da tutti i dispositivi. \(motivo)"
+        }
+
         /// `account.cambia_password`
         static let cambiaPassword = "Cambia la password"
 

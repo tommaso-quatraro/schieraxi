@@ -423,6 +423,50 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
     }
 
+    // MARK: Esci da tutti i dispositivi (#765)
+
+    func testEsciDaTuttiChiudeOgniSessioneEPoiQuestoTelefono() async throws {
+        let server = serverAccount(extra: { _, p in
+            p == "/api/account/esci-da-tutti" ? Data("{\"sessioni_chiuse\": 3}".utf8) : nil
+        })
+        memoria.set(true, forKey: "account.multiutente")
+        let s = sessione(server)
+        try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        let prima = pulizie
+        try await s.esciDaTutti()
+        XCTAssertEqual(server.richieste.filter { $0.hasPrefix("POST /api/account/esci") }, ["POST /api/account/esci-da-tutti"],
+                       "una richiesta sola, alla rotta di «Esci da tutti» (non a quella di «Esci»)")
+        let corpo = try XCTUnwrap(server.corpiInviati(a: "/api/account/esci-da-tutti").first)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: corpo) as? [String: Any])
+        XCTAssertNil(json["password"], "senza password: il server non manda un codice di recupero nuovo, che qui andrebbe perso")
+        XCTAssertEqual(s.stato, .daAccedere, "si torna allo schermo d'accesso")
+        XCTAssertNil(archivio.leggi(server: server.indirizzo))
+        XCTAssertGreaterThan(pulizie, prima, "i dati di questo telefono si cancellano")
+        XCTAssertNil(memoria.data(forKey: "account.utente"))
+        XCTAssertFalse(s.inCorso)
+    }
+
+    /// Se la richiesta non arriva gli altri dispositivi sono ancora dentro: l'errore si vede e su questo telefono non cambia niente
+    /// (al contrario di «Esci», che riesce anche con il server spento).
+    func testEsciDaTuttiNonRiuscitoLoDiceERestaDentro() async throws {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/esci-da-tutti" { throw ErroreApi.rete("spento") }
+            return nil
+        })
+        memoria.set(true, forKey: "account.multiutente")
+        let s = sessione(server)
+        try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        let prima = pulizie
+        var errore: Error?
+        do { try await s.esciDaTutti() } catch { errore = error }
+        XCTAssertNotNil(errore, "la richiesta non è arrivata: non si può dire che è andata")
+        XCTAssertEqual(server.quante("POST /api/account/esci-da-tutti"), 1)
+        XCTAssertNotNil(s.utente, "si resta dentro")
+        XCTAssertEqual(archivio.leggi(server: server.indirizzo), "tok-1")
+        XCTAssertEqual(pulizie, prima, "i dati di questo telefono restano")
+        XCTAssertFalse(s.inCorso)
+    }
+
     func testEliminaChiudeAncheQuestoTelefono() async throws {
         let server = serverAccount()
         archivio.salva("tok", server: server.indirizzo)
