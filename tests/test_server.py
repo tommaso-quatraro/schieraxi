@@ -169,6 +169,39 @@ def test_altri_siti_non_possono_modificare(client):
     assert estraneo.get("/api/regole").status_code == 200      # leggere si può
 
 
+def _fine_aggiornamento():
+    """Aspetta che il lavoro avviato da POST /api/aggiorna finisca (un thread del server); il tempo massimo evita solo il test appeso."""
+    import time
+    fine = time.monotonic() + 30
+    while server._aggiornamento["in_corso"] and time.monotonic() < fine:
+        time.sleep(0.01)
+    assert not server._aggiornamento["in_corso"]
+
+
+def test_aggiorna_dall_app_non_parte_con_l_aggiornamento_programmato_in_corso(client, monkeypatch):
+    """«Aggiorna i dati» mentre gira l'aggiornamento programmato del server (o un giro leggero di un altro processo): il blocco su file
+    è occupato, quindi niente secondo aggiornamento insieme (le stesse pagine chieste due volte alle fonti, #660). Libero, parte; e il
+    blocco resta preso fino alla fine del lavoro."""
+    import contextlib
+    chiamate, tenuto = [], []
+    monkeypatch.setattr(server.aggiorna, "esegui", lambda **k: chiamate.append(bool(tenuto)) or [])
+    monkeypatch.setattr(server.pianificatore, "blocco_processo", lambda: contextlib.nullcontext(False))
+    assert client.post("/api/aggiorna").json() == {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+    assert chiamate == [] and not server._aggiornamento["in_corso"]
+
+    @contextlib.contextmanager
+    def libero():
+        tenuto.append(1)
+        try:
+            yield True
+        finally:
+            tenuto.clear()
+    monkeypatch.setattr(server.pianificatore, "blocco_processo", libero)
+    assert client.post("/api/aggiorna").json() == {"avviato": True}          # il lucchetto interno non è rimasto preso
+    _fine_aggiornamento()
+    assert chiamate == [True] and tenuto == []                              # tenuto durante il lavoro, lasciato alla fine
+
+
 def test_app_sempre_aggiornata_sul_telefono(client):
     assert client.get("/app.js").headers["cache-control"] == "no-cache"
 
