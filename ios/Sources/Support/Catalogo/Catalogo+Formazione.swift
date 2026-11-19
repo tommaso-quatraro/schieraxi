@@ -129,6 +129,12 @@ extension Catalogo {
         /// `formazione.bloccati`
         static let bloccati = "Chi gioca in una partita già cominciata non si può più spostare."
 
+        /// `formazione.non_salvata_rete`
+        static let nonSalvataRete = "La formazione non è stata salvata perché non riesco a collegarmi: torna sulla Formazione e riprova."
+
+        /// `formazione.non_salvata`
+        static let nonSalvata = "La formazione non è stata salvata: torna sulla Formazione e controllala."
+
         /// `formazione.copia_lega`
         static let copiaLega = "Copia per l'app della lega"
 
