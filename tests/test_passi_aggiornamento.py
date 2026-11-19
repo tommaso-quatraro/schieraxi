@@ -258,6 +258,30 @@ def test_understat_pagina_web_al_posto_dei_dati():
     assert us.dati_json("{\"nome\": \"Martínez\"}".encode("utf-8")) == {"nome": "Martínez"}
 
 
+# inventata e corta, con la forma di quella che Understat dà dal novembre 2026 su ogni indirizzo: titolo col solo nome del sito,
+# stile, un disegno, una frase
+PAGINA_DI_ATTESA = (b"<!DOCTYPE html>\n<html><head><title>Sito</title><style>body { color: #fff }</style></head>"
+                    b"<body class=\"scuro\"><div><?xml version=\"1.0\"?><svg><text>logo</text></svg></div>\n"
+                    b"<p>Torniamo\n   presto &amp; bene</p><!-- nota --><script>var x = 1;</script></body></html>")
+
+
+def test_understat_pagina_web_dice_anche_il_testo_che_mostra():
+    """Il solo titolo («Understat.com») non diceva cosa c'era scritto sulla pagina: il messaggio riporta anche il testo visibile,
+    senza stile, disegni, commenti e codice, con un tetto di lunghezza."""
+    with pytest.raises(us.RispostaNonDati) as e:
+        us.dati_json(PAGINA_DI_ATTESA)
+    assert "(titolo «Sito», testo «Torniamo presto & bene»): " in str(e.value)
+    for scarto in ("logo", "color", "var x", "nota", "xml", "scuro"):
+        assert scarto not in str(e.value)
+    with pytest.raises(us.RispostaNonDati) as e:
+        us.dati_json(b"<html><body><p>" + b"parola " * 100 + b"</p></body></html>")
+    testo = str(e.value).split("testo «")[1].split("»")[0]
+    assert testo.startswith("parola parola") and len(testo) <= 120
+    with pytest.raises(us.RispostaNonDati) as e:                               # niente testo visibile: solo il titolo, come prima
+        us.dati_json(b"<html><head><title>Vuota</title></head><body><svg></svg></body></html>")
+    assert "(titolo «Vuota»): " in str(e.value) and "testo" not in str(e.value)
+
+
 def test_aggiornamento_understat_con_pagina_web_una_richiesta_sola_e_errore_chiaro(db, monkeypatch):
     chiamate = []
     monkeypatch.setattr(aggiorna.rete, "scarica", lambda url, *a, **k: chiamate.append(url) or SimpleNamespace(content=MANUTENZIONE))
