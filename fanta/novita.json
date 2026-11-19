@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.516",
+    "data": "2026-11-19T03:15:45",
+    "titolo": "Ore tranquille: si riaccendono anche se le avevi salvate con inizio e fine alla stessa ora",
+    "voci": [
+      "Impostazioni, Avvisi: chi aveva salvato le ore tranquille con inizio e fine alla stessa ora le trova spente e, sotto l'interruttore, «dalle 23 alle 7». Riaccendendole valgono dalle 23 alle 7, sulla web e sull'iPhone. Prima riaccenderle dava errore e non c'era modo di scegliere due ore diverse."
+    ],
+    "tecnico": [
+      "notifiche.impostazioni (#711): con silenzio_da uguale a silenzio_a (salvataggi di prima del controllo, accese o spente) restituisce silenzio falso e le ore predefinite (23 e 7); PUT /api/avvisi con il solo silenzio acceso non dà più 422. Due ore uguali mandate apposta con l'interruttore acceso restano rifiutate (422). ore_tranquille_spente di GET /api/avvisi non cambia. Nessun campo dell'API nuovo o tolto; i client mandano la stessa richiesta di prima.",
+      "Catalogo: avv.avevi_scelto_ore dice che riaccendendole valgono dalle 23 alle 7 (web e iPhone rigenerati con script/testi.py --scrivi)."
+    ]
+  },
+  {
     "versione": "1.515",
     "data": "2026-11-19T02:22:38",
     "titolo": "Promemoria della scadenza: sull'iPhone seguono «L'ho messa» anche quando la spunta cambia dalla web",
