@@ -321,11 +321,26 @@ def test_il_giro_stampa_solo_i_numeri(mondo, registro, monkeypatch, capsys):
         def now(cls, tz=None):
             return UN_ORA_PRIMA
     monkeypatch.setattr(avvisi_utenti, "datetime", UnOraPrima)
-    nuovo("amico1", (1, "Castro"))
+    a = nuovo("amico1", (1, "Castro"))
     monkeypatch.setattr(archivio, "apri", lambda *a: mondo.db)
     cli._avvisi_per_utente("promemoria")
     cattura = capsys.readouterr()
-    assert "amico1: 1 avvisi (promemoria)" in cattura.out and "Castro" not in cattura.out + cattura.err
+    assert f"utente {a.utente_id}: 1 avvisi (promemoria)" in cattura.out                # il numero dell'utente, mai il nome
+    assert "Castro" not in cattura.out + cattura.err and "amico1" not in cattura.out + cattura.err
+
+
+def test_il_giro_stampa_gli_errori_col_numero_dell_utente(mondo, registro, monkeypatch, capsys):
+    from fanta import archivio
+
+    def rotto(att, db, r, adesso):
+        raise OSError("disco pieno: cartella-di-amico1")
+    a = nuovo("amico1", (1, "Castro"))
+    monkeypatch.setitem(avvisi_utenti._LAVORI, "cambi", rotto)
+    monkeypatch.setattr(archivio, "apri", lambda *a: mondo.db)
+    cli._avvisi_per_utente("cambi")
+    cattura = capsys.readouterr()
+    assert f"utente {a.utente_id}: errore negli avvisi (cambi): OSError" in cattura.out
+    assert "amico1" not in cattura.out + cattura.err
 
 
 def test_spento_i_comandi_restano_quelli_di_sempre(monkeypatch):
