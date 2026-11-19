@@ -958,6 +958,11 @@ enum ParoleWidget {
     /// Il conto alla rovescia dopo la scadenza, come la web (`oggi.chiusa`): per la giornata mai «In corso».
     static let chiusa = "Chiusa"
 
+    /// Per chi è entrato a giornata già iniziata senza una formazione (#687), come la web e la Formazione dell'app
+    /// (`oggi.gia_iniziata` e `oggi.prepara_prossima` del catalogo comune, che il widget non compila: li confrontano i test).
+    static let giaIniziata = "Questa giornata è già iniziata"
+    static let preparaProssima = "Prepara la prossima"
+
     /// Il simbolo dei crediti, lo stesso dell'app («C» nel cerchio): i crediti non sono euro.
     static let simboloCrediti = "c.circle"
 
@@ -1261,6 +1266,37 @@ extension RiassuntoOggi {
 
     /// Il sottotitolo per VoiceOver, con i due numeri.
     var voceSottotitoloRettangolo: String { finita ? "Prossima: \(voceGiornata)" : voceGiornata }
+}
+
+// MARK: Entrato a giornata già iniziata senza formazione (`senza_formazione`, #687): parole della web (`oggi.gia_iniziata`, `oggi.prepara_prossima`)
+
+extension RiassuntoOggi {
+    /// La giornata da preparare nelle sue forme, dalla più lunga: «Giornata 9 · 12ª di Serie A», «Giornata 9»; mai «G9» (#299).
+    /// Vuoto se il server non dice quale.
+    var formeProssimaDaPreparare: [String] { ParoleWidget.formeGiornata(prossimaDaPreparare?.nomeGiornata) }
+
+    /// La giornata da preparare per VoiceOver, con i due numeri («Giornata 9, 12ª di Serie A»), o «Prossima giornata».
+    var voceProssimaDaPreparare: String { prossimaDaPreparare?.nomeGiornata?.voce ?? "Prossima giornata" }
+
+    /// La riga in linea della schermata di blocco, dalla più lunga: «Prepara la prossima: 4 giorni 2 h» → «Prepara la prossima».
+    /// Vuoto fuori da quel caso.
+    func formeRigaInLineaSenzaFormazione(adesso: Date) -> [String] {
+        guard senzaFormazioneInCorso else { return [] }
+        guard let scadenza = scadenzaDelConto, let conto = Quando.contoAllaRovescia(fino: scadenza, adesso: adesso) else {
+            return [ParoleWidget.preparaProssima]
+        }
+        return ["\(ParoleWidget.preparaProssima): \(conto)", ParoleWidget.preparaProssima]
+    }
+
+    /// La frase per VoiceOver: «Giornata 8, 11ª di Serie A. Questa giornata è già iniziata. Prepara la prossima: Giornata 9, 12ª di
+    /// Serie A, scadenza sab 14 nov, 14:50.». Nil fuori da quel caso.
+    var descrizioneSenzaFormazione: String? {
+        guard senzaFormazioneInCorso else { return nil }
+        var t = "\(voceGiornata). \(ParoleWidget.giaIniziata). \(ParoleWidget.preparaProssima)"
+        if let nome = prossimaDaPreparare?.nomeGiornata { t += ": \(nome.voce)" }
+        if let scadenza = scadenzaDelConto { t += ", scadenza \(Quando.leggibile(scadenza))" }
+        return t + "."
+    }
 }
 
 // MARK: Widget «Osservato»: una sola percentuale, e i seguiti tolti dal server per il peso
