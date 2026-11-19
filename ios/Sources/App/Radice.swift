@@ -233,6 +233,8 @@ struct RadiceView: View {
             ForEach(Sezione.allCases) { s in
                 Tab(value: s) {
                     vista(s)
+                        // lasciata la Formazione, un suo salvataggio che non riesce si dice sulla scheda aperta (#726)
+                        .avvisoNonSalvata(modello.formazione, attiva: s != .formazione && nav.sezione == s)
                 } label: {
                     Label(s.titolo, systemImage: s.icona)
                 }
@@ -244,11 +246,14 @@ struct RadiceView: View {
                     RicercaGiocatoreView(server: modello.server)
                         .destinazioniGiocatore(server: modello.server)
                 }
+                .avvisoNonSalvata(modello.formazione, attiva: nav.sezione == .cerca)
             }
         }
         .tabViewStyle(.sidebarAdaptable)
         .onAppear { apriPaginaRichiesta() }
         .onChange(of: nav.paginaDaAprire) { _, _ in apriPaginaRichiesta() }
+        // la Formazione sa se è la scheda aperta: decide dove si dice un suo salvataggio che non riesce (#726)
+        .onChange(of: nav.sezione, initial: true) { _, sezione in modello.formazione.inVista = sezione == .formazione }
         // un indirizzo che porta a una parte delle Impostazioni (La mia lega) torna alla pagina, anche se sopra ce n'era un'altra
         .onChange(of: nav.parteImpostazioni) { _, parte in if parte != nil { modello.lega.percorso = [] } }
         .barraSchedeCheSiRiduce()

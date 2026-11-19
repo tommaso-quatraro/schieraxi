@@ -28,6 +28,22 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// L'ultimo avviso (un salvataggio non riuscito, la scelta cambiata da un altro dispositivo, la formazione copiata).
     @Published var messaggio: String?
+    /// Un salvataggio partito da qui non è riuscito quando eri già su un'altra scheda (#726): l'avviso che la radice mostra sulle
+    /// altre schede (`AvvisoNonSalvata`), con una frase del catalogo che nomina la formazione (`testoNonSalvata`).
+    @Published var avvisoAltrove: String?
+    /// La Formazione è la scheda aperta (lo dice la radice a ogni cambio di scheda). Decide dove si dice una scrittura che non
+    /// riesce: qui sotto il campo (`messaggio`) o sulle altre schede (`avvisoAltrove`). Tornando qui l'avviso delle altre schede se
+    /// ne va e, se c'è un guasto, compare quello di sempre.
+    var inVista = true {
+        didSet {
+            guard inVista else { return }
+            avvisoAltrove = nil
+            if let guasto { messaggio = testoQui(guasto) }
+        }
+    }
+    /// L'errore dell'ultima scrittura non riuscita a scheda lasciata, finché una dopo non riesce o arriva un'altra giornata: tornando
+    /// sulla Formazione se ne rivede l'avviso, anche se quello delle altre schede è passato senza che lo vedessi (sotto un foglio).
+    private var guasto: Error?
     /// Nome di un'altra squadra della lega, se se ne sta guardando la formazione consigliata (nil = la mia).
     @Published private(set) var squadraVista: String?
     /// Un altro modulo guardato nella formazione di un'altra squadra: solo sullo schermo, non si salva niente.
@@ -342,6 +358,7 @@ final class FormazioneViewModel: ViewModelBase {
             giornata = f.giornata
             dimentica()
             sceltaLetta = false
+            guasto = nil        // era della giornata di prima
         }
         let letta: SceltaSalvata?
         do {
@@ -517,6 +534,7 @@ final class FormazioneViewModel: ViewModelBase {
         defer { occupato = false }
         do {
             if cera { try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)") }
+            riuscita()
             guard g == generazione else {
                 await carica()
                 return false
@@ -549,6 +567,7 @@ final class FormazioneViewModel: ViewModelBase {
         do {
             let corpo = RichiestaValutazione(titolari: ids, salva: true, giornata: f.giornata, messa: messa)
             let r: ValutazioneManuale = try await server.posta("POST", "/api/formazione/valuta", corpo)
+            riuscita()
             // nel frattempo la schermata si è riletta: questa risposta non vale, si rilegge dal server (mai una scelta che non si vede)
             guard g == generazione else {
                 await carica()
@@ -571,13 +590,21 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Una scrittura non riuscita: 412 rilegge e lo dice (`comune.cambiato_ricarico`); 409 `formazione_chiusa` rilegge (la scadenza
     /// è passata con la schermata aperta); gli altri errori (per esempio 400 `giocatore_bloccato`) dicono il messaggio del server.
+    /// Come `nonSalvata` della web (#667, #726): nella tua Formazione il motivo; lasciata la scheda, o guardando la formazione di
+    /// un'altra squadra, una frase che nomina la formazione (lì «Non riesco a collegarmi» da solo sembrerebbe parlare d'altro). Le
+    /// scritture sono una alla volta, quindi questa è sempre l'ultima partita da qui.
     private func nonRiuscita(_ error: Error, generazione g: Int) async {
         if let e = error as? ErroreApi, e.eConflitto {
             await cambiataAltrove()
             return
         }
         Haptics.esito(riuscito: false)
-        messaggio = error.localizedDescription
+        if !inVista {
+            avvisoAltrove = Self.testoNonSalvata(error)
+            guasto = error
+        } else {
+            messaggio = testoQui(error)
+        }
         if g != generazione {
             await carica()
         } else if case .codificato(let codice, _)? = error as? ErroreApi, codice == Self.codiceChiusa {
@@ -587,6 +614,26 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Il codice del server per una scrittura arrivata dopo la scadenza (409).
     static let codiceChiusa = "formazione_chiusa"
+
+    /// L'avviso di una scrittura non riuscita nella Formazione: il motivo per la tua; guardando la formazione di un'altra squadra la
+    /// frase che nomina la formazione, come la web.
+    private func testoQui(_ error: Error) -> String {
+        squadraVista == nil ? error.localizedDescription : Self.testoNonSalvata(error)
+    }
+
+    /// Una scrittura è riuscita (anche se la sua risposta arriva dopo una rilettura): il guasto di prima non vale più, nemmeno il
+    /// suo avviso.
+    private func riuscita() {
+        guard guasto != nil else { return }
+        guasto = nil
+        messaggio = nil
+    }
+
+    /// La frase di una scrittura non riuscita fuori dalla tua Formazione: la rete solo se è lei il motivo (rete giù o server troppo
+    /// lento, come `e.rete` della web), altrimenti il rifiuto del server, che chiede di controllare.
+    static func testoNonSalvata(_ error: Error) -> String {
+        DatiVecchi.eDiRete(error) ? Catalogo.Formazione.nonSalvataRete : Catalogo.Formazione.nonSalvata
+    }
 
     /// 412: la scelta è stata cambiata su un altro dispositivo e la scrittura non è stata fatta. Si dice che si sta ricaricando, si
     /// rilegge tutto (formazione e scelta, con l'ETag nuovo) e, a dati riletti, si chiede di controllare e rifare la modifica.
