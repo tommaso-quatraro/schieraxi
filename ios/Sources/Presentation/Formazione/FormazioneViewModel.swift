@@ -33,17 +33,25 @@ final class FormazioneViewModel: ViewModelBase {
     @Published var avvisoAltrove: String?
     /// La Formazione è la scheda aperta (lo dice la radice a ogni cambio di scheda). Decide dove si dice una scrittura che non
     /// riesce: qui sotto il campo (`messaggio`) o sulle altre schede (`avvisoAltrove`). Tornando qui l'avviso delle altre schede se
-    /// ne va e, se c'è un guasto, compare quello di sempre.
+    /// ne va e, se c'è un guasto o un 412 arrivato a scheda lasciata, compare l'avviso di sempre.
     var inVista = true {
         didSet {
             guard inVista else { return }
             avvisoAltrove = nil
-            if let guasto { messaggio = testoQui(guasto) }
+            if cambiataFuori {
+                messaggio = testoCambiataFuori
+            } else if let guasto {
+                messaggio = testoQui(guasto)
+            }
         }
     }
     /// L'errore dell'ultima scrittura non riuscita a scheda lasciata, finché una dopo non riesce o arriva un'altra giornata: tornando
     /// sulla Formazione se ne rivede l'avviso, anche se quello delle altre schede è passato senza che lo vedessi (sotto un foglio).
     private var guasto: Error?
+    /// L'ultima scrittura ha avuto un 412 a scheda lasciata (#751): tornando sulla Formazione, a ogni ritorno finché non fai una nuova
+    /// modifica o arriva un'altra giornata, la frase di sempre del 412 (`testoCambiataFuori`). Chi non ha visto l'avviso in basso
+    /// sa così perché in campo c'è un'altra formazione.
+    private var cambiataFuori = false
     /// Nome di un'altra squadra della lega, se se ne sta guardando la formazione consigliata (nil = la mia).
     @Published private(set) var squadraVista: String?
     /// Un altro modulo guardato nella formazione di un'altra squadra: solo sullo schermo, non si salva niente.
@@ -370,6 +378,7 @@ final class FormazioneViewModel: ViewModelBase {
             dimentica()
             sceltaLetta = false
             guasto = nil        // era della giornata di prima
+            cambiataFuori = false
         }
         let letta: SceltaSalvata?
         do {
@@ -539,6 +548,7 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// `DELETE /api/scelta`, se c'è una scelta salvata. true se il server l'ha tolta e la risposta vale (allora si rilegge la giornata).
     private func togliLaScelta(_ f: Formazione) async -> Bool {
+        nuovaModifica()
         let g = generazione
         let cera = salvata != nil
         occupato = true
@@ -572,6 +582,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// gli 11 sono gli stessi (la stessa regola qui, per la riga e la spunta). true se il server l'ha salvata e la risposta vale.
     private func scrivi(_ ids: [Int], messa: Bool?) async -> Bool {
         guard let f = formazione, puoScrivere else { return false }
+        nuovaModifica()
         let g = generazione
         occupato = true
         defer { occupato = false }
@@ -641,6 +652,19 @@ final class FormazioneViewModel: ViewModelBase {
         messaggio = nil
     }
 
+    /// Parte una nuova modifica: la frase di un 412 arrivato a scheda lasciata non vale più, nemmeno quella a schermo.
+    private func nuovaModifica() {
+        guard cambiataFuori else { return }
+        cambiataFuori = false
+        messaggio = nil
+    }
+
+    /// Tornando sulla Formazione dopo un 412 a scheda lasciata: nella tua la frase di sempre del 412 (quella che dice anche con la
+    /// Formazione aperta, dopo la rilettura); guardando la formazione di un'altra squadra la frase della web (`comune.cambiato_altrove`).
+    private var testoCambiataFuori: String {
+        squadraVista == nil ? ErroreApi.conflitto.localizedDescription : Catalogo.Comune.cambiatoAltrove
+    }
+
     /// La frase di una scrittura non riuscita fuori dalla tua Formazione: la rete solo se è lei il motivo (rete giù o server troppo
     /// lento, come `e.rete` della web), altrimenti il rifiuto del server, che chiede di controllare.
     static func testoNonSalvata(_ error: Error) -> String {
@@ -653,11 +677,13 @@ final class FormazioneViewModel: ViewModelBase {
     /// che i dati sono cambiati (`comune.cambiato_altrove`), sulle altre schede nell'avviso in basso (`avvisoAltrove`), per un'altra
     /// squadra sotto il campo. A scheda lasciata la tua formazione si rilegge subito: dopo il 412 il telefono ha già la versione
     /// nuova della scelta, e una scrittura partita dalla scelta vecchia passerebbe; così tornando c'è già quella giusta. Guardando
-    /// un'altra squadra non si scrive niente, e la tua si rilegge tornandoci (`tornaAllaMia`).
+    /// un'altra squadra non si scrive niente, e la tua si rilegge tornandoci (`tornaAllaMia`). Tornando sulla Formazione dopo un 412
+    /// a scheda lasciata compare la frase di sempre del 412 (`cambiataFuori`).
     private func cambiataAltrove() async {
         Haptics.esito(riuscito: false)
         if !inVista {
             avvisoAltrove = Catalogo.Comune.cambiatoAltrove
+            cambiataFuori = true
             if squadraVista == nil { await carica() }
             return
         }
