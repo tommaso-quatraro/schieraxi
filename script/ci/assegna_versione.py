@@ -18,7 +18,7 @@ Con --urgente il commit ha anche la riga «Rilascio: urgente»: il server instal
 installazioni (script/server/aggiorna-app.sh, #635). Il job la chiede quando una delle PR delle novità in attesa, o una issue che
 quella PR chiude, ha l'etichetta P1 o urgente. Le stampa --pr-e-issue-in-attesa, senza cambiare niente: «pr N» dal titolo
 «... (#N)» del commit di unione, «issue M» dalle righe di chiusura che il job unisci mette nel suo corpo («Closes #M»).
-Solo libreria standard: gira nei controlli di GitHub e sul server (Python 3.11).
+Solo libreria standard: gira nei controlli di GitHub e sul server (Python 3.12).
 """
 from __future__ import annotations
 
