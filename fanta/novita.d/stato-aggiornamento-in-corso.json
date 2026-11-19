@@ -1,7 +1,8 @@
 {
   "titolo": "«Aggiorna i dati» spento anche mentre il server aggiorna da solo",
   "voci": [
-    "Impostazioni, Gestione: mentre il server sta già aggiornando i dati da solo (gli aggiornamenti programmati della giornata), il pulsante «Aggiorna i dati» è spento e sotto c'è scritto perché; quando l'aggiornamento è finito si riaccende da solo, senza ricaricare la pagina. Prima sembrava libero e, premuto, rispondeva «Aggiornamento già in corso»."
+    "Impostazioni, Gestione: se all'apertura dell'app il server stava già aggiornando i dati da solo (gli aggiornamenti programmati della giornata), il pulsante «Aggiorna i dati» è spento e sotto c'è scritto perché; quando l'aggiornamento è finito si riaccende da solo, senza ricaricare la pagina. Prima sembrava libero.",
+    "Se l'aggiornamento parte con l'app già aperta, il pulsante resta attivo e, premuto, risponde «Aggiornamento già in corso», come prima."
   ],
   "tecnico": [
     "GET /api/stato: aggiornamento_in_corso è vero anche quando il blocco dell'aggiornamento (~/.cache/fantacalcio/blocco) è tenuto da un altro: aggiorna.sh dal cron, un giro leggero del pianificatore (probabili, risultati della sera) o POST /api/aggiorna (#763). Stesso nome e tipo del campo; GET /api/aggiorna non cambia.",

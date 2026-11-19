@@ -143,6 +143,10 @@ prima della scadenza:
   con un tocco e ha le sezioni Avvisi, La mia lega, Aspetto;
 - un utente normale (account non amministratore) vede al massimo dieci controlli (i pulsanti di un gruppo, come il tema,
   contano una volta) e non vede Gestione, neanche con il suo indirizzo; chi gestisce il server la apre, con «Aggiorna i dati»;
+- Gestione con un aggiornamento in corso (`aggiornamento_in_corso` di `/api/stato`, #763): «Aggiorna i dati» è spento con la frase
+  che dice perché; con l'orologio della pagina portato avanti (`clock.fast_forward`) lo stato si rilegge ogni 15-20 secondi, una
+  lettura alla volta (una lettura ferma non ne fa partire altre), e a campo falso il pulsante si riaccende e la frase sparisce;
+  fuori da Gestione niente letture; «già in corso» dopo il tocco resta un avviso;
 - ogni indirizzo di prima apre la voce giusta e l'indirizzo diventa quello nuovo: Squadra, Altro, Lega, Mercato, Scambi,
   i gruppi delle Impostazioni (Avvisi, Aspetto, Avanzate, Informazioni, Account), le voci (Aggiorna le rose, Squadre e
   rose, Regole, Novità), la rosa mia e di un'altra squadra; una scheda salvata da una versione di prima (Squadra, Altro,
