@@ -67,7 +67,8 @@ Installare una versione nuova riavvia il servizio. Per questo `aggiorna-app.sh` 
   un controllo guasto non deve fermare gli aggiornamenti.
 
 Emergenza (correzione urgente durante una partita): `touch ~/.cache/fantacalcio/installa-subito` (installa al prossimo giro e il
-file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`. Nel log:
+file si cancella da solo quando l'installazione riesce: se non riesce, per esempio per le librerie, resta e il giro dopo riprova,
+anche con la versione seguente) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`. Nel log:
 «installazione forzata». Per vedere cosa direbbe adesso: `cd ~/fantacalcio && .venv/bin/python -m fanta momento-libero`.
 
 ## Rilasci raggruppati: al massimo un'installazione all'ora
@@ -103,16 +104,18 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   cade in mezzo (in `main` c'è ancora un file in `fanta/novita.d/`) si aspetta il giro dopo, invece di installare l'unione con numero
   di versione e novità vecchi. Al massimo mezz'ora, contata dal primo giro che ha aspettato (stato in `attesa-versione`), non dall'ora
   dei commit: le unioni che arrivano nel frattempo non la fanno ripartire. Poi (job `rilascia` fermo) si installa lo stesso, con una
-  riga nel registro e un avviso «aggiornamento non riuscito», e «di nuovo a posto» quando il commit di versione arriva.
-  L'installazione forzata (`installa-subito`) non aspetta.
+  riga nel registro (una sola, anche se poi l'installazione è rimandata per una partita o per l'intervallo) e un avviso
+  «aggiornamento non riuscito», e «di nuovo a posto» quando il commit di versione arriva. Una versione rifiutata toglie l'attesa: la
+  versione dopo aspetta di nuovo il suo commit di versione. L'installazione forzata (`installa-subito`) non aspetta.
 - **L'ultima versione rifiutata non lascia passare quelle sotto**: se la versione da installare viene rifiutata (firma, cartelle,
   librerie, ritorno alla versione di prima), le versioni buone arrivate prima e raggruppate con lei restano fuori anche loro. Non si
   installano da sole: un ripiego automatico su una versione mai provata potrebbe alternare due versioni rotte, con un riavvio a ogni
-  giro. L'avviso del rifiuto lo dice quando sotto ci sono commit di versione («Anche la versione arrivata prima, in attesa, non è
-  installata»; i commit di soli documenti non contano); entrano con la prossima versione buona (una pull request che corregge o toglie
+  giro. L'avviso del rifiuto lo dice quando le cartelle del server cambiano fra l'ultima versione installata e il commit prima di
+  quella rifiutata («Anche la versione arrivata prima, in attesa, non è installata», o «le modifiche arrivate prima» se non hanno un
+  commit di versione; i commit di soli documenti non contano); entrano con la prossima versione buona (una pull request che corregge o toglie
   quella rotta) oppure, per una firma, con `--fidati origin/main` dopo il controllo (l'avviso lo nomina).
 - Stato in `~/.cache/fantacalcio/`: `ultima-installazione` (ora d'inizio del giro dell'ultima installazione riuscita, in secondi),
-  `raggruppata` (la versione rimandata), `intervallo-letto`, `attesa-versione` (ora del primo giro che aspetta il commit di versione). Senza `ultima-installazione` (la prima volta) si installa subito; se
+  `raggruppata` (la versione rimandata), `intervallo-letto`, `attesa-versione` (ora del primo giro che aspetta il commit di versione, poi `scaduta` dopo la mezz'ora). Senza `ultima-installazione` (la prima volta) si installa subito; se
   l'orologio del server è indietro rispetto a quell'ora non si aspetta (una riga nel registro).
 
 ## Aggiornamenti sicuri: firme dei commit e librerie bloccate
