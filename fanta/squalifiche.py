@@ -1,8 +1,9 @@
 """Squalificati e diffidati calcolati dai cartellini dei voti (#640, nel calcolo dal #668).
 
 Nel calcolo (`in_uso`) valgono SOLO LE ESPULSIONI: chi è stato espulso e non ha ancora saltato una partita della sua squadra è
-squalificato. Niente squalifiche per somma di ammonizioni e niente diffidati: sull'archivio danno falsi squalificati oltre la
-soglia decisa per usarle (uno ogni cento segnalati; vedi la misura qui sotto, si rifà con `prove/misura_squalifiche.py`).
+squalificato. Niente squalifiche per somma di ammonizioni e niente diffidati: vengono dal conto delle ammonizioni, che
+sull'archivio dà falsi squalificati oltre la soglia decisa per usarlo (uno ogni cento segnalati; vedi la misura qui sotto, si
+rifà con `prove/misura_squalifiche.py`).
 Si usa solo quando la giornata non ha una lettura buona delle probabili (`modello.previsioni`, `dai_cartellini`): con una
 lettura buona vince la fonte, e una differenza a giornata cominciata va nel registro dei controlli
 (`controlli.squalificati_cartellini`). L'ora non è mai quella vera: è quella dell'ultimo aggiornamento riuscito del calendario
