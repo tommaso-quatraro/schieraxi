@@ -52,11 +52,14 @@ struct CampionatoFinitoTests {
         #expect(t == TestaFormazione(campionatoFinito: fraseCampionatoFinito))
     }
 
-    @Test("Con la formazione di prima ancora sul telefono la testa non parla della sua giornata")
-    func testaConLaFormazioneDiPrima() throws {
-        let vecchia = try TestaFormazioneTests.formazione(giornata: 38, lega: 35)
-        let t = TestaFormazione.per(oggi: try Self.oggi("oggi-campionato-finito"), formazione: vecchia, adesso: try Self.adesso())
-        #expect(t == TestaFormazione(campionatoFinito: fraseCampionatoFinito))
+    @Test("Con una formazione da mostrare la testa segue lei, anche se una copia di Oggi dice ancora che il campionato è finito")
+    func testaConLaFormazione() throws {
+        // a campionato finito la Formazione passa `formazione: nil` (`FormazioneViewModel.campionatoFinito`); con una formazione,
+        // per esempio quella fresca della stagione nuova mentre di Oggi resta la copia di giugno, la frase vecchia non si mostra
+        let nuova = try TestaFormazioneTests.formazione(giornata: 4, lega: 1)
+        let t = TestaFormazione.per(oggi: try Self.oggi("oggi-campionato-finito"), formazione: nuova, adesso: try Self.adesso())
+        #expect(t.campionatoFinito == nil)
+        #expect(t.giornata == "Giornata 1 · 4ª di Serie A")
     }
 
     // MARK: Formazione
@@ -89,6 +92,33 @@ struct CampionatoFinitoTests {
         #expect(vm.campionatoFinito)
         #expect(vm.striscia?.data == nil, "la formazione di prima non si mostra: la sua copia non fa comparire «dati salvati»")
         #expect(vm.erroreGiornata == nil)
+    }
+
+    @MainActor
+    @Test("Con la formazione fresca una copia salvata di Oggi non fa credere finito il campionato: il dato fresco vince")
+    func copiaDiOggiVecchia() async throws {
+        // a inizio stagione `/api/oggi` non risponde e resta la copia di giugno, mentre `/api/formazione` arriva fresca
+        let settembre = Scatola<Bool>()
+        let srv = ServerDiProva { _, percorso, _ in
+            let nuovaStagione = settembre.valore == true
+            if percorso.hasPrefix("/api/oggi") {
+                if nuovaStagione { throw ErroreApi.rete("senza rete") }
+                return try Fixture.dati("oggi-campionato-finito")
+            }
+            if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
+            if !nuovaStagione { throw ErroreApi.codificato(codice: "campionato_finito", messaggio: fraseCampionatoFinito) }
+            return try Fixture.dati("formazione")
+        }
+        let oggi = OggiViewModel(server: srv, conPromemoria: false)
+        let vm = FormazioneViewModel(server: srv, oggi: oggi, promemoria: {})
+        await FormazioneView.ricarica(vm, oggi: oggi)
+        #expect(vm.campionatoFinito, "a giugno, con la giornata fresca")
+
+        settembre.valore = true
+        await FormazioneView.ricarica(vm, oggi: oggi)
+        #expect(oggi.copia && oggi.oggi?.testoCampionatoFinito != nil, "di Oggi resta la copia di giugno")
+        #expect(vm.formazione != nil && !vm.copia, "la formazione è arrivata fresca")
+        #expect(!vm.campionatoFinito, "si vede la formazione nuova, non la frase di giugno")
     }
 
     @MainActor
