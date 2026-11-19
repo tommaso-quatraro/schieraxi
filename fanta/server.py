@@ -932,11 +932,18 @@ class FormazioneScelta(BaseModel):
     messa: bool | None = None       # «L'ho messa» (#616), solo con `salva`: vero o falso la scrive, senza resta com'era (scelte.salva)
 
 
+INTESTAZIONE_APP = "x-schieraxi-client"     # l'app nativa la manda sempre con il valore «ios», anche senza account (#710)
+
+
 def _da_dove(request: Request) -> str | None:
     """Da dove arriva un salvataggio della formazione (campo `da` della scelta, #639): «app» se porta il token come «Bearer» (l'app
-    nativa, la regola delle rotte degli account), «web» se porta il cookie della sessione o `Sec-Fetch-Mode`, che ogni browser
-    recente manda e l'app nativa no (senza account non c'è il cookie). Altrimenti None: non si sa, e il promemoria resta com'era."""
+    nativa, la regola delle rotte degli account) o l'intestazione `X-Schieraxi-Client: ios`, che l'app manda sempre, anche senza
+    account (#710); «web» se porta il cookie della sessione o `Sec-Fetch-Mode`, che ogni browser recente manda e l'app nativa no
+    (senza account non c'è il cookie). Altrimenti None: non si sa, e il promemoria resta com'era. Serve solo a etichettare la
+    scelta di chi salva (il promemoria chiede la spunta): non dà permessi né fiducia in più."""
     if request.headers.get("authorization", "")[:7].lower() == "bearer ":
+        return scelte.DA_APP
+    if request.headers.get(INTESTAZIONE_APP, "").strip().lower() == "ios":
         return scelte.DA_APP
     if request.cookies.get(rotte_account.COOKIE) or request.headers.get("sec-fetch-mode"):
         return scelte.DA_WEB
@@ -1378,8 +1385,9 @@ def tratti_avatar():
 
 @app.get("/api/oggi")
 def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650, le=3650), ctx: Contesto = Depends(lega_corrente)):
-    """La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md). `certificato_giorni`
-    (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo)."""
+    """La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), e `serve_promemoria`: se
+    il promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi).
+    `certificato_giorni` (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo)."""
     db = _db()
     try:
         try:
@@ -1398,6 +1406,8 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
             admin, dal = False, None
         corpo = dict(gestione.oggi(db, r, rose_, file_scelte=ctx.scelte, file_diario=getattr(ctx, "diario", None),
                                    live_partite=_stati_live(), dal=dal))
+        if isinstance(corpo.get("giornata"), int):        # la regola dei promemoria del server, per quelli locali dell'iPhone (#710)
+            corpo["serve_promemoria"] = notifiche.serve_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], ctx.scelte)
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
                                               lingua=lingua_testi.della_richiesta(request), dal=dal)

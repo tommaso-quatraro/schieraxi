@@ -365,6 +365,10 @@ struct Oggi: Decodable {
     /// `true` per chi è entrato a giornata iniziata senza una formazione per lei (con la fase `in_corso`; c'è solo se vale `true`).
     /// Facoltativo e tollerante: un server vecchio non lo manda, un valore strano vale «no».
     let senzaFormazione: Tollerante<Bool>?
+    /// Il promemoria della scadenza serve per questa giornata? (`serve_promemoria`: la regola dei promemoria del server, no solo con
+    /// «L'ho messa» e nessun titolare diventato indisponibile; la usa `Aggiornamento.promemoriaTace`). Facoltativo e tollerante: senza
+    /// (server di prima) o con un valore strano i promemoria partono.
+    let servePromemoria: Tollerante<Bool>?
 }
 
 /// Quando sono state lette le probabili formazioni (campo `probabili` di Oggi). Ogni campo è facoltativo.

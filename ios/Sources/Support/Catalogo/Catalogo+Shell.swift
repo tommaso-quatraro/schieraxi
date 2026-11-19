@@ -8,5 +8,11 @@ extension Catalogo {
 
         /// `shell.chiudi`
         static let chiudi = "Chiudi"
+
+        /// `shell.cerca`
+        static let cerca = "Cerca un giocatore"
+
+        /// `shell.aggiorna`
+        static let aggiorna = "Aggiorna i dati"
     }
 }

@@ -13,16 +13,16 @@
       "id": 53,
       "schermata": "Impostazioni, Notifiche e Avanzate",
       "web": "la voce si chiama «Notifiche» («Cosa ricevere sul telefono e quando»); righe d'aiuto sotto «Cambi di formazione e probabili», «Promemoria un'ora prima» e «Riepilogo a giornata finita»; ore tranquille «Niente avvisi nella fascia scelta: …»; Avanzate «vedi anche il resto» (`impostazioni.js`, `avvisiTelefono`, testi `imp.*`, `avv.*`, `av.*`)",
-      "iphone": "«Notifiche» («Cosa ricevere sul telefono e quando»); righe d'aiuto sotto i tre interruttori; ore tranquille «Niente avvisi nella fascia scelta: …»; Avanzate «vedi anche il resto» (`TestiImpostazioni`, `NomeConAiuto`, `ImpostazioniView.swift`, `Gestione.swift`). Il permesso di iOS sta solo dentro la pagina. La sezione «Promemoria sul telefono» è solo dell'iPhone (promemoria del telefono): resta",
+      "iphone": "come la web: la sezione «Avvisi» con «Avvisi su questo dispositivo» (con la riga `imp.avvisi_qui_aiuto`) e «Ore tranquille» («Niente avvisi dalle 23 alle 7», `imp.ore_tranquille_aiuto`); niente più interruttori per singolo avviso né «Avviso se il consiglio cambia»; i promemoria locali seguono l'interruttore unico (`AvvisiDispositivoSezione`, `AvvisiDispositivoViewModel`, `ArchivioAvvisiQui`). Gestione al posto di Avanzate (`GestionePagina`)",
       "forma": "web",
-      "chi": "**fatto** (#634): dal 12/11/2026 la web non ha più «Mostra tutte le funzioni» in Avanzate (#615) e nemmeno l'iPhone. Prima: **fatto** (#439, `NotificheComeLaWebTests`)",
+      "chi": "**fatto** (#673 passo 3, dopo #693): prova `AvvisiDispositivoTests`. Prima: dal 12/11/2026 la web non ha più «Mostra tutte le funzioni» in Avanzate (#615) e nemmeno l'iPhone (#634); **fatto** con #439",
       "stato": "fatto"
     },
     {
       "id": 58,
       "schermata": "Impostazioni, Aspetto",
       "web": "Lingua (italiano, inglese), Tema, Dimensione del testo (Normale, Grande, Molto grande) (`schedaAspetto`)",
-      "iphone": "Tema e «Animazioni ridotte»; niente lingua (l'app è solo in italiano) né dimensione del testo (la prende da iOS) (`AspettoView` in `LegaPagine.swift`)",
+      "iphone": "Tema e «Animazioni ridotte»; niente lingua (l'app è solo in italiano) né dimensione del testo (la prende da iOS) (`AspettoSezione` in `LegaPagine.swift`, una sezione della pagina Impostazioni dal passo 3 di #673)",
       "forma": "differenza ammessa",
       "chi": "**fatto**: dal 12/11/2026 la web non ha più la dimensione del testo (#615); l'iPhone non l'ha mai avuta (la prende da iOS). Restano, tra le «Differenze ammesse», la Lingua (solo web) e «Animazioni ridotte» (solo iPhone). Prima: decisa dal proprietario il 6/11/2026: tra le «Differenze ammesse» (riga «Impostazioni, Aspetto»)",
       "stato": "fatto"

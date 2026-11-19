@@ -3464,7 +3464,7 @@
   },
   "/api/oggi": {
    "get": {
-    "description": "La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md). `certificato_giorni`\n(facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo).",
+    "description": "La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), e `serve_promemoria`: se\nil promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi).\n`certificato_giorni` (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo).",
     "parameters": [
      {
       "in": "query",

@@ -442,7 +442,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
 
 # ---------------------------------------------------------------- promemoria prima della scadenza
 NON_VALIDA = "non_valida"          # `_gia_schierato`: c'è una scelta salvata, ma non si può più schierare
-NON_MESSA = "non_messa"            # `_gia_schierato`: scelta salvata dalla web e a posto, ma non segnata come messa nell'app della lega
+NON_MESSA = "non_messa"            # `_gia_schierato`: scelta salvata (web o app) e a posto, ma non segnata come messa nell'app della lega
 
 
 def _giornata(giornata: int, regole: Regole) -> frasi.Frase:
@@ -455,9 +455,10 @@ def _gia_schierato(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione:
     """None se non hai ancora schierato (nessuna scelta salvata, né «ho schierato la consigliata»). `NON_VALIDA` se la scelta salvata
     non si può più schierare (regola unica della scelta, come la Formazione: vale la consigliata, come senza scelta, ma il promemoria
     lo dice con una frase sua). Altrimenti la lista dei titolari che hai schierato e che ora risultano fuori, in panchina o non
-    citati nelle probabili; se non ce n'è nessuno, la lista vuota (a posto) oppure `NON_MESSA` (#639): la web salva da sola a ogni
-    tocco, quindi una sua scelta è a posto solo con la spunta «L'ho messa». Le scelte salvate dall'iPhone, che oggi non ha la
-    spunta, e quelle che non dicono da dove arrivano (salvate prima) restano a posto come prima."""
+    citati nelle probabili; se non ce n'è nessuno, la lista vuota (a posto) oppure `NON_MESSA` (#639): web e iPhone salvano da soli
+    a ogni tocco, quindi una loro scelta è a posto solo con la spunta «L'ho messa» (l'iPhone ce l'ha dal riallineamento, #673). Le
+    scelte che non dicono da dove arrivano (salvate prima del 13/11) restano a posto come prima. La regola è una sola: la usano il
+    promemoria e `serve_promemoria` (campo di GET /api/oggi)."""
     from . import consigli, scelte
     scelta = scelte.leggi(stagione, giornata, file_scelte)
     if not scelta:
@@ -472,9 +473,17 @@ def _gia_schierato(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione:
     for i in (scelta["titolari"] if prev is not None else []):     # senza previsioni non so dire se è cambiato qualcosa
         if i in prev.index and prev.at[i, "stato"] in FUORI + ("panchina", "non_citato"):
             problemi.append(str(prev.at[i, "nome"]))
-    if not problemi and scelta.get("da") == scelte.DA_WEB and scelta.get("messa") is not True:
+    if not problemi and scelta.get("da") in scelte.DA and scelta.get("messa") is not True:
         return NON_MESSA
     return problemi
+
+
+def serve_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int, file_scelte: Path | None) -> bool:
+    """Il promemoria della scadenza serve per questa giornata? La regola di `promemoria` (`_gia_schierato`), senza finestre né invii:
+    no (False) solo con una scelta che si può schierare, spuntata «L'ho messa» (o salvata prima che la scelta ricordasse da dove
+    arriva) e senza titolari diventati indisponibili. È il campo `serve_promemoria` di GET /api/oggi: l'iPhone programma con questo i
+    suoi promemoria locali, anche in background, così una spunta messa o tolta dalla web vale anche lì (#710)."""
+    return _gia_schierato(db, regole, rose, stagione, giornata, file_scelte) != []
 
 
 def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_PROMEMORIA,

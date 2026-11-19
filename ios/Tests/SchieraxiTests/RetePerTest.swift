@@ -78,6 +78,15 @@ final class ServerHTTPTests: XCTestCase {
         XCTAssertEqual(r.httpMethod, "GET")
     }
 
+    func testLAppSiFaRiconoscereAncheSenzaAccount() async throws {
+        ProtocolloFinto.gestore = { [unowned self] r in (risposta(r, 200), Data("{}".utf8)) }
+        _ = try await server.grezzo("/api/oggi")
+        XCTAssertEqual(ProtocolloFinto.ultimaRichiesta?.value(forHTTPHeaderField: "X-Schieraxi-Client"), "ios",
+                       "anche senza token il server sa che la formazione l'ha salvata l'app: senza la spunta il promemoria serve (#710)")
+        _ = try await server.corpoJSON("POST", "/api/formazione/valuta", RichiestaValutazione(titolari: [1], salva: true))
+        XCTAssertEqual(ProtocolloFinto.ultimaRichiesta?.value(forHTTPHeaderField: "X-Schieraxi-Client"), "ios")
+    }
+
     func testCorpoJSONEMetodo() async throws {
         ProtocolloFinto.gestore = { [unowned self] r in (risposta(r, 200), Data("{}".utf8)) }
         _ = try await server.corpoJSON("PUT", "/api/mia-squadra", NomeSquadra(nome: "Gli Amici"))

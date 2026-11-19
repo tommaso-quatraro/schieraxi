@@ -4,10 +4,11 @@ import Foundation
 // pulsante.
 
 extension DestinazioneDaFare {
-    /// Dove porta: prima il collegamento `schieraxi://`, poi la sezione scritta a parole; altrimenti da nessuna parte.
+    /// Dove porta: prima il collegamento `schieraxi://`, poi la sezione scritta a parole (Squadra e Altro aprono La mia lega delle
+    /// Impostazioni, #673 passo 3); altrimenti da nessuna parte.
     var destinazione: Destinazione? {
         if let link, let url = URL(string: link), let d = Collegamenti.interpreta(url) { return d }
-        if let sezione, let s = Sezione.da(nome: sezione) { return .sezione(s) }
+        if let sezione { return Collegamenti.perNome(sezione) }
         return nil
     }
 }

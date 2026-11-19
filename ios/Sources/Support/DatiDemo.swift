@@ -837,9 +837,11 @@ private extension LegaDemo {
     }
 
     static func avvisi() -> String {
-        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true, "copertura": true, "app_nativa": true,
-                              "silenzio": false, "silenzio_da": 23, "silenzio_a": 23, "avviso_prima": 60],
-              "canale": true, "dispositivi": 2, "ore_tranquille_spente": true])
+        // come le manda il server a chi ha le ore tranquille di sempre (dalle 23 alle 7) accese (#673 passo 3: la sezione Avvisi delle
+        // Impostazioni le mostra); le scelte per singolo avviso restano, l'app non le usa più
+        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "copertura": true, "app_nativa": true,
+                              "silenzio": true, "silenzio_da": 23, "silenzio_a": 7, "avviso_prima": 60],
+              "canale": true, "dispositivi": 2])
     }
 
     /// Diario delle giornate: le quattro giornate finite prima di quella di Oggi (la 4, 5, 6 e 7 della lega, Serie A 7-10),

@@ -9,11 +9,11 @@ final class AuditAccessibilitaUITests: XCTestCase {
     private static let schermate = [
         "formazione", "formazione-in-corso", "formazione-finita", "formazione-rinvio", "formazione-chiusa", "formazione-cambiata",
         "formazione-sostituisci",
-        "squadra", "giocatore",
+        "giocatore", "ricerca",
         "giornate", "giornate-aperta", "giornate-dettagli",
-        "lega", "lega-squadre", "lega-rosa", "lega-regole", "lega-stato", "lega-avvisi",
+        "lega", "lega-squadre", "lega-rosa", "lega-regole", "lega-stato",
         "lega-importa", "lega-stagione", "impostazioni", "impostazioni-aspetto", "impostazioni-crediti", "impostazioni-novita",
-        "impostazioni-avanzate", "collega-widget", "guida", "primo-avvio",
+        "impostazioni-squadra", "impostazioni-gestione", "collega-widget", "guida", "primo-avvio",
     ]
     private static let accessi = ["accedi", "registra", "recupero", "codice", "account", "rose", "rete", "limite"]
 

@@ -41,31 +41,24 @@ final class FunzioniTests: XCTestCase {
     }
 
     func testLeVecchieSezioniPortanoNelleNuove() {
-        XCTAssertEqual(Sezione.da(nome: "Mercato"), .squadra)
-        XCTAssertEqual(Sezione.da(nome: "scambi"), .altro)
-        XCTAssertEqual(Sezione.da(nome: "lega"), .altro)
-        XCTAssertEqual(Sezione.da(nome: "squadra"), .squadra)
+        // Squadra e Altro non sono più schede (#673 passo 3): i loro nomi aprono le Impostazioni
+        XCTAssertEqual(Sezione.da(nome: "Mercato"), .impostazioni)
+        XCTAssertEqual(Sezione.da(nome: "scambi"), .impostazioni)
+        XCTAssertEqual(Sezione.da(nome: "lega"), .impostazioni)
+        XCTAssertEqual(Sezione.da(nome: "squadra"), .impostazioni)
         XCTAssertNil(Sezione.da(nome: "boh"))
         XCTAssertNil(Sezione.da(nome: nil))
         // Oggi è nella Formazione (#673): i collegamenti dei widget, gli avvisi e l'ultima sezione salvata la aprono
         XCTAssertEqual(Sezione.da(nome: "oggi"), .formazione)
-        XCTAssertEqual(Sezione.allCases.map(\.titolo), ["Formazione", "Giornate", "Squadra", "Altro"], "il Diario è Giornate (#673 passo 2)")
-    }
-
-    func testOgniPaginaStaNellaSuaScheda() {
-        XCTAssertEqual(PaginaLega.importa.sezione, .squadra)
-        XCTAssertEqual(PaginaLega.rosa("X").sezione, .squadra)
-        XCTAssertEqual(PaginaLega.squadre.sezione, .squadra)
-        XCTAssertEqual(PaginaLega.regole.sezione, .altro)
-        XCTAssertEqual(PaginaLega.stagione.sezione, .altro)
+        XCTAssertEqual(Sezione.allCases.map(\.titolo), ["Formazione", "Giornate", "Impostazioni"], "la barra a tre voci (#673 passo 3)")
     }
 
     @MainActor
-    func testApriUnaPaginaScegliLaSchedaGiusta() {
+    func testApriUnaPaginaApreLeImpostazioni() {
         let lega = LegaViewModel(server: FinteServer(risposte: [:]))
-        XCTAssertEqual(lega.apri([.squadre, .rosa("X")]), .squadra)
-        XCTAssertEqual(lega.percorsoSquadra, [.squadre, .rosa("X")])
-        XCTAssertEqual(lega.apri([.regole]), .altro)
+        XCTAssertEqual(lega.apri([.squadre, .rosa("X")]), .impostazioni)
+        XCTAssertEqual(lega.percorso, [.squadre, .rosa("X")])
+        XCTAssertEqual(lega.apri([.regole]), .impostazioni)
         XCTAssertEqual(lega.percorso, [.regole])
     }
 

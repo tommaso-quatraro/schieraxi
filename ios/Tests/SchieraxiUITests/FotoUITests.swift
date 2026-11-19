@@ -49,7 +49,7 @@ final class FotoUITests: XCTestCase {
             var cambiandoScheda = tardi
             if !tardi {
                 let barra = app.tabBars.firstMatch
-                barra.buttons["Squadra"].firstMatch.tap()
+                barra.buttons["Giornate"].firstMatch.tap()
                 barra.buttons["Formazione"].firstMatch.tap()
                 cambiandoScheda = pronta.waitForExistence(timeout: 15)
             }

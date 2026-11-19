@@ -43,9 +43,6 @@ enum Demo {
         argomento("DEMO_ORIENTAMENTO", in: argomenti) == "orizzontale"
     }
 
-    /// Solo per la fotografia «ricerca»: la lente si apre da sola la prima volta (e il testo da cercare arriva da `-DEMO_CERCA`).
-    static var ricercaMostrata = false
-
     /// `-DEMO_ACCESSO <scenario>`: la demo con gli account accesi. Scenari: `accedi`, `registra`, `recupero` (schermata di accesso),
     /// `codice` (il codice di recupero appena creato), `account` (Lega con «Il tuo account»), `rose` (lega senza rose: configurazione).
     static var accesso: String? { attivo ? argomento("DEMO_ACCESSO") : nil }
@@ -142,9 +139,8 @@ extension Demo {
         applicata = true
 
         if accesso == "account" {
-            // l'account sta nelle Impostazioni (ingranaggio): in demo si apre subito il foglio
-            nav.sezione = .altro
-            nav.impostazioniAperte = true
+            // l'account è una pagina delle Impostazioni (#673 passo 3): in demo si apre subito
+            apriLega(nav, modello, [.account])
         }
         guard let nome = argomento("DEMO_SCHERMATA") else { return }
         switch nome {
@@ -154,9 +150,19 @@ extension Demo {
         case "collega-widget":
             // «Collega il widget», in attesa del tocco su «Collega» (in demo il tocco dice «Codice copiato» senza toccare gli appunti)
             nav.collegaWidgetAperto = true
-        case "impostazioni", "impostazioni-crediti", "impostazioni-avanzate", "impostazioni-aspetto", "impostazioni-novita":
-            // le Impostazioni (le pagine «Crediti e fonti», «Avanzate», «Aspetto» e «Novità» le apre da sola ImpostazioniView)
-            nav.impostazioniAperte = true
+        // le Impostazioni, la terza voce della barra (#673 passo 3): la pagina unica, scorsa ad Aspetto, e le sue pagine
+        case "impostazioni":
+            nav.sezione = .impostazioni
+        case "impostazioni-aspetto":
+            nav.vai(a: .impostazioni(.aspetto))
+        case "impostazioni-squadra":
+            apriLega(nav, modello, [.rosa(LegaDemo.nomeMia)])
+        case "impostazioni-gestione":
+            apriLega(nav, modello, [.gestione])
+        case "impostazioni-crediti":
+            apriLega(nav, modello, [.informazioni, .crediti])
+        case "impostazioni-novita":
+            apriLega(nav, modello, [.informazioni, .novita])
 
         // la Formazione unica (#673): prima della scadenza, in corso, finita, con una partita rinviata, a giornata chiusa (scorsa alla
         // riga dello stato), con una tua scelta diversa dalla consigliata
@@ -165,8 +171,6 @@ extension Demo {
         case "formazione-sostituisci":
             apriSostituzione(modello)
 
-        case "squadra":
-            nav.sezione = .squadra
         case "giocatore":
             if let vero = ScenarioVero.attuale?.giocatore {
                 nav.vai(a: .giocatore(vero))
@@ -175,7 +179,8 @@ extension Demo {
             }
 
         case "lega":
-            nav.sezione = .altro
+            // La mia lega, la sezione delle Impostazioni che ha preso il posto delle schede Squadra e Altro
+            nav.vai(a: .impostazioni(.lega))
         case "lega-squadre":
             apriLega(nav, modello, [.squadre])
         case "lega-rosa":
@@ -183,9 +188,7 @@ extension Demo {
         case "lega-regole":
             apriLega(nav, modello, [.regole])
         case "lega-stato":
-            apriLega(nav, modello, [.stato])
-        case "lega-avvisi":
-            apriLega(nav, modello, [.avvisi])
+            apriLega(nav, modello, [.gestione, .stato])
         // la pagina Giornate (#673 passo 2): le righe chiuse (sull'iPad la più recente a destra), la più recente aperta, «Dettagli»
         case "giornate", "giornate-aperta", "giornate-dettagli":
             nav.sezione = .giornate
@@ -202,7 +205,8 @@ extension Demo {
         case "lega-stagione":
             apriLega(nav, modello, [.stagione])
         case "ricerca":
-            nav.sezione = .formazione
+            // la voce Cerca della barra, con un testo già scritto (-DEMO_CERCA)
+            nav.sezione = .cerca
         default:
             break
         }
@@ -221,7 +225,7 @@ extension Demo {
         }
     }
 
-    private static func apriLega(_ nav: Navigazione, _ modello: AppModel, _ pagine: [PaginaLega]) {
+    private static func apriLega(_ nav: Navigazione, _ modello: AppModel, _ pagine: [PaginaImpostazioni]) {
         nav.sezione = modello.lega.apri(pagine)
     }
 

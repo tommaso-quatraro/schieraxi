@@ -1,12 +1,10 @@
 import SwiftUI
 
-/// Ricerca di un giocatore per nome (la lente accanto al titolo di ogni schermata): un tocco apre la sua scheda.
+/// La ricerca di un giocatore per nome, la voce Cerca della barra (come la lente della web): un tocco apre la sua scheda.
 struct RicercaGiocatoreView: View {
-    let titolo: String
     @StateObject private var vm: RicercaViewModel
 
-    init(titolo: String, server: any ServerClient) {
-        self.titolo = titolo
+    init(server: any ServerClient) {
         _vm = StateObject(wrappedValue: RicercaViewModel(server: server))
     }
 
@@ -18,33 +16,24 @@ struct RicercaGiocatoreView: View {
                 if vm.testo.trimmingCharacters(in: .whitespaces).count < 2 {
                     VStack(spacing: 10) {
                         Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
-                        Text("Scrivi almeno due lettere del nome.").foregroundStyle(Color.testoSecondario)
+                        Text(RicercaViewModel.testoVuoto).foregroundStyle(Color.testoSecondario)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
                     .listRowBackground(Color.clear)
                 } else if vm.risultati.isEmpty && vm.errore == nil && !vm.cercando {
-                    ContentUnavailableView.search(text: vm.testo).listRowBackground(Color.clear)
+                    ContentUnavailableView(RicercaViewModel.testoNessuno, systemImage: "magnifyingglass")
+                        .listRowBackground(Color.clear)
                 }
                 ForEach(vm.risultati) { g in
-                    NavigationLink(value: PassoScheda.scheda(g.id)) { riga(g) }
+                    NavigationLink(value: PassoScheda.scheda(g.id)) { RigaRicerca(g) }
                 }
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle(titolo)
+        .navigationTitle(Catalogo.Shell.cerca)
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $vm.testo, placement: .navigationBarDrawer(displayMode: .always), prompt: "Nome del giocatore")
+        .searchable(text: $vm.testo, placement: .navigationBarDrawer(displayMode: .always), prompt: Catalogo.Avv.nomeDelGiocatore)
         .task(id: vm.testo) { await vm.cerca() }
-    }
-
-    /// Volto, fantavoto atteso e «gioca N%» dall'elenco largo della giornata; chi non c'è ha «–».
-    @ViewBuilder
-    private func riga(_ b: GiocatoreBreve) -> some View {
-        if let g = vm.previsioni.di(b.id) {
-            RigaElencoGiocatore(g: g)
-        } else {
-            RigaElencoGiocatore(breve: b, nonGioca: vm.previsioni.arrivate)
-        }
     }
 }
