@@ -50,6 +50,9 @@ enum TestiAccount {
     static let elimina = Catalogo.Account.elimina
     static let eliminaConferma = Catalogo.Account.eliminaConferma
 
+    /// «Esci da tutti i dispositivi» (#765): la frase su Google sotto la conferma. Da scrivere.
+    static func esciTuttiGoogle(accessi: AccessiAccount?) -> String? { nil }
+
     /// La riga sotto il nome: «Utente · dal 1 settembre 2026» (o «Amministratore · …»). Senza una data leggibile resta il ruolo.
     static func ruoloEData(ruolo: String, creato: String?) -> String {
         let chi = ruolo == "amministratore" ? Catalogo.Account.ruoloAdmin : Catalogo.Account.ruoloUtente

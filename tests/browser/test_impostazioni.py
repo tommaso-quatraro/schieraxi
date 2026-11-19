@@ -277,6 +277,31 @@ def test_esci_da_tutti_chiede_conferma_ed_esce_ovunque(web):
     assert chiavi_salvate(web) == []
 
 
+GOOGLE = [{"provider": "google", "email": "nome@example.invalid", "creata": "2026-10-01T10:00:00", "ultimo_uso": None}]
+
+
+@pytest.mark.parametrize("password, social, dice_google", [(True, GOOGLE, True), (False, GOOGLE, False), (True, [], False)],
+                         ids=["google-e-password", "solo-google", "senza-google"])
+def test_esci_da_tutti_dice_di_google_solo_a_chi_perde_il_collegamento(web, password, social, dice_google):
+    """Il server toglie il collegamento con Google a chi ha una password (dopo, «Continua con Google» non fa entrare finché non si
+    ricollega); chi entra solo con Google lo tiene. La conferma lo dice solo a chi lo perde, leggendo `accessi` del server."""
+    solo(web, "prima")
+    da_utente(web, {**UTENTE, "social": ["google"], "accessi": {"password": password, "social": social, "disponibili": ["google"]}})
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    domande = []
+
+    def rispondi(dialogo):
+        domande.append(dialogo.message)
+        dialogo.dismiss()
+
+    web.pagina.on("dialog", rispondi)
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    assert len(domande) == 1 and "anche da questo" in domande[0], domande
+    assert ("Il collegamento con Google si toglie" in domande[0]) is dice_google, domande
+    assert arrivate == []
+
+
 def test_esci_da_tutti_annullato_non_fa_niente(web):
     solo(web, "prima")
     da_utente(web)

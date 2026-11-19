@@ -27,7 +27,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Accesso.vaiAccesso, Catalogo.Accesso.rispostaIncompleta,
         // account.*
         Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.esciTutti,
-        Catalogo.Account.esciTuttiConferma, Catalogo.Account.cambiaPassword,
+        Catalogo.Account.esciTuttiConferma, Catalogo.Account.esciTuttiGoogle, Catalogo.Account.cambiaPassword,
         Catalogo.Account.passwordAttuale, Catalogo.Account.ripetiPassword, Catalogo.Account.passwordDiverse,
         Catalogo.Account.altriScollegati, Catalogo.Account.passwordCambiataOk, Catalogo.Account.passwordCambiataCodice,
         Catalogo.Account.laTuaPassword,
@@ -146,6 +146,7 @@ struct AccessoImpostazioniDalCatalogoTests {
             "Catalogo.Imp.account", "Catalogo.Account.esci", "Catalogo.Social.collegatoOk", "Catalogo.Social.scollegatoOk",
             // «Esci da tutti i dispositivi» con la sua conferma e il suo errore (#765)
             "Catalogo.Account.esciTutti", "Catalogo.Account.esciTuttiConferma", "Catalogo.Account.esciTuttiNo(",
+            "TestiAccount.esciTuttiGoogle(",
             "Catalogo.Shell.chiudi",
             // dopo il cambio della password: il codice nuovo sotto «Password cambiata» e l'esito dal catalogo (#590)
             "TestiAccesso.passwordCambiata", "TestiAccount.esitoCambioPassword(",
@@ -258,6 +259,20 @@ struct AccessoImpostazioniDalCatalogoTests {
         let senzaEmail = AccessiAccount(password: true, social: [AccessoCollegato(provider: "google", email: " ")])
         #expect(TestiAccount.rigaGoogle(senzaEmail) == Catalogo.Social.googleCollegato(email: Catalogo.Social.googleAccount))
         #expect(TestiAccount.rigaGoogle(AccessiAccount(password: true)) == Catalogo.Social.googleNonCollegato)
+    }
+
+    /// Il server toglie il collegamento con Google a chi ha una password; chi entra solo con Google lo tiene (#765). La conferma lo
+    /// dice solo a chi lo perde, come la web, leggendo come si entra dal server (`accessi`): finché non si sa, niente frase.
+    @Test("«Esci da tutti i dispositivi»: la frase su Google solo a chi ha Google collegato e una password (#765)")
+    func esciTuttiGoogle() {
+        let google = [AccessoCollegato(provider: "google", email: "g@example.invalid")]
+        #expect(TestiAccount.esciTuttiGoogle(accessi: AccessiAccount(password: true, social: google)) == Catalogo.Account.esciTuttiGoogle)
+        #expect(TestiAccount.esciTuttiGoogle(accessi: AccessiAccount(password: false, social: google)) == nil,
+                "chi entra solo con Google resta collegato")
+        #expect(TestiAccount.esciTuttiGoogle(accessi: AccessiAccount(password: true)) == nil, "senza Google niente frase")
+        #expect(TestiAccount.esciTuttiGoogle(accessi: AccessiAccount(password: nil, social: google)) == nil,
+                "se il server non dice della password non si sa se Google si toglie")
+        #expect(TestiAccount.esciTuttiGoogle(accessi: nil) == nil)
     }
 
     @MainActor
