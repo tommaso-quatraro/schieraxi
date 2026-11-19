@@ -958,8 +958,11 @@ function sostituti(f, base, dentro) {
   return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
     .sort((a, b) => b.punti_attesi - a.punti_attesi);
 }
+// Chi non si mette in campo (#643): lo stato del server (`etichetta.codice`) dice che è infortunato o squalificato.
+const NON_ENTRANO = ["infortunato", "squalificato"];
 // La Formazione si ridisegna (modulo, «Torna alla consigliata», un salvataggio arrivato): la sostituzione di un titolare aperta
-// (`data-sostituzione`) si chiude, perché i suoi candidati erano quelli della formazione di prima. Le schede dei giocatori restano.
+// (`data-sostituzione`, anche l'elenco di «Metti in campo») si chiude, perché i suoi candidati erano quelli della formazione di
+// prima. Le schede dei giocatori restano.
 function chiudiSostituzione() {
   const foglio = $("#foglio");
   if (foglio && !foglio.hidden && $("#foglio-contenuto [data-sostituzione]")) chiudiFoglio();
@@ -1063,6 +1066,7 @@ function mostraFormazione(b, squadra, opz = {}) {
     return x ? { ...x, ...dalVivo } : { id: g.id, nome: g.nome, ruolo: g.ruolo, squadra: g.squadra, ...dalVivo };
   };
   const chiusa = !!f.iniziata || !!live;
+  const primaDellaScadenza = !!o && (o.fase || "prima") === "prima";     // la fase della giornata (/api/oggi), non della prossima
   const mia = !squadra;
   // `sola`: i comandi che scrivono sono spenti. Vale per la copia tenuta sul telefono, mostrata subito all'apertura, finché non
   // arrivano i dati nuovi (un tocco lì salvava, e i dati in arrivo ridisegnavano la pagina senza il cambio), per la scelta non letta,
@@ -1205,11 +1209,15 @@ function mostraFormazione(b, squadra, opz = {}) {
     const linee = { P: [], D: [], C: [], A: [] };
     titolari.forEach(x => (linee[x.ruolo] || linee.A).push(x));
     // per la scheda del giocatore e la sostituzione: la formazione in pagina e cosa ci si può fare
-    // `fermo`: un titolare che gioca un anticipo già cominciato; al posto di «Sostituisci» la scheda dice perché non si sposta
+    // `fermo`: chi gioca un anticipo già cominciato; al posto di «Sostituisci» o «Metti in campo» la scheda dice perché non si sposta
+    // `entrabile`: chi non è fra gli 11 e si può mettere in campo (#643), solo prima della scadenza della giornata (non a giornata
+    // finita, anche con la prossima già da preparare: lo dice l'issue) e non se è infortunato o squalificato (stato del server)
     stato.formaz = { f, modulo: m, scheda, perche: id => (sc.manuale || chiusa ? "" : percheTitolare(m, id, scheda)),
       pronta: () => !sc.sola,
       sostituibile: id => mia && !chiusa && m.titolari.includes(id) && !fermi.has(id),
-      fermo: id => mia && !chiusa && m.titolari.includes(id) && fermi.has(id), sostituisci };
+      entrabile: id => mia && !chiusa && primaDellaScadenza && !m.titolari.includes(id) && !fermi.has(id) && !!scheda(id)
+        && !NON_ENTRANO.includes(codiceStato(scheda(id))),
+      fermo: id => mia && !chiusa && fermi.has(id) && (m.titolari.includes(id) || primaDellaScadenza), sostituisci };
     // le decisioni che hanno ancora senso con la formazione in pagina: un cambio già fatto non si propone più, e «la consigliata è
     // cambiata» vale finché c'è una tua scelta salvata diversa da lei
     const vale = v => v.tipo === "dubbio" ? !chiusa && !!v.giocatore && m.titolari.includes(Number(v.giocatore.id)) && !m.titolari.includes(Number(v.alternativa.id))
@@ -1293,8 +1301,8 @@ function mostraFormazione(b, squadra, opz = {}) {
     const comeAndata = $("[data-apri-giornata]");       // «Com'è andata»: la pagina Giornate, aperta sulla giornata appena finita
     if (comeAndata) comeAndata.addEventListener("click", () => vaiGiornate(Number(comeAndata.dataset.apriGiornata) || undefined));
     if (mantieniScroll) window.scrollTo(0, y0);
-    // la scheda di un giocatore rimasta aperta: il suo «Sostituisci» segue lo stato della schermata
-    document.querySelectorAll("#foglio-contenuto [data-sostituisci]").forEach(e => { e.disabled = sc.sola; });
+    // la scheda di un giocatore rimasta aperta: il suo «Sostituisci» (o «Metti in campo») segue lo stato della schermata
+    document.querySelectorAll("#foglio-contenuto [data-sostituisci], #foglio-contenuto [data-metti-in-campo]").forEach(e => { e.disabled = sc.sola; });
     if (fuoco !== null) {                                   // mai sul vuoto: lo stesso comando, o il più vicino che c'è
       const dove = (fuoco ? [fuoco, "#copia", "#modulo", "#titolo-pagina"] : ["#titolo-pagina"]).map(s => $(s)).find(e => e && !e.disabled);
       // con il foglio modale ancora in chiusura la pagina sotto non prende il fuoco: glielo dà il foglio quando ha finito (sbloccaSfondo)
@@ -1321,7 +1329,7 @@ function mostraFormazione(b, squadra, opz = {}) {
     if (sc.nonLetta) { disegna(true); return; }
     if (spenti()) return;                                   // una scrittura è ancora in volo: quando torna la schermata si rilegge
     sc.sola = false;
-    document.querySelectorAll("#contenuto [data-scrive], #foglio-contenuto [data-sostituisci]").forEach(e => { e.disabled = false; });
+    document.querySelectorAll("#contenuto [data-scrive], #foglio-contenuto [data-sostituisci], #foglio-contenuto [data-metti-in-campo]").forEach(e => { e.disabled = false; });
   } };
 }
 
@@ -1457,6 +1465,7 @@ function htmlScheda(c, pr, fz) {
     ${pr && !finitaP ? bloccoPerche(prSenzaGioca) : ""}
     <div class="scheda-pezzo" id="scheda-voti" aria-busy="true"><h3>${t("formazione.ultimi_voti")}</h3><div class="debole piccolo">${t("comune.carico")}</div></div>
     ${fz && fz.sostituibile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-sostituisci="${Number(c.id)}"${fz.pronta() ? "" : " disabled"}>${t("formazione.sostituisci")}</button></div>`
+      : fz && fz.entrabile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-metti-in-campo="${Number(c.id)}"${fz.pronta() ? "" : " disabled"}>${t("formazione.metti_in_campo")}</button></div>`
       : fz && fz.fermo(Number(c.id)) ? `<p class="debole piccolo" id="scheda-fermo">${t("formazione.bloccati")}</p>` : ""}
     <details class="scheda-numeri" id="scheda-numeri"><summary>${t("formazione.tutti_numeri")}</summary>
       <div id="scheda-numeri-corpo" aria-busy="true"><div class="debole piccolo">${t("comune.carico")}</div></div></details>`;
@@ -1559,6 +1568,55 @@ function apriSostituzione(id) {
     const formazione = stato.vista === "formazione" ? stato.formaz : null;
     chiudiFoglio();
     if (formazione) formazione.sostituisci(Number(id), Number(b.dataset.entra));
+  }));
+}
+
+// «Metti in campo» (dalla scheda di chi non è fra gli 11, #643): il contrario di «Sostituisci». Chi può lasciargli il posto lo dice
+// il server (POST /api/formazione/metti-in-campo, con gli 11 in pagina): stesso ruolo, oppure un altro modulo ammesso dalla lega.
+// Ogni riga ha i punti attesi in più o in meno se al posto di quel titolare gioca lui (numero del server) e, se il modulo cambia,
+// quale. Un tocco fa il cambio con la stessa strada di «Sostituisci», che si salva da solo.
+async function apriMettiInCampo(id) {
+  const fz = stato.vista === "formazione" ? stato.formaz : null, base = fz && fz.scheda(id);
+  if (!base || !fz.entrabile(Number(id)) || !fz.pronta()) return;
+  const numero = ++ultimaScheda;                                          // una scheda ancora in arrivo non prende il posto dell'elenco
+  const testa = `<h2 class="titolo-foglio">${t("formazione.chi_esce_per", { nome: esc(base.nome) })}</h2>
+    <div class="debole piccolo">${t("formazione.esce_spiega", { nome: esc(base.nome) })}</div>`;
+  apriFoglio(`${testa}<div data-sostituzione aria-busy="true"><div class="debole" style="margin-top:12px">${t("comune.carico")}</div></div>`, { affianco: true });
+  // la risposta vale per questa scheda e per la formazione da cui è partita: nel frattempo la pagina può essersi ridisegnata (e
+  // allora l'elenco aperto si è già chiuso, chiudiSostituzione) o può essersi aperta un'altra scheda
+  const ancoraLei = () => numero === ultimaScheda && stato.formaz === fz && !!$("#foglio-contenuto [data-sostituzione]");
+  let r;
+  try {
+    r = await api("/api/formazione/metti-in-campo", { method: "POST",
+      body: JSON.stringify({ entra: Number(id), titolari: fz.modulo.titolari.map(Number), giornata: fz.f.giornata }) });
+  } catch (e) {
+    if (!ancoraLei()) return;
+    if (e.codice === "formazione_chiusa") { chiudiFoglio(); avviso(e.message, 5000); rileggiFormazione(); return; }   // scadenza passata con la pagina aperta
+    const dove = $("#foglio-contenuto [data-sostituzione]");
+    dove.innerHTML = errore(e);
+    dove.removeAttribute("aria-busy");
+    return;
+  }
+  if (!ancoraLei()) return;
+  const uscite = (Array.isArray(r && r.uscite) ? r.uscite : [])
+    .filter(u => u && fz.modulo.titolari.includes(Number(u.esce)) && fz.scheda(u.esce)).map(u => ({ ...u, x: fz.scheda(u.esce) }));
+  const riga = ({ x, differenza, modulo, cambia_modulo }) => {
+    const d = Number(differenza);
+    const nuovo = cambia_modulo && modulo ? `<span class="etichetta neutra">${t("formazione.passi_al", { modulo: esc(modulo) })}</span>` : "";
+    return `<li class="riga-gioc"><button class="voce voce-g" data-esce="${Number(x.id)}">${volto(x)}
+      <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
+        <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra)])}</span>
+        <span class="etichette">${etichetteGiocatore(x, nuovo)}</span></span>
+      ${Number.isFinite(d) ? `<span class="valore"><b class="${d > 0.04 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_con", { nome: esc(base.nome) })}</span></span>` : ""}
+      <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
+  };
+  apriFoglio(`${testa}<div data-sostituzione>${uscite.length ? `<ul class="elenco" style="margin-top:8px">${uscite.map(riga).join("")}</ul>`
+    : `<div class="debole" style="margin-top:12px">${t("formazione.nessuno_lascia_posto")}</div>`}</div>`, { affianco: true });
+  document.querySelectorAll("#foglio-contenuto [data-esce]").forEach(b => b.addEventListener("click", () => {
+    // come «Sostituisci»: il foglio si chiude comunque, il cambio si fa solo se lui è ancora fuori e quel titolare ancora dentro
+    const formazione = stato.vista === "formazione" ? stato.formaz : null;
+    chiudiFoglio();
+    if (formazione) formazione.sostituisci(Number(b.dataset.esce), Number(id));
   }));
 }
 
@@ -1711,6 +1769,8 @@ document.addEventListener("click", ev => {
   if (g && !g.disabled) apriGiocatore(Number(g.dataset.giocatore));
   const sost = ev.target.closest("[data-sostituisci]");                  // «Sostituisci» nella scheda di un titolare
   if (sost) apriSostituzione(Number(sost.dataset.sostituisci));
+  const entra = ev.target.closest("[data-metti-in-campo]");               // «Metti in campo» nella scheda di chi non è fra gli 11
+  if (entra && !entra.disabled) apriMettiInCampo(Number(entra.dataset.mettiInCampo));
   const v = ev.target.closest("[data-vai]");
   if (v) { chiudiFoglio(); vai(v.dataset.vai); }
   const ind = ev.target.closest("[data-imp-torna]");                      // «‹ Impostazioni» di una sua pagina, «‹ Le altre squadre»

@@ -121,6 +121,17 @@ prima della scadenza:
   spenti sulla copia («Sostituisci», «Torna alla consigliata») si accendono già pieni quando arrivano i dati nuovi, mai mezzi
   trasparenti (#697: axe lanciato in quell'istante trovava un contrasto troppo basso).
 
+`test_metti_in_campo.py`, «Metti in campo» dalla scheda di un giocatore che non è fra gli 11 (#643). Gli scenari registrati non
+hanno ancora la rotta `POST /api/formazione/metti-in-campo`: la risposta la dà il test con `web.risposta`, costruita sulla
+formazione registrata (finché non li si registra di nuovo, la web la chiama solo al tocco sul pulsante):
+- dalla scheda di un panchinaro «Metti in campo» chiede al server chi può uscire (con gli 11 in pagina), l'elenco ha la
+  differenza di punti attesi e, se il modulo cambia, il modulo nuovo («Si passa al 5-3-2»); un tocco cambia il campo, lo stato dice «L'hai cambiata
+  tu» e la scelta è salvata; con un cambio di modulo il campo e il menu del modulo passano a quello nuovo;
+- se la rotta non risponde la scheda ha un errore `role="alert"` e niente cambia; scheda ed elenco senza violazioni gravi di
+  axe, chiaro e scuro;
+- il pulsante non c'è per i titolari (che hanno «Sostituisci»), per infortunati e squalificati, per chi gioca un anticipo già
+  cominciato (la scheda dice perché), né a giornata in corso o finita.
+
 `test_giornate.py`, la pagina «Giornate» che ha preso il posto del Diario (#617):
 - si apre con un tocco dalla barra; gli indirizzi vecchi del Diario la aprono; «Com'è andata» della Formazione la apre
   sulla giornata appena finita;

@@ -255,6 +255,30 @@
     "it": "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi in più o in meno rispetto a {nome}.",
     "en": "Same role, from your roster. The big number is the expected points more or less than {nome}."
   },
+  "formazione.metti_in_campo": {
+    "it": "Metti in campo",
+    "en": "Put in the lineup"
+  },
+  "formazione.chi_esce_per": {
+    "it": "Chi esce per {nome}",
+    "en": "Who makes way for {nome}"
+  },
+  "formazione.esce_spiega": {
+    "it": "Stesso ruolo, oppure un altro modulo ammesso dalla tua lega. Il numero grande sono i punti attesi in più o in meno se al suo posto gioca {nome}.",
+    "en": "Same role, or another formation your league allows. The big number is the expected points more or less if {nome} plays instead."
+  },
+  "formazione.passi_al": {
+    "it": "Si passa al {modulo}",
+    "en": "Switches to {modulo}"
+  },
+  "formazione.punti_con": {
+    "it": "punti attesi se al suo posto gioca {nome}",
+    "en": "expected points if {nome} plays instead"
+  },
+  "formazione.nessuno_lascia_posto": {
+    "it": "Nessun titolare può lasciargli il posto.",
+    "en": "No starter can make way for him."
+  },
   "formazione.scelta_non_letta": {
     "it": "Non riesco a leggere la formazione che hai salvato: finché non la leggo non si può cambiare niente.",
     "en": "I can't read your saved lineup: nothing can be changed until I can."

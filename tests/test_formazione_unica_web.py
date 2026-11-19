@@ -164,9 +164,9 @@ SCHEDA = "\n".join(["const volto = () => ''; const NOME_RUOLO_1 = { P: 'Portiere
 CALCIATORE = {"id": 7, "nome": "Rossi L.", "ruolo": "C", "squadra": "Genoa", "squadra_slug": "genoa"}
 
 
-def _scheda(pr, sostituibile=True, perche="", lingua="it", fermo=False, pronta=True) -> str:
+def _scheda(pr, sostituibile=True, perche="", lingua="it", fermo=False, pronta=True, entrabile=False) -> str:
     fz = (f"{{ perche: () => {json.dumps(perche)}, sostituibile: () => {json.dumps(sostituibile)}, fermo: () => {json.dumps(fermo)}, "
-          f"pronta: () => {json.dumps(pronta)} }}")
+          f"entrabile: () => {json.dumps(entrabile)}, pronta: () => {json.dumps(pronta)} }}")
     return _esegui(f"htmlScheda({json.dumps(CALCIATORE)}, {json.dumps(pr)}, {fz})", STATI, SCHEDA, lingua=lingua)
 
 
@@ -206,6 +206,16 @@ def test_la_scheda_di_chi_non_si_puo_sostituire_non_ha_il_pulsante():
     assert "data-sostituisci" not in senza_formazione and 'id="perche-titolare"' not in senza_formazione   # dalla ricerca o dalla rosa
     senza_previsione = _esegui(f"htmlScheda({json.dumps(CALCIATORE)}, null, null)", STATI, SCHEDA)
     assert "Nessuna previsione" in _testo(senza_previsione) and 'id="scheda-voti"' in senza_previsione
+
+
+def test_la_scheda_di_chi_non_e_fra_gli_11_ha_metti_in_campo():
+    """#643: chi si può mettere in campo ha «Metti in campo» al posto di «Sostituisci»; sulla copia tenuta sul telefono è spento.
+    Chi gioca un anticipo già cominciato non lo ha: la scheda dice perché."""
+    assert '<button class="bottone" type="button" data-metti-in-campo="7">Metti in campo</button>' in _scheda(_giocatore(), sostituibile=False, entrabile=True)
+    assert 'data-metti-in-campo="7" disabled>' in _scheda(_giocatore(), sostituibile=False, entrabile=True, pronta=False)
+    assert ">Put in the lineup<" in _scheda(_giocatore(), sostituibile=False, entrabile=True, lingua="en")
+    fermo = _scheda(_giocatore(), sostituibile=False, fermo=True)
+    assert "data-metti-in-campo" not in fermo and 'id="scheda-fermo"' in fermo
 
 
 def test_la_scheda_a_partita_in_corso_e_finita():
