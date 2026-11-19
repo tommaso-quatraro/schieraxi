@@ -713,6 +713,43 @@
     "title": "IscrizionePush",
     "type": "object"
    },
+   "MettiInCampo": {
+    "properties": {
+     "entra": {
+      "maximum": 2147483647.0,
+      "minimum": 1.0,
+      "title": "Entra",
+      "type": "integer"
+     },
+     "giornata": {
+      "anyOf": [
+       {
+        "maximum": 100.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Giornata"
+     },
+     "titolari": {
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 40,
+      "title": "Titolari",
+      "type": "array"
+     }
+    },
+    "required": [
+     "entra",
+     "titolari"
+    ],
+    "title": "MettiInCampo",
+    "type": "object"
+   },
    "MiaSquadra": {
     "properties": {
      "nome": {
@@ -3047,6 +3084,42 @@
      }
     },
     "summary": "Formazione"
+   }
+  },
+  "/api/formazione/metti-in-campo": {
+   "post": {
+    "description": "«Metti in campo» (#643): chi può lasciare il posto a `entra`, un giocatore della tua rosa che non è fra i `titolari` in pagina.\nStesso ruolo, oppure un altro ruolo se il modulo che ne esce è ammesso dalla lega; per ognuno il modulo dopo il cambio e la\ndifferenza di punti attesi. Non scrive niente: il cambio scelto si salva con POST /api/formazione/valuta.",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MettiInCampo"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Metti In Campo"
    }
   },
   "/api/formazione/testo": {

@@ -125,6 +125,8 @@ def letture(m: str):
         ("GET", "/api/stato", {}), ("GET", "/api/formazione", {}), ("GET", "/api/scelta", dict(params={"giornata": 9})),
         ("GET", "/api/osservati", {}), ("GET", "/api/affidabilita", {}), ("GET", "/api/sotto-il-cofano", {}), ("GET", "/api/diario", {}), ("GET", "/api/stagione", {}),
         ("GET", "/api/asta", {}), ("GET", "/api/formazione/testo", {}), ("GET", "/api/confronto", dict(params={"a": 1, "b": 2})),
+        # «Metti in campo» (#643) non scrive niente: legge solo la formazione di chi chiede
+        ("POST", "/api/formazione/metti-in-campo", dict(json={"entra": 4, "titolari": [1, 2, 3], "giornata": 9})),
         ("GET", "/api/oggi", {}), ("GET", "/api/widget", {}), ("GET", "/api/calendario", {}), ("GET", "/api/mercato", {}), ("GET", "/api/classifica", {}),
         ("GET", "/api/giocatore/{calciatore_id}", dict(calciatore_id=2)), ("GET", "/api/scambi/proposte", {}), ("GET", "/api/scambi/limite", {}),
         ("GET", "/api/scambi/analizza", dict(params={"con": "x", "do": "1", "ricevo": "2"})),

@@ -4,8 +4,14 @@ Lo stesso ruolo, oppure un altro ruolo se il modulo che ne esce è ammesso dalla
 `scelte.motivo_non_valida`). Per ognuno il modulo dopo il cambio e la differenza di punti attesi (chi entra meno chi esce, la
 stessa di «Sostituisci»). Nessuno per chi è già titolare, gioca un anticipo già cominciato, è infortunato o squalificato.
 Rosa e regole inventate."""
+# ruff: noqa: F811  (le fixture importate arrivano come parametri con lo stesso nome: è il modo di pytest)
+from datetime import datetime, timedelta
+
 from fanta import scelte
 from fanta.regole import Regole
+from test_anticipi_scelta import CONSIGLIATA, GIORNATA
+from test_anticipi_scelta import mondo  # noqa: F401  (fixture: rosa, calendario e anticipo inventati, #373)
+from test_server import client  # noqa: F401  (fixture del server)
 
 # id: (ruolo, punti attesi, stato delle probabili)
 ROSA = {1: ("P", 4.0, None), 20: ("P", 3.0, None),
@@ -85,3 +91,44 @@ def test_infortunati_e_squalificati_non_entrano():
 def test_un_titolare_o_uno_che_non_e_della_rosa_non_ha_nessuno_da_far_uscire():
     assert _escono(2) == {}
     assert _escono(999) == {}
+
+
+# ---------------------------------------------------------------- la rotta: POST /api/formazione/metti-in-campo
+# Il mondo dei test sugli anticipi (#373): giornata 10, consigliata 4-4-2, il 5 (titolare) e il 16 (riserva) giocano un anticipo
+# già cominciato, il gruppo principale fra tre giorni. Tutte le schede valgono 6 punti attesi.
+def _chiedi(mondo, entra, titolari=CONSIGLIATA, giornata=GIORNATA):
+    return mondo["client"].post("/api/formazione/metti-in-campo", json={"entra": entra, "titolari": titolari, "giornata": giornata})
+
+
+def test_la_rotta_dice_chi_puo_uscire_con_il_modulo_e_la_differenza(mondo):
+    r = _chiedi(mondo, 12)                                              # un difensore della panchina
+    assert r.status_code == 200, r.text
+    corpo = r.json()
+    assert corpo["giornata"] == GIORNATA and corpo["entra"] == 12
+    moduli = {u["esce"]: (u["modulo"], u["cambia_modulo"]) for u in corpo["uscite"]}
+    assert moduli == {2: ("4-4-2", False), 3: ("4-4-2", False), 4: ("4-4-2", False),           # il 5 gioca l'anticipo: resta
+                      6: ("5-3-2", True), 7: ("5-3-2", True), 8: ("5-3-2", True), 9: ("5-3-2", True),
+                      10: ("5-4-1", True), 11: ("5-4-1", True)}
+    assert {u["differenza"] for u in corpo["uscite"]} == {0.0}
+
+
+def test_la_rotta_non_scrive_niente(mondo):
+    assert _chiedi(mondo, 12).status_code == 200
+    assert mondo["client"].get("/api/scelta", params={"giornata": GIORNATA}).json() is None
+
+
+def test_chi_gioca_un_anticipo_gia_cominciato_non_si_mette_in_campo(mondo):
+    r = _chiedi(mondo, 16)
+    assert r.status_code == 200 and r.json()["uscite"] == []
+
+
+def test_con_11_che_non_si_possono_schierare_risponde_400(mondo):
+    r = _chiedi(mondo, 12, titolari=CONSIGLIATA[:10])
+    assert r.status_code == 400 and r.json()["codice"] == "formazione_non_valida"
+
+
+def test_dopo_la_scadenza_risponde_409_formazione_chiusa(mondo):
+    mondo["anticipo"] = datetime.now() - timedelta(hours=2)
+    mondo["principale"] = datetime.now() - timedelta(hours=1)
+    r = _chiedi(mondo, 12)
+    assert r.status_code == 409 and r.json()["codice"] == "formazione_chiusa", r.text

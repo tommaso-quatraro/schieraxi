@@ -1048,6 +1048,37 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
         db.close()
 
 
+class MettiInCampo(BaseModel):
+    entra: int = Field(ge=1, le=MAX_ID_CALCIATORE)
+    titolari: list[int] = Field(max_length=limiti.MAX_GIOCATORI_SQUADRA)
+    giornata: int | None = Field(None, ge=1, le=MAX_GIORNATA)
+
+
+@app.post("/api/formazione/metti-in-campo")
+def metti_in_campo(dati: MettiInCampo, ctx: Contesto = Depends(lega_corrente)):
+    """«Metti in campo» (#643): chi può lasciare il posto a `entra`, un giocatore della tua rosa che non è fra i `titolari` in pagina.
+    Stesso ruolo, oppure un altro ruolo se il modulo che ne esce è ammesso dalla lega; per ognuno il modulo dopo il cambio e la
+    differenza di punti attesi. Non scrive niente: il cambio scelto si salva con POST /api/formazione/valuta."""
+    # Le schede e i `bloccati` sono quelli di GET /api/formazione (la consigliata è già in cache); la regola è
+    # scelte.chi_lascia_il_posto. Dopo la scadenza 409 `formazione_chiusa`, come il salvataggio.
+    db = _db()
+    try:
+        regole_ = _regole(ctx)
+        f = consigli.formazione(db, regole_, _rose_da_schierare(ctx), None, dati.giornata)
+        chiusa = _formazione_chiusa(db, ctx, f.get("giornata"))
+        if chiusa is not None:
+            return chiusa
+        schede = f.get("schede") or {}
+        motivo = scelte.motivo_non_valida(dati.titolari, {int(k): x.get("ruolo") for k, x in schede.items() if isinstance(x, dict)}, regole_)
+        if motivo:
+            raise consigli.FormazioneNonValida(motivo)
+        fermi = _con_bloccati(db, f).get("bloccati") or []
+        return {"giornata": f.get("giornata"), "entra": dati.entra,
+                "uscite": scelte.chi_lascia_il_posto(dati.entra, dati.titolari, schede, regole_, fermi)}
+    finally:
+        db.close()
+
+
 @app.get("/api/scelta")
 def leggi_scelta(response: Response, giornata: int = Query(ge=1, le=MAX_GIORNATA), ctx: Contesto = Depends(lega_corrente)):
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, ctx.scelte)
