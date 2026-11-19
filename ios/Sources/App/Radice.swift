@@ -1,11 +1,15 @@
 import SwiftUI
 import TipKit
 
-/// Le quattro sezioni dell'app, come la web fra #671 e #675: la Formazione per prima (al posto di Oggi e Formazione, #673), le
-/// Giornate (al posto del Diario di Altro, #673 passo 2), Squadra con le rose, Altro con le regole. Sull'iPhone sono le schede in
-/// basso, sull'iPad (e in orizzontale sui telefoni grandi) la barra laterale.
+/// Le voci della barra, come la web dal 12/11/2026 (#673 passo 3, web #675): Formazione, Giornate, Impostazioni, più la ricerca di un
+/// giocatore. Squadra e Altro non ci sono più: rose e regole stanno in Impostazioni > La mia lega. Sull'iPhone sono le schede in basso,
+/// sull'iPad (e in orizzontale sui telefoni grandi) la barra laterale. La ricerca (`cerca`) è la voce con il ruolo di ricerca: non è fra
+/// le tre (`allCases`), che sono anche le voci del menu «Vai a» con Cmd+1…3.
 enum Sezione: String, CaseIterable, Identifiable, Hashable {
-    case formazione, giornate, squadra, altro
+    case formazione, giornate, impostazioni, cerca
+
+    /// Le tre voci della barra, nell'ordine della web (la ricerca ha la sua, a parte).
+    static let allCases: [Sezione] = [.formazione, .giornate, .impostazioni]
 
     var id: String { rawValue }
 
@@ -13,8 +17,8 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .formazione: return Catalogo.Nav.formazione
         case .giornate: return Catalogo.Nav.giornate
-        case .squadra: return "Squadra"
-        case .altro: return "Altro"
+        case .impostazioni: return Catalogo.Shell.impostazioni
+        case .cerca: return Catalogo.Shell.cerca
         }
     }
 
@@ -22,31 +26,33 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .formazione: return "sportscourt"
         case .giornate: return "calendar"
-        case .squadra: return "person.3"
-        case .altro: return "ellipsis.circle"
+        case .impostazioni: return "gearshape"
+        case .cerca: return "magnifyingglass"
         }
     }
 
-    /// Cmd+1 ... Cmd+4 con la tastiera (iPad con tastiera, iPhone con tastiera Bluetooth).
+    /// Cmd+1 ... Cmd+3 con la tastiera (iPad con tastiera, iPhone con tastiera Bluetooth), per le tre voci del menu «Vai a».
     var scorciatoia: KeyEquivalent {
         switch self {
         case .formazione: return "1"
         case .giornate: return "2"
-        case .squadra: return "3"
-        case .altro: return "4"
+        case .impostazioni: return "3"
+        case .cerca: return "f"
         }
     }
 
+    /// All'apertura l'app torna qui: solo Formazione e Giornate (Impostazioni e ricerca si aprono quando servono).
+    var siRicorda: Bool { self == .formazione || self == .giornate }
+
     /// Da un nome scritto (indirizzi `schieraxi://`, «Da fare», scelta salvata). I nomi delle sezioni e delle pagine tolte
-    /// continuano a funzionare e aprono la scheda più vicina che resta (#634, come la web): Mercato è Squadra, Scambi e Lega sono Altro,
-    /// Oggi è la Formazione (#673: `schieraxi://oggi` dei widget già sulla Home, il tocco sugli avvisi, l'ultima sezione salvata),
-    /// il Diario è Giornate (#673 passo 2, come `dove` della web).
+    /// continuano a funzionare e aprono la voce più vicina che resta, come `dove` della web: Oggi è la Formazione (#673), il Diario è
+    /// Giornate (#673 passo 2), Squadra, Mercato, Altro, Lega e Scambi sono le Impostazioni (#673 passo 3; `Collegamenti` le porta
+    /// su La mia lega).
     static func da(nome: String?) -> Sezione? {
         switch (nome ?? "").lowercased() {
         case "oggi", "formazione": return .formazione
         case "giornate", "diario": return .giornate
-        case "squadra", "mercato": return .squadra
-        case "altro", "lega", "scambi": return .altro
+        case "impostazioni", "squadra", "mercato", "altro", "lega", "scambi": return .impostazioni
         default: return nil
         }
     }
@@ -55,18 +61,19 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
 /// Stato condiviso della navigazione: sezione aperta e, se serve, un giocatore da aprire (da Spotlight).
 @MainActor
 final class Navigazione: ObservableObject {
-    /// La sezione aperta; si ricorda l'ultima: all'apertura l'app torna lì.
+    /// La sezione aperta; si ricorda l'ultima fra Formazione e Giornate: all'apertura l'app torna lì.
     @Published var sezione: Sezione = .formazione {
-        didSet { if !Demo.attivo { UserDefaults.standard.set(sezione.rawValue, forKey: "ultimaSezione") } }
+        didSet { if !Demo.attivo, sezione.siRicorda { UserDefaults.standard.set(sezione.rawValue, forKey: "ultimaSezione") } }
     }
-    /// Un file delle rose arrivato da un'altra app («Apri con SchieraXI», Condividi): Lega > Aggiorna le rose lo importa.
+    /// Un file delle rose arrivato da un'altra app («Apri con SchieraXI», Condividi): Impostazioni > Aggiorna le rose lo importa.
     @Published var fileDaImportare: URL?
     /// Un'immagine arrivata da un'altra app («Apri con SchieraXI»): si chiede se è lo stemma o la divisa e di quale squadra.
     @Published var immagineRicevuta: ImmagineRicevuta?
-    /// La scheda di un giocatore aperta sopra la schermata corrente (tocco su una riga di Oggi, Formazione, Lega...).
+    /// La scheda di un giocatore aperta sopra la schermata corrente (tocco su una riga della Formazione, di una rosa...).
     @Published var scheda: IdGiocatore?
-    /// Il foglio delle Impostazioni (l'ingranaggio in testata, o `schieraxi://impostazioni`).
-    @Published var impostazioniAperte = false
+    /// La parte delle Impostazioni da portare in vista (La mia lega per gli indirizzi di Squadra e Altro): la pagina la prende e la
+    /// rimette a nil.
+    @Published var parteImpostazioni: ParteImpostazioni?
     /// «Collega il widget» (`schieraxi://widget/collega`, il tocco sul widget non collegato, o la configurazione guidata).
     @Published var collegaWidgetAperto = false
     /// La configurazione guidata («Primo avvio»): parte da sola senza rose, si riapre dalla lista «Da fare» di Oggi.
@@ -74,8 +81,8 @@ final class Navigazione: ObservableObject {
         // riaperta: la prossima chiusura torna a essere dell'utente
         didSet { if guidaAperta { guidaChiusaDallApp = false } }
     }
-    /// Una pagina di Squadra o di Altro da aprire (da un indirizzo `schieraxi://` o da Oggi): la radice la apre nella scheda giusta.
-    @Published var paginaDaAprire: PaginaLega?
+    /// Una pagina delle Impostazioni da aprire (da un indirizzo `schieraxi://` o dalle decisioni della Formazione): la radice la apre.
+    @Published var paginaDaAprire: PaginaImpostazioni?
     /// La giornata (numero di Serie A) da aprire nella pagina Giornate («Com'è andata» della Formazione): la pagina la prende e la
     /// rimette a nil.
     @Published var giornataDaAprire: Int?
@@ -100,11 +107,13 @@ final class Navigazione: ObservableObject {
         if !Demo.attivo { sezione = Self.sezioneDiAvvio() }
     }
 
-    /// Dove si apre l'app: l'ultima sezione in cui si era (una scelta vecchia in `sezioneAvvio` vale ancora, ma all'avvio si toglie).
+    /// Dove si apre l'app: l'ultima sezione in cui si era fra Formazione e Giornate (una scelta vecchia in `sezioneAvvio` vale ancora,
+    /// ma all'avvio si toglie). Chi aveva lasciato l'app su Squadra o su Altro si ritrova sulla Formazione.
     static func sezioneDiAvvio(_ memoria: UserDefaults = .standard) -> Sezione {
         let scelta = memoria.string(forKey: "sezioneAvvio") ?? "ultima"
         let nome = scelta == "ultima" ? memoria.string(forKey: "ultimaSezione") : scelta
-        return Sezione.da(nome: nome) ?? .formazione
+        guard let sezione = Sezione.da(nome: nome), sezione.siRicorda else { return .formazione }
+        return sezione
     }
 
     /// Un file arrivato da fuori: si accetta solo se l'estensione è di quelle delle rose (il controllo vero è all'importazione).
@@ -198,17 +207,18 @@ final class Navigazione: ObservableObject {
             apriScheda(id)
         case .pagina(let pagina):
             paginaDaAprire = pagina
-        case .impostazioni:
-            impostazioniAperte = true
+        case .impostazioni(let parte):
+            parteImpostazioni = parte
+            sezione = .impostazioni
         case .collegaWidget:
             collegaWidgetAperto = true
         }
     }
 }
 
-/// Radice dell'app: una `TabView` moderna. Sull'iPhone è la barra delle schede in basso (con il Liquid Glass di iOS 26 si riduce
-/// scorrendo e ha l'accessorio con il conto alla rovescia); sull'iPad diventa in alto una barra che si apre in barra laterale
-/// (`sidebarAdaptable`), con tastiera e puntatore, come le app di sistema.
+/// Radice dell'app: una `TabView` moderna con le tre voci e la ricerca. Sull'iPhone è la barra delle schede in basso (con il Liquid
+/// Glass di iOS 26 si riduce scorrendo e la ricerca è il tondo a destra); sull'iPad diventa in alto una barra che si apre in barra
+/// laterale (`sidebarAdaptable`), con tastiera e puntatore, come le app di sistema.
 struct RadiceView: View {
     @EnvironmentObject private var nav: Navigazione
     @EnvironmentObject private var modello: AppModel
@@ -228,10 +238,19 @@ struct RadiceView: View {
                 }
                 // niente pallino sulle schede: le novità si leggono in Impostazioni > Informazioni
             }
+            // la ricerca di un giocatore, come la lente della web: il nome della voce lo dà iOS («Cerca»)
+            Tab(value: Sezione.cerca, role: .search) {
+                NavigationStack {
+                    RicercaGiocatoreView(server: modello.server)
+                        .destinazioniGiocatore(server: modello.server)
+                }
+            }
         }
         .tabViewStyle(.sidebarAdaptable)
         .onAppear { apriPaginaRichiesta() }
         .onChange(of: nav.paginaDaAprire) { _, _ in apriPaginaRichiesta() }
+        // un indirizzo che porta a una parte delle Impostazioni (La mia lega) torna alla pagina, anche se sopra ce n'era un'altra
+        .onChange(of: nav.parteImpostazioni) { _, parte in if parte != nil { modello.lega.percorso = [] } }
         .barraSchedeCheSiRiduce()
         // Il conto alla rovescia sta nell'intestazione di Oggi (e nel widget): sotto la barra delle schede faceva due barre sovrapposte.
         .tint(Color.verde)
@@ -241,10 +260,10 @@ struct RadiceView: View {
         .environment(\.spazioZoom, zoom)
         .environment(\.apriGiocatore) { nav.apriScheda($0) }
         .environment(\.vaiASezione) { nav.sezione = $0 }
-        .environment(\.apriImpostazioni) { nav.impostazioniAperte = true }
+        .environment(\.apriImpostazioni) { nav.sezione = .impostazioni }
         .environment(\.funzioni, modello.funzioni.stato)
         .environment(\.apriRosaDi) { nome in
-            nav.sezione = modello.lega.apri([.squadre, .rosa(nome)])
+            nav.sezione = modello.lega.apri([.rosa(nome)])
         }
         .environment(\.apriImportazione) {
             nav.sezione = modello.lega.apri([.importa])
@@ -252,12 +271,6 @@ struct RadiceView: View {
         .environment(\.vediFormazioneDi) { nome in
             modello.formazione.vediSquadra(nome)
             nav.sezione = .formazione
-        }
-        .sheet(isPresented: $nav.impostazioniAperte) {
-            ImpostazioniView(vm: modello.lega)
-                .tint(Color.verde)
-                // Su iPad un foglio ampio, come le Impostazioni di sistema.
-                .presentationSizing(.page)
         }
         .sheet(isPresented: $nav.collegaWidgetAperto) {
             CollegaWidgetView()
@@ -285,7 +298,7 @@ struct RadiceView: View {
         .onChange(of: nav.immagineRicevuta) { _, nuova in
             if nuova == nil { controllaFineArrivo() }
         }
-        .onReceive(modello.lega.$percorsoSquadra) { percorso in
+        .onReceive(modello.lega.$percorso) { percorso in
             nav.controllaFineArrivo(importaAperta: percorso.contains(.importa))
         }
         .task { await Aggiornamento.riprogrammaScadenza() }   // a ogni apertura
@@ -309,10 +322,10 @@ struct RadiceView: View {
     }
 
     private func controllaFineArrivo() {
-        nav.controllaFineArrivo(importaAperta: modello.lega.percorsoSquadra.contains(.importa))
+        nav.controllaFineArrivo(importaAperta: modello.lega.percorso.contains(.importa))
     }
 
-    /// Una pagina chiesta da fuori («Da fare», «Apri il Diario»): si apre nella scheda a cui appartiene.
+    /// Una pagina chiesta da fuori (le decisioni della Formazione, un indirizzo): si apre nelle Impostazioni.
     private func apriPaginaRichiesta() {
         guard let pagina = nav.paginaDaAprire else { return }
         nav.paginaDaAprire = nil
@@ -328,8 +341,8 @@ struct RadiceView: View {
             FormazioneView(vm: modello.formazione, oggi: modello.oggi)
                 .environment(\.apriGiocatore) { id in nav.apriScheda(id, contesto: modello.formazione.contestoScheda(id)) }
         case .giornate: GiornateView(vm: modello.giornate)
-        case .squadra: LegaView(vm: modello.lega, ambito: .squadra)
-        case .altro: LegaView(vm: modello.lega, ambito: .altro)
+        case .impostazioni: ImpostazioniView(vm: modello.lega)
+        case .cerca: EmptyView()   // la ricerca ha la sua voce, con il suo contenuto (sopra)
         }
     }
 }

@@ -24,7 +24,7 @@ struct ParoleComeLaWebTests {
 
     @Test("Ore tranquille spente dal server: la frase della web (`avv.avevi_scelto_ore`)")
     func oreTranquilleSpente() {
-        #expect(AvvisiServerView.testoOreTranquilleSpente == Catalogo.Avv.aveviSceltoOre)
+        #expect(AvvisiDispositivoSezione.testoOreTranquilleSpente == Catalogo.Avv.aveviSceltoOre)
     }
 
     @Test("La riga dei controlli con l'app chiusa è in italiano")

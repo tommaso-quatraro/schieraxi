@@ -1,21 +1,33 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Le pagine che si aprono dalle schede Squadra e Altro.
-enum PaginaLega: Hashable {
-    case importa, squadre, rosa(String), regole, avvisi, stato
-    case stagione
+/// Le pagine che si aprono dalle Impostazioni (#673 passo 3: hanno preso anche quelle delle schede Squadra e Altro, come la web).
+enum PaginaImpostazioni: Hashable {
+    /// La mia lega: Aggiorna le rose, l'elenco delle squadre (Le altre squadre, o la scelta della propria), la rosa di una squadra
+    /// (La mia squadra, con stemma e maglia), Regole e scadenza, la nuova stagione.
+    case importa, squadre, rosa(String), regole, stagione
+    /// Le righe che aprono una pagina loro: Il tuo account, Informazioni, Gestione (solo per chi gestisce il server).
+    case account, informazioni, gestione
+    /// Pagine aperte da un'altra pagina: stato dei dati (Gestione), crediti e novità (Informazioni), cambio di server.
+    case stato, crediti, novita, cambiaServer
+}
 
-    /// In quale scheda sta la pagina: Squadra (la mia squadra, le rose, l'importazione) oppure Altro (tutto il resto).
-    var sezione: Sezione {
+/// Le parti della pagina Impostazioni che un indirizzo può portare in vista (`?vista=impostazioni&sezione=` della web).
+enum ParteImpostazioni: String, Hashable {
+    case avvisi, lega, aspetto
+
+    /// L'identificativo della prima riga della parte, dove la pagina scorre (`ScrollViewReader`): una riga, non la sezione (un
+    /// modificatore su una Section finisce su ogni sua riga).
+    var ancora: String {
         switch self {
-        case .importa, .squadre, .rosa: return .squadra
-        default: return .altro
+        case .avvisi: return "imp-avvisi"
+        case .lega: return "imp-rose"
+        case .aspetto: return "imp-aspetto"
         }
     }
 }
 
-/// Logica della schermata Lega: stato del server, permesso per le notifiche, aggiornamento in background.
+/// Logica delle Impostazioni: stato del server, squadre della lega (per La mia lega), nuova stagione, aggiornamento dei dati.
 @MainActor
 final class LegaViewModel: ViewModelBase {
     let server: any ServerClient
@@ -24,57 +36,44 @@ final class LegaViewModel: ViewModelBase {
     let stagione: Caricatore<StatoStagione>
     /// L'aggiornamento dei dati del server (tasto «Aggiorna i dati»), con il suo stato.
     let aggiornamento: AggiornaDatiViewModel
-    @Published var permesso = "…"
-    /// Pagine aperte nella pila di navigazione (nell'AppModel: cambiando sezione si resta dove si era).
-    /// Le pagine aperte nella scheda Altro.
-    @Published var percorso: [PaginaLega] = []
-    /// Le pagine aperte nella scheda Squadra.
-    @Published var percorsoSquadra: [PaginaLega] = []
+    /// Le squadre della lega: quante sono e qual è la propria (le voci di La mia lega, come `paginaImpostazioni` della web).
+    let squadre: Caricatore<[SquadraLega]>
+    /// Le pagine aperte nella pila delle Impostazioni (nell'AppModel: cambiando sezione si resta dove si era).
+    @Published var percorso: [PaginaImpostazioni] = []
 
-    /// Apre una pagina (e quelle che ci stanno sopra) nella scheda a cui appartiene e dice quale scheda mostrare.
+    /// Apre una pagina (e quelle che ci stanno sopra) nelle Impostazioni e dice quale voce della barra mostrare.
     @discardableResult
-    func apri(_ pagine: [PaginaLega]) -> Sezione {
-        let dove = pagine.first?.sezione ?? .altro
-        if dove == .squadra { percorsoSquadra = pagine } else { percorso = pagine }
-        return dove
+    func apri(_ pagine: [PaginaImpostazioni]) -> Sezione {
+        percorso = pagine
+        return .impostazioni
     }
 
     init(server: any ServerClient) {
         self.server = server
         info = Caricatore<InfoServer>("/api/stato", server: server)
         stagione = Caricatore<StatoStagione>("/api/stagione", ascolta: false, server: server)
+        squadre = Caricatore<[SquadraLega]>("/api/squadre", server: server)
         aggiornamento = AggiornaDatiViewModel(server: server)
         super.init()
         osserva(info)
         osserva(stagione)
+        osserva(squadre)
         osserva(aggiornamento)
     }
 
     func carica() async {
         await info.ricarica()
         await stagione.ricarica()
-        await aggiornaPermesso()
+        await squadre.ricarica()
     }
 
     /// true quando le rose sono ancora della stagione finita.
     var nuovaStagione: Bool { stagione.dato?.nuova == true }
 
-    func attivaPromemoria() async {
-        _ = await Notifiche.chiediPermesso()
-        await Aggiornamento.riprogrammaScadenza()
-        await aggiornaPermesso()
-    }
+    /// La propria squadra, se scelta.
+    var miaSquadra: String? { squadre.dato?.first { $0.mia == true }?.nome }
 
-    func aggiornaPermesso() async {
-        if Demo.attivo { permesso = "attive"; return }
-        switch await Notifiche.stato() {
-        case .authorized, .provisional, .ephemeral: permesso = "attive"
-        case .denied: permesso = "negate (Impostazioni di iOS)"
-        default: permesso = "da attivare"
-        }
-    }
-
-    /// La riga di Avvisi sul controllo che iOS fa fare all'app quando è chiusa (se cambia la consigliata), in italiano semplice.
+    /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (se cambia la consigliata), in italiano semplice.
     static let titoloControlli = "Controllo con l'app chiusa"
 
     /// Lo stato di quel controllo; se è spento, dove si riaccende (Impostazioni > Generali > Aggiornamento app in background).
@@ -122,125 +121,3 @@ final class SquadreViewModel: ViewModelBase {
     }
 }
 
-/// Impostazioni degli avvisi del server.
-@MainActor
-final class AvvisiServerViewModel: ViewModelBase {
-    private let server: any ServerClient
-    let caricatore: Caricatore<StatoAvvisi>
-    @Published var impostazioni: ImpostazioniAvvisi?
-    @Published var messaggio: String?
-    /// Il server ha spento le ore tranquille (inizio = fine): si dice una volta, finché non si salva di nuovo.
-    @Published var oreTranquilleSpente = false
-    /// Un salvataggio non riuscito, detto in parole semplici (si vede in ogni caso, anche con gli account accesi).
-    @Published var erroreSalvataggio: String?
-    /// Le impostazioni come le ha il server (l'ultima lettura o l'ultimo salvataggio riuscito): se un salvataggio fallisce
-    /// gli interruttori tornano qui, così non mostrano una scelta che il server non ha.
-    private var salvate: ImpostazioniAvvisi?
-    /// Le modifiche che non sono andate (anche quelle fatte mentre si aspettava): «Riprova» le rimanda. L'errore resta
-    /// finché un salvataggio riuscito non le contiene tutte.
-    private var daRiprovare: ModificaAvvisi?
-    /// I promemoria locali di questo telefono (nei test: una versione che annota le chiamate).
-    private let promemoria: PromemoriaTelefono
-
-    init(server: any ServerClient, promemoria: PromemoriaTelefono = .veri) {
-        self.server = server
-        self.promemoria = promemoria
-        caricatore = Caricatore<StatoAvvisi>("/api/avvisi", snake: false, cache: false, server: server)
-        super.init()
-        osserva(caricatore)
-    }
-
-    func carica() async {
-        await caricatore.ricarica()
-        impostazioni = caricatore.dato?.impostazioni
-        salvate = impostazioni
-        oreTranquilleSpente = caricatore.dato?.oreTranquilleSpente ?? false
-        if let i = impostazioni { ricordaSulTelefono(i) }
-    }
-
-    /// Ore tranquille e promemoria accesi servono anche ai promemoria locali: si ricordano sul telefono, e quelli spenti si
-    /// tolgono subito. Sempre con le impostazioni che ha il server (lette o appena salvate), mai con un tocco ancora in coda.
-    private func ricordaSulTelefono(_ i: ImpostazioniAvvisi) {
-        guard !Demo.attivo else { return }
-        promemoria.ricorda(i)
-        promemoria.togliSpenti(i.promemoriaAccesi)
-    }
-
-    /// Il salvataggio in corso: i salvataggi vanno uno alla volta. Due interruttori toccati in fretta partivano insieme con la
-    /// stessa versione: il secondo riceveva 412 («cambiato da un altro dispositivo», ma era questo) e la modifica si perdeva.
-    private var inCoda: Task<Void, Never>?
-
-    func salva() async {
-        let prima = inCoda
-        let questo = Task { @MainActor [weak self] in
-            await prima?.value
-            await self?.salvaOra()
-        }
-        inCoda = questo
-        await questo.value
-    }
-
-    /// Manda le impostazioni come sono ADESSO (comprese le modifiche fatte mentre si aspettava il salvataggio precedente).
-    private func salvaOra() async {
-        guard let i = impostazioni else { return }
-        guard i != salvate else {
-            // Niente da mandare: dopo un errore gli interruttori sono tornati come li ha il server e le modifiche aspettano
-            // «Riprova» (mandare questi valori cancellerebbe l'errore e le modifiche). L'errore resta, a meno che il server
-            // non abbia già tutto quello che c'era da riprovare.
-            if let attesa = daRiprovare, attesa.contenuta(in: i) { daRiprovare = nil; erroreSalvataggio = nil }
-            return
-        }
-        let prima = salvate
-        do {
-            let _: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", i, snake: false)
-            salvate = i
-            if daRiprovare?.contenuta(in: i) ?? true {
-                daRiprovare = nil
-                erroreSalvataggio = nil
-            }   // altrimenti una modifica non andata prima manca ancora: errore e «Riprova» restano
-            ricordaSulTelefono(i)
-            // Un promemoria si è riacceso, o sono cambiate le ore tranquille: i promemoria tornano in programma subito, con le
-            // scelte appena ricordate (quelli che ora cadono nel silenzio spariscono, quelli che ne sono usciti tornano).
-            let riacceso = prima.map { !i.promemoriaAccesi.subtracting($0.promemoriaAccesi).isEmpty } ?? false
-            let oreCambiate = prima.map { i.oreTranquille != $0.oreTranquille } ?? false
-            if riacceso || oreCambiate, !Demo.attivo {
-                await promemoria.riprogramma()
-            }
-            oreTranquilleSpente = false
-            messaggio = nil
-        } catch {
-            let conflitto = (error as? ErroreApi)?.eConflitto == true
-            if conflitto {
-                await carica()   // cambiato da un altro dispositivo: si rilegge e si mostra il valore nuovo
-                daRiprovare = nil
-            } else {
-                // Tutto ciò che il server non ha (questa modifica, quelle fatte mentre si aspettava e quelle di un errore
-                // precedente) aspetta «Riprova»; gli interruttori tornano come li ha il server.
-                let adesso = impostazioni ?? i
-                let voluta = daRiprovare?.applicata(a: adesso) ?? adesso
-                daRiprovare = ModificaAvvisi(da: salvate ?? i, a: voluta)
-                impostazioni = salvate
-            }
-            erroreSalvataggio = "Non ho salvato la modifica. " + error.localizedDescription
-        }
-    }
-
-    /// «Riprova» dopo un salvataggio non riuscito: rimanda le modifiche che non erano andate, sopra le impostazioni di adesso.
-    func riprova() async {
-        guard let attesa = daRiprovare else { erroreSalvataggio = nil; return }
-        impostazioni = attesa.applicata(a: impostazioni ?? attesa.a)
-        await salva()
-    }
-
-    /// Dopo un errore si può riprovare (non dopo un conflitto: lì i dati sono già quelli nuovi del server).
-    var puoRiprovare: Bool { daRiprovare != nil }
-
-    func provaAvviso() async {
-        do {
-            try await server.invia("POST", "/api/avvisi/prova")
-            messaggio = "Avviso di prova inviato."
-        } catch {
-            messaggio = error.localizedDescription
-        }
-    }
-}

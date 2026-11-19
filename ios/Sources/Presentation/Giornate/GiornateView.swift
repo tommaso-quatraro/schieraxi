@@ -61,7 +61,6 @@ struct GiornateView: View {
             .background(Sfondo())
             .avvisoDatiSalvati(vm.caricatore)
             .titoloPagina(Catalogo.Nav.giornate)
-            .ricercaGlobale()
             .refreshable { await vm.carica() }
         }
     }
@@ -102,7 +101,6 @@ struct GiornateView: View {
             .background(Sfondo())
             .avvisoDatiSalvati(vm.caricatore)
             .titoloPagina(Catalogo.Nav.giornate)
-            .ricercaGlobale()
             .refreshable { await vm.carica() }
         } detail: {
             NavigationStack {

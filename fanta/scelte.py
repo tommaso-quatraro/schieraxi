@@ -141,7 +141,8 @@ def salva(stagione: str, giornata: int, titolari: list[int], modulo: str, percor
     `messa` («L'ho messa», #616): l'utente dice di aver messo questi 11 nell'app della lega. Nella voce diventa `messa: true` con
     `messa_il` (quando l'ha detto), scritti solo se vero. None = chi salva non dice niente: vedi `_messa`.
     `da` (#639): da dove arriva il salvataggio, «web» o «app» (l'app nativa); scritto solo se è uno dei due. Lo usa il promemoria
-    (`notifiche._gia_schierato`): l'app per iPhone di oggi non ha la spunta «L'ho messa», quindi solo le scelte della web la chiedono."""
+    (`notifiche._gia_schierato`): web e iPhone hanno la spunta «L'ho messa» e una loro scelta la chiede; le scelte senza `da`
+    (salvate prima del 13/11) no."""
     with _blocco:
         tutte = _tutte(percorso)
         adesso = datetime.now().isoformat(timespec="seconds")
