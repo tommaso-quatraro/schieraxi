@@ -27,12 +27,15 @@ struct TestaFormazione: Equatable {
     /// accanto, piccolo, «fra 3 h 10 min». Nil dove la web non lo scrive (giornata in corso, formazione già chiusa).
     var chiude: String?
     var manca: String?
+    /// Da fare (#727): la frase del server a campionato finito.
+    var campionatoFinito: String?
 }
 
 extension TestaFormazione {
     /// La testa per la tua formazione (`oggi` di `GET /api/oggi`) o, senza `oggi`, per quella di un'altra squadra (solo la giornata).
     /// `adesso`: l'ora dell'app, per il conto alla rovescia.
-    static func per(oggi o: Oggi?, formazione f: Formazione, adesso: Date) -> TestaFormazione {
+    static func per(oggi o: Oggi?, formazione: Formazione?, adesso: Date) -> TestaFormazione {
+        guard let f = formazione else { return TestaFormazione() }
         let giornata = f.etichettaGiornata
         guard let o else { return TestaFormazione(giornata: giornata) }
         let conto = Self.conto(o, adesso: adesso)

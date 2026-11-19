@@ -729,4 +729,7 @@ enum LegaDemo {
         }
         return Data(json(w).utf8)
     }
+
+    /// Da fare (#727): il widget a campionato finito.
+    static func widgetCampionatoFinito(adesso: Date) -> Data { Data() }
 }

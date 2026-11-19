@@ -371,6 +371,11 @@ struct Oggi: Decodable {
     let servePromemoria: Tollerante<Bool>?
 }
 
+extension Oggi {
+    /// Da fare (#727): la frase del server a campionato finito.
+    var testoCampionatoFinito: String? { nil }
+}
+
 /// Quando sono state lette le probabili formazioni (campo `probabili` di Oggi). Ogni campo è facoltativo.
 struct ProbabiliFresche: Decodable, Equatable {
     let aggiornateIl: String?

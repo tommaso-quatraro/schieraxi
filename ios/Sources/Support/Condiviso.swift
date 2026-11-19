@@ -129,6 +129,8 @@ struct RiassuntoOggi: Codable, Equatable {
     /// `finita`: la giornata appena chiusa (Serie A e lega); `giornata` e `inizio` sono già quelli della prossima.
     var giornataChiusa: Int?
     var giornataChiusaLega: Int?
+    /// Da fare (#727): la frase del server a campionato finito.
+    var campionatoFinito: String?
 
     /// La giornata con i due numeri (#299); nil senza giornata.
     var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }

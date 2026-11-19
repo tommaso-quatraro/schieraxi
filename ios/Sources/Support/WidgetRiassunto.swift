@@ -308,6 +308,9 @@ struct RiassuntoWidget: Decodable {
         d.keyDecodingStrategy = .convertFromSnakeCase
         return try? d.decode(RiassuntoWidget.self, from: dati)
     }
+
+    /// Da fare (#727): la frase del server a campionato finito.
+    var campionatoFinito: String? { nil }
 }
 
 /// Lo scarico di `/api/widget` (nel widget e nell'app): sempre con `If-None-Match`, mai calcoli.
@@ -968,6 +971,9 @@ enum ParoleWidget {
             : "si è chiusa \(Quando.relativa(inizio, adesso: adesso))"
         return conProbabili == false ? ["probabili non uscite · \(quando)", "probabili non uscite"] : [quando]
     }
+
+    /// Da fare (#727): le forme della frase del server a campionato finito.
+    static func formeCampionatoFinito(_ testo: String) -> [String] { [testo] }
 
     /// «4 da controllare» → «4»; senza niente da controllare «titolari a posto» → «a posto».
     static func daControllare(_ n: Int) -> [String] {

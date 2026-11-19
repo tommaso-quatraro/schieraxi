@@ -150,6 +150,9 @@ final class FormazioneViewModel: ViewModelBase {
         return o.errore
     }
 
+    /// Da fare (#727): il campionato è finito.
+    var campionatoFinito: Bool { false }
+
     /// La spunta «L'ho messa»: vale per gli 11 salvati.
     var messa: Bool { salvata?.messa == true }
 
