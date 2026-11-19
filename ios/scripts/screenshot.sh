@@ -29,6 +29,8 @@ TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazi
        lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri impostazioni-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-squadra impostazioni-gestione impostazioni-crediti primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
+# I nomi che l'app conosce: le foto a mano (SCHERMATE) possono chiedere solo questi.
+CONOSCIUTE=("${TUTTE[@]}")
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
 PER_CHIARO=(formazione formazione-in-corso formazione-finita giornate-aperta
             impostazioni lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
@@ -53,8 +55,18 @@ fi
 
 # SCHERMATE="a b c" (a mano, dal workflow): SOLO queste schermate, ma in tutte le varianti (come il collaudo):
 # iPhone chiaro, scuro e testo grande, iPad verticale e orizzontale. Per fotografare solo le schermate toccate da una PR.
+# Un nome che non è in TUTTE (scena tolta o rinominata, nome scritto male) ferma tutto prima del simulatore: l'app, che non lo
+# conosce, si aprirebbe sulla Formazione e le foto sembrerebbero buone (#710, «impostazioni-avanzate» diventata «-gestione»).
 if [ -n "${SCHERMATE:-}" ]; then
   read -r -a TUTTE <<< "$SCHERMATE"
+  SCONOSCIUTE=()
+  for s in "${TUTTE[@]}"; do
+    [[ " ${CONOSCIUTE[*]} " == *" $s "* ]] || SCONOSCIUTE+=("$s")
+  done
+  if [ ${#SCONOSCIUTE[@]} -gt 0 ]; then
+    echo "::error title=Foto::Schermate sconosciute: ${SCONOSCIUTE[*]}. I nomi validi sono in TUTTE di ios/scripts/screenshot.sh (una scena tolta o rinominata si aprirebbe sulla Formazione)."
+    exit 2
+  fi
   SCATTI=collaudo
 fi
 
