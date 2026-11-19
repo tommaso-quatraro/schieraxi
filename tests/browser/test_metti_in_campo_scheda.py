@@ -6,7 +6,9 @@ differenza di punti attesi) e un tocco fa il cambio, che si salva come «Sostitu
 rotta nuova: la sua risposta la dà il test (`web.risposta`), costruita sulla formazione registrata. Il pulsante non c'è a giornata
 in corso o finita, né per chi gioca un anticipo già cominciato, è infortunato o squalificato.
 """
+import json
 import re
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -144,6 +146,26 @@ def test_se_il_server_non_risponde_la_scheda_lo_dice_e_non_cambia_niente(web):
     assert scheda(web).get_by_role("alert").count() == 1
     assert nomi_sul_campo(web) == prima and stato(web) == "È la consigliata."
     assert not [p for m, p, c in scritte if p == "/api/formazione/valuta"]
+
+
+def test_se_la_scheda_si_chiude_prima_della_risposta_l_elenco_non_si_riapre(web):
+    """La risposta del server arriva dopo (rete lenta, «sto calcolando»): se nel frattempo la scheda è stata chiusa, resta chiusa."""
+    solo(web, "prima")
+    _, entra, difensore, attaccante = _prepara(web)
+    tenute = []
+    web.pagina.route(lambda u: urlsplit(u).path == ROTTA, lambda r: tenute.append(r))   # in sospeso finché il test non la dà
+    web.apri("/")
+    tocca(web, _riga_panchina(web, entra["nome"]))
+    tocca(web, scheda(web).get_by_role("button", name="Metti in campo"))
+    assert len(tenute) == 1 and "Chi esce per" in scheda(web).get_by_role("heading").first.inner_text()
+    web.pagina.keyboard.press("Escape")
+    web.aspetta()
+    assert scheda(web).count() == 0
+    tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps({"giornata": 9, "entra": entra["id"], "uscite": [
+        {"esce": difensore["id"], "modulo": "4-3-3", "cambia_modulo": False, "differenza": 0.4}]}))
+    web.pagina.wait_for_load_state("networkidle")
+    web.aspetta()
+    assert scheda(web).count() == 0, scheda(web).inner_text()
 
 
 @pytest.mark.parametrize("tema", ["chiaro", "scuro"])

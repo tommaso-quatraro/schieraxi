@@ -1585,8 +1585,10 @@ async function apriMettiInCampo(id) {
     <div class="debole piccolo">${t("formazione.esce_spiega", { nome: esc(base.nome) })}</div>`;
   apriFoglio(`${testa}<div data-sostituzione aria-busy="true"><div class="debole" style="margin-top:12px">${t("comune.carico")}</div></div>`, { affianco: true });
   // la risposta vale per questa scheda e per la formazione da cui è partita: nel frattempo la pagina può essersi ridisegnata (e
-  // allora l'elenco aperto si è già chiuso, chiudiSostituzione) o può essersi aperta un'altra scheda
-  const ancoraLei = () => numero === ultimaScheda && stato.formaz === fz && !!$("#foglio-contenuto [data-sostituzione]");
+  // allora l'elenco aperto si è già chiuso, chiudiSostituzione), può essersi aperta un'altra scheda, o l'utente l'ha chiusa (✕, Esc:
+  // chiudiFoglio lascia il contenuto e nasconde il foglio dopo l'animazione, quindi conta anche «chiude»)
+  const aperto = () => { const foglio = $("#foglio"); return !foglio.hidden && !foglio.classList.contains("chiude"); };
+  const ancoraLei = () => numero === ultimaScheda && stato.formaz === fz && aperto() && !!$("#foglio-contenuto [data-sostituzione]");
   let r;
   try {
     r = await api("/api/formazione/metti-in-campo", { method: "POST",
