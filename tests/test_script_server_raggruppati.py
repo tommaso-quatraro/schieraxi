@@ -385,3 +385,71 @@ def test_versione_rifiutata_con_sotto_una_modifica_al_server_senza_commit_di_ver
     s.giro(70)
     assert s.codice() == "V2"
     assert "La versione nuova non partiva" in s.avvisi()[-1] and "arrivat" in s.avvisi()[-1]
+
+
+@con_bash
+def test_versione_rifiutata_l_unione_che_numera_non_e_una_modifica_arrivata_prima(s):
+    """Revisione di #647: il rilascio di tutti i giorni è un'unione con codice e novità, poi il commit di versione che tocca solo le
+    novità. Se quella versione è rifiutata, l'unione che numera è la versione rotta, non «una modifica arrivata prima»."""
+    _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.giro(0)
+    _commit(s.lavoro, "Correzione (#62)", **{"fanta/__init__.py": "V3", "fanta/novita.d/correzione.json": "{}"})
+    (s.lavoro / "fanta" / "novita.d" / "correzione.json").unlink()
+    _commit(s.lavoro, "Versione 1.6: Correzione", **{"fanta/novita.json": "[]"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    s.giro(70)
+    assert s.codice() == "V2"
+    assert "La versione nuova non partiva" in s.avvisi()[-1]
+    assert "arrivat" not in s.avvisi()[-1] and "partita" not in s.avvisi()[-1]
+
+
+@con_bash
+def test_installazione_forzata_tornata_indietro_l_avviso_dice_che_la_richiesta_resta_attiva(s):
+    """Revisione di #647: installa-subito resta finché un'installazione non riesce. L'avviso del rifiuto lo dice: la prossima
+    versione si installa subito, anche durante una partita."""
+    (s.stato / "installa-subito").write_text("", encoding="utf-8")
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    s.giro(0)
+    assert s.codice() == "V1" and (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert (s.stato / "installa-subito").exists()
+    assert "La versione nuova non partiva" in s.avvisi()[-1] and "anche durante una partita" in s.avvisi()[-1]
+
+
+SCAMBIO_CHE_NON_RIESCE = 'case "$*" in *".venv.nuova "*"/.venv") exit 1;; esac\nexec /usr/bin/mv "$@"'
+
+
+@con_bash
+def test_scambio_degli_ambienti_non_riuscito_rimette_subito_la_versione_di_prima(s):
+    """Revisione di #647: se l'ambiente Python nuovo non prende il posto di quello in uso, codice e ambiente tornano subito quelli di
+    prima. Al giro dopo la copia di sicurezza è quella della versione di prima: un ritorno indietro riporta davvero lì."""
+    _stub(s.bin, "mv", SCAMBIO_CHE_NON_RIESCE)
+    c2 = _commit(s.lavoro, "librerie", **{"requirements.txt": "r2", "fanta/__init__.py": "V2"})
+    s.giro(0, uscita=1)
+    assert s.riavvii() == 0 and s.codice() == "V1" and base._venv(s) == "vecchia"
+    assert (s.app / "requirements.txt").read_text(encoding="utf-8") == "r1"
+    assert len(s.avvisi()) == 1 and "ambienti Python" in s.avvisi()[0]
+    (s.bin / "mv").unlink()
+    s.codice_curl.write_text("500", encoding="utf-8")                      # si riprova, la versione nuova non parte
+    s.giro(10)
+    assert s.codice() == "V1" and base._venv(s) == "vecchia"
+    assert (s.app / "requirements.txt").read_text(encoding="utf-8") == "r1"
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+
+
+@con_bash
+def test_installazione_rimasta_a_meta_non_sovrascrive_la_copia_di_sicurezza(s):
+    """Revisione di #647: se un'installazione si ferma a metà (qui: lo scambio non riesce e neanche il ripristino), il giro dopo
+    rimette la versione di prima dalla copia di sicurezza invece di rifarla con il codice mai provato."""
+    _stub(s.bin, "mv", SCAMBIO_CHE_NON_RIESCE)
+    _stub(s.bin, "tar", 'case "${1:-}" in xzf) exit 1;; esac\nexec /usr/bin/tar "$@"')
+    c2 = _commit(s.lavoro, "librerie", **{"requirements.txt": "r2", "fanta/__init__.py": "V2"})
+    s.giro(0, uscita=1)
+    assert s.riavvii() == 0 and base._venv(s) == "vecchia"
+    (s.bin / "mv").unlink()
+    (s.bin / "tar").unlink()
+    s.codice_curl.write_text("500", encoding="utf-8")
+    s.giro(10)
+    assert s.codice() == "V1" and base._venv(s) == "vecchia"
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert _righe(s, "non era finita")
