@@ -29,8 +29,35 @@ final class AnteprimaRoseTests: XCTestCase {
     "differenze": {"prima_importazione": true, "testo": "Prima importazione"}, "riepilogo": "Prima importazione"}
     """#
 
+    /// Due omonimi scritti uguali nella stessa rosa (#716), come li manda il server dal #662: ogni giocatore ha la sua `riga`
+    /// (la posizione nella squadra, da 0) e i due «Bertolazzi» hanno proposte diverse.
+    static let omonimi = #"""
+    {"squadre": [
+      {"nome": "Real Fantasia", "giocatori": [
+        {"testo": "Pirlotti", "riga": 0, "stato": "sicuro", "metodo": "esatto", "id": 901, "nome": "Ugo Pirlotti", "ruolo": "P", "squadra": "inter", "alternative": []},
+        {"testo": "Bertolazzi", "riga": 1, "stato": "da_controllare", "metodo": "ambiguo", "id": 904, "nome": "Aldo Bertolazzi", "ruolo": "A", "squadra": "roma",
+         "avviso": "", "alternative": [{"id": 904, "nome": "Aldo Bertolazzi", "ruolo": "A", "squadra": "roma"},
+                                      {"id": 905, "nome": "Rino Bertolazzi", "ruolo": "A", "squadra": "lazio"}]},
+        {"testo": "Bertolazzi", "riga": 2, "stato": "da_controllare", "metodo": "ambiguo", "id": 905, "nome": "Rino Bertolazzi", "ruolo": "A", "squadra": "lazio",
+         "avviso": "", "alternative": [{"id": 905, "nome": "Rino Bertolazzi", "ruolo": "A", "squadra": "lazio"},
+                                      {"id": 904, "nome": "Aldo Bertolazzi", "ruolo": "A", "squadra": "roma"}]},
+        {"testo": "Quintavalle", "riga": 3, "stato": "non_trovato", "metodo": "non trovato", "id": null, "nome": null, "ruolo": "A", "squadra": null, "alternative": []}
+      ]}
+    ],
+    "mia_squadra": "Real Fantasia"}
+    """#
+
     private func anteprima() throws -> AnteprimaRose {
         try Decodifica.decodifica(Data(Self.risposta.utf8))
+    }
+
+    private func anteprimaOmonimi() throws -> AnteprimaRose {
+        try Decodifica.decodifica(Data(Self.omonimi.utf8))
+    }
+
+    /// Le correzioni come le riceve il server.
+    private func inviate(_ correzioni: [CorrezioneRosa]) throws -> [[String: Any]] {
+        try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(correzioni)) as? [[String: Any]])
     }
 
     // MARK: modelli
@@ -99,6 +126,30 @@ final class AnteprimaRoseTests: XCTestCase {
         var s = try XCTUnwrap(try anteprima().squadre.first)
         s.giocatori.insert(GiocatoreAnteprima(testo: "Quintavalle", stato: .nonTrovato), at: 0)   // stesso nome due volte
         XCTAssertEqual(AnteprimaLogica.dubbi(s).map(\.testo), ["Mancuzzi", "Bertolazzi", "Quintavalle"])
+    }
+
+    // MARK: omonimi nella stessa rosa (#716)
+
+    func testDueOmonimiNellaStessaRosaSonoDueDubbi() throws {
+        let s = try XCTUnwrap(try anteprimaOmonimi().squadre.first)
+        XCTAssertEqual(AnteprimaLogica.dubbi(s).map(\.testo), ["Bertolazzi", "Bertolazzi", "Quintavalle"],
+                       "con la riga del server ogni omonimo ha il suo dubbio, come sulla web")
+    }
+
+    func testDueOmonimiMandanoUnaCorrezioneCiascunaConLaLoroRiga() throws {
+        let r = try anteprimaOmonimi()
+        let c = try inviate(AnteprimaLogica.correzioni(r.squadre, scelte: [:]))
+        XCTAssertEqual(c.map { $0["testo"] as? String }, ["Bertolazzi", "Bertolazzi"])
+        XCTAssertEqual(c.map { $0["riga"] as? Int }, [1, 2], "ogni correzione dice a quale riga vale")
+        XCTAssertEqual(c.map { $0["id"] as? Int }, [904, 905], "ognuno con la sua proposta")
+    }
+
+    func testConUnServerDiPrimaLeCorrezioniNonHannoLaRiga() throws {
+        let r = try anteprima()          // risposta senza `riga`
+        let c = try inviate(AnteprimaLogica.correzioni(r.squadre, scelte: [AnteprimaLogica.chiave("Real Fantasia", "Quintavalle"): .togli]))
+        XCTAssertEqual(c.map { $0["testo"] as? String }, ["Mancuzzi", "Quintavalle"])
+        XCTAssertTrue(c.allSatisfy { $0["riga"] == nil }, "un server di prima non conosce la riga: non si manda")
+        XCTAssertTrue(c[1]["id"] is NSNull)
     }
 
     func testIlGiocatoreTrovatoSiAggiungeAlleOpzioni() throws {
@@ -216,6 +267,27 @@ final class AnteprimaRoseViewModelTests: XCTestCase {
         let corpo = try oggetto(s.corpiInviati(a: "POST /api/rose/testo").last)
         XCTAssertNil(corpo["correzioni"])
         XCTAssertNil(corpo["mia_squadra"])
+    }
+
+    /// Server dal #662: anteprima con due omonimi nella stessa rosa, ognuno con la sua `riga`.
+    private func serverOmonimi() -> ServerDiProva {
+        ServerDiProva { _, percorso, _ in
+            if percorso.hasPrefix("/api/rose/anteprima") { return Data(AnteprimaRoseTests.omonimi.utf8) }
+            return Data("{}".utf8)
+        }
+    }
+
+    func testDueOmonimiSiSalvanoUnoPerRigaAncheSenzaToccarli() async throws {
+        let s = serverOmonimi()
+        let vm = ImportaExcelViewModel(server: s)
+        vm.testoRose = "Real Fantasia\nBertolazzi\nBertolazzi"
+        await vm.importaTesto()
+        await vm.conferma()
+        let corpo = try oggetto(s.corpiInviati(a: "POST /api/rose/testo").last)
+        let correzioni = try XCTUnwrap(corpo["correzioni"] as? [[String: Any]])
+        XCTAssertEqual(correzioni.map { $0["testo"] as? String }, ["Bertolazzi", "Bertolazzi"])
+        XCTAssertEqual(correzioni.map { $0["riga"] as? Int }, [1, 2])
+        XCTAssertEqual(correzioni.map { $0["id"] as? Int }, [904, 905], "nessuno dei due si perde")
     }
 
     func testRoseCambiateNelFrattempoRifaLAnteprimaTenendoLeScelte() async throws {
