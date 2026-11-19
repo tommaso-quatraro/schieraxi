@@ -96,6 +96,16 @@ extension Catalogo {
             "da: «\(r)»"
         }
 
+        /// `regole.da_controllare`
+        static func daControllare(n: String) -> String {
+            "Righe da controllare a mano (\(n))"
+        }
+
+        /// `regole.da_impostare`
+        static func daImpostare(r: String) -> String {
+            "da impostare: \(r)"
+        }
+
         /// `regole.non_riconosciute`
         static func nonRiconosciute(n: String) -> String {
             "Righe con numeri non riconosciute (\(n))"
