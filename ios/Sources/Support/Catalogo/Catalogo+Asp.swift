@@ -17,8 +17,5 @@ extension Catalogo {
 
         /// `asp.auto_spiega`
         static let autoSpiega = "Automatico segue il chiaro e lo scuro del dispositivo."
-
-        /// `asp.avvisi_titolo`
-        static let avvisiTitolo = "Quali avvisi"
     }
 }

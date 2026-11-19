@@ -2,7 +2,7 @@ import XCTest
 @testable import Schieraxi
 
 /// «Quanto ci abbiamo preso» (campo `precisione` di `/api/diario`) e «Avviso se il consiglio cambia» (`avviso_prima` degli avvisi).
-/// Dati inventati; le frasi devono essere quelle della web (`diario.qp_*` e `avv.prima*` di `fanta/web/testi.js`).
+/// Dati inventati; le frasi devono essere quelle della web (`diario.qp_*` di `fanta/web/testi.js`).
 final class PrecisioneTests: XCTestCase {
 
     private func diario(_ json: String) throws -> DiarioRisposta {

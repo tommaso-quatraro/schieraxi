@@ -14,36 +14,6 @@ extension Catalogo {
             "\(g): tocca i giocatori che hai schierato. Servono 11 titolari."
         }
 
-        /// `diario.salvata`
-        static let salvata = "Salvato: ho segnato che hai schierato la consigliata"
-
-        /// `diario.non_salvata`
-        static let nonSalvata = "Non avevi salvato la tua formazione per questa giornata."
-
-        /// `diario.ho_schierato_questa`
-        static let hoSchieratoQuesta = "Ho schierato la consigliata"
-
-        /// `diario.ho_schierato_altra`
-        static let hoSchieratoAltra = "Ho schierato un'altra formazione"
-
-        /// `diario.correggi`
-        static let correggi = "Correggi a mano"
-
-        /// `diario.tua`
-        static func tua(modulo: String) -> String {
-            "La tua (\(modulo))"
-        }
-
-        /// `diario.tua_consigliata`
-        static func tuaConsigliata(modulo: String) -> String {
-            "La tua, la consigliata (\(modulo))"
-        }
-
-        /// `diario.la_consigliata`
-        static func laConsigliata(modulo: String) -> String {
-            "La consigliata (\(modulo))"
-        }
-
         /// `diario.af_titolo`
         static let afTitolo = "Quanto ci abbiamo preso"
 

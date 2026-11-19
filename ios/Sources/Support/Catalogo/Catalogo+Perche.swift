@@ -6,9 +6,6 @@ extension Catalogo {
         /// `perche.titolo`
         static let titolo = "Perché questo numero"
 
-        /// `perche.definizione`
-        static let definizione = "Il fantavoto atteso è quello che SchieraXI si aspetta da questo giocatore in questa partita, se gioca, con le regole della tua lega."
-
         /// `perche.rispetto`
         static func rispetto(n: String) -> String {
             "Un giocatore medio del suo ruolo ha \(n). Il resto sono differenze piccole."

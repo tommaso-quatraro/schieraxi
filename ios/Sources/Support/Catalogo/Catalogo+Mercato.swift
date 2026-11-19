@@ -3,12 +3,6 @@
 
 extension Catalogo {
     enum Mercato {
-        /// `mercato.non_gioca`
-        static let nonGioca = "non gioca"
-
-        /// `mercato.come_legge`
-        static let comeLegge = "Come si legge"
-
         /// `mercato.annulla`
         static let annulla = "Annulla"
 

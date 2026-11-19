@@ -1,8 +1,4 @@
 {
-  "mercato.come_legge": {
-    "it": "Come si legge",
-    "en": "How to read this"
-  },
   "mercato.annulla": {
     "it": "Annulla",
     "en": "Cancel"
@@ -82,10 +78,6 @@
   "mercato.svincolato": {
     "it": "Svincolato",
     "en": "Free agent"
-  },
-  "mercato.non_gioca": {
-    "it": "non gioca",
-    "en": "not playing"
   },
   "mercato.pochi_dati": {
     "it": "pochi dati",

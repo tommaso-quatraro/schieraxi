@@ -6,17 +6,6 @@ diario.salvata_manuale
 diario.cosa_hai_schierato_titolo
 diario.correggi_spiega
 
-# Il Diario di prima (Altro › Diario, tolto con il passo 2 di #673). La web non le usa più: restano elencate finché il catalogo
-# comune le tiene (toglierle è un lavoro sul catalogo, fuori da ios/)
-diario.salvata
-diario.non_salvata
-diario.ho_schierato_questa
-diario.ho_schierato_altra
-diario.correggi
-diario.tua
-diario.tua_consigliata
-diario.la_consigliata
-
 # «Dettagli» della pagina Giornate: «Quanto ci abbiamo preso», come `dettagliPrecisione` della web (Domain/Precisione.swift)
 diario.af_titolo
 diario.qp_intro
