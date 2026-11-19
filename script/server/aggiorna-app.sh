@@ -223,16 +223,21 @@ if [ "$nuovo" = "$ultimo" ] || [ "$nuovo" = "$(cat "$STATO/rifiutato" 2>/dev/nul
 fi
 # Versione rifiutata con altre sotto, arrivate prima e non ancora installate (con il raggruppamento capita piu' spesso, #635): non si
 # installano da sole, perche' un ripiego automatico su una versione mai provata potrebbe alternare due versioni rotte con un riavvio a
-# ogni giro. Entrano con la prossima versione buona (o con --fidati, per le firme). L'avviso del rifiuto lo dice se le cartelle del
-# server cambiano fra l'ultima installata e il commit prima di quello rifiutato (non per i commit di soli documenti; anche per una
-# modifica rimasta senza commit di versione, #647), contando le versioni vere quando ci sono: i commit di versione del job rilascia
-# («Versione 1.2: ...») in quel tratto.
+# ogni giro. Entrano con la prossima versione buona (o con --fidati, per le firme). L'avviso del rifiuto lo dice se sotto c'e' una
+# versione che si sarebbe potuta installare da sola: l'ultimo commit (linea principale, sotto quello rifiutato) senza novita' in attesa
+# in fanta/novita.d. Le unioni sopra quel commit sono numerate dal commit di versione rifiutato, quindi sono la versione rotta (#647).
+# Se fra l'ultima installata e quel commit cambiano le cartelle del server (non per i soli documenti; anche una modifica rimasta senza
+# commit di versione) l'avviso lo dice, contando le versioni vere quando ci sono: i commit «Versione 1.2: ...» del job rilascia.
 anche_prima() {
-  local n
+  local n c fino=""
   { [ -n "$ultimo" ] && git cat-file -e "$ultimo^{commit}" 2>/dev/null && git cat-file -e "$nuovo^1" 2>/dev/null; } || return 0
+  for c in $(git rev-list --first-parent --max-count=500 "$ultimo..$nuovo^1" 2>/dev/null); do
+    git ls-tree --name-only "$c" fanta/novita.d/ 2>/dev/null | grep -q '\.json$' || { fino=$c; break; }
+  done
+  [ -n "$fino" ] || return 0
   # shellcheck disable=SC2086
-  git diff --quiet "$ultimo" "$nuovo^1" -- $CARTELLE 2>/dev/null && return 0
-  n=$(git log --first-parent --format=%s "$ultimo..$nuovo^1" 2>/dev/null | grep -cE '^Versione [0-9]+\.[0-9]+[,:]')
+  git diff --quiet "$ultimo" "$fino" -- $CARTELLE 2>/dev/null && return 0
+  n=$(git log --first-parent --format=%s "$ultimo..$fino" 2>/dev/null | grep -cE '^Versione [0-9]+\.[0-9]+[,:]')
   if ! [[ $n =~ ^[0-9]+$ ]] || [ "$n" = 0 ]; then
     printf ' Anche le modifiche arrivate prima, in attesa, non sono installate: entrano con la prossima versione buona.'
   elif [ "$n" = 1 ]; then
@@ -240,6 +245,11 @@ anche_prima() {
   else
     printf ' Anche le %s versioni arrivate prima, in attesa, non sono installate: entrano con la prossima versione buona.' "$n"
   fi
+  return 0
+}
+# La richiesta d'emergenza resta finche' un'installazione non riesce (#647): l'avviso di un rifiuto lo dice
+ancora_subito() {
+  [ -e "$STATO/installa-subito" ] && printf ' La richiesta di installare subito resta attiva: la prossima versione si installa appena arriva, anche durante una partita.'
   return 0
 }
 # Firme: dall'ultimo commit verificato (o, la prima volta, dall'ultimo installato) fino a quello nuovo, tutti firmati da una chiave fidata
@@ -250,7 +260,7 @@ if [ -s "$CHIAVI" ]; then
     log "versione ${nuovo:0:7} NON installata: $MOTIVO_FIRMA"
     if [ "$PROVA" = 0 ]; then
       echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione"
-      avvisa "SchieraXI: aggiornamento bloccato" "Su GitHub c'è una versione senza la firma attesa: non l'ho installata.$(anche_prima) Motivo in dati/pubblicazione.log. Se dopo il controllo va bene: aggiorna-app.sh --fidati origin/main (script/server/LEGGIMI.md, «Casi limite»)." 4
+      avvisa "SchieraXI: aggiornamento bloccato" "Su GitHub c'è una versione senza la firma attesa: non l'ho installata.$(anche_prima)$(ancora_subito) Motivo in dati/pubblicazione.log. Se dopo il controllo va bene: aggiorna-app.sh --fidati origin/main (script/server/LEGGIMI.md, «Casi limite»)." 4
     fi
     fine; exit 1
   fi
@@ -277,7 +287,7 @@ for c in $CARTELLE; do git cat-file -e "$nuovo:$c" 2>/dev/null || mancanti="$man
 if [ -n "$mancanti" ]; then
   log "la versione ${nuovo:0:7} non contiene:$mancanti : non installo"
   [ "$PROVA" = 1 ] || { echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione"; }
-  guasto cartelle "Su GitHub c'è una versione senza tutte le cartelle del server: non l'ho installata.$(anche_prima)"
+  guasto cartelle "Su GitHub c'è una versione senza tutte le cartelle del server: non l'ho installata.$(anche_prima)$(ancora_subito)"
   fine; exit 1
 fi
 
@@ -414,14 +424,32 @@ fi
 
 log "versione nuova ${nuovo:0:7}: la installo"
 copia="$STATO/versione-precedente.tar.gz"
-# shellcheck disable=SC2086
-tar czf "$copia" -C "$DEST" $CARTELLE 2>/dev/null
+# Copia di sicurezza della versione in uso, per tornare indietro. Finche' i file nuovi non hanno superato l'installazione c'e' il segno
+# installazione-in-corso: se un giro si ferma a meta' (scambio degli ambienti e ripristino non riusciti, server spento...) il giro dopo
+# rimette la versione di prima da quella copia e non la rifa' con il codice mai provato (#647). La copia nuova prende il posto della
+# vecchia solo se e' riuscita tutta.
+A_META="$STATO/installazione-in-corso"
+if [ -e "$A_META" ] && [ -s "$copia" ]; then
+  log "l'installazione di prima non era finita: rimetto la versione di prima dalla copia di sicurezza"
+  if ! tar xzf "$copia" -C "$DEST"; then
+    log "ripristino dalla copia di sicurezza non riuscito: non installo, controlla $DEST"
+    guasto ambienti "Non riesco a rimettere la versione di prima dalla copia di sicurezza: va controllato il server."; fine; exit 1
+  fi
+  [ -e "$DEST/.venv" ] || { [ -d "$DEST/.venv.precedente" ] && mv "$DEST/.venv.precedente" "$DEST/.venv"; }
+else
+  # shellcheck disable=SC2086
+  if ! tar czf "$copia.nuova" -C "$DEST" $CARTELLE 2>/dev/null || ! mv "$copia.nuova" "$copia"; then
+    rm -f "$copia.nuova"; log "copia di sicurezza della versione in uso non riuscita (disco pieno?): non installo"
+    guasto copia-file "Non riesco a fare la copia di sicurezza della versione in uso (disco pieno?): resta quella di prima."; fine; exit 1
+  fi
+fi
+: > "$A_META"
 vecchi_req=$(md5sum "$DEST/requirements.txt" 2>/dev/null | cut -d' ' -f1)
 
 prova=$(mktemp -d)
 # shellcheck disable=SC2086
 if ! git archive "$nuovo" $CARTELLE | tar -x -C "$prova"; then
-  log "copia dei file non riuscita"; rm -rf "$prova"
+  log "copia dei file non riuscita"; rm -rf "$prova"; rm -f "$A_META"
   guasto copia-file "Non riesco a copiare i file della versione nuova (disco pieno?): resta quella di prima."; fine; exit 1
 fi
 # Il file dei tratti dei volti vive solo sul server: se c'e' gia', resta quello (anche se il repository non lo ha piu')
@@ -448,13 +476,20 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
     rm -f "$STATO/librerie-fallite"
     rm -rf "$DEST/.venv.precedente"
     mv "$DEST/.venv" "$DEST/.venv.precedente" && mv "$DEST/.venv.nuova" "$DEST/.venv" && venv_cambiata=1
-    [ "$venv_cambiata" = 1 ] || { log "scambio degli ambienti Python non riuscito: controlla $DEST/.venv"
-                                  guasto ambienti "Non riesco a scambiare gli ambienti Python della versione nuova: va controllato il server."
-                                  fine; exit 1; }
+    if [ "$venv_cambiata" = 0 ]; then
+      # il servizio non e' stato riavviato: si rimettono subito l'ambiente in uso e i file della versione di prima (#647)
+      log "scambio degli ambienti Python non riuscito: rimetto la versione di prima"
+      [ -e "$DEST/.venv" ] || mv "$DEST/.venv.precedente" "$DEST/.venv"
+      rm -rf "$DEST/.venv.nuova"
+      if tar xzf "$copia" -C "$DEST" && [ -x "$DEST/.venv/bin/python" ]; then rm -f "$A_META"
+      else log "versione di prima non rimessa del tutto: controlla $DEST (il prossimo giro riprova dalla copia di sicurezza)"; fi
+      guasto ambienti "Non riesco a scambiare gli ambienti Python della versione nuova: resta quella di prima, va controllato il server."
+      fine; exit 1
+    fi
   else
     # il servizio non e' stato riavviato e il suo ambiente non e' stato toccato: si rimettono solo i file della versione di prima
     rm -rf "$DEST/.venv.nuova"
-    tar xzf "$copia" -C "$DEST"
+    tar xzf "$copia" -C "$DEST" && rm -f "$A_META"
     # un errore passeggero (rete, PyPI) non deve bloccare la versione per sempre: si riprova ai giri dopo, si rinuncia alla terza volta
     tentativi=1
     if [ "$(cut -d' ' -f1 "$STATO/librerie-fallite" 2>/dev/null)" = "$nuovo" ]; then
@@ -465,7 +500,7 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
       log "librerie NON installate per la ${tentativi}a volta di fila: rinuncio a ${nuovo:0:7} (resta la versione di prima)"
       echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione"
       rm -f "$STATO/librerie-fallite"
-      avvisa "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima.$(anche_prima) Dettagli in dati/pubblicazione.log." 4
+      avvisa "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima.$(anche_prima)$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
     else
       log "librerie NON installate (rete, PyPI, hash diverso?): resta la versione di prima, riprovo al prossimo giro (tentativo $tentativi)"
       [ "$tentativi" = 1 ] && avvisa "SchieraXI: aggiornamento rimandato" "Le librerie della versione nuova non si sono installate: riprovo fra 10 minuti." 3
@@ -486,7 +521,7 @@ done
 if [ "$risponde" = 1 ]; then
   echo "$nuovo" > "$STATO/ultimo-rilascio"
   echo "$INIZIO" > "$STATO/ultima-installazione"     # da qui parte l'intervallo fra due installazioni (#635)
-  rm -f "$STATO/attesa-versione"
+  rm -f "$STATO/attesa-versione" "$A_META"
   [ "$installa_subito" = 1 ] && rm -f "$STATO/installa-subito"     # la richiesta d'emergenza e' soddisfatta (#647)
   versione=$(cd "$DEST" && .venv/bin/python -c "import json; print(json.load(open('fanta/novita.json', encoding='utf-8'))[0]['versione'])" 2>/dev/null)
   # solo la riga nel registro, niente avviso: con tante versioni al giorno gli avvisi veri (fallita, rifiutata, tornata indietro) si
@@ -495,7 +530,7 @@ if [ "$risponde" = 1 ]; then
   risolto cartelle copia-file ambienti           # «di nuovo a posto» se un guasto dell'installazione era stato segnalato
 else
   log "il servizio NON risponde con ${nuovo:0:7} (ultimo codice HTTP: ${codice:-nessuno}): torno alla versione di prima"
-  tar xzf "$copia" -C "$DEST"
+  tar xzf "$copia" -C "$DEST" && rm -f "$A_META"
   if [ "$venv_cambiata" = 1 ]; then          # anche le librerie di prima
     rm -rf "$DEST/.venv.scartata"
     mv "$DEST/.venv" "$DEST/.venv.scartata" && mv "$DEST/.venv.precedente" "$DEST/.venv" && rm -rf "$DEST/.venv.scartata"
@@ -503,7 +538,7 @@ else
   sudo systemctl restart "$SERVIZIO"
   echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione"
   sleep "${SCHIERAXI_PAUSA_DOPO_RITORNO:-5}"
-  avvisa "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima.$(anche_prima) Dettagli in dati/pubblicazione.log." 4
+  avvisa "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima.$(anche_prima)$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
 fi
 fine
 exit 0

@@ -68,7 +68,7 @@ Installare una versione nuova riavvia il servizio. Per questo `aggiorna-app.sh` 
 
 Emergenza (correzione urgente durante una partita): `touch ~/.cache/fantacalcio/installa-subito` (installa al prossimo giro e il
 file si cancella da solo quando l'installazione riesce: se non riesce, per esempio per le librerie, resta e il giro dopo riprova,
-anche con la versione seguente) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`. Nel log:
+anche con la versione seguente, e l'avviso del rifiuto lo dice) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`. Nel log:
 «installazione forzata». Per vedere cosa direbbe adesso: `cd ~/fantacalcio && .venv/bin/python -m fanta momento-libero`.
 
 ## Rilasci raggruppati: al massimo un'installazione all'ora
@@ -112,7 +112,7 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   installano da sole: un ripiego automatico su una versione mai provata potrebbe alternare due versioni rotte, con un riavvio a ogni
   giro. L'avviso del rifiuto lo dice quando le cartelle del server cambiano fra l'ultima versione installata e il commit prima di
   quella rifiutata («Anche la versione arrivata prima, in attesa, non è installata», o «le modifiche arrivate prima» se non hanno un
-  commit di versione; i commit di soli documenti non contano); entrano con la prossima versione buona (una pull request che corregge o toglie
+  commit di versione; i commit di soli documenti e le unioni numerate dal commit di versione rifiutato non contano); entrano con la prossima versione buona (una pull request che corregge o toglie
   quella rotta) oppure, per una firma, con `--fidati origin/main` dopo il controllo (l'avviso lo nomina).
 - Stato in `~/.cache/fantacalcio/`: `ultima-installazione` (ora d'inizio del giro dell'ultima installazione riuscita, in secondi),
   `raggruppata` (la versione rimandata), `intervallo-letto`, `attesa-versione` (ora del primo giro che aspetta il commit di versione, poi `scaduta` dopo la mezz'ora). Senza `ultima-installazione` (la prima volta) si installa subito; se
@@ -147,6 +147,10 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
     riavviato) e **riprova ai giri dopo**: stato in `~/.cache/fantacalcio/librerie-fallite`, un avviso «rimandato» la prima volta;
     alla terza volta di fila rinuncia, scrive `rifiutato` e avvisa.
   - Se dopo il riavvio il servizio non risponde torna anche all'ambiente di prima.
+  - Se lo scambio delle cartelle non riesce rimette subito l'ambiente in uso e i file della versione di prima, e avvisa.
+- **Copia di sicurezza** (`~/.cache/fantacalcio/versione-precedente.tar.gz`): si rifà a ogni installazione e prende il posto della
+  vecchia solo se riesce tutta. Finché i file nuovi non hanno superato l'installazione c'è il segno `installazione-in-corso`: se un giro
+  si ferma a metà, il giro dopo rimette la versione di prima da quella copia invece di rifarla con il codice mai provato.
   - Le versioni in `requirements.txt` sono quelle in produzione sul server (Python 3.12) al momento del blocco: il primo giro
     non cambia nessuna libreria, crea solo l'ambiente nuovo.
 
