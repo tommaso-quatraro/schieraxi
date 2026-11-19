@@ -92,7 +92,7 @@ python script/squadra/squadra.py brief 123 --modello sonnet --tocca "fanta/web/a
 ## foto
 Dai file iOS di una PR (o di `main` dopo un commit, con `--da`) ricava le schermate da fotografare e stampa il comando di
 `screenshot.yml`. Un file iOS senza schermata in `foto.json` dà un avviso (uscita 3). Le foto le lancia solo il fotografo,
-su `main`, con `--lancia`.
+con `--lancia`: sul ramo della PR se è aperta, su `main` se è unita o con `--da` (`--ref` per un altro ramo).
 
 ```
 python script/squadra/squadra.py foto 123
