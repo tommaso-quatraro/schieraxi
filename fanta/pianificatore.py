@@ -205,6 +205,11 @@ def file_blocco() -> Path:
     return Path.home() / ".cache" / "fantacalcio" / "blocco"
 
 
+# Un tentativo sul blocco alla volta in questo processo, tenuto solo per i microsecondi del tentativo (mai durante il lavoro): la
+# lettura di /api/stato (`blocco_tenuto`) non fa rinunciare un giro leggero o «Aggiorna i dati» che provano il blocco nello stesso istante.
+_tentativo = threading.Lock()
+
+
 @contextlib.contextmanager
 def blocco_processo() -> Iterator[bool]:
     """Lo stesso blocco dell'aggiornamento del server (`file_blocco`): se `aggiorna.sh` sta girando, si rinuncia.
@@ -218,12 +223,13 @@ def blocco_processo() -> Iterator[bool]:
         yield True
         return
     try:
-        try:
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            yield False
-            return
-        yield True
+        with _tentativo:
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                libero = True
+            except OSError:
+                libero = False
+        yield libero
     finally:
         f.close()
 
@@ -232,7 +238,8 @@ def blocco_tenuto() -> bool:
     """Vero se qualcuno tiene il blocco dell'aggiornamento: l'aggiornamento programmato del server, un giro leggero o «Aggiorna i
     dati» (`aggiornamento_in_corso` di /api/stato, #763). Non aspetta mai e non crea niente: prova un blocco condiviso senza
     attesa su un descrittore in sola lettura e lo lascia subito. Condiviso, così due letture insieme non si vedono a vicenda come
-    un aggiornamento. Il cron aspetta il blocco (`flock -w 120`): questi microsecondi non lo fanno saltare.
+    un aggiornamento. Il cron aspetta il blocco (`flock -w 120`): questi microsecondi non lo fanno saltare; i tentativi senza attesa
+    di questo processo (giri leggeri, «Aggiorna i dati») si mettono in fila con la lettura (`_tentativo`).
     Senza `fcntl` (Windows) o senza il file nessuno lo tiene: falso, come per `blocco_processo`."""
     try:
         import fcntl
@@ -245,16 +252,17 @@ def blocco_tenuto() -> bool:
     except OSError as e:
         LOG.warning("pianificatore: il blocco dell'aggiornamento non si legge (%s)", type(e).__name__)
         return False
-    try:
-        fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
-        return False
-    except BlockingIOError:
-        return True
-    except OSError as e:
-        LOG.warning("pianificatore: il blocco dell'aggiornamento non si legge (%s)", type(e).__name__)
-        return False
-    finally:
-        os.close(fd)                    # chiudere lascia anche il blocco condiviso
+    with _tentativo:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            return False
+        except BlockingIOError:
+            return True
+        except OSError as e:
+            LOG.warning("pianificatore: il blocco dell'aggiornamento non si legge (%s)", type(e).__name__)
+            return False
+        finally:
+            os.close(fd)                # chiudere lascia anche il blocco condiviso, prima di lasciare `_tentativo`
 
 
 def aggiorna_probabili(scrivi: Callable[[str], None] = lambda _: None) -> bool | None:
