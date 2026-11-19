@@ -4,7 +4,9 @@ Niente rete vera: le risposte arrivano da un server finto su 127.x. Si provano l
 (nessun nuovo tentativo), il commento sull'issue scritto una volta sola e le regole del workflow (letto come testo)."""
 import importlib.util
 import json
+import os
 import re
+import subprocess
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -55,11 +57,14 @@ def test_risposte_strane_non_sono_dati_veri(su, contenuto):
 class _Finto(BaseHTTPRequestHandler):
     codice = 200
     corpo = b""
+    posizione = ""
     chiamate: list = []
 
     def do_GET(self):
         type(self).chiamate.append((self.path, dict(self.headers)))
         self.send_response(type(self).codice)
+        if type(self).posizione:
+            self.send_header("Location", type(self).posizione)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
         self.wfile.write(type(self).corpo)
@@ -94,6 +99,30 @@ def test_controlla_fa_una_sola_richiesta(su, finto, codice, corpo, esito):
     assert percorso == "/getLeagueData/Serie_A/2026"
     assert intestazioni.get("X-Requested-With") == "XMLHttpRequest"      # come il lettore fanta/fonti/understat.py
     assert intestazioni.get("User-Agent", "").startswith("SchieraXI/")
+
+
+def test_un_reindirizzamento_non_si_segue(su, finto):
+    # un 302 (o un ciclo di reindirizzamenti) farebbe più di una richiesta: vale «fermo», come un codice diverso da 200
+    _Finto.codice, _Finto.corpo = 302, b""
+    _Finto.posizione = "/getLeagueData/Serie_A/2026"
+    try:
+        assert su.controlla(finto) == "fermo"
+    finally:
+        _Finto.posizione = ""
+    assert len(_Finto.chiamate) == 1
+
+
+def test_lo_script_lanciato_come_nel_workflow_trova_il_lettore(finto, tmp_path):
+    # come in GitHub Actions: un processo a sé, lanciato per percorso, con solo script/ci nel percorso dei moduli
+    _Finto.codice, _Finto.corpo = 200, json.dumps(DATI_FINTI).encode()
+    uscita = tmp_path / "uscita.txt"
+    ambiente = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "GITHUB_OUTPUT")}
+    ambiente["GITHUB_OUTPUT"] = str(uscita)
+    r = subprocess.run([sys.executable, str(PERCORSO), "controlla", finto], cwd=tmp_path, env=ambiente,
+                       capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert uscita.read_text(encoding="utf-8") == "esito=tornato\n"
+    assert len(_Finto.chiamate) == 1
 
 
 def test_controlla_senza_risposta_tace(su):

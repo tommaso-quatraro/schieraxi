@@ -8,7 +8,8 @@ porta un segno fisso, contato solo se scritto da github-actions) e la riapre se 
 
 Comandi:
   python script/ci/sentinella_understat.py gia-avvisato   -> avvisato=si|no in $GITHUB_OUTPUT (gh, nessuna richiesta a Understat)
-  python script/ci/sentinella_understat.py controlla      -> esito=tornato|fermo in $GITHUB_OUTPUT (una richiesta a Understat)
+  python script/ci/sentinella_understat.py controlla      -> esito=tornato|fermo in $GITHUB_OUTPUT (una richiesta a Understat;
+                                                             un indirizzo dopo «controlla» solo per i test, con un server finto)
   python script/ci/sentinella_understat.py avvisa         -> commenta e riapre l'issue, se non è già stato fatto (gh)
 Il primo e il terzo usano solo la libreria standard; il secondo vuole le librerie di requirements.txt."""
 from __future__ import annotations
@@ -22,6 +23,8 @@ from datetime import date
 from pathlib import Path
 
 RADICE = Path(__file__).resolve().parent.parent.parent
+if str(RADICE) not in sys.path:      # lanciato per percorso (come nel workflow) Python vede solo script/ci
+    sys.path.insert(0, str(RADICE))
 ISSUE = 756
 TIMEOUT = 20                     # secondi: una risposta più lenta vale «ancora fermo», e si riprova domani
 SEGNO = "<!-- sentinella-understat: tornato -->"
@@ -34,8 +37,6 @@ COMMENTO = ("Understat è tornato: riaccendere la fonte.\n\n"
 
 
 def _lettore():
-    if str(RADICE) not in sys.path:
-        sys.path.insert(0, str(RADICE))
     from fanta.fonti import understat
     return understat
 
@@ -60,13 +61,15 @@ def dati_veri(contenuto: bytes) -> bool:
 
 
 def controlla(url: str | None = None) -> str:
-    """Una sola richiesta, nessun nuovo tentativo: «tornato» se arrivano dati veri, altrimenti «fermo» (anche senza risposta)."""
+    """Una sola richiesta, nessun nuovo tentativo né reindirizzamento seguito: «tornato» se arrivano dati veri, altrimenti
+    «fermo» (anche senza risposta o con un 3xx)."""
     import requests
 
     from fanta import rete
     us = _lettore()
     try:
-        r = requests.get(url or indirizzo(), headers={"User-Agent": rete.UA, **us.HEADERS}, timeout=TIMEOUT)
+        r = requests.get(url or indirizzo(), headers={"User-Agent": rete.UA, **us.HEADERS}, timeout=TIMEOUT,
+                         allow_redirects=False)
     except requests.RequestException as e:
         print(f"Nessuna risposta da Understat ({type(e).__name__}): ancora fermo.")
         return "fermo"
@@ -120,7 +123,7 @@ def main(argomenti: list[str]) -> int:
     if comando == "gia-avvisato":
         _scrivi_uscita("avvisato", "si" if gia_avvisato(_issue()[1]) else "no")
     elif comando == "controlla":
-        _scrivi_uscita("esito", controlla())
+        _scrivi_uscita("esito", controlla(argomenti[1] if len(argomenti) > 1 else None))
     elif comando == "avvisa":
         stato, commenti = _issue()
         avvisa(stato, commenti, lambda c: subprocess.run(c, check=True), corsa=os.environ.get("CORSA", ""))
