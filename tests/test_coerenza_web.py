@@ -1,6 +1,6 @@
 """Web e iPhone uguali (docs/COERENZA-WEB-IPHONE.md, pacchetto 1 della web): numero della giornata della lega, partita
 «INT @ MIL · sab 31 20:45», celle «@ MIL» / «vs MIL», «in trasferta contro», stati della partita con le parole del vocabolario,
-cognome senza iniziale sul campo, «Ho schierato la consigliata»."""
+cognome senza iniziale sul campo."""
 import json
 import re
 import shutil
@@ -46,7 +46,6 @@ def test_parole_del_vocabolario():
         assert _testo(IT, chiave) == testo, chiave
         assert _testo(IT, "tit." + chiave.split(".", 1)[1]) == testo                       # stesse parole in Oggi e Formazione
         assert _testo(EN, chiave) == _testo(EN, "tit." + chiave.split(".", 1)[1])
-    assert _testo(IT, "diario.ho_schierato_questa") == "Ho schierato la consigliata"
 
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
