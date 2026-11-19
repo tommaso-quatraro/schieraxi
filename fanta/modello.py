@@ -353,8 +353,10 @@ def previsioni(d: Dati, stagione: str, giornata: int, regole: Regole, par: Param
 
     probabili: righe della tabella probabili per la giornata (live); se None, p_voto dalle presenze recenti.
     dai_cartellini: squalificati e diffidati ricavati dai cartellini ({id: squalifiche.Stato}, `squalifiche.in_uso`). Valgono
-               solo per chi non ha le probabili della sua squadra (nessuna lettura buona, o squadra non coperta): con le
-               probabili vince la fonte. Uno squalificato ha `stato` «squalificato» e p_voto 0, come se lo dicesse la fonte.
+               solo se la giornata non ha nessuna lettura buona delle probabili (`probabili` None): con una lettura vince
+               la fonte, e per le squadre che la pagina non copre valgono le presenze come sempre (uno stato che non
+               viene dalla fonte farebbe partire avvisi di cambi e finirebbe nella taratura). Uno squalificato ha `stato`
+               «squalificato» e p_voto 0, come se lo dicesse la fonte.
     giocatori: chi prevedere (colonne id, nome, ruolo, squadra_slug); se None, il listone (live) o chi ha
                giocato prima della giornata (verifica storica).
     oracolo: SOLO per misurare quanto vale un dato in più (comando `oracolo`), mai nell'uso normale. Chiavi facoltative:
@@ -595,8 +597,9 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
             # senza probabili: chi gioca in coppa a ridosso della partita ha più probabilità di essere riposato
             p_voto = p_senza_probabili(x["p_storico"], x["p_lungo"], x["p_tit"], x["p_ultima"], r == "P")
             p_voto *= coppe.fattore_turnover(x["squadra_slug"], data_partita.get(partita))
-            # e squalificati e diffidati li dicono i cartellini (squalifiche.in_uso): con le probabili li dice la fonte
-            cartellini = dai_cartellini.get(cid) if dai_cartellini else None
+            # e, se la giornata non ha nessuna lettura delle probabili, squalificati e diffidati li dicono i cartellini
+            # (squalifiche.in_uso). Con una lettura, anche per le squadre che la pagina non copre, niente cartellini
+            cartellini = dai_cartellini.get(cid) if dai_cartellini and prob is None else None
             if cartellini is not None:
                 diffidato = bool(cartellini.diffidato)
                 if cartellini.squalificato:

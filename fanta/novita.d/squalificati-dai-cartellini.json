@@ -6,7 +6,7 @@
   ],
   "tecnico": [
     "squalifiche.in_uso (#668): solo le espulsioni (misura sull'archivio locale, 44 giornate: per somma di ammonizioni 1 falso su 92, 1,09%, sopra la soglia dell'1%; per espulsione 0 su 68). L'ora è quella dell'ultimo aggiornamento riuscito del calendario (aggiornamenti, passo calendario), mai l'ora vera; con i risultati fermi (partita cominciata da più di 12 ore nelle ultime due settimane e non segnata giocata) o senza un aggiornamento riuscito la regola non si usa.",
-    "modello.previsioni(dai_cartellini=...): vale solo per chi non ha le probabili della sua squadra (nessuna lettura buona nella tabella probabili, o squadra non coperta); stato «squalificato», p_voto 0, percentuale null. Nessun campo dell'API nuovo o tolto; docs/API.md dice da dove vengono squalificati e diffidati.",
+    "modello.previsioni(dai_cartellini=...): vale solo se la giornata non ha nessuna lettura buona delle probabili (tabella probabili vuota per la giornata: pagina non uscita, fallita o copiata); per le squadre che una lettura buona non copre restano le presenze. Stato «squalificato», p_voto 0, percentuale null. Nessun campo dell'API nuovo o tolto; docs/API.md dice da dove vengono squalificati e diffidati.",
     "Registro dei controlli: squalificati_cartellini («Squalificati: cartellini e probabili») confronta, a giornata cominciata, gli squalificati della regola con quelli della fonte; uno solo dai cartellini è un avviso."
   ]
 }

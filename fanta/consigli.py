@@ -190,11 +190,11 @@ def _calcola_previsioni(db, d, regole, stagione, giornata, chiave):
     # queste previsioni si rifanno. Se il registro non si legge: numeri di partenza, e `_versione` lo dice (vedi `_ripieghi`)
     taratura, fattori, ripiego = stato_dati.taratura_e_fattori(db, stagione)
     _segna_ripiego(db, ripiego)
-    # squalificati per espulsione dai cartellini (#668): il modello li usa solo per chi non ha le probabili della sua squadra
-    # (nella tabella `probabili` c'è solo una lettura buona: una pagina fallita o copiata dalla giornata prima non ci arriva)
+    # squalificati per espulsione dai cartellini (#668), solo se la giornata non ha una lettura buona delle probabili (nella
+    # tabella `probabili` arriva solo quella: una pagina fallita o copiata dalla giornata prima non ci arriva)
     p = modello.previsioni(d, stagione, giornata, regole, probabili=None if prob.empty else prob,
                            giocatori=d.calciatori, fattori_probabili=fattori, taratura=taratura,
-                           dai_cartellini=squalifiche.in_uso(db, stagione, giornata))
+                           dai_cartellini=squalifiche.in_uso(db, stagione, giornata) if prob.empty else None)
     if p.empty:
         raise ValueError(frasi.elidi_ordinali(f"Non ci sono ancora previsioni per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))}: riprova più tardi."))
     p = p.set_index("id")

@@ -1,5 +1,5 @@
-"""Squalificati dai cartellini nel calcolo (fanta/squalifiche.py, #668): valgono solo per chi non ha una lettura buona delle
-probabili per la sua squadra; con una lettura buona vince la fonte, e una differenza a giornata cominciata va nel registro dei
+"""Squalificati dai cartellini nel calcolo (fanta/squalifiche.py, #668): valgono solo quando la giornata non ha una lettura
+buona delle probabili; con una lettura buona vince la fonte, e una differenza a giornata cominciata va nel registro dei
 controlli. Solo dati inventati e cartelle temporanee."""
 import pandas as pd
 
@@ -37,11 +37,13 @@ def test_con_le_probabili_della_sua_squadra_vince_la_fonte():
     assert p.at[3, "stato"] == "titolare" and p.at[3, "p_voto"] > 0.8
 
 
-def test_squadra_non_coperta_dalle_probabili_vale_la_regola():
-    """La pagina delle probabili ha solo alfa: per beta la fonte non ha una lettura, come senza probabili."""
-    p = _p(pd.DataFrame([_riga(1, "alfa", "titolare")]), ESPULSO)
+def test_con_una_lettura_buona_la_regola_non_vale_nemmeno_per_le_squadre_assenti():
+    """La pagina delle probabili ha solo alfa. La giornata ha una lettura buona: per beta valgono le presenze, come prima, e
+    non i cartellini (uno stato senza la fonte, in una giornata con le probabili, farebbe partire avvisi di cambi e
+    entrerebbe nella taratura di «gioca N%», che legge lo stato come detto dalla fonte)."""
+    p, senza = _p(pd.DataFrame([_riga(1, "alfa", "titolare")]), ESPULSO), _p(pd.DataFrame([_riga(1, "alfa", "titolare")]))
     assert p.at[1, "stato"] == "titolare"
-    assert (p.at[3, "stato"], p.at[3, "p_voto"]) == ("squalificato", 0.0)
+    assert pd.isna(p.at[3, "stato"]) and p.at[3, "p_voto"] == senza.at[3, "p_voto"] > 0.5
 
 
 def test_diffidato_dai_cartellini_solo_senza_probabili():
