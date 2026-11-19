@@ -101,8 +101,9 @@ python script/squadra/squadra.py foto --da abc1234 --lancia
 
 ## giro
 La procedura del coordinatore in un comando: `stato`, PR in conflitto, guasti d'infrastruttura, corse superate, worktree da
-pulire (sempre solo prova) e versione in produzione se c'è `SCHIERAXI_URL` (letta dal file pubblico `/sw.js`). Stampa solo
-ciò che è cambiato dal giro prima (`+` nuovo, `~` cambiato, `-` finito); `--tutto` stampa anche il resto. Con `--esegui`
+pulire (sempre solo prova), fotografie dal vero più vecchie dell'API (ultimo commit su `docs/openapi.json` dopo l'ultimo su
+`ios/fotografie/`, in `origin/main`: si rifanno con `prove/fotografie_dal_vero.py`) e versione in produzione se c'è
+`SCHIERAXI_URL` (letta dal file pubblico `/sw.js`). Stampa solo ciò che è cambiato dal giro prima (`+` nuovo, `~` cambiato, `-` finito); `--tutto` stampa anche il resto. Con `--esegui`
 rilancia una volta sola i guasti, e solo le corse al primo tentativo (`gh run rerun <id> --failed`) e annulla le corse superate. Esce con 10 se c'è qualcosa da
 guardare.
 
