@@ -62,6 +62,15 @@
       "forma": "web",
       "chi": "**fatto** (#716): prove `AnteprimaRoseTests` e `AnteprimaRoseViewModelTests` con due omonimi",
       "stato": "fatto"
+    },
+    {
+      "id": 77,
+      "schermata": "Impostazioni, Nuova stagione: il server rifiuta «Archivia e riparti» (#731)",
+      "web": "al 409 («Le rose sono già della stagione in corso: non c'è niente da archiviare.», per esempio un altro dispositivo ha già archiviato) il foglio si chiude, l'avviso «Nuova stagione» sparisce e si legge il messaggio del server; al 412 (rose cambiate da un altro dispositivo, la web manda If-Match) il messaggio del server e la pagina si ricarica (`apriNuovaStagione` e `api` in `app.js`, dal #729)",
+      "iphone": "prima: il messaggio del server sotto «Archivia e riparti», ma il passaggio e il pulsante restavano a schermo finché la pagina non si ricaricava. Ora dopo un rifiuto del server lo stato della stagione si rilegge: al 409 il passaggio sparisce e resta il messaggio del server; al 412 «Nel frattempo le rose sono cambiate, forse da un altro dispositivo: le ho rilette. Ricontrolla e conferma di nuovo.» (`ar.cambiate`, la frase dell'importazione delle rose); senza risposta (rete) non si rilegge (`StagioneViewModel.archiviaERiparti`, `StagioneView`). L'iPhone non manda If-Match a questa rotta, quindi oggi il 412 non arriva. L'avviso in cima a Impostazioni (`LegaViewModel.stagione`) non è cambiato: si rilegge con la pagina, come dopo un archivio riuscito",
+      "forma": "web",
+      "chi": "**fatto** (#731): prove in `LegaViewModelTests` (409, 412, rete giù)",
+      "stato": "fatto"
     }
   ]
 }

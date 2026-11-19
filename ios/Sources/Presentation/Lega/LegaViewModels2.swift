@@ -342,8 +342,23 @@ final class StagioneViewModel: ViewModelBase {
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
         } catch {
-            errore = error.localizedDescription
+            // 412: le rose sono cambiate su un altro dispositivo, detto con la frase che l'importazione delle rose usa per lo stesso
+            // caso; gli altri rifiuti con il messaggio del server, così com'è (il 409 dice che le rose sono già della stagione in corso).
+            errore = (error as? ErroreApi)?.eConflitto == true ? Catalogo.Ar.cambiate : error.localizedDescription
             Haptics.esito(riuscito: false)
+            // Il server ha risposto senza scrivere niente: un altro dispositivo può aver già archiviato (409) o cambiato le rose
+            // (412). Si rilegge lo stato, così il passaggio sparisce se non serve più, come sulla web (#731). Senza risposta (rete,
+            // tempo scaduto) non si rilegge: sarebbe un'altra attesa a vuoto.
+            if Self.haRisposto(error) { await stato.ricarica() }
+        }
+    }
+
+    /// Il server ha risposto con un rifiuto (il suo messaggio, un 412, un errore con codice): non la rete né una pagina d'altri.
+    private static func haRisposto(_ errore: Error) -> Bool {
+        guard let e = errore as? ErroreApi else { return false }
+        switch e {
+        case .server, .codificato, .conflitto: return true
+        default: return false
         }
     }
 }
