@@ -57,13 +57,13 @@ enum TestiRinvio {
         s.miei.isEmpty ? nil : Catalogo.Oggi.rinvioMiei(nomi: s.miei.map(\.nome).joined(separator: ", "))
     }
 
-    /// La riga sotto il menu: regola della lega oppure scelta solo per questa giornata. La frase della regola resta dell'iPhone:
-    /// la web (`oggi.rinvio_regola_lega`) dice «Impostazioni › Regole», ma le Regole stanno in Altro.
+    /// La riga sotto il menu: regola della lega oppure scelta solo per questa giornata, come la web (`oggi.rinvio_regola_lega`:
+    /// le regole stanno in Impostazioni › Regole e scadenza su tutte e due).
     static func nota(_ s: SceltaRinvio) -> String {
         if s.eccezione {
             return Catalogo.Oggi.rinvioEccezione(regola: nomeModo(s.predefinito, voto: s.votoUfficio))
         }
-        return "È la regola della tua lega (Altro › Regole). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata."
+        return Catalogo.Oggi.rinvioRegolaLega
     }
 
     /// Nel riepilogo della giornata finita: «Manca il recupero di ATA vs PAR: i punti possono ancora cambiare.» Nil se non manca
@@ -78,7 +78,7 @@ enum TestiRinvio {
     // MARK: regole della lega
 
     static let sezioneRegole = Catalogo.Regole.rinviate
-    static let aiutoRegole = Catalogo.Regole.rinviateAiuto
+    static let aiutoRegole = Catalogo.Regole.rinviateAiutoFormazione
 
     /// L'etichetta corta nel selettore delle regole.
     static func etichetta(_ modo: String) -> String {
