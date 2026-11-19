@@ -170,12 +170,17 @@ def test_altri_siti_non_possono_modificare(client):
 
 
 def _fine_aggiornamento():
-    """Aspetta che il lavoro avviato da POST /api/aggiorna finisca (un thread del server); il tempo massimo evita solo il test appeso."""
+    """Aspetta che il lavoro avviato da POST /api/aggiorna finisca e lasci i blocchi (un thread del server). Il lavoro mette
+    `in_corso` a falso, poi lascia il blocco su file e per ultimo il lucchetto interno: lucchetto libero = tutto lasciato.
+    Il tempo massimo evita solo il test appeso."""
     import time
     fine = time.monotonic() + 30
-    while server._aggiornamento["in_corso"] and time.monotonic() < fine:
+    while time.monotonic() < fine:
+        if not server._aggiornamento["in_corso"] and server._blocco.acquire(blocking=False):
+            server._blocco.release()
+            return
         time.sleep(0.01)
-    assert not server._aggiornamento["in_corso"]
+    raise AssertionError("il lavoro di POST /api/aggiorna non ha lasciato i blocchi in 30 secondi")
 
 
 def test_aggiorna_dall_app_non_parte_con_l_aggiornamento_programmato_in_corso(client, monkeypatch):
