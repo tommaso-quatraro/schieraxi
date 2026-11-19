@@ -1321,14 +1321,23 @@ enum CasoWidget: Equatable {
     /// Il contenuto di sempre del widget.
     case normale
 
-    /// Dal riassunto (dell'app o del widget) e dalla risposta completa di `/api/widget`, se c'è.
+    /// Dal riassunto (dell'app o del widget) e dalla risposta completa di `/api/widget`, se c'è. Senza riassunto vale la risposta
+    /// completa: la sua `formazione` (e i suoi `avvisi`) sono ancora della giornata già iniziata, non si mostrano a chi non l'ha
+    /// schierata.
     static func di(riassunto: RiassuntoOggi?, widget: RiassuntoWidget?) -> CasoWidget {
         if let testo = riassunto?.campionatoFinito ?? widget?.campionatoFinito { return .campionatoFinito(testo) }
+        if let r = riassunto ?? widget?.comeRiassuntoOggi(), r.senzaFormazioneInCorso { return .senzaFormazione(r) }
         return .normale
     }
 
-    /// Dove porta il tocco su «Da controllare».
-    var indirizzoDaControllare: String { "schieraxi://oggi" }
+    /// Dove porta il tocco su «Da controllare»: di solito Oggi (i dubbi, e a formazione chiusa i punti fatti); per chi è entrato a
+    /// giornata iniziata la Formazione, che è già quella della prossima, come il tocco su Prossima giornata.
+    var indirizzoDaControllare: String {
+        switch self {
+        case .senzaFormazione: return "schieraxi://formazione"
+        case .campionatoFinito, .normale: return "schieraxi://oggi"
+        }
+    }
 }
 
 // MARK: Widget «Osservato»: una sola percentuale, e i seguiti tolti dal server per il peso
