@@ -505,6 +505,12 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, f
 # (misura del 5/11/2026: quando 3 o più titolari cambiano per un ritocco, la nuova vale in mediana 3-4 centesimi di punto).
 SOGLIA_CAMBIO_PUNTI = SOGLIA_AVVISO_PUNTI
 NON_GIOCA = ("fuori", "improbabile")      # `titolarita`: infortunato, squalificato, senza voto per il rinvio, o gioca meno del 20%
+# Un titolare DIVENTATO improbabile (giocava almeno il 20% quando la consigliata è stata mostrata) ma sceso di poco (gioca ancora
+# almeno MARGINE_SE_ALMENO) la fa cambiare sotto la soglia di punti solo se un compagno gioca almeno MARGINE_COMPAGNO più di lui
+# (#737): con due compagni che si scambiano sopra e sotto il 20% (21% e 19%, o 25% e 12%) la consigliata cambiava a ogni
+# aggiornamento. Sotto il 10% non vale (revisione di #738): chi è passato dal 95% al 2% non resta titolare con un compagno al 20%.
+MARGINE_COMPAGNO = 0.20
+MARGINE_SE_ALMENO = 0.10
 # Le consigliate già mostrate, una per squadra e giornata:
 # {impronta: {stagione, giornata, modulo, titolari, panchina, non_giocano, quando}} (`da_ricordare`).
 # Comune a tutti come la cache dei calcoli (stessa squadra, rosa e regole: stessa consigliata), ma sopravvive ai riavvii e vale
@@ -746,9 +752,10 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
     Prima della scadenza la migliore prende il posto di quella di prima se vale almeno SOGLIA_CAMBIO_PUNTI punti attesi in più (sulle
     stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più e la migliore lo lascia fuori: uscito dalla rosa,
     diventato fuori (non chi lo era già quando è stata mostrata, `prima["non_giocano"]`), oppure fuori o improbabile con nel suo
-    ruolo un compagno fuori dagli 11 di prima, non fermo per un anticipo, che gioca almeno il 20% (#632, `fa_cambiare`); tenuta quella di prima, la
-    sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
-    resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui.
+    ruolo un compagno fuori dagli 11 di prima, non fermo per un anticipo, che gioca almeno il 20% (#632, `fa_cambiare`) e, se il
+    titolare è diventato improbabile ma gioca ancora almeno MARGINE_SE_ALMENO, almeno MARGINE_COMPAGNO più di lui (#737); tenuta
+    quella di prima, la sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`) resta quella di prima, panchina
+    compresa. La scelta salvata dall'utente non passa di qui.
     `iniziate` (squadre di Serie A con un anticipo già cominciato, #368): prima della scadenza i loro giocatori restano dove erano
     nella consigliata di prima (titolari, stesso posto in panchina, fuori), anche quando la migliore li sposterebbe: al posto della
     migliore si confronta la migliore che li lascia lì, con le stesse regole."""
@@ -777,7 +784,11 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
         """Il titolare di prima `i`, che la migliore lascia fuori, fa cambiare la consigliata anche sotto la soglia di punti:
         - fuori o improbabile, con nel suo ruolo un compagno che si può mettere titolare e gioca almeno COMPAGNO_ALMENO (#632:
           con tre portieri al 10%, 5% e 3% restava il 10% anche dopo che il secondo era salito al 92%). Conta ogni compagno, non
-          solo i titolari nuovi della migliore: una migliore con un altro modulo può non metterne nessuno in quel ruolo;
+          solo i titolari nuovi della migliore: una migliore con un altro modulo può non metterne nessuno in quel ruolo.
+          Se è DIVENTATO improbabile (non era in `prima["non_giocano"]`) e gioca ancora almeno MARGINE_SE_ALMENO, il compagno
+          deve anche giocare almeno MARGINE_COMPAGNO più di lui (#737: con il 2 e il 3 che si scambiavano 21% e 19%, o 25% e
+          12%, il titolare appena messo scendeva sotto il 20%, l'altro saliva e la consigliata cambiava a ogni giro). Sotto
+          MARGINE_SE_ALMENO basta il compagno al 20% (revisione di #738: dal 95% al 2% restava titolare, con il 2 al 20%);
         - diventato fuori dopo che la consigliata è stata mostrata (infortunato, squalificato, senza voto per il rinvio).
         Un improbabile senza un compagno così non basta, né se lo era già né se lo è diventato: al suo posto andrebbe un altro
         improbabile, e quando un compagno sale e scende attorno al 20% la consigliata cambiava a ogni giro (revisione di #736:
@@ -785,7 +796,10 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
         stato = titolarita(prev.loc[i])
         if stato not in NON_GIOCA:
             return False
-        if any(g.ruolo == per_id[i].ruolo and g.p >= fz.COMPAGNO_ALMENO for g in liberi):
+        almeno = fz.COMPAGNO_ALMENO
+        if stato == "improbabile" and i not in gia and per_id[i].p >= MARGINE_SE_ALMENO:
+            almeno = max(almeno, round(per_id[i].p + MARGINE_COMPAGNO, 3))   # al millesimo: 0,12 + 0,20 non dia 0,32000000000000006
+        if any(g.ruolo == per_id[i].ruolo and g.p >= almeno for g in liberi):
             return True
         return stato == "fuori" and i not in gia
     if not chiusa and any(i not in nuovi and fa_cambiare(i) for i in titolari):
