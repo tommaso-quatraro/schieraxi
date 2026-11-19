@@ -16,7 +16,9 @@
                      "panchina": [{"id": 4, "nome": "Difensore Quattro", "ruolo": "D", "p_voto": 0.7, "fv_atteso": 5.8}]},
       "giocatori": [{"id": 1, "p_voto": 0.97, "fv_atteso": 6.3, "fv": 5.5}, {"id": 4, "p_voto": 0.6, "fv_atteso": 5.6, "fv": 6.5},
                     {"id": 5, "p_voto": 0.8, "fv_atteso": 6.9, "fv": null}, {"id": 2, "p_voto": 0.9, "fv_atteso": 6.0, "fv": 7.0}],
-      "consigliata_di_allora": "mostrata", "nota_consigliata": null, "nota_consigliata_frase": null
+      "consigliata_di_allora": "mostrata", "nota_consigliata": null, "nota_consigliata_frase": null,
+      "fatti_e_attesi": {"formazione": "schierata", "atteso": 71.7, "fatti": 74.5, "differenza": 2.8, "meglio": [], "peggio": [],
+                         "testo": null, "frase": null}
     },
     {
       "stagione": "2026-27", "giornata": 10, "giornata_lega": 7, "modificabile": true,
@@ -24,7 +26,9 @@
                       "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
       "schierata": {"modulo": "4-3-3", "atteso": 70.0, "reale": 68.0, "tipo": "manuale", "confermata": null,
                     "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
-      "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.2, "fv": 6.0}]
+      "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.2, "fv": 6.0}],
+      "fatti_e_attesi": {"formazione": "schierata", "atteso": 70.0, "fatti": 68.0, "differenza": -2.0, "meglio": [], "peggio": [],
+                         "testo": null, "frase": null}
     },
     {
       "stagione": "2026-27", "giornata": 9, "giornata_lega": 6, "modificabile": true,
@@ -32,7 +36,10 @@
                       "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
       "schierata": null,
       "automatica": {"modulo": "4-4-2", "atteso": 69.5, "reale": 71.0, "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
-      "istantanea": null, "giocatori": []
+      "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 5.9, "fv": 8.0}],
+      "fatti_e_attesi": {"formazione": "automatica", "atteso": 69.5, "fatti": 71.0, "differenza": 1.5,
+                         "meglio": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P", "atteso": 5.9, "preso": 8.0, "differenza": 2.1}],
+                         "peggio": [], "testo": "Meglio del previsto: Portiere Uno (+2,1)."}
     },
     {
       "stagione": "2026-27", "giornata": 8, "giornata_lega": 5, "modificabile": true,
@@ -41,7 +48,9 @@
       "schierata": null, "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.4, "fv": 7.0}],
       "consigliata_di_allora": "non_salvata",
       "nota_consigliata": "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata.",
-      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
+      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}},
+      "fatti_e_attesi": {"formazione": "consigliata", "atteso": 74.0, "fatti": 78.5, "differenza": 4.5, "meglio": [], "peggio": [],
+                         "testo": null, "frase": null}
     },
     {
       "stagione": "2026-27", "giornata": 7, "giornata_lega": 4, "modificabile": true,
@@ -52,7 +61,8 @@
       "automatica": null, "istantanea": null,
       "consigliata_di_allora": "non_salvata",
       "nota_consigliata": "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata.",
-      "nota_consigliata_frase": {"chiave": "diario.senza_confronto", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
+      "nota_consigliata_frase": {"chiave": "diario.senza_confronto", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}},
+      "fatti_e_attesi": null
     },
     {
       "stagione": "2026-27", "giornata": 6, "giornata_lega": 3, "modificabile": true,
@@ -60,16 +70,24 @@
                       "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 2, "nome": "Difensore Due", "ruolo": "D"}]},
       "schierata": {"modulo": "4-3-3", "atteso": 70.1, "reale": 70.0, "tipo": "manuale",
                     "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}, {"id": 4, "nome": "Difensore Quattro", "ruolo": "D"}]},
-      "automatica": null, "istantanea": null
+      "automatica": null, "istantanea": null,
+      "giocatori": [{"id": 1, "fv_atteso": 6.0, "fv": 7.5}, {"id": 4, "fv_atteso": 6.2, "fv": 4.5}],
+      "fatti_e_attesi": {"formazione": "schierata", "atteso": 70.1, "fatti": 70.0, "differenza": -0.1,
+                         "meglio": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P", "atteso": 6.0, "preso": 7.5, "differenza": 1.5}],
+                         "peggio": [{"id": 4, "nome": "Difensore Quattro", "ruolo": "D", "atteso": 6.2, "preso": 4.5, "differenza": -1.7}],
+                         "testo": "Meglio del previsto: Portiere Uno (+1,5). Peggio: Difensore Quattro (−1,7)."}
     },
     {
       "stagione": "2025-26", "giornata": 38, "giornata_lega": null, "modificabile": false,
       "consigliata": {"modulo": "4-4-2", "atteso": 68.0, "reale": 61.5, "origine": "ricostruita",
                       "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
-      "schierata": null, "automatica": null, "istantanea": null,
+      "schierata": null, "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.5, "fv": 4.0}],
       "consigliata_di_allora": "non_salvata",
       "nota_consigliata": "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata.",
-      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}}
+      "nota_consigliata_frase": {"chiave": "diario.rifatta", "param": {"perche": {"chiave": "diario.allora_non_salvata", "param": {}}}},
+      "fatti_e_attesi": {"formazione": "consigliata", "atteso": 68.0, "fatti": 61.5, "differenza": -6.5, "meglio": [],
+                         "peggio": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P", "atteso": 6.5, "preso": 4.0, "differenza": -2.5}],
+                         "testo": "Peggio del previsto: Portiere Uno (−2,5)."}
     }
   ],
   "scelte_tue": {

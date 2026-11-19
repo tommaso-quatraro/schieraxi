@@ -97,6 +97,56 @@ struct DemoDiarioTests {
         #expect(s.pochiDati == (n < 8), "sotto le 8 giornate il server dice «pochi dati» (POCHI_DATI di fanta/diario.py)")
     }
 
+    @Test("«Fatti e attesi» di ogni giornata è quello che il server calcola dai numeri della tabella (#672)")
+    func fattiEAttesiComeIlServer() async throws {
+        let voci = try await diario().giornate ?? []
+        try #require(!voci.isEmpty, "nel diario della demo non ci sono giornate")
+        for v in voci {
+            let g = v.giornata ?? 0
+            let f = try #require(v.cheConta.formazione, "giornata \(g): manca la formazione che conta")
+            let fa = try #require(v.fattiEAttesi, "giornata \(g): manca `fatti_e_attesi`")
+            let atteso = try #require(f.atteso), fatti = try #require(f.reale)
+            #expect(fa.differenza == Self.unaCifra(fatti - atteso), "giornata \(g): la differenza è fatti meno attesi")
+            #expect(fa.testo == Self.fraseScarti(v), "giornata \(g): la frase deve dire i numeri della tabella")
+        }
+        #expect(voci.contains { $0.fattiEAttesi?.testo != nil }, "la foto deve mostrare la frase in almeno una giornata")
+    }
+
+    /// Un titolare con il suo scarto dall'atteso, nell'ordine della formazione.
+    private struct Scarto {
+        let posto: Int
+        let nome: String
+        let d: Double
+    }
+
+    private static func unaCifra(_ x: Double) -> Double { (x * 10).rounded() / 10 }
+
+    /// La frase come la scrive `fatti_e_attesi` di fanta/diario.py: i titolari con almeno un punto in più (o in meno) del loro
+    /// fantavoto atteso, al massimo due per parte e dal più lontano; l'atteso è quello mostrato prima della scadenza, se c'è, se no
+    /// quello rifatto; chi è senza voto non c'è. Nil se nessuno arriva a un punto.
+    private static func fraseScarti(_ v: VoceDiario) -> String? {
+        var mostrati: [Int: Double] = [:]
+        for x in (v.istantanea?.titolari ?? []) + (v.istantanea?.panchina ?? []) {
+            if let id = x.id, let a = x.fvAtteso { mostrati[id] = a }
+        }
+        let righe = (v.cheConta.formazione?.titolari ?? []).enumerated().compactMap { i, t -> Scarto? in
+            guard let id = t.id, let n = v.giocatori?.first(where: { $0.id == id }),
+                  let atteso = mostrati[id] ?? n.fvAtteso, let preso = n.fv else { return nil }
+            return Scarto(posto: i, nome: t.nome ?? "", d: unaCifra(preso - atteso))
+        }
+        let meglio = righe.filter { $0.d >= 1 }.sorted { $0.d != $1.d ? $0.d > $1.d : $0.posto < $1.posto }.prefix(2)
+        let peggio = righe.filter { $0.d <= -1 }.sorted { $0.d != $1.d ? $0.d < $1.d : $0.posto < $1.posto }.prefix(2)
+        func nomi(_ r: ArraySlice<Scarto>) -> String {
+            r.map { "\($0.nome) (\(Formato.conSegno($0.d)))" }.joined(separator: " e ")
+        }
+        switch (meglio.isEmpty, peggio.isEmpty) {
+        case (false, false): return "Meglio del previsto: \(nomi(meglio)). Peggio: \(nomi(peggio))."
+        case (false, true): return "Meglio del previsto: \(nomi(meglio))."
+        case (true, false): return "Peggio del previsto: \(nomi(peggio))."
+        case (true, true): return nil
+        }
+    }
+
     /// Una riga di «Le tue scelte», da confrontare tutta insieme.
     private struct Scelta: Equatable {
         let giornata: Int?

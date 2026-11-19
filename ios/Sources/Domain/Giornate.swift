@@ -1,8 +1,9 @@
 import Foundation
 
 /// La pagina Giornate (#673, passo 2; la web con #617/#671, `mostraGiornate` di `fanta/web/app.js`): una riga per giornata finita,
-/// dalla più recente, con i punti fatti e attesi della formazione che conta e, al tocco, gli 11 con il fantavoto atteso e quello
-/// preso. Il confronto «tu contro la consigliata» c'è solo dove la consigliata è quella mostrata prima della scadenza
+/// dalla più recente, con i punti fatti e attesi della formazione che conta, di quanto sopra o sotto gli attesi (#672) e, al tocco,
+/// chi ha fatto meglio o peggio del previsto e gli 11 con il fantavoto atteso e quello preso. Il confronto «tu contro la consigliata»
+/// c'è solo dove la consigliata è quella mostrata prima della scadenza
 /// (`consigliata.origine == "mostrata"`, #614): un server di prima non manda `origine` e la sua consigliata è rifatta a giornata
 /// finita, e lì il confronto non si mostra. Numeri, nomi e frasi vengono da `GET /api/diario`: qui si sceglie cosa mostrare, non si
 /// calcola. Logica pura, provata in `GiornateTests`.
@@ -40,7 +41,10 @@ struct RigaGiornata: Identifiable, Equatable, Sendable {
     let punti: String
     /// «punti (attesi 71,7)», o «punti» senza gli attesi.
     let attesi: String
-    /// La riga intera per VoiceOver: «Giornata 8, 11ª di Serie A: 74,5 punti (attesi 71,7). La tua formazione.»
+    /// «+2,8 sul previsto», «−3,1 sul previsto» o «come previsto», dalla differenza del server (`fatti_e_attesi.differenza`, #672);
+    /// nil se il server non la manda.
+    let sulPrevisto: String?
+    /// La riga intera per VoiceOver: «Giornata 8, 11ª di Serie A: 74,5 punti (attesi 71,7), +2,8 sul previsto. La tua formazione.»
     let voce: String
 }
 
@@ -67,6 +71,8 @@ struct DettaglioGiornata: Equatable, Sendable {
     let titolo: String
     /// Sotto il titolo, quando la formazione non è la tua: la frase del server sulla consigliata di allora (`nota_consigliata`, #674).
     let nota: String?
+    /// Sopra la tabella: la frase del server su chi ha fatto meglio o peggio del previsto (`fatti_e_attesi.testo`, #672).
+    let scarti: String?
     let titolari: [TitolareGiornata]
     /// «Al posto di X hai messo Y.» (solo con la consigliata mostrata).
     let cambi: String?
@@ -157,11 +163,16 @@ struct PaginaGiornate {
         let f = v.cheConta.formazione
         let punti = Formato.punti(f?.reale)
         let attesi = f?.atteso.map { Catalogo.Formazione.puntiEAttesi(n: Formato.punti($0)) } ?? Catalogo.Formazione.punti
+        // fatti meno attesi come li dà il server (`fatti_e_attesi.differenza`, #672): qui solo il segno, niente conti
+        let sulPrevisto = v.fattiEAttesi?.differenza.map { d in
+            d == 0 ? Catalogo.Giornate.comePrevisto : Catalogo.Giornate.sulPrevisto(d: Formato.conSegno(d))
+        }
         let frase = Self.stato(v, scelte: scelte)
         let stagione = stagioni ? v.stagione : nil
         let nomeVoce = (v.nomeGiornata?.voce ?? v.titolo) + (stagione.map { ", \($0)" } ?? "")
         return RigaGiornata(id: v.id, nome: v.titolo, stagione: stagione, stato: frase, punti: punti, attesi: attesi,
-                            voce: "\(nomeVoce): \(punti) \(attesi). \(frase)")
+                            sulPrevisto: sulPrevisto,
+                            voce: "\(nomeVoce): \(punti) \(attesi)\(sulPrevisto.map { ", \($0)" } ?? ""). \(frase)")
     }
 
     static func dettaglio(_ v: VoceDiario, scelte: [SceltaGiornata]) -> DettaglioGiornata {
@@ -201,7 +212,8 @@ struct PaginaGiornate {
         // formazione al posto dei cambi, altrimenti sotto il titolo. Un server di prima non la manda: niente frase.
         let senzaConfronto = tipo == .tua && cambi == nil ? v.notaConsigliata : nil
         let nota = tipo != .tua ? v.notaConsigliata : nil
-        return DettaglioGiornata(titolo: titolo, nota: nota, titolari: titolari, cambi: cambi, senzaConfronto: senzaConfronto,
-                                 correggibile: v.siPuoCambiare)
+        // chi ha fatto meglio o peggio del previsto: la frase del server (`fatti_e_attesi.testo`, #672), sopra la tabella come la web
+        return DettaglioGiornata(titolo: titolo, nota: nota, scarti: v.fattiEAttesi?.testo, titolari: titolari, cambi: cambi,
+                                 senzaConfronto: senzaConfronto, correggibile: v.siPuoCambiare)
     }
 }
