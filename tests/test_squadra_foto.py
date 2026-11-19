@@ -196,19 +196,33 @@ def test_pr_chiusa_senza_unione_non_lancia(capsys):
     assert "chiusa senza unione" in capsys.readouterr().err
 
 
-def test_spiega_dice_per_ogni_file_come_ha_scelto(capsys):
+def _albero_finto(monkeypatch):
+    """L'albero Swift finto di test_squadra_foto_grafo.py al posto del repository: i test di --spiega non dipendono dai file
+    Swift di oggi (non diventano rossi in una PR iOS che non c'entra)."""
+    import grafo_ios
+    from test_squadra_foto_grafo import DATI, SCENE, TESTI
+    monkeypatch.setattr(foto, "grafo_del_repository", lambda: grafo_ios.Grafo(TESTI))
+    monkeypatch.setattr(foto, "scene_di_screenshot", lambda: SCENE)
+    monkeypatch.setattr(foto.comune, "leggi_json", lambda nome: DATI)
+
+
+def test_spiega_dice_per_ogni_file_come_ha_scelto(capsys, monkeypatch):
     """#505: con --spiega ogni file dice se ha deciso una regola a mano, il codice (con la strada) o la regola larga."""
     import squadra
-    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Lega/NomeConPillola.swift"},
-                                          {"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}],
+    _albero_finto(monkeypatch)
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/A/Riquadro.swift"},
+                                          {"path": "ios/Sources/Presentation/B/VistaB.swift"},
+                                          {"path": "ios/Sources/Support/Comune.swift"}],
                                 "state": "MERGED"}})
     squadra.main(["foto", "7", "--spiega"], esegui=f)
     out = capsys.readouterr().out
-    assert "ios/Sources/Presentation/Lega/NomeConPillola.swift: grafo: dal codice: " in out
-    assert "ios/Sources/Presentation/Giornate/GiornateView.swift: regola:" in out
+    assert "ios/Sources/Presentation/A/Riquadro.swift: grafo: dal codice: VistaA ← Riquadro" in out
+    assert "ios/Sources/Presentation/B/VistaB.swift: regola:" in out
+    assert "ios/Sources/Support/Comune.swift: ripiego:" in out
 
 
-def test_senza_spiega_niente_perche(capsys):
-    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}], "state": "MERGED"}})
+def test_senza_spiega_niente_perche(capsys, monkeypatch):
+    _albero_finto(monkeypatch)
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/B/VistaB.swift"}], "state": "MERGED"}})
     foto.main(f, pr=7)
     assert "regola a mano" not in capsys.readouterr().out

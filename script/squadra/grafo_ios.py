@@ -2,14 +2,16 @@
 
 Il codice si divide in pezzi di primo livello (una dichiarazione che comincia a inizio riga: struct, class, enum, protocol,
 actor, typealias, extension, func, let, var). Un pezzo «usa» un altro se nel suo testo compare il nome dell'altro.
-Dal file cambiato si risale a chi lo usa finché si arriva a una vista radice (lì ci si ferma) o a una «barriera» (gli oggetti
-che tengono tutto, come AppModel: da lì in su ogni schermata sarebbe raggiunta).
+Dal file cambiato si risale a chi lo usa finché si arriva a una vista radice (lì ci si ferma, salvo le radici «annidate»
+dentro un'altra) o a una «barriera» (gli oggetti che tengono tutto, come AppModel: da lì in su ogni schermata sarebbe
+raggiunta).
 
 Nomi di un pezzo: il tipo che dichiara; per un'estensione di un tipo dell'app il tipo esteso; per un'estensione di un tipo
 esterno (View, String...) i nomi dei suoi membri (chi chiama `.bordino()` usa l'estensione che lo dichiara). Un pezzo
-`private`/`fileprivate` vale solo nel suo file. Commenti e stringhe non contano. È una lettura a occhio del testo, non un
-compilatore: sbaglia per eccesso (nomi uguali in file diversi), e per questo un file che arriva a troppe radici usa le regole
-larghe di foto.json. Solo libreria standard."""
+`private`/`fileprivate` vale solo nel suo file. Commenti e testo delle stringhe non contano; il codice delle interpolazioni
+(`"\\(Formato.euro(x))"`) sì. È una lettura a occhio del testo, non un compilatore: sbaglia per eccesso (nomi uguali in file
+diversi) e per difetto (usi che il testo non mostra), e per questo le regole a mano strette vincono e un file che arriva a
+troppe radici usa le regole larghe di foto.json. Solo libreria standard."""
 from __future__ import annotations
 
 import re
@@ -26,9 +28,16 @@ _NOME = re.compile(r"\b[A-Za-z_]\w*\b")
 
 
 def pulisci(testo: str) -> str:
-    """Toglie commenti e contenuto delle stringhe; gli a capo restano (gli inizi di riga servono a trovare i pezzi)."""
-    fuori, i, n = [], 0, len(testo)
+    """Toglie commenti e testo delle stringhe; restano gli a capo (gli inizi di riga servono a trovare i pezzi) e il codice
+    delle interpolazioni (`"\\(Formato.euro(x))"` usa Formato)."""
+    return _codice(testo, 0, False)[0]
+
+
+def _codice(testo: str, i: int, dentro_interpolazione: bool) -> tuple[str, int]:
+    """Codice da `i` alla fine (o alla «)» che chiude un'interpolazione): (testo pulito, posizione dopo)."""
+    fuori, n, aperte = [], len(testo), 0
     while i < n:
+        c = testo[i]
         if testo.startswith("//", i):
             j = testo.find("\n", i)
             i = n if j < 0 else j
@@ -37,21 +46,39 @@ def pulisci(testo: str) -> str:
             j = n if j < 0 else j + 2
             fuori.append("\n" * testo.count("\n", i, j))
             i = j
-        elif testo.startswith('"""', i):
-            j = testo.find('"""', i + 3)
-            j = n if j < 0 else j + 3
-            fuori.append('""' + "\n" * testo.count("\n", i, j))
-            i = j
-        elif testo[i] == '"':
-            j = i + 1
-            while j < n and testo[j] not in '"\n':
-                j += 2 if testo[j] == "\\" else 1
-            fuori.append('""')
-            i = j + 1
+        elif c == '"':
+            pulita, i = _stringa(testo, i)
+            fuori.append(pulita)
+        elif dentro_interpolazione and c == ")" and aperte == 0:
+            return "".join(fuori), i + 1
         else:
-            fuori.append(testo[i])
+            aperte += (c == "(") - (c == ")")
+            fuori.append(c)
             i += 1
-    return "".join(fuori)
+    return "".join(fuori), i
+
+
+def _stringa(testo: str, i: int) -> tuple[str, int]:
+    """Una stringa che comincia in `i` (semplice o fra «\"\"\"»): ne tiene solo gli a capo e il codice delle interpolazioni."""
+    lunga = testo.startswith('"""', i)
+    chiusura = '"""' if lunga else '"'
+    fuori, n = ['"'], len(testo)
+    i += len(chiusura)
+    while i < n:
+        if testo.startswith(chiusura, i):
+            return "".join(fuori) + '"', i + len(chiusura)
+        if testo[i] == "\n":
+            if not lunga:
+                break
+            fuori.append("\n")
+        elif testo.startswith("\\(", i):
+            interno, i = _codice(testo, i + 2, True)
+            fuori.append(" " + interno + " ")
+            continue
+        elif testo[i] == "\\":
+            i += 1
+        i += 1
+    return "".join(fuori) + '"', i
 
 
 def _membri(corpo: str) -> set[str]:
@@ -102,8 +129,11 @@ class Grafo:
                     if i != j:
                         self.usato_da[i].add(j)
 
-    def radici(self, file: str, radici: set[str], barriere: set[str]) -> dict[str, list[str]]:
-        """Viste radice raggiunte risalendo da `file`, ciascuna con la strada (nomi dei pezzi, dalla radice al file)."""
+    def radici(self, file: str, radici: set[str], barriere: set[str],
+               annidate: set[str] = frozenset()) -> dict[str, list[str]]:
+        """Viste radice raggiunte risalendo da `file`, ciascuna con la strada (nomi dei pezzi, dalla radice al file).
+        A una radice ci si ferma, tranne a quelle `annidate` (mostrate dentro un'altra radice, come AspettoSezione dentro
+        ImpostazioniView): da lì si continua a risalire e si prendono anche le radici di fuori."""
         partenza = [i for i, p in enumerate(self.pezzi) if p["file"] == file]
         visti, coda, da, trovate = set(partenza), deque(partenza), {}, {}
         while coda:
@@ -116,7 +146,8 @@ class Grafo:
                         k = da[k]
                         strada.append(self.pezzi[k]["nome"])
                     trovate[p["nome"]] = strada
-                continue
+                if p["nome"] not in annidate:
+                    continue
             if p["nome"] in barriere and i not in partenza:
                 continue
             for j in sorted(self.usato_da[i]):

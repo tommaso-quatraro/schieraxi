@@ -50,6 +50,31 @@ def test_tipi_in_commenti_e_stringhe_non_contano():
     assert grafo_ios.tipi_dichiarati(testo) == {"Vera", "Nascosta"}
 
 
+def test_i_nomi_dentro_una_interpolazione_contano():
+    """«\\(Formato.euro(x))» dentro una stringa usa Formato: il testo della stringa no, quello fra «\\(» e «)» sì."""
+    pulito = grafo_ios.pulisci('let s = "Prezzo \\(Formato.euro(x)) di Tizio"\nlet m = """\nRiga \\(Altro.y)\n"""\n')
+    assert "Formato" in pulito and "euro" in pulito and "Altro" in pulito
+    assert "Prezzo" not in pulito and "Tizio" not in pulito and "Riga" not in pulito
+    testi = {**TESTI, "ios/Sources/Presentation/A/Riquadro.swift":
+             'struct Riquadro: View {\n    var body: some View { Text("costa \\(Prezzo.uno)") }\n}\n',
+             "ios/Sources/Domain/Prezzo.swift": "enum Prezzo {\n    static let uno = 1\n}\n"}
+    s = _scegli("ios/Sources/Domain/Prezzo.swift", testi=testi)
+    assert s["modo"] == "grafo" and s["schermate"] == ["a", "a-fondo"]
+
+
+def test_una_radice_dentro_un_altra_porta_anche_le_schermate_di_fuori():
+    """Come AspettoSezione dentro ImpostazioniView: una parte usata solo dalla sezione si vede anche nella pagina intera."""
+    testi = {**TESTI,
+             "ios/Sources/Presentation/A/VistaA.swift": "struct VistaA: View {\n    var body: some View { Sezione() }\n}\n",
+             "ios/Sources/Presentation/A/Sezione.swift": "struct Sezione: View {\n    var body: some View { Riquadro() }\n}\n"}
+    dati = {**DATI, "radici": {"a": ["VistaA"], "a-fondo": ["Sezione"], "b": ["VistaB"]}, "soglia_radici": 2}
+    # senza «annidate» ci si ferma alla sezione (una pagina aperta da un'altra, come RosaView da ImpostazioniView, non è dentro)
+    assert _scegli("ios/Sources/Presentation/A/Riquadro.swift", dati, testi)["schermate"] == ["a-fondo"]
+    s = _scegli("ios/Sources/Presentation/A/Riquadro.swift", {**dati, "annidate": ["Sezione"]}, testi)
+    assert s["modo"] == "grafo" and s["schermate"] == ["a", "a-fondo"]
+    assert "VistaA ← Sezione ← Riquadro" in s["perche"]
+
+
 def test_file_nuovo_prende_le_schermate_della_vista_che_lo_usa():
     """Il caso che costringeva a rinominare i file: una parte nuova senza regola a mano."""
     s = _scegli("ios/Sources/Presentation/A/Riquadro.swift")
@@ -131,6 +156,7 @@ def test_ogni_radice_barriera_e_contenitore_e_un_tipo_dichiarato():
     g = foto.grafo_del_repository()
     dati = _dati()
     nomi = {t for tipi in dati["radici"].values() for t in tipi} | set(dati["barriere"]) | set(dati["contenitori"])
+    assert set(dati["annidate"]) <= {t for tipi in dati["radici"].values() for t in tipi}, "ogni tipo di «annidate» è una radice"
     assert nomi - g.dichiarati == set(), "tipi di «radici», «barriere» o «contenitori» in script/squadra/foto.json che il codice non ha più"
 
 

@@ -57,7 +57,8 @@ def scegli(file: str, dati: dict, grafo: grafo_ios.Grafo, scene: list[str]) -> d
                     radici_scena.setdefault(t, []).append(s)
     # i contenitori (RadiceView...) mostrano le loro parti su ogni schermata: arrivarci vale «troppe radici»
     contenitori = set(dati.get("contenitori", []))
-    trovate = grafo.radici(file, set(radici_scena) | contenitori, set(dati.get("barriere", [])))
+    trovate = grafo.radici(file, set(radici_scena) | contenitori, set(dati.get("barriere", [])),
+                           set(dati.get("annidate", [])))
     soglia = dati.get("soglia_radici", 4)
     dentro = [t for t in trovate if t in contenitori]
     if dentro and regola is not None:
