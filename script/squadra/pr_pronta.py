@@ -4,7 +4,9 @@ Controlla: PR aperta; `mergeable` esattamente uguale a «MERGEABLE» (CONFLICTIN
 rispetto a main; ultima corsa di ogni workflow sul commit in testa verde; descrizione, revisione e novità con le funzioni di
 script/ci/controlla_pr.py (la revisione come se la PR fosse già pronta); coerenza web-iPhone con script/coerenza.py
 --controlla sui file della PR (se la PR tocca i dati della coerenza); «Foto da fare: …» nella descrizione se la PR tocca ios/.
-Se uno dei due controlli non c'è su questo main, rifiuta: «controllo non disponibile su questo main».
+Se uno dei due controlli (controlla_pr.py, coerenza.py) non c'è su questo main, rifiuta: «controllo non disponibile su
+questo main». Se le righe «Foto da fare» non nominano tutte le schermate che «squadra.py foto» ricava dai file iOS della PR
+(#505), un avviso dice quali mancano e da quale file arrivano: non è un rifiuto.
 Caso a parte (#476): è rosso solo il job «ambito» e la descrizione ATTUALE va bene (controlla_pr.py senza problemi, aree di
 controlla_ambito.py che coprono i file). Il job ha letto la descrizione di prima e un «Re-run» la rilegge uguale: lo dice e
 suggerisce update-branch (ramo indietro) o un push; con --esegui, se l'unico altro motivo è il ramo indietro, fa da solo
@@ -23,6 +25,8 @@ from typing import Callable
 
 import attendi
 import comune
+import foto
+import grafo_ios
 
 FILE_COERENZA = ("script/coerenza.py", "docs/coerenza", "docs/COERENZA-WEB-IPHONE.md")
 NON_DISPONIBILE = "controllo non disponibile su questo main"
@@ -87,9 +91,56 @@ def _test_della_pr(esegui: comune.Esegui, testa: str, file: list[tuple], cartell
             _copia_dal_commit(esegui, testa, percorso, cartella)
 
 
+_RIGA_FOTO = re.compile(r"^\W*foto (?:da fare|prima dell'unione)\s*:(.*)$", re.I | re.M)
+
+
+def _righe_foto(corpo: str) -> list[str]:
+    """Il testo dopo i due punti di ogni riga «Foto da fare: …» o «Foto prima dell'unione: …», commenti HTML esclusi."""
+    return _RIGA_FOTO.findall(re.sub(r"<!--.*?(?:-->|\Z)", "", corpo or "", flags=re.S))
+
+
 def _foto_scritte(corpo: str) -> bool:
-    corpo = re.sub(r"<!--.*?(?:-->|\Z)", "", corpo or "", flags=re.S)
-    return bool(re.search(r"^\W*foto (da fare|prima dell'unione)\s*:", corpo, re.I | re.M))
+    return bool(_righe_foto(corpo))
+
+
+def foto_non_coperte(esegui: comune.Esegui, numero: int, testa: str, file: list[tuple], corpo: str,
+                     commit_preso: bool) -> list[str]:
+    """Avviso, mai rifiuto (#505): le schermate che «squadra.py foto» ricava dai file iOS della PR e che nessuna riga «Foto da
+    fare» nomina, con i file da cui arrivano. Il grafo è quello del codice della PR: i file Swift cambiati si leggono dal suo
+    commit (solo testo, mai eseguiti), gli altri dal disco. Se il confronto non riesce, un avviso corto e si va avanti."""
+    righe = _righe_foto(corpo)
+    ios = [voce for voce in file if voce[-1].startswith("ios/")]
+    if not righe or not ios:
+        return []
+    nominate = {parola for riga in righe for parola in re.findall(r"[\w-]+", riga)}
+    mancanti: dict[tuple, list[str]] = {}
+    try:
+        testi = grafo_ios.leggi(comune.RADICE)
+        swift = [voce for voce in ios if voce[0] != "removed" and voce[-1].startswith("ios/Sources/")
+                 and voce[-1].endswith(".swift")]
+        if swift and not commit_preso:
+            comune.chiama(esegui, ["git", "fetch", "origin", f"refs/pull/{numero}/head"])
+        for voce in swift:
+            testi.pop(voce[1], None)                      # nome di prima di un file rinominato (o il file stesso)
+            testi[voce[-1]] = comune.chiama(esegui, ["git", "show", f"{testa}:{voce[-1]}"])
+        dati, scene, grafo = comune.leggi_json("foto.json"), foto.scene_di_screenshot(), grafo_ios.Grafo(testi)
+        for voce in ios:
+            esito = foto.schermate([voce[-1]], dati, grafo, scene)
+            manca = tuple(s for s in esito["schermate"] + ["widget"] * esito["widget"] if s not in nominate)
+            if manca:
+                mancanti.setdefault(manca, []).append(voce[-1])
+    except Exception as e:   # un avviso non ferma mai pr-pronta; il testo dell'errore non si stampa (vedi il test)
+        return [f"non ho potuto confrontare «Foto da fare» con i file iOS della PR ({type(e).__name__}): "
+                f"le schermate le ricava «squadra.py foto {numero} --spiega»"]
+    if not mancanti:
+        return []
+    gruppi = []
+    for schermate, da in list(mancanti.items())[:4]:
+        gruppi.append(f"{' '.join(schermate)} (da {', '.join(da[:3])}" + (f" e altri {len(da) - 3}" if len(da) > 3 else "") + ")")
+    if len(mancanti) > 4:
+        gruppi.append(f"e altri {sum(len(da) for da in list(mancanti.values())[4:])} file")
+    return ["«Foto da fare» non nomina schermate che i file iOS della PR raggiungono: " + "; ".join(gruppi)
+            + f". Come sono scelte: «squadra.py foto {numero} --spiega»"]
 
 
 def _solo_ambito_vecchio(esegui: comune.Esegui, non_verdi: list[tuple], pr: dict, file: list[str], controlli_ambito) -> bool:
@@ -163,9 +214,12 @@ def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza:
             motivi.append(f"coerenza web-iPhone: {NON_DISPONIBILE} (manca script/coerenza.py)")
     else:
         motivi += controlla_coerenza(esegui, testa, percorsi)
-    if any(p.startswith("ios/") for p in percorsi) and not _foto_scritte(pr.get("body") or ""):
-        motivi.append("la PR tocca ios/ ma la descrizione non ha «Foto da fare: <schermate>» "
-                      "(le ricava «squadra.py foto <PR>»)")
+    if any(p.startswith("ios/") for p in percorsi):
+        if not _foto_scritte(pr.get("body") or ""):
+            motivi.append("la PR tocca ios/ ma la descrizione non ha «Foto da fare: <schermate>» "
+                          "(le ricava «squadra.py foto <PR>»)")
+        else:
+            avvisi += foto_non_coperte(esegui, numero, testa, file, pr.get("body") or "", serve_commit)
     ripartenza = None
     if ambito_vecchio:
         indietro = dietro.isdigit() and int(dietro) > 0

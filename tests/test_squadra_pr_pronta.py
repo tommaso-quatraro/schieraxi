@@ -298,8 +298,9 @@ def test_il_codice_4_e_scritto_nell_aiuto():
 RIQUADRO = "ios/Sources/Presentation/A/Riquadro.swift"
 VISTA_A = "ios/Sources/Presentation/A/VistaA.swift"
 VISTA_B = "ios/Sources/Presentation/B/VistaB.swift"
-# porta.py (chi toglie la bozza in automatico) legge queste parole come «controlli non ancora finiti» e aspetta ancora
-PAROLE_DI_PORTA = ("in corso", "in coda", "attesa")
+# Gli script che rilanciano pr-pronta finché i controlli finiscono cercano queste parole nell'uscita: in un avviso le
+# leggerebbero come «controlli non ancora finiti» e continuerebbero ad aspettare.
+PAROLE_DI_CHI_ASPETTA = ("in corso", "in coda", "attesa")
 
 
 def _foto_finte(monkeypatch):
@@ -329,7 +330,7 @@ def test_avviso_se_foto_da_fare_non_copre_le_schermate_toccate(monkeypatch, caps
     [avviso] = _avvisi_foto(uscita)
     assert "a-fondo" in avviso and RIQUADRO in avviso                 # quale schermata manca e da quale file arriva
     assert VISTA_B not in avviso                                      # «b» c'è già
-    assert not any(p in avviso for p in PAROLE_DI_PORTA)
+    assert not any(p in avviso for p in PAROLE_DI_CHI_ASPETTA)
 
 
 def test_nessun_avviso_se_le_righe_foto_da_fare_coprono_tutto(monkeypatch, capsys):
@@ -368,4 +369,4 @@ def test_foto_non_confrontabili_non_fermano_pr_pronta(monkeypatch, capsys):
     assert codice == 0 and f.lanciati("gh pr ready")
     [avviso] = _avvisi_foto(uscita)
     assert "Foto da fare" in avviso and "squadra.py foto 7" in avviso
-    assert not any(p in avviso for p in PAROLE_DI_PORTA)
+    assert not any(p in avviso for p in PAROLE_DI_CHI_ASPETTA)
