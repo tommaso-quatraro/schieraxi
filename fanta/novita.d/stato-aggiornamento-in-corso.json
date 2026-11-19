@@ -1,10 +1,11 @@
 {
   "titolo": "«Aggiorna i dati» spento anche mentre il server aggiorna da solo",
   "voci": [
-    "Impostazioni, Gestione: se apri l'app mentre il server sta già aggiornando i dati da solo (gli aggiornamenti programmati della giornata), il pulsante «Aggiorna i dati» è spento, come quando l'hai premuto tu, e si riaccende quando riapri o ricarichi l'app. Prima sembrava libero e, premuto, rispondeva «Aggiornamento già in corso»."
+    "Impostazioni, Gestione: mentre il server sta già aggiornando i dati da solo (gli aggiornamenti programmati della giornata), il pulsante «Aggiorna i dati» è spento e sotto c'è scritto perché; quando l'aggiornamento è finito si riaccende da solo, senza ricaricare la pagina. Prima sembrava libero e, premuto, rispondeva «Aggiornamento già in corso»."
   ],
   "tecnico": [
     "GET /api/stato: aggiornamento_in_corso è vero anche quando il blocco dell'aggiornamento (~/.cache/fantacalcio/blocco) è tenuto da un altro: aggiorna.sh dal cron, un giro leggero del pianificatore (probabili, risultati della sera) o POST /api/aggiorna (#763). Stesso nome e tipo del campo; GET /api/aggiorna non cambia.",
-    "pianificatore.blocco_tenuto(): flock condiviso senza attesa su un descrittore in sola lettura, lasciato subito; non crea cartella né file; senza fcntl o senza file vale falso; un errore diverso da «occupato» va nel registro e vale falso. Un lucchetto interno (_tentativo) mette in fila i tentativi di flock di questo processo: un giro leggero o «Aggiorna i dati» non rinuncia per colpa di una lettura dello stato. pianificatore.file_blocco(): un solo percorso per blocco_processo e blocco_tenuto."
+    "pianificatore.blocco_tenuto(): flock condiviso senza attesa su un descrittore in sola lettura, lasciato subito; non crea cartella né file; senza fcntl o senza file vale falso; un errore diverso da «occupato» va nel registro e vale falso. Un lucchetto interno (_tentativo) mette in fila i tentativi di flock di questo processo: un giro leggero o «Aggiorna i dati» non rinuncia per colpa di una lettura dello stato. pianificatore.file_blocco(): un solo percorso per blocco_processo e blocco_tenuto.",
+    "Web, Gestione: frase aggiorna.in_corso in una regione role=\"status\" sotto il pulsante (vuota non occupa spazio). Con Gestione aperta e il campo vero rilegge lo stato (caricaInfo) ogni 15 secondi, una lettura alla volta (la prossima si prepara a lettura finita), e smette fuori da Gestione (segnaAggiornamento, seguiAggiornamento in app.js). «Già in corso» dopo il tocco resta un avviso, come prima. L'iPhone dichiara il campo (aggiornamentoInCorso) ma non lo usa."
   ]
 }
