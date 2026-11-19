@@ -5,8 +5,8 @@
     "nota": "---- [avvisi] ----"
   },
   "avv.avevi_scelto_ore": {
-    "it": "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7).",
-    "en": "You had chosen quiet hours starting and ending at the same hour: they are not valid, so I turned them off. Turn them on again choosing two different hours (for example from 23 to 7)."
+    "it": "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Se le riaccendi valgono dalle 23 alle 7.",
+    "en": "You had chosen quiet hours starting and ending at the same hour: they are not valid, so I turned them off. If you turn them on again, they will be from 23 to 7."
   },
   "avv.dalle": {
     "it": "Dalle",

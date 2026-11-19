@@ -7,7 +7,7 @@ extension Catalogo {
         static let oreTranq = "Ore tranquille"
 
         /// `avv.avevi_scelto_ore`
-        static let aveviSceltoOre = "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7)."
+        static let aveviSceltoOre = "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Se le riaccendi valgono dalle 23 alle 7."
 
         /// `avv.permesso_negato_abilita`
         static let permessoNegatoAbilita = "Permesso negato: abilita le notifiche per l'app nelle impostazioni del telefono"

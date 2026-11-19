@@ -185,7 +185,7 @@ const TESTI = {
     "av.apri_stato": "Apri lo stato dei dati",
 
     "avv.alle": "Alle",
-    "avv.avevi_scelto_ore": "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7).",
+    "avv.avevi_scelto_ore": "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Se le riaccendi valgono dalle 23 alle 7.",
     "avv.dalle": "Dalle",
     "avv.errore_fantamedia": "errore (da fantamedia)",
     "avv.errore_sui_fantavoti": "errore sui fantavoti (modello)",
@@ -1804,7 +1804,7 @@ const TESTI = {
     "av.apri_stato": "Open the data status",
 
     "avv.alle": "To",
-    "avv.avevi_scelto_ore": "You had chosen quiet hours starting and ending at the same hour: they are not valid, so I turned them off. Turn them on again choosing two different hours (for example from 23 to 7).",
+    "avv.avevi_scelto_ore": "You had chosen quiet hours starting and ending at the same hour: they are not valid, so I turned them off. If you turn them on again, they will be from 23 to 7.",
     "avv.dalle": "From",
     "avv.errore_fantamedia": "error (fantasy-average pick)",
     "avv.errore_sui_fantavoti": "error on fantasy scores (model)",
