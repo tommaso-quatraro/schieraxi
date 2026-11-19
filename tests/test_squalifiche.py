@@ -138,6 +138,18 @@ def test_cambio_squadra_il_conto_e_la_squalifica_seguono_il_giocatore():
     assert sq.calcola(gialli(2, [1, 2, 3, 4, 5], "alfa"), partite, ST, 6, {2: "gamma"}, ADESSO) == {2: (True, False)}
 
 
+def test_cambio_squadra_sconta_anche_nella_squadra_di_allora():
+    """Espulso alla 19 con alfa, che gioca la 20: la squalifica si sconta lì. A gennaio passa a gamma, che ha la 20 rinviata
+    (ancora da giocare, con la data vecchia). Alla 21 gioca: contando solo le partite della squadra nuova risulterebbe
+    squalificato. La data del trasferimento non la sappiamo: una partita della squadra di allora giocata dopo il cartellino
+    conta sempre come scontata (al peggio un mancato, mai un falso)."""
+    partite = calendario(20) + calendario(19, "gamma", "delta", giorni=1)
+    assert sq.calcola([cartellino(1, 19, rosso=1)], partite, ST, 21, {1: "gamma"}, ADESSO) == {}
+    # la squadra di allora non ha ancora giocato dopo il cartellino: la squalifica resta
+    partite = calendario(19) + calendario(19, "gamma", "delta", giorni=1)
+    assert sq.calcola([cartellino(1, 19, rosso=1)], partite, ST, 21, {1: "gamma"}, ADESSO) == {1: (True, False)}
+
+
 def test_inizio_stagione_il_conto_riparte_da_zero():
     """Art. 19 comma 9: le ammonizioni che non hanno portato a una squalifica decadono a fine stagione. Quattro nelle prime
     giornate della stagione prima e una alla 5 di questa: alla 6 né squalificato né diffidato. (Gialli della stagione prima

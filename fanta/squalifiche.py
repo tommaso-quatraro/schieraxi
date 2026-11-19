@@ -17,7 +17,9 @@ La regola, dal Codice di giustizia sportiva della FIGC (testo aggiornato al 22/1
 - art. 19 comma 9: le ammonizioni decadono a fine stagione (dentro la stessa lega seguono il giocatore che cambia squadra);
 - art. 21 commi 2, 4 e 7: la squalifica si sconta nelle gare della squadra finite con un risultato valido, con la squadra nuova
   se il giocatore l'ha cambiata. Quindi conta la prima partita che la squadra gioca davvero, in ordine di data: una partita
-  rinviata non la sconta, un recupero sì.
+  rinviata non la sconta, un recupero sì. Per chi ha cambiato squadra la data del trasferimento non la sappiamo: conta anche
+  una partita giocata dalla squadra di allora dopo il cartellino (via prudente: se era già andato via è un mancato, non un
+  falso squalificato).
 
 Partite non ancora giocate, secondo l'ora (`adesso`): una che comincia da MARGINE_RISULTATI prima di `adesso` in poi è in
 programma, in corso o finita da poco e non ancora segnata come giocata, e sconta la squalifica; una cominciata da più di
@@ -122,13 +124,13 @@ def calcola(cartellini: Iterable[Mapping], partite: Iterable[Mapping], stagione:
             della_squadra.setdefault(s, []).append((q, bool(p["giocata"])))
     da_giocare_dal = (adesso - MARGINE_RISULTATI).strftime("%Y-%m-%d %H:%M")   # non giocata e cominciata prima: rinviata
 
-    per_giocatore: dict[int, list[tuple[_Quando, bool, bool]]] = {}   # giocatore -> [(quando, giallo, rosso)]
+    per_giocatore: dict[int, list[tuple[_Quando, bool, bool, str]]] = {}   # giocatore -> [(quando, giallo, rosso, squadra)]
     for c in cartellini:
         if c["stagione"] != stagione or not (c["ammonizioni"] or c["espulsioni"]):
             continue
         g = int(c["giornata"])
         per_giocatore.setdefault(int(c["calciatore_id"]), []).append(
-            (quando.get((g, c["squadra"]), _Quando(None, g)), bool(c["ammonizioni"]), bool(c["espulsioni"])))
+            (quando.get((g, c["squadra"]), _Quando(None, g)), bool(c["ammonizioni"]), bool(c["espulsioni"]), c["squadra"]))
 
     esito = {}
     for cid, carte in per_giocatore.items():
@@ -139,15 +141,18 @@ def calcola(cartellini: Iterable[Mapping], partite: Iterable[Mapping], stagione:
         carte = [c for c in carte if _prima(c[0], meta)]
         if not carte:
             continue
-        gialli = sum(1 for _, giallo, rosso in carte if giallo and not rosso)
-        certo = not any(rosso for _, _, rosso in carte)  # un rosso può nascondere un giallo della stessa partita
+        gialli = sum(1 for _, giallo, rosso, _ in carte if giallo and not rosso)
+        certo = not any(rosso for _, _, rosso, _ in carte)  # un rosso può nascondere un giallo della stessa partita
         ultimo = carte[0]
         for c in carte[1:]:
             if _prima(ultimo[0], c[0]):
                 ultimo = c
         # Solo l'ultimo cartellino può lasciare una squalifica aperta: dopo uno più vecchio il giocatore è tornato in campo.
         decisivo = ultimo[2] or (certo and _scatta(gialli))
-        squalificato = decisivo and not _scontata(ultimo[0], meta, della_squadra[squadra], da_giocare_dal)
+        # Cambio di squadra: la data del trasferimento non la sappiamo. Le partite giocate dalla squadra di allora dopo il
+        # cartellino contano come scontate (via prudente: al peggio un mancato, se era già andato via, mai un falso).
+        di_allora = [(q, True) for q, giocata in della_squadra.get(ultimo[3], []) if giocata] if ultimo[3] != squadra else []
+        squalificato = decisivo and not _scontata(ultimo[0], meta, della_squadra[squadra] + di_allora, da_giocare_dal)
         diffidato = certo and _scatta(gialli + 1)
         if squalificato or diffidato:
             esito[cid] = Stato(squalificato, diffidato)
@@ -155,7 +160,8 @@ def calcola(cartellini: Iterable[Mapping], partite: Iterable[Mapping], stagione:
 
 
 def _scontata(cartellino: _Quando, meta: _Quando, della_squadra: list[tuple[_Quando, bool]], da_giocare_dal: str) -> bool:
-    """Se tra il cartellino e la partita `meta` la squadra ha un'altra partita in cui la squalifica si sconta: una giocata,
+    """Se tra il cartellino e la partita `meta` la squadra (più, per chi l'ha cambiata, le partite giocate dalla squadra di
+    allora) ha un'altra partita in cui la squalifica si sconta: una giocata,
     oppure una non ancora giocata che comincia da `da_giocare_dal` in poi (in programma, come un recupero a metà settimana;
     in corso; o finita da poco e non ancora segnata come giocata). Una partita non giocata cominciata da più di
     MARGINE_RISULTATI è rinviata e non la sconta, come una senza data. Non conta la partita della stessa giornata del
