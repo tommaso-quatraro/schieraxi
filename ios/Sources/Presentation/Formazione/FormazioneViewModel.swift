@@ -28,6 +28,12 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// L'ultimo avviso (un salvataggio non riuscito, la scelta cambiata da un altro dispositivo, la formazione copiata).
     @Published var messaggio: String?
+    /// Un salvataggio partito da qui non è riuscito quando eri già su un'altra scheda (#726): l'avviso che la radice mostra sulle
+    /// altre schede (`AvvisoNonSalvata`), con una frase del catalogo che nomina la formazione (`testoNonSalvata`).
+    @Published var avvisoAltrove: String?
+    /// La Formazione è la scheda aperta (lo dice la radice a ogni cambio di scheda). Decide dove si dice una scrittura che non
+    /// riesce: qui sotto il campo (`messaggio`) o sulle altre schede (`avvisoAltrove`).
+    var inVista = true
     /// Nome di un'altra squadra della lega, se se ne sta guardando la formazione consigliata (nil = la mia).
     @Published private(set) var squadraVista: String?
     /// Un altro modulo guardato nella formazione di un'altra squadra: solo sullo schermo, non si salva niente.
