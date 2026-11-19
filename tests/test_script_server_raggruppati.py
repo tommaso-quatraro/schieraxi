@@ -474,3 +474,77 @@ def test_installazione_interrotta_il_giro_dopo_rimette_subito_la_versione_di_pri
     assert not (s.stato / "installazione-in-corso").exists()
     assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
     assert _righe(s, "non era finita") and any("a metà" in a for a in s.avvisi())
+
+
+def _sudo(s, poi=""):
+    """Il finto sudo del server, con un comando in più dopo l'annotazione (per esempio: il giro muore qui)."""
+    _stub(s.bin, "sudo", f'echo "sudo $*" >> "{base._msys(s.chiamate)}"' + (f"\n{poi}" if poi else ""))
+
+
+@con_bash
+def test_interruzione_a_installazione_riuscita_non_lascia_la_versione_vecchia_segnata_come_installata(s):
+    """Seconda revisione di #647: il segno si toglie prima di scrivere ultimo-rilascio. Un giro che muore proprio lì non deve lasciare
+    il codice di prima con lo stato «installata la nuova» (il giro dopo non la riproverebbe più)."""
+    segno = s.casa / "ucciso-una-volta"
+    _stub(s.bin, "rm", f'case "$*" in *installazione-in-corso*) [ -e "{base._msys(segno)}" ] || '
+                       f'{{ : > "{base._msys(segno)}"; kill -9 "$PPID"; sleep 5; }};; esac\nexec /usr/bin/rm "$@"')
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode != 0 and segno.exists()
+    s.giro(10)
+    assert s.ultimo() == c2 and s.codice() == "V2"
+
+
+@con_bash
+def test_interruzione_subito_dopo_lo_scambio_degli_ambienti_rimette_anche_l_ambiente_di_prima(s):
+    """Seconda revisione di #647: il segno dice «ambiente» prima dello scambio. Un giro che muore appena scambiati gli ambienti non
+    lascia il codice di prima con l'ambiente Python nuovo."""
+    _stub(s.bin, "mv", '/usr/bin/mv "$@"; rc=$?\ncase "$*" in *".venv.nuova "*"/.venv") kill -9 "$PPID"; sleep 5;; esac\nexit $rc')
+    c2 = _commit(s.lavoro, "librerie", **{"requirements.txt": "r2", "fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode != 0 and base._venv(s) == "nuova"
+    (s.bin / "mv").unlink()
+    s.codice_curl.write_text("500", encoding="utf-8")                      # la reinstallazione non parte: si torna indietro
+    s.giro(10)
+    assert s.codice() == "V1" and base._venv(s) == "vecchia"
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+
+
+LEGGIMI_INTERROTTA = "Aggiornamento interrotto senza copia di sicurezza"
+
+
+@con_bash
+def test_installazione_interrotta_senza_copia_di_sicurezza_dice_come_ripartire(s):
+    """Seconda revisione di #647: segno presente ma copia di sicurezza mancante. Non si installa niente; l'avviso (uno al giorno) dice
+    dove leggere come ripartire, e il LEGGIMI ha i comandi. Tolto il segno a mano, gli aggiornamenti ripartono."""
+    _scrivi(s.stato, "installazione-in-corso", f"file {s.c1}\n")
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    s.giro(0, uscita=1)
+    assert s.riavvii() == 0 and s.codice() == "V1"
+    assert len(s.avvisi()) == 1 and LEGGIMI_INTERROTTA in s.avvisi()[0]
+    leggimi = (base.SCRIPT / "LEGGIMI.md").read_text(encoding="utf-8")
+    assert LEGGIMI_INTERROTTA in leggimi and "git archive" in leggimi and "rm ~/.cache/fantacalcio/installazione-in-corso" in leggimi
+    s.giro(10, uscita=1)
+    assert len(s.avvisi()) == 1                                            # uno al giorno
+    (s.stato / "installazione-in-corso").unlink()
+    s.giro(20)
+    assert s.ultimo() == c2 and "di nuovo a posto" in s.avvisi()[-1]
+
+
+@con_bash
+def test_versione_interrotta_due_volte_non_si_riprova_piu_neanche_con_installa_subito(s):
+    """Seconda revisione di #647: il segno ricorda il commit. La stessa versione interrotta per la seconda volta, dopo il ripristino,
+    è rifiutata con un avviso; l'avviso «si era fermato a metà» resta uno al giorno."""
+    _sudo(s, f'grep -q V2 "{base._msys(s.app / "fanta" / "__init__.py")}" && {{ kill -9 "$PPID"; sleep 5; }}')
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    for _ in range(2):                                                      # due giri muoiono con la versione nuova al suo posto
+        assert s.esegui("aggiorna-app.sh").returncode != 0
+    assert c2 in (s.stato / "installazione-in-corso").read_text(encoding="utf-8")
+    s.giro(20)
+    assert s.codice() == "V1" and (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert "interrotta due volte" in s.avvisi()[-1]
+    assert len([a for a in s.avvisi() if "si era fermato a metà" in a]) == 1
+    riavvii = s.riavvii()
+    (s.stato / "installa-subito").write_text("", encoding="utf-8")
+    s.giro(30)
+    assert s.codice() == "V1" and s.riavvii() == riavvii
