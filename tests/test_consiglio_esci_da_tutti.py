@@ -31,6 +31,17 @@ def test_le_email_consigliano_il_pulsante_che_c_e():
     assert set(nomi) == {CATALOGO["account.esci_tutti"]["it"]}, nomi
 
 
+def test_le_email_portano_alla_pagina_del_pulsante():
+    """Dove l'email dice il percorso, è quello della pagina che ha il pulsante, sulla web e sull'iPhone: Impostazioni > Il tuo
+    account (`imp.account`, la riga di Impostazioni che apre la pagina)."""
+    imp = json.loads((Path(__file__).resolve().parents[1] / "fanta" / "testi" / "imp.json").read_text(encoding="utf-8"))
+    pagina = f"Impostazioni > {imp['imp.account']['it']}"
+    con_pulsante = [testo for testo in _testi_delle_email() if NOME_IT.search(testo)]
+    percorsi = [p for testo in con_pulsante for p in re.findall(r"Impostazioni > [^.,;)«\n]+?(?= e |[.,;)«\n]|$)", testo)]
+    assert len(percorsi) >= 2, percorsi            # accesso nuovo, email cambiata
+    assert set(percorsi) == {pagina}, percorsi
+
+
 def test_la_privacy_nomina_il_pulsante_che_c_e_in_italiano_e_in_inglese():
     for lingua, cerca in (("it", NOME_IT), ("en", NOME_EN)):
         nomi = cerca.findall(testi_legali.pagina("privacy", lingua))
