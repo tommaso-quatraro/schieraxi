@@ -26,6 +26,8 @@
 # controlla dopo lo scatto con avvisi_coprono e si rifà se l'avviso può esserci sopra.
 
 AVVISI_PAUSA="${AVVISI_PAUSA:-12}"   # secondi in cui un avviso sta sullo schermo (visti 5), con margine
+AVVISI_SCHERMO="${AVVISI_SCHERMO:-8}" # dopo una foto si guarda indietro di tanto: un avviso più vecchio è già sparito.
+# Meno della pausa: la foto rifatta dopo la pausa non deve ritrovare l'avviso appena aspettato (corsa 44594837693).
 # Solo la riga dell'invito di Apple Intelligence: un'altra notifica di sistema non deve chiudere l'attesa (e poi lasciare l'avviso vero
 # sopra le foto). Subito dopo questa riga SpringBoard crea la notifica di Impostazioni (NotificationsPipeline, «[create,»), ma
 # quella riga c'è per qualunque notifica e non serve.
@@ -78,11 +80,12 @@ avvisi_attendi() {
   done
 }
 
-# Dopo una foto cominciata all'ora <inizio>: un invito dal momento in cui poteva già essere sullo schermo (una pausa prima di
-# <inizio>) a ora vuol dire che la foto può averlo sopra. Allora si aspetta che sparisca e si torna «vero»: chi chiama rifà la foto.
+# Dopo una foto cominciata all'ora <inizio>: un invito dal momento in cui poteva già essere sullo schermo (AVVISI_SCHERMO secondi
+# prima di <inizio>) a ora vuol dire che la foto può averlo sopra. Allora si aspetta che sparisca (AVVISI_PAUSA) e si torna
+# «vero»: chi chiama rifà la foto.
 avvisi_coprono() {
   local udid="$1" inizio="$2" finestra visti
-  finestra=$(( $(date +%s) - inizio + AVVISI_PAUSA ))
+  finestra=$(( $(date +%s) - inizio + AVVISI_SCHERMO ))
   [ "$finestra" -ge 1 ] || finestra=1
   visti=$(avvisi_contati "$udid" "$finestra")
   if [ "${visti:-0}" -gt 0 ]; then

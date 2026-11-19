@@ -204,7 +204,7 @@ def test_avviso_durante_lo_scatto_fa_rifare_la_foto(tmp_path):
     assert "RIFARE" in r.stdout
     assert dormiti == 100 + 5 + 12, "prima di rifare la foto si aspetta che l'avviso sparisca"
     finestre = [int(m.group(1)) for c in chiamate if (m := re.search(r"log show --last (\d+)s", c))]
-    assert finestre == [5 + 12], f"il registro va letto da una pausa prima dello scatto: {finestre}"
+    assert finestre == [5 + 8], f"il registro va letto da quanto l'avviso resta sullo schermo prima dello scatto: {finestre}"
     assert "foto rifatte per l'avviso: 1" in r.stdout
 
 
@@ -237,3 +237,16 @@ def test_ogni_foto_si_controlla_dopo_lo_scatto():
         corpo = scatta.group(0)
         assert "avvisi_coprono" in corpo, f"{script.name}: la foto non si controlla dopo lo scatto"
         assert corpo.index("screenshot") < corpo.index("avvisi_coprono") or "schermo_fermo" in corpo
+
+
+@serve_bash
+def test_dopo_l_attesa_la_foto_rifatta_non_ritrova_lo_stesso_avviso(tmp_path):
+    # corsa 44594837693: nei widget ogni foto si rifaceva due volte, perché il controllo della foto rifatta guardava indietro
+    # quanto la pausa (12 s) e ritrovava l'avviso già aspettato. Si guarda indietro solo quanto l'avviso resta sullo schermo.
+    corpo = ('sleep 100; inizio=$(date +%s); sleep 3; giri=0; '
+             'while [ "$giri" -lt 2 ] && avvisi_coprono UDID1 "$inizio"; do giri=$((giri + 1)); inizio=$(date +%s); sleep 1; done; '
+             'echo "GIRI=$giri"')
+    # avviso nello stesso secondo del controllo (come nel registro vero, dove l avviso arriva al lancio dell app)
+    r, _, _ = _bash(tmp_path, corpo, eventi=[103])
+    assert r.returncode == 0, r.stderr
+    assert "GIRI=1" in r.stdout, r.stdout
