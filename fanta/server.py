@@ -733,6 +733,9 @@ def stato(request: Request, ctx: Contesto = Depends(lega_corrente)):
         r = lega.carica(ctx.rose)
         rg = _regole(ctx)
         prossima = consigli.giornata_da_giocare(db, st, rg)
+        # in corso anche se i dati li aggiorna un altro (aggiornamento programmato, giro leggero): il blocco su file, letto senza
+        # aspettare (#763). Con «Aggiorna i dati» partito da qui il blocco non si legge nemmeno.
+        in_corso = _aggiornamento["in_corso"] or pianificatore.blocco_tenuto()
         return {
             "stagione": st, "prossima_giornata": prossima,
             "prima_giornata_lega": rg.prima_giornata_lega,
@@ -741,7 +744,7 @@ def stato(request: Request, ctx: Contesto = Depends(lega_corrente)):
             "errori_ultimo": _errori_per(json.loads(ultimo["dettaglio"]) if ultimo and ultimo["dettaglio"] else [],
                                          _e_amministratore(request)),
             "mia_squadra": r.mia_squadra if r else None, "rose_importate": bool(r and r.squadre),
-            "nome_lega": rg.nome_lega, "aggiornamento_in_corso": _aggiornamento["in_corso"],
+            "nome_lega": rg.nome_lega, "aggiornamento_in_corso": in_corso,
             "versione": (_novita() or [{"versione": "?"}])[0]["versione"],
             "sorgente": testi_legali.sorgente(),          # indirizzo del codice sorgente (AGPL); "" se non impostato
         }

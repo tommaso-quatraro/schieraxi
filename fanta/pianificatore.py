@@ -27,6 +27,7 @@ import logging
 import os
 import threading
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Callable, Iterator
 
 from . import archivio, avvisi, consigli
@@ -199,16 +200,20 @@ def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lamb
             db.close()
 
 
+def file_blocco() -> Path:
+    """Il blocco dell'aggiornamento dei dati, lo stesso di `script/server/aggiorna.sh` (`exec 9>>"$HOME/.cache/fantacalcio/blocco"`)."""
+    return Path.home() / ".cache" / "fantacalcio" / "blocco"
+
+
 @contextlib.contextmanager
 def blocco_processo() -> Iterator[bool]:
-    """Lo stesso blocco dell'aggiornamento del server (`~/.cache/fantacalcio/blocco`): se `aggiorna.sh` sta girando, si rinuncia.
+    """Lo stesso blocco dell'aggiornamento del server (`file_blocco`): se `aggiorna.sh` sta girando, si rinuncia.
     Dove il blocco di file non esiste (Windows) o la cartella manca, si va avanti."""
     try:
         import fcntl
-        from pathlib import Path
-        cartella = Path.home() / ".cache" / "fantacalcio"
-        cartella.mkdir(parents=True, exist_ok=True)
-        f = open(cartella / "blocco", "w")          # noqa: SIM115 - serve aperto per tutta la durata
+        file = file_blocco()
+        file.parent.mkdir(parents=True, exist_ok=True)
+        f = open(file, "w")          # noqa: SIM115 - serve aperto per tutta la durata
     except (ImportError, OSError):
         yield True
         return
@@ -221,6 +226,35 @@ def blocco_processo() -> Iterator[bool]:
         yield True
     finally:
         f.close()
+
+
+def blocco_tenuto() -> bool:
+    """Vero se qualcuno tiene il blocco dell'aggiornamento: l'aggiornamento programmato del server, un giro leggero o «Aggiorna i
+    dati» (`aggiornamento_in_corso` di /api/stato, #763). Non aspetta mai e non crea niente: prova un blocco condiviso senza
+    attesa su un descrittore in sola lettura e lo lascia subito. Condiviso, così due letture insieme non si vedono a vicenda come
+    un aggiornamento. Il cron aspetta il blocco (`flock -w 120`): questi microsecondi non lo fanno saltare.
+    Senza `fcntl` (Windows) o senza il file nessuno lo tiene: falso, come per `blocco_processo`."""
+    try:
+        import fcntl
+    except ImportError:
+        return False
+    try:
+        fd = os.open(file_blocco(), os.O_RDONLY)
+    except FileNotFoundError:
+        return False
+    except OSError as e:
+        LOG.warning("pianificatore: il blocco dell'aggiornamento non si legge (%s)", type(e).__name__)
+        return False
+    try:
+        fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        return False
+    except BlockingIOError:
+        return True
+    except OSError as e:
+        LOG.warning("pianificatore: il blocco dell'aggiornamento non si legge (%s)", type(e).__name__)
+        return False
+    finally:
+        os.close(fd)                    # chiudere lascia anche il blocco condiviso
 
 
 def aggiorna_probabili(scrivi: Callable[[str], None] = lambda _: None) -> bool | None:

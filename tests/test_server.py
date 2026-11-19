@@ -214,9 +214,9 @@ def test_aggiorna_dall_app_non_parte_con_l_aggiornamento_programmato_in_corso(cl
 def test_stato_dice_aggiornamento_in_corso_anche_se_lo_fa_un_altro(client, monkeypatch):
     """`aggiornamento_in_corso` di /api/stato è vero anche quando i dati li sta aggiornando un altro (l'aggiornamento programmato
     del server o un giro leggero, che tengono il blocco su file), non solo dopo «Aggiorna i dati» da qui (#763)."""
-    monkeypatch.setattr(server.pianificatore, "blocco_tenuto", lambda: True, raising=False)
+    monkeypatch.setattr(server.pianificatore, "blocco_tenuto", lambda: True)
     assert client.get("/api/stato").json()["aggiornamento_in_corso"] is True
-    monkeypatch.setattr(server.pianificatore, "blocco_tenuto", lambda: False, raising=False)
+    monkeypatch.setattr(server.pianificatore, "blocco_tenuto", lambda: False)
     assert client.get("/api/stato").json()["aggiornamento_in_corso"] is False
 
 
@@ -255,7 +255,7 @@ def test_stato_con_il_blocco_tenuto_da_un_altro_processo(client, tmp_path, monke
     lascia il blocco preso (un giro leggero subito dopo parte), non vede come aggiornamento un'altra lettura in corso e non crea
     il file se manca (#763)."""
     file = tmp_path / "blocco"
-    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: file, raising=False)
+    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: file)
     with _blocco_di_un_altro_processo(file):
         assert client.get("/api/stato").json()["aggiornamento_in_corso"] is True
     assert client.get("/api/stato").json()["aggiornamento_in_corso"] is False
@@ -264,7 +264,7 @@ def test_stato_con_il_blocco_tenuto_da_un_altro_processo(client, tmp_path, monke
     with _blocco_di_un_altro_processo(file, "condiviso"):
         assert client.get("/api/stato").json()["aggiornamento_in_corso"] is False
     manca = tmp_path / "manca" / "blocco"
-    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: manca, raising=False)
+    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: manca)
     assert client.get("/api/stato").json()["aggiornamento_in_corso"] is False
     assert not manca.parent.exists()
 
@@ -276,7 +276,7 @@ def test_la_lettura_del_blocco_non_fa_rinunciare_un_giro_leggero(tmp_path, monke
     import fcntl
     file = tmp_path / "blocco"
     file.touch()
-    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: file, raising=False)
+    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: file)
     vero, esiti, giri = fcntl.flock, [], []
 
     def giro():
