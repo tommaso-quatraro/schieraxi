@@ -84,6 +84,9 @@ def test_dalla_scheda_di_un_panchinaro_metti_in_campo_fa_il_cambio_e_lo_salva(we
     dopo = nomi_sul_campo(web)
     assert set(prima) - set(dopo) == {cognome(difensore["nome"])} and set(dopo) - set(prima) == {cognome(entra["nome"])}, (prima, dopo)
     assert stato(web).startswith("L'hai cambiata tu: 1 titolare diverso dalla consigliata")
+    # come dopo «Sostituisci», il fuoco è sul campo, su chi è entrato (mai nel vuoto)
+    assert web.pagina.evaluate("() => !!document.activeElement.closest('#campo-formazione')")
+    assert cognome(entra["nome"]) in web.pagina.evaluate("() => document.activeElement.innerText")
     salvate = [c for m, p, c in scritte if p == "/api/formazione/valuta"]
     assert len(salvate) == 1 and salvate[0]["salva"] is True
     assert entra["id"] in salvate[0]["titolari"] and difensore["id"] not in salvate[0]["titolari"]
