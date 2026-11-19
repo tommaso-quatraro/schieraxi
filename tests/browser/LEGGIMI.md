@@ -162,6 +162,10 @@ prima della scadenza:
   `/api/avvisi/prova` con risposte finte): la frase dell'interruttore dice che arrivano anche gli altri avvisi; accenderlo
   manda un avviso di prova e lo dice; se la prova non parte (429 o `inviato: false`) lo dice un avviso `role="status"` e
   l'interruttore resta acceso; con il permesso negato niente prova;
+- Il tuo account: «Esci da tutti i dispositivi» chiede conferma con una frase che dice che si esce ovunque, anche da qui, e che si
+  dovrà rientrare; confermato manda la richiesta e torna alla pagina d'accesso senza copie dei dati né account nel browser;
+  annullato non manda niente; se la richiesta non riesce (errore del server o rete giù) lo dice un avviso, si resta nella pagina
+  e le copie restano (#765);
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore.
 
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
