@@ -77,13 +77,13 @@ esecuzione per ramo o PR (un nuovo push annulla quella in corso).
 |---|---|---|
 | `iOS` (`ios.yml`) | chiamato da `Controlli` (`test.yml`, job `ios`) solo se la PR o il push toccano `ios/`; a mano per le prove | compila ed esegue i test su un simulatore; l'unione automatica della PR lo aspetta |
 | `Compila IPA` (`ipa.yml`) | dopo l'unione di una PR, lanciato dal job `rilascia` se `ios/` è cambiata dall'ultima IPA riuscita; push diretto a `main` che tocca `ios/`; a mano per le prove | crea `Schieraxi.ipa` e la release `build-N`. Su `main` ne resta in coda solo una (l'ultima) e la build in corso non si annulla mai |
-| `Screenshot` (`screenshot.yml`) | a mano, o su una PR che tocca `ios/` e ha l'etichetta `screenshot` o cambia `Sources/Presentation`, `Sources/Support`, `Sources/App`, `WidgetSources` o `AnteprimaWidget` | fotografa l'app (iPhone e iPad) e i widget in un solo job Mac. Un job Linux, gratis, decide prima se serve il Mac |
+| `Screenshot` (`screenshot.yml`) | solo a mano, o quando si mette l'etichetta `screenshot` (o `screenshot-vero`) a una PR non in bozza che tocca `ios/`. Un push non la fa ripartire | fotografa l'app (iPhone e iPad) e i widget in un job Mac (nelle corse lunghe i widget su un secondo Mac). Un job Linux, gratis, decide prima se serve il Mac |
 
 Non parte più nulla a ogni unione su `main`: prima partivano in automatico gli screenshot (due volte) e la build a ogni unione.
 
 **Come chiedere gli screenshot:**
-- su una PR: `gh pr edit <numero> --add-label screenshot` (la foto parte una volta per ogni nuovo push, finché l'etichetta c'è);
-- a mano, da Actions (Screenshot > Run workflow) oppure: `gh workflow run screenshot.yml --ref <ramo> -f scatti=completo` (`veloce` o `completo`).
+- su una PR non in bozza: `gh pr edit <numero> --add-label screenshot` (la foto parte una volta, quando si mette l'etichetta; dopo un push non riparte: per rifarla si toglie e si rimette l'etichetta, o si lancia a mano);
+- a mano, da Actions (Screenshot > Run workflow) oppure: `gh workflow run screenshot.yml --ref <ramo> -f scatti=completo` (`veloce`, `completo`, `collaudo` o `vero`; una PR in bozza le foto le fa solo così).
 Le foto si scaricano con `gh run download <id> --name screenshot-app --dir .screenshot` (o `screenshot-widget`).
 
 ## Vedere l'app senza telefono (modalità demo e foto nel simulatore)
