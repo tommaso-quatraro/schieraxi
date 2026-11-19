@@ -812,11 +812,11 @@ def stato_dei_dati():
 GIA_IN_CORSO = {"avviato": False, "messaggio": "Aggiornamento già in corso"}
 
 
+# «Aggiorna i dati» (solo l'amministratore). Mai insieme a un altro aggiornamento: né del servizio (`_blocco`) né all'aggiornamento
+# programmato del server o ai giri leggeri di un altro processo (il blocco su file `pianificatore.blocco_processo`, tenuto fino alla
+# fine del lavoro, #660): una richiesta alla volta alle fonti. (Commento e non docstring: la docstring finirebbe in docs/openapi.json.)
 @app.post("/api/aggiorna")
 def avvia_aggiornamento():
-    """«Aggiorna i dati» (solo l'amministratore). Mai insieme a un altro aggiornamento: né del servizio (`_blocco`) né
-    all'aggiornamento programmato del server o ai giri leggeri di un altro processo (il blocco su file
-    `pianificatore.blocco_processo`, tenuto fino alla fine del lavoro, #660): una richiesta alla volta alle fonti."""
     if not _blocco.acquire(blocking=False):
         return GIA_IN_CORSO
     pila = contextlib.ExitStack()
