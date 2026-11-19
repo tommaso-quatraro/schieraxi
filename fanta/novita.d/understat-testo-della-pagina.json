@@ -4,6 +4,6 @@
     "Stato dei dati, riga «Statistiche avanzate»: se Understat risponde con una pagina al posto dei dati, l'errore riporta anche la frase scritta sulla pagina (in questi giorni dice che il sito tornerà presto), non più solo il nome del sito."
   ],
   "tecnico": [
-    "fonti/understat.dati_json (#756): RispostaNonDati per una pagina web aggiunge al titolo il testo visibile della pagina (senza head, style, script, svg, commenti e tag; al massimo 120 caratteri). Dal 2/11 ogni indirizzo di Understat, robots.txt compreso, dà la stessa pagina statica «We will come back soon»: nessun endpoint nuovo né dati nella pagina della lega. Il modo di leggere i dati non cambia; quando il sito torna, il lettore recupera da solo le partite senza statistiche."
+    "fonti/understat.dati_json (#756): RispostaNonDati per una pagina web aggiunge al titolo il testo visibile della pagina (senza head, style, script, svg, commenti e tag; al massimo 120 caratteri). Il 19/11 ogni indirizzo di Understat provato, robots.txt compreso, dà la stessa pagina statica «We will come back soon» (al nostro lettore dal 12/11, ad altri progetti dal 2/11): nessun endpoint nuovo né dati nella pagina della lega. Il modo di leggere i dati non cambia; quando il sito torna, il lettore recupera da solo le partite senza statistiche."
   ]
 }
