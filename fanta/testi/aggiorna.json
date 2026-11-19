@@ -14,5 +14,10 @@
   "aggiorna.ok": {
     "it": "Dati aggiornati",
     "en": "Data updated"
+  },
+  "aggiorna.in_corso": {
+    "it": "Il server sta già aggiornando i dati: il pulsante torna attivo quando ha finito.",
+    "en": "The server is already refreshing the data: the button comes back when it is done.",
+    "nota": "Gestione, accanto ad «Aggiorna i dati» spento mentre il server aggiorna da solo (#763)"
   }
 }

@@ -133,6 +133,7 @@ const TESTI = {
     "aggiorna.non_so": "Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco",
     "aggiorna.problemi": "Aggiornato, ma con problemi: {errori}",
     "aggiorna.ok": "Dati aggiornati",
+    "aggiorna.in_corso": "Il server sta già aggiornando i dati: il pulsante torna attivo quando ha finito.",
 
     "ar.leggo": "Leggo le rose…",
     "ar.indietro": "Torna indietro",
@@ -1710,6 +1711,7 @@ const TESTI = {
     "aggiorna.non_so": "I cannot tell how the refresh went: reopen the app shortly",
     "aggiorna.problemi": "Updated, but with problems: {errori}",
     "aggiorna.ok": "Data updated",
+    "aggiorna.in_corso": "The server is already refreshing the data: the button comes back when it is done.",
 
     "ar.leggo": "Reading the rosters…",
     "ar.indietro": "Go back",
