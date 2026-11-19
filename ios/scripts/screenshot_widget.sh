@@ -93,6 +93,9 @@ avvia "$UDID_IPAD"
 giro "$UDID_IPAD" ipad_scuro_verticale dark 800 oggi formazione dubbi
 giro "$UDID_IPAD" ipad_chiaro_verticale light 800 oggi formazione
 giro "$UDID_IPAD" ipad_fasi dark 800 oggi:in_corso oggi:finita dubbi:in_corso oggi:senza_formazione formazione:senza_formazione dubbi:senza_formazione
+# Entrato a giornata iniziata (#752): l'extra large di Formazione consigliata c'è solo su iPad, anche chiaro e con il testo molto grande.
+giro "$UDID_IPAD" ipad_senza_formazione_chiaro light 800 formazione:senza_formazione dubbi:senza_formazione
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_senza_formazione_testo_grande dark 800 formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_testo_grande dark 800 formazione oggi
 
 # Orizzontale: si ruota il simulatore con la tastiera (puo' non funzionare sul Mac di GitHub: in quel caso le foto restano verticali).

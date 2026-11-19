@@ -22,8 +22,9 @@ struct SenzaFormazioneWidget: View {
     @ViewBuilder
     private var contenuto: some View {
         switch famiglia {
-        // nel grande e nell'extra large (Formazione consigliata, Da controllare) come nel medio: a destra la prossima giornata
-        case .systemMedium, .systemLarge, .systemExtraLarge: medio
+        case .systemMedium: medio
+        // solo Formazione consigliata e Da controllare: tutto in alto, raggruppato
+        case .systemLarge, .systemExtraLarge: grande
         case .accessoryCircular: circolare
         case .accessoryRectangular: rettangolare
         // «Prepara la prossima: 4 giorni 2 h» → «Prepara la prossima», mai tagliata
@@ -75,6 +76,40 @@ struct SenzaFormazioneWidget: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Grande ed extra large: tutto in alto e raggruppato, la giornata già iniziata, «Prepara la prossima» e subito sotto la prossima
+    /// giornata con il conto alla rovescia e quando si chiude; lo spazio libero resta sotto, mai in mezzo. Se con il testo grande
+    /// non entra tutto va via per prima la riga «Questa giornata è già iniziata» (VoiceOver la legge comunque): mai una riga tagliata.
+    private var grande: some View {
+        PrimaCheEntra(2, in: .vertical) { i in
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    titolo(corta: false)
+                    if i == 0 {
+                        Text(ParoleWidget.giaIniziata).font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Text(ParoleWidget.preparaProssima).font(.system(.title2, design: .rounded).weight(.bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .widgetAccentable()
+                if let prossima = riassunto.prossimaDaPreparare {
+                    VStack(alignment: .leading, spacing: 4) {
+                        GiornataInRiga(forme: riassunto.formeProssimaDaPreparare, voce: riassunto.voceProssimaDaPreparare, simbolo: "calendar")
+                            .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).minimumScaleFactor(0.7)
+                        conto.font(.system(.title, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
+                        if let scadenza = prossima.scadenza {
+                            Text(allaScadenza(scadenza)).font(.caption).foregroundStyle(.white.opacity(0.8))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                statoDati
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var circolare: some View {
