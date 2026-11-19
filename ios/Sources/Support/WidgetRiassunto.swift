@@ -1308,6 +1308,38 @@ extension RiassuntoOggi {
     }
 }
 
+// MARK: Il caso che i tre widget mostrano prima del loro contenuto di sempre (#727, #687, #752)
+
+/// Cosa mostrano Prossima giornata, Formazione consigliata e Da controllare, nello stesso ordine per i tre: a campionato finito la
+/// frase del server (#727, prima di tutto, #745); per chi è entrato a giornata già iniziata senza una formazione la prossima da
+/// preparare (#687, #752); altrimenti il widget di sempre.
+enum CasoWidget: Equatable {
+    /// La frase del server a campionato finito.
+    case campionatoFinito(String)
+    /// Entrato a giornata già iniziata senza una formazione: il riassunto, con la giornata già iniziata e la prossima da preparare.
+    case senzaFormazione(RiassuntoOggi)
+    /// Il contenuto di sempre del widget.
+    case normale
+
+    /// Dal riassunto (dell'app o del widget) e dalla risposta completa di `/api/widget`, se c'è. Senza riassunto vale la risposta
+    /// completa: la sua `formazione` (e i suoi `avvisi`) sono ancora della giornata già iniziata, non si mostrano a chi non l'ha
+    /// schierata.
+    static func di(riassunto: RiassuntoOggi?, widget: RiassuntoWidget?) -> CasoWidget {
+        if let testo = riassunto?.campionatoFinito ?? widget?.campionatoFinito { return .campionatoFinito(testo) }
+        if let r = riassunto ?? widget?.comeRiassuntoOggi(), r.senzaFormazioneInCorso { return .senzaFormazione(r) }
+        return .normale
+    }
+
+    /// Dove porta il tocco su «Da controllare»: di solito `schieraxi://oggi`, come prima; per chi è entrato a
+    /// giornata iniziata la Formazione, che è già quella della prossima, come il tocco su Prossima giornata.
+    var indirizzoDaControllare: String {
+        switch self {
+        case .senzaFormazione: return "schieraxi://formazione"
+        case .campionatoFinito, .normale: return "schieraxi://oggi"
+        }
+    }
+}
+
 // MARK: Widget «Osservato»: una sola percentuale, e i seguiti tolti dal server per il peso
 
 extension GiocatoreWidget {
