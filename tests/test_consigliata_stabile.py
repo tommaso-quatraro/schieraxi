@@ -199,6 +199,44 @@ def test_un_compagno_che_sale_e_scende_attorno_al_20_per_cento_non_fa_oscillare_
     assert cambi <= 1                                   # al più il primo passaggio al portiere che gioca
 
 
+@pytest.mark.parametrize("allora, primo, scambio", [
+    ((0.10, 0.05, 0.03), 1, (0.21, 0.19)),     # titolare l'1 già improbabile, poi il 2 e il 3 si scambiano 21% e 19%
+    ((0.10, 0.05, 0.03), 1, (0.25, 0.12)),     # ...oppure 25% e 12%
+    ((0.02, 0.21, 0.19), 2, (0.19, 0.21)),     # titolare il 2 che gioca, poi si scambia con il 3
+])
+def test_due_compagni_che_si_scambiano_attorno_al_20_per_cento_non_fanno_oscillare_la_consigliata(allora, primo, scambio):
+    """#737: due portieri che a ogni aggiornamento si scambiano sopra e sotto il 20%. Il titolare che giocava quando la consigliata
+    è stata mostrata diventava improbabile, il compagno ora giocava almeno il 20% e la consigliata cambiava a ogni giro (6 cambi
+    su 6). Un titolare diventato improbabile la fa cambiare solo se il compagno gioca molto più di lui."""
+    ricordata = consigli.da_ricordare(_migliore(_prev(_portieri(*allora))))
+    assert primo in ricordata["titolari"]
+    cambi = 0
+    for giro in range(6):
+        secondo, terzo = scambio if giro % 2 == 0 else scambio[::-1]
+        nuove = _prev(_portieri(allora[0], secondo, terzo))
+        f = consigli.stabile(_migliore(nuove), ricordata, nuove, _squadra(), SOLO_442, SIM)
+        mostrata = consigli.da_ricordare(f, ricordata)
+        cambi += set(mostrata["titolari"]) != set(ricordata["titolari"])
+        ricordata = mostrata
+    assert cambi <= 1                                   # al più il primo passaggio al portiere che gioca
+
+
+@pytest.mark.parametrize("p_compagno, cambia", [(0.25, False), (0.32, True), (0.40, True)])
+def test_titolare_diventato_improbabile_cambia_se_un_compagno_gioca_almeno_20_punti_piu_di_lui(p_compagno, cambia):
+    """#737: il portiere 1 giocava il 30% quando la consigliata è stata mostrata, ora il 12%; il 2 sale. Sotto 1 punto la
+    consigliata cambia solo se il 2 gioca almeno il 20% e almeno 20 punti percentuali più dell'1 (qui dal 32%)."""
+    prima = _migliore(_prev(_portieri(0.30, 0.05, 0.03)))
+    ricordata = consigli.da_ricordare(prima)
+    assert 1 in ricordata["titolari"] and ricordata["non_giocano"] == []
+    nuove = _prev(_portieri(0.12, p_compagno, 0.03))
+    migliore = _migliore(nuove)
+    assert 2 in _ids(migliore) and 1 not in _ids(migliore)
+    assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
+    f = consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, SIM)
+    assert (f is migliore) == cambia
+    assert (1 in _ids(f)) != cambia
+
+
 def test_titolare_diventato_fuori_cambia_anche_senza_un_compagno_che_gioca():
     """Il portiere 1 si infortuna e gli altri due giocano il 10% e il 5%: nessun compagno arriva al 20%, ma un titolare fuori non
     resta nella consigliata (al suo posto il 2, più probabile che giochi). Con un improbabile, invece, vale la soglia di punti."""
