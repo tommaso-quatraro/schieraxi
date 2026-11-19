@@ -82,7 +82,7 @@
       "stato": "fatto"
     },
     {
-      "id": 73,
+      "id": 76,
       "schermata": "Formazione e widget a campionato finito",
       "web": "la testa della giornata finita con il riepilogo dell'ultima (nelle 48 ore, con il menu del recupero se manca) e sotto la frase del server «Il campionato è finito: previsioni e consigli ripartono con il calendario della prossima stagione.», senza campo né decisioni; `/api/formazione` non si chiede (`mostraCampionatoFinito`, #656)",
       "iphone": "uguale alla web: il riepilogo, se c'è, e la frase del server, senza campo, errore, «Riprova» né striscia dei dati salvati; i tre widget mostrano la frase del server con la bandiera a scacchi, invece di «Nessun dato · Apri SchieraXI per aggiornare i dati» con il simbolo del Wi-Fi",

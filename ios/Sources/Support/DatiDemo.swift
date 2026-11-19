@@ -841,7 +841,13 @@ private extension LegaDemo {
             ["chiave": "bonus.ammonizione", "etichetta": "Ammonizione", "valore": -0.5, "riga": "Ammonizione: -0.5"],
             ["chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 7, "riga": "Panchina: 7 giocatori"],
             ["chiave": "moduli", "etichetta": "Moduli ammessi", "valore": ["3-4-3", "4-3-3", "4-4-2"], "riga": "Moduli: 3-4-3, 4-3-3, 4-4-2"],
-        ] as [[String: Any]], "non_riconosciute": ["Il bonus per il rigore parato vale 3 punti, tranne in coppa"]])
+        ] as [[String: Any]], "non_riconosciute": ["Il bonus per il rigore parato vale 3 punti, tranne in coppa"],
+        // come il server dal 19/11/2026 (#733): le righe con numeri non lette e quelle dubbie, con la regola da impostare a mano
+        "da_controllare": [
+            ["riga": "Il bonus per il rigore parato vale 3 punti, tranne in coppa", "regole": [[String: Any]]()],
+            ["riga": "Non è vietato il cambio modulo",
+             "regole": [["chiave": "panchina.cambio_modulo", "etichetta": "Cambio modulo nelle sostituzioni"]]],
+        ] as [[String: Any]]])
     }
 
     static func novita() -> String {

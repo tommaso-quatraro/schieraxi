@@ -387,9 +387,17 @@ struct RegoleEditorView: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-            if let non = r.nonRiconosciute, !non.isEmpty {
-                DisclosureGroup(Catalogo.Regole.nonRiconosciute(n: String(non.count))) {
-                    Text(non.joined(separator: "\n")).font(.caption).foregroundStyle(Color.testoSecondario)
+            // le righe da rileggere, come la web (#733): ognuna con la regola da impostare a mano sotto, se il server ne nomina
+            if let gruppo = RegolamentoDaControllare(r) {
+                DisclosureGroup(gruppo.titolo) {
+                    ForEach(gruppo.righe) { riga in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(riga.testo).foregroundStyle(Color.testoSecondario)
+                            if let daImpostare = riga.daImpostare { Text(daImpostare) }
+                        }
+                        .font(.caption)
+                        .accessibilityElement(children: .combine)
+                    }
                 }
             }
             Button { vm.applicaRiconosciute() } label: { Text(Catalogo.Regole.applicaCampi).frame(maxWidth: .infinity, minHeight: 44) }

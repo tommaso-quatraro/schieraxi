@@ -41,7 +41,7 @@ struct ImportaExcelView: View {
         }
         .sheet(item: $cerca) { d in
             NavigationStack {
-                CercaPerAnteprimaView(server: server, dubbio: d) { c in vm.scegli(trovato: c, squadra: d.squadra, testo: d.testo) }
+                CercaPerAnteprimaView(server: server, dubbio: d) { c in vm.scegli(trovato: c, per: d.giocatore, squadra: d.squadra) }
             }
         }
         .fileImporter(isPresented: $scegli, allowedContentTypes: vm.tipiAmmessi, allowsMultipleSelection: false) { risultato in
@@ -141,10 +141,11 @@ struct ImportaExcelView: View {
 // MARK: - passo 2: l'anteprima
 
 /// Un dubbio per cui si cerca il giocatore giusto nel listone.
-struct DubbioDaCercare: Identifiable, Hashable {
+struct DubbioDaCercare: Identifiable, Equatable {
     let squadra: String
-    let testo: String
-    var id: String { AnteprimaLogica.chiave(squadra, testo) }
+    let giocatore: GiocatoreAnteprima
+    var testo: String { giocatore.testo }
+    var id: String { AnteprimaLogica.chiave(squadra, giocatore) }
 }
 
 /// L'anteprima: riassunto, la propria squadra, una scheda per squadra (in colonne sull'iPad), «Conferma e salva».
@@ -266,13 +267,13 @@ struct CartaSquadraAnteprima: View {
             } else {
                 Label(problemi.joined(separator: " · "), systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(Color.attenzione)
             }
-            ForEach(AnteprimaLogica.dubbi(squadra), id: \.testo) { g in
+            ForEach(AnteprimaLogica.dubbi(squadra), id: \.chiaveInSquadra) { g in
                 RigaDubbioAnteprima(
                     squadra: squadra.nome, giocatore: g,
                     scelta: vm.scelta(per: g, squadra: squadra.nome),
                     opzioni: vm.opzioni(per: g, squadra: squadra.nome),
-                    scegli: { vm.scegli($0, squadra: squadra.nome, testo: g.testo) },
-                    cerca: { cerca(DubbioDaCercare(squadra: squadra.nome, testo: g.testo)) })
+                    scegli: { vm.scegli($0, per: g, squadra: squadra.nome) },
+                    cerca: { cerca(DubbioDaCercare(squadra: squadra.nome, giocatore: g)) })
             }
             if squadra.sicuri > 0 {
                 DisclosureGroup(isExpanded: $sicuriAperti) {
@@ -366,7 +367,7 @@ struct RigaDubbioAnteprima: View {
     }
 }
 
-/// Cerca nel listone il giocatore giusto per un dubbio dell'anteprima (niente si salva: diventa la scelta per quel nome).
+/// Cerca nel listone il giocatore giusto per un dubbio dell'anteprima (niente si salva: diventa la scelta di quel dubbio).
 struct CercaPerAnteprimaView: View {
     let server: any ServerClient
     let dubbio: DubbioDaCercare
