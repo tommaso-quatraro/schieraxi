@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.518",
+    "data": "2026-11-19T18:19:49",
+    "titolo": "Librerie: solo Python 3.12 e successivi",
+    "voci": [
+      "Nessun cambiamento visibile: l'app usa solo le versioni aggiornate delle sue librerie."
+    ],
+    "tecnico": [
+      "Tolto il supporto a Python 3.11: via le righe numpy 2.4.6 e soupsieve 2.10 per Python < 3.12 da requirements.txt, gli obiettivi 3.11 di script/blocca_dipendenze.py e i residui sui runner propri con Debian 12 (#692).",
+      "ruff e pyright ora puntano a Python 3.12."
+    ]
+  },
+  {
     "versione": "1.517",
     "data": "2026-11-19T05:55:00",
     "titolo": "Testi: via le frasi che nessuna schermata mostrava più",
