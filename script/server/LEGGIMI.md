@@ -149,8 +149,10 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   - Se dopo il riavvio il servizio non risponde torna anche all'ambiente di prima.
   - Se lo scambio delle cartelle non riesce rimette subito l'ambiente in uso e i file della versione di prima, e avvisa.
 - **Copia di sicurezza** (`~/.cache/fantacalcio/versione-precedente.tar.gz`): si rifà a ogni installazione e prende il posto della
-  vecchia solo se riesce tutta. Finché i file nuovi non hanno superato l'installazione c'è il segno `installazione-in-corso`: se un giro
-  si ferma a metà, il giro dopo rimette la versione di prima da quella copia invece di rifarla con il codice mai provato.
+  vecchia solo se riesce tutta. Finché i file nuovi non hanno superato l'installazione c'è il segno `installazione-in-corso`. Se un giro
+  si ferma a metà (server spento, processo fermato), il giro dopo lo trova e, prima di tutto, rimette file e ambiente Python della
+  versione di prima da quella copia, riavvia il servizio, lo scrive nel registro e avvisa («aggiornamento interrotto»); poi riprova la
+  versione nuova come sempre. Un giro ancora vivo tiene il blocco dello script, quindi non viene scambiato per interrotto.
   - Le versioni in `requirements.txt` sono quelle in produzione sul server (Python 3.12) al momento del blocco: il primo giro
     non cambia nessuna libreria, crea solo l'ambiente nuovo.
 

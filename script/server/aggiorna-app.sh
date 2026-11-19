@@ -183,6 +183,41 @@ risolto() {   # motivi tornati a posto
 }
 TESTO_RETE="Da tre giri di fila non riesco a scaricare da GitHub (rete?): le versioni nuove non arrivano."
 
+# Installazione interrotta (#647). Mentre i file nuovi non hanno superato l'installazione c'e' il segno installazione-in-corso («file»,
+# poi «ambiente» dopo lo scambio degli ambienti Python). Se c'e' all'inizio di un giro, il giro che l'ha scritto si e' fermato a meta'
+# (server spento, processo ucciso): un giro ancora vivo terrebbe il blocco preso qui sopra e questo non sarebbe partito. Si rimettono
+# subito file e ambiente della versione di prima dalla copia di sicurezza (mai rifatta mentre c'e' il segno), si riavvia il servizio e
+# si avvisa; poi il giro continua e la versione nuova si riprova come sempre. Se non si riesce: niente installazioni, guasto e avviso.
+copia="$STATO/versione-precedente.tar.gz"
+A_META="$STATO/installazione-in-corso"
+if [ -e "$A_META" ]; then
+  if [ "$PROVA" = 1 ]; then
+    log "un'installazione di prima si e' fermata a meta': rimetterei la versione di prima dalla copia di sicurezza"
+  else
+    log "l'installazione di prima non era finita (server spento o processo fermato?): rimetto la versione di prima dalla copia di sicurezza"
+    rimessa=0
+    if [ -s "$copia" ] && tar xzf "$copia" -C "$DEST"; then
+      if [ "$(cat "$A_META" 2>/dev/null)" = ambiente ] && [ -d "$DEST/.venv.precedente" ]; then
+        rm -rf "$DEST/.venv.scartata"
+        mv "$DEST/.venv" "$DEST/.venv.scartata" && mv "$DEST/.venv.precedente" "$DEST/.venv" && rm -rf "$DEST/.venv.scartata"
+      fi
+      [ -e "$DEST/.venv" ] || { [ -d "$DEST/.venv.precedente" ] && mv "$DEST/.venv.precedente" "$DEST/.venv"; }
+      rm -rf "$DEST/.venv.nuova"
+      [ -x "$DEST/.venv/bin/python" ] && rimessa=1
+    fi
+    if [ "$rimessa" = 1 ]; then
+      rm -f "$A_META"
+      sudo systemctl restart "$SERVIZIO"
+      log "versione di prima rimessa e servizio riavviato"
+      avvisa "SchieraXI: aggiornamento interrotto" "Un aggiornamento si era fermato a metà: ho rimesso la versione di prima e riprovo la nuova. Dettagli in dati/pubblicazione.log." 4
+    else
+      log "non riesco a rimettere la versione di prima dalla copia di sicurezza: non installo niente, controlla $DEST"
+      guasto ambienti "Un aggiornamento si era fermato a metà e non riesco a rimettere la versione di prima: va controllato il server."
+      fine; exit 1
+    fi
+  fi
+fi
+
 if [ ! -d "$SRC/.git" ]; then
   if [ "$PROVA" = 1 ]; then log "manca la copia di GitHub in $SRC: la creerei da $REPO"; exit 0; fi
   timeout -k 5 "${SCHIERAXI_TIMEOUT_GIT:-120}" git clone -q "$REPO" "$SRC" 2>>"$ERR"; rc=$?
@@ -423,27 +458,15 @@ if [ "$PROVA" = 1 ]; then
 fi
 
 log "versione nuova ${nuovo:0:7}: la installo"
-copia="$STATO/versione-precedente.tar.gz"
-# Copia di sicurezza della versione in uso, per tornare indietro. Finche' i file nuovi non hanno superato l'installazione c'e' il segno
-# installazione-in-corso: se un giro si ferma a meta' (scambio degli ambienti e ripristino non riusciti, server spento...) il giro dopo
-# rimette la versione di prima da quella copia e non la rifa' con il codice mai provato (#647). La copia nuova prende il posto della
-# vecchia solo se e' riuscita tutta.
-A_META="$STATO/installazione-in-corso"
-if [ -e "$A_META" ] && [ -s "$copia" ]; then
-  log "l'installazione di prima non era finita: rimetto la versione di prima dalla copia di sicurezza"
-  if ! tar xzf "$copia" -C "$DEST"; then
-    log "ripristino dalla copia di sicurezza non riuscito: non installo, controlla $DEST"
-    guasto ambienti "Non riesco a rimettere la versione di prima dalla copia di sicurezza: va controllato il server."; fine; exit 1
-  fi
-  [ -e "$DEST/.venv" ] || { [ -d "$DEST/.venv.precedente" ] && mv "$DEST/.venv.precedente" "$DEST/.venv"; }
-else
-  # shellcheck disable=SC2086
-  if ! tar czf "$copia.nuova" -C "$DEST" $CARTELLE 2>/dev/null || ! mv "$copia.nuova" "$copia"; then
-    rm -f "$copia.nuova"; log "copia di sicurezza della versione in uso non riuscita (disco pieno?): non installo"
-    guasto copia-file "Non riesco a fare la copia di sicurezza della versione in uso (disco pieno?): resta quella di prima."; fine; exit 1
-  fi
+# Copia di sicurezza della versione in uso, per tornare indietro: prende il posto della vecchia solo se e' riuscita tutta. Qui il segno
+# installazione-in-corso non c'e' (un giro interrotto e' gia' stato rimesso a posto all'inizio), quindi la cartella dell'app ha una
+# versione che ha superato l'installazione. Da qui fino alla fine dell'installazione il segno c'e' (#647).
+# shellcheck disable=SC2086
+if [ -e "$A_META" ] || ! tar czf "$copia.nuova" -C "$DEST" $CARTELLE 2>/dev/null || ! mv "$copia.nuova" "$copia"; then
+  rm -f "$copia.nuova"; log "copia di sicurezza della versione in uso non riuscita (disco pieno?): non installo"
+  guasto copia-file "Non riesco a fare la copia di sicurezza della versione in uso (disco pieno?): resta quella di prima."; fine; exit 1
 fi
-: > "$A_META"
+echo file > "$A_META"
 vecchi_req=$(md5sum "$DEST/requirements.txt" 2>/dev/null | cut -d' ' -f1)
 
 prova=$(mktemp -d)
@@ -476,6 +499,7 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
     rm -f "$STATO/librerie-fallite"
     rm -rf "$DEST/.venv.precedente"
     mv "$DEST/.venv" "$DEST/.venv.precedente" && mv "$DEST/.venv.nuova" "$DEST/.venv" && venv_cambiata=1
+    [ "$venv_cambiata" = 1 ] && echo ambiente > "$A_META"     # un'interruzione da qui rimette anche l'ambiente di prima
     if [ "$venv_cambiata" = 0 ]; then
       # il servizio non e' stato riavviato: si rimettono subito l'ambiente in uso e i file della versione di prima (#647)
       log "scambio degli ambienti Python non riuscito: rimetto la versione di prima"
@@ -530,11 +554,13 @@ if [ "$risponde" = 1 ]; then
   risolto cartelle copia-file ambienti           # «di nuovo a posto» se un guasto dell'installazione era stato segnalato
 else
   log "il servizio NON risponde con ${nuovo:0:7} (ultimo codice HTTP: ${codice:-nessuno}): torno alla versione di prima"
-  tar xzf "$copia" -C "$DEST" && rm -f "$A_META"
+  rimessa=1
+  tar xzf "$copia" -C "$DEST" || rimessa=0
   if [ "$venv_cambiata" = 1 ]; then          # anche le librerie di prima
     rm -rf "$DEST/.venv.scartata"
-    mv "$DEST/.venv" "$DEST/.venv.scartata" && mv "$DEST/.venv.precedente" "$DEST/.venv" && rm -rf "$DEST/.venv.scartata"
+    mv "$DEST/.venv" "$DEST/.venv.scartata" && mv "$DEST/.venv.precedente" "$DEST/.venv" && rm -rf "$DEST/.venv.scartata" || rimessa=0
   fi
+  [ "$rimessa" = 1 ] && rm -f "$A_META"     # altrimenti il giro dopo riprova a rimettere la versione di prima (#647)
   sudo systemctl restart "$SERVIZIO"
   echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione"
   sleep "${SCHIERAXI_PAUSA_DOPO_RITORNO:-5}"
