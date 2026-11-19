@@ -69,9 +69,10 @@ def test_main_rosso_apre_un_issue_p1_con_permesso_minimo():
     assert "contains(needs.*.result, 'failure')" in cond
     assert "!cancelled()" in cond or "always()" in cond
     needs = re.search(r"^    needs:\s*\[([^\]]*)\]", j, re.M).group(1)
-    for lavoro in ("test", "script-server", "cambi", "ios", "pip-audit"):
+    for lavoro in ("test", "script-server", "cambi", "ios", "pip-audit", "browser"):    # browser: issue #630
         assert lavoro in [n.strip() for n in needs.split(",")], lavoro
     comandi = _comandi(j)
+    assert "browser ${{ needs.browser.result }}" in comandi        # l'issue dice quale job è rosso
     assert "gh issue create" in comandi and "P1" in comandi and "gh issue comment" in comandi
     assert _permessi(j) == {"issues": "write"}
 

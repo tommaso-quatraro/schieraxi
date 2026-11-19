@@ -30,9 +30,10 @@ def _senza_commenti(blocco: str) -> str:
 
 
 def _filtro() -> re.Pattern:
-    """L'espressione del passo «Tocca la web?» (grep -E), come espressione di Python: le due sintassi qui coincidono."""
-    m = re.search(r"grep -qE '([^']+)'", _job("browser"))
-    assert m, "il passo «Tocca la web?» sceglie i file con grep -qE '...'"
+    """L'espressione con cui «cambi» decide se la modifica tocca la web (grep -E), come espressione di Python: le due
+    sintassi qui coincidono."""
+    m = re.search(r"grep -qE '([^']+)'; then\s*web=true", _job("cambi"))
+    assert m, "il job «cambi» sceglie i file della web con grep -qE '...'; then web=true"
     return re.compile(m.group(1))
 
 
@@ -46,10 +47,26 @@ def test_il_job_browser_blocca_l_unione():
     assert not re.search(r"^    if:.*draft", _job("browser"), re.M), "se saltasse in bozza o altrove, «unisci» non partirebbe più"
 
 
-def test_il_job_browser_gira_nelle_pr_e_a_mano_su_un_ramo_non_su_main():
-    cond = re.search(r"^    if:\s*(.+)$", _job("browser"), re.M).group(1)
-    assert "github.event_name == 'pull_request'" in cond
-    assert "github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'" in cond
+def test_il_job_browser_gira_nelle_pr_a_mano_e_su_main():
+    """Issue #630: anche su main (push o lancio di «prova-main» dopo un'unione), così due PR verdi da sole che insieme rompono
+    una schermata fanno rosso su main. Nessuna condizione sull'evento: la scelta di girare o no la fa «cambi»."""
+    j = _job("browser")
+    assert not re.search(r"^    if:", j, re.M), "una condizione sul job lo salterebbe su main (o nelle PR, fermando «unisci»)"
+    assert re.search(r"^    needs:\s*\[?\s*cambi\s*\]?\s*$", j, re.M)
+    comandi = _senza_commenti(j)
+    assert "WEB: ${{ needs.cambi.outputs.web }}" in comandi
+    # lanciato a mano su un ramo gira sempre; altrove (PR, main) solo se la modifica tocca la web
+    assert "EVENTO: ${{ github.event_name }}" in comandi and "RIF: ${{ github.ref }}" in comandi
+
+
+def test_cambi_dice_se_la_modifica_tocca_la_web():
+    j = _job("cambi")
+    assert re.search(r"^      web: \$\{\{ steps\.decidi\.outputs\.web \}\}\s*$", j, re.M)
+    assert 'echo "web=$web" >> "$GITHUB_OUTPUT"' in j
+    # se non si sa cosa è cambiato (nessuna corsa riuscita, confronto impossibile, troppi file) il browser gira comunque
+    assert re.search(r"if \[ \"\$tutto\" = true \] \|\| printf '%s\\n' \"\$file\" \| grep -qE '[^']+'; then\s*web=true", j)
+    comandi = _senza_commenti(j)
+    assert comandi.count("tutto=true") >= 3, "ogni ramo «non si sa» (corsa riuscita, confronto, troppi file, push senza before)"
 
 
 @pytest.mark.parametrize("file, serve", [
@@ -66,8 +83,10 @@ def test_il_job_browser_parte_solo_se_la_pr_tocca_la_web(file, serve):
 
 
 def test_un_file_spostato_fuori_dalla_web_conta():
-    """Con le rinomine git stampa solo il percorso nuovo: spostare fanta/web/a.js in altro/a.js non farebbe partire i test."""
-    assert "git diff --name-only --no-renames HEAD^1 HEAD | grep -qE" in _job("browser")
+    """Un file spostato conta col percorso vecchio e col nuovo: spostare fanta/web/a.js in altro/a.js fa partire i test.
+    «cambi» prende anche previous_filename in ogni caso (PR, lancio, push)."""
+    j = _senza_commenti(_job("cambi"))
+    assert j.count(".filename, (.previous_filename // empty)") == 3
 
 
 def test_il_job_browser_ha_permessi_minimi_e_niente_testo_della_pr():

@@ -120,15 +120,18 @@ jobs:
   # di GitHub (nessun browser scaricato). La web si apre sul server finto di script/ci/server_finto.py (solo libreria standard)
   # con le risposte registrate delle tre fasi della giornata (ios/fotografie/, nomi inventati): niente server vero, niente
   # rete, nessun segreto. Gira nelle PR che toccano la web, i testi, i test del browser, axe, gli scenari, il server finto, il
-  # suo ambiente o questo workflow (passo «Tocca la web?»: altrimenti i passi si saltano e il job resta verde in pochi
-  # secondi); lanciato a mano su un ramo (`gh workflow run test.yml --ref <ramo>`) gira sempre; su main no. Playwright e
-  # pytest in un ambiente a parte, versioni e hash fissati in .github/browser-requisiti.txt. BROWSER_OBBLIGATORIO=1: senza
+  # suo ambiente o questo workflow (lo dice «cambi»: altrimenti i passi si saltano e il job resta verde in pochi secondi);
+  # lanciato a mano su un ramo (`gh workflow run test.yml --ref <ramo>`) gira sempre. Su main (issue #630) gira nella corsa
+  # lanciata da «prova-main» se dall'ultima corsa verde su main è cambiata la web: due PR verdi da sole che insieme rompono
+  # una schermata fanno rosso su main e «main-rosso» apre l'issue. Su main i minuti si spendono solo dopo un'unione che
+  # tocca la web. Playwright e pytest in un ambiente a parte, versioni e hash fissati in .github/browser-requisiti.txt.
+  # BROWSER_OBBLIGATORIO=1: senza
   # Playwright o senza Chrome i test falliscono invece di saltare (qui un test saltato sarebbe un verde finto).
   # Guida: tests/browser/LEGGIMI.md.
   # BLOCCA L'UNIONE: «unisci» lo aspetta e lo vuole riuscito. Nelle PR il job non si salta mai (se la PR non tocca la web
   # salta solo i passi e resta verde), quindi una PR che non c'entra non resta ferma.
   browser:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
+    needs: cambi
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -136,19 +139,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          fetch-depth: 2          # nelle PR il commit di prova e la sua base: git diff HEAD^1 HEAD = i file della PR
           persist-credentials: false
       - name: Tocca la web?
         id: decidi
         env:
           EVENTO: ${{ github.event_name }}
+          RIF: ${{ github.ref }}
+          WEB: ${{ needs.cambi.outputs.web }}
         run: |
+          # quali file contano lo decide «cambi» (PR, push, lancio su main); a mano su un ramo gira sempre; se non si sa, gira
           serve=true
-          if [ "$EVENTO" = pull_request ]; then
-            # --no-renames: un file spostato conta col percorso vecchio e col nuovo (senza, git dice solo il nuovo)
-            if ! git diff --name-only --no-renames HEAD^1 HEAD | grep -qE '^(fanta/web/|fanta/testi/|tests/browser/|tests/strumenti/axe/|ios/fotografie/|script/ci/server_finto\.py$|\.github/workflows/test\.yml$|\.github/browser-requisiti\.txt$)'; then
-              serve=false
-            fi
+          if [ "$WEB" = false ] && ! { [ "$EVENTO" = workflow_dispatch ] && [ "$RIF" != refs/heads/main ]; }; then
+            serve=false
           fi
           echo "Test del browser: $serve"
           echo "serve=$serve" >> "$GITHUB_OUTPUT"
@@ -260,6 +262,7 @@ jobs:
       actions: read             # ultima corsa riuscita su main (corse lanciate dopo un'unione)
     outputs:
       ios: ${{ steps.decidi.outputs.ios }}
+      web: ${{ steps.decidi.outputs.web }}
     steps:
       - name: Tocca ios/?
         id: decidi
@@ -272,6 +275,8 @@ jobs:
           DOPO: ${{ github.sha }}
         run: |
           # se l'API non risponde il job fallisce (bash -e) e «unisci» non parte: mai un'unione senza sapere se servivano i test iOS
+          # tutto=true: non si sa cosa è cambiato, girano sia i test iOS sia quelli del browser
+          tutto=false
           if [ "$EVENTO" = pull_request ]; then
             file=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[] | .filename, (.previous_filename // empty)')
           elif [ "$EVENTO" = workflow_dispatch ]; then
@@ -285,13 +290,14 @@ jobs:
             else
               base=main
             fi
-            file="ios/"
+            file="ios/"; tutto=true
             if [ -n "$base" ]; then
-              file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$DOPO" --jq '.files[] | .filename, (.previous_filename // empty)') || file="ios/"
-              if [ "$(printf '%s\n' "$file" | wc -l)" -ge 300 ]; then file="ios/"; fi
+              tutto=false
+              file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$DOPO" --jq '.files[] | .filename, (.previous_filename // empty)') || { file="ios/"; tutto=true; }
+              if [ "$(printf '%s\n' "$file" | wc -l)" -ge 300 ]; then file="ios/"; tutto=true; fi
             fi
           elif [ -z "$PRIMA" ] || [ "$PRIMA" = 0000000000000000000000000000000000000000 ]; then
-            file="ios/"
+            file="ios/"; tutto=true
           else
             file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$PRIMA...$DOPO" --jq '.files[] | .filename, (.previous_filename // empty)')
           fi
@@ -321,6 +327,14 @@ jobs:
           fi
           echo "Tocca ios/: $ios"
           echo "ios=$ios" >> "$GITHUB_OUTPUT"
+          # La web, per il job «browser» (issue #630). Un file spostato conta col percorso vecchio e col nuovo (previous_filename).
+          if [ "$tutto" = true ] || printf '%s\n' "$file" | grep -qE '^(fanta/web/|fanta/testi/|tests/browser/|tests/strumenti/axe/|ios/fotografie/|script/ci/server_finto\.py$|\.github/workflows/test\.yml$|\.github/browser-requisiti\.txt$)'; then
+            web=true
+          else
+            web=false
+          fi
+          echo "Tocca la web: $web"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
 
   # Test dell'app iOS nel simulatore (macos-26), solo se la modifica tocca ios/. Sta qui (e non come workflow a parte)
   # perché «unisci» deve aspettarlo: prima una PR su ios/ si univa appena finivano i test Python.
@@ -560,7 +574,7 @@ jobs:
   # da sola: la chiude chi ha corretto, quando una corsa nuova su main è verde. Dentro i comandi solo dati nostri (esiti dei job,
   # commit, indirizzo della corsa) passati per variabili d'ambiente, mai testo di PR o issue.
   main-rosso:
-    needs: [test, script-server, pip-audit, cambi, ios]
+    needs: [test, script-server, pip-audit, cambi, ios, browser]
     if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -577,7 +591,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           CORSA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT: ${{ github.sha }}
-          ESITI: "test ${{ needs.test.result }}, script-server ${{ needs.script-server.result }}, pip-audit ${{ needs.pip-audit.result }}, ios ${{ needs.ios.result }}, cambi ${{ needs.cambi.result }}"
+          ESITI: "test ${{ needs.test.result }}, script-server ${{ needs.script-server.result }}, pip-audit ${{ needs.pip-audit.result }}, ios ${{ needs.ios.result }}, cambi ${{ needs.cambi.result }}, browser ${{ needs.browser.result }}"
         run: |
           set -eu
           titolo="CI: main rosso"

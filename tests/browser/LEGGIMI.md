@@ -44,6 +44,9 @@ hanno il loro `role="alert"`. Il controllo non conta ancora come errori gli elem
   girano in 4 processi (`pytest-xdist`, `-n 4 --dist worksteal`, #680), ognuno con il suo Chrome e i suoi server finti, e
   il registro del job elenca i dieci test più lenti (`--durations=10`).
 - **A mano su un ramo**: `gh workflow run test.yml --ref <ramo>` (girano tutti i controlli, questo compreso).
+- **Su `main` dopo un'unione** (#630): nella corsa lanciata da `prova-main`, se dall'ultima corsa verde su `main` sono
+  cambiati gli stessi file (lo decide il job `cambi`; se non si sa, girano). Se falliscono, `main-rosso` apre o commenta
+  l'issue P1 «CI: main rosso».
 - **Nella suite normale no**: senza `-m browser` si saltano. Si saltano anche se mancano Playwright o Chrome; nel job dei
   controlli (variabile `BROWSER_OBBLIGATORIO=1`) invece falliscono, perché lì un test saltato sarebbe un verde finto.
 
@@ -230,5 +233,5 @@ apposta (come `/api/avatar`, che viene dalle foto vere dei calciatori), la sua r
 
 ## Sono bloccanti
 In `test.yml` `browser` sta nei `needs` del job `unisci`, con `needs.browser.result == 'success'` nella sua condizione.
-Nelle PR il job non si salta mai (se la PR non tocca la web salta solo i passi e resta verde). Su `main` non gira: se due
-pull request verdi da sole rompono insieme una schermata, lo vede la pull request successiva che tocca la web.
+Nelle PR il job non si salta mai (se la PR non tocca la web salta solo i passi e resta verde). Su `main` gira dopo
+un'unione che tocca la web: se due pull request verdi da sole rompono insieme una schermata, `main-rosso` apre l'issue P1.
