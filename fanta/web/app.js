@@ -756,7 +756,7 @@ function segnaAggiornamento(inCorso) {
 async function aggiornaDati() {
   try {
     const r = await api("/api/aggiorna", { method: "POST" });
-    if (!r.avviato) { avviso(r.messaggio); return; }
+    if (!r.avviato) { avviso(traduciErrore(r.messaggio), 6000); return; }        // già in corso, o nessuna fonte accesa (#779)
     segnaAggiornamento(true);
     avviso(t("aggiorna.avviato"));
     let tentativi = 0;

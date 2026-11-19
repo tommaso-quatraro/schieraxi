@@ -810,13 +810,18 @@ def stato_dei_dati():
 
 
 GIA_IN_CORSO = {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+NESSUNA_FONTE = {"avviato": False, "messaggio": "Nessuna fonte di dati è accesa, quindi non c'è niente da aggiornare: "
+                                                "accendine una in Impostazioni › Gestione › Stato dei dati."}
 
 
 # «Aggiorna i dati» (solo l'amministratore). Mai insieme a un altro aggiornamento: né del servizio (`_blocco`) né all'aggiornamento
 # programmato del server o ai giri leggeri di un altro processo (il blocco su file `pianificatore.blocco_processo`, tenuto fino alla
-# fine del lavoro, #660): una richiesta alla volta alle fonti. (Commento e non docstring: la docstring finirebbe in docs/openapi.json.)
+# fine del lavoro, #660): una richiesta alla volta alle fonti. Con tutte le fonti dell'aggiornamento spente non parte e lo dice
+# (#779): prima di prendere i blocchi, così non restano presi. (Commento e non docstring: la docstring finirebbe in docs/openapi.json.)
 @app.post("/api/aggiorna")
 def avvia_aggiornamento():
+    if not aggiorna.fonti_accese():
+        return NESSUNA_FONTE
     if not _blocco.acquire(blocking=False):
         return GIA_IN_CORSO
     pila = contextlib.ExitStack()
