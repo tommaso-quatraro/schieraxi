@@ -26,11 +26,17 @@ scatta() {
   if ! xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -q "UIKitApplication:$ID_APP"; then
     echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"; ERRORI=$((ERRORI + 1))
   fi
-  local file="$USCITA/${etichetta}_${nome}_${dati}${suffisso}.png"
+  local file="$USCITA/${etichetta}_${nome}_${dati}${suffisso}.png" inizio giri=0
+  inizio=$(date +%s)
   if ! xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1; then
     echo "ERRORE: scatto non riuscito ($etichetta / $nome)"; ERRORI=$((ERRORI + 1)); return
   fi
   if [ "$(stat -f%z "$file" 2>/dev/null || echo 999999)" -lt 30000 ]; then sleep 5; xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1; fi
+  # un avviso di sistema comparso durante la foto (#601): si aspetta che sparisca e si rifà (al massimo due volte)
+  while [ "$giri" -lt 2 ] && avvisi_coprono "$udid" "$inizio"; do
+    giri=$((giri + 1)); inizio=$(date +%s)
+    xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1
+  done
   sips --resampleWidth "$larghezza" "$file" >/dev/null 2>&1
   echo "  $etichetta / $nome / $dati"
 }

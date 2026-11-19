@@ -15,8 +15,15 @@
 #
 #   avvisi_avvia <udid>       da chiamare appena il simulatore è acceso: segna l'ora
 #   avvisi_attendi <udid> [s] aspetta l'avviso (al massimo s secondi, predefinito 400) e che sparisca
+#   avvisi_coprono <udid> <inizio>  dopo ogni foto: vero se un avviso può essere sopra la foto cominciata all'ora <inizio>
+#                             (in quel caso ha già aspettato che sparisca: basta rifare la foto)
+#   avvisi_foto <udid> <file> una foto semplice («simctl io screenshot») controllata e, se serve, rifatta
 #   avvisi_ferma              da chiamare prima di spegnere: se l'avviso non è comparso durante l'attesa guarda se è comparso dopo
 #   avvisi_riepilogo          una riga per il registro della corsa
+#
+# Su iOS 26.5 l'invito non compare una volta sola (#601): dopo quello aspettato ne sono arrivati altri due mentre si
+# fotografava (corsa 43131154860, uno sopra la foto accesso-account). Per questo, oltre all'attesa iniziale, ogni foto si
+# controlla dopo lo scatto con avvisi_coprono e si rifà se l'avviso può esserci sopra.
 
 AVVISI_PAUSA="${AVVISI_PAUSA:-12}"   # secondi in cui un avviso sta sullo schermo (visti 5), con margine
 # Solo la riga dell'invito di Apple Intelligence: un'altra notifica di sistema non deve chiudere l'attesa (e poi lasciare l'avviso vero
@@ -29,6 +36,7 @@ AVVISI_FINE_ATTESA=0 # ora (secondi) in cui è finita l'attesa: gli avvisi dopo 
 AVVISI_VISTO=""      # "" = non si è aspettato; "si" = visto durante l'attesa; "no" = non visto in tempo (solo per il registro)
 AVVISI_TARDI=0       # righe di avviso viste dopo l'attesa (sono nelle foto fatte dopo)
 AVVISI_ASPETTATI=0   # avvisi visti durante l'attesa e lasciati passare prima delle foto
+AVVISI_RIFATTE=0     # foto rifatte perché un avviso poteva esserci sopra (avvisi_coprono)
 
 # Quante righe di avviso ci sono nel registro del simulatore negli ultimi <secondi>.
 avvisi_contati() {
@@ -70,6 +78,34 @@ avvisi_attendi() {
   done
 }
 
+# Dopo una foto cominciata all'ora <inizio>: un invito dal momento in cui poteva già essere sullo schermo (una pausa prima di
+# <inizio>) a ora vuol dire che la foto può averlo sopra. Allora si aspetta che sparisca e si torna «vero»: chi chiama rifà la foto.
+avvisi_coprono() {
+  local udid="$1" inizio="$2" finestra visti
+  finestra=$(( $(date +%s) - inizio + AVVISI_PAUSA ))
+  [ "$finestra" -ge 1 ] || finestra=1
+  visti=$(avvisi_contati "$udid" "$finestra")
+  if [ "${visti:-0}" -gt 0 ]; then
+    echo "  avviso di sistema durante la foto: aspetto $AVVISI_PAUSA s che sparisca e la rifaccio"
+    sleep "$AVVISI_PAUSA"
+    AVVISI_RIFATTE=$((AVVISI_RIFATTE + 1))
+    return 0
+  fi
+  return 1
+}
+
+# Una foto semplice dello schermo, controllata e rifatta (al massimo due volte) se un avviso può esserci sopra.
+avvisi_foto() {
+  local udid="$1" file="$2" giri=0 inizio
+  while :; do
+    inizio=$(date +%s)
+    xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1 || return 1
+    avvisi_coprono "$udid" "$inizio" || return 0
+    giri=$((giri + 1))
+    [ "$giri" -le 2 ] || return 0
+  done
+}
+
 # Prima di spegnere: dopo la fine dell'attesa è comparso un altro invito? (Sempre, qualunque cosa abbia visto l'attesa: se la
 # riga del registro è più nuova della fine dell'attesa, le foto fatte da allora possono avere l'avviso sopra.)
 avvisi_ferma() {
@@ -82,7 +118,9 @@ avvisi_ferma() {
     visti=$(avvisi_contati "$AVVISI_UDID" "$da")
     if [ "${visti:-0}" -gt 0 ]; then
       AVVISI_TARDI=$((AVVISI_TARDI + visti))
-      echo "ATTENZIONE: l'avviso di sistema è comparso DOPO l'attesa: le foto fatte in quel momento possono averlo sopra"
+      echo "ATTENZIONE: l'avviso di sistema è comparso DOPO l'attesa ($visti volte): le foto con l'avviso sopra sono state rifatte (finora $AVVISI_RIFATTE)"
+      # le ore dell'avviso, per capire ogni quanto si ripete
+      xcrun simctl spawn "$AVVISI_UDID" log show --last "${da}s" --style compact --predicate "$AVVISI_FILTRO" 2>/dev/null         | grep '^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] ' | cut -c1-19 | sed 's/^/  avviso alle /'
     fi
   fi
   AVVISI_UDID=""
@@ -90,6 +128,8 @@ avvisi_ferma() {
 }
 
 avvisi_riepilogo() {
-  echo "Avvisi di sistema: aspettati prima delle foto: $AVVISI_ASPETTATI; comparsi dopo l'attesa: $AVVISI_TARDI"
-  if [ "$AVVISI_TARDI" -gt 0 ]; then echo "  (controllare le foto: l'avviso può essere sopra quelle fatte dopo l'attesa)"; fi
+  echo "Avvisi di sistema: aspettati prima delle foto: $AVVISI_ASPETTATI; comparsi dopo l'attesa: $AVVISI_TARDI; foto rifatte per l'avviso: $AVVISI_RIFATTE"
+  if [ "$AVVISI_TARDI" -gt 0 ] && [ "$AVVISI_RIFATTE" -eq 0 ]; then
+    echo "  (controllare le foto: l'avviso è comparso dopo l'attesa ma nessuna foto è stata rifatta)"
+  fi
 }

@@ -189,3 +189,51 @@ def test_senza_avvisi_tardivi_il_riepilogo_e_pulito(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "aspettati prima delle foto: 1; comparsi dopo l'attesa: 0" in r.stdout
     assert "controllare" not in r.stdout
+
+
+# Su iOS 26.5 l'invito non compare una volta sola: dopo quello aspettato ne arrivano altri mentre si fotografa (corsa 43131154860,
+# issue #601: «comparsi dopo l'attesa: 2», con l'avviso sopra la foto accesso-account). Ogni foto si controlla dopo lo scatto:
+# se nel registro c'è un invito da poco prima dello scatto a ora, si aspetta che sparisca e si rifà la foto.
+
+@serve_bash
+def test_avviso_durante_lo_scatto_fa_rifare_la_foto(tmp_path):
+    # scatto cominciato a 100 secondi, invito a 103: la foto può averlo sopra
+    r, chiamate, dormiti = _bash(tmp_path, 'sleep 100; inizio=$(date +%s); sleep 5; '
+                                 'if avvisi_coprono UDID1 "$inizio"; then echo RIFARE; fi; avvisi_riepilogo', eventi=[103])
+    assert r.returncode == 0, r.stderr
+    assert "RIFARE" in r.stdout
+    assert dormiti == 100 + 5 + 12, "prima di rifare la foto si aspetta che l'avviso sparisca"
+    finestre = [int(m.group(1)) for c in chiamate if (m := re.search(r"log show --last (\d+)s", c))]
+    assert finestre == [5 + 12], f"il registro va letto da una pausa prima dello scatto: {finestre}"
+    assert "foto rifatte per l'avviso: 1" in r.stdout
+
+
+@serve_bash
+def test_avviso_poco_prima_dello_scatto_fa_rifare_la_foto(tmp_path):
+    # invito a 95, scatto da 100 a 102: l'avviso resta sullo schermo qualche secondo, quindi è ancora sopra la foto
+    r, _, _ = _bash(tmp_path, 'sleep 100; inizio=$(date +%s); sleep 2; if avvisi_coprono UDID1 "$inizio"; then echo RIFARE; fi',
+                    eventi=[95])
+    assert r.returncode == 0, r.stderr
+    assert "RIFARE" in r.stdout
+
+
+@serve_bash
+def test_avviso_vecchio_o_altra_notifica_non_fanno_rifare_la_foto(tmp_path):
+    # invito a 50 (già sparito quando lo scatto comincia a 100), un'altra notifica a 101
+    r, _, dormiti = _bash(tmp_path, 'sleep 100; inizio=$(date +%s); sleep 2; '
+                          'if avvisi_coprono UDID1 "$inizio"; then echo RIFARE; fi; avvisi_riepilogo', eventi=[50], altre=[101])
+    assert r.returncode == 0, r.stderr
+    assert "RIFARE" not in r.stdout
+    assert dormiti == 102, "senza avviso nessuna attesa in più"
+    assert "foto rifatte per l'avviso: 0" in r.stdout
+
+
+def test_ogni_foto_si_controlla_dopo_lo_scatto():
+    """Le funzioni che scattano le foto dell'app e dei widget chiamano avvisi_coprono e rifanno la foto."""
+    for script in (FOTO, WIDGET):
+        testo = script.read_text(encoding="utf-8")
+        scatta = re.search(r"^scatta\(\) \{\n.*?^\}\n", testo, re.S | re.M)
+        assert scatta, f"{script.name}: scatta() non trovata"
+        corpo = scatta.group(0)
+        assert "avvisi_coprono" in corpo, f"{script.name}: la foto non si controlla dopo lo scatto"
+        assert corpo.index("screenshot") < corpo.index("avvisi_coprono") or "schermo_fermo" in corpo
