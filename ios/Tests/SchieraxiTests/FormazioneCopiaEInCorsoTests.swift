@@ -43,6 +43,23 @@ struct FormazioneCopiaEInCorsoTests {
         #expect(!vm.conModulo(f), "niente modulo né punti attesi sopra il campo, come la web")
     }
 
+    @Test("A giornata in corso un titolare che la Formazione non ha, e di cui Oggi non dice il ruolo, ha la sua pedina: in attacco, come la web (#699)")
+    func pedinaMaiSaltata() async throws {
+        var schierati = try SalvataggioAutomaticoTests.altroModulo()
+        let sconosciuto = 990_001                       // per esempio ceduto dopo la scadenza: la Formazione non lo conosce
+        schierati[schierati.count - 1] = sconosciuto
+        let srv = try Self.server(Self.indirizzo(), oggi: Self.oggiInCorso(titolari: schierati, panchina: []))
+        let oggi = OggiViewModel(server: srv, conPromemoria: false)
+        let vm = FormazioneViewModel(server: srv, oggi: oggi)
+        await FormazioneView.ricarica(vm, oggi: oggi)
+        let f = try #require(vm.formazione)
+        let titolari = vm.vista(f).titolari
+        try #require(titolari.map(\.id) == schierati, "gli 11 schierati, anche quello composto solo con i dati di Oggi")
+        let nelCampo = CampoFormazione.file.flatMap { CampoFormazione.inFila($0, titolari) }
+        #expect(nelCampo.count == 11, "ogni titolare ha la sua pedina sul campo: mai 10 senza dirlo")
+        #expect(CampoFormazione.inFila("A", titolari).contains { $0.id == sconosciuto }, "senza ruolo in attacco (`linee.A` della web)")
+    }
+
     @Test("Con la giornata in corso di un'altra giornata (copia vecchia) il campo non la usa")
     func inCorsoDiUnAltraGiornata() async throws {
         let schierati = try SalvataggioAutomaticoTests.altroModulo()
@@ -145,6 +162,46 @@ struct FormazioneCopiaEInCorsoTests {
         await vm.carica()
         #expect(vm.formazione != nil && vm.copiaFerma)
         #expect(vm.statoScelta == .nonLetta, "mai la consigliata come se fosse la formazione salvata")
+    }
+
+    @Test("La spunta «L'ho messa» e la scelta che non vale più sono della loro giornata: con la copia della scelta di un'altra giornata non valgono (#699)")
+    func spuntaDellaGiornata() async throws {
+        let dove = Self.indirizzo()
+        // giornata 9: la scelta salvata è spuntata e non vale più (`stato_scelta` «non_valida»)
+        let fixture = try Fixture.testo("formazione")
+        let inizio = try #require(fixture.firstIndex(of: "{"))
+        let nove = fixture.replacingCharacters(in: inizio...inizio, with: #"{"stato_scelta": "non_valida", "#)
+        try #require(fixture.contains("\"giornata\":9"), "la fixture è della giornata 9")
+        let dieci = fixture.replacingOccurrences(of: "\"giornata\":9", with: "\"giornata\":10")
+        let salvati = try SalvataggioAutomaticoTests.altroModulo().map(String.init).joined(separator: ",")
+        let scelta = #"{"titolari": [\#(salvati)], "messa": true}"#
+        // 1: si legge la giornata 9; 2: arriva la 10 ma la sua scelta non si legge; 3: niente rete
+        let fase = Scatola<Int>()
+        fase.valore = 1
+        let srv = ServerDiProva(indirizzo: dove) { _, percorso, _ in
+            switch fase.valore ?? 1 {
+            case 3: throw ErroreApi.rete("spento")
+            case 2:
+                if percorso.hasPrefix("/api/scelta") { throw ErroreApi.rete("spento") }
+                return Data(dieci.utf8)
+            default:
+                return Data((percorso.hasPrefix("/api/scelta") ? scelta : nove).utf8)
+            }
+        }
+        let prima = FormazioneViewModel(server: srv)
+        let lettaPrima = await prima.carica()
+        try #require(lettaPrima && prima.messa && prima.salvataNonValida, "giornata 9: spuntata, e non vale più")
+        fase.valore = 2
+        let dopo = FormazioneViewModel(server: srv)
+        let lettaDopo = await dopo.carica()
+        try #require(!lettaDopo && dopo.formazione?.giornata == 10, "la scelta della 10 non si è letta: sul telefono resta quella della 9")
+        fase.valore = 3
+        let vm = FormazioneViewModel(server: srv)
+        await vm.carica()
+        let f = try #require(vm.formazione)
+        try #require(f.giornata == 10 && vm.copiaFerma, "riaperta senza rete: la copia della Formazione è della giornata 10")
+        #expect(!vm.messa, "la spunta era della giornata 9: non compare, nemmeno spenta")
+        #expect(!vm.salvataNonValida, "anche la scelta che non vale più era della giornata 9")
     }
 
     // MARK: errori di /api/oggi
