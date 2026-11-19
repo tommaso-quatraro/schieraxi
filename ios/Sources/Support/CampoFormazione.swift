@@ -133,9 +133,11 @@ struct CampoFormazione: View {
     /// Le file del campo, dall'alto: attaccanti, centrocampisti, difensori, portiere.
     static let file = ["A", "C", "D", "P"]
 
-    /// I titolari che stanno in questa fila.
+    /// I titolari che stanno in questa fila. Un ruolo che non è una fila (per esempio un giocatore che la Formazione non ha, composto
+    /// con i soli dati di Oggi da `Giocatore.soloDalVivo`, quando Oggi non dice il ruolo) va in attacco, come `linee[x.ruolo] ||
+    /// linee.A` di `mostraFormazione` della web: una pedina non manca mai in silenzio (#699).
     static func inFila(_ fila: String, _ titolari: [Giocatore]) -> [Giocatore] {
-        titolari.filter { $0.ruolo == fila }
+        titolari.filter { (file.contains($0.ruolo) ? $0.ruolo : "A") == fila }
     }
 
     var body: some View {
