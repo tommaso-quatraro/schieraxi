@@ -88,6 +88,13 @@ avvisi_coprono() {
   finestra=$(( $(date +%s) - inizio + AVVISI_SCHERMO ))
   [ "$finestra" -ge 1 ] || finestra=1
   visti=$(avvisi_contati "$udid" "$finestra")
+  if [ "${visti:-0}" -gt 0 ] && [ "${AVVISI_DIAGNOSI_FATTA:-0}" -lt 3 ]; then
+    AVVISI_DIAGNOSI_FATTA=$(( ${AVVISI_DIAGNOSI_FATTA:-0} + 1 ))
+    echo "  DIAGNOSI #601: righe dell'invito negli ultimi 60 s"
+    xcrun simctl spawn "$udid" log show --last 60s --style compact --predicate "$AVVISI_FILTRO" 2>/dev/null | cut -c1-400 | sed 's/^/    /'
+    echo "  DIAGNOSI #601: notifiche create da SpringBoard negli ultimi 60 s"
+    xcrun simctl spawn "$udid" log show --last 60s --style compact       --predicate 'process == "SpringBoard" AND eventMessage CONTAINS "[create,"' 2>/dev/null | cut -c1-300 | sed 's/^/    /'
+  fi
   if [ "${visti:-0}" -gt 0 ]; then
     echo "  avviso di sistema durante la foto: aspetto $AVVISI_PAUSA s che sparisca e la rifaccio"
     sleep "$AVVISI_PAUSA"
