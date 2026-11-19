@@ -149,19 +149,20 @@ final class ImportaExcelViewModel: ViewModelBase {
         AnteprimaLogica.scelta(g, squadra: squadra, scelte: scelte)
     }
 
-    func scegli(_ scelta: SceltaDubbio, squadra: String, testo: String) {
-        scelte[AnteprimaLogica.chiave(squadra, testo)] = scelta
+    /// La scelta per un dubbio: vale solo per la sua riga (due omonimi si scelgono uno per uno), con un server di prima per il nome.
+    func scegli(_ scelta: SceltaDubbio, per g: GiocatoreAnteprima, squadra: String) {
+        scelte[AnteprimaLogica.chiave(squadra, g)] = scelta
     }
 
-    /// Un giocatore trovato con la ricerca diventa la scelta (e un'opzione del menu).
-    func scegli(trovato c: CandidatoAnteprima, squadra: String, testo: String) {
-        let k = AnteprimaLogica.chiave(squadra, testo)
+    /// Un giocatore trovato con la ricerca diventa la scelta (e un'opzione del menu) di quel dubbio.
+    func scegli(trovato c: CandidatoAnteprima, per g: GiocatoreAnteprima, squadra: String) {
+        let k = AnteprimaLogica.chiave(squadra, g)
         trovati[k] = c
         scelte[k] = .giocatore(c.id)
     }
 
     func opzioni(per g: GiocatoreAnteprima, squadra: String) -> [CandidatoAnteprima] {
-        AnteprimaLogica.opzioni(g, trovato: trovati[AnteprimaLogica.chiave(squadra, g.testo)])
+        AnteprimaLogica.opzioni(g, trovato: trovati[AnteprimaLogica.chiave(squadra, g)])
     }
 
     /// Le correzioni che partiranno con «Conferma e salva».
