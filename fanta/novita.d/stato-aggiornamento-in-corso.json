@@ -1,0 +1,12 @@
+{
+  "titolo": "«Aggiorna i dati» spento mentre il server è occupato con un aggiornamento",
+  "voci": [
+    "Impostazioni, Gestione: se all'apertura dell'app il server era già occupato con un aggiornamento (quelli programmati dei dati, o l'installazione di una versione nuova), il pulsante «Aggiorna i dati» è spento e sotto c'è scritto perché; quando l'aggiornamento è finito si riaccende da solo, senza ricaricare la pagina. Prima sembrava libero.",
+    "Se l'aggiornamento parte con l'app già aperta, il pulsante resta attivo e, premuto, risponde «Aggiornamento già in corso», come prima."
+  ],
+  "tecnico": [
+    "GET /api/stato: aggiornamento_in_corso è vero anche quando il blocco dell'aggiornamento (~/.cache/fantacalcio/blocco) è tenuto da un altro: aggiorna.sh dal cron, un giro leggero del pianificatore (probabili, risultati della sera), POST /api/aggiorna e anche script/server/aggiorna-app.sh, lo script che installa le versioni, che lo prende a ogni giro (ogni 10 minuti, per il git fetch) e per tutta un'installazione (#763). Stesso nome e tipo del campo; GET /api/aggiorna non cambia.",
+    "pianificatore.blocco_tenuto(): flock condiviso senza attesa su un descrittore in sola lettura, lasciato subito; non crea cartella né file; senza fcntl o senza file vale falso; un errore diverso da «occupato» va nel registro e vale falso. Un lucchetto interno (_tentativo) mette in fila i tentativi di flock di questo processo: un giro leggero o «Aggiorna i dati» non rinuncia per colpa di una lettura dello stato. aggiorna-app.sh prova il blocco senza attesa (flock -n) da un altro processo: se cade negli stessi microsecondi della lettura salta quel giro e riprova 10 minuti dopo. pianificatore.file_blocco(): un solo percorso per blocco_processo e blocco_tenuto.",
+    "Web, Gestione: frase aggiorna.in_corso («Il server è occupato con un aggiornamento: il pulsante torna attivo appena finisce.») in una regione role=\"status\" sotto il pulsante (vuota non occupa spazio). Entrando in Gestione con il campo già vero (letto prima) rilegge subito lo stato, poi ogni 15 secondi finché è vero, una lettura alla volta (la prossima si prepara a lettura finita), e smette fuori da Gestione (segnaAggiornamento, seguiAggiornamento, rileggiAggiornamento in app.js). «Già in corso» dopo il tocco resta un avviso. L'iPhone dichiara il campo (aggiornamentoInCorso) ma non lo usa (#773)."
+  ]
+}

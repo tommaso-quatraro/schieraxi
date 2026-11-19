@@ -246,6 +246,10 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .azione-testo { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0 8px;
   border: 0; border-radius: var(--r-in); background: none; color: var(--azione); font-weight: 650; text-decoration: none; }
 .pulsanti { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+/* Sotto un pulsante spento, perché è spento (Gestione, «Aggiorna i dati», #763). Vuota non occupa spazio ma resta in pagina:
+   è una regione role="status" e il lettore di schermo legge la frase quando arriva. */
+.nota-pulsanti { margin: 10px 0 0; }
+.nota-pulsanti:empty { margin: 0; }
 .bottone.indietro { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px !important; }   /* «‹ Impostazioni»: icona e parola, niente «←» nel testo */
 .interruttore { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: var(--t-corpo); }
 .interruttore { min-height: 44px; }
