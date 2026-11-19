@@ -258,6 +258,8 @@ Codice: `fanta/modello.py:previsioni`
 
 È la parte più delicata, perché un campione che resta in panchina porta zero punti. Quando ci sono le probabili formazioni di Fantacalcio.it (si aggiornano più volte al giorno) il modello le legge: titolare con una percentuale, panchina con una percentuale, infortunato, squalificato, in dubbio, diffidato.
 
+Infortunati, squalificati e diffidati li dice la stessa pagina. Quando per la squadra di un giocatore le probabili non ci sono ancora, chi è stato espulso e da allora non ha ancora saltato una partita risulta squalificato lo stesso, e vale 0: lo ricava SchieraXI dai cartellini dei voti e dal calendario. Le squalifiche per somma di ammonizioni e i diffidati arrivano solo dalla pagina, perché ricavati dai cartellini sbaglierebbero troppo spesso (misura del 19/11/2026 sulle giornate passate: per somma di ammonizioni 1 squalificato sbagliato su 92, per espulsione nessuno su 68). Se il calendario non si aggiorna i cartellini non si usano; quando la pagina c'è, vale la pagina.
+
 Un titolare al 90% non gioca con probabilità 0,90: se non parte spesso entra comunque dalla panchina, e il voto manca solo se entra per pochi minuti. Un infortunato o squalificato vale 0. Chi è in dubbio vale un quarto in meno. Un giocatore non citato vale 2%.
 
 Questi numeri di partenza sono scelti a mano. Da 4 giornate giocate con le probabili salvate poco prima della prima partita il server li ritara da solo su metà delle giornate e li prova sull'altra metà; li usa solo da 8 giornate e se sbagliano meno; se poi peggiorano torna ai numeri di partenza.
@@ -274,7 +276,7 @@ in dubbio: p × 0,75 · infortunato o squalificato: 0 · non citato: 0,02
 
 Nell'app: Formazione (stato e percentuale accanto a ogni giocatore).
 
-Codice: `fanta/modello.py:_p_da_probabili`, `fanta/modello.py:P_SUBENTRO_TITOLARE`, `fanta/modello.py:P_SENZA_VOTO`, `fanta/fonti/fantacalcio.py:leggi_probabili`, `fanta/taratura_probabili.py:esegui`
+Codice: `fanta/modello.py:_p_da_probabili`, `fanta/modello.py:P_SUBENTRO_TITOLARE`, `fanta/modello.py:P_SENZA_VOTO`, `fanta/fonti/fantacalcio.py:leggi_probabili`, `fanta/squalifiche.py:in_uso`, `fanta/taratura_probabili.py:esegui`
 
 ## 11. Senza probabili: presenze recenti, coppe e calibrazione  [nerd]
 
