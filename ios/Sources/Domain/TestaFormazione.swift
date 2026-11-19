@@ -35,11 +35,12 @@ struct TestaFormazione: Equatable {
 
 extension TestaFormazione {
     /// La testa per la tua formazione (`oggi` di `GET /api/oggi`) o, senza `oggi`, per quella di un'altra squadra (solo la giornata).
-    /// A campionato finito (`campionato_finito` di Oggi, #727) non c'è una giornata da preparare e la formazione non conta (il server
-    /// risponde 409; può restare quella di prima, salvata sul telefono): il riepilogo dell'ultima giornata, se c'è, e la frase del
-    /// server, come `mostraCampionatoFinito` della web. `adesso`: l'ora dell'app, per il conto alla rovescia.
+    /// A campionato finito (`campionato_finito` di Oggi, #727) la Formazione non mostra una formazione (`formazione` nil: lo decide
+    /// `FormazioneViewModel.campionatoFinito`): il riepilogo dell'ultima giornata, se c'è, e la frase del server, come
+    /// `mostraCampionatoFinito` della web. Con una formazione da mostrare la testa segue lei, anche se una copia vecchia di Oggi dice
+    /// ancora che il campionato è finito. `adesso`: l'ora dell'app, per il conto alla rovescia.
     static func per(oggi o: Oggi?, formazione: Formazione?, adesso: Date) -> TestaFormazione {
-        if let o, let testo = o.testoCampionatoFinito {
+        if formazione == nil, let o, let testo = o.testoCampionatoFinito {
             guard let r = o.riepilogoGiornata else { return TestaFormazione(campionatoFinito: testo) }
             var testa = riepilogo(r)
             testa.campionatoFinito = testo

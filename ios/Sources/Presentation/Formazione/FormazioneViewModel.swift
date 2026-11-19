@@ -153,8 +153,14 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Il campionato è finito (`campionato_finito` di `/api/oggi`, #656): non c'è una giornata da preparare e `/api/formazione`
     /// risponde 409. La Formazione mostra il riepilogo dell'ultima giornata, se c'è, e la frase del server, senza errore né
-    /// «Riprova», come `mostraCampionatoFinito` della web (#727). Solo per la tua squadra.
-    var campionatoFinito: Bool { squadraVista == nil && oggi?.oggi?.testoCampionatoFinito != nil }
+    /// «Riprova», come `mostraCampionatoFinito` della web (#727). Solo per la tua squadra. Se di `/api/oggi` c'è solo la copia del
+    /// telefono (a inizio stagione può essere quella di giugno) e la Formazione è arrivata fresca, vince il dato fresco: si mostra la
+    /// formazione, non la frase vecchia.
+    var campionatoFinito: Bool {
+        guard squadraVista == nil, let o = oggi, o.oggi?.testoCampionatoFinito != nil else { return false }
+        let formazioneFresca = formazione != nil && !copia
+        return !(o.copia && formazioneFresca)
+    }
 
     /// La spunta «L'ho messa»: vale per gli 11 salvati.
     var messa: Bool { salvata?.messa == true }
