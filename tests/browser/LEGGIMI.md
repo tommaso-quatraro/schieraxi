@@ -121,7 +121,7 @@ prima della scadenza:
   spenti sulla copia («Sostituisci», «Torna alla consigliata») si accendono già pieni quando arrivano i dati nuovi, mai mezzi
   trasparenti (#697: axe lanciato in quell'istante trovava un contrasto troppo basso).
 
-`test_metti_in_campo.py`, «Metti in campo» dalla scheda di un giocatore che non è fra gli 11 (#643). Gli scenari registrati non
+`test_metti_in_campo_scheda.py`, «Metti in campo» dalla scheda di un giocatore che non è fra gli 11 (#643). Gli scenari registrati non
 hanno ancora la rotta `POST /api/formazione/metti-in-campo`: la risposta la dà il test con `web.risposta`, costruita sulla
 formazione registrata (finché non li si registra di nuovo, la web la chiama solo al tocco sul pulsante):
 - dalla scheda di un panchinaro «Metti in campo» chiede al server chi può uscire (con gli 11 in pagina), l'elenco ha la
