@@ -243,6 +243,10 @@ struct RiassuntoWidget: Decodable {
     var fase: String? { faseLetta?.valore }
     private var inCorsoLetto: Facoltativo<GiornataInCorso>?
     private var riepilogoLetto: Facoltativo<RiepilogoGiornata>?
+    /// Entrato a giornata già iniziata senza formazione (#651, #687): `senza_formazione` e la `prossima` da preparare, come in
+    /// `/api/oggi` (facoltativi: un server di prima non li manda, un valore strano vale «no»).
+    private var senzaFormazioneLetto: Facoltativo<Bool>?
+    private var prossimaLetta: Facoltativo<ProssimaGiornata>?
     /// Il campionato è finito (#656): la frase del server, come in `/api/oggi` (facoltativo: un server di prima non lo manda).
     private var campionatoFinitoLetto: Facoltativo<CampionatoFinito>?
     var mancano: [String]?
@@ -270,10 +274,15 @@ struct RiassuntoWidget: Decodable {
         case inCorsoLetto = "inCorso"
         case riepilogoLetto = "riepilogo"
         case campionatoFinitoLetto = "campionatoFinito"
+        case senzaFormazioneLetto = "senzaFormazione"
+        case prossimaLetta = "prossima"
     }
 
     /// La fase con i suoi blocchi (ognuno solo nella sua fase).
-    var faseGiornata: FaseRiassunto { FaseRiassunto(fase: fase, inCorso: inCorsoLetto?.valore, riepilogo: riepilogoLetto?.valore) }
+    var faseGiornata: FaseRiassunto {
+        FaseRiassunto(fase: fase, inCorso: inCorsoLetto?.valore, riepilogo: riepilogoLetto?.valore,
+                      senzaFormazione: senzaFormazioneLetto?.valore == true, prossima: prossimaLetta?.valore)
+    }
 
     /// La giornata con i due numeri (#299); nil se la giornata non si conosce.
     var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }

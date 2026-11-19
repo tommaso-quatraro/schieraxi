@@ -203,7 +203,8 @@ struct RiassuntoOggi: Codable, Equatable {
 
     /// Dalla risposta di «oggi» (la stessa per l'app e per il widget).
     init(oggi: Oggi, scaricatoIl: Date = Date()) {
-        let fase = FaseRiassunto(fase: oggi.fase?.valore, inCorso: oggi.inCorso?.valore, riepilogo: oggi.riepilogo?.valore)
+        let fase = FaseRiassunto(fase: oggi.fase?.valore, inCorso: oggi.inCorso?.valore, riepilogo: oggi.riepilogo?.valore,
+                                 senzaFormazione: oggi.senzaFormazione?.valore == true, prossima: oggi.prossima?.valore)
         let daControllare = fase.chiusa ? [] : (oggi.avvisi ?? []).filter { $0.inFormazione == true }
         self.init(giornata: oggi.giornata,
                   inizio: Quando.data(oggi.chiusura),
