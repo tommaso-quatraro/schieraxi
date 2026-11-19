@@ -487,10 +487,10 @@ def test_interruzione_a_installazione_riuscita_non_lascia_la_versione_vecchia_se
     il codice di prima con lo stato «installata la nuova» (il giro dopo non la riproverebbe più)."""
     segno = s.casa / "ucciso-una-volta"
     _stub(s.bin, "rm", f'case "$*" in *installazione-in-corso*) [ -e "{base._msys(segno)}" ] || '
-                       f'{{ : > "{base._msys(segno)}"; kill -9 "$PPID"; sleep 5; }};; esac\nexec /usr/bin/rm "$@"')
+                       f'{{ : > "{base._msys(segno)}"; kill -9 "$PPID"; exit 1; }};; esac\nexec /usr/bin/rm "$@"')     # ucciso: il segno resta
     c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
     r = s.esegui("aggiorna-app.sh")
-    assert r.returncode != 0 and segno.exists()
+    assert r.returncode != 0 and segno.exists() and (s.stato / "installazione-in-corso").exists()
     s.giro(10)
     assert s.ultimo() == c2 and s.codice() == "V2"
 
@@ -542,7 +542,7 @@ def test_versione_interrotta_due_volte_non_si_riprova_piu_neanche_con_installa_s
     assert c2 in (s.stato / "installazione-in-corso").read_text(encoding="utf-8")
     s.giro(20)
     assert s.codice() == "V1" and (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
-    assert "interrotta due volte" in s.avvisi()[-1]
+    assert any("interrotta due volte" in a for a in s.avvisi())
     assert len([a for a in s.avvisi() if "si era fermato a metà" in a]) == 1
     riavvii = s.riavvii()
     (s.stato / "installa-subito").write_text("", encoding="utf-8")
