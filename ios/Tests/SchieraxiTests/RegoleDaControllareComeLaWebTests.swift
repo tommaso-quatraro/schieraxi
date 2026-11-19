@@ -41,7 +41,7 @@ private let senzaRighe: [RispostaSenzaRighe] = [
 struct RegoleDaControllareComeLaWebTests {
     @Test("Il server manda `da_controllare`: «Righe da controllare a mano (N)» e le righe nell'ordine del server")
     func titoloERighe() throws {
-        let gruppo = try #require(GruppoDaControllare(try risposta(conDaControllare)))
+        let gruppo = try #require(RegolamentoDaControllare(try risposta(conDaControllare)))
         #expect(gruppo.titolo == "Righe da controllare a mano (3)")
         #expect(gruppo.titolo == Catalogo.Regole.daControllare(n: "3"))
         #expect(gruppo.righe.map(\.testo) == ["Panchina: 7 giocatori, non libera", "Non è vietato il cambio modulo", "Media 6-6,5: +1"])
@@ -49,7 +49,7 @@ struct RegoleDaControllareComeLaWebTests {
 
     @Test("Sotto una riga dubbia «da impostare: <regola>»; niente sotto una riga che non nomina regole")
     func daImpostare() throws {
-        let gruppo = try #require(GruppoDaControllare(try risposta(conDaControllare)))
+        let gruppo = try #require(RegolamentoDaControllare(try risposta(conDaControllare)))
         #expect(gruppo.righe.map(\.daImpostare) == ["da impostare: Ordine dei cambi", "da impostare: Cambio modulo nelle sostituzioni", nil])
         #expect(gruppo.righe.first?.daImpostare == Catalogo.Regole.daImpostare(r: "Ordine dei cambi"))
     }
@@ -61,7 +61,7 @@ struct RegoleDaControllareComeLaWebTests {
               {"chiave": "panchina.tipo", "etichetta": "Ordine dei cambi"},
               {"chiave": "modificatore_difesa.attivo", "etichetta": "Modificatore difesa attivo"}]}]}
             """
-        let gruppo = try #require(GruppoDaControllare(try risposta(json)))
+        let gruppo = try #require(RegolamentoDaControllare(try risposta(json)))
         #expect(gruppo.titolo == "Righe da controllare a mano (1)")
         #expect(gruppo.righe.map(\.daImpostare) == ["da impostare: Ordine dei cambi, Modificatore difesa attivo"])
     }
@@ -69,7 +69,7 @@ struct RegoleDaControllareComeLaWebTests {
     @Test("Server di prima, senza `da_controllare`: resta «Righe con numeri non riconosciute (N)» con le sole righe con numeri")
     func serverDiPrima() throws {
         let json = #"{"modifiche": [], "non_riconosciute": ["Media 6-6,5: +1", "Il bonus vale 3 punti, tranne in coppa"]}"#
-        let gruppo = try #require(GruppoDaControllare(try risposta(json)))
+        let gruppo = try #require(RegolamentoDaControllare(try risposta(json)))
         #expect(gruppo.titolo == Catalogo.Regole.nonRiconosciute(n: "2"))
         #expect(gruppo.righe.map(\.testo) == ["Media 6-6,5: +1", "Il bonus vale 3 punti, tranne in coppa"])
         #expect(gruppo.righe.allSatisfy { $0.daImpostare == nil })
@@ -77,6 +77,6 @@ struct RegoleDaControllareComeLaWebTests {
 
     @Test("Niente da controllare: il gruppo non c'è", arguments: senzaRighe)
     func senzaGruppo(caso: RispostaSenzaRighe) throws {
-        #expect(GruppoDaControllare(try risposta(caso.json)) == nil)
+        #expect(RegolamentoDaControllare(try risposta(caso.json)) == nil)
     }
 }

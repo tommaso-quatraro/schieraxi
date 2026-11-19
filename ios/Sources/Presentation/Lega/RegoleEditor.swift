@@ -388,7 +388,7 @@ struct RegoleEditorView: View {
                 .accessibilityElement(children: .combine)
             }
             // le righe da rileggere, come la web (#733): ognuna con la regola da impostare a mano sotto, se il server ne nomina
-            if let gruppo = GruppoDaControllare(r) {
+            if let gruppo = RegolamentoDaControllare(r) {
                 DisclosureGroup(gruppo.titolo) {
                     ForEach(gruppo.righe) { riga in
                         VStack(alignment: .leading, spacing: 2) {
