@@ -5,7 +5,7 @@ import Testing
 /// «Formazione consigliata» e «Da controllare» per chi è entrato in SchieraXI a giornata già iniziata senza una formazione per lei
 /// (#752, seguito di #687). `GET /api/widget` manda ancora `formazione` e `avvisi` della giornata già iniziata: prima «Formazione
 /// consigliata» mostrava la consigliata di una giornata che non si può più schierare e «Da controllare» «Chiusa · La formazione si
-/// è chiusa … I punti fatti sono in Oggi.», punti che per lui non ci sono. Ora i tre widget mostrano la stessa cosa di «Prossima
+/// è chiusa … I punti fatti sono nella Formazione.», punti che per lui non ci sono. Ora i tre widget mostrano la stessa cosa di «Prossima
 /// giornata»: «Questa giornata è già iniziata», «Prepara la prossima» e il conto alla rovescia alla scadenza della prossima. Il caso
 /// lo sceglie `CasoWidget`, nello stesso ordine per i tre widget: prima il campionato finito (#727, #745), poi questo, poi il widget
 /// di sempre. Dati inventati (`widget-senza-formazione`, `widget-in-corso`).

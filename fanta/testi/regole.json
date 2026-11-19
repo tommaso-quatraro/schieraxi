@@ -19,11 +19,6 @@
     "it": "Come entrano le riserve",
     "en": "How substitutes come on"
   },
-  "regole.con_prima_giornata": {
-    "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Diario e promemoria contano da lì.",
-    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Journal and reminders count from there.",
-    "nota": "Solo per l'iPhone, che ha ancora il Diario: la web (Regole e scadenza, #618) usa regole.prima_giornata_conta"
-  },
   "regole.prima_giornata_conta": {
     "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Giornate e promemoria contano da lì.",
     "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Matchdays and reminders count from there."
@@ -308,10 +303,6 @@
   "regole.rinviate": {
     "it": "Partite rinviate",
     "en": "Postponed matches"
-  },
-  "regole.rinviate_aiuto": {
-    "it": "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo da Oggi.",
-    "en": "What your league does with the players of a postponed match, even weeks later. You can change it for a single round from Today."
   },
   "regole.rv_aspetta": {
     "it": "Aspetta il recupero",

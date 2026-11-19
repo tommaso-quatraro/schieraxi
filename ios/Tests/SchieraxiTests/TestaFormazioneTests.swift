@@ -52,6 +52,41 @@ struct TestaFormazioneTests {
         #expect(s.manca == nil)
     }
 
+    @Test("Giornata senza date: la frase del server (`senza_data`, #552), la stessa della web, senza conto alla rovescia")
+    func senzaDataFraseDelServer() throws {
+        let o = try Self.oggi(#"""
+        {"giornata": 11, "giornata_lega": 8, "inizio": null, "scadenza": null, "fase": "prima",
+         "senza_data": {"testo": "Data da definire", "frase": {"chiave": "giornata.senza_data", "param": {}}}}
+        """#)
+        #expect(o.testoSenzaData == "Data da definire")
+        let t = TestaFormazione.per(oggi: o, formazione: try Self.formazione(), adesso: try Self.adesso())
+        #expect(t.giornata == "Giornata 8 · 11ª di Serie A")
+        #expect(t.chiude == "Data da definire")
+        #expect(t.manca == nil)
+    }
+
+    @Test("A giornata finita la prossima senza date: sotto il riepilogo la sua giornata e la frase del server")
+    func senzaDataAGiornataFinita() throws {
+        let json = Self.jsonFinita
+            .replacingOccurrences(of: #""scadenza": "2026-11-06 14:50""#, with: #""scadenza": null"#)
+            .replacingOccurrences(of: #""fase": "finita","#, with: #""fase": "finita", "senza_data": {"testo": "Data da definire"},"#)
+        let t = TestaFormazione.per(oggi: try Self.oggi(json), formazione: try Self.formazione(giornata: 12, lega: 9),
+                                    adesso: try Self.adesso())
+        #expect(t.giornata == "Giornata 8 · 11ª di Serie A: finita")
+        #expect(t.prossima == "Giornata 9 · 12ª di Serie A")
+        #expect(t.chiude == "Data da definire")
+        #expect(t.manca == nil)
+    }
+
+    @Test("`senza_data` vuoto o con una forma strana: il testo di sempre, come con un server di prima",
+          arguments: [#"{"testo": "  "}"#, #""Data da definire""#, #"{"testo": 3}"#, "null"])
+    func senzaDataStrana(campo: String) throws {
+        let o = try Self.oggi(#"{"giornata": 11, "senza_data": \#(campo)}"#)
+        #expect(o.testoSenzaData == nil)
+        let t = TestaFormazione.per(oggi: o, formazione: try Self.formazione(), adesso: try Self.adesso())
+        #expect(t.chiude == Catalogo.Oggi.calendarioNo)
+    }
+
     @Test("Formazione già chiusa (`iniziata`) senza i dati della fase: solo la giornata, come la web")
     func iniziataSenzaFase() throws {
         let o = try Self.oggi(#"{"giornata": 11, "scadenza": "2026-10-31 14:50"}"#)

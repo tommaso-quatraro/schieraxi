@@ -154,6 +154,10 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   20 minuti dopo un rilascio e ogni giorno alle 5:17 UTC; se non passa apre l'issue `P1` «Collaudo della prova: v<N> non passa» e la
   corsa è rossa; se la prova resta indietro di oltre 40 minuti, issue «La prova non si aggiorna». Segreti `PROVA_URL`, `PROVA_UTENTE`,
   `PROVA_PASSWORD` (senza: non fa niente). Test `tests/test_collaudo_prova.py`.
+  `sentinella_understat.py` con `.github/workflows/sentinella-understat.yml`: con la fonte Understat spenta (issue #756), una volta
+  al giorno alle 4:23 UTC fa una sola richiesta ai dati della Serie A (indirizzo e intestazioni del lettore, nessun nuovo tentativo,
+  20 secondi); se arrivano dati veri commenta l'issue #756 «Understat è tornato: riaccendere la fonte» una volta sola e la riapre se
+  è chiusa, altrimenti tace. Niente lancio a mano. Si toglie quando la fonte è riaccesa. Test `tests/test_sentinella_understat.py`.
 - `script/squadra/`: comandi del coordinatore (`stato`, `attendi`, `annulla-superate`, `pulisci`, `brief`, `foto`, `giro`, `pr-pronta`,
   `giornata`: dice se una giornata è passata senza errori, in `giornata.py`, decisione 0013) con `aree.json`, `foto.json`, `modello-brief.md`: `python script/squadra/squadra.py <comando> --help`, guida in `script/squadra/LEGGIMI.md`.
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
@@ -165,7 +169,7 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
 - `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335). `tara_forza_gol.py`: taratura della forza delle squadre dei gol attesi «nostri» (memoria, partite fittizie, livello recente del campionato; devianza di Poisson dei gol di squadra sul 2025-26, controllo sul 2026-27) e, con `--ruoli`, gol e assist veri su attesi per ruolo (Fase C del piano `2026-11-06-gol-attesi-nostri`). `foto_web/foto.py`: foto e axe della web senza finestra (Chrome di sistema, server di prova con la lega d'esempio avviato e fermato da solo, 9 scene a 390/768/1024/1440 px in chiaro e scuro, `riepilogo.txt` con violazioni gravi, scorrimento di lato ed errori della console; foto sempre fuori dal repository), istruzioni in `prove/foto_web/LEGGIMI.md`, test `tests/test_foto_web.py`.
 - `tests/browser/`: test di comportamento della web in un browser vero senza finestra (Chrome di sistema, Playwright in un
   ambiente a parte, server finto di `script/ci/server_finto.py` con le risposte registrate delle tre fasi di
-  `ios/fotografie/vero-*.json`): cosa compare e cosa succede a un tocco, non il testo del sorgente. Job `browser` di `test.yml`;
+  `ios/fotografie/vero-*.json`): cosa compare e cosa succede a un tocco, non il testo del sorgente. Job `browser` di `test.yml` (nelle PR e su `main` dopo un'unione che tocca la web, #630);
   nella suite normale si saltano (`-m browser`). `test_prima_schermata.py`: la prima schermata nelle tre fasi;
   `test_tagli.py`: la web senza le funzioni tolte (#615) e i tre patti (errore = `role="alert"`, avviso = `role="status"`,
   caricamento = `aria-busy`). Guida: `tests/browser/LEGGIMI.md`.

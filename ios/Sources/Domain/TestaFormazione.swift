@@ -24,7 +24,7 @@ struct TestaFormazione: Equatable {
     var comeAndata: Int?
     /// A giornata finita, la giornata della formazione sotto: «Giornata 9 · 12ª di Serie A».
     var prossima: String?
-    /// Quando si chiude la formazione mostrata: «Si chiude sab 31 14:50» (o «Formazione chiusa», «Calendario non disponibile») e
+    /// Quando si chiude la formazione mostrata: «Si chiude sab 31 14:50» (o «Formazione chiusa», «Data da definire») e
     /// accanto, piccolo, «fra 3 h 10 min». Nil dove la web non lo scrive (giornata in corso, formazione già chiusa).
     var chiude: String?
     var manca: String?
@@ -117,10 +117,12 @@ extension TestaFormazione {
         return o.chiusura
     }
 
-    /// «Si chiude sab 31 14:50» e «fra 3 h 10 min», come `testoConto` della web; scaduta, «Formazione chiusa»; senza una data,
+    /// «Si chiude sab 31 14:50» e «fra 3 h 10 min», come `testoConto` della web; scaduta, «Formazione chiusa»; con la giornata
+    /// ancora senza date la frase del server («Data da definire», `senza_data`, #552), e senza la frase (server di prima)
     /// «Calendario non disponibile». Ogni numero resta attaccato alla sua unità (spazio che non va a capo, come la web, #286):
     /// con il testo grande «min» non va da solo sulla riga dopo.
     static func conto(_ o: Oggi, adesso: Date) -> (chiude: String, manca: String?) {
+        if let frase = o.testoSenzaData { return (frase, nil) }
         guard let testo = scadenza(o), let fine = Quando.data(testo) else { return (Catalogo.Oggi.calendarioNo, nil) }
         guard let tempo = Quando.contoAllaRovescia(fino: fine, adesso: adesso) else { return (Catalogo.Formazione.chiusaBreve, nil) }
         let unito = tempo.replacingOccurrences(of: #"(\d) "#, with: "$1\u{00A0}", options: .regularExpression)

@@ -89,8 +89,9 @@ struct RestiDalCatalogoTests {
         Caso(file: "Sources/Domain/PartiteRinviate.swift",
              testi: [
                 Catalogo.Oggi.rinvioTitolo1, Catalogo.Oggi.rinvioTitoloN, Catalogo.Oggi.rinvioDomanda, Catalogo.Oggi.rinvioAspetta,
-                Catalogo.Oggi.rinvioSenzaVoto, Catalogo.Oggi.rinvioDaDefinire, Catalogo.Oggi.rinvioSalvato, Catalogo.Regole.rinviate,
-                Catalogo.Regole.rinviateAiuto, Catalogo.Regole.rvAspetta, Catalogo.Regole.rvSenzaVoto, Catalogo.Regole.rvUfficio,
+                Catalogo.Oggi.rinvioSenzaVoto, Catalogo.Oggi.rinvioDaDefinire, Catalogo.Oggi.rinvioSalvato, Catalogo.Oggi.rinvioRegolaLega,
+                Catalogo.Regole.rinviate, Catalogo.Regole.rinviateAiutoFormazione, Catalogo.Regole.rvAspetta, Catalogo.Regole.rvSenzaVoto,
+                Catalogo.Regole.rvUfficio,
                 Catalogo.Regole.rvAiutoAspetta, Catalogo.Regole.rvAiutoSenzaVoto, Catalogo.Regole.rvAiutoVotoUfficio,
              ],
              frasi: [
@@ -98,7 +99,7 @@ struct RestiDalCatalogoTests {
                 Catalogo.Oggi.rinvioEccezione(regola: "§"), Catalogo.Oggi.recuperoManca(partite: "§"),
              ],
              usa: ["Catalogo.Oggi.rinvioUfficio(", "Catalogo.Oggi.rinvioEccezione(", "Catalogo.Oggi.recuperoManca(",
-                   "Catalogo.Regole.rvAiutoVotoUfficio"]),
+                   "Catalogo.Regole.rvAiutoVotoUfficio", "Catalogo.Oggi.rinvioRegolaLega", "Catalogo.Regole.rinviateAiutoFormazione"]),
         // la riga dello stato della Formazione unica (#673): cinque stati, la giornata chiusa e la scelta che non si legge
         Caso(file: "Sources/Domain/StatoScelta.swift",
              testi: [

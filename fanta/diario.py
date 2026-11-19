@@ -580,7 +580,7 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
     controlla_stagione(stagione)
     squadra = rose.squadra(rose.mia_squadra) if rose and rose.mia_squadra else None
     if not squadra:
-        raise SchierataNonValida("Indica prima la tua squadra in Squadra > Squadre e rose")
+        raise SchierataNonValida("Indica prima la tua squadra in «La mia squadra»")
     stagione = consigli.stagione_corrente()
     if giornata < regole.prima_giornata_lega:
         raise SchierataNonValida("Quella giornata è precedente all'inizio della tua lega")
