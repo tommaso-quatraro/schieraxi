@@ -245,9 +245,9 @@ def conferma_email(db: sqlite3.Connection, utente_id: int, codice, ip: str | Non
         raise ErroreAccount(NON_VALIDO, 403) from None
     evento("email_verificata", ip=ip)
     if vecchia and vecchia != riga["email"]:
+        _invia(db, posta.modello_email_cambiata(vecchia))   # prima: l'avviso parte anche se la chiusura qui sotto non riesce
         if sessione:                                         # senza la sessione di chi conferma non si chiude niente
             account.esci_da_tutti(db, utente_id, tranne=sessione)
-        _invia(db, posta.modello_email_cambiata(vecchia))
     return {"ok": True, "email": riga["email"]}
 
 

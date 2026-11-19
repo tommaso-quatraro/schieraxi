@@ -187,6 +187,21 @@ def test_cambio_email_dall_app_tiene_dentro_l_app(web, posta_finta):
     assert altro.get("/api/account/me").status_code == 401
 
 
+def test_cambio_email_avvisa_il_vecchio_indirizzo_anche_se_la_chiusura_delle_sessioni_non_riesce(web, posta_finta, monkeypatch):
+    c = utente_con_email(web, posta_finta, "marco", "vecchia@example.com")
+    assert imposta(c, "nuova@example.com").status_code == 200
+    codice = codice_di(ultimi(posta_finta, "nuova@example.com")[-1])
+    posta_finta.clear()
+
+    def occupato(*_a, **_k):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(account, "esci_da_tutti", occupato)
+    with contextlib.suppress(sqlite3.OperationalError):          # l'errore arriva a chi ha chiesto: va bene
+        c.post("/api/account/email/conferma", json={"codice": codice})
+    assert len(ultimi(posta_finta, "vecchia@example.com")) == 1
+
+
 def test_avviso_al_vecchio_indirizzo_mette_prima_l_email_poi_la_password(web, posta_finta):
     c = utente_con_email(web, posta_finta, "marco", "vecchia@example.com")
     posta_finta.clear()
