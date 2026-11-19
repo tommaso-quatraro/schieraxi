@@ -111,6 +111,61 @@ final class LegaViewModelTests: XCTestCase {
         XCTAssertEqual(vm.errore, "Nessuna rosa importata")
     }
 
+    /// Un server dove un altro dispositivo archivia la stagione subito dopo la prima lettura dello stato: la prima risposta di
+    /// `/api/stagione` dice ancora «nuova», le successive no. `POST /api/nuova-stagione` lancia `rifiuto`.
+    private func archiviataAltrove(rifiuto: ErroreApi) -> ServerDiProva {
+        let letture = Contatore()
+        return ServerDiProva { metodo, _, _ in
+            if metodo == "POST" { throw rifiuto }
+            return letture.passo() == 0 ? Data(#"{"corrente": "2027-28", "rose": "2026-27", "nuova": true}"#.utf8)
+                                        : Data(#"{"corrente": "2027-28", "rose": "2027-28", "nuova": false}"#.utf8)
+        }
+    }
+
+    /// #731: il server rifiuta con 409 perché le rose sono già della stagione in corso (un altro dispositivo ha archiviato) e non
+    /// scrive niente. Si mostra il suo messaggio così com'è e lo stato si rilegge: il passaggio sparisce, come sulla web.
+    func testRifiutoPercheGiaArchiviataRileggeLoStatoETogliePassaggio() async {
+        let messaggio = "Le rose sono già della stagione in corso: non c'è niente da archiviare."
+        let s = archiviataAltrove(rifiuto: .server(messaggio))
+        let vm = StagioneViewModel(server: s)
+        await vm.carica()
+        XCTAssertTrue(vm.puoArchiviare)
+        await vm.archiviaERiparti()
+        XCTAssertEqual(vm.errore, messaggio, "il messaggio del server, così com'è")
+        XCTAssertFalse(vm.archiviata)
+        XCTAssertEqual(s.quante("GET /api/stagione"), 2, "dopo il rifiuto lo stato della stagione si rilegge")
+        XCTAssertFalse(vm.puoArchiviare, "le rose sono già della stagione in corso: il passaggio non c'è più")
+        XCTAssertEqual(s.quante("POST /api/nuova-stagione"), 1)
+    }
+
+    /// #731: 412, le rose sono cambiate su un altro dispositivo e il server non ha scritto niente. Lo stato si rilegge e si dice
+    /// che le rose sono cambiate, con la frase del catalogo che l'importazione delle rose usa per lo stesso caso.
+    func testRoseCambiateAltroveRileggeLoStatoEDiceCheSonoCambiate() async {
+        let s = archiviataAltrove(rifiuto: .conflitto)
+        let vm = StagioneViewModel(server: s)
+        await vm.carica()
+        await vm.archiviaERiparti()
+        XCTAssertEqual(vm.errore, Catalogo.Ar.cambiate)
+        XCTAssertFalse(vm.archiviata)
+        XCTAssertEqual(s.quante("GET /api/stagione"), 2, "dopo il 412 lo stato della stagione si rilegge")
+        XCTAssertFalse(vm.puoArchiviare)
+    }
+
+    /// Senza risposta dal server (rete giù) non si sa niente di nuovo: lo stato non si rilegge, che sarebbe un'altra attesa a vuoto,
+    /// e il passaggio resta per riprovare.
+    func testSenzaRispostaDelServerLoStatoNonSiRilegge() async {
+        let s = ServerDiProva { metodo, _, _ in
+            if metodo == "POST" { throw ErroreApi.rete("giù") }
+            return Data(#"{"corrente": "2027-28", "rose": "2026-27", "nuova": true}"#.utf8)
+        }
+        let vm = StagioneViewModel(server: s)
+        await vm.carica()
+        await vm.archiviaERiparti()
+        XCTAssertEqual(vm.errore, ErroreApi.rete("giù").localizedDescription)
+        XCTAssertEqual(s.quante("GET /api/stagione"), 1)
+        XCTAssertTrue(vm.puoArchiviare)
+    }
+
     func testLegaSaSeServeIlPassaggioDiStagione() async {
         let s = ServerDiProva { _, percorso, _ in
             if percorso.hasPrefix("/api/stagione") { return Data(#"{"corrente": "2027-28", "rose": "2026-27", "nuova": true}"#.utf8) }

@@ -120,6 +120,9 @@ struct StagioneView: View {
                             Label("Le rose sono della stagione in corso (\(s.corrente ?? "")): non c'è niente da fare.", systemImage: "checkmark.circle")
                                 .font(.subheadline)
                             Text("Quando la stagione finisce e inizia la successiva, qui compare il passaggio guidato.").font(.footnote).foregroundStyle(Color.testoSecondario)
+                            // dopo un rifiuto (un altro dispositivo ha già archiviato) lo stato riletto toglie il passaggio: resta il
+                            // messaggio del server, come l'avviso della web (#731)
+                            if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
                         }
                     }
                 } else if let e = vm.stato.errore {
