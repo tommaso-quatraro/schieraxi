@@ -1,5 +1,6 @@
 """`foto <PR>` (o `foto --da <commit>`): dai file iOS cambiati ricava le schermate da fotografare (foto.json) e stampa il comando
-`gh workflow run screenshot.yml …`. Lo lancia solo con --lancia (le foto le lancia solo il fotografo, su main dopo l'unione).
+`gh workflow run screenshot.yml …`. Lo lancia solo con --lancia (solo il fotografo). Fotografa il ramo della PR se è aperta,
+main se è unita o con --da; --ref sceglie un altro ramo.
 
 Codici di uscita: 0 fatto (anche se non c'è nulla da fotografare); 1 errore di gh o git; 3 ci sono file iOS senza schermata
 in foto.json (avviso su stderr: il comando stampato non li copre)."""
@@ -49,18 +50,22 @@ def _per_persone(c: list[str]) -> str:
     return " ".join(f'{a.split("=", 1)[0]}="{a.split("=", 1)[1]}"' if a.startswith("schermate=") else shlex.quote(a) for a in c)
 
 
-def file_cambiati(esegui: comune.Esegui, pr: int | None, da: str | None) -> list[str]:
+def file_cambiati(esegui: comune.Esegui, pr: int | None, da: str | None) -> tuple[list[str], str]:
+    """File cambiati e ramo da fotografare: quello della PR se è ancora aperta (#717), altrimenti main."""
     if pr is not None:
-        dati = comune.chiama_json(esegui, ["gh", "pr", "view", str(pr), "--json", "files"]) or {}
-        return [f["path"] for f in dati.get("files") or []]
+        dati = comune.chiama_json(esegui, ["gh", "pr", "view", str(pr), "--json", "files,headRefName,state"]) or {}
+        ramo = dati.get("headRefName") if dati.get("state") == "OPEN" else None
+        return [f["path"] for f in dati.get("files") or []], ramo or "main"
     return [r for r in comune.chiama(esegui, ["git", "diff", "--name-only", f"{da}..origin/main", "--", "ios/"]).splitlines()
-            if r.strip()]
+            if r.strip()], "main"
 
 
-def main(esegui: comune.Esegui, pr: int | None = None, da: str | None = None, lancia: bool = False, ref: str = "main",
+def main(esegui: comune.Esegui, pr: int | None = None, da: str | None = None, lancia: bool = False, ref: str | None = None,
          dispositivi: str = "iphone", json_: bool = False) -> int:
     try:
-        esito = schermate(file_cambiati(esegui, pr, da))
+        file, ramo = file_cambiati(esegui, pr, da)
+        esito = schermate(file)
+        ref = ref or ramo
     except comune.ErroreComando as e:
         print(f"foto: {e}", file=sys.stderr)
         return 1
@@ -95,7 +100,7 @@ def opzioni(p) -> None:
     g.add_argument("pr", type=int, nargs="?", help="numero della PR")
     g.add_argument("--da", help="commit dell'ultimo giro di foto: guarda i file iOS cambiati da lì a origin/main")
     p.add_argument("--lancia", action="store_true", help="lancia davvero screenshot.yml (solo il fotografo)")
-    p.add_argument("--ref", default="main", help="ramo su cui fotografare (predefinito: main)")
+    p.add_argument("--ref", default=None, help="ramo su cui fotografare (predefinito: quello della PR se è aperta, altrimenti main)")
     p.add_argument("--dispositivi", default="iphone", choices=["iphone", "ipad", "tutti"], help="predefinito: iphone")
     p.add_argument("--json", action="store_true", help="uscita in JSON per altri script")
 

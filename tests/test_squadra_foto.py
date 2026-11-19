@@ -48,11 +48,11 @@ def test_parte_comune_porta_le_principali_e_widget_la_sua_foto():
 
 
 def test_file_ios_senza_schermata_avvisa_ed_esce_con_3(capsys):
-    f = Finto({"gh pr view 7": {"files": [{"path": "ios/scripts/nuovo.sh"},
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/altro/nuovo.sh"},
                                           {"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}]}})
     assert foto.main(f, pr=7) == 3
     cattura = capsys.readouterr()
-    assert "ios/scripts/nuovo.sh" in cattura.err and "foto.json" in cattura.err
+    assert "ios/altro/nuovo.sh" in cattura.err and "foto.json" in cattura.err
     assert 'gh workflow run screenshot.yml --ref main -f dispositivi=iphone -f schermate="giornate' in cattura.out
 
 
@@ -114,3 +114,47 @@ def test_ogni_file_di_presentation_ha_una_voce_o_un_ripiego_dichiarato():
                               "e script/squadra nella riga «Aree:» della PR")
     assert dichiarati - set(file) == set(), ("in «ripiego_dichiarato» di script/squadra/foto.json ci sono file che non "
                                              "esistono più (e script/squadra va nella riga «Aree:» della PR)")
+
+
+def _ref_lanciato(f) -> str:
+    [c] = [c for c in f.chiamate if c[:3] == ["gh", "workflow", "run"]]
+    return c[c.index("--ref") + 1]
+
+
+def test_pr_aperta_fotografa_il_suo_ramo():
+    """#717: per una PR aperta le foto vanno fatte sul suo ramo, non su main (che non ha ancora le sue modifiche)."""
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}],
+                                "headRefName": "ramo-della-pr", "state": "OPEN"},
+               "gh workflow run screenshot.yml": ""})
+    assert foto.main(f, pr=7, lancia=True) == 0
+    assert _ref_lanciato(f) == "ramo-della-pr"
+
+
+def test_pr_unita_fotografa_main():
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}],
+                                "headRefName": "ramo-della-pr", "state": "MERGED"},
+               "gh workflow run screenshot.yml": ""})
+    assert foto.main(f, pr=7, lancia=True) == 0
+    assert _ref_lanciato(f) == "main"
+
+
+def test_ref_scritto_a_mano_vince_sul_ramo_della_pr():
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}],
+                                "headRefName": "ramo-della-pr", "state": "OPEN"},
+               "gh workflow run screenshot.yml": ""})
+    assert foto.main(f, pr=7, lancia=True, ref="altro") == 0
+    assert _ref_lanciato(f) == "altro"
+
+
+def test_pr_aperta_da_riga_di_comando_usa_il_ramo(capsys):
+    import squadra
+    f = Finto({"gh pr view 7": {"files": [{"path": "ios/Sources/Presentation/Giornate/GiornateView.swift"}],
+                                "headRefName": "ramo-della-pr", "state": "OPEN"}})
+    squadra.main(["foto", "7"], esegui=f)
+    assert "--ref ramo-della-pr" in capsys.readouterr().out
+
+
+def test_gli_script_di_ios_non_chiedono_foto():
+    """#717: ios/scripts/screenshot.sh (lo strumento delle foto, non l'app) dava l'avviso «aggiungi una regola»."""
+    esito = foto.schermate(["ios/scripts/screenshot.sh", "ios/scripts/scegli_simulatore.py"])
+    assert esito == {"schermate": [], "widget": False, "senza": []}
