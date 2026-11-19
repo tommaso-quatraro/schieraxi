@@ -55,9 +55,16 @@ def scegli(file: str, dati: dict, grafo: grafo_ios.Grafo, scene: list[str]) -> d
             if aree.corrisponde(s, modello):
                 for t in tipi:
                     radici_scena.setdefault(t, []).append(s)
-    trovate = grafo.radici(file, set(radici_scena), set(dati.get("barriere", [])))
+    # i contenitori (RadiceView...) mostrano le loro parti su ogni schermata: arrivarci vale «troppe radici»
+    contenitori = set(dati.get("contenitori", []))
+    trovate = grafo.radici(file, set(radici_scena) | contenitori, set(dati.get("barriere", [])))
     soglia = dati.get("soglia_radici", 4)
-    if 0 < len(trovate) <= soglia:
+    dentro = [t for t in trovate if t in contenitori]
+    if dentro and regola is not None:
+        strade = "; ".join(" ← ".join(trovate[t]) for t in dentro)
+        return {"modo": "ripiego", "schermate": _nomi(dati, regola["schermate"]),
+                "perche": f"il codice arriva a un contenitore di tutte le schermate ({strade}): regola larga"}
+    if not dentro and 0 < len(trovate) <= soglia:
         scelte = {s for t in trovate for s in radici_scena[t]}
         strade = "; ".join(" ← ".join(strada) for strada in trovate.values())
         return {"modo": "grafo", "schermate": [s for s in scene if s in scelte], "perche": f"dal codice: {strade}"}

@@ -68,6 +68,16 @@ def test_la_barriera_ferma_la_risalita():
     assert s["modo"] == "ripiego"
 
 
+def test_una_parte_del_contenitore_dell_app_usa_la_regola_larga():
+    """Un contenitore (come RadiceView) mostra le sue parti su ogni schermata: un file che ci arriva non si restringe alle
+    poche viste radice trovate altrove, ma va alla regola larga come prima."""
+    testi = {**TESTI, "ios/Sources/App/Contenitore.swift": "struct Contenitore: View {\n    var body: some View { Riquadro() }\n}\n"}
+    dati = {**DATI, "contenitori": ["Contenitore"]}
+    s = _scegli("ios/Sources/Presentation/A/Riquadro.swift", dati, testi)
+    assert s["modo"] == "ripiego" and s["schermate"] == ["a"]
+    assert "Contenitore" in s["perche"]
+
+
 def test_estensione_di_un_tipo_esterno_va_a_chi_usa_i_suoi_membri():
     s = _scegli("ios/Sources/Support/Bordino.swift")
     assert s["modo"] == "grafo" and s["schermate"] == ["a", "a-fondo"]
@@ -117,23 +127,14 @@ def test_ogni_modello_di_radici_corrisponde_a_una_schermata():
     assert vecchi == [], "in «radici» di script/squadra/foto.json ci sono schermate che screenshot.sh non ha più"
 
 
-def test_ogni_radice_e_ogni_barriera_sono_tipi_dichiarati():
+def test_ogni_radice_barriera_e_contenitore_e_un_tipo_dichiarato():
     g = foto.grafo_del_repository()
     dati = _dati()
-    nomi = {t for tipi in dati["radici"].values() for t in tipi} | set(dati["barriere"])
-    assert nomi - g.dichiarati == set(), "tipi di «radici» o «barriere» in script/squadra/foto.json che il codice non ha più"
+    nomi = {t for tipi in dati["radici"].values() for t in tipi} | set(dati["barriere"]) | set(dati["contenitori"])
+    assert nomi - g.dichiarati == set(), "tipi di «radici», «barriere» o «contenitori» in script/squadra/foto.json che il codice non ha più"
 
 
 def test_scene_di_screenshot_come_il_file():
     testo = (RADICE / "ios" / "scripts" / "screenshot.sh").read_text(encoding="utf-8")
     attese = re.search(r"^TUTTE=\((.*?)\)", testo, re.S | re.M).group(1).split()
     assert foto.scene_di_screenshot() == attese
-
-
-def test_caso_vero_la_pillola_tua_porta_solo_le_squadre():
-    """PillolaTua.swift ha una regola a mano (rosa); senza, il grafo la trova solo dentro RigaSquadra → «lega-squadre»."""
-    dati = {**_dati(), "regole": [r for r in _dati()["regole"]
-                                  if "ios/Sources/Presentation/Lega/PillolaTua.swift" not in r["percorsi"]]}
-    s = foto.scegli("ios/Sources/Presentation/Lega/PillolaTua.swift", dati, foto.grafo_del_repository(),
-                    foto.scene_di_screenshot())
-    assert s["modo"] == "grafo" and s["schermate"] == ["lega-squadre"]

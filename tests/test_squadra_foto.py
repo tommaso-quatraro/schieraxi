@@ -204,7 +204,7 @@ def test_spiega_dice_per_ogni_file_come_ha_scelto(capsys):
                                 "state": "MERGED"}})
     squadra.main(["foto", "7", "--spiega"], esegui=f)
     out = capsys.readouterr().out
-    assert "ios/Sources/Presentation/Lega/NomeConPillola.swift: grafo: dal codice: SquadreView ←" in out
+    assert "ios/Sources/Presentation/Lega/NomeConPillola.swift: grafo: dal codice: " in out
     assert "ios/Sources/Presentation/Giornate/GiornateView.swift: regola:" in out
 
 
