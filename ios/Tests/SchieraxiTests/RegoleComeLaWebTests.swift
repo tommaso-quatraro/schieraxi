@@ -20,7 +20,7 @@ private let testiFissi: [(String, String)] = [
     (Catalogo.Regole.scadenzaAiuto, TestiRegole.scadenzaAiuto),
     (Catalogo.Regole.primaGiornata, TestiRegole.primaGiornata),
     (Catalogo.Regole.primaGiornataAiuto, TestiRegole.primaGiornataAiuto),
-    (Catalogo.Regole.conPrimaGiornata, TestiRegole.conPrimaGiornata),
+    (Catalogo.Regole.primaGiornataConta, TestiRegole.conPrimaGiornata),
 ]
 
 /// Un esito della prova del modificatore: `m` e `b` sono i numeri come li scrive la web (segnaposto `{m}` e `{b}`).

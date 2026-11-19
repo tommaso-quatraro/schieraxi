@@ -1,5 +1,6 @@
 """Le parti pure di prove/fotografie_dal_vero.py: nomi inventati coerenti, nessun nome vero che resta, orologio fermo."""
 import importlib.util
+import os
 from datetime import date, datetime
 from pathlib import Path
 
@@ -59,3 +60,26 @@ def test_la_mappatura_privata_vale_in_ogni_forma_del_nome():
                     key=lambda c: -len(c[0]))
     testo = "Mario Rossi, /api/rosa?squadra=I%20Lupi, mario-rossi, MARIO ROSSI, i_lupi"
     assert fv.applica_mappatura(testo, coppie) == "Luca Bianchi, /api/rosa?squadra=Squadra%20Demo, luca-bianchi, LUCA BIANCHI, squadra_demo"
+
+
+def test_gli_accessi_dell_account_si_registrano_con_account_e_google_accesi_solo_per_quella_richiesta(tmp_path, monkeypatch):
+    """`/api/account/social/accessi` (#536) risponde solo con gli account e Google accesi: lo script li accende per quella richiesta,
+    con un account di prova nella cartella della copia, e poi rimette l'ambiente com'era (le altre rotte restano senza account)."""
+    from fastapi.testclient import TestClient
+
+    from fanta import account, server
+    monkeypatch.setattr(account, "COSTO", {"n": 2 ** 4, "r": 8, "p": 1})     # password veloci da calcolare
+    for nome in ("FANTA_MULTIUTENTE", "FANTA_DATI_UTENTI", "FANTA_REGISTRAZIONE", *fv.GOOGLE_FINTO):
+        monkeypatch.delenv(nome, raising=False)
+    cliente = TestClient(server.app, headers={"X-Fanta": "1"})
+    risposte = {}
+
+    def chiedi(percorso, intestazioni=None):
+        r = cliente.get(percorso, headers=intestazioni)
+        risposte[percorso] = (r.status_code, r.json())
+
+    fv.registra_accessi(chiedi, tmp_path)
+    assert risposte == {"/api/account/social/accessi": (200, {"password": True, "social": [], "disponibili": ["google"]})}
+    assert not account.multiutente()
+    assert not any(nome in os.environ for nome in ("FANTA_DATI_UTENTI", *fv.GOOGLE_FINTO))
+    assert (tmp_path / "account-prova" / "account.sqlite").is_file()          # l'account di prova sta nella copia, non in dati/

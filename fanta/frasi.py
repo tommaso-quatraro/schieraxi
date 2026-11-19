@@ -46,6 +46,8 @@ CATALOGO: dict[str, str] = {
     # il numero della giornata, lega e Serie A insieme (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»): si usa con nome_giornata
     "giornata.lega": "Giornata {n} · {a}ª di Serie A",
     "giornata.serie_a": "{a}ª giornata di Serie A",
+    # la giornata da preparare non ha ancora le date (#552): Oggi (`senza_data`) al posto di «Si chiude …»
+    "giornata.senza_data": "Data da definire",
     "elenco.e": " e ",
     # nessuna giornata da giocare perché l'ultima è tutta giocata (#656): Oggi e widget (`campionato_finito`), Formazione e le rotte
     # che vogliono una giornata (409); d'estate, con la stagione nuova senza calendario, resta il messaggio del calendario

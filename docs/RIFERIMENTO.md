@@ -154,6 +154,10 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   20 minuti dopo un rilascio e ogni giorno alle 5:17 UTC; se non passa apre l'issue `P1` «Collaudo della prova: v<N> non passa» e la
   corsa è rossa; se la prova resta indietro di oltre 40 minuti, issue «La prova non si aggiorna». Segreti `PROVA_URL`, `PROVA_UTENTE`,
   `PROVA_PASSWORD` (senza: non fa niente). Test `tests/test_collaudo_prova.py`.
+  `sentinella_understat.py` con `.github/workflows/sentinella-understat.yml`: con la fonte Understat spenta (issue #756), una volta
+  al giorno alle 4:23 UTC fa una sola richiesta ai dati della Serie A (indirizzo e intestazioni del lettore, nessun nuovo tentativo,
+  20 secondi); se arrivano dati veri commenta l'issue #756 «Understat è tornato: riaccendere la fonte» una volta sola e la riapre se
+  è chiusa, altrimenti tace. Niente lancio a mano. Si toglie quando la fonte è riaccesa. Test `tests/test_sentinella_understat.py`.
 - `script/squadra/`: comandi del coordinatore (`stato`, `attendi`, `annulla-superate`, `pulisci`, `brief`, `foto`, `giro`, `pr-pronta`,
   `giornata`: dice se una giornata è passata senza errori, in `giornata.py`, decisione 0013) con `aree.json`, `foto.json`, `modello-brief.md`: `python script/squadra/squadra.py <comando> --help`, guida in `script/squadra/LEGGIMI.md`.
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.

@@ -88,7 +88,7 @@ enum PassoGuidato: String, CaseIterable, Identifiable {
         case .squadra:
             return "Indica quale delle squadre è la tua: la formazione consigliata è per lei."
         case .stemma:
-            return "Scegli lo stemma e la maglia della tua squadra dalle tue foto. Compaiono in Oggi e nella formazione."
+            return "Scegli lo stemma e la maglia della tua squadra dalle tue foto. Compaiono nella Formazione."
         case .widget:
             return "Tieni premuto sulla Home, tocca + e cerca SchieraXI. Il widget si collega da solo: se dice «Tocca per collegare», toccalo."
         case .avvisi:

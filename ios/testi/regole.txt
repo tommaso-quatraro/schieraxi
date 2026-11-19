@@ -21,7 +21,7 @@ regole.scadenza
 regole.scadenza_aiuto
 regole.prima_giornata
 regole.prima_giornata_aiuto
-regole.con_prima_giornata
+regole.prima_giornata_conta
 
 # Editor delle regole
 regole.nome_della_lega
@@ -83,7 +83,7 @@ regole.nuovo
 
 # Partite rinviate: la sezione delle regole (TestiRinvio in Domain/PartiteRinviate.swift)
 regole.rinviate
-regole.rinviate_aiuto
+regole.rinviate_aiuto_formazione
 regole.rv_aspetta
 regole.rv_senza_voto
 regole.rv_ufficio

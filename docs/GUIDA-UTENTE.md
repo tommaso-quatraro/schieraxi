@@ -67,7 +67,7 @@ Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le ril
 Limiti: file fino a 5 MB, al massimo 20 squadre da 40 giocatori, 10 importazioni al giorno (controllare e poi salvare lo stesso file conta una volta). Se dice che non trova nessuna rosa, controlla di aver preso il file delle rose e non il calendario o la classifica.
 Se il file Excel della lega ha anche altri fogli (listone, calendario, classifica), SchieraXI li salta e legge solo le rose; se ci sono solo quelli, il messaggio dice quali fogli ha saltato.
 
-Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo) va bene. Un codice sconosciuto compare tra i non trovati; se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone, in Lega, **Non riconosciuti**).
+Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo) va bene. Un codice sconosciuto compare tra i non trovati; se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone anche dopo, in fondo a **Impostazioni > Aggiorna le rose**).
 
 Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Impostazioni > Aggiorna le rose**.
 
@@ -99,7 +99,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
 È la schermata che si apre per prima e risponde a una domanda sola: chi schiero. Al telefono, dall'alto in basso (fino al campo con gli 11 sta tutto nel primo schermo):
 
-- la **giornata** e **quando si chiude** la formazione («Si chiude oggi 18:20», con accanto quanto manca);
+- la **giornata** e **quando si chiude** la formazione («Si chiude oggi 18:20», con accanto quanto manca); se la Serie A non ha ancora fissato le date della giornata, **Data da definire**;
 - le **decisioni**, se ce ne sono: al massimo due righe, la più urgente per prima, ognuna con il suo pulsante. Ci sono solo le cose che chiedono di fare qualcosa:
   - **un titolare da cambiare**: per esempio «Rossi è in dubbio… Meglio Bianchi.», con quanti punti attesi vale il cambio («+0,9 punti attesi.») e **Sostituisci**, che lo fa subito. Te lo propone solo se anche la formazione consigliata lo toglie, uno diverso per ciascun titolare, e mai per differenze minime;
   - **«La consigliata è cambiata da quando l'hai salvata»**, con chi entra e chi esce (fino a tre cambi; con di più, quanti sono): **Usa la consigliata** prende quella nuova. Se uno dei tuoi titolari salvati è infortunato o squalificato, la riga lo dice per primo ed è **Urgente**;
@@ -192,7 +192,7 @@ Gli avvisi dicono le cose a parole e sono nella lingua scelta nell'app: se la me
 
 Attivazione: nella web app, **Impostazioni > Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo.
 
-Nell'app per iPhone e iPad (Impostazioni > Notifiche) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
+Nell'app per iPhone e iPad (Impostazioni > Avvisi) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
 Se le notifiche smettono di arrivare dopo un cambio di chiave del server: spegni e riaccendi **Avvisi su questo dispositivo**.
 
