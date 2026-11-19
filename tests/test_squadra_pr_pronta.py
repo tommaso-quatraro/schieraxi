@@ -1,14 +1,18 @@
 """script/squadra: `pr-pronta <PR>` toglie la bozza solo se tutto torna; altrimenti stampa ogni motivo ed esce con 1."""
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from test_squadra_comune import Finto
+from test_squadra_foto_grafo import DATI, SCENE, TESTI
 
 import comune
+import foto
+import grafo_ios
 import pr_pronta
 
 CORPO = "## Cosa cambia\nx\n## Perché\ny\n## Come l'ho provato\nz\n## Revisione\n- revisore: nessun rilievo bloccante\n"
@@ -286,3 +290,82 @@ def test_ambito_vecchio_con_altri_motivi_non_fa_update_branch():
 
 def test_il_codice_4_e_scritto_nell_aiuto():
     assert "4" in pr_pronta.USCITE and "riprova" in pr_pronta.USCITE
+
+
+# #505: «Foto da fare» che non nomina le schermate raggiunte dai file iOS della PR: avviso, mai rifiuto. Dati finti del grafo
+# (test_squadra_foto_grafo): Riquadro.swift arriva a VistaA, cioè alle schermate «a» e «a-fondo»; VistaB.swift ha la
+# regola a mano «b».
+RIQUADRO = "ios/Sources/Presentation/A/Riquadro.swift"
+VISTA_A = "ios/Sources/Presentation/A/VistaA.swift"
+VISTA_B = "ios/Sources/Presentation/B/VistaB.swift"
+# porta.py (chi toglie la bozza in automatico) legge queste parole come «controlli non ancora finiti» e aspetta ancora
+PAROLE_DI_PORTA = ("in corso", "in coda", "attesa")
+
+
+def _foto_finte(monkeypatch):
+    """Il disco e foto.json finti: i file Swift sul disco sono TESTI, le regole DATI, le schermate SCENE."""
+    monkeypatch.setattr(grafo_ios, "leggi", lambda radice: dict(TESTI))
+    monkeypatch.setattr(foto, "scene_di_screenshot", lambda: list(SCENE))
+    vero = comune.leggi_json
+    monkeypatch.setattr(comune, "leggi_json", lambda nome: DATI if nome == "foto.json" else vero(nome))
+
+
+def _pr_ios(corpo, file, testi=TESTI, **extra):
+    """Risposte per una PR che cambia `file` (percorsi iOS) con il testo di `testi` nel suo commit."""
+    show = {f"git show t1:{f}": testi[f] for f in file if f in testi}
+    return risposte(p=pr(corpo=CORPO + corpo), file=[{"filename": f, "status": "modified"} for f in file], **{**show, **extra})
+
+
+def _avvisi_foto(uscita: str) -> list[str]:
+    return [a for a in json.loads(uscita)["avvisi"] if a != "avviso finto"]
+
+
+def test_avviso_se_foto_da_fare_non_copre_le_schermate_toccate(monkeypatch, capsys):
+    _foto_finte(monkeypatch)
+    codice, f, _ = lancia(_pr_ios("\nFoto da fare: a b\n", [RIQUADRO, VISTA_B]), esegui_davvero=True, json_=True)
+    uscita = capsys.readouterr().out
+    assert codice == 0 and json.loads(uscita)["pronta"] is True
+    assert f.lanciati("gh pr ready") == ["gh pr ready 7"]             # un avviso: la bozza si toglie lo stesso
+    [avviso] = _avvisi_foto(uscita)
+    assert "a-fondo" in avviso and RIQUADRO in avviso                 # quale schermata manca e da quale file arriva
+    assert VISTA_B not in avviso                                      # «b» c'è già
+    assert not any(p in avviso for p in PAROLE_DI_PORTA)
+
+
+def test_nessun_avviso_se_le_righe_foto_da_fare_coprono_tutto(monkeypatch, capsys):
+    """Come nelle PR vere: nomi fra apici inversi e virgole, testo dopo l'elenco, più righe (#744, #767)."""
+    _foto_finte(monkeypatch)
+    corpo = ("\nFoto da fare: `a`, `b` (elenco di `squadra.py foto 7`). Devono restare uguali.\n"
+             "- Foto prima dell'unione: a-fondo\n")
+    assert lancia(_pr_ios(corpo, [RIQUADRO, VISTA_B]), json_=True)[0] == 0
+    assert _avvisi_foto(capsys.readouterr().out) == []
+    # «a-fondo» non vale «a»: le parole contano intere
+    lancia(_pr_ios("\nFoto da fare: a-fondo b\n", [RIQUADRO, VISTA_B]), json_=True)
+    [avviso] = _avvisi_foto(capsys.readouterr().out)
+    assert RIQUADRO in avviso and VISTA_B not in avviso
+
+
+def test_foto_dal_codice_della_pr_non_dal_disco(monkeypatch, capsys):
+    """Un file nuovo della PR non c'è sul disco: il grafo lo legge dal commit della PR (solo testo, mai eseguito).
+    Dal disco varrebbe la regola larga («a», già nominata) e l'avviso su a-fondo non ci sarebbe."""
+    _foto_finte(monkeypatch)
+    nuovo = "ios/Sources/Presentation/A/Nuovo.swift"
+    testi = {**TESTI, nuovo: "struct Nuovo: View {\n    var body: some View { Text(\"n\") }\n}\n",
+             VISTA_A: "struct VistaA: View {\n    var body: some View { Nuovo() }\n}\n"}
+    codice, f, _ = lancia(_pr_ios("\nFoto da fare: a\n", [nuovo, VISTA_A], testi=testi), json_=True)
+    assert codice == 0
+    [avviso] = _avvisi_foto(capsys.readouterr().out)
+    assert nuovo in avviso and "a-fondo" in avviso
+    assert f.lanciati("git fetch origin refs/pull/7/head")             # il commit della PR c'è prima di «git show»
+
+
+def test_foto_non_confrontabili_non_fermano_pr_pronta(monkeypatch, capsys):
+    """Se il commit della PR non si legge, un avviso corto e pr-pronta va avanti (niente uscita 3)."""
+    _foto_finte(monkeypatch)
+    r = _pr_ios("\nFoto da fare: a\n", [RIQUADRO], **{f"git show t1:{RIQUADRO}": comune.Risposta(128, "", "fatal: bad object")})
+    codice, f, _ = lancia(r, esegui_davvero=True, json_=True)
+    uscita = capsys.readouterr().out
+    assert codice == 0 and f.lanciati("gh pr ready")
+    [avviso] = _avvisi_foto(uscita)
+    assert "Foto da fare" in avviso and "squadra.py foto 7" in avviso
+    assert not any(p in avviso for p in PAROLE_DI_PORTA)
