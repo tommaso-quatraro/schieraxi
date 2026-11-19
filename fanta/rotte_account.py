@@ -535,7 +535,7 @@ def imposta_email(dati: NuovaEmail, request: Request, utente: Utente = Depends(u
 @router.post("/api/account/email/conferma", dependencies=[Depends(_attivo)])
 def conferma_email(dati: CodiceEmail, request: Request, utente: Utente = Depends(utente_corrente)):
     with closing(account.apri()) as db:
-        return account_email.conferma_email(db, utente.id, dati.codice, ip_reale(request))
+        return account_email.conferma_email(db, utente.id, dati.codice, ip_reale(request), sessione=token_della_richiesta(request))
 
 
 @router.post("/api/account/email/togli", dependencies=[Depends(_attivo)])

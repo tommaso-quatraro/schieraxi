@@ -152,6 +152,83 @@ def test_cambio_email_avvisa_la_vecchia_e_serve_la_password(web, posta_finta):
     assert any(m.a == "vecchia@example.com" and "cambiata" in m.oggetto for m in posta_finta)
 
 
+def entra(nome="marco", password=PASSWORD):
+    c = cliente()
+    assert c.post("/api/account/accedi", json={"nome_utente": nome, "password": password}).status_code == 200
+    return c
+
+
+def conferma_ultimo(c, posta_finta, email):
+    return c.post("/api/account/email/conferma", json={"codice": codice_di(ultimi(posta_finta, email)[-1])})
+
+
+def test_cambio_email_tiene_dentro_solo_chi_conferma(web, posta_finta):
+    """La prima email non chiude niente; sostituire un'email già confermata chiude gli altri dispositivi, non questo."""
+    c = cliente()
+    registra(c, "marco")
+    telefono = entra()
+    assert imposta(c, "prima@example.com").status_code == 200
+    assert conferma_ultimo(c, posta_finta, "prima@example.com").status_code == 200
+    assert telefono.get("/api/account/me").status_code == 200                   # la prima email: gli altri restano dentro
+    assert imposta(c, "seconda@example.com").status_code == 200
+    assert conferma_ultimo(c, posta_finta, "seconda@example.com").status_code == 200
+    assert c.get("/api/account/me").json()["email"] == "seconda@example.com"   # chi ha confermato resta dentro
+    assert telefono.get("/api/account/me").status_code == 401
+
+
+def test_cambio_email_dall_app_tiene_dentro_l_app(web, posta_finta):
+    utente_con_email(web, posta_finta, "marco", "vecchia@example.com")
+    altro = entra()
+    r = cliente().post("/api/account/accedi", json={"nome_utente": "marco", "password": PASSWORD, "nativo": True})
+    app = cliente(Authorization=f"Bearer {r.json()['token']}")
+    assert imposta(app, "nuova@example.com").status_code == 200
+    assert conferma_ultimo(app, posta_finta, "nuova@example.com").status_code == 200
+    assert app.get("/api/account/me").status_code == 200
+    assert altro.get("/api/account/me").status_code == 401
+
+
+def test_avviso_al_vecchio_indirizzo_mette_prima_l_email_poi_la_password(web, posta_finta):
+    c = utente_con_email(web, posta_finta, "marco", "vecchia@example.com")
+    posta_finta.clear()
+    imposta(c, "nuova@example.com")
+    conferma_ultimo(c, posta_finta, "nuova@example.com")
+    testo = ultimi(posta_finta, "vecchia@example.com")[-1].testo
+    assert "Impostazioni > Il tuo account" in testo
+    passi = [testo.find(p) for p in ("rimetti questo indirizzo", "cambia la password", "«Esci da tutti i dispositivi»")]
+    assert -1 not in passi and passi == sorted(passi), testo
+    assert "Privacy" in testo, testo                                          # se non si riesce più a entrare
+
+
+def test_togliere_l_email_avvisa_il_vecchio_indirizzo(web, posta_finta):
+    c = utente_con_email(web, posta_finta, "marco", "vecchia@example.com")
+    posta_finta.clear()
+    assert c.post("/api/account/email/togli", json={"password": PASSWORD}).status_code == 200
+    avvisi = ultimi(posta_finta, "vecchia@example.com")
+    assert len(avvisi) == 1 and "rimetti questo indirizzo" in avvisi[0].testo, [m.testo for m in avvisi]
+
+
+def test_i_passi_dell_avviso_riportano_l_account_al_proprietario(web, posta_finta):
+    """Il proprietario segue i passi dell'avviso arrivato al suo indirizzo: alla fine resta dentro solo lui, con la sua email
+    e la password nuova."""
+    utente_con_email(web, posta_finta, "marco", "mia@example.com")
+    altro = entra()
+    assert imposta(altro, "altra@example.com").status_code == 200
+    assert conferma_ultimo(altro, posta_finta, "altra@example.com").status_code == 200
+    assert "rimetti questo indirizzo" in ultimi(posta_finta, "mia@example.com")[-1].testo
+    mio = entra()
+    assert imposta(mio, "mia@example.com").status_code == 200                  # 1. rimetti questo indirizzo
+    assert conferma_ultimo(mio, posta_finta, "mia@example.com").status_code == 200
+    assert altro.get("/api/account/me").status_code == 401                     # già qui l'altro dispositivo è fuori
+    nuova = "una-nuova-password-9"
+    assert mio.post("/api/account/cambia-password", json={"attuale": PASSWORD, "nuova": nuova}).status_code == 200   # 2.
+    assert mio.post("/api/account/esci-da-tutti", json={"password": nuova}).status_code == 200                       # 3.
+    assert cliente().post("/api/account/accedi", json={"nome_utente": "marco", "password": PASSWORD}).status_code == 401
+    posta_finta.clear()
+    assert cliente().post("/api/account/recupero-email", json={"email": "altra@example.com"}).status_code == 200
+    assert not ultimi(posta_finta, "altra@example.com")
+    assert entra(password=nuova).get("/api/account/me").json()["email"] == "mia@example.com"
+
+
 def test_togli_email(web, posta_finta):
     c = utente_con_email(web, posta_finta)
     assert c.post("/api/account/email/togli", json={"password": "sbagliata-sbagliata"}).status_code == 403

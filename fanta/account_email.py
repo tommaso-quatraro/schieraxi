@@ -224,7 +224,10 @@ def chiedi_verifica(db: sqlite3.Connection, utente_id: int, email_grezza, passwo
     return dict(RISPOSTA_INVIO)
 
 
-def conferma_email(db: sqlite3.Connection, utente_id: int, codice, ip: str | None = None, adesso: datetime | None = None) -> dict:
+def conferma_email(db: sqlite3.Connection, utente_id: int, codice, ip: str | None = None, adesso: datetime | None = None,
+                   sessione: str | None = None) -> dict:
+    """Con il codice giusto l'indirizzo in attesa diventa l'email dell'account. Se prende il posto di un'altra email, gli altri
+    dispositivi escono (resta dentro solo la sessione `sessione`, quella che conferma) e il vecchio indirizzo riceve un avviso."""
     adesso = _ora(adesso)
     limite.consuma(db, _chiave("email-prove-account", utente_id), 20, account.ORA)
     if ip:
@@ -242,16 +245,22 @@ def conferma_email(db: sqlite3.Connection, utente_id: int, codice, ip: str | Non
         raise ErroreAccount(NON_VALIDO, 403) from None
     evento("email_verificata", ip=ip)
     if vecchia and vecchia != riga["email"]:
+        if sessione:                                         # senza la sessione di chi conferma non si chiude niente
+            account.esci_da_tutti(db, utente_id, tranne=sessione)
         _invia(db, posta.modello_email_cambiata(vecchia))
     return {"ok": True, "email": riga["email"]}
 
 
 def togli_email(db: sqlite3.Connection, utente_id: int, password: str, sessione: str | None = None) -> dict:
+    """Toglie l'email dell'account (serve la password); l'indirizzo tolto riceve lo stesso avviso di un cambio."""
     account._controlla_password_attuale(db, utente_id, password, sessione)
+    vecchia = db.execute("SELECT email FROM utenti WHERE id = ?", (utente_id,)).fetchone()["email"]
     db.execute("UPDATE utenti SET email = NULL WHERE id = ?", (utente_id,))
     db.execute("UPDATE codici_email SET usato = 1 WHERE utente_id = ?", (utente_id,))
     db.commit()
     evento("email_tolta")
+    if vecchia:
+        _invia(db, posta.modello_email_cambiata(vecchia))
     return {"ok": True}
 
 
