@@ -17,6 +17,15 @@
       "forma": "neutro",
       "chi": "fatto (rassegna 6/11): `CifreScheda` (colore del testo); dal 12/11/2026 «Fantavoto atteso, se gioca» e accanto «gioca N%», arancio fra 50 e 79 e rosso sotto 50 (`SogliaGioca`), come la web (#616)",
       "stato": "fatto"
+    },
+    {
+      "id": 85,
+      "schermata": "Scheda giocatore: «Metti in campo» (#643)",
+      "web": "nella scheda di chi non è fra gli 11, solo prima della scadenza della giornata e non per infortunati, squalificati o `bloccati`, il pulsante «Metti in campo» (`formazione.metti_in_campo`); il tocco chiede a `POST /api/formazione/metti-in-campo` chi può lasciargli il posto e apre «Chi esce per {nome}» (`formazione.chi_esce_per`, `formazione.esce_spiega`): una riga per titolare con la differenza di punti attesi del server, «Si passa al {modulo}» se il modulo cambia (`formazione.passi_al`), «Nessun titolare può lasciargli il posto.» se non c'è nessuno; un tocco fa il cambio come «Sostituisci» (`apriMettiInCampo` in `app.js`)",
+      "iphone": "non c'è: dalla scheda di un panchinaro non si mette in campo; per farlo si apre il titolare da togliere e si usa «Sostituisci»",
+      "forma": "web",
+      "chi": "#778",
+      "stato": "da-fare"
     }
   ]
 }
