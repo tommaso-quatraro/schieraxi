@@ -26,6 +26,28 @@ struct AccessoFraseEContoTests {
         #expect(SchermataAccesso.fraseDopoInvio(ErroreApi.rete("x")) == SchermataAccesso.testoErrore(ErroreApi.rete("x")))
     }
 
+    /// Revisione della #806: con due messaggi veri del server (`err.troppi_tentativi`, `err.molto_occupato`) la frase diventava
+    /// «Troppi tentativi:.» e «Il server è molto occupato:.». Il segno prima dell'invito a riprovare se ne va con l'invito.
+    @Test("Dalla frase del server si toglie anche il segno prima dell'invito: mai «:.»", arguments: [
+        ("Troppi tentativi: riprova più tardi", "Troppi tentativi."),
+        ("Il server è molto occupato: riprova fra qualche secondo", "Il server è molto occupato."),
+    ])
+    func senzaDuePuntiFinali(messaggio: String, attesa: String) {
+        let errore = ErroreApi.troppiTentativi(messaggio, riprovaTra: 30)
+        #expect(SchermataAccesso.fraseDopoInvio(errore) == attesa)
+        #expect(errore.errorDescription == "\(attesa) Riprova tra 30 secondi.", "anche dove il tempo resta nella frase")
+    }
+
+    /// Il pulsante conta al massimo un'ora: oltre (per esempio il tetto delle iscrizioni del giorno) la frase tiene il tempo,
+    /// come la web («Riprova tra 20 h»).
+    @Test("Attesa oltre l'ora: la frase tiene il tempo, come la web; fino all'ora no")
+    func attesaLunga() {
+        let lunga = ErroreApi.troppiTentativi("Per oggi le iscrizioni sono chiuse: riprova domani", riprovaTra: 72_000)
+        #expect(SchermataAccesso.fraseDopoInvio(lunga) == "Per oggi le iscrizioni sono chiuse. Riprova tra 20 h.")
+        #expect(SchermataAccesso.fraseDopoInvio(ErroreApi.troppiTentativi("Calma.", riprovaTra: 3600)) == "Calma.",
+                "un'ora esatta la conta ancora il pulsante")
+    }
+
     @Test("Altrove, dove nessun pulsante conta, il tempo resta nella frase")
     func altroveColTempo() {
         #expect(SchermataAccesso.testoErrore(ErroreApi.troppiTentativi("Calma.", riprovaTra: 30)).contains("30 secondi"))
