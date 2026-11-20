@@ -240,7 +240,7 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Su uno schermo più l
 | Il tuo account | solo con gli account: nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci**, **Esci da tutti i dispositivi** |
 | Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). La dimensione del testo è quella del telefono o dello zoom del browser |
 | Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente (licenza AGPL-3.0, se il server lo indica), versione e **Novità**: le ultime dieci versioni, le altre con **Mostra le versioni precedenti** |
-| Gestione | solo per chi gestisce il server: **Aggiorna i dati** (scarica subito dalle fonti; di solito il server lo fa da solo. Se all'apertura dell'app il server è già occupato con un aggiornamento, dei dati o di una versione nuova, il pulsante è spento con una frase che lo dice e si riaccende da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in corso»; con tutte le fonti spente lo dice e non parte), **Stato dei dati** (con le fonti da accendere o spegnere), inviti, codici per chi ha perso la password, utenti, **Errori recenti** (ore nell'ora italiana, eventi di sicurezza con il loro nome in parole). Sul server senza account anche **Avvisi anche per l'app nativa** |
+| Gestione | solo per chi gestisce il server: **Aggiorna i dati** (scarica subito dalle fonti; di solito il server lo fa da solo. Se all'apertura dell'app il server è già occupato con un aggiornamento, dei dati o di una versione nuova, il pulsante è spento con una frase che lo dice e si riaccende da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in corso»; con tutte le fonti spente lo dice e non parte), **Stato dei dati** (con le fonti da accendere o spegnere), inviti, codici per chi ha perso la password, utenti (chi gestisce ha accanto «amministratore»), **Errori recenti** (ore nell'ora italiana, eventi di sicurezza con il loro nome in parole, tempi in millisecondi o secondi, e accanto al percorso tecnico il nome della parte dell'app, per esempio «Formazione (/api/oggi)»). Sul server senza account anche **Avvisi anche per l'app nativa** |
 
 Gli indirizzi di prima (le schede Squadra e Altro, i gruppi delle impostazioni come Notifiche e Avanzate) aprono la voce che ne ha preso il posto.
 
@@ -286,6 +286,8 @@ Sulla schermata Home, a schermo intero, senza store:
 | Cosa vedi | Cosa fare |
 |---|---|
 | «Server non raggiungibile» | Controlla la connessione, poi tocca **Riprova** (o ricarica la pagina). |
+| «Non riesco a collegarmi: controlla internet e riprova» | Il dispositivo è senza rete: controlla Wi-Fi o dati mobili, poi riprova. |
+| «Il server non risponde: riprova fra poco» | La rete c'è, ma il server è spento o sta ripartendo: riprova dopo qualche minuto. Se dura, avvisa chi gestisce l'app. |
 | «Aggiornamento pronto – Ricarica» in basso | È uscita una versione nuova dell'app: tocca **Ricarica** per usarla. Fino ad allora resta tutta la versione di prima. |
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
