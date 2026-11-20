@@ -755,11 +755,13 @@ private extension LegaDemo {
             ], "taratura": taraturaProbabili(adesso: adesso)],
             "partite": ["totali": 380, "giocate": 100],
             "registro_nostri": registroNostri(),
+            // ogni riga con il suo nome scritto dal server (`etichetta`, #808), come `fanta/stato_dati.py`
             "aggiornamenti": [
-                ["cosa": "listone e quotazioni", "quando": quando(30), "errori": [String]()],
-                ["cosa": "probabili formazioni", "quando": lettura, "errori": ["Una fonte non ha risposto: usata la copia delle \(copia)"]],
-                ["cosa": "voti e statistiche", "quando": quando(52), "errori": [String]()],
-                ["cosa": "calendario e coppe europee", "quando": quando(100), "errori": [String]()],
+                ["cosa": "listone e quotazioni", "etichetta": "Listone e quotazioni", "quando": quando(30), "errori": [String]()],
+                ["cosa": "probabili formazioni", "etichetta": "Probabili formazioni", "quando": lettura,
+                 "errori": ["Una fonte non ha risposto: usata la copia delle \(copia)"]],
+                ["cosa": "voti e statistiche", "etichetta": "Voti e bonus", "quando": quando(52), "errori": [String]()],
+                ["cosa": "calendario e coppe europee", "etichetta": "Calendario", "quando": quando(100), "errori": [String]()],
             ],
             "registro": registroGiornate(),
             "consiglio": consiglioFormazione(adesso: adesso),
