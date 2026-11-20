@@ -129,7 +129,7 @@
   },
   "oggi.rinvio_ufficio": {
     "it": "prendono il voto d'ufficio ({v})",
-    "en": "get the official grade ({v})"
+    "en": "get the default grade ({v})"
   },
   "oggi.rinvio_regola_lega": {
     "it": "È la regola della tua lega (Impostazioni › Regole e scadenza). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata.",
@@ -177,7 +177,7 @@
   },
   "oggi.la_consigliata": {
     "it": "La consigliata",
-    "en": "The suggested lineup"
+    "en": "The recommended lineup"
   },
   "oggi.punti_fatti": {
     "it": "punti fatti",
@@ -185,11 +185,11 @@
   },
   "oggi.con_consigliata": {
     "it": "Con la consigliata: {fatti} punti ({attesi} attesi).",
-    "en": "With the suggested lineup: {fatti} points ({attesi} expected)."
+    "en": "With the recommended lineup: {fatti} points ({attesi} expected)."
   },
   "oggi.confronto_in_arrivo": {
     "it": "Il confronto con la consigliata arriva nel Diario.",
-    "en": "The comparison with the suggested lineup will appear in the Diary."
+    "en": "The comparison with the recommended lineup will appear in the Diary."
   },
   "oggi.apri_diario": {
     "it": "Apri il Diario",

@@ -578,7 +578,7 @@
   },
   "frase.rinvio.voto_ufficio": {
     "it": "partita rinviata: voto d'ufficio {voto}",
-    "en": "postponed match: official grade {voto}"
+    "en": "postponed match: default grade {voto}"
   },
   "frase.probabili.oggi": {
     "it": "Probabili aggiornate alle {ora}",
@@ -1083,5 +1083,41 @@
   "frase.diario.peggio": {
     "it": "Peggio del previsto: {peggio}.",
     "en": "Worse than expected: {peggio}."
+  },
+  "frase.registro.persa_senza_tentativi": {
+    "it": "nessun tentativo negli ultimi 10 minuti prima della prima partita (servizio fermo o registro spento)",
+    "en": "no attempt in the last 10 minutes before the first match (service stopped or log switched off)"
+  },
+  "frase.registro.nostri_senza_tentativi": {
+    "it": "nessun tentativo prima della prima partita (servizio fermo o riavviato)",
+    "en": "no attempt before the first match (service stopped or restarted)"
+  },
+  "frase.registro.persa_previsioni": {
+    "it": "previsioni vuote o incomplete",
+    "en": "predictions empty or incomplete"
+  },
+  "frase.registro.persa_calcolo": {
+    "it": "calcolo delle previsioni non riuscito",
+    "en": "the predictions could not be computed"
+  },
+  "frase.registro.persa_altra_giornata": {
+    "it": "previsioni di un'altra giornata",
+    "en": "predictions for another matchday"
+  },
+  "frase.registro.persa_nessun_giocatore": {
+    "it": "nessun giocatore con i numeri da salvare",
+    "en": "no player with numbers to save"
+  },
+  "frase.registro.persa_scrittura": {
+    "it": "salvataggio nell'archivio non riuscito",
+    "en": "saving to the archive failed"
+  },
+  "frase.registro.persa_misura": {
+    "it": "misura a giornata finita non riuscita più volte",
+    "en": "the measurement after the matchday failed several times"
+  },
+  "frase.registro.persa_altro": {
+    "it": "motivo non riconosciuto: i dettagli sono nel log del server",
+    "en": "unrecognised reason: the details are in the server log"
   }
 }

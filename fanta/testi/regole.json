@@ -315,7 +315,7 @@
   },
   "regole.rv_ufficio": {
     "it": "Voto d'ufficio",
-    "en": "Official grade"
+    "en": "Default grade"
   },
   "regole.rv_aiuto_aspetta": {
     "it": "Si aspetta il recupero e conta il voto preso lì: i giocatori restano schierabili.",
@@ -331,7 +331,7 @@
   },
   "regole.rv_voto": {
     "it": "Voto d'ufficio",
-    "en": "Official grade"
+    "en": "Default grade"
   },
   "regole.crediti_iniziali": {
     "it": "Crediti iniziali",

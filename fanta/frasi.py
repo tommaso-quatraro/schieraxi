@@ -330,6 +330,18 @@ CATALOGO: dict[str, str] = {
     "diario.meglio_peggio": "Meglio del previsto: {meglio}. Peggio: {peggio}.",
     "diario.meglio": "Meglio del previsto: {meglio}.",
     "diario.peggio": "Peggio del previsto: {peggio}.",
+    # il motivo di una giornata persa in Stato dei dati (#833, `registro_giornate.motivo_persa`): il registro dei mostrati e quello
+    # dei nostri. Il motivo tecnico (tipo d'errore, colonne, numeri) resta nell'archivio, nel log e in `persa_dettaglio`. Le due
+    # «senza_tentativi» sono anche il motivo salvato (`SENZA_TENTATIVI` dei due registri): l'iPhone e le sue prove le leggono così
+    "registro.persa_senza_tentativi": "nessun tentativo negli ultimi 10 minuti prima della prima partita (servizio fermo o registro spento)",
+    "registro.nostri_senza_tentativi": "nessun tentativo prima della prima partita (servizio fermo o riavviato)",
+    "registro.persa_previsioni": "previsioni vuote o incomplete",
+    "registro.persa_calcolo": "calcolo delle previsioni non riuscito",
+    "registro.persa_altra_giornata": "previsioni di un'altra giornata",
+    "registro.persa_nessun_giocatore": "nessun giocatore con i numeri da salvare",
+    "registro.persa_scrittura": "salvataggio nell'archivio non riuscito",
+    "registro.persa_misura": "misura a giornata finita non riuscita più volte",
+    "registro.persa_altro": "motivo non riconosciuto: i dettagli sono nel log del server",
 }
 
 
