@@ -182,7 +182,7 @@ scadenza:
 
 `test_ora_italiana.py`, date e conto alla rovescia nell'ora italiana con il browser su un altro fuso (#776):
 - in ogni fase la Formazione con il browser a New York e a Tokyo dice le stesse cose (tutto il testo della pagina) che con il
-  browser in Italia;
+  browser in Italia; lo stesso la pagina Giornate, che ha la riga di stato con la data dei dati;
 - prima della scadenza, a Roma, New York e Tokyo: «Si chiude oggi 18:20» e «fra 3 h 10 min» (a Tokyo le 18:20 italiane sono
   il giorno dopo: resta «oggi»);
 - a cavallo del cambio dell'ora (sabato sera prima dell'ultima domenica di ottobre e di marzo, scadenza la domenica): il conto
