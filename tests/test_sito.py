@@ -419,6 +419,16 @@ def test_esempio_di_campo(nome):
 
 
 @pytest.mark.parametrize("nome", PAGINE)
+def test_panchina_con_gioca_solo_sotto_80(nome):
+    """Come nell'app (docs/GUIDA-UTENTE.md): la probabilità di giocare compare solo sotto l'80%, quindi l'esempio non mostra
+    valori che l'app non mostrerebbe mai."""
+    _, testo = leggi(nome)
+    _, _, panca = _campo(testo)
+    assert len(panca) == 3
+    assert all(numero(r[2]) < 0.8 for r in panca), [r[2] for r in panca]
+
+
+@pytest.mark.parametrize("nome", PAGINE)
 def test_esempio_di_calcolo_torna(nome):
     """Base + voci = fantavoto atteso; fantavoto × probabilità di giocare = punti attesi; lo stesso giocatore è sul campo."""
     _, testo = leggi(nome)
