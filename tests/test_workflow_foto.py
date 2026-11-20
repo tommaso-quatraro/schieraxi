@@ -106,7 +106,24 @@ def test_il_job_dei_widget_parte_solo_quando_servono():
     assert "parallelo: ${{ steps.widget.outputs.parallelo }}" in quando
     entrate = _blocco(_blocco(_blocco(_testo(), "on", 0), "workflow_dispatch", 2), "inputs", 4)
     widget = _blocco(entrate, "widget", 6)
-    assert re.search(r"options:\s*\[auto, si, no\]", widget) and re.search(r"default:\s*auto", widget)
+    assert re.search(r"options:\s*\[auto, si, 'no'\]", widget) and re.search(r"default:\s*auto", widget)
+
+
+# In YAML 1.1 (quello di GitHub) no, yes, on, off, y, n, true, false senza virgolette sono vero o falso, non testo: l'opzione
+# «no» arrivava come «false», `gh workflow run -f widget=no` rispondeva 422 e la corsa faceva i widget (issue #791).
+BOOLEANI_YAML = {"y", "yes", "n", "no", "on", "off", "true", "false"}
+
+
+def test_le_opzioni_delle_scelte_sono_testo_e_non_vero_o_falso():
+    for workflow in sorted((RADICE / ".github" / "workflows").glob("*.yml")):
+        for opzioni in re.findall(r"^\s+options:\s*\[([^\]]*)\]", workflow.read_text(encoding="utf-8"), re.M):
+            for voce in (v.strip() for v in opzioni.split(",")):
+                assert voce.lower() not in BOOLEANI_YAML, f"{workflow.name}: l'opzione {voce} va fra virgolette ('{voce}')"
+
+
+def test_widget_no_si_legge_come_testo():
+    comandi = _comandi(_passo(_job("quando"), "Servono le foto dei widget?"))
+    assert "[ \"$RICHIESTA\" = 'no' ]" in comandi
 
 
 def test_i_file_dei_widget_coprono_tutto_quello_che_compila_l_anteprima():
