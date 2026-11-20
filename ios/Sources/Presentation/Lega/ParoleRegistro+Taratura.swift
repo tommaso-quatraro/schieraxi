@@ -1,29 +1,29 @@
 import Foundation
 
 /// La riga della taratura di «gioca N%» con le probabili in Stato dei dati (#379), uguale alla web: `rigaTaratura` di
-/// `fanta/web/app.js` e i testi `sd.tar_*` del catalogo comune (`Catalogo+Sd.swift`; `TaraturaProbabiliTests` prova le frasi composte). Stato, versione, numeri
-/// della prova e motivo arrivano dal server: qui si scrivono e basta, Brier con quattro cifre e scarto in punti come il registro.
-/// Sta con le parole del registro: la taratura si fa sulle giornate del registro e ne usa i numeri (`cifra`, `punti`).
+/// `fanta/web/app.js` e i testi `sd.tar_*` del catalogo comune (`Catalogo+Sd.swift`; `TaraturaProbabiliTests` prova le frasi composte). Stato, numeri
+/// della prova e motivo arrivano dal server: qui si scrivono e basta. La prova si dice con l'errore medio delle percentuali in punti,
+/// con due cifre, contro quello senza questa taratura (#821); versione e Brier restano per chi gestisce il server.
+/// Sta con le parole del registro: la taratura si fa sulle giornate del registro.
 extension ParoleRegistro {
     /// La frase sotto i gruppi della calibrazione; nil senza il campo o con uno stato che l'app non conosce (nessuna riga).
     static func taratura(_ t: StatoDati.Taratura?) -> String? {
         guard let t else { return nil }
         let giornate = t.giornate ?? 0
         let parti: [String?]
-        switch t.stato ?? "" {
-        case "in_attesa":
+        switch t.statoNoto {
+        case .inAttesa?:
             let minimo = t.minimo ?? 0
             parti = [giornate < minimo ? Catalogo.Sd.tarInAttesaSu(giornate, m: String(minimo)) : Catalogo.Sd.tarInAttesa(giornate)]
-        case "attiva":
-            let versione = t.versione ?? "–"
-            let accesa = giornoMese(t.dal).map { Catalogo.Sd.tarAttivaDal(d: $0, v: versione) } ?? Catalogo.Sd.tarAttiva(v: versione)
+        case .attiva?:
+            let accesa = giornoMese(t.dal).map { Catalogo.Sd.tarAttivaDal(d: $0) } ?? Catalogo.Sd.tarAttiva
             let rimandato = t.motivo == "scadenza_vicina" ? motivoTaratura(t.motivo, giornate: giornate) : nil
             parti = [accesa, t.prova.map(provaTaratura), rimandato]
-        case "non_attiva":
+        case .nonAttiva?:
             parti = [Catalogo.Sd.tarNonAttiva, motivoTaratura(t.motivo, giornate: giornate)]
-        case "spenta":
+        case .spenta?:
             parti = [Catalogo.Sd.tarSpenta]
-        default:
+        case nil:
             return nil
         }
         return Catalogo.Sd.tarRiga(s: parti.compactMap { $0 }.joined(separator: " · "))
@@ -43,10 +43,10 @@ extension ParoleRegistro {
         }
     }
 
-    /// I numeri della prova (`sd.tar_prova`): Brier con quattro cifre, scarto in punti con una cifra e senza «,0»; «–» se mancano.
+    /// I numeri della prova (`sd.tar_prova`): l'errore medio delle percentuali con la taratura e senza, in punti con due cifre
+    /// (`errore`); «–» se mancano (un server vecchio manda solo i Brier: l'app non fa la radice da sé).
     static func provaTaratura(_ p: StatoDati.Taratura.Prova) -> String {
-        Catalogo.Sd.tarProva(p.giornate ?? 0, b: Formato.decimali(p.brier, cifre: 4), c: punti(p.calibrazione, per: 100),
-                             p: Formato.decimali(p.brierPrima, cifre: 4))
+        Catalogo.Sd.tarProva(p.giornate ?? 0, e: errore(p.erroreMedio), p: errore(p.erroreMedioPrima))
     }
 
     /// «15/1» dalla data del server («2027-01-15T10:00:00»), senza passare dal fuso orario; nil se non è una data.

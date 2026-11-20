@@ -33,6 +33,31 @@ def servizio_risponde(indirizzo: str = "http://127.0.0.1:8000/api/stato", attesa
         return False
 
 
+def controlla_database_account(percorso: Path | None = None) -> tuple[bool, str]:
+    """Dopo un'installazione (#825): apre davvero il database degli account, con le migrazioni come farebbe il servizio alla prima
+    richiesta, e confronta la sua versione (PRAGMA user_version) con le migrazioni attese. (riuscito, frase per il registro).
+    Senza il file non crea niente (account spenti, o il servizio li tiene altrove): va bene.
+    La chiama script/server/aggiorna-app.sh con il codice appena installato, mentre lo script che gira è quello di prima: nome,
+    argomenti e risultato non si cambiano (si aggiunge una funzione nuova, questa resta)."""
+    import contextlib
+
+    from . import account, percorsi
+    percorso = percorso or percorsi.cartella_account() / "account.sqlite"
+    if not percorso.exists():
+        return True, f"database degli account assente ({percorso.name}): niente da controllare"
+    attese = len(account.MIGRAZIONI)
+    try:
+        with contextlib.closing(account.apri(percorso)) as db:
+            versione = db.execute("PRAGMA user_version").fetchone()[0]
+    except Exception as e:       # non si nasconde: l'installazione si considera non riuscita, con il motivo nel registro
+        causa = e.__cause__ or e.__context__          # apri() trasforma gli errori di SQLite in «rovinato»: qui serve quello vero
+        dettaglio = f" ({type(causa).__name__}: {causa})" if causa else ""
+        return False, f"il database degli account non si apre: {type(e).__name__}: {e}{dettaglio}"
+    if versione != attese:
+        return False, f"il database degli account è alla versione {versione}, il codice ne aspetta {attese}"
+    return True, f"database degli account aperto, versione {versione} di {attese}"
+
+
 TENTATIVI = 3                             # prove prima di dire "non risponde": un riavvio (aggiornamento dell'app) dura qualche secondo
 PAUSA = 5.0                               # secondi fra una prova e l'altra
 

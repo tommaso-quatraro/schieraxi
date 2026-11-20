@@ -2,8 +2,9 @@
 #379). Sotto i gruppi della carta «Quanto ci azzecca il modello», una frase sola per chi amministra: in attesa, attiva (con la prova),
 non attiva (con il motivo), spenta a mano. I dati vengono dalla funzione vera del server (`taratura_probabili.riepilogo`, sulla
 tabella `taratura_probabili` dell'archivio); la riga la scrive la funzione vera di `app.js`, eseguita con node. I numeri sono quelli
-del server: la web li scrive con la virgola, non li ricalcola. Brier con quattro decimali e «1 punto» al singolare, come sull'iPhone
-(decisi in revisione); il singolare vale anche per la riga di «gioca N%» del registro delle giornate."""
+del server: la web li scrive con la virgola, non li ricalcola. Dal #821 la prova si dice in parole semplici, con l'errore medio
+delle percentuali in punti (due decimali, calcolato dal server) e senza «versione N» né «Brier»; «1 punto» al singolare resta nella
+riga di «gioca N%» del registro delle giornate."""
 import json
 import re
 import shutil
@@ -23,7 +24,7 @@ ST = "2026-27"
 COEFFICIENTI = {"titolare": [-1.0, 4.0], "panchina": [-2.5, 3.0], "dubbio": -0.5, "non_citato": 0.03}   # coerenti (`tp.coerente`)
 PROVA = [[ST, 9], [ST, 10], [ST, 11], [ST, 12]]
 # la prova di una versione: Brier 0,0912 della formula tarata contro 0,0968 dei numeri di partenza e 0,0975 dei mostrati,
-# scarto (calibrazione) 0,0213 = 2,1 punti
+# scarto (calibrazione) 0,0213 = 2,1 punti; errore medio delle percentuali 30,20 punti contro 31,11 (`tp.errore_medio`)
 MISURA = {"nuova": {"brier": 0.0912, "calibrazione": 0.0213}, "attuale": {"brier": 0.0968}, "mostrati": {"brier": 0.0975}}
 # una versione attiva tornata ai numeri di partenza: nelle 2 giornate dopo la sua prova sbagliava di più
 RITORNO = {**MISURA, "ritirata": {"quando": "2027-02-01T10:00:00"},
@@ -102,51 +103,47 @@ def test_in_attesa_con_le_giornate_gia_raggiunte(tmp_path, monkeypatch):
 def test_attiva_con_la_prova(tmp_path, monkeypatch):
     taratura = _riepilogo(tmp_path, monkeypatch, 8, ATTIVA)
     assert (taratura["stato"], taratura["dal"], taratura["motivo"]) == ("attiva", "2027-01-15T10:00:00", None)
-    assert _frase(taratura) == (f"{TITOLO}: attiva dal 15/1 (versione 1) · nelle ultime 4 giornate Brier 0,0912 invece di 0,0968, "
-                                "scarto 2,1 punti")
+    assert _frase(taratura) == (f"{TITOLO}: attiva dal 15/1 · nelle ultime 4 giornate le percentuali «gioca N%» hanno sbagliato "
+                                "in media di 30,20 punti, contro 31,11 senza questa taratura")
 
 
 def test_attiva_con_un_cambio_rimandato(tmp_path, monkeypatch):
     rimandata = _riga(2, "2027-02-06T10:00:00", "rimandata", "scadenza_vicina")
     taratura = _riepilogo(tmp_path, monkeypatch, 10, ATTIVA, rimandata)
     assert (taratura["stato"], taratura["motivo"]) == ("attiva", "scadenza_vicina")
-    assert _frase(taratura) == (f"{TITOLO}: attiva dal 15/1 (versione 1) · nelle ultime 4 giornate Brier 0,0912 invece di 0,0968, "
-                                "scarto 2,1 punti · cambio rimandato: la prima partita è tra meno di 24 ore")
+    assert _frase(taratura) == (f"{TITOLO}: attiva dal 15/1 · nelle ultime 4 giornate le percentuali «gioca N%» hanno sbagliato "
+                                "in media di 30,20 punti, contro 31,11 senza questa taratura · cambio rimandato: la prima partita è "
+                                "tra meno di 24 ore")
 
 
 def test_attiva_senza_numeri_della_prova_ne_data():
     taratura = {"stato": "attiva", "giornate": 8, "minimo": 4, "versione": 3, "dal": None, "prova": None, "motivo": None}
-    assert _frase(taratura) == f"{TITOLO}: attiva (versione 3)"
+    assert _frase(taratura) == f"{TITOLO}: attiva"
     taratura = {**taratura, "dal": "2027-03-02T06:00:00",
-                "prova": {"giornate": 1, "brier": None, "brier_prima": 0.1, "brier_mostrati": None, "calibrazione": None}}
-    assert _frase(taratura) == f"{TITOLO}: attiva dal 2/3 (versione 3) · nell'ultima giornata Brier – invece di 0,1000, scarto – punti"
+                "prova": {"giornate": 1, "brier": None, "brier_prima": 0.1, "brier_mostrati": None, "calibrazione": None,
+                          "errore_medio": None, "errore_medio_prima": 31.62}}
+    assert _frase(taratura) == (f"{TITOLO}: attiva dal 2/3 · nell'ultima giornata le percentuali «gioca N%» hanno sbagliato in media "
+                                "di – punti, contro 31,62 senza questa taratura")
 
 
-def test_brier_con_quattro_decimali():
-    """Con tre decimali due numeri diversi si leggevano uguali («0,096 invece di 0,096»)."""
-    prova = {"giornate": 5, "brier": 0.09553, "brier_prima": 0.09612, "brier_mostrati": None, "calibrazione": 0.03}
+def test_errore_medio_con_due_decimali_scritto_dal_server():
+    """I numeri sono quelli del server (`errore_medio`, `errore_medio_prima`), con due decimali: con uno solo una versione accesa
+    per un miglioramento dello 0,5% si leggerebbe «30,9 contro 30,9». Il Brier non si scrive più, né si ricalcola qui."""
+    prova = {"giornate": 5, "brier": 0.09553, "brier_prima": 0.09612, "brier_mostrati": None, "calibrazione": 0.03,
+             "errore_medio": 30.91, "errore_medio_prima": 31.0}
     taratura = {"stato": "attiva", "giornate": 8, "minimo": 4, "versione": 2, "dal": None, "prova": prova, "motivo": None}
-    assert _frase(taratura) == f"{TITOLO}: attiva (versione 2) · nelle ultime 5 giornate Brier 0,0955 invece di 0,0961, scarto 3 punti"
-    assert "Brier 0.0955 instead of 0.0961" in _frase(taratura, "en")
+    assert _frase(taratura) == (f"{TITOLO}: attiva · nelle ultime 5 giornate le percentuali «gioca N%» hanno sbagliato in media di "
+                                "30,91 punti, contro 31,00 senza questa taratura")
+    assert _frase(taratura, "en") == ("Calibration with the probable lineups: active · in the last 5 matchdays the «plays N%» "
+                                      "percentages were off by 30.91 points on average, against 31.00 without this calibration")
 
 
-@pytest.mark.parametrize(("calibrazione", "scarto"), [
-    (0.01, "1 punto"), (0.0104, "1 punto"), (0.014, "1,4 punti"), (0.0213, "2,1 punti"), (0.1, "10 punti"), (0, "0 punti"),
-    (None, "– punti"),
-])
-def test_scarto_di_1_punto_al_singolare(calibrazione, scarto):
-    """Come `ParoleRegistro.punti` dell'iPhone: «punto» quando il numero scritto è «1» (anche 1,04 scritto «1»)."""
-    prova = {"giornate": 5, "brier": 0.0955, "brier_prima": 0.0961, "brier_mostrati": None, "calibrazione": calibrazione}
-    taratura = {"stato": "attiva", "giornate": 8, "minimo": 4, "versione": 2, "dal": None, "prova": prova, "motivo": None}
-    assert _frase(taratura) == f"{TITOLO}: attiva (versione 2) · nelle ultime 5 giornate Brier 0,0955 invece di 0,0961, scarto {scarto}"
-
-
-def test_scarto_di_1_punto_al_singolare_in_inglese():
+def test_server_vecchio_senza_errore_medio_scrive_il_trattino():
+    """Un server di prima di #821 manda solo i Brier: la web non fa la radice da sé, scrive «–»."""
     prova = {"giornate": 1, "brier": 0.0955, "brier_prima": 0.0961, "brier_mostrati": None, "calibrazione": 0.01}
     taratura = {"stato": "attiva", "giornate": 8, "minimo": 4, "versione": 2, "dal": None, "prova": prova, "motivo": None}
-    assert _frase(taratura, "en").endswith("in the last matchday Brier 0.0955 instead of 0.0961, gap 1 point")
-    prova = {**prova, "calibrazione": 0.0213}
-    assert _frase({**taratura, "prova": prova}, "en").endswith("gap 2.1 points")
+    assert _frase(taratura) == (f"{TITOLO}: attiva · nell'ultima giornata le percentuali «gioca N%» hanno sbagliato in media di "
+                                "– punti, contro – senza questa taratura")
 
 
 @pytest.mark.parametrize(("calibrazione", "it", "en"), [
@@ -159,10 +156,11 @@ def test_riga_di_gioca_del_registro_1_punto_al_singolare(calibrazione, it, en):
                 "soglie": {"I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88},
                 "i1": -0.057, "errore_modello": 1.0, "errore_fantamedia": 1.06, "brier": 0.1, "calibrazione": calibrazione,
                 "copertura": 0.8, "per_giornata": []}
+    registro = {**registro, "errore_medio": 31.62, "soglie": {**registro["soglie"], "I2_errore_medio": 38.73}}
     testo = " ".join(re.sub(r"<[^>]+>", " ", _esegui("cartaRegistro", registro)).split())
-    assert f"{it} · punteggio di Brier 0,100 (al massimo 0,150)" in testo
+    assert f"{it} · errore medio delle percentuali 31,62 punti (al massimo 38,73)" in testo
     testo = " ".join(re.sub(r"<[^>]+>", " ", _esegui("cartaRegistro", registro, "en")).split())
-    assert f"{en} · Brier score 0.100 (at most 0.150)" in testo
+    assert f"{en} · average error of the percentages 31.62 points (at most 38.73)" in testo
 
 
 def test_le_soglie_scritte_nei_testi_sono_quelle_del_server():
@@ -206,7 +204,7 @@ def test_spenta_a_mano(tmp_path, monkeypatch):
 @pytest.mark.parametrize(("motivo", "frase"), [
     ("non_migliora", "non sbaglia meno dei numeri di partenza"),
     ("poche_giornate", "la prova passa, si accende con 8 giornate (ora 7)"),
-    ("fuori_soglia", "fuori dalle soglie di scarto o di Brier"),
+    ("fuori_soglia", "fuori dalle soglie di scarto o di errore medio delle percentuali"),
     ("incoerente", "i numeri tarati non sono validi"),
     ("peggiorata", "tornata ai numeri di partenza: sbagliava di più nelle ultime giornate"),
     ("scadenza_vicina", "cambio rimandato: la prima partita è tra meno di 24 ore"),
@@ -236,14 +234,16 @@ def test_senza_campo_niente_riga():
     assert _frase({"stato": "sconosciuto", "giornate": 1, "minimo": 4}) == ""
 
 
-def test_versione_protetta():
+def test_versione_non_scritta_e_dati_protetti():
+    """La versione resta nella risposta (per chi gestisce il server) ma la riga non la scrive più (#821)."""
     taratura = {"stato": "attiva", "giornate": 8, "minimo": 4, "versione": "<b>1</b>", "dal": "x", "prova": None, "motivo": None}
     frase = _frase(taratura)
-    assert "<b>" not in frase and "&lt;b&gt;1&lt;/b&gt;" in frase and frase == f"{TITOLO}: attiva (versione &lt;b&gt;1&lt;/b&gt;)"
+    assert "<b>" not in frase and "1" not in frase and frase == f"{TITOLO}: attiva"
     for stato, motivo in (("in_attesa", None), ("non_attiva", "poche_giornate")):       # giornate: solo numeri, mai il testo ricevuto
         html = _html({"stato": stato, "giornate": "<i>5</i>", "minimo": "<i>4</i>", "versione": 1, "prova": None, "motivo": motivo})
         assert "<i>" not in html
-    html = _html({**taratura, "versione": 1, "prova": {"giornate": "<i>4</i>", "brier": 0.1, "brier_prima": 0.1, "calibrazione": 0.02}})
+    html = _html({**taratura, "versione": 1, "prova": {"giornate": "<i>4</i>", "brier": 0.1, "brier_prima": 0.1, "calibrazione": 0.02,
+                                                      "errore_medio": "<i>3</i>", "errore_medio_prima": "<i>3</i>"}})
     assert "<i>" not in html
 
 
@@ -257,8 +257,9 @@ def test_niente_chiavi_mancanti_ne_numeri_rotti(tmp_path, monkeypatch, lingua):
         testo = _frase(taratura, lingua)
         assert testo and "sd.tar_" not in testo and "sd.reg_" not in testo
         assert "undefined" not in testo and "NaN" not in testo and "null" not in testo and "[object" not in testo
+        assert "Brier" not in testo and "version" not in testo and "–" not in testo
     if lingua == "en":
-        assert _frase(stati[1], "en").startswith("Calibration with the probable lineups: active since 15/1 (version 1)")
+        assert _frase(stati[1], "en").startswith("Calibration with the probable lineups: active since 15/1 · in the last 4 matchdays")
 
 
 def test_la_fixture_dell_iphone_e_la_risposta_vera_del_server(tmp_path, monkeypatch):
