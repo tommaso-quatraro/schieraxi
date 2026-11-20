@@ -30,10 +30,10 @@
     {
       "id": 59,
       "schermata": "Stato dei dati, taratura di «gioca N%»",
-      "web": "sotto i gruppi di «Quanto ci azzecca il modello» una frase «Taratura con le probabili: …» dal campo `calibrazione.taratura` del server: «in attesa · 2 giornate su 4», «attiva dal 15/1 (versione 1) · nelle ultime 4 giornate Brier 0,0912 invece di 0,0968, scarto 2,1 punti» (Brier con quattro decimali, «1 punto» al singolare anche nella riga di «gioca N%» del registro), «non attiva · » e il motivo (per esempio «non sbaglia meno dei numeri di partenza»), «spenta a mano»; negli aggiornamenti «Taratura di «gioca N%»» (`rigaTaratura`, testi `sd.tar_*`, `sd.reg_punti`, `sd.f_taratura`)",
-      "iphone": "uguale, nel piè della sezione «Quanto sono giuste le previsioni» (`ParoleRegistro.taratura`), e lo stesso nome negli aggiornamenti; Brier con quattro decimali e «1 punto» al singolare (anche nella riga di «gioca N%» del registro), decisi in revisione e uguali sulla web",
+      "web": "sotto i gruppi di «Quanto ci azzecca il modello» una frase «Taratura con le probabili: …» dal campo `calibrazione.taratura` del server: «in attesa · 2 giornate su 4», «attiva dal 15/1 · nelle ultime 4 giornate le percentuali «gioca N%» hanno sbagliato in media di 30,20 punti, contro 31,11 senza questa taratura» (dal #821 l'errore medio delle percentuali in punti con due decimali, scritto dal server: niente «versione N» né «Brier»; «–» se un server vecchio non lo manda), «non attiva · » e il motivo (per esempio «non sbaglia meno dei numeri di partenza»), «spenta a mano»; negli aggiornamenti «Taratura di «gioca N%»». Nella riga di «gioca N%» del registro «scarto 1 punto (al massimo 5) · errore medio delle percentuali 31,62 punti (al massimo 38,73)», con «1 punto» al singolare (`rigaTaratura`, `cartaRegistro`, testi `sd.tar_*`, `sd.reg_i2_riga`, `sd.reg_punti`, `sd.f_taratura`)",
+      "iphone": "uguale, nel piè della sezione «Quanto sono giuste le previsioni» (`ParoleRegistro.taratura`), e lo stesso nome negli aggiornamenti; errore medio delle percentuali con due decimali (#821, campi facoltativi: «–» con un server vecchio) e «1 punto» al singolare nella riga di «gioca N%» del registro, uguali sulla web",
       "forma": "web",
-      "chi": "fatto con #379 (testi dal catalogo, `Catalogo.Sd` da #496; test sulla stessa risposta del server)",
+      "chi": "fatto con #379 (testi dal catalogo, `Catalogo.Sd` da #496; test sulla stessa risposta del server); parole semplici con #821",
       "stato": "fatto"
     },
     {
