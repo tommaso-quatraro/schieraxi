@@ -13,7 +13,8 @@ se scambiarli varrebbe di più (il Confronto dice «invertendoli varrebbe di pi�
 (#335) una riga, perché il cambio vale meno della soglia (ma se a schermo i due numeri sono uguali, le righe del pari, dal 4 in
 poi: #659); altrimenti nessuna riga (meglio niente che una scusa: succede con gli stili prudenti o rischiosi e con un modulo
 diverso da quello proposto, che costano punti apposta);
-2. titolare anche se incerto: se non gioca, in panchina c'è una riserva che gioca quasi di sicuro, e insieme valgono di più;
+2. titolare anche se incerto: se non gioca, in panchina c'è una riserva che gioca quasi di sicuro, e insieme valgono di più (mai
+in una lega senza sostituzioni, #816: lì l'incerto si confronta con il miglior escluso del suo ruolo);
 3. con lui la formazione fa più punti attesi;
 se le due formazioni valgono lo stesso (come per il Confronto, o con lo stesso numero a schermo):
 4. gioca più sicuro dell'altro;
@@ -21,7 +22,8 @@ se le due formazioni valgono lo stesso (come per il Confronto, o con lo stesso n
 6. il primo motivo proprio a favore del suo «perché questo numero»;
 7. con l'uno o con l'altro la formazione vale quasi lo stesso.
 Un titolare incerto senza una riserva sicura e senza un escluso con più punti attesi ha la riga che lo dice (`senza_riserva`):
-non nomina nessuno e non ha un conto.
+non nomina nessuno e non ha un conto. Se quasi certamente non gioca (sotto il 20%, anche lo 0% di un infortunato) e fuori dagli
+undici nessun altro del suo ruolo può giocare, la riga dice che è titolare per questo (`nessun_altro`, #816).
 
 Campo `perche_scelta` di ogni modulo della risposta di `GET /api/formazione`: [{titolare, altro, testo, frase}] (contratto in
 docs/API.md). Non cambia nessun numero né nessuna scelta.
@@ -87,6 +89,17 @@ def senza_riserva(t: fz.Giocatore) -> Frase:
     return F("scelta.incerto_senza_riserva", p=percento(t.p))
 
 
+def nessun_altro(t: fz.Giocatore, rosa: list[fz.Giocatore], titolari: set[int]) -> Frase | None:
+    """La riga di un titolare che quasi certamente non gioca (sotto `fz.IMPROBABILE_SOTTO`, anche lo 0% di un infortunato) perché
+    nella rosa, fuori dagli undici, nessun altro del suo ruolo può giocare al suo posto (#816: due portieri, uno infortunato e uno
+    squalificato). None se c'è un compagno che può giocare: allora valgono le altre righe."""
+    if t.p >= fz.IMPROBABILE_SOTTO:
+        return None
+    if any(g.ruolo == t.ruolo and g.id not in titolari and g.p >= fz.IMPROBABILE_SOTTO for g in rosa):
+        return None
+    return F("scelta.nessun_altro")
+
+
 def conto(val: fz.Valutatore, rosa: list[fz.Giocatore], titolari: list[fz.Giocatore], panchina: list[fz.Giocatore],
           titolare: fz.Giocatore, altro: fz.Giocatore, regole) -> tuple[float, float]:
     """(punti attesi della formazione com'è, punti attesi con `altro` al posto di `titolare` e la panchina rifatta dal sistema):
@@ -101,7 +114,9 @@ def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.
     Scelta storta = un escluso dello stesso ruolo ha più punti attesi (`punti_attesi` delle schede, il numero che vede l'utente;
     senza, «gioca» per fantavoto atteso): l'altro è quello che ne ha di più. Per un titolare incerto l'altro è la sua riserva, quella
     che la riga nomina: il conto (e il Confronto) è sempre sulla coppia della riga. Un incerto senza riserva sicura e senza un
-    escluso più forte ha la riga `senza_riserva`, con `altro` = None."""
+    escluso più forte ha la riga `senza_riserva`, con `altro` = None.
+    In una lega senza sostituzioni (`panchina.max_sostituzioni` 0, #816) dalla panchina non entra nessuno: nessuna riga nomina una
+    riserva, e l'incerto si confronta con il miglior escluso del suo ruolo, come una scelta storta (di solito «più punti attesi»)."""
     per_id = {g.id: g for g in rosa}
     ids = [int(i) for i in m.get("titolari") or []]
     panchina_ids = [int(i) for i in m.get("panchina") or []]
@@ -112,6 +127,7 @@ def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.
     # gli esclusi: prima la panchina nel suo ordine, poi gli altri della rosa (a pari punti vince il primo)
     esclusi = panchina_ids + [g.id for g in rosa if g.id not in scelti]
     riserve = {int(x["titolare"]): x.get("riserva") for x in m.get("incerti") or []}      # None = nessuna riserva sicura
+    sostituzioni = regole.panchina.max_sostituzioni > 0
 
     def punti(i: int) -> float:
         v = (schede.get(str(i)) or {}).get("punti_attesi")
@@ -119,12 +135,22 @@ def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.
     righe = []
     for t in titolari:
         rivali = [i for i in esclusi if per_id[i].ruolo == t.ruolo and punti(i) > punti(t.id)]
-        riserva = per_id.get(riserve.get(t.id))
+        riserva = per_id.get(riserve.get(t.id)) if sostituzioni else None
         if not rivali and riserva is None:
-            if t.id in riserve:           # incerto, nessuno da cui farsi coprire e nessuno con più punti: lo si dice
+            if t.id not in riserve:
+                continue
+            frase = nessun_altro(t, rosa, set(ids))
+            if frase is not None:         # non gioca, ma nessuno può prendere il suo posto: «anche se incerto (gioca 0%)» non spiega
+                righe.append({"titolare": t.id, "altro": None, "testo": frase, "frase": frase.json()})
+                continue
+            if sostituzioni:              # incerto, nessuno da cui farsi coprire e nessuno con più punti: lo si dice
                 frase = senza_riserva(t)
                 righe.append({"titolare": t.id, "altro": None, "testo": frase, "frase": frase.json()})
-            continue
+                continue
+            # senza sostituzioni la panchina non conta: il confronto è con il miglior escluso del suo ruolo, se c'è
+            rivali = [i for i in esclusi if per_id[i].ruolo == t.ruolo]
+            if not rivali:
+                continue
         altro = riserva if riserva is not None else per_id[max(rivali, key=punti)]
         attuale, invertita = conto(val, rosa, titolari, panchina, t, altro, regole)
         frase = motivo(t, altro, attuale, invertita, riserva, (schede.get(str(t.id)) or {}).get("perche_numero"), tenuta)

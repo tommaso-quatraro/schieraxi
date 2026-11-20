@@ -72,6 +72,25 @@ CATALOGO: dict[str, str] = {
     "dafare.consigliata_cambiata_fuori_molti": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
     "dafare.fuori_infortunato": "{nome} è infortunato",
     "dafare.fuori_squalificato": "{nome} è squalificato",
+    # reparto della rosa scoperto o senza ricambi (fanta/copertura.py, #816): {ruolo} = una `dafare.copertura_<ruolo>` («nessun
+    # portiere»), {quanti} = una `rose.<ruolo>` («2 portieri»), {testo} = una `dafare.copertura_nessuno` o `_pochi`, {fuori} e {nomi} =
+    # un elenco di nomi o una `dafare.copertura_altri`, {diffidati} = una `dafare.copertura_diffidati_nomi`
+    "dafare.copertura_portiere": "portiere",
+    "dafare.copertura_difensore": "difensore",
+    "dafare.copertura_centrocampista": "centrocampista",
+    "dafare.copertura_attaccante": "attaccante",
+    "dafare.copertura_nessuno": "Non hai nessun {ruolo} disponibile: ne servono almeno {minimo}.",
+    "dafare.copertura_pochi.one": "Hai solo {quanti} disponibile: per giocare ne servono almeno {minimo}.",
+    "dafare.copertura_pochi.other": "Hai solo {quanti} disponibili: per giocare ne servono almeno {minimo}.",
+    "dafare.copertura_fuori": "{testo} Fuori: {fuori}.",
+    "dafare.copertura_diffidati.one": "Hai {quanti} disponibile, ma {diffidati}: con un giallo resti scoperto.",
+    "dafare.copertura_diffidati.other": "Hai {quanti} disponibili, ma {diffidati}: con un giallo resti scoperto.",
+    "dafare.copertura_diffidati_nomi.one": "{n} è diffidato ({nomi})",
+    "dafare.copertura_diffidati_nomi.other": "{n} sono diffidati ({nomi})",
+    "dafare.copertura_minimo.one": "Hai solo {quanti} disponibile, il minimo per giocare: se un altro salta, resti senza ricambi.",
+    "dafare.copertura_minimo.other": "Hai solo {quanti} disponibili, il minimo per giocare: se un altro salta, resti senza ricambi.",
+    "dafare.copertura_moduli": "Con i giocatori disponibili non riesci a schierare nessuno dei moduli ammessi dalla tua lega.",
+    "dafare.copertura_altri": "{nomi} e altri {n}",
     # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
     "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa
@@ -201,6 +220,8 @@ CATALOGO: dict[str, str] = {
     # {riserva} = la prima riserva del ruolo che gioca quasi di sicuro: non per forza la prima a entrare (panchina per fantavoto atteso)
     "scelta.incerto": "Titolare anche se incerto (gioca {p}%): se non gioca, in panchina c'è {riserva} che gioca quasi di sicuro, e insieme valgono di più.",
     "scelta.incerto_senza_riserva": "Titolare anche se incerto (gioca {p}%): in panchina nessuno del suo ruolo gioca quasi di sicuro.",
+    # il titolare quasi certamente non gioca (anche lo 0% di un infortunato) e fuori dagli undici nessuno del suo ruolo può giocare (#816)
+    "scelta.nessun_altro": "Titolare perché nella rosa nessun altro del suo ruolo può giocare al suo posto.",
     "scelta.piu_punti": "Preferito a {altro}: con lui la formazione fa più punti attesi ({attuale} contro {invertita}).",
     "scelta.piu_sicuro": "A pari punti gioca più sicuro di {altro} ({pt}% contro {pa}%).",
     "scelta.fantavoto_piu_alto": "A pari punti ha il fantavoto atteso più alto di {altro} ({mu_t} contro {mu_a}).",

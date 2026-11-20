@@ -354,15 +354,18 @@ INCERTO_SOTTO = 0.5        # il titolare gioca meno di così...
 RISERVA_SOPRA = 0.8        # ...e la riserva che copre il suo posto più di così
 
 
-def incerti(titolari: list, panchina: list) -> list[dict]:
+def incerti(titolari: list, panchina: list, regole: Regole | None = None) -> list[dict]:
     """I titolari incerti e la riserva sicura dello stesso ruolo: [{titolare, riserva}] (id), dal titolare più incerto. La riserva
     è la prima del ruolo, nell'ordine della panchina, che gioca più di RISERVA_SOPRA, una sola per titolare (con due incerti dello
-    stesso ruolo il secondo prende la riserva sicura dopo); `riserva` = None se in panchina non ce n'è una.
+    stesso ruolo il secondo prende la riserva sicura dopo); `riserva` = None se in panchina non ce n'è una, o se le `regole` della
+    lega non ammettono sostituzioni (`panchina.max_sostituzioni` 0, #816): allora dalla panchina non entra nessuno.
     Non è per forza chi entra per primo: la panchina è in ordine di fantavoto atteso (#612), quindi davanti può esserci un compagno
     che vale di più e gioca meno spesso. Prima di #612 si guardava solo la prima riserva del ruolo, che era quasi sempre la più
     sicura; con l'ordine nuovo la riga si perdeva per due titolari incerti su tre."""
     usate: set[int] = set()
     risultato = []
+    if regole is not None and regole.panchina.max_sostituzioni <= 0:
+        panchina = []
     for t in sorted((g for g in titolari if g.p < INCERTO_SOTTO), key=lambda g: g.p):
         r = next((b for b in panchina if b.ruolo == t.ruolo and b.id not in usate and b.p > RISERVA_SOPRA), None)
         if r is not None:
@@ -371,10 +374,10 @@ def incerti(titolari: list, panchina: list) -> list[dict]:
     return risultato
 
 
-def _moduli(tutte: list) -> list[dict]:
+def _moduli(tutte: list, regole: Regole) -> list[dict]:
     return [{"modulo": x.modulo, "punteggio_atteso": round(x.atteso, 1), **incertezza.campi(x.atteso, x.dev),
              "titolari": [g.id for g in x.titolari], "panchina": [g.id for g in x.panchina],
-             "incerti": incerti(x.titolari, x.panchina)} for x in tutte]
+             "incerti": incerti(x.titolari, x.panchina, regole)} for x in tutte]
 
 
 class FormazioneImpossibile(ValueError):
@@ -481,7 +484,7 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, f
             candidati, regole, simulazioni, peso=peso, valutatore=val, inclinazione=inclinazione, **vincoli)
         livelli.append({"rischio": rischio, "stile": rischio, "nome": nome, "descrizione": descrizione, "modulo": fl.modulo,
                         "punteggio_atteso": round(fl.atteso, 1), **incertezza.campi(fl.atteso, fl.dev),
-                        "moduli": _moduli(fl.tutte)})
+                        "moduli": _moduli(fl.tutte, regole)})
     scelti = {g.id for g in f.titolari + f.panchina}
     fuori = [scheda_previsione(g.id, prev.loc[g.id]) for g in rosa if g.id not in scelti]
     senza_dati = [g.nome for g in s.giocatori if g.id is None or g.id not in prev.index]
@@ -494,7 +497,7 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, f
         "senza_dati": senza_dati, "con_probabili": con_probabili,
         # la formazione migliore per ogni modulo (l'app li fa scorrere come Algo); i dettagli dei giocatori in "schede"
         # `dev` e `intervallo` sono calibrati sul backtest (incertezza.py): la fascia contiene i punti veri circa 8 volte su 10
-        "moduli": _moduli(f.tutte), **incertezza.campi(f.atteso, f.dev),
+        "moduli": _moduli(f.tutte, regole), **incertezza.campi(f.atteso, f.dev),
         # la stessa scelta per ogni livello di rischio (da molto sicura a molto rischiosa): quella di base è la consigliata
         # ogni livello è uno STILE completo (preset): profilo di rischio dei giocatori + preferenza di modulo + testo di una riga
         "livelli": livelli, "stile_consigliato": 0,
@@ -924,12 +927,12 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
                                  [per_id[int(g["id"])] for g in migliore.get("panchina") or []])
     if not chiusa and atteso_migliore - atteso >= SOGLIA_CAMBIO_PUNTI:
         return migliore
-    return perche_scelta.aggiungi(_con_consigliata(migliore, tit, panchina, atteso, dev, atteso_migliore, rosa), rosa, regole, val,
+    return perche_scelta.aggiungi(_con_consigliata(migliore, tit, panchina, atteso, dev, atteso_migliore, rosa, regole), rosa, regole, val,
                                   tenuta=not chiusa)
 
 
 def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, dev: float, atteso_migliore: float,
-                     rosa: list) -> dict:
+                     rosa: list, regole: Regole) -> dict:
     """Una copia della risposta della migliore con la consigliata di prima al suo posto: in cima, nella voce del suo modulo
     (`moduli`) e nello stile consigliato (`livelli`), da cui web e iPhone prendono i titolari; `alternative` e `fuori` rifatti.
     La risposta della migliore (in cache) non cambia."""
@@ -937,7 +940,7 @@ def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, d
     modulo = f"{conta['D']}-{conta['C']}-{conta['A']}"
     fascia = incertezza.campi(atteso, dev)
     voce = {"modulo": modulo, "punteggio_atteso": round(atteso, 1), **fascia, "titolari": [g.id for g in tit],
-            "panchina": [g.id for g in panchina], "incerti": incerti(tit, panchina)}
+            "panchina": [g.id for g in panchina], "incerti": incerti(tit, panchina, regole)}
     moduli = [voce if m["modulo"] == modulo else m for m in migliore.get("moduli") or []]
     if not any(m["modulo"] == modulo for m in moduli):
         moduli.append(voce)
