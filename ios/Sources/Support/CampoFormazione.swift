@@ -78,7 +78,8 @@ struct PillolaFantavoto: View {
 
 /// «gioca 85%»: bianco se è quasi sicuro di giocare; sotto l'80% pillola arancio con l'icona di avviso (non solo il colore), sotto
 /// il 50% rossa (`basso`), come la web. Se la pedina è stretta va a capo tra le parole («⚠ gioca» sopra «45%»), come la web: il
-/// carattere non si rimpicciolisce.
+/// carattere non si rimpicciolisce. Le parole senza pillola («Partita in corso», «Senza voto») si staccano da quelle della pedina
+/// accanto come il cognome (`TestoStaccato`).
 struct RigaGioca: View {
     let testo: String
     let incerto: Bool
@@ -97,7 +98,9 @@ struct RigaGioca: View {
                     .background(basso ? Color(red: 1.0, green: 0.42, blue: 0.37) : Color(red: 1.0, green: 0.69, blue: 0.29),
                                 in: .rect(cornerRadius: 8))
             } else {
-                Text(testo)
+                // staccato da quello della pedina accanto e a capo fra le parole come il cognome: «Partita in corso Partita in
+                // corso» si leggeva come una riga sola (#819); su due righe «Partita» sopra «in corso», mai tre
+                TestoStaccato(testo: testo, aCapo: LetturaPedina.dueRighe(testo))
                     .foregroundStyle(.white.opacity(0.95))   // sul prato a 0,8 il contrasto non bastava (controllo di accessibilità)
                     .shadow(color: .black.opacity(0.5), radius: 1)
             }

@@ -137,11 +137,11 @@ def test_menu_del_rinvio_mostra_la_scelta_intera():
     html = _node(_codice_rinvio(f"console.log(JSON.stringify(menuRinvio({json.dumps(RINVIO)})));"))
     riquadro = re.search(r'<span class="menu-scelta"><span class="menu-scelta-testo" aria-hidden="true">([^<]*)</span>\s*<select class="rinvio-modo"', html)
     assert riquadro, html
-    assert riquadro.group(1) == "aspettano il recupero (conta il suo voto)"
+    assert riquadro.group(1) == "aspettano il recupero (conta il voto del recupero)"
     assert html.index("<select") > html.index('<label class="rinvio-scelta">') and html.index("</select>") < html.index("</label>")   # il nome resta la domanda
     # scelta che non è fra i modi (server più nuovo): il riquadro dice quello che il <select> mostra, cioè la prima voce
     strano = _node(_codice_rinvio(f"console.log(JSON.stringify(menuRinvio({json.dumps(RINVIO | {'modo': 'altro'})})));"))
-    assert '<span class="menu-scelta-testo" aria-hidden="true">aspettano il recupero (conta il suo voto)</span>' in strano
+    assert '<span class="menu-scelta-testo" aria-hidden="true">aspettano il recupero (conta il voto del recupero)</span>' in strano
 
     testo = _regole(GLOBALE, ".menu-scelta-testo")
     assert "nowrap" not in testo and "ellipsis" not in testo and "overflow-wrap: break-word" in testo
@@ -158,7 +158,7 @@ def test_il_riquadro_del_rinvio_segue_la_scelta_e_torna_indietro_se_non_si_salva
     """Cambiata la scelta, il riquadro la mostra subito; se il server non la salva, il menu e il riquadro tornano a quella di prima
     (prima il <select> restava sulla scelta non salvata)."""
     dom = r"""
-const NOMI = { aspetta: "aspettano il recupero (conta il suo voto)", senza_voto: "restano senza voto (entra la riserva)", voto_ufficio: "prendono il voto d'ufficio (6)" };
+const NOMI = { aspetta: "aspettano il recupero (conta il voto del recupero)", senza_voto: "restano senza voto (entra la riserva)", voto_ufficio: "prendono il voto d'ufficio (6)" };
 const testo = { textContent: NOMI.aspetta };
 const sel = { value: "aspetta", disabled: false, dataset: { giornata: "8", stagione: "2026-27" }, ascolta: {},
   get selectedOptions() { return [{ textContent: NOMI[this.value] }]; },

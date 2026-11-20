@@ -143,6 +143,17 @@ struct PedinaInteraTests {
         #expect(LetturaPedina.parolePerRiga("") == nil)
     }
 
+    @Test("Lo stato sotto il cognome va a capo su due righe, tagliato dove le righe vengono più pari (#819)")
+    func statoSuDueRighe() {
+        #expect(LetturaPedina.dueRighe("Partita in corso") == "Partita\nin corso", "mai «Partita / in / corso» su tre righe")
+        #expect(LetturaPedina.dueRighe("Voto in arrivo") == "Voto in\narrivo")
+        #expect(LetturaPedina.dueRighe("Senza voto") == "Senza\nvoto")
+        #expect(LetturaPedina.dueRighe("oggi 20:45") == "oggi\n20:45")
+        #expect(LetturaPedina.dueRighe("  Ha   giocato ") == "Ha\ngiocato")
+        #expect(LetturaPedina.dueRighe("Infortunato") == nil, "una parola sola: niente da provare")
+        #expect(LetturaPedina.dueRighe("") == nil)
+    }
+
     // MARK: immagine da condividere
 
 }
