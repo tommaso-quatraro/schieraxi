@@ -152,6 +152,23 @@ final class FumoUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
     }
 
+    /// «Metti in campo» (#778), come la web: la scheda di un panchinaro ha «Metti in campo», che chiude la scheda e apre «Chi esce
+    /// per …» con le righe del server (il server finto risponde per Fabio Dimarzi, in panchina nella demo); un tocco su una riga fa
+    /// il cambio, che si salva da solo.
+    func testMettiInCampoDallaSchedaDiUnPanchinaro() {
+        attendi("È la consigliata.")
+        let panchinaro = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Fabio Dimarzi")).firstMatch
+        XCTAssertTrue(panchinaro.waitForExistence(timeout: 20), "Fabio Dimarzi è in panchina nella demo")
+        for _ in 0..<6 where !panchinaro.isHittable { app.swipeUp(velocity: .slow) }
+        let metti = app.buttons["Metti in campo"].firstMatch
+        tocca(panchinaro, finchéCompare: metti, "un tocco sul panchinaro apre la sua scheda, con «Metti in campo»")
+        tocca(metti, finchéCompare: elemento("Chi esce per Fabio Dimarzi"), "«Metti in campo» chiude la scheda e apre l'elenco")
+        let riga = app.buttons.matching(NSPredicate(format: "label CONTAINS %@",
+                                                    "punti attesi della formazione se Fabio Dimarzi gioca al suo posto")).firstMatch
+        XCTAssertTrue(riga.waitForExistence(timeout: 10), "l'elenco ha le righe del server")
+        tocca(riga, finchéCompare: elemento("L'hai cambiata tu", contiene: true), "un tocco su una riga fa il cambio e lo salva")
+    }
+
     /// Riapre la demo direttamente su una schermata (`-DEMO_SCHERMATA`).
     private func apriDemo(_ schermata: String) {
         app.terminate()

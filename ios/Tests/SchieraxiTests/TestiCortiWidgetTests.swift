@@ -69,6 +69,31 @@ struct TestiCortiWidgetTests {
         #expect(corto.formeRiga == ["Bastrani · Diffidato"])
     }
 
+    /// Foto del 20/11 (#787, punto 9): «Marténi · In dubbio · gioca 62%» sopra «Alvise Bastrani · Diffidato», perché ogni riga
+    /// sceglieva da sola. Ora le righe si accorciano insieme: in ogni forma lo stesso modo di scrivere il nome.
+    @Test("Righe del rettangolo «Da controllare»: tutte con la stessa forma del nome")
+    func righeDubbiInsieme() {
+        let marteni = DubbioRiassunto(id: 1, nome: "Leonel Marténi", ruolo: "A", tipo: "dubbio", pVoto: 0.62)
+        let bastrani = DubbioRiassunto(id: 2, nome: "Alvise Bastrani", ruolo: "D", tipo: "diffidato", pVoto: nil)
+        #expect(DubbioRiassunto.formeRighe([marteni, bastrani]) == [
+            ["Leonel Marténi · In dubbio · gioca 62%", "Alvise Bastrani · Diffidato"],
+            ["Marténi · In dubbio · gioca 62%", "Bastrani · Diffidato"],
+            ["Marténi · gioca 62%", "Bastrani · Diffidato"],
+        ])
+        // con un nome di una parola sola le forme uguali non si ripetono
+        let solo = DubbioRiassunto(id: 3, nome: "Pelayo", ruolo: "C", tipo: "diffidato", pVoto: nil)
+        #expect(DubbioRiassunto.formeRighe([solo]) == [["Pelayo · Diffidato"]])
+        #expect(DubbioRiassunto.formeRighe([]) == [[]])
+    }
+
+    /// Foto del 20/11 (#787, punto 2): sull'iPad con il testo grande il modulo diventava «3-4…». Il modulo resta intero; i punti
+    /// accanto perdono «punti».
+    @Test("Accanto al modulo del widget medio: «72,7 punti», poi «72,7»")
+    func puntiAccantoAlModulo() {
+        #expect(ParoleWidget.punti(72.7) == ["72,7 punti", "72,7"])
+        #expect(ParoleWidget.punti(nil).last == Formato.punti(nil))
+    }
+
     @Test("Sotto il conto del Cruscotto: quando scade o quando si è chiusa; senza probabili prima l'avviso intero, poi solo l'avviso")
     func sottoScadenza() throws {
         let scadenza = try #require(Quando.data("2026-10-31 20:45"))

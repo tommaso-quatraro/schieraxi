@@ -112,8 +112,8 @@
     },
     {
       "cosa": "Date e ore",
-      "forma": "Ora italiana. «oggi 20:45», «ieri 20:45», «domani 18:30»; entro la settimana «sab 31 20:45»; oltre, con il mese. Salvataggi: «oggi alle 13:09», «sab 31 alle 13:09». In una frase del server (motivi, «perché»): «mer 18 nov», sempre con il mese, perché la frase resta in memoria e «domani» invecchierebbe.",
-      "mai": "«sab 8 nov, 18:30» per le partite della settimana; «18/11»"
+      "forma": "Ora italiana. «oggi 20:45», «ieri 20:45», «domani 18:30»; entro la settimana «sab 31 20:45»; oltre, con il mese. Una partita di cui si sa solo il giorno resta senza ora: «domani», «dom 1», «dom 8 nov». Salvataggi: «oggi alle 13:09», «sab 31 alle 13:09». In una frase del server (motivi, «perché»): «mer 18 nov», sempre con il mese, perché la frase resta in memoria e «domani» invecchierebbe.",
+      "mai": "«sab 8 nov, 18:30» per le partite della settimana; «18/11»; «dom 1 00:00» per una partita senza ora"
     },
     {
       "cosa": "Nomi dei giocatori",

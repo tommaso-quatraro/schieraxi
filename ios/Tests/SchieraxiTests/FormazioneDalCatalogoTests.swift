@@ -26,6 +26,10 @@ struct FormazioneDalCatalogoTests {
             Catalogo.Formazione.opzioneConsigliato(modulo: segno, punti: segno), Catalogo.Formazione.diSolito(a: segno, b: segno),
             Catalogo.Formazione.nessunAltroGiocatore, Catalogo.Formazione.alPostoDi(nome: segno), Catalogo.Formazione.sostSpiega(nome: segno),
             Catalogo.Formazione.puntiRispetto(nome: segno), Catalogo.Formazione.chiusa, Catalogo.Formazione.bloccati,
+            // «Metti in campo» (#778)
+            Catalogo.Formazione.mettiInCampo, Catalogo.Formazione.chiEscePer(nome: segno), Catalogo.Formazione.esceSpiega(nome: segno),
+            Catalogo.Formazione.passiAl(modulo: segno), Catalogo.Formazione.puntiCon(nome: segno),
+            Catalogo.Formazione.nessunoLasciaPosto,
             // la scheda del giocatore unica (#616)
             Catalogo.Formazione.partitaCasa(avv: segno, quando: segno), Catalogo.Formazione.partitaFuori(avv: segno, quando: segno),
             Catalogo.Formazione.seGioca, Catalogo.Formazione.percheTitolare, Catalogo.Formazione.incerto(p: segno, riserva: segno),

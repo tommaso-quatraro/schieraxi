@@ -10,6 +10,8 @@ struct ContestoScheda {
     var perche: String? = nil
     /// Titolare della tua formazione ancora aperta: «Sostituisci».
     var sostituibile = false
+    /// Giocatore della tua formazione che non è fra gli 11, alle stesse condizioni di «Sostituisci»: «Metti in campo» (#778).
+    var entrabile = false
     /// Titolare che gioca un anticipo già cominciato: al posto di «Sostituisci» la frase di `formazione.bloccati`.
     var fermo = false
 }

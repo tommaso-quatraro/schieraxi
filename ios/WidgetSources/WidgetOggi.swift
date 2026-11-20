@@ -310,8 +310,9 @@ struct VistaWidget: View {
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
+                // a capo allineata a sinistra: dentro un Link le righe si centravano («alla scadenza, oggi / 12:20», #787)
                 Text(r.inizio.map(allaScadenza) ?? "")
-                    .font(.caption).foregroundStyle(.white.opacity(0.8))
+                    .font(.caption).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 if voce.datiSalvati {
                     Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
@@ -322,9 +323,11 @@ struct VistaWidget: View {
             VStack(alignment: conDubbi ? .leading : .trailing, spacing: conDubbi ? 2 : 4) {
                 Label("Formazione", systemImage: "sportscourt").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
                 if conDubbi {
+                    // il modulo è il dato principale e resta intero; i punti accanto perdono «punti» se non c'è posto (#787)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(r.modulo ?? "—").font(.system(.title2, design: .rounded).weight(.bold))
-                        Text("\(puntiTesto(r)) punti").font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(1).fixedSize()
+                        TestoCheEntra(ParoleWidget.punti(r.punti)).font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.9))
                     }
                 } else {
                     Text(r.modulo ?? "—").font(.system(.title, design: .rounded).weight(.bold))
@@ -372,8 +375,10 @@ struct VistaWidget: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// «3-4-3 · 72,7 punti», e dove non entra «3-4-3 · 72,7»: si perdono parole intere, mai il modulo. Prima con il testo grande
+    /// diventava «SchieraXI 3-4-3, 72,7…» (#787).
     private func riga(_ r: RiassuntoOggi) -> some View {
-        Label("SchieraXI \(r.modulo ?? "—"), \(puntiTesto(r)) punti", systemImage: "sportscourt")
+        RigaInLinea(ParoleWidget.moduloEPunti(r.modulo, punti: r.punti, fascia: nil), icona: "sportscourt")
     }
 }
 

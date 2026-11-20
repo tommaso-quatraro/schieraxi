@@ -7,13 +7,24 @@ import SwiftUI
 /// piccolo resta 12 punti, come le scritte delle pedine sulla web (`--t-eti`) e il minimo dei testi di `docs/DESIGN.md`; sotto
 /// si legge male sul prato. Cresce con il testo grande fino a XXL (16 punti): oltre, in una fila da cinque, andrebbe a capo a
 /// ogni sillaba e la pedina diventerebbe una colonna di pezzi di parola.
+/// Ogni forma si prova prima con un margine ai lati (`margine`): due nomi vicini nella stessa fila restano staccati. Sull'iPad un
+/// nome che entrava appena su una riga toccava quello accanto, «Teo Kloosmeijer Cesare Pulinski» (#787); ora va a capo come
+/// sull'iPhone. Senza il margine si prova solo se con il margine non entra niente.
 struct CognomePedina: View {
     let nome: String
 
+    /// Lo spazio libero per lato attorno al nome.
+    static let margine: CGFloat = 4
+
     var body: some View {
+        let parole = LetturaPedina.parolePerRiga(nome)
         ViewThatFits(in: .horizontal) {
+            Text(nome).padding(.horizontal, Self.margine)
+            if let parole {
+                Text(parole).padding(.horizontal, Self.margine)
+            }
             Text(nome)
-            if let parole = LetturaPedina.parolePerRiga(nome) {
+            if let parole {
                 Text(parole)
             }
             Text(LetturaPedina.sillabato(nome))

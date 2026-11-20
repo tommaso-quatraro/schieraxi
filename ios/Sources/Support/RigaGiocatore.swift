@@ -72,7 +72,7 @@ struct RigaGiocatore: View {
         } else if !mia.isEmpty {
             parti.append(mia)
         }
-        if Quando.data(g.dataPartita) != nil { parti.append(Quando.leggibile(g.dataPartita, adesso: adesso)) }
+        if let quando = Quando.leggibileSeData(g.dataPartita, adesso: adesso) { parti.append(quando) }
         return parti.joined(separator: " · ")
     }
 
@@ -86,7 +86,7 @@ struct RigaGiocatore: View {
         } else if !mia.isEmpty {
             parti.append(mia)
         }
-        if Quando.data(g.dataPartita) != nil { parti.append(Quando.leggibile(g.dataPartita, adesso: Orologio.adesso())) }
+        if let quando = Quando.leggibileSeData(g.dataPartita, adesso: Orologio.adesso()) { parti.append(quando) }
         return parti.joined(separator: ", ")
     }
 

@@ -64,6 +64,12 @@ struct FormazioneView: View {
                     }
                 }
             }
+            // «Metti in campo» nella scheda (#778): chi può lasciargli il posto; un tocco chiude l'elenco e fa il cambio
+            .sheet(item: $vm.elencoEntra) { elenco in
+                SceltaChiEsce(elenco: elenco) { esce in
+                    Task { await vm.scegliChiEsce(esce) }
+                }
+            }
             .task { await ricarica() }
             // mentre si gioca i punti cambiano quando escono i voti: si rilegge ogni 5 minuti, solo con la schermata visibile
             .task(id: "\(fase == .active)-\(oggi.oggi?.faseGiornata.rawValue ?? "")") {
@@ -490,7 +496,9 @@ struct FormazioneView: View {
                     }
                     .padding(.top, 6)
                 } label: {
-                    Text(titolo).font(.subheadline.weight(.semibold)).frame(minHeight: Tema.areaTocco, alignment: .leading)
+                    // a capo allineato a sinistra: l'etichetta di un DisclosureGroup centra le righe («Infortunati e / squalificati», #787)
+                    Text(titolo).font(.subheadline.weight(.semibold)).multilineTextAlignment(.leading)
+                        .frame(minHeight: Tema.areaTocco, alignment: .leading)
                 }
                 .tint(Color.testoSecondario)
             }

@@ -10,6 +10,10 @@ extension FinteServer {
     /// Server della modalità demo (costruito una volta sola all'avvio).
     static let demo: FinteServer = demoFissata(adesso: Date())
 
+    /// Il panchinaro di «Metti in campo» nella demo (#778): Fabio Dimarzi, in panchina nella consigliata. Il server finto non legge
+    /// il corpo della domanda e risponde sempre per lui, con gli 11 della consigliata (foto `formazione-metti-in-campo`).
+    static let entraMettiInCampo = 105
+
     /// La stessa demo costruita in un istante preciso: i test confrontano app e widget (`LegaDemo.widget`) nello stesso momento.
     static func demoFissata(adesso: Date) -> FinteServer {
         // ricerca, confronto ed elenco dei giocatori dipendono dalla domanda: li calcola `DatiDemo.calcolata`
@@ -368,6 +372,32 @@ private extension LegaDemo {
     /// (`sceltaSalvata`) e quelli da cui parte «Modifica a mano». Quindi gli stessi punti attesi della consigliata e differenza zero,
     /// gli stessi di Oggi (#390).
     static func valutazione() -> String { json(valutazioneScelta) }
+
+    /// I moduli che la lega della demo ammette (`moduli` delle regole).
+    static let moduliLega = ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"]
+
+    /// «Metti in campo» (`POST /api/formazione/metti-in-campo`, #778), come `scelte.chi_lascia_il_posto` del server: chi può
+    /// lasciare il posto al panchinaro della demo (`FinteServer.entraMettiInCampo`) negli 11 della consigliata. Il server finto non
+    /// legge il corpo della domanda: la risposta è sempre questa. Un portiere solo al posto del portiere; un altro ruolo solo se il
+    /// modulo che ne esce è della lega (`moduliLega`). I punti attesi sono quelli della demo (`punteggio`), la differenza è fatta sui
+    /// due numeri arrotondati a una cifra e l'ordine va dal cambio che rende di più.
+    static func mettiInCampo() -> String {
+        func tondo(_ x: Double) -> Double { (x * 10).rounded() / 10 }
+        func modulo(_ ids: [Int]) -> String { ModuloTitolari.modulo(ruoli: ids.map { calciatore($0).ruolo }) }
+        let entra = calciatore(FinteServer.entraMettiInCampo)
+        let titolari = moduli[0].titolari
+        let prima = tondo(punteggio(titolari))
+        var uscite: [[String: Any]] = []
+        for esce in titolari where (calciatore(esce).ruolo == "P") == (entra.ruolo == "P") {
+            let dopo = titolari.map { $0 == esce ? entra.id : $0 }
+            guard moduliLega.contains(modulo(dopo)) else { continue }
+            let punti = tondo(punteggio(dopo))
+            uscite.append(["esce": esce, "modulo": modulo(dopo), "cambia_modulo": modulo(dopo) != modulo(titolari),
+                           "punteggio_atteso": punti, "differenza": tondo(punti - prima)])
+        }
+        uscite.sort { (($0["differenza"] as? Double) ?? 0) > (($1["differenza"] as? Double) ?? 0) }
+        return json(["giornata": giornata, "entra": entra.id, "punteggio_atteso": prima, "uscite": uscite])
+    }
 
     static var valutazioneScelta: [String: Any] {
         // la valutazione e la consigliata sono gli stessi undici: un numero solo, `attesiGiornata`
@@ -826,7 +856,7 @@ private extension LegaDemo {
             "rosa": postiRosa, "crediti_iniziali": 500, "rimborso_svincolo": rimborsoSvincolo,
             "scadenza_minuti": minutiScadenza, "prima_giornata_lega": 4, "aggiornamenti_vicino_scadenza": true,
             "partite_rinviate": "aspetta", "voto_ufficio_rinviate": 6, "rinvii_giornate": [String: Any](),
-            "moduli": ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"],
+            "moduli": moduliLega,
             "panchina": ["numero": 11, "tipo": "per_ruolo", "max_sostituzioni": maxSostituzioni, "cambio_modulo": false,
                          "posti": ["P": 2, "D": 3, "C": 3, "A": 3]],
             "modificatore_difesa": ["attivo": true, "min_difensori": 4,
@@ -1097,6 +1127,8 @@ private extension LegaDemo {
             "/api/calendario": json(calendario(adesso: adesso)),
             "/api/formazione/testo": "Giornata \(giornata) - 3-4-3 (\(Formato.punti(punteggio(moduli[0].titolari))) punti attesi)",
             "/api/formazione/valuta": valutazione(),
+            // con la sua chiave: senza, risponderebbe il prefisso «/api/formazione» (la Formazione), e l'elenco sarebbe vuoto
+            "/api/formazione/metti-in-campo": mettiInCampo(),
             "/api/scelta": "null",   // nessuna scelta salvata: si vede la consigliata
             "/api/formazione": formazione(adesso: adesso),
             "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]]),
