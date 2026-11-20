@@ -1367,6 +1367,13 @@ def con_tab_fino_a(web, bersaglio, massimo: int = 30) -> bool:
     return False
 
 
+def selettore_intercettato(web) -> None:
+    """Prima di aprire il selettore dei file con un tasto. Playwright intercetta il selettore solo da quando qualcuno ne ascolta
+    l'evento, e lo chiede al browser senza aspettare risposta: un tasto è un messaggio solo e può arrivare prima, e allora il
+    selettore vero si apre e si chiude senza evento (è successo una volta su GitHub). Un ascoltatore messo subito la tiene accesa."""
+    web.pagina.on("filechooser", lambda _scelta: None)
+
+
 # un'immagine PNG di 1×1 pixel
 PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360f8cfc0f01f0005"
                     "0001ff5c6d2d6b0000000049454e44ae426082")
@@ -1376,6 +1383,7 @@ def test_scegli_il_file_delle_rose_si_raggiunge_con_tab_e_apre_il_selettore(web)
     """«Scegli il file» di Aggiorna le rose era un'etichetta di un campo nascosto: con Tab non ci si arrivava. Ora è un pulsante vero
     che apre il selettore dei file, come nel primo avvio; il file scelto va subito al controllo delle rose (#801)."""
     solo(web, "prima")
+    selettore_intercettato(web)
     web.apri("/?vista=impostazioni&gruppo=rose")
     scegli = principale(web).get_by_role("button", name="Scegli il file (Excel o CSV)")
     assert scegli.count() == 1, "«Scegli il file» non è un pulsante"
@@ -1393,6 +1401,7 @@ def test_file_o_foto_di_stemma_e_maglia_si_raggiungono_con_tab_e_caricano(web):
     """«Da file o foto» del foglio di stemma e maglia era un'etichetta di un campo nascosto: con Tab non ci si arrivava. Ora sono
     due pulsanti veri; quello della maglia apre il selettore e l'immagine scelta si carica come maglia (#801)."""
     solo(web, "prima")
+    selettore_intercettato(web)
     _mia_con_stemma(web)
     caricate = []
     web.pagina.route(lambda u: urlsplit(u).path == "/api/squadre/immagine",
