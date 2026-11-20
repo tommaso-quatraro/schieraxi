@@ -971,6 +971,27 @@ enum DisposizioneWidget {
         if d > 1 { prove.append(ProvaCruscotto(partite: partitePrima, compatto: true, grafico: false, dubbi: 1)) }
         return Array(prove.prefix(6))
     }
+
+    /// Una riga sotto i punti dei widget Formazione piccolo e medio.
+    enum RigaPiedeFormazione: Equatable {
+        /// L'ora della copia salvata (`RigaCopia`).
+        case copia
+        /// «2 da controllare» (`EtichettaDaControllare`).
+        case daControllare
+    }
+
+    /// Una prova dei widget Formazione piccolo e medio: la testata con il titolo (o il solo simbolo con la giornata) e le righe in basso.
+    struct ProvaFormazione: Equatable {
+        let conTitolo: Bool
+        let piede: [RigaPiedeFormazione]
+    }
+
+    /// Le prove dei widget Formazione piccolo e medio, dalla più ricca (segnaposto: il comportamento di prima, #834).
+    static func proveFormazione(conGiornata: Bool, datiSalvati: Bool, daControllare: Int) -> [ProvaFormazione] {
+        let piede: [RigaPiedeFormazione] = daControllare > 0 ? [.daControllare] : (datiSalvati ? [.copia] : [])
+        let titolo = ProvaFormazione(conTitolo: true, piede: piede)
+        return conGiornata ? [titolo, ProvaFormazione(conTitolo: false, piede: piede)] : [titolo]
+    }
 }
 
 // MARK: Testi che si accorciano (mai una parola tagliata a metà)
@@ -1118,6 +1139,11 @@ enum ParoleWidget {
     /// Lo stato dei dati in una riga: «Dati delle 14:32 · probabili uscite» → «14:32 · probabili uscite» → «Dati delle 14:32».
     static func statoDati(ora: String, probabili: String) -> [String] {
         ["Dati delle \(ora) · \(probabili)", "\(ora) · \(probabili)", "Dati delle \(ora)"]
+    }
+
+    /// La riga della copia salvata dei widget (segnaposto: il comportamento di prima, la sola ora, #834).
+    static func datiSalvati(_ scaricatoIl: Date, adesso: Date) -> [String] {
+        ["dati delle \(Quando.ora(scaricatoIl))"]
     }
 }
 
