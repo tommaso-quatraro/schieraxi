@@ -1397,6 +1397,7 @@ def _togli_widget_della_sessione(db: sqlite3.Connection, utente_id: int, session
 def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = None, scollega_social: bool = False,
                   tieni_push: str | None = None) -> int:
     """Revoca tutte le sessioni dell'utente (tranne, se indicata, quella con questo token). Restituisce quante ne ha chiuse.
+    Chiude sempre anche il token del widget (uno per account, chiunque l'abbia chiesto): anche con `tranne` (cambio dell'email, #843).
     Senza `tranne` (esci da tutti, cambio password, recupero) si dimenticano anche i dispositivi e gli indirizzi fidati e si
     tolgono le iscrizioni alle notifiche web, tranne quella del dispositivo che sta chiedendo (`tieni_push`, il suo indirizzo
     di notifica, se lo manda): gli altri dispositivi le riattivano dopo il nuovo accesso.
@@ -1408,9 +1409,10 @@ def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = N
                          (utente_id, _hash_token(tranne)))
     else:
         cur = db.execute("UPDATE sessioni SET revocata = 1 WHERE utente_id = ? AND revocata = 0", (utente_id,))
-        db.execute("DELETE FROM token_widget WHERE utente_id = ?", (utente_id,))      # «esci da tutti» e cambio password chiudono anche il widget
         # e i dispositivi e gli indirizzi fidati: chi ha rubato un segreto di dispositivo non deve più saltare i tetti dei tentativi
         db.execute("DELETE FROM indirizzi_noti WHERE utente_id = ?", (utente_id,))
+    # «esci da tutti», cambio password, recupero e cambio dell'email chiudono anche il widget
+    db.execute("DELETE FROM token_widget WHERE utente_id = ?", (utente_id,))
     if scollega_social:
         db.execute("DELETE FROM identita_esterne WHERE utente_id = ? AND EXISTS "
                    "(SELECT 1 FROM utenti WHERE id = ? AND senza_password = 0)", (utente_id, utente_id))
