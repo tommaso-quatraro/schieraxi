@@ -948,7 +948,7 @@ function collegaRinvio() {
         salvato = sel.value;
         svuotaCache();
         avviso(t("oggi.rinvio_salvato"));
-        rileggiFormazione();
+        if (document.body.contains(sel)) rileggiFormazione();       // passati a un'altra scheda: resta quella (#801)
       } catch (e) { avviso(e.message, 8000); sel.value = salvato; mostra(); sel.disabled = false; }   // resta la scelta salvata
     });
   });
@@ -3289,7 +3289,7 @@ async function vistaRegole() {
       stato.calendario = null;
       avviso(t("regole.regole_salvate_consigli"));
       caricaInfo();
-      vistaRegole();
+      if (!sig.signal.aborted) vistaRegole();                      // passati a un'altra pagina (vai() ferma regoleAC): resta quella (#801)
     } catch (e) { avviso(e.message, 8000); }
   };
   $("#salva-regole").addEventListener("click", salva);

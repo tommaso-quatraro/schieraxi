@@ -1398,3 +1398,24 @@ def test_file_o_foto_di_stemma_e_maglia_si_raggiungono_con_tab_e_caricano(web):
     scelta.value.set_files({"name": "maglia.png", "mimeType": "image/png", "buffer": PNG})
     web.pagina.locator("#avviso").filter(has_text="Maglia aggiornata").wait_for(timeout=10000)
     assert caricate == [["maglia"]]
+
+
+def test_le_regole_salvate_a_scheda_cambiata_non_ridisegnano_la_pagina_vecchia(web):
+    """Il salvataggio delle Regole risponde quando si è già passati a un'altra scheda (rete lenta): la pagina in vista resta quella,
+    e l'avviso dice comunque che le regole sono salvate. Prima le Regole si ridisegnavano sotto la barra della Formazione (#801)."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", RICONOSCIUTE)
+    tenute = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/regole",
+                     lambda r: tenute.append(r) if r.request.method == "PUT" else r.fallback())
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Crediti: 500\nAssist +1,5")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    principale(web).get_by_role("button", name="Salva queste regole").click(timeout=10000)
+    tocca(web, barra(web).get_by_role("link", name="Formazione"))
+    assert len(tenute) == 1 and titolo(web) == "Formazione"
+    tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(web.registrata("/api/regole")))
+    web.pagina.locator("#avviso").filter(has_text="Regole salvate").wait_for(timeout=10000)
+    web.aspetta()
+    assert titolo(web) == "Formazione", f"dopo il salvataggio si vede «{titolo(web)}» sotto la barra della Formazione"
+    assert web.pagina.url.endswith("/?vista=formazione")
