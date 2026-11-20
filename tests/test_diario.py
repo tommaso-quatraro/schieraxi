@@ -31,6 +31,9 @@ def finto(monkeypatch, tmp_path):
     db = archivio.apri(tmp_path / "t.sqlite")
     for g in (1, 2):
         db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, '2026-09-01 18:00', 'a', 'b', 1)", (g, ST, g))
+    # gli stessi voti anche nella tabella dell'archivio: da lì il Diario vede che i voti della giornata sono arrivati (#793)
+    archivio.inserisci(db, "voti", [{"stagione": ST, "giornata": g, "calciatore_id": i, "squadra": "ab"[i % 2],
+                                     "voto_red": 9.0 if i == 25 else 6.0} for g in (1, 2) for i in range(1, 26)])
     rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, f"G{i}", RUOLI[i - 1], "INT") for i in range(1, 26)])], "Mia")
     return SimpleNamespace(dati=dati, db=db, rose=rose, file=tmp_path / "diario.json")
 
@@ -451,6 +454,7 @@ def test_rotta_diario_schierata(vero, monkeypatch, tmp_path):
     assert r.json()["schierata"]["tipo"] == "consigliata"
     g = c.get("/api/diario").json()["giornate"]
     assert g[0]["schierata"]["tipo"] == "consigliata" and "automatica" in g[0]
+    assert "impronta_voti" not in r.json() and "impronta_voti" not in g[0]       # l'impronta dei voti resta nel file (#793)
     assert c.post("/api/diario/schierata", json={"giornata": 7, "tipo": "consigliata"}).status_code == 400
     assert "motivo_vuoto" not in c.get("/api/diario").json()                                  # con almeno una voce il campo non c'è
     assert c.post("/api/diario/schierata", json={"giornata": 1, "tipo": "manuale", "titolari": [1]}).status_code == 400
