@@ -96,7 +96,8 @@ def piano_riparazione(v: scambi.Valori, regole: Regole, rose, nome: str | None =
                                    "miglioramento": round(p - debole[1], 1), "al_posto_di": debole[2]})
         per_te.sort(key=lambda g: -g["miglioramento"])
     nota = ("Stima: i prezzi dividono i crediti che restano alla lega tra gli svincolati che troverebbero posto; " if conosciuti
-            else "I crediti delle squadre non sono inseriti (Lega > Crediti): come prezzo di riferimento c'è la quotazione. ")
+            else "I crediti delle squadre non sono inseriti: come prezzo di riferimento c'è la quotazione. "
+                 "I crediti si scrivono nelle Impostazioni, nella pagina di ogni squadra. ")
     nota += ("Rose piene: si ipotizza che ogni squadra cambi %d giocatori." % posti_per_squadra) if not any(
         max(0, regole.rosa[r] - sum(1 for g in s.giocatori if g.ruolo == r)) for r in RUOLI for s in rose.squadre) else "I posti sono quelli che mancano nelle rose."
     return {"modo": "riparazione", "tuoi_crediti": tuoi, "crediti_lega": crediti_lega if conosciuti else None, "posti_liberi": sum(posti.values()),

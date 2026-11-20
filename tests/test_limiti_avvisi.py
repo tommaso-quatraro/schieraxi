@@ -238,7 +238,8 @@ def test_un_destinatario_lento_non_ferma_gli_altri(tmp_path, servizi, monkeypatc
     for nome, sito in (("anna", "lento"), ("bruno", "veloce")):          # anna, con il servizio lento, viene prima nel giro
         f = tmp_path / f"{nome}.json"
         scrivi_iscrizioni(f, sito)
-        attivi.append(SimpleNamespace(utente=SimpleNamespace(nome_utente=nome), ctx=SimpleNamespace(regole=None, iscrizioni_push=f)))
+        attivi.append(SimpleNamespace(utente=SimpleNamespace(nome_utente=nome), ctx=SimpleNamespace(
+            regole=None, iscrizioni_push=f, stato_promemoria=tmp_path / f"{nome}-promemoria.json")))     # accanto, il blocco degli avvisi
     monkeypatch.setattr(avvisi_utenti.regole, "carica", lambda percorso: None)
 
     def promemoria(a, db, r, adesso):

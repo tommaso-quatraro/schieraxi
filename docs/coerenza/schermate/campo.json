@@ -35,6 +35,15 @@
       "forma": "web (`esitoPedina`)",
       "chi": "fatto sull'iPhone (#295, #283): `EsitoPedina`",
       "stato": "fatto"
+    },
+    {
+      "id": 82,
+      "schermata": "Campo, titolare senza ruolo (#699)",
+      "web": "un titolare con un ruolo che non è P, D, C o A (per esempio a giornata in corso un giocatore che la Formazione non ha, composto con i dati di Oggi quando Oggi non manda il ruolo) va nella fila degli attaccanti (`linee.A` in `mostraFormazione`)",
+      "iphone": "uguale: va in attacco. Prima non aveva una fila e il campo mostrava 10 pedine senza dirlo",
+      "forma": "web",
+      "chi": "fatto sull'iPhone con #699: `CampoFormazione.inFila`; prova `FormazioneCopiaEInCorsoTests`",
+      "stato": "fatto"
     }
   ]
 }

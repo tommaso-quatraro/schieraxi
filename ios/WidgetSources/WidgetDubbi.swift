@@ -34,20 +34,31 @@ struct VistaDubbi: View {
     }
 
     var body: some View {
-        Group {
+        let caso = voce.caso
+        return Group {
             if voce.widget?.acceso(FunzioneWidget.extra) == false {
                 spento
-            } else if let testo = voce.campionatoFinito {
-                // campionato finito (#727): niente da controllare, la frase del server
-                CampionatoFinitoWidget(testo: testo)
-            } else if let r = voce.riassunto {
-                if accessorio { rettangolare(r) } else { contenuto(r) }
             } else {
-                senzaDati
+                switch caso {
+                case .campionatoFinito(let testo):
+                    // campionato finito (#727): niente da controllare, la frase del server
+                    CampionatoFinitoWidget(testo: testo)
+                case .senzaFormazione(let r):
+                    // entrato a giornata già iniziata senza una formazione (#752): niente dubbi né «Chiusa» di una giornata che non ha
+                    // schierato, la prossima da preparare come Prossima giornata
+                    SenzaFormazioneWidget(riassunto: r, voce: voce)
+                case .normale:
+                    if let r = voce.riassunto {
+                        if accessorio { rettangolare(r) } else { contenuto(r) }
+                    } else {
+                        senzaDati
+                    }
+                }
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(voce.tocco(URL(string: "schieraxi://oggi")))
+        // Oggi; per chi è entrato a giornata iniziata la Formazione, già quella della prossima (`CasoWidget.indirizzoDaControllare`)
+        .widgetURL(voce.tocco(URL(string: caso.indirizzoDaControllare)))
     }
 
     // MARK: Home
@@ -61,7 +72,7 @@ struct VistaDubbi: View {
                                colore: r.daControllare > 0 ? .orange : .white.opacity(0.85),
                                giornata: r.nomeTestata, soloCorta: famiglia == .systemSmall)
             if let titolo = r.titoloFase {
-                // formazione chiusa: i dubbi non contano più (i punti stanno in Oggi e nel widget Prossima giornata).
+                // formazione chiusa: i dubbi non contano più (i punti stanno nella Formazione e nel widget Prossima giornata).
                 // Parole della web: «Chiusa» dopo la scadenza, «Giornata 8 · 11ª di Serie A: finita» a giornata finita.
                 Spacer(minLength: 0)
                 // nel widget piccolo senza «11ª di Serie A» («Giornata 8: finita»); VoiceOver legge i due numeri

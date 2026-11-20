@@ -748,10 +748,33 @@ function vaiQui(opz = {}) {
 // ---------------------------------------------------------------- aggiornamento dati
 // In Impostazioni > Gestione (#618: prima erano le frecce in testata). Mentre il server scarica il pulsante è spento; si può lasciare
 // la pagina, l'avviso arriva lo stesso.
-function segnaAggiornamento(inCorso) {
+// Spento, con la frase che dice perché, anche quando il server è occupato da un altro aggiornamento (aggiornamento programmato,
+// giro leggero, installazione di una versione: `aggiornamento_in_corso` di /api/stato, #763). Con Gestione aperta lo stato si rilegge
+// ogni 15 secondi finché non torna libero, e subito entrando in Gestione se era già occupato (letto prima, magari da minuti): una
+// lettura alla volta (la prossima si prepara solo a lettura finita); fuori da Gestione non si rilegge più.
+const RILEGGI_AGGIORNAMENTO_MS = 15000;
+let rileggoAggiornamento = null, leggoAggiornamento = false;
+function segnaAggiornamento(inCorso, subito = false) {
   stato.aggiornoDati = inCorso;
   const b = $("#aggiorna-dati");
   if (b) b.disabled = inCorso;
+  const nota = $("#aggiorna-in-corso");
+  if (nota) nota.textContent = inCorso ? t("aggiorna.in_corso") : "";
+  if (inCorso && b) seguiAggiornamento(subito);
+}
+function seguiAggiornamento(subito = false) {
+  if (leggoAggiornamento || (rileggoAggiornamento && !subito)) return;
+  clearTimeout(rileggoAggiornamento);
+  rileggoAggiornamento = null;
+  if (subito) rileggiAggiornamento();
+  else rileggoAggiornamento = setTimeout(rileggiAggiornamento, RILEGGI_AGGIORNAMENTO_MS);
+}
+async function rileggiAggiornamento() {
+  rileggoAggiornamento = null;
+  if (!$("#aggiorna-dati") || !stato.aggiornoDati) return;        // uscito da Gestione, o già finito: si smette
+  leggoAggiornamento = true;
+  try { await caricaInfo(); } finally { leggoAggiornamento = false; }
+  if (stato.aggiornoDati) seguiAggiornamento();
 }
 async function aggiornaDati() {
   try {
@@ -790,8 +813,10 @@ async function aggiornaDati() {
 
 // Quando si chiude la formazione che la schermata mostra: a giornata finita, o per chi è arrivato a giornata iniziata, la prossima.
 const scadenzaDi = o => (o.prossima && (o.fase === "finita" || o.senza_formazione) && o.prossima.scadenza) || o.scadenza || o.inizio;
-// «Si chiude oggi 18:20» e «fra 3 h 10 min»: il conto resta, piccolo, accanto alla scadenza.
+// «Si chiude oggi 18:20» e «fra 3 h 10 min»: il conto resta, piccolo, accanto alla scadenza. Con la giornata ancora senza date la
+// frase del server (`senza_data` di /api/oggi, #552: «Data da definire»); un server di prima non la manda e resta il testo di sempre.
 function testoConto(o) {
+  if (o.senza_data && typeof o.senza_data.testo === "string" && o.senza_data.testo.trim()) return { chiude: testoDi(o.senza_data), manca: "" };
   const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude);
   if (!fine) return { chiude: t("oggi.calendario_no"), manca: "" };
   const min = Math.round((fine - new Date()) / 60000);
@@ -3141,18 +3166,25 @@ async function vistaRegole() {
 const soloAmministratore = () => !stato.account || stato.account.ruolo === "amministratore";
 
 // All'uscita su questo dispositivo non deve restare niente dell'utente: copie dei dati, archivio scambi, copie dell'app del service worker.
-async function svuotaDatiLocali() {
+// `tieniAccesso`: resta sessionStorage, che tiene solo i passi dell'accesso in corso (codice d'invito, ritorno da Google).
+async function svuotaDatiLocali({ tieniAccesso = false } = {}) {
   try { Object.keys(localStorage).filter(k => k.startsWith("cache:") || ["archivio-scambi", "vista", "account"].includes(k)).forEach(k => localStorage.removeItem(k)); }
   catch { /* niente memoria */ }
-  try { sessionStorage.clear(); } catch { /* niente memoria */ }
+  if (!tieniAccesso) try { sessionStorage.clear(); } catch { /* niente memoria */ }
   try { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch { /* niente copie */ }
+}
+// C'è ancora qualcosa di un account in questo browser (l'account stesso, copie dei dati, archivio scambi)?
+function restanoCopie() {
+  try { return Object.keys(localStorage).some(k => k.startsWith("cache:") || ["archivio-scambi", "account"].includes(k)); }
+  catch { return false; }
 }
 // Il tasto Indietro del browser può rimettere una pagina dalla sua memoria: con gli account si ricarica, così dopo un'uscita
 // non ricompaiono i dati di chi è uscito.
 window.addEventListener("pageshow", ev => { if (ev.persisted && (stato.account || accessoAperto)) location.reload(); });
 
 // Le notifiche di questo dispositivo sono dell'utente che esce: si tolgono, così non arrivano a chi entra dopo di lui.
-async function lasciaNotifiche() {
+// `alServer` falso: la sessione è già chiusa e il server ha già tolto le iscrizioni (Esci da tutti), si toglie solo quella del browser.
+async function lasciaNotifiche(alServer = true) {
   try {
     if (!("serviceWorker" in navigator && "PushManager" in window)) return;
     const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(no, 2000))]);
@@ -3160,7 +3192,7 @@ async function lasciaNotifiche() {
     if (!sub) return;
     const ep = sub.endpoint;
     await sub.unsubscribe();
-    await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) });
+    if (alServer) await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) });
   } catch { /* non è un motivo per restare dentro */ }
 }
 
@@ -3526,6 +3558,26 @@ async function esciDa(percorso) {
   location.reload();
 }
 
+// Impostazioni > Il tuo account > «Esci da tutti i dispositivi» (#765), il pulsante che consigliano le email di sicurezza: il server
+// chiude tutte le sessioni (anche questa), il widget, le notifiche web di ogni dispositivo e scollega Google a chi ha una password.
+// Al contrario di «Esci» non riesce senza il server: se la richiesta non va, gli altri dispositivi sono ancora dentro e lo si dice.
+// Niente password nel corpo: il codice di recupero nuovo che il server manderebbe si perderebbe con la ricarica.
+// Il server toglie il collegamento con Google a chi ha una password; chi entra solo con Google lo tiene (sarebbe chiuso fuori).
+// Lo si legge da `accessi` del server: senza, niente frase.
+const perdeGoogle = () => !!(stato.accessi && stato.accessi.password === true
+  && (stato.accessi.social || []).some(s => s.provider === "google"));
+async function esciDaTutti() {
+  if (!confirm(t("account.esci_tutti_conferma") + (perdeGoogle() ? " " + t("account.esci_tutti_google") : ""))) return;
+  try { await api("/api/account/esci-da-tutti", { method: "POST" }); }
+  catch (e) {
+    if (e.status !== 401) avviso(t("account.esci_tutti_no", { motivo: e.message || "" }).trim(), 8000);     // 401: c'è già l'accesso
+    return;
+  }
+  await lasciaNotifiche(false);                       // le iscrizioni sul server le ha già tolte lui: qui solo quella del browser
+  await svuotaDatiLocali();
+  location.reload();
+}
+
 // Email dell'account: aggiungere/cambiare (codice a 6 cifre per posta), confermare, togliere. Tutti i valori dell'utente passano da esc().
 function htmlEmailAccount() {
   const e = stato.emailAccount || {};
@@ -3598,7 +3650,8 @@ function schedaAccount() {
       <div class="attenzione">${t("account.elimina_avviso")}</div>
       ${soloGoogle() ? `<div class="debole piccolo">${t("social.elimina_spiega")}</div>` : campo("acc-pw-elimina", t("account.la_tua_password"), 'autocomplete="current-password"')}
       <div class="pulsanti"><button class="bottone secondario" id="acc-elimina" style="color:var(--rosso)">${t("account.elimina")}</button></div></details>
-    <div class="pulsanti"><button class="bottone secondario" id="acc-esci">${t("account.esci")}</button></div>
+    <div class="pulsanti"><button class="bottone secondario" id="acc-esci">${t("account.esci")}</button>
+      <button class="bottone secondario" id="acc-esci-tutti" type="button">${t("account.esci_tutti")}</button></div>
   </div>`;
 }
 
@@ -3654,6 +3707,7 @@ function collegaAccount() {
   const provaCosi = async (cosa, fai) => { try { await fai(); } catch (e) { avviso(e.message || cosa, 6000); } };
   collegaEmailAccount();
   $("#acc-esci").addEventListener("click", () => esciDa("/api/account/esci"));
+  $("#acc-esci-tutti").addEventListener("click", () => esciDaTutti());
   $("#acc-scarica-dati").addEventListener("click", () => scaricaIMieiDati());
   if ($("#acc-accessi")) collegaAccessi();
   const passwordDiverse = () => valore("#acc-ripeti") !== "" && valore("#acc-nuova") !== valore("#acc-ripeti");
@@ -3783,6 +3837,8 @@ async function controllaAccesso() {
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
   const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
   if (r.status === 401 && dati && dati.multiutente) {
+    // la sessione non vale più: via le copie rimaste, come all'uscita, prima della schermata di accesso
+    if (restanoCopie()) await svuotaDatiLocali({ tieniAccesso: true });
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false); else mostraAccesso("", invito ? "registra" : "accedi");
     return false;
   }

@@ -125,7 +125,7 @@ mu = voto in pagella atteso
 
 > **Un caso vero: Thuram, giornata 8 del 2026-27 (Inter-Fiorentina)** (numeri veri del modello). Calcolo rifatto il 30/10/2026 con i soli dati precedenti alla giornata 8 (senza probabili, quindi p viene dalle presenze, vedi la sezione 11: ha preso voto in tutte le ultime 6 partite, ma p = 0,86, ricalcolata il 2/11/2026). La partita vale 2,46 gol attesi per l'Inter contro 0,99 della Fiorentina. Voto in pagella atteso 6,46; gol attesi 0,505 e a 3 punti l'uno fanno +1,52; assist attesi 0,144 fanno +0,14; cartellini e altro circa -0,06. Totale mu = 8,06. La probabilità di segnare almeno un gol è 1 - e^(-0,505) = 39,7%.
 
-Nell'app: Formazione (tocca un giocatore per vedere i pezzi); Lega > Regole.
+Nell'app: Formazione (tocca un giocatore per vedere i pezzi); Impostazioni > Regole e scadenza.
 
 Codice: `fanta/modello.py:previsioni`, `fanta/punteggio.py:fantavoto`, `fanta/consigli.py:_componenti`
 
@@ -416,7 +416,7 @@ Codice: `fanta/scambi_multi.py:analizza_completo`, `fanta/scambi_multi.py:cerca_
 
 ## 20. Conguagli in crediti  [nerd]
 
-Uno scambio può includere crediti (positivi se li ricevi, negativi se li paghi). L'app controlla che chi paga li abbia, secondo i crediti residui salvati in Lega, e che nessuno superi il limite di 100.000.
+Uno scambio può includere crediti (positivi se li ricevi, negativi se li paghi). L'app controlla che chi paga li abbia, secondo i crediti residui salvati nelle Impostazioni, e che nessuno superi il limite di 100.000.
 
 Per dare un valore in punti ai crediti, usa il mercato degli svincolati della squadra: somma i guadagni in punti delle sue migliori mosse e li divide per quanto costano (quotazione di chi entra meno il rimborso di chi esce). Il risultato è un tasso: punti attesi in stagione per ogni credito. Il valore dei crediti scambiati è conguaglio × tasso, e il giudizio finale usa il guadagno netto. Senza tasso (nessuna mossa utile) i crediti si mostrano ma non entrano nel giudizio.
 
@@ -429,7 +429,7 @@ tasso = Σ guadagno delle mosse utili / Σ (quotazione di chi entra - rimborso)
 netto = guadagno in punti + conguaglio × tasso
 ```
 
-Nell'app: Scambi > Conguaglio; Lega > Crediti.
+Nell'app: Scambi > Conguaglio; Impostazioni > La mia squadra.
 
 Codice: `fanta/scambi_multi.py:tasso_da_mercato`, `fanta/scambi_multi.py:controlla_conguaglio`, `fanta/scambi_multi.py:analizza_completo`
 

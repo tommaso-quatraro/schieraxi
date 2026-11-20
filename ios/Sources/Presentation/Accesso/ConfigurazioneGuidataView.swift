@@ -162,9 +162,9 @@ struct ConfigurazioneGuidataView: View {
                 .foregroundStyle(Color.verde)
                 .accessibilityHidden(true)
             // titolo e «Hai finito la configurazione.» come la web; dove ritrovare i passi saltati lo dice l'iPhone (si riprendono
-            // da «Da fare» in Oggi, non dalle Impostazioni come sulla web)
+            // da «Da fare» in cima alla Formazione)
             Text(Catalogo.Pav.tuttoProntoMister).font(.title2.bold()).multilineTextAlignment(.center)
-            Text(tuttoFatto ? Catalogo.Pav.haiFinito : "Quello che hai saltato lo trovi in Oggi, nella lista «Da fare».")
+            Text(tuttoFatto ? Catalogo.Pav.haiFinito : "Quello che hai saltato lo trovi nella Formazione, nella lista «Da fare».")
                 .font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
             Carta {
                 ForEach(PassoGuidato.allCases) { passo in

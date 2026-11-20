@@ -41,6 +41,10 @@ formazione.torna_alla_tua
 formazione.chiusa
 formazione.bloccati
 
+# Salvataggio non riuscito quando sei già su un'altra scheda, come la web (FormazioneViewModel.testoNonSalvata), #726
+formazione.non_salvata_rete
+formazione.non_salvata
+
 # Copia per l'app della lega e spunta «L'ho messa»
 formazione.copia_lega
 formazione.copiata_lega

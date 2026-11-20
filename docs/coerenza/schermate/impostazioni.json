@@ -71,6 +71,24 @@
       "forma": "web",
       "chi": "**fatto** (#731): prove in `LegaViewModelTests` (409, 412, rete giù)",
       "stato": "fatto"
+    },
+    {
+      "id": 84,
+      "schermata": "Il tuo account: «Esci da tutti i dispositivi» (#765)",
+      "web": "il secondo pulsante accanto a «Esci» (`account.esci_tutti`); la conferma del browser «Esci da tutti i dispositivi, anche da questo? Dovrai accedere di nuovo su ognuno.» (`account.esci_tutti_conferma`), e solo a chi ha Google collegato e una password (`accessi` del server) anche «Il collegamento con Google si toglie: per entrare con Google dovrai ricollegarlo.» (`account.esci_tutti_google`, `perdeGoogle`); poi `POST /api/account/esci-da-tutti` senza password, la pagina d'accesso e nessuna copia dei dati nel browser; se la richiesta non riesce l'avviso «Non riesco a farti uscire da tutti i dispositivi.» con il motivo (`account.esci_tutti_no`) e si resta dentro (`esciDaTutti` in `app.js`)",
+      "iphone": "prima: il pulsante non c'era (tolto con «Esci da tutti i telefoni» il 1/11/2026), ma le email di sicurezza lo consigliavano. Ora come la web: l'ultima riga di «Il tuo account», sotto «Esci», con la stessa conferma (la frase su Google sotto il titolo, alle stesse condizioni: `TestiAccount.esciTuttiGoogle`) e lo stesso errore sotto la riga; dopo l'uscita lo schermo d'accesso e il telefono svuotato come con «Esci» (`RigaEsciDaTutti`, `SessioneAccount.esciDaTutti`)",
+      "forma": "web",
+      "chi": "**fatto** (#765): prove nel browser in `tests/browser/test_impostazioni.py`, sull'iPhone `SessioneAccountTests` e `AccessoImpostazioniDalCatalogoTests`; il nome fra «» delle email e della Privacy è legato al catalogo da `tests/test_consiglio_esci_da_tutti.py`",
+      "stato": "fatto"
+    },
+    {
+      "id": 86,
+      "schermata": "Gestione: «Aggiorna i dati» mentre il server è occupato con un aggiornamento (#763)",
+      "web": "con `aggiornamento_in_corso` di `GET /api/stato` vero il pulsante è spento e sotto c'è «Il server è occupato con un aggiornamento: il pulsante torna attivo appena finisce.» (`aggiorna.in_corso`, regione `role=\"status\"`); entrando in Gestione con il campo già vero lo stato si rilegge subito, poi ogni 15 secondi finché torna falso (una lettura alla volta), e fuori da Gestione non si rilegge (`segnaAggiornamento`, `seguiAggiornamento`, `rileggiAggiornamento` in `app.js`)",
+      "iphone": "`aggiornamentoInCorso` è dichiarato (`Modelli.swift`) ma non letto: il pulsante (`AggiornaDatiViewModel`, `AggiornaDatiSezione`) è spento con «Aggiornamento in corso…» solo dopo il tocco; con il server già occupato resta acceso e, premuto, mostra «Aggiornamento già in corso»",
+      "forma": "web",
+      "chi": "web fatta (#772, prove in `tests/browser/test_impostazioni.py`); iPhone da fare: #773",
+      "stato": "da-fare"
     }
   ]
 }

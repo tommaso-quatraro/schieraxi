@@ -1,7 +1,7 @@
 """`giro`: la procedura fissa del coordinatore in un comando. Fa `stato`, cerca le PR in conflitto e le corse fallite per
-guasto d'infrastruttura, le corse superate (`annulla-superate`), le worktree da pulire (`pulisci`, SEMPRE solo prova) e, se la
-variabile d'ambiente SCHIERAXI_URL c'è, la versione in produzione (letta da /sw.js, pubblico; l'indirizzo non si stampa) con il
-tempo in cui arriva una versione unita (il server raggruppa le installazioni, #635).
+guasto d'infrastruttura, le corse superate (`annulla-superate`), le worktree da pulire (`pulisci`, SEMPRE solo prova), le
+fotografie dal vero più vecchie dell'API (#508) e, se la variabile d'ambiente SCHIERAXI_URL c'è, la versione in produzione
+(letta da /sw.js, pubblico; l'indirizzo non si stampa) con il tempo in cui arriva una versione unita (il server raggruppa le installazioni, #635).
 Confronta con il giro di prima (.superpowers/squadra/giro.json, fuori da git) e stampa SOLO ciò che è cambiato.
 
 Con --esegui: rilancia una volta sola le corse con guasto d'infrastruttura (`gh run rerun <id> --failed`) e annulla le corse
@@ -54,6 +54,18 @@ def versione_produzione(url: str, leggi_url: Callable[[str], str]) -> str:
     return m.group(1) if m else "versione non trovata in /sw.js"
 
 
+def api_dopo_le_fotografie(esegui: comune.Esegui) -> str | None:
+    """Data dell'ultimo commit su docs/openapi.json venuto dopo l'ultimo su ios/fotografie (su origin/main), o None.
+    Le fotografie dal vero sono risposte vere dell'API per le prove dell'iPhone (#508): se l'API cambia dopo, vanno rifatte.
+    Un errore di git qui non ferma il giro: l'avviso semplicemente non c'è."""
+    foto = esegui(["git", "log", "-1", "--format=%H", "origin/main", "--", "ios/fotografie"])
+    commit = foto.uscita.strip() if foto.codice == 0 else ""
+    if not commit:
+        return None
+    api = esegui(["git", "log", "-1", "--format=%cs", f"{commit}..origin/main", "--", "docs/openapi.json"])
+    return (api.uscita.strip() or None) if api.codice == 0 else None
+
+
 def guasti(esegui: comune.Esegui, prs: list[dict]) -> list[dict]:
     """Corse con guasto d'infrastruttura sull'ultima testa delle PR rosse o annullate."""
     uscita = []
@@ -93,6 +105,11 @@ def osserva(esegui: comune.Esegui, url: str | None, leggi_url: Callable[[str], s
     superate = annulla_superate.superate(esegui)
     for c in superate:
         voci[f"superata:{c['id']}"] = f"Corsa superata {c['id']} {c['workflow']} ramo {c['ramo']} (commit {c['commit']})"
+    data_api = api_dopo_le_fotografie(esegui)
+    if data_api:
+        voci["fotografie"] = (f"DA FARE: le fotografie dal vero (ios/fotografie) sono più vecchie dell'API (docs/openapi.json "
+                              f"cambiata il {data_api}): rifai le fotografie dal vero con `prove/fotografie_dal_vero.py` "
+                              "(serve la copia dei dati sul PC)")
     if url:
         voci["produzione"] = f"Produzione: {versione_produzione(url, leggi_url)} ({ATTESA_PRODUZIONE})"
     return voci, rotte, superate

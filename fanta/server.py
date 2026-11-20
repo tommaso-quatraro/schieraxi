@@ -733,6 +733,9 @@ def stato(request: Request, ctx: Contesto = Depends(lega_corrente)):
         r = lega.carica(ctx.rose)
         rg = _regole(ctx)
         prossima = consigli.giornata_da_giocare(db, st, rg)
+        # in corso anche se il blocco dell'aggiornamento lo tiene un altro (aggiornamento programmato, giro leggero, aggiorna-app.sh che
+        # installa le versioni): letto senza aspettare (#763). Con «Aggiorna i dati» partito da qui il blocco non si legge nemmeno.
+        in_corso = _aggiornamento["in_corso"] or pianificatore.blocco_tenuto()
         return {
             "stagione": st, "prossima_giornata": prossima,
             "prima_giornata_lega": rg.prima_giornata_lega,
@@ -741,7 +744,7 @@ def stato(request: Request, ctx: Contesto = Depends(lega_corrente)):
             "errori_ultimo": _errori_per(json.loads(ultimo["dettaglio"]) if ultimo and ultimo["dettaglio"] else [],
                                          _e_amministratore(request)),
             "mia_squadra": r.mia_squadra if r else None, "rose_importate": bool(r and r.squadre),
-            "nome_lega": rg.nome_lega, "aggiornamento_in_corso": _aggiornamento["in_corso"],
+            "nome_lega": rg.nome_lega, "aggiornamento_in_corso": in_corso,
             "versione": (_novita() or [{"versione": "?"}])[0]["versione"],
             "sorgente": testi_legali.sorgente(),          # indirizzo del codice sorgente (AGPL); "" se non impostato
         }
@@ -809,10 +812,26 @@ def stato_dei_dati():
         db.close()
 
 
+GIA_IN_CORSO = {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+
+
+# «Aggiorna i dati» (solo l'amministratore). Mai insieme a un altro aggiornamento: né del servizio (`_blocco`) né all'aggiornamento
+# programmato del server o ai giri leggeri di un altro processo (il blocco su file `pianificatore.blocco_processo`, tenuto fino alla
+# fine del lavoro, #660): una richiesta alla volta alle fonti. (Commento e non docstring: la docstring finirebbe in docs/openapi.json.)
 @app.post("/api/aggiorna")
 def avvia_aggiornamento():
     if not _blocco.acquire(blocking=False):
-        return {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+        return GIA_IN_CORSO
+    pila = contextlib.ExitStack()
+    try:
+        libero = pila.enter_context(pianificatore.blocco_processo())
+    except BaseException:
+        _blocco.release()
+        raise
+    if not libero:
+        pila.close()
+        _blocco.release()
+        return GIA_IN_CORSO
 
     def lavoro():
         try:
@@ -822,7 +841,10 @@ def avvia_aggiornamento():
             _aggiornamento["errori"].append(str(e))
         finally:
             _aggiornamento["in_corso"] = False
-            _blocco.release()
+            try:
+                pila.close()
+            finally:
+                _blocco.release()
 
     _aggiornamento.update(in_corso=True, righe=[], errori=[])
     threading.Thread(target=lavoro, daemon=True).start()

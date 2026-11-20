@@ -123,6 +123,122 @@ def test_gestione_solo_per_chi_gestisce_il_server(web):
     assert principale(web).get_by_role("button", name="Aggiorna i dati").is_visible()   # le frecce della testata stanno qui
 
 
+# ---------------------------------------------------------------- «Aggiorna i dati» mentre il server aggiorna da solo (#763)
+FRASE_IN_CORSO = re.compile("occupato con un aggiornamento")
+
+
+def stato_aggiornamento(web, in_corso: bool) -> None:
+    """Da qui /api/stato risponde come quello registrato, con `aggiornamento_in_corso` scelto."""
+    s = web.registrata("/api/stato")
+    s["aggiornamento_in_corso"] = in_corso
+    web.risposta("/api/stato", s)
+
+
+def orologio_comandato(web) -> None:
+    """Il tempo della pagina parte da «adesso» dello scenario, scorre da sé e si porta avanti con `clock.fast_forward`."""
+    istante = web.pagina.evaluate("(s) => new Date(s).getTime()", web.server.adesso)
+    web.pagina.clock.install(time=istante / 1000)
+
+
+def letture_stato(web) -> int:
+    return web.richieste.count("/api/stato")
+
+
+def test_aggiorna_i_dati_spento_finche_il_server_aggiorna_da_solo(web):
+    """L'aggiornamento programmato del server è in corso (`aggiornamento_in_corso` di /api/stato): in Gestione «Aggiorna i dati»
+    è spento e una frase dice perché. Con la schermata aperta lo stato si rilegge ogni 15-20 secondi; quando l'aggiornamento è
+    finito il pulsante si riaccende, la frase sparisce e le letture smettono."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, True)
+    orologio_comandato(web)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    pulsante = principale(web).get_by_role("button", name="Aggiorna i dati")
+    assert pulsante.is_disabled()
+    assert principale(web).get_by_text(FRASE_IN_CORSO).is_visible()
+    prima = letture_stato(web)
+    web.pagina.clock.fast_forward(20_000)
+    web.aspetta()
+    assert letture_stato(web) == prima + 1                    # ancora in corso: spento, si rilegge ancora
+    assert pulsante.is_disabled() and principale(web).get_by_text(FRASE_IN_CORSO).is_visible()
+    stato_aggiornamento(web, False)
+    web.pagina.clock.fast_forward(20_000)
+    web.aspetta()
+    assert letture_stato(web) == prima + 2
+    assert pulsante.is_enabled()
+    assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
+    web.pagina.clock.fast_forward(60_000)
+    web.aspetta()
+    assert letture_stato(web) == prima + 2                    # finito: niente altre letture
+    # (inviti e utenti di Gestione non sono nello scenario registrato: le loro 404 qui non contano)
+    assert not [e for e in web.errori_console if e.startswith("errore nel codice")], web.errori_console
+    assert not [r for r in web.richieste_fallite if "/api/stato" in r], web.richieste_fallite
+
+
+def test_gestione_rilegge_subito_lo_stato_letto_prima(web):
+    """Lo stato letto prima, all'apertura dell'app, diceva «aggiornamento in corso»; nel frattempo è finito. Entrando in Gestione
+    lo stato si rilegge subito, non dopo 15 secondi: il pulsante è già acceso e la frase non c'è."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, True)
+    web.apri("/?vista=impostazioni")
+    prima = letture_stato(web)
+    stato_aggiornamento(web, False)
+    tocca(web, voce(web, "Gestione"))
+    assert letture_stato(web) == prima + 1
+    assert principale(web).get_by_role("button", name="Aggiorna i dati").is_enabled()
+    assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
+
+
+def test_fuori_da_gestione_lo_stato_non_si_rilegge(web):
+    """Con l'aggiornamento in corso si esce da Gestione: lo stato non si rilegge più (la lettura serve solo al pulsante)."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, True)
+    orologio_comandato(web)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    assert principale(web).get_by_role("button", name="Aggiorna i dati").is_disabled()
+    tocca(web, barra(web).get_by_role("link", name="Formazione"))
+    prima = letture_stato(web)
+    for _ in range(3):
+        web.pagina.clock.fast_forward(20_000)
+        web.aspetta()
+    assert letture_stato(web) == prima
+
+
+def test_una_lettura_dello_stato_alla_volta(web):
+    """Una lettura dello stato che tarda non ne fa partire altre: la prossima si prepara solo quando la risposta è arrivata."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, True)
+    orologio_comandato(web)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    ferme = []
+    web.pagina.route("**/api/stato", lambda r: ferme.append(r))     # le letture da qui restano senza risposta finché non si sblocca
+    for _ in range(4):
+        web.pagina.clock.fast_forward(20_000)
+        web.pagina.evaluate("() => new Promise(fatto => setTimeout(fatto, 0))")
+    assert len(ferme) == 1, f"{len(ferme)} letture insieme"
+    s = web.registrata("/api/stato")
+    s["aggiornamento_in_corso"] = False
+    ferme[0].fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps(s))
+    web.aspetta()
+    assert principale(web).get_by_role("button", name="Aggiorna i dati").is_enabled()
+
+
+def test_aggiorna_i_dati_con_il_server_gia_occupato_lo_dice(web):
+    """Il pulsante acceso, ma il server risponde che un aggiornamento è già in corso: lo dice un avviso, come prima (#760)."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    web.risposta("/api/aggiorna", {"avviato": False, "messaggio": "Aggiornamento già in corso"})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    principale(web).get_by_role("button", name="Aggiorna i dati").click(timeout=10000)
+    web.pagina.get_by_role("status").filter(has_text="Aggiornamento già in corso").first.wait_for(timeout=5000)
+    assert principale(web).get_by_role("button", name="Aggiorna i dati").is_enabled()
+    assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
+
+
 @pytest.mark.parametrize("indirizzo", ["/?vista=impostazioni&gruppo=gestione", "/?vista=impostazioni&gruppo=avanzate"])
 def test_chi_non_gestisce_il_server_non_apre_gestione_neanche_con_l_indirizzo(web, indirizzo):
     solo(web, "prima")
@@ -214,7 +330,122 @@ def test_con_un_account_l_indirizzo_dell_account_apre_l_account(web):
     da_utente(web)
     web.apri("/?vista=impostazioni&gruppo=account")
     assert titolo(web) == "Il tuo account"
-    assert principale(web).get_by_role("button", name="Esci").is_visible()
+    assert principale(web).get_by_role("button", name="Esci", exact=True).is_visible()
+
+
+# ---------------------------------------------------------------- Esci da tutti i dispositivi (#765)
+ESCI_TUTTI = "Esci da tutti i dispositivi"
+
+
+def uscita_ovunque(web, stato: int | None = 200) -> list[str]:
+    """Il server di «Esci da tutti»: la rotta risponde con `stato` (None: la richiesta non arriva). Se riesce, da lì ogni
+    /api/... risponde 401 come il server vero a sessioni chiuse. Restituisce i metodi delle richieste arrivate alla rotta."""
+    arrivate, uscito = [], []
+    a_sessione_chiusa = json.dumps({"detail": "Serve l'accesso", "multiutente": True})
+
+    def altre(route):
+        if uscito:
+            route.fulfill(status=401, content_type="application/json; charset=utf-8", body=a_sessione_chiusa)
+        else:
+            route.fallback()
+
+    def esci(route):
+        arrivate.append(route.request.method)
+        if stato is None:
+            route.abort()
+            return
+        if stato == 200:
+            uscito.append(True)
+        route.fulfill(status=stato, content_type="application/json; charset=utf-8",
+                      body=json.dumps({"sessioni_chiuse": 3} if stato == 200 else {}))
+
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), altre)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci-da-tutti", esci)
+    return arrivate
+
+
+def chiavi_salvate(web) -> list[str]:
+    """Le copie dei dati e l'account lasciati nel browser (localStorage)."""
+    return [k for k in web.pagina.evaluate("Object.keys(localStorage)") if k.startswith("cache:") or k == "account"]
+
+
+def test_esci_da_tutti_chiede_conferma_ed_esce_ovunque(web):
+    """Il pulsante consigliato dalle email di sicurezza c'è in Il tuo account. La conferma dice che si esce ovunque, anche da qui,
+    e che si dovrà rientrare; dopo l'uscita si torna alla pagina d'accesso e nel browser non restano copie dei dati né l'account."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/")                                              # la Formazione lascia nel browser le sue copie
+    assert chiavi_salvate(web), "la prova vuole delle copie da togliere"
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    domande = []
+
+    def rispondi(dialogo):
+        domande.append(dialogo.message)
+        dialogo.accept()
+
+    web.pagina.on("dialog", rispondi)
+    principale(web).get_by_role("button", name=ESCI_TUTTI).click(timeout=10000)
+    web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).wait_for(timeout=10000)
+    assert len(domande) == 1, domande
+    assert all(parte in domande[0] for parte in ("tutti i dispositivi", "anche da questo", "accedere di nuovo")), domande
+    assert arrivate == ["POST"]
+    assert chiavi_salvate(web) == []
+
+
+GOOGLE = [{"provider": "google", "email": "nome@example.invalid", "creata": "2026-10-01T10:00:00", "ultimo_uso": None}]
+
+
+@pytest.mark.parametrize("password, social, dice_google", [(True, GOOGLE, True), (False, GOOGLE, False), (True, [], False)],
+                         ids=["google-e-password", "solo-google", "senza-google"])
+def test_esci_da_tutti_dice_di_google_solo_a_chi_perde_il_collegamento(web, password, social, dice_google):
+    """Il server toglie il collegamento con Google a chi ha una password (dopo, «Continua con Google» non fa entrare finché non si
+    ricollega); chi entra solo con Google lo tiene. La conferma lo dice solo a chi lo perde, leggendo `accessi` del server."""
+    solo(web, "prima")
+    da_utente(web, {**UTENTE, "social": ["google"], "accessi": {"password": password, "social": social, "disponibili": ["google"]}})
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    domande = []
+
+    def rispondi(dialogo):
+        domande.append(dialogo.message)
+        dialogo.dismiss()
+
+    web.pagina.on("dialog", rispondi)
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    assert len(domande) == 1 and "anche da questo" in domande[0], domande
+    assert ("Il collegamento con Google si toglie" in domande[0]) is dice_google, domande
+    assert arrivate == []
+
+
+def test_esci_da_tutti_annullato_non_fa_niente(web):
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    arrivate = uscita_ovunque(web)
+    web.pagina.on("dialog", lambda dialogo: dialogo.dismiss())
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    assert arrivate == []
+    assert titolo(web) == "Il tuo account"
+
+
+@pytest.mark.parametrize("stato", [500, None], ids=["errore-del-server", "rete-giu"])
+def test_esci_da_tutti_non_riuscito_lo_dice_e_resta_dentro(web, stato):
+    """Se la richiesta non riesce gli altri dispositivi sono ancora dentro: un avviso lo dice, si resta nella pagina e le copie
+    restano (al contrario di «Esci», che esce anche con il server spento)."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/")
+    web.apri("/?vista=impostazioni&gruppo=account")
+    prima = chiavi_salvate(web)
+    arrivate = uscita_ovunque(web, stato)
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())
+    tocca(web, principale(web).get_by_role("button", name=ESCI_TUTTI))
+    web.pagina.get_by_role("status").filter(has_text="Non riesco a farti uscire da tutti i dispositivi").wait_for(timeout=10000)
+    assert arrivate == ["POST"]
+    assert titolo(web) == "Il tuo account"
+    assert principale(web).get_by_role("button", name=ESCI_TUTTI).is_visible()
+    assert chiavi_salvate(web) == prima
 
 
 # ---------------------------------------------------------------- valori salvati da versioni di prima

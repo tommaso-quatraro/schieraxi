@@ -23,10 +23,21 @@ Regole comuni:
 - `aree.json`: aree del repository (percorsi, primo che corrisponde vince), gruppi con il tetto delle PR aperte
   (`server-web` 4, `ios` 3), aree neutre (documenti e test: non contano nel tetto), workflow con job sui Mac,
   etichetta degli obiettivi. Una PR che tocca `ios/` e un'altra area conta nel gruppo `ios`.
-- `foto.json`: dai file iOS alle schermate di `ios/scripts/screenshot.sh`. Un test controlla che i nomi esistano e che ogni
-  file Swift di oggi abbia una regola. Le regole larghe hanno `"ripiego": true`: un file di `ios/Sources/Presentation/` ci
-  finisce solo se è scritto in `ripiego_dichiarato` (parti usate da più schermate); per gli altri una regola per file o per
-  cartella stretta (anche questo lo controlla un test).
+- `foto.json`: dai file iOS alle schermate di `ios/scripts/screenshot.sh`. Per ogni file vince una regola a mano stretta; se
+  non c'è, `grafo_ios.py` legge il codice Swift (`ios/Sources`) e risale dai tipi del file alle viste che lo usano, fino alle
+  viste «radice» delle schermate (sezione `radici`), fermandosi alle `barriere` (AppModel, Navigazione…: da lì ogni schermata
+  sarebbe raggiunta); un file che arriva a un `contenitore` (RadiceView…: parti mostrate su ogni schermata) usa la regola
+  larga. Alle viste radice la risalita si ferma, tranne alle `annidate` (mostrate dentro un'altra radice, come
+  AspettoSezione dentro ImpostazioniView): da lì continua e prende anche le radici di fuori. Se arriva ad almeno una e al
+  massimo `soglia_radici` viste radice prende le loro schermate, altrimenti vale la regola larga (`"ripiego": true`). I test controllano che ogni schermata di `TUTTE` abbia una radice, che ogni nome
+  di `radici` e delle regole esista in `screenshot.sh`, che ogni tipo esista nel codice e che ogni file Swift abbia una
+  scelta. Un file di `ios/Sources/Presentation/` che il codice non porta a poche viste radice chiede una regola stretta, le
+  sue radici o una riga in `ripiego_dichiarato` (parti usate da più schermate). Il grafo legge i file sul disco: un file
+  nuovo di una PR aperta che qui non c'è usa le regole. È una lettura del testo, non un compilatore, e sbaglia nei due sensi.
+  Per eccesso: nomi uguali in file diversi. Per difetto: usi che il testo non mostra (un tipo scelto con una stringa, una
+  chiamata senza il nome del tipo, come `.init` o un membro con un nome che ha anche un altro tipo), usi che passano da una
+  barriera, e pagine aperte da una radice che non sono scritte in `annidate`. Per questo le regole a mano strette vincono e un
+  file che arriva a troppe radici o a un contenitore usa la regola larga.
 - `modello-brief.md`: modello pubblico del brief per un agente.
 
 ## stato
@@ -97,12 +108,14 @@ con `--lancia`: sul ramo della PR se è aperta, su `main` se è unita o con `--d
 ```
 python script/squadra/squadra.py foto 123
 python script/squadra/squadra.py foto --da abc1234 --lancia
+python script/squadra/squadra.py foto 123 --spiega     # per ogni file: regola a mano, codice (con la strada) o regola larga
 ```
 
 ## giro
 La procedura del coordinatore in un comando: `stato`, PR in conflitto, guasti d'infrastruttura, corse superate, worktree da
-pulire (sempre solo prova) e versione in produzione se c'è `SCHIERAXI_URL` (letta dal file pubblico `/sw.js`). Stampa solo
-ciò che è cambiato dal giro prima (`+` nuovo, `~` cambiato, `-` finito); `--tutto` stampa anche il resto. Con `--esegui`
+pulire (sempre solo prova), fotografie dal vero più vecchie dell'API (ultimo commit su `docs/openapi.json` dopo l'ultimo su
+`ios/fotografie/`, in `origin/main`: si rifanno con `prove/fotografie_dal_vero.py`) e versione in produzione se c'è
+`SCHIERAXI_URL` (letta dal file pubblico `/sw.js`). Stampa solo ciò che è cambiato dal giro prima (`+` nuovo, `~` cambiato, `-` finito); `--tutto` stampa anche il resto. Con `--esegui`
 rilancia una volta sola i guasti, e solo le corse al primo tentativo (`gh run rerun <id> --failed`) e annulla le corse superate. Esce con 10 se c'è qualcosa da
 guardare.
 
@@ -114,6 +127,9 @@ python script/squadra/squadra.py giro
 Toglie la bozza solo se tutto torna: PR aperta, `mergeable` esattamente `MERGEABLE`, ramo non indietro (`compare/main...<testa>`, `behind_by` uguale a 0), controlli verdi sul
 commit in testa, descrizione, revisione e novità (`script/ci/controlla_pr.py`), coerenza web-iPhone (`script/coerenza.py
 --controlla` sui file della PR, se li tocca), «Foto da fare» se la PR tocca `ios/`. Altrimenti stampa ogni motivo ed esce con 1.
+Se le righe «Foto da fare» non nominano tutte le schermate che `foto` ricava dai file iOS della PR (il grafo con i file Swift
+del commit della PR), stampa un avviso con le schermate che mancano e i file da cui arrivano: non è un motivo di rifiuto.
+Un file Swift della PR oltre 200 KB o 3000 righe salta il confronto (avviso corto). Gli avvisi escono prima dei motivi.
 Se `controlla_pr.py` o `coerenza.py` non ci sono su questo `main`, rifiuta («controllo non disponibile su questo main").
 
 Caso a parte: è rosso solo il job «ambito» ma la descrizione attuale va bene (`controlla_pr.py` senza problemi, aree di

@@ -56,6 +56,7 @@ oggi.rinvio_senza_voto
 oggi.rinvio_ufficio
 oggi.rinvio_eccezione
 oggi.rinvio_salvato
+oggi.rinvio_regola_lega
 oggi.recupero_manca
 
 # Scheda del giocatore: lo stato a parole (Domain/ParolaStato) e «Diffidato» accanto al ruolo (SchedaGiocatoreView)

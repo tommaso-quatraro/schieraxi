@@ -127,6 +127,39 @@ def test_a_campionato_finito_il_riepilogo_e_la_frase_del_server_senza_errori(web
     assert not web.richieste_fallite and not web.errori_console and not web.errori_mostrati()
 
 
+FRASE_SENZA_DATA = "Data da definire"
+
+
+def senza_date(web, frase=True) -> None:
+    """Prima di `apri`: /api/oggi con la giornata da preparare ancora senza date (#552), niente scadenza né inizio (anche nella
+    `prossima` della fase «finita») e, con `frase`, il campo `senza_data` di un server di adesso."""
+    oggi = web.registrata("/api/oggi")
+    corpo = {**oggi, "inizio": None, "scadenza": None, "ore_mancanti": None}
+    if oggi.get("prossima"):
+        corpo["prossima"] = {**oggi["prossima"], "scadenza": None}
+    if frase:
+        corpo["senza_data"] = {"testo": FRASE_SENZA_DATA, "frase": {"chiave": "giornata.senza_data", "param": {}}}
+    web.risposta("/api/oggi", corpo)
+
+
+def test_con_la_giornata_senza_date_la_testa_dice_la_frase_del_server(web):
+    """#552: al posto di «Si chiude …» la frase del server (`senza_data`), la stessa dell'iPhone, senza conto alla rovescia."""
+    solo(web, "prima", "finita")
+    senza_date(web)
+    web.apri("/")
+    assert principale(web).locator("#conto-chiude").inner_text().strip() == FRASE_SENZA_DATA
+    assert principale(web).locator("#conto").inner_text().strip() == ""
+    assert "Calendario non disponibile" not in web.testo_principale()
+    assert campo(web).count() == 11 and not web.errori_console and not web.errori_mostrati()
+
+
+def test_un_server_di_prima_senza_la_frase_lascia_il_testo_di_sempre(web):
+    solo(web, "prima")
+    senza_date(web, frase=False)
+    web.apri("/")
+    assert principale(web).locator("#conto-chiude").inner_text().strip() == "Calendario non disponibile"
+
+
 def test_a_campionato_finito_con_un_recupero_che_manca_si_sceglie_cosa_vale(web):
     """#656: nelle 48 ore dopo l'ultima giornata, con un suo recupero ancora da giocare, il riepilogo porta `rinvio` come nella fase
     «finita» di sempre: anche a campionato finito si sceglie come contano i giocatori della partita rinviata (stesso menu)."""

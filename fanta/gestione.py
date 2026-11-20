@@ -390,4 +390,17 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
         corpo["rinvio"] = rinvii.blocco_oggi(regole, stagione, giornata, corpo.get("partite") or [], mie)
     except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
         corpo["rinvio"] = None
+    if not scadenza_mostrata(corpo):                    # la giornata da preparare non ha ancora le date (#552)
+        testo = F("giornata.senza_data")
+        corpo["senza_data"] = {"testo": testo, "frase": frasi.di(testo)}
     return corpo
+
+
+def scadenza_mostrata(corpo: dict) -> str | None:
+    """Quando si chiude la formazione che la Formazione mostra (la regola di `scadenzaDi` della web e di `TestaFormazione.scadenza`
+    dell'iPhone): a giornata finita, o per chi è entrato a giornata iniziata, quella della `prossima`; altrimenti la scadenza di
+    Oggi, o l'inizio della prima partita. None se la giornata non ha ancora le date: allora Oggi manda `senza_data` (#552)."""
+    p = corpo.get("prossima")
+    if p and (corpo.get("fase") == fasi.FINITA or corpo.get("senza_formazione")) and p.get("scadenza"):
+        return p["scadenza"]
+    return corpo.get("scadenza") or corpo.get("inizio")

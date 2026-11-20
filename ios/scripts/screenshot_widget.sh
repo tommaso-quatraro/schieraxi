@@ -80,10 +80,11 @@ giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto formazione-blocco:vuo
 # Campionato finito (#727): la frase del server al posto della giornata, anche con il testo molto grande.
 giro "$UDID_IPHONE" iphone_campionato_finito dark 600 oggi:campionato_finito oggi-blocco:campionato_finito formazione:campionato_finito formazione-blocco:campionato_finito dubbi:campionato_finito dubbi-blocco:campionato_finito
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_campionato_finito_testo_grande dark 600 oggi:campionato_finito formazione:campionato_finito oggi-blocco:campionato_finito
-# Entrato a giornata iniziata senza una formazione (#687): la prossima giornata da preparare, anche chiaro e con il testo molto grande.
-giro "$UDID_IPHONE" iphone_senza_formazione dark 600 oggi:senza_formazione oggi-blocco:senza_formazione
-giro "$UDID_IPHONE" iphone_senza_formazione_chiaro light 600 oggi:senza_formazione
-DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_senza_formazione_testo_grande dark 600 oggi:senza_formazione oggi-blocco:senza_formazione
+# Entrato a giornata iniziata senza una formazione (#687, #752): i tre widget mostrano la prossima giornata da preparare, anche chiaro
+# e con il testo molto grande.
+giro "$UDID_IPHONE" iphone_senza_formazione dark 600 oggi:senza_formazione oggi-blocco:senza_formazione formazione:senza_formazione formazione-blocco:senza_formazione dubbi:senza_formazione dubbi-blocco:senza_formazione
+giro "$UDID_IPHONE" iphone_senza_formazione_chiaro light 600 oggi:senza_formazione formazione:senza_formazione dubbi:senza_formazione
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_senza_formazione_testo_grande dark 600 oggi:senza_formazione oggi-blocco:senza_formazione formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione oggi dubbi formazione-blocco oggi-blocco
 giro "$UDID_IPHONE" iphone_accentato dark 600 formazione:pieni+accentato oggi:pieni+accentato dubbi:pieni+accentato oggi-blocco:pieni+vivido
 avvisi_ferma
@@ -94,7 +95,10 @@ echo "iPad: $NOME_IPAD ($IOS_IPAD)"
 avvia "$UDID_IPAD"
 giro "$UDID_IPAD" ipad_scuro_verticale dark 800 oggi formazione dubbi
 giro "$UDID_IPAD" ipad_chiaro_verticale light 800 oggi formazione
-giro "$UDID_IPAD" ipad_fasi dark 800 oggi:in_corso oggi:finita dubbi:in_corso oggi:senza_formazione
+giro "$UDID_IPAD" ipad_fasi dark 800 oggi:in_corso oggi:finita dubbi:in_corso oggi:senza_formazione formazione:senza_formazione dubbi:senza_formazione
+# Entrato a giornata iniziata (#752): l'extra large di Formazione consigliata c'è solo su iPad, anche chiaro e con il testo molto grande.
+giro "$UDID_IPAD" ipad_senza_formazione_chiaro light 800 formazione:senza_formazione dubbi:senza_formazione
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_senza_formazione_testo_grande dark 800 formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_testo_grande dark 800 formazione oggi
 
 # Orizzontale: si ruota il simulatore con la tastiera (puo' non funzionare sul Mac di GitHub: in quel caso le foto restano verticali).

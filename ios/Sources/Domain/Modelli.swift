@@ -373,12 +373,18 @@ struct Oggi: Decodable {
     /// l'ultima giornata c'è anche il suo `riepilogo`). Facoltativo e tollerante: un server di prima non lo manda, una forma strana
     /// vale «no».
     let campionatoFinito: Tollerante<CampionatoFinito>?
+    /// La giornata da preparare non ha ancora le date (#552): `{testo, frase}` («Data da definire»), solo in quel caso. Facoltativo e
+    /// tollerante: un server di prima non lo manda, una forma strana vale «no».
+    let senzaData: Tollerante<FraseServer>?
 }
 
 extension Oggi {
     /// La frase del server a campionato finito («Il campionato è finito: previsioni e consigli ripartono con il calendario della
     /// prossima stagione.»), da mostrare così com'è (#727). Nil fuori da quel caso, con un server di prima o con un testo vuoto.
     var testoCampionatoFinito: String? { campionatoFinito?.valore?.testoPronto }
+    /// La frase del server al posto di «Si chiude …» quando la giornata da preparare non ha ancora le date («Data da definire»,
+    /// #552), da mostrare così com'è, come la web. Nil fuori da quel caso, con un server di prima o con un testo vuoto.
+    var testoSenzaData: String? { senzaData?.valore?.testoPronto }
 }
 
 /// Quando sono state lette le probabili formazioni (campo `probabili` di Oggi). Ogni campo è facoltativo.
@@ -1191,9 +1197,13 @@ struct PuntiConsigliata: Decodable, Equatable {
     }
 }
 
-/// Il campo `campionato_finito` di `GET /api/oggi` e `GET /api/widget` (#656): la frase del server, già nella lingua chiesta.
-/// `frase` (chiave e parametri per tradurla) all'iPhone non serve e non si legge.
-struct CampionatoFinito: Decodable, Equatable {
+/// Il campo `campionato_finito` di `GET /api/oggi` e `GET /api/widget` (#656).
+typealias CampionatoFinito = FraseServer
+
+/// Una frase del server `{testo, frase}` da mostrare così com'è, già nella lingua chiesta: `campionato_finito` di `GET /api/oggi` e
+/// `GET /api/widget` (#656), `senza_data` di `GET /api/oggi` (#552). `frase` (chiave e parametri per tradurla) all'iPhone non serve e
+/// non si legge.
+struct FraseServer: Decodable, Equatable {
     let testo: String?
 
     /// Il testo senza spazi ai lati; nil se manca o è vuoto.

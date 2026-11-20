@@ -492,7 +492,7 @@ def nuovo_codice_recupero(dati: SoloPassword, request: Request, utente: Utente =
 @router.post("/api/account/elimina", dependencies=[Depends(_attivo)])
 def elimina_account(dati: SoloPassword, request: Request, risposta: Response, utente: Utente = Depends(utente_corrente)):
     """Cancella l'account e TUTTI i suoi dati (rose, regole, scelte, immagini, avvisi). Serve la password; non si può annullare.
-    Per portarti via i dati prima, usa il backup (Lega > Backup)."""
+    Per portarti via i dati prima, usa «Scarica i tuoi dati» (Impostazioni > Il tuo account)."""
     with closing(account.apri()) as db:
         account.conferma_password(db, utente.id, dati.password, token_della_richiesta(request))
         account.elimina(db, utente.id)
@@ -535,7 +535,7 @@ def imposta_email(dati: NuovaEmail, request: Request, utente: Utente = Depends(u
 @router.post("/api/account/email/conferma", dependencies=[Depends(_attivo)])
 def conferma_email(dati: CodiceEmail, request: Request, utente: Utente = Depends(utente_corrente)):
     with closing(account.apri()) as db:
-        return account_email.conferma_email(db, utente.id, dati.codice, ip_reale(request))
+        return account_email.conferma_email(db, utente.id, dati.codice, ip_reale(request), sessione=token_della_richiesta(request))
 
 
 @router.post("/api/account/email/togli", dependencies=[Depends(_attivo)])

@@ -864,10 +864,5 @@
   "err.passo_sconosciuto": {
     "it": "Passo sconosciuto della configurazione",
     "en": "Unknown setup step"
-  },
-  "err.indica_prima_squadra_diario": {
-    "it": "Indica prima la tua squadra in Squadra > Squadre e rose",
-    "en": "First choose your team in «My team»",
-    "nota": "Frase di fanta/diario.py con il nome di prima della voce (#618): si toglie quando diario.py dice come server.py «Indica prima la tua squadra in «La mia squadra»»"
   }
 }
