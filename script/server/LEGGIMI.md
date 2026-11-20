@@ -143,8 +143,10 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   con `pip install --require-hashes`: solo le versioni e i file con l'hash scritto lì. Solo se l'installazione riesce tutta scambia le
   cartelle (`.venv` diventa `.venv.precedente`, la nuova diventa `.venv`): l'ambiente in uso non resta mai a metà. Funziona perché
   servizio e script usano solo `.venv/bin/python`.
-  - Se pip non riesce (rete, PyPI, hash diverso) non tocca niente, rimette i file della versione di prima (il servizio non è stato
-    riavviato) e **riprova ai giri dopo**: stato in `~/.cache/fantacalcio/librerie-fallite`, un avviso «rimandato» la prima volta;
+  - L'ambiente nuovo si prepara **prima** di mettere al loro posto i file della versione nuova (#826): mentre pip lavora, i processi
+    del cron usano ancora codice e librerie di prima.
+  - Se pip non riesce (rete, PyPI, hash diverso) non c'è niente da rimettere: file, ambiente in uso e servizio non sono stati toccati.
+    **Riprova ai giri dopo**: stato in `~/.cache/fantacalcio/librerie-fallite`, un avviso «rimandato» la prima volta;
     alla terza volta di fila rinuncia, scrive `rifiutato` e avvisa.
   - Se dopo il riavvio il servizio non risponde torna anche all'ambiente di prima.
   - Se lo scambio delle cartelle non riesce rimette subito l'ambiente in uso e i file della versione di prima, e avvisa.
@@ -163,6 +165,13 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   attese; se non torna, l'installazione non è riuscita e si torna indietro. Senza il file non controlla niente (account spenti).
   Prima di installare legge la versione del database in sola lettura (anche nel segno `installazione-in-corso`, terzo campo) e la
   rilegge prima di tornare indietro: se è salita, il codice di prima rifiuterebbe il database e **non si torna indietro** (vedi sotto).
+- **Riavvio** (#826): `sudo -n systemctl restart <servizio>` (mai una domanda di password: serve la regola di sudo senza password per
+  quel solo comando) e il processo del servizio (`systemctl show -p MainPID`) deve cambiare. Se il riavvio non riesce risponderebbe
+  ancora il processo vecchio: lo script rimette i file di prima, non scrive `rifiutato` (è un guasto del server, non della versione),
+  avvisa come gli altri guasti (uno al giorno) e riprova al giro dopo.
+- **Avvisi** (#826): partono anche nelle ore tranquille. Se il servizio degli avvisi non risponde resta una riga nel registro
+  («avviso non partito») e l'avviso si riprova all'inizio dei giri dopo (`~/.cache/fantacalcio/avvisi-da-mandare`, un file per avviso;
+  dopo un giorno si rinuncia, con una riga nel registro). I guasti già si riprovavano da soli.
 
 #### Versione tenuta dopo una migrazione
 Avviso «SchieraXI: aggiornamento da controllare»: la versione nuova non andava, ma aveva già portato il database degli account a una

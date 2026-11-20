@@ -13,17 +13,18 @@
 #   2b. installazioni raggruppate (#635): rimanda durante le partite e nell'ora prima di una scadenza, e se l'ultima installazione
 #      riuscita e' di meno di un intervallo fa (predefinito 60 minuti, 0 = subito; SCHIERAXI_INTERVALLO_MINUTI o il file
 #      ~/.config/schieraxi/intervallo-minuti). Subito le versioni segnate urgenti dal job rilascia (vedi «Rilasci raggruppati» sotto);
-#   3. altrimenti salva una copia della versione attuale (per tornare indietro) e copia la nuova in ~/fantacalcio
-#      (codice e script: mai lega/, dati/ e fanta/avatar_tratti.json, mai CLAUDE.md);
-#   4. se cambia requirements.txt prepara un ambiente Python nuovo (solo versioni e hash di requirements.txt: pip --require-hashes)
-#      e lo scambia con quello in uso solo se tutto e' andato; se pip non riesce resta tutto com'era e riprova ai giri dopo
-#      (alla terza volta di fila rinuncia e avvisa); poi riavvia SOLO il servizio fantacalcio e controlla che risponda e che il
+#   3. altrimenti salva una copia della versione attuale (per tornare indietro); se cambia requirements.txt prepara PRIMA un ambiente
+#      Python nuovo (solo versioni e hash di requirements.txt: pip --require-hashes; se pip non riesce non tocca niente e riprova ai giri
+#      dopo, alla terza volta di fila rinuncia e avvisa) (#826);
+#   4. copia la versione nuova in ~/fantacalcio (codice e script: mai lega/, dati/ e fanta/avatar_tratti.json, mai CLAUDE.md), scambia
+#      l'ambiente Python, riavvia SOLO il servizio fantacalcio (sudo -n, processo cambiato: #826) e controlla che risponda e che il
 #      database degli account si apra alla versione attesa (#825);
 #   5. se non va torna alla versione di prima (codice e librerie), non riprova la stessa versione e manda un avviso sul telefono;
 #      ma se intanto il database degli account e' salito di versione tiene la nuova e avvisa (il codice di prima non lo leggerebbe).
 # Avvisi sul telefono solo quando qualcosa non va (versione rifiutata, librerie che non si installano, ritorno alla versione di prima,
 # chiave delle firme mancante, GitHub che non risponde da tre giri, copia di GitHub o file della versione nuova che non si copiano:
 # vedi guasto, al massimo uno al giorno per motivo): un'installazione riuscita resta solo nel registro dati/pubblicazione.log.
+# Gli avvisi partono anche nelle ore tranquille; se non partono, una riga nel registro e si riprovano (#826, avvisa_o_riprova).
 # Non parte mentre gira l'aggiornamento dei dati (stesso blocco di aggiorna.sh): ritenta al giro dopo.
 # Mentre lavora tiene ~/.cache/fantacalcio/blocco-pubblicazione: lo usano anche pubblica-sito.sh (stesso clone) e promemoria.sh (salute).
 # Opzione --prova: dice cosa farebbe e non scrive niente in ~/fantacalcio e in ~/.cache/fantacalcio (non copia, non riavvia).
@@ -103,12 +104,13 @@ QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di 
 LOG="$DEST/dati/pubblicazione.log"
 # la cartella dati la scrive anche il servizio (produzione o prova): un collegamento simbolico al posto del log farebbe scrivere
 # questo script (che gira fuori dal recinto del servizio) da un'altra parte, per esempio sul codice. Non scrive e non installa niente.
+# Gli avvisi dell'installazione ignorano le ore tranquille (#826): dicono che gli aggiornamenti sono fermi o tornati indietro.
 avvisa() {   # titolo, testo, priorita (usa il canale delle notifiche dell'app: web o ntfy); esce con 0 solo se l'avviso e' partito
   [ "$ISTANZA" = prova ] && return 0     # la prova non avvisa: gli avvisi vanno al canale della produzione (se resta indietro, lo vede il collaudo)
   ( cd "$DEST" && nice -n 10 .venv/bin/python -c "
 import sys
 from fanta import notifiche
-sys.exit(0 if notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'package') else 1)" "$1" "$2" "$3" ) >/dev/null 2>&1
+sys.exit(0 if notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'package', ignora_silenzio=True) else 1)" "$1" "$2" "$3" ) >/dev/null 2>&1
 }
 # Fermo per un collegamento: oltre al journal (registri.sh) un avviso sul telefono, una volta sola finche' il collegamento resta.
 # Il segno sta in ~/.cache come gli altri stati e si crea con noclobber (mai attraverso un collegamento gia' presente).
@@ -116,7 +118,8 @@ SEGNO_COLLEGAMENTO="$STATO/avvisato-collegamento"
 if ! registri_sicuri "$LOG" "$LOG.tmp"; then
   if [ "$PROVA" = 0 ] && [ -z "$ISTANZA" ] && mkdir -p "$STATO" && [ ! -L "$SEGNO_COLLEGAMENTO" ] && [ ! -e "$SEGNO_COLLEGAMENTO" ] \
      && ( set -C; : > "$SEGNO_COLLEGAMENTO" ) 2>/dev/null; then
-    avvisa "SchieraXI: aggiornamento fermo" "Nella cartella dei dati c'e' un collegamento al posto del registro degli aggiornamenti: l'app non si aggiorna finche' non lo togli." 4
+    avvisa "SchieraXI: aggiornamento fermo" "Nella cartella dei dati c'e' un collegamento al posto del registro degli aggiornamenti: l'app non si aggiorna finche' non lo togli." 4 \
+      || rm -f "$SEGNO_COLLEGAMENTO"     # non partito (#826): il giro dopo riprova
   fi
   exit 1
 fi
@@ -159,9 +162,9 @@ guasto() {   # motivo, testo dell'avviso, volte di fila prima dell'avviso (di so
   [[ $n =~ ^[0-9]{1,9}$ ]] || n=0
   [[ $ultimo =~ ^[0-9]{1,12}$ ]] || ultimo=0
   n=$(( n + 1 )); adesso=$(date +%s)
-  if [ "$n" -ge "${3:-1}" ] && [ $(( adesso - ultimo )) -ge $(( GIORNO - TOLLERANZA )) ] \
-     && avvisa "SchieraXI: aggiornamento non riuscito" "$2 Dettagli in dati/pubblicazione.log." 4; then
-    ultimo=$adesso
+  if [ "$n" -ge "${3:-1}" ] && [ $(( adesso - ultimo )) -ge $(( GIORNO - TOLLERANZA )) ]; then
+    if avvisa "SchieraXI: aggiornamento non riuscito" "$2 Dettagli in dati/pubblicazione.log." 4; then ultimo=$adesso
+    else log "avviso non partito (guasto $1): riprovo al prossimo giro"; fi
   fi
   echo "$n $ultimo" > "$f"
 }
@@ -179,11 +182,63 @@ risolto() {   # motivi tornati a posto
   [ ${#file[@]} -gt 0 ] || return 0
   if [ -n "$segnalati" ]; then
     log "di nuovo a posto: $segnalati"
-    avvisa "SchieraXI: aggiornamenti di nuovo a posto" "Gli aggiornamenti automatici funzionano di nuovo." 3 || return 0
+    avvisa "SchieraXI: aggiornamenti di nuovo a posto" "Gli aggiornamenti automatici funzionano di nuovo." 3 \
+      || { log "avviso «di nuovo a posto» non partito: riprovo"; return 0; }
   fi
   rm -f -- "${file[@]}"
 }
 TESTO_RETE="Da tre giri di fila non riesco a scaricare da GitHub (rete?): le versioni nuove non arrivano."
+
+# Avvisi che si mandano una volta sola (versione rifiutata, ritorno indietro...): lo stato e' gia' scritto, quindi il giro dopo non
+# ripasserebbe di qui (#826). Se non partono (servizio degli avvisi che non risponde) una riga nel registro e l'avviso resta in
+# $STATO/avvisi-da-mandare, un file per avviso (ora in secondi, priorita, titolo, testo); ogni giro, prima di tutto il resto, li
+# riprova: mandato, si toglie con una riga nel registro; dopo un giorno si rinuncia, con una riga nel registro.
+DA_MANDARE="$STATO/avvisi-da-mandare"
+avvisa_o_riprova() {   # titolo, testo, priorita
+  [ "$PROVA" = 1 ] && return 0
+  avvisa "$1" "$2" "$3" && return 0
+  log "avviso non partito («$1»): lo riprovo ai prossimi giri"
+  { mkdir -p "$DA_MANDARE" && [ ! -L "$DA_MANDARE" ]; } || return 1
+  printf '%s\n%s\n%s\n%s\n' "$(date +%s)" "$3" "$1" "$2" > "$DA_MANDARE/$(date +%s)-$$-$RANDOM"
+  return 1
+}
+riprova_avvisi() {
+  [ "$PROVA" = 1 ] && return 0
+  { [ -d "$DA_MANDARE" ] && [ ! -L "$DA_MANDARE" ]; } || return 0
+  local f quando priorita titolo testo
+  for f in "$DA_MANDARE"/*; do
+    { [ -f "$f" ] && [ ! -L "$f" ]; } || continue
+    quando=""; priorita=""; titolo=""
+    { read -r quando; read -r priorita; read -r titolo; testo=$(cat); } < "$f"
+    [[ $quando =~ ^[0-9]{1,12}$ ]] || quando=0
+    [[ $priorita =~ ^[1-5]$ ]] || priorita=4
+    if avvisa "$titolo" "$testo" "$priorita"; then
+      log "avviso mandato al nuovo tentativo: «$titolo»"; rm -f "$f"
+    elif [ $(( $(date +%s) - quando )) -ge "$GIORNO" ]; then
+      log "avviso «$titolo» non partito per un giorno intero: rinuncio"; rm -f "$f"
+    fi
+  done
+}
+riprova_avvisi
+
+# Riavvio del servizio (#826): sudo -n (mai una domanda di password: senza la regola di sudo il comando fallisce subito) e processo
+# principale (MainPID, da systemctl show, che non chiede permessi) diverso da prima e diverso da 0. Esce con 1 se il riavvio non e'
+# riuscito, con una riga nel registro: risponderebbe ancora il processo vecchio, con il codice di prima.
+pid_servizio() { systemctl show -p MainPID --value "$SERVIZIO" 2>/dev/null | tr -cd '0-9'; }
+riavvia() {
+  local prima dopo
+  prima=$(pid_servizio)
+  if ! sudo -n systemctl restart "$SERVIZIO" 2>>"$ERR"; then
+    log "riavvio di $SERVIZIO non riuscito (sudo -n systemctl restart: manca la regola di sudo o il servizio non parte)"
+    return 1
+  fi
+  dopo=$(pid_servizio)
+  if [ -z "$dopo" ] || [ "$dopo" = 0 ] || [ "$dopo" = "$prima" ]; then
+    log "riavvio di $SERVIZIO non riuscito: il processo del servizio non e' cambiato (prima ${prima:-nessuno}, dopo ${dopo:-nessuno})"
+    return 1
+  fi
+}
+TESTO_RIAVVIO="Non riesco a riavviare il servizio (regola di sudo o servizio che non parte): resta la versione di prima e riprovo al prossimo giro."
 
 # Database degli account (#825). /api/account/me risponde 401 senza sessione prima di leggere il database: il servizio «risponde»
 # anche con una migrazione che sui dati veri non riesce. Per questo:
@@ -246,7 +301,7 @@ if [ -e "$A_META" ]; then
     # indietro: si toglie il segno e questo giro reinstalla la versione di main (ultimo-rilascio e' ancora quello di prima)
     log "l'installazione di prima (${interrotto:0:7}) non era finita, ma il database degli account e' gia' passato dalla versione $db_meta alla $db_ora: non rimetto la versione di prima, che non lo saprebbe leggere; reinstallo la versione nuova"
     rm -f "$A_META" "$STATO/interrotta"
-    avvisa "SchieraXI: aggiornamento da controllare" "Un aggiornamento si era fermato a metà dopo aver già aggiornato il database degli account: non ho rimesso la versione di prima, che non saprebbe leggerlo, e reinstallo quella nuova. $TESTO_TENUTA" 4
+    avvisa_o_riprova "SchieraXI: aggiornamento da controllare" "Un aggiornamento si era fermato a metà dopo aver già aggiornato il database degli account: non ho rimesso la versione di prima, che non saprebbe leggerlo, e reinstallo quella nuova. $TESTO_TENUTA" 4
   else
     log "l'installazione di prima (${interrotto:0:7}) non era finita (server spento o processo fermato?): rimetto la versione di prima dalla copia di sicurezza"
     rimessa=0
@@ -264,13 +319,13 @@ if [ -e "$A_META" ]; then
       guasto copia-sicurezza "$TESTO_SENZA_COPIA"
       fine; exit 1
     fi
-    sudo systemctl restart "$SERVIZIO"
     rm -f "$A_META"
-    log "versione di prima rimessa e servizio riavviato"
+    if riavvia; then log "versione di prima rimessa e servizio riavviato"
+    else log "versione di prima rimessa, ma il servizio non si e' riavviato"; guasto riavvio "$TESTO_RIAVVIO"; fi
     if [ -n "$interrotto" ] && [ "$(cat "$STATO/interrotta" 2>/dev/null)" = "$interrotto" ]; then
       log "versione ${interrotto:0:7} interrotta due volte: non la riprovo"
       echo "$interrotto" > "$STATO/rifiutato"; rm -f "$STATO/interrotta" "$STATO/attesa-versione"
-      avvisa "SchieraXI: aggiornamento annullato" "La versione nuova si è interrotta due volte a metà dell'installazione: ho rimesso quella di prima e non la riprovo.$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
+      avvisa_o_riprova "SchieraXI: aggiornamento annullato" "La versione nuova si è interrotta due volte a metà dell'installazione: ho rimesso quella di prima e non la riprovo.$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
     else
       [ -n "$interrotto" ] && echo "$interrotto" > "$STATO/interrotta"
     fi
@@ -350,7 +405,7 @@ if [ -s "$CHIAVI" ]; then
     log "versione ${nuovo:0:7} NON installata: $MOTIVO_FIRMA"
     if [ "$PROVA" = 0 ]; then
       echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione"
-      avvisa "SchieraXI: aggiornamento bloccato" "Su GitHub c'è una versione senza la firma attesa: non l'ho installata.$(anche_prima)$(ancora_subito) Motivo in dati/pubblicazione.log. Se dopo il controllo va bene: aggiorna-app.sh --fidati origin/main (script/server/LEGGIMI.md, «Casi limite»)." 4
+      avvisa_o_riprova "SchieraXI: aggiornamento bloccato" "Su GitHub c'è una versione senza la firma attesa: non l'ho installata.$(anche_prima)$(ancora_subito) Motivo in dati/pubblicazione.log. Se dopo il controllo va bene: aggiorna-app.sh --fidati origin/main (script/server/LEGGIMI.md, «Casi limite»)." 4
     fi
     fine; exit 1
   fi
@@ -365,7 +420,7 @@ else
     log "versione ${nuovo:0:7} NON installata: manca la chiave fidata $CHIAVI (vedi script/server/LEGGIMI.md; per installare senza firme: SCHIERAXI_SENZA_FIRME=1)"
   fi
   if [ "$PROVA" = 0 ]; then
-    [ -e "$STATO/senza-chiave" ] || avvisa "SchieraXI: aggiornamenti fermi" "Manca la chiave per controllare le firme: non installo le versioni nuove. Dettagli in dati/pubblicazione.log." 4
+    [ -e "$STATO/senza-chiave" ] || avvisa_o_riprova "SchieraXI: aggiornamenti fermi" "Manca la chiave per controllare le firme: non installo le versioni nuove. Dettagli in dati/pubblicazione.log." 4
     echo "$nuovo" > "$STATO/senza-chiave"
   fi
   fine; exit 1
@@ -536,41 +591,26 @@ fi
 if [ -f "$DEST/fanta/avatar_tratti.json" ]; then
   cp -p "$DEST/fanta/avatar_tratti.json" "$prova/fanta/avatar_tratti.json"
 fi
-for d in fanta tests script; do
-  rm -rf "$DEST/$d.nuovo" && mv "$prova/$d" "$DEST/$d.nuovo" && rm -rf "$DEST/$d" && mv "$DEST/$d.nuovo" "$DEST/$d"
-done
-cp "$prova"/requirements*.txt "$DEST"/
-rm -rf "$prova"
-find "$DEST/script" -name '*.sh' -exec sed -i 's/\r$//' {} +
 
 # Librerie cambiate: un ambiente Python NUOVO accanto a quello in uso (.venv.nuova), con le sole versioni e hash di requirements.txt.
-# Si scambiano le cartelle solo se l'installazione e' riuscita tutta: l'ambiente in uso non resta mai a meta'. Quello di prima resta
-# in .venv.precedente (per tornare indietro). Funziona perche' servizio e script usano solo .venv/bin/python (mai i comandi di bin/).
+# Si prepara PRIMA di toccare i file (#826): mentre pip lavora i processi del cron usano ancora codice e librerie di prima, e se pip
+# non riesce non c'e' niente da rimettere (prima restavano i file aggiunti dalla versione nuova). Le cartelle si scambiano solo se
+# l'installazione e' riuscita tutta: l'ambiente in uso non resta mai a meta'. Quello di prima resta in .venv.precedente (per tornare
+# indietro). Funziona perche' servizio e script usano solo .venv/bin/python (mai i comandi di bin/).
+venv_pronta=0
 venv_cambiata=0
-if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; then
+if [ "$vecchi_req" != "$(md5sum "$prova/requirements.txt" | cut -d' ' -f1)" ]; then
   log "librerie cambiate: preparo un ambiente Python nuovo con le versioni e gli hash di requirements.txt"
   python_base=$(readlink -f "$DEST/.venv/bin/python")
   rm -rf "$DEST/.venv.nuova"
   if "$python_base" -m venv "$DEST/.venv.nuova" >> "$LOG" 2>&1 \
-     && "$DEST/.venv.nuova/bin/python" -m pip install -q --require-hashes -r "$DEST/requirements.txt" >> "$LOG" 2>&1; then
+     && "$DEST/.venv.nuova/bin/python" -m pip install -q --require-hashes -r "$prova/requirements.txt" >> "$LOG" 2>&1; then
     rm -f "$STATO/librerie-fallite"
-    rm -rf "$DEST/.venv.precedente"
-    echo "ambiente $nuovo $db_prima" > "$A_META"     # prima dello scambio: un'interruzione da qui rimette anche l'ambiente di prima
-    mv "$DEST/.venv" "$DEST/.venv.precedente" && mv "$DEST/.venv.nuova" "$DEST/.venv" && venv_cambiata=1
-    if [ "$venv_cambiata" = 0 ]; then
-      # il servizio non e' stato riavviato: si rimettono subito l'ambiente in uso e i file della versione di prima (#647)
-      log "scambio degli ambienti Python non riuscito: rimetto la versione di prima"
-      [ -e "$DEST/.venv" ] || mv "$DEST/.venv.precedente" "$DEST/.venv"
-      rm -rf "$DEST/.venv.nuova"
-      if tar xzf "$copia" -C "$DEST" && [ -x "$DEST/.venv/bin/python" ]; then rm -f "$A_META"
-      else log "versione di prima non rimessa del tutto: controlla $DEST (il prossimo giro riprova dalla copia di sicurezza)"; fi
-      guasto ambienti "Non riesco a scambiare gli ambienti Python della versione nuova: resta quella di prima, va controllato il server."
-      fine; exit 1
-    fi
+    venv_pronta=1
   else
-    # il servizio non e' stato riavviato e il suo ambiente non e' stato toccato: si rimettono solo i file della versione di prima
-    rm -rf "$DEST/.venv.nuova"
-    tar xzf "$copia" -C "$DEST" && rm -f "$A_META"
+    # file, ambiente in uso e servizio non sono stati toccati: si butta solo quello che e' stato preparato
+    rm -rf "$DEST/.venv.nuova" "$prova"
+    rm -f "$A_META"
     # un errore passeggero (rete, PyPI) non deve bloccare la versione per sempre: si riprova ai giri dopo, si rinuncia alla terza volta
     tentativi=1
     if [ "$(cut -d' ' -f1 "$STATO/librerie-fallite" 2>/dev/null)" = "$nuovo" ]; then
@@ -581,24 +621,51 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
       log "librerie NON installate per la ${tentativi}a volta di fila: rinuncio a ${nuovo:0:7} (resta la versione di prima)"
       echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione"
       rm -f "$STATO/librerie-fallite"
-      avvisa "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima.$(anche_prima)$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
+      avvisa_o_riprova "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima.$(anche_prima)$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
     else
       log "librerie NON installate (rete, PyPI, hash diverso?): resta la versione di prima, riprovo al prossimo giro (tentativo $tentativi)"
-      [ "$tentativi" = 1 ] && avvisa "SchieraXI: aggiornamento rimandato" "Le librerie della versione nuova non si sono installate: riprovo fra 10 minuti." 3
+      [ "$tentativi" = 1 ] && avvisa_o_riprova "SchieraXI: aggiornamento rimandato" "Le librerie della versione nuova non si sono installate: riprovo fra 10 minuti." 3
     fi
     fine; exit 1
   fi
 fi
 
-sudo systemctl restart "$SERVIZIO"
-risponde=0
-for i in $(seq 1 "${SCHIERAXI_ATTESE_AVVIO:-25}"); do
-  # 200 con un solo utente; 401 con gli account accesi: in entrambi i casi il servizio risponde
-  codice=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "X-Fanta: 1" "http://127.0.0.1:$PORTA/api/account/me")
-  if [ "$codice" = 200 ] || [ "$codice" = 401 ]; then risponde=1; break; fi
-  sleep 1
+for d in fanta tests script; do
+  rm -rf "$DEST/$d.nuovo" && mv "$prova/$d" "$DEST/$d.nuovo" && rm -rf "$DEST/$d" && mv "$DEST/$d.nuovo" "$DEST/$d"
 done
+cp "$prova"/requirements*.txt "$DEST"/
+rm -rf "$prova"
+find "$DEST/script" -name '*.sh' -exec sed -i 's/\r$//' {} +
+
+if [ "$venv_pronta" = 1 ]; then
+  rm -rf "$DEST/.venv.precedente"
+  echo "ambiente $nuovo $db_prima" > "$A_META"     # prima dello scambio: un'interruzione da qui rimette anche l'ambiente di prima
+  mv "$DEST/.venv" "$DEST/.venv.precedente" && mv "$DEST/.venv.nuova" "$DEST/.venv" && venv_cambiata=1
+  if [ "$venv_cambiata" = 0 ]; then
+    # il servizio non e' stato riavviato: si rimettono subito l'ambiente in uso e i file della versione di prima (#647)
+    log "scambio degli ambienti Python non riuscito: rimetto la versione di prima"
+    [ -e "$DEST/.venv" ] || mv "$DEST/.venv.precedente" "$DEST/.venv"
+    rm -rf "$DEST/.venv.nuova"
+    if tar xzf "$copia" -C "$DEST" && [ -x "$DEST/.venv/bin/python" ]; then rm -f "$A_META"
+    else log "versione di prima non rimessa del tutto: controlla $DEST (il prossimo giro riprova dalla copia di sicurezza)"; fi
+    guasto ambienti "Non riesco a scambiare gli ambienti Python della versione nuova: resta quella di prima, va controllato il server."
+    fine; exit 1
+  fi
+fi
+
+riavviato=0
+risponde=0
+if riavvia; then
+  riavviato=1
+  for i in $(seq 1 "${SCHIERAXI_ATTESE_AVVIO:-25}"); do
+    # 200 con un solo utente; 401 con gli account accesi: in entrambi i casi il servizio risponde
+    codice=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "X-Fanta: 1" "http://127.0.0.1:$PORTA/api/account/me")
+    if [ "$codice" = 200 ] || [ "$codice" = 401 ]; then risponde=1; break; fi
+    sleep 1
+  done
+fi
 perche="il servizio NON risponde (ultimo codice HTTP: ${codice:-nessuno})"
+[ "$riavviato" = 1 ] || perche="il riavvio del servizio non e' riuscito"
 if [ "$risponde" = 1 ] && ! controlla_account; then     # il servizio risponde: ora il database degli account (#825)
   risponde=0; perche="il database degli account non va: $ESITO_ACCOUNT"
 fi
@@ -614,7 +681,7 @@ if [ "$risponde" = 1 ]; then
   # solo la riga nel registro, niente avviso: con tante versioni al giorno gli avvisi veri (fallita, rifiutata, tornata indietro) si
   # perdevano tra quelli di routine (#607)
   log "installata ${nuovo:0:7} (versione $versione): il servizio risponde ($ESITO_ACCOUNT)"
-  risolto cartelle copia-file ambienti interrotta copia-sicurezza     # «di nuovo a posto» se un guasto dell'installazione era stato segnalato
+  risolto cartelle copia-file ambienti interrotta copia-sicurezza riavvio     # «di nuovo a posto» se un guasto dell'installazione era stato segnalato
 elif db_dopo=$(versione_db) && salita "$db_prima" "$db_dopo"; then
   # la versione nuova ha gia' migrato il database degli account (#825): il codice di prima lo rifiuterebbe, con errori per ogni utente
   # collegato. Si tiene la nuova (codice e librerie) e si avvisa; il segno si toglie, se no il giro dopo rimetterebbe la versione di prima
@@ -622,7 +689,7 @@ elif db_dopo=$(versione_db) && salita "$db_prima" "$db_dopo"; then
   rm -f "$A_META"
   echo "$nuovo" > "$STATO/ultimo-rilascio"
   rm -f "$STATO/attesa-versione" "$STATO/interrotta"
-  avvisa "SchieraXI: aggiornamento da controllare" "La versione nuova non funziona come dovrebbe, ma ha già aggiornato il database degli account: l'ho lasciata installata, perché quella di prima non saprebbe leggerlo. $TESTO_TENUTA" 4
+  avvisa_o_riprova "SchieraXI: aggiornamento da controllare" "La versione nuova non funziona come dovrebbe, ma ha già aggiornato il database degli account: l'ho lasciata installata, perché quella di prima non saprebbe leggerlo. $TESTO_TENUTA" 4
 else
   log "con ${nuovo:0:7} $perche: torno alla versione di prima"
   rimessa=1
@@ -632,10 +699,15 @@ else
     mv "$DEST/.venv" "$DEST/.venv.scartata" && mv "$DEST/.venv.precedente" "$DEST/.venv" && rm -rf "$DEST/.venv.scartata" || rimessa=0
   fi
   [ "$rimessa" = 1 ] && rm -f "$A_META"     # altrimenti il giro dopo riprova a rimettere la versione di prima (#647)
-  sudo systemctl restart "$SERVIZIO"
+  riavvia
+  if [ "$riavviato" = 0 ]; then
+    # guasto del server, non della versione (#826): non si scrive «rifiutato», il giro dopo riprova
+    guasto riavvio "$TESTO_RIAVVIO"
+    fine; exit 0
+  fi
   echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione"
   sleep "${SCHIERAXI_PAUSA_DOPO_RITORNO:-5}"
-  avvisa "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima.$(anche_prima)$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
+  avvisa_o_riprova "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima.$(anche_prima)$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
 fi
 fine
 exit 0

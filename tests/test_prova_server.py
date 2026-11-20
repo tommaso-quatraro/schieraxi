@@ -192,6 +192,8 @@ def server(tmp_path):
     _stub(s.bin, "flock", "exit 0")
     _stub(s.bin, "sudo", f'echo "sudo $*" >> "{reg}"')
     _stub(s.bin, "curl", f'echo "curl $*" >> "{reg}"; echo 200')
+    # finto systemctl: il processo del servizio (MainPID) cambia a ogni riavvio annotato (aggiorna-app.sh lo controlla, #826)
+    _stub(s.bin, "systemctl", f'case "$*" in *MainPID*) n=$(grep -c restart "{reg}" 2>/dev/null); echo $(( 1000 + ${{n:-0}} )) ;; esac\nexit 0')
     python_vero = Path(sys.executable).as_posix()
     s.python = _stub(s.bin, "python-finto", f'''reg="{reg}"
 case "$1" in
@@ -382,7 +384,7 @@ def test_prova_installa_solo_nelle_sue_cartelle_senza_aspettare_le_partite_e_sen
     assert (s.stato_prova / "blocco-pubblicazione").exists()                       # il suo blocco, accanto al suo stato
     assert "installata" in (s.prova / "dati" / "pubblicazione.log").read_text(encoding="utf-8")
     reg = s.registro()
-    assert "sudo systemctl restart schieraxi-prova" in reg
+    assert "sudo -n systemctl restart schieraxi-prova" in reg
     assert "restart fantacalcio" not in reg
     assert "127.0.0.1:8001" in reg and "127.0.0.1:8000" not in reg
     assert "momento-libero" not in reg                             # la prova non aspetta la fine delle partite
