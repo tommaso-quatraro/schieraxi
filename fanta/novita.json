@@ -1,5 +1,18 @@
 [
   {
+    "versione": "1.541",
+    "data": "2026-11-20T11:56:59",
+    "titolo": "Stato dei dati: la taratura di «gioca N%» in parole semplici",
+    "voci": [
+      "Stato dei dati, per chi gestisce il server: la riga «Taratura con le probabili» dice di quanti punti, in media, hanno sbagliato le percentuali «gioca N%» nelle ultime giornate, e di quanti senza questa taratura. Prima c'erano un numero tecnico e il numero della versione.",
+      "Nel registro delle giornate, la riga di «gioca N%» usa lo stesso errore medio in punti, con il suo limite."
+    ],
+    "tecnico": [
+      "/api/stato-dati: in calibrazione.taratura.prova i campi nuovi errore_medio ed errore_medio_prima, in punti (100 × √Brier con due decimali, taratura_probabili.errore_medio; null se il Brier manca o non è un numero buono). In registro i campi nuovi errore_medio e soglie.I2_errore_medio (stato_dati.registro, dal Brier già arrotondato, così il numero e il verdetto regge non si contraddicono). Brier e versione restano nella risposta e nei registri del server.",
+      "Web e iPhone non scrivono più «versione N» né «Brier» (testi sd.tar_attiva_dal, sd.tar_attiva, sd.tar_prova, sd.tar_m_fuori_soglia, sd.reg_i2_riga) e non ricalcolano: con un server vecchio scrivono «–». Lo scarto non è più nella riga della taratura; resta nel registro."
+    ]
+  },
+  {
     "versione": "1.540",
     "data": "2026-11-20T11:36:13",
     "titolo": "Aggiornamenti dell'app più sicuri",

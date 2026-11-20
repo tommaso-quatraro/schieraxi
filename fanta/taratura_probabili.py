@@ -682,9 +682,19 @@ MOTIVI = ("poche_giornate", "non_migliora", "fuori_soglia", "incoerente", "peggi
 VERDETTI = ("pronta", "scartata", "attiva", "superata", "ritirata", "rimandata")
 
 
+def errore_medio(brier) -> float | None:
+    """L'«errore medio delle percentuali» di «gioca N%» che leggono gli utenti (#821), in punti: 100 × √Brier, con due decimali
+    (una versione si accende con un Brier anche solo dello 0,5% più basso: con un decimale i due numeri si leggerebbero uguali).
+    None se il Brier manca o non è un numero buono (testo, vero/falso, nan, infinito, negativo): mai «nan» per l'utente."""
+    if isinstance(brier, bool) or not isinstance(brier, (int, float)) or not math.isfinite(brier) or brier < 0:
+        return None
+    return round(100 * math.sqrt(brier), 2)
+
+
 def _numeri_prova(t: dict) -> dict | None:
     """I numeri della prova di una riga: giornate di prova, Brier della formula provata, di quella di prima e dei mostrati,
-    calibrazione della formula provata (quota: 0,02 = 2 punti). None se la riga non ha una prova leggibile."""
+    calibrazione della formula provata (quota: 0,02 = 2 punti), e l'errore medio delle percentuali (`errore_medio`) della formula
+    provata e di quella di prima. None se la riga non ha una prova leggibile."""
     m = _json(t["misura"], {})
     prova = _giornate_da(t["prova"])
     if prova is None or not isinstance(m.get("attuale"), dict):
@@ -692,20 +702,22 @@ def _numeri_prova(t: dict) -> dict | None:
     n = m["nuova"] if isinstance(m.get("nuova"), dict) else {}
     mo = m["mostrati"] if isinstance(m.get("mostrati"), dict) else {}
     return {"giornate": len(prova), "brier": n.get("brier"), "brier_prima": m["attuale"].get("brier"),
-            "brier_mostrati": mo.get("brier"), "calibrazione": n.get("calibrazione")}
+            "brier_mostrati": mo.get("brier"), "calibrazione": n.get("calibrazione"),
+            "errore_medio": errore_medio(n.get("brier")), "errore_medio_prima": errore_medio(m["attuale"].get("brier"))}
 
 
 def _numeri_ritorno(t: dict) -> dict | None:
     """I numeri del ritorno indietro di una riga `ritirata`, nella forma di `_numeri_prova`: giornate dopo la sua prova, Brier e
-    calibrazione della versione ritirata, Brier dei numeri di partenza (`brier_prima`); niente mostrati. None se non c'è una misura
-    (coefficienti rovinati)."""
+    calibrazione della versione ritirata, Brier dei numeri di partenza (`brier_prima`), con i due errori medi; niente mostrati. None
+    se non c'è una misura (coefficienti rovinati)."""
     ri = _json(t["misura"], {}).get("ritorno")
     if not isinstance(ri, dict):
         return None
     a = ri["attiva"] if isinstance(ri.get("attiva"), dict) else {}
     p = ri["partenza"] if isinstance(ri.get("partenza"), dict) else {}
     return {"giornate": len(ri.get("giornate") or []), "brier": a.get("brier"), "brier_prima": p.get("brier"),
-            "brier_mostrati": None, "calibrazione": a.get("calibrazione")}
+            "brier_mostrati": None, "calibrazione": a.get("calibrazione"),
+            "errore_medio": errore_medio(a.get("brier")), "errore_medio_prima": errore_medio(p.get("brier"))}
 
 
 def riepilogo(db: sqlite3.Connection) -> dict:

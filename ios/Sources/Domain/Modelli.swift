@@ -601,16 +601,27 @@ struct StatoDati: Decodable {
         /// I numeri della prova sulle ultime giornate (per una versione tornata ai numeri di partenza: le giornate dopo la sua prova).
         struct Prova: Decodable {
             let giornate: Int?
-            /// Punteggio di Brier della formula provata, di quella di prima e dei numeri mostrati.
+            /// Punteggio di Brier della formula provata, di quella di prima e dei numeri mostrati (per chi gestisce il server: l'app
+            /// non li scrive).
             let brier: Double?
             let brierPrima: Double?
             let brierMostrati: Double?
             /// Scarto tra previsto e giocato della formula provata, come quota (0,021 = 2,1 punti).
             let calibrazione: Double?
+            /// L'errore medio delle percentuali in punti (#821), della formula provata e di quella di prima, già calcolato dal server
+            /// (30,2 = 30,2 punti). Un server vecchio non li manda: allora l'app scrive «–».
+            let erroreMedio: Double?
+            let erroreMedioPrima: Double?
         }
+
+        /// I valori di `stato` che l'app conosce. Stanno qui e non nelle parole della riga, perché «attiva» è anche un testo del
+        /// catalogo (#821) e lì un codice uguale a una frase sembrerebbe una frase copiata.
+        enum Stato: String { case inAttesa = "in_attesa", attiva, nonAttiva = "non_attiva", spenta }
 
         /// `in_attesa`, `attiva`, `non_attiva` o `spenta`.
         let stato: String?
+        /// `stato` se l'app lo conosce, altrimenti nil (nessuna riga).
+        var statoNoto: Stato? { stato.flatMap(Stato.init(rawValue:)) }
         /// Giornate del registro buone per la taratura, e quante ne servono per la prima prova.
         let giornate: Int?
         let minimo: Int?
@@ -705,9 +716,11 @@ struct StatoDati: Decodable {
             let i1: Double?
             let i2Calibrazione: Double?
             let i2Brier: Double?
+            /// La soglia dell'errore medio delle percentuali in punti (#821, «I2_errore_medio»); un server vecchio non la manda.
+            let i2ErroreMedio: Double?
             let i3Minimo: Double?
             let i3Massimo: Double?
-            enum CodingKeys: String, CodingKey { case i1 = "I1", i2Calibrazione, i2Brier, i3Minimo, i3Massimo }
+            enum CodingKeys: String, CodingKey { case i1 = "I1", i2Calibrazione, i2Brier, i2ErroreMedio, i3Minimo, i3Massimo }
         }
         /// Per ogni misura: vero se regge, falso se no, nil finché non c'è il verdetto o manca il numero.
         struct Regge: Decodable {
@@ -730,6 +743,8 @@ struct StatoDati: Decodable {
         let erroreFantamedia: Double?
         let i1: Double?
         let brier: Double?
+        /// L'errore medio delle percentuali di «gioca N%» in punti (#821), calcolato dal server; un server vecchio non lo manda.
+        let erroreMedio: Double?
         let calibrazione: Double?
         let copertura: Double?
         let verdetto: Bool?

@@ -119,6 +119,16 @@ def _taratura(db: sqlite3.Connection) -> dict | None:
         return None
 
 
+def registro(db: sqlite3.Connection) -> dict:
+    """Il registro delle giornate per «Stato dei dati» (`registro_giornate.riepilogo`), con l'errore medio delle percentuali di
+    «gioca N%» in punti (`taratura_probabili.errore_medio`, #821): `errore_medio` della media e `soglie.I2_errore_medio`. Vengono
+    dal Brier già arrotondato e dalla sua soglia, così il numero scritto e il verdetto `regge` non si contraddicono mai."""
+    from . import registro_giornate, taratura_probabili   # qui dentro: importano consigli, che importa questo modulo
+    r = registro_giornate.riepilogo(db)
+    return {**r, "errore_medio": taratura_probabili.errore_medio(r.get("brier")),
+            "soglie": {**r["soglie"], "I2_errore_medio": taratura_probabili.errore_medio(r["soglie"].get("I2_brier"))}}
+
+
 MIN_GIORNATE = 3          # sotto queste giornate non si corregge niente
 MIN_GIOCATORI = 30        # né un gruppo con meno giocatori di questi
 LIMITE_FATTORE = 0.15     # la correzione non supera mai il 15% in più o in meno
@@ -223,12 +233,12 @@ def _sentinella_giri(adesso: datetime | None) -> list[dict] | None:
 
 def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None = None) -> dict:
     """Tutto quello che serve alla pagina "Stato dei dati". `registro`: quanto ci hanno preso i numeri mostrati prima di ogni
-    giornata (I1-I3, `registro_giornate.riepilogo`). `registro_nostri`: i numeri «nostri» contro i mostrati (I4 dal vivo,
+    giornata (I1-I3, `registro`). `registro_nostri`: i numeri «nostri» contro i mostrati (I4 dal vivo,
     `registro_nostri.riepilogo`; None se non si leggono). `consiglio`: gli indicatori del consiglio di formazione C1-C4, sommati sui
     Diari di tutti (`indicatori_consiglio.riepilogo`). `calibrazione.taratura`: la taratura di «gioca N%» con le probabili
     (`taratura_probabili.riepilogo`; None se non si legge). `sentinella_giri`: i giri della sentinella dell'ultima settimana
     (None se non si leggono); `adesso` (senza fuso, di norma l'ora del server) serve solo a quello."""
-    from . import indicatori_consiglio, registro_giornate      # qui dentro: importano consigli, che importa questo modulo
+    from . import indicatori_consiglio      # qui dentro: importa consigli, che importa questo modulo
     passi = {p["passo"]: p for p in archivio.passi(db)}
     agg = []
     for cosa, quando, dettaglio in db.execute("SELECT cosa, quando, dettaglio FROM aggiornamenti ORDER BY cosa"):
@@ -256,7 +266,7 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
         "uso": uso.riepilogo(),
         "coppe_fino": coppe.aggiornate_fino().isoformat(),
         "calibrazione": {**(c := calibrazione(db, stagione)), "fattori": fattori_da(c), "taratura": _taratura(db)},
-        "registro": registro_giornate.riepilogo(db),
+        "registro": registro(db),
         "registro_nostri": _registro_nostri(db),
         "consiglio": indicatori_consiglio.riepilogo(),
         "sentinella_giri": _sentinella_giri(adesso),
