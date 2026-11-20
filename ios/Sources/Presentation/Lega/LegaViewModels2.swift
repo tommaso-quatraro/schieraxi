@@ -245,7 +245,8 @@ struct RichiestaRoseTesto: Encodable {
     var mia_squadra: String? = nil
 }
 
-/// Il tasto «Aggiorna i dati»: avvia l'aggiornamento sul server e ne segue l'avanzamento finché finisce.
+/// Il tasto «Aggiorna i dati»: avvia l'aggiornamento sul server e ne segue l'avanzamento finché finisce. È spento anche quando
+/// il server è già occupato con un aggiornamento partito altrove, come `segnaAggiornamento` della web (#773, #772).
 @MainActor
 final class AggiornaDatiViewModel: ViewModelBase {
     private let server: any ServerClient
@@ -256,17 +257,59 @@ final class AggiornaDatiViewModel: ViewModelBase {
     var pausa: UInt64 = 2_000_000_000
     /// Dopo quante domande si smette di aspettare.
     var tentativiMassimi = 150
+    /// Il server è occupato con un aggiornamento partito altrove (aggiornamento programmato, giro leggero, installazione di una
+    /// versione): `aggiornamento_in_corso` di `GET /api/stato`.
+    @Published private(set) var serverOccupato = false
+    /// Pausa tra una rilettura dello stato e l'altra mentre il server è occupato: 15 secondi, come la web (i test la azzerano).
+    var pausaStato: Duration = .seconds(15)
 
     init(server: any ServerClient) {
         self.server = server
         super.init()
     }
 
+    /// Spento durante l'aggiornamento partito da qui e mentre il server è occupato con un altro.
+    var pulsanteSpento: Bool { inCorso || serverOccupato }
+
+    /// Sotto il pulsante spento perché il server è occupato, la frase della web (`aggiorna.in_corso`): anche con l'aggiornamento
+    /// partito da qui, da quando il server ne conferma l'avvio a quando finisce, come la web.
+    var fraseOccupato: String? { serverOccupato ? Catalogo.Aggiorna.inCorso : nil }
+
+    /// Lo stato detto dal server: `aggiornamento_in_corso` di una risposta fresca di `GET /api/stato` (mai la copia salvata), o
+    /// l'avvio e la fine dell'aggiornamento partito da qui.
+    func segna(occupato: Bool) {
+        if occupato != serverOccupato { serverOccupato = occupato }
+    }
+
+    /// Con il pulsante in vista (`.task` della vista, che si annulla uscendo dalla pagina): finché il server è occupato rilegge lo
+    /// stato, subito e poi ogni 15 secondi, una lettura alla volta (la prossima parte solo a lettura finita), come
+    /// `seguiAggiornamento` della web. Un errore non cambia lo stato e non ferma le letture: il pulsante si riaccende appena il
+    /// server risponde libero.
+    func segui() async {
+        var prima = true
+        while serverOccupato {
+            if !prima, pausaStato > .zero { try? await Task.sleep(for: pausaStato) }
+            prima = false
+            if Task.isCancelled { return }
+            do {
+                let stato: InfoServer = try await server.get("/api/stato")
+                if Task.isCancelled { return }   // pagina lasciata o stato cambiato nel frattempo: la risposta è vecchia
+                segna(occupato: stato.aggiornamentoInCorso == true)
+            } catch {
+                // pagina lasciata: si smette; rete giù o server che non risponde: si riprova alla volta dopo
+                if Task.isCancelled { return }
+            }
+        }
+    }
+
+    /// Come `aggiornaDati` della web: appena il server conferma l'avvio il pulsante è spento con la frase `aggiorna.in_corso` e sotto
+    /// il messaggio dell'avvio (sulla web un avviso); la frase sparisce quando l'aggiornamento finisce o dopo cinque domande senza
+    /// risposta. Se dura più del solito resta, e la toglie la rilettura dello stato (`segui`) quando il server è libero.
     func avvia() async {
         guard !inCorso else { return }
         inCorso = true
         errori = []
-        messaggio = Catalogo.Aggiorna.avviato
+        messaggio = nil
         defer { inCorso = false }
         do {
             let dati = try await server.richiesta("POST", "/api/aggiorna", corpo: nil)
@@ -280,6 +323,8 @@ final class AggiornaDatiViewModel: ViewModelBase {
             Haptics.esito(riuscito: false)
             return
         }
+        segna(occupato: true)
+        messaggio = Catalogo.Aggiorna.avviato
         var senzaRisposta = 0
         for _ in 0..<tentativiMassimi {
             if pausa > 0 { try? await Task.sleep(nanoseconds: pausa) }
@@ -288,6 +333,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
                 let stato: StatoAggiornamento = try await server.get("/api/aggiorna")
                 senzaRisposta = 0
                 if stato.inCorso != true {
+                    segna(occupato: false)
                     errori = stato.errori ?? []
                     messaggio = errori.isEmpty ? Catalogo.Aggiorna.ok : Catalogo.Aggiorna.problemi(errori: errori.joined(separator: "; "))
                     Haptics.esito(riuscito: errori.isEmpty)
@@ -297,6 +343,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
             } catch {
                 senzaRisposta += 1
                 if senzaRisposta >= 5 {
+                    segna(occupato: false)
                     messaggio = Catalogo.Aggiorna.nonSo
                     return
                 }

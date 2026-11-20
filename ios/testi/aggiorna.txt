@@ -5,3 +5,4 @@ aggiorna.avviato
 aggiorna.ok
 aggiorna.problemi
 aggiorna.non_so
+aggiorna.in_corso
