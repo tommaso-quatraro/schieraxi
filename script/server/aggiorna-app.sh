@@ -249,7 +249,10 @@ TESTO_RIAVVIO="Non riesco a riavviare il servizio (regola di sudo o systemd): re
 #   salita, il codice di prima rifiuterebbe il database («versione piu' nuova dell'app») e si tiene la versione nuova;
 # - controlla_account: dopo il riavvio, con il codice appena installato, apre davvero il database (con le migrazioni, come la prima
 #   richiesta del servizio) e lo confronta con le migrazioni attese: fanta/salute.py, controlla_database_account (nome fisso: lo
-#   chiama questo script, che e' quello della versione di prima). La sua frase finisce in ESITO_ACCOUNT.
+#   chiama questo script, che e' quello della versione di prima). La sua frase finisce in ESITO_ACCOUNT. Una versione senza quella
+#   funzione (per esempio il revert di #825) si installa lo stesso, con la riga nel registro: come momento-libero, un controllo che
+#   manca non deve fermare gli aggiornamenti (ne' un ritorno indietro d'emergenza).
+#   Il percorso e' quello del servizio: FANTA_DATI_UTENTI se c'e' (dall'ambiente del servizio), altrimenti dati/ della cartella.
 ambiente_servizio() { . "$QUI/leggi-ambiente.sh" && leggi_ambiente dati/ambiente.env 2>/dev/null; }
 versione_db() {
   ( cd "$DEST" && ambiente_servizio && timeout -k 5 60 nice -n 10 .venv/bin/python -c "
@@ -268,7 +271,11 @@ controlla_account() {
   ESITO_ACCOUNT=$(cd "$DEST" && ambiente_servizio && timeout -k 5 "${SCHIERAXI_TIMEOUT_ACCOUNT:-90}" nice -n 10 .venv/bin/python -c "
 import sys
 from fanta import salute
-ok, testo = salute.controlla_database_account()
+controlla = getattr(salute, 'controlla_database_account', None)
+if controlla is None:
+    print('controllo del database degli account assente in questa versione: non controllo')
+    sys.exit(0)
+ok, testo = controlla()
 print(testo)
 sys.exit(0 if ok else 1)" 2>&1)
   rc=$?
@@ -302,7 +309,10 @@ if [ -e "$A_META" ]; then
     # indietro: si toglie il segno e questo giro reinstalla la versione di main (ultimo-rilascio e' ancora quello di prima)
     log "l'installazione di prima (${interrotto:0:7}) non era finita, ma il database degli account e' gia' passato dalla versione $db_meta alla $db_ora: non rimetto la versione di prima, che non lo saprebbe leggere; reinstallo la versione nuova"
     rm -f "$A_META" "$STATO/interrotta"
-    avvisa_o_riprova "SchieraXI: aggiornamento da controllare" "Un aggiornamento si era fermato a metà dopo aver già aggiornato il database degli account: non ho rimesso la versione di prima, che non saprebbe leggerlo, e reinstallo quella nuova. $TESTO_TENUTA" 4
+    # per questo giro: la copia di sicurezza non si rifa' dai file lasciati a meta' e la versione «di prima» del database resta
+    # quella di prima della migrazione, cosi' se anche la reinstallazione non va si tiene la nuova invece di tornare a una copia
+    DB_PRIMA_ORIGINALE=$db_meta
+    avvisa_o_riprova "SchieraXI: aggiornamento da controllare" "Un aggiornamento si era fermato a metà dopo aver già aggiornato il database degli account: non ho rimesso la versione di prima, che non saprebbe leggerlo, e reinstallo quella nuova.$(ancora_subito) $TESTO_TENUTA" 4
   else
     log "l'installazione di prima (${interrotto:0:7}) non era finita (server spento o processo fermato?): rimetto la versione di prima dalla copia di sicurezza"
     rimessa=0
@@ -573,9 +583,20 @@ log "versione nuova ${nuovo:0:7}: la installo"
 # installazione-in-corso non c'e' (un giro interrotto e' gia' stato rimesso a posto all'inizio), quindi la cartella dell'app ha una
 # versione che ha superato l'installazione. Da qui fino alla fine dell'installazione il segno c'e' (#647), con la versione del
 # database degli account di prima (#825; «-» se non si legge).
-db_prima=$(versione_db); [ -n "$db_prima" ] || db_prima=-
+db_prima=$(versione_db)
+if [ -n "${DB_PRIMA_ORIGINALE:-}" ]; then
+  log "database degli account alla versione ${db_prima:-non leggibile} (era alla $DB_PRIMA_ORIGINALE prima dell'installazione interrotta): tengo la copia di sicurezza di allora"
+  db_prima=$DB_PRIMA_ORIGINALE
+else
+  case "$db_prima" in
+    nessuno) log "database degli account assente (account spenti?): niente da confrontare" ;;
+    "") log "database degli account non leggibile in sola lettura: se l'installazione non va, si torna indietro come sempre" ;;
+    *) log "database degli account alla versione $db_prima" ;;
+  esac
+fi
+[ -n "$db_prima" ] || db_prima=-
 # shellcheck disable=SC2086
-if [ -e "$A_META" ] || ! tar czf "$copia.nuova" -C "$DEST" $CARTELLE 2>/dev/null || ! mv "$copia.nuova" "$copia"; then
+if [ -e "$A_META" ] || { [ -z "${DB_PRIMA_ORIGINALE:-}" ] && { ! tar czf "$copia.nuova" -C "$DEST" $CARTELLE 2>/dev/null || ! mv "$copia.nuova" "$copia"; }; }; then
   rm -f "$copia.nuova"; log "copia di sicurezza della versione in uso non riuscita (disco pieno?): non installo"
   guasto copia-file "Non riesco a fare la copia di sicurezza della versione in uso (disco pieno?): resta quella di prima."; fine; exit 1
 fi
@@ -692,7 +713,7 @@ elif db_dopo=$(versione_db) && salita "$db_prima" "$db_dopo"; then
   rm -f "$A_META"
   echo "$nuovo" > "$STATO/ultimo-rilascio"
   rm -f "$STATO/attesa-versione" "$STATO/interrotta"
-  avvisa_o_riprova "SchieraXI: aggiornamento da controllare" "La versione nuova non funziona come dovrebbe, ma ha già aggiornato il database degli account: l'ho lasciata installata, perché quella di prima non saprebbe leggerlo. $TESTO_TENUTA" 4
+  avvisa_o_riprova "SchieraXI: aggiornamento da controllare" "La versione nuova non funziona come dovrebbe, ma ha già aggiornato il database degli account: l'ho lasciata installata, perché quella di prima non saprebbe leggerlo.$(ancora_subito) $TESTO_TENUTA" 4
 else
   log "con ${nuovo:0:7} $perche: torno alla versione di prima"
   rimessa=1
