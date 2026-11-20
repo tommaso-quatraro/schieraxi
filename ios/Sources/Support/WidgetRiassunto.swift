@@ -1042,8 +1042,9 @@ enum DisposizioneWidget {
 // MARK: Testi che si accorciano (mai una parola tagliata a metà)
 
 /// Le parole dei widget e le forme dei testi, dalla più lunga alla più corta. La vista mostra la prima che entra (`TestoCheEntra`,
-/// `PrimaCheEntra` in WidgetSources): dove non c'è spazio il testo perde parole intere («4 da controllare» → «4»), mai
-/// «4 da contr…»; VoiceOver legge sempre la prima. Stanno qui, e non nelle viste, perché le viste dei widget non entrano nei test.
+/// `PrimaCheEntra` in WidgetSources): dove non c'è spazio il testo cambia forma, per parole intere («4 da controllare» →
+/// «4 dubbi» → «4»), mai «4 da contr…»; VoiceOver legge sempre la prima. Stanno qui, e non nelle viste, perché le viste dei
+/// widget non entrano nei test.
 enum ParoleWidget {
     /// Il conto alla rovescia dopo la scadenza, come la web (`oggi.chiusa`): per la giornata mai «In corso».
     static let chiusa = "Chiusa"
@@ -1082,9 +1083,11 @@ enum ParoleWidget {
         return prima.isEmpty ? [intera] : [intera, prima]
     }
 
-    /// «4 da controllare» → «4»; senza niente da controllare «titolari a posto» → «a posto».
+    /// «4 da controllare» → «4 dubbi» → «4»; senza niente da controllare «titolari a posto» → «a posto». «4 dubbi» (`oggi.dubbi`
+    /// del catalogo) dice ancora cosa c'è da guardare dove la frase intera non entra: con il testo grande il medio della
+    /// Formazione mostrava solo «⚠ 2» (#848). Il solo numero resta per ultimo, per il cerchio della schermata di blocco.
     static func daControllare(_ n: Int) -> [String] {
-        n > 0 ? ["\(n) da controllare", "\(n)"] : ["titolari a posto", "a posto"]
+        n > 0 ? ["\(n) da controllare", Catalogo.Oggi.dubbi(n), "\(n)"] : ["titolari a posto", "a posto"]
     }
 
     /// Lo stato di un giocatore: «In dubbio · gioca 70%» → «gioca 70%», come la pillola del campo; uno stato di un pezzo solo resta.

@@ -60,6 +60,8 @@ struct GiornateView: View {
             .scrollContentBackground(.hidden)
             .background(Sfondo())
             .avvisoDatiSalvati(vm.caricatore)
+            // dopo la striscia dei dati salvati: con il testo grande la barra è vuota e le righe passavano nitide sotto l'ora (#848)
+            .bordoSottoLaBarraVuota()
             .titoloPagina(Catalogo.Nav.giornate)
             .refreshable { await vm.carica() }
         }

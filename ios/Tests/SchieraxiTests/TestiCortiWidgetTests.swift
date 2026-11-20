@@ -5,8 +5,8 @@ import UIKit
 @testable import Schieraxi
 
 /// I testi dei widget che si accorciano quando non c'è spazio (testo grande, iPad, schermata di blocco): dalla forma più lunga
-/// alla più corta, sempre di parole intere («4 da controllare» → «4»), mai «4 da contr…». La vista mostra la prima che entra;
-/// VoiceOver legge sempre la prima, intera. Dati inventati.
+/// alla più corta, sempre di parole intere («4 da controllare» → «4 dubbi» → «4»), mai «4 da contr…». La vista mostra la prima
+/// che entra; VoiceOver legge sempre la prima, intera. Dati inventati.
 @Suite("Widget: testi che si accorciano senza tagli")
 struct TestiCortiWidgetTests {
     // MARK: forme semplici

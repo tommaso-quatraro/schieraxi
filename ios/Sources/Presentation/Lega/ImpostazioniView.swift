@@ -67,6 +67,8 @@ struct ImpostazioniView: View {
                 .scrollContentBackground(.hidden)
                 .contentMargins(.bottom, 24, for: .scrollContent)
                 .background(Sfondo())
+                // con il testo grande la barra è vuota: senza, le righe passavano nitide sotto l'ora (#848)
+                .bordoSottoLaBarraVuota()
                 // fotografia `impostazioni-fondo`: la fine della pagina, quando le righe della lega sono arrivate (con le righe che
                 // arrivano dopo, `demoInFondo` da solo restava in cima)
                 .demoScorriA("imp-informazioni", proxy: proxy, schermate: ["impostazioni"], inFondo: true, ancora: .bottom,

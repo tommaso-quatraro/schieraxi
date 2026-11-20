@@ -104,9 +104,9 @@
     },
     {
       "titolo": "Widget con il testo grande, forme corte",
-      "precisazione": "(riga della schermata di blocco di «Prossima giornata» e di «Formazione consigliata», medio di «Prossima giornata», rettangolo di «Da controllare»)",
-      "testo": "dove la forma intera non entra il widget perde parole intere, mai il modulo e mai con «…»: la riga «3-4-3 · 72,7 punti», la stessa nei due widget (#819), diventa «3-4-3 · 72,7»; nel medio, accanto al modulo, «72,7 punti» diventa «72,7»; nel rettangolo di «Da controllare» i giocatori passano tutti insieme dal nome intero al solo cognome, poi allo stato corto («Marténi · gioca 62%»). VoiceOver legge sempre la forma intera.",
-      "motivo": "il widget ha misure fisse e con il testo grande la forma intera non entra: prima uscivano «SchieraXI 3-4-3, 72,7…», «3-4…» e un nome intero accanto a un cognome (#787)."
+      "precisazione": "(riga della schermata di blocco di «Prossima giornata» e di «Formazione consigliata», medio di «Prossima giornata» e di «Formazione consigliata», rettangolo di «Da controllare»)",
+      "testo": "dove la forma intera non entra il widget perde parole intere, mai il modulo e mai con «…»: la riga «3-4-3 · 72,7 punti», la stessa nei due widget (#819), diventa «3-4-3 · 72,7»; nel medio, accanto al modulo, «72,7 punti» diventa «72,7»; nel rettangolo di «Da controllare» i giocatori passano tutti insieme dal nome intero al solo cognome, poi allo stato corto («Marténi · gioca 62%»); «2 da controllare» diventa «2 dubbi» (`oggi.dubbi`, solo dei widget) e solo dove non entra nemmeno quello «2» con il triangolo. VoiceOver legge sempre la forma intera.",
+      "motivo": "il widget ha misure fisse e con il testo grande la forma intera non entra: prima uscivano «SchieraXI 3-4-3, 72,7…», «3-4…» e un nome intero accanto a un cognome (#787); nel medio di «Formazione consigliata» restava solo «⚠ 2», che da solo non si capisce (#848)."
     },
     {
       "titolo": "Accesso, «troppi tentativi»",
