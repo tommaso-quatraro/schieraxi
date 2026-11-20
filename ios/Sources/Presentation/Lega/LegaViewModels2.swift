@@ -245,7 +245,8 @@ struct RichiestaRoseTesto: Encodable {
     var mia_squadra: String? = nil
 }
 
-/// Il tasto «Aggiorna i dati»: avvia l'aggiornamento sul server e ne segue l'avanzamento finché finisce.
+/// Il tasto «Aggiorna i dati»: avvia l'aggiornamento sul server e ne segue l'avanzamento finché finisce. È spento anche quando
+/// il server è già occupato con un aggiornamento partito altrove, come `segnaAggiornamento` della web (#773, #772).
 @MainActor
 final class AggiornaDatiViewModel: ViewModelBase {
     private let server: any ServerClient
@@ -256,24 +257,48 @@ final class AggiornaDatiViewModel: ViewModelBase {
     var pausa: UInt64 = 2_000_000_000
     /// Dopo quante domande si smette di aspettare.
     var tentativiMassimi = 150
-    /// Il server è occupato con un aggiornamento partito altrove (#773). Provvisorio: da scrivere.
+    /// Il server è occupato con un aggiornamento partito altrove (aggiornamento programmato, giro leggero, installazione di una
+    /// versione): `aggiornamento_in_corso` di `GET /api/stato`.
     @Published private(set) var serverOccupato = false
-    /// Pausa tra una rilettura dello stato e l'altra mentre il server è occupato (i test la azzerano).
-    var pausaStato: UInt64 = 15_000_000_000
+    /// Pausa tra una rilettura dello stato e l'altra mentre il server è occupato: 15 secondi, come la web (i test la azzerano).
+    var pausaStato: Duration = .seconds(15)
 
     init(server: any ServerClient) {
         self.server = server
         super.init()
     }
 
-    /// Provvisorio (#773): il pulsante è spento solo durante l'aggiornamento partito da qui.
-    var pulsanteSpento: Bool { inCorso }
-    /// Provvisorio (#773).
-    var fraseOccupato: String? { nil }
-    /// Provvisorio (#773).
-    func segna(occupato: Bool?) {}
-    /// Provvisorio (#773).
-    func segui() async {}
+    /// Spento durante l'aggiornamento partito da qui e mentre il server è occupato con un altro.
+    var pulsanteSpento: Bool { inCorso || serverOccupato }
+
+    /// Sotto il pulsante spento perché il server è occupato, la frase della web (`aggiorna.in_corso`). Durante l'aggiornamento
+    /// partito da qui no: l'etichetta dice già «Aggiornamento in corso…» e sotto c'è il messaggio dell'avvio.
+    var fraseOccupato: String? { serverOccupato && !inCorso ? Catalogo.Aggiorna.inCorso : nil }
+
+    /// Lo stato appena letto dal server (`aggiornamento_in_corso` di una risposta fresca di `GET /api/stato`, mai la copia salvata).
+    func segna(occupato: Bool) {
+        if occupato != serverOccupato { serverOccupato = occupato }
+    }
+
+    /// Con il pulsante in vista (`.task` della vista, che si annulla uscendo dalla pagina): finché il server è occupato rilegge lo
+    /// stato, subito e poi ogni 15 secondi, una lettura alla volta (la prossima parte solo a lettura finita), come
+    /// `seguiAggiornamento` della web. Un errore non cambia lo stato e non ferma le letture: il pulsante si riaccende appena il
+    /// server risponde libero.
+    func segui() async {
+        var prima = true
+        while serverOccupato {
+            if !prima, pausaStato > .zero { try? await Task.sleep(for: pausaStato) }
+            prima = false
+            if Task.isCancelled { return }
+            do {
+                let stato: InfoServer = try await server.get("/api/stato")
+                segna(occupato: stato.aggiornamentoInCorso == true)
+            } catch {
+                // pagina lasciata: si smette; rete giù o server che non risponde: si riprova alla volta dopo
+                if Task.isCancelled { return }
+            }
+        }
+    }
 
     func avvia() async {
         guard !inCorso else { return }

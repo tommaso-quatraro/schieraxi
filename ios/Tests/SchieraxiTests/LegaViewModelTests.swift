@@ -92,7 +92,7 @@ final class LegaViewModelTests: XCTestCase {
         let letture = Contatore()
         let s = ServerDiProva { _, _, _ in statoDelServer(occupato: letture.passo() < 2) }
         let vm = AggiornaDatiViewModel(server: s)
-        vm.pausaStato = 0
+        vm.pausaStato = .zero
         vm.segna(occupato: true)
         await vm.segui()
         XCTAssertEqual(s.richieste, Array(repeating: "GET /api/stato", count: 3),
@@ -104,7 +104,7 @@ final class LegaViewModelTests: XCTestCase {
     func testServerLiberoNonSiRilegge() async {
         let s = ServerDiProva { _, _, _ in statoDelServer(occupato: false) }
         let vm = AggiornaDatiViewModel(server: s)
-        vm.pausaStato = 0
+        vm.pausaStato = .zero
         vm.segna(occupato: false)
         await vm.segui()
         XCTAssertEqual(s.quante("GET /api/stato"), 0)
@@ -119,7 +119,7 @@ final class LegaViewModelTests: XCTestCase {
             return statoDelServer(occupato: false)
         }
         let vm = AggiornaDatiViewModel(server: s)
-        vm.pausaStato = 0
+        vm.pausaStato = .zero
         vm.segna(occupato: true)
         await vm.segui()
         XCTAssertEqual(s.quante("GET /api/stato"), 2, "dopo un errore di rete si rilegge alla volta dopo")
@@ -129,7 +129,7 @@ final class LegaViewModelTests: XCTestCase {
     func testUscendoDallaPaginaSiSmetteDiRileggere() async {
         let s = ServerDiProva { _, _, _ in throw ErroreApi.rete("giù") }
         let vm = AggiornaDatiViewModel(server: s)
-        vm.pausaStato = 20_000_000
+        vm.pausaStato = .milliseconds(20)
         vm.segna(occupato: true)
         let pagina = Task { await vm.segui() }
         await attendi("almeno due letture", finche: { s.quante("GET /api/stato") >= 2 })
@@ -137,7 +137,7 @@ final class LegaViewModelTests: XCTestCase {
         pagina.cancel()
         await pagina.value
         let fatte = s.quante("GET /api/stato")
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        try? await Task.sleep(for: .milliseconds(150))
         XCTAssertEqual(s.quante("GET /api/stato"), fatte, "fuori dalla pagina lo stato non si rilegge")
     }
 

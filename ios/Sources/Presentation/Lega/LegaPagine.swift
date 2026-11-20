@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Il tasto «Aggiorna i dati» con il suo stato: da mettere dentro una `Section` di una `List`.
+/// Il tasto «Aggiorna i dati» con il suo stato: da mettere dentro una `Section` di una `List`. Con il server occupato da un
+/// aggiornamento partito altrove è spento, con la frase della web sotto (#773).
 struct AggiornaDatiSezione: View {
     @ObservedObject var vm: AggiornaDatiViewModel
     @Environment(\.accessibilityReduceMotion) private var ridotto
@@ -11,9 +12,15 @@ struct AggiornaDatiSezione: View {
                 .symbolEffect(.variableColor.iterative, isActive: vm.inCorso && !ridotto)
                 .frame(minHeight: 44)
         }
-        .disabled(vm.inCorso)
+        .disabled(vm.pulsanteSpento)
         .sensoryFeedback(trigger: vm.inCorso) { vecchio, nuovo in vecchio && !nuovo ? .success : nil }
         .accessibilityHint("Il server riscarica calendario, voti, probabili formazioni e quotazioni")
+        // con il pulsante in vista e il server occupato lo stato si rilegge finché torna libero; uscendo dalla pagina il task si
+        // annulla e le letture smettono
+        .task(id: vm.serverOccupato) { await vm.segui() }
+        if let frase = vm.fraseOccupato {
+            Text(frase).font(.footnote).foregroundStyle(Color.testoSecondario)
+        }
         if let m = vm.messaggio {
             Text(m).font(.footnote).foregroundStyle(vm.errori.isEmpty ? Color.testoSecondario : Color.attenzione)
         }
