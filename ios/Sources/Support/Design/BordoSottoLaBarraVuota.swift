@@ -12,13 +12,14 @@ import SwiftUI
 /// Va solo sulle pagine con `Sfondo()` dietro la lista, e fuori dalla striscia dei dati salvati (`avvisoDatiSalvati`), così la
 /// fascia è alta quanto l'ora e la barra, non di più.
 private struct BordoSottoLaBarraVuota: ViewModifier {
+    var misurata: ((CGFloat) -> Void)?
     @Environment(\.dynamicTypeSize) private var dimensione
 
     func body(content: Content) -> some View {
         Group {
             if #available(iOS 26.0, *) {
                 content.overlay(alignment: .top) {
-                    if TitoloPagina.barraSenzaTitolo(dimensione) { FasciaSottoLaBarra() }
+                    if TitoloPagina.barraSenzaTitolo(dimensione) { FasciaSottoLaBarra(misurata: misurata) }
                 }
             } else {
                 content
@@ -30,6 +31,8 @@ private struct BordoSottoLaBarraVuota: ViewModifier {
 /// La fascia: `Sfondo()` dall'alto dello schermo al fondo della barra (il margine sicuro in alto: ora e barra), mascherato da
 /// pieno a trasparente. Non riceve tocchi e VoiceOver non la vede.
 private struct FasciaSottoLaBarra: View {
+    var misurata: ((CGFloat) -> Void)?
+
     var body: some View {
         GeometryReader { spazio in
             Sfondo()
@@ -39,6 +42,7 @@ private struct FasciaSottoLaBarra: View {
                                    startPoint: .top, endPoint: .bottom)
                         .frame(height: spazio.safeAreaInsets.top)
                 }
+                .onChange(of: spazio.safeAreaInsets.top, initial: true) { _, altezza in misurata?(altezza) }
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
@@ -49,7 +53,8 @@ private struct FasciaSottoLaBarra: View {
 extension View {
     /// Con il testo grande, su iOS 26, i contenuti che scorrono sotto la barra vuota sfumano nello sfondo invece di passare
     /// nitidi sotto l'ora (#848). Per le pagine in cima a una scheda con `Sfondo()` dietro; vedi `BordoSottoLaBarraVuota`.
-    func bordoSottoLaBarraVuota() -> some View {
-        modifier(BordoSottoLaBarraVuota())
+    /// `misurata`: per i test, riceve l'altezza della fascia quando la fascia c'è.
+    func bordoSottoLaBarraVuota(misurata: ((CGFloat) -> Void)? = nil) -> some View {
+        modifier(BordoSottoLaBarraVuota(misurata: misurata))
     }
 }
