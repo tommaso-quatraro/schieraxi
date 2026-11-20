@@ -322,9 +322,11 @@ struct VistaWidget: View {
             VStack(alignment: conDubbi ? .leading : .trailing, spacing: conDubbi ? 2 : 4) {
                 Label("Formazione", systemImage: "sportscourt").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
                 if conDubbi {
+                    // il modulo è il dato principale e resta intero; i punti accanto perdono «punti» se non c'è posto (#787)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(r.modulo ?? "—").font(.system(.title2, design: .rounded).weight(.bold))
-                        Text("\(puntiTesto(r)) punti").font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(1).fixedSize()
+                        TestoCheEntra(ParoleWidget.punti(r.punti)).font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.9))
                     }
                 } else {
                     Text(r.modulo ?? "—").font(.system(.title, design: .rounded).weight(.bold))

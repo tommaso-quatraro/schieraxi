@@ -1027,9 +1027,11 @@ enum ParoleWidget {
         return [testo, ultima]
     }
 
-    /// I punti accanto al modulo nel widget medio.
+    /// I punti accanto al modulo nel widget medio «Prossima giornata»: «72,7 punti» → «72,7». Il modulo resta intero: sull'iPad con
+    /// il testo grande diventava «3-4…» (#787).
     static func punti(_ punti: Double?) -> [String] {
-        ["\(Formato.punti(punti)) punti"]
+        let p = Formato.punti(punti)
+        return ["\(p) punti", p]
     }
 
     /// «73,7 punti attesi» → «73,7 attesi»; con la scelta tua «… · la tua scelta» finché entra.
