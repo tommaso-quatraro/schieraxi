@@ -39,5 +39,10 @@ extension Catalogo {
         static func nDi11(n: String) -> String {
             "\(n) di 11"
         }
+
+        /// `avv.prova_su.one`, `avv.prova_su.other`
+        static func provaSu(_ n: Int) -> String {
+            n == 1 ? "Prova sull'ultima giornata giocata, usando solo i dati che c'erano prima. «Da fantamedia» è la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare; per chi ha pochi voti la fantamedia si avvicina a quella del suo ruolo." : "Prova sulle ultime \(n) giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare; per chi ha pochi voti la fantamedia si avvicina a quella del suo ruolo."
+        }
     }
 }

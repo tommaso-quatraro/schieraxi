@@ -74,6 +74,15 @@ def prima_giornata(web):
     return guida(web).get_by_label(re.compile("^Da quale giornata di Serie A"))
 
 
+def test_le_giornate_della_prima_giornata_con_l_apostrofo(web):
+    """Come in Regole e scadenza: «Dall'8ª» e «Dall'11ª», non «Dalla 8ª» (#842)."""
+    solo_prima(web)
+    guida_sui_tempi(web, "subito")
+    voci = prima_giornata(web).locator("option").all_inner_texts()
+    assert len(voci) == 38
+    assert voci[7] == "Dall'8ª" and voci[10] == "Dall'11ª" and voci[1] == "Dalla 2ª", voci[:12]
+
+
 def test_i_tempi_non_si_salvano_se_le_regole_non_si_sono_lette(web):
     """La lettura delle regole non arriva: «Salva» non scrive i valori di partenza sopra quelli veri, lo dice e rilegge; i menu
     passano ai valori salvati e «Salva» li scrive al tocco dopo."""
