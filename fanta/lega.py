@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .frasi import F
-from .percorsi import scrivi_sicuro
+from .percorsi import scrivi_sicuro, utente_della_cartella
 from .regole import RUOLI, Regole
 from .rose import SquadraLetta
 
@@ -47,6 +47,9 @@ class Rose:
     mia_squadra: str | None = None
     aggiornato: str = ""
     stagione: str = ""        # la stagione a cui appartengono le rose ("2026-27"), segnata all'importazione
+    # Di quale account è la lega: il suo numero interno, letto dalla cartella del file (`carica`, `percorsi.utente_della_cartella`);
+    # None senza account. Non cambia mai (il nome sì) e non si salva: tiene separate le consigliate ricordate di due account (#780).
+    di_utente: int | None = field(default=None, compare=False)
 
     def squadra(self, nome: str) -> Squadra | None:
         """Cerca una squadra per nome, senza badare a maiuscole e spazi; accetta anche l'inizio del nome."""
@@ -148,7 +151,9 @@ def carica(percorso: Path) -> Rose | None:
         dati = json.loads(percorso.read_text(encoding="utf-8"))
     except ValueError:
         raise ValueError(f"Il file {percorso.name} è rovinato: ripristina la copia {percorso.name}.bak o importa di nuovo le rose") from None
-    return da_dict(dati)
+    rose = da_dict(dati)
+    rose.di_utente = utente_della_cartella(percorso)
+    return rose
 
 
 _CAMPI_GIOCATORE = {f.name for f in fields(GiocatoreRosa)}
@@ -215,4 +220,6 @@ def salva(rose: Rose, percorso: Path, copia_di_riserva: bool = False) -> None:
     """Salva le rose. Con copia_di_riserva la versione precedente resta in rose.json.bak."""
     if copia_di_riserva and percorso.exists():
         shutil.copy2(percorso, percorso.with_name(percorso.name + ".bak"))
-    scrivi_sicuro(percorso, json.dumps(asdict(rose), ensure_ascii=False, indent=2))
+    dati = asdict(rose)
+    dati.pop("di_utente")                          # viene dalla cartella, non dal file
+    scrivi_sicuro(percorso, json.dumps(dati, ensure_ascii=False, indent=2))
