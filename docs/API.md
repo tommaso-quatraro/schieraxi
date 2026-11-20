@@ -215,7 +215,11 @@ Tenuta quella di prima, i suoi punti attesi e la sua
 panchina si rifanno con i dati nuovi; dopo la scadenza della lega resta com'è, panchina compresa. Gli altri moduli e gli altri
 stili sono sempre i migliori del momento: la voce di un altro modulo può avere qualche decimo di punti attesi più della
 consigliata. La scelta salvata dall'utente non cambia mai. Il server ricorda la consigliata in `dati/consigliate.json`
-(`consigli.FILE_CONSIGLIATE`: per ogni squadra, giornata, rosa e regole solo gli id dei giocatori, sotto un'impronta).
+(`consigli.FILE_CONSIGLIATE`: per ogni account, giornata, rosa e regole solo gli id dei giocatori, sotto un'impronta). Dal
+20/11/2026 (#780) l'impronta ha l'account (il suo numero interno, che non cambia; senza account un valore fisso) e solo ciò che
+cambia il calcolo (giocatori della squadra, moduli, panchina, bonus, fonte del voto, modificatore, voto di chi resta senza
+sostituto, regola dei rinvii di quella giornata): cambiare il nome della lega o della squadra, la scadenza o il rinvio di un'altra
+giornata non fa ripartire la consigliata, e due account non condividono mai una consigliata.
 Dopo l'inizio di un **anticipo** (vedi «Anticipi»; dal 5/11/2026, #368), con la formazione ancora aperta, i giocatori di quella
 partita restano dove erano nella consigliata già mostrata: titolari, allo stesso posto in panchina, o fuori. Vale per la
 consigliata e per ogni modulo e stile della risposta; gli altri giocatori si spostano con le regole di sopra. «Cominciato» si legge
