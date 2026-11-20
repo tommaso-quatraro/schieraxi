@@ -6,9 +6,10 @@ Esempio (dalla radice, col .venv della cartella principale):
 Cosa fa, per ogni prova: crea una cartella temporanea con account.sqlite e N utenti (password uguale, hash calcolato una volta),
 dà a ognuno regole e rose (copia di lega/; con `diverse` ogni utente ha regole e mia squadra propri, quindi nessuna cache in comune),
 avvia il server (multiutente, FANTA_LIVE=0, FANTA_PIANIFICATORE=0, nessuna fonte esterna) e fa partire gli utenti sfalsati nella
-`rampa`. Ogni utente: accesso, Oggi, widget, formazione, mercato, scambi, diario, scelta e osservati (scritture), poi qualche giro
-di riletture con pause. Una risposta 202 («sto calcolando») si riprova ogni 3 secondi come fa l'app: la latenza che si registra
-è quella percepita (fino alla risposta utile). L'archivio dati (dati/fanta.sqlite) va copiato prima nella cartella dati/ del
+`rampa`. Ogni utente: accesso, Oggi, widget, formazione, rosa, scambi, diario, scelta e osservati (scritture), poi qualche giro
+di riletture con pause. Niente `/api/mercato`: i cambi consigliati non sono più nelle app e senza profilo `completo` la rotta
+risponde 404 (interruttore `mercato` spento di predefinito, #795). Una risposta 202 («sto calcolando») si riprova ogni 3 secondi
+come fa l'app: la latenza che si registra è quella percepita (fino alla risposta utile). L'archivio dati (dati/fanta.sqlite) va copiato prima nella cartella dati/ del
 repository (è ignorato da git).
 """
 from __future__ import annotations
@@ -147,7 +148,6 @@ async def utente(cl, reg: Registro, i: int, nome: str, partenza: float, giri: in
     r = await q("widget", "GET", "/api/widget", token=tk)
     etag = r.headers.get("etag") if r is not None and r.status_code == 200 else None
     f = await q("formazione", "GET", "/api/formazione", token=tk)
-    await q("mercato", "GET", "/api/mercato", token=tk)
     await q("rosa", "GET", "/api/rosa", token=tk)
     await q("scambi", "GET", "/api/scambi/proposte", params={"con": SQUADRE[(i + 1) % len(SQUADRE)]} if CON_SQUADRA else None, token=tk)
     await q("diario", "GET", "/api/diario", token=tk)
@@ -169,7 +169,6 @@ async def utente(cl, reg: Registro, i: int, nome: str, partenza: float, giri: in
         await q("oggi", "GET", "/api/oggi", token=tk)
         await q("formazione", "GET", "/api/formazione", token=tk)
         await q("widget_304", "GET", "/api/widget", token=tk, headers={"If-None-Match": etag} if etag else {})
-        await q("mercato", "GET", "/api/mercato", token=tk)
 
 
 def pct(v: list[float], p: float) -> float:

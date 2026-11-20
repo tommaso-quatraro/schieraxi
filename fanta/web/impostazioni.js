@@ -24,7 +24,8 @@ function paginaImpostazioni(sezione) {
   const lega = [rigaImp("rose", t("lega.voce_importa"), t("lega.voce_importa_sub")),
     conRose ? rigaImp("squadra", t("lega.mia_squadra"), mia ? esc(mia.nome) : t("imp.mia_squadra_nessuna")) : "",
     rigaImp("regole", t("imp.regole"), t("imp.regole_sub")),
-    conRose && squadre.length > 1 && funz("squadre_altrui") ? rigaImp("squadre", t("imp.altre_squadre"), tp("lega.n_squadre", squadre.length)) : ""].join("");
+    // il numero delle altre, senza la mia (#779): è quello dell'elenco che la riga apre (vistaAltreSquadre)
+    conRose && squadre.length > 1 && funz("squadre_altrui") ? rigaImp("squadre", t("imp.altre_squadre"), tp("lega.n_squadre", squadre.filter(s => !s.mia).length)) : ""].join("");
   const a = stato.account;
   pagina(`<div class="imp-griglia">
     <section class="carta imp-sezione" id="imp-avvisi" aria-labelledby="imp-avvisi-t"><h2 id="imp-avvisi-t">${t("imp.sez_avvisi")}</h2>

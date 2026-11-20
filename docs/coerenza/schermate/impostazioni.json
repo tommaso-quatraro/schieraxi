@@ -89,6 +89,24 @@
       "forma": "web",
       "chi": "**fatto** (#773): prove sull'iPhone in `LegaViewModelTests` (stato occupato e libero, lettura annullata con la copia salvata o dopo una rilettura, rilettura fino a libero, errore di rete, uscita dalla pagina, aggiornamento partito dal telefono), nel browser in `tests/browser/test_impostazioni.py` (#772)",
       "stato": "fatto"
+    },
+    {
+      "id": 87,
+      "schermata": "La mia lega: «Le altre squadre» senza la mia squadra (#779)",
+      "web": "la riga «Le altre squadre» dice il numero delle squadre senza la mia (`lega.n_squadre` con le squadre che non hanno `mia: true`) e la pagina elenca solo quelle, senza l'etichetta «la tua»; finché la mia non è scelta, tutte (`paginaImpostazioni` in `impostazioni.js`, `vistaAltreSquadre` in `app.js`)",
+      "iphone": "`VociImpostazioni.lega` conta tutte le squadre (`Catalogo.Lega.nSquadre(squadre.count)`) e l'elenco mostra anche la mia con `PillolaTua` (`RigaSquadra.swift`)",
+      "forma": "web",
+      "chi": "web fatta (#779, prove in `tests/browser/test_impostazioni.py`); iPhone da fare: #788",
+      "stato": "da-fare"
+    },
+    {
+      "id": 88,
+      "schermata": "Accesso dopo «Esci da tutti i dispositivi» (#779)",
+      "web": "riuscita l'uscita, la schermata di accesso mostra una volta l'avviso «Sei fuori da tutti i dispositivi, anche da questo: accedi di nuovo.» (`account.esci_tutti_fatto`, regione `role=\"status\"`); non dopo un «Esci» normale (`esciDaTutti`, `controllaAccesso` in `app.js`)",
+      "iphone": "`AccountSezione.esci()` chiama `sessione.esciDaTutti()` e si torna all'accesso senza frase",
+      "forma": "web",
+      "chi": "web fatta (#779, prove in `tests/browser/test_impostazioni.py`); iPhone da fare: #788",
+      "stato": "da-fare"
     }
   ]
 }
