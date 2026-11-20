@@ -71,7 +71,7 @@ struct GiornataInteraWidgetTests {
     func fasi() throws {
         let inCorso = try riassunto("in_corso")
         #expect(inCorso.testaRettangoloFase == "Giornata 8 · Chiusa")
-        #expect(inCorso.formeRigaInLineaFase == ["Giornata 8: 41,5 punti fatti finora", "Giornata 8: 41,5 punti fatti", "Giornata 8: 41,5"])
+        #expect(inCorso.formeRigaInLineaFase == ["Giornata 8: 41,5 punti finora", "Giornata 8: 41,5"], "«punti finora» come l'app (#774)")
         let finita = try riassunto("finita")
         #expect(finita.testaRettangoloFase == "Giornata 8 finita")
         #expect(finita.formeRigaInLineaFase == ["Giornata 8: 69,5 punti fatti", "Giornata 8: 69,5"])

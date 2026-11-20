@@ -293,35 +293,37 @@ extension RiassuntoOggi {
     /// Il numero grande del widget in corso o finito: i punti fatti, «—» se non si sanno.
     var puntiFattiTesto: String { puntiFatti.map { Formato.punti($0) } ?? "—" }
 
-    /// «circa 72,4 a fine giornata» (in corso) o «66,0 attesi» (finita); nil se il numero manca.
+    /// A giornata in corso «circa 75 a fine giornata», senza decimali come la testa della Formazione e la web
+    /// (`formazione.circa_fine` con `num(…, 0)`, #774); a giornata finita «66,0 attesi». Nil se il numero manca.
     var puntiFineTesto: String? {
         guard let p = puntiFine, p.isFinite else { return nil }
-        return inCorso ? "circa \(Formato.punti(p)) a fine giornata" : "\(Formato.punti(p)) attesi"
+        return inCorso ? Catalogo.Formazione.circaFine(n: Formato.decimali(p, cifre: 0)) : "\(Formato.punti(p)) attesi"
     }
 
-    /// «3 devono ancora giocare», «Hanno giocato tutti»; nil se il numero non c'è.
+    /// Chi deve ancora giocare, con le frasi del catalogo come l'app (`TestiFase.ancora`, #774): «3 giocatori devono ancora
+    /// giocare», «1 giocatore deve ancora giocare» e, a zero, «Hanno giocato tutti: mancano solo i voti ufficiali.». Nil se il
+    /// numero non c'è.
     var ancoraDaGiocareTesto: String? {
         guard let n = ancoraDaGiocare, n >= 0 else { return nil }
-        switch n {
-        case 0: return "Hanno giocato tutti"
-        case 1: return "1 deve ancora giocare"
-        default: return "\(n) devono ancora giocare"
-        }
+        return n == 0 ? Catalogo.Oggi.tuttiGiocato : Catalogo.Oggi.ancoraDaGiocare(n)
     }
 
     /// Una frase per VoiceOver sulla fase; nil nella fase `prima` (lì valgono i testi di sempre). Dopo la scadenza «formazione
-    /// chiusa», come la web («Chiusa»), mai «in corso» per la giornata. La giornata in testa con i due numeri (#299).
+    /// chiusa», come la web («Chiusa»), mai «in corso» per la giornata. La giornata in testa con i due numeri (#299); i punti
+    /// con le parole della testa della Formazione (#774).
     var descrizioneFase: String? {
         if inCorso {
             var t = "\(voceGiornata): formazione chiusa, "
-            t += puntiFatti.map { "\(Formato.punti($0)) punti fatti finora" } ?? "punti fatti non ancora noti"
-            if let p = puntiFine, p.isFinite { t += ", circa \(Formato.punti(p)) a fine giornata" }
-            if let a = ancoraDaGiocareTesto { t += ". \(a)" }
-            return t + "."
+            t += puntiFatti.map { "\(Formato.punti($0)) \(Catalogo.Formazione.puntiFinora)" } ?? "punti fatti non ancora noti"
+            if let fine = puntiFineTesto { t += ", \(fine)" }
+            t += "."
+            // «Hanno giocato tutti: mancano solo i voti ufficiali.» ha già il suo punto
+            if let a = ancoraDaGiocareTesto { t += " \(a)" + (a.hasSuffix(".") ? "" : ".") }
+            return t
         }
         if finita {
             var t = (nomeGiornataChiusa.map { "\($0.voce): finita" } ?? "Giornata finita") + ", "
-            t += puntiFatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non ancora noti"
+            t += puntiFatti.map { "\(Formato.punti($0)) \(Catalogo.Oggi.puntiFatti)" } ?? "punti fatti non ancora noti"
             if let p = puntiFine, p.isFinite { t += " su \(Formato.punti(p)) attesi" }
             t += ". Prossima: \(voceGiornata)"
             if let inizio { t += ", scadenza \(Quando.leggibile(inizio))" }

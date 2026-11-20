@@ -26,7 +26,9 @@ struct BottoneGoogle: View {
     }
 }
 
-/// Dopo Google, per un account nuovo: si sceglie il nome utente (e si mette il codice d'invito, se serve).
+/// Dopo Google, per un account nuovo: si sceglie il nome utente (e si mette il codice d'invito, se serve). Testi della web
+/// (`mostraNuovoGoogle` di app.js, #775): «Scegli il tuo nome utente» con la sua spiegazione, i campi, la casella e «Crea
+/// l'account». Restano dell'iPhone solo «Un attimo…» e «Annulla» del foglio.
 struct ScegliNomeGoogleView: View {
     let nuovo: NuovoAccountSocial
     var invitoIniziale = ""
@@ -53,6 +55,8 @@ struct ScegliNomeGoogleView: View {
 
     var body: some View {
         Form {
+            // con il testo grande il titolo intero sta qui, dove va a capo (`TitoloPagina`)
+            TitoloNellaPagina()
             Section {
                 TextField(Catalogo.Accesso.nomeUtente, text: $nome)
                     .textInputAutocapitalization(.never)
@@ -63,11 +67,16 @@ struct ScegliNomeGoogleView: View {
                     .onSubmit { Task { await crea() } }
                     .frame(minHeight: Tema.areaTocco)
             } header: {
-                Text(Catalogo.Social.scegliNome).foregroundStyle(Color.testoSecondario)
-            } footer: { Group {
+                // come la web e Registrati: sotto il titolo la spiegazione («Hai scelto Google: …»), poi l'etichetta del campo,
+                // che resta anche quando il nome suggerito è già scritto (come «Codice d'invito»)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(Catalogo.Social.scegliSpiega).textCase(nil)
+                    Text(Catalogo.Accesso.nomeUtente)
+                }
+                .foregroundStyle(Color.testoSecondario)
+            } footer: {
                 if let problemaNome { Text(problemaNome).foregroundStyle(Color.attenzione) }
-                else { Text("È il nome con cui ti vedono gli altri. Da 3 a 32 caratteri: lettere, numeri, punto, trattino.") }
-            }.foregroundStyle(Color.testoSecondario) }
+            }
             if nuovo.serveInvito {
                 Section {
                     TextField(Catalogo.Accesso.codiceInvito, text: $invito)
@@ -75,9 +84,8 @@ struct ScegliNomeGoogleView: View {
                         .autocorrectionDisabled()
                         .frame(minHeight: Tema.areaTocco)
                 } header: {
-                    Text("Invito").foregroundStyle(Color.testoSecondario)
-                } footer: {
-                    Text("L'invito te lo dà chi ti ha parlato di SchieraXI.").foregroundStyle(Color.testoSecondario)
+                    // l'etichetta del campo della web: resta anche quando il codice è già scritto
+                    Text(Catalogo.Accesso.codiceInvito).foregroundStyle(Color.testoSecondario)
                 }
             }
             Section {
@@ -97,8 +105,8 @@ struct ScegliNomeGoogleView: View {
                 .disabled(!pronto || sessione.inCorso)
             }
         }
-        .navigationTitle("Quasi fatto")
-        .navigationBarTitleDisplayMode(.inline)
+        // il titolo della web, intero: nella barra piccola va a capo invece di tagliarsi (`TitoloInBarra`)
+        .titoloPagina(Catalogo.Social.scegliNome, piccoloInBarra: true)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
         .onAppear {
             if nome.isEmpty { nome = NomeSuggerito.pulito(nuovo.nomeSuggerito) }
