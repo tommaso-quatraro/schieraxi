@@ -41,7 +41,7 @@ on:
       widget:
         description: "foto dei widget: auto = nella corsa completa o se sono cambiati i loro file; si = sempre; no = mai"
         type: choice
-        options: [auto, si, no]
+        options: [auto, si, 'no']   # 'no' fra virgolette: senza, YAML lo legge come «false» (issue #791)
         default: auto
   # solo quando si mette un'etichetta: «quando» guarda se è «screenshot» o «screenshot-vero» (con un'altra, niente Mac)
   pull_request:
@@ -132,7 +132,7 @@ jobs:
             perche="foto dal vero o solo iPad (come prima, niente widget)"
           elif [ "$RICHIESTA" = si ]; then
             widget=true; perche="chieste"
-          elif [ "$RICHIESTA" = no ]; then
+          elif [ "$RICHIESTA" = 'no' ]; then
             perche="escluse a mano"
           elif [ "$SCATTI" = completo ]; then
             widget=true; perche="corsa completa"
