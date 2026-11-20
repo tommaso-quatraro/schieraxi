@@ -401,8 +401,8 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     # La consigliata già mostrata per questa squadra e giornata (#335): resta finché la migliore non vale almeno SOGLIA_CAMBIO_PUNTI in
     # più o un suo titolare non gioca più (`stabile`); dopo la scadenza resta e basta. Tutti passano di qui (Formazione, Oggi, widget,
     # Da fare, avvisi, copia alla scadenza): leggono la stessa.
-    impronta = _impronta(stagione, giornata, s, regole, simulazioni)
-    prima = _ritrova(impronta, _impronta_vecchia(stagione, giornata, s, regole, simulazioni))
+    impronta = _impronta(stagione, giornata, s, regole, simulazioni, rose.di_utente)
+    prima = _ritrova(impronta, _impronta_vecchia(stagione, giornata, s, regole, simulazioni), rose.di_utente)
     prima = prima if _ids(prima, "titolari") is not None else None          # voce rovinata: come se non ci fosse
     chiusa = _chiusa(db, regole, stagione, giornata, adesso)
     # Anticipi già cominciati (#368): con la formazione ancora aperta i loro giocatori restano dove sono nella consigliata di prima.
@@ -591,12 +591,17 @@ def _decimali(x):
     return [_decimali(v) for v in x] if isinstance(x, list) else {k: _decimali(v) for k, v in x.items()}
 
 
-def _impronta(stagione: str, giornata: int, s: Squadra, regole: Regole, simulazioni: int) -> str:
-    """La chiave della consigliata ricordata: stagione, giornata, giocatori della squadra, regole del calcolo e simulazioni, in
-    un'impronta. Niente nome della squadra (#780): rinominata, la sua consigliata resta. Due squadre con gli stessi giocatori e le
-    stesse regole del calcolo hanno la stessa consigliata."""
-    testo = json.dumps([stagione, int(giornata), sorted(g.id for g in s.giocatori if g.id is not None),
-                        _regole_del_calcolo(regole, stagione, giornata), simulazioni], ensure_ascii=False, sort_keys=True)
+SENZA_ACCOUNT = "senza account"             # l'account nell'impronta senza account: sul server c'è una lega sola
+
+
+def _impronta(stagione: str, giornata: int, s: Squadra, regole: Regole, simulazioni: int, di_utente: int | None) -> str:
+    """La chiave della consigliata ricordata: stagione, giornata, account della lega, giocatori della squadra, regole del calcolo e
+    simulazioni, in un'impronta. Niente nome della squadra (#780): rinominata, la sua consigliata resta. L'account è il numero
+    interno (`Rose.di_utente`), che non cambia mai; senza account `SENZA_ACCOUNT`: due account non condividono mai una consigliata,
+    anche con gli stessi giocatori e le stesse regole (con orari di chiusura diversi uno cambierebbe quella già chiusa dell'altro)."""
+    testo = json.dumps([stagione, int(giornata), SENZA_ACCOUNT if di_utente is None else int(di_utente),
+                        sorted(g.id for g in s.giocatori if g.id is not None), _regole_del_calcolo(regole, stagione, giornata),
+                        simulazioni], ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(testo.encode("utf-8")).hexdigest()[:32]
 
 
@@ -608,25 +613,39 @@ def _impronta_vecchia(stagione: str, giornata: int, s: Squadra, regole: Regole, 
     return hashlib.sha256(testo.encode("utf-8")).hexdigest()[:32]
 
 
-def _ritrova(impronta: str, vecchia: str) -> dict | None:
+def _ritrova(impronta: str, vecchia: str, di_utente: int | None) -> dict | None:
     """La consigliata ricordata con la chiave `impronta`; se manca, quella salvata da una versione di prima con la chiave `vecchia`
-    (#780), che passa alla chiave nuova: al rilascio, anche a giornata iniziata, nessuna consigliata riparte da zero, e dopo un
-    cambio delle regole che cambia la chiave vecchia (il nome della lega) la si ritrova ancora. Se lo spostamento non riesce la voce
-    vale lo stesso (si riprova alla prossima lettura) e resta un avviso nel registro."""
+    (#780), che passa alla chiave nuova dell'account `di_utente`: al rilascio, anche a giornata iniziata, nessuna consigliata riparte
+    da zero, e dopo un cambio delle regole che cambia la chiave vecchia (il nome della lega) la si ritrova ancora. Se lo spostamento
+    non riesce la voce vale lo stesso (si riprova alla prossima lettura) e resta un avviso nel registro."""
     tutte = _consigliate()
     if impronta in tutte or vecchia not in tutte:
         return tutte.get(impronta)
     try:
-        _sposta_voci({vecchia: impronta})
+        _sposta_voci({vecchia: impronta}, di_utente)
     except OSError as e:
         LOG.warning("consigliata della versione di prima non spostata alla chiave nuova (%s)", type(e).__name__)
     return tutte[vecchia]
 
 
-def _sposta_voci(da_a: dict[str, str]) -> int:
-    """Sposta le consigliate ricordate dalle chiavi vecchie alle nuove ({vecchia: nuova}) così come sono, con `quando`, `utenti` e
-    `proprie`; una chiave nuova già presente vince e non si tocca. Stesso blocco di `_ricorda`, valido anche fra processi. Quante ne
-    ha spostate. Un errore di disco o un blocco che non arriva (OSError) passa a chi chiama."""
+def _divisa(voce: dict, di_utente: int) -> tuple[dict, dict | None]:
+    """Una voce con la chiave vecchia poteva servire a più account (stessa squadra, rosa e regole): la copia di `di_utente`, con solo
+    lui in `utenti` e `proprie`, e quella che resta agli altri (None se non resta a nessuno). Una voce senza `utenti` (scritta da un
+    comando, senza account) resta anche agli altri."""
+    utenti, proprie = _utenti(voce), _proprie(voce)
+    base = {k: v for k, v in voce.items() if k not in ("utenti", "proprie")}
+    sua = base | ({"utenti": [di_utente]} if di_utente in utenti else {}) | ({"proprie": [di_utente]} if di_utente in proprie else {})
+    altri, altre = [u for u in utenti if u != di_utente], [u for u in proprie if u != di_utente]
+    if utenti and not altri:
+        return sua, None
+    return sua, base | ({"utenti": altri} if altri else {}) | ({"proprie": altre} if altre else {})
+
+
+def _sposta_voci(da_a: dict[str, str], di_utente: int | None) -> int:
+    """Passa le consigliate ricordate dalle chiavi vecchie alle nuove ({vecchia: nuova}) dell'account `di_utente`, con `quando`; una
+    chiave nuova già presente vince e non si tocca. Senza account la voce si sposta com'è; con un account prende la sua copia e la
+    vecchia resta agli altri account che l'avevano vista (`_divisa`). Stesso blocco di `_ricorda`, valido anche fra processi. Quante
+    ne ha passate. Un errore di disco o un blocco che non arriva (OSError) passa a chi chiama."""
     if not any(k in _consigliate() for k in da_a):           # niente da spostare: né blocco né scrittura
         return 0
     file = FILE_CONSIGLIATE
@@ -639,22 +658,30 @@ def _sposta_voci(da_a: dict[str, str]) -> int:
             return 0
         spostate = 0
         for vecchia, nuova in da_a.items():
-            if vecchia in tutte and nuova not in tutte:
+            if vecchia not in tutte or nuova in tutte:
+                continue
+            if di_utente is None or not isinstance(tutte[vecchia], dict):
                 tutte[nuova] = tutte.pop(vecchia)
-                spostate += 1
+            else:
+                tutte[nuova], resto = _divisa(tutte[vecchia], int(di_utente))
+                if resto is None:
+                    del tutte[vecchia]
+                else:
+                    tutte[vecchia] = resto
+            spostate += 1
         if spostate:
             scrivi_sicuro(file, json.dumps(tutte, ensure_ascii=False))
     return spostate
 
 
-def segui_il_nome(s: Squadra, regole: Regole) -> int:
-    """La squadra `s` (ancora con il nome di prima) sta per cambiare nome (PUT /api/squadre/nome, #780): le sue consigliate salvate
-    dalle versioni di prima, con il nome nella chiave, passano alla chiave nuova, che il nome non ce l'ha (quelle nuove seguono la
-    squadra da sole). Le chiavi sono impronte: si rifanno per ogni giornata della stagione in corso, con le simulazioni di sempre.
-    Quante ne ha spostate. Un errore di disco passa a chi chiama."""
+def segui_il_nome(s: Squadra, regole: Regole, di_utente: int | None) -> int:
+    """La squadra `s` (ancora con il nome di prima) dell'account `di_utente` sta per cambiare nome (PUT /api/squadre/nome, #780): le
+    sue consigliate salvate dalle versioni di prima, con il nome nella chiave, passano alla chiave nuova, che il nome non ce l'ha
+    (quelle nuove seguono la squadra da sole). Le chiavi sono impronte: si rifanno per ogni giornata della stagione in corso, con le
+    simulazioni di sempre. Quante ne ha passate. Un errore di disco passa a chi chiama."""
     stagione = stagione_corrente()
-    return _sposta_voci({_impronta_vecchia(stagione, g, s, regole, SIMULAZIONI): _impronta(stagione, g, s, regole, SIMULAZIONI)
-                         for g in range(1, GIORNATE_SERIE_A + 1)})
+    return _sposta_voci({_impronta_vecchia(stagione, g, s, regole, SIMULAZIONI): _impronta(stagione, g, s, regole, SIMULAZIONI, di_utente)
+                         for g in range(1, GIORNATE_SERIE_A + 1)}, di_utente)
 
 
 def _consigliate() -> dict:

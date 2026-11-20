@@ -30,11 +30,11 @@ def _chiave_vecchia(stagione: str, giornata: int, s: lega.Squadra, regole, simul
     return hashlib.sha256(testo.encode("utf-8")).hexdigest()[:32]
 
 
-def _salvata_dalla_versione_di_prima(s: lega.Squadra, regole) -> dict:
-    """La voce appena ricordata rimessa sotto la chiave vecchia, con un utente, come l'avrebbe lasciata la versione di prima; poi
-    il servizio riparte con quella nuova (memoria vuota)."""
+def _salvata_dalla_versione_di_prima(s: lega.Squadra, regole, utenti: list[int] | None = None) -> dict:
+    """La voce appena ricordata rimessa sotto la chiave vecchia, con chi l'ha vista (`utenti`, di base uno), come l'avrebbe lasciata
+    la versione di prima; poi il servizio riparte con quella nuova (memoria vuota)."""
     (voce,) = json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")).values()
-    voce |= {"utenti": [5], "proprie": [5]}
+    voce |= {"utenti": utenti or [5], "proprie": utenti or [5]}
     consigli.FILE_CONSIGLIATE.write_text(json.dumps({_chiave_vecchia(ST, GIORNATA, s, regole): voce}), encoding="utf-8")
     consigli._cache.clear()
     return voce
@@ -43,7 +43,7 @@ def _salvata_dalla_versione_di_prima(s: lega.Squadra, regole) -> dict:
 # ---------------------------------------------------------------- l'impronta
 def test_l_impronta_non_cambia_con_cio_che_non_tocca_il_calcolo():
     s = _squadra()
-    base = consigli._impronta(ST, GIORNATA, s, SOLO_442, 600)
+    base = consigli._impronta(ST, GIORNATA, s, SOLO_442, 600, None)
     uguali = {
         "nome della lega": replace(SOLO_442, nome_lega="Nome nuovo della lega"),
         "scadenza": replace(SOLO_442, scadenza_minuti=30),
@@ -62,32 +62,34 @@ def test_l_impronta_non_cambia_con_cio_che_non_tocca_il_calcolo():
             SOLO_442.modificatore_difesa, soglie=[[6, 1], [6.5, 3], [7, 6]])),
     }
     for cosa, regole in uguali.items():
-        assert consigli._impronta(ST, GIORNATA, s, regole, 600) == base, cosa
+        assert consigli._impronta(ST, GIORNATA, s, regole, 600, None) == base, cosa
     rinominata = _squadra()
     rinominata.nome = "Nome Nuovo"
-    assert consigli._impronta(ST, GIORNATA, rinominata, SOLO_442, 600) == base
+    assert consigli._impronta(ST, GIORNATA, rinominata, SOLO_442, 600, None) == base
 
 
 def test_l_impronta_cambia_con_cio_che_cambia_il_calcolo():
     s = _squadra()
     diverse = {
-        "di partenza": consigli._impronta(ST, GIORNATA, s, SOLO_442, 600),
-        "moduli": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, moduli=["4-3-3"]), 600),
-        "fonte del voto": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, fonte_voto="statistico"), 600),
-        "bonus": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, bonus=replace(SOLO_442.bonus, assist=2.0)), 600),
-        "panchina": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, panchina=replace(SOLO_442.panchina, numero=9)), 600),
+        "di partenza": consigli._impronta(ST, GIORNATA, s, SOLO_442, 600, None),
+        "moduli": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, moduli=["4-3-3"]), 600, None),
+        "fonte del voto": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, fonte_voto="statistico"), 600, None),
+        "bonus": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, bonus=replace(SOLO_442.bonus, assist=2.0)), 600, None),
+        "panchina": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, panchina=replace(SOLO_442.panchina, numero=9)), 600, None),
         "modificatore": consigli._impronta(ST, GIORNATA, s, replace(
-            SOLO_442, modificatore_difesa=replace(SOLO_442.modificatore_difesa, attivo=True)), 600),
-        "senza sostituto": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, voto_senza_sostituto=4.0), 600),
+            SOLO_442, modificatore_difesa=replace(SOLO_442.modificatore_difesa, attivo=True)), 600, None),
+        "senza sostituto": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, voto_senza_sostituto=4.0), 600, None),
         "rinvio di questa giornata": consigli._impronta(ST, GIORNATA, s, replace(
-            SOLO_442, rinvii_giornate={f"{ST}/{GIORNATA}": "senza_voto"}), 600),
-        "voto d'ufficio": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, partite_rinviate="voto_ufficio"), 600),
+            SOLO_442, rinvii_giornate={f"{ST}/{GIORNATA}": "senza_voto"}), 600, None),
+        "voto d'ufficio": consigli._impronta(ST, GIORNATA, s, replace(SOLO_442, partite_rinviate="voto_ufficio"), 600, None),
         "valore del voto d'ufficio": consigli._impronta(ST, GIORNATA, s, replace(
-            SOLO_442, partite_rinviate="voto_ufficio", voto_ufficio_rinviate=5.0), 600),
-        "rosa della squadra": consigli._impronta(ST, GIORNATA, _squadra(senza=(25,)), SOLO_442, 600),
-        "simulazioni": consigli._impronta(ST, GIORNATA, s, SOLO_442, 200),
-        "giornata": consigli._impronta(ST, GIORNATA + 1, s, SOLO_442, 600),
-        "stagione": consigli._impronta("2027-28", GIORNATA, s, SOLO_442, 600),
+            SOLO_442, partite_rinviate="voto_ufficio", voto_ufficio_rinviate=5.0), 600, None),
+        "rosa della squadra": consigli._impronta(ST, GIORNATA, _squadra(senza=(25,)), SOLO_442, 600, None),
+        "simulazioni": consigli._impronta(ST, GIORNATA, s, SOLO_442, 200, None),
+        "giornata": consigli._impronta(ST, GIORNATA + 1, s, SOLO_442, 600, None),
+        "stagione": consigli._impronta("2027-28", GIORNATA, s, SOLO_442, 600, None),
+        "un account": consigli._impronta(ST, GIORNATA, s, SOLO_442, 600, 1),
+        "un altro account": consigli._impronta(ST, GIORNATA, s, SOLO_442, 600, 2),
     }
     assert len(set(diverse.values())) == len(diverse), diverse
 
@@ -119,6 +121,29 @@ def test_rinvio_di_un_altra_giornata_la_consigliata_resta_dopo_un_ritocco(mondo)
     assert _ids(consigli.formazione(mondo["db"], con_rinvio, _rose())) == _ids(prima)
 
 
+# ---------------------------------------------------------------- due account non condividono mai una voce
+def _rose_di(account: int | None) -> lega.Rose:
+    """Le rose come le carica il server dalla cartella di un account (`lega.carica`): stessi giocatori per tutti."""
+    r = _rose()
+    r.di_utente = account
+    return r
+
+
+def test_due_account_con_la_stessa_rosa_non_si_cambiano_la_consigliata(mondo):  # noqa: F811
+    """Stessi giocatori e stesse regole del calcolo, ma la lega del primo chiude un'ora prima della partita e quella del secondo
+    all'inizio. Fra le due chiusure il secondo, ancora aperto, vede il 7 infortunato e la sua consigliata cambia: quella già
+    congelata del primo deve restare com'era."""
+    chiude_prima, chiude_dopo = replace(SOLO_442, scadenza_minuti=60), SOLO_442
+    primo = consigli.formazione(mondo["db"], chiude_prima, _rose_di(1))
+    assert _ids(consigli.formazione(mondo["db"], chiude_dopo, _rose_di(2))) == _ids(primo)
+    mondo["adesso"] = PRIMA_PARTITA - timedelta(minutes=30)                # chiusa per il primo, aperta per il secondo
+    mondo["prev"], mondo["versione"] = _nuove_dopo_la_scadenza(), "v2"
+    secondo = consigli.formazione(mondo["db"], chiude_dopo, _rose_di(2))
+    assert 7 not in _ids(secondo)                                          # il secondo cambia: il 7 non gioca
+    dopo = consigli.formazione(mondo["db"], chiude_prima, _rose_di(1))
+    assert _ids(dopo) == _ids(primo) and _panchina(dopo) == _panchina(primo)
+
+
 # ---------------------------------------------------------------- al rilascio: le voci salvate con la chiave vecchia
 def test_voce_della_versione_di_prima_si_ritrova_a_giornata_iniziata(mondo):  # noqa: F811
     """Rilascio a giornata iniziata: la consigliata congelata alla scadenza era salvata con la chiave vecchia. Non riparte da zero."""
@@ -139,9 +164,28 @@ def test_voce_della_versione_di_prima_passa_alla_chiave_nuova(mondo):  # noqa: F
     mondo["prev"], mondo["versione"] = _nuove_dopo_la_scadenza(), "v2"
     consigli.formazione(mondo["db"], SOLO_442, _rose())                     # la prima lettura dopo il rilascio
     tutte = json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
-    assert tutte == {consigli._impronta(ST, GIORNATA, _squadra(), SOLO_442, 600): voce}
+    assert tutte == {consigli._impronta(ST, GIORNATA, _squadra(), SOLO_442, 600, None): voce}
     dopo = consigli.formazione(mondo["db"], replace(SOLO_442, nome_lega="Nome nuovo della lega"), _rose())
     assert _ids(dopo) == _ids(prima) and _panchina(dopo) == _panchina(prima)
+
+
+def test_voce_della_versione_di_prima_di_due_account_ciascuno_prende_la_sua(mondo):  # noqa: F811
+    """Prima di #780 due account con la stessa squadra, rosa e regole avevano una voce sola. Al rilascio, a giornata iniziata,
+    ciascuno ritrova la consigliata congelata in una voce tutta sua (solo lui fra chi l'ha vista); la vecchia resta finché serve
+    a qualcuno."""
+    prima = consigli.formazione(mondo["db"], SOLO_442, _rose())
+    voce = _salvata_dalla_versione_di_prima(_squadra(), SOLO_442, utenti=[1, 2])
+    vecchia = _chiave_vecchia(ST, GIORNATA, _squadra(), SOLO_442)
+    di = {u: consigli._impronta(ST, GIORNATA, _squadra(), SOLO_442, 600, u) for u in (1, 2)}
+    mondo["adesso"] = DOPO_LA_SCADENZA
+    mondo["prev"], mondo["versione"] = _nuove_dopo_la_scadenza(), "v2"
+
+    def file() -> dict:
+        return json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))
+    assert _ids(consigli.formazione(mondo["db"], SOLO_442, _rose_di(1))) == _ids(prima)
+    assert file() == {di[1]: voce | {"utenti": [1], "proprie": [1]}, vecchia: voce | {"utenti": [2], "proprie": [2]}}
+    assert _ids(consigli.formazione(mondo["db"], SOLO_442, _rose_di(2))) == _ids(prima)
+    assert file() == {di[1]: voce | {"utenti": [1], "proprie": [1]}, di[2]: voce | {"utenti": [2], "proprie": [2]}}
 
 
 def test_la_voce_con_la_chiave_nuova_vince_su_quella_vecchia(mondo):  # noqa: F811
@@ -153,7 +197,7 @@ def test_la_voce_con_la_chiave_nuova_vince_su_quella_vecchia(mondo):  # noqa: F8
     vecchia = _chiave_vecchia(ST, GIORNATA, _squadra(), SOLO_442)
     altra = dict(nuova[chiave], titolari=[2] + nuova[chiave]["titolari"][1:])          # un altro portiere: si vedrebbe
     consigli.FILE_CONSIGLIATE.write_text(json.dumps(nuova | {vecchia: altra}), encoding="utf-8")
-    assert consigli._sposta_voci({vecchia: chiave}) == 0
+    assert consigli._sposta_voci({vecchia: chiave}, None) == 0
     assert json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")) == nuova | {vecchia: altra}
     consigli._cache.clear()
     mondo["adesso"] = DOPO_LA_SCADENZA                                     # dopo la scadenza resta quella ricordata, com'è

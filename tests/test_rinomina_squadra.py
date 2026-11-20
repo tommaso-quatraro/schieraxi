@@ -56,7 +56,8 @@ def test_la_consigliata_salvata_dalla_versione_di_prima_segue_il_nome_nuovo(mond
     assert a.put("/api/squadre/nome", json={"nome": "Mia", "nuovo": "I Lupi"}).status_code == 200
     rinominata = lega.carica(ctx.rose).squadra("I Lupi")
     assert rinominata.giocatori == mia.giocatori
-    nuova = consigli._impronta("2026-27", 9, rinominata, regole_lega, 600)
+    assert lega.carica(ctx.rose).di_utente == uid and "di_utente" not in ctx.rose.read_text(encoding="utf-8")   # dalla cartella
+    nuova = consigli._impronta("2026-27", 9, rinominata, regole_lega, 600, uid)
     assert json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")) == {nuova: voce, altra: voce}
 
 
