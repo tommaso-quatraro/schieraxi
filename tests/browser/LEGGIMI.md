@@ -186,7 +186,9 @@ scadenza:
 - prima della scadenza, a Roma, New York e Tokyo: «Si chiude oggi 18:20» e «fra 3 h 10 min» (a Tokyo le 18:20 italiane sono
   il giorno dopo: resta «oggi»);
 - a cavallo del cambio dell'ora (sabato sera prima dell'ultima domenica di ottobre e di marzo, scadenza la domenica): il conto
-  alla rovescia conta l'ora in più o in meno.
+  alla rovescia conta l'ora in più o in meno;
+- una partita con solo il giorno (`data_partita` «2026-11-01», ora non ancora fissata) si scrive «dom 1», mai con un'ora finta
+  come «00:00».
 
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
 - dopo un rilascio finto (ogni file della scocca dice la sua versione, `VERSIONE` di `sw.js` alzata) con `app.js` e `testi.js`
