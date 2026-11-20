@@ -117,16 +117,16 @@ struct VistaFormazione: View {
     /// grande, `ParoleWidget.formeGiornata`). Accanto al titolo non entra: prima il titolo con la giornata sulla riga sotto; se
     /// in altezza non c'è posto (testo grande, iPad), il solo simbolo con la giornata accanto: si perde il titolo, non la giornata.
     /// VoiceOver legge sempre la giornata intera («Giornata 8, 11ª di Serie A»). `corpo`: il resto del widget, sotto la testata,
-    /// con le righe in basso della prova che entra (`DisposizioneWidget.proveFormazione`: la copia salvata c'è sempre, poi
-    /// «da controllare», #834). Una sola scelta per testata e righe in basso: due `PrimaCheEntra` in altezza uno dentro l'altro
-    /// non misurano il vero.
-    private func conTestataPiccola<Corpo: View>(titolo: String, giornata: NomeGiornata?, spazio: CGFloat, conCopia: Bool = false,
-                                                dubbi: Int = 0,
-                                                @ViewBuilder corpo: @escaping ([DisposizioneWidget.RigaPiedeFormazione]) -> Corpo) -> some View {
+    /// nella forma della prova che entra (`DisposizioneWidget.proveFormazione`: punti attesi e righe in basso; la copia salvata
+    /// c'è sempre, «da controllare» cede per ultimo, #834). Una sola scelta per testata, punti e righe in basso: due
+    /// `PrimaCheEntra` in altezza uno dentro l'altro non misurano il vero.
+    private func conTestataPiccola<Corpo: View>(titolo: String, giornata: NomeGiornata?, spazio: CGFloat, conFascia: Bool = false,
+                                                conCopia: Bool = false, dubbi: Int = 0,
+                                                @ViewBuilder corpo: @escaping (DisposizioneWidget.ProvaFormazione) -> Corpo) -> some View {
         let forme = ParoleWidget.formeGiornata(giornata)
         let voceGiornata = giornata?.voce ?? forme.first ?? ""
-        let prove = DisposizioneWidget.proveFormazione(medio: false, conGiornata: !forme.isEmpty, conFascia: false, datiSalvati: conCopia,
-                                                       daControllare: dubbi)
+        let prove = DisposizioneWidget.proveFormazione(medio: false, conGiornata: !forme.isEmpty, conFascia: conFascia,
+                                                       datiSalvati: conCopia, daControllare: dubbi)
         return PrimaCheEntra(prove.count, in: .vertical) { i in
             VStack(alignment: .leading, spacing: spazio) {
                 if prove[i].conTitolo {
@@ -143,9 +143,31 @@ struct VistaFormazione: View {
                     }
                 }
                 Spacer(minLength: 0)
-                corpo(prove[i].piede)
+                corpo(prove[i])
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// I punti attesi sotto il modulo del piccolo e del medio, nella forma della prova che entra (#834): «72,7» con sotto
+    /// «punti attesi» e la fascia (medio), con sotto «attesi · tra 65 e 81» (o «punti attesi»), o «72,7 attesi» su una riga sola.
+    @ViewBuilder
+    private func righePunti(_ f: FormazioneWidget, _ forma: DisposizioneWidget.PuntiFormazione) -> some View {
+        switch forma {
+        case .dueRighe:
+            Text(punti(f)).font(.title3.bold()).monospacedDigit()
+            Text("punti attesi").font(.caption2).foregroundStyle(TintaWidget.testo2)
+            if let t = f.intervallo?.testo { Text(t).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+        case .unaRiga:
+            Text(punti(f)).font(.title3.bold()).monospacedDigit()
+            Text(f.intervallo?.testo.map { "attesi · \($0)" } ?? "punti attesi")
+                .font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1).minimumScaleFactor(0.8)
+        case .accanto:
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(punti(f)).font(.title3.bold()).monospacedDigit()
+                Text("attesi").font(.caption2).foregroundStyle(TintaWidget.testo2)
+            }
+            .lineLimit(1).minimumScaleFactor(0.8)
         }
     }
 
@@ -167,18 +189,17 @@ struct VistaFormazione: View {
     private func piccolo(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
         let dubbi = w.daControllare.count
         return conTestataPiccola(titolo: f.tuaScelta == true ? "La tua scelta" : "Formazione", giornata: w.nomeGiornata, spazio: 2,
-                                 conCopia: voce.copiaDel != nil, dubbi: dubbi) { righe in
+                                 conFascia: f.intervallo?.testo != nil, conCopia: voce.copiaDel != nil, dubbi: dubbi) { prova in
             Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
-            Text(punti(f)).font(.title3.bold()).monospacedDigit()
-            Text(f.intervallo?.testo.map { "attesi · \($0)" } ?? "punti attesi")
-                .font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1).minimumScaleFactor(0.8)
-            piede(righe, dubbi: dubbi)
+            righePunti(f, prova.punti)
+            piede(prova.piede, dubbi: dubbi)
         }
     }
 
     private func medio(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
         let dubbi = w.daControllare.count
-        // la prima prova che entra in altezza: la copia salvata c'è sempre, «da controllare» cede per primo (#834)
+        // la prima prova che entra in altezza: la copia salvata c'è sempre, prima cedono le righe dei punti attesi, per ultimo
+        // «da controllare» (#834)
         let prove = DisposizioneWidget.proveFormazione(medio: true, conGiornata: false, conFascia: f.intervallo?.testo != nil,
                                                        datiSalvati: voce.copiaDel != nil, daControllare: dubbi)
         return HStack(alignment: .center, spacing: 12) {
@@ -187,9 +208,7 @@ struct VistaFormazione: View {
                     IntestazioneWidget(titolo: f.tuaScelta == true ? "La tua scelta" : "Formazione", icona: "sportscourt")
                     Spacer(minLength: 0)
                     Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
-                    Text(punti(f)).font(.title3.bold()).monospacedDigit()
-                    Text("punti attesi").font(.caption2).foregroundStyle(TintaWidget.testo2)
-                    if let t = f.intervallo?.testo { Text(t).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+                    righePunti(f, prove[i].punti)
                     Spacer(minLength: 0)
                     piede(prove[i].piede, dubbi: dubbi)
                 }

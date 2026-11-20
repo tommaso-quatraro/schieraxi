@@ -1002,17 +1002,36 @@ enum DisposizioneWidget {
         var piede: [RigaPiedeFormazione]
     }
 
-    /// Le prove dei widget Formazione piccolo e medio, dalla più ricca (segnaposto: il comportamento della prima versione, #834).
+    /// Le prove dei widget Formazione piccolo e medio, dalla più ricca: la vista tiene la prima che entra in altezza (#834). Ogni
+    /// prova toglie una riga alla precedente. Con una copia salvata la sua riga c'è in ogni prova, anche con giocatori da controllare
+    /// (prima «2 da controllare» la toglieva e una copia vecchia sembrava attuale): sopra la copia, sotto «2 da controllare».
+    /// Per fare posto cedono, in quest'ordine: il titolo del piccolo (resta il simbolo con la giornata accanto, come prima), nel
+    /// medio «punti attesi» e la fascia su due righe («attesi · tra 65 e 81» su una, come nel piccolo), la fascia («72,7 attesi»
+    /// accanto ai punti), e per ultimo, solo con il testo molto grande, «da controllare»; la copia mai. Con il testo normale ci
+    /// stanno tutte e due anche nel piccolo e nel medio dell'iPad (foto della corsa 44731480155). `medio`: il medio, che parte da
+    /// «punti attesi» e fascia su due righe; `conGiornata`: la testata del piccolo, con la giornata sotto il titolo; `conFascia`:
+    /// c'è la fascia «tra 65 e 81» (senza, «punti attesi» sta già su una riga).
     static func proveFormazione(medio: Bool, conGiornata: Bool, conFascia: Bool, datiSalvati: Bool,
                                 daControllare: Int) -> [ProvaFormazione] {
-        var ricco: [RigaPiedeFormazione] = datiSalvati ? [.copia] : []
-        if daControllare > 0 { ricco.append(.daControllare) }
-        var piedi = [ricco]
-        if datiSalvati && daControllare > 0 { piedi.append([.copia]) }
-        let punti: PuntiFormazione = medio && conFascia ? .dueRighe : .unaRiga
-        guard conGiornata else { return piedi.map { ProvaFormazione(conTitolo: true, punti: punti, piede: $0) } }
-        return [ProvaFormazione(conTitolo: true, punti: punti, piede: ricco)]
-            + piedi.map { ProvaFormazione(conTitolo: false, punti: punti, piede: $0) }
+        var piede: [RigaPiedeFormazione] = datiSalvati ? [.copia] : []
+        if daControllare > 0 { piede.append(.daControllare) }
+        var prova = ProvaFormazione(conTitolo: true, punti: medio && conFascia ? .dueRighe : .unaRiga, piede: piede)
+        var prove = [prova]
+        if conGiornata {
+            prova.conTitolo = false
+            prove.append(prova)
+        }
+        if prova.punti == .dueRighe {
+            prova.punti = .unaRiga
+            prove.append(prova)
+        }
+        prova.punti = .accanto
+        prove.append(prova)
+        if datiSalvati && daControllare > 0 {
+            prova.piede = [.copia]
+            prove.append(prova)
+        }
+        return prove
     }
 }
 
@@ -1165,13 +1184,17 @@ enum ParoleWidget {
 
     /// La riga della copia salvata dei widget (#834), dalla forma più lunga. Di oggi la sola ora, «dati delle 18:30»; di un altro
     /// giorno anche il giorno, scritto come `Quando.relativa` («dati di ieri 18:30», «dati di mar 17 21:05», oltre la settimana
-    /// «dati di dom 8 nov 18:30»), e dove non entra il solo giorno («dati di ieri»): è il giorno che dice quanto è vecchia. Prima
-    /// era sempre la sola ora, e una copia di venerdì sera la domenica sembrava di oggi. I giorni si contano in ora italiana da
-    /// `adesso`, nei widget l'istante della voce: alla voce di mezzanotte (`VociTimeline`) «dati delle 23:30» diventa
-    /// «dati di ieri 23:30».
+    /// «dati di dom 8 nov 18:30»), e dove non entra il solo giorno («dati di ieri»): è il giorno che dice quanto è vecchia. Per
+    /// ultima la sola data («ieri», «mar 17», di oggi «18:30»), che con il testo molto grande sta su una riga anche nella colonna
+    /// di 120 punti del medio (prima «dati di mer 18» finiva con «…»): accanto c'è il simbolo della nuvola sbarrata, e VoiceOver
+    /// legge sempre la prima forma. Prima era sempre la sola ora, e una copia di venerdì sera la domenica sembrava di oggi. I giorni
+    /// si contano in ora italiana da `adesso`, nei widget l'istante della voce: alla voce di mezzanotte (`VociTimeline`)
+    /// «dati delle 23:30» diventa «dati di ieri 23:30».
     static func datiSalvati(_ scaricatoIl: Date, adesso: Date) -> [String] {
-        guard !calendarioItalia.isDate(scaricatoIl, inSameDayAs: adesso) else { return ["dati delle \(Quando.ora(scaricatoIl))"] }
-        return ["dati di \(Quando.relativa(scaricatoIl, adesso: adesso))", "dati di \(Quando.giornoRelativo(scaricatoIl, adesso: adesso))"]
+        let ora = Quando.ora(scaricatoIl)
+        guard !calendarioItalia.isDate(scaricatoIl, inSameDayAs: adesso) else { return ["dati delle \(ora)", ora] }
+        let giorno = Quando.giornoRelativo(scaricatoIl, adesso: adesso)
+        return ["dati di \(Quando.relativa(scaricatoIl, adesso: adesso))", "dati di \(giorno)", giorno]
     }
 }
 

@@ -86,10 +86,10 @@ giro "$UDID_IPHONE" iphone_senza_formazione dark 600 oggi:senza_formazione oggi-
 giro "$UDID_IPHONE" iphone_senza_formazione_chiaro light 600 oggi:senza_formazione formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_senza_formazione_testo_grande dark 600 oggi:senza_formazione oggi-blocco:senza_formazione formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione oggi dubbi formazione-blocco oggi-blocco
-# Copia salvata di due giorni prima (#834): la riga «dati di …» con il giorno c'è sempre, nel Formazione anche con «da controllare»,
-# e non si taglia, nemmeno con il testo molto grande.
-giro "$UDID_IPHONE" iphone_salvati dark 600 formazione:salvati oggi:salvati dubbi:salvati
-DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_salvati_testo_grande dark 600 formazione:salvati oggi:salvati dubbi:salvati
+# Copia salvata (#834), di due giorni prima («dati di mer 18 …») e di oggi («dati delle …»): la riga c'è sempre, nel Formazione
+# anche con «da controllare» (con il testo normale tutte e due), e non si taglia, nemmeno con il testo molto grande.
+giro "$UDID_IPHONE" iphone_salvati dark 600 formazione:salvati oggi:salvati dubbi:salvati formazione:salvati_oggi
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_salvati_testo_grande dark 600 formazione:salvati oggi:salvati dubbi:salvati formazione:salvati_oggi
 giro "$UDID_IPHONE" iphone_accentato dark 600 formazione:pieni+accentato oggi:pieni+accentato dubbi:pieni+accentato oggi-blocco:pieni+vivido
 avvisi_ferma
 xcrun simctl shutdown "$UDID_IPHONE" >/dev/null 2>&1
@@ -104,8 +104,8 @@ giro "$UDID_IPAD" ipad_fasi dark 800 oggi:in_corso oggi:finita dubbi:in_corso og
 giro "$UDID_IPAD" ipad_senza_formazione_chiaro light 800 formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_senza_formazione_testo_grande dark 800 formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_testo_grande dark 800 formazione oggi
-# Copia salvata (#834): anche l'extra large di Formazione consigliata, che c'è solo su iPad.
-giro "$UDID_IPAD" ipad_salvati dark 800 formazione:salvati
+# Copia salvata (#834), di due giorni prima e di oggi: piccolo e medio più bassi dell'iPhone, e l'extra large, che c'è solo su iPad.
+giro "$UDID_IPAD" ipad_salvati dark 800 formazione:salvati formazione:salvati_oggi
 
 # Orizzontale: si ruota il simulatore con la tastiera (puo' non funzionare sul Mac di GitHub: in quel caso le foto restano verticali).
 open -a Simulator --args -CurrentDeviceUDID "$UDID_IPAD" >/dev/null 2>&1

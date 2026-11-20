@@ -81,7 +81,8 @@ struct IntestazioneWidget: View {
 
 /// La riga della copia salvata, una sola per tutti i widget (#834): «dati delle 14:32» se è di oggi, altrimenti con il giorno,
 /// «dati di ieri 18:30» (forme e giorni in ora italiana in `ParoleWidget.datiSalvati`, contati dall'istante della voce). Dove non
-/// entra perde l'ora («dati di ieri») e, se nemmeno così entra, va a capo: mai «…». VoiceOver legge sempre la forma intera.
+/// entra perde l'ora («dati di ieri»), poi «dati di» (la sola data accanto al simbolo, su una riga anche con il testo molto grande
+/// nel medio), e solo se nemmeno così entra va a capo: mai «…». VoiceOver legge sempre la forma intera.
 /// Carattere e colore li sceglie chi la usa.
 struct RigaCopia: View {
     let scaricatoIl: Date
