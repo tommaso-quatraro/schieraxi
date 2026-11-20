@@ -465,6 +465,41 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertEqual(archivio.leggi(server: server.indirizzo), "tok-1")
         XCTAssertEqual(pulizie, prima, "i dati di questo telefono restano")
         XCTAssertFalse(s.inCorso)
+        XCTAssertNil(s.prendiAvvisoAccesso(), "non è uscito: nessuna frase per la schermata di accesso")
+    }
+
+    /// Come la web (#779, #788): riuscita l'uscita da tutti, la schermata di accesso dice una volta «Sei fuori da tutti i
+    /// dispositivi, anche da questo: accedi di nuovo.» (`account.esci_tutti_fatto`). È quello che `SchermataAccesso` legge
+    /// quando compare.
+    func testDopoEsciDaTuttiLoSchermoDAccessoLoDiceUnaVolta() async throws {
+        let server = serverAccount(extra: { _, p in
+            p == "/api/account/esci-da-tutti" ? Data("{\"sessioni_chiuse\": 2}".utf8) : nil
+        })
+        memoria.set(true, forKey: "account.multiutente")
+        let s = sessione(server)
+        try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        XCTAssertNil(s.prendiAvvisoAccesso(), "prima dell'uscita nessuna frase")
+        try await s.esciDaTutti()
+        XCTAssertEqual(s.stato, .daAccedere)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), Catalogo.Account.esciTuttiFatto)
+        XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
+    }
+
+    /// Dopo un «Esci» normale niente frase, anche se prima c'era stata un'uscita da tutti non ancora mostrata; e un nuovo accesso
+    /// la toglie.
+    func testDopoEsciNormaleNessunaFrase() async throws {
+        let server = serverAccount(extra: { _, p in
+            p == "/api/account/esci-da-tutti" ? Data("{\"sessioni_chiuse\": 2}".utf8) : nil
+        })
+        memoria.set(true, forKey: "account.multiutente")
+        let s = sessione(server)
+        try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        await s.esci()
+        XCTAssertNil(s.prendiAvvisoAccesso(), "«Esci» non è «Esci da tutti»")
+        try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        try await s.esciDaTutti()
+        try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        XCTAssertNil(s.prendiAvvisoAccesso(), "rientrato: la frase non vale più")
     }
 
     func testEliminaChiudeAncheQuestoTelefono() async throws {

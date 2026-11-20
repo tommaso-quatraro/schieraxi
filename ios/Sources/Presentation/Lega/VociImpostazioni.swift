@@ -13,7 +13,8 @@ struct VoceImpostazioni: Identifiable, Equatable {
 /// `ImpostazioniComeLaWebTests`.
 enum VociImpostazioni {
     /// La mia lega: Aggiorna le rose; La mia squadra (solo con le rose: sotto il suo nome o «Non l'hai ancora scelta»); Regole e
-    /// scadenza; Le altre squadre (solo con più squadre e la funzione `squadre_altrui` accesa).
+    /// scadenza; Le altre squadre (solo con più squadre e la funzione `squadre_altrui` accesa), con il numero delle squadre senza la
+    /// mia, quello dell'elenco che apre (`altreSquadre`).
     static func lega(squadre: [SquadraLega], squadreAltrui: Bool) -> [VoceImpostazioni] {
         var voci = [VoceImpostazioni(id: "rose", nome: Catalogo.Lega.voceImporta, sotto: Catalogo.Lega.voceImportaSub, pagina: .importa)]
         if !squadre.isEmpty {
@@ -24,10 +25,16 @@ enum VociImpostazioni {
         }
         voci.append(VoceImpostazioni(id: "regole", nome: Catalogo.Imp.regole, sotto: Catalogo.Imp.regoleSub, pagina: .regole))
         if squadre.count > 1, squadreAltrui {
-            voci.append(VoceImpostazioni(id: "squadre", nome: Catalogo.Imp.altreSquadre, sotto: Catalogo.Lega.nSquadre(squadre.count),
-                                         pagina: .squadre))
+            voci.append(VoceImpostazioni(id: "squadre", nome: Catalogo.Imp.altreSquadre,
+                                         sotto: Catalogo.Lega.nSquadre(altreSquadre(squadre).count), pagina: .squadre))
         }
         return voci
+    }
+
+    /// Le squadre di «Le altre squadre», come `vistaAltreSquadre` della web (#779, #788): tutte tranne la mia. Finché la mia non è
+    /// scelta sono tutte: «La mia squadra» apre lo stesso elenco per sceglierla.
+    static func altreSquadre(_ squadre: [SquadraLega]) -> [SquadraLega] {
+        squadre.filter { $0.mia != true }
     }
 
     /// «Il tuo account», solo con un account: sotto il nome con cui si mostra.

@@ -27,10 +27,12 @@ struct SquadreView: View {
                         Text(ParoleSquadre.importaPrima).foregroundStyle(Color.testoSecondario)
                     } else {
                         Section(titolo: ParoleSquadre.miaSquadra) { miaSquadra(s) }
-                        // senza le rose degli altri c'è solo la carta «La mia squadra», con «Vedi la rosa» (come la web)
-                        if funzioni.acceso(Funzione.squadreAltrui) {
+                        // senza le rose degli altri c'è solo la carta «La mia squadra», con «Vedi la rosa» (come la web);
+                        // l'elenco ha le altre squadre, senza la mia (tutte finché non è scelta), come la web (#788)
+                        let altre = VociImpostazioni.altreSquadre(s)
+                        if funzioni.acceso(Funzione.squadreAltrui), !altre.isEmpty {
                             Section {
-                                ForEach(s) { sq in
+                                ForEach(altre) { sq in
                                     NavigationLink(value: PaginaImpostazioni.rosa(sq.nome)) {
                                         RigaSquadra(squadra: sq)
                                     }

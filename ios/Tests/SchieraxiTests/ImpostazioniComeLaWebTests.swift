@@ -29,7 +29,31 @@ struct ImpostazioniComeLaWebTests {
     func testi() {
         let voci = VociImpostazioni.lega(squadre: squadre(8, mia: 2), squadreAltrui: true)
         #expect(voci.map(\.nome) == [Catalogo.Lega.voceImporta, Catalogo.Lega.miaSquadra, Catalogo.Imp.regole, Catalogo.Imp.altreSquadre])
-        #expect(voci.map(\.sotto) == [Catalogo.Lega.voceImportaSub, "Squadra 3", Catalogo.Imp.regoleSub, Catalogo.Lega.nSquadre(8)])
+        // otto squadre, una è la mia: le altre sono sette (#788, come la web)
+        #expect(voci.map(\.sotto) == [Catalogo.Lega.voceImportaSub, "Squadra 3", Catalogo.Imp.regoleSub, Catalogo.Lega.nSquadre(7)])
+    }
+
+    /// Foto del 20/11 (#787, punto 5) e #788: «Le altre squadre · 8 squadre» quando le altre erano 7. Come la web (#779): numero
+    /// ed elenco senza la mia; finché la mia non è scelta, tutte (lì si sceglie la propria).
+    @Test("«Le altre squadre»: con quattro squadre e la mia scelta conta e mostra le altre tre")
+    func altreSenzaLaMia() throws {
+        let quattro = squadre(4, mia: 1)
+        let voce = try #require(VociImpostazioni.lega(squadre: quattro, squadreAltrui: true).first { $0.id == "squadre" })
+        #expect(voce.sotto == Catalogo.Lega.nSquadre(3))
+        let altre = VociImpostazioni.altreSquadre(quattro)
+        #expect(altre.map(\.nome) == ["Squadra 1", "Squadra 3", "Squadra 4"])
+        #expect(!altre.contains { $0.mia == true })
+    }
+
+    @Test("«Le altre squadre» senza la mia scelta: tutte, nel numero e nell'elenco")
+    func altreSenzaSceltaTutte() throws {
+        let quattro = squadre(4)
+        let voce = try #require(VociImpostazioni.lega(squadre: quattro, squadreAltrui: true).first { $0.id == "squadre" })
+        #expect(voce.sotto == Catalogo.Lega.nSquadre(4))
+        #expect(VociImpostazioni.altreSquadre(quattro).count == 4)
+        // due squadre, una è la mia: «1 squadra», al singolare
+        let due = try #require(VociImpostazioni.lega(squadre: squadre(2, mia: 0), squadreAltrui: true).first { $0.id == "squadre" })
+        #expect(due.sotto == Catalogo.Lega.nSquadre(1))
     }
 
     @Test("La mia squadra non ancora scelta: lo dice, e la voce apre l'elenco per sceglierla")

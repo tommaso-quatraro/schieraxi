@@ -147,9 +147,16 @@ struct VistaDubbi: View {
                     .font(.headline).minimumScaleFactor(0.7)
             }
             if let dubbi = r.dubbi, !dubbi.isEmpty {
-                ForEach(dubbi.prefix(2)) { d in
-                    TestoCheEntra(d.formeRiga).font(.caption2)
+                // le due righe si accorciano insieme, con la stessa forma del nome (#787); VoiceOver legge sempre la forma intera
+                let forme = DubbioRiassunto.formeRighe(Array(dubbi.prefix(2)))
+                PrimaCheEntra(forme.count) { i in
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(forme[i].enumerated()), id: \.offset) { j, riga in
+                            Text(riga).lineLimit(1).accessibilityLabel(forme[0][j])
+                        }
+                    }
                 }
+                .font(.caption2)
             } else {
                 GiornataInRiga(forme: r.formeSottotitoloRettangolo, voce: r.voceSottotitoloRettangolo)
                     .font(.caption2).foregroundStyle(.secondary).minimumScaleFactor(0.7)

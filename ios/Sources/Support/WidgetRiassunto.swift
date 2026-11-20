@@ -891,6 +891,21 @@ enum DisposizioneWidget {
     /// del normale (con due righe i nomi si sovrapponevano). Gli altri restano in «e altri N».
     static func righeDubbi(_ testo: DynamicTypeSize) -> Int { testo >= .xLarge ? 1 : 2 }
 
+    /// Le file del campo nei widget Formazione, dall'alto: attaccanti, centrocampisti, difensori, portiere in basso. È il verso del
+    /// campo dell'app (`CampoFormazione.file`, che il widget non compila: li confronta un test) e della web (#787).
+    static let fileCampo = ["A", "C", "D", "P"]
+
+    /// I titolari nelle file del campo, dall'alto; le file vuote non ci sono. Un ruolo che non è una fila va in attacco, come
+    /// `CampoFormazione.inFila` dell'app: nessun titolare manca dal campo.
+    static func righeCampo(_ titolari: [GiocatoreWidget]) -> [[GiocatoreWidget]] {
+        fileCampo.map { fila in titolari.filter { filaDi($0.ruolo) == fila } }.filter { !$0.isEmpty }
+    }
+
+    private static func filaDi(_ ruolo: String?) -> String {
+        let r = (ruolo ?? "").uppercased()
+        return fileCampo.contains(r) ? r : "A"
+    }
+
     /// La riga in linea del Cruscotto (Schermata di blocco): «3-4-3 · 2 da controllare». Lì il sistema mostra solo un testo e un
     /// simbolo e taglia quello che non entra, quindi con il testo più grande del normale resta solo «2 da controllare».
     static func rigaInLinea(modulo: String?, dubbi: Int, testo: DynamicTypeSize) -> String {
@@ -1010,6 +1025,13 @@ enum ParoleWidget {
     static func stato(_ testo: String) -> [String] {
         guard let ultima = testo.components(separatedBy: " · ").last, !ultima.isEmpty, ultima != testo else { return [testo] }
         return [testo, ultima]
+    }
+
+    /// I punti accanto al modulo nel widget medio «Prossima giornata»: «72,7 punti» → «72,7». Il modulo resta intero: sull'iPad con
+    /// il testo grande diventava «3-4…» (#787).
+    static func punti(_ punti: Double?) -> [String] {
+        let p = Formato.punti(punti)
+        return ["\(p) punti", p]
     }
 
     /// «73,7 punti attesi» → «73,7 attesi»; con la scelta tua «… · la tua scelta» finché entra.
@@ -1197,6 +1219,27 @@ extension DubbioRiassunto {
         if cognome != nome { forme.append("\(cognome) · \(descrizione)") }
         if let corto = ParoleWidget.stato(descrizione).last, corto != descrizione { forme.append("\(cognome) · \(corto)") }
         return forme
+    }
+
+    /// Le righe del rettangolo «Da controllare» tutte insieme, dalla forma più lunga alla più corta, con lo stesso modo di scrivere
+    /// il nome in ogni forma: prima nomi interi, poi i soli cognomi, poi i cognomi con lo stato corto. Prima ogni riga sceglieva da
+    /// sola, e uscivano «Marténi · In dubbio · gioca 62%» sopra «Alvise Bastrani · Diffidato» (#787). Una forma uguale a quella
+    /// prima non si ripete; senza giocatori una forma vuota. La vista mostra la prima che entra (`PrimaCheEntra`).
+    static func formeRighe(_ dubbi: [DubbioRiassunto]) -> [[String]] {
+        let forme = (0..<3).map { livello in dubbi.map { $0.rigaInForma(livello) } }
+        return forme.reduce(into: [[String]]()) { tutte, forma in
+            if tutte.last != forma { tutte.append(forma) }
+        }
+    }
+
+    /// Una riga in una forma: 0 nome intero e stato, 1 cognome e stato, 2 cognome e stato corto (come `formeRiga`).
+    private func rigaInForma(_ livello: Int) -> String {
+        let cognome = nome.split(separator: " ").last.map(String.init) ?? nome
+        switch livello {
+        case 0: return "\(nome) · \(descrizione)"
+        case 1: return "\(cognome) · \(descrizione)"
+        default: return "\(cognome) · \(ParoleWidget.stato(descrizione).last ?? descrizione)"
+        }
     }
 }
 
