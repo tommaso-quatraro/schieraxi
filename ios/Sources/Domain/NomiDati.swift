@@ -1,6 +1,7 @@
 import Foundation
 
-/// I nomi grezzi dei dati del server («dati-extra», «crediti-giocatore 2026-10») in parole per l'utente.
+/// Le righe di «Ultimi aggiornamenti» in Stato dei dati: il nome lo scrive il server (campo `etichetta`, come la web); i nomi
+/// grezzi dei dati («dati-extra», «crediti-giocatore 2026-10») si traducono qui solo per un server di prima, senza il campo.
 enum NomiDati {
     private static let noti: [String: String] = [
         "aggiornamento": "Aggiornamento generale",
@@ -17,6 +18,19 @@ enum NomiDati {
     /// Voci di server vecchi che l'app non mostra più (fonti di dati non più usate).
     static func daNascondere(_ cosa: String) -> Bool {
         cosa.lowercased().hasPrefix("quote")
+    }
+
+    /// Il nome di una riga di «Ultimi aggiornamenti», come la web (#808): il campo `etichetta` del server («Listone e quotazioni»);
+    /// un server di prima, senza il campo, ha i nomi dell'app (`leggibile`).
+    static func nome(_ a: AggiornamentoDati) -> String {
+        if let etichetta = a.etichetta?.trimmingCharacters(in: .whitespacesAndNewlines), !etichetta.isEmpty { return etichetta }
+        return leggibile(a.cosa)
+    }
+
+    /// Quando è riuscito l'ultima volta; per un passo mai riuscito (senza `quando`) «mai», come la web (`sd.mai`).
+    static func quando(_ a: AggiornamentoDati) -> String {
+        guard let quando = a.quando?.trimmingCharacters(in: .whitespacesAndNewlines), !quando.isEmpty else { return Catalogo.Sd.mai }
+        return Quando.leggibile(quando.replacingOccurrences(of: "T", with: " "))
     }
 
     static func leggibile(_ cosa: String) -> String {

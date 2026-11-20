@@ -492,7 +492,7 @@ def nuovo_codice_recupero(dati: SoloPassword, request: Request, utente: Utente =
 @router.post("/api/account/elimina", dependencies=[Depends(_attivo)])
 def elimina_account(dati: SoloPassword, request: Request, risposta: Response, utente: Utente = Depends(utente_corrente)):
     """Cancella l'account e TUTTI i suoi dati (rose, regole, scelte, immagini, avvisi). Serve la password; non si può annullare.
-    Per portarti via i dati prima, usa «Scarica i tuoi dati» (Impostazioni > Il tuo account)."""
+    Per portarti via i dati prima, usa «Scarica i tuoi dati» (Impostazioni › Il tuo account)."""
     with closing(account.apri()) as db:
         account.conferma_password(db, utente.id, dati.password, token_della_richiesta(request))
         account.elimina(db, utente.id)

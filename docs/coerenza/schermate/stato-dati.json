@@ -35,6 +35,24 @@
       "forma": "web",
       "chi": "fatto con #379 (testi dal catalogo, `Catalogo.Sd` da #496; test sulla stessa risposta del server); parole semplici con #821",
       "stato": "fatto"
+    },
+    {
+      "id": 92,
+      "schermata": "Stato dei dati: copia salvata e prova delle previsioni che non si legge (#808)",
+      "web": "la pagina si legge ogni volta dal server: senza risposta l'errore con il motivo (`apriStatoDati`); la prova delle previsioni che non si legge dice il motivo (`mostraAffidabilita`, `errore(e)`)",
+      "iphone": "prima: la copia salvata sul telefono senza la striscia «dati salvati», e la prova delle previsioni che non si legge con una frase generica. Ora la striscia dei dati salvati (la data più vecchia fra lo stato e la prova, con il motivo), come le altre pagine; la prova che non si legge dice il motivo e ha «Riprova», tranne con un limite, che dice già quando riprovare (`StatoDatiView`)",
+      "forma": "web; la copia salvata con la striscia, come nelle altre pagine dell'iPhone",
+      "chi": "**fatto** (#808); da vedere sul telefono in modo aereo",
+      "stato": "fatto"
+    },
+    {
+      "id": 93,
+      "schermata": "Stato dei dati, ultimi aggiornamenti: nomi e passi mai riusciti (#808)",
+      "web": "il nome di ogni riga è il campo `etichetta` del server («Listone e quotazioni», `fanta/stato_dati.py`); un passo senza ora dice «mai» (`sd.mai`) (`apriStatoDati`)",
+      "iphone": "prima: nomi fatti dall'app («Elenco dei calciatori») e niente per un passo mai riuscito. Ora l'etichetta del server (con un server di prima, senza il campo, i nomi dell'app) e «mai» dal catalogo (`NomiDati.nome`, `NomiDati.quando`)",
+      "forma": "web",
+      "chi": "**fatto** (#808): prova `StatoDatiNomiTests`",
+      "stato": "fatto"
     }
   ]
 }
