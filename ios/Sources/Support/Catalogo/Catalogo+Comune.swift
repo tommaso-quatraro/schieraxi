@@ -23,5 +23,16 @@ extension Catalogo {
 
         /// `comune.carico`
         static let carico = "Carico…"
+
+        /// `comune.rete_no`
+        static let reteNo = "Non riesco a collegarmi: controlla internet e riprova"
+
+        /// `comune.server_non_risponde`
+        static let serverNonRisponde = "Il server non risponde: riprova fra poco"
+
+        /// `comune.cache_errore`
+        static func cacheErrore(errore: String) -> String {
+            "\(errore) (dati salvati, potrebbero non essere aggiornati)"
+        }
     }
 }

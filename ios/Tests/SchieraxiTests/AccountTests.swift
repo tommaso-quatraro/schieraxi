@@ -523,6 +523,7 @@ final class SessioneAccountTests: XCTestCase {
     func testEsciSoloDaQuestoTelefonoSiOffreSoloSeIlServerNonSiRaggiunge() {
         XCTAssertTrue(SessioneAccount.esciSoloQuiPossibile(dopo: ErroreApi.rete("spento")), "rete giù")
         XCTAssertTrue(SessioneAccount.esciSoloQuiPossibile(dopo: ErroreApi.timeout), "server che non risponde")
+        XCTAssertTrue(SessioneAccount.esciSoloQuiPossibile(dopo: ErroreApi.senzaRete), "telefono senza rete (#830)")
         let rispostaDelServer: [Error] = [ErroreApi.risposta(503), ErroreApi.server("Errore interno."),
                                           ErroreApi.troppiTentativi("Troppe richieste.", riprovaTra: 30), CancellationError()]
         for errore in rispostaDelServer {
@@ -777,7 +778,7 @@ final class ErroriDelServerTests: XCTestCase {
 
     func testIMessaggiDiReteNonParlanoSoloDiRetePrivata() {
         XCTAssertFalse((ErroreApi.rete("x").errorDescription ?? "").contains("rete privata"))
-        XCTAssertTrue((ErroreApi.rete("x").errorDescription ?? "").contains("connessione"))
+        XCTAssertEqual(ErroreApi.rete("x").errorDescription, Catalogo.Comune.serverNonRisponde, "la frase della web, #830")
         XCTAssertFalse((ErroreApi.timeout.errorDescription ?? "").contains("rete privata"))
         XCTAssertFalse(ErroreApi.rete("x").eLimite)
     }

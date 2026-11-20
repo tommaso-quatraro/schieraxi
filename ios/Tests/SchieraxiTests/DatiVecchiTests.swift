@@ -7,6 +7,7 @@ final class DatiVecchiTests: XCTestCase {
     func testSoloReteETempoScadutoSonoNonRaggiungibile() {
         XCTAssertTrue(DatiVecchi.eDiRete(ErroreApi.rete("spento")))
         XCTAssertTrue(DatiVecchi.eDiRete(ErroreApi.timeout))
+        XCTAssertTrue(DatiVecchi.eDiRete(ErroreApi.senzaRete), "il telefono senza rete (#830)")
         XCTAssertTrue(DatiVecchi.eDiRete(URLError(.notConnectedToInternet)))
         XCTAssertFalse(DatiVecchi.eDiRete(ErroreApi.troppiTentativi("Hai finito le ricerche di oggi.", riprovaTra: 60)))
         XCTAssertFalse(DatiVecchi.eDiRete(ErroreApi.server("Guasto")))
@@ -20,10 +21,20 @@ final class DatiVecchiTests: XCTestCase {
         XCTAssertTrue(rete.contains("2 nov 2026, 10:00"))
         let limite = DatiVecchi.frase(salvatiIl: "2 nov 2026, 10:00", motivo: "Hai finito le ricerche di oggi")
         XCTAssertFalse(limite.contains("raggiungere"), "il server ha risposto: non si dice che non è raggiungibile")
-        XCTAssertTrue(limite.contains("Hai finito le ricerche di oggi. Quello che vedi"), "punto aggiunto una sola volta")
         let conPunto = DatiVecchi.frase(salvatiIl: "x", motivo: "Errore del server.")
         XCTAssertFalse(conPunto.contains(".."))
         XCTAssertEqual(DatiVecchi.frase(salvatiIl: "x", motivo: "  "), DatiVecchi.frase(salvatiIl: "x", motivo: nil))
+    }
+
+    /// Con il motivo (il server ha risposto con un errore, per esempio la pagina 502 del proxy) la frase della web nello stesso caso
+    /// (`comune.cache_errore` in `app.js`): il motivo in testa e la nota fra parentesi. Prima «Non ho potuto aggiornare: Il server
+    /// non risponde: riprova fra poco. …», con due «:» di fila e una maiuscola a metà frase (#830).
+    func testIlMotivoVaInTestaComeSullaWeb() {
+        let proxy = DatiVecchi.frase(salvatiIl: "2 nov 2026, 10:00", motivo: Catalogo.Comune.serverNonRisponde)
+        XCTAssertEqual(proxy, "Il server non risponde: riprova fra poco (dati salvati, potrebbero non essere aggiornati)")
+        XCTAssertEqual(proxy.filter { $0 == ":" }.count, 1, "un solo «:», quello del motivo")
+        XCTAssertEqual(DatiVecchi.frase(salvatiIl: "x", motivo: "  Hai finito le ricerche di oggi "),
+                       Catalogo.Comune.cacheErrore(errore: "Hai finito le ricerche di oggi"))
     }
 
     func testIlCaricatoreRicordaIlMotivoSoloSeIlServerHaRisposto() async throws {

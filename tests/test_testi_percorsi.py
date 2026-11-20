@@ -11,7 +11,6 @@ import json
 import re
 from pathlib import Path
 
-import pytest
 
 RADICE = Path(__file__).resolve().parent.parent
 # «Lega > Regole», «Altro › Regole», «League > Rules»: il nome di una scheda tolta seguito da una freccia
@@ -141,9 +140,6 @@ def test_guida_e_sotto_il_cofano_scrivono_i_percorsi_delle_impostazioni_in_un_mo
     assert not trovati, "\n".join(trovati)
 
 
-@pytest.mark.xfail(strict=True, reason="l'iPhone scrive ancora «(Impostazioni, Il tuo account, Accessi)» in "
-                                       "ios/Sources/Domain/AccessoSocial.swift (serve_riconferma): si corregge in una PR dell'iPhone, "
-                                       "che poi toglie questo segno")
 def test_l_iphone_e_i_widget_scrivono_i_percorsi_delle_impostazioni_in_un_modo_solo():
     trovati = percorsi_storti(stringhe_swift())
     assert not trovati, "\n".join(trovati)

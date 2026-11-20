@@ -91,6 +91,8 @@ final class AccessoGooglePuraTests: XCTestCase {
     func testIlCodiceDelServerFaDireLaFraseGiusta() {
         let e = ErroreApi.codificato(codice: "serve_riconferma", messaggio: "Conferma prima con Google")
         XCTAssertTrue(e.localizedDescription.contains("conferma prima con Google"))
+        // il percorso si scrive come sulla web, con «›» (#830): non «(Impostazioni, Il tuo account, Accessi)»
+        XCTAssertTrue(e.localizedDescription.contains("Impostazioni › Il tuo account › Accessi"), e.localizedDescription)
         XCTAssertEqual(ErroreApi.codificato(codice: "boh", messaggio: "Messaggio del server").localizedDescription, "Messaggio del server")
         XCTAssertEqual(ServerHTTP.codiceErrore(Data(#"{"detail": "x", "codice": "ultimo_accesso"}"#.utf8)), "ultimo_accesso")
         XCTAssertNil(ServerHTTP.codiceErrore(Data(#"{"detail": "x"}"#.utf8)))

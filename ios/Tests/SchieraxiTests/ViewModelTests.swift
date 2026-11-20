@@ -22,7 +22,7 @@ final class OggiViewModelTests: XCTestCase {
         let vm = vm(.chePrecipita())
         await vm.carica()
         XCTAssertNil(vm.oggi)
-        XCTAssertEqual(vm.errore, "Non riesco a collegarmi a SchieraXI. Controlla la connessione e riprova.")
+        XCTAssertEqual(vm.errore, "Il server non risponde: riprova fra poco")
     }
 
     func testIlComandoAggiornaRicaricaOggi() async throws {
