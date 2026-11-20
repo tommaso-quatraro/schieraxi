@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.532",
+    "data": "2026-11-20T03:51:28",
+    "titolo": "Con i cambi consigliati spenti, niente svincolati in Da fare e nel widget",
+    "voci": [
+      "Se i cambi consigliati sono spenti, Da fare in Oggi e il widget dell'iPhone non propongono più uno svincolato da prendere. Accesi, tutto resta come prima."
+    ],
+    "tecnico": [
+      "GET /api/oggi (da_fare) e GET /api/widget decidono con funzioni.acceso(\"mercato\", Mostra tutte, ruolo) tramite server._accesa_per, la stessa regola di GET /api/funzioni e del blocco di GET /api/mercato. Spenta: nessuna voce svincolato in da_fare, nessun campo svincolato nel widget e «svincolato» non entra in mancano (il mercato non si legge). Nessun campo tolto o rinominato (#797).",
+      "Il ruolo è quello dell'utente anche con il token del widget: l'amministratore, che vede la funzione spenta solo di predefinito, riceve lo svincolato anche nel widget, come nell'app."
+    ]
+  },
+  {
     "versione": "1.531",
     "data": "2026-11-20T03:19:09",
     "titolo": "Cambi consigliati e scambi seguono l'interruttore delle funzioni",

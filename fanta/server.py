@@ -449,6 +449,13 @@ def _vede_tutto(request: Request, funzione: str) -> bool:
     return _mostra_tutte(request) or (_e_amministratore(request) and funzioni.origine(funzione)[1] == "predefinito")
 
 
+def _accesa_per(request: Request, funzione: str) -> bool:
+    """Vero se `funzione` è accesa per chi chiede: la regola di `funzioni.acceso`, con il suo «Mostra tutte» e il suo ruolo, la stessa
+    di GET /api/funzioni e del blocco delle rotte. Il ruolo resta suo anche con il token del widget: il widget mostra quello che
+    vede nell'app (#797)."""
+    return funzioni.acceso(funzione, _mostra_tutte(request), amministratore=_e_amministratore(request))
+
+
 def lega_corrente(request: Request) -> Contesto:
     """Dipendenza: i file personali di chi sta chiedendo. Con gli account vengono SOLO dalla sessione (senza sessione: 401);
     mai da un parametro della richiesta, quindi un utente non può nominare i file di un altro."""
@@ -1482,7 +1489,8 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
             corpo["serve_promemoria"] = notifiche.serve_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], ctx.scelte)
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
-                                              lingua=lingua_testi.della_richiesta(request), dal=dal)
+                                              lingua=lingua_testi.della_richiesta(request), dal=dal,
+                                              mercato=_accesa_per(request, "mercato"))     # «Cambi consigliati» spenta: niente svincolati (#797)
         return corpo
     finally:
         db.close()
@@ -1559,7 +1567,7 @@ def widget(request: Request, ctx: Contesto = Depends(lega_corrente)):
     db = _db()
     try:
         corpo = widget_riassunto.costruisci(db, _regole(ctx), _rose(ctx), ctx.diario, ctx.osservati, file_scelte=ctx.scelte,
-                                            live_partite=_stati_live(), dal=dal)
+                                            live_partite=_stati_live(), dal=dal, mercato=_accesa_per(request, "mercato"))
     finally:
         db.close()
     corpo["live"] = _live_per_widget()
