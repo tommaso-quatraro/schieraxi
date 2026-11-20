@@ -100,7 +100,8 @@ struct VistaFormazione: View {
         case .systemExtraLarge: grandissimo(w, f, tit)
         case .accessoryCircular: circolare(f)
         case .accessoryRectangular: rettangolare(w, f)
-        case .accessoryInline: Label("SchieraXI \(f.modulo ?? "—") · \(punti(f))", systemImage: "sportscourt")
+        // la stessa riga di Prossima giornata: si perdono parole intere, mai il modulo (#819)
+        case .accessoryInline: RigaInLinea(f.formeInLinea, icona: "sportscourt")
         default: piccolo(w, f)
         }
     }

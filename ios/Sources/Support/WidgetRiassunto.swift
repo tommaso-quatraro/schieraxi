@@ -132,8 +132,9 @@ struct FormazioneWidget: Codable, Equatable {
         tuaScelta = try? c.decodeIfPresent(Bool.self, forKey: .tuaScelta)
     }
 
-    /// La riga del widget sulla schermata di blocco (`accessoryInline`), dalla forma più lunga.
-    var formeInLinea: [String] { ["SchieraXI \(modulo ?? "—") · \(Formato.punti(puntiAttesi))"] }
+    /// La riga del widget sulla schermata di blocco (`accessoryInline`), dalla forma più lunga: la stessa di Prossima giornata,
+    /// «3-4-3 · 72,7 punti» e, dove non entra, «3-4-3 · 72,7» (`ParoleWidget.moduloEPunti`). Prima «SchieraXI 3-4-3 · 72,7» (#819).
+    var formeInLinea: [String] { ParoleWidget.moduloEPunti(modulo, punti: puntiAttesi, fascia: nil) }
 }
 
 struct PuntiGiornata: Codable, Equatable, Identifiable {
