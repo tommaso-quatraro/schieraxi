@@ -177,8 +177,8 @@
     "en": "Choose which of the teams is yours."
   },
   "lega.squadra_aggiorna_rose": {
-    "it": ": in Impostazioni, «Aggiorna le rose», con l'Excel di Leghe (si importa anche con il menu Condividi).",
-    "en": ": in Settings, «Update the rosters», with the Leghe Excel (you can also import it from the Share menu)."
+    "it": ": in Impostazioni › Aggiorna le rose, con l'Excel di Leghe (si importa anche con il menu Condividi).",
+    "en": ": in Settings › Update the rosters, with the Leghe Excel (you can also import it from the Share menu)."
   },
   "lega.squadra_salvata": {
     "it": "Squadra salvata",
@@ -225,8 +225,8 @@
     "en": "Check the rules"
   },
   "lega.bonus_moduli_crediti": {
-    "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Impostazioni, Regole e scadenza).",
-    "en": ": bonuses, formations and credits can change from one year to the next (Settings, Rules and deadline)."
+    "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Impostazioni › Regole e scadenza).",
+    "en": ": bonuses, formations and credits can change from one year to the next (Settings › Rules and deadline)."
   },
   "lega.indirizzo_aria": {
     "it": "Indirizzo web dell'immagine, {tipo}",
