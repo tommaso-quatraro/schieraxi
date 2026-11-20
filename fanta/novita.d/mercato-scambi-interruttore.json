@@ -5,6 +5,6 @@
   ],
   "tecnico": [
     "funzioni.ROTTE: GET /api/scambi/analizza e POST /api/scambi/da-testo vanno a scambi_costruisci, GET /api/mercato al nuovo interruttore mercato («Cambi consigliati»; spento di predefinito nella versione pubblica, acceso con FANTA_PROFILO_FUNZIONI=completo). Con l'interruttore spento rispondono 404 con il campo funzione, come le altre funzioni di CON_ROTTE; «Mostra tutte» le riapre (non sono in SEMPRE_BLOCCATE).",
-    "Prima queste tre rotte non si bloccavano mai (servivano a «Valuta un'offerta»): le loro schermate sono state tolte dalla web e dall'iPhone (#615, #634) e nessun client le chiede. Con l'interruttore acceso le risposte non cambiano. GET /api/funzioni ha la chiave nuova mercato: un client che non la conosce la ignora."
+    "Con l'interruttore acceso le risposte non cambiano. Web e iPhone non chiedono queste rotte: le schermate di scambi e cambi consigliati non ci sono più (#615, #634). GET /api/funzioni ha la chiave nuova mercato: un client che non la conosce la ignora."
   ]
 }
