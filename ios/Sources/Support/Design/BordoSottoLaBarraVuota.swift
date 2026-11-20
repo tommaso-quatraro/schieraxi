@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Il bordo sotto la barra in alto per le pagine in cima a una scheda (Impostazioni, Giornate) con il testo grande (#848).
+/// Il bordo sotto la barra in alto per le pagine in cima a una scheda (per ora Impostazioni) con il testo grande (#848).
 ///
 /// Da `TitoloPagina.soglia` in su la barra di queste pagine è vuota: il titolo sta nella pagina (`TitoloPagina.barraSenzaTitolo`,
 /// #419) e in cima a una scheda non c'è «indietro». Su iOS 26 la barra non ha uno sfondo suo e sfuma i contenuti che le passano

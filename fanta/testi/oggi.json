@@ -39,15 +39,10 @@
     "it": "In dubbio · gioca {p}",
     "en": "Doubtful · plays {p}"
   },
-  "oggi.dubbi.one": {
-    "it": "{n} dubbio",
-    "en": "{n} doubt",
-    "nota": "solo widget dell'iPhone: forma corta di «N da controllare» dove la frase intera non entra (medio di Formazione consigliata con il testo grande, #848)"
-  },
-  "oggi.dubbi.other": {
-    "it": "{n} dubbi",
-    "en": "{n} doubts",
-    "nota": "solo widget dell'iPhone: forma corta di «N da controllare» dove la frase intera non entra (medio di Formazione consigliata con il testo grande, #848)"
+  "oggi.da_vedere": {
+    "it": "{n} da vedere",
+    "en": "{n} to look at",
+    "nota": "solo widget dell'iPhone: forma corta di «N da controllare» dove la frase intera non entra (medio di Formazione consigliata con il testo grande, #848). N conta gli avvisi dei titolari (in dubbio, diffidato, infortunato, squalificato), non i giocatori: niente parole che dicono uno stato"
   },
   "oggi.diffidato_tipo": {
     "it": "Diffidato",

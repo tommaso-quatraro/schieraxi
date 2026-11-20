@@ -214,7 +214,7 @@ extension View {
     }
 }
 
-/// «4 da controllare»; se non entra (testo grande) «4 dubbi», e dove non entra nemmeno quello (cerchio della schermata di blocco)
+/// «4 da controllare»; se non entra (testo grande) «4 da vedere», e dove non entra nemmeno quello (cerchio della schermata di blocco)
 /// solo «4» con il simbolo: mai «4 da contro…». Le forme vengono da `ParoleWidget.daControllare`; VoiceOver legge sempre
 /// «4 da controllare».
 struct EtichettaDaControllare: View {

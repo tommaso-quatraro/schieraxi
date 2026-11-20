@@ -5,36 +5,37 @@ import UIKit
 @testable import Schieraxi
 
 /// I testi dei widget che si accorciano quando non c'è spazio (testo grande, iPad, schermata di blocco): dalla forma più lunga
-/// alla più corta, sempre di parole intere («4 da controllare» → «4 dubbi» → «4»), mai «4 da contr…». La vista mostra la prima
-/// che entra; VoiceOver legge sempre la prima, intera. Dati inventati.
+/// alla più corta, sempre di parole intere («4 da controllare» → «4 da vedere» → «4»), mai «4 da contr…». La vista mostra la
+/// prima che entra; VoiceOver legge sempre la prima, intera. Dati inventati.
 @Suite("Widget: testi che si accorciano senza tagli")
 struct TestiCortiWidgetTests {
     // MARK: forme semplici
 
-    @Test("«4 da controllare» diventa «4 dubbi», poi «4»; senza dubbi «titolari a posto» diventa «a posto»")
+    @Test("«4 da controllare» diventa «4 da vedere», poi «4»; senza niente da controllare «titolari a posto» diventa «a posto»")
     func daControllare() {
-        #expect(ParoleWidget.daControllare(4) == ["4 da controllare", "4 dubbi", "4"])
-        #expect(ParoleWidget.daControllare(1) == ["1 da controllare", "1 dubbio", "1"])
+        #expect(ParoleWidget.daControllare(4) == ["4 da controllare", "4 da vedere", "4"])
+        #expect(ParoleWidget.daControllare(1) == ["1 da controllare", "1 da vedere", "1"])
         #expect(ParoleWidget.daControllare(0) == ["titolari a posto", "a posto"])
     }
 
-    @Test("La forma di mezzo è la frase del catalogo (`oggi.dubbi`), con il plurale giusto")
+    @Test("La forma di mezzo è la frase del catalogo (`oggi.da_vedere`)")
     func daControllareDalCatalogo() {
         for n in [1, 2, 12] {
-            #expect(ParoleWidget.daControllare(n).dropFirst().first == Catalogo.Oggi.dubbi(n), "\(n)")
+            #expect(ParoleWidget.daControllare(n).dropFirst().first == Catalogo.Oggi.daVedere(n: String(n)), "\(n)")
         }
     }
 
     /// Con il testo grande il medio della Formazione mostrava solo «⚠ 2», che da solo non si capisce (#848): «2 da controllare»
-    /// non entra nella colonna di sinistra. La forma di mezzo dice ancora cosa c'è da controllare ed entra. Misura vera del
-    /// testo, con il simbolo e il carattere dell'etichetta del widget (`caption2`), a testo XXXL: nelle foto del widget con il
-    /// testo grande il carattere è più piccolo, quindi qui c'è margine. `ImageRenderer` disegna la misura ideale, su una riga.
+    /// non entra nella colonna di sinistra. La forma di mezzo dice ancora che c'è qualcosa da guardare ed entra. Misura vera
+    /// del testo, con il simbolo e il carattere dell'etichetta del widget (`caption2`), al testo più grande dei widget (XXL,
+    /// `TestoWidget.massimo`, che il test non compila). `ImageRenderer` disegna la misura ideale, su una riga: è quella che
+    /// `PrimaCheEntra` confronta con lo spazio.
     @MainActor
-    @Test("Con il testo grande «2 dubbi» entra nella colonna del medio della Formazione, «2 da controllare» no")
+    @Test("Con il testo grande «2 da vedere» entra nella colonna del medio della Formazione, «2 da controllare» no")
     func formaDiMezzoEntraNelMedio() throws {
         func larghezza(_ testo: String) -> CGFloat {
             let disegno = ImageRenderer(content: Label(testo, systemImage: "exclamationmark.triangle.fill")
-                .font(.caption2).lineLimit(1).dynamicTypeSize(.xxxLarge))
+                .font(.caption2).lineLimit(1).dynamicTypeSize(.xxLarge))
             disegno.scale = 1
             return disegno.uiImage?.size.width ?? 0
         }

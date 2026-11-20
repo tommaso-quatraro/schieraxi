@@ -11,8 +11,8 @@ oggi.giorni_ore
 # Carte di Oggi (TestiOggi, OggiView, CartaFormazioneOggi)
 oggi.punti_attesi
 
-# Widget: «2 dubbi», forma corta di «2 da controllare» dove la frase intera non entra (ParoleWidget.daControllare, #848)
-oggi.dubbi
+# Widget: «2 da vedere», forma corta di «2 da controllare» dove la frase intera non entra (ParoleWidget.daControllare, #848)
+oggi.da_vedere
 
 # Il conto alla rovescia senza una data (OggiView)
 oggi.calendario_no
