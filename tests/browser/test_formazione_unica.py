@@ -1010,9 +1010,8 @@ def test_un_salvataggio_non_riuscito_lascia_la_formazione_com_era_e_lo_dice(web,
     assert avviso.count() == 1 and avviso.first.is_visible(), web.pagina.get_by_role("status").all_inner_texts()
     if guasto in ("server", "502"):
         assert "internet" not in avviso.first.inner_text(), avviso.first.inner_text()
-    if guasto == "rete":
-        assert "server" not in avviso.first.inner_text(), avviso.first.inner_text()
-        web.pagina.context.set_offline(False)
+    if guasto == "rete":                      # la scheda resta fuori linea: ogni test ne apre una nuova, e tornare in linea
+        assert "server" not in avviso.first.inner_text(), avviso.first.inner_text()      # farebbe rileggere a metà controllo
     assert nomi_sul_campo(web) == prima and stato(web) == "È la consigliata." and mem["scelta"] is None
     assert principale(web).get_by_label("Modulo").input_value() == web.registrata("/api/formazione")["modulo"]
     assert not web.errori_mostrati()
