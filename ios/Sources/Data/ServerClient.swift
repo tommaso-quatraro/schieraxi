@@ -78,7 +78,7 @@ enum ErroreApi: LocalizedError {
             guard let attesa, attesa > 0 else { return messaggio }
             // Il messaggio del server può già dire «Riprova domani»: si toglie, resta il tempo vero, una volta sola.
             return "\(Self.senzaInvitoARiprovare(messaggio)) Riprova tra \(Self.tempoLeggibile(attesa))."
-        case .conflitto: return "È cambiato da un altro dispositivo: ho ricaricato i dati. Controlla e rifai la modifica."
+        case .conflitto: return Catalogo.Err.conflitto   // la frase della web (`err.conflitto`), #771
         case .funzioneSpenta(_, let messaggio): return messaggio
         case .codificato(let codice, let messaggio): return TestiSocial.errore(codice: codice) ?? messaggio
         case .indirizzoNonValido:
