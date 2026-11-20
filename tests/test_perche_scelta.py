@@ -3,6 +3,7 @@ escluso dello stesso ruolo) e per gli incerti con la riserva sicura, il motivo v
 Rose e numeri inventati."""
 import json
 import shutil
+from dataclasses import replace
 
 import pandas as pd
 import pytest
@@ -316,6 +317,66 @@ def test_la_consigliata_tenuta_ha_le_sue_righe():
     # dopo la scadenza la consigliata resta e basta: niente «per meno di 1 punto non cambia»
     chiusa = consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, 200, chiusa=True)
     assert "scelta.stabile" not in {r["frase"]["chiave"] for r in _scelta(chiusa)}
+
+
+
+# ------------------------------------------------------------------ lega senza sostituzioni (#816)
+SENZA_SOSTITUZIONI = replace(SOLO_442, panchina=replace(SOLO_442.panchina, max_sostituzioni=0))
+
+
+def _sonda_s3(regole) -> tuple[dict, list[dict]]:
+    """Il caso della revisione (#816), solo 3-4-3: l'attaccante 100 gioca il 45% ma se gioca fa 11 (4,95 punti attesi da solo), la
+    riserva 104 gioca il 90% e fa 5 (4,5). (Il modulo, le righe del perché con `incerti` di `consigli.incerti`, senza le regole.)"""
+    rosa = [G(1, "P", 0.95, 5.5), G(2, "P", 0.05, 5.0), G(3, "P", 0.03, 5.0)]
+    rosa += [G(10 + j, "D", 0.9 - 0.02 * j, 6.0 - 0.05 * j) for j in range(8)]
+    rosa += [G(30 + j, "C", 0.9 - 0.02 * j, 6.0 - 0.05 * j) for j in range(8)]
+    rosa += [G(100, "A", 0.45, 11.0), G(101, "A", 0.95, 7.0), G(102, "A", 0.95, 6.9), G(104, "A", 0.9, 5.0), G(105, "A", 0.3, 4.0),
+             G(106, "A", 0.3, 3.9)]
+    regole = replace(regole, moduli=["3-4-3"])
+    f = fz.migliore(rosa, regole, simulazioni=400)
+    m = {"titolari": [g.id for g in f.titolari], "panchina": [g.id for g in f.panchina],
+         "incerti": consigli.incerti(f.titolari, f.panchina)}
+    schede = {str(g.id): {"punti_attesi": round(g.valore, 2), "perche_numero": []} for g in rosa}
+    return m, perche_scelta.del_modulo(m, schede, rosa, regole, fz.Valutatore(rosa, regole, 400))
+
+
+def test_senza_sostituzioni_la_riga_dell_incerto_non_cita_la_riserva():
+    """#816: in una lega senza sostituzioni nessuno entra dalla panchina, e il Confronto lo dice. La riga dell'incerto non può dire
+    «se non gioca, in panchina c'è X»: il motivo vero è che con lui la formazione fa più punti attesi."""
+    m, righe = _sonda_s3(SOLO_442)
+    riga = next(r for r in righe if r["titolare"] == 100)
+    assert (riga["altro"], riga["frase"]["chiave"]) == (104, "scelta.incerto")        # con le sostituzioni: la riserva sicura
+    m, righe = _sonda_s3(SENZA_SOSTITUZIONI)
+    assert 100 in m["titolari"] and 104 not in m["titolari"]
+    riga = next(r for r in righe if r["titolare"] == 100)
+    assert (riga["altro"], riga["frase"]["chiave"]) == (104, "scelta.piu_punti"), str(riga["testo"])
+    assert "panchina" not in riga["testo"] and riga["testo"].startswith("Preferito a Giocatore 104: con lui la formazione fa più punti")
+
+
+def test_senza_sostituzioni_gli_incerti_non_hanno_la_riserva():
+    """#816: `incerti` è anche il ripiego di web e iPhone quando manca la riga del perché («Titolare anche se incerto…: se non gioca,
+    in panchina c'è X»). Senza sostituzioni nessuno entra: `riserva` è None, come quando in panchina non c'è nessuno di sicuro."""
+    tit, panchina = [G(21, "A", p=0.45, mu=9.0), G(20, "A", p=0.95, mu=8.0)], [G(22, "A", p=0.9, mu=4.4)]
+    assert consigli.incerti(tit, panchina, SOLO_442) == [{"titolare": 21, "riserva": 22}]
+    assert consigli.incerti(tit, panchina, SENZA_SOSTITUZIONI) == [{"titolare": 21, "riserva": None}]
+
+
+def test_senza_sostituzioni_la_formazione_e_il_confronto_dicono_lo_stesso(monkeypatch):
+    """Con la Formazione vera: l'attaccante incerto 21 (qui fa 10 se gioca, 4,5 punti attesi) resta titolare con il 22 in panchina,
+    `incerti` non ha la riserva in nessun modulo e stile, la riga dice «più punti attesi» contro il miglior escluso del ruolo (il 22,
+    3,96) e il Confronto sulla stessa coppia dice che con lui la formazione vale di più."""
+    prev = _prev({21: {"mu": 10.0}})
+    con = consigli._calcola_formazione(_squadra(), prev, GIORNATA, True, SOLO_442, 600)
+    assert {"titolare": 21, "riserva": 22} in next(m for m in con["moduli"] if m["modulo"] == con["modulo"])["incerti"]
+    f = consigli._calcola_formazione(_squadra(), prev, GIORNATA, True, SENZA_SOSTITUZIONI, 600)
+    assert 21 in [g["id"] for g in f["titolari"]] and 22 in [g["id"] for g in f["panchina"]]
+    moduli = f["moduli"] + [m for liv in f["livelli"] for m in liv["moduli"]]
+    assert all(x["riserva"] is None for m in moduli for x in m["incerti"])
+    riga = next(r for r in _scelta(f) if r["titolare"] == 21)
+    assert (riga["altro"], riga["frase"]["chiave"]) == (22, "scelta.piu_punti"), str(riga["testo"])
+    monkeypatch.setattr(consigli, "formazione", lambda *a, **k: f)
+    c = consigli._in_formazione(None, SENZA_SOSTITUZIONI, None, None, GIORNATA, None, 21, 22, prev)
+    assert _esito(c) in CON_IL_CONFRONTO["scelta.piu_punti"], c["testo"]
 
 
 # ------------------------------------------------------------------ web: la nota sotto il campo
