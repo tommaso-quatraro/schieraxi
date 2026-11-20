@@ -18,3 +18,7 @@ comune.carico
 # che riparte, risposte 502-504 senza il JSON del server)
 comune.rete_no
 comune.server_non_risponde
+
+# La striscia dei dati salvati quando il server ha risposto con un errore (DatiVecchi.frase): il motivo in testa e la nota fra
+# parentesi, come la web (comune.cache_errore in app.js), #830
+comune.cache_errore
