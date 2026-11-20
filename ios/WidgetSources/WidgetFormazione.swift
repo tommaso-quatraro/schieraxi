@@ -124,7 +124,8 @@ struct VistaFormazione: View {
                                                 @ViewBuilder corpo: @escaping ([DisposizioneWidget.RigaPiedeFormazione]) -> Corpo) -> some View {
         let forme = ParoleWidget.formeGiornata(giornata)
         let voceGiornata = giornata?.voce ?? forme.first ?? ""
-        let prove = DisposizioneWidget.proveFormazione(conGiornata: !forme.isEmpty, datiSalvati: conCopia, daControllare: dubbi)
+        let prove = DisposizioneWidget.proveFormazione(medio: false, conGiornata: !forme.isEmpty, conFascia: false, datiSalvati: conCopia,
+                                                       daControllare: dubbi)
         return PrimaCheEntra(prove.count, in: .vertical) { i in
             VStack(alignment: .leading, spacing: spazio) {
                 if prove[i].conTitolo {
@@ -177,7 +178,8 @@ struct VistaFormazione: View {
     private func medio(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
         let dubbi = w.daControllare.count
         // la prima prova che entra in altezza: la copia salvata c'è sempre, «da controllare» cede per primo (#834)
-        let prove = DisposizioneWidget.proveFormazione(conGiornata: false, datiSalvati: voce.copiaDel != nil, daControllare: dubbi)
+        let prove = DisposizioneWidget.proveFormazione(medio: true, conGiornata: false, conFascia: f.intervallo?.testo != nil,
+                                                       datiSalvati: voce.copiaDel != nil, daControllare: dubbi)
         return HStack(alignment: .center, spacing: 12) {
             PrimaCheEntra(prove.count, in: .vertical) { i in
                 VStack(alignment: .leading, spacing: 2) {

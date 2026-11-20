@@ -980,24 +980,35 @@ enum DisposizioneWidget {
         case daControllare
     }
 
-    /// Una prova dei widget Formazione piccolo e medio: la testata con il titolo (o il solo simbolo con la giornata) e le righe in basso.
-    struct ProvaFormazione: Equatable {
-        let conTitolo: Bool
-        let piede: [RigaPiedeFormazione]
+    /// Come stanno i punti attesi sotto il modulo nei widget Formazione piccolo e medio, dalla forma più alta.
+    enum PuntiFormazione: Hashable {
+        /// «72,7», sotto «punti attesi» e sotto ancora la fascia «tra 65 e 81» (il medio con la fascia).
+        case dueRighe
+        /// «72,7», sotto «attesi · tra 65 e 81» (o «punti attesi» senza fascia), come il piccolo di sempre.
+        case unaRiga
+        /// «72,7 attesi» su una riga sola, senza la fascia.
+        case accanto
     }
 
-    /// Le prove dei widget Formazione piccolo e medio, dalla più ricca: la vista tiene la prima che entra in altezza (#834). Con una
-    /// copia salvata la sua riga c'è in ogni prova, anche con giocatori da controllare (prima «2 da controllare» la toglieva e una
-    /// copia vecchia sembrava attuale): sopra l'ora della copia, sotto «2 da controllare». Se non entrano tutte e due, nel piccolo
-    /// prima si perde il titolo (resta il simbolo con la giornata accanto, come prima), poi «da controllare»; la copia mai.
-    /// `conGiornata`: la testata del piccolo, con la giornata sulla riga sotto il titolo; senza (medio) la testata è una riga sola.
-    static func proveFormazione(conGiornata: Bool, datiSalvati: Bool, daControllare: Int) -> [ProvaFormazione] {
+    /// Una prova dei widget Formazione piccolo e medio: la testata con il titolo (o il solo simbolo con la giornata), i punti
+    /// attesi e le righe in basso.
+    struct ProvaFormazione: Equatable {
+        var conTitolo: Bool
+        var punti: PuntiFormazione
+        var piede: [RigaPiedeFormazione]
+    }
+
+    /// Le prove dei widget Formazione piccolo e medio, dalla più ricca (segnaposto: il comportamento della prima versione, #834).
+    static func proveFormazione(medio: Bool, conGiornata: Bool, conFascia: Bool, datiSalvati: Bool,
+                                daControllare: Int) -> [ProvaFormazione] {
         var ricco: [RigaPiedeFormazione] = datiSalvati ? [.copia] : []
         if daControllare > 0 { ricco.append(.daControllare) }
         var piedi = [ricco]
         if datiSalvati && daControllare > 0 { piedi.append([.copia]) }
-        guard conGiornata else { return piedi.map { ProvaFormazione(conTitolo: true, piede: $0) } }
-        return [ProvaFormazione(conTitolo: true, piede: ricco)] + piedi.map { ProvaFormazione(conTitolo: false, piede: $0) }
+        let punti: PuntiFormazione = medio && conFascia ? .dueRighe : .unaRiga
+        guard conGiornata else { return piedi.map { ProvaFormazione(conTitolo: true, punti: punti, piede: $0) } }
+        return [ProvaFormazione(conTitolo: true, punti: punti, piede: ricco)]
+            + piedi.map { ProvaFormazione(conTitolo: false, punti: punti, piede: $0) }
     }
 }
 
