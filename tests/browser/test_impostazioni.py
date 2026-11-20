@@ -1202,6 +1202,56 @@ def test_l_iscrizione_di_un_altro_account_non_si_rimanda(web):
     assert interruttore_qui(web).is_checked() and len(iscritte) == 1
 
 
+def test_un_iscrizione_senza_numero_dopo_un_nuovo_accesso_non_diventa_del_nuovo_account(web):
+    """Un'iscrizione fatta con la versione di prima (nessun numero d'account accanto) ed entra un account dopo un'uscita: non si sa
+    di chi è, quindi non si rimanda e l'interruttore è spento. Anche alla seconda apertura e al prossimo accesso (#804, revisione):
+    prima alla seconda apertura diventava del nuovo account, l'interruttore si accendeva senza iscrizione sul server e al prossimo
+    accesso veniva mandata come sua."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web, di="")
+    iscritte = entra_con_la_password(web, rimanda=False)
+    web.apri("/")                                                    # seconda apertura, con la sessione che continua
+    web.apri("/?vista=impostazioni")
+    assert not interruttore_qui(web).is_checked(), "alla seconda apertura l'iscrizione senza numero è diventata del nuovo account"
+    iscritte += entra_con_la_password(web, rimanda=False)            # la sessione si chiude altrove e si rientra
+    assert iscritte == [], f"l'iscrizione senza numero è stata mandata come del nuovo account: {iscritte}"
+
+
+def test_un_iscrizione_senza_numero_con_la_sessione_gia_aperta_diventa_sua_e_si_rimanda_una_volta(web):
+    """Un'iscrizione fatta con la versione di prima, con la sessione già aperta prima del rilascio: è di chi è dentro, l'interruttore
+    resta acceso e l'iscrizione si rimanda una volta (il server può averla già tolta); alle aperture dopo non più."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    iscrizione_gia_qui(web, di="")
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    with web.pagina.expect_request(iscrizione_mandata):
+        web.apri("/?vista=impostazioni")
+    assert interruttore_qui(web).is_checked()
+    web.apri("/?vista=impostazioni")
+    assert interruttore_qui(web).is_checked() and [c["endpoint"] for c in iscritte] == [ENDPOINT], iscritte
+
+
+def test_esci_con_la_sessione_gia_finita_esce_senza_avviso(web):
+    """«Esci» che riceve 401 (la sessione era già finita, per esempio chiusa da un altro dispositivo): si esce lo stesso, con la
+    ricarica e la schermata d'accesso, senza l'avviso «Non riesco a farti uscire»."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    web.apri("/?vista=impostazioni&gruppo=account")
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), lambda route: json_200(route, SENZA_SESSIONE, 401))
+    avvisi = []
+    web.pagina.expose_function("__avvisoDiProva", lambda testo: avvisi.append(testo))
+    web.pagina.evaluate("""() => new MutationObserver(() => { const a = document.querySelector('#avviso');
+        if (a && a.textContent.trim()) window.__avvisoDiProva(a.textContent); })
+      .observe(document.body, { subtree: true, childList: true, characterData: true })""")
+    with web.pagina.expect_navigation(wait_until="load"):           # la ricarica dopo l'uscita
+        principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    assert not [a for a in avvisi if "Non riesco a farti uscire" in a], avvisi
+
+
 def test_dopo_un_nuovo_accesso_l_iscrizione_del_browser_torna_sul_server(web):
     """Dopo un nuovo accesso, se il browser ha ancora un'iscrizione agli avvisi la web la rimanda al server, senza chiedere di nuovo
     il permesso: prima l'interruttore «Avvisi su questo dispositivo» restava acceso e i promemoria non arrivavano più (#800)."""

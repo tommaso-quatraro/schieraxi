@@ -4054,11 +4054,15 @@ async function controllaAccesso() {
     if (usaLinguaDi(dati.utente && dati.utente.nome_utente)) return false;           // l'utente aveva scelto un'altra lingua: ricarico con la sua
     stato.emailAccount = { email: dati.email || null, email_origine: dati.email_origine || null, email_in_attesa: dati.email_in_attesa || null };
     // nel browser l'account non c'è (lo toglie ogni uscita, anche una sessione chiusa altrove): è un nuovo accesso, e l'iscrizione
-    // agli avvisi che il browser ha ancora torna al server se l'aveva fatta lui (rimandaAvvisi, all'avvio). Con la sessione che
-    // continua e nessun segno di chi l'ha fatta (iscrizione di una versione di prima, #804) è di chi è già dentro.
+    // agli avvisi che il browser ha ancora torna al server se l'aveva fatta lui (rimandaAvvisi, all'avvio). Un'iscrizione senza il
+    // segno di chi l'ha fatta (di una versione di prima, #804): dopo un accesso nuovo non è di nessuno («-», nessun account ha quel
+    // numero), così anche alle aperture dopo resta spenta; solo una sessione già aperta prima del rilascio la prende come sua, e la
+    // rimanda una volta (il server può averla già tolta).
     try {
-      if (!localStorage.getItem("account")) segnaAvvisiDaRimandare();
-      else if (!localStorage.getItem(AVVISI_DI)) segnaAvvisiDi();
+      if (!localStorage.getItem("account")) {
+        segnaAvvisiDaRimandare();
+        if (!localStorage.getItem(AVVISI_DI)) localStorage.setItem(AVVISI_DI, "-");
+      } else if (!localStorage.getItem(AVVISI_DI)) { segnaAvvisiDi(); segnaAvvisiDaRimandare(); }
       localStorage.setItem("account", JSON.stringify(dati.utente));
     } catch { /* niente memoria */ }
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, true);       // collega / conferma: si resta dentro

@@ -199,6 +199,8 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
   (429) si riprova all'apertura dopo, e poi basta;
 - di chi è l'iscrizione (#804): accesa da un account, dopo il suo nuovo accesso torna al server; fatta da un altro account
   non si rimanda e «Avvisi su questo dispositivo» è spento finché il nuovo utente non lo accende (allora è sua);
+  un'iscrizione senza numero (versione di prima) dopo un accesso nuovo resta spenta anche alle aperture dopo e non si rimanda;
+  con la sessione già aperta prima diventa di chi è dentro e si rimanda una volta; «Esci» con 401 esce senza l'avviso «non riesco»;
 - lo stato d'avvio (#801): aperta senza rete, Impostazioni ritrova «La mia squadra» e «Le altre squadre» quando il browser dice
   che la rete è tornata (evento `online`); aperta con il server che riparte (502), la riga di stato di Giornate torna quella di
   sempre alla prima risposta buona («Riprova»);
