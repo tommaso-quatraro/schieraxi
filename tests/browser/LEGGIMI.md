@@ -147,11 +147,14 @@ prima della scadenza:
   i gruppi delle Impostazioni (Avvisi, Aspetto, Avanzate, Informazioni, Account), le voci (Aggiorna le rose, Squadre e
   rose, Regole, Novità), la rosa mia e di un'altra squadra; una scheda salvata da una versione di prima (Squadra, Altro,
   Oggi...) apre la Formazione; Indietro e «‹ Impostazioni» tornano dove si era;
-- La mia lega porta alla mia squadra (con stemma, maglia e «Non è la tua squadra?») e alle altre; senza le rose degli altri
-  «Le altre squadre» non c'è; «Nuova stagione» compare lì quando serve; «Stemma e maglia» della rosa apre il foglio sulla
+- La mia lega porta alla mia squadra (con «Stemma e maglia» e «Non è la tua squadra?») e alle altre; senza le rose degli altri
+  «Le altre squadre» non c'è; il numero della riga «Le altre squadre» e il suo elenco non contano la mia (finché non è scelta,
+  tutte); senza costo d'acquisto la riga di un giocatore non scrive «costo –» (un costo 0 sì) e senza immagini non restano le
+  parole «Stemma» e «Maglia» (#779); «Nuova stagione» compare lì quando serve; «Stemma e maglia» della rosa apre il foglio sulla
   squadra della pagina, con «Rimuovi» (che cancella l'immagine giusta) e «Da indirizzo web»;
 - Regole e scadenza: il regolamento incollato si salva con «Salva queste regole»; i singoli valori stanno dietro «Modifica i
-  valori»; la scadenza si salva appena cambia; la frase sulla prima giornata parla di Giornate, non del Diario;
+  valori»; la scadenza si salva appena cambia; la frase sulla prima giornata parla di Giornate, non del Diario, e scelta la 6ª
+  non cita un'altra giornata (#779);
 - conflitto (412) su Regole (la scadenza) e rose (i crediti della mia squadra), con un server finto che dà l'ETag: l'avviso lo
   dice e la pagina si ricarica; la modifica rifatta prima della ricarica porta l'If-Match vecchio ed è rifiutata ancora, mai
   senza If-Match; rifatta dopo porta l'ETag riletto e passa (#667);
@@ -164,10 +167,13 @@ prima della scadenza:
   l'interruttore resta acceso; con il permesso negato niente prova;
 - Il tuo account: «Esci da tutti i dispositivi» chiede conferma con una frase che dice che si esce ovunque, anche da qui, e che si
   dovrà rientrare (e, solo a chi ha Google collegato e una password, che il collegamento con Google si toglie); confermato
-  manda la richiesta e torna alla pagina d'accesso senza copie dei dati né account nel browser;
+  manda la richiesta e torna alla pagina d'accesso senza copie dei dati né account nel browser, con un avviso (`role="status"`)
+  che dice che si è fuori da tutti i dispositivi, una volta sola e non dopo un «Esci» normale (#779);
   annullato non manda niente; se la richiesta non riesce (errore del server o rete giù) lo dice un avviso, si resta nella pagina
   e le copie restano (#765);
-- Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore.
+- Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore;
+- Gestione, «Errori recenti» (amministratore e registro finti): plurali giusti, tempi con la virgola, ora italiana senza «UTC»,
+  eventi con il nome del catalogo e, per un tipo sconosciuto, senza trattini bassi (#779).
 
 `test_accesso_all_avvio.py`, l'avvio con gli account quando la sessione non vale più (401 da «chi sono»). Gira solo prima della
 scadenza:
