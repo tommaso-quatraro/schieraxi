@@ -85,10 +85,10 @@
       "id": 86,
       "schermata": "Gestione: «Aggiorna i dati» mentre il server è occupato con un aggiornamento (#763)",
       "web": "con `aggiornamento_in_corso` di `GET /api/stato` vero il pulsante è spento e sotto c'è «Il server è occupato con un aggiornamento: il pulsante torna attivo appena finisce.» (`aggiorna.in_corso`, regione `role=\"status\"`); entrando in Gestione con il campo già vero lo stato si rilegge subito, poi ogni 15 secondi finché torna falso (una lettura alla volta), e fuori da Gestione non si rilegge (`segnaAggiornamento`, `seguiAggiornamento`, `rileggiAggiornamento` in `app.js`)",
-      "iphone": "`aggiornamentoInCorso` è dichiarato (`Modelli.swift`) ma non letto: il pulsante (`AggiornaDatiViewModel`, `AggiornaDatiSezione`) è spento con «Aggiornamento in corso…» solo dopo il tocco; con il server già occupato resta acceso e, premuto, mostra «Aggiornamento già in corso»",
+      "iphone": "prima: `aggiornamentoInCorso` era dichiarato ma non letto, e con il server già occupato il pulsante restava acceso. Ora come la web: ogni risposta di `GET /api/stato` arrivata ora passa il campo al pulsante (non la copia salvata sul telefono, né l'ultima risposta che il caricamento rimette quando una lettura si annulla: `Caricatore.risposte`); con il campo vero il pulsante è spento e sotto c'è la stessa frase (`aggiorna.in_corso`). Con il pulsante in vista (Gestione, e Stato dei dati che ha lo stesso pulsante) lo stato si rilegge subito, poi ogni 15 secondi finché torna falso, una lettura alla volta; un errore di rete non cambia lo stato e si riprova alla volta dopo; uscendo dalla pagina le letture smettono (`AggiornaDatiViewModel.segui`, `.task` di `AggiornaDatiSezione`, `LegaViewModel.statoLetto`). Con l'aggiornamento partito dal telefono, come `aggiornaDati` della web: appena il server conferma l'avvio il pulsante (che dice «Aggiornamento in corso…») ha sotto la stessa frase e il messaggio dell'avvio (`aggiorna.avviato`, sulla web un avviso), fino alla fine dell'aggiornamento o a cinque domande senza risposta (`AggiornaDatiViewModel.avvia`). Premuto con il server già occupato ma non ancora letto, il messaggio del server «Aggiornamento già in corso», come prima",
       "forma": "web",
-      "chi": "web fatta (#772, prove in `tests/browser/test_impostazioni.py`); iPhone da fare: #773",
-      "stato": "da-fare"
+      "chi": "**fatto** (#773): prove sull'iPhone in `LegaViewModelTests` (stato occupato e libero, lettura annullata con la copia salvata o dopo una rilettura, rilettura fino a libero, errore di rete, uscita dalla pagina, aggiornamento partito dal telefono), nel browser in `tests/browser/test_impostazioni.py` (#772)",
+      "stato": "fatto"
     },
     {
       "id": 87,
