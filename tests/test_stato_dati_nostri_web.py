@@ -165,16 +165,23 @@ def test_giornata_misurata_senza_giocatori_e_motivo_protetto(tmp_path):
         db.execute("INSERT INTO registro_i4 (stagione, giornata, versione, misurato, voti, rose, avvisato) "
                    "VALUES (?, 4, ?, '2026-10-04T12:00:00', 0, 0, 0)", (ST, V))
         db.execute("INSERT INTO registro_i4 (stagione, giornata, versione, voti, rose, persa, avvisato) VALUES (?, 5, ?, 0, 0, ?, 0)",
-                   (ST, V, "misura non riuscita <b>x</b>"))
+                   (ST, V, "misura non riuscita 3 volte (KeyError) <b>x</b>"))
         db.commit()
         reg = json.loads(json.dumps(registro_nostri.riepilogo(db)))
     finally:
         db.close()
-    html = _carta(reg)
-    pezzi = _testi(html)
-    assert _dopo(pezzi, "4ª giornata di Serie A · 2026-27") == "misurata, ma senza giocatori da confrontare"
-    assert _dopo(pezzi, "5ª giornata di Serie A · 2026-27") == "misura non riuscita &lt;b&gt;x&lt;/b&gt;"
-    assert "<b>x</b>" not in html
+    g5 = next(g for g in reg["per_giornata"] if g["giornata"] == 5)
+    assert g5["persa_frase"] == {"chiave": "registro.persa_misura", "param": {}}               # #833: la frase del catalogo,
+    assert g5["persa_dettaglio"] == "misura non riuscita 3 volte (KeyError) <b>x</b>"           # il testo tecnico a parte
+    for lingua, misurata, frase, giornata in (
+            ("it", "misurata, ma senza giocatori da confrontare", "misura a giornata finita non riuscita più volte", "{}ª giornata di Serie A · 2026-27"),
+            ("en", None, "the measurement after the matchday failed several times", "Serie A matchday {} · 2026-27")):
+        html = _carta(reg, lingua)
+        pezzi = _testi(html)
+        if misurata:
+            assert _dopo(pezzi, giornata.format(4)) == misurata
+        assert _dopo(pezzi, giornata.format(5)) == frase
+        assert "<b>x</b>" not in html and "KeyError" not in html
 
 
 @pytest.mark.parametrize(("misurate", "riga", "stato"), [

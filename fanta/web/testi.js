@@ -981,6 +981,15 @@ const TESTI = {
     "frase.diario.meglio_peggio": "Meglio del previsto: {meglio}. Peggio: {peggio}.",
     "frase.diario.meglio": "Meglio del previsto: {meglio}.",
     "frase.diario.peggio": "Peggio del previsto: {peggio}.",
+    "frase.registro.persa_senza_tentativi": "nessun tentativo negli ultimi 10 minuti prima della prima partita (servizio fermo o registro spento)",
+    "frase.registro.nostri_senza_tentativi": "nessun tentativo prima della prima partita (servizio fermo o riavviato)",
+    "frase.registro.persa_previsioni": "previsioni vuote o incomplete",
+    "frase.registro.persa_calcolo": "calcolo delle previsioni non riuscito",
+    "frase.registro.persa_altra_giornata": "previsioni di un'altra giornata",
+    "frase.registro.persa_nessun_giocatore": "nessun giocatore con i numeri da salvare",
+    "frase.registro.persa_scrittura": "salvataggio nell'archivio non riuscito",
+    "frase.registro.persa_misura": "misura a giornata finita non riuscita più volte",
+    "frase.registro.persa_altro": "motivo non riconosciuto: i dettagli sono nel log del server",
 
     "giocatore.gioca": "gioca {p}",
 
@@ -2666,6 +2675,15 @@ const TESTI = {
     "frase.diario.meglio_peggio": "Better than expected: {meglio}. Worse: {peggio}.",
     "frase.diario.meglio": "Better than expected: {meglio}.",
     "frase.diario.peggio": "Worse than expected: {peggio}.",
+    "frase.registro.persa_senza_tentativi": "no attempt in the last 10 minutes before the first match (service stopped or log switched off)",
+    "frase.registro.nostri_senza_tentativi": "no attempt before the first match (service stopped or restarted)",
+    "frase.registro.persa_previsioni": "predictions empty or incomplete",
+    "frase.registro.persa_calcolo": "the predictions could not be computed",
+    "frase.registro.persa_altra_giornata": "predictions for another matchday",
+    "frase.registro.persa_nessun_giocatore": "no player with numbers to save",
+    "frase.registro.persa_scrittura": "saving to the archive failed",
+    "frase.registro.persa_misura": "the measurement after the matchday failed several times",
+    "frase.registro.persa_altro": "unrecognised reason: the details are in the server log",
 
     "giocatore.gioca": "plays {p}",
 

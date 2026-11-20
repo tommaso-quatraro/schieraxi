@@ -2039,9 +2039,10 @@ function rigaNostri(st, nome, dettaglio) {
       ${dettaglio ? `<div class="debole piccolo">${dettaglio}</div>` : ""}`;
 }
 // Una giornata: il motivo se è persa, quanti giocatori sono salvati se non è ancora misurata, altrimenti i suoi tre numeri; quelle di
-// un'altra versione del calcolo non contano nel verdetto e lo dicono.
+// un'altra versione del calcolo non contano nel verdetto e lo dicono. Il motivo è la frase del server con la sua chiave (`persa_frase`,
+// #833); il motivo tecnico (`persa_dettaglio`) non si mostra.
 function statoGiornataNostri(g, versione) {
-  if (g.persa) return { testo: esc(g.persa), colore: "var(--rosso)" };
+  if (g.persa) return { testo: esc(testoDi(g, "persa")), colore: "var(--rosso)" };
   const altra = g.versione != null && versione != null && String(g.versione) !== String(versione) ? ` · ${t("sd.nos_g_versione", { v: esc(g.versione) })}` : "";
   const testo = !g.misurato ? tp("sd.nos_g_da_misurare", g.giocatori || 0)
     : (g.voti || 0) > 0 ? t("sd.nos_g_misurata", { e: regPerc(g.errore_pct, true), p: segno(g.punti, 2), g: num(g.gol_su_veri, 2) }) : t("sd.nos_g_vuota");
@@ -2101,7 +2102,7 @@ function cartaRegistro(reg) {
     ${misure}
     ${perse.length ? `<h3>${t("sd.reg_perse")}</h3><div class="debole piccolo">${t("sd.reg_perse_spiega")}</div>
       ${perse.map(g => `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: nomeGiornata(null, g.giornata) })}</span></div>
-        <div class="piccolo" style="color:var(--rosso)">${esc(g.persa)}</div>`).join("")}` : ""}</div>`;
+        <div class="piccolo" style="color:var(--rosso)">${esc(testoDi(g, "persa"))}</div>`).join("")}` : ""}</div>`;
 }
 // Consiglio di formazione (#366): gli indicatori del consiglio sommati sui Diari di tutti (campo `consiglio`, PR #362), resi come il
 // registro: per ognuno la media delle ultime giornate, la soglia e il verdetto del server (`regge`, non si ricalcola qui). Punti con
