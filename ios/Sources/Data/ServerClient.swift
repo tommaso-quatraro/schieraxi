@@ -53,7 +53,13 @@ enum ErroreApi: LocalizedError {
     case indirizzoNonValido
     case risposta(Int)
     case dati(String)
+    /// La richiesta non arriva al server ma il telefono ha rete (server spento o che riparte, indirizzo che non risponde,
+    /// collegamento caduto): «Il server non risponde: riprova fra poco», come la web (`comune.server_non_risponde`, #830).
     case rete(String)
+    /// Il telefono non ha rete (modalità aereo, nessuna rete, dati cellulare spenti per l'app): «Non riesco a collegarmi: controlla
+    /// internet e riprova», come la web con il dispositivo fuori linea (`comune.rete_no`, #830).
+    case senzaRete
+    /// Il server non risponde in tempo con la rete accesa: la stessa frase di `rete`.
     case timeout
     case server(String)
     /// 401: serve l'accesso (account) oppure nome utente e password sono sbagliati. Il testo è quello del server, già in italiano.
@@ -85,22 +91,35 @@ enum ErroreApi: LocalizedError {
             return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo nelle Impostazioni." : "L'indirizzo del server non è valido."
         case .risposta(let codice): return Self.testoRisposta(codice)
         case .dati: return "Il server ha mandato una risposta che l'app non capisce. Riprova tra poco; se succede ancora, aggiorna l'app."
-        case .timeout: return "SchieraXI ci mette troppo a rispondere. Controlla la connessione e riprova tra poco."
-        case .rete: return Self.testoNonRaggiungibile
+        case .timeout, .rete: return Self.testoNonRaggiungibile
+        case .senzaRete: return Self.testoSenzaRete
         }
     }
 
     /// Una risposta d'errore senza il JSON del server (pagina HTML, testo): per 401 e 403 di solito c'è di mezzo una rete o un indirizzo
-    /// sbagliato, non un guasto del server.
+    /// sbagliato, non un guasto del server. 502-504 sono la pagina del proxy con il servizio spento o che riparte: il server non
+    /// risponde, come la web (#830).
     static func testoRisposta(_ codice: Int) -> String {
         if codice == 401 || codice == 403 {
             return "La richiesta è stata rifiutata. Se sei su un Wi-Fi pubblico apri prima la sua pagina di accesso, poi riprova."
         }
+        if (502...504).contains(codice) { return testoNonRaggiungibile }
         return "SchieraXI ha un problema in questo momento. Riprova tra poco."
     }
 
-    /// Rete assente o server irraggiungibile: una sola frase in tutta l'app.
-    static let testoNonRaggiungibile = "Non riesco a collegarmi a SchieraXI. Controlla la connessione e riprova."
+    /// Il server non risponde con la rete accesa (`rete`, `timeout`, la pagina 502-504 del proxy): una sola frase in tutta l'app,
+    /// quella della web (`comune.server_non_risponde`, #830).
+    static let testoNonRaggiungibile = Catalogo.Comune.serverNonRisponde
+
+    /// Il telefono senza rete (`senzaRete`): la frase della web con il dispositivo fuori linea (`comune.rete_no`, #830).
+    static let testoSenzaRete = Catalogo.Comune.reteNo
+
+    /// Gli errori di `URLSession` che dicono che il telefono non ha rete: la richiesta non è nemmeno partita. Tutti gli altri (tempo
+    /// scaduto, server che rifiuta il collegamento, nome non trovato, collegamento caduto) sono il server che non risponde.
+    static func eSenzaRete(_ codice: URLError.Code) -> Bool {
+        let senzaRete: [URLError.Code] = [.notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff, .callIsActive]
+        return senzaRete.contains(codice)
+    }
 
     /// Un'attesa in parole: «30 secondi», «10 minuti», «6 h 55 min», «2 giorni».
     static func tempoLeggibile(_ secondi: Int) -> String {
@@ -346,11 +365,12 @@ struct ServerHTTP: ServerClient {
         return c
     }
 
-    /// Traduce gli errori di rete: annullamento (resta tale), tempo scaduto, server non raggiungibile.
+    /// Traduce gli errori di rete: annullamento (resta tale), telefono senza rete, tempo scaduto, server non raggiungibile.
     private func traduci(_ e: Error) -> Error {
         if e is ErroreApi || e is CancellationError { return e }
         if let u = e as? URLError {
             if u.code == .cancelled { return CancellationError() }
+            if ErroreApi.eSenzaRete(u.code) { return ErroreApi.senzaRete }
             if u.code == .timedOut { return ErroreApi.timeout }
         }
         return ErroreApi.rete(e.localizedDescription)

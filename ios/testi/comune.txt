@@ -12,3 +12,13 @@ comune.importa_spiega
 
 # Scheda del giocatore: mentre arrivano gli ultimi voti e «Tutti i numeri» (SchedaGiocatoreView)
 comune.carico
+
+# Una richiesta che non arriva al server (ErroreApi), come fraseSenzaRisposta della web (#830): il telefono senza rete
+# (URLError .notConnectedToInternet e simili) e il server che non risponde con la rete accesa (tempo scaduto, server spento o
+# che riparte, risposte 502-504 senza il JSON del server)
+comune.rete_no
+comune.server_non_risponde
+
+# La striscia dei dati salvati quando il server ha risposto con un errore (DatiVecchi.frase): il motivo in testa e la nota fra
+# parentesi, come la web (comune.cache_errore in app.js), #830
+comune.cache_errore

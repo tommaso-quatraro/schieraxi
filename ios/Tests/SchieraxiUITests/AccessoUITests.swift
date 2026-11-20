@@ -245,7 +245,7 @@ final class AccessoUITests: XCTestCase {
 
     func testRetAssenteDiceCosaFare() {
         avvia("rete")
-        attendi("Non riesco a collegarmi a SchieraXI", contiene: true)
+        attendi("controlla internet e riprova", contiene: true)   // il telefono senza rete, come la web (#830)
         XCTAssertTrue(app.buttons["accesso-invia"].waitForExistence(timeout: 10), "si può riprovare")
         XCTAssertFalse(app.tabBars.firstMatch.exists)
     }

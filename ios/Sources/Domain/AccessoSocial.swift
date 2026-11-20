@@ -115,7 +115,7 @@ enum TestiSocial {
         case "ultimo_accesso":
             return "Prima aggiungi una password: non puoi togliere l'unico modo per entrare."
         case "serve_riconferma":
-            return "Per sicurezza conferma prima con Google (Impostazioni, Il tuo account, Accessi), poi riprova."
+            return "Per sicurezza conferma prima con Google in Impostazioni › Il tuo account › Accessi, poi riprova."
         default:
             return nil
         }

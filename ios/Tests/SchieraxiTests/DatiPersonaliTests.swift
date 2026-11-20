@@ -66,8 +66,8 @@ final class DatiPersonaliTests: XCTestCase {
         } catch {
             XCTAssertEqual(DatiPersonali.testoErrore(error), "La sessione è scaduta: rientra nel tuo account e riprova.")
         }
-        XCTAssertEqual(DatiPersonali.testoErrore(ErroreApi.rete("spento")), "Non riesco a collegarmi a SchieraXI. Controlla la connessione e riprova.")
-        XCTAssertEqual(DatiPersonali.testoErrore(ErroreApi.timeout), "Non riesco a collegarmi a SchieraXI. Controlla la connessione e riprova.")
+        XCTAssertEqual(DatiPersonali.testoErrore(ErroreApi.rete("spento")), "Il server non risponde: riprova fra poco")
+        XCTAssertEqual(DatiPersonali.testoErrore(ErroreApi.timeout), "Il server non risponde: riprova fra poco")
         XCTAssertFalse(FileManager.default.fileExists(atPath: cartella.appendingPathComponent(DatiPersonali.nomeCartella).path), "niente file se la richiesta fallisce")
     }
 }

@@ -19,6 +19,7 @@ struct SalvataggioFuoriDallaFormazioneTests {
           arguments: [
               (ErroreApi.rete("spento"), Catalogo.Formazione.nonSalvataRete),
               (ErroreApi.timeout, Catalogo.Formazione.nonSalvataRete),
+              (ErroreApi.senzaRete, Catalogo.Formazione.nonSalvataRete),
               (ErroreApi.server("Un giocatore di prova gioca una partita già cominciata."), Catalogo.Formazione.nonSalvata),
               (ErroreApi.codificato(codice: "formazione_chiusa", messaggio: "La formazione di prova è chiusa."),
                Catalogo.Formazione.nonSalvata),
