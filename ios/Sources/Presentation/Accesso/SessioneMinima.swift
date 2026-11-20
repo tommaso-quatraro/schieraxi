@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Rete di sicurezza nelle Impostazioni: se c'è una sessione (o il server non risponde) ma «Il tuo account» non si vede
-/// perché l'utente non si è caricato, restano comunque «Esci» e «Cambia server». Così nessuno resta intrappolato.
+/// perché l'utente non si è caricato, restano comunque «Esci» e «Cambia server». Così nessuno resta intrappolato: qui «Esci» esce
+/// dal telefono anche se il server non risponde (`SessioneAccount.esciAncheSenzaServer`), al contrario di quello di «Il tuo account».
 struct SessioneMinimaSezione: View {
     let nonRaggiungibile: Bool
     @EnvironmentObject private var sessione: SessioneAccount
@@ -30,7 +31,7 @@ struct SessioneMinimaSezione: View {
                 Text("Se l'app non si collega, puoi uscire e accedere di nuovo, oppure scegliere un altro server.").foregroundStyle(Color.testoSecondario)
             }
             .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-                Button(Catalogo.Account.esci, role: .destructive) { Task { await sessione.esci() } }
+                Button(Catalogo.Account.esci, role: .destructive) { Task { await sessione.esciAncheSenzaServer() } }
             } message: {
                 Text("I dati salvati su questo telefono vengono cancellati.")
             }

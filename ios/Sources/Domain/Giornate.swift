@@ -26,6 +26,18 @@ extension VoceDiario {
 
     /// La consigliata è quella mostrata prima della scadenza (`conMostrata` della web).
     var conMostrata: Bool { consigliata?.origine == "mostrata" }
+
+    /// I ruoli che il foglio di «Non è quello che ho schierato» elenca, nell'ordine, come `correggiGiornata` della web.
+    static let ruoliDaCorreggere = ["P", "D", "C", "A"]
+
+    /// «Non è quello che ho schierato»: gli 11 da cui parte il foglio (`FormazioneManualeDiarioView`), come `correggiGiornata` della
+    /// web (#807). Sono i titolari della formazione che conta che il foglio elenca, cioè i giocatori della rosa letta adesso con il
+    /// numero e uno dei ruoli di `ruoliDaCorreggere`. Un titolare ceduto dopo la giornata non c'è: non è spuntato, non conta nel
+    /// «N di 11» e «Salva» non lo manda.
+    func titolariInRosa(_ rosa: [GiocatoreRosa]) -> Set<Int> {
+        let elencati = Set(rosa.filter { Self.ruoliDaCorreggere.contains($0.ruolo ?? "") }.compactMap(\.id))
+        return Set((cheConta.formazione?.titolari ?? []).compactMap(\.id)).intersection(elencati)
+    }
 }
 
 /// Una riga dell'elenco: nome della giornata, la frase di chi sono i punti, i punti fatti grandi e «punti (attesi 71,7)».

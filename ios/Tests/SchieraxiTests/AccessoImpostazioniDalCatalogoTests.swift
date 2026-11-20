@@ -28,6 +28,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         // account.*
         Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.esciTutti,
         Catalogo.Account.esciTuttiConferma, Catalogo.Account.esciTuttiGoogle, Catalogo.Account.esciTuttiFatto,
+        Catalogo.Account.esciSoloQui, Catalogo.Account.esciSoloQuiSpiega,
         Catalogo.Account.cambiaPassword,
         Catalogo.Account.passwordAttuale, Catalogo.Account.ripetiPassword, Catalogo.Account.passwordDiverse,
         Catalogo.Account.altriScollegati, Catalogo.Account.passwordCambiataOk, Catalogo.Account.passwordCambiataCodice,
@@ -151,6 +152,8 @@ struct AccessoImpostazioniDalCatalogoTests {
             // «Esci da tutti i dispositivi» con la sua conferma e il suo errore (#765)
             "Catalogo.Account.esciTutti", "Catalogo.Account.esciTuttiConferma", "Catalogo.Account.esciTuttiNo(",
             "TestiAccount.esciTuttiGoogle(",
+            // «Esci» che non riesce lo dice con la frase della web (#809)
+            "Catalogo.Account.esciNo(",
             "Catalogo.Shell.chiudi",
             // dopo il cambio della password: il codice nuovo sotto «Password cambiata» e l'esito dal catalogo (#590)
             "TestiAccesso.passwordCambiata", "TestiAccount.esitoCambioPassword(",

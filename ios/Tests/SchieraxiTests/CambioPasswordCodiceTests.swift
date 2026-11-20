@@ -174,7 +174,7 @@ struct CambioPasswordCodiceTests {
         let sessione = p.sessione
         let lenta = Task { try? await sessione.cambiaPassword(attuale: "vecchia-prova-1", nuova: "nuova-prova-12") }
         try await Task.sleep(nanoseconds: 50_000_000)
-        await sessione.esci()
+        try await sessione.esci()
         _ = await lenta.value
         #expect(sessione.stato == .daAccedere)
         #expect(p.token == nil, "dopo «Esci» nessun token deve restare sul telefono")
@@ -230,7 +230,7 @@ struct CambioPasswordCodiceTests {
         let indirizzo = p.server.indirizzo
         try await p.sessione.cambiaPassword(attuale: "vecchia-prova-1", nuova: "nuova-prova-12")
         let lavoro = try #require(p.sessione.rinnovoWidget)
-        await p.sessione.esci()
+        try await p.sessione.esci()
         await lavoro.value
         #expect(p.sessione.stato == .daAccedere)
         #expect(p.token == nil)

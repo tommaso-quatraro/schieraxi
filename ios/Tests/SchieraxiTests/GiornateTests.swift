@@ -238,6 +238,35 @@ struct GiornateTests {
         #expect(try !dettaglio(p, 38, stagione: "2025-26").correggibile)
     }
 
+    /// Come `correggiGiornata` della web: il foglio spunta e conta solo chi è nella rosa letta adesso. Prima l'iPhone spuntava gli 11
+    /// della riga anche con un titolare ceduto: il conto diceva «11 di 11», le spunte visibili erano 10, «Salva» dava l'errore del
+    /// server e il giocatore nascosto non si poteva togliere. Giocatori e numeri inventati.
+    @Test("«Non è quello che ho schierato» parte dai titolari ancora in rosa: un titolare ceduto non è spuntato né contato (#807)")
+    func titolariInRosa() throws {
+        let ruoli = ["P", "D", "D", "D", "D", "C", "C", "C", "A", "A", "A"]
+        let titolari: [[String: Any]] = ruoli.enumerated().map { (i, ruolo) -> [String: Any] in
+            ["id": i + 1, "nome": "Giocatore \(i + 1)", "ruolo": ruolo]
+        }
+        let corpo: [String: Any] = ["stagione": "2026-27", "giornata": 11, "schierata": ["modulo": "4-3-3", "titolari": titolari]]
+        let voce: VoceDiario = try Decodifica.decodifica(JSONSerialization.data(withJSONObject: corpo))
+        func giocatore(_ id: Int, _ ruolo: String?) -> GiocatoreRosa {
+            GiocatoreRosa(id: id, nome: "Giocatore \(id)", ruolo: ruolo, squadra: nil, squadraSlug: nil, costo: nil, quotazione: nil,
+                          previsione: nil)
+        }
+        // tutti ancora in rosa, più due in panchina: gli 11 della riga
+        let rosa = ruoli.enumerated().map { (i, ruolo) in giocatore(i + 1, ruolo) } + [giocatore(12, "P"), giocatore(13, "D")]
+        #expect(voce.titolariInRosa(rosa) == Set(1...11))
+        // il 9 è stato ceduto dopo la giornata: non è nella rosa letta, quindi non è spuntato e il conto dice 10 di 11
+        let senzaIl9 = rosa.filter { $0.id != 9 }
+        #expect(voce.titolariInRosa(senzaIl9) == Set(1...11).subtracting([9]))
+        #expect(voce.titolariInRosa(senzaIl9).count == 10)
+        // il foglio elenca solo portieri, difensori, centrocampisti e attaccanti: chi non ha uno di questi ruoli non si vede, e non si spunta
+        let senzaRuolo = rosa.map { $0.id == 6 ? giocatore(6, nil) : $0 }
+        #expect(voce.titolariInRosa(senzaRuolo) == Set(1...11).subtracting([6]))
+        // rosa non ancora letta: niente spunte
+        #expect(voce.titolariInRosa([]).isEmpty)
+    }
+
     // MARK: in cima e pagina vuota
 
     @Test("In cima la riga sulla precisione e «Dettagli»; la voce del confronto solo con una consigliata mostrata")

@@ -389,7 +389,7 @@ final class SessioneGoogleTests: XCTestCase {
         archivio.salva("tok", server: s.indirizzo)
         try await sess.collegaGoogle(password: "p", avvio: AvvioFinto(codice: "c"))
         XCTAssertNotNil(sess.accessi)
-        await sess.esci()
+        try await sess.esci()
         XCTAssertNil(sess.accessi)
     }
 
