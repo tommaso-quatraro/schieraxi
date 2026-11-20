@@ -1066,6 +1066,24 @@ def test_previsioni_leggono_la_attiva_una_volta(db, monkeypatch):
     assert len(letture) == 1
 
 
+@pytest.mark.parametrize(("brier", "punti"), [
+    (0.1307, 36.15), (0.1194, 34.55), (0.15, 38.73), (0.0, 0.0), (1.0, 100.0), (0.0912, 30.2),
+    (None, None), (float("nan"), None), (float("inf"), None), (-0.01, None), ("0,1", None), (True, None),
+])
+def test_errore_medio_in_punti_dal_brier(brier, punti):
+    """«Errore medio delle percentuali» in punti per Stato dei dati (#821): 100 × √Brier, con due decimali; None se il Brier manca
+    o non è un numero buono (mai «nan» per l'utente)."""
+    assert tp.errore_medio(brier) == punti
+
+
+def test_errore_medio_non_scrive_uguali_due_numeri_della_prova():
+    """Una versione si accende con un Brier anche solo dello 0,5% più basso (`SOGLIA_BRIER`): con un decimale si leggerebbe
+    «36,1 contro 36,1», con due no (lo stesso difetto del Brier con tre decimali)."""
+    for prima in (0.06, 0.09, 0.1307, 0.15, 0.2):
+        dopo = prima * (1 - tp.SOGLIA_BRIER)
+        assert tp.errore_medio(dopo) < tp.errore_medio(prima)
+
+
 def test_riepilogo_senza_nomi(db):
     vuoto = {"stato": "in_attesa", "giornate": 0, "minimo": 4, "versione": None, "dal": None, "prova": None, "motivo": None}
     assert tp.riepilogo(db) == vuoto
@@ -1075,7 +1093,9 @@ def test_riepilogo_senza_nomi(db):
     assert (r["stato"], r["giornate"], r["versione"], r["dal"], r["motivo"]) == ("non_attiva", 6, 1, None, "poche_giornate")
     m = json.loads(_tabella(db)[0]["misura"])
     assert r["prova"] == {"giornate": 3, "brier": m["nuova"]["brier"], "brier_prima": m["attuale"]["brier"],
-                          "brier_mostrati": m["mostrati"]["brier"], "calibrazione": m["nuova"]["calibrazione"]}
+                          "brier_mostrati": m["mostrati"]["brier"], "calibrazione": m["nuova"]["calibrazione"],
+                          "errore_medio": tp.errore_medio(m["nuova"]["brier"]),
+                          "errore_medio_prima": tp.errore_medio(m["attuale"]["brier"])}
     _genera(db, [7, 8], seme=3)
     _prossima(db, 9, ADESSO + timedelta(hours=20))
     tp.esegui(db, ADESSO)
@@ -1104,7 +1124,9 @@ def test_riepilogo_dopo_il_ritorno_indietro_dice_peggiorata(db):
     rit = json.loads(_tabella(db)[0]["misura"])["ritorno"]
     assert (r["stato"], r["versione"], r["motivo"], r["dal"]) == ("non_attiva", 1, "peggiorata", None)
     assert r["prova"] == {"giornate": 2, "brier": rit["attiva"]["brier"], "brier_prima": rit["partenza"]["brier"],
-                          "brier_mostrati": None, "calibrazione": rit["attiva"]["calibrazione"]}
+                          "brier_mostrati": None, "calibrazione": rit["attiva"]["calibrazione"],
+                          "errore_medio": tp.errore_medio(rit["attiva"]["brier"]),
+                          "errore_medio_prima": tp.errore_medio(rit["partenza"]["brier"])}
     _genera(db, [11], gioca=_gioca_partenza, seme=23)
     tp.esegui(db, ADESSO + timedelta(days=1))                      # un verdetto più nuovo prende il suo posto
     assert (tp.riepilogo(db)["versione"], tp.riepilogo(db)["motivo"]) == (3, "non_migliora")
