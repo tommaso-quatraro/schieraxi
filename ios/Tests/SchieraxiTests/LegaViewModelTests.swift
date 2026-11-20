@@ -59,6 +59,29 @@ final class LegaViewModelTests: XCTestCase {
         XCTAssertEqual(vm.messaggio, Catalogo.Aggiorna.nonSo)
         XCTAssertEqual(s.quante("GET /api/aggiorna"), 5, "dopo cinque tentativi a vuoto si smette")
         XCTAssertFalse(vm.inCorso)
+        XCTAssertFalse(vm.pulsanteSpento, "come la web, che dopo cinque tentativi riaccende il pulsante")
+        XCTAssertNil(vm.fraseOccupato)
+    }
+
+    func testAggiornamentoPartitoDaQuiMostraLaFraseEIlMessaggioDellAvvioComeLaWeb() async {
+        let finito = Scatola<Bool>()
+        let s = ServerDiProva { metodo, _, _ in
+            if metodo == "POST" { return Data(#"{"avviato": true}"#.utf8) }
+            return Data((finito.valore == true ? #"{"in_corso": false, "errori": []}"# : #"{"in_corso": true, "errori": []}"#).utf8)
+        }
+        let vm = AggiornaDatiViewModel(server: s)
+        vm.pausa = 10_000_000
+        let tocco = Task { await vm.avvia() }
+        await attendi("l'aggiornamento partito si segue", finche: { s.quante("GET /api/aggiorna") >= 1 })
+        XCTAssertTrue(vm.inCorso)
+        XCTAssertTrue(vm.pulsanteSpento)
+        XCTAssertEqual(vm.fraseOccupato, Catalogo.Aggiorna.inCorso, "la frase della web anche con l'aggiornamento partito da qui")
+        XCTAssertEqual(vm.messaggio, Catalogo.Aggiorna.avviato, "insieme al messaggio dell'avvio, come l'avviso della web")
+        finito.valore = true
+        await tocco.value
+        XCTAssertFalse(vm.pulsanteSpento)
+        XCTAssertNil(vm.fraseOccupato, "finito l'aggiornamento la frase sparisce")
+        XCTAssertEqual(vm.messaggio, Catalogo.Aggiorna.ok)
     }
 
     func testAggiornamentoNonPartito() async {
@@ -85,6 +108,17 @@ final class LegaViewModelTests: XCTestCase {
         occupato.valore = false
         await vm.info.ricarica()
         await attendi("il pulsante si riaccende con lo stato libero", finche: { !vm.aggiornamento.pulsanteSpento })
+        XCTAssertNil(vm.aggiornamento.fraseOccupato)
+    }
+
+    func testLaCopiaSalvataSulTelefonoNonSpegneIlPulsante() async {
+        // una copia di /api/stato salvata mentre il server era occupato; adesso il server non risponde
+        let s = ServerDiProva { _, _, _ in throw ErroreApi.rete("giù") }
+        Cache.salva(statoDelServer(occupato: true), "/api/stato", indirizzo: s.indirizzo)
+        let vm = LegaViewModel(server: s)
+        await vm.info.ricarica()
+        XCTAssertEqual(vm.info.dato?.aggiornamentoInCorso, true, "la copia salvata si mostra")
+        XCTAssertFalse(vm.aggiornamento.pulsanteSpento, "uno stato vecchio non spegne il pulsante")
         XCTAssertNil(vm.aggiornamento.fraseOccupato)
     }
 
