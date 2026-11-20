@@ -42,6 +42,8 @@ struct RigaCambio: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(voce(contenuto))
         .accessibilityHint(suggerimento)
+        // Controllo vocale: basta dire il nome, non tutta la riga
+        .accessibilityInputLabels([giocatore.nome])
     }
 
     /// Il colore di un pezzo dello stato: arancio fra 50 e 79, rosso sotto 50 o per chi non gioca, grigio per le parole.
