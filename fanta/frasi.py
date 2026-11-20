@@ -72,6 +72,25 @@ CATALOGO: dict[str, str] = {
     "dafare.consigliata_cambiata_fuori_molti": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
     "dafare.fuori_infortunato": "{nome} è infortunato",
     "dafare.fuori_squalificato": "{nome} è squalificato",
+    # reparto della rosa scoperto o senza ricambi (fanta/copertura.py, #816): {ruolo} = una `dafare.copertura_<ruolo>` («nessun
+    # portiere»), {quanti} = una `rose.<ruolo>` («2 portieri»), {testo} = una `dafare.copertura_nessuno` o `_pochi`, {fuori} e {nomi} =
+    # un elenco di nomi o una `dafare.copertura_altri`, {diffidati} = una `dafare.copertura_diffidati_nomi`
+    "dafare.copertura_portiere": "portiere",
+    "dafare.copertura_difensore": "difensore",
+    "dafare.copertura_centrocampista": "centrocampista",
+    "dafare.copertura_attaccante": "attaccante",
+    "dafare.copertura_nessuno": "Non hai nessun {ruolo} disponibile: ne servono almeno {minimo}.",
+    "dafare.copertura_pochi.one": "Hai solo {quanti} disponibile: per giocare ne servono almeno {minimo}.",
+    "dafare.copertura_pochi.other": "Hai solo {quanti} disponibili: per giocare ne servono almeno {minimo}.",
+    "dafare.copertura_fuori": "{testo} Fuori: {fuori}.",
+    "dafare.copertura_diffidati.one": "Hai {quanti} disponibile, ma {diffidati}: con un giallo resti scoperto.",
+    "dafare.copertura_diffidati.other": "Hai {quanti} disponibili, ma {diffidati}: con un giallo resti scoperto.",
+    "dafare.copertura_diffidati_nomi.one": "{n} è diffidato ({nomi})",
+    "dafare.copertura_diffidati_nomi.other": "{n} sono diffidati ({nomi})",
+    "dafare.copertura_minimo.one": "Hai solo {quanti} disponibile, il minimo per giocare: se un altro salta, resti senza ricambi.",
+    "dafare.copertura_minimo.other": "Hai solo {quanti} disponibili, il minimo per giocare: se un altro salta, resti senza ricambi.",
+    "dafare.copertura_moduli": "Con i giocatori disponibili non riesci a schierare nessuno dei moduli ammessi dalla tua lega.",
+    "dafare.copertura_altri": "{nomi} e altri {n}",
     # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
     "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa

@@ -257,11 +257,11 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
     return [v for v in _dubbi(db, regole, rose, giornata, file_scelte) if "alternativa" not in v]
 
 
-def _copertura(db, regole: Regole, rose: Rose, lingua: str = "it") -> list[dict]:
+def _copertura(db, regole: Regole, rose: Rose) -> list[dict]:
     """Reparti della rosa scoperti (priorità alta) o senza ricambi (media): un conteggio sulle previsioni già in cache."""
     from . import copertura
     prev, _, _ = consigli.previsioni(db, regole)
-    r = copertura.analizza(prev, regole, rose, lingua)
+    r = copertura.analizza(prev, regole, rose)
     voci = []
     for x in (r or {}).get("reparti", [])[:MAX_COPERTURA]:
         scoperto = x["livello"] == copertura.SCOPERTO
@@ -584,7 +584,7 @@ def senza_rose(imp: Path | None) -> list[dict]:
 
 # ---------------------------------------------------------------- insieme
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, ctx, certificato_giorni: int | None = None,
-               amministratore: bool = False, adesso: datetime | None = None, lingua: str = "it", dal: datetime | None = None,
+               amministratore: bool = False, adesso: datetime | None = None, dal: datetime | None = None,
                mercato: bool = True, scambi_trova: bool = True) -> list[dict]:
     """La lista ordinata (priorità 1 = alta, poi 2 e 3; a parità, nell'ordine dei controlli), al massimo MAX_VOCI voci e al
     massimo buon_senso.MAX_CONSIGLI consigli. `ctx` è il contesto dell'utente (percorsi dei suoi file); `dal` è quando è nato
@@ -605,7 +605,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, c
     if aperta and giornata and not finita:
         controlli += [lambda: _titolari(db, regole, rose, giornata, ctx.scelte)]
     if aperta and giornata:
-        controlli += [lambda: _copertura(db, regole, rose, lingua),
+        controlli += [lambda: _copertura(db, regole, rose),
                       lambda: _formazione_non_salvata(db, regole, rose, ore, giornata, ctx.scelte)]
     controlli += [lambda: _certificato(certificato_giorni)]
     if rose_file is not None:
