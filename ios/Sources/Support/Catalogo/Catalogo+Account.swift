@@ -17,6 +17,11 @@ extension Catalogo {
         /// `account.esci`
         static let esci = "Esci"
 
+        /// `account.esci_no`
+        static func esciNo(motivo: String) -> String {
+            "Non riesco a farti uscire. \(motivo)"
+        }
+
         /// `account.esci_tutti`
         static let esciTutti = "Esci da tutti i dispositivi"
 

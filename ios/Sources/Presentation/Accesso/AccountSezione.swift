@@ -218,24 +218,47 @@ struct AccountSezione: View {
 }
 
 /// «Esci», in fondo a «Il tuo account» (sotto c'è solo «Esci da tutti i dispositivi»), come sulla web. Sta dentro la sezione
-/// dell'account (che c'è solo con un account: senza account c'è `SessioneMinimaSezione`).
+/// dell'account (che c'è solo con un account: senza account c'è `SessioneMinimaSezione`). Se la richiesta non riesce (rete giù,
+/// server che non risponde) lo dice qui sotto con la frase della web (`account.esci_no`) e si resta dentro, come «Esci da tutti i
+/// dispositivi» (#809); con la sessione già finita si esce lo stesso (`SessioneAccount.esci`).
 struct RigaEsci: View {
     /// Dove scorre la foto `accesso-account-fondo` (vedi `ImpostazioniView`); è anche l'identificativo per i test.
     static let idDemo = "account-esci"
     @EnvironmentObject private var sessione: SessioneAccount
     @State private var chiediEsci = false
+    @State private var errore: String?
 
     var body: some View {
-        Button { chiediEsci = true } label: {
-            Label(Catalogo.Account.esci, systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
+        VStack(alignment: .leading, spacing: 4) {
+            Button { chiediEsci = true } label: {
+                Label(Catalogo.Account.esci, systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
+            }
+            .accessibilityHint("Esci dal tuo account su questo telefono")
+            .accessibilityIdentifier(Self.idDemo)
+            // sul pulsante, non sulla Section (vedi `FoglioAccount`)
+            .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
+                Button(Catalogo.Account.esci, role: .destructive) { Task { await esci() } }
+            } message: {
+                Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
+            }
+            if let errore {
+                Text(errore)
+                    .font(.footnote)
+                    .foregroundStyle(Color.attenzione)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .accessibilityHint("Esci dal tuo account su questo telefono")
-        .accessibilityIdentifier(Self.idDemo)
-        // sul pulsante, non sulla Section (vedi `FoglioAccount`)
-        .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-            Button(Catalogo.Account.esci, role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
-        } message: {
-            Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
+    }
+
+    private func esci() async {
+        errore = nil
+        do {
+            try await sessione.esci()
+            DatiPersonali.pulisci()
+        } catch {
+            let testo = Catalogo.Account.esciNo(motivo: SchermataAccesso.testoErrore(error))
+            errore = testo
+            AccessibilityNotification.Announcement(testo).post()
         }
     }
 }

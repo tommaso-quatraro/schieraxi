@@ -82,6 +82,15 @@
       "stato": "fatto"
     },
     {
+      "id": 90,
+      "schermata": "Il tuo account: «Esci» che non riesce (#809)",
+      "web": "se la richiesta non riesce (rete giù, server che riparte, troppe richieste) l'avviso «Non riesco a farti uscire.» con il motivo (`account.esci_no`) e la pagina resta com'è, come per «Esci da tutti i dispositivi»; con un 401 la sessione era già finita e si esce lo stesso (`esciDa` in `app.js`, #800 con la #804)",
+      "iphone": "prima: «Esci» non guardava l'esito e usciva sempre. Ora come la web: se la richiesta non riesce la stessa frase con il motivo (`account.esci_no`) sotto la riga, letta da VoiceOver, e si resta dentro con i dati e il widget collegato (se il server gli aveva già tolto il token, il widget ne riceve uno nuovo); con un 401 si esce come prima (`RigaEsci`, `SessioneAccount.esci`). La sezione «Collegamento» delle Impostazioni, che c'è quando l'app non si collega, esce invece anche senza server, come prima, perché nessuno resti chiuso dentro (`SessioneAccount.esciAncheSenzaServer`)",
+      "forma": "web",
+      "chi": "**fatto** (#809): prove sull'iPhone in `SessioneAccountTests` (rete giù, server in errore, troppe richieste, 401, la sezione «Collegamento») e `AccessoImpostazioniDalCatalogoTests`",
+      "stato": "fatto"
+    },
+    {
       "id": 86,
       "schermata": "Gestione: «Aggiorna i dati» mentre il server è occupato con un aggiornamento (#763)",
       "web": "con `aggiornamento_in_corso` di `GET /api/stato` vero il pulsante è spento e sotto c'è «Il server è occupato con un aggiornamento: il pulsante torna attivo appena finisce.» (`aggiorna.in_corso`, regione `role=\"status\"`); entrando in Gestione con il campo già vero lo stato si rilegge subito, poi ogni 15 secondi finché torna falso (una lettura alla volta), e fuori da Gestione non si rilegge (`segnaAggiornamento`, `seguiAggiornamento`, `rileggiAggiornamento` in `app.js`)",
