@@ -171,6 +171,8 @@ extension Demo {
             nav.sezione = .formazione
         case "formazione-sostituisci":
             apriSostituzione(modello)
+        case "formazione-metti-in-campo":
+            apriMettiInCampo(modello)
 
         case "giocatore":
             if let vero = ScenarioVero.attuale?.giocatore {
@@ -223,6 +225,23 @@ extension Demo {
             guard let f = vm.formazione else { return }
             let titolari = vm.vista(f).titolari
             vm.daSostituire = titolari.first { SogliaGioca.daMostrare($0.pVoto) } ?? titolari.first
+        }
+    }
+
+    /// La foto `formazione-metti-in-campo` (#778): l'elenco «Chi esce per …», come dopo «Metti in campo» nella scheda di un
+    /// panchinaro, per quello a cui risponde il server finto (`FinteServer.entraMettiInCampo`). «Metti in campo» c'è a comandi
+    /// accesi: la Formazione si legge anche da sé (la sua `task`), quindi si aspetta che abbia finito (al massimo 5 secondi).
+    private static func apriMettiInCampo(_ modello: AppModel) {
+        Task {
+            let vm = modello.formazione
+            await vm.carica()
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            var attese = 0
+            while vm.comandiSpenti, attese < 25 {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                attese += 1
+            }
+            await vm.mettiInCampo(FinteServer.entraMettiInCampo)
         }
     }
 
