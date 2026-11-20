@@ -112,7 +112,8 @@ struct VistaDubbi: View {
                 Spacer(minLength: 0)
             }
             if voce.datiSalvati {
-                Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash")
+                // con il giorno se la copia non è di oggi (`RigaCopia`, #834)
+                RigaCopia(scaricatoIl: r.scaricatoIl, adesso: voce.date)
                     .font(.caption2).foregroundStyle(.white.opacity(0.7))
             }
         }

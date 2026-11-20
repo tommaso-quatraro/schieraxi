@@ -31,7 +31,9 @@ enum DatiGalleria {
         // «si è chiusa ieri 20:35» e gli orari delle partite da quell'ora, come Oggi dell'app, anche se la foto si scatta di notte
         let quando = LegaDemo.momento(adesso: adesso, fase: fase)
         let w = RiassuntoWidget.leggi(LegaDemo.widget(adesso: quando, fase: fase, parziali: tipo == "parziali"))
-        return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: tipo == "salvati", widget: w)
+        // la copia salvata è di due giorni prima: la riga più lunga, con il giorno (per esempio «dati di mer 18 09:41», #834)
+        let scaricatoIl = tipo == "salvati" ? quando.addingTimeInterval(-2 * 86_400) : quando
+        return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: scaricatoIl), datiSalvati: tipo == "salvati", widget: w)
     }
 
     /// La giornata in corso della demo come la vede chi è entrato dopo la scadenza senza una formazione (`fanta/fasi.py`, #651):

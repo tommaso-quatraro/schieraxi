@@ -973,7 +973,7 @@ enum DisposizioneWidget {
     }
 
     /// Una riga sotto i punti dei widget Formazione piccolo e medio.
-    enum RigaPiedeFormazione: Equatable {
+    enum RigaPiedeFormazione: Hashable {
         /// L'ora della copia salvata (`RigaCopia`).
         case copia
         /// «2 da controllare» (`EtichettaDaControllare`).
@@ -986,11 +986,18 @@ enum DisposizioneWidget {
         let piede: [RigaPiedeFormazione]
     }
 
-    /// Le prove dei widget Formazione piccolo e medio, dalla più ricca (segnaposto: il comportamento di prima, #834).
+    /// Le prove dei widget Formazione piccolo e medio, dalla più ricca: la vista tiene la prima che entra in altezza (#834). Con una
+    /// copia salvata la sua riga c'è in ogni prova, anche con giocatori da controllare (prima «2 da controllare» la toglieva e una
+    /// copia vecchia sembrava attuale): sopra l'ora della copia, sotto «2 da controllare». Se non entrano tutte e due, nel piccolo
+    /// prima si perde il titolo (resta il simbolo con la giornata accanto, come prima), poi «da controllare»; la copia mai.
+    /// `conGiornata`: la testata del piccolo, con la giornata sulla riga sotto il titolo; senza (medio) la testata è una riga sola.
     static func proveFormazione(conGiornata: Bool, datiSalvati: Bool, daControllare: Int) -> [ProvaFormazione] {
-        let piede: [RigaPiedeFormazione] = daControllare > 0 ? [.daControllare] : (datiSalvati ? [.copia] : [])
-        let titolo = ProvaFormazione(conTitolo: true, piede: piede)
-        return conGiornata ? [titolo, ProvaFormazione(conTitolo: false, piede: piede)] : [titolo]
+        var ricco: [RigaPiedeFormazione] = datiSalvati ? [.copia] : []
+        if daControllare > 0 { ricco.append(.daControllare) }
+        var piedi = [ricco]
+        if datiSalvati && daControllare > 0 { piedi.append([.copia]) }
+        guard conGiornata else { return piedi.map { ProvaFormazione(conTitolo: true, piede: $0) } }
+        return [ProvaFormazione(conTitolo: true, piede: ricco)] + piedi.map { ProvaFormazione(conTitolo: false, piede: $0) }
     }
 }
 
@@ -1141,9 +1148,15 @@ enum ParoleWidget {
         ["Dati delle \(ora) · \(probabili)", "\(ora) · \(probabili)", "Dati delle \(ora)"]
     }
 
-    /// La riga della copia salvata dei widget (segnaposto: il comportamento di prima, la sola ora, #834).
+    /// La riga della copia salvata dei widget (#834), dalla forma più lunga. Di oggi la sola ora, «dati delle 18:30»; di un altro
+    /// giorno anche il giorno, scritto come `Quando.relativa` («dati di ieri 18:30», «dati di mar 17 21:05», oltre la settimana
+    /// «dati di dom 8 nov 18:30»), e dove non entra il solo giorno («dati di ieri»): è il giorno che dice quanto è vecchia. Prima
+    /// era sempre la sola ora, e una copia di venerdì sera la domenica sembrava di oggi. I giorni si contano in ora italiana da
+    /// `adesso`, nei widget l'istante della voce: alla voce di mezzanotte (`VociTimeline`) «dati delle 23:30» diventa
+    /// «dati di ieri 23:30».
     static func datiSalvati(_ scaricatoIl: Date, adesso: Date) -> [String] {
-        ["dati delle \(Quando.ora(scaricatoIl))"]
+        guard !calendarioItalia.isDate(scaricatoIl, inSameDayAs: adesso) else { return ["dati delle \(Quando.ora(scaricatoIl))"] }
+        return ["dati di \(Quando.relativa(scaricatoIl, adesso: adesso))", "dati di \(Quando.giornoRelativo(scaricatoIl, adesso: adesso))"]
     }
 }
 
