@@ -62,6 +62,15 @@
       "forma": "web, tranne il tempo scaduto: sull'iPhone dice «Il server non risponde: riprova fra poco» (due frasi sole, decisione del coordinatore sul #830)",
       "chi": "**fatto** (#830): `ErroreApi` (`senzaRete`, `rete`, `timeout`, `testoRisposta`) e `ServerHTTP.traduci` in `ServerClient.swift`, `TestiSocial`, `AspettoSezione.spiegaTema`, `DatiVecchi.frase`; prove `ServerHTTPTests`, `ServerHTTPOstileTests`, `MessaggiErroreTests`, `AccessoGooglePuraTests`, `AccessoImpostazioniDalCatalogoTests`, `DatiVecchiTests` e `tests/test_testi_percorsi.py` senza il segno di difetto atteso",
       "stato": "fatto"
+    },
+    {
+      "id": 98,
+      "schermata": "Data della copia nella nota dei dati salvati (#845)",
+      "web": "con una copia salvata e un errore del server (per esempio 502 o 429) la nota dice anche di quando è la copia: «Il server non risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati)» (`comune.cache_errore` con `{giorno}` e `{ora}`, scritti con `fData` e `fOra` dall'ora della copia, in `caricaConCache` di `app.js`). Prima la nota diceva solo «(dati salvati, potrebbero non essere aggiornati)»: con una copia di giorni prima nessun punto della schermata ne diceva l'età",
+      "iphone": "prima: come la web, la striscia con il motivo e la nota senza la data della copia. Ora la stessa nota, con il giorno e l'ora della copia nell'ora italiana («17 nov alle 10:05»), anche con il telefono su un altro fuso; la frase senza motivo («Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il …») resta com'era",
+      "forma": "web",
+      "chi": "**fatto** (#845): `DatiVecchi.frase(salvatiIl:motivo:)` prende la data della copia (`Date`); prove `DatiVecchiTests` (stesso istante e stessa frase della web) e `tests/browser/test_copia_salvata.py`",
+      "stato": "fatto"
     }
   ]
 }

@@ -1,0 +1,11 @@
+{
+  "titolo": "Dati salvati: la riga in alto dice di quando sono",
+  "voci": [
+    "Formazione e Giornate, quando il server risponde con un errore e vedi i dati salvati sul dispositivo: la riga in alto dice anche il giorno e l'ora di quei dati, per esempio «Il server non risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati)». Prima non diceva di quando erano. Lo stesso nell'app per iPhone.",
+    "App per iPhone: il tema scelto in Impostazioni › Aspetto (Chiaro o Scuro) vale anche per la schermata di accesso e per il primo avvio. Prima lì l'app seguiva sempre il chiaro o lo scuro del telefono."
+  ],
+  "tecnico": [
+    "Catalogo: comune.cache_errore ha i segnaposto {giorno} e {ora} (italiano e inglese). Web: caricaConCache li scrive con fData e fOra dall'ora della copia salvata (salvata.quando), non da adesso. iPhone: DatiVecchi.frase(salvatiIl:motivo:) prende la data della copia (Date) e scrive giorno e ora nell'ora italiana, come la web. Nessuna rotta né campo dell'API cambia.",
+    "iPhone: il tema di Impostazioni › Aspetto si applica alla radice (PortaDiAccesso), quindi vale anche per accesso, primo avvio e codice di recupero; nelle foto del simulatore l'argomento -DEMO_ASPETTO dà l'aspetto del giro (ios/scripts/screenshot.sh)."
+  ]
+}

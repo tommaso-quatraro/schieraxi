@@ -14,16 +14,27 @@ enum DatiVecchi {
         return errore is URLError
     }
 
-    /// La frase della striscia. `motivo` nil = server non raggiungibile; altrimenti il messaggio dell'errore (già in italiano), in
-    /// testa e con la nota fra parentesi come la web nello stesso caso (`comune.cache_errore` in `app.js`, #830): così un motivo
-    /// come «Il server non risponde: riprova fra poco» non finisce dopo altri due punti, con la maiuscola a metà frase.
+    /// La frase della striscia, con `data` il momento in cui è stata salvata la copia. `motivo` nil = server non raggiungibile;
+    /// altrimenti il messaggio dell'errore (già in italiano), in testa e con la nota fra parentesi come la web nello stesso caso
+    /// (`comune.cache_errore` in `app.js`, #830): così un motivo come «Il server non risponde: riprova fra poco» non finisce dopo
+    /// altri due punti, con la maiuscola a metà frase. Nella nota il giorno e l'ora della copia, ora italiana, scritti come
+    /// `fData` e `fOra` della web: «dati salvati il 17 nov alle 10:05» (#845).
     static func frase(salvatiIl data: Date, motivo: String?) -> String {
         guard let m = motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty else {
             let quando = data.formatted(date: .abbreviated, time: .shortened)
             return "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(quando) e può essere vecchio."
         }
-        return Catalogo.Comune.cacheErrore(errore: m)
+        return Catalogo.Comune.cacheErrore(errore: m, giorno: giornoEMese.string(from: data), ora: Quando.ora(data))
     }
+
+    /// «17 nov», ora italiana: come `fData` della web.
+    private static let giornoEMese: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.timeZone = TimeZone(identifier: "Europe/Rome")
+        f.dateFormat = "d MMM"
+        return f
+    }()
 
     /// Dopo quanto tempo fuori dall'app, tornando, si ricarica tutto (anche dopo la mezzanotte, comunque).
     static let sogliaRitorno: TimeInterval = 10 * 60
