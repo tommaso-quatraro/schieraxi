@@ -2363,9 +2363,6 @@ $("#campo-cerca").addEventListener("keydown", ev => {
 
 // Numeri con la virgola in italiano, con il punto nelle altre lingue.
 const virgola = x => (LINGUA === "it" ? String(x).replace(".", ",") : String(x));
-// Il plurale scelto sul numero come è scritto (#833): il singolare solo per «1»; «1,0» e «1.0» vogliono il plurale come «1,5»
-// (prima «1,0 punto in più»). Come `regPunti`.
-const tpScritto = (chiave, scritto, valori) => t(`${chiave}.${scritto === "1" ? "one" : "other"}`, valori);
 // Giornate > «Dettagli» della riga sulla precisione (campo `precisione` di /api/diario, fanta/precisione.py): i numeri con una frase,
 // l'andamento giornata per giornata e l'avviso se i dati sono pochi. Tutto viene dal server; si mostra anche quando va male.
 // Numeri dal server (passati da Number) e, per la riga su tutta la Serie A, una frase del server passata da esc(); niente innerHTML.
@@ -2377,6 +2374,9 @@ function dettagliPrecisione(p, conConfronto) {
   if (!p || !p.giornate) return "";
   const n = x => (x == null || !isFinite(Number(x)) ? null : Number(x));
   const v = x => (n(x) == null ? "–" : virgola(n(x).toFixed(1)));
+  // il plurale scelto sul numero come è scritto da `v` (#833): il singolare solo per «1», e `v` scrive sempre un decimale, quindi
+  // «1,0 punti» come «1,5 punti» (prima «1,0 punto in più»). Come `regPunti`
+  const tpScritto = (chiave, scritto, valori) => t(`${chiave}.${scritto === "1" ? "one" : "other"}`, valori);
   const suDieci = pct => Math.round((n(pct) || 0) / 10);
   const pg = p.per_giornata || [];
   const nomeG = g => nomeGiornata(g.giornata_lega, g.giornata);
