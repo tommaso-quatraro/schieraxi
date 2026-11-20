@@ -76,7 +76,7 @@ enum ParoleRegistro {
         }
     }
 
-    /// Sotto il nome: la media e la soglia (più i due errori per il fantavoto, il punteggio di Brier per «gioca N%»).
+    /// Sotto il nome: la media e la soglia (più i due errori per il fantavoto, l'errore medio delle percentuali per «gioca N%»).
     static func dettaglio(_ misura: Misura, di r: StatoDati.Registro) -> String {
         let s = r.soglie
         switch misura {
@@ -84,8 +84,8 @@ enum ParoleRegistro {
             return Catalogo.Sd.regI1Riga(f: Formato.decimali(r.erroreFantamedia, cifre: 2), m: Formato.decimali(r.erroreModello, cifre: 2),
                                          s: percento(s?.i1, segno: true), v: percento(r.i1, segno: true))
         case .gioca:
-            return Catalogo.Sd.regI2Riga(b: Formato.decimali(r.brier, cifre: 3), c: punti(r.calibrazione, per: 100),
-                                         sb: Formato.decimali(s?.i2Brier, cifre: 3), sc: cifra(s?.i2Calibrazione, per: 100))
+            return Catalogo.Sd.regI2Riga(c: punti(r.calibrazione, per: 100), e: errore(r.erroreMedio),
+                                         sc: cifra(s?.i2Calibrazione, per: 100), se: errore(s?.i2ErroreMedio))
         case .fascia:
             return Catalogo.Sd.regI3Riga(max: percento(s?.i3Massimo), min: percento(s?.i3Minimo), v: percento(r.copertura))
         }
@@ -112,6 +112,12 @@ enum ParoleRegistro {
     static func punti(_ x: Double?, per: Double = 1) -> String {
         let testo = cifra(x, per: per)
         return testo == "1" ? "1 punto" : testo + " punti"
+    }
+
+    /// L'errore medio delle percentuali di «gioca N%» in punti, già calcolato dal server (#821), con due cifre come `regErrore`
+    /// della web: 31,62 → «31,62», 30,2 → «30,20»; «–» se manca (l'app non lo ricava dal Brier).
+    static func errore(_ x: Double?) -> String {
+        Formato.decimali(x, cifre: 2)
     }
 
     /// Una quota come percentuale, come `regPerc` della web: 0,057 → «5,7%», −0,03 con il segno → «−3%».

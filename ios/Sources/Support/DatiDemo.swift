@@ -770,11 +770,12 @@ private extension LegaDemo {
 
     /// La taratura di «gioca N%» con le probabili (#379) come la manda il server: accesa da due giorni, dopo le 8 giornate del
     /// registro (4 per tarare, 4 per provare). Prima si mostravano i numeri misurati dal registro, con lo stesso Brier (0,128).
-    /// Numeri inventati.
+    /// Gli errori medi sono quelli che il server ricava dai Brier (`taratura_probabili.errore_medio`, #821). Numeri inventati.
     private static func taraturaProbabili(adesso: Date) -> [String: Any] {
         ["stato": "attiva", "giornate": 8, "minimo": 4, "versione": 1, "motivo": NSNull(),
          "dal": formatta(adesso.addingTimeInterval(-2 * 86_400), "yyyy-MM-dd'T'HH:mm:ss"),
-         "prova": ["giornate": 4, "brier": 0.1194, "brier_prima": 0.1307, "brier_mostrati": 0.128, "calibrazione": 0.021]]
+         "prova": ["giornate": 4, "brier": 0.1194, "brier_prima": 0.1307, "brier_mostrati": 0.128, "calibrazione": 0.021,
+                   "errore_medio": 34.55, "errore_medio_prima": 36.15]]
     }
 
     /// Gli indicatori del consiglio di formazione (#366) come li manda il server: 8 giornate (dalla 3 alla 10) su 3 utenti; non regge
@@ -808,9 +809,10 @@ private extension LegaDemo {
         }
         return [
             "finestra": 8, "giornate": 8, "verdetto": true,
-            "soglie": ["I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88],
-            "errore_modello": 2.38, "errore_fantamedia": 2.52, "i1": -0.056, "brier": 0.128, "calibrazione": 0.034, "copertura": 0.69,
-            "regge": ["I1": true, "I2": true, "I3": false], "fuori": ["I3"], "per_giornata": righe,
+            "soglie": ["I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I2_errore_medio": 38.73, "I3_minimo": 0.72,
+                       "I3_massimo": 0.88],
+            "errore_modello": 2.38, "errore_fantamedia": 2.52, "i1": -0.056, "brier": 0.128, "errore_medio": 35.78, "calibrazione": 0.034,
+            "copertura": 0.69, "regge": ["I1": true, "I2": true, "I3": false], "fuori": ["I3"], "per_giornata": righe,
         ]
     }
 

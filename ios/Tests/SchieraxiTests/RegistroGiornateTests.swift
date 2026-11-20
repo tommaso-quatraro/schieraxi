@@ -27,12 +27,14 @@ struct RegistroGiornateTests {
         #expect(r.erroreModello == 1.0)
         #expect(r.erroreFantamedia == 1.061)
         #expect(r.brier == 0.1)
+        #expect(r.erroreMedio == 31.62)
         #expect(r.calibrazione == 0.1)
         #expect(r.copertura == 0.8)
         let soglie = try #require(r.soglie)
         #expect(soglie.i1 == 0.01)
         #expect(soglie.i2Calibrazione == 0.05)
         #expect(soglie.i2Brier == 0.15)
+        #expect(soglie.i2ErroreMedio == 38.73)
         #expect(soglie.i3Minimo == 0.72)
         #expect(soglie.i3Massimo == 0.88)
         let regge = try #require(r.regge)
@@ -58,8 +60,24 @@ struct RegistroGiornateTests {
     func dettagli() throws {
         let r = try registro()
         #expect(ParoleRegistro.dettaglio(.fantavoto, di: r) == "−5,7% (deve stare a +1% o meno) · errore 1,00 contro 1,06")
-        #expect(ParoleRegistro.dettaglio(.gioca, di: r) == "scarto 10 punti (al massimo 5) · punteggio di Brier 0,100 (al massimo 0,150)")
+        #expect(ParoleRegistro.dettaglio(.gioca, di: r)
+                == "scarto 10 punti (al massimo 5) · errore medio delle percentuali 31,62 punti (al massimo 38,73)")
         #expect(ParoleRegistro.dettaglio(.fascia, di: r) == "80% (deve stare tra 72% e 88%)")
+    }
+
+    /// #821: l'errore medio delle percentuali lo calcola il server; uno di prima manda solo il Brier e l'app non fa la radice da sé.
+    @Test("Server vecchio senza errore medio: «–», mai il Brier")
+    func senzaErroreMedio() throws {
+        let json = "{\"stagione\":\"2026-27\",\"registro\":{\"finestra\":8,\"giornate\":8,\"verdetto\":true,"
+            + "\"soglie\":{\"I2_calibrazione\":0.05,\"I2_brier\":0.15},\"brier\":0.1,\"calibrazione\":0.1}}"
+        let s: StatoDati = try Decodifica.decodifica(Data(json.utf8))
+        let r = try #require(s.registro)
+        #expect(r.erroreMedio == nil)
+        #expect(r.soglie?.i2ErroreMedio == nil)
+        #expect(ParoleRegistro.dettaglio(.gioca, di: r)
+                == "scarto 10 punti (al massimo 5) · errore medio delle percentuali – punti (al massimo –)")
+        #expect(ParoleRegistro.errore(30.2) == "30,20")
+        #expect(ParoleRegistro.errore(.nan) == "–")
     }
 
     @Test("Regge o non regge come dice il server")
@@ -113,10 +131,12 @@ struct RegistroGiornateTests {
         #expect(ParoleRegistro.punti(0, per: 100) == "0 punti")
         #expect(ParoleRegistro.punti(nil, per: 100) == "– punti")
         let json = "{\"stagione\":\"2026-27\",\"registro\":{\"finestra\":8,\"giornate\":8,\"verdetto\":true,"
-            + "\"soglie\":{\"I2_calibrazione\":0.05,\"I2_brier\":0.15},\"brier\":0.1,\"calibrazione\":0.01}}"
+            + "\"soglie\":{\"I2_calibrazione\":0.05,\"I2_brier\":0.15,\"I2_errore_medio\":38.73},\"brier\":0.1,\"errore_medio\":31.62,"
+            + "\"calibrazione\":0.01}}"
         let s: StatoDati = try Decodifica.decodifica(Data(json.utf8))
         let r = try #require(s.registro)
-        #expect(ParoleRegistro.dettaglio(.gioca, di: r) == "scarto 1 punto (al massimo 5) · punteggio di Brier 0,100 (al massimo 0,150)")
+        #expect(ParoleRegistro.dettaglio(.gioca, di: r)
+                == "scarto 1 punto (al massimo 5) · errore medio delle percentuali 31,62 punti (al massimo 38,73)")
     }
 
     @Test("Le giornate perse con il motivo del server")
@@ -158,7 +178,7 @@ struct RegistroGiornateTests {
         let r = try registro()
         #expect(Catalogo.Sd.regI1Riga(f: "1,06", m: "1,00", s: "+1%", v: "−5,7%") == ParoleRegistro.dettaglio(.fantavoto, di: r))
         let dieci = try riempi(web.italiano("sd.reg_punti.other"), ["n": "10"])
-        #expect(Catalogo.Sd.regI2Riga(b: "0,100", c: dieci, sb: "0,150", sc: "5") == ParoleRegistro.dettaglio(.gioca, di: r))
+        #expect(Catalogo.Sd.regI2Riga(c: dieci, e: "31,62", sc: "5", se: "38,73") == ParoleRegistro.dettaglio(.gioca, di: r))
         let unPunto = try riempi(web.italiano("sd.reg_punti.one"), ["n": "1"])
         #expect(unPunto == ParoleRegistro.punti(0.01, per: 100))
         #expect(Catalogo.Sd.regI3Riga(max: "88%", min: "72%", v: "80%") == ParoleRegistro.dettaglio(.fascia, di: r))
