@@ -3088,7 +3088,7 @@
   },
   "/api/formazione/metti-in-campo": {
    "post": {
-    "description": "«Metti in campo» (#643): chi può lasciare il posto a `entra`, un giocatore della tua rosa che non è fra i `titolari` in pagina.\nStesso ruolo, oppure un altro ruolo se il modulo che ne esce è ammesso dalla lega; per ognuno il modulo dopo il cambio e la\ndifferenza di punti attesi. Non scrive niente: il cambio scelto si salva con POST /api/formazione/valuta.",
+    "description": "«Metti in campo» (#643): chi può lasciare il posto a `entra`, un giocatore della tua rosa che non è fra i `titolari` in pagina.\nStesso ruolo, oppure un altro ruolo se il modulo che ne esce è ammesso dalla lega; per ognuno il modulo e i punti attesi della\nformazione dopo il cambio, e la differenza da quella di adesso. Non scrive niente: il cambio scelto si salva con POST\n/api/formazione/valuta.",
     "requestBody": {
      "content": {
       "application/json": {

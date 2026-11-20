@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from . import etichette
+from . import frasi
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
 from .punteggio import modulo_valido
 
@@ -79,21 +79,20 @@ def controlla_bloccati(fermi, prima, nuovi, nomi: dict[int, str]) -> None:
 
 
 # ---------------------------------------------------------------- «Metti in campo» (#643)
-NON_ENTRANO = ("infortunato", "squalificato")      # stato del giocatore (etichette.codice) che non si mette in campo
-
-
-def chi_lascia_il_posto(entra: int, titolari, schede: dict, regole, fermi=()) -> list[dict]:
+def chi_lascia_il_posto(entra: int, titolari, schede: dict, regole, fermi, punti) -> list[dict]:
     """Chi può lasciare il posto a `entra`, un giocatore delle `schede` della Formazione ({id: scheda}) che non è fra i `titolari`:
     i titolari che, tolti per far entrare lui, lasciano una formazione schierabile per la regola unica della scelta
     (`motivo_non_valida`: lo stesso ruolo, oppure un altro modulo ammesso dalla lega). Per ognuno {esce, modulo, cambia_modulo,
-    differenza}: il modulo dopo il cambio e i punti attesi di chi entra meno quelli di chi esce (lo stesso numero di «Sostituisci»
-    dalla scheda del titolare, con il segno girato), il cambio migliore in cima. Vuoto se `entra` è già titolare, non è nelle
-    schede, è fra i `fermi` (anticipo già cominciato, `bloccati`), infortunato o squalificato; i fermi non escono."""
+    punteggio_atteso, differenza}: il modulo e i punti attesi della formazione dopo il cambio, e quanto vale in più o in meno
+    della formazione di adesso. `punti(ids)` valuta una formazione (la rotta usa `consigli.valuta`, quella di POST
+    /api/formazione/valuta): conta la formazione intera, panchina compresa, non il confronto fra i due giocatori. La differenza è
+    quella dei due numeri scritti (`frasi.differenza`); in cima il cambio che rende di più. Gli stessi giocatori che «Sostituisci»
+    propone: vuoto se `entra` è già titolare, non è nelle schede o è fra i `fermi` (anticipo già cominciato, `bloccati`), che non
+    escono nemmeno; infortunati e squalificati entrano, come fra i sostituti."""
     sch = {int(k): x for k, x in schede.items() if isinstance(x, dict)}
     dentro = [int(i) for i in titolari]
     fermi = {int(i) for i in fermi}
-    nuovo = sch.get(int(entra))
-    if nuovo is None or int(entra) in dentro or int(entra) in fermi or etichette.codice(nuovo) in NON_ENTRANO:
+    if int(entra) not in sch or int(entra) in dentro or int(entra) in fermi:
         return []
     ruoli = {i: x.get("ruolo") for i, x in sch.items()}
     modulo = lambda ids: "-".join(str(sum(1 for i in ids if ruoli[i] == r)) for r in "DCA")     # noqa: E731
@@ -103,8 +102,12 @@ def chi_lascia_il_posto(entra: int, titolari, schede: dict, regole, fermi=()) ->
         dopo = [int(entra) if i == esce else i for i in dentro]
         if esce in fermi or motivo_non_valida(dopo, ruoli, regole):
             continue
-        uscite.append({"esce": esce, "modulo": modulo(dopo), "cambia_modulo": modulo(dopo) != prima,
-                       "differenza": round(float(nuovo["punti_attesi"]) - float(sch[esce]["punti_attesi"]), 2)})
+        uscite.append({"esce": esce, "modulo": modulo(dopo), "cambia_modulo": modulo(dopo) != prima, "dopo": dopo})
+    if uscite:
+        adesso = punti(dentro)
+        for u in uscite:
+            valore = punti(u.pop("dopo"))
+            u["punteggio_atteso"], u["differenza"] = round(float(valore), 1), float(frasi.differenza(valore, adesso))
     return sorted(uscite, key=lambda u: -u["differenza"])
 
 
