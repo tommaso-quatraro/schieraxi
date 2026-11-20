@@ -446,6 +446,29 @@ def test_esempio_di_calcolo_torna(nome):
     assert sul_campo[chi] == fv
 
 
+# Per lingua: la domanda, le voci dell'informativa che la risposta deve citare (oltre all'account) e l'inizio vietato, che
+# presenterebbe un elenco chiuso («solo questi») più corto di quello dell'informativa.
+DOMANDA_DATI = {
+    "index.html": ("Quali dati raccoglie?", ("notifiche", "indirizzo di rete", "statistiche d'uso"), "Solo"),
+    "en/index.html": ("What data does it collect?", ("notifications", "network address", "usage statistics"), "Only"),
+}
+
+
+@pytest.mark.parametrize("nome", PAGINE)
+def test_domanda_sui_dati_non_promette_meno_dell_informativa(nome):
+    """La risposta cita anche notifiche, registro con l'indirizzo di rete e statistiche d'uso (fanta/testi_legali.py) e
+    rimanda all'informativa per l'elenco completo."""
+    domanda, voci, inizio_vietato = DOMANDA_DATI[nome]
+    _, testo = leggi(nome)
+    m = re.search(r"<summary>" + re.escape(domanda) + r"</summary><p>(.*?)</p>", sezione(testo, "domande"), re.S)
+    assert m, domanda
+    risposta = senza_tag(m.group(1))
+    assert '<a href="https://app.schieraxi.it/privacy">' in m.group(1)
+    assert not risposta.startswith(inizio_vietato), risposta
+    for v in voci:
+        assert v in risposta, v
+
+
 def test_italiano_e_inglese_allineati():
     """Stessi id, stessi numeri (con la virgola o con il punto), stesse domande, stessi nomi inventati."""
     it, t_it = leggi("index.html")
