@@ -94,11 +94,11 @@
   },
   "pav.prima_uno": {
     "it": "Dalla 1ª, con il campionato",
-    "en": "From the 1st, with the championship"
+    "en": "From Serie A matchday 1, with the championship"
   },
   "pav.prima_n": {
     "it": "Dalla {n}ª",
-    "en": "From the {n}th"
+    "en": "From Serie A matchday {n}"
   },
   "pav.tempi_dove": {
     "it": "Puoi cambiarle quando vuoi in Impostazioni › Regole e scadenza.",

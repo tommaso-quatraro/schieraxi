@@ -26,8 +26,9 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from . import archivio, avvisi, consigli, fasi, incertezza
+from . import archivio, avvisi, consigli, fasi, frasi, incertezza
 from . import formazione as fz
+from .frasi import F
 from .punteggio import COLONNA_VOTO, fantavoto
 from .regole import Regole
 
@@ -65,7 +66,26 @@ BONUS_E_MALUS = ("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagliati",
 ESSENZIALI = ("partita", "ruolo", "p_voto", "mu")
 FACOLTATIVE = ("data_partita", "squadra", "mu_voto", "e_gol", "e_assist", "minuti", "stato", "percentuale", "dubbio")
 PERSA = "persa"                         # in `da_avvisare` / `avvisati` di una giornata persa
-SENZA_TENTATIVI = "nessun tentativo negli ultimi 10 minuti prima della prima partita (servizio fermo o registro spento)"
+SENZA_TENTATIVI = frasi.CATALOGO["registro.persa_senza_tentativi"]
+# Il motivo di una giornata persa per Stato dei dati (#833): una frase del catalogo («registro.*» in `frasi.CATALOGO`), scelta
+# dall'inizio del motivo tecnico che questo registro e quello dei nostri (`registro_nostri`) salvano nell'archivio. Il motivo tecnico
+# (tipo d'errore, colonne, numeri) resta com'è nell'archivio, nel log e nell'avviso al proprietario, e arriva a parte
+# (`persa_dettaglio`). Vale anche per le giornate perse prima. Un motivo nuovo vuole qui la sua riga (lo controllano le prove).
+MOTIVI_PERSA = (
+    (SENZA_TENTATIVI, "registro.persa_senza_tentativi"),
+    ("nessun tentativo prima della prima partita", "registro.nostri_senza_tentativi"),
+    ("previsioni vuote", "registro.persa_previsioni"),
+    ("nelle previsioni mancano le colonne", "registro.persa_previsioni"),
+    ("numeri nostri vuoti", "registro.persa_previsioni"),
+    ("nei numeri nostri mancano le colonne", "registro.persa_previsioni"),
+    ("previsioni non calcolate", "registro.persa_calcolo"),
+    ("numeri nostri non calcolati", "registro.persa_calcolo"),
+    ("previsioni della giornata", "registro.persa_altra_giornata"),
+    ("nessun giocatore da salvare", "registro.persa_nessun_giocatore"),
+    ("nessuno dei", "registro.persa_nessun_giocatore"),
+    ("scrittura non riuscita", "registro.persa_scrittura"),
+    ("misura non riuscita", "registro.persa_misura"),
+)
 # l'ultimo motivo per cui una giornata non si è salvata, {(stagione, giornata): motivo}, finché non si salva o diventa persa. In
 # memoria: dopo un riavvio la giornata diventa persa lo stesso, con il motivo SENZA_TENTATIVI.
 _tentativi: dict[tuple[str, int], str] = {}
@@ -130,6 +150,21 @@ def fantamedie_tirate(db: sqlite3.Connection, stagione: str, giornata: int,
 def avversario(tirate: dict[int, float], ruoli: dict[str, float], calciatore_id: int, ruolo: str) -> float:
     """La stima dell'avversario per un giocatore: la sua fantamedia tirata; senza voti la media del ruolo; senza nemmeno quella 6."""
     return tirate.get(int(calciatore_id), ruoli.get(str(ruolo), FANTAVOTO_SENZA_RUOLO))
+
+
+def motivo_persa(tecnico: str | None) -> frasi.Frase | None:
+    """La frase del catalogo per il motivo tecnico `tecnico` di una giornata persa (`MOTIVI_PERSA`); un motivo che non si riconosce ha
+    quella generica, che rimanda al log. None se la giornata non è persa."""
+    if not tecnico:
+        return None
+    return F(next((chiave for inizio, chiave in MOTIVI_PERSA if str(tecnico).startswith(inizio)), "registro.persa_altro"))
+
+
+def campi_persa(tecnico: str | None) -> dict:
+    """I campi di una giornata persa nelle risposte (#833): `persa` (la frase italiana del catalogo, None se non è persa), la sua chiave
+    (`persa_frase`, come `frasi.di`) e il motivo tecnico (`persa_dettaglio`), solo per chi gestisce il server."""
+    frase = motivo_persa(tecnico)
+    return {"persa": str(frase) if frase else None, "persa_frase": frasi.di(frase), "persa_dettaglio": tecnico or None}
 
 
 def _salvata(db: sqlite3.Connection, stagione: str, giornata: int) -> bool:
@@ -448,7 +483,8 @@ def registra_misura(db: sqlite3.Connection, stagione: str, giornata: int, m: dic
 def riepilogo(db: sqlite3.Connection) -> dict:
     """Per «Stato dei dati»: finestra, soglie, le medie delle ultime FINESTRA giornate misurate (come `medie`) e una riga per ogni
     giornata salvata o persa, dalla più recente (al massimo MOSTRATE), con i suoi numeri (None finché la giornata non è misurata) e
-    `persa` (None, o il motivo in breve se la giornata non è stata salvata in tempo). Solo giornate e numeri, niente giocatori."""
+    `persa` (None, o il motivo in breve se la giornata non è stata salvata in tempo: la frase del catalogo, con `persa_frase` e
+    `persa_dettaglio` di `campi_persa`). Solo giornate e numeri, niente giocatori."""
     per_giornata = []
     for r in _righe(db.execute("SELECT * FROM registro_giornate ORDER BY stagione DESC, giornata DESC LIMIT ?", (MOSTRATE,))):
         g = medie([r]) if r["misurato"] else {}
@@ -456,7 +492,7 @@ def riepilogo(db: sqlite3.Connection) -> dict:
             "stagione": r["stagione"], "giornata": r["giornata"], "salvato": r["salvato"], "giocatori": r["giocatori"],
             "con_probabili": bool(r["con_probabili"]), "misurato": r["misurato"], "voti": r["voti"], "presenze": r["presenze"],
             **{k: g.get(k) for k in ("errore_modello", "errore_fantamedia", "i1", "brier", "calibrazione", "copertura")},
-            "fuori": _lista(r["fuori"]), "persa": r["persa"]})
+            "fuori": _lista(r["fuori"]), **campi_persa(r["persa"])})
     return {"finestra": FINESTRA, "soglie": dict(SOGLIE), **medie(_misurate(db)), "per_giornata": per_giornata}
 
 
