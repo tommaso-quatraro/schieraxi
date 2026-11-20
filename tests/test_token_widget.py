@@ -272,8 +272,8 @@ def _cambia_email(c, posta_finta, email):
 
 
 def test_il_cambio_dell_email_chiude_il_widget_di_un_altro_dispositivo(due_utenti, posta_finta):
-    """#843: come «Cambia password» ed «Esci da tutti i dispositivi», sostituire un'email già confermata chiude il widget nato su
-    un altro dispositivo. Chi conferma resta dentro; il widget di un altro account non si tocca."""
+    """#843: sostituire un'email già confermata chiude il widget nato su un altro dispositivo (la sua sessione esce). Chi conferma
+    resta dentro; il widget di un altro account non si tocca."""
     a, b = due_utenti
     _cambia_email(a, posta_finta, "prima@example.com")                   # la prima email non chiude niente
     altro = _altro_dispositivo()
@@ -287,13 +287,30 @@ def test_il_cambio_dell_email_chiude_il_widget_di_un_altro_dispositivo(due_utent
     assert c.get("/api/widget", headers=h).status_code == 200
 
 
-def test_il_cambio_dell_email_chiude_anche_il_widget_di_chi_conferma(due_utenti, posta_finta):
-    """Un widget per account, e la stessa regola di «Cambia password»: si chiude anche quello nato dalla sessione che conferma."""
+def test_il_cambio_dell_email_tiene_il_widget_di_chi_conferma(due_utenti, posta_finta):
+    """#843: il widget nato dalla sessione che conferma resta, come resta quella sessione (l'app non ne chiederebbe un altro e il
+    widget resterebbe su «Tocca per collegare»)."""
     a, _ = due_utenti
     _cambia_email(a, posta_finta, "prima@example.com")
     t = token_di(a)
     _cambia_email(a, posta_finta, "seconda@example.com")
     c, h = widget(t)
+    assert c.get("/api/widget", headers=h).status_code == 200
+    assert a.get("/api/account/token-widget").json()["presente"] is True
+
+
+def test_il_cambio_dell_email_chiude_un_widget_senza_legame(due_utenti, posta_finta):
+    """Un token nato prima del legame con la sessione (sessione_id vuoto) si chiude anche se l'ha chiesto chi conferma: non si
+    sa di quale dispositivo sia."""
+    a, _ = due_utenti
+    _cambia_email(a, posta_finta, "prima@example.com")
+    t = token_di(a)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("UPDATE token_widget SET sessione_id = NULL")
+        db.commit()
+    c, h = widget(t)
+    assert c.get("/api/widget", headers=h).status_code == 200
+    _cambia_email(a, posta_finta, "seconda@example.com")
     assert c.get("/api/widget", headers=h).status_code == 401
     assert a.get("/api/account/token-widget").json() == {"presente": False}
 

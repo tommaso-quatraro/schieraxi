@@ -227,8 +227,8 @@ def chiedi_verifica(db: sqlite3.Connection, utente_id: int, email_grezza, passwo
 def conferma_email(db: sqlite3.Connection, utente_id: int, codice, ip: str | None = None, adesso: datetime | None = None,
                    sessione: str | None = None) -> dict:
     """Con il codice giusto l'indirizzo in attesa diventa l'email dell'account. Se prende il posto di un'altra email, gli altri
-    dispositivi escono (resta dentro solo la sessione `sessione`, quella che conferma), il token del widget si chiude come con il
-    cambio della password (#843) e il vecchio indirizzo riceve un avviso."""
+    dispositivi escono (resta dentro solo la sessione `sessione`, quella che conferma), si chiude il token del widget tranne
+    quello nato da questa sessione (#843) e il vecchio indirizzo riceve un avviso."""
     adesso = _ora(adesso)
     limite.consuma(db, _chiave("email-prove-account", utente_id), 20, account.ORA)
     if ip:

@@ -1,9 +1,9 @@
 {
-  "titolo": "Account: il cambio dell'email scollega anche il widget",
+  "titolo": "Account: il cambio dell'email scollega anche il widget degli altri dispositivi",
   "voci": [
-    "Il tuo account: quando confermi una nuova email al posto di quella di prima, oltre agli altri dispositivi si scollega anche il widget dell'iPhone, come già succede con «Cambia password» ed «Esci da tutti i dispositivi»."
+    "Il tuo account: quando confermi una nuova email al posto di quella di prima, sugli altri dispositivi si scollega anche il widget dell'iPhone, oltre all'accesso. Il widget del telefono con cui confermi resta collegato (se è stato collegato prima del 20 novembre 2026 si scollega anche quello)."
   ],
   "tecnico": [
-    "account.esci_da_tutti cancella la riga di token_widget dell'utente anche con tranne (unico chiamante: account_email.conferma_email, quando l'email confermata prende il posto di un'altra). La riga è una per account: si chiude chiunque l'abbia chiesta, anche la sessione che conferma, come con il cambio della password. Dopo il cambio, /api/oggi, /api/widget e /api/live con quel token rispondono 401. Nessun campo dell'API cambia; docs/API.md (punto 5 e riga di POST /api/account/email/conferma) e docs/RIFERIMENTO.md aggiornati."
+    "account.esci_da_tutti con tranne (unico chiamante: account_email.conferma_email, quando l'email confermata prende il posto di un'altra) cancella la riga di token_widget dell'utente se sessione_id è vuoto o diverso dalla sessione che resta aperta. Senza tranne (cambio password, esci da tutti, recupero) si cancella come prima qualunque token. Dopo il cambio, /api/oggi, /api/widget e /api/live con un token chiuso rispondono 401. Nessun campo dell'API cambia; docs/API.md (punto 5 e riga di POST /api/account/email/conferma) e docs/RIFERIMENTO.md aggiornati."
   ]
 }
