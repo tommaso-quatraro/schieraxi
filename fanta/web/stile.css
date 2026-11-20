@@ -186,11 +186,7 @@ main { padding: 8px 16px 0; padding-top: calc(env(safe-area-inset-top) + 8px); m
 main > .capo-pagina { animation: none; }                    /* il titolo resta fermo quando la schermata si ridisegna */
 #titolo-pagina { margin: 0; min-height: 44px; display: flex; align-items: center; padding-right: var(--posto-bottoni);
   font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; line-height: 1.1;
-  overflow-wrap: anywhere; text-wrap: balance; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; }
-/* hyphens (#779): con il testo molto ingrandito (195 px di larghezza) un nome lungo nel titolo va a capo con il trattino dove il
-   browser sa sillabare (la lingua è quella di <html lang>), invece di spezzarsi a caso; dove non sa, resta overflow-wrap. Anche il
-   titolo della scheda; le pedine lo fanno già (più sotto), il nome nelle righe dei giocatori ci sta. Solo le parole da 10 lettere in
-   su: una parola corta va intera alla riga dopo. */
+  overflow-wrap: anywhere; text-wrap: balance; }
 #titolo-pagina:focus { outline: none; }
 .stato-pagina { margin: 2px 0 0; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.45; overflow-wrap: anywhere; }
 .stato-pagina:empty { display: none; }
@@ -508,7 +504,14 @@ details[open] > summary { margin-bottom: 8px; }
 /* scheda (pannello o foglio, spec §9): volto da 56 px, nome in Archivo 32; sotto il fantavoto atteso come numero eroe e «gioca N%»
    come seconda cifra, separate da un filo (.cifre-oggi, nella sezione della Formazione) */
 .intestazione-scheda { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-bottom: 14px; }
-.intestazione-scheda h2 { margin: 0 0 2px; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; line-height: 1.1; overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto; hyphenate-limit-chars: 10 4 4; }
+.intestazione-scheda h2 { margin: 0 0 2px; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; line-height: 1.1; overflow-wrap: anywhere; }
+/* Testo molto ingrandito (#779: 195 px di larghezza, cioè 390 px con lo zoom al 200%): un nome lungo nel titolo della pagina o della
+   scheda va a capo con il trattino dove il browser sa sillabare (la lingua è quella di <html lang>), invece di spezzarsi a caso; dove
+   non sa, resta overflow-wrap. Solo sotto i 300 px: a larghezza normale i titoli vanno a capo come prima. Le pedine lo fanno già
+   (più sotto); il nome nelle righe dei giocatori ci sta. */
+@media (max-width: 299.98px) {
+  #titolo-pagina, .intestazione-scheda h2 { -webkit-hyphens: auto; hyphens: auto; }
+}
 .intestazione-scheda .avatar-anello.grande-a { --d: 56px; }
 .cifre-scheda { margin: 10px 0 4px; align-items: last baseline; }   /* i due numeri sulla stessa riga di base */
 .cifre-scheda .enorme { margin: 2px 0 0; }

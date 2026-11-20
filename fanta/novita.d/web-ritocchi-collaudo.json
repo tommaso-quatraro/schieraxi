@@ -14,6 +14,6 @@
     "POST /api/aggiorna: se aggiorna.fonti_accese() è vuota (fantacalcio, understat e footballdata solo con fonti_ombra) risponde {\"avviato\": false, \"messaggio\": NESSUNA_FONTE} prima di prendere i blocchi; traduzione srv.aggiorna_nessuna_fonte. Nessun campo nuovo. Contratto in docs/API.md.",
     "Web, Errori recenti: plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori, errori.lenta_riga; tempi con num(); ore con toLocaleString e timeZone Europe/Rome; nomi errori.evento_<tipo> (tests/test_eventi_sicurezza_catalogo.py li vuole per ogni evento scritto dal server).",
     "Catalogo: regole.prima_giornata_conta senza numero; sei testi con «Impostazioni › …» (test_testi_percorsi.py); scambio.costo_quot sostituita da scambio.costo_n e scambio.quotazione_n; tolta lega.la_tua. Catalogo Swift rigenerato (cambia solo il testo di due costanti).",
-    "Web: vistaAltreSquadre e il conteggio di Impostazioni senza la squadra mia (stato.squadre resta intero); immaginiRosa; dopo esciDaTutti un segno in sessionStorage letto una volta da controllaAccesso; hyphens: auto (con hyphenate-limit-chars: 10 4 4) su #titolo-pagina e .intestazione-scheda h2."
+    "Web: vistaAltreSquadre e il conteggio di Impostazioni senza la squadra mia (stato.squadre resta intero); immaginiRosa; dopo esciDaTutti un segno in sessionStorage letto una volta da controllaAccesso; hyphens: auto su #titolo-pagina e .intestazione-scheda h2 solo sotto i 300 px (@media (max-width: 299.98px))."
   ]
 }
