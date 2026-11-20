@@ -25,6 +25,11 @@ extension Catalogo {
         /// `oggi.punti_attesi`
         static let puntiAttesi = "punti attesi"
 
+        /// `oggi.dubbi.one`, `oggi.dubbi.other`
+        static func dubbi(_ n: Int) -> String {
+            n == 1 ? "\(n) dubbio" : "\(n) dubbi"
+        }
+
         /// `oggi.calendario_no`
         static let calendarioNo = "Calendario non disponibile"
 

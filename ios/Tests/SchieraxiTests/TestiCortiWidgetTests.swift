@@ -1,5 +1,7 @@
 import Foundation
+import SwiftUI
 import Testing
+import UIKit
 @testable import Schieraxi
 
 /// I testi dei widget che si accorciano quando non c'è spazio (testo grande, iPad, schermata di blocco): dalla forma più lunga
@@ -9,11 +11,40 @@ import Testing
 struct TestiCortiWidgetTests {
     // MARK: forme semplici
 
-    @Test("«4 da controllare» diventa «4»; senza dubbi «titolari a posto» diventa «a posto»")
+    @Test("«4 da controllare» diventa «4 dubbi», poi «4»; senza dubbi «titolari a posto» diventa «a posto»")
     func daControllare() {
-        #expect(ParoleWidget.daControllare(4) == ["4 da controllare", "4"])
-        #expect(ParoleWidget.daControllare(1) == ["1 da controllare", "1"])
+        #expect(ParoleWidget.daControllare(4) == ["4 da controllare", "4 dubbi", "4"])
+        #expect(ParoleWidget.daControllare(1) == ["1 da controllare", "1 dubbio", "1"])
         #expect(ParoleWidget.daControllare(0) == ["titolari a posto", "a posto"])
+    }
+
+    @Test("La forma di mezzo è la frase del catalogo (`oggi.dubbi`), con il plurale giusto")
+    func daControllareDalCatalogo() {
+        for n in [1, 2, 12] {
+            #expect(ParoleWidget.daControllare(n).dropFirst().first == Catalogo.Oggi.dubbi(n), "\(n)")
+        }
+    }
+
+    /// Con il testo grande il medio della Formazione mostrava solo «⚠ 2», che da solo non si capisce (#848): «2 da controllare»
+    /// non entra nella colonna di sinistra. La forma di mezzo dice ancora cosa c'è da controllare ed entra. Misura vera del
+    /// testo, con il simbolo e il carattere dell'etichetta del widget (`caption2`), a testo XXXL: nelle foto del widget con il
+    /// testo grande il carattere è più piccolo, quindi qui c'è margine. `ImageRenderer` disegna la misura ideale, su una riga.
+    @MainActor
+    @Test("Con il testo grande «2 dubbi» entra nella colonna del medio della Formazione, «2 da controllare» no")
+    func formaDiMezzoEntraNelMedio() throws {
+        func larghezza(_ testo: String) -> CGFloat {
+            let disegno = ImageRenderer(content: Label(testo, systemImage: "exclamationmark.triangle.fill")
+                .font(.caption2).lineLimit(1).dynamicTypeSize(.xxxLarge))
+            disegno.scale = 1
+            return disegno.uiImage?.size.width ?? 0
+        }
+        let colonna = DisposizioneWidget.colonnaMedioFormazione
+        let due = ParoleWidget.daControllare(2), dodici = ParoleWidget.daControllare(12)
+        try #require(due.count == 3 && dodici.count == 3, "serve una forma fra la frase intera e il solo numero")
+        #expect(larghezza(due[0]) > colonna, "la frase intera non entra: per questo serve la forma di mezzo")
+        #expect(larghezza(due[1]) > 0)
+        #expect(larghezza(due[1]) < colonna)
+        #expect(larghezza(dodici[1]) < colonna)
     }
 
     @Test("Lo stato di un giocatore si accorcia come la pillola del campo: «gioca 70%»")

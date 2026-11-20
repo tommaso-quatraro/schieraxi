@@ -895,6 +895,10 @@ enum DisposizioneWidget {
     /// del normale (con due righe i nomi si sovrapponevano). Gli altri restano in «e altri N».
     static func righeDubbi(_ testo: DynamicTypeSize) -> Int { testo >= .xLarge ? 1 : 2 }
 
+    /// La larghezza massima della colonna di sinistra (modulo, punti attesi, righe in basso) del widget medio della Formazione:
+    /// il resto è del campo. Con il testo grande «2 da controllare» non ci sta e resta la forma corta (#848).
+    static let colonnaMedioFormazione: CGFloat = 120
+
     /// Le file del campo nei widget Formazione, dall'alto: attaccanti, centrocampisti, difensori, portiere in basso. È il verso del
     /// campo dell'app (`CampoFormazione.file`, che il widget non compila: li confronta un test) e della web (#787).
     static let fileCampo = ["A", "C", "D", "P"]
