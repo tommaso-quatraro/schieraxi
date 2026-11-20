@@ -212,6 +212,9 @@ private struct RispostaOk: Decodable {
 
 /// Il conto alla rovescia dopo un «troppi tentativi» (429): quanti secondi mancano, e si ferma a zero.
 enum AttesaRiprova {
+    /// Il pulsante dell'accesso conta al massimo un'ora; un'attesa più lunga la dice la frase, come la web.
+    static let massimoConto = 3600
+
     static func secondiRimasti(fino: Date, adesso: Date = Date()) -> Int {
         max(0, Int(fino.timeIntervalSince(adesso).rounded(.up)))
     }

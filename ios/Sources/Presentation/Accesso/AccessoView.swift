@@ -344,7 +344,7 @@ struct SchermataAccesso: View {
             // Se nel frattempo si è cambiato passo, l'errore non c'entra più con quello che si vede.
             guard passoInvio == modulo.passo else { return }
             if case ErroreApi.troppiTentativi(_, let attesa) = error, let attesa, attesa > 0 {
-                attesaFinoA = Date().addingTimeInterval(TimeInterval(min(attesa, 3600)))
+                attesaFinoA = Date().addingTimeInterval(TimeInterval(min(attesa, AttesaRiprova.massimoConto)))
             }
             // con il pulsante che conta la frase non dice i secondi (#787)
             errore = Self.fraseDopoInvio(error)
@@ -387,12 +387,14 @@ struct SchermataAccesso: View {
         }
     }
 
-    /// La frase sopra il pulsante dopo un errore dell'invio. Dopo un «troppi tentativi» con l'attesa il pulsante conta da solo
-    /// («Riprova tra 35 s»): la frase non dice il numero, che resterebbe fermo accanto a quello che scende (#787). Resta la frase
-    /// del server senza l'invito a riprovare («Troppi tentativi sbagliati.»). Negli altri casi, e se della frase non resta niente,
+    /// La frase sopra il pulsante dopo un errore dell'invio. Dopo un «troppi tentativi» con un'attesa fino a un'ora il pulsante
+    /// conta da solo («Riprova tra 35 s»): la frase non dice il numero, che resterebbe fermo accanto a quello che scende (#787).
+    /// Resta la frase del server senza l'invito a riprovare («Troppi tentativi sbagliati.»). Oltre l'ora il pulsante non conta
+    /// tutto e la frase tiene il tempo, come la web («Riprova tra 20 h»). Negli altri casi, e se della frase non resta niente,
     /// `testoErrore`; fuori dall'accesso, dove nessun pulsante conta, il tempo resta nella frase (`ErroreApi.errorDescription`).
     static func fraseDopoInvio(_ errore: Error) -> String {
-        if case ErroreApi.troppiTentativi(let messaggio, let attesa) = errore, let attesa, attesa > 0 {
+        if case ErroreApi.troppiTentativi(let messaggio, let attesa) = errore, let attesa, attesa > 0,
+           attesa <= AttesaRiprova.massimoConto {
             let frase = ErroreApi.senzaInvitoARiprovare(messaggio)
             if frase.count > 1 { return frase }
         }
