@@ -343,14 +343,19 @@ enum AnteprimaLogica {
         return r.avvisi.filter { !diSquadra.contains($0) }
     }
 
+    /// Le squadre tra cui scegliere la propria, come `nomiMia` della web: quelle lette e, per prima, quella suggerita dal server se
+    /// non è nel file (si aggiornano solo le rose degli altri: la propria resta com'era, #808).
     static func nomiMia(_ r: AnteprimaRose) -> [String] {
-        r.squadre.map(\.nome)
+        let nomi = r.squadre.map(\.nome)
+        guard let suggerita = r.miaSquadra, !suggerita.isEmpty, !nomi.contains(suggerita) else { return nomi }
+        return [suggerita] + nomi
     }
 
-    /// La squadra dell'utente da mostrare scelta: quella già decisa, altrimenti il suggerimento del server; vuota se non è tra le lette.
+    /// La squadra dell'utente da mostrare scelta: quella già decisa, altrimenti il suggerimento del server; vuota se non è tra quelle
+    /// che si possono scegliere (`nomiMia`).
     static func mia(decisa: String?, _ r: AnteprimaRose) -> String {
         let candidata = decisa ?? r.miaSquadra ?? ""
-        return r.squadre.contains { $0.nome == candidata } ? candidata : ""
+        return nomiMia(r).contains(candidata) ? candidata : ""
     }
 
     /// Le differenze si mostrano solo se c'era già qualcosa e qualcosa cambia.

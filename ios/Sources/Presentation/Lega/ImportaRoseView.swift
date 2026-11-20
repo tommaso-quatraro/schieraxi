@@ -206,7 +206,8 @@ struct AnteprimaRoseVista: View {
         Carta(Catalogo.Ar.qualETua, simbolo: "star") {
             Picker(Catalogo.Ar.qualETua, selection: $vm.mia) {
                 Text("Scegli dopo").tag("")
-                ForEach(anteprima.squadre) { Text($0.nome).tag($0.nome) }
+                // anche la squadra suggerita dal server che non è nel file, per prima e già scelta (come la web, #808)
+                ForEach(AnteprimaLogica.nomiMia(anteprima), id: \.self) { Text($0).tag($0) }
             }
             .pickerStyle(.menu)
             .tint(Color.verde)
