@@ -146,7 +146,7 @@ def test_passata_all_inglese_senza_rete_la_formazione_resta_con_la_copia_di_prim
     assert campo(web).count() == 11, f"senza rete la Formazione non mostra la copia: {testo[:300]}"
     riprova = principale(web).get_by_role("button", name="Try again")
     assert riprova.count() == 1 and riprova.is_visible(), testo[:300]
-    assert principale(web).get_by_label("Formation", exact=True).is_disabled(), "sulla copia i comandi che scrivono sono spenti"
+    assert principale(web).get_by_label("Formation").is_disabled(), "sulla copia i comandi che scrivono sono spenti"
     _riprova_con_la_rete(web, rete, "Try again")
     testo = _testo(web)
     assert campo(web).count() == 11 and "Doubtful" in testo and "In dubbio" not in testo, testo[:300]
