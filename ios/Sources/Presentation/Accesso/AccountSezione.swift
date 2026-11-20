@@ -170,7 +170,8 @@ struct AccountSezione: View {
 
     var body: some View {
         if sessione.multiutente, let utente = sessione.utente {
-            Section(titolo: Catalogo.Imp.account) {
+            // senza titolo: «Il tuo account» è già il titolo della pagina (`AccountPagina`), e la scheda della web non ne ha (#787)
+            Section {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(utente.nome).font(.headline)
                     Text(TestiAccount.ruoloEData(ruolo: utente.ruolo, creato: utente.creato))
