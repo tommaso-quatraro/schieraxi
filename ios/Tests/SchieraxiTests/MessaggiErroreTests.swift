@@ -20,6 +20,13 @@ final class MessaggiErroreTests: XCTestCase {
         XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.rete("x")), ErroreApi.testoNonRaggiungibile)
     }
 
+    /// #771: il 412 (dati cambiati da un altro dispositivo) dice la frase della web, `err.conflitto` del catalogo comune, non una
+    /// frase scritta a mano nell'app. `localizedDescription` è quello che mostrano le schermate (per esempio la Formazione).
+    func testIl412HaLaFraseDelCatalogoComeLaWeb() {
+        XCTAssertEqual(ErroreApi.conflitto.errorDescription, Catalogo.Err.conflitto)
+        XCTAssertEqual(ErroreApi.conflitto.localizedDescription, Catalogo.Err.conflitto)
+    }
+
     func testIlMessaggioDelLimiteRestaUnaFraseIntera() {
         // il testo vero del server per l'accesso
         XCTAssertEqual(ErroreApi.troppiTentativi("Troppi tentativi sbagliati: aspetta prima di riprovare", riprovaTra: 45).errorDescription,
