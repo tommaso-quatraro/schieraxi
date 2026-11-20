@@ -6,6 +6,7 @@ Due livelli:
 - le parti FACOLTATIVE (miglior scambio, miglior svincolato) si leggono SOLO se già in cache (le riempie l'app quando l'utente apre
   quelle schermate): se mancano, non compaiono e il loro nome sta in `mancano`. Il widget non fa mai partire un calcolo per loro.
   Il miglior svincolato c'è solo se «Cambi consigliati» è accesa per l'utente: spenta, non si legge nemmeno (né in `mancano`, #797).
+  Allo stesso modo il miglior scambio c'è solo se «Scambi: trova» è accesa per l'utente (#803).
 Niente capitano (la lega non lo usa) e niente classifica della lega (l'app non ne ha i dati): si espone solo ciò che esiste.
 """
 from __future__ import annotations
@@ -33,9 +34,10 @@ TAGLI_PESO = ("scambio", "osservati")    # cosa si toglie sopra MAX_BYTE, in que
 FUNZIONI_WIDGET = ("live", "diario", "scambi_trova", "seguiti", "widget_extra")
 
 
-def funzioni_per_widget(mostra_tutte: bool = False) -> dict[str, bool]:
-    """id -> acceso, per le sole `FUNZIONI_WIDGET`, con le regole di `funzioni.acceso` (amministratore, ambiente, «Mostra tutte»)."""
-    return {k: funzioni.acceso(k, mostra_tutte) for k in FUNZIONI_WIDGET}
+def funzioni_per_widget(mostra_tutte: bool = False, amministratore: bool = False) -> dict[str, bool]:
+    """id -> acceso, per le sole `FUNZIONI_WIDGET`, con le regole di `funzioni.acceso` (scelte dell'amministratore, ambiente,
+    «Mostra tutte» e ruolo di chi chiede): gli stessi valori di GET /api/funzioni per lo stesso utente (#803)."""
+    return {k: funzioni.acceso(k, mostra_tutte, amministratore=amministratore) for k in FUNZIONI_WIDGET}
 
 
 def _g(scheda: dict, tratti: dict, *campi: str) -> dict:
@@ -85,10 +87,12 @@ def _tua_scelta(db, regole, rose, f: dict, giornata: int, file_scelte) -> dict |
 
 
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, file_osservati, file_scelte=None,
-                live_partite: dict | None = None, dal: datetime | None = None, mercato: bool = True) -> dict:
+                live_partite: dict | None = None, dal: datetime | None = None, mercato: bool = True,
+                scambi_trova: bool = True) -> dict:
     """`dal` (facoltativo): quando è nato l'account, come in /api/oggi: chi è entrato a giornata iniziata senza formazione ha
     `senza_formazione` e la `prossima` giornata invece dei punti di una formazione che non ha schierato (#651).
-    `mercato`: se «Cambi consigliati» è accesa per l'utente (lo decide il server con `funzioni.acceso`); spenta, niente `svincolato` (#797)."""
+    `mercato`: se «Cambi consigliati» è accesa per l'utente (lo decide il server con `funzioni.acceso`); spenta, niente `svincolato` (#797).
+    `scambi_trova`: lo stesso per «Scambi: trova»; spenta, niente `scambio` (#803)."""
     tratti = avatar.tutti()
     # il nucleo: può alzare InCalcolo (202). La consigliata si chiede UNA volta e la usa anche Oggi: l'errore di un calcolo in coda
     # arriva una volta sola, e una seconda richiesta lo rimetteva in coda («sto calcolando» per sempre con una rosa che non basta, #651)
@@ -154,7 +158,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     def scambio():
         _, proposte = consigli.proposte_scambi(db, regole, rose)
         return proposte[0] if proposte else None
-    p = _opzionale(mancano, "scambio", scambio)
+    p = _opzionale(mancano, "scambio", scambio) if scambi_trova else None
     if p:
         corpo["scambio"] = p
 
