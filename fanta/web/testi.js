@@ -6,7 +6,7 @@
 // Ogni chiave ha italiano e inglese con gli stessi segnaposto {nome} (lo controllano il generatore e tests/test_testi.py).
 // t("chiave", { n: 3 }) sostituisce {n}; tp("chiave", n) sceglie il plurale (chiave.one / chiave.other) con Intl.PluralRules.
 // I valori si inseriscono COSÌ COME SONO: dati di chi usa l'app vanno prima passati da esc().
-// Date, ore e numeri: fData / fOra / fDataOra / fNum (Intl con la lingua scelta). Lingua: scelta in Impostazioni > Aspetto,
+// Date, ore e numeri: fData / fOra / fDataOra / fNum (Intl con la lingua scelta, date nell'ora italiana). Lingua: scelta in Impostazioni > Aspetto,
 // ricordata per utente; alla prima visita si usa quella del browser (navigator.language).
 // I messaggi che arrivano dal server restano in italiano per gli altri client (iOS, Android): qui si traducono dalle chiavi «err.*».
 // <catalogo> generato da script/testi.py: non modificare a mano
@@ -3330,10 +3330,12 @@ function tp(chiave, n, valori) {
   return t(Object.hasOwn(TESTI.it, `${chiave}.${categoria}`) ? `${chiave}.${categoria}` : `${chiave}.other`, { n, ...valori });
 }
 
-// Formati con la lingua scelta (date, ore, numeri).
-const fData = (d, opz = { day: "numeric", month: "short" }) => d.toLocaleDateString(t("lingua.locale"), opz);
-const fOra = d => d.toLocaleTimeString(t("lingua.locale"), { hour: "2-digit", minute: "2-digit" });
-const fDataOra = d => d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+// Formati con la lingua scelta (date, ore, numeri). Date e ore sempre nell'ora italiana, anche con il browser su un altro fuso
+// (#776): è l'ora delle partite e della scadenza, e l'iPhone fa lo stesso. Le date del server si leggono con parseData (app.js).
+const FUSO_ITALIA = "Europe/Rome";
+const fData = (d, opz = { day: "numeric", month: "short" }) => d.toLocaleDateString(t("lingua.locale"), { ...opz, timeZone: FUSO_ITALIA });
+const fOra = d => d.toLocaleTimeString(t("lingua.locale"), { hour: "2-digit", minute: "2-digit", timeZone: FUSO_ITALIA });
+const fDataOra = d => d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: FUSO_ITALIA });
 const fNum = (n, opz) => Number(n).toLocaleString(t("lingua.locale"), opz);
 
 // Tempi scritti dal server («3 ore fa», «meno di un'ora», «circa 2 ore») nella lingua scelta.

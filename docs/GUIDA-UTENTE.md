@@ -99,7 +99,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
 È la schermata che si apre per prima e risponde a una domanda sola: chi schiero. Al telefono, dall'alto in basso (fino al campo con gli 11 sta tutto nel primo schermo):
 
-- la **giornata** e **quando si chiude** la formazione («Si chiude oggi 18:20», con accanto quanto manca); se la Serie A non ha ancora fissato le date della giornata, **Data da definire**;
+- la **giornata** e **quando si chiude** la formazione («Si chiude oggi 18:20», con accanto quanto manca); se la Serie A non ha ancora fissato le date della giornata, **Data da definire**. Orari e giorni sono sempre quelli italiani, anche se il telefono o il computer sono su un altro fuso orario (all'estero);
 - le **decisioni**, se ce ne sono: al massimo due righe, la più urgente per prima, ognuna con il suo pulsante. Ci sono solo le cose che chiedono di fare qualcosa:
   - **un titolare da cambiare**: per esempio «Rossi è in dubbio… Meglio Bianchi.», con quanti punti attesi vale il cambio («+0,9 punti attesi.») e **Sostituisci**, che lo fa subito. Te lo propone solo se anche la formazione consigliata lo toglie, uno diverso per ciascun titolare, e mai per differenze minime;
   - **«La consigliata è cambiata da quando l'hai salvata»**, con chi entra e chi esce (fino a tre cambi; con di più, quanti sono): **Usa la consigliata** prende quella nuova. Se uno dei tuoi titolari salvati è infortunato o squalificato, la riga lo dice per primo ed è **Urgente**;
