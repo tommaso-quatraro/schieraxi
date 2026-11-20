@@ -58,7 +58,7 @@ function parseData(s) {
   // dell'ora. Una data con il fuso («…+01:00», «…Z») è già un istante preciso. null se non è una data.
   if (!s) return null;
   const testo = String(s).trim();
-  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/.exec(testo);
+  const m = DATA_DEL_SERVER.exec(testo);
   if (m) {
     const [anno, mese, giorno, ore, minuti, secondi] = m.slice(1).map(x => Number(x || 0));
     if (mese < 1 || mese > 12 || giorno < 1 || giorno > 31 || ore > 23 || minuti > 59 || secondi > 59) return null;
@@ -67,6 +67,8 @@ function parseData(s) {
   const d = new Date(testo.replace(" ", "T"));
   return Number.isNaN(d.getTime()) ? null : d;
 }
+// Una data del server senza fuso: giorno, e se c'è l'ora (con o senza secondi, con la «T» o lo spazio).
+const DATA_DEL_SERVER = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/;
 // Anno, mese (1-12), giorno, ore, minuti e secondi di un istante sull'orologio italiano.
 const PEZZI_ITALIA = new Intl.DateTimeFormat("en-US", { timeZone: FUSO_ITALIA, hourCycle: "h23", year: "numeric", month: "numeric",
   day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" });
@@ -87,15 +89,17 @@ function daOraItaliana(anno, mese, giorno, ore = 0, minuti = 0, secondi = 0) {
   const comeUtc = Date.UTC(anno, mese - 1, giorno, ore, minuti, secondi);
   return new Date(comeUtc - scartoItalia(comeUtc - scartoItalia(comeUtc)));
 }
-// "oggi 20:45", "domani 18:30", "sab 31 15:00": giorni contati sul calendario italiano, come l'ora
+// "oggi 20:45", "domani 18:30", "sab 31 15:00": giorni contati sul calendario italiano, come l'ora. Una data con solo il giorno
+// (l'ora della partita non è ancora fissata) resta senza ora: "domani", "dom 1", mai un "00:00" che sembra una partita a mezzanotte.
 function quando(s) {
   const d = parseData(s);
   if (!d) return "–";
+  const m = DATA_DEL_SERVER.exec(String(s).trim()), soloGiorno = !!m && m[4] === undefined;
   const giornoDi = x => { const p = inItalia(x); return Date.UTC(p.anno, p.mese - 1, p.giorno); };      // mezzanotte, come se fosse UTC
   const il = giornoDi(d), diff = Math.round((il - giornoDi(new Date())) / 864e5);
-  const ora = fOra(d);
   const giorno = Math.abs(diff) > 6 ? fData(d) : new Date(il).getUTCDate();          // oltre la settimana anche il mese
-  return `${diff === 0 ? t("tempo.oggi") : diff === 1 ? t("tempo.domani") : diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + new Date(il).getUTCDay())} ${giorno}`} ${ora}`;
+  const quale = diff === 0 ? t("tempo.oggi") : diff === 1 ? t("tempo.domani") : diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + new Date(il).getUTCDay())} ${giorno}`;
+  return soloGiorno ? quale : `${quale} ${fOra(d)}`;
 }
 
 // ETag e If-Match: il server dà a ogni risorsa personale (regole, rose, scelta di una giornata, avvisi) un ETag. L'app

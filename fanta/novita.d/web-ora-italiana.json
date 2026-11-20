@@ -2,10 +2,11 @@
   "titolo": "Web: orari sempre nell'ora italiana, anche all'estero",
   "voci": [
     "Web, Formazione: la scadenza, il tempo che manca e gli orari delle partite sono sempre quelli italiani, anche con il computer o il telefono su un altro fuso orario. Prima, per esempio a New York, il tempo che mancava era sbagliato di qualche ora, e in Asia la formazione poteva risultare già chiusa.",
-    "Il tempo che manca alla scadenza resta giusto anche nel fine settimana in cui cambia l'ora."
+    "Il tempo che manca alla scadenza resta giusto anche nel fine settimana in cui cambia l'ora.",
+    "Una partita di cui non si sa ancora l'ora mostra solo il giorno (per esempio «dom 1»), non più un orario finto come «01:00»."
   ],
   "tecnico": [
-    "fanta/web/app.js: parseData legge le date del server senza fuso (docs/API.md, «Date e ore») come ora di Europe/Rome con Intl.DateTimeFormat (scarto preso due volte, così regge alle notti del cambio dell'ora); le date con il fuso (account, sentinella) restano istanti. quando conta i giorni sul calendario italiano. fData, fOra e fDataOra (testi.js) scrivono con timeZone Europe/Rome.",
+    "fanta/web/app.js: parseData legge le date del server senza fuso (docs/API.md, «Date e ore») come ora di Europe/Rome con Intl.DateTimeFormat (scarto preso due volte, così regge alle notti del cambio dell'ora); le date con il fuso (account, sentinella) restano istanti. quando conta i giorni sul calendario italiano e, per una data con solo il giorno («2026-11-01»), scrive il giorno senza ora. fData, fOra e fDataOra (testi.js) scrivono con timeZone Europe/Rome.",
     "Passano da parseData anche ultimo_aggiornamento della riga di stato, uso.dal e coppe_fino di Stato dei dati, creato dell'account e la data delle novità (impostazioni.js). Server e campi dell'API non cambiano."
   ]
 }
