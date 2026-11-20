@@ -196,6 +196,14 @@
     "it": "Confronto tra due giocatori",
     "en": "Comparison between two players"
   },
+  "err.p_fn_scambi_costruisci": {
+    "it": "Scambi: costruisci",
+    "en": "Trades: build"
+  },
+  "err.p_fn_mercato": {
+    "it": "Cambi consigliati",
+    "en": "Suggested free agent swaps"
+  },
   "err.p_dare": {
     "it": "dare",
     "en": "give"
