@@ -168,7 +168,9 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
 - **Riavvio** (#826): `sudo -n systemctl restart <servizio>` (mai una domanda di password: serve la regola di sudo senza password per
   quel solo comando) e il processo del servizio (`systemctl show -p MainPID`) deve cambiare. Se il riavvio non riesce risponderebbe
   ancora il processo vecchio: lo script rimette i file di prima, non scrive `rifiutato` (è un guasto del server, non della versione),
-  avvisa come gli altri guasti (uno al giorno) e riprova al giro dopo.
+  avvisa come gli altri guasti (uno al giorno) e riprova al giro dopo; alla terza volta di fila con la stessa versione rinuncia a
+  quella (`rifiutato`, avviso; stato in `~/.cache/fantacalcio/riavvio-fallito`). Un processo 0 subito dopo il riavvio vuol dire che
+  la versione nuova muore all'avvio: lì vale il ritorno indietro di sempre.
 - **Avvisi** (#826): partono anche nelle ore tranquille. Se il servizio degli avvisi non risponde resta una riga nel registro
   («avviso non partito») e l'avviso si riprova all'inizio dei giri dopo (`~/.cache/fantacalcio/avvisi-da-mandare`, un file per avviso;
   dopo un giorno si rinuncia, con una riga nel registro). I guasti già si riprovavano da soli.

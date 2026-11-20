@@ -222,8 +222,9 @@ riprova_avvisi() {
 riprova_avvisi
 
 # Riavvio del servizio (#826): sudo -n (mai una domanda di password: senza la regola di sudo il comando fallisce subito) e processo
-# principale (MainPID, da systemctl show, che non chiede permessi) diverso da prima e diverso da 0. Esce con 1 se il riavvio non e'
-# riuscito, con una riga nel registro: risponderebbe ancora il processo vecchio, con il codice di prima.
+# principale (MainPID, da systemctl show, che non chiede permessi) diverso da prima. Esce con 1 se il riavvio non e' riuscito, con
+# una riga nel registro: risponderebbe ancora il processo vecchio, con il codice di prima. Un processo 0 (o illeggibile) dopo il
+# riavvio non e' un guasto del riavvio: e' la versione nuova che muore all'avvio (systemd la rilancia), e lo dice il controllo dopo.
 pid_servizio() { systemctl show -p MainPID --value "$SERVIZIO" 2>/dev/null | tr -cd '0-9'; }
 riavvia() {
   local prima dopo
@@ -233,12 +234,12 @@ riavvia() {
     return 1
   fi
   dopo=$(pid_servizio)
-  if [ -z "$dopo" ] || [ "$dopo" = 0 ] || [ "$dopo" = "$prima" ]; then
+  if [ -n "$dopo" ] && [ "$dopo" != 0 ] && [ "$dopo" = "$prima" ]; then
     log "riavvio di $SERVIZIO non riuscito: il processo del servizio non e' cambiato (prima ${prima:-nessuno}, dopo ${dopo:-nessuno})"
     return 1
   fi
 }
-TESTO_RIAVVIO="Non riesco a riavviare il servizio (regola di sudo o servizio che non parte): resta la versione di prima e riprovo al prossimo giro."
+TESTO_RIAVVIO="Non riesco a riavviare il servizio (regola di sudo o systemd): resta la versione di prima e riprovo al prossimo giro."
 
 # Database degli account (#825). /api/account/me risponde 401 senza sessione prima di leggere il database: il servizio «risponde»
 # anche con una migrazione che sui dati veri non riesce. Per questo:
@@ -249,7 +250,7 @@ TESTO_RIAVVIO="Non riesco a riavviare il servizio (regola di sudo o servizio che
 # - controlla_account: dopo il riavvio, con il codice appena installato, apre davvero il database (con le migrazioni, come la prima
 #   richiesta del servizio) e lo confronta con le migrazioni attese: fanta/salute.py, controlla_database_account (nome fisso: lo
 #   chiama questo script, che e' quello della versione di prima). La sua frase finisce in ESITO_ACCOUNT.
-ambiente_servizio() { . "$QUI/leggi-ambiente.sh" && leggi_ambiente dati/ambiente.env 2>>"$ERR"; }
+ambiente_servizio() { . "$QUI/leggi-ambiente.sh" && leggi_ambiente dati/ambiente.env 2>/dev/null; }
 versione_db() {
   ( cd "$DEST" && ambiente_servizio && timeout -k 5 60 nice -n 10 .venv/bin/python -c "
 import os, sqlite3, sys
@@ -624,7 +625,9 @@ if [ "$vecchi_req" != "$(md5sum "$prova/requirements.txt" | cut -d' ' -f1)" ]; t
       avvisa_o_riprova "SchieraXI: aggiornamento annullato" "Le librerie della versione nuova non si installano (provato $tentativi volte): resta quella di prima.$(anche_prima)$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
     else
       log "librerie NON installate (rete, PyPI, hash diverso?): resta la versione di prima, riprovo al prossimo giro (tentativo $tentativi)"
-      [ "$tentativi" = 1 ] && avvisa_o_riprova "SchieraXI: aggiornamento rimandato" "Le librerie della versione nuova non si sono installate: riprovo fra 10 minuti." 3
+      if [ "$tentativi" = 1 ] && ! avvisa "SchieraXI: aggiornamento rimandato" "Le librerie della versione nuova non si sono installate: riprovo fra 10 minuti." 3; then
+        log "avviso «aggiornamento rimandato» non partito (non lo riprovo: vale solo adesso)"
+      fi
     fi
     fine; exit 1
   fi
@@ -675,7 +678,7 @@ if [ "$risponde" = 1 ]; then
   rm -f "$A_META"
   echo "$nuovo" > "$STATO/ultimo-rilascio"
   echo "$INIZIO" > "$STATO/ultima-installazione"     # da qui parte l'intervallo fra due installazioni (#635)
-  rm -f "$STATO/attesa-versione" "$STATO/interrotta"
+  rm -f "$STATO/attesa-versione" "$STATO/interrotta" "$STATO/riavvio-fallito"
   [ "$installa_subito" = 1 ] && rm -f "$STATO/installa-subito"     # la richiesta d'emergenza e' soddisfatta (#647)
   versione=$(cd "$DEST" && .venv/bin/python -c "import json; print(json.load(open('fanta/novita.json', encoding='utf-8'))[0]['versione'])" 2>/dev/null)
   # solo la riga nel registro, niente avviso: con tante versioni al giorno gli avvisi veri (fallita, rifiutata, tornata indietro) si
@@ -699,9 +702,22 @@ else
     mv "$DEST/.venv" "$DEST/.venv.scartata" && mv "$DEST/.venv.precedente" "$DEST/.venv" && rm -rf "$DEST/.venv.scartata" || rimessa=0
   fi
   [ "$rimessa" = 1 ] && rm -f "$A_META"     # altrimenti il giro dopo riprova a rimettere la versione di prima (#647)
-  riavvia
+  riavvia || [ "$riavviato" = 0 ] || guasto riavvio "$TESTO_RIAVVIO"     # la versione di prima rimessa, ma il servizio no
   if [ "$riavviato" = 0 ]; then
-    # guasto del server, non della versione (#826): non si scrive «rifiutato», il giro dopo riprova
+    # guasto del server, non della versione (#826): non si scrive «rifiutato» e il giro dopo riprova, al massimo tre giri per versione
+    # (stato in riavvio-fallito: «commit volte»), poi si rinuncia come per le librerie: ogni giro rifa' copia, file e librerie
+    volte=1
+    if [ "$(cut -d' ' -f1 "$STATO/riavvio-fallito" 2>/dev/null)" = "$nuovo" ]; then
+      volte=$(cut -d' ' -f2 "$STATO/riavvio-fallito" 2>/dev/null); [[ $volte =~ ^[0-9]{1,6}$ ]] || volte=0
+      volte=$(( volte + 1 ))
+    fi
+    if [ "$volte" -ge "${SCHIERAXI_TENTATIVI_RIAVVIO:-3}" ]; then
+      log "riavvio non riuscito per la ${volte}a volta di fila con ${nuovo:0:7}: non la riprovo (resta la versione di prima)"
+      echo "$nuovo" > "$STATO/rifiutato"; rm -f "$STATO/attesa-versione" "$STATO/riavvio-fallito"
+      avvisa_o_riprova "SchieraXI: aggiornamento annullato" "Non riesco a riavviare il servizio da $volte giri di fila: resta la versione di prima e non riprovo questa (la prossima versione sì). Va controllata la regola di sudo (script/server/LEGGIMI.md).$(ancora_subito) Dettagli in dati/pubblicazione.log." 4
+    else
+      echo "$nuovo $volte" > "$STATO/riavvio-fallito"
+    fi
     guasto riavvio "$TESTO_RIAVVIO"
     fine; exit 0
   fi
