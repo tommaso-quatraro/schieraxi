@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import UniformTypeIdentifiers
 
 /// Le pagine che si aprono dalle Impostazioni (#673 passo 3: hanno preso anche quelle delle schede Squadra e Altro, come la web).
@@ -40,6 +41,9 @@ final class LegaViewModel: ViewModelBase {
     let squadre: Caricatore<[SquadraLega]>
     /// Le pagine aperte nella pila delle Impostazioni (nell'AppModel: cambiando sezione si resta dove si era).
     @Published var percorso: [PaginaImpostazioni] = []
+    private var ascoltoStato: AnyCancellable?
+    /// L'ultima risposta di `/api/stato` già passata al pulsante «Aggiorna i dati» (`Caricatore.risposte`).
+    private var rispostaUsata = 0
 
     /// Apre una pagina (e quelle che ci stanno sopra) nelle Impostazioni e dice quale voce della barra mostrare.
     @discardableResult
@@ -59,6 +63,19 @@ final class LegaViewModel: ViewModelBase {
         osserva(stagione)
         osserva(squadre)
         osserva(aggiornamento)
+        // ogni lettura di /api/stato dice anche se il server è occupato con un aggiornamento (#773)
+        ascoltoStato = info.$stato.sink { [weak self] stato in
+            MainActor.assumeIsolated { self?.statoLetto(stato) }
+        }
+    }
+
+    /// Passa al pulsante «Aggiorna i dati» lo stato del server, solo da una risposta arrivata ora. La copia salvata sul telefono può
+    /// essere di un aggiornamento finito da tempo; una lettura annullata rimette l'ultima risposta, che la rilettura di Gestione
+    /// (`AggiornaDatiViewModel.segui`) può aver già smentito: tutte e due terrebbero il pulsante spento.
+    private func statoLetto(_ stato: Stato<InfoServer>) {
+        guard case .loaded(let dato) = stato, info.risposte != rispostaUsata else { return }
+        rispostaUsata = info.risposte
+        aggiornamento.segna(occupato: dato.aggiornamentoInCorso == true)
     }
 
     func carica() async {

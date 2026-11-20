@@ -1319,7 +1319,7 @@ def diario_schierata(dati: SchierataDiario, request: Request, response: Response
                 raise HTTPException(409, "Le regole o la rosa sono cambiate mentre calcolavo: riprova")
             diario.scrivi_schierata(voce, scelti, dati.giornata, dati.tipo, ctx.diario, ctx.scelte)
             response.headers["ETag"] = _etag_scelta(ctx, dati.giornata)
-        return voce
+        return diario.per_i_client(voce)                                   # una copia: la voce in cache tiene l'impronta dei voti
     except (calcolo.InCalcolo, calcolo.Occupato):
         raise                                                              # il posto resta preso: il nuovo tentativo con gli stessi dati non conta
     except BaseException:
@@ -1490,7 +1490,8 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
                                               lingua=lingua_testi.della_richiesta(request), dal=dal,
-                                              mercato=_accesa_per(request, "mercato"))     # «Cambi consigliati» spenta: niente svincolati (#797)
+                                              mercato=_accesa_per(request, "mercato"),     # «Cambi consigliati» spenta: niente svincolati (#797)
+                                              scambi_trova=_accesa_per(request, "scambi_trova"))     # «Scambi: trova» spenta: niente scambi (#803)
         return corpo
     finally:
         db.close()
@@ -1564,14 +1565,20 @@ def widget(request: Request, ctx: Contesto = Depends(lega_corrente)):
         dal = _ora_locale(rotte_account.utente_corrente(request).creato)     # chi entra a giornata iniziata, come /api/oggi (#651)
     except HTTPException:
         dal = None
+    # le funzioni con la regola di GET /api/funzioni («Mostra tutte» e ruolo di chi chiede, anche con il token del widget): le
+    # parti facoltative seguono gli stessi valori di `funzioni`, così la risposta non si contraddice (#797, #803)
+    mostra, admin = stato_utente.leggi_mostra_tutte(ctx.impostazioni_avvisi), _e_amministratore(request)
+    funz = widget_riassunto.funzioni_per_widget(mostra, amministratore=admin)
     db = _db()
     try:
         corpo = widget_riassunto.costruisci(db, _regole(ctx), _rose(ctx), ctx.diario, ctx.osservati, file_scelte=ctx.scelte,
-                                            live_partite=_stati_live(), dal=dal, mercato=_accesa_per(request, "mercato"))
+                                            live_partite=_stati_live(), dal=dal,
+                                            mercato=funzioni.acceso("mercato", mostra, amministratore=admin),
+                                            scambi_trova=funz["scambi_trova"])
     finally:
         db.close()
     corpo["live"] = _live_per_widget()
-    corpo["funzioni"] = widget_riassunto.funzioni_per_widget(stato_utente.leggi_mostra_tutte(ctx.impostazioni_avvisi))
+    corpo["funzioni"] = funz
     widget_riassunto.entro_il_peso(corpo)                 # rete di sicurezza sulla dimensione: i blocchi tolti vanno in `mancano`
     etag = widget_riassunto.etag(corpo)                   # senza i campi che cambiano solo con l'orologio (#651)
     intestazioni = {"ETag": etag, "Cache-Control": "private, no-cache", "Vary": "Authorization, Cookie"}

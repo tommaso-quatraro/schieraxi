@@ -48,10 +48,10 @@ final class WidgetFasiTests: XCTestCase {
         XCTAssertEqual(r.puntiFine, 72.4)
         XCTAssertEqual(r.punti, 73.7, "i punti attesi prima restano quelli della formazione")
         XCTAssertEqual(r.puntiFattiTesto, "41,5")
-        XCTAssertEqual(r.puntiFineTesto, "circa 72,4 a fine giornata")
-        XCTAssertEqual(r.ancoraDaGiocareTesto, "4 devono ancora giocare")
+        XCTAssertEqual(r.puntiFineTesto, "circa 72 a fine giornata", "senza decimali, come la Formazione dell'app (#774)")
+        XCTAssertEqual(r.ancoraDaGiocareTesto, "4 giocatori devono ancora giocare")
         // dopo la scadenza «formazione chiusa» (vocabolario: «Chiusa», mai «in corso» per la giornata)
-        XCTAssertEqual(r.descrizioneFase, "11ª giornata di Serie A: formazione chiusa, 41,5 punti fatti finora, circa 72,4 a fine giornata. 4 devono ancora giocare.")
+        XCTAssertEqual(r.descrizioneFase, "11ª giornata di Serie A: formazione chiusa, 41,5 punti finora, circa 72 a fine giornata. 4 giocatori devono ancora giocare.")
     }
 
     func testGiornataFinitaRiepilogoEProssima() throws {
