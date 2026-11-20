@@ -1,0 +1,15 @@
+{
+  "titolo": "Piccole correzioni: nome della squadra, inglese, colonne e Stato dei dati",
+  "voci": [
+    "La mia squadra: dopo un tocco su «Salva» del nome il pulsante resta spento finché il nome non è salvato. Prima un secondo tocco faceva comparire «Squadra non trovata» anche se il nome era già salvato.",
+    "In inglese, Regole e scadenza: il menu della prima giornata della lega dice «From Serie A matchday 2» invece di «From the 2th».",
+    "In inglese, nelle righe dei giocatori (per esempio fra i sostituti) «expected 6.8» e «fantasy score» vanno a capo invece di uscire dalla riga. In italiano non cambia niente.",
+    "In inglese la formazione consigliata si chiama sempre «recommended lineup» e il voto d'ufficio sempre «default grade».",
+    "Giornate, Dettagli: «1,0 punti in più della consigliata» invece di «1,0 punto in più».",
+    "Stato dei dati, per chi gestisce il server: il motivo di una giornata persa è una frase semplice, anche in inglese, senza i nomi degli errori interni. Vale anche per le giornate perse prima."
+  ],
+  "tecnico": [
+    "/api/stato-dati, registro.per_giornata e registro_nostri.per_giornata: persa è ora la frase del catalogo (frasi.CATALOGO «registro.persa_*», riconosciuta dall'inizio del motivo tecnico salvato con registro_giornate.motivo_persa; un motivo sconosciuto ha registro.persa_altro); campi nuovi persa_frase ({chiave, param}) e persa_dettaglio (il motivo tecnico com'era). Nessun campo tolto; le due frasi «nessun tentativo…» sono uguali a prima. Archivio, log e avvisi al proprietario restano con il motivo tecnico.",
+    "Web: «Salva» del nome della squadra spento durante PUT /api/squadre/nome; .voce-g > .pv-g senza white-space: nowrap (la colonna resta di 8ch); plurale di diario.qp_cf_piu e diario.qp_cf_meno scelto sul numero scritto (tpScritto). Testi inglesi cambiati: pav.prima_uno, pav.prima_n, oggi.la_consigliata, oggi.con_consigliata, oggi.confronto_in_arrivo, oggi.rinvio_ufficio, regole.rv_ufficio, regole.rv_voto, frase.rinvio.voto_ufficio, sd.cons_spiega, sd.cons_c1, sd.cons_c2."
+  ]
+}
