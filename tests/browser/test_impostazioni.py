@@ -376,8 +376,8 @@ def test_la_mia_lega_porta_alla_mia_squadra_e_alle_altre(web):
     assert mia in riga.inner_text()                                      # la riga dice qual è
     tocca(web, riga)
     assert titolo(web) == mia and web.pagina.url.endswith("/?vista=impostazioni&gruppo=squadra")
-    testo = web.testo_principale()
-    assert "Portieri" in testo and "Stemma" in testo and "Maglia" in testo
+    assert "Portieri" in web.testo_principale()
+    assert principale(web).get_by_role("button", name="Stemma e maglia").is_visible()   # senza immagini, solo il pulsante (#779)
     assert principale(web).get_by_text("Non è la tua squadra?").is_visible()
     tocca(web, principale(web).get_by_role("button", name="Impostazioni"))
     tocca(web, voce(web, "Le altre squadre"))
@@ -385,6 +385,25 @@ def test_la_mia_lega_porta_alla_mia_squadra_e_alle_altre(web):
     tocca(web, principale(web).get_by_role("button", name=re.compile(r"^\s*Real Esempio")))
     assert titolo(web) == "Real Esempio"
     assert not web.errori_mostrati() and not web.errori_console and not web.richieste_fallite
+
+
+def test_la_mia_squadra_senza_costo_ne_immagini_non_mostra_parole_vuote(web):
+    """Una lega senza costi d'acquisto: ogni riga diceva «costo –» (#779). Senza costo la parola non c'è, la quotazione resta;
+    un costo 0 è un costo e si mostra. Senza stemma né maglia non restano le due parole «Stemma» e «Maglia» in uno spazio vuoto:
+    resta il pulsante «Stemma e maglia» per caricarli."""
+    solo(web, "prima")
+    rosa = web.registrata("/api/rosa")
+    for g in rosa["giocatori"]:
+        g["costo"] = None
+    rosa["giocatori"][0]["costo"] = 0
+    web.risposta("/api/rosa", rosa)
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    testo = " ".join(web.testo_principale().split())
+    assert "costo –" not in testo and len(re.findall(r"\bcosto\b", testo)) == 1 and "costo 0 · quotazione" in testo, testo[:600]
+    assert len(re.findall(r"\bquotazione \d", testo)) == len(rosa["giocatori"])
+    assert principale(web).get_by_text("Stemma", exact=True).count() == 0
+    assert principale(web).get_by_text("Maglia", exact=True).count() == 0
+    assert principale(web).get_by_role("button", name="Stemma e maglia").is_visible()
 
 
 def _mia_con_stemma(web) -> str:

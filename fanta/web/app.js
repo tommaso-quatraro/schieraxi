@@ -1800,11 +1800,13 @@ async function vistaRosa(nome) {
       const g = ruolo === "?" ? senzaRuolo : r.giocatori.filter(x => x.ruolo === ruolo);
       if (ruolo === "?" && !g.length) return "";
       const intestazione = g.length && !conIntestazione ? (conIntestazione = true, intestazioneColonne({ partita: true, ferma: true })) : "";
-      // la riga di ogni giocatore come nelle altre schermate (grafica B): la partita con la lineetta del club, poi costo e quotazione
+      // la riga di ogni giocatore come nelle altre schermate (grafica B): la partita con la lineetta del club, poi costo e quotazione;
+      // quello che manca non si scrive (una lega senza costi d'acquisto non legge «costo –» su ogni riga, #779; come RigaRosa dell'iPhone)
       return `<h3>${NOMI_RUOLO[ruolo] || t("scambio.senza_ruolo")} (${g.length})</h3>${intestazione}<ul class="elenco">${g.map(x => {
         const p = x.previsione, slug = slugQualunque((p && p.squadra) || x.squadra);
+        const prezzi = [x.costo != null ? t("scambio.costo_n", { c: x.costo }) : "", x.quotazione != null ? t("scambio.quotazione_n", { q: x.quotazione }) : ""];
         const partita = pezziRiga([[[sigla(x.squadra), p ? vsAt(p) : ""].filter(Boolean).join(" "), p && p.data_partita ? quando(p.data_partita) : ""]
-          .filter(Boolean).join(" · "), t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })]);
+          .filter(Boolean).join(" · "), prezzi.filter(Boolean).join(" · ")]);
         return `<li class="riga-gioc"><button class="voce voce-g" ${x.id ? `data-giocatore="${x.id}"` : "disabled"}>
           ${volto(p || { id: x.id, nome: x.nome, ruolo: x.ruolo, squadra: slug })}
           <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo || "?"))}</span><span class="nome-t">${esc(x.nome)}</span></span>
@@ -1824,10 +1826,7 @@ async function vistaRosa(nome) {
         <div class="riga riga-crediti"><label for="crediti-squadra">${t("scambio.crediti_residui")}</label>
           <span class="riga" style="gap:8px"><input class="campo-testo" id="crediti-squadra" type="number" min="0" max="99999" inputmode="numeric" value="${r.crediti_residui ?? ""}" style="width:96px;text-align:right">
           <button class="bottone secondario" id="salva-crediti-squadra" type="button">${t("scambio.salva")}</button></span></div>
-        <div class="immagini-squadra">
-          ${["stemma", "maglia"].map(tipo => { const s = squadre.find(x => x.nome === r.nome); const c = s && s.immagini && s.immagini[tipo]; return `<div class="immagine-squadra">
-            ${c ? `<img src="${urlImg(r.nome, tipo)}" alt="${t(NOME_IMMAGINE[tipo])}">` : `<span class="vuota">${t(NOME_IMMAGINE[tipo])}</span>`}</div>`; }).join("")}
-        </div>
+        ${immaginiRosa(squadre.find(x => x.nome === r.nome), r.nome)}
         <div class="pulsanti"><button class="bottone secondario" type="button" id="apri-stemma-maglia">${t("lega.stemma_maglia")}</button>
           ${r.mia ? "" : `<button class="bottone" type="button" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
@@ -1864,6 +1863,13 @@ async function vistaRosa(nome) {
 }
 
 const NOME_IMMAGINE = { stemma: "scambio.stemma", maglia: "scambio.maglia" };
+// Stemma e maglia in cima a una rosa: solo quelli caricati. Senza nessuno dei due niente riquadro (prima restavano le parole «Stemma» e
+// «Maglia» in uno spazio vuoto, #779): li carica il pulsante «Stemma e maglia» subito sotto.
+function immaginiRosa(squadra, nome) {
+  const caricate = ["stemma", "maglia"].filter(tipo => squadra && squadra.immagini && squadra.immagini[tipo]);
+  return caricate.length ? `<div class="immagini-squadra">${caricate.map(tipo => `<div class="immagine-squadra">
+    <img src="${urlImg(nome, tipo)}" alt="${t(NOME_IMMAGINE[tipo])}"></div>`).join("")}</div>` : "";
+}
 // Gol attesi nostri, senza Understat (I4 dal vivo, #401): i numeri calcolati solo con i voti di Fantacalcio.it contro quelli mostrati
 // (campo `registro_nostri`), dopo il registro delle giornate e con le sue righe. Verdetto e soglie dal server (`regge`, `regge_tutto`),
 // non si ricalcolano qui. Errore in percentuale come il registro, punti con due cifre e il segno, scarto con tre cifre, gol attesi su
