@@ -786,6 +786,18 @@ def test_la_frase_sulla_prima_giornata_non_cita_un_altra_giornata(web):
     assert set(re.findall(r"\d+", aiuto)) <= {"1", "6"}, aiuto
 
 
+def test_in_inglese_le_giornate_della_prima_giornata_senza_ordinali(web):
+    """In inglese il menu della prima giornata scriveva «From the 2th», «3th», «21th» (#833): il numero non si fa ordinale con
+    un «th» attaccato. Come nelle altre frasi delle giornate («Serie A matchday 11»), la frase non ha ordinali."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    voci = principale(web).get_by_label("From which Serie A matchday did the league start?").locator("option").all_inner_texts()
+    assert len(voci) == 38
+    assert not [v for v in voci if re.search(r"\d(st|nd|rd|th)\b", v)], voci
+    assert voci[1] == "From Serie A matchday 2" and voci[20] == "From Serie A matchday 21", voci[:3]
+
+
 def test_la_scadenza_si_cambia_e_si_salva_subito(web):
     solo(web, "prima")
     salvate = _scritture(web, "/api/regole")
