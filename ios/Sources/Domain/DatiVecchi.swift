@@ -14,13 +14,14 @@ enum DatiVecchi {
         return errore is URLError
     }
 
-    /// La frase della striscia. `motivo` nil = server non raggiungibile; altrimenti il messaggio dell'errore (già in italiano).
+    /// La frase della striscia. `motivo` nil = server non raggiungibile; altrimenti il messaggio dell'errore (già in italiano), in
+    /// testa e con la nota fra parentesi come la web nello stesso caso (`comune.cache_errore` in `app.js`, #830): così un motivo
+    /// come «Il server non risponde: riprova fra poco» non finisce dopo altri due punti, con la maiuscola a metà frase.
     static func frase(salvatiIl data: String, motivo: String?) -> String {
         guard let m = motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty else {
             return "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(data) e può essere vecchio."
         }
-        let punto = m.last.map { ".!?".contains($0) } == true ? "" : "."
-        return "Non ho potuto aggiornare: \(m)\(punto) Quello che vedi è del \(data) e può essere vecchio."
+        return Catalogo.Comune.cacheErrore(errore: m)
     }
 
     /// Dopo quanto tempo fuori dall'app, tornando, si ricarica tutto (anche dopo la mezzanotte, comunque).
