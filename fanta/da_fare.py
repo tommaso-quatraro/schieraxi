@@ -236,9 +236,10 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
     la consigliata (#333) nessun cambio proposto: era già la scelta migliore. Se intanto la consigliata ha titolari diversi, UNA voce
     lo dice e porta alla Formazione. La scelta salvata non si tocca mai: la cambi solo tu."""
     prev = consigli.previsioni(db, regole)[0]
+    ruoli = scelte.ruoli_schierabili(rose, prev)
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
     if scelta:                      # conta solo se si può ancora schierare (regola unica, come in `_dubbi`)
-        scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
+        scelta = scelte.che_vale(scelta, ruoli, regole)
     if not (scelta and _e_la_consigliata(scelta)):
         return _dubbi(db, regole, rose, giornata, file_scelte)
     salvati = [int(i) for i in scelta["titolari"]]
@@ -247,8 +248,10 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
         # chi gioca un anticipo già cominciato non si sposta più (#373): non si nomina come cambio; se cambiano solo loro, niente voce
         schede = {i: consigli.scheda_previsione(i, prev.loc[i]) for i in set(consigliata[0]) ^ set(salvati) if i in prev.index}
         entrano, escono = _cambi_possibili(salvati, consigliata[0], _bloccati(db, giornata, schede), schede)
-        if entrano or escono:
-            adesso = [i for i in consigliata[0] if i in entrano] + [i for i in salvati if i not in escono]
+        adesso = [i for i in consigliata[0] if i in entrano] + [i for i in salvati if i not in escono]
+        # senza un fermo che lo impedisca il cambio è quello della consigliata; con un fermo di un altro ruolo (#816) togliere solo
+        # l'altro lascerebbe 10 o 12 titolari, o un modulo che la lega non ammette: allora nessuna voce (regola unica della scelta)
+        if entrano and escono and scelte.motivo_non_valida(adesso, ruoli, regole) is None:
             return [_consigliata_cambiata(prev, salvati, adesso, giornata)]
     # la stessa consigliata (o non si riesce a calcolarla): restano solo le voci che non chiedono un cambio
     return [v for v in _dubbi(db, regole, rose, giornata, file_scelte) if "alternativa" not in v]

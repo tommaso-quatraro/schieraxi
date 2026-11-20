@@ -15,6 +15,7 @@ import pandas as pd
 import pytest
 
 from fanta import archivio, calcolo, consigli, da_fare, diario, lega, scelte, server
+from fanta.regole import Regole
 from test_da_fare import la_consigliata_cambia
 from test_da_fare import mondo as mondo_da_fare  # noqa: F401  (fixture di «Da fare» con dati finti)
 from test_da_fare import vai as vai_da_fare
@@ -310,3 +311,19 @@ def test_da_fare_consigliata_cambiata_se_non_entra_un_bloccato_resta_il_piu_util
     v = _consigliata_cambiata(mondo_da_fare)
     assert len(v) == 1 and v[0]["entrano"] == [{"id": 12, "nome": "Riserva"}] and len(v[0]["escono"]) == 1
     assert v[0]["escono"][0]["id"] in (7, 8)
+
+
+@pytest.mark.parametrize("fermo", [10, 14], ids=["esce-un-bloccato", "entra-un-bloccato"])
+def test_da_fare_consigliata_cambiata_con_un_cambio_di_ruolo_impossibile_niente_voce(mondo_da_fare, monkeypatch, fermo):
+    """#816: la consigliata cambia modulo, entra il centrocampista 14 ed esce l'attaccante 10. Se uno dei due gioca l'anticipo già
+    cominciato non si sposta, e nessun cambio dello stesso ruolo lo sostituisce: togliere solo l'altro lascerebbe 12 titolari
+    («Ora schiera g14 al posto di .») o 10 («Ora schiera  al posto di g10.»). Niente voce, mai una frase con un nome vuoto."""
+    regole = Regole(moduli=["3-5-2", "3-6-1"])                            # la consigliata passa dal 3-5-2 al 3-6-1
+    _salva_la_consigliata(mondo_da_fare)
+    _cambia(mondo_da_fare, (10, 14))
+    _con_anticipo(mondo_da_fare, monkeypatch)
+    v = [x for x in vai_da_fare(mondo_da_fare, regole=regole) if x["id"].startswith("consigliata:")]
+    assert len(v) == 1 and v[0]["testo"].endswith("Ora schiera g14 al posto di g10.")      # senza anticipi la voce c'è
+    _con_anticipo(mondo_da_fare, monkeypatch, fermo)
+    v = [x for x in vai_da_fare(mondo_da_fare, regole=regole) if x["id"].startswith("consigliata:")]
+    assert v == [], [str(x["testo"]) for x in v]
