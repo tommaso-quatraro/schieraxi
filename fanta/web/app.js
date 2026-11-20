@@ -361,7 +361,7 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
         if (!b) return false;
         const ferma = !!vista && typeof vista.sola === "function" && vista.sola();
         const copia = new Date(salvata.quando);                             // la nota dice di quando è la copia (#845)
-        const motivo = t("comune.cache_errore", { errore: esc(e.message), giorno: fData(copia), ora: fOra(copia) });
+        const motivo = elidiGiorno(t("comune.cache_errore", { errore: esc(e.message), giorno: fData(copia), ora: fOra(copia) }));
         b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : motivo}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
           <button class="azione-testo" type="button" data-riprova>${t("comune.riprova")}</button>`;
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
@@ -792,7 +792,7 @@ async function caricaInfo() {
     stato.rigaStato = {
       giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
       squadra: i.mia_squadra || null,
-      dati: (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, ""),
+      dati: (quandoAgg ? elidiGiorno(t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) })) : t("testata.mai")).replace(/^\s*·\s*/, ""),
     };
     segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
