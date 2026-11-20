@@ -1305,3 +1305,41 @@ def test_lo_stato_d_avvio_si_rilegge_al_primo_dato_fresco(web):
     assert "Giornata" in riga_di_stato(web), riga_di_stato(web)
     tocca(web, barra(web).get_by_role("link", name="Impostazioni"))
     assert voce(web, "La mia squadra").count() == 1
+
+
+def elimina_l_account(web, stato: int) -> list[dict]:
+    """In Il tuo account, «Elimina l'account» con la password, confermato; la rotta risponde con `stato`. Restituisce le
+    disiscrizioni dagli avvisi mandate al server."""
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/disiscrivi", {"dispositivi": 0})
+    disiscritte = _scritture(web, "/api/push/disiscrivi")
+    web.risposta("/api/account/elimina", {"detail": "La password non va bene."} if stato == 403 else {"ok": True}, stato=stato)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    tocca(web, principale(web).get_by_text("Elimina l'account", exact=True))
+    principale(web).get_by_label("La tua password").last.fill("Password-Finta-1")
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())
+    principale(web).get_by_role("button", name="Elimina il mio account").click(timeout=10000)
+    return disiscritte
+
+
+def test_elimina_l_account_non_riuscito_lascia_gli_avvisi(web):
+    """Con la password sbagliata il server non elimina niente: gli avvisi di questo dispositivo restano accesi, nel browser e sul
+    server. Prima si toglievano prima che il server controllasse la password (#801)."""
+    solo(web, "prima")
+    disiscritte = elimina_l_account(web, 403)
+    web.pagina.locator("#avviso").filter(has_text="La password non va bene").wait_for(timeout=10000)
+    web.aspetta()
+    assert disiscritte == [], f"gli avvisi si sono tolti dal server con un'eliminazione non riuscita: {disiscritte}"
+    assert iscrizione_nel_browser(web) == ENDPOINT
+    assert titolo(web) == "Il tuo account"
+
+
+def test_elimina_l_account_riuscito_toglie_gli_avvisi_dal_browser(web):
+    """Riuscita, l'eliminazione cancella sul server anche gli avvisi: il browser toglie la sua iscrizione e la pagina si ricarica.
+    (Il «chi sono» finto risponde sempre con l'utente: le copie le rimette l'avvio dopo la ricarica, qui non si guardano.)"""
+    solo(web, "prima")
+    with web.pagina.expect_navigation(wait_until="load"):
+        elimina_l_account(web, 200)
+    assert iscrizione_nel_browser(web) is None

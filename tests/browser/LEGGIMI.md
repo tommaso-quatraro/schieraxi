@@ -200,6 +200,8 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
 - lo stato d'avvio (#801): aperta senza rete, Impostazioni ritrova «La mia squadra» e «Le altre squadre» quando il browser dice
   che la rete è tornata (evento `online`); aperta con il server che riparte (502), la riga di stato di Giornate torna quella di
   sempre alla prima risposta buona («Riprova»);
+- «Elimina l'account» (#801): con la password sbagliata (403) gli avvisi del dispositivo restano, nel browser e sul server;
+  riuscita, il browser toglie la sua iscrizione;
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore;
 - Gestione, «Errori recenti» (amministratore e registro finti): plurali giusti, tempi con la virgola, ora italiana senza «UTC»,
   eventi con il nome del catalogo (anche un tipo scritto con il trattino, `fonte-cambiata`) e, per un tipo sconosciuto, senza

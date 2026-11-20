@@ -3921,9 +3921,9 @@ function collegaAccount() {
     const pw = soloGoogle() ? "" : valore("#acc-pw-elimina");
     if (!soloGoogle() && !pw) { avviso(t("account.elimina_serve_password")); return; }
     if (!confirm(t("account.elimina_conferma"))) return;
-    await lasciaNotifiche();
     try { await api("/api/account/elimina", { method: "POST", body: JSON.stringify({ password: pw }) }); }
-    catch (e) { throw new Error(erroreGoogle(e)); }
+    catch (e) { throw new Error(erroreGoogle(e)); }               // password sbagliata, rete giù: gli avvisi restano accesi (#801)
+    await lasciaNotifiche(false);                                 // il server ha cancellato anche le iscrizioni: qui solo quella del browser
     await svuotaDatiLocali();
     location.reload();
   }));
