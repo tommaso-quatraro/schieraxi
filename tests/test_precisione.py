@@ -125,6 +125,9 @@ def finto(monkeypatch, tmp_path):
     db = archivio.apri(tmp_path / "t.sqlite")
     for g in (1, 2):
         db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, '2026-09-01 18:00', 'a', 'b', 1)", (g, ST, g))
+    # i voti di tutte e due le squadre anche nell'archivio: da lì si vede che la giornata è finita (#832)
+    archivio.inserisci(db, "voti", [{"stagione": ST, "giornata": g, "calciatore_id": i, "squadra": "ab"[i % 2], "voto_red": 7.0}
+                                    for g in (1, 2) for i in range(1, 21)])
     return db
 
 

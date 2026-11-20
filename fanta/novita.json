@@ -1,5 +1,44 @@
 [
   {
+    "versione": "1.544",
+    "data": "2026-11-20T13:41:43",
+    "titolo": "Account: il cambio dell'email scollega anche il widget degli altri dispositivi",
+    "voci": [
+      "Il tuo account: quando confermi una nuova email al posto di quella di prima, sugli altri dispositivi si scollega anche il widget dell'iPhone, oltre all'accesso. Il widget del telefono con cui confermi resta collegato (se è stato collegato prima del 20 novembre 2026 si scollega anche quello)."
+    ],
+    "tecnico": [
+      "account.esci_da_tutti con tranne (unico chiamante: account_email.conferma_email, quando l'email confermata prende il posto di un'altra) cancella la riga di token_widget dell'utente se sessione_id è vuoto o diverso dalla sessione che resta aperta. Senza tranne (cambio password, esci da tutti, recupero) si cancella come prima qualunque token. Dopo il cambio, /api/oggi, /api/widget e /api/live con un token chiuso rispondono 401. Nessun campo dell'API cambia; docs/API.md (punto 5 e riga di POST /api/account/email/conferma) e docs/RIFERIMENTO.md aggiornati."
+    ]
+  },
+  {
+    "versione": "1.543",
+    "data": "2026-11-20T13:00:30",
+    "titolo": "Partita rinviata: la scelta dice di chi è il voto",
+    "voci": [
+      "Formazione, sulla web e sull'iPhone, con una partita rinviata: la scelta «aspettano il recupero» ora dice «(conta il voto del recupero)». Prima diceva «(conta il suo voto)», che sembrava parlare di un giocatore solo."
+    ],
+    "tecnico": [
+      "Catalogo dei testi: cambia solo la chiave oggi.rinvio_aspetta (italiano e inglese); testi.js e il catalogo dell'iPhone rigenerati con script/testi.py --scrivi. Nessuna rotta né campo nuovo."
+    ]
+  },
+  {
+    "versione": "1.542",
+    "data": "2026-11-20T12:54:35",
+    "titolo": "La prova del modello per ogni account, con giornate complete",
+    "voci": [
+      "Stato dei dati e «Sotto il cofano»: la carta «Quanto è affidabile il modello» si aggiorna per ogni account, con le regole e le rose della sua lega. Prima restava ferma al giorno del passaggio agli account, oppure diceva sempre «La prova si fa da sola…».",
+      "La prova conta una giornata solo quando sono arrivati i voti di tutte le partite, e si rifà quando si gioca un recupero o si corregge un voto.",
+      "La fantamedia di confronto usa solo i voti delle partite giocate prima della giornata provata, come il fantavoto atteso.",
+      "La spiegazione di «da fantamedia» dice come si sceglie davvero quella formazione: con la fantamedia dei giocatori e la loro probabilità di giocare."
+    ],
+    "tecnico": [
+      "python -m fanta affidabilita: con FANTA_MULTIUTENTE=1, dopo i diari, rifà dati/utenti/<id>/affidabilita.json di ogni utente con rose (__main__._prova_per_utente), nel tempo di --minuti; il resto al giro dopo, gli errori nel registro con numero dell'utente e tipo. Il file comune dati/affidabilita.json resta, per l'app senza account. Le rose a sorte non dipendono dalle rose della lega: nel giro si calcolano una volta per regole uguali (memo di verifica.verifica). Lega d'esempio sul PC, primo giro: comune 12 s, due utenti 7 s in più (24 s senza memo).",
+      "affidabilita.json: campo nuovo «impronta» (giornate della prova e loro voti). La prova si rifà quando cambia, non più solo quando cambia «ultima», che resta com'era. Il giorno del rilascio nessun file ha l'impronta: al primo giro del cron si rifanno il file comune e quello di ogni utente, poi una volta per giornata.",
+      "affidabilita.giornate_concluse: tutte le partite giocate e i voti di tutte e due le squadre di ognuna (fasi.voti_arrivati, colonna del voto della lega); vale anche per il riassunto pubblico (precisione.pubblico). verifica.verifica_giornata esclude le partite giocate senza i voti di una squadra.",
+      "verifica.avversari e verifica._fantamedia (anche S2 del Diario) filtrano i voti per data, prima dell'inizio della giornata (modello.prima_di), non per numero di giornata. Testo avv.prova_su nel catalogo comune; sull'iPhone il testo è scritto a mano in LegaExtra.swift e non cambia con questa versione."
+    ]
+  },
+  {
     "versione": "1.541",
     "data": "2026-11-20T11:56:59",
     "titolo": "Stato dei dati: la taratura di «gioca N%» in parole semplici",

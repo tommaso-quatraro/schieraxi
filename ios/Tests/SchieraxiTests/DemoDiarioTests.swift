@@ -112,6 +112,31 @@ struct DemoDiarioTests {
         #expect(voci.contains { $0.fattiEAttesi?.testo != nil }, "la foto deve mostrare la frase in almeno una giornata")
     }
 
+    @Test("Il Diario della demo scrive i giocatori della rosa per cognome, mai con il nome di battesimo (#819: «Leonel» per Marténi)")
+    func giocatoriPerCognome() async throws {
+        // i nomi di battesimo dei giocatori della demo con nome e cognome («Leonel» di «Leonel Marténi»)
+        let battesimi = Set(LegaDemo.tutti.compactMap { p -> String? in
+            let parole = p.nome.split(separator: " ")
+            return parole.count > 1 ? String(parole[0]) : nil
+        })
+        try #require(battesimi.contains("Leonel"), "la rosa della demo è cambiata: il test non prova più niente")
+        let voci = try await diario().giornate ?? []
+        try #require(!voci.isEmpty, "nel diario della demo non ci sono giornate")
+        for v in voci {
+            let g = v.giornata ?? 0
+            let titolari = [v.consigliata, v.schierata, v.automatica].flatMap { $0?.titolari ?? [] }
+                + (v.istantanea?.titolari ?? []) + (v.istantanea?.panchina ?? [])
+            for t in titolari {
+                #expect(!battesimi.contains(t.nome ?? ""), "giornata \(g): «\(t.nome ?? "")» è un nome di battesimo, non un cognome")
+            }
+            for parola in (v.fattiEAttesi?.testo ?? "").split(whereSeparator: { !$0.isLetter }).map(String.init) {
+                #expect(!battesimi.contains(parola), "giornata \(g): nella frase c'è «\(parola)», un nome di battesimo")
+            }
+        }
+        #expect(voci.contains { v in (v.consigliata?.titolari ?? []).contains { $0.nome == "Marténi" } },
+                "Marténi, titolare della consigliata, si scrive con il cognome")
+    }
+
     /// Un titolare con il suo scarto dall'atteso, nell'ordine della formazione.
     private struct Scarto {
         let posto: Int

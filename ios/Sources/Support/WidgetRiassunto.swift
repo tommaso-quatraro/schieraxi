@@ -131,6 +131,10 @@ struct FormazioneWidget: Codable, Equatable {
         intervallo = try? c.decodeIfPresent(IntervalloWidget.self, forKey: .intervallo)
         tuaScelta = try? c.decodeIfPresent(Bool.self, forKey: .tuaScelta)
     }
+
+    /// La riga del widget sulla schermata di blocco (`accessoryInline`), dalla forma più lunga: la stessa di Prossima giornata,
+    /// «3-4-3 · 72,7 punti» e, dove non entra, «3-4-3 · 72,7» (`ParoleWidget.moduloEPunti`). Prima «SchieraXI 3-4-3 · 72,7» (#819).
+    var formeInLinea: [String] { ParoleWidget.moduloEPunti(modulo, punti: puntiAttesi, fascia: nil) }
 }
 
 struct PuntiGiornata: Codable, Equatable, Identifiable {
@@ -1328,17 +1332,6 @@ extension RiassuntoOggi {
         return "\(n.voce): finita"
     }
 
-    /// La frase sotto il titolo della fase: dopo la scadenza come la web («La formazione si è chiusa oggi 14:50»: la giornata è
-    /// scritta sopra, non si ripete) e dove sono i punti; a giornata finita cosa succede ora. nil prima della scadenza.
-    func fraseFase(adesso: Date) -> String? {
-        if inCorso {
-            var t = "La formazione si è chiusa"
-            if let inizio { t += " \(Quando.relativa(inizio, adesso: adesso))" }
-            return t + ". I punti fatti sono nella Formazione."
-        }
-        return finita ? "Si ricomincia con la prossima giornata." : nil
-    }
-
     /// La giornata di cui parla la fase, nella forma corta: dopo la scadenza quella in corso, a giornata finita quella appena
     /// chiusa («Giornata 8»); se il server non la dice, «Giornata».
     private var giornataFaseCorta: String { (inCorso ? nomeGiornata : nomeGiornataChiusa)?.corto ?? "Giornata" }
@@ -1367,6 +1360,56 @@ extension RiassuntoOggi {
 
     /// Il sottotitolo per VoiceOver, con i due numeri.
     var voceSottotitoloRettangolo: String { finita ? "Prossima: \(voceGiornata)" : voceGiornata }
+}
+
+// MARK: Testata e corpo del widget «Da controllare» (medio e grande)
+
+/// La testata del widget «Da controllare»: il titolo nelle sue forme (dalla più lunga), la frase per VoiceOver, il simbolo e la
+/// giornata a destra (nil quando il titolo la dice già).
+struct TestataDubbi: Equatable {
+    let forme: [String]
+    let voce: String
+    let simbolo: String
+    let giornata: NomeGiornata?
+}
+
+/// Sotto la testata del widget «Da controllare», a formazione chiusa o a giornata finita: la frase in grande e, sotto, una riga
+/// più piccola (nil se non c'è).
+struct CorpoFaseDubbi: Equatable {
+    let frase: String
+    let sotto: String?
+}
+
+extension RiassuntoOggi {
+    /// La testata del widget «Da controllare». Prima della scadenza «Da controllare» con la giornata a destra. Dopo non c'è più
+    /// niente da controllare (#819): a formazione chiusa «Chiusa» (`oggi.chiusa`) con la giornata a destra; a giornata finita
+    /// «Giornata 8 · 11ª di Serie A: finita» (`oggi.giornata_finita`, poi «Giornata 8: finita»), che dice già la giornata: a
+    /// destra niente, prima si ripeteva. I simboli delle fasi sono quelli del widget Prossima giornata.
+    var testataDubbi: TestataDubbi {
+        if inCorso {
+            return TestataDubbi(forme: [ParoleWidget.chiusa], voce: ParoleWidget.chiusa, simbolo: "dot.radiowaves.left.and.right",
+                                giornata: nomeGiornata)
+        }
+        if finita, let forme = formeTitoloFase, let prima = forme.first {
+            return TestataDubbi(forme: forme, voce: voceTitoloFase ?? prima, simbolo: "flag.checkered", giornata: nil)
+        }
+        return TestataDubbi(forme: ["Da controllare"], voce: "Da controllare",
+                            simbolo: daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill", giornata: nomeTestata)
+    }
+
+    /// Il corpo del widget «Da controllare» sotto la testata, a formazione chiusa o a giornata finita: la parola della fase sta
+    /// già in testata, qui la frase e sotto dove sono i punti. nil prima della scadenza.
+    /// A formazione chiusa la frase della web, «La formazione si è chiusa oggi 14:50.» (`oggi.chiusa_dettaglio`: la giornata è
+    /// scritta sopra e non si ripete); se il server non manda l'ora della scadenza, «La formazione di questa giornata è chiusa: le
+    /// partite sono cominciate.» (`formazione.chiusa`). A giornata finita «Si ricomincia con la prossima giornata.».
+    func corpoFaseDubbi(adesso: Date) -> CorpoFaseDubbi? {
+        if inCorso {
+            let frase = inizio.map { Catalogo.Oggi.chiusaDettaglio(quando: Quando.relativa($0, adesso: adesso)) + "." }
+                ?? Catalogo.Formazione.chiusa
+            return CorpoFaseDubbi(frase: frase, sotto: "I punti fatti sono nella Formazione.")
+        }
+        return finita ? CorpoFaseDubbi(frase: "Si ricomincia con la prossima giornata.", sotto: nil) : nil
+    }
 }
 
 // MARK: Entrato a giornata già iniziata senza formazione (`senza_formazione`, #687): parole della web (`oggi.gia_iniziata`, `oggi.prepara_prossima`)

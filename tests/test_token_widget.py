@@ -253,6 +253,86 @@ def _altro_dispositivo(nome="anna"):
     return d
 
 
+@pytest.fixture
+def posta_finta(monkeypatch):
+    """Le email «partono» in una lista: niente file e niente rete."""
+    from fanta import posta
+    messaggi = []
+    monkeypatch.setattr(posta, "invia", lambda m: messaggi.append(m) or True)
+    monkeypatch.setattr(posta, "attiva", lambda: True)
+    return messaggi
+
+
+def _cambia_email(c, posta_finta, email):
+    """Imposta e conferma l'email dell'account dal dispositivo `c`, con il codice arrivato a quell'indirizzo."""
+    assert c.post("/api/account/email", json={"email": email, "password": PASSWORD}).status_code == 200
+    codice = re.search(r"\b(\d{6})\b", [m for m in posta_finta if m.a == email][-1].testo).group(1)
+    r = c.post("/api/account/email/conferma", json={"codice": codice})
+    assert r.status_code == 200, r.text
+
+
+def test_il_cambio_dell_email_chiude_il_widget_di_un_altro_dispositivo(due_utenti, posta_finta):
+    """#843: sostituire un'email già confermata chiude il widget nato su un altro dispositivo (la sua sessione esce). Chi conferma
+    resta dentro; il widget di un altro account non si tocca."""
+    a, b = due_utenti
+    _cambia_email(a, posta_finta, "prima@example.com")                   # la prima email non chiude niente
+    altro = _altro_dispositivo()
+    t, tb = token_di(altro), token_di(b)
+    c, h = widget(t)
+    assert c.get("/api/widget", headers=h).status_code == 200
+    _cambia_email(a, posta_finta, "seconda@example.com")
+    assert c.get("/api/widget", headers=h).status_code == 401
+    assert a.get("/api/account/me").status_code == 200
+    c, h = widget(tb)
+    assert c.get("/api/widget", headers=h).status_code == 200
+
+
+def test_il_cambio_dell_email_tiene_il_widget_di_chi_conferma(due_utenti, posta_finta):
+    """#843: il widget nato dalla sessione che conferma resta, come resta quella sessione (l'app non ne chiederebbe un altro e il
+    widget resterebbe su «Tocca per collegare»)."""
+    a, _ = due_utenti
+    _cambia_email(a, posta_finta, "prima@example.com")
+    t = token_di(a)
+    _cambia_email(a, posta_finta, "seconda@example.com")
+    c, h = widget(t)
+    assert c.get("/api/widget", headers=h).status_code == 200
+    assert a.get("/api/account/token-widget").json()["presente"] is True
+
+
+def test_il_cambio_dell_email_chiude_le_sessioni_anche_se_il_widget_non_si_toglie(due_utenti, posta_finta):
+    """Un guasto nel togliere il widget non annulla la conferma: le sessioni degli altri sono già chiuse e salvate, il guasto si
+    vede nel registro di sicurezza con il nome di ciò che non è riuscito (come per «Esci», #814)."""
+    from fanta import registro
+    a, _ = due_utenti
+    _cambia_email(a, posta_finta, "prima@example.com")
+    altro = _altro_dispositivo()
+    token_di(altro)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("CREATE TRIGGER guasto BEFORE DELETE ON token_widget BEGIN SELECT RAISE(ABORT, 'guasto finto'); END")
+        db.commit()
+    _cambia_email(a, posta_finta, "seconda@example.com")
+    assert a.get("/api/account/me").json()["email"] == "seconda@example.com"
+    assert altro.get("/api/account/me").status_code == 401
+    eventi = [e for e in registro.ultimi(registro.FILE_SICUREZZA) if e.get("cosa") == "token_widget_non_tolto"]
+    assert len(eventi) == 1 and eventi[0]["tipo"] == "errore_interno" and eventi[0]["utente"] == "1"
+
+
+def test_il_cambio_dell_email_chiude_un_widget_senza_legame(due_utenti, posta_finta):
+    """Un token nato prima del legame con la sessione (sessione_id vuoto) si chiude anche se l'ha chiesto chi conferma: non si
+    sa di quale dispositivo sia."""
+    a, _ = due_utenti
+    _cambia_email(a, posta_finta, "prima@example.com")
+    t = token_di(a)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("UPDATE token_widget SET sessione_id = NULL")
+        db.commit()
+    c, h = widget(t)
+    assert c.get("/api/widget", headers=h).status_code == 200
+    _cambia_email(a, posta_finta, "seconda@example.com")
+    assert c.get("/api/widget", headers=h).status_code == 401
+    assert a.get("/api/account/token-widget").json() == {"presente": False}
+
+
 def test_uscire_dalla_sessione_che_ha_creato_il_token_lo_chiude(due_utenti):
     """#814: «Esci» da un dispositivo chiude anche il token del widget nato da quella sessione, anche se l'app non è riuscita a
     revocarlo prima (rete caduta a metà). Il widget di un altro account non si tocca."""
