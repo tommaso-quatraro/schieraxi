@@ -260,13 +260,23 @@ struct RigaInterruttore: View {
 
 /// Regole della lega: punteggi, modificatore difesa, moduli, panchina, rosa e crediti. Si può anche incollare il regolamento di Leghe.
 struct RegoleEditorView: View {
-    @StateObject private var vm: RegoleEditorViewModel
-    @Environment(\.dismiss) private var chiudi
-    @Environment(\.horizontalSizeClass) private var classe
-    @State private var chiediUscita = false
+    /// Perché si chiede cosa fare delle modifiche non salvate: «Indietro», o una pagina aperta da fuori (#808).
+    private enum Uscita {
+        case indietro
+        case pagine([PaginaImpostazioni])
+    }
 
-    init(server: any ServerClient) {
+    @StateObject private var vm: RegoleEditorViewModel
+    /// Le Impostazioni: sanno che le regole hanno modifiche non salvate e quali pagine aspettano la risposta alla domanda.
+    private let lega: LegaViewModel
+    @Environment(\.dismiss) private var chiudi
+    @State private var chiediIndietro = false
+    /// Le pagine chieste da fuori («Vedi la rosa» dalla Formazione) che aspettano la risposta (`LegaViewModel.pagineInAttesa`).
+    @State private var inAttesa: [PaginaImpostazioni]?
+
+    init(server: any ServerClient, lega: LegaViewModel) {
         _vm = StateObject(wrappedValue: RegoleEditorViewModel(server: server))
+        self.lega = lega
     }
 
     private let ruoli = [("P", "portiere"), ("D", "difensore"), ("C", "centrocampista"), ("A", "attaccante")]
@@ -311,30 +321,36 @@ struct RegoleEditorView: View {
         }
         .titoloPagina(Catalogo.Imp.regole)
         .task { await vm.carica() }
-        // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga)
-        // e tornando indietro si chiede cosa fare, invece di perderle in silenzio.
+        // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga) e, tornando
+        // indietro o aprendo un'altra pagina da fuori, si chiede cosa fare invece di perderle in silenzio. Sull'iPhone e sull'iPad
+        // (#808: sull'iPad «‹ Impostazioni» le buttava); un avviso, che si vede intero in mezzo allo schermo su tutti e due.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if vm.caricato && vm.modificato { barraNonSalvate }
         }
-        .navigationBarBackButtonHidden(vm.modificato && classe == .compact)
+        .navigationBarBackButtonHidden(vm.modificato)
         .toolbar {
-            if vm.modificato && classe == .compact {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button { chiediUscita = true } label: { Label("Indietro", systemImage: "chevron.backward") }
+            if vm.modificato {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { chiediIndietro = true } label: { Label("Indietro", systemImage: "chevron.backward") }
                         .accessibilityHint("Le modifiche alle regole non sono salvate: ti chiedo cosa fare")
                 }
             }
         }
-        .confirmationDialog("Le modifiche alle regole non sono salvate", isPresented: $chiediUscita, titleVisibility: .visible) {
+        .alert("Le modifiche alle regole non sono salvate", isPresented: domandaAperta, presenting: uscita) { perche in
             Button(Catalogo.Regole.salvaRegole) {
                 Task {
                     // si esce solo se le regole sono salvate: un errore (anche il 412) lascia la pagina aperta, con l'errore
-                    if await vm.salva() { chiudi() }
+                    if await vm.salva() { esci(perche) }
                 }
             }
-            Button("Esci senza salvare", role: .destructive) { chiudi() }
+            Button("Esci senza salvare", role: .destructive) { esci(perche) }
             Button("Continua a modificare", role: .cancel) {}
         }
+        // le Impostazioni sanno se le regole hanno modifiche da salvare, e chiedono qui prima di aprire un'altra pagina
+        .onChange(of: vm.modificato, initial: true) { _, modificato in
+            if lega.regoleNonSalvate != modificato { lega.regoleNonSalvate = modificato }
+        }
+        .onReceive(lega.$pagineInAttesa) { inAttesa = $0 }
         // un salvataggio non riuscito si sente anche con VoiceOver (la frase compare sopra la barra, lontano dal fuoco)
         .onChange(of: erroreSalvataggio) { _, errore in
             if let errore { AccessibilityNotification.Announcement(errore).post() }
@@ -343,6 +359,33 @@ struct RegoleEditorView: View {
 
     /// L'errore dell'ultimo salvataggio (nil se è riuscito o non ce n'è stato uno).
     private var erroreSalvataggio: String? { vm.esitoRiuscito ? nil : vm.esito }
+
+    /// Perché la domanda è aperta (nil = chiusa): una pagina chiesta da fuori vince su «Indietro».
+    private var uscita: Uscita? {
+        if let inAttesa { return .pagine(inAttesa) }
+        return chiediIndietro ? .indietro : nil
+    }
+
+    /// La domanda è aperta finché c'è un perché; chiusa (con qualsiasi risposta) si dimenticano «Indietro» e le pagine in attesa.
+    /// Le risposte che escono usano il perché di quando la domanda si è aperta (`presenting`), non questo.
+    private var domandaAperta: Binding<Bool> {
+        Binding(get: { uscita != nil }, set: { aperta in
+            guard !aperta else { return }
+            chiediIndietro = false
+            lega.lasciaPagineInAttesa()
+        })
+    }
+
+    /// Regole salvate o lasciate: si torna indietro, o si aprono le pagine chieste da fuori.
+    private func esci(_ uscita: Uscita) {
+        switch uscita {
+        case .indietro:
+            lega.regoleNonSalvate = false
+            chiudi()
+        case .pagine(let pagine):
+            lega.apriDopoLaDomanda(pagine)
+        }
+    }
 
     /// La barra delle modifiche non salvate, con sopra l'errore dell'ultimo salvataggio: vicino a «Salva» si vede sempre, anche in
     /// cima a una lista lunga (prima stava solo in fondo alla lista, #808). Dopo un errore le modifiche restano, quindi c'è la barra.

@@ -41,6 +41,11 @@ final class LegaViewModel: ViewModelBase {
     let squadre: Caricatore<[SquadraLega]>
     /// Le pagine aperte nella pila delle Impostazioni (nell'AppModel: cambiando sezione si resta dove si era).
     @Published var percorso: [PaginaImpostazioni] = []
+    /// Le Regole aperte hanno modifiche non salvate (lo tiene aggiornato `RegoleEditorView`). Una pagina aperta da fuori (dalla
+    /// Formazione «Vedi la rosa», un file da importare, un passo della guida) non chiude le Regole in silenzio: prima si chiede (#808).
+    @Published var regoleNonSalvate = false
+    /// Le pagine chieste mentre le Regole avevano modifiche non salvate: si aprono dopo la risposta alla domanda.
+    @Published private(set) var pagineInAttesa: [PaginaImpostazioni]?
     private var ascoltoStato: AnyCancellable?
     /// L'ultima risposta di `/api/stato` già passata al pulsante «Aggiorna i dati» (`Caricatore.risposte`).
     private var rispostaUsata = 0
@@ -48,17 +53,23 @@ final class LegaViewModel: ViewModelBase {
     /// Apre una pagina (e quelle che ci stanno sopra) nelle Impostazioni e dice quale voce della barra mostrare.
     @discardableResult
     func apri(_ pagine: [PaginaImpostazioni]) -> Sezione {
-        percorso = pagine
+        // Regole aperte con modifiche non salvate: le pagine chieste aspettano la risposta alla domanda delle Regole (#808)
+        if regoleNonSalvate, percorso.contains(.regole), pagine != percorso {
+            pagineInAttesa = pagine
+        } else {
+            percorso = pagine
+        }
         return .impostazioni
     }
 
-    @Published var regoleNonSalvate = false
-    @Published private(set) var pagineInAttesa: [PaginaImpostazioni]?
-
+    /// Regole salvate o lasciate («Esci senza salvare»): si aprono le pagine chieste, senza chiedere di nuovo.
     func apriDopoLaDomanda(_ pagine: [PaginaImpostazioni]) {
+        pagineInAttesa = nil
+        regoleNonSalvate = false
         percorso = pagine
     }
 
+    /// «Continua a modificare» (o la domanda chiusa): le Regole restano aperte con le modifiche e la pagina chiesta non si apre.
     func lasciaPagineInAttesa() {
         pagineInAttesa = nil
     }
