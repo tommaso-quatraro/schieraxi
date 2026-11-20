@@ -151,6 +151,11 @@ enum LetturaPedina {
         return parole.joined(separator: "\n")
     }
 
+    /// Lo stato sotto il cognome su due righe. nil con una parola sola.
+    static func dueRighe(_ testo: String) -> String? {
+        nil
+    }
+
     /// Il testo del distintivo va scuro o chiaro secondo il colore di fondo (il contrasto più alto, come WCAG).
     static func testoScuro(suEsadecimale hex: String) -> Bool {
         var n: UInt64 = 0

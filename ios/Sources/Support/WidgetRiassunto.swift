@@ -131,6 +131,9 @@ struct FormazioneWidget: Codable, Equatable {
         intervallo = try? c.decodeIfPresent(IntervalloWidget.self, forKey: .intervallo)
         tuaScelta = try? c.decodeIfPresent(Bool.self, forKey: .tuaScelta)
     }
+
+    /// La riga del widget sulla schermata di blocco (`accessoryInline`), dalla forma più lunga.
+    var formeInLinea: [String] { ["SchieraXI \(modulo ?? "—") · \(Formato.punti(puntiAttesi))"] }
 }
 
 struct PuntiGiornata: Codable, Equatable, Identifiable {
@@ -1317,6 +1320,38 @@ extension RiassuntoOggi {
 
     /// Il sottotitolo per VoiceOver, con i due numeri.
     var voceSottotitoloRettangolo: String { finita ? "Prossima: \(voceGiornata)" : voceGiornata }
+}
+
+// MARK: Testata e corpo del widget «Da controllare» (medio e grande)
+
+/// La testata del widget «Da controllare»: il titolo nelle sue forme (dalla più lunga), la frase per VoiceOver, il simbolo e la
+/// giornata a destra (nil quando il titolo la dice già).
+struct TestataDubbi: Equatable {
+    let forme: [String]
+    let voce: String
+    let simbolo: String
+    let giornata: NomeGiornata?
+}
+
+/// Sotto la testata del widget «Da controllare», a formazione chiusa o a giornata finita: la frase in grande e, sotto, una riga
+/// più piccola (nil se non c'è).
+struct CorpoFaseDubbi: Equatable {
+    let frase: String
+    let sotto: String?
+}
+
+extension RiassuntoOggi {
+    /// La testata del widget «Da controllare».
+    var testataDubbi: TestataDubbi {
+        TestataDubbi(forme: ["Da controllare"], voce: "Da controllare",
+                     simbolo: daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill", giornata: nomeTestata)
+    }
+
+    /// Il corpo del widget «Da controllare» a formazione chiusa o a giornata finita; nil prima della scadenza.
+    func corpoFaseDubbi(adesso: Date) -> CorpoFaseDubbi? {
+        guard let titolo = titoloFase else { return nil }
+        return CorpoFaseDubbi(frase: titolo, sotto: fraseFase(adesso: adesso))
+    }
 }
 
 // MARK: Entrato a giornata già iniziata senza formazione (`senza_formazione`, #687): parole della web (`oggi.gia_iniziata`, `oggi.prepara_prossima`)
