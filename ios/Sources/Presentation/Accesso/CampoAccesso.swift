@@ -20,10 +20,11 @@ struct CampoAccesso: View {
     var maiuscole: TextInputAutocapitalization = .never
 
     /// Tetto della misura dei pallini della password (issue #857). La casella sta su una riga sola e, quando non ci si scrive,
-    /// iOS taglia con «…» quello che non ci sta: con il testo massimo restavano otto pallini. Fino a XXXL i pallini crescono con
-    /// il testo; con le misure per l'accessibilità restano a XXXL, e una password di 20 caratteri (quella forte che propone
-    /// iOS) sta intera anche sull'iPhone più stretto (`PalliniPasswordTests`). L'etichetta sopra la casella resta grande.
-    static let tettoPallini: DynamicTypeSize = .xxxLarge
+    /// iOS taglia con «…» quello che non ci sta: con il testo massimo restavano otto pallini. Nelle foto un pallino è largo
+    /// circa 0,6 volte la misura del carattere: a XXL 20 pallini (la password forte che propone iOS) sono larghi circa 256
+    /// punti e stanno nei 295 della casella sull'iPhone più stretto. Oltre XXL i pallini non crescono più; l'etichetta sopra
+    /// la casella resta grande.
+    static let tettoPallini: DynamicTypeSize = .xxLarge
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
