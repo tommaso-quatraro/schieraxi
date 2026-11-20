@@ -255,6 +255,21 @@ def _copia_alla_scadenza(a, prev, titolari, panchina) -> None:
     copia_scadenza.salva(f, ST, a.tmp / "scelte.json", a.tmp / "diario.json")
 
 
+def test_i_numeri_della_rosa_alla_scadenza_restano_per_le_ultime_quattro_giornate(ambiente):
+    """La copia alla scadenza di cinque giornate di fila: restano i numeri delle ultime quattro, la 10 e la 11 comprese (le
+    giornate si ordinano come numeri), e non entrano nell'istantanea che va ai client."""
+    from fanta import copia_scadenza, diario
+    prev, _, _ = consigli.previsioni(None, REGOLE)
+    for g in (7, 8, 9, 10, 11):
+        f = {"giornata": g, "modulo": "4-4-2", "punteggio_atteso": 70.0, "titolari": [_scheda(prev, i) for i in TITOLARI],
+             "panchina": [_scheda(prev, i) for i in PANCHINA], "schede": {str(i): _scheda(prev, i) for i in prev.index}}
+        copia_scadenza.salva(f, ST, ambiente.tmp / "scelte.json", ambiente.tmp / "diario.json")
+    d = diario.carica(ambiente.tmp / "diario.json")
+    assert set(d["numeri_rosa"]) == {f"{ST}/{g}" for g in (8, 9, 10, 11)}
+    assert set(diario.numeri_rosa(ambiente.tmp / "diario.json", ST, 11)) == set(prev.index)
+    assert all("numeri" not in str(list(ist)) for ist in d["istantanee"].values())
+
+
 def test_giornata_finita_senza_diario_con_la_scelta_salvata_senza_panchina(ambiente, monkeypatch):
     """#794: web e iPhone salvano la formazione senza panchina. Senza la voce del Diario il riepilogo usava una panchina vuota e
     le riserve entrate in corso sparivano (64,0 invece di 76,0). Con gli stessi 11 della consigliata congelata alla scadenza la

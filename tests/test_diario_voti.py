@@ -47,7 +47,7 @@ def _voti(m, partita: int, diversi: dict[int, float] | None = None) -> None:
     ids, squadre = (range(1, 20), "ab") if partita == 1 else (range(20, 26), "cd")
     voto = {25: 9.0} | (diversi or {})
     archivio.inserisci(m.db, "voti", [{"stagione": ST, "giornata": 1, "calciatore_id": i, "nome": f"G{i}", "squadra": squadre[i % 2],
-                                       "voto_red": voto.get(i, 6.0)} for i in ids])
+                                       "ruolo": RUOLI[i - 1], "voto_red": voto.get(i, 6.0)} for i in ids])
     m.dati.voti = pd.read_sql_query("SELECT * FROM voti", m.db)
 
 
@@ -198,6 +198,23 @@ def test_una_correzione_dopo_il_rilascio_non_toglie_il_verdetto(mondo):
     v = _voce(mondo)
     assert v["consigliata"]["origine"] == "mostrata" and v["consigliata"]["reale"] == v["schierata"]["reale"] == CON_TUTTI_I_VOTI + 1
     assert diario.elenco(mondo.diario)["scelte_tue"]["giornate"] == 1
+
+
+def test_con_i_voti_cambiati_si_rifanno_anche_i_punti_degli_indicatori(mondo):
+    """Gli indicatori del consiglio della voce (`consiglio`) seguono i punti rifatti: quelli della consigliata e della schierata
+    (diversa dalla mostrata) sono i nuovi `reale`, S2 si rifà con la rosa di allora; il resto (C2-C4, chi è la consigliata) resta."""
+    _voti(mondo, 1)
+    _voti(mondo, 2)
+    prima = _voce_di_prima(mondo, _istantanea(mondo))
+    assert prima["consiglio"]["punti_s2"] is not None                   # con il ruolo nei voti S2 si calcola
+    assert _aggiorna(mondo) == 1
+    v = _voce(mondo)
+    c = v["consiglio"]
+    assert c["punti_consigliata"] == v["consigliata"]["reale"] == CON_TUTTI_I_VOTI
+    assert c["punti_schierata"] == v["schierata"]["reale"] == CON_TUTTI_I_VOTI
+    assert c["punti_s2"] is not None and c["punti_s2"] != prima["consiglio"]["punti_s2"]      # S2 ha giocatori della seconda partita
+    assert {k: x for k, x in c.items() if not k.startswith("punti_")} == {k: x for k, x in prima["consiglio"].items()
+                                                                          if not k.startswith("punti_")}
 
 
 def test_una_voce_senza_impronta_con_ho_schierato_ma_senza_piu_la_scelta_tiene_la_schierata(mondo, monkeypatch):
