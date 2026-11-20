@@ -95,6 +95,21 @@ final class FotoUITests: XCTestCase {
                        "nella foto lega-stato-nostri l'ultimo indicatore del consiglio non deve essere a video")
     }
 
+    /// `lega-stato-taratura` (#527): la riga della taratura di «gioca N%» sta sotto i gruppi di «Quanto sono giuste le previsioni»,
+    /// fra la cima della pagina e le nostri. Con `-DEMO_FONDO taratura` la lista si ferma sull'ultimo gruppo: il gruppo e la riga
+    /// sono a video, la cima e il fondo no (se la lista non scorresse resterebbe in fondo, sugli indicatori del consiglio).
+    func testLaFotoDellaTaraturaMostraLaRiga() {
+        avvia(["-DEMO_SCHERMATA", "lega-stato", "-DEMO_FONDO", "taratura"])
+        let riga = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Taratura con le probabili")).firstMatch
+        XCTAssertTrue(aspetta(30) { riga.exists && riga.isHittable }, "nella foto lega-stato-taratura la riga della taratura deve essere a video")
+        let gruppo = elemento(cheComincia: "Panchina 20-49%")
+        XCTAssertTrue(aspetta(5) { gruppo.exists && gruppo.isHittable }, "nella foto lega-stato-taratura l'ultimo gruppo deve essere a video")
+        XCTAssertFalse(elemento(cheComincia: "Scelte strane senza un motivo detto").isHittable,
+                       "nella foto lega-stato-taratura l'ultimo indicatore del consiglio non deve essere a video")
+        XCTAssertFalse(elemento(cheComincia: "Coppe europee fino al").isHittable,
+                       "nella foto lega-stato-taratura la cima di Stato dei dati non deve più essere a video")
+    }
+
     /// `formazione-metti-in-campo` (#778): la scena apre da sola l'elenco «Chi esce per …» del panchinaro della demo, con in cima
     /// il cambio che rende di più, che cambia modulo («Si passa al …»).
     func testLaFotoDiMettiInCampoMostraLElenco() {
