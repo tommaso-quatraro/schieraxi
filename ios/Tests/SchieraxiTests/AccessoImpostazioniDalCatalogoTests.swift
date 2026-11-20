@@ -27,7 +27,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Accesso.vaiAccesso, Catalogo.Accesso.rispostaIncompleta,
         // account.*
         Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.esciTutti,
-        Catalogo.Account.esciTuttiConferma, Catalogo.Account.esciTuttiGoogle, Catalogo.Account.cambiaPassword,
+        Catalogo.Account.esciTuttiConferma, Catalogo.Account.esciTuttiGoogle, Catalogo.Account.esciTuttiFatto,
+        Catalogo.Account.cambiaPassword,
         Catalogo.Account.passwordAttuale, Catalogo.Account.ripetiPassword, Catalogo.Account.passwordDiverse,
         Catalogo.Account.altriScollegati, Catalogo.Account.passwordCambiataOk, Catalogo.Account.passwordCambiataCodice,
         Catalogo.Account.laTuaPassword,
@@ -143,8 +144,10 @@ struct AccessoImpostazioniDalCatalogoTests {
             "TestiAccount.rigaPassword(", "TestiAccount.rigaGoogle(", "TestiAccount.nuovaPassword", "TestiAccount.ripetiPassword",
             "TestiAccount.passwordDiverse",
         ]),
+        // «Il tuo account» è il titolo della pagina; la sezione sotto non lo ripete (#787)
+        ("Sources/Presentation/Lega/AccountPagina.swift", ["Catalogo.Imp.account"]),
         ("Sources/Presentation/Accesso/AccountSezione.swift", [
-            "Catalogo.Imp.account", "Catalogo.Account.esci", "Catalogo.Social.collegatoOk", "Catalogo.Social.scollegatoOk",
+            "Catalogo.Account.esci", "Catalogo.Social.collegatoOk", "Catalogo.Social.scollegatoOk",
             // «Esci da tutti i dispositivi» con la sua conferma e il suo errore (#765)
             "Catalogo.Account.esciTutti", "Catalogo.Account.esciTuttiConferma", "Catalogo.Account.esciTuttiNo(",
             "TestiAccount.esciTuttiGoogle(",

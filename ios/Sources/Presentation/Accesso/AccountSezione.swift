@@ -170,7 +170,8 @@ struct AccountSezione: View {
 
     var body: some View {
         if sessione.multiutente, let utente = sessione.utente {
-            Section(titolo: Catalogo.Imp.account) {
+            // senza titolo: «Il tuo account» è già il titolo della pagina (`AccountPagina`), e la scheda della web non ne ha (#787)
+            Section {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(utente.nome).font(.headline)
                     Text(TestiAccount.ruoloEData(ruolo: utente.ruolo, creato: utente.creato))
@@ -272,7 +273,8 @@ struct RigaEsci: View {
 
 /// «Esci da tutti i dispositivi» (#765), l'ultima riga di «Il tuo account», subito sotto «Esci» come sulla web: è il pulsante che
 /// consigliano le email di sicurezza quando c'è un accesso che non si riconosce. Chiede conferma con la frase della web; dopo
-/// l'uscita l'app torna allo schermo d'accesso (`SessioneAccount.esciDaTutti`). Se non riesce lo dice qui sotto e si resta dentro.
+/// l'uscita l'app torna allo schermo d'accesso (`SessioneAccount.esciDaTutti`), che lo dice una volta con la frase della web
+/// (`account.esci_tutti_fatto`, #788). Se non riesce lo dice qui sotto e si resta dentro.
 struct RigaEsciDaTutti: View {
     /// Identificativo per i test di interfaccia.
     static let id = "account-esci-tutti"

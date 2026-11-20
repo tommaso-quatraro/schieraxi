@@ -115,9 +115,12 @@ enum ErroreApi: LocalizedError {
 
     /// Il messaggio senza le frasi che cominciano con «Riprova» e senza «aspetta prima di riprovare» (li sostituisce il tempo
     /// che manca), chiuso da un punto. Prima «riprovare» perdeva solo la parola: «aspetta prima di Riprova tra 45 secondi».
+    /// Con l'invito se ne vanno anche i due punti o la virgola rimasti in fondo: «Troppi tentativi: riprova più tardi» diventa
+    /// «Troppi tentativi.», non «Troppi tentativi:.» (revisione della #806).
     static func senzaInvitoARiprovare(_ messaggio: String) -> String {
         var pulito = messaggio.replacingOccurrences(of: #"\s*\bRiprova\b[^.!]*[.!]?"#, with: "", options: [.regularExpression, .caseInsensitive])
         pulito = pulito.replacingOccurrences(of: #"\s*[:,;]?\s*aspetta prima di riprovare[.!]?"#, with: "", options: [.regularExpression, .caseInsensitive])
+        pulito = pulito.replacingOccurrences(of: #"[\s:,;]+$"#, with: "", options: .regularExpression)
         pulito = pulito.trimmingCharacters(in: .whitespacesAndNewlines)
         if let ultimo = pulito.last, !".!?".contains(ultimo) { pulito += "." }
         return pulito

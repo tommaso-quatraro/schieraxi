@@ -19,15 +19,14 @@ struct WidgetFormazione: Widget {
     }
 }
 
-/// I titolari disposti per reparto: portiere in alto, attaccanti in basso (come nel campo dell'app).
+/// I titolari disposti per reparto: attaccanti in alto, portiere in basso, come nel campo dell'app e della web
+/// (`DisposizioneWidget.righeCampo`, provato dai test).
 struct CampoMini: View {
     let titolari: [GiocatoreWidget]
     var lato: CGFloat = 22
     var conNomi = false
 
-    private var righe: [[GiocatoreWidget]] {
-        ["P", "D", "C", "A"].map { r in titolari.filter { ($0.ruolo ?? "").uppercased() == r } }.filter { !$0.isEmpty }
-    }
+    private var righe: [[GiocatoreWidget]] { DisposizioneWidget.righeCampo(titolari) }
 
     var body: some View {
         VStack(spacing: conNomi ? 6 : 3) {

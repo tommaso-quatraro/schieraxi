@@ -212,6 +212,9 @@ private struct RispostaOk: Decodable {
 
 /// Il conto alla rovescia dopo un «troppi tentativi» (429): quanti secondi mancano, e si ferma a zero.
 enum AttesaRiprova {
+    /// Il pulsante dell'accesso conta al massimo un'ora; un'attesa più lunga la dice la frase, come la web.
+    static let massimoConto = 3600
+
     static func secondiRimasti(fino: Date, adesso: Date = Date()) -> Int {
         max(0, Int(fino.timeIntervalSince(adesso).rounded(.up)))
     }
@@ -570,6 +573,7 @@ final class SessioneAccount: ObservableObject {
         guard Accesso.tokenValido(token), utente.nomeUtente.count <= 100, utente.ruolo.count <= 40 else { throw Errore.rispostaNonValida }
         if let codice = codiceRecupero, !Accesso.codiceRecuperoValido(codice) { throw Errore.rispostaNonValida }
         accessi = nil
+        avvisoAccesso = nil   // rientrato: la frase dell'uscita da tutti non vale più
         pulisci()
         memoria.removeObject(forKey: MigrazioneServer.chiaveSpostato)
         serverSpostato = false
@@ -710,7 +714,18 @@ final class SessioneAccount: ObservableObject {
         rinnovoWidget?.cancel()   // un token del widget che arriva adesso non si tiene
         await TokenWidget.revoca(server: server, luoghi: luoghiWidget)   // serve ancora la sessione: prima di chiuderla
         _ = try? await server.corpoJSON("POST", "/api/account/esci", [String: String]())
+        avvisoAccesso = nil   // un «Esci» normale non dice «Sei fuori da tutti i dispositivi»
         chiudiLocale()
+    }
+
+    /// La frase da mostrare una volta sulla schermata di accesso: dopo «Esci da tutti i dispositivi» riuscito, come la web
+    /// (`account.esci_tutti_fatto`, #788). Non è un errore e non c'è dopo un «Esci» normale. Solo in memoria.
+    private var avvisoAccesso: String?
+
+    /// La frase per la schermata di accesso, una volta sola: chi la prende la toglie (`SchermataAccesso` quando compare).
+    func prendiAvvisoAccesso() -> String? {
+        defer { avvisoAccesso = nil }
+        return avvisoAccesso
     }
 
     /// «Esci da tutti i dispositivi» (#765): il server chiude tutte le sessioni (anche questa), il widget, le notifiche e scollega
@@ -722,6 +737,7 @@ final class SessioneAccount: ObservableObject {
         try inizia()
         defer { inCorso = false }
         _ = try await server.corpoJSON("POST", "/api/account/esci-da-tutti", [String: String]())
+        avvisoAccesso = Catalogo.Account.esciTuttiFatto   // prima di chiudere: la schermata di accesso la legge appena compare
         chiudiLocale()
     }
 
