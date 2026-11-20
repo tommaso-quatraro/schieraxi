@@ -66,11 +66,11 @@ struct WidgetOraCopiaTests {
 
     private typealias Prova = DisposizioneWidget.ProvaFormazione
 
-    static func piccolo(salvati: Bool, dubbi: Int, fascia: Bool = true) -> [Prova] {
+    private static func piccolo(salvati: Bool, dubbi: Int, fascia: Bool = true) -> [Prova] {
         DisposizioneWidget.proveFormazione(medio: false, conGiornata: true, conFascia: fascia, datiSalvati: salvati, daControllare: dubbi)
     }
 
-    static func medio(salvati: Bool, dubbi: Int, fascia: Bool = true) -> [Prova] {
+    private static func medio(salvati: Bool, dubbi: Int, fascia: Bool = true) -> [Prova] {
         DisposizioneWidget.proveFormazione(medio: true, conGiornata: false, conFascia: fascia, datiSalvati: salvati, daControllare: dubbi)
     }
 
@@ -81,7 +81,7 @@ struct WidgetOraCopiaTests {
     func daControllareCedePerUltimo(medio: Bool, fascia: Bool) throws {
         let prove = medio ? Self.medio(salvati: true, dubbi: 2, fascia: fascia) : Self.piccolo(salvati: true, dubbi: 2, fascia: fascia)
         let ultima = try #require(prove.last)
-        #expect(ultima.piede == [.copia])
+        #expect(ultima.piede == [DisposizioneWidget.RigaPiedeFormazione.copia])
         // con una chiusura, non con un percorso: dentro #expect il percorso come funzione fa credere che la chiamata lanci errori
         #expect(prove.dropLast().allSatisfy { $0.piede == [.copia, .daControllare] })
         #expect(prove.count >= 3, "prima di «da controllare» deve cedere almeno un'altra riga")
