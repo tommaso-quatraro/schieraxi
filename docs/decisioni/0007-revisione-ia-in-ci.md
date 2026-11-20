@@ -38,7 +38,7 @@ La revisione fatta dagli agenti prima della pull request a volte manca o è parz
   nome (niente `secrets: inherit`) e solo tramite `env`.
 
 ## Versioni
-- Azione fissata per commit: v1.0.266, commit `d535f5172dec02b204866b393d6b20b9b2aaf98d` del 31/10/2026, adottata il 10/11 dopo i 7 giorni di attesa di Dependabot.
+- Azione fissata per commit: v1.0.269, commit `61a9c274fa7110a66dfafc1bbbced03833eb25fe` del 06/11/2026, adottata il 17/11 dopo i 7 giorni di attesa di Dependabot (al posto di #719).
 - La versione di Claude Code è scritta nell'azione (ogni versione dell'azione ha la sua) e si installa con lo script ufficiale: fissare
   l'azione fissa anche Claude Code. `path_to_claude_code_executable` permetterebbe di usarne un'altra, ma l'azione avvisa che
   versioni diverse possono non funzionare: non lo usiamo. Bun (1.4.4) e `oven-sh/setup-bun` sono fissati dentro l'azione.
@@ -47,7 +47,7 @@ La revisione fatta dagli agenti prima della pull request a volte manca o è parz
 ## Impostazione del repository
 Il repository accetta solo azioni di GitHub più un elenco. Senza le due voci qui sotto l'intero workflow «Controlli»
 non parte (anche `unisci`): vanno aggiunte PRIMA di unire questa decisione, e aggiornate quando cambia il commit dell'azione.
-- `anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d`
+- `anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe`
 - `oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6` (usata dentro l'azione)
 
 ## Conseguenze

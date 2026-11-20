@@ -207,8 +207,9 @@ def multiutente(tmp_path, monkeypatch):
 def dati_isolati(tmp_path, monkeypatch):
     """Se per un errore una rotta risultasse aperta, il test non deve poter toccare i dati veri né fare cose vere (aggiornamenti,
     avvisi): tutti i file personali vanno in una cartella temporanea e le azioni verso l'esterno sono spente."""
-    from fanta import affidabilita, archivio, diario, immagini, notifiche, osservati, push, scelte, server
+    from fanta import affidabilita, archivio, diario, immagini, notifiche, osservati, pianificatore, push, scelte, server
     d = tmp_path / "dati-finti"
+    monkeypatch.setattr(pianificatore, "file_blocco", lambda: d / "blocco")     # il blocco dell'aggiornamento, non ~/.cache vero
     for modulo, nome, percorso in ((server, "FILE_REGOLE", d / "regole.json"), (server, "FILE_ROSE", d / "rose.json"),
                                    (server, "FILE_MOVIMENTI", d / "movimenti.json"), (server, "FILE_ICONA", d / "icona.json"),
                                    (server, "RADICE", d), (scelte, "FILE_SCELTE", d / "scelte.json"),

@@ -14,5 +14,10 @@
   "aggiorna.ok": {
     "it": "Dati aggiornati",
     "en": "Data updated"
+  },
+  "aggiorna.in_corso": {
+    "it": "Il server è occupato con un aggiornamento: il pulsante torna attivo appena finisce.",
+    "en": "The server is busy with an update: the button comes back as soon as it is done.",
+    "nota": "Gestione, sotto «Aggiorna i dati» spento mentre il server tiene il blocco dell'aggiornamento: dati (programmato, giro leggero) o installazione di una versione (#763)"
   }
 }
