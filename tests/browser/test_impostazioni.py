@@ -393,6 +393,45 @@ def test_esci_da_tutti_chiede_conferma_ed_esce_ovunque(web):
     assert chiavi_salvate(web) == []
 
 
+USCITO_OVUNQUE = "Sei fuori da tutti i dispositivi"
+
+
+def test_dopo_esci_da_tutti_l_accesso_dice_che_l_uscita_e_riuscita(web):
+    """Confermato «Esci da tutti i dispositivi» si tornava all'accesso senza una parola (#779): ora un avviso (`role="status"`, non
+    un errore) dice che l'uscita è riuscita. Una volta sola: ricaricata la pagina, l'accesso torna quello di sempre."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    uscita_ovunque(web)
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())
+    principale(web).get_by_role("button", name=ESCI_TUTTI).click(timeout=10000)
+    accesso = web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI"))
+    accesso.get_by_role("status").filter(has_text=USCITO_OVUNQUE).wait_for(timeout=10000)
+    allarmi = [t for t in web.pagina.locator('[role="alert"]').all_inner_texts() if t.strip()]
+    assert allarmi == [], allarmi
+    web.pagina.reload(wait_until="load")
+    accesso.get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    assert USCITO_OVUNQUE not in accesso.inner_text()
+
+
+def test_dopo_esci_normale_niente_frase_di_esci_da_tutti(web):
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    uscito = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci",
+                     lambda route: uscito.append(1) or route.fulfill(status=200, content_type="application/json", body='{"ok": true}'))
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/") and urlsplit(u).path != "/api/account/esci",
+                     lambda route: route.fulfill(status=401, content_type="application/json",
+                                                 body=json.dumps({"detail": "Serve l'accesso", "multiutente": True})) if uscito
+                     else route.fallback())
+    principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    accesso = web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI"))
+    accesso.get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    web.aspetta()
+    assert uscito and USCITO_OVUNQUE not in accesso.inner_text()
+
+
 GOOGLE = [{"provider": "google", "email": "nome@example.invalid", "creata": "2026-10-01T10:00:00", "ultimo_uso": None}]
 
 
@@ -492,14 +531,70 @@ def test_la_mia_lega_porta_alla_mia_squadra_e_alle_altre(web):
     assert mia in riga.inner_text()                                      # la riga dice qual è
     tocca(web, riga)
     assert titolo(web) == mia and web.pagina.url.endswith("/?vista=impostazioni&gruppo=squadra")
-    testo = web.testo_principale()
-    assert "Portieri" in testo and "Stemma" in testo and "Maglia" in testo
+    assert "Portieri" in web.testo_principale()
+    assert principale(web).get_by_role("button", name="Stemma e maglia").is_visible()   # senza immagini, solo il pulsante (#779)
     assert principale(web).get_by_text("Non è la tua squadra?").is_visible()
     tocca(web, principale(web).get_by_role("button", name="Impostazioni"))
     tocca(web, voce(web, "Le altre squadre"))
     assert titolo(web) == "Le altre squadre"
     tocca(web, principale(web).get_by_role("button", name=re.compile(r"^\s*Real Esempio")))
     assert titolo(web) == "Real Esempio"
+    assert not web.errori_mostrati() and not web.errori_console and not web.richieste_fallite
+
+
+def test_la_mia_squadra_senza_costo_ne_immagini_non_mostra_parole_vuote(web):
+    """Una lega senza costi d'acquisto: ogni riga diceva «costo –» (#779). Senza costo la parola non c'è, la quotazione resta;
+    un costo 0 è un costo e si mostra. Senza stemma né maglia non restano le due parole «Stemma» e «Maglia» in uno spazio vuoto:
+    resta il pulsante «Stemma e maglia» per caricarli."""
+    solo(web, "prima")
+    rosa = web.registrata("/api/rosa")
+    for g in rosa["giocatori"]:
+        g["costo"] = None
+    rosa["giocatori"][0]["costo"] = 0
+    web.risposta("/api/rosa", rosa)
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    testo = " ".join(web.testo_principale().split())
+    assert "costo –" not in testo and len(re.findall(r"\bcosto\b", testo)) == 1 and "costo 0 · quotazione" in testo, testo[:600]
+    assert len(re.findall(r"\bquotazione \d", testo)) == len(rosa["giocatori"])
+    assert principale(web).get_by_text("Stemma", exact=True).count() == 0
+    assert principale(web).get_by_text("Maglia", exact=True).count() == 0
+    assert principale(web).get_by_role("button", name="Stemma e maglia").is_visible()
+
+
+@pytest.mark.parametrize("scelta", [True, False], ids=["mia-scelta", "mia-non-scelta"])
+def test_le_altre_squadre_contano_ed_elencano_solo_le_altre(web, scelta):
+    """«Le altre squadre · 10 squadre» elencava anche la mia (#779): la mia sta già in «La mia squadra». Il numero della riga e
+    l'elenco dicono le stesse squadre, senza la mia; finché la mia non è scelta sono tutte."""
+    solo(web, "prima")
+    squadre = web.registrata("/api/squadre")
+    mia = next(s["nome"] for s in squadre if s["mia"])
+    if not scelta:
+        for s in squadre:
+            s["mia"] = False
+        web.risposta("/api/squadre", squadre)
+    web.apri("/?vista=impostazioni")
+    riga = voce(web, "Le altre squadre")
+    quante = int(re.search(r"(\d+) squadr", riga.inner_text()).group(1))
+    tocca(web, riga)
+    assert titolo(web) == "Le altre squadre"
+    nomi = [b.inner_text() for b in principale(web).get_by_role("listitem").get_by_role("button").all()]
+    attese = len(squadre) - (1 if scelta else 0)
+    assert quante == len(nomi) == attese, (quante, nomi)
+    assert any(mia in n for n in nomi) is not scelta, nomi
+    assert not any("la tua" in n for n in nomi), nomi
+
+
+def test_le_altre_squadre_con_la_sola_mia_squadra_lo_dicono(web):
+    """Con le rose della sola mia squadra la riga non c'è, ma la pagina si apre dal suo indirizzo: diceva «Importa prima le rose…»,
+    falso perché le rose ci sono (#779). Ora dice che nella lega c'è solo la mia squadra e niente elenco."""
+    solo(web, "prima")
+    mia = next(s for s in web.registrata("/api/squadre") if s["mia"])
+    web.risposta("/api/squadre", [mia])
+    web.apri("/?vista=impostazioni&gruppo=squadre")
+    assert titolo(web) == "Le altre squadre"
+    testo = " ".join(web.testo_principale().split())
+    assert "solo la tua squadra" in testo and "Importa prima" not in testo, testo
+    assert principale(web).get_by_role("listitem").count() == 0
     assert not web.errori_mostrati() and not web.errori_console and not web.richieste_fallite
 
 
@@ -671,6 +766,24 @@ def test_regole_e_scadenza_parla_di_giornate_non_del_diario(web):
     web.apri("/?vista=impostazioni&gruppo=regole")
     testo = web.testo_principale()
     assert "Diario" not in testo and "Giornate" in testo, testo[:400]
+
+
+def test_la_frase_sulla_prima_giornata_non_cita_un_altra_giornata(web):
+    """Sotto «Da quale giornata di Serie A è partita la lega?» la frase d'aiuto restava sull'esempio «Con la prima giornata a 4…»
+    anche con un'altra giornata scelta (#779). Scelta la 6ª, la frase segue la scelta o non cita giornate: nessun numero tranne
+    1 (la giornata 1 della lega) e 6."""
+    solo(web, "prima")
+    salvate = _scritture(web, "/api/regole")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    scelta = principale(web).get_by_label("Da quale giornata di Serie A è partita la lega?")
+    scelta.select_option("6")
+    web.aspetta()
+    assert salvate and salvate[-1]["prima_giornata_lega"] == 6
+    # il riquadro dei tempi senza i due menu, che elencano tutte le scelte
+    aiuto = scelta.evaluate("""s => { const c = s.closest('.carta').cloneNode(true);
+      c.querySelectorAll('select').forEach(x => x.remove()); return c.textContent; }""")
+    assert "Giornate" in aiuto, aiuto
+    assert set(re.findall(r"\d+", aiuto)) <= {"1", "6"}, aiuto
 
 
 def test_la_scadenza_si_cambia_e_si_salva_subito(web):
@@ -937,6 +1050,41 @@ def test_stato_dei_dati_usa_le_etichette_del_server(web):
     foglio = web.pagina.get_by_role("dialog")
     foglio.get_by_text("Voti e bonus dal server").wait_for(timeout=10000)
     assert foglio.get_by_text("Gol attesi dal server").is_visible()
+
+
+# ---------------------------------------------------------------- Gestione: gli errori recenti in parole (#779)
+REGISTRO = {"contatori": {"da": "2026-11-20T08:00:00+00:00", "richieste": 1, "riuscite": 0, "rifiutate": 1, "errori": 0,
+                          "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 12.5,
+                          "piu_lente": [{"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3}]},
+            "errori": [],
+            "sicurezza": [{"quando": "2026-11-20T09:05:00+00:00", "tipo": "ruolo_cambiato", "nome": "amico"},
+                          {"quando": "2026-11-20T09:01:00+00:00", "tipo": "accesso_fallito", "nome": "amico", "ip": "192.0.2.x"},
+                          {"quando": "2026-11-20T09:00:30+00:00", "tipo": "fonte-cambiata", "utente": "amico", "fonte": "understat"},
+                          {"quando": "2026-11-20T09:00:00+00:00", "tipo": "evento_che_non_esiste_ancora"}]}
+
+
+def test_gli_errori_recenti_sono_scritti_in_parole(web):
+    """Impostazioni › Gestione, «Errori recenti» (solo chi gestisce il server, con gli account): plurali giusti («1 richiesta»,
+    «1 rifiutata»), tempi con la virgola, ora italiana senza «UTC» e nomi degli eventi in parole, mai il nome interno
+    (`ruolo_cambiato`); un evento che il catalogo non conosce ancora si legge senza trattini bassi."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    web.risposta("/api/admin/utenti", {"utenti": [{"nome_utente": "amico", "nome_visualizzato": "Amico di prova", "ruolo": "amministratore"}],
+                                       "massimo": 10})
+    web.risposta("/api/admin/registro", REGISTRO)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    carta = principale(web).locator(".carta", has=web.pagina.get_by_role("heading", name="Errori recenti"))
+    carta.get_by_text("Ruolo cambiato").wait_for(timeout=10000)
+    testo = " ".join(carta.inner_text().split())
+    assert "1 richiesta dall'ultimo riavvio" in testo and "1 rifiutata" in testo, testo
+    assert "1 richieste" not in testo and "1 rifiutate" not in testo, testo
+    assert "7,3 ms" in testo and "12,5 ms" in testo and "7.3" not in testo, testo
+    assert "/api/stato · 1 richiesta, medio 7,3 ms" in testo, testo
+    assert "10:05" in testo and "10:01" in testo and "UTC" not in testo, testo          # 9:05 UTC = 10:05 in Italia a novembre
+    assert "Accesso non riuscito" in testo and "evento che non esiste ancora" in testo, testo
+    assert "Fonte dei dati accesa o spenta" in testo and "fonte-cambiata" not in testo, testo     # tipo scritto con il trattino
+    assert "_" not in testo, testo
+    assert not web.errori_console and not web.richieste_fallite
 
 
 # ---------------------------------------------------------------- accesso: gli avvisi non sono errori

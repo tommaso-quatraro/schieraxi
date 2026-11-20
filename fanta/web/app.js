@@ -813,7 +813,7 @@ async function rileggiAggiornamento() {
 async function aggiornaDati() {
   try {
     const r = await api("/api/aggiorna", { method: "POST" });
-    if (!r.avviato) { avviso(r.messaggio); return; }
+    if (!r.avviato) { avviso(traduciErrore(r.messaggio), 6000); return; }        // già in corso, o nessuna fonte accesa (#779)
     segnaAggiornamento(true);
     avviso(t("aggiorna.avviato"));
     let tentativi = 0;
@@ -1927,11 +1927,13 @@ async function vistaRosa(nome) {
       const g = ruolo === "?" ? senzaRuolo : r.giocatori.filter(x => x.ruolo === ruolo);
       if (ruolo === "?" && !g.length) return "";
       const intestazione = g.length && !conIntestazione ? (conIntestazione = true, intestazioneColonne({ partita: true, ferma: true })) : "";
-      // la riga di ogni giocatore come nelle altre schermate (grafica B): la partita con la lineetta del club, poi costo e quotazione
+      // la riga di ogni giocatore come nelle altre schermate (grafica B): la partita con la lineetta del club, poi costo e quotazione;
+      // quello che manca non si scrive (una lega senza costi d'acquisto non legge «costo –» su ogni riga, #779; come RigaRosa dell'iPhone)
       return `<h3>${NOMI_RUOLO[ruolo] || t("scambio.senza_ruolo")} (${g.length})</h3>${intestazione}<ul class="elenco">${g.map(x => {
         const p = x.previsione, slug = slugQualunque((p && p.squadra) || x.squadra);
+        const prezzi = [x.costo != null ? t("scambio.costo_n", { c: x.costo }) : "", x.quotazione != null ? t("scambio.quotazione_n", { q: x.quotazione }) : ""];
         const partita = pezziRiga([[[sigla(x.squadra), p ? vsAt(p) : ""].filter(Boolean).join(" "), p && p.data_partita ? quando(p.data_partita) : ""]
-          .filter(Boolean).join(" · "), t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })]);
+          .filter(Boolean).join(" · "), prezzi.filter(Boolean).join(" · ")]);
         return `<li class="riga-gioc"><button class="voce voce-g" ${x.id ? `data-giocatore="${x.id}"` : "disabled"}>
           ${volto(p || { id: x.id, nome: x.nome, ruolo: x.ruolo, squadra: slug })}
           <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo || "?"))}</span><span class="nome-t">${esc(x.nome)}</span></span>
@@ -1951,10 +1953,7 @@ async function vistaRosa(nome) {
         <div class="riga riga-crediti"><label for="crediti-squadra">${t("scambio.crediti_residui")}</label>
           <span class="riga" style="gap:8px"><input class="campo-testo" id="crediti-squadra" type="number" min="0" max="99999" inputmode="numeric" value="${r.crediti_residui ?? ""}" style="width:96px;text-align:right">
           <button class="bottone secondario" id="salva-crediti-squadra" type="button">${t("scambio.salva")}</button></span></div>
-        <div class="immagini-squadra">
-          ${["stemma", "maglia"].map(tipo => { const s = squadre.find(x => x.nome === r.nome); const c = s && s.immagini && s.immagini[tipo]; return `<div class="immagine-squadra">
-            ${c ? `<img src="${urlImg(r.nome, tipo)}" alt="${t(NOME_IMMAGINE[tipo])}">` : `<span class="vuota">${t(NOME_IMMAGINE[tipo])}</span>`}</div>`; }).join("")}
-        </div>
+        ${immaginiRosa(squadre.find(x => x.nome === r.nome), r.nome)}
         <div class="pulsanti"><button class="bottone secondario" type="button" id="apri-stemma-maglia">${t("lega.stemma_maglia")}</button>
           ${r.mia ? "" : `<button class="bottone" type="button" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
@@ -1991,6 +1990,13 @@ async function vistaRosa(nome) {
 }
 
 const NOME_IMMAGINE = { stemma: "scambio.stemma", maglia: "scambio.maglia" };
+// Stemma e maglia in cima a una rosa: solo quelli caricati. Senza nessuno dei due niente riquadro (prima restavano le parole «Stemma» e
+// «Maglia» in uno spazio vuoto, #779): li carica il pulsante «Stemma e maglia» subito sotto.
+function immaginiRosa(squadra, nome) {
+  const caricate = ["stemma", "maglia"].filter(tipo => squadra && squadra.immagini && squadra.immagini[tipo]);
+  return caricate.length ? `<div class="immagini-squadra">${caricate.map(tipo => `<div class="immagine-squadra">
+    <img src="${urlImg(nome, tipo)}" alt="${t(NOME_IMMAGINE[tipo])}"></div>`).join("")}</div>` : "";
+}
 // Gol attesi nostri, senza Understat (I4 dal vivo, #401): i numeri calcolati solo con i voti di Fantacalcio.it contro quelli mostrati
 // (campo `registro_nostri`), dopo il registro delle giornate e con le sue righe. Verdetto e soglie dal server (`regge`, `regge_tutto`),
 // non si ricalcolano qui. Errore in percentuale come il registro, punti con due cifre e il segno, scarto con tre cifre, gol attesi su
@@ -2898,7 +2904,9 @@ function vistaImportaRose() {
   });
 }
 
-// Le altre squadre (?vista=impostazioni&gruppo=squadre): l'elenco della lega, con la mia segnata; un tocco apre la rosa.
+// Le altre squadre (?vista=impostazioni&gruppo=squadre): le squadre della lega senza la mia, che sta in «La mia squadra» (#779: prima
+// c'era anche lei, segnata «la tua», e il numero della riga di Impostazioni la contava); finché la mia non è scelta, tutte. Un tocco
+// apre la rosa. `stato.squadre` resta l'elenco intero: lo leggono La mia squadra e il foglio di stemma e maglia.
 async function vistaAltreSquadre() {
   const mia = nuovaRichiesta(), opz = { titolo: t("imp.altre_squadre"), stato: false, indietro: indietroImp() };
   caricamento(t("lega.carico_squadra"), opz);
@@ -2907,12 +2915,13 @@ async function vistaAltreSquadre() {
   catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
   if (!ancoraValida(mia)) return;
   stato.squadre = squadre;
-  pagina(squadre.length ? `<div class="carta imp-colonna"><ul class="elenco">${squadre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
+  const altre = squadre.filter(x => !x.mia);
+  pagina(altre.length ? `<div class="carta imp-colonna"><ul class="elenco">${altre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
       ${x.immagini && x.immagini.stemma ? `<img class="stemma-lista" src="${urlImg(x.nome, "stemma")}" alt="" loading="lazy">` : `<span class="iniziale-squadra" aria-hidden="true">${esc(x.nome.trim().slice(0, 1).toUpperCase())}</span>`}
-      <span><span class="nome">${esc(x.nome)}</span>${x.mia ? ` <span class="etichetta">${t("lega.la_tua")}</span>` : ""}
+      <span><span class="nome">${esc(x.nome)}</span>
         <span class="dettaglio" style="display:block">${tp("sd.n_giocatori", x.giocatori)}${x.crediti_residui != null ? ` · ${tp("lega.n_crediti", x.crediti_residui)}` : ""}</span></span>
       <span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul></div>`
-    : `<div class="carta"><p class="debole">${t("lega.importa_prima_rose")}</p></div>`, opz);
+    : `<div class="carta"><p class="debole">${t(squadre.length ? "lega.solo_la_tua" : "lega.importa_prima_rose")}</p></div>`, opz);   // rose della sola mia squadra: lo dice (#779)
   contenuto.querySelectorAll("[data-rosa]").forEach(b => b.addEventListener("click", () => vai("impostazioni", "squadre", { rosa: b.dataset.rosa, focoTitolo: true })));
 }
 
@@ -3680,7 +3689,15 @@ async function esciDaTutti() {
   }
   await lasciaNotifiche(false);                       // le iscrizioni sul server le ha già tolte lui: qui solo quella del browser
   await svuotaDatiLocali();
+  try { sessionStorage.setItem(USCITO_OVUNQUE, "1"); } catch { /* niente memoria: l'accesso torna senza la frase */ }
   location.reload();
+}
+// Dopo «Esci da tutti i dispositivi» la pagina si ricarica: il segno (scritto dopo la pulizia, che svuota sessionStorage) fa dire alla
+// schermata di accesso che l'uscita è riuscita (#779). Si legge e si toglie all'avvio, una volta sola, qualunque cosa risponda il server.
+const USCITO_OVUNQUE = "uscito-ovunque";
+function leggiUscitoOvunque() {
+  try { const c = sessionStorage.getItem(USCITO_OVUNQUE) === "1"; sessionStorage.removeItem(USCITO_OVUNQUE); return c; }
+  catch { return false; }
 }
 
 // Email dell'account: aggiungere/cambiare (codice a 6 cifre per posta), confermare, togliere. Tutti i valori dell'utente passano da esc().
@@ -3910,12 +3927,20 @@ function collegaAmministratore() {
     if (!dove) return;
     try {
       const r = await api("/api/admin/registro"), c = r.contatori;
-      const quando = q => esc(String(q).replace("T", " ").replace(/\+00:00$/, " UTC"));
+      // le ore del registro sono in UTC con il fuso («2026-11-20T09:05:00+00:00»): si mostrano nell'ora italiana, qualunque sia il
+      // fuso del browser (#779); i tipi di evento con il loro nome del catalogo (il trattino conta come il trattino basso:
+      // «fonte-cambiata» → errori.evento_fonte_cambiata), uno nuovo senza nome almeno senza trattini
+      const quando = q => { const d = new Date(q); return esc(Number.isNaN(d.getTime()) ? String(q)
+        : d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })); };
+      const evento = tipo => { const nome = String(tipo || "").replace(/-/g, "_");
+        return esc(Object.hasOwn(TESTI.it, "errori.evento_" + nome) ? t("errori.evento_" + nome) : nome.replace(/_/g, " ")); };
       const righe = (elenco, vuoto, testo) => elenco.length ? `<ul class="registro-elenco">${elenco.map(testo).join("")}</ul>` : `<p>${vuoto}</p>`;
-      dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: c.richieste, rifiutate: c.rifiutate, errori: c.errori, medio: c.tempo_medio_ms, p95: c.tempo_p95_ms, max: c.tempo_max_ms })}</p>
+      dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: tp("errori.n_richieste", c.richieste, { n: fNum(c.richieste) }),
+          rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }),
+          medio: num(c.tempo_medio_ms), p95: num(c.tempo_p95_ms), max: num(c.tempo_max_ms) })}</p>
         <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${quando(e.quando)} · ${esc(e.metodo || "")} ${esc(e.rotta || "")} · ${esc(e.stato || "")} ${esc(e.errore || "")}</li>`)}
-        <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${esc(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
-        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${t("errori.lenta_riga", { rotta: esc(p.rotta), richieste: p.richieste, medio: p.medio_ms })}</li>`)}`;
+        <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
+        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), rotta: esc(p.rotta), medio: num(p.medio_ms) })}</li>`)}`;
     } catch (e) { dove.textContent = e.message; }
   };
   $("#adm-registro-aggiorna").addEventListener("click", caricaRegistro);
@@ -3925,6 +3950,7 @@ function collegaAmministratore() {
 // Prima di tutto: chi sono? Senza account sul server (come oggi) risponde «utente locale» e l'app parte come sempre.
 async function controllaAccesso() {
   let r, dati = null;
+  const uscitoOvunque = leggiUscitoOvunque();
   try {
     r = await fetch("/api/account/me", { headers: { "X-Fanta": "1" } });
     try { dati = await r.json(); } catch { /* risposta vuota */ }
@@ -3944,7 +3970,8 @@ async function controllaAccesso() {
   if (r.status === 401 && dati && dati.multiutente) {
     // la sessione non vale più: via le copie rimaste, come all'uscita, prima della schermata di accesso
     if (restanoCopie()) await svuotaDatiLocali({ tieniAccesso: true });
-    if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false); else mostraAccesso("", invito ? "registra" : "accedi");
+    if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false);
+    else mostraAccesso(uscitoOvunque ? t("account.esci_tutti_fatto") : "", invito ? "registra" : "accedi");
     return false;
   }
   if (r.ok && dati && dati.multiutente) {

@@ -104,6 +104,35 @@ def test_guida_e_sotto_il_cofano_non_indicano_le_schede_di_prima():
     assert not trovati, "\n".join(trovati)
 
 
+# Un percorso dentro le Impostazioni si scrive in un modo solo, «Impostazioni › Regole e scadenza» (#779): non con «>», non
+# «in Impostazioni, alla voce …», non «(Impostazioni, Regole e scadenza)» né «in Impostazioni, «Aggiorna le rose»».
+PERCORSO_STORTO = re.compile(r"(?<!\w)(Impostazioni|Settings)(\s*(>|&gt;|→)|,\s*(alla voce|under|«|[A-Z{]))")
+
+
+def percorsi_storti(testi) -> list[str]:
+    trovati = []
+    for dove, testo in testi:
+        if m := PERCORSO_STORTO.search(testo):
+            trovati.append(f"{dove}: «…{' '.join(testo[max(0, m.start() - 40):m.end() + 40].split())}…»")
+    return trovati
+
+
+def test_il_catalogo_scrive_i_percorsi_delle_impostazioni_in_un_modo_solo():
+    """Le chiavi err.* e srv.* restano fuori: il loro testo italiano è parola per parola il messaggio del server, che le
+    riconosce per tradurlo (traduciErrore in testi.js); si cambiano insieme alla frase del server."""
+    trovati = percorsi_storti((dove, t) for dove, t in voci_catalogo() if dove.split(":")[1].split(".")[0] not in ("err", "srv"))
+    assert not trovati, "\n".join(trovati)
+
+
+def test_il_controllo_vede_i_percorsi_storti():
+    for storto in ("in Impostazioni > Regole e scadenza", "in Impostazioni, alla voce {voce}", "(Impostazioni, Regole e scadenza)",
+                   ": in Impostazioni, «Aggiorna le rose»", "in Settings > Your account", "in Settings, under Rules"):
+        assert PERCORSO_STORTO.search(storto), storto
+    for giusto in ("Impostazioni › Regole e scadenza", "In Impostazioni trovi gli avvisi", "Impostazioni", "Settings › Your account",
+                   "in Impostazioni, poi tocca", "le Impostazioni, ma"):
+        assert not PERCORSO_STORTO.search(giusto), giusto
+
+
 def test_il_controllo_vede_le_frecce_e_salta_i_commenti_swift():
     for buono in ("Lega > Account", "Altro › Regole", "Squadra >Seguiti", "League > Rules", "in Lega &gt; Crediti"):
         assert PERCORSO_VECCHIO.search(buono), buono

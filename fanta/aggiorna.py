@@ -582,6 +582,18 @@ class Aggiornamento:
                 self.errori.append(f"controlli: {r['nome']}: {r['dettaglio']}")
 
 
+# Le fonti che contattano i passi di un aggiornamento normale (`Aggiornamento.esegui`): football-data solo con le fonti in ombra.
+# Se si aggiunge un passo con una fonte nuova, va scritta anche qui.
+FONTI_DEL_GIRO = ("fantacalcio", "understat")
+
+
+def fonti_accese() -> list[str]:
+    """Le fonti accese che un aggiornamento normale contatterebbe adesso. Lista vuota: ogni passo si salterebbe e non c'è niente da
+    aggiornare (#779, «Aggiorna i dati» diceva «Dati aggiornati» lo stesso)."""
+    fonti = list(FONTI_DEL_GIRO) + (["footballdata"] if funzioni.acceso("fonti_ombra") else [])
+    return [f for f in fonti if fonti_attive.acceso(f)]
+
+
 def esegui(storico: bool = False, scrivi: Callable[[str], None] = print, stagioni_storiche: int = 1) -> list[str]:
     db = archivio.apri()
     try:
