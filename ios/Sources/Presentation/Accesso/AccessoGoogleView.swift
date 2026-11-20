@@ -67,8 +67,13 @@ struct ScegliNomeGoogleView: View {
                     .onSubmit { Task { await crea() } }
                     .frame(minHeight: Tema.areaTocco)
             } header: {
-                // come la web, sotto il titolo: «Hai scelto Google: non ti serve nessuna password. …»
-                Text(Catalogo.Social.scegliSpiega).foregroundStyle(Color.testoSecondario).textCase(nil)
+                // come la web e Registrati: sotto il titolo la spiegazione («Hai scelto Google: …»), poi l'etichetta del campo,
+                // che resta anche quando il nome suggerito è già scritto (come «Codice d'invito»)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(Catalogo.Social.scegliSpiega).textCase(nil)
+                    Text(Catalogo.Accesso.nomeUtente)
+                }
+                .foregroundStyle(Color.testoSecondario)
             } footer: {
                 if let problemaNome { Text(problemaNome).foregroundStyle(Color.attenzione) }
             }

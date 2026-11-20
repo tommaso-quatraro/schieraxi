@@ -209,6 +209,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         // il titolo è quello della web («Scegli il tuo nome utente»), intero anche con il testo grande: mai «Quasi fatto»
         #expect(codice.contains(".titoloPagina(Catalogo.Social.scegliNome"), "il titolo della pagina deve essere social.scegli_nome")
         #expect(codice.contains("TitoloNellaPagina()"), "con il testo grande il titolo intero sta nella pagina")
+        // come la web e Registrati: il campo del nome ha la sua etichetta fissa, che resta anche con il nome già scritto
+        #expect(codice.contains("Text(Catalogo.Accesso.nomeUtente)"), "manca l'etichetta fissa «Nome utente» sopra il campo")
         #expect(codice.contains("Catalogo.Social.scegliSpiega"), "la spiegazione della web (social.scegli_spiega)")
         // i valori iniziali vuoti dei campi (`= ""`) non sono testi
         let letterali = Set(try RestiDalCatalogoTests.letterali(codice).filter { !$0.isEmpty })
