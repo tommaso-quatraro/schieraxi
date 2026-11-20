@@ -5,7 +5,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from .percorsi import CARTELLA_LEGA, RADICE
+from .percorsi import CARTELLA_LEGA, RADICE, scrivi_sicuro_byte
 
 CARTELLA = CARTELLA_LEGA / "immagini"
 ESEMPIO = RADICE / "lega" / "esempio" / "immagini"
@@ -65,11 +65,11 @@ def salva(nome: str, tipo: str, dati: bytes, cartella: Path | None = None) -> Pa
     if estensione is None:
         raise ValueError("Formato non supportato: usa PNG, JPEG o WebP")
     cartella = cartella or CARTELLA
-    cartella.mkdir(parents=True, exist_ok=True)
-    for altra in FORMATI:                       # una sola immagine per tipo: le vecchie si tolgono
-        (cartella / f"{slug(nome)}-{tipo}{altra}").unlink(missing_ok=True)
     destinazione = cartella / f"{slug(nome)}-{tipo}{estensione}"
-    destinazione.write_bytes(dati)
+    scrivi_sicuro_byte(destinazione, dati)      # se il disco si riempie a metà, quella di prima resta intera (#781)
+    for altra in FORMATI:                       # una sola immagine per tipo: le altre si tolgono, solo a scrittura riuscita
+        if altra != estensione:
+            (cartella / f"{slug(nome)}-{tipo}{altra}").unlink(missing_ok=True)
     return destinazione
 
 
@@ -148,10 +148,11 @@ def salva_in_attesa(dati: bytes, cartella: Path | None = None) -> Path:
     if estensione is None:
         raise ValueError("Formato non supportato: usa PNG, JPEG o WebP")
     cartella = cartella or CARTELLA
-    cartella.mkdir(parents=True, exist_ok=True)
-    togli_in_attesa(cartella)
     destinazione = cartella / f"_in-attesa{estensione}"
-    destinazione.write_bytes(dati)
+    scrivi_sicuro_byte(destinazione, dati)      # come `salva`: quella di prima resta finché la nuova non è scritta tutta
+    for altra in FORMATI:
+        if altra != estensione:
+            (cartella / f"_in-attesa{altra}").unlink(missing_ok=True)
     return destinazione
 
 
