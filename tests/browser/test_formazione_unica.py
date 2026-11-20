@@ -1256,3 +1256,32 @@ def test_le_decisioni_urgenti_stanno_in_cima_e_il_reparto_scoperto_prende_un_pos
     for riga, (pezzo, pulsante) in zip(righe, attese):
         assert pezzo in riga and riga.endswith(pulsante), righe
     assert sum("Vedi la rosa" in r for r in righe) <= 1 and "In difesa" not in web.testo_principale()
+
+
+# ---------------------------------------------------------------- la colonna di «gioca N%» in inglese (#833)
+# Il testo di ogni cella `.pv-g` che sporge dalla sua colonna, in px: la colonna è larga 8 caratteri e in inglese «fantasy score» o
+# «expected 6.8» non ci stavano (uscivano di 8-10 px dalla riga). Una cella va a capo, non esce.
+SPORGE = """() => [...document.querySelectorAll('.voce-g > .pv-g')].filter(p => p.textContent.trim() && p.getClientRects().length)
+  .map(p => { const r = document.createRange(); r.selectNodeContents(p); const t = r.getBoundingClientRect(), c = p.getBoundingClientRect();
+    return [p.textContent.trim(), Math.round(Math.max(t.right - c.right, c.left - t.left) * 10) / 10]; })
+  .filter(([, px]) => px > 0.5)"""
+CELLE = "() => [...document.querySelectorAll('.voce-g > .pv-g')].filter(p => p.textContent.trim() && p.getClientRects().length).length"
+
+
+def test_in_inglese_la_colonna_di_gioca_non_sporge_nella_lista_dei_cambi(web):
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    web.apri("/")
+    tocca(web, campo(web).nth(3))
+    tocca(web, scheda(web).get_by_role("button", name="Replace"))
+    assert web.pagina.evaluate(CELLE) >= 3                               # «expected 6.8» in ogni riga della lista
+    assert web.pagina.evaluate(SPORGE) == []
+
+
+def test_in_inglese_la_colonna_di_gioca_non_sporge_nella_rosa_a_giornata_in_corso(web):
+    solo(web, "in-corso")
+    web.memoria({"lingua": "en"})
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    celle = web.pagina.locator(".voce-g > .pv-g").all_inner_texts()
+    assert any(" ".join(c.split()) == "fantasy score" for c in celle), celle    # a partita finita il fantavoto preso, col suo nome
+    assert web.pagina.evaluate(SPORGE) == []

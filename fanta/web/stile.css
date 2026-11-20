@@ -639,7 +639,9 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
 .lineetta { display: inline-block; width: 3px; height: 1em; margin-right: 5px; vertical-align: -.15em; border-radius: 1px; background: var(--c-scuro); }
 @media (prefers-color-scheme: light) { :root:not([data-tema="scuro"]) .lineetta { background: var(--c); } }
 :root[data-tema="chiaro"] .lineetta { background: var(--c); }
-.voce-g > .pv-g { grid-area: gioca; align-self: start; text-align: right; font-size: var(--t-sec); color: var(--testo-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* la colonna resta di 8 caratteri (allineata in ogni riga e sotto i nomi delle colonne): una scritta più lunga va a capo invece di
+   uscire dalla riga, come «fantasy score» ed «expected 6.8» in inglese (#833). In italiano «gioca 79%» e «atteso 6,8» ci stanno */
+.voce-g > .pv-g { grid-area: gioca; align-self: start; text-align: right; font-size: var(--t-sec); color: var(--testo-2); overflow-wrap: break-word; font-variant-numeric: tabular-nums; }
 .pv-g.medio { color: var(--eti-arancio); font-weight: 650; }       /* «gioca N%» c'è solo sotto l'80%: arancio fra 50 e 79, rosso sotto 50 (il colore non è da solo: c'è il numero) */
 .pv-g.basso { color: var(--eti-rosso); font-weight: 650; }
 .voce-g > .valore { grid-area: fv; align-self: end; }
