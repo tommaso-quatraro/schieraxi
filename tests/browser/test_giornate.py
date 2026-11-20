@@ -332,6 +332,25 @@ def test_con_la_consigliata_mostrata_la_riga_dice_i_cambi_e_quanto_sono_valsi(we
     assert not web.errori_mostrati() and not web.errori_console
 
 
+@pytest.mark.parametrize("punti, frase", [
+    (1.0, "Seguendo sempre la consigliata avresti fatto 1,0 punti in più."),
+    (-1.0, "Con le tue scelte hai fatto 1,0 punti in più della consigliata."),
+    (1.5, "Seguendo sempre la consigliata avresti fatto 1,5 punti in più."),
+])
+def test_nei_dettagli_il_singolare_solo_per_1_scritto_senza_decimali(web, punti, frase):
+    """Nei Dettagli il confronto con la consigliata scriveva «1,0 punto in più» (#833): il numero ha sempre un decimale, e «1,0» vuole
+    il plurale come «1,5». Il singolare solo per «1» scritto così, come nelle altre frasi dei punti."""
+    solo(web, "prima")
+    d, _ = forma_di_domani(web)
+    d["precisione"]["confronto"]["punti"] = punti
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE)
+    tocca(web, principale(web).get_by_text("Dettagli", exact=True))
+    tutto = " ".join(web.testo_principale().split())
+    assert frase in tutto, tutto
+    assert "1,0 punto " not in tutto
+
+
 def test_la_frase_sulla_consigliata_di_allora_e_quella_del_server(web):
     """#674: la consigliata di allora era salvata ma dentro c'è chi poi è stato ceduto. La pagina non scrive più di suo «non era
     stata salvata»: mostra la frase del server (`nota_consigliata`), sotto la tua formazione e sopra la consigliata rifatta."""

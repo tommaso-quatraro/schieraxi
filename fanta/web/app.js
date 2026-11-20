@@ -2363,6 +2363,9 @@ $("#campo-cerca").addEventListener("keydown", ev => {
 
 // Numeri con la virgola in italiano, con il punto nelle altre lingue.
 const virgola = x => (LINGUA === "it" ? String(x).replace(".", ",") : String(x));
+// Il plurale scelto sul numero come è scritto (#833): il singolare solo per «1»; «1,0» e «1.0» vogliono il plurale come «1,5»
+// (prima «1,0 punto in più»). Come `regPunti`.
+const tpScritto = (chiave, scritto, valori) => t(`${chiave}.${scritto === "1" ? "one" : "other"}`, valori);
 // Giornate > «Dettagli» della riga sulla precisione (campo `precisione` di /api/diario, fanta/precisione.py): i numeri con una frase,
 // l'andamento giornata per giornata e l'avviso se i dati sono pochi. Tutto viene dal server; si mostra anche quando va male.
 // Numeri dal server (passati da Number) e, per la riga su tutta la Serie A, una frase del server passata da esc(); niente innerHTML.
@@ -2396,7 +2399,7 @@ function dettagliPrecisione(p, conConfronto) {
   const cf = p.confronto || {};
   const cfNota = testoDi(cf, "nota");                  // la frase del server sulle giornate senza verdetto (#614); vuota se non c'è
   const punti = n(cf.punti);
-  const cfFrase = cf.giornate ? `${t("diario.qp_cf", { k: n(cf.meglio_consigliata), n: n(cf.giornate), tua: n(cf.meglio_tua), pari: n(cf.pari) })} ${punti === 0 ? t("diario.qp_cf_pari") : punti > 0 ? tp("diario.qp_cf_piu", punti, { e: v(punti) }) : tp("diario.qp_cf_meno", -punti, { e: v(-punti) })}`
+  const cfFrase = cf.giornate ? `${t("diario.qp_cf", { k: n(cf.meglio_consigliata), n: n(cf.giornate), tua: n(cf.meglio_tua), pari: n(cf.pari) })} ${punti === 0 ? t("diario.qp_cf_pari") : punti > 0 ? tpScritto("diario.qp_cf_piu", v(punti), { e: v(punti) }) : tpScritto("diario.qp_cf_meno", v(-punti), { e: v(-punti) })}`
     : "";
   // 4. punti della squadra (consigliata): previsti contro fatti
   const sq = p.squadra;
