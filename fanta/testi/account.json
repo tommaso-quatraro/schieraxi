@@ -92,6 +92,16 @@
     "en": "I cannot sign you out. {motivo}",
     "nota": "«Esci» quando la richiesta non arriva al server (rete giù, server che riparte): si resta dentro, come con account.esci_tutti_no (#800)"
   },
+  "account.esci_solo_qui": {
+    "it": "Esci solo da questo telefono",
+    "en": "Sign out of this phone only",
+    "nota": "solo l'app per iPhone: pulsante sotto account.esci_no quando la richiesta non arriva al server (rete giù, server che non risponde); esce dal telefono senza il server (#809). La web non ne ha bisogno: senza server non si apre"
+  },
+  "account.esci_solo_qui_spiega": {
+    "it": "Sul server la sessione resta aperta finché non scade.",
+    "en": "On the server the session stays open until it expires.",
+    "nota": "accanto ad account.esci_solo_qui (#809)"
+  },
   "account.esci_tutti": {
     "it": "Esci da tutti i dispositivi",
     "en": "Sign out of all devices"

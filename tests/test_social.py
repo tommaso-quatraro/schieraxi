@@ -848,7 +848,8 @@ def test_completa_salva_i_termini(scena):
 def test_migrazione_dei_termini_su_utenti_esistenti(tmp_path):
     vecchio = tmp_path / "account.sqlite"
     db = sqlite3.connect(vecchio)
-    for numero, m in enumerate(account.MIGRAZIONI[:-1]):
+    termini = next(n for n, v in enumerate(account.MIGRAZIONI) if isinstance(v, str) and "termini_accettati" in v)
+    for numero, m in enumerate(account.MIGRAZIONI[:termini]):      # tutte quelle di prima dei termini (testo SQL)
         db.executescript("BEGIN IMMEDIATE;" + m + f"PRAGMA user_version = {numero + 1}; COMMIT;")
     db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('vecchio', 'h', 'r', '2026-01-01T00:00:00+00:00')")
     db.commit()

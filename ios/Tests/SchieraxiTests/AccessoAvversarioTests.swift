@@ -346,7 +346,7 @@ final class SessioneAvversariaTests: XCTestCase {
         try await s.accedi(nomeUtente: "mister", password: "Prova-Finta-Zero")
         XCTAssertNotNil(s.utente, "si entra lo stesso, finché l'app è aperta")
         XCTAssertTrue(s.avviso?.contains("in modo sicuro") == true, s.avviso ?? "nessun avviso")
-        await s.esci()
+        try await s.esci()
         XCTAssertNil(s.avviso)
         XCTAssertNil(perde.leggi(server: server.indirizzo))
     }
@@ -370,7 +370,7 @@ final class SessioneAvversariaTests: XCTestCase {
         XCTAssertFalse(s.inCorso)
     }
 
-    func testUscireSiPuoSempreAncheConUnaRichiestaInCorso() async {
+    func testUscireSiPuoSempreAncheConUnaRichiestaInCorso() async throws {
         let server = ServerDiProva { _, percorso, _ in
             if percorso == "/api/account/cambia-password" { try await Task.sleep(nanoseconds: 300_000_000) }
             return Data("{\"ok\": true}".utf8)
@@ -379,7 +379,7 @@ final class SessioneAvversariaTests: XCTestCase {
         let s = sessione(server)
         let lenta = Task { try? await s.cambiaPassword(attuale: "a", nuova: "b") }
         try? await Task.sleep(nanoseconds: 50_000_000)
-        await s.esci()
+        try await s.esci()
         _ = await lenta.value
         XCTAssertEqual(s.stato, .daAccedere)
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
@@ -497,7 +497,7 @@ final class SessioneAvversariaTests: XCTestCase {
 
         // l'uscita vera (non il finto «pulisci» dei test): DatiLocali.svuota
         let s = SessioneAccount(server: server, archivio: archivio, memoria: memoria, pulisci: { DatiLocali.svuota() })
-        await s.esci()
+        try await s.esci()
 
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
         let copia = await Cache.leggi("/api/oggi", indirizzo: indirizzo)
@@ -513,7 +513,7 @@ final class SessioneAvversariaTests: XCTestCase {
         let s = sessione(conRisposta(corpo))
         try await s.registra(nomeUtente: "mister", password: "Prova-Finta-Zero", invito: "X")
         XCTAssertNotNil(s.codiceDaMostrare)
-        await s.esci()
+        try await s.esci()
         XCTAssertNil(s.codiceDaMostrare, "stato impossibile: codice da mostrare senza utente")
         XCTAssertEqual(s.stato, .daAccedere)
     }
