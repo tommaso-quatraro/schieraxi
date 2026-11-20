@@ -8,7 +8,7 @@ import XCTest
 final class AuditAccessibilitaUITests: XCTestCase {
     private static let schermate = [
         "formazione", "formazione-in-corso", "formazione-finita", "formazione-rinvio", "formazione-chiusa", "formazione-cambiata",
-        "formazione-sostituisci", "formazione-campionato-finito",
+        "formazione-sostituisci", "formazione-metti-in-campo", "formazione-campionato-finito",
         "giocatore", "ricerca",
         "giornate", "giornate-aperta", "giornate-dettagli",
         "lega", "lega-squadre", "lega-rosa", "lega-regole", "lega-stato",

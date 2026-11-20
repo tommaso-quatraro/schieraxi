@@ -133,6 +133,7 @@ function paFine() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
       await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) });
+      segnaAvvisiDi();                                   // l'iscrizione è di chi l'ha accesa (#804, app.js)
       avvisi.remove(); $("#pa-msg").innerHTML = `<div class="onb-verde">${t("onb.avvisi_attivi_questo")}</div>`;
     } catch (e) { paErrore(e); }
   });
@@ -188,19 +189,30 @@ function paAnteprima() {
 
 // Le due domande sui tempi della lega: scadenza della formazione e giornata di Serie A da cui parte la lega.
 // Si leggono le regole di adesso e si salvano tutte, cambiando solo questi due valori (le altre restano come sono).
-async function paTempiCarica() {
+// «Salva» aspetta la lettura (#801): se non è riuscita i menu hanno ancora i valori di partenza, che andavano sopra quelli veri;
+// allora non scrive niente, lo dice e rilegge, e i menu passano ai valori salvati per il tocco dopo. Un menu già cambiato a mano
+// (`data-scelto`) la lettura non lo tocca: si salva la scelta.
+let paTempiLettura = null;                         // la lettura in corso o finita: vale true se riuscita
+async function paTempiLeggi() {
   try {
     const r = await api("/api/regole");
     const sc = $("#pa-scadenza"), pg = $("#pa-prima");
-    if (!sc || !pg) return;
+    if (!sc || !pg) return false;
     const m = Number(r.scadenza_minuti ?? 0), g = Number(r.prima_giornata_lega ?? 1);
-    if (!PA_SCADENZE.includes(m)) sc.insertAdjacentHTML("beforeend", `<option value="${m}">${esc(paScadenzaNome(m))}</option>`);
-    sc.value = String(m); pg.value = String(g);
-  } catch { /* restano i valori più comuni; si cambiano anche in Impostazioni > Regole e scadenza */ }
+    if (!PA_SCADENZE.includes(m) && ![...sc.options].some(o => o.value === String(m))) sc.insertAdjacentHTML("beforeend", `<option value="${m}">${esc(paScadenzaNome(m))}</option>`);
+    if (!sc.dataset.scelto) sc.value = String(m);
+    if (!pg.dataset.scelto) pg.value = String(g);
+    return true;
+  } catch { return false; }                        // restano i valori più comuni: «Salva» non li scrive
+}
+function paTempiCarica() {
+  for (const id of ["#pa-scadenza", "#pa-prima"]) { const m = $(id); if (m) m.addEventListener("change", () => { m.dataset.scelto = "1"; }); }
+  paTempiLettura = paTempiLeggi();
 }
 const paScadenzaNome = m => (m === 0 ? t("pav.scad_inizio") : tp("pav.scad_minuti", m));
 
 async function paTempiSalva() {
+  if (!paTempiLettura || !(await paTempiLettura)) { paTempiCarica(); throw new Error(t("pav.tempi_non_letti")); }
   const r = await api("/api/regole");
   r.scadenza_minuti = Number($("#pa-scadenza").value);
   r.prima_giornata_lega = Number($("#pa-prima").value);

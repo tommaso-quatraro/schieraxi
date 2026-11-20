@@ -191,10 +191,36 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
   che dice che si è fuori da tutti i dispositivi, una volta sola e non dopo un «Esci» normale (#779);
   annullato non manda niente; se la richiesta non riesce (errore del server o rete giù) lo dice un avviso, si resta nella pagina
   e le copie restano (#765);
+- Il tuo account, «Esci» (#800): se la richiesta non riesce (500, 502 o rete giù) lo dice un avviso (`role="status"`), la pagina
+  non si ricarica, le copie restano e l'iscrizione agli avvisi del browser resta, e torna al server (che l'aveva già tolta);
+  riuscito, l'iscrizione si toglie dal server e dal browser e si torna all'accesso senza copie. Con un'iscrizione già nel browser
+  (finta, in `localStorage`, che regge alla ricarica: `ISCRIZIONE_GIA_QUI`): dopo un nuovo accesso con la password l'iscrizione
+  torna al server una volta, senza chiedere il permesso; riaprendo l'app già dentro non si rimanda; se il server non la prende
+  (429) si riprova all'apertura dopo, e poi basta;
+- di chi è l'iscrizione (#804): accesa da un account, dopo il suo nuovo accesso torna al server; fatta da un altro account
+  non si rimanda e «Avvisi su questo dispositivo» è spento finché il nuovo utente non lo accende (allora è sua);
+  un'iscrizione senza numero (versione di prima) dopo un accesso nuovo resta spenta anche alle aperture dopo e non si rimanda;
+  con la sessione già aperta prima diventa di chi è dentro e si rimanda una volta; «Esci» con 401 esce senza l'avviso «non riesco»;
+- lo stato d'avvio (#801): aperta senza rete, Impostazioni ritrova «La mia squadra» e «Le altre squadre» quando il browser dice
+  che la rete è tornata (evento `online`); aperta con il server che riparte (502), la riga di stato di Giornate torna quella di
+  sempre alla prima risposta buona («Riprova»);
+- «Elimina l'account» (#801): con la password sbagliata (403) gli avvisi del dispositivo restano, nel browser e sul server;
+  riuscita, il browser toglie la sua iscrizione;
+- i pulsanti dei file (#801): «Scegli il file» di Aggiorna le rose e i due «Da file o foto» di stemma e maglia si raggiungono
+  con Tab e con Invio aprono il selettore; il file scelto va al controllo delle rose o si carica come maglia;
+- salvataggi lenti (#801): le Regole salvate quando si è già nella Formazione non si ridisegnano sopra di lei (risposta trattenuta
+  dal test), l'avviso c'è lo stesso; la scelta sul rinvio (in `test_formazione_unica.py`) lo stesso con Giornate;
+- l'immagine condivisa che il server non prende (`?condivisa=no`, #801): l'avviso è quello del catalogo, in italiano e in inglese;
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore;
 - Gestione, «Errori recenti» (amministratore e registro finti): plurali giusti, tempi con la virgola, ora italiana senza «UTC»,
   eventi con il nome del catalogo (anche un tipo scritto con il trattino, `fonte-cambiata`) e, per un tipo sconosciuto, senza
   trattini bassi (#779).
+
+`test_primo_avvio.py`, il passo «I tempi della lega» del primo avvio (#801). Gira solo prima della scadenza:
+- se la lettura delle regole non arriva, «Salva» non scrive i valori di partenza dei menu sopra quelli veri: lo dice
+  (`role="alert"`), rilegge, i menu passano ai valori salvati e il tocco dopo li scrive;
+- «Salva» toccato con la lettura ancora in volo la aspetta e scrive i valori veri;
+- una scelta fatta prima che la lettura torni resta: si salva la scadenza scelta e la prima giornata letta.
 
 `test_accesso_all_avvio.py`, l'avvio con gli account quando la sessione non vale più (401 da «chi sono»). Gira solo prima della
 scadenza:
