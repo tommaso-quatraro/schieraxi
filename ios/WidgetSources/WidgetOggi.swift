@@ -310,8 +310,9 @@ struct VistaWidget: View {
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
+                // a capo allineata a sinistra: dentro un Link le righe si centravano («alla scadenza, oggi / 12:20», #787)
                 Text(r.inizio.map(allaScadenza) ?? "")
-                    .font(.caption).foregroundStyle(.white.opacity(0.8))
+                    .font(.caption).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 if voce.datiSalvati {
                     Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
