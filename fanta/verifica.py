@@ -16,13 +16,14 @@ qui il modello è più debole che dal vivo.
 from __future__ import annotations
 
 import itertools
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 
 import numpy as np
 import pandas as pd
 
 from . import formazione as fz
-from .modello import Dati, Parametri, previsioni
+from .modello import Dati, Parametri, previsioni, prima_di
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import RUOLI, Regole, modulo_in_numeri
 
@@ -76,11 +77,18 @@ class EsitoGiornata:
     sorte: list | None = None         # rose a sorte: [(punti della consigliata, punti «da fantamedia», massimo possibile)]
 
 
+def _prima(d: Dati, stagione: str, giornata: int) -> pd.Series:
+    """Le righe dei voti di partite giocate prima dell'inizio della giornata (la sua prima partita): quello che vede il modello
+    (`modello.prima_di`). Con il numero di giornata un recupero giocato settimane dopo sarebbe già fra i dati (#832)."""
+    return prima_di(d.voti, Dati.inizio(d, stagione, giornata))
+
+
 def _fantamedia(d: Dati, stagione: str, giornata: int, regole: Regole) -> pd.Series:
-    """Fantamedia (con le regole della lega) nelle giornate precedenti della stagione; 6 se non ha voti. È quella che vede chi
-    non ha l'app (la usa S2 di `verifica_consiglio`); come avversario del modello è debole: vedi `avversari`."""
+    """Fantamedia (con le regole della lega) delle partite della stagione giocate prima dell'inizio della giornata (`_prima`);
+    6 se non ha voti. È quella che vede chi non ha l'app (la usa S2 di `verifica_consiglio`); come avversario del modello è
+    debole: vedi `avversari`."""
     col = COLONNA_VOTO[regole.fonte_voto]
-    V = d.voti[(d.voti["stagione"] == stagione) & (d.voti["giornata"] < giornata) & d.voti[col].notna()]
+    V = d.voti[(d.voti["stagione"] == stagione) & _prima(d, stagione, giornata) & d.voti[col].notna()]
     fv = V.apply(lambda r: fantavoto(r.to_dict(), r["ruolo"], regole), axis=1)
     return fv.groupby(V["calciatore_id"]).mean() if len(V) else pd.Series(dtype=float)
 
@@ -89,10 +97,11 @@ def avversari(d: Dati, stagione: str, giornata: int, regole: Regole) -> tuple[pd
     """Gli avversari onesti del fantavoto atteso, con i voti di PRIMA della giornata (anche delle stagioni passate) e le regole
     della lega: (fantamedia tirata verso il ruolo per giocatore, {ruolo: fantavoto medio}).
     Tirata = (somma dei suoi fantavoti + PRESENZE_FITTIZIE x media del suo ruolo) / (presenze + PRESENZE_FITTIZIE): chi ha pochi
-    voti sta vicino al ruolo. Chi non ne ha nessuno non c'è: per lui vale la media del ruolo."""
+    voti sta vicino al ruolo. Chi non ne ha nessuno non c'è: per lui vale la media del ruolo. «Prima» vuol dire prima
+    dell'inizio della giornata, per data come il modello (`_prima`), non per numero di giornata."""
     col = COLONNA_VOTO[regole.fonte_voto]
     v = d.voti
-    prima = ((v["stagione"] < stagione) | ((v["stagione"] == stagione) & (v["giornata"] < giornata))) & v[col].notna()
+    prima = _prima(d, stagione, giornata) & v[col].notna()
     V = v[prima].drop_duplicates(["stagione", "giornata", "calciatore_id"]).sort_values(["stagione", "giornata"])
     if V.empty:
         return pd.Series(dtype=float), {}
@@ -107,11 +116,12 @@ def verifica_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par
                       rose: list[list[int]] | None = None, simulazioni: int = 300,
                       oracolo=frozenset(), verita: dict | None = None, casi: list | None = None,
                       sintetiche: int = 0, dati_modello: Dati | None = None, prevedi=None,
-                      ritocca=None, sorte: bool = False) -> EsitoGiornata | None:
+                      ritocca=None, sorte: bool = False, memo: dict | None = None) -> EsitoGiornata | None:
     """Una giornata del backtest. Con `casi` (una lista) vi aggiunge, per ogni rosa, la formazione del modello con i punti
     attesi, la deviazione simulata e i punti fatti (serve a `incertezza.py`); `sintetiche` = quante rose estratte a sorte
     in più, che vanno SOLO in `casi` (più campioni per misurare lo scarto, senza toccare le medie della verifica) e, con
     `sorte`, in `EsitoGiornata.sorte`: per ognuna i punti della consigliata, della formazione «da fantamedia» e il massimo.
+    `memo`: vedi `verifica` (si usa solo senza `casi`, oracoli ed esperimenti).
     Solo per gli esperimenti di `verifica_pacchetti.py` (spenti di default, None = verifica normale): `dati_modello` = i dati
     che vede il modello (la verità resta `d`), `prevedi` = funzione al posto di `previsioni`, `ritocca` = funzione
     (prev, d, stagione, giornata) -> nuove probabilità di giocare."""
@@ -123,9 +133,12 @@ def verifica_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par
         prev = previsioni(dm, stagione, giornata, regole, par, oracolo=verita if oracolo else None)
     else:
         prev = prevedi(dm, stagione, giornata, regole, par)
-    # solo le partite già giocate (una giornata in corso non deve contare chi deve ancora giocare)
-    giocate = d.partite.loc[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata)
-                            & (d.partite["giocata"] == 1), "id"]
+    # solo le partite già giocate e con i voti di tutte e due le squadre: una giornata in corso, o una partita giocata con i voti
+    # non ancora arrivati, non deve contare i suoi giocatori come «non hanno giocato» (#832, come `fasi.voti_arrivati`)
+    v, p = d.voti, d.partite
+    con_voti = set(v.loc[(v["stagione"] == stagione) & (v["giornata"] == giornata) & v[col].notna(), "squadra"])
+    giocate = p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & (p["giocata"] == 1)
+                    & p["casa"].isin(con_voti) & p["trasferta"].isin(con_voti), "id"]
     if prev.empty or giocate.empty:
         return None
     prev = prev[prev["partita"].isin(set(giocate))]
@@ -163,8 +176,16 @@ def verifica_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par
     esito.quadratico_ruolo, esito.quadratico_fantamedia_stagione, esito.errore_ruolo = float(q_r), float(q_s), float(err_r)
     # 3. formazioni sulle rose
     if sintetiche and (casi is not None or sorte):
-        esito.sorte = _casi_sintetici(prev, sintetiche, stagione, giornata, regole, simulazioni, fv_vero,
-                                      {i: reali.at[i, col] for i in fv_vero}, casi, onesta if sorte else None) or None
+        normale = casi is None and not oracolo and dati_modello is None and prevedi is None and ritocca is None
+        chiave = (stagione, giornata, sintetiche, simulazioni, repr(par),
+                  json.dumps(asdict(regole), sort_keys=True, default=str)) if memo is not None and normale else None
+        if chiave is not None and chiave in memo:
+            esito.sorte = memo[chiave]
+        else:
+            esito.sorte = _casi_sintetici(prev, sintetiche, stagione, giornata, regole, simulazioni, fv_vero,
+                                          {i: reali.at[i, col] for i in fv_vero}, casi, onesta if sorte else None) or None
+            if chiave is not None:
+                memo[chiave] = esito.sorte
     if rose:
         punti = {"modello": [], "fantamedia": [], "perfetta": []}
         voto_vero = {i: reali.at[i, col] for i in fv_vero}
@@ -258,9 +279,11 @@ def _perfetta(rosa: list[fz.Giocatore], fv_vero: dict[int, float], regole: Regol
 def verifica(d: Dati, regole: Regole, par: Parametri, giornate: list[tuple[str, int]],
              rose: list[list[int]] | None = None, simulazioni: int = 300, scrivi=print,
              oracolo=frozenset(), dati_modello: Dati | None = None, prevedi=None, ritocca=None,
-             sintetiche: int = 0) -> pd.DataFrame:
+             sintetiche: int = 0, memo: dict | None = None) -> pd.DataFrame:
     """Una riga per giornata. `sintetiche` = rose estratte a sorte per giornata per le misure in punti (colonne `sorte_*`,
-    da riassumere con `riepilogo_sorte`); 0 = solo le rose date."""
+    da riassumere con `riepilogo_sorte`); 0 = solo le rose date. `memo` (un dizionario per un giro solo, con gli stessi dati):
+    i punti sulle rose a sorte già calcolati, che non dipendono dalle rose della lega; con le stesse regole e gli stessi
+    parametri si riusano invece di rifarli (la prova di ogni utente, #832). Solo per la verifica normale."""
     righe = []
     verita: dict[str, dict] = {}
     for stagione, g in giornate:
@@ -268,7 +291,7 @@ def verifica(d: Dati, regole: Regole, par: Parametri, giornate: list[tuple[str, 
             verita[stagione] = dati_oracolo(d, stagione, oracolo)
         e = verifica_giornata(d, stagione, g, regole, par, rose, simulazioni, oracolo, verita.get(stagione),
                               dati_modello=dati_modello, prevedi=prevedi, ritocca=ritocca, sintetiche=sintetiche,
-                              sorte=bool(sintetiche))
+                              sorte=bool(sintetiche), memo=memo)
         if e is None:
             continue
         riga = {"stagione": e.stagione, "giornata": e.giornata, "errore_modello": e.errore_modello,
