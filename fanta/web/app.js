@@ -276,11 +276,14 @@ const erroreVista = e => senzaRose(e) ? cartaSenzaRose() : funzioneSpenta(e) ? c
 // L'app mostra subito i dati vecchi e li sostituisce con quelli nuovi appena arrivano: si apre senza attese.
 const VERSIONE_CACHE = "3";   // da cambiare quando cambia la forma dei dati: le copie vecchie vengono ignorate
 const chiaveCache = chiave => `cache:${VERSIONE_CACHE}:${stato.account ? `u${stato.account.id}:` : ""}${chiave}`;
+// La copia ricorda la lingua in cui è stata chiesta: alcune parole le scrive il server in quella lingua (etichette, note). In
+// un'altra lingua non si mostra (#854); una copia senza lingua, salvata da una versione di prima, nemmeno. Una copia sola per
+// chiave: quella nuova prende il posto della vecchia.
 function leggiCache(chiave) {
-  try { const x = JSON.parse(localStorage.getItem(chiaveCache(chiave)) || "null"); return x && x.dati ? x : null; } catch { return null; }
+  try { const x = JSON.parse(localStorage.getItem(chiaveCache(chiave)) || "null"); return x && x.dati && x.lingua === LINGUA ? x : null; } catch { return null; }
 }
 function salvaCache(chiave, dati) {
-  try { localStorage.setItem(chiaveCache(chiave), JSON.stringify({ quando: Date.now(), dati })); } catch { /* memoria piena o bloccata */ }
+  try { localStorage.setItem(chiaveCache(chiave), JSON.stringify({ quando: Date.now(), lingua: LINGUA, dati })); } catch { /* memoria piena o bloccata */ }
 }
 function rimuoviCache(chiave) {
   try { localStorage.removeItem(chiaveCache(chiave)); } catch { /* niente memoria */ }
