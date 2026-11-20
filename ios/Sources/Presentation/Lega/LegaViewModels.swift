@@ -70,8 +70,7 @@ final class LegaViewModel: ViewModelBase {
     /// Passa al pulsante «Aggiorna i dati» lo stato del server, solo da una risposta fresca: la copia salvata sul telefono può essere
     /// di un aggiornamento finito da tempo e terrebbe il pulsante spento.
     private func statoLetto(_ stato: Stato<InfoServer>) {
-        // provvisorio (#773): senza la guardia sulla copia salvata, per vedere fallire il test; si rimette nel commit dopo
-        guard let dato = stato.dato else { return }
+        guard case .loaded(let dato) = stato, !info.dallaCache else { return }
         aggiornamento.segna(occupato: dato.aggiornamentoInCorso == true)
     }
 

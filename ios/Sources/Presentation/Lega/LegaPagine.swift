@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Il tasto «Aggiorna i dati» con il suo stato: da mettere dentro una `Section` di una `List`. Con il server occupato da un
-/// aggiornamento partito altrove è spento, con la frase della web sotto (#773).
+/// aggiornamento, partito da qui o altrove, è spento con la frase della web sotto (#773).
 struct AggiornaDatiSezione: View {
     @ObservedObject var vm: AggiornaDatiViewModel
     @Environment(\.accessibilityReduceMotion) private var ridotto

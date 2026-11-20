@@ -271,11 +271,12 @@ final class AggiornaDatiViewModel: ViewModelBase {
     /// Spento durante l'aggiornamento partito da qui e mentre il server è occupato con un altro.
     var pulsanteSpento: Bool { inCorso || serverOccupato }
 
-    /// Sotto il pulsante spento perché il server è occupato, la frase della web (`aggiorna.in_corso`). Durante l'aggiornamento
-    /// partito da qui no: l'etichetta dice già «Aggiornamento in corso…» e sotto c'è il messaggio dell'avvio.
-    var fraseOccupato: String? { serverOccupato && !inCorso ? Catalogo.Aggiorna.inCorso : nil }
+    /// Sotto il pulsante spento perché il server è occupato, la frase della web (`aggiorna.in_corso`): anche con l'aggiornamento
+    /// partito da qui, da quando il server ne conferma l'avvio a quando finisce, come la web.
+    var fraseOccupato: String? { serverOccupato ? Catalogo.Aggiorna.inCorso : nil }
 
-    /// Lo stato appena letto dal server (`aggiornamento_in_corso` di una risposta fresca di `GET /api/stato`, mai la copia salvata).
+    /// Lo stato detto dal server: `aggiornamento_in_corso` di una risposta fresca di `GET /api/stato` (mai la copia salvata), o
+    /// l'avvio e la fine dell'aggiornamento partito da qui.
     func segna(occupato: Bool) {
         if occupato != serverOccupato { serverOccupato = occupato }
     }
@@ -292,6 +293,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
             if Task.isCancelled { return }
             do {
                 let stato: InfoServer = try await server.get("/api/stato")
+                if Task.isCancelled { return }   // pagina lasciata o stato cambiato nel frattempo: la risposta è vecchia
                 segna(occupato: stato.aggiornamentoInCorso == true)
             } catch {
                 // pagina lasciata: si smette; rete giù o server che non risponde: si riprova alla volta dopo
@@ -300,11 +302,14 @@ final class AggiornaDatiViewModel: ViewModelBase {
         }
     }
 
+    /// Come `aggiornaDati` della web: appena il server conferma l'avvio il pulsante è spento con la frase `aggiorna.in_corso` e sotto
+    /// il messaggio dell'avvio (sulla web un avviso); la frase sparisce quando l'aggiornamento finisce o dopo cinque domande senza
+    /// risposta. Se dura più del solito resta, e la toglie la rilettura dello stato (`segui`) quando il server è libero.
     func avvia() async {
         guard !inCorso else { return }
         inCorso = true
         errori = []
-        messaggio = Catalogo.Aggiorna.avviato
+        messaggio = nil
         defer { inCorso = false }
         do {
             let dati = try await server.richiesta("POST", "/api/aggiorna", corpo: nil)
@@ -318,6 +323,8 @@ final class AggiornaDatiViewModel: ViewModelBase {
             Haptics.esito(riuscito: false)
             return
         }
+        segna(occupato: true)
+        messaggio = Catalogo.Aggiorna.avviato
         var senzaRisposta = 0
         for _ in 0..<tentativiMassimi {
             if pausa > 0 { try? await Task.sleep(nanoseconds: pausa) }
@@ -326,6 +333,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
                 let stato: StatoAggiornamento = try await server.get("/api/aggiorna")
                 senzaRisposta = 0
                 if stato.inCorso != true {
+                    segna(occupato: false)
                     errori = stato.errori ?? []
                     messaggio = errori.isEmpty ? Catalogo.Aggiorna.ok : Catalogo.Aggiorna.problemi(errori: errori.joined(separator: "; "))
                     Haptics.esito(riuscito: errori.isEmpty)
@@ -335,6 +343,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
             } catch {
                 senzaRisposta += 1
                 if senzaRisposta >= 5 {
+                    segna(occupato: false)
                     messaggio = Catalogo.Aggiorna.nonSo
                     return
                 }
