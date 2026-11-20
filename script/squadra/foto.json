@@ -59,7 +59,7 @@
     {"percorsi": ["ios/Sources/Presentation/Lega/RigaCreditiResidui.swift", "ios/Sources/Presentation/Lega/DisposizioneCrediti.swift"],
      "schermate": ["lega-rosa"]},
     {"percorsi": ["ios/Sources/Presentation/Lega/*Registro*", "ios/Sources/Presentation/Lega/ParoleNostri.swift", "ios/Sources/Presentation/Lega/GolAttesiNostriSezione.swift", "ios/Sources/Presentation/Lega/ConsiglioFormazioneSezione.swift", "ios/Sources/Presentation/Lega/ParoleConsiglio.swift"],
-     "schermate": ["lega-stato", "lega-stato-fondo", "lega-stato-nostri"]},
+     "schermate": ["lega-stato", "lega-stato-fondo", "lega-stato-nostri", "lega-stato-taratura"]},
     {"percorsi": ["ios/Sources/Presentation/Lega/**"], "ripiego": true,
      "schermate": ["impostazioni", "lega", "lega-squadre", "lega-rosa", "lega-stagione"]},
     {"percorsi": ["ios/Sources/**", "ios/Resources/**", "ios/project.yml"], "ripiego": true,
