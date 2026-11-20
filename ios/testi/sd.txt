@@ -77,3 +77,6 @@ sd.tar_m_spenta_a_mano
 sd.giornate_giocate
 sd.appena_finisce
 sd.pochi_dati
+
+# Ultimi aggiornamenti: un passo mai riuscito (NomiDati.quando)
+sd.mai

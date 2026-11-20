@@ -165,7 +165,8 @@ final class RegoleEditorViewModel: ViewModelBase {
 
     // MARK: salvataggio
 
-    func salva() async {
+    @discardableResult
+    func salva() async -> Bool {
         inCorso = true
         defer { inCorso = false }
         do {
@@ -178,12 +179,14 @@ final class RegoleEditorViewModel: ViewModelBase {
             esitoRiuscito = true
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+            return true
         } catch {
             let conflitto = (error as? ErroreApi)?.eConflitto == true
             if conflitto { await carica(forza: true) }   // un altro dispositivo ha cambiato le regole: si rilegge la versione nuova
             esito = error.localizedDescription
             esitoRiuscito = false
             Haptics.esito(riuscito: false)
+            return false
         }
     }
 

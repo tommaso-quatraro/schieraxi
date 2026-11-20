@@ -52,6 +52,17 @@ final class LegaViewModel: ViewModelBase {
         return .impostazioni
     }
 
+    @Published var regoleNonSalvate = false
+    @Published private(set) var pagineInAttesa: [PaginaImpostazioni]?
+
+    func apriDopoLaDomanda(_ pagine: [PaginaImpostazioni]) {
+        percorso = pagine
+    }
+
+    func lasciaPagineInAttesa() {
+        pagineInAttesa = nil
+    }
+
     init(server: any ServerClient) {
         self.server = server
         info = Caricatore<InfoServer>("/api/stato", server: server)

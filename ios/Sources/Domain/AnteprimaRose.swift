@@ -328,7 +328,7 @@ enum AnteprimaLogica {
     }
 
     /// «8 squadre: 196 giocatori riconosciuti, 3 da controllare, 1 non trovato. Sistema i dubbi qui sotto, poi conferma.»
-    static func riassunto(_ r: AnteprimaRose) -> String {
+    static func riassunto(_ r: AnteprimaRose, scelte: [String: SceltaDubbio] = [:]) -> String {
         let squadre = Formato.plurale(r.squadre.count, "squadra", "squadre")
         var parti = ["\(Formato.giocatori(r.sicuri)) \(r.sicuri == 1 ? "riconosciuto" : "riconosciuti")"]
         if r.daControllare > 0 { parti.append("\(r.daControllare) da controllare") }
@@ -341,6 +341,10 @@ enum AnteprimaLogica {
     static func avvisiGenerali(_ r: AnteprimaRose) -> [String] {
         let diSquadra = Set(r.squadre.flatMap { s in s.avvisi.map { "\(s.nome): \($0)" } })
         return r.avvisi.filter { !diSquadra.contains($0) }
+    }
+
+    static func nomiMia(_ r: AnteprimaRose) -> [String] {
+        r.squadre.map(\.nome)
     }
 
     /// La squadra dell'utente da mostrare scelta: quella già decisa, altrimenti il suggerimento del server; vuota se non è tra le lette.

@@ -19,6 +19,14 @@ enum NomiDati {
         cosa.lowercased().hasPrefix("quote")
     }
 
+    static func nome(_ a: AggiornamentoDati) -> String {
+        leggibile(a.cosa)
+    }
+
+    static func quando(_ a: AggiornamentoDati) -> String {
+        Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))
+    }
+
     static func leggibile(_ cosa: String) -> String {
         let t = cosa.trimmingCharacters(in: .whitespaces)
         let minuscolo = t.lowercased()
