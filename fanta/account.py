@@ -1381,13 +1381,27 @@ def _togli_widget_della_sessione(db: sqlite3.Connection, utente_id: int, session
     registro di sicurezza e quello del servizio, e il token resta fino a «Esci da tutti i dispositivi» o alla scadenza.
     (Nel registro di sicurezza con il tipo `errore_interno` e `cosa=token_widget_non_tolto`: un tipo nuovo chiederebbe un nome
     nuovo nel catalogo dei testi.)"""
+    _togli_widget(db, utente_id, "DELETE FROM token_widget WHERE utente_id = ? AND sessione_id = ?", (utente_id, sessione_id),
+                  "della sessione chiusa")
+
+
+def _togli_widget_degli_altri(db: sqlite3.Connection, utente_id: int, tieni: int | None) -> None:
+    """Dopo il cambio dell'email (#843), con le sessioni degli altri dispositivi già chiuse e salvate: i token del widget tranne
+    quello della sessione `tieni` (None: tutti); uno senza legame (`sessione_id` vuoto) si chiude sempre. Un guasto qui non
+    annulla la conferma né riapre le sessioni: si vede nei registri come sopra. (`IS NOT` perché con None li chiude tutti.)"""
+    _togli_widget(db, utente_id, "DELETE FROM token_widget WHERE utente_id = ? AND (sessione_id IS NULL OR sessione_id IS NOT ?)",
+                  (utente_id, tieni), "degli altri dispositivi")
+
+
+def _togli_widget(db: sqlite3.Connection, utente_id: int, sql: str, parametri: tuple, quale: str) -> None:
+    """Toglie i token del widget scelti da `sql` in una transazione sua, dopo che le sessioni sono già chiuse e salvate."""
     try:
-        tolti = db.execute("DELETE FROM token_widget WHERE utente_id = ? AND sessione_id = ?", (utente_id, sessione_id)).rowcount
+        tolti = db.execute(sql, parametri).rowcount
         db.commit()
     except sqlite3.Error as e:
         if db.in_transaction:
             db.rollback()
-        logging.getLogger(__name__).error("Account %s: token del widget della sessione chiusa non tolto (%s)", utente_id, type(e).__name__)
+        logging.getLogger(__name__).error("Account %s: token del widget %s non tolto (%s)", utente_id, quale, type(e).__name__)
         evento("errore_interno", cosa="token_widget_non_tolto", utente=int(utente_id), errore=type(e).__name__)
         return
     if tolti:
@@ -1405,23 +1419,23 @@ def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = N
     Con `scollega_social` (il pulsante «Esci da tutti» e il recupero della password: i casi in cui si sospetta che qualcuno sia entrato)
     si scollegano anche i Google collegati: chi ci è entrato avrebbe altrimenti una porta che la nuova password non chiude.
     Un account senza password (solo Google) li tiene: sarebbe chiuso fuori."""
-    tieni_widget = None                  # il numero della sessione che resta aperta: il suo widget resta (None = si chiude tutto)
+    tieni_widget = None                  # il numero della sessione che resta aperta: il suo widget resta
     if tranne:
         tieni_widget = _id_sessione_aperta(db, utente_id, tranne)
         cur = db.execute("UPDATE sessioni SET revocata = 1 WHERE utente_id = ? AND revocata = 0 AND token_hash != ?",
                          (utente_id, _hash_token(tranne)))
     else:
         cur = db.execute("UPDATE sessioni SET revocata = 1 WHERE utente_id = ? AND revocata = 0", (utente_id,))
+        db.execute("DELETE FROM token_widget WHERE utente_id = ?", (utente_id,))      # «esci da tutti» e cambio password chiudono anche il widget
         # e i dispositivi e gli indirizzi fidati: chi ha rubato un segreto di dispositivo non deve più saltare i tetti dei tentativi
         db.execute("DELETE FROM indirizzi_noti WHERE utente_id = ?", (utente_id,))
-    # «esci da tutti», cambio password, recupero e cambio dell'email chiudono anche il widget; IS NOT perché con None li chiude tutti
-    db.execute("DELETE FROM token_widget WHERE utente_id = ? AND (sessione_id IS NULL OR sessione_id IS NOT ?)",
-               (utente_id, tieni_widget))
     if scollega_social:
         db.execute("DELETE FROM identita_esterne WHERE utente_id = ? AND EXISTS "
                    "(SELECT 1 FROM utenti WHERE id = ? AND senza_password = 0)", (utente_id, utente_id))
     db.commit()
-    if not tranne:                       # dopo la revoca (vedi `push.iscrivi`, che ricontrolla la sessione prima di scrivere)
+    if tranne:                           # dopo le sessioni già salvate: un guasto qui non tiene dentro gli altri dispositivi
+        _togli_widget_degli_altri(db, utente_id, tieni_widget)
+    else:                                # dopo la revoca (vedi `push.iscrivi`, che ricontrolla la sessione prima di scrivere)
         _togli_notifiche(utente_id, tieni_push)
     return cur.rowcount
 

@@ -299,6 +299,24 @@ def test_il_cambio_dell_email_tiene_il_widget_di_chi_conferma(due_utenti, posta_
     assert a.get("/api/account/token-widget").json()["presente"] is True
 
 
+def test_il_cambio_dell_email_chiude_le_sessioni_anche_se_il_widget_non_si_toglie(due_utenti, posta_finta):
+    """Un guasto nel togliere il widget non annulla la conferma: le sessioni degli altri sono già chiuse e salvate, il guasto si
+    vede nel registro di sicurezza con il nome di ciò che non è riuscito (come per «Esci», #814)."""
+    from fanta import registro
+    a, _ = due_utenti
+    _cambia_email(a, posta_finta, "prima@example.com")
+    altro = _altro_dispositivo()
+    token_di(altro)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("CREATE TRIGGER guasto BEFORE DELETE ON token_widget BEGIN SELECT RAISE(ABORT, 'guasto finto'); END")
+        db.commit()
+    _cambia_email(a, posta_finta, "seconda@example.com")
+    assert a.get("/api/account/me").json()["email"] == "seconda@example.com"
+    assert altro.get("/api/account/me").status_code == 401
+    eventi = [e for e in registro.ultimi(registro.FILE_SICUREZZA) if e.get("cosa") == "token_widget_non_tolto"]
+    assert len(eventi) == 1 and eventi[0]["tipo"] == "errore_interno" and eventi[0]["utente"] == "1"
+
+
 def test_il_cambio_dell_email_chiude_un_widget_senza_legame(due_utenti, posta_finta):
     """Un token nato prima del legame con la sessione (sessione_id vuoto) si chiude anche se l'ha chiesto chi conferma: non si
     sa di quale dispositivo sia."""
