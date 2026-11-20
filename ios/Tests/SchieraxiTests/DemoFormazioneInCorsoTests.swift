@@ -196,7 +196,8 @@ struct DemoFormazioneInCorsoTests {
           arguments: ["Sources/Support/RigaGiocatore.swift", "Sources/Domain/LetturaScheda.swift"])
     func conLOrologioDellApp(percorso: String) throws {
         let codice = try sorgente(percorso)
-        let chiamate = Self.chiamate("Quando.leggibile(", in: codice)
+        // `leggibileSeData` è `leggibile` che dà nil senza data (#789): vale lo stesso controllo
+        let chiamate = Self.chiamate("Quando.leggibile(", in: codice) + Self.chiamate("Quando.leggibileSeData(", in: codice)
         #expect(!chiamate.isEmpty, "\(percorso): nessuna data scritta, il controllo non serve più")
         for c in chiamate {
             #expect(c.contains("adesso:"), "\(percorso): «\(c)» conta con l'ora del telefono")
