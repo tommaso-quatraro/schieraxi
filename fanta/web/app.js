@@ -2776,7 +2776,9 @@ function vistaImportaRose() {
   });
 }
 
-// Le altre squadre (?vista=impostazioni&gruppo=squadre): l'elenco della lega, con la mia segnata; un tocco apre la rosa.
+// Le altre squadre (?vista=impostazioni&gruppo=squadre): le squadre della lega senza la mia, che sta in «La mia squadra» (#779: prima
+// c'era anche lei, segnata «la tua», e il numero della riga di Impostazioni la contava); finché la mia non è scelta, tutte. Un tocco
+// apre la rosa. `stato.squadre` resta l'elenco intero: lo leggono La mia squadra e il foglio di stemma e maglia.
 async function vistaAltreSquadre() {
   const mia = nuovaRichiesta(), opz = { titolo: t("imp.altre_squadre"), stato: false, indietro: indietroImp() };
   caricamento(t("lega.carico_squadra"), opz);
@@ -2785,9 +2787,10 @@ async function vistaAltreSquadre() {
   catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
   if (!ancoraValida(mia)) return;
   stato.squadre = squadre;
-  pagina(squadre.length ? `<div class="carta imp-colonna"><ul class="elenco">${squadre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
+  const altre = squadre.filter(x => !x.mia);
+  pagina(altre.length ? `<div class="carta imp-colonna"><ul class="elenco">${altre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
       ${x.immagini && x.immagini.stemma ? `<img class="stemma-lista" src="${urlImg(x.nome, "stemma")}" alt="" loading="lazy">` : `<span class="iniziale-squadra" aria-hidden="true">${esc(x.nome.trim().slice(0, 1).toUpperCase())}</span>`}
-      <span><span class="nome">${esc(x.nome)}</span>${x.mia ? ` <span class="etichetta">${t("lega.la_tua")}</span>` : ""}
+      <span><span class="nome">${esc(x.nome)}</span>
         <span class="dettaglio" style="display:block">${tp("sd.n_giocatori", x.giocatori)}${x.crediti_residui != null ? ` · ${tp("lega.n_crediti", x.crediti_residui)}` : ""}</span></span>
       <span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul></div>`
     : `<div class="carta"><p class="debole">${t("lega.importa_prima_rose")}</p></div>`, opz);

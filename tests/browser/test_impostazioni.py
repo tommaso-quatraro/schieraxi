@@ -406,6 +406,29 @@ def test_la_mia_squadra_senza_costo_ne_immagini_non_mostra_parole_vuote(web):
     assert principale(web).get_by_role("button", name="Stemma e maglia").is_visible()
 
 
+@pytest.mark.parametrize("scelta", [True, False], ids=["mia-scelta", "mia-non-scelta"])
+def test_le_altre_squadre_contano_ed_elencano_solo_le_altre(web, scelta):
+    """«Le altre squadre · 10 squadre» elencava anche la mia (#779): la mia sta già in «La mia squadra». Il numero della riga e
+    l'elenco dicono le stesse squadre, senza la mia; finché la mia non è scelta sono tutte."""
+    solo(web, "prima")
+    squadre = web.registrata("/api/squadre")
+    mia = next(s["nome"] for s in squadre if s["mia"])
+    if not scelta:
+        for s in squadre:
+            s["mia"] = False
+        web.risposta("/api/squadre", squadre)
+    web.apri("/?vista=impostazioni")
+    riga = voce(web, "Le altre squadre")
+    quante = int(re.search(r"(\d+) squadr", riga.inner_text()).group(1))
+    tocca(web, riga)
+    assert titolo(web) == "Le altre squadre"
+    nomi = [b.inner_text() for b in principale(web).get_by_role("listitem").get_by_role("button").all()]
+    attese = len(squadre) - (1 if scelta else 0)
+    assert quante == len(nomi) == attese, (quante, nomi)
+    assert any(mia in n for n in nomi) is not scelta, nomi
+    assert not any("la tua" in n for n in nomi), nomi
+
+
 def _mia_con_stemma(web) -> str:
     """La mia squadra con lo stemma già caricato (la maglia no); dà il suo nome. Le immagini rispondono con un corpo finto: niente
     404 per l'anteprima, e la cancellazione riesce."""
