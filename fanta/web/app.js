@@ -1597,7 +1597,8 @@ function apriSostituzione(id) {
 // «Metti in campo» (dalla scheda di chi non è fra gli 11, #643): il contrario di «Sostituisci». Chi può lasciargli il posto lo dice
 // il server (POST /api/formazione/metti-in-campo, con gli 11 in pagina): stesso ruolo, oppure un altro modulo ammesso dalla lega,
 // dal cambio che rende di più. Il numero grande di ogni riga sono i punti attesi della formazione in più o in meno con quel cambio
-// (numero del server, la valutazione di POST /api/formazione/valuta: la riga di stato dopo il cambio dice lo stesso); sotto il nome
+// (numero del server, la valutazione di POST /api/formazione/valuta: dopo il cambio i punti attesi accanto al modulo cambiano di
+// tanto; la riga di stato confronta con la consigliata, quindi dice lo stesso numero solo partendo da lei); sotto il nome
 // «gioca N%» come fra i sostituti e, se il modulo cambia, quale. Sotto il titolo lo stato di chi entra, se ne ha uno («Infortunato»,
 // «In dubbio», «gioca N%»): gli stessi avvisi che «Sostituisci» mette nella sua riga. Un tocco fa il cambio con la stessa strada di
 // «Sostituisci», che si salva da solo.
