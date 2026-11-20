@@ -16,23 +16,34 @@ def solo(web, *fasi):
 
 
 def pagina_intera(w) -> str:
-    """Il testo che si vede in tutta la pagina (anche la riga di stato con la data dei dati), con gli spazi normali."""
+    """Il testo che si vede in tutta la pagina (anche la riga di stato sotto il titolo), con gli spazi normali."""
     return " ".join(w.pagina.evaluate("() => document.body.innerText").replace("\u00a0", " ").split())
 
 
-def formazione(w) -> str:
-    w.apri("/?vista=formazione")
+def vista(w, nome: str) -> str:
+    w.apri(f"/?vista={nome}")
     assert not w.errori_console, w.errori_console
     return pagina_intera(w)
 
 
+def formazione(w) -> str:
+    return vista(w, "formazione")
+
+
 @pytest.mark.parametrize("fuso", ALTRI_FUSI)
 def test_la_formazione_si_legge_uguale_in_ogni_fuso(web, fuso):
-    """Scadenza, conto alla rovescia, orari delle partite, data dei dati: in ogni fase la pagina dice le stesse cose che in
-    Italia."""
+    """Scadenza, conto alla rovescia, orari delle partite: in ogni fase la pagina dice le stesse cose che in Italia."""
     italia = formazione(web)
     altrove = formazione(web.con_fuso(fuso))
     assert altrove == italia
+
+
+@pytest.mark.parametrize("fuso", ALTRI_FUSI)
+def test_la_data_dei_dati_si_legge_uguale_in_ogni_fuso(web, fuso):
+    """La riga di stato sotto il titolo (Giornate) dice di quando sono i dati (\u00abdati del 26 ott 23:55\u00bb): l'ora italiana."""
+    italia = vista(web, "giornate")
+    assert "dati del" in italia, italia[:300]
+    assert vista(web.con_fuso(fuso), "giornate") == italia
 
 
 @pytest.mark.parametrize("fuso", TUTTI_I_FUSI)
