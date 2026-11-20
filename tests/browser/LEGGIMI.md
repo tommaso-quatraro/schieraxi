@@ -206,6 +206,7 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
   con Tab e con Invio aprono il selettore; il file scelto va al controllo delle rose o si carica come maglia;
 - salvataggi lenti (#801): le Regole salvate quando si è già nella Formazione non si ridisegnano sopra di lei (risposta trattenuta
   dal test), l'avviso c'è lo stesso; la scelta sul rinvio (in `test_formazione_unica.py`) lo stesso con Giornate;
+- l'immagine condivisa che il server non prende (`?condivisa=no`, #801): l'avviso è quello del catalogo, in italiano e in inglese;
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore;
 - Gestione, «Errori recenti» (amministratore e registro finti): plurali giusti, tempi con la virgola, ora italiana senza «UTC»,
   eventi con il nome del catalogo (anche un tipo scritto con il trattino, `fonte-cambiata`) e, per un tipo sconosciuto, senza

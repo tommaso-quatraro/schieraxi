@@ -1419,3 +1419,14 @@ def test_le_regole_salvate_a_scheda_cambiata_non_ridisegnano_la_pagina_vecchia(w
     web.aspetta()
     assert titolo(web) == "Formazione", f"dopo il salvataggio si vede «{titolo(web)}» sotto la barra della Formazione"
     assert web.pagina.url.endswith("/?vista=formazione")
+
+
+@pytest.mark.parametrize("lingua, frase", [("it", "Non ho potuto usare l'immagine condivisa"), ("en", "I could not use the shared image")])
+def test_l_immagine_condivisa_non_usata_si_dice_nella_lingua_dell_app(web, lingua, frase):
+    """Dal menu Condividi del telefono con un'immagine che il server non prende (`?condivisa=no`) l'avviso viene dal catalogo, nella
+    lingua dell'app: prima era scritto in italiano nel codice (#801)."""
+    solo(web, "prima")
+    web.memoria({"lingua": lingua})
+    web.apri("/?condivisa=no")
+    web.pagina.locator("#avviso").filter(has_text=frase).wait_for(timeout=10000)
+    assert "PNG, JPEG" in web.pagina.locator("#avviso").inner_text()

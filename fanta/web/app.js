@@ -4089,7 +4089,7 @@ controllaAccesso().then(async entrato => {
     // dal menu Condividi si apre il foglio di stemma e maglia: la guida non gli prende il posto
     if (typeof primoAvvioSeServe === "function" && !condivisa) primoAvvioSeServe();
     if (condivisa === "1") apriStemmaMaglia(null, true);
-    else if (condivisa === "no") avviso("Non ho potuto usare l'immagine condivisa: servono PNG, JPEG o WebP fino a 4 MB", 7000);
+    else if (condivisa === "no") avviso(t("lega.immagine_condivisa_no"), 7000);
   });
 });
 applicaAspetto();
