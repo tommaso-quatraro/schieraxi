@@ -287,9 +287,12 @@ def server(tmp_path, chiavi_di_prova):
     _stub(s.bin, "curl", f'cat "{s.codice_curl.as_posix()}"')
     # finto systemctl: il processo del servizio (MainPID) cambia a ogni riavvio annotato nelle chiamate, chiunque lo annoti (#826)
     s.pid_fisso = tmp_path / "pid-fisso.txt"            # se c'e': il processo non cambia (riavvio che non ha fatto niente)
+    s.pid_zero = tmp_path / "pid-zero.txt"              # se c'e': dopo un riavvio nessun processo (versione che muore all'avvio)
     _stub(s.bin, "systemctl", f'''case "$*" in *MainPID*)
   [ -f "{s.pid_fisso.as_posix()}" ] && {{ echo 4242; exit 0; }}
-  n=$(grep -c restart "{s.chiamate.as_posix()}" 2>/dev/null); echo $(( 1000 + ${{n:-0}} )) ;;
+  n=$(grep -c restart "{s.chiamate.as_posix()}" 2>/dev/null)
+  [ -f "{s.pid_zero.as_posix()}" ] && [ "${{n:-0}}" -gt 0 ] && {{ echo 0; exit 0; }}
+  echo $(( 1000 + ${{n:-0}} )) ;;
 esac
 exit 0''')
     # repository "GitHub": storia con tutte le cartelle, commit firmati
@@ -1014,6 +1017,39 @@ def test_riavvio_che_non_riesce_non_segna_installata(server, come):
     s.esegui("aggiorna-app.sh")
     assert s.ultimo() == c2 and (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
     assert "di nuovo a posto" in s.avvisi()[-1]
+
+
+@con_bash
+def test_versione_che_muore_all_avvio_e_rifiutata_non_e_un_guasto_del_riavvio(server):
+    """Il riavvio riesce ma la versione nuova muore subito (MainPID 0, systemd la riavvierà da solo): è la versione rotta, non sudo.
+    Si torna indietro e la si rifiuta come prima, senza reinstallarla a ogni giro."""
+    s = server
+    s.pid_zero.write_text("", encoding="utf-8")
+    c2 = _commit(s.lavoro, "muore all'avvio", **{"fanta/__init__.py": "V2"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert not (s.stato / "guasto-riavvio").exists()
+    assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]
+
+
+@con_bash
+def test_riavvio_che_non_riesce_per_tre_giri_rinuncia_alla_versione(server):
+    """Un guasto del riavvio che dura (regola di sudo sparita) non deve rifare copia, file e librerie a ogni giro per sempre."""
+    s = server
+    _sudo_che_non_riavvia(s)
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    for _ in range(2):
+        s.esegui("aggiorna-app.sh")
+        assert not (s.stato / "rifiutato").exists()
+    s.esegui("aggiorna-app.sh")
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert any("riavviare" in a for a in s.avvisi())
+    riavvii = s.riavvii()
+    s.esegui("aggiorna-app.sh")
+    assert s.riavvii() == riavvii                                   # non si riprova più
 
 
 @con_bash
