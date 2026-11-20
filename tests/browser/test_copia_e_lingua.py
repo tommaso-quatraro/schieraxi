@@ -70,7 +70,7 @@ def test_passata_all_inglese_la_formazione_non_mostra_la_copia_con_le_etichette_
     formazione = web.registrata("/api/formazione")
     parole = {s["etichetta"]["testo"].split(" · ")[0] for s in formazione["schede"].values() if s.get("etichetta")}
     italiane = sorted(p for p in parole if p in _testo(web))
-    assert italiane, "nessuna etichetta del server si vede nella Formazione in italiano: il test non proverebbe niente"
+    assert "In dubbio" in italiane, f"nella Formazione in italiano non si vede «In dubbio» ({italiane}): il test non proverebbe niente"
 
     web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Impostazioni").click(timeout=10000)
     web.aspetta()
