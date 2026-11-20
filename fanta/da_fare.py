@@ -581,10 +581,12 @@ def senza_rose(imp: Path | None) -> list[dict]:
 
 # ---------------------------------------------------------------- insieme
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, ctx, certificato_giorni: int | None = None,
-               amministratore: bool = False, adesso: datetime | None = None, lingua: str = "it", dal: datetime | None = None) -> list[dict]:
+               amministratore: bool = False, adesso: datetime | None = None, lingua: str = "it", dal: datetime | None = None,
+               mercato: bool = True) -> list[dict]:
     """La lista ordinata (priorità 1 = alta, poi 2 e 3; a parità, nell'ordine dei controlli), al massimo MAX_VOCI voci e al
     massimo buon_senso.MAX_CONSIGLI consigli. `ctx` è il contesto dell'utente (percorsi dei suoi file); `dal` è quando è nato
-    il suo account (ora locale; None = senza account o non noto). Non alza mai errori:
+    il suo account (ora locale; None = senza account o non noto). `mercato`: se «Cambi consigliati» è accesa per l'utente (lo
+    decide il server con `funzioni.acceso`); spenta, nessun cambio con uno svincolato (#797). Non alza mai errori:
     un controllo che fallisce viene saltato."""
     adesso = adesso or datetime.now()
     stagione = consigli.stagione_corrente()
@@ -607,7 +609,9 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, c
         controlli += [lambda: _rose_vecchie(db, stagione, regole, rose_file, adesso)]
     if aperta:
         recenti = _recenti(rose, getattr(ctx, "movimenti", None), adesso)
-        controlli += [lambda: _svincolato(db, regole, rose, recenti), lambda: _scambio(db, regole, rose, recenti)]
+        if mercato:
+            controlli += [lambda: _svincolato(db, regole, rose, recenti)]
+        controlli += [lambda: _scambio(db, regole, rose, recenti)]
     controlli += [lambda: _diario(db, stagione, rose, ctx.scelte, ctx.diario, regole, dal)]
     if amministratore or not con_account:
         controlli += [lambda: _dati_vecchi(db, adesso)]
