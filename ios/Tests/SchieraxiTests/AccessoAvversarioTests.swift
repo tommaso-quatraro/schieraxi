@@ -100,9 +100,11 @@ final class ValidazioneAvversariaTests: XCTestCase {
     }
 
     func testMessaggiDErroreDicononCosaFare() {
-        XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.rete("x")).contains("connessione"))
-        XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.timeout).contains("troppo"))
-        XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.risposta(502)).contains("Riprova"), "dice cosa fare (senza il codice tecnico)")
+        // server spento o che non risponde in tempo, con la rete accesa: la frase della web (#830)
+        XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.rete("x")), Catalogo.Comune.serverNonRisponde)
+        XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.timeout), Catalogo.Comune.serverNonRisponde)
+        XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.risposta(502)), Catalogo.Comune.serverNonRisponde, "la pagina del proxy")
+        XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.risposta(500)).contains("Riprova"), "dice cosa fare (senza il codice tecnico)")
         XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.indirizzoNonValido).contains("https://"))
         XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.accessoRichiesto("Nome utente o password sbagliati")), "Nome utente o password sbagliati")
         XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.troppiTentativi("Calma.", riprovaTra: 30)).contains("30 secondi"))
@@ -157,14 +159,18 @@ final class ServerHTTPOstileTests: XCTestCase {
         XCTAssertEqual(ProtocolloFinto.ultimaRichiesta?.timeoutInterval, 25)
     }
 
+    /// 502-504 senza il JSON del server (la pagina d'errore del proxy, con il servizio spento o che riparte): il server non risponde,
+    /// come la web (#830). Gli altri codici restano un guasto generico.
     func testUnaPaginaHtmlNonDiventaUnMessaggioDelServer() async throws {
-        for codice in [400, 404, 500, 502, 503] {
+        for codice in [400, 404, 500, 502, 503, 504] {
             ProtocolloFinto.gestore = { [unowned self] r in (risposta(r, codice), Data("<html><body>Bad Gateway</body></html>".utf8)) }
             do {
                 _ = try await server.grezzo("/api/oggi")
                 XCTFail("doveva lanciare")
             } catch {
-                XCTAssertEqual(error.localizedDescription, "SchieraXI ha un problema in questo momento. Riprova tra poco.", "codice \(codice)")
+                let atteso = (502...504).contains(codice) ? Catalogo.Comune.serverNonRisponde
+                    : "SchieraXI ha un problema in questo momento. Riprova tra poco."
+                XCTAssertEqual(error.localizedDescription, atteso, "codice \(codice)")
                 XCTAssertFalse(error.localizedDescription.contains("codice"), "niente codici tecnici")
                 XCTAssertFalse(error.localizedDescription.contains("<html"), "il corpo della risposta non finisce nei messaggi")
             }
@@ -226,7 +232,7 @@ final class ServerHTTPOstileTests: XCTestCase {
         let testo = ErroreApi.risposta(403).localizedDescription
         XCTAssertTrue(testo.contains("rifiutata"))
         XCTAssertFalse(testo.contains("ha un problema"))
-        XCTAssertTrue(ErroreApi.risposta(502).localizedDescription.contains("ha un problema"))
+        XCTAssertTrue(ErroreApi.risposta(500).localizedDescription.contains("ha un problema"))
     }
 
     func testIlRetryAfterNonNumericoNonFaCrash() async throws {

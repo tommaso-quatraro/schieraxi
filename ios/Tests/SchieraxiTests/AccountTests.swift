@@ -777,7 +777,7 @@ final class ErroriDelServerTests: XCTestCase {
 
     func testIMessaggiDiReteNonParlanoSoloDiRetePrivata() {
         XCTAssertFalse((ErroreApi.rete("x").errorDescription ?? "").contains("rete privata"))
-        XCTAssertTrue((ErroreApi.rete("x").errorDescription ?? "").contains("connessione"))
+        XCTAssertEqual(ErroreApi.rete("x").errorDescription, Catalogo.Comune.serverNonRisponde, "la frase della web, #830")
         XCTAssertFalse((ErroreApi.timeout.errorDescription ?? "").contains("rete privata"))
         XCTAssertFalse(ErroreApi.rete("x").eLimite)
     }

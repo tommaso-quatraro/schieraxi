@@ -123,14 +123,48 @@ final class ServerHTTPTests: XCTestCase {
         }
     }
 
-    func testTimeoutERete() async throws {
-        ProtocolloFinto.gestore = { _ in throw URLError(.timedOut) }
-        do { _ = try await server.grezzo("/api/x"); XCTFail("doveva lanciare") } catch {
-            XCTAssertEqual(error.localizedDescription, ErroreApi.timeout.errorDescription)
+    /// Una richiesta che non arriva (#830), come `fraseSenzaRisposta` della web: con il telefono senza rete si chiede di controllare
+    /// internet (`comune.rete_no`); con la rete accesa è il server che non risponde (`comune.server_non_risponde`), anche quando il
+    /// tempo scade, e controllare internet non serve. Le stesse frasi nella schermata d'accesso e nello scarico dei dati.
+    @MainActor
+    func testTelefonoSenzaReteEServerCheNonRisponde() async throws {
+        let senzaRete: [URLError.Code] = [.notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff, .callIsActive]
+        for codice in senzaRete {
+            ProtocolloFinto.gestore = { _ in throw URLError(codice) }
+            do { _ = try await server.grezzo("/api/x"); XCTFail("doveva lanciare") } catch {
+                XCTAssertEqual(error.localizedDescription, Catalogo.Comune.reteNo, "URLError \(codice.rawValue)")
+                XCTAssertEqual(SchermataAccesso.testoErrore(error), Catalogo.Comune.reteNo, "URLError \(codice.rawValue)")
+                XCTAssertEqual(DatiPersonali.testoErrore(error), Catalogo.Comune.reteNo, "URLError \(codice.rawValue)")
+            }
         }
+        let serverMuto: [URLError.Code] = [.timedOut, .cannotConnectToHost, .cannotFindHost, .networkConnectionLost]
+        for codice in serverMuto {
+            ProtocolloFinto.gestore = { _ in throw URLError(codice) }
+            do { _ = try await server.grezzo("/api/x"); XCTFail("doveva lanciare") } catch {
+                XCTAssertEqual(error.localizedDescription, Catalogo.Comune.serverNonRisponde, "URLError \(codice.rawValue)")
+                XCTAssertEqual(SchermataAccesso.testoErrore(error), Catalogo.Comune.serverNonRisponde, "URLError \(codice.rawValue)")
+                XCTAssertEqual(DatiPersonali.testoErrore(error), Catalogo.Comune.serverNonRisponde, "URLError \(codice.rawValue)")
+            }
+        }
+    }
+
+    /// Il telefono senza rete resta un errore di rete per chi decide cosa mostrare (#830): la striscia dei dati salvati, «La
+    /// formazione non è stata salvata perché non riesco a collegarmi» e «Esci solo da questo telefono» valgono come con il server spento.
+    @MainActor
+    func testSenzaReteRestaUnErroreDiRete() async throws {
         ProtocolloFinto.gestore = { _ in throw URLError(.notConnectedToInternet) }
         do { _ = try await server.grezzo("/api/x"); XCTFail("doveva lanciare") } catch {
-            XCTAssertEqual(error.localizedDescription, ErroreApi.rete("").errorDescription, "il messaggio suggerisce di controllare la connessione")
+            XCTAssertTrue(DatiVecchi.eDiRete(error))
+            XCTAssertTrue(SessioneAccount.esciSoloQuiPossibile(dopo: error))
+            XCTAssertEqual(FormazioneViewModel.testoNonSalvata(error), Catalogo.Formazione.nonSalvataRete)
+        }
+    }
+
+    /// Un 503 con il JSON del server resta il messaggio del server: «il server non risponde» vale solo per la pagina del proxy (#830).
+    func testUnCinquecentoTreDelServerTieneIlSuoMessaggio() async throws {
+        ProtocolloFinto.gestore = { [unowned self] r in (risposta(r, 503), Data(#"{"detail": "Aggiornamento in corso"}"#.utf8)) }
+        do { _ = try await server.grezzo("/api/x"); XCTFail("doveva lanciare") } catch {
+            XCTAssertEqual(error.localizedDescription, "Aggiornamento in corso")
         }
     }
 

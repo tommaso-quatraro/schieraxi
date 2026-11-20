@@ -20,6 +20,20 @@ final class MessaggiErroreTests: XCTestCase {
         XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.rete("x")), ErroreApi.testoNonRaggiungibile)
     }
 
+    /// #830: il server che non risponde con la rete accesa (spento, che riparte, tempo scaduto, la pagina 502-504 del proxy) ha la
+    /// frase della web, `comune.server_non_risponde`, ovunque; il telefono senza rete ha l'altra (`comune.rete_no`, prova in
+    /// `ServerHTTPTests`). Un 500 resta un guasto del server.
+    func testIlServerCheNonRispondeHaLaFraseDellaWeb() {
+        let errori = [ErroreApi.rete("spento"), .timeout, .risposta(502), .risposta(503), .risposta(504)]
+        for e in errori {
+            XCTAssertEqual(e.errorDescription, Catalogo.Comune.serverNonRisponde, "\(e)")
+            XCTAssertEqual(SchermataAccesso.testoErrore(e), Catalogo.Comune.serverNonRisponde, "\(e)")
+        }
+        XCTAssertEqual(ErroreApi.testoNonRaggiungibile, Catalogo.Comune.serverNonRisponde)
+        XCTAssertEqual(DatiPersonali.testoErrore(ErroreApi.timeout), Catalogo.Comune.serverNonRisponde)
+        XCTAssertEqual(ErroreApi.risposta(500).errorDescription, "SchieraXI ha un problema in questo momento. Riprova tra poco.")
+    }
+
     /// #771: il 412 (dati cambiati da un altro dispositivo) dice la frase della web, `err.conflitto` del catalogo comune, non una
     /// frase scritta a mano nell'app. `localizedDescription` è quello che mostrano le schermate (per esempio la Formazione).
     func testIl412HaLaFraseDelCatalogoComeLaWeb() {
