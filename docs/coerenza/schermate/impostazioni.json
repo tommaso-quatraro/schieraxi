@@ -80,6 +80,15 @@
       "forma": "web",
       "chi": "**fatto** (#765): prove nel browser in `tests/browser/test_impostazioni.py`, sull'iPhone `SessioneAccountTests` e `AccessoImpostazioniDalCatalogoTests`; il nome fra «» delle email e della Privacy è legato al catalogo da `tests/test_consiglio_esci_da_tutti.py`",
       "stato": "fatto"
+    },
+    {
+      "id": 86,
+      "schermata": "Gestione: «Aggiorna i dati» mentre il server è occupato con un aggiornamento (#763)",
+      "web": "con `aggiornamento_in_corso` di `GET /api/stato` vero il pulsante è spento e sotto c'è «Il server è occupato con un aggiornamento: il pulsante torna attivo appena finisce.» (`aggiorna.in_corso`, regione `role=\"status\"`); entrando in Gestione con il campo già vero lo stato si rilegge subito, poi ogni 15 secondi finché torna falso (una lettura alla volta), e fuori da Gestione non si rilegge (`segnaAggiornamento`, `seguiAggiornamento`, `rileggiAggiornamento` in `app.js`)",
+      "iphone": "`aggiornamentoInCorso` è dichiarato (`Modelli.swift`) ma non letto: il pulsante (`AggiornaDatiViewModel`, `AggiornaDatiSezione`) è spento con «Aggiornamento in corso…» solo dopo il tocco; con il server già occupato resta acceso e, premuto, mostra «Aggiornamento già in corso»",
+      "forma": "web",
+      "chi": "web fatta (#772, prove in `tests/browser/test_impostazioni.py`); iPhone da fare: #773",
+      "stato": "da-fare"
     }
   ]
 }
