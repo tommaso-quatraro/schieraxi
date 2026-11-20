@@ -151,23 +151,20 @@ def test_una_voce_senza_impronta_si_rifa_una_volta_e_tiene_ho_schierato(mondo):
 
 def test_la_migrazione_non_toglie_la_giornata_da_le_tue_scelte(mondo):
     """Decisione del coordinatore: la migrazione rifà solo i punti. Qui un titolare della consigliata mostrata (22) non è più nella
-    rosa: rifatta da zero, la voce passava a «ricostruita» e usciva da «Le tue scelte» e dall'affidabilità. I punti della mostrata
-    restano quelli di prima: con la rosa di oggi non si valutano, come in «Correggi» (stesso insieme di giocatori, revisione)."""
+    rosa: rifatta da zero, la voce passava a «ricostruita» e usciva da «Le tue scelte» e dall'affidabilità. La mostrata con la rosa
+    di oggi non si valuta (come in «Correggi»), e allora nessun numero della voce cambia (ricontrollo di #798)."""
     _voti(mondo, 1)
     _voti(mondo, 2)
     prima = _voce_di_prima(mondo, _istantanea(mondo))
-    assert prima["consigliata"]["origine"] == "mostrata" and diario.elenco(mondo.diario)["scelte_tue"]["giornate"] == 1
+    esito = diario.elenco(mondo.diario)["scelte_tue"]["per_giornata"]
+    assert prima["consigliata"]["origine"] == "mostrata" and len(esito) == 1
     _vendi(mondo, 22)
-    assert _aggiorna(mondo) == 1
+    assert _aggiorna(mondo) == 1                                          # solo l'impronta
     v = _voce(mondo)
-    assert (v["consigliata"]["origine"], v["consigliata_di_allora"]) == ("mostrata", "mostrata")
-    assert [t["id"] for t in v["consigliata"]["titolari"]] == MOSTRATA
-    assert v["schierata"]["reale"] == CON_TUTTI_I_VOTI                    # i punti della tua, rifatti con tutti i voti
-    assert v["consigliata"]["reale"] == prima["consigliata"]["reale"]
-    assert (v["consigliata"]["atteso"], v["schierata"]["atteso"]) == (prima["consigliata"]["atteso"], prima["schierata"]["atteso"])
+    assert v.pop("impronta_voti") and v == prima
     e = diario.elenco(mondo.diario)
-    assert e["scelte_tue"]["giornate"] == 1 and e["affidabilita"]["senza_istantanea"] == 0
-    assert _aggiorna(mondo) == 0
+    assert e["scelte_tue"]["per_giornata"] == esito and e["affidabilita"]["senza_istantanea"] == 0
+    assert _aggiorna(mondo) == 0                                          # e i giri dopo non ci riprovano
 
 
 @pytest.mark.parametrize("venduto", [None, 22, 24])                    # nessuno, un titolare della mostrata, la riserva entrata
@@ -188,8 +185,8 @@ def test_con_gli_stessi_voti_la_migrazione_cambia_solo_l_impronta(mondo, venduto
 
 
 def test_una_correzione_dopo_il_rilascio_non_toglie_il_verdetto(mondo):
-    """Stessa strada per una voce che ha già l'impronta: se cambiano i voti cambiano solo i punti, anche con la rosa cambiata. La
-    mostrata, con il 22 non più in rosa, tiene i suoi punti (come in «Correggi»); la tua prende la correzione."""
+    """Stessa strada per una voce che ha già l'impronta: se cambiano i voti cambiano solo i punti. Con il 22, titolare della
+    mostrata, non più in rosa la mostrata non si rifà, e allora non cambia nessun numero: tutti insieme o nessuno."""
     _voti(mondo, 1)
     _voti(mondo, 2)
     _istantanea(mondo)
@@ -199,10 +196,27 @@ def test_una_correzione_dopo_il_rilascio_non_toglie_il_verdetto(mondo):
     _voti(mondo, 2, {25: 10.0})
     assert _aggiorna(mondo) == 1
     v = _voce(mondo)
-    assert v["consigliata"]["origine"] == "mostrata" and v["consigliata"]["reale"] == CON_TUTTI_I_VOTI
-    assert v["schierata"]["reale"] == CON_TUTTI_I_VOTI + 1
-    assert diario.elenco(mondo.diario)["scelte_tue"]["giornate"] == 1
+    assert v["consigliata"]["origine"] == "mostrata"
+    assert v["consigliata"]["reale"] == v["schierata"]["reale"] == CON_TUTTI_I_VOTI
+    assert diario.elenco(mondo.diario)["scelte_tue"]["per_giornata"][0]["esito"] == "pari"
 
+
+def test_un_titolare_della_mostrata_venduto_con_i_voti_a_meta_lascia_il_verdetto_com_era(mondo):
+    """Ricontrollo di #798, sonda del revisore: voce di prima con i voti a metà, poi il 22, titolare della mostrata, è venduto. La
+    tua veniva rifatta (54,0 → 69,0) e la mostrata no (54,0): «Le tue scelte» passava da «pari» a «hai fatto meglio di 15 punti».
+    Decisione del coordinatore: i numeri che si confrontano cambiano tutti insieme o nessuno."""
+    _voti(mondo, 1)
+    _voti(mondo, 2)
+    prima = _voce_di_prima(mondo, _istantanea(mondo))
+    esito = diario.elenco(mondo.diario)["scelte_tue"]
+    assert esito["per_giornata"][0]["esito"] == "pari"
+    _vendi(mondo, 22)
+    assert _aggiorna(mondo) == 1
+    v = _voce(mondo)
+    assert (v["schierata"]["reale"], v["consigliata"]["reale"], v["ricostruita"]["reale"]) == (
+        prima["schierata"]["reale"], prima["consigliata"]["reale"], prima["ricostruita"]["reale"])
+    assert v["consiglio"] == prima["consiglio"] and v["giocatori"] == prima["giocatori"]
+    assert diario.elenco(mondo.diario)["scelte_tue"] == esito             # verdetto e media invariati
 
 def test_con_i_voti_cambiati_si_rifanno_anche_i_punti_degli_indicatori(mondo):
     """Gli indicatori del consiglio della voce (`consiglio`) seguono i punti rifatti: quelli della consigliata e della schierata
@@ -303,14 +317,29 @@ def test_correggi_e_rilascio_danno_lo_stesso_numero_anche_con_una_riserva_vendut
 
 def test_con_i_voti_cambiati_i_punti_rifatti_sono_quelli_di_correggi(mondo):
     """Quando i voti cambiano davvero (voce calcolata senza i voti della seconda partita), i punti rifatti dal giro del cron sono
-    quelli che darebbe «Correggi» con la rosa di oggi, anche se nel frattempo è stata venduta una riserva della mostrata."""
+    quelli che darebbe «Correggi»: stessa funzione e stesso insieme di giocatori."""
     _voti(mondo, 1)
     _voti(mondo, 2, {22: None, 24: 8.0})
-    _voce_di_prima(mondo, _istantanea(mondo))
+    prima = _voce_di_prima(mondo, _istantanea(mondo))
+    assert _aggiorna(mondo) == 1
+    dal_giro = _voce(mondo)
+    assert dal_giro["schierata"]["reale"] != prima["schierata"]["reale"]  # i punti sono stati rifatti davvero
+    assert _correggi(mondo) == dal_giro["consigliata"]["reale"]
+    assert _voce(mondo)["schierata"]["reale"] == dal_giro["schierata"]["reale"]
+    assert _aggiorna(mondo) == 0
+
+
+def test_con_i_voti_cambiati_e_un_venduto_in_una_formazione_la_voce_resta_com_era(mondo):
+    """Il 24, titolare della ricostruita e riserva della mostrata, viene venduto dopo il calcolo della voce: la ricostruita non si
+    rifà, quindi non cambia nessun numero (tutti insieme o nessuno), e i giri dopo non ci riprovano."""
+    _voti(mondo, 1)
+    _voti(mondo, 2, {22: None, 24: 8.0})
+    prima = _voce_di_prima(mondo, _istantanea(mondo))
+    assert 24 in [t["id"] for t in prima["ricostruita"]["titolari"]]
     _vendi(mondo, 24)
     assert _aggiorna(mondo) == 1
-    dal_giro = _voce(mondo)["consigliata"]["reale"]
-    assert _correggi(mondo) == dal_giro
+    v = _voce(mondo)
+    assert v.pop("impronta_voti") and v == prima
     assert _aggiorna(mondo) == 0
 
 

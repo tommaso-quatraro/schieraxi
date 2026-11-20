@@ -486,19 +486,25 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
                 return None                     # un titolare non è più in rosa: come in «Correggi», la formazione non si rifà
             tit, panc = formazione(scelti, panchina)
             return round(fz.punteggio(tit, panc, gioca, fv, voto, regole), 1)
+        impronte = {"regole": impronta_regole(regole, stagione, giornata, bool(rinviate)),
+                    "impronta_voti": impronta_voti(d, stagione, giornata)}
         nuova = _solo_punti(tieni, punti, istantanea, scelta, automatica)
+        if nuova is not None and isinstance(nuova.get("consiglio"), dict):
+            try:
+                nuova["consiglio"]["punti_s2"] = _punti_s2(d, stagione, giornata, regole, lista, gioca, fv, voto, simulazioni)
+            except Exception as e:  # noqa: BLE001 - S2 non si rifà: allora non cambia nessun numero della voce
+                _senza_indicatori(e)
+                nuova = None
+        if nuova is None:
+            # i numeri che si confrontano (schierata, consigliata, ricostruita, S2) cambiano tutti insieme o nessuno (ricontrollo di
+            # #798): uno non si rifà, quindi la voce resta com'era, con le impronte di adesso perché i giri dopo non ci riprovino
+            return json.loads(json.dumps(tieni)) | impronte
         for g in nuova.get("giocatori") or []:
             if isinstance(g, dict) and g.get("id") in numeri_prev.index:
                 g["fv"] = round(float(fv_vero[g["id"]]), 2) if g["id"] in fv_vero else None
         if "giocatori" not in nuova:
             nuova["giocatori"] = _numeri_giocatori(numeri_prev, fv_vero, list(ids) + list(altri_ids))
-        if isinstance(nuova.get("consiglio"), dict) and indicatori:
-            try:
-                nuova["consiglio"]["punti_s2"] = _punti_s2(d, stagione, giornata, regole, lista, gioca, fv, voto, simulazioni)
-            except Exception as e:  # noqa: BLE001 - un di più: i punti della voce si rifanno comunque, S2 resta quello di prima
-                _senza_indicatori(e)
-        return nuova | {"regole": impronta_regole(regole, stagione, giornata, bool(rinviate)),
-                        "impronta_voti": impronta_voti(d, stagione, giornata)}
+        return nuova | impronte
     # chi non ha previsione sta in colonne fisse DOPO le estrazioni della rosa: la consigliata vale come prima, e la stessa
     # formazione vale lo stesso con o senza di lui (revisione di #461)
     val = fz.Valutatore(lista, regole, simulazioni, fissi=list(extra.values()))
@@ -545,24 +551,29 @@ def rifai_i_punti(d: Dati, stagione: str, giornata: int, regole: Regole, par: Pa
     stessa classificazione (consigliata mostrata o ricostruita, `consigliata_di_allora`, tipo e «L'ho messa» della schierata,
     copia automatica), stessi punti attesi. Cambiano `reale` di ogni formazione, `fv` dei numeri per giocatore, i punti degli
     indicatori del consiglio e le impronte. Le formazioni si contano con lo stesso insieme di giocatori e la stessa funzione di
-    `calcola_giornata` e di «Correggi» (la rosa di oggi, `formazione`), così il numero non cambia fra l'uno e l'altro; una
-    formazione con un titolare non più in rosa tiene i suoi punti. Le simulazioni servono solo a S2 degli indicatori. None se
-    mancano i dati (come `calcola_giornata`)."""
+    `calcola_giornata` e di «Correggi» (la rosa di oggi, `formazione`), così il numero non cambia fra l'uno e l'altro. I numeri che
+    si confrontano (schierata, consigliata, ricostruita, S2) cambiano tutti insieme o nessuno: se una formazione non si rifà (un
+    titolare non più in rosa) la voce resta com'era, con le sole impronte nuove. Le simulazioni servono solo a S2 degli
+    indicatori. None se mancano i dati (come `calcola_giornata`)."""
     return calcola_giornata(d, stagione, giornata, regole, par, ids_rosa, scelta, simulazioni, automatica, altri_ids,
                             istantanea=istantanea, giocatori_rosa=giocatori_rosa, tieni=voce)
 
 
-def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None, automatica: dict | None) -> dict:
-    """Una copia di `voce` con `reale` di ogni formazione rifatto da `punti(titolari, panchina)` (None = resta com'era), e i punti
-    della consigliata e della schierata negli indicatori. La panchina è l'unico dato che la riga non ha: per la mostrata quella
-    dell'istantanea; per una formazione con gli stessi 11 della mostrata e senza una panchina sua, i punti della mostrata (come
-    `_come_la_mostrata`); altrimenti quella della scelta, se ha gli stessi 11, o quella del sistema."""
+def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None, automatica: dict | None) -> dict | None:
+    """Una copia di `voce` con `reale` di ogni formazione rifatto da `punti(titolari, panchina)`, e i punti della consigliata e della
+    schierata negli indicatori; None se anche una sola formazione non si rifà (`punti` None: un titolare non più in rosa), perché
+    i numeri che si confrontano cambiano tutti insieme o nessuno. La panchina è l'unico dato che la riga non ha: per la mostrata
+    quella dell'istantanea; per una formazione con gli stessi 11 della mostrata e senza una panchina sua, i punti della mostrata
+    (come `_come_la_mostrata`); altrimenti quella della scelta, se ha gli stessi 11, o quella del sistema."""
     nuova = json.loads(json.dumps(voce))
     ist_panc = _ids((istantanea or {}).get("panchina"))
+    mancate = []
 
     def rifai(riga: dict, panchina=()) -> None:
         p = punti(_ids(riga.get("titolari")), panchina)
-        if p is not None:
+        if p is None:
+            mancate.append(riga)
+        else:
             riga["reale"] = p
 
     cons = nuova.get("consigliata") if isinstance(nuova.get("consigliata"), dict) else None
@@ -581,6 +592,8 @@ def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None,
             riga["reale"] = cons["reale"]
         else:
             rifai(riga, propria)
+    if mancate:
+        return None
     c = nuova.get("consiglio")
     if isinstance(c, dict):
         if cons:
