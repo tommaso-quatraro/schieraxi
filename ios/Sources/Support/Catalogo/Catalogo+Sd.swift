@@ -259,5 +259,8 @@ extension Catalogo {
 
         /// `sd.pochi_dati`
         static let pochiDati = " (pochi dati)"
+
+        /// `sd.mai`
+        static let mai = "mai"
     }
 }

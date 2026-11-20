@@ -605,12 +605,13 @@ struct StatoDatiView: View {
                             riga("Coppe europee fino al", s.coppeFino.map { Quando.dataVersione($0) } ?? "—")
                         }
                         Section(titolo: "Avanzate") {
-                            // i nomi grezzi dei dati («dati-extra») si leggono meglio tradotti; la lista sta ripiegata
+                            // il nome di ogni riga è l'etichetta del server, come la web (#808; un server di prima: i nomi
+                            // dell'app); un passo mai riuscito dice «mai». La lista sta ripiegata
                             DisclosureGroup(Catalogo.Scambio.ultimiAggiornamenti) {
                                 ForEach((s.aggiornamenti ?? []).filter { !NomiDati.daNascondere($0.cosa) }) { a in
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(NomiDati.leggibile(a.cosa))
-                                        Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(Color.testoSecondario)
+                                        Text(NomiDati.nome(a))
+                                        Text(NomiDati.quando(a)).font(.caption).foregroundStyle(Color.testoSecondario)
                                         ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Color.attenzione) }
                                     }
                                     .accessibilityElement(children: .combine)
@@ -669,6 +670,8 @@ struct StatoDatiView: View {
                     RigaFondoDemo()
                 }
                 .scrollContentBackground(.hidden)
+                // la copia salvata sul telefono non sembra nuova: la striscia «dati salvati», come nelle altre pagine (#808)
+                .avvisoDatiSalvati(striscia?.data, motivo: striscia?.motivo)
                 // fotografie `lega-stato-fondo` (#425: la lista scorsa fino in fondo, agli indicatori del consiglio) e `lega-stato-nostri`
                 // (#430: ferma sul riquadro dei gol attesi nostri, che col consiglio non entra in una foto sola). Lo stato arriva per
                 // primo, la prova delle previsioni (a metà pagina) subito dopo: si scorre a entrambi arrivati.
@@ -681,6 +684,15 @@ struct StatoDatiView: View {
         .titoloPagina(Catalogo.Av.stato)
         .refreshable { await caricatore.ricarica(); await affidabilita.ricarica() }
         .task { await caricatore.ricarica(); await affidabilita.ricarica() }
+    }
+
+    /// La striscia dei dati salvati: lo stato dei dati o la prova delle previsioni non sono arrivati freschi e si vede la copia
+    /// del telefono. La data più vecchia delle due, con il suo motivo (nil = server non raggiungibile), come la Formazione.
+    private var striscia: (data: Date, motivo: String?)? {
+        var vecchi: [(data: Date, motivo: String?)] = []
+        if let d = caricatore.datiSalvati { vecchi.append((d, caricatore.motivoDatiSalvati)) }
+        if let d = affidabilita.datiSalvati { vecchi.append((d, affidabilita.motivoDatiSalvati)) }
+        return vecchi.min { $0.data < $1.data }
     }
 
     @ViewBuilder
@@ -697,8 +709,17 @@ struct StatoDatiView: View {
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
             let righe = (a.righe ?? []).filter { $0.puntiModello != nil }
             if righe.count >= 2 { GraficoAffidabilita(righe: righe) }
-        } else if affidabilita.errore != nil, affidabilita.dato == nil {
-            Text("Non riesco a leggere la prova delle previsioni.").font(.footnote).foregroundStyle(Color.attenzione)
+        } else if let errore = affidabilita.errore, affidabilita.dato == nil {
+            // il motivo vero, come la web (#808: prima una frase generica), e «Riprova»; con un limite il messaggio dice già quando
+            Label(errore, systemImage: "exclamationmark.triangle")
+                .font(.footnote).foregroundStyle(Color.attenzione)
+                .fixedSize(horizontal: false, vertical: true)
+            if !ErroreVista.eLimite(errore) {
+                Button(Catalogo.Comune.riprova) { Task { await affidabilita.ricarica() } }
+                    .font(.footnote.weight(.semibold))
+                    .frame(minHeight: Tema.areaTocco)
+                    .accessibilityHint("Riprova a leggere la prova delle previsioni")
+            }
         } else {
             Text("La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita.").font(.footnote).foregroundStyle(Color.testoSecondario)
         }
