@@ -250,7 +250,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Account: rotte `/api/account/*`. Con `nativo: true` il token torna nel corpo (l'app per iPhone lo manda come
   `Authorization: Bearer`). La web app usa il cookie `fanta_sessione`, HttpOnly.
 - Token del widget iPhone: `fw_...`, vale 90 giorni, creato con `POST /api/account/token-widget`. Apre solo `GET /api/oggi`,
-  `GET /api/widget` e `GET /api/live`. Ogni altra rotta risponde 403. Cambio password e «esci da tutti» lo revocano. Resta legato
+  `GET /api/widget` e `GET /api/live`. Ogni altra rotta risponde 403. Cambio password, «esci da tutti» e, dal 20/11/2026 (#843),
+  il cambio dell'email confermato lo revocano. Resta legato
   alla sessione che l'ha chiesto (`token_widget.sessione_id`, #814): «Esci» da quella sessione lo revoca, da un'altra no; i token
   nati prima del 20/11/2026 restano senza legame fino al rinnovo.
 - Giocatori: all'utente una sola percentuale sul giocare, «gioca N%» (`p_voto`); `percentuale` delle probabili non si mostra e
