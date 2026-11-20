@@ -14,6 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from .etichette import percento
 from .frasi import F, di
 from .modello import Parametri
 from .regole import Regole
@@ -57,6 +58,7 @@ def riferimento(p: pd.DataFrame, parti: pd.DataFrame) -> pd.DataFrame:
 
 
 def _pct(x: float) -> int:
+    """Una probabilità (di segnare, di non subire gol) in punti percentuali. «gioca N%» usa invece `percento`, come scheda ed etichette."""
     return round(float(x) * 100)
 
 
@@ -69,12 +71,13 @@ def _frase_gioca(x: dict) -> str | None:
         return F("perche.squalificato")
     if stato == "non_citato" and p < 0.2:
         return F("perche.non_convocato")
+    # «gioca N%» con il numero della scheda (`etichette.percento`, #816): con 0,345 la scheda dice 35% e qui si leggeva 34%
     if p < 0.2:
-        return F("perche.gioca_improbabile", p=_pct(p))
+        return F("perche.gioca_improbabile", p=percento(p))
     if p < 0.5:
-        return F("perche.gioca_panchina", p=_pct(p))
+        return F("perche.gioca_panchina", p=percento(p))
     if p < 0.8:
-        return F("perche.gioca_dubbio", p=_pct(p))
+        return F("perche.gioca_dubbio", p=percento(p))
     return None
 
 
