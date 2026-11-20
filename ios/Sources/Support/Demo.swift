@@ -77,7 +77,7 @@ enum Demo {
             // Errori dell'accesso, per le fotografie: rete assente, troppi tentativi, un server che risponde HTML invece del JSON.
             var errore = FinteServer.demo
             switch accesso {
-            case "rete": errore.fallimenti = ["/api/account/accedi": .rete("senza rete")]
+            case "rete": errore.fallimenti = ["/api/account/accedi": .senzaRete]
             case "limite": errore.fallimenti = ["/api/account/accedi": .troppiTentativi("Troppi tentativi sbagliati: aspetta prima di riprovare.", riprovaTra: 45)]
             case "non-valido": errore.risposte["/api/account/accedi"] = "<html><body><h1>Benvenuto</h1><p>Pagina di prova</p></body></html>"
             default: return FinteServer.demo

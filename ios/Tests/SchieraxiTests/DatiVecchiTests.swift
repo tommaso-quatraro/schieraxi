@@ -7,6 +7,7 @@ final class DatiVecchiTests: XCTestCase {
     func testSoloReteETempoScadutoSonoNonRaggiungibile() {
         XCTAssertTrue(DatiVecchi.eDiRete(ErroreApi.rete("spento")))
         XCTAssertTrue(DatiVecchi.eDiRete(ErroreApi.timeout))
+        XCTAssertTrue(DatiVecchi.eDiRete(ErroreApi.senzaRete), "il telefono senza rete (#830)")
         XCTAssertTrue(DatiVecchi.eDiRete(URLError(.notConnectedToInternet)))
         XCTAssertFalse(DatiVecchi.eDiRete(ErroreApi.troppiTentativi("Hai finito le ricerche di oggi.", riprovaTra: 60)))
         XCTAssertFalse(DatiVecchi.eDiRete(ErroreApi.server("Guasto")))

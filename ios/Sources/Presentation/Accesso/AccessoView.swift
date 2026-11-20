@@ -405,8 +405,6 @@ struct SchermataAccesso: View {
     static func testoErrore(_ errore: Error) -> String {
         if let e = errore as? ErroreApi {
             switch e {
-            case .rete: return ErroreApi.testoNonRaggiungibile
-            case .timeout: return "SchieraXI ci mette troppo a rispondere. Riprova tra poco."
             case .server(let m): return m
             case .indirizzoNonValido: return "L'indirizzo del server non è valido: deve cominciare con https://"
             case .risposta(let codice): return ErroreApi.testoRisposta(codice)

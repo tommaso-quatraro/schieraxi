@@ -4,7 +4,7 @@ import XCTest
 /// Messaggi d'errore per chi usa l'app: semplici, senza codici e senza «server acceso»; il «Riprova» resta dove serve.
 final class MessaggiErroreTests: XCTestCase {
     func testNienteParoleTecniche() {
-        let testi = [ErroreApi.rete("x"), .timeout, .risposta(500), .risposta(502), .risposta(401), .risposta(403), .server("Nessuna rosa importata")]
+        let testi = [ErroreApi.rete("x"), .senzaRete, .timeout, .risposta(500), .risposta(502), .risposta(401), .risposta(403), .server("Nessuna rosa importata")]
             .compactMap(\.errorDescription)
         for t in testi {
             XCTAssertFalse(t.contains("codice"), t)
@@ -32,6 +32,10 @@ final class MessaggiErroreTests: XCTestCase {
         XCTAssertEqual(ErroreApi.testoNonRaggiungibile, Catalogo.Comune.serverNonRisponde)
         XCTAssertEqual(DatiPersonali.testoErrore(ErroreApi.timeout), Catalogo.Comune.serverNonRisponde)
         XCTAssertEqual(ErroreApi.risposta(500).errorDescription, "SchieraXI ha un problema in questo momento. Riprova tra poco.")
+        XCTAssertEqual(ErroreApi.senzaRete.errorDescription, Catalogo.Comune.reteNo)
+        XCTAssertEqual(ErroreApi.testoSenzaRete, Catalogo.Comune.reteNo)
+        XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.senzaRete), Catalogo.Comune.reteNo)
+        XCTAssertEqual(DatiPersonali.testoErrore(ErroreApi.senzaRete), Catalogo.Comune.reteNo)
     }
 
     /// #771: il 412 (dati cambiati da un altro dispositivo) dice la frase della web, `err.conflitto` del catalogo comune, non una
@@ -55,6 +59,7 @@ final class MessaggiErroreTests: XCTestCase {
         XCTAssertFalse(ErroreVista.eLimite(ErroreApi.timeout.errorDescription ?? ""))
         XCTAssertFalse(ErroreVista.eLimite(ErroreApi.risposta(500).errorDescription ?? ""))
         XCTAssertFalse(ErroreVista.eLimite(ErroreApi.rete("x").errorDescription ?? ""))
+        XCTAssertFalse(ErroreVista.eLimite(ErroreApi.senzaRete.errorDescription ?? ""))
         XCTAssertTrue(ErroreVista.eLimite(ErroreApi.troppiTentativi("Troppe ricerche oggi.", riprovaTra: 45).errorDescription ?? ""))
         XCTAssertTrue(ErroreVista.eLimite("Hai finito le ricerche di oggi. Riprova domani."))
     }

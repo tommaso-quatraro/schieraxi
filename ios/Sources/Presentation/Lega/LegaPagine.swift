@@ -209,7 +209,7 @@ struct AspettoSezione: View {
     /// Sotto il Tema: la frase della web e dove si cambia la dimensione del testo. «Impostazioni», non «Impostazioni di iPhone»:
     /// la stessa frase vale sull'iPad (#563).
     static let spiegaTema = Catalogo.Asp.autoSpiega
-        + " La dimensione del testo si cambia in Impostazioni > Schermo e luminosità > Dimensione del testo: l'app la segue."
+        + " La dimensione del testo si cambia in Impostazioni › Schermo e luminosità › Dimensione del testo: l'app la segue."
 
     var body: some View {
         Section {

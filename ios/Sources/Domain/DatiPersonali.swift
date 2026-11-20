@@ -51,8 +51,6 @@ enum DatiPersonali {
         switch e {
         case .accessoRichiesto:
             return "La sessione è scaduta: rientra nel tuo account e riprova."
-        case .rete, .timeout:
-            return ErroreApi.testoNonRaggiungibile
         case .dati:
             return "Il server non ha mandato il file dei dati. Riprova tra poco."
         default:

@@ -2,12 +2,12 @@ import Foundation
 
 /// Quando i dati a video non sono freschi: la frase della striscia «dati salvati» e quando ricaricare tornando nell'app.
 enum DatiVecchi {
-    /// Rete assente o server troppo lento: solo qui si dice «non riesco a raggiungere SchieraXI». Ogni altro errore
-    /// (limite raggiunto, guasto del server, risposta che l'app non capisce) ha il suo messaggio, che va mostrato.
+    /// Telefono senza rete, server che non risponde o troppo lento: solo qui si dice «non riesco a raggiungere SchieraXI». Ogni
+    /// altro errore (limite raggiunto, guasto del server, risposta che l'app non capisce) ha il suo messaggio, che va mostrato.
     static func eDiRete(_ errore: Error) -> Bool {
         if let e = errore as? ErroreApi {
             switch e {
-            case .rete, .timeout: return true
+            case .rete, .senzaRete, .timeout: return true
             default: return false
             }
         }

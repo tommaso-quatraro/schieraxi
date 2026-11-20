@@ -712,7 +712,7 @@ final class SessioneAccount: ObservableObject {
     static func esciSoloQuiPossibile(dopo errore: Error) -> Bool {
         guard let e = errore as? ErroreApi else { return false }
         switch e {
-        case .rete, .timeout: return true
+        case .rete, .senzaRete, .timeout: return true
         default: return false
         }
     }
