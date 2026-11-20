@@ -6,8 +6,8 @@ import UIKit
 
 // Issue #846. Nella foto `ipad_scuro_orizzontale_formazione-in-corso` (corsa 44738994894) la Formazione era ferma sullo scheletro:
 // due scatti di fila uguali, quindi nemmeno il marchio del caricamento si muoveva. Non era un caricamento perso: arrivati i dati,
-// la prima disposizione della pagina in due colonne teneva occupato il thread principale per secondi (10,7 s misurati con questi
-// stessi passi, corsa 44754490526) e lo schermo restava sull'ultimo disegno, lo scheletro. L'`HStack` delle due colonne chiedeva a
+// la prima disposizione della pagina in due colonne teneva occupato il thread principale per secondi (10,7 e 15,6 s misurati con
+// questi stessi passi, corse 44754490526 e 44757536152) e lo schermo restava sull'ultimo disegno, lo scheletro. L'`HStack` delle due colonne chiedeva a
 // ogni colonna anche la misura a larghezza 0 e infinita, e ogni domanda rifaceva pedine e righe dei giocatori. Si misura la
 // pagina vera, con i dati della demo, in una finestra grande come la parte destra dell'iPad in orizzontale.
 
@@ -33,10 +33,11 @@ private struct Sonda: Layout {
 @MainActor
 @Suite("Formazione sull'iPad: arrivati i dati, la pagina compare senza bloccare lo schermo (#846)")
 struct FormazioneIPadSenzaBloccoTests {
-    /// Prima della correzione: 10,7 s (giornata in corso) e 6,7 s (prima della scadenza) sul Mac di GitHub.
-    static let soglia: Duration = .seconds(4)
+    /// Prima della correzione, su due Mac di GitHub: 10,7 e 15,6 s a giornata in corso, 6,7 e 7,8 s prima della scadenza.
+    /// In una colonna sola (iPhone) la stessa pagina chiedeva circa un secondo.
+    static let soglia: Duration = .seconds(5)
 
-    @Test("La Formazione in due colonne si dispone in meno di 4 secondi, a giornata in corso e prima della scadenza",
+    @Test("La Formazione in due colonne si dispone in meno di 5 secondi, a giornata in corso e prima della scadenza",
           arguments: ["formazione-in-corso", "formazione"])
     func primaDisposizioneInDueColonne(foto: String) async throws {
         let demo = FinteServer.demoFase(foto) ?? FinteServer.demo
@@ -87,7 +88,8 @@ struct FormazioneIPadSenzaBloccoTests {
             Sonda(proposte: sinistra, altezza: 50) {}
             Sonda(proposte: destra, altezza: 80) {}
         }
-        .frame(width: 900))
+        .frame(width: 900)
+        .background(Color.white))   // senza niente da disegnare l'immagine non nasce
         disegno.scale = 1
         let immagine = try #require(disegno.uiImage)
         let colonna = ColonneUguali.larghezzaColonna(totale: 900, colonne: 2, spazio: 14)
