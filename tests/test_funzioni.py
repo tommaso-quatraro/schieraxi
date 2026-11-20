@@ -201,6 +201,23 @@ def test_due_utenti_ognuno_il_suo_mostra_tutte(multiutente, dati_isolati):
     assert a.get("/api/live").status_code == 200 and b.get("/api/live").status_code == 200
 
 
+@pytest.mark.parametrize(("funzione", "metodo", "rotta", "argomenti"), MERCATO_E_SCAMBI)
+def test_versione_pubblica_spenti_di_predefinito_tranne_per_l_amministratore(multiutente, dati_isolati, monkeypatch,
+                                                                              funzione, metodo, rotta, argomenti):
+    """#795, il caso del server pubblico: senza nessuna scelta, «Cambi consigliati» e «Scambi: costruisci» sono spenti di predefinito.
+    Chi non è amministratore riceve il 404 con il campo `funzione`; l'amministratore passa, come per l'asta."""
+    from test_account_http import cliente, registra
+    monkeypatch.setattr(fn, "VERSIONE_PUBBLICA", True)
+    utente, admin = cliente(), cliente()
+    assert registra(utente, "utentec").status_code == 200
+    assert registra(admin, "gestorea", amministratore=True).status_code == 200
+    r = utente.request(metodo, rotta, **argomenti)
+    assert r.status_code == 404 and r.json() == {"detail": fn.messaggio_spenta(funzione), "funzione": funzione}, (rotta, r.text)
+    r = admin.request(metodo, rotta, **argomenti)
+    assert r.status_code != 404 and "funzione" not in r.json(), (rotta, r.text)
+    assert fn.origine(funzione) == (False, "predefinito")               # nessuna scelta dell'amministratore né dell'ambiente
+
+
 def test_fonti_ombra_spente_saltano_il_passo_di_misura(tmp_path, monkeypatch):
     from fanta import aggiorna, archivio
 
