@@ -1,6 +1,6 @@
 """Ogni evento del registro di sicurezza ha il suo nome in parole nel catalogo (#779).
 
-Impostazioni › Gestione › «Errori recenti» mostra gli eventi di `GET /api/admin/registro` con la chiave `errori.evento.<tipo>`
+Impostazioni › Gestione › «Errori recenti» mostra gli eventi di `GET /api/admin/registro` con la chiave `errori.evento_<tipo>`
 (fanta/testi/errori.json): senza, l'amministratore leggerebbe il nome interno con gli spazi al posto dei trattini bassi. I tipi si
 leggono dal codice del server con `ast`: le chiamate a `evento(...)` (anche `account.evento` e `_evento` della posta) con un testo
 fisso, e quelle composte `evento(prefisso + "_bloccato")` dei tentativi di accesso, recupero e iscrizione (i prefissi sono quelli
@@ -11,6 +11,7 @@ from pathlib import Path
 
 RADICE = Path(__file__).resolve().parent.parent
 CATALOGO = RADICE / "fanta" / "testi" / "errori.json"
+PREFISSO = "errori.evento_"
 NOMI_EVENTO = {"evento", "_evento"}
 
 
@@ -54,7 +55,7 @@ def test_ogni_evento_di_sicurezza_ha_il_nome_nel_catalogo():
     assert not ignote, "chiamate a evento() che il controllo non sa leggere:\n" + "\n".join(ignote)
     assert {"ruolo_cambiato", "accesso_fallito", "recupero_bloccato", "iscrizione_rallentamento_pieno"} <= tipi, sorted(tipi)
     catalogo = json.loads(CATALOGO.read_text(encoding="utf-8"))
-    mancano = sorted(t for t in tipi if f"errori.evento.{t}" not in catalogo)
-    assert not mancano, f"aggiungi in fanta/testi/errori.json le chiavi errori.evento.<tipo> (italiano e inglese): {mancano}"
-    in_piu = sorted(k for k in catalogo if k.startswith("errori.evento.") and k.removeprefix("errori.evento.") not in tipi)
+    mancano = sorted(t for t in tipi if f"{PREFISSO}{t}" not in catalogo)
+    assert not mancano, f"aggiungi in fanta/testi/errori.json le chiavi {PREFISSO}<tipo> (italiano e inglese): {mancano}"
+    in_piu = sorted(k for k in catalogo if k.startswith(PREFISSO) and k.removeprefix(PREFISSO) not in tipi)
     assert not in_piu, f"eventi che il server non scrive più: togli le chiavi {in_piu}"

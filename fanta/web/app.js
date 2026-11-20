@@ -3786,11 +3786,11 @@ function collegaAmministratore() {
       // fuso del browser (#779); i tipi di evento con il loro nome del catalogo, uno nuovo senza nome almeno senza trattini bassi
       const quando = q => { const d = new Date(q); return esc(Number.isNaN(d.getTime()) ? String(q)
         : d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })); };
-      const evento = tipo => esc(Object.hasOwn(TESTI.it, "errori.evento." + tipo) ? t("errori.evento." + tipo) : String(tipo || "").replace(/_/g, " "));
-      const conta = (chiave, n) => tp(chiave, n, { n: fNum(n) });
+      const evento = tipo => esc(Object.hasOwn(TESTI.it, "errori.evento_" + tipo) ? t("errori.evento_" + tipo) : String(tipo || "").replace(/_/g, " "));
       const righe = (elenco, vuoto, testo) => elenco.length ? `<ul class="registro-elenco">${elenco.map(testo).join("")}</ul>` : `<p>${vuoto}</p>`;
-      dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: conta("errori.n_richieste", c.richieste), rifiutate: conta("errori.n_rifiutate", c.rifiutate),
-          errori: conta("errori.n_errori", c.errori), medio: num(c.tempo_medio_ms), p95: num(c.tempo_p95_ms), max: num(c.tempo_max_ms) })}</p>
+      dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: tp("errori.n_richieste", c.richieste, { n: fNum(c.richieste) }),
+          rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }),
+          medio: num(c.tempo_medio_ms), p95: num(c.tempo_p95_ms), max: num(c.tempo_max_ms) })}</p>
         <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${quando(e.quando)} · ${esc(e.metodo || "")} ${esc(e.rotta || "")} · ${esc(e.stato || "")} ${esc(e.errore || "")}</li>`)}
         <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
         <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), rotta: esc(p.rotta), medio: num(p.medio_ms) })}</li>`)}`;
