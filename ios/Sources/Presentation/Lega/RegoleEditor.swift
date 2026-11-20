@@ -25,7 +25,11 @@ final class RegoleEditorViewModel: ViewModelBase {
     @Published var erroreRiconoscimento: String?
     @Published var riconoscimentoInCorso = false
 
+    /// Dopo un 412, quanto si aspetta prima di ricaricare i campi con le regole del server: la frase si legge mentre si vedono ancora
+    /// i valori scritti, come la web (che ricarica la pagina dopo 2,5 secondi). I test la mettono a zero.
     private let attesaDopoConflitto: Duration
+    /// L'ETag delle regole dopo un 412, finché una lettura riuscita non porta quello vero: con questo ogni scrittura riceve di nuovo
+    /// 412 (vedi `ricaricaDopoConflitto`).
     static let etagDaRileggere = "\"da-rileggere\""
 
     init(server: any ServerClient, attesaDopoConflitto: Duration = .milliseconds(2500)) {
@@ -37,8 +41,9 @@ final class RegoleEditorViewModel: ViewModelBase {
         osserva(caricatore)
     }
 
-    /// Rilegge le regole. Con modifiche non salvate NON le sovrascrive (prima bastava cambiare scheda e tornare, il comando
-    /// «Aggiorna» o un 412 al salvataggio per perderle senza avviso): solo `forza` («Annulla le modifiche») riparte dal server.
+    /// Rilegge le regole. Con modifiche non salvate NON le sovrascrive (prima bastava cambiare scheda e tornare, o il comando
+    /// «Aggiorna», per perderle senza avviso): solo `forza` («Annulla le modifiche», o le regole cambiate da un altro dispositivo)
+    /// riparte dal server.
     func carica(forza: Bool = false) async {
         await caricatore.ricarica()
         if let d = caricatore.dato, forza || !modificato || !caricato {
@@ -174,6 +179,9 @@ final class RegoleEditorViewModel: ViewModelBase {
     /// pagina lo mostra sopra la barra «Modifiche non salvate», vicino a «Salva» (#808).
     @discardableResult
     func salva() async -> Bool {
+        // un «Salva» mentre un altro è in corso (anche nell'attesa dopo un 412) non parte: la domanda «Salva le regole» arriva qui
+        // anche quando la barra ha il pulsante spento
+        guard !inCorso else { return false }
         inCorso = true
         defer { inCorso = false }
         do {
@@ -188,15 +196,27 @@ final class RegoleEditorViewModel: ViewModelBase {
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
             return true
         } catch {
-            // 412, regole cambiate da un altro dispositivo: si rilegge la versione del server, ma i campi scritti restano e la
-            // pagina resta aperta, come la web (#808; prima i valori del server sostituivano quelli scritti e la domanda chiudeva
-            // la pagina come dopo un salvataggio riuscito). Un nuovo «Salva» manda quello che c'è nei campi.
-            if (error as? ErroreApi)?.eConflitto == true { await carica() }
             esito = error.localizedDescription
             esitoRiuscito = false
             Haptics.esito(riuscito: false)
+            if (error as? ErroreApi)?.eConflitto == true { await ricaricaDopoConflitto(messaggio: error.localizedDescription) }
             return false
         }
+    }
+
+    /// 412, regole cambiate da un altro dispositivo: come la web, la frase e, dopo un attimo, i campi ricaricati con le regole del
+    /// server; le modifiche non salvate si perdono e la pagina resta aperta (#808; prima la domanda la chiudeva come dopo un
+    /// salvataggio riuscito). Intanto `inCorso` tiene fermo «Salva». L'ETag ricordato non deve valere: il trasporto ha già preso
+    /// quello della risposta 412, e un nuovo «Salva» passerebbe sopra la versione dell'altro dispositivo senza che si veda. Con
+    /// `etagDaRileggere` ogni scrittura riceve di nuovo 412 finché una lettura riuscita non porta l'ETag vero, anche se la rilettura
+    /// qui sotto non riesce (come la web, che dopo un 412 tiene l'ETag vecchio).
+    private func ricaricaDopoConflitto(messaggio: String) async {
+        VersioniRisorse.condivise.imposta(Self.etagDaRileggere, server: server.indirizzo, risorsa: "regole")
+        try? await Task.sleep(for: attesaDopoConflitto)
+        await carica(forza: true)
+        // `carica(forza:)` toglie l'esito: la frase resta da leggere, con i valori nuovi
+        esito = messaggio
+        esitoRiuscito = false
     }
 
     func annulla() async { await carica(forza: true) }
@@ -329,7 +349,8 @@ struct RegoleEditorView: View {
         // indietro o aprendo un'altra pagina da fuori, si chiede cosa fare invece di perderle in silenzio. Sull'iPhone e sull'iPad
         // (#808: sull'iPad «‹ Impostazioni» le buttava); un avviso, che si vede intero in mezzo allo schermo su tutti e due.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if vm.caricato && vm.modificato { barraNonSalvate }
+            // anche senza modifiche, se c'è l'errore dell'ultimo salvataggio: dopo il 412 i campi sono ricaricati, la frase resta
+            if vm.caricato && (vm.modificato || erroreSalvataggio != nil) { barraNonSalvate }
         }
         .navigationBarBackButtonHidden(vm.modificato)
         .toolbar {
@@ -392,7 +413,8 @@ struct RegoleEditorView: View {
     }
 
     /// La barra delle modifiche non salvate, con sopra l'errore dell'ultimo salvataggio: vicino a «Salva» si vede sempre, anche in
-    /// cima a una lista lunga (prima stava solo in fondo alla lista, #808). Dopo un errore le modifiche restano, quindi c'è la barra.
+    /// cima a una lista lunga (prima stava solo in fondo alla lista, #808). Dopo il 412 i campi si ricaricano e le modifiche non ci
+    /// sono più: resta solo la frase, senza la barra.
     private var barraNonSalvate: some View {
         VStack(spacing: 6) {
             if let errore = erroreSalvataggio {
@@ -405,20 +427,22 @@ struct RegoleEditorView: View {
                     .vetro(in: RoundedRectangle(cornerRadius: 18, style: .continuous), tinta: Color.attenzione.opacity(0.35))
                     .accessibilityElement(children: .combine)
             }
-            HStack(spacing: 10) {
-                Label("Modifiche non salvate", systemImage: "pencil.circle").font(.subheadline.weight(.semibold))
-                Spacer(minLength: 8)
-                Button {
-                    Task { await vm.salva() }
-                } label: {
-                    if vm.inCorso { ProgressView() } else { Text("Salva").frame(minWidth: 60) }
+            if vm.modificato {
+                HStack(spacing: 10) {
+                    Label("Modifiche non salvate", systemImage: "pencil.circle").font(.subheadline.weight(.semibold))
+                    Spacer(minLength: 8)
+                    Button {
+                        Task { await vm.salva() }
+                    } label: {
+                        if vm.inCorso { ProgressView() } else { Text("Salva").frame(minWidth: 60) }
+                    }
+                    .pulsanteVetro(prominente: true)
+                    .frame(minHeight: 44)
+                    .disabled(vm.inCorso)
                 }
-                .pulsanteVetro(prominente: true)
-                .frame(minHeight: 44)
-                .disabled(vm.inCorso)
+                .padding(.horizontal, 16).padding(.vertical, 6)
+                .vetro(in: Capsule(), tinta: Color.attenzione.opacity(0.25))
             }
-            .padding(.horizontal, 16).padding(.vertical, 6)
-            .vetro(in: Capsule(), tinta: Color.attenzione.opacity(0.25))
         }
         .padding(.horizontal, Tema.margine).padding(.bottom, 8)
         .accessibilityElement(children: .contain)

@@ -30,9 +30,9 @@
     {
       "id": 91,
       "schermata": "Regole: salvataggio che non riesce e 412 (#808)",
-      "web": "un errore di «Salva le regole» (anche «Scegli almeno un modulo») è un avviso in basso (`avviso(e.message, 8000)` in `vistaRegole`); con il 412 l'avviso ha la frase dei dati cambiati da un altro dispositivo (`err.conflitto`) e dopo un attimo la pagina si ricarica con le regole del server (`api` in `app.js`)",
-      "iphone": "prima: l'errore solo in fondo alla lista, lontano dalla barra con «Salva»; con il 412 i valori del server sostituivano quelli scritti e la domanda chiudeva la pagina come dopo un salvataggio riuscito. Ora l'errore sta sopra la barra «Modifiche non salvate», a capo, e VoiceOver lo legge; con il 412 la frase della web (`err.conflitto`), le regole del server si rileggono ma i campi scritti restano e la pagina resta aperta: «Annulla le modifiche» mostra la versione nuova, un nuovo «Salva» manda i campi scritti (`RegoleEditorViewModel.salva`, `RegoleEditorView.barraNonSalvate`)",
-      "forma": "web per l'errore in vista; dopo il 412 l'iPhone tiene i campi scritti invece di ricaricare la pagina (deciso nel #808)",
+      "web": "un errore di «Salva le regole» (anche «Scegli almeno un modulo») è un avviso in basso (`avviso(e.message, 8000)` in `vistaRegole`); con il 412 l'avviso ha la frase dei dati cambiati da un altro dispositivo (`err.conflitto`) e dopo un attimo (2,5 secondi) la pagina si ricarica con le regole del server (`api` in `app.js`)",
+      "iphone": "prima: l'errore solo in fondo alla lista, lontano dalla barra con «Salva»; con il 412 i valori del server sostituivano quelli scritti e la domanda chiudeva la pagina come dopo un salvataggio riuscito. Ora l'errore sta sopra la barra «Modifiche non salvate», a capo, e VoiceOver lo legge; con il 412, come la web, la frase (`err.conflitto`) e dopo un attimo (2,5 secondi) i campi ricaricati con le regole del server: le modifiche non salvate si perdono, la pagina resta aperta e la frase resta. Intanto «Salva» è fermo, e l'ETag ricordato non vale finché le regole non si rileggono, così un nuovo «Salva» non scrive mai sopra la versione dell'altro dispositivo senza che si vedano i valori nuovi (`RegoleEditorViewModel.salva`, `ricaricaDopoConflitto`, `RegoleEditorView.barraNonSalvate`)",
+      "forma": "web",
       "chi": "**fatto** (#808): prova `RegoleSalvataggioTests`",
       "stato": "fatto"
     },
