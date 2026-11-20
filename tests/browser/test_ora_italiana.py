@@ -75,3 +75,23 @@ def test_il_conto_alla_rovescia_regge_al_cambio_dell_ora(web, fuso, cambio):
     w.orologio(adesso)
     testo = formazione(w)
     assert chiude in testo and manca in testo, testo[:400]
+
+
+def _solo_giorno(x, giorno: str):
+    """La risposta con ogni `data_partita` ridotta al solo giorno, come la manda il server quando l'ora non è ancora fissata."""
+    if isinstance(x, dict):
+        return {k: (giorno if k == "data_partita" and v else _solo_giorno(v, giorno)) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_solo_giorno(v, giorno) for v in x]
+    return x
+
+
+@pytest.mark.parametrize("fuso", TUTTI_I_FUSI)
+def test_una_partita_senza_ora_mostra_solo_il_giorno(web, fuso):
+    """Una partita con solo il giorno («2026-11-01») si scrive «dom 1», come gli altri giorni, senza un'ora finta: «00:00»
+    sembrerebbe una partita a mezzanotte."""
+    solo(web, "prima")
+    w = web.con_fuso(fuso)
+    w.risposta("/api/formazione", _solo_giorno(w.registrata("/api/formazione"), "2026-11-01"))
+    testo = formazione(w)
+    assert "· dom 1 " in testo + " " and "00:00" not in testo and "01:00" not in testo, testo[:600]

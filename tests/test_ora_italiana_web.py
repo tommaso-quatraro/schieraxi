@@ -63,11 +63,13 @@ QUANDO = {
     # martedì 27/10 alle 15:10 italiane: a New York le 10:10, a Tokyo le 23:10, tutti martedì
     "2026-10-27T14:10:00Z": {"2026-10-27 18:20": "oggi 18:20", "2026-10-27 23:59": "oggi 23:59", "2026-10-28 00:30": "domani 00:30",
                              "2026-10-26 23:30": "ieri 23:30", "2026-10-31 20:45": "sab 31 20:45", "2026-10-24 20:45": "sab 24 20:45",
-                             "2026-11-08 15:00": "dom 8 nov 15:00"},             # oltre la settimana anche il mese
+                             "2026-11-08 15:00": "dom 8 nov 15:00",              # oltre la settimana anche il mese
+                             # solo il giorno (l'ora della partita non è ancora fissata): il giorno senza un'ora finta
+                             "2026-11-01": "dom 1", "2026-10-28": "domani", "2026-10-27": "oggi", "2026-11-08": "dom 8 nov"},
     # martedì 27/10 alle 23:30 italiane: a Tokyo è già mercoledì, ma il giorno è quello italiano
     "2026-10-27T22:30:00Z": {"2026-10-27 23:45": "oggi 23:45", "2026-10-28 08:00": "domani 08:00"},
     # mercoledì 28/10 alle 00:30 italiane: a New York è ancora martedì
-    "2026-10-27T23:30:00Z": {"2026-10-28 18:20": "oggi 18:20", "2026-10-27 22:00": "ieri 22:00"},
+    "2026-10-27T23:30:00Z": {"2026-10-28 18:20": "oggi 18:20", "2026-10-27 22:00": "ieri 22:00", "2026-10-28": "oggi"},
 }
 
 
