@@ -17,9 +17,10 @@ enum DatiVecchi {
     /// La frase della striscia. `motivo` nil = server non raggiungibile; altrimenti il messaggio dell'errore (già in italiano), in
     /// testa e con la nota fra parentesi come la web nello stesso caso (`comune.cache_errore` in `app.js`, #830): così un motivo
     /// come «Il server non risponde: riprova fra poco» non finisce dopo altri due punti, con la maiuscola a metà frase.
-    static func frase(salvatiIl data: String, motivo: String?) -> String {
+    static func frase(salvatiIl data: Date, motivo: String?) -> String {
         guard let m = motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty else {
-            return "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(data) e può essere vecchio."
+            let quando = data.formatted(date: .abbreviated, time: .shortened)
+            return "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(quando) e può essere vecchio."
         }
         return Catalogo.Comune.cacheErrore(errore: m)
     }
