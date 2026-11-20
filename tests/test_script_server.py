@@ -22,6 +22,7 @@ import pytest
 
 RADICE = Path(__file__).resolve().parent.parent
 SCRIPT = RADICE / "script" / "server"
+PYTHON_VERO = Path(sys.executable).as_posix()
 
 
 def _trova_bash():
@@ -327,6 +328,7 @@ exit 0''')
     s.migra = tmp_path / "migra.txt"
     s.esito_avviso = tmp_path / "esito-avviso.txt"           # #826: se c'e' e non e' 0, l'avviso non parte
     s.silenzio = tmp_path / "silenzio.txt"                   # #826: se c'e', ore tranquille (parte solo con ignora_silenzio)
+    s.account_vero = tmp_path / "account-vero.txt"           # se c'e': i due comandi del database degli account girano col Python vero
     (s.app / ".venv" / "bin").mkdir(parents=True)
     _scrivi(s.app / ".venv", "QUALE", "vecchia")
     _stub(s.app / ".venv" / "bin", "python", f'''reg="{s.chiamate.as_posix()}"
@@ -343,9 +345,11 @@ case "$1" in
           case "$2" in *ignora_silenzio=True*) ;; *) [ -f "{s.silenzio.as_posix()}" ] && {{ echo "avviso-perso $3" >> "$reg"; exit 1; }} ;; esac
           echo "avviso $3 | $4" >> "$reg" ;;
         *controlla_database_account*) echo "controllo-account" >> "$reg"
+          [ -f "{s.account_vero.as_posix()}" ] && exec "{PYTHON_VERO}" "$@"
           [ -f "{s.migra.as_posix()}" ] && cp "{s.migra.as_posix()}" "{s.versione_db.as_posix()}"
           echo "controllo finto del database degli account"; exit "$(cat "{s.esito_account.as_posix()}")" ;;
-        *user_version*) cat "{s.versione_db.as_posix()}" ;;
+        *user_version*) [ -f "{s.account_vero.as_posix()}" ] && exec "{PYTHON_VERO}" "$@"
+          cat "{s.versione_db.as_posix()}" ;;
       esac ;;
 esac
 exit 0''')
@@ -939,6 +943,70 @@ def test_installazione_interrotta_con_database_gia_migrato_non_rimette_la_versio
     assert any("database degli account" in a for a in s.avvisi())
     assert s.ultimo() == c2 and (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
     assert s.riavvii() == 1 and not (s.stato / "interrotta").exists()
+    with tarfile.open(s.stato / "versione-precedente.tar.gz") as tar:          # la copia non si rifà dai file lasciati a metà
+        assert tar.extractfile("fanta/__init__.py").read() == b"V0"
+
+
+@con_bash
+def test_reinstallazione_dopo_interrotta_e_migrata_che_non_va_tiene_la_versione_nuova(server):
+    """Revisione di #828: dopo «interrotta ma già migrato» il giro reinstalla la versione nuova. Se anche questa non va, non si torna
+    a una copia (né a quella vecchia né a una rifatta dai file a metà): il database resta più nuovo del codice di prima."""
+    s = server
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    with tarfile.open(s.stato / "versione-precedente.tar.gz", "w:gz") as tar:
+        f = s.casa / "V0.txt"
+        f.write_text("V0", encoding="utf-8")
+        tar.add(f, arcname="fanta/__init__.py")
+    _scrivi(s.stato, "installazione-in-corso", f"file {c2} 7\n")
+    s.versione_db.write_text("8", encoding="utf-8")
+    s.codice_curl.write_text("500", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+    assert s.ultimo() == c2 and not (s.stato / "rifiutato").exists()
+    assert not any("aggiornamento annullato" in a for a in s.avvisi())
+    assert "non torno alla versione di prima" in s.log()
+
+
+@con_bash
+def test_versione_senza_il_controllo_del_database_si_installa(server):
+    """Revisione di #828: una versione senza salute.controlla_database_account (per esempio il revert di questa PR) deve potersi
+    installare, con una riga nel registro, come fa momento-libero quando il comando non c'è: se no nessun ritorno indietro
+    d'emergenza arriverebbe mai sul server. Qui il controllo gira col Python vero sul codice della versione nuova."""
+    s = server
+    s.account_vero.write_text("", encoding="utf-8")
+    c2 = _commit(s.lavoro, "revert", **{"fanta/__init__.py": "V2 = 2\n", "fanta/salute.py": "# niente controllo del database\n"})
+    s.codice_curl.write_text("401", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert s.ultimo() == c2 and not (s.stato / "rifiutato").exists()
+    assert "controllo del database degli account assente" in s.log()
+
+
+@con_bash
+def test_senza_fanta_dati_utenti_si_legge_il_database_della_cartella_dati(server):
+    """Sul server FANTA_DATI_UTENTI non c'è: il servizio usa dati/account.sqlite, e lì deve guardare anche lo script (versione di prima
+    nel registro, controllo dopo il riavvio), non spegnersi in silenzio. Python vero su un database SQLite vero."""
+    import sqlite3
+    s = server
+    s.env.pop("FANTA_DATI_UTENTI", None)
+    s.account_vero.write_text("", encoding="utf-8")
+    db = s.app / "dati" / "account.sqlite"
+    db.unlink()
+    con = sqlite3.connect(db)
+    con.execute("PRAGMA user_version = 5")
+    con.commit()
+    con.close()
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2 = 2\n", "fanta/salute.py": (
+        "def controlla_database_account():\n"
+        "    import os, sqlite3\n"
+        "    from pathlib import Path\n"
+        "    p = Path('dati') / 'account.sqlite'\n"
+        "    v = sqlite3.connect(p).execute('PRAGMA user_version').fetchone()[0]\n"
+        "    return v == 5 and 'FANTA_DATI_UTENTI' not in os.environ, f'finto: versione {v}'\n")})
+    s.codice_curl.write_text("401", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert "database degli account alla versione 5" in s.log()
+    assert "finto: versione 5" in s.log()
+    assert s.ultimo() == c2
 
 
 # ---------------------------------------------------------------- avvisi, riavvio e librerie dell'installazione (#826)
@@ -1046,7 +1114,7 @@ def test_riavvio_che_non_riesce_per_tre_giri_rinuncia_alla_versione(server):
     s.esegui("aggiorna-app.sh")
     assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
     assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
-    assert any("riavviare" in a for a in s.avvisi())
+    assert any("aggiornamento annullato" in a and "Non riesco a riavviare il servizio da 3 giri di fila" in a for a in s.avvisi())
     riavvii = s.riavvii()
     s.esegui("aggiorna-app.sh")
     assert s.riavvii() == riavvii                                   # non si riprova più

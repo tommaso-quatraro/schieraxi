@@ -63,3 +63,17 @@ def test_database_piu_nuovo_del_codice_non_va(cartella):
     db.close()
     ok, testo = salute.controlla_database_account()
     assert not ok and "più nuova" in testo, testo
+
+
+def test_senza_fanta_dati_utenti_controlla_il_database_della_cartella_dati(tmp_path, monkeypatch):
+    """Sul server FANTA_DATI_UTENTI non c'è: il controllo guarda dati/account.sqlite come il servizio, e se non va lo dice."""
+    from fanta import percorsi
+    monkeypatch.delenv("FANTA_DATI_UTENTI", raising=False)
+    monkeypatch.setenv("FANTA_MULTIUTENTE", "1")
+    monkeypatch.setattr(percorsi, "RADICE", tmp_path)
+    account.apri(tmp_path / "dati" / "account.sqlite").close()
+    ok, testo = salute.controlla_database_account()
+    assert ok and str(len(account.MIGRAZIONI)) in testo, testo
+    monkeypatch.setattr(account, "MIGRAZIONI", [*account.MIGRAZIONI, "INSERT INTO tabella_che_non_c_e VALUES (1);"])
+    ok, testo = salute.controlla_database_account()
+    assert not ok, testo
