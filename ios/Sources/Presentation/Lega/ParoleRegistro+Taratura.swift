@@ -11,19 +11,19 @@ extension ParoleRegistro {
         guard let t else { return nil }
         let giornate = t.giornate ?? 0
         let parti: [String?]
-        switch t.stato ?? "" {
-        case "in_attesa":
+        switch t.statoNoto {
+        case .inAttesa?:
             let minimo = t.minimo ?? 0
             parti = [giornate < minimo ? Catalogo.Sd.tarInAttesaSu(giornate, m: String(minimo)) : Catalogo.Sd.tarInAttesa(giornate)]
-        case "attiva":
+        case .attiva?:
             let accesa = giornoMese(t.dal).map { Catalogo.Sd.tarAttivaDal(d: $0) } ?? Catalogo.Sd.tarAttiva
             let rimandato = t.motivo == "scadenza_vicina" ? motivoTaratura(t.motivo, giornate: giornate) : nil
             parti = [accesa, t.prova.map(provaTaratura), rimandato]
-        case "non_attiva":
+        case .nonAttiva?:
             parti = [Catalogo.Sd.tarNonAttiva, motivoTaratura(t.motivo, giornate: giornate)]
-        case "spenta":
+        case .spenta?:
             parti = [Catalogo.Sd.tarSpenta]
-        default:
+        case nil:
             return nil
         }
         return Catalogo.Sd.tarRiga(s: parti.compactMap { $0 }.joined(separator: " · "))

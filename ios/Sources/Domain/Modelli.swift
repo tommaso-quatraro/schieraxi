@@ -610,8 +610,14 @@ struct StatoDati: Decodable {
             let erroreMedioPrima: Double?
         }
 
+        /// I valori di `stato` che l'app conosce. Stanno qui e non nelle parole della riga, perché «attiva» è anche un testo del
+        /// catalogo (#821) e lì un codice uguale a una frase sembrerebbe una frase copiata.
+        enum Stato: String { case inAttesa = "in_attesa", attiva, nonAttiva = "non_attiva", spenta }
+
         /// `in_attesa`, `attiva`, `non_attiva` o `spenta`.
         let stato: String?
+        /// `stato` se l'app lo conosce, altrimenti nil (nessuna riga).
+        var statoNoto: Stato? { stato.flatMap(Stato.init(rawValue:)) }
         /// Giornate del registro buone per la taratura, e quante ne servono per la prima prova.
         let giornate: Int?
         let minimo: Int?
