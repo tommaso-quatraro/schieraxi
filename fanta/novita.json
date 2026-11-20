@@ -1,5 +1,18 @@
 [
   {
+    "versione": "1.529",
+    "data": "2026-11-20T02:27:45",
+    "titolo": "«Metti in campo» dalla scheda di un giocatore in panchina",
+    "voci": [
+      "Formazione, scheda di un giocatore in panchina o fra i non schierati: c'è «Metti in campo». Mostra i titolari che possono lasciargli il posto, dello stesso ruolo o di un altro ruolo se il modulo che ne esce è ammesso dalla tua lega, con i punti attesi della formazione in più o in meno per ognuno, dal cambio che rende di più. Un tocco fa il cambio e lo salva, come «Sostituisci».",
+      "Il pulsante c'è quando c'è «Sostituisci», anche per la prossima giornata a giornata finita. Non c'è per chi gioca una partita già cominciata; se chi entra è infortunato o squalificato, lo stato si legge in cima all'elenco."
+    ],
+    "tecnico": [
+      "Nuova rotta POST /api/formazione/metti-in-campo {entra, titolari, giornata?} -> {giornata, entra, punteggio_atteso, uscite: [{esce, modulo, cambia_modulo, punteggio_atteso, differenza}]}: scelte.chi_lascia_il_posto prova ogni scambio con scelte.motivo_non_valida (moduli di regole.moduli) ed esclude i bloccati (chi entra bloccato: 400 giocatore_bloccato con la frase del salvataggio, scelte.controlla_bloccati) e conta una volta i titolari ripetuti; i punti sono quelli di consigli.valuta (la formazione intera, adesso e dopo ogni cambio), la differenza quella dei due numeri scritti. Non scrive; 400 formazione_non_valida, 409 formazione_chiusa. Contratto in docs/API.md e docs/openapi.json.",
+      "Web: pulsante data-metti-in-campo in htmlScheda (stato.formaz.entrabile, con la stessa condizione siSposta di sostituibile), elenco in apriMettiInCampo; il cambio passa da stato.formaz.sostituisci e quindi da POST /api/formazione/valuta con salva e If-Match."
+    ]
+  },
+  {
     "versione": "1.528",
     "data": "2026-11-20T02:04:52",
     "titolo": "La formazione consigliata non si perde più cambiando il nome della lega o della squadra; stemmi e maglie al sicuro",
