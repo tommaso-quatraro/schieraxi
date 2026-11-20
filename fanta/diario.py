@@ -643,8 +643,8 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
              simulazioni: int = SIMULAZIONI, file_scelte: Path | None = None, scadenza: float | None = None) -> int:
     """Aggiunge al diario le giornate finite che mancano (e quelle fatte senza la tua scelta, se nel frattempo l'hai salvata).
     Una giornata entra solo quando i voti di tutte le sue partite giocate sono arrivati (`fasi.voti_arrivati`, la regola del
-    riepilogo di Oggi) e si rifà quando cambiano i suoi voti (`impronta_voti`) o le regole, finché resta fra le ultime
-    MASSIMO_GIORNATE (#793). Restituisce quante voci ha scritto. `scadenza` (ora di `time.monotonic()`): passata quella, non
+    riepilogo di Oggi), finché resta fra le ultime MASSIMO_GIORNATE. Quando cambiano i suoi voti (`impronta_voti`, o la voce non
+    ce l'ha) se ne rifanno solo i punti (`rifai_i_punti`); quando cambiano le regole si rifà da zero (#793). Restituisce quante voci ha scritto. `scadenza` (ora di `time.monotonic()`): passata quella, non
     comincia altre giornate e salva quelle già fatte (il resto al giro dopo)."""
     squadra = rose.squadra(rose.mia_squadra) if rose and rose.mia_squadra else None
     if not squadra:

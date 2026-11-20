@@ -520,7 +520,7 @@ Codice: `fanta/verifica.py:guadagno_oracoli`, `fanta/verifica.py:dati_oracolo`, 
 
 Per ogni giornata finita il diario mette a confronto la formazione che hai schierato e la consigliata che avevi davanti prima della scadenza, con i punti attesi mostrati allora e quelli fatti. Dove quella consigliata non è stata salvata (le giornate di prima, o un suo giocatore non è più nella tua rosa) il diario mette al suo posto la scelta che il sistema rifà a giornata finita, con i soli dati che c'erano prima della giornata e con la rosa di oggi (le rose passate non si conservano), senza le probabili formazioni: serve a misurare il modello e non entra nel conto di chi ha fatto meglio. La panchina della tua formazione la sceglie il sistema.
 
-Una giornata entra nel diario solo quando sono usciti i voti di tutte le sue partite giocate. Se poi i voti cambiano (una correzione dei giorni dopo), la giornata si rifà da sola, finché è fra le ultime 12.
+Una giornata entra nel diario solo quando sono usciti i voti di tutte le sue partite giocate. Se poi i voti cambiano (una correzione dei giorni dopo), i suoi punti si rifanno da soli, finché è fra le ultime 12: cambiano solo i punti, le formazioni e il confronto con la consigliata restano quelli.
 
 Con poche giornate è solo un racconto: l'oscillazione dei punti è molto più grande della differenza tra le due scelte.
 
