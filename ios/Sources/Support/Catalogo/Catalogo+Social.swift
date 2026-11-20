@@ -12,6 +12,9 @@ extension Catalogo {
         /// `social.scegli_nome`
         static let scegliNome = "Scegli il tuo nome utente"
 
+        /// `social.scegli_spiega`
+        static let scegliSpiega = "Hai scelto Google: non ti serve nessuna password. Scegli solo come vuoi chiamarti nell'app."
+
         /// `social.crea`
         static let crea = "Crea l'account"
 
