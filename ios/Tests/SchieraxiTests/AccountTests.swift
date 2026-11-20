@@ -399,7 +399,7 @@ final class SessioneAccountTests: XCTestCase {
         let s = sessione(server)
         try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
         let prima = pulizie
-        await s.esci()
+        try await s.esci()
         XCTAssertEqual(server.quante("POST /api/account/esci"), 1)
         XCTAssertEqual(s.stato, .daAccedere)
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
@@ -411,16 +411,106 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertEqual(archivio.leggi(server: server.indirizzo), "tok-1")
     }
 
-    func testUscitaFunzionaAncheSeIlServerNonRisponde() async {
+    // MARK: «Esci» che non riesce (#809)
+
+    /// Il token del widget prima dell'uscita e quello nuovo che il server finto dà dopo (inventati).
+    private let widgetVecchio = "fw_vecchioDiProva123"
+    private let widgetNuovo = "fw_nuovoDiProva123456"
+
+    /// Una sessione già dentro (token «tok» e l'utente salvato, senza passare dalla rete) con un widget finto collegato: il suo
+    /// token in `widget`, niente cartella del gruppo, Keychain condiviso in memoria. Mai il Keychain o i file veri.
+    private func sessioneDentro(_ server: ServerDiProva, widget: MemoriaToken) throws -> SessioneAccount {
+        archivio.salva("tok", server: server.indirizzo)
+        memoria.set(true, forKey: "account.multiutente")
+        memoria.set(try JSONEncoder().encode(Utente(id: 7, nomeUtente: "mister.rossi", ruolo: "utente", creato: nil)), forKey: "account.utente")
+        widget.salva(widgetVecchio, server: server.indirizzo)
+        let luoghi = TokenWidget.Luoghi(archivio: widget, memoria: memoria, cartella: { nil }, portachiavi: MemoriaCollegamento(),
+                                        sincronizza: {})
+        return SessioneAccount(server: server, archivio: archivio, memoria: memoria, pulisci: { [unowned self] in pulizie += 1 },
+                               widget: luoghi)
+    }
+
+    /// Come la web (#800, #809): il server toglie la sessione solo se la richiesta gli arriva. Con la rete giù non si è usciti:
+    /// l'errore arriva a chi ha chiesto (la riga «Esci» lo scrive con `account.esci_no`) e sul telefono non cambia niente, né la
+    /// sessione, né i dati, né il widget. Prima l'iPhone usciva lo stesso e diceva di esserci riuscito.
+    func testUscitaNonRiuscitaLoDiceERestaDentro() async throws {
         let server = serverAccount(extra: { _, p in
-            if p == "/api/account/esci" { throw ErroreApi.rete("spento") }
+            if p == "/api/account/esci" || p == "/api/account/token-widget" { throw ErroreApi.rete("spento") }
             return nil
         })
-        archivio.salva("tok", server: server.indirizzo)
-        let s = sessione(server)
-        await s.esci()
-        XCTAssertEqual(s.stato, .daAccedere, "uscire dal telefono non dipende dal server")
+        let widget = MemoriaToken()
+        let s = try sessioneDentro(server, widget: widget)
+        let prima = pulizie
+        var errore: Error?
+        do { try await s.esci() } catch { errore = error }
+        XCTAssertNotNil(errore, "la richiesta non è arrivata: non si può dire che sei uscito")
+        XCTAssertEqual(server.quante("POST /api/account/esci"), 1)
+        XCTAssertEqual(s.utente?.nomeUtente, "mister.rossi", "si resta dentro")
+        XCTAssertEqual(archivio.leggi(server: server.indirizzo), "tok")
+        XCTAssertEqual(pulizie, prima, "i dati di questo telefono restano")
+        XCTAssertFalse(s.inCorso)
+        _ = await s.rinnovoWidget?.value
+        XCTAssertEqual(widget.leggi(server: server.indirizzo), widgetVecchio, "il widget resta collegato com'era")
+    }
+
+    /// Server in errore o troppe richieste: come con la rete giù si resta dentro. Il server aveva già tolto il token del widget
+    /// (si toglie prima dell'uscita, finché la sessione vale): il widget ne riceve uno nuovo e resta collegato.
+    func testUscitaNonRiuscitaColServerInErroreRestaDentroConIlWidget() async throws {
+        let errori: [ErroreApi] = [.risposta(503), .troppiTentativi("Troppe richieste.", riprovaTra: 30)]
+        for errore in errori {
+            let nuovo = widgetNuovo
+            let server = serverAccount(extra: { m, p in
+                if p == "/api/account/esci" { throw errore }
+                if m == "POST", p == "/api/account/token-widget" {
+                    return Data(#"{"token": "\#(nuovo)", "scade": "2027-02-01T12:00:00"}"#.utf8)
+                }
+                return nil
+            })
+            let widget = MemoriaToken()
+            let s = try sessioneDentro(server, widget: widget)
+            let prima = pulizie
+            var ricevuto: Error?
+            do { try await s.esci() } catch { ricevuto = error }
+            XCTAssertNotNil(ricevuto, "\(errore): non si può dire che sei uscito")
+            XCTAssertEqual(server.quante("DELETE /api/account/token-widget"), 1, "\(errore): il token del widget si toglie prima")
+            XCTAssertEqual(s.utente?.nomeUtente, "mister.rossi", "\(errore): si resta dentro")
+            XCTAssertEqual(archivio.leggi(server: server.indirizzo), "tok")
+            XCTAssertEqual(pulizie, prima, "\(errore): i dati di questo telefono restano")
+            XCTAssertFalse(s.inCorso)
+            _ = await s.rinnovoWidget?.value
+            XCTAssertEqual(widget.leggi(server: server.indirizzo), widgetNuovo, "\(errore): il widget resta collegato, con un token nuovo")
+        }
+    }
+
+    /// 401: la sessione era già finita (chiusa da un altro dispositivo, scaduta). Si esce come prima, senza errore.
+    func testUscitaConLaSessioneGiaFinitaEsceLoStesso() async throws {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/esci" { throw ErroreApi.accessoRichiesto("Accesso richiesto") }
+            return nil
+        })
+        let widget = MemoriaToken()
+        let s = try sessioneDentro(server, widget: widget)
+        let prima = pulizie
+        try await s.esci()
+        XCTAssertEqual(s.stato, .daAccedere)
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
+        XCTAssertGreaterThan(pulizie, prima, "all'uscita i dati locali si cancellano")
+        XCTAssertNil(widget.leggi(server: server.indirizzo), "e il widget dimentica il suo token")
+    }
+
+    /// La rete di sicurezza delle Impostazioni (`SessioneMinimaSezione`), per quando l'app non si collega: lì «Esci» esce dal
+    /// telefono anche se il server non risponde, come prima del #809, così nessuno resta chiuso dentro.
+    func testLaReteDiSicurezzaEsceAncheSeIlServerNonRisponde() async throws {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/esci" || p == "/api/account/token-widget" { throw ErroreApi.rete("spento") }
+            return nil
+        })
+        let widget = MemoriaToken()
+        let s = try sessioneDentro(server, widget: widget)
+        await s.esciAncheSenzaServer()
+        XCTAssertEqual(s.stato, .daAccedere, "qui uscire dal telefono non dipende dal server")
+        XCTAssertNil(archivio.leggi(server: server.indirizzo))
+        XCTAssertNil(widget.leggi(server: server.indirizzo))
     }
 
     // MARK: Esci da tutti i dispositivi (#765)
