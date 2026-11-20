@@ -156,6 +156,25 @@ def test_se_il_server_non_risponde_la_scheda_lo_dice_e_non_cambia_niente(web):
     assert not [p for m, p, c in scritte if p == "/api/formazione/valuta"]
 
 
+def test_se_intanto_e_cominciato_il_suo_anticipo_la_scheda_dice_la_frase_del_server(web):
+    """Revisione della #783: la pagina non sa ancora che la sua partita è cominciata (niente `bloccati`), il server sì e risponde
+    400 `giocatore_bloccato` con la frase del salvataggio. La scheda dice quella frase, come informazione e non come guasto, al
+    posto di «Nessun titolare può lasciargli il posto.»; niente si salva."""
+    solo(web, "prima")
+    f, entra, _, _ = _prepara(web)
+    frase = f"{entra['nome']} gioca in una partita già cominciata: non si può più spostare."
+    web.risposta(ROTTA, {"detail": frase, "codice": "giocatore_bloccato"}, stato=400)
+    web.apri("/")
+    prima = nomi_sul_campo(web)
+    scritte = scritture(web)
+    tocca(web, _riga_panchina(web, entra["nome"]))
+    tocca(web, scheda(web).get_by_role("button", name="Metti in campo"))
+    testo = " ".join(scheda(web).inner_text().split())
+    assert frase in testo and "Nessun titolare" not in testo, testo
+    assert scheda(web).get_by_role("alert").count() == 0 and scheda(web).get_by_role("status").filter(has_text=frase).count() == 1
+    assert nomi_sul_campo(web) == prima and not [p for m, p, c in scritte if p == "/api/formazione/valuta"]
+
+
 def test_se_la_scheda_si_chiude_prima_della_risposta_l_elenco_non_si_riapre(web):
     """La risposta del server arriva dopo (rete lenta, «sto calcolando»): se nel frattempo la scheda è stata chiusa, resta chiusa."""
     solo(web, "prima")

@@ -1086,6 +1086,10 @@ def metti_in_campo(dati: MettiInCampo, ctx: Contesto = Depends(lega_corrente)):
                 valutate[chiave] = consigli.valuta(db, regole_, rose_, list(ids), None, giornata)["punteggio_atteso"]
             return valutate[chiave]
         fermi = _con_bloccati(db, f).get("bloccati") or []
+        # chi entra gioca un anticipo già cominciato (anche se la pagina non lo sapeva ancora): 400 `giocatore_bloccato` con la frase
+        # del salvataggio (scelte.controlla_bloccati), invece di un elenco vuoto
+        scelte.controlla_bloccati(fermi, dati.titolari, [*dati.titolari, dati.entra],
+                                  {int(k): x.get("nome") for k, x in schede.items() if isinstance(x, dict)})
         uscite = scelte.chi_lascia_il_posto(dati.entra, dati.titolari, schede, regole_, fermi, punti)
         return {"giornata": giornata, "entra": dati.entra, "punteggio_atteso": punti(dati.titolari), "uscite": uscite}
     finally:

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 from fanta import scelte, server
 from fanta.regole import Regole
-from test_anticipi_scelta import CONSIGLIATA, GIORNATA, ROSA as ROSA_ANTICIPI
+from test_anticipi_scelta import CONSIGLIATA, GIORNATA, MESSAGGIO, ROSA as ROSA_ANTICIPI
 from test_anticipi_scelta import mondo  # noqa: F401  (fixture: rosa, calendario e anticipo inventati, #373)
 from test_server import client  # noqa: F401  (fixture del server)
 
@@ -183,9 +183,14 @@ def test_la_rotta_non_scrive_niente_e_non_chiede_if_match(mondo):
     assert mondo["client"].get("/api/scelta", params={"giornata": GIORNATA}).json() is None
 
 
-def test_chi_gioca_un_anticipo_gia_cominciato_non_si_mette_in_campo(mondo):
+def test_chi_gioca_un_anticipo_gia_cominciato_non_si_mette_in_campo_e_la_rotta_dice_perche(mondo):
+    """Revisione della #783: il 16 gioca un anticipo già cominciato (il server lo legge al momento della richiesta, anche se la
+    pagina non lo sapeva ancora). La rotta risponde come il salvataggio: 400 `giocatore_bloccato` con la stessa frase."""
     r = _chiedi(mondo, 16)
-    assert r.status_code == 200 and r.json()["uscite"] == []
+    assert r.status_code == 400, r.text
+    assert r.json() == {"detail": MESSAGGIO.format("Dif16"), "codice": "giocatore_bloccato"}
+    assert r.json() == mondo["client"].post("/api/formazione/valuta", json={
+        "titolari": [16 if i == 4 else i for i in CONSIGLIATA], "giornata": GIORNATA, "salva": True}).json()
 
 
 def test_con_11_che_non_si_possono_schierare_risponde_400(mondo):

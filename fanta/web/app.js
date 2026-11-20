@@ -1624,7 +1624,9 @@ async function apriMettiInCampo(id) {
     if (!ancoraLei()) return;
     if (e.codice === "formazione_chiusa") { chiudiFoglio(); avviso(e.message, 5000); rileggiFormazione(); return; }   // scadenza passata con la pagina aperta
     const dove = $("#foglio-contenuto [data-sostituzione]");
-    dove.innerHTML = errore(e);
+    // la sua partita è cominciata e la pagina non lo sapeva ancora (`giocatore_bloccato`): la frase del server, come informazione
+    // al posto dell'elenco (non è un guasto); ogni altro errore resta un errore
+    dove.innerHTML = e.codice === "giocatore_bloccato" ? `<p class="debole" role="status" style="margin-top:12px">${esc(e.message)}</p>` : errore(e);
     dove.removeAttribute("aria-busy");
     return;
   }
