@@ -128,7 +128,8 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
   differenza dei punti attesi della formazione, «gioca N%» per chi gioca meno dell'80% e, se il modulo cambia, il modulo nuovo
   («Si passa al 5-3-2»); un tocco cambia il campo, lo stato dice «L'hai cambiata tu», la scelta è salvata e il fuoco va su chi è
   entrato; con un cambio di modulo il campo e il menu del modulo passano a quello nuovo;
-- se la rotta non risponde la scheda ha un errore `role="alert"` e niente cambia; se la scheda si chiude prima della risposta,
+- se la rotta non risponde la scheda ha un errore `role="alert"` e niente cambia; se il server dice che la sua partita è già
+  cominciata (`giocatore_bloccato`) la scheda dice la sua frase come informazione (`role="status"`); se la scheda si chiude prima della risposta,
   resta chiusa; se il salvataggio trova la scelta cambiata da un altro dispositivo (412, con If-Match) la pagina rilegge, mostra
   ciò che è salvato e l'avviso lo dice; scheda ed elenco senza violazioni gravi di axe, chiaro e scuro;
 - il pulsante c'è dove c'è «Sostituisci» per la stessa formazione: anche a giornata finita (per la prossima) e per chi entra a
