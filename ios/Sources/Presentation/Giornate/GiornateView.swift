@@ -63,15 +63,10 @@ struct GiornateView: View {
                 .avvisoDatiSalvati(vm.caricatore)
                 .titoloPagina(Catalogo.Nav.giornate)
                 .refreshable { await vm.carica() }
-                .demoScorriA(primaGiornata ?? "", proxy: proxy, schermate: ["giornate-confronto"], ancora: .bottom,
-                             pronto: primaGiornata != nil)
+                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
             }
         }
     }
-
-    /// La foto `giornate-confronto` (#842, solo demo): la lista scorre alla prima giornata, messa in fondo allo schermo, così
-    /// subito sopra ci sono le ultime voci dei «Dettagli» aperti, il confronto con la consigliata e i punti della squadra.
-    private var primaGiornata: String? { vm.pagina?.righe.first?.id }
 
     /// Una riga aperta o chiusa sul telefono.
     private func aperta(_ id: String) -> Binding<Bool> {
@@ -111,8 +106,7 @@ struct GiornateView: View {
                 .avvisoDatiSalvati(vm.caricatore)
                 .titoloPagina(Catalogo.Nav.giornate)
                 .refreshable { await vm.carica() }
-                .demoScorriA(primaGiornata ?? "", proxy: proxy, schermate: ["giornate-confronto"], ancora: .bottom,
-                             pronto: primaGiornata != nil)
+                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
             }
         } detail: {
             NavigationStack {
@@ -161,6 +155,7 @@ struct GiornateView: View {
                 if let titolo = p.titoloDettagli, let t = p.dettagli {
                     DisclosureGroup(isExpanded: $vm.dettagliAperti) {
                         PrecisioneView(testo: t)
+                            .id(ConfrontoDemo.idDettagli)   // dove arriva la foto `giornate-confronto` (solo demo, #842)
                     } label: {
                         Text(titolo)
                             .font(.subheadline.weight(.semibold))

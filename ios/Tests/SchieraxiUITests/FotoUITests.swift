@@ -127,13 +127,40 @@ final class FotoUITests: XCTestCase {
                        "nella foto lega-stato-prova la cima di Stato dei dati non deve più essere a video")
     }
 
-    /// `giornate-confronto` (#842): Giornate › Dettagli con la voce del confronto a video, nella demo in cui la consigliata ha fatto
-    /// 1,0 punti in più: il plurale scelto sul numero scritto, «1,0 punti» (prima «1,0 punto»).
+    /// `giornate-confronto` (#842): Giornate › Dettagli nella demo in cui la consigliata ha fatto 1,0 punti in più, con a video la fine
+    /// della voce del confronto, «…avresti fatto 1,0 punti in più.» (il plurale scelto sul numero scritto; prima «1,0 punto»).
     func testLaFotoDelConfrontoMostraUnoVirgolaZeroPunti() {
-        avvia(["-DEMO_SCHERMATA", "giornate-confronto"])
+        fineDelConfrontoAVideo(testo: nil)
+    }
+
+    /// La stessa foto col testo più grande: la voce è più alta dello schermo e la prima versione della scena la spingeva sopra il bordo
+    /// alto (foto della corsa 44826938210, `iphone_chiaro_testomassimo_giornate-confronto.png`).
+    func testLaFotoDelConfrontoColTestoMassimoMostraUnoVirgolaZeroPunti() {
+        fineDelConfrontoAVideo(testo: "UICTContentSizeCategoryAccessibilityXXXL")
+    }
+
+    /// Si guarda il bordo basso della voce, dove sta la frase, e non il centro: con il testo grande la voce è più alta dello schermo e
+    /// il centro può essere a video con la frase fuori. La fine della voce deve stare sopra la barra in basso e sotto le barre in alto.
+    private func fineDelConfrontoAVideo(testo: String?) {
+        avvia(["-DEMO_SCHERMATA", "giornate-confronto"] + (testo.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? []))
         let voce = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "avresti fatto 1,0 punti in più")).firstMatch
-        XCTAssertTrue(aspetta(30) { voce.exists && voce.isHittable },
-                      "nella foto giornate-confronto la voce del confronto deve essere a video (\(posizione(voce)))")
+        XCTAssertTrue(voce.waitForExistence(timeout: 30), "nella foto giornate-confronto manca la voce del confronto")
+        let finestra = app.windows.firstMatch.frame
+        let barra = app.tabBars.firstMatch
+        let squadra = elemento(cheComincia: "Punti di scarto medio sulla squadra")
+        func dove() -> String {
+            "voce \(voce.frame), squadra \(squadra.exists ? String(describing: squadra.frame) : "assente"), "
+                + "barra \(barra.exists ? String(describing: barra.frame) : "assente"), finestra \(finestra)"
+        }
+        // la barra in basso, se c'è e sta davvero in basso; se no il fondo della finestra
+        let sotto = barra.exists && barra.frame.minY > finestra.midY ? barra.frame.minY + 8 : finestra.maxY
+        // lo scorrimento arriva dopo i dati: si aspetta che la fine della voce sia fra le barre (in alto: stato e titolo, circa 110 punti)
+        XCTAssertTrue(aspetta(20) { voce.frame.maxY <= sotto && voce.frame.maxY >= finestra.minY + 160 },
+                      "nella foto giornate-confronto la fine della voce del confronto deve essere a video (\(dove()))")
+        if testo != nil {
+            XCTAssertGreaterThan(voce.frame.height, finestra.height / 2,
+                                 "il testo grande non è arrivato all'app: la prova non dice niente (\(dove()))")
+        }
     }
 
     /// `formazione-metti-in-campo` (#778): la scena apre da sola l'elenco «Chi esce per …» del panchinaro della demo, con in cima
