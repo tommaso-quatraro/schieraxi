@@ -33,8 +33,8 @@ final class RegoleEditorViewModel: ViewModelBase {
         osserva(caricatore)
     }
 
-    /// Rilegge le regole. Con modifiche non salvate NON le sovrascrive (prima bastava cambiare scheda e tornare, o il comando
-    /// «Aggiorna», per perderle senza avviso): solo `forza` (Annulla, o le regole cambiate da un altro dispositivo) riparte dal server.
+    /// Rilegge le regole. Con modifiche non salvate NON le sovrascrive (prima bastava cambiare scheda e tornare, il comando
+    /// «Aggiorna» o un 412 al salvataggio per perderle senza avviso): solo `forza` («Annulla le modifiche») riparte dal server.
     func carica(forza: Bool = false) async {
         await caricatore.ricarica()
         if let d = caricatore.dato, forza || !modificato || !caricato {
@@ -165,6 +165,9 @@ final class RegoleEditorViewModel: ViewModelBase {
 
     // MARK: salvataggio
 
+    /// «Salva le regole». Vero se il server le ha salvate: la domanda sulle modifiche non salvate chiude la pagina solo allora.
+    /// Un errore (anche il controllo prima di salvare, «Scegli almeno un modulo») va in `esito` con `esitoRiuscito` falso e la
+    /// pagina lo mostra sopra la barra «Modifiche non salvate», vicino a «Salva» (#808).
     @discardableResult
     func salva() async -> Bool {
         inCorso = true
@@ -181,8 +184,10 @@ final class RegoleEditorViewModel: ViewModelBase {
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
             return true
         } catch {
-            let conflitto = (error as? ErroreApi)?.eConflitto == true
-            if conflitto { await carica(forza: true) }   // un altro dispositivo ha cambiato le regole: si rilegge la versione nuova
+            // 412, regole cambiate da un altro dispositivo: si rilegge la versione del server, ma i campi scritti restano e la
+            // pagina resta aperta, come la web (#808; prima i valori del server sostituivano quelli scritti e la domanda chiudeva
+            // la pagina come dopo un salvataggio riuscito). Un nuovo «Salva» manda quello che c'è nei campi.
+            if (error as? ErroreApi)?.eConflitto == true { await carica() }
             esito = error.localizedDescription
             esitoRiuscito = false
             Haptics.esito(riuscito: false)
@@ -323,30 +328,51 @@ struct RegoleEditorView: View {
         .confirmationDialog("Le modifiche alle regole non sono salvate", isPresented: $chiediUscita, titleVisibility: .visible) {
             Button(Catalogo.Regole.salvaRegole) {
                 Task {
-                    await vm.salva()
-                    if !vm.modificato { chiudi() }
+                    // si esce solo se le regole sono salvate: un errore (anche il 412) lascia la pagina aperta, con l'errore
+                    if await vm.salva() { chiudi() }
                 }
             }
             Button("Esci senza salvare", role: .destructive) { chiudi() }
             Button("Continua a modificare", role: .cancel) {}
         }
+        // un salvataggio non riuscito si sente anche con VoiceOver (la frase compare sopra la barra, lontano dal fuoco)
+        .onChange(of: erroreSalvataggio) { _, errore in
+            if let errore { AccessibilityNotification.Announcement(errore).post() }
+        }
     }
 
+    /// L'errore dell'ultimo salvataggio (nil se è riuscito o non ce n'è stato uno).
+    private var erroreSalvataggio: String? { vm.esitoRiuscito ? nil : vm.esito }
+
+    /// La barra delle modifiche non salvate, con sopra l'errore dell'ultimo salvataggio: vicino a «Salva» si vede sempre, anche in
+    /// cima a una lista lunga (prima stava solo in fondo alla lista, #808). Dopo un errore le modifiche restano, quindi c'è la barra.
     private var barraNonSalvate: some View {
-        HStack(spacing: 10) {
-            Label("Modifiche non salvate", systemImage: "pencil.circle").font(.subheadline.weight(.semibold))
-            Spacer(minLength: 8)
-            Button {
-                Task { await vm.salva() }
-            } label: {
-                if vm.inCorso { ProgressView() } else { Text("Salva").frame(minWidth: 60) }
+        VStack(spacing: 6) {
+            if let errore = erroreSalvataggio {
+                Label(errore, systemImage: "exclamationmark.triangle")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)   // la frase del 412 è lunga: va a capo, mai tagliata
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .vetro(in: RoundedRectangle(cornerRadius: 18, style: .continuous), tinta: Color.attenzione.opacity(0.35))
+                    .accessibilityElement(children: .combine)
             }
-            .pulsanteVetro(prominente: true)
-            .frame(minHeight: 44)
-            .disabled(vm.inCorso)
+            HStack(spacing: 10) {
+                Label("Modifiche non salvate", systemImage: "pencil.circle").font(.subheadline.weight(.semibold))
+                Spacer(minLength: 8)
+                Button {
+                    Task { await vm.salva() }
+                } label: {
+                    if vm.inCorso { ProgressView() } else { Text("Salva").frame(minWidth: 60) }
+                }
+                .pulsanteVetro(prominente: true)
+                .frame(minHeight: 44)
+                .disabled(vm.inCorso)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 6)
+            .vetro(in: Capsule(), tinta: Color.attenzione.opacity(0.25))
         }
-        .padding(.horizontal, 16).padding(.vertical, 6)
-        .vetro(in: Capsule(), tinta: Color.attenzione.opacity(0.25))
         .padding(.horizontal, Tema.margine).padding(.bottom, 8)
         .accessibilityElement(children: .contain)
     }
@@ -590,7 +616,8 @@ struct RegoleEditorView: View {
             .disabled(vm.inCorso || !vm.modificato)
             Button { Task { await vm.annulla() } } label: { Text(Catalogo.Regole.annullaModifiche).frame(maxWidth: .infinity, minHeight: 44) }
                 .disabled(!vm.modificato)
-            if let esito = vm.esito { Text(esito).font(.footnote).foregroundStyle(vm.esitoRiuscito ? Color.testoSecondario : Color.attenzione) }
+            // qui solo gli esiti riusciti: un errore sta sopra la barra «Modifiche non salvate», vicino a «Salva»
+            if let esito = vm.esito, vm.esitoRiuscito { Text(esito).font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
     }
 }
