@@ -33,7 +33,8 @@ ESITI_BUONI = {"success", "skipped", "cancelled"}      # «annullato» non è «
 # Il nome del job che collauda davvero (`name:` del job `collauda` in .github/workflows/collaudo-prova.yml): una corsa
 # «success» senza questo job riuscito (segreti mancanti = «spento», versione già collaudata = «salta») non è un collaudo.
 JOB_COLLAUDO = "Collaudo delle schermate"
-BUCO_MASSIMO = timedelta(hours=2)
+# un giro saltato (la sentinella salta un giro se un'installazione occupa il server) più un margine per i secondi di scarto
+BUCO_MASSIMO = timedelta(hours=2, minutes=10)
 LIMITE = 1000                                           # il massimo della ricerca di GitHub: arrivarci = risultati tagliati
 CAMPI_CORSE = "databaseId,createdAt,conclusion,url"
 CAMPI_ISSUE = "number,title,createdAt,closedAt,labels,url"
