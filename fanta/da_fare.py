@@ -253,6 +253,11 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
         # l'altro lascerebbe 10 o 12 titolari, o un modulo che la lega non ammette: allora nessuna voce (regola unica della scelta)
         if entrano and escono and scelte.motivo_non_valida(adesso, ruoli, regole) is None:
             return [_consigliata_cambiata(prev, salvati, adesso, giornata)]
+        # senza la voce del cambio restano anche le voci di chi è infortunato o squalificato con il loro cambio: `_dubbi` lo propone
+        # solo se la consigliata lo fa, dello stesso ruolo e mai su chi gioca un anticipo già cominciato, quindi si può fare
+        fuori = {i for i in salvati if i in prev.index and consigli.scheda_previsione(i, prev.loc[i]).get("stato") in FUORI}
+        return [v for v in _dubbi(db, regole, rose, giornata, file_scelte)
+                if "alternativa" not in v or (v.get("giocatore") or {}).get("id") in fuori]
     # la stessa consigliata (o non si riesce a calcolarla): restano solo le voci che non chiedono un cambio
     return [v for v in _dubbi(db, regole, rose, giornata, file_scelte) if "alternativa" not in v]
 

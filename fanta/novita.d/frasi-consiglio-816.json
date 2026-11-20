@@ -6,7 +6,7 @@
     "Perché questo numero: «gioca» dice la stessa percentuale della scheda del giocatore."
   ],
   "tecnico": [
-    "da_fare._titolari: la voce consigliata:<giornata> si mostra solo se entrano ed escono non sono vuoti e i titolari che ne risultano passano scelte.motivo_non_valida (11 diversi, un portiere, modulo ammesso); altrimenti nessuna voce.",
+    "da_fare._titolari: la voce consigliata:<giornata> si mostra solo se entrano ed escono non sono vuoti e i titolari che ne risultano passano scelte.motivo_non_valida (11 diversi, un portiere, modulo ammesso); altrimenti nessuna voce. Senza quella voce restano le voci dubbio degli infortunati e degli squalificati con la loro alternativa (stesso ruolo, mai chi gioca un anticipo già cominciato), così in cima alla Formazione resta la decisione urgente.",
     "perche._frase_gioca usa etichette.percento per perche.gioca_* (arrotondamento della web, non quello al pari di Python).",
     "consigli.incerti riceve le regole: con panchina.max_sostituzioni 0 riserva = null in ogni modulo e stile (_moduli e _con_consigliata hanno le regole). perche_scelta.del_modulo, senza sostituzioni, non usa la riserva e confronta l'incerto con il miglior escluso del suo ruolo (conto del Confronto).",
     "Chiave nuova scelta.nessun_altro (altro: null, nessun conto): titolare sotto fz.IMPROBABILE_SOTTO senza un compagno del ruolo fuori dagli undici che giochi almeno il 20%.",
