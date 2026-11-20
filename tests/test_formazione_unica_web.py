@@ -19,8 +19,9 @@ TESTI = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(not NODE, reason="serve node")
 
-# l'orologio fermo: la scadenza si conta da qui, mai dall'ora vera
-OROLOGIO = ("const FERMO = Date.parse('2026-10-26T09:35:00'), DataVera = Date;\n"
+# l'orologio fermo: la scadenza si conta da qui, mai dall'ora vera. Le 09:35 italiane con il fuso scritto: le date del server si
+# leggono in ora italiana (#776), quindi l'istante non deve cambiare con il fuso della macchina che fa girare i test
+OROLOGIO = ("const FERMO = Date.parse('2026-10-26T09:35:00+01:00'), DataVera = Date;\n"
             "globalThis.Date = class extends DataVera { constructor(...a) { super(...(a.length ? a : [FERMO])); } static now() { return FERMO; } };")
 
 

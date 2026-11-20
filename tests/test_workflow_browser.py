@@ -6,6 +6,7 @@ import importlib.util
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -203,7 +204,7 @@ class _ChromeFinto:
         ctx.close = lambda: setattr(ctx, "chiuso", True)
 
         def nuova_pagina():
-            pagina = SimpleNamespace(eventi=[], evaluate=lambda codice, *argomenti: 1_800_000_000_000)
+            pagina = SimpleNamespace(eventi=[], context=ctx, evaluate=lambda codice, *argomenti: 1_800_000_000_000)
             pagina.on = lambda evento, funzione: pagina.eventi.append(evento)
             ctx.pagine.append(pagina)
             return pagina
@@ -231,11 +232,40 @@ def test_la_scheda_si_apre_una_volta_alla_prima_richiesta_e_si_chiude_alla_fine(
     assert w.pagina is w.pagina and len(chrome.contesti) == 1
     ctx = chrome.contesti[0]
     assert ctx.pagine == [w.pagina] and not ctx.chiuso
-    assert ctx.ora == 1_800_000_000 and ctx.opzioni["service_workers"] == "block" and ctx.opzioni["locale"] == "it-IT"
+    # l'orologio: le 15:10 italiane del 27/10/2026 (14:10 UTC), calcolate senza chiedere al browser (#776)
+    assert ctx.ora == 1_793_110_200 and ctx.opzioni["timezone_id"] == "Europe/Rome"
+    assert ctx.opzioni["service_workers"] == "block" and ctx.opzioni["locale"] == "it-IT"
     assert set(w.pagina.eventi) == {"console", "pageerror", "request", "requestfailed", "response"}
     with pytest.raises(StopIteration):
         next(fixture)
     assert ctx.chiuso
+
+
+def test_con_un_altro_fuso_si_apre_una_scheda_sua_sullo_stesso_momento(appoggio):
+    """#776: `con_fuso` apre un'altra scheda con il browser su quel fuso, allo stesso istante dello scenario; `orologio` la sposta
+    su un altro momento, sempre in ora italiana (anche a cavallo del cambio dell'ora)."""
+    chrome = _ChromeFinto()
+    fixture = appoggio.web.__wrapped__(chrome, appoggio.ServerFase("prima", "http://127.0.0.30:8000", "2026-10-27T15:10:00"))
+    w = next(fixture)
+    tokyo = w.con_fuso("Asia/Tokyo")
+    assert chrome.contesti == [] and tokyo.fuso == "Asia/Tokyo" and w.fuso == "Europe/Rome"
+    tokyo.orologio("2026-10-24T20:00:00")                    # sabato, ora legale: 18:00 UTC
+    assert len(chrome.contesti) == 1 and chrome.contesti[0].opzioni["timezone_id"] == "Asia/Tokyo"
+    assert chrome.contesti[0].ora == 1_792_864_800
+    assert w.errori_console is not tokyo.errori_console and w.richieste is not tokyo.richieste
+    with pytest.raises(StopIteration):
+        next(fixture)
+    assert chrome.contesti[0].chiuso
+
+
+def test_l_istante_italiano_segue_l_ora_legale(appoggio):
+    """La regola di fanta/fuso.py senza l'archivio dei fusi: +2 dalle 01:00 UTC dell'ultima domenica di marzo a quelle
+    dell'ultima di ottobre, +1 il resto dell'anno."""
+    utc = {"2026-10-27T15:10:00": "2026-10-27T14:10:00", "2026-07-01T12:00:00": "2026-07-01T10:00:00",
+           "2026-10-25T01:30:00": "2026-10-24T23:30:00", "2026-10-25T03:30:00": "2026-10-25T02:30:00",
+           "2027-03-28T01:30:00": "2027-03-28T00:30:00", "2027-03-28T03:30:00": "2027-03-28T01:30:00"}
+    for italiana, attesa in utc.items():
+        assert appoggio.istante_italiano(italiana) == datetime.fromisoformat(attesa + "+00:00").timestamp(), italiana
 
 
 def test_una_richiesta_annullata_non_e_fallita(appoggio):
