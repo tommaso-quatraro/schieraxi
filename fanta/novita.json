@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.543",
+    "data": "2026-11-20T13:00:30",
+    "titolo": "Partita rinviata: la scelta dice di chi è il voto",
+    "voci": [
+      "Formazione, sulla web e sull'iPhone, con una partita rinviata: la scelta «aspettano il recupero» ora dice «(conta il voto del recupero)». Prima diceva «(conta il suo voto)», che sembrava parlare di un giocatore solo."
+    ],
+    "tecnico": [
+      "Catalogo dei testi: cambia solo la chiave oggi.rinvio_aspetta (italiano e inglese); testi.js e il catalogo dell'iPhone rigenerati con script/testi.py --scrivi. Nessuna rotta né campo nuovo."
+    ]
+  },
+  {
     "versione": "1.542",
     "data": "2026-11-20T12:54:35",
     "titolo": "La prova del modello per ogni account, con giornate complete",
