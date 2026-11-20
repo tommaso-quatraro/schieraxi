@@ -171,6 +171,24 @@ def test_sentinella_ferma_piu_di_due_ore():
     assert giudica(giri=giri_regolari(ogni=timedelta(hours=2))).ok is True
 
 
+def giri_con_buco(da: str, a: str) -> list[dict]:
+    """Giri regolari con un buco: un giro alle ore `da` e uno alle ore `a` (stesso fuso), nessuno in mezzo."""
+    giri = [g for g in giri_regolari() if not da <= g["quando"] <= a]
+    giri += [{"quando": da, "rotte": [], "inviato": False}, {"quando": a, "rotte": [], "inviato": False}]
+    return sorted(giri, key=lambda g: g["quando"])
+
+
+def test_un_giro_saltato_con_qualche_secondo_di_scarto_va_bene():
+    # la sentinella gira ogni ora al minuto 37 e salta un giro se un'installazione occupa il server: il buco
+    # è di 2 ore e qualche secondo, e non è un errore
+    assert giudica(giri=giri_con_buco("2026-11-16T13:37:02+01:00", "2026-11-16T15:37:05+01:00")).ok is True
+
+
+def test_due_giri_saltati_restano_rossi():
+    v = giudica(giri=giri_con_buco("2026-11-16T13:37:02+01:00", "2026-11-16T16:37:04+01:00"))
+    assert v.ok is False and any("non ha girato da" in m for m in v.motivi)
+
+
 def test_senza_sentinella_non_e_verde():
     v = giudica(giri=None)
     assert v.ok is False and any("manca la storia della sentinella" in m for m in v.motivi)
