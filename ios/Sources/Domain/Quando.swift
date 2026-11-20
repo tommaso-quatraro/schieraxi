@@ -119,8 +119,8 @@ enum Quando {
     }
 
     /// Il giorno di `d` contato sul calendario italiano da `adesso`, come `quando` della web: «oggi», «domani», «ieri»; entro
-    /// la settimana «sab 31»; oltre, con il mese, «sab 8 nov».
-    private static func giornoRelativo(_ d: Date, adesso: Date) -> String {
+    /// la settimana «sab 31»; oltre, con il mese, «sab 8 nov». Lo usa anche la forma corta della copia dei widget («dati di ieri»).
+    static func giornoRelativo(_ d: Date, adesso: Date) -> String {
         let c = calendario
         let giorni = c.dateComponents([.day], from: c.startOfDay(for: adesso), to: c.startOfDay(for: d)).day ?? 0
         switch giorni {

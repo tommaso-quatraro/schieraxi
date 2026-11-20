@@ -73,6 +73,16 @@ con la giornata accanto (si perde il titolo, non la giornata). Rettangolo della 
 rimpicciolita. VoiceOver legge sempre «Giornata 8, 11ª di Serie A».
 I widget rotondi della schermata di blocco stanno in `CerchioWidget` (contenuto sempre al centro). Crediti: simbolo «C» nel cerchio
 (`ParoleWidget.simboloCrediti`, come l'app), mai l'euro.
+Copia salvata (server che non risponde o rete assente, #834): una riga sola per tutti i widget, `RigaCopia`. Di oggi la sola ora,
+«dati delle 18:30»; di un altro giorno anche il giorno, come `Quando.relativa`: «dati di ieri 18:30», «dati di mar 17 21:05»,
+oltre la settimana «dati di dom 8 nov 18:30»; dove non entra perde l'ora («dati di ieri»), poi «dati di» (la sola data accanto al
+simbolo, «ieri», di oggi «18:30»: con il testo molto grande sta su una riga anche nel medio), mai «…» (`ParoleWidget.datiSalvati`,
+ora italiana, contata dall'istante della voce: a mezzanotte «dati delle 23:30» diventa «dati di ieri 23:30»). Nel Formazione piccolo
+e medio la riga c'è anche con «2 da controllare», sopra, e con il testo normale ci stanno tutte e due, anche sull'iPad: per fare
+posto cedono prima il titolo del piccolo (resta il simbolo con la giornata), nel medio «punti attesi» e la fascia su due righe
+(«attesi · tra 65 e 81» su una), poi la fascia («72,7 attesi»); «da controllare» per ultimo, solo con il testo molto grande, e la
+copia mai (`DisposizioneWidget.proveFormazione`). Test in `WidgetOraCopiaTests`; foto: `-DATI salvati` (copia di due giorni prima)
+e `salvati_oggi` (copia di oggi), giri `iphone_salvati`, `iphone_salvati_testo_grande` e `ipad_salvati` di `scripts/screenshot_widget.sh`.
 
 ## Collegamento automatico (Apple ID gratuito + SideStore)
 

@@ -120,12 +120,12 @@ struct VistaWidget: View {
             .widgetAccentable()
     }
 
-    /// Sotto i numeri: l'ora della copia salvata.
+    /// Sotto i numeri: l'ora della copia salvata, con il giorno se non è di oggi (`RigaCopia`, #834).
     @ViewBuilder
     private func statoDati(_ r: RiassuntoOggi) -> some View {
         if voce.datiSalvati {
-            Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash")
-                .font(.caption2).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
+            RigaCopia(scaricatoIl: r.scaricatoIl, adesso: voce.date)
+                .font(.caption2).foregroundStyle(.white.opacity(0.75))
         }
     }
 
@@ -282,8 +282,11 @@ struct VistaWidget: View {
                 Spacer()
                 Text(puntiTesto(r)).font(.title3.bold()).monospacedDigit()
             }
-            if voce.datiSalvati || (r.daControllare == 0 && r.probabili != false) {
-                Text(voce.datiSalvati ? "dati delle \(Quando.ora(r.scaricatoIl))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
+            if voce.datiSalvati {
+                // la copia salvata, con il giorno se non è di oggi (#834); con i dati freschi «punti attesi» sotto i punti
+                RigaCopia(scaricatoIl: r.scaricatoIl, adesso: voce.date).font(.caption2).foregroundStyle(.white.opacity(0.75))
+            } else if r.daControllare == 0 && r.probabili != false {
+                Text("punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
             }
             if r.daControllare > 0 {
                 EtichettaDaControllare(n: r.daControllare).font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
@@ -315,7 +318,7 @@ struct VistaWidget: View {
                     .font(.caption).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 if voce.datiSalvati {
-                    Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
+                    RigaCopia(scaricatoIl: r.scaricatoIl, adesso: voce.date).font(.caption2).foregroundStyle(.secondary)
                 }
             }
             }

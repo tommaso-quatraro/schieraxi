@@ -165,12 +165,12 @@ struct SenzaFormazioneWidget: View {
         "alla scadenza, \(Quando.relativa(scadenza, adesso: voce.date))"
     }
 
-    /// Sotto l'invito: l'ora della copia salvata.
+    /// Sotto l'invito: l'ora della copia salvata, con il giorno se non è di oggi (`RigaCopia`, #834).
     @ViewBuilder
     private var statoDati: some View {
         if voce.datiSalvati {
-            Label("dati delle \(Quando.ora(riassunto.scaricatoIl))", systemImage: "icloud.slash")
-                .font(.caption2).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
+            RigaCopia(scaricatoIl: riassunto.scaricatoIl, adesso: voce.date)
+                .font(.caption2).foregroundStyle(.white.opacity(0.75))
         }
     }
 }
