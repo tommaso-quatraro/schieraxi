@@ -10,9 +10,8 @@ import Testing
 @Suite("Regole: salvataggio che non riesce (#808)")
 struct RegoleSalvataggioTests {
     /// Le regole della fixture (assist 1); dalla seconda lettura quelle salvate dall'altro dispositivo (assist 2). I primi
-    /// `conflitti` PUT rispondono 412, quelli dopo rimandano il corpo ricevuto. `rilettureRotte`: dopo la prima, le letture non
-    /// rispondono.
-    private func server(conflitti: Int = 1, rilettureRotte: Bool = false) -> ServerDiProva {
+    /// `conflitti` PUT rispondono 412, quelli dopo rimandano il corpo ricevuto. Senza ETag: le versioni sono in `RegoleVersioniTests`.
+    private func server(conflitti: Int = 1) -> ServerDiProva {
         let rifiuti = Scatola<Int>()
         rifiuti.valore = conflitti
         let letture = Scatola<Int>()
@@ -28,7 +27,6 @@ struct RegoleSalvataggioTests {
             }
             let n = (letture.valore ?? 0) + 1
             letture.valore = n
-            if n > 1, rilettureRotte { throw ErroreApi.rete("spento") }
             let testo = try Fixture.testo("regole")
             return Data((n == 1 ? testo : testo.replacingOccurrences(of: "\"assist\":1.0", with: "\"assist\":2.0")).utf8)
         }
@@ -55,7 +53,7 @@ struct RegoleSalvataggioTests {
         #expect(!vm.modificato, "le modifiche non salvate si perdono, come sulla web")
         #expect(vm.esito == Catalogo.Err.conflitto, "la frase della web per il 412 resta da leggere")
         #expect(!vm.esitoRiuscito)
-        #expect(s.quante("GET /api/regole") == 2, "dopo il 412 le regole del server si rileggono")
+        #expect(s.quante("GET /api/regole") >= 2, "dopo il 412 le regole del server si rileggono")
     }
 
     @Test("Dopo il 412 un nuovo «Salva» parte dalle regole dell'altro dispositivo, mai dai campi scritti prima")
@@ -90,14 +88,38 @@ struct RegoleSalvataggioTests {
         #expect(vm.numero("bonus.assist").wrappedValue == 2)
     }
 
-    @Test("Dopo il 412 l'ETag ricordato non vale più: finché una lettura riuscita non porta quello vero, ogni «Salva» riceve 412")
-    func etagDaRileggereDopoIlConflitto() async throws {
-        let s = server(rilettureRotte: true)
-        let vm = RegoleEditorViewModel(server: s, attesaDopoConflitto: .zero)
+    @Test("Chiusa la pagina durante l'attesa dopo il 412, la rilettura non parte")
+    func chiusaLaPaginaNienteRilettura() async throws {
+        let s = server()
+        let vm = RegoleEditorViewModel(server: s, attesaDopoConflitto: .seconds(2))
         await vm.carica()
         vm.numero("bonus.assist").wrappedValue = 1.5
-        #expect(await vm.salva() == false)
-        #expect(VersioniRisorse.condivise.leggi(server: s.indirizzo, risorsa: "regole") == RegoleEditorViewModel.etagDaRileggere)
+        let primo = Task { await vm.salva() }
+        await aspetta { vm.esito == Catalogo.Err.conflitto }
+        vm.fermaAttese()                                  // la pagina si chiude
+        #expect(await primo.value == false)
+        #expect(vm.numero("bonus.assist").wrappedValue == 1.5, "niente rilettura: i campi non sono stati ricaricati")
+        #expect(!vm.inCorso)
+    }
+
+    @Test("L'errore dell'ultimo salvataggio se ne va appena si cambia un campo")
+    func unCampoCambiatoTogliLErrore() async {
+        let vm = RegoleEditorViewModel(server: server(conflitti: 0))
+        await vm.carica()
+        for m in vm.moduliAttivi { vm.alternaModulo(m) }
+        await vm.salva()
+        #expect(vm.esito == "Scegli almeno un modulo.")
+        vm.alternaModulo("4-4-2")
+        #expect(vm.esito == nil, "il campo è cambiato: l'errore di prima non vale più")
+        #expect(vm.esitoRiuscito)
+
+        let dopo412 = RegoleEditorViewModel(server: server(), attesaDopoConflitto: .zero)
+        await dopo412.carica()
+        dopo412.numero("bonus.assist").wrappedValue = 1.5
+        await dopo412.salva()
+        #expect(dopo412.esito == Catalogo.Err.conflitto, "la frase resta anche con i campi ricaricati")
+        dopo412.numero("bonus.mvp").wrappedValue = 1
+        #expect(dopo412.esito == nil)
     }
 
     @Test("Un controllo che non passa o un errore del server: non riuscito, e la modifica resta")

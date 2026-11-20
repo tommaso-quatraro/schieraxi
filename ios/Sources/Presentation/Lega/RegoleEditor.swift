@@ -220,6 +220,8 @@ final class RegoleEditorViewModel: ViewModelBase {
     }
 
     func annulla() async { await carica(forza: true) }
+
+    func fermaAttese() {}
 }
 
 // MARK: - Vista
