@@ -49,7 +49,7 @@ Con un Apple ID gratuito ci sono limiti: circa 3 app installate insieme e un ide
 2. L'app non chiede nessun indirizzo: usa da sola **https://app.schieraxi.it**. La prima schermata ha **Accedi** e **Registrati**.
 3. Entra o registrati (vedi [GUIDA-UTENTE.md](GUIDA-UTENTE.md), sezione 2). Se non hai ancora le rose, parte la configurazione guidata.
 
-Chi gestisce un server proprio può cambiare l'indirizzo in **Impostazioni > Server** (solo `https://`).
+Chi gestisce un server proprio può cambiare l'indirizzo in **Impostazioni › Gestione**, nel riquadro **Collegamento** (solo `https://`), oppure, prima di entrare, tenendo premuto il marchio nella prima schermata.
 
 **Se avevi una versione di prima**: l'app ha un nuovo identificativo, quindi per SideStore è un'app nuova. Installala dalla fonte, rifai l'accesso e riaggiungi i widget. La vecchia resta sul telefono finché non la rimuovi (sezione 8).
 
@@ -88,7 +88,7 @@ Se il rinnovo non è partito e la scadenza si avvicina:
 Quando esce una nuova versione:
 
 1. Apri SideStore e aggiorna SchieraXI dalla sua fonte (sezione 2). Se non compare un tasto di aggiornamento, reinstalla dalla fonte.
-2. Apri l'app e controlla la scheda **Novità** (in **Impostazioni > Informazioni**).
+2. Apri l'app e controlla la scheda **Novità** (in **Impostazioni › Informazioni**).
 
 L'icona sulla Home può non cambiare subito: se non cambia, riaggiungi l'app alla Home.
 
@@ -100,7 +100,7 @@ Il widget mostra i dati letti dal server, senza far partire calcoli. Si collega 
 2. Tieni premuto sulla Home (o sulla schermata di blocco) e tocca **+** oppure **Modifica widget**.
 3. Scegli **SchieraXI** e il tipo di widget.
 
-Se il widget dice «Serve l'accesso», apri l'app ed entra: si ricollega. Se proprio non si collega, usa **Collegamento manuale** nelle impostazioni dell'app e segui le istruzioni a schermo.
+Se il widget dice «Tocca per collegare» (sotto: «Si apre SchieraXI per collegarlo»), toccalo: si apre l'app su **Collega il widget**; tocca **Collega**. La stessa schermata si apre dalla riga **Widget: tocca per collegare** in **Impostazioni** dell'app. Se proprio non si collega, l'app copia un codice: tieni premuto il widget, tocca **Modifica widget**, attiva **Collegamento manuale** e incolla il codice.
 
 Il widget legge solo la formazione, i dati del widget e i risultati in diretta, e il suo permesso scade dopo 90 giorni (si rinnova aprendo l'app).
 
@@ -118,12 +118,12 @@ Il widget legge solo la formazione, i dati del widget e i risultati in diretta, 
 
 ## 10. Notifiche dopo un cambio di chiave
 
-Le notifiche della web app (sezione 4 della guida, «Notifiche di questa app») usano una chiave del server. Se chi gestisce il server la cambia, le notifiche attivate prima smettono di arrivare, e l'app non lo segnala. Per riattivarle:
+Le notifiche della web app (sezione 4 della guida, «Avvisi sul telefono») usano una chiave del server. Se chi gestisce il server la cambia, le notifiche attivate prima smettono di arrivare, e l'app non lo segnala. Per riattivarle:
 
 1. Apri SchieraXI dalla schermata Home: la web app aggiunta da Safari, non quella installata con SideStore.
-2. Vai in **Impostazioni > Notifiche**, nel riquadro **Notifiche di questa app**.
-3. Tocca **Disattiva**, poi **Attiva**. Concedi il permesso quando il telefono lo chiede.
-4. Tocca **Manda un avviso di prova** per controllare.
+2. Vai in **Impostazioni › Avvisi**.
+3. Spegni e riaccendi **Avvisi su questo dispositivo**. Concedi il permesso quando il telefono lo chiede.
+4. Quando lo riaccendi l'app ti manda un avviso di prova; se non parte, te lo dice.
 
 Se il permesso è stato negato, riattivalo dalle impostazioni del telefono per l'app, poi ripeti i passi.
 

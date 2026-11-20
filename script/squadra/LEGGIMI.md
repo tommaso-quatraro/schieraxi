@@ -149,7 +149,7 @@ Dice se una giornata è passata senza errori: è la misura che chiude #167 (deci
 
 Raccoglie con `gh` le corse di `test.yml` su `main` e di `collaudo-prova.yml`, le issue nuove della finestra e quelle con i titoli
 «CI: main rosso», «Collaudo della prova: v<N> non passa» e «La prova non si aggiorna». Rosso se: la sentinella ha un allarme o non gira per più di
-2 ore; nasce un'issue `P1` o `dall-utente`; una di quelle tre issue è aperta in qualche momento della finestra; una corsa è rossa
+2 ore e 10 minuti (un giro saltato più un margine); nasce un'issue `P1` o `dall-utente`; una di quelle tre issue è aperta in qualche momento della finestra; una corsa è rossa
 («annullato» non conta); nessun collaudo riuscito davvero nella finestra (job «Collaudo delle schermate»); manca il file della
 sentinella. Ogni motivo stampato dice cosa, quando e il link.
 
