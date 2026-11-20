@@ -285,6 +285,13 @@ def server(tmp_path, chiavi_di_prova):
     _stub(s.bin, "flock", "exit 0")
     _stub(s.bin, "sudo", f'echo "sudo $*" >> "{s.chiamate.as_posix()}"')
     _stub(s.bin, "curl", f'cat "{s.codice_curl.as_posix()}"')
+    # finto systemctl: il processo del servizio (MainPID) cambia a ogni riavvio annotato nelle chiamate, chiunque lo annoti (#826)
+    s.pid_fisso = tmp_path / "pid-fisso.txt"            # se c'e': il processo non cambia (riavvio che non ha fatto niente)
+    _stub(s.bin, "systemctl", f'''case "$*" in *MainPID*)
+  [ -f "{s.pid_fisso.as_posix()}" ] && {{ echo 4242; exit 0; }}
+  n=$(grep -c restart "{s.chiamate.as_posix()}" 2>/dev/null); echo $(( 1000 + ${{n:-0}} )) ;;
+esac
+exit 0''')
     # repository "GitHub": storia con tutte le cartelle, commit firmati
     _git(s.lavoro, "init", "-q", "-b", "main")
     _FIRMATARI[str(s.lavoro)] = (chiavi_di_prova["casa"], chiavi_di_prova["fidata"])
@@ -308,6 +315,13 @@ def server(tmp_path, chiavi_di_prova):
     s.esito_pip.write_text("0", encoding="utf-8")
     s.esito_libero = tmp_path / "esito-libero.txt"           # finto «python -m fanta momento-libero»: codice di uscita (0 = libero)
     s.esito_libero.write_text("0", encoding="utf-8")
+    # database degli account (#825): versione letta in sola lettura, esito del controllo dopo il riavvio e, se c'e' migra.txt, la
+    # versione a cui la versione nuova lo porta al controllo (come farebbe la sua prima apertura)
+    s.versione_db = tmp_path / "versione-db.txt"
+    s.versione_db.write_text("7", encoding="utf-8")
+    s.esito_account = tmp_path / "esito-account.txt"
+    s.esito_account.write_text("0", encoding="utf-8")
+    s.migra = tmp_path / "migra.txt"
     (s.app / ".venv" / "bin").mkdir(parents=True)
     _scrivi(s.app / ".venv", "QUALE", "vecchia")
     _stub(s.app / ".venv" / "bin", "python", f'''reg="{s.chiamate.as_posix()}"
@@ -317,7 +331,13 @@ case "$1" in
         pip) shift 2; echo "pip $* (con $0)" >> "$reg"; exit "$(cat "{s.esito_pip.as_posix()}")" ;;
         fanta) [ "$3" = momento-libero ] && {{ echo "momento-libero FANTA_MULTIUTENTE=${{FANTA_MULTIUTENTE:-}}" >> "$reg"; echo "partita in corso: juventus-napoli (inizio 20:45)"; exit "$(cat "{s.esito_libero.as_posix()}")"; }} ;;
       esac ;;
-  -c) case "$2" in *notifiche.invia*) echo "avviso $3 | $4" >> "$reg" ;; esac ;;
+  -c) case "$2" in
+        *notifiche.invia*) echo "avviso $3 | $4" >> "$reg" ;;
+        *controlla_database_account*) echo "controllo-account" >> "$reg"
+          [ -f "{s.migra.as_posix()}" ] && cp "{s.migra.as_posix()}" "{s.versione_db.as_posix()}"
+          echo "controllo finto del database degli account"; exit "$(cat "{s.esito_account.as_posix()}")" ;;
+        *user_version*) cat "{s.versione_db.as_posix()}" ;;
+      esac ;;
 esac
 exit 0''')
     s.env = {**os.environ, "HOME": s.casa.as_posix(), "PATH": f"{s.bin}{os.pathsep}{os.environ['PATH']}",
@@ -851,6 +871,65 @@ def test_servizio_che_non_risponde_torna_alla_versione_di_prima(server):
     assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
     _lega_e_dati_intatti(s)
     assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]      # il ritorno indietro avvisa sempre
+
+
+@con_bash
+def test_database_degli_account_che_non_si_apre_torna_alla_versione_di_prima(server):
+    """#825: con gli account accesi /api/account/me risponde 401 prima di leggere il database, quindi il servizio «risponde» anche se
+    la migrazione della versione nuova fallisce sui dati veri. Dopo il riavvio un controllo apre davvero il database: se non va, si
+    torna alla versione di prima (il database non e' cambiato)."""
+    s = server
+    c2 = _commit(s.lavoro, "migrazione rotta", **{"fanta/__init__.py": "V2"})
+    s.codice_curl.write_text("401", encoding="utf-8")
+    s.esito_account.write_text("1", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert "controllo-account" in s.chiamate.read_text(encoding="utf-8")
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert s.ultimo() == s.c1 and s.riavvii() == 2
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert "database degli account" in s.log()
+    assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]
+    _lega_e_dati_intatti(s)
+
+
+@con_bash
+def test_database_gia_migrato_tiene_la_versione_nuova_e_avvisa(server):
+    """#825: la versione nuova non va, ma ha gia' portato il database degli account a una versione piu' nuova. Il codice di prima lo
+    rifiuterebbe (errori per ogni utente): si tiene la versione nuova, librerie comprese, e l'avviso lo dice."""
+    s = server
+    c2 = _commit(s.lavoro, "migrazione a meta'", **{"fanta/__init__.py": "V2", "requirements.txt": "r2"})
+    s.codice_curl.write_text("401", encoding="utf-8")
+    s.esito_account.write_text("1", encoding="utf-8")
+    s.migra.write_text("8", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+    assert _venv(s) == "nuova" and (s.app / "requirements.txt").read_text(encoding="utf-8") == "r2"
+    assert s.ultimo() == c2 and not (s.stato / "rifiutato").exists()
+    assert not (s.stato / "installazione-in-corso").exists()        # il giro dopo non rimette la versione di prima dalla copia
+    assert "non torno alla versione di prima" in s.log()
+    assert len(s.avvisi()) == 1 and "database degli account" in s.avvisi()[0]
+    _lega_e_dati_intatti(s)
+    s.esegui("aggiorna-app.sh")                                     # il giro dopo non tocca niente
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2" and len(s.avvisi()) == 1
+
+
+@con_bash
+def test_installazione_interrotta_con_database_gia_migrato_non_rimette_la_versione_di_prima(server):
+    """#825: il segno dell'installazione a meta' ricorda la versione del database di prima. Se nel frattempo e' salita, il codice di
+    prima non si rimette sopra (la copia di sicurezza resta dov'e'): lo si scrive, si avvisa e il giro installa la versione nuova."""
+    s = server
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    with tarfile.open(s.stato / "versione-precedente.tar.gz", "w:gz") as tar:
+        f = s.casa / "V0.txt"
+        f.write_text("V0", encoding="utf-8")
+        tar.add(f, arcname="fanta/__init__.py")
+    _scrivi(s.stato, "installazione-in-corso", f"file {c2} 7\n")
+    s.versione_db.write_text("8", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert "non rimetto la versione di prima" in s.log()
+    assert any("database degli account" in a for a in s.avvisi())
+    assert s.ultimo() == c2 and (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+    assert s.riavvii() == 1 and not (s.stato / "interrotta").exists()
 
 
 @con_bash
