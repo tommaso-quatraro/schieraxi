@@ -192,7 +192,8 @@ struct AnteprimaRoseVista: View {
                 .font(.title3.bold())
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityFocused($fuocoTitolo)
-            Text(AnteprimaLogica.riassunto(anteprima)).font(.subheadline)
+            // si rifà dopo ogni scelta, come la web (#808): i dubbi già decisi non si contano più
+            Text(AnteprimaLogica.riassunto(anteprima, scelte: vm.scelte)).font(.subheadline)
             if let m = vm.messaggioAnteprima {
                 Label(m, systemImage: "arrow.triangle.2.circlepath").font(.footnote).foregroundStyle(Color.attenzione)
             }

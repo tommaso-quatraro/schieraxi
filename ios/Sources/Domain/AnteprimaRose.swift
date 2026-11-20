@@ -328,12 +328,30 @@ enum AnteprimaLogica {
     }
 
     /// «8 squadre: 196 giocatori riconosciuti, 3 da controllare, 1 non trovato. Sistema i dubbi qui sotto, poi conferma.»
+    /// Si rifà dopo ogni scelta, come `arRiassuntoScelte` della web (#808): un dubbio deciso dall'utente (un giocatore scelto o
+    /// «Toglilo dalla rosa») non è più da controllare né «non trovato», e chi è stato scelto conta tra i riconosciuti. La proposta
+    /// del server non toccata e «Scegli chi è» / «Lascialo così per ora» restano dubbi.
     static func riassunto(_ r: AnteprimaRose, scelte: [String: SceltaDubbio] = [:]) -> String {
+        var sistemati = 0, decisiDaControllare = 0, decisiNonTrovati = 0
+        for s in r.squadre {
+            for g in s.giocatori where g.stato != .sicuro {
+                guard let scelta = scelte[chiave(s.nome, g)] else { continue }
+                switch scelta {
+                case .giocatore: sistemati += 1
+                case .togli: break
+                case .lascia: continue
+                }
+                if g.stato == .nonTrovato { decisiNonTrovati += 1 } else { decisiDaControllare += 1 }
+            }
+        }
+        let sicuri = r.sicuri + sistemati
+        let daControllare = max(0, r.daControllare - decisiDaControllare)
+        let nonTrovati = max(0, r.nonTrovati - decisiNonTrovati)
         let squadre = Formato.plurale(r.squadre.count, "squadra", "squadre")
-        var parti = ["\(Formato.giocatori(r.sicuri)) \(r.sicuri == 1 ? "riconosciuto" : "riconosciuti")"]
-        if r.daControllare > 0 { parti.append("\(r.daControllare) da controllare") }
-        if r.nonTrovati > 0 { parti.append("\(r.nonTrovati) \(r.nonTrovati == 1 ? "non trovato" : "non trovati")") }
-        let invito = r.daControllare + r.nonTrovati > 0 ? " Sistema i dubbi qui sotto, poi conferma." : ""
+        var parti = ["\(Formato.giocatori(sicuri)) \(sicuri == 1 ? "riconosciuto" : "riconosciuti")"]
+        if daControllare > 0 { parti.append("\(daControllare) da controllare") }
+        if nonTrovati > 0 { parti.append("\(nonTrovati) \(nonTrovati == 1 ? "non trovato" : "non trovati")") }
+        let invito = daControllare + nonTrovati > 0 ? " Sistema i dubbi qui sotto, poi conferma." : ""
         return "\(squadre): \(parti.joined(separator: ", "))." + invito
     }
 
