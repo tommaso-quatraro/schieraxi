@@ -96,8 +96,9 @@ struct WidgetInCorsoComeLAppTests {
         for _ in 0..<3 { cartella.deleteLastPathComponent() }          // questo file, SchieraxiTests, Tests
         let testo = try #require(try? String(contentsOf: cartella.appendingPathComponent(file), encoding: .utf8),
                                  "non riesco a leggere ios/\(file)")
+        // il testo «circa \(Formato.punti(…))» di prima; i «66,0 attesi» a giornata finita restano con il decimale
         let righe = RestiDalCatalogoTests.soloCodice(testo).components(separatedBy: .newlines)
-        let sbagliate = righe.filter { $0.contains("circa") && $0.contains("Formato.punti(") }
+        let sbagliate = righe.filter { $0.contains(#"circa \(Formato.punti("#) }
         #expect(sbagliate.isEmpty, "\(file): «circa» con Formato.punti (un decimale): \(sbagliate)")
     }
 }

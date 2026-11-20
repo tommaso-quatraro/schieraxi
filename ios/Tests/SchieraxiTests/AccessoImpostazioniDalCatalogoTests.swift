@@ -210,7 +210,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         #expect(codice.contains(".titoloPagina(Catalogo.Social.scegliNome"), "il titolo della pagina deve essere social.scegli_nome")
         #expect(codice.contains("TitoloNellaPagina()"), "con il testo grande il titolo intero sta nella pagina")
         #expect(codice.contains("Catalogo.Social.scegliSpiega"), "la spiegazione della web (social.scegli_spiega)")
-        let letterali = Set(try RestiDalCatalogoTests.letterali(codice))
+        // i valori iniziali vuoti dei campi (`= ""`) non sono testi
+        let letterali = Set(try RestiDalCatalogoTests.letterali(codice).filter { !$0.isEmpty })
         #expect(letterali.isSubset(of: Self.soloIPhoneNelNome),
                 "testi scritti a mano nella schermata del nome: \(letterali.subtracting(Self.soloIPhoneNelNome).sorted())")
     }
