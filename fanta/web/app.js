@@ -2804,7 +2804,7 @@ async function apriStemmaMaglia(nome, inAttesa = false) {
         ${["stemma", "maglia"].map(tipo => { const c = s.immagini && s.immagini[tipo]; return `<div class="immagine-squadra">
           <b>${t(NOME_IMMAGINE[tipo])}</b>
           ${c ? `<img src="${urlImg(s.nome, tipo)}" alt="${t("lega.alt_immagine", { tipo: t(NOME_IMMAGINE[tipo]), nome: esc(s.nome) })}">` : `<span class="vuota">${t("lega.nessuna_immagine")}</span>`}
-          <label class="bottone secondario sm-pulsante" for="sm-file-${tipo}">${t("lega.file_foto")}</label>
+          <button class="bottone secondario sm-pulsante" type="button" data-scegli-file="sm-file-${tipo}">${t("lega.file_foto")}</button>
           <input id="sm-file-${tipo}" data-tipo="${tipo}" type="file" accept="image/png,image/jpeg,image/webp" hidden>
           ${funz("immagini_web") ? `<input class="campo-testo" id="sm-url-${tipo}" type="url" inputmode="url" autocomplete="off" placeholder="${t("lega.https")}" aria-label="${t("lega.indirizzo_aria", { tipo: t(NOME_IMMAGINE[tipo]).toLowerCase() })}">
           <button class="bottone secondario sm-pulsante" data-scarica="${tipo}">${t("lega.indirizzo_web")}</button>` : ""}
@@ -2825,6 +2825,8 @@ async function apriStemmaMaglia(nome, inAttesa = false) {
       dati.append("file", blob, nomeFile || "immagine");
       await chiamaImmagine(`/api/squadre/immagine?squadra=${encodeURIComponent(s.nome)}&tipo=${tipo}`, { method: "POST", body: dati });
     };
+    // un pulsante vero apre il campo del file, nascosto (#801: un'etichetta del campo non si raggiungeva con Tab), come nel primo avvio
+    document.querySelectorAll("#foglio [data-scegli-file]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.scegliFile).click()));
     document.querySelectorAll("#foglio input[type=file]").forEach(inp => inp.addEventListener("change", async () => {
       const file = inp.files[0]; inp.value = "";
       if (!file) return;
@@ -2876,7 +2878,7 @@ function vistaImportaRose() {
   nuovaRichiesta();
   pagina(`<div class="carta imp-colonna">
       <div class="debole piccolo">${t("lega.esporta_rose_excel")}</div>
-      <div class="pulsanti"><label class="bottone" for="file-rose">${t("pav.scegli_file")}</label></div>
+      <div class="pulsanti"><button class="bottone" id="scegli-file-rose" type="button">${t("pav.scegli_file")}</button></div>
       <details style="margin-top:14px"><summary style="font-size:var(--t-corpo)">${t("lega.con_tocco_dal")}</summary>
         <div class="debole piccolo">${t("lega.una_volta_sola")}</div>
         <ol class="guida">
@@ -2909,6 +2911,8 @@ function vistaImportaRose() {
     sostituisci: $("#sostituisci-tutto").checked,
     fatto: esito => { mostraEsito(esito); avviso(t("ar.salvate")); },
   });
+  // il pulsante dell'app apre il campo del file, nascosto (#801: un'etichetta del campo non si raggiungeva con Tab), come nel primo avvio
+  $("#scegli-file-rose").addEventListener("click", () => $("#file-rose").click());
   $("#file-rose").addEventListener("change", ev => {
     const file = ev.target.files[0];
     ev.target.value = "";              // così si può scegliere di nuovo lo stesso file

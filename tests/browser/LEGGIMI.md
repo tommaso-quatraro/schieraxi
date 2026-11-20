@@ -202,6 +202,8 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
   sempre alla prima risposta buona («Riprova»);
 - «Elimina l'account» (#801): con la password sbagliata (403) gli avvisi del dispositivo restano, nel browser e sul server;
   riuscita, il browser toglie la sua iscrizione;
+- i pulsanti dei file (#801): «Scegli il file» di Aggiorna le rose e i due «Da file o foto» di stemma e maglia si raggiungono
+  con Tab e con Invio aprono il selettore; il file scelto va al controllo delle rose o si carica come maglia;
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore;
 - Gestione, «Errori recenti» (amministratore e registro finti): plurali giusti, tempi con la virgola, ora italiana senza «UTC»,
   eventi con il nome del catalogo (anche un tipo scritto con il trattino, `fonte-cambiata`) e, per un tipo sconosciuto, senza

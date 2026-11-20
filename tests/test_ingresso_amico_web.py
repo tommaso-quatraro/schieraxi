@@ -106,8 +106,9 @@ def test_il_pulsante_del_file_dice_excel_o_csv():
 
 def test_aggiorna_le_rose_ha_lo_stesso_pulsante_del_primo_avvio():
     """Squadra › Aggiorna le rose (#594): anche lì il selettore accetta Excel, CSV e testo, e il pulsante lo dice con le parole del
-    primo avvio (stessa chiave del catalogo, la usa anche l'iPhone in Importa le rose)."""
-    etichetta = re.search(r'<label class="bottone" for="file-rose">\$\{t\("([\w.]+)"\)\}</label>', APP)
+    primo avvio (stessa chiave del catalogo, la usa anche l'iPhone in Importa le rose). Dal #801 è un pulsante vero, come nel primo
+    avvio (un'etichetta del campo nascosto non si raggiungeva con Tab): che apra il selettore lo prova tests/browser/test_impostazioni.py."""
+    etichetta = re.search(r'<button class="bottone" id="scegli-file-rose" type="button">\$\{t\("([\w.]+)"\)\}</button>', APP)
     assert etichetta, "pulsante di #file-rose non trovato in app.js"
     assert etichetta.group(1) == "pav.scegli_file"
     assert _node(TESTI + f"\nconsole.log(JSON.stringify(t({json.dumps(etichetta.group(1))})));") == "Scegli il file (Excel o CSV)"

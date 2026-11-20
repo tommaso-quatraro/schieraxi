@@ -654,7 +654,7 @@ def test_lo_stemma_si_prende_anche_da_un_indirizzo_web(web):
     tocca(web, principale(web).get_by_role("button", name="Stemma e maglia"))
     foglio = web.pagina.get_by_role("dialog")
     assert foglio.get_by_role("button", name="Da indirizzo web").count() == 2           # stemma e maglia
-    assert foglio.locator("label", has_text="Da file o foto").count() == 2           # l'etichetta del campo del file
+    assert foglio.get_by_role("button", name="Da file o foto").count() == 2            # il pulsante che apre il campo del file (#801)
 
 
 def test_un_altra_squadra_apre_il_foglio_sul_suo_nome(web):
@@ -1343,3 +1343,58 @@ def test_elimina_l_account_riuscito_toglie_gli_avvisi_dal_browser(web):
     with web.pagina.expect_navigation(wait_until="load"):
         elimina_l_account(web, 200)
     assert iscrizione_nel_browser(web) is None
+
+
+def con_tab_fino_a(web, bersaglio, massimo: int = 30) -> bool:
+    """Avanti con Tab dal fuoco di adesso: si arriva su `bersaglio`?"""
+    for _ in range(massimo):
+        web.pagina.keyboard.press("Tab")
+        if bersaglio.evaluate("e => e === document.activeElement"):
+            return True
+    return False
+
+
+# un'immagine PNG di 1×1 pixel
+PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360f8cfc0f01f0005"
+                    "0001ff5c6d2d6b0000000049454e44ae426082")
+
+
+def test_scegli_il_file_delle_rose_si_raggiunge_con_tab_e_apre_il_selettore(web):
+    """«Scegli il file» di Aggiorna le rose era un'etichetta di un campo nascosto: con Tab non ci si arrivava. Ora è un pulsante vero
+    che apre il selettore dei file, come nel primo avvio; il file scelto va subito al controllo delle rose (#801)."""
+    solo(web, "prima")
+    web.apri("/?vista=impostazioni&gruppo=rose")
+    scegli = principale(web).get_by_role("button", name="Scegli il file (Excel o CSV)")
+    assert scegli.count() == 1, "«Scegli il file» non è un pulsante"
+    principale(web).get_by_role("button", name="Impostazioni").focus()            # «‹ Impostazioni», in cima alla pagina
+    assert con_tab_fino_a(web, scegli), "con Tab non si arriva a «Scegli il file»"
+    with web.pagina.expect_file_chooser() as scelta:
+        web.pagina.keyboard.press("Enter")
+    assert ".xlsx" in scelta.value.element.get_attribute("accept")
+    with web.pagina.expect_request(lambda r: r.method == "POST" and urlsplit(r.url).path.startswith("/api/rose")) as mandata:
+        scelta.value.set_files({"name": "rose.csv", "mimeType": "text/csv", "buffer": "Squadra;Ruolo;Calciatore\n".encode()})
+    assert urlsplit(mandata.value.url).path == "/api/rose/anteprima/file"           # il controllo delle rose, con il file
+
+
+def test_file_o_foto_di_stemma_e_maglia_si_raggiungono_con_tab_e_caricano(web):
+    """«Da file o foto» del foglio di stemma e maglia era un'etichetta di un campo nascosto: con Tab non ci si arrivava. Ora sono
+    due pulsanti veri; quello della maglia apre il selettore e l'immagine scelta si carica come maglia (#801)."""
+    solo(web, "prima")
+    _mia_con_stemma(web)
+    caricate = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/squadre/immagine",
+                     lambda r: (r.request.method == "POST" and caricate.append(parse_qs(urlsplit(r.request.url).query)["tipo"]),
+                                json_200(r, {"ok": True})))
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    tocca(web, principale(web).get_by_role("button", name="Stemma e maglia"))
+    foglio = web.pagina.get_by_role("dialog")
+    pulsanti = foglio.get_by_role("button", name="Da file o foto")
+    assert pulsanti.count() == 2, "«Da file o foto» non è un pulsante"
+    foglio.get_by_role("combobox").focus()                                       # la squadra, in cima al foglio
+    assert con_tab_fino_a(web, pulsanti.nth(0)), "con Tab non si arriva a «Da file o foto» dello stemma"
+    assert con_tab_fino_a(web, pulsanti.nth(1)), "con Tab non si arriva a «Da file o foto» della maglia"
+    with web.pagina.expect_file_chooser() as scelta:
+        web.pagina.keyboard.press("Enter")
+    scelta.value.set_files({"name": "maglia.png", "mimeType": "image/png", "buffer": PNG})
+    web.pagina.locator("#avviso").filter(has_text="Maglia aggiornata").wait_for(timeout=10000)
+    assert caricate == [["maglia"]]
