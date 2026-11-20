@@ -11,6 +11,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 RADICE = Path(__file__).resolve().parent.parent
 # «Lega > Regole», «Altro › Regole», «League > Rules»: il nome di una scheda tolta seguito da una freccia
 PERCORSO_VECCHIO = re.compile(r"(?<!\w)(Lega|Squadra|Altro|League|Team|More)\s*(>|›|→|&gt;|&rsaquo;)")
@@ -105,8 +107,10 @@ def test_guida_e_sotto_il_cofano_non_indicano_le_schede_di_prima():
 
 
 # Un percorso dentro le Impostazioni si scrive in un modo solo, «Impostazioni › Regole e scadenza» (#779): non con «>», non
-# «in Impostazioni, alla voce …», non «(Impostazioni, Regole e scadenza)» né «in Impostazioni, «Aggiorna le rose»».
-PERCORSO_STORTO = re.compile(r"(?<!\w)(Impostazioni|Settings)(\s*(>|&gt;|→)|,\s*(alla voce|under|«|[A-Z{]))")
+# «in Impostazioni, alla voce …», non «(Impostazioni, Regole e scadenza)» né «in Impostazioni, «Aggiorna le rose»». Anche i
+# passi dopo il primo (#827): «Impostazioni › Il tuo account > «Scarica i tuoi dati»» è storto come «Impostazioni > …».
+PERCORSO_STORTO = re.compile(r"(?<!\w)(Impostazioni|Settings)(\s*(>|&gt;|→)|,\s*(alla voce|under|«|[A-Z{]))"
+                             r"|›[^›<>.;:\n]{1,40}?\s(>|&gt;|→)\s")
 
 
 def percorsi_storti(testi) -> list[str]:
@@ -118,18 +122,42 @@ def percorsi_storti(testi) -> list[str]:
 
 
 def test_il_catalogo_scrive_i_percorsi_delle_impostazioni_in_un_modo_solo():
-    """Le chiavi err.* e srv.* restano fuori: il loro testo italiano è parola per parola il messaggio del server, che le
-    riconosce per tradurlo (traduciErrore in testi.js); si cambiano insieme alla frase del server."""
-    trovati = percorsi_storti((dove, t) for dove, t in voci_catalogo() if dove.split(":")[1].split(".")[0] not in ("err", "srv"))
+    """Tutte le chiavi, anche err.* e srv.* (#827): il loro testo italiano è parola per parola il messaggio del server, che le
+    riconosce per tradurlo (traduciErrore in testi.js), e si cambiano insieme alla frase del server."""
+    trovati = percorsi_storti(voci_catalogo())
+    assert not trovati, "\n".join(trovati)
+
+
+def test_il_server_scrive_i_percorsi_delle_impostazioni_in_un_modo_solo():
+    """Errori, avvisi sul telefono di chi gestisce, email, pagine legali, descrizioni delle rotte e Sotto il cofano (#827). Le
+    novità già uscite (`novita.en.json`, come `novita.json`) no: raccontano com'era l'app quel giorno."""
+    contenuti = ((dove, t) for dove, t in stringhe_contenuti() if not dove.startswith("novita."))
+    trovati = percorsi_storti(stringhe_python()) + percorsi_storti(contenuti)
+    assert not trovati, "\n".join(trovati)
+
+
+def test_guida_e_sotto_il_cofano_scrivono_i_percorsi_delle_impostazioni_in_un_modo_solo():
+    trovati = percorsi_storti(righe_documenti())
+    assert not trovati, "\n".join(trovati)
+
+
+@pytest.mark.xfail(strict=True, reason="l'iPhone scrive ancora «(Impostazioni, Il tuo account, Accessi)» in "
+                                       "ios/Sources/Domain/AccessoSocial.swift (serve_riconferma): si corregge in una PR dell'iPhone, "
+                                       "che poi toglie questo segno")
+def test_l_iphone_e_i_widget_scrivono_i_percorsi_delle_impostazioni_in_un_modo_solo():
+    trovati = percorsi_storti(stringhe_swift())
     assert not trovati, "\n".join(trovati)
 
 
 def test_il_controllo_vede_i_percorsi_storti():
     for storto in ("in Impostazioni > Regole e scadenza", "in Impostazioni, alla voce {voce}", "(Impostazioni, Regole e scadenza)",
-                   ": in Impostazioni, «Aggiorna le rose»", "in Settings > Your account", "in Settings, under Rules"):
+                   ": in Impostazioni, «Aggiorna le rose»", "in Settings > Your account", "in Settings, under Rules",
+                   "da Impostazioni › Il tuo account > «Scarica i tuoi dati»", "in Impostazioni › Gestione > Stato dei dati.",
+                   "from Settings › Your account > «Download your data»"):
         assert PERCORSO_STORTO.search(storto), storto
     for giusto in ("Impostazioni › Regole e scadenza", "In Impostazioni trovi gli avvisi", "Impostazioni", "Settings › Your account",
-                   "in Impostazioni, poi tocca", "le Impostazioni, ma"):
+                   "in Impostazioni, poi tocca", "le Impostazioni, ma", "Impostazioni › Gestione › Stato dei dati",
+                   "Impostazioni › Il tuo account › «Scarica i tuoi dati»", "› Regole e scadenza. Se 3 > 2"):
         assert not PERCORSO_STORTO.search(giusto), giusto
 
 

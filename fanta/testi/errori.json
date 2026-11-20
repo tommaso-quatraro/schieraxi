@@ -4,17 +4,56 @@
     "en": "Recent errors"
   },
   "errori.spiega": {
-    "it": "Gli errori del server (risposte 5xx) e gli ultimi eventi di sicurezza. Nessuna password, nessun dato delle richieste: solo quando, dove e che tipo di errore.",
-    "en": "Server errors (5xx replies) and the latest security events. No passwords, no request data: only when, where and what kind of error."
+    "it": "Gli errori del server e gli ultimi eventi di sicurezza. Nessuna password, nessun dato delle richieste: solo quando, dove e che tipo di errore.",
+    "en": "Server errors and the latest security events. No passwords, no request data: only when, where and what kind of error."
   },
   "errori.aggiorna": {
     "it": "Aggiorna",
     "en": "Refresh"
   },
   "errori.riepilogo": {
-    "it": "{richieste} dall'ultimo riavvio ({rifiutate}, {errori}). Tempo medio {medio} ms, il 5% più lento oltre {p95} ms, massimo {max} ms.",
-    "en": "{richieste} since the last restart ({rifiutate}, {errori}). Average time {medio} ms, the slowest 5% over {p95} ms, maximum {max} ms.",
-    "nota": "{richieste}, {rifiutate}, {errori}: i plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori; i tempi con num() (#779)"
+    "it": "{richieste} dall'ultimo riavvio ({rifiutate}, {errori}). Tempo medio {medio}, il 5% più lento oltre {p95}, massimo {max}.",
+    "en": "{richieste} since the last restart ({rifiutate}, {errori}). Average time {medio}, the slowest 5% over {p95}, maximum {max}.",
+    "nota": "{richieste}, {rifiutate}, {errori}: i plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori (#779); {medio}, {p95}, {max}: un tempo già in parole, errori.millisecondi o errori.secondi (#827)"
+  },
+  "errori.millisecondi": {
+    "it": "{n} millisecondi",
+    "en": "{n} milliseconds",
+    "nota": "un tempo sotto il secondo in «Errori recenti», con la virgola (#827): niente «ms»"
+  },
+  "errori.secondi": {
+    "it": "{n} secondi",
+    "en": "{n} seconds",
+    "nota": "un tempo da un secondo in su in «Errori recenti», con la virgola (#827)"
+  },
+  "errori.dove": {
+    "it": "{nome} ({rotta})",
+    "en": "{nome} ({rotta})",
+    "nota": "in «Errori recenti» il nome della parte dell'app che usa la rotta, con il percorso fra parentesi per chi gestisce: «Formazione (/api/oggi)» (#827). Una rotta senza nome resta con il solo percorso"
+  },
+  "errori.area_avvio": {
+    "it": "Apertura dell'app",
+    "en": "App start",
+    "nota": "nome accanto alle rotte che l'app legge quando si apre (/api/stato, /api/funzioni), in «Errori recenti» (#827)"
+  },
+  "errori.area_widget": {
+    "it": "Widget dell'iPhone",
+    "en": "iPhone widget"
+  },
+  "errori.area_controllo": {
+    "it": "Controllo del server",
+    "en": "Server check",
+    "nota": "nome accanto a /api/salute, la rotta che controlla se il server è acceso (#827)"
+  },
+  "errori.riga_errore": {
+    "it": "{quando} · {dove} · errore {stato}",
+    "en": "{quando} · {dove} · error {stato}",
+    "nota": "una riga di «Errori del server»: quando, dove (errori.dove con il metodo) e il codice della risposta (#827)"
+  },
+  "errori.riga_errore_tipo": {
+    "it": "{quando} · {dove} · errore {stato}, {tipo}",
+    "en": "{quando} · {dove} · error {stato}, {tipo}",
+    "nota": "come errori.riga_errore, con il tipo di errore che il server ha scritto (per esempio KeyError)"
   },
   "errori.n_richieste.one": {
     "it": "<b>{n}</b> richiesta",
@@ -65,12 +104,13 @@
     "en": "Nothing yet."
   },
   "errori.lenta_riga.one": {
-    "it": "{rotta} · {n} richiesta, medio {medio} ms",
-    "en": "{rotta} · {n} request, average {medio} ms"
+    "it": "{dove} · {n} richiesta, in media {medio}",
+    "en": "{dove} · {n} request, on average {medio}",
+    "nota": "{dove}: errori.dove o il solo percorso; {medio}: errori.millisecondi o errori.secondi (#827)"
   },
   "errori.lenta_riga.other": {
-    "it": "{rotta} · {n} richieste, medio {medio} ms",
-    "en": "{rotta} · {n} requests, average {medio} ms"
+    "it": "{dove} · {n} richieste, in media {medio}",
+    "en": "{dove} · {n} requests, on average {medio}"
   },
   "errori.evento_accesso": {
     "it": "Accesso",

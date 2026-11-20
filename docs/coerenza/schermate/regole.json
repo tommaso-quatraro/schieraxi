@@ -26,6 +26,24 @@
       "forma": "web",
       "chi": "fatto (#733): l'iPhone legge `da_controllare` e mostra «Righe da controllare a mano (N)» con «da impostare: …» sotto le righe dubbie, testi dal catalogo (`Catalogo.Regole.daControllare`, `daImpostare`) attraverso `RegolamentoDaControllare` (`Presentation/Lega/RegolamentoDaControllare.swift`), prova `RegoleDaControllareComeLaWebTests`. Con un server che non manda `da_controllare` resta il gruppo di prima (`regole.non_riconosciute`). Le etichette delle regole sono quelle del server, come per i valori riconosciuti (in italiano uguali a `regola.et.<chiave>` della web)",
       "stato": "fatto"
+    },
+    {
+      "id": 91,
+      "schermata": "Regole: salvataggio che non riesce e 412 (#808)",
+      "web": "un errore di «Salva le regole» (anche «Scegli almeno un modulo») è un avviso in basso (`avviso(e.message, 8000)` in `vistaRegole`); con il 412 l'avviso ha la frase dei dati cambiati da un altro dispositivo (`err.conflitto`) e dopo un attimo (2,5 secondi) la pagina si ricarica con le regole del server (`api` in `app.js`)",
+      "iphone": "prima: l'errore solo in fondo alla lista, lontano dalla barra con «Salva»; con il 412 i valori del server sostituivano quelli scritti e la domanda chiudeva la pagina come dopo un salvataggio riuscito. Ora l'errore sta sopra la barra «Modifiche non salvate», a capo, e VoiceOver lo legge; con il 412, come la web, la frase (`err.conflitto`) e dopo un attimo (2,5 secondi) i campi ricaricati con le regole del server: le modifiche non salvate si perdono, la pagina resta aperta e la frase resta. Intanto «Salva» è fermo, e chiusa la pagina l'attesa si ferma; se la rilettura non riesce si dice perché e i campi restano. «Salva» manda sempre la versione (ETag) da cui vengono i campi: con modifiche non salvate una rilettura (ritorno sulla pagina, «Aggiorna») tiene i campi e la loro versione, e se le regole sono cambiate altrove il server risponde 412; senza modifiche si ricaricano campi e versione insieme. Così un «Salva» non scrive mai sopra la versione dell'altro dispositivo senza che si vedano i valori nuovi (prima, tornando sulla pagina con modifiche non salvate, sì). L'errore se ne va appena si cambia un campo (`RegoleEditorViewModel.salva`, `carica`, `ricaricaDopoConflitto`, `RegoleEditorView.barraNonSalvate`)",
+      "forma": "web",
+      "chi": "**fatto** (#808): prove `RegoleSalvataggioTests` e `RegoleVersioniTests`",
+      "stato": "fatto"
+    },
+    {
+      "id": 94,
+      "schermata": "Regole: modifiche non salvate sull'iPad e «Vedi la rosa» (#808)",
+      "web": "nessuna domanda: le modifiche restano finché la pagina è aperta, con la barra «Salva» fissa in basso (`mostraSalva` in `vistaRegole`)",
+      "iphone": "prima: la domanda «Le modifiche alle regole non sono salvate» c'era solo con lo schermo stretto; sull'iPad «‹ Impostazioni» buttava le modifiche, e «Vedi la rosa» dalla Formazione sostituiva le pagine aperte e le perdeva. Ora la domanda è un avviso («Salva le regole», «Esci senza salvare», «Continua a modificare») sull'iPhone e sull'iPad, e le pagine aperte da fuori con `LegaViewModel.apri` («Vedi la rosa», «Aggiungi la tua divisa», un file da importare, un passo della guida) aspettano la risposta (`RegoleEditorView`, `LegaViewModel.pagineInAttesa`). Un indirizzo `schieraxi://lega` torna ancora alla pagina delle Impostazioni senza chiedere",
+      "forma": "solo iPhone: la web non chiede",
+      "chi": "**fatto** (#808): prova `DomandaRegoleTests`; la domanda sull'iPad va vista in foto o sul telefono",
+      "stato": "fatto"
     }
   ]
 }

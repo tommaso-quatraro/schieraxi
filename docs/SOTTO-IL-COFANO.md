@@ -4,7 +4,7 @@
 
 Versione leggibile dei testi di `fanta/contenuti/sotto-il-cofano.json`, che è la fonte unica: web, iOS e Android mostrano lo stesso testo (vedi `docs/API-SOTTO-IL-COFANO.md`). Questo file è generato dal JSON: non modificarlo a mano, cambia il JSON e rigeneralo. Aggiornato al 2026-10-30.
 
-Nell'app si trova in Impostazioni > Informazioni > «Sotto il cofano». Le sezioni **[base]** sono per tutti, le **[nerd]** hanno formule e parametri. Le righe «Codice» (file:funzione) non si vedono nell'app.
+Nell'app si trova in Impostazioni › Informazioni › «Sotto il cofano». Le sezioni **[base]** sono per tutti, le **[nerd]** hanno formule e parametri. Le righe «Codice» (file:funzione) non si vedono nell'app.
 
 SchieraXI non indovina il futuro: stima, per ogni giocatore e per ogni giornata, quanti punti fantacalcio porterà in media, e poi sceglie la formazione che in media ne porta di più. Qui sotto trovi come fa, da dove prende i dati e, soprattutto, dove sbaglia.
 
@@ -125,7 +125,7 @@ mu = voto in pagella atteso
 
 > **Un caso vero: Thuram, giornata 8 del 2026-27 (Inter-Fiorentina)** (numeri veri del modello). Calcolo rifatto il 30/10/2026 con i soli dati precedenti alla giornata 8 (senza probabili, quindi p viene dalle presenze, vedi la sezione 11: ha preso voto in tutte le ultime 6 partite, ma p = 0,86, ricalcolata il 2/11/2026). La partita vale 2,46 gol attesi per l'Inter contro 0,99 della Fiorentina. Voto in pagella atteso 6,46; gol attesi 0,505 e a 3 punti l'uno fanno +1,52; assist attesi 0,144 fanno +0,14; cartellini e altro circa -0,06. Totale mu = 8,06. La probabilità di segnare almeno un gol è 1 - e^(-0,505) = 39,7%.
 
-Nell'app: Formazione (tocca un giocatore per vedere i pezzi); Impostazioni > Regole e scadenza.
+Nell'app: Formazione (tocca un giocatore per vedere i pezzi); Impostazioni › Regole e scadenza.
 
 Codice: `fanta/modello.py:previsioni`, `fanta/punteggio.py:fantavoto`, `fanta/consigli.py:_componenti`
 
@@ -300,7 +300,7 @@ correzione di un gruppo = 1 + (osservati/previsti - 1) × n/(n + 60), tra 0,85 e
 
 > **Esempio di calcolo** (esempio di calcolo). Tre partite: ha preso voto nelle due più recenti ma non nella più vecchia. Pesi 0,5625 (più vecchia), 0,75, 1,0: presenze = (0,75 + 1,0) / 2,3125 = 76%. Thuram alla giornata 8 del 2026-27: presenze 1,0, presenze lunghe 0,81, da titolare 0,83, ultima 0,75: z = -2,681 + 1,058 + 1,212 + 0,642 + 1,592 = 1,82 e p = 86%. Con n = 30 giocatori in un gruppo e osservati/previsti = 1,20 la correzione è 1 + 0,20 × 30/90 = 1,07.
 
-Nell'app: Stato dei dati > Calibrazione delle probabili.
+Nell'app: Stato dei dati › Calibrazione delle probabili.
 
 Codice: `fanta/modello.py:_presenze_recenti_varie`, `fanta/modello.py:p_senza_probabili`, `prove/calibra_p_voto.py`, `fanta/coppe.py:fattore_turnover`, `fanta/coppe.py:COPPE`, `fanta/stato_dati.py:calibrazione`, `fanta/stato_dati.py:fattori_da`
 
@@ -360,7 +360,7 @@ punteggio di scelta = punti attesi - peso_giù × (punti attesi - brutta giornat
 
 > **Sicura con numeri di esempio** (esempio di calcolo). Peso 0,6: una formazione con 70 punti attesi e brutta giornata a 64 (10° percentile) vale 70 - 0,6 × 6 = 66,4 per la scelta. Una da 69,7 con brutta giornata a 67 vale 69,7 - 0,6 × 2,7 = 68,1 e passa avanti. Per l'«Equilibrata» i pesi sono zero: vince quella da 70.
 
-Nell'app: Formazione > Stile.
+Nell'app: Formazione › Stile.
 
 Codice: `fanta/formazione.py:LIVELLI_RISCHIO`, `fanta/formazione.py:Valutatore.scelta`, `fanta/formazione.py:migliore`, `docs/STILI.md`
 
@@ -429,7 +429,7 @@ tasso = Σ guadagno delle mosse utili / Σ (quotazione di chi entra - rimborso)
 netto = guadagno in punti + conguaglio × tasso
 ```
 
-Nell'app: Scambi > Conguaglio; Impostazioni > La mia squadra.
+Nell'app: Scambi › Conguaglio; Impostazioni › La mia squadra.
 
 Codice: `fanta/scambi_multi.py:tasso_da_mercato`, `fanta/scambi_multi.py:controlla_conguaglio`, `fanta/scambi_multi.py:analizza_completo`
 
@@ -552,7 +552,7 @@ Dopo ogni aggiornamento girano controlli di coerenza: 10 partite per giornata, i
 
 Rischio onesto: Understat è l'unica fonte di xG, xA e rigori e Fantacalcio.it quella di voti e probabili. I loro termini non sono pensati per un uso da programma: per uso personale il rischio è basso, ma va ripensato prima di aprire l'app a molte persone (permessi, fonti alternative).
 
-Nell'app: Stato dei dati > Controlli.
+Nell'app: Stato dei dati › Controlli.
 
 Codice: `fanta/nomi.py:normalizza`, `fanta/fonti/understat.py`, `fanta/controlli.py:esegui`, `docs/archivio/PIANO-DATI.md`
 
@@ -566,7 +566,7 @@ Regola di promozione: una fonte entra nel modello solo se l'errore sui voti scen
 
 Stato al 30/10/2026: nessuna fonte è stata promossa. Sul computer di sviluppo la tabella delle colonne extra è vuota (0 partite con il dato nuovo), quindi la prova dice «niente da misurare»; i conteggi veri della raccolta stanno sul server e si leggono in Stato dei dati.
 
-Nell'app: Stato dei dati > Fonti in ombra.
+Nell'app: Stato dei dati › Fonti in ombra.
 
 Codice: `fanta/verifica_fonti.py:giudizio`, `fanta/verifica_fonti.py:SOGLIA_ERRORE`, `fanta/verifica_fonti.py:dati_con_variante`, `fanta/stato_dati.py:ombra`, `docs/archivio/PIANO-DATI.md`, `docs/archivio/PIANO-FONTI.md`
 

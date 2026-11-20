@@ -1,5 +1,34 @@
 [
   {
+    "versione": "1.540",
+    "data": "2026-11-20T11:36:13",
+    "titolo": "Aggiornamenti dell'app più sicuri",
+    "voci": [
+      "Quando arriva una versione nuova, il server controlla anche che gli account si aprano davvero: se qualcosa non va torna alla versione di prima, senza lasciare errori a chi è collegato."
+    ],
+    "tecnico": [
+      "aggiorna-app.sh: dopo il riavvio apre il database degli account con il codice nuovo (salute.controlla_database_account) e confronta PRAGMA user_version con le migrazioni attese (#825).",
+      "aggiorna-app.sh: prima di tornare indietro rilegge la versione del database degli account; se è salita tiene la versione nuova e avvisa (anche dopo un'installazione interrotta) (#825).",
+      "aggiorna-app.sh: avvisi con ignora_silenzio e ripresi ai giri dopo se non partono, con una riga nel registro; promemoria.sh fa lo stesso per «controllo fermo» (#826).",
+      "aggiorna-app.sh: riavvio con sudo -n e MainPID controllato prima e dopo (guasto del server, al massimo tre giri per versione); librerie preparate prima di toccare i file (#826)."
+    ]
+  },
+  {
+    "versione": "1.539",
+    "data": "2026-11-20T11:23:09",
+    "titolo": "Parole più semplici in Gestione e un avviso giusto quando il server non risponde",
+    "voci": [
+      "Se il telefono ha la rete ma il server non risponde, per esempio perché è spento o sta ripartendo, l'avviso lo dice e chiede di riprovare fra poco, invece di mandarti a controllare internet. Senza rete sul dispositivo l'avviso resta quello di prima.",
+      "Gestione, per chi gestisce l'app: fra gli utenti c'è scritto «amministratore», e negli errori recenti i tempi sono in millisecondi o secondi, con accanto il nome della parte dell'app a cui si riferiscono.",
+      "Email, avvisi e pagine come Privacy e Termini indicano le schermate come le trovi nell'app: Impostazioni › Il tuo account."
+    ],
+    "tecnico": [
+      "app.js: una richiesta che non arriva dà comune.rete_no solo con navigator.onLine falso, altrimenti la chiave nuova comune.server_non_risponde (anche per 502-504 senza JSON); il tempo scaduto con la rete accesa resta comune.rete_timeout; e.rete resta vero.",
+      "Errori recenti: tempi con errori.millisecondi ed errori.secondi, nome dell'area accanto alla rotta (tabella AREE_DELLE_ROTTE dalla prima parte del percorso, una rotta sconosciuta resta col solo percorso), admin.admin_breve «(amministratore)». Nessun campo dell'API cambia.",
+      "Percorsi con «›» in social.py (con err.google_indirizzo_ha_account), salute.py, posta.py, testi_legali.py, nella descrizione di POST /api/account/elimina (docs/openapi.json rigenerato) e nei rimandi di Sotto il cofano; tests/test_testi_percorsi.py ora controlla anche err.*, srv.*, le stringhe del server, i contenuti, i documenti e i passi dopo il primo."
+    ]
+  },
+  {
     "versione": "1.538",
     "data": "2026-11-20T10:01:37",
     "titolo": "Formazione e Da fare: cinque frasi corrette",

@@ -208,7 +208,7 @@ def test_avviso_al_vecchio_indirizzo_mette_prima_l_email_poi_la_password(web, po
     imposta(c, "nuova@example.com")
     conferma_ultimo(c, posta_finta, "nuova@example.com")
     testo = ultimi(posta_finta, "vecchia@example.com")[-1].testo
-    assert "Impostazioni > Il tuo account" in testo
+    assert "Impostazioni › Il tuo account" in testo                           # come nell'app, non con «>» (#827)
     passi = [testo.find(p) for p in ("rimetti questo indirizzo", "cambia la password", "«Esci da tutti i dispositivi»")]
     assert -1 not in passi and passi == sorted(passi), testo
     assert "Privacy" in testo, testo                                          # se non si riesce più a entrare

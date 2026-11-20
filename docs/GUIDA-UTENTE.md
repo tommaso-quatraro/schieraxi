@@ -36,9 +36,9 @@ Parole che vedrai spesso:
 3. Spunta la casella (hai letto Privacy e Termini e hai almeno 14 anni) e tocca **Crea l'account**.
 4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password.
 
-Per entrare ancora: nome utente e password, poi **Entra nell'app**. Se compare **Continua con Google**, puoi usarlo senza password. Se hai già un account con la stessa email, entra come sempre e collega Google da **Impostazioni > Il tuo account > Accessi**.
+Per entrare ancora: nome utente e password, poi **Entra nell'app**. Se compare **Continua con Google**, puoi usarlo senza password. Se hai già un account con la stessa email, entra come sempre e collega Google da **Impostazioni › Il tuo account › Accessi**.
 
-Per chi gestisce l'app: **Impostazioni > Gestione > Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**); sotto c'è anche il codice, per chi usa l'app per iPhone.
+Per chi gestisce l'app: **Impostazioni › Gestione › Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**); sotto c'è anche il codice, per chi usa l'app per iPhone.
 
 Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'email collegata ti arriva un codice a 6 cifre; altrimenti usi il codice di recupero. Se chi gestisce il server ha spento l'invio delle email, l'app lo dice e propone solo il codice di recupero (e in **Il tuo account** non si può collegare un'email). Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
@@ -59,7 +59,7 @@ Se ti fermi prima di caricare le rose (per esempio per mettere l'app sulla scher
    Il conto in alto («N da controllare») scende man mano che scegli o togli i giocatori in dubbio. Su un computer le squadre stanno affiancate.
    In alto scegli **Qual è la tua squadra?** (se aggiungi solo le rose degli altri, c'è anche la tua, già scelta). Sotto, **Cosa cambia rispetto a ora** elenca squadre aggiunte o tolte, scambi, svincolati presi, tagli e crediti.
    Un giocatore scritto due volte nella stessa rosa resta una volta sola, e te lo dice. Poi **Conferma e salva** (oppure **Annulla**: non si salva niente).
-3. **I tempi della lega.** Due domande: quando si chiude la formazione (all'inizio della prima partita o qualche minuto prima) e da quale giornata di Serie A è partita la lega. Servono perché promemoria e numeri delle giornate siano giusti; le trovi nelle impostazioni della tua lega su Leghe e le cambi quando vuoi in **Impostazioni > Regole e scadenza**, in cima.
+3. **I tempi della lega.** Due domande: quando si chiude la formazione (all'inizio della prima partita o qualche minuto prima) e da quale giornata di Serie A è partita la lega. Servono perché promemoria e numeri delle giornate siano giusti; le trovi nelle impostazioni della tua lega su Leghe e le cambi quando vuoi in **Impostazioni › Regole e scadenza**, in cima.
 4. **Tutto pronto.** Puoi attivare gli avvisi e andare alla Formazione.
 
 Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le rilegge e ti chiede di ricontrollare; le scelte già fatte restano.
@@ -67,9 +67,9 @@ Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le ril
 Limiti: file fino a 5 MB, al massimo 20 squadre da 40 giocatori, 10 importazioni al giorno (controllare e poi salvare lo stesso file conta una volta). Se dice che non trova nessuna rosa, controlla di aver preso il file delle rose e non il calendario o la classifica.
 Se il file Excel della lega ha anche altri fogli (listone, calendario, classifica), SchieraXI li salta e legge solo le rose; se ci sono solo quelli, il messaggio dice quali fogli ha saltato.
 
-Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo) va bene. Un codice sconosciuto compare tra i non trovati; se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone anche dopo, in fondo a **Impostazioni > Aggiorna le rose**).
+Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo) va bene. Un codice sconosciuto compare tra i non trovati; se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone anche dopo, in fondo a **Impostazioni › Aggiorna le rose**).
 
-Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Impostazioni > Aggiorna le rose**.
+Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Impostazioni › Aggiorna le rose**.
 
 ### Per chi entra in una lega già avviata
 
@@ -83,7 +83,7 @@ Se ti invitano in una lega che gioca già da un po':
 
 ### Le schede in basso
 
-**Formazione**, **Giornate**, **Impostazioni**. In cima a ogni schermata c'è il suo titolo; in Formazione e Giornate, sotto, la giornata, la tua squadra e l'ora dei dati. In alto a destra la **lente** cerca un giocatore. Toccando un giocatore si apre la sua scheda. Le schede **Squadra** e **Altro** di prima non ci sono più: rose, squadre e regole stanno in **Impostazioni > La mia lega**, e i loro indirizzi salvati portano lì.
+**Formazione**, **Giornate**, **Impostazioni**. In cima a ogni schermata c'è il suo titolo; in Formazione e Giornate, sotto, la giornata, la tua squadra e l'ora dei dati. In alto a destra la **lente** cerca un giocatore. Toccando un giocatore si apre la sua scheda. Le schede **Squadra** e **Altro** di prima non ci sono più: rose, squadre e regole stanno in **Impostazioni › La mia lega**, e i loro indirizzi salvati portano lì.
 
 Su uno schermo largo (computer, iPad in orizzontale) le schede stanno in alto, accanto al nome SchieraXI, con il campo **Cerca un giocatore** sempre aperto: scrivi e si apre la ricerca. Con Ctrl+clic (⌘+clic sul Mac) una scheda si apre in un'altra scheda del browser, per confrontare due schermate.
 
@@ -174,7 +174,7 @@ La **Formazione** resta la stessa schermata; cambia la testa, con la fase della 
   Se sei entrato in SchieraXI quando la giornata era già iniziata e non hai una formazione per lei, non vedi punti: in testa leggi che quella giornata è già iniziata e che la formazione è quella della prossima, con la sua scadenza.
 - **Giornata finita** (per due giorni): in testa com'è andata, per esempio «Giornata 7 · 10ª di Serie A: finita», con i punti fatti e quelli attesi e il pulsante **Com'è andata**, che apre la pagina **Giornate** su quella giornata. Se hai schierato una formazione tua e la consigliata ha fatto punti diversi, una riga dice quanti. Se non hai una formazione tua, o quella salvata non è più valida, contano i punti della consigliata: SchieraXI se la segna da solo pochi minuti prima della scadenza, anche se non hai aperto l'app. Una partita rinviata non tiene aperta la giornata: se la tua lega aspetta il recupero, una riga lo dice («Manca il recupero di…: i punti possono ancora cambiare»). Sotto c'è già la formazione della prossima giornata, con la sua scadenza: la puoi preparare subito.
 
-### Avvisi sul telefono (Impostazioni > Avvisi)
+### Avvisi sul telefono (Impostazioni › Avvisi)
 
 Nella web app gli avvisi si accendono e si spengono con un interruttore solo, **Avvisi su questo dispositivo**, più le **Ore tranquille** (di solito dalle 23 alle 7). Quali avvisi manda il server lo decide lui: le scelte per i singoli avvisi fatte con le versioni di prima o con l'app per iPhone (per esempio il promemoria di un quarto d'ora prima spento) restano salvate ma per i suoi avvisi non contano più. I promemoria che l'app per iPhone programma da sola sul telefono seguono ancora quelle scelte, finché l'app non avrà anche lei l'interruttore unico.
 
@@ -192,9 +192,9 @@ Una formazione salvata non più valida (per esempio con un giocatore ceduto) per
 
 Gli avvisi dicono le cose a parole e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
 
-Attivazione: nella web app, **Impostazioni > Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo.
+Attivazione: nella web app, **Impostazioni › Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo.
 
-Nell'app per iPhone e iPad (Impostazioni > Avvisi) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
+Nell'app per iPhone e iPad (Impostazioni › Avvisi) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
 Se le notifiche smettono di arrivare dopo un cambio di chiave del server: spegni e riaccendi **Avvisi su questo dispositivo**.
 
@@ -240,27 +240,27 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Su uno schermo più l
 | Il tuo account | solo con gli account: nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci**, **Esci da tutti i dispositivi** |
 | Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). La dimensione del testo è quella del telefono o dello zoom del browser |
 | Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente (licenza AGPL-3.0, se il server lo indica), versione e **Novità**: le ultime dieci versioni, le altre con **Mostra le versioni precedenti** |
-| Gestione | solo per chi gestisce il server: **Aggiorna i dati** (scarica subito dalle fonti; di solito il server lo fa da solo. Se all'apertura dell'app il server è già occupato con un aggiornamento, dei dati o di una versione nuova, il pulsante è spento con una frase che lo dice e si riaccende da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in corso»; con tutte le fonti spente lo dice e non parte), **Stato dei dati** (con le fonti da accendere o spegnere), inviti, codici per chi ha perso la password, utenti, **Errori recenti** (ore nell'ora italiana, eventi di sicurezza con il loro nome in parole). Sul server senza account anche **Avvisi anche per l'app nativa** |
+| Gestione | solo per chi gestisce il server: **Aggiorna i dati** (scarica subito dalle fonti; di solito il server lo fa da solo. Se all'apertura dell'app il server è già occupato con un aggiornamento, dei dati o di una versione nuova, il pulsante è spento con una frase che lo dice e si riaccende da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in corso»; con tutte le fonti spente lo dice e non parte), **Stato dei dati** (con le fonti da accendere o spegnere), inviti, codici per chi ha perso la password, utenti (chi gestisce ha accanto «amministratore»), **Errori recenti** (ore nell'ora italiana, eventi di sicurezza con il loro nome in parole, tempi in millisecondi o secondi, e accanto al percorso tecnico il nome della parte dell'app, per esempio «Formazione (/api/oggi)»). Sul server senza account anche **Avvisi anche per l'app nativa** |
 
 Gli indirizzi di prima (le schede Squadra e Altro, i gruppi delle impostazioni come Notifiche e Avanzate) aprono la voce che ne ha preso il posto.
 
-- **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, seguiti, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi > Salva su File**.
-- **Stato dei dati > Registro delle giornate** (solo per chi gestisce il server): prima di ogni giornata l'app salva i numeri che mostra per tutta la Serie A e, a giornata finita, li confronta con com'è andata. Per tre misure (errore del fantavoto atteso contro la fantamedia avvicinata alla media del ruolo, «gioca N%» contro chi ha giocato davvero, punti veri dentro la fascia «8 volte su 10») c'è la media delle ultime giornate misurate, la soglia e se **regge** o **non regge**; finché le giornate misurate sono meno di 8 c'è scritto quante ne servono ancora. Sotto, le **Giornate perse**: quelle non salvate prima della prima partita, con il motivo.
-- **Stato dei dati > Gol attesi nostri (senza Understat)** (solo per chi gestisce il server): prima di ogni giornata l'app salva anche i numeri calcolati solo con i voti di Fantacalcio.it e, a giornata finita, li confronta con quelli mostrati. Per tre misure (errore del fantavoto atteso, punti veri della formazione migliore, gol attesi contro gol veri per fasce) c'è la media delle ultime giornate misurate con la versione di oggi del calcolo, la soglia e se **regge** o **non regge**; in cima, se **reggono** tutte e tre insieme. Finché le giornate misurate sono meno di 8 c'è scritto quante ne servono ancora. Se reggono per 8 giornate si può fare a meno di Understat. **Giornata per giornata** si apre e mostra ogni giornata: da misurare, misurata con i suoi numeri, o persa con il motivo.
-- **Stato dei dati > Consiglio di formazione** (solo per chi gestisce il server): dopo ogni giornata l'app misura la formazione consigliata che mostrava prima della scadenza, sommando i Diari di tutti. Quattro misure: punti in più della consigliata rispetto alla scelta semplice (quella di chi non ha l'app: schiera chi ha preso voto la giornata prima e ha la fantamedia più alta) e rispetto alla formazione schierata, quando è diversa; cambi della consigliata nelle 24 ore prima della scadenza; titolari che rischiano di non giocare mentre un compagno di ruolo gioca; scelte strane senza un motivo detto. Per ognuna la media delle ultime giornate, la soglia e se **regge** o **non regge**; finché le giornate sono meno di 8 c'è scritto quante ne servono ancora.
-- **Stato dei dati > Quanto ci azzecca il modello > Taratura con le probabili** (solo per chi gestisce il server): la riga sotto i gruppi dice a che punto è la taratura di «gioca N%» con le probabili formazioni. **In attesa**: quante giornate giocate con le probabili salvate prima della prima partita ci sono, su quante ne servono per la prima prova. **Attiva**: da quando, quale versione e, sulle ultime giornate di prova, il punteggio di Brier contro quello della formula di prima e lo scarto in punti. **Non attiva**: perché (per esempio «non sbaglia meno dei numeri di partenza», o «la prova passa, si accende con 8 giornate»). **Spenta a mano**. Negli **Ultimi aggiornamenti** dei dati la riga **Taratura di «gioca N%»** ha l'ora dell'ultimo cambio.
+- **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, seguiti, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi › Salva su File**.
+- **Stato dei dati › Registro delle giornate** (solo per chi gestisce il server): prima di ogni giornata l'app salva i numeri che mostra per tutta la Serie A e, a giornata finita, li confronta con com'è andata. Per tre misure (errore del fantavoto atteso contro la fantamedia avvicinata alla media del ruolo, «gioca N%» contro chi ha giocato davvero, punti veri dentro la fascia «8 volte su 10») c'è la media delle ultime giornate misurate, la soglia e se **regge** o **non regge**; finché le giornate misurate sono meno di 8 c'è scritto quante ne servono ancora. Sotto, le **Giornate perse**: quelle non salvate prima della prima partita, con il motivo.
+- **Stato dei dati › Gol attesi nostri (senza Understat)** (solo per chi gestisce il server): prima di ogni giornata l'app salva anche i numeri calcolati solo con i voti di Fantacalcio.it e, a giornata finita, li confronta con quelli mostrati. Per tre misure (errore del fantavoto atteso, punti veri della formazione migliore, gol attesi contro gol veri per fasce) c'è la media delle ultime giornate misurate con la versione di oggi del calcolo, la soglia e se **regge** o **non regge**; in cima, se **reggono** tutte e tre insieme. Finché le giornate misurate sono meno di 8 c'è scritto quante ne servono ancora. Se reggono per 8 giornate si può fare a meno di Understat. **Giornata per giornata** si apre e mostra ogni giornata: da misurare, misurata con i suoi numeri, o persa con il motivo.
+- **Stato dei dati › Consiglio di formazione** (solo per chi gestisce il server): dopo ogni giornata l'app misura la formazione consigliata che mostrava prima della scadenza, sommando i Diari di tutti. Quattro misure: punti in più della consigliata rispetto alla scelta semplice (quella di chi non ha l'app: schiera chi ha preso voto la giornata prima e ha la fantamedia più alta) e rispetto alla formazione schierata, quando è diversa; cambi della consigliata nelle 24 ore prima della scadenza; titolari che rischiano di non giocare mentre un compagno di ruolo gioca; scelte strane senza un motivo detto. Per ognuna la media delle ultime giornate, la soglia e se **regge** o **non regge**; finché le giornate sono meno di 8 c'è scritto quante ne servono ancora.
+- **Stato dei dati › Quanto ci azzecca il modello › Taratura con le probabili** (solo per chi gestisce il server): la riga sotto i gruppi dice a che punto è la taratura di «gioca N%» con le probabili formazioni. **In attesa**: quante giornate giocate con le probabili salvate prima della prima partita ci sono, su quante ne servono per la prima prova. **Attiva**: da quando, quale versione e, sulle ultime giornate di prova, il punteggio di Brier contro quello della formula di prima e lo scarto in punti. **Non attiva**: perché (per esempio «non sbaglia meno dei numeri di partenza», o «la prova passa, si accende con 8 giornate»). **Spenta a mano**. Negli **Ultimi aggiornamenti** dei dati la riga **Taratura di «gioca N%»** ha l'ora dell'ultimo cambio.
 - **Esci**: chiude l'accesso su questo dispositivo e toglie da qui i tuoi dati e gli avvisi. Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: riprova.
 - **Esci da tutti i dispositivi**: se non riconosci un accesso (te lo segnala anche un'email di sicurezza), chiude l'accesso su ogni telefono e computer, anche su quello che stai usando, dopo una conferma. Si chiudono anche il widget e le notifiche, e se hai una password Google viene scollegato. La schermata di accesso dice che sei fuori da tutti i dispositivi; poi si rientra come sempre. Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: riprova.
 - **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
 - **Cambiare l'email**: quando confermi il codice del nuovo indirizzo, gli altri dispositivi escono (resta dentro quello che stai usando) e all'indirizzo di prima arriva un messaggio con i passi da fare se non sei stato tu. Lo stesso messaggio arriva se togli l'email.
-- **Stemma e maglia**: da **Impostazioni > La mia squadra > Stemma e maglia** (le altre squadre dalla loro rosa, in **Le altre squadre**), o dal menu Condividi del telefono. Nel foglio scegli la squadra, poi per lo stemma o la maglia **Da file o foto** (PNG, JPEG o WebP, massimo 4 MB). Da un indirizzo web (solo `https://`) o dal menu Condividi si può solo se chi gestisce l'app ha acceso **Immagini da indirizzo web**. Carica solo immagini della tua squadra; **Rimuovi** la toglie.
+- **Stemma e maglia**: da **Impostazioni › La mia squadra › Stemma e maglia** (le altre squadre dalla loro rosa, in **Le altre squadre**), o dal menu Condividi del telefono. Nel foglio scegli la squadra, poi per lo stemma o la maglia **Da file o foto** (PNG, JPEG o WebP, massimo 4 MB). Da un indirizzo web (solo `https://`) o dal menu Condividi si può solo se chi gestisce l'app ha acceso **Immagini da indirizzo web**. Carica solo immagini della tua squadra; **Rimuovi** la toglie.
 
 ### Installare SchieraXI dal browser
 
 Sulla schermata Home, a schermo intero, senza store:
 
-- **iPhone e iPad** (Safari): **Condividi** > **Aggiungi alla schermata Home**.
-- **Android** (Chrome): i tre puntini > **Installa app**.
+- **iPhone e iPad** (Safari): **Condividi** › **Aggiungi alla schermata Home**.
+- **Android** (Chrome): i tre puntini › **Installa app**.
 - **Computer** (Chrome o Edge): l'icona di installazione nella barra dell'indirizzo.
 
 ## 7. Domande frequenti
@@ -286,6 +286,8 @@ Sulla schermata Home, a schermo intero, senza store:
 | Cosa vedi | Cosa fare |
 |---|---|
 | «Server non raggiungibile» | Controlla la connessione, poi tocca **Riprova** (o ricarica la pagina). |
+| «Non riesco a collegarmi: controlla internet e riprova» | Il dispositivo è senza rete: controlla Wi-Fi o dati mobili, poi riprova. |
+| «Il server non risponde: riprova fra poco» | La rete c'è, ma il server è spento o sta ripartendo: riprova dopo qualche minuto. Se dura, avvisa chi gestisce l'app. |
 | «Aggiornamento pronto – Ricarica» in basso | È uscita una versione nuova dell'app: tocca **Ricarica** per usarla. Fino ad allora resta tutta la versione di prima. |
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
@@ -294,7 +296,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Nessuna rosa importata» | Importa le rose (sezione 2). |
 | «Non riesco a leggere la formazione che hai salvato» | Tocca **Riprova**. Finché non si legge, la Formazione non fa cambiare niente: così la tua scelta non viene sovrascritta. |
 | «Serve l'accesso» sul widget | Apri l'app sull'iPhone ed entra. |
-| Dati che non sembrano aggiornati | Ricarica la pagina. Se non cambia, chiedi a chi gestisce l'app di controllare **Impostazioni > Gestione > Stato dei dati**. |
+| Dati che non sembrano aggiornati | Ricarica la pagina. Se non cambia, chiedi a chi gestisce l'app di controllare **Impostazioni › Gestione › Stato dei dati**. |
 | File delle rose rovinato | L'app lo dice e spiega come rimediare: riesporta le rose da Leghe e riprova. |
 
 Se l'errore non è in lista, annota cosa stavi facendo e a che ora, e scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
