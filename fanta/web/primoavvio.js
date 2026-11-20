@@ -189,7 +189,8 @@ function paAnteprima() {
 // Le due domande sui tempi della lega: scadenza della formazione e giornata di Serie A da cui parte la lega.
 // Si leggono le regole di adesso e si salvano tutte, cambiando solo questi due valori (le altre restano come sono).
 // «Salva» aspetta la lettura (#801): se non è riuscita i menu hanno ancora i valori di partenza, che andavano sopra quelli veri;
-// allora non scrive niente, lo dice e rilegge, e i menu passano ai valori salvati per il tocco dopo.
+// allora non scrive niente, lo dice e rilegge, e i menu passano ai valori salvati per il tocco dopo. Un menu già cambiato a mano
+// (`data-scelto`) la lettura non lo tocca: si salva la scelta.
 let paTempiLettura = null;                         // la lettura in corso o finita: vale true se riuscita
 async function paTempiLeggi() {
   try {
@@ -198,11 +199,15 @@ async function paTempiLeggi() {
     if (!sc || !pg) return false;
     const m = Number(r.scadenza_minuti ?? 0), g = Number(r.prima_giornata_lega ?? 1);
     if (!PA_SCADENZE.includes(m) && ![...sc.options].some(o => o.value === String(m))) sc.insertAdjacentHTML("beforeend", `<option value="${m}">${esc(paScadenzaNome(m))}</option>`);
-    sc.value = String(m); pg.value = String(g);
+    if (!sc.dataset.scelto) sc.value = String(m);
+    if (!pg.dataset.scelto) pg.value = String(g);
     return true;
   } catch { return false; }                        // restano i valori più comuni: «Salva» non li scrive
 }
-function paTempiCarica() { paTempiLettura = paTempiLeggi(); }
+function paTempiCarica() {
+  for (const id of ["#pa-scadenza", "#pa-prima"]) { const m = $(id); if (m) m.addEventListener("change", () => { m.dataset.scelto = "1"; }); }
+  paTempiLettura = paTempiLeggi();
+}
 const paScadenzaNome = m => (m === 0 ? t("pav.scad_inizio") : tp("pav.scad_minuti", m));
 
 async function paTempiSalva() {

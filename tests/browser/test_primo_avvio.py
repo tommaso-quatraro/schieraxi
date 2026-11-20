@@ -95,3 +95,17 @@ def test_i_tempi_aspettano_la_lettura_in_corso(web):
     web.aspetta()
     assert [(s["scadenza_minuti"], s["prima_giornata_lega"]) for s in salvate] == \
         [(registrate["scadenza_minuti"], registrate["prima_giornata_lega"])]
+
+
+def test_una_scelta_fatta_prima_della_lettura_resta(web):
+    """Con la lettura ancora in volo si cambia la scadenza e si tocca «Salva»: quando la lettura torna non rimette il valore salvato
+    sopra la scelta. Si salva la scadenza scelta e, per l'altra domanda, il valore letto."""
+    solo_prima(web)
+    registrate = web.registrata("/api/regole")
+    assert registrate["scadenza_minuti"] != 30, "la prova vuole una scadenza diversa da quella scelta"
+    salvate, tenute = guida_sui_tempi(web, "tenuta")
+    scadenza(web).select_option("30")
+    guida(web).get_by_role("button", name="Salva", exact=True).click(timeout=10000)
+    tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
+    web.aspetta()
+    assert [(s["scadenza_minuti"], s["prima_giornata_lega"]) for s in salvate] == [(30, registrate["prima_giornata_lega"])]

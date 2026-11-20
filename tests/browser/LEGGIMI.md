@@ -215,7 +215,8 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
 `test_primo_avvio.py`, il passo «I tempi della lega» del primo avvio (#801). Gira solo prima della scadenza:
 - se la lettura delle regole non arriva, «Salva» non scrive i valori di partenza dei menu sopra quelli veri: lo dice
   (`role="alert"`), rilegge, i menu passano ai valori salvati e il tocco dopo li scrive;
-- «Salva» toccato con la lettura ancora in volo la aspetta e scrive i valori veri.
+- «Salva» toccato con la lettura ancora in volo la aspetta e scrive i valori veri;
+- una scelta fatta prima che la lettura torni resta: si salva la scadenza scelta e la prima giornata letta.
 
 `test_accesso_all_avvio.py`, l'avvio con gli account quando la sessione non vale più (401 da «chi sono»). Gira solo prima della
 scadenza:
