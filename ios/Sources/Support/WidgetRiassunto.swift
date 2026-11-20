@@ -1284,12 +1284,7 @@ extension RiassuntoOggi {
     /// La frase sotto il titolo della fase: dopo la scadenza come la web («La formazione si è chiusa oggi 14:50»: la giornata è
     /// scritta sopra, non si ripete) e dove sono i punti; a giornata finita cosa succede ora. nil prima della scadenza.
     func fraseFase(adesso: Date) -> String? {
-        if inCorso {
-            var t = "La formazione si è chiusa"
-            if let inizio { t += " \(Quando.relativa(inizio, adesso: adesso))" }
-            return t + ". I punti fatti sono nella Formazione."
-        }
-        return finita ? "Si ricomincia con la prossima giornata." : nil
+        corpoFaseDubbi(adesso: adesso).map { c in [c.frase, c.sotto].compactMap { $0 }.joined(separator: " ") }
     }
 
     /// La giornata di cui parla la fase, nella forma corta: dopo la scadenza quella in corso, a giornata finita quella appena
@@ -1341,16 +1336,32 @@ struct CorpoFaseDubbi: Equatable {
 }
 
 extension RiassuntoOggi {
-    /// La testata del widget «Da controllare».
+    /// La testata del widget «Da controllare». Prima della scadenza «Da controllare» con la giornata a destra. Dopo non c'è più
+    /// niente da controllare (#819): a formazione chiusa «Chiusa» (`oggi.chiusa`) con la giornata a destra; a giornata finita
+    /// «Giornata 8 · 11ª di Serie A: finita» (`oggi.giornata_finita`, poi «Giornata 8: finita»), che dice già la giornata: a
+    /// destra niente, prima si ripeteva. I simboli delle fasi sono quelli del widget Prossima giornata.
     var testataDubbi: TestataDubbi {
-        TestataDubbi(forme: ["Da controllare"], voce: "Da controllare",
-                     simbolo: daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill", giornata: nomeTestata)
+        if inCorso {
+            return TestataDubbi(forme: [ParoleWidget.chiusa], voce: ParoleWidget.chiusa, simbolo: "dot.radiowaves.left.and.right",
+                                giornata: nomeGiornata)
+        }
+        if finita, let forme = formeTitoloFase, let prima = forme.first {
+            return TestataDubbi(forme: forme, voce: voceTitoloFase ?? prima, simbolo: "flag.checkered", giornata: nil)
+        }
+        return TestataDubbi(forme: ["Da controllare"], voce: "Da controllare",
+                            simbolo: daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill", giornata: nomeTestata)
     }
 
-    /// Il corpo del widget «Da controllare» a formazione chiusa o a giornata finita; nil prima della scadenza.
+    /// Il corpo del widget «Da controllare» sotto la testata, a formazione chiusa o a giornata finita: la parola della fase sta
+    /// già in testata, qui la frase («La formazione si è chiusa oggi 14:50.», «Si ricomincia con la prossima giornata.») e sotto
+    /// dove sono i punti. Insieme fanno `fraseFase`. nil prima della scadenza.
     func corpoFaseDubbi(adesso: Date) -> CorpoFaseDubbi? {
-        guard let titolo = titoloFase else { return nil }
-        return CorpoFaseDubbi(frase: titolo, sotto: fraseFase(adesso: adesso))
+        if inCorso {
+            var t = "La formazione si è chiusa"
+            if let inizio { t += " \(Quando.relativa(inizio, adesso: adesso))" }
+            return CorpoFaseDubbi(frase: t + ".", sotto: "I punti fatti sono nella Formazione.")
+        }
+        return finita ? CorpoFaseDubbi(frase: "Si ricomincia con la prossima giornata.", sotto: nil) : nil
     }
 }
 
