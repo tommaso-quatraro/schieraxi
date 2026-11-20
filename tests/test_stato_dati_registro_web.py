@@ -1,6 +1,7 @@
 """Stato dei dati, web: il registro delle giornate (#344). Per ogni misura la media, la soglia e «regge» / «non regge» /
 «servono ancora N giornate»; poi le giornate perse con il motivo. I dati vengono dalle funzioni vere del server
-(`registro_giornate.registra_misura` e `riepilogo`); la carta la disegna la funzione vera di `app.js`, eseguita con node."""
+(`registro_giornate.registra_misura` e `stato_dati.registro`); la carta la disegna la funzione vera di `app.js`, eseguita con node.
+Per «gioca N%» l'errore medio delle percentuali in punti, scritto dal server (#821): niente «Brier» per l'utente."""
 import json
 import re
 import shutil
@@ -9,7 +10,7 @@ from datetime import datetime
 
 import pytest
 
-from fanta import archivio, registro_giornate, server
+from fanta import archivio, registro_giornate, server, stato_dati
 import codice_web
 
 WEB = server.WEB
@@ -17,8 +18,9 @@ APP = codice_web.app()
 TESTI_JS = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 ST = "2026-27"
-# una giornata misurata (come in test_stato_dati): errore del fantavoto atteso 1,00 contro 1,06 della fantamedia (−5,7%), Brier 0,100,
-# scarto di 10 punti tra «gioca N%» e chi ha giocato, punti veri dentro la fascia 16 volte su 20 (80%)
+# una giornata misurata (come in test_stato_dati): errore del fantavoto atteso 1,00 contro 1,06 della fantamedia (−5,7%), Brier 0,100
+# (errore medio delle percentuali 31,62 punti), scarto di 10 punti tra «gioca N%» e chi ha giocato, punti veri dentro la fascia 16
+# volte su 20 (80%)
 MISURA = {"voti": 2, "sq_modello": 2.0, "sq_fantamedia": 2.25, "presenze": 4, "brier_somma": 0.4,
           "fasce": [[2, 0.3, 0]] + [[0, 0.0, 0]] * 8 + [[2, 1.9, 2]], "fascia_casi": 20, "fascia_dentro": 16}
 I1 = "Errore del fantavoto atteso contro la fantamedia avvicinata alla media del ruolo"      # l'avversario onesto di #614
@@ -41,9 +43,18 @@ def _registro(tmp_path, misurate: int, perse: dict | None = None) -> dict:
                    "VALUES (?, ?, 0, 0, ?, '[]', '[]')", (ST, g, motivo))
     db.commit()
     try:
-        return json.loads(json.dumps(registro_giornate.riepilogo(db)))
+        return json.loads(json.dumps(stato_dati.registro(db)))
     finally:
         db.close()
+
+
+def test_errore_medio_delle_percentuali_dal_server(tmp_path):
+    """#821: per «gioca N%» il server manda anche l'errore medio delle percentuali in punti (100 × √Brier, due decimali), con la sua
+    soglia: Brier 0,100 → 31,62 punti, soglia 0,15 → 38,73. I campi di prima restano dove sono."""
+    reg = _registro(tmp_path, 3)
+    assert (reg["brier"], reg["soglie"]["I2_brier"]) == (0.1, 0.15)
+    assert (reg["errore_medio"], reg["soglie"]["I2_errore_medio"]) == (31.62, 38.73)
+    assert _registro(tmp_path, 0)["errore_medio"] is None
 
 
 def _codice_registro() -> str:
@@ -83,7 +94,7 @@ def test_prima_di_8_giornate_medie_soglie_e_quante_ne_servono(tmp_path):
     for nome in (I1, I2, I3):
         assert _dopo(pezzi, nome) == "servono ancora 5 giornate"
     assert _dopo(pezzi, "servono ancora 5 giornate") == "−5,7% (deve stare a +1% o meno) · errore 1,00 contro 1,06"
-    assert "scarto 10 punti (al massimo 5) · punteggio di Brier 0,100 (al massimo 0,150)" in pezzi
+    assert "scarto 10 punti (al massimo 5) · errore medio delle percentuali 31,62 punti (al massimo 38,73)" in pezzi
     assert "80% (deve stare tra 72% e 88%)" in pezzi
     assert "Giornate perse" not in pezzi
 
@@ -138,11 +149,19 @@ def test_senza_campo_registro_niente_carta():
     assert _carta(None) == ""
 
 
+def test_server_vecchio_senza_errore_medio_scrive_il_trattino(tmp_path):
+    """Un server di prima di #821 manda solo il Brier: la web non fa la radice da sé (i numeri li calcola il server), scrive «–»."""
+    reg = _registro(tmp_path, 3)
+    del reg["errore_medio"], reg["soglie"]["I2_errore_medio"]
+    assert "scarto 10 punti (al massimo 5) · errore medio delle percentuali – punti (al massimo –)" in _testi(_carta(reg))
+
+
 @pytest.mark.parametrize("lingua", ["it", "en"])
 def test_niente_chiavi_mancanti_ne_numeri_rotti(tmp_path, lingua):
     for reg in (_registro(tmp_path, 3, {4: "motivo"}), _registro(tmp_path, 8)):
         testo = " ".join(_testi(_carta(reg, lingua)))
         assert "sd.reg_" not in testo and "undefined" not in testo and "NaN" not in testo and "null" not in testo
+        assert "Brier" not in testo and "–" not in testo
 
 
 def test_la_fixture_dell_iphone_e_la_risposta_vera_del_server(tmp_path):
