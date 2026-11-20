@@ -618,6 +618,8 @@ const TESTI = {
     "errori.evento_database_illeggibile": "Archivio illeggibile",
     "errori.evento_disco_pieno": "Disco pieno",
     "errori.evento_errore_interno": "Errore interno del server",
+    "errori.evento_fonte_cambiata": "Fonte dei dati accesa o spenta",
+    "errori.evento_funzione_cambiata": "Funzione dell'app accesa o spenta",
 
     "formazione.calcolo": "Calcolo la formazione migliore…",
     "formazione.stai_guardando_formazione": "Stai guardando la formazione di",
@@ -1020,6 +1022,7 @@ const TESTI = {
     "lega.immagini_png_jpeg": "Immagini PNG, JPEG o WebP, fino a 4 MB. Si vedono nella rosa della squadra; lo stemma anche nell'elenco delle squadre e in Giornate.",
     "lega.importa_nuove_rose": "Importa le nuove rose",
     "lega.importa_prima_rose": "Importa prima le rose da «Aggiorna le rose».",
+    "lega.solo_la_tua": "Per ora nella lega c'è solo la tua squadra: le rose delle altre le aggiungi in Impostazioni › Aggiorna le rose.",
     "lega.importa_prima_rose_2": "Importa prima le rose, poi potrai caricare stemma e maglia",
     "lega.importa_testo": "Controlla il testo",
     "lega.incolla_prima_indirizzo": "Incolla prima l'indirizzo dell'immagine",
@@ -2261,6 +2264,8 @@ const TESTI = {
     "errori.evento_database_illeggibile": "Database unreadable",
     "errori.evento_disco_pieno": "Disk full",
     "errori.evento_errore_interno": "Internal server error",
+    "errori.evento_fonte_cambiata": "Data source turned on or off",
+    "errori.evento_funzione_cambiata": "App feature turned on or off",
 
     "formazione.calcolo": "Working out the best lineup…",
     "formazione.stai_guardando_formazione": "You are looking at the lineup of",
@@ -2663,6 +2668,7 @@ const TESTI = {
     "lega.immagini_png_jpeg": "PNG, JPEG or WebP images, up to 4 MB. They show in the team's roster; the crest also in the list of teams and in Matchdays.",
     "lega.importa_nuove_rose": "Import the new rosters",
     "lega.importa_prima_rose": "First import the rosters from «Update the rosters».",
+    "lega.solo_la_tua": "For now the league has only your team: you can add the other rosters in Settings › Update the rosters.",
     "lega.importa_prima_rose_2": "First import the rosters, then you can upload crest and shirt",
     "lega.importa_testo": "Check the text",
     "lega.incolla_prima_indirizzo": "First paste the image address",

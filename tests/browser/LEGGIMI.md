@@ -154,7 +154,7 @@ prima della scadenza:
   Oggi...) apre la Formazione; Indietro e «‹ Impostazioni» tornano dove si era;
 - La mia lega porta alla mia squadra (con «Stemma e maglia» e «Non è la tua squadra?») e alle altre; senza le rose degli altri
   «Le altre squadre» non c'è; il numero della riga «Le altre squadre» e il suo elenco non contano la mia (finché non è scelta,
-  tutte); senza costo d'acquisto la riga di un giocatore non scrive «costo –» (un costo 0 sì) e senza immagini non restano le
+  tutte; con la sola mia squadra, aperta dal suo indirizzo, dice che c'è solo la mia); senza costo d'acquisto la riga di un giocatore non scrive «costo –» (un costo 0 sì) e senza immagini non restano le
   parole «Stemma» e «Maglia» (#779); «Nuova stagione» compare lì quando serve; «Stemma e maglia» della rosa apre il foglio sulla
   squadra della pagina, con «Rimuovi» (che cancella l'immagine giusta) e «Da indirizzo web»;
 - Regole e scadenza: il regolamento incollato si salva con «Salva queste regole»; i singoli valori stanno dietro «Modifica i
@@ -178,7 +178,8 @@ prima della scadenza:
   e le copie restano (#765);
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore;
 - Gestione, «Errori recenti» (amministratore e registro finti): plurali giusti, tempi con la virgola, ora italiana senza «UTC»,
-  eventi con il nome del catalogo e, per un tipo sconosciuto, senza trattini bassi (#779).
+  eventi con il nome del catalogo (anche un tipo scritto con il trattino, `fonte-cambiata`) e, per un tipo sconosciuto, senza
+  trattini bassi (#779).
 
 `test_accesso_all_avvio.py`, l'avvio con gli account quando la sessione non vale più (401 da «chi sono»). Gira solo prima della
 scadenza:

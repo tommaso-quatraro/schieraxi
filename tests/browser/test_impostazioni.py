@@ -584,6 +584,20 @@ def test_le_altre_squadre_contano_ed_elencano_solo_le_altre(web, scelta):
     assert not any("la tua" in n for n in nomi), nomi
 
 
+def test_le_altre_squadre_con_la_sola_mia_squadra_lo_dicono(web):
+    """Con le rose della sola mia squadra la riga non c'è, ma la pagina si apre dal suo indirizzo: diceva «Importa prima le rose…»,
+    falso perché le rose ci sono (#779). Ora dice che nella lega c'è solo la mia squadra e niente elenco."""
+    solo(web, "prima")
+    mia = next(s for s in web.registrata("/api/squadre") if s["mia"])
+    web.risposta("/api/squadre", [mia])
+    web.apri("/?vista=impostazioni&gruppo=squadre")
+    assert titolo(web) == "Le altre squadre"
+    testo = " ".join(web.testo_principale().split())
+    assert "solo la tua squadra" in testo and "Importa prima" not in testo, testo
+    assert principale(web).get_by_role("listitem").count() == 0
+    assert not web.errori_mostrati() and not web.errori_console and not web.richieste_fallite
+
+
 def _mia_con_stemma(web) -> str:
     """La mia squadra con lo stemma già caricato (la maglia no); dà il suo nome. Le immagini rispondono con un corpo finto: niente
     404 per l'anteprima, e la cancellazione riesce."""
@@ -1045,6 +1059,7 @@ REGISTRO = {"contatori": {"da": "2026-11-20T08:00:00+00:00", "richieste": 1, "ri
             "errori": [],
             "sicurezza": [{"quando": "2026-11-20T09:05:00+00:00", "tipo": "ruolo_cambiato", "nome": "amico"},
                           {"quando": "2026-11-20T09:01:00+00:00", "tipo": "accesso_fallito", "nome": "amico", "ip": "192.0.2.x"},
+                          {"quando": "2026-11-20T09:00:30+00:00", "tipo": "fonte-cambiata", "utente": "amico", "fonte": "understat"},
                           {"quando": "2026-11-20T09:00:00+00:00", "tipo": "evento_che_non_esiste_ancora"}]}
 
 
@@ -1067,6 +1082,7 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     assert "/api/stato · 1 richiesta, medio 7,3 ms" in testo, testo
     assert "10:05" in testo and "10:01" in testo and "UTC" not in testo, testo          # 9:05 UTC = 10:05 in Italia a novembre
     assert "Accesso non riuscito" in testo and "evento che non esiste ancora" in testo, testo
+    assert "Fonte dei dati accesa o spenta" in testo and "fonte-cambiata" not in testo, testo     # tipo scritto con il trattino
     assert "_" not in testo, testo
     assert not web.errori_console and not web.richieste_fallite
 

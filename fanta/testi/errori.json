@@ -280,5 +280,15 @@
   "errori.evento_errore_interno": {
     "it": "Errore interno del server",
     "en": "Internal server error"
+  },
+  "errori.evento_fonte_cambiata": {
+    "it": "Fonte dei dati accesa o spenta",
+    "en": "Data source turned on or off",
+    "nota": "tipo «fonte-cambiata», scritto con il trattino da PUT /api/admin/fonti (rotte_account.py): nella chiave il trattino diventa trattino basso"
+  },
+  "errori.evento_funzione_cambiata": {
+    "it": "Funzione dell'app accesa o spenta",
+    "en": "App feature turned on or off",
+    "nota": "tipo «funzione-cambiata», scritto con il trattino da PUT /api/admin/funzioni (rotte_account.py)"
   }
 }

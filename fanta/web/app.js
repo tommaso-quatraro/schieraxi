@@ -2816,7 +2816,7 @@ async function vistaAltreSquadre() {
       <span><span class="nome">${esc(x.nome)}</span>
         <span class="dettaglio" style="display:block">${tp("sd.n_giocatori", x.giocatori)}${x.crediti_residui != null ? ` · ${tp("lega.n_crediti", x.crediti_residui)}` : ""}</span></span>
       <span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul></div>`
-    : `<div class="carta"><p class="debole">${t("lega.importa_prima_rose")}</p></div>`, opz);
+    : `<div class="carta"><p class="debole">${t(squadre.length ? "lega.solo_la_tua" : "lega.importa_prima_rose")}</p></div>`, opz);   // rose della sola mia squadra: lo dice (#779)
   contenuto.querySelectorAll("[data-rosa]").forEach(b => b.addEventListener("click", () => vai("impostazioni", "squadre", { rosa: b.dataset.rosa, focoTitolo: true })));
 }
 
@@ -3823,10 +3823,12 @@ function collegaAmministratore() {
     try {
       const r = await api("/api/admin/registro"), c = r.contatori;
       // le ore del registro sono in UTC con il fuso («2026-11-20T09:05:00+00:00»): si mostrano nell'ora italiana, qualunque sia il
-      // fuso del browser (#779); i tipi di evento con il loro nome del catalogo, uno nuovo senza nome almeno senza trattini bassi
+      // fuso del browser (#779); i tipi di evento con il loro nome del catalogo (il trattino conta come il trattino basso:
+      // «fonte-cambiata» → errori.evento_fonte_cambiata), uno nuovo senza nome almeno senza trattini
       const quando = q => { const d = new Date(q); return esc(Number.isNaN(d.getTime()) ? String(q)
         : d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })); };
-      const evento = tipo => esc(Object.hasOwn(TESTI.it, "errori.evento_" + tipo) ? t("errori.evento_" + tipo) : String(tipo || "").replace(/_/g, " "));
+      const evento = tipo => { const nome = String(tipo || "").replace(/-/g, "_");
+        return esc(Object.hasOwn(TESTI.it, "errori.evento_" + nome) ? t("errori.evento_" + nome) : nome.replace(/_/g, " ")); };
       const righe = (elenco, vuoto, testo) => elenco.length ? `<ul class="registro-elenco">${elenco.map(testo).join("")}</ul>` : `<p>${vuoto}</p>`;
       dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: tp("errori.n_richieste", c.richieste, { n: fNum(c.richieste) }),
           rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }),

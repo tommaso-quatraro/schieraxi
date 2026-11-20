@@ -88,6 +88,11 @@
     "it": "Importa prima le rose da «Aggiorna le rose».",
     "en": "First import the rosters from «Update the rosters»."
   },
+  "lega.solo_la_tua": {
+    "it": "Per ora nella lega c'è solo la tua squadra: le rose delle altre le aggiungi in Impostazioni › Aggiorna le rose.",
+    "en": "For now the league has only your team: you can add the other rosters in Settings › Update the rosters.",
+    "nota": "Le altre squadre aperta dal suo indirizzo con le rose della sola squadra dell'utente (#779)"
+  },
   "lega.importa_prima_rose_2": {
     "it": "Importa prima le rose, poi potrai caricare stemma e maglia",
     "en": "First import the rosters, then you can upload crest and shirt"
