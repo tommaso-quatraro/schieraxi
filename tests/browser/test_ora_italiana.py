@@ -17,7 +17,7 @@ def solo(web, *fasi):
 
 def pagina_intera(w) -> str:
     """Il testo che si vede in tutta la pagina (anche la riga di stato con la data dei dati), con gli spazi normali."""
-    return " ".join(w.pagina.evaluate("() => document.body.innerText").replace(" ", " ").split())
+    return " ".join(w.pagina.evaluate("() => document.body.innerText").replace("\u00a0", " ").split())
 
 
 def formazione(w) -> str:
