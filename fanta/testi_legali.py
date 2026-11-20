@@ -66,7 +66,7 @@ TESTI: dict[str, dict] = {
                 "Se entri con Google: l'identificativo che Google ci dà per il tuo account, l'indirizzo email che Google ci comunica e se Google lo ha verificato. "
                 "A Google chiediamo solo questo (i permessi «openid» ed «email»): non riceviamo né conserviamo il tuo nome, la tua foto, i tuoi contatti né alcun codice di accesso di Google. "
                 "Servono per farti entrare e, se Google ha verificato l'email, come email del tuo account. L'accesso con Google è soggetto anche all'informativa privacy di Google. "
-                "Puoi scollegare Google da Impostazioni > Il tuo account > Accessi e togliere il permesso dal tuo Account Google, in Sicurezza > Accedi con Google.",
+                "Puoi scollegare Google da Impostazioni › Il tuo account › Accessi e togliere il permesso dal tuo Account Google, in Sicurezza › Accedi con Google.",
                 "{email}",
                 "Se ti iscrivi con un codice o un link d'invito: il codice resta solo come hash, insieme a quante volte è stato usato, da quale account e a un'etichetta "
                 "scelta da chi ha creato l'invito (per esempio il nome della persona invitata). Il codice scritto nel link si toglie subito dall'indirizzo della pagina.",
@@ -133,7 +133,7 @@ TESTI: dict[str, dict] = {
                 "(per esempio l'ultima schermata aperta) e gli scambi che salvi: restano lì e nessun altro sito li legge.",
             ]),
             ("h", "Cancellazione e copia dei dati"),
-            ("p", "Da Impostazioni > Il tuo account, con «Scarica i tuoi dati», ricevi subito un file (JSON, leggibile anche da altri programmi) con i tuoi dati: "
+            ("p", "Da Impostazioni › Il tuo account, con «Scarica i tuoi dati», ricevi subito un file (JSON, leggibile anche da altri programmi) con i tuoi dati: "
                   "quelli dell'account (nome, email, accessi collegati, termini accettati) e quelli della lega (regole, rose, scelte, giocatori seguiti, "
                   "impostazioni delle notifiche). La password e gli altri codici segreti non ci sono mai. Per una copia anche del resto (per esempio le immagini "
                   "caricate o le formazioni importate) scrivi a {contatto}. Con «Elimina il mio account» cancelli tutto dal server. "
@@ -142,7 +142,7 @@ TESTI: dict[str, dict] = {
             ("h", "I tuoi diritti"),
             ("p", "Puoi chiedere di accedere ai tuoi dati e riceverne una copia, di correggerli, di cancellarli, di limitarne o di opporti al trattamento, e di avere i dati "
                   "in un formato leggibile da un altro servizio (portabilità). Per le notifiche puoi ritirare il consenso quando vuoi. "
-                  "La copia dei tuoi dati la scarichi da solo da Impostazioni > Il tuo account > «Scarica i tuoi dati»; per qualunque altra richiesta scrivi a {contatto}. Puoi anche fare reclamo al Garante per la protezione dei dati personali."),
+                  "La copia dei tuoi dati la scarichi da solo da Impostazioni › Il tuo account › «Scarica i tuoi dati»; per qualunque altra richiesta scrivi a {contatto}. Puoi anche fare reclamo al Garante per la protezione dei dati personali."),
             ("h", "Età minima"),
             ("p", "L'app è per persone con almeno {eta} anni."),
             ("h", "Cambiamenti"),
@@ -178,7 +178,7 @@ TESTI: dict[str, dict] = {
                 "Non usare l'app per disturbare il servizio, cercare di entrare nei dati di altri o caricare file dannosi: l'accesso può essere chiuso.",
             ]),
             ("h", "Disponibilità"),
-            ("p", "L'app può fermarsi, cambiare o chiudere in qualunque momento. Se ti servono, scarica ogni tanto i tuoi dati da Impostazioni > Il tuo account > «Scarica i tuoi dati». "
+            ("p", "L'app può fermarsi, cambiare o chiudere in qualunque momento. Se ti servono, scarica ogni tanto i tuoi dati da Impostazioni › Il tuo account › «Scarica i tuoi dati». "
                   "Per capire cosa tenere in primo piano contiamo, in forma anonima e aggregata, quante volte è usata ogni funzione (vedi la pagina Privacy)."),
             ("h", "Privacy e contatti"),
             ("p", "Come trattiamo i tuoi dati è scritto nella pagina Privacy. Per domande o segnalazioni scrivi a {contatto}."),
@@ -207,7 +207,7 @@ TESTI: dict[str, dict] = {
             ("h", "Dall'app"),
             ("li", [
                 "Apri SchieraXI e accedi.",
-                "Vai in Impostazioni > Il tuo account.",
+                "Vai in Impostazioni › Il tuo account.",
                 "Tocca «Elimina il mio account» e conferma con la tua password (se entri solo con Google, ti chiede di confermare con Google).",
             ]),
             ("p", "Vengono cancellati subito il tuo account, le sessioni aperte, il collegamento con Google, il codice del widget, i dispositivi riconosciuti, "
@@ -267,7 +267,7 @@ TESTI: dict[str, dict] = {
                 "If you sign in with Google: the identifier Google gives us for your account, the email address Google tells us, and whether Google has verified it. "
                 "We ask Google only for this (the «openid» and «email» permissions): we do not receive or keep your name, photo, contacts or any Google token. "
                 "They are used to sign you in and, if Google has verified the email, as your account's email. Signing in with Google is also subject to Google's own privacy policy. "
-                "You can unlink Google in Settings > Your account > Sign-in methods, and revoke the access in your Google Account under Security > Sign in with Google.",
+                "You can unlink Google in Settings › Your account › Sign-in methods, and revoke the access in your Google Account under Security › Sign in with Google.",
                 "{email}",
                 "If you sign up with an invitation code or link: the code is kept only as a hash, together with how many times it was used, by which account, and a label "
                 "chosen by whoever created the invitation (for example the invited person's name). The code in the link is removed from the page address right away.",
@@ -334,7 +334,7 @@ TESTI: dict[str, dict] = {
                 "(for example the last screen you opened) and the trades you save: they stay there and no other site reads them.",
             ]),
             ("h", "Deletion and a copy of your data"),
-            ("p", "From Settings > Your account, with «Download your data», you get a file right away (JSON, readable by other programs too) with your data: "
+            ("p", "From Settings › Your account, with «Download your data», you get a file right away (JSON, readable by other programs too) with your data: "
                   "your account (name, email, linked sign-ins, accepted terms) and your league (rules, squads, choices, followed players, "
                   "notification settings). The password and other secret codes are never in it. For a copy of the rest too (for example the images "
                   "you uploaded or the lineups you imported) write to {contatto}. With «Delete my account» you delete everything from the server. "
@@ -343,7 +343,7 @@ TESTI: dict[str, dict] = {
             ("h", "Your rights"),
             ("p", "You can ask to access your data and receive a copy, to correct it, to delete it, to restrict or object to its processing, and to have the data "
                   "in a format readable by another service (portability). For notifications you can withdraw your consent at any time. "
-                  "You can download a copy of your data yourself from Settings > Your account > «Download your data»; for any other request write to {contatto}. You can also complain to the data protection authority."),
+                  "You can download a copy of your data yourself from Settings › Your account › «Download your data»; for any other request write to {contatto}. You can also complain to the data protection authority."),
             ("h", "Minimum age"),
             ("p", "The app is for people aged {eta} or over."),
             ("h", "Changes"),
@@ -379,7 +379,7 @@ TESTI: dict[str, dict] = {
                 "Do not use the app to disturb the service, try to get into other people's data or upload harmful files: access may be closed.",
             ]),
             ("h", "Availability"),
-            ("p", "The app may stop, change or close at any time. If you need it, download your data now and then from Settings > Your account > «Download your data». "
+            ("p", "The app may stop, change or close at any time. If you need it, download your data now and then from Settings › Your account › «Download your data». "
                   "To understand what to keep in the foreground we count, anonymously and in aggregate, how many times each feature is used (see the Privacy page)."),
             ("h", "Privacy and contacts"),
             ("p", "How we process your data is written on the Privacy page. For questions or reports write to {contatto}."),
@@ -408,7 +408,7 @@ TESTI: dict[str, dict] = {
             ("h", "From the app"),
             ("li", [
                 "Open SchieraXI and sign in.",
-                "Go to Settings > Your account.",
+                "Go to Settings › Your account.",
                 "Tap «Delete my account» and confirm with your password (if you sign in only with Google, you are asked to confirm with Google).",
             ]),
             ("p", "Your account, open sessions, the link with Google, the widget code, the recognised devices, "

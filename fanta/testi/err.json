@@ -802,8 +802,8 @@
     "en": "The link with Google has expired: try again"
   },
   "err.google_indirizzo_ha_account": {
-    "it": "Questo indirizzo ha già un account: entra come fai di solito e poi, in Impostazioni > Il tuo account, collega Google.",
-    "en": "This address already has an account: sign in as usual and then, in Settings > Your account, link Google."
+    "it": "Questo indirizzo ha già un account: entra come fai di solito e poi, in Impostazioni › Il tuo account, collega Google.",
+    "en": "This address already has an account: sign in as usual and then, in Settings › Your account, link Google."
   },
   "err.google_usa_modulo": {
     "it": "Per iscriverti usa il modulo con la tua email.",

@@ -85,7 +85,7 @@
       },
       "rimandi": [
         {"schermata": "formazione", "etichetta": "Formazione (tocca un giocatore per vedere i pezzi)"},
-        {"schermata": "regole", "etichetta": "Impostazioni > Regole e scadenza"}
+        {"schermata": "regole", "etichetta": "Impostazioni › Regole e scadenza"}
       ],
       "fonte_codice": ["fanta/modello.py:previsioni", "fanta/punteggio.py:fantavoto", "fanta/consigli.py:_componenti"]
     },
@@ -232,7 +232,7 @@
         "testo": "Tre partite: ha preso voto nelle due più recenti ma non nella più vecchia. Pesi 0,5625 (più vecchia), 0,75, 1,0: presenze = (0,75 + 1,0) / 2,3125 = 76%. Con n = 30 giocatori in un gruppo e osservati/previsti = 1,20 la correzione è 1 + 0,20 × 30/90 = 1,07.",
         "origine": "di calcolo"
       },
-      "rimandi": [{"schermata": "stato-dati", "etichetta": "Stato dei dati > Calibrazione delle probabili"}],
+      "rimandi": [{"schermata": "stato-dati", "etichetta": "Stato dei dati › Calibrazione delle probabili"}],
       "fonte_codice": ["fanta/modello.py:_presenze_recenti", "fanta/coppe.py:fattore_turnover", "fanta/coppe.py:COPPE", "fanta/stato_dati.py:calibrazione", "fanta/stato_dati.py:fattori_da"]
     },
     {
@@ -290,7 +290,7 @@
         "origine": "di calcolo"
       },
       "numeri": [],
-      "rimandi": [{"schermata": "formazione", "etichetta": "Formazione > Stile"}],
+      "rimandi": [{"schermata": "formazione", "etichetta": "Formazione › Stile"}],
       "fonte_codice": ["fanta/formazione.py:LIVELLI_RISCHIO", "fanta/formazione.py:Valutatore.scelta", "fanta/formazione.py:migliore", "docs/STILI.md"]
     },
     {
@@ -353,7 +353,7 @@
         "È una stima grossolana: dipende da quali svincolati ci sono oggi."
       ],
       "formula": "tasso = Σ guadagno delle mosse utili / Σ (quotazione di chi entra - rimborso)\nnetto = guadagno in punti + conguaglio × tasso",
-      "rimandi": [{"schermata": "scambi", "etichetta": "Scambi > Conguaglio"}, {"schermata": "lega", "etichetta": "Impostazioni > La mia squadra"}],
+      "rimandi": [{"schermata": "scambi", "etichetta": "Scambi › Conguaglio"}, {"schermata": "lega", "etichetta": "Impostazioni › La mia squadra"}],
       "fonte_codice": ["fanta/scambi_multi.py:tasso_da_mercato", "fanta/scambi_multi.py:controlla_conguaglio", "fanta/scambi_multi.py:analizza_completo"]
     },
     {
@@ -454,7 +454,7 @@
         "Dopo ogni aggiornamento girano controlli di coerenza: 10 partite per giornata, i voti di ogni squadra nelle giornate finite, somma degli xG dei giocatori vicina a quella della partita (scarto massimo 1), 11 titolari per squadra. Fino al 2% di righe fuori misura è rumore delle fonti, oltre è un avviso, e tutto si vede in Stato dei dati.",
         "Rischio onesto: Understat è l'unica fonte di xG, xA e rigori e Fantacalcio.it quella di voti e probabili. I loro termini non sono pensati per un uso da programma: per uso personale il rischio è basso, ma va ripensato prima di aprire l'app a molte persone (permessi, fonti alternative)."
       ],
-      "rimandi": [{"schermata": "stato-dati", "etichetta": "Stato dei dati > Controlli"}],
+      "rimandi": [{"schermata": "stato-dati", "etichetta": "Stato dei dati › Controlli"}],
       "fonte_codice": ["fanta/nomi.py:normalizza", "fanta/fonti/understat.py", "fanta/controlli.py:esegui", "docs/archivio/PIANO-DATI.md"]
     },
     {
@@ -467,7 +467,7 @@
         "Regola di promozione: una fonte entra nel modello solo se l'errore sui voti scende almeno dello 0,5% e il miglioramento c'è in almeno 2 delle ultime 3 stagioni misurate. Per il piano dati servono anche un miglioramento del Brier delle presenze dell'1% e, sui punti delle formazioni, +0,3 a giornata su almeno 100 giornate. Con una sola stagione di dati il risultato è «solo indicativo», non si promuove. La decisione la prende una persona guardando i numeri: il modello non cambia da solo.",
         "Stato al 30/10/2026: nessuna fonte è stata promossa. Sul computer di sviluppo la tabella delle colonne extra è vuota (0 partite con il dato nuovo), quindi la prova dice «niente da misurare»; i conteggi veri della raccolta stanno sul server e si leggono in Stato dei dati."
       ],
-      "rimandi": [{"schermata": "stato-dati", "etichetta": "Stato dei dati > Fonti in ombra"}],
+      "rimandi": [{"schermata": "stato-dati", "etichetta": "Stato dei dati › Fonti in ombra"}],
       "fonte_codice": ["fanta/verifica_fonti.py:giudizio", "fanta/verifica_fonti.py:SOGLIA_ERRORE", "fanta/verifica_fonti.py:dati_con_variante", "fanta/stato_dati.py:ombra", "docs/archivio/PIANO-DATI.md", "docs/archivio/PIANO-FONTI.md"]
     },
     {
