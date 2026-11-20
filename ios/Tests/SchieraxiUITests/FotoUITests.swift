@@ -110,6 +110,32 @@ final class FotoUITests: XCTestCase {
                        "nella foto lega-stato-taratura la cima di Stato dei dati non deve più essere a video")
     }
 
+    /// Dove sta un elemento rispetto alla finestra, per capire di quanto manca quando una foto non lo mostra.
+    private func posizione(_ e: XCUIElement) -> String {
+        "elemento \(e.exists ? String(describing: e.frame) : "assente"), finestra \(String(describing: app.windows.firstMatch.frame))"
+    }
+
+    /// `lega-stato-prova` (#842): la frase della prova delle previsioni su «da fantamedia» (#840) sta a metà di Stato dei dati, sotto
+    /// la riga della taratura, in nessuna delle altre foto. Con `-DEMO_FONDO prova` la lista si ferma lì: la frase è a video, la cima no.
+    func testLaFotoDellaProvaMostraLaFraseDaFantamedia() {
+        avvia(["-DEMO_SCHERMATA", "lega-stato", "-DEMO_FONDO", "prova"])
+        let frase = elemento(cheComincia: "Prova sulle ultime 8 giornate giocate")
+        XCTAssertTrue(aspetta(30) { frase.exists && frase.isHittable },
+                      "nella foto lega-stato-prova la frase della prova deve essere a video (\(posizione(frase)))")
+        XCTAssertTrue(frase.label.contains("«Da fantamedia» è la formazione scelta con la fantamedia dei giocatori"), frase.label)
+        XCTAssertFalse(elemento(cheComincia: "Coppe europee fino al").isHittable,
+                       "nella foto lega-stato-prova la cima di Stato dei dati non deve più essere a video")
+    }
+
+    /// `giornate-confronto` (#842): Giornate › Dettagli con la voce del confronto a video, nella demo in cui la consigliata ha fatto
+    /// 1,0 punti in più: il plurale scelto sul numero scritto, «1,0 punti» (prima «1,0 punto»).
+    func testLaFotoDelConfrontoMostraUnoVirgolaZeroPunti() {
+        avvia(["-DEMO_SCHERMATA", "giornate-confronto"])
+        let voce = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "avresti fatto 1,0 punti in più")).firstMatch
+        XCTAssertTrue(aspetta(30) { voce.exists && voce.isHittable },
+                      "nella foto giornate-confronto la voce del confronto deve essere a video (\(posizione(voce)))")
+    }
+
     /// `formazione-metti-in-campo` (#778): la scena apre da sola l'elenco «Chi esce per …» del panchinaro della demo, con in cima
     /// il cambio che rende di più, che cambia modulo («Si passa al …»).
     func testLaFotoDiMettiInCampoMostraLElenco() {
