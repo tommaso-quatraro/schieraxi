@@ -101,6 +101,12 @@
       "precisazione": "(widget medio e cerchio della schermata di blocco)",
       "testo": "nel medio la frase «circa 75 a fine giornata» (`formazione.circa_fine`) è divisa in due: sopra «A fine giornata» (`oggi.a_fine_giornata`), sotto il numero grande «circa 75»; nel cerchio della schermata di blocco accanto ai punti c'è solo «fatti». Numero e frasi sono quelli della testa della Formazione (senza decimali, «punti finora», chi deve ancora giocare) e VoiceOver legge le frasi intere.",
       "motivo": "la frase intera non entra: nel medio il numero grande sta in mezza larghezza del widget, nel cerchio ci stanno poche lettere (#774)."
+    },
+    {
+      "titolo": "Widget con il testo grande, forme corte",
+      "precisazione": "(riga della schermata di blocco e medio di «Prossima giornata», rettangolo di «Da controllare»)",
+      "testo": "dove la forma intera non entra il widget perde parole intere, mai il modulo e mai con «…»: la riga «3-4-3 · 72,7 punti» diventa «3-4-3 · 72,7»; nel medio, accanto al modulo, «72,7 punti» diventa «72,7»; nel rettangolo di «Da controllare» i giocatori passano tutti insieme dal nome intero al solo cognome, poi allo stato corto («Marténi · gioca 62%»). VoiceOver legge sempre la forma intera.",
+      "motivo": "il widget ha misure fisse e con il testo grande la forma intera non entra: prima uscivano «SchieraXI 3-4-3, 72,7…», «3-4…» e un nome intero accanto a un cognome (#787)."
     }
   ]
 }
