@@ -17,8 +17,10 @@
 #      (codice e script: mai lega/, dati/ e fanta/avatar_tratti.json, mai CLAUDE.md);
 #   4. se cambia requirements.txt prepara un ambiente Python nuovo (solo versioni e hash di requirements.txt: pip --require-hashes)
 #      e lo scambia con quello in uso solo se tutto e' andato; se pip non riesce resta tutto com'era e riprova ai giri dopo
-#      (alla terza volta di fila rinuncia e avvisa); poi riavvia SOLO il servizio fantacalcio e controlla che risponda;
-#   5. se non risponde torna alla versione di prima (codice e librerie), non riprova la stessa versione e manda un avviso sul telefono.
+#      (alla terza volta di fila rinuncia e avvisa); poi riavvia SOLO il servizio fantacalcio e controlla che risponda e che il
+#      database degli account si apra alla versione attesa (#825);
+#   5. se non va torna alla versione di prima (codice e librerie), non riprova la stessa versione e manda un avviso sul telefono;
+#      ma se intanto il database degli account e' salito di versione tiene la nuova e avvisa (il codice di prima non lo leggerebbe).
 # Avvisi sul telefono solo quando qualcosa non va (versione rifiutata, librerie che non si installano, ritorno alla versione di prima,
 # chiave delle firme mancante, GitHub che non risponde da tre giri, copia di GitHub o file della versione nuova che non si copiano:
 # vedi guasto, al massimo uno al giorno per motivo): un'installazione riuscita resta solo nel registro dati/pubblicazione.log.
@@ -183,6 +185,42 @@ risolto() {   # motivi tornati a posto
 }
 TESTO_RETE="Da tre giri di fila non riesco a scaricare da GitHub (rete?): le versioni nuove non arrivano."
 
+# Database degli account (#825). /api/account/me risponde 401 senza sessione prima di leggere il database: il servizio «risponde»
+# anche con una migrazione che sui dati veri non riesce. Per questo:
+# - versione_db: la versione del database (PRAGMA user_version) letta in sola lettura con il solo Python di base, senza importare
+#   fanta, quindi con qualunque versione installata e senza migrare niente. Stampa un numero, «nessuno» se il file non c'e', niente
+#   se non si legge. Si legge prima dell'installazione (anche nel segno installazione-in-corso) e prima di tornare indietro: se e'
+#   salita, il codice di prima rifiuterebbe il database («versione piu' nuova dell'app») e si tiene la versione nuova;
+# - controlla_account: dopo il riavvio, con il codice appena installato, apre davvero il database (con le migrazioni, come la prima
+#   richiesta del servizio) e lo confronta con le migrazioni attese: fanta/salute.py, controlla_database_account (nome fisso: lo
+#   chiama questo script, che e' quello della versione di prima). La sua frase finisce in ESITO_ACCOUNT.
+ambiente_servizio() { . "$QUI/leggi-ambiente.sh" && leggi_ambiente dati/ambiente.env 2>>"$ERR"; }
+versione_db() {
+  ( cd "$DEST" && ambiente_servizio && timeout -k 5 60 nice -n 10 .venv/bin/python -c "
+import os, sqlite3, sys
+from pathlib import Path
+p = Path(os.environ.get('FANTA_DATI_UTENTI') or 'dati') / 'account.sqlite'
+if not p.exists():
+    print('nessuno')
+    sys.exit(0)
+db = sqlite3.connect(p.resolve().as_uri() + '?mode=ro', uri=True, timeout=15)
+print(db.execute('PRAGMA user_version').fetchone()[0])" 2>>"$ERR" )
+}
+salita() { [[ ${1:-} =~ ^[0-9]{1,9}$ ]] && [[ ${2:-} =~ ^[0-9]{1,9}$ ]] && [ "$2" -gt "$1" ]; }     # versione di prima, di adesso
+controlla_account() {
+  local rc
+  ESITO_ACCOUNT=$(cd "$DEST" && ambiente_servizio && timeout -k 5 "${SCHIERAXI_TIMEOUT_ACCOUNT:-90}" nice -n 10 .venv/bin/python -c "
+import sys
+from fanta import salute
+ok, testo = salute.controlla_database_account()
+print(testo)
+sys.exit(0 if ok else 1)" 2>&1)
+  rc=$?
+  ESITO_ACCOUNT=$(printf '%s' "$ESITO_ACCOUNT" | tr '\r\n' '  ' | tail -c 400)
+  return "$rc"
+}
+TESTO_TENUTA="Va controllato il server: script/server/LEGGIMI.md, «Versione tenuta dopo una migrazione». Dettagli in dati/pubblicazione.log."
+
 # La richiesta d'emergenza resta finche' un'installazione non riesce (#647): l'avviso di un rifiuto lo dice
 ancora_subito() {
   [ -e "$STATO/installa-subito" ] && printf ' La richiesta di installare subito resta attiva: la prossima versione si installa appena arriva, anche durante una partita.'
@@ -199,10 +237,16 @@ copia="$STATO/versione-precedente.tar.gz"
 A_META="$STATO/installazione-in-corso"
 TESTO_SENZA_COPIA="Un aggiornamento si era fermato a metà e non riesco a rimettere la versione di prima dalla copia di sicurezza: gli aggiornamenti sono fermi. Come ripartire: script/server/LEGGIMI.md, «Aggiornamento interrotto senza copia di sicurezza»."
 if [ -e "$A_META" ]; then
-  stadio=""; interrotto=""
-  read -r stadio interrotto _ < "$A_META" 2>/dev/null
+  stadio=""; interrotto=""; db_meta=""
+  read -r stadio interrotto db_meta _ < "$A_META" 2>/dev/null
   if [ "$PROVA" = 1 ]; then
     log "un'installazione di prima (${interrotto:0:7}) si e' fermata a meta': rimetterei la versione di prima dalla copia di sicurezza"
+  elif db_ora=$(versione_db) && salita "$db_meta" "$db_ora"; then
+    # la versione nuova ha gia' migrato il database degli account (#825): il codice di prima non lo saprebbe leggere. Niente ritorno
+    # indietro: si toglie il segno e questo giro reinstalla la versione di main (ultimo-rilascio e' ancora quello di prima)
+    log "l'installazione di prima (${interrotto:0:7}) non era finita, ma il database degli account e' gia' passato dalla versione $db_meta alla $db_ora: non rimetto la versione di prima, che non lo saprebbe leggere; reinstallo la versione nuova"
+    rm -f "$A_META" "$STATO/interrotta"
+    avvisa "SchieraXI: aggiornamento da controllare" "Un aggiornamento si era fermato a metà dopo aver già aggiornato il database degli account: non ho rimesso la versione di prima, che non saprebbe leggerlo, e reinstallo quella nuova. $TESTO_TENUTA" 4
   else
     log "l'installazione di prima (${interrotto:0:7}) non era finita (server spento o processo fermato?): rimetto la versione di prima dalla copia di sicurezza"
     rimessa=0
@@ -471,13 +515,15 @@ fi
 log "versione nuova ${nuovo:0:7}: la installo"
 # Copia di sicurezza della versione in uso, per tornare indietro: prende il posto della vecchia solo se e' riuscita tutta. Qui il segno
 # installazione-in-corso non c'e' (un giro interrotto e' gia' stato rimesso a posto all'inizio), quindi la cartella dell'app ha una
-# versione che ha superato l'installazione. Da qui fino alla fine dell'installazione il segno c'e' (#647).
+# versione che ha superato l'installazione. Da qui fino alla fine dell'installazione il segno c'e' (#647), con la versione del
+# database degli account di prima (#825; «-» se non si legge).
+db_prima=$(versione_db); [ -n "$db_prima" ] || db_prima=-
 # shellcheck disable=SC2086
 if [ -e "$A_META" ] || ! tar czf "$copia.nuova" -C "$DEST" $CARTELLE 2>/dev/null || ! mv "$copia.nuova" "$copia"; then
   rm -f "$copia.nuova"; log "copia di sicurezza della versione in uso non riuscita (disco pieno?): non installo"
   guasto copia-file "Non riesco a fare la copia di sicurezza della versione in uso (disco pieno?): resta quella di prima."; fine; exit 1
 fi
-echo "file $nuovo" > "$A_META"
+echo "file $nuovo $db_prima" > "$A_META"
 vecchi_req=$(md5sum "$DEST/requirements.txt" 2>/dev/null | cut -d' ' -f1)
 
 prova=$(mktemp -d)
@@ -509,7 +555,7 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
      && "$DEST/.venv.nuova/bin/python" -m pip install -q --require-hashes -r "$DEST/requirements.txt" >> "$LOG" 2>&1; then
     rm -f "$STATO/librerie-fallite"
     rm -rf "$DEST/.venv.precedente"
-    echo "ambiente $nuovo" > "$A_META"     # prima dello scambio: un'interruzione da qui rimette anche l'ambiente di prima
+    echo "ambiente $nuovo $db_prima" > "$A_META"     # prima dello scambio: un'interruzione da qui rimette anche l'ambiente di prima
     mv "$DEST/.venv" "$DEST/.venv.precedente" && mv "$DEST/.venv.nuova" "$DEST/.venv" && venv_cambiata=1
     if [ "$venv_cambiata" = 0 ]; then
       # il servizio non e' stato riavviato: si rimettono subito l'ambiente in uso e i file della versione di prima (#647)
@@ -552,6 +598,10 @@ for i in $(seq 1 "${SCHIERAXI_ATTESE_AVVIO:-25}"); do
   if [ "$codice" = 200 ] || [ "$codice" = 401 ]; then risponde=1; break; fi
   sleep 1
 done
+perche="il servizio NON risponde (ultimo codice HTTP: ${codice:-nessuno})"
+if [ "$risponde" = 1 ] && ! controlla_account; then     # il servizio risponde: ora il database degli account (#825)
+  risponde=0; perche="il database degli account non va: $ESITO_ACCOUNT"
+fi
 
 if [ "$risponde" = 1 ]; then
   # prima il segno, poi lo stato: un'interruzione fra i due fa solo reinstallare la stessa versione al giro dopo (#647)
@@ -563,10 +613,18 @@ if [ "$risponde" = 1 ]; then
   versione=$(cd "$DEST" && .venv/bin/python -c "import json; print(json.load(open('fanta/novita.json', encoding='utf-8'))[0]['versione'])" 2>/dev/null)
   # solo la riga nel registro, niente avviso: con tante versioni al giorno gli avvisi veri (fallita, rifiutata, tornata indietro) si
   # perdevano tra quelli di routine (#607)
-  log "installata ${nuovo:0:7} (versione $versione): il servizio risponde"
+  log "installata ${nuovo:0:7} (versione $versione): il servizio risponde ($ESITO_ACCOUNT)"
   risolto cartelle copia-file ambienti interrotta copia-sicurezza     # «di nuovo a posto» se un guasto dell'installazione era stato segnalato
+elif db_dopo=$(versione_db) && salita "$db_prima" "$db_dopo"; then
+  # la versione nuova ha gia' migrato il database degli account (#825): il codice di prima lo rifiuterebbe, con errori per ogni utente
+  # collegato. Si tiene la nuova (codice e librerie) e si avvisa; il segno si toglie, se no il giro dopo rimetterebbe la versione di prima
+  log "con ${nuovo:0:7} $perche, ma il database degli account e' gia' passato dalla versione $db_prima alla $db_dopo: non torno alla versione di prima, che non lo saprebbe leggere. Resta ${nuovo:0:7}, da controllare a mano"
+  rm -f "$A_META"
+  echo "$nuovo" > "$STATO/ultimo-rilascio"
+  rm -f "$STATO/attesa-versione" "$STATO/interrotta"
+  avvisa "SchieraXI: aggiornamento da controllare" "La versione nuova non funziona come dovrebbe, ma ha già aggiornato il database degli account: l'ho lasciata installata, perché quella di prima non saprebbe leggerlo. $TESTO_TENUTA" 4
 else
-  log "il servizio NON risponde con ${nuovo:0:7} (ultimo codice HTTP: ${codice:-nessuno}): torno alla versione di prima"
+  log "con ${nuovo:0:7} $perche: torno alla versione di prima"
   rimessa=1
   tar xzf "$copia" -C "$DEST" || rimessa=0
   if [ "$venv_cambiata" = 1 ]; then          # anche le librerie di prima

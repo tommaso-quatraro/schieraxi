@@ -157,6 +157,21 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   (al massimo una volta al giorno); poi riprova la versione nuova. Se la stessa versione si ferma a metà una seconda volta diventa
   `rifiutato`, con un avviso, e non si riprova più (neanche con `installa-subito`). Un giro ancora vivo tiene il blocco dello script,
   quindi non viene scambiato per interrotto.
+- **Database degli account** (#825): `/api/account/me` senza sessione risponde 401 prima di leggere il database, quindi «risponde» non
+  basta. Dopo il riavvio lo script apre davvero `dati/account.sqlite` con il codice nuovo (`fanta/salute.py`,
+  `controlla_database_account`: le migrazioni come alla prima richiesta del servizio) e confronta la sua versione con le migrazioni
+  attese; se non torna, l'installazione non è riuscita e si torna indietro. Senza il file non controlla niente (account spenti).
+  Prima di installare legge la versione del database in sola lettura (anche nel segno `installazione-in-corso`, terzo campo) e la
+  rilegge prima di tornare indietro: se è salita, il codice di prima rifiuterebbe il database e **non si torna indietro** (vedi sotto).
+
+#### Versione tenuta dopo una migrazione
+Avviso «SchieraXI: aggiornamento da controllare»: la versione nuova non andava, ma aveva già portato il database degli account a una
+versione più nuova, quindi è rimasta installata (codice e librerie). Sul server, con l'utente del servizio:
+1. Il motivo: `tail -n 30 ~/fantacalcio/dati/pubblicazione.log` e `journalctl -u fantacalcio -n 50`.
+2. Se l'app va lo stesso (il guasto era passeggero), non serve altro. Se no la correzione arriva con una PR, come sempre.
+3. Per tornare davvero alla versione di prima serve anche il database di prima: la copia fatta prima della migrazione sta in
+   `~/fantacalcio/dati/backup/account-prima-della-migrazione-<versione>.sqlite` (dentro ci sono le modifiche fino a quel momento, non
+   quelle fatte dopo). Va rimessa a servizio fermo e con l'ok del proprietario: è un passo a mano, lo script non lo fa mai.
 
 #### Aggiornamento interrotto senza copia di sicurezza
 Se c'è il segno ma la copia di sicurezza manca o è rovinata, lo script non installa più niente e avvisa (una volta al giorno). Per

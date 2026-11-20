@@ -200,7 +200,9 @@ case "$1" in
         pip) shift 2; echo "pip $*" >> "$reg" ;;
         fanta) echo "fanta $3" >> "$reg"; [ "$3" = momento-libero ] && {{ echo "partita in corso"; exit 3; }} ;;
       esac ;;
-  -c) case "$2" in *notifiche.invia*) echo "avviso $3" >> "$reg" ;; *novita.json*) echo "1.0" ;; *) exec "{python_vero}" "$@" ;; esac ;;
+  -c) case "$2" in *notifiche.invia*) echo "avviso $3" >> "$reg" ;; *novita.json*) echo "1.0" ;;
+        *controlla_database_account*) echo "controllo-account" >> "$reg"; echo "database finto a posto" ;;
+        *) exec "{python_vero}" "$@" ;; esac ;;
   *.py) exec "{python_vero}" "$@" ;;
 esac
 exit 0''')
