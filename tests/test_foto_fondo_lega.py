@@ -21,6 +21,8 @@ LEGA = RADICE / "ios" / "Sources" / "Presentation" / "Lega"
 FOTO = {
     "lega-stato-fondo": ("lega-stato", LEGA / "LegaExtra.swift"),
     "lega-stato-nostri": ("lega-stato", LEGA / "LegaExtra.swift"),   # #430: i gol attesi nostri non stanno nella foto del fondo
+    # #527: la riga della taratura di «gioca N%» sta fra la cima (lega-stato) e le nostri, in nessuna delle due foto
+    "lega-stato-taratura": ("lega-stato", LEGA / "LegaExtra.swift"),
     "lega-rosa-fondo": ("lega-rosa", LEGA / "LegaExtra.swift"),
 }
 
@@ -82,6 +84,21 @@ def test_il_punto_delle_nostri_sta_sulla_prima_riga_del_riquadro_e_la_lista_lo_u
     assert "FondoDemo.arrivoDiStato" in (LEGA / "LegaExtra.swift").read_text(encoding="utf-8")
     regola = (LEGA / "FondoDemo.swift").read_text(encoding="utf-8")
     assert 'Demo.argomento("DEMO_FONDO", in: argomenti) == "nostri"' in regola
+
+
+def test_la_foto_della_taratura_apre_stato_dei_dati_e_chiede_il_punto_della_taratura():
+    # #527: come «lega-stato-nostri», la demo apre «lega-stato» e il valore di -DEMO_FONDO dice dove fermarsi
+    testo = SCRIPT.read_text(encoding="utf-8")
+    assert 'lega-stato-taratura) schermata="lega-stato"; fondo=(-DEMO_FONDO taratura) ;;' in testo
+
+
+def test_il_punto_della_taratura_sta_sull_ultimo_gruppo_della_calibrazione():
+    # La riga della taratura è nel piè della sezione dei gruppi: non è una riga della lista, e lo scorrimento a un'identità messa
+    # lì non è sicuro. Il punto sta sull'ultimo gruppo, subito sopra: una sola riga con l'identità (FondoDemo.idGruppo).
+    vista = (LEGA / "LegaExtra.swift").read_text(encoding="utf-8")
+    assert vista.count(".id(FondoDemo.idGruppo(g.id, ultimo: gruppi.last?.id))") == 1
+    regola = (LEGA / "FondoDemo.swift").read_text(encoding="utf-8")
+    assert 'Demo.argomento("DEMO_FONDO", in: argomenti) == "taratura"' in regola
 
 
 def test_le_righe_delle_misure_non_si_stringono_in_altezza():
