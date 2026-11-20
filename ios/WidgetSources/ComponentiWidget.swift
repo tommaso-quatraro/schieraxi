@@ -79,14 +79,36 @@ struct IntestazioneWidget: View {
     }
 }
 
-/// «dati delle 14:32» quando il widget mostra una copia, niente quando i dati sono freschi. Quando il codice del widget non vale
-/// più (401) non c'è copia: il widget dice «Tocca per collegare» (`SenzaDatiWidget`).
+/// La riga della copia salvata, una sola per tutti i widget (#834): «dati delle 14:32» se è di oggi, altrimenti con il giorno,
+/// «dati di ieri 18:30» (forme e giorni in ora italiana in `ParoleWidget.datiSalvati`, contati dall'istante della voce). Dove non
+/// entra perde l'ora («dati di ieri»), poi «dati di» (la sola data accanto al simbolo, su una riga anche con il testo molto grande
+/// nel medio), e solo se nemmeno così entra va a capo: mai «…». VoiceOver legge sempre la forma intera.
+/// Carattere e colore li sceglie chi la usa.
+struct RigaCopia: View {
+    let scaricatoIl: Date
+    let adesso: Date
+
+    var body: some View {
+        let forme = ParoleWidget.datiSalvati(scaricatoIl, adesso: adesso)
+        PrimaCheEntra(forme.count) { i in
+            // l'ultima forma va a capo invece di finire con «…»; a sinistra anche dentro un Link (#787)
+            Label(forme[i], systemImage: "icloud.slash")
+                .lineLimit(i == forme.count - 1 ? nil : 1)
+                .multilineTextAlignment(.leading)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(forme.first ?? "")
+    }
+}
+
+/// La riga della copia nei widget Formazione quando il widget mostra una copia, niente quando i dati sono freschi. Quando il
+/// codice del widget non vale più (401) non c'è copia: il widget dice «Tocca per collegare» (`SenzaDatiWidget`).
 struct PiedeDati: View {
     let voce: Voce
 
     var body: some View {
-        if voce.datiSalvati, let r = voce.riassunto {
-            Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash")
+        if let copia = voce.copiaDel {
+            RigaCopia(scaricatoIl: copia, adesso: voce.date)
                 .font(.caption2).foregroundStyle(TintaWidget.testo2)
         }
     }
@@ -141,6 +163,9 @@ struct SenzaDatiWidget: View {
 extension Voce {
     /// Il riassunto completo, o nil se il server non lo ha ancora (si ricade sui widget «vecchi»).
     var completo: RiassuntoWidget? { widget }
+
+    /// Quando è stata scaricata la copia che il widget mostra (`PiedeDati`); nil con i dati freschi o senza riassunto.
+    var copiaDel: Date? { datiSalvati ? riassunto?.scaricatoIl : nil }
 
     /// Cosa mostrano i tre widget prima del loro contenuto di sempre, nello stesso ordine (`CasoWidget`, provato dai test): a
     /// campionato finito la frase del server (#727, `CampionatoFinitoWidget`), per chi è entrato a giornata già iniziata senza una

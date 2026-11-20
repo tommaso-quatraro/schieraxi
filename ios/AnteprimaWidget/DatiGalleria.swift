@@ -4,8 +4,8 @@ import WidgetKit
 /// I dati finti della galleria (nessuna rete) e la tabella «widget -> misure -> vista». I dati sono quelli della lega della demo
 /// dell'app (`LegaDemo`, la stessa fonte): nelle foto widget e app dicono le stesse cose (nomi, «gioca 62%», scadenza, Diario).
 enum DatiGalleria {
-    /// `-DATI`: pieni (prima della scadenza), parziali (un server senza scambio, svincolo e Diario), salvati (copia vecchia),
-    /// in_corso, finita, campionato_finito (la frase del server al posto della giornata, #727), senza_formazione (entrato a
+    /// `-DATI`: pieni (prima della scadenza), parziali (un server senza scambio, svincolo e Diario), salvati (copia di due giorni
+    /// prima), salvati_oggi (copia di oggi), in_corso, finita, campionato_finito (la frase del server al posto della giornata, #727), senza_formazione (entrato a
     /// giornata iniziata: la prossima da preparare, #687), vuoto (widget da collegare).
     static func voce(_ tipo: String) -> Voce {
         let adesso = Date()
@@ -31,7 +31,11 @@ enum DatiGalleria {
         // «si è chiusa ieri 20:35» e gli orari delle partite da quell'ora, come Oggi dell'app, anche se la foto si scatta di notte
         let quando = LegaDemo.momento(adesso: adesso, fase: fase)
         let w = RiassuntoWidget.leggi(LegaDemo.widget(adesso: quando, fase: fase, parziali: tipo == "parziali"))
-        return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: tipo == "salvati", widget: w)
+        // la copia salvata (#834): «salvati» è di due giorni prima, la riga più lunga, con il giorno (per esempio «dati di mer 18
+        // 09:41»); «salvati_oggi» è di adesso, «dati delle 09:41»
+        let scaricatoIl = tipo == "salvati" ? quando.addingTimeInterval(-2 * 86_400) : quando
+        let salvati = tipo == "salvati" || tipo == "salvati_oggi"
+        return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: scaricatoIl), datiSalvati: salvati, widget: w)
     }
 
     /// La giornata in corso della demo come la vede chi è entrato dopo la scadenza senza una formazione (`fanta/fasi.py`, #651):
