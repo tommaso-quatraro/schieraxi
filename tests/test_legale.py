@@ -108,7 +108,7 @@ def test_nuove_pagine_pubbliche(percorso, multiutente, dati_isolati):
 
 def test_elimina_account_dice_come_fare():
     t = tl.pagina("elimina").lower()
-    assert "elimina il mio account" in t and "impostazioni &gt; il tuo account" in t and "copie di sicurezza" in t
+    assert "elimina il mio account" in t and "impostazioni › il tuo account" in t and "copie di sicurezza" in t   # come nell'app (#827)
 
 
 def test_stato_ha_il_campo_sorgente(dati_isolati, monkeypatch):
