@@ -5,7 +5,7 @@ e fuori dalle schede (l'accesso).
 Nella corsa 44739068749 `iphone_scuro_accesso-rete.png` e `iphone_scuro_impostazioni-aspetto.png` sono uscite chiare. Erano le
 prime foto dopo l'accensione: il simulatore era ancora chiaro anche se `simctl ui appearance` rileggeva «dark», e a quelle due
 schermate non arrivava `-tema scuro` (l'accesso perché il tema dell'app valeva solo dentro le schede, Aspetto apposta). Le stesse
-schermate, scattate più tardi nella stessa corsa, erano scure. Il ripiego `-AppleInterfaceStyle Dark` iOS non lo legge.
+schermate, scattate più tardi nella stessa corsa, erano scure. Il ripiego `-AppleInterfaceStyle Dark` era passato anche a loro e non è servito.
 Qui i comandi del Mac sono finti (xcrun, python3, sleep, sips, stat): nessun simulatore."""
 import os
 import re
