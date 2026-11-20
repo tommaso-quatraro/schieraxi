@@ -12,8 +12,8 @@
     "en": "Refresh"
   },
   "errori.riepilogo": {
-    "it": "{richieste} dall'ultimo riavvio ({rifiutate}, {errori}). Tempo medio {medio} ms, il 5% più lento oltre {p95} ms, massimo {max} ms.",
-    "en": "{richieste} since the last restart ({rifiutate}, {errori}). Average time {medio} ms, the slowest 5% over {p95} ms, maximum {max} ms.",
+    "it": "{richieste} dall'ultimo riavvio ({rifiutate}, {errori}). Tempo medio {medio} ms, il 5% più lento oltre {p95} ms, massimo {max} ms.",
+    "en": "{richieste} since the last restart ({rifiutate}, {errori}). Average time {medio} ms, the slowest 5% over {p95} ms, maximum {max} ms.",
     "nota": "{richieste}, {rifiutate}, {errori}: i plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori; i tempi con num() (#779)"
   },
   "errori.n_richieste.one": {
@@ -65,12 +65,12 @@
     "en": "Nothing yet."
   },
   "errori.lenta_riga.one": {
-    "it": "{rotta} · {n} richiesta, medio {medio} ms",
-    "en": "{rotta} · {n} request, average {medio} ms"
+    "it": "{rotta} · {n} richiesta, medio {medio} ms",
+    "en": "{rotta} · {n} request, average {medio} ms"
   },
   "errori.lenta_riga.other": {
-    "it": "{rotta} · {n} richieste, medio {medio} ms",
-    "en": "{rotta} · {n} requests, average {medio} ms"
+    "it": "{rotta} · {n} richieste, medio {medio} ms",
+    "en": "{rotta} · {n} requests, average {medio} ms"
   },
   "errori.evento_accesso": {
     "it": "Accesso",
