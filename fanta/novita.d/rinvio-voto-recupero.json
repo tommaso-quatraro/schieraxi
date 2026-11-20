@@ -1,9 +1,0 @@
-{
-  "titolo": "Partita rinviata: la scelta dice di chi è il voto",
-  "voci": [
-    "Formazione, sulla web e sull'iPhone, con una partita rinviata: la scelta «aspettano il recupero» ora dice «(conta il voto del recupero)». Prima diceva «(conta il suo voto)», che sembrava parlare di un giocatore solo."
-  ],
-  "tecnico": [
-    "Catalogo dei testi: cambia solo la chiave oggi.rinvio_aspetta (italiano e inglese); testi.js e il catalogo dell'iPhone rigenerati con script/testi.py --scrivi. Nessuna rotta né campo nuovo."
-  ]
-}
