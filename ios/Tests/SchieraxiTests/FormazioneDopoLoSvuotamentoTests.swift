@@ -28,12 +28,18 @@ struct FormazioneDopoLoSvuotamentoTests {
     }
 
     /// La sessione dell'app su `server`, nata con un altro indirizzo ricordato (l'avvio di prima era su un'altra scena della demo):
-    /// `cambiaServer` svuota i dati locali con la pulizia vera. Widget e portachiavi finti: mai quelli veri del simulatore.
+    /// `cambiaServer` svuota i dati locali. Della pulizia vera (`DatiLocali.svuota`) alla Formazione arriva solo questo: le copie
+    /// su disco delle sue risposte spariscono, dalla stessa coda di `Cache`. Si tolgono solo quelle di questo server: lo
+    /// svuotamento intero toglierebbe le copie anche ai test che girano insieme. Widget e portachiavi finti.
     private static func sessione(_ server: ServerDiProva, memoria: UserDefaults) -> SessioneAccount {
         memoria.set("https://prova-846-prima.invalid", forKey: "account.indirizzo")
         let luoghi = TokenWidget.Luoghi(archivio: MemoriaToken(), memoria: memoria, cartella: { nil }, portachiavi: MemoriaCollegamento(),
                                         sincronizza: {})
-        return SessioneAccount(server: server, archivio: MemoriaToken(), memoria: memoria, pulisci: { DatiLocali.svuota() }, widget: luoghi)
+        let pulisci: @MainActor () -> Void = {
+            let letti = server.richieste.filter { $0.hasPrefix("GET ") }.map { String($0.dropFirst(4)) }
+            for percorso in letti + [CopiaScelta.percorso] { Cache.rimuovi(percorso, indirizzo: server.indirizzo) }
+        }
+        return SessioneAccount(server: server, archivio: MemoriaToken(), memoria: memoria, pulisci: pulisci, widget: luoghi)
     }
 
     @Test("Svuotati i dati mentre una lettura della Formazione è in viaggio: la Formazione arriva lo stesso",
