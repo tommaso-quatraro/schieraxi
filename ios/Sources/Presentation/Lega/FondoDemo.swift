@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Le foto `lega-stato-fondo`, `lega-rosa-fondo` e `lega-stato-nostri` (#425, #430): la lista parte scorsa in fondo, dove sono le
-/// parti nuove di Stato dei dati (indicatori del consiglio) e l'ultima riga della Rosa; per Stato dei dati c'è anche un secondo
-/// punto di arrivo, i gol attesi nostri, che col consiglio non entra in una foto sola. Vale solo in demo, con `-DEMO_FONDO`:
+/// Le foto `lega-stato-fondo`, `lega-rosa-fondo`, `lega-stato-nostri` e `lega-stato-taratura` (#425, #430, #527): la lista parte
+/// scorsa in fondo, dove sono le parti nuove di Stato dei dati (indicatori del consiglio) e l'ultima riga della Rosa; per Stato dei
+/// dati ci sono anche due punti di arrivo in mezzo, che col consiglio non entrano in una foto sola: i gol attesi nostri e la riga
+/// della taratura di «gioca N%» (sotto i gruppi di «Quanto sono giuste le previsioni»). Vale solo in demo, con `-DEMO_FONDO`:
 /// nell'app vera la lista non ha niente in più.
 enum FondoDemo {
     /// L'identità dell'ultima riga della lista (`RigaFondoDemo`): è lì che scorre la foto, appena i dati sono arrivati.
@@ -14,6 +15,14 @@ enum FondoDemo {
     /// Dove si ferma la foto «nostri»: la riga un po' sotto il bordo alto, così sopra si vede anche il titolo del riquadro.
     static let ancoraNostri = UnitPoint(x: 0.5, y: 0.06)
 
+    /// L'identità dell'ultimo gruppo della calibrazione (`idGruppo`): dove si ferma `lega-stato-taratura`. La riga della taratura
+    /// sta nel piè della sezione, che non è una riga della lista: lo scorrimento si ferma sul gruppo subito sopra.
+    static let idTaratura = "fondo-demo-taratura"
+
+    /// Dove si ferma la foto «taratura»: l'ultimo gruppo in cima, con la riga subito sotto. Un gruppo è corto, quindi anche a testo
+    /// grande la riga resta a video (una riga sotto il piè, lunga, la spingerebbe fuori dall'alto).
+    static let ancoraTaratura = UnitPoint.top
+
     /// Vero in demo con `-DEMO_FONDO <valore>` fra gli argomenti di lancio, come per `demoInFondo`.
     static func attivo(demo: Bool, argomenti: [String]) -> Bool {
         demo && Demo.argomento("DEMO_FONDO", in: argomenti) != nil
@@ -24,18 +33,31 @@ enum FondoDemo {
         demo && Demo.argomento("DEMO_FONDO", in: argomenti) == "nostri"
     }
 
+    /// Vero in demo con `-DEMO_FONDO taratura`: Stato dei dati si ferma sulla riga della taratura invece di andare in fondo.
+    static func vaAllaTaratura(demo: Bool, argomenti: [String]) -> Bool {
+        demo && Demo.argomento("DEMO_FONDO", in: argomenti) == "taratura"
+    }
+
+    /// L'identità di un gruppo della calibrazione: l'ultimo (subito sopra la riga della taratura) prende `idTaratura`, gli altri
+    /// tengono la loro.
+    static func idGruppo(_ id: String, ultimo: String?) -> String {
+        id == ultimo ? idTaratura : id
+    }
+
     /// Vero adesso: l'app è in demo e le foto chiedono la schermata scorsa in fondo.
     static var richiesto: Bool {
         attivo(demo: Demo.attivo, argomenti: ProcessInfo.processInfo.arguments)
     }
 
-    /// Vero adesso: l'app è in demo e la foto vuole Stato dei dati fermo sui gol attesi nostri.
-    static var richiestoAlleNostri: Bool {
-        vaAlleNostri(demo: Demo.attivo, argomenti: ProcessInfo.processInfo.arguments)
+    /// Dove deve arrivare la foto di Stato dei dati: la riga delle nostri, l'ultimo gruppo sopra la taratura, o l'ultima riga.
+    static func arrivo(demo: Bool, argomenti: [String]) -> (id: String, ancora: UnitPoint) {
+        if vaAlleNostri(demo: demo, argomenti: argomenti) { return (idNostri, ancoraNostri) }
+        if vaAllaTaratura(demo: demo, argomenti: argomenti) { return (idTaratura, ancoraTaratura) }
+        return (idRiga, .bottom)
     }
 
-    /// Dove deve arrivare la foto di Stato dei dati: la riga delle nostri, o l'ultima riga della lista.
+    /// Dove deve arrivare adesso la foto di Stato dei dati (`arrivo` con gli argomenti di lancio).
     static var arrivoDiStato: (id: String, ancora: UnitPoint) {
-        richiestoAlleNostri ? (idNostri, ancoraNostri) : (idRiga, .bottom)
+        arrivo(demo: Demo.attivo, argomenti: ProcessInfo.processInfo.arguments)
     }
 }

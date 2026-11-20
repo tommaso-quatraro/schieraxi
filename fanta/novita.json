@@ -1,5 +1,22 @@
 [
   {
+    "versione": "1.538",
+    "data": "2026-11-20T10:01:37",
+    "titolo": "Formazione e Da fare: cinque frasi corrette",
+    "voci": [
+      "Formazione: nelle leghe senza sostituzioni la riga di un titolare incerto non nomina più una riserva, e chi è titolare solo perché gli altri del suo ruolo sono fuori ha una riga che lo dice.",
+      "Da fare: «La consigliata è cambiata» non compare più con un nome mancante quando uno dei due gioca una partita già cominciata, e l'avviso del reparto scoperto non mette più due punti dopo un nome con l'iniziale (in inglese ora è tradotto).",
+      "Perché questo numero: «gioca» dice la stessa percentuale della scheda del giocatore."
+    ],
+    "tecnico": [
+      "da_fare._titolari: la voce consigliata:<giornata> si mostra solo se entrano ed escono non sono vuoti e i titolari che ne risultano passano scelte.motivo_non_valida (11 diversi, un portiere, modulo ammesso); altrimenti nessuna voce. Senza quella voce restano le voci dubbio degli infortunati e degli squalificati con la loro alternativa (stesso ruolo, mai chi gioca un anticipo già cominciato), così in cima alla Formazione resta la decisione urgente.",
+      "perche._frase_gioca usa etichette.percento per perche.gioca_* (arrotondamento della web, non quello al pari di Python).",
+      "consigli.incerti riceve le regole: con panchina.max_sostituzioni 0 riserva = null in ogni modulo e stile (_moduli e _con_consigliata hanno le regole). perche_scelta.del_modulo, senza sostituzioni, non usa la riserva e confronta l'incerto con il miglior escluso del suo ruolo (conto del Confronto).",
+      "Chiave nuova scelta.nessun_altro (altro: null, nessun conto): titolare sotto fz.IMPROBABILE_SOTTO senza un compagno del ruolo fuori dagli undici che giochi almeno il 20%.",
+      "copertura.analizza scrive Frase del catalogo (dafare.copertura_*, con rose.* per «2 portieri»); il parametro lingua è tolto da analizza, da_fare._copertura e da_fare.costruisci. Con lingua=en il testo della voce copertura è in italiano come le altre voci, con frase per tradurlo. Nessun campo dell'API tolto o rinominato."
+    ]
+  },
+  {
     "versione": "1.537",
     "data": "2026-11-20T08:59:35",
     "titolo": "iPhone: «Esci» che non riesce e correzione delle giornate",

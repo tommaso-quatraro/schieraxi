@@ -27,7 +27,7 @@ TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazi
        formazione-campionato-finito
        giocatore giocatore-fondo ricerca
        guida marchio giornate giornate-aperta giornate-dettagli
-       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri impostazioni-novita
+       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-stato-taratura impostazioni-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-squadra impostazioni-gestione impostazioni-crediti primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # I nomi che l'app conosce: le foto a mano (SCHERMATE) possono chiedere solo questi.
@@ -93,6 +93,8 @@ scatta() {
     *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
     # Stato dei dati ha due riquadri lunghi quasi quanto lo schermo: «-fondo» mostra il consiglio di formazione, questa i gol attesi nostri
     lega-stato-nostri) schermata="lega-stato"; fondo=(-DEMO_FONDO nostri) ;;
+    # e la riga della taratura di «gioca N%» (#527), fra la cima e le nostri: in nessuna delle altre foto
+    lega-stato-taratura) schermata="lega-stato"; fondo=(-DEMO_FONDO taratura) ;;
   esac
   # «accesso-<scenario>»: la demo con gli account accesi (schermata di accesso, codice di recupero, account in Lega...).
   # Con «-fondo» lo scenario è lo stesso (accesso-account-fondo = scenario «account» con -DEMO_FONDO).

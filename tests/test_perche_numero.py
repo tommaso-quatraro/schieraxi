@@ -104,6 +104,16 @@ def test_dubbio_sul_giocare_e_un_motivo_senza_effetto():
     assert all(x["chiave"] != "gioca" for x in motivi.loc[99])            # chi gioca di sicuro non ha bisogno di dirlo
 
 
+@pytest.mark.parametrize("p_voto, atteso", [(0.345, 35), (0.3447, 35), (0.125, 13), (0.645, 65), (0.785, 79)])
+def test_gioca_n_del_perche_e_quello_della_scheda(p_voto, atteso):
+    """#816: «gioca N%» del «Perché questo numero» è lo stesso numero della scheda e delle etichette (`etichette.percento`, mezzo
+    punto in su come la web), mai l'arrotondamento al pari di Python: con 0,345 la scheda dice 35% e il perché diceva 34%."""
+    from fanta import etichette
+    frase = perche._frase_gioca({"stato": None, "p_voto": p_voto})
+    assert frase.param["p"] == atteso == etichette.percento(p_voto), str(frase)
+    assert f"{atteso}%" in frase
+
+
 def test_chi_non_gioca_non_ha_motivi_sulla_partita():
     """Collaudo 2/11/2026: un infortunato con «partita favorevole» e «segna più della media»: consigli a vuoto."""
     for stato in ("infortunato", "squalificato"):

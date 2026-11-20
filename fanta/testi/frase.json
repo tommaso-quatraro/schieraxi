@@ -136,6 +136,70 @@
     "it": "{nome} è squalificato",
     "en": "{nome} is suspended"
   },
+  "frase.dafare.copertura_portiere": {
+    "it": "portiere",
+    "en": "goalkeeper"
+  },
+  "frase.dafare.copertura_difensore": {
+    "it": "difensore",
+    "en": "defender"
+  },
+  "frase.dafare.copertura_centrocampista": {
+    "it": "centrocampista",
+    "en": "midfielder"
+  },
+  "frase.dafare.copertura_attaccante": {
+    "it": "attaccante",
+    "en": "forward"
+  },
+  "frase.dafare.copertura_nessuno": {
+    "it": "Non hai nessun {ruolo} disponibile: ne servono almeno {minimo}.",
+    "en": "You have no {ruolo} available: you need at least {minimo}."
+  },
+  "frase.dafare.copertura_pochi.one": {
+    "it": "Hai solo {quanti} disponibile: per giocare ne servono almeno {minimo}.",
+    "en": "You have only {quanti} available: you need at least {minimo} to play."
+  },
+  "frase.dafare.copertura_pochi.other": {
+    "it": "Hai solo {quanti} disponibili: per giocare ne servono almeno {minimo}.",
+    "en": "You have only {quanti} available: you need at least {minimo} to play."
+  },
+  "frase.dafare.copertura_fuori": {
+    "it": "{testo} Fuori: {fuori}.",
+    "en": "{testo} Out: {fuori}."
+  },
+  "frase.dafare.copertura_diffidati.one": {
+    "it": "Hai {quanti} disponibile, ma {diffidati}: con un giallo resti scoperto.",
+    "en": "You have {quanti} available, but {diffidati}: with a yellow you would be short."
+  },
+  "frase.dafare.copertura_diffidati.other": {
+    "it": "Hai {quanti} disponibili, ma {diffidati}: con un giallo resti scoperto.",
+    "en": "You have {quanti} available, but {diffidati}: with a yellow you would be short."
+  },
+  "frase.dafare.copertura_diffidati_nomi.one": {
+    "it": "{n} è diffidato ({nomi})",
+    "en": "{n} is one yellow card from a ban ({nomi})"
+  },
+  "frase.dafare.copertura_diffidati_nomi.other": {
+    "it": "{n} sono diffidati ({nomi})",
+    "en": "{n} are one yellow card from a ban ({nomi})"
+  },
+  "frase.dafare.copertura_minimo.one": {
+    "it": "Hai solo {quanti} disponibile, il minimo per giocare: se un altro salta, resti senza ricambi.",
+    "en": "You have only {quanti} available, the minimum to play: if another one is out, you have no cover."
+  },
+  "frase.dafare.copertura_minimo.other": {
+    "it": "Hai solo {quanti} disponibili, il minimo per giocare: se un altro salta, resti senza ricambi.",
+    "en": "You have only {quanti} available, the minimum to play: if another one is out, you have no cover."
+  },
+  "frase.dafare.copertura_moduli": {
+    "it": "Con i giocatori disponibili non riesci a schierare nessuno dei moduli ammessi dalla tua lega.",
+    "en": "With the players available you cannot field any of the formations your league allows."
+  },
+  "frase.dafare.copertura_altri": {
+    "it": "{nomi} e altri {n}",
+    "en": "{nomi} and {n} more"
+  },
   "frase.dafare.formazione_non_valida": {
     "it": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     "en": "The lineup closes in {tempo} and the one you saved is no longer valid: save another one."
@@ -631,6 +695,10 @@
   "frase.scelta.incerto_senza_riserva": {
     "it": "Titolare anche se incerto (gioca {p}%): in panchina nessuno del suo ruolo gioca quasi di sicuro.",
     "en": "Starting even though uncertain (plays {p}%): nobody in his role on the bench is almost certain to play."
+  },
+  "frase.scelta.nessun_altro": {
+    "it": "Titolare perché nella rosa nessun altro del suo ruolo può giocare al suo posto.",
+    "en": "Starting because nobody else in his role on the roster can play in his place."
   },
   "frase.scelta.piu_punti": {
     "it": "Preferito a {altro}: con lui la formazione fa più punti attesi ({attuale} contro {invertita}).",

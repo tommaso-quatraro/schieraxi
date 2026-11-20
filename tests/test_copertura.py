@@ -4,8 +4,9 @@ import time
 
 import pandas as pd
 
-from fanta import consigli, copertura, da_fare, lega
+from fanta import consigli, copertura, da_fare, frasi, lega
 from fanta.regole import Regole
+from test_frasi import CON_NODE, _in_node
 
 
 def _rosa(spec):
@@ -37,17 +38,54 @@ def _con(spec, ruolo, indisponibili, diffidati=0):
     return out
 
 
-def test_testi_in_inglese_a_richiesta():
-    prev, rose = _rosa(_con(_base(), "A", 6))
-    assert copertura.analizza(prev, Regole(), rose, "en")["reparti"][0]["testo"].startswith("You have no forward available: you need at least 1.")
-    assert copertura.analizza(prev, Regole(), rose)["reparti"][0]["testo"].startswith("Non hai nessun attaccante")      # senza lingua: italiano
-    prev, rose = _rosa(_con(_base(), "D", 6))
-    assert copertura.analizza(prev, Regole(), rose, "en")["reparti"][0]["testo"].startswith("You have only 2 defenders available: you need at least 3")
-    prev, rose = _rosa(_con(_base(), "P", 2))
-    assert copertura.analizza(prev, Regole(), rose, "en")["reparti"][0]["testo"] == \
-        "You have only 1 goalkeeper available, the minimum to play: if another one is out, you have no cover."
-    prev, rose = _rosa(_con(_base(), "D", 4, diffidati=2))
-    assert "2 are one yellow card from a ban" in copertura.analizza(prev, Regole(), rose, "en")["reparti"][0]["testo"]
+def _testo(prev, rose, regole=None) -> frasi.Frase:
+    return copertura.analizza(prev, regole or Regole(), rose)["reparti"][0]["testo"]
+
+
+def _un_attaccante_fuori(nome: str):
+    """La rosa di base con un attaccante solo, infortunato, che si chiama `nome`."""
+    prev, rose = _rosa([x for x in _base() if x[0] != "A"] + [("A", "infortunato", False)])
+    prev.loc[prev["ruolo"] == "A", "nome"] = nome
+    return prev, rose
+
+
+SENZA_MODULI = ([("P", None, False)] * 2 + [("D", None, False)] * 4 + [("C", None, False)] * 4 + [("A", None, False)] * 3,
+                Regole(moduli=["3-5-2", "5-3-2"]))
+
+
+def test_ogni_testo_e_una_frase_del_catalogo():
+    """#816: i testi della copertura stanno nel catalogo (italiano e inglese), come le altre voci di «Da fare»: `testo` in italiano
+    e, accanto, `frase` per tradurlo. Prima erano scritti nel codice, senza `frase`."""
+    for spec in (_con(_base(), "A", 6), _con(_base(), "D", 6), _con(_base(), "P", 2), _con(_base(), "D", 4, diffidati=2)):
+        t = _testo(*_rosa(spec))
+        assert isinstance(t, frasi.Frase) and t.chiave.startswith("dafare.copertura_"), t
+    t = _testo(*_rosa(SENZA_MODULI[0]), SENZA_MODULI[1])
+    assert isinstance(t, frasi.Frase) and t.chiave == "dafare.copertura_moduli", t
+
+
+def test_fuori_con_un_nome_con_l_iniziale_un_punto_solo():
+    """#816: «Fuori: Rossi L..» aveva due punti dopo un nome che finisce con l'iniziale."""
+    assert _testo(*_un_attaccante_fuori("Rossi L.")) == "Non hai nessun attaccante disponibile: ne servono almeno 1. Fuori: Rossi L."
+    assert _testo(*_un_attaccante_fuori("Rossi")) == "Non hai nessun attaccante disponibile: ne servono almeno 1. Fuori: Rossi."
+
+
+@CON_NODE
+def test_testi_in_inglese_dalla_frase():
+    """L'inglese viene dal catalogo (`frase`, tradotta dalla web), con le stesse parole di prima e un punto solo dopo «Rossi L.»."""
+    casi = [
+        (_rosa(_con(_base(), "A", 6)), "You have no forward available: you need at least 1. Out: A20, A21, A22 and 3 more."),
+        (_rosa(_con(_base(), "D", 6)), "You have only 2 defenders available: you need at least 3 to play. Out: D4, D5, D6 and 3 more."),
+        (_rosa(_con(_base(), "D", 7)), "You have only 1 defender available: you need at least 3 to play. Out: D4, D5, D6 and 4 more."),
+        (_rosa(_con(_base(), "P", 2)), "You have only 1 goalkeeper available, the minimum to play: if another one is out, you have no cover."),
+        (_rosa(_con(_base(), "D", 4, diffidati=2)),
+         "You have 4 defenders available, but 2 are one yellow card from a ban (D8, D9): with a yellow you would be short."),
+        (_rosa(_con(_base(), "P", 2, diffidati=1)),
+         "You have 1 goalkeeper available, but 1 is one yellow card from a ban (P3): with a yellow you would be short."),
+        (_un_attaccante_fuori("Rossi L."), "You have no forward available: you need at least 1. Out: Rossi L."),
+    ]
+    frasi_it = [_testo(*rosa) for rosa, _ in casi] + [_testo(*_rosa(SENZA_MODULI[0]), SENZA_MODULI[1])]
+    attesi = [inglese for _, inglese in casi] + ["With the players available you cannot field any of the formations your league allows."]
+    assert _in_node("en", [[t.json(), str(t)] for t in frasi_it]) == attesi
 
 
 def test_rosa_a_posto_niente_allarme():
@@ -123,3 +161,6 @@ def test_voce_da_fare_urgente_e_con_destinazione(monkeypatch):
     voci = da_fare._copertura(None, Regole(), rose)
     assert [(v["id"], v["priorita"], v["tipo"]) for v in voci] == [("copertura:A", 1, "copertura"), ("copertura:P", 2, "copertura")]
     assert voci[0]["destinazione"]["scheda"] == "mercato" and voci[0]["azione"] == "Cerca un rimpiazzo" and voci[0]["reparto"] == "A"
+    # come le altre voci: accanto al testo italiano la frase per tradurlo (#816)
+    assert [v["frase"]["chiave"] for v in voci] == ["dafare.copertura_fuori", "dafare.copertura_minimo"]
+    assert frasi.da_json(voci[1]["frase"]) == voci[1]["testo"]

@@ -1489,7 +1489,7 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
             corpo["serve_promemoria"] = notifiche.serve_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], ctx.scelte)
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
-                                              lingua=lingua_testi.della_richiesta(request), dal=dal,
+                                              dal=dal,
                                               mercato=_accesa_per(request, "mercato"),     # «Cambi consigliati» spenta: niente svincolati (#797)
                                               scambi_trova=_accesa_per(request, "scambi_trova"))     # «Scambi: trova» spenta: niente scambi (#803)
         return corpo
