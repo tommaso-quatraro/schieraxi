@@ -694,6 +694,7 @@ final class SessioneAccount: ObservableObject {
             riprendiIlWidget(revocato: widgetRevocato)
             throw error
         }
+        avvisoAccesso = nil   // un «Esci» normale non dice «Sei fuori da tutti i dispositivi»
         chiudiLocale()
     }
 

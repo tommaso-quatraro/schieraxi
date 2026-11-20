@@ -584,7 +584,7 @@ final class SessioneAccountTests: XCTestCase {
         memoria.set(true, forKey: "account.multiutente")
         let s = sessione(server)
         try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
-        await s.esci()
+        try await s.esci()
         XCTAssertNil(s.prendiAvvisoAccesso(), "«Esci» non è «Esci da tutti»")
         try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
         try await s.esciDaTutti()
