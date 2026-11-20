@@ -42,6 +42,8 @@ final class LegaViewModel: ViewModelBase {
     /// Le pagine aperte nella pila delle Impostazioni (nell'AppModel: cambiando sezione si resta dove si era).
     @Published var percorso: [PaginaImpostazioni] = []
     private var ascoltoStato: AnyCancellable?
+    /// L'ultima risposta di `/api/stato` già passata al pulsante «Aggiorna i dati» (`Caricatore.risposte`).
+    private var rispostaUsata = 0
 
     /// Apre una pagina (e quelle che ci stanno sopra) nelle Impostazioni e dice quale voce della barra mostrare.
     @discardableResult
@@ -67,11 +69,12 @@ final class LegaViewModel: ViewModelBase {
         }
     }
 
-    /// Passa al pulsante «Aggiorna i dati» lo stato del server, solo da una risposta fresca: la copia salvata sul telefono può essere
-    /// di un aggiornamento finito da tempo e terrebbe il pulsante spento.
+    /// Passa al pulsante «Aggiorna i dati» lo stato del server, solo da una risposta arrivata ora. La copia salvata sul telefono può
+    /// essere di un aggiornamento finito da tempo; una lettura annullata rimette l'ultima risposta, che la rilettura di Gestione
+    /// (`AggiornaDatiViewModel.segui`) può aver già smentito: tutte e due terrebbero il pulsante spento.
     private func statoLetto(_ stato: Stato<InfoServer>) {
-        // provvisorio (#773): senza guardia, per vedere fallire i test della lettura annullata; il commit dopo la rimette
-        guard case .loaded(let dato) = stato else { return }
+        guard case .loaded(let dato) = stato, info.risposte != rispostaUsata else { return }
+        rispostaUsata = info.risposte
         aggiornamento.segna(occupato: dato.aggiornamentoInCorso == true)
     }
 
