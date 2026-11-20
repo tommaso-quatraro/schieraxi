@@ -180,6 +180,16 @@ scadenza:
   prima della schermata di accesso, come all'uscita; riaperta senza rete, la Formazione salvata non compare;
 - il codice di un link d'invito resta e compare nel modulo di registrazione.
 
+`test_ora_italiana.py`, date e conto alla rovescia nell'ora italiana con il browser su un altro fuso (#776):
+- in ogni fase la Formazione con il browser a New York e a Tokyo dice le stesse cose (tutto il testo della pagina) che con il
+  browser in Italia; lo stesso la pagina Giornate, che ha la riga di stato con la data dei dati;
+- prima della scadenza, a Roma, New York e Tokyo: «Si chiude oggi 18:20» e «fra 3 h 10 min» (a Tokyo le 18:20 italiane sono
+  il giorno dopo: resta «oggi»);
+- a cavallo del cambio dell'ora (sabato sera prima dell'ultima domenica di ottobre e di marzo, scadenza la domenica): il conto
+  alla rovescia conta l'ora in più o in meno;
+- una partita con solo il giorno (`data_partita` «2026-11-01», ora non ancora fissata) si scrive «dom 1», mai con un'ora finta
+  come «00:00».
+
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
 - dopo un rilascio finto (ogni file della scocca dice la sua versione, `VERSIONE` di `sw.js` alzata) con `app.js` e `testi.js`
   lenti oltre i 2,5 secondi, la pagina riaperta è tutta di una versione e un testo nuovo non compare come chiave; la versione
@@ -226,6 +236,9 @@ Cosa offre la fixture `web`:
   `stato` al posto della risposta registrata, per un dato che lo scenario non ha o per una rotta che fallisce.
   `web.registrata(rotta)` dà la risposta registrata come oggetto, per cambiarne un pezzo;
 - `web.memoria({"chiave": "valore"})`, prima di `apri`: valori già salvati nel browser da una versione di prima;
+- `web.con_fuso("America/New_York")`: un'altra scheda sulla stessa fase con il browser su quel fuso (stesso momento dello
+  scenario); `web.orologio("2026-10-24T20:00:00")`, prima di `apri`: l'orologio fermo su un altro momento, in ora italiana.
+  Il momento dello scenario è ora italiana e si calcola senza il fuso del browser (`istante_italiano` di `conftest.py`);
 - `web.testo_principale()`, `web.in_caricamento()`, `web.errori_mostrati()`, `web.scorre_di_lato()`,
   `web.violazioni_gravi()`;
 - `web.fase`: `prima`, `in-corso` o `finita` (per un test che vale per una fase sola:
