@@ -65,6 +65,8 @@ def _prova_url(tmp_path, defaults_fallisce=False):
         # simulatore finto: annota ogni comando; «defaults write» non riesce se gli si dice di fallire
         'xcrun() { echo "$*" >> "$REGISTRO"; [ "$DEFAULTS_FALLISCE" = 1 ] && [ "$4" = defaults ] && return 1; return 0; }',
         'sleep() { echo "sleep $1" >> "$REGISTRO"; }',
+        # le foto passano da avvisi_foto (controllo dell'avviso di sistema, #601), che screenshot.sh carica da avvisi.sh
+        f'source "{(SCRIPT.parent / "avvisi.sh").as_posix()}"',
         funzione,
         "prova_url UDID",
         'echo "ERRORI=$ERRORI"',
