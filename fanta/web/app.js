@@ -3782,12 +3782,18 @@ function collegaAmministratore() {
     if (!dove) return;
     try {
       const r = await api("/api/admin/registro"), c = r.contatori;
-      const quando = q => esc(String(q).replace("T", " ").replace(/\+00:00$/, " UTC"));
+      // le ore del registro sono in UTC con il fuso («2026-11-20T09:05:00+00:00»): si mostrano nell'ora italiana, qualunque sia il
+      // fuso del browser (#779); i tipi di evento con il loro nome del catalogo, uno nuovo senza nome almeno senza trattini bassi
+      const quando = q => { const d = new Date(q); return esc(Number.isNaN(d.getTime()) ? String(q)
+        : d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })); };
+      const evento = tipo => esc(Object.hasOwn(TESTI.it, "errori.evento." + tipo) ? t("errori.evento." + tipo) : String(tipo || "").replace(/_/g, " "));
+      const conta = (chiave, n) => tp(chiave, n, { n: fNum(n) });
       const righe = (elenco, vuoto, testo) => elenco.length ? `<ul class="registro-elenco">${elenco.map(testo).join("")}</ul>` : `<p>${vuoto}</p>`;
-      dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: c.richieste, rifiutate: c.rifiutate, errori: c.errori, medio: c.tempo_medio_ms, p95: c.tempo_p95_ms, max: c.tempo_max_ms })}</p>
+      dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: conta("errori.n_richieste", c.richieste), rifiutate: conta("errori.n_rifiutate", c.rifiutate),
+          errori: conta("errori.n_errori", c.errori), medio: num(c.tempo_medio_ms), p95: num(c.tempo_p95_ms), max: num(c.tempo_max_ms) })}</p>
         <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${quando(e.quando)} · ${esc(e.metodo || "")} ${esc(e.rotta || "")} · ${esc(e.stato || "")} ${esc(e.errore || "")}</li>`)}
-        <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${esc(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
-        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${t("errori.lenta_riga", { rotta: esc(p.rotta), richieste: p.richieste, medio: p.medio_ms })}</li>`)}`;
+        <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
+        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), rotta: esc(p.rotta), medio: num(p.medio_ms) })}</li>`)}`;
     } catch (e) { dove.textContent = e.message; }
   };
   $("#adm-registro-aggiorna").addEventListener("click", caricaRegistro);
