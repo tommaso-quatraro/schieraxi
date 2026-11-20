@@ -138,6 +138,16 @@ def test_di_rotta():
     assert set(fn.ROTTE.values()) <= fn.CON_ROTTE <= set(fn.FUNZIONI)
 
 
+def test_i_nomi_delle_funzioni_con_rotte_hanno_la_traduzione_inglese():
+    """Il 404 di una funzione spenta dice il suo nome: in inglese la web lo traduce con la chiave err.p_fn_<id> del catalogo (#795)."""
+    import json
+    from pathlib import Path
+    catalogo = json.loads((Path(fn.__file__).parent / "testi" / "err.json").read_text(encoding="utf-8"))
+    for f in sorted(fn.CON_ROTTE):
+        voce = catalogo.get(f"err.p_fn_{f}") or {}
+        assert voce.get("it") == fn.FUNZIONI[f][0] and voce.get("en") and voce["en"] != voce["it"], (f, voce)
+
+
 # ---------------------------------------------------------------- mercato e scambi (#795): spenti come le altre funzioni con rotte
 MERCATO_E_SCAMBI = [("mercato", "GET", "/api/mercato", {}),
                     ("scambi_costruisci", "GET", "/api/scambi/analizza", {"params": {"con": "x", "do": "1", "ricevo": "2"}}),
