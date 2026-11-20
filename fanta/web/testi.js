@@ -266,7 +266,7 @@ const TESTI = {
     "comune.riprova": "Riprova",
     "comune.dati_salvati": "Dati salvati {quando}: aggiorno…",
     "comune.cache_offline": "Non riesco a collegarmi: questi sono gli ultimi dati salvati.",
-    "comune.cache_errore": "{errore} (dati salvati, potrebbero non essere aggiornati)",
+    "comune.cache_errore": "{errore} (dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati)",
     "comune.vai_lega": "Apri La mia lega",
     "comune.giocatore": "Giocatore",
     "comune.riprova_tra": " (riprova tra {attesa})",
@@ -1960,7 +1960,7 @@ const TESTI = {
     "comune.riprova": "Try again",
     "comune.dati_salvati": "Saved data from {quando}: refreshing…",
     "comune.cache_offline": "I cannot connect: these are the last saved data.",
-    "comune.cache_errore": "{errore} (saved data, may be out of date)",
+    "comune.cache_errore": "{errore} (saved data from {giorno} at {ora}, may be out of date)",
     "comune.vai_lega": "Open My league",
     "comune.giocatore": "Player",
     "comune.riprova_tra": " (try again in {attesa})",
@@ -3432,6 +3432,10 @@ const FUSO_ITALIA = "Europe/Rome";
 const fData = (d, opz = { day: "numeric", month: "short" }) => d.toLocaleDateString(t("lingua.locale"), { ...opz, timeZone: FUSO_ITALIA });
 const fOra = d => d.toLocaleTimeString(t("lingua.locale"), { hour: "2-digit", minute: "2-digit", timeZone: FUSO_ITALIA });
 const fDataOra = d => d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: FUSO_ITALIA });
+// Un giorno scritto con fData dopo l'articolo («dati del {data}», «dati salvati il {giorno}»): davanti a 8 e 11 (otto, undici)
+// l'articolo perde la vocale, «del 11 nov» → «dell'11 nov», «il 8 nov» → «l'8 nov». Le altre date restano («il 18 nov», «il 1
+// nov»). Solo in italiano; come DatiVecchi sull'iPhone. Gli ordinali («l'8ª») li fa elidiOrdinali (app.js).
+const elidiGiorno = testo => (LINGUA === "it" ? String(testo).replace(/\bil (8|11)(?= )/g, "l'$1").replace(/\b(del|al|dal|nel|sul) (8|11)(?= )/g, "$1l'$2") : testo);
 const fNum = (n, opz) => Number(n).toLocaleString(t("lingua.locale"), opz);
 
 // Tempi scritti dal server («3 ore fa», «meno di un'ora», «circa 2 ore») nella lingua scelta.

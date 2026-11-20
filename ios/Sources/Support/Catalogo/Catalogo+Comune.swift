@@ -31,8 +31,8 @@ extension Catalogo {
         static let serverNonRisponde = "Il server non risponde: riprova fra poco"
 
         /// `comune.cache_errore`
-        static func cacheErrore(errore: String) -> String {
-            "\(errore) (dati salvati, potrebbero non essere aggiornati)"
+        static func cacheErrore(errore: String, giorno: String, ora: String) -> String {
+            "\(errore) (dati salvati il \(giorno) alle \(ora), potrebbero non essere aggiornati)"
         }
     }
 }
