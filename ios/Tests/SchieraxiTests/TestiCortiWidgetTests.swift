@@ -261,7 +261,7 @@ struct TestiCortiWidgetTests {
         let adesso = try #require(Quando.data("2026-10-31 18:00"))
         // docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»: la giornata è scritta sopra e non si ripete
         let attesa = "La formazione si è chiusa oggi 14:50"
-        #expect(r.fraseFase(adesso: adesso) == attesa + ". I punti fatti sono nella Formazione.")
+        #expect(r.corpoFaseDubbi(adesso: adesso) == CorpoFaseDubbi(frase: attesa + ".", sotto: "I punti fatti sono nella Formazione."))
         #expect(Catalogo.Oggi.chiusaDettaglio(quando: "oggi 14:50") == attesa)
     }
 
@@ -280,14 +280,14 @@ struct TestiCortiWidgetTests {
         #expect(r.rigaInLineaFase == "Giornata 8: 69,5 punti fatti")
         #expect(r.formeSottotitoloRettangolo == ["Prossima: Giornata 9 · 12ª di Serie A", "Prossima: Giornata 9"])
         #expect(r.voceSottotitoloRettangolo == "Prossima: Giornata 9, 12ª di Serie A")
-        #expect(r.fraseFase(adesso: Date()) == "Si ricomincia con la prossima giornata.")
+        #expect(r.corpoFaseDubbi(adesso: Date()) == CorpoFaseDubbi(frase: "Si ricomincia con la prossima giornata.", sotto: nil))
     }
 
     @Test("Prima della scadenza niente titolo di fase; la testata è la giornata da giocare")
     func prima() throws {
         let r = try riassunto("prima")
         #expect(r.titoloFase == nil)
-        #expect(r.fraseFase(adesso: Date()) == nil)
+        #expect(r.corpoFaseDubbi(adesso: Date()) == nil)
         #expect(r.etichettaTestata == "Giornata 8 · 11ª di Serie A")
         #expect(r.sottotitoloRettangolo == "Giornata 8 · 11ª di Serie A")
         #expect(r.formeGiornata == ["Giornata 8 · 11ª di Serie A", "Giornata 8"])

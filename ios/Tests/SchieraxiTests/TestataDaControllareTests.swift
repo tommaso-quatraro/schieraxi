@@ -84,11 +84,18 @@ struct TestataDaControllareTests {
         #expect(r.corpoFaseDubbi(adesso: Date()) == nil)
     }
 
-    @Test("La frase unica di sempre (`fraseFase`) resta uguale: è la frase e la riga sotto, insieme")
-    func fraseDiSempre() throws {
-        let r = try riassunto("in_corso")
-        let adesso = try #require(Quando.data("2026-10-31 18:00"))
-        #expect(r.fraseFase(adesso: adesso) == "La formazione si è chiusa oggi 14:50. I punti fatti sono nella Formazione.")
-        #expect(try riassunto("finita").fraseFase(adesso: adesso) == "Si ricomincia con la prossima giornata.")
+    @Test("A formazione chiusa senza l'ora della scadenza la frase è quella del catalogo per quel caso (`formazione.chiusa`)")
+    func chiusaSenzaOra() throws {
+        let corpo = #"""
+        {"giornata": 11, "giornata_lega": 8, "fase": "in_corso",
+         "in_corso": {"giornata": 11, "giornata_lega": 8, "punti_fatti": 41.5, "punti_previsti": 72.4, "ancora_da_giocare": 4,
+                      "giocatori": [], "sostituzioni": []}}
+        """#
+        let w = try #require(RiassuntoWidget.leggi(Data(corpo.utf8)))
+        let r = try #require(w.comeRiassuntoOggi())
+        #expect(r.inizio == nil, "senza `scadenza` il widget non sa quando si è chiusa")
+        let c = try #require(r.corpoFaseDubbi(adesso: Date()))
+        #expect(c == CorpoFaseDubbi(frase: Catalogo.Formazione.chiusa, sotto: "I punti fatti sono nella Formazione."))
+        #expect(c.frase == "La formazione di questa giornata è chiusa: le partite sono cominciate.")
     }
 }
