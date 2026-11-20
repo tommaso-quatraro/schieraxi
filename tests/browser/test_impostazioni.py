@@ -471,7 +471,7 @@ def test_esci_da_tutti_annullato_non_fa_niente(web):
 @pytest.mark.parametrize("stato", [500, None], ids=["errore-del-server", "rete-giu"])
 def test_esci_da_tutti_non_riuscito_lo_dice_e_resta_dentro(web, stato):
     """Se la richiesta non riesce gli altri dispositivi sono ancora dentro: un avviso lo dice, si resta nella pagina e le copie
-    restano (al contrario di «Esci», che esce anche con il server spento)."""
+    restano (come per «Esci» dal #800: test_esci_non_riuscito_lo_dice_e_resta_dentro)."""
     solo(web, "prima")
     da_utente(web)
     web.apri("/")
@@ -1036,6 +1036,159 @@ def test_le_ore_tranquille_rifiutate_dal_server_tornano_come_erano(web):
     sezione(web, "Avvisi").locator("label").filter(has_text="Ore tranquille").click()
     web.pagina.locator("#avviso").filter(has_text="Le ore tranquille non possono").wait_for(timeout=10000)
     assert not ore.is_checked()                                          # resta scritto ciò che vale sul server
+
+
+# ---------------------------------------------------------------- «Esci» e gli avvisi di questo dispositivo (#800)
+# Un browser che ha già un'iscrizione agli avvisi, fatta in una visita di prima: service worker e permesso finti come in
+# NOTIFICHE_FINTE, ma l'iscrizione sta in localStorage (la web non tocca quella chiave), così resta dopo una ricarica, e c'è già
+# alla prima pagina della scheda (scritta una volta sola: dopo resta ciò che fa l'app).
+ENDPOINT = "https://push.example/prova"
+ISCRIZIONE_GIA_QUI = """(() => {
+  const CHIAVE = '__iscrizione-di-prova', ep = () => localStorage.getItem(CHIAVE);
+  if (!localStorage.getItem('__iscrizione-iniziata')) { localStorage.setItem('__iscrizione-iniziata', '1'); localStorage.setItem(CHIAVE, ENDPOINT); }
+  const sub = () => ep() ? { endpoint: ep(), toJSON: () => ({ endpoint: ep(), keys: { p256dh: 'a', auth: 'b' } }),
+    unsubscribe: async () => { localStorage.removeItem(CHIAVE); return true; } } : null;
+  const reg = { active: {}, pushManager: { getSubscription: async () => sub(),
+    subscribe: async () => { localStorage.setItem(CHIAVE, ENDPOINT); return sub(); } } };
+  ServiceWorkerContainer.prototype.getRegistration = async () => reg;
+  Object.defineProperty(ServiceWorkerContainer.prototype, 'ready', { get: () => Promise.resolve(reg) });
+  Notification.requestPermission = async () => 'granted';
+})();""".replace("ENDPOINT", json.dumps(ENDPOINT))
+SENZA_SESSIONE = {"detail": "Accesso richiesto", "multiutente": True, "registrazione": "invito", "social": [], "email_attiva": True}
+
+
+def iscrizione_gia_qui(web) -> None:
+    """Prima di `apri`: il browser ha già un'iscrizione agli avvisi."""
+    web.pagina.add_init_script(ISCRIZIONE_GIA_QUI)
+
+
+def iscrizione_nel_browser(web) -> str | None:
+    return web.pagina.evaluate("localStorage.getItem('__iscrizione-di-prova')")
+
+
+def json_200(route, corpo, stato=200) -> None:
+    route.fulfill(status=stato, content_type="application/json; charset=utf-8", body=json.dumps(corpo))
+
+
+@pytest.mark.parametrize("stato", [500, 502, None], ids=["errore-del-server", "server-che-riparte", "rete-giu"])
+def test_esci_non_riuscito_lo_dice_e_resta_dentro(web, stato):
+    """Il cookie della sessione lo toglie solo il server: se la richiesta di «Esci» non riesce (rete giù, server che riparte dopo
+    un rilascio) non si è usciti davvero. Come «Esci da tutti i dispositivi», un avviso lo dice e la pagina resta com'è: copie dei
+    dati e avvisi di questo dispositivo, nel browser e sul server (#800). Prima la web svuotava e ricaricava come se fosse uscita."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})     # già dentro da prima: all'apertura niente da rimandare
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/disiscrivi", {"dispositivi": 0})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.apri("/")                                              # la Formazione lascia nel browser le sue copie
+    web.apri("/?vista=impostazioni&gruppo=account")
+    prima = chiavi_salvate(web)
+    assert prima, "la prova vuole delle copie da tenere"
+    arrivate = []
+
+    def esci(route):
+        arrivate.append(route.request.method)
+        if stato is None:
+            route.abort()
+        else:
+            json_200(route, {"detail": "Il server non risponde"} if stato == 502 else {}, stato)
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", esci)
+    ricariche = []
+    web.pagina.on("framenavigated", lambda f: f == web.pagina.main_frame and ricariche.append(f.url))
+    principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    web.pagina.locator("#avviso[role=status]").filter(has_text="Non riesco a farti uscire").wait_for(timeout=10000)
+    web.aspetta()
+    assert ricariche == [], f"la pagina si è ricaricata come dopo un'uscita riuscita: {ricariche}"
+    assert arrivate == ["POST"]
+    assert titolo(web) == "Il tuo account" and web.pagina.locator("#accesso").count() == 0
+    assert chiavi_salvate(web) == prima
+    assert iscrizione_nel_browser(web) == ENDPOINT, "gli avvisi di questo dispositivo si sono spenti con un'uscita non riuscita"
+    assert [c["endpoint"] for c in iscritte] == [ENDPOINT], f"l'iscrizione tolta dal server non è stata rimandata: {iscritte}"
+
+
+def test_esci_riuscito_toglie_gli_avvisi_di_questo_dispositivo(web):
+    """Riuscito, «Esci» fa come prima: gli avvisi di questo dispositivo si tolgono dal server (mentre la sessione vale ancora) e dal
+    browser, nel browser non restano copie e si torna all'accesso."""
+    solo(web, "prima")
+    da_utente(web)
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/disiscrivi", {"dispositivi": 0})
+    disiscritte = _scritture(web, "/api/push/disiscrivi")
+    web.apri("/?vista=impostazioni&gruppo=account")
+    uscito = []
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/") and urlsplit(u).path != "/api/account/esci",
+                     lambda route: json_200(route, SENZA_SESSIONE, 401) if uscito else route.fallback())
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", lambda route: uscito.append(1) or json_200(route, {"ok": True}))
+    principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    assert uscito == [1]
+    assert disiscritte == [{"endpoint": ENDPOINT}]
+    assert iscrizione_nel_browser(web) is None
+    assert chiavi_salvate(web) == []
+
+
+def entra_con_la_password(web) -> list[dict]:
+    """La sessione di questo browser è stata chiusa altrove («Esci da tutti», password cambiata o recuperata da un altro dispositivo:
+    il server toglie anche la sua iscrizione agli avvisi). Si apre l'accesso, si entra con la password e la pagina si ricarica.
+    Restituisce le iscrizioni mandate al server."""
+    entrato = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/me",
+                     lambda route: json_200(route, UTENTE) if entrato else json_200(route, SENZA_SESSIONE, 401))
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/accedi",
+                     lambda route: entrato.append(1) or json_200(route, UTENTE))
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
+    web.pagina.locator("#accesso-form").wait_for(timeout=10000)
+    web.pagina.locator("#ac-nome").fill("amico")
+    web.pagina.locator("#ac-pw").fill("Password-Finta-1")
+    with web.pagina.expect_navigation(wait_until="load"):
+        web.pagina.locator("#accesso-invia").click()
+    web.aspetta()
+    return iscritte
+
+
+def test_dopo_un_nuovo_accesso_l_iscrizione_del_browser_torna_sul_server(web):
+    """Dopo un nuovo accesso, se il browser ha ancora un'iscrizione agli avvisi la web la rimanda al server, senza chiedere di nuovo
+    il permesso: prima l'interruttore «Avvisi su questo dispositivo» restava acceso e i promemoria non arrivavano più (#800)."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = entra_con_la_password(web)
+    assert [c["endpoint"] for c in iscritte] == [ENDPOINT], iscritte
+    assert iscritte[0]["keys"] == {"p256dh": "a", "auth": "b"}
+
+
+def test_riaprendo_l_app_gia_dentro_l_iscrizione_non_si_rimanda(web):
+    """Una volta per accesso: riaprire l'app con la sessione che vale ancora non rimanda niente (ogni iscrizione conta nel tetto
+    all'ora del server e costa un controllo in rete)."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = entra_con_la_password(web)
+    assert len(iscritte) == 1, iscritte
+    web.apri("/")
+    web.apri("/?vista=impostazioni")
+    assert len(iscritte) == 1, f"l'iscrizione è stata rimandata a ogni apertura: {iscritte}"
+    assert interruttore_qui(web).is_checked()
+
+
+def test_l_iscrizione_che_non_arriva_si_rimanda_all_apertura_dopo(web):
+    """Se l'iscrizione rimandata dopo l'accesso non arriva (server occupato, troppe richieste, rete giù) si riprova alla prossima
+    apertura dell'app, finché il server non la prende; poi basta."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web)
+    risposte = [({"detail": "Il server sta attivando altre notifiche: riprova tra qualche secondo."}, 429)]
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/push/iscrivi",
+                     lambda route: json_200(route, *(risposte.pop(0) if risposte else ({"dispositivi": 1}, 200))))
+    iscritte = entra_con_la_password(web)
+    assert len(iscritte) == 1, iscritte
+    web.apri("/")
+    assert len(iscritte) == 2, f"l'iscrizione non arrivata non è stata rimandata: {iscritte}"
+    web.apri("/")
+    assert len(iscritte) == 2, f"l'iscrizione arrivata è stata rimandata ancora: {iscritte}"
 
 
 # ---------------------------------------------------------------- Stato dei dati: le etichette del server

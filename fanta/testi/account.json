@@ -87,6 +87,11 @@
     "it": "Esci",
     "en": "Sign out"
   },
+  "account.esci_no": {
+    "it": "Non riesco a farti uscire. {motivo}",
+    "en": "I cannot sign you out. {motivo}",
+    "nota": "«Esci» quando la richiesta non arriva al server (rete giù, server che riparte): si resta dentro, come con account.esci_tutti_no (#800)"
+  },
   "account.esci_tutti": {
     "it": "Esci da tutti i dispositivi",
     "en": "Sign out of all devices"

@@ -191,6 +191,12 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
   che dice che si è fuori da tutti i dispositivi, una volta sola e non dopo un «Esci» normale (#779);
   annullato non manda niente; se la richiesta non riesce (errore del server o rete giù) lo dice un avviso, si resta nella pagina
   e le copie restano (#765);
+- Il tuo account, «Esci» (#800): se la richiesta non riesce (500, 502 o rete giù) lo dice un avviso (`role="status"`), la pagina
+  non si ricarica, le copie restano e l'iscrizione agli avvisi del browser resta, e torna al server (che l'aveva già tolta);
+  riuscito, l'iscrizione si toglie dal server e dal browser e si torna all'accesso senza copie. Con un'iscrizione già nel browser
+  (finta, in `localStorage`, che regge alla ricarica: `ISCRIZIONE_GIA_QUI`): dopo un nuovo accesso con la password l'iscrizione
+  torna al server una volta, senza chiedere il permesso; riaprendo l'app già dentro non si rimanda; se il server non la prende
+  (429) si riprova all'apertura dopo, e poi basta;
 - Stato dei dati scrive le etichette del server (`etichetta`); nella schermata di accesso un avviso non è un errore;
 - Gestione, «Errori recenti» (amministratore e registro finti): plurali giusti, tempi con la virgola, ora italiana senza «UTC»,
   eventi con il nome del catalogo (anche un tipo scritto con il trattino, `fonte-cambiata`) e, per un tipo sconosciuto, senza

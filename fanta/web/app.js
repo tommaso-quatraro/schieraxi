@@ -3654,27 +3654,63 @@ function mostraCodiceAccesso(titolo, codice, continua, dopo) {
   $("#codice-continua").addEventListener("click", dopo);
 }
 
-// L'indirizzo delle notifiche web di questo dispositivo, o "" se non ci sono: dopo un cambio di password o un recupero il server
-// tiene solo questo e toglie le altre iscrizioni. Non aspetta il service worker: se non c'è, non ci sono nemmeno le notifiche.
-async function endpointPushQui() {
+// L'iscrizione alle notifiche web di questo dispositivo (null se non ci sono) e il suo indirizzo (endpointPushQui, "" se non ci sono):
+// dopo un cambio di password o un recupero il server tiene solo questo e toglie le altre iscrizioni. Non aspetta il service worker:
+// se non c'è, non ci sono nemmeno le notifiche.
+async function iscrizionePushQui() {
   try {
-    if (!("serviceWorker" in navigator && "PushManager" in window)) return "";
+    if (!("serviceWorker" in navigator && "PushManager" in window)) return null;
     const reg = await navigator.serviceWorker.getRegistration();
-    const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
-    return sub && sub.endpoint ? sub.endpoint : "";
-  } catch { return ""; }
+    return reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+  } catch { return null; }
+}
+async function endpointPushQui() {
+  const sub = await iscrizionePushQui();
+  return sub && sub.endpoint ? sub.endpoint : "";
 }
 
+// L'iscrizione agli avvisi di questo browser da rimandare al server (#800). Dopo «Esci da tutti», un cambio o un recupero della
+// password fatti da un altro dispositivo il server toglie l'iscrizione di questo browser, che invece la tiene: l'interruttore «Avvisi
+// su questo dispositivo» resta acceso e i promemoria non arrivano più. Così, dopo ogni nuovo accesso (controllaAccesso) e dopo un
+// «Esci» non riuscito, l'iscrizione che il browser ha già torna al server, senza chiedere di nuovo il permesso. Una volta per accesso
+// (ogni iscrizione conta nel tetto all'ora del server): il segno si toglie quando il server l'ha presa, o se non c'è niente da
+// mandare; con la rete giù, il server che non risponde o troppe richieste resta, e si riprova alla prossima apertura.
+const AVVISI_DA_RIMANDARE = "avvisi-da-rimandare";
+function segnaAvvisiDaRimandare() {
+  try { localStorage.setItem(AVVISI_DA_RIMANDARE, "1"); } catch { /* niente memoria */ }
+}
+async function rimandaAvvisi() {
+  try { if (localStorage.getItem(AVVISI_DA_RIMANDARE) !== "1") return; } catch { return; }
+  const fatto = () => { try { localStorage.removeItem(AVVISI_DA_RIMANDARE); } catch { /* niente memoria */ } };
+  const sub = await iscrizionePushQui();
+  if (!sub) { fatto(); return; }
+  try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
+  catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
+}
+
+// Impostazioni > Il tuo account > «Esci». Il cookie della sessione lo toglie solo il server: se la richiesta non riesce (rete giù,
+// server che riparte) non si è usciti, e come per «Esci da tutti i dispositivi» lo si dice e la pagina resta com'è (#800).
+// Gli avvisi di questo dispositivo si tolgono dal server prima, finché la sessione vale; il browser tiene la sua iscrizione finché
+// l'uscita non è riuscita, e se non riesce la rimanda al server. 401: la sessione era già finita, si esce lo stesso.
 async function esciDa(percorso) {
-  await lasciaNotifiche();
-  try { await api(percorso, { method: "POST" }); } catch { /* se la sessione era già finita, va bene lo stesso */ }
+  const ep = await endpointPushQui();
+  if (ep) try { await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) }); } catch { /* decide l'uscita */ }
+  try { await api(percorso, { method: "POST" }); }
+  catch (e) {
+    if (e.status !== 401) {
+      if (ep) { segnaAvvisiDaRimandare(); rimandaAvvisi(); }
+      avviso(t("account.esci_no", { motivo: e.message || "" }).trim(), 8000);
+      return;
+    }
+  }
+  await lasciaNotifiche(false);                       // l'iscrizione sul server è già tolta: qui solo quella del browser
   await svuotaDatiLocali();
   location.reload();
 }
 
 // Impostazioni > Il tuo account > «Esci da tutti i dispositivi» (#765), il pulsante che consigliano le email di sicurezza: il server
 // chiude tutte le sessioni (anche questa), il widget, le notifiche web di ogni dispositivo e scollega Google a chi ha una password.
-// Al contrario di «Esci» non riesce senza il server: se la richiesta non va, gli altri dispositivi sono ancora dentro e lo si dice.
+// Come «Esci» non riesce senza il server: se la richiesta non va, gli altri dispositivi sono ancora dentro e lo si dice.
 // Niente password nel corpo: il codice di recupero nuovo che il server manderebbe si perderebbe con la ricarica.
 // Il server toglie il collegamento con Google a chi ha una password; chi entra solo con Google lo tiene (sarebbe chiuso fuori).
 // Lo si legge da `accessi` del server: senza, niente frase.
@@ -3978,7 +4014,10 @@ async function controllaAccesso() {
     stato.account = dati.utente;
     if (usaLinguaDi(dati.utente && dati.utente.nome_utente)) return false;           // l'utente aveva scelto un'altra lingua: ricarico con la sua
     stato.emailAccount = { email: dati.email || null, email_origine: dati.email_origine || null, email_in_attesa: dati.email_in_attesa || null };
-    try { localStorage.setItem("account", JSON.stringify(dati.utente)); } catch { /* niente memoria */ }
+    // nel browser l'account non c'è (lo toglie ogni uscita, anche una sessione chiusa altrove): è un nuovo accesso, e l'iscrizione
+    // agli avvisi che il browser ha ancora torna al server (rimandaAvvisi, all'avvio)
+    try { if (!localStorage.getItem("account")) segnaAvvisiDaRimandare(); localStorage.setItem("account", JSON.stringify(dati.utente)); }
+    catch { /* niente memoria */ }
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, true);       // collega / conferma: si resta dentro
   }
   return true;
@@ -4017,6 +4056,7 @@ try {                                                                           
 } catch { /* indirizzo strano */ }
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
+  rimandaAvvisi();                                       // dopo un nuovo accesso, o se l'ultima volta non era arrivata (#800)
   Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
     let condivisa = null;
     try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }
