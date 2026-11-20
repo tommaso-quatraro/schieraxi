@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// «Non è quello che ho schierato» (pagina Giornate): scegli a mano gli undici che hai schierato in una giornata già finita. Si parte
-/// dagli 11 della riga (la formazione che conta: la tua, la copia alla scadenza o la consigliata), come la web; il server controlla che
-/// siano undici della tua rosa con un modulo valido.
+/// dagli 11 della riga (la formazione che conta: la tua, la copia alla scadenza o la consigliata) che sono nella rosa letta adesso, come
+/// la web: un titolare ceduto non è spuntato né contato (`VoceDiario.titolariInRosa`, #807). Il server controlla che siano undici della
+/// tua rosa con un modulo valido.
 /// Se il server rifiuta, l'errore si vede qui dentro, sopra il conto «N di 11»: la pagina sotto il foglio non si vede.
 struct FormazioneManualeDiarioView: View {
     let voce: VoceDiario
@@ -23,11 +24,6 @@ struct FormazioneManualeDiarioView: View {
 
     private let reparti = [("P", "Portieri"), ("D", "Difensori"), ("C", "Centrocampisti"), ("A", "Attaccanti")]
 
-    /// Chi era titolare nella riga: la formazione che conta per la giornata.
-    private var iniziali: Set<Int> {
-        Set((voce.cheConta.formazione?.titolari ?? []).compactMap(\.id))
-    }
-
     var body: some View {
         NavigationStack {
             List {
@@ -45,7 +41,12 @@ struct FormazioneManualeDiarioView: View {
                         }
                     }
                 } else if let e = rosa.errore {
-                    ErroreVista(messaggio: e) { Task { await rosa.ricarica() } }
+                    ErroreVista(messaggio: e) {
+                        Task {
+                            await rosa.ricarica()
+                            preseleziona()
+                        }
+                    }
                 } else {
                     ScheletroRighe(righe: 6).listRowBackground(Color.clear)
                 }
@@ -87,9 +88,16 @@ struct FormazioneManualeDiarioView: View {
             .onChange(of: scelti) { errore = nil }
             .task {
                 await rosa.ricarica()
-                if !partito { scelti = iniziali; partito = true }
+                preseleziona()
             }
         }
+    }
+
+    /// Le spunte di partenza, una volta sola e solo con la rosa letta: se la prima lettura non riesce si preselezionano dopo «Riprova».
+    private func preseleziona() {
+        guard !partito, let r = rosa.dato else { return }
+        scelti = voce.titolariInRosa(r.giocatori)
+        partito = true
     }
 
     private func riga(_ g: GiocatoreRosa) -> some View {

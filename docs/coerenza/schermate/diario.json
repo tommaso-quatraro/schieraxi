@@ -15,7 +15,7 @@
       "web": "«Ho schierato questa»",
       "iphone": "«Non è quello che ho schierato» (un solo pulsante, nella giornata aperta)",
       "forma": "web",
-      "chi": "**fatto** (#673 passo 2): come la web (#617), un solo pulsante per giornata, «Non è quello che ho schierato», che fa scegliere gli 11 a mano partendo da quelli della riga (`Giornate/FormazioneManualeDiarioView`). Via «Ho schierato la consigliata» e «Correggi a mano». Prima: fatto sulla web (pacchetto 1)",
+      "chi": "**fatto** (#673 passo 2): come la web (#617), un solo pulsante per giornata, «Non è quello che ho schierato», che fa scegliere gli 11 a mano partendo da quelli della riga (`Giornate/FormazioneManualeDiarioView`). Via «Ho schierato la consigliata» e «Correggi a mano». Prima: fatto sulla web (pacchetto 1). Dal #807, come `correggiGiornata` della web, il foglio spunta e conta solo i titolari della riga che sono nella rosa letta adesso: un titolare ceduto non è spuntato né contato (prima «11 di 11» con 10 spunte visibili e «Salva» rifiutato; `VoceDiario.titolariInRosa`, prova `GiornateTests`)",
       "stato": "fatto"
     },
     {
