@@ -572,8 +572,12 @@ struct VoceNovita: Decodable, Identifiable {
 
 struct AggiornamentoDati: Decodable, Identifiable {
     let cosa: String
+    /// L'ultimo successo; nil per un passo mai riuscito.
     let quando: String?
     let errori: [String]?
+    /// Il nome della riga per chi legge («Listone e quotazioni»), scritto dal server (`fanta/stato_dati.py`), come lo usa la web.
+    /// Un server di prima non lo manda: allora il nome lo fa l'app (`NomiDati`, che il widget non compila).
+    let etichetta: String?
     var id: String { cosa + (quando ?? "") }
 }
 

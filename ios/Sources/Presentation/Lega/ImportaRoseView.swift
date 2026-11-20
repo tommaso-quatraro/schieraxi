@@ -192,7 +192,8 @@ struct AnteprimaRoseVista: View {
                 .font(.title3.bold())
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityFocused($fuocoTitolo)
-            Text(AnteprimaLogica.riassunto(anteprima)).font(.subheadline)
+            // si rifà dopo ogni scelta, come la web (#808): i dubbi già decisi non si contano più
+            Text(AnteprimaLogica.riassunto(anteprima, scelte: vm.scelte)).font(.subheadline)
             if let m = vm.messaggioAnteprima {
                 Label(m, systemImage: "arrow.triangle.2.circlepath").font(.footnote).foregroundStyle(Color.attenzione)
             }
@@ -206,7 +207,8 @@ struct AnteprimaRoseVista: View {
         Carta(Catalogo.Ar.qualETua, simbolo: "star") {
             Picker(Catalogo.Ar.qualETua, selection: $vm.mia) {
                 Text("Scegli dopo").tag("")
-                ForEach(anteprima.squadre) { Text($0.nome).tag($0.nome) }
+                // anche la squadra suggerita dal server che non è nel file, per prima e già scelta (come la web, #808)
+                ForEach(AnteprimaLogica.nomiMia(anteprima), id: \.self) { Text($0).tag($0) }
             }
             .pickerStyle(.menu)
             .tint(Color.verde)
