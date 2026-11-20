@@ -126,7 +126,8 @@ scatta() {
     echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"
     ERRORI=$((ERRORI + 1))
   fi
-  local file="$USCITA/${etichetta}_${nome}.png" esito
+  local file="$USCITA/${etichetta}_${nome}.png" esito inizio
+  inizio=$(date +%s)
   # Si fotografa quando lo schermo è fermo (due foto di fila uguali): non mentre la schermata carica o i numeri salgono.
   # Prima bastavano i secondi fissi qui sopra, e la Formazione in orizzontale usciva con lo scheletro del caricamento.
   python3 -I "$(dirname "$0")/schermo_fermo.py" "$udid" "$file" "${ATTESA_FERMO:-8}"
@@ -144,6 +145,8 @@ scatta() {
     ERRORI=$((ERRORI + 1))
     return
   fi
+  # Un avviso di sistema comparso durante la foto (#601): si aspetta che sparisca e si rifà (avvisi.sh).
+  avvisi_rifai "$udid" "$file" "$inizio"
   # Se la foto è quasi vuota (nera) l'app non aveva ancora finito di disegnarsi: si riprova dopo qualche secondo.
   local peso
   peso=$(stat -f%z "$file" 2>/dev/null || echo 999999)
@@ -221,10 +224,10 @@ prova_url() {
   sleep 3
   xcrun simctl openurl "$udid" "schieraxi://formazione"
   sleep 3
-  xcrun simctl io "$udid" screenshot "$USCITA/prova-url_openurl-formazione.png" >/dev/null 2>&1
+  avvisi_foto "$udid" "$USCITA/prova-url_openurl-formazione.png"
   xcrun simctl openurl "$udid" "schieraxi://giocatore/203"
   sleep 3
-  xcrun simctl io "$udid" screenshot "$USCITA/prova-url_openurl-giocatore.png" >/dev/null 2>&1
+  avvisi_foto "$udid" "$USCITA/prova-url_openurl-giocatore.png"
 }
 
 # In fondo al registro della corsa: quante foto, quanti problemi (con il nome delle foto rimaste a metà attesa), quante in movimento.
@@ -353,13 +356,13 @@ xcrun simctl ui "$UDID_IPHONE" appearance dark
 xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
 sleep 2
 xcrun simctl launch "$UDID_IPHONE" "$ID_APP" -DEMO >/dev/null 2>&1
-xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/avvio_iphone.png" >/dev/null 2>&1
+avvisi_foto "$UDID_IPHONE" "$USCITA/avvio_iphone.png"
 sleep 4
 for aspetto in dark light; do
   xcrun simctl ui "$UDID_IPHONE" appearance "$aspetto"
   xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
   sleep 3
-  xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/home_iphone_$aspetto.png" >/dev/null 2>&1
+  avvisi_foto "$UDID_IPHONE" "$USCITA/home_iphone_$aspetto.png"
 done
 
 STILE_ARG=()
@@ -419,7 +422,7 @@ RADDRIZZA=0
 xcrun simctl ui "$UDID_IPAD" appearance dark
 xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
 sleep 3
-xcrun simctl io "$UDID_IPAD" screenshot "$USCITA/home_ipad_dark.png" >/dev/null 2>&1
+avvisi_foto "$UDID_IPAD" "$USCITA/home_ipad_dark.png"
 
 spegni_simulatore "$UDID_IPAD"
 

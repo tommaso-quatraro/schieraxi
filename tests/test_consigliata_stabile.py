@@ -448,20 +448,21 @@ def test_file_rovinato_vale_la_migliore_e_si_riscrive(mondo):
 
 def test_una_voce_per_squadra_e_un_tetto_al_file(mondo, monkeypatch):
     monkeypatch.setattr(consigli, "MAX_CONSIGLIATE", 2)
-    squadre = [lega.Squadra(nome, _squadra().giocatori) for nome in ("Prima", "Seconda", "Terza")]
+    # rose diverse (un attaccante di riserva in meno): l'impronta è dei giocatori, non del nome (#780)
+    squadre = [lega.Squadra(nome, _squadra(senza=(via,)).giocatori) for nome, via in (("Prima", 25), ("Seconda", 24), ("Terza", 23))]
     voci = []
     for s in squadre:
         mondo["adesso"] += timedelta(minutes=1)
         consigli.formazione(mondo["db"], SOLO_442, lega.Rose(squadre, s.nome))
         voci.append(len(json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))))
-    assert voci == [1, 2, 2]                                  # stessa rosa ma squadre diverse: voci diverse; poi esce la più vecchia
+    assert voci == [1, 2, 2]                                  # squadre diverse: voci diverse; poi esce la più vecchia
 
 
 def test_formazione_segna_la_consigliata_della_propria_squadra(mondo):
     """Con gli account la consigliata della squadra di chi chiede si segna come sua (`proprie`), quella di un'avversaria no;
     rivedendo la propria già ricordata (prima senza il segno) il segno si aggiunge."""
     from fanta import calcolo
-    squadre = [lega.Squadra("Mia", _squadra().giocatori), lega.Squadra("Avversaria", _squadra().giocatori)]
+    squadre = [lega.Squadra("Mia", _squadra(senza=(25,)).giocatori), lega.Squadra("Avversaria", _squadra(senza=(24,)).giocatori)]
     gettone = calcolo.utente_richiesta.set(7)
     try:
         consigli.formazione(mondo["db"], SOLO_442, lega.Rose(squadre, "Avversaria"), "Mia")      # un'altra lega: Mia non è sua
