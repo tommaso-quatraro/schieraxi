@@ -59,11 +59,10 @@ enum TestiAccount {
     }
 
     /// «Esci solo da questo telefono» e la frase accanto (#809, dalla revisione della #812): dopo un «Esci» che non è arrivato al
-    /// server (`SessioneAccount.esciSoloQuiPossibile`). Testi solo dell'iPhone: la web senza server non si apre e non ne ha bisogno
-    /// (Differenze ammesse). Il catalogo del server non li ha ancora: le chiavi da aggiungere a `fanta/testi/account.json` sono
-    /// `account.esci_solo_qui` e `account.esci_solo_qui_spiega`, poi questi due passano a `Catalogo.Account`.
-    static let esciSoloQui = "Esci solo da questo telefono"
-    static let esciSoloQuiSpiega = "Sul server la sessione resta aperta finché non scade."
+    /// server (`SessioneAccount.esciSoloQuiPossibile`). Dal catalogo comune (`account.esci_solo_qui`, `account.esci_solo_qui_spiega`),
+    /// anche se li mostra solo l'iPhone: la web senza server non si apre e non ne ha bisogno (Differenze ammesse).
+    static let esciSoloQui = Catalogo.Account.esciSoloQui
+    static let esciSoloQuiSpiega = Catalogo.Account.esciSoloQuiSpiega
 
     /// La riga sotto il nome: «Utente · dal 1 settembre 2026» (o «Amministratore · …»). Senza una data leggibile resta il ruolo.
     static func ruoloEData(ruolo: String, creato: String?) -> String {
