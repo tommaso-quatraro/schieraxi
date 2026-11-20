@@ -189,15 +189,6 @@ details p { max-width: 60ch; margin: 0 0 1rem; color: var(--sec); }
 .servizio h2 { margin: 3rem 0 .75rem; padding-top: 2rem; border-top: 1px solid var(--linea); }
 .servizio .azioni { margin-top: 0; }
 
-/* avvisi in basso: installazione su iPhone, versione nuova del sito */
-.suggerimento {
-  position: fixed; left: 1rem; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 20;
-  display: flex; align-items: center; justify-content: space-between; gap: .75rem; max-width: 30rem; margin-inline: auto;
-  padding: .5rem .5rem .5rem 1rem; border: 1px solid var(--linea); border-radius: .5rem; background: var(--sup); font-size: .92rem;
-}
-.indietro svg { width: 1.2rem; height: 1.2rem; }
-@media (display-mode: standalone) { html { overscroll-behavior-y: none; } body { -webkit-tap-highlight-color: transparent; } }
-
 /* nome disegnato «SchieraXI»: tracciati già calcolati da Archivo (assets/marchio/wordmark/genera.py), #wm-c compatto */
 .sprite { display: none; }
 .wm-svg { display: block; width: auto; height: 1.2rem; aspect-ratio: 4.8081; overflow: visible; }
@@ -207,4 +198,4 @@ details p { max-width: 60ch; margin: 0 0 1rem; color: var(--sec); }
 /* movimento ridotto: niente scorrimento morbido (il sito non ha altre animazioni) */
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 @media (forced-colors: active) { .campo, .disco { border: 1px solid CanvasText; } }
-@media print { .alto, .suggerimento { display: none; } }
+@media print { .alto { display: none; } }

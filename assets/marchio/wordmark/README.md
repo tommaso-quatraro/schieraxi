@@ -40,8 +40,7 @@ python -m venv .venv-marchio
 - `--og` rifà `sito/img/og.png` (serve Chrome o Edge);
 - `--swift PERCORSO` scrive la View SwiftUI `WordmarkSchieraXI` (forme disegnate, niente font nell'app).
 
-Alla fine stampa i valori da copiare in `sito/stile.css` (la proporzione `aspect-ratio` di `.wm-svg`) se cambiano. Dopo `--sito`
-alza `VERSIONE` in `sito/sw.js`.
+Alla fine stampa i valori da copiare in `sito/stile.css` (la proporzione `aspect-ratio` di `.wm-svg`) se cambiano.
 
 ## Licenza
 Il font Archivo resta sotto SIL OFL 1.1 (`OFL.txt`): si può usare, modificare e ridistribuire, anche dentro un logo.
