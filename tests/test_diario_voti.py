@@ -51,8 +51,8 @@ def _voti(m, partita: int, diversi: dict[int, float] | None = None) -> None:
     m.dati.voti = pd.read_sql_query("SELECT * FROM voti", m.db)
 
 
-def _aggiorna(m) -> int:
-    return diario.aggiorna(m.db, Regole(), m.rose, m.diario, simulazioni=50, file_scelte=m.scelte)
+def _aggiorna(m, regole=None) -> int:
+    return diario.aggiorna(m.db, regole or Regole(), m.rose, m.diario, simulazioni=50, file_scelte=m.scelte)
 
 
 def _voce(m) -> dict:
@@ -101,16 +101,35 @@ def test_ho_schierato_prima_dei_voti_dell_ultima_partita_si_corregge_quando_arri
     assert _aggiorna(mondo) == 0
 
 
-def _voce_di_prima(m) -> dict:
-    """Una voce come quelle già scritte sul server prima di #793: calcolata quando i voti della seconda partita non c'erano
-    ancora, e senza l'impronta dei voti."""
+MOSTRATA = [1, 4, 5, 6, 12, 13, 14, 15, 20, 22, 25]           # la consigliata mostrata prima della scadenza: 22 invece di 21
+
+
+def _istantanea(m) -> dict:
+    """La consigliata congelata alla scadenza, diversa dalla scelta dell'utente: la giornata ha un verdetto in «Le tue scelte»."""
+    g = lambda i: {"id": i, "nome": f"G{i}", "ruolo": RUOLI[i - 1]}      # noqa: E731
+    ist = {"giornata": 1, "modulo": "3-4-3", "titolari": [g(i) for i in MOSTRATA], "panchina": [g(i) for i in (3, 24, 23, 21, 19, 18, 17)],
+           "atteso": 70.0, "stile": None, "calcolata": "2026-09-01T17:50:00"}
+    diario._scrivi(m.diario, istantanee={CHIAVE: ist})
+    return ist
+
+
+def _voce_di_prima(m, istantanea=None, con_tutti_i_voti=False) -> dict:
+    """Una voce come quelle già scritte sul server prima di #793, senza l'impronta dei voti: di base calcolata quando i voti della
+    seconda partita non c'erano ancora."""
     completi = m.dati.voti
-    m.dati.voti = completi[completi["calciatore_id"] < 20].copy()
-    voce = diario.calcola_giornata(m.dati, ST, 1, Regole(), None, list(range(1, 26)), scelte.leggi(ST, 1, m.scelte), simulazioni=50)
+    if not con_tutti_i_voti:
+        m.dati.voti = completi[completi["calciatore_id"] < 20].copy()
+    voce = diario.calcola_giornata(m.dati, ST, 1, Regole(), None, list(range(1, 26)), scelte.leggi(ST, 1, m.scelte), simulazioni=50,
+                                   istantanea=istantanea)
     m.dati.voti = completi
     voce.pop("impronta_voti", None)
     diario._scrivi(m.diario, voci={CHIAVE: voce})
     return voce
+
+
+def _vendi(m, i) -> None:
+    squadra = m.rose.squadra("Mia")
+    squadra.giocatori = [g for g in squadra.giocatori if g.id != i]
 
 
 def test_una_voce_senza_impronta_si_rifa_una_volta_e_tiene_ho_schierato(mondo):
@@ -130,54 +149,112 @@ def test_una_voce_senza_impronta_si_rifa_una_volta_e_tiene_ho_schierato(mondo):
     assert _aggiorna(mondo) == 0                                          # e poi non più
 
 
-def test_una_voce_senza_impronta_con_ho_schierato_ma_senza_piu_la_scelta_resta_com_e(mondo, monkeypatch):
-    """Se la scelta non c'è più, rifare la voce perderebbe la formazione schierata: resta com'è (come quando cambiano le
-    regole), e i giri dopo non rifanno le simulazioni ogni volta."""
+def test_la_migrazione_non_toglie_la_giornata_da_le_tue_scelte(mondo):
+    """Decisione del coordinatore: la migrazione rifà solo i punti. Qui un titolare della consigliata mostrata (22) non è più nella
+    rosa: rifatta da zero, la voce passava a «ricostruita» e usciva da «Le tue scelte» e dall'affidabilità."""
+    _voti(mondo, 1)
+    _voti(mondo, 2)
+    prima = _voce_di_prima(mondo, _istantanea(mondo))
+    assert prima["consigliata"]["origine"] == "mostrata" and diario.elenco(mondo.diario)["scelte_tue"]["giornate"] == 1
+    _vendi(mondo, 22)
+    assert _aggiorna(mondo) == 1
+    v = _voce(mondo)
+    assert (v["consigliata"]["origine"], v["consigliata_di_allora"]) == ("mostrata", "mostrata")
+    assert [t["id"] for t in v["consigliata"]["titolari"]] == MOSTRATA
+    assert v["consigliata"]["reale"] == v["schierata"]["reale"] == CON_TUTTI_I_VOTI       # i punti, rifatti con tutti i voti
+    assert (v["consigliata"]["atteso"], v["schierata"]["atteso"]) == (prima["consigliata"]["atteso"], prima["schierata"]["atteso"])
+    e = diario.elenco(mondo.diario)
+    assert e["scelte_tue"]["giornate"] == 1 and e["affidabilita"]["senza_istantanea"] == 0
+    assert _aggiorna(mondo) == 0
+
+
+@pytest.mark.parametrize("venduto", [None, 22, 24])                    # nessuno, un titolare della mostrata, la riserva entrata
+def test_con_gli_stessi_voti_la_migrazione_cambia_solo_l_impronta(mondo, venduto):
+    """Una voce già giusta (calcolata con tutti i voti) resta uguale: stessi punti, stesso verdetto. Il 21, titolare della scelta,
+    non prende voto e al suo posto entra il 24, prima riserva della panchina scelta dal sistema con la rosa di allora."""
+    _voti(mondo, 1)
+    _voti(mondo, 2, {21: None})
+    prima = _voce_di_prima(mondo, _istantanea(mondo), con_tutti_i_voti=True)
+    esito = diario.elenco(mondo.diario)["scelte_tue"]["per_giornata"]
+    if venduto:
+        _vendi(mondo, venduto)
+    assert _aggiorna(mondo) == 1
+    v = _voce(mondo)
+    assert v.pop("impronta_voti") and v == prima
+    assert diario.elenco(mondo.diario)["scelte_tue"]["per_giornata"] == esito
+    assert _aggiorna(mondo) == 0
+
+
+def test_una_correzione_dopo_il_rilascio_non_toglie_il_verdetto(mondo):
+    """Stessa strada per una voce che ha già l'impronta: se cambiano i voti cambiano solo i punti, anche con la rosa cambiata."""
+    _voti(mondo, 1)
+    _voti(mondo, 2)
+    _istantanea(mondo)
+    assert _aggiorna(mondo) == 1
+    assert _voce(mondo)["consigliata"]["origine"] == "mostrata"
+    _vendi(mondo, 22)
+    _voti(mondo, 2, {25: 10.0})
+    assert _aggiorna(mondo) == 1
+    v = _voce(mondo)
+    assert v["consigliata"]["origine"] == "mostrata" and v["consigliata"]["reale"] == v["schierata"]["reale"] == CON_TUTTI_I_VOTI + 1
+    assert diario.elenco(mondo.diario)["scelte_tue"]["giornate"] == 1
+
+
+def test_una_voce_senza_impronta_con_ho_schierato_ma_senza_piu_la_scelta_tiene_la_schierata(mondo, monkeypatch):
+    """La scelta non c'è più: la formazione schierata resta quella della voce (titolari, tipo, «L'ho messa») e si rifanno solo i
+    suoi punti; i giri dopo non rifanno le simulazioni."""
     _voti(mondo, 1)
     _voti(mondo, 2)
     prima = _voce_di_prima(mondo)
     scelte.cancella(ST, 1, mondo.scelte)
+    assert _aggiorna(mondo) == 1
+    v = _voce(mondo)["schierata"]
+    assert {k: x for k, x in v.items() if k != "reale"} == {k: x for k, x in prima["schierata"].items() if k != "reale"}
+    assert v["reale"] == CON_TUTTI_I_VOTI
     monkeypatch.setattr(diario.fz, "migliore", lambda *a, **k: pytest.fail("non deve rifare le simulazioni"))
     assert _aggiorna(mondo) == 0
-    assert _aggiorna(mondo) == 0
-    assert _voce(mondo)["schierata"] == prima["schierata"]
 
 
-def test_una_voce_rifatta_che_perde_la_schierata_resta_com_era_e_non_si_rifa_a_ogni_giro(mondo, monkeypatch):
-    """La scelta c'è ed è valida con la rosa, ma rifatta non si valuta più (qui le previsioni danno il 25 come portiere: due
-    portieri). Resta la voce di prima, con la formazione schierata, e i giri dopo non rifanno le simulazioni ogni volta."""
+def test_con_le_regole_cambiate_una_voce_che_perde_la_schierata_resta_com_era(mondo, monkeypatch):
+    """Le regole cambiano e la voce si rifà da zero; la scelta c'è ed è valida con la rosa, ma rifatta non si valuta più (qui le
+    previsioni danno il 25 come portiere: due portieri). Resta la voce di prima, con la formazione schierata, e i giri dopo non
+    rifanno le simulazioni ogni volta."""
     _voti(mondo, 1)
     _voti(mondo, 2)
-    prima = _voce_di_prima(mondo)
+    assert _aggiorna(mondo) == 1
+    prima = _voce(mondo)
+    nuove = Regole()
+    nuove.bonus.rigore_sbagliato = -3.0
     previsioni = diario.previsioni
     monkeypatch.setattr(diario, "previsioni", lambda *a: previsioni(*a).assign(
         ruolo=lambda p: p["ruolo"].where(p["id"] != 25, "P")))
-    assert _aggiorna(mondo) == 1                                          # rifatta una volta, poi tenuta com'era
+    assert _aggiorna(mondo, nuove) == 1                                   # rifatta una volta, poi tenuta com'era
     assert _voce(mondo)["schierata"] == prima["schierata"]
     monkeypatch.setattr(diario.fz, "migliore", lambda *a, **k: pytest.fail("non deve rifare le simulazioni"))
-    assert _aggiorna(mondo) == 0
+    assert _aggiorna(mondo, nuove) == 0
     assert _voce(mondo)["schierata"] == prima["schierata"]
 
 
 def test_un_correggi_arrivato_mentre_il_cron_rifa_la_voce_non_si_perde(mondo, monkeypatch):
-    """Il cron rifà la voce perché i voti sono cambiati, con la scelta che ha letto all'inizio. Intanto l'utente tocca «Correggi»
-    e registra altri titolari: quando il cron scrive, resta la voce dell'utente."""
+    """Il cron rifà i punti della voce perché i voti sono cambiati. Intanto l'utente tocca «Correggi» e registra altri titolari:
+    quando il cron scrive, resta la voce dell'utente."""
     _voti(mondo, 1)
     _voti(mondo, 2)
     assert _aggiorna(mondo) == 1
     _voti(mondo, 2, {25: 10.0})
     corretti = [1, 4, 5, 6, 7, 12, 13, 14, 15, 20, 25]                   # 4-4-2
-    calcola_vera, fatto = diario.calcola_giornata, {}
+    rifai_vera, fatto = diario.rifai_i_punti, {}
 
-    def calcola_lenta(d, stagione, giornata, *a, **k):
-        voce = calcola_vera(d, stagione, giornata, *a, **k)
+    def rifai_lenta(*a, **k):
+        voce = rifai_vera(*a, **k)
         if not fatto:                                                     # «nel frattempo» l'app salva la correzione
             fatto["in_corso"] = True
             fatto["voce"] = diario.salva_schierata(mondo.db, Regole(), mondo.rose, 1, "manuale", corretti, mondo.diario, mondo.scelte,
                                                    simulazioni=50)
         return voce
-    monkeypatch.setattr(diario, "calcola_giornata", calcola_lenta)
+    monkeypatch.setattr(diario, "rifai_i_punti", rifai_lenta)
     _aggiorna(mondo)
+    assert fatto
     assert sorted(t["id"] for t in _voce(mondo)["schierata"]["titolari"]) == sorted(corretti)
     assert _voce(mondo)["schierata"] == fatto["voce"]["schierata"]
 
