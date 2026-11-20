@@ -1,0 +1,11 @@
+{
+  "titolo": "Account: «Esci» scollega anche il widget di quel dispositivo",
+  "voci": [
+    "Il tuo account: quando esci sull'iPhone si scollega anche il widget di quel telefono, pure se l'app non è riuscita a farlo prima. I widget degli altri tuoi dispositivi restano collegati. Per un widget collegato prima di questa versione vale dal prossimo rinnovo del collegamento, che l'app fa da sola."
+  ],
+  "tecnico": [
+    "Nuova migrazione degli account: token_widget.sessione_id INTEGER, facoltativa e senza REFERENCES (le sessioni vecchie si cancellano; sessioni.id è AUTOINCREMENT e non si riusa). Si riempie in POST /api/account/token-widget con la sessione della richiesta (account.crea_token_widget, parametro sessione).",
+    "POST /api/account/esci (account.esci con chiudi_widget) toglie, nella stessa transazione della chiusura della sessione, il token del widget legato a quella sessione; riga token_widget_revocato nel registro di sicurezza. Il nuovo accesso sullo stesso dispositivo (accedi e Google, che chiudono la sessione di prima) non lo tocca. Nessun campo dell'API cambia.",
+    "I token già emessi hanno sessione_id NULL e restano validi fino al rinnovo. Una sessione scaduta da sola (401) non chiude il token: si chiude con «Esci da tutti i dispositivi» o con il cambio della password."
+  ]
+}
