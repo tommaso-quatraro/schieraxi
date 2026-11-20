@@ -26,6 +26,18 @@ enum ParteImpostazioni: String, Hashable {
         case .aspetto: return "imp-aspetto"
         }
     }
+
+    /// Dove scorre la pagina per portare in vista una parte: la riga e il punto dello schermo dove va.
+    struct Scorrimento: Equatable {
+        let riga: String
+        let punto: UnitPoint
+    }
+
+    /// Dove scorre la pagina per questa parte (`ImpostazioniView.portaInVista`): la prima riga della parte a metà schermo (#819).
+    /// `ultimaRigaLega`: l'identificativo dell'ultima riga di La mia lega, se c'è.
+    func scorrimento(ultimaRigaLega: String?) -> Scorrimento {
+        Scorrimento(riga: ancora, punto: .center)
+    }
 }
 
 /// Logica delle Impostazioni: stato del server, squadre della lega (per La mia lega), nuova stagione, aggiornamento dei dati.
