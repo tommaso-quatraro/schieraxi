@@ -47,10 +47,10 @@ enum TestiRinvio {
     static func partitaAVoce(_ p: PartitaRinviata) -> String { "\(p.casa.capitalized) contro \(p.trasferta.capitalized)" }
 
     /// «recupero mer 18 nov 20:45» (la data come `quando` della web: «oggi 20:45», «dom 8 15:00», oltre la settimana con il
-    /// mese) oppure «recupero da definire». `adesso` serve solo ai test.
+    /// mese; con solo il giorno senza ora, «recupero mer 18 nov») oppure «recupero da definire». `adesso` serve solo ai test.
     static func recupero(_ p: PartitaRinviata, adesso: Date = Date()) -> String {
-        guard Quando.data(p.data) != nil else { return Catalogo.Oggi.rinvioDaDefinire }
-        return Catalogo.Oggi.rinvioRecupero(quando: Quando.leggibile(p.data, adesso: adesso))
+        guard let quando = Quando.leggibileSeData(p.data, adesso: adesso) else { return Catalogo.Oggi.rinvioDaDefinire }
+        return Catalogo.Oggi.rinvioRecupero(quando: quando)
     }
 
     static func miei(_ s: SceltaRinvio) -> String? {

@@ -75,7 +75,7 @@ enum LetturaPedina {
         let attesa: String? = preso == nil ? partita?.testo : nil              // cominciata, senza voto (o rinviata): lo stato
         let daGiocare = partita == nil && g.statoPartita == "da_giocare"       // formazione chiusa, la sua partita non è cominciata
         let gioca = partita == nil && !daGiocare && !(stato?.nonGiocaDiSicuro ?? false) && SogliaGioca.daMostrare(g.pVoto)
-        let quando: String? = daGiocare ? Quando.data(g.dataPartita).map { Quando.relativa($0, adesso: adesso) } : nil
+        let quando: String? = daGiocare ? Quando.leggibileSeData(g.dataPartita, adesso: adesso) : nil
         var pezzi: [Pezzo] = []
         if gioca {
             pezzi.append(Pezzo(testo: "gioca \(Formato.percento(SogliaGioca.letta(g.pVoto)))%",
