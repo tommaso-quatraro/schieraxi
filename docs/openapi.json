@@ -1496,7 +1496,7 @@
   },
   "/api/account/elimina": {
    "post": {
-    "description": "Cancella l'account e TUTTI i suoi dati (rose, regole, scelte, immagini, avvisi). Serve la password; non si può annullare.\nPer portarti via i dati prima, usa «Scarica i tuoi dati» (Impostazioni > Il tuo account).",
+    "description": "Cancella l'account e TUTTI i suoi dati (rose, regole, scelte, immagini, avvisi). Serve la password; non si può annullare.\nPer portarti via i dati prima, usa «Scarica i tuoi dati» (Impostazioni › Il tuo account).",
     "requestBody": {
      "content": {
       "application/json": {

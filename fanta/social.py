@@ -326,7 +326,7 @@ def scambio(db: sqlite3.Connection, codice: str, verificatore: str, utente_sessi
         db.execute("UPDATE flussi_social SET esito = NULL WHERE id = ?", (riga["id"],))
         db.commit()
         evento("social_rifiutato", motivo="email_gia_usata", ip=ip)
-        raise ErroreSocial("Questo indirizzo ha già un account: entra come fai di solito e poi, in Impostazioni > Il tuo account, "
+        raise ErroreSocial("Questo indirizzo ha già un account: entra come fai di solito e poi, in Impostazioni › Il tuo account, "
                            "collega Google.", 409, codice="email_gia_usata")
     modo = account_email.modo_registrazione()
     if modo != "invito" and not esito["affidabile"]:

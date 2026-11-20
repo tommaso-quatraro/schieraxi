@@ -1,5 +1,5 @@
 """Le email di sicurezza e la Privacy consigliano «Esci da tutti i dispositivi» (#765): il nome fra «» è quello del pulsante
-vero di Impostazioni > Il tuo account, la chiave `account.esci_tutti` del catalogo comune che mostrano la web e l'iPhone.
+vero di Impostazioni › Il tuo account, la chiave `account.esci_tutti` del catalogo comune che mostrano la web e l'iPhone.
 Dal 1/11/2026 al #765 il pulsante non c'era più, e le email consigliavano una cosa che non si poteva fare."""
 import inspect
 import json
@@ -32,12 +32,12 @@ def test_le_email_consigliano_il_pulsante_che_c_e():
 
 
 def test_le_email_portano_alla_pagina_del_pulsante():
-    """Dove l'email dice il percorso, è quello della pagina che ha il pulsante, sulla web e sull'iPhone: Impostazioni > Il tuo
-    account (`imp.account`, la riga di Impostazioni che apre la pagina)."""
+    """Dove l'email dice il percorso, è quello della pagina che ha il pulsante, sulla web e sull'iPhone: Impostazioni › Il tuo
+    account (`imp.account`, la riga di Impostazioni che apre la pagina), scritto come nell'app (#827)."""
     imp = json.loads((Path(__file__).resolve().parents[1] / "fanta" / "testi" / "imp.json").read_text(encoding="utf-8"))
-    pagina = f"Impostazioni > {imp['imp.account']['it']}"
+    pagina = f"Impostazioni › {imp['imp.account']['it']}"
     con_pulsante = [testo for testo in _testi_delle_email() if NOME_IT.search(testo)]
-    percorsi = [p for testo in con_pulsante for p in re.findall(r"Impostazioni > [^.,;)«\n]+?(?= e |[.,;)«\n]|$)", testo)]
+    percorsi = [p for testo in con_pulsante for p in re.findall(r"Impostazioni [›>] [^.,;)«\n]+?(?= e |[.,;)«\n]|$)", testo)]
     assert len(percorsi) >= 2, percorsi            # accesso nuovo, email cambiata
     assert set(percorsi) == {pagina}, percorsi
 
