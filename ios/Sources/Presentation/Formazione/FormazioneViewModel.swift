@@ -60,6 +60,12 @@ final class FormazioneViewModel: ViewModelBase {
     @Published var daSostituire: Giocatore?
     /// «Sostituisci» toccato nella scheda: la scelta del sostituto si apre quando il foglio della scheda è sparito.
     private var sostituzioneInAttesa: Int?
+    /// L'elenco di «Metti in campo» aperto (#778): chi entra e chi può lasciargli il posto; nil = chiuso.
+    @Published var elencoEntra: ElencoMettiInCampo?
+    /// «Metti in campo» toccato nella scheda: l'elenco si apre quando il foglio della scheda è sparito.
+    private var mettiInCampoInAttesa: Int?
+    /// Cresce a ogni elenco aperto: la risposta di un elenco già chiuso, o sostituito da un altro, non vale.
+    private var numeroElenco = 0
 
     /// La scelta della giornata è stata letta dal server (anche «nessuna»): finché no, non si può cambiare niente.
     @Published private(set) var sceltaLetta = false
@@ -720,7 +726,8 @@ final class FormazioneViewModel: ViewModelBase {
               let g = f.schede?[String(id)] ?? (f.titolari + f.panchina).first(where: { $0.id == id }) else { return nil }
         // a giornata in corso con lo stato vero della sua partita, come sul campo
         let previsione = dalVivo(f)?.giocatori.first { $0.id == id }.map { g.dalVivo($0) } ?? g
-        return ContestoScheda(previsione: previsione, perche: percheTitolare(id), sostituibile: sostituibile(id), fermo: fermo(id))
+        return ContestoScheda(previsione: previsione, perche: percheTitolare(id), sostituibile: sostituibile(id),
+                              entrabile: entrabile(id), fermo: fermo(id))
     }
 
     /// «Perché è titolare» (`PercheTitolare`): solo con la consigliata in campo e a formazione aperta, come la web.
@@ -730,18 +737,33 @@ final class FormazioneViewModel: ViewModelBase {
         return PercheTitolare.testo(consigliata, id: id, schede: schede)
     }
 
+    /// La condizione sola di «Sostituisci» e di «Metti in campo», come `siSposta` della web (#643): la tua formazione, ancora
+    /// aperta, con i comandi accesi, e lui non gioca un anticipo già cominciato. I due pulsanti ci sono sempre insieme.
+    private func siSposta(_ id: Int) -> Bool {
+        squadraVista == nil && !chiusa && !fermi.contains(id) && !comandiSpenti
+    }
+
     /// Un titolare della tua formazione ancora aperta, con i comandi accesi: nella scheda «Sostituisci».
     func sostituibile(_ id: Int) -> Bool {
-        titolareTuo(id) && !fermi.contains(id) && !comandiSpenti
+        siSposta(id) && inCampo(id)
     }
 
-    /// Un titolare della tua formazione che gioca un anticipo già cominciato: nella scheda la frase di `formazione.bloccati`.
+    /// Un giocatore della tua formazione che non è fra gli 11 in campo (panchina, non schierati, infortunati e squalificati), alle
+    /// stesse condizioni di «Sostituisci»: nella scheda «Metti in campo» (#778).
+    func entrabile(_ id: Int) -> Bool {
+        guard siSposta(id), formazione?.schede?[String(id)] != nil else { return false }
+        return !inCampo(id)
+    }
+
+    /// Chi gioca un anticipo già cominciato, nella tua formazione ancora aperta, titolare o no (`fermo` della web): nella scheda la
+    /// frase di `formazione.bloccati` al posto del pulsante.
     func fermo(_ id: Int) -> Bool {
-        titolareTuo(id) && fermi.contains(id)
+        squadraVista == nil && !chiusa && fermi.contains(id)
     }
 
-    private func titolareTuo(_ id: Int) -> Bool {
-        guard squadraVista == nil, !chiusa, let f = formazione else { return false }
+    /// È fra gli 11 in campo.
+    private func inCampo(_ id: Int) -> Bool {
+        guard let f = formazione else { return false }
         return vista(f).titolari.contains { $0.id == id }
     }
 
@@ -768,5 +790,82 @@ final class FormazioneViewModel: ViewModelBase {
         sostituzioneInAttesa = nil
         guard sostituibile(id), let g = formazione?.schede?[String(id)] else { return }
         daSostituire = g
+    }
+
+    // MARK: «Metti in campo» (#778, come `apriMettiInCampo` della web)
+
+    /// Il codice del server per chi gioca una partita già cominciata (400).
+    static let codiceBloccato = "giocatore_bloccato"
+
+    /// «Metti in campo» nella scheda: il foglio della scheda si chiude e l'elenco parte quando è sparito.
+    func chiediMettiInCampo(_ id: Int) {
+        mettiInCampoInAttesa = id
+    }
+
+    /// Chiamata quando il foglio della scheda è sparito: apre l'elenco chiesto con «Metti in campo», se quel giocatore si può
+    /// ancora mettere in campo.
+    func apriMettiInCampoInAttesa() {
+        guard let id = mettiInCampoInAttesa else { return }
+        mettiInCampoInAttesa = nil
+        guard entrabile(id) else { return }
+        Task { await mettiInCampo(id) }
+    }
+
+    /// Apre l'elenco di «Metti in campo» per `id` («Carico…») e chiede al server chi può lasciargli il posto, con gli 11 in campo
+    /// (`POST /api/formazione/metti-in-campo`). Numeri e ordine sono del server; restano le righe dei titolari ancora in campo.
+    /// `giocatore_bloccato` (la sua partita è cominciata e la schermata non lo sapeva): la frase del server al posto dell'elenco,
+    /// come informazione. `formazione_chiusa` (la scadenza è passata con la schermata aperta): l'elenco si chiude, si dice il motivo
+    /// e si rilegge. Un altro errore: il motivo nell'elenco. Se l'elenco si chiude, o se ne apre un altro, prima della risposta, la
+    /// risposta non lo tocca; se nel frattempo gli 11 in campo sono cambiati, l'elenco si chiude (direbbe di un'altra formazione).
+    func mettiInCampo(_ id: Int) async {
+        guard let f = formazione, entrabile(id), let entra = f.schede?[String(id)] else { return }
+        numeroElenco += 1
+        let numero = numeroElenco
+        let titolari = vista(f).titolari.map(\.id)
+        elencoEntra = ElencoMettiInCampo(id: numero, entra: entra)
+        do {
+            let r: RispostaMettiInCampo = try await server.posta("POST", "/api/formazione/metti-in-campo",
+                                                                RichiestaMettiInCampo(entra: id, titolari: titolari, giornata: f.giornata))
+            guard elencoEntra?.id == numero else { return }
+            guard let ora = formazione, squadraVista == nil, !chiusa, Set(vista(ora).titolari.map(\.id)) == Set(titolari) else {
+                elencoEntra = nil
+                return
+            }
+            let schede = ora.schede ?? [:]
+            let righe: [ElencoMettiInCampo.Riga] = (r.uscite ?? []).compactMap { u in
+                guard let esce = u.esce, titolari.contains(esce), let g = schede[String(esce)] else { return nil }
+                return ElencoMettiInCampo.Riga(esce: g, modulo: u.modulo, cambiaModulo: u.cambiaModulo == true, differenza: u.differenza)
+            }
+            elencoEntra?.stato = .uscite(righe)
+        } catch {
+            guard elencoEntra?.id == numero else { return }
+            if Task.isCancelled || error is CancellationError {
+                elencoEntra = nil
+                return
+            }
+            if case .codificato(let codice, _)? = error as? ErroreApi {
+                if codice == Self.codiceChiusa {
+                    elencoEntra = nil
+                    messaggio = testoQui(error)
+                    await carica()
+                    return
+                }
+                if codice == Self.codiceBloccato {
+                    elencoEntra?.stato = .informazione(error.localizedDescription)
+                    return
+                }
+            }
+            elencoEntra?.stato = .errore(error.localizedDescription)
+        }
+    }
+
+    /// Un tocco su una riga dell'elenco: l'elenco si chiude e quel titolare lascia il posto a chi entra, per la stessa strada di
+    /// «Sostituisci» (`sostituisciTitolare`: si salva subito, al 412 si rilegge e lo si dice). false se il cambio non si può più
+    /// fare da qui (lui non è più fuori, quel titolare non è più in campo, la giornata si è chiusa).
+    @discardableResult
+    func scegliChiEsce(_ esce: Int) async -> Bool {
+        guard let entra = elencoEntra?.entra.id else { return false }
+        elencoEntra = nil
+        return await sostituisciTitolare(esce, con: entra)
     }
 }

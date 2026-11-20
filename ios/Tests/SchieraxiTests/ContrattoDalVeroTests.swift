@@ -56,6 +56,7 @@ struct ContrattoDalVeroTests {
         "/api/diario": [.modello(DiarioRisposta.self)],
         "/api/formazione": [.modello(Formazione.self)],
         "/api/formazione/valuta": [.modello(ValutazioneManuale.self)],
+        "/api/formazione/metti-in-campo": [.modello(RispostaMettiInCampo.self)],
         "/api/foto-disponibili": [.modello(FotoDisponibili.self)],
         "/api/funzioni": [.modello(RispostaFunzioni.self, snake: false)],
         "/api/giocatore/{id}": [.modello(SchedaGiocatore.self)],
@@ -95,6 +96,7 @@ struct ContrattoDalVeroTests {
     /// Rotte di `letture` che le fotografie possono non avere, con il motivo: quando ci sono si leggono come le altre.
     static let facoltative: [String: String] = [
         "/api/foto-disponibili": "c'è solo sui server con le foto dei calciatori, non in quello del repository: lì risponde 404 e prove/fotografie_dal_vero.py non la scrive",
+        "/api/formazione/metti-in-campo": "le fotografie sono di prima della rotta (#643, #778): quando prove/fotografie_dal_vero.py la registra, si legge come le altre",
     ]
 
     // MARK: test

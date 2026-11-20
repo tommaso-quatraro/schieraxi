@@ -23,7 +23,7 @@ mkdir -p "$USCITA"
 source "$(dirname "$0")/avvisi.sh"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
-TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-rinvio formazione-chiusa formazione-cambiata formazione-sostituisci
+TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-rinvio formazione-chiusa formazione-cambiata formazione-sostituisci formazione-metti-in-campo
        formazione-campionato-finito
        giocatore giocatore-fondo ricerca
        guida marchio giornate giornate-aperta giornate-dettagli
@@ -36,7 +36,7 @@ CONOSCIUTE=("${TUTTE[@]}")
 PER_CHIARO=(formazione formazione-in-corso formazione-finita giornate-aperta
             impostazioni lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
 PRINCIPALI=(formazione giornate impostazioni giocatore)
-PER_TESTO_GRANDE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-cambiata formazione-sostituisci giornate-aperta
+PER_TESTO_GRANDE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-cambiata formazione-sostituisci formazione-metti-in-campo giornate-aperta
                   lega lega-squadre lega-regole lega-stato
                   impostazioni impostazioni-fondo impostazioni-aspetto giocatore giocatore-fondo ricerca)
 PER_IPAD=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-cambiata

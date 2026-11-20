@@ -186,7 +186,7 @@ final class Navigazione: ObservableObject {
         ["png", "jpg", "jpeg", "heic", "heif", "webp"].contains(url.pathExtension.lowercased())
     }
 
-    /// `contesto`: la scheda si apre dalla Formazione, con la previsione già letta e «Sostituisci» (come la web).
+    /// `contesto`: la scheda si apre dalla Formazione, con la previsione già letta, «Sostituisci» e «Metti in campo» (come la web).
     func apriScheda(_ id: Int, contesto: ContestoScheda? = nil) {
         Suggerimenti.schedaAperta()
         scheda = IdGiocatore(id: id, contesto: contesto)
@@ -285,12 +285,21 @@ struct RadiceView: View {
             ImmagineRicevutaView(ricevuta: r, server: modello.server)
                 .tint(Color.verde)
         }
-        // «Sostituisci» nella scheda chiude il foglio: la scelta del sostituto si apre quando è sparito (un foglio alla volta)
-        .sheet(item: $nav.scheda, onDismiss: { modello.formazione.apriSostituzioneInAttesa() }) { g in
-            GiocatoreSheet(id: g.id, server: modello.server, contesto: g.contesto) {
-                modello.formazione.chiediSostituzione(g.id)
-                nav.scheda = nil
-            }
+        // «Sostituisci» e «Metti in campo» nella scheda chiudono il foglio: la scelta del sostituto, o l'elenco di chi esce, si apre
+        // quando è sparito (un foglio alla volta)
+        .sheet(item: $nav.scheda, onDismiss: {
+            modello.formazione.apriSostituzioneInAttesa()
+            modello.formazione.apriMettiInCampoInAttesa()
+        }) { g in
+            GiocatoreSheet(id: g.id, server: modello.server, contesto: g.contesto,
+                           sostituisci: {
+                               modello.formazione.chiediSostituzione(g.id)
+                               nav.scheda = nil
+                           },
+                           mettiInCampo: {
+                               modello.formazione.chiediMettiInCampo(g.id)
+                               nav.scheda = nil
+                           })
             .navigationTransition(.zoom(sourceID: g.id, in: zoom))
             .presentationDragIndicator(.visible)
             .tint(Color.verde)

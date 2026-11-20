@@ -23,7 +23,7 @@
   "soglia_radici": 4,
   "regole": [
     {"percorsi": ["ios/Sources/Presentation/Formazione/**", "ios/Sources/Domain/StatoScelta.swift", "ios/Sources/Domain/TestoFormazione.swift", "ios/Sources/Domain/LetturaPedina.swift", "ios/Sources/Domain/EsitoPedina.swift", "ios/Sources/Domain/Decisioni.swift", "ios/Sources/Domain/TestaFormazione.swift", "ios/Sources/Domain/FasiGiornata.swift", "ios/Sources/Domain/PartiteRinviate.swift", "ios/Sources/Support/CampoFormazione.swift"],
-     "schermate": ["formazione", "formazione-fondo", "formazione-in-corso", "formazione-finita", "formazione-rinvio", "formazione-chiusa", "formazione-cambiata", "formazione-sostituisci", "formazione-campionato-finito"]},
+     "schermate": ["formazione", "formazione-fondo", "formazione-in-corso", "formazione-finita", "formazione-rinvio", "formazione-chiusa", "formazione-cambiata", "formazione-sostituisci", "formazione-metti-in-campo", "formazione-campionato-finito"]},
     {"percorsi": ["ios/Sources/Presentation/Mercato/SchedaGiocatore*", "ios/Sources/Presentation/Mercato/CifreScheda.swift", "ios/Sources/Presentation/Mercato/TuttiINumeri.swift", "ios/Sources/Presentation/Mercato/ContestoScheda.swift", "ios/Sources/Domain/GiocatoreEtichette.swift", "ios/Sources/Domain/LetturaScheda.swift", "ios/Sources/Domain/ParolaStato.swift", "ios/Sources/Domain/PercheTitolare.swift", "ios/Sources/Domain/SogliaGioca.swift", "ios/Sources/Domain/TestaScheda.swift", "ios/Sources/Support/BloccoPercheNumero.swift"],
      "schermate": ["giocatore", "giocatore-fondo"]},
     {"percorsi": ["ios/Sources/Presentation/Mercato/Ricerca*", "ios/Sources/Presentation/Mercato/RigaRicerca.swift", "ios/Sources/Presentation/Mercato/DatiRigaRicerca.swift", "ios/Sources/Support/DemoRicerca.swift"],

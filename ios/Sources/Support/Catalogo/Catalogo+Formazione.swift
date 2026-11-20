@@ -214,6 +214,32 @@ extension Catalogo {
         /// `formazione.nessun_altro_giocatore`
         static let nessunAltroGiocatore = "Nessun altro giocatore di questo ruolo in rosa."
 
+        /// `formazione.metti_in_campo`
+        static let mettiInCampo = "Metti in campo"
+
+        /// `formazione.chi_esce_per`
+        static func chiEscePer(nome: String) -> String {
+            "Chi esce per \(nome)"
+        }
+
+        /// `formazione.esce_spiega`
+        static func esceSpiega(nome: String) -> String {
+            "Stesso ruolo, oppure un altro modulo ammesso dalla tua lega. Il numero grande sono i punti attesi della formazione in più o in meno se \(nome) gioca al suo posto."
+        }
+
+        /// `formazione.passi_al`
+        static func passiAl(modulo: String) -> String {
+            "Si passa al \(modulo)"
+        }
+
+        /// `formazione.punti_con`
+        static func puntiCon(nome: String) -> String {
+            "punti attesi della formazione se \(nome) gioca al suo posto"
+        }
+
+        /// `formazione.nessuno_lascia_posto`
+        static let nessunoLasciaPosto = "Nessun titolare può lasciargli il posto."
+
         /// `formazione.partita_casa`
         static func partitaCasa(avv: String, quando: String) -> String {
             "In casa contro \(avv) · \(quando)"
