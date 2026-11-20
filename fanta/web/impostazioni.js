@@ -79,12 +79,14 @@ function paginaGestione() {
   nuovaRichiesta();
   pagina(`<div class="imp-colonna">
     <div class="carta"><h2>${t("shell.aggiorna")}</h2><p class="debole piccolo">${t("imp.aggiorna_spiega")}</p>
-      <div class="pulsanti"><button class="bottone secondario" id="aggiorna-dati" type="button"${stato.aggiornoDati ? " disabled" : ""}>${t("shell.aggiorna")}</button></div></div>
+      <div class="pulsanti"><button class="bottone secondario" id="aggiorna-dati" type="button"${stato.aggiornoDati ? " disabled" : ""}>${t("shell.aggiorna")}</button></div>
+      <p class="debole piccolo nota-pulsanti" id="aggiorna-in-corso" role="status">${stato.aggiornoDati ? t("aggiorna.in_corso") : ""}</p></div>
     <div class="carta"><h2>${t("av.stato")}</h2><p class="debole piccolo">${t("av.stato_spiega")}</p>
       <div class="pulsanti"><button class="bottone secondario" id="apri-stato-dati" type="button">${t("av.apri_stato")}</button></div></div>
     ${stato.account ? "" : `<div class="carta" id="avvisi-nativa" aria-busy="true"><div class="caricamento">${t("comune.carico")}</div></div>`}
     ${schedaAmministratore()}</div>`, { titolo: t("imp.gestione"), stato: false, indietro: indietroImp() });
   $("#aggiorna-dati").addEventListener("click", aggiornaDati);
+  segnaAggiornamento(!!stato.aggiornoDati, true);      // server già occupato (letto prima): si rilegge subito, poi finché non finisce (#763)
   $("#apri-stato-dati").addEventListener("click", apriStatoDati);
   collegaAmministratore();
   avvisiNativa();

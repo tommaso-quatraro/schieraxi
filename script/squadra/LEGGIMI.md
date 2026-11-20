@@ -127,6 +127,9 @@ python script/squadra/squadra.py giro
 Toglie la bozza solo se tutto torna: PR aperta, `mergeable` esattamente `MERGEABLE`, ramo non indietro (`compare/main...<testa>`, `behind_by` uguale a 0), controlli verdi sul
 commit in testa, descrizione, revisione e novità (`script/ci/controlla_pr.py`), coerenza web-iPhone (`script/coerenza.py
 --controlla` sui file della PR, se li tocca), «Foto da fare» se la PR tocca `ios/`. Altrimenti stampa ogni motivo ed esce con 1.
+Se le righe «Foto da fare» non nominano tutte le schermate che `foto` ricava dai file iOS della PR (il grafo con i file Swift
+del commit della PR), stampa un avviso con le schermate che mancano e i file da cui arrivano: non è un motivo di rifiuto.
+Un file Swift della PR oltre 200 KB o 3000 righe salta il confronto (avviso corto). Gli avvisi escono prima dei motivi.
 Se `controlla_pr.py` o `coerenza.py` non ci sono su questo `main`, rifiuta («controllo non disponibile su questo main").
 
 Caso a parte: è rosso solo il job «ambito» ma la descrizione attuale va bene (`controlla_pr.py` senza problemi, aree di

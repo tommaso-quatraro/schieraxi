@@ -1,5 +1,9 @@
 """Server dell'app: regole e importazione rose, su file temporanei (la lega vera non viene toccata)."""
+import contextlib
 import json
+import subprocess
+import sys
+import threading
 
 import pytest
 from fastapi.testclient import TestClient
@@ -228,6 +232,90 @@ def test_aggiorna_con_tutte_le_fonti_spente_lo_dice_e_non_parte(client, monkeypa
     assert client.post("/api/aggiorna").json() == {"avviato": True}
     _fine_aggiornamento()
     assert chiamate == [1]
+
+
+def test_stato_dice_aggiornamento_in_corso_anche_se_lo_fa_un_altro(client, monkeypatch):
+    """`aggiornamento_in_corso` di /api/stato è vero anche quando i dati li sta aggiornando un altro (l'aggiornamento programmato
+    del server o un giro leggero, che tengono il blocco su file), non solo dopo «Aggiorna i dati» da qui (#763)."""
+    monkeypatch.setattr(server.pianificatore, "blocco_tenuto", lambda: True)
+    assert client.get("/api/stato").json()["aggiornamento_in_corso"] is True
+    monkeypatch.setattr(server.pianificatore, "blocco_tenuto", lambda: False)
+    assert client.get("/api/stato").json()["aggiornamento_in_corso"] is False
+
+
+# L'altro processo, come l'aggiornamento programmato (`exec 9>>…/blocco; flock 9` in aggiorna.sh): tiene il blocco su file
+# finché non riceve il «via». «condiviso» fa come un'altra lettura dello stato in corso.
+FIGLIO_BLOCCO = r"""
+import fcntl, sys
+with open(sys.argv[1], "ab") as f:
+    fcntl.flock(f, fcntl.LOCK_SH if sys.argv[2] == "condiviso" else fcntl.LOCK_EX)
+    print("preso", flush=True)
+    sys.stdin.readline()
+"""
+SOLO_LINUX = pytest.mark.skipif(sys.platform == "win32", reason="il blocco dell'aggiornamento c'è solo dove c'è fcntl, come sul server")
+
+
+@contextlib.contextmanager
+def _blocco_di_un_altro_processo(file, modo="esclusivo"):
+    figlio = subprocess.Popen([sys.executable, "-I", "-c", FIGLIO_BLOCCO, str(file), modo], cwd=file.parent, text=True,
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    guardia = threading.Timer(60, figlio.kill)       # solo se il figlio resta appeso: il test non deve bloccare la suite
+    guardia.start()
+    try:
+        assert figlio.stdout.readline().strip() == "preso"
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            figlio.stdin.write("via\n")
+            figlio.stdin.flush()
+        figlio.wait(30)
+        guardia.cancel()
+
+
+@SOLO_LINUX
+def test_stato_con_il_blocco_tenuto_da_un_altro_processo(client, tmp_path, monkeypatch):
+    """Il blocco vero, tenuto da un altro processo: «aggiornamento in corso» finché lo tiene, poi no. La lettura non aspetta, non
+    lascia il blocco preso (un giro leggero subito dopo parte), non vede come aggiornamento un'altra lettura in corso e non crea
+    il file se manca (#763)."""
+    file = tmp_path / "blocco"
+    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: file)
+    with _blocco_di_un_altro_processo(file):
+        assert client.get("/api/stato").json()["aggiornamento_in_corso"] is True
+    assert client.get("/api/stato").json()["aggiornamento_in_corso"] is False
+    with server.pianificatore.blocco_processo() as libero:
+        assert libero is True
+    with _blocco_di_un_altro_processo(file, "condiviso"):
+        assert client.get("/api/stato").json()["aggiornamento_in_corso"] is False
+    manca = tmp_path / "manca" / "blocco"
+    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: manca)
+    assert client.get("/api/stato").json()["aggiornamento_in_corso"] is False
+    assert not manca.parent.exists()
+
+
+@SOLO_LINUX
+def test_la_lettura_del_blocco_non_fa_rinunciare_un_giro_leggero(tmp_path, monkeypatch):
+    """Un giro leggero (o «Aggiorna i dati») prova il blocco senza aspettare: se in quell'istante lo tiene la lettura di
+    /api/stato, aspetta la fine della lettura invece di rinunciare come se l'aggiornamento programmato fosse in corso (#763)."""
+    import fcntl
+    file = tmp_path / "blocco"
+    file.touch()
+    monkeypatch.setattr(server.pianificatore, "file_blocco", lambda: file)
+    vero, esiti, giri = fcntl.flock, [], []
+
+    def giro():
+        with server.pianificatore.blocco_processo() as libero:
+            esiti.append(libero)
+
+    def flock(fd, modo):
+        vero(fd, modo)
+        if modo == fcntl.LOCK_SH | fcntl.LOCK_NB and not giri:      # la lettura ha il blocco in mano: proprio ora parte un giro
+            giri.append(threading.Thread(target=giro))
+            giri[0].start()
+            giri[0].join(0.5)                                      # il giro deve aspettare la lettura, non finire qui con «occupato»
+    monkeypatch.setattr(fcntl, "flock", flock)
+    assert server.pianificatore.blocco_tenuto() is False
+    giri[0].join(30)
+    assert esiti == [True]
 
 
 def test_app_sempre_aggiornata_sul_telefono(client):
