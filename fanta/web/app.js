@@ -143,6 +143,11 @@ function mostraCalcolo(mostra) {
   }
   if (c) c.hidden = inAttesa <= 0;
 }
+// Una richiesta che non arriva (#827): con il dispositivo fuori linea si chiede di controllare internet; con la rete accesa è il
+// server che non risponde (spento, o riparte) e controllare internet non serve. Il tempo scaduto con la rete accesa resta «lenta o
+// assente»: può essere l'una o l'altra cosa.
+const fraseSenzaRisposta = (scaduta = false) =>
+  t(navigator.onLine === false ? "comune.rete_no" : scaduta ? "comune.rete_timeout" : "comune.server_non_risponde");
 async function api(percorso, opzioni = {}) {
   const risorsa = risorsaDi(percorso, opzioni);
   const scrive = !!risorsa && (opzioni.method || "GET").toUpperCase() !== "GET";
@@ -167,7 +172,7 @@ async function api(percorso, opzioni = {}) {
       const ferma = timeout ? new AbortController() : null;
       const sveglia = ferma ? setTimeout(() => ferma.abort(), timeout) : null;
       try { r = await fetch(percorso, { ...resto, headers: intestazioni, ...(ferma ? { signal: ferma.signal } : {}) }); }
-      catch { const e = new Error(ferma && ferma.signal.aborted ? t("comune.rete_timeout") : t("comune.rete_no")); e.rete = true; throw e; }
+      catch { const e = new Error(fraseSenzaRisposta(!!ferma && ferma.signal.aborted)); e.rete = true; throw e; }
       finally { if (sveglia) clearTimeout(sveglia); }
       let dati = null;
       try { dati = await r.json(); } catch { /* risposta vuota */ }
@@ -185,7 +190,9 @@ async function api(percorso, opzioni = {}) {
       if (!r.ok) {
         if (dati && dati.registrazione) stato.registrazione = dati.registrazione;
         if (r.status === 401 && dati && dati.multiutente) sessioneScaduta();          // vedi "account" più sotto
+        // 502-504 senza la risposta del server (la pagina d'errore del proxy, con il servizio spento o che riparte): non risponde
         const testo = dati && typeof dati.detail === "string" ? dati.detail
+          : dati === null && r.status >= 502 && r.status <= 504 ? t("comune.server_non_risponde")
           : r.status >= 500 ? t("comune.errore_server", { n: r.status }) : t("comune.errore_n", { n: r.status });
         const e = new Error(traduciErrore(testo)); e.originale = testo; e.status = r.status; e.riprova = Number(r.headers.get("Retry-After")) || 0;
         e.codice = dati && typeof dati.codice === "string" ? dati.codice : "";            // nome breve dell'errore (accesso con Google)
@@ -2769,7 +2776,7 @@ async function avvisiTelefono() {
 async function chiamaImmagine(percorso, opzioni = {}) {
   let r;
   try { r = await fetch(percorso, { cache: "no-store", ...opzioni, headers: { "X-Fanta": "1", "Accept-Language": LINGUA, ...(opzioni.headers || {}) } }); }
-  catch { throw new Error(t("comune.rete_no")); }
+  catch { throw new Error(fraseSenzaRisposta()); }
   const dati = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(traduciErrore(dati.detail) || t("lega.operazione_no"));
   return dati;

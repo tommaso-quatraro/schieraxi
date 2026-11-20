@@ -9,7 +9,13 @@
   },
   "comune.rete_no": {
     "it": "Non riesco a collegarmi: controlla internet e riprova",
-    "en": "I cannot connect: check your internet and try again"
+    "en": "I cannot connect: check your internet and try again",
+    "nota": "solo con il dispositivo fuori linea (navigator.onLine falso); con la rete accesa e la richiesta che non arriva vale comune.server_non_risponde (#827)"
+  },
+  "comune.server_non_risponde": {
+    "it": "Il server non risponde: riprova fra poco",
+    "en": "The server is not responding: try again shortly",
+    "nota": "la richiesta non arriva ma la rete del dispositivo c'è (server spento o che riparte), o il proxy risponde 502-504 senza la risposta del server (#827)"
   },
   "comune.calcolo_lungo": {
     "it": "Il calcolo sta durando più del previsto: riprova tra poco.",

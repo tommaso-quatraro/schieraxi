@@ -872,9 +872,9 @@ def test_se_il_salvataggio_in_volo_non_riesce_la_pagina_riletta_lo_dice_e_si_ria
     web.apri("/")
     fermi, _ = _rileggi_a_salvataggio_in_volo(web)
     assert principale(web).get_by_label("Modulo").is_disabled()
-    fermi.pop(0).abort()
-    avviso = web.pagina.get_by_role("status").filter(has_text="Non riesco a collegarmi")
-    _aspetta(avviso.first, testo="Non riesco a collegarmi")
+    fermi.pop(0).abort()                                     # la richiesta non arriva, con la rete del dispositivo accesa (#827)
+    avviso = web.pagina.get_by_role("status").filter(has_text="Il server non risponde")
+    _aspetta(avviso.first, testo="Il server non risponde")
     _aspetta(principale(web).get_by_label("Modulo"), attivo=True)
     web.aspetta()
     assert principale(web).get_by_role("checkbox", name="L'ho messa").is_enabled()
@@ -974,25 +974,45 @@ def test_se_la_scelta_salvata_non_si_legge_la_pagina_lo_dice_e_non_fa_cambiare_n
     assert principale(web).get_by_label("Modulo").is_enabled()
 
 
-@pytest.mark.parametrize("rifiuto, frase", [
-    (None, "Non riesco a collegarmi"),
+SERVER_GIU = "Il server non risponde: riprova fra poco"
+SENZA_RETE = "Non riesco a collegarmi: controlla internet e riprova"
+
+
+@pytest.mark.parametrize("guasto, frase", [
+    ("server", SERVER_GIU),
+    ("502", SERVER_GIU),
+    ("rete", SENZA_RETE),
     ((400, {"detail": "La formazione non è valida: controlla i titolari.", "codice": "formazione_non_valida"}), "La formazione non è valida"),
 ])
-def test_un_salvataggio_non_riuscito_lascia_la_formazione_com_era_e_lo_dice(web, rifiuto, frase):
-    """Rete caduta o rifiuto del server su una sostituzione: un avviso dice cosa è successo e in pagina resta ciò che è salvato."""
+def test_un_salvataggio_non_riuscito_lascia_la_formazione_com_era_e_lo_dice(web, guasto, frase):
+    """Rete caduta, server che non risponde o rifiuto del server su una sostituzione: un avviso dice cosa è successo e in pagina
+    resta ciò che è salvato. Dal #827 il server spento non manda a controllare internet: con la rete del dispositivo accesa la
+    richiesta che non arriva («server») o la pagina d'errore del proxy («502») dicono che il server non risponde; solo con il
+    dispositivo fuori linea («rete») l'avviso chiede di controllare internet."""
     solo(web, "prima")
     mem = server_con_memoria(web, None)
     web.apri("/")
     prima = nomi_sul_campo(web)
-    if rifiuto:
-        mem["rifiuto"] = rifiuto
-    else:
-        web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione/valuta", lambda r: r.abort())
     tocca(web, campo(web).nth(3))
     tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    valuta = lambda u: urlsplit(u).path == "/api/formazione/valuta"          # noqa: E731
+    if guasto == "server":
+        web.pagina.route(valuta, lambda r: r.abort("connectionrefused"))
+    elif guasto == "502":
+        web.pagina.route(valuta, lambda r: r.fulfill(status=502, content_type="text/html", body="<html>502 Bad Gateway</html>"))
+    elif guasto == "rete":                    # il browser fuori linea; le risposte finte passerebbero lo stesso: anche la richiesta cade
+        web.pagina.context.set_offline(True)
+        web.pagina.route(valuta, lambda r: r.abort("internetdisconnected"))
+    else:
+        mem["rifiuto"] = guasto
     tocca(web, scheda(web).get_by_role("listitem").first.get_by_role("button"))
     avviso = web.pagina.get_by_role("status").filter(has_text=frase)
-    assert avviso.count() == 1 and avviso.first.is_visible()
+    assert avviso.count() == 1 and avviso.first.is_visible(), web.pagina.get_by_role("status").all_inner_texts()
+    if guasto in ("server", "502"):
+        assert "internet" not in avviso.first.inner_text(), avviso.first.inner_text()
+    if guasto == "rete":
+        assert "server" not in avviso.first.inner_text(), avviso.first.inner_text()
+        web.pagina.context.set_offline(False)
     assert nomi_sul_campo(web) == prima and stato(web) == "È la consigliata." and mem["scelta"] is None
     assert principale(web).get_by_label("Modulo").input_value() == web.registrata("/api/formazione")["modulo"]
     assert not web.errori_mostrati()
