@@ -1,11 +1,11 @@
 import SwiftUI
 
 /// «Metti in campo» (dalla scheda di chi non è fra gli 11, #778), come `apriMettiInCampo` della web (#643). In cima chi entra: il
-/// titolo con il suo nome, intero e a capo se serve (`titoloPagina`), sotto il suo stato se ne ha uno («gioca 62%», «In dubbio»:
-/// gli stessi avvisi che «Sostituisci» mette nella sua riga) e la spiegazione del numero. Poi un titolare per riga, nell'ordine
+/// titolo con il suo nome, intero e a capo se serve (`titoloPagina`), sotto le sue etichette se ne ha («In dubbio», «gioca 62%»,
+/// «Diffidato», la nota: le stesse delle righe, `EtichetteRiga`) e la spiegazione del numero. Poi un titolare per riga, nell'ordine
 /// del server (dal cambio che rende di più): il numero grande è la `differenza` del server, i punti attesi della formazione
-/// dopo il cambio meno quelli di adesso, verde se positiva; sotto il nome «gioca N%» sotto l'80% e, se il modulo cambia,
-/// «Si passa al …»; a destra il fantavoto atteso del titolare. Mentre il server risponde «Carico…»; nessun titolare: la frase
+/// dopo il cambio meno quelli di adesso, verde se positiva; sotto il nome le etichette della web, con «Si passa al …» dopo
+/// «gioca N%» se il modulo cambia; a destra il fantavoto atteso del titolare. Mentre il server risponde «Carico…»; nessun titolare: la frase
 /// della web; `giocatore_bloccato`: la frase del server al posto dell'elenco, come informazione; un altro errore: il motivo.
 /// Un tocco su una riga fa il cambio, che si salva da solo (`FormazioneViewModel.scegliChiEsce`).
 struct SceltaChiEsce: View {
@@ -35,7 +35,7 @@ struct SceltaChiEsce: View {
     /// Lo stato di chi entra, se ne ha uno, e la spiegazione del numero grande.
     private var testa: some View {
         VStack(alignment: .leading, spacing: 6) {
-            let pezzi = LetturaPedina.contenuto(entra, adesso: Orologio.adesso()).pezzi
+            let pezzi = EtichetteRiga.pezzi(entra)
             if !pezzi.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(Array(pezzi.enumerated()), id: \.offset) { _, pezzo in
