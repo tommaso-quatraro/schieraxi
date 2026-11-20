@@ -176,11 +176,11 @@ La **Formazione** resta la stessa schermata; cambia la testa, con la fase della 
 
 ### Avvisi sul telefono (Impostazioni › Avvisi)
 
-Nella web app gli avvisi si accendono e si spengono con un interruttore solo, **Avvisi su questo dispositivo**, più le **Ore tranquille** (di solito dalle 23 alle 7). Quali avvisi manda il server lo decide lui: le scelte per i singoli avvisi fatte con le versioni di prima o con l'app per iPhone (per esempio il promemoria di un quarto d'ora prima spento) restano salvate ma per i suoi avvisi non contano più. I promemoria che l'app per iPhone programma da sola sul telefono seguono ancora quelle scelte, finché l'app non avrà anche lei l'interruttore unico.
+Nella web app e nell'app per iPhone gli avvisi si accendono e si spengono con un interruttore solo, **Avvisi su questo dispositivo**, più le **Ore tranquille** (di solito dalle 23 alle 7). Quali avvisi manda il server lo decide lui: le scelte per i singoli avvisi fatte con le versioni di prima (per esempio il promemoria di un quarto d'ora prima spento) restano salvate ma non contano più.
 
 Gli avvisi sono due:
 
-- il **promemoria**, un'ora e un quarto d'ora prima della scadenza della formazione. Non arriva se hai una formazione salvata e hai spuntato **L'ho messa**, a meno che un tuo titolare sia diventato indisponibile. La web salva la formazione da sola a ogni tocco: senza la spunta il promemoria arriva e ti chiede se l'hai messa nell'app della lega. Se salvi la formazione dall'app per iPhone, che la spunta non ce l'ha ancora, il promemoria resta com'era: non arriva quando hai una formazione salvata;
+- il **promemoria**, un'ora e un quarto d'ora prima della scadenza della formazione. Non arriva se hai una formazione salvata e hai spuntato **L'ho messa**, a meno che un tuo titolare sia diventato indisponibile. La web salva la formazione da sola a ogni tocco: senza la spunta il promemoria arriva e ti chiede se l'hai messa nell'app della lega. Lo stesso vale per l'app per iPhone, che ha anche lei la spunta **L'ho messa**;
 - il **cambio della formazione da schierare**:
   - con una formazione salvata, **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni (solo se anche la formazione consigliata lo toglie, come nelle decisioni in cima alla Formazione);
   - senza, **cambia un titolare**: la consigliata toglie un titolare che è diventato infortunato, squalificato o in panchina; l'avviso dice il motivo, chi entra e quando si chiude la formazione. Arriva una volta per ogni titolare che diventa fuori, anche giorni prima della scadenza;
@@ -194,7 +194,7 @@ Gli avvisi dicono le cose a parole e sono nella lingua scelta nell'app: se la me
 
 Attivazione: nella web app, **Impostazioni › Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo.
 
-Nell'app per iPhone e iPad (Impostazioni › Avvisi) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
+Nell'app per iPhone e iPad (Impostazioni › Avvisi) l'interruttore **Avvisi su questo dispositivo** accende insieme i promemoria di **un'ora e un quarto d'ora prima** della scadenza e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
 Se le notifiche smettono di arrivare dopo un cambio di chiave del server: spegni e riaccendi **Avvisi su questo dispositivo**.
 
@@ -202,7 +202,7 @@ Dopo **Esci da tutti i dispositivi**, o un cambio o un recupero della password f
 
 ### Widget sull'iPhone
 
-Il widget è il riquadro sulla Home o sulla schermata di blocco. Sono tre: **Prossima giornata**, **Formazione** e **Da controllare**. Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se non si collega, in **Impostazioni** dell'app c'è **Collegamento manuale**. Se dice «Serve l'accesso», apri l'app ed entra. Su Android non ci sono widget.
+Il widget è il riquadro sulla Home o sulla schermata di blocco. Sono tre: **Prossima giornata**, **Formazione** e **Da controllare**. Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se dice «Tocca per collegare» (sotto: «Si apre SchieraXI per collegarlo»), toccalo: si apre l'app su **Collega il widget**; tocca **Collega**. La stessa schermata si apre dalla riga **Widget: tocca per collegare** in **Impostazioni** dell'app (quando è collegato la riga dice «Widget collegato automaticamente»). Solo se non basta, l'app copia un codice da incollare tenendo premuto il widget: **Modifica widget › Collegamento manuale**. Su Android non ci sono widget.
 
 ## 5. Dopo la giornata: Giornate
 
@@ -295,7 +295,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Accesso richiesto» | La sessione è scaduta: entra di nuovo. |
 | «Nessuna rosa importata» | Importa le rose (sezione 2). |
 | «Non riesco a leggere la formazione che hai salvato» | Tocca **Riprova**. Finché non si legge, la Formazione non fa cambiare niente: così la tua scelta non viene sovrascritta. |
-| «Serve l'accesso» sul widget | Apri l'app sull'iPhone ed entra. |
+| «Tocca per collegare» sul widget | Tocca il widget: si apre SchieraXI su **Collega il widget**; tocca **Collega**. Se non basta, incolla il codice che l'app copia in **Modifica widget › Collegamento manuale** (sezione 4). |
 | Dati che non sembrano aggiornati | Ricarica la pagina. Se non cambia, chiedi a chi gestisce l'app di controllare **Impostazioni › Gestione › Stato dei dati**. |
 | File delle rose rovinato | L'app lo dice e spiega come rimediare: riesporta le rose da Leghe e riprova. |
 
