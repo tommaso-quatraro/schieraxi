@@ -372,8 +372,10 @@ struct VistaWidget: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// «3-4-3 · 72,7 punti», e dove non entra «3-4-3 · 72,7»: si perdono parole intere, mai il modulo. Prima con il testo grande
+    /// diventava «SchieraXI 3-4-3, 72,7…» (#787).
     private func riga(_ r: RiassuntoOggi) -> some View {
-        Label("SchieraXI \(r.modulo ?? "—"), \(puntiTesto(r)) punti", systemImage: "sportscourt")
+        RigaInLinea(ParoleWidget.moduloEPunti(r.modulo, punti: r.punti, fascia: nil), icona: "sportscourt")
     }
 }
 
