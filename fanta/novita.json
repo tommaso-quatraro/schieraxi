@@ -1,5 +1,23 @@
 [
   {
+    "versione": "1.533",
+    "data": "2026-11-20T04:15:30",
+    "titolo": "Punti delle giornate finite giusti nel Diario e nel riepilogo di Oggi",
+    "voci": [
+      "Diario: una giornata entra solo quando sono usciti i voti di tutte le sue partite. Prima, se l'ultima partita era finita ma i suoi voti non erano ancora arrivati, la giornata entrava lo stesso con i suoi giocatori senza voto, e quei punti sbagliati restavano anche in Oggi, in «Le tue scelte» e in «Quanto ci abbiamo preso».",
+      "Diario: se i voti di una giornata vengono corretti nei giorni dopo, i suoi punti si rifanno da soli, finché è fra le ultime 12.",
+      "Nei primi aggiornamenti dopo questa versione si ricontrollano i punti delle giornate già nel Diario. Se i voti sono quelli di adesso non cambia niente; se nel frattempo sono cambiati, cambiano solo i punti: le formazioni, il confronto con la consigliata di allora e quello che hai detto di aver schierato restano come sono. Se i punti di una giornata non si possono rifare tutti, per esempio perché un giocatore di allora non è più nella tua rosa, restano tutti come erano.",
+      "Oggi, riepilogo della giornata finita: le riserve entrate al posto di chi è rimasto senza voto contano anche se hai salvato la formazione senza panchina, come fanno la web app e l'iPhone. Prima, finché il Diario non aveva calcolato la giornata, i loro punti mancavano. La panchina è scelta con i numeri che l'app mostrava quando la formazione si è chiusa; durante la giornata in corso, invece, Oggi usa i numeri aggiornati, quindi in qualche caso l'ordine delle riserve può essere diverso."
+    ],
+    "tecnico": [
+      "diario.aggiorna (#793): salta le giornate con fasi.voti_arrivati falso; ogni voce ha impronta_voti (diario.impronta_voti: hash delle colonne di voto, fantavoto e bonus di d.voti della giornata, tutta la Serie A, valori normalizzati), scritta da calcola_giornata e quindi anche da «Ho schierato». Finestra invariata: ultime MASSIMO_GIORNATE giornate chiuse; il cron resta dentro --minuti, il resto al giro dopo.",
+      "Impronta diversa o assente, regole uguali: se i fantavoti dei giocatori della voce (giocatori) sono quelli di adesso si scrive solo l'impronta (diario._stessi_voti); altrimenti diario.rifai_i_punti, cioè calcola_giornata(tieni=voce), rifà solo reale di ogni formazione, fv dei giocatori e i punti degli indicatori, con le stesse formazioni e la stessa classificazione. Le formazioni si contano con la stessa funzione e lo stesso insieme di giocatori di calcola_giornata e di «Correggi» (formazione: la rosa di oggi), quindi il numero non oscilla fra i due; i numeri che si confrontano (schierata, consigliata, ricostruita, S2) cambiano tutti insieme o nessuno: se una formazione non si rifà (un titolare non più in rosa) la voce resta com'era, con le sole impronte nuove. Il cambio di regole rifà la voce da zero come prima; se la rifatta perde la schierata, si rifanno i soli punti della voce di prima.",
+      "diario._scrivi ha basi: il cron passa le voci lette prima del calcolo; se nel file la voce è cambiata nel frattempo e ha la schierata (un «Correggi» arrivato durante il calcolo), resta quella.",
+      "impronta_voti resta nel file: diario.elenco e POST /api/diario/schierata la tolgono (diario.per_i_client). Nessun campo dell'API cambia.",
+      "fasi.blocco_riepilogo (#794): senza panchina salvata usa fasi._panchina_della_giornata: la panchina dell'istantanea se gli 11 sono gli stessi, altrimenti fasi._panchina_di (la funzione di «in corso») con i numeri della rosa alla scadenza. Li salva diario.salva_istantanea da f[\"schede\"] in numeri_rosa, a parte nel file del Diario (ultime 4 giornate), fuori dall'istantanea che va ai client. Per le istantanee di prima valgono i numeri che hanno; senza niente la panchina resta vuota. Mai le previsioni della giornata da giocare; vale anche a campionato finito."
+    ]
+  },
+  {
     "versione": "1.532",
     "data": "2026-11-20T03:51:28",
     "titolo": "Con i cambi consigliati spenti, niente svincolati in Da fare e nel widget",
