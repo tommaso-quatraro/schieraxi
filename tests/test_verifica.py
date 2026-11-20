@@ -249,6 +249,29 @@ def test_punti_su_rose_a_sorte_con_intervallo_a_gruppi_di_giornata(finto):
     assert "sorte_casi" not in senza.columns and verifica.riepilogo_sorte(senza) == {}
 
 
+def test_le_rose_a_sorte_si_riusano_nello_stesso_giro_con_le_stesse_regole(finto, monkeypatch):
+    """La prova di ogni utente (#832): le rose a sorte non dipendono dalle rose della lega, quindi con le stesse regole si
+    calcolano una volta sola nel giro (`memo`), con gli stessi numeri; con regole diverse si rifanno."""
+    voti = [_voto(st, g, i, 5.0 + (i * g) % 4) for st in (S1, S2) for g in range(1, 7) for i in range(1, 26)]
+    d = _dati(voti)
+    giornate = [(S2, g) for g in range(2, 5)]
+    conta = []
+    vera = verifica._casi_sintetici
+    monkeypatch.setattr(verifica, "_casi_sintetici", lambda *a, **k: conta.append(1) or vera(*a, **k))
+    prova = lambda rose, regole=None, memo=None: verifica.verifica(                                       # noqa: E731
+        d, regole or Regole(), Parametri(), giornate, rose=rose, simulazioni=30, scrivi=None, sintetiche=3, memo=memo)
+    senza = prova([list(range(1, 26))])
+    memo: dict = {}
+    primo = prova([list(range(1, 26))], memo=memo)
+    secondo = prova([list(range(1, 24))], memo=memo)                     # un altro utente, altre rose, stesse regole
+    assert len(conta) == 6                                               # 3 giornate senza memo, 3 con: il secondo le riusa
+    pd.testing.assert_frame_equal(senza, primo)
+    sorte = [c for c in primo.columns if c.startswith("sorte_")]
+    pd.testing.assert_frame_equal(primo[sorte], secondo[sorte])
+    prova([list(range(1, 26))], imposta(Regole(), "bonus.gol.A", "4"), memo=memo)
+    assert len(conta) == 9                                               # regole diverse: si rifanno
+
+
 # ---------------------------------------------------------------- affidabilità («Quanto è affidabile il modello»)
 def _partita_db(db, pid, st, g, data, casa="a", trasferta="b", giocata=1, con_voti=None):
     """Una partita nell'archivio e un voto per ciascuna squadra di `con_voti` (di norma tutte e due, se è giocata)."""

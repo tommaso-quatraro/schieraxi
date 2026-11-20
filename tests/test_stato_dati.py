@@ -227,7 +227,7 @@ def test_affidabilita_si_rifa_solo_con_una_giornata_nuova(tmp_path, monkeypatch)
     monkeypatch.setattr(consigli, "dati", lambda db: None)
     chiamate = []
 
-    def finta(d, regole, par, giornate, rose=None, simulazioni=0, scrivi=None, sintetiche=0):
+    def finta(d, regole, par, giornate, rose=None, simulazioni=0, scrivi=None, sintetiche=0, **k):
         chiamate.append(list(giornate))
         return pd.DataFrame([{"stagione": s, "giornata": g, "errore_modello": 1.0, "errore_fantamedia": 1.2, "brier": 0.1, "n": 50,
                               "quadratico_modello": 1.0, "quadratico_fantamedia": 1.44, "punti_modello": 70.0, "punti_fantamedia": 66.0, "punti_perfetta": 85.0}

@@ -16,7 +16,8 @@ qui il modello è più debole che dal vivo.
 from __future__ import annotations
 
 import itertools
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 
 import numpy as np
 import pandas as pd
@@ -115,11 +116,12 @@ def verifica_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par
                       rose: list[list[int]] | None = None, simulazioni: int = 300,
                       oracolo=frozenset(), verita: dict | None = None, casi: list | None = None,
                       sintetiche: int = 0, dati_modello: Dati | None = None, prevedi=None,
-                      ritocca=None, sorte: bool = False) -> EsitoGiornata | None:
+                      ritocca=None, sorte: bool = False, memo: dict | None = None) -> EsitoGiornata | None:
     """Una giornata del backtest. Con `casi` (una lista) vi aggiunge, per ogni rosa, la formazione del modello con i punti
     attesi, la deviazione simulata e i punti fatti (serve a `incertezza.py`); `sintetiche` = quante rose estratte a sorte
     in più, che vanno SOLO in `casi` (più campioni per misurare lo scarto, senza toccare le medie della verifica) e, con
     `sorte`, in `EsitoGiornata.sorte`: per ognuna i punti della consigliata, della formazione «da fantamedia» e il massimo.
+    `memo`: vedi `verifica` (si usa solo senza `casi`, oracoli ed esperimenti).
     Solo per gli esperimenti di `verifica_pacchetti.py` (spenti di default, None = verifica normale): `dati_modello` = i dati
     che vede il modello (la verità resta `d`), `prevedi` = funzione al posto di `previsioni`, `ritocca` = funzione
     (prev, d, stagione, giornata) -> nuove probabilità di giocare."""
@@ -174,8 +176,16 @@ def verifica_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par
     esito.quadratico_ruolo, esito.quadratico_fantamedia_stagione, esito.errore_ruolo = float(q_r), float(q_s), float(err_r)
     # 3. formazioni sulle rose
     if sintetiche and (casi is not None or sorte):
-        esito.sorte = _casi_sintetici(prev, sintetiche, stagione, giornata, regole, simulazioni, fv_vero,
-                                      {i: reali.at[i, col] for i in fv_vero}, casi, onesta if sorte else None) or None
+        normale = casi is None and not oracolo and dati_modello is None and prevedi is None and ritocca is None
+        chiave = (stagione, giornata, sintetiche, simulazioni, repr(par),
+                  json.dumps(asdict(regole), sort_keys=True, default=str)) if memo is not None and normale else None
+        if chiave is not None and chiave in memo:
+            esito.sorte = memo[chiave]
+        else:
+            esito.sorte = _casi_sintetici(prev, sintetiche, stagione, giornata, regole, simulazioni, fv_vero,
+                                          {i: reali.at[i, col] for i in fv_vero}, casi, onesta if sorte else None) or None
+            if chiave is not None:
+                memo[chiave] = esito.sorte
     if rose:
         punti = {"modello": [], "fantamedia": [], "perfetta": []}
         voto_vero = {i: reali.at[i, col] for i in fv_vero}
@@ -269,9 +279,11 @@ def _perfetta(rosa: list[fz.Giocatore], fv_vero: dict[int, float], regole: Regol
 def verifica(d: Dati, regole: Regole, par: Parametri, giornate: list[tuple[str, int]],
              rose: list[list[int]] | None = None, simulazioni: int = 300, scrivi=print,
              oracolo=frozenset(), dati_modello: Dati | None = None, prevedi=None, ritocca=None,
-             sintetiche: int = 0) -> pd.DataFrame:
+             sintetiche: int = 0, memo: dict | None = None) -> pd.DataFrame:
     """Una riga per giornata. `sintetiche` = rose estratte a sorte per giornata per le misure in punti (colonne `sorte_*`,
-    da riassumere con `riepilogo_sorte`); 0 = solo le rose date."""
+    da riassumere con `riepilogo_sorte`); 0 = solo le rose date. `memo` (un dizionario per un giro solo, con gli stessi dati):
+    i punti sulle rose a sorte già calcolati, che non dipendono dalle rose della lega; con le stesse regole e gli stessi
+    parametri si riusano invece di rifarli (la prova di ogni utente, #832). Solo per la verifica normale."""
     righe = []
     verita: dict[str, dict] = {}
     for stagione, g in giornate:
@@ -279,7 +291,7 @@ def verifica(d: Dati, regole: Regole, par: Parametri, giornate: list[tuple[str, 
             verita[stagione] = dati_oracolo(d, stagione, oracolo)
         e = verifica_giornata(d, stagione, g, regole, par, rose, simulazioni, oracolo, verita.get(stagione),
                               dati_modello=dati_modello, prevedi=prevedi, ritocca=ritocca, sintetiche=sintetiche,
-                              sorte=bool(sintetiche))
+                              sorte=bool(sintetiche), memo=memo)
         if e is None:
             continue
         riga = {"stagione": e.stagione, "giornata": e.giornata, "errore_modello": e.errore_modello,

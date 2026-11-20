@@ -92,12 +92,13 @@ def impronta(db: sqlite3.Connection, elenco: list[tuple[str, int]]) -> str:
 
 
 def calcola(db: sqlite3.Connection, regole: Regole, rose: Rose | None, simulazioni: int = 200,
-            elenco: list[tuple[str, int]] | None = None) -> dict:
-    """La prova sulle giornate di `elenco` (di norma `giornate_della_prova`) con le regole e le rose date."""
+            elenco: list[tuple[str, int]] | None = None, memo: dict | None = None) -> dict:
+    """La prova sulle giornate di `elenco` (di norma `giornate_della_prova`) con le regole e le rose date. `memo`: le rose a
+    sorte già provate nello stesso giro (`verifica.verifica`), così con gli account la prova di ogni utente non le rifà."""
     elenco = giornate_della_prova(db, regole) if elenco is None else elenco
     liste = [[g.id for g in s.giocatori if g.id is not None] for s in rose.squadre] if rose else None
     df = verifica.verifica(consigli.dati(db), regole, modello.Parametri(), elenco, rose=liste, simulazioni=simulazioni, scrivi=None,
-                           sintetiche=verifica.ROSE_A_SORTE)
+                           sintetiche=verifica.ROSE_A_SORTE, memo=memo)
     righe = [{k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in r.items()} for r in df.to_dict("records")]
     ultima = _chiave(elenco)
     riassunto = sintesi(righe)
@@ -109,7 +110,7 @@ def calcola(db: sqlite3.Connection, regole: Regole, rose: Rose | None, simulazio
 
 
 def aggiorna_se_serve(db: sqlite3.Connection, regole: Regole, rose: Rose | None, forza: bool = False,
-                      percorso: Path | None = None, simulazioni: int = 200) -> bool:
+                      percorso: Path | None = None, simulazioni: int = 200, memo: dict | None = None) -> bool:
     """Rifà la prova solo se dall'ultima volta sono cambiate le giornate della prova o i loro voti (`impronta`, salvata nel file).
     True se ha ricalcolato. Le giornate sono quelle della prova (`giornate_della_prova`), non della sola stagione in corso:
     d'estate quella non ne ha e la prova ripartiva a ogni giro del cron. Un file senza impronta (scritto prima di #832) si rifà
@@ -119,6 +120,6 @@ def aggiorna_se_serve(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
     vecchio = carica(percorso)
     if not forza and vecchio.get("impronta") == nuova and vecchio.get("righe"):
         return False
-    esito = calcola(db, regole, rose, simulazioni, elenco=elenco) | {"impronta": nuova}
+    esito = calcola(db, regole, rose, simulazioni, elenco=elenco, memo=memo) | {"impronta": nuova}
     scrivi_sicuro(percorso or FILE, json.dumps(esito, ensure_ascii=False))
     return True
