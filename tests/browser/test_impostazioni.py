@@ -798,6 +798,18 @@ def test_in_inglese_le_giornate_della_prima_giornata_senza_ordinali(web):
     assert voci[1] == "From Serie A matchday 2" and voci[20] == "From Serie A matchday 21", voci[:3]
 
 
+def test_le_giornate_della_prima_giornata_con_l_apostrofo(web):
+    """Il menu della prima giornata scriveva «Dalla 8ª» e «Dalla 11ª» (#842): davanti all'8ª (ottava) e all'11ª (undicesima)
+    l'articolo si apostrofa, «Dall'8ª», come nelle altre frasi con le giornate. «Dalla 1ª» e «Dalla 18ª» restano."""
+    solo(web, "prima")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    voci = principale(web).get_by_label("Da quale giornata di Serie A è partita la lega?").locator("option").all_inner_texts()
+    assert len(voci) == 38
+    assert voci[7] == "Dall'8ª" and voci[10] == "Dall'11ª", voci[6:12]
+    assert voci[0] == "Dalla 1ª, con il campionato" and voci[1] == "Dalla 2ª" and voci[17] == "Dalla 18ª", voci[:3]
+    assert [v for v in voci if v.startswith("Dall'")] == ["Dall'8ª", "Dall'11ª"], voci
+
+
 def test_in_inglese_il_voto_d_ufficio_ha_un_nome_solo_in_regole(web):
     """In Regole e scadenza in inglese il voto d'ufficio era «Default grade» fra le riserve e «Official grade» fra le partite rinviate
     (#833), e «official grades» sono i voti veri dei giornali: un nome solo, «default grade»."""
