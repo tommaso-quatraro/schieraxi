@@ -34,6 +34,10 @@ RIGA_AVVISO = ("2026-11-06 05:18:34.770 Df generativeexperiencesd[5393:bdb3] [co
                "Posted new Readiness CFU with item: <FLFollowUpItem")
 
 
+RIGA_ECO = ("2026-11-19 22:37:01.837 Df log[7199:0] [com.apple.log:] log run noninteractively, parent: 3640 (launchd_sim), "
+            "args: 'log' 'show' '--last' '12s' '--style' 'compact' '--predicate' 'eventMessage CONTAINS Posted new Readiness CFU'")
+
+
 RIGA_ALTRA = ("2026-11-06 05:00:00.000 Df SpringBoard[5284:8bf4] [com.apple.usernotificationsd:NotificationsPipeline] "
               "[create, [id=1111-2222, time=2026-11-06 05:00:00, bundle=com.example.altra], Time elapsed=0.057 sec]: Running step")
 
@@ -60,7 +64,11 @@ def _bash(tmp_path, corpo, avviso_dopo=None, eventi=None, altre=()):
         'sleep() { echo "sleep $1" >> "$CHIAMATE"; echo $(( $(cat "$ORA") + $1 )) > "$ORA"; }',
         'xcrun() {',
         '  echo "xcrun $*" >> "$CHIAMATE"',
+        '  case "$*" in *"screenshot"*) [ "${FALLISCE_FOTO:-0}" = 1 ] && return 1; return 0 ;; esac',
         '  case "$*" in *"log show"*) ;; *) return 0 ;; esac',
+        # le righe di comando delle letture di prima (processo «log»): contano solo se il filtro non chiede il processo
+        '  case "$*" in *generativeexperiencesd*) ;; *) n=$(grep -c "log show" "$CHIAMATE"); i=1; '
+        f'while [ "$i" -lt "$n" ]; do echo "{RIGA_ECO}"; i=$((i + 1)); done ;; esac',
         '  finestra=$(echo "$*" | sed -n "s/.*--last \\([0-9]*\\)s.*/\\1/p"); ora=$(cat "$ORA")',
         f'  for t in $EVENTI; do [ "$t" -le "$ora" ] && [ "$t" -ge $((ora - finestra)) ] && echo "{RIGA_AVVISO}"; done',
         f'  case "$*" in *"[create,"*) for t in $ALTRE; do [ "$t" -le "$ora" ] && [ "$t" -ge $((ora - finestra)) ] && echo "{RIGA_ALTRA}"; done ;; esac',
@@ -102,7 +110,7 @@ def test_il_registro_interrogato_e_quello_dell_avviso_di_apple_intelligence():
     testo = SCRIPT.read_text(encoding="utf-8")
     filtro = re.search(r"^AVVISI_FILTRO='([^']*)'", testo, re.M)
     assert filtro, "AVVISI_FILTRO non trovato"
-    assert filtro.group(1) == 'eventMessage CONTAINS "Posted new Readiness CFU"', "solo l'invito di Apple Intelligence chiude l'attesa"
+    assert filtro.group(1) == 'process == "generativeexperiencesd" AND eventMessage CONTAINS "Posted new Readiness CFU"',         "solo l'invito di Apple Intelligence, scritto dal suo servizio, chiude l'attesa"
     assert "[create," not in filtro.group(1), "una notifica qualunque non è l'avviso"
     assert "log show" in testo and "log stream" not in testo.replace("«log stream»", ""), "il registro in diretta arriva in ritardo"
 
@@ -113,9 +121,9 @@ def test_se_l_avviso_compare_si_aspetta_che_sparisca_e_poi_si_va(tmp_path):
     r, chiamate, dormiti = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 400; echo "VISTO=$AVVISI_VISTO"', avviso_dopo=170)
     assert r.returncode == 0, r.stderr
     assert "VISTO=si" in r.stdout and "avviso visto" in r.stdout
-    assert 170 <= dormiti <= 170 + 5 + 12, f"ha dormito {dormiti} secondi"
-    # alla fine ha lasciato passare la pausa dell'avviso (12 secondi), non ha aspettato oltre
-    assert dormiti >= 170 + 12 - 5
+    assert 170 <= dormiti <= 170 + 5 + 20, f"ha dormito {dormiti} secondi"
+    # alla fine ha lasciato passare la pausa dell'avviso (20 secondi), non ha aspettato oltre
+    assert dormiti >= 170 + 20 - 5
     assert all("UDID1" in c for c in chiamate if "log show" in c)
     assert any("log show" in c and "Posted new Readiness CFU" in c for c in chiamate)
 
@@ -124,7 +132,7 @@ def test_se_l_avviso_compare_si_aspetta_che_sparisca_e_poi_si_va(tmp_path):
 def test_se_l_avviso_e_gia_passato_quando_si_comincia_a_aspettare_basta_la_pausa(tmp_path):
     r, _, dormiti = _bash(tmp_path, 'avvisi_avvia UDID1; sleep 200; avvisi_attendi UDID1 400', avviso_dopo=100)
     assert r.returncode == 0, r.stderr
-    assert dormiti == 200 + 12, "la riga d'avviso c'è già: si aspetta solo che sparisca"
+    assert dormiti == 200 + 20, "la riga d'avviso c'è già: si aspetta solo che sparisca"
 
 
 @serve_bash
@@ -142,7 +150,7 @@ def test_l_attesa_guarda_indietro_nel_registro_non_solo_gli_ultimi_secondi(tmp_p
     assert r.returncode == 0, r.stderr
     finestre = [int(m.group(1)) for c in chiamate if (m := re.search(r"log show --last (\d+)s", c))]
     assert finestre and finestre[0] >= 3 * 3600, f"finestra troppo corta: {finestre}"
-    assert dormiti == 12, "avviso già nel registro: basta la pausa"
+    assert dormiti == 20, "avviso già nel registro: basta la pausa"
 
 
 @serve_bash
@@ -189,3 +197,106 @@ def test_senza_avvisi_tardivi_il_riepilogo_e_pulito(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "aspettati prima delle foto: 1; comparsi dopo l'attesa: 0" in r.stdout
     assert "controllare" not in r.stdout
+
+
+# #601. Su iOS 26.5 l'invito può tornare mentre si fotografa (corsa 43131154860, sopra la foto accesso-account): ogni foto si
+# controlla dopo lo scatto e si rifà se l'avviso può esserci sopra. E il filtro deve prendere solo il servizio di Apple: il
+# processo «log show» scrive nel registro la propria riga di comando, che contiene lo stesso testo (corsa 44629200541: ogni
+# lettura ritrovava quelle di prima, l'attesa iniziale finiva su una riga falsa e ogni foto si rifaceva due volte).
+
+def test_il_filtro_prende_solo_il_servizio_di_apple():
+    filtro = re.search(r"^AVVISI_FILTRO='([^']*)'", SCRIPT.read_text(encoding="utf-8"), re.M).group(1)
+    assert 'process == "generativeexperiencesd"' in filtro, "la riga di comando di «log show» contiene lo stesso testo"
+
+
+@serve_bash
+def test_le_righe_di_comando_di_log_show_non_chiudono_l_attesa(tmp_path):
+    r, _, dormiti = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 60; echo "VISTO=$AVVISI_VISTO"')
+    assert r.returncode == 0, r.stderr
+    assert "VISTO=no" in r.stdout, "una lettura del registro ha scambiato la riga di comando di quella prima per l'avviso"
+    assert dormiti >= 60
+
+
+@serve_bash
+def test_senza_avviso_nessuna_foto_si_rifa_anche_con_tante_letture(tmp_path):
+    corpo = ('for n in 1 2 3 4 5 6; do inizio=$(date +%s); sleep 4; avvisi_rifai UDID1 /tmp/f$n.png "$inizio"; done; '
+             'avvisi_riepilogo')
+    r, chiamate, dormiti = _bash(tmp_path, corpo)
+    assert r.returncode == 0, r.stderr
+    assert "foto rifatte per l'avviso: 0" in r.stdout
+    assert not [c for c in chiamate if "screenshot" in c]
+    assert dormiti == 6 * 4
+
+
+@serve_bash
+def test_avviso_durante_la_foto_la_fa_rifare_una_volta(tmp_path):
+    # foto cominciata a 100, invito a 103 (stesso secondo del controllo): una sola foto rifatta dopo la pausa, non due
+    corpo = 'sleep 100; inizio=$(date +%s); sleep 3; avvisi_rifai UDID1 /tmp/f.png "$inizio"; echo "ESITO=$?"; avvisi_riepilogo'
+    r, chiamate, dormiti = _bash(tmp_path, corpo, eventi=[103])
+    assert r.returncode == 0, r.stderr
+    assert "ESITO=0" in r.stdout
+    assert len([c for c in chiamate if "screenshot /tmp/f.png" in c]) == 1
+    assert dormiti == 100 + 3 + 20, "prima di rifare la foto si aspetta che il banner sparisca"
+    assert "foto rifatte per l'avviso: 1" in r.stdout and "controllare" not in r.stdout
+
+
+@serve_bash
+def test_avviso_poco_prima_della_foto_la_fa_rifare(tmp_path):
+    # invito a 90, foto da 100 a 102: SpringBoard mostra il banner circa 9 secondi dopo, quindi può essere sopra
+    r, chiamate, _ = _bash(tmp_path, 'sleep 100; inizio=$(date +%s); sleep 2; avvisi_rifai UDID1 /tmp/f.png "$inizio"',
+                           eventi=[90])
+    assert r.returncode == 0, r.stderr
+    assert any("screenshot /tmp/f.png" in c for c in chiamate)
+
+
+@serve_bash
+def test_avviso_vecchio_o_altra_notifica_non_fanno_rifare_la_foto(tmp_path):
+    r, chiamate, dormiti = _bash(tmp_path, 'sleep 100; inizio=$(date +%s); sleep 2; avvisi_rifai UDID1 /tmp/f.png "$inizio"',
+                                 eventi=[50], altre=[101])
+    assert r.returncode == 0, r.stderr
+    assert not [c for c in chiamate if "screenshot" in c]
+    assert dormiti == 102
+
+
+@serve_bash
+def test_se_l_avviso_resta_dopo_due_rifacimenti_lo_dice_nel_riepilogo(tmp_path):
+    eventi = list(range(100, 400, 5))   # un invito ogni 5 secondi: nessuna foto pulita
+    corpo = ('sleep 100; inizio=$(date +%s); sleep 2; avvisi_rifai UDID1 /tmp/iphone_formazione.png "$inizio"; '
+             'echo "ESITO=$?"; avvisi_riepilogo')
+    r, chiamate, _ = _bash(tmp_path, corpo, eventi=eventi)
+    assert r.returncode == 0, r.stderr
+    assert "ESITO=1" in r.stdout
+    assert len([c for c in chiamate if "screenshot" in c]) == 2, "al massimo due rifacimenti"
+    assert "foto rifatte per l'avviso: 2" in r.stdout
+    assert "controllare le foto" in r.stdout and "iphone_formazione.png" in r.stdout
+
+
+@serve_bash
+def test_se_la_foto_rifatta_non_riesce_lo_dice_nel_riepilogo(tmp_path):
+    corpo = ('FALLISCE_FOTO=1; sleep 100; inizio=$(date +%s); sleep 2; avvisi_rifai UDID1 /tmp/f.png "$inizio"; '
+             'echo "ESITO=$?"; avvisi_riepilogo')
+    r, _, _ = _bash(tmp_path, corpo, eventi=[101])
+    assert r.returncode == 0, r.stderr
+    assert "ESITO=1" in r.stdout and "non riuscita" in r.stdout
+    assert "foto rifatte per l'avviso: 0" in r.stdout and "controllare le foto" in r.stdout
+
+
+@serve_bash
+def test_avvisi_foto_scatta_controlla_e_rifa(tmp_path):
+    r, chiamate, _ = _bash(tmp_path, 'sleep 100; avvisi_foto UDID1 /tmp/home.png; echo "ESITO=$?"', eventi=[95])
+    assert r.returncode == 0, r.stderr
+    assert "ESITO=0" in r.stdout
+    assert len([c for c in chiamate if "screenshot /tmp/home.png" in c]) == 2, "foto, avviso visto, foto rifatta"
+
+
+def test_le_foto_si_controllano_dopo_lo_scatto_e_prima_di_girarle_o_ridimensionarle():
+    """scatta() dell'app e dei widget: avvisi_rifai dopo la foto, prima del controllo della foto quasi nera e di «sips»; le
+    foto semplici di screenshot.sh (avvio, home, prova-url) passano da avvisi_foto."""
+    for script, prima in ((FOTO, "schermo_fermo.py"), (WIDGET, 'simctl io "$udid" screenshot')):
+        corpo = re.search(r"^scatta\(\) \{\n.*?^\}\n", script.read_text(encoding="utf-8"), re.S | re.M).group(0)
+        assert 'avvisi_rifai "$udid" "$file" "$inizio"' in corpo, script.name
+        i = corpo.index("avvisi_rifai")
+        assert corpo.index(prima) < i < corpo.index("stat -f%z") < corpo.index("sips"), script.name
+    foto = FOTO.read_text(encoding="utf-8")
+    assert not re.search(r'simctl io "\$(UDID_IPHONE|UDID_IPAD|udid)" screenshot "\$USCITA/(avvio|home|prova-url)', foto)
+    assert foto.count("avvisi_foto ") >= 5
