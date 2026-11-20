@@ -275,7 +275,7 @@ const PA_SCHERMATE = {
       <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
         <select class="campo-testo" id="pa-scadenza">${PA_SCADENZE.map(m => `<option value="${m}" ${m === 0 ? "selected" : ""}>${esc(paScadenzaNome(m))}</option>`).join("")}</select></label>
       <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
-        <select class="campo-testo" id="pa-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === 1 ? "selected" : ""}>${esc(g === 1 ? t("pav.prima_uno") : t("pav.prima_n", { n: g }))}</option>`).join("")}</select></label>
+        <select class="campo-testo" id="pa-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === 1 ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select></label>
       <p class="debole piccolo">${t("pav.tempi_dove")}</p>`,
     dopo: paTempiCarica,
     esegui: paTempiSalva,

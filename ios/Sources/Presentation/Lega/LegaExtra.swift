@@ -698,7 +698,8 @@ struct StatoDatiView: View {
     @ViewBuilder
     private var affidabilitaContenuto: some View {
         if let a = affidabilita.dato, let s = a.sintesi, (s.giornate ?? 0) > 0 {
-            Text("Prova sulle ultime \(s.giornate ?? 0) giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la scelta più semplice: chi ha la media più alta.")
+            // la frase della web (`avv.prova_su`, #839): cosa vuol dire «da fantamedia», non più «chi ha la media più alta» (#840)
+            Text(Catalogo.Avv.provaSu(s.giornate ?? 0))
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
             FilaTessere {
                 TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore sui fantavoti (SchieraXI)")
