@@ -496,7 +496,9 @@ struct FormazioneView: View {
                     }
                     .padding(.top, 6)
                 } label: {
-                    Text(titolo).font(.subheadline.weight(.semibold)).frame(minHeight: Tema.areaTocco, alignment: .leading)
+                    // a capo allineato a sinistra: l'etichetta di un DisclosureGroup centra le righe («Infortunati e / squalificati», #787)
+                    Text(titolo).font(.subheadline.weight(.semibold)).multilineTextAlignment(.leading)
+                        .frame(minHeight: Tema.areaTocco, alignment: .leading)
                 }
                 .tint(Color.testoSecondario)
             }

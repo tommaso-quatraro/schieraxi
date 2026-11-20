@@ -94,19 +94,19 @@
       "id": 87,
       "schermata": "La mia lega: «Le altre squadre» senza la mia squadra (#779)",
       "web": "la riga «Le altre squadre» dice il numero delle squadre senza la mia (`lega.n_squadre` con le squadre che non hanno `mia: true`) e la pagina elenca solo quelle, senza l'etichetta «la tua»; finché la mia non è scelta, tutte (`paginaImpostazioni` in `impostazioni.js`, `vistaAltreSquadre` in `app.js`)",
-      "iphone": "`VociImpostazioni.lega` conta tutte le squadre (`Catalogo.Lega.nSquadre(squadre.count)`) e l'elenco mostra anche la mia con `PillolaTua` (`RigaSquadra.swift`)",
+      "iphone": "come la web: la riga conta le squadre senza la mia e l'elenco di «Squadre e rose» mostra solo quelle; finché la mia non è scelta, tutte (`VociImpostazioni.altreSquadre`, usata da `VociImpostazioni.lega` e da `SquadreView`)",
       "forma": "web",
-      "chi": "web fatta (#779, prove in `tests/browser/test_impostazioni.py`); iPhone da fare: #788",
-      "stato": "da-fare"
+      "chi": "web fatta (#779, prove in `tests/browser/test_impostazioni.py`); iPhone fatto con #788 (prova `ImpostazioniComeLaWebTests`)",
+      "stato": "fatto"
     },
     {
       "id": 88,
       "schermata": "Accesso dopo «Esci da tutti i dispositivi» (#779)",
       "web": "riuscita l'uscita, la schermata di accesso mostra una volta l'avviso «Sei fuori da tutti i dispositivi, anche da questo: accedi di nuovo.» (`account.esci_tutti_fatto`, regione `role=\"status\"`); non dopo un «Esci» normale (`esciDaTutti`, `controllaAccesso` in `app.js`)",
-      "iphone": "`AccountSezione.esci()` chiama `sessione.esciDaTutti()` e si torna all'accesso senza frase",
+      "iphone": "come la web: riuscita l'uscita da tutti, la schermata di accesso mostra una volta la stessa frase (`account.esci_tutti_fatto`) dove sta la conferma verde, e VoiceOver la legge; non dopo un «Esci» normale (`SessioneAccount.prendiAvvisoAccesso`, letta da `SchermataAccesso`)",
       "forma": "web",
-      "chi": "web fatta (#779, prove in `tests/browser/test_impostazioni.py`); iPhone da fare: #788",
-      "stato": "da-fare"
+      "chi": "web fatta (#779, prove in `tests/browser/test_impostazioni.py`); iPhone fatto con #788 (prova `SessioneAccountTests`)",
+      "stato": "fatto"
     }
   ]
 }
