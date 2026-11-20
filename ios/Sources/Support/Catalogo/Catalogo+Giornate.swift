@@ -95,7 +95,7 @@ extension Catalogo {
 
         /// `giornate.vuoto_squadra`
         static func vuotoSquadra(voce: String) -> String {
-            "Ancora niente: manca la tua squadra. Indicala in Impostazioni, alla voce \(voce)."
+            "Ancora niente: manca la tua squadra. Indicala in Impostazioni › \(voce)."
         }
 
         /// `giornate.vuoto_giornate`

@@ -167,9 +167,14 @@
     "it": "Senza ruolo (da controllare)",
     "en": "No position (to check)"
   },
-  "scambio.costo_quot": {
-    "it": "costo {c} · quotazione {q}",
-    "en": "cost {c} · price {q}"
+  "scambio.costo_n": {
+    "it": "costo {c}",
+    "en": "cost {c}",
+    "nota": "in una riga della rosa, solo se il giocatore ha un costo d'acquisto (#779); poi scambio.quotazione_n"
+  },
+  "scambio.quotazione_n": {
+    "it": "quotazione {q}",
+    "en": "price {q}"
   },
   "scambio.stemma": {
     "it": "Stemma",

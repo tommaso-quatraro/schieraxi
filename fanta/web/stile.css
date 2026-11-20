@@ -505,6 +505,13 @@ details[open] > summary { margin-bottom: 8px; }
    come seconda cifra, separate da un filo (.cifre-oggi, nella sezione della Formazione) */
 .intestazione-scheda { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-bottom: 14px; }
 .intestazione-scheda h2 { margin: 0 0 2px; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; line-height: 1.1; overflow-wrap: anywhere; }
+/* Testo molto ingrandito (#779: 195 px di larghezza, cioè 390 px con lo zoom al 200%): un nome lungo nel titolo della pagina o della
+   scheda va a capo con il trattino dove il browser sa sillabare (la lingua è quella di <html lang>), invece di spezzarsi a caso; dove
+   non sa, resta overflow-wrap. Solo sotto i 300 px: a larghezza normale i titoli vanno a capo come prima. Le pedine lo fanno già
+   (più sotto); il nome nelle righe dei giocatori ci sta. */
+@media (max-width: 299.98px) {
+  #titolo-pagina, .intestazione-scheda h2 { -webkit-hyphens: auto; hyphens: auto; }
+}
 .intestazione-scheda .avatar-anello.grande-a { --d: 56px; }
 .cifre-scheda { margin: 10px 0 4px; align-items: last baseline; }   /* i due numeri sulla stessa riga di base */
 .cifre-scheda .enorme { margin: 2px 0 0; }
