@@ -958,8 +958,6 @@ function sostituti(f, base, dentro) {
   return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
     .sort((a, b) => b.punti_attesi - a.punti_attesi);
 }
-// Chi non si mette in campo (#643): lo stato del server (`etichetta.codice`) dice che è infortunato o squalificato.
-const NON_ENTRANO = ["infortunato", "squalificato"];
 // La Formazione si ridisegna (modulo, «Torna alla consigliata», un salvataggio arrivato): la sostituzione di un titolare aperta
 // (`data-sostituzione`, anche l'elenco di «Metti in campo») si chiude, perché i suoi candidati erano quelli della formazione di
 // prima. Le schede dei giocatori restano.
@@ -1066,7 +1064,6 @@ function mostraFormazione(b, squadra, opz = {}) {
     return x ? { ...x, ...dalVivo } : { id: g.id, nome: g.nome, ruolo: g.ruolo, squadra: g.squadra, ...dalVivo };
   };
   const chiusa = !!f.iniziata || !!live;
-  const primaDellaScadenza = !!o && (o.fase || "prima") === "prima";     // la fase della giornata (/api/oggi), non della prossima
   const mia = !squadra;
   // `sola`: i comandi che scrivono sono spenti. Vale per la copia tenuta sul telefono, mostrata subito all'apertura, finché non
   // arrivano i dati nuovi (un tocco lì salvava, e i dati in arrivo ridisegnavano la pagina senza il cambio), per la scelta non letta,
@@ -1209,15 +1206,16 @@ function mostraFormazione(b, squadra, opz = {}) {
     const linee = { P: [], D: [], C: [], A: [] };
     titolari.forEach(x => (linee[x.ruolo] || linee.A).push(x));
     // per la scheda del giocatore e la sostituzione: la formazione in pagina e cosa ci si può fare
-    // `fermo`: chi gioca un anticipo già cominciato; al posto di «Sostituisci» o «Metti in campo» la scheda dice perché non si sposta
-    // `entrabile`: chi non è fra gli 11 e si può mettere in campo (#643), solo prima della scadenza della giornata (non a giornata
-    // finita, anche con la prossima già da preparare: lo dice l'issue) e non se è infortunato o squalificato (stato del server)
+    // `siSposta`: la formazione è tua e ancora aperta e lui non gioca un anticipo già cominciato (`fermo`: al posto del pulsante la
+    // scheda dice perché non si sposta). È la condizione sola di «Sostituisci» (un titolare) e di «Metti in campo» (chi non è fra
+    // gli 11, #643): i due pulsanti ci sono sempre per la stessa formazione, anche la prossima a giornata finita o per chi entra a
+    // giornata iniziata, e per gli stessi giocatori che `sostituti` propone (infortunati e squalificati compresi, con il loro stato)
+    const siSposta = id => mia && !chiusa && !fermi.has(id);
     stato.formaz = { f, modulo: m, scheda, perche: id => (sc.manuale || chiusa ? "" : percheTitolare(m, id, scheda)),
       pronta: () => !sc.sola,
-      sostituibile: id => mia && !chiusa && m.titolari.includes(id) && !fermi.has(id),
-      entrabile: id => mia && !chiusa && primaDellaScadenza && !m.titolari.includes(id) && !fermi.has(id) && !!scheda(id)
-        && !NON_ENTRANO.includes(codiceStato(scheda(id))),
-      fermo: id => mia && !chiusa && fermi.has(id) && (m.titolari.includes(id) || primaDellaScadenza), sostituisci };
+      sostituibile: id => siSposta(id) && m.titolari.includes(id),
+      entrabile: id => siSposta(id) && !m.titolari.includes(id) && !!scheda(id),
+      fermo: id => mia && !chiusa && fermi.has(id), sostituisci };
     // le decisioni che hanno ancora senso con la formazione in pagina: un cambio già fatto non si propone più, e «la consigliata è
     // cambiata» vale finché c'è una tua scelta salvata diversa da lei
     const vale = v => v.tipo === "dubbio" ? !chiusa && !!v.giocatore && m.titolari.includes(Number(v.giocatore.id)) && !m.titolari.includes(Number(v.alternativa.id))
@@ -1574,14 +1572,19 @@ function apriSostituzione(id) {
 }
 
 // «Metti in campo» (dalla scheda di chi non è fra gli 11, #643): il contrario di «Sostituisci». Chi può lasciargli il posto lo dice
-// il server (POST /api/formazione/metti-in-campo, con gli 11 in pagina): stesso ruolo, oppure un altro modulo ammesso dalla lega.
-// Ogni riga ha i punti attesi in più o in meno se al posto di quel titolare gioca lui (numero del server) e, se il modulo cambia,
-// quale. Un tocco fa il cambio con la stessa strada di «Sostituisci», che si salva da solo.
+// il server (POST /api/formazione/metti-in-campo, con gli 11 in pagina): stesso ruolo, oppure un altro modulo ammesso dalla lega,
+// dal cambio che rende di più. Il numero grande di ogni riga sono i punti attesi della formazione in più o in meno con quel cambio
+// (numero del server, la valutazione di POST /api/formazione/valuta: la riga di stato dopo il cambio dice lo stesso); sotto il nome
+// «gioca N%» come fra i sostituti e, se il modulo cambia, quale. Sotto il titolo lo stato di chi entra, se ne ha uno («Infortunato»,
+// «In dubbio», «gioca N%»): gli stessi avvisi che «Sostituisci» mette nella sua riga. Un tocco fa il cambio con la stessa strada di
+// «Sostituisci», che si salva da solo.
 async function apriMettiInCampo(id) {
   const fz = stato.vista === "formazione" ? stato.formaz : null, base = fz && fz.scheda(id);
   if (!base || !fz.entrabile(Number(id)) || !fz.pronta()) return;
   const numero = ++ultimaScheda;                                          // una scheda ancora in arrivo non prende il posto dell'elenco
+  const avvisi = etichetteGiocatore(base, giocaPoco(base));
   const testa = `<h2 class="titolo-foglio">${t("formazione.chi_esce_per", { nome: esc(base.nome) })}</h2>
+    ${avvisi ? `<div class="etichette" id="entra-stato">${avvisi}</div>` : ""}
     <div class="debole piccolo">${t("formazione.esce_spiega", { nome: esc(base.nome) })}</div>`;
   apriFoglio(`${testa}<div data-sostituzione aria-busy="true"><div class="debole" style="margin-top:12px">${t("comune.carico")}</div></div>`, { affianco: true });
   // la risposta vale per questa scheda e per la formazione da cui è partita: nel frattempo la pagina può essersi ridisegnata (e
@@ -1611,7 +1614,7 @@ async function apriMettiInCampo(id) {
       <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
         <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra)])}</span>
         <span class="etichette">${etichetteGiocatore(x, giocaPoco(x) + nuovo)}</span></span>
-      ${Number.isFinite(d) ? `<span class="valore"><b class="${d > 0.04 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_con", { nome: esc(base.nome) })}</span></span>` : ""}
+      ${Number.isFinite(d) ? `<span class="valore"><b class="${d > 0 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_con", { nome: esc(base.nome) })}</span></span>` : ""}
       <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
   };
   apriFoglio(`${testa}<div data-sostituzione>${uscite.length ? `<ul class="elenco" style="margin-top:8px">${uscite.map(riga).join("")}</ul>`

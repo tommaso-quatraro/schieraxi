@@ -264,16 +264,16 @@
     "en": "Who makes way for {nome}"
   },
   "formazione.esce_spiega": {
-    "it": "Stesso ruolo, oppure un altro modulo ammesso dalla tua lega. Il numero grande sono i punti attesi in più o in meno se al suo posto gioca {nome}.",
-    "en": "Same role, or another formation your league allows. The big number is the expected points more or less if {nome} plays instead."
+    "it": "Stesso ruolo, oppure un altro modulo ammesso dalla tua lega. Il numero grande sono i punti attesi della formazione in più o in meno se al suo posto gioca {nome}.",
+    "en": "Same role, or another formation your league allows. The big number is the lineup's expected points more or less if {nome} plays instead."
   },
   "formazione.passi_al": {
     "it": "Si passa al {modulo}",
     "en": "Switches to {modulo}"
   },
   "formazione.punti_con": {
-    "it": "punti attesi se al suo posto gioca {nome}",
-    "en": "expected points if {nome} plays instead"
+    "it": "punti attesi della formazione se al suo posto gioca {nome}",
+    "en": "lineup expected points if {nome} plays instead"
   },
   "formazione.nessuno_lascia_posto": {
     "it": "Nessun titolare può lasciargli il posto.",
