@@ -241,6 +241,39 @@ def test_giornata_finita_senza_diario_usa_i_voti(ambiente, monkeypatch):
     assert o["prossima"]["prepara_da"] == "2026-11-11 15:00" and o["prossima"]["con_probabili"] is False
 
 
+def test_giornata_finita_senza_diario_con_la_scelta_salvata_senza_panchina(ambiente, monkeypatch):
+    """#794: web e iPhone salvano la formazione senza panchina. Senza la voce del Diario il riepilogo usava una panchina vuota e
+    le riserve entrate in corso sparivano (64,0 invece di 76,0). Ora la panchina è quella che sceglie il sistema, come in «in
+    corso» e nel Diario: Dif12 entra al posto di Dif3 (senza voto), Cen13 al posto di Cen9 (infortunato, senza voto)."""
+    _giornata_finita(ambiente)
+    prev, _, _ = consigli.previsioni(None, REGOLE)
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 11, False))
+    from fanta import scelte
+    scelte.salva(ST, 10, TITOLARI, "4-4-2", ambiente.tmp / "scelte.json")          # come web e iPhone: niente panchina
+    r = _oggi(ambiente, datetime(2026, 11, 10, 10, 0))["riepilogo"]
+    assert r["nel_diario"] is False and r["formazione_di"] == "tua"
+    assert r["punti_fatti"] == pytest.approx(round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1))
+
+
+def test_riepilogo_con_una_riserva_senza_ruolo_nella_rosa(ambiente, monkeypatch):
+    """Una riserva della rosa senza ruolo (rosa scritta a mano) ma con il ruolo nelle previsioni, e con il voto: nella panchina del
+    sistema ha il ruolo delle previsioni, come in «in corso». Con il ruolo vuoto il conto si rompeva e il riepilogo spariva."""
+    _giornata_finita(ambiente)
+    prev, _, _ = consigli.previsioni(None, REGOLE)
+    prev = pd.concat([prev, pd.DataFrame([{"id": 15, "nome": "Dif15", "ruolo": "D", "squadra": "inter", "atteso": 4.5, "stato": "titolare",
+                                           "p_voto": 0.9, "mu": 5.0, "mu_voto": 6.0, "dubbio": False, "diffidato": False}]).set_index("id")])
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 11, False))
+    ambiente.rose.squadra("Mia").giocatori.append(lega.GiocatoreRosa(15, "Dif15", None, "INT", 1))
+    archivio.inserisci(ambiente.db, "voti", [{"stagione": ST, "giornata": 10, "calciatore_id": 15, "nome": "Dif15", "squadra": "inter",
+                                              "ruolo": "D", "voto_red": 6.0, "gol": 0}])
+    from fanta import scelte
+    scelte.salva(ST, 10, TITOLARI, "4-4-2", ambiente.tmp / "scelte.json")
+    atteso = pytest.approx(round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1))
+    assert _oggi(ambiente, datetime(2026, 11, 10, 10, 0))["riepilogo"]["punti_fatti"] == atteso
+    r = fasi.blocco_riepilogo(ambiente.db, REGOLE, ambiente.rose, ST, 10, ambiente.tmp / "scelte.json", ambiente.tmp / "diario.json", prev)
+    assert r["punti_fatti"] == atteso
+
+
 def test_giornata_finita_con_i_voti_a_meta_niente_totale(ambiente, monkeypatch):
     """#649: lunedì sera napoli-juve è segnata giocata ma i suoi voti non sono ancora usciti. Prima Oggi faceva entrare le riserve al
     posto di Dif5, Cen8 e Cen9 e dava un totale che sembrava definitivo (e senza recuperi da aspettare). Ora niente totale finché

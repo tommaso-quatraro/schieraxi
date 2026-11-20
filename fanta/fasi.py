@@ -361,11 +361,14 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
         "partite": conta_partite(partite)}
 
 
-def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, file_scelte, file_diario) -> dict | None:
+def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, file_scelte, file_diario, prev=None) -> dict | None:
     """Il campo `riepilogo` di Oggi (fase finita): dal Diario se la giornata è già calcolata, altrimenti i punti fatti dai voti.
     Con una partita rinviata ancora da recuperare la giornata è finita lo stesso (fine_giornata): la regola della lega dice cosa
     contano i suoi giocatori; con `aspetta` restano in formazione senza voto e `recuperi` elenca le partite che mancano (i punti
-    possono ancora cambiare), con le altre regole `recuperi` è vuoto (i punti sono già quelli finali)."""
+    possono ancora cambiare), con le altre regole `recuperi` è vuoto (i punti sono già quelli finali).
+    Senza la panchina schierata (web e iPhone salvano solo gli 11, e la copia automatica non ce l'ha) la panchina è quella che
+    sceglie il sistema (`_panchina_di`), la stessa funzione di «in corso» e del Diario (#794), con le previsioni `prev` che Oggi ha
+    già (della giornata da giocare: nessun calcolo nuovo). Senza `prev` (campionato finito) la panchina resta vuota."""
     r_rinvio = rinvii.regola(regole, stagione, giornata)
     mancano = recuperi_mancanti(db, stagione, giornata)
     # con un recupero da giocare il riepilogo ha anche il menu per decidere quella giornata (`rinvio`, come in Oggi)
@@ -379,12 +382,14 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
         return base | {"formazione_di": "tua" if voce.get("schierata") else "consigliata", "nel_diario": True,
                        "punti_fatti": mia.get("reale"), "punti_attesi": mia.get("atteso"), "intervallo": mia.get("intervallo"),
                        "consigliata": {"punti_fatti": cons.get("reale"), "punti_attesi": cons.get("atteso")}}
-    info = _info_rosa(rose, None)
+    info = _info_rosa(rose, prev)
     sch = schierata(stagione, giornata, file_scelte, file_diario, ruoli={i: x["ruolo"] for i, x in info.items()}, regole=regole)
     if not sch or any(i not in info for i in sch[0]):
         return None
     tit_ids, panc_ids, di = sch
-    panc_ids = [i for i in (panc_ids or []) if i in info and i not in tit_ids]
+    if panc_ids is None:
+        panc_ids = _panchina_di(info, prev, tit_ids, regole)
+    panc_ids = [i for i in panc_ids if i in info and i not in tit_ids]
     if not voti_arrivati(db, stagione, giornata, regole):
         return None                                   # una partita giocata senza i suoi voti: niente numeri inventati (#649)
     voti, squadre_voti = voti_giornata(db, stagione, giornata, tit_ids + panc_ids, regole)
@@ -464,7 +469,7 @@ def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str
             corpo["in_corso"] = blocco_in_corso(db, regole, rose, prev, f, stagione, giornata, corpo.get("partite") or [],
                                                 file_scelte, file_diario)
         elif corpo["fase"] == FINITA:
-            corpo["riepilogo"] = blocco_riepilogo(db, regole, rose, stagione, precedente, file_scelte, file_diario)
+            corpo["riepilogo"] = blocco_riepilogo(db, regole, rose, stagione, precedente, file_scelte, file_diario, prev)
             corpo["prossima"] = blocco_prossima(corpo, adesso)
     except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
         pass
