@@ -557,6 +557,24 @@ def test_regole_e_scadenza_parla_di_giornate_non_del_diario(web):
     assert "Diario" not in testo and "Giornate" in testo, testo[:400]
 
 
+def test_la_frase_sulla_prima_giornata_non_cita_un_altra_giornata(web):
+    """Sotto «Da quale giornata di Serie A è partita la lega?» la frase d'aiuto restava sull'esempio «Con la prima giornata a 4…»
+    anche con un'altra giornata scelta (#779). Scelta la 6ª, la frase segue la scelta o non cita giornate: nessun numero tranne
+    1 (la giornata 1 della lega) e 6."""
+    solo(web, "prima")
+    salvate = _scritture(web, "/api/regole")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    scelta = principale(web).get_by_label("Da quale giornata di Serie A è partita la lega?")
+    scelta.select_option("6")
+    web.aspetta()
+    assert salvate and salvate[-1]["prima_giornata_lega"] == 6
+    # il riquadro dei tempi senza i due menu, che elencano tutte le scelte
+    aiuto = scelta.evaluate("""s => { const c = s.closest('.carta').cloneNode(true);
+      c.querySelectorAll('select').forEach(x => x.remove()); return c.textContent; }""")
+    assert "Giornate" in aiuto, aiuto
+    assert set(re.findall(r"\d+", aiuto)) <= {"1", "6"}, aiuto
+
+
 def test_la_scadenza_si_cambia_e_si_salva_subito(web):
     solo(web, "prima")
     salvate = _scritture(web, "/api/regole")
