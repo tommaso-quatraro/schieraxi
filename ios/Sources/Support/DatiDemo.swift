@@ -67,6 +67,12 @@ extension FinteServer {
             server.risposte["/api/oggi"] = DatiDemo.oggiCampionatoFinito()
             server.fallimenti["/api/formazione"] = .codificato(codice: "campionato_finito", messaggio: DatiDemo.testoCampionatoFinito)
             server.indirizzoFinto = "https://finto-campionato-finito.invalid"
+        case "giornate-confronto":
+            // la foto del plurale «1,0 punti» in Giornate › Dettagli (#842): il diario con il confronto a 1,0 punti
+            if let diario = server.risposte["/api/diario"] {
+                server.risposte["/api/diario"] = DatiDemo.diarioConfrontoAUnPunto(diario)
+            }
+            server.indirizzoFinto = "https://finto-confronto-un-punto.invalid"
         default:
             return nil
         }
@@ -1049,6 +1055,23 @@ private extension LegaDemo {
                                 "punti_tua": 59.5, "punti_consigliata": 64.0, "differenza": -4.5, "esito": "consigliata"],
                            ]],
         ])
+    }
+
+    /// La foto `giornate-confronto` (#842): il diario della demo con la consigliata a 1,0 punti in più della tua (nella demo di sempre
+    /// 12,0, legati alle giornate, a «Le tue scelte» e ai widget: lì non cambiano), per fotografare il plurale scelto sul numero
+    /// scritto, «1,0 punti». Nei Dettagli sotto il confronto resta solo la voce dei punti della squadra: niente grafico, andamento,
+    /// riga su tutta la Serie A e note, così la foto, scorsa alla prima giornata, ha il confronto a video. Un diario illeggibile resta
+    /// com'è.
+    static func diarioConfrontoAUnPunto(_ diario: String) -> String {
+        guard var tutto = (try? JSONSerialization.jsonObject(with: Data(diario.utf8))) as? [String: Any],
+              var precisione = tutto["precisione"] as? [String: Any] else { return diario }
+        precisione["confronto"] = ["giornate": 2, "meglio_consigliata": 2, "meglio_tua": 0, "pari": 0, "punti": 1.0,
+                                   "media_consigliata": 67.5, "media_tua": 67.0] as [String: Any]
+        precisione["per_giornata"] = [[String: Any]]()
+        precisione["fonti"] = ["mostrati": 4, "ricostruiti": 0]
+        precisione.removeValue(forKey: "serie_a")
+        tutto["precisione"] = precisione
+        return json(tutto)
     }
 
     /// Un backup piccolo ma valido, per provare «Scarica il backup» in demo.

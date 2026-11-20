@@ -673,8 +673,9 @@ struct StatoDatiView: View {
                 // la copia salvata sul telefono non sembra nuova: la striscia «dati salvati», come nelle altre pagine (#808)
                 .avvisoDatiSalvati(striscia?.data, motivo: striscia?.motivo)
                 // fotografie `lega-stato-fondo` (#425: la lista scorsa fino in fondo, agli indicatori del consiglio) e `lega-stato-nostri`
-                // (#430: ferma sul riquadro dei gol attesi nostri, che col consiglio non entra in una foto sola). Lo stato arriva per
-                // primo, la prova delle previsioni (a metà pagina) subito dopo: si scorre a entrambi arrivati.
+                // (#430: ferma sul riquadro dei gol attesi nostri, che col consiglio non entra in una foto sola); `lega-stato-taratura`
+                // e `lega-stato-prova` (#527, #842) si fermano più in alto (`FondoDemo.arrivo`). Lo stato arriva per primo, la prova
+                // delle previsioni (a metà pagina) subito dopo: si scorre a entrambi arrivati.
                 .demoInFondo()
                 .demoScorriA(FondoDemo.arrivoDiStato.id, proxy: proxy, schermate: ["lega-stato"], inFondo: true,
                              ancora: FondoDemo.arrivoDiStato.ancora,
@@ -701,6 +702,7 @@ struct StatoDatiView: View {
             // la frase della web (`avv.prova_su`, #839): cosa vuol dire «da fantamedia», non più «chi ha la media più alta» (#840)
             Text(Catalogo.Avv.provaSu(s.giornate ?? 0))
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
+                .id(FondoDemo.idProva)   // dove si ferma la foto `lega-stato-prova` (solo demo, #842)
             FilaTessere {
                 TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore sui fantavoti (SchieraXI)")
                 TesseraDato(valore: s.erroreFantamedia.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore (da fantamedia)")
