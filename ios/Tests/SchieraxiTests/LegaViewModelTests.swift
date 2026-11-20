@@ -112,13 +112,50 @@ final class LegaViewModelTests: XCTestCase {
     }
 
     func testLaCopiaSalvataSulTelefonoNonSpegneIlPulsante() async {
-        // una copia di /api/stato salvata mentre il server era occupato; adesso il server non risponde
-        let s = ServerDiProva { _, _, _ in throw ErroreApi.rete("giù") }
+        // una copia di /api/stato salvata mentre il server era occupato; la lettura nuova viene annullata (pagina lasciata) e il
+        // Caricatore torna a mostrare la copia come dato caricato
+        let s = ServerDiProva { _, _, _ in
+            try await Task.sleep(for: .seconds(30))
+            throw ErroreApi.rete("mai")
+        }
         Cache.salva(statoDelServer(occupato: true), "/api/stato", indirizzo: s.indirizzo)
         let vm = LegaViewModel(server: s)
-        await vm.info.ricarica()
+        let lettura = Task { await vm.info.ricarica() }
+        await attendi("la richiesta al server è partita", finche: { s.quante("GET /api/stato") >= 1 })
+        lettura.cancel()
+        await lettura.value
         XCTAssertEqual(vm.info.dato?.aggiornamentoInCorso, true, "la copia salvata si mostra")
+        XCTAssertNil(vm.info.errore, "una lettura annullata non è un errore")
         XCTAssertFalse(vm.aggiornamento.pulsanteSpento, "uno stato vecchio non spegne il pulsante")
+        XCTAssertNil(vm.aggiornamento.fraseOccupato)
+    }
+
+    func testUnaLetturaAnnullataNonRimetteLoStatoDiPrima() async {
+        // in Gestione il server era occupato e poi la rilettura l'ha trovato libero; tornando indietro e rientrando la lettura delle
+        // Impostazioni si annulla, e il Caricatore rimette la sua ultima risposta («occupato»): non deve spegnere il pulsante
+        let letture = Contatore()
+        let s = ServerDiProva { _, percorso, _ in
+            guard percorso == "/api/stato" else { throw ErroreApi.server("non serve a questo test") }
+            switch letture.passo() {
+            case 0: return statoDelServer(occupato: true)
+            case 1: return statoDelServer(occupato: false)
+            default:
+                try await Task.sleep(for: .seconds(30))
+                throw ErroreApi.rete("mai")
+            }
+        }
+        let vm = LegaViewModel(server: s)
+        await vm.info.ricarica()
+        XCTAssertTrue(vm.aggiornamento.pulsanteSpento)
+        vm.aggiornamento.pausaStato = .zero
+        await vm.aggiornamento.segui()
+        XCTAssertFalse(vm.aggiornamento.pulsanteSpento, "la rilettura ha trovato il server libero")
+        let lettura = Task { await vm.info.ricarica() }
+        await attendi("la terza richiesta è partita", finche: { s.quante("GET /api/stato") >= 3 })
+        lettura.cancel()
+        await lettura.value
+        XCTAssertEqual(vm.info.dato?.aggiornamentoInCorso, true, "il Caricatore mostra di nuovo la sua ultima risposta")
+        XCTAssertFalse(vm.aggiornamento.pulsanteSpento, "una risposta già usata non torna a spegnere il pulsante")
         XCTAssertNil(vm.aggiornamento.fraseOccupato)
     }
 
