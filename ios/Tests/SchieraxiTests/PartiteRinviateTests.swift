@@ -65,7 +65,7 @@ final class PartiteRinviateTests: XCTestCase {
     func testTestiUgualiAllaWeb() {
         XCTAssertEqual(TestiRinvio.titolo(1), "Partita rinviata")
         XCTAssertEqual(TestiRinvio.titolo(2), "Partite rinviate")
-        XCTAssertEqual(TestiRinvio.nomeModo(ModoRinvio.aspetta, voto: 6), "aspettano il recupero (conta il suo voto)")
+        XCTAssertEqual(TestiRinvio.nomeModo(ModoRinvio.aspetta, voto: 6), "aspettano il recupero (conta il voto del recupero)")
         XCTAssertEqual(TestiRinvio.nomeModo(ModoRinvio.senzaVoto, voto: 6), "restano senza voto (entra la riserva)")
         XCTAssertEqual(TestiRinvio.nomeModo(ModoRinvio.votoUfficio, voto: 6), "prendono il voto d'ufficio (6)")
         XCTAssertEqual(TestiRinvio.nomeModo(ModoRinvio.votoUfficio, voto: 5.5), "prendono il voto d'ufficio (5,5)")
@@ -74,7 +74,7 @@ final class PartiteRinviateTests: XCTestCase {
         XCTAssertTrue(TestiRinvio.recupero(PartitaRinviata(casa: "a", trasferta: "b", data: "2026-11-25 20:45")).hasPrefix("recupero "))
         let s = SceltaRinvio(giornata: 10, modo: ModoRinvio.votoUfficio, predefinito: ModoRinvio.aspetta, eccezione: true,
                              miei: [GiocatoreRinviato(id: 1, nome: "Ruben Tescari"), GiocatoreRinviato(id: 2, nome: "Amos Delvecchio")])
-        XCTAssertEqual(TestiRinvio.nota(s), "Scelta solo per questa giornata. Di solito la tua lega: aspettano il recupero (conta il suo voto).")
+        XCTAssertEqual(TestiRinvio.nota(s), "Scelta solo per questa giornata. Di solito la tua lega: aspettano il recupero (conta il voto del recupero).")
         XCTAssertEqual(TestiRinvio.miei(s), "I tuoi giocatori coinvolti: Ruben Tescari, Amos Delvecchio")
         XCTAssertTrue(TestiRinvio.nota(SceltaRinvio(giornata: 10, modo: ModoRinvio.aspetta)).hasPrefix("È la regola della tua lega"))
         XCTAssertEqual(TestiRinvio.etichetta(ModoRinvio.votoUfficio), "Voto d'ufficio")
