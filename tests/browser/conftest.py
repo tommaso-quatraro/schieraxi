@@ -21,7 +21,8 @@ import shutil
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -85,6 +86,25 @@ SCORRE_DI_LATO = "() => document.documentElement.scrollWidth > document.document
 LANCIA_AXE = """(regole) => axe.run(document, {runOnly: {type: 'tag', values: regole}, resultTypes: ['violations']})
   .then(r => r.violations.map(v => ({id: v.id, impact: v.impact, help: v.help, n: v.nodes.length,
     nodi: v.nodes.slice(0, 3).map(n => n.target.join(' '))})))"""
+
+
+def istante_italiano(testo: str) -> float:
+    """«2026-10-27T15:10:00», ora italiana, in secondi dal 1970. Senza l'archivio dei fusi (su Windows `zoneinfo` non lo trova) e
+    senza il browser (il suo fuso può essere un altro, #776): la regola di fanta/fuso.py, ora legale (+2) dalle 01:00 UTC
+    dell'ultima domenica di marzo alle 01:00 UTC dell'ultima di ottobre, solare (+1) il resto dell'anno. Un'ora che c'è due volte
+    (la notte di ottobre) è la prima."""
+    locale = datetime.fromisoformat(testo)
+
+    def ultima_domenica(mese: int) -> datetime:          # alle 01:00 UTC, quando l'ora cambia
+        fine_mese = datetime(locale.year, mese, 31, 1)
+        return fine_mese - timedelta(days=(fine_mese.weekday() + 1) % 7)
+
+    legale = (ultima_domenica(3), ultima_domenica(10))
+    for ore in (2, 1):
+        utc = locale - timedelta(hours=ore)
+        if (legale[0] <= utc < legale[1]) == (ore == 2):
+            return utc.replace(tzinfo=timezone.utc).timestamp()
+    return (locale - timedelta(hours=1)).replace(tzinfo=timezone.utc).timestamp()    # le 02:xx di marzo, che non esistono
 
 
 def pytest_configure(config):
@@ -171,9 +191,11 @@ class Web:
     """Una scheda di Chrome sulla web di una fase. Raccoglie da sola gli errori della console (anche quelli del codice) e le
     richieste fallite (risposta 4xx o 5xx, o richiesta che non arriva): i test li leggono dopo `apri`.
     La scheda si apre alla prima richiesta di `pagina` (con `apre_scheda`): un test che vale per un'altra fase si salta
-    leggendo solo `fase`, senza aprirla (issue #680: più di metà dei test)."""
+    leggendo solo `fase`, senza aprirla (issue #680: più di metà dei test).
+    `fuso`: il fuso del browser (di norma l'ora italiana); per un altro fuso `con_fuso` (#776)."""
     server: ServerFase
     apre_scheda: Callable[[Web], object] | None = None
+    fuso: str = FUSO
     errori_console: list[str] = field(default_factory=list)
     richieste_fallite: list[str] = field(default_factory=list)
     richieste: list[str] = field(default_factory=list)          # le /api/... chieste dalla pagina (percorso e query), in ordine
@@ -189,6 +211,16 @@ class Web:
     @property
     def fase(self) -> str:
         return self.server.fase
+
+    def con_fuso(self, fuso: str) -> Web:
+        """Un'altra scheda sulla stessa fase con il browser sul fuso `fuso` («America/New_York»): stesso momento dello
+        scenario, stessa lingua. Si apre al primo uso, come questa, e si chiude a fine test."""
+        return replace(self, fuso=fuso, errori_console=[], richieste_fallite=[], richieste=[], _pagina=None)
+
+    def orologio(self, adesso: str) -> None:
+        """Prima di `apri`: l'orologio della pagina fermo su `adesso` («2026-10-24T20:00:00», ora italiana) al posto del momento
+        dello scenario."""
+        self.pagina.context.clock.set_fixed_time(istante_italiano(adesso))
 
     def risposta(self, rotta: str, corpo, stato: int = 200) -> None:
         """Prima di `apri` (o di un clic): da qui la rotta risponde con `corpo` (un oggetto JSON) e `stato`, al posto della
@@ -286,11 +318,10 @@ def web(chrome, server_fase):
 
     def apre_scheda(w: Web):
         ctx = chrome.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=1, locale="it-IT",
-                                 timezone_id=FUSO, service_workers="block", reduced_motion="reduce")
+                                 timezone_id=w.fuso, service_workers="block", reduced_motion="reduce")
         contesti.append(ctx)
         pagina = ctx.new_page()
-        istante = pagina.evaluate("(s) => new Date(s).getTime()", server_fase.adesso)     # letto con il fuso italiano
-        ctx.clock.set_fixed_time(istante / 1000)
+        ctx.clock.set_fixed_time(istante_italiano(server_fase.adesso))       # «adesso» è ora italiana, qualunque sia il fuso
         pagina.on("console", lambda m: m.type == "error" and w.errori_console.append(
             f"{m.text} ({_breve(m.location.get('url') or '')})"))
         pagina.on("pageerror", lambda e: w.errori_console.append(f"errore nel codice: {e}"))
