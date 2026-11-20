@@ -1262,7 +1262,7 @@ def diario_schierata(dati: SchierataDiario, request: Request, response: Response
                 raise HTTPException(409, "Le regole o la rosa sono cambiate mentre calcolavo: riprova")
             diario.scrivi_schierata(voce, scelti, dati.giornata, dati.tipo, ctx.diario, ctx.scelte)
             response.headers["ETag"] = _etag_scelta(ctx, dati.giornata)
-        return voce
+        return diario.per_i_client(voce)                                   # una copia: la voce in cache tiene l'impronta dei voti
     except (calcolo.InCalcolo, calcolo.Occupato):
         raise                                                              # il posto resta preso: il nuovo tentativo con gli stessi dati non conta
     except BaseException:

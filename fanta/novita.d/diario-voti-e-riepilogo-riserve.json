@@ -1,0 +1,15 @@
+{
+  "titolo": "Punti delle giornate finite giusti nel Diario e nel riepilogo di Oggi",
+  "voci": [
+    "Diario: una giornata entra solo quando sono usciti i voti di tutte le sue partite. Prima, se l'ultima partita era finita ma i suoi voti non erano ancora arrivati, la giornata entrava lo stesso con i suoi giocatori senza voto, e quei punti sbagliati restavano anche in Oggi, in «Le tue scelte» e in «Quanto ci abbiamo preso».",
+    "Diario: se i voti di una giornata vengono corretti nei giorni dopo, la giornata si rifà da sola, finché è fra le ultime 12.",
+    "Le giornate già nel Diario si ricalcolano una volta nei primi aggiornamenti dopo questa versione, così prendono i voti giusti. La formazione che hai detto di aver schierato resta la tua.",
+    "Oggi, riepilogo della giornata finita: le riserve entrate al posto di chi è rimasto senza voto contano anche se hai salvato la formazione senza panchina, come fanno la web app e l'iPhone. Prima, finché il Diario non aveva calcolato la giornata, i loro punti mancavano."
+  ],
+  "tecnico": [
+    "diario.aggiorna (#793): salta le giornate con fasi.voti_arrivati falso; ogni voce ha impronta_voti (diario.impronta_voti: hash delle colonne di voto, fantavoto e bonus di d.voti della giornata, tutta la Serie A, valori normalizzati) scritta da calcola_giornata, quindi anche da «Ho schierato». Impronta diversa o assente: la voce si rifà con la stessa regola del cambio di regole (resta com'è se ha la schierata e la scelta non c'è più). Finestra invariata: ultime MASSIMO_GIORNATE giornate chiuse; il cron resta dentro --minuti, il resto al giro dopo.",
+    "diario._scrivi ha basi: il cron passa le voci lette prima del calcolo; se nel file la voce è cambiata nel frattempo e ha la schierata (un «Correggi» arrivato durante il calcolo), resta quella.",
+    "impronta_voti resta nel file: diario.elenco e POST /api/diario/schierata la tolgono (diario.per_i_client). Nessun campo dell'API cambia.",
+    "fasi.blocco_riepilogo (#794): riceve prev da fasi.aggiungi; senza panchina salvata usa fasi._panchina_di (la funzione di «in corso») e _info_rosa(rose, prev). prev è quello che Oggi ha già, della giornata da giocare: nessun calcolo nuovo. gestione.oggi_campionato_finito non ha previsioni e lì la panchina resta vuota come prima."
+  ]
+}
