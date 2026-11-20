@@ -1,6 +1,7 @@
 """Quanto è affidabile il modello: prova sulle ultime giornate già giocate (usando solo i dati che c'erano prima di ognuna).
 
-Confronta il modello con una scelta "da fantamedia" (chi ha la media più alta) su tre cose: l'errore sul fantavoto di chi ha giocato,
+Confronta il modello con una scelta "da fantamedia" (la formazione scelta con la fantamedia tirata verso il ruolo e la stessa
+probabilità di giocare del modello; testo per l'utente: `avv.prova_su`) su tre cose: l'errore sul fantavoto di chi ha giocato,
 i punti delle formazioni consigliate alle rose della lega e il massimo possibile col senno di poi. Il calcolo è pesante (simulazioni):
 si rifà solo quando cambiano le giornate finite (con i voti di tutte le partite) o i loro voti, e il risultato resta in
 dati/affidabilita.json.
