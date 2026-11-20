@@ -64,6 +64,24 @@
       "stato": "fatto"
     },
     {
+      "id": 95,
+      "schermata": "Impostazioni, Aggiorna le rose: la tua squadra non è nel file (#808)",
+      "web": "«Qual è la tua squadra?» elenca le squadre lette e, per prima, quella suggerita dal server (`mia_squadra`) quando non è nel file, già scelta (`nomiMia` in `anteprima.js`)",
+      "iphone": "prima: la squadra suggerita che non era nel file si scartava («Scegli dopo») e scegliere un'altra squadra cambiava la propria per sbaglio. Ora come la web (`AnteprimaLogica.nomiMia`, `AnteprimaLogica.mia`)",
+      "forma": "web",
+      "chi": "**fatto** (#808): prove `AnteprimaMiaERiassuntoTests` e `AnteprimaMiaViewModelTests`",
+      "stato": "fatto"
+    },
+    {
+      "id": 96,
+      "schermata": "Impostazioni, Aggiorna le rose: il riassunto dopo le scelte (#808)",
+      "web": "il riassunto in cima si rifà dopo ogni scelta: un dubbio deciso (un giocatore o «Toglilo dalla rosa») non è più da controllare né non trovato e chi è scelto conta tra i riconosciuti; la proposta del server non toccata resta da controllare (`arRiassuntoScelte` in `anteprima.js`)",
+      "iphone": "prima: restava il riassunto dell'anteprima («3 da controllare» anche con i dubbi sistemati). Ora come la web (`AnteprimaLogica.riassunto(_:scelte:)`)",
+      "forma": "web",
+      "chi": "**fatto** (#808): prova `AnteprimaMiaERiassuntoTests`",
+      "stato": "fatto"
+    },
+    {
       "id": 77,
       "schermata": "Impostazioni, Nuova stagione: il server rifiuta «Archivia e riparti» (#731)",
       "web": "al 409 («Le rose sono già della stagione in corso: non c'è niente da archiviare.», per esempio un altro dispositivo ha già archiviato) il foglio si chiude, l'avviso «Nuova stagione» sparisce e si legge il messaggio del server; al 412 (rose cambiate da un altro dispositivo, la web manda If-Match) il messaggio del server e la pagina si ricarica (`apriNuovaStagione` e `api` in `app.js`, dal #729)",
