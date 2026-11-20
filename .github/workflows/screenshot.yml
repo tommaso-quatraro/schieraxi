@@ -125,7 +125,7 @@ jobs:
           ETICHETTA_NUOVA: ${{ github.event.label.name }}
           # i file che cambiano le foto dei widget: quelli che compila il target AnteprimaWidget (ios/project.yml), il progetto,
           # lo script delle foto dei widget e questo workflow (tests/test_workflow_foto.py controlla che l'elenco sia completo)
-          FILE_WIDGET: '^(ios/(AnteprimaWidget/|WidgetSources/|project\.yml$|scripts/(screenshot_widget\.sh|scegli_simulatore\.py|avvisi\.sh)$|Sources/Domain/(Modelli|Quando|TempiLega|Formato|LinguaServer|ColoriSquadra|GeneratoreVolto)\.swift$|Sources/Support/(Condiviso|WidgetRiassunto|EventiPartita|AvatarVolto|LegaDemo)\.swift$|Sources/Support/Design/PercorsoSVG\.swift$)|\.github/workflows/screenshot\.yml$)'
+          FILE_WIDGET: '^(ios/(AnteprimaWidget/|WidgetSources/|project\.yml$|scripts/(screenshot_widget\.sh|scegli_simulatore\.py|avvisi\.sh)$|Sources/Domain/(Modelli|Quando|TempiLega|Formato|LinguaServer|ColoriSquadra|GeneratoreVolto)\.swift$|Sources/Support/(Condiviso|WidgetRiassunto|EventiPartita|AvatarVolto|LegaDemo)\.swift$|Sources/Support/Design/PercorsoSVG\.swift$|Sources/Support/Catalogo/Catalogo(\+Oggi|\+Formazione)?\.swift$)|\.github/workflows/screenshot\.yml$)'
         run: |
           widget=false
           if [ "$SCATTI" = vero ] || [ "$ETICHETTA_NUOVA" = screenshot-vero ] || [ "$DISPOSITIVI" = ipad ]; then
