@@ -264,7 +264,7 @@
     "en": "Who makes way for {nome}"
   },
   "formazione.esce_spiega": {
-    "it": "Stesso ruolo, oppure un altro modulo ammesso dalla tua lega. Il numero grande sono i punti attesi della formazione in più o in meno se al suo posto gioca {nome}.",
+    "it": "Stesso ruolo, oppure un altro modulo ammesso dalla tua lega. Il numero grande sono i punti attesi della formazione in più o in meno se {nome} gioca al suo posto.",
     "en": "Same role, or another formation your league allows. The big number is the lineup's expected points more or less if {nome} plays instead."
   },
   "formazione.passi_al": {
@@ -272,7 +272,7 @@
     "en": "Switches to {modulo}"
   },
   "formazione.punti_con": {
-    "it": "punti attesi della formazione se al suo posto gioca {nome}",
+    "it": "punti attesi della formazione se {nome} gioca al suo posto",
     "en": "lineup expected points if {nome} plays instead"
   },
   "formazione.nessuno_lascia_posto": {
