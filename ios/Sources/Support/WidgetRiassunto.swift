@@ -1221,9 +1221,25 @@ extension DubbioRiassunto {
         return forme
     }
 
-    /// Le righe del rettangolo «Da controllare» tutte insieme.
+    /// Le righe del rettangolo «Da controllare» tutte insieme, dalla forma più lunga alla più corta, con lo stesso modo di scrivere
+    /// il nome in ogni forma: prima nomi interi, poi i soli cognomi, poi i cognomi con lo stato corto. Prima ogni riga sceglieva da
+    /// sola, e uscivano «Marténi · In dubbio · gioca 62%» sopra «Alvise Bastrani · Diffidato» (#787). Una forma uguale a quella
+    /// prima non si ripete; senza giocatori una forma vuota. La vista mostra la prima che entra (`PrimaCheEntra`).
     static func formeRighe(_ dubbi: [DubbioRiassunto]) -> [[String]] {
-        []
+        let forme = (0..<3).map { livello in dubbi.map { $0.rigaInForma(livello) } }
+        return forme.reduce(into: [[String]]()) { tutte, forma in
+            if tutte.last != forma { tutte.append(forma) }
+        }
+    }
+
+    /// Una riga in una forma: 0 nome intero e stato, 1 cognome e stato, 2 cognome e stato corto (come `formeRiga`).
+    private func rigaInForma(_ livello: Int) -> String {
+        let cognome = nome.split(separator: " ").last.map(String.init) ?? nome
+        switch livello {
+        case 0: return "\(nome) · \(descrizione)"
+        case 1: return "\(cognome) · \(descrizione)"
+        default: return "\(cognome) · \(ParoleWidget.stato(descrizione).last ?? descrizione)"
+        }
     }
 }
 
