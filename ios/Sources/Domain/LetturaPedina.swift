@@ -151,9 +151,19 @@ enum LetturaPedina {
         return parole.joined(separator: "\n")
     }
 
-    /// Lo stato sotto il cognome su due righe. nil con una parola sola.
+    /// Lo stato sotto il cognome su due righe, tagliato fra due parole dove la riga più lunga è più corta: «Partita in corso» →
+    /// «Partita» sopra «in corso», mai una parola per riga su tre righe come il cognome. A parità il taglio più a sinistra.
+    /// nil con una parola sola.
     static func dueRighe(_ testo: String) -> String? {
-        nil
+        let parole = testo.split(separator: " ").map(String.init)
+        guard parole.count > 1 else { return nil }
+        let tagli = (1..<parole.count).map { i in
+            (sopra: parole[..<i].joined(separator: " "), sotto: parole[i...].joined(separator: " "))
+        }
+        guard let migliore = tagli.min(by: { max($0.sopra.count, $0.sotto.count) < max($1.sopra.count, $1.sotto.count) }) else {
+            return nil
+        }
+        return migliore.sopra + "\n" + migliore.sotto
     }
 
     /// Il testo del distintivo va scuro o chiaro secondo il colore di fondo (il contrasto più alto, come WCAG).
