@@ -202,6 +202,7 @@ async function api(percorso, opzioni = {}) {
       if (etag && risorsa && (scrive || !scrittureInCorso[risorsa])) etagDi[risorsa] = etag;
       if (scrive) lampoSalvato();
       if (percorso === "/api/nuova-stagione" || percorso === "/api/backup/ripristina") nuovoCollegamento();   // cambiano più risorse insieme
+      if (avvioDaRileggere && !rileggoAvvio) setTimeout(rileggiAvvio, 0);   // il server risponde di nuovo: lo stato d'avvio mancava (#801)
       return dati;
     }
   } finally {
@@ -730,9 +731,26 @@ const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURICompone
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
   if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
-  else { try { stato.squadre = await api("/api/squadre"); } catch { stato.squadre = stato.squadre || []; } }
+  else { try { stato.squadre = await api("/api/squadre"); } catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); } }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
+// Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
+// riesce (aperta senza rete o mentre il server riparte) la riga di stato dice «Server non raggiungibile», Impostazioni nasconde «La
+// mia squadra» e «Le altre squadre», La mia squadra chiede di importare le rose. Si rileggono quando il browser dice che la rete è
+// tornata e alla prima risposta buona del server (api(): con il server che riparte il browser non dice niente), una lettura alla
+// volta; riuscite, la pagina di Impostazioni che ne dipende si ridisegna. Una lettura che non riesce ancora aspetta il segnale dopo.
+// Solo dopo un guasto della rete o del server (5xx): un rifiuto (4xx) rileggendo non cambia, e ripartirebbe a ogni risposta buona.
+let avvioDaRileggere = false, rileggoAvvio = false;
+function segnaAvvioDaRileggere(e) { if (e && (e.rete || e.status >= 500)) avvioDaRileggere = true; }
+async function rileggiAvvio() {
+  if (!avvioDaRileggere || rileggoAvvio) return;
+  rileggoAvvio = true; avvioDaRileggere = false;
+  try { await caricaInfo(); await caricaSquadre(true); }                   // un errore rimette avvioDaRileggere
+  finally { rileggoAvvio = false; }
+  const gruppo = new URLSearchParams(location.search).get("gruppo");
+  if (!avvioDaRileggere && stato.vista === "impostazioni" && [null, "squadra", "squadre"].includes(gruppo)) vaiQui();
+}
+window.addEventListener("online", () => rileggiAvvio());
 const miaSquadra = () => (stato.squadre || []).find(s => s.mia);
 
 async function caricaTratti() {
@@ -770,6 +788,7 @@ async function caricaInfo() {
     segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
     stato.rigaStato = { offline: true };
+    segnaAvvioDaRileggere(e);
   }
   aggiornaRigaStato();
 }
@@ -931,7 +950,7 @@ function collegaRinvio() {
         salvato = sel.value;
         svuotaCache();
         avviso(t("oggi.rinvio_salvato"));
-        rileggiFormazione();
+        if (document.body.contains(sel)) rileggiFormazione();       // passati a un'altra scheda: resta quella (#801)
       } catch (e) { avviso(e.message, 8000); sel.value = salvato; mostra(); sel.disabled = false; }   // resta la scelta salvata
     });
   });
@@ -2689,6 +2708,7 @@ async function notificheWeb(dispositivi) {
     const { chiave } = await api("/api/push/chiave");
     sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
     dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
+    segnaAvvisiDi();                                       // l'iscrizione è di chi l'ha accesa (#804)
   };
   const spegni = async () => {
     if (!sub) return;
@@ -2704,7 +2724,8 @@ async function notificheWeb(dispositivi) {
       avviso(t(r.inviato ? "avv.notifiche_attivate_qui" : "avv.prova_non_partita"), 7000);
     } catch (e) { avviso(`${t("avv.prova_non_partita")} ${e.message || ""}`.trim(), 8000); }
   };
-  mostra(interruttore("av_qui", t("imp.avvisi_qui"), !!sub, t("imp.avvisi_qui_aiuto")));
+  // acceso solo con un'iscrizione di questo account: quella di un altro account non vale per lui (#804), si accende di nuovo
+  mostra(interruttore("av_qui", t("imp.avvisi_qui"), !!sub && avvisiDiQuestoAccount(), t("imp.avvisi_qui_aiuto")));
   const scelta = $("#av_qui");
   scelta.addEventListener("change", async () => {
     const acceso = scelta.checked;
@@ -2787,7 +2808,7 @@ async function apriStemmaMaglia(nome, inAttesa = false) {
         ${["stemma", "maglia"].map(tipo => { const c = s.immagini && s.immagini[tipo]; return `<div class="immagine-squadra">
           <b>${t(NOME_IMMAGINE[tipo])}</b>
           ${c ? `<img src="${urlImg(s.nome, tipo)}" alt="${t("lega.alt_immagine", { tipo: t(NOME_IMMAGINE[tipo]), nome: esc(s.nome) })}">` : `<span class="vuota">${t("lega.nessuna_immagine")}</span>`}
-          <label class="bottone secondario sm-pulsante" for="sm-file-${tipo}">${t("lega.file_foto")}</label>
+          <button class="bottone secondario sm-pulsante" type="button" data-scegli-file="sm-file-${tipo}">${t("lega.file_foto")}</button>
           <input id="sm-file-${tipo}" data-tipo="${tipo}" type="file" accept="image/png,image/jpeg,image/webp" hidden>
           ${funz("immagini_web") ? `<input class="campo-testo" id="sm-url-${tipo}" type="url" inputmode="url" autocomplete="off" placeholder="${t("lega.https")}" aria-label="${t("lega.indirizzo_aria", { tipo: t(NOME_IMMAGINE[tipo]).toLowerCase() })}">
           <button class="bottone secondario sm-pulsante" data-scarica="${tipo}">${t("lega.indirizzo_web")}</button>` : ""}
@@ -2808,6 +2829,8 @@ async function apriStemmaMaglia(nome, inAttesa = false) {
       dati.append("file", blob, nomeFile || "immagine");
       await chiamaImmagine(`/api/squadre/immagine?squadra=${encodeURIComponent(s.nome)}&tipo=${tipo}`, { method: "POST", body: dati });
     };
+    // un pulsante vero apre il campo del file, nascosto (#801: un'etichetta del campo non si raggiungeva con Tab), come nel primo avvio
+    document.querySelectorAll("#foglio [data-scegli-file]").forEach(b => b.addEventListener("click", () => $("#" + b.dataset.scegliFile).click()));
     document.querySelectorAll("#foglio input[type=file]").forEach(inp => inp.addEventListener("change", async () => {
       const file = inp.files[0]; inp.value = "";
       if (!file) return;
@@ -2859,7 +2882,7 @@ function vistaImportaRose() {
   nuovaRichiesta();
   pagina(`<div class="carta imp-colonna">
       <div class="debole piccolo">${t("lega.esporta_rose_excel")}</div>
-      <div class="pulsanti"><label class="bottone" for="file-rose">${t("pav.scegli_file")}</label></div>
+      <div class="pulsanti"><button class="bottone" id="scegli-file-rose" type="button">${t("pav.scegli_file")}</button></div>
       <details style="margin-top:14px"><summary style="font-size:var(--t-corpo)">${t("lega.con_tocco_dal")}</summary>
         <div class="debole piccolo">${t("lega.una_volta_sola")}</div>
         <ol class="guida">
@@ -2892,6 +2915,8 @@ function vistaImportaRose() {
     sostituisci: $("#sostituisci-tutto").checked,
     fatto: esito => { mostraEsito(esito); avviso(t("ar.salvate")); },
   });
+  // il pulsante dell'app apre il campo del file, nascosto (#801: un'etichetta del campo non si raggiungeva con Tab), come nel primo avvio
+  $("#scegli-file-rose").addEventListener("click", () => $("#file-rose").click());
   $("#file-rose").addEventListener("change", ev => {
     const file = ev.target.files[0];
     ev.target.value = "";              // così si può scegliere di nuovo lo stesso file
@@ -3268,7 +3293,7 @@ async function vistaRegole() {
       stato.calendario = null;
       avviso(t("regole.regole_salvate_consigli"));
       caricaInfo();
-      vistaRegole();
+      if (!sig.signal.aborted) vistaRegole();                      // passati a un'altra pagina (vai() ferma regoleAC): resta quella (#801)
     } catch (e) { avviso(e.message, 8000); }
   };
   $("#salva-regole").addEventListener("click", salva);
@@ -3654,27 +3679,77 @@ function mostraCodiceAccesso(titolo, codice, continua, dopo) {
   $("#codice-continua").addEventListener("click", dopo);
 }
 
-// L'indirizzo delle notifiche web di questo dispositivo, o "" se non ci sono: dopo un cambio di password o un recupero il server
-// tiene solo questo e toglie le altre iscrizioni. Non aspetta il service worker: se non c'è, non ci sono nemmeno le notifiche.
-async function endpointPushQui() {
+// L'iscrizione alle notifiche web di questo dispositivo (null se non ci sono) e il suo indirizzo (endpointPushQui, "" se non ci sono):
+// dopo un cambio di password o un recupero il server tiene solo questo e toglie le altre iscrizioni. Non aspetta il service worker:
+// se non c'è, non ci sono nemmeno le notifiche.
+async function iscrizionePushQui() {
   try {
-    if (!("serviceWorker" in navigator && "PushManager" in window)) return "";
+    if (!("serviceWorker" in navigator && "PushManager" in window)) return null;
     const reg = await navigator.serviceWorker.getRegistration();
-    const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
-    return sub && sub.endpoint ? sub.endpoint : "";
-  } catch { return ""; }
+    return reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+  } catch { return null; }
+}
+async function endpointPushQui() {
+  const sub = await iscrizionePushQui();
+  return sub && sub.endpoint ? sub.endpoint : "";
 }
 
+// L'iscrizione agli avvisi di questo browser da rimandare al server (#800). Dopo «Esci da tutti», un cambio o un recupero della
+// password fatti da un altro dispositivo il server toglie l'iscrizione di questo browser, che invece la tiene: l'interruttore «Avvisi
+// su questo dispositivo» resta acceso e i promemoria non arrivano più. Così, dopo ogni nuovo accesso (controllaAccesso) e dopo un
+// «Esci» non riuscito, l'iscrizione che il browser ha già torna al server, senza chiedere di nuovo il permesso. Una volta per accesso
+// (ogni iscrizione conta nel tetto all'ora del server): il segno si toglie quando il server l'ha presa, o se non c'è niente da
+// mandare; con la rete giù, il server che non risponde o troppe richieste resta, e si riprova alla prossima apertura.
+const AVVISI_DA_RIMANDARE = "avvisi-da-rimandare";
+function segnaAvvisiDaRimandare() {
+  try { localStorage.setItem(AVVISI_DA_RIMANDARE, "1"); } catch { /* niente memoria */ }
+}
+// Di chi è l'iscrizione (#804): il numero dell'account che l'ha fatta, accanto a lei. Si rimanda solo se rientra lo stesso account;
+// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui. Il segno resta anche dopo un'uscita (non è
+// fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza account sul server l'iscrizione è sempre «mia».
+const AVVISI_DI = "avvisi-di";
+const numeroAccount = () => (stato.account && stato.account.id != null ? String(stato.account.id) : "");
+function segnaAvvisiDi() {
+  const n = numeroAccount();
+  if (n) try { localStorage.setItem(AVVISI_DI, n); } catch { /* niente memoria */ }
+}
+function avvisiDiQuestoAccount() {
+  const n = numeroAccount();
+  if (!n) return true;
+  try { return localStorage.getItem(AVVISI_DI) === n; } catch { return false; }
+}
+async function rimandaAvvisi() {
+  try { if (localStorage.getItem(AVVISI_DA_RIMANDARE) !== "1") return; } catch { return; }
+  const fatto = () => { try { localStorage.removeItem(AVVISI_DA_RIMANDARE); } catch { /* niente memoria */ } };
+  const sub = await iscrizionePushQui();
+  if (!sub || !avvisiDiQuestoAccount()) { fatto(); return; }            // fatta da un altro account: non si rimanda (#804)
+  try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
+  catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
+}
+
+// Impostazioni > Il tuo account > «Esci». Il cookie della sessione lo toglie solo il server: se la richiesta non riesce (rete giù,
+// server che riparte) non si è usciti, e come per «Esci da tutti i dispositivi» lo si dice e la pagina resta com'è (#800).
+// Gli avvisi di questo dispositivo si tolgono dal server prima, finché la sessione vale; il browser tiene la sua iscrizione finché
+// l'uscita non è riuscita, e se non riesce la rimanda al server. 401: la sessione era già finita, si esce lo stesso.
 async function esciDa(percorso) {
-  await lasciaNotifiche();
-  try { await api(percorso, { method: "POST" }); } catch { /* se la sessione era già finita, va bene lo stesso */ }
+  const ep = await endpointPushQui();
+  if (ep) try { await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) }); } catch { /* decide l'uscita */ }
+  try { await api(percorso, { method: "POST" }); }
+  catch (e) {
+    if (e.status !== 401) {
+      if (ep) { segnaAvvisiDaRimandare(); rimandaAvvisi(); }
+      avviso(t("account.esci_no", { motivo: e.message || "" }).trim(), 8000);
+      return;
+    }
+  }
+  await lasciaNotifiche(false);                       // l'iscrizione sul server è già tolta: qui solo quella del browser
   await svuotaDatiLocali();
   location.reload();
 }
 
 // Impostazioni > Il tuo account > «Esci da tutti i dispositivi» (#765), il pulsante che consigliano le email di sicurezza: il server
 // chiude tutte le sessioni (anche questa), il widget, le notifiche web di ogni dispositivo e scollega Google a chi ha una password.
-// Al contrario di «Esci» non riesce senza il server: se la richiesta non va, gli altri dispositivi sono ancora dentro e lo si dice.
+// Come «Esci» non riesce senza il server: se la richiesta non va, gli altri dispositivi sono ancora dentro e lo si dice.
 // Niente password nel corpo: il codice di recupero nuovo che il server manderebbe si perderebbe con la ricarica.
 // Il server toglie il collegamento con Google a chi ha una password; chi entra solo con Google lo tiene (sarebbe chiuso fuori).
 // Lo si legge da `accessi` del server: senza, niente frase.
@@ -3868,9 +3943,9 @@ function collegaAccount() {
     const pw = soloGoogle() ? "" : valore("#acc-pw-elimina");
     if (!soloGoogle() && !pw) { avviso(t("account.elimina_serve_password")); return; }
     if (!confirm(t("account.elimina_conferma"))) return;
-    await lasciaNotifiche();
     try { await api("/api/account/elimina", { method: "POST", body: JSON.stringify({ password: pw }) }); }
-    catch (e) { throw new Error(erroreGoogle(e)); }
+    catch (e) { throw new Error(erroreGoogle(e)); }               // password sbagliata, rete giù: gli avvisi restano accesi (#801)
+    await lasciaNotifiche(false);                                 // il server ha cancellato anche le iscrizioni: qui solo quella del browser
     await svuotaDatiLocali();
     location.reload();
   }));
@@ -3978,7 +4053,18 @@ async function controllaAccesso() {
     stato.account = dati.utente;
     if (usaLinguaDi(dati.utente && dati.utente.nome_utente)) return false;           // l'utente aveva scelto un'altra lingua: ricarico con la sua
     stato.emailAccount = { email: dati.email || null, email_origine: dati.email_origine || null, email_in_attesa: dati.email_in_attesa || null };
-    try { localStorage.setItem("account", JSON.stringify(dati.utente)); } catch { /* niente memoria */ }
+    // nel browser l'account non c'è (lo toglie ogni uscita, anche una sessione chiusa altrove): è un nuovo accesso, e l'iscrizione
+    // agli avvisi che il browser ha ancora torna al server se l'aveva fatta lui (rimandaAvvisi, all'avvio). Un'iscrizione senza il
+    // segno di chi l'ha fatta (di una versione di prima, #804): dopo un accesso nuovo non è di nessuno («-», nessun account ha quel
+    // numero), così anche alle aperture dopo resta spenta; solo una sessione già aperta prima del rilascio la prende come sua, e la
+    // rimanda una volta (il server può averla già tolta).
+    try {
+      if (!localStorage.getItem("account")) {
+        segnaAvvisiDaRimandare();
+        if (!localStorage.getItem(AVVISI_DI)) localStorage.setItem(AVVISI_DI, "-");
+      } else if (!localStorage.getItem(AVVISI_DI)) { segnaAvvisiDi(); segnaAvvisiDaRimandare(); }
+      localStorage.setItem("account", JSON.stringify(dati.utente));
+    } catch { /* niente memoria */ }
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, true);       // collega / conferma: si resta dentro
   }
   return true;
@@ -4017,6 +4103,7 @@ try {                                                                           
 } catch { /* indirizzo strano */ }
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
+  rimandaAvvisi();                                       // dopo un nuovo accesso, o se l'ultima volta non era arrivata (#800)
   Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
     let condivisa = null;
     try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }
@@ -4028,7 +4115,7 @@ controllaAccesso().then(async entrato => {
     // dal menu Condividi si apre il foglio di stemma e maglia: la guida non gli prende il posto
     if (typeof primoAvvioSeServe === "function" && !condivisa) primoAvvioSeServe();
     if (condivisa === "1") apriStemmaMaglia(null, true);
-    else if (condivisa === "no") avviso("Non ho potuto usare l'immagine condivisa: servono PNG, JPEG o WebP fino a 4 MB", 7000);
+    else if (condivisa === "no") avviso(t("lega.immagine_condivisa_no"), 7000);
   });
 });
 applicaAspetto();

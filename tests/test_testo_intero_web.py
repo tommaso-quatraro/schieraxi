@@ -165,6 +165,7 @@ const sel = { value: "aspetta", disabled: false, dataset: { giornata: "8", stagi
   closest: s => s === ".menu-scelta" ? { querySelector: q => q === ".menu-scelta-testo" ? testo : null } : null,
   addEventListener(ev, f) { this.ascolta[ev] = f; } };
 document.querySelectorAll = s => s === "select.rinvio-modo" ? [sel] : [];
+document.body = { contains: e => e === sel };      // il menu è ancora in pagina (#801: se si è cambiata scheda non si rilegge)
 const chiamate = [], avvisi = []; let fallisci = false, ridisegni = 0;
 async function api(p, o) { chiamate.push([p, JSON.parse(o.body)]); if (fallisci) throw new Error("Non riesco a salvare la scelta."); return {}; }
 const svuotaCache = () => {}, avviso = m => avvisi.push(m), rileggiFormazione = () => { ridisegni++; };     // rilegge e tiene il fuoco sul menu
