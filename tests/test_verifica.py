@@ -378,7 +378,7 @@ def test_la_prova_si_rifa_quando_cambiano_le_giornate_o_i_voti(monkeypatch, tmp_
     assert [rifai(), rifai()] == [True, False] and prove[-1] == [1, 2, 3, 4, 5, 6]
     assert affidabilita.carica(f)["ultima"] == f"{S2}/6"
     # un voto corretto nei giorni dopo
-    _voto_db(db, S2, 5, 50, "a", voto=7.5)
+    _voto_db(db, S2, 5, 500, "a", voto=7.5)                          # stesso giocatore, voto cambiato
     assert [rifai(), rifai()] == [True, False] and len(prove) == 3
     # la giornata 7 è giocata, ma i voti di una squadra mancano: non entra, e la prova non si rifà
     _partita_db(db, 70, S2, 7, "2026-09-07 15:00", con_voti=("a",))
