@@ -12,10 +12,10 @@
     {
       "id": 22,
       "schermata": "Date",
-      "web": "«sab 31 20:45», «oggi 20:45»",
-      "iphone": "«sab 31 ott, 20:45»",
+      "web": "«sab 31 20:45», «oggi 20:45»; una partita di cui si sa solo il giorno (`data_partita` «2026-11-01») senza ora: «dom 1», «domani», oltre la settimana «dom 8 nov» (in panchina «VEN vs INT · dom 1», #785)",
+      "iphone": "«sab 31 ott, 20:45»; fino a #789 con solo il giorno nessuna data: niente nelle righe, in panchina e nella pedina, «–» nella scheda, «recupero da definire» nei rinvii",
       "forma": "web",
-      "chi": "fatto (rassegna 6/11): `Quando.leggibile` e `Quando.relativa`, come `quando` di `app.js`",
+      "chi": "fatto (rassegna 6/11): `Quando.leggibile` e `Quando.relativa`, come `quando` di `app.js`; il solo giorno con #789 (`Quando.leggibileSeData`, usato da righe, panchina, pedina, scheda e rinvii; `GiornoSenzaOraTests`)",
       "stato": "fatto"
     },
     {
