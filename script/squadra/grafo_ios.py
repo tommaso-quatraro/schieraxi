@@ -129,6 +129,11 @@ class Grafo:
                     if i != j:
                         self.usato_da[i].add(j)
 
+    def radici_dichiarate(self, file: str, radici: set[str]) -> list[str]:
+        """Le viste radice dichiarate (come tipo, non private) nel file stesso, in ordine di nome."""
+        return sorted({p["nome"] for p in self.pezzi
+                       if p["file"] == file and p["tipo"] in _TIPI and not p["privato"] and p["nome"] in radici})
+
     def radici(self, file: str, radici: set[str], barriere: set[str],
                annidate: set[str] = frozenset()) -> dict[str, list[str]]:
         """Viste radice raggiunte risalendo da `file`, ciascuna con la strada (nomi dei pezzi, dalla radice al file).

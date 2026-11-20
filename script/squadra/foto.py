@@ -72,7 +72,16 @@ def scegli(file: str, dati: dict, grafo: grafo_ios.Grafo, scene: list[str]) -> d
     motivo = (f"il codice arriva a {len(trovate)} viste radice (più di {soglia})" if trovate
               else "il codice non arriva a nessuna vista radice")
     if regola is not None:
-        return {"modo": "ripiego", "schermate": _nomi(dati, regola["schermate"]), "perche": f"{motivo}: regola larga"}
+        scelte = _nomi(dati, regola["schermate"])
+        # le viste radice dichiarate nel file stesso (LegaExtra.swift tiene StatoDatiView): cambiarlo può cambiare proprio
+        # quelle schermate, che la regola larga non sempre comprende
+        proprie = grafo.radici_dichiarate(file, set(radici_scena))
+        if proprie:
+            scelte += [s for s in scene if s not in scelte and any(s in radici_scena[t] for t in proprie)]
+            motivo += f"; il file dichiara le viste radice {', '.join(proprie)}"
+            return {"modo": "ripiego", "schermate": scelte,
+                    "perche": f"{motivo}: regola larga più le loro schermate"}
+        return {"modo": "ripiego", "schermate": scelte, "perche": f"{motivo}: regola larga"}
     return {"modo": "senza", "schermate": [], "perche": motivo}
 
 

@@ -87,6 +87,24 @@ def test_parte_comune_oltre_la_soglia_usa_la_regola_larga():
     assert s["modo"] == "ripiego" and s["schermate"] == ["a"]
 
 
+def test_regola_larga_piu_le_schermate_delle_viste_radice_del_file():
+    """Un file che dichiara una vista radice (come LegaExtra.swift con StatoDatiView) e arriva a troppe radici prende la
+    regola larga più le schermate delle viste radice che dichiara lui stesso: cambiarlo può cambiare proprio quelle."""
+    testi = {k: v for k, v in TESTI.items() if k != "ios/Sources/Presentation/B/VistaB.swift"}
+    testi["ios/Sources/Presentation/C/Insieme.swift"] = (
+        "struct VistaB: View {\n    var body: some View { Comune() }\n}\n"
+        "struct PezzoA: View {\n    var body: some View { Text(\"p\") }\n}\n")
+    testi["ios/Sources/Presentation/A/VistaA.swift"] = "struct VistaA: View {\n    var body: some View { PezzoA() }\n}\n"
+    s = _scegli("ios/Sources/Presentation/C/Insieme.swift", testi=testi)
+    assert s["modo"] == "ripiego" and s["schermate"] == ["a", "b"]
+    assert "VistaB" in s["perche"]
+
+
+def test_regola_larga_senza_viste_radice_nel_file_resta_com_era():
+    s = _scegli("ios/Sources/Support/Comune.swift")
+    assert s["schermate"] == ["a"] and "dichiara" not in s["perche"]
+
+
 def test_la_barriera_ferma_la_risalita():
     """ModelloA arriva a VistaB solo attraverso Tutto (come AppModel, che tutti usano): non conta."""
     s = _scegli("ios/Sources/Domain/ModelloA.swift")
@@ -136,6 +154,15 @@ def test_schermate_usa_il_grafo_e_spiega():
 
 def _dati() -> dict:
     return comune.leggi_json("foto.json")
+
+
+def test_lega_extra_porta_anche_lo_stato_dei_dati():
+    """LegaExtra.swift contiene StatoDatiView (Impostazioni › Gestione › Stato dei dati): nella PR #850 le sue schermate
+    erano state aggiunte a mano perché la regola larga della cartella Lega non le comprende."""
+    s = foto.scegli("ios/Sources/Presentation/Lega/LegaExtra.swift", _dati(), foto.grafo_del_repository(),
+                    foto.scene_di_screenshot())
+    assert {"lega-stato", "lega-stato-nostri", "lega-stato-fondo"} <= set(s["schermate"])
+    assert "StatoDatiView" in s["perche"]
 
 
 def test_ogni_schermata_di_screenshot_ha_una_radice():
