@@ -221,13 +221,19 @@ struct AccountSezione: View {
 /// «Esci», in fondo a «Il tuo account» (sotto c'è solo «Esci da tutti i dispositivi»), come sulla web. Sta dentro la sezione
 /// dell'account (che c'è solo con un account: senza account c'è `SessioneMinimaSezione`). Se la richiesta non riesce (rete giù,
 /// server che non risponde) lo dice qui sotto con la frase della web (`account.esci_no`) e si resta dentro, come «Esci da tutti i
-/// dispositivi» (#809); con la sessione già finita si esce lo stesso (`SessioneAccount.esci`).
+/// dispositivi» (#809); con la sessione già finita si esce lo stesso (`SessioneAccount.esci`). Se la richiesta non è arrivata al
+/// server (rete giù, server che non risponde) sotto l'errore c'è anche «Esci solo da questo telefono», con la frase che sul server
+/// la sessione resta aperta finché scade: un server sparito per sempre non chiude dentro nessuno.
 struct RigaEsci: View {
     /// Dove scorre la foto `accesso-account-fondo` (vedi `ImpostazioniView`); è anche l'identificativo per i test.
     static let idDemo = "account-esci"
+    /// Identificativo per i test di «Esci solo da questo telefono».
+    static let idSoloQui = "account-esci-solo-qui"
     @EnvironmentObject private var sessione: SessioneAccount
     @State private var chiediEsci = false
     @State private var errore: String?
+    /// La richiesta non è arrivata al server: si può uscire solo da questo telefono (`SessioneAccount.esciSoloQuiPossibile`).
+    @State private var soloQui = false
 
     var body: some View {
         // senza errore la riga è il solo pulsante, com'era; l'errore va sotto, nella stessa riga
@@ -238,7 +244,24 @@ struct RigaEsci: View {
                     .font(.footnote)
                     .foregroundStyle(Color.attenzione)
                     .fixedSize(horizontal: false, vertical: true)
+                if soloQui {
+                    Button(role: .destructive) {
+                        sessione.esciSoloDaQuestoTelefono()
+                        DatiPersonali.pulisci()
+                    } label: {
+                        Text(TestiAccount.esciSoloQui)
+                            .frame(minHeight: Tema.areaTocco)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityIdentifier(Self.idSoloQui)
+                    Text(TestiAccount.esciSoloQuiSpiega)
+                        .font(.footnote)
+                        .foregroundStyle(Color.testoSecondario)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+            // due pulsanti nella stessa riga di una lista: senza questo un tocco li attiva come uno solo
+            .buttonStyle(.borderless)
         } else {
             pulsante
         }
@@ -260,11 +283,13 @@ struct RigaEsci: View {
 
     private func esci() async {
         errore = nil
+        soloQui = false
         do {
             try await sessione.esci()
             DatiPersonali.pulisci()
         } catch {
             let testo = Catalogo.Account.esciNo(motivo: SchermataAccesso.testoErrore(error))
+            soloQui = SessioneAccount.esciSoloQuiPossibile(dopo: error)
             errore = testo
             AccessibilityNotification.Announcement(testo).post()
         }

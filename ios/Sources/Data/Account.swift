@@ -702,18 +702,28 @@ final class SessioneAccount: ObservableObject {
     /// (riassunto e copie restano) e ne chiede uno nuovo, come dopo il cambio della password; poi ripassa il collegamento al widget.
     private func riprendiIlWidget(revocato: Bool) {
         let w = luoghiWidget, s = server, a = archivio
-        // PROVA DEL TEST, si rimette nel commit dopo: if revocato { TokenWidget.dimenticaToken(indirizzo: s.indirizzo, luoghi: w) }
-        _ = revocato
+        if revocato { TokenWidget.dimenticaToken(indirizzo: s.indirizzo, luoghi: w) }
         rinnovoWidget = Task { await TokenWidget.assicura(server: s, luoghi: w, sessione: a) }
     }
 
-    /// Dopo un «Esci» non riuscito: si offre «Esci solo da questo telefono»?
+    /// Dopo un «Esci» non riuscito: si offre «Esci solo da questo telefono» quando la richiesta non è arrivata al server (rete giù,
+    /// server che non risponde), così un server sparito per sempre non chiude dentro nessuno. Se il server ha risposto con un
+    /// errore (5xx, troppe richieste) no: lì basta riprovare.
     static func esciSoloQuiPossibile(dopo errore: Error) -> Bool {
-        false
+        guard let e = errore as? ErroreApi else { return false }
+        switch e {
+        case .rete, .timeout: return true
+        default: return false
+        }
     }
 
-    /// «Esci solo da questo telefono».
+    /// «Esci solo da questo telefono», dopo un «Esci» non riuscito con il server irraggiungibile (`esciSoloQuiPossibile`): senza
+    /// chiedere altro al server, via sessione, dati e widget da questo telefono (`chiudiLocale`). Sul server la sessione resta
+    /// aperta finché scade.
     func esciSoloDaQuestoTelefono() {
+        rinnovoWidget?.cancel()
+        avvisoAccesso = nil
+        chiudiLocale()
     }
 
     /// La rete di sicurezza delle Impostazioni (`SessioneMinimaSezione`), per quando l'app non si collega: esce da questo telefono
