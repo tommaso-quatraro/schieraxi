@@ -120,10 +120,11 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
 - `fanta/contenuti/sotto-il-cofano.json`: testi di «Sotto il cofano», fonte unica per web e iPhone. Ogni affermazione ha il
   suo punto di codice in `fonte_codice`.
 - `fanta/novita.json`: storia delle versioni (numero, data, titolo, voci). `fanta/novita.d/`: voci in attesa, un file per pull request.
-- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/` (solo il
-  pulsante del tema), `font/` (Archivo semi-stretto in woff2, licenza `OFL.txt` accanto). Dal 20/11/2026 non si installa come
-  app: niente manifest; `sw.js` resta solo per togliere il service worker di prima a chi l'aveva (svuota le copie e si toglie
-  da solo, va lasciato). Niente script né stili
+- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/` (pulsante
+  del tema e pulizia del service worker di prima), `font/` (Archivo semi-stretto in woff2, licenza `OFL.txt` accanto). Dal
+  20/11/2026 non si installa come app: niente manifest. `sw.js` resta solo per togliere il service worker di prima a chi
+  l'aveva (svuota le copie e si toglie da solo; va lasciato); se una vecchia copia di `installa.js` nella cache del browser lo
+  registra di nuovo, lo toglie `js/principale.js`. Niente script né stili
   dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`). Grafica della web app «direzione B» (#355): fili al posto
   delle carte, Archivo per titoli e numeri, niente gradienti né ombre; esempi con nomi e numeri inventati che tornano (i test li rifanno).
   Il nome «SchieraXI» è in tracciati SVG: simboli `#wm` (grande) e `#wm-c` (compatto, l'unico mostrato, nella barra in alto) in cima a

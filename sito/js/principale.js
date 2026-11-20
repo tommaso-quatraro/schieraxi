@@ -1,4 +1,4 @@
-// Il sito si legge e funziona anche senza JavaScript. Qui solo il pulsante del tema.
+// Il sito si legge e funziona anche senza JavaScript. Qui solo il pulsante del tema e la pulizia del service worker di prima.
 const radice = document.documentElement;
 // colore della barra del browser per ogni tema: lo stesso di --fondo in stile.css
 const BARRA = { chiaro: '#ffffff', scuro: '#121513' };
@@ -33,4 +33,21 @@ function tema() {
   });
 }
 
+// Dal 20/11/2026 il sito non ha più un service worker né copie salvate. Quello di prima si toglie da solo (sw.js), ma una
+// vecchia copia di installa.js rimasta nella cache del browser può registrarlo di nuovo: qui lo si toglie anche dalla
+// pagina, con le copie. Tocca solo questo indirizzo: la web app ne ha un altro e le sue copie restano.
+function togliServiceWorker() {
+  try {
+    navigator.serviceWorker
+      ?.getRegistrations()
+      .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+      .catch(() => {});
+    globalThis.caches
+      ?.keys()
+      .then((nomi) => Promise.all(nomi.map((n) => globalThis.caches.delete(n))))
+      .catch(() => {});
+  } catch (e) {}
+}
+
 tema();
+togliServiceWorker();

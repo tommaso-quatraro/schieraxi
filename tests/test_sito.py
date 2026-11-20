@@ -514,12 +514,52 @@ def test_niente_suggerimento_ne_pulsanti_per_installare(nome):
 
 def test_file_dell_installazione_tolti_e_nessuna_registrazione():
     for f in ("manifest.webmanifest", "en/manifest.webmanifest", "js/installa.js", "icona-maskable-192.png",
-              "icona-maskable-512.png"):
+              "icona-maskable-512.png", "img/schermata-stretta.png"):
         assert not (SITO / f).exists(), f
     for f in (SITO / "js").glob("*.js"):
         testo = f.read_text(encoding="utf-8")
-        for vietato in ("serviceWorker", "beforeinstallprompt"):
+        for vietato in (".register(", "beforeinstallprompt"):
             assert vietato not in testo, (f.name, vietato)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="serve node per provare la pulizia dalla pagina")
+def test_la_pagina_toglie_il_service_worker_rimasto():
+    """Una vecchia copia di installa.js rimasta nella cache del browser può registrare di nuovo sw.js: la pagina nuova toglie
+    ogni registrazione e ogni copia salvata del sito (la web app sta su un altro indirizzo, le sue copie non si toccano).
+    Dove il browser non ha service worker né copie (http, finestre private) non dà errori."""
+    prova = r"""
+const fs = require("fs");
+const testo = fs.readFileSync(process.argv[1], "utf8");
+const documento = { documentElement: { dataset: {} }, getElementById: () => null, querySelectorAll: () => [] };
+const memoria = { getItem: () => null, setItem() {}, removeItem() {} };
+const pausa = () => new Promise((ok) => setTimeout(ok, 50));
+process.on("unhandledRejection", (e) => { console.log(JSON.stringify({ rifiuto: String(e) })); process.exit(1); });
+function esegui(nav, cachesFinti) {
+  Object.defineProperty(globalThis, "navigator", { value: nav, configurable: true, writable: true });
+  if (cachesFinti === undefined) delete globalThis.caches; else globalThis.caches = cachesFinti;
+  new Function("document", "localStorage", testo)(documento, memoria);
+}
+(async () => {
+  const r = {};
+  let tolte = 0;
+  const regs = [{ unregister: () => { tolte++; return Promise.resolve(true); } }];
+  const cache = new Set(["schieraxi-14"]);
+  esegui({ serviceWorker: { getRegistrations: () => Promise.resolve(regs) } },
+         { keys: () => Promise.resolve([...cache]), delete: (n) => Promise.resolve(cache.delete(n)) });
+  await pausa();
+  r.registrazioniTolte = tolte;
+  r.cache = [...cache];
+  try { esegui({}, undefined); await pausa(); r.senzaServiceWorker = "ok"; } catch (e) { r.senzaServiceWorker = String(e); }
+  console.log(JSON.stringify(r));
+})();
+"""
+    esito = subprocess.run(["node", "-e", prova, str(SITO / "js" / "principale.js")], capture_output=True, text=True,
+                           timeout=60)
+    assert esito.returncode == 0, esito.stdout + esito.stderr
+    r = json.loads(esito.stdout.strip().splitlines()[-1])
+    assert r["registrazioniTolte"] == 1, "la registrazione rimasta va tolta"
+    assert r["cache"] == [], "le copie salvate del sito vanno svuotate"
+    assert r["senzaServiceWorker"] == "ok"
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="serve node per provare il service worker")
