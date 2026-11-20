@@ -2,20 +2,22 @@ import SwiftUI
 
 /// La scheda di un giocatore (foglio), una sola come la web (#616, `htmlScheda` di app.js). In alto ciò che serve per decidere:
 /// volto, nome, «Ruolo · club», la partita, il fantavoto atteso «se gioca» con «gioca N%» e lo stato a parole, la nota della
-/// fonte, «Perché è titolare», «Perché questo numero», gli ultimi voti e, per un titolare della tua formazione ancora aperta,
-/// «Sostituisci». Il resto sta in «Tutti i numeri», chiuso. Dalla Formazione si apre subito con la previsione già letta
-/// (`ContestoScheda`); gli ultimi voti e «Tutti i numeri» arrivano con `/api/giocatore`.
+/// fonte, «Perché è titolare», «Perché questo numero», gli ultimi voti e, nella tua formazione ancora aperta, «Sostituisci» per
+/// un titolare o «Metti in campo» per chi non è fra gli 11 (#778). Il resto sta in «Tutti i numeri», chiuso. Dalla Formazione si
+/// apre subito con la previsione già letta (`ContestoScheda`); gli ultimi voti e «Tutti i numeri» arrivano con `/api/giocatore`.
 struct GiocatoreSheet: View {
     let id: Int
     let server: any ServerClient
     var contesto: ContestoScheda? = nil
     /// «Sostituisci»: chi apre il foglio lo chiude e poi apre la scelta del sostituto.
     var sostituisci: (() -> Void)? = nil
+    /// «Metti in campo»: chi apre il foglio lo chiude e poi apre l'elenco di chi può lasciargli il posto.
+    var mettiInCampo: (() -> Void)? = nil
     @Environment(\.dismiss) private var chiudi
 
     var body: some View {
         NavigationStack {
-            GiocatoreCorpo(id: id, server: server, contesto: contesto, sostituisci: sostituisci)
+            GiocatoreCorpo(id: id, server: server, contesto: contesto, sostituisci: sostituisci, mettiInCampo: mettiInCampo)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(Catalogo.Shell.chiudi) { chiudi() }.keyboardShortcut(.cancelAction)
@@ -42,14 +44,17 @@ struct GiocatoreCorpo: View {
     let id: Int
     let contesto: ContestoScheda?
     let sostituisci: (() -> Void)?
+    let mettiInCampo: (() -> Void)?
     @StateObject private var vm: SchedaGiocatoreViewModel
     /// «Tutti i numeri» parte chiuso; solo nella foto `giocatore-fondo` (demo con `-DEMO_FONDO`) è aperto, per vederlo.
     @State private var numeriAperti = Demo.attivo && Demo.argomento("DEMO_FONDO") != nil
 
-    init(id: Int, server: any ServerClient, contesto: ContestoScheda? = nil, sostituisci: (() -> Void)? = nil) {
+    init(id: Int, server: any ServerClient, contesto: ContestoScheda? = nil, sostituisci: (() -> Void)? = nil,
+         mettiInCampo: (() -> Void)? = nil) {
         self.id = id
         self.contesto = contesto
         self.sostituisci = sostituisci
+        self.mettiInCampo = mettiInCampo
         _vm = StateObject(wrappedValue: SchedaGiocatoreViewModel(id: id, server: server))
     }
 
@@ -180,20 +185,27 @@ struct GiocatoreCorpo: View {
             .accessibilityLabel("\(TempiLega.serieA(v.giornata)): \(etichetta)")
     }
 
-    /// Per un titolare della tua formazione ancora aperta «Sostituisci»; per uno che gioca un anticipo già cominciato la frase
-    /// della web (`formazione.bloccati`).
+    /// Nella tua formazione ancora aperta «Sostituisci» per un titolare e «Metti in campo» per chi non è fra gli 11 (alle stesse
+    /// condizioni, come la web); per chi gioca un anticipo già cominciato la frase della web (`formazione.bloccati`).
     @ViewBuilder
     private var azioneFormazione: some View {
         if let contesto, contesto.sostituibile, let sostituisci {
-            Button(action: sostituisci) {
-                Label(Catalogo.Formazione.sostituisci, systemImage: "arrow.left.arrow.right")
-                    .frame(maxWidth: .infinity, minHeight: 44)
-            }
-            .pulsanteVetro(prominente: true)
+            pulsanteFormazione(Catalogo.Formazione.sostituisci, azione: sostituisci)
+        } else if let contesto, contesto.entrabile, let mettiInCampo {
+            pulsanteFormazione(Catalogo.Formazione.mettiInCampo, azione: mettiInCampo)
         } else if contesto?.fermo == true {
             Text(Catalogo.Formazione.bloccati).font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// Il pulsante pieno di un cambio nella formazione: chi apre il foglio lo chiude e apre la scelta.
+    private func pulsanteFormazione(_ titolo: String, azione: @escaping () -> Void) -> some View {
+        Button(action: azione) {
+            Label(titolo, systemImage: "arrow.left.arrow.right")
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .pulsanteVetro(prominente: true)
     }
 
     private var cartaTuttiINumeri: some View {

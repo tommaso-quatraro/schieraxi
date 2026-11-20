@@ -29,7 +29,9 @@ def test_web_cambio_password_e_recupero_mandano_le_notifiche_di_questo_dispositi
         prima, dopo = APP.split(percorso, 1)
         chiamata = prima[-300:] + dopo.split("\n", 1)[0]
         assert "await endpointPushQui()" in chiamata and "endpoint_push" in chiamata, percorso
-    assert "navigator.serviceWorker.getRegistration()" in APP.split("async function endpointPushQui()")[1].split("\n}\n")[0]
+    # l'indirizzo viene dall'iscrizione del browser, letta senza aspettare il service worker (#800: la legge anche rimandaAvvisi)
+    assert "await iscrizionePushQui()" in APP.split("async function endpointPushQui()")[1].split("\n}\n")[0]
+    assert "navigator.serviceWorker.getRegistration()" in APP.split("async function iscrizionePushQui()")[1].split("\n}\n")[0]
 
 
 def test_la_prima_schermata_ha_solo_accedi_e_registrati():

@@ -95,6 +95,16 @@ final class FotoUITests: XCTestCase {
                        "nella foto lega-stato-nostri l'ultimo indicatore del consiglio non deve essere a video")
     }
 
+    /// `formazione-metti-in-campo` (#778): la scena apre da sola l'elenco «Chi esce per …» del panchinaro della demo, con in cima
+    /// il cambio che rende di più, che cambia modulo («Si passa al …»).
+    func testLaFotoDiMettiInCampoMostraLElenco() {
+        avvia(["-DEMO_SCHERMATA", "formazione-metti-in-campo"])
+        XCTAssertTrue(elemento(cheComincia: "Chi esce per Fabio Dimarzi").waitForExistence(timeout: 30),
+                      "nella foto formazione-metti-in-campo l'elenco deve aprirsi da solo")
+        let riga = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Si passa al")).firstMatch
+        XCTAssertTrue(riga.waitForExistence(timeout: 10), "in cima all'elenco c'è un cambio di modulo, con «Si passa al …»")
+    }
+
     /// `lega-rosa-fondo` (#425): la rosa di un'altra squadra (#375) arriva fino a «Rose aggiornate il…», in fondo alla lista.
     func testIlFondoDellaRosaMostraLUltimaRiga() {
         avvia(["-DEMO_SCHERMATA", "lega-rosa", "-DEMO_FONDO", "1"])
