@@ -3,15 +3,20 @@ import Testing
 @testable import Schieraxi
 
 /// Regole, un salvataggio che non riesce (#808), come la web: `salva()` dice se è riuscito (la domanda sulle modifiche non salvate
-/// chiude la pagina solo allora) e con il 412 (regole cambiate su un altro dispositivo) i campi scritti restano, la pagina resta
-/// aperta e le regole del server si rileggono. Regole della fixture `regole.json` (inventate).
+/// chiude la pagina solo allora). Con il 412 (regole cambiate su un altro dispositivo) la frase della web e, dopo un attimo, i campi
+/// si ricaricano con le regole del server: la pagina resta aperta, le modifiche non salvate si perdono, e un nuovo «Salva» non
+/// scrive mai sopra la versione dell'altro dispositivo senza che si vedano i valori nuovi. Regole della fixture `regole.json`.
 @MainActor
 @Suite("Regole: salvataggio che non riesce (#808)")
 struct RegoleSalvataggioTests {
-    /// Le regole della fixture; i primi `conflitti` PUT rispondono 412, quelli dopo rimandano il corpo ricevuto.
-    private func server(conflitti: Int = 1) -> ServerDiProva {
+    /// Le regole della fixture (assist 1); dalla seconda lettura quelle salvate dall'altro dispositivo (assist 2). I primi
+    /// `conflitti` PUT rispondono 412, quelli dopo rimandano il corpo ricevuto. `rilettureRotte`: dopo la prima, le letture non
+    /// rispondono.
+    private func server(conflitti: Int = 1, rilettureRotte: Bool = false) -> ServerDiProva {
         let rifiuti = Scatola<Int>()
         rifiuti.valore = conflitti
+        let letture = Scatola<Int>()
+        letture.valore = 0
         return ServerDiProva { metodo, _, corpo in
             if metodo == "PUT" {
                 let restano = rifiuti.valore ?? 0
@@ -21,39 +26,78 @@ struct RegoleSalvataggioTests {
                 }
                 return corpo ?? Data("{}".utf8)
             }
-            return try Fixture.dati("regole")
+            let n = (letture.valore ?? 0) + 1
+            letture.valore = n
+            if n > 1, rilettureRotte { throw ErroreApi.rete("spento") }
+            let testo = try Fixture.testo("regole")
+            return Data((n == 1 ? testo : testo.replacingOccurrences(of: "\"assist\":1.0", with: "\"assist\":2.0")).utf8)
         }
     }
 
-    @Test("Con il 412 i campi scritti restano, la pagina non si chiude e le regole si rileggono")
-    func conflittoTieneICampi() async {
+    /// Aspetta (al massimo 5 secondi) che una condizione diventi vera.
+    private func aspetta(_ condizione: () -> Bool) async {
+        var tentativi = 0
+        while !condizione() && tentativi < 250 {
+            try? await Task.sleep(for: .milliseconds(20))
+            tentativi += 1
+        }
+    }
+
+    @Test("Con il 412 la frase della web, poi i campi si ricaricano con le regole del server e la pagina resta aperta")
+    func conflittoRicaricaLeRegoleDelServer() async throws {
         let s = server()
-        let vm = RegoleEditorViewModel(server: s)
+        let vm = RegoleEditorViewModel(server: s, attesaDopoConflitto: .zero)
         await vm.carica()
         vm.numero("bonus.assist").wrappedValue = 1.5
         let riuscito = await vm.salva()
         #expect(!riuscito, "un 412 non è un salvataggio riuscito: la domanda non chiude la pagina")
-        #expect(vm.modificato, "la modifica resta da salvare")
-        #expect(vm.numero("bonus.assist").wrappedValue == 1.5, "il campo scritto resta com'è")
-        #expect(vm.esito == Catalogo.Err.conflitto, "la frase della web per il 412")
+        #expect(vm.numero("bonus.assist").wrappedValue == 2, "i campi hanno le regole salvate dall'altro dispositivo")
+        #expect(!vm.modificato, "le modifiche non salvate si perdono, come sulla web")
+        #expect(vm.esito == Catalogo.Err.conflitto, "la frase della web per il 412 resta da leggere")
         #expect(!vm.esitoRiuscito)
         #expect(s.quante("GET /api/regole") == 2, "dopo il 412 le regole del server si rileggono")
     }
 
-    @Test("Dopo il 412 un nuovo «Salva» manda i campi scritti")
-    func dopoIlConflittoSiSalvanoICampiScritti() async throws {
+    @Test("Dopo il 412 un nuovo «Salva» parte dalle regole dell'altro dispositivo, mai dai campi scritti prima")
+    func dopoIlConflittoNonSiScriveSopra() async throws {
         let s = server()
-        let vm = RegoleEditorViewModel(server: s)
+        let vm = RegoleEditorViewModel(server: s, attesaDopoConflitto: .zero)
         await vm.carica()
         vm.numero("bonus.assist").wrappedValue = 1.5
         await vm.salva()
+        vm.numero("bonus.mvp").wrappedValue = 1
         let riuscito = await vm.salva()
         #expect(riuscito)
-        #expect(!vm.modificato)
-        #expect(vm.esito == Catalogo.Regole.regoleSalvateConsigli)
         let corpo = try #require(s.corpiInviati(a: "PUT /api/regole").last)
         let inviate = try JSONDecoder().decode(JSONValue.self, from: corpo)
-        #expect(inviate.valore("bonus.assist")?.numero == 1.5, "parte quello che c'è nei campi")
+        #expect(inviate.valore("bonus.assist")?.numero == 2, "l'assist resta quello dell'altro dispositivo")
+        #expect(inviate.valore("bonus.mvp")?.numero == 1, "parte la modifica fatta sui valori nuovi")
+    }
+
+    @Test("Mentre si aspetta di ricaricare dopo il 412, un altro «Salva» non parte")
+    func nienteSecondoSalvaDuranteLAttesa() async throws {
+        let s = server()
+        let vm = RegoleEditorViewModel(server: s, attesaDopoConflitto: .milliseconds(500))
+        await vm.carica()
+        vm.numero("bonus.assist").wrappedValue = 1.5
+        let primo = Task { await vm.salva() }
+        await aspetta { vm.esito == Catalogo.Err.conflitto }
+        #expect(vm.inCorso, "durante l'attesa il salvataggio è ancora in corso")
+        #expect(vm.numero("bonus.assist").wrappedValue == 1.5, "per un attimo si vede ancora quello che si era scritto")
+        #expect(await vm.salva() == false, "il secondo «Salva» non parte")
+        #expect(s.quante("PUT /api/regole") == 1)
+        #expect(await primo.value == false)
+        #expect(vm.numero("bonus.assist").wrappedValue == 2)
+    }
+
+    @Test("Dopo il 412 l'ETag ricordato non vale più: finché una lettura riuscita non porta quello vero, ogni «Salva» riceve 412")
+    func etagDaRileggereDopoIlConflitto() async throws {
+        let s = server(rilettureRotte: true)
+        let vm = RegoleEditorViewModel(server: s, attesaDopoConflitto: .zero)
+        await vm.carica()
+        vm.numero("bonus.assist").wrappedValue = 1.5
+        #expect(await vm.salva() == false)
+        #expect(VersioniRisorse.condivise.leggi(server: s.indirizzo, risorsa: "regole") == RegoleEditorViewModel.etagDaRileggere)
     }
 
     @Test("Un controllo che non passa o un errore del server: non riuscito, e la modifica resta")

@@ -25,8 +25,12 @@ final class RegoleEditorViewModel: ViewModelBase {
     @Published var erroreRiconoscimento: String?
     @Published var riconoscimentoInCorso = false
 
-    init(server: any ServerClient) {
+    private let attesaDopoConflitto: Duration
+    static let etagDaRileggere = "\"da-rileggere\""
+
+    init(server: any ServerClient, attesaDopoConflitto: Duration = .milliseconds(2500)) {
         self.server = server
+        self.attesaDopoConflitto = attesaDopoConflitto
         // Dati che si modificano: niente cache (non si deve ripartire da una copia vecchia).
         caricatore = Caricatore<JSONValue>("/api/regole", snake: false, cache: false, server: server)
         super.init()
