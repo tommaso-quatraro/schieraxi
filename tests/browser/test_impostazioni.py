@@ -798,6 +798,19 @@ def test_in_inglese_le_giornate_della_prima_giornata_senza_ordinali(web):
     assert voci[1] == "From Serie A matchday 2" and voci[20] == "From Serie A matchday 21", voci[:3]
 
 
+def test_in_inglese_il_voto_d_ufficio_ha_un_nome_solo_in_regole(web):
+    """In Regole e scadenza in inglese il voto d'ufficio era «Default grade» fra le riserve e «Official grade» fra le partite rinviate
+    (#833), e «official grades» sono i voti veri dei giornali: un nome solo, «default grade»."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    tocca(web, principale(web).get_by_text("Edit the values", exact=True))
+    tutto = principale(web).evaluate("m => m.textContent")               # anche le sezioni chiuse e i valori nascosti
+    assert "Postponed matches" in tutto and "Default grade if there is no substitute" in tutto
+    assert "Official grade" not in tutto and "official grade" not in tutto
+    assert tutto.count("Default grade") >= 3, tutto.count("Default grade")   # riserve, valore, partite rinviate
+
+
 def test_la_scadenza_si_cambia_e_si_salva_subito(web):
     solo(web, "prima")
     salvate = _scritture(web, "/api/regole")

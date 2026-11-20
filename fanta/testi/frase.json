@@ -578,7 +578,7 @@
   },
   "frase.rinvio.voto_ufficio": {
     "it": "partita rinviata: voto d'ufficio {voto}",
-    "en": "postponed match: official grade {voto}"
+    "en": "postponed match: default grade {voto}"
   },
   "frase.probabili.oggi": {
     "it": "Probabili aggiornate alle {ora}",
