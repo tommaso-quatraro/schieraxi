@@ -91,9 +91,9 @@ def test_funzione_accesa_o_senza_rotte_proprie_come_prima(dati_isolati):
     c = TestClient(server.app, headers={"X-Fanta": "1"})
     assert c.get("/api/live").status_code == 200
     # funzioni spente ma senza rotte proprie: le rotte rispondono come sempre (mai 404 con il campo «funzione»)
-    for f in ("scambi_costruisci", "seguiti", "diario", "backup", "squadre_altrui", "novita", "elenco_giocatori"):
+    for f in ("seguiti", "diario", "backup", "squadre_altrui", "novita", "elenco_giocatori"):
         fn.imposta(f, False)
-    for rotta in ("/api/scambi/analizza?con=x&do=1&ricevo=2", "/api/osservati", "/api/diario", "/api/backup", "/api/squadre", "/api/novita"):
+    for rotta in ("/api/osservati", "/api/diario", "/api/backup", "/api/squadre", "/api/novita"):
         r = c.get(rotta)
         corpo = r.json() if r.headers.get("content-type", "").startswith("application/json") else None
         assert not (isinstance(corpo, dict) and "funzione" in corpo), rotta
@@ -130,8 +130,55 @@ def test_mostra_tutte_non_riapre_rete_e_diretta(dati_isolati):
 def test_di_rotta():
     assert fn.di_rotta("GET", "/api/asta/") == "asta"
     assert fn.di_rotta("POST", "/api/asta") is None
-    assert fn.di_rotta("GET", "/api/scambi/analizza") is None
-    assert set(fn.ROTTE.values()) <= fn.CON_ROTTE
+    # #795: le schermate di mercato e scambi non ci sono più (#615, #634): le loro rotte seguono l'interruttore come le altre
+    assert fn.di_rotta("GET", "/api/mercato") == "mercato"
+    assert fn.di_rotta("GET", "/api/scambi/analizza") == "scambi_costruisci"
+    assert fn.di_rotta("POST", "/api/scambi/da-testo") == "scambi_costruisci"
+    assert fn.di_rotta("GET", "/api/scambi/da-testo") is None
+    assert set(fn.ROTTE.values()) <= fn.CON_ROTTE <= set(fn.FUNZIONI)
+
+
+def test_i_nomi_delle_funzioni_con_rotte_hanno_la_traduzione_inglese():
+    """Il 404 di una funzione spenta dice il suo nome: in inglese la web lo traduce con la chiave err.p_fn_<id> del catalogo (#795)."""
+    import json
+    from pathlib import Path
+    catalogo = json.loads((Path(fn.__file__).parent / "testi" / "err.json").read_text(encoding="utf-8"))
+    for f in sorted(fn.CON_ROTTE):
+        voce = catalogo.get(f"err.p_fn_{f}") or {}
+        assert voce.get("it") == fn.FUNZIONI[f][0] and voce.get("en") and voce["en"] != voce["it"], (f, voce)
+
+
+# ---------------------------------------------------------------- mercato e scambi (#795): spenti come le altre funzioni con rotte
+MERCATO_E_SCAMBI = [("mercato", "GET", "/api/mercato", {}),
+                    ("scambi_costruisci", "GET", "/api/scambi/analizza", {"params": {"con": "x", "do": "1", "ricevo": "2"}}),
+                    ("scambi_costruisci", "POST", "/api/scambi/da-testo", {"json": {"testo": "ti do Rossi per Bianchi"}})]
+
+
+@pytest.mark.parametrize(("funzione", "metodo", "rotta", "argomenti"), MERCATO_E_SCAMBI)
+def test_mercato_e_scambi_spenti_rispondono_come_le_altre_funzioni_spente(dati_isolati, funzione, metodo, rotta, argomenti):
+    c = TestClient(server.app, headers={"X-Fanta": "1"})
+    fn.imposta(funzione, False)
+    r = c.request(metodo, rotta, **argomenti)
+    assert r.status_code == 404, (rotta, r.status_code, r.text)
+    assert r.json() == {"detail": fn.messaggio_spenta(funzione), "funzione": funzione}
+    assert r.headers["cache-control"] == "no-store"
+    c.put("/api/funzioni", json={"mostra_tutte": True})                 # come le altre: «Mostra tutte» le riapre
+    assert "funzione" not in c.request(metodo, rotta, **argomenti).json()
+
+
+def test_mercato_con_l_interruttore_acceso_risponde_come_prima(dati_isolati, monkeypatch):
+    from fanta import consigli, lega
+    squadra = lega.Squadra("Mia", [lega.GiocatoreRosa(1, "g1", "P", "INT")])
+    lega.salva(lega.Rose([squadra], "Mia"), dati_isolati / "rose.json")
+    chiamate = []
+    monkeypatch.setattr(consigli, "mercato", lambda db, regole, rose, nome: chiamate.append(nome) or {"proposte": [], "finto": True})
+    c = TestClient(server.app, headers={"X-Fanta": "1"})
+    for scelta in (None, True):                                          # predefinito e acceso dall'amministratore
+        fn.imposta("mercato", scelta)
+        r = c.get("/api/mercato")
+        assert r.status_code == 200 and r.json() == {"proposte": [], "finto": True}, r.text
+    fn.imposta("mercato", False)
+    assert c.get("/api/mercato").status_code == 404 and len(chiamate) == 2      # spento: il calcolo non parte nemmeno
 
 
 def test_due_utenti_ognuno_il_suo_mostra_tutte(multiutente, dati_isolati):
@@ -152,6 +199,23 @@ def test_due_utenti_ognuno_il_suo_mostra_tutte(multiutente, dati_isolati):
     assert a.get("/api/live").status_code == 404                  # «Mostra tutte» non riapre le rotte bloccate
     fn.imposta("live", True)
     assert a.get("/api/live").status_code == 200 and b.get("/api/live").status_code == 200
+
+
+@pytest.mark.parametrize(("funzione", "metodo", "rotta", "argomenti"), MERCATO_E_SCAMBI)
+def test_versione_pubblica_spenti_di_predefinito_tranne_per_l_amministratore(multiutente, dati_isolati, monkeypatch,
+                                                                              funzione, metodo, rotta, argomenti):
+    """#795, il caso del server pubblico: senza nessuna scelta, «Cambi consigliati» e «Scambi: costruisci» sono spenti di predefinito.
+    Chi non è amministratore riceve il 404 con il campo `funzione`; l'amministratore passa, come per l'asta."""
+    from test_account_http import cliente, registra
+    monkeypatch.setattr(fn, "VERSIONE_PUBBLICA", True)
+    utente, admin = cliente(), cliente()
+    assert registra(utente, "utentec").status_code == 200
+    assert registra(admin, "gestorea", amministratore=True).status_code == 200
+    r = utente.request(metodo, rotta, **argomenti)
+    assert r.status_code == 404 and r.json() == {"detail": fn.messaggio_spenta(funzione), "funzione": funzione}, (rotta, r.text)
+    r = admin.request(metodo, rotta, **argomenti)
+    assert r.status_code != 404 and "funzione" not in r.json(), (rotta, r.text)
+    assert fn.origine(funzione) == (False, "predefinito")               # nessuna scelta dell'amministratore né dell'ambiente
 
 
 def test_fonti_ombra_spente_saltano_il_passo_di_misura(tmp_path, monkeypatch):
