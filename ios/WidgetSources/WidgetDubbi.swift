@@ -65,23 +65,14 @@ struct VistaDubbi: View {
 
     private func contenuto(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            // con il testo grande il titolo lascia il posto al simbolo (mai «Da contr…»)
-            // a giornata finita la testata dice la giornata finita, non la prossima
-            IntestazioneWidget(titolo: "Da controllare",
-                               icona: r.daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill",
-                               colore: r.daControllare > 0 ? .orange : .white.opacity(0.85),
-                               giornata: r.nomeTestata, soloCorta: famiglia == .systemSmall)
-            if let titolo = r.titoloFase {
-                // formazione chiusa: i dubbi non contano più (i punti stanno nella Formazione e nel widget Prossima giornata).
-                // Parole della web: «Chiusa» dopo la scadenza, «Giornata 8 · 11ª di Serie A: finita» a giornata finita.
+            testata(r)
+            if let corpo = r.corpoFaseDubbi(adesso: voce.date) {
+                // formazione chiusa o giornata finita: i dubbi non contano più (i punti stanno nella Formazione e nel widget Prossima
+                // giornata). La parola della fase sta in testata (#819); qui la frase, poi dove sono i punti.
                 Spacer(minLength: 0)
-                // nel widget piccolo senza «11ª di Serie A» («Giornata 8: finita»); VoiceOver legge i due numeri
-                let forme = r.formeTitoloFase ?? [titolo]
-                GiornataInRiga(forme: famiglia == .systemSmall && forme.count > 1 ? Array(forme.dropFirst()) : forme,
-                               voce: r.voceTitoloFase ?? titolo)
-                    .font(.headline).minimumScaleFactor(0.7)
-                if let frase = r.fraseFase(adesso: voce.date) {
-                    Text(frase).font(.caption).foregroundStyle(.white.opacity(0.8))
+                Text(corpo.frase).font(.headline).minimumScaleFactor(0.7)
+                if let sotto = corpo.sotto {
+                    Text(sotto).font(.caption).foregroundStyle(.white.opacity(0.8))
                 }
                 Spacer(minLength: 0)
             } else if r.daControllare == 0 {
@@ -117,6 +108,24 @@ struct VistaDubbi: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// La testata (`RiassuntoOggi.testataDubbi`): prima della scadenza «Da controllare» con la giornata a destra, dopo la parola
+    /// della fase al posto del titolo (#819). Con la giornata a destra si perde il titolo, mai la giornata (`IntestazioneWidget`);
+    /// a giornata finita il titolo è la giornata stessa e si accorcia di parole intere («Giornata 8: finita»), mai «…».
+    @ViewBuilder
+    private func testata(_ r: RiassuntoOggi) -> some View {
+        let t = r.testataDubbi
+        if r.finita {
+            GiornataInRiga(forme: t.forme, voce: t.voce, simbolo: t.simbolo)
+                .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.85)).minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            // con il testo grande il titolo lascia il posto al simbolo (mai «Da contr…»)
+            IntestazioneWidget(titolo: t.forme.first ?? t.voce, icona: t.simbolo,
+                               colore: r.daControllare > 0 ? .orange : .white.opacity(0.85),
+                               giornata: t.giornata, soloCorta: famiglia == .systemSmall)
+        }
     }
 
     private func riga(_ d: DubbioRiassunto) -> some View {

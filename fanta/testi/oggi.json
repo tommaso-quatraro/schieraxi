@@ -120,8 +120,8 @@
     "en": "For this round their players"
   },
   "oggi.rinvio_aspetta": {
-    "it": "aspettano il recupero (conta il suo voto)",
-    "en": "wait for the make-up game (its grade counts)"
+    "it": "aspettano il recupero (conta il voto del recupero)",
+    "en": "wait for the make-up game (the make-up game's grade counts)"
   },
   "oggi.rinvio_senza_voto": {
     "it": "restano senza voto (entra la riserva)",
