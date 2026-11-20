@@ -603,12 +603,13 @@ struct StatoDatiView: View {
                             riga("Coppe europee fino al", s.coppeFino.map { Quando.dataVersione($0) } ?? "—")
                         }
                         Section(titolo: "Avanzate") {
-                            // i nomi grezzi dei dati («dati-extra») si leggono meglio tradotti; la lista sta ripiegata
+                            // il nome di ogni riga è l'etichetta del server, come la web (#808; un server di prima: i nomi
+                            // dell'app); un passo mai riuscito dice «mai». La lista sta ripiegata
                             DisclosureGroup(Catalogo.Scambio.ultimiAggiornamenti) {
                                 ForEach((s.aggiornamenti ?? []).filter { !NomiDati.daNascondere($0.cosa) }) { a in
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(NomiDati.leggibile(a.cosa))
-                                        Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(Color.testoSecondario)
+                                        Text(NomiDati.nome(a))
+                                        Text(NomiDati.quando(a)).font(.caption).foregroundStyle(Color.testoSecondario)
                                         ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Color.attenzione) }
                                     }
                                     .accessibilityElement(children: .combine)
