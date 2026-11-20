@@ -1310,9 +1310,11 @@ def test_stato_dei_dati_usa_le_etichette_del_server(web):
 
 # ---------------------------------------------------------------- Gestione: gli errori recenti in parole (#779)
 REGISTRO = {"contatori": {"da": "2026-11-20T08:00:00+00:00", "richieste": 1, "riuscite": 0, "rifiutate": 1, "errori": 0,
-                          "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 12.5,
-                          "piu_lente": [{"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3}]},
-            "errori": [],
+                          "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 1234.5,
+                          "piu_lente": [{"rotta": "/api/rotta-mai-vista", "richieste": 2, "medio_ms": 1234.5, "max_ms": 1234.5},
+                                        {"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3}]},
+            "errori": [{"quando": "2026-11-20T09:10:00+00:00", "tipo": "errore", "metodo": "GET", "rotta": "/api/oggi", "stato": "500",
+                        "errore": "KeyError"}],
             "sicurezza": [{"quando": "2026-11-20T09:05:00+00:00", "tipo": "ruolo_cambiato", "nome": "amico"},
                           {"quando": "2026-11-20T09:01:00+00:00", "tipo": "accesso_fallito", "nome": "amico", "ip": "192.0.2.x"},
                           {"quando": "2026-11-20T09:00:30+00:00", "tipo": "fonte-cambiata", "utente": "amico", "fonte": "understat"},
@@ -1322,7 +1324,8 @@ REGISTRO = {"contatori": {"da": "2026-11-20T08:00:00+00:00", "richieste": 1, "ri
 def test_gli_errori_recenti_sono_scritti_in_parole(web):
     """Impostazioni › Gestione, «Errori recenti» (solo chi gestisce il server, con gli account): plurali giusti («1 richiesta»,
     «1 rifiutata»), tempi con la virgola, ora italiana senza «UTC» e nomi degli eventi in parole, mai il nome interno
-    (`ruolo_cambiato`); un evento che il catalogo non conosce ancora si legge senza trattini bassi."""
+    (`ruolo_cambiato`); un evento che il catalogo non conosce ancora si legge senza trattini bassi. Dal #827 niente sigle:
+    millisecondi e secondi in parole, il nome della parte dell'app accanto al percorso, «(amministratore)» fra gli utenti."""
     solo(web, "prima")
     da_utente(web, AMMINISTRATORE)
     web.risposta("/api/admin/utenti", {"utenti": [{"nome_utente": "amico", "nome_visualizzato": "Amico di prova", "ruolo": "amministratore"}],
@@ -1334,12 +1337,20 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     testo = " ".join(carta.inner_text().split())
     assert "1 richiesta dall'ultimo riavvio" in testo and "1 rifiutata" in testo, testo
     assert "1 richieste" not in testo and "1 rifiutate" not in testo, testo
-    assert "7,3 ms" in testo and "12,5 ms" in testo and "7.3" not in testo, testo
-    assert "/api/stato · 1 richiesta, medio 7,3 ms" in testo, testo
+    # tempi in parole (#827): «7,3 millisecondi», sopra il secondo «1,2 secondi»; mai «ms» né la sigla «5xx»
+    assert "Tempo medio 7,3 millisecondi" in testo and "massimo 1,2 secondi" in testo and "7.3" not in testo, testo
+    assert not re.search(r"\bms\b|5xx", testo), testo
+    # il percorso resta per chi gestisce, accanto al nome della parte dell'app; una rotta che l'app non conosce solo con il percorso
+    assert "Apertura dell'app (/api/stato) · 1 richiesta, in media 7,3 millisecondi" in testo, testo
+    assert "/api/rotta-mai-vista · 2 richieste, in media 1,2 secondi" in testo, testo
+    assert "10:10 · Formazione (GET /api/oggi) · errore 500, KeyError" in testo, testo
     assert "10:05" in testo and "10:01" in testo and "UTC" not in testo, testo          # 9:05 UTC = 10:05 in Italia a novembre
     assert "Accesso non riuscito" in testo and "evento che non esiste ancora" in testo, testo
     assert "Fonte dei dati accesa o spenta" in testo and "fonte-cambiata" not in testo, testo     # tipo scritto con il trattino
     assert "_" not in testo, testo
+    utenti = principale(web).locator("#adm-utenti")
+    utenti.get_by_text("Amico di prova", exact=False).wait_for(timeout=10000)
+    assert "Amico di prova (amministratore)" in utenti.inner_text() and "admin)" not in utenti.inner_text(), utenti.inner_text()
     assert not web.errori_console and not web.richieste_fallite
 
 

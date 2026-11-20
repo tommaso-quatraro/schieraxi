@@ -143,6 +143,11 @@ function mostraCalcolo(mostra) {
   }
   if (c) c.hidden = inAttesa <= 0;
 }
+// Una richiesta che non arriva (#827): con il dispositivo fuori linea si chiede di controllare internet; con la rete accesa è il
+// server che non risponde (spento, o riparte) e controllare internet non serve. Il tempo scaduto con la rete accesa resta «lenta o
+// assente»: può essere l'una o l'altra cosa.
+const fraseSenzaRisposta = (scaduta = false) =>
+  t(navigator.onLine === false ? "comune.rete_no" : scaduta ? "comune.rete_timeout" : "comune.server_non_risponde");
 async function api(percorso, opzioni = {}) {
   const risorsa = risorsaDi(percorso, opzioni);
   const scrive = !!risorsa && (opzioni.method || "GET").toUpperCase() !== "GET";
@@ -167,7 +172,7 @@ async function api(percorso, opzioni = {}) {
       const ferma = timeout ? new AbortController() : null;
       const sveglia = ferma ? setTimeout(() => ferma.abort(), timeout) : null;
       try { r = await fetch(percorso, { ...resto, headers: intestazioni, ...(ferma ? { signal: ferma.signal } : {}) }); }
-      catch { const e = new Error(ferma && ferma.signal.aborted ? t("comune.rete_timeout") : t("comune.rete_no")); e.rete = true; throw e; }
+      catch { const e = new Error(fraseSenzaRisposta(!!ferma && ferma.signal.aborted)); e.rete = true; throw e; }
       finally { if (sveglia) clearTimeout(sveglia); }
       let dati = null;
       try { dati = await r.json(); } catch { /* risposta vuota */ }
@@ -185,7 +190,9 @@ async function api(percorso, opzioni = {}) {
       if (!r.ok) {
         if (dati && dati.registrazione) stato.registrazione = dati.registrazione;
         if (r.status === 401 && dati && dati.multiutente) sessioneScaduta();          // vedi "account" più sotto
+        // 502-504 senza la risposta del server (la pagina d'errore del proxy, con il servizio spento o che riparte): non risponde
         const testo = dati && typeof dati.detail === "string" ? dati.detail
+          : dati === null && r.status >= 502 && r.status <= 504 ? t("comune.server_non_risponde")
           : r.status >= 500 ? t("comune.errore_server", { n: r.status }) : t("comune.errore_n", { n: r.status });
         const e = new Error(traduciErrore(testo)); e.originale = testo; e.status = r.status; e.riprova = Number(r.headers.get("Retry-After")) || 0;
         e.codice = dati && typeof dati.codice === "string" ? dati.codice : "";            // nome breve dell'errore (accesso con Google)
@@ -2769,7 +2776,7 @@ async function avvisiTelefono() {
 async function chiamaImmagine(percorso, opzioni = {}) {
   let r;
   try { r = await fetch(percorso, { cache: "no-store", ...opzioni, headers: { "X-Fanta": "1", "Accept-Language": LINGUA, ...(opzioni.headers || {}) } }); }
-  catch { throw new Error(t("comune.rete_no")); }
+  catch { throw new Error(fraseSenzaRisposta()); }
   const dati = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(traduciErrore(dati.detail) || t("lega.operazione_no"));
   return dati;
@@ -3951,6 +3958,28 @@ function collegaAccount() {
   }));
 }
 
+// «Errori recenti» (#827): il nome della parte dell'app che usa una rotta, dalla prima parte del percorso («/api/oggi» →
+// «Formazione»), da scrivere accanto al percorso. Una rotta che qui non c'è (nuova, o «(file dell'app)») resta con il solo percorso.
+const AREE_DELLE_ROTTE = {
+  "nav.formazione": ["oggi", "formazione", "scelta", "giocatore", "giocatori", "live", "osservati", "confronto", "classifica", "avatar"],
+  "nav.giornate": ["diario", "calendario", "affidabilita"],
+  "imp.lega": ["regole", "rose", "rosa", "squadre", "mia-squadra", "crediti", "stagione", "nuova-stagione", "onboarding", "primo-avvio",
+    "scambi", "movimenti", "mercato", "asta"],
+  "imp.account": ["account"],
+  "imp.sez_avvisi": ["avvisi", "push"],
+  "imp.aspetto": ["icona"],
+  "imp.gestione": ["admin", "aggiorna", "backup", "stato-dati"],
+  "imp.informazioni": ["novita", "sotto-il-cofano"],
+  "errori.area_avvio": ["stato", "funzioni"],
+  "errori.area_widget": ["widget"],
+  "errori.area_controllo": ["salute"],
+};
+function nomeDiRotta(rotta) {
+  const m = /^\/api\/([a-z-]+)/.exec(String(rotta || ""));
+  const chiave = m && Object.keys(AREE_DELLE_ROTTE).find(k => AREE_DELLE_ROTTE[k].includes(m[1]));
+  return chiave ? t(chiave) : "";
+}
+
 function collegaAmministratore() {
   if (!stato.account || stato.account.ruolo !== "amministratore" || !$("#scheda-admin")) return;
   const valore = id => ($(id) ? $(id).value : "");
@@ -4010,12 +4039,18 @@ function collegaAmministratore() {
       const evento = tipo => { const nome = String(tipo || "").replace(/-/g, "_");
         return esc(Object.hasOwn(TESTI.it, "errori.evento_" + nome) ? t("errori.evento_" + nome) : nome.replace(/_/g, " ")); };
       const righe = (elenco, vuoto, testo) => elenco.length ? `<ul class="registro-elenco">${elenco.map(testo).join("")}</ul>` : `<p>${vuoto}</p>`;
+      // tempi in parole (#827): «18,2 millisecondi», da un secondo in su «1,2 secondi»; il percorso accanto al nome della parte
+      // dell'app, il metodo solo dove serve (gli errori)
+      const tempo = ms => Number(ms) >= 1000 ? t("errori.secondi", { n: num(Number(ms) / 1000) }) : t("errori.millisecondi", { n: num(ms) });
+      const doveRotta = (rotta, metodo = "") => { const percorso = esc(((metodo ? metodo + " " : "") + (rotta || "")).trim()), nome = nomeDiRotta(rotta);
+        return nome ? t("errori.dove", { nome: esc(nome), rotta: percorso }) : percorso; };
       dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: tp("errori.n_richieste", c.richieste, { n: fNum(c.richieste) }),
           rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }),
-          medio: num(c.tempo_medio_ms), p95: num(c.tempo_p95_ms), max: num(c.tempo_max_ms) })}</p>
-        <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${quando(e.quando)} · ${esc(e.metodo || "")} ${esc(e.rotta || "")} · ${esc(e.stato || "")} ${esc(e.errore || "")}</li>`)}
+          medio: tempo(c.tempo_medio_ms), p95: tempo(c.tempo_p95_ms), max: tempo(c.tempo_max_ms) })}</p>
+        <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${t(e.errore ? "errori.riga_errore_tipo" : "errori.riga_errore",
+          { quando: quando(e.quando), dove: doveRotta(e.rotta, e.metodo), stato: esc(e.stato || ""), tipo: esc(e.errore || "") })}</li>`)}
         <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
-        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), rotta: esc(p.rotta), medio: num(p.medio_ms) })}</li>`)}`;
+        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), dove: doveRotta(p.rotta), medio: tempo(p.medio_ms) })}</li>`)}`;
     } catch (e) { dove.textContent = e.message; }
   };
   $("#adm-registro-aggiorna").addEventListener("click", caricaRegistro);

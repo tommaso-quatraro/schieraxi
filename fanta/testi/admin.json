@@ -88,7 +88,8 @@
     "en": "I'm inviting you to SchieraXI, the app that suggests your fantasy football lineup. Open this link and create your account (the invitation code is already inside, valid for {giorni} days): {link}"
   },
   "admin.admin_breve": {
-    "it": " (admin)",
-    "en": " (admin)"
+    "it": " (amministratore)",
+    "en": " (administrator)",
+    "nota": "dopo il nome di chi gestisce, nell'elenco «Utenti» di Gestione; in parole, non «admin» (#827)"
   }
 }

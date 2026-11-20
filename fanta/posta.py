@@ -167,7 +167,7 @@ def modello_accesso_nuovo(a: str, dispositivo: str, quando: str) -> Messaggio:
     d = re.sub(r"[^\w .,;:/()+-]", "", dispositivo or "")[:80] or "un dispositivo sconosciuto"
     return Messaggio(a, "SchieraXI: accesso da un dispositivo nuovo",
                      f"Ciao,\nil tuo account è stato aperto da un dispositivo nuovo.\n\n    Quando: {quando}\n    Dispositivo: {d}\n\n"
-                     "Se sei stato tu, va bene così. Se non riconosci questo accesso, cambia subito la password da Impostazioni > Il tuo account "
+                     "Se sei stato tu, va bene così. Se non riconosci questo accesso, cambia subito la password da Impostazioni › Il tuo account "
                      "e usa «Esci da tutti i dispositivi».")
 
 
@@ -280,7 +280,7 @@ def modello_password_cambiata(a: str, quando: str) -> Messaggio:
     return Messaggio(a, "SchieraXI: la password del tuo account è cambiata",
                      f"Ciao,\nla password del tuo account SchieraXI è stata cambiata.\n\n    Quando: {quando}\n\n"
                      "Tutti i dispositivi sono stati scollegati e il codice di recupero è stato sostituito con uno nuovo.\n"
-                     "Controlla anche che l'email collegata all'account sia la tua: la trovi in Impostazioni > Il tuo account.\n\n"
+                     "Controlla anche che l'email collegata all'account sia la tua: la trovi in Impostazioni › Il tuo account.\n\n"
                      "Se non sei stato tu, nella schermata di accesso scegli «Password dimenticata» e scrivi questo indirizzo: "
                      "ti arriva un codice per scegliere una password nuova.")
 
@@ -290,7 +290,7 @@ def modello_email_cambiata(a: str) -> Messaggio:
     return Messaggio(a, "SchieraXI: l'email del tuo account è cambiata",
                      "Ciao,\nquesto indirizzo email non è più collegato al tuo account SchieraXI: da ora i messaggi non "
                      "arriveranno più qui.\n\n"
-                     "Se non sei stato tu, fai subito questi passi da Impostazioni > Il tuo account, in quest'ordine:\n"
+                     "Se non sei stato tu, fai subito questi passi da Impostazioni › Il tuo account, in quest'ordine:\n"
                      "1. rimetti questo indirizzo (ti arriva qui un codice da scrivere nell'app);\n"
                      "2. cambia la password;\n"
                      "3. usa «Esci da tutti i dispositivi».\n\n"

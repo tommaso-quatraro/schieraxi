@@ -71,7 +71,7 @@
         "titolo": "A real case: Thuram, matchday 8 of 2026-27 (Inter-Fiorentina)",
         "testo": "Recalculated on 30/10/2026 with only the data before matchday 8 (no probable line-ups, so p comes from recent appearances: 1.0). The match is worth 2.46 expected goals for Inter against 0.99 for Fiorentina. Expected rating 6.46; expected goals 0.505, at 3 points each, add +1.52; expected assists 0.144 add +0.14; cards and the rest about -0.06. Total mu = 8.06. The probability of scoring at least one goal is 1 - e^(-0.505) = 39.7%."
       },
-      "rimandi": ["Line-up (tap a player to see the pieces)", "Settings > Rules and deadline"]
+      "rimandi": ["Line-up (tap a player to see the pieces)", "Settings › Rules and deadline"]
     },
     "voto-base": {
       "titolo": "The expected rating",
@@ -183,7 +183,7 @@
         "titolo": "Calculation example",
         "testo": "Three matches: he got a rating in the two most recent but not in the oldest. Weights 0.5625 (oldest), 0.75, 1.0: appearances = (0.75 + 1.0) / 2.3125 = 76%. With n = 30 players in a group and observed/predicted = 1.20 the correction is 1 + 0.20 × 30/90 = 1.07."
       },
-      "rimandi": ["Data status > Calibration of the probable line-ups"]
+      "rimandi": ["Data status › Calibration of the probable line-ups"]
     },
     "formazione": {
       "titolo": "How the line-up is chosen",
@@ -226,7 +226,7 @@
         "titolo": "Safe with example numbers",
         "testo": "Weight 0.6: a line-up with 70 expected points and a bad day at 64 (10th percentile) is worth 70 - 0.6 × 6 = 66.4 for the choice. One with 69.7 and a bad day at 67 is worth 69.7 - 0.6 × 2.7 = 68.1 and goes ahead. For \"Balanced\" the weights are zero: the one with 70 wins."
       },
-      "rimandi": ["Line-up > Style"]
+      "rimandi": ["Line-up › Style"]
     },
     "stili-misura": {
       "titolo": "Styles put to the test",
@@ -273,7 +273,7 @@
         "It is a rough estimate: it depends on which free agents there are today."
       ],
       "formula": "rate = Σ gain of the useful moves / Σ (price of the incoming - refund)\nnet = gain in points + balance × rate",
-      "rimandi": ["Trades > Balance", "Settings > My team"]
+      "rimandi": ["Trades › Balance", "Settings › My team"]
     },
     "svincoli": {
       "titolo": "Releases and refund",
@@ -347,7 +347,7 @@
         "After every update, consistency checks run: 10 matches per matchday, ratings for every team in finished matchdays, the sum of the players' xG close to that of the match (maximum gap 1), 11 starters per team. Up to 2% of out-of-range rows is source noise, beyond that it is a warning, and everything can be seen in Data status.",
         "Honest risk: Understat is the only source of xG, xA and penalties and Fantacalcio.it the one of ratings and probable line-ups. Their terms are not designed for use by a program: for personal use the risk is low, but it must be rethought before opening the app to many people (permissions, alternative sources)."
       ],
-      "rimandi": ["Data status > Checks"]
+      "rimandi": ["Data status › Checks"]
     },
     "ombra": {
       "titolo": "Sources in shadow mode and how they are promoted",
@@ -357,7 +357,7 @@
         "Promotion rule: a source enters the model only if the error on ratings falls by at least 0.5% and the improvement is there in at least 2 of the last 3 measured seasons. For the data plan an improvement of 1% in the Brier of appearances is also needed and, on line-up points, +0.3 per matchday over at least 100 matchdays. With only one season of data the result is \"indicative only\", it is not promoted. The decision is taken by a person looking at the numbers: the model does not change on its own.",
         "Status on 30/10/2026: no source has been promoted. On the development computer the table of the extra columns is empty (0 matches with the new data), so the test says \"nothing to measure\"; the real collection counts are on the server and can be read in Data status."
       ],
-      "rimandi": ["Data status > Sources in shadow"]
+      "rimandi": ["Data status › Sources in shadow"]
     },
     "avatar": {
       "titolo": "Avatars: faces invented by the code",

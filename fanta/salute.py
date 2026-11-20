@@ -101,10 +101,10 @@ def controlla(db: sqlite3.Connection, adesso: datetime | None = None, file_stato
     except (ValueError, TypeError):
         n_errori = 0
     if n_errori >= ERRORI_GRAVI:
-        problemi["errori"] = f"L'ultimo aggiornamento dei dati ha avuto {n_errori} errori: controlla in Impostazioni > Gestione > Stato dei dati."
+        problemi["errori"] = f"L'ultimo aggiornamento dei dati ha avuto {n_errori} errori: controlla in Impostazioni › Gestione › Stato dei dati."
     for p in archivio.passi_fermi(db, adesso):      # un passo solo che non riesce (per esempio una fonte ferma) si dice per nome
         problemi[f"passo:{p['passo']}"] = (f"Il passo «{p['passo']}» dell'aggiornamento dei dati non riesce da {archivio.durata_testo(p['fermo'])}: "
-                                           "controlla in Impostazioni > Gestione > Stato dei dati.")
+                                           "controlla in Impostazioni › Gestione › Stato dei dati.")
     stato = _json(file_stato)
     avvisati = stato.get("avvisati", {})
     for chiave in [k for k in avvisati if k not in problemi]:
