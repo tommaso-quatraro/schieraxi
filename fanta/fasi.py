@@ -378,8 +378,9 @@ def _rosa_della_giornata(rose, stagione: str, giornata: int, file_diario) -> tup
 
 def _panchina_della_giornata(info: dict[int, dict], numeri, ist: dict | None, titolari: list[int], regole: Regole) -> list[int]:
     """La panchina di una formazione salvata senza panchina, nel riepilogo di una giornata finita (#794): quella congelata alla
-    scadenza (l'istantanea) se gli 11 sono gli stessi; altrimenti quella che «in corso» sceglieva per la giornata (`_panchina_di`)
-    con i numeri della rosa alla scadenza (`diario.numeri_rosa`); senza numeri (nessuna copia alla scadenza) vuota."""
+    scadenza (l'istantanea) se gli 11 sono gli stessi; altrimenti quella che sceglie il sistema con la funzione di «in corso»
+    (`_panchina_di`), ma con i numeri della rosa alla scadenza (`diario.numeri_rosa`): «in corso» usa le previsioni vive, quindi in
+    qualche caso l'ordine delle riserve può essere diverso. Senza numeri (nessuna copia alla scadenza) vuota."""
     congelati = [g.get("id") for g in (ist or {}).get("titolari") or [] if isinstance(g, dict)]
     if congelati and set(congelati) == set(titolari) and (ist or {}).get("panchina"):
         return [int(g["id"]) for g in ist["panchina"] if isinstance(g, dict) and isinstance(g.get("id"), int)]
@@ -392,7 +393,7 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
     contano i suoi giocatori; con `aspetta` restano in formazione senza voto e `recuperi` elenca le partite che mancano (i punti
     possono ancora cambiare), con le altre regole `recuperi` è vuoto (i punti sono già quelli finali).
     Senza la panchina schierata (web e iPhone salvano solo gli 11, e la copia automatica non ce l'ha) la panchina è quella della
-    giornata (`_panchina_della_giornata`): la congelata alla scadenza o quella di «in corso» con i numeri di allora (#794)."""
+    giornata (`_panchina_della_giornata`): la congelata alla scadenza, o quella del sistema con i numeri della scadenza (#794)."""
     r_rinvio = rinvii.regola(regole, stagione, giornata)
     mancano = recuperi_mancanti(db, stagione, giornata)
     # con un recupero da giocare il riepilogo ha anche il menu per decidere quella giornata (`rinvio`, come in Oggi)

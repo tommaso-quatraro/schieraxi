@@ -151,7 +151,8 @@ def test_una_voce_senza_impronta_si_rifa_una_volta_e_tiene_ho_schierato(mondo):
 
 def test_la_migrazione_non_toglie_la_giornata_da_le_tue_scelte(mondo):
     """Decisione del coordinatore: la migrazione rifà solo i punti. Qui un titolare della consigliata mostrata (22) non è più nella
-    rosa: rifatta da zero, la voce passava a «ricostruita» e usciva da «Le tue scelte» e dall'affidabilità."""
+    rosa: rifatta da zero, la voce passava a «ricostruita» e usciva da «Le tue scelte» e dall'affidabilità. I punti della mostrata
+    restano quelli di prima: con la rosa di oggi non si valutano, come in «Correggi» (stesso insieme di giocatori, revisione)."""
     _voti(mondo, 1)
     _voti(mondo, 2)
     prima = _voce_di_prima(mondo, _istantanea(mondo))
@@ -161,7 +162,8 @@ def test_la_migrazione_non_toglie_la_giornata_da_le_tue_scelte(mondo):
     v = _voce(mondo)
     assert (v["consigliata"]["origine"], v["consigliata_di_allora"]) == ("mostrata", "mostrata")
     assert [t["id"] for t in v["consigliata"]["titolari"]] == MOSTRATA
-    assert v["consigliata"]["reale"] == v["schierata"]["reale"] == CON_TUTTI_I_VOTI       # i punti, rifatti con tutti i voti
+    assert v["schierata"]["reale"] == CON_TUTTI_I_VOTI                    # i punti della tua, rifatti con tutti i voti
+    assert v["consigliata"]["reale"] == prima["consigliata"]["reale"]
     assert (v["consigliata"]["atteso"], v["schierata"]["atteso"]) == (prima["consigliata"]["atteso"], prima["schierata"]["atteso"])
     e = diario.elenco(mondo.diario)
     assert e["scelte_tue"]["giornate"] == 1 and e["affidabilita"]["senza_istantanea"] == 0
@@ -186,7 +188,8 @@ def test_con_gli_stessi_voti_la_migrazione_cambia_solo_l_impronta(mondo, venduto
 
 
 def test_una_correzione_dopo_il_rilascio_non_toglie_il_verdetto(mondo):
-    """Stessa strada per una voce che ha già l'impronta: se cambiano i voti cambiano solo i punti, anche con la rosa cambiata."""
+    """Stessa strada per una voce che ha già l'impronta: se cambiano i voti cambiano solo i punti, anche con la rosa cambiata. La
+    mostrata, con il 22 non più in rosa, tiene i suoi punti (come in «Correggi»); la tua prende la correzione."""
     _voti(mondo, 1)
     _voti(mondo, 2)
     _istantanea(mondo)
@@ -196,7 +199,8 @@ def test_una_correzione_dopo_il_rilascio_non_toglie_il_verdetto(mondo):
     _voti(mondo, 2, {25: 10.0})
     assert _aggiorna(mondo) == 1
     v = _voce(mondo)
-    assert v["consigliata"]["origine"] == "mostrata" and v["consigliata"]["reale"] == v["schierata"]["reale"] == CON_TUTTI_I_VOTI + 1
+    assert v["consigliata"]["origine"] == "mostrata" and v["consigliata"]["reale"] == CON_TUTTI_I_VOTI
+    assert v["schierata"]["reale"] == CON_TUTTI_I_VOTI + 1
     assert diario.elenco(mondo.diario)["scelte_tue"]["giornate"] == 1
 
 
@@ -234,8 +238,8 @@ def test_una_voce_senza_impronta_con_ho_schierato_ma_senza_piu_la_scelta_tiene_l
 
 def test_con_le_regole_cambiate_una_voce_che_perde_la_schierata_resta_com_era(mondo, monkeypatch):
     """Le regole cambiano e la voce si rifà da zero; la scelta c'è ed è valida con la rosa, ma rifatta non si valuta più (qui le
-    previsioni danno il 25 come portiere: due portieri). Resta la voce di prima, con la formazione schierata, e i giri dopo non
-    rifanno le simulazioni ogni volta."""
+    previsioni danno il 25 come portiere: due portieri). Resta la voce di prima, con la formazione schierata e i soli punti rifatti,
+    e i giri dopo non rifanno le simulazioni ogni volta."""
     _voti(mondo, 1)
     _voti(mondo, 2)
     assert _aggiorna(mondo) == 1
@@ -250,6 +254,83 @@ def test_con_le_regole_cambiate_una_voce_che_perde_la_schierata_resta_com_era(mo
     monkeypatch.setattr(diario.fz, "migliore", lambda *a, **k: pytest.fail("non deve rifare le simulazioni"))
     assert _aggiorna(mondo, nuove) == 0
     assert _voce(mondo)["schierata"] == prima["schierata"]
+
+
+def _togli_impronta(m) -> dict:
+    d = diario.carica(m.diario)
+    d["giornate"][CHIAVE].pop("impronta_voti")
+    m.diario.write_text(json.dumps(d), encoding="utf-8")
+    return d["giornate"][CHIAVE]
+
+
+def _correggi(m) -> float:
+    diario.salva_schierata(m.db, Regole(), m.rose, 1, "manuale", SCELTI, m.diario, m.scelte, simulazioni=50)
+    return _voce(m)["consigliata"]["reale"]
+
+
+def test_al_rilascio_una_voce_scritta_dopo_la_vendita_di_una_riserva_resta_uguale(mondo):
+    """Revisione di #798, scenario del revisore: il 22, titolare della mostrata, non prende voto; il 24, prima riserva
+    dell'istantanea, prende 8 ma era già venduto quando la voce è stata calcolata. Al rilascio, con gli stessi voti, la
+    consigliata passava da 69,0 a 71,0 e l'esito in «Le tue scelte» cambiava. Con i voti uguali si scrive solo l'impronta."""
+    _voti(mondo, 1)
+    _voti(mondo, 2, {22: None, 24: 8.0})
+    _istantanea(mondo)
+    _vendi(mondo, 24)
+    assert _aggiorna(mondo) == 1
+    prima = _togli_impronta(mondo)
+    esito = diario.elenco(mondo.diario)["scelte_tue"]["per_giornata"]
+    assert _aggiorna(mondo) == 1
+    v = _voce(mondo)
+    assert v.pop("impronta_voti") and v == prima
+    assert diario.elenco(mondo.diario)["scelte_tue"]["per_giornata"] == esito
+    assert _aggiorna(mondo) == 0
+
+
+def test_correggi_e_rilascio_danno_lo_stesso_numero_anche_con_una_riserva_venduta(mondo):
+    """Revisione di #798: «Correggi» e il giro del cron contano con lo stesso insieme di giocatori (la rosa di oggi), quindi il
+    numero non oscilla. Prima: 69,0 dopo «Correggi», 71,0 dopo il giro, di nuovo 69,0 dopo un altro «Correggi»."""
+    _voti(mondo, 1)
+    _voti(mondo, 2, {22: None, 24: 8.0})
+    _istantanea(mondo)
+    assert _aggiorna(mondo) == 1                                          # voce scritta con la rosa intera
+    _vendi(mondo, 24)
+    dopo_correggi = _correggi(mondo)
+    _togli_impronta(mondo)
+    assert _aggiorna(mondo) == 1
+    assert _voce(mondo)["consigliata"]["reale"] == dopo_correggi
+    assert _correggi(mondo) == dopo_correggi
+
+
+def test_con_i_voti_cambiati_i_punti_rifatti_sono_quelli_di_correggi(mondo):
+    """Quando i voti cambiano davvero (voce calcolata senza i voti della seconda partita), i punti rifatti dal giro del cron sono
+    quelli che darebbe «Correggi» con la rosa di oggi, anche se nel frattempo è stata venduta una riserva della mostrata."""
+    _voti(mondo, 1)
+    _voti(mondo, 2, {22: None, 24: 8.0})
+    _voce_di_prima(mondo, _istantanea(mondo))
+    _vendi(mondo, 24)
+    assert _aggiorna(mondo) == 1
+    dal_giro = _voce(mondo)["consigliata"]["reale"]
+    assert _correggi(mondo) == dal_giro
+    assert _aggiorna(mondo) == 0
+
+
+def test_regole_cambiate_su_una_voce_con_i_voti_a_meta_che_perde_la_schierata(mondo, monkeypatch):
+    """Revisione di #798 (sonda del revisore): voce di prima con i voti a metà (54,0), poi cambiano le regole e la scelta, rifatta,
+    non si valuta più. Prima restava 54,0 con l'impronta nuova, e la correzione di #793 non le arrivava più. Ora se ne rifanno i
+    punti: 69,0, con la formazione schierata di prima."""
+    _voti(mondo, 1)
+    _voti(mondo, 2)
+    prima = _voce_di_prima(mondo)
+    assert prima["schierata"]["reale"] < CON_TUTTI_I_VOTI
+    nuove = Regole()
+    nuove.bonus.rigore_sbagliato = -3.0
+    previsioni = diario.previsioni
+    monkeypatch.setattr(diario, "previsioni", lambda *a: previsioni(*a).assign(
+        ruolo=lambda p: p["ruolo"].where(p["id"] != 25, "P")))
+    assert _aggiorna(mondo, nuove) == 1
+    v = _voce(mondo)
+    assert v["schierata"]["reale"] == CON_TUTTI_I_VOTI and v["schierata"]["titolari"] == prima["schierata"]["titolari"]
+    assert _aggiorna(mondo, nuove) == 0
 
 
 def test_un_correggi_arrivato_mentre_il_cron_rifa_la_voce_non_si_perde(mondo, monkeypatch):
