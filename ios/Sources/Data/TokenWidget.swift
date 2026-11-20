@@ -114,8 +114,15 @@ enum TokenWidget {
 
     static func revoca(server: any ServerClient, luoghi: Luoghi) async {
         if Demo.attivo { return }
-        _ = try? await server.richiesta("DELETE", "/api/account/token-widget", corpo: nil)
+        _ = await revocaSulServer(server)
         pulisciLocale(indirizzo: server.indirizzo, luoghi: luoghi)
+    }
+
+    /// Solo la parte del server: toglie il token del widget (serve ancora la sessione) e dice se c'è riuscito. Il telefono non
+    /// cambia: «Esci» lo dimentica solo a uscita riuscita, così se l'uscita non riesce il widget resta collegato (#809).
+    static func revocaSulServer(_ server: any ServerClient) async -> Bool {
+        if Demo.attivo { return false }
+        return (try? await server.richiesta("DELETE", "/api/account/token-widget", corpo: nil)) != nil
     }
 
     /// Via il token dal telefono (Keychain e file condiviso), senza chiamare il server (sessione già finita o server cambiato).
