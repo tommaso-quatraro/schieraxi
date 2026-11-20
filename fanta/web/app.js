@@ -731,7 +731,7 @@ const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURICompone
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
   if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
-  else { try { stato.squadre = await api("/api/squadre"); } catch { stato.squadre = stato.squadre || []; avvioDaRileggere = true; } }
+  else { try { stato.squadre = await api("/api/squadre"); } catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); } }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 // Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
@@ -739,7 +739,9 @@ async function caricaSquadre(seServono = false) {
 // mia squadra» e «Le altre squadre», La mia squadra chiede di importare le rose. Si rileggono quando il browser dice che la rete è
 // tornata e alla prima risposta buona del server (api(): con il server che riparte il browser non dice niente), una lettura alla
 // volta; riuscite, la pagina di Impostazioni che ne dipende si ridisegna. Una lettura che non riesce ancora aspetta il segnale dopo.
+// Solo dopo un guasto della rete o del server (5xx): un rifiuto (4xx) rileggendo non cambia, e ripartirebbe a ogni risposta buona.
 let avvioDaRileggere = false, rileggoAvvio = false;
+function segnaAvvioDaRileggere(e) { if (e && (e.rete || e.status >= 500)) avvioDaRileggere = true; }
 async function rileggiAvvio() {
   if (!avvioDaRileggere || rileggoAvvio) return;
   rileggoAvvio = true; avvioDaRileggere = false;
@@ -786,7 +788,7 @@ async function caricaInfo() {
     segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
     stato.rigaStato = { offline: true };
-    avvioDaRileggere = true;
+    segnaAvvioDaRileggere(e);
   }
   aggiornaRigaStato();
 }

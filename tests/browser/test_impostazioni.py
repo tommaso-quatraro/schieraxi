@@ -1307,6 +1307,19 @@ def test_lo_stato_d_avvio_si_rilegge_al_primo_dato_fresco(web):
     assert voce(web, "La mia squadra").count() == 1
 
 
+def test_un_rifiuto_del_server_non_fa_rileggere_lo_stato_d_avvio(web):
+    """Lo stato d'avvio si rilegge solo dopo un guasto della rete o del server (5xx): un rifiuto (4xx) rileggendo non cambia, e
+    farebbe ripartire le letture a ogni risposta buona."""
+    solo(web, "prima")
+    web.risposta("/api/squadre", {"detail": "Rose non trovate"}, stato=409)
+    web.risposta("/api/primo-avvio", {"primo_avvio": {"fatti": [], "saltati": [], "chiuso": True}})   # senza squadre la guida rileggerebbe
+    web.apri("/?vista=impostazioni")
+    assert web.richieste.count("/api/squadre") == 1, web.richieste
+    tocca(web, barra(web).get_by_role("link", name="Giornate"))
+    tocca(web, barra(web).get_by_role("link", name="Formazione"))
+    assert web.richieste.count("/api/squadre") == 1, f"lo stato d'avvio si è riletto dopo un rifiuto: {web.richieste}"
+
+
 def elimina_l_account(web, stato: int) -> list[dict]:
     """In Il tuo account, «Elimina l'account» con la password, confermato; la rotta risponde con `stato`. Restituisce le
     disiscrizioni dagli avvisi mandate al server."""
