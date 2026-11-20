@@ -13,9 +13,6 @@
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121513">
 <meta name="color-scheme" content="light dark">
 <meta name="application-name" content="SchieraXI">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="SchieraXI">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SchieraXI">
 <meta property="og:title" content="SchieraXI – fantasy football lineup advice (fantacalcio)">
@@ -32,12 +29,10 @@
 <meta name="twitter:image:alt" content="SchieraXI: the symbol with eleven dots in a 4-3-3 formation">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icona-192.png">
-<link rel="manifest" href="/en/manifest.webmanifest">
 <script src="/js/tema.js"></script>
 <link rel="preload" href="/font/archivo-semistretto.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/stile.css">
 <link rel="modulepreload" href="/js/principale.js">
-<link rel="modulepreload" href="/js/installa.js">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -59,7 +54,6 @@
 <a class="salta" href="#principale">Skip to content</a>
 <header class="alto">
   <div class="cont cab">
-    <button type="button" class="icona indietro" id="indietro" hidden aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
     <a class="nome" href="/en/" aria-label="SchieraXI, home page"><img src="/favicon.svg" alt="" width="28" height="28"><svg class="wm-svg wm-bar" aria-hidden="true" focusable="false"><use href="#wm-c"/></svg></a>
     <nav class="menu" aria-label="Sections">
       <a href="#come">How it works</a>
@@ -67,7 +61,6 @@
       <a href="#domande">Questions</a>
     </nav>
     <div class="cab-azioni">
-      <button type="button" class="icona" id="installa" hidden aria-label="Install SchieraXI as an app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg></button>
       <a class="tasto tasto-cab" href="https://app.schieraxi.it">Open the web app</a>
       <button type="button" class="icona tema-btn" id="tema" hidden data-t-auto="Theme: automatic. Tap to change." data-t-chiaro="Theme: light. Tap to change." data-t-scuro="Theme: dark. Tap to change." aria-label="Theme: automatic. Tap to change.">
         <svg class="i-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>
@@ -209,14 +202,6 @@
   </div>
 </footer>
 
-<div class="suggerimento" id="ios-hint" hidden role="note">
-  <span>To get it as an app: tap “Share”, then “Add to Home Screen”.</span>
-  <button type="button" class="icona" id="ios-chiudi" aria-label="Close the tip">×</button>
-</div>
-<div class="suggerimento" id="aggiorna" hidden role="status">
-  <span>There is a new version of the site.</span>
-  <button type="button" class="tasto" id="ricarica">Reload</button>
-</div>
 <script type="module" src="/js/principale.js"></script>
 </body>
 </html>

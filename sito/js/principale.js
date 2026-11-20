@@ -1,6 +1,4 @@
-// Il sito si legge e funziona anche senza JavaScript. Qui solo: pulsante del tema e installazione come app.
-import { installa } from './installa.js';
-
+// Il sito si legge e funziona anche senza JavaScript. Qui solo il pulsante del tema.
 const radice = document.documentElement;
 // colore della barra del browser per ogni tema: lo stesso di --fondo in stile.css
 const BARRA = { chiaro: '#ffffff', scuro: '#121513' };
@@ -15,7 +13,7 @@ function tema() {
     b.hidden = false;
     const t = leggi();
     b.setAttribute('aria-label', b.dataset['t' + t[0].toUpperCase() + t.slice(1)] || 'Tema');
-    // la barra del browser o della finestra dell'app segue il tema scelto a mano
+    // la barra del browser segue il tema scelto a mano
     document.querySelectorAll('meta[name=theme-color]').forEach((m) => {
       m.dataset.o ??= m.content;
       m.dataset.m ??= m.media;
@@ -36,4 +34,3 @@ function tema() {
 }
 
 tema();
-installa();
