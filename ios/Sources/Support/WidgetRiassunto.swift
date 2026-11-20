@@ -1256,15 +1256,14 @@ extension RiassuntoOggi {
         inCorso ? "\(giornataFaseCorta) · \(ParoleWidget.chiusa)" : "\(giornataFaseCorta) finita"
     }
 
-    /// La riga in linea, la forma intera: «Giornata 8: 41,5 punti fatti finora» dopo la scadenza, «Giornata 8: 69,5 punti fatti»
-    /// a giornata finita.
+    /// La riga in linea, la forma intera: «Giornata 8: 41,5 punti finora» dopo la scadenza (come la testa della Formazione,
+    /// #774), «Giornata 8: 69,5 punti fatti» a giornata finita.
     var rigaInLineaFase: String { formeRigaInLineaFase.first ?? giornataFaseCorta }
 
     /// Le forme della riga in linea, dalla più lunga: si perdono parole, mai la giornata intera («Giornata 8: 41,5»).
     var formeRigaInLineaFase: [String] {
         let g = giornataFaseCorta, p = puntiFattiTesto
-        return inCorso ? ["\(g): \(p) punti fatti finora", "\(g): \(p) punti fatti", "\(g): \(p)"]
-                       : ["\(g): \(p) punti fatti", "\(g): \(p)"]
+        return ["\(g): \(p) \(inCorso ? Catalogo.Formazione.puntiFinora : Catalogo.Oggi.puntiFatti)", "\(g): \(p)"]
     }
 
     /// Sotto il titolo del rettangolo «Da controllare» quando non ci sono nomi: la giornata, o a giornata finita la prossima.

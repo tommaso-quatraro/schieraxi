@@ -227,7 +227,7 @@ struct TestiCortiWidgetTests {
         #expect(r.titoloFase == "Chiusa")
         #expect(r.etichettaTestata == "Giornata 8 · 11ª di Serie A")
         #expect(r.testaRettangoloFase == "Giornata 8 · Chiusa")
-        #expect(r.rigaInLineaFase == "Giornata 8: 41,5 punti fatti finora")
+        #expect(r.rigaInLineaFase == "Giornata 8: 41,5 punti finora", "«punti finora» come la testa della Formazione (#774)")
     }
 
     @Test("Dopo la scadenza la frase è quella della web (`oggi.chiusa_dettaglio`), senza ripetere la giornata, e dice dove sono i punti")

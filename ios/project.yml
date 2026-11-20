@@ -119,6 +119,10 @@ targets:
       - path: Sources/Domain/GeneratoreVolto.swift
       - path: Sources/Support/AvatarVolto.swift
       - path: Sources/Support/Design/PercorsoSVG.swift
+      # le frasi del catalogo comune con la web che i widget mostrano (#774): giornata in corso come la testa della Formazione
+      - path: Sources/Support/Catalogo/Catalogo.swift
+      - path: Sources/Support/Catalogo/Catalogo+Oggi.swift
+      - path: Sources/Support/Catalogo/Catalogo+Formazione.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: it.schieraxi.app.widget
@@ -156,6 +160,9 @@ targets:
       - path: Sources/Domain/GeneratoreVolto.swift
       - path: Sources/Support/AvatarVolto.swift
       - path: Sources/Support/Design/PercorsoSVG.swift
+      - path: Sources/Support/Catalogo/Catalogo.swift
+      - path: Sources/Support/Catalogo/Catalogo+Oggi.swift
+      - path: Sources/Support/Catalogo/Catalogo+Formazione.swift
       # la lega della demo, la stessa dell'app: widget e app nelle foto dicono le stesse cose
       - path: Sources/Support/LegaDemo.swift
     settings:

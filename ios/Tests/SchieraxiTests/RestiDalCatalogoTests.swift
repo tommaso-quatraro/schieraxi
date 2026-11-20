@@ -153,6 +153,23 @@ struct RestiDalCatalogoTests {
         Caso(file: "Sources/Support/RigaGiocatore.swift", testi: [Catalogo.Mercato.fantavoto, Catalogo.Perche.apriScheda],
              usa: ["Catalogo.Mercato.fantavoto", "Catalogo.Perche.apriScheda"]),
         Caso(file: "Sources/Presentation/Lega/RigaRosa.swift", testi: [Catalogo.Mercato.fantavoto], usa: ["Catalogo.Mercato.fantavoto"]),
+        // il widget «Prossima giornata» a giornata in corso con le frasi della testa della Formazione (#774)
+        Caso(file: "Sources/Support/Condiviso.swift",
+             testi: [Catalogo.Oggi.tuttiGiocato, Catalogo.Formazione.puntiFinora, Catalogo.Oggi.puntiFatti],
+             frasi: [Catalogo.Oggi.ancoraDaGiocare(1), Catalogo.Oggi.ancoraDaGiocare(7), Catalogo.Formazione.circaFine(n: "§")],
+             usa: ["Catalogo.Oggi.ancoraDaGiocare(", "Catalogo.Oggi.tuttiGiocato", "Catalogo.Formazione.circaFine(",
+                   "Catalogo.Formazione.puntiFinora", "Catalogo.Oggi.puntiFatti"]),
+        Caso(file: "WidgetSources/WidgetOggi.swift",
+             testi: [Catalogo.Oggi.aFineGiornata, Catalogo.Formazione.puntiFinora, Catalogo.Oggi.puntiFatti],
+             frasi: [Catalogo.Oggi.attesiPrima(n: "§"), Catalogo.Formazione.circaFine(n: "§")],
+             usa: ["Catalogo.Oggi.aFineGiornata", "Catalogo.Oggi.attesiPrima(", "Catalogo.Formazione.puntiFinora",
+                   "Catalogo.Oggi.puntiFatti"]),
+        // la schermata del nome dopo «Continua con Google» con i testi della web (#775)
+        Caso(file: "Sources/Presentation/Accesso/AccessoGoogleView.swift",
+             testi: [Catalogo.Social.scegliNome, Catalogo.Social.scegliSpiega, Catalogo.Social.crea, Catalogo.Accesso.nomeUtente,
+                     Catalogo.Accesso.codiceInvito],
+             usa: ["Catalogo.Social.scegliNome", "Catalogo.Social.scegliSpiega", "Catalogo.Social.crea",
+                   "Catalogo.Accesso.nomeUtente", "Catalogo.Accesso.codiceInvito"]),
     ]
 
     /// Un pezzo fisso più corto di così potrebbe stare per caso in un altro testo.

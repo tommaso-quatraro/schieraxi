@@ -5,6 +5,7 @@ Due livelli:
   risposta è 202 «sto calcolando», come per le altre rotte;
 - le parti FACOLTATIVE (miglior scambio, miglior svincolato) si leggono SOLO se già in cache (le riempie l'app quando l'utente apre
   quelle schermate): se mancano, non compaiono e il loro nome sta in `mancano`. Il widget non fa mai partire un calcolo per loro.
+  Il miglior svincolato c'è solo se «Cambi consigliati» è accesa per l'utente: spenta, non si legge nemmeno (né in `mancano`, #797).
 Niente capitano (la lega non lo usa) e niente classifica della lega (l'app non ne ha i dati): si espone solo ciò che esiste.
 """
 from __future__ import annotations
@@ -84,9 +85,10 @@ def _tua_scelta(db, regole, rose, f: dict, giornata: int, file_scelte) -> dict |
 
 
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, file_osservati, file_scelte=None,
-                live_partite: dict | None = None, dal: datetime | None = None) -> dict:
+                live_partite: dict | None = None, dal: datetime | None = None, mercato: bool = True) -> dict:
     """`dal` (facoltativo): quando è nato l'account, come in /api/oggi: chi è entrato a giornata iniziata senza formazione ha
-    `senza_formazione` e la `prossima` giornata invece dei punti di una formazione che non ha schierato (#651)."""
+    `senza_formazione` e la `prossima` giornata invece dei punti di una formazione che non ha schierato (#651).
+    `mercato`: se «Cambi consigliati» è accesa per l'utente (lo decide il server con `funzioni.acceso`); spenta, niente `svincolato` (#797)."""
     tratti = avatar.tutti()
     # il nucleo: può alzare InCalcolo (202). La consigliata si chiede UNA volta e la usa anche Oggi: l'errore di un calcolo in coda
     # arriva una volta sola, e una seconda richiesta lo rimetteva in coda («sto calcolando» per sempre con una rosa che non basta, #651)
@@ -159,7 +161,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     def svincolato():
         m = consigli.mercato(db, regole, rose)
         return m["proposte"][0] if m["proposte"] else None
-    m = _opzionale(mancano, "svincolato", svincolato)
+    m = _opzionale(mancano, "svincolato", svincolato) if mercato else None
     if m:
         corpo["svincolato"] = {"esce": _g(m["esce"], tratti), "entra": _g(m["entra"], tratti, "quotazione"), "guadagno": m["guadagno"],
                                "fattibile": m.get("fattibile")}
