@@ -702,8 +702,18 @@ final class SessioneAccount: ObservableObject {
     /// (riassunto e copie restano) e ne chiede uno nuovo, come dopo il cambio della password; poi ripassa il collegamento al widget.
     private func riprendiIlWidget(revocato: Bool) {
         let w = luoghiWidget, s = server, a = archivio
-        if revocato { TokenWidget.dimenticaToken(indirizzo: s.indirizzo, luoghi: w) }
+        // PROVA DEL TEST, si rimette nel commit dopo: if revocato { TokenWidget.dimenticaToken(indirizzo: s.indirizzo, luoghi: w) }
+        _ = revocato
         rinnovoWidget = Task { await TokenWidget.assicura(server: s, luoghi: w, sessione: a) }
+    }
+
+    /// Dopo un «Esci» non riuscito: si offre «Esci solo da questo telefono»?
+    static func esciSoloQuiPossibile(dopo errore: Error) -> Bool {
+        false
+    }
+
+    /// «Esci solo da questo telefono».
+    func esciSoloDaQuestoTelefono() {
     }
 
     /// La rete di sicurezza delle Impostazioni (`SessioneMinimaSezione`), per quando l'app non si collega: esce da questo telefono

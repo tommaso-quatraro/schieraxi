@@ -419,11 +419,14 @@ final class SessioneAccountTests: XCTestCase {
 
     /// Una sessione già dentro (token «tok» e l'utente salvato, senza passare dalla rete) con un widget finto collegato: il suo
     /// token in `widget`, niente cartella del gruppo, Keychain condiviso in memoria. Mai il Keychain o i file veri.
+    /// Il token del widget scade fra molto (la chiave è quella di `TokenWidget`): così l'app ne chiede uno nuovo solo se ha
+    /// dimenticato quello di prima, e un test può accorgersi se il token revocato dal server resta sul telefono.
     private func sessioneDentro(_ server: ServerDiProva, widget: MemoriaToken) throws -> SessioneAccount {
         archivio.salva("tok", server: server.indirizzo)
         memoria.set(true, forKey: "account.multiutente")
         memoria.set(try JSONEncoder().encode(Utente(id: 7, nomeUtente: "mister.rossi", ruolo: "utente", creato: nil)), forKey: "account.utente")
         widget.salva(widgetVecchio, server: server.indirizzo)
+        memoria.set("2099-01-01T00:00:00", forKey: "tokenWidgetScade|" + server.indirizzo)
         let luoghi = TokenWidget.Luoghi(archivio: widget, memoria: memoria, cartella: { nil }, portachiavi: MemoriaCollegamento(),
                                         sincronizza: {})
         return SessioneAccount(server: server, archivio: archivio, memoria: memoria, pulisci: { [unowned self] in pulizie += 1 },
@@ -454,7 +457,8 @@ final class SessioneAccountTests: XCTestCase {
     }
 
     /// Server in errore o troppe richieste: come con la rete giù si resta dentro. Il server aveva già tolto il token del widget
-    /// (si toglie prima dell'uscita, finché la sessione vale): il widget ne riceve uno nuovo e resta collegato.
+    /// (si toglie prima dell'uscita, finché la sessione vale): il telefono dimentica quel token, che non vale più, e ne chiede uno
+    /// nuovo. Il token di prima non scade (`sessioneDentro`): se restasse sul telefono, l'app non ne chiederebbe un altro.
     func testUscitaNonRiuscitaColServerInErroreRestaDentroConIlWidget() async throws {
         let errori: [ErroreApi] = [.risposta(503), .troppiTentativi("Troppe richieste.", riprovaTra: 30)]
         for errore in errori {
@@ -478,7 +482,8 @@ final class SessioneAccountTests: XCTestCase {
             XCTAssertEqual(pulizie, prima, "\(errore): i dati di questo telefono restano")
             XCTAssertFalse(s.inCorso)
             _ = await s.rinnovoWidget?.value
-            XCTAssertEqual(widget.leggi(server: server.indirizzo), widgetNuovo, "\(errore): il widget resta collegato, con un token nuovo")
+            XCTAssertEqual(server.quante("POST /api/account/token-widget"), 1, "\(errore): il token revocato si dimentica e se ne chiede uno nuovo")
+            XCTAssertEqual(widget.leggi(server: server.indirizzo), widgetNuovo, "\(errore): il widget ha il token nuovo, non quello revocato")
         }
     }
 
@@ -511,6 +516,40 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertEqual(s.stato, .daAccedere, "qui uscire dal telefono non dipende dal server")
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
         XCTAssertNil(widget.leggi(server: server.indirizzo))
+    }
+
+    /// «Esci solo da questo telefono» si offre quando «Esci» non è arrivato al server (rete giù, server che non risponde): un server
+    /// sparito per sempre non deve chiudere dentro nessuno. Non si offre se il server ha risposto con un errore: lì basta riprovare.
+    func testEsciSoloDaQuestoTelefonoSiOffreSoloSeIlServerNonSiRaggiunge() {
+        XCTAssertTrue(SessioneAccount.esciSoloQuiPossibile(dopo: ErroreApi.rete("spento")), "rete giù")
+        XCTAssertTrue(SessioneAccount.esciSoloQuiPossibile(dopo: ErroreApi.timeout), "server che non risponde")
+        let rispostaDelServer: [Error] = [ErroreApi.risposta(503), ErroreApi.server("Errore interno."),
+                                          ErroreApi.troppiTentativi("Troppe richieste.", riprovaTra: 30), CancellationError()]
+        for errore in rispostaDelServer {
+            XCTAssertFalse(SessioneAccount.esciSoloQuiPossibile(dopo: errore), "\(errore): il server ha risposto, si riprova")
+        }
+    }
+
+    /// Dopo un «Esci» non riuscito con il server irraggiungibile, «Esci solo da questo telefono» esce senza chiedere altro al
+    /// server: via sessione, dati e widget da questo telefono (sul server la sessione resta aperta finché scade).
+    func testEsciSoloDaQuestoTelefonoEsceSenzaIlServer() async throws {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/esci" || p == "/api/account/token-widget" { throw ErroreApi.rete("spento") }
+            return nil
+        })
+        let widget = MemoriaToken()
+        let s = try sessioneDentro(server, widget: widget)
+        let prima = pulizie
+        do { try await s.esci() } catch {}
+        _ = await s.rinnovoWidget?.value
+        XCTAssertNotNil(s.utente, "«Esci» non è riuscito: si è ancora dentro")
+        let richiestePrima = server.richieste.count
+        s.esciSoloDaQuestoTelefono()
+        XCTAssertEqual(s.stato, .daAccedere)
+        XCTAssertNil(archivio.leggi(server: server.indirizzo))
+        XCTAssertGreaterThan(pulizie, prima, "i dati di questo telefono si cancellano")
+        XCTAssertNil(widget.leggi(server: server.indirizzo), "e il widget dimentica il suo token")
+        XCTAssertEqual(server.richieste.count, richiestePrima, "niente richieste a un server che non risponde")
     }
 
     // MARK: Esci da tutti i dispositivi (#765)
