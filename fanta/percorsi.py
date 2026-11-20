@@ -143,12 +143,21 @@ def scrivi_sicuro(percorso: Path, testo: str) -> None:
     Nella cartella di un account eliminato non scrive (anche se il lavoro era partito prima dell'eliminazione): il segno si guarda
     prima e di nuovo dopo, così la cartella non rinasce nemmeno se l'eliminazione arriva a metà scrittura. Se prima di scrivere
     il database degli account non risponde: `DatabaseAccountNonRisponde`, niente scritto."""
+    _scrivi_sicuro(percorso, lambda tmp: tmp.write_text(testo, encoding="utf-8"))
+
+
+def scrivi_sicuro_byte(percorso: Path, dati: bytes) -> None:
+    """Come `scrivi_sicuro`, per i byte (stemmi e maglie, #781): se il disco si riempie a metà, il file di prima resta intatto."""
+    _scrivi_sicuro(percorso, lambda tmp: tmp.write_bytes(dati))
+
+
+def _scrivi_sicuro(percorso: Path, scrivi) -> None:
     if not scrittura_permessa(percorso):
         return
     percorso.parent.mkdir(parents=True, exist_ok=True)
     tmp = percorso.with_name(f"{percorso.name}.{uuid.uuid4().hex[:8]}.tmp")   # nome unico: salvataggi in parallelo
     try:
-        tmp.write_text(testo, encoding="utf-8")
+        scrivi(tmp)
         os.replace(tmp, percorso)
     except BaseException:
         tmp.unlink(missing_ok=True)       # disco pieno o altro: niente file a metà che occupano altro spazio
