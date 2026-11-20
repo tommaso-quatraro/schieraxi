@@ -95,6 +95,12 @@
       "precisazione": "(salvataggio o «Torna alla consigliata» rifiutati dal server)",
       "testo": "se dopo il rifiuto (412) l'iPhone non riesce a rileggere la scelta, resta «Questi dati sono stati cambiati da un altro dispositivo. Sto ricaricando la versione nuova…» e la riga dello stato dice che non riesce a leggere la formazione salvata, con «Riprova» e i comandi spenti; la web mostra la copia salvata con la nota della cache o la pagina d'errore.",
       "motivo": "l'iPhone rilegge solo formazione e scelta, senza ridisegnare la pagina intera: finché non le rilegge non si può cambiare niente, come sulla web (#477, #673)."
+    },
+    {
+      "titolo": "Widget «Prossima giornata» a giornata in corso",
+      "precisazione": "(widget medio e cerchio della schermata di blocco)",
+      "testo": "nel medio la frase «circa 75 a fine giornata» (`formazione.circa_fine`) è divisa in due: sopra «A fine giornata» (`oggi.a_fine_giornata`), sotto il numero grande «circa 75»; nel cerchio della schermata di blocco accanto ai punti c'è solo «fatti». Numero e frasi sono quelli della testa della Formazione (senza decimali, «punti finora», chi deve ancora giocare) e VoiceOver legge le frasi intere.",
+      "motivo": "la frase intera non entra: nel medio il numero grande sta in mezza larghezza del widget, nel cerchio ci stanno poche lettere (#774)."
     }
   ]
 }
