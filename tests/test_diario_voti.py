@@ -28,7 +28,7 @@ def _voti_con_data(db) -> pd.DataFrame:
 @pytest.fixture
 def mondo(monkeypatch, tmp_path):
     db = archivio.apri(tmp_path / "t.sqlite")
-    for n, (ora, casa, trasferta) in enumerate((("18:00", "a", "b"), ("20:45", "c", "d")), start=1):
+    for n, (casa, trasferta) in enumerate((("a", "b"), ("c", "d")), start=1):
         db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, 1, ?, ?, ?, 1)",
                    (n, ST, DATA[n], casa, trasferta))
     dati = SimpleNamespace(partite=pd.DataFrame([{"id": n, "stagione": ST, "giornata": 1, "data": DATA[n], "giocata": 1} for n in (1, 2)]),
