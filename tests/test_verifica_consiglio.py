@@ -198,9 +198,9 @@ def giocate(monkeypatch):
     consigliata e S1 (che usa il «gioca N%» del modello) non lo schierano e fanno 66; S2 vede che ha preso voto la giornata prima,
     lo schiera e fa 69 come il senno di poi. Il portiere 3 (il migliore per il modello) non prende voto dalla giornata 2: è
     titolare della consigliata senza voto, ed entra la riserva."""
-    partite = pd.DataFrame([{"id": g, "stagione": ST, "giornata": g, "giocata": 1} for g in (1, 2, 3)])
+    partite = pd.DataFrame([{"id": g, "stagione": ST, "giornata": g, "data": f"2026-09-0{g} 18:00", "giocata": 1} for g in (1, 2, 3)])
     voti = pd.DataFrame([{"stagione": ST, "giornata": g, "calciatore_id": i, "ruolo": RUOLI[i - 1],
-                          "voto_red": 9.0 if i == 25 else 6.0} for g in (1, 2, 3) for i in range(1, 26)
+                          "voto_red": 9.0 if i == 25 else 6.0, "data": f"2026-09-0{g} 18:00"} for g in (1, 2, 3) for i in range(1, 26)
                          if not (i == 3 and g >= 2)])
     d = SimpleNamespace(partite=partite, voti=voti)
 

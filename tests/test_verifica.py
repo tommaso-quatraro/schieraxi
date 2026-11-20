@@ -21,9 +21,13 @@ def _voto(st, g, i, voto, ruolo=None):
 
 
 def _dati(voti):
-    partite = pd.DataFrame([{"id": 100 * k + g, "stagione": st, "giornata": g, "giocata": 1}
+    """Una partita per giornata, una a settimana; ogni voto ha la data della sua partita (come `modello.carica`)."""
+    partite = pd.DataFrame([{"id": 100 * k + g, "stagione": st, "giornata": g, "data": f"{st[:4]}-10-{7 * g:02d} 15:00", "giocata": 1}
                             for k, st in enumerate((S1, S2)) for g in range(1, 7)])
-    return SimpleNamespace(stagioni=[S1, S2], partite=partite, voti=pd.DataFrame(voti))
+    voti = pd.DataFrame(voti)
+    if len(voti):
+        voti = voti.merge(partite[["stagione", "giornata", "data"]], on=["stagione", "giornata"], how="left")
+    return SimpleNamespace(stagioni=[S1, S2], partite=partite, voti=voti)
 
 
 @pytest.fixture
@@ -57,6 +61,23 @@ def test_gli_avversari_non_vedono_i_voti_della_giornata_stessa(finto):
     d = _dati([_voto(S2, 1, 4, 6.0), _voto(S2, 2, 4, 10.0), _voto(S2, 2, 6, 9.0), _voto(S2, 2, 12, 9.0)])
     tirata, ruolo = verifica.avversari(d, S2, 2, Regole())
     assert ruolo == {"D": 6.0} and list(tirata.index) == [4] and tirata[4] == pytest.approx(6.0)
+
+def test_gli_avversari_non_vedono_un_recupero_giocato_dopo(finto):
+    """Un recupero della giornata 3 giocato il 29/11, dopo l'inizio della giornata 5 (22/11): il modello per la giornata 5 non lo
+    vede (filtra per data), e nemmeno la fantamedia di confronto. Prima la fantamedia filtrava per numero di giornata e contava
+    il 12 del recupero (#832, sonda del revisore)."""
+    partite = pd.DataFrame([{"id": 1, "stagione": S2, "giornata": 3, "data": "2026-11-29 15:00", "giocata": 1},   # recupero
+                            {"id": 2, "stagione": S2, "giornata": 4, "data": "2026-11-08 15:00", "giocata": 1},
+                            {"id": 3, "stagione": S2, "giornata": 5, "data": "2026-11-22 15:00", "giocata": 1}])
+    voti = pd.DataFrame([{**_voto(S2, 4, 7, 6.0, "A"), "data": "2026-11-08 15:00"},
+                         {**_voto(S2, 3, 7, 12.0, "A"), "data": "2026-11-29 15:00"}])
+    d = SimpleNamespace(stagioni=[S2], partite=partite, voti=voti)
+    tirata, ruolo = verifica.avversari(d, S2, 5, Regole())
+    assert ruolo == {"A": 6.0} and tirata.to_dict() == {7: pytest.approx(6.0)}
+    assert verifica._fantamedia(d, S2, 5, Regole()).to_dict() == {7: 6.0}
+    # per la giornata 6 (dopo il recupero) il voto del recupero c'è
+    partite.loc[3] = {"id": 4, "stagione": S2, "giornata": 6, "data": "2026-12-06 15:00", "giocata": 1}
+    assert verifica._fantamedia(d, S2, 6, Regole()).to_dict() == {7: 9.0}
 
 
 def test_la_formazione_da_fantamedia_si_sceglie_con_la_fantamedia_tirata(finto, monkeypatch):
