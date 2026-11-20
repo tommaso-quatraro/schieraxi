@@ -910,14 +910,14 @@ private extension LegaDemo {
         // la lega parte dalla giornata 4 di Serie A (`prima_giornata_lega` delle regole della demo), come in Oggi: Serie A 11 = giornata 8
         func lega(_ serieA: Int) -> Int { serieA - 3 }
         // Gli id seguono il nome (non la posizione), così due formazioni con un nome diverso risultano davvero diverse.
-        let anagrafe = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Leonel", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey", "Orsetti", "Mkhedrian", "Zelawski"]
-        let ruoliDi = ["Sorvani": "P", "Bastrani": "D", "Dimarzi": "D", "Dunfrey": "D", "Leonel": "A", "Thorvan": "A", "Lemão": "A", "Pulinski": "A", "Orsetti": "A"]
+        let anagrafe = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey", "Orsetti", "Mkhedrian", "Zelawski"]
+        let ruoliDi = ["Sorvani": "P", "Bastrani": "D", "Dimarzi": "D", "Dunfrey": "D", "Marténi": "A", "Thorvan": "A", "Lemão": "A", "Pulinski": "A", "Orsetti": "A"]
         func titolari(_ nomi: [String]) -> [[String: Any]] {
             nomi.map { ["id": 9000 + (anagrafe.firstIndex(of: $0) ?? 99), "nome": $0, "ruolo": ruoliDi[$0] ?? "C"] }
         }
-        let base = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Leonel", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey"]
-        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Leonel", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Orsetti"]
-        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Leonel", "Thorvan", "Pulinski", "Lemão", "Zelawski", "Orsetti"]
+        let base = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey"]
+        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Orsetti"]
+        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Marténi", "Thorvan", "Pulinski", "Lemão", "Zelawski", "Orsetti"]
         // Fantavoto atteso e preso di ogni giocatore (pagina Giornate, #673 passo 2): numeri inventati e fermi, vicini ai punti della
         // squadra divisi per 11; ogni giornata uno è senza voto.
         let scarti: [Double] = [1.5, -1, 0.5, -0.5, 2, -1.5, 0, 1, -2, 0.5, -0.5, 0.5, -1, 1]
@@ -988,7 +988,7 @@ private extension LegaDemo {
         // chi ha fatto meglio o peggio del previsto (`fatti_e_attesi.testo` di fanta/diario.py, #672): la frase la scrive il server,
         // qui il suo testo per i numeri della tabella qui sopra (`DemoDiarioTests` controlla che siano quelli)
         let frasiScarti: [Int: String] = [
-            10: "Meglio del previsto: Leonel (+2,6) e Bastrani (+1,5). Peggio: Thorvan (\u{2212}1,5) e Kloosmeijer (\u{2212}1,2).",
+            10: "Meglio del previsto: Marténi (+2,6) e Bastrani (+1,5). Peggio: Thorvan (\u{2212}1,5) e Kloosmeijer (\u{2212}1,2).",
             9: "Meglio del previsto: Thorvan (+2,7) e Dimarzi (+1,6). Peggio: Pulinski (\u{2212}1,4).",
             8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Orsetti (\u{2212}1,5).",
             7: "Meglio del previsto: Lemão (+2,0). Peggio: Kloosmeijer (\u{2212}2,1) e Pulinski (\u{2212}1,5).",

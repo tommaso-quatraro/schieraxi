@@ -27,7 +27,7 @@ enum TestiRinvio {
 
     static let domanda = Catalogo.Oggi.rinvioDomanda
 
-    /// La voce del menu: «aspettano il recupero (conta il suo voto)»…
+    /// La voce del menu: «aspettano il recupero (conta il voto del recupero)»…
     static func nomeModo(_ modo: String?, voto: Double?) -> String {
         switch modo {
         case ModoRinvio.aspetta: return Catalogo.Oggi.rinvioAspetta
