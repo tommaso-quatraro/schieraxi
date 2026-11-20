@@ -90,7 +90,7 @@ def chi_lascia_il_posto(entra: int, titolari, schede: dict, regole, fermi, punti
     propone: vuoto se `entra` è già titolare, non è nelle schede o è fra i `fermi` (anticipo già cominciato, `bloccati`), che non
     escono nemmeno; infortunati e squalificati entrano, come fra i sostituti."""
     sch = {int(k): x for k, x in schede.items() if isinstance(x, dict)}
-    dentro = [int(i) for i in titolari]
+    dentro = list(dict.fromkeys(int(i) for i in titolari))          # un titolare ripetuto conta una volta, come in `motivo_non_valida`
     fermi = {int(i) for i in fermi}
     if int(entra) not in sch or int(entra) in dentro or int(entra) in fermi:
         return []

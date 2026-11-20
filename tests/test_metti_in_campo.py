@@ -111,6 +111,14 @@ def test_infortunati_e_squalificati_si_mettono_in_campo_come_fra_i_sostituti():
     assert set(_escono(25)) == {2, 3, 4, 5, 9, 10, 11}
 
 
+def test_un_titolare_ripetuto_conta_una_volta_come_in_valuta():
+    """Revisione della #783: 12 voci con il difensore 2 ripetuto davano due righe «esce 2» e moduli sbagliati («5-3-3»). Come la
+    regola unica della scelta (e quindi `valuta`), un titolare ripetuto conta una volta."""
+    uscite = _uscite(21, titolari=TITOLARI + [2])
+    assert sorted(u["esce"] for u in uscite) == [2, 3, 4, 5, 9, 10, 11]
+    assert {u["esce"]: u["modulo"] for u in uscite} == {2: "4-3-3", 3: "4-3-3", 4: "4-3-3", 5: "4-3-3", 9: "5-3-2", 10: "5-3-2", 11: "5-3-2"}
+
+
 def test_un_titolare_o_uno_che_non_e_della_rosa_non_ha_nessuno_da_far_uscire():
     assert _escono(2) == {}
     assert _escono(999) == {}
