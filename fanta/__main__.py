@@ -18,7 +18,7 @@
   server                          avvia l'app (http://127.0.0.1:8000)
   cambi                           avvisa se sono cambiate le probabili dei tuoi giocatori (usato sul server)
   promemoria                      promemoria prima della scadenza della formazione (usato sul server)
-  affidabilita [--forza] [--minuti N]   prova il modello sulle ultime giornate e aggiorna il diario (con gli account: di ogni utente, al massimo N minuti, di norma 10)
+  affidabilita [--forza] [--minuti N]   prova il modello sulle ultime giornate e aggiorna il diario (con gli account: diario e prova di ogni utente, al massimo N minuti, di norma 10)
   affidabilita --pubblico [--file F]   scrive il riassunto anonimo «Quanto ci abbiamo preso» per il sito (non lo pubblica)
   backup [--tieni N]              copia dei dati della lega in dati/backup, ne tiene le ultime N (usato sul server, di sera)
   salute                          controlla che l'app risponda e che i dati siano freschi (usato sul server)
@@ -420,11 +420,13 @@ def cmd_affidabilita(a) -> None:
     import time
     scadenza = time.monotonic() + 60 * a.minuti        # il diario di tutti in tempo limitato: il blocco degli aggiornamenti non resta preso a lungo
     db = archivio.apri()
+    memo: dict = {}                     # le rose a sorte già provate in questo giro, per chi ha le stesse regole
     try:
         regole_, rose_ = regole.carica(FILE_REGOLE), lega.carica(FILE_ROSE)
-        fatto = affidabilita.aggiorna_se_serve(db, regole_, rose_, forza=a.forza)
+        fatto = affidabilita.aggiorna_se_serve(db, regole_, rose_, forza=a.forza, memo=memo)   # il file comune: l'app senza account
         nuove = diario.aggiorna(db, regole_, rose_, scadenza=scadenza)
         utenti = _diario_per_utente(db, scadenza) if account.multiutente() else None
+        prove = _prova_per_utente(db, scadenza, forza=a.forza, memo=memo) if account.multiutente() else None
     finally:
         db.close()
     print("prova del modello rifatta" if fatto else "prova del modello già aggiornata")
@@ -435,6 +437,12 @@ def cmd_affidabilita(a) -> None:
               + (f", {saltati} rimandati al prossimo giro (tempo finito)" if saltati else ""))
         for uid, tipo in errori:                # solo il numero dell'utente e il tipo di errore: niente nomi né contenuti
             print(f"diario dell'utente {uid}: errore {tipo}")
+    if prove is not None:
+        rifatte, saltati, errori = prove
+        print(f"prova del modello degli utenti: rifatta per {rifatte} utenti"
+              + (f", {saltati} rimandati al prossimo giro (tempo finito)" if saltati else ""))
+        for uid, tipo in errori:
+            print(f"prova del modello dell'utente {uid}: errore {tipo}")
     _indicatori_consiglio()
 
 
@@ -476,6 +484,35 @@ def _diario_per_utente(db, scadenza: float | None = None) -> tuple[int, int, int
         except Exception as e:              # noqa: BLE001 - un utente non deve fermare gli altri
             errori.append((ctx.utente_id, type(e).__name__))
     return voci, fatti, 0, errori
+
+
+def _prova_per_utente(db, scadenza: float | None = None, forza: bool = False,
+                      memo: dict | None = None) -> tuple[int, int, list[tuple[int, str]]]:
+    """Con gli account: la prova del modello di ogni utente nella sua cartella, con le sue regole e le sue rose (la leggono la carta
+    in Stato dei dati e «Sotto il cofano»). Come quella comune si rifà solo quando cambiano le giornate della prova o i loro voti
+    (`affidabilita.aggiorna_se_serve`): al primo giro dopo #832 la ricevono tutti, poi una volta per giornata. Prima chi non ce
+    l'ha o ce l'ha più vecchia, così con il tempo finito tocca agli altri al giro dopo; un utente con un file rovinato non ferma
+    gli altri. `memo`: le rose a sorte già provate nel giro, uguali per chi ha le stesse regole. Restituisce (prove rifatte,
+    utenti rimandati, [(id, tipo di errore)])."""
+    import contextlib
+    import time
+    from . import account, affidabilita
+    from .contesto import Contesto
+    with contextlib.closing(account.apri()) as adb:
+        ids = [u["id"] for u in account.elenco(adb)]
+    contesti = [c for c in (Contesto.per_utente(i) for i in ids) if c.rose.exists()]
+    contesti.sort(key=lambda c: c.affidabilita.stat().st_mtime if c.affidabilita.exists() else 0.0)
+    rifatte = 0
+    errori: list[tuple[int, str]] = []
+    for n, ctx in enumerate(contesti):
+        if scadenza is not None and time.monotonic() > scadenza:
+            return rifatte, len(contesti) - n, errori
+        try:
+            rifatte += affidabilita.aggiorna_se_serve(db, regole.carica(ctx.regole), lega.carica(ctx.rose), forza=forza,
+                                                      percorso=ctx.affidabilita, memo=memo)
+        except Exception as e:              # noqa: BLE001 - un utente non deve fermare gli altri
+            errori.append((ctx.utente_id, type(e).__name__))
+    return rifatte, 0, errori
 
 
 def _affidabilita_pubblica(file: str | None) -> None:

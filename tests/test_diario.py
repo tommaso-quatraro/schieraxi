@@ -15,9 +15,9 @@ RUOLI = ["P"] * 3 + ["D"] * 8 + ["C"] * 8 + ["A"] * 6          # 25 giocatori, i
 @pytest.fixture
 def finto(monkeypatch, tmp_path):
     """Due giornate finite; tutti prendono 6, tranne l'ultimo attaccante (id 25) che prende 9."""
-    partite = pd.DataFrame([{"id": g, "stagione": ST, "giornata": g, "giocata": 1} for g in (1, 2)])
-    voti = pd.DataFrame([{"stagione": ST, "giornata": g, "calciatore_id": i, "voto_red": 9.0 if i == 25 else 6.0}
-                         for g in (1, 2) for i in range(1, 26)])
+    partite = pd.DataFrame([{"id": g, "stagione": ST, "giornata": g, "data": f"2026-09-0{g} 18:00", "giocata": 1} for g in (1, 2)])
+    voti = pd.DataFrame([{"stagione": ST, "giornata": g, "calciatore_id": i, "voto_red": 9.0 if i == 25 else 6.0,
+                          "data": f"2026-09-0{g} 18:00"} for g in (1, 2) for i in range(1, 26)])
     dati = SimpleNamespace(partite=partite, voti=voti)
 
     def previsioni(d, stagione, giornata, regole, par):

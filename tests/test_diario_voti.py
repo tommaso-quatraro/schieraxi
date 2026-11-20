@@ -16,16 +16,23 @@ CHIAVE = f"{ST}/1"
 RUOLI = ["P"] * 3 + ["D"] * 8 + ["C"] * 8 + ["A"] * 6          # 25 giocatori, id da 1 a 25
 SCELTI = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]             # 3-4-3, con i tre attaccanti della seconda partita
 CON_TUTTI_I_VOTI = 10 * 6 + 9                                  # 69,0
+DATA = {1: "2026-09-01 18:00", 2: "2026-09-01 20:45"}          # le due partite: a-b e c-d
+
+
+def _voti_con_data(db) -> pd.DataFrame:
+    """I voti dell'archivio con la data della loro partita, come li vede il calcolo (`modello.carica`)."""
+    v = pd.read_sql_query("SELECT * FROM voti", db)
+    return v.assign(data=v["squadra"].map({"a": DATA[1], "b": DATA[1], "c": DATA[2], "d": DATA[2]}))
 
 
 @pytest.fixture
 def mondo(monkeypatch, tmp_path):
     db = archivio.apri(tmp_path / "t.sqlite")
-    for n, (ora, casa, trasferta) in enumerate((("18:00", "a", "b"), ("20:45", "c", "d")), start=1):
+    for n, (casa, trasferta) in enumerate((("a", "b"), ("c", "d")), start=1):
         db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, 1, ?, ?, ?, 1)",
-                   (n, ST, f"2026-09-01 {ora}", casa, trasferta))
-    dati = SimpleNamespace(partite=pd.DataFrame([{"id": n, "stagione": ST, "giornata": 1, "giocata": 1} for n in (1, 2)]),
-                           voti=pd.read_sql_query("SELECT * FROM voti", db))
+                   (n, ST, DATA[n], casa, trasferta))
+    dati = SimpleNamespace(partite=pd.DataFrame([{"id": n, "stagione": ST, "giornata": 1, "data": DATA[n], "giocata": 1} for n in (1, 2)]),
+                           voti=_voti_con_data(db))
 
     def previsioni(d, stagione, giornata, regole, par):
         return pd.DataFrame([{"id": i, "nome": f"G{i}", "ruolo": RUOLI[i - 1], "p_voto": 0.9, "mu": 5.5 + i * 0.05, "mu_voto": 6.0,
@@ -48,7 +55,7 @@ def _voti(m, partita: int, diversi: dict[int, float] | None = None) -> None:
     voto = {25: 9.0} | (diversi or {})
     archivio.inserisci(m.db, "voti", [{"stagione": ST, "giornata": 1, "calciatore_id": i, "nome": f"G{i}", "squadra": squadre[i % 2],
                                        "ruolo": RUOLI[i - 1], "voto_red": voto.get(i, 6.0)} for i in ids])
-    m.dati.voti = pd.read_sql_query("SELECT * FROM voti", m.db)
+    m.dati.voti = _voti_con_data(m.db)
 
 
 def _aggiorna(m, regole=None) -> int:

@@ -17,13 +17,20 @@ RUOLI = ["P"] * 3 + ["D"] * 8 + ["C"] * 8 + ["A"] * 6          # 25 giocatori, i
 
 
 def _voto(st, g, i, voto, ruolo=None):
-    return {"stagione": st, "giornata": g, "calciatore_id": i, "ruolo": ruolo or RUOLI[i - 1], "voto_red": voto}
+    """Un voto; i giocatori con l'id dispari sono della squadra «aa», gli altri di «bb» (l'unica partita della giornata)."""
+    return {"stagione": st, "giornata": g, "calciatore_id": i, "ruolo": ruolo or RUOLI[i - 1], "voto_red": voto,
+            "squadra": "aa" if i % 2 else "bb"}
 
 
 def _dati(voti):
-    partite = pd.DataFrame([{"id": 100 * k + g, "stagione": st, "giornata": g, "giocata": 1}
+    """Una partita per giornata (aa-bb), una a settimana; ogni voto ha la data della sua partita (come `modello.carica`)."""
+    partite = pd.DataFrame([{"id": 100 * k + g, "stagione": st, "giornata": g, "data": f"{st[:4]}-10-{7 * g:02d} 15:00",
+                             "casa": "aa", "trasferta": "bb", "giocata": 1}
                             for k, st in enumerate((S1, S2)) for g in range(1, 7)])
-    return SimpleNamespace(stagioni=[S1, S2], partite=partite, voti=pd.DataFrame(voti))
+    voti = pd.DataFrame(voti)
+    if len(voti):
+        voti = voti.merge(partite[["stagione", "giornata", "data"]], on=["stagione", "giornata"], how="left")
+    return SimpleNamespace(stagioni=[S1, S2], partite=partite, voti=voti)
 
 
 @pytest.fixture
@@ -59,6 +66,24 @@ def test_gli_avversari_non_vedono_i_voti_della_giornata_stessa(finto):
     assert ruolo == {"D": 6.0} and list(tirata.index) == [4] and tirata[4] == pytest.approx(6.0)
 
 
+def test_gli_avversari_non_vedono_un_recupero_giocato_dopo(finto):
+    """Un recupero della giornata 3 giocato il 29/11, dopo l'inizio della giornata 5 (22/11): il modello per la giornata 5 non lo
+    vede (filtra per data), e nemmeno la fantamedia di confronto. Prima la fantamedia filtrava per numero di giornata e contava
+    il 12 del recupero (#832, sonda del revisore)."""
+    partite = pd.DataFrame([{"id": 1, "stagione": S2, "giornata": 3, "data": "2026-11-29 15:00", "giocata": 1},   # recupero
+                            {"id": 2, "stagione": S2, "giornata": 4, "data": "2026-11-08 15:00", "giocata": 1},
+                            {"id": 3, "stagione": S2, "giornata": 5, "data": "2026-11-22 15:00", "giocata": 1}])
+    voti = pd.DataFrame([{**_voto(S2, 4, 7, 6.0, "A"), "data": "2026-11-08 15:00"},
+                         {**_voto(S2, 3, 7, 12.0, "A"), "data": "2026-11-29 15:00"}])
+    d = SimpleNamespace(stagioni=[S2], partite=partite, voti=voti)
+    tirata, ruolo = verifica.avversari(d, S2, 5, Regole())
+    assert ruolo == {"A": 6.0} and tirata.to_dict() == {7: pytest.approx(6.0)}
+    assert verifica._fantamedia(d, S2, 5, Regole()).to_dict() == {7: 6.0}
+    # per la giornata 6 (dopo il recupero) il voto del recupero c'è
+    partite.loc[3] = {"id": 4, "stagione": S2, "giornata": 6, "data": "2026-12-06 15:00", "giocata": 1}
+    assert verifica._fantamedia(d, S2, 6, Regole()).to_dict() == {7: 9.0}
+
+
 def test_la_formazione_da_fantamedia_si_sceglie_con_la_fantamedia_tirata(finto, monkeypatch):
     """Sulle rose della lega la formazione «da fantamedia» (l'avversario dei punti) si sceglie con la fantamedia tirata verso il
     ruolo, chi non ha voti con la media del ruolo: non con la fantamedia della sola stagione (6 a chi non ha voti)."""
@@ -87,6 +112,35 @@ def test_verifica_misura_il_modello_contro_gli_avversari_onesti(finto):
     assert e.errore_ruolo > e.errore_fantamedia > 0
     t = verifica.verifica(d, Regole(), Parametri(), [(S2, 2)], scrivi=None)
     assert {"quadratico_ruolo", "quadratico_fantamedia_stagione", "errore_ruolo"} <= set(t.columns)
+
+
+def test_una_partita_giocata_ancora_senza_voti_non_conta(monkeypatch):
+    """Due partite della giornata 5, tutte e due giocate per il calendario, ma i voti della seconda non sono ancora arrivati: i
+    suoi giocatori non contano come «non hanno giocato». Prima entravano nel punteggio di Brier (0,41 invece di 0,01) e nelle
+    rose, con zero punti (#832, sonda del revisore)."""
+    ruolo = lambda i: RUOLI[(i - 1) % 25]                                        # noqa: E731
+    squadra = lambda i: ("aa" if i % 2 else "ab") if i <= 25 else ("ba" if i % 2 else "bb")   # noqa: E731
+
+    def previsioni(d, stagione, giornata, regole, par, oracolo=None):
+        return pd.DataFrame([{"id": i, "nome": f"G{i}", "ruolo": ruolo(i), "p_voto": 0.9, "mu": 5.5 + (i % 25) * 0.05, "mu_voto": 6.0,
+                              "partita": 1 if i <= 25 else 2} for i in range(1, 51)])
+    monkeypatch.setattr(verifica, "previsioni", previsioni)
+    monkeypatch.setattr(verifica, "fantavoto", lambda r, ru, regole: float(r["voto_red"]))
+    partite = pd.DataFrame([{"id": 1, "stagione": S2, "giornata": 5, "data": "2026-10-04 15:00", "casa": "aa", "trasferta": "ab", "giocata": 1},
+                            {"id": 2, "stagione": S2, "giornata": 5, "data": "2026-10-04 18:00", "casa": "ba", "trasferta": "bb", "giocata": 1}])
+    prima = [{"stagione": S2, "giornata": 4, "calciatore_id": i, "ruolo": ruolo(i), "voto_red": 6.0, "squadra": squadra(i),
+              "data": "2026-09-27 15:00"} for i in range(1, 51)]
+    g5 = [{"stagione": S2, "giornata": 5, "calciatore_id": i, "ruolo": ruolo(i), "voto_red": 6.5, "squadra": squadra(i),
+           "data": partite.at[0 if i <= 25 else 1, "data"]} for i in range(1, 51)]
+    rosa = [1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15, 20, 21, 22, 29, 30, 31, 32, 37, 38, 39, 40, 46, 47, 48]
+    esiti = {}
+    for nome, voti5 in (("tutti", g5), ("senza la seconda", g5[:25])):
+        d = SimpleNamespace(stagioni=[S2], partite=partite, voti=pd.DataFrame(prima + voti5))
+        esiti[nome] = verifica.verifica_giornata(d, S2, 5, Regole(), Parametri(), rose=[rosa], simulazioni=30)
+    assert esiti["tutti"].n == 50 and esiti["tutti"].brier == pytest.approx(0.01) and esiti["tutti"].formazioni is not None
+    senza = esiti["senza la seconda"]
+    assert senza.n == 25 and senza.brier == pytest.approx(0.01)
+    assert senza.formazioni is None              # della rosa restano 14 giocatori: troppo pochi per un confronto, si salta
 
 
 # ---------------------------------------------------------------- massimo possibile
@@ -195,15 +249,52 @@ def test_punti_su_rose_a_sorte_con_intervallo_a_gruppi_di_giornata(finto):
     assert "sorte_casi" not in senza.columns and verifica.riepilogo_sorte(senza) == {}
 
 
+def test_le_rose_a_sorte_si_riusano_nello_stesso_giro_con_le_stesse_regole(finto, monkeypatch):
+    """La prova di ogni utente (#832): le rose a sorte non dipendono dalle rose della lega, quindi con le stesse regole si
+    calcolano una volta sola nel giro (`memo`), con gli stessi numeri; con regole diverse si rifanno."""
+    voti = [_voto(st, g, i, 5.0 + (i * g) % 4) for st in (S1, S2) for g in range(1, 7) for i in range(1, 26)]
+    d = _dati(voti)
+    giornate = [(S2, g) for g in range(2, 5)]
+    conta = []
+    vera = verifica._casi_sintetici
+    monkeypatch.setattr(verifica, "_casi_sintetici", lambda *a, **k: conta.append(1) or vera(*a, **k))
+    prova = lambda rose, regole=None, memo=None: verifica.verifica(                                       # noqa: E731
+        d, regole or Regole(), Parametri(), giornate, rose=rose, simulazioni=30, scrivi=None, sintetiche=3, memo=memo)
+    senza = prova([list(range(1, 26))])
+    memo: dict = {}
+    primo = prova([list(range(1, 26))], memo=memo)
+    secondo = prova([list(range(1, 24))], memo=memo)                     # un altro utente, altre rose, stesse regole
+    assert len(conta) == 6                                               # 3 giornate senza memo, 3 con: il secondo le riusa
+    pd.testing.assert_frame_equal(senza, primo)
+    sorte = [c for c in primo.columns if c.startswith("sorte_")]
+    pd.testing.assert_frame_equal(primo[sorte], secondo[sorte])
+    prova([list(range(1, 26))], imposta(Regole(), "bonus.gol.A", "4"), memo=memo)
+    assert len(conta) == 9                                               # regole diverse: si rifanno
+
+
 # ---------------------------------------------------------------- affidabilità («Quanto è affidabile il modello»)
+def _partita_db(db, pid, st, g, data, casa="a", trasferta="b", giocata=1, con_voti=None):
+    """Una partita nell'archivio e un voto per ciascuna squadra di `con_voti` (di norma tutte e due, se è giocata)."""
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, ?, ?, ?, ?)",
+               (pid, st, g, data, casa, trasferta, giocata))
+    for k, sq in enumerate((casa, trasferta) if con_voti is None and giocata else con_voti or ()):
+        _voto_db(db, st, g, 10 * pid + k, sq)
+    db.commit()
+
+
+def _voto_db(db, st, g, calciatore, squadra, voto=6.0):
+    db.execute("INSERT OR REPLACE INTO voti (stagione, giornata, calciatore_id, squadra, ruolo, voto_red) VALUES (?, ?, ?, ?, 'C', ?)",
+               (st, g, calciatore, squadra, voto))
+    db.commit()
+
+
 def test_affidabilita_porta_gli_avversari_onesti_e_le_rose_a_sorte(finto, monkeypatch, tmp_path):
     from fanta import affidabilita, archivio, consigli
     voti = [_voto(st, g, i, 5.0 + (i * g) % 4) for st in (S1, S2) for g in range(1, 7) for i in range(1, 26)]
     d = _dati(voti)
     db = archivio.apri(tmp_path / "a.sqlite")
     for g in range(1, 7):
-        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, '2026-09-01 18:00', "
-                   "'a', 'b', 1)", (100 + g, S2, g))
+        _partita_db(db, 100 + g, S2, g, "2026-09-01 18:00")
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: S2)
     monkeypatch.setattr(consigli, "dati", lambda db: d)
     monkeypatch.setattr(verifica, "ROSE_A_SORTE", 3)
@@ -223,9 +314,7 @@ def test_d_estate_la_prova_non_si_rifa_a_ogni_giro(monkeypatch, tmp_path):
     from fanta import affidabilita, archivio, consigli
     db = archivio.apri(tmp_path / "a.sqlite")
     for g in range(30, 39):
-        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, '2027-05-01 18:00', "
-                   "'a', 'b', 1)", (g, S2, g))
-    db.commit()
+        _partita_db(db, g, S2, g, "2027-05-01 18:00")
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: "2027-28")
     monkeypatch.setattr(consigli, "dati", lambda db: None)
     prove = []
@@ -238,11 +327,81 @@ def test_d_estate_la_prova_non_si_rifa_a_ogni_giro(monkeypatch, tmp_path):
     assert [affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f) for _ in range(3)] == [True, False, False]
     assert len(prove) == 1 and prove[0][-1] == (S2, 38) and affidabilita.carica(f)["ultima"] == f"{S2}/38"
     # finisce la prima giornata della stagione nuova: si rifà, una volta
-    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (99, '2027-28', 1, "
-               "'2027-08-22 18:00', 'a', 'b', 1)")
-    db.commit()
+    _partita_db(db, 99, "2027-28", 1, "2027-08-22 18:00")
     assert [affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f) for _ in range(2)] == [True, False]
     assert len(prove) == 2 and prove[1][-1] == ("2027-28", 1)
+
+
+def test_la_giornata_e_conclusa_solo_con_i_voti_di_tutte_e_due_le_squadre(monkeypatch, tmp_path):
+    """Una giornata entra nella prova solo con tutte le partite giocate e i voti di tutte e due le squadre di ognuna (la regola
+    di `fasi.voti_arrivati`). Prima bastava «giocata» e una partita senza voti contava i suoi giocatori come «non hanno giocato»
+    (#832)."""
+    from fanta import affidabilita, archivio
+    db = archivio.apri(tmp_path / "a.sqlite")
+    for g in (1, 2, 3):
+        _partita_db(db, 10 * g, S2, g, f"2026-09-0{g} 15:00")
+        _partita_db(db, 10 * g + 1, S2, g, f"2026-09-0{g} 18:00", "c", "d", con_voti=() if g == 3 else None)
+    assert affidabilita.giornate_concluse(db, S2) == [1, 2]
+    _voto_db(db, S2, 3, 900, "c")                                    # arrivano i voti di una squadra sola: non basta
+    assert affidabilita.giornate_concluse(db, S2) == [1, 2]
+    _voto_db(db, S2, 3, 901, "d")
+    assert affidabilita.giornate_concluse(db, S2) == [1, 2, 3]
+    # la colonna del voto è quella della lega: con il voto statistico la redazione non basta
+    statistico = imposta(Regole(), "fonte_voto", "statistico")
+    assert affidabilita.giornate_concluse(db, S2, statistico) == []
+
+
+def test_la_prova_si_rifa_quando_cambiano_le_giornate_o_i_voti(monkeypatch, tmp_path):
+    """La prova si rifaceva solo quando cambiava l'ultima giornata: un recupero giocato dopo, i voti di una partita arrivati tardi
+    o un voto corretto restavano fuori fino alla giornata dopo (#832, sonda del revisore). Ora la chiave è l'impronta delle
+    giornate della prova e dei loro voti; `ultima` resta quella di sempre."""
+    from fanta import affidabilita, archivio, consigli
+    db = archivio.apri(tmp_path / "a.sqlite")
+    for g in range(1, 7):
+        _partita_db(db, 10 * g, S2, g, f"2026-09-{g:02d} 15:00")
+    _partita_db(db, 31, S2, 3, "2026-09-03 18:00", "c", "d", giocata=0)          # giornata 3: una partita rinviata
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: S2)
+    monkeypatch.setattr(consigli, "dati", lambda db: None)
+    prove = []
+
+    def finta(d, regole, par, giornate, **k):
+        prove.append([g for _, g in giornate])
+        return pd.DataFrame([{"stagione": s, "giornata": g, "quadratico_modello": 2.0, "quadratico_fantamedia": 2.1} for s, g in giornate])
+    monkeypatch.setattr(verifica, "verifica", finta)
+    f = tmp_path / "affidabilita.json"
+    rifai = lambda: affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f)      # noqa: E731
+    assert [rifai(), rifai()] == [True, False] and prove == [[1, 2, 4, 5, 6]]
+    # il recupero della 3 si gioca e arrivano i suoi voti: l'ultima giornata resta la 6, ma la prova si rifà
+    db.execute("UPDATE partite SET giocata = 1 WHERE id = 31")
+    _voto_db(db, S2, 3, 900, "c")
+    _voto_db(db, S2, 3, 901, "d")
+    assert [rifai(), rifai()] == [True, False] and prove[-1] == [1, 2, 3, 4, 5, 6]
+    assert affidabilita.carica(f)["ultima"] == f"{S2}/6"
+    # un voto corretto nei giorni dopo
+    _voto_db(db, S2, 5, 500, "a", voto=7.5)                          # stesso giocatore, voto cambiato
+    assert [rifai(), rifai()] == [True, False] and len(prove) == 3
+    # la giornata 7 è giocata, ma i voti di una squadra mancano: non entra, e la prova non si rifà
+    _partita_db(db, 70, S2, 7, "2026-09-07 15:00", con_voti=("a",))
+    assert rifai() is False and len(prove) == 3
+    _voto_db(db, S2, 7, 701, "b")
+    assert rifai() is True and prove[-1][-1] == 7 and affidabilita.carica(f)["ultima"] == f"{S2}/7"
+
+
+def test_il_giorno_del_rilascio_la_prova_si_rifa_una_volta(monkeypatch, tmp_path):
+    """Un file scritto prima di #832 non ha l'impronta: al primo giro la prova si rifà, poi resta."""
+    import json
+    from fanta import affidabilita, archivio, consigli
+    db = archivio.apri(tmp_path / "a.sqlite")
+    for g in range(1, 5):
+        _partita_db(db, 10 * g, S2, g, f"2026-09-{g:02d} 15:00")
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: S2)
+    monkeypatch.setattr(consigli, "dati", lambda db: None)
+    monkeypatch.setattr(verifica, "verifica", lambda d, regole, par, giornate, **k: pd.DataFrame(
+        [{"stagione": s, "giornata": g, "quadratico_modello": 2.0} for s, g in giornate]))
+    f = tmp_path / "affidabilita.json"
+    f.write_text(json.dumps({"ultima": f"{S2}/4", "righe": [{"giornata": 4}]}), encoding="utf-8")
+    assert [affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f) for _ in range(2)] == [True, False]
+    assert affidabilita.carica(f)["impronta"]
 
 
 # ---------------------------------------------------------------- il comando su un archivio vuoto
