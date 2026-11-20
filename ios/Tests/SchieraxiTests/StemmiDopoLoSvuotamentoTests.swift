@@ -22,14 +22,15 @@ struct StemmiDopoLoSvuotamentoTests {
     }
 
     /// Un server senza account con una squadra che ha stemma e maglia. Ogni server ha un indirizzo suo: niente copie su disco
-    /// di altri test.
-    private static func server(indirizzo: String = "https://prova-824-\(UUID().uuidString).invalid") -> ServerDiProva {
+    /// di altri test. Con `trattieni` l'elenco delle squadre risponde solo quando quel flusso finisce.
+    private static func server(trattieni: AsyncStream<Void>? = nil) -> ServerDiProva {
         let immagine = png()
-        return ServerDiProva(indirizzo: indirizzo) { metodo, percorso, _ in
+        return ServerDiProva(indirizzo: "https://prova-824-\(UUID().uuidString).invalid") { metodo, percorso, _ in
             if percorso == "/api/account/me" { return Data(#"{"multiutente": false, "utente": null}"#.utf8) }
             if percorso.hasPrefix("/api/foto-disponibili") { return Data(#"{"ids": []}"#.utf8) }
             if percorso.hasPrefix("/api/squadre/immagine") && metodo == "GET" { return immagine }
             if percorso == "/api/squadre" {
+                if let trattieni { for await _ in trattieni {} }
                 return Data(#"[{"nome": "Gli Amici", "mia": true, "immagini": {"stemma": true, "maglia": true}}]"#.utf8)
             }
             throw ErroreApi.server("niente")
@@ -75,6 +76,25 @@ struct StemmiDopoLoSvuotamentoTests {
         #expect(immagini.haImmagine(Self.squadra, tipo: "stemma"), "l'elenco si chiede di nuovo")
         #expect(immagini.memoriaSquadra(Self.squadra, tipo: "stemma") != nil, "lo stemma torna, niente lettera")
         #expect(immagini.memoriaSquadra(Self.squadra, tipo: "maglia") != nil, "la maglia torna")
+    }
+
+    /// L'altro ordine della stessa gara: lo svuotamento arriva mentre l'elenco chiesto all'avvio è ancora in viaggio.
+    @Test("Svuotati i dati mentre l'elenco arriva: arrivato, le righe caricano subito lo stemma")
+    func svuotamentoMentreLElencoArriva() async throws {
+        let (trattieni, rilascia) = AsyncStream<Void>.makeStream()
+        let s = Self.server(trattieni: trattieni)
+        let immagini = Immagini(server: s)
+        let avvio = Task { await immagini.caricaElenchi() }
+        for _ in 0..<300 where Self.richiesteElenco(s) == 0 { try await Task.sleep(for: .milliseconds(10)) }
+        try #require(Self.richiesteElenco(s) == 1, "l'elenco è in viaggio")
+        immagini.azzera()
+        rilascia.finish()
+        await avvio.value
+        try #require(immagini.haImmagine(Self.squadra, tipo: "stemma"))
+        // la riga riparte perché l'elenco è cambiato: lo stemma si carica subito, senza chiedere l'elenco un'altra volta
+        await immagini.caricaSquadra(Self.squadra, tipo: "stemma")
+        #expect(immagini.memoriaSquadra(Self.squadra, tipo: "stemma") != nil)
+        #expect(Self.richiesteElenco(s) == 1)
     }
 
     @Test("Le righe che ripartono insieme dopo lo svuotamento chiedono l'elenco una volta sola")

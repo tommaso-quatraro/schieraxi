@@ -25,6 +25,9 @@ final class Immagini: ObservableObject {
     private var inCorso = Set<String>()
     /// Cambia quando l'utente carica uno stemma o una maglia nuovi: le copie vecchie non valgono più.
     private var edizione = 0
+    /// L'elenco delle squadre (`squadre`) non è ancora stato chiesto: all'apertura e dopo `azzera` (dati locali svuotati, per
+    /// esempio dal cambio di server). Lo chiede la prima vista che ne ha bisogno (`caricaSquadra`), una volta sola (#824).
+    private var elencoSquadreDaChiedere = true
 
     init(server: (any ServerClient)? = nil) {
         self.server = server
@@ -61,13 +64,21 @@ final class Immagini: ObservableObject {
     /// Chi ha la foto e quali squadre hanno stemma e maglia. Se il server non risponde si usano gli ultimi elenchi salvati su disco
     /// (così le foto già scaricate si vedono anche senza rete privata).
     func caricaElenchi() async {
+        elencoSquadreDaChiedere = false   // già chiesto: le viste che compaiono intanto non lo chiedono una seconda volta
         if let foto: FotoDisponibili = await leggiElenco("/api/foto-disponibili") {
             fotoDisponibili = Set(foto.ids)
         }
+        await caricaElencoSquadre()
+    }
+
+    /// Quali squadre hanno stemma e maglia (`/api/squadre`).
+    private func caricaElencoSquadre() async {
         if let elenco: [SquadraLega] = await leggiElenco("/api/squadre") {
             var nuove: [String: ImmaginiSquadra] = [:]
             for s in elenco { nuove[s.nome] = s.immagini ?? ImmaginiSquadra(stemma: false, maglia: false) }
             squadre = nuove
+            // arrivato anche se nel frattempo `azzera` l'aveva rimesso da chiedere: le viste ripartono con questo e caricano
+            elencoSquadreDaChiedere = false
         }
     }
 
@@ -89,7 +100,18 @@ final class Immagini: ObservableObject {
         await carica(percorso: Self.percorsoFoto(id), chiave: Self.percorsoFoto(id))
     }
 
+    /// Carica lo stemma o la maglia di una squadra. Senza l'elenco delle squadre (svuotato da `azzera` dopo che era arrivato, o
+    /// mai chiesto) prima lo chiede, e intanto basta: quando arriva `squadre` cambia, le viste (`.task(id: squadre[nome])` di
+    /// `StemmaSquadra`) ripartono e caricano l'immagine. Caricarla anche qui farebbe due caricamenti sovrapposti, e quello della
+    /// vista annullata non arriverebbe. Prima, svuotato l'elenco, nessuno lo chiedeva più e restava la lettera (#824).
     func caricaSquadra(_ nome: String, tipo: String) async {
+        if elencoSquadreDaChiedere {
+            // subito, prima di aspettare: le altre righe che ripartono insieme non lo chiedono di nuovo
+            elencoSquadreDaChiedere = false
+            // una richiesta a sé: se la vista sparisce o riparte, l'elenco arriva lo stesso
+            await Task { await self.caricaElencoSquadre() }.value
+            return
+        }
         guard haImmagine(nome, tipo: tipo) else { return }
         await carica(percorso: Self.percorsoSquadra(nome, tipo: tipo), chiave: chiaveSquadra(nome, tipo))
     }
@@ -145,12 +167,14 @@ final class Immagini: ObservableObject {
         var errorDescription: String? { "L'indirizzo deve cominciare con https:// e portare a un'immagine." }
     }
 
-    /// Per i test: svuota memoria e ricordi.
+    /// Svuota memoria e ricordi (`DatiLocali.svuota`: uscita dall'account, cambio di server). L'elenco delle squadre torna da
+    /// chiedere: lo chiede la prima vista che mostra uno stemma.
     func azzera() {
         memoria.removeAllObjects()
         senzaImmagine.removeAll()
         fotoDisponibili = []
         squadre = [:]
+        elencoSquadreDaChiedere = true
     }
 }
 
