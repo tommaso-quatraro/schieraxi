@@ -16,6 +16,8 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta
 
+import pandas as pd
+
 from . import avvisi, diario, rinvii, scelte, turno as turni
 from . import etichette
 from . import formazione as fz
@@ -361,14 +363,36 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
         "partite": conta_partite(partite)}
 
 
-def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, file_scelte, file_diario, prev=None) -> dict | None:
+def _rosa_della_giornata(rose, stagione: str, giornata: int, file_diario) -> tuple[dict[int, dict], object, dict | None]:
+    """(info della rosa, numeri della rosa alla scadenza come tabella per `_panchina_di` o None, istantanea o None) per il riepilogo
+    di una giornata finita. Il ruolo è quello di allora, se c'è (una rosa scritta a mano può non averlo). Mai le previsioni di
+    un'altra giornata: sono della giornata da giocare (#794)."""
+    info = _info_rosa(rose, None)
+    numeri = diario.numeri_rosa(file_diario, stagione, giornata) if file_diario else {}
+    info = {i: x | ({"ruolo": numeri[i]["ruolo"]} if i in numeri else {}) for i, x in info.items()}
+    tabella = pd.DataFrame([{"id": i, "p_voto": float(n["p_voto"]), "mu": float(n["fv_atteso"]), "mu_voto": 6.0}
+                            for i, n in numeri.items() if i in info]).set_index("id") if any(i in info for i in numeri) else None
+    ist = (diario.carica(file_diario).get("istantanee") or {}).get(f"{stagione}/{giornata}") if file_diario else None
+    return info, tabella, ist if isinstance(ist, dict) else None
+
+
+def _panchina_della_giornata(info: dict[int, dict], numeri, ist: dict | None, titolari: list[int], regole: Regole) -> list[int]:
+    """La panchina di una formazione salvata senza panchina, nel riepilogo di una giornata finita (#794): quella congelata alla
+    scadenza (l'istantanea) se gli 11 sono gli stessi; altrimenti quella che «in corso» sceglieva per la giornata (`_panchina_di`)
+    con i numeri della rosa alla scadenza (`diario.numeri_rosa`); senza numeri (nessuna copia alla scadenza) vuota."""
+    congelati = [g.get("id") for g in (ist or {}).get("titolari") or [] if isinstance(g, dict)]
+    if congelati and set(congelati) == set(titolari) and (ist or {}).get("panchina"):
+        return [int(g["id"]) for g in ist["panchina"] if isinstance(g, dict) and isinstance(g.get("id"), int)]
+    return _panchina_di(info, numeri, titolari, regole)
+
+
+def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, file_scelte, file_diario) -> dict | None:
     """Il campo `riepilogo` di Oggi (fase finita): dal Diario se la giornata è già calcolata, altrimenti i punti fatti dai voti.
     Con una partita rinviata ancora da recuperare la giornata è finita lo stesso (fine_giornata): la regola della lega dice cosa
     contano i suoi giocatori; con `aspetta` restano in formazione senza voto e `recuperi` elenca le partite che mancano (i punti
     possono ancora cambiare), con le altre regole `recuperi` è vuoto (i punti sono già quelli finali).
-    Senza la panchina schierata (web e iPhone salvano solo gli 11, e la copia automatica non ce l'ha) la panchina è quella che
-    sceglie il sistema (`_panchina_di`), la stessa funzione di «in corso» e del Diario (#794), con le previsioni `prev` che Oggi ha
-    già (della giornata da giocare: nessun calcolo nuovo). Senza `prev` (campionato finito) la panchina resta vuota."""
+    Senza la panchina schierata (web e iPhone salvano solo gli 11, e la copia automatica non ce l'ha) la panchina è quella della
+    giornata (`_panchina_della_giornata`): la congelata alla scadenza o quella di «in corso» con i numeri di allora (#794)."""
     r_rinvio = rinvii.regola(regole, stagione, giornata)
     mancano = recuperi_mancanti(db, stagione, giornata)
     # con un recupero da giocare il riepilogo ha anche il menu per decidere quella giornata (`rinvio`, come in Oggi)
@@ -382,13 +406,13 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
         return base | {"formazione_di": "tua" if voce.get("schierata") else "consigliata", "nel_diario": True,
                        "punti_fatti": mia.get("reale"), "punti_attesi": mia.get("atteso"), "intervallo": mia.get("intervallo"),
                        "consigliata": {"punti_fatti": cons.get("reale"), "punti_attesi": cons.get("atteso")}}
-    info = _info_rosa(rose, prev)
+    info, numeri, ist = _rosa_della_giornata(rose, stagione, giornata, file_diario)
     sch = schierata(stagione, giornata, file_scelte, file_diario, ruoli={i: x["ruolo"] for i, x in info.items()}, regole=regole)
     if not sch or any(i not in info for i in sch[0]):
         return None
     tit_ids, panc_ids, di = sch
     if panc_ids is None:
-        panc_ids = _panchina_di(info, prev, tit_ids, regole)
+        panc_ids = _panchina_della_giornata(info, numeri, ist, tit_ids, regole)
     panc_ids = [i for i in panc_ids if i in info and i not in tit_ids]
     if not voti_arrivati(db, stagione, giornata, regole):
         return None                                   # una partita giocata senza i suoi voti: niente numeri inventati (#649)
@@ -402,7 +426,6 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
     giocatore = lambda i: info[i] | ({"squadra": squadre[i]} if i in squadre else {})     # noqa: E731
     a = andamento([giocatore(i) for i in tit_ids], [giocatore(i) for i in panc_ids], partite, voti, squadre_voti, {}, set(), regole,
                   rinvio=r_rinvio)
-    ist = (diario.carica(file_diario).get("istantanee") or {}).get(f"{stagione}/{giornata}") if file_diario else None
     atteso = ist.get("atteso") if isinstance(ist, dict) and di == "consigliata" else None
     return base | {"formazione_di": di, "nel_diario": False, "punti_fatti": a["punti_fatti"], "punti_attesi": atteso,
                    "intervallo": None, "consigliata": None}
@@ -469,7 +492,7 @@ def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str
             corpo["in_corso"] = blocco_in_corso(db, regole, rose, prev, f, stagione, giornata, corpo.get("partite") or [],
                                                 file_scelte, file_diario)
         elif corpo["fase"] == FINITA:
-            corpo["riepilogo"] = blocco_riepilogo(db, regole, rose, stagione, precedente, file_scelte, file_diario, prev)
+            corpo["riepilogo"] = blocco_riepilogo(db, regole, rose, stagione, precedente, file_scelte, file_diario)
             corpo["prossima"] = blocco_prossima(corpo, adesso)
     except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
         pass

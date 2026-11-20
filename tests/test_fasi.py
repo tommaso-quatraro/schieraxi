@@ -241,37 +241,127 @@ def test_giornata_finita_senza_diario_usa_i_voti(ambiente, monkeypatch):
     assert o["prossima"]["prepara_da"] == "2026-11-11 15:00" and o["prossima"]["con_probabili"] is False
 
 
+def _scheda(prev, i) -> dict:
+    x = prev.loc[i]
+    return {"id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "p_voto": float(x["p_voto"]), "fv_atteso": float(x["mu"])}
+
+
+def _copia_alla_scadenza(a, prev, titolari, panchina) -> None:
+    """Il passo del server alla scadenza (`copia_scadenza.salva`, come fa per ogni utente): l'istantanea della consigliata e i
+    numeri della rosa di allora, dalle previsioni `prev` della giornata 10."""
+    from fanta import copia_scadenza
+    f = {"giornata": 10, "modulo": "4-4-2", "punteggio_atteso": 70.0, "titolari": [_scheda(prev, i) for i in titolari],
+         "panchina": [_scheda(prev, i) for i in panchina], "schede": {str(i): _scheda(prev, i) for i in prev.index}}
+    copia_scadenza.salva(f, ST, a.tmp / "scelte.json", a.tmp / "diario.json")
+
+
 def test_giornata_finita_senza_diario_con_la_scelta_salvata_senza_panchina(ambiente, monkeypatch):
     """#794: web e iPhone salvano la formazione senza panchina. Senza la voce del Diario il riepilogo usava una panchina vuota e
-    le riserve entrate in corso sparivano (64,0 invece di 76,0). Ora la panchina è quella che sceglie il sistema, come in «in
-    corso» e nel Diario: Dif12 entra al posto di Dif3 (senza voto), Cen13 al posto di Cen9 (infortunato, senza voto)."""
-    _giornata_finita(ambiente)
+    le riserve entrate in corso sparivano (64,0 invece di 76,0). Con gli stessi 11 della consigliata congelata alla scadenza la
+    panchina è la sua: Dif12 entra al posto di Dif3 (senza voto), Cen13 al posto di Cen9 (infortunato, senza voto)."""
     prev, _, _ = consigli.previsioni(None, REGOLE)
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 11, False))
     from fanta import scelte
     scelte.salva(ST, 10, TITOLARI, "4-4-2", ambiente.tmp / "scelte.json")          # come web e iPhone: niente panchina
+    _copia_alla_scadenza(ambiente, prev, TITOLARI, PANCHINA)
+    _giornata_finita(ambiente)
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 11, False))
     r = _oggi(ambiente, datetime(2026, 11, 10, 10, 0))["riepilogo"]
     assert r["nel_diario"] is False and r["formazione_di"] == "tua"
     assert r["punti_fatti"] == pytest.approx(round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1))
 
 
 def test_riepilogo_con_una_riserva_senza_ruolo_nella_rosa(ambiente, monkeypatch):
-    """Una riserva della rosa senza ruolo (rosa scritta a mano) ma con il ruolo nelle previsioni, e con il voto: nella panchina del
-    sistema ha il ruolo delle previsioni, come in «in corso». Con il ruolo vuoto il conto si rompeva e il riepilogo spariva."""
-    _giornata_finita(ambiente)
+    """Una riserva della rosa senza ruolo (rosa scritta a mano), con il ruolo nei numeri della scadenza e con il voto: nella
+    panchina del sistema ha il ruolo di allora, come in «in corso». Con il ruolo vuoto il conto si rompeva e il riepilogo spariva."""
     prev, _, _ = consigli.previsioni(None, REGOLE)
     prev = pd.concat([prev, pd.DataFrame([{"id": 15, "nome": "Dif15", "ruolo": "D", "squadra": "inter", "atteso": 4.5, "stato": "titolare",
                                            "p_voto": 0.9, "mu": 5.0, "mu_voto": 6.0, "dubbio": False, "diffidato": False}]).set_index("id")])
-    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 11, False))
     ambiente.rose.squadra("Mia").giocatori.append(lega.GiocatoreRosa(15, "Dif15", None, "INT", 1))
     archivio.inserisci(ambiente.db, "voti", [{"stagione": ST, "giornata": 10, "calciatore_id": 15, "nome": "Dif15", "squadra": "inter",
                                               "ruolo": "D", "voto_red": 6.0, "gol": 0}])
     from fanta import scelte
     scelte.salva(ST, 10, TITOLARI, "4-4-2", ambiente.tmp / "scelte.json")
+    consigliata = [1, 2, 3, 4, 5, 6, 7, 8, 13, 10, 11]                      # 11 diversi da quelli dell'utente
+    _copia_alla_scadenza(ambiente, prev, consigliata, [12, 9, 15, 14])
+    _giornata_finita(ambiente)
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 11, False))
     atteso = pytest.approx(round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1))
     assert _oggi(ambiente, datetime(2026, 11, 10, 10, 0))["riepilogo"]["punti_fatti"] == atteso
-    r = fasi.blocco_riepilogo(ambiente.db, REGOLE, ambiente.rose, ST, 10, ambiente.tmp / "scelte.json", ambiente.tmp / "diario.json", prev)
+    r = fasi.blocco_riepilogo(ambiente.db, REGOLE, ambiente.rose, ST, 10, ambiente.tmp / "scelte.json", ambiente.tmp / "diario.json")
     assert r["punti_fatti"] == atteso
+
+
+# sei giocatori in più: più non titolari dei 7 posti in panchina. Cen19 (napoli) prende voto il lunedì, gli altri (torino) non giocano
+ALTRI = {15: ("Dif15", "D", "torino"), 16: ("Cen16", "C", "torino"), 17: ("Att17", "A", "torino"), 18: ("Dif18", "D", "torino"),
+         19: ("Cen19", "C", "napoli"), 20: ("Att20", "A", "torino")}
+
+
+def _con_altri_sei(a, dif4_poco=False):
+    """Previsioni della giornata 10 e della 11 con i sei giocatori in più. Nella 11 Cen13, che ha preso voto nella 10, è
+    squalificato («gioca 0%»): con quelle previsioni resterebbe fuori dalla panchina."""
+    base, _, _ = consigli.previsioni(None, REGOLE)
+    for i, (n, r, s) in ALTRI.items():
+        a.rose.squadra("Mia").giocatori.append(lega.GiocatoreRosa(i, n, r, s, 1))
+    righe = pd.DataFrame([{"id": i, "nome": n, "ruolo": r, "squadra": s, "atteso": 4.2, "stato": "titolare", "p_voto": 0.8, "mu": 5.2,
+                           "mu_voto": 6.0, "dubbio": False, "diffidato": False} for i, (n, r, s) in ALTRI.items()]).set_index("id")
+    prev10 = pd.concat([base, righe])
+    if dif4_poco:
+        prev10.loc[4, "p_voto"] = 0.3
+    prev11 = prev10.copy()
+    prev11.loc[13, ["p_voto", "stato"]] = [0.0, "squalificato"]
+    archivio.inserisci(a.db, "voti", [{"stagione": ST, "giornata": 10, "calciatore_id": 19, "nome": "Cen19", "squadra": "napoli",
+                                       "ruolo": "C", "voto_red": 6.0, "gol": 0}])
+    return prev10, prev11
+
+
+def _fine_giornata_e_giorno_dopo(a, monkeypatch, prev10, prev11, titolari):
+    """(«in corso» lunedì alle 23:30, con le previsioni della 10; riepilogo di martedì, quando Oggi ha le previsioni della 11)."""
+    from fanta import scelte
+    scelte.salva(ST, 10, titolari, "4-4-2", a.tmp / "scelte.json")
+    info10 = fasi._info_rosa(a.rose, prev10)
+    _copia_alla_scadenza(a, prev10, TITOLARI, fasi._panchina_di(info10, prev10, TITOLARI, REGOLE))
+    monkeypatch.setattr(consigli, "valuta", lambda *x, **k: {"modulo": "4-4-2", "punteggio_atteso": 69.0})
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev10, 10, True))
+    a.stato["giocate"] = {0, 1}
+    a.stato["carica"]()
+    _voti(a, VOTI_DOMENICA)
+    _voti(a, VOTI_LUNEDI)
+    c = _oggi(a, datetime(2026, 11, 9, 23, 30))["in_corso"]
+    _giornata_finita(a, voti=())
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev11, 11, False))
+    r = _oggi(a, datetime(2026, 11, 10, 10, 0))["riepilogo"]
+    return c, r
+
+
+def _panchina_del_riepilogo(a, titolari) -> list[int]:
+    info, numeri, ist = fasi._rosa_della_giornata(a.rose, ST, 10, a.tmp / "diario.json")
+    return fasi._panchina_della_giornata(info, numeri, ist, titolari, REGOLE)
+
+
+def test_riepilogo_senza_panchina_salvata_non_usa_le_previsioni_della_giornata_dopo(ambiente, monkeypatch):
+    """#794, revisione: la panchina del riepilogo è quella di «in corso» per la stessa giornata, con i numeri della rosa alla
+    scadenza. Con le previsioni della 11 Cen13 (squalificato per la 11) restava fuori: 70,0 invece di 76,0. Qui l'utente ha gli 11
+    della consigliata congelata (dove c'è Dif4 e non Dif12): Dif12 entra per Dif3, Cen13 per Cen9."""
+    prev10, prev11 = _con_altri_sei(ambiente)
+    c, r = _fine_giornata_e_giorno_dopo(ambiente, monkeypatch, prev10, prev11, TITOLARI)
+    attesi = round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1)
+    assert c["punti_fatti"] == pytest.approx(attesi)
+    assert r["nel_diario"] is False and r["punti_fatti"] == pytest.approx(attesi)
+    assert _panchina_del_riepilogo(ambiente, TITOLARI) == [g["id"] for g in c["giocatori"] if not g["titolare"]]
+
+
+def test_riepilogo_con_11_diversi_dalla_consigliata_e_una_riserva_che_non_era_nella_consigliata(ambiente, monkeypatch):
+    """Dif4, titolare della consigliata congelata, vale poco; l'utente lo lascia fuori e mette Dif12. La panchina è allora quella
+    di «in corso» per i suoi 11: entra Cen19, che non era né titolare né riserva della consigliata (serve il suo numero di allora),
+    e prende il posto di Cen9; Cen13 prende quello di Dif3."""
+    prev10, prev11 = _con_altri_sei(ambiente, dif4_poco=True)
+    mia = [1, 2, 3, 12, 5, 6, 7, 8, 9, 10, 11]
+    c, r = _fine_giornata_e_giorno_dopo(ambiente, monkeypatch, prev10, prev11, mia)
+    attesi = round(sum(_fv(i) for i in (1, 2, 5, 6, 7, 8, 10, 11, 12, 13)) + 6.0, 1)       # più Cen19
+    assert c["punti_fatti"] == pytest.approx(attesi)
+    assert r["punti_fatti"] == pytest.approx(attesi)
+    panchina = _panchina_del_riepilogo(ambiente, mia)
+    assert 19 in panchina and panchina == [g["id"] for g in c["giocatori"] if not g["titolare"]]
 
 
 def test_giornata_finita_con_i_voti_a_meta_niente_totale(ambiente, monkeypatch):

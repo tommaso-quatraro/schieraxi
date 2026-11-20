@@ -40,6 +40,8 @@ FILE = RADICE / "dati" / "diario.json"
 MASSIMO_GIORNATE = 12
 SIMULAZIONI = 300
 MAX_ISTANTANEE = 60
+# I numeri di tutta la rosa alla scadenza (`numeri_rosa`): servono solo al riepilogo di Oggi della giornata appena finita (#794)
+MAX_NUMERI_ROSA = 4
 # «L'ho messa» (#616): il campo della scelta salvata che dice «ho messo questi 11 nell'app della lega». `scelte.salva` lo scrive
 # solo quando è vero (`messa: true`, con `messa_il`) e lo fa cadere se gli 11 cambiano. È l'unico punto dove il Diario lo legge:
 # `schierata_confermata` dice se la scelta salvata è quella schierata davvero e ogni voce lo porta in `schierata.confermata`.
@@ -58,7 +60,7 @@ def carica(percorso: Path | None = None) -> dict:
 
 
 def _scrivi(percorso: Path | None, voci: dict | None = None, istantanee: dict | None = None, cambi: dict | None = None,
-            basi: dict | None = None) -> None:
+            basi: dict | None = None, numeri: dict | None = None) -> None:
     """Aggiunge voci e/o istantanee al file ricaricandolo subito prima di scrivere: il calcolo del diario è lungo e nel frattempo
     la schermata della formazione può aver salvato un'istantanea nuova, che non va persa. Il blocco vale anche fra processi
     (servizio e comando del cron) e una voce con la formazione schierata non viene MAI sostituita da una che non ce l'ha:
@@ -69,7 +71,8 @@ def _scrivi(percorso: Path | None, voci: dict | None = None, istantanee: dict | 
     `cambi` = {chiave: cambio} (`indicatori_consiglio.cambio`): si aggiunge in fondo a quelli della giornata, al massimo
     `indicatori_consiglio.MAX_CAMBI` (gli ultimi), solo se l'istantanea nel file ha ancora i titolari di prima del cambio: due
     salvataggi della stessa consigliata nuova nello stesso momento (app e copia alla scadenza) contano un cambio solo.
-    Stanno a parte, fuori dalle istantanee che l'app riceve."""
+    Stanno a parte, fuori dalle istantanee che l'app riceve. Così anche `numeri` = {chiave: numeri della rosa} (`numeri_rosa`),
+    al massimo MAX_NUMERI_ROSA giornate."""
     file = percorso or FILE
     with _blocco, BloccoFile(file.with_name(file.name + ".lock")):
         d = carica(percorso)
@@ -95,6 +98,12 @@ def _scrivi(percorso: Path | None, voci: dict | None = None, istantanee: dict | 
             for vecchia in chiavi_vecchie(ist, MAX_ISTANTANEE):
                 ist.pop(vecchia, None)
             d["istantanee"] = ist
+        if numeri:
+            tenuti = d["numeri_rosa"] if isinstance(d.get("numeri_rosa"), dict) else {}
+            tenuti.update(numeri)
+            for vecchia in chiavi_vecchie(tenuti, MAX_NUMERI_ROSA):
+                tenuti.pop(vecchia, None)
+            d["numeri_rosa"] = tenuti
         scrivi_sicuro(file, json.dumps(d, ensure_ascii=False))
 
 
@@ -126,7 +135,8 @@ def salva_istantanea(f: dict, stagione: str, percorso: Path | None = None) -> bo
     circa 1 KB per giornata, una sola per giornata. Chi chiama la usa solo finché la formazione è aperta; dopo la scadenza non si
     chiama più e quella già salvata resta com'è (congelata). True se ha scritto.
     Per gli indicatori del consiglio (`indicatori_consiglio.py`): `misure` = C3 e C4 di questa consigliata; quando l'istantanea si
-    sovrascrive con titolari diversi si registra il cambio (C2), a parte."""
+    sovrascrive con titolari diversi si registra il cambio (C2), a parte.
+    A parte anche i numeri di tutta la rosa (`f["schede"]`, vedi `numeri_rosa`), congelati alla scadenza come l'istantanea."""
     g = f.get("giornata")
     tit = [_giocatore(x) for x in f.get("titolari", []) if isinstance(x, dict) and "id" in x]
     if not isinstance(g, int) or len(tit) != 11:
@@ -138,14 +148,34 @@ def salva_istantanea(f: dict, stagione: str, percorso: Path | None = None) -> bo
     if (m := ic.misure(f)) is not None:
         nuova["misure"] = m
     chiave = f"{stagione}/{g}"
-    prima = carica(percorso).get("istantanee")
+    d = carica(percorso)
+    prima = d.get("istantanee")
     vecchia = prima.get(chiave) if isinstance(prima, dict) else None
+    numeri = [{k: v for k, v in _giocatore(x).items() if k != "nome"}
+              for x in (f.get("schede") or {}).values() if isinstance(x, dict) and "id" in x][:MAX_GIOCATORI_VOCE]
+    numeri = {chiave: numeri} if numeri and numeri != (d.get("numeri_rosa") or {}).get(chiave) else None
     if isinstance(vecchia, dict) and {k: v for k, v in vecchia.items() if k != "calcolata"} == nuova:
-        return False
+        if numeri:
+            _scrivi(percorso, numeri=numeri)
+        return bool(numeri)
     nuova["calcolata"] = _adesso().isoformat(timespec="seconds")
     c = ic.cambio(vecchia, f, nuova["calcolata"]) if isinstance(vecchia, dict) else None
-    _scrivi(percorso, istantanee={chiave: nuova}, cambi={chiave: c} if c else None)
+    _scrivi(percorso, istantanee={chiave: nuova}, cambi={chiave: c} if c else None, numeri=numeri)
     return True
+
+
+def numeri_rosa(percorso: Path | None, stagione: str, giornata: int) -> dict[int, dict]:
+    """{id: {ruolo, p_voto, fv_atteso}} della rosa alla scadenza della giornata, come li mostrava l'app: i numeri di tutta la rosa
+    (`f["schede"]`) e, per le giornate salvate prima che ci fossero, quelli che l'istantanea ha (titolari e panchina). Per la
+    panchina del riepilogo di Oggi, la stessa che «in corso» sceglieva per quella giornata (#794). Vuoto se non c'è niente."""
+    d = carica(percorso)
+    chiave = f"{stagione}/{giornata}"
+    ist = (d.get("istantanee") or {}).get(chiave) if isinstance(d.get("istantanee"), dict) else None
+    righe = [x for x in ((ist or {}).get("titolari") or []) + ((ist or {}).get("panchina") or []) if isinstance(x, dict)]
+    tutti = (d.get("numeri_rosa") or {}).get(chiave) if isinstance(d.get("numeri_rosa"), dict) else None
+    righe += [x for x in tutti or [] if isinstance(x, dict)]
+    return {x["id"]: {k: x[k] for k in ("ruolo", "p_voto", "fv_atteso")} for x in righe
+            if isinstance(x.get("id"), int) and all(_numero(x.get(k)) is not None for k in ("p_voto", "fv_atteso")) and x.get("ruolo") in RUOLI}
 
 
 def impronta_regole(regole: Regole, stagione: str | None = None, giornata: int | None = None, fuori_turno: bool = False) -> str:
