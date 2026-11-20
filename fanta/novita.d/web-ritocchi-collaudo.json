@@ -8,12 +8,12 @@
     "Le altre squadre: il numero e l'elenco non contano più la tua squadra, che sta in «La mia squadra».",
     "Dopo «Esci da tutti i dispositivi» la schermata di accesso dice che sei fuori da tutti i dispositivi.",
     "I percorsi nei testi si scrivono tutti allo stesso modo, per esempio «Impostazioni › Regole e scadenza».",
-    "Con il testo molto ingrandito un nome lungo va a capo con il trattino, dove il browser sa sillabare, invece di spezzarsi a caso."
+    "Con il testo molto ingrandito un nome lungo nel titolo di una pagina o della scheda di un giocatore va a capo con il trattino, dove il browser sa sillabare, invece di spezzarsi a caso."
   ],
   "tecnico": [
     "POST /api/aggiorna: se aggiorna.fonti_accese() è vuota (fantacalcio, understat e footballdata solo con fonti_ombra) risponde {\"avviato\": false, \"messaggio\": NESSUNA_FONTE} prima di prendere i blocchi; traduzione srv.aggiorna_nessuna_fonte. Nessun campo nuovo. Contratto in docs/API.md.",
     "Web, Errori recenti: plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori, errori.lenta_riga; tempi con num(); ore con toLocaleString e timeZone Europe/Rome; nomi errori.evento_<tipo> (tests/test_eventi_sicurezza_catalogo.py li vuole per ogni evento scritto dal server).",
     "Catalogo: regole.prima_giornata_conta senza numero; sei testi con «Impostazioni › …» (test_testi_percorsi.py); scambio.costo_quot sostituita da scambio.costo_n e scambio.quotazione_n; tolta lega.la_tua. Catalogo Swift rigenerato (cambia solo il testo di due costanti).",
-    "Web: vistaAltreSquadre e il conteggio di Impostazioni senza la squadra mia (stato.squadre resta intero); immaginiRosa; dopo esciDaTutti un segno in sessionStorage letto una volta da controllaAccesso; hyphens: auto su #titolo-pagina, .intestazione-scheda h2 e .voce-g .nome-t."
+    "Web: vistaAltreSquadre e il conteggio di Impostazioni senza la squadra mia (stato.squadre resta intero); immaginiRosa; dopo esciDaTutti un segno in sessionStorage letto una volta da controllaAccesso; hyphens: auto (con hyphenate-limit-chars: 10 4 4) su #titolo-pagina e .intestazione-scheda h2."
   ]
 }
