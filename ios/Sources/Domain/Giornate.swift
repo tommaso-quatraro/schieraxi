@@ -26,6 +26,11 @@ extension VoceDiario {
 
     /// La consigliata è quella mostrata prima della scadenza (`conMostrata` della web).
     var conMostrata: Bool { consigliata?.origine == "mostrata" }
+
+    /// «Non è quello che ho schierato»: gli 11 da cui parte il foglio (`FormazioneManualeDiarioView`).
+    func titolariInRosa(_ rosa: [GiocatoreRosa]) -> Set<Int> {
+        Set((cheConta.formazione?.titolari ?? []).compactMap(\.id))
+    }
 }
 
 /// Una riga dell'elenco: nome della giornata, la frase di chi sono i punti, i punti fatti grandi e «punti (attesi 71,7)».
