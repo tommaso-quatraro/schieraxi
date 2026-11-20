@@ -236,9 +236,10 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
     la consigliata (#333) nessun cambio proposto: era già la scelta migliore. Se intanto la consigliata ha titolari diversi, UNA voce
     lo dice e porta alla Formazione. La scelta salvata non si tocca mai: la cambi solo tu."""
     prev = consigli.previsioni(db, regole)[0]
+    ruoli = scelte.ruoli_schierabili(rose, prev)
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
     if scelta:                      # conta solo se si può ancora schierare (regola unica, come in `_dubbi`)
-        scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
+        scelta = scelte.che_vale(scelta, ruoli, regole)
     if not (scelta and _e_la_consigliata(scelta)):
         return _dubbi(db, regole, rose, giornata, file_scelte)
     salvati = [int(i) for i in scelta["titolari"]]
@@ -247,18 +248,25 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
         # chi gioca un anticipo già cominciato non si sposta più (#373): non si nomina come cambio; se cambiano solo loro, niente voce
         schede = {i: consigli.scheda_previsione(i, prev.loc[i]) for i in set(consigliata[0]) ^ set(salvati) if i in prev.index}
         entrano, escono = _cambi_possibili(salvati, consigliata[0], _bloccati(db, giornata, schede), schede)
-        if entrano or escono:
-            adesso = [i for i in consigliata[0] if i in entrano] + [i for i in salvati if i not in escono]
+        adesso = [i for i in consigliata[0] if i in entrano] + [i for i in salvati if i not in escono]
+        # senza un fermo che lo impedisca il cambio è quello della consigliata; con un fermo di un altro ruolo (#816) togliere solo
+        # l'altro lascerebbe 10 o 12 titolari, o un modulo che la lega non ammette: allora nessuna voce (regola unica della scelta)
+        if entrano and escono and scelte.motivo_non_valida(adesso, ruoli, regole) is None:
             return [_consigliata_cambiata(prev, salvati, adesso, giornata)]
+        # senza la voce del cambio restano anche le voci di chi è infortunato o squalificato con il loro cambio: `_dubbi` lo propone
+        # solo se la consigliata lo fa, dello stesso ruolo e mai su chi gioca un anticipo già cominciato, quindi si può fare
+        fuori = {i for i in salvati if i in prev.index and consigli.scheda_previsione(i, prev.loc[i]).get("stato") in FUORI}
+        return [v for v in _dubbi(db, regole, rose, giornata, file_scelte)
+                if "alternativa" not in v or (v.get("giocatore") or {}).get("id") in fuori]
     # la stessa consigliata (o non si riesce a calcolarla): restano solo le voci che non chiedono un cambio
     return [v for v in _dubbi(db, regole, rose, giornata, file_scelte) if "alternativa" not in v]
 
 
-def _copertura(db, regole: Regole, rose: Rose, lingua: str = "it") -> list[dict]:
+def _copertura(db, regole: Regole, rose: Rose) -> list[dict]:
     """Reparti della rosa scoperti (priorità alta) o senza ricambi (media): un conteggio sulle previsioni già in cache."""
     from . import copertura
     prev, _, _ = consigli.previsioni(db, regole)
-    r = copertura.analizza(prev, regole, rose, lingua)
+    r = copertura.analizza(prev, regole, rose)
     voci = []
     for x in (r or {}).get("reparti", [])[:MAX_COPERTURA]:
         scoperto = x["livello"] == copertura.SCOPERTO
@@ -581,7 +589,7 @@ def senza_rose(imp: Path | None) -> list[dict]:
 
 # ---------------------------------------------------------------- insieme
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, ctx, certificato_giorni: int | None = None,
-               amministratore: bool = False, adesso: datetime | None = None, lingua: str = "it", dal: datetime | None = None,
+               amministratore: bool = False, adesso: datetime | None = None, dal: datetime | None = None,
                mercato: bool = True, scambi_trova: bool = True) -> list[dict]:
     """La lista ordinata (priorità 1 = alta, poi 2 e 3; a parità, nell'ordine dei controlli), al massimo MAX_VOCI voci e al
     massimo buon_senso.MAX_CONSIGLI consigli. `ctx` è il contesto dell'utente (percorsi dei suoi file); `dal` è quando è nato
@@ -602,7 +610,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, c
     if aperta and giornata and not finita:
         controlli += [lambda: _titolari(db, regole, rose, giornata, ctx.scelte)]
     if aperta and giornata:
-        controlli += [lambda: _copertura(db, regole, rose, lingua),
+        controlli += [lambda: _copertura(db, regole, rose),
                       lambda: _formazione_non_salvata(db, regole, rose, ore, giornata, ctx.scelte)]
     controlli += [lambda: _certificato(certificato_giorni)]
     if rose_file is not None:

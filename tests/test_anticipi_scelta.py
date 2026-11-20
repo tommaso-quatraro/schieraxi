@@ -15,6 +15,7 @@ import pandas as pd
 import pytest
 
 from fanta import archivio, calcolo, consigli, da_fare, diario, lega, scelte, server
+from fanta.regole import Regole
 from test_da_fare import la_consigliata_cambia
 from test_da_fare import mondo as mondo_da_fare  # noqa: F401  (fixture di «Da fare» con dati finti)
 from test_da_fare import vai as vai_da_fare
@@ -310,3 +311,38 @@ def test_da_fare_consigliata_cambiata_se_non_entra_un_bloccato_resta_il_piu_util
     v = _consigliata_cambiata(mondo_da_fare)
     assert len(v) == 1 and v[0]["entrano"] == [{"id": 12, "nome": "Riserva"}] and len(v[0]["escono"]) == 1
     assert v[0]["escono"][0]["id"] in (7, 8)
+
+
+@pytest.mark.parametrize("fermo", [10, 14], ids=["esce-un-bloccato", "entra-un-bloccato"])
+def test_da_fare_consigliata_cambiata_con_un_cambio_di_ruolo_impossibile_niente_voce(mondo_da_fare, monkeypatch, fermo):
+    """#816: la consigliata cambia modulo, entra il centrocampista 14 ed esce l'attaccante 10. Se uno dei due gioca l'anticipo già
+    cominciato non si sposta, e nessun cambio dello stesso ruolo lo sostituisce: togliere solo l'altro lascerebbe 12 titolari
+    («Ora schiera g14 al posto di .») o 10 («Ora schiera  al posto di g10.»). Niente voce, mai una frase con un nome vuoto."""
+    regole = Regole(moduli=["3-5-2", "3-6-1"])                            # la consigliata passa dal 3-5-2 al 3-6-1
+    _salva_la_consigliata(mondo_da_fare)
+    _cambia(mondo_da_fare, (10, 14))
+    _con_anticipo(mondo_da_fare, monkeypatch)
+    v = [x for x in vai_da_fare(mondo_da_fare, regole=regole) if x["id"].startswith("consigliata:")]
+    assert len(v) == 1 and v[0]["testo"].endswith("Ora schiera g14 al posto di g10.")      # senza anticipi la voce c'è
+    _con_anticipo(mondo_da_fare, monkeypatch, fermo)
+    v = [x for x in vai_da_fare(mondo_da_fare, regole=regole) if x["id"].startswith("consigliata:")]
+    assert v == [], [str(x["testo"]) for x in v]
+
+
+def test_da_fare_cambio_di_modulo_impossibile_resta_la_voce_dell_infortunato(mondo_da_fare, monkeypatch):
+    """#816, revisione: la consigliata ha tolto l'attaccante 10, che gioca l'anticipo già cominciato (entra il centrocampista 14), e
+    intanto il centrocampista salvato Bianchi (6) si è infortunato (entra il 12). Il cambio di modulo non si può fare e la sua voce
+    sparisce, ma la voce dell'infortunato resta, con un cambio dello stesso ruolo che si può fare: in cima alla Formazione c'è ancora
+    una decisione, e nessun cambio tocca il 10."""
+    regole = Regole(moduli=["3-5-2", "3-6-1"])
+    _salva_la_consigliata(mondo_da_fare)
+    _cambia(mondo_da_fare, (10, 14), (6, 12))
+    _con_anticipo(mondo_da_fare, monkeypatch, 10)
+    voci = vai_da_fare(mondo_da_fare, regole=regole)
+    assert not [v for v in voci if v["id"].startswith("consigliata:")]
+    bianchi = next((v for v in voci if v["id"] == "dubbio:6"), None)
+    assert bianchi is not None and bianchi["priorita"] == 1 and bianchi["testo"].startswith("Bianchi è infortunato. Meglio "), voci
+    assert bianchi["alternativa"]["id"] in (12, 14) and bianchi["azione"] == "Sostituisci" and bianchi.get("decisione") == 1
+    # nessun cambio impossibile: chi gioca l'anticipo non si sposta, e nessuna voce propone un cambio per chi non è fuori
+    assert all(v.get("giocatore", {}).get("id") != 10 and v.get("alternativa", {}).get("id") != 10 for v in voci)
+    assert [v["id"] for v in voci if "alternativa" in v] == ["dubbio:6"]

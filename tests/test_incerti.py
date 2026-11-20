@@ -1,7 +1,10 @@
 """«Titolare anche se incerto»: titolare sotto il 50% e la riserva dello stesso ruolo che gioca più dell'80%, se in panchina c'è
 (campo `incerti` di ogni modulo)."""
+from dataclasses import replace
+
 from fanta import consigli
 from fanta.formazione import Giocatore
+from fanta.regole import Regole
 
 
 def g(i, ruolo, p):
@@ -38,5 +41,8 @@ def test_ogni_modulo_porta_gli_incerti():
         modulo, atteso, dev = "3-4-3", 70.0, 5.0
         titolari = [g(2, "D", 0.35)]
         panchina = [g(11, "D", 0.89)]
-    m = consigli._moduli([F()])[0]
+    m = consigli._moduli([F()], Regole())[0]
     assert m["incerti"] == [{"titolare": 2, "riserva": 11}] and m["titolari"] == [2] and m["panchina"] == [11]
+    # una lega senza sostituzioni (#816): dalla panchina non entra nessuno, quindi nessuna riserva
+    senza = replace(Regole(), panchina=replace(Regole().panchina, max_sostituzioni=0))
+    assert consigli._moduli([F()], senza)[0]["incerti"] == [{"titolare": 2, "riserva": None}]
