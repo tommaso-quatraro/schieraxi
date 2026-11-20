@@ -2708,6 +2708,7 @@ async function notificheWeb(dispositivi) {
     const { chiave } = await api("/api/push/chiave");
     sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
     dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
+    segnaAvvisiDi();                                       // l'iscrizione è di chi l'ha accesa (#804)
   };
   const spegni = async () => {
     if (!sub) return;
@@ -2723,7 +2724,8 @@ async function notificheWeb(dispositivi) {
       avviso(t(r.inviato ? "avv.notifiche_attivate_qui" : "avv.prova_non_partita"), 7000);
     } catch (e) { avviso(`${t("avv.prova_non_partita")} ${e.message || ""}`.trim(), 8000); }
   };
-  mostra(interruttore("av_qui", t("imp.avvisi_qui"), !!sub, t("imp.avvisi_qui_aiuto")));
+  // acceso solo con un'iscrizione di questo account: quella di un altro account non vale per lui (#804), si accende di nuovo
+  mostra(interruttore("av_qui", t("imp.avvisi_qui"), !!sub && avvisiDiQuestoAccount(), t("imp.avvisi_qui_aiuto")));
   const scelta = $("#av_qui");
   scelta.addEventListener("change", async () => {
     const acceso = scelta.checked;
@@ -3702,11 +3704,25 @@ const AVVISI_DA_RIMANDARE = "avvisi-da-rimandare";
 function segnaAvvisiDaRimandare() {
   try { localStorage.setItem(AVVISI_DA_RIMANDARE, "1"); } catch { /* niente memoria */ }
 }
+// Di chi è l'iscrizione (#804): il numero dell'account che l'ha fatta, accanto a lei. Si rimanda solo se rientra lo stesso account;
+// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui. Il segno resta anche dopo un'uscita (non è
+// fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza account sul server l'iscrizione è sempre «mia».
+const AVVISI_DI = "avvisi-di";
+const numeroAccount = () => (stato.account && stato.account.id != null ? String(stato.account.id) : "");
+function segnaAvvisiDi() {
+  const n = numeroAccount();
+  if (n) try { localStorage.setItem(AVVISI_DI, n); } catch { /* niente memoria */ }
+}
+function avvisiDiQuestoAccount() {
+  const n = numeroAccount();
+  if (!n) return true;
+  try { return localStorage.getItem(AVVISI_DI) === n; } catch { return false; }
+}
 async function rimandaAvvisi() {
   try { if (localStorage.getItem(AVVISI_DA_RIMANDARE) !== "1") return; } catch { return; }
   const fatto = () => { try { localStorage.removeItem(AVVISI_DA_RIMANDARE); } catch { /* niente memoria */ } };
   const sub = await iscrizionePushQui();
-  if (!sub) { fatto(); return; }
+  if (!sub || !avvisiDiQuestoAccount()) { fatto(); return; }            // fatta da un altro account: non si rimanda (#804)
   try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
   catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
 }
@@ -4038,9 +4054,13 @@ async function controllaAccesso() {
     if (usaLinguaDi(dati.utente && dati.utente.nome_utente)) return false;           // l'utente aveva scelto un'altra lingua: ricarico con la sua
     stato.emailAccount = { email: dati.email || null, email_origine: dati.email_origine || null, email_in_attesa: dati.email_in_attesa || null };
     // nel browser l'account non c'è (lo toglie ogni uscita, anche una sessione chiusa altrove): è un nuovo accesso, e l'iscrizione
-    // agli avvisi che il browser ha ancora torna al server (rimandaAvvisi, all'avvio)
-    try { if (!localStorage.getItem("account")) segnaAvvisiDaRimandare(); localStorage.setItem("account", JSON.stringify(dati.utente)); }
-    catch { /* niente memoria */ }
+    // agli avvisi che il browser ha ancora torna al server se l'aveva fatta lui (rimandaAvvisi, all'avvio). Con la sessione che
+    // continua e nessun segno di chi l'ha fatta (iscrizione di una versione di prima, #804) è di chi è già dentro.
+    try {
+      if (!localStorage.getItem("account")) segnaAvvisiDaRimandare();
+      else if (!localStorage.getItem(AVVISI_DI)) segnaAvvisiDi();
+      localStorage.setItem("account", JSON.stringify(dati.utente));
+    } catch { /* niente memoria */ }
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, true);       // collega / conferma: si resta dentro
   }
   return true;

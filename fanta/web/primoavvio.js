@@ -133,6 +133,7 @@ function paFine() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
       await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) });
+      segnaAvvisiDi();                                   // l'iscrizione è di chi l'ha accesa (#804, app.js)
       avvisi.remove(); $("#pa-msg").innerHTML = `<div class="onb-verde">${t("onb.avvisi_attivi_questo")}</div>`;
     } catch (e) { paErrore(e); }
   });

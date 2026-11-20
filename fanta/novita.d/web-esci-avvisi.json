@@ -2,12 +2,12 @@
   "titolo": "Web: «Esci», avvisi dopo un nuovo accesso e altri ritocchi",
   "voci": [
     "Il tuo account: se «Esci» non riesce, per esempio senza rete, l'app lo dice e resti dentro; se «Elimina l'account» non riesce, gli avvisi di qui restano accesi.",
-    "Avvisi su questo dispositivo: dopo un nuovo accesso, se qui erano accesi tornano a funzionare da soli, senza un'altra domanda del browser.",
+    "Avvisi su questo dispositivo: dopo un nuovo accesso con lo stesso account, se qui erano accesi tornano a funzionare da soli; con un altro account sono spenti finché non li accende lui.",
     "Altri ritocchi: aperta senza rete l'app si rimette in ordine quando il collegamento torna; i pulsanti per scegliere un file si raggiungono con il tasto Tab."
   ],
   "tecnico": [
     "esciDa (app.js) guarda l'esito di POST /api/account/esci: con un errore diverso da 401 avviso account.esci_no, nessuna pulizia né ricarica. L'iscrizione push si toglie dal server (POST /api/push/disiscrivi) prima dell'uscita e dal browser solo dopo l'uscita riuscita (lasciaNotifiche(false)); se l'uscita non riesce l'iscrizione torna al server.",
-    "rimandaAvvisi (app.js): dopo un nuovo accesso (controllaAccesso trova il server con l'account e localStorage senza «account») l'iscrizione già nel browser (pushManager.getSubscription, senza chiedere il permesso) torna a POST /api/push/iscrivi, una volta. Il segno «avvisi-da-rimandare» in localStorage resta con rete giù, 5xx o 429 e si riprova all'apertura dopo. Nessuna rotta né campo nuovo.",
+    "rimandaAvvisi (app.js): dopo un nuovo accesso (controllaAccesso trova il server con l'account e localStorage senza «account») l'iscrizione già nel browser (pushManager.getSubscription, senza chiedere il permesso) torna a POST /api/push/iscrivi, una volta, solo se l'aveva fatta lo stesso account: il suo numero (stato.account.id) sta in localStorage «avvisi-di», scritto quando si accendono gli avvisi (interruttore e primo avvio) e tenuto anche dopo un'uscita; con un altro account l'interruttore è spento. Un'iscrizione di prima senza segno, con la sessione che continua, diventa di chi è dentro. Il segno «avvisi-da-rimandare» in localStorage resta con rete giù, 5xx o 429 e si riprova all'apertura dopo. Nessuna rotta né campo nuovo.",
     "rileggiAvvio (app.js, #801): caricaInfo e caricaSquadre segnano quando non riescono; si rileggono all'evento «online» e alla prima risposta buona di api(), una lettura alla volta, e la pagina di Impostazioni che ne dipende si ridisegna.",
     "«Elimina l'account»: lasciaNotifiche(false) solo dopo POST /api/account/elimina riuscito (il server cancella la cartella dell'utente, iscrizioni comprese).",
     "Aggiorna le rose e foglio di stemma e maglia: <button type=button> che apre il campo file nascosto, al posto di <label for>.",

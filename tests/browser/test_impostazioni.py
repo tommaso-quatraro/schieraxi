@@ -1041,11 +1041,16 @@ def test_le_ore_tranquille_rifiutate_dal_server_tornano_come_erano(web):
 # ---------------------------------------------------------------- «Esci» e gli avvisi di questo dispositivo (#800)
 # Un browser che ha già un'iscrizione agli avvisi, fatta in una visita di prima: service worker e permesso finti come in
 # NOTIFICHE_FINTE, ma l'iscrizione sta in localStorage (la web non tocca quella chiave), così resta dopo una ricarica, e c'è già
-# alla prima pagina della scheda (scritta una volta sola: dopo resta ciò che fa l'app).
+# alla prima pagina della scheda (scritta una volta sola: dopo resta ciò che fa l'app). `__DI__`: il numero dell'account che l'ha
+# fatta, come lo ricorda la web (`avvisi-di`, #804); `__INIZIALE__` vuoto: nessuna iscrizione all'inizio.
 ENDPOINT = "https://push.example/prova"
 ISCRIZIONE_GIA_QUI = """(() => {
   const CHIAVE = '__iscrizione-di-prova', ep = () => localStorage.getItem(CHIAVE);
-  if (!localStorage.getItem('__iscrizione-iniziata')) { localStorage.setItem('__iscrizione-iniziata', '1'); localStorage.setItem(CHIAVE, ENDPOINT); }
+  if (!localStorage.getItem('__iscrizione-iniziata')) {
+    localStorage.setItem('__iscrizione-iniziata', '1');
+    if (__INIZIALE__) localStorage.setItem(CHIAVE, __INIZIALE__);
+    if (__DI__) localStorage.setItem('avvisi-di', __DI__);
+  }
   const sub = () => ep() ? { endpoint: ep(), toJSON: () => ({ endpoint: ep(), keys: { p256dh: 'a', auth: 'b' } }),
     unsubscribe: async () => { localStorage.removeItem(CHIAVE); return true; } } : null;
   const reg = { active: {}, pushManager: { getSubscription: async () => sub(),
@@ -1057,9 +1062,11 @@ ISCRIZIONE_GIA_QUI = """(() => {
 SENZA_SESSIONE = {"detail": "Accesso richiesto", "multiutente": True, "registrazione": "invito", "social": [], "email_attiva": True}
 
 
-def iscrizione_gia_qui(web) -> None:
-    """Prima di `apri`: il browser ha già un'iscrizione agli avvisi."""
-    web.pagina.add_init_script(ISCRIZIONE_GIA_QUI)
+def iscrizione_gia_qui(web, di: str = "7", iniziale: bool = True) -> None:
+    """Prima di `apri`: il browser ha già un'iscrizione agli avvisi, fatta dall'account numero `di` (7 è UTENTE); con
+    `iniziale=False` le notifiche finte ci sono ma l'iscrizione no."""
+    web.pagina.add_init_script(ISCRIZIONE_GIA_QUI.replace("__INIZIALE__", json.dumps(ENDPOINT if iniziale else ""))
+                               .replace("__DI__", json.dumps(di)))
 
 
 def iscrizione_nel_browser(web) -> str | None:
@@ -1136,10 +1143,10 @@ def test_esci_riuscito_toglie_gli_avvisi_di_questo_dispositivo(web):
     assert chiavi_salvate(web) == []
 
 
-def entra_con_la_password(web) -> list[dict]:
+def entra_con_la_password(web, rimanda: bool = True) -> list[dict]:
     """La sessione di questo browser è stata chiusa altrove («Esci da tutti», password cambiata o recuperata da un altro dispositivo:
     il server toglie anche la sua iscrizione agli avvisi). Si apre l'accesso, si entra con la password e la pagina si ricarica.
-    Restituisce le iscrizioni mandate al server."""
+    Con `rimanda` aspetta che l'iscrizione parta. Restituisce le iscrizioni mandate al server."""
     entrato = []
     web.pagina.route(lambda u: urlsplit(u).path == "/api/account/me",
                      lambda route: json_200(route, UTENTE) if entrato else json_200(route, SENZA_SESSIONE, 401))
@@ -1150,10 +1157,49 @@ def entra_con_la_password(web) -> list[dict]:
     web.pagina.locator("#accesso-form").wait_for(timeout=10000)
     web.pagina.locator("#ac-nome").fill("amico")
     web.pagina.locator("#ac-pw").fill("Password-Finta-1")
-    with web.pagina.expect_request(iscrizione_mandata), web.pagina.expect_navigation(wait_until="load"):
-        web.pagina.locator("#accesso-invia").click()
+    if rimanda:
+        with web.pagina.expect_request(iscrizione_mandata), web.pagina.expect_navigation(wait_until="load"):
+            web.pagina.locator("#accesso-invia").click()
+    else:
+        with web.pagina.expect_navigation(wait_until="load"):
+            web.pagina.locator("#accesso-invia").click()
     web.aspetta()
     return iscritte
+
+
+def test_gli_avvisi_accesi_da_un_account_tornano_al_suo_nuovo_accesso(web):
+    """Stesso account (#804): accende gli avvisi qui, la sua sessione si chiude altrove e rientra: l'iscrizione torna al server.
+    (Browser vuoto all'inizio: il numero dell'account lo ricorda l'accensione, non un passaggio di prima.)"""
+    solo(web, "prima")
+    da_utente(web)
+    iscrizione_gia_qui(web, di="", iniziale=False)
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/avvisi/prova", {"inviato": True})
+    web.apri("/?vista=impostazioni")
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    iscritte = entra_con_la_password(web)
+    assert [c["endpoint"] for c in iscritte] == [ENDPOINT], iscritte
+
+
+def test_l_iscrizione_di_un_altro_account_non_si_rimanda(web):
+    """Account diverso (#804): il browser ha l'iscrizione fatta dall'account 12 ed entra l'account 7. La web non la rimanda al
+    server e «Avvisi su questo dispositivo» è spento, finché il nuovo utente non lo accende lui; acceso, l'iscrizione è sua."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web, di="12")
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/avvisi/prova", {"inviato": True})
+    iscritte = entra_con_la_password(web, rimanda=False)
+    assert iscritte == [], f"l'iscrizione di un altro account è stata rimandata: {iscritte}"
+    web.apri("/?vista=impostazioni")
+    assert not interruttore_qui(web).is_checked(), "l'interruttore è acceso con l'iscrizione di un altro account"
+    with web.pagina.expect_request(iscrizione_mandata):
+        accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    web.apri("/?vista=impostazioni")
+    assert interruttore_qui(web).is_checked() and len(iscritte) == 1
 
 
 def test_dopo_un_nuovo_accesso_l_iscrizione_del_browser_torna_sul_server(web):
