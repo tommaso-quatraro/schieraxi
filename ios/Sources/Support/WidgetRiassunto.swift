@@ -1282,12 +1282,6 @@ extension RiassuntoOggi {
         return "\(n.voce): finita"
     }
 
-    /// La frase sotto il titolo della fase: dopo la scadenza come la web («La formazione si è chiusa oggi 14:50»: la giornata è
-    /// scritta sopra, non si ripete) e dove sono i punti; a giornata finita cosa succede ora. nil prima della scadenza.
-    func fraseFase(adesso: Date) -> String? {
-        corpoFaseDubbi(adesso: adesso).map { c in [c.frase, c.sotto].compactMap { $0 }.joined(separator: " ") }
-    }
-
     /// La giornata di cui parla la fase, nella forma corta: dopo la scadenza quella in corso, a giornata finita quella appena
     /// chiusa («Giornata 8»); se il server non la dice, «Giornata».
     private var giornataFaseCorta: String { (inCorso ? nomeGiornata : nomeGiornataChiusa)?.corto ?? "Giornata" }
@@ -1354,13 +1348,15 @@ extension RiassuntoOggi {
     }
 
     /// Il corpo del widget «Da controllare» sotto la testata, a formazione chiusa o a giornata finita: la parola della fase sta
-    /// già in testata, qui la frase («La formazione si è chiusa oggi 14:50.», «Si ricomincia con la prossima giornata.») e sotto
-    /// dove sono i punti. Insieme fanno `fraseFase`. nil prima della scadenza.
+    /// già in testata, qui la frase e sotto dove sono i punti. nil prima della scadenza.
+    /// A formazione chiusa la frase della web, «La formazione si è chiusa oggi 14:50.» (`oggi.chiusa_dettaglio`: la giornata è
+    /// scritta sopra e non si ripete); se il server non manda l'ora della scadenza, «La formazione di questa giornata è chiusa: le
+    /// partite sono cominciate.» (`formazione.chiusa`). A giornata finita «Si ricomincia con la prossima giornata.».
     func corpoFaseDubbi(adesso: Date) -> CorpoFaseDubbi? {
         if inCorso {
-            var t = "La formazione si è chiusa"
-            if let inizio { t += " \(Quando.relativa(inizio, adesso: adesso))" }
-            return CorpoFaseDubbi(frase: t + ".", sotto: "I punti fatti sono nella Formazione.")
+            let frase = inizio.map { Catalogo.Oggi.chiusaDettaglio(quando: Quando.relativa($0, adesso: adesso)) + "." }
+                ?? Catalogo.Formazione.chiusa
+            return CorpoFaseDubbi(frase: frase, sotto: "I punti fatti sono nella Formazione.")
         }
         return finita ? CorpoFaseDubbi(frase: "Si ricomincia con la prossima giornata.", sotto: nil) : nil
     }
