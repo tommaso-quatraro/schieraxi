@@ -1,0 +1,12 @@
+{
+  "titolo": "La prova del modello segue le regole e le rose della lega",
+  "voci": [
+    "Stato dei dati e «Sotto il cofano»: la carta «Quanto è affidabile il modello» si rifà anche quando cambi le regole o le rose della lega, all'aggiornamento successivo, invece di aspettare la giornata dopo.",
+    "Stato dei dati, per chi gestisce il server: nel registro delle giornate la fantamedia di confronto usa solo le partite giocate prima dell'inizio della giornata, come il fantavoto atteso."
+  ],
+  "tecnico": [
+    "affidabilita.impronta: oltre a giornate e voti contiene tutte le regole (asdict, come la chiave di memo in verifica.verifica_giornata) e gli id dei giocatori di ogni squadra, ordinati e senza nomi; aggiorna_se_serve rifà la prova quando cambia. Il giorno del rilascio nessun file ha l'impronta nuova: al primo giro di python -m fanta affidabilita si rifanno il file comune e quello di ogni utente con rose (nel tempo di --minuti, il resto al giro dopo), poi una volta per giornata o al cambio di regole o rose. Nessun aggancio al salvataggio: la carta cambia al giro del cron dopo il salvataggio.",
+    "registro_giornate.fantamedie_tirate (avversario di I1, salvato in registro_giocatori.fantamedia e ricalcolato in misura_giornata): i voti delle partite con data prima di MIN(data) della giornata (come modello.prima_di e Dati.inizio), con la data presa per stagione, giornata e squadra come modello.carica; i voti senza partita non contano. AVVERSARIO non cambia: le giornate già misurate non si rimisurano. Su una copia dei dati del 2/11 le fantamedie del 2026-27 (giornate 3-8) sono identiche; cambiano nel 2025-26 dopo i recuperi (giornate 17-20 e 25).",
+    "verifica_pacchetti.squalificati (esperimento spento di default): cartellini delle sole partite giocate prima dell'inizio della giornata (modello.prima_di)."
+  ]
+}
