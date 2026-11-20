@@ -125,13 +125,15 @@ prima della scadenza:
 hanno ancora la rotta `POST /api/formazione/metti-in-campo`: la risposta la dà il test con `web.risposta`, costruita sulla
 formazione registrata (finché non li si registra di nuovo, la web la chiama solo al tocco sul pulsante):
 - dalla scheda di un panchinaro «Metti in campo» chiede al server chi può uscire (con gli 11 in pagina), l'elenco ha la
-  differenza di punti attesi, «gioca N%» per chi gioca meno dell'80% e, se il modulo cambia, il modulo nuovo («Si passa al
-  5-3-2»); un tocco cambia il campo, lo stato dice «L'hai cambiata tu» e la scelta è salvata; con un cambio di modulo il campo
-  e il menu del modulo passano a quello nuovo;
-- se la rotta non risponde la scheda ha un errore `role="alert"` e niente cambia; scheda ed elenco senza violazioni gravi di
-  axe, chiaro e scuro;
-- il pulsante non c'è per i titolari (che hanno «Sostituisci»), per infortunati e squalificati, per chi gioca un anticipo già
-  cominciato (la scheda dice perché), né a giornata in corso o finita.
+  differenza dei punti attesi della formazione, «gioca N%» per chi gioca meno dell'80% e, se il modulo cambia, il modulo nuovo
+  («Si passa al 5-3-2»); un tocco cambia il campo, lo stato dice «L'hai cambiata tu», la scelta è salvata e il fuoco va su chi è
+  entrato; con un cambio di modulo il campo e il menu del modulo passano a quello nuovo;
+- se la rotta non risponde la scheda ha un errore `role="alert"` e niente cambia; se la scheda si chiude prima della risposta,
+  resta chiusa; se il salvataggio trova la scelta cambiata da un altro dispositivo (412, con If-Match) la pagina rilegge, mostra
+  ciò che è salvato e l'avviso lo dice; scheda ed elenco senza violazioni gravi di axe, chiaro e scuro;
+- il pulsante c'è dove c'è «Sostituisci» per la stessa formazione: anche a giornata finita (per la prossima) e per chi entra a
+  giornata iniziata; anche per infortunati e squalificati, con il loro stato in cima all'elenco. Non c'è per i titolari (che
+  hanno «Sostituisci»), per chi gioca un anticipo già cominciato (la scheda dice perché), né a giornata in corso.
 
 `test_giornate.py`, la pagina «Giornate» che ha preso il posto del Diario (#617):
 - si apre con un tocco dalla barra; gli indirizzi vecchi del Diario la aprono; «Com'è andata» della Formazione la apre
