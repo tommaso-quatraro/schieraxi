@@ -147,7 +147,7 @@ extension Catalogo {
         static let rinvioDomanda = "Per questa giornata i loro giocatori"
 
         /// `oggi.rinvio_aspetta`
-        static let rinvioAspetta = "aspettano il recupero (conta il suo voto)"
+        static let rinvioAspetta = "aspettano il recupero (conta il voto del recupero)"
 
         /// `oggi.rinvio_senza_voto`
         static let rinvioSenzaVoto = "restano senza voto (entra la riserva)"
