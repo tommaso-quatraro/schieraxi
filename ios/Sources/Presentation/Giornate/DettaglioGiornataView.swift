@@ -121,11 +121,11 @@ struct DettaglioGiornataView: View {
     List {
         DettaglioGiornataView(dettaglio: DettaglioGiornata(
             titolo: Catalogo.Giornate.formazioneTua(modulo: "3-4-3"), nota: nil,
-            scarti: "Meglio del previsto: Leonel (+3,1).",
+            scarti: "Meglio del previsto: Marténi (+3,1).",
             titolari: [TitolareGiornata(id: 1, nome: "Sorvani", ruolo: "P", atteso: "6,1", preso: "5,5", senzaVoto: false),
                        TitolareGiornata(id: 2, nome: "Bastrani", ruolo: "D", atteso: "6,0", preso: Catalogo.Giornate.senzaVoto,
                                         senzaVoto: true),
-                       TitolareGiornata(id: 3, nome: "Leonel", ruolo: "A", atteso: "7,4", preso: "10,5", senzaVoto: false)],
+                       TitolareGiornata(id: 3, nome: "Marténi", ruolo: "A", atteso: "7,4", preso: "10,5", senzaVoto: false)],
             cambi: Catalogo.Giornate.alPosto(dentro: "Orsetti", fuori: "Dunfrey"), senzaConfronto: nil, correggibile: true)) {}
     }
 }
