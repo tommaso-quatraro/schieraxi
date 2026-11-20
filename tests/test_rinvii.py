@@ -261,6 +261,10 @@ def test_diario_scrive_la_giornata_con_il_recupero_da_giocare(tmp_path, monkeypa
     db, _ = _db_giornata(tmp_path)
     partite = pd.read_sql_query("SELECT id, stagione, giornata, data, giocata FROM partite", db)
     voti = pd.DataFrame([{"stagione": ST, "giornata": 9, "calciatore_id": i, "voto_red": 6.0} for i in range(1, 21)])
+    # nell'archivio i voti di tutte le partite giocate: senza, la giornata non entra nel Diario (#793)
+    squadre = ("inter", "milan", "roma", "lazio", "napoli", "juve")
+    archivio.inserisci(db, "voti", [{"stagione": ST, "giornata": 9, "calciatore_id": i, "squadra": squadre[i % 6], "voto_red": 6.0}
+                                    for i in range(1, 21)])
     monkeypatch.setattr(consigli, "dati", lambda db_: NS(partite=partite, voti=voti))
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
     monkeypatch.setattr(diario, "previsioni", lambda d, stagione, giornata, regole, par: pd.DataFrame([
