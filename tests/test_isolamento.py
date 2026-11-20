@@ -73,13 +73,21 @@ def test_ogni_rotta_e_classificata():
 
 
 # ---------------------------------------------------------------- le prove: (metodo, rotta, cosa mandare); m = «A» o «B»
+# La squadra di A ha 12 giocatori del listone finto (tests/conftest.py, `calciatori`): un 4-3-3 e una riserva, per «Metti in campo»
+# (#643) con una formazione vera. Quella di B ne ha 2: gli 11 di A non sono suoi.
+SQUADRA_A = ("D\tN'Dicka\t5\nD\tDimarco\t5\nD\tPellegrini Lu.\t5\nC\tLaurienté\t5\nC\tThuram K.\t5\nC\tBarella\t5\n"
+             "A\tThuram\t5\nA\tEsposito Se.\t5\nA\tMartinez L.\t5\nA\tEsposito F.P.\t5\n")
+TITOLARI_A = [2, 3, 4, 13, 17, 5, 6, 12, 7, 8, 10]           # Sommer, i 4 difensori, i 3 centrocampisti, 3 attaccanti (4-3-3)
+RISERVA_A = 9                                                 # Esposito F.P., attaccante
+
+
 def dati_di(m: str) -> dict:
     a = m == "A"
     regole = asdict(Regole())
     regole["nome_lega"] = f"LEGA-DI-{m}"
     return {
         "regole": regole,
-        "rose": f"Real Esempio {m}\nP\tSommer\t10\nD\tBastoni\t15\nAltra {m}\nA\tKean\t30\n",
+        "rose": f"Real Esempio {m}\nP\tSommer\t10\nD\tBastoni\t15\n{SQUADRA_A if a else ''}Altra {m}\nA\tKean\t30\n",
         "crediti": {f"Real Esempio {m}": 11 if a else 22},
         "osservato": 5 if a else 6,
         "titolari": [1, 2, 3] if a else [4, 5, 6],
@@ -125,8 +133,8 @@ def letture(m: str):
         ("GET", "/api/stato", {}), ("GET", "/api/formazione", {}), ("GET", "/api/scelta", dict(params={"giornata": 9})),
         ("GET", "/api/osservati", {}), ("GET", "/api/affidabilita", {}), ("GET", "/api/sotto-il-cofano", {}), ("GET", "/api/diario", {}), ("GET", "/api/stagione", {}),
         ("GET", "/api/asta", {}), ("GET", "/api/formazione/testo", {}), ("GET", "/api/confronto", dict(params={"a": 1, "b": 2})),
-        # «Metti in campo» (#643) non scrive niente: legge solo la formazione di chi chiede
-        ("POST", "/api/formazione/metti-in-campo", dict(json={"entra": 4, "titolari": [1, 2, 3], "giornata": 9})),
+        # «Metti in campo» (#643) non scrive niente e legge solo la rosa di chi chiede: anche B manda gli 11 di A, che non sono suoi
+        ("POST", "/api/formazione/metti-in-campo", dict(json={"entra": RISERVA_A, "titolari": TITOLARI_A, "giornata": 9})),
         ("GET", "/api/oggi", {}), ("GET", "/api/widget", {}), ("GET", "/api/calendario", {}), ("GET", "/api/mercato", {}), ("GET", "/api/classifica", {}),
         ("GET", "/api/giocatore/{calciatore_id}", dict(calciatore_id=2)), ("GET", "/api/scambi/proposte", {}), ("GET", "/api/scambi/limite", {}),
         ("GET", "/api/scambi/analizza", dict(params={"con": "x", "do": "1", "ricevo": "2"})),
@@ -161,10 +169,15 @@ def due(multiutente, dati_isolati, listone_in_archivio, calciatori, monkeypatch)
     monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: "2026-27")
     monkeypatch.setattr(server.consigli, "valuta", lambda db, regole, rose, titolari, squadra=None, giornata=None, simulazioni=600:
                         {"modulo": "4-3-3", "giornata": 9, "punteggio_atteso": 70.0, "dev": 4.0, "panchina": [], "differenza": -1.0})
-    # il calcolo della formazione, che vuole il calendario vero, è sostituito da uno che dice solo di chi è la rosa
-    monkeypatch.setattr(server.consigli, "formazione", lambda db, regole, rose, *a, **k: {
-        "squadra": rose.mia_squadra, "lega": regole.nome_lega, "giornata": 9, "modulo": "4-3-3",
-        "moduli": [{"modulo": "4-3-3", "titolari": [], "panchina": []}]})
+    # il calcolo della formazione, che vuole il calendario vero, è sostituito da uno che dice solo di chi è la rosa; le schede sono
+    # i giocatori della squadra di chi chiede (le usa «Metti in campo», #643)
+    def formazione(db, regole, rose, *a, **k):
+        s = rose.squadra(rose.mia_squadra or "")
+        return {"squadra": rose.mia_squadra, "lega": regole.nome_lega, "giornata": 9, "modulo": "4-3-3",
+                "moduli": [{"modulo": "4-3-3", "titolari": [], "panchina": []}],
+                "schede": {str(g.id): {"id": g.id, "nome": g.nome, "ruolo": g.ruolo, "squadra": g.squadra, "punti_attesi": 6.0}
+                           for g in (s.giocatori if s else []) if g.id is not None}}
+    monkeypatch.setattr(server.consigli, "formazione", formazione)
     monkeypatch.setattr(server.consigli, "testo_formazione", lambda f, *a, **k: f"formazione di {f['squadra']} ({f['lega']})")
     clienti = {}
     for m in "AB":
@@ -220,6 +233,9 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     assert risposte_a[("GET", "/api/avvisi")].json()["dispositivi"] == 1
     assert risposte_a[("GET", "/api/formazione")].json()["squadra"] == "Real Esempio A"
     assert risposte_a[("GET", "/api/formazione/testo")].text == "formazione di Real Esempio A (LEGA-DI-A)"
+    entra_a = risposte_a[("POST", "/api/formazione/metti-in-campo")]                # una risposta completa, sulla rosa di A
+    assert entra_a.status_code == 200, entra_a.text
+    assert entra_a.json()["entra"] == RISERVA_A and {u["esce"] for u in entra_a.json()["uscite"]} == {7, 8, 10}
     assert risposte_a[("GET", "/api/squadre/immagine")].content == dati_di("A")["stemma"]
     anteprima_a = risposte_a[("POST", "/api/rose/anteprima")].json()
     assert [s["nuova"] for s in anteprima_a["squadre"]] == [False, True] and anteprima_a["totale_squadre"] == 3   # confronta con le SUE rose
@@ -233,6 +249,7 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     assert vuote[("GET", "/api/squadre")].status_code == 409                      # nessuna rosa: non quelle di A
     assert vuote[("GET", "/api/rosa")].status_code == 409
     assert vuote[("GET", "/api/formazione")].status_code == 409
+    assert vuote[("POST", "/api/formazione/metti-in-campo")].status_code == 409     # gli 11 di A, senza rosa: non quella di A
     assert vuote[("GET", "/api/scelta")].json() is None
     assert vuote[("GET", "/api/regole")].json()["nome_lega"] != "LEGA-DI-A"
     assert vuote[("GET", "/api/icona")].json()["scelta"] == "verde"
@@ -258,6 +275,8 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     assert risposte_b[("GET", "/api/icona")].json()["scelta"] == "rosso"
     assert risposte_b[("GET", "/api/primo-avvio")].json()["primo_avvio"]["saltati"] == ["stemma"]
     assert risposte_b[("GET", "/api/formazione")].json()["lega"] == "LEGA-DI-B"
+    entra_b = risposte_b[("POST", "/api/formazione/metti-in-campo")]                # gli 11 di A non sono della rosa di B
+    assert entra_b.status_code == 400 and entra_b.json()["codice"] == "formazione_non_valida", entra_b.text
     assert risposte_b[("GET", "/api/squadre/immagine")].content == dati_di("B")["stemma"]
 
     # 4. A rilegge: niente di B, tutto come prima
