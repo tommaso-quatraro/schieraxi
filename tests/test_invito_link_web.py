@@ -39,7 +39,7 @@ def test_codice_dal_link(search, atteso):
 def test_il_codice_si_toglie_dall_indirizzo_e_si_scrive_nel_campo():
     assert 'u.searchParams.delete("invito")' in APP_JS and "history.replaceState" in APP_JS
     assert APP_JS.count("SENZA_AIUTI + valoreInvito()") == 2           # registrazione e primo accesso con Google
-    assert 'mostraAccesso("", invito ? "registra" : "accedi")' in APP_JS
+    assert re.search(r'mostraAccesso\([^;\n]*, invito \? "registra" : "accedi"\)', APP_JS)   # il messaggio può esserci (#779)
     assert APP_JS.count("dimenticaInvito();") == 3                    # dopo ogni registrazione riuscita
 
 

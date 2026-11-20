@@ -28,7 +28,7 @@
       "stato": "fatto"
     },
     {
-      "id": 87,
+      "id": 89,
       "schermata": "Widget «Prossima giornata», giornata in corso",
       "web": "la testa della Formazione: «40,0 punti finora · circa 75 a fine giornata», con i punti a fine giornata senza decimali (`formazione.punti_finora`, `formazione.circa_fine` con `num(…, 0)`), e sotto «2 giocatori devono ancora giocare» o «Hanno giocato tutti: mancano solo i voti ufficiali.» (`oggi.ancora_da_giocare`, `oggi.tutti_giocato`)",
       "iphone": "prima: «circa 74,6 a fine giornata» con un decimale, «punti fatti» accanto ai punti, «1 deve ancora giocare» e «Hanno giocato tutti» scritti a mano. Ora come la testa della Formazione dell'app (`TestaFormazione`): numero senza decimali (`Formato.decimali(p, cifre: 0)`), «punti finora», le frasi del catalogo; nel medio «A fine giornata» sopra «circa 75» e nel cerchio solo «fatti» («Differenze ammesse»); VoiceOver legge le frasi intere",

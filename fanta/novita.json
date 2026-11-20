@@ -1,5 +1,39 @@
 [
   {
+    "versione": "1.531",
+    "data": "2026-11-20T03:19:09",
+    "titolo": "Cambi consigliati e scambi seguono l'interruttore delle funzioni",
+    "voci": [
+      "Chi gestisce il server può spegnere i cambi consigliati e la valutazione degli scambi come le altre funzioni: spenti, non sono disponibili. Accesi, tutto resta come prima.",
+      "Nella versione pubblica dell'app i cambi consigliati e la valutazione degli scambi sono spenti da subito, come le altre funzioni messe da parte. Chi gestisce il server li vede ancora e può accenderli per tutti."
+    ],
+    "tecnico": [
+      "funzioni.ROTTE: GET /api/scambi/analizza e POST /api/scambi/da-testo vanno a scambi_costruisci, GET /api/mercato al nuovo interruttore mercato («Cambi consigliati»; spento di predefinito nella versione pubblica, acceso con FANTA_PROFILO_FUNZIONI=completo). Con l'interruttore spento rispondono 404 con il campo funzione, come le altre funzioni di CON_ROTTE; «Mostra tutte» le riapre (non sono in SEMPRE_BLOCCATE).",
+      "Con l'interruttore acceso le risposte non cambiano. Web e iPhone aggiornati non chiedono queste rotte: le schermate di scambi e cambi consigliati non ci sono più (#615, #634); le app iPhone di prima della #641 (12/11/2026) le chiamano ancora e, con la funzione spenta, mostrano «Non disponibile». GET /api/funzioni ha la chiave nuova mercato: un client che non la conosce la ignora."
+    ]
+  },
+  {
+    "versione": "1.530",
+    "data": "2026-11-20T03:01:43",
+    "titolo": "Web: ritocchi a Gestione, Regole, La mia squadra e Le altre squadre",
+    "voci": [
+      "Gestione, «Aggiorna i dati»: con tutte le fonti dei dati spente dice che non c'è niente da aggiornare, invece di «Dati aggiornati».",
+      "Gestione, «Errori recenti»: numeri al singolare quando sono uno («1 richiesta»), tempi con la virgola, ore nell'ora italiana e ogni evento di sicurezza con un nome in parole.",
+      "Regole e scadenza: la frase sotto «Da quale giornata di Serie A è partita la lega?» non cita più una giornata d'esempio che non è quella scelta.",
+      "La mia squadra: se un giocatore non ha un costo d'acquisto la riga non scrive «costo –»; stemma e maglia compaiono solo se li hai caricati.",
+      "Le altre squadre: il numero e l'elenco non contano più la tua squadra, che sta in «La mia squadra».",
+      "Dopo «Esci da tutti i dispositivi» la schermata di accesso dice che sei fuori da tutti i dispositivi.",
+      "I percorsi nei testi si scrivono tutti allo stesso modo, per esempio «Impostazioni › Regole e scadenza».",
+      "Con il testo molto ingrandito un nome lungo nel titolo di una pagina o della scheda di un giocatore va a capo con il trattino, dove il browser sa sillabare, invece di spezzarsi a caso."
+    ],
+    "tecnico": [
+      "POST /api/aggiorna: se aggiorna.fonti_accese() è vuota (fantacalcio, understat e footballdata solo con fonti_ombra) risponde {\"avviato\": false, \"messaggio\": NESSUNA_FONTE} prima di prendere i blocchi; traduzione srv.aggiorna_nessuna_fonte. Nessun campo nuovo. Contratto in docs/API.md.",
+      "Web, Errori recenti: plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori, errori.lenta_riga; tempi con num(); ore con toLocaleString e timeZone Europe/Rome; nomi errori.evento_<tipo>, con il trattino del tipo letto come trattino basso (fonte-cambiata, funzione-cambiata); tests/test_eventi_sicurezza_catalogo.py li vuole per ogni evento scritto dal server, anche per le righe scritte direttamente nel registro di sicurezza.",
+      "Catalogo: regole.prima_giornata_conta senza numero; sei testi con «Impostazioni › …» (test_testi_percorsi.py); scambio.costo_quot sostituita da scambio.costo_n e scambio.quotazione_n; tolta lega.la_tua. Catalogo Swift rigenerato (cambia solo il testo di due costanti).",
+      "Web: vistaAltreSquadre e il conteggio di Impostazioni senza la squadra mia (stato.squadre resta intero; con la sola mia squadra la frase lega.solo_la_tua); immaginiRosa; dopo esciDaTutti un segno in sessionStorage letto una volta da controllaAccesso; hyphens: auto su #titolo-pagina e .intestazione-scheda h2 solo sotto i 300 px (@media (max-width: 299.98px))."
+    ]
+  },
+  {
     "versione": "1.529",
     "data": "2026-11-20T02:27:45",
     "titolo": "«Metti in campo» dalla scheda di un giocatore in panchina",

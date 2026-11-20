@@ -211,6 +211,29 @@ def test_aggiorna_dall_app_non_parte_con_l_aggiornamento_programmato_in_corso(cl
     assert chiamate == [True] and tenuto == []                              # tenuto durante il lavoro, lasciato alla fine
 
 
+def test_aggiorna_con_tutte_le_fonti_spente_lo_dice_e_non_parte(client, monkeypatch):
+    """«Aggiorna i dati» con le fonti dell'aggiornamento spente (#779): prima ogni passo si saltava e l'avviso diceva «Dati
+    aggiornati». Ora la risposta dice che nessuna fonte è accesa e il lavoro non parte; football-data conta solo con le fonti in
+    ombra accese, ESPN e le foto non contano. Riaccesa una fonte, il pulsante riparte (niente lucchetto rimasto preso)."""
+    import contextlib
+
+    from fanta import fonti_attive, funzioni
+    chiamate = []
+    monkeypatch.setattr(server.aggiorna, "esegui", lambda **k: chiamate.append(1) or [])
+    monkeypatch.setattr(server.pianificatore, "blocco_processo", lambda: contextlib.nullcontext(True))
+    for fonte in fonti_attive.FONTI:
+        fonti_attive.imposta(fonte, fonte in ("espn", "footballdata"))
+    funzioni.imposta("fonti_ombra", False)
+    r = client.post("/api/aggiorna").json()
+    assert r["avviato"] is False and "Nessuna fonte di dati è accesa" in r["messaggio"], r
+    assert chiamate == [] and not server._aggiornamento["in_corso"]
+
+    fonti_attive.imposta("understat", True)
+    assert client.post("/api/aggiorna").json() == {"avviato": True}
+    _fine_aggiornamento()
+    assert chiamate == [1]
+
+
 def test_stato_dice_aggiornamento_in_corso_anche_se_lo_fa_un_altro(client, monkeypatch):
     """`aggiornamento_in_corso` di /api/stato è vero anche quando i dati li sta aggiornando un altro (l'aggiornamento programmato
     del server o un giro leggero, che tengono il blocco su file), non solo dopo «Aggiorna i dati» da qui (#763)."""
