@@ -94,6 +94,14 @@ struct SchermataAccesso: View {
         .background(Sfondo())
         .animation(Tema.morbida, value: errore)
         .schermoProtetto()
+        // dopo «Esci da tutti i dispositivi» una volta «Sei fuori da tutti i dispositivi, anche da questo: accedi di nuovo.»,
+        // come la web (#788, lì `role="status"`): non è un errore, sta dove sta la conferma verde e VoiceOver la legge
+        .onAppear {
+            if let avviso = sessione.prendiAvvisoAccesso() {
+                messaggio = avviso
+                AccessibilityNotification.Announcement(avviso).post()
+            }
+        }
         .sheet(isPresented: $avanzate) { areaAvanzata }
         // Con l'app in secondo piano (o al ritorno) password e codici scritti si cancellano: non restano in memoria dei campi.
         .onChange(of: fase) { _, nuova in
