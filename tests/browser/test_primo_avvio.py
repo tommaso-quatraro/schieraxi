@@ -52,6 +52,16 @@ def guida_sui_tempi(web, prima_lettura: str) -> tuple[list[dict], list]:
     return salvate, tenute
 
 
+def salvataggio(richiesta) -> bool:
+    return richiesta.method == "PUT" and urlsplit(richiesta.url).path == "/api/regole"
+
+
+def menu_vale(web, menu, valore) -> None:
+    """Aspetta che il menu mostri `valore` (la rilettura delle regole arriva dopo l'avviso)."""
+    from playwright.sync_api import expect                 # qui: la suite normale raccoglie questo file senza Playwright
+    expect(menu).to_have_value(str(valore), timeout=10000)
+
+
 def guida(web):
     return web.pagina.get_by_role("dialog")
 
@@ -74,9 +84,10 @@ def test_i_tempi_non_si_salvano_se_le_regole_non_si_sono_lette(web):
     guida(web).get_by_role("alert").filter(has_text="non ho salvato niente").wait_for(timeout=10000)
     web.aspetta()
     assert salvate == [], f"salvati i valori di partenza dei menu: {salvate}"
-    assert scadenza(web).input_value() == str(registrate["scadenza_minuti"])
-    assert prima_giornata(web).input_value() == str(registrate["prima_giornata_lega"])
-    guida(web).get_by_role("button", name="Salva", exact=True).click(timeout=10000)
+    menu_vale(web, scadenza(web), registrate["scadenza_minuti"])
+    menu_vale(web, prima_giornata(web), registrate["prima_giornata_lega"])
+    with web.pagina.expect_request(salvataggio):
+        guida(web).get_by_role("button", name="Salva", exact=True).click(timeout=10000)
     web.aspetta()
     assert [(s["scadenza_minuti"], s["prima_giornata_lega"]) for s in salvate] == \
         [(registrate["scadenza_minuti"], registrate["prima_giornata_lega"])]
@@ -91,7 +102,8 @@ def test_i_tempi_aspettano_la_lettura_in_corso(web):
     guida(web).get_by_role("button", name="Salva", exact=True).click(timeout=10000)
     web.aspetta()
     assert salvate == [], f"salvati i valori di partenza dei menu prima della lettura: {salvate}"
-    tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
+    with web.pagina.expect_request(salvataggio):
+        tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
     web.aspetta()
     assert [(s["scadenza_minuti"], s["prima_giornata_lega"]) for s in salvate] == \
         [(registrate["scadenza_minuti"], registrate["prima_giornata_lega"])]
@@ -106,6 +118,7 @@ def test_una_scelta_fatta_prima_della_lettura_resta(web):
     salvate, tenute = guida_sui_tempi(web, "tenuta")
     scadenza(web).select_option("30")
     guida(web).get_by_role("button", name="Salva", exact=True).click(timeout=10000)
-    tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
+    with web.pagina.expect_request(salvataggio):
+        tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
     web.aspetta()
     assert [(s["scadenza_minuti"], s["prima_giornata_lega"]) for s in salvate] == [(30, registrate["prima_giornata_lega"])]

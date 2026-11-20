@@ -1066,6 +1066,10 @@ def iscrizione_nel_browser(web) -> str | None:
     return web.pagina.evaluate("localStorage.getItem('__iscrizione-di-prova')")
 
 
+def iscrizione_mandata(richiesta) -> bool:
+    return richiesta.method == "POST" and urlsplit(richiesta.url).path == "/api/push/iscrivi"
+
+
 def json_200(route, corpo, stato=200) -> None:
     route.fulfill(status=stato, content_type="application/json; charset=utf-8", body=json.dumps(corpo))
 
@@ -1098,7 +1102,8 @@ def test_esci_non_riuscito_lo_dice_e_resta_dentro(web, stato):
     web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", esci)
     ricariche = []
     web.pagina.on("framenavigated", lambda f: f == web.pagina.main_frame and ricariche.append(f.url))
-    principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    with web.pagina.expect_request(iscrizione_mandata):
+        principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
     web.pagina.locator("#avviso[role=status]").filter(has_text="Non riesco a farti uscire").wait_for(timeout=10000)
     web.aspetta()
     assert ricariche == [], f"la pagina si è ricaricata come dopo un'uscita riuscita: {ricariche}"
@@ -1122,7 +1127,8 @@ def test_esci_riuscito_toglie_gli_avvisi_di_questo_dispositivo(web):
     web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/") and urlsplit(u).path != "/api/account/esci",
                      lambda route: json_200(route, SENZA_SESSIONE, 401) if uscito else route.fallback())
     web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", lambda route: uscito.append(1) or json_200(route, {"ok": True}))
-    principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    with web.pagina.expect_navigation(wait_until="load"):            # la ricarica dopo l'uscita
+        principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
     web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
     assert uscito == [1]
     assert disiscritte == [{"endpoint": ENDPOINT}]
@@ -1144,7 +1150,7 @@ def entra_con_la_password(web) -> list[dict]:
     web.pagina.locator("#accesso-form").wait_for(timeout=10000)
     web.pagina.locator("#ac-nome").fill("amico")
     web.pagina.locator("#ac-pw").fill("Password-Finta-1")
-    with web.pagina.expect_navigation(wait_until="load"):
+    with web.pagina.expect_request(iscrizione_mandata), web.pagina.expect_navigation(wait_until="load"):
         web.pagina.locator("#accesso-invia").click()
     web.aspetta()
     return iscritte
@@ -1185,7 +1191,8 @@ def test_l_iscrizione_che_non_arriva_si_rimanda_all_apertura_dopo(web):
                      lambda route: json_200(route, *(risposte.pop(0) if risposte else ({"dispositivi": 1}, 200))))
     iscritte = entra_con_la_password(web)
     assert len(iscritte) == 1, iscritte
-    web.apri("/")
+    with web.pagina.expect_request(iscrizione_mandata):
+        web.apri("/")
     assert len(iscritte) == 2, f"l'iscrizione non arrivata non è stata rimandata: {iscritte}"
     web.apri("/")
     assert len(iscritte) == 2, f"l'iscrizione arrivata è stata rimandata ancora: {iscritte}"
@@ -1320,9 +1327,9 @@ def test_un_rifiuto_del_server_non_fa_rileggere_lo_stato_d_avvio(web):
     assert web.richieste.count("/api/squadre") == 1, f"lo stato d'avvio si è riletto dopo un rifiuto: {web.richieste}"
 
 
-def elimina_l_account(web, stato: int) -> list[dict]:
-    """In Il tuo account, «Elimina l'account» con la password, confermato; la rotta risponde con `stato`. Restituisce le
-    disiscrizioni dagli avvisi mandate al server."""
+def elimina_l_account(web, stato: int):
+    """In Il tuo account, «Elimina l'account» aperto, con la password scritta e la conferma accettata; la rotta risponde con
+    `stato`. Restituisce le disiscrizioni dagli avvisi mandate al server e il pulsante da toccare."""
     da_utente(web)
     web.memoria({"account": json.dumps(UTENTE["utente"])})
     iscrizione_gia_qui(web)
@@ -1333,15 +1340,15 @@ def elimina_l_account(web, stato: int) -> list[dict]:
     tocca(web, principale(web).get_by_text("Elimina l'account", exact=True))
     principale(web).get_by_label("La tua password").last.fill("Password-Finta-1")
     web.pagina.on("dialog", lambda dialogo: dialogo.accept())
-    principale(web).get_by_role("button", name="Elimina il mio account").click(timeout=10000)
-    return disiscritte
+    return disiscritte, principale(web).get_by_role("button", name="Elimina il mio account")
 
 
 def test_elimina_l_account_non_riuscito_lascia_gli_avvisi(web):
     """Con la password sbagliata il server non elimina niente: gli avvisi di questo dispositivo restano accesi, nel browser e sul
     server. Prima si toglievano prima che il server controllasse la password (#801)."""
     solo(web, "prima")
-    disiscritte = elimina_l_account(web, 403)
+    disiscritte, elimina = elimina_l_account(web, 403)
+    elimina.click(timeout=10000)
     web.pagina.locator("#avviso").filter(has_text="La password non va bene").wait_for(timeout=10000)
     web.aspetta()
     assert disiscritte == [], f"gli avvisi si sono tolti dal server con un'eliminazione non riuscita: {disiscritte}"
@@ -1353,8 +1360,9 @@ def test_elimina_l_account_riuscito_toglie_gli_avvisi_dal_browser(web):
     """Riuscita, l'eliminazione cancella sul server anche gli avvisi: il browser toglie la sua iscrizione e la pagina si ricarica.
     (Il «chi sono» finto risponde sempre con l'utente: le copie le rimette l'avvio dopo la ricarica, qui non si guardano.)"""
     solo(web, "prima")
-    with web.pagina.expect_navigation(wait_until="load"):
-        elimina_l_account(web, 200)
+    _, elimina = elimina_l_account(web, 200)
+    with web.pagina.expect_navigation(wait_until="load"):          # la ricarica dopo l'eliminazione, non l'apertura della pagina
+        elimina.click(timeout=10000)
     assert iscrizione_nel_browser(web) is None
 
 
