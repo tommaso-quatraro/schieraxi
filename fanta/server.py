@@ -1051,6 +1051,51 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
         db.close()
 
 
+class MettiInCampo(BaseModel):
+    entra: int = Field(ge=1, le=MAX_ID_CALCIATORE)
+    titolari: list[int] = Field(max_length=limiti.MAX_GIOCATORI_SQUADRA)
+    giornata: int | None = Field(None, ge=1, le=MAX_GIORNATA)
+
+
+@app.post("/api/formazione/metti-in-campo")
+def metti_in_campo(dati: MettiInCampo, ctx: Contesto = Depends(lega_corrente)):
+    """«Metti in campo» (#643): chi può lasciare il posto a `entra`, un giocatore della tua rosa che non è fra i `titolari` in pagina.
+    Stesso ruolo, oppure un altro ruolo se il modulo che ne esce è ammesso dalla lega; per ognuno il modulo e i punti attesi della
+    formazione dopo il cambio, e la differenza da quella di adesso. Non scrive niente: il cambio scelto si salva con POST
+    /api/formazione/valuta."""
+    # Le schede e i `bloccati` sono quelli di GET /api/formazione (la consigliata è già in cache); la regola è
+    # scelte.chi_lascia_il_posto, i punti quelli di consigli.valuta (POST /api/formazione/valuta, una decina di ms per formazione).
+    # Dopo la scadenza 409 `formazione_chiusa`, come il salvataggio.
+    db = _db()
+    try:
+        regole_, rose_ = _regole(ctx), _rose_da_schierare(ctx)
+        f = consigli.formazione(db, regole_, rose_, None, dati.giornata)
+        giornata = f.get("giornata")
+        chiusa = _formazione_chiusa(db, ctx, giornata)
+        if chiusa is not None:
+            return chiusa
+        schede = f.get("schede") or {}
+        motivo = scelte.motivo_non_valida(dati.titolari, {int(k): x.get("ruolo") for k, x in schede.items() if isinstance(x, dict)}, regole_)
+        if motivo:
+            raise consigli.FormazioneNonValida(motivo)
+        valutate: dict[frozenset, float] = {}
+
+        def punti(ids) -> float:
+            chiave = frozenset(int(i) for i in ids)
+            if chiave not in valutate:
+                valutate[chiave] = consigli.valuta(db, regole_, rose_, list(ids), None, giornata)["punteggio_atteso"]
+            return valutate[chiave]
+        fermi = _con_bloccati(db, f).get("bloccati") or []
+        # chi entra gioca un anticipo già cominciato (anche se la pagina non lo sapeva ancora): 400 `giocatore_bloccato` con la frase
+        # del salvataggio (scelte.controlla_bloccati), invece di un elenco vuoto
+        scelte.controlla_bloccati(fermi, dati.titolari, [*dati.titolari, dati.entra],
+                                  {int(k): x.get("nome") for k, x in schede.items() if isinstance(x, dict)})
+        uscite = scelte.chi_lascia_il_posto(dati.entra, dati.titolari, schede, regole_, fermi, punti)
+        return {"giornata": giornata, "entra": dati.entra, "punteggio_atteso": punti(dati.titolari), "uscite": uscite}
+    finally:
+        db.close()
+
+
 @app.get("/api/scelta")
 def leggi_scelta(response: Response, giornata: int = Query(ge=1, le=MAX_GIORNATA), ctx: Contesto = Depends(lega_corrente)):
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, ctx.scelte)
