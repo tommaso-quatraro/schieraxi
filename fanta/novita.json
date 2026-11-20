@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.537",
+    "data": "2026-11-20T08:59:35",
+    "titolo": "iPhone: «Esci» che non riesce e correzione delle giornate",
+    "voci": [
+      "App per iPhone, Il tuo account: se «Esci» non riesce, per esempio senza rete, l'app lo dice e resti dentro, come sulla web. Se il server non si raggiunge puoi scegliere «Esci solo da questo telefono».",
+      "App per iPhone, Giornate: in «Non è quello che ho schierato» un titolare che non è più nella tua rosa non è più spuntato né contato."
+    ],
+    "tecnico": [
+      "Chiavi nuove del catalogo, usate solo dall'app per iPhone: account.esci_solo_qui e account.esci_solo_qui_spiega. Nessuna rotta né campo nuovo; la web non cambia."
+    ]
+  },
+  {
     "versione": "1.536",
     "data": "2026-11-20T08:15:13",
     "titolo": "Account: «Esci» scollega anche il widget di quel dispositivo",
