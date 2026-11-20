@@ -22,6 +22,7 @@ import pytest
 
 RADICE = Path(__file__).resolve().parent.parent
 SCRIPT = RADICE / "script" / "server"
+PYTHON_VERO = Path(sys.executable).as_posix()
 
 
 def _trova_bash():
@@ -285,6 +286,16 @@ def server(tmp_path, chiavi_di_prova):
     _stub(s.bin, "flock", "exit 0")
     _stub(s.bin, "sudo", f'echo "sudo $*" >> "{s.chiamate.as_posix()}"')
     _stub(s.bin, "curl", f'cat "{s.codice_curl.as_posix()}"')
+    # finto systemctl: il processo del servizio (MainPID) cambia a ogni riavvio annotato nelle chiamate, chiunque lo annoti (#826)
+    s.pid_fisso = tmp_path / "pid-fisso.txt"            # se c'e': il processo non cambia (riavvio che non ha fatto niente)
+    s.pid_zero = tmp_path / "pid-zero.txt"              # se c'e': dopo un riavvio nessun processo (versione che muore all'avvio)
+    _stub(s.bin, "systemctl", f'''case "$*" in *MainPID*)
+  [ -f "{s.pid_fisso.as_posix()}" ] && {{ echo 4242; exit 0; }}
+  n=$(grep -c restart "{s.chiamate.as_posix()}" 2>/dev/null)
+  [ -f "{s.pid_zero.as_posix()}" ] && [ "${{n:-0}}" -gt 0 ] && {{ echo 0; exit 0; }}
+  echo $(( 1000 + ${{n:-0}} )) ;;
+esac
+exit 0''')
     # repository "GitHub": storia con tutte le cartelle, commit firmati
     _git(s.lavoro, "init", "-q", "-b", "main")
     _FIRMATARI[str(s.lavoro)] = (chiavi_di_prova["casa"], chiavi_di_prova["fidata"])
@@ -308,16 +319,38 @@ def server(tmp_path, chiavi_di_prova):
     s.esito_pip.write_text("0", encoding="utf-8")
     s.esito_libero = tmp_path / "esito-libero.txt"           # finto «python -m fanta momento-libero»: codice di uscita (0 = libero)
     s.esito_libero.write_text("0", encoding="utf-8")
+    # database degli account (#825): versione letta in sola lettura, esito del controllo dopo il riavvio e, se c'e' migra.txt, la
+    # versione a cui la versione nuova lo porta al controllo (come farebbe la sua prima apertura)
+    s.versione_db = tmp_path / "versione-db.txt"
+    s.versione_db.write_text("7", encoding="utf-8")
+    s.esito_account = tmp_path / "esito-account.txt"
+    s.esito_account.write_text("0", encoding="utf-8")
+    s.migra = tmp_path / "migra.txt"
+    s.esito_avviso = tmp_path / "esito-avviso.txt"           # #826: se c'e' e non e' 0, l'avviso non parte
+    s.silenzio = tmp_path / "silenzio.txt"                   # #826: se c'e', ore tranquille (parte solo con ignora_silenzio)
+    s.account_vero = tmp_path / "account-vero.txt"           # se c'e': i due comandi del database degli account girano col Python vero
     (s.app / ".venv" / "bin").mkdir(parents=True)
     _scrivi(s.app / ".venv", "QUALE", "vecchia")
     _stub(s.app / ".venv" / "bin", "python", f'''reg="{s.chiamate.as_posix()}"
 case "$1" in
   -m) case "$2" in
         venv) mkdir -p "$3/bin" && cp "$0" "$3/bin/python" && echo "venv $3" >> "$reg" ;;
-        pip) shift 2; echo "pip $* (con $0)" >> "$reg"; exit "$(cat "{s.esito_pip.as_posix()}")" ;;
+        pip) shift 2; echo "pip $* (con $0) codice=$(cat "{(s.app / "fanta" / "__init__.py").as_posix()}")" >> "$reg"
+             exit "$(cat "{s.esito_pip.as_posix()}")" ;;
         fanta) [ "$3" = momento-libero ] && {{ echo "momento-libero FANTA_MULTIUTENTE=${{FANTA_MULTIUTENTE:-}}" >> "$reg"; echo "partita in corso: juventus-napoli (inizio 20:45)"; exit "$(cat "{s.esito_libero.as_posix()}")"; }} ;;
       esac ;;
-  -c) case "$2" in *notifiche.invia*) echo "avviso $3 | $4" >> "$reg" ;; esac ;;
+  -c) case "$2" in
+        *notifiche.invia*)          # avviso che non parte: esito-avviso.txt diverso da 0, o ore tranquille (silenzio.txt) senza ignora_silenzio
+          if [ "$(cat "{s.esito_avviso.as_posix()}" 2>/dev/null || echo 0)" != 0 ]; then echo "avviso-perso $3" >> "$reg"; exit 1; fi
+          case "$2" in *ignora_silenzio=True*) ;; *) [ -f "{s.silenzio.as_posix()}" ] && {{ echo "avviso-perso $3" >> "$reg"; exit 1; }} ;; esac
+          echo "avviso $3 | $4" >> "$reg" ;;
+        *controlla_database_account*) echo "controllo-account" >> "$reg"
+          [ -f "{s.account_vero.as_posix()}" ] && exec "{PYTHON_VERO}" "$@"
+          [ -f "{s.migra.as_posix()}" ] && cp "{s.migra.as_posix()}" "{s.versione_db.as_posix()}"
+          echo "controllo finto del database degli account"; exit "$(cat "{s.esito_account.as_posix()}")" ;;
+        *user_version*) [ -f "{s.account_vero.as_posix()}" ] && exec "{PYTHON_VERO}" "$@"
+          cat "{s.versione_db.as_posix()}" ;;
+      esac ;;
 esac
 exit 0''')
     s.env = {**os.environ, "HOME": s.casa.as_posix(), "PATH": f"{s.bin}{os.pathsep}{os.environ['PATH']}",
@@ -851,6 +884,262 @@ def test_servizio_che_non_risponde_torna_alla_versione_di_prima(server):
     assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
     _lega_e_dati_intatti(s)
     assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]      # il ritorno indietro avvisa sempre
+
+
+@con_bash
+def test_database_degli_account_che_non_si_apre_torna_alla_versione_di_prima(server):
+    """#825: con gli account accesi /api/account/me risponde 401 prima di leggere il database, quindi il servizio «risponde» anche se
+    la migrazione della versione nuova fallisce sui dati veri. Dopo il riavvio un controllo apre davvero il database: se non va, si
+    torna alla versione di prima (il database non e' cambiato)."""
+    s = server
+    c2 = _commit(s.lavoro, "migrazione rotta", **{"fanta/__init__.py": "V2"})
+    s.codice_curl.write_text("401", encoding="utf-8")
+    s.esito_account.write_text("1", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert "controllo-account" in s.chiamate.read_text(encoding="utf-8")
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert s.ultimo() == s.c1 and s.riavvii() == 2
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert "database degli account" in s.log()
+    assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]
+    _lega_e_dati_intatti(s)
+
+
+@con_bash
+def test_database_gia_migrato_tiene_la_versione_nuova_e_avvisa(server):
+    """#825: la versione nuova non va, ma ha gia' portato il database degli account a una versione piu' nuova. Il codice di prima lo
+    rifiuterebbe (errori per ogni utente): si tiene la versione nuova, librerie comprese, e l'avviso lo dice."""
+    s = server
+    c2 = _commit(s.lavoro, "migrazione a meta'", **{"fanta/__init__.py": "V2", "requirements.txt": "r2"})
+    s.codice_curl.write_text("401", encoding="utf-8")
+    s.esito_account.write_text("1", encoding="utf-8")
+    s.migra.write_text("8", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+    assert _venv(s) == "nuova" and (s.app / "requirements.txt").read_text(encoding="utf-8") == "r2"
+    assert s.ultimo() == c2 and not (s.stato / "rifiutato").exists()
+    assert not (s.stato / "installazione-in-corso").exists()        # il giro dopo non rimette la versione di prima dalla copia
+    assert "non torno alla versione di prima" in s.log()
+    assert len(s.avvisi()) == 1 and "database degli account" in s.avvisi()[0]
+    _lega_e_dati_intatti(s)
+    s.esegui("aggiorna-app.sh")                                     # il giro dopo non tocca niente
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2" and len(s.avvisi()) == 1
+
+
+@con_bash
+def test_installazione_interrotta_con_database_gia_migrato_non_rimette_la_versione_di_prima(server):
+    """#825: il segno dell'installazione a meta' ricorda la versione del database di prima. Se nel frattempo e' salita, il codice di
+    prima non si rimette sopra (la copia di sicurezza resta dov'e'): lo si scrive, si avvisa e il giro installa la versione nuova."""
+    s = server
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    with tarfile.open(s.stato / "versione-precedente.tar.gz", "w:gz") as tar:
+        f = s.casa / "V0.txt"
+        f.write_text("V0", encoding="utf-8")
+        tar.add(f, arcname="fanta/__init__.py")
+    _scrivi(s.stato, "installazione-in-corso", f"file {c2} 7\n")
+    s.versione_db.write_text("8", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert "non rimetto la versione di prima" in s.log()
+    assert any("database degli account" in a for a in s.avvisi())
+    assert s.ultimo() == c2 and (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+    assert s.riavvii() == 1 and not (s.stato / "interrotta").exists()
+    with tarfile.open(s.stato / "versione-precedente.tar.gz") as tar:          # la copia non si rifà dai file lasciati a metà
+        assert tar.extractfile("fanta/__init__.py").read() == b"V0"
+
+
+@con_bash
+def test_reinstallazione_dopo_interrotta_e_migrata_che_non_va_tiene_la_versione_nuova(server):
+    """Revisione di #828: dopo «interrotta ma già migrato» il giro reinstalla la versione nuova. Se anche questa non va, non si torna
+    a una copia (né a quella vecchia né a una rifatta dai file a metà): il database resta più nuovo del codice di prima."""
+    s = server
+    c2 = _commit(s.lavoro, "codice 2", **{"fanta/__init__.py": "V2"})
+    with tarfile.open(s.stato / "versione-precedente.tar.gz", "w:gz") as tar:
+        f = s.casa / "V0.txt"
+        f.write_text("V0", encoding="utf-8")
+        tar.add(f, arcname="fanta/__init__.py")
+    _scrivi(s.stato, "installazione-in-corso", f"file {c2} 7\n")
+    s.versione_db.write_text("8", encoding="utf-8")
+    s.codice_curl.write_text("500", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+    assert s.ultimo() == c2 and not (s.stato / "rifiutato").exists()
+    assert not any("aggiornamento annullato" in a for a in s.avvisi())
+    assert "non torno alla versione di prima" in s.log()
+
+
+@con_bash
+def test_versione_senza_il_controllo_del_database_si_installa(server):
+    """Revisione di #828: una versione senza salute.controlla_database_account (per esempio il revert di questa PR) deve potersi
+    installare, con una riga nel registro, come fa momento-libero quando il comando non c'è: se no nessun ritorno indietro
+    d'emergenza arriverebbe mai sul server. Qui il controllo gira col Python vero sul codice della versione nuova."""
+    s = server
+    s.account_vero.write_text("", encoding="utf-8")
+    c2 = _commit(s.lavoro, "revert", **{"fanta/__init__.py": "V2 = 2\n", "fanta/salute.py": "# niente controllo del database\n"})
+    s.codice_curl.write_text("401", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert s.ultimo() == c2 and not (s.stato / "rifiutato").exists()
+    assert "controllo del database degli account assente" in s.log()
+
+
+@con_bash
+def test_senza_fanta_dati_utenti_si_legge_il_database_della_cartella_dati(server):
+    """Sul server FANTA_DATI_UTENTI non c'è: il servizio usa dati/account.sqlite, e lì deve guardare anche lo script (versione di prima
+    nel registro, controllo dopo il riavvio), non spegnersi in silenzio. Python vero su un database SQLite vero."""
+    import sqlite3
+    s = server
+    s.env.pop("FANTA_DATI_UTENTI", None)
+    s.account_vero.write_text("", encoding="utf-8")
+    db = s.app / "dati" / "account.sqlite"
+    db.unlink()
+    con = sqlite3.connect(db)
+    con.execute("PRAGMA user_version = 5")
+    con.commit()
+    con.close()
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2 = 2\n", "fanta/salute.py": (
+        "def controlla_database_account():\n"
+        "    import os, sqlite3\n"
+        "    from pathlib import Path\n"
+        "    p = Path('dati') / 'account.sqlite'\n"
+        "    v = sqlite3.connect(p).execute('PRAGMA user_version').fetchone()[0]\n"
+        "    return v == 5 and 'FANTA_DATI_UTENTI' not in os.environ, f'finto: versione {v}'\n")})
+    s.codice_curl.write_text("401", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert "database degli account alla versione 5" in s.log()
+    assert "finto: versione 5" in s.log()
+    assert s.ultimo() == c2
+
+
+# ---------------------------------------------------------------- avvisi, riavvio e librerie dell'installazione (#826)
+
+@con_bash
+def test_gli_avvisi_dell_installazione_partono_anche_nelle_ore_tranquille(server):
+    s = server
+    s.silenzio.write_text("", encoding="utf-8")
+    _commit(s.lavoro, "rotta", **{"fanta/__init__.py": "V2"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]
+
+
+@con_bash
+def test_avviso_dell_installazione_che_non_parte_si_scrive_e_si_riprova(server):
+    """Lo stato «rifiutata» e' gia' scritto, quindi il giro dopo si ferma subito: l'avviso si riprova all'inizio dei giri dopo."""
+    s = server
+    s.esito_avviso.write_text("1", encoding="utf-8")
+    c2 = _commit(s.lavoro, "rotta", **{"fanta/__init__.py": "V2"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert s.avvisi() == [] and "avviso non partito" in s.log()
+    s.esegui("aggiorna-app.sh")                                     # ancora niente: si riprova, una riga sola nel registro
+    assert s.avvisi() == [] and s.log().count("avviso non partito") == 1
+    s.esito_avviso.write_text("0", encoding="utf-8")
+    s.esegui("aggiorna-app.sh")
+    assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]
+    assert "nuovo tentativo" in s.log()
+    s.esegui("aggiorna-app.sh")
+    assert len(s.avvisi()) == 1                                     # mandato: non si ripete
+
+
+@con_bash
+def test_promemoria_avviso_del_controllo_fermo_che_non_parte_si_riprova(server):
+    s = server
+    _stub(s.bin, "flock", 'for a in "$@"; do [ "$a" = -s ] && exit 1; done; exit 0')
+    s.esito_avviso.write_text("1", encoding="utf-8")
+    for _ in range(3):
+        assert s.esegui("promemoria.sh", SCHIERAXI_ATTESA_BLOCCO="1").returncode == 0
+    assert s.avvisi() == []
+    registro = (s.app / "dati" / "promemoria.log").read_text(encoding="utf-8")
+    assert "avviso non partito" in registro and "avviso mandato" not in registro
+    s.esito_avviso.write_text("0", encoding="utf-8")
+    s.esegui("promemoria.sh", SCHIERAXI_ATTESA_BLOCCO="1")
+    assert len(s.avvisi()) == 1
+    s.esegui("promemoria.sh", SCHIERAXI_ATTESA_BLOCCO="1")
+    assert len(s.avvisi()) == 1
+
+
+def _sudo_che_non_riavvia(s):
+    _stub(s.bin, "sudo", f'echo "sudo $*" >> "{s.chiamate.as_posix()}"\ncase "$*" in *restart*) exit 1;; esac')
+
+
+@con_bash
+@pytest.mark.parametrize("come", ["sudo", "processo"])
+def test_riavvio_che_non_riesce_non_segna_installata(server, come):
+    """Se il riavvio non riesce (sudo che chiede la password, servizio che non riparte) risponde ancora il processo vecchio: prima la
+    versione nuova risultava «installata». Ora: si torna ai file di prima, guasto del server (non «rifiutata»: si riprova)."""
+    s = server
+    if come == "sudo":
+        _sudo_che_non_riavvia(s)
+    else:
+        s.pid_fisso.write_text("", encoding="utf-8")          # systemctl riesce ma il processo e' sempre quello
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    s.esegui("aggiorna-app.sh")
+    assert "sudo -n systemctl restart fantacalcio" in s.chiamate.read_text(encoding="utf-8")
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert s.ultimo() == s.c1 and not (s.stato / "rifiutato").exists()
+    assert not (s.stato / "installazione-in-corso").exists()
+    assert "riavvio" in s.log()
+    assert len(s.avvisi()) == 1 and "non riuscito" in s.avvisi()[0]
+    _stub(s.bin, "sudo", f'echo "sudo $*" >> "{s.chiamate.as_posix()}"')
+    s.pid_fisso.unlink(missing_ok=True)
+    s.esegui("aggiorna-app.sh")
+    assert s.ultimo() == c2 and (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+    assert "di nuovo a posto" in s.avvisi()[-1]
+
+
+@con_bash
+def test_versione_che_muore_all_avvio_e_rifiutata_non_e_un_guasto_del_riavvio(server):
+    """Il riavvio riesce ma la versione nuova muore subito (MainPID 0, systemd la riavvierà da solo): è la versione rotta, non sudo.
+    Si torna indietro e la si rifiuta come prima, senza reinstallarla a ogni giro."""
+    s = server
+    s.pid_zero.write_text("", encoding="utf-8")
+    c2 = _commit(s.lavoro, "muore all'avvio", **{"fanta/__init__.py": "V2"})
+    s.codice_curl.write_text("500", encoding="utf-8")
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert not (s.stato / "guasto-riavvio").exists()
+    assert len(s.avvisi()) == 1 and "aggiornamento annullato" in s.avvisi()[0]
+
+
+@con_bash
+def test_riavvio_che_non_riesce_per_tre_giri_rinuncia_alla_versione(server):
+    """Un guasto del riavvio che dura (regola di sudo sparita) non deve rifare copia, file e librerie a ogni giro per sempre."""
+    s = server
+    _sudo_che_non_riavvia(s)
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    for _ in range(2):
+        s.esegui("aggiorna-app.sh")
+        assert not (s.stato / "rifiutato").exists()
+    s.esegui("aggiorna-app.sh")
+    assert (s.stato / "rifiutato").read_text(encoding="utf-8").strip() == c2
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert any("aggiornamento annullato" in a and "Non riesco a riavviare il servizio da 3 giri di fila" in a for a in s.avvisi())
+    riavvii = s.riavvii()
+    s.esegui("aggiorna-app.sh")
+    assert s.riavvii() == riavvii                                   # non si riprova più
+
+
+@con_bash
+def test_librerie_preparate_prima_di_toccare_i_file(server):
+    """Mentre pip installa, i processi del cron usano ancora codice e librerie di prima (prima: codice nuovo con librerie vecchie)."""
+    s = server
+    c2 = _commit(s.lavoro, "librerie", **{"requirements.txt": "r2 --hash=sha256:abc", "fanta/__init__.py": "V2"})
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    [pip] = [r for r in s.chiamate.read_text(encoding="utf-8").splitlines() if r.startswith("pip ")]
+    assert "codice=V1" in pip
+    assert s.ultimo() == c2 and _venv(s) == "nuova" and (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+
+
+@con_bash
+def test_librerie_che_non_si_installano_non_lasciano_i_file_nuovi(server):
+    s = server
+    s.esito_pip.write_text("1", encoding="utf-8")
+    _commit(s.lavoro, "librerie e file nuovo", **{"requirements.txt": "r2", "fanta/__init__.py": "V2", "fanta/nuovo.py": "NUOVO"})
+    assert s.esegui("aggiorna-app.sh").returncode == 1
+    assert not (s.app / "fanta" / "nuovo.py").exists()
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1" and _venv(s) == "vecchia"
+    assert not (s.stato / "installazione-in-corso").exists()
 
 
 @con_bash

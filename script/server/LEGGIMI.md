@@ -143,8 +143,10 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   con `pip install --require-hashes`: solo le versioni e i file con l'hash scritto lì. Solo se l'installazione riesce tutta scambia le
   cartelle (`.venv` diventa `.venv.precedente`, la nuova diventa `.venv`): l'ambiente in uso non resta mai a metà. Funziona perché
   servizio e script usano solo `.venv/bin/python`.
-  - Se pip non riesce (rete, PyPI, hash diverso) non tocca niente, rimette i file della versione di prima (il servizio non è stato
-    riavviato) e **riprova ai giri dopo**: stato in `~/.cache/fantacalcio/librerie-fallite`, un avviso «rimandato» la prima volta;
+  - L'ambiente nuovo si prepara **prima** di mettere al loro posto i file della versione nuova (#826): mentre pip lavora, i processi
+    del cron usano ancora codice e librerie di prima.
+  - Se pip non riesce (rete, PyPI, hash diverso) non c'è niente da rimettere: file, ambiente in uso e servizio non sono stati toccati.
+    **Riprova ai giri dopo**: stato in `~/.cache/fantacalcio/librerie-fallite`, un avviso «rimandato» la prima volta;
     alla terza volta di fila rinuncia, scrive `rifiutato` e avvisa.
   - Se dopo il riavvio il servizio non risponde torna anche all'ambiente di prima.
   - Se lo scambio delle cartelle non riesce rimette subito l'ambiente in uso e i file della versione di prima, e avvisa.
@@ -157,6 +159,30 @@ aggiorna la web installata sul telefono: `aggiorna-app.sh` le raggruppa (#635).
   (al massimo una volta al giorno); poi riprova la versione nuova. Se la stessa versione si ferma a metà una seconda volta diventa
   `rifiutato`, con un avviso, e non si riprova più (neanche con `installa-subito`). Un giro ancora vivo tiene il blocco dello script,
   quindi non viene scambiato per interrotto.
+- **Database degli account** (#825): `/api/account/me` senza sessione risponde 401 prima di leggere il database, quindi «risponde» non
+  basta. Dopo il riavvio lo script apre davvero `dati/account.sqlite` con il codice nuovo (`fanta/salute.py`,
+  `controlla_database_account`: le migrazioni come alla prima richiesta del servizio) e confronta la sua versione con le migrazioni
+  attese; se non torna, l'installazione non è riuscita e si torna indietro. Senza il file non controlla niente (account spenti).
+  Prima di installare legge la versione del database in sola lettura (anche nel segno `installazione-in-corso`, terzo campo) e la
+  rilegge prima di tornare indietro: se è salita, il codice di prima rifiuterebbe il database e **non si torna indietro** (vedi sotto).
+- **Riavvio** (#826): `sudo -n systemctl restart <servizio>` (mai una domanda di password: serve la regola di sudo senza password per
+  quel solo comando) e il processo del servizio (`systemctl show -p MainPID`) deve cambiare. Se il riavvio non riesce risponderebbe
+  ancora il processo vecchio: lo script rimette i file di prima, non scrive `rifiutato` (è un guasto del server, non della versione),
+  avvisa come gli altri guasti (uno al giorno) e riprova al giro dopo; alla terza volta di fila con la stessa versione rinuncia a
+  quella (`rifiutato`, avviso; stato in `~/.cache/fantacalcio/riavvio-fallito`). Un processo 0 subito dopo il riavvio vuol dire che
+  la versione nuova muore all'avvio: lì vale il ritorno indietro di sempre.
+- **Avvisi** (#826): partono anche nelle ore tranquille. Se il servizio degli avvisi non risponde resta una riga nel registro
+  («avviso non partito») e l'avviso si riprova all'inizio dei giri dopo (`~/.cache/fantacalcio/avvisi-da-mandare`, un file per avviso;
+  dopo un giorno si rinuncia, con una riga nel registro). I guasti già si riprovavano da soli.
+
+#### Versione tenuta dopo una migrazione
+Avviso «SchieraXI: aggiornamento da controllare»: la versione nuova non andava, ma aveva già portato il database degli account a una
+versione più nuova, quindi è rimasta installata (codice e librerie). Sul server, con l'utente del servizio:
+1. Il motivo: `tail -n 30 ~/fantacalcio/dati/pubblicazione.log` e `journalctl -u fantacalcio -n 50`.
+2. Se l'app va lo stesso (il guasto era passeggero), non serve altro. Se no la correzione arriva con una PR, come sempre.
+3. Per tornare davvero alla versione di prima serve anche il database di prima: la copia fatta prima della migrazione sta in
+   `~/fantacalcio/dati/backup/account-prima-della-migrazione-<versione>.sqlite` (dentro ci sono le modifiche fino a quel momento, non
+   quelle fatte dopo). Va rimessa a servizio fermo e con l'ok del proprietario: è un passo a mano, lo script non lo fa mai.
 
 #### Aggiornamento interrotto senza copia di sicurezza
 Se c'è il segno ma la copia di sicurezza manca o è rovinata, lo script non installa più niente e avvisa (una volta al giorno). Per

@@ -36,15 +36,19 @@ if flock -s -w "${SCHIERAXI_ATTESA_BLOCCO:-180}" 7; then
 else
   out="${out}controllo di salute saltato: aggiornamento dell'app in corso"
   n=$(( $(cat "$SALTI" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$SALTI"
-  # 3 salti di fila (mezz'ora): l'aggiornamento e' fermo (rete bloccata?). Un solo avviso finche' non torna normale.
+  # 3 salti di fila (mezz'ora): l'aggiornamento e' fermo (rete bloccata?). Un solo avviso finche' non torna normale, anche nelle ore
+  # tranquille; il segno si scrive solo se l'avviso e' partito, altrimenti si riprova al prossimo salto (#826)
   if [ "$n" -ge 3 ] && [ ! -e "$SALTI.avvisato" ]; then
-    : > "$SALTI.avvisato"
-    .venv/bin/python -c "
+    if .venv/bin/python -c "
 import sys
 from fanta import notifiche
-notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'warning')" "SchieraXI: controllo fermo" \
-      "Il controllo di salute e' saltato 3 volte di fila: l'aggiornamento dell'app sembra bloccato." 4 >/dev/null 2>&1
-    out="$out"$'\n'"avviso mandato: controllo di salute saltato $n volte"
+sys.exit(0 if notifiche.invia(sys.argv[1], sys.argv[2], int(sys.argv[3]), 'warning', ignora_silenzio=True) else 1)" \
+      "SchieraXI: controllo fermo" "Il controllo di salute e' saltato 3 volte di fila: l'aggiornamento dell'app sembra bloccato." 4 >/dev/null 2>&1; then
+      : > "$SALTI.avvisato"
+      out="$out"$'\n'"avviso mandato: controllo di salute saltato $n volte"
+    else
+      out="$out"$'\n'"avviso non partito: controllo di salute saltato $n volte, riprovo al prossimo giro"
+    fi
   fi
 fi
 exec 7>&-
