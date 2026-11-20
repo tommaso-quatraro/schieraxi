@@ -68,6 +68,87 @@ final class LegaViewModelTests: XCTestCase {
         XCTAssertFalse(vm.inCorso)
     }
 
+    // MARK: server occupato con un aggiornamento partito altrove (#773, come la web con #772)
+
+    func testServerOccupatoSpegneIlPulsanteConLaFraseELiberoLoRiaccende() async {
+        let occupato = Scatola<Bool>()
+        occupato.valore = true
+        let s = ServerDiProva { _, percorso, _ in
+            guard percorso == "/api/stato" else { throw ErroreApi.server("non serve a questo test") }
+            return statoDelServer(occupato: occupato.valore ?? false)
+        }
+        let vm = LegaViewModel(server: s)
+        await vm.info.ricarica()
+        await attendi("il pulsante si spegne con lo stato «occupato»", finche: { vm.aggiornamento.pulsanteSpento })
+        XCTAssertEqual(vm.aggiornamento.fraseOccupato, Catalogo.Aggiorna.inCorso)
+        XCTAssertFalse(vm.aggiornamento.inCorso, "l'aggiornamento non è partito da qui: l'etichetta resta «Aggiorna i dati»")
+        occupato.valore = false
+        await vm.info.ricarica()
+        await attendi("il pulsante si riaccende con lo stato libero", finche: { !vm.aggiornamento.pulsanteSpento })
+        XCTAssertNil(vm.aggiornamento.fraseOccupato)
+    }
+
+    func testServerOccupatoSiRileggeFinoAQuandoTornaLibero() async {
+        let letture = Contatore()
+        let s = ServerDiProva { _, _, _ in statoDelServer(occupato: letture.passo() < 2) }
+        let vm = AggiornaDatiViewModel(server: s)
+        vm.pausaStato = 0
+        vm.segna(occupato: true)
+        await vm.segui()
+        XCTAssertEqual(s.richieste, Array(repeating: "GET /api/stato", count: 3),
+                       "subito, poi una lettura dopo l'altra finché il server non è libero")
+        XCTAssertFalse(vm.pulsanteSpento)
+        XCTAssertNil(vm.fraseOccupato)
+    }
+
+    func testServerLiberoNonSiRilegge() async {
+        let s = ServerDiProva { _, _, _ in statoDelServer(occupato: false) }
+        let vm = AggiornaDatiViewModel(server: s)
+        vm.pausaStato = 0
+        vm.segna(occupato: false)
+        await vm.segui()
+        XCTAssertEqual(s.quante("GET /api/stato"), 0)
+        XCTAssertFalse(vm.pulsanteSpento)
+        XCTAssertNil(vm.fraseOccupato)
+    }
+
+    func testErroreDiReteSiRiprovaEIlPulsanteSiRiaccende() async {
+        let letture = Contatore()
+        let s = ServerDiProva { _, _, _ in
+            if letture.passo() == 0 { throw ErroreApi.rete("giù") }
+            return statoDelServer(occupato: false)
+        }
+        let vm = AggiornaDatiViewModel(server: s)
+        vm.pausaStato = 0
+        vm.segna(occupato: true)
+        await vm.segui()
+        XCTAssertEqual(s.quante("GET /api/stato"), 2, "dopo un errore di rete si rilegge alla volta dopo")
+        XCTAssertFalse(vm.pulsanteSpento, "un errore di rete non lascia il pulsante spento per sempre")
+    }
+
+    func testUscendoDallaPaginaSiSmetteDiRileggere() async {
+        let s = ServerDiProva { _, _, _ in throw ErroreApi.rete("giù") }
+        let vm = AggiornaDatiViewModel(server: s)
+        vm.pausaStato = 20_000_000
+        vm.segna(occupato: true)
+        let pagina = Task { await vm.segui() }
+        await attendi("almeno due letture", finche: { s.quante("GET /api/stato") >= 2 })
+        XCTAssertTrue(vm.pulsanteSpento, "senza risposta lo stato resta quello di prima, come la web")
+        pagina.cancel()
+        await pagina.value
+        let fatte = s.quante("GET /api/stato")
+        try? await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertEqual(s.quante("GET /api/stato"), fatte, "fuori dalla pagina lo stato non si rilegge")
+    }
+
+    func testGiaInCorsoAlToccoNonSpegneIlPulsante() async {
+        let s = ServerDiProva { _, _, _ in Data(#"{"avviato": false, "messaggio": "Aggiornamento già in corso"}"#.utf8) }
+        let vm = AggiornaDatiViewModel(server: s)
+        await vm.avvia()
+        XCTAssertEqual(vm.messaggio, "Aggiornamento già in corso", "il messaggio del server, come prima")
+        XCTAssertFalse(vm.pulsanteSpento, "senza una rilettura dello stato il pulsante non resta spento")
+    }
+
     // MARK: stagione
 
     func testPassaggioDiStagioneSoloConLeRoseVecchie() async {
@@ -336,4 +417,9 @@ final class LegaViewModelTests: XCTestCase {
         XCTAssertEqual(corpo, "{\"nome\":\"Borgo Alto\"}")
         XCTAssertEqual(s.quante("GET /api/squadre"), 2, "dopo la scelta l'elenco si ricarica")
     }
+}
+
+/// Una risposta inventata di `GET /api/stato` con `aggiornamento_in_corso` (gli altri campi non servono a questi test).
+private func statoDelServer(occupato: Bool) -> Data {
+    Data(#"{"stagione": "2026-27", "versione": "1.0", "aggiornamento_in_corso": \#(occupato)}"#.utf8)
 }

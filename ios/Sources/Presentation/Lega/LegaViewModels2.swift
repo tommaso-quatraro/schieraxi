@@ -256,11 +256,24 @@ final class AggiornaDatiViewModel: ViewModelBase {
     var pausa: UInt64 = 2_000_000_000
     /// Dopo quante domande si smette di aspettare.
     var tentativiMassimi = 150
+    /// Il server è occupato con un aggiornamento partito altrove (#773). Provvisorio: da scrivere.
+    @Published private(set) var serverOccupato = false
+    /// Pausa tra una rilettura dello stato e l'altra mentre il server è occupato (i test la azzerano).
+    var pausaStato: UInt64 = 15_000_000_000
 
     init(server: any ServerClient) {
         self.server = server
         super.init()
     }
+
+    /// Provvisorio (#773): il pulsante è spento solo durante l'aggiornamento partito da qui.
+    var pulsanteSpento: Bool { inCorso }
+    /// Provvisorio (#773).
+    var fraseOccupato: String? { nil }
+    /// Provvisorio (#773).
+    func segna(occupato: Bool?) {}
+    /// Provvisorio (#773).
+    func segui() async {}
 
     func avvia() async {
         guard !inCorso else { return }
