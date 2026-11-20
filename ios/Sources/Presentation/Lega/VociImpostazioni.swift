@@ -30,6 +30,11 @@ enum VociImpostazioni {
         return voci
     }
 
+    /// Le squadre dell'elenco «Le altre squadre».
+    static func altreSquadre(_ squadre: [SquadraLega]) -> [SquadraLega] {
+        squadre
+    }
+
     /// «Il tuo account», solo con un account: sotto il nome con cui si mostra.
     static func account(nome: String?) -> VoceImpostazioni? {
         nome.map { VoceImpostazioni(id: "account", nome: Catalogo.Imp.account, sotto: $0, pagina: .account) }

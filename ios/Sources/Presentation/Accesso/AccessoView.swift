@@ -378,6 +378,11 @@ struct SchermataAccesso: View {
         }
     }
 
+    /// La frase sopra il pulsante dopo un errore dell'invio.
+    static func fraseDopoInvio(_ errore: Error) -> String {
+        testoErrore(errore)
+    }
+
     /// Un messaggio che dice cosa è successo e come rimediare.
     static func testoErrore(_ errore: Error) -> String {
         if let e = errore as? ErroreApi {

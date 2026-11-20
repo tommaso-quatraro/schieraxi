@@ -891,6 +891,14 @@ enum DisposizioneWidget {
     /// del normale (con due righe i nomi si sovrapponevano). Gli altri restano in «e altri N».
     static func righeDubbi(_ testo: DynamicTypeSize) -> Int { testo >= .xLarge ? 1 : 2 }
 
+    /// Le file del campo nei widget Formazione, dall'alto.
+    static let fileCampo = ["P", "D", "C", "A"]
+
+    /// I titolari nelle file del campo, dall'alto; le file vuote non ci sono.
+    static func righeCampo(_ titolari: [GiocatoreWidget]) -> [[GiocatoreWidget]] {
+        fileCampo.map { r in titolari.filter { ($0.ruolo ?? "").uppercased() == r } }.filter { !$0.isEmpty }
+    }
+
     /// La riga in linea del Cruscotto (Schermata di blocco): «3-4-3 · 2 da controllare». Lì il sistema mostra solo un testo e un
     /// simbolo e taglia quello che non entra, quindi con il testo più grande del normale resta solo «2 da controllare».
     static func rigaInLinea(modulo: String?, dubbi: Int, testo: DynamicTypeSize) -> String {
@@ -1010,6 +1018,11 @@ enum ParoleWidget {
     static func stato(_ testo: String) -> [String] {
         guard let ultima = testo.components(separatedBy: " · ").last, !ultima.isEmpty, ultima != testo else { return [testo] }
         return [testo, ultima]
+    }
+
+    /// I punti accanto al modulo nel widget medio.
+    static func punti(_ punti: Double?) -> [String] {
+        ["\(Formato.punti(punti)) punti"]
     }
 
     /// «73,7 punti attesi» → «73,7 attesi»; con la scelta tua «… · la tua scelta» finché entra.
@@ -1197,6 +1210,11 @@ extension DubbioRiassunto {
         if cognome != nome { forme.append("\(cognome) · \(descrizione)") }
         if let corto = ParoleWidget.stato(descrizione).last, corto != descrizione { forme.append("\(cognome) · \(corto)") }
         return forme
+    }
+
+    /// Le righe del rettangolo «Da controllare» tutte insieme.
+    static func formeRighe(_ dubbi: [DubbioRiassunto]) -> [[String]] {
+        []
     }
 }
 

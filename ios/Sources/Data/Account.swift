@@ -679,6 +679,11 @@ final class SessioneAccount: ObservableObject {
         chiudiLocale()
     }
 
+    /// La frase da mostrare sulla schermata di accesso.
+    func prendiAvvisoAccesso() -> String? {
+        nil
+    }
+
     /// «Esci da tutti i dispositivi» (#765): il server chiude tutte le sessioni (anche questa), il widget, le notifiche e scollega
     /// Google a chi ha una password (lo cancella lui: niente revoca del widget da qui); poi si svuota il telefono come con «Esci».
     /// Al contrario di `esci()` senza il server non riesce: se la richiesta non va l'errore arriva a chi ha chiesto e qui non cambia
