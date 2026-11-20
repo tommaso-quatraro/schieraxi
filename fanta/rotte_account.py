@@ -434,18 +434,18 @@ def cambia_nome(dati: NuovoNome, utente: Utente = Depends(utente_corrente)):
 @router.post("/api/account/esci", dependencies=[Depends(_attivo)])
 def esci(request: Request, risposta: Response):
     with closing(account.apri()) as db:
-        account.esci(db, token_della_richiesta(request))
+        account.esci(db, token_della_richiesta(request), chiudi_widget=True)     # anche il widget nato da questa sessione (#814)
     _togli_cookie(risposta, request)
     return {"ok": True}
 
 
 @router.post("/api/account/token-widget", dependencies=[Depends(_attivo)])
-def crea_token_widget(utente: Utente = Depends(utente_corrente)):
+def crea_token_widget(request: Request, utente: Utente = Depends(utente_corrente)):
     """Il token per il widget iOS: uno solo per utente (uno nuovo revoca il precedente), vale 90 giorni e serve solo a leggere (GET)
     /api/oggi, /api/widget e /api/live. Si vede una volta sola: sul server resta l'hash. (Con il token del widget questa rotta è già chiusa dal controllo d'accesso.)"""
     with closing(account.apri()) as db:
         account.limite.consuma(db, account._chiave("crea-token-widget", utente.id), 10, account.ORA)
-        token, scade = account.crea_token_widget(db, utente.id)
+        token, scade = account.crea_token_widget(db, utente.id, sessione=token_della_richiesta(request))     # legato a questa sessione (#814)
     return {"token": token, "scade": scade, "etichetta": "widget"}
 
 

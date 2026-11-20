@@ -245,6 +245,109 @@ def test_cambio_password_ed_esci_da_tutti_chiudono_il_widget(due_utenti):
         assert db.execute("SELECT COUNT(*) FROM token_widget").fetchone()[0] == 0
 
 
+def _altro_dispositivo(nome="anna"):
+    """Un secondo dispositivo dello stesso account: una sessione sua, con lo stesso nome e la stessa password."""
+    d = cliente()
+    r = d.post("/api/account/accedi", json={"nome_utente": nome, "password": PASSWORD})
+    assert r.status_code == 200, r.text
+    return d
+
+
+def test_uscire_dalla_sessione_che_ha_creato_il_token_lo_chiude(due_utenti):
+    """#814: «Esci» da un dispositivo chiude anche il token del widget nato da quella sessione, anche se l'app non è riuscita a
+    revocarlo prima (rete caduta a metà). Il widget di un altro account non si tocca."""
+    a, b = due_utenti
+    t, tb = token_di(a), token_di(b)
+    assert a.post("/api/account/esci").status_code == 200
+    c, h = widget(t)
+    assert c.get("/api/oggi", headers=h).status_code == 401
+    c, h = widget(tb)
+    assert c.get("/api/oggi", headers=h).status_code == 200
+    with contextlib.closing(account.apri()) as db:
+        assert [r[0] for r in db.execute("SELECT utente_id FROM token_widget")] == [2]
+
+
+def test_uscire_da_un_altra_sessione_dello_stesso_account_non_tocca_il_widget(due_utenti):
+    a, _ = due_utenti
+    t = token_di(a)
+    altro = _altro_dispositivo()
+    assert altro.post("/api/account/esci").status_code == 200
+    c, h = widget(t)
+    assert c.get("/api/oggi", headers=h).status_code == 200
+    assert a.get("/api/account/me").status_code == 200 and a.get("/api/account/token-widget").json()["presente"]
+
+
+def test_il_token_rinnovato_da_un_altro_dispositivo_segue_quel_dispositivo(due_utenti):
+    """Un widget per account: chi lo rinnova per ultimo se lo lega. L'uscita del primo dispositivo non lo chiude, quella del secondo sì."""
+    a, _ = due_utenti
+    token_di(a)
+    altro = _altro_dispositivo()
+    t = token_di(altro)
+    assert a.post("/api/account/esci").status_code == 200
+    c, h = widget(t)
+    assert c.get("/api/oggi", headers=h).status_code == 200
+    assert altro.post("/api/account/esci").status_code == 200
+    assert c.get("/api/oggi", headers=h).status_code == 401
+
+
+def test_un_token_senza_legame_resta_dopo_l_uscita(due_utenti):
+    """I token nati prima del legame con la sessione (sessione_id vuoto) restano validi fino al rinnovo: l'uscita non li tocca."""
+    a, _ = due_utenti
+    t = token_di(a)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("UPDATE token_widget SET sessione_id = NULL")
+        db.commit()
+    assert a.post("/api/account/esci").status_code == 200
+    c, h = widget(t)
+    assert c.get("/api/oggi", headers=h).status_code == 200
+
+
+def test_con_l_intestazione_bearer_come_l_iphone(due_utenti):
+    """L'iPhone manda la sessione in `Authorization: Bearer`, senza cookie: il token nasce legato a quella sessione e «Esci» lo chiude."""
+    a, _ = due_utenti
+    r = cliente().post("/api/account/accedi", json={"nome_utente": "anna", "password": PASSWORD, "nativo": True})
+    assert r.status_code == 200, r.text
+    iphone = cliente(Authorization=f"Bearer {r.json()['token']}")
+    t = token_di(iphone)
+    assert not iphone.cookies
+    assert iphone.post("/api/account/esci").status_code == 200
+    c, h = widget(t)
+    assert c.get("/api/oggi", headers=h).status_code == 401
+    assert iphone.get("/api/account/me").status_code == 401
+    assert a.get("/api/account/me").status_code == 200                 # la sessione del browser resta
+
+
+def test_l_uscita_riesce_anche_se_il_widget_non_si_toglie(due_utenti):
+    """Un guasto nel togliere il token del widget non tiene dentro chi esce: la sessione è già chiusa e salvata, il guasto si
+    vede nel registro di sicurezza con il nome di ciò che non è riuscito; il token resta fino a «Esci da tutti» o alla scadenza."""
+    from fanta import registro
+    a, _ = due_utenti
+    t = token_di(a)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("CREATE TRIGGER guasto BEFORE DELETE ON token_widget BEGIN SELECT RAISE(ABORT, 'guasto finto'); END")
+        db.commit()
+    assert a.post("/api/account/esci").status_code == 200
+    assert a.get("/api/account/me").status_code == 401
+    eventi = [e for e in registro.ultimi(registro.FILE_SICUREZZA) if e.get("cosa") == "token_widget_non_tolto"]
+    assert len(eventi) == 1 and eventi[0]["tipo"] == "errore_interno" and eventi[0]["utente"] == "1"
+    c, h = widget(t)
+    assert c.get("/api/oggi", headers=h).status_code == 200
+
+
+def test_un_rinnovo_dopo_l_uscita_della_stessa_sessione_non_crea_il_token(multiutente, dati_isolati):
+    """Il rinnovo legge la sessione insieme alla scrittura: se nel frattempo quella sessione è uscita, niente token (401)."""
+    with contextlib.closing(account.apri()) as db:
+        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('x', 'h', 'r', '2026-01-01T00:00:00')")
+        db.commit()
+        sessione = account._apri_sessione(db, 1, "iphone", datetime.now(timezone.utc))
+        account.esci(db, sessione, chiudi_widget=True)
+        with pytest.raises(account.ErroreAccount) as errore:
+            account.crea_token_widget(db, 1, sessione=sessione)
+        assert errore.value.stato == 401
+        assert db.execute("SELECT COUNT(*) FROM token_widget").fetchone()[0] == 0
+        assert not db.in_transaction
+
+
 def test_eliminare_l_account_toglie_il_token(due_utenti):
     a, _ = due_utenti
     t = token_di(a)

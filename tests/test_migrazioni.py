@@ -1,12 +1,14 @@
 """Le migrazioni del database degli account: mai modificare una già rilasciata (vedi il commento sopra MIGRAZIONI)."""
 import contextlib
 import sqlite3
+from datetime import datetime, timezone
 
 from fanta import account, percorsi
 from tests.test_social import PASSWORD, SFIDA, cliente, scena, utente_con_password  # noqa: F401  (scena è una fixture)
 
 COLONNA = ",\n        sessione_hash TEXT"
 INDICE_FLUSSI = next(n for n, v in enumerate(account.MIGRAZIONI) if isinstance(v, str) and "CREATE TABLE IF NOT EXISTS flussi_social" in v)
+INDICE_RIPARAZIONE = account.MIGRAZIONI.index(account._riparazione_sessione_hash)
 
 
 def _applica(db, voce, numero):
@@ -35,7 +37,7 @@ def _server_prima_del_tampone(percorso):
     percorso.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(percorso)
     assert COLONNA in account.MIGRAZIONI[INDICE_FLUSSI]
-    for n, voce in enumerate(account.MIGRAZIONI[:-1]):
+    for n, voce in enumerate(account.MIGRAZIONI[:INDICE_RIPARAZIONE]):
         _applica(db, voce.replace(COLONNA, "") if n == INDICE_FLUSSI else voce, n)
     assert "sessione_hash" not in [r[1] for r in db.execute("PRAGMA table_info(flussi_social)")]
     db.close()
@@ -75,6 +77,27 @@ def test_un_database_gia_sistemato_a_mano_non_si_rompe(tmp_path):
         colonne = [r[1] for r in db.execute("PRAGMA table_info(flussi_social)")]
         assert colonne.count("sessione_hash") == 1
         assert db.execute("PRAGMA user_version").fetchone()[0] == len(account.MIGRAZIONI)
+
+
+def test_i_token_del_widget_di_prima_restano_senza_legame(tmp_path):
+    """#814: un archivio di prima riceve token_widget.sessione_id; il token già emesso resta e vale, senza sessione (fino al rinnovo)."""
+    indice = next(n for n, v in enumerate(account.MIGRAZIONI) if isinstance(v, str) and "token_widget ADD COLUMN sessione_id" in v)
+    f = tmp_path / "account.sqlite"
+    db = sqlite3.connect(f)
+    for n, voce in enumerate(account.MIGRAZIONI[:indice]):
+        _applica(db, voce, n)
+    token = account.PREFISSO_TOKEN_WIDGET + "a" * 43
+    db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('vecchio', 'h', 'r', '2026-01-01T00:00:00+00:00')")
+    db.execute("INSERT INTO token_widget (utente_id, token_hash, creato, scade, ultimo_uso) VALUES (1, ?, ?, ?, ?)",
+               (account._hash_token(token), "2026-11-01T00:00:00+00:00", "2027-01-30T00:00:00+00:00", "2026-11-01T00:00:00+00:00"))
+    db.commit()
+    db.close()
+    with contextlib.closing(account.apri(f)) as db, contextlib.closing(_riferimento(tmp_path / "ref.sqlite")) as ref:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == len(account.MIGRAZIONI)
+        assert _schema(db) == _schema(ref)
+        assert tuple(db.execute("SELECT utente_id, sessione_id FROM token_widget").fetchone()) == (1, None)
+        assert account.utente_da_token_widget(db, token, datetime(2026, 11, 20, tzinfo=timezone.utc)).nome_utente == "vecchio"
+    assert list((tmp_path / "backup").glob("*prima-della-migrazione-*"))
 
 
 def test_google_inizia_su_un_database_migrato_passo_per_passo(scena):     # noqa: F811
