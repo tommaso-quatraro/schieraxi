@@ -1,8 +1,11 @@
 """Squadra rinominata nell'app (PUT /api/squadre/nome): reimportazione da Leghe con il nome vecchio, stemma e maglia al sicuro,
 nomi strani, immagini private e orfane. Dati finti in cartelle temporanee."""
-from fanta import immagini, lega, server
+import json
+
+from fanta import consigli, contesto, immagini, lega, regole, server
 
 from test_etag import mondo  # noqa: F401 (fixture)
+from test_impronta_consigliata import _chiave_vecchia
 from test_limiti import ambiente, nuovo_utente  # noqa: F401 (fixture e utente di prova)
 
 ROSE = "Mia\nP\tSommer\t10\nAltra\nA\tKean\t30\n"
@@ -35,6 +38,26 @@ def test_reimportare_con_il_nome_di_leghe_aggiorna_la_squadra_rinominata(mondo):
     assert a.put("/api/squadre/nome", json={"nome": "I Lupi", "nuovo": "Mia"}).status_code == 200
     assert a.post("/api/rose/testo", json={"testo": ROSE}).status_code == 200
     assert set(_squadre(a)) == {"Mia", "Altra"}
+
+
+def test_la_consigliata_salvata_dalla_versione_di_prima_segue_il_nome_nuovo(mondo):
+    """#780: la chiave della consigliata ricordata non ha più il nome della squadra; quelle salvate prima del rilascio sì. Rinominando
+    la squadra la sua passa alla chiave nuova (con utenti e ora), così la consigliata della giornata non riparte da zero.
+    Le voci delle altre squadre restano dove sono."""
+    a, uid = nuovo_utente("utentea")
+    assert a.post("/api/rose/testo", json={"testo": ROSE}).status_code == 200
+    ctx = contesto.Contesto.per_utente(uid)
+    regole_lega, mia = regole.carica(ctx.regole), lega.carica(ctx.rose).squadra("Mia")
+    voce = {"stagione": "2026-27", "giornata": 9, "modulo": "4-4-2", "titolari": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            "panchina": [12], "non_giocano": [], "quando": "2026-11-08T10:00:00", "utenti": [uid]}
+    altra = _chiave_vecchia("2026-27", 9, lega.carica(ctx.rose).squadra("Altra"), regole_lega)
+    consigli.FILE_CONSIGLIATE.write_text(json.dumps({_chiave_vecchia("2026-27", 9, mia, regole_lega): voce, altra: voce}),
+                                         encoding="utf-8")
+    assert a.put("/api/squadre/nome", json={"nome": "Mia", "nuovo": "I Lupi"}).status_code == 200
+    rinominata = lega.carica(ctx.rose).squadra("I Lupi")
+    assert rinominata.giocatori == mia.giocatori
+    nuova = consigli._impronta("2026-27", 9, rinominata, regole_lega, 600)
+    assert json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")) == {nuova: voce, altra: voce}
 
 
 def test_nomi_rinominati_non_tocca_una_squadra_che_ha_davvero_quel_nome():

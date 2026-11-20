@@ -1,0 +1,12 @@
+{
+  "titolo": "La formazione consigliata non si perde più cambiando il nome della lega o della squadra",
+  "voci": [
+    "Formazione, Oggi, Diario: la formazione consigliata già mostrata resta la stessa anche se cambi il nome della lega, rinomini la tua squadra, cambi l'orario di chiusura o decidi come contare le partite rinviate di un'altra giornata. Prima ripartiva da zero: prima della chiusura poteva cambiare per un ritocco di pochi decimi, dopo la chiusura la Formazione poteva mostrare titolari diversi da quelli di Oggi e del Diario.",
+    "Le formazioni consigliate già mostrate prima di questo aggiornamento restano quelle, anche per la giornata in corso."
+  ],
+  "tecnico": [
+    "consigli._impronta (chiave di dati/consigliate.json, #780): solo stagione, giornata, id della rosa, simulazioni e consigli._regole_del_calcolo (fonte_voto, bonus, moduli, panchina, modificatore_difesa, voto_senza_sostituto e rinvii.regola della giornata: modo e valore), con sort_keys. Niente nome della squadra né repr(regole). Due squadre con gli stessi id e le stesse regole del calcolo hanno la stessa voce.",
+    "Voci salvate con la chiave di prima (consigli._impronta_vecchia, nome della squadra e repr(regole)): consigli.formazione cerca la chiave nuova e, se manca, la vecchia (_ritrova); trovata, la voce passa alla chiave nuova così com'è (quando, utenti, proprie) sotto il blocco del file (_sposta_voci; una chiave nuova già presente vince). Se lo spostamento non riesce la voce vale lo stesso e resta un avviso nel registro.",
+    "PUT /api/squadre/nome: prima di stemma, maglia e rose chiama consigli.segui_il_nome, che rifà la chiave vecchia con il nome di prima per le giornate 1-38 della stagione in corso (600 simulazioni) e la sposta su quella nuova. Nessun campo dell'API cambia."
+  ]
+}

@@ -1913,6 +1913,8 @@ def rinomina_squadra(dati: NomeSquadra, request: Request, response: Response, ct
             raise HTTPException(409, f"Questo nome si confonde con «{simile.nome}»: aggiungi o cambia una lettera o un numero.")
         vecchio = s.nome
         if vecchio != nuovo:
+            # le consigliate salvate prima di #780 hanno il nome nella chiave: passano a quella nuova, prima di toccare altri file
+            consigli.segui_il_nome(s, _regole(ctx))
             spostati = immagini.rinomina(vecchio, nuovo, ctx.immagini)
             s.nome = nuovo
             s.nome_importato = s.nome_importato or vecchio       # il nome di Leghe, per riconoscerla alla prossima importazione

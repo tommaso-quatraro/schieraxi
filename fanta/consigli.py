@@ -8,7 +8,7 @@ import sqlite3
 import threading
 import time
 from collections.abc import Collection
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, timedelta
 
 import numpy as np
@@ -23,7 +23,7 @@ from .frasi import F
 from .lega import Rose, Squadra
 from .notifiche import SOGLIA_AVVISO_PUNTI
 from .percorsi import RADICE, scrivi_sicuro
-from .regole import Regole, serie_a_a_lega
+from .regole import GIORNATE_SERIE_A, Regole, serie_a_a_lega
 
 LOG = logging.getLogger(__name__)
 
@@ -383,10 +383,11 @@ class FormazioneImpossibile(ValueError):
 
 
 IMPOSSIBILE = "formazione_impossibile"      # la voce della cache che ricorda l'esito: {IMPOSSIBILE: messaggio per l'utente}
+SIMULAZIONI = 600                           # quelle della consigliata che vedono tutti (Formazione, Oggi, widget, avvisi)
 
 
 def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra: str | None = None,
-               giornata: int | None = None, simulazioni: int = 600, adesso: datetime | None = None) -> dict:
+               giornata: int | None = None, simulazioni: int = SIMULAZIONI, adesso: datetime | None = None) -> dict:
     """La formazione consigliata. `adesso`: l'ora con cui cercare la giornata e contare scadenza passata e anticipi cominciati nella
     risposta (per chi l'ha già fissata, come il giro degli avvisi, e per le prove); senza, l'ora vera. Ricordare la consigliata invece
     deve andare bene anche per l'ora vera (`_si_ricorda`)."""
@@ -401,7 +402,7 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     # più o un suo titolare non gioca più (`stabile`); dopo la scadenza resta e basta. Tutti passano di qui (Formazione, Oggi, widget,
     # Da fare, avvisi, copia alla scadenza): leggono la stessa.
     impronta = _impronta(stagione, giornata, s, regole, simulazioni)
-    prima = _consigliate().get(impronta)
+    prima = _ritrova(impronta, _impronta_vecchia(stagione, giornata, s, regole, simulazioni))
     prima = prima if _ids(prima, "titolari") is not None else None          # voce rovinata: come se non ci fosse
     chiusa = _chiusa(db, regole, stagione, giornata, adesso)
     # Anticipi già cominciati (#368): con la formazione ancora aperta i loro giocatori restano dove sono nella consigliata di prima.
@@ -570,11 +571,90 @@ def da_ricordare(f: dict, prima: dict | None = None) -> dict | None:
             "panchina": [int(g["id"]) for g in f.get("panchina") or []], "non_giocano": non_giocano}
 
 
+def _regole_del_calcolo(regole: Regole, stagione: str, giornata: int) -> dict:
+    """Delle regole, solo ciò che cambia la consigliata della giornata (#780): fonte del voto e bonus (il fantavoto atteso), moduli,
+    panchina, modificatore e voto di chi resta senza sostituto (la formazione) e la regola dei rinvii di QUESTA giornata. Il resto
+    (nome della lega, scadenza, aste, rinvii delle altre giornate...) non la cambia: cambiandolo, la consigliata già mostrata resta."""
+    rinvio = rinvii.regola(regole, stagione, giornata)
+    return _decimali({"fonte_voto": regole.fonte_voto, "bonus": asdict(regole.bonus), "moduli": list(regole.moduli),
+                      "panchina": asdict(regole.panchina), "modificatore_difesa": asdict(regole.modificatore_difesa),
+                      "voto_senza_sostituto": regole.voto_senza_sostituto, "rinvio": [rinvio["modo"], rinvio["valore"]]})
+
+
+def _decimali(x):
+    """`x` con i numeri interi scritti come decimali (6 -> 6.0; vero e falso restano): la web manda 6 per 6.0 e le fasce del
+    modificatore restano come arrivano, ma il calcolo è lo stesso e l'impronta deve esserlo."""
+    if isinstance(x, bool) or not isinstance(x, (int, list, dict)):
+        return x
+    if isinstance(x, int):
+        return float(x)
+    return [_decimali(v) for v in x] if isinstance(x, list) else {k: _decimali(v) for k, v in x.items()}
+
+
 def _impronta(stagione: str, giornata: int, s: Squadra, regole: Regole, simulazioni: int) -> str:
-    """La chiave della consigliata ricordata: stagione, giornata, squadra, rosa, regole e simulazioni, in un'impronta."""
+    """La chiave della consigliata ricordata: stagione, giornata, giocatori della squadra, regole del calcolo e simulazioni, in
+    un'impronta. Niente nome della squadra (#780): rinominata, la sua consigliata resta. Due squadre con gli stessi giocatori e le
+    stesse regole del calcolo hanno la stessa consigliata."""
+    testo = json.dumps([stagione, int(giornata), sorted(g.id for g in s.giocatori if g.id is not None),
+                        _regole_del_calcolo(regole, stagione, giornata), simulazioni], ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(testo.encode("utf-8")).hexdigest()[:32]
+
+
+def _impronta_vecchia(stagione: str, giornata: int, s: Squadra, regole: Regole, simulazioni: int) -> str:
+    """La chiave delle versioni di prima di #780: con il nome della squadra e tutte le regole. Serve solo a ritrovare
+    le consigliate salvate prima del rilascio (`_ritrova`, `segui_il_nome`); passata la giornata in corso al rilascio non serve più."""
     testo = json.dumps([stagione, int(giornata), s.nome, sorted(g.id for g in s.giocatori if g.id is not None), repr(regole),
                         simulazioni], ensure_ascii=False)
     return hashlib.sha256(testo.encode("utf-8")).hexdigest()[:32]
+
+
+def _ritrova(impronta: str, vecchia: str) -> dict | None:
+    """La consigliata ricordata con la chiave `impronta`; se manca, quella salvata da una versione di prima con la chiave `vecchia`
+    (#780), che passa alla chiave nuova: al rilascio, anche a giornata iniziata, nessuna consigliata riparte da zero, e dopo un
+    cambio delle regole che cambia la chiave vecchia (il nome della lega) la si ritrova ancora. Se lo spostamento non riesce la voce
+    vale lo stesso (si riprova alla prossima lettura) e resta un avviso nel registro."""
+    tutte = _consigliate()
+    if impronta in tutte or vecchia not in tutte:
+        return tutte.get(impronta)
+    try:
+        _sposta_voci({vecchia: impronta})
+    except OSError as e:
+        LOG.warning("consigliata della versione di prima non spostata alla chiave nuova (%s)", type(e).__name__)
+    return tutte[vecchia]
+
+
+def _sposta_voci(da_a: dict[str, str]) -> int:
+    """Sposta le consigliate ricordate dalle chiavi vecchie alle nuove ({vecchia: nuova}) così come sono, con `quando`, `utenti` e
+    `proprie`; una chiave nuova già presente vince e non si tocca. Stesso blocco di `_ricorda`, valido anche fra processi. Quante ne
+    ha spostate. Un errore di disco o un blocco che non arriva (OSError) passa a chi chiama."""
+    if not any(k in _consigliate() for k in da_a):           # niente da spostare: né blocco né scrittura
+        return 0
+    file = FILE_CONSIGLIATE
+    with _blocco_consigliate, BloccoFile(file.with_name(file.name + ".lock")):
+        try:
+            tutte = json.loads(file.read_text(encoding="utf-8"))
+        except (FileNotFoundError, ValueError):
+            return 0                         # sparito o rovinato: niente da spostare (il prossimo `_ricorda` lo riscrive)
+        if not isinstance(tutte, dict):
+            return 0
+        spostate = 0
+        for vecchia, nuova in da_a.items():
+            if vecchia in tutte and nuova not in tutte:
+                tutte[nuova] = tutte.pop(vecchia)
+                spostate += 1
+        if spostate:
+            scrivi_sicuro(file, json.dumps(tutte, ensure_ascii=False))
+    return spostate
+
+
+def segui_il_nome(s: Squadra, regole: Regole) -> int:
+    """La squadra `s` (ancora con il nome di prima) sta per cambiare nome (PUT /api/squadre/nome, #780): le sue consigliate salvate
+    dalle versioni di prima, con il nome nella chiave, passano alla chiave nuova, che il nome non ce l'ha (quelle nuove seguono la
+    squadra da sole). Le chiavi sono impronte: si rifanno per ogni giornata della stagione in corso, con le simulazioni di sempre.
+    Quante ne ha spostate. Un errore di disco passa a chi chiama."""
+    stagione = stagione_corrente()
+    return _sposta_voci({_impronta_vecchia(stagione, g, s, regole, SIMULAZIONI): _impronta(stagione, g, s, regole, SIMULAZIONI)
+                         for g in range(1, GIORNATE_SERIE_A + 1)})
 
 
 def _consigliate() -> dict:
