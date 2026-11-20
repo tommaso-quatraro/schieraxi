@@ -63,6 +63,7 @@ enum Quando {
     }
 
     private static let versioneConOra = formato("yyyy-MM-dd'T'HH:mm:ss", locale: Locale(identifier: "en_US_POSIX"))
+    /// «2026-10-30»: la data di una versione e il giorno senza ora di una partita (`giornoSenzaOra(_:)`).
     private static let versioneSoloData = formato("yyyy-MM-dd", locale: Locale(identifier: "en_US_POSIX"))
     private static let versioneConOraScritta = formato("d MMM yyyy, HH:mm:ss", locale: italia)
     private static let versioneSoloDataScritta = formato("d MMM yyyy", locale: italia)
@@ -95,27 +96,51 @@ enum Quando {
 
     /// La data di una partita o di una scadenza scritta come la web (`quando` di `app.js`), ora italiana:
     /// «oggi 20:45», «ieri 15:00», «domani 18:30»; entro la settimana «sab 31 20:45»; oltre, con il mese «sab 8 nov 18:30».
+    /// Con solo il giorno («2026-11-01») senza ora: «domani», «dom 1» (vedi `leggibileSeData(_:adesso:)`).
     /// Un testo che non si capisce resta com'è (nil: vuoto). `adesso` serve solo ai test.
     /// L'app è solo in italiano: niente inglese («today», «Sat»).
     static func leggibile(_ testo: String?, adesso: Date = Date()) -> String {
-        guard let d = data(testo) else { return testo ?? "" }
-        return relativa(d, adesso: adesso)
+        leggibileSeData(testo, adesso: adesso) ?? testo ?? ""
+    }
+
+    /// Come `leggibile(_:adesso:)`, ma nil se il testo non è una data: lo usano le righe che senza data non scrivono niente
+    /// (o «–»). Una partita di cui il server sa solo il giorno («2026-11-01»: l'ora non è ancora fissata) resta senza ora, come
+    /// `quando` della web: «oggi», «domani», «dom 1», oltre la settimana «dom 8 nov»; mai un «00:00» che sembra una partita a
+    /// mezzanotte (#789). Una data con l'ora si scrive come `relativa(_:adesso:)`.
+    static func leggibileSeData(_ testo: String?, adesso: Date = Date()) -> String? {
+        if let d = data(testo) { return relativa(d, adesso: adesso) }
+        guard let giorno = giornoSenzaOra(testo) else { return nil }
+        return giornoRelativo(giorno, adesso: adesso)
     }
 
     /// Come `leggibile(_:adesso:)`, per una data già pronta.
     static func relativa(_ d: Date, adesso: Date = Date()) -> String {
+        "\(giornoRelativo(d, adesso: adesso)) \(soloOra.string(from: d))"
+    }
+
+    /// Il giorno di `d` contato sul calendario italiano da `adesso`, come `quando` della web: «oggi», «domani», «ieri»; entro
+    /// la settimana «sab 31»; oltre, con il mese, «sab 8 nov».
+    private static func giornoRelativo(_ d: Date, adesso: Date) -> String {
         let c = calendario
         let giorni = c.dateComponents([.day], from: c.startOfDay(for: adesso), to: c.startOfDay(for: d)).day ?? 0
-        let ora = soloOra.string(from: d)
         switch giorni {
-        case 0: return "oggi \(ora)"
-        case 1: return "domani \(ora)"
-        case -1: return "ieri \(ora)"
+        case 0: return "oggi"
+        case 1: return "domani"
+        case -1: return "ieri"
         default:
             let nome = sigleGiorni[min(max(c.component(.weekday, from: d) - 1, 0), 6)]
             let giorno = abs(giorni) > 6 ? giornoMese.string(from: d) : String(c.component(.day, from: d))
-            return "\(nome) \(giorno) \(ora)"
+            return "\(nome) \(giorno)"
         }
+    }
+
+    /// La mezzanotte italiana di una data del server con solo il giorno («2026-11-01», come `DATA_DEL_SERVER` della web senza
+    /// l'ora); nil con l'ora o se non è una data. Il giorno riscritto deve tornare uguale: un giorno che non c'è («2026-02-30»)
+    /// non diventa il 2 marzo.
+    private static func giornoSenzaOra(_ testo: String?) -> Date? {
+        guard let t = testo?.trimmingCharacters(in: .whitespaces), t.count == 10,
+              let d = versioneSoloData.date(from: t), versioneSoloData.string(from: d) == t else { return nil }
+        return d
     }
 
     /// Un momento già pronto (non la data di una partita), con giorno e mese: «sab 8 nov, 18:30», ora italiana.

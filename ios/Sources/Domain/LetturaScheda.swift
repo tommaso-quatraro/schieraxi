@@ -31,7 +31,7 @@ enum LetturaScheda {
     static func partita(_ g: Giocatore, adesso: Date) -> String? {
         guard let avversario = g.avversario?.trimmingCharacters(in: .whitespaces), !avversario.isEmpty else { return nil }
         let nome = avversario.capitalized
-        let quando = Quando.data(g.dataPartita) == nil ? senzaValore : Quando.leggibile(g.dataPartita, adesso: adesso)
+        let quando = Quando.leggibileSeData(g.dataPartita, adesso: adesso) ?? senzaValore
         return g.inCasa == true
             ? Catalogo.Formazione.partitaCasa(avv: nome, quando: quando)
             : Catalogo.Formazione.partitaFuori(avv: nome, quando: quando)
