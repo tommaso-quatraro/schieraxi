@@ -769,4 +769,19 @@ final class FormazioneViewModel: ViewModelBase {
         guard sostituibile(id), let g = formazione?.schede?[String(id)] else { return }
         daSostituire = g
     }
+
+    // MARK: «Metti in campo» (#778) — scheletro per i test, il codice arriva nel commit dopo
+
+    @Published var elencoEntra: ElencoMettiInCampo?
+
+    func entrabile(_ id: Int) -> Bool { false }
+
+    func mettiInCampo(_ id: Int) async {}
+
+    func chiediMettiInCampo(_ id: Int) {}
+
+    func apriMettiInCampoInAttesa() {}
+
+    @discardableResult
+    func scegliChiEsce(_ esce: Int) async -> Bool { false }
 }

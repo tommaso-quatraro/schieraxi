@@ -10,6 +10,10 @@ extension FinteServer {
     /// Server della modalità demo (costruito una volta sola all'avvio).
     static let demo: FinteServer = demoFissata(adesso: Date())
 
+    /// Il panchinaro di «Metti in campo» nella demo (#778): Fabio Dimarzi, in panchina nella consigliata. Il server finto non legge
+    /// il corpo della domanda e risponde sempre per lui, con gli 11 della consigliata (foto `formazione-metti-in-campo`).
+    static let entraMettiInCampo = 105
+
     /// La stessa demo costruita in un istante preciso: i test confrontano app e widget (`LegaDemo.widget`) nello stesso momento.
     static func demoFissata(adesso: Date) -> FinteServer {
         // ricerca, confronto ed elenco dei giocatori dipendono dalla domanda: li calcola `DatiDemo.calcolata`

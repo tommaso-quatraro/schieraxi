@@ -74,6 +74,14 @@ formazione.punti_rispetto
 formazione.fv_atteso_breve
 formazione.nessun_altro_giocatore
 
+# «Metti in campo» dalla scheda di chi non è fra gli 11, come `apriMettiInCampo` della web (SceltaChiEsce), #778
+formazione.metti_in_campo
+formazione.chi_esce_per
+formazione.esce_spiega
+formazione.passi_al
+formazione.punti_con
+formazione.nessuno_lascia_posto
+
 # Scheda del giocatore, una sola come la web (#616): SchedaGiocatoreView, CifreScheda, TuttiINumeri, Domain/LetturaScheda,
 # Domain/PercheTitolare
 formazione.partita_casa
