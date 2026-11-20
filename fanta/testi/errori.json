@@ -12,8 +12,33 @@
     "en": "Refresh"
   },
   "errori.riepilogo": {
-    "it": "<b>{richieste}</b> richieste dall'ultimo riavvio ({rifiutate} rifiutate, <b>{errori}</b> errori del server). Tempo medio {medio} ms, il 5% più lento oltre {p95} ms, massimo {max} ms.",
-    "en": "<b>{richieste}</b> requests since the last restart ({rifiutate} refused, <b>{errori}</b> server errors). Average time {medio} ms, the slowest 5% over {p95} ms, maximum {max} ms."
+    "it": "{richieste} dall'ultimo riavvio ({rifiutate}, {errori}). Tempo medio {medio} ms, il 5% più lento oltre {p95} ms, massimo {max} ms.",
+    "en": "{richieste} since the last restart ({rifiutate}, {errori}). Average time {medio} ms, the slowest 5% over {p95} ms, maximum {max} ms.",
+    "nota": "{richieste}, {rifiutate}, {errori}: i plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori; i tempi con num() (#779)"
+  },
+  "errori.n_richieste.one": {
+    "it": "<b>{n}</b> richiesta",
+    "en": "<b>{n}</b> request"
+  },
+  "errori.n_richieste.other": {
+    "it": "<b>{n}</b> richieste",
+    "en": "<b>{n}</b> requests"
+  },
+  "errori.n_rifiutate.one": {
+    "it": "{n} rifiutata",
+    "en": "{n} refused"
+  },
+  "errori.n_rifiutate.other": {
+    "it": "{n} rifiutate",
+    "en": "{n} refused"
+  },
+  "errori.n_errori.one": {
+    "it": "<b>{n}</b> errore del server",
+    "en": "<b>{n}</b> server error"
+  },
+  "errori.n_errori.other": {
+    "it": "<b>{n}</b> errori del server",
+    "en": "<b>{n}</b> server errors"
   },
   "errori.del_server": {
     "it": "Errori del server",
@@ -39,8 +64,231 @@
     "it": "Ancora niente.",
     "en": "Nothing yet."
   },
-  "errori.lenta_riga": {
-    "it": "{rotta} · {richieste} richieste, medio {medio} ms",
-    "en": "{rotta} · {richieste} requests, average {medio} ms"
+  "errori.lenta_riga.one": {
+    "it": "{rotta} · {n} richiesta, medio {medio} ms",
+    "en": "{rotta} · {n} request, average {medio} ms"
+  },
+  "errori.lenta_riga.other": {
+    "it": "{rotta} · {n} richieste, medio {medio} ms",
+    "en": "{rotta} · {n} requests, average {medio} ms"
+  },
+  "errori.evento_accesso": {
+    "it": "Accesso",
+    "en": "Sign-in",
+    "nota": "errori.evento_<tipo>: il nome in parole di un evento del registro di sicurezza (account.evento), in «Errori recenti» (#779). Un tipo nuovo senza chiave si legge con gli spazi al posto dei trattini bassi; tests/test_eventi_sicurezza_catalogo.py li vuole tutti qui"
+  },
+  "errori.evento_accesso_fallito": {
+    "it": "Accesso non riuscito",
+    "en": "Failed sign-in"
+  },
+  "errori.evento_accesso_bloccato": {
+    "it": "Accesso fermato: troppi tentativi sbagliati",
+    "en": "Sign-in stopped: too many wrong attempts"
+  },
+  "errori.evento_accesso_rallentamento_pieno": {
+    "it": "Accesso respinto: troppe attese in corso",
+    "en": "Sign-in turned away: too many waits in progress"
+  },
+  "errori.evento_recupero": {
+    "it": "Password nuova con il recupero",
+    "en": "New password through recovery"
+  },
+  "errori.evento_recupero_fallito": {
+    "it": "Recupero della password non riuscito",
+    "en": "Failed password recovery"
+  },
+  "errori.evento_recupero_bloccato": {
+    "it": "Recupero fermato: troppi tentativi sbagliati",
+    "en": "Recovery stopped: too many wrong attempts"
+  },
+  "errori.evento_recupero_rallentamento_pieno": {
+    "it": "Recupero respinto: troppe attese in corso",
+    "en": "Recovery turned away: too many waits in progress"
+  },
+  "errori.evento_recupero_email_richiesto": {
+    "it": "Recupero con l'email chiesto",
+    "en": "Recovery by email requested"
+  },
+  "errori.evento_iscrizione_richiesta": {
+    "it": "Iscrizione con l'email chiesta",
+    "en": "Sign-up by email requested"
+  },
+  "errori.evento_iscrizione_fallito": {
+    "it": "Iscrizione non riuscita",
+    "en": "Failed sign-up"
+  },
+  "errori.evento_iscrizione_bloccato": {
+    "it": "Iscrizione fermata: troppi tentativi sbagliati",
+    "en": "Sign-up stopped: too many wrong attempts"
+  },
+  "errori.evento_iscrizione_rallentamento_pieno": {
+    "it": "Iscrizione respinta: troppe attese in corso",
+    "en": "Sign-up turned away: too many waits in progress"
+  },
+  "errori.evento_registrazione": {
+    "it": "Account nuovo",
+    "en": "New account"
+  },
+  "errori.evento_registrazione_invito_sbagliato": {
+    "it": "Registrazione con un invito non valido",
+    "en": "Sign-up with an invalid invitation"
+  },
+  "errori.evento_account_eliminato": {
+    "it": "Account eliminato",
+    "en": "Account deleted"
+  },
+  "errori.evento_password_cambiata": {
+    "it": "Password cambiata",
+    "en": "Password changed"
+  },
+  "errori.evento_password_attuale_sbagliata": {
+    "it": "Password attuale sbagliata",
+    "en": "Wrong current password"
+  },
+  "errori.evento_password_ricalcolata": {
+    "it": "Password salvata di nuovo in forma più sicura",
+    "en": "Password stored again in a safer form"
+  },
+  "errori.evento_codice_recupero_rigenerato": {
+    "it": "Codice di recupero nuovo",
+    "en": "New recovery code"
+  },
+  "errori.evento_reset_creato": {
+    "it": "Codice per una password nuova creato dall'amministratore",
+    "en": "New-password code created by the administrator"
+  },
+  "errori.evento_ruolo_cambiato": {
+    "it": "Ruolo cambiato",
+    "en": "Role changed"
+  },
+  "errori.evento_invito_creato": {
+    "it": "Invito creato",
+    "en": "Invitation created"
+  },
+  "errori.evento_invito_revocato": {
+    "it": "Invito annullato",
+    "en": "Invitation cancelled"
+  },
+  "errori.evento_esci_da_tutti": {
+    "it": "Uscita da tutti i dispositivi",
+    "en": "Signed out of all devices"
+  },
+  "errori.evento_email_verifica_richiesta": {
+    "it": "Conferma dell'email chiesta",
+    "en": "Email confirmation requested"
+  },
+  "errori.evento_email_codice_sbagliato": {
+    "it": "Codice dell'email sbagliato",
+    "en": "Wrong email code"
+  },
+  "errori.evento_email_verificata": {
+    "it": "Email confermata",
+    "en": "Email confirmed"
+  },
+  "errori.evento_email_tolta": {
+    "it": "Email tolta",
+    "en": "Email removed"
+  },
+  "errori.evento_social_inizio": {
+    "it": "Accesso con Google cominciato",
+    "en": "Google sign-in started"
+  },
+  "errori.evento_social_accesso": {
+    "it": "Accesso con Google",
+    "en": "Google sign-in"
+  },
+  "errori.evento_social_registrazione": {
+    "it": "Account nuovo con Google",
+    "en": "New account with Google"
+  },
+  "errori.evento_social_collegato": {
+    "it": "Google collegato",
+    "en": "Google linked"
+  },
+  "errori.evento_social_scollegato": {
+    "it": "Google scollegato",
+    "en": "Google unlinked"
+  },
+  "errori.evento_social_rifiutato": {
+    "it": "Accesso con Google rifiutato",
+    "en": "Google sign-in refused"
+  },
+  "errori.evento_social_password_impostata": {
+    "it": "Password scelta da chi entrava con Google",
+    "en": "Password chosen by a Google user"
+  },
+  "errori.evento_token_widget_creato": {
+    "it": "Collegamento del widget creato",
+    "en": "Widget link created"
+  },
+  "errori.evento_token_widget_revocato": {
+    "it": "Collegamento del widget tolto",
+    "en": "Widget link removed"
+  },
+  "errori.evento_notifiche_non_tolte": {
+    "it": "Notifiche dei dispositivi usciti non tolte",
+    "en": "Notifications of signed-out devices not removed"
+  },
+  "errori.evento_posta_tetto_ora": {
+    "it": "Email non mandata: tetto dell'ora raggiunto",
+    "en": "Email not sent: hourly limit reached"
+  },
+  "errori.evento_posta_non_inviata": {
+    "it": "Email non mandata",
+    "en": "Email not sent"
+  },
+  "errori.evento_posta_errore": {
+    "it": "Errore nell'invio di un'email",
+    "en": "Error while sending an email"
+  },
+  "errori.evento_importazione_per_conto_di": {
+    "it": "Rose importate per conto di un utente",
+    "en": "Rosters imported on behalf of a user"
+  },
+  "errori.evento_cartella_messa_da_parte": {
+    "it": "Cartella di un account che non c'è più messa da parte",
+    "en": "Folder of an account that no longer exists set aside"
+  },
+  "errori.evento_cartella_non_liberata": {
+    "it": "Account nuovo non creato: cartella dei dati non liberata",
+    "en": "New account not created: data folder not freed"
+  },
+  "errori.evento_cancellazione_dati_non_riuscita": {
+    "it": "Cancellazione dei dati non riuscita",
+    "en": "Data deletion failed"
+  },
+  "errori.evento_segno_cancellazione_non_riuscito": {
+    "it": "Segno dell'account eliminato non scritto",
+    "en": "Deleted-account mark not written"
+  },
+  "errori.evento_chiave_impronte_ricreata": {
+    "it": "Chiave degli indirizzi noti rifatta",
+    "en": "Known-addresses key recreated"
+  },
+  "errori.evento_database_occupato": {
+    "it": "Archivio occupato",
+    "en": "Database busy"
+  },
+  "errori.evento_database_illeggibile": {
+    "it": "Archivio illeggibile",
+    "en": "Database unreadable"
+  },
+  "errori.evento_disco_pieno": {
+    "it": "Disco pieno",
+    "en": "Disk full"
+  },
+  "errori.evento_errore_interno": {
+    "it": "Errore interno del server",
+    "en": "Internal server error"
+  },
+  "errori.evento_fonte_cambiata": {
+    "it": "Fonte dei dati accesa o spenta",
+    "en": "Data source turned on or off",
+    "nota": "tipo «fonte-cambiata», scritto con il trattino da PUT /api/admin/fonti (rotte_account.py): nella chiave il trattino diventa trattino basso"
+  },
+  "errori.evento_funzione_cambiata": {
+    "it": "Funzione dell'app accesa o spenta",
+    "en": "App feature turned on or off",
+    "nota": "tipo «funzione-cambiata», scritto con il trattino da PUT /api/admin/funzioni (rotte_account.py)"
   }
 }

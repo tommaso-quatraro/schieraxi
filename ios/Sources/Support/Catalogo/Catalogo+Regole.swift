@@ -65,7 +65,7 @@ extension Catalogo {
         static let primaGiornataAiuto = "la giornata di Serie A da cui parte la lega (1 se è partita con il campionato)"
 
         /// `regole.prima_giornata_conta`
-        static let primaGiornataConta = "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Giornate e promemoria contano da lì."
+        static let primaGiornataConta = "La giornata di Serie A scelta qui diventa la giornata 1 della lega: calendario, Giornate e promemoria contano da lì."
 
         /// `regole.nome_della_lega`
         static let nomeDellaLega = "Nome della lega"

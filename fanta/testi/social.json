@@ -32,8 +32,8 @@
     "en": "Create account"
   },
   "social.email_gia_usata": {
-    "it": "Questo indirizzo ha già un account SchieraXI. Entra come fai di solito e poi, in Impostazioni > Il tuo account > Accessi, collega Google.",
-    "en": "This address already has a SchieraXI account. Sign in the usual way, then link Google in Settings > Your account > Sign-in methods."
+    "it": "Questo indirizzo ha già un account SchieraXI. Entra come fai di solito e poi, in Impostazioni › Il tuo account › Accessi, collega Google.",
+    "en": "This address already has a SchieraXI account. Sign in the usual way, then link Google in Settings › Your account › Sign-in methods."
   },
   "social.email_non_affidabile": {
     "it": "Con questo account Google non posso iscriverti. Usa il modulo con la tua email.",

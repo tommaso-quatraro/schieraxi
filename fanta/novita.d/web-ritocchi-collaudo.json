@@ -1,0 +1,19 @@
+{
+  "titolo": "Web: ritocchi a Gestione, Regole, La mia squadra e Le altre squadre",
+  "voci": [
+    "Gestione, «Aggiorna i dati»: con tutte le fonti dei dati spente dice che non c'è niente da aggiornare, invece di «Dati aggiornati».",
+    "Gestione, «Errori recenti»: numeri al singolare quando sono uno («1 richiesta»), tempi con la virgola, ore nell'ora italiana e ogni evento di sicurezza con un nome in parole.",
+    "Regole e scadenza: la frase sotto «Da quale giornata di Serie A è partita la lega?» non cita più una giornata d'esempio che non è quella scelta.",
+    "La mia squadra: se un giocatore non ha un costo d'acquisto la riga non scrive «costo –»; stemma e maglia compaiono solo se li hai caricati.",
+    "Le altre squadre: il numero e l'elenco non contano più la tua squadra, che sta in «La mia squadra».",
+    "Dopo «Esci da tutti i dispositivi» la schermata di accesso dice che sei fuori da tutti i dispositivi.",
+    "I percorsi nei testi si scrivono tutti allo stesso modo, per esempio «Impostazioni › Regole e scadenza».",
+    "Con il testo molto ingrandito un nome lungo nel titolo di una pagina o della scheda di un giocatore va a capo con il trattino, dove il browser sa sillabare, invece di spezzarsi a caso."
+  ],
+  "tecnico": [
+    "POST /api/aggiorna: se aggiorna.fonti_accese() è vuota (fantacalcio, understat e footballdata solo con fonti_ombra) risponde {\"avviato\": false, \"messaggio\": NESSUNA_FONTE} prima di prendere i blocchi; traduzione srv.aggiorna_nessuna_fonte. Nessun campo nuovo. Contratto in docs/API.md.",
+    "Web, Errori recenti: plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori, errori.lenta_riga; tempi con num(); ore con toLocaleString e timeZone Europe/Rome; nomi errori.evento_<tipo>, con il trattino del tipo letto come trattino basso (fonte-cambiata, funzione-cambiata); tests/test_eventi_sicurezza_catalogo.py li vuole per ogni evento scritto dal server, anche per le righe scritte direttamente nel registro di sicurezza.",
+    "Catalogo: regole.prima_giornata_conta senza numero; sei testi con «Impostazioni › …» (test_testi_percorsi.py); scambio.costo_quot sostituita da scambio.costo_n e scambio.quotazione_n; tolta lega.la_tua. Catalogo Swift rigenerato (cambia solo il testo di due costanti).",
+    "Web: vistaAltreSquadre e il conteggio di Impostazioni senza la squadra mia (stato.squadre resta intero; con la sola mia squadra la frase lega.solo_la_tua); immaginiRosa; dopo esciDaTutti un segno in sessionStorage letto una volta da controllaAccesso; hyphens: auto su #titolo-pagina e .intestazione-scheda h2 solo sotto i 300 px (@media (max-width: 299.98px))."
+  ]
+}
