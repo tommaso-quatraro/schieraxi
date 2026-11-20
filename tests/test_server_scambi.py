@@ -255,3 +255,20 @@ def test_offerta_a_parole_rispetta_il_limite_delle_analisi(client, monkeypatch):
         assert solo_nomi.status_code == 200 and solo_nomi.json()["analisi"] is None    # riconoscere i nomi non è un'analisi
     assert client.post("/api/scambi/da-testo", json=corpo).status_code == 200          # finite le altre, si riparte
     assert limiti._analisi_in_corso == {}
+
+
+def test_analisi_e_offerta_a_parole_seguono_l_interruttore_degli_scambi(client):
+    """#795: con «Scambi: costruisci» acceso (di predefinito o dall'amministratore) le due rotte rispondono come prima;
+    spento, 404 con il campo `funzione` come le altre funzioni spente."""
+    from fanta import funzioni
+    analizza = {"con": "B", "do": "12,9", "ricevo": "32,30"}
+    offerta = {"testo": "Ti do g12, mi dai g32?"}
+    for scelta in (None, True):
+        funzioni.imposta("scambi_costruisci", scelta)
+        r = client.get("/api/scambi/analizza", params=analizza)
+        assert r.status_code == 200 and r.json()["guadagno_mio"] > 0, r.text
+        r = client.post("/api/scambi/da-testo", json=offerta)
+        assert r.status_code == 200 and r.json()["analisi"] is not None and r.json()["ids"] == {"do": [12], "ricevo": [32]}, r.text
+    funzioni.imposta("scambi_costruisci", False)
+    for r in (client.get("/api/scambi/analizza", params=analizza), client.post("/api/scambi/da-testo", json=offerta)):
+        assert r.status_code == 404 and r.json() == {"detail": funzioni.messaggio_spenta("scambi_costruisci"), "funzione": "scambi_costruisci"}

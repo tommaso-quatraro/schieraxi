@@ -39,7 +39,8 @@ FUNZIONI: dict[str, tuple[str, str, bool]] = {
     "live": ("Risultati in diretta", "partite del turno in diretta e widget Live", False),
     "asta": ("Asta e riparazione", "prezzi consigliati per l'asta", False),
     "scambi_trova": ("Scambi: trova per me", "proposte di scambio con le altre squadre", False),
-    "scambi_costruisci": ("Scambi: costruisci", "scambi da 1 a 4 contro 1 a 4 con conguaglio in crediti (solo la schermata)", False),
+    "scambi_costruisci": ("Scambi: costruisci", "scambi da 1 a 4 contro 1 a 4 con conguaglio in crediti e valutazione di un'offerta", False),
+    "mercato": ("Cambi consigliati", "svincolati da prendere al posto dei giocatori della propria rosa", False),
     "immagini_web": ("Immagini da indirizzo web", "stemma e maglia da un indirizzo web o dal menu Condividi", False),
     "widget_extra": ("Widget aggiuntivi", "widget oltre a formazione e scadenza", False),
     "fonti_ombra": ("Fonti in ombra", "raccolta di dati usati solo per misurare il modello", False),
@@ -53,9 +54,10 @@ SPENTE_DI_NORMA = frozenset({"asta", "crediti"})
 # così un client vecchio, per cui una chiave che manca vale «acceso», non le mostra più. «Sotto il cofano»: tolta il 1/11/2026.
 RITIRATE = frozenset({"sotto_il_cofano"})
 
-# le funzioni di cui il server blocca le rotte quando sono spente (le altre sono solo da nascondere nelle schermate)
-# («scambi_costruisci» non ne ha di sue: la schermata usa /api/scambi/analizza, che serve anche a «Valuta un'offerta»)
-CON_ROTTE = frozenset({"live", "asta", "scambi_trova", "immagini_web", "confronto"})
+# le funzioni di cui il server blocca le rotte quando sono spente (le altre sono solo da nascondere nelle schermate).
+# «scambi_costruisci» tiene anche le rotte di «Valuta un'offerta»: le schermate di scambi e cambi consigliati non ci sono più
+# né sulla web né sull'iPhone (#615, #634), quindi nessuna funzione sempre accesa le usa (#795).
+CON_ROTTE = frozenset({"live", "asta", "scambi_trova", "scambi_costruisci", "mercato", "immagini_web", "confronto"})
 
 # spente dall'amministratore = spente per tutti, anche per chi ha acceso «Mostra tutte»: `immagini_web` scarica indirizzi scritti dall'utente,
 # `live` fa partire il raccoglitore e le chiamate verso l'esterno
@@ -67,6 +69,9 @@ ROTTE: dict[tuple[str, str], str] = {
     ("GET", "/api/asta"): "asta",
     ("GET", "/api/scambi/proposte"): "scambi_trova",
     ("GET", "/api/scambi/limite"): "scambi_trova",
+    ("GET", "/api/scambi/analizza"): "scambi_costruisci",
+    ("POST", "/api/scambi/da-testo"): "scambi_costruisci",
+    ("GET", "/api/mercato"): "mercato",
     ("GET", "/api/confronto"): "confronto",
     ("POST", "/api/squadre/immagine/da-url"): "immagini_web",
     ("POST", "/api/squadre/immagine/condivisa"): "immagini_web",
