@@ -554,6 +554,32 @@ def test_a_giornata_finita_con_un_recupero_che_manca_lo_dice_e_si_sceglie_cosa_v
     assert not web.errori_mostrati() and not web.errori_console
 
 
+def test_la_scelta_sul_rinvio_salvata_a_scheda_cambiata_non_ridisegna_la_formazione(web):
+    """La scelta sul rinvio risponde quando si è già passati a un'altra scheda (rete lenta): la pagina in vista resta quella, e
+    l'avviso dice comunque che è fatto. Prima la Formazione si ridisegnava sotto la barra di Giornate (#801)."""
+    solo(web, "finita")
+    oggi = web.registrata("/api/oggi")
+    giornata = oggi["riepilogo"]["giornata"]
+    rinvio = {"giornata": giornata, "stagione": "2026-27", "modo": "aspetta", "modi": ["aspetta", "senza_voto", "voto_ufficio"],
+              "voto_ufficio": 6, "predefinito": "aspetta", "eccezione": False}
+    web.risposta("/api/oggi", {**oggi, "riepilogo": {**oggi["riepilogo"], "rinvio": rinvio,
+                                                     "recuperi": [{"casa": "udinese", "trasferta": "milan", "data": None}]}})
+    tenute = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/regole/rinvio", lambda r: tenute.append(r))
+    web.apri("/")
+    principale(web).get_by_label("Per questa giornata i loro giocatori").select_option("senza_voto")
+    tocca(web, web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Giornate"))
+    assert len(tenute) == 1 and principale(web).get_by_role("heading", level=1).inner_text().strip() == "Giornate"
+    giornate = web.testo_principale()
+    tenute[0].fulfill(status=200, content_type="application/json", body='{"ok": true}')
+    web.pagina.locator("#avviso").filter(has_text="consigli aggiornati").wait_for(timeout=10000)
+    web.aspetta()
+    assert principale(web).get_by_label("Per questa giornata i loro giocatori").count() == 0, \
+        "dopo il salvataggio la Formazione si è ridisegnata sotto la barra di Giornate"
+    assert web.testo_principale() == giornate
+    assert "vista=giornate" in web.pagina.url
+
+
 # ---------------------------------------------------------------- accessibilità della scheda e dei sostituti
 @pytest.mark.parametrize("tema", ["chiaro", "scuro"])
 def test_la_scheda_e_l_elenco_dei_sostituti_non_hanno_violazioni_gravi(web, tema):

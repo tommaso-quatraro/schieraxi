@@ -471,7 +471,7 @@ def test_esci_da_tutti_annullato_non_fa_niente(web):
 @pytest.mark.parametrize("stato", [500, None], ids=["errore-del-server", "rete-giu"])
 def test_esci_da_tutti_non_riuscito_lo_dice_e_resta_dentro(web, stato):
     """Se la richiesta non riesce gli altri dispositivi sono ancora dentro: un avviso lo dice, si resta nella pagina e le copie
-    restano (al contrario di «Esci», che esce anche con il server spento)."""
+    restano (come per «Esci» dal #800: test_esci_non_riuscito_lo_dice_e_resta_dentro)."""
     solo(web, "prima")
     da_utente(web)
     web.apri("/")
@@ -654,7 +654,7 @@ def test_lo_stemma_si_prende_anche_da_un_indirizzo_web(web):
     tocca(web, principale(web).get_by_role("button", name="Stemma e maglia"))
     foglio = web.pagina.get_by_role("dialog")
     assert foglio.get_by_role("button", name="Da indirizzo web").count() == 2           # stemma e maglia
-    assert foglio.locator("label", has_text="Da file o foto").count() == 2           # l'etichetta del campo del file
+    assert foglio.get_by_role("button", name="Da file o foto").count() == 2            # il pulsante che apre il campo del file (#801)
 
 
 def test_un_altra_squadra_apre_il_foglio_sul_suo_nome(web):
@@ -1038,6 +1038,262 @@ def test_le_ore_tranquille_rifiutate_dal_server_tornano_come_erano(web):
     assert not ore.is_checked()                                          # resta scritto ciò che vale sul server
 
 
+# ---------------------------------------------------------------- «Esci» e gli avvisi di questo dispositivo (#800)
+# Un browser che ha già un'iscrizione agli avvisi, fatta in una visita di prima: service worker e permesso finti come in
+# NOTIFICHE_FINTE, ma l'iscrizione sta in localStorage (la web non tocca quella chiave), così resta dopo una ricarica, e c'è già
+# alla prima pagina della scheda (scritta una volta sola: dopo resta ciò che fa l'app). `__DI__`: il numero dell'account che l'ha
+# fatta, come lo ricorda la web (`avvisi-di`, #804); `__INIZIALE__` vuoto: nessuna iscrizione all'inizio.
+ENDPOINT = "https://push.example/prova"
+ISCRIZIONE_GIA_QUI = """(() => {
+  const CHIAVE = '__iscrizione-di-prova', ep = () => localStorage.getItem(CHIAVE);
+  if (!localStorage.getItem('__iscrizione-iniziata')) {
+    localStorage.setItem('__iscrizione-iniziata', '1');
+    if (__INIZIALE__) localStorage.setItem(CHIAVE, __INIZIALE__);
+    if (__DI__) localStorage.setItem('avvisi-di', __DI__);
+  }
+  const sub = () => ep() ? { endpoint: ep(), toJSON: () => ({ endpoint: ep(), keys: { p256dh: 'a', auth: 'b' } }),
+    unsubscribe: async () => { localStorage.removeItem(CHIAVE); return true; } } : null;
+  const reg = { active: {}, pushManager: { getSubscription: async () => sub(),
+    subscribe: async () => { localStorage.setItem(CHIAVE, ENDPOINT); return sub(); } } };
+  ServiceWorkerContainer.prototype.getRegistration = async () => reg;
+  Object.defineProperty(ServiceWorkerContainer.prototype, 'ready', { get: () => Promise.resolve(reg) });
+  Notification.requestPermission = async () => 'granted';
+})();""".replace("ENDPOINT", json.dumps(ENDPOINT))
+SENZA_SESSIONE = {"detail": "Accesso richiesto", "multiutente": True, "registrazione": "invito", "social": [], "email_attiva": True}
+
+
+def iscrizione_gia_qui(web, di: str = "7", iniziale: bool = True) -> None:
+    """Prima di `apri`: il browser ha già un'iscrizione agli avvisi, fatta dall'account numero `di` (7 è UTENTE); con
+    `iniziale=False` le notifiche finte ci sono ma l'iscrizione no."""
+    web.pagina.add_init_script(ISCRIZIONE_GIA_QUI.replace("__INIZIALE__", json.dumps(ENDPOINT if iniziale else ""))
+                               .replace("__DI__", json.dumps(di)))
+
+
+def iscrizione_nel_browser(web) -> str | None:
+    return web.pagina.evaluate("localStorage.getItem('__iscrizione-di-prova')")
+
+
+def iscrizione_mandata(richiesta) -> bool:
+    return richiesta.method == "POST" and urlsplit(richiesta.url).path == "/api/push/iscrivi"
+
+
+def json_200(route, corpo, stato=200) -> None:
+    route.fulfill(status=stato, content_type="application/json; charset=utf-8", body=json.dumps(corpo))
+
+
+@pytest.mark.parametrize("stato", [500, 502, None], ids=["errore-del-server", "server-che-riparte", "rete-giu"])
+def test_esci_non_riuscito_lo_dice_e_resta_dentro(web, stato):
+    """Il cookie della sessione lo toglie solo il server: se la richiesta di «Esci» non riesce (rete giù, server che riparte dopo
+    un rilascio) non si è usciti davvero. Come «Esci da tutti i dispositivi», un avviso lo dice e la pagina resta com'è: copie dei
+    dati e avvisi di questo dispositivo, nel browser e sul server (#800). Prima la web svuotava e ricaricava come se fosse uscita."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})     # già dentro da prima: all'apertura niente da rimandare
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/disiscrivi", {"dispositivi": 0})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.apri("/")                                              # la Formazione lascia nel browser le sue copie
+    web.apri("/?vista=impostazioni&gruppo=account")
+    prima = chiavi_salvate(web)
+    assert prima, "la prova vuole delle copie da tenere"
+    arrivate = []
+
+    def esci(route):
+        arrivate.append(route.request.method)
+        if stato is None:
+            route.abort()
+        else:
+            json_200(route, {"detail": "Il server non risponde"} if stato == 502 else {}, stato)
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", esci)
+    ricariche = []
+    web.pagina.on("framenavigated", lambda f: f == web.pagina.main_frame and ricariche.append(f.url))
+    with web.pagina.expect_request(iscrizione_mandata):
+        principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    web.pagina.locator("#avviso[role=status]").filter(has_text="Non riesco a farti uscire").wait_for(timeout=10000)
+    web.aspetta()
+    assert ricariche == [], f"la pagina si è ricaricata come dopo un'uscita riuscita: {ricariche}"
+    assert arrivate == ["POST"]
+    assert titolo(web) == "Il tuo account" and web.pagina.locator("#accesso").count() == 0
+    assert chiavi_salvate(web) == prima
+    assert iscrizione_nel_browser(web) == ENDPOINT, "gli avvisi di questo dispositivo si sono spenti con un'uscita non riuscita"
+    assert [c["endpoint"] for c in iscritte] == [ENDPOINT], f"l'iscrizione tolta dal server non è stata rimandata: {iscritte}"
+
+
+def test_esci_riuscito_toglie_gli_avvisi_di_questo_dispositivo(web):
+    """Riuscito, «Esci» fa come prima: gli avvisi di questo dispositivo si tolgono dal server (mentre la sessione vale ancora) e dal
+    browser, nel browser non restano copie e si torna all'accesso."""
+    solo(web, "prima")
+    da_utente(web)
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/disiscrivi", {"dispositivi": 0})
+    disiscritte = _scritture(web, "/api/push/disiscrivi")
+    web.apri("/?vista=impostazioni&gruppo=account")
+    uscito = []
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/") and urlsplit(u).path != "/api/account/esci",
+                     lambda route: json_200(route, SENZA_SESSIONE, 401) if uscito else route.fallback())
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", lambda route: uscito.append(1) or json_200(route, {"ok": True}))
+    with web.pagina.expect_navigation(wait_until="load"):            # la ricarica dopo l'uscita
+        principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    assert uscito == [1]
+    assert disiscritte == [{"endpoint": ENDPOINT}]
+    assert iscrizione_nel_browser(web) is None
+    assert chiavi_salvate(web) == []
+
+
+def entra_con_la_password(web, rimanda: bool = True) -> list[dict]:
+    """La sessione di questo browser è stata chiusa altrove («Esci da tutti», password cambiata o recuperata da un altro dispositivo:
+    il server toglie anche la sua iscrizione agli avvisi). Si apre l'accesso, si entra con la password e la pagina si ricarica.
+    Con `rimanda` aspetta che l'iscrizione parta. Restituisce le iscrizioni mandate al server."""
+    entrato = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/me",
+                     lambda route: json_200(route, UTENTE) if entrato else json_200(route, SENZA_SESSIONE, 401))
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/accedi",
+                     lambda route: entrato.append(1) or json_200(route, UTENTE))
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
+    web.pagina.locator("#accesso-form").wait_for(timeout=10000)
+    web.pagina.locator("#ac-nome").fill("amico")
+    web.pagina.locator("#ac-pw").fill("Password-Finta-1")
+    if rimanda:
+        with web.pagina.expect_request(iscrizione_mandata), web.pagina.expect_navigation(wait_until="load"):
+            web.pagina.locator("#accesso-invia").click()
+    else:
+        with web.pagina.expect_navigation(wait_until="load"):
+            web.pagina.locator("#accesso-invia").click()
+    web.aspetta()
+    return iscritte
+
+
+def test_gli_avvisi_accesi_da_un_account_tornano_al_suo_nuovo_accesso(web):
+    """Stesso account (#804): accende gli avvisi qui, la sua sessione si chiude altrove e rientra: l'iscrizione torna al server.
+    (Browser vuoto all'inizio: il numero dell'account lo ricorda l'accensione, non un passaggio di prima.)"""
+    solo(web, "prima")
+    da_utente(web)
+    iscrizione_gia_qui(web, di="", iniziale=False)
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/avvisi/prova", {"inviato": True})
+    web.apri("/?vista=impostazioni")
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    iscritte = entra_con_la_password(web)
+    assert [c["endpoint"] for c in iscritte] == [ENDPOINT], iscritte
+
+
+def test_l_iscrizione_di_un_altro_account_non_si_rimanda(web):
+    """Account diverso (#804): il browser ha l'iscrizione fatta dall'account 12 ed entra l'account 7. La web non la rimanda al
+    server e «Avvisi su questo dispositivo» è spento, finché il nuovo utente non lo accende lui; acceso, l'iscrizione è sua."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web, di="12")
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/avvisi/prova", {"inviato": True})
+    iscritte = entra_con_la_password(web, rimanda=False)
+    assert iscritte == [], f"l'iscrizione di un altro account è stata rimandata: {iscritte}"
+    web.apri("/?vista=impostazioni")
+    assert not interruttore_qui(web).is_checked(), "l'interruttore è acceso con l'iscrizione di un altro account"
+    with web.pagina.expect_request(iscrizione_mandata):
+        accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    web.apri("/?vista=impostazioni")
+    assert interruttore_qui(web).is_checked() and len(iscritte) == 1
+
+
+def test_un_iscrizione_senza_numero_dopo_un_nuovo_accesso_non_diventa_del_nuovo_account(web):
+    """Un'iscrizione fatta con la versione di prima (nessun numero d'account accanto) ed entra un account dopo un'uscita: non si sa
+    di chi è, quindi non si rimanda e l'interruttore è spento. Anche alla seconda apertura e al prossimo accesso (#804, revisione):
+    prima alla seconda apertura diventava del nuovo account, l'interruttore si accendeva senza iscrizione sul server e al prossimo
+    accesso veniva mandata come sua."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web, di="")
+    iscritte = entra_con_la_password(web, rimanda=False)
+    web.apri("/")                                                    # seconda apertura, con la sessione che continua
+    web.apri("/?vista=impostazioni")
+    assert not interruttore_qui(web).is_checked(), "alla seconda apertura l'iscrizione senza numero è diventata del nuovo account"
+    iscritte += entra_con_la_password(web, rimanda=False)            # la sessione si chiude altrove e si rientra
+    assert iscritte == [], f"l'iscrizione senza numero è stata mandata come del nuovo account: {iscritte}"
+
+
+def test_un_iscrizione_senza_numero_con_la_sessione_gia_aperta_diventa_sua_e_si_rimanda_una_volta(web):
+    """Un'iscrizione fatta con la versione di prima, con la sessione già aperta prima del rilascio: è di chi è dentro, l'interruttore
+    resta acceso e l'iscrizione si rimanda una volta (il server può averla già tolta); alle aperture dopo non più."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    iscrizione_gia_qui(web, di="")
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    with web.pagina.expect_request(iscrizione_mandata):
+        web.apri("/?vista=impostazioni")
+    assert interruttore_qui(web).is_checked()
+    web.apri("/?vista=impostazioni")
+    assert interruttore_qui(web).is_checked() and [c["endpoint"] for c in iscritte] == [ENDPOINT], iscritte
+
+
+def test_esci_con_la_sessione_gia_finita_esce_senza_avviso(web):
+    """«Esci» che riceve 401 (la sessione era già finita, per esempio chiusa da un altro dispositivo): si esce lo stesso, con la
+    ricarica e la schermata d'accesso, senza l'avviso «Non riesco a farti uscire»."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    web.apri("/?vista=impostazioni&gruppo=account")
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), lambda route: json_200(route, SENZA_SESSIONE, 401))
+    avvisi = []
+    web.pagina.expose_function("__avvisoDiProva", lambda testo: avvisi.append(testo))
+    web.pagina.evaluate("""() => new MutationObserver(() => { const a = document.querySelector('#avviso');
+        if (a && a.textContent.trim()) window.__avvisoDiProva(a.textContent); })
+      .observe(document.body, { subtree: true, childList: true, characterData: true })""")
+    with web.pagina.expect_navigation(wait_until="load"):           # la ricarica dopo l'uscita
+        principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    assert not [a for a in avvisi if "Non riesco a farti uscire" in a], avvisi
+
+
+def test_dopo_un_nuovo_accesso_l_iscrizione_del_browser_torna_sul_server(web):
+    """Dopo un nuovo accesso, se il browser ha ancora un'iscrizione agli avvisi la web la rimanda al server, senza chiedere di nuovo
+    il permesso: prima l'interruttore «Avvisi su questo dispositivo» restava acceso e i promemoria non arrivavano più (#800)."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = entra_con_la_password(web)
+    assert [c["endpoint"] for c in iscritte] == [ENDPOINT], iscritte
+    assert iscritte[0]["keys"] == {"p256dh": "a", "auth": "b"}
+
+
+def test_riaprendo_l_app_gia_dentro_l_iscrizione_non_si_rimanda(web):
+    """Una volta per accesso: riaprire l'app con la sessione che vale ancora non rimanda niente (ogni iscrizione conta nel tetto
+    all'ora del server e costa un controllo in rete)."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = entra_con_la_password(web)
+    assert len(iscritte) == 1, iscritte
+    web.apri("/")
+    web.apri("/?vista=impostazioni")
+    assert len(iscritte) == 1, f"l'iscrizione è stata rimandata a ogni apertura: {iscritte}"
+    assert interruttore_qui(web).is_checked()
+
+
+def test_l_iscrizione_che_non_arriva_si_rimanda_all_apertura_dopo(web):
+    """Se l'iscrizione rimandata dopo l'accesso non arriva (server occupato, troppe richieste, rete giù) si riprova alla prossima
+    apertura dell'app, finché il server non la prende; poi basta."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web)
+    risposte = [({"detail": "Il server sta attivando altre notifiche: riprova tra qualche secondo."}, 429)]
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/push/iscrivi",
+                     lambda route: json_200(route, *(risposte.pop(0) if risposte else ({"dispositivi": 1}, 200))))
+    iscritte = entra_con_la_password(web)
+    assert len(iscritte) == 1, iscritte
+    with web.pagina.expect_request(iscrizione_mandata):
+        web.apri("/")
+    assert len(iscritte) == 2, f"l'iscrizione non arrivata non è stata rimandata: {iscritte}"
+    web.apri("/")
+    assert len(iscritte) == 2, f"l'iscrizione arrivata è stata rimandata ancora: {iscritte}"
+
+
 # ---------------------------------------------------------------- Stato dei dati: le etichette del server
 def test_stato_dei_dati_usa_le_etichette_del_server(web):
     solo(web, "prima")
@@ -1098,3 +1354,205 @@ def test_nella_schermata_di_accesso_un_avviso_non_e_un_errore(web):
     accesso.get_by_role("status").filter(has_text=re.compile(r"\w")).first.wait_for(timeout=10000)
     allarmi = [t for t in web.pagina.locator('[role="alert"]').all_inner_texts() if t.strip()]
     assert allarmi == [], allarmi
+
+
+# ---------------------------------------------------------------- ritocchi dalla revisione del 20/11 (#801)
+def server_giu(web, modo="rete") -> list:
+    """Da qui ogni /api/... non arriva («rete») o risponde 502 come il proxy mentre il servizio riparte («502»), finché la lista
+    restituita non si svuota (`.clear()`): da lì le risposte tornano quelle di sempre."""
+    giu = [modo]
+
+    def rispondi(route):
+        if not giu:
+            route.fallback()
+        elif giu[0] == "rete":
+            route.abort()
+        else:
+            route.fulfill(status=502, content_type="text/html", body="<html>502 Bad Gateway</html>")
+
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), rispondi)
+    return giu
+
+
+def riga_di_stato(web) -> str:
+    return principale(web).locator(".stato-pagina").first.inner_text()
+
+
+def test_lo_stato_d_avvio_si_rilegge_quando_torna_la_rete(web):
+    """Aperta senza rete, l'app non sa delle rose: Impostazioni non ha «La mia squadra» né «Le altre squadre». Quando il browser dice
+    che la rete è tornata lo stato d'avvio si rilegge e la pagina in vista si ridisegna con le voci giuste (#801)."""
+    solo(web, "prima")
+    giu = server_giu(web, "rete")
+    web.apri("/?vista=impostazioni")
+    assert voce(web, "La mia squadra").count() == 0, "la prova vuole l'avvio senza le rose"
+    giu.clear()
+    web.pagina.evaluate("window.dispatchEvent(new Event('online'))")
+    voce(web, "La mia squadra").wait_for(timeout=10000)
+    web.aspetta()
+    assert voce(web, "Le altre squadre").count() == 1
+
+
+def test_lo_stato_d_avvio_si_rilegge_al_primo_dato_fresco(web):
+    """Aperta mentre il server riparte (502 del proxy: per il browser la rete c'è, e non dice niente), la riga di stato dice «Server
+    non raggiungibile». Alla prima risposta buona del server (qui «Riprova» di Giornate, a server tornato) lo stato si rilegge: la
+    riga torna quella di sempre e Impostazioni ha «La mia squadra» (#801). Prima restava «Server non raggiungibile» fino a ricaricare."""
+    solo(web, "prima")
+    giu = server_giu(web, "502")
+    web.apri("/?vista=giornate")
+    assert "Server non raggiungibile" in riga_di_stato(web)
+    giu.clear()
+    tocca(web, principale(web).get_by_role("button", name="Riprova"))
+    web.pagina.wait_for_function(
+        "() => { const r = document.querySelector('main .stato-pagina'); return r && r.innerText.trim() && !r.innerText.includes('Server non raggiungibile'); }",
+        timeout=10000)
+    assert "Giornata" in riga_di_stato(web), riga_di_stato(web)
+    tocca(web, barra(web).get_by_role("link", name="Impostazioni"))
+    assert voce(web, "La mia squadra").count() == 1
+
+
+def test_un_rifiuto_del_server_non_fa_rileggere_lo_stato_d_avvio(web):
+    """Lo stato d'avvio si rilegge solo dopo un guasto della rete o del server (5xx): un rifiuto (4xx) rileggendo non cambia, e
+    farebbe ripartire le letture a ogni risposta buona."""
+    solo(web, "prima")
+    web.risposta("/api/squadre", {"detail": "Rose non trovate"}, stato=409)
+    web.risposta("/api/primo-avvio", {"primo_avvio": {"fatti": [], "saltati": [], "chiuso": True}})   # senza squadre la guida rileggerebbe
+    web.apri("/?vista=impostazioni")
+    assert web.richieste.count("/api/squadre") == 1, web.richieste
+    tocca(web, barra(web).get_by_role("link", name="Giornate"))
+    tocca(web, barra(web).get_by_role("link", name="Formazione"))
+    assert web.richieste.count("/api/squadre") == 1, f"lo stato d'avvio si è riletto dopo un rifiuto: {web.richieste}"
+
+
+def elimina_l_account(web, stato: int):
+    """In Il tuo account, «Elimina l'account» aperto, con la password scritta e la conferma accettata; la rotta risponde con
+    `stato`. Restituisce le disiscrizioni dagli avvisi mandate al server e il pulsante da toccare."""
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    iscrizione_gia_qui(web)
+    web.risposta("/api/push/disiscrivi", {"dispositivi": 0})
+    disiscritte = _scritture(web, "/api/push/disiscrivi")
+    web.risposta("/api/account/elimina", {"detail": "La password non va bene."} if stato == 403 else {"ok": True}, stato=stato)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    tocca(web, principale(web).get_by_text("Elimina l'account", exact=True))
+    principale(web).get_by_label("La tua password").last.fill("Password-Finta-1")
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())
+    return disiscritte, principale(web).get_by_role("button", name="Elimina il mio account")
+
+
+def test_elimina_l_account_non_riuscito_lascia_gli_avvisi(web):
+    """Con la password sbagliata il server non elimina niente: gli avvisi di questo dispositivo restano accesi, nel browser e sul
+    server. Prima si toglievano prima che il server controllasse la password (#801)."""
+    solo(web, "prima")
+    disiscritte, elimina = elimina_l_account(web, 403)
+    elimina.click(timeout=10000)
+    web.pagina.locator("#avviso").filter(has_text="La password non va bene").wait_for(timeout=10000)
+    web.aspetta()
+    assert disiscritte == [], f"gli avvisi si sono tolti dal server con un'eliminazione non riuscita: {disiscritte}"
+    assert iscrizione_nel_browser(web) == ENDPOINT
+    assert titolo(web) == "Il tuo account"
+
+
+def test_elimina_l_account_riuscito_toglie_gli_avvisi_dal_browser(web):
+    """Riuscita, l'eliminazione cancella sul server anche gli avvisi: il browser toglie la sua iscrizione e la pagina si ricarica.
+    (Il «chi sono» finto risponde sempre con l'utente: le copie le rimette l'avvio dopo la ricarica, qui non si guardano.)"""
+    solo(web, "prima")
+    _, elimina = elimina_l_account(web, 200)
+    with web.pagina.expect_navigation(wait_until="load"):          # la ricarica dopo l'eliminazione, non l'apertura della pagina
+        elimina.click(timeout=10000)
+    assert iscrizione_nel_browser(web) is None
+
+
+def con_tab_fino_a(web, bersaglio, massimo: int = 30) -> bool:
+    """Avanti con Tab dal fuoco di adesso: si arriva su `bersaglio`?"""
+    for _ in range(massimo):
+        web.pagina.keyboard.press("Tab")
+        if bersaglio.evaluate("e => e === document.activeElement"):
+            return True
+    return False
+
+
+def selettore_intercettato(web) -> None:
+    """Prima di aprire il selettore dei file con un tasto. Playwright intercetta il selettore solo da quando qualcuno ne ascolta
+    l'evento, e lo chiede al browser senza aspettare risposta: un tasto è un messaggio solo e può arrivare prima, e allora il
+    selettore vero si apre e si chiude senza evento (è successo una volta su GitHub). Un ascoltatore messo subito la tiene accesa."""
+    web.pagina.on("filechooser", lambda _scelta: None)
+
+
+# un'immagine PNG di 1×1 pixel
+PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360f8cfc0f01f0005"
+                    "0001ff5c6d2d6b0000000049454e44ae426082")
+
+
+def test_scegli_il_file_delle_rose_si_raggiunge_con_tab_e_apre_il_selettore(web):
+    """«Scegli il file» di Aggiorna le rose era un'etichetta di un campo nascosto: con Tab non ci si arrivava. Ora è un pulsante vero
+    che apre il selettore dei file, come nel primo avvio; il file scelto va subito al controllo delle rose (#801)."""
+    solo(web, "prima")
+    selettore_intercettato(web)
+    web.apri("/?vista=impostazioni&gruppo=rose")
+    scegli = principale(web).get_by_role("button", name="Scegli il file (Excel o CSV)")
+    assert scegli.count() == 1, "«Scegli il file» non è un pulsante"
+    principale(web).get_by_role("button", name="Impostazioni").focus()            # «‹ Impostazioni», in cima alla pagina
+    assert con_tab_fino_a(web, scegli), "con Tab non si arriva a «Scegli il file»"
+    with web.pagina.expect_file_chooser() as scelta:
+        web.pagina.keyboard.press("Enter")
+    assert ".xlsx" in scelta.value.element.get_attribute("accept")
+    with web.pagina.expect_request(lambda r: r.method == "POST" and urlsplit(r.url).path.startswith("/api/rose")) as mandata:
+        scelta.value.set_files({"name": "rose.csv", "mimeType": "text/csv", "buffer": "Squadra;Ruolo;Calciatore\n".encode()})
+    assert urlsplit(mandata.value.url).path == "/api/rose/anteprima/file"           # il controllo delle rose, con il file
+
+
+def test_file_o_foto_di_stemma_e_maglia_si_raggiungono_con_tab_e_caricano(web):
+    """«Da file o foto» del foglio di stemma e maglia era un'etichetta di un campo nascosto: con Tab non ci si arrivava. Ora sono
+    due pulsanti veri; quello della maglia apre il selettore e l'immagine scelta si carica come maglia (#801)."""
+    solo(web, "prima")
+    selettore_intercettato(web)
+    _mia_con_stemma(web)
+    caricate = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/squadre/immagine",
+                     lambda r: (r.request.method == "POST" and caricate.append(parse_qs(urlsplit(r.request.url).query)["tipo"]),
+                                json_200(r, {"ok": True})))
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    tocca(web, principale(web).get_by_role("button", name="Stemma e maglia"))
+    foglio = web.pagina.get_by_role("dialog")
+    pulsanti = foglio.get_by_role("button", name="Da file o foto")
+    assert pulsanti.count() == 2, "«Da file o foto» non è un pulsante"
+    foglio.get_by_role("combobox").focus()                                       # la squadra, in cima al foglio
+    assert con_tab_fino_a(web, pulsanti.nth(0)), "con Tab non si arriva a «Da file o foto» dello stemma"
+    assert con_tab_fino_a(web, pulsanti.nth(1)), "con Tab non si arriva a «Da file o foto» della maglia"
+    with web.pagina.expect_file_chooser() as scelta:
+        web.pagina.keyboard.press("Enter")
+    scelta.value.set_files({"name": "maglia.png", "mimeType": "image/png", "buffer": PNG})
+    web.pagina.locator("#avviso").filter(has_text="Maglia aggiornata").wait_for(timeout=10000)
+    assert caricate == [["maglia"]]
+
+
+def test_le_regole_salvate_a_scheda_cambiata_non_ridisegnano_la_pagina_vecchia(web):
+    """Il salvataggio delle Regole risponde quando si è già passati a un'altra scheda (rete lenta): la pagina in vista resta quella,
+    e l'avviso dice comunque che le regole sono salvate. Prima le Regole si ridisegnavano sotto la barra della Formazione (#801)."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", RICONOSCIUTE)
+    tenute = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/regole",
+                     lambda r: tenute.append(r) if r.request.method == "PUT" else r.fallback())
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Crediti: 500\nAssist +1,5")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    principale(web).get_by_role("button", name="Salva queste regole").click(timeout=10000)
+    tocca(web, barra(web).get_by_role("link", name="Formazione"))
+    assert len(tenute) == 1 and titolo(web) == "Formazione"
+    tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(web.registrata("/api/regole")))
+    web.pagina.locator("#avviso").filter(has_text="Regole salvate").wait_for(timeout=10000)
+    web.aspetta()
+    assert titolo(web) == "Formazione", f"dopo il salvataggio si vede «{titolo(web)}» sotto la barra della Formazione"
+    assert web.pagina.url.endswith("/?vista=formazione")
+
+
+@pytest.mark.parametrize("lingua, frase", [("it", "Non ho potuto usare l'immagine condivisa"), ("en", "I could not use the shared image")])
+def test_l_immagine_condivisa_non_usata_si_dice_nella_lingua_dell_app(web, lingua, frase):
+    """Dal menu Condividi del telefono con un'immagine che il server non prende (`?condivisa=no`) l'avviso viene dal catalogo, nella
+    lingua dell'app: prima era scritto in italiano nel codice (#801)."""
+    solo(web, "prima")
+    web.memoria({"lingua": lingua})
+    web.apri("/?condivisa=no")
+    web.pagina.locator("#avviso").filter(has_text=frase).wait_for(timeout=10000)
+    assert "PNG, JPEG" in web.pagina.locator("#avviso").inner_text()

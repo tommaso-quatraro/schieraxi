@@ -68,6 +68,11 @@
     "it": "Immagine condivisa",
     "en": "Shared image"
   },
+  "lega.immagine_condivisa_no": {
+    "it": "Non ho potuto usare l'immagine condivisa: servono PNG, JPEG o WebP fino a 4 MB",
+    "en": "I could not use the shared image: it must be PNG, JPEG or WebP, up to 4 MB",
+    "nota": "dal menu Condividi del telefono, quando il server non prende l'immagine (?condivisa=no); prima era scritto nel codice (#801)"
+  },
   "lega.immagine_condivisa_non": {
     "it": "L'immagine condivisa non c'è più: condividila di nuovo",
     "en": "The shared image is gone: share it again"
