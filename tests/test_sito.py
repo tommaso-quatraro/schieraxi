@@ -419,6 +419,16 @@ def test_esempio_di_campo(nome):
 
 
 @pytest.mark.parametrize("nome", PAGINE)
+def test_panchina_con_gioca_solo_sotto_80(nome):
+    """Come nell'app (docs/GUIDA-UTENTE.md): la probabilità di giocare compare solo sotto l'80%, quindi l'esempio non mostra
+    valori che l'app non mostrerebbe mai."""
+    _, testo = leggi(nome)
+    _, _, panca = _campo(testo)
+    assert len(panca) == 3
+    assert all(numero(r[2]) < 0.8 for r in panca), [r[2] for r in panca]
+
+
+@pytest.mark.parametrize("nome", PAGINE)
 def test_esempio_di_calcolo_torna(nome):
     """Base + voci = fantavoto atteso; fantavoto × probabilità di giocare = punti attesi; lo stesso giocatore è sul campo."""
     _, testo = leggi(nome)
@@ -434,6 +444,29 @@ def test_esempio_di_calcolo_torna(nome):
     sul_campo = {n: numero(v) for l in giocatori for n, v in l}
     chi = caption.split(":", 1)[1].split(",")[0].strip()
     assert sul_campo[chi] == fv
+
+
+# Per lingua: la domanda, le voci dell'informativa che la risposta deve citare (oltre all'account) e l'inizio vietato, che
+# presenterebbe un elenco chiuso («solo questi») più corto di quello dell'informativa.
+DOMANDA_DATI = {
+    "index.html": ("Quali dati raccoglie?", ("notifiche", "indirizzo di rete", "statistiche d'uso"), "Solo"),
+    "en/index.html": ("What data does it collect?", ("notifications", "network address", "usage statistics"), "Only"),
+}
+
+
+@pytest.mark.parametrize("nome", PAGINE)
+def test_domanda_sui_dati_non_promette_meno_dell_informativa(nome):
+    """La risposta cita anche notifiche, registro con l'indirizzo di rete e statistiche d'uso (fanta/testi_legali.py) e
+    rimanda all'informativa per l'elenco completo."""
+    domanda, voci, inizio_vietato = DOMANDA_DATI[nome]
+    _, testo = leggi(nome)
+    m = re.search(r"<summary>" + re.escape(domanda) + r"</summary><p>(.*?)</p>", sezione(testo, "domande"), re.S)
+    assert m, domanda
+    risposta = senza_tag(m.group(1))
+    assert '<a href="https://app.schieraxi.it/privacy">' in m.group(1)
+    assert not risposta.startswith(inizio_vietato), risposta
+    for v in voci:
+        assert v in risposta, v
 
 
 def test_italiano_e_inglese_allineati():
