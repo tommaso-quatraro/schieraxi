@@ -1989,10 +1989,14 @@ async function vistaRosa(nome) {
     collegaSceltaMia();
     const vf = $("#vedi-formazione");
     if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione", undefined, { focoTitolo: true }); });
-    $("#salva-nome-squadra").addEventListener("click", async () => {
+    // spento finché la richiesta non torna (#833): un secondo tocco mandava il nome vecchio, già cambiato, e il server diceva
+    // «Squadra non trovata» anche se il nome era salvato
+    const salvaNome = $("#salva-nome-squadra");
+    salvaNome.addEventListener("click", async () => {
       const nuovo = $("#nome-squadra").value.trim().replace(/\s+/g, " ");
       if (!nuovo || nuovo.length > 60) { avviso(t("scambio.nome_non_valido")); return; }
-      if (nuovo === r.nome) return;
+      if (nuovo === r.nome || salvaNome.disabled) return;
+      salvaNome.disabled = true;
       try {
         const esito = await api("/api/squadre/nome", { method: "PUT", body: JSON.stringify({ nome: r.nome, nuovo }) });
         svuotaCache();
@@ -2001,6 +2005,7 @@ async function vistaRosa(nome) {
         avviso(t("scambio.nome_salvato"));
         vai("impostazioni", r.mia ? "squadra" : "squadre", { rosa: r.mia ? undefined : esito.nome, sostituisci: true });   // il nome nuovo nell'indirizzo
       } catch (e) { avviso(e.message, 5000); }
+      finally { salvaNome.disabled = false; }
     });
     $("#salva-crediti-squadra").addEventListener("click", async () => {
       const testo = $("#crediti-squadra").value.trim();
