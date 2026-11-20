@@ -635,6 +635,8 @@ struct StatoDatiView: View {
                                             .font(.caption).foregroundStyle(Color.testoSecondario)
                                     }
                                     .accessibilityElement(children: .combine)
+                                    // l'ultimo gruppo, subito sopra la riga della taratura: dove si ferma la foto `lega-stato-taratura` (#527)
+                                    .id(FondoDemo.idGruppo(g.id, ultimo: gruppi.last?.id))
                                 }
                             } header: { Text("Quanto sono giuste le previsioni").foregroundStyle(Color.testoSecondario) } footer: {
                                 VStack(alignment: .leading) {

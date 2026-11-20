@@ -97,6 +97,12 @@ def test_righe_dei_crediti_portano_solo_la_rosa():
     assert esito["schermate"] == ["lega-rosa"]
 
 
+def test_la_riga_della_taratura_porta_anche_la_sua_scena():
+    """#527: la riga della taratura di «gioca N%» non sta in nessuna delle altre foto di Stato dei dati."""
+    esito = foto.schermate(["ios/Sources/Presentation/Lega/ParoleRegistro+Taratura.swift"])
+    assert esito["schermate"] == ["lega-stato", "lega-stato-fondo", "lega-stato-nostri", "lega-stato-taratura"]
+
+
 def test_ogni_file_di_presentation_ha_una_voce_o_un_ripiego_dichiarato():
     """Un file di ios/Sources/Presentation non prende in silenzio tutte le schermate di una sezione: ha una regola stretta, o il
     codice lo porta a poche viste radice («radici» di foto.json, #505), o è scritto in «ripiego_dichiarato» (parti comuni)."""
