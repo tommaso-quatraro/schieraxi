@@ -16,5 +16,8 @@ extension Catalogo {
 
         /// `aggiorna.non_so`
         static let nonSo = "Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco"
+
+        /// `aggiorna.in_corso`
+        static let inCorso = "Il server è occupato con un aggiornamento: il pulsante torna attivo appena finisce."
     }
 }

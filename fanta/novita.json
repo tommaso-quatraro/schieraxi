@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.534",
+    "data": "2026-11-20T04:25:34",
+    "titolo": "Con «Scambi: trova per me» spenta, niente scambi in Da fare e nel widget",
+    "voci": [
+      "Se «Scambi: trova per me» è spenta, Da fare in Oggi e il widget dell'iPhone non propongono più uno scambio con un'altra squadra. Accesa, tutto resta come prima."
+    ],
+    "tecnico": [
+      "GET /api/oggi (da_fare) e GET /api/widget decidono con funzioni.acceso(\"scambi_trova\", Mostra tutte, ruolo), la stessa regola di GET /api/funzioni e del blocco di GET /api/scambi/proposte. Spenta: nessuna voce scambio in da_fare, nessun campo scambio nel widget e «scambio» non entra in mancano (le proposte non si leggono). Nessun campo tolto o rinominato (#803).",
+      "funzioni del widget (widget.funzioni_per_widget) tiene conto anche del ruolo, come GET /api/funzioni: l'amministratore vede accese anche le funzioni spente solo di predefinito (live, diario, scambi_trova, seguiti, widget_extra), e scambio segue sempre funzioni.scambi_trova."
+    ]
+  },
+  {
     "versione": "1.533",
     "data": "2026-11-20T04:15:30",
     "titolo": "Punti delle giornate finite giusti nel Diario e nel riepilogo di Oggi",

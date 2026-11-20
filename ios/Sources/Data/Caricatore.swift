@@ -50,6 +50,9 @@ final class Caricatore<T: Decodable>: ObservableObject {
     private var ascolto: AnyCancellable?
     /// true finché i dati mostrati vengono dalla cache e non da una risposta fresca del server.
     private(set) var dallaCache = false
+    /// Quante risposte del server sono arrivate. Cresce solo con una risposta nuova: non con la copia salvata, né quando un
+    /// caricamento annullato rimette i dati di prima come caricati. Chi deve usare solo dati appena arrivati confronta questo numero.
+    private(set) var risposte = 0
     /// Perché l'ultimo aggiornamento non è riuscito: nil se il server non era raggiungibile (rete, tempo scaduto) o se è andato bene;
     /// altrimenti il messaggio dell'errore (limite, guasto del server...), da mostrare nella striscia dei dati salvati.
     private(set) var motivoDatiSalvati: String?
@@ -111,6 +114,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
             scaricatoIl = Date()
             dallaCache = false
             motivoDatiSalvati = nil
+            risposte += 1
             stato = .loaded(nuovo)
             if usaCache { Cache.salva(dati, richiesto, indirizzo: server.indirizzo) }
         } catch {
