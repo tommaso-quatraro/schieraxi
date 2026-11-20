@@ -38,8 +38,8 @@ extension Catalogo {
         }
 
         /// `sd.reg_i2_riga`
-        static func regI2Riga(b: String, c: String, sb: String, sc: String) -> String {
-            "scarto \(c) (al massimo \(sc)) · punteggio di Brier \(b) (al massimo \(sb))"
+        static func regI2Riga(c: String, e: String, sc: String, se: String) -> String {
+            "scarto \(c) (al massimo \(sc)) · errore medio delle percentuali \(e) punti (al massimo \(se))"
         }
 
         /// `sd.reg_i3_riga`
@@ -206,18 +206,16 @@ extension Catalogo {
         }
 
         /// `sd.tar_attiva_dal`
-        static func tarAttivaDal(d: String, v: String) -> String {
-            "attiva dal \(d) (versione \(v))"
+        static func tarAttivaDal(d: String) -> String {
+            "attiva dal \(d)"
         }
 
         /// `sd.tar_attiva`
-        static func tarAttiva(v: String) -> String {
-            "attiva (versione \(v))"
-        }
+        static let tarAttiva = "attiva"
 
         /// `sd.tar_prova.one`, `sd.tar_prova.other`
-        static func tarProva(_ n: Int, b: String, c: String, p: String) -> String {
-            n == 1 ? "nell'ultima giornata Brier \(b) invece di \(p), scarto \(c)" : "nelle ultime \(n) giornate Brier \(b) invece di \(p), scarto \(c)"
+        static func tarProva(_ n: Int, e: String, p: String) -> String {
+            n == 1 ? "nell'ultima giornata le percentuali «gioca N%» hanno sbagliato in media di \(e) punti, contro \(p) senza questa taratura" : "nelle ultime \(n) giornate le percentuali «gioca N%» hanno sbagliato in media di \(e) punti, contro \(p) senza questa taratura"
         }
 
         /// `sd.tar_non_attiva`
@@ -235,7 +233,7 @@ extension Catalogo {
         }
 
         /// `sd.tar_m_fuori_soglia`
-        static let tarMFuoriSoglia = "fuori dalle soglie di scarto o di Brier"
+        static let tarMFuoriSoglia = "fuori dalle soglie di scarto o di errore medio delle percentuali"
 
         /// `sd.tar_m_incoerente`
         static let tarMIncoerente = "i numeri tarati non sono validi"

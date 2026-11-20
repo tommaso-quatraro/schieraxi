@@ -116,20 +116,20 @@
     "en": "waiting · {n} matchdays"
   },
   "sd.tar_attiva_dal": {
-    "it": "attiva dal {d} (versione {v})",
-    "en": "active since {d} (version {v})"
+    "it": "attiva dal {d}",
+    "en": "active since {d}"
   },
   "sd.tar_attiva": {
-    "it": "attiva (versione {v})",
-    "en": "active (version {v})"
+    "it": "attiva",
+    "en": "active"
   },
   "sd.tar_prova.one": {
-    "it": "nell'ultima giornata Brier {b} invece di {p}, scarto {c}",
-    "en": "in the last matchday Brier {b} instead of {p}, gap {c}"
+    "it": "nell'ultima giornata le percentuali «gioca N%» hanno sbagliato in media di {e} punti, contro {p} senza questa taratura",
+    "en": "in the last matchday the «plays N%» percentages were off by {e} points on average, against {p} without this calibration"
   },
   "sd.tar_prova.other": {
-    "it": "nelle ultime {n} giornate Brier {b} invece di {p}, scarto {c}",
-    "en": "in the last {n} matchdays Brier {b} instead of {p}, gap {c}"
+    "it": "nelle ultime {n} giornate le percentuali «gioca N%» hanno sbagliato in media di {e} punti, contro {p} senza questa taratura",
+    "en": "in the last {n} matchdays the «plays N%» percentages were off by {e} points on average, against {p} without this calibration"
   },
   "sd.tar_non_attiva": {
     "it": "non attiva",
@@ -148,8 +148,8 @@
     "en": "the test passes, it switches on with 8 matchdays (now {n})"
   },
   "sd.tar_m_fuori_soglia": {
-    "it": "fuori dalle soglie di scarto o di Brier",
-    "en": "outside the gap or Brier limits"
+    "it": "fuori dalle soglie di scarto o di errore medio delle percentuali",
+    "en": "outside the limits for the gap or the average error of the percentages"
   },
   "sd.tar_m_incoerente": {
     "it": "i numeri tarati non sono validi",
@@ -280,8 +280,8 @@
     "en": "«Plays N%» against who really played"
   },
   "sd.reg_i2_riga": {
-    "it": "scarto {c} (al massimo {sc}) · punteggio di Brier {b} (al massimo {sb})",
-    "en": "gap {c} (at most {sc}) · Brier score {b} (at most {sb})"
+    "it": "scarto {c} (al massimo {sc}) · errore medio delle percentuali {e} punti (al massimo {se})",
+    "en": "gap {c} (at most {sc}) · average error of the percentages {e} points (at most {se})"
   },
   "sd.reg_punti.one": {
     "it": "{n} punto",
