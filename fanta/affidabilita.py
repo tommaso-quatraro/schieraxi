@@ -3,8 +3,8 @@
 Confronta il modello con una scelta "da fantamedia" (la formazione scelta con la fantamedia tirata verso il ruolo e la stessa
 probabilità di giocare del modello; testo per l'utente: `avv.prova_su`) su tre cose: l'errore sul fantavoto di chi ha giocato,
 i punti delle formazioni consigliate alle rose della lega e il massimo possibile col senno di poi. Il calcolo è pesante (simulazioni):
-si rifà solo quando cambiano le giornate finite (con i voti di tutte le partite) o i loro voti, e il risultato resta in
-dati/affidabilita.json.
+si rifà solo quando cambiano le giornate finite (con i voti di tutte le partite), i loro voti, le regole o i giocatori delle
+rose, e il risultato resta in dati/affidabilita.json (con gli account, nella cartella di ogni utente).
 Dal 12/11/2026 (#614) la fantamedia è quella tirata verso il ruolo (`verifica.avversari`): `errore_fantamedia` e
 `punti_fantamedia` sono un confronto onesto. In più, facoltativi: `errore_ruolo` (un numero fisso per ruolo),
 `errore_fantamedia_stagione` (l'avversario di prima) e `rose_a_sorte` (punti su rose estratte a sorte, con l'intervallo).
@@ -15,6 +15,7 @@ import hashlib
 import json
 import math
 import sqlite3
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -80,11 +81,22 @@ def _chiave(elenco: list[tuple[str, int]]) -> str | None:
     return f"{elenco[-1][0]}/{elenco[-1][1]}" if elenco else None
 
 
-def impronta(db: sqlite3.Connection, elenco: list[tuple[str, int]]) -> str:
-    """Impronta (hash corto) delle giornate della prova e dei loro voti: cambia se entra una giornata (finita, o con un recupero
-    giocato e i suoi voti), se ne esce una o se un voto si corregge. Con questa si decide se rifare la prova (#832); prima si
-    guardava solo l'ultima giornata e un recupero o i voti arrivati tardi restavano fuori fino alla giornata dopo."""
+def _liste(rose: Rose | None) -> list[list[int]] | None:
+    """I giocatori di ogni squadra (solo gli id riconosciuti), come la prova li passa a `verifica.verifica`."""
+    return [[g.id for g in s.giocatori if g.id is not None] for s in rose.squadre] if rose else None
+
+
+def impronta(db: sqlite3.Connection, elenco: list[tuple[str, int]], regole: Regole | None = None,
+             rose: Rose | None = None) -> str:
+    """Impronta (hash corto) di ciò da cui esce la prova: le giornate e i loro voti, le regole e i giocatori delle rose. Cambia se
+    entra una giornata (finita, o con un recupero giocato e i suoi voti), se ne esce una, se un voto si corregge (#832) o se
+    l'utente cambia le sue regole o le sue rose (#840). Con questa si decide se rifare la prova. Le regole ci sono tutte, come
+    nella memoria di `verifica.verifica` (anche i campi che non cambiano i punti: al più una prova in più); delle rose solo gli id
+    dei giocatori di ogni squadra, senza i nomi: rinominare una squadra non la rifà."""
     h = hashlib.sha1()
+    h.update(json.dumps(asdict(regole or Regole()), sort_keys=True, default=str).encode("utf-8"))
+    liste = _liste(rose)
+    h.update(json.dumps(None if liste is None else sorted(sorted(ids) for ids in liste)).encode("utf-8"))
     for stagione, g in elenco:
         h.update(json.dumps([stagione, g]).encode("utf-8"))
         for r in db.execute("SELECT * FROM voti WHERE stagione = ? AND giornata = ? ORDER BY calciatore_id", (stagione, g)):
@@ -97,9 +109,8 @@ def calcola(db: sqlite3.Connection, regole: Regole, rose: Rose | None, simulazio
     """La prova sulle giornate di `elenco` (di norma `giornate_della_prova`) con le regole e le rose date. `memo`: le rose a
     sorte già provate nello stesso giro (`verifica.verifica`), così con gli account la prova di ogni utente non le rifà."""
     elenco = giornate_della_prova(db, regole) if elenco is None else elenco
-    liste = [[g.id for g in s.giocatori if g.id is not None] for s in rose.squadre] if rose else None
-    df = verifica.verifica(consigli.dati(db), regole, modello.Parametri(), elenco, rose=liste, simulazioni=simulazioni, scrivi=None,
-                           sintetiche=verifica.ROSE_A_SORTE, memo=memo)
+    df = verifica.verifica(consigli.dati(db), regole, modello.Parametri(), elenco, rose=_liste(rose), simulazioni=simulazioni,
+                           scrivi=None, sintetiche=verifica.ROSE_A_SORTE, memo=memo)
     righe = [{k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in r.items()} for r in df.to_dict("records")]
     ultima = _chiave(elenco)
     riassunto = sintesi(righe)
@@ -112,12 +123,12 @@ def calcola(db: sqlite3.Connection, regole: Regole, rose: Rose | None, simulazio
 
 def aggiorna_se_serve(db: sqlite3.Connection, regole: Regole, rose: Rose | None, forza: bool = False,
                       percorso: Path | None = None, simulazioni: int = 200, memo: dict | None = None) -> bool:
-    """Rifà la prova solo se dall'ultima volta sono cambiate le giornate della prova o i loro voti (`impronta`, salvata nel file).
-    True se ha ricalcolato. Le giornate sono quelle della prova (`giornate_della_prova`), non della sola stagione in corso:
-    d'estate quella non ne ha e la prova ripartiva a ogni giro del cron. Un file senza impronta (scritto prima di #832) si rifà
-    una volta."""
+    """Rifà la prova solo se dall'ultima volta sono cambiate le giornate della prova, i loro voti, le regole o le rose (`impronta`,
+    salvata nel file). True se ha ricalcolato. Le giornate sono quelle della prova (`giornate_della_prova`), non della sola
+    stagione in corso: d'estate quella non ne ha e la prova ripartiva a ogni giro del cron. Un file senza impronta (scritto prima
+    di #832) o con quella di prima di #840 (senza regole e rose) si rifà una volta."""
     elenco = giornate_della_prova(db, regole)
-    nuova = impronta(db, elenco)
+    nuova = impronta(db, elenco, regole, rose)
     vecchio = carica(percorso)
     if not forza and vecchio.get("impronta") == nuova and vecchio.get("righe"):
         return False
