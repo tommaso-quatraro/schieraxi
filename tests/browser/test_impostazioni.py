@@ -1251,3 +1251,57 @@ def test_nella_schermata_di_accesso_un_avviso_non_e_un_errore(web):
     accesso.get_by_role("status").filter(has_text=re.compile(r"\w")).first.wait_for(timeout=10000)
     allarmi = [t for t in web.pagina.locator('[role="alert"]').all_inner_texts() if t.strip()]
     assert allarmi == [], allarmi
+
+
+# ---------------------------------------------------------------- ritocchi dalla revisione del 20/11 (#801)
+def server_giu(web, modo="rete") -> list:
+    """Da qui ogni /api/... non arriva («rete») o risponde 502 come il proxy mentre il servizio riparte («502»), finché la lista
+    restituita non si svuota (`.clear()`): da lì le risposte tornano quelle di sempre."""
+    giu = [modo]
+
+    def rispondi(route):
+        if not giu:
+            route.fallback()
+        elif giu[0] == "rete":
+            route.abort()
+        else:
+            route.fulfill(status=502, content_type="text/html", body="<html>502 Bad Gateway</html>")
+
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), rispondi)
+    return giu
+
+
+def riga_di_stato(web) -> str:
+    return principale(web).locator(".stato-pagina").first.inner_text()
+
+
+def test_lo_stato_d_avvio_si_rilegge_quando_torna_la_rete(web):
+    """Aperta senza rete, l'app non sa delle rose: Impostazioni non ha «La mia squadra» né «Le altre squadre». Quando il browser dice
+    che la rete è tornata lo stato d'avvio si rilegge e la pagina in vista si ridisegna con le voci giuste (#801)."""
+    solo(web, "prima")
+    giu = server_giu(web, "rete")
+    web.apri("/?vista=impostazioni")
+    assert voce(web, "La mia squadra").count() == 0, "la prova vuole l'avvio senza le rose"
+    giu.clear()
+    web.pagina.evaluate("window.dispatchEvent(new Event('online'))")
+    voce(web, "La mia squadra").wait_for(timeout=10000)
+    web.aspetta()
+    assert voce(web, "Le altre squadre").count() == 1
+
+
+def test_lo_stato_d_avvio_si_rilegge_al_primo_dato_fresco(web):
+    """Aperta mentre il server riparte (502 del proxy: per il browser la rete c'è, e non dice niente), la riga di stato dice «Server
+    non raggiungibile». Alla prima risposta buona del server (qui «Riprova» di Giornate, a server tornato) lo stato si rilegge: la
+    riga torna quella di sempre e Impostazioni ha «La mia squadra» (#801). Prima restava «Server non raggiungibile» fino a ricaricare."""
+    solo(web, "prima")
+    giu = server_giu(web, "502")
+    web.apri("/?vista=giornate")
+    assert "Server non raggiungibile" in riga_di_stato(web)
+    giu.clear()
+    tocca(web, principale(web).get_by_role("button", name="Riprova"))
+    web.pagina.wait_for_function(
+        "() => { const r = document.querySelector('main .stato-pagina'); return r && r.innerText.trim() && !r.innerText.includes('Server non raggiungibile'); }",
+        timeout=10000)
+    assert "Giornata" in riga_di_stato(web), riga_di_stato(web)
+    tocca(web, barra(web).get_by_role("link", name="Impostazioni"))
+    assert voce(web, "La mia squadra").count() == 1

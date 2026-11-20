@@ -202,6 +202,7 @@ async function api(percorso, opzioni = {}) {
       if (etag && risorsa && (scrive || !scrittureInCorso[risorsa])) etagDi[risorsa] = etag;
       if (scrive) lampoSalvato();
       if (percorso === "/api/nuova-stagione" || percorso === "/api/backup/ripristina") nuovoCollegamento();   // cambiano più risorse insieme
+      if (avvioDaRileggere && !rileggoAvvio) setTimeout(rileggiAvvio, 0);   // il server risponde di nuovo: lo stato d'avvio mancava (#801)
       return dati;
     }
   } finally {
@@ -730,9 +731,24 @@ const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURICompone
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
   if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
-  else { try { stato.squadre = await api("/api/squadre"); } catch { stato.squadre = stato.squadre || []; } }
+  else { try { stato.squadre = await api("/api/squadre"); } catch { stato.squadre = stato.squadre || []; avvioDaRileggere = true; } }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
+// Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
+// riesce (aperta senza rete o mentre il server riparte) la riga di stato dice «Server non raggiungibile», Impostazioni nasconde «La
+// mia squadra» e «Le altre squadre», La mia squadra chiede di importare le rose. Si rileggono quando il browser dice che la rete è
+// tornata e alla prima risposta buona del server (api(): con il server che riparte il browser non dice niente), una lettura alla
+// volta; riuscite, la pagina di Impostazioni che ne dipende si ridisegna. Una lettura che non riesce ancora aspetta il segnale dopo.
+let avvioDaRileggere = false, rileggoAvvio = false;
+async function rileggiAvvio() {
+  if (!avvioDaRileggere || rileggoAvvio) return;
+  rileggoAvvio = true; avvioDaRileggere = false;
+  try { await caricaInfo(); await caricaSquadre(true); }                   // un errore rimette avvioDaRileggere
+  finally { rileggoAvvio = false; }
+  const gruppo = new URLSearchParams(location.search).get("gruppo");
+  if (!avvioDaRileggere && stato.vista === "impostazioni" && [null, "squadra", "squadre"].includes(gruppo)) vaiQui();
+}
+window.addEventListener("online", () => rileggiAvvio());
 const miaSquadra = () => (stato.squadre || []).find(s => s.mia);
 
 async function caricaTratti() {
@@ -770,6 +786,7 @@ async function caricaInfo() {
     segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
     stato.rigaStato = { offline: true };
+    avvioDaRileggere = true;
   }
   aggiornaRigaStato();
 }
