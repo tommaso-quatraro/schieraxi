@@ -3561,7 +3561,15 @@ async function esciDaTutti() {
   }
   await lasciaNotifiche(false);                       // le iscrizioni sul server le ha già tolte lui: qui solo quella del browser
   await svuotaDatiLocali();
+  try { sessionStorage.setItem(USCITO_OVUNQUE, "1"); } catch { /* niente memoria: l'accesso torna senza la frase */ }
   location.reload();
+}
+// Dopo «Esci da tutti i dispositivi» la pagina si ricarica: il segno (scritto dopo la pulizia, che svuota sessionStorage) fa dire alla
+// schermata di accesso che l'uscita è riuscita (#779). Si legge e si toglie all'avvio, una volta sola, qualunque cosa risponda il server.
+const USCITO_OVUNQUE = "uscito-ovunque";
+function leggiUscitoOvunque() {
+  try { const c = sessionStorage.getItem(USCITO_OVUNQUE) === "1"; sessionStorage.removeItem(USCITO_OVUNQUE); return c; }
+  catch { return false; }
 }
 
 // Email dell'account: aggiungere/cambiare (codice a 6 cifre per posta), confermare, togliere. Tutti i valori dell'utente passano da esc().
@@ -3812,6 +3820,7 @@ function collegaAmministratore() {
 // Prima di tutto: chi sono? Senza account sul server (come oggi) risponde «utente locale» e l'app parte come sempre.
 async function controllaAccesso() {
   let r, dati = null;
+  const uscitoOvunque = leggiUscitoOvunque();
   try {
     r = await fetch("/api/account/me", { headers: { "X-Fanta": "1" } });
     try { dati = await r.json(); } catch { /* risposta vuota */ }
@@ -3831,7 +3840,8 @@ async function controllaAccesso() {
   if (r.status === 401 && dati && dati.multiutente) {
     // la sessione non vale più: via le copie rimaste, come all'uscita, prima della schermata di accesso
     if (restanoCopie()) await svuotaDatiLocali({ tieniAccesso: true });
-    if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false); else mostraAccesso("", invito ? "registra" : "accedi");
+    if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false);
+    else mostraAccesso(uscitoOvunque ? t("account.esci_tutti_fatto") : "", invito ? "registra" : "accedi");
     return false;
   }
   if (r.ok && dati && dati.multiutente) {

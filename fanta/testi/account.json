@@ -100,6 +100,11 @@
     "en": "The link with Google is removed: to sign in with Google you will need to link it again.",
     "nota": "dopo account.esci_tutti_conferma, solo a chi ha Google collegato e una password (il server toglie il collegamento; chi entra solo con Google lo tiene)"
   },
+  "account.esci_tutti_fatto": {
+    "it": "Sei fuori da tutti i dispositivi, anche da questo: accedi di nuovo.",
+    "en": "You are signed out of all devices, this one included: sign in again.",
+    "nota": "sulla schermata di accesso dopo «Esci da tutti i dispositivi» riuscito, una volta sola (#779)"
+  },
   "account.esci_tutti_no": {
     "it": "Non riesco a farti uscire da tutti i dispositivi. {motivo}",
     "en": "I cannot sign you out of all devices. {motivo}"

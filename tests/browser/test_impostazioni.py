@@ -277,6 +277,45 @@ def test_esci_da_tutti_chiede_conferma_ed_esce_ovunque(web):
     assert chiavi_salvate(web) == []
 
 
+USCITO_OVUNQUE = "Sei fuori da tutti i dispositivi"
+
+
+def test_dopo_esci_da_tutti_l_accesso_dice_che_l_uscita_e_riuscita(web):
+    """Confermato «Esci da tutti i dispositivi» si tornava all'accesso senza una parola (#779): ora un avviso (`role="status"`, non
+    un errore) dice che l'uscita è riuscita. Una volta sola: ricaricata la pagina, l'accesso torna quello di sempre."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    uscita_ovunque(web)
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())
+    principale(web).get_by_role("button", name=ESCI_TUTTI).click(timeout=10000)
+    accesso = web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI"))
+    accesso.get_by_role("status").filter(has_text=USCITO_OVUNQUE).wait_for(timeout=10000)
+    allarmi = [t for t in web.pagina.locator('[role="alert"]').all_inner_texts() if t.strip()]
+    assert allarmi == [], allarmi
+    web.pagina.reload(wait_until="load")
+    accesso.get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    assert USCITO_OVUNQUE not in accesso.inner_text()
+
+
+def test_dopo_esci_normale_niente_frase_di_esci_da_tutti(web):
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    uscito = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci",
+                     lambda route: uscito.append(1) or route.fulfill(status=200, content_type="application/json", body='{"ok": true}'))
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/") and urlsplit(u).path != "/api/account/esci",
+                     lambda route: route.fulfill(status=401, content_type="application/json",
+                                                 body=json.dumps({"detail": "Serve l'accesso", "multiutente": True})) if uscito
+                     else route.fallback())
+    principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    accesso = web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI"))
+    accesso.get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    web.aspetta()
+    assert uscito and USCITO_OVUNQUE not in accesso.inner_text()
+
+
 GOOGLE = [{"provider": "google", "email": "nome@example.invalid", "creata": "2026-10-01T10:00:00", "ultimo_uso": None}]
 
 
