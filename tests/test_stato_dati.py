@@ -216,8 +216,13 @@ def test_affidabilita_si_rifa_solo_con_una_giornata_nuova(tmp_path, monkeypatch)
     from fanta import affidabilita, archivio, consigli
     from fanta.regole import Regole
     db = archivio.apri(tmp_path / "t.sqlite")
+
+    def partita(g, data):          # giocata, con i voti di tutte e due le squadre (#832: senza, la giornata non è finita)
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, ?, 'a', 'b', 1)", (g, ST, g, data))
+        archivio.inserisci(db, "voti", [{"stagione": ST, "giornata": g, "calciatore_id": i, "squadra": s, "voto_red": 6.0}
+                                        for i, s in ((1, "a"), (2, "b"))])
     for g in (1, 2):
-        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, '2026-09-01 18:00', 'a', 'b', 1)", (g, ST, g))
+        partita(g, "2026-09-01 18:00")
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
     monkeypatch.setattr(consigli, "dati", lambda db: None)
     chiamate = []
@@ -231,7 +236,7 @@ def test_affidabilita_si_rifa_solo_con_una_giornata_nuova(tmp_path, monkeypatch)
     f = tmp_path / "a.json"
     assert affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f) is True
     assert affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f) is False          # nessuna giornata nuova
-    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (3, ?, 3, '2026-09-08 18:00', 'a', 'b', 1)", (ST,))
+    partita(3, "2026-09-08 18:00")
     assert affidabilita.aggiorna_se_serve(db, Regole(), None, percorso=f) is True           # è finita la 3
     r = affidabilita.carica(f)
     assert r["ultima"] == f"{ST}/3" and r["sintesi"]["errore_modello"] == 1.0 and r["sintesi"]["errore_fantamedia"] == 1.2 and r["sintesi"]["punti_modello"] == 70.0

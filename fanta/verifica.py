@@ -131,9 +131,12 @@ def verifica_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par
         prev = previsioni(dm, stagione, giornata, regole, par, oracolo=verita if oracolo else None)
     else:
         prev = prevedi(dm, stagione, giornata, regole, par)
-    # solo le partite già giocate (una giornata in corso non deve contare chi deve ancora giocare)
-    giocate = d.partite.loc[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata)
-                            & (d.partite["giocata"] == 1), "id"]
+    # solo le partite già giocate e con i voti di tutte e due le squadre: una giornata in corso, o una partita giocata con i voti
+    # non ancora arrivati, non deve contare i suoi giocatori come «non hanno giocato» (#832, come `fasi.voti_arrivati`)
+    v, p = d.voti, d.partite
+    con_voti = set(v.loc[(v["stagione"] == stagione) & (v["giornata"] == giornata) & v[col].notna(), "squadra"])
+    giocate = p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & (p["giocata"] == 1)
+                    & p["casa"].isin(con_voti) & p["trasferta"].isin(con_voti), "id"]
     if prev.empty or giocate.empty:
         return None
     prev = prev[prev["partita"].isin(set(giocate))]
