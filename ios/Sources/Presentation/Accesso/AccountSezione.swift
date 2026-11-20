@@ -229,24 +229,31 @@ struct RigaEsci: View {
     @State private var errore: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button { chiediEsci = true } label: {
-                Label(Catalogo.Account.esci, systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
-            }
-            .accessibilityHint("Esci dal tuo account su questo telefono")
-            .accessibilityIdentifier(Self.idDemo)
-            // sul pulsante, non sulla Section (vedi `FoglioAccount`)
-            .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-                Button(Catalogo.Account.esci, role: .destructive) { Task { await esci() } }
-            } message: {
-                Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
-            }
-            if let errore {
+        // senza errore la riga è il solo pulsante, com'era; l'errore va sotto, nella stessa riga
+        if let errore {
+            VStack(alignment: .leading, spacing: 4) {
+                pulsante
                 Text(errore)
                     .font(.footnote)
                     .foregroundStyle(Color.attenzione)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        } else {
+            pulsante
+        }
+    }
+
+    private var pulsante: some View {
+        Button { chiediEsci = true } label: {
+            Label(Catalogo.Account.esci, systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
+        }
+        .accessibilityHint("Esci dal tuo account su questo telefono")
+        .accessibilityIdentifier(Self.idDemo)
+        // sul pulsante, non sulla Section (vedi `FoglioAccount`)
+        .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
+            Button(Catalogo.Account.esci, role: .destructive) { Task { await esci() } }
+        } message: {
+            Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
         }
     }
 

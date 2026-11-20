@@ -537,7 +537,7 @@ final class SessioneAccountTests: XCTestCase {
     }
 
     /// Se la richiesta non arriva gli altri dispositivi sono ancora dentro: l'errore si vede e su questo telefono non cambia niente
-    /// (al contrario di «Esci», che riesce anche con il server spento).
+    /// (come «Esci» dal #809; solo la sezione «Collegamento» delle Impostazioni esce anche con il server spento).
     func testEsciDaTuttiNonRiuscitoLoDiceERestaDentro() async throws {
         let server = serverAccount(extra: { _, p in
             if p == "/api/account/esci-da-tutti" { throw ErroreApi.rete("spento") }
