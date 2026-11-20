@@ -29,8 +29,9 @@ Regole comuni:
   sarebbe raggiunta); un file che arriva a un `contenitore` (RadiceView…: parti mostrate su ogni schermata) usa la regola
   larga. Alle viste radice la risalita si ferma, tranne alle `annidate` (mostrate dentro un'altra radice, come
   AspettoSezione dentro ImpostazioniView): da lì continua e prende anche le radici di fuori. Se arriva ad almeno una e al
-  massimo `soglia_radici` viste radice prende le loro schermate, altrimenti vale la regola larga (`"ripiego": true`); se arriva a troppe radici e il file
-  stesso dichiara viste radice (LegaExtra.swift con StatoDatiView), alla regola larga si aggiungono le loro schermate. I test controllano che ogni schermata di `TUTTE` abbia una radice, che ogni nome
+  massimo `soglia_radici` viste radice prende le loro schermate, altrimenti vale la regola larga (`"ripiego": true`). Se il file stesso dichiara viste radice
+  (un tipo o un'estensione: LegaExtra.swift con StatoDatiView), alla regola scelta, a mano o larga, si aggiungono sempre le
+  loro schermate. I test controllano che ogni schermata di `TUTTE` abbia una radice, che ogni nome
   di `radici` e delle regole esista in `screenshot.sh`, che ogni tipo esista nel codice e che ogni file Swift abbia una
   scelta. Un file di `ios/Sources/Presentation/` che il codice non porta a poche viste radice chiede una regola stretta, le
   sue radici o una riga in `ripiego_dichiarato` (parti usate da più schermate). Il grafo legge i file sul disco: un file
