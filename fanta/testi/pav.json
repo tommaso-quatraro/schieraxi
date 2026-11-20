@@ -108,6 +108,11 @@
     "it": "Salva",
     "en": "Save"
   },
+  "pav.tempi_non_letti": {
+    "it": "Non riesco a leggere i tempi salvati della tua lega, quindi non ho salvato niente: controlla i due valori e riprova.",
+    "en": "I cannot read your league's saved timings, so I have not saved anything: check the two values and try again.",
+    "nota": "«Salva» dei tempi della lega nel primo avvio quando la lettura delle regole non è riuscita: si rilegge e si salva al tocco dopo (#801)"
+  },
   "pav.usa_esempi": {
     "it": "Usa le squadre di esempio",
     "en": "Use the example teams"

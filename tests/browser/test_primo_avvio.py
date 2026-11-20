@@ -1,0 +1,97 @@
+"""Il primo avvio (`primoavvio.js`), passo «I tempi della lega»: due menu (quando si chiude la formazione, da quale giornata di Serie A
+è partita la lega) che partono dai valori più comuni e si riempiono con le regole lette dal server. «Salva» scrive le regole con i
+due valori dei menu: se la lettura non è riuscita, o non è ancora tornata, i valori di partenza andavano sopra quelli veri (#801).
+Gira solo prima della scadenza: conta la guida, non la fase della giornata.
+"""
+import json
+import re
+from urllib.parse import urlsplit
+
+import pytest
+
+# rose e mia squadra le dà lo scenario registrato: la guida segna da sola i primi due passi e si apre sui tempi
+ALL_INIZIO = {"primo_avvio": {"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}}
+
+
+def solo_prima(web):
+    if web.fase != "prima":
+        pytest.skip("conta la guida, non la fase della giornata")
+
+
+def guida_sui_tempi(web, prima_lettura: str) -> tuple[list[dict], list]:
+    """Apre la guida sul passo dei tempi. La prima lettura delle regole non arriva («rete») o resta in sospeso finché il test non
+    la dà («tenuta»); le altre rispondono con le regole registrate. Restituisce le regole salvate (PUT) e le letture tenute."""
+    registrate = web.registrata("/api/regole")
+    salvate, tenute, letture = [], [], []
+
+    def regole(route):
+        if route.request.method == "PUT":
+            salvate.append(json.loads(route.request.post_data))
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
+            return
+        letture.append(1)
+        if len(letture) == 1 and prima_lettura == "rete":
+            route.abort()
+        elif len(letture) == 1 and prima_lettura == "tenuta":
+            tenute.append(route)
+        else:
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
+
+    primo = dict(ALL_INIZIO["primo_avvio"])
+
+    def primo_avvio(route):                                  # il server salva i passi fatti e li rimanda
+        if route.request.method == "PUT":
+            primo.update(json.loads(route.request.post_data))
+        route.fulfill(status=200, content_type="application/json", body=json.dumps({"primo_avvio": primo}))
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/primo-avvio", primo_avvio)
+    web.apri("/")
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/regole", regole)
+    web.pagina.evaluate("apriPrimoAvvio()")                  # come «Importa le rose» o la voce della guida in Da fare
+    guida(web).get_by_role("heading", name="I tempi della lega").wait_for(timeout=10000)
+    return salvate, tenute
+
+
+def guida(web):
+    return web.pagina.get_by_role("dialog")
+
+
+def scadenza(web):
+    return guida(web).get_by_label("Quando si chiude la formazione?")
+
+
+def prima_giornata(web):
+    return guida(web).get_by_label(re.compile("^Da quale giornata di Serie A"))
+
+
+def test_i_tempi_non_si_salvano_se_le_regole_non_si_sono_lette(web):
+    """La lettura delle regole non arriva: «Salva» non scrive i valori di partenza sopra quelli veri, lo dice e rilegge; i menu
+    passano ai valori salvati e «Salva» li scrive al tocco dopo."""
+    solo_prima(web)
+    registrate = web.registrata("/api/regole")
+    salvate, _ = guida_sui_tempi(web, "rete")
+    guida(web).get_by_role("button", name="Salva", exact=True).click(timeout=10000)
+    guida(web).get_by_role("alert").filter(has_text="non ho salvato niente").wait_for(timeout=10000)
+    web.aspetta()
+    assert salvate == [], f"salvati i valori di partenza dei menu: {salvate}"
+    assert scadenza(web).input_value() == str(registrate["scadenza_minuti"])
+    assert prima_giornata(web).input_value() == str(registrate["prima_giornata_lega"])
+    guida(web).get_by_role("button", name="Salva", exact=True).click(timeout=10000)
+    web.aspetta()
+    assert [(s["scadenza_minuti"], s["prima_giornata_lega"]) for s in salvate] == \
+        [(registrate["scadenza_minuti"], registrate["prima_giornata_lega"])]
+
+
+def test_i_tempi_aspettano_la_lettura_in_corso(web):
+    """«Salva» toccato prima che la lettura delle regole torni (rete lenta): aspetta la lettura e scrive i valori veri."""
+    solo_prima(web)
+    registrate = web.registrata("/api/regole")
+    salvate, tenute = guida_sui_tempi(web, "tenuta")
+    assert len(tenute) == 1
+    guida(web).get_by_role("button", name="Salva", exact=True).click(timeout=10000)
+    web.aspetta()
+    assert salvate == [], f"salvati i valori di partenza dei menu prima della lettura: {salvate}"
+    tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
+    web.aspetta()
+    assert [(s["scadenza_minuti"], s["prima_giornata_lega"]) for s in salvate] == \
+        [(registrate["scadenza_minuti"], registrate["prima_giornata_lega"])]
