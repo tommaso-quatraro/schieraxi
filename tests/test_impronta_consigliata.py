@@ -171,8 +171,8 @@ def test_voce_della_versione_di_prima_passa_alla_chiave_nuova(mondo):  # noqa: F
 
 def test_voce_della_versione_di_prima_di_due_account_ciascuno_prende_la_sua(mondo):  # noqa: F811
     """Prima di #780 due account con la stessa squadra, rosa e regole avevano una voce sola. Al rilascio, a giornata iniziata,
-    ciascuno ritrova la consigliata congelata in una voce tutta sua (solo lui fra chi l'ha vista); la vecchia resta finché serve
-    a qualcuno."""
+    ciascuno ritrova la consigliata congelata in una voce tutta sua (solo lui fra chi l'ha vista); la vecchia resta, senza nessuno
+    in `utenti`, per chi altro avesse la stessa chiave vecchia."""
     prima = consigli.formazione(mondo["db"], SOLO_442, _rose())
     voce = _salvata_dalla_versione_di_prima(_squadra(), SOLO_442, utenti=[1, 2])
     vecchia = _chiave_vecchia(ST, GIORNATA, _squadra(), SOLO_442)
@@ -185,7 +185,22 @@ def test_voce_della_versione_di_prima_di_due_account_ciascuno_prende_la_sua(mond
     assert _ids(consigli.formazione(mondo["db"], SOLO_442, _rose_di(1))) == _ids(prima)
     assert file() == {di[1]: voce | {"utenti": [1], "proprie": [1]}, vecchia: voce | {"utenti": [2], "proprie": [2]}}
     assert _ids(consigli.formazione(mondo["db"], SOLO_442, _rose_di(2))) == _ids(prima)
-    assert file() == {di[1]: voce | {"utenti": [1], "proprie": [1]}, di[2]: voce | {"utenti": [2], "proprie": [2]}}
+    senza_nessuno = {k: v for k, v in voce.items() if k not in ("utenti", "proprie")}
+    assert file() == {di[1]: voce | {"utenti": [1], "proprie": [1]}, di[2]: voce | {"utenti": [2], "proprie": [2]},
+                      vecchia: senza_nessuno}
+
+
+def test_voce_della_versione_di_prima_vista_da_uno_solo_resta_anche_per_l_altro(mondo):  # noqa: F811
+    """`utenti` non elenca tutti quelli che l'hanno vista: chi apre l'app solo a formazione chiusa, la copia alla scadenza e gli
+    avvisi non ci finiscono. Con `utenti=[1]` l'account 1 prende la sua copia, ma la voce vecchia resta: l'account 2, con la
+    stessa chiave vecchia (per esempio la lega demo, sempre uguale), ritrova la stessa consigliata congelata (revisione di #786)."""
+    prima = consigli.formazione(mondo["db"], SOLO_442, _rose())
+    _salvata_dalla_versione_di_prima(_squadra(), SOLO_442, utenti=[1])
+    mondo["adesso"] = DOPO_LA_SCADENZA
+    mondo["prev"], mondo["versione"] = _nuove_dopo_la_scadenza(), "v2"
+    assert _ids(consigli.formazione(mondo["db"], SOLO_442, _rose_di(1))) == _ids(prima)
+    secondo = consigli.formazione(mondo["db"], SOLO_442, _rose_di(2))
+    assert _ids(secondo) == _ids(prima) and _panchina(secondo) == _panchina(prima)
 
 
 def test_la_voce_con_la_chiave_nuova_vince_su_quella_vecchia(mondo):  # noqa: F811

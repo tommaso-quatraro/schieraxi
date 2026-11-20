@@ -43,7 +43,7 @@ def test_reimportare_con_il_nome_di_leghe_aggiorna_la_squadra_rinominata(mondo):
 def test_la_consigliata_salvata_dalla_versione_di_prima_segue_il_nome_nuovo(mondo):
     """#780: la chiave della consigliata ricordata non ha più il nome della squadra; quelle salvate prima del rilascio sì. Rinominando
     la squadra la sua passa alla chiave nuova (con utenti e ora), così la consigliata della giornata non riparte da zero.
-    Le voci delle altre squadre restano dove sono."""
+    La vecchia resta (senza quell'account), per chi altro avesse la stessa chiave; le voci delle altre squadre restano dove sono."""
     a, uid = nuovo_utente("utentea")
     assert a.post("/api/rose/testo", json={"testo": ROSE}).status_code == 200
     ctx = contesto.Contesto.per_utente(uid)
@@ -51,14 +51,15 @@ def test_la_consigliata_salvata_dalla_versione_di_prima_segue_il_nome_nuovo(mond
     voce = {"stagione": "2026-27", "giornata": 9, "modulo": "4-4-2", "titolari": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
             "panchina": [12], "non_giocano": [], "quando": "2026-11-08T10:00:00", "utenti": [uid]}
     altra = _chiave_vecchia("2026-27", 9, lega.carica(ctx.rose).squadra("Altra"), regole_lega)
-    consigli.FILE_CONSIGLIATE.write_text(json.dumps({_chiave_vecchia("2026-27", 9, mia, regole_lega): voce, altra: voce}),
-                                         encoding="utf-8")
+    vecchia = _chiave_vecchia("2026-27", 9, mia, regole_lega)
+    consigli.FILE_CONSIGLIATE.write_text(json.dumps({vecchia: voce, altra: voce}), encoding="utf-8")
     assert a.put("/api/squadre/nome", json={"nome": "Mia", "nuovo": "I Lupi"}).status_code == 200
     rinominata = lega.carica(ctx.rose).squadra("I Lupi")
     assert rinominata.giocatori == mia.giocatori
     assert lega.carica(ctx.rose).di_utente == uid and "di_utente" not in ctx.rose.read_text(encoding="utf-8")   # dalla cartella
     nuova = consigli._impronta("2026-27", 9, rinominata, regole_lega, 600, uid)
-    assert json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")) == {nuova: voce, altra: voce}
+    senza_nessuno = {k: v for k, v in voce.items() if k != "utenti"}      # la vecchia resta per chi altro avesse la stessa chiave
+    assert json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")) == {nuova: voce, vecchia: senza_nessuno, altra: voce}
 
 
 def test_nomi_rinominati_non_tocca_una_squadra_che_ha_davvero_quel_nome():

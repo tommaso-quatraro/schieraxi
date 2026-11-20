@@ -628,23 +628,22 @@ def _ritrova(impronta: str, vecchia: str, di_utente: int | None) -> dict | None:
     return tutte[vecchia]
 
 
-def _divisa(voce: dict, di_utente: int) -> tuple[dict, dict | None]:
-    """Una voce con la chiave vecchia poteva servire a più account (stessa squadra, rosa e regole): la copia di `di_utente`, con solo
-    lui in `utenti` e `proprie`, e quella che resta agli altri (None se non resta a nessuno). Una voce senza `utenti` (scritta da un
-    comando, senza account) resta anche agli altri."""
+def _divisa(voce: dict, di_utente: int) -> tuple[dict, dict]:
+    """Una voce con la chiave vecchia poteva servire a più account (stessa squadra, rosa e regole: per esempio la lega demo, sempre
+    uguale): la copia di `di_utente`, con solo lui in `utenti` e `proprie`, e la vecchia senza di lui. La vecchia resta sempre, anche
+    senza più nessuno in `utenti`: quell'elenco non ha tutti quelli che l'hanno vista (chi apre l'app solo a formazione chiusa, la
+    copia alla scadenza e gli avvisi non ci finiscono). Uscirà da sola con il tetto `MAX_CONSIGLIATE`."""
     utenti, proprie = _utenti(voce), _proprie(voce)
     base = {k: v for k, v in voce.items() if k not in ("utenti", "proprie")}
     sua = base | ({"utenti": [di_utente]} if di_utente in utenti else {}) | ({"proprie": [di_utente]} if di_utente in proprie else {})
     altri, altre = [u for u in utenti if u != di_utente], [u for u in proprie if u != di_utente]
-    if utenti and not altri:
-        return sua, None
     return sua, base | ({"utenti": altri} if altri else {}) | ({"proprie": altre} if altre else {})
 
 
 def _sposta_voci(da_a: dict[str, str], di_utente: int | None) -> int:
     """Passa le consigliate ricordate dalle chiavi vecchie alle nuove ({vecchia: nuova}) dell'account `di_utente`, con `quando`; una
     chiave nuova già presente vince e non si tocca. Senza account la voce si sposta com'è; con un account prende la sua copia e la
-    vecchia resta agli altri account che l'avevano vista (`_divisa`). Stesso blocco di `_ricorda`, valido anche fra processi. Quante
+    vecchia resta, senza di lui, per gli altri account con la stessa chiave vecchia (`_divisa`). Stesso blocco di `_ricorda`. Quante
     ne ha passate. Un errore di disco o un blocco che non arriva (OSError) passa a chi chiama."""
     if not any(k in _consigliate() for k in da_a):           # niente da spostare: né blocco né scrittura
         return 0
@@ -660,14 +659,12 @@ def _sposta_voci(da_a: dict[str, str], di_utente: int | None) -> int:
         for vecchia, nuova in da_a.items():
             if vecchia not in tutte or nuova in tutte:
                 continue
-            if di_utente is None or not isinstance(tutte[vecchia], dict):
+            if di_utente is None:                    # senza account sul server c'è una lega sola: la voce si sposta
                 tutte[nuova] = tutte.pop(vecchia)
+            elif isinstance(tutte[vecchia], dict):   # con un account la vecchia resta sempre (`_divisa`)
+                tutte[nuova], tutte[vecchia] = _divisa(tutte[vecchia], int(di_utente))
             else:
-                tutte[nuova], resto = _divisa(tutte[vecchia], int(di_utente))
-                if resto is None:
-                    del tutte[vecchia]
-                else:
-                    tutte[vecchia] = resto
+                tutte[nuova] = tutte[vecchia]        # rovinata: com'è (vale come nessuna voce)
             spostate += 1
         if spostate:
             scrivi_sicuro(file, json.dumps(tutte, ensure_ascii=False))
