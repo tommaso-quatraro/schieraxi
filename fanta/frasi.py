@@ -201,6 +201,8 @@ CATALOGO: dict[str, str] = {
     # {riserva} = la prima riserva del ruolo che gioca quasi di sicuro: non per forza la prima a entrare (panchina per fantavoto atteso)
     "scelta.incerto": "Titolare anche se incerto (gioca {p}%): se non gioca, in panchina c'è {riserva} che gioca quasi di sicuro, e insieme valgono di più.",
     "scelta.incerto_senza_riserva": "Titolare anche se incerto (gioca {p}%): in panchina nessuno del suo ruolo gioca quasi di sicuro.",
+    # il titolare quasi certamente non gioca (anche lo 0% di un infortunato) e fuori dagli undici nessuno del suo ruolo può giocare (#816)
+    "scelta.nessun_altro": "Titolare perché nella rosa nessun altro del suo ruolo può giocare al suo posto.",
     "scelta.piu_punti": "Preferito a {altro}: con lui la formazione fa più punti attesi ({attuale} contro {invertita}).",
     "scelta.piu_sicuro": "A pari punti gioca più sicuro di {altro} ({pt}% contro {pa}%).",
     "scelta.fantavoto_piu_alto": "A pari punti ha il fantavoto atteso più alto di {altro} ({mu_t} contro {mu_a}).",

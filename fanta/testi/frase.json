@@ -632,6 +632,10 @@
     "it": "Titolare anche se incerto (gioca {p}%): in panchina nessuno del suo ruolo gioca quasi di sicuro.",
     "en": "Starting even though uncertain (plays {p}%): nobody in his role on the bench is almost certain to play."
   },
+  "frase.scelta.nessun_altro": {
+    "it": "Titolare perché nella rosa nessun altro del suo ruolo può giocare al suo posto.",
+    "en": "Starting because nobody else in his role on the roster can play in his place."
+  },
   "frase.scelta.piu_punti": {
     "it": "Preferito a {altro}: con lui la formazione fa più punti attesi ({attuale} contro {invertita}).",
     "en": "Preferred to {altro}: with him the team gets more expected points ({attuale} vs {invertita})."

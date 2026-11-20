@@ -22,7 +22,8 @@ se le due formazioni valgono lo stesso (come per il Confronto, o con lo stesso n
 6. il primo motivo proprio a favore del suo «perché questo numero»;
 7. con l'uno o con l'altro la formazione vale quasi lo stesso.
 Un titolare incerto senza una riserva sicura e senza un escluso con più punti attesi ha la riga che lo dice (`senza_riserva`):
-non nomina nessuno e non ha un conto.
+non nomina nessuno e non ha un conto. Se quasi certamente non gioca (sotto il 20%, anche lo 0% di un infortunato) e fuori dagli
+undici nessun altro del suo ruolo può giocare, la riga dice che è titolare per questo (`nessun_altro`, #816).
 
 Campo `perche_scelta` di ogni modulo della risposta di `GET /api/formazione`: [{titolare, altro, testo, frase}] (contratto in
 docs/API.md). Non cambia nessun numero né nessuna scelta.
@@ -88,6 +89,17 @@ def senza_riserva(t: fz.Giocatore) -> Frase:
     return F("scelta.incerto_senza_riserva", p=percento(t.p))
 
 
+def nessun_altro(t: fz.Giocatore, rosa: list[fz.Giocatore], titolari: set[int]) -> Frase | None:
+    """La riga di un titolare che quasi certamente non gioca (sotto `fz.IMPROBABILE_SOTTO`, anche lo 0% di un infortunato) perché
+    nella rosa, fuori dagli undici, nessun altro del suo ruolo può giocare al suo posto (#816: due portieri, uno infortunato e uno
+    squalificato). None se c'è un compagno che può giocare: allora valgono le altre righe."""
+    if t.p >= fz.IMPROBABILE_SOTTO:
+        return None
+    if any(g.ruolo == t.ruolo and g.id not in titolari and g.p >= fz.IMPROBABILE_SOTTO for g in rosa):
+        return None
+    return F("scelta.nessun_altro")
+
+
 def conto(val: fz.Valutatore, rosa: list[fz.Giocatore], titolari: list[fz.Giocatore], panchina: list[fz.Giocatore],
           titolare: fz.Giocatore, altro: fz.Giocatore, regole) -> tuple[float, float]:
     """(punti attesi della formazione com'è, punti attesi con `altro` al posto di `titolare` e la panchina rifatta dal sistema):
@@ -126,6 +138,10 @@ def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.
         riserva = per_id.get(riserve.get(t.id)) if sostituzioni else None
         if not rivali and riserva is None:
             if t.id not in riserve:
+                continue
+            frase = nessun_altro(t, rosa, set(ids))
+            if frase is not None:         # non gioca, ma nessuno può prendere il suo posto: «anche se incerto (gioca 0%)» non spiega
+                righe.append({"titolare": t.id, "altro": None, "testo": frase, "frase": frase.json()})
                 continue
             if sostituzioni:              # incerto, nessuno da cui farsi coprire e nessuno con più punti: lo si dice
                 frase = senza_riserva(t)

@@ -324,20 +324,30 @@ def test_la_consigliata_tenuta_ha_le_sue_righe():
 SENZA_SOSTITUZIONI = replace(SOLO_442, panchina=replace(SOLO_442.panchina, max_sostituzioni=0))
 
 
-def _sonda_s3(regole) -> tuple[dict, list[dict]]:
-    """Il caso della revisione (#816), solo 3-4-3: l'attaccante 100 gioca il 45% ma se gioca fa 11 (4,95 punti attesi da solo), la
-    riserva 104 gioca il 90% e fa 5 (4,5). (Il modulo, le righe del perché con `incerti` di `consigli.incerti`, senza le regole.)"""
-    rosa = [G(1, "P", 0.95, 5.5), G(2, "P", 0.05, 5.0), G(3, "P", 0.03, 5.0)]
-    rosa += [G(10 + j, "D", 0.9 - 0.02 * j, 6.0 - 0.05 * j) for j in range(8)]
-    rosa += [G(30 + j, "C", 0.9 - 0.02 * j, 6.0 - 0.05 * j) for j in range(8)]
-    rosa += [G(100, "A", 0.45, 11.0), G(101, "A", 0.95, 7.0), G(102, "A", 0.95, 6.9), G(104, "A", 0.9, 5.0), G(105, "A", 0.3, 4.0),
-             G(106, "A", 0.3, 3.9)]
-    regole = replace(regole, moduli=["3-4-3"])
+def _righe_di(rosa: list[fz.Giocatore], regole) -> tuple[dict, list[dict]]:
+    """La migliore formazione di `rosa` e le righe del suo perché, con `incerti` di `consigli.incerti` (senza le regole)."""
     f = fz.migliore(rosa, regole, simulazioni=400)
     m = {"titolari": [g.id for g in f.titolari], "panchina": [g.id for g in f.panchina],
          "incerti": consigli.incerti(f.titolari, f.panchina)}
     schede = {str(g.id): {"punti_attesi": round(g.valore, 2), "perche_numero": []} for g in rosa}
     return m, perche_scelta.del_modulo(m, schede, rosa, regole, fz.Valutatore(rosa, regole, 400))
+
+
+def _rosa_base(senza: str) -> list[fz.Giocatore]:
+    """3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti che giocano quasi tutti, senza il ruolo `senza`."""
+    rosa = [G(1, "P", 0.95, 5.5), G(2, "P", 0.05, 5.0), G(3, "P", 0.03, 5.0)]
+    rosa += [G(10 + j, "D", 0.9 - 0.02 * j, 6.0 - 0.05 * j) for j in range(8)]
+    rosa += [G(30 + j, "C", 0.9 - 0.02 * j, 6.0 - 0.05 * j) for j in range(8)]
+    rosa += [G(50 + j, "A", 0.9 - 0.02 * j, 6.0 - 0.05 * j) for j in range(6)]
+    return [g for g in rosa if g.ruolo != senza]
+
+
+def _sonda_s3(regole) -> tuple[dict, list[dict]]:
+    """Il caso della revisione (#816), solo 3-4-3: l'attaccante 100 gioca il 45% ma se gioca fa 11 (4,95 punti attesi da solo), la
+    riserva 104 gioca il 90% e fa 5 (4,5)."""
+    rosa = _rosa_base(senza="A") + [G(100, "A", 0.45, 11.0), G(101, "A", 0.95, 7.0), G(102, "A", 0.95, 6.9), G(104, "A", 0.9, 5.0),
+                                     G(105, "A", 0.3, 4.0), G(106, "A", 0.3, 3.9)]
+    return _righe_di(rosa, replace(regole, moduli=["3-4-3"]))
 
 
 def test_senza_sostituzioni_la_riga_dell_incerto_non_cita_la_riserva():
@@ -377,6 +387,45 @@ def test_senza_sostituzioni_la_formazione_e_il_confronto_dicono_lo_stesso(monkey
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: f)
     c = consigli._in_formazione(None, SENZA_SOSTITUZIONI, None, None, GIORNATA, None, 21, 22, prev)
     assert _esito(c) in CON_IL_CONFRONTO["scelta.piu_punti"], c["testo"]
+
+
+
+# ------------------------------------------------------------------ nessun altro del ruolo può giocare (#816)
+NESSUN_ALTRO = "Titolare perché nella rosa nessun altro del suo ruolo può giocare al suo posto."
+
+
+@pytest.mark.parametrize("regole", [SOLO_442, SENZA_SOSTITUZIONI], ids=["con-sostituzioni", "senza-sostituzioni"])
+def test_portiere_infortunato_titolare_perche_nessun_altro_puo_giocare(regole):
+    """#816: un portiere infortunato e l'altro squalificato. Uno dei due va schierato: la riga non è «Titolare anche se incerto
+    (gioca 0%)», ma dice che nella rosa nessun altro portiere può giocare al suo posto. Non nomina nessuno e non ha un conto."""
+    rosa = _rosa_base(senza="P") + [G(1, "P", 0.0, 5.0), G(2, "P", 0.0, 4.5)]
+    m, righe = _righe_di(rosa, regole)
+    portiere = next(i for i in m["titolari"] if i in (1, 2))
+    riga = next(r for r in righe if r["titolare"] == portiere)
+    assert (riga["altro"], riga["frase"]) == (None, {"chiave": "scelta.nessun_altro", "param": {}})
+    assert riga["testo"] == NESSUN_ALTRO
+
+
+def test_difensore_improbabile_titolare_perche_nessun_altro_puo_giocare():
+    """Lo stesso per un improbabile sotto il 20% di un altro ruolo: tre difensori giocano, il quarto del 4-4-2 gioca il 10% e gli altri
+    sono fuori. Solo lui ha la riga: gli altri tre difensori titolari giocano, e la frase parla di chi potrebbe prendere il suo posto."""
+    rosa = _rosa_base(senza="D") + [G(10, "D", 0.9, 6.0), G(11, "D", 0.9, 6.0), G(12, "D", 0.9, 6.0), G(13, "D", 0.1, 6.0),
+                                     G(14, "D", 0.0, 6.0), G(15, "D", 0.0, 6.0)]
+    m, righe = _righe_di(rosa, SOLO_442)
+    assert {10, 11, 12, 13} <= set(m["titolari"])
+    assert [(r["titolare"], r["frase"]["chiave"]) for r in righe if r["titolare"] in (10, 11, 12, 13)] == [(13, "scelta.nessun_altro")]
+    assert "gioca 10%" not in next(r["testo"] for r in righe if r["titolare"] == 13)
+
+
+def test_un_incerto_che_non_e_improbabile_tiene_la_riga_di_prima():
+    """La frase nuova è per chi quasi certamente non gioca (sotto il 20%): un difensore al 40%, con gli altri fuori, resta «Titolare
+    anche se incerto (gioca 40%): in panchina nessuno del suo ruolo gioca quasi di sicuro.»."""
+    rosa = _rosa_base(senza="D") + [G(10, "D", 0.9, 6.0), G(11, "D", 0.9, 6.0), G(12, "D", 0.9, 6.0), G(13, "D", 0.4, 6.0),
+                                     G(14, "D", 0.0, 6.0), G(15, "D", 0.0, 6.0)]
+    m, righe = _righe_di(rosa, SOLO_442)
+    assert {10, 11, 12, 13} <= set(m["titolari"])
+    riga = next(r for r in righe if r["titolare"] == 13)
+    assert riga["frase"]["chiave"] == "scelta.incerto_senza_riserva", str(riga["testo"])
 
 
 # ------------------------------------------------------------------ web: la nota sotto il campo
