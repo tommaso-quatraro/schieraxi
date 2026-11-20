@@ -149,7 +149,7 @@ struct FormazioneView: View {
         if dueColonne {
             // colonne uguali e non un HStack: l'HStack misurava ogni colonna anche a larghezza 0 e infinita, e arrivati i dati la
             // prima disposizione teneva fermo lo schermo per secondi, sullo scheletro del caricamento (#846)
-            HStack(alignment: .top, spacing: Tema.spazioSchede) {   // PROVA DA TOGLIERE (#846): il test deve diventare rosso
+            ColonneUguali(spazio: Tema.spazioSchede) {
                 VStack(alignment: .leading, spacing: Tema.spazioSchede) {
                     testa(f)
                     campo(f, v)
