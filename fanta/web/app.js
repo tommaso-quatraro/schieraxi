@@ -1989,10 +1989,14 @@ async function vistaRosa(nome) {
     collegaSceltaMia();
     const vf = $("#vedi-formazione");
     if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione", undefined, { focoTitolo: true }); });
-    $("#salva-nome-squadra").addEventListener("click", async () => {
+    // spento finché la richiesta non torna (#833): un secondo tocco mandava il nome vecchio, già cambiato, e il server diceva
+    // «Squadra non trovata» anche se il nome era salvato
+    const salvaNome = $("#salva-nome-squadra");
+    salvaNome.addEventListener("click", async () => {
       const nuovo = $("#nome-squadra").value.trim().replace(/\s+/g, " ");
       if (!nuovo || nuovo.length > 60) { avviso(t("scambio.nome_non_valido")); return; }
-      if (nuovo === r.nome) return;
+      if (nuovo === r.nome || salvaNome.disabled) return;
+      salvaNome.disabled = true;
       try {
         const esito = await api("/api/squadre/nome", { method: "PUT", body: JSON.stringify({ nome: r.nome, nuovo }) });
         svuotaCache();
@@ -2001,6 +2005,7 @@ async function vistaRosa(nome) {
         avviso(t("scambio.nome_salvato"));
         vai("impostazioni", r.mia ? "squadra" : "squadre", { rosa: r.mia ? undefined : esito.nome, sostituisci: true });   // il nome nuovo nell'indirizzo
       } catch (e) { avviso(e.message, 5000); }
+      finally { salvaNome.disabled = false; }
     });
     $("#salva-crediti-squadra").addEventListener("click", async () => {
       const testo = $("#crediti-squadra").value.trim();
@@ -2034,9 +2039,10 @@ function rigaNostri(st, nome, dettaglio) {
       ${dettaglio ? `<div class="debole piccolo">${dettaglio}</div>` : ""}`;
 }
 // Una giornata: il motivo se è persa, quanti giocatori sono salvati se non è ancora misurata, altrimenti i suoi tre numeri; quelle di
-// un'altra versione del calcolo non contano nel verdetto e lo dicono.
+// un'altra versione del calcolo non contano nel verdetto e lo dicono. Il motivo è la frase del server con la sua chiave (`persa_frase`,
+// #833); il motivo tecnico (`persa_dettaglio`) non si mostra.
 function statoGiornataNostri(g, versione) {
-  if (g.persa) return { testo: esc(g.persa), colore: "var(--rosso)" };
+  if (g.persa) return { testo: esc(testoDi(g, "persa")), colore: "var(--rosso)" };
   const altra = g.versione != null && versione != null && String(g.versione) !== String(versione) ? ` · ${t("sd.nos_g_versione", { v: esc(g.versione) })}` : "";
   const testo = !g.misurato ? tp("sd.nos_g_da_misurare", g.giocatori || 0)
     : (g.voti || 0) > 0 ? t("sd.nos_g_misurata", { e: regPerc(g.errore_pct, true), p: segno(g.punti, 2), g: num(g.gol_su_veri, 2) }) : t("sd.nos_g_vuota");
@@ -2096,7 +2102,7 @@ function cartaRegistro(reg) {
     ${misure}
     ${perse.length ? `<h3>${t("sd.reg_perse")}</h3><div class="debole piccolo">${t("sd.reg_perse_spiega")}</div>
       ${perse.map(g => `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: nomeGiornata(null, g.giornata) })}</span></div>
-        <div class="piccolo" style="color:var(--rosso)">${esc(g.persa)}</div>`).join("")}` : ""}</div>`;
+        <div class="piccolo" style="color:var(--rosso)">${esc(testoDi(g, "persa"))}</div>`).join("")}` : ""}</div>`;
 }
 // Consiglio di formazione (#366): gli indicatori del consiglio sommati sui Diari di tutti (campo `consiglio`, PR #362), resi come il
 // registro: per ognuno la media delle ultime giornate, la soglia e il verdetto del server (`regge`, non si ricalcola qui). Punti con
@@ -2368,6 +2374,9 @@ function dettagliPrecisione(p, conConfronto) {
   if (!p || !p.giornate) return "";
   const n = x => (x == null || !isFinite(Number(x)) ? null : Number(x));
   const v = x => (n(x) == null ? "–" : virgola(n(x).toFixed(1)));
+  // il plurale scelto sul numero come è scritto da `v` (#833): il singolare solo per «1», e `v` scrive sempre un decimale, quindi
+  // «1,0 punti» come «1,5 punti» (prima «1,0 punto in più»). Come `regPunti`
+  const tpScritto = (chiave, scritto, valori) => t(`${chiave}.${scritto === "1" ? "one" : "other"}`, valori);
   const suDieci = pct => Math.round((n(pct) || 0) / 10);
   const pg = p.per_giornata || [];
   const nomeG = g => nomeGiornata(g.giornata_lega, g.giornata);
@@ -2390,7 +2399,7 @@ function dettagliPrecisione(p, conConfronto) {
   const cf = p.confronto || {};
   const cfNota = testoDi(cf, "nota");                  // la frase del server sulle giornate senza verdetto (#614); vuota se non c'è
   const punti = n(cf.punti);
-  const cfFrase = cf.giornate ? `${t("diario.qp_cf", { k: n(cf.meglio_consigliata), n: n(cf.giornate), tua: n(cf.meglio_tua), pari: n(cf.pari) })} ${punti === 0 ? t("diario.qp_cf_pari") : punti > 0 ? tp("diario.qp_cf_piu", punti, { e: v(punti) }) : tp("diario.qp_cf_meno", -punti, { e: v(-punti) })}`
+  const cfFrase = cf.giornate ? `${t("diario.qp_cf", { k: n(cf.meglio_consigliata), n: n(cf.giornate), tua: n(cf.meglio_tua), pari: n(cf.pari) })} ${punti === 0 ? t("diario.qp_cf_pari") : punti > 0 ? tpScritto("diario.qp_cf_piu", v(punti), { e: v(punti) }) : tpScritto("diario.qp_cf_meno", v(-punti), { e: v(-punti) })}`
     : "";
   // 4. punti della squadra (consigliata): previsti contro fatti
   const sq = p.squadra;

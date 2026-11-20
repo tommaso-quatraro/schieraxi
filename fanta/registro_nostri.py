@@ -26,7 +26,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from . import archivio, avvisi, consigli, nostri, squalifiche, stato_dati
+from . import archivio, avvisi, consigli, frasi, nostri, squalifiche, stato_dati
 from . import formazione as fz
 from . import registro_giornate as rg
 from .modello import Parametri
@@ -41,7 +41,7 @@ SOGLIE = {"errore": 0.01, "punti": -0.3, "scarto_gol": 0.03}
 FASCE = len(nostri.FASCE_GOL) - 1
 ESSENZIALI = ("p_voto", "mu")
 FACOLTATIVE = ("mu_voto", "e_gol", "e_rigori", "e_assist", "minuti")
-SENZA_TENTATIVI = "nessun tentativo prima della prima partita (servizio fermo o riavviato)"
+SENZA_TENTATIVI = frasi.CATALOGO["registro.nostri_senza_tentativi"]
 TENTATIVI_MISURA = 3                    # misure non riuscite prima che la giornata diventi persa (il calcolo è pesante)
 TITOLO = "SchieraXI: gol attesi nostri"
 LOG = logging.getLogger(__name__)
@@ -399,7 +399,8 @@ def _misurate(db: sqlite3.Connection, versione: str | None = None, quante: int =
 def riepilogo(db: sqlite3.Connection) -> dict:
     """Per «Stato dei dati»: versione di oggi, finestra, soglie, le medie (come `medie`) e una riga per ogni giornata con i nostri
     salvati o persi, dalla più recente (al massimo MOSTRATE), con i suoi numeri (None finché non è misurata) e `persa` (None, o il
-    motivo in breve). Solo giornate e numeri, niente giocatori."""
+    motivo in breve: la frase del catalogo, con `persa_frase` e `persa_dettaglio` di `registro_giornate.campi_persa`). Solo giornate
+    e numeri, niente giocatori."""
     giornate: dict[tuple[str, int], dict] = {}
     for s, g, versione, n in db.execute("SELECT stagione, giornata, MIN(versione), COUNT(*) FROM registro_nostri "
                                         "GROUP BY stagione, giornata ORDER BY stagione DESC, giornata DESC LIMIT ?", (MOSTRATE,)):
@@ -413,7 +414,7 @@ def riepilogo(db: sqlite3.Connection) -> dict:
         per_giornata.append({
             "stagione": chiave[0], "giornata": chiave[1], "versione": r.get("versione") or salvata.get("versione"),
             "giocatori": salvata.get("giocatori", 0), "misurato": r.get("misurato"), "voti": r.get("voti"), "rose": r.get("rose"),
-            **{k: numeri.get(k) for k in ("errore_pct", "punti", "scarto_gol", "gol_su_veri")}, "persa": r.get("persa")})
+            **{k: numeri.get(k) for k in ("errore_pct", "punti", "scarto_gol", "gol_su_veri")}, **rg.campi_persa(r.get("persa"))})
     return {"finestra": FINESTRA, "soglie": dict(SOGLIE), **medie(_misurate(db)), "per_giornata": per_giornata}
 
 

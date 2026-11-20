@@ -786,6 +786,31 @@ def test_la_frase_sulla_prima_giornata_non_cita_un_altra_giornata(web):
     assert set(re.findall(r"\d+", aiuto)) <= {"1", "6"}, aiuto
 
 
+def test_in_inglese_le_giornate_della_prima_giornata_senza_ordinali(web):
+    """In inglese il menu della prima giornata scriveva «From the 2th», «3th», «21th» (#833): il numero non si fa ordinale con
+    un «th» attaccato. Come nelle altre frasi delle giornate («Serie A matchday 11»), la frase non ha ordinali."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    voci = principale(web).get_by_label("From which Serie A matchday did the league start?").locator("option").all_inner_texts()
+    assert len(voci) == 38
+    assert not [v for v in voci if re.search(r"\d(st|nd|rd|th)\b", v)], voci
+    assert voci[1] == "From Serie A matchday 2" and voci[20] == "From Serie A matchday 21", voci[:3]
+
+
+def test_in_inglese_il_voto_d_ufficio_ha_un_nome_solo_in_regole(web):
+    """In Regole e scadenza in inglese il voto d'ufficio era «Default grade» fra le riserve e «Official grade» fra le partite rinviate
+    (#833), e «official grades» sono i voti veri dei giornali: un nome solo, «default grade»."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    tocca(web, principale(web).get_by_text("Edit the values", exact=True))
+    tutto = principale(web).evaluate("m => m.textContent")               # anche le sezioni chiuse e i valori nascosti
+    assert "Postponed matches" in tutto and "Default grade if there is no substitute" in tutto
+    assert "Official grade" not in tutto and "official grade" not in tutto
+    assert tutto.count("Default grade") >= 3, tutto.count("Default grade")   # riserve, valore, partite rinviate
+
+
 def test_la_scadenza_si_cambia_e_si_salva_subito(web):
     solo(web, "prima")
     salvate = _scritture(web, "/api/regole")
@@ -1567,3 +1592,57 @@ def test_l_immagine_condivisa_non_usata_si_dice_nella_lingua_dell_app(web, lingu
     web.apri("/?condivisa=no")
     web.pagina.locator("#avviso").filter(has_text=frase).wait_for(timeout=10000)
     assert "PNG, JPEG" in web.pagina.locator("#avviso").inner_text()
+
+
+def _rinomina(web, risposte: list) -> tuple[list, list]:
+    """La pagina della mia squadra con «Cambia il nome» aperto e un nome nuovo scritto. Il primo PUT del nome resta in sospeso
+    (`tenute`, lo sblocca il test); i successivi rispondono con `risposte`, come il server vero. Torna (tenute, corpi di tutti i PUT)."""
+    tenute, mandate = [], []
+
+    def nome(rotta):
+        mandate.append(json.loads(rotta.request.post_data or "{}"))
+        if not tenute:
+            tenute.append(rotta)
+            return
+        stato, corpo = risposte.pop(0)
+        rotta.fulfill(status=stato, content_type="application/json; charset=utf-8", body=json.dumps(corpo))
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/squadre/nome", nome)
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    principale(web).locator("summary", has_text="Cambia il nome").click()
+    principale(web).get_by_label("Nuovo nome della squadra").fill("Nome Nuovo di Prova")
+    return tenute, mandate
+
+
+def _salva_nome(web):
+    return principale(web).locator("details").filter(has_text="Cambia il nome").get_by_role("button", name="Salva")
+
+
+def test_salva_del_nome_resta_spento_finche_la_richiesta_non_torna(web):
+    """Doppio tocco su «Salva» del nome della squadra (#833): il secondo mandava il nome vecchio, già cambiato, e compariva «Squadra
+    non trovata» anche se il nome era salvato. Finché la richiesta è in corso il pulsante è spento: parte una richiesta sola."""
+    solo(web, "prima")
+    tenute, mandate = _rinomina(web, [(404, {"detail": "Squadra non trovata"})])
+    salva = _salva_nome(web)
+    salva.click(timeout=10000)
+    assert len(tenute) == 1
+    assert salva.is_disabled(), "«Salva» resta acceso mentre il nome si sta salvando"
+    salva.click(force=True, timeout=10000)                              # il secondo tocco: su un pulsante spento non succede niente
+    tenute[0].fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps({"nome": "Nome Nuovo di Prova"}))
+    web.pagina.locator("#avviso").filter(has_text="Nome salvato").wait_for(timeout=10000)
+    web.aspetta()
+    assert len(mandate) == 1, mandate
+    assert web.pagina.get_by_text("Squadra non trovata").count() == 0
+
+
+def test_salva_del_nome_si_riaccende_se_il_salvataggio_non_riesce(web):
+    """Se il server rifiuta il nome (409, nome già usato) l'avviso lo dice e «Salva» si riaccende per riprovare (#833)."""
+    solo(web, "prima")
+    tenute, _ = _rinomina(web, [])
+    salva = _salva_nome(web)
+    salva.click(timeout=10000)
+    tenute[0].fulfill(status=409, content_type="application/json; charset=utf-8",
+                      body=json.dumps({"detail": "C'è già una squadra con questo nome: scegline un altro."}))
+    web.pagina.locator("#avviso").filter(has_text="C'è già una squadra con questo nome").wait_for(timeout=10000)
+    web.aspetta()
+    assert salva.is_enabled()

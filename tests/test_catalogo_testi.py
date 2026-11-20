@@ -82,6 +82,16 @@ def test_testi_js_e_generato_dal_catalogo():
         "fanta/web/testi.js non è quello generato: i testi si scrivono in fanta/testi/, poi python script/testi.py --scrivi"
 
 
+def test_in_inglese_una_cosa_ha_un_nome_solo():
+    """#833: la stessa cosa aveva due nomi inglesi nella stessa schermata. La consigliata è «recommended lineup» (mai «suggested»);
+    il voto d'ufficio è «default grade» («official grades» sono i voti veri dei giornali, «voti ufficiali»)."""
+    voci = {k: v for prefisso in testi.carica_catalogo(CATALOGO).values() for k, v in prefisso.items()}
+    assert [k for k, v in voci.items() if "suggested lineup" in v.en.lower()] == []
+    ufficio = {k: v.en for k, v in voci.items() if "voto d'ufficio" in v.it.lower()}
+    assert ufficio and {k: en for k, en in ufficio.items() if "default grade" not in en.lower()} == {}
+    assert [k for k, v in voci.items() if "official grade" in v.en.lower() and "voti ufficiali" not in v.it.lower()] == []
+
+
 def test_ogni_chiave_ios_esiste_nel_catalogo():
     assert testi.errori_ios(testi.carica_catalogo(CATALOGO), testi.chiavi_ios(IOS_TESTI)) == []
 

@@ -504,7 +504,10 @@ def test_previsioni_sempre_in_errore_giornata_persa_e_un_avviso(giornata10, monk
     titolo, testo = inviati[0]
     assert titolo.startswith("SchieraXI") and "giornata 10" in testo and "ValueError" in testo and "segreti" not in testo
     ultima = stato_dati.riepilogo(db, ST)["registro"]["per_giornata"][0]       # e Stato dei dati la mostra
-    assert ultima["giornata"] == 10 and "ValueError" in ultima["persa"] and ultima["salvato"] is None
+    assert ultima["giornata"] == 10 and ultima["salvato"] is None
+    # con la frase del catalogo; il tipo d'errore solo nel dettaglio per chi gestisce il server (#833)
+    assert ultima["persa_frase"]["chiave"] == "registro.persa_calcolo" and "ValueError" not in ultima["persa"]
+    assert "ValueError" in ultima["persa_dettaglio"]
     _gioca(db, 1, 2)
     assert rg.da_misurare(db, ORA(10, 12)) == []                                # una giornata persa non si misura
 
@@ -550,6 +553,44 @@ def test_salvata_dopo_un_errore_non_e_persa(giornata10):
         rg.salva_se_serve(db, ORA(7, 18, 20), rotte)
     assert rg.salva_se_serve(db, ORA(7, 18, 21), lambda db, r, g: (_prev(PREV_10), g, True)) == 2
     assert rg.segna_perse(db, ORA(7, 18, 31)) == []
+
+
+def _previsioni_rotte(db, regole, giornata):
+    raise ValueError("dati di un giocatore")
+
+
+def _scrittura_rotta(*_):
+    raise sqlite3.OperationalError("disco pieno")
+
+
+@pytest.mark.parametrize("previsioni, errore, chiave", [
+    (lambda db, r, g: (pd.DataFrame(), g, True), None, "registro.persa_previsioni"),
+    (lambda db, r, g: (_prev(PREV_10).rename(columns={"p_voto": "p_gioca"}), g, True), None, "registro.persa_previsioni"),
+    (lambda db, r, g: (_prev(PREV_10), 11, True), None, "registro.persa_altra_giornata"),
+    (lambda db, r, g: (_prev([{**x, "mu": float("nan")} for x in PREV_10]), g, True), None, "registro.persa_nessun_giocatore"),
+    (_previsioni_rotte, ValueError, "registro.persa_calcolo"),
+    (lambda db, r, g: (_prev(PREV_10), g, True), sqlite3.OperationalError, "registro.persa_scrittura"),
+    (None, None, "registro.persa_senza_tentativi"),
+], ids=["vuote", "colonne", "altra-giornata", "nessun-giocatore", "calcolo", "scrittura", "servizio-fermo"])
+def test_ogni_motivo_di_una_giornata_persa_ha_la_sua_frase(giornata10, monkeypatch, previsioni, errore, chiave):
+    """#833: per Stato dei dati il motivo tecnico salvato nell'archivio diventa una frase del catalogo (`motivo_persa`). Ogni motivo
+    che il registro scrive davvero ha la sua, mai quella generica: un motivo nuovo senza la sua frase fa fallire questa prova."""
+    db = giornata10
+    if previsioni is None:                                                     # servizio fermo: nessun tentativo, registro già partito
+        db.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) VALUES (?, 9, ?, 600, 1)",
+                   (ST, "2026-10-31T18:20:00"))
+    elif errore is None:
+        assert rg.salva_se_serve(db, ORA(7, 18, 22), previsioni) == 0
+    else:
+        if errore is sqlite3.OperationalError:
+            monkeypatch.setattr(archivio, "inserisci", _scrittura_rotta)
+        with pytest.raises(errore):
+            rg.salva_se_serve(db, ORA(7, 18, 22), previsioni)
+    assert rg.segna_perse(db, ORA(7, 18, 30)) == [(ST, 10)]
+    tecnico = db.execute("SELECT persa FROM registro_giornate WHERE giornata = 10").fetchone()[0]
+    frase = rg.motivo_persa(tecnico)
+    assert frase.chiave == chiave, tecnico
+    assert "Error" not in frase and "p_voto" not in frase                       # niente tipi d'errore né nomi di colonne
 
 
 # ---------------------------------------------------------------- il salvataggio con le previsioni VERE del modello

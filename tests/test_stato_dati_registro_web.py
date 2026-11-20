@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 from datetime import datetime
+from html import unescape
 
 import pytest
 
@@ -135,14 +136,44 @@ def test_senza_giornate_misurate_solo_la_spiegazione(tmp_path):
 
 
 def test_giornate_perse_con_il_motivo_protetto(tmp_path):
+    """Un motivo che il server non riconosce arriva con la frase generica e il testo tecnico solo in `persa_dettaglio` (#833); quello
+    di un server di prima (senza `persa_frase`) si scrive com'è, protetto (#299: come il Diario)."""
     reg = _registro(tmp_path, 2, {9: "previsioni non pronte <b>x</b>", 5: registro_giornate.SENZA_TENTATIVI})
+    assert reg["per_giornata"][0]["persa_dettaglio"] == "previsioni non pronte <b>x</b>"
     html = _carta(reg)
     pezzi = _testi(html)
     assert "Giornate perse" in pezzi
     assert "Non salvate prima della prima partita: non si possono più misurare." in pezzi
-    assert _dopo(pezzi, "9ª giornata di Serie A · 2026-27") == "previsioni non pronte &lt;b&gt;x&lt;/b&gt;"      # #299: come il Diario
+    assert _dopo(pezzi, "9ª giornata di Serie A · 2026-27") == "motivo non riconosciuto: i dettagli sono nel log del server"
     assert _dopo(pezzi, "5ª giornata di Serie A · 2026-27") == registro_giornate.SENZA_TENTATIVI
+    assert "<b>x</b>" not in html and "previsioni non pronte" not in html
+    vecchio = {**reg, "per_giornata": [{**g, "persa": g["persa_dettaglio"]} for g in reg["per_giornata"]]}
+    for g in vecchio["per_giornata"]:
+        g.pop("persa_frase", None), g.pop("persa_dettaglio", None)
+    html = _carta(vecchio)
+    assert _dopo(_testi(html), "9ª giornata di Serie A · 2026-27") == "previsioni non pronte &lt;b&gt;x&lt;/b&gt;"
     assert "<b>x</b>" not in html
+
+
+# il motivo tecnico di una giornata persa (#833): il tipo d'errore interno, che la pagina scriveva com'era e non traduceva
+TECNICO = "scrittura non riuscita (OperationalError)"
+
+
+def test_giornata_persa_il_motivo_e_una_frase_del_catalogo_e_il_dettaglio_sta_a_parte(tmp_path):
+    """#833: in Stato dei dati il motivo di una giornata persa era il testo libero del server, con i nomi degli errori interni
+    («(OperationalError)»), anche in inglese. Ora `persa` è una frase del catalogo con la sua chiave in `persa_frase`; il testo
+    tecnico sta solo in `persa_dettaglio`, per chi gestisce il server. Vale anche per le giornate perse prima, salvate col testo."""
+    reg = _registro(tmp_path, 2, {9: TECNICO})
+    g = reg["per_giornata"][0]
+    assert g["persa_frase"] == {"chiave": "registro.persa_scrittura", "param": {}}
+    assert g["persa"] == "salvataggio nell'archivio non riuscito"
+    assert g["persa_dettaglio"] == TECNICO
+    assert all(x["persa"] is None and x["persa_frase"] is None and x["persa_dettaglio"] is None for x in reg["per_giornata"][1:])
+    for lingua, frase, giornata in (("it", "salvataggio nell'archivio non riuscito", "9ª giornata di Serie A · 2026-27"),
+                                    ("en", "saving to the archive failed", "Serie A matchday 9 · 2026-27")):
+        html = _carta(reg, lingua)
+        assert unescape(_dopo(_testi(html), giornata)) == frase                  # l'apostrofo arriva protetto (&#39;)
+        assert "OperationalError" not in html
 
 
 def test_senza_campo_registro_niente_carta():

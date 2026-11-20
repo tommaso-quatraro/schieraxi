@@ -215,7 +215,10 @@ def test_errore_dei_nostri_non_ferma_il_registro(giornata10, monkeypatch, caplog
     assert db.execute("SELECT misurato FROM registro_giornate WHERE giornata = 10").fetchone()[0] is not None
     assert db.execute("SELECT misurato FROM registro_i4 WHERE giornata = 10").fetchone()[0] is None
     r = rn.riepilogo(db)
-    assert r["giornate"] == 0 and r["per_giornata"][0]["giornata"] == 10 and "ValueError" in r["per_giornata"][0]["persa"]
+    assert r["giornate"] == 0 and r["per_giornata"][0]["giornata"] == 10
+    # Stato dei dati: la frase del catalogo, il tipo d'errore solo nel dettaglio per chi gestisce il server (#833)
+    assert r["per_giornata"][0]["persa_frase"]["chiave"] == "registro.persa_calcolo"
+    assert "ValueError" not in r["per_giornata"][0]["persa"] and "ValueError" in r["per_giornata"][0]["persa_dettaglio"]
 
 
 def test_modulo_dei_nostri_che_non_si_carica_non_ferma_i_mostrati(giornata10, monkeypatch, caplog):
@@ -290,7 +293,54 @@ def test_misura_sempre_in_errore_si_ferma_dopo_tre_tentativi(finita, monkeypatch
     assert rn.avvisa_perse(db, lambda t, x: inviati.append((t, x)) or True) is True
     assert rn.avvisa_perse(db, lambda t, x: inviati.append((t, x)) or True) is False and len(inviati) == 1
     assert "giornata 10" in inviati[0][1] and "misura" in inviati[0][1] and "dato interno" not in inviati[0][1]
-    assert rn.riepilogo(db)["per_giornata"][1]["persa"] == riga["persa"]
+    g10 = rn.riepilogo(db)["per_giornata"][1]
+    assert g10["persa_dettaglio"] == riga["persa"] and g10["persa_frase"]["chiave"] == "registro.persa_misura"   # #833
+
+
+def _nostri_rotti(db, giornata):
+    raise ValueError("dati di un giocatore")
+
+
+def _scrittura_rotta(*_):
+    raise sqlite3.OperationalError("disco pieno")
+
+
+@pytest.mark.parametrize("nostri_, errore, chiave", [
+    (lambda db, g: pd.DataFrame(), None, "registro.persa_previsioni"),
+    (lambda db, g: _prev(NOSTRI_10).rename(columns={"p_voto": "p_gioca"}), None, "registro.persa_previsioni"),
+    (lambda db, g: _prev(NOSTRI_10[-1:]), None, "registro.persa_nessun_giocatore"),     # solo chi il registro non ha
+    (_nostri_rotti, ValueError, "registro.persa_calcolo"),
+    (lambda db, g: _prev(NOSTRI_10), sqlite3.OperationalError, "registro.persa_scrittura"),
+    (None, None, "registro.nostri_senza_tentativi"),
+], ids=["vuoti", "colonne", "nessun-giocatore", "calcolo", "scrittura", "servizio-fermo"])
+def test_ogni_motivo_dei_nostri_persi_ha_la_sua_frase(giornata10, monkeypatch, nostri_, errore, chiave):
+    """#833: come per il registro dei mostrati, ogni motivo che i nostri scrivono davvero ha la sua frase del catalogo, mai quella
+    generica (`registro_giornate.motivo_persa`)."""
+    db = giornata10
+    assert rg.salva(db, ST, 10, _prev(PREV_10), True, ORA(7, 18, 22)) == 2      # i mostrati ci sono
+    if nostri_ is None:                                                        # servizio fermo: i nostri erano già partiti prima
+        db.execute("INSERT INTO registro_i4 (stagione, giornata, versione, voti, rose, avvisato) VALUES (?, 9, ?, 0, 0, 0)",
+                   (ST, nostri.VERSIONE))
+    elif errore is None:
+        assert rn.salva_se_serve(db, ORA(7, 18, 23), nostri_, _mostrate) == 0
+    else:
+        if errore is sqlite3.OperationalError:
+            monkeypatch.setattr(archivio, "inserisci", _scrittura_rotta)
+        with pytest.raises(errore):
+            rn.salva_se_serve(db, ORA(7, 18, 23), nostri_, _mostrate)
+    assert rn.segna_perse(db, ORA(7, 18, 30)) == [(ST, 10)]
+    tecnico = db.execute("SELECT persa FROM registro_i4 WHERE giornata = 10").fetchone()[0]
+    frase = rg.motivo_persa(tecnico)
+    assert frase.chiave == chiave, tecnico
+    assert "Error" not in frase and "p_voto" not in frase
+
+
+def test_la_misura_dei_nostri_non_riuscita_ha_la_sua_frase(finita):
+    """#833: la misura che non riesce TENTATIVI_MISURA volte rende la giornata persa con il suo motivo, che ha la sua frase."""
+    for _ in range(rn.TENTATIVI_MISURA):
+        rn._misura_non_riuscita(finita, ST, 10, nostri.VERSIONE, KeyError("dato interno"))
+    tecnico = finita.execute("SELECT persa FROM registro_i4 WHERE giornata = 10").fetchone()[0]
+    assert "KeyError" in tecnico and rg.motivo_persa(tecnico).chiave == "registro.persa_misura"
 
 
 # ---------------------------------------------------------------- misura a giornata finita
