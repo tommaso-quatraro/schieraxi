@@ -6,40 +6,37 @@ import SwiftUI
 /// #419) e in cima a una scheda non c'è «indietro». Su iOS 26 la barra non ha uno sfondo suo e sfuma i contenuti che le passano
 /// sotto solo dietro a quello che contiene: con il testo normale dietro al titolo piccolo che compare scorrendo, con la barra
 /// vuota mai. Scorrendo, righe e titoli passavano nitidi sotto l'ora (foto `impostazioni-aspetto` e `impostazioni-fondo` con il
-/// testo grande; con il testo massimo il titolo «Aspetto»). Qui la pagina copre la fascia dell'ora e della barra con il suo
-/// stesso sfondo, pieno sotto l'ora e trasparente sul fondo della barra: ferma non si vede (lo sfondo sopra lo stesso sfondo),
-/// scorrendo i contenuti spariscono sotto l'ora come con il testo normale.
-/// Su iOS 18 la barra ha ancora il suo sfondo sfocato quando i contenuti le passano sotto: lì non cambia niente.
+/// testo grande; con il testo massimo il titolo «Aspetto»). Qui la pagina copre la fascia sopra la parte sicura (l'ora e la
+/// barra, se c'è) con il suo stesso sfondo, pieno sotto l'ora e trasparente in fondo: ferma non si vede (lo sfondo sopra lo
+/// stesso sfondo) e non tocca il titolo, che comincia sotto; scorrendo i contenuti spariscono sotto l'ora come con il testo
+/// normale. Su iOS 18 la barra ha ancora il suo sfondo sfocato quando i contenuti le passano sotto: lì non cambia niente.
+///
+/// Niente misure: una riga alta 0 in cima alla parte sicura, e dietro di lei la fascia, che ignora il margine sicuro in alto e
+/// quindi sale fino all'alto della finestra. È alta esattamente quanto il margine. Le due versioni con le misure sbagliavano:
+/// dentro una vista che ignora il margine il margine vale 0 (fascia alta 0, corsa 44819951481), e la cima della parte sicura
+/// più il margine rimasto lo contava due volte (fascia fino a 124 punti, sopra il titolo, corsa 44833454399).
 /// Va solo sulle pagine con `Sfondo()` dietro la lista, e fuori dalla striscia dei dati salvati (`avvisoDatiSalvati`), così la
 /// fascia è alta quanto l'ora e la barra, non di più.
 private struct BordoSottoLaBarraVuota: ViewModifier {
     var misurata: ((CGRect) -> Void)?
     @Environment(\.dynamicTypeSize) private var dimensione
-    /// Il fondo della barra contato dall'alto della finestra: l'ora più la barra. 0 finché non è misurato.
-    @State private var fondoBarra: CGFloat = 0
 
     func body(content: Content) -> some View {
         Group {
             if #available(iOS 26.0, *) {
-                content
-                    .overlay(alignment: .top) {
-                        // La misura: una vista vuota che rispetta il margine sicuro. La sua cima, contata dall'alto della finestra,
-                        // più il margine che le resta in alto (se arriva sotto la barra) è il fondo della barra. Mai dentro una
-                        // vista che ignora il margine sicuro: lì il margine vale 0 e la fascia era alta 0 (corsa 44819951481).
+                content.overlay(alignment: .top) {
+                    if TitoloPagina.barraSenzaTitolo(dimensione) {
                         Color.clear
-                            .onGeometryChange(for: CGFloat.self) { spazio in
-                                spazio.frame(in: .global).minY + spazio.safeAreaInsets.top
-                            } action: { fondo in
-                                fondoBarra = fondo
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 0)
+                            .background(alignment: .bottom) {
+                                FasciaSottoLaBarra(misurata: misurata)
+                                    .ignoresSafeArea(edges: .top)
                             }
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
-                    .overlay(alignment: .top) {
-                        if TitoloPagina.barraSenzaTitolo(dimensione), fondoBarra > 0 {
-                            FasciaSottoLaBarra(altezza: fondoBarra, misurata: misurata)
-                        }
-                    }
+                }
             } else {
                 content
             }
@@ -47,25 +44,23 @@ private struct BordoSottoLaBarraVuota: ViewModifier {
     }
 }
 
-/// La fascia: la cima di `Sfondo()`, dall'alto della finestra e alta `altezza` (ora e barra), mascherata da piena a
-/// trasparente. Sta in un contenitore che ignora il margine sicuro, così parte dall'alto della finestra come lo `Sfondo()` della
-/// pagina e i due disegni coincidono. Non riceve tocchi e VoiceOver non la vede.
+/// La fascia: la cima di `Sfondo()`, alta quanto lo spazio che riceve (dall'alto della finestra alla parte sicura), mascherata
+/// da piena a trasparente. Lo `Sfondo()` parte dall'alto come quello della pagina, quindi i due disegni coincidono. Non riceve
+/// tocchi e VoiceOver non la vede.
 private struct FasciaSottoLaBarra: View {
-    let altezza: CGFloat
     var misurata: ((CGRect) -> Void)?
 
     var body: some View {
         Sfondo()
-            .frame(height: altezza, alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .clipped()
             .mask {
-                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.55),
+                // piena fin sotto l'ora anche quando la fascia è solo l'ora (la barra vuota può non avere altezza)
+                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.7),
                                        .init(color: .clear, location: 1)],
                                startPoint: .top, endPoint: .bottom)
             }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { misurata?($0) }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .ignoresSafeArea()
             .allowsHitTesting(false)
             .accessibilityHidden(true)
     }
