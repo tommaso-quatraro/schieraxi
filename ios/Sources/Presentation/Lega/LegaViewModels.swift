@@ -26,6 +26,21 @@ enum ParteImpostazioni: String, Hashable {
         case .aspetto: return "imp-aspetto"
         }
     }
+
+    /// Dove scorre la pagina per portare in vista una parte: la riga e il punto dello schermo dove va.
+    struct Scorrimento: Equatable {
+        let riga: String
+        let punto: UnitPoint
+    }
+
+    /// Dove scorre la pagina per questa parte (`ImpostazioniView.portaInVista`): la prima riga della parte a metà schermo, così il
+    /// titolo della sezione resta sopra di lei, in vista (#819). Per Aspetto no: con il testo massimo la sua prima riga (il Tema
+    /// con la spiegazione) è più alta di mezzo schermo e, messa a metà, il titolo «Aspetto» saliva sotto l'orologio (#857). Lì
+    /// va in cima l'ultima riga di La mia lega (`ultimaRigaLega`), e sotto si vedono il titolo e il Tema; senza, come le altre.
+    func scorrimento(ultimaRigaLega: String?) -> Scorrimento {
+        if self == .aspetto, let ultimaRigaLega { return Scorrimento(riga: ultimaRigaLega, punto: .top) }
+        return Scorrimento(riga: ancora, punto: .center)
+    }
 }
 
 /// Logica delle Impostazioni: stato del server, squadre della lega (per La mia lega), nuova stagione, aggiornamento dei dati.

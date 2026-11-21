@@ -67,6 +67,8 @@ struct ImpostazioniView: View {
                 .scrollContentBackground(.hidden)
                 .contentMargins(.bottom, 24, for: .scrollContent)
                 .background(Sfondo())
+                // con il testo grande la barra è vuota: senza, le righe passavano nitide sotto l'ora (#848)
+                .bordoSottoLaBarraVuota()
                 // fotografia `impostazioni-fondo`: la fine della pagina, quando le righe della lega sono arrivate (con le righe che
                 // arrivano dopo, `demoInFondo` da solo restava in cima)
                 .demoScorriA("imp-informazioni", proxy: proxy, schermate: ["impostazioni"], inFondo: true, ancora: .bottom,
@@ -116,14 +118,17 @@ struct ImpostazioniView: View {
 
     /// Porta in vista la parte chiesta da un indirizzo (`schieraxi://lega` apre La mia lega) e la dimentica. La prima riga della
     /// parte va a metà schermo, non in cima: in cima il titolo della sezione («La mia lega») restava sopra la riga, sotto la barra
-    /// e, con il testo massimo, sotto l'orologio e l'isola dinamica (#819). La lista scorre fino a una riga, non al titolo.
+    /// e, con il testo massimo, sotto l'orologio e l'isola dinamica (#819). La lista scorre fino a una riga, non al titolo. Per
+    /// Aspetto in cima va l'ultima riga di La mia lega (`ParteImpostazioni.scorrimento`, #857).
     private func portaInVista(_ proxy: ScrollViewProxy) {
         guard let parte = nav.parteImpostazioni else { return }
         nav.parteImpostazioni = nil
         Task {
             // la lista deve avere già le righe (le squadre arrivano dopo): un attimo di attesa, come per le foto della demo
             try? await Task.sleep(for: .milliseconds(400))
-            proxy.scrollTo(parte.ancora, anchor: .center)
+            let voci = VociImpostazioni.lega(squadre: vm.squadre.dato ?? [], squadreAltrui: funzioni.acceso(Funzione.squadreAltrui))
+            let dove = parte.scorrimento(ultimaRigaLega: voci.last.map { "imp-\($0.id)" })
+            proxy.scrollTo(dove.riga, anchor: dove.punto)
         }
     }
 

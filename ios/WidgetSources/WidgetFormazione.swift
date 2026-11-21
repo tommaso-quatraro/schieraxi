@@ -213,7 +213,7 @@ struct VistaFormazione: View {
                     piede(prove[i].piede, dubbi: dubbi)
                 }
             }
-            .frame(maxWidth: 120, alignment: .leading)
+            .frame(maxWidth: DisposizioneWidget.colonnaMedioFormazione, alignment: .leading)
             CampoMini(titolari: tit, lato: 24)
         }
     }
