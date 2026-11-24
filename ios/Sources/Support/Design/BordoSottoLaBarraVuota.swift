@@ -7,11 +7,11 @@ import SwiftUI
 /// sotto solo dietro a quello che contiene: con il testo normale dietro al titolo piccolo che compare scorrendo, con la barra
 /// vuota mai. Scorrendo, righe e titoli passavano nitidi sotto l'ora (foto `impostazioni-aspetto` e `impostazioni-fondo` con il
 /// testo grande). Qui la pagina copre la zona sopra la parte sicura (l'ora, e la barra se ha un'altezza) con il suo stesso
-/// sfondo, pieno sotto l'ora e trasparente in fondo: ferma non si vede (lo sfondo sopra lo stesso sfondo) e non tocca il
-/// titolo, che comincia sotto; scorrendo i contenuti spariscono sotto l'ora come con il testo normale.
+/// sfondo, pieno, e sotto sfuma fino a trasparente prima del titolo: ferma non si vede (lo sfondo sopra lo stesso sfondo) e non
+/// tocca il titolo; scorrendo i contenuti spariscono sotto l'ora come con il testo normale.
 /// Su iOS 18 la barra ha ancora il suo sfondo sfocato quando i contenuti le passano sotto: lì non cambia niente.
-/// Va solo sulle pagine con `Sfondo()` dietro la lista, e fuori dalla striscia dei dati salvati (`avvisoDatiSalvati`), così la
-/// fascia è alta quanto l'ora e la barra, non di più.
+/// Va solo sulle pagine con `Sfondo()` dietro la lista e il titolo nella pagina in cima, e fuori dalla striscia dei dati salvati
+/// (`avvisoDatiSalvati`), così la fascia comincia dall'alto della finestra e la parte che sfuma resta sopra il titolo.
 private struct BordoSottoLaBarraVuota: ViewModifier {
     var misurata: ((CGRect, CGFloat) -> Void)?
     @Environment(\.dynamicTypeSize) private var dimensione
@@ -41,7 +41,7 @@ private struct BordoSottoLaBarraVuota: ViewModifier {
                     }
                     .overlay(alignment: .top) {
                         if TitoloPagina.barraSenzaTitolo(dimensione), fondoBarra > 0 {
-                            FasciaSottoLaBarra(altezza: fondoBarra, misurata: misurata)
+                            FasciaSottoLaBarra(piena: fondoBarra, misurata: misurata)
                         }
                     }
             } else {
@@ -51,28 +51,34 @@ private struct BordoSottoLaBarraVuota: ViewModifier {
     }
 }
 
-/// La fascia: la cima di `Sfondo()`, dall'alto della finestra e alta `altezza` (ora e barra), mascherata da piena a
-/// trasparente. Sta in un contenitore che ignora il margine sicuro, così parte dall'alto della finestra come lo `Sfondo()` della
-/// pagina e i due disegni coincidono; è sopra le righe, che scorrendo le spariscono sotto. Non riceve tocchi e VoiceOver non
-/// la vede.
+/// La fascia: la cima di `Sfondo()`, dall'alto della finestra, piena fino a `piena` (il fondo dell'ora e della barra) e poi
+/// sfumata per `sfumata` punti fino a trasparente. Sta in un contenitore che ignora il margine sicuro, così parte dall'alto della
+/// finestra come lo `Sfondo()` della pagina e i due disegni coincidono; è sopra le righe, che scorrendo le spariscono sotto. Non
+/// riceve tocchi e VoiceOver non la vede.
 private struct FasciaSottoLaBarra: View {
-    let altezza: CGFloat
+    /// Fin dove la fascia è piena, dall'alto della finestra: il fondo della zona sopra la parte sicura. Piena solo per una parte
+    /// di quella zona, scorrendo le lettere si vedevano dietro l'ora e accanto all'isola (foto della corsa 45493597395).
+    let piena: CGFloat
     var misurata: ((CGRect, CGFloat) -> Void)?
 
-    /// Fin dove la fascia è piena, in proporzione alla sua altezza.
-    private let piena: CGFloat = 0.55
+    /// Quanti punti sfuma la fascia sotto la parte piena. Il titolo nella pagina comincia 46-48 punti sotto la zona sopra la
+    /// parte sicura (foto della corsa 45493597395: a 108-110 punti sull'iPhone, dove la zona finisce a 62; a 132 sull'iPad):
+    /// con 36 la fascia finisce una decina di punti prima e da ferma non lo tocca.
+    static let sfumata: CGFloat = 36
 
     var body: some View {
+        let altezza = piena + Self.sfumata
+        let finePiena = piena / altezza
         Sfondo()
             .frame(height: altezza, alignment: .top)
             .clipped()
             .mask {
-                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: piena),
+                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: finePiena),
                                        .init(color: .clear, location: 1)],
                                startPoint: .top, endPoint: .bottom)
             }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { riquadro in
-                misurata?(riquadro, riquadro.minY + riquadro.height * piena)
+                misurata?(riquadro, riquadro.minY + riquadro.height * finePiena)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .ignoresSafeArea()
