@@ -24,7 +24,10 @@ def _pulito(testo: str, quanti: int) -> str:
     return "".join(c for c in " ".join(testo.split()) if c.isprintable())[:quanti]
 
 
-PAGINA_LETTA = 20_000      # caratteri di una pagina web al posto dei dati che si guardano per il messaggio (rete.scarica non ha tetti)
+PAGINA_LETTA = 20_000      # caratteri dell'inizio di una pagina web al posto dei dati in cui si cerca il titolo (rete.scarica non ha
+                           # tetti, e la ricerca del titolo su tante aperture mai chiuse cresce col quadrato della lunghezza)
+TESTO_LETTO = 2_000_000    # caratteri in cui si cerca il testo visibile: la pagina di attesa ha un disegno di decine di migliaia di
+                           # caratteri prima della frase, che con PAGINA_LETTA restava fuori (#862); la pulizia cresce solo con la lunghezza
 
 
 def _testo_visibile(pagina: str) -> str:
@@ -43,12 +46,12 @@ def dati_json(contenuto: bytes | str) -> dict:
     if not testo:
         raise RispostaNonDati("Understat ha risposto con una pagina vuota al posto dei dati")
     if testo.startswith("<"):
-        pagina = testo[:PAGINA_LETTA]           # una risposta enorme o storta non costa minuti di espressioni regolari
+        pagina = testo[:PAGINA_LETTA]           # il titolo: una risposta enorme o storta non costa minuti di espressioni regolari
         apertura = re.search(r"<title[^>]*>", pagina, re.IGNORECASE)    # la chiusura con find: una sola passata
         chiusura = pagina.lower().find("</title>", apertura.end()) if apertura else -1
         titolo = _pulito(pagina[apertura.end():chiusura], 80) if apertura and chiusura >= 0 else ""
         parti = [f"titolo «{titolo}»"] if titolo else []
-        if visibile := _pulito(_testo_visibile(pagina), 120):
+        if visibile := _pulito(_testo_visibile(testo[:TESTO_LETTO]), 120):
             parti.append(f"testo «{visibile}»")
         raise RispostaNonDati("Understat ha risposto con una pagina web al posto dei dati" + (f" ({', '.join(parti)})" if parti else "")
                               + ": il sito è fermo o ha cambiato indirizzo")
