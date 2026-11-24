@@ -413,9 +413,14 @@ _DAVANTI_A_VOCALE = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:11|1|8\d?)(?:,\d+
 _DAVANTI_A_DATA = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:0?8|11)/\d)")
 
 
+def elidi_date(testo: str) -> str:
+    """Il testo italiano con l'apostrofo davanti alle date giorno/mese dell'8 e dell'11 («non riesce dal 08/11» → «non riesce
+    dall'08/11»). La usano le frasi composte qui e le righe d'errore scritte nel codice (`stato_dati`, `aggiorna`)."""
+    return _DAVANTI_A_DATA.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo)
+
+
 def _apostrofo(testo: str) -> str:
-    testo = _DAVANTI_A_DATA.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo)
-    return elidi_ordinali(_DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo))
+    return elidi_ordinali(_DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), elidi_date(testo)))
 
 
 # «la 8ª» si dice «l'8ª» (e «dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una
