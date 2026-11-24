@@ -38,10 +38,9 @@ struct ContoWidget: View {
     let adesso: Date
 
     var body: some View {
-        let testo = ParoleWidget.conto(fino: inizio, adesso: adesso)
-        Text(testo)
+        Text(ParoleWidget.conto(fino: inizio, adesso: adesso))
             .monospacedDigit()
-            .accessibilityLabel(inizio.flatMap { Quando.contoAllaRovesciaParlato(fino: $0, adesso: adesso) } ?? testo)
+            .accessibilityLabel(ParoleWidget.contoParlato(fino: inizio, adesso: adesso))
     }
 }
 

@@ -1038,24 +1038,47 @@ enum DisposizioneWidget {
         return prove
     }
 
-    // PROVVISORIO (#871): come oggi, per vedere i test fallire prima del codice
-    enum PostoGiornataRettangolo: Equatable { case sopra, accanto }
+    /// Dove sta la giornata nel rettangolo della Formazione sulla schermata di blocco (#871).
+    enum PostoGiornataRettangolo: Equatable {
+        /// Sulla prima riga, sopra «Formazione 3-4-3», come la giornata del rettangolo di Prossima giornata.
+        case sopra
+        /// Accanto al modulo, a destra: il titolo perde «Formazione» (si perde il titolo, mai la giornata).
+        case accanto
+    }
 
+    /// Una prova del rettangolo della Formazione: dove sta la giornata (nil se il server non la dice) e se c'è «2 da controllare».
     struct ProvaRettangoloFormazione: Equatable {
         var giornata: PostoGiornataRettangolo?
         var daControllare: Bool
     }
 
+    /// Le prove del rettangolo della Formazione sulla schermata di blocco, dalla più alta: la vista tiene la prima che entra in
+    /// altezza. Righe: la giornata, «Formazione 3-4-3» (o «3-4-3»), i punti attesi con la fascia e «2 da controllare». Prima, con
+    /// giocatori da controllare, la giornata spariva (#871). Dove quattro righe non entrano (testo grande, iPhone piccoli) la
+    /// giornata sale accanto al modulo, che resta senza «Formazione». Né la giornata né «da controllare» cedono.
     static func proveRettangoloFormazione(conGiornata: Bool, daControllare: Int) -> [ProvaRettangoloFormazione] {
-        [ProvaRettangoloFormazione(giornata: conGiornata && daControllare == 0 ? .sopra : nil, daControllare: daControllare > 0)]
+        let dubbi = daControllare > 0
+        guard conGiornata else { return [ProvaRettangoloFormazione(giornata: nil, daControllare: dubbi)] }
+        return [ProvaRettangoloFormazione(giornata: .sopra, daControllare: dubbi),
+                ProvaRettangoloFormazione(giornata: .accanto, daControllare: dubbi)]
     }
 
+    /// Una prova della colonna di sinistra del widget Formazione extra large: quanto è grande il volto sul campo e se sotto c'è
+    /// il cognome.
     struct ProvaCampoExtraLarge: Equatable {
         let lato: CGFloat
         let conNomi: Bool
     }
 
-    static let proveCampoExtraLarge = [ProvaCampoExtraLarge(lato: 48, conNomi: true)]
+    /// Le prove della colonna di sinistra del Formazione extra large, dalla più alta (#871). In ogni prova la testata con i punti
+    /// attesi, la fascia e la giornata, il campo e sotto «2 da controllare» e «7 in panchina», come il grande: prima giornata e
+    /// righe in fondo mancavano. L'extra large è alto quanto il grande (circa 345 punti sull'iPad Pro 11", 305 sull'iPad mini) e il
+    /// campo con i volti da 48 punti lo riempiva già: per far posto i volti rimpiccioliscono (48, 40, 32 punti) e per ultimi
+    /// spariscono i cognomi sotto i volti, che l'elenco dei titolari accanto dice già.
+    static let proveCampoExtraLarge = [
+        ProvaCampoExtraLarge(lato: 48, conNomi: true), ProvaCampoExtraLarge(lato: 40, conNomi: true),
+        ProvaCampoExtraLarge(lato: 32, conNomi: true), ProvaCampoExtraLarge(lato: 32, conNomi: false),
+    ]
 }
 
 // MARK: Testi che si accorciano (mai una parola tagliata a metà)
@@ -1082,14 +1105,35 @@ enum ParoleWidget {
         return Quando.contoAllaRovescia(fino: scadenza, adesso: adesso) ?? chiusa
     }
 
-    // PROVVISORIO (#871): come oggi, per vedere i test fallire prima del codice
-    static func allaScadenza(_ scadenza: Date, adesso: Date) -> String {
-        "alla scadenza, \(Quando.relativa(scadenza, adesso: adesso))"
+    /// Il conto alla rovescia a parole intere, per VoiceOver: «6 ore e 44 minuti»; dopo la scadenza «Chiusa», senza scadenza «—».
+    static func contoParlato(fino scadenza: Date?, adesso: Date) -> String {
+        scadenza.flatMap { Quando.contoAllaRovesciaParlato(fino: $0, adesso: adesso) } ?? conto(fino: scadenza, adesso: adesso)
     }
 
-    static func prossima(fino scadenza: Date?, adesso: Date) -> String { "Prossima: \(conto(fino: scadenza, adesso: adesso))" }
+    /// Lo spazio che non va a capo (U+00A0): tiene insieme i pezzi di una data con l'ora («lun 23 20:35») e del conto alla
+    /// rovescia («4 giorni 1 h»), così una riga che non entra va a capo prima, mai a metà (#871: «alla scadenza, lun / 23 20:35»).
+    static let spazioUnito = "\u{00A0}"
 
-    static func voceProssima(fino scadenza: Date?, adesso: Date) -> String { prossima(fino: scadenza, adesso: adesso) }
+    /// Il testo con gli spazi che non vanno a capo.
+    static func unito(_ testo: String) -> String { testo.replacingOccurrences(of: " ", with: spazioUnito) }
+
+    /// «alla scadenza, lun 23 20:35», la data come `quando` della web contata da `adesso` (nei widget l'istante della voce).
+    /// Giorno, numero e ora restano uniti: dove la riga non entra si va a capo dopo la virgola (#871).
+    static func allaScadenza(_ scadenza: Date, adesso: Date) -> String {
+        "alla scadenza, \(unito(Quando.relativa(scadenza, adesso: adesso)))"
+    }
+
+    /// «Prossima: 4 giorni 1 h», il conto alla rovescia alla prossima scadenza in un testo solo. Erano due testi che si
+    /// rimpicciolivano ciascuno per conto suo, e con il testo molto grande il conto usciva più piccolo di «Prossima:» (#871). Il
+    /// conto resta unito: dove non entra va a capo intero, sotto «Prossima:».
+    static func prossima(fino scadenza: Date?, adesso: Date) -> String {
+        "Prossima: \(unito(conto(fino: scadenza, adesso: adesso)))"
+    }
+
+    /// «Prossima: 4 giorni e 1 ora», per VoiceOver.
+    static func voceProssima(fino scadenza: Date?, adesso: Date) -> String {
+        "Prossima: \(contoParlato(fino: scadenza, adesso: adesso))"
+    }
 
     /// Sotto il conto alla rovescia del Cruscotto: «alla scadenza, oggi 20:45», dopo la scadenza «si è chiusa oggi 20:45».
     /// Senza probabili prima «probabili non uscite · alla scadenza, oggi 20:45», poi solo «probabili non uscite» (il conto sopra
@@ -1396,10 +1440,10 @@ extension RiassuntoOggi {
     /// chiusa («Giornata 8»); se il server non la dice, «Giornata».
     private var giornataFaseCorta: String { (inCorso ? nomeGiornata : nomeGiornataChiusa)?.corto ?? "Giornata" }
 
-    /// La prima riga del rettangolo della schermata di blocco: «Giornata 8 · Chiusa» dopo la scadenza, «Giornata 8 finita» a
-    /// giornata finita. Mai «G8» (#299).
+    /// La prima riga del rettangolo della schermata di blocco: «Giornata 8 · Chiusa» dopo la scadenza, «Giornata 8: finita» a
+    /// giornata finita, la forma corta della testata di Da controllare (prima «Giornata 8 finita», #871). Mai «G8» (#299).
     var testaRettangoloFase: String {
-        inCorso ? "\(giornataFaseCorta) · \(ParoleWidget.chiusa)" : "\(giornataFaseCorta) finita"
+        inCorso ? "\(giornataFaseCorta) · \(ParoleWidget.chiusa)" : (formeTitoloFase?.last ?? "Giornata finita")
     }
 
     /// La riga in linea, la forma intera: «Giornata 8: 41,5 punti finora» dopo la scadenza (come la testa della Formazione,
@@ -1421,10 +1465,23 @@ extension RiassuntoOggi {
     /// Il sottotitolo per VoiceOver, con i due numeri.
     var voceSottotitoloRettangolo: String { finita ? "Prossima: \(voceGiornata)" : voceGiornata }
 
-    // PROVVISORIO (#871): come oggi, per vedere i test fallire prima del codice
-    func formeRigaInLineaConto(adesso: Date) -> [String] { ParoleWidget.moduloEPunti(modulo, punti: punti, fascia: nil) }
+    /// La riga in linea di Prossima giornata sulla schermata di blocco, dalla più lunga: la giornata con il conto alla rovescia
+    /// («Giornata 8: 17 h 50 min», dopo la scadenza «Giornata 8: Chiusa»), poi il solo conto, che è il motivo del widget. Prima
+    /// era «3-4-3 · 72,7 punti», la stessa riga della Formazione consigliata (#871). Senza scadenza non c'è un conto: resta la
+    /// formazione, come prima.
+    func formeRigaInLineaConto(adesso: Date) -> [String] {
+        guard let scadenza = scadenzaDelConto else { return ParoleWidget.moduloEPunti(modulo, punti: punti, fascia: nil) }
+        let conto = ParoleWidget.conto(fino: scadenza, adesso: adesso)
+        return nomeGiornata.map { ["\($0.corto): \(conto)", conto] } ?? [conto]
+    }
 
-    func voceRigaInLineaConto(adesso: Date) -> String { formeRigaInLineaConto(adesso: adesso).first ?? "" }
+    /// La stessa riga per VoiceOver, con i due numeri della giornata e il conto a parole: «Giornata 8, 11ª di Serie A: 17 ore e
+    /// 50 minuti».
+    func voceRigaInLineaConto(adesso: Date) -> String {
+        guard let scadenza = scadenzaDelConto else { return formeRigaInLineaConto(adesso: adesso).first ?? "" }
+        let conto = ParoleWidget.contoParlato(fino: scadenza, adesso: adesso)
+        return nomeGiornata.map { "\($0.voce): \(conto)" } ?? conto
+    }
 }
 
 // MARK: Testata e corpo del widget «Da controllare» (medio e grande)

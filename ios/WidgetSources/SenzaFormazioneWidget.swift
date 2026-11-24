@@ -49,7 +49,9 @@ struct SenzaFormazioneWidget: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .widgetAccentable()
                 if conConto, riassunto.scadenzaDelConto != nil {
+                    // con il testo grande il conto va a capo intero sotto «Prossima:», della stessa grandezza (#871)
                     prossimaBreve.font(.caption2).foregroundStyle(.white.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 statoDati
             }
@@ -128,7 +130,8 @@ struct SenzaFormazioneWidget: View {
             Text(ParoleWidget.giaIniziata).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
             Text(ParoleWidget.preparaProssima).font(.headline).lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
             if riassunto.scadenzaDelConto != nil {
-                prossimaBreve.font(.caption2)
+                // una riga sola nel rettangolo: un testo solo, che si rimpicciolisce tutto insieme
+                prossimaBreve.font(.caption2).lineLimit(1).minimumScaleFactor(0.6)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -151,18 +154,15 @@ struct SenzaFormazioneWidget: View {
         ContoWidget(inizio: riassunto.scadenzaDelConto, adesso: voce.date)
     }
 
-    /// «Prossima: 4 giorni 2 h».
-    private var prossimaBreve: some View {
-        HStack(spacing: 3) {
-            Text("Prossima:")
-            conto.monospacedDigit()
-        }
-        .lineLimit(1).minimumScaleFactor(0.6)
+    /// «Prossima: 4 giorni 2 h», in un testo solo (#871).
+    private var prossimaBreve: ProssimaConto {
+        ProssimaConto(scadenza: riassunto.scadenzaDelConto, adesso: voce.date)
     }
 
-    /// «alla scadenza, lun 23 20:35»: la data come `quando` della web, contata dall'istante della voce.
+    /// «alla scadenza, lun 23 20:35»: la data come `quando` della web, contata dall'istante della voce, con giorno e ora uniti
+    /// (si va a capo dopo la virgola, #871).
     private func allaScadenza(_ scadenza: Date) -> String {
-        "alla scadenza, \(Quando.relativa(scadenza, adesso: voce.date))"
+        ParoleWidget.allaScadenza(scadenza, adesso: voce.date)
     }
 
     /// Sotto l'invito: l'ora della copia salvata, con il giorno se non è di oggi (`RigaCopia`, #834).
