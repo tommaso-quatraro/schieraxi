@@ -62,6 +62,11 @@ def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, fonte_voto
             avanzate["per_90"] = {k: round((t[k] or 0) * 90 / minuti, 2) for k in ("xg", "xa", "tiri", "passaggi_chiave")}
         avanzate["nome_understat"] = us["nome"]
         avanzate["abbinamento"] = us["abbinamento"]
+        # fin dove arrivano i dati della fonte (#862): il giorno dell'ultima partita della stagione con le statistiche
+        # nell'archivio, di chiunque (con la fonte ferma i numeri restano quelli di quel giorno, e i client lo scrivono)
+        ultima = db.execute("SELECT MAX(pu.data) FROM partite_understat pu WHERE pu.stagione = ? AND EXISTS "
+                            "(SELECT 1 FROM prestazioni pr WHERE pr.understat_partita = pu.id)", (stagione,)).fetchone()[0]
+        avanzate["dati_fino_al"] = str(ultima)[:10] if ultima else None
         precedenti = db.execute("SELECT stagione, partite, minuti, gol, xg, assist, xa FROM understat_stagione "
                                 "WHERE understat_giocatore = ? AND stagione <> ? ORDER BY stagione DESC",
                                 (us["id"], stagione)).fetchall()
