@@ -74,8 +74,8 @@
     "en": "Saved data from {quando}: refreshing…"
   },
   "comune.cache_offline": {
-    "it": "Non riesco a collegarmi: questi sono gli ultimi dati salvati.",
-    "en": "I cannot connect: these are the last saved data."
+    "it": "Non riesco a collegarmi: questi sono i dati salvati il {giorno} alle {ora}.",
+    "en": "I cannot connect: this is the data saved on {giorno} at {ora}."
   },
   "comune.cache_errore": {
     "it": "{errore} (dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati)",

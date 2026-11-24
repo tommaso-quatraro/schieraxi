@@ -69,7 +69,7 @@ def _riapri_dalla_copia(web, vista: str, guasto: str, larghezza: int = 390) -> N
     web.orologio(DOPO)
     _server_giu(web, guasto)
     web.apri(vista, larghezza=larghezza)
-    web.pagina.locator(NOTA).get_by_role("button", name="Riprova").wait_for(timeout=10000)
+    web.pagina.locator(NOTA).get_by_role("button").wait_for(timeout=10000)          # «Riprova», in inglese «Try again»
 
 
 @pytest.mark.parametrize("lingua", ["it", "en"])

@@ -367,9 +367,9 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
         const b = $("#nota-cache");
         if (!b) return false;
         const ferma = !!vista && typeof vista.sola === "function" && vista.sola();
-        const copia = new Date(salvata.quando);                             // la nota dice di quando è la copia (#845)
-        const motivo = elidiGiorno(t("comune.cache_errore", { errore: esc(e.message), giorno: fData(copia), ora: fOra(copia) }));
-        b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : motivo}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
+        const copia = new Date(salvata.quando), salvataIl = { giorno: fData(copia), ora: fOra(copia) };   // di quando è la copia (#845, #864)
+        const motivo = elidiGiorno(e.rete ? t("comune.cache_offline", salvataIl) : t("comune.cache_errore", { errore: esc(e.message), ...salvataIl }));
+        b.innerHTML = `<span>${motivo}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
           <button class="azione-testo" type="button" data-riprova>${t("comune.riprova")}</button>`;
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
         return false;
