@@ -349,6 +349,9 @@ function primoAvvioSeServe() {
 }
 async function paControllaAvvio() {
   try {
+    // l'elenco delle squadre non è arrivato (server che riparte, rete giù): vuoto non vuol dire senza rose, e la guida non parte
+    // su quello (#874); si riprova alla prossima occasione (Formazione senza rose, prossima apertura)
+    if (!stato.squadreLette) { paControllo = null; return; }
     if ((stato.squadre || []).length) return;             // con le rose la guida non parte né riprende da sola
     const r = await api("/api/primo-avvio");
     if (r.primo_avvio) {

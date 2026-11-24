@@ -735,10 +735,15 @@ function tornaImp(gruppo) {
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
+// `stato.squadreLette`: l'elenco è arrivato davvero almeno una volta (o il server ha detto che le rose non ci sono). Se la lettura non
+// riesce l'elenco resta vuoto, ma non vuol dire «senza rose»: il primo avvio non parte da solo su quello (#874, primoavvio.js).
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
-  if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
-  else { try { stato.squadre = await api("/api/squadre"); } catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); } }
+  if (seServono && stato.info && stato.info.rose_importate === false) { stato.squadre = []; stato.squadreLette = true; }
+  else {
+    try { stato.squadre = await api("/api/squadre"); stato.squadreLette = true; }
+    catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); }
+  }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 // Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
@@ -2958,7 +2963,7 @@ async function vistaAltreSquadre() {
   try { squadre = await api("/api/squadre"); }
   catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
   if (!ancoraValida(mia)) return;
-  stato.squadre = squadre;
+  stato.squadre = squadre; stato.squadreLette = true;
   const altre = squadre.filter(x => !x.mia);
   pagina(altre.length ? `<div class="carta imp-colonna"><ul class="elenco">${altre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
       ${x.immagini && x.immagini.stemma ? `<img class="stemma-lista" src="${urlImg(x.nome, "stemma")}" alt="" loading="lazy">` : `<span class="iniziale-squadra" aria-hidden="true">${esc(x.nome.trim().slice(0, 1).toUpperCase())}</span>`}
