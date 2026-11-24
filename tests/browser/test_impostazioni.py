@@ -1069,17 +1069,23 @@ def test_le_ore_tranquille_rifiutate_dal_server_tornano_come_erano(web):
 # alla prima pagina della scheda (scritta una volta sola: dopo resta ciò che fa l'app). `__DI__`: il numero dell'account che l'ha
 # fatta, come lo ricorda la web (`avvisi-di`, #804); `__INIZIALE__` vuoto: nessuna iscrizione all'inizio.
 # Come nel browser vero, `subscribe` con un'iscrizione già presente dà quella (stesso indirizzo); dopo `unsubscribe` ne nasce una
-# nuova, con un indirizzo nuovo (ENDPOINT la prima, poi ENDPOINT-2, ENDPOINT-3...).
+# nuova, con un indirizzo nuovo (ENDPOINT la prima, poi ENDPOINT-2, ENDPOINT-3...). `__RIFIUTI__`: quante volte di fila
+# `unsubscribe` non riesce (dà false e l'iscrizione resta), come un browser che non riesce a toglierla.
 ENDPOINT = "https://push.example/prova"
 ISCRIZIONE_GIA_QUI = """(() => {
-  const CHIAVE = '__iscrizione-di-prova', FATTE = '__iscrizioni-fatte', ep = () => localStorage.getItem(CHIAVE);
+  const CHIAVE = '__iscrizione-di-prova', FATTE = '__iscrizioni-fatte', RIFIUTI = '__disiscrizioni-rifiutate';
+  const ep = () => localStorage.getItem(CHIAVE);
   if (!localStorage.getItem('__iscrizione-iniziata')) {
     localStorage.setItem('__iscrizione-iniziata', '1');
     if (__INIZIALE__) { localStorage.setItem(CHIAVE, __INIZIALE__); localStorage.setItem(FATTE, '1'); }
     if (__DI__) localStorage.setItem('avvisi-di', __DI__);
+    localStorage.setItem(RIFIUTI, String(__RIFIUTI__));
   }
   const sub = () => ep() ? { endpoint: ep(), toJSON: () => ({ endpoint: ep(), keys: { p256dh: 'a', auth: 'b' } }),
-    unsubscribe: async () => { localStorage.removeItem(CHIAVE); return true; } } : null;
+    unsubscribe: async () => {
+      const no = Number(localStorage.getItem(RIFIUTI) || '0');
+      if (no > 0) { localStorage.setItem(RIFIUTI, String(no - 1)); return false; }
+      localStorage.removeItem(CHIAVE); return true; } } : null;
   const nuova = () => {
     const n = Number(localStorage.getItem(FATTE) || '0') + 1;
     localStorage.setItem(FATTE, String(n));
@@ -1094,11 +1100,11 @@ ISCRIZIONE_GIA_QUI = """(() => {
 SENZA_SESSIONE = {"detail": "Accesso richiesto", "multiutente": True, "registrazione": "invito", "social": [], "email_attiva": True}
 
 
-def iscrizione_gia_qui(web, di: str = "7", iniziale: bool = True) -> None:
+def iscrizione_gia_qui(web, di: str = "7", iniziale: bool = True, rifiuti: int = 0) -> None:
     """Prima di `apri`: il browser ha già un'iscrizione agli avvisi, fatta dall'account numero `di` (7 è UTENTE); con
-    `iniziale=False` le notifiche finte ci sono ma l'iscrizione no."""
+    `iniziale=False` le notifiche finte ci sono ma l'iscrizione no. `rifiuti`: le prime volte che il browser non riesce a toglierla."""
     web.pagina.add_init_script(ISCRIZIONE_GIA_QUI.replace("__INIZIALE__", json.dumps(ENDPOINT if iniziale else ""))
-                               .replace("__DI__", json.dumps(di)))
+                               .replace("__DI__", json.dumps(di)).replace("__RIFIUTI__", str(int(rifiuti))))
 
 
 def iscrizione_nel_browser(web) -> str | None:
@@ -1295,6 +1301,52 @@ def test_dopo_la_sessione_scaduta_di_un_altro_account_arrivano_solo_gli_avvisi_d
     web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
     qui = iscrizione_nel_browser(web)
     assert qui in iscrizioni[7] and qui not in iscrizioni[12], f"iscrizione del browser {qui}, server: {iscrizioni}"
+
+
+@pytest.mark.parametrize("rifiuti", [1, 2], ids=["al-secondo-tentativo", "mai"])
+def test_accendere_con_l_iscrizione_di_un_altro_account_rimasta_qui_ne_fa_una_nuova(web, rifiuti):
+    """#874: all'apertura il browser non riesce a togliere l'iscrizione dell'account 12 ed è dentro l'account 7. Quando lui accende
+    gli avvisi la web riprova a toglierla prima di iscriversi: il browser darebbe la stessa iscrizione, e gli avvisi dell'altro
+    account continuerebbero ad arrivare qui. Tolta, al server va un'iscrizione nuova; se non si toglie nemmeno ora, niente va al
+    server, lo dice un avviso e l'interruttore resta spento."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})          # già dentro da prima
+    iscrizione_gia_qui(web, di="12", rifiuti=rifiuti)
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/avvisi/prova", {"inviato": True})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.apri("/?vista=impostazioni")
+    assert not interruttore_qui(web).is_checked()
+    accendi_qui(web)
+    if rifiuti == 1:
+        web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+        assert [c["endpoint"] for c in iscritte] == [ENDPOINT + "-2"], f"mandata l'iscrizione dell'altro account: {iscritte}"
+        assert interruttore_qui(web).is_checked()
+    else:
+        web.pagina.locator("#avviso").filter(has_text="Non riesco ad attivare le notifiche").wait_for(timeout=10000)
+        web.aspetta()
+        assert iscritte == [], f"mandata l'iscrizione dell'altro account: {iscritte}"
+        assert not interruttore_qui(web).is_checked()
+
+
+def test_gli_avvisi_accesi_dal_primo_avvio_non_usano_l_iscrizione_di_un_altro_account(web):
+    """#874: come l'interruttore, «Attiva gli avvisi» in fondo al primo avvio non manda al server l'iscrizione di un altro account
+    rimasta nel browser: la toglie e ne fa una nuova."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    iscrizione_gia_qui(web, di="12", rifiuti=1)
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/primo-avvio", {"primo_avvio": {"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.apri("/")
+    web.pagina.evaluate("apriPrimoAvvio().then(() => paFine())")       # l'ultima pagina della guida
+    web.pagina.get_by_role("dialog").get_by_role("button", name="Attiva gli avvisi").click(timeout=10000)
+    web.pagina.get_by_role("dialog").get_by_text("Avvisi attivi su questo dispositivo").wait_for(timeout=10000)
+    assert [c["endpoint"] for c in iscritte] == [ENDPOINT + "-2"], f"mandata l'iscrizione dell'altro account: {iscritte}"
 
 
 def test_un_iscrizione_senza_numero_dopo_un_nuovo_accesso_non_diventa_del_nuovo_account(web):

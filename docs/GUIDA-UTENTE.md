@@ -198,7 +198,7 @@ Nell'app per iPhone e iPad (Impostazioni › Avvisi) l'interruttore **Avvisi su 
 
 Se le notifiche smettono di arrivare dopo un cambio di chiave del server: spegni e riaccendi **Avvisi su questo dispositivo**.
 
-Dopo **Esci da tutti i dispositivi**, o un cambio o un recupero della password fatti da un altro dispositivo, questo browser deve accedere di nuovo: appena sei dentro, se qui gli avvisi li avevi accesi tu tornano a funzionare da soli, senza un'altra domanda del browser. Se entra un altro account, **Avvisi su questo dispositivo** è spento finché non lo accende lui.
+Dopo **Esci da tutti i dispositivi**, o un cambio o un recupero della password fatti da un altro dispositivo, questo browser deve accedere di nuovo: appena sei dentro, se qui gli avvisi li avevi accesi tu tornano a funzionare da soli, senza un'altra domanda del browser. Se entra un altro account, **Avvisi su questo dispositivo** è spento finché non lo accende lui, e da quel momento su questo browser non arrivano più gli avvisi dell'account di prima, anche se la sua sessione era finita da sola senza **Esci**.
 
 ### Widget sull'iPhone
 

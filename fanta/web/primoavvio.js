@@ -131,7 +131,7 @@ function paFine() {
       if (await Notification.requestPermission() !== "granted") throw new Error(t("pav.permesso_negato_abilita"));
       const { chiave } = await api("/api/push/chiave");
       const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
+      const sub = await iscrizioneMia(reg, chiave);   // mai quella di un altro account (#874, app.js)
       await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) });
       segnaAvvisiDi();                                   // l'iscrizione è di chi l'ha accesa (#804, app.js)
       avvisi.remove(); $("#pa-msg").innerHTML = `<div class="onb-verde">${t("onb.avvisi_attivi_questo")}</div>`;

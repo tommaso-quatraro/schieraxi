@@ -2725,7 +2725,7 @@ async function notificheWeb(dispositivi) {
   const accendi = async () => {
     if (await Notification.requestPermission() !== "granted") throw new Error(t("avv.permesso_negato_abilita"));
     const { chiave } = await api("/api/push/chiave");
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
+    sub = await iscrizioneMia(reg, chiave);              // mai quella di un altro account (#874)
     dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
     segnaAvvisiDi();                                       // l'iscrizione è di chi l'ha accesa (#804)
   };
@@ -3724,8 +3724,9 @@ function segnaAvvisiDaRimandare() {
   try { localStorage.setItem(AVVISI_DA_RIMANDARE, "1"); } catch { /* niente memoria */ }
 }
 // Di chi è l'iscrizione (#804): il numero dell'account che l'ha fatta, accanto a lei. Si rimanda solo se rientra lo stesso account;
-// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui. Il segno resta anche dopo un'uscita (non è
-// fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza account sul server l'iscrizione è sempre «mia».
+// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui, e il browser la toglie (lasciaAvvisiDiAltri,
+// #874). Il segno resta anche dopo un'uscita (non è fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza
+// account sul server l'iscrizione è sempre «mia».
 const AVVISI_DI = "avvisi-di";
 const numeroAccount = () => (stato.account && stato.account.id != null ? String(stato.account.id) : "");
 function segnaAvvisiDi() {
@@ -3744,6 +3745,27 @@ async function rimandaAvvisi() {
   if (!sub || !avvisiDiQuestoAccount()) { fatto(); return; }            // fatta da un altro account: non si rimanda (#804)
   try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
   catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
+}
+// Un'iscrizione fatta da un altro account non resta in questo browser (#874). Finché c'è, il server manda qui gli avvisi di
+// quell'account: la sua sessione può essere scaduta senza «Esci», e lì l'iscrizione resta. All'avvio, con dentro un account diverso
+// da quello che l'ha fatta (anche «-», un'iscrizione di prima che non è di nessuno), il browser la toglie: da lì il servizio delle
+// notifiche non la consegna più, e il server la cancella da sé al primo avviso che non arriva. Chi è dentro la riaccende con
+// un'iscrizione nuova, solo sua. Se non si sa di chi è (segno mancante, memoria che non risponde) resta com'è.
+async function lasciaAvvisiDiAltri() {
+  const n = numeroAccount();
+  let di = null;
+  try { di = localStorage.getItem(AVVISI_DI); } catch { /* niente memoria */ }
+  if (!n || di === null || di === n) return;
+  const sub = await iscrizionePushQui();
+  if (sub) try { await sub.unsubscribe(); } catch { /* resta: si riprova alla prossima apertura */ }
+}
+// L'iscrizione di chi accende gli avvisi (interruttore, primo avvio). Se il browser ne ha ancora una che non è di questo account
+// (non si è tolta all'avvio, o non si sa di chi è) prima la toglie: `subscribe` darebbe la stessa, con lo stesso indirizzo, e gli
+// avvisi dell'altro account continuerebbero ad arrivare qui (#874). Se non si toglie, niente iscrizione: «Non riesco ad attivare».
+async function iscrizioneMia(reg, chiave) {
+  const vecchia = await reg.pushManager.getSubscription();
+  if (vecchia && !avvisiDiQuestoAccount() && !(await vecchia.unsubscribe().catch(() => false))) throw new Error(t("avv.non_attivo"));
+  return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
 }
 
 // Impostazioni > Il tuo account > «Esci». Il cookie della sessione lo toglie solo il server: se la richiesta non riesce (rete giù,
@@ -4150,7 +4172,9 @@ try {                                                                           
 } catch { /* indirizzo strano */ }
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
-  rimandaAvvisi();                                       // dopo un nuovo accesso, o se l'ultima volta non era arrivata (#800)
+  // via l'iscrizione di un altro account (#874); poi quella di chi è dentro torna al server dopo un nuovo accesso, o se l'ultima
+  // volta non era arrivata (#800)
+  lasciaAvvisiDiAltri().then(rimandaAvvisi);
   Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
     let condivisa = null;
     try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }
