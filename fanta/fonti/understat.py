@@ -51,7 +51,8 @@ def dati_json(contenuto: bytes | str) -> dict:
         chiusura = pagina.lower().find("</title>", apertura.end()) if apertura else -1
         titolo = _pulito(pagina[apertura.end():chiusura], 80) if apertura and chiusura >= 0 else ""
         parti = [f"titolo «{titolo}»"] if titolo else []
-        if visibile := _pulito(_testo_visibile(testo[:TESTO_LETTO]), 120):
+        # accorciato prima di _pulito, che spezza in parole tutto ciò che riceve (2 milioni di caratteri per tenerne 120)
+        if visibile := _pulito(_testo_visibile(testo[:TESTO_LETTO]).lstrip()[:1000], 120):
             parti.append(f"testo «{visibile}»")
         raise RispostaNonDati("Understat ha risposto con una pagina web al posto dei dati" + (f" ({', '.join(parti)})" if parti else "")
                               + ": il sito è fermo o ha cambiato indirizzo")
