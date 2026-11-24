@@ -132,8 +132,9 @@ struct FormazioneWidget: Codable, Equatable {
         tuaScelta = try? c.decodeIfPresent(Bool.self, forKey: .tuaScelta)
     }
 
-    /// La riga del widget sulla schermata di blocco (`accessoryInline`), dalla forma più lunga: la stessa di Prossima giornata,
-    /// «3-4-3 · 72,7 punti» e, dove non entra, «3-4-3 · 72,7» (`ParoleWidget.moduloEPunti`). Prima «SchieraXI 3-4-3 · 72,7» (#819).
+    /// La riga del widget sulla schermata di blocco (`accessoryInline`), dalla forma più lunga: «3-4-3 · 72,7 punti» e, dove non
+    /// entra, «3-4-3 · 72,7» (`ParoleWidget.moduloEPunti`). Prima «SchieraXI 3-4-3 · 72,7» (#819). Prossima giornata, che aveva la
+    /// stessa riga, mostra il conto alla rovescia (`RiassuntoOggi.formeRigaInLineaConto`, #871).
     var formeInLinea: [String] { ParoleWidget.moduloEPunti(modulo, punti: puntiAttesi, fascia: nil) }
 }
 
