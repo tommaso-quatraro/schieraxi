@@ -199,11 +199,118 @@ final class AccessoUITests: XCTestCase {
 
     /// Chiude il foglio con il pulsante della sua barra (`titolo`): sotto c'è la barra delle Impostazioni con un altro «Chiudi».
     /// La chiusura si controlla con `siChiude`, la stessa prova di `restaAperto`: così ogni corsa mostra che vede un foglio che si chiude davvero.
-    private func chiudiFoglio(_ titolo: String, _ pulsante: String, segno: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+    /// `tap` serve solo al test che simula un tocco perso (`testUnToccoPersoSuAnnullaSiRitocca`).
+    private func chiudiFoglio(_ titolo: String, _ pulsante: String, segno: XCUIElement, file: StaticString = #filePath, line: UInt = #line,
+                              tap: ((XCUIElement) -> Void)? = nil) {
         let b = app.navigationBars[titolo].buttons[pulsante]
         XCTAssertTrue(b.waitForExistence(timeout: 10), "manca «\(pulsante)»", file: file, line: line)
-        b.tap()
+        if let tap { tap(b) } else { b.tap() }
         XCTAssertTrue(siChiude(segno, entro: 10), "il foglio non si chiude con «\(pulsante)»", file: file, line: line)
+    }
+
+    /// Il rimedio di #860: il primo tocco su «Annulla» si perde (non lo si manda all'app) e `chiudiFoglio` deve accorgersene e
+    /// ritoccare finché il foglio si chiude. Con un tocco solo questo test fallisce.
+    func testUnToccoPersoSuAnnullaSiRitocca() {
+        avvia("account")
+        attendi("Il tuo account")
+        let elimina = app.navigationBars["Elimina l'account"]
+        apriFoglio(app.buttons["account-elimina"], segno: elimina)
+        var tocchi = 0
+        chiudiFoglio("Elimina l'account", "Annulla", segno: elimina, tap: { pulsante in
+            tocchi += 1
+            if tocchi > 1 { pulsante.tap() }   // il primo tocco «si perde»
+        })
+        XCTAssertGreaterThanOrEqual(tocchi, 2, "un tocco perso e almeno uno arrivato")
+    }
+
+    // MARK: DIAGNOSI TEMPORANEA #860 (si toglie nel commit dopo: finisce sempre con il riassunto come errore)
+
+    /// Fili che tengono occupata la CPU del Mac fino a `fine`, come la diagnosi della #177 (il Mac di GitHub carico).
+    private func caricaLaCPU(fili: Int, fino fine: Date) {
+        for _ in 0..<fili {
+            Thread {
+                var conto = 0.0
+                while Date() < fine { conto += 1 }
+                _ = conto
+            }.start()
+        }
+    }
+
+    /// Apre un foglio senza far fallire il test: vero se il `segno` compare (al massimo 3 tocchi).
+    private func provaAdAprire(_ voce: XCUIElement, segno: XCUIElement) -> Bool {
+        guard voce.waitForExistence(timeout: 20) else { return false }
+        for _ in 0..<3 {
+            if voce.exists {
+                if !voce.isHittable { app.swipeUp() }
+                voce.tap()
+            }
+            if segno.waitForExistence(timeout: 10) { return true }
+        }
+        return false
+    }
+
+    /// Apre e chiude i quattro fogli dell'account fino a `fine`, un tocco sul pulsante della barra per chiudere. Per ogni chiusura
+    /// che non arriva entro 10 secondi: com'erano foglio e pulsante, e se un secondo o terzo tocco la fanno arrivare.
+    private func giriDiChiusura(fino fine: Date, nome: String) -> String {
+        let fogli: [(voce: XCUIElement, titolo: String, pulsante: String)] = [
+            (app.buttons["account-cambia-password"], "Cambia la password", "Annulla"),
+            (app.buttons["account-codice"], "Codice di recupero", "Annulla"),
+            (app.buttons.matching(NSPredicate(format: "label IN %@", ["Aggiungi un'email", "Gestisci l'email"])).firstMatch, "Email", "Chiudi"),
+            (app.buttons["account-elimina"], "Elimina l'account", "Annulla"),
+        ]
+        var prove = 0
+        var persi = 0
+        var nonAperti = 0
+        var giro = 0
+        var righe: [String] = []
+        while Date() < fine {
+            giro += 1
+            for f in fogli where Date() < fine {
+                let segno = app.navigationBars[f.titolo]
+                guard provaAdAprire(f.voce, segno: segno) else {
+                    nonAperti += 1
+                    righe.append("giro \(giro) \(f.titolo): non si apre")
+                    continue
+                }
+                let b = segno.buttons[f.pulsante]
+                guard b.waitForExistence(timeout: 10) else {
+                    righe.append("giro \(giro) \(f.titolo): manca «\(f.pulsante)»")
+                    continue
+                }
+                let inizio = Date()
+                b.tap()
+                prove += 1
+                if siChiude(segno, entro: 10) { continue }
+                persi += 1
+                let c = b.exists
+                let h = c && b.isHittable
+                let aperto = segno.exists
+                var esito = "MAI"
+                for n in 2...3 where esito == "MAI" {
+                    if b.exists && b.isHittable { b.tap() }
+                    if siChiude(segno, entro: 10) { esito = "chiuso al tocco \(n)" }
+                }
+                righe.append("giro \(giro) \(f.titolo): dopo \(Int(Date().timeIntervalSince(inizio))) s foglio \(aperto), pulsante \(c), toccabile \(h); \(esito)")
+                if esito == "MAI" {
+                    return "\(nome): FOGLIO MAI CHIUSO dopo \(prove) prove || " + righe.joined(separator: " || ")
+                }
+            }
+        }
+        return "\(nome): primo tocco senza chiusura \(persi) su \(prove), non aperti \(nonAperti), giri \(giro)"
+            + (righe.isEmpty ? "" : " || " + righe.joined(separator: " || "))
+    }
+
+    func testDiagnosiChiusuraDeiFogli() {
+        avvia("account", altri: ["-DEMO_ACCOUNT_CHE_CAMBIA", "1"])
+        attendi("Il tuo account")
+        let senza = giriDiChiusura(fino: Date().addingTimeInterval(150), nome: "senza carico")
+        // di nuovo dall'avvio: in demo i dati cambiano per 300 secondi dall'apertura
+        avvia("account", altri: ["-DEMO_ACCOUNT_CHE_CAMBIA", "1"])
+        attendi("Il tuo account")
+        let fine = Date().addingTimeInterval(240)
+        caricaLaCPU(fili: 6, fino: fine)
+        let sotto = giriDiChiusura(fino: fine, nome: "6 fili")
+        XCTFail("DIAGNOSI chiusura fogli #860: " + senza + " ### " + sotto)
     }
 
     /// Build 219: «Cambia password» si apriva e si chiudeva subito da solo. Con i dati dell'account che cambiano di continuo
