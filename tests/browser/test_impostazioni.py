@@ -1411,7 +1411,9 @@ def server_giu(web, modo="rete") -> list:
 
 
 def riga_di_stato(web) -> str:
-    return principale(web).locator(".stato-pagina").first.inner_text()
+    """Il testo della riga di stato come si vede: vuoto se la riga è nascosta (`inner_text` darebbe anche il testo nascosto)."""
+    riga = principale(web).locator(".stato-pagina").first
+    return riga.inner_text() if riga.is_visible() else ""
 
 
 def test_lo_stato_d_avvio_si_rilegge_quando_torna_la_rete(web):
@@ -1429,13 +1431,18 @@ def test_lo_stato_d_avvio_si_rilegge_quando_torna_la_rete(web):
 
 
 def test_lo_stato_d_avvio_si_rilegge_al_primo_dato_fresco(web):
-    """Aperta mentre il server riparte (502 del proxy: per il browser la rete c'è, e non dice niente), la riga di stato dice «Server
-    non raggiungibile». Alla prima risposta buona del server (qui «Riprova» di Giornate, a server tornato) lo stato si rilegge: la
-    riga torna quella di sempre e Impostazioni ha «La mia squadra» (#801). Prima restava «Server non raggiungibile» fino a ricaricare."""
+    """Aperta mentre il server riparte (502 del proxy: per il browser la rete c'è, e non dice niente), lo stato d'avvio non si legge.
+    Giornate è l'errore con «Riprova», che dice già che il server non risponde: la riga di stato «Server non raggiungibile» c'è ma non
+    si vede, per non dirlo due volte (#864). Alla prima risposta buona del server (qui «Riprova», a server tornato) lo stato si
+    rilegge: la riga torna quella di sempre e Impostazioni ha «La mia squadra» (#801). Prima restava «Server non raggiungibile» fino a
+    ricaricare."""
     solo(web, "prima")
     giu = server_giu(web, "502")
     web.apri("/?vista=giornate")
-    assert "Server non raggiungibile" in riga_di_stato(web)
+    assert web.errori_mostrati() == ["Il server non risponde: riprova fra poco"], web.errori_mostrati()
+    offline = principale(web).get_by_text("Server non raggiungibile")
+    assert offline.count() == 1, "la prova vuole l'avvio senza lo stato"
+    assert not offline.is_visible() and riga_di_stato(web) == "", "sopra l'errore con «Riprova» la riga non ripete il guasto"
     giu.clear()
     tocca(web, principale(web).get_by_role("button", name="Riprova"))
     web.pagina.wait_for_function(

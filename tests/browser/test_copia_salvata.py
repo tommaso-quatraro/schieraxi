@@ -98,6 +98,18 @@ def test_con_il_server_giu_giornate_lo_dice_una_volta(web, guasto, larghezza):
     assert web.pagina.locator(NOTA).is_visible()
 
 
+@pytest.mark.parametrize("larghezza", [390, 1440])
+def test_se_solo_lo_stato_non_arriva_la_riga_di_stato_lo_dice(web, larghezza):
+    """La riga «Server non raggiungibile» si toglie solo quando la pagina dice già il guasto. Se non arriva solo lo stato d'avvio
+    (/api/stato) e Giornate arriva con i dati nuovi, senza nota né errore, la riga è l'unico posto che lo dice: si vede."""
+    _solo_prima(web)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/stato", lambda r: r.abort("connectionrefused"))
+    web.apri(GIORNATE, larghezza=larghezza)
+    assert web.pagina.locator(NOTA).count() == 0 and web.errori_mostrati() == [], "i dati di Giornate arrivano"
+    assert "sbaglia in media" in web.testo_principale(), web.testo_principale()[:300]
+    assert web.pagina.locator("main").get_by_text("Server non raggiungibile").is_visible()
+
+
 @pytest.mark.parametrize("vista", ["/", GIORNATE])
 def test_senza_copia_e_con_il_server_giu_l_errore_si_dice_una_volta(web, vista):
     """Senza una copia salvata e con il server giù la pagina è l'errore con «Riprova» («Il server non risponde: riprova fra
