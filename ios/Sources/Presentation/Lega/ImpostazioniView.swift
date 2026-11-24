@@ -35,6 +35,7 @@ struct ImpostazioniView: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @EnvironmentObject private var nav: Navigazione
     @Environment(\.funzioni) private var funzioni
+    @Environment(\.dynamicTypeSize) private var dimensione
 
     init(vm: LegaViewModel) {
         self.vm = vm
@@ -73,6 +74,13 @@ struct ImpostazioniView: View {
                 // arrivano dopo, `demoInFondo` da solo restava in cima)
                 .demoScorriA("imp-informazioni", proxy: proxy, schermate: ["impostazioni"], inFondo: true, ancora: .bottom,
                              pronto: vm.squadre.dato != nil)
+                // fotografia `impostazioni-aspetto` con il testo grande (#857): `portaInVista` mette a metà schermo la prima riga di
+                // Aspetto, che con il testo massimo è più alta di mezzo schermo, e il titolo «Aspetto» restava sopra, sotto l'ora e
+                // la fascia. Solo per la foto, dopo `portaInVista` e con le righe della lega arrivate: in cima l'ultima riga di La
+                // mia lega, sotto il titolo «Aspetto» e il Tema. Con il testo normale la foto resta com'è.
+                .demoScorriA(ultimaRigaLega, proxy: proxy,
+                             schermate: TitoloPagina.barraSenzaTitolo(dimensione) ? ["impostazioni-aspetto"] : [],
+                             pronto: vm.squadre.dato != nil)
                 .refreshable {
                     await vm.carica()
                     await avvisi.carica()
@@ -94,10 +102,20 @@ struct ImpostazioniView: View {
         return utente.nome
     }
 
+    /// Le righe di La mia lega (`VociImpostazioni.lega`).
+    private var vociLega: [VoceImpostazioni] {
+        VociImpostazioni.lega(squadre: vm.squadre.dato ?? [], squadreAltrui: funzioni.acceso(Funzione.squadreAltrui))
+    }
+
+    /// L'ancora dell'ultima riga di La mia lega: la foto di Aspetto con il testo grande la porta in cima.
+    private var ultimaRigaLega: String {
+        vociLega.last.map { "imp-\($0.id)" } ?? ParteImpostazioni.aspetto.ancora
+    }
+
     /// La mia lega, con le righe di `VociImpostazioni.lega`.
     private var sezioneLega: some View {
         Section(titolo: Catalogo.Imp.lega) {
-            ForEach(VociImpostazioni.lega(squadre: vm.squadre.dato ?? [], squadreAltrui: funzioni.acceso(Funzione.squadreAltrui))) { voce in
+            ForEach(vociLega) { voce in
                 RigaVoceImpostazioni(voce: voce).id("imp-\(voce.id)")
             }
         }
