@@ -13,7 +13,7 @@ import SwiftUI
 /// Va solo sulle pagine con `Sfondo()` dietro la lista, e fuori dalla striscia dei dati salvati (`avvisoDatiSalvati`), così la
 /// fascia è alta quanto l'ora e la barra, non di più.
 private struct BordoSottoLaBarraVuota: ViewModifier {
-    var misurata: ((CGRect) -> Void)?
+    var misurata: ((CGRect, CGFloat) -> Void)?
     @Environment(\.dynamicTypeSize) private var dimensione
     /// L'altezza della zona sopra la parte sicura, dall'alto della finestra: l'ora e la barra. 0 finché non è misurata.
     @State private var fondoBarra: CGFloat = 0
@@ -57,18 +57,23 @@ private struct BordoSottoLaBarraVuota: ViewModifier {
 /// la vede.
 private struct FasciaSottoLaBarra: View {
     let altezza: CGFloat
-    var misurata: ((CGRect) -> Void)?
+    var misurata: ((CGRect, CGFloat) -> Void)?
+
+    /// Fin dove la fascia è piena, in proporzione alla sua altezza.
+    private let piena: CGFloat = 0.55
 
     var body: some View {
         Sfondo()
             .frame(height: altezza, alignment: .top)
             .clipped()
             .mask {
-                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.55),
+                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: piena),
                                        .init(color: .clear, location: 1)],
                                startPoint: .top, endPoint: .bottom)
             }
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { misurata?($0) }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { riquadro in
+                misurata?(riquadro, riquadro.minY + riquadro.height * piena)
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .ignoresSafeArea()
             .allowsHitTesting(false)
@@ -79,8 +84,9 @@ private struct FasciaSottoLaBarra: View {
 extension View {
     /// Con il testo grande, su iOS 26, i contenuti che scorrono sotto la barra vuota sfumano nello sfondo invece di passare
     /// nitidi sotto l'ora (#848). Per le pagine in cima a una scheda con `Sfondo()` dietro; vedi `BordoSottoLaBarraVuota`.
-    /// `misurata`: per i test, riceve il riquadro della fascia (nello spazio `.global`) quando la fascia c'è.
-    func bordoSottoLaBarraVuota(misurata: ((CGRect) -> Void)? = nil) -> some View {
+    /// `misurata`: per i test, quando la fascia c'è riceve il suo riquadro e dove finisce la sua parte piena (nello spazio
+    /// `.global`).
+    func bordoSottoLaBarraVuota(misurata: ((CGRect, CGFloat) -> Void)? = nil) -> some View {
         modifier(BordoSottoLaBarraVuota(misurata: misurata))
     }
 }
