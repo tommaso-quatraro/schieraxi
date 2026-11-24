@@ -338,7 +338,9 @@ def test_riepilogo_mostra_le_righe_chiudifoglio(tmp_path):
 
 
 @serve_bash
-@pytest.mark.parametrize("log", [None, "", "nessun tocco ripetuto\n", "    t =     3.21s chiudiFoglio: 2 tocchi\n"])
+@pytest.mark.parametrize("log", [None, "", "nessun tocco ripetuto\n", "    t =     3.21s chiudiFoglio: 2 tocchi\n",
+                                 # la riga del test che simula il tocco perso (#869) c'è in ogni corsa: non è un tocco ripetuto vero
+                                 "chiudiFoglio (prova voluta): 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)\n"])
 def test_riepilogo_senza_righe_non_scrive_e_non_fallisce(tmp_path, log):
     testo, codice, uscita = _esegui_riepilogo(tmp_path, log)
     assert codice == 0, uscita
