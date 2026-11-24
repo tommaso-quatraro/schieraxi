@@ -17,23 +17,26 @@ struct SquadreComeLaWebTests {
 
     // MARK: parole della pagina
 
-    @Test("Titolo della pagina: «Squadre e rose»; senza le rose degli altri «La mia squadra e rosa», come il menu")
+    @Test("Titolo della pagina: «Le altre squadre», come la riga di Impostazioni e la web (#863)")
     func titolo() throws {
-        #expect(ParoleSquadre.titolo(squadreAltrui: true) == Catalogo.Lega.voceSquadre)
-        #expect(ParoleSquadre.titolo(squadreAltrui: false) == Catalogo.Lega.voceMiasquadra)
+        #expect(ParoleSquadre.altreSquadre == Catalogo.Imp.altreSquadre)
     }
 
-    @Test("La carta «La mia squadra» e l'elenco: stesse frasi della web")
+    @Test("La mia squadra, la sua scelta e «Non è la tua squadra?»: stesse frasi della web")
     func carta() throws {
         #expect(ParoleSquadre.miaSquadra == Catalogo.Lega.miaSquadra)
         #expect(ParoleSquadre.stemmaEMaglia == Catalogo.Lega.stemmaMaglia)
-        #expect(ParoleSquadre.vediLaRosa == Catalogo.Lega.vediRosa)
         #expect(ParoleSquadre.nonLaTua == Catalogo.Lega.nonTuaSquadra)
         #expect(ParoleSquadre.scegliLaTua == Catalogo.Lega.scegliQualeDelle)
         #expect(ParoleSquadre.tuaSquadra == Catalogo.Lega.tuaSquadra)
-        #expect(ParoleSquadre.toccaUnaSquadra == Catalogo.Lega.toccaUnaSquadra)
         #expect(ParoleSquadre.importaPrima == Catalogo.Lega.importaPrimaRose)
-        #expect(ParoleSquadre.chiudi == Catalogo.Shell.chiudi)
+    }
+
+    @Test("«Le altre squadre» senza altre squadre: con la sola mia «lega.solo_la_tua», senza rose «lega.importa_prima_rose» (#863)")
+    func senzaAltre() {
+        let mia = SquadraLega(nome: "Nuvola Ovest", mia: true, giocatori: 25, creditiResidui: nil, immagini: nil)
+        #expect(ParoleSquadre.senzaAltre([mia]) == Catalogo.Lega.soloLaTua)
+        #expect(ParoleSquadre.senzaAltre([]) == Catalogo.Lega.importaPrimaRose)
     }
 
     @Test("«24 giocatori · 12 crediti», con il singolare e senza i crediti se il server non li dà")

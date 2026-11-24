@@ -18,6 +18,7 @@ lega.scegli_quale_delle
 lega.tua_squadra
 lega.tocca_una_squadra
 lega.importa_prima_rose
+lega.solo_la_tua
 lega.usa_come_stemma
 lega.usa_come_maglia
 lega.indirizzo_web

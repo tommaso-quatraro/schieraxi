@@ -22,6 +22,10 @@ enum ParoleSquadre {
     static let importaPrima = Catalogo.Lega.importaPrimaRose
     static let chiudi = "Chiudi"
 
+    /// Da scrivere (#863).
+    static let altreSquadre = ""
+    static func senzaAltre(_ squadre: [SquadraLega]) -> String { "" }
+
     /// «24 giocatori · 12 crediti»; senza crediti (il server non li ha) solo i giocatori.
     static func riepilogo(giocatori: Int?, crediti: Double?) -> String {
         let quanti = Formato.giocatori(giocatori ?? 0)

@@ -7,6 +7,8 @@ enum PaginaImpostazioni: Hashable {
     /// La mia lega: Aggiorna le rose, l'elenco delle squadre (Le altre squadre, o la scelta della propria), la rosa di una squadra
     /// (La mia squadra, con stemma e maglia), Regole e scadenza, la nuova stagione.
     case importa, squadre, rosa(String), regole, stagione
+    /// Da scrivere (#863).
+    case sceltaSquadra
     /// Le righe che aprono una pagina loro: Il tuo account, Informazioni, Gestione (solo per chi gestisce il server).
     case account, informazioni, gestione
     /// Pagine aperte da un'altra pagina: stato dei dati (Gestione), crediti e novità (Informazioni), cambio di server.
@@ -111,6 +113,9 @@ final class LegaViewModel: ViewModelBase {
 
     /// La propria squadra, se scelta.
     var miaSquadra: String? { squadre.dato?.first { $0.mia == true }?.nome }
+
+    /// Da scrivere (#863).
+    func scegliMiaSquadra(_ nome: String) async -> String? { "da scrivere" }
 
     /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (se cambia la consigliata), in italiano semplice.
     static let titoloControlli = "Controllo con l'app chiusa"

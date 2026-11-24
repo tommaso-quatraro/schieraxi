@@ -34,6 +34,9 @@ final class GiornateViewModel: ViewModelBase {
     /// La pagina pronta da mostrare (nil finché non c'è una risposta, anche dalla copia del telefono).
     var pagina: PaginaGiornate? { caricatore.dato.map(PaginaGiornate.init) }
 
+    /// La riga sotto il titolo (#863): da scrivere.
+    var rigaStato: RigaStato? { nil }
+
     /// Rilegge le giornate. Solo una risposta fresca del server chiude la richiesta di «Com'è andata», come la web: la copia del
     /// telefono, o una lettura non riuscita, possono essere di prima della giornata chiesta.
     func carica() async {

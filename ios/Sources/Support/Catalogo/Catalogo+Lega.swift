@@ -45,6 +45,9 @@ extension Catalogo {
         /// `lega.importa_prima_rose`
         static let importaPrimaRose = "Importa prima le rose da «Aggiorna le rose»."
 
+        /// `lega.solo_la_tua`
+        static let soloLaTua = "Per ora nella lega c'è solo la tua squadra: le rose delle altre le aggiungi in Impostazioni › Aggiorna le rose."
+
         /// `lega.usa_come_stemma`
         static let usaComeStemma = "Usa come stemma"
 
