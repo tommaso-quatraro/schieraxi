@@ -1,11 +1,14 @@
 {
   "titolo": "Scheda del giocatore: le statistiche avanzate dicono fino a che giorno arrivano",
   "voci": [
-    "Scheda del giocatore, «Tutti i numeri»: sotto «Statistiche avanzate» e in fondo alla riga di «Gol e assist rispetto alle occasioni» c'è il giorno fino a cui arrivano quei numeri, per esempio «Dati fino al 9/11.». Se la loro fonte si ferma, si vede che i numeri sono di quel giorno. Sulla web e sull'iPhone.",
-    "Stato dei dati, per chi gestisce il server: quando il sito delle statistiche avanzate risponde con una pagina al posto dei dati, l'errore riporta la frase scritta sulla pagina anche se prima c'è un disegno grande. Prima diceva solo il nome del sito."
+    "Scheda del giocatore, «Tutti i numeri»: le statistiche avanzate dicono fino a che giorno arrivano («Dati fino al 9/11.»), sulla web e sull'iPhone.",
+    "«Gol e assist rispetto alle occasioni» conta solo le partite fino a quel giorno: con la fonte ferma non cala più da solo.",
+    "Stato dei dati: se il sito delle statistiche avanzate risponde con una pagina, l'errore riporta la frase scritta sulla pagina."
   ],
   "tecnico": [
     "GET /api/giocatore/{id}: campo nuovo e facoltativo avanzate.dati_fino_al («AAAA-MM-GG»), il giorno dell'ultima partita della stagione con righe in prestazioni (di qualunque giocatore), null se non ce n'è. Nessun campo tolto; calcolo del fantavoto atteso invariato. Testo nuovo mercato.dati_fino_al (web e iPhone).",
-    "fonti/understat.dati_json: il testo visibile di una pagina web al posto dei dati si cerca nei primi 2 milioni di caratteri (TESTO_LETTO) invece che nei primi 20.000: un disegno più lungo di 20.000 caratteri prima della frase la lasciava fuori. Il titolo si cerca ancora nei primi 20.000 (PAGINA_LETTA). Vale anche per la sentinella di Understat."
+    "rendimento.sovra_rendimento divide per scheda.con_voto_fino_al (partite con voto della fonte voti della lega, la cui partita in calendario è entro dati_fino_al) invece che per stagione.con_voto, che continua a crescere con i voti di Fantacalcio.it.",
+    "fonti/understat.dati_json: il testo visibile di una pagina web al posto dei dati si cerca nei primi 2 milioni di caratteri (TESTO_LETTO) invece che nei primi 20.000: un disegno più lungo di 20.000 caratteri prima della frase la lasciava fuori. Il titolo si cerca ancora nei primi 20.000 (PAGINA_LETTA); il testo trovato si accorcia a 1.000 caratteri prima di spezzarlo in parole. Vale anche per la sentinella di Understat.",
+    "iPhone, demo: la foto giocatore-fondo si ferma sul blocco «Statistiche avanzate» (TuttiINumeri.idAvanzate), così col testo grande si vede la riga della data."
   ]
 }
