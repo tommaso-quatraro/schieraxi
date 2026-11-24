@@ -1,30 +1,28 @@
 import Foundation
 
-/// Le parole di «Squadre e rose» e della rosa di una squadra, uguali alla web (issue #441): vengono dal catalogo comune (chiavi
-/// `lega.*` e `scambio.*`, file generati `Catalogo+Lega.swift` e `Catalogo+Scambio.swift`). Si dice «maglia», mai «divisa». I testi
-/// che la web non ha (le spiegazioni per caricare un'immagine dal telefono) restano qui e usano le stesse parole.
+/// Le parole di «Le altre squadre», della scelta della mia squadra e della rosa di una squadra, uguali alla web (issue #441, #863):
+/// vengono dal catalogo comune (chiavi `lega.*`, `imp.*` e `scambio.*`, file generati `Catalogo+Lega.swift`, `Catalogo+Imp.swift` e
+/// `Catalogo+Scambio.swift`). Si dice «maglia», mai «divisa». I testi che la web non ha (le spiegazioni per caricare un'immagine dal
+/// telefono) restano qui e usano le stesse parole.
 enum ParoleSquadre {
-    // MARK: pagina Squadre e rose
+    // MARK: Le altre squadre e la mia squadra
 
-    /// Il titolo della pagina: come la voce del menu (`lega.voce_squadre`), che senza le rose degli altri diventa `lega.voce_miasquadra`.
-    static func titolo(squadreAltrui: Bool) -> String {
-        squadreAltrui ? Catalogo.Lega.voceSquadre : Catalogo.Lega.voceMiasquadra
+    /// Il titolo dell'elenco: come la riga di Impostazioni e la pagina della web (`imp.altre_squadre`, #863).
+    static let altreSquadre = Catalogo.Imp.altreSquadre
+
+    /// «Le altre squadre» senza altre squadre, come `vistaAltreSquadre` della web: con la sola mia «lega.solo_la_tua», senza rose
+    /// «lega.importa_prima_rose».
+    static func senzaAltre(_ squadre: [SquadraLega]) -> String {
+        squadre.isEmpty ? importaPrima : Catalogo.Lega.soloLaTua
     }
 
     static let miaSquadra = Catalogo.Lega.miaSquadra
     static let stemmaEMaglia = Catalogo.Lega.stemmaMaglia
-    static let vediLaRosa = Catalogo.Lega.vediRosa
     static let nonLaTua = Catalogo.Lega.nonTuaSquadra
     static let scegliLaTua = Catalogo.Lega.scegliQualeDelle
     /// Il nome del selettore per VoiceOver (`lega.tua_squadra`).
     static let tuaSquadra = Catalogo.Lega.tuaSquadra
-    static let toccaUnaSquadra = Catalogo.Lega.toccaUnaSquadra
     static let importaPrima = Catalogo.Lega.importaPrimaRose
-    static let chiudi = "Chiudi"
-
-    /// Da scrivere (#863).
-    static let altreSquadre = ""
-    static func senzaAltre(_ squadre: [SquadraLega]) -> String { "" }
 
     /// «24 giocatori · 12 crediti»; senza crediti (il server non li ha) solo i giocatori.
     static func riepilogo(giocatori: Int?, crediti: Double?) -> String {

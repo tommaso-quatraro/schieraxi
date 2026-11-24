@@ -132,7 +132,8 @@ struct ContenitoreApp: View {
         case .importaRose:
             nav.sezione = modello.lega.apri([.importa])
         case .squadre(let nome):
-            nav.sezione = modello.lega.apri(nome.map { [PaginaImpostazioni.rosa($0)] } ?? [.squadre])
+            // senza il nome il passo «La tua squadra»: la sua scelta, come «La mia squadra» non ancora scelta (#863)
+            nav.sezione = modello.lega.apri(nome.map { [PaginaImpostazioni.rosa($0)] } ?? [.sceltaSquadra])
         case .impostazioni:
             nav.sezione = .impostazioni
         case .collegaWidget:

@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// La pagina Giornate (#673, passo 2), seconda nella barra come sulla web (#671): in cima una riga sola sulla precisione con
-/// «Dettagli», poi una riga per giornata finita, dalla più recente, con i punti fatti e attesi della formazione che conta. Sul telefono
-/// gli 11 si aprono sotto la riga (anche più giornate insieme); sull'iPad l'elenco sta a sinistra e la giornata scelta a destra, con la
-/// più recente già aperta. Testi dal catalogo comune, numeri e frasi da `GET /api/diario` (`PaginaGiornate`).
+/// La pagina Giornate (#673, passo 2), seconda nella barra come sulla web (#671): sotto il titolo la riga della web con giornata,
+/// mia squadra e data dei dati (#863), una riga sola sulla precisione con «Dettagli», poi una riga per giornata finita, dalla più
+/// recente, con i punti fatti e attesi della formazione che conta. Sul telefono gli 11 si aprono sotto la riga (anche più giornate
+/// insieme); sull'iPad l'elenco sta a sinistra e la giornata scelta a destra, con la più recente già aperta. Testi dal catalogo
+/// comune, numeri e frasi da `GET /api/diario` (`PaginaGiornate`) e `GET /api/stato` (`RigaStato`).
 struct GiornateView: View {
     @ObservedObject var vm: GiornateViewModel
     @EnvironmentObject private var nav: Navigazione
@@ -31,7 +32,7 @@ struct GiornateView: View {
     private var pila: some View {
         NavigationStack {
             List {
-                TitoloNellaPagina()
+                capo
                 if let p = vm.pagina {
                     testa(p)
                     if p.righe.isEmpty {
@@ -78,7 +79,7 @@ struct GiornateView: View {
     private var colonne: some View {
         NavigationSplitView {
             List(selection: sceltaIPad) {
-                TitoloNellaPagina()
+                capo
                 if let p = vm.pagina {
                     testa(p)
                     if p.righe.isEmpty {
@@ -167,6 +168,14 @@ struct GiornateView: View {
                 .font(.subheadline).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// In cima alla lista il titolo intero (solo con il testo grande) e sotto la riga della web: giornata, mia squadra e data dei
+    /// dati (#863).
+    @ViewBuilder
+    private var capo: some View {
+        TitoloNellaPagina()
+        if let riga = vm.rigaStato { RigaStatoView(riga: riga) }
     }
 
     /// «Com'è andata» della Formazione: la giornata chiesta passa alla pagina, che la apre appena c'è.

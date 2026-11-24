@@ -148,12 +148,13 @@ struct GiocatoreCorpo: View {
 
     // MARK: ultimi voti, «Sostituisci», tutti i numeri
 
-    /// Le ultime cinque giornate in pallini, come la web; mentre arriva la scheda del server «Carico…», se non arriva il motivo.
+    /// Le ultime cinque giornate in pallini, come la web, a capo se non ci stanno; mentre arriva la scheda del server «Carico…», se
+    /// non arriva il motivo.
     private var cartaUltimiVoti: some View {
         Carta(Catalogo.Formazione.ultimiVoti) {
             if let s = vm.caricatore.dato {
                 if let forma = Forma.calcola(s.voti ?? []) {
-                    HStack(spacing: 6) {
+                    FilaPillole(spazio: 6) {
                         ForEach(forma.ultime) { pallino($0) }
                     }
                 } else {
@@ -174,14 +175,17 @@ struct GiocatoreCorpo: View {
         }
     }
 
+    /// Un voto passato in un pallino neutro, come la web (`.pallini i`) e il vocabolario comune: mai verde, arancio o rosso per
+    /// valore (#863). Con il testo grande il pallino si allarga in una pillola: il numero non si taglia.
     private func pallino(_ v: VotoGiornata) -> some View {
-        let colore: Color = v.fv == nil ? Color.testoSecondario : (v.fv ?? 0) >= 7 ? Color.verde : (v.fv ?? 0) >= 6 ? Color.attenzione : Color.malus
         let etichetta = v.fv.map { Catalogo.Mercato.fantavoto + " " + Formato.decimali($0) } ?? Catalogo.Mercato.sv
         return Text(v.fv.map { Formato.decimali($0) } ?? Catalogo.Mercato.sv)
             .font(.caption.bold()).monospacedDigit()
-            .foregroundStyle(Color.testoSuAccento)
-            .frame(minWidth: 40, minHeight: 32)
-            .background(colore, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 6)
+            .frame(minWidth: 40, minHeight: 40)
+            .background(Color.primary.opacity(0.08), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.testoSecondario.opacity(0.35), lineWidth: 1))
             .accessibilityLabel("\(TempiLega.serieA(v.giornata)): \(etichetta)")
     }
 
