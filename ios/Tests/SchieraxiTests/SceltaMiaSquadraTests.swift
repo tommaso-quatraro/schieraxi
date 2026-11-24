@@ -10,10 +10,10 @@ import Testing
 @Suite("La mia squadra: la scelta come la web (#863)")
 struct SceltaMiaSquadraTests {
     /// Un server con le squadre della fixture; `PUT /api/mia-squadra` risponde bene o, con `rifiuto`, con quell'errore.
-    private static func server(rifiuto: String? = nil) -> ServerDiProva {
+    private static func server(rifiuto: ErroreApi? = nil) -> ServerDiProva {
         ServerDiProva { metodo, percorso, _ in
             if metodo == "PUT", percorso == "/api/mia-squadra" {
-                if let rifiuto { throw ErroreApi.server(rifiuto) }
+                if let rifiuto { throw rifiuto }
                 return Data("{}".utf8)
             }
             if percorso == "/api/squadre" { return try Fixture.dati("squadre") }
@@ -53,13 +53,19 @@ struct SceltaMiaSquadraTests {
         }
     }
 
-    @Test("Il server rifiuta: il suo motivo, la pagina resta quella e le squadre non si rileggono")
+    /// Revisione della #868: una squadra rinominata dal PC, scelta sull'iPhone, dà 412 («Ho ricaricato la versione nuova…»); senza
+    /// rileggere le squadre elenco e rosa restavano vecchi e riprovando arrivava «Squadra non trovata». Come faceva prima
+    /// `SquadreViewModel.impostaMia`, le squadre si rileggono anche quando il salvataggio non riesce.
+    @Test("Il server rifiuta (anche con 412): il suo motivo, la pagina resta quella e le squadre si rileggono")
     func rifiuto() async throws {
-        let s = Self.server(rifiuto: "Squadra non trovata")
-        let lega = LegaViewModel(server: s)
-        lega.percorso = [.rosa("Nuvola Ovest")]
-        #expect(await lega.scegliMiaSquadra("Borgo Alto") == "Squadra non trovata")
-        #expect(lega.percorso == [.rosa("Nuvola Ovest")])
-        #expect(s.quante("GET /api/squadre") == 0)
+        for (errore, frase) in [(ErroreApi.server("Squadra non trovata"), "Squadra non trovata"),
+                                (ErroreApi.conflitto, ErroreApi.conflitto.localizedDescription)] {
+            let s = Self.server(rifiuto: errore)
+            let lega = LegaViewModel(server: s)
+            lega.percorso = [.rosa("Nuvola Ovest")]
+            #expect(await lega.scegliMiaSquadra("Borgo Alto") == frase)
+            #expect(lega.percorso == [.rosa("Nuvola Ovest")])
+            #expect(s.quante("GET /api/squadre") == 1, "le squadre si rileggono: elenco e selettore con i nomi di adesso")
+        }
     }
 }
