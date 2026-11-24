@@ -322,19 +322,23 @@ def _esegui_riepilogo(tmp_path, log: str | None) -> tuple[str, int, str]:
 
 @serve_bash
 def test_riepilogo_mostra_le_righe_chiudifoglio(tmp_path):
+    # la riga vera è quella di `print`, a inizio riga; l'attività di XCTest con lo stesso testo esce come «t = …s <nome>»
+    # e non va contata due volte. Un carattere nullo nel registro non deve far trattare il file come binario da grep.
     log = ("Test Case '-[SchieraxiUITests.AccessoUITests testA]' started.\n"
            "chiudiFoglio: 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)\n"
-           "altra riga\n"
+           "    t =    12.34s chiudiFoglio: 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)\n"
+           "altra riga \x00 con un carattere nullo\n"
            "chiudiFoglio: 1 tocchi, chiuso dopo 14 s («Chiudi» di «Account»)\n")
     testo, codice, uscita = _esegui_riepilogo(tmp_path, log)
     assert codice == 0, uscita
     assert "chiudiFoglio: 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)" in testo
     assert "chiudiFoglio: 1 tocchi, chiuso dopo 14 s («Chiudi» di «Account»)" in testo
-    assert "altra riga" not in testo and "Test Case" not in testo
+    assert testo.count("chiudiFoglio:") == 2, testo
+    assert "altra riga" not in testo and "Test Case" not in testo and "t =" not in testo
 
 
 @serve_bash
-@pytest.mark.parametrize("log", [None, "", "nessun tocco ripetuto\n"])
+@pytest.mark.parametrize("log", [None, "", "nessun tocco ripetuto\n", "    t =     3.21s chiudiFoglio: 2 tocchi\n"])
 def test_riepilogo_senza_righe_non_scrive_e_non_fallisce(tmp_path, log):
     testo, codice, uscita = _esegui_riepilogo(tmp_path, log)
     assert codice == 0, uscita
