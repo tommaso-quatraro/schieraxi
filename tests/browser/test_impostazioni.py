@@ -1068,18 +1068,25 @@ def test_le_ore_tranquille_rifiutate_dal_server_tornano_come_erano(web):
 # NOTIFICHE_FINTE, ma l'iscrizione sta in localStorage (la web non tocca quella chiave), così resta dopo una ricarica, e c'è già
 # alla prima pagina della scheda (scritta una volta sola: dopo resta ciò che fa l'app). `__DI__`: il numero dell'account che l'ha
 # fatta, come lo ricorda la web (`avvisi-di`, #804); `__INIZIALE__` vuoto: nessuna iscrizione all'inizio.
+# Come nel browser vero, `subscribe` con un'iscrizione già presente dà quella (stesso indirizzo); dopo `unsubscribe` ne nasce una
+# nuova, con un indirizzo nuovo (ENDPOINT la prima, poi ENDPOINT-2, ENDPOINT-3...).
 ENDPOINT = "https://push.example/prova"
 ISCRIZIONE_GIA_QUI = """(() => {
-  const CHIAVE = '__iscrizione-di-prova', ep = () => localStorage.getItem(CHIAVE);
+  const CHIAVE = '__iscrizione-di-prova', FATTE = '__iscrizioni-fatte', ep = () => localStorage.getItem(CHIAVE);
   if (!localStorage.getItem('__iscrizione-iniziata')) {
     localStorage.setItem('__iscrizione-iniziata', '1');
-    if (__INIZIALE__) localStorage.setItem(CHIAVE, __INIZIALE__);
+    if (__INIZIALE__) { localStorage.setItem(CHIAVE, __INIZIALE__); localStorage.setItem(FATTE, '1'); }
     if (__DI__) localStorage.setItem('avvisi-di', __DI__);
   }
   const sub = () => ep() ? { endpoint: ep(), toJSON: () => ({ endpoint: ep(), keys: { p256dh: 'a', auth: 'b' } }),
     unsubscribe: async () => { localStorage.removeItem(CHIAVE); return true; } } : null;
+  const nuova = () => {
+    const n = Number(localStorage.getItem(FATTE) || '0') + 1;
+    localStorage.setItem(FATTE, String(n));
+    localStorage.setItem(CHIAVE, n === 1 ? ENDPOINT : ENDPOINT + '-' + n);
+  };
   const reg = { active: {}, pushManager: { getSubscription: async () => sub(),
-    subscribe: async () => { localStorage.setItem(CHIAVE, ENDPOINT); return sub(); } } };
+    subscribe: async () => { if (!ep()) nuova(); return sub(); } } };
   ServiceWorkerContainer.prototype.getRegistration = async () => reg;
   Object.defineProperty(ServiceWorkerContainer.prototype, 'ready', { get: () => Promise.resolve(reg) });
   Notification.requestPermission = async () => 'granted';
@@ -1225,6 +1232,69 @@ def test_l_iscrizione_di_un_altro_account_non_si_rimanda(web):
     web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
     web.apri("/?vista=impostazioni")
     assert interruttore_qui(web).is_checked() and len(iscritte) == 1
+
+
+PRIMO = {"multiutente": True, "utente": {**UTENTE["utente"], "id": 12, "nome_utente": "primo", "nome_visualizzato": "Primo di prova"}}
+
+
+def server_con_due_account(web) -> tuple[list, dict]:
+    """Prima di `apri`: il server con gli account, per finta. Chi è dentro con la sessione di questo browser (`dentro[0]`: "primo",
+    l'account 12; None, sessione scaduta; "secondo", l'account 7 di UTENTE) e le iscrizioni agli avvisi che il server tiene per
+    ogni account (indirizzi): gli avvisi di un account arrivano a un browser se la sua iscrizione è fra quelle dell'account.
+    «Accedi» fa entrare il secondo."""
+    dentro = ["primo"]
+    iscrizioni = {12: set(), 7: set()}
+    chi = {"primo": PRIMO, "secondo": UTENTE}
+
+    def me(route):
+        json_200(route, chi[dentro[0]]) if dentro[0] else json_200(route, SENZA_SESSIONE, 401)
+
+    def iscrizione(route, aggiungi: bool) -> None:
+        if not dentro[0]:
+            json_200(route, SENZA_SESSIONE, 401)
+            return
+        mie = iscrizioni[chi[dentro[0]]["utente"]["id"]]
+        endpoint = json.loads(route.request.post_data)["endpoint"]
+        mie.add(endpoint) if aggiungi else mie.discard(endpoint)
+        json_200(route, {"dispositivi": len(mie)})
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/me", me)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/accedi",
+                     lambda route: dentro.__setitem__(0, "secondo") or json_200(route, UTENTE))
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/push/iscrivi", lambda route: iscrizione(route, True))
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/push/disiscrivi", lambda route: iscrizione(route, False))
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/avvisi/prova", {"inviato": True})
+    return dentro, iscrizioni
+
+
+def test_dopo_la_sessione_scaduta_di_un_altro_account_arrivano_solo_gli_avvisi_di_chi_entra(web):
+    """#874: il primo account accende gli avvisi su questo browser, la sua sessione scade senza «Esci» ed entra un secondo account.
+    Gli avvisi del primo non devono più arrivare qui: l'iscrizione del browser non è più fra le sue sul server, l'interruttore
+    del secondo è spento e, se lo accende, l'iscrizione nuova è solo sua. Prima il browser teneva l'iscrizione del primo (il
+    server continuava a mandargli i suoi avvisi) e, acceso dal secondo, la stessa iscrizione finiva anche fra le sue."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web, di="", iniziale=False)
+    dentro, iscrizioni = server_con_due_account(web)
+    web.apri("/?vista=impostazioni")
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    assert iscrizioni[12] == {ENDPOINT} and iscrizione_nel_browser(web) == ENDPOINT
+    dentro[0] = None                                                 # la sessione del primo scade: nessuno ha toccato «Esci»
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
+    web.pagina.locator("#accesso-form").wait_for(timeout=10000)
+    web.pagina.locator("#ac-nome").fill("amico")
+    web.pagina.locator("#ac-pw").fill("Password-Finta-1")
+    with web.pagina.expect_navigation(wait_until="load"):
+        web.pagina.locator("#accesso-invia").click()
+    web.aspetta()
+    web.apri("/?vista=impostazioni")
+    assert iscrizione_nel_browser(web) not in iscrizioni[12], "gli avvisi del primo account arrivano ancora al browser del secondo"
+    assert not interruttore_qui(web).is_checked()
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    qui = iscrizione_nel_browser(web)
+    assert qui in iscrizioni[7] and qui not in iscrizioni[12], f"iscrizione del browser {qui}, server: {iscrizioni}"
 
 
 def test_un_iscrizione_senza_numero_dopo_un_nuovo_accesso_non_diventa_del_nuovo_account(web):
