@@ -1037,6 +1037,25 @@ enum DisposizioneWidget {
         }
         return prove
     }
+
+    // PROVVISORIO (#871): come oggi, per vedere i test fallire prima del codice
+    enum PostoGiornataRettangolo: Equatable { case sopra, accanto }
+
+    struct ProvaRettangoloFormazione: Equatable {
+        var giornata: PostoGiornataRettangolo?
+        var daControllare: Bool
+    }
+
+    static func proveRettangoloFormazione(conGiornata: Bool, daControllare: Int) -> [ProvaRettangoloFormazione] {
+        [ProvaRettangoloFormazione(giornata: conGiornata && daControllare == 0 ? .sopra : nil, daControllare: daControllare > 0)]
+    }
+
+    struct ProvaCampoExtraLarge: Equatable {
+        let lato: CGFloat
+        let conNomi: Bool
+    }
+
+    static let proveCampoExtraLarge = [ProvaCampoExtraLarge(lato: 48, conNomi: true)]
 }
 
 // MARK: Testi che si accorciano (mai una parola tagliata a metà)
@@ -1062,6 +1081,15 @@ enum ParoleWidget {
         guard let scadenza else { return "—" }
         return Quando.contoAllaRovescia(fino: scadenza, adesso: adesso) ?? chiusa
     }
+
+    // PROVVISORIO (#871): come oggi, per vedere i test fallire prima del codice
+    static func allaScadenza(_ scadenza: Date, adesso: Date) -> String {
+        "alla scadenza, \(Quando.relativa(scadenza, adesso: adesso))"
+    }
+
+    static func prossima(fino scadenza: Date?, adesso: Date) -> String { "Prossima: \(conto(fino: scadenza, adesso: adesso))" }
+
+    static func voceProssima(fino scadenza: Date?, adesso: Date) -> String { prossima(fino: scadenza, adesso: adesso) }
 
     /// Sotto il conto alla rovescia del Cruscotto: «alla scadenza, oggi 20:45», dopo la scadenza «si è chiusa oggi 20:45».
     /// Senza probabili prima «probabili non uscite · alla scadenza, oggi 20:45», poi solo «probabili non uscite» (il conto sopra
@@ -1392,6 +1420,11 @@ extension RiassuntoOggi {
 
     /// Il sottotitolo per VoiceOver, con i due numeri.
     var voceSottotitoloRettangolo: String { finita ? "Prossima: \(voceGiornata)" : voceGiornata }
+
+    // PROVVISORIO (#871): come oggi, per vedere i test fallire prima del codice
+    func formeRigaInLineaConto(adesso: Date) -> [String] { ParoleWidget.moduloEPunti(modulo, punti: punti, fascia: nil) }
+
+    func voceRigaInLineaConto(adesso: Date) -> String { formeRigaInLineaConto(adesso: adesso).first ?? "" }
 }
 
 // MARK: Testata e corpo del widget «Da controllare» (medio e grande)

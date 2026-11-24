@@ -308,7 +308,7 @@ struct TestiCortiWidgetTests {
         #expect(Catalogo.Oggi.giornataFinita(g: "Giornata 8 · 11ª di Serie A") == attesa)
         #expect(r.formeTitoloFase == [attesa, "Giornata 8: finita"])
         #expect(r.voceTitoloFase == "Giornata 8, 11ª di Serie A: finita")
-        #expect(r.testaRettangoloFase == "Giornata 8 finita")
+        #expect(r.testaRettangoloFase == "Giornata 8: finita")
         #expect(r.rigaInLineaFase == "Giornata 8: 69,5 punti fatti")
         #expect(r.formeSottotitoloRettangolo == ["Prossima: Giornata 9 · 12ª di Serie A", "Prossima: Giornata 9"])
         #expect(r.voceSottotitoloRettangolo == "Prossima: Giornata 9, 12ª di Serie A")
