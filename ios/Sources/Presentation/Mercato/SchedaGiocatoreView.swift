@@ -67,34 +67,40 @@ struct GiocatoreCorpo: View {
     var body: some View {
         ZStack {
             Sfondo()
-            ScrollView {
-                Colonne(spazio: 14) {
-                    if let t = testa {
-                        cartaTesta(t)
-                        if let perche = contesto?.perche {
-                            Carta(Catalogo.Formazione.percheTitolare) {
-                                Text(perche).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Colonne(spazio: 14) {
+                        if let t = testa {
+                            cartaTesta(t)
+                            if let perche = contesto?.perche {
+                                Carta(Catalogo.Formazione.percheTitolare) {
+                                    Text(perche).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                                }
                             }
+                            if let p = t.previsione, let motivi = LetturaScheda.perche(p) {
+                                Carta(PercheNumero.titolo) { BloccoPercheNumero(perche: motivi) }
+                            }
+                            cartaUltimiVoti
+                            azioneFormazione
+                            cartaTuttiINumeri
+                        } else if let e = vm.caricatore.errore {
+                            ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                        } else {
+                            Scheletro(schede: 3, righe: 2, testo: Catalogo.Mercato.caricoScheda)
                         }
-                        if let p = t.previsione, let motivi = LetturaScheda.perche(p) {
-                            Carta(PercheNumero.titolo) { BloccoPercheNumero(perche: motivi) }
-                        }
-                        cartaUltimiVoti
-                        azioneFormazione
-                        cartaTuttiINumeri
-                    } else if let e = vm.caricatore.errore {
-                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                    } else {
-                        Scheletro(schede: 3, righe: 2, testo: Catalogo.Mercato.caricoScheda)
                     }
+                    .padding(16)
+                    .animation(Tema.morbida, value: vm.caricatore.dato != nil)
                 }
-                .padding(16)
-                .animation(Tema.morbida, value: vm.caricatore.dato != nil)
+                .demoInFondo()
+                // foto `giocatore-fondo`: si ferma su «Statistiche avanzate», così anche col testo grande si vede «Dati fino al …»
+                // (#862); col testo normale il blocco sta già nell'ultima schermata e la foto resta quella di prima
+                .demoScorriA(TuttiINumeri.idAvanzate, proxy: proxy, schermate: ["giocatore"], inFondo: true,
+                             pronto: vm.caricatore.dato != nil)
+                .refreshable { await vm.carica() }
+                .avvisoDatiSalvati(vm.caricatore)
+                .bordiMorbidi()
             }
-            .demoInFondo()
-            .refreshable { await vm.carica() }
-            .avvisoDatiSalvati(vm.caricatore)
-            .bordiMorbidi()
         }
         // Il nome si legge una volta sola, grande, nell'intestazione.
         .navigationTitle("")

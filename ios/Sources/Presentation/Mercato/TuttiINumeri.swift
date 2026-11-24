@@ -192,6 +192,10 @@ struct TuttiINumeri: View {
         }
     }
 
+    /// L'identità del blocco «Statistiche avanzate»: la foto `giocatore-fondo` ci si ferma (`demoScorriA` in `SchedaGiocatoreView`),
+    /// così anche col testo grande si vede «Dati fino al …» sotto il titolo (#862).
+    static let idAvanzate = "scheda-statistiche-avanzate"
+
     @ViewBuilder
     private var avanzate: some View {
         if let a = scheda.avanzate, (a.minuti ?? 0) > 0 {
@@ -217,6 +221,7 @@ struct TuttiINumeri: View {
                                                        xa: Formato.decimali(p.xa), xg: Formato.decimali(p.xg)))
                 }
             }
+            .id(Self.idAvanzate)
         }
     }
 }
