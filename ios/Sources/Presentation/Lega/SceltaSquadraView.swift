@@ -2,7 +2,8 @@ import SwiftUI
 
 /// «La mia squadra» quando non è ancora scelta, come `vistaRosa("")` della web senza la mia squadra (#863): «Scegli quale delle
 /// squadre è la tua.» e il selettore. Scelta la squadra, al posto di questa pagina c'è la sua rosa (`LegaViewModel.scegliMiaSquadra`),
-/// come la web che ridisegna «La mia squadra». Prima la scelta stava in cima a «Squadre e rose», con «È la mia» sulle righe.
+/// come la web che ridisegna «La mia squadra». Senza rose la frase della web e «Aggiorna le rose». Prima la scelta stava in cima a
+/// «Squadre e rose», con «È la mia» sulle righe.
 struct SceltaSquadraView: View {
     /// Le squadre della lega (`LegaViewModel.squadre`).
     @ObservedObject var squadre: Caricatore<[SquadraLega]>
@@ -17,7 +18,11 @@ struct SceltaSquadraView: View {
                 if let s = squadre.dato {
                     Section {
                         if s.isEmpty {
+                            // senza rose, come la web: la frase e «Aggiorna le rose», la stessa pagina della riga di Impostazioni
                             Text(ParoleSquadre.importaPrima).foregroundStyle(Color.testoSecondario)
+                            NavigationLink(value: PaginaImpostazioni.importa) {
+                                Label(Catalogo.Lega.voceImporta, systemImage: "square.and.arrow.down").frame(minHeight: Tema.areaTocco)
+                            }
                         } else {
                             Text(ParoleSquadre.scegliLaTua).foregroundStyle(Color.testoSecondario)
                             SelettoreMiaSquadra(squadre: s, scegli: scegli)

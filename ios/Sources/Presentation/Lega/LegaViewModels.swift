@@ -117,12 +117,15 @@ final class LegaViewModel: ViewModelBase {
     /// «Non è la tua squadra?» e la prima scelta della propria (come `collegaSceltaMia` della web, #863): `PUT /api/mia-squadra`,
     /// poi le squadre si rileggono (la riga «La mia squadra» dice quella nuova) e, come la web che ridisegna «La mia squadra», al
     /// posto della pagina aperta (la rosa di prima o la scelta) c'è la rosa della squadra scelta. Se nel frattempo si è passati a
-    /// un'altra pagina, la pila resta com'è. Nil se è andata bene, altrimenti il motivo da mostrare.
+    /// un'altra pagina, la pila resta com'è. Se non riesce le squadre si rileggono lo stesso, come prima (`impostaMia`): con il 412
+    /// di una squadra rinominata altrove elenco e selettore mostrano i nomi di adesso (revisione della #868). Nil se è andata bene,
+    /// altrimenti il motivo da mostrare.
     func scegliMiaSquadra(_ nome: String) async -> String? {
         do {
             _ = try await server.corpoJSON("PUT", "/api/mia-squadra", NomeSquadra(nome: nome))
         } catch {
             Haptics.esito(riuscito: false)
+            await squadre.ricarica()
             return error.localizedDescription
         }
         Haptics.esito(riuscito: true)
