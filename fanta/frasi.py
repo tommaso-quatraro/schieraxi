@@ -408,9 +408,13 @@ def _componi(chiave: str, param: dict, lingua: str = "it") -> str:
 # «il 1%» si dice «l'1%» (e «all'8%», «dell'11%», «nell'85%»): davanti a 1, 8, 11 e 80-89 l'articolo perde la vocale.
 _ELISIONE = {"il": "l'", "al": "all'", "dal": "dall'", "del": "dell'", "nel": "nell'", "sul": "sull'"}
 _DAVANTI_A_VOCALE = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:11|1|8\d?)(?:,\d+)?\s?%)")
+# Le date giorno/mese: «il 8/11» si dice «l'8/11» («l'08/11», «dall'11/11»), si legge «l'otto», «l'undici» (#859). «Il 1/11» (il
+# primo) e «il 18/11» restano. Come `elidiGiorno` della web (testi.js) e di DatiVecchi sull'iPhone, per le date che scrivono loro.
+_DAVANTI_A_DATA = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:0?8|11)/\d)")
 
 
 def _apostrofo(testo: str) -> str:
+    testo = _DAVANTI_A_DATA.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo)
     return elidi_ordinali(_DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo))
 
 
