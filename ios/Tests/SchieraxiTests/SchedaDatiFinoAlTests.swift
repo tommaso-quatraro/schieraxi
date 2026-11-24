@@ -20,8 +20,8 @@ struct SchedaDatiFinoAlTests {
     func conIlGiorno() throws {
         let s = try scheda(avanzate: #"{"minuti": 492, "xg": 6.66, "dati_fino_al": "2026-11-09"}"#)
         #expect(s.avanzate?.datiFinoAl == "2026-11-09")
-        #expect(TuttiINumeri.datiFinoAl(s.avanzate) == "Dati fino al 9/11.")
-        #expect(TuttiINumeri.datiFinoAl(s.avanzate) == Catalogo.Mercato.datiFinoAl(data: "9/11"))
+        #expect(LetturaScheda.datiFinoAl(s.avanzate) == "Dati fino al 9/11.")
+        #expect(LetturaScheda.datiFinoAl(s.avanzate) == Catalogo.Mercato.datiFinoAl(data: "9/11"))
     }
 
     @Test("Senza il giorno (server di prima, stagione senza partite lette) o con un giorno che non si capisce, niente riga",
@@ -29,21 +29,21 @@ struct SchedaDatiFinoAlTests {
                       #"{"minuti": 492, "dati_fino_al": ""}"#])
     func senzaIlGiorno(avanzate: String) throws {
         let s = try scheda(avanzate: avanzate)
-        #expect(TuttiINumeri.datiFinoAl(s.avanzate) == nil)
+        #expect(LetturaScheda.datiFinoAl(s.avanzate) == nil)
     }
 
     @Test("Senza statistiche avanzate niente riga")
     func senzaAvanzate() throws {
         let s = try scheda(avanzate: nil)
         #expect(s.avanzate == nil)
-        #expect(TuttiINumeri.datiFinoAl(s.avanzate) == nil)
+        #expect(LetturaScheda.datiFinoAl(s.avanzate) == nil)
     }
 
-    @Test("Il primo giorno del mese e dicembre si scrivono senza zeri, come `giornoMese` della web")
+    @Test("Giorno e mese si scrivono senza zeri davanti, come `giornoMese` della web")
     func senzaZeri() throws {
         let primo = try scheda(avanzate: #"{"minuti": 90, "dati_fino_al": "2027-01-03"}"#)
-        #expect(TuttiINumeri.datiFinoAl(primo.avanzate) == "Dati fino al 3/1.")
+        #expect(LetturaScheda.datiFinoAl(primo.avanzate) == "Dati fino al 3/1.")
         let dicembre = try scheda(avanzate: #"{"minuti": 90, "dati_fino_al": "2026-12-20"}"#)
-        #expect(TuttiINumeri.datiFinoAl(dicembre.avanzate) == "Dati fino al 20/12.")
+        #expect(LetturaScheda.datiFinoAl(dicembre.avanzate) == "Dati fino al 20/12.")
     }
 }
