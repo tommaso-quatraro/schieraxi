@@ -321,7 +321,8 @@ function rigaStato() {
   if (r.offline) return `<span class="stato-offline">${esc(t("testata.offline"))}</span>`;
   const mia = miaSquadra();
   const stemma = mia && mia.immagini && mia.immagini.stemma ? `<img class="stemma-stato" src="${esc(urlImg(mia.nome, "stemma"))}" alt="" width="20" height="20">` : "";
-  return stemma + [r.giornata, r.squadra, r.dati].filter(Boolean).map(p => `<span>${esc(p)}</span>`).join(" · ");
+  const pezzi = [r.giornata, r.squadra, r.dati].filter(Boolean);
+  return stemma + pezzi.map(p => `<span>${esc(p)}</span>`).join(" · ");
 }
 // Dati nuovi (avvio, «Aggiorna i dati», rose o squadra cambiate): la riga di stato già in pagina si riscrive.
 function aggiornaRigaStato() {
