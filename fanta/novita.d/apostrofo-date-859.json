@@ -2,10 +2,11 @@
   "titolo": "Date con l'apostrofo davanti all'8 e all'11",
   "voci": [
     "Formazione: «Probabili aggiornate l'8/11» invece di «il 8/11», e lo stesso con l'11. Lo stesso nell'avviso sul telefono quando cambia un titolare: «La formazione si chiude l'08/11».",
-    "Impostazioni, Il tuo account: «Utente · dall'8 ottobre 2026» invece di «dal 8 ottobre». Nella rosa: «Rose aggiornate l'11 novembre 2026». In Gestione, Stato dei dati: «dall'08/10/2026», «Inserite fino all'11/01/2027» e «attiva dall'8/1». Lo stesso nell'app per iPhone."
+    "Impostazioni, Il tuo account: «Utente · dall'8 ottobre 2026» invece di «dal 8 ottobre». Nella rosa: «Rose aggiornate l'11 novembre 2026». Lo stesso nell'app per iPhone.",
+    "Gestione, Stato dei dati: «dall'08/10/2026», «Inserite fino all'11/01/2027», «attiva dall'8/1» e, nelle righe di un aggiornamento che non riesce, «non riesce dall'08/11» e «Non riuscito alle 13:03 dell'11/11». Nell'app per iPhone cambia la riga «attiva dall'8/1» e cambiano le righe degli aggiornamenti che non riescono."
   ],
   "tecnico": [
-    "Server: frasi._apostrofo elide l'articolo davanti alle date giorno/mese che cominciano con 8, 08 o 11 (_DAVANTI_A_DATA): probabili.data e n.testo_cambiata. «il 1/11» e «il 18/11» restano.",
-    "Web: elidiGiorno (testi.js) accetta anche le date con la barra e si usa in account.dal, scambio.rose_aggiornate, sd.dal, sd.coppe_spiega e sd.tar_attiva_dal. iPhone: DatiVecchi.elidiGiorno, non più privata, con la stessa regola, in TestiAccount.ruoloEData, ParoleSquadre.roseAggiornate e ParoleRegistro.taratura. Nessuna rotta né campo dell'API cambia."
+    "Server: frasi.elidi_date (regola _DAVANTI_A_DATA) elide l'articolo davanti alle date giorno/mese che cominciano con 8, 08 o 11; la usano frasi._apostrofo (probabili.data, n.testo_cambiata), stato_dati._errori_passo e aggiorna._da_quando (righe d'errore dei passi dell'aggiornamento). «il 1/11» e «del 02/11» restano.",
+    "Web: elidiGiorno (testi.js) accetta anche le date con la barra e si usa in account.dal, scambio.rose_aggiornate, sd.dal, sd.coppe_spiega e sd.tar_attiva_dal. iPhone: DatiVecchi.elidiGiorno, non più privata, con la stessa regola, in TestiAccount.ruoloEData, ParoleSquadre.roseAggiornate e ParoleRegistro.taratura (l'iPhone non mostra sd.dal e sd.coppe_spiega). Nessuna rotta né campo dell'API cambia."
   ]
 }
