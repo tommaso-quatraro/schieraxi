@@ -432,7 +432,7 @@ Se due righe finiscono sullo stesso giocatore resta la prima, con l'avviso «com
 Il giocatore scelto entra con il ruolo e la squadra del listone e `riconosciuto: "manuale"`.
 Nel multipart il campo `correzioni` è lo stesso elenco scritto come testo JSON (JSON non valido: `422`). Una scelta che non corrisponde più al
 testo, o un `id` fuori listone: `400` con il messaggio, e niente si salva. `mia_squadra` che non c'è tra le rose: `400`.
-Si può cominciare con la sola propria rosa: una squadra sola non è un errore (solo un avviso, testo `lega.UNA_SQUADRA`: «Con una sola squadra funzionano formazione e consigli; per gli scambi servono le rose degli altri: potrai aggiungerle quando vuoi.»).
+Si può cominciare con la sola propria rosa: una squadra sola non è un errore (solo un avviso, testo `lega.UNA_SQUADRA`: «Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.»).
 
 Limiti (solo con gli account): l'anteprima conta tra le 10 importazioni al giorno, ma anteprima e importazione dello **stesso** contenuto
 (stesso testo o stesso file) contano una volta sola, e rifare l'anteprima dello stesso contenuto (per esempio con le `correzioni`) non conta di
