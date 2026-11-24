@@ -253,6 +253,16 @@ scadenza:
   server, Impostazioni ha «Il tuo account» e non «Gestione»;
 - senza rete Privacy, mai aperta prima, dice «Nessuna connessione» e non apre un'altra copia dell'app; l'app si apre dalla copia.
 
+`test_copia_e_lingua.py`, la copia dei dati tenuta nel browser e la lingua (#854). Gira solo prima della scadenza. Le `/api/`
+rispondono come il server vero, con le etichette nella lingua di `Accept-Language` (`traduci_dati` di `fanta/etichette.py`: il
+server finto le ha solo in italiano):
+- Formazione in italiano, poi «English» in Impostazioni con la rete lenta (le `/api/` trattenute dal test): mentre arrivano i
+  dati in inglese la Formazione sta caricando e non mostra la copia presa in italiano («In dubbio» con la pagina in inglese);
+  arrivati, l'etichetta è in inglese («Doubtful»);
+- lo stesso con il server che non risponde: resta la copia presa in italiano (gli 11 sul campo, i comandi che scrivono spenti),
+  con la nota e «Try again»; tornata la rete, «Try again» porta i dati in inglese e la nota sparisce;
+- una copia senza lingua, come la lascia una versione di prima: senza rete la Formazione la mostra con la nota e «Riprova».
+
 La fixture `installata` (al posto di `web`) apre un contesto di Chrome con il service worker permesso, davanti al server finto
 mette `Proxy` (fa la parte di nginx, su 127.0.0.1: senza https la web registra il service worker solo lì e su localhost) e
 serve una copia di `fanta/web/` (`installata.web`) da cambiare per un rilascio finto. `installata.installa()` è la prima
