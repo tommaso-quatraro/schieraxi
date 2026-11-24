@@ -336,7 +336,8 @@ def _scatta(tmp_path, fermo, vuoto, comandi="scatta UDID iphone_scuro accesso-re
         'sips() { echo "sips $*" >> "$CODE/chiamate.txt"; }',
         "avvisi_rifai() { return 0; }",
         "avvisi_riepilogo() { :; }",
-        'prossimo() { local f="$CODE/$1.txt" n; n=$(head -n 1 "$f"); sed -i "1d" "$f"; echo "${n:-0}"; }',
+        # il primo codice della fila e via dalla fila: head e tail, uguali con i comandi del Mac e con quelli di Linux (sed -i no)
+        'prossimo() { local f="$CODE/$1.txt" n; n=$(head -n 1 "$f"); tail -n +2 "$f" > "$f.resto"; mv "$f.resto" "$f"; echo "${n:-0}"; }',
         "python3() {",
         '  local e',
         '  case "$2" in',
@@ -388,9 +389,33 @@ def test_una_foto_sempre_vuota_dopo_due_nuove_prove_e_un_errore_che_fa_fallire_l
 def test_senza_foto_vuote_la_fine_e_quella_di_prima(tmp_path):
     r, _ = _scatta(tmp_path / "una", fermo=[0], vuoto=[0], comandi="scatta UDID iphone_scuro formazione; fine")
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "::error" not in r.stdout
+    assert "::error" not in r.stdout and "::warning" not in r.stdout
     r, _ = _scatta(tmp_path / "nessuna", fermo=[1], vuoto=[], comandi="scatta UDID iphone_scuro formazione; fine")
     assert r.returncode == 1, "nessuna foto: la corsa fallisce come prima"
+
+
+@serve_bash
+def test_le_foto_non_controllate_danno_un_avviso_visibile_su_github(tmp_path):
+    """Il controllo stesso non riesce (manca sips, file illeggibile): non basta l'ATTENZIONE nel registro."""
+    r, _ = _scatta(tmp_path, fermo=[0, 0], vuoto=[1, 0],
+                   comandi="scatta UDID iphone_scuro accesso-recupero; scatta UDID iphone_scuro formazione; fine")
+    assert r.returncode == 0, r.stdout + r.stderr
+    avviso = next((riga for riga in r.stdout.splitlines() if riga.startswith("::warning")), "")
+    assert avviso.startswith("::warning title=Foto::1 foto non controllate"), r.stdout
+    assert "iphone_scuro / accesso-recupero" in avviso and "formazione" not in avviso
+    assert "::error" not in r.stdout
+    assert "Foto non controllate (il controllo dello schermo vuoto non è riuscito): 1" in r.stdout
+
+
+@serve_bash
+def test_se_nessuna_foto_si_puo_controllare_la_corsa_fallisce(tmp_path):
+    """Se il controllo non va mai (sips che manca, Python rotto) le foto vuote passerebbero tutte: la corsa fallisce."""
+    r, _ = _scatta(tmp_path, fermo=[0, 0], vuoto=[1, 1],
+                   comandi="scatta UDID iphone_scuro accesso-recupero; scatta UDID iphone_scuro formazione; fine")
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert any(riga.startswith("::warning title=Foto::2 foto non controllate") for riga in r.stdout.splitlines()), r.stdout
+    errore = next((riga for riga in r.stdout.splitlines() if riga.startswith("::error")), "")
+    assert errore.startswith("::error title=Foto::Nessuna foto controllata"), r.stdout
 
 
 @serve_bash

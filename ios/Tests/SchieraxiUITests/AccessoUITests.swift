@@ -204,19 +204,29 @@ final class AccessoUITests: XCTestCase {
     /// una volta sola e foglio ancora aperto dopo 10 secondi, una volta (corsa 44830138599); la diagnosi sulla stessa schermata con
     /// i dati che cambiano non ha visto nessuna chiusura mancata su 26 (senza carico e con la CPU occupata). Al massimo 3 tocchi, e
     /// dopo il primo solo se il pulsante c'è ancora e si può toccare. Un foglio ancora aperto dopo 3 tocchi è un difetto vero: il
-    /// test fallisce e dice com'era il pulsante. `tap` serve solo al test che simula un tocco perso (`testUnToccoPersoSuAnnullaSiRitocca`).
+    /// test fallisce e dice com'era il pulsante. Quando non basta la prima attesa (tocco perso o chiusura lenta) il registro del test
+    /// ha una riga «chiudiFoglio: N tocchi, chiuso dopo S s», da contare nelle corse. `tap` serve solo al test che simula un tocco
+    /// perso (`testUnToccoPersoSuAnnullaSiRitocca`).
     private func chiudiFoglio(_ titolo: String, _ pulsante: String, segno: XCUIElement, file: StaticString = #filePath, line: UInt = #line,
                               tap: ((XCUIElement) -> Void)? = nil) {
         let b = app.navigationBars[titolo].buttons[pulsante]
         XCTAssertTrue(b.waitForExistence(timeout: 10), "manca «\(pulsante)»", file: file, line: line)
         var chiuso = false
         var tocchi = 0
+        var attese = 0
+        let inizio = Date()
         for tentativo in 0..<3 where !chiuso {
             if tentativo == 0 || (b.exists && b.isHittable) {
                 if let tap { tap(b) } else { b.tap() }
                 tocchi += 1
             }
+            attese += 1
             chiuso = siChiude(segno, entro: 10)
+        }
+        if chiuso && attese > 1 {
+            let riga = "chiudiFoglio: \(tocchi) tocchi, chiuso dopo \(Int(Date().timeIntervalSince(inizio))) s («\(pulsante)» di «\(titolo)»)"
+            print(riga)
+            XCTContext.runActivity(named: riga) { _ in }
         }
         if !chiuso {
             let comEra = b.exists ? (b.isHittable ? "c'è e si può toccare" : "c'è ma non si può toccare") : "non c'è più"

@@ -15,6 +15,8 @@ IN_MOVIMENTO=0   # foto scattate allo scadere dell'attesa, con lo schermo che si
 NON_RIUSCITI=()  # foto rimaste a metà attesa perché uno scatto non è riuscito: problemi, non movimento (uscita 4 di schermo_fermo.py)
 FOTO_RIFATTE=0   # foto rifatte perché lo schermo era ancora vuoto: schermata d'avvio o caricamento (schermo_vuoto.py, #860)
 FOTO_VUOTE=()    # foto con lo schermo vuoto anche dopo le nuove prove: la corsa fallisce (fine)
+CONTROLLATE=0    # controlli dello schermo vuoto riusciti (foto piena o vuota)
+NON_CONTROLLATE=()  # foto su cui il controllo non è riuscito: avviso su GitHub; se nessuna è controllata la corsa fallisce
 ARGOMENTI_EXTRA=()
 ARGOMENTI_SCENARIO=()   # -DEMO_SCENARIO <nome>: le fotografie dal vero (SCATTI=vero)
 TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qualunque cosa dica il simulatore
@@ -161,12 +163,15 @@ scatta() {
     # Lo schermo è ancora vuoto? Si guarda la foto già girata: barre in alto e in basso al loro posto.
     controllo=$(python3 -I "$(dirname "$0")/schermo_vuoto.py" "$file")
     vuota=$?
-    [ "$vuota" -eq 0 ] && break
-    if [ "$vuota" -ne 3 ]; then
+    if [ "$vuota" -ne 0 ] && [ "$vuota" -ne 3 ]; then
+      # il controllo stesso non è riuscito (sips che manca, file illeggibile): avviso a fine corsa (fine)
       echo "ATTENZIONE: foto non controllata ($etichetta / $nome): $controllo"
       ERRORI=$((ERRORI + 1))
+      NON_CONTROLLATE+=("$etichetta / $nome")
       break
     fi
+    CONTROLLATE=$(( ${CONTROLLATE:-0} + 1 ))
+    [ "$vuota" -eq 0 ] && break
     if [ "$prove" -ge 2 ]; then
       echo "ERRORE: ($etichetta / $nome) lo schermo è ancora vuoto dopo $prove nuove foto: $controllo"
       ERRORI=$((ERRORI + 1))
@@ -273,14 +278,24 @@ riepilogo() {
     echo "Tra i problemi, foto con lo schermo ancora vuoto dopo le nuove prove (schermata d'avvio o caricamento):"
     printf '  %s\n' "${FOTO_VUOTE[@]}"
   fi
+  echo "Foto non controllate (il controllo dello schermo vuoto non è riuscito): ${#NON_CONTROLLATE[@]}"
 }
 
-# Fine dello script: riepilogo, poi esce. Fallisce se non c'è nessuna foto (le foto mancanti si guardano nell'artifact) o se una
-# foto mostra ancora lo schermo vuoto dopo le nuove prove (#860: prima la corsa restava verde con la schermata d'avvio).
+# Fine dello script: riepilogo, poi esce. Fallisce se non c'è nessuna foto (le foto mancanti si guardano nell'artifact), se una
+# foto mostra ancora lo schermo vuoto dopo le nuove prove (#860: prima la corsa restava verde con la schermata d'avvio) o se il
+# controllo dello schermo vuoto non è riuscito su nessuna foto (sips che manca, Python rotto: le foto vuote passerebbero tutte).
+# Qualche foto non controllata: avviso visibile su GitHub, la corsa resta verde.
 fine() {
   riepilogo
+  if [ "${#NON_CONTROLLATE[@]}" -gt 0 ]; then
+    echo "::warning title=Foto::${#NON_CONTROLLATE[@]} foto non controllate (il controllo dello schermo vuoto non è riuscito): ${NON_CONTROLLATE[*]}"
+  fi
   if [ "${#FOTO_VUOTE[@]}" -gt 0 ]; then
     echo "::error title=Foto::Schermo ancora vuoto (schermata d'avvio o caricamento) dopo 2 nuove foto: ${FOTO_VUOTE[*]}"
+    exit 1
+  fi
+  if [ "${#NON_CONTROLLATE[@]}" -gt 0 ] && [ "${CONTROLLATE:-0}" -eq 0 ]; then
+    echo "::error title=Foto::Nessuna foto controllata: il controllo dello schermo vuoto (scripts/schermo_vuoto.py) non è mai riuscito"
     exit 1
   fi
   [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
