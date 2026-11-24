@@ -21,6 +21,21 @@ def rendimento(avanzate: dict | None, ruolo: str, con_voto: int, regole) -> dict
     return {"sovra_rendimento": round(extra, 2), "gol_meno_xg": round(gol - xg, 2), "assist_meno_xa": round(ass - xa, 2)}
 
 
+def con_voto_fino_al(db: sqlite3.Connection, calciatore_id: int, stagione: str, giorno: str | None,
+                     fonte_voto: str = "redazione") -> int:
+    """Le partite con voto del giocatore giocate entro `giorno` (compreso), la finestra delle statistiche avanzate
+    (`dati_fino_al`): il rendimento divide per queste i gol meno i gol attesi della fonte. Con tutte le partite con voto, a fonte
+    ferma il numero calava da solo a ogni giornata (#862). 0 senza giorno."""
+    if not giorno:
+        return 0
+    col_v = FONTI_VOTO[fonte_voto][0]
+    return db.execute(
+        f"SELECT COUNT(*) FROM voti v WHERE v.stagione = ? AND v.calciatore_id = ? AND v.{col_v} IS NOT NULL AND EXISTS "
+        "(SELECT 1 FROM partite p WHERE p.stagione = v.stagione AND p.giornata = v.giornata "
+        "AND (p.casa = v.squadra OR p.trasferta = v.squadra) AND substr(p.data, 1, 10) <= ?)",
+        (stagione, calciatore_id, giorno)).fetchone()[0]
+
+
 def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, fonte_voto: str = "redazione") -> dict:
     c = db.execute("SELECT * FROM calciatori WHERE id = ?", (calciatore_id,)).fetchone()
     if not c:
