@@ -14,7 +14,7 @@ import pytest
 GIORNATE = "/?vista=giornate"           # una pagina che si apre dalla copia salvata (come Formazione)
 SALVATA = "2026-11-17T10:05:00"         # quando la pagina arriva dal server e se ne salva la copia (ora italiana)
 DOPO = "2026-11-20T09:30:00"            # tre giorni dopo: si riapre e il server non risponde
-FRASE = "Il server non risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati)"
+FRASE = "Il server non risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati)."
 
 
 def test_con_un_errore_del_server_la_nota_dice_di_quando_e_la_copia(web):
@@ -107,6 +107,15 @@ def test_senza_copia_e_con_il_server_giu_l_errore_si_dice_una_volta(web, vista):
     web.apri(vista, larghezza=1440)
     assert web.errori_mostrati() == ["Il server non risponde: riprova fra poco"], web.errori_mostrati()
     assert "Server non raggiungibile" not in web.testo_principale(), web.testo_principale()[:300]
+
+
+def test_con_un_errore_del_server_la_formazione_chiude_la_frase_prima_di_dire_che_non_si_cambia(web):
+    """In Formazione dopo la nota del 502 viene «Finché non arrivano quelli nuovi la formazione non si può cambiare.»: senza il
+    punto si leggeva «…potrebbero non essere aggiornati) Finché non arrivano…», due frasi attaccate (#864)."""
+    _solo_prima(web)
+    _riapri_dalla_copia(web, "/", "502")
+    nota = " ".join(web.pagina.locator(NOTA).inner_text().split())
+    assert "potrebbero non essere aggiornati). Finché non arrivano quelli nuovi la formazione non si può cambiare." in nota, nota
 
 
 @pytest.mark.parametrize("larghezza", [390, 1440])
