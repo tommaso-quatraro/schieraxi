@@ -53,6 +53,41 @@ struct SceltaMiaSquadraTests {
         }
     }
 
+    // MARK: «Non è la tua squadra?» nella rosa
+
+    /// Un server con la rosa della fixture (la scrittura della scelta la fa la closure `scegli` del test).
+    private static func serverRosa() -> ServerDiProva {
+        ServerDiProva { metodo, percorso, _ in
+            if metodo == "GET", percorso.hasPrefix("/api/rosa") { return try Fixture.dati("rosa") }
+            return Data("{}".utf8)
+        }
+    }
+
+    /// Revisione della #868: dopo il 412 della scelta l'ETag della rosa è già quello nuovo (`ServerClient` lo tiene anche col 412),
+    /// quindi un «Salva» dei crediti con i dati vecchi in pagina riscriverebbe sopra quelli salvati dal PC senza avviso. Come dopo
+    /// il 412 di «Cambia il nome» e dei crediti, la rosa si rilegge dal server e i campi ripartono dai suoi valori.
+    @Test("«Non è la tua squadra?» che non riesce (anche 412): la rosa si rilegge e i campi ripartono dal server")
+    func sceltaNonRiuscitaRileggeLaRosa() async throws {
+        let server = Self.serverRosa()
+        let vm = RosaViewModel(nome: "Nuvola Ovest", server: server, immagini: Immagini(server: server), centro: NotificationCenter())
+        await vm.carica()
+        vm.crediti = "99"   // scritto e non salvato: dopo il rifiuto riparte dal valore del server (la fixture non ha crediti)
+        let errore = await vm.scegliMia("Borgo Alto") { _ in ErroreApi.conflitto.localizedDescription }
+        #expect(errore == ErroreApi.conflitto.localizedDescription)
+        #expect(server.quante("GET /api/rosa") == 2, "la rosa si rilegge dopo il rifiuto")
+        #expect(vm.crediti == "")
+    }
+
+    @Test("«Non è la tua squadra?» riuscita: la rosa di prima non si rilegge (al suo posto si apre quella della squadra scelta)")
+    func sceltaRiuscitaNonRilegge() async throws {
+        let server = Self.serverRosa()
+        let vm = RosaViewModel(nome: "Nuvola Ovest", server: server, immagini: Immagini(server: server), centro: NotificationCenter())
+        await vm.carica()
+        let errore = await vm.scegliMia("Borgo Alto") { _ in nil }
+        #expect(errore == nil)
+        #expect(server.quante("GET /api/rosa") == 1)
+    }
+
     /// Revisione della #868: una squadra rinominata dal PC, scelta sull'iPhone, dà 412 («Ho ricaricato la versione nuova…»); senza
     /// rileggere le squadre elenco e rosa restavano vecchi e riprovando arrivava «Squadra non trovata». Come faceva prima
     /// `SquadreViewModel.impostaMia`, le squadre si rileggono anche quando il salvataggio non riesce.

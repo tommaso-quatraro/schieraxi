@@ -164,6 +164,11 @@ final class RosaViewModel: ViewModelBase {
         }
     }
 
+    /// «Non è la tua squadra?» (#863): salva la squadra scelta con `scegli` (`LegaViewModel.scegliMiaSquadra`). Da scrivere.
+    func scegliMia(_ nome: String, con scegli: @MainActor (String) async -> String?) async -> String? {
+        await scegli(nome)
+    }
+
     /// Lo stemma o la maglia da un indirizzo web: lo scarica il server.
     func inviaDaIndirizzo(_ indirizzo: String, tipo: String) async {
         inCorso = true
