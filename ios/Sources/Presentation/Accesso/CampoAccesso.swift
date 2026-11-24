@@ -26,11 +26,17 @@ struct CampoAccesso: View {
     /// la casella resta grande.
     static let tettoPallini: DynamicTypeSize = .xxLarge
 
-    /// Altezza minima della riga di testo nella casella, uguale per tutti i campi. Segue la misura del testo scelta da chi usa
-    /// l'app anche quando i pallini si fermano a `tettoPallini`, così la casella della password è alta come le altre (prima,
-    /// col testo massimo, 49 punti contro 89). 21 punti col testo normale, poco più di una riga di `.body` (circa 20): a ogni
-    /// misura vince questa, e le caselle sono alte uguali.
-    @ScaledMetric(relativeTo: .body) private var rigaCasella: CGFloat = 21
+    @Environment(\.dynamicTypeSize) private var misuraTesto
+
+    /// Altezza minima della riga di testo nella casella, uguale per tutti i campi: una riga di `.body` alla misura del testo
+    /// scelta da chi usa l'app (anche quando i pallini si fermano a `tettoPallini`) più 3 punti. Nelle foto una casella di
+    /// testo è alta circa una riga più un punto e mezzo (22 punti col testo normale, 65 col massimo), quella della password
+    /// un punto meno: con 3 punti in più vince sempre questa altezza, e le caselle sono alte uguali a ogni misura. Un
+    /// `@ScaledMetric` non bastava: cresce meno del carattere (col testo massimo la password restava 83 punti contro 89).
+    private var rigaCasella: CGFloat {
+        let tratti = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(misuraTesto))
+        return UIFont.preferredFont(forTextStyle: .body, compatibleWith: tratti).lineHeight + 3
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
