@@ -1306,9 +1306,9 @@ def test_dopo_la_sessione_scaduta_di_un_altro_account_arrivano_solo_gli_avvisi_d
 @pytest.mark.parametrize("rifiuti", [1, 2], ids=["al-secondo-tentativo", "mai"])
 def test_accendere_con_l_iscrizione_di_un_altro_account_rimasta_qui_ne_fa_una_nuova(web, rifiuti):
     """#874: all'apertura il browser non riesce a togliere l'iscrizione dell'account 12 ed è dentro l'account 7. Quando lui accende
-    gli avvisi la web riprova a toglierla prima di iscriversi: il browser darebbe la stessa iscrizione, e gli avvisi dell'altro
-    account continuerebbero ad arrivare qui. Tolta, al server va un'iscrizione nuova; se non si toglie nemmeno ora, niente va al
-    server, lo dice un avviso e l'interruttore resta spento."""
+    gli avvisi la web riprova a toglierla prima di iscriversi: il browser darebbe la stessa iscrizione. Tolta, al server va
+    un'iscrizione nuova. Se non si toglie nemmeno ora, al server va quella che c'è: il server la toglie all'altro account (l'ultimo
+    che la manda la tiene), e gli avvisi si accendono lo stesso."""
     solo(web, "prima")
     da_utente(web)
     web.memoria({"account": json.dumps(UTENTE["utente"])})          # già dentro da prima
@@ -1320,15 +1320,12 @@ def test_accendere_con_l_iscrizione_di_un_altro_account_rimasta_qui_ne_fa_una_nu
     web.apri("/?vista=impostazioni")
     assert not interruttore_qui(web).is_checked()
     accendi_qui(web)
-    if rifiuti == 1:
-        web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
-        assert [c["endpoint"] for c in iscritte] == [ENDPOINT + "-2"], f"mandata l'iscrizione dell'altro account: {iscritte}"
-        assert interruttore_qui(web).is_checked()
-    else:
-        web.pagina.locator("#avviso").filter(has_text="Non riesco ad attivare le notifiche").wait_for(timeout=10000)
-        web.aspetta()
-        assert iscritte == [], f"mandata l'iscrizione dell'altro account: {iscritte}"
-        assert not interruttore_qui(web).is_checked()
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    atteso = ENDPOINT + "-2" if rifiuti == 1 else ENDPOINT
+    assert [c["endpoint"] for c in iscritte] == [atteso], iscritte
+    assert interruttore_qui(web).is_checked()
+    web.apri("/?vista=impostazioni")
+    assert interruttore_qui(web).is_checked(), "riaperta, l'iscrizione non risulta di chi l'ha accesa"
 
 
 def test_gli_avvisi_accesi_dal_primo_avvio_non_usano_l_iscrizione_di_un_altro_account(web):

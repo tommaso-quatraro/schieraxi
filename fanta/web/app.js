@@ -3765,11 +3765,11 @@ async function lasciaAvvisiDiAltri() {
   if (sub) try { await sub.unsubscribe(); } catch { /* resta: si riprova alla prossima apertura */ }
 }
 // L'iscrizione di chi accende gli avvisi (interruttore, primo avvio). Se il browser ne ha ancora una che non è di questo account
-// (non si è tolta all'avvio, o non si sa di chi è) prima la toglie: `subscribe` darebbe la stessa, con lo stesso indirizzo, e gli
-// avvisi dell'altro account continuerebbero ad arrivare qui (#874). Se non si toglie, niente iscrizione: «Non riesco ad attivare».
+// (non si è tolta all'avvio, o non si sa di chi è) prima la toglie e ne chiede una nuova, solo sua (#874). Se non si toglie, va al
+// server quella che c'è: il server la toglie agli altri account (la tiene l'ultimo che la manda), così arrivano solo i suoi avvisi.
 async function iscrizioneMia(reg, chiave) {
   const vecchia = await reg.pushManager.getSubscription();
-  if (vecchia && !avvisiDiQuestoAccount() && !(await vecchia.unsubscribe().catch(() => false))) throw new Error(t("avv.non_attivo"));
+  if (vecchia && !avvisiDiQuestoAccount() && !(await vecchia.unsubscribe().catch(() => false))) return vecchia;
   return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
 }
 
