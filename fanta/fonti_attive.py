@@ -13,6 +13,7 @@ import os
 import threading
 from pathlib import Path
 
+from . import frasi
 from .percorsi import RADICE, scrivi_sicuro
 
 PREDEFINITO_ACCESO = os.environ.get("FANTA_FONTI_PREDEFINITO", "").strip() == "1"
@@ -88,6 +89,15 @@ def messaggio_spenta(fonte: str) -> str:
             "(per esempio il listone e le rose da file). Se la accendi, rispetti le condizioni d'uso del sito.")
 
 
+def cosa_manca(fonte: str) -> frasi.Frase:
+    """Per la riga di una fonte spenta in «Stato dei dati» (#894): solo cosa non arriva, frase del catalogo `fonte.spenta_<id>`
+    (fanta/frasi.py). Il nome e «spenta» sono già sulla riga, e la frase comune (dati già salvati, condizioni d'uso) la pagina la
+    scrive una volta sola sotto l'elenco."""
+    if fonte not in FONTI:
+        raise KeyError(fonte)
+    return frasi.F(f"fonte.spenta_{fonte}")
+
+
 def richiedi(fonte: str) -> None:
     """Alza FonteSpenta (con un messaggio chiaro) se la fonte non va contattata."""
     if not acceso(fonte):
@@ -99,8 +109,9 @@ def stato(percorso: Path | None = None) -> list[dict]:
     righe = []
     for k, (nome, serve, _) in FONTI.items():
         on, da = origine(k, percorso)
+        manca = None if on else cosa_manca(k)
         righe.append({"id": k, "nome": nome, "serve": serve, "acceso": on, "scelta_da": da,
-                      "messaggio": None if on else messaggio_spenta(k)})
+                      "messaggio": str(manca) if manca else None, "messaggio_frase": frasi.di(manca)})
     return righe
 
 

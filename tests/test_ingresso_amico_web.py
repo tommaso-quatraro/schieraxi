@@ -136,12 +136,14 @@ def test_quando_si_riprende_da_solo(stato, atteso):
     assert da_riprendere(stato) is atteso
 
 
-def _avvio(primo_avvio, squadre=(), mia=False, chiamate=1, onboarding="nessuno") -> dict:
-    """Esegue `primoAvvioSeServe` (una o più volte, come fanno l'avvio e Oggi senza rose) con il server finto: cosa ha aperto e salvato."""
+def _avvio(primo_avvio, squadre=(), mia=False, chiamate=1, onboarding="nessuno", lette=True, lette_dopo=False) -> dict:
+    """Esegue `primoAvvioSeServe` (una o più volte, come fanno l'avvio e Oggi senza rose) con il server finto: cosa ha aperto e salvato.
+    `lette`: l'elenco delle squadre è arrivato dal server (`stato.squadreLette` di app.js, #874); `lette_dopo`: poi arriva, e
+    `primoAvvioSeServe` si chiede ancora una volta."""
     codice = "\n".join([
         TESTI,
         "const esc = x => String(x); const avviso = () => {};",
-        f"const stato = {{ account: {{ nome_utente: 'amico' }}, squadre: {json.dumps(list(squadre))} }};",
+        f"const stato = {{ account: {{ nome_utente: 'amico' }}, squadre: {json.dumps(list(squadre))}, squadreLette: {json.dumps(lette)} }};",
         f"const miaSquadra = () => {json.dumps(bool(mia))};",
         "const scritte = [];",
         f"const risposte = {{ '/api/primo-avvio': {{ primo_avvio: {json.dumps(primo_avvio)} }}, '/api/onboarding': {{ stato: {json.dumps(onboarding)} }} }};",
@@ -154,6 +156,7 @@ def _avvio(primo_avvio, squadre=(), mia=False, chiamate=1, onboarding="nessuno")
         "(async () => {",
         f"  await Promise.all(Array.from({{ length: {chiamate} }}, () => primoAvvioSeServe()));",
         "  await new Promise(r => setTimeout(r, 20));",
+        f"  if ({json.dumps(lette_dopo)}) {{ stato.squadreLette = true; await primoAvvioSeServe(); await new Promise(r => setTimeout(r, 20)); }}",
         "  console.log(JSON.stringify({ aperture, scritte }));",
         "})();",
     ])
@@ -194,6 +197,14 @@ def test_chi_ha_gia_le_rose_e_non_l_ha_mai_iniziato_non_lo_vede():
 def test_account_nuovo_senza_rose_lo_apre_come_prima():
     esito = _avvio(None)
     assert esito["aperture"] == 1 and esito["scritte"] == [{"fatti": ["server", "accesso"]}]
+
+
+def test_con_le_squadre_non_lette_non_si_apre_ne_si_salva():
+    """#874: l'elenco delle squadre non è arrivato (server che riparte): vuoto non vuol dire senza rose. La guida non si apre, non
+    salva lo stato «server, accesso», e alla volta dopo, con l'elenco letto, si apre."""
+    assert _avvio(None, lette=False, chiamate=2) == {"aperture": 0, "scritte": []}
+    assert _avvio({"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}, lette=False) == {"aperture": 0, "scritte": []}
+    assert _avvio(None, lette=False, lette_dopo=True) == {"aperture": 1, "scritte": [{"fatti": ["server", "accesso"]}]}
 
 
 def test_si_riprende_una_volta_sola_per_apertura_dell_app():

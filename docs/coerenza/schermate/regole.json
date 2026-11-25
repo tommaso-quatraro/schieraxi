@@ -46,7 +46,7 @@
       "stato": "fatto"
     },
     {
-      "id": 98,
+      "id": 103,
       "schermata": "Regole, importazione da Leghe: valori non applicabili e nomi in parole (#881)",
       "web": "dopo «Riconosci le regole» i valori di `non_applicabili` di `POST /api/regole/riconosci` stanno sotto «Non applicato» (`regole.non_applicato`), ognuno con «etichetta: valore», il perché (`motivo_frase`, per ora la frase `regole.panchina_posti_fissi`) e la riga da cui viene; non si salvano. L'ordine dei cambi si scrive «Per ruolo» o «Libera» (`regole.per_ruolo`, `regole.libera`) e i posti per ruolo «2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti» (frasi `rose.<ruolo>`) (`vistaRegole`)",
       "iphone": "non legge `non_applicabili`: il valore che non si può salvare non compare (e non si salva più, perché il server non lo manda in `modifiche`; prima si vedeva 12 e si salvava 11). L'ordine dei cambi si legge «per_ruolo» e i posti per ruolo «A: 3, C: 3, D: 3, P: 2» (`RegoleLogica.descrivi`)",

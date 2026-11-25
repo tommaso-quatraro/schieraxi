@@ -1061,6 +1061,14 @@ def elenco_inviti(db: sqlite3.Connection, adesso: datetime | None = None) -> lis
             for r in db.execute("SELECT * FROM inviti ORDER BY id DESC LIMIT 200")]
 
 
+def posti_negli_inviti(db: sqlite3.Connection, adesso: datetime | None = None) -> int:
+    """Quante persone possono ancora entrare con gli inviti aperti (non annullati, non finiti, non scaduti): i posti già promessi,
+    per l'avviso di Gestione prima di un invito nuovo (#894)."""
+    riga = db.execute("SELECT COALESCE(SUM(usi_max - usi), 0) FROM inviti WHERE usato = 0 AND revocato = 0 AND scade > ?",
+                      (_testo(_ora(adesso)),)).fetchone()
+    return max(0, int(riga[0]))
+
+
 def revoca_invito(db: sqlite3.Connection, invito_id: int) -> None:
     """Annulla un invito: chi ha già un account lo tiene, ma il codice non vale più. Non si cancella: resta nell'elenco."""
     if db.execute("UPDATE inviti SET revocato = 1 WHERE id = ?", (invito_id,)).rowcount != 1:
