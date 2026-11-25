@@ -1,12 +1,19 @@
 """Letture ripetute a ogni richiesta tenute in memoria (#907): stesso risultato di prima, rifatte da sole quando i dati cambiano,
 con un tetto. Dati inventati."""
 import gc
+import json
+import os
 import sqlite3
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pandas as pd
+import pytest
 
-from fanta import consigli
+from fanta import consigli, contesto, lega, memoria_file, regole
+from fanta.regole import Regole
+
+from test_account_http import cliente, registra
 
 ST = "2031-32"          # una stagione che nessun'altra prova usa: le righe del calendario sono solo di queste prove
 
@@ -146,3 +153,120 @@ def test_le_schede_hanno_un_tetto():
         consigli.scheda_di(t, 11)
     assert len(consigli._schede_fatte) <= consigli.MAX_TABELLE_SCHEDE
     assert consigli.scheda_di(tabelle[0], 11)["fv_atteso"] == 5.0          # uscita dalla memoria: si rifà, giusta
+
+
+# ---------------------------------------------------------------- rose.json e regole.json
+ROSE = {"squadre": [{"nome": "Alfa", "giocatori": [{"id": 1, "nome": "Uno", "ruolo": "P", "squadra": "aaa"}], "crediti_residui": 10},
+                    {"nome": "Beta", "giocatori": [], "crediti_residui": 20}], "mia_squadra": "Alfa"}
+
+
+def _scrivi(p: Path, dati: dict) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(dati), encoding="utf-8")
+
+
+def test_rose_trasformate_una_volta_finche_il_file_non_cambia(tmp_path, monkeypatch):
+    p = tmp_path / "rose.json"
+    _scrivi(p, ROSE)
+    fatte = []
+    vera = lega.da_dict
+    monkeypatch.setattr(lega, "da_dict", lambda dati: fatte.append(1) or vera(dati))
+    a, b = lega.carica(p), lega.carica(p)
+    assert a == b == vera(ROSE)
+    assert len(fatte) == 1
+    assert a is not b                                          # ogni lettura ha il suo oggetto
+
+
+def test_rose_cambiate_si_vedono_subito_anche_con_la_stessa_ora_e_dimensione(tmp_path):
+    p = tmp_path / "rose.json"
+    _scrivi(p, ROSE)
+    prima = p.stat()
+    assert lega.carica(p).squadre[0].crediti_residui == 10
+    _scrivi(p, ROSE | {"squadre": [ROSE["squadre"][0] | {"crediti_residui": 30}, ROSE["squadre"][1]]})
+    os.utime(p, ns=(prima.st_atime_ns, prima.st_mtime_ns))
+    assert (p.stat().st_size, p.stat().st_mtime_ns) == (prima.st_size, prima.st_mtime_ns)
+    assert lega.carica(p).squadre[0].crediti_residui == 30
+
+
+def test_rose_cambiate_da_chi_le_legge_restano_quelle_del_file(tmp_path):
+    p = tmp_path / "rose.json"
+    _scrivi(p, ROSE)
+    r = lega.carica(p)
+    r.mia_squadra = "Beta"
+    r.squadre[0].giocatori.clear()
+    r.squadre.pop()
+    di_nuovo = lega.carica(p)
+    assert di_nuovo.mia_squadra == "Alfa" and len(di_nuovo.squadre) == 2 and len(di_nuovo.squadre[0].giocatori) == 1
+
+
+def test_due_account_con_lo_stesso_file_hanno_ognuno_il_suo(multiutente):
+    """MAI le rose di un account a un altro: anche con due file identici byte per byte ognuno riceve le sue (con il suo numero
+    d'account, che tiene separate le consigliate ricordate), e il cambio di uno non tocca l'altro."""
+    a, b = contesto.cartella_utente(1) / "rose.json", contesto.cartella_utente(2) / "rose.json"
+    _scrivi(a, ROSE)
+    _scrivi(b, ROSE)
+    ra, rb = lega.carica(a), lega.carica(b)
+    assert (ra.di_utente, rb.di_utente) == (1, 2)
+    ra.squadre[0].nome = "Cambiata da A"
+    _scrivi(b, ROSE | {"mia_squadra": "Beta"})
+    assert lega.carica(b).mia_squadra == "Beta" and lega.carica(b).di_utente == 2
+    assert lega.carica(a).mia_squadra == "Alfa" and lega.carica(a).squadre[0].nome == "Alfa" and lega.carica(a).di_utente == 1
+
+
+def test_rose_rovinate_danno_sempre_l_errore(tmp_path):
+    p = tmp_path / "rose.json"
+    _scrivi(p, ROSE)
+    lega.carica(p)
+    p.write_text("{rotto", encoding="utf-8")
+    for _ in range(2):
+        with pytest.raises(ValueError, match="rovinato"):
+            lega.carica(p)
+    p.unlink()
+    assert lega.carica(p) is None
+
+
+def test_regole_trasformate_una_volta_e_rifatte_al_cambio(tmp_path, monkeypatch):
+    p = tmp_path / "regole.json"
+    regole.salva(Regole(nome_lega="Lega uno"), p)
+    fatte = []
+    vera = regole.da_dict
+    monkeypatch.setattr(regole, "da_dict", lambda dati, misure=True: fatte.append(1) or vera(dati, misure))
+    r = regole.carica(p)
+    assert regole.carica(p) == r and r.nome_lega == "Lega uno" and len(fatte) == 1
+    r.bonus.assist = 99.0                                      # cambiata da chi l'ha letta: per gli altri resta quella del file
+    assert regole.carica(p).bonus.assist == Regole().bonus.assist
+    regole.salva(Regole(nome_lega="Lega due"), p)
+    assert regole.carica(p).nome_lega == "Lega due"
+    p.unlink()
+    assert regole.carica(p) == Regole()
+
+
+def test_la_memoria_dei_file_ha_un_tetto(tmp_path):
+    for k in range(memoria_file.MAX_VOCI + 5):
+        p = tmp_path / f"lega{k}" / "regole.json"
+        regole.salva(Regole(nome_lega=f"Lega {k}"), p)
+        assert regole.carica(p).nome_lega == f"Lega {k}"
+    assert len(memoria_file._voci) <= memoria_file.MAX_VOCI
+
+
+def test_api_ogni_account_legge_le_sue_regole_e_le_sue_rose(multiutente, dati_isolati):
+    """Dalle rotte: due account con regole e rose diverse, lette più volte (quindi dalla memoria), poi cambiate per uno solo."""
+    clienti = {}
+    for nome in ("anna", "bruno"):
+        c = cliente()
+        r = registra(c, nome)
+        assert r.status_code == 200, r.text
+        clienti[nome] = (c, contesto.cartella_utente(r.json()["utente"]["id"]))
+    for nome, (c, cartella) in clienti.items():
+        regole.salva(Regole(nome_lega=f"Lega di {nome}"), cartella / "regole.json")
+        _scrivi(cartella / "rose.json", ROSE | {"mia_squadra": "Alfa" if nome == "anna" else "Beta"})
+    for _ in range(3):
+        for nome, (c, _) in clienti.items():
+            assert c.get("/api/regole").json()["nome_lega"] == f"Lega di {nome}"
+            mia = [s["nome"] for s in c.get("/api/squadre").json() if s["mia"]]
+            assert mia == ["Alfa" if nome == "anna" else "Beta"]
+    c_bruno, cartella_bruno = clienti["bruno"]
+    regole.salva(Regole(nome_lega="Lega nuova di bruno"), cartella_bruno / "regole.json")
+    assert c_bruno.get("/api/regole").json()["nome_lega"] == "Lega nuova di bruno"
+    assert clienti["anna"][0].get("/api/regole").json()["nome_lega"] == "Lega di anna"
+

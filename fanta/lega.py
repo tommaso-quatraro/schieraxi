@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from pathlib import Path
 
+from . import memoria_file
 from .frasi import F
 from .percorsi import scrivi_sicuro, utente_della_cartella
 from .regole import RUOLI, Regole
@@ -145,15 +146,21 @@ def controlla(rose: Rose, regole: Regole) -> list[str]:
 
 
 def carica(percorso: Path) -> Rose | None:
+    """Le rose del file (None se non c'è), trasformate una volta finché il contenuto non cambia (`memoria_file`, #907): ogni
+    chiamata riceve un oggetto suo, da modificare liberamente."""
     if not percorso.exists():
         return None
-    try:
-        dati = json.loads(percorso.read_text(encoding="utf-8"))
-    except ValueError:
-        raise ValueError(f"Il file {percorso.name} è rovinato: ripristina la copia {percorso.name}.bak o importa di nuovo le rose") from None
-    rose = da_dict(dati)
+    rose = memoria_file.leggi(percorso, "rose", lambda contenuto: _da_contenuto(contenuto, percorso.name))
     rose.di_utente = utente_della_cartella(percorso)
     return rose
+
+
+def _da_contenuto(contenuto: bytes, nome: str) -> Rose:
+    try:
+        dati = json.loads(contenuto.decode("utf-8"))
+    except ValueError:
+        raise ValueError(f"Il file {nome} è rovinato: ripristina la copia {nome}.bak o importa di nuovo le rose") from None
+    return da_dict(dati)
 
 
 _CAMPI_GIOCATORE = {f.name for f in fields(GiocatoreRosa)}
