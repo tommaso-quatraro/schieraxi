@@ -52,7 +52,7 @@
     {"percorsi": ["ios/Sources/Support/DemoPrimoIngresso.swift"],
      "schermate": ["guida-pronta", "lega-importa-prima"]},
     {"percorsi": ["ios/Sources/Presentation/Lega/*Regol*", "ios/Sources/Domain/RegoleLogica.swift", "ios/Sources/Domain/TempiLega.swift"],
-     "schermate": ["lega-regole", "lega-regole-fondo"]},
+     "schermate": ["lega-regole", "lega-regole-fondo", "lega-regole-anteprima", "lega-regole-non-applicato"]},
     {"percorsi": ["ios/Sources/Presentation/Lega/ParoleNovita.swift"],
      "schermate": ["impostazioni-novita"]},
     {"percorsi": ["ios/Sources/Presentation/Lega/ParoleSquadre.swift", "ios/Sources/Presentation/Lega/RigaSquadra.swift"],

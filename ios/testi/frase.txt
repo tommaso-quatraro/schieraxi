@@ -1,0 +1,9 @@
+# Frasi del server (fanta/testi/frase.json) che l'iPhone scrive da sé: una chiave per riga.
+# Dopo una modifica: python script/testi.py --scrivi
+
+# Anteprima del regolamento incollato: i posti per ruolo per esteso, «2 portieri, 3 difensori, …», come POSTI_DEL_RUOLO della
+# web (AnteprimaRegolamento, #889)
+frase.rose.portieri
+frase.rose.difensori
+frase.rose.centrocampisti
+frase.rose.attaccanti

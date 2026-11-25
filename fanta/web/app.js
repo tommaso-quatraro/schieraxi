@@ -3068,10 +3068,17 @@ async function leggiLimitiRegole() {
 }
 // Un limite scritto nella frase di un avviso: «−20» con il meno tipografico, come nei messaggi del server.
 const cifraLimite = v => (v < 0 ? "−" : "") + num(Math.abs(v), Number.isInteger(v) ? 0 : 2);
+// I nomi dei campi negli avvisi prima di salvare, dove due righe della pagina hanno lo stesso titolo (#889): «Difensori» nella rosa
+// e nei posti fissi in panchina, «Voto d'ufficio» due volte. Sono i nomi dei campi del server (err.p_regola_*), gli stessi
+// dell'iPhone; la riga e il suo nome per i lettori di schermo restano quelli della pagina.
+const NOME_ROSA = { P: t("err.p_regola_rosa_p"), D: t("err.p_regola_rosa_d"), C: t("err.p_regola_rosa_c"), A: t("err.p_regola_rosa_a") };
+const NOME_POSTI = { P: t("err.p_regola_panchina_posti_p"), D: t("err.p_regola_panchina_posti_d"), C: t("err.p_regola_panchina_posti_c"),
+                     A: t("err.p_regola_panchina_posti_a") };
 // `lim`: la chiave del limite in limitiRegole (i campi delle regole); senza, `min` e `max` (i voti della prova, che non si salvano).
-function stepper(id, valore, { passo = 0.5, dec = 1, lim = "", min = -50, max = 999 } = {}) {
+// `nome`: il nome del campo negli avvisi, se il titolo della riga non basta a distinguerlo (vedi NOME_ROSA).
+function stepper(id, valore, { passo = 0.5, dec = 1, lim = "", min = -50, max = 999, nome = "" } = {}) {
   if (lim) ({ min, max } = limitiRegole[lim]);
-  return `<div class="stepper" data-passo="${passo}" data-min="${min}" data-max="${max}" data-dec="${dec}">
+  return `<div class="stepper" data-passo="${passo}" data-min="${min}" data-max="${max}" data-dec="${dec}"${nome ? ` data-nome="${esc(nome)}"` : ""}>
     <button type="button" data-step="-1" aria-label="${t("regole.diminuisci")}">−</button>
     <input id="${id}" inputmode="decimal" autocomplete="off" value="${num(valore, dec)}">
     <button type="button" data-step="1" aria-label="${t("regole.aumenta")}">+</button></div>`;
@@ -3192,7 +3199,7 @@ async function vistaRegole() {
     <details class="carta regola-sez"><summary>${t("regole.panchina_sostituzioni")}</summary>
       ${interruttore("posti_fissi", t("regole.posti_fissi"), !!r.panchina.posti, t("regole.posti_fissi_aiuto"))}
       <div id="posti-corpo" ${r.panchina.posti ? "" : "hidden"}>
-        ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("posti_" + x, (r.panchina.posti || { P: 2, D: 3, C: 3, A: 3 })[x], { passo: 1, dec: 0, lim: "panchina.posti." + x }))).join("")}
+        ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("posti_" + x, (r.panchina.posti || { P: 2, D: 3, C: 3, A: 3 })[x], { passo: 1, dec: 0, lim: "panchina.posti." + x, nome: NOME_POSTI[x] }))).join("")}
         <div class="debole piccolo" id="totale-posti" style="margin:4px 0 8px"></div>
       </div>
       <div id="numero-corpo" ${r.panchina.posti ? "hidden" : ""}>${rigaRegola(t("regole.giocatori_panchina"), stepper("p_numero", r.panchina.numero, { passo: 1, dec: 0, lim: "panchina.numero" }))}</div>
@@ -3202,7 +3209,7 @@ async function vistaRegole() {
       <div class="debole piccolo" id="aiuto-panchina"></div>
       ${interruttore("p_cambio", t("regole.cambio_modulo"), r.panchina.cambio_modulo, t("regole.cambio_modulo_aiuto"))}
       ${interruttore("vu_attivo", t("regole.vu_se_manca"), r.voto_senza_sostituto !== null && r.voto_senza_sostituto !== undefined)}
-      <div id="vu-corpo" ${r.voto_senza_sostituto !== null && r.voto_senza_sostituto !== undefined ? "" : "hidden"}>${rigaRegola(t("regole.vu"), stepper("voto_ufficio", r.voto_senza_sostituto ?? 4, { passo: 0.5, lim: "voto_senza_sostituto" }))}</div>
+      <div id="vu-corpo" ${r.voto_senza_sostituto !== null && r.voto_senza_sostituto !== undefined ? "" : "hidden"}>${rigaRegola(t("regole.vu"), stepper("voto_ufficio", r.voto_senza_sostituto ?? 4, { passo: 0.5, lim: "voto_senza_sostituto", nome: t("err.p_regola_voto_senza_sostituto") }))}</div>
     </details>
 
     <details class="carta regola-sez"><summary>${t("regole.aggiornamenti_titolo")}</summary>
@@ -3213,11 +3220,11 @@ async function vistaRegole() {
       <div class="debole piccolo">${t("regole.rinviate_aiuto_formazione")}</div>
       <div class="segmenti" id="rinvio-modo">${[["aspetta", t("regole.rv_aspetta")], ["senza_voto", t("regole.rv_senza_voto")], ["voto_ufficio", t("regole.rv_ufficio")]].map(([k, nome]) => `<button type="button" data-valore="${k}" class="${r.partite_rinviate === k ? "attivo" : ""}">${nome}</button>`).join("")}</div>
       <div class="debole piccolo" id="aiuto-rinvio"></div>
-      <div id="rinvio-voto-corpo" ${r.partite_rinviate === "voto_ufficio" ? "" : "hidden"}>${rigaRegola(t("regole.rv_voto"), stepper("voto_rinv", r.voto_ufficio_rinviate ?? 6, { passo: 0.5, lim: "voto_ufficio_rinviate" }))}</div>
+      <div id="rinvio-voto-corpo" ${r.partite_rinviate === "voto_ufficio" ? "" : "hidden"}>${rigaRegola(t("regole.rv_voto"), stepper("voto_rinv", r.voto_ufficio_rinviate ?? 6, { passo: 0.5, lim: "voto_ufficio_rinviate", nome: t("err.p_regola_voto_ufficio_rinviate") }))}</div>
     </details>` : ""}
 
     <details class="carta regola-sez"><summary>${t("regole.rosa_crediti")}</summary>
-      ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, dec: 0, lim: "rosa." + x }))).join("")}
+      ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, dec: 0, lim: "rosa." + x, nome: NOME_ROSA[x] }))).join("")}
       ${rigaRegola(t("regole.crediti_iniziali"), stepper("crediti", r.crediti_iniziali, { passo: 10, dec: 0, lim: "crediti_iniziali" }))}
     </details>
     <div class="salva-fisso" hidden><button class="bottone" id="salva-regole" type="button">${t("regole.salva_regole")}</button></div></div></details></div>`, opz);
@@ -3347,11 +3354,12 @@ async function vistaRegole() {
   // --- salvataggio
   // Cosa non va in un campo che si salva (#881): vuoto (prima diventava 0), non un numero, con la virgola in un campo di numeri
   // interi (quelli senza decimali: portieri, panchina, cambi, crediti...), fuori dai limiti del server (gli stessi di − e +). Il
-  // nome del campo è quello della riga; "" se va bene.
+  // nome del campo è quello della riga, o quello del campo quando due righe hanno lo stesso titolo (data-nome, #889); "" se va bene.
   const problemaCampo = campo => {
-    const testo = String(campo.value).trim().replace(",", "."), nome = campo.getAttribute("aria-label") || "";
+    const s = campo.closest(".stepper"), testo = String(campo.value).trim().replace(",", "."),
+      nome = s.dataset.nome || campo.getAttribute("aria-label") || "";
     if (!testo) return t("regole.campo_vuoto", { campo: nome });
-    const v = Number(testo), s = campo.closest(".stepper");
+    const v = Number(testo);
     if (!Number.isFinite(v)) return t("regole.sono_valori_non");
     if (s.dataset.dec === "0" && !Number.isInteger(v)) return t("regole.intero", { campo: nome });
     const min = Number(s.dataset.min), max = Number(s.dataset.max);

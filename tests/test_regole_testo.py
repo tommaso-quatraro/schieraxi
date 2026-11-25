@@ -916,3 +916,6 @@ def test_la_panchina_diversa_dalla_somma_dei_posti_letti_non_si_applica(posti_sa
     [na] = r["non_applicabili"]
     assert (na["chiave"], na["valore"], na["motivo_frase"]["chiave"]) == ("panchina.numero", 12, "regole.panchina_somma_posti")
     assert "11" in na["motivo"]
+    # una frase valida per la web e per l'iPhone: niente «Modifica i valori», che c'è solo sulla web (#889)
+    assert na["motivo"] == ("I posti per ruolo letti nel regolamento sono 11 in tutto e la panchina è la loro somma: controlla a mano i "
+                            "posti di ogni ruolo nei valori delle regole.")
