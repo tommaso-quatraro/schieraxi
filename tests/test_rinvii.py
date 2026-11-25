@@ -163,7 +163,8 @@ def test_partita_solo_ritardata_non_fa_scattare_il_voto_d_ufficio():
         "status": {"type": {"name": "STATUS_DELAYED", "state": "pre"}, "displayClock": "0'", "period": 0},
         "competitors": [{"homeAway": "home", "score": "0", "team": {"id": "1", "displayName": "Roma"}},
                         {"homeAway": "away", "score": "0", "team": {"id": "2", "displayName": "Lazio"}}], "details": []}]}]}
-    diretta = {(p["casa"], p["trasferta"]): p for p in live.leggi_espn(corpo, {"roma", "lazio"})}
+    diretta = {(p["casa"], p["trasferta"]): p | {"visto": "2026-11-08T20:49:30"}               # letta da poco (Raccoglitore.stati)
+               for p in live.leggi_espn(corpo, {"roma", "lazio"})}
     roma = {"data": "2026-11-08 20:45", "casa": "roma", "trasferta": "lazio", "giocata": False}
     stato = fasi.stato_partita(roma, datetime(2026, 11, 8, 20, 50), diretta)       # cinque minuti dopo l'orario previsto
     assert stato != "rinviata"

@@ -160,14 +160,56 @@ def test_ritardata_oggi_e_diretta_dicono_lo_stesso_stato():
     m.corpo["events"][0]["competitions"][0]["details"] = []
     r = m.raccoglitore()
     assert r.passo() == "ok"
-    assert _juve(r)["stato"] == fasi.stato_partita(CAL[0], m.t, r.istantanea()["partite"]) == "da_giocare"
+    assert _juve(r)["stato"] == fasi.stato_partita(CAL[0], m.t, r.stati()) == "da_giocare"
     m.avanza(50 * 60)                                                # 22:50: oltre la fine stimata dell'orario previsto
     assert r.passo() == "ok"
-    assert _juve(r)["stato"] == fasi.stato_partita(CAL[0], m.t, r.istantanea()["partite"]) == "da_giocare"
+    assert _juve(r)["stato"] == fasi.stato_partita(CAL[0], m.t, r.stati()) == "da_giocare"
     m.corpo = _espn("STATUS_FIRST_HALF", "in", ("0", "0"), "3'")
     m.avanza(5 * 60)
     assert r.passo() == "ok" and _juve(r)["stato"] == "primo_tempo"
-    assert fasi.stato_partita(CAL[0], m.t, r.istantanea()["partite"]) == "in_corso"
+    assert fasi.stato_partita(CAL[0], m.t, r.stati()) == "in_corso"
+
+
+def _guasto(url):
+    raise ConnectionError("fonte giù")
+
+
+def test_da_giocare_letto_prima_dell_inizio_e_fonte_giu_oggi_segue_l_orario():
+    """#901, revisione: la diretta legge alle 20:38 («da giocare», `STATUS_SCHEDULED`), poi la fonte smette di rispondere. Quel
+    valore resta nella cache, ma non conferma un ritardo: Oggi dice «in corso» dalle 20:45 e «finita» dopo la fine stimata, come
+    senza diretta (prima diceva «da giocare» fino a 4 ore dall'inizio)."""
+    from fanta import fasi
+    m = Mondo("2026-11-01 20:38", _espn("STATUS_SCHEDULED", "pre", ("0", "0"), "0'"))
+    r = m.raccoglitore()
+    assert r.passo() == "ok" and _juve(r)["stato"] == "da_giocare"
+    r.scarica = _guasto
+    for ora in ("2026-11-01 20:50", "2026-11-01 21:00"):
+        m.avanza((datetime.fromisoformat(ora) - m.t).total_seconds())
+        assert r.passo() == "errore"
+        assert fasi.stato_partita(CAL[0], m.t, r.stati()) == "in_corso"
+    m.avanza((datetime(2026, 11, 1, 23, 30) - m.t).total_seconds())
+    assert fasi.stato_partita(CAL[0], m.t, r.stati()) == "finita"
+
+
+def test_il_da_giocare_del_ripiego_non_conferma_un_ritardo(tmp_path):
+    """#901, revisione: il ripiego (calendario di Fantacalcio.it) scrive «da giocare» anche per una partita già cominciata ma senza
+    punteggio sulla pagina: quella lettura non lascia `visto` (nemmeno nel file), quindi per Oggi non conferma un ritardo."""
+    from fanta import fasi
+    f = tmp_path / "live.json"
+    m = Mondo("2026-11-01 20:50", _espn("STATUS_DELAYED", "pre", ("0", "0"), "0'"))
+    r = m.raccoglitore(f)
+    assert r.passo() == "ok" and r.stati()[("juventus", "napoli")]["visto"] == "2026-11-01T20:50:00"
+    from fanta import sentinella                                     # la sentinella legge la copia su file: stesso `visto`
+    assert sentinella.leggi_live(f).stati()[("juventus", "napoli")]["visto"] == "2026-11-01T20:50:00"
+    m.avanza(4 * 60)
+    da_giocare = {"casa": "juventus", "trasferta": "napoli", "data": "2026-11-01 20:45", "stato": "da_giocare", "minuto": None,
+                  "gol_casa": 0, "gol_trasferta": 0, "eventi": []}
+    r._unisci([da_giocare], live.FONTE_RIPIEGO, m.t)                 # come passo() con il ripiego
+    r._salva()
+    assert r.stati()[("juventus", "napoli")]["visto"] is None
+    assert fasi.stato_partita(CAL[0], m.t, r.stati()) == "in_corso"
+    assert m.raccoglitore(f).stati()[("juventus", "napoli")]["visto"] is None     # dopo un riavvio
+    assert "visto" not in live.risposta(r, CAL)["partite"][0]                         # /api/live non cambia
 
 
 def _ev(data_utc, casa, trasf, stato, gruppo):

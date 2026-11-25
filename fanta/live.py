@@ -324,6 +324,12 @@ class Raccoglitore:
         with self._blocco:
             return {"partite": {k: dict(v) for k, v in self._partite.items()}, "aggiornato_il": self.aggiornato_il, "fonte": self.fonte}
 
+    def stati(self) -> dict:
+        """Per le fasi di Oggi: le partite della cache ({(casa, trasferta): partita}) con `visto` = quando la fonte ha dato quello
+        stato (None se non si sa, o se è un «da giocare» del ripiego). Serve a riconoscere un ritardo confermato (#901)."""
+        with self._blocco:
+            return {k: dict(v) | {"visto": self._visto.get(k, v.get("visto"))} for k, v in self._partite.items()}
+
     def in_gioco(self) -> bool:
         with self._blocco:
             return any(p["stato"] in IN_GIOCO for p in self._partite.values())
@@ -403,7 +409,11 @@ class Raccoglitore:
                 if fonte == FONTE_RIPIEGO and vecchia and vecchia["eventi"] and p["stato"] != "finita":
                     p = p | {"eventi": vecchia["eventi"], "minuto": vecchia["minuto"]}      # il ripiego non cancella i marcatori già noti
                 self._partite[(p["casa"], p["trasferta"])] = p
-                self._visto[(p["casa"], p["trasferta"])] = visto
+                if fonte == FONTE_RIPIEGO and p["stato"] == "da_giocare":
+                    # il ripiego scrive «da giocare» anche a partita cominciata senza punteggio: non conferma un ritardo (#901)
+                    self._visto.pop((p["casa"], p["trasferta"]), None)
+                else:
+                    self._visto[(p["casa"], p["trasferta"])] = visto
             limite = (adesso - TIENI).strftime("%Y-%m-%d")
             for k in [k for k, p in self._partite.items() if (p.get("data") or "9") < limite]:
                 del self._partite[k]
