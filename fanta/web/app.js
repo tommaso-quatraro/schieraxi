@@ -314,12 +314,14 @@ function pagina(html, opz = {}) {
 }
 // La riga di stato: [stemma] Giornata N · nome della mia squadra · dati del … (i pezzi li prepara caricaInfo, lo stemma caricaSquadre).
 // Ogni pezzo sta intero: se la riga non ci sta si va a capo dopo un « · » (a 390 px la data si tagliava).
+// Senza server «Server non raggiungibile» (`stato-offline`): non si vede se la pagina lo dice già lei con «Riprova» (stile.css, #864).
 function rigaStato() {
   const r = stato.rigaStato;
   if (!r) return "";
-  const mia = r.offline ? null : miaSquadra();
+  if (r.offline) return `<span class="stato-offline">${esc(t("testata.offline"))}</span>`;
+  const mia = miaSquadra();
   const stemma = mia && mia.immagini && mia.immagini.stemma ? `<img class="stemma-stato" src="${esc(urlImg(mia.nome, "stemma"))}" alt="" width="20" height="20">` : "";
-  const pezzi = r.offline ? [t("testata.offline")] : [r.giornata, r.squadra, r.dati].filter(Boolean);
+  const pezzi = [r.giornata, r.squadra, r.dati].filter(Boolean);
   return stemma + pezzi.map(p => `<span>${esc(p)}</span>`).join(" · ");
 }
 // Dati nuovi (avvio, «Aggiorna i dati», rose o squadra cambiate): la riga di stato già in pagina si riscrive.
@@ -367,9 +369,9 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
         const b = $("#nota-cache");
         if (!b) return false;
         const ferma = !!vista && typeof vista.sola === "function" && vista.sola();
-        const copia = new Date(salvata.quando);                             // la nota dice di quando è la copia (#845)
-        const motivo = elidiGiorno(t("comune.cache_errore", { errore: esc(e.message), giorno: fData(copia), ora: fOra(copia) }));
-        b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : motivo}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
+        const copia = new Date(salvata.quando), salvataIl = { giorno: fData(copia), ora: fOra(copia) };   // di quando è la copia (#845, #864)
+        const motivo = elidiGiorno(e.rete ? t("comune.cache_offline", salvataIl) : t("comune.cache_errore", { errore: esc(e.message), ...salvataIl }));
+        b.innerHTML = `<span>${motivo}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
           <button class="azione-testo" type="button" data-riprova>${t("comune.riprova")}</button>`;
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
         return false;

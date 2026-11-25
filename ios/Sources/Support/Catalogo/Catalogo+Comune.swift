@@ -32,7 +32,7 @@ extension Catalogo {
 
         /// `comune.cache_errore`
         static func cacheErrore(errore: String, giorno: String, ora: String) -> String {
-            "\(errore) (dati salvati il \(giorno) alle \(ora), potrebbero non essere aggiornati)"
+            "\(errore) (dati salvati il \(giorno) alle \(ora), potrebbero non essere aggiornati)."
         }
     }
 }
