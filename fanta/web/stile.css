@@ -400,6 +400,9 @@ details[open] > summary { margin-bottom: 8px; }
 .tg-finita .bottone { flex: none; min-height: 44px; padding: 8px 14px; }
 .tg-prossima { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--filo); }
 .fz-testa > .attenzione.piccolo { margin: 8px 0 0; }
+/* giornata finita con una partita da recuperare (#895): la scelta su come contarla sta con la sua giornata, sotto i punti */
+.fz-testa > .carta.rinvio { margin: 20px 0 4px; }
+@media (min-width: 768px) { .fz-testa > .carta.rinvio { max-width: 640px; } }
 /* Le decisioni (dfRiga in dafare.js): il testo e, a destra, la sua azione nel colore delle azioni (spec C9: niente pulsanti a contorno
    in fila); quella urgente la dice la parola «Urgente». Un filo sopra e uno sotto le staccano dalla testa e dal campo. Il margine
    negativo porta l'azione sul filo destro: l'area di tocco resta di 44 px. */
