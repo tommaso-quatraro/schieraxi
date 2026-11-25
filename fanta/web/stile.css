@@ -890,8 +890,9 @@ html[data-calmo] .marchio.muove .capitano { animation: capitano-calmo 2.2s ease-
    e l'anteprima a 15, e su PC il testo cambiava a ogni passo (#873). L'anteprima tiene le sue misure */
 .pa-corpo p.debole:not(.ar *) { font-size: var(--t-corpo); }
 .pa-corpo p.debole.piccolo:not(.ar *) { font-size: var(--t-sec); }
-/* il collegamento «Regole e scadenza» di «Tutto pronto» va a capo con la frase; la sua area di tocco è alta 44 px senza spostare le righe */
-.pa-corpo .debole a { padding: 12px 0; }
+/* il collegamento «Regole e scadenza» di «Tutto pronto»: area di tocco alta almeno 44 px con qualsiasi carattere (in riga, l'altezza
+   dipendeva dal carattere: 41 px su Linux), senza spostare le righe (il margine negativo rende lo spazio). Va a capo intero */
+.pa-corpo .debole a { display: inline-block; box-sizing: border-box; min-height: 44px; padding: 12px 0; margin: -12px 0; }
 /* nel primo avvio «Conferma e salva» resta in fondo al foglio mentre le squadre scorrono: si raggiunge senza scorrere (#873). Il piede
    ha anche i messaggi (errore del salvataggio, ricerca lasciata a metà, rose cambiate): stanno sopra i pulsanti, in vista. Si ferma
    sul bordo vero del foglio, sopra il suo riempimento in basso (28 px più l'area sicura), che copre: sotto non si vedono le squadre */
