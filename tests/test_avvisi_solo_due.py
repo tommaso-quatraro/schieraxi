@@ -124,7 +124,7 @@ def test_nell_ultima_ora_lo_stesso_cambio_arriva_una_volta_sola(m, tmp_path):
     _giro(m, tmp_path, ore(16, 0))
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
     righe = _cambi(m, tmp_path, ore(17, 45), manda)                                     # parte prima l'avviso dell'ultima ora
-    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"] and len(righe) == 1
+    assert [t for t, _ in mandati] == ["SchieraXI · la formazione consigliata è cambiata"] and len(righe) == 1
     assert "(+2,5 punti attesi)" in mandati[0][1]
     assert _giro(m, tmp_path, ore(17, 50)) == ([], []) and _cambi(m, tmp_path, ore(18, 0), manda) == []
     assert len(mandati) == 1
