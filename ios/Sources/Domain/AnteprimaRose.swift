@@ -382,6 +382,16 @@ enum AnteprimaLogica {
         return d.primaImportazione != true && d.nessunaDifferenza != true
     }
 
+    /// «Nuova» accanto al nome della squadra.
+    static func mostraNuova(_ s: SquadraAnteprima, differenze: Differenze?) -> Bool {
+        s.nuova
+    }
+
+    /// I conti della squadra nella riga da aprire con i nomi dei riconosciuti, invece che in una riga a sé.
+    static func contiNelRipiegato(_ s: SquadraAnteprima) -> Bool {
+        false
+    }
+
     /// La squadra di Serie A per esteso: «juventus» o «JUV» → «Juventus»; se non la conosciamo, com'è.
     static func club(_ s: String?) -> String {
         guard let s, !s.isEmpty else { return "" }

@@ -163,7 +163,7 @@ struct AnteprimaRoseVista: View {
                 if !anteprima.squadre.isEmpty { miaSquadra }
                 Colonne(spazio: Tema.spazioSchede, larghezzaMinima: 320) {
                     ForEach(anteprima.squadre) { s in
-                        CartaSquadraAnteprima(vm: vm, squadra: s, cerca: cerca)
+                        CartaSquadraAnteprima(vm: vm, squadra: s, differenze: anteprima.differenze, cerca: cerca)
                     }
                 }
                 if AnteprimaLogica.mostraDifferenze(anteprima.differenze), let d = anteprima.differenze {
@@ -252,6 +252,8 @@ struct AnteprimaRoseVista: View {
 struct CartaSquadraAnteprima: View {
     @ObservedObject var vm: ImportaExcelViewModel
     let squadra: SquadraAnteprima
+    /// Le differenze dell'anteprima: alla prima importazione niente «Nuova» (#873).
+    let differenze: Differenze?
     let cerca: (DubbioDaCercare) -> Void
     @State private var sicuriAperti = false
 
@@ -260,7 +262,7 @@ struct CartaSquadraAnteprima: View {
         Carta {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(squadra.nome).font(.headline).accessibilityAddTraits(.isHeader)
-                if squadra.nuova { Capsula(testo: Catalogo.Ar.nuova, colore: Color.informazione, simbolo: "sparkles") }
+                if AnteprimaLogica.mostraNuova(squadra, differenze: differenze) { Capsula(testo: Catalogo.Ar.nuova, colore: Color.informazione, simbolo: "sparkles") }
                 Spacer(minLength: 0)
             }
             Text(AnteprimaLogica.conteggio(squadra)).font(.caption).foregroundStyle(Color.testoSecondario)
