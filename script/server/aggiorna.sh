@@ -153,7 +153,7 @@ fermato() {   # comando, uscita: con 124 (tempo finito, vedi timeout) lo scrive 
 
 # avviso sul telefono se cambia la formazione da schierare (un titolare non gioca piu')
 nice -n 10 timeout "$giro" .venv/bin/python -m fanta cambi >> "$LOG" 2>&1 || fermato cambi $?
-# prova del modello sulle ultime giornate (si rifà solo se è finita una giornata nuova)
+# prova del modello sulle ultime giornate, comune e di ogni account (si rifà quando cambiano le giornate finite, i loro voti, le regole o le rose)
 nice -n 15 .venv/bin/python -m fanta affidabilita >> "$LOG" 2>&1
 
 # ritagli dei volti dei calciatori: fino a 80 per giro e al massimo 6 minuti, sempre sotto le 30 richieste al minuto del servizio
