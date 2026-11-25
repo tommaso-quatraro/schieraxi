@@ -1668,7 +1668,10 @@ def giocatore(calciatore_id: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Conte
                                                                       _stati_live())[calciatore_id]
         except ValueError:
             pass
-        s["rendimento"] = scheda.rendimento(s["avanzate"], s["calciatore"]["ruolo"], s["stagione"]["con_voto"], r)
+        # le partite con voto della stessa finestra della fonte (#862): a fonte ferma il numero resta quello di quel giorno
+        con_voto = scheda.con_voto_fino_al(db, calciatore_id, consigli.stagione_corrente(), (s["avanzate"] or {}).get("dati_fino_al"),
+                                           r.fonte_voto)
+        s["rendimento"] = scheda.rendimento(s["avanzate"], s["calciatore"]["ruolo"], con_voto, r)
         # di chi è nella lega
         rs = lega.carica(ctx.rose)
         s["proprietario"] = next((sq.nome for sq in (rs.squadre if rs else []) for g in sq.giocatori
