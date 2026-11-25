@@ -751,6 +751,62 @@ def test_le_righe_da_controllare_a_mano_dicono_la_regola_e_seguono_il_testo(web)
     assert not web.errori_mostrati()
 
 
+RIGA_PANCHINA = "Panchina di 12 giocatori, massimo 5 sostituzioni."
+POSTI_FISSI = {"P": 2, "D": 3, "C": 3, "A": 3}
+
+
+def test_nell_anteprima_del_regolamento_i_valori_hanno_nomi_in_parole(web):
+    """L'ordine dei cambi si leggeva «per_ruolo» (il nome interno) e i posti per ruolo come un oggetto: ora con le parole della
+    pagina (#881), anche in inglese."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "panchina.tipo", "etichetta": "Ordine dei cambi", "valore": "per_ruolo", "riga": "Le riserve entrano per ruolo."},
+        {"chiave": "panchina.posti", "etichetta": "Posti in panchina per ruolo", "valore": {"P": 1, "D": 3, "C": 3, "A": 3},
+         "riga": "Panchina: 1 portiere, 3 difensori, 3 centrocampisti, 3 attaccanti"}]})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    testo = web.testo_principale()
+    assert "Ordine dei cambi: Per ruolo" in testo and "per_ruolo" not in testo, testo
+    assert "Posti in panchina per ruolo: 1 portiere, 3 difensori, 3 centrocampisti, 3 attaccanti" in testo, testo
+    assert "object" not in testo
+    web.memoria({"lingua": "en"})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Paste the rules text here").fill("Rules for testing")
+    tocca(web, principale(web).get_by_role("button", name="Recognise the rules"))
+    testo = web.testo_principale()
+    assert "Order of substitutions: By position" in testo and "1 goalkeeper, 3 defenders" in testo, testo
+    assert not web.errori_mostrati()
+
+
+def test_un_valore_che_non_si_puo_salvare_non_sta_fra_i_riconosciuti(web):
+    """«Panchina di 12 giocatori» con i posti fissi per ruolo (11): l'anteprima mostrava 12 e si salvava 11 con «Regole salvate».
+    Ora il server lo manda fra i non applicabili: la pagina lo mostra sotto «Non applicato» con il perché, e «Salva queste regole»
+    salva gli altri valori lasciando la panchina com'era (#881)."""
+    solo(web, "prima")
+    regole = web.registrata("/api/regole")
+    regole["panchina"] |= {"posti": POSTI_FISSI, "numero": 11}
+    web.risposta("/api/regole", regole)
+    motivo = "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia i posti di ogni ruolo in «Modifica i valori»."
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "panchina.max_sostituzioni", "etichetta": "Sostituzioni massime", "valore": 5, "riga": RIGA_PANCHINA}],
+        "non_applicabili": [{"chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 12, "riga": RIGA_PANCHINA,
+                             "motivo": motivo, "motivo_frase": {"chiave": "regole.panchina_posti_fissi", "param": {"n": 11}}}]})
+    salvate = _scritture(web, "/api/regole")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill(RIGA_PANCHINA)
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    assert principale(web).get_by_text("Non applicato", exact=True).is_visible()
+    assert principale(web).get_by_text(motivo, exact=True).is_visible()
+    testo = web.testo_principale()
+    assert testo.index("Sostituzioni massime: 5") < testo.index("Non applicato") < testo.index("Giocatori in panchina: 12"), testo
+    tocca(web, principale(web).get_by_role("button", name="Salva queste regole"))
+    assert salvate, "le regole riconosciute non sono state salvate"
+    assert salvate[-1]["panchina"]["max_sostituzioni"] == 5
+    assert salvate[-1]["panchina"]["numero"] == 11 and salvate[-1]["panchina"]["posti"] == POSTI_FISSI
+    assert not web.errori_mostrati()
+
+
 def test_i_singoli_valori_stanno_dietro_modifica_i_valori(web):
     solo(web, "prima")
     web.apri("/?vista=impostazioni&gruppo=regole")
@@ -1466,7 +1522,7 @@ def test_stato_dei_dati_usa_le_etichette_del_server(web):
 
 # ---------------------------------------------------------------- Gestione: gli errori recenti in parole (#779)
 REGISTRO = {"contatori": {"da": "2026-11-20T08:00:00+00:00", "richieste": 1, "riuscite": 0, "rifiutate": 1, "errori": 0,
-                          "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 1234.5,
+                          "senza_accesso": 29, "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 1234.5,
                           "piu_lente": [{"rotta": "/api/rotta-mai-vista", "richieste": 2, "medio_ms": 1234.5, "max_ms": 1234.5},
                                         {"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3}]},
             "errori": [{"quando": "2026-11-20T09:10:00+00:00", "tipo": "errore", "metodo": "GET", "rotta": "/api/oggi", "stato": "500",
@@ -1496,6 +1552,10 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     # tempi in parole (#827): «7,3 millisecondi», sopra il secondo «1,2 secondi»; mai «ms» né la sigla «5xx»
     assert "Tempo medio 7,3 millisecondi" in testo and "massimo 1,2 secondi" in testo and "7.3" not in testo, testo
     assert not re.search(r"\bms\b|5xx", testo), testo
+    # #894: niente percentili; le richieste senza nessun accesso dette a parte, con parole neutre
+    assert "5%" not in testo and "più lento" not in testo, testo
+    assert "29 richieste senza accesso, di solito dalla pagina prima dell'ingresso." in testo, testo
+    assert "normale" not in testo, testo
     # il percorso resta per chi gestisce, accanto al nome della parte dell'app; una rotta che l'app non conosce solo con il percorso
     assert "Apertura dell'app (/api/stato) · 1 richiesta, in media 7,3 millisecondi" in testo, testo
     assert "/api/rotta-mai-vista · 2 richieste, in media 1,2 secondi" in testo, testo
@@ -1508,6 +1568,85 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     utenti.get_by_text("Amico di prova", exact=False).wait_for(timeout=10000)
     assert "Amico di prova (amministratore)" in utenti.inner_text() and "admin)" not in utenti.inner_text(), utenti.inner_text()
     assert not web.errori_console and not web.richieste_fallite
+
+
+# ---------------------------------------------------------------- Gestione per il titolare (#894)
+POSTI_PIENI = ("Posti pieni: 4 utenti su 4. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero "
+               "massimo di utenti del server.")
+FRASE_POSTI_PIENI = {"chiave": "admin.posti_pieni", "param": {"n": 4, "massimo": 4}}
+
+
+def gestione_del_titolare(web, utenti: dict, larghezza: int = 390) -> None:
+    da_utente(web, AMMINISTRATORE)
+    web.risposta("/api/admin/utenti", utenti)
+    web.risposta("/api/admin/registro", REGISTRO)
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=larghezza)
+
+
+def carta_con(web, titolo: str):
+    return principale(web).locator(".carta", has=web.pagina.get_by_role("heading", name=titolo, exact=True))
+
+
+def test_con_i_posti_pieni_l_avviso_si_legge_prima_di_creare_l_invito(web):
+    """Con «4 utenti su 4» chi gestisce lo legge sopra «Crea l'invito», prima di crearlo: la frase è del server. L'invito si crea
+    lo stesso (il tetto si può alzare dopo) e la frase resta una sola, anche dopo."""
+    solo(web, "prima")
+    amici = [{"nome_utente": f"amico{i}", "nome_visualizzato": f"Amico {i}", "ruolo": "utente"} for i in range(4)]
+    web.risposta("/api/admin/inviti", {"codice": "PROVA-PROVA-PROVA-PROVA", "etichetta": "Sara", "valido_giorni": 7, "usi_max": 1,
+                                       "avviso": POSTI_PIENI, "avviso_frase": FRASE_POSTI_PIENI})
+    gestione_del_titolare(web, {"utenti": amici, "massimo": 4, "avviso": POSTI_PIENI, "avviso_frase": FRASE_POSTI_PIENI})
+    carta = carta_con(web, "Amministrazione")
+    avviso = carta.get_by_role("status").filter(has_text="Posti pieni: 4 utenti su 4.")
+    avviso.wait_for(timeout=10000)
+    crea = carta.get_by_role("button", name="Crea l'invito")
+    assert avviso.bounding_box()["y"] < crea.bounding_box()["y"], "l'avviso va letto prima del pulsante"
+    assert POSTI_PIENI in " ".join(avviso.inner_text().split())
+    carta.get_by_label("Etichetta").fill("Sara")
+    tocca(web, crea)
+    carta.get_by_text("PROVA-PROVA-PROVA-PROVA", exact=False).first.wait_for(timeout=10000)
+    assert " ".join(carta.inner_text().split()).count("Posti pieni") == 1, carta.inner_text()
+    assert not web.errori_console and not web.richieste_fallite
+
+
+@pytest.mark.parametrize("larghezza", [390, PC])
+def test_gestione_usa_la_larghezza_della_pagina(web, larghezza):
+    """A 1440 px Gestione non è una colonna stretta a sinistra (#894): «Errori recenti» sta accanto agli strumenti e la pagina
+    prende la larghezza delle altre; al telefono una colonna sola. Con un posto libero nessun avviso sui posti."""
+    solo(web, "prima")
+    gestione_del_titolare(web, {"utenti": [{"nome_utente": "amico", "ruolo": "amministratore"}], "massimo": 4, "avviso": None,
+                                "avviso_frase": None}, larghezza=larghezza)
+    aggiorna, admin, errori = (carta_con(web, t) for t in ("Aggiorna i dati", "Amministrazione", "Errori recenti"))
+    errori.get_by_text("Ruolo cambiato").wait_for(timeout=10000)
+    a, e, g = admin.bounding_box(), errori.bounding_box(), aggiorna.bounding_box()
+    if larghezza == PC:
+        assert e["x"] >= a["x"] + a["width"], (a, e)                                       # una accanto all'altra
+        assert e["y"] < a["y"] + a["height"], (a, e)
+        assert e["x"] + e["width"] - g["x"] > 1000, (g, e)                                 # la pagina, non 720 px
+    else:
+        assert abs(e["x"] - a["x"]) < 2 and e["y"] > a["y"], (a, e)
+    assert "Posti pieni" not in admin.inner_text()
+    assert not web.scorre_di_lato()
+    assert not web.violazioni_gravi()
+
+
+def test_stato_dei_dati_dice_una_volta_sola_la_frase_delle_fonti_spente(web):
+    """«Fonti dei dati» con le fonti spente (#894): sotto ogni fonte solo cosa non arriva (frase del server); dati già salvati e
+    condizioni d'uso una volta sola, sotto l'elenco."""
+    solo(web, "prima")
+    s = web.registrata("/api/stato-dati")
+    s["fonti"] = [{"id": "fantacalcio", "nome": "Fantacalcio.it", "serve": "listone", "acceso": False, "scelta_da": "predefinito",
+                   "messaggio": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni."},
+                  {"id": "understat", "nome": "Understat", "serve": "statistiche", "acceso": False, "scelta_da": "predefinito",
+                   "messaggio": "Non scarico statistiche avanzate (gol e assist attesi, rigori)."},
+                  {"id": "foto", "nome": "Foto dei giocatori", "serve": "foto", "acceso": False, "scelta_da": "predefinito",
+                   "messaggio": "L'app usa i volti illustrati."}]
+    web.risposta("/api/stato-dati", s)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    tocca(web, principale(web).get_by_role("button", name="Apri lo stato dei dati"))
+    fonti = web.pagina.get_by_role("dialog").locator(".carta", has=web.pagina.get_by_role("heading", name="Fonti dei dati"))
+    fonti.get_by_text("Non scarico statistiche avanzate", exact=False).wait_for(timeout=10000)
+    testo = " ".join(fonti.inner_text().split())
+    assert testo.count("condizioni d'uso") == 1 and testo.count("dati già salvati") == 1, testo
 
 
 # ---------------------------------------------------------------- accesso: gli avvisi non sono errori

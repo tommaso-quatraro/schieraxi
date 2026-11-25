@@ -17,6 +17,8 @@ const nuovaRichiesta = () => ++stato.richiesta;
 const ancoraValida = n => n === stato.richiesta;
 const NOMI_RUOLO = { P: t("ruolo.P_pl"), D: t("ruolo.D_pl"), C: t("ruolo.C_pl"), A: t("ruolo.A_pl") };
 const NOME_RUOLO_1 = { P: t("ruolo.P_1"), D: t("ruolo.D_1"), C: t("ruolo.C_1"), A: t("ruolo.A_1") };
+// «2 portieri», «1 difensore»…: le frasi del server con il plurale (frase.rose.portieri.one e .other, …)
+const POSTI_DEL_RUOLO = { P: "frase.rose.portieri", D: "frase.rose.difensori", C: "frase.rose.centrocampisti", A: "frase.rose.attaccanti" };
 // Le lettere dei ruoli (P, D, C, A) sono quelle del fantacalcio italiano; in inglese: G (portiere), D, M (centrocampista), F (attaccante).
 const ruoloSigla = r => (LINGUA === "it" ? r : ({ P: "G", D: "D", C: "M", A: "F" }[r] || r));
 const SIGLE = { atalanta: "ATA", bologna: "BOL", cagliari: "CAG", como: "COM", fiorentina: "FIO", frosinone: "FRO", genoa: "GEN", inter: "INT",
@@ -2223,8 +2225,8 @@ async function apriStatoDati() {
       <div class="carta" id="fonti-dati"><h2>${t("scambio.fonti_dei_dati")}</h2>
         ${(s.fonti || []).map(f => `<div class="riga"><span>${esc(f.nome)}</span>
           <button class="bottone secondario piccolo" data-fonte="${esc(f.id)}" data-acceso="${f.acceso ? "1" : "0"}">${t(f.acceso ? "sd.accesa_spegni" : "sd.spenta_accendi")}</button></div>
-          ${f.acceso ? "" : `<div class="debole piccolo">${esc(f.messaggio || "")}</div>`}`).join("")}
-        <div class="debole piccolo">${t("scambio.accendere_una_fonte")}</div></div>
+          ${f.acceso ? "" : `<div class="debole piccolo">${esc(testoDi(f, "messaggio") || "")}</div>`}`).join("")}
+        <div class="debole piccolo" style="margin-top:12px">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
         <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${elidiGiorno(t("sd.dal", { d: esc(fData(usoDal, {})) }))})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
         ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
@@ -3303,19 +3305,29 @@ async function vistaRegole() {
     dove.innerHTML = `<div class="caricamento">${t("regole.leggo_testo")}</div>`;
     try {
       const esito = await api("/api/regole/riconosci", { method: "POST", body: JSON.stringify({ testo }) });
-      if (!esito.modifiche.length) {
+      // i valori letti che non si possono salvare così come sono (#881): il server li toglie dai riconosciuti e dice perché
+      const nonApplicabili = esito.non_applicabili || [];
+      if (!esito.modifiche.length && !nonApplicabili.length) {
         dove.innerHTML = `<div class="attenzione" style="margin-top:12px">${t("regole.non_riconosciuto_nessuna")}</div>`;
         return;
       }
-      const vedi = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
+      const vediValore = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
+      // con le parole della pagina (#881): l'ordine dei cambi come nei pulsanti, i posti per ruolo per esteso
+      const vedi = m => m.chiave === "panchina.tipo" && m.valore === "per_ruolo" ? t("regole.per_ruolo")
+        : m.chiave === "panchina.tipo" && m.valore === "libera" ? t("regole.libera")
+          : m.chiave === "panchina.posti" && m.valore && typeof m.valore === "object"
+            ? ["P", "D", "C", "A"].map(x => tp(POSTI_DEL_RUOLO[x], Number(m.valore[x] ?? 0))).join(", ")
+            : vediValore(m.valore);
       // da controllare a mano (#684): le righe non lette, già nell'ordine del testo, con le regole da impostare (le dà il server)
       const daControllare = esito.da_controllare;
       const rigaDaControllare = x => `<div style="margin-top:6px"><span class="debole">${esc(x.riga)}</span>${x.regole.length ? `<span style="display:block">${t("regole.da_impostare", { r: esc(x.regole.map(etichettaRegola).join(", ")) })}</span>` : ""}</div>`;
-      dove.innerHTML = `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(etichettaRegola(m))}: <b>${esc(vedi(m.valore))}</b>${m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : ""}</span></div>`).join("")}
+      const daRiga = m => m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : "";
+      dove.innerHTML = `${esito.modifiche.length ? `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(etichettaRegola(m))}: <b>${esc(vedi(m))}</b>${daRiga(m)}</span></div>`).join("")}` : ""}
+        ${nonApplicabili.length ? `<h3>${t("regole.non_applicato")}</h3>${nonApplicabili.map(m => `<div class="attenzione"><b>${esc(etichettaRegola(m))}: ${esc(vedi(m))}</b><span style="display:block">${esc(testoDi(m, "motivo"))}</span>${daRiga(m)}</div>`).join("")}` : ""}
         ${daControllare.length ? `<details><summary style="font-size:var(--t-corpo)">${t("regole.da_controllare", { n: daControllare.length })}</summary><div class="piccolo">${daControllare.map(rigaDaControllare).join("")}</div></details>` : ""}
-        <div class="pulsanti"><button class="bottone" id="salva-riconosciute" type="button">${t("regole.salva_queste")}</button></div>`;
+        ${esito.modifiche.length ? `<div class="pulsanti"><button class="bottone" id="salva-riconosciute" type="button">${t("regole.salva_queste")}</button></div>` : ""}`;
       // un tocco: i valori riconosciuti vanno nei campi (dietro «Modifica i valori») e le regole si salvano come con «Salva le regole»
-      $("#salva-riconosciute").addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
+      $("#salva-riconosciute")?.addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
     } catch (e) { dove.innerHTML = errore(e); }
   });
   const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? (Number.isInteger(valore) ? 0 : 1)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
@@ -3997,12 +4009,14 @@ async function scaricaIMieiDati() {
   finally { if (b) b.disabled = false; }
 }
 
-// Impostazioni > Avanzate (solo amministratore): inviti, codici per chi ha perso la password, utenti, errori del server.
+// Impostazioni > Gestione (solo amministratore con gli account): inviti, codici per chi ha perso la password, utenti. Con i posti
+// pieni l'avviso del server sta sopra «Crea l'invito» (#894).
+const gestisceAccount = () => !!(stato.account && stato.account.ruolo === "amministratore");
 function schedaAmministratore() {
-  const a = stato.account;
-  return a && a.ruolo === "amministratore" ? `<div class="carta" id="scheda-admin"><h3>${t("admin.titolo")}</h3>
+  return gestisceAccount() ? `<div class="carta" id="scheda-admin"><h3>${t("admin.titolo")}</h3>
     <h3>${t("admin.invito_titolo")}</h3>
     <div class="debole piccolo">${t("admin.invito_spiega")}</div>
+    <div id="adm-avviso-posti" role="status"></div>
     <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
     <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
     <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
@@ -4010,8 +4024,11 @@ function schedaAmministratore() {
     <div class="debole piccolo">${t("admin.reset_spiega")}</div>
     <label class="accesso-campo"><span class="debole piccolo">${t("accesso.nome_utente")}</span><input class="campo-testo" id="adm-nome" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></label>
     <div class="pulsanti"><button class="bottone secondario" id="adm-reset">${t("admin.genera_codice")}</button></div><div id="adm-esito-reset"></div>
-    <h3>${t("admin.utenti_titolo")}</h3><div id="adm-utenti" class="debole piccolo">${t("admin.carico")}</div></div>
-  <div class="carta" id="scheda-errori"><h3>${t("errori.titolo")}</h3>
+    <h3>${t("admin.utenti_titolo")}</h3><div id="adm-utenti" class="debole piccolo">${t("admin.carico")}</div></div>` : "";
+}
+// «Errori recenti», accanto agli strumenti da 1100 px (paginaGestione).
+function schedaErrori() {
+  return gestisceAccount() ? `<div class="carta" id="scheda-errori"><h3>${t("errori.titolo")}</h3>
     <div class="debole piccolo">${t("errori.spiega")}</div>
     <div id="adm-registro" class="debole piccolo" aria-live="polite">${t("admin.carico")}</div>
     <div class="pulsanti"><button class="bottone secondario" type="button" id="adm-registro-aggiorna">${t("errori.aggiorna")}</button></div></div>` : "";
@@ -4106,9 +4123,17 @@ function collegaAmministratore() {
     collegaCopiaCodice(codice);
   };
   const provaCosi = async (cosa, fai) => { try { await fai(); } catch (e) { avviso(e.message || cosa, 6000); } };
+  // posti pieni (#894): la frase del server (`avviso` di /api/admin/utenti e di /api/admin/inviti), in un posto solo sopra
+  // «Crea l'invito»; senza `avviso` (c'è posto, o un server di prima) il posto resta vuoto
+  const avvisoPosti = r => {
+    const dove = $("#adm-avviso-posti");
+    if (!dove || !r || !("avviso" in r)) return;
+    dove.innerHTML = r.avviso ? `<div class="attenzione">${esc(testoDi(r, "avviso"))}</div>` : "";
+  };
   $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
     const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked }) });
     $("#adm-etichetta").value = "";
+    avvisoPosti(r);
     mostraInvito(r);
     caricaUtenti();
   }));
@@ -4138,6 +4163,7 @@ function collegaAmministratore() {
     try {
       const r = await api("/api/admin/utenti");
       if (!$("#adm-utenti")) return;
+      avvisoPosti(r);
       const elenco = r.utenti.map(u => esc(u.nome_visualizzato || u.nome_utente) + (u.ruolo === "amministratore" ? t("admin.admin_breve") : "")).join(", ");
       $("#adm-utenti").innerHTML = tp("admin.utenti_riepilogo", r.utenti.length, { massimo: r.massimo, elenco });
     } catch (e) { if ($("#adm-utenti")) $("#adm-utenti").textContent = e.message; }
@@ -4161,9 +4187,11 @@ function collegaAmministratore() {
       const tempo = ms => Number(ms) >= 1000 ? t("errori.secondi", { n: num(Number(ms) / 1000) }) : t("errori.millisecondi", { n: num(ms) });
       const doveRotta = (rotta, metodo = "") => { const percorso = esc(((metodo ? metodo + " " : "") + (rotta || "")).trim()), nome = nomeDiRotta(rotta);
         return nome ? t("errori.dove", { nome: esc(nome), rotta: percorso }) : percorso; };
+      // le richieste prima dell'accesso (#894) non sono fra le rifiutate: si dicono a parte, solo se ci sono; niente percentile
+      const senzaAccesso = Number(c.senza_accesso) > 0 ? " " + tp("errori.senza_accesso", c.senza_accesso, { n: fNum(c.senza_accesso) }) : "";
       dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: tp("errori.n_richieste", c.richieste, { n: fNum(c.richieste) }),
-          rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }),
-          medio: tempo(c.tempo_medio_ms), p95: tempo(c.tempo_p95_ms), max: tempo(c.tempo_max_ms) })}</p>
+          rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }) })}${senzaAccesso}
+          ${t("errori.tempi", { medio: tempo(c.tempo_medio_ms), max: tempo(c.tempo_max_ms) })}</p>
         <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${t(e.errore ? "errori.riga_errore_tipo" : "errori.riga_errore",
           { quando: quando(e.quando), dove: doveRotta(e.rotta, e.metodo), stato: esc(e.stato || ""), tipo: esc(e.errore || "") })}</li>`)}
         <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
