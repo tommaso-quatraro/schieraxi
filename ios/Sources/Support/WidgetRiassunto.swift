@@ -1064,17 +1064,33 @@ enum DisposizioneWidget {
                 ProvaRettangoloFormazione(giornata: .accanto, daControllare: dubbi)]
     }
 
-    // PROVVISORIO (#871): come oggi, per vedere il test fallire prima del codice
-    enum ContoColonna: Equatable { case conProssima, solo }
+    /// Come sta il conto alla rovescia sotto «Prepara la prossima» nel piccolo di chi è entrato a giornata iniziata.
+    enum ContoColonna: Equatable {
+        /// «Prossima: 4 giorni 1 h», un testo solo che con il testo grande va a capo con il conto intero (`ProssimaConto`).
+        case conProssima
+        /// Il solo conto, «4 giorni 1 h», su una riga: sotto «Prepara la prossima» si capisce lo stesso a cosa si riferisce.
+        case solo
+    }
 
+    /// Una prova della colonna di sinistra di `SenzaFormazioneWidget` (piccolo, e metà sinistra del medio): se c'è la riga
+    /// «Questa giornata è già iniziata» e come sta il conto alla rovescia (nil: niente conto).
     struct ProvaColonnaSenzaFormazione: Equatable {
         var giaIniziata: Bool
         var conto: ContoColonna?
     }
 
+    /// Le prove della colonna di chi è entrato a giornata iniziata, dalla più alta: la vista tiene la prima che entra in altezza.
+    /// «Questa giornata è già iniziata» spiega perché non c'è una formazione e cede per ultima: con il testo grande prima va via la
+    /// parola «Prossima:» (resta il conto, su una riga), solo poi quella riga (#871, foto della corsa 45518745600: con «Prossima:
+    /// 4 giorni 1 h» che andava a capo il piccolo dell'iPhone perdeva la riga, che su main c'era). `conConto`: c'è il conto sotto
+    /// l'invito (il piccolo, con la scadenza della prossima); nel medio il conto sta a destra.
     static func proveColonnaSenzaFormazione(conConto: Bool) -> [ProvaColonnaSenzaFormazione] {
-        let conto: ContoColonna? = conConto ? .conProssima : nil
-        return [ProvaColonnaSenzaFormazione(giaIniziata: true, conto: conto), ProvaColonnaSenzaFormazione(giaIniziata: false, conto: conto)]
+        guard conConto else {
+            return [ProvaColonnaSenzaFormazione(giaIniziata: true, conto: nil), ProvaColonnaSenzaFormazione(giaIniziata: false, conto: nil)]
+        }
+        return [true, false].flatMap { riga in
+            [ContoColonna.conProssima, .solo].map { ProvaColonnaSenzaFormazione(giaIniziata: riga, conto: $0) }
+        }
     }
 
     /// Una prova della colonna di sinistra del widget Formazione extra large: quanto è grande il volto sul campo e se sotto c'è
