@@ -185,6 +185,9 @@ struct AccessoImpostazioniDalCatalogoTests {
         ("Sources/Presentation/Lega/GestionePagina.swift", [
             "Catalogo.Imp.gestione", "Catalogo.Imp.aggiornaSpiega", "Catalogo.Avv.nativa", "Catalogo.Avv.nativaAiuto",
         ]),
+        // i promemoria del certificato (#906) e il passo «Attiva gli avvisi» del primo avvio
+        ("Sources/Support/Notifiche.swift", ["Catalogo.Avv.certificatoTitolo", "Catalogo.Avv.certificatoOre("]),
+        ("Sources/Domain/PrimoAvvioGuidato.swift", ["Catalogo.Pav.avvisiSpiega"]),
     ])
     func vistaUsaIlCatalogo(percorso: String, costanti: [String]) throws {
         let codice = try SorgenteAccesso.codice(percorso)

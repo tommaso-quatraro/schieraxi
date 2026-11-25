@@ -120,7 +120,7 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     private func applica(_ stato: StatoAvvisi) {
         oreTranquille = stato.impostazioni.oreTranquille
         appNativa = stato.impostazioni.app_nativa
-        if !Demo.attivo { telefono.ricorda(stato) }
+        if !Demo.attivo { _ = telefono.ricorda(stato) }   // SCHELETRO PER I TEST: il valore non si usa ancora
     }
 }
 

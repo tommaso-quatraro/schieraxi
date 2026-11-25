@@ -65,10 +65,16 @@ enum Aggiornamento {
     }
 
     /// Ricorda sul telefono gli avvisi come li ha il server: le ore tranquille e se manda già i suoi avvisi a questa app
-    /// (`StatoAvvisi.mandaGiaIlServer`, ntfy per l'app nativa: allora l'app non programma i suoi promemoria).
-    static func ricordaAvvisi(_ stato: StatoAvvisi) {
-        ArchivioOreTranquille.salva(stato.impostazioni.oreTranquille)
-        ArchivioAvvisiDalServer.salva(stato.mandaGiaIlServer)
+    /// (`StatoAvvisi.mandaGiaIlServer`, ntfy per l'app nativa: allora l'app non programma i suoi promemoria). Dice se una delle due
+    /// cose è cambiata rispetto a quello che il telefono sapeva: allora i promemoria vanno rimessi in programma.
+    @discardableResult
+    static func ricordaAvvisi(_ stato: StatoAvvisi, memoria: UserDefaults = .standard) -> Bool {
+        let ore = stato.impostazioni.oreTranquille
+        let manda = stato.mandaGiaIlServer
+        let cambiato = ArchivioOreTranquille.leggi(memoria) != ore || ArchivioAvvisiDalServer.mandaGia(memoria) != manda
+        ArchivioOreTranquille.salva(ore, memoria)
+        ArchivioAvvisiDalServer.salva(manda, memoria)
+        return cambiato
     }
 
     /// Da dove arriva la giornata con cui si programmano i promemoria (`promemoriaTace`).

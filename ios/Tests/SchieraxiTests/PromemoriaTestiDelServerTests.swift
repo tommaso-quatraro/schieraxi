@@ -67,14 +67,19 @@ struct PromemoriaTestiDelServerTests {
         #expect(!elenco.contains { $0.testo.contains("modulo consigliato") })
     }
 
-    @Test("Il testo di un'ora prima letto più di due ore prima che suoni (può avere numeri vecchi): la frase minima con l'ora")
-    func unOraLettaPresto() throws {
-        let letta = try data("2026-11-28 10:00")   // il promemoria di un'ora prima suona alle 13:50, quasi 4 ore dopo
-        let elenco = try promemoria(testi: testiServer, lettaIl: letta, adesso: letta)
-        #expect(elenco.map(\.titolo) == ["", testiServer[1].titolo])
-        #expect(elenco.map(\.testo) == [minima, testiServer[1].testo], "quello di un quarto d'ora prima non ha numeri: resta del server")
-        let senzaOra = try promemoria(testi: testiServer, lettaIl: nil, adesso: letta)
-        #expect(senzaOra.map(\.testo) == [minima, testiServer[1].testo], "lettura di cui non si sa l'ora: come una vecchia")
+    @Test("Testi letti più di due ore prima che il promemoria suoni (numeri e fatti di allora): la frase minima con l'ora, per tutti e due")
+    func testiLettiPresto() throws {
+        let presto = try data("2026-11-28 10:00")   // i promemoria suonano alle 13:50 e alle 14:35, quasi 4 e 5 ore dopo
+        let elenco = try promemoria(testi: testiServer, lettaIl: presto, adesso: presto)
+        #expect(elenco.map(\.titolo) == ["", ""])
+        #expect(elenco.map(\.testo) == [minima, minima], "anche quello di un quarto d'ora prima dice fatti del momento della lettura")
+        let senzaOra = try promemoria(testi: testiServer, lettaIl: nil, adesso: presto)
+        #expect(senzaOra.map(\.testo) == [minima, minima], "lettura di cui non si sa l'ora: come una vecchia")
+        // alle 12:30 quello delle 13:50 è a 1 ora e 20 dalla lettura (del server), quello delle 14:35 a 2 ore e 5 (minimo)
+        let aMezzogiorno = try data("2026-11-28 12:30")
+        let misto = try promemoria(testi: testiServer, lettaIl: aMezzogiorno, adesso: aMezzogiorno)
+        #expect(misto.map(\.titolo) == [testiServer[0].titolo, ""])
+        #expect(misto.map(\.testo) == [testiServer[0].testo, minima])
     }
 
     @Test("Server di prima, senza i testi: il promemoria minimo del catalogo con l'ora della scadenza, senza titolo")
@@ -110,17 +115,39 @@ struct PromemoriaTestiDelServerTests {
 
     // MARK: avvisi del server all'app nativa
 
-    @Test("Il server manda già gli avvisi a questa app solo con ntfy per l'app nativa e il canale; le notifiche della web non contano",
+    /// Sul server `canale` è vero anche con le sole notifiche della web: vuol dire ntfy solo senza dispositivi della web.
+    @Test("Il server manda già gli avvisi a questa app solo con ntfy per l'app nativa, il canale e nessun dispositivo della web",
           arguments: zip([
+            #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": true}, "canale": true, "dispositivi": 1}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": false}, "canale": true, "dispositivi": 1}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": true}, "canale": true, "dispositivi": 0}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": true}, "canale": false, "dispositivi": 0}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": false}, "canale": true, "dispositivi": 0}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true}}"#,
-          ], [false, true, false, false, false]))
+          ], [false, false, true, false, false, false]))
     func dalServer(json: String, atteso: Bool) throws {
         let stato: StatoAvvisi = try Decodifica.decodifica(Data(json.utf8), snake: false)
         #expect(stato.mandaGiaIlServer == atteso)
+    }
+
+    @Test("Ricordare gli avvisi del server dice se per i promemoria è cambiato qualcosa (ore tranquille, avvisi del server all'app)")
+    func ricordaDiceSeCambia() throws {
+        let m = try memoria()
+        let testa = #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true"#
+        let semplice: StatoAvvisi = try Decodifica.decodifica(
+            Data((testa + #"}, "canale": false, "dispositivi": 0}"#).utf8), snake: false)
+        let conNtfy: StatoAvvisi = try Decodifica.decodifica(
+            Data((testa + #", "app_nativa": true}, "canale": true, "dispositivi": 0}"#).utf8), snake: false)
+        let conSilenzio: StatoAvvisi = try Decodifica.decodifica(
+            Data((testa + #", "silenzio": true, "silenzio_da": 22, "silenzio_a": 8}, "canale": false, "dispositivi": 0}"#).utf8),
+            snake: false)
+        #expect(Aggiornamento.ricordaAvvisi(semplice, memoria: m) == false, "come sul telefono appena installato")
+        #expect(Aggiornamento.ricordaAvvisi(conNtfy, memoria: m) == true)
+        #expect(ArchivioAvvisiDalServer.mandaGia(m))
+        #expect(Aggiornamento.ricordaAvvisi(conNtfy, memoria: m) == false, "di nuovo uguale")
+        #expect(Aggiornamento.ricordaAvvisi(conSilenzio, memoria: m) == true)
+        #expect(ArchivioOreTranquille.leggi(m) == OreTranquille(attive: true, da: 22, a: 8))
+        #expect(!ArchivioAvvisiDalServer.mandaGia(m))
     }
 
     // MARK: certificato e ore tranquille

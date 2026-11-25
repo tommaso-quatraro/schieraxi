@@ -184,8 +184,9 @@ struct TelefonoAvvisi: Sendable {
     /// Chiede il permesso a iOS (la prima volta compare la domanda di sistema); dice se c'è.
     var chiediPermesso: @MainActor @Sendable () async -> Bool
     /// Ricorda sul telefono gli avvisi come li ha il server (`GET` o `PUT /api/avvisi`): le ore tranquille e se il server manda già
-    /// gli avvisi a questo telefono (`ArchivioAvvisiDalServer`). Li usa ogni programmazione successiva, anche in background.
-    var ricorda: @MainActor @Sendable (StatoAvvisi) -> Void
+    /// gli avvisi a questa app (`ArchivioAvvisiDalServer`). Li usa ogni programmazione successiva, anche in background. Dice se per i
+    /// promemoria è cambiato qualcosa (`Aggiornamento.ricordaAvvisi`).
+    var ricorda: @MainActor @Sendable (StatoAvvisi) -> Bool
     /// Toglie subito i promemoria e gli avvisi già programmati.
     var togliTutti: @MainActor @Sendable () -> Void
     /// Rimette in programma i promemoria con l'ultima giornata salvata (e quelli del certificato).
