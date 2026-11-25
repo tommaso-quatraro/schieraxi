@@ -1511,6 +1511,8 @@ const TESTI = {
     "regole.modifica_valori": "Modifica i valori",
     "regole.tempi_salvati": "Salvato: promemoria e giornate usano i tempi nuovi",
     "regole.aggiornamenti_titolo": "Aggiornamenti dei dati",
+    "regole.campo_vuoto": "«{campo}» è vuoto: scrivi un numero",
+    "regole.fuori_limiti": "«{campo}» deve essere tra {min} e {max}",
 
     "ruolo.P_pl": "Portieri",
     "ruolo.D_pl": "Difensori",
@@ -3249,6 +3251,8 @@ const TESTI = {
     "regole.modifica_valori": "Edit the values",
     "regole.tempi_salvati": "Saved: reminders and matchdays use the new times",
     "regole.aggiornamenti_titolo": "Data updates",
+    "regole.campo_vuoto": "“{campo}” is empty: enter a number",
+    "regole.fuori_limiti": "“{campo}” must be between {min} and {max}",
 
     "ruolo.P_pl": "Goalkeepers",
     "ruolo.D_pl": "Defenders",
