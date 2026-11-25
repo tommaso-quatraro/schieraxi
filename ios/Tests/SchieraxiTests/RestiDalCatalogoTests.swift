@@ -144,8 +144,16 @@ struct RestiDalCatalogoTests {
                 Catalogo.Bonus.golSubitoPortiere, Catalogo.Regole.legheApriRegolamento,
                 Catalogo.Regole.controllaValoriQui, Catalogo.Regole.valoriApplicatiControlla,
              ],
-             usa: ["Catalogo.Bonus.assist", "Catalogo.Bonus.golSubitoPortiere", "Catalogo.Regole.legheApriRegolamento",
-                   "Catalogo.Regole.controllaValoriQui", "Catalogo.Regole.valoriApplicatiControlla"]),
+             usa: ["Catalogo.Regole.legheApriRegolamento", "Catalogo.Regole.controllaValoriQui",
+                   "Catalogo.Regole.valoriApplicatiControlla"]),
+        // i nomi dei bonus e dei malus delle righe con − e + stanno con gli altri campi in CampiRegole (#889)
+        Caso(file: "Sources/Presentation/Lega/CampiRegole.swift",
+             testi: [
+                Catalogo.Bonus.assist, Catalogo.Bonus.rigoreSegnato, Catalogo.Bonus.portiereImbattuto, Catalogo.Bonus.mvp,
+                Catalogo.Bonus.ammonizione, Catalogo.Bonus.espulsione, Catalogo.Bonus.autogol, Catalogo.Bonus.rigoreSbagliato,
+                Catalogo.Bonus.golSubitoPortiere, Catalogo.Ruolo.pPl, Catalogo.Ruolo.dPl, Catalogo.Ruolo.cPl, Catalogo.Ruolo.aPl,
+             ],
+             usa: ["Catalogo.Bonus.assist", "Catalogo.Bonus.golSubitoPortiere", "Catalogo.Ruolo.pPl", "Catalogo.Ruolo.aPl"]),
         // il pulsante del file con le parole del primo avvio della web (#594)
         Caso(file: "Sources/Presentation/Lega/ImportaRoseView.swift",
              testi: [Catalogo.Lega.esportaRoseExcel, Catalogo.Pav.scegliFile],
