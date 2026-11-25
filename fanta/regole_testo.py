@@ -64,6 +64,12 @@ MAX_CIFRE = 9                    # un valore di regola con più cifre non è un 
 # I crediti sono un numero intero, anche con il punto delle migliaia («1.000» è mille, #888). Con una parte decimale («1,000»,
 # «500,5») o un gruppo di cifre che non torna («1.0000») non si leggono: la riga resta da controllare.
 CREDITI_NUM = r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?![.,]?\d)"
+# Le righe dei gol delle partite testa a testa («Soglia gol: 66 punti», «Ampiezza fascia gol: 6», «Punti per il primo gol: 66»)
+# non dicono il bonus del gol: non si leggono e restano da controllare (#888).
+SOGLIA_GOL = r"sogli|\bfasc|ampiezz|classific|\bprim[oa]\s(?:gol|rete)"
+# Un bonus o un malus oltre questo valore non è un bonus vero (la web e l'iPhone lasciano scegliere da 0 a 20): «Gol: 66 punti» è
+# la soglia del primo gol. Non si propone e il numero resta non letto, così la riga va controllata (#888).
+MAX_BONUS_LETTO = 20
 RUOLI = {"portier": "P", "difensor": "D", "centrocamp": "C", "attaccant": "A"}
 NOMI_PLURALE = {"P": "portieri", "D": "difensori", "C": "centrocampisti", "A": "attaccanti"}
 NOMI_SINGOLARE = {"P": "portiere", "D": "difensore", "C": "centrocampista", "A": "attaccante"}
@@ -309,6 +315,8 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
 
     def imposta(chiave, etichetta, valore, n, *posizioni):
         """Propone `valore` per `chiave` dalla riga `n`; `posizioni`: dove cominciano i numeri della riga che ha letto."""
+        if chiave.startswith("bonus.") and abs(valore) > MAX_BONUS_LETTO:
+            return
         proposte.append((chiave, etichetta, valore, n))
         usate.add(n)
         letti.setdefault(n, set()).update(posizioni)
@@ -352,7 +360,9 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
         if re.search(r"\bgol\b", riga) and not re.search(r"gol subit|reti subit|gol (?:su|da) rigore|nessun gol|assist|rigor"
                                                          r"|imbattut|inviolat|clean sheet|senza subire", riga):
             ruoli_riga = [(r, riga.find(k)) for k, r in RUOLI.items() if k in riga]
-            if len(ruoli_riga) >= 2:
+            if re.search(SOGLIA_GOL, riga):
+                trovato = True                  # la soglia del primo gol, non il bonus: nessuna proposta, la riga si controlla
+            elif len(ruoli_riga) >= 2:
                 for r, pos in sorted(ruoli_riga, key=lambda x: x[1]):
                     if (primo := _primo(riga, pos)) and primo[1] is not None:
                         imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(primo[1]), n, primo[0]); trovato = True
