@@ -171,8 +171,15 @@ enum PrimoAvvioLogica {
         return PassoGuidato.allCases.filter { !gia.contains($0) }
     }
 
-    /// Il passo da cui parte la guida.
-    static func inizio(_ passi: [PassoGuidato], riprendiDa: PassoGuidato?) -> Int { 0 }
+    /// Da quale dei `passi` parte la guida. Aperta da sola o da «Da fare» (`riprendiDa` nil), dal primo. Riaperta dopo una pagina in
+    /// cui l'aveva portata un passo (#880), da quel passo se è ancora da fare (il widget, che l'app non sa se è collegato, si
+    /// segna con «L'ho già fatto»), altrimenti dal primo dopo: i passi prima, già decisi, non si ripropongono. Nessuno dopo:
+    /// `passi.count`, cioè «Tutto pronto».
+    static func inizio(_ passi: [PassoGuidato], riprendiDa: PassoGuidato?) -> Int {
+        let ordine = PassoGuidato.allCases
+        guard let riprendiDa, let soglia = ordine.firstIndex(of: riprendiDa) else { return 0 }
+        return passi.firstIndex { (ordine.firstIndex(of: $0) ?? 0) >= soglia } ?? passi.count
+    }
 
     /// Il corpo del PUT: si parte da quello che il server ricorda (anche i passi di altri dispositivi) e si aggiunge il nuovo.
     /// Un passo non sta mai in «fatti» e «saltati» insieme; i nomi che il server non conosce non si mandano (darebbero errore).

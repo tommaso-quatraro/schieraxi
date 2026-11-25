@@ -1,38 +1,63 @@
 import Foundation
 
-/// Una pagina aperta da un passo della configurazione guidata.
+/// Una pagina aperta da un passo della configurazione guidata (#880). Sulla web tutto succede dentro la guida, che continua con i
+/// passi che restano fino a «Tutto pronto»; sull'iPhone «Importa le rose», «Scegli la squadra» e «Scegli stemma e maglia» portano
+/// a una pagina delle Impostazioni e «Collega il widget» al suo foglio. Quando la pagina si lascia (anche con «indietro» senza
+/// salvare) o il foglio si chiude, la guida si riapre e riparte da quel passo (`PrimoAvvioLogica.inizio`).
+/// Vive nel `LegaViewModel` della sessione: uscendo dall'account se ne va con lui.
 struct RitornoAllaGuida {
-    /// Dove ha portato la guida.
+    /// Dove ha portato la guida: una pagina delle Impostazioni (con quelle che le si aprono sopra) o il foglio del widget.
     enum Meta: Equatable { case pagina(PaginaImpostazioni), widget }
 
     private enum Fase { case nessuna, chiesta, aperta }
     private var fase = Fase.nessuna
+    private var meta: Meta?
+    private var passo: PassoGuidato?
 
     /// La guida ha portato a `meta` dal passo `passo`.
     mutating func chiesta(_ meta: Meta, dalPasso passo: PassoGuidato) {
-        if meta == .pagina(.importa) { fase = .chiesta }
+        fase = .chiesta
+        self.meta = meta
+        self.passo = passo
     }
 
-    /// La pila delle Impostazioni è cambiata: il passo da cui riaprire la guida.
+    /// La pila delle Impostazioni è cambiata: il passo da cui riaprire la guida, una volta, quando la pagina chiesta è stata
+    /// aperta e poi lasciata (una pagina aperta sopra, come la rosa dall'elenco delle squadre, non conta come lasciata). Se la
+    /// pagina non si apre (le Regole con modifiche da salvare la fanno aspettare) e si torna indietro, la richiesta cade: la stessa
+    /// pagina aperta più tardi dalle Impostazioni non riapre la guida.
     mutating func pilaCambiata(_ pagine: [PaginaImpostazioni]) -> PassoGuidato? {
-        let rose = pagine.contains(.importa)
-        switch (fase, rose) {
+        guard case .pagina(let pagina)? = meta else { return nil }
+        return segui(aperta: pagine.contains(pagina))
+    }
+
+    /// Il foglio «Collega il widget» si è aperto o chiuso: il passo da cui riaprire la guida, una volta, quando si chiude.
+    mutating func foglioWidget(aperto: Bool) -> PassoGuidato? {
+        guard meta == .widget else { return nil }
+        return segui(aperta: aperto)
+    }
+
+    /// La pagina è stata chiesta dalla guida e non è ancora stata lasciata: la pagina delle rose, salvate le rose, si chiude da sola.
+    func attivo(per pagina: PaginaImpostazioni) -> Bool { fase != .nessuna && meta == .pagina(pagina) }
+
+    private mutating func segui(aperta: Bool) -> PassoGuidato? {
+        switch (fase, aperta) {
         case (.chiesta, true):
             fase = .aperta
         case (.chiesta, false):
-            fase = .nessuna
+            dimentica()
         case (.aperta, false):
-            fase = .nessuna
-            return .rose
+            let daQui = passo
+            dimentica()
+            return daQui
         default:
             break
         }
         return nil
     }
 
-    /// Il foglio «Collega il widget» si è aperto o chiuso.
-    mutating func foglioWidget(aperto: Bool) -> PassoGuidato? { nil }
-
-    /// La pagina è stata chiesta dalla guida e non è ancora stata lasciata.
-    func attivo(per pagina: PaginaImpostazioni) -> Bool { fase != .nessuna && pagina == .importa }
+    private mutating func dimentica() {
+        fase = .nessuna
+        meta = nil
+        passo = nil
+    }
 }
