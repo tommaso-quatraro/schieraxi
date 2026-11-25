@@ -15,7 +15,7 @@ struct AvvisiDispositivoSezione: View {
                 avviso(Self.testoOreTranquilleSpente)
             }
             Toggle(isOn: Binding(get: { vm.qui }, set: { nuovo in Task { await vm.cambiaQui(nuovo) } })) {
-                NomeConAiuto(Catalogo.Imp.avvisiQui, aiuto: Catalogo.Imp.avvisiQuiAiuto)
+                NomeConAiuto(Catalogo.Imp.avvisiQui, aiuto: Catalogo.Imp.avvisiQuiAiutoApp)
             }
             .tint(Color.verde)
             .frame(minHeight: Tema.areaTocco)

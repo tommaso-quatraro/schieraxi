@@ -119,8 +119,9 @@ final class OggiViewModel: ViewModelBase {
         return .fresca(oggi, chiestaIl: chiesta)
     }
 
-    /// Una giornata fresca per i promemoria e i widget: la prima volta il permesso per le notifiche, poi `Aggiornamento.elabora`
-    /// (promemoria, riassunto per il widget, memoria dell'ultima formazione). `chiestaIl`: quando è partita la lettura. In demo niente.
+    /// Una giornata fresca per i promemoria e i widget: la prima volta il permesso per le notifiche, poi gli avvisi del server (ore
+    /// tranquille e se il server manda già i suoi avvisi a questo telefono, #906) e `Aggiornamento.elabora` (promemoria con i testi
+    /// del server, riassunto per il widget). `chiestaIl`: quando è partita la lettura. In demo niente.
     static func passaAWidgetEPromemoria(_ oggi: Oggi, chiestaIl: Date) async {
         guard !Demo.attivo else { return }
         let memoria = UserDefaults.standard
@@ -129,7 +130,7 @@ final class OggiViewModel: ViewModelBase {
             _ = await Notifiche.chiediPermesso()
             await Aggiornamento.riprogrammaScadenza()
         }
-        // Promemoria, widget e memoria dell'ultima formazione (per accorgersi dei cambiamenti in background).
-        await Aggiornamento.elabora(oggi, avvisaSeCambia: false, chiestaIl: chiestaIl)
+        await Aggiornamento.aggiornaAvvisiDelServer()
+        await Aggiornamento.elabora(oggi, chiestaIl: chiestaIl)
     }
 }

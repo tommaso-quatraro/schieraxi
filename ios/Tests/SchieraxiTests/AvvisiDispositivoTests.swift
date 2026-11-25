@@ -2,6 +2,16 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
+/// Un caso di `AvvisiDispositivoTests.serverMandaGia`: lo stato degli avvisi sul server e cosa deve ricordare il telefono.
+struct CasoCanaleAvvisi: Sendable, CustomTestStringConvertible {
+    let dispositivi: Int
+    let appNativa: Bool
+    let ntfy: Bool
+    let atteso: Bool
+
+    var testDescription: String { "dispositivi \(dispositivi), app nativa \(appNativa), ntfy \(ntfy)" }
+}
+
 /// Impostazioni > Avvisi come la web (#673 passo 3, #693): un interruttore solo, «Avvisi su questo dispositivo», che accende o spegne
 /// il permesso di iOS e i promemoria locali dell'app (le scelte per singolo avviso non si usano più), e «Ore tranquille», che manda
 /// al server il solo `silenzio`. Il telefono vero (permesso, promemoria) è sostituito da una versione che annota le chiamate.
@@ -17,6 +27,10 @@ struct AvvisiDispositivoTests {
         var tolti = 0
         var riprogrammati = 0
         var oreRicordate: [OreTranquille] = []
+        /// Per ogni stato degli avvisi ricordato: il server manda già i suoi avvisi a questo telefono?
+        var serverManda: [Bool] = []
+        /// Cosa risponde il telefono quando ricorda lo stato del server: è cambiato qualcosa per i promemoria?
+        var cambia = false
 
         var avvisi: TelefonoAvvisi {
             TelefonoAvvisi(
@@ -26,7 +40,11 @@ struct AvvisiDispositivoTests {
                     self.permesso = self.concede
                     return self.concede
                 },
-                ricordaOre: { self.oreRicordate.append($0) },
+                ricorda: { stato in
+                    self.oreRicordate.append(stato.impostazioni.oreTranquille)
+                    self.serverManda.append(stato.mandaGiaIlServer)
+                    return self.cambia
+                },
                 togliTutti: { self.tolti += 1 },
                 riprogramma: { self.riprogrammati += 1 })
         }
@@ -36,11 +54,13 @@ struct AvvisiDispositivoTests {
         try #require(UserDefaults(suiteName: "prova-avvisi-qui-\(UUID().uuidString)"))
     }
 
-    private func server(rotto: Bool = false) -> ServerDiProva {
+    /// Come il server (`_stato_avvisi` di `fanta/server.py`): `canale` è vero con il canale ntfy configurato (`ntfy`) o con almeno
+    /// un dispositivo con le notifiche della web accese (`dispositivi`); `appNativa` è «Avvisi anche per l'app nativa» e non lo tocca.
+    private func server(rotto: Bool = false, dispositivi: Int = 0, appNativa: Bool = false, ntfy: Bool = false) -> ServerDiProva {
         ServerDiProva { metodo, percorso, _ in
             if metodo == "PUT", rotto { throw ErroreApi.rete("spento") }
             if percorso.hasPrefix("/api/avvisi") {
-                return Data(#"{"impostazioni":{"cambi":true,"promemoria_60":false,"promemoria_15":false,"riepilogo":true,"silenzio":true,"silenzio_da":22,"silenzio_a":8},"canale":false,"dispositivi":0}"#.utf8)
+                return Data(#"{"impostazioni":{"cambi":true,"promemoria_60":false,"promemoria_15":false,"riepilogo":true,"silenzio":true,"silenzio_da":22,"silenzio_a":8,"app_nativa":\#(appNativa)},"canale":\#(ntfy || dispositivi > 0),"dispositivi":\#(dispositivi)}"#.utf8)
             }
             return Data("{}".utf8)
         }
@@ -164,13 +184,44 @@ struct AvvisiDispositivoTests {
         #expect(telefono.riprogrammati == 0)
     }
 
-    @Test("Avvisi anche per l'app nativa (Gestione): si manda solo `app_nativa`")
+    @Test("Avvisi anche per l'app nativa (Gestione): si manda solo `app_nativa`, poi i promemoria del telefono tornano in programma")
     func appNativa() async throws {
         let s = server()
-        let vm = AvvisiDispositivoViewModel(server: s, telefono: Telefono().avvisi, memoria: try memoria())
+        let telefono = Telefono()
+        let vm = AvvisiDispositivoViewModel(server: s, telefono: telefono.avvisi, memoria: try memoria())
         await vm.carica()
         await vm.cambiaAppNativa(true)
         let corpo = String(decoding: try #require(s.corpiInviati(a: "PUT /api/avvisi").last), as: UTF8.self)
         #expect(corpo == #"{"app_nativa":true}"#)
+        #expect(telefono.riprogrammati == 1, "con ntfy per l'app nativa i promemoria del telefono si tolgono (#906)")
+    }
+
+    @Test("Con ntfy per l'app nativa il telefono ricorda che il server manda già gli avvisi; con le notifiche della web no (#906)",
+          arguments: [
+            CasoCanaleAvvisi(dispositivi: 0, appNativa: true, ntfy: true, atteso: true),
+            CasoCanaleAvvisi(dispositivi: 1, appNativa: true, ntfy: false, atteso: false),   // web solo sul computer: `canale` vero per la web
+            CasoCanaleAvvisi(dispositivi: 1, appNativa: true, ntfy: true, atteso: false),    // il server manda alla web e a ntfy
+            CasoCanaleAvvisi(dispositivi: 1, appNativa: false, ntfy: false, atteso: false),
+            CasoCanaleAvvisi(dispositivi: 0, appNativa: true, ntfy: false, atteso: false),   // nessun canale: il server non manda niente
+            CasoCanaleAvvisi(dispositivi: 0, appNativa: false, ntfy: false, atteso: false),
+          ])
+    func serverMandaGia(caso: CasoCanaleAvvisi) async throws {
+        let telefono = Telefono()
+        let vm = AvvisiDispositivoViewModel(server: server(dispositivi: caso.dispositivi, appNativa: caso.appNativa, ntfy: caso.ntfy),
+                                            telefono: telefono.avvisi, memoria: try memoria())
+        await vm.carica()
+        #expect(telefono.serverManda.last == caso.atteso)
+    }
+
+    @Test("Aprendo la pagina degli avvisi, se per i promemoria è cambiato qualcosa sul server, i promemoria tornano in programma")
+    func caricaRiprogrammaSeCambia() async throws {
+        let cambiato = Telefono()
+        cambiato.cambia = true
+        await AvvisiDispositivoViewModel(server: server(appNativa: true, ntfy: true), telefono: cambiato.avvisi, memoria: try memoria())
+            .carica()
+        #expect(cambiato.riprogrammati == 1, "niente doppioni fino alla prossima lettura di Oggi")
+        let uguale = Telefono()
+        await AvvisiDispositivoViewModel(server: server(), telefono: uguale.avvisi, memoria: try memoria()).carica()
+        #expect(uguale.riprogrammati == 0)
     }
 }

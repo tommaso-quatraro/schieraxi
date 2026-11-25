@@ -140,7 +140,7 @@ final class LegaViewModel: ViewModelBase {
         return nil
     }
 
-    /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (se cambia la consigliata), in italiano semplice.
+    /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (giornata, promemoria, widget), in italiano semplice.
     static let titoloControlli = "Controllo con l'app chiusa"
 
     /// Lo stato di quel controllo; se è spento, dove si riaccende (Impostazioni > Generali > Aggiornamento app in background).

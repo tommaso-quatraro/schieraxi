@@ -29,18 +29,12 @@ final class TempiLegaTests: XCTestCase {
         XCTAssertEqual(try oggi(", \"giornata_lega\": 0").giornataMostrata, 10)
     }
 
-    func testGliAvvisiESiriDicianoLaGiornataDellaLega() throws {
-        // lega che parte dalla 4ª di Serie A: la 10ª di Serie A è la 7ª della lega; in testa i due numeri e i due punti (#299)
+    func testSiriDiceLaGiornataDellaLega() throws {
+        // lega che parte dalla 4ª di Serie A: la 10ª di Serie A è la 7ª della lega (#299). Gli avvisi «Cambio di modulo» ed «Escono
+        // le probabili» non partono più dal telefono (#906): i testi dei promemoria li scrive il server.
         let o = try oggi(", \"giornata_lega\": 7")
-        XCTAssertEqual(Aggiornamento.corpoCambioModulo(o, modulo: "3-5-2", punti: "66,0", moduloPrima: "4-3-3"),
-                       "Giornata 7 · 10ª di Serie A: ora 3-5-2, 66,0 punti attesi (prima 4-3-3).")
-        XCTAssertEqual(Aggiornamento.corpoProbabili(o, modulo: "3-5-2", punti: "66,0"),
-                       "Giornata 7 · 10ª di Serie A: modulo consigliato 3-5-2, 66,0 punti attesi.")
         XCTAssertEqual(FormazioneComando.fraseBase(o, modulo: "3-5-2", punti: "66,0"),
                        "Giornata 7, 10ª di Serie A: ti consiglio il 3-5-2, con 66,0 punti attesi.", "Siri legge la virgola, non «·»")
-        // senza il numero della lega solo quello di Serie A
-        let senza = try oggi("")
-        XCTAssertTrue(Aggiornamento.corpoProbabili(senza, modulo: "3-5-2", punti: "66,0").hasPrefix("10ª giornata di Serie A:"))
     }
 
     func testIlRiassuntoDelWidgetUsaLaScadenza() throws {
@@ -129,10 +123,8 @@ final class OggiSenzaGiornataTests: XCTestCase {
         XCTAssertNil(w?.comeRiassuntoOggi())
     }
 
-    func testSiriENotificheSenzaGiornata() throws {
+    func testSiriSenzaGiornata() throws {
         let o = try leggi(nuovoSenzaRose)
-        XCTAssertTrue(Aggiornamento.corpoProbabili(o, modulo: "3-5-2", punti: "66,0").hasPrefix("Prossima giornata:"))
-        XCTAssertTrue(Aggiornamento.corpoCambioModulo(o, modulo: "3-5-2", punti: "66,0", moduloPrima: "4-3-3").hasPrefix("Prossima giornata:"))
         XCTAssertFalse(FormazioneComando.fraseBase(o, modulo: "3-5-2", punti: "66,0").contains("nil"))
     }
 }

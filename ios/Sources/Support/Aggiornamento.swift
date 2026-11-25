@@ -2,8 +2,8 @@ import Foundation
 import BackgroundTasks
 import WidgetKit
 
-/// Aggiornamento in background: ogni tanto iOS sveglia l'app (BGAppRefreshTask), che riscarica la giornata,
-/// riprogramma i promemoria e, se la formazione consigliata è cambiata, manda una notifica locale.
+/// Aggiornamento in background: ogni tanto iOS sveglia l'app (BGAppRefreshTask), che riscarica la giornata e riprogramma i
+/// promemoria. Gli avvisi quando cambia la formazione li manda solo il server (#676): l'app non ne manda di suoi (#906).
 /// iOS decide quando svegliarla (di solito poche volte al giorno, di più se usi spesso l'app): non c'è un orario garantito.
 enum Aggiornamento {
     static let identificativo = "it.schieraxi.app.aggiorna"
@@ -22,21 +22,23 @@ enum Aggiornamento {
         if let scadenza = Certificato.scadenza() { await Notifiche.programmaScadenza(scadenza) }
     }
 
-    /// Il lavoro vero: scarica /api/oggi, lo salva nella cache e confronta con l'ultima volta. Se la lettura non riesce, i promemoria
-    /// tornano in programma con l'ultima giornata salvata e partono: mai tacere per un dato incerto.
+    /// Il lavoro vero: scarica /api/oggi, lo salva nella cache e riprogramma promemoria e widget. Se la lettura non riesce, i
+    /// promemoria tornano in programma con l'ultima giornata salvata e partono: mai tacere per un dato incerto.
     static func esegui() async {
         if Demo.attivo { return }
         programma()   // prima di tutto: riprogramma il prossimo risveglio
+        await aggiornaAvvisiDelServer()   // ore tranquille e avvisi del server, per i promemoria qui sotto
         await riprogrammaScadenza()
         await NuovaVersione.controllaEAvvisa()
-        await aggiornaOreTranquille()
         let repository = OggiRepository(server: ServerCorrente.condiviso)
         let chiesta = Date()
         guard let oggi = try? await repository.aggiornato() else {
-            if let salvato = await repository.salvato() { await programmaPromemoria(salvato, lettura: .nonRiuscita) }
+            if let salvato = await repository.salvatoConData() {
+                await programmaPromemoria(salvato.oggi, lettura: .nonRiuscita, salvataIl: salvato.il)
+            }
             return
         }
-        await elabora(oggi, avvisaSeCambia: true, chiestaIl: chiesta)
+        await elabora(oggi, chiestaIl: chiesta)
     }
 
     /// Riempie in anticipo la copia di `/api/widget` (con If-None-Match), così i widget mostrano subito dati freschi.
@@ -53,12 +55,26 @@ enum Aggiornamento {
         }
     }
 
-    /// Rilegge le ore tranquille dal server (se risponde) per i promemoria locali.
-    static func aggiornaOreTranquille() async {
+    /// Rilegge dal server gli avvisi (`GET /api/avvisi`, se risponde) per i promemoria locali: le ore tranquille e se il server manda
+    /// già i suoi avvisi a questo telefono (#906). Se non risponde resta quello che si sapeva.
+    static func aggiornaAvvisiDelServer() async {
         if Demo.attivo { return }
         if let stato: StatoAvvisi = try? await ServerCorrente.condiviso.get("/api/avvisi", snake: false) {
-            ArchivioOreTranquille.salva(stato.impostazioni.oreTranquille)
+            ricordaAvvisi(stato)
         }
+    }
+
+    /// Ricorda sul telefono gli avvisi come li ha il server: le ore tranquille e se manda già i suoi avvisi a questa app
+    /// (`StatoAvvisi.mandaGiaIlServer`, ntfy per l'app nativa: allora l'app non programma i suoi promemoria). Dice se una delle due
+    /// cose è cambiata rispetto a quello che il telefono sapeva: allora i promemoria vanno rimessi in programma.
+    @discardableResult
+    static func ricordaAvvisi(_ stato: StatoAvvisi, memoria: UserDefaults = .standard) -> Bool {
+        let ore = stato.impostazioni.oreTranquille
+        let manda = stato.mandaGiaIlServer
+        let cambiato = ArchivioOreTranquille.leggi(memoria) != ore || ArchivioAvvisiDalServer.mandaGia(memoria) != manda
+        ArchivioOreTranquille.salva(ore, memoria)
+        ArchivioAvvisiDalServer.salva(manda, memoria)
+        return cambiato
     }
 
     /// Da dove arriva la giornata con cui si programmano i promemoria (`promemoriaTace`).
@@ -73,15 +89,16 @@ enum Aggiornamento {
     }
 
     /// I promemoria di questa giornata tacciono? La spunta toccata sul telefono dopo l'ultima lettura vale subito; altrimenti decide il
-    /// server con la regola dei suoi promemoria (`serve_promemoria`, `Notifiche.tacePromemoria`).
+    /// server con la regola dei suoi promemoria (`serve_promemoria`, o la lista vuota di `testi_promemoria`: `Oggi.serveIlPromemoria`;
+    /// `Notifiche.tacePromemoria`).
     static func promemoriaTace(_ oggi: Oggi, lettura: Lettura, memoria: UserDefaults = .standard) -> Bool {
         let serve: Bool?
         switch lettura {
         case .fresca(let chiestaIl):
             ArchivioMessa.dimentica(primaDi: chiestaIl, memoria)
-            serve = oggi.servePromemoria?.valore
+            serve = oggi.serveIlPromemoria
         case .salvata:
-            serve = oggi.servePromemoria?.valore
+            serve = oggi.serveIlPromemoria
         case .nonRiuscita:
             serve = nil
         }
@@ -89,12 +106,17 @@ enum Aggiornamento {
     }
 
     /// I promemoria di un'ora e di un quarto d'ora prima della scadenza di questa giornata (con «Avvisi su questo dispositivo» acceso),
-    /// se servono (`promemoriaTace`).
-    static func programmaPromemoria(_ oggi: Oggi, lettura: Lettura) async {
+    /// se servono (`promemoriaTace`) e se il server non manda già i suoi a questo telefono, con i testi del server
+    /// (`Notifiche.promemoriaDaProgrammare`). `salvataIl`: quando è stata salvata la copia, per una lettura non fresca.
+    static func programmaPromemoria(_ oggi: Oggi, lettura: Lettura, salvataIl: Date? = nil) async {
         let tace = promemoriaTace(oggi, lettura: lettura)
-        if let inizio = Quando.data(oggi.chiusura), let nome = oggi.nomeGiornata {
-            await Notifiche.programma(giornata: nome, inizio: inizio, modulo: oggi.formazione?.modulo, tace: tace)
-        }
+        guard let inizio = Quando.data(oggi.chiusura), let nome = oggi.nomeGiornata else { return }
+        let lettaIl: Date?
+        if case .fresca(let chiestaIl) = lettura { lettaIl = chiestaIl } else { lettaIl = salvataIl }
+        let elenco = Notifiche.promemoriaDaProgrammare(giornata: nome, inizio: inizio, testi: oggi.promemoriaDelServer, lettaIl: lettaIl,
+                                                       ore: ArchivioOreTranquille.leggi(), attivi: ArchivioAvvisiQui.minutiAttivi(),
+                                                       tace: tace, dalServer: ArchivioAvvisiDalServer.mandaGia())
+        await Notifiche.programma(elenco)
     }
 
     /// Dopo che gli avvisi si sono riaccesi o sono cambiate le ore tranquille: rimette in programma i promemoria con l'ultima giornata
@@ -102,53 +124,37 @@ enum Aggiornamento {
     /// Senza una copia salvata ci pensa la prossima lettura di Oggi.
     static func riprogrammaPromemoria(lettura: Lettura = .salvata) async {
         if Demo.attivo { return }
-        guard let oggi = await OggiRepository(server: ServerCorrente.condiviso).salvato() else { return }
-        await programmaPromemoria(oggi, lettura: lettura)
+        guard let salvato = await OggiRepository(server: ServerCorrente.condiviso).salvatoConData() else { return }
+        await programmaPromemoria(salvato.oggi, lettura: lettura, salvataIl: salvato.il)
     }
 
-    /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata. `chiestaIl`: quando
-    /// è partita la lettura di questa giornata dal server.
-    static func elabora(_ oggi: Oggi, avvisaSeCambia: Bool, chiestaIl: Date) async {
-        if Demo.attivo { return }   // demo: niente promemoria, widget o notifiche
+    /// Promemoria e widget dopo una lettura fresca della giornata. `chiestaIl`: quando è partita la lettura dal server.
+    /// «Cambio di modulo» ed «Escono le probabili» non partono più dal telefono (#906): annunciavano come notizia anche il modulo
+    /// salvato dall'utente, e il server li ha tolti con #676.
+    static func elabora(_ oggi: Oggi, chiestaIl: Date) async {
+        if Demo.attivo { return }   // demo: niente promemoria né widget
         await programmaPromemoria(oggi, lettura: .fresca(chiestaIl: chiestaIl))
         // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
         Condiviso.salvaRiassunto(RiassuntoOggi(oggi: oggi))
         await precaricaWidget()
         WidgetCenter.shared.reloadAllTimelines()
-        // Senza una formazione vera (modulo mancante o «–», punti assenti) non si confronta né si ricorda niente.
-        guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo, let giornata = oggi.giornata else { return }
-        let memoria = UserDefaults.standard
-        let probabili = oggi.conProbabili ?? false
-        let giornataPrima = memoria.object(forKey: "bg.giornata") as? Int
-        let moduloPrima = memoria.string(forKey: "bg.modulo")
-        let probabiliPrima = memoria.object(forKey: "bg.probabili") as? Bool
-
-        if avvisaSeCambia, giornataPrima == giornata {
-            let punti = Formato.punti(f.punteggioAtteso)
-            if let moduloPrima, moduloPrima != modulo {
-                await Notifiche.avviso(id: "fanta-cambio", titolo: "SchieraXI · Cambio di modulo",
-                                       corpo: corpoCambioModulo(oggi, modulo: modulo, punti: punti, moduloPrima: moduloPrima))
-            } else if probabiliPrima == false, probabili {
-                await Notifiche.avviso(id: "fanta-probabili", titolo: "SchieraXI · Escono le probabili",
-                                       corpo: corpoProbabili(oggi, modulo: modulo, punti: punti))
-            }
-        }
-        memoria.set(giornata, forKey: "bg.giornata")
-        memoria.set(modulo, forKey: "bg.modulo")
-        memoria.set(probabili, forKey: "bg.probabili")
-    }
-
-    /// I testi degli avvisi: la giornata con i due numeri in testa, seguita dai due punti, come gli avvisi del server (#299).
-    static func corpoCambioModulo(_ oggi: Oggi, modulo: String, punti: String, moduloPrima: String) -> String {
-        "\(oggi.nomeGiornata?.intero ?? "Prossima giornata"): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima))."
-    }
-
-    static func corpoProbabili(_ oggi: Oggi, modulo: String, punti: String) -> String {
-        "\(oggi.nomeGiornata?.intero ?? "Prossima giornata"): modulo consigliato \(modulo), \(punti) punti attesi."
     }
 
     /// La giornata di oggi per Siri e Comandi: dal server, o dalla cache se non risponde.
     static func leggiOggi() async -> (oggi: Oggi, salvato: Bool)? {
         await OggiRepository(server: ServerCorrente.condiviso).ultimo()
+    }
+}
+
+extension Oggi {
+    /// I due promemoria della scadenza già scritti dal server (`testi_promemoria`, #906); nil con un server di prima o con un
+    /// campo strano.
+    var promemoriaDelServer: [TestoPromemoria]? { testiPromemoria?.valore?.voci }
+
+    /// Il promemoria serve, secondo il server? No con `serve_promemoria: false` o con la lista dei testi vuota (#906); nil se il
+    /// server non lo dice (server di prima, valore strano).
+    var serveIlPromemoria: Bool? {
+        if promemoriaDelServer?.isEmpty == true { return false }
+        return servePromemoria?.valore
     }
 }
