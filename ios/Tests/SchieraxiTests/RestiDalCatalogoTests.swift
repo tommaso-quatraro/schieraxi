@@ -70,6 +70,11 @@ struct RestiDalCatalogoTests {
              testi: [Catalogo.Perche.titolo],
              frasi: [Catalogo.Perche.rispetto(n: "§"), Catalogo.Perche.nessuno(n: "§")],
              usa: ["Catalogo.Perche.titolo", "Catalogo.Perche.rispetto(", "Catalogo.Perche.nessuno("]),
+        // la riga sotto il titolo di Giornate, come la riga di stato della web (#863)
+        Caso(file: "Sources/Domain/RigaStato.swift",
+             testi: [Catalogo.Testata.offline, Catalogo.Testata.mai],
+             frasi: [Catalogo.Testata.datiDel(data: "§", ora: "§")],
+             usa: ["Catalogo.Testata.offline", "Catalogo.Testata.mai", "Catalogo.Testata.datiDel("]),
         Caso(file: "Sources/Domain/FasiGiornata.swift",
              testi: [
                 Catalogo.Oggi.puntiFinora, Catalogo.Oggi.aFineGiornata, Catalogo.Oggi.dallaPanchina, Catalogo.Oggi.cambiPanchina,

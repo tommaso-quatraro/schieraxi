@@ -743,8 +743,8 @@ private extension LegaDemo {
     }
 
     static func stato(adesso: Date) -> String {
-        json(["stagione": "2026-27", "prossima_giornata": giornata, "mia_squadra": nomeMia, "rose_importate": true, "versione": "1.9",
-              "ultimo_aggiornamento": ultimoAggiornamento(adesso: adesso)])
+        json(["stagione": "2026-27", "prossima_giornata": giornata, "prossima_giornata_lega": giornataLega, "mia_squadra": nomeMia,
+              "rose_importate": true, "versione": "1.9", "ultimo_aggiornamento": ultimoAggiornamento(adesso: adesso)])
     }
 
     static func statoDati(adesso: Date) -> String {

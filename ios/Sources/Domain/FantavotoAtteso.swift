@@ -37,7 +37,7 @@ struct PercheNumero: Equatable {
     struct Riga: Equatable, Identifiable {
         let id: Int
         let chiave: String
-        /// La frase del server con la prima lettera maiuscola.
+        /// La frase del server così come arriva, come la web («gioca il 78%: dubbio»): il client non la riscrive (#863).
         let testo: String
         /// «+1,1», «−0,4»; nil senza numero.
         let effetto: String?
@@ -63,7 +63,6 @@ struct PercheNumero: Equatable {
             let testo = (m.testo ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !testo.isEmpty else { continue }
             let chiave = m.chiave ?? "altro"
-            let frase = testo.prefix(1).uppercased() + testo.dropFirst()
             let effetto = m.effetto.flatMap { $0.isFinite ? $0 : nil }
             let verso: Verso
             let voce: String
@@ -72,9 +71,9 @@ struct PercheNumero: Equatable {
                 voce = "\(FantavotoAtteso.conSegnoVoce(e)): \(testo)"
             } else {
                 verso = chiave == "gioca" ? .avviso : .neutro
-                voce = chiave == "gioca" ? "Attenzione: \(testo)" : frase
+                voce = chiave == "gioca" ? "Attenzione: \(testo)" : testo
             }
-            righe.append(Riga(id: righe.count, chiave: chiave, testo: frase, effetto: effetto.map(FantavotoAtteso.conSegno), verso: verso, voce: voce))
+            righe.append(Riga(id: righe.count, chiave: chiave, testo: testo, effetto: effetto.map(FantavotoAtteso.conSegno), verso: verso, voce: voce))
         }
         if righe.isEmpty && media == nil { return nil }
         self.righe = righe
