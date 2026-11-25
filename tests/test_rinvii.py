@@ -32,14 +32,14 @@ def test_predefinito_aspetta_e_regole_vecchie_si_leggono(tmp_path):
 
 
 @pytest.mark.parametrize("cambio, frase", [
-    ({"partite_rinviate": "boh"}, "partite_rinviate"),
-    ({"partite_rinviate": 3}, "partite_rinviate deve essere un testo"),
+    ({"partite_rinviate": "boh"}, "le partite rinviate devono aspettare il recupero"),
+    ({"partite_rinviate": 3}, "«Partite rinviate» deve essere un testo"),
     ({"voto_ufficio_rinviate": 11}, "tra 0 e 10"),
-    ({"voto_ufficio_rinviate": "sei"}, "voto_ufficio_rinviate deve essere un numero"),
+    ({"voto_ufficio_rinviate": "sei"}, "«Voto d.ufficio delle partite rinviate» deve essere un numero"),
     ({"rinvii_giornate": {"2026-27/39": "aspetta"}}, "non è del tipo"),
     ({"rinvii_giornate": {"giornata 12": "aspetta"}}, "non è del tipo"),
     ({"rinvii_giornate": {"2026-27/12": "rinvia"}}, "deve essere una di"),
-    ({"rinvii_giornate": ["2026-27/12"]}, "rinvii_giornate deve essere"),
+    ({"rinvii_giornate": ["2026-27/12"]}, "ogni eccezione delle partite rinviate deve dire la giornata"),
     ({"rinvii_giornate": {f"2026-27/{g}": "aspetta" for g in range(1, 39)} | {f"2025-26/{g}": "aspetta" for g in range(1, 39)}
       | {"2024-25/1": "aspetta"}}, "al massimo"),
 ])

@@ -17,23 +17,26 @@ struct SquadreComeLaWebTests {
 
     // MARK: parole della pagina
 
-    @Test("Titolo della pagina: «Squadre e rose»; senza le rose degli altri «La mia squadra e rosa», come il menu")
+    @Test("Titolo della pagina: «Le altre squadre», come la riga di Impostazioni e la web (#863)")
     func titolo() throws {
-        #expect(ParoleSquadre.titolo(squadreAltrui: true) == Catalogo.Lega.voceSquadre)
-        #expect(ParoleSquadre.titolo(squadreAltrui: false) == Catalogo.Lega.voceMiasquadra)
+        #expect(ParoleSquadre.altreSquadre == Catalogo.Imp.altreSquadre)
     }
 
-    @Test("La carta «La mia squadra» e l'elenco: stesse frasi della web")
+    @Test("La mia squadra, la sua scelta e «Non è la tua squadra?»: stesse frasi della web")
     func carta() throws {
         #expect(ParoleSquadre.miaSquadra == Catalogo.Lega.miaSquadra)
         #expect(ParoleSquadre.stemmaEMaglia == Catalogo.Lega.stemmaMaglia)
-        #expect(ParoleSquadre.vediLaRosa == Catalogo.Lega.vediRosa)
         #expect(ParoleSquadre.nonLaTua == Catalogo.Lega.nonTuaSquadra)
         #expect(ParoleSquadre.scegliLaTua == Catalogo.Lega.scegliQualeDelle)
         #expect(ParoleSquadre.tuaSquadra == Catalogo.Lega.tuaSquadra)
-        #expect(ParoleSquadre.toccaUnaSquadra == Catalogo.Lega.toccaUnaSquadra)
         #expect(ParoleSquadre.importaPrima == Catalogo.Lega.importaPrimaRose)
-        #expect(ParoleSquadre.chiudi == Catalogo.Shell.chiudi)
+    }
+
+    @Test("«Le altre squadre» senza altre squadre: con la sola mia «lega.solo_la_tua», senza rose «lega.importa_prima_rose» (#863)")
+    func senzaAltre() {
+        let mia = SquadraLega(nome: "Nuvola Ovest", mia: true, giocatori: 25, creditiResidui: nil, immagini: nil)
+        #expect(ParoleSquadre.senzaAltre([mia]) == Catalogo.Lega.soloLaTua)
+        #expect(ParoleSquadre.senzaAltre([]) == Catalogo.Lega.importaPrimaRose)
     }
 
     @Test("«24 giocatori · 12 crediti», con il singolare e senza i crediti se il server non li dà")
@@ -110,6 +113,14 @@ struct SquadreComeLaWebTests {
         #expect(ParoleSquadre.roseAggiornate(nil) == web("–"))
         #expect(ParoleSquadre.roseAggiornate("") == web("–"))
         #expect(ParoleSquadre.roseAggiornate("ieri") == web("–"))
+    }
+
+    @Test("«Rose aggiornate l'8 novembre 2026», «l'11 novembre 2026»: l'apostrofo come la web (#859); «il 1» e «il 18» restano")
+    func roseAggiornateConLApostrofo() {
+        #expect(ParoleSquadre.roseAggiornate("2026-11-08T19:19:33") == "Rose aggiornate l'8 novembre 2026")
+        #expect(ParoleSquadre.roseAggiornate("2026-11-11 09:00") == "Rose aggiornate l'11 novembre 2026")
+        #expect(ParoleSquadre.roseAggiornate("2026-11-18") == "Rose aggiornate il 18 novembre 2026")
+        #expect(ParoleSquadre.roseAggiornate("2026-11-01") == "Rose aggiornate il 1 novembre 2026")
     }
 
     // MARK: Cambia il nome

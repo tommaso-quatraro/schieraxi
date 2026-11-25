@@ -478,16 +478,7 @@ final class LegaViewModelTests: XCTestCase {
         XCTAssertEqual(vm.errore, "Nessuna rosa trovata")
     }
 
-    func testMiaSquadra() async throws {
-        let s = ServerDiProva.conFixture(["/api/squadre": "squadre"])
-        let squadre = SquadreViewModel(server: s)
-        await squadre.carica()
-        XCTAssertEqual(squadre.mia, "Nuvola Ovest", "la squadra segnata come «mia» nella fixture")
-        await squadre.impostaMia("Borgo Alto")
-        let corpo = String(decoding: try XCTUnwrap(s.corpiInviati(a: "PUT /api/mia-squadra").last), as: UTF8.self)
-        XCTAssertEqual(corpo, "{\"nome\":\"Borgo Alto\"}")
-        XCTAssertEqual(s.quante("GET /api/squadre"), 2, "dopo la scelta l'elenco si ricarica")
-    }
+    // la scelta della propria squadra (`LegaViewModel.scegliMiaSquadra`, #863) la prova `SceltaMiaSquadraTests`
 }
 
 /// Una risposta inventata di `GET /api/stato` con `aggiornamento_in_corso` (gli altri campi non servono a questi test).

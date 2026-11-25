@@ -2,22 +2,20 @@
 # Dopo una modifica: python script/testi.py --scrivi
 
 # Impostazioni > La mia lega (VociImpostazioni, come paginaImpostazioni della web) e titoli delle pagine
-lega.voce_squadre
-lega.voce_miasquadra
 lega.voce_importa
 lega.voce_importa_sub
 lega.voce_stagione
 lega.voce_novita
 
-# Squadre e rose (ParoleSquadre), stemma e maglia
+# Le altre squadre e la mia squadra (ParoleSquadre), stemma e maglia; «Vedi la rosa» delle decisioni della Formazione
 lega.mia_squadra
 lega.stemma_maglia
 lega.vedi_rosa
 lega.non_tua_squadra
 lega.scegli_quale_delle
 lega.tua_squadra
-lega.tocca_una_squadra
 lega.importa_prima_rose
+lega.solo_la_tua
 lega.usa_come_stemma
 lega.usa_come_maglia
 lega.indirizzo_web

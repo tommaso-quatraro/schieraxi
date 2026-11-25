@@ -55,7 +55,16 @@
       "stato": "fatto"
     },
     {
-      "id": 101,
+      "id": 102,
+      "schermata": "Giornate, riga sotto il titolo (#863)",
+      "web": "sotto il titolo lo stemma della mia squadra, se c'è, e «Giornata 13 · 13ª di Serie A · Real Esempio · dati del 26 ott 23:55» (`prossima_giornata`, `prossima_giornata_lega`, `mia_squadra` e `ultimo_aggiornamento` di `GET /api/stato`, testi `testata.dati_del` e `testata.mai`); ogni pezzo intero, a capo dopo un «·»; senza risposta «Server non raggiungibile» (`testata.offline`) (`rigaStato` e `caricaInfo` in `app.js`)",
+      "iphone": "prima: niente riga. Ora uguale alla web, con gli stessi dati e testi; un pezzo che manca non si scrive, e VoiceOver legge la riga in una volta",
+      "forma": "web; i dati dal server (`GET /api/stato`)",
+      "chi": "**fatto** (#863): `RigaStato` (`Domain/RigaStato.swift`), `Giornate/RigaStatoView`, `GiornateViewModel.rigaStato`; prova `RigaStatoGiornateTests`, foto `giornate`",
+      "stato": "fatto"
+    },
+    {
+      "id": 106,
       "schermata": "Giornate, da dove vengono i punti (riserve entrate, modificatore difesa, partita rinviata)",
       "web": "nella giornata aperta, sotto la tabella degli 11, una riga per frase: «Rossi (10,0) è entrato dalla panchina al posto di Bianchi.», «Modificatore difesa: +1,5.», «Al posto di Verdi non è entrato nessuno dalla panchina.», «Partita rinviata: Neri prende il voto d'ufficio (6,0).»; per una giornata calcolata prima, solo se i conti non tornano, «Per questa giornata manca il dettaglio dei punti …»; niente se non c'è niente da spiegare",
       "iphone": "manca: la tabella degli 11 senza le righe sotto",

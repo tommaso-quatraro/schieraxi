@@ -13,9 +13,9 @@
       "id": 53,
       "schermata": "Impostazioni, Notifiche e Avanzate",
       "web": "la voce si chiama «Notifiche» («Cosa ricevere sul telefono e quando»); righe d'aiuto sotto «Cambi di formazione e probabili», «Promemoria un'ora prima» e «Riepilogo a giornata finita»; ore tranquille «Niente avvisi nella fascia scelta: …»; Avanzate «vedi anche il resto» (`impostazioni.js`, `avvisiTelefono`, testi `imp.*`, `avv.*`, `av.*`)",
-      "iphone": "come la web: la sezione «Avvisi» con «Avvisi su questo dispositivo» (con la riga `imp.avvisi_qui_aiuto`) e «Ore tranquille» («Niente avvisi dalle 23 alle 7», `imp.ore_tranquille_aiuto`); niente più interruttori per singolo avviso né «Avviso se il consiglio cambia»; i promemoria locali seguono l'interruttore unico (`AvvisiDispositivoSezione`, `AvvisiDispositivoViewModel`, `ArchivioAvvisiQui`). Gestione al posto di Avanzate (`GestionePagina`)",
+      "iphone": "come la web: la sezione «Avvisi» con «Avvisi su questo dispositivo» (con la riga `imp.avvisi_qui_aiuto`) e «Ore tranquille» («Niente avvisi dalle 23 alle 7», `imp.ore_tranquille_aiuto`; con l'interruttore spento «Spente. Se le accendi: niente avvisi dalle 23 alle 7», `imp.ore_tranquille_spente`, dal #873); niente più interruttori per singolo avviso né «Avviso se il consiglio cambia»; i promemoria locali seguono l'interruttore unico (`AvvisiDispositivoSezione`, `AvvisiDispositivoViewModel`, `ArchivioAvvisiQui`). Gestione al posto di Avanzate (`GestionePagina`)",
       "forma": "web",
-      "chi": "**fatto** (#673 passo 3, dopo #693): prova `AvvisiDispositivoTests`. Prima: dal 12/11/2026 la web non ha più «Mostra tutte le funzioni» in Avanzate (#615) e nemmeno l'iPhone (#634); **fatto** con #439",
+      "chi": "**fatto** (#673 passo 3, dopo #693): prova `AvvisiDispositivoTests`. Prima: dal 12/11/2026 la web non ha più «Mostra tutte le funzioni» in Avanzate (#615) e nemmeno l'iPhone (#634); **fatto** con #439. Ore tranquille spente **fatto** anche sull'iPhone (#873, dopo la web): la riga segue l'interruttore (`AvvisiDispositivoViewModel.aiutoOreTranquille`); prova `ImpostazioniComeLaWebTests`",
       "stato": "fatto"
     },
     {
@@ -121,7 +121,7 @@
       "id": 87,
       "schermata": "La mia lega: «Le altre squadre» senza la mia squadra (#779)",
       "web": "la riga «Le altre squadre» dice il numero delle squadre senza la mia (`lega.n_squadre` con le squadre che non hanno `mia: true`) e la pagina elenca solo quelle, senza l'etichetta «la tua»; finché la mia non è scelta, tutte (`paginaImpostazioni` in `impostazioni.js`, `vistaAltreSquadre` in `app.js`)",
-      "iphone": "come la web: la riga conta le squadre senza la mia e l'elenco di «Squadre e rose» mostra solo quelle; finché la mia non è scelta, tutte (`VociImpostazioni.altreSquadre`, usata da `VociImpostazioni.lega` e da `SquadreView`)",
+      "iphone": "come la web: la riga conta le squadre senza la mia e l'elenco di «Le altre squadre» (riga 101) mostra solo quelle; finché la mia non è scelta, tutte (`VociImpostazioni.altreSquadre`, usata da `VociImpostazioni.lega` e da `SquadreView`)",
       "forma": "web",
       "chi": "web fatta (#779, prove in `tests/browser/test_impostazioni.py`); iPhone fatto con #788 (prova `ImpostazioniComeLaWebTests`)",
       "stato": "fatto"
@@ -133,6 +133,15 @@
       "iphone": "come la web: riuscita l'uscita da tutti, la schermata di accesso mostra una volta la stessa frase (`account.esci_tutti_fatto`) dove sta la conferma verde, e VoiceOver la legge; non dopo un «Esci» normale (`SessioneAccount.prendiAvvisoAccesso`, letta da `SchermataAccesso`)",
       "forma": "web",
       "chi": "web fatta (#779, prove in `tests/browser/test_impostazioni.py`); iPhone fatto con #788 (prova `SessioneAccountTests`)",
+      "stato": "fatto"
+    },
+    {
+      "id": 101,
+      "schermata": "La mia lega: «Le altre squadre» e la scelta della mia squadra (#863)",
+      "web": "«Le altre squadre» ha il titolo «Le altre squadre» e solo l'elenco delle altre squadre (tutte finché la mia non è scelta), senza la mia e senza altre righe; senza altre squadre `lega.solo_la_tua` (senza rose `lega.importa_prima_rose`) (`vistaAltreSquadre` in `app.js`). La propria squadra si cambia in «La mia squadra»: «Non è la tua squadra?» in cima alla sua rosa, con più squadre; finché non è scelta, «La mia squadra» è la pagina «Scegli quale delle squadre è la tua.» con il selettore; scelta, la pagina diventa la sua rosa (`vistaRosa(\"\")`, `collegaSceltaMia`)",
+      "iphone": "prima: titolo «Squadre e rose», in cima di nuovo la carta «La mia squadra» (che ha già la sua riga in Impostazioni), in fondo «Tocca una squadra per vedere la rosa.» e «È la mia» scorrendo una riga. Ora come la web: «Le altre squadre» con il solo elenco (`SquadreView`); «Non è la tua squadra?» in cima alla rosa della mia squadra (`RosaView`); «La mia squadra» non ancora scelta apre la pagina della scelta (`SceltaSquadraView`), anche dal passo «La tua squadra» della configurazione guidata; scelta la squadra, al posto della pagina c'è la sua rosa",
+      "forma": "web",
+      "chi": "**fatto** (#863): `SquadreView`, `SceltaSquadraView`, `SelettoreMiaSquadra`, `LegaViewModel.scegliMiaSquadra`, `VociImpostazioni.lega`; prove `SceltaMiaSquadraTests`, `ImpostazioniComeLaWebTests`, `SquadreComeLaWebTests`, `TitoloUnaVoltaUITests`",
       "stato": "fatto"
     }
   ]

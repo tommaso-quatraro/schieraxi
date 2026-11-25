@@ -218,6 +218,27 @@ def test_stato_dei_dati_mostra_il_passo_fermo_con_l_ora_vera(db, monkeypatch):
     assert voce["errori"] == ["Non riuscito alle 08:03 del 02/11: ValueError: pagina strana"]
 
 
+def test_le_righe_d_errore_con_l_apostrofo_davanti_all_08_e_all_11(db, monkeypatch):
+    """«dall'08/11», «dell'11/11», «l'08/11» (si legge «dall'otto», «dell'undici»), mai «dal 08/11» o «del 11/11» (#859): nella
+    riga generale dell'aggiornamento e nelle righe d'errore di Stato dei dati. «il 01/11» e «del 02/11» restano."""
+    _agg(db, monkeypatch, "2026-11-01T21:03:00")._passo("Understat", lambda: None)
+    _agg(db, monkeypatch, "2026-11-08T08:03:00")._passo("Understat", _rotto)
+    a = _agg(db, monkeypatch, "2026-11-11T13:03:00")
+    a._passo("Understat", _rotto)
+    assert "(non riesce dall'08/11 alle 08:03; ultimo riuscito il 01/11 alle 21:03)" in a.errori[0], a.errori[0]
+    r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 11, 14, 0))
+    voce = next(x for x in r["aggiornamenti"] if x["cosa"] == "understat")
+    assert voce["errori"] == ["Fermo da 3 giorni (non riesce dall'08/11 alle 08:03): ValueError: pagina strana"]
+    _agg(db, monkeypatch, "2026-11-08T21:03:00")._passo("Understat", lambda: None)
+    _agg(db, monkeypatch, "2026-11-11T08:03:00")._passo("Understat", _rotto)
+    a = _agg(db, monkeypatch, "2026-11-11T13:03:00")
+    a._passo("Understat", _rotto)
+    assert "(non riesce dall'11/11 alle 08:03; ultimo riuscito l'08/11 alle 21:03)" in a.errori[0], a.errori[0]
+    r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 11, 14, 0))       # non è fermo da più di un giorno
+    voce = next(x for x in r["aggiornamenti"] if x["cosa"] == "understat")
+    assert voce["errori"] == ["Non riuscito alle 13:03 dell'11/11: ValueError: pagina strana"]
+
+
 def test_stato_dei_dati_ha_un_nome_leggibile_per_ogni_riga_e_ogni_controllo(db, monkeypatch):
     """Le etichette nascono sul server (campo `etichetta`): i client non mostrano più chiavi grezze come «dati-extra» o
     «gol_dei_voti»."""
@@ -282,12 +303,26 @@ def test_understat_pagina_web_dice_anche_il_testo_che_mostra():
     assert "(titolo «Vuota»): " in str(e.value) and "testo" not in str(e.value)
 
 
+def test_understat_pagina_web_con_un_disegno_grande_prima_della_frase_dice_la_frase():
+    """La pagina di attesa di Understat (#862) ha un disegno lungo decine di migliaia di caratteri prima della frase: leggendo solo
+    l'inizio della pagina il disegno restava aperto, la frase fuori e il messaggio diceva solo il titolo. Pagina inventata."""
+    disegno = b"<svg viewBox=\"0 0 800 600\">" + b"<path d=\"M10 10 L20 20 L30 10 Z\" fill=\"#123456\"/>" * 2_000 + b"</svg>"
+    assert len(disegno) > 3 * us.PAGINA_LETTA
+    pagina = (b"<!DOCTYPE html>\n<html><head><title>Sito</title><style>body { color: #fff }</style></head><body><div>" + disegno
+              + b"</div><h1>Torniamo presto</h1><p>Stiamo sistemando il sito.</p></body></html>")
+    with pytest.raises(us.RispostaNonDati) as e:
+        us.dati_json(pagina)
+    assert "(titolo «Sito», testo «Torniamo presto Stiamo sistemando il sito.»): " in str(e.value)
+    assert "path" not in str(e.value) and "123456" not in str(e.value)
+
+
 @pytest.mark.parametrize("pezzo", [b"<svg>", b"<title>", b"<title", b"<title>x</titl", b"<!--", b"<?", b"<", b"<style>x"])
 def test_understat_pagina_web_enorme_o_storta_si_legge_subito(pezzo):
     """Una risposta grande fatta di aperture mai chiuse (rete.scarica non ha un tetto di dimensione) prima costava decine di
-    secondi di espressioni regolari: si guarda solo l'inizio della pagina. Limite largo: dopo la correzione bastano millesimi."""
+    secondi di espressioni regolari: il titolo si cerca solo all'inizio della pagina e il testo visibile, che si cerca più in là
+    (#862), con espressioni che crescono solo con la lunghezza, fino a un tetto. Limite largo: bastano centesimi."""
     import time
-    pagina = b"<html><body><p>Fermi</p>" + pezzo * (300_000 // len(pezzo))
+    pagina = b"<html><body><p>Fermi</p>" + pezzo * ((us.TESTO_LETTO + 300_000) // len(pezzo))
     inizio = time.perf_counter()
     with pytest.raises(us.RispostaNonDati, match="pagina web al posto dei dati") as e:
         us.dati_json(pagina)

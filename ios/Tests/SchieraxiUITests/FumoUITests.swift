@@ -157,7 +157,8 @@ final class FumoUITests: XCTestCase {
     /// il cambio, che si salva da solo.
     func testMettiInCampoDallaSchedaDiUnPanchinaro() {
         attendi("È la consigliata.")
-        let panchinaro = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Fabio Dimarzi")).firstMatch
+        // in panchina VoiceOver dice prima il posto («3. Fabio Dimarzi, …», #882): il nome non è più all'inizio
+        let panchinaro = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Fabio Dimarzi, ")).firstMatch
         XCTAssertTrue(panchinaro.waitForExistence(timeout: 20), "Fabio Dimarzi è in panchina nella demo")
         for _ in 0..<6 where !panchinaro.isHittable { app.swipeUp(velocity: .slow) }
         let metti = app.buttons["Metti in campo"].firstMatch

@@ -16,8 +16,8 @@
     "en": "All set, coach"
   },
   "pav.incolla_testo_delle": {
-    "it": "Incolla il testo delle rose o scegli il file Excel che scarichi da Leghe.",
-    "en": "Paste the roster text or choose the Excel file you download from Leghe."
+    "it": "Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla qui il testo o scegli il file. Per cominciare basta anche solo la tua squadra.",
+    "en": "Export the rosters from Leghe (Excel, CSV or copied text), then paste the text here or choose the file. To get started, your own team alone is enough."
   },
   "pav.testo_delle_rose": {
     "it": "Testo delle rose",
@@ -118,8 +118,13 @@
     "en": "Use the example teams"
   },
   "pav.il_resto": {
-    "it": "In Impostazioni trovi gli avvisi, le regole della lega e lo stemma della tua squadra.",
-    "en": "In Settings you find alerts, your league's rules and your team's crest."
+    "it": "In Impostazioni trovi anche gli avvisi e lo stemma della tua squadra.",
+    "en": "In Settings you also find alerts and your team's crest."
+  },
+  "pav.regole_comuni": {
+    "it": "I fantavoti attesi usano i punteggi più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5), finché non metti quelli della tua lega in {regole}.",
+    "en": "Expected fantasy scores use the most common scoring of classic leagues (goal 3, assist 1, yellow card −0.5) until you enter your league's in {regole}.",
+    "nota": "«Tutto pronto» del primo avvio (#873): {regole} è il collegamento «Regole e scadenza» (imp.regole) che apre quella pagina"
   },
   "pav.fatto_par": {
     "it": " (fatto)",

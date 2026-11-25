@@ -121,7 +121,7 @@ def _promemoria(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: dat
         righe = []
         notifiche.segna_guasto(a.guasti, "avviso «cambia la formazione» non controllato", e)
     return righe + notifiche.promemoria(db, r, a.rose, adesso, a.ctx.stato_promemoria, a.manda, a.opzioni, a.ctx.scelte,
-                                        guasti=a.guasti)
+                                        guasti=a.guasti, file_cambi=a.ctx.stato_cambi)
 
 
 _LAVORI = {"cambi": _cambi, "promemoria": _promemoria}

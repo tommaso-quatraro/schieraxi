@@ -87,6 +87,42 @@
     "it": "Ti invito su SchieraXI, l'app che ti consiglia la formazione del fantacalcio. Apri questo link e crea il tuo account (il codice d'invito è già dentro, vale {giorni} giorni): {link}",
     "en": "I'm inviting you to SchieraXI, the app that suggests your fantasy football lineup. Open this link and create your account (the invitation code is already inside, valid for {giorni} days): {link}"
   },
+  "admin.inviti_aperti": {
+    "it": "Inviti aperti",
+    "en": "Open invitations",
+    "nota": "Gestione (#894): titolo dell'elenco degli inviti ancora buoni, sotto «Crea l'invito»; ogni riga ha la frase del server (frase.admin.invito_aperto)"
+  },
+  "admin.nessun_invito_aperto": {
+    "it": "Nessun invito aperto.",
+    "en": "No open invitations."
+  },
+  "admin.annulla_invito": {
+    "it": "Annulla",
+    "en": "Cancel",
+    "nota": "il pulsante di una riga di «Inviti aperti»; per i lettori di schermo vale admin.annulla_invito_per"
+  },
+  "admin.annulla_invito_per": {
+    "it": "Annulla l'invito per {etichetta}",
+    "en": "Cancel the invitation for {etichetta}"
+  },
+  "admin.annulla_conferma": {
+    "it": "L'invito per «{etichetta}» non varrà più: chi ha il link non potrà registrarsi. Confermi?",
+    "en": "The invitation for «{etichetta}» will stop working: whoever has the link won't be able to sign up. Continue?",
+    "nota": "domanda del browser prima di annullare (pulsanti OK e Annulla del sistema: per questo «Confermi?» e non «Vuoi annullarlo?»)"
+  },
+  "admin.annulla_conferma_usato": {
+    "it": "L'invito per «{etichetta}» non varrà più: chi ha il link non potrà registrarsi. Chi è già entrato tiene il suo account. Confermi?",
+    "en": "The invitation for «{etichetta}» will stop working: whoever has the link won't be able to sign up. Whoever has already joined keeps their account. Continue?",
+    "nota": "come admin.annulla_conferma, per un invito già usato da qualcuno"
+  },
+  "admin.invito_annullato": {
+    "it": "Invito annullato: il link non vale più",
+    "en": "Invitation cancelled: the link no longer works"
+  },
+  "admin.annulla_invito_no": {
+    "it": "Non riesco ad annullare l'invito",
+    "en": "I cannot cancel the invitation"
+  },
   "admin.admin_breve": {
     "it": " (amministratore)",
     "en": " (administrator)",

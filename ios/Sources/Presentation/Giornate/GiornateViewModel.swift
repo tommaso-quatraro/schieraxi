@@ -5,6 +5,8 @@ import SwiftUI
 @MainActor
 final class GiornateViewModel: ViewModelBase {
     let caricatore: Caricatore<DiarioRisposta>
+    /// `GET /api/stato`, per la riga sotto il titolo (`rigaStato`, #863).
+    let info: Caricatore<InfoServer>
     let server: any ServerClient
 
     /// Sul telefono le righe aperte (anche più di una); sull'iPad la prima è la giornata scelta a destra.
@@ -27,19 +29,27 @@ final class GiornateViewModel: ViewModelBase {
     init(server: any ServerClient) {
         self.server = server
         caricatore = Caricatore<DiarioRisposta>("/api/diario", server: server)
+        info = Caricatore<InfoServer>("/api/stato", server: server)
         super.init()
         osserva(caricatore)
+        osserva(info)
     }
 
     /// La pagina pronta da mostrare (nil finché non c'è una risposta, anche dalla copia del telefono).
     var pagina: PaginaGiornate? { caricatore.dato.map(PaginaGiornate.init) }
 
-    /// Rilegge le giornate. Solo una risposta fresca del server chiude la richiesta di «Com'è andata», come la web: la copia del
-    /// telefono, o una lettura non riuscita, possono essere di prima della giornata chiesta.
+    /// La riga sotto il titolo, come la riga di stato della web (#863): giornata, mia squadra e data dei dati; «Server non
+    /// raggiungibile» se `/api/stato` non ha risposto. Nil prima della prima risposta (anche dalla copia del telefono).
+    var rigaStato: RigaStato? { RigaStato(info: info.dato, nonRaggiungibile: info.errore != nil) }
+
+    /// Rilegge le giornate e poi `/api/stato` per la riga sotto il titolo. Solo una risposta fresca del server chiude la richiesta
+    /// di «Com'è andata», come la web: la copia del telefono, o una lettura non riuscita, possono essere di prima della giornata
+    /// chiesta.
     func carica() async {
         await caricatore.ricarica()
         applicaChiesta()
         if caricatore.dato != nil, caricatore.errore == nil, !caricatore.dallaCache { chiesta = nil }
+        await info.ricarica()
     }
 
     /// «Com'è andata» o un indirizzo: apre la giornata `giornata` (numero di Serie A) se c'è già; altrimenti la apre `carica()`
@@ -53,13 +63,14 @@ final class GiornateViewModel: ViewModelBase {
     /// Solo per le foto della demo (`giornate-aperta`): la giornata più recente si apre appena c'è.
     private var piuRecenteDaAprire = false
 
-    /// Le foto della demo: `giornate-aperta` apre la giornata più recente, `giornate-dettagli` apre «Dettagli».
+    /// Le foto della demo: `giornate-aperta` apre la giornata più recente, `giornate-dettagli` apre «Dettagli»; anche
+    /// `giornate-confronto`, che poi scorre alla voce del confronto (#842).
     func preparaFoto(_ nome: String) {
         switch nome {
         case "giornate-aperta":
             piuRecenteDaAprire = true
             applicaChiesta()
-        case "giornate-dettagli":
+        case "giornate-dettagli", "giornate-confronto":
             dettagliAperti = true
         default:
             break

@@ -2338,7 +2338,7 @@
   },
   "/api/admin/inviti": {
    "get": {
-    "description": "Gli inviti con posti usati e stato (attivo, finito, scaduto, revocato). I codici non si rileggono.",
+    "description": "Gli inviti con posti usati e stato (attivo, finito, scaduto, revocato). I codici non si rileggono. Per quelli aperti la frase\nda mostrare (`dettaglio`, con `dettaglio_frase` per tradurla), null per gli altri.",
     "responses": {
      "200": {
       "content": {
@@ -2352,6 +2352,7 @@
     "summary": "Elenco Inviti"
    },
    "post": {
+    "description": "Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`. `id` è il numero\ndell'invito in GET /api/admin/inviti (#894: se proprio quell'invito si annulla, la web toglie il link che sta mostrando).",
     "requestBody": {
      "content": {
       "application/json": {
@@ -3537,7 +3538,7 @@
   },
   "/api/oggi": {
    "get": {
-    "description": "La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), e `serve_promemoria`: se\nil promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi).\n`certificato_giorni` (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo).",
+    "description": "La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), `serve_promemoria`: se\nil promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi), e\n`testi_promemoria`: titolo e testo dei due promemoria come li scrive il server, che l'iPhone mostra così come sono.\n`certificato_giorni` (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo).",
     "parameters": [
      {
       "in": "query",
@@ -3988,7 +3989,7 @@
   },
   "/api/regole/riconosci": {
    "post": {
-    "description": "Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).\nOltre i tetti (regole_testo.MAX_TESTO caratteri, MAX_RIGA per riga): 422 con una frase chiara.",
+    "description": "Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).\nConfronta con le regole salvate: un valore che non si potrebbe salvare così com'è va in `non_applicabili` con il perché (#881).\nOltre i tetti (regole_testo.MAX_TESTO caratteri, MAX_RIGA per riga): 422 con una frase chiara.",
     "requestBody": {
      "content": {
       "application/json": {

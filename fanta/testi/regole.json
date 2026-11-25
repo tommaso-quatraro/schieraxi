@@ -128,6 +128,11 @@
     "it": "Riconosciuto",
     "en": "Recognised"
   },
+  "regole.non_applicato": {
+    "it": "Non applicato",
+    "en": "Not applied",
+    "nota": "anteprima del regolamento incollato: i valori letti che non si possono salvare, ognuno con il perché (#881)"
+  },
   "regole.rosa_crediti": {
     "it": "Rosa e crediti",
     "en": "Roster and credits"
@@ -415,5 +420,17 @@
   "regole.aggiornamenti_titolo": {
     "it": "Aggiornamenti dei dati",
     "en": "Data updates"
+  },
+  "regole.campo_vuoto": {
+    "it": "«{campo}» è vuoto: scrivi un numero",
+    "en": "“{campo}” is empty: enter a number"
+  },
+  "regole.fuori_limiti": {
+    "it": "«{campo}» deve essere tra {min} e {max}",
+    "en": "“{campo}” must be between {min} and {max}"
+  },
+  "regole.intero": {
+    "it": "«{campo}» deve essere un numero intero",
+    "en": "“{campo}” must be a whole number"
   }
 }
