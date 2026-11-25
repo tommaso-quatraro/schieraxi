@@ -258,7 +258,7 @@ def test_api_ogni_account_legge_le_sue_regole_e_le_sue_rose(multiutente, dati_is
         r = registra(c, nome)
         assert r.status_code == 200, r.text
         clienti[nome] = (c, contesto.cartella_utente(r.json()["utente"]["id"]))
-    for nome, (c, cartella) in clienti.items():
+    for nome, (_, cartella) in clienti.items():
         regole.salva(Regole(nome_lega=f"Lega di {nome}"), cartella / "regole.json")
         _scrivi(cartella / "rose.json", ROSE | {"mia_squadra": "Alfa" if nome == "anna" else "Beta"})
     for _ in range(3):
