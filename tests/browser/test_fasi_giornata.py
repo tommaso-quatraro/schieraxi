@@ -132,3 +132,21 @@ def test_un_titolare_senza_voto_gia_sostituito_non_mostra_il_suo_atteso(web):
     assert "Senza voto" in p.inner_text()
     assert p.locator(".solo-lettori").inner_text().strip() == "Merondo, Senza voto"
     assert not web.errori_console
+
+
+def test_a_giornata_in_corso_la_colonna_della_panchina_vale_per_il_voto_e_per_l_atteso(web):
+    """In panchina c'è chi ha già il voto vero (con sotto «fantavoto») e chi deve ancora giocare: la colonna non si chiama più
+    «Fantavoto atteso» per tutti ma «Fantavoto», e il numero di chi deve ancora giocare dice «atteso». Prima della scadenza resta
+    «Fantavoto atteso»."""
+    solo(web, "in-corso", "prima")
+    web.apri("/")
+    panchina = principale(web).locator("#panchina")
+    colonna = panchina.locator(".ic-fv").inner_text().strip()
+    if web.fase == "prima":
+        assert colonna == "Fantavoto atteso"
+        return
+    assert colonna == "Fantavoto"
+    riga = lambda nome: panchina.locator("li", has_text=nome)
+    assert riga("Llando Faseto").locator(".pv-g").inner_text().strip() == "atteso"         # deve ancora giocare
+    assert riga("Zè Rosso").locator(".pv-g").inner_text().strip() == "fantavoto"           # ha già il voto
+    assert not web.errori_console

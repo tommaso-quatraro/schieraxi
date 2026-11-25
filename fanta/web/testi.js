@@ -636,6 +636,8 @@ const TESTI = {
     "errori.evento_funzione_cambiata": "Funzione dell'app accesa o spenta",
 
     "formazione.calcolo": "Calcolo la formazione migliore…",
+    "formazione.col_fantavoto": "Fantavoto",
+    "formazione.atteso_breve": "atteso",
     "formazione.stai_guardando_formazione": "Stai guardando la formazione di",
     "formazione.torna_alla_tua": "Torna alla tua",
     "formazione.mancano_probabili_formazioni": "Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono.",
@@ -2342,6 +2344,8 @@ const TESTI = {
     "errori.evento_funzione_cambiata": "App feature turned on or off",
 
     "formazione.calcolo": "Working out the best lineup…",
+    "formazione.col_fantavoto": "Fantasy score",
+    "formazione.atteso_breve": "expected",
     "formazione.stai_guardando_formazione": "You are looking at the lineup of",
     "formazione.torna_alla_tua": "Back to yours",
     "formazione.mancano_probabili_formazioni": "The probable lineups for this matchday are not out yet: for now I use recent appearances. The advice updates by itself when they come out.",

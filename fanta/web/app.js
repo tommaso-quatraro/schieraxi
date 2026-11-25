@@ -574,11 +574,12 @@ function lineetta(slug) {
 }
 // I nomi delle colonne sopra un elenco di giocatori, allineati alle colonne delle righe; nascosti ai lettori di schermo, perché il
 // nome di ogni riga dice già tutto. `partita: false` senza la colonna della partita; `ferma` resta sotto la testata mentre si
-// scorre (elenchi lunghi).
+// scorre (elenchi lunghi). `dalVivo` (giornata in corso, #895): nelle righe c'è chi ha già il voto vero e chi ha ancora l'atteso,
+// e la colonna si chiama «Fantavoto» (le righe dicono «fantavoto» o «atteso», vedi numeriRiga).
 function intestazioneColonne(opz = { partita: true }) {
   return `<div class="intestazione-colonne${opz.ferma ? " ferma" : ""}" aria-hidden="true"><div class="voce-g">`
     + (opz.partita === false ? "" : `<span class="ic-partita">${t("mercato.partita")}</span>`)
-    + `<span class="ic-fv">${t("mercato.fantavoto_atteso")}</span></div></div>`;
+    + `<span class="ic-fv">${t(opz.dalVivo ? "formazione.col_fantavoto" : "mercato.fantavoto_atteso")}</span></div></div>`;
 }
 
 // La riga sotto il nome in pezzi interi («NAP vs LAZ · sab 31 20:45 ·», «Real Esempio»): va a capo tra un pezzo e l'altro, mai
@@ -586,13 +587,14 @@ function intestazioneColonne(opz = { partita: true }) {
 const pezziRiga = pezzi => pezzi.filter(Boolean).map((p, i, tutti) => `<span class="nb">${p}${i < tutti.length - 1 ? " ·" : ""}</span>`).join(" ");
 
 // `posizione`: il numero d'ordine davanti al nome (la panchina, nell'ordine in cui entra). Un tocco apre la scheda del giocatore.
-function voceGiocatore(x, posizione) {
+// `dalVivo`: a giornata in corso (vedi intestazioneColonne).
+function voceGiocatore(x, posizione, dalVivo = false) {
   return `<li class="riga-gioc"><button class="voce voce-g" data-giocatore="${x.id}">
     ${volto(x)}
     <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${posizione ? `<span class="debole">${posizione}. </span>` : ""}${esc(x.nome)}</span></span>
       <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra)])}</span>
       <span class="etichette">${etichetteGiocatore(x)}</span></span>
-    ${numeriRiga(x)}
+    ${numeriRiga(x, dalVivo)}
   </button></li>`;
 }
 
@@ -606,15 +608,17 @@ function valoreRosa(p, x) {
 // Le due colonne dei numeri di ogni riga: il fantavoto atteso e, solo sotto l'80%, «gioca N%» (arancio fra 50 e 79, rosso sotto 50;
 // niente per chi non gioca di sicuro: lo dice la parola). A partita iniziata il fantavoto preso con accanto «fantavoto», oppure «–»
 // (lo stato è già scritto sotto il nome): mai «gioca N%». I nomi delle colonne sono nascosti ai lettori di schermo: il numero ha il
-// suo nome accanto, solo per loro («gioca 45%, Fantavoto atteso 6,8»).
+// suo nome accanto, solo per loro («gioca 45%, Fantavoto atteso 6,8»). `dalVivo` (giornata in corso, #895): la colonna si chiama
+// «Fantavoto» e il numero di chi deve ancora giocare dice «atteso» dove non c'è «gioca N%» (accanto al voto vero c'è «fantavoto»).
 const nomeFvAtteso = () => `<span class="solo-lettori">${t("mercato.fantavoto_atteso")} </span>`;
-function numeriRiga(p) {
+function numeriRiga(p, dalVivo = false) {
   const esito = esitoPartita(p);
   if (esito) return esito.fv != null
     ? `<span class="pv-g">${t("mercato.fantavoto")}</span><span class="valore esito"><b>${num(esito.fv)}</b></span>`
     : `<span class="pv-g"></span><span class="valore esito"><b class="debole" aria-hidden="true">–</b></span>`;
   const q = giocaLetto(p), mostra = q < SOGLIA_GIOCA && !nonGiocaDiSicuro(parolaStato(p));
-  return `<span class="pv-g${mostra ? " " + classeGioca(q) : ""}">${mostra ? t("giocatore.gioca", { p: perc(q) }) : ""}</span><span class="valore">${nomeFvAtteso()}<b>${num(p.fv_atteso)}</b></span>`;
+  const sotto = mostra ? t("giocatore.gioca", { p: perc(q) }) : dalVivo ? `<span aria-hidden="true">${t("formazione.atteso_breve")}</span>` : "";
+  return `<span class="pv-g${mostra ? " " + classeGioca(q) : ""}">${sotto}</span><span class="valore">${nomeFvAtteso()}<b>${num(p.fv_atteso)}</b></span>`;
 }
 
 // ---------------------------------------------------------------- navigazione
@@ -1341,7 +1345,7 @@ function mostraFormazione(b, squadra, opz = {}) {
     const opzione = x => `<option value="${esc(x.modulo)}" ${x.modulo === m.modulo ? "selected" : ""}>${t(x === consigliato ? "formazione.opzione_consigliato" : "formazione.opzione_modulo", { modulo: esc(x.modulo), punti: num(x.punteggio_atteso) })}</option>`;
     const diSolito = fraseDiSolito(m);
     const probabili = o && o.probabili && !chiusa ? `<p class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</p>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : "";
-    const elenco = (righe, numerati) => `${intestazioneColonne({ partita: true })}<ul class="elenco">${righe.map((x, k) => voceGiocatore(x, numerati ? k + 1 : null)).join("")}</ul>`;
+    const elenco = (righe, numerati) => `${intestazioneColonne({ partita: true, dalVivo: !!live })}<ul class="elenco">${righe.map((x, k) => voceGiocatore(x, numerati ? k + 1 : null, !!live)).join("")}</ul>`;
     pagina(`<div class="fz${chiusa ? " chiusa" : ""}">
       <div class="fz-testa">
         ${squadra ? `<div class="attenzione" role="status">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
