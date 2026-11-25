@@ -151,6 +151,25 @@ def test_rinviata_e_rimessa_il_giorno_dopo_si_segue_quando_si_gioca():
     assert (p["stato"], p["gol_casa"], p["data"]) == ("primo_tempo", 1, "2026-11-02 18:30")
 
 
+def test_ritardata_oggi_e_diretta_dicono_lo_stesso_stato():
+    """#901: calcio d'inizio delle 20:45 in ritardo. Alle 22:00 la fonte dice ancora «ritardata»: la diretta e Oggi dicono tutte e due
+    «da giocare» (prima Oggi deduceva «in corso» dall'orario, e dopo le 22:35 «finita»: la sentinella le vedeva in disaccordo).
+    Quando la fonte la dà in gioco, tutte e due dicono che è in corso."""
+    from fanta import fasi
+    m = Mondo("2026-11-01 22:00", _espn("STATUS_DELAYED", "pre", ("0", "0"), "0'"))
+    m.corpo["events"][0]["competitions"][0]["details"] = []
+    r = m.raccoglitore()
+    assert r.passo() == "ok"
+    assert _juve(r)["stato"] == fasi.stato_partita(CAL[0], m.t, r.istantanea()["partite"]) == "da_giocare"
+    m.avanza(50 * 60)                                                # 22:50: oltre la fine stimata dell'orario previsto
+    assert r.passo() == "ok"
+    assert _juve(r)["stato"] == fasi.stato_partita(CAL[0], m.t, r.istantanea()["partite"]) == "da_giocare"
+    m.corpo = _espn("STATUS_FIRST_HALF", "in", ("0", "0"), "3'")
+    m.avanza(5 * 60)
+    assert r.passo() == "ok" and _juve(r)["stato"] == "primo_tempo"
+    assert fasi.stato_partita(CAL[0], m.t, r.istantanea()["partite"]) == "in_corso"
+
+
 def _ev(data_utc, casa, trasf, stato, gruppo):
     return {"date": data_utc, "competitions": [{"status": {"type": {"name": stato, "state": gruppo}, "displayClock": "0"},
             "competitors": [{"homeAway": "home", "score": "0", "team": {"id": casa, "displayName": casa}},

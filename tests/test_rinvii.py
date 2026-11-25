@@ -194,7 +194,7 @@ def test_partita_solo_ritardata_non_fa_scattare_il_voto_d_ufficio():
     a = fasi.andamento(TIT, PANC, [PARTITE[0], roma | {"stato": stato}], VOTI, {"inter", "milan"}, {10: 6.0}, set(), regole,
                        {10: (0.8, 7.5, 6.3)}, rinvii.regola(regole, ST, 10))
     g10 = next(g for g in a["giocatori"] if g["id"] == 10)
-    assert g10["stato"] in ("da_giocare", "in_corso") and g10["fantavoto"] is None and g10["a_punteggio"]
+    assert g10["stato"] == "da_giocare" and g10["fantavoto"] is None and g10["a_punteggio"]
     assert a["punti_fatti"] == 61.0 and a["ancora_da_giocare"] == 1             # senza il 6 d'ufficio (67 con la partita rinviata)
 
 
