@@ -86,8 +86,16 @@ final class PrecisioneTests: XCTestCase {
         XCTAssertEqual(t.fantavoto.frase, "In media il fantavoto atteso dei tuoi giocatori sbaglia di 3,0 punti; 2 voti su 10 sono entro un punto. Su 1 voto. In media hanno fatto 2,1 in più del previsto.")
         XCTAssertEqual(t.gioca.giudizio, "Qui siamo stati troppo prudenti.")
         XCTAssertEqual(t.gioca.fasce, ["Gioca 70-89%: dicevamo 75%, hanno giocato nel 100% dei casi (1 caso, pochi per dirlo)"])
-        XCTAssertEqual(t.confronto?.frase, "Giornate in cui la consigliata ha fatto meglio della tua: 0 su 1. Meglio la tua: 1. Pari: 0. Con le tue scelte hai fatto 1,0 punto in più della consigliata.")
+        // il plurale si sceglie sul numero come è scritto, come la web dopo #841: «1,0 punti», il singolare solo per «1» (#842)
+        XCTAssertEqual(t.confronto?.frase, "Giornate in cui la consigliata ha fatto meglio della tua: 0 su 1. Meglio la tua: 1. Pari: 0. Con le tue scelte hai fatto 1,0 punti in più della consigliata.")
         XCTAssertTrue(t.barre.count < 2, "con una sola giornata niente grafico")
+    }
+
+    /// «1,0 punti in più» anche quando la consigliata ha fatto meglio, come «1,5 punti» (#842, la web con #841).
+    func testUnPuntoScrittoConIlDecimaleEPlurale() throws {
+        let t = try XCTUnwrap(TestoPrecisione(PrecisioneDiario(
+            giornate: 2, confronto: .init(giornate: 2, meglioConsigliata: 1, meglioTua: 0, pari: 1, punti: 1))))
+        XCTAssertEqual(t.confronto?.frase, "Giornate in cui la consigliata ha fatto meglio della tua: 1 su 2. Meglio la tua: 0. Pari: 1. Seguendo sempre la consigliata avresti fatto 1,0 punti in più.")
     }
 
     func testCampiMancantiONulli() throws {
