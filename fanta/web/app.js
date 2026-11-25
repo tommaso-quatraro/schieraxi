@@ -483,11 +483,13 @@ const classeGioca = p => (p < SOGLIA_BASSA ? "basso" : "medio");
 // Per i lettori di schermo la pedina in una frase, con le stesse cose che si vedono: «Rossi, fantavoto atteso 6,8, gioca al 45 per
 // cento, In dubbio». `esito`: esitoPedina(x), a partita iniziata o rinviata; `stato`: parolaStato(x). A formazione chiusa, per chi
 // deve ancora giocare (`da_giocare`), sulla pedina c'è quando gioca e non «gioca N%»: nemmeno qui.
+// Rimasto senza voto (#895): il suo fantavoto atteso non conta più (al suo posto entra una riserva, o niente), e non si mostra.
+const senzaVoto = x => (etichettaPronta(x) ? x.etichetta.codice : x.stato_partita) === "senza_voto";
 function vocePedina(x, esito = null, stato = null) {
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
   const preso = esito && esito.fv != null;
-  return [x.nome, preso ? esito.testo : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "", esito && esito.parola,
+  return [x.nome, preso ? esito.testo : senzaVoto(x) ? "" : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "", esito && esito.parola,
     !esito && x.stato_partita !== "da_giocare" && !nonGiocaDiSicuro(stato) && giocaLetto(x) < SOGLIA_GIOCA ? t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }) : "",
     !esito && stato ? stato.testo : ""].filter(Boolean).join(", ");
 }
@@ -525,7 +527,7 @@ function pedina(x, k = 0) {
   const daGiocare = !esito && x.stato_partita === "da_giocare";                 // formazione chiusa, la sua partita non è cominciata
   const gioca = !esito && !daGiocare && !nonGiocaDiSicuro(stato) && p < SOGLIA_GIOCA;
   return `<button class="pedina${(esito && !preso) || daGiocare ? " attesa" : ""}" data-giocatore="${x.id}" style="--k:${k}">
-    <span class="disco" aria-hidden="true">${num(preso ? esito.fv : x.fv_atteso)}</span>
+    <span class="disco" aria-hidden="true">${preso ? num(esito.fv) : senzaVoto(x) ? "–" : num(x.fv_atteso)}</span>
     <span class="nome" aria-hidden="true">${esc(cognome(x))}</span>
     ${gioca ? `<span class="gioca ${classeGioca(p)}" aria-hidden="true">${t("giocatore.gioca", { p: perc(p) })}</span>` : ""}
     ${stato ? `<span class="gioca ${stato.classe === "rossa" ? "basso" : "parola"}" aria-hidden="true">${esc(stato.testo)}</span>` : ""}

@@ -113,3 +113,22 @@ def test_a_giornata_finita_senza_voti_la_testa_dice_che_e_finita_e_i_punti_arriv
     assert f"Giornata {r['giornata_lega']} · {r['giornata']}ª di Serie A: finita" in testa
     assert "I punti arrivano quando escono i voti." in testa and "Si chiude" in testa      # e sotto la prossima, come sempre
     assert not web.errori_console
+
+
+def test_un_titolare_senza_voto_gia_sostituito_non_mostra_il_suo_atteso(web):
+    """Merondo è rimasto senza voto ed è già entrato Zè Rosso: sulla pedina non c'è più il suo fantavoto atteso (un numero che non
+    conta più), ma la lineetta e «Senza voto»."""
+    solo(web, "in-corso")
+    o = oggi_in_corso(web)
+    m, z = giocatore(o, "Merondo"), giocatore(o, "Zè Rosso")
+    m.update(stato="senza_voto", fantavoto=None, a_punteggio=False, etichetta={"codice": "senza_voto", "testo": "Senza voto", "tono": "attenzione"})
+    z.update(a_punteggio=True)
+    o["in_corso"]["sostituzioni"] = [{"esce": {"id": m["id"], "nome": m["nome"], "ruolo": "D"},
+                                      "entra": {"id": z["id"], "nome": z["nome"], "ruolo": "D"}, "certa": True, "motivo": "senza_voto"}]
+    web.risposta("/api/oggi", o)
+    web.apri("/")
+    p = pedina(web, "Merondo")
+    assert p.locator(".disco").inner_text().strip() == "–"
+    assert "Senza voto" in p.inner_text()
+    assert p.locator(".solo-lettori").inner_text().strip() == "Merondo, Senza voto"
+    assert not web.errori_console
