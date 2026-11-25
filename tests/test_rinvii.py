@@ -176,6 +176,28 @@ def test_andamento_con_la_partita_rinviata(modo, fatti, stato_cambio, entra):
         assert a["punti_attesi_restanti"] == 0.0
 
 
+def test_partita_solo_ritardata_non_fa_scattare_il_voto_d_ufficio():
+    """#901: la diretta dà Roma-Lazio «ritardata» (calcio d'inizio rimandato di poco, stessa sera). Con la regola «voto d'ufficio»
+    il giocatore della Roma non è «rinviata» e non prende il 6 d'ufficio: deve ancora giocare. Prima «ritardata» diventava «sospesa»
+    e Oggi la trattava come rinviata: voto d'ufficio tra i punti fatti (o «aspetta il recupero»)."""
+    from datetime import datetime
+    from fanta import live
+    corpo = {"events": [{"date": "2026-11-08T19:45Z", "competitions": [{
+        "status": {"type": {"name": "STATUS_DELAYED", "state": "pre"}, "displayClock": "0'", "period": 0},
+        "competitors": [{"homeAway": "home", "score": "0", "team": {"id": "1", "displayName": "Roma"}},
+                        {"homeAway": "away", "score": "0", "team": {"id": "2", "displayName": "Lazio"}}], "details": []}]}]}
+    diretta = {(p["casa"], p["trasferta"]): p for p in live.leggi_espn(corpo, {"roma", "lazio"})}
+    roma = {"data": "2026-11-08 20:45", "casa": "roma", "trasferta": "lazio", "giocata": False}
+    stato = fasi.stato_partita(roma, datetime(2026, 11, 8, 20, 50), diretta)       # cinque minuti dopo l'orario previsto
+    assert stato != "rinviata"
+    regole = replace(Regole(), partite_rinviate="voto_ufficio")
+    a = fasi.andamento(TIT, PANC, [PARTITE[0], roma | {"stato": stato}], VOTI, {"inter", "milan"}, {10: 6.0}, set(), regole,
+                       {10: (0.8, 7.5, 6.3)}, rinvii.regola(regole, ST, 10))
+    g10 = next(g for g in a["giocatori"] if g["id"] == 10)
+    assert g10["stato"] in ("da_giocare", "in_corso") and g10["fantavoto"] is None and g10["a_punteggio"]
+    assert a["punti_fatti"] == 61.0 and a["ancora_da_giocare"] == 1             # senza il 6 d'ufficio (67 con la partita rinviata)
+
+
 # ---------------------------------------------------------------- giornata finita con un recupero da giocare
 def _db_giornata(tmp_path, recupero_giocato=False, data_recupero="2026-11-30 20:45"):
     from datetime import datetime as dt

@@ -72,6 +72,19 @@ def test_stati_della_fonte(nome, stato_fonte, orologio, atteso, minuto):
     assert p["stato"] in live.STATI
 
 
+@pytest.mark.parametrize("nome", ["STATUS_DELAYED", "STATUS_RAIN_DELAY"])
+def test_partita_ritardata_non_e_rinviata(nome):
+    """#901: «ritardata» per la fonte = calcio d'inizio rimandato di poco (o gioco fermo per poco), nella stessa giornata. Non è un
+    rinvio: prima di cominciare è «da giocare» (senza punteggio), a partita già cominciata è in corso con il suo punteggio. Prima
+    diventava «sospesa», che Oggi tratta come «rinviata» (aspetta il recupero, o il voto d'ufficio)."""
+    prima = live.leggi_espn(_con_stato(nome, "pre", "0'", ("0", "0")), SLUG)[0]
+    assert (prima["stato"], prima["minuto"], prima["gol_casa"], prima["gol_trasferta"]) == ("da_giocare", None, None, None)
+    durante = live.leggi_espn(_con_stato(nome, "in", "50'", ("1", "0")), SLUG)[0]
+    assert (durante["stato"], durante["minuto"], durante["gol_casa"], durante["gol_trasferta"]) == ("in_corso", "50'", 1, 0)
+    strano = live.leggi_espn(_con_stato(nome, "post", "0'"), SLUG)[0]       # un ritardo non è mai «finita» né «rinviata»
+    assert strano["stato"] == "da_giocare"
+
+
 def test_squadra_sconosciuta_o_risposta_strana_non_rompe_niente():
     assert live.leggi_espn(_espn(), {"inter"}) == []             # nessuna partita con due squadre note
     assert live.leggi_espn({}, SLUG) == [] and live.leggi_espn({"events": [{"x": 1}, None]}, SLUG) == []
