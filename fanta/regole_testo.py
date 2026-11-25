@@ -309,15 +309,16 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
     usate: set[int] = set()
     # Le proposte restano in sospeso finché la riga non è finita: una riga propone valori solo se ogni suo numero è letto da una
     # proposta (#884, decisione del coordinatore). Con un numero non spiegato la riga non propone niente e si controlla a mano.
-    proposte: list[tuple[str, str, object, int]] = []
+    proposte: list[tuple[str, str, object, int, bool]] = []
     letti: dict[int, set[int]] = {}      # riga -> dove cominciano i numeri letti dalle proposte (_cifra)
     dubbie: dict[int, list[dict]] = {}   # riga -> regole che nomina senza dirne il valore con sicurezza
 
-    def imposta(chiave, etichetta, valore, n, *posizioni):
-        """Propone `valore` per `chiave` dalla riga `n`; `posizioni`: dove cominciano i numeri della riga che ha letto."""
+    def imposta(chiave, etichetta, valore, n, *posizioni, generale=False):
+        """Propone `valore` per `chiave` dalla riga `n`; `posizioni`: dove cominciano i numeri della riga che ha letto.
+        `generale`: il gol letto da una riga che non nomina il ruolo («Gol segnato: +3»), che non cancella quello del ruolo."""
         if chiave.startswith("bonus.") and abs(valore) > MAX_BONUS_LETTO:
             return
-        proposte.append((chiave, etichetta, valore, n))
+        proposte.append((chiave, etichetta, valore, n, generale))
         usate.add(n)
         letti.setdefault(n, set()).update(posizioni)
 
@@ -382,7 +383,7 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                         # citato solo per lui (#881)
                         for x in RUOLI.values():
                             p, v = dopo[0] if x == r else prima[0]
-                            imposta(f"bonus.gol.{x}", f"Gol ({NOMI_SINGOLARE[x]})", abs(v), n, p)
+                            imposta(f"bonus.gol.{x}", f"Gol ({NOMI_SINGOLARE[x]})", abs(v), n, p, generale=x != r)
                     elif not prima:
                         imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(dopo[0][1]), n, dopo[0][0])
                     # numeri solo prima del ruolo («3 punti, 5 per il portiere», «+3 (anche per il portiere)»): non si sa se il ruolo
@@ -390,7 +391,7 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                     trovato = True
                 elif numeri:
                     for r in RUOLI.values():
-                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numeri[0][1]), n, numeri[0][0])
+                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numeri[0][1]), n, numeri[0][0], generale=True)
                     trovato = True
         if not trovato:
             letta = False                       # una sola regola con il suo numero per riga, la prima nominata nell'ordine di BONUS
@@ -475,11 +476,15 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                 for r in RUOLI.values():
                     if r in rosa:
                         imposta(f"rosa.{r}", f"Rosa: {NOMI_PLURALE[r]}", rosa[r].pop(), n, *dove)
-    # le proposte delle righe con tutti i numeri letti, nell'ordine del testo (una riga dopo vince su una prima)
+    # le proposte delle righe con tutti i numeri letti, nell'ordine del testo: una riga dopo vince su una prima, ma una riga più
+    # generale non cancella un'eccezione già letta («Gol del portiere: +5», poi «Gol segnato: +3»: il portiere resta 5, #888)
     parziali = {n for n in usate if not _da_leggere(righe[n]) <= letti.get(n, set())}
-    for chiave, etichetta, valore, n in proposte:
-        if n in parziali:
+    per_ruolo: set[str] = set()          # i gol letti da una riga che nomina il ruolo
+    for chiave, etichetta, valore, n, generale in proposte:
+        if n in parziali or generale and chiave in per_ruolo:
             continue
+        if not generale and chiave.startswith("bonus.gol."):
+            per_ruolo.add(chiave)
         if chiave == "moduli":
             valore = sorted(set(modifiche.get("moduli", {"valore": []})["valore"]) | valore)
         modifiche[chiave] = {"chiave": chiave, "etichetta": etichetta, "valore": valore, "riga": originali[n][:120]}
