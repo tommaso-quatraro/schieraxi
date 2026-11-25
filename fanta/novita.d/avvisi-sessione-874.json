@@ -1,7 +1,7 @@
 {
   "titolo": "Web: gli avvisi di un altro account non arrivano più su questo browser, e la guida iniziale aspetta le squadre",
   "voci": [
-    "Impostazioni › Avvisi: quando su un browser entra un account diverso da quello che aveva acceso gli avvisi, gli avvisi dell'account di prima smettono di arrivare lì, anche se la sua sessione era finita da sola senza «Esci». «Avvisi su questo dispositivo» resta spento finché chi è entrato non lo accende; acceso, arrivano solo i suoi avvisi. Se gli avvisi erano già accesi prima di questa versione e ne arrivano di un altro account, spegni e riaccendi «Avvisi su questo dispositivo».",
+    "Impostazioni › Avvisi: quando su un browser entra un account diverso da quello che aveva acceso gli avvisi, gli avvisi dell'account di prima smettono di arrivare lì, anche se la sua sessione era finita da sola senza «Esci». «Avvisi su questo dispositivo» resta spento finché chi è entrato non lo accende; acceso, arrivano solo i suoi avvisi.",
     "Se all'apertura dell'app l'elenco delle squadre non arriva (per esempio mentre il server riparte), la guida del primo avvio non si apre più su «Importa le rose» a chi le rose le ha già."
   ],
   "tecnico": [
