@@ -31,6 +31,11 @@ struct TestaFormazione: Equatable {
     /// accanto, piccolo, «fra 3 h 10 min». Nil dove la web non lo scrive (giornata in corso, formazione già chiusa).
     var chiude: String?
     var manca: String?
+    /// `manca` a parole intere per VoiceOver: «fra 3 ore e 10 minuti» (`Quando.contoAllaRovesciaParlato`).
+    var mancaParlato: String?
+    /// La scadenza letta da VoiceOver: «Si chiude oggi 14:50 fra 3 ore e 10 minuti» (#882: leggeva «fra 3 h 10 min»); senza
+    /// conto alla rovescia solo `chiude`, nil dove la scadenza non si mostra.
+    var voceScadenza: String? { chiude.map { c in (mancaParlato ?? manca).map { "\(c) \($0)" } ?? c } }
     /// A campionato finito la frase del server («Il campionato è finito: previsioni e consigli ripartono con il calendario della
     /// prossima stagione.»), sotto il riepilogo dell'ultima giornata se c'è, al posto della giornata da preparare (#727).
     var campionatoFinito: String?
@@ -72,7 +77,7 @@ extension TestaFormazione {
                 nota = TempiLega.elidiOrdinali(Catalogo.Formazione.perLaProssima(
                     g: TempiLega.etichetta(serieA: saltata, lega: f.giornataSaltataLega), m: giornata))
             }
-            return TestaFormazione(nota: nota, chiude: conto.chiude, manca: conto.manca)
+            return TestaFormazione(nota: nota, chiude: conto.chiude, manca: conto.manca, mancaParlato: conto.mancaParlato)
         case .inCorso:
             if let c = o.giornataInCorso {
                 var parole = Catalogo.Formazione.puntiFinora
@@ -89,6 +94,7 @@ extension TestaFormazione {
                 testa.prossima = giornata
                 testa.chiude = conto.chiude
                 testa.manca = conto.manca
+                testa.mancaParlato = conto.mancaParlato
                 return testa
             }
             // finita, voti non ancora usciti (`voti_in_arrivo`, #895): niente totale, ma la giornata di prima è finita e la frase
@@ -102,7 +108,7 @@ extension TestaFormazione {
         }
         // prima della scadenza (o senza i dati della fase): la giornata e, se la formazione è ancora aperta, quando si chiude
         if f.iniziata == true { return TestaFormazione(giornata: giornata) }
-        return TestaFormazione(giornata: giornata, chiude: conto.chiude, manca: conto.manca)
+        return TestaFormazione(giornata: giornata, chiude: conto.chiude, manca: conto.manca, mancaParlato: conto.mancaParlato)
     }
 
     /// La giornata appena finita (`riepilogo` di Oggi), come `riepilogoGiornata` della web: «Giornata 7 · 10ª di Serie A: finita»,
@@ -150,12 +156,17 @@ extension TestaFormazione {
     /// «Si chiude sab 31 14:50» e «fra 3 h 10 min», come `testoConto` della web; scaduta, «Formazione chiusa»; con la giornata
     /// ancora senza date la frase del server («Data da definire», `senza_data`, #552), e senza la frase (server di prima)
     /// «Calendario non disponibile». Ogni numero resta attaccato alla sua unità (spazio che non va a capo, come la web, #286):
-    /// con il testo grande «min» non va da solo sulla riga dopo.
-    static func conto(_ o: Oggi, adesso: Date) -> (chiude: String, manca: String?) {
-        if let frase = o.testoSenzaData { return (frase, nil) }
-        guard let testo = scadenza(o), let fine = Quando.data(testo) else { return (Catalogo.Oggi.calendarioNo, nil) }
-        guard let tempo = Quando.contoAllaRovescia(fino: fine, adesso: adesso) else { return (Catalogo.Formazione.chiusaBreve, nil) }
+    /// con il testo grande «min» non va da solo sulla riga dopo. `mancaParlato`: lo stesso conto a parole intere per VoiceOver,
+    /// «fra 3 ore e 10 minuti» (#882).
+    static func conto(_ o: Oggi, adesso: Date) -> (chiude: String, manca: String?, mancaParlato: String?) {
+        if let frase = o.testoSenzaData { return (frase, nil, nil) }
+        guard let testo = scadenza(o), let fine = Quando.data(testo) else { return (Catalogo.Oggi.calendarioNo, nil, nil) }
+        guard let tempo = Quando.contoAllaRovescia(fino: fine, adesso: adesso) else {
+            return (Catalogo.Formazione.chiusaBreve, nil, nil)
+        }
+        let parlato = Quando.contoAllaRovesciaParlato(fino: fine, adesso: adesso).map { Catalogo.Formazione.fra(tempo: $0) }
         let unito = tempo.replacingOccurrences(of: #"(\d) "#, with: "$1\u{00A0}", options: .regularExpression)
-        return (Catalogo.Formazione.siChiude(quando: Quando.relativa(fine, adesso: adesso)), Catalogo.Formazione.fra(tempo: unito))
+        return (Catalogo.Formazione.siChiude(quando: Quando.relativa(fine, adesso: adesso)), Catalogo.Formazione.fra(tempo: unito),
+                parlato)
     }
 }

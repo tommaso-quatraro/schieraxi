@@ -25,6 +25,11 @@ extension Catalogo {
         /// `oggi.punti_attesi`
         static let puntiAttesi = "punti attesi"
 
+        /// `oggi.da_vedere`
+        static func daVedere(n: String) -> String {
+            "\(n) da vedere"
+        }
+
         /// `oggi.calendario_no`
         static let calendarioNo = "Calendario non disponibile"
 

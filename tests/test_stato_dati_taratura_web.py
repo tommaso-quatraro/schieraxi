@@ -126,6 +126,17 @@ def test_attiva_senza_numeri_della_prova_ne_data():
                                 "di – punti, contro 31,62 senza questa taratura")
 
 
+@pytest.mark.parametrize(("dal", "atteso"), [("2027-01-08T06:00:00", "attiva dall'8/1"), ("2027-01-11T06:00:00", "attiva dall'11/1"),
+                                            ("2027-01-18T06:00:00", "attiva dal 18/1"), ("2027-01-01T06:00:00", "attiva dal 1/1")])
+def test_attiva_dall_8_e_dall_11_con_l_apostrofo(dal, atteso):
+    """«attiva dall'8/1», «dall'11/1» (si legge «dall'otto», «dall'undici»), mai «dal 8/1» (#859); «dal 18/1» e «dal 1/1» restano.
+    In inglese niente apostrofo: «active since 8/1». Lo stesso sull'iPhone (`TaraturaProbabiliTests`)."""
+    taratura = {"stato": "attiva", "giornate": 8, "minimo": 4, "versione": 3, "dal": dal, "prova": None, "motivo": None}
+    assert _frase(taratura) == f"{TITOLO}: {atteso}"
+    if dal.startswith("2027-01-08"):
+        assert "active since 8/1" in _frase(taratura, "en")
+
+
 def test_errore_medio_con_due_decimali_scritto_dal_server():
     """I numeri sono quelli del server (`errore_medio`, `errore_medio_prima`), con due decimali: con uno solo una versione accesa
     per un miglioramento dello 0,5% si leggerebbe «30,9 contro 30,9». Il Brier non si scrive più, né si ricalcola qui."""

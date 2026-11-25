@@ -48,11 +48,12 @@ def _con(dati: dict, chiave: str, valore) -> dict:
     return nuove
 
 
+# PUT /api/regole (la pagina Regole): un valore cambiato ha i limiti della pagina (#881), più stretti degli intervalli qui sotto
 @pytest.mark.parametrize("chiave, valore, parole", [
-    ("bonus.gol.P", 1e308, ["gol del portiere", "tra -100 e 100"]),
+    ("bonus.gol.P", 1e308, ["gol del portiere", "tra 0 e 20"]),
     ("crediti_iniziali", -1, ["crediti iniziali", "tra 0 e 100.000"]),
     ("crediti_iniziali", 10 ** 30, ["crediti iniziali", "tra 0 e 100.000"]),
-    ("modificatore_difesa.min_difensori", 10 ** 30, ["difensori", "tra 0 e 10"]),
+    ("modificatore_difesa.min_difensori", 10 ** 30, ["difensori", "tra 3 e 5"]),
 ])
 def test_regole_fuori_misura_400_chiaro_e_regole_invariate(client, chiave, valore, parole):
     prima = client.get("/api/regole").json()
@@ -66,6 +67,8 @@ def test_regole_fuori_misura_400_chiaro_e_regole_invariate(client, chiave, valor
 
 
 # I limiti di ogni numero (chiave, minimo, massimo, parole del messaggio). Larghi: la web e l'iPhone stanno molto più stretti.
+# Dal 25/11/2026 (#881) valgono per i salvataggi che non vengono dalla pagina Regole (eccezione delle partite rinviate, backup,
+# procedura guidata) e per i valori che non cambiano; i limiti della pagina sono in tests/test_regole_limiti.py.
 LIMITI = [
     ("bonus.gol.P", -100, 100, "gol del portiere"),
     ("bonus.gol.D", -100, 100, "gol del difensore"),
@@ -99,7 +102,8 @@ def test_ogni_numero_ha_i_suoi_limiti(chiave, minimo, massimo, parole):
         with pytest.raises(ValueError) as e:
             regole.da_dict(_con(base, chiave, fuori))
         assert type(e.value) is regole.RegoleFuoriIntervallo and e.value.stato == 400      # non 422 dei tetti di misura
-        assert parole in str(e.value) and f"tra {minimo:,} e {massimo:,}".replace(",", ".") in str(e.value), str(e.value)
+        intervallo = " e ".join(("−" if n < 0 else "") + f"{abs(n):,}".replace(",", ".") for n in (minimo, massimo))
+        assert parole in str(e.value) and f"tra {intervallo}" in str(e.value), str(e.value)
 
 
 def test_fasce_del_modificatore_limitate():

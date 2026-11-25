@@ -16,7 +16,10 @@ NON_RIUSCITI=()  # foto rimaste a metà attesa perché uno scatto non è riuscit
 ARGOMENTI_EXTRA=()
 ARGOMENTI_SCENARIO=()   # -DEMO_SCENARIO <nome>: le fotografie dal vero (SCATTI=vero)
 TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qualunque cosa dica il simulatore
-STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto
+# -DEMO_ASPETTO scuro/chiaro: l'aspetto del giro, che l'app usa anche dove il tema resta «Automatico» (impostazioni-aspetto) e
+# prima delle schede (l'accesso). Al primo giro dopo l'accensione il simulatore poteva essere ancora chiaro anche se «simctl ui
+# appearance» rileggeva «dark» (corsa 44739068749, #845); -AppleInterfaceStyle, il ripiego di prima, iOS non lo legge.
+ASPETTO_ARG=()
 RADDRIZZA=0
 mkdir -p "$USCITA"
 # Avvisi di sistema («Ready for Apple Intelligence»): si aspetta che compaiano e spariscano PRIMA delle foto (#393).
@@ -26,10 +29,10 @@ source "$(dirname "$0")/avvisi.sh"
 TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-rinvio formazione-chiusa formazione-cambiata formazione-sostituisci formazione-metti-in-campo
        formazione-campionato-finito formazione-finita-recupero
        giocatore giocatore-fondo ricerca
-       guida marchio giornate giornate-aperta giornate-dettagli
-       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-stato-taratura impostazioni-novita
+       guida marchio giornate giornate-aperta giornate-dettagli giornate-confronto
+       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-stato-taratura lega-stato-prova impostazioni-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-stagione impostazioni-aspetto
-       impostazioni impostazioni-fondo impostazioni-squadra impostazioni-gestione impostazioni-crediti primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
+       impostazioni impostazioni-fondo impostazioni-squadra impostazioni-gestione impostazioni-crediti primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido lega-scelta-squadra)
 # I nomi che l'app conosce: le foto a mano (SCHERMATE) possono chiedere solo questi.
 CONOSCIUTE=("${TUTTE[@]}")
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
@@ -95,6 +98,8 @@ scatta() {
     lega-stato-nostri) schermata="lega-stato"; fondo=(-DEMO_FONDO nostri) ;;
     # e la riga della taratura di «gioca N%» (#527), fra la cima e le nostri: in nessuna delle altre foto
     lega-stato-taratura) schermata="lega-stato"; fondo=(-DEMO_FONDO taratura) ;;
+    # e la frase della prova delle previsioni su «da fantamedia» (#842), subito sotto la taratura
+    lega-stato-prova) schermata="lega-stato"; fondo=(-DEMO_FONDO prova) ;;
   esac
   # «accesso-<scenario>»: la demo con gli account accesi (schermata di accesso, codice di recupero, account in Lega...).
   # Con «-fondo» lo scenario è lo stesso (accesso-account-fondo = scenario «account» con -DEMO_FONDO).
@@ -112,7 +117,7 @@ scatta() {
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
   if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO "${cosa[@]}" \
-        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} ${ARGOMENTI_SCENARIO[@]+"${ARGOMENTI_SCENARIO[@]}"}         ${STILE_ARG[@]+"${STILE_ARG[@]}"} ${tema[@]+"${tema[@]}"} \
+        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} ${ARGOMENTI_SCENARIO[@]+"${ARGOMENTI_SCENARIO[@]}"}         ${ASPETTO_ARG[@]+"${ASPETTO_ARG[@]}"} ${tema[@]+"${tema[@]}"} \
         -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
     echo "ERRORE: l'app non parte ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
@@ -171,12 +176,13 @@ giro() {
   local udid="$1" etichetta="$2" aspetto="$3" dimensione="$4"
   shift 4
   local ui="dark"
-  STILE_ARG=(-AppleInterfaceStyle Dark)
+  ASPETTO_ARG=(-DEMO_ASPETTO scuro)
   TEMA_ARG=(-tema scuro)
-  if [ "$aspetto" = "chiaro" ]; then ui="light"; STILE_ARG=(-AppleInterfaceStyle Light); TEMA_ARG=(-tema chiaro); fi
+  if [ "$aspetto" = "chiaro" ]; then ui="light"; ASPETTO_ARG=(-DEMO_ASPETTO chiaro); TEMA_ARG=(-tema chiaro); fi
   echo "=== $etichetta ($ui, testo $dimensione) ==="
   # Il cambio di aspetto del simulatore è asincrono e subito dopo l'avvio a volte non vale: capitava che le foto «scuro»
-  # dell'iPhone uscissero chiare. Si cambia, si aspetta e si controlla (fino a 5 tentativi).
+  # dell'iPhone uscissero chiare. Si cambia, si aspetta e si controlla (fino a 5 tentativi). Il controllo rilegge l'impostazione,
+  # non ciò che l'app vede (#845): per questo l'app riceve anche l'aspetto del giro (ASPETTO_ARG).
   local t letto
   for t in 1 2 3 4 5; do
     xcrun simctl ui "$udid" appearance "$ui"
@@ -367,7 +373,7 @@ for aspetto in dark light; do
   avvisi_foto "$UDID_IPHONE" "$USCITA/home_iphone_$aspetto.png"
 done
 
-STILE_ARG=()
+ASPETTO_ARG=()
 prova_url "$UDID_IPHONE"
 
 spegni_simulatore "$UDID_IPHONE"

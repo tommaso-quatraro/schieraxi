@@ -130,6 +130,13 @@ enum LetturaScheda {
         return Catalogo.Mercato.golAttesi(a: Formato.decimali(a), b: Formato.decimali(b))
     }
 
+    /// «Dati fino al 9/11.»: fin dove arrivano i numeri della fonte delle statistiche avanzate (`avanzate.dati_fino_al`, #862), in
+    /// «Gol e assist rispetto alle occasioni» e sotto «Statistiche avanzate», come `finoAl` di `riempiScheda` della web (il giorno
+    /// scritto come `giornoMese`). nil se il server non manda il giorno o non è una data.
+    static func datiFinoAl(_ avanzate: StatisticheAvanzate?) -> String? {
+        ParoleRegistro.giornoMese(avanzate?.datiFinoAl).map { Catalogo.Mercato.datiFinoAl(data: $0) }
+    }
+
     /// Per VoiceOver, con i nomi delle squadre: «Risultato atteso: Genoa 2,1, Como 1,0».
     static func voceRisultatoAtteso(_ g: Giocatore, squadra: String?) -> String? {
         guard let a = g.golSquadra, let b = g.golAvversario, a.isFinite, b.isFinite else { return nil }

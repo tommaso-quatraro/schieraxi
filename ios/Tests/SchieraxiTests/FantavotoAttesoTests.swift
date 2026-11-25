@@ -20,7 +20,8 @@ final class FantavotoAttesoTests: XCTestCase {
         XCTAssertEqual(g.motiviNumero?.count, 3)
         XCTAssertEqual(g.mediaRuolo, 6.9)
         let p = try XCTUnwrap(PercheNumero(g))
-        XCTAssertEqual(p.righe.map(\.testo), ["Gioca il 70%: dubbio", "Segna più della media del ruolo (41% di segnare)", "Partita difficile in casa"])
+        // le frasi del server come arrivano, come la web («gioca il 78%: dubbio»): il client non mette la maiuscola (#863)
+        XCTAssertEqual(p.righe.map(\.testo), ["gioca il 70%: dubbio", "segna più della media del ruolo (41% di segnare)", "partita difficile in casa"])
         XCTAssertEqual(p.righe.map(\.effetto), [nil, "+1,1", "−0,4"])
         XCTAssertEqual(p.righe.map(\.verso), [.avviso, .su, .giu])
         XCTAssertEqual(p.righe[0].voce, "Attenzione: gioca il 70%: dubbio")
@@ -60,8 +61,9 @@ final class FantavotoAttesoTests: XCTestCase {
                             {"testo": "rigorista", "effetto": 0.5}, {"chiave": "assist", "testo": "fa più assist", "effetto": 0.2}]
         """#)
         let p = try XCTUnwrap(PercheNumero(h))
-        XCTAssertEqual(p.righe.map(\.testo), ["Campo pesante", "Rigorista", "Fa più assist"])
+        XCTAssertEqual(p.righe.map(\.testo), ["campo pesante", "rigorista", "fa più assist"])
         XCTAssertEqual(p.righe.map(\.verso), [.neutro, .su, .su])
+        XCTAssertEqual(p.righe[0].voce, "campo pesante", "VoiceOver legge la stessa frase, come arriva")
         XCTAssertEqual(p.righe[1].chiave, "altro")
         XCTAssertEqual(p.nota, "I numeri sono le differenze rispetto a un giocatore medio del suo ruolo.")
     }

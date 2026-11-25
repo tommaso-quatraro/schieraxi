@@ -65,6 +65,9 @@ formazione.senza_dati
 formazione.voce_fv
 formazione.voce_gioca
 formazione.voce_gioca_v
+# La partita a voce nelle righe della rosa (Lega/RigaRosa), come `vsAt` della web: «in casa contro Como» (#882)
+formazione.voce_casa
+formazione.voce_fuori
 
 # A giornata in corso, sotto l'atteso di chi deve ancora giocare nelle righe della panchina e degli elenchi (#900, RigaGiocatore)
 formazione.atteso_breve

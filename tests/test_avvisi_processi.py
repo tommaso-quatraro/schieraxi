@@ -104,7 +104,7 @@ def test_utente_tenuto_da_un_altro_processo_passa_al_giro_dopo_e_gli_altri_ricev
 @pytest.mark.parametrize("aspetta, arriva_prima", [("promemoria", "cambi"), ("cambi", "promemoria")])
 def test_il_giro_partito_prima_ma_arrivato_dopo_non_ripete_l_avviso(mondo, registro, monkeypatch, aspetta, arriva_prima):  # noqa: F811
     """Ultima ora prima della scadenza. Il giro `aspetta` parte alle 17:35:00 e trova l'utente occupato; l'altro giro, partito alle
-    17:35:20, arriva prima e manda «cambia la formazione consigliata». Quando il primo giro prende il blocco deve contare l'ora di
+    17:35:20, arriva prima e manda «la formazione consigliata è cambiata». Quando il primo giro prende il blocco deve contare l'ora di
     quel momento, non quella della sua partenza: con l'ora della partenza l'avviso appena partito sembrava «nel futuro», quindi non
     recente, e partiva un secondo avviso (promemoria o «cambia un titolare»)."""
     ctx = nuovo("amico1", (1, "Castro"))
@@ -133,7 +133,7 @@ def test_il_giro_partito_prima_ma_arrivato_dopo_non_ripete_l_avviso(mondo, regis
         Orologio.ora = datetime(2026, 10, 28, 17, 35, 25)
     primo.join(30)
     assert not primo.is_alive() and esito["r"][1] == {}
-    assert [t for _, t, _ in registro.web] == ["SchieraXI · cambia la formazione consigliata"]
+    assert [t for _, t, _ in registro.web] == ["SchieraXI · la formazione consigliata è cambiata"]
 
 
 def test_ordine_del_giro_tenuto_da_un_altro_processo_non_si_sovrascrive(mondo, registro, monkeypatch, caplog, tmp_path):  # noqa: F811

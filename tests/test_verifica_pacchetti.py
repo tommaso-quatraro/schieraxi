@@ -51,6 +51,17 @@ def test_squalificati_dal_rosso_non_da_tre_gialli():
     assert vp.squalificati(d, ST, 4) == {2}              # rosso alla 3: fuori alla 4
 
 
+def test_squalificati_solo_dalle_partite_giocate_prima_dell_inizio_della_giornata():
+    """#840, come `verifica.avversari` dopo #832: «prima» è per data, non per numero di giornata. Un rosso nella partita della 3
+    rinviata e giocata dopo l'inizio della 4 non si poteva sapere prima della 4."""
+    d = _dati()
+    rinviata = "2026-09-10 15:00"                                    # la 4 si gioca il 4 settembre, la 3 dopo
+    d.partite.loc[d.partite["giornata"] == 3, "data"] = rinviata
+    d.voti.loc[d.voti["giornata"] == 3, "data"] = rinviata
+    d.voti.loc[(d.voti["calciatore_id"] == 2) & (d.voti["giornata"] == 3), "espulsioni"] = 1
+    assert vp.squalificati(d, ST, 4) == set()
+
+
 def test_indisponibili_e_ritocca():
     d = _dati()
     # il Mediano non c'è nella 3 e nella 4: per la 3 è un indisponibile noto

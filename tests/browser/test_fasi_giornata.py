@@ -48,7 +48,7 @@ def test_il_voto_d_ufficio_della_partita_rinviata_si_vede_sul_campo(web):
     assert p.locator(".disco").inner_text().strip() == "6,0"
     visibile = " ".join(p.inner_text().split())
     assert "Voto d'ufficio" in visibile and "Rinviata" not in visibile
-    assert p.locator(".solo-lettori").inner_text().strip() == "Bapepe, fantavoto 6,0, Voto d'ufficio"
+    assert p.locator(".solo-lettori").inner_text().strip() == "Bapepe, Portiere, fantavoto 6,0, Voto d'ufficio"
     assert not web.errori_console
 
 
@@ -130,7 +130,7 @@ def test_un_titolare_senza_voto_gia_sostituito_non_mostra_il_suo_atteso(web):
     p = pedina(web, "Merondo")
     assert p.locator(".disco").inner_text().strip() == "–"
     assert "Senza voto" in p.inner_text()
-    assert p.locator(".solo-lettori").inner_text().strip() == "Merondo, Senza voto"
+    assert p.locator(".solo-lettori").inner_text().strip() == "Merondo, Difensore, Senza voto"
     assert not web.errori_console
 
 

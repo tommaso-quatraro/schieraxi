@@ -354,7 +354,7 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
     avvisi = []
     for i in mie_ids:
         x = prev.loc[i]
-        scheda = consigli.scheda_previsione(i, x)
+        scheda = consigli.scheda_di(prev, i)               # una volta per tabella di previsioni (#907)
         base = {"id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "squadra": x["squadra"]}
         if x["stato"] in ("infortunato", "squalificato"):
             avvisi.append(base | {"tipo": x["stato"], "nota": scheda["nota"], "in_formazione": i in in_formazione,

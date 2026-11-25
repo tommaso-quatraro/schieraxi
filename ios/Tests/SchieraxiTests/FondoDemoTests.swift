@@ -57,9 +57,13 @@ struct FondoDemoTests {
         var testDescription: String { "-DEMO_FONDO " + valore }
     }
 
-    @Test("Stato dei dati si ferma sulle nostri, sull'ultimo gruppo sopra la taratura o in fondo, secondo -DEMO_FONDO", arguments: [
+    /// `prova` (#842): la foto `lega-stato-prova` si ferma sulla frase della prova delle previsioni (quella su «da fantamedia», #840),
+    /// a metà pagina: la taratura si ferma poco sopra, le nostri sotto.
+    @Test("Stato dei dati si ferma sulle nostri, sull'ultimo gruppo sopra la taratura, sulla prova delle previsioni o in fondo, secondo -DEMO_FONDO",
+          arguments: [
         Arrivo(valore: "nostri", id: FondoDemo.idNostri),
         Arrivo(valore: "taratura", id: FondoDemo.idTaratura),
+        Arrivo(valore: "prova", id: "fondo-demo-prova"),
         Arrivo(valore: "1", id: FondoDemo.idRiga),
     ])
     func dovesiFermaStatoDeiDati(_ caso: Arrivo) {

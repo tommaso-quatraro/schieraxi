@@ -151,6 +151,16 @@ def test_traduzione_della_risposta_in_inglese():
     assert json.loads(server._riscrivi_note(json.dumps(strano).encode(), False)) == strano
 
 
+def test_rinviata_e_senza_voto_della_rosa_in_inglese():
+    """#842: nella web in inglese si erano viste «Rinviata» e «Senza voto» nella rosa a giornata in corso. Venivano dal server finto
+    dei test del browser, che risponde con registrazioni in italiano e non traduce: il server vero le riscrive anche dentro la
+    `previsione` di ogni giocatore di /api/rosa."""
+    corpo = {"giocatori": [{"id": 1, "previsione": {"etichetta": etichette.crea("rinviata"), "stato_partita": "rinviata"}},
+                           {"id": 2, "previsione": {"etichetta": etichette.crea("senza_voto"), "stato_partita": "senza_voto"}}]}
+    nuovo = json.loads(server._riscrivi_note(json.dumps(corpo).encode(), False))
+    assert [g["previsione"]["etichetta"]["testo"] for g in nuovo["giocatori"]] == ["Postponed", "No grade"]
+
+
 def test_la_rotta_risponde_nella_lingua_chiesta(tmp_path, monkeypatch):
     prev = pd.DataFrame([dict(_riga(dubbio=True, p_voto=0.55))], index=[1])
     monkeypatch.setattr(consigli, "previsioni", lambda *a, **k: (prev, 10, None))

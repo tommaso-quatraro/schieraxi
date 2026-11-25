@@ -5,6 +5,8 @@ import Foundation
 struct InfoServer: Decodable {
     let stagione: String?
     let prossimaGiornata: Int?
+    /// La stessa giornata contata dalla prima della lega (nil prima che la lega parta o con un server di prima).
+    let prossimaGiornataLega: Int?
     let ultimoAggiornamento: String?
     let miaSquadra: String?
     let versione: String?
@@ -913,6 +915,8 @@ struct StatisticheAvanzate: Decodable, Equatable {
     let punizioni: Double?
     let per90: Per90?
     let stagioniPrecedenti: [StagionePrecedente]?
+    /// Fin dove arrivano i dati della fonte («2026-11-09», #862): il giorno dell'ultima partita letta. nil da un server di prima.
+    let datiFinoAl: String?
 }
 
 /// «Rende sopra o sotto le occasioni?»: punti a partita in più (o in meno) di quanto dicono xG e xA.

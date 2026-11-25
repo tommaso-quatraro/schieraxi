@@ -33,7 +33,8 @@ def test_partita_nelle_righe_e_nelle_celle():
     # per i lettori di schermo la frase intera, «in trasferta contro Genoa», dentro vsAt; mai «GEN fuori» (#453)
     assert APP.count('t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv: nomeClub(x.avversario) })') == 1
     assert "giocatore.casa" not in APP and "giocatore.fuori" not in APP
-    assert APP.count('<span class="cella d${p.difficolta}">${vsAt(p)}</span>') == 1           # le prossime partite, nella scheda
+    # le prossime partite, nella scheda: «vs MIL» e sotto la difficoltà a parole (#882; la prova vera è in tests/browser)
+    assert APP.count('<span class="cella d${p.difficolta}">${vsAt(p)}') == 1
     assert "${sigla(x.squadra)} – ${sigla(x.avversario)}" not in APP
 
 

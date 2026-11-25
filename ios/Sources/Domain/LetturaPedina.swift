@@ -64,7 +64,8 @@ enum LetturaPedina {
         /// disco è vuoto (solo il bordo), come la classe `attesa` della pedina della web; pieno con il voto preso e prima della scadenza.
         let attesa: Bool
         let pezzi: [Pezzo]
-        /// La frase per VoiceOver, come `vocePedina` della web: «Rossi, fantavoto atteso 6,8, gioca al 45 per cento, In dubbio».
+        /// La frase per VoiceOver, come `vocePedina` della web: «Rossi, Centrocampista, fantavoto atteso 6,8, gioca al 45 per cento,
+        /// In dubbio».
         let voce: String
     }
 
@@ -88,9 +89,9 @@ enum LetturaPedina {
         if let attesa { pezzi.append(Pezzo(testo: attesa, tono: .parola)) }
         if let parola { pezzi.append(Pezzo(testo: parola, tono: .parola)) }
         if let quando { pezzi.append(Pezzo(testo: quando, tono: .parola)) }
-        // la frase per VoiceOver: le stesse cose che si vedono
+        // la frase per VoiceOver: le stesse cose che si vedono, e il ruolo dopo il nome (sul campo lo dice solo la fila, #882)
         let numero = preso != nil ? (partita?.testo ?? "") : senzaVoto ? "" : Catalogo.Formazione.voceFv(fv: Formato.punti(g.fvAtteso))
-        var frase: [String] = [g.nome, numero]
+        var frase: [String] = [g.nome, ruoloPerIntero(g.ruolo) ?? "", numero]
         if let attesa { frase.append(attesa) }
         if let parola { frase.append(parola) }
         if gioca { frase.append(voceGioca(Formato.percento(g.pVoto))) }
@@ -107,6 +108,18 @@ enum LetturaPedina {
         if let partita = g.esitoPartita { return (partita.fv, partita.testo, partita.parola) }
         guard let rinviata = g.esitoPedina else { return nil }
         return (nil, rinviata, nil)
+    }
+
+    /// Il ruolo per intero, «Difensore» (`ruolo.D_1`, come `NOME_RUOLO_1` della web e la scheda); nil per un ruolo sconosciuto,
+    /// che la frase salta come la web.
+    static func ruoloPerIntero(_ ruolo: String) -> String? {
+        switch ruolo {
+        case "P": return Catalogo.Ruolo.p1
+        case "D": return Catalogo.Ruolo.d1
+        case "C": return Catalogo.Ruolo.c1
+        case "A": return Catalogo.Ruolo.a1
+        default: return nil
+        }
     }
 
     /// «gioca al 62 per cento», «gioca all'85 per cento» (`formazione.voce_gioca`, `formazione.voce_gioca_v`).

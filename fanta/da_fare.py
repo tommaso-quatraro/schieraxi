@@ -108,7 +108,7 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
     else:
         return []
     sistema, panchina = consigliata or (None, [])
-    schede = {g.id: consigli.scheda_previsione(g.id, prev.loc[g.id]) for g in s.giocatori if g.id is not None and g.id in prev.index}
+    schede = {g.id: consigli.scheda_di(prev, g.id) for g in s.giocatori if g.id is not None and g.id in prev.index}
     # anticipi già cominciati (#373): niente voce su chi è bloccato e non entra al posto di un altro; resta solo come riserva che
     # entra da sola dalla panchina
     fermi = _bloccati(db, giornata, schede)
@@ -192,7 +192,7 @@ def _consigliata_cambiata(prev, salvati: list[int], adesso: list[int], giornata:
     """UNA voce: la consigliata ha titolari diversi da quelli che hai salvato. Dice chi entra e chi esce (fino a MAX_NOMI_CAMBIATI
     cambi, poi solo quanti sono) e porta alla Formazione. Non cambia niente da sola. Se fra chi esce c'è un infortunato o uno
     squalificato lo dice per primo e la priorità è alta («Urgente»), come la voce del suo dubbio che sostituisce."""
-    schede = {i: consigli.scheda_previsione(i, prev.loc[i]) for i in set(salvati) ^ set(adesso)}
+    schede = {i: consigli.scheda_di(prev, i) for i in set(salvati) ^ set(adesso)}
     ruolo = lambda i: ORDINE_RUOLI.get(schede[i].get("ruolo"), len(ORDINE_RUOLI))     # per ruolo, poi nell'ordine della formazione
     entrano = sorted((i for i in adesso if i not in salvati), key=ruolo)
     escono = sorted((i for i in salvati if i not in adesso), key=ruolo)
@@ -246,7 +246,7 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
     consigliata = _consigliata(db, regole, rose)
     if consigliata and set(consigliata[0]) != set(salvati):
         # chi gioca un anticipo già cominciato non si sposta più (#373): non si nomina come cambio; se cambiano solo loro, niente voce
-        schede = {i: consigli.scheda_previsione(i, prev.loc[i]) for i in set(consigliata[0]) ^ set(salvati) if i in prev.index}
+        schede = {i: consigli.scheda_di(prev, i) for i in set(consigliata[0]) ^ set(salvati) if i in prev.index}
         entrano, escono = _cambi_possibili(salvati, consigliata[0], _bloccati(db, giornata, schede), schede)
         adesso = [i for i in consigliata[0] if i in entrano] + [i for i in salvati if i not in escono]
         # senza un fermo che lo impedisca il cambio è quello della consigliata; con un fermo di un altro ruolo (#816) togliere solo
@@ -255,7 +255,7 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
             return [_consigliata_cambiata(prev, salvati, adesso, giornata)]
         # senza la voce del cambio restano anche le voci di chi è infortunato o squalificato con il loro cambio: `_dubbi` lo propone
         # solo se la consigliata lo fa, dello stesso ruolo e mai su chi gioca un anticipo già cominciato, quindi si può fare
-        fuori = {i for i in salvati if i in prev.index and consigli.scheda_previsione(i, prev.loc[i]).get("stato") in FUORI}
+        fuori = {i for i in salvati if i in prev.index and consigli.scheda_di(prev, i).get("stato") in FUORI}
         return [v for v in _dubbi(db, regole, rose, giornata, file_scelte)
                 if "alternativa" not in v or (v.get("giocatore") or {}).get("id") in fuori]
     # la stessa consigliata (o non si riesce a calcolarla): restano solo le voci che non chiedono un cambio

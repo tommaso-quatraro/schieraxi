@@ -226,10 +226,12 @@ struct FormazioneView: View {
             Label(messaggio, systemImage: "exclamationmark.triangle")
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
-            Button(Catalogo.Comune.riprova) { Task { await ricarica() } }
-                .font(.subheadline.weight(.semibold))
-                .buttonStyle(.bordered)
-                .frame(minHeight: Tema.areaTocco)
+            // i 44 punti dentro l'etichetta: fuori dal pulsante allargavano la riga ma non la zona da toccare (#882)
+            Button { Task { await ricarica() } } label: {
+                Text(Catalogo.Comune.riprova).frame(minHeight: Tema.areaTocco).contentShape(Rectangle())
+            }
+            .font(.subheadline.weight(.semibold))
+            .buttonStyle(.bordered)
         }
     }
 
@@ -375,9 +377,10 @@ struct FormazioneView: View {
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
-            Button(Catalogo.Comune.riprova) { Task { await ricarica() } }
-                .font(.footnote.weight(.semibold))
-                .frame(minHeight: Tema.areaTocco)
+            Button { Task { await ricarica() } } label: {
+                Text(Catalogo.Comune.riprova).frame(minHeight: Tema.areaTocco).contentShape(Rectangle())
+            }
+            .font(.footnote.weight(.semibold))
         }
     }
 
@@ -459,7 +462,8 @@ struct FormazioneView: View {
                         Text("\(i + 1)").font(.footnote.weight(.semibold)).monospacedDigit()
                             .foregroundStyle(Color.testoSecondario)
                             .accessibilityHidden(true)
-                        RigaGiocatore(g: g, apribile: true, dalVivo: dalVivo)
+                        // il numero lo dice la riga, prima del nome: «1. Mario Prova, …» (#882)
+                        RigaGiocatore(g: g, apribile: true, posizione: i + 1, dalVivo: dalVivo)
                     }
                 }
             }

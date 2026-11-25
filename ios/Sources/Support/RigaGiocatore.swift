@@ -52,6 +52,8 @@ extension Etichetta.Gravita {
 struct RigaGiocatore: View {
     let g: Giocatore
     var apribile = false
+    /// Il posto in panchina (da 1), che la riga accanto mostra: VoiceOver lo dice prima del nome.
+    var posizione: Int? = nil
     /// A giornata in corso (panchina ed elenchi della Formazione): sotto l'atteso «atteso» invece di «gioca N%» (`sottoNumero`).
     var dalVivo = false
     @Environment(\.apriGiocatore) private var apri
@@ -130,9 +132,10 @@ struct RigaGiocatore: View {
     }
 
     /// Frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono. A partita iniziata «fantavoto 3,5» come la
-    /// pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette.
-    nonisolated static func voce(_ g: Giocatore) -> String {
-        var parti = [g.nome, nomeRuolo(g.ruolo)]
+    /// pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette. In panchina davanti il
+    /// posto, «2. Mario Prova, …», come il numero davanti al nome della web (`posizione`, #882).
+    nonisolated static func voce(_ g: Giocatore, posizione: Int? = nil) -> String {
+        var parti = [posizione.map { "\($0). \(g.nome)" } ?? g.nome, nomeRuolo(g.ruolo)]
         let partita = partitaAVoce(g)
         if !partita.isEmpty { parti.append(partita) }
         if g.assente == true {
@@ -246,7 +249,7 @@ struct RigaGiocatore: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Self.voce(g))
+        .accessibilityLabel(Self.voce(g, posizione: posizione))
     }
 
     private var contenuto: some View { corpo(conNumero: true) }

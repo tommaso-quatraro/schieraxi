@@ -63,7 +63,7 @@ struct TestaFormazioneView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                 }
-                if let chiude = t.chiude { scadenza(chiude, t.manca) }
+                if let chiude = t.chiude { scadenza(chiude, t.manca, voce: t.voceScadenza ?? chiude) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -135,8 +135,9 @@ struct TestaFormazioneView: View {
         .accessibilityHint("Mostra le giornate giocate, con i punti di ogni giocatore")
     }
 
-    /// «Si chiude sab 31 14:50» in grassetto e accanto, piccolo, «fra 3 h 10 min».
-    private func scadenza(_ chiude: String, _ manca: String?) -> some View {
+    /// «Si chiude sab 31 14:50» in grassetto e accanto, piccolo, «fra 3 h 10 min». VoiceOver legge `voce`, con il conto a parole
+    /// intere («fra 3 ore e 10 minuti», `TestaFormazione.voceScadenza`, #882).
+    private func scadenza(_ chiude: String, _ manca: String?, voce: String) -> some View {
         Group {
             if let manca {
                 Text("\(Text(chiude).bold()) \(Text(manca).foregroundStyle(Color.testoSecondario))")
@@ -146,5 +147,6 @@ struct TestaFormazioneView: View {
         }
         .font(.subheadline)
         .fixedSize(horizontal: false, vertical: true)
+        .accessibilityLabel(voce)
     }
 }

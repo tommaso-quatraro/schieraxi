@@ -188,6 +188,16 @@ extension Catalogo {
             "gioca all'\(p) per cento"
         }
 
+        /// `formazione.voce_casa`
+        static func voceCasa(avv: String) -> String {
+            "in casa contro \(avv)"
+        }
+
+        /// `formazione.voce_fuori`
+        static func voceFuori(avv: String) -> String {
+            "in trasferta contro \(avv)"
+        }
+
         /// `formazione.atteso_breve`
         static let attesoBreve = "atteso"
 
