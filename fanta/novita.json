@@ -1,5 +1,60 @@
 [
   {
+    "versione": "1.549",
+    "data": "2026-11-25T21:33:21",
+    "titolo": "iPhone: widget e Impostazioni con il testo grande",
+    "voci": [
+      "Widget Formazione consigliata, misura media, con il testo grande: accanto al triangolo arancione si legge «2 da vedere» invece del solo numero. Lo stesso negli altri widget dove «2 da controllare» non entra.",
+      "Impostazioni con il testo grande: scorrendo, le righe sfumano sotto l'ora in alto invece di passarci sotto nitide."
+    ],
+    "tecnico": [
+      "Catalogo: chiave nuova oggi.da_vedere, usata solo dal widget dell'iPhone come forma di mezzo di «N da controllare» (ParoleWidget.daControllare). Nessun cambio sul server né sulla web (#848).",
+      "iPhone: con il testo grande la barra delle pagine in cima a una scheda è vuota (titolo nella pagina, #419) e su iOS 26 non sfuma i contenuti che le passano sotto; bordoSottoLaBarraVuota() copre la fascia della barra con lo sfondo della pagina (per ora solo Impostazioni)."
+    ]
+  },
+  {
+    "versione": "1.548",
+    "data": "2026-11-25T21:25:12",
+    "titolo": "Piccole correzioni di parole: «Dall'8ª», «1,0 punti» sull'iPhone, la prova delle previsioni",
+    "voci": [
+      "Regole e scadenza e primo avvio: il menu della prima giornata della lega dice «Dall'8ª» e «Dall'11ª» invece di «Dalla 8ª» e «Dalla 11ª».",
+      "iPhone, Giornate: nei Dettagli «1,0 punti in più della consigliata» invece di «1,0 punto in più», come sulla web.",
+      "iPhone, Stato dei dati: sotto la prova delle previsioni la frase su «da fantamedia» è quella della web (la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare), non più «chi ha la media più alta»."
+    ],
+    "tecnico": [
+      "Web: elidiOrdinali riconosce anche l'articolo con la maiuscola in testa («Dalla 8ª» → «Dall'8ª»); vocePrimaGiornata scrive le voci del menu della prima giornata in Regole (app.js) e nel primo avvio (primoavvio.js). frasi.elidi_ordinali del server e TempiLega.elidiOrdinali dell'iPhone restano sulle minuscole: nessun loro testo comincia con l'articolo.",
+      "iPhone: TestoPrecisione sceglie il plurale di diario.qp_cf_piu e diario.qp_cf_meno sul numero scritto, come tpScritto della web; LegaExtra usa Catalogo.Avv.provaSu (avv.prova_su aggiunta a ios/testi/avv.txt)."
+    ]
+  },
+  {
+    "versione": "1.547",
+    "data": "2026-11-25T21:08:58",
+    "titolo": "Web: gli avvisi di un altro account non arrivano più su questo browser, e la guida iniziale aspetta le squadre",
+    "voci": [
+      "Impostazioni › Avvisi: quando su un browser entra un account diverso da quello che aveva acceso gli avvisi, gli avvisi dell'account di prima smettono di arrivare lì, anche se la sua sessione era finita da sola senza «Esci». «Avvisi su questo dispositivo» resta spento finché chi è entrato non lo accende; acceso, arrivano solo i suoi avvisi.",
+      "Se all'apertura dell'app l'elenco delle squadre non arriva (per esempio mentre il server riparte), la guida del primo avvio non si apre più su «Importa le rose» a chi le rose le ha già."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: all'avvio lasciaAvvisiDiAltri() toglie dal browser (pushManager unsubscribe) l'iscrizione agli avvisi se il segno avvisi-di (#804) è di un altro account o «-»; con il segno mancante non la tocca. iscrizioneMia(), usata dall'interruttore e da «Attiva gli avvisi» del primo avvio, toglie prima un'iscrizione che non è dell'account dentro (subscribe darebbe la stessa) e ne chiede una nuova; se non si toglie, manda quella che c'è, e il server la toglie agli altri account.",
+      "Server, POST /api/push/iscrivi con gli account: dopo la scrittura push.togli_dagli_altri() toglie lo stesso endpoint dai push.json delle cartelle degli altri utenti, scrivendo solo dove c'è (lettura senza blocco, poi blocco e nuova lettura), senza creare cartelle né file. Un file occupato, un errore del disco o il database degli account che non risponde non fanno fallire l'iscrizione: una riga d'errore nel registro del servizio, con il tipo dell'errore e l'indirizzo mascherato. Un'iscrizione morta resta comunque tolta al primo invio che riceve 404 o 410. Nessun campo dell'API cambia; docs/API.md aggiornato.",
+      "fanta/web/app.js e primoavvio.js: stato.squadreLette diventa vero quando /api/squadre risponde (o /api/stato dice rose_importate falso); primoAvvioSeServe non apre la guida e non salva lo stato «server, accesso» finché l'elenco non è stato letto, e riprova alla volta dopo."
+    ]
+  },
+  {
+    "versione": "1.546",
+    "data": "2026-11-25T20:57:42",
+    "titolo": "La prova del modello segue le regole e le rose della lega",
+    "voci": [
+      "Stato dei dati e «Sotto il cofano»: la carta «Quanto è affidabile il modello» si rifà anche quando cambi le regole o le rose della lega, al prossimo aggiornamento programmato, invece di aspettare la giornata dopo.",
+      "Stato dei dati, per chi gestisce il server: nel registro delle giornate la fantamedia di confronto usa solo le partite giocate prima dell'inizio della giornata, come il fantavoto atteso."
+    ],
+    "tecnico": [
+      "affidabilita.impronta: oltre a giornate e voti contiene tutte le regole (asdict, come la chiave di memo in verifica.verifica_giornata) e gli id dei giocatori di ogni squadra, ordinati e senza nomi; aggiorna_se_serve rifà la prova quando cambia. Il giorno del rilascio nessun file ha l'impronta nuova: al primo giro di python -m fanta affidabilita si rifanno il file comune e quello di ogni utente con rose (nel tempo di --minuti, il resto al giro dopo), poi una volta per giornata o al cambio di regole o rose. Nessun aggancio al salvataggio: la carta cambia al giro del cron dopo il salvataggio.",
+      "registro_giornate.fantamedie_tirate (avversario di I1, salvato in registro_giocatori.fantamedia e ricalcolato in misura_giornata): i voti delle partite con data prima di MIN(data) della giornata (come modello.prima_di e Dati.inizio), con la data presa per stagione, giornata e squadra come modello.carica; i voti senza partita non contano. AVVERSARIO non cambia: le giornate già misurate non si rimisurano. Su una copia dei dati del 2/11 le fantamedie del 2026-27 (giornate 3-8) sono identiche; cambiano nel 2025-26 dopo i recuperi (giornate 17-20 e 25).",
+      "verifica_pacchetti.squalificati (esperimento spento di default): cartellini delle sole partite giocate prima dell'inizio della giornata (modello.prima_di)."
+    ]
+  },
+  {
     "versione": "1.545",
     "data": "2026-11-20T13:48:29",
     "titolo": "Piccole correzioni: nome della squadra, inglese, colonne e Stato dei dati",
