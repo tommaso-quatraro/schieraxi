@@ -15,7 +15,8 @@
     "collega-widget": ["CollegaWidgetView"],
     "accesso-accedi": ["SchermataAccesso"], "accesso-registra": ["SchermataAccesso"], "accesso-recupero": ["SchermataAccesso"],
     "accesso-rete": ["SchermataAccesso"], "accesso-limite": ["SchermataAccesso"], "accesso-non-valido": ["SchermataAccesso"],
-    "accesso-codice": ["CodiceRecuperoView"], "accesso-account*": ["AccountPagina"]
+    "accesso-codice": ["CodiceRecuperoView"], "accesso-account*": ["AccountPagina"],
+    "lega-scelta-squadra": ["SceltaSquadraView"]
   },
   "barriere": ["AppModel", "Navigazione", "Demo", "Catalogo", "SessioneAccount"],
   "contenitori": ["RadiceView", "ContenitoreApp", "PortaDiAccesso"],

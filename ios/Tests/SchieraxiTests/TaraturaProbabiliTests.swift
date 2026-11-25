@@ -125,6 +125,15 @@ struct TaraturaProbabiliTests {
         #expect(try frase("{\"stato\":\"attiva\"}") == "\(Self.titolo): attiva")
     }
 
+    @Test("Attiva dall'8/1 e dall'11/1 con l'apostrofo, come la web (#859); «dal 18/1» e «dal 1/1» restano")
+    func attivaConLApostrofo() throws {
+        let base = "\"stato\":\"attiva\",\"giornate\":8,\"minimo\":4,\"versione\":3,\"prova\":null,\"motivo\":null"
+        #expect(try frase("{\(base),\"dal\":\"2027-01-08T06:00:00\"}") == "\(Self.titolo): attiva dall'8/1")
+        #expect(try frase("{\(base),\"dal\":\"2027-01-11T06:00:00\"}") == "\(Self.titolo): attiva dall'11/1")
+        #expect(try frase("{\(base),\"dal\":\"2027-01-18T06:00:00\"}") == "\(Self.titolo): attiva dal 18/1")
+        #expect(try frase("{\(base),\"dal\":\"2027-01-01T06:00:00\"}") == "\(Self.titolo): attiva dal 1/1")
+    }
+
     @Test("Errore medio con due decimali, scritto dal server; un server vecchio che manda solo i Brier: «–»")
     func erroreMedio() throws {
         // con un decimale una versione accesa per un miglioramento dello 0,5% si leggerebbe «30,9 contro 30,9»

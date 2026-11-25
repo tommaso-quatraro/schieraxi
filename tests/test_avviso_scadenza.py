@@ -101,7 +101,7 @@ def test_probabili_che_cambiano_a_70_40_e_10_minuti(m, tmp_path):
     # 40 minuti prima: Bonvicini parte dalla panchina, conviene Attanasi e un altro modulo
     m.cambia("v2", esce=12, entra=13, stato={12: "panchina"}, bonus={12: -2.0}, modulo="3-4-3")
     righe, mandati = _giro(m, tmp_path, ore(17, 50))
-    assert mandati == [("SchieraXI · cambia la formazione consigliata",
+    assert mandati == [("SchieraXI · la formazione consigliata è cambiata",
                         "Bonvicini parte dalla panchina: metti Attanasi e passa al 3-4-3 (+2,0 punti attesi). La formazione si chiude alle 18:30.",
                         4, "rotating_light")]                              # tag dei cambi: il tocco apre la Formazione
     assert righe == [mandati[0][1]]
@@ -201,9 +201,9 @@ def test_vicino_alla_scadenza_parla_solo_l_avviso_nuovo(m, tmp_path):
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
     righe = _cambi(m, tmp_path, ore(17, 45), opz, mandati)                  # nella finestra parte prima l'avviso nuovo...
     assert len(righe) == 1 and righe[0].startswith("Castoldi è infortunato: metti Bonvicini")
-    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"]   # ...e quello dei cambi tace
+    assert [t for t, _ in mandati] == ["SchieraXI · la formazione consigliata è cambiata"]   # ...e quello dei cambi tace
     assert _avviso(m, tmp_path, ore(17, 50), opz, mandati) == []           # il giro dei promemoria non lo ripete
-    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"]
+    assert [t for t, _ in mandati] == ["SchieraXI · la formazione consigliata è cambiata"]
     assert _cambi(m, tmp_path, ore(18, 0), opz, mandati) == [] and len(mandati) == 1    # e non riparte più tardi
 
 
@@ -236,7 +236,7 @@ def test_se_l_avviso_nuovo_non_parte_i_cambi_si_dicono(m, tmp_path):
     m.cambia("v3", esce=9, entra=13, stato={9: "infortunato"}, bonus={9: -4.0})
     righe = _cambi(m, tmp_path, ore(17, 55), opz, mandati)
     assert righe == ["Lombrici è infortunato: metti Attanasi. La formazione si chiude il 28/10 alle 18:30."]
-    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"] * 2 + ["SchieraXI · cambia un titolare"]
+    assert [t for t, _ in mandati] == ["SchieraXI · la formazione consigliata è cambiata"] * 2 + ["SchieraXI · cambia un titolare"]
     m.cambia("v4", stato={8: "panchina"}, bonus={8: -0.3})                 # la consigliata non cambia: niente
     assert _cambi(m, tmp_path, ore(18, 0), opz, mandati) == [] and len(mandati) == 3
 
@@ -266,7 +266,7 @@ def test_piu_utenti_con_leghe_diverse(mondo, registro, monkeypatch):  # noqa: F8
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
     esiti, errori = avvisi_utenti.esegui("promemoria", m.db, ore(17, 0))
     assert errori == {} and esiti["amico1"] == [] and len(esiti["amico2"]) == 1      # solo B è nella sua finestra
-    assert [(u, t) for u, t, _ in registro.web] == [(str(b.utente_id), "SchieraXI · cambia la formazione consigliata")]
+    assert [(u, t) for u, t, _ in registro.web] == [(str(b.utente_id), "SchieraXI · la formazione consigliata è cambiata")]
     esiti, _ = avvisi_utenti.esegui("promemoria", m.db, ore(17, 35))
     assert len(esiti["amico1"]) == 1 and esiti["amico2"] == []             # ora A (55 minuti); per B la formazione è chiusa
     assert [u for u, _, _ in registro.web] == [str(b.utente_id), str(a.utente_id)]   # e niente promemoria doppione per A

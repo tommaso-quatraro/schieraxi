@@ -246,9 +246,8 @@ final class Navigazione: ObservableObject {
 struct RadiceView: View {
     @EnvironmentObject private var nav: Navigazione
     @EnvironmentObject private var modello: AppModel
-    /// Impostazioni > Aspetto: tema e animazioni.
+    /// Impostazioni > Aspetto: le animazioni (il tema lo applica `PortaDiAccesso`, per tutte le schermate).
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
-    @AppStorage("tema") private var tema = "auto"   // auto, chiaro, scuro
     /// Punto di partenza e arrivo della transizione a zoom tra una riga di giocatore e la sua scheda.
     @Namespace private var zoom
 
@@ -283,7 +282,6 @@ struct RadiceView: View {
         .barraSchedeCheSiRiduce()
         // Il conto alla rovescia sta nell'intestazione di Oggi (e nel widget): sotto la barra delle schede faceva due barre sovrapposte.
         .tint(Color.verde)
-        .preferredColorScheme(tema == "chiaro" ? ColorScheme.light : tema == "scuro" ? ColorScheme.dark : nil)
         .transaction { if animazioniRidotte { $0.animation = nil } }
         .environment(\.server, modello.server)
         .environment(\.spazioZoom, zoom)

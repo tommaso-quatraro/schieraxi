@@ -61,7 +61,8 @@ def test_insiste_se_dopo_aver_schierato_un_titolare_salta(tmp_path, monkeypatch)
     fs, mandati, manda, _ = _scena(tmp_path, monkeypatch, stato="infortunato")
     f, db = tmp_path / "n.json", _db()
     assert len(notifiche.promemoria(db, Regole(), ROSE, datetime(2026, 10, 28, 17, 35), f, manda, OPZ, fs)) == 1
-    assert "Hai già schierato, ma Castro" in mandati[0][1] and "18:30" in mandati[0][1]
+    # scelta di prima del 13/11 (senza `da`): conta come schierata; il fatto vero in testa (#906)
+    assert mandati[0][1].startswith("Castro è infortunato: controlla la formazione che hai schierato.") and "18:30" in mandati[0][1]
     assert notifiche.promemoria(db, Regole(), ROSE, datetime(2026, 10, 28, 17, 45), f, manda, OPZ, fs) == []   # non ripetuto nella finestra
 
 

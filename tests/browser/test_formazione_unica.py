@@ -723,7 +723,7 @@ def _apri_sulla_copia_senza_rete(web) -> dict:
     web.pagina.route(lambda u: urlsplit(u).path == "/api/oggi", lambda r: r.abort() if caduta["si"] else r.fallback())
     web.pagina.goto(web.server.indirizzo + "/", wait_until="commit")
     web.pagina.wait_for_selector("#campo-formazione")
-    _aspetta(principale(web).get_by_text("Non riesco a collegarmi"), testo="questi sono gli ultimi dati salvati")
+    _aspetta(principale(web).get_by_text("Non riesco a collegarmi"), testo="questi sono i dati salvati")
     return caduta
 
 

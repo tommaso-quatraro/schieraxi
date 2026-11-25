@@ -74,12 +74,12 @@
     "en": "Saved data from {quando}: refreshing…"
   },
   "comune.cache_offline": {
-    "it": "Non riesco a collegarmi: questi sono gli ultimi dati salvati.",
-    "en": "I cannot connect: these are the last saved data."
+    "it": "Non riesco a collegarmi: questi sono i dati salvati il {giorno} alle {ora}.",
+    "en": "I cannot connect: this is the data saved on {giorno} at {ora}."
   },
   "comune.cache_errore": {
-    "it": "{errore} (dati salvati, potrebbero non essere aggiornati)",
-    "en": "{errore} (saved data, may be out of date)"
+    "it": "{errore} (dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati).",
+    "en": "{errore} (saved data from {giorno} at {ora}, may be out of date)."
   },
   "comune.vai_lega": {
     "it": "Apri La mia lega",

@@ -28,7 +28,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from .blocco import BloccoFile
-from .percorsi import RADICE, ricontrolla_dopo_la_scrittura, scrittura_permessa
+from .percorsi import RADICE, DatabaseAccountNonRisponde, ricontrolla_dopo_la_scrittura, scrittura_permessa
 
 FILE_VAPID = RADICE / "dati" / "vapid.json"
 FILE_ISCRIZIONI = RADICE / "dati" / "push.json"
@@ -405,6 +405,37 @@ def togli(endpoint: str, percorso: Path | None = None) -> list[dict]:
         lista = [s for s in iscrizioni(p) if s["endpoint"] != endpoint]
         scrivi_sicuro(p, json.dumps(lista))
     return lista
+
+
+def togli_dagli_altri(endpoint: str, cartella_utenti: Path, tranne: Path) -> list[tuple[Path, str]]:
+    """Con gli account: un'iscrizione (un browser) è di un account solo, l'ultimo che l'ha mandata (#874). Toglie quella con questo
+    indirizzo dai `push.json` delle cartelle degli altri utenti (`<cartella_utenti>/<numero>/push.json`, tranne il file `tranne`).
+    Scrive solo i file che la contengono: prima una lettura senza blocco, poi, solo dove c'è, lo stesso blocco di `iscrivi` e una
+    nuova lettura prima di scrivere. Non crea cartelle né file. Non alza mai per un file: restituisce (file, tipo dell'errore) di
+    quelli dove è rimasta, tenuti da un altro processo (Occupato), con un errore del disco o con il database degli account che non
+    ha risposto. Chi chiama lo scrive nel registro: l'iscrizione di chi l'ha mandata è già salvata e non deve fallire per questo."""
+    rimasti: list[tuple[Path, str]] = []
+    try:
+        cartelle = [c for c in cartella_utenti.iterdir()
+                    if c.is_dir() and c.name.isascii() and c.name.isdecimal() and str(int(c.name)) == c.name]
+    except FileNotFoundError:
+        return rimasti
+    escluso = tranne.resolve()
+    for cartella in sorted(cartelle, key=lambda c: int(c.name)):
+        p = cartella / FILE_ISCRIZIONI.name
+        if p.resolve() == escluso or not any(s["endpoint"] == endpoint for s in iscrizioni(p)):
+            continue
+        try:
+            with _scrittura_iscrizioni(p, crea_cartella=False) as aperto:
+                if not aperto:
+                    continue
+                prima = iscrizioni(p)
+                lista = [s for s in prima if s["endpoint"] != endpoint]
+                if len(lista) != len(prima):
+                    scrivi_sicuro(p, json.dumps(lista))
+        except (OSError, DatabaseAccountNonRisponde) as e:      # OSError comprende Occupato (un TimeoutError)
+            rimasti.append((p, type(e).__name__))
+    return rimasti
 
 
 def maschera(ep: str) -> str:

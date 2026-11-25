@@ -72,6 +72,19 @@ def test_promemoria_e_cambi_in_inglese(telefono, tmp_path, monkeypatch):
     assert telefono.arrivati[-1] == ("SchieraXI · a starter changes", "Vicario is injured: field Bonny. The lineup closes on 28/10 at 18:30.")
 
 
+def test_la_scadenza_dell_avviso_con_l_apostrofo_davanti_all_8_e_all_11():
+    """«si chiude l'08/11», «l'11/11» (si legge «l'otto», «l'undici»), mai «il 08/11» o «il 11/11» (#859); in inglese niente
+    articolo. Le altre date restano: «il 01/11» (il primo), «il 18/11». `notifiche` scrive la data come «%d/%m», con lo zero."""
+    def avviso(data, lingua="it"):
+        metti = frasi.F("n.metti", motivi=frasi.F("n.m_infortunato", nome="Vicario"), entrano="Bonny")
+        return frasi.F("n.testo_cambiata", frase=metti, data=data, ora="18:30").in_lingua(lingua)
+    assert avviso("08/11") == "Vicario è infortunato: metti Bonny. La formazione si chiude l'08/11 alle 18:30."
+    assert avviso("11/11").endswith("si chiude l'11/11 alle 18:30.")
+    assert avviso("01/11").endswith("si chiude il 01/11 alle 18:30.")
+    assert avviso("18/11").endswith("si chiude il 18/11 alle 18:30.")
+    assert avviso("08/11", "en").endswith("The lineup closes on 08/11 at 18:30.")
+
+
 def test_avviso_di_prova_in_inglese(telefono):
     telefono.impostazioni.write_text(json.dumps({"lingua": "en"}), encoding="utf-8")
     assert telefono.manda(frasi.F("n.t_prova"), frasi.F("n.prova"), ignora_silenzio=True)

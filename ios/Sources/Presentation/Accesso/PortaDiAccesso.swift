@@ -13,6 +13,8 @@ struct PortaDiAccesso: View {
     @AppStorage("indirizzo") private var indirizzo = ""
     /// La prova con dati di esempio (`ProvaEsempio`): accesa o spenta, la porta si ridisegna.
     @AppStorage(ProvaEsempio.chiave) private var prova = false
+    /// Impostazioni › Aspetto: chiaro, scuro o come il dispositivo (`auto`). Si applica qui, alla radice, per tutte le schermate.
+    @AppStorage("tema") private var tema = "auto"
     /// Quando l'app è andata in secondo piano: al ritorno, se è passato un po', si ricarica tutto.
     @State private var uscitaIl: Date?
 
@@ -49,6 +51,9 @@ struct PortaDiAccesso: View {
         .animation(Tema.morbida, value: sessione.stato == .daAccedere)
         .animation(Tema.morbida, value: indirizzo.isEmpty)
         .tint(Color.verde)   // anche accesso e codice di recupero con il colore dell app (prima restavano blu)
+        // Il tema scelto vale anche per accesso, primo avvio e codice di recupero: prima stava solo sulle schede (`RadiceView`) e
+        // qui si seguiva il dispositivo (#845). Uno solo in tutta l'app, qui.
+        .preferredColorScheme(TemaScelto.schema(tema: tema, foto: TemaScelto.fotoDaLancio))
         // Solo per le fotografie (-DEMO_ORIENTAMENTO orizzontale): qui, alla radice, vale anche per l'accesso.
         .task { await Demo.chiediOrientamento() }
         // All'apertura, e poco dopo che si è cambiato l'indirizzo del server, si chiede chi siamo.
@@ -155,10 +160,10 @@ struct ContenitoreApp: View {
             modello.lega.ritornoAllaGuida.chiesta(.pagina(.importa), dalPasso: .rose)
             nav.sezione = modello.lega.apri([.importa])
         case .scegliSquadra:
-            modello.lega.ritornoAllaGuida.chiesta(.pagina(.squadre), dalPasso: .squadra)
-            nav.sezione = modello.lega.apri([.squadre])
+            modello.lega.ritornoAllaGuida.chiesta(.pagina(.sceltaSquadra), dalPasso: .squadra)
+            nav.sezione = modello.lega.apri([.sceltaSquadra])
         case .stemma(let nome):
-            let pagina = nome.map { PaginaImpostazioni.rosa($0) } ?? .squadre
+            let pagina = nome.map { PaginaImpostazioni.rosa($0) } ?? .sceltaSquadra   // prima la squadra, poi lo stemma (#868)
             modello.lega.ritornoAllaGuida.chiesta(.pagina(pagina), dalPasso: .stemma)
             nav.sezione = modello.lega.apri([pagina])
         case .impostazioni:

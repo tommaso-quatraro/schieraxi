@@ -50,6 +50,8 @@ def _regole_node(chiamata: str, lingua: str = "it"):
     pezzo = lambda inizio, fine: APP[APP.index(inizio):APP.index(fine, APP.index(inizio))]  # noqa: E731
     codice = "\n".join([TESTI, f"LINGUA = '{lingua}';", pezzo("function esc(", "\n}\n") + "\n}",
                         re.search(r"^const num = .*$", APP, re.M).group(0),
+                        # i limiti dei pulsanti, che la pagina legge dal file del server prima di disegnare i campi (#881)
+                        f"const limitiRegole = {(codice_web.WEB / 'limiti-regole.json').read_text(encoding='utf-8')};",
                         pezzo("function stepper(", "\n}\n") + "\n}",
                         pezzo("// Il nome dei campi delle fasce", "\n\ndocument.addEventListener"),
                         f"console.log(JSON.stringify({chiamata}));"])

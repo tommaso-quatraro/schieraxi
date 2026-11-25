@@ -4,9 +4,11 @@ import UniformTypeIdentifiers
 
 /// Le pagine che si aprono dalle Impostazioni (#673 passo 3: hanno preso anche quelle delle schede Squadra e Altro, come la web).
 enum PaginaImpostazioni: Hashable {
-    /// La mia lega: Aggiorna le rose, l'elenco delle squadre (Le altre squadre, o la scelta della propria), la rosa di una squadra
-    /// (La mia squadra, con stemma e maglia), Regole e scadenza, la nuova stagione.
+    /// La mia lega: Aggiorna le rose, Le altre squadre, la rosa di una squadra (La mia squadra, con stemma e maglia), Regole e
+    /// scadenza, la nuova stagione.
     case importa, squadre, rosa(String), regole, stagione
+    /// La mia squadra quando non è ancora scelta: la sua scelta, come `vistaRosa("")` della web (#863).
+    case sceltaSquadra
     /// Le righe che aprono una pagina loro: Il tuo account, Informazioni, Gestione (solo per chi gestisce il server).
     case account, informazioni, gestione
     /// Pagine aperte da un'altra pagina: stato dei dati (Gestione), crediti e novità (Informazioni), cambio di server.
@@ -115,6 +117,29 @@ final class LegaViewModel: ViewModelBase {
     /// La propria squadra, se scelta.
     var miaSquadra: String? { squadre.dato?.first { $0.mia == true }?.nome }
 
+    /// «Non è la tua squadra?» e la prima scelta della propria (come `collegaSceltaMia` della web, #863): `PUT /api/mia-squadra`,
+    /// poi le squadre si rileggono (la riga «La mia squadra» dice quella nuova) e, come la web che ridisegna «La mia squadra», al
+    /// posto della pagina aperta (la rosa di prima o la scelta) c'è la rosa della squadra scelta. Se nel frattempo si è passati a
+    /// un'altra pagina, la pila resta com'è. Se non riesce le squadre si rileggono lo stesso, come prima (`impostaMia`): con il 412
+    /// di una squadra rinominata altrove elenco e selettore mostrano i nomi di adesso (revisione della #868). Nil se è andata bene,
+    /// altrimenti il motivo da mostrare.
+    func scegliMiaSquadra(_ nome: String) async -> String? {
+        do {
+            _ = try await server.corpoJSON("PUT", "/api/mia-squadra", NomeSquadra(nome: nome))
+        } catch {
+            Haptics.esito(riuscito: false)
+            await squadre.ricarica()
+            return error.localizedDescription
+        }
+        Haptics.esito(riuscito: true)
+        switch percorso.last {
+        case .some(.sceltaSquadra), .some(.rosa): percorso[percorso.count - 1] = .rosa(nome)
+        default: break
+        }
+        await squadre.ricarica()
+        return nil
+    }
+
     /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (se cambia la consigliata), in italiano semplice.
     static let titoloControlli = "Controllo con l'app chiusa"
 
@@ -131,35 +156,17 @@ final class LegaViewModel: ViewModelBase {
     var aggiornamentoInBackground: String { Self.statoControlli(UIApplication.shared.backgroundRefreshStatus) }
 }
 
-/// Elenco delle squadre; da qui si indica quale è la propria.
+/// L'elenco delle squadre di «Le altre squadre». La propria si sceglie in «La mia squadra» (`LegaViewModel.scegliMiaSquadra`, #863).
 @MainActor
 final class SquadreViewModel: ViewModelBase {
-    private let server: any ServerClient
     let caricatore: Caricatore<[SquadraLega]>
-    @Published var errore: String?
 
     init(server: any ServerClient) {
-        self.server = server
         caricatore = Caricatore<[SquadraLega]>("/api/squadre", server: server)
         super.init()
         osserva(caricatore)
     }
 
     func carica() async { await caricatore.ricarica() }
-
-    /// Il nome della mia squadra.
-    var mia: String { caricatore.dato?.first { $0.mia == true }?.nome ?? "" }
-
-    func impostaMia(_ nome: String) async {
-        do {
-            _ = try await server.corpoJSON("PUT", "/api/mia-squadra", NomeSquadra(nome: nome))
-            errore = nil
-            Haptics.esito(riuscito: true)
-        } catch {
-            errore = error.localizedDescription
-            Haptics.esito(riuscito: false)
-        }
-        await caricatore.ricarica()
-    }
 }
 

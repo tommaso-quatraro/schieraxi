@@ -1,5 +1,284 @@
 [
   {
+    "versione": "1.564",
+    "data": "2026-11-26T00:41:10",
+    "titolo": "iPhone come la web: voti neutri, «Le altre squadre» e la riga sotto il titolo di Giornate",
+    "voci": [
+      "iPhone, scheda del giocatore: gli ultimi voti sono tutti dello stesso grigio, come sulla web (prima verdi, arancio o rossi secondo il voto), e in «Perché questo numero» le frasi sono scritte come sulla web («gioca il 78%: dubbio»).",
+      "iPhone, Impostazioni › Le altre squadre: la pagina si chiama «Le altre squadre» e ha solo l'elenco delle altre squadre, come sulla web. La tua squadra si cambia da «La mia squadra», con «Non è la tua squadra?» in cima alla rosa; se non l'hai ancora scelta, «La mia squadra» ti fa scegliere quale delle squadre è la tua.",
+      "iPhone, Giornate: sotto il titolo c'è la riga della web con la giornata («Giornata 13 · 13ª di Serie A»), il nome della tua squadra e l'ora dei dati («dati del 26 ott 23:55»)."
+    ],
+    "tecnico": [
+      "Catalogo dei testi: tolte lega.voce_squadre, lega.voce_miasquadra e lega.tocca_una_squadra, che dopo questa modifica non usa più nessuno (la web le aveva già lasciate); aggiunte all'iPhone testata.dati_del, testata.mai, testata.offline e lega.solo_la_tua.",
+      "iPhone: RigaStato (Domain) con i campi di GET /api/stato già mandati alla web (prossima_giornata_lega aggiunto a InfoServer); SquadreView solo elenco; SceltaSquadraView e SelettoreMiaSquadra; LegaViewModel.scegliMiaSquadra (PUT /api/mia-squadra, poi la rosa della squadra scelta al posto della pagina); PercheNumero senza maiuscola; pallini degli ultimi voti neutri. Nessun cambio al server."
+    ]
+  },
+  {
+    "versione": "1.563",
+    "data": "2026-11-26T00:34:57",
+    "titolo": "Regole: niente più valori sbagliati salvati senza avviso",
+    "voci": [
+      "Regole e scadenza: un campo vuoto non si salva più come 0, e un numero fuori dai limiti (per esempio un assist da 99) o con la virgola dove serve un numero intero si segnala prima di salvare, con il nome del campo.",
+      "I pulsanti − e + si fermano agli stessi limiti: non arrivano più a 0 portieri o a 14 cambi. Non si salvano più nemmeno panchina vuota e modificatore difesa acceso senza fasce.",
+      "Gli errori delle regole sono frasi semplici, senza sigle, e con l'app in inglese sono in inglese."
+    ],
+    "tecnico": [
+      "Limiti dei numeri della pagina Regole in un file solo, fanta/web/limiti-regole.json ({chiave: {min, max}}), servito come file statico /limiti-regole.json, pubblico anche con gli account (rotte_account.STATICI) e nella scocca del service worker: lo legge regole.py (regole.LIMITI) e la pagina Regole della web (pulsanti e controllo prima di salvare). Limiti: bonus 0..20, malus -20..0, rosa 1..30, panchina 1..30, cambi 0..10, posti fissi 0..10, crediti 0..100000, difensori minimi del modificatore 3..5, fasce media 0..10 e bonus 0..20, voti d'ufficio 0..10.",
+      "PUT /api/regole confronta con le regole salvate: solo i valori che cambiano hanno i limiti nuovi (e, se cambiano modificatore o moduli, 400 per modificatore attivo senza soglie, soglie con la stessa media, min_difensori maggiore dei difensori di tutti i moduli ammessi); quelli uguali hanno i limiti di prima (regole.LIMITI_LARGHI, #663). PUT /api/regole/rinvio, ripristino del backup, procedura guidata e regole --imposta controllano tutto con i limiti di prima: una lega salvata prima con valori ora fuori dai limiti continua a funzionare.",
+      "Messaggi senza nomi di campo, ognuno con la sua chiave err.regole_* in fanta/testi/err.json; i tipi sbagliati dicono il nome del campo (regole.NOMI_CAMPI, tradotto con err.p_regola_*: «Portieri della rosa» deve essere un numero intero). traduciErrore della web traduce riga per riga i messaggi di più righe e l'avviso va a capo (white-space: pre-line). Nessun campo dell'API tolto o rinominato; detail resta «Regole non valide:» più una riga «- …» per problema."
+    ]
+  },
+  {
+    "versione": "1.562",
+    "data": "2026-11-26T00:21:43",
+    "titolo": "Oggi e il widget rispondono più in fretta quando l'app la usano in tanti",
+    "voci": [
+      "Oggi e il widget dell'iPhone si aprono più in fretta, soprattutto quando molti amici usano l'app nello stesso momento. Numeri, consigli e testi restano gli stessi."
+    ],
+    "tecnico": [
+      "#907. Restano in memoria, senza cambiare nessun numero: il calendario della stagione già convertito per consigli.prossima_giornata (rifatto se le righe lette cambiano; tetto 8), la scheda di ogni giocatore per tabella di previsioni (consigli.scheda_di, usata da Oggi, Da fare e widget; tetto 16 tabelle), rose.json e regole.json già trasformati finché il contenuto del file è identico byte per byte (fanta/memoria_file.py: chiave il percorso, quindi ogni account le sue voci; ogni lettura riceve un oggetto suo; tetto 256), lo schema dell'archivio preparato una volta per processo finché PRAGMA schema_version non cambia. Nessun campo dell'API cambia. Misura con prove/misura_oggi.py."
+    ]
+  },
+  {
+    "versione": "1.561",
+    "data": "2026-11-26T00:20:56",
+    "titolo": "Avvisi: niente doppione dopo il «cambio pronto», la cosa importante all'inizio",
+    "voci": [
+      "Se il «cambio pronto» ti ha appena detto che un tuo titolare è infortunato, il promemoria della scadenza che arriva pochi minuti dopo non te lo ripete: ti ricorda comunque l'ora in cui si chiude la formazione.",
+      "Il promemoria con un titolare a rischio dice subito cosa gli è successo, per esempio «Castro è infortunato: controlla la formazione che hai salvato.», e dice «che hai schierato» solo se hai spuntato «L'ho messa». Con più titolari li elenca tutti, con «e» e «e altri».",
+      "I promemoria con la formazione non più valida e con la spunta «L'ho messa» mancante dicono la cosa importante all'inizio del testo e nel titolo («SchieraXI · formazione non più valida», «SchieraXI · hai messo la formazione?»), così non resta tagliata.",
+      "L'avviso vicino alla scadenza senza una formazione salvata ora si intitola «SchieraXI · la formazione consigliata è cambiata»."
+    ],
+    "tecnico": [
+      "fanta/notifiche.py: il giro dei cambi scrive nello stato dei cambi (`notifiche.json`, voce della giornata) il campo `detti` {«codice/motivo»: ora} per ogni riga del «cambio pronto» mandata; il promemoria (nuovo argomento `file_cambi`, di base accanto al suo file; avvisi_utenti lo passa) toglie i titolari a rischio con lo stesso codice e stato detti negli ultimi DOPPIONE_PROMEMORIA (20) minuti; se non ne resta nessuno il promemoria parte lo stesso con la sola scadenza (SOLO_SCADENZA, frase n.solo_scadenza o n.tra_un_ora) o, senza la spunta, con la domanda «L'ho messa?» (NON_MESSA). Il verso opposto (promemoria prima, «cambio pronto» dopo) non cambia.",
+      "fanta/notifiche.py: `_situazione` (esito della regola di `_gia_schierato` con i titolari come (codice, nome, stato), più `schierata`), `_testo_promemoria` (titolo e testo per finestra, usato dal giro e dalla rotta), `testi_promemoria`. fanta/frasi_avvisi.py: n.rischio_salvata e n.rischio_schierata con le frasi n.m_* al posto di n.rischio.one/other; n.t_titolari_rischio, n.t_non_valida, n.t_non_messa; n.non_valida_* e n.non_messa_* con il fatto in testa; n.t_cambia_consigliata riscritto.",
+      "GET /api/oggi: campo nuovo `testi_promemoria` [{minuti: 60|15, titolo, testo}] nella lingua degli avvisi dell'utente, lista vuota se il promemoria non serve o la scadenza non si sa (docs/API.md). Nessun campo tolto o rinominato; l'app iPhone lo userà nella parte B del #906."
+    ]
+  },
+  {
+    "versione": "1.560",
+    "data": "2026-11-26T00:13:07",
+    "titolo": "Gli inviti aperti, con «Annulla»",
+    "voci": [
+      "Impostazioni › Gestione, per chi gestisce il server: sotto «Crea l'invito» l'elenco degli inviti non ancora usati né scaduti, ognuno con quando è stato creato, quando scade e, se è per più amici, i posti ancora liberi.",
+      "Con «Annulla» il link di quell'invito non vale più: prima l'app chiede conferma, poi l'elenco e l'avviso dei posti si aggiornano. Chi è già entrato tiene il suo account."
+    ],
+    "tecnico": [
+      "#894 (punto 1). GET /api/admin/inviti: campi nuovi per invito dettaglio e dettaglio_frase (chiavi admin.invito_aperto e admin.invito_aperto_posti, giorni con frasi.giorno_mese nell'ora italiana), null per gli inviti non attivi (rotte_account.dettaglio_invito). POST /api/admin/inviti: campo nuovo id (account.id_dell_invito), lo stesso dell'elenco. Nessun campo tolto o rinominato; l'iPhone non usa questa rotta.",
+      "Web: collegaAmministratore legge GET /api/admin/inviti, mostra solo stato attivo e annulla con DELETE /api/admin/inviti/{id} dopo confirm(); poi rilegge inviti e utenti, e svuota #adm-esito-invito se mostrava il link di quell'invito (data-invito = id della risposta di POST). rinvii._quando usa frasi.giorno_mese."
+    ]
+  },
+  {
+    "versione": "1.559",
+    "data": "2026-11-26T00:09:34",
+    "titolo": "Dati salvati senza rete: la riga in alto dice di quando sono, e lo dice una volta sola",
+    "voci": [
+      "Formazione e Giornate, senza rete o con il server spento: la riga in alto con i dati salvati sul dispositivo dice anche il giorno e l'ora di quei dati, per esempio «Non riesco a collegarmi: questi sono i dati salvati l'8 nov alle 10:05.». Prima diceva solo «questi sono gli ultimi dati salvati», senza la data. L'app per iPhone la diceva già.",
+      "Giornate e Formazione con il server che non risponde: sotto il titolo non compare più «Server non raggiungibile» quando subito sotto la riga dei dati salvati, o il messaggio d'errore con «Riprova», dice già la stessa cosa.",
+      "La riga dei dati salvati è allineata a sinistra come il resto della pagina, con la scritta della stessa grandezza della riga sotto il titolo. Prima era più piccola e centrata.",
+      "Formazione con il server che risponde con un errore: la riga dei dati salvati finisce con il punto prima di «Finché non arrivano quelli nuovi la formazione non si può cambiare.», invece di due frasi attaccate. Lo stesso punto alla fine della riga nell'app per iPhone."
+    ],
+    "tecnico": [
+      "Catalogo: comune.cache_offline ha i segnaposto {giorno} e {ora} (italiano e inglese); caricaConCache li scrive con fData e fOra dall'ora della copia e passa la frase da elidiGiorno, come comune.cache_errore. La chiave non è nel catalogo Swift: l'iPhone non cambia.",
+      "Web: rigaStato scrive «Server non raggiungibile» in uno span .stato-offline; stile.css nasconde la riga di stato quando main ha #nota-cache con il pulsante «Riprova» o un .errore figlio diretto (selettore :has), così vale anche dopo i ridisegni di Giornate. La nota .nota è flex a capo, con --t-sec e allineata a sinistra; «Riprova» resta alto 44 px con margini negativi. Nessuna rotta né campo dell'API cambia.",
+      "Catalogo: comune.cache_errore finisce con il punto (italiano e inglese); script/testi.py --scrivi ha riscritto anche Catalogo+Comune.swift. iPhone: DatiVecchi.frase la mostra da sola nella striscia, nessuna frase dopo; attese di DatiVecchiTests allineate."
+    ]
+  },
+  {
+    "versione": "1.558",
+    "data": "2026-11-25T23:52:08",
+    "titolo": "Regole: il regolamento incollato non propone più valori sbagliati per la soglia del gol, le migliaia e i casi particolari",
+    "voci": [
+      "Impostazioni, Regole e scadenza, «Incolla il regolamento»: «Soglia gol: 66 punti» (o «Gol: 66 punti») non diventa più un bonus di 66 per ogni gol: la riga va fra le «Righe da controllare a mano».",
+      "«Crediti iniziali: 1.000» si legge mille, non uno.",
+      "«Gol del portiere: +5» seguito da «Gol segnato: +3» lascia +5 al portiere e dà +3 agli altri ruoli.",
+      "Un caso particolare di una regola, come «Assist da fermo: +0,5» o «Gol segnato in trasferta: +0,5», non cambia più l'assist o il gol: la riga va controllata a mano.",
+      "Una riga della panchina scritta dopo le fasce del modificatore difesa non aggiunge più una fascia in più, e se una fascia non si legge non se ne propone nessuna: le righe delle fasce vanno fra le «Righe da controllare a mano»."
+    ],
+    "tecnico": [
+      "regole_testo: SOGLIA_GOL (soglia, fascia, ampiezza, classifica, primo gol) nella riga del gol: nessuna proposta; un bonus letto oltre MAX_BONUS_LETTO (20, il massimo della web e dell'iPhone) non si propone e il suo numero resta non letto; CREDITI_NUM legge il punto delle migliaia e non taglia un numero con la parte decimale («1,000», «500,5»: riga da controllare); le proposte del gol hanno il flag generale e una riga generale non sovrascrive il gol di un ruolo letto prima; CASO_PARTICOLARE (da fermo, piazzato, punizione, trasferta, decisivo, doppia…) non negato da un «non» poco prima: nella riga del gol ovunque, per gli altri bonus nel tratto fra il nome e il suo numero (_tratto); FINE_MODIFICATORE chiude la sezione del modificatore prima di leggere fasce e difensori minimi. Casi nel CORPUS di tests/test_regole_testo.py, ora anche con testi di più righe (#888). Fasce tutte o nessuna: una riga della sezione che sembra una fascia (_sembra_fascia: INIZIO_FASCIA, o «media» con due numeri o un intervallo) e non si legge toglie tutte le fasce e manda le loro righe in da_controllare con modificatore_difesa.soglie da impostare (revisione della #891)."
+    ]
+  },
+  {
+    "versione": "1.557",
+    "data": "2026-11-25T23:39:13",
+    "titolo": "Regole: il regolamento incollato si legge meglio e non salva valori diversi da quelli mostrati",
+    "voci": [
+      "Impostazioni, Regole e scadenza, «Incolla il regolamento»: un valore che con le tue regole non si può salvare così com'è non sta più fra quelli riconosciuti. Compare sotto «Non applicato» con il perché: per esempio «Panchina di 12 giocatori» quando la panchina ha posti fissi per ruolo (prima si vedeva 12 e si salvava 11).",
+      "«Gol segnato: +3 (il gol del portiere vale +5)» dà +3 a tutti i ruoli e +5 al portiere, e una riga della rosa con tutti i ruoli li legge tutti.",
+      "Una riga con un numero che SchieraXI non sa a cosa serva (per esempio l'assist da fermo) non dà nessun valore e va fra le «Righe da controllare a mano»; i titoli come «Art. 2 - Punteggi» non ci vanno più.",
+      "L'ordine dei cambi si legge «Per ruolo» o «Libera», e i posti in panchina per ruolo per esteso."
+    ],
+    "tecnico": [
+      "POST /api/regole/riconosci legge le regole di chi chiede (lega_corrente) e manda il campo nuovo non_applicabili [{chiave, etichetta, valore, riga, motivo, motivo_frase}]: per ora panchina.numero diverso dalla somma dei posti per ruolo, letti nel testo (frase regole.panchina_somma_posti) o salvati (frase regole.panchina_posti_fissi). docs/API.md e docs/openapi.json aggiornati.",
+      "regole_testo: numeri dell'articolo, dell'elenco e della stagione tolti prima di leggere (NUMERO_TITOLO); una riga propone valori solo se ogni suo numero (per posizione, _cifra) è letto da una proposta, altrimenti nessuna proposta e la riga va in non_riconosciute e da_controllare; la forma «ruolo numero» solo su righe di rosa (SOLO_RUOLI o ROSA_FRASE); negazioni anche con penalità e penalizzare; gol con un ruolo citato fra due numeri; rosa con tutti i ruoli della riga (anche «3 portieri, 8 difensori…» in una riga che parla della rosa o della squadra, mai di formazione o moduli); gol con numeri solo prima del ruolo, totale scritto diverso dalla somma dei ruoli: niente proposta, riga da controllare; una regola dei punteggi negata senza numero nel suo pezzo di riga (NEGA_PUNTI: «nessun bonus per l'assist») va in da_controllare con la regola da impostare; crediti iniziali dal numero subito prima di «crediti», poi da quello dopo. Corpus delle righe viste in revisione in tests/test_regole_testo.py (CORPUS).",
+      "Web: vistaRegole scrive panchina.tipo con regole.per_ruolo/regole.libera e panchina.posti con le frasi rose.<ruolo>; blocco «Non applicato» (regole.non_applicato). iPhone da allineare (riga 103 di docs/COERENZA-WEB-IPHONE.md)."
+    ]
+  },
+  {
+    "versione": "1.556",
+    "data": "2026-11-25T23:33:03",
+    "titolo": "Gestione più chiara per chi gestisce il server",
+    "voci": [
+      "Impostazioni › Gestione: sopra «Crea l'invito» un avviso dice quando chi riceve l'invito troverà le registrazioni chiuse, perché i posti sono pieni o già tutti negli inviti aperti, finché non alzi il numero massimo di utenti.",
+      "Errori recenti: le richieste senza nessun accesso, di solito dalla pagina prima dell'ingresso, sono dette a parte e non fra le rifiutate; via il tempo del «5% più lento»; fra le richieste più lente solo le parti dell'app.",
+      "Stato dei dati › Fonti dei dati: sotto ogni fonte spenta solo cosa non arriva, anche in inglese; cosa fa l'app senza e le condizioni d'uso sono scritte una volta sola, sotto l'elenco.",
+      "Sul computer la pagina Gestione usa tutta la larghezza: gli strumenti a sinistra, gli errori recenti a destra."
+    ],
+    "tecnico": [
+      "#894 (punti 2-5). GET /api/admin/utenti e POST /api/admin/inviti: campi nuovi avviso e avviso_frase, chiave admin.posti_pieni (utenti al tetto) o admin.posti_promessi (utenti + posti degli inviti aperti, account.posti_negli_inviti, al tetto); null se un invito in più trova posto. L'invito si crea lo stesso.",
+      "GET /api/admin/registro: contatori.senza_accesso nuovo, solo per il 401 di una richiesta senza Authorization né cookie di sessione verso una rotta /api/ non riservata (rotte_account._senza_nessun_accesso). Token o cookie non validi, rotte riservate, percorsi fuori da /api/, password sbagliate, 429, 403, 404 restano in rifiutate. piu_lente solo con le rotte /api/.",
+      "fonti_attive.stato(): messaggio = fonti_attive.cosa_manca, frase del catalogo fonte.spenta_<id> con messaggio_frase; messaggio_spenta, usato dall'errore FonteSpenta, resta intero. Testo comune scambio.accendere_una_fonte.",
+      "Web: errori.riepilogo diviso in errori.riepilogo, errori.senza_accesso e errori.tempi (niente tempo_p95_ms, che resta nella risposta); paginaGestione con due colonne (.gestione-colonne) da 1100 px. Nessun campo tolto o rinominato; l'iPhone non usa queste rotte."
+    ]
+  },
+  {
+    "versione": "1.555",
+    "data": "2026-11-25T23:08:17",
+    "titolo": "Più facile da usare con VoiceOver e senza distinguere i colori",
+    "voci": [
+      "Scheda del giocatore, «Tutti i numeri»: nelle prossime partite ogni casella scrive anche la difficoltà («Facile», «Dura»…), non solo il colore, sulla web e sull'iPhone.",
+      "Formazione, per chi usa un lettore di schermo: ogni giocatore sul campo dice anche il ruolo, dopo il nome.",
+      "iPhone con VoiceOver: in cima alla Formazione si sente «fra 3 ore e 10 minuti» invece delle sigle; in panchina il posto di ogni riserva; nella rosa di una squadra «gioca al 72 per cento» e i nomi delle squadre per intero; nel widget Formazione i volti dicono il nome del giocatore e il cerchio sulla schermata di blocco dice «punti attesi».",
+      "iPhone: «Riprova», «Password dimenticata», «Torna all'accesso», «Ricomincia» e i pulsanti delle decisioni si toccano su tutta la loro altezza, non solo sulla scritta.",
+      "iPhone con il testo grandissimo: tenendo il dito su un giocatore del campo, le sue scritte si leggono in grande."
+    ],
+    "tecnico": [
+      "Web (#882): nelle celle di `.prossime` la difficoltà sotto «vs MIL» (`NOMI_DIFF`, chiavi diff.1…diff.5); `vocePedina` con `NOME_RUOLO_1` dopo il nome. Prova: tests/browser/test_scheda_prossime.py e i test node della pedina.",
+      "iPhone (#882): `TestaFormazione.voceScadenza` (conto a parole di `Quando.contoAllaRovesciaParlato`), `FormazioneWidget.testataParlata` anche per il cerchio, etichetta col nome sui volti di `CampoMini`, `ProssimePartite.parola`, `RigaRosa.voce` come `RigaGiocatore.voce` (chiavi formazione.voce_casa e formazione.voce_fuori ora anche nel catalogo dell'iPhone), `RigaGiocatore.voce(_:posizione:)` per la panchina, ruolo in `LetturaPedina.contenuto`, frame e contentShape dentro l'etichetta dei pulsanti piccoli, `accessibilityShowsLargeContentViewer` sulla pedina. Nessun cambio sul server."
+    ]
+  },
+  {
+    "versione": "1.554",
+    "data": "2026-11-25T23:01:11",
+    "titolo": "Date con l'apostrofo davanti all'8 e all'11",
+    "voci": [
+      "Formazione: «Probabili aggiornate l'8/11» invece di «il 8/11», e lo stesso con l'11. Lo stesso nell'avviso sul telefono quando cambia un titolare: «La formazione si chiude l'08/11».",
+      "Impostazioni, Il tuo account: «Utente · dall'8 ottobre 2026» invece di «dal 8 ottobre». Nella rosa: «Rose aggiornate l'11 novembre 2026». Lo stesso nell'app per iPhone.",
+      "Gestione, Stato dei dati: «dall'08/10/2026», «Inserite fino all'11/01/2027», «attiva dall'8/1» e, nelle righe di un aggiornamento che non riesce, «non riesce dall'08/11» e «Non riuscito alle 13:03 dell'11/11». Nell'app per iPhone cambia la riga «attiva dall'8/1» e cambiano le righe degli aggiornamenti che non riescono."
+    ],
+    "tecnico": [
+      "Server: frasi.elidi_date (regola _DAVANTI_A_DATA) elide l'articolo davanti alle date giorno/mese che cominciano con 8, 08 o 11; la usano frasi._apostrofo (probabili.data, n.testo_cambiata), stato_dati._errori_passo e aggiorna._da_quando (righe d'errore dei passi dell'aggiornamento). «il 1/11» e «del 02/11» restano.",
+      "Web: elidiGiorno (testi.js) accetta anche le date con la barra e si usa in account.dal, scambio.rose_aggiornate, sd.dal, sd.coppe_spiega e sd.tar_attiva_dal. iPhone: DatiVecchi.elidiGiorno, non più privata, con la stessa regola, in TestiAccount.ruoloEData, ParoleSquadre.roseAggiornate e ParoleRegistro.taratura (l'iPhone non mostra sd.dal e sd.coppe_spiega). Nessuna rotta né campo dell'API cambia."
+    ]
+  },
+  {
+    "versione": "1.553",
+    "data": "2026-11-25T22:56:43",
+    "titolo": "Scheda del giocatore: le statistiche avanzate dicono fino a che giorno arrivano",
+    "voci": [
+      "Scheda del giocatore, «Tutti i numeri»: le statistiche avanzate dicono fino a che giorno arrivano («Dati fino al 9/11.»), sulla web e sull'iPhone.",
+      "«Gol e assist rispetto alle occasioni» conta solo le partite fino a quel giorno: con la fonte ferma non cala più da solo.",
+      "Stato dei dati: se il sito delle statistiche avanzate risponde con una pagina, l'errore riporta la frase scritta sulla pagina."
+    ],
+    "tecnico": [
+      "GET /api/giocatore/{id}: campo nuovo e facoltativo avanzate.dati_fino_al («AAAA-MM-GG»), il giorno dell'ultima partita della stagione con righe in prestazioni (di qualunque giocatore), null se non ce n'è. Nessun campo tolto; calcolo del fantavoto atteso invariato. Testo nuovo mercato.dati_fino_al (web e iPhone).",
+      "rendimento.sovra_rendimento divide per scheda.con_voto_fino_al (partite con voto della fonte voti della lega, la cui partita in calendario è entro dati_fino_al) invece che per stagione.con_voto, che continua a crescere con i voti di Fantacalcio.it.",
+      "fonti/understat.dati_json: il testo visibile di una pagina web al posto dei dati si cerca nei primi 2 milioni di caratteri (TESTO_LETTO) invece che nei primi 20.000: un disegno più lungo di 20.000 caratteri prima della frase la lasciava fuori. Il titolo si cerca ancora nei primi 20.000 (PAGINA_LETTA); il testo trovato si accorcia a 1.000 caratteri prima di spezzarlo in parole. Vale anche per la sentinella di Understat.",
+      "iPhone, demo: la foto giocatore-fondo si ferma sul blocco «Statistiche avanzate» (TuttiINumeri.idAvanzate), così col testo grande si vede la riga della data."
+    ]
+  },
+  {
+    "versione": "1.552",
+    "data": "2026-11-25T22:21:18",
+    "titolo": "Cambio di lingua: niente più parole della lingua di prima mentre arrivano i dati",
+    "voci": [
+      "Web, dopo il passaggio da italiano a inglese (o il contrario) in Impostazioni › Aspetto: Formazione e Giornate aspettano i dati nella lingua nuova. Prima mostravano per un attimo quelli tenuti sul dispositivo, con stati come «In dubbio» ancora in italiano nella pagina in inglese. Se i dati nuovi non arrivano (per esempio senza rete) restano quelli tenuti sul dispositivo, con la riga che lo dice e «Riprova», come sempre."
+    ],
+    "tecnico": [
+      "Web: la copia in localStorage (salvaCache) scrive anche la lingua con cui è stata chiesta. All'apertura caricaConCache mostra solo la copia della lingua di adesso (LINGUA); se la lettura non riesce e quella copia non c'è, mostra la copia di un'altra lingua o senza lingua (leggiCache(chiave, true)) con la nota e «Riprova», e i dati nuovi la sostituiscono appena arrivano. Le copie già salvate, senza lingua: con la rete si aspettano i dati nuovi una volta, senza rete si mostrano. Chiavi, VERSIONE_CACHE e rotte non cambiano. L'app per iPhone non ha il difetto: chiede sempre i testi in italiano (LinguaServer)."
+    ]
+  },
+  {
+    "versione": "1.551",
+    "data": "2026-11-25T22:11:05",
+    "titolo": "Dati salvati: la riga in alto dice di quando sono",
+    "voci": [
+      "Formazione e Giornate, quando il server risponde con un errore e vedi i dati salvati sul dispositivo: la riga in alto dice anche il giorno e l'ora di quei dati, per esempio «Il server non risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati)». Prima non diceva di quando erano. Lo stesso nell'app per iPhone.",
+      "Riga sotto il titolo: «dati dell'11 nov» e «dati dell'8 nov» invece di «dati del 11 nov» e «dati del 8 nov». Lo stesso nella riga dei dati salvati: «salvati l'8 nov».",
+      "App per iPhone: il tema scelto in Impostazioni › Aspetto (Chiaro o Scuro) vale anche per la schermata di accesso e per il primo avvio. Prima lì l'app seguiva sempre il chiaro o lo scuro del telefono."
+    ],
+    "tecnico": [
+      "Catalogo: comune.cache_errore ha i segnaposto {giorno} e {ora} (italiano e inglese). Web: caricaConCache li scrive con fData e fOra dall'ora della copia salvata (salvata.quando), non da adesso. iPhone: DatiVecchi.frase(salvatiIl:motivo:) prende la data della copia (Date) e scrive giorno e ora nell'ora italiana, come la web. Nessuna rotta né campo dell'API cambia.",
+      "Web: elidiGiorno (testi.js, accanto a fData) mette l'apostrofo davanti a 8 e 11 dopo l'articolo («il 8» → «l'8», «del 11» → «dell'11») in testata.dati_del e comune.cache_errore, solo in italiano. iPhone: lo stesso in DatiVecchi.frase, che ora scrive anche la frase senza motivo con giorno e ora italiani («salvato il 2 nov alle 10:00»), usata anche da Gestione.",
+      "iPhone: il tema di Impostazioni › Aspetto si applica alla radice (PortaDiAccesso), quindi vale anche per accesso, primo avvio e codice di recupero; nelle foto del simulatore l'argomento -DEMO_ASPETTO dà l'aspetto del giro (ios/scripts/screenshot.sh)."
+    ]
+  },
+  {
+    "versione": "1.550",
+    "data": "2026-11-25T21:47:43",
+    "titolo": "Primo avvio più chiaro per chi arriva adesso",
+    "voci": [
+      "Primo avvio, «Le rose»: dice di esportare le rose da Leghe (Excel, CSV o testo copiato) e che per cominciare basta anche solo la tua squadra.",
+      "Primo avvio, controllo delle rose: una squadra senza dubbi sta in due righe e «Nuova» non si ripete su ogni squadra la prima volta. «Conferma e salva» resta in fondo mentre scorri, con sopra l'eventuale messaggio di errore, e in alto è acceso il passo «La tua squadra», la domanda in cima.",
+      "Con una sola squadra l'app non parla più di scambi: le rose degli altri servono a guardare le altre squadre. Dopo la conferma nessun avviso copre la Formazione.",
+      "Primo avvio, «Tutto pronto»: una frase dice che i fantavoti attesi usano i punteggi più comuni delle leghe classic finché non metti quelli della tua lega, con il collegamento a Regole e scadenza. Dietro la guida la Formazione è già quella della tua squadra.",
+      "Su computer la guida del primo avvio resta larga uguale in ogni passo, con il testo della stessa grandezza.",
+      "Giornate senza rose: dice di importarle senza promettere consigli in quella pagina.",
+      "Impostazioni, Avvisi: con l'interruttore spento le ore tranquille dicono che sono spente e quale fascia varrebbe accendendole.",
+      "Dopo un nuovo accesso l'app si apre sulla Formazione o su Giornate, come all'apertura, e non più su «Il tuo account»."
+    ],
+    "tecnico": [
+      "Web: Giornate, se lo stato letto dice rose_importate false, rilegge /api/stato e chiede /api/diario solo se ora le rose ci sono (niente 409 in console; le rose importate altrove si vedono senza ricaricare); entraNellApp() toglie una pagina di Impostazioni dall'indirizzo prima di ricaricare dopo accesso, registrazione e Google; avvisi: imp.ore_tranquille_spente con silenzio falso; anteprimaRose ha opz.mostrata(risposta); il primo avvio accende «La tua squadra» durante l'anteprima, ridisegna la vista sotto la guida dopo rose o squadra salvate, toglie l'avviso di 8 secondi dopo la conferma; tolta la larghezza di 1180 px del foglio con l'anteprima; nel primo avvio .ar-piede (messaggi #ar-msg e pulsanti) fermo in fondo al foglio, scroll-padding-bottom per il Tab; .pa-corpo a 15 e 13 px.",
+      "Testi cambiati: lega.UNA_SQUADRA e srv.una_sola_squadra (niente scambi), comune.importa_spiega (anche iPhone, Catalogo.Comune.importaSpiega), pav.incolla_testo_delle, pav.il_resto; nuovi pav.regole_comuni e imp.ore_tranquille_spente (solo web)."
+    ]
+  },
+  {
+    "versione": "1.549",
+    "data": "2026-11-25T21:33:21",
+    "titolo": "iPhone: widget e Impostazioni con il testo grande",
+    "voci": [
+      "Widget Formazione consigliata, misura media, con il testo grande: accanto al triangolo arancione si legge «2 da vedere» invece del solo numero. Lo stesso negli altri widget dove «2 da controllare» non entra.",
+      "Impostazioni con il testo grande: scorrendo, le righe sfumano sotto l'ora in alto invece di passarci sotto nitide."
+    ],
+    "tecnico": [
+      "Catalogo: chiave nuova oggi.da_vedere, usata solo dal widget dell'iPhone come forma di mezzo di «N da controllare» (ParoleWidget.daControllare). Nessun cambio sul server né sulla web (#848).",
+      "iPhone: con il testo grande la barra delle pagine in cima a una scheda è vuota (titolo nella pagina, #419) e su iOS 26 non sfuma i contenuti che le passano sotto; bordoSottoLaBarraVuota() copre la fascia della barra con lo sfondo della pagina (per ora solo Impostazioni)."
+    ]
+  },
+  {
+    "versione": "1.548",
+    "data": "2026-11-25T21:25:12",
+    "titolo": "Piccole correzioni di parole: «Dall'8ª», «1,0 punti» sull'iPhone, la prova delle previsioni",
+    "voci": [
+      "Regole e scadenza e primo avvio: il menu della prima giornata della lega dice «Dall'8ª» e «Dall'11ª» invece di «Dalla 8ª» e «Dalla 11ª».",
+      "iPhone, Giornate: nei Dettagli «1,0 punti in più della consigliata» invece di «1,0 punto in più», come sulla web.",
+      "iPhone, Stato dei dati: sotto la prova delle previsioni la frase su «da fantamedia» è quella della web (la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare), non più «chi ha la media più alta»."
+    ],
+    "tecnico": [
+      "Web: elidiOrdinali riconosce anche l'articolo con la maiuscola in testa («Dalla 8ª» → «Dall'8ª»); vocePrimaGiornata scrive le voci del menu della prima giornata in Regole (app.js) e nel primo avvio (primoavvio.js). frasi.elidi_ordinali del server e TempiLega.elidiOrdinali dell'iPhone restano sulle minuscole: nessun loro testo comincia con l'articolo.",
+      "iPhone: TestoPrecisione sceglie il plurale di diario.qp_cf_piu e diario.qp_cf_meno sul numero scritto, come tpScritto della web; LegaExtra usa Catalogo.Avv.provaSu (avv.prova_su aggiunta a ios/testi/avv.txt)."
+    ]
+  },
+  {
+    "versione": "1.547",
+    "data": "2026-11-25T21:08:58",
+    "titolo": "Web: gli avvisi di un altro account non arrivano più su questo browser, e la guida iniziale aspetta le squadre",
+    "voci": [
+      "Impostazioni › Avvisi: quando su un browser entra un account diverso da quello che aveva acceso gli avvisi, gli avvisi dell'account di prima smettono di arrivare lì, anche se la sua sessione era finita da sola senza «Esci». «Avvisi su questo dispositivo» resta spento finché chi è entrato non lo accende; acceso, arrivano solo i suoi avvisi.",
+      "Se all'apertura dell'app l'elenco delle squadre non arriva (per esempio mentre il server riparte), la guida del primo avvio non si apre più su «Importa le rose» a chi le rose le ha già."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: all'avvio lasciaAvvisiDiAltri() toglie dal browser (pushManager unsubscribe) l'iscrizione agli avvisi se il segno avvisi-di (#804) è di un altro account o «-»; con il segno mancante non la tocca. iscrizioneMia(), usata dall'interruttore e da «Attiva gli avvisi» del primo avvio, toglie prima un'iscrizione che non è dell'account dentro (subscribe darebbe la stessa) e ne chiede una nuova; se non si toglie, manda quella che c'è, e il server la toglie agli altri account.",
+      "Server, POST /api/push/iscrivi con gli account: dopo la scrittura push.togli_dagli_altri() toglie lo stesso endpoint dai push.json delle cartelle degli altri utenti, scrivendo solo dove c'è (lettura senza blocco, poi blocco e nuova lettura), senza creare cartelle né file. Un file occupato, un errore del disco o il database degli account che non risponde non fanno fallire l'iscrizione: una riga d'errore nel registro del servizio, con il tipo dell'errore e l'indirizzo mascherato. Un'iscrizione morta resta comunque tolta al primo invio che riceve 404 o 410. Nessun campo dell'API cambia; docs/API.md aggiornato.",
+      "fanta/web/app.js e primoavvio.js: stato.squadreLette diventa vero quando /api/squadre risponde (o /api/stato dice rose_importate falso); primoAvvioSeServe non apre la guida e non salva lo stato «server, accesso» finché l'elenco non è stato letto, e riprova alla volta dopo."
+    ]
+  },
+  {
+    "versione": "1.546",
+    "data": "2026-11-25T20:57:42",
+    "titolo": "La prova del modello segue le regole e le rose della lega",
+    "voci": [
+      "Stato dei dati e «Sotto il cofano»: la carta «Quanto è affidabile il modello» si rifà anche quando cambi le regole o le rose della lega, al prossimo aggiornamento programmato, invece di aspettare la giornata dopo.",
+      "Stato dei dati, per chi gestisce il server: nel registro delle giornate la fantamedia di confronto usa solo le partite giocate prima dell'inizio della giornata, come il fantavoto atteso."
+    ],
+    "tecnico": [
+      "affidabilita.impronta: oltre a giornate e voti contiene tutte le regole (asdict, come la chiave di memo in verifica.verifica_giornata) e gli id dei giocatori di ogni squadra, ordinati e senza nomi; aggiorna_se_serve rifà la prova quando cambia. Il giorno del rilascio nessun file ha l'impronta nuova: al primo giro di python -m fanta affidabilita si rifanno il file comune e quello di ogni utente con rose (nel tempo di --minuti, il resto al giro dopo), poi una volta per giornata o al cambio di regole o rose. Nessun aggancio al salvataggio: la carta cambia al giro del cron dopo il salvataggio.",
+      "registro_giornate.fantamedie_tirate (avversario di I1, salvato in registro_giocatori.fantamedia e ricalcolato in misura_giornata): i voti delle partite con data prima di MIN(data) della giornata (come modello.prima_di e Dati.inizio), con la data presa per stagione, giornata e squadra come modello.carica; i voti senza partita non contano. AVVERSARIO non cambia: le giornate già misurate non si rimisurano. Su una copia dei dati del 2/11 le fantamedie del 2026-27 (giornate 3-8) sono identiche; cambiano nel 2025-26 dopo i recuperi (giornate 17-20 e 25).",
+      "verifica_pacchetti.squalificati (esperimento spento di default): cartellini delle sole partite giocate prima dell'inizio della giornata (modello.prima_di)."
+    ]
+  },
+  {
     "versione": "1.545",
     "data": "2026-11-20T13:48:29",
     "titolo": "Piccole correzioni: nome della squadra, inglese, colonne e Stato dei dati",

@@ -176,7 +176,7 @@ def eroe(w: dict) -> str:
             f'<g class="wm-a wm-a9"><path class="xi-f wm-I" d="{w["i_palo"]}"/><path class="xi-f wm-Id" d="{w["i_testa"]}"/></g></svg>')
 
 
-PAGINE = ("index.html", "en/index.html", "404.html", "offline.html")
+PAGINE = ("index.html", "en/index.html", "404.html")
 
 
 def aggiorna_sito(w: dict) -> None:
