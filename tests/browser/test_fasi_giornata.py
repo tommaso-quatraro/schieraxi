@@ -95,3 +95,21 @@ def test_a_giornata_finita_la_scelta_sul_rinvio_sta_con_la_sua_giornata_e_ha_un_
     y = lambda sel: principale(web).locator(sel).first.bounding_box()["y"]
     assert y(".fz-testa .rinvio") < y("#campo-formazione") and y(".fz-testa .rinvio") < y("#panchina")
     assert not web.errori_console
+
+
+# ---------------------------------------------------------------- 5. ritocchi
+def test_a_giornata_finita_senza_voti_la_testa_dice_che_e_finita_e_i_punti_arrivano(web):
+    """Voti non ancora usciti: il server non manda il riepilogo (niente totale a metà) ma `voti_in_arrivo`. Prima la testa diceva
+    solo la giornata dopo; ora anche che quella di prima è finita e la frase del server."""
+    solo(web, "finita")
+    o = copy.deepcopy(web.registrata("/api/oggi"))
+    r = o["riepilogo"]
+    o["riepilogo"] = None
+    o["voti_in_arrivo"] = {"giornata": r["giornata"], "giornata_lega": r["giornata_lega"], "testo": "I punti arrivano quando escono i voti.",
+                           "frase": {"chiave": "riepilogo.voti_in_arrivo", "param": {}}}
+    web.risposta("/api/oggi", o)
+    web.apri("/")
+    testa = " ".join(principale(web).locator(".fz-testa").inner_text().split())
+    assert f"Giornata {r['giornata_lega']} · {r['giornata']}ª di Serie A: finita" in testa
+    assert "I punti arrivano quando escono i voti." in testa and "Si chiude" in testa      # e sotto la prossima, come sempre
+    assert not web.errori_console

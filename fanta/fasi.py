@@ -460,6 +460,16 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
                    "intervallo": None, "consigliata": None}
 
 
+def blocco_voti_in_arrivo(db, regole: Regole, stagione: str, giornata: int, file_scelte, file_diario) -> dict | None:
+    """Il campo `voti_in_arrivo` di Oggi (fase finita, senza `riepilogo`, #895): la giornata è finita, c'è una formazione schierata
+    ma i voti non sono ancora tutti usciti (voti_arrivati), quindi niente totale. Prima la testa non diceva niente della giornata
+    appena finita. None se non c'è una formazione (nessun punto da aspettare) o se i voti ci sono."""
+    if schierata(stagione, giornata, file_scelte, file_diario) is None or voti_arrivati(db, stagione, giornata, regole):
+        return None
+    testo = F("riepilogo.voti_in_arrivo")
+    return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "testo": testo, "frase": frasi.di(testo)}
+
+
 def entrato_dopo_la_scadenza(stagione: str, giornata: int, scadenza: datetime | None, dal: datetime | None, file_scelte,
                              file_diario) -> bool:
     """Chi è entrato in SchieraXI dopo la scadenza della giornata e non ha nessuna formazione per lei (né sua né la copia della
@@ -523,6 +533,10 @@ def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str
         elif corpo["fase"] == FINITA:
             corpo["riepilogo"] = blocco_riepilogo(db, regole, rose, stagione, precedente, file_scelte, file_diario)
             corpo["prossima"] = blocco_prossima(corpo, adesso)
+            if corpo["riepilogo"] is None:
+                attesa = blocco_voti_in_arrivo(db, regole, stagione, precedente, file_scelte, file_diario)
+                if attesa:
+                    corpo["voti_in_arrivo"] = attesa
     except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
         pass
     return corpo

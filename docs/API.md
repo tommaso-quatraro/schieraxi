@@ -781,6 +781,12 @@ sotto la panchina della giornata dopo, senza titolo); la riga dei recuperi diven
 possono ancora cambiare.»).
 Con `nel_diario: true` i numeri sono quelli del Diario (`GET /api/diario`) e `consigliata` = `{punti_fatti, punti_attesi}` della consigliata; con `nel_diario: false` il Diario non ha ancora calcolato la giornata: `punti_fatti` viene dai voti, `punti_attesi` può essere `null`, `consigliata` è `null` (il confronto arriva nel Diario).
 
+`voti_in_arrivo` (facoltativo, dal 25/11/2026, #895; c'è solo in questo caso): con `fase: "finita"` e `riepilogo` `null` perché i voti
+della giornata finita non sono ancora tutti usciti (c'è una formazione schierata, ma niente totale a metà). `{giornata, giornata_lega,
+testo, frase}`: `testo` = «I punti arrivano quando escono i voti.», `frase` = `{chiave: "riepilogo.voti_in_arrivo", param: {}}`. La web
+scrive in testa «Giornata 5 · 8ª di Serie A: finita» e sotto il testo, poi la prossima giornata come sempre (prima la testa diceva solo
+la prossima). Senza formazione per quella giornata, o con i voti usciti, il campo manca.
+
 `senza_formazione` (facoltativo, dal 2/11/2026; c'è solo se vale `true`, con `fase: "in_corso"`): l'utente è entrato in SchieraXI (account nato) DOPO la scadenza della giornata in corso e non ha nessuna formazione per lei (né salvata da lui né la copia della consigliata vista prima della scadenza). Allora `in_corso` è `null` (niente punti di una formazione che non ha schierato), `miei_titolari` è vuoto e c'è `prossima` = la giornata dopo, da preparare. Il client scrive «Questa giornata è già iniziata: prepara la prossima» con la scadenza della prossima e un pulsante che apre la Formazione (che in questo caso è già quella della prossima: vedi `giornata_saltata` di `GET /api/formazione`). Senza account (interruttore spento) non c'è mai. Dal 12/11/2026 (#651) c'è anche in `GET /api/widget`, con lo stesso significato.
 
 `prossima` (oggetto o `null`; con `fase: "finita"`, tranne a campionato finito, oppure con `fase: "in_corso"` e `senza_formazione: true`): `{giornata, giornata_lega, scadenza, prepara_da, con_probabili}`. `prepara_da` (`AAAA-MM-GG HH:MM`) = da quando conviene preparare la formazione: adesso se le probabili ci sono già, altrimenti 3 giorni prima della scadenza (di solito escono allora).

@@ -1119,6 +1119,10 @@ function testaGiornata(o, f) {
       <p class="tg-sotto">${sotto}</p>`;
   }
   if (fase === "finita" && o.riepilogo) return `${riepilogoGiornata(o.riepilogo)}<div class="tg-prossima">${giornata}${chiusura}</div>`;
+  // finita, voti non ancora usciti (#895): niente totale, ma la giornata di prima è finita e la frase del server lo dice
+  const attesa = fase === "finita" && o.voti_in_arrivo && typeof o.voti_in_arrivo.testo === "string" ? o.voti_in_arrivo : null;
+  if (attesa) return `<div id="oggi-voti-in-arrivo"><p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(attesa.giornata_lega, attesa.giornata) })}</p>
+      <p class="tg-punti">${esc(testoDi(attesa))}</p></div><div class="tg-prossima">${giornata}${chiusura}</div>`;
   return giornata + (f.iniziata ? "" : chiusura);
 }
 

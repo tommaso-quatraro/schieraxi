@@ -9,7 +9,7 @@ import pytest
 
 from fanta import archivio, consigli, da_fare, fasi, gestione, lega
 from fanta.punteggio import fantavoto
-from fanta.regole import Regole
+from fanta.regole import Regole, serie_a_a_lega
 
 ST = "2026-27"
 REGOLE = Regole()
@@ -390,9 +390,21 @@ def test_giornata_finita_con_i_voti_a_meta_niente_totale(ambiente, monkeypatch):
     scelte.salva(ST, 10, TITOLARI, "4-4-2", ambiente.tmp / "scelte.json", panchina=PANCHINA)
     o = _oggi(ambiente, datetime(2026, 11, 9, 23, 0))                  # lunedì, 25 minuti dopo la fine stimata della partita
     assert o["fase"] == "finita" and o["riepilogo"] is None
+    # #895: la testa diceva solo la giornata dopo; ora il server dice che la giornata è finita e i voti arrivano
+    assert o["voti_in_arrivo"] == {"giornata": 10, "giornata_lega": serie_a_a_lega(10, REGOLE), "testo": "I punti arrivano quando escono i voti.",
+                                   "frase": {"chiave": "riepilogo.voti_in_arrivo", "param": {}}}
     _voti(ambiente, VOTI_LUNEDI)                                        # i voti del lunedì arrivano col giro di mezzanotte
-    r = _oggi(ambiente, datetime(2026, 11, 10, 0, 50))["riepilogo"]
+    o = _oggi(ambiente, datetime(2026, 11, 10, 0, 50))
+    r = o["riepilogo"]
     assert r["punti_fatti"] == pytest.approx(round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1))
+    assert "voti_in_arrivo" not in o
+
+
+def test_giornata_finita_senza_formazione_niente_voti_in_arrivo(ambiente):
+    """Chi non ha una formazione per la giornata finita non ha punti da aspettare: niente «i punti arrivano»."""
+    _giornata_finita(ambiente, voti=(VOTI_DOMENICA,))
+    o = _oggi(ambiente, datetime(2026, 11, 9, 23, 0))
+    assert o["riepilogo"] is None and "voti_in_arrivo" not in o
 
 
 def test_oggi_non_si_rompe_se_le_fasi_falliscono(ambiente, monkeypatch):

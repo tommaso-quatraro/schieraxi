@@ -612,6 +612,10 @@
     "it": "I voti dei tuoi giocatori sono tutti usciti.",
     "en": "The grades of all your players are out."
   },
+  "frase.riepilogo.voti_in_arrivo": {
+    "it": "I punti arrivano quando escono i voti.",
+    "en": "The points arrive when the grades are out."
+  },
   "frase.probabili.oggi": {
     "it": "Probabili aggiornate alle {ora}",
     "en": "Probable lineups updated at {ora}"
