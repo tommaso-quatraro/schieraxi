@@ -116,35 +116,43 @@ struct GuidaDopoLeRoseTests {
 
 @Suite("La pagina delle rose aperta dalla guida: lasciata, la guida si riapre (#880)")
 struct RitornoAllaGuidaTests {
+    /// Le pile delle Impostazioni una dopo l'altra: per ognuna, se la guida va riaperta (`#expect` non chiama metodi `mutating`).
+    private func segui(_ r: inout RitornoAllaGuida, _ pile: [[PaginaImpostazioni]]) -> [Bool] {
+        pile.map { r.pilaCambiata($0) }
+    }
+
     @Test("Lasciata la pagina delle rose (salvate o «indietro») la guida si riapre, una volta sola")
     func siRiapreUnaVolta() {
         var r = RitornoAllaGuida()
         r.importaChiesta()
         #expect(r.attivo)
-        #expect(!r.pilaCambiata([.importa]), "la pagina delle rose è aperta: la guida aspetta")
+        let aperta = segui(&r, [[.importa]])
+        #expect(aperta == [false], "la pagina delle rose è aperta: la guida aspetta")
         #expect(r.attivo)
-        #expect(r.pilaCambiata([]), "pagina lasciata: la guida si riapre")
+        let lasciata = segui(&r, [[]])
+        #expect(lasciata == [true], "pagina lasciata: la guida si riapre")
         #expect(!r.attivo)
-        #expect(!r.pilaCambiata([.importa]))
-        #expect(!r.pilaCambiata([]), "la volta dopo la pagina è aperta dalle Impostazioni: niente guida")
+        let dopo = segui(&r, [[.importa], []])
+        #expect(dopo == [false, false], "la volta dopo la pagina è aperta dalle Impostazioni: niente guida")
     }
 
     @Test("Aperta dalle Impostazioni o dalla Formazione, senza la guida, lasciarla non apre niente")
     func senzaGuida() {
         var r = RitornoAllaGuida()
         #expect(!r.attivo)
-        #expect(!r.pilaCambiata([.importa]))
-        #expect(!r.pilaCambiata([]))
+        let risposte = segui(&r, [[.importa], []])
+        #expect(risposte == [false, false])
     }
 
     @Test("La pagina non si è aperta (Regole con modifiche da salvare) e si torna indietro: niente guida a sorpresa dopo")
     func paginaMaiAperta() {
         var r = RitornoAllaGuida()
         r.importaChiesta()
-        #expect(!r.pilaCambiata([]))
+        let indietro = segui(&r, [[]])
+        #expect(indietro == [false])
         #expect(!r.attivo)
-        #expect(!r.pilaCambiata([.importa]))
-        #expect(!r.pilaCambiata([]))
+        let dopo = segui(&r, [[.importa], []])
+        #expect(dopo == [false, false])
     }
 }
 
