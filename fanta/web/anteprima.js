@@ -61,7 +61,7 @@ const arDescrivi = c => `${esc(c.nome)} · ${esc((NOME_RUOLO_1[c.ruolo] || c.ruo
  * è in pagina, con la risposta del server).
  */
 async function anteprimaRose(dove, sorgente, opz = {}) {
-  const st = { ris: null, etag: null, scelte: new Map(), trovati: new Map(), mia: null, righe: [] };
+  const st = { ris: null, etag: null, scelte: new Map(), trovati: new Map(), mia: null, righe: [], piede: null };
 
   const anteprima = async () => {
     const leggiEtag = e => { st.etag = e; };
@@ -154,11 +154,12 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
       ${mia}
       <div class="ar-squadre">${squadreHtml}</div>
       ${differenze}
-      <div id="ar-msg" role="status"></div>
-      <div class="pulsanti"><button class="bottone" type="button" id="ar-salva">${t("ar.conferma")}</button>
-        <button class="bottone secondario" type="button" id="ar-annulla">${t("ar.annulla")}</button></div>
+      <div class="ar-piede"><div id="ar-msg" role="status"></div>
+        <div class="pulsanti"><button class="bottone" type="button" id="ar-salva">${t("ar.conferma")}</button>
+          <button class="bottone secondario" type="button" id="ar-annulla">${t("ar.annulla")}</button></div></div>
     </div>`;
     collega();
+    seguiPiede();
     $("#ar-titolo", dove).focus({ preventScroll: false });
     if (messaggio) setTimeout(() => dici(`<div class="attenzione">${esc(messaggio)}</div>`), 100);
     if (opz.mostrata) opz.mostrata(r);
@@ -168,6 +169,17 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
   // viene scritto DOPO, non una regione che nasce già con il suo testo. Per questo nasce vuoto e il messaggio di apertura arriva
   // un attimo dopo. Qui vanno gli avvisi; un errore vero ci entra con il suo role="alert" (errore()).
   const dici = html => { const m = $("#ar-msg", dove); if (m) m.innerHTML = html; };
+
+  // Nel foglio (primo avvio) il piede con i messaggi e «Conferma e salva» resta fermo in fondo (stile.css): il Tab porta la riga a
+  // fuoco sopra di lui. --alto-piede è la sua altezza vera, che cresce con un messaggio (#878); stile.css la usa come
+  // scroll-padding-bottom del foglio. Nella pagina di Aggiorna le rose il piede scorre con il resto: niente da seguire.
+  const seguiPiede = () => {
+    if (st.piede) st.piede.disconnect();
+    const corpo = dove.closest(".foglio-corpo"), piede = $(".ar-piede", dove);
+    if (!corpo || !piede || typeof ResizeObserver !== "function") return;
+    st.piede = new ResizeObserver(() => { if (piede.isConnected) corpo.style.setProperty("--alto-piede", `${piede.offsetHeight}px`); });
+    st.piede.observe(piede);
+  };
 
   const collegaRiga = li => {
     const i = Number(li.dataset.i), { s, g } = st.righe[i], k = arChiave(s.nome, g.riga);
