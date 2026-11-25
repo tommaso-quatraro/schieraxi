@@ -2338,7 +2338,7 @@
   },
   "/api/admin/inviti": {
    "get": {
-    "description": "Gli inviti con posti usati e stato (attivo, finito, scaduto, revocato). I codici non si rileggono.",
+    "description": "Gli inviti con posti usati e stato (attivo, finito, scaduto, revocato). I codici non si rileggono. Per quelli aperti la frase\nda mostrare (`dettaglio`, con `dettaglio_frase` per tradurla), null per gli altri.",
     "responses": {
      "200": {
       "content": {
@@ -2352,7 +2352,7 @@
     "summary": "Elenco Inviti"
    },
    "post": {
-    "description": "Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`.",
+    "description": "Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`. `id` è il numero\ndell'invito in GET /api/admin/inviti (#894: se proprio quell'invito si annulla, la web toglie il link che sta mostrando).",
     "requestBody": {
      "content": {
       "application/json": {

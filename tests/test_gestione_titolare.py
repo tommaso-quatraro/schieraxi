@@ -1,13 +1,14 @@
 """Gestione per chi gestisce il server (#894): l'avviso con i posti pieni (o già promessi agli inviti aperti) prima di creare un
-invito; le richieste senza nessun accesso verso le rotte dell'app contate a parte, tutti gli altri 401 fra le rifiutate; le richieste
-più lente solo delle parti dell'app; la frase sulle fonti spente detta una volta sola, con la sua chiave."""
+invito; gli inviti aperti con la frase del server (creato, scade, posti liberi) e il loro annullamento, solo per chi gestisce; le
+richieste senza nessun accesso verso le rotte dell'app contate a parte, tutti gli altri 401 fra le rifiutate; le richieste più lente
+solo delle parti dell'app; la frase sulle fonti spente detta una volta sola, con la sua chiave."""
 import contextlib
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
-from fanta import account, fonti_attive, frasi, registro, server
+from fanta import account, fonti_attive, frasi, registro, rotte_account, server
 
 PASSWORD = "una-password-lunga-9"
 
@@ -87,6 +88,98 @@ def test_con_i_posti_pieni_l_avviso_arriva_prima_e_dopo_l_invito(titolare):
 def test_posti_pieni_al_singolare(titolare, monkeypatch):
     monkeypatch.setenv("MAX_UTENTI", "1")
     assert titolare.get("/api/admin/utenti").json()["avviso"].startswith("Posti pieni: 1 utente su 1.")
+
+
+# ---------------------------------------------------------------- inviti aperti, con «Annulla» (#894, punto 1)
+APERTO = {"id": 1, "etichetta": "Sara", "ruolo": "utente", "creato": "2026-11-25T09:00:00+00:00", "scade": "2026-12-02T09:00:00+00:00",
+          "usi": 0, "usi_max": 1, "stato": "attivo"}
+
+
+def giorno(sigla: str, n: int, mese: str) -> dict:
+    return {"chiave": "data.giorno_mese", "param": {"giorno": {"chiave": f"giorno.{sigla}", "param": {}}, "n": n,
+                                                    "mese": {"chiave": f"mese.{mese}", "param": {}}}}
+
+
+def test_un_invito_aperto_dice_quando_e_nato_e_quando_scade():
+    """La frase la scrive il server (la web la mostra): i due giorni come li scrive l'app, «mer 25 nov», con la chiave per tradurla."""
+    f = rotte_account.dettaglio_invito(APERTO)
+    assert f == "Creato mer 25 nov, scade mer 2 dic.", f
+    assert frasi.di(f) == {"chiave": "admin.invito_aperto", "param": {"creato": giorno("mer", 25, "nov"), "scade": giorno("mer", 2, "dic")}}
+
+
+def test_i_giorni_dell_invito_sono_nell_ora_italiana():
+    """Il server salva l'ora in UTC: alle 23:30 UTC in Italia è già il giorno dopo."""
+    tardi = APERTO | {"creato": "2026-11-25T23:30:00+00:00", "scade": "2026-12-02T23:30:00+00:00"}
+    assert rotte_account.dettaglio_invito(tardi) == "Creato gio 26 nov, scade gio 3 dic."
+
+
+@pytest.mark.parametrize("usi, usi_max, posti", [(1, 3, "2 posti liberi su 3."), (1, 2, "1 posto libero su 2."), (0, 30, "30 posti liberi su 30.")])
+def test_un_invito_per_piu_amici_dice_i_posti_liberi(usi, usi_max, posti):
+    f = rotte_account.dettaglio_invito(APERTO | {"usi": usi, "usi_max": usi_max})
+    assert f == "Creato mer 25 nov, scade mer 2 dic. " + posti, f
+    assert frasi.di(f)["chiave"] == "admin.invito_aperto_posti"
+    assert frasi.di(f)["param"] | {"creato": None, "scade": None} == {"creato": None, "scade": None, "n": usi_max - usi, "posti": usi_max}
+
+
+@pytest.mark.parametrize("stato", ["finito", "scaduto", "revocato"])
+def test_un_invito_chiuso_non_ha_la_frase(stato):
+    assert rotte_account.dettaglio_invito(APERTO | {"stato": stato}) is None
+
+
+def registra_con(nome: str, codice: str) -> None:
+    r = cliente().post("/api/account/registra", json={"nome_utente": nome, "password": PASSWORD, "invito": codice})
+    assert r.status_code == 200, r.text
+
+
+def test_l_elenco_degli_inviti_ha_la_frase_dei_soli_aperti(titolare, monkeypatch):
+    """`dettaglio` e `dettaglio_frase` in più nella risposta di sempre (nessun campo tolto): la frase per gli inviti aperti, null
+    per quelli chiusi."""
+    monkeypatch.setenv("MAX_UTENTI", "5")
+    titolare.post("/api/admin/inviti", json={"etichetta": "Sara"})
+    amici = titolare.post("/api/admin/inviti", json={"etichetta": "amici", "usi": 3}).json()
+    registra_con("luca", amici["codice"])
+    titolare.post("/api/admin/inviti", json={"etichetta": "Piero"})
+    elenco = {i["etichetta"]: i for i in titolare.get("/api/admin/inviti").json()["inviti"]}
+    assert titolare.delete(f"/api/admin/inviti/{elenco['Piero']['id']}").status_code == 200
+    elenco = {i["etichetta"]: i for i in titolare.get("/api/admin/inviti").json()["inviti"]}
+    for i in elenco.values():
+        assert {"id", "etichetta", "ruolo", "creato", "scade", "usi", "usi_max", "stato", "dettaglio", "dettaglio_frase"} <= set(i), i
+    sara, gruppo, piero = elenco["Sara"], elenco["amici"], elenco["Piero"]
+    assert sara["stato"] == "attivo" and sara["dettaglio"].startswith("Creato ") and ", scade " in sara["dettaglio"], sara
+    assert "posti" not in sara["dettaglio"] and sara["dettaglio_frase"]["chiave"] == "admin.invito_aperto", sara
+    assert gruppo["dettaglio"].endswith(". 2 posti liberi su 3."), gruppo
+    assert gruppo["dettaglio_frase"]["chiave"] == "admin.invito_aperto_posti" and gruppo["dettaglio_frase"]["param"]["n"] == 2, gruppo
+    assert piero["stato"] == "revocato" and piero["dettaglio"] is None and piero["dettaglio_frase"] is None, piero
+
+
+def test_la_risposta_dell_invito_nuovo_dice_il_suo_numero(titolare):
+    """`id` dell'invito appena creato, lo stesso dell'elenco: la web sa di quale invito sta mostrando il link, e lo toglie se
+    proprio quell'invito si annulla."""
+    titolare.post("/api/admin/inviti", json={"etichetta": "Anna"})
+    nuovo = titolare.post("/api/admin/inviti", json={"etichetta": "Sara"}).json()
+    elenco = titolare.get("/api/admin/inviti").json()["inviti"]
+    assert nuovo["id"] == next(i["id"] for i in elenco if i["etichetta"] == "Sara"), (nuovo, elenco)
+
+
+def test_annullare_un_invito_libera_il_suo_posto(titolare):
+    """Due posti, uno preso da chi gestisce: con un invito aperto l'ultimo posto è promesso. Annullato l'invito, l'avviso non c'è
+    più e l'invito resta nell'elenco come annullato."""
+    titolare.post("/api/admin/inviti", json={"etichetta": "Sara"})
+    assert titolare.get("/api/admin/utenti").json()["avviso_frase"]["chiave"] == "admin.posti_promessi"
+    invito = titolare.get("/api/admin/inviti").json()["inviti"][0]
+    assert titolare.delete(f"/api/admin/inviti/{invito['id']}").json() == {"ok": True}
+    assert titolare.get("/api/admin/utenti").json()["avviso"] is None
+    assert titolare.get("/api/admin/inviti").json()["inviti"][0]["stato"] == "revocato"
+
+
+def test_un_account_normale_non_vede_ne_annulla_gli_inviti(titolare):
+    titolare.post("/api/admin/inviti", json={"etichetta": "Sara"})
+    amico = cliente()
+    registra(amico, "luca")
+    sara = lambda: next(i for i in titolare.get("/api/admin/inviti").json()["inviti"] if i["etichetta"] == "Sara")  # noqa: E731
+    for r in (amico.get("/api/admin/inviti"), amico.delete(f"/api/admin/inviti/{sara()['id']}")):
+        assert r.status_code == 403 and "Sara" not in r.text, r.text
+    assert sara()["stato"] == "attivo"
 
 
 # ---------------------------------------------------------------- contatori di «Errori recenti»

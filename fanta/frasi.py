@@ -352,6 +352,11 @@ CATALOGO: dict[str, str] = {
     # i posti liberi sono già tutti negli inviti aperti (#894): {n} = posti degli inviti aperti, {utenti} = gli utenti, {massimo} = il tetto
     "admin.posti_promessi.one": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posto è già in un invito aperto. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
     "admin.posti_promessi.other": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posti sono già in inviti aperti. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    # Gestione › Inviti aperti (#894, `dettaglio` di GET /api/admin/inviti, solo per gli inviti aperti): {creato} e {scade} = una
+    # `data.giorno_mese` nell'ora italiana; per un invito per più amici anche i posti: {n} = liberi, {posti} = tutti
+    "admin.invito_aperto": "Creato {creato}, scade {scade}.",
+    "admin.invito_aperto_posti.one": "Creato {creato}, scade {scade}. {n} posto libero su {posti}.",
+    "admin.invito_aperto_posti.other": "Creato {creato}, scade {scade}. {n} posti liberi su {posti}.",
     # Stato dei dati › Fonti dei dati, sotto una fonte spenta (#894, `fonti_attive.cosa_manca`): solo cosa non arriva, una chiave
     # per fonte (`fonte.spenta_<id>`); il nome e la frase comune sulle condizioni d'uso li scrive la pagina
     "fonte.spenta_fantacalcio": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni.",
@@ -518,6 +523,17 @@ def nome_giornata(serie_a: int, lega: int | None, avviso: bool = False) -> Frase
     if lega is None:
         return F(prima + "giornata.serie_a", a=int(serie_a))
     return F(prima + "giornata.lega", n=int(lega), a=int(serie_a))
+
+
+_GIORNI = ("lun", "mar", "mer", "gio", "ven", "sab", "dom")              # date.weekday(): 0 = lunedì
+_MESI = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
+
+
+def giorno_mese(d) -> Frase:
+    """Un giorno (`date` o `datetime`, già nell'ora italiana) in una frase, come lo scrive l'app: «mer 18 nov»
+    (docs/COERENZA-WEB-IPHONE.md, «Date e ore»; mai «18/11»). Sempre con il mese e senza «oggi» o «domani»: la frase può restare in
+    memoria e non deve invecchiare."""
+    return F("data.giorno_mese", giorno=F("giorno." + _GIORNI[d.weekday()]), n=d.day, mese=F("mese." + _MESI[d.month - 1]))
 
 
 def elenco(parti: list, sep: str = ", ", con_e: bool = False):
