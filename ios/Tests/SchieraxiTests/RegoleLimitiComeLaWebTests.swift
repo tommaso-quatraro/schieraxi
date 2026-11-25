@@ -37,13 +37,13 @@ private let campiFuoriPosto: [CampoFuoriPosto] = [
     CampoFuoriPosto(percorso: "bonus.assist", numero: 99, frase: "«Assist» deve essere tra 0 e 20"),
     CampoFuoriPosto(percorso: "bonus.autogol", numero: 3, frase: "«Autogol» deve essere tra −20 e 0"),
     CampoFuoriPosto(percorso: "bonus.gol.A", numero: -4, frase: "«Gol di un attaccante» deve essere tra 0 e 20"),
-    CampoFuoriPosto(percorso: "rosa.P", numero: 0, frase: "«Portieri» deve essere tra 1 e 30"),
+    CampoFuoriPosto(percorso: "rosa.P", numero: 0, frase: "«Portieri della rosa» deve essere tra 1 e 30"),
     CampoFuoriPosto(percorso: "panchina.max_sostituzioni", numero: 11, frase: "«Cambi massimi» deve essere tra 0 e 10"),
-    CampoFuoriPosto(percorso: "panchina.posti.D", numero: 11, frase: "«Difensori» deve essere tra 0 e 10"),
+    CampoFuoriPosto(percorso: "panchina.posti.D", numero: 11, frase: "«Posti in panchina per i difensori» deve essere tra 0 e 10"),
     CampoFuoriPosto(percorso: "crediti_iniziali", numero: 200_000, frase: "«Crediti iniziali» deve essere tra 0 e 100000"),
     CampoFuoriPosto(percorso: "modificatore_difesa.min_difensori", numero: 6, frase: "«Difensori minimi in campo» deve essere tra 3 e 5"),
-    CampoFuoriPosto(percorso: "rosa.D", numero: 8.5, frase: "«Difensori» deve essere un numero intero"),
-    CampoFuoriPosto(percorso: "panchina.posti.P", numero: 1.5, frase: "«Portieri» deve essere un numero intero"),
+    CampoFuoriPosto(percorso: "rosa.D", numero: 8.5, frase: "«Difensori della rosa» deve essere un numero intero"),
+    CampoFuoriPosto(percorso: "panchina.posti.P", numero: 1.5, frase: "«Posti in panchina per i portieri» deve essere un numero intero"),
 ]
 
 @Suite("Regole: i limiti dei numeri dal server e i campi controllati prima di salvare, come la web (#889)")
@@ -213,7 +213,28 @@ struct RegoleLimitiComeLaWebTests {
 
         var votoAcceso = try regole()
         votoAcceso.imposta("voto_senza_sostituto", JSONValue.numero(12))
-        #expect(CampiRegole.problema(votoAcceso, limiti: .riserva) == "«Voto d'ufficio» deve essere tra 0 e 10")
+        #expect(CampiRegole.problema(votoAcceso, limiti: .riserva) == "«Voto d'ufficio di chi resta senza sostituto» deve essere tra 0 e 10")
+    }
+
+    @Test("Nelle frasi ogni campo ha un nome suo: due righe con lo stesso titolo («Difensori», «Voto d'ufficio») non si confondono")
+    func nomiDiversi() {
+        let nomi = CampiRegole.tutti.map(\.nomeDelCampo)
+        #expect(Set(nomi).count == nomi.count, "nomi ripetuti: \(nomi)")
+        // i titoli delle righe restano quelli della pagina
+        #expect(CampiRegole.rosa.map(\.nome) == ["Portieri", "Difensori", "Centrocampisti", "Attaccanti"])
+        #expect(CampiRegole.posti.map(\.nome) == CampiRegole.rosa.map(\.nome))
+    }
+
+    @Test("Il voto d'ufficio delle partite rinviate si controlla con il suo nome, anche quando è nascosto")
+    func votoRinviate() throws {
+        var r = try regole()
+        r.imposta("partite_rinviate", .testo("aspetta"))
+        r.imposta("voto_ufficio_rinviate", JSONValue.numero(11))
+        #expect(CampiRegole.problema(r, limiti: .riserva) == "«Voto d'ufficio delle partite rinviate» deve essere tra 0 e 10")
+        r.imposta("voto_ufficio_rinviate", .nullo)
+        #expect(CampiRegole.problema(r, limiti: .riserva) == nil, "nascosto e senza numero: non si controlla")
+        r.imposta("partite_rinviate", .testo("voto_ufficio"))
+        #expect(CampiRegole.problema(r, limiti: .riserva) == "«Voto d'ufficio delle partite rinviate» è vuoto: scrivi un numero")
     }
 
     @Test("I limiti del server valgono anche nel controllo")

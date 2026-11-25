@@ -49,7 +49,7 @@
     {"percorsi": ["ios/Sources/Presentation/Lega/ImportaRose*", "ios/Sources/Presentation/Lega/EsitoRoseSalvate.swift", "ios/Sources/Domain/AnteprimaRose.swift", "ios/Sources/Domain/FileRose.swift", "ios/Sources/Domain/DubbiRose.swift", "ios/Sources/Support/DemoAnteprimaRose.swift", "ios/Sources/Support/DemoEsitoRose.swift"],
      "schermate": ["lega-importa", "lega-importa-salvate", "lega-importa-salvate-ok", "lega-importa-csv"]},
     {"percorsi": ["ios/Sources/Presentation/Lega/*Regol*", "ios/Sources/Domain/RegoleLogica.swift", "ios/Sources/Domain/TempiLega.swift"],
-     "schermate": ["lega-regole", "lega-regole-fondo"]},
+     "schermate": ["lega-regole", "lega-regole-fondo", "lega-regole-anteprima", "lega-regole-non-applicato"]},
     {"percorsi": ["ios/Sources/Presentation/Lega/ParoleNovita.swift"],
      "schermate": ["impostazioni-novita"]},
     {"percorsi": ["ios/Sources/Presentation/Lega/ParoleSquadre.swift", "ios/Sources/Presentation/Lega/RigaSquadra.swift"],

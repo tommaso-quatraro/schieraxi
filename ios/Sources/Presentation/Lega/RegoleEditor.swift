@@ -402,13 +402,17 @@ struct RegoleEditorView: View {
                 .demoScorriA("rinviate", proxy: proxy, schermate: ["lega-regole"], inFondo: true, pronto: vm.caricato)
                 // fotografia `lega-regole-anteprima`: l'anteprima del regolamento della demo, da «Riconosci le regole» in giù
                 .demoScorriA("riconosci", proxy: proxy, schermate: ["lega-regole-anteprima"], pronto: vm.riconoscimento != nil)
+                // fotografia `lega-regole-non-applicato`: «Non applicato» in cima, per vedere come va a capo il perché (testo grande)
+                .demoScorriA("non-applicato", proxy: proxy, schermate: ["lega-regole-non-applicato"], pronto: vm.riconoscimento != nil)
             }
         }
         .titoloPagina(Catalogo.Imp.regole)
         .task { await vm.carica() }
-        // solo per la fotografia `lega-regole-anteprima`: il regolamento della demo incollato e riconosciuto, come dopo il tocco
+        // solo per le fotografie `lega-regole-anteprima` e `lega-regole-non-applicato`: il regolamento della demo incollato e
+        // riconosciuto, come dopo il tocco
         .task(id: vm.caricato) {
-            guard vm.caricato, Demo.attivo, Demo.foto == "lega-regole-anteprima", vm.riconoscimento == nil else { return }
+            guard vm.caricato, Demo.attivo, let foto = Demo.foto, ["lega-regole-anteprima", "lega-regole-non-applicato"].contains(foto),
+                  vm.riconoscimento == nil else { return }
             vm.testoRegolamento = LegaDemo.regolamentoIncollato
             await vm.riconosci()
         }
@@ -567,6 +571,7 @@ struct RegoleEditorView: View {
             // i valori letti che con le regole di adesso non si salvano così come sono: il perché è del server
             if !anteprima.nonApplicati.isEmpty {
                 Text(Catalogo.Regole.nonApplicato).font(.headline).accessibilityAddTraits(.isHeader)
+                    .id("non-applicato")
                 ForEach(anteprima.nonApplicati) { v in
                     VStack(alignment: .leading, spacing: 2) {
                         Label {

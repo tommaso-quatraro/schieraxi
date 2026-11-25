@@ -5,7 +5,10 @@ import Foundation
 /// ferma al primo campo che non va, nell'ordine della pagina, e dice quale: senza un numero («è vuoto: scrivi un numero»), con i
 /// decimali in un campo di numeri interi, o fuori dai limiti del server (`LimitiRegole`). Con − e + sull'iPhone non si scrive un
 /// campo vuoto né un decimale in un campo intero: il controllo vale per i valori arrivati così (regole incomplete, o salvate prima
-/// con limiti più larghi). Si controllano solo i campi che si salvano, come la web. Logica pura: la provano i test.
+/// con limiti più larghi). Si controllano solo i campi che si salvano, come la web. Nella frase il campo ha il titolo della sua riga,
+/// tranne dove due righe della pagina hanno lo stesso titolo («Difensori» nella rosa e nei posti fissi in panchina, «Voto d'ufficio»
+/// due volte): lì il nome del campo del server («Difensori della rosa», `err.p_regola_*`), perché si capisca quale correggere.
+/// Logica pura: la provano i test.
 enum CampiRegole {
     /// Un campo con − e +.
     struct Campo: Equatable, Sendable {
@@ -15,6 +18,11 @@ enum CampiRegole {
         let nome: String
         /// Vero per i numeri interi (giocatori, cambi, crediti): sulla pagina si scrivono senza decimali.
         var intero = false
+        /// Il nome nelle frasi del controllo, se il titolo della riga non basta a distinguerla da un'altra.
+        var nomeNelleFrasi: String? = nil
+
+        /// Il nome del campo nelle frasi del controllo prima di salvare.
+        var nomeDelCampo: String { nomeNelleFrasi ?? nome }
     }
 
     private static let ruoli = ["P", "D", "C", "A"]
@@ -34,13 +42,30 @@ enum CampiRegole {
                                  ("gol_subito_portiere", Catalogo.Bonus.golSubitoPortiere)]
         .map { Campo(percorso: "bonus.\($0.0)", nome: $0.1) }
     static let minDifensori = Campo(percorso: "modificatore_difesa.min_difensori", nome: Catalogo.Regole.mdMin, intero: true)
-    static let posti: [Campo] = ruoli.map { Campo(percorso: "panchina.posti.\($0)", nome: nomiRuolo[$0] ?? $0, intero: true) }
+    /// I nomi dei campi del server per i posti fissi in panchina e la rosa («Posti in panchina per i difensori», «Difensori della
+    /// rosa»): le loro righe si chiamano tutte e due «Difensori».
+    private static let nomiPosti = ["P": Catalogo.Err.pRegolaPanchinaPostiP, "D": Catalogo.Err.pRegolaPanchinaPostiD,
+                                    "C": Catalogo.Err.pRegolaPanchinaPostiC, "A": Catalogo.Err.pRegolaPanchinaPostiA]
+    private static let nomiRosa = ["P": Catalogo.Err.pRegolaRosaP, "D": Catalogo.Err.pRegolaRosaD, "C": Catalogo.Err.pRegolaRosaC,
+                                   "A": Catalogo.Err.pRegolaRosaA]
+    static let posti: [Campo] = ruoli.map {
+        Campo(percorso: "panchina.posti.\($0)", nome: nomiRuolo[$0] ?? $0, intero: true, nomeNelleFrasi: nomiPosti[$0])
+    }
     static let giocatoriPanchina = Campo(percorso: "panchina.numero", nome: Catalogo.Regole.giocatoriPanchina, intero: true)
     static let cambi = Campo(percorso: "panchina.max_sostituzioni", nome: Catalogo.Regole.cambiMassimi, intero: true)
-    static let votoSenzaSostituto = Campo(percorso: "voto_senza_sostituto", nome: Catalogo.Regole.vu)
-    static let rosa: [Campo] = ruoli.map { Campo(percorso: "rosa.\($0)", nome: nomiRuolo[$0] ?? $0, intero: true) }
+    static let votoSenzaSostituto = Campo(percorso: "voto_senza_sostituto", nome: Catalogo.Regole.vu,
+                                          nomeNelleFrasi: Catalogo.Err.pRegolaVotoSenzaSostituto)
+    static let rosa: [Campo] = ruoli.map {
+        Campo(percorso: "rosa.\($0)", nome: nomiRuolo[$0] ?? $0, intero: true, nomeNelleFrasi: nomiRosa[$0])
+    }
     static let crediti = Campo(percorso: "crediti_iniziali", nome: Catalogo.Regole.creditiIniziali, intero: true)
-    static let votoRinviate = Campo(percorso: "voto_ufficio_rinviate", nome: Catalogo.Regole.rvVoto)
+    static let votoRinviate = Campo(percorso: "voto_ufficio_rinviate", nome: Catalogo.Regole.rvVoto,
+                                    nomeNelleFrasi: Catalogo.Err.pRegolaVotoUfficioRinviate)
+
+    /// Tutti i campi con − e +, nell'ordine della pagina (le fasce del modificatore a parte).
+    static var tutti: [Campo] {
+        gol + bonus + malus + [minDifensori] + posti + [giocatoriPanchina, cambi, votoSenzaSostituto] + rosa + [crediti, votoRinviate]
+    }
 
     /// Le chiavi dei limiti delle fasce del modificatore difesa (ogni fascia è una coppia [media, bonus] in `soglie`).
     static let limiteMediaFascia = "modificatore_difesa.soglie.media"
@@ -66,7 +91,7 @@ enum CampiRegole {
     /// rinviate solo se il server conosce la regola, anche quando è nascosto (come la web) ma allora solo se c'è.
     private static func voci(_ regole: JSONValue, fasce: [RegoleLogica.Fascia]) -> [Voce] {
         func voce(_ campo: Campo) -> Voce {
-            Voce(nome: campo.nome, valore: regole.valore(campo.percorso), intero: campo.intero, limite: campo.percorso)
+            Voce(nome: campo.nomeDelCampo, valore: regole.valore(campo.percorso), intero: campo.intero, limite: campo.percorso)
         }
         var voci = (gol + bonus + malus).map(voce)
         if regole.valore("modificatore_difesa.attivo")?.booleano == true {
