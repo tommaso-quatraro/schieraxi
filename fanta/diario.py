@@ -485,9 +485,11 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
                      scelta: dict | None, simulazioni: int = SIMULAZIONI, automatica: dict | None = None,
                      altri_ids=(), istantanea: dict | None = None, cambi: tuple | None = None,
                      indicatori: bool = True, giocatori_rosa: dict[int, tuple[str, str | None]] | None = None,
-                     tieni: dict | None = None) -> dict | None:
+                     tieni: dict | None = None, completa: bool = False) -> dict | None:
     """La voce del diario di una giornata finita, o None se mancano i dati (o la rosa è troppo piccola per quella giornata).
-    Con `tieni` (una voce già scritta) non la rifà da zero: ne rifà solo i punti (`rifai_i_punti`).
+    Con `tieni` (una voce già scritta) non la rifà da zero: ne rifà solo i punti (`rifai_i_punti`); con anche `completa` (per dare
+    il dettaglio dei punti a una voce di prima, `_con_il_dettaglio`) il dettaglio di una formazione è null se la sua panchina di
+    allora non si conosce intera e la panchina ha contato.
     `altri_ids`: chi era nella consigliata di allora (istantanea) ma non è più in rosa, per i numeri per giocatore.
     `giocatori_rosa`: {id: (nome, ruolo)} di tutta la rosa. Chi non ha una previsione per quella giornata (mai sceso in campo prima,
     come spesso il portiere di riserva) si può schierare lo stesso (#447, la regola di `scelte.ruoli_schierabili` a giornata finita):
@@ -531,10 +533,16 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
         return tit, propria or fz._panchina(lista_v, tit, regole)
 
     if tieni is not None:
-        def punti(scelti: list[int], panchina=()) -> tuple[float, dict] | None:
+        def punti(scelti: list[int], panchina=()) -> tuple[float, dict | None] | None:
             if not scelti or any(i not in tutti for i in scelti):
                 return None                     # un titolare non è più in rosa: come in «Correggi», la formazione non si rifà
             reale, dettaglio = fatti(*formazione(scelti, panchina))
+            # senza la panchina di allora, intera (dall'istantanea o dalla scelta), quella del sistema rifatta con la rosa e il modello
+            # di oggi può far entrare un altro giocatore con lo stesso voto: i punti tornano, chi è entrato no (revisione di #905).
+            # Per una voce di prima allora il dettaglio vale solo se la panchina non ha contato
+            nota = bool(panchina) and all(int(i) in tutti for i in panchina)
+            if completa and not nota and (dettaglio["entrati"] or dettaglio["senza_sostituto"]):
+                dettaglio = None
             return round(reale, 1), dettaglio
         impronte = {"regole": impronta_regole(regole, stagione, giornata, bool(rinviate)),
                     "impronta_voti": impronta_voti(d, stagione, giornata)}
@@ -596,7 +604,8 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
 
 def rifai_i_punti(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, voce: dict, ids_rosa: list[int],
                   scelta: dict | None, automatica: dict | None, istantanea: dict | None,
-                  giocatori_rosa: dict[int, tuple[str, str | None]] | None, simulazioni: int = SIMULAZIONI, altri_ids=()) -> dict | None:
+                  giocatori_rosa: dict[int, tuple[str, str | None]] | None, simulazioni: int = SIMULAZIONI, altri_ids=(),
+                  completa: bool = False) -> dict | None:
     """La voce `voce` con i soli punti fatti rifatti con i voti di adesso (#793, decisione del coordinatore): stesse formazioni,
     stessa classificazione (consigliata mostrata o ricostruita, `consigliata_di_allora`, tipo e «L'ho messa» della schierata,
     copia automatica), stessi punti attesi. Cambiano `reale` di ogni formazione, `fv` dei numeri per giocatore, i punti degli
@@ -604,9 +613,9 @@ def rifai_i_punti(d: Dati, stagione: str, giornata: int, regole: Regole, par: Pa
     `calcola_giornata` e di «Correggi» (la rosa di oggi, `formazione`), così il numero non cambia fra l'uno e l'altro. I numeri che
     si confrontano (schierata, consigliata, ricostruita, S2) cambiano tutti insieme o nessuno: se una formazione non si rifà (un
     titolare non più in rosa) la voce resta com'era, con le sole impronte nuove. Le simulazioni servono solo a S2 degli
-    indicatori. None se mancano i dati (come `calcola_giornata`)."""
+    indicatori. None se mancano i dati (come `calcola_giornata`). `completa`: vedi `calcola_giornata`."""
     return calcola_giornata(d, stagione, giornata, regole, par, ids_rosa, scelta, simulazioni, automatica, altri_ids,
-                            istantanea=istantanea, giocatori_rosa=giocatori_rosa, tieni=voce)
+                            istantanea=istantanea, giocatori_rosa=giocatori_rosa, tieni=voce, completa=completa)
 
 
 def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None, automatica: dict | None) -> dict | None:
@@ -735,15 +744,20 @@ def _con_il_dettaglio(vecchia: dict, rifatta: dict | None) -> dict:
     una copia di `vecchia` in cui ogni formazione senza `dettaglio` prende quello di `rifatta` (la stessa voce con i punti rifatti,
     `rifai_i_punti`), solo se i punti rifatti sono uguali a quelli salvati. Tutto il resto resta com'era, punti compresi. Dove i
     punti rifatti sono diversi (per esempio la panchina del sistema è cambiata perché una riserva è stata ceduta) o la formazione
-    non si rifà (`rifatta` None, o un titolare non più in rosa), `dettaglio` null: la pagina Giornate dice che il dettaglio manca."""
+    non si rifà (`rifatta` None, o un titolare non più in rosa), `dettaglio` null: la pagina Giornate dice che il dettaglio manca.
+    Null anche quando chi entra non è fra i giocatori della voce (`giocatori`, la rosa di allora) e, già in `rifatta` (rifatta con
+    `completa`), quando la panchina di allora non si conosce e ha contato (revisione di #905)."""
     nuova = json.loads(json.dumps(vecchia))
+    allora = {x.get("id") for x in vecchia.get("giocatori") or [] if isinstance(x, dict)}
     for k in FORMAZIONI:
         riga = nuova.get(k)
         if not isinstance(riga, dict) or "dettaglio" in riga:
             continue
         r = (rifatta or {}).get(k)
-        uguale = isinstance(r, dict) and isinstance(r.get("dettaglio"), dict) and r.get("reale") == riga.get("reale")
-        riga["dettaglio"] = r["dettaglio"] if uguale else None
+        d = r.get("dettaglio") if isinstance(r, dict) else None
+        uguale = isinstance(d, dict) and r.get("reale") == riga.get("reale") and all(
+            isinstance(e, dict) and (e.get("entra") or {}).get("id") in allora for e in d.get("entrati") or [])
+        riga["dettaglio"] = d if uguale else None
     return nuova
 
 
@@ -817,12 +831,14 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
                         # le stesse formazioni con i punti rifatti come per i voti cambiati; senza gli indicatori, che non servono
                         # e vorrebbero le simulazioni
                         rifatta = rifai_i_punti(dati, stagione, g, regole, Parametri(), {k: x for k, x in vecchia.items() if k != "consiglio"},
-                                                ids, scelta, auto, ist or None, _giocatori_rosa(squadra), simulazioni, altri)
-                    except Exception as e:  # noqa: BLE001 - un di più: non deve fermare le giornate dopo; la voce resta com'era
-                        LOG.warning("diario: dettaglio dei punti della giornata %s non calcolato (%s), la voce resta com'era",
+                                                ids, scelta, auto, ist or None, _giocatori_rosa(squadra), simulazioni, altri,
+                                                completa=True)
+                    except Exception as e:  # noqa: BLE001 - un di più: non deve fermare le giornate dopo
+                        # una volta sola: la voce resta com'era, con il dettaglio null, così i giri dopo non ci riprovano
+                        LOG.warning("diario: dettaglio dei punti della giornata %s non calcolato (%s), la voce resta senza",
                                     g, type(e).__name__)
-                    else:
-                        nuove_voci[chiave] = _con_il_dettaglio(vecchia, rifatta)
+                        rifatta = None
+                    nuove_voci[chiave] = _con_il_dettaglio(vecchia, rifatta)
                 continue
         voce = calcola_giornata(consigli.dati(db), stagione, g, regole, Parametri(), ids, scelta, simulazioni, auto, altri,
                                 giocatori_rosa=_giocatori_rosa(squadra), **per_il_consiglio(db, regole, stagione, g, dati_diario))

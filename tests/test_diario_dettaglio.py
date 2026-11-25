@@ -276,17 +276,72 @@ def _senza_dettagli(voci: dict) -> dict:
 
 
 def test_le_giornate_gia_calcolate_prendono_il_dettaglio_senza_cambiare_niente_altro(finto, monkeypatch):
-    _senza_voto(finto, 25)                                       # nella consigliata della giornata 1 entra una riserva
-    assert _aggiorna(finto) == 2
+    regole = replace(Regole(), modificatore_difesa=ModificatoreDifesa(attivo=True, min_difensori=3))
+    assert diario.aggiorna(finto.db, regole, finto.rose, finto.file, simulazioni=50) == 2
     nuove = diario.carica(finto.file)["giornate"]
     prima = _come_prima_di_900(finto)
     monkeypatch.setattr(diario.fz, "migliore", lambda *a, **k: pytest.fail("non deve rifare le simulazioni"))
-    assert _aggiorna(finto) == 2
+    assert diario.aggiorna(finto.db, regole, finto.rose, finto.file, simulazioni=50) == 2
     dopo = diario.carica(finto.file)["giornate"]
     assert _senza_dettagli(dopo) == prima                        # punti, formazioni, indicatori, impronte: tutto com'era
     assert dopo == nuove                                         # e il dettaglio è quello che avrebbe una voce nuova
-    assert dopo[f"{ST}/1"]["consigliata"]["dettaglio"]["entrati"][0]["esce"] == g(25)
-    assert _aggiorna(finto) == 0                                 # una volta sola
+    assert dopo[f"{ST}/1"]["consigliata"]["dettaglio"]["modificatore"] == 1.0
+    assert diario.aggiorna(finto.db, regole, finto.rose, finto.file, simulazioni=50) == 0          # una volta sola
+
+
+def test_con_la_panchina_di_allora_il_dettaglio_dice_chi_e_entrato(finto):
+    """La consigliata mostrata prima della scadenza ha la sua panchina salvata (istantanea): chi è entrato si sa."""
+    _senza_voto(finto, 20)
+    _voto(finto, 22, 10.0)
+    diario.salva_istantanea(_formazione_finta(TRE_QUATTRO_TRE), ST, finto.file)
+    assert _aggiorna(finto) == 2
+    nuove = diario.carica(finto.file)["giornate"]
+    _come_prima_di_900(finto)
+    assert _aggiorna(finto) == 2
+    c = diario.carica(finto.file)["giornate"][f"{ST}/1"]["consigliata"]
+    assert c["origine"] == "mostrata" and c["dettaglio"] == nuove[f"{ST}/1"]["consigliata"]["dettaglio"]
+    assert c["dettaglio"]["entrati"] == [{"esce": g(20), "entra": g(22), "fv": 10.0}]
+
+
+def test_chi_entra_deve_essere_nella_rosa_di_allora(finto):
+    """Chi entra dalla panchina deve essere fra i giocatori della voce (`giocatori`, la rosa di allora): se no il dettaglio non vale."""
+    _senza_voto(finto, 20)
+    _voto(finto, 22, 10.0)
+    diario.salva_istantanea(_formazione_finta(TRE_QUATTRO_TRE), ST, finto.file)
+    assert _aggiorna(finto) == 2
+
+    def senza_il_22(voci):
+        voci[f"{ST}/1"]["giocatori"] = [x for x in voci[f"{ST}/1"]["giocatori"] if x["id"] != 22]
+    _come_prima_di_900(finto, senza_il_22)
+    assert _aggiorna(finto) == 2
+    assert diario.carica(finto.file)["giornate"][f"{ST}/1"]["consigliata"]["dettaglio"] is None
+
+
+def test_con_la_panchina_del_sistema_una_riserva_entrata_non_si_indovina(finto, monkeypatch):
+    """Revisione di #905: senza la panchina di allora (né istantanea né scelta con la sua panchina) la panchina si rifà con la rosa
+    di oggi. Il 20 non prese voto ed entrò il 22 (6,0); poi il 22 è stato ceduto ed è arrivato il 26, stesso ruolo e stesso voto: i
+    punti rifatti tornano uguali, ma «G26 è entrato al posto di G20» sarebbe falso. Il dettaglio resta vuoto."""
+    prima = diario.previsioni
+    monkeypatch.setattr(diario, "previsioni", lambda *a: pd.concat(
+        [prima(*a), pd.DataFrame([{"id": 26, "nome": "G26", "ruolo": "A", "p_voto": 0.9, "mu": 6.8, "mu_voto": 6.0, "partita": a[2]}])],
+        ignore_index=True))
+    finto.dati.voti = pd.concat([finto.dati.voti, pd.DataFrame([{"stagione": ST, "giornata": gg, "calciatore_id": 26, "voto_red": 6.0,
+                                                                 "data": f"2026-09-0{gg} 18:00"} for gg in (1, 2)])], ignore_index=True)
+    _senza_voto(finto, 20, 23, 24)
+    monkeypatch.setattr(diario.scelte, "leggi", lambda st, gg, *a, **k: {"titolari": TRE_QUATTRO_TRE} if gg == 1 and not k else None)
+    assert _aggiorna(finto) == 2
+    s = diario.carica(finto.file)["giornate"][f"{ST}/1"]["schierata"]
+    assert s["reale"] == 69.0 and s["dettaglio"]["entrati"] == [{"esce": g(20), "entra": g(22), "fv": 6.0}]
+    _come_prima_di_900(finto)
+    tutti = [i for i in range(1, 27) if i != 22]                                   # il 22 ceduto, il 26 comprato
+    finto.rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, f"G{i}", (RUOLI + ["A"])[i - 1], "INT") for i in tutti])], "Mia")
+    assert _aggiorna(finto) == 2
+    voci = diario.carica(finto.file)["giornate"]
+    s = voci[f"{ST}/1"]["schierata"]
+    assert s["reale"] == 69.0 and s["dettaglio"] is None
+    assert "G26" not in json.dumps(voci)
+    assert diario.spiegazione_punti(voci[f"{ST}/1"])["righe_frasi"] == [{"chiave": "diario.punti_senza_dettaglio", "param": {}}]
+    assert _aggiorna(finto) == 0
 
 
 def test_dove_i_punti_rifatti_non_sono_quelli_salvati_il_dettaglio_resta_vuoto(finto):
@@ -308,16 +363,21 @@ def test_dove_i_punti_rifatti_non_sono_quelli_salvati_il_dettaglio_resta_vuoto(f
 
 
 def test_se_il_dettaglio_non_si_calcola_le_giornate_nuove_si_scrivono_lo_stesso(finto, monkeypatch, caplog):
-    """Un guasto nel completare una voce di prima non deve fermare il Diario (le giornate si scorrono dalla più vecchia): la voce
-    resta com'era, il registro del server lo dice e la giornata nuova si scrive."""
+    """Un guasto nel completare una voce di prima non deve fermare il Diario (le giornate si scorrono dalla più vecchia): il
+    registro del server lo dice una volta, la voce resta com'era con il dettaglio vuoto (non ci si riprova a ogni giro) e la
+    giornata nuova si scrive."""
     assert _aggiorna(finto) == 2
     prima = _come_prima_di_900(finto, lambda voci: voci.pop(f"{ST}/2"))
+    tentativi = []
 
     def rotto(*a, **k):
+        tentativi.append(1)
         raise RuntimeError("guasto")
     monkeypatch.setattr(diario, "rifai_i_punti", rotto)
     with caplog.at_level("WARNING", logger="fanta.diario"):
-        assert _aggiorna(finto) == 1
-    voci = diario.carica(finto.file)["giornate"]
-    assert voci[f"{ST}/1"] == prima[f"{ST}/1"] and f"{ST}/2" in voci
-    assert "dettaglio dei punti" in caplog.text and "RuntimeError" in caplog.text
+        assert _aggiorna(finto) == 2                                              # la 1 segnata, la 2 nuova
+        voci = diario.carica(finto.file)["giornate"]
+        assert _senza_dettagli(voci)[f"{ST}/1"] == prima[f"{ST}/1"] and f"{ST}/2" in voci
+        assert all(voci[f"{ST}/1"][k]["dettaglio"] is None for k in ("consigliata", "ricostruita"))
+        assert _aggiorna(finto) == 0                                              # al giro dopo non ci riprova
+    assert len(tentativi) == 1 and caplog.text.count("dettaglio dei punti") == 1 and "RuntimeError" in caplog.text
