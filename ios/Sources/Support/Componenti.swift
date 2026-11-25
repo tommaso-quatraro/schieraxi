@@ -198,7 +198,7 @@ struct AvvisoSalvati: ViewModifier {
         content
             .safeAreaInset(edge: .top, spacing: 0) {
                 if let data {
-                    Label(DatiVecchi.frase(salvatiIl: data.formatted(date: .abbreviated, time: .shortened), motivo: motivo),
+                    Label(DatiVecchi.frase(salvatiIl: data, motivo: motivo),
                           systemImage: motivo == nil ? "icloud.slash" : "exclamationmark.triangle")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.primary)

@@ -14,15 +14,36 @@ enum DatiVecchi {
         return errore is URLError
     }
 
-    /// La frase della striscia. `motivo` nil = server non raggiungibile; altrimenti il messaggio dell'errore (già in italiano), in
-    /// testa e con la nota fra parentesi come la web nello stesso caso (`comune.cache_errore` in `app.js`, #830): così un motivo
-    /// come «Il server non risponde: riprova fra poco» non finisce dopo altri due punti, con la maiuscola a metà frase.
-    static func frase(salvatiIl data: String, motivo: String?) -> String {
+    /// La frase della striscia, con `data` il momento in cui è stata salvata la copia. `motivo` nil = server non raggiungibile;
+    /// altrimenti il messaggio dell'errore (già in italiano), in testa e con la nota fra parentesi come la web nello stesso caso
+    /// (`comune.cache_errore` in `app.js`, #830): così un motivo come «Il server non risponde: riprova fra poco» non finisce dopo
+    /// altri due punti, con la maiuscola a metà frase. Nella nota il giorno e l'ora della copia, ora italiana, scritti come
+    /// `fData` e `fOra` della web: «dati salvati il 17 nov alle 10:05» (#845). Senza motivo lo stesso giorno e la stessa ora
+    /// (prima l'orologio del telefono: a Londra la stessa copia era «alle 10:05» con il 502 e «09:05» senza rete).
+    static func frase(salvatiIl data: Date, motivo: String?) -> String {
+        let giorno = giornoEMese.string(from: data), ora = Quando.ora(data)
         guard let m = motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty else {
-            return "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(data) e può essere vecchio."
+            return elidiGiorno("Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(giorno) alle \(ora) e può essere vecchio.")
         }
-        return Catalogo.Comune.cacheErrore(errore: m)
+        return elidiGiorno(Catalogo.Comune.cacheErrore(errore: m, giorno: giorno, ora: ora))
     }
+
+    /// «il 8 nov» → «l'8 nov», «del 11 nov» → «dell'11 nov»: davanti a 8 e 11 (otto, undici) l'articolo perde la vocale, come
+    /// `elidiGiorno` della web (`testi.js`). Le altre date restano («il 18 nov», «il 1 nov»); gli ordinali («l'8ª») li fa
+    /// `TempiLega.elidiOrdinali`.
+    private static func elidiGiorno(_ testo: String) -> String {
+        testo.replacingOccurrences(of: #"\bil (8|11)(?= )"#, with: "l'$1", options: .regularExpression)
+            .replacingOccurrences(of: #"\b(del|al|dal|nel|sul) (8|11)(?= )"#, with: "$1l'$2", options: .regularExpression)
+    }
+
+    /// «17 nov», ora italiana: come `fData` della web.
+    private static let giornoEMese: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.timeZone = TimeZone(identifier: "Europe/Rome")
+        f.dateFormat = "d MMM"
+        return f
+    }()
 
     /// Dopo quanto tempo fuori dall'app, tornando, si ricarica tutto (anche dopo la mezzanotte, comunque).
     static let sogliaRitorno: TimeInterval = 10 * 60
