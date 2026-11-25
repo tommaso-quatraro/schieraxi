@@ -281,7 +281,9 @@ private extension LegaDemo {
         d["avanzate"] = ["minuti": 560 + p.id % 200, "xg": 3.4 + Double(p.id % 5) * 0.7, "xa": 1.2 + Double(p.id % 3) * 0.4, "tiri": 22 + p.id % 9,
                          "passaggi_chiave": 9 + p.id % 7, "rigori_calciati": p.id % 4 == 0 ? 2 : 0, "punizioni": p.id % 5 == 0 ? 3 : 0,
                          "per_90": ["xg": 0.52, "xa": 0.18, "tiri": 3.1],
-                         "stagioni_precedenti": [["stagione": "2025-26", "minuti": 2400, "gol": 11, "xg": 10.2, "assist": 4, "xa": 3.6]]] as [String: Any]
+                         "stagioni_precedenti": [["stagione": "2025-26", "minuti": 2400, "gol": 11, "xg": 10.2, "assist": 4, "xa": 3.6]],
+                         // come il server (#862): il giorno dell'ultima partita letta dalla fonte, qualche giorno prima di adesso
+                         "dati_fino_al": formatta(adesso.addingTimeInterval(-3 * 86_400), "yyyy-MM-dd")] as [String: Any]
         d["rendimento"] = ["sovra_rendimento": p.id % 2 == 0 ? 0.42 : -0.38, "gol_meno_xg": p.id % 2 == 0 ? 0.9 : -1.1, "assist_meno_xa": 0.2] as [String: Any]
         if let o = fantasquadra(di: p.id) { d["proprietario"] = o }
         return d
