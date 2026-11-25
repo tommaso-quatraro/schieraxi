@@ -27,6 +27,8 @@ final class RegoleEditorViewModel: ViewModelBase {
     @Published var riconoscimento: RiconoscimentoRegole?
     @Published var erroreRiconoscimento: String?
     @Published var riconoscimentoInCorso = false
+    /// SCHELETRO per vedere fallire i test (#889).
+    @Published private(set) var limiti = LimitiRegole.riserva
 
     /// Dopo un 412, quanto si aspetta prima di ricaricare i campi con le regole del server: la frase si legge mentre si vedono ancora
     /// i valori scritti, come la web (che ricarica la pagina dopo 2,5 secondi). I test la mettono a zero.
