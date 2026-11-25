@@ -37,7 +37,7 @@ struct BordiGiornataComeLaWebTests {
         #expect(c.valore == 6)
         #expect(!c.attesa, "il voto d'ufficio è un voto preso: il disco è pieno")
         #expect(c.pezzi == [LetturaPedina.Pezzo(testo: "Voto d'ufficio", tono: .parola)], "niente «Rinviata» né «gioca 90%»")
-        #expect(c.voce == "Mario Prova, fantavoto 6,0, Voto d'ufficio")
+        #expect(c.voce == "Mario Prova, Difensore, fantavoto 6,0, Voto d'ufficio")
     }
 
     @Test("Voto d'ufficio nella riga e nella scheda: il numero con «fantavoto», la parola del server accanto")
@@ -75,7 +75,7 @@ struct BordiGiornataComeLaWebTests {
         #expect(c.valore == nil, "il disco scrive «–»: l'atteso non conta più")
         #expect(c.attesa)
         #expect(c.pezzi == [LetturaPedina.Pezzo(testo: "Senza voto", tono: .parola)])
-        #expect(c.voce == "Mario Prova, Senza voto")
+        #expect(c.voce == "Mario Prova, Difensore, Senza voto")
     }
 
     @Test("Chi deve ancora giocare o ha il voto resta come prima")
