@@ -133,19 +133,58 @@ def corpi_scritti(web) -> list[dict]:
     return corpi
 
 
-@pytest.mark.parametrize("sezione, nome, valore", [
-    ("Rosa e crediti", "Portieri", "3,5"),
-    ("Rosa e crediti", "Crediti iniziali", "500,5"),
-    ("Panchina e sostituzioni", "Cambi massimi", "2,5"),
+@pytest.mark.parametrize("sezione, nome, valore, nell_avviso", [
+    ("Rosa e crediti", "Portieri", "3,5", "Portieri della rosa"),       # la riga dei posti in panchina si chiama uguale (#889)
+    ("Rosa e crediti", "Crediti iniziali", "500,5", "Crediti iniziali"),
+    ("Panchina e sostituzioni", "Cambi massimi", "2,5", "Cambi massimi"),
 ])
-def test_un_numero_con_la_virgola_in_un_campo_intero_si_dice_prima_di_salvare(web, sezione, nome, valore):
+def test_un_numero_con_la_virgola_in_un_campo_intero_si_dice_prima_di_salvare(web, sezione, nome, valore, nell_avviso):
     """«3,5» portieri passava la pagina e il server rispondeva «rosa.P deve essere un numero intero», con il nome interno."""
     solo_prima(web)
     salvate = scritture(web)
     apri_valori(web, sezione)
     campo(web, nome).fill(valore)
     tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
-    assert avviso(web) == f"«{nome}» deve essere un numero intero"
+    assert avviso(web) == f"«{nell_avviso}» deve essere un numero intero"
+    assert salvate == []
+
+
+# ---------------------------------------------------------------- nomi distinti nell'avviso, come l'iPhone (#889)
+def nella_sezione(web, sezione: str, nome: str):
+    """Il campo `nome` della sezione di «Modifica i valori» intitolata `sezione` (due sezioni hanno righe con lo stesso titolo)."""
+    return principale(web).locator("details.regola-sez").filter(has_text=sezione).get_by_role("textbox", name=nome, exact=True)
+
+
+@pytest.mark.parametrize("sezione, valore, frase", [
+    ("Rosa e crediti", "40", "«Difensori della rosa» deve essere tra 1 e 30"),
+    ("Panchina e sostituzioni", "11", "«Posti in panchina per i difensori» deve essere tra 0 e 10"),
+])
+def test_due_righe_con_lo_stesso_titolo_si_distinguono_nell_avviso(web, sezione, valore, frase):
+    """Con i posti fissi in panchina ci sono due righe «Difensori» (rosa e panchina): l'avviso diceva «Difensori» per tutte e
+    due. Ora dice il nome del campo, come il server e l'iPhone (`err.p_regola_*`), e la riga resta «Difensori»."""
+    solo_prima(web)
+    salvate = scritture(web)
+    apri_valori(web, sezione)
+    nella_sezione(web, sezione, "Difensori").fill(valore)
+    tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
+    assert avviso(web) == frase
+    assert salvate == []
+
+
+@pytest.mark.parametrize("chiave, frase", [
+    ("voto_senza_sostituto", "«Voto d'ufficio di chi resta senza sostituto» deve essere tra 0 e 10"),
+    ("voto_ufficio_rinviate", "«Voto d'ufficio delle partite rinviate» deve essere tra 0 e 10"),
+])
+def test_i_due_voti_d_ufficio_si_distinguono_nell_avviso(web, chiave, frase):
+    """Due righe «Voto d'ufficio» (chi resta senza sostituto, partite rinviate): l'avviso dice quale (#889). Il valore fuori dai
+    limiti arriva dalle regole salvate; il voto delle partite rinviate si controlla anche nascosto."""
+    solo_prima(web)
+    web.risposta("/api/regole", web.registrata("/api/regole") | {chiave: 12})
+    salvate = scritture(web)
+    apri_valori(web)
+    campo(web, "Assist").fill("1,5")                                    # una modifica qualsiasi: compare «Salva le regole»
+    tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
+    assert avviso(web) == frase
     assert salvate == []
 
 
