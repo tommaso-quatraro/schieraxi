@@ -114,8 +114,9 @@ _blocco_giornate = threading.Lock()
 def _giornate_della_stagione(db: sqlite3.Connection, stagione: str) -> dict[int, tuple[tuple, tuple, datetime | None]]:
     """{giornata: (partite, aperte, inizio del turno)} in ordine di giornata: `partite` = ((data o None, giocata), ...), `aperte` =
     le date di quelle da giocare, `inizio` = turno.inizio delle date. Da non modificare: è condiviso fra le richieste."""
-    righe = tuple(tuple(r) for r in db.execute("SELECT giornata, data, giocata FROM partite WHERE stagione = ? ORDER BY giornata",
-                                               (stagione,)))
+    cursore = db.cursor()
+    cursore.row_factory = None                   # righe come tuple semplici: si confrontano e si ricordano così come sono
+    righe = tuple(cursore.execute("SELECT giornata, data, giocata FROM partite WHERE stagione = ? ORDER BY giornata", (stagione,)))
     chiave = (stagione, righe)
     with _blocco_giornate:
         pronte = _giornate_lette.get(chiave)
