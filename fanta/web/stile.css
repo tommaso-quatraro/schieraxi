@@ -971,6 +971,10 @@ body.pagina-testo { padding: 0 0 40px; }
 
 .testo-lungo > * { animation: none; }
 .registro-elenco { margin: 4px 0 10px; padding-left: 18px; font-size: var(--t-sec); word-break: break-word; }
+/* Gestione › Inviti aperti (#894): il nome e sotto, piccola, la frase del server; «Annulla» a destra. Un nome lungo va a capo */
+.adm-inviti li { min-height: 56px; padding: 6px 0; }
+.adm-inviti li > div { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.adm-inviti .azione-testo { flex: none; }
 
 
 .segmenti[hidden] { display: none !important; }
