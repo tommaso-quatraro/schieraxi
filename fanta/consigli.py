@@ -7,6 +7,7 @@ import logging
 import sqlite3
 import threading
 import time
+from collections import OrderedDict
 from collections.abc import Collection
 from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, timedelta
@@ -101,6 +102,39 @@ def _data(testo) -> datetime | None:
         return None
 
 
+# Il calendario della stagione già convertito (#907): `prossima_giornata` si chiede molte volte per ogni richiesta (Oggi, widget,
+# Da fare, avvisi) e ogni volta convertiva tutte le date della stagione. Le righe si leggono sempre e la memoria vale solo per
+# righe identiche: un calendario cambiato si vede alla richiesta dopo. Uguale per tutti (dati di Serie A, nessun dato personale).
+MAX_GIORNATE_LETTE = 8                  # calendari diversi tenuti in memoria (una stagione per archivio; nei test ce ne sono tanti)
+_giornate_lette: OrderedDict = OrderedDict()
+_blocco_giornate = threading.Lock()
+
+
+def _giornate_della_stagione(db: sqlite3.Connection, stagione: str) -> dict[int, tuple[tuple, tuple, datetime | None]]:
+    """{giornata: (partite, aperte, inizio del turno)} in ordine di giornata: `partite` = ((data o None, giocata), ...), `aperte` =
+    le date di quelle da giocare, `inizio` = turno.inizio delle date. Da non modificare: è condiviso fra le richieste."""
+    righe = tuple(tuple(r) for r in db.execute("SELECT giornata, data, giocata FROM partite WHERE stagione = ? ORDER BY giornata",
+                                               (stagione,)))
+    chiave = (stagione, righe)
+    with _blocco_giornate:
+        pronte = _giornate_lette.get(chiave)
+        if pronte is not None:
+            _giornate_lette.move_to_end(chiave)
+            return pronte
+    per_giornata: dict[int, list[tuple[datetime | None, bool]]] = {}
+    for g, testo, giocata in righe:
+        per_giornata.setdefault(g, []).append((_data(testo) if testo else None, bool(giocata)))
+    pronte = {}
+    for g in sorted(per_giornata):
+        partite = tuple(per_giornata[g])
+        pronte[g] = (partite, tuple(d for d, giocata in partite if not giocata), turno.inizio(d for d, _ in partite))
+    with _blocco_giornate:
+        _giornate_lette[chiave] = pronte
+        while len(_giornate_lette) > MAX_GIORNATE_LETTE:
+            _giornate_lette.popitem(last=False)
+    return pronte
+
+
 def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | None = None) -> int | None:
     """La giornata in corso o, se non ce n'è una, la prossima. È la prima con anche una sola partita da giocare nel suo turno (regola
     unica in turno.py, come la scadenza) e non passata da più di MARGINE_RISULTATI: così la domenica sera e i posticipi del lunedì
@@ -110,17 +144,12 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
     partita da giocare prima dell'inizio del turno della giornata dopo. Metà giornata giocata e il resto rinviato a settimane dopo
     (per turno.py il turno diventa il recupero, dopo la giornata dopo): si passa alla giornata dopo e non si torna indietro quando
     il recupero si avvicina. Anticipi lontani (Supercoppa, coppe, turno.lontano): il turno viene prima della giornata dopo, quindi
-    la giornata resta «da giocare» finché il suo turno ha partite da cominciare. Le giornate normali non hanno partite così."""
+    la giornata resta «da giocare» finché il suo turno ha partite da cominciare. Le giornate normali non hanno partite così.
+    Le date già convertite e l'inizio di ogni turno vengono da `_giornate_della_stagione` (in memoria finché le righe sono quelle)."""
     adesso = adesso or _adesso()
     da = adesso - MARGINE_RISULTATI        # una partita non giocata e cominciata prima: calendario fermo, non tiene la giornata
-    per_giornata: dict[int, list[tuple[datetime | None, bool]]] = {}
-    for g, testo, giocata in db.execute("SELECT giornata, data, giocata FROM partite WHERE stagione = ? ORDER BY giornata",
-                                        (stagione,)):
-        per_giornata.setdefault(g, []).append((_data(testo) if testo else None, bool(giocata)))
-    for g in sorted(per_giornata):
-        partite = per_giornata[g]
-        aperte = [d for d, giocata in partite if not giocata]
-        inizio = turno.inizio(d for d, _ in partite)
+    per_giornata = _giornate_della_stagione(db, stagione)
+    for g, (partite, aperte, inizio) in per_giornata.items():
         if inizio is None:
             if len(aperte) >= 5:
                 return g
@@ -129,7 +158,8 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
             continue
         # partite giocate settimane prima del turno (non anticipi di turno.py): conta dove cadono le partite da giocare
         giocate_prima = any(d and giocata and d < inizio and not turno.anticipo(d, inizio) for d, giocata in partite)
-        dopo = turno.inizio(d for d, _ in per_giornata.get(g + 1, ()))
+        successiva = per_giornata.get(g + 1)
+        dopo = successiva[2] if successiva else None          # l'inizio del turno della giornata dopo (None se non c'è)
         if giocate_prima and dopo is not None and not any(d and da <= d < dopo for d in aperte):
             continue                       # metà giornata giocata: le partite che restano sono recuperi dopo la giornata dopo
         return g
