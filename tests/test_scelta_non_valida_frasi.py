@@ -32,9 +32,9 @@ def _promemoria(tmp_path, monkeypatch, salvata, quando, stato="p.json"):
 def test_promemoria_un_ora_dice_che_la_formazione_salvata_non_vale(tmp_path, monkeypatch, salvata):
     r, mandati = _promemoria(tmp_path, monkeypatch, salvata, datetime(2026, 10, 28, 17, 35))
     testo = mandati[0][1]
-    assert len(r) == 1 and mandati[0][0] == "SchieraXI · formazione tra un'ora"
-    assert testo.startswith("Giornata 9 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30), ma quella che hai salvato "
-                            "non è più valida: salvane un'altra.")
+    assert len(r) == 1 and mandati[0][0] == "SchieraXI · formazione non più valida"     # il fatto in testa e nel titolo (#906)
+    assert testo.startswith("La formazione che hai salvato non è più valida: salvane un'altra. "
+                            "Giornata 9 · 9ª di Serie A: si chiude tra circa un'ora, alle 18:30.")
     assert "Consigliato: 4-4-2, 71,2 punti attesi." in testo                    # il consiglio resta, serve a sceglierne un'altra
     assert "L'hai inserita" not in testo
 
@@ -42,9 +42,9 @@ def test_promemoria_un_ora_dice_che_la_formazione_salvata_non_vale(tmp_path, mon
 @pytest.mark.parametrize("salvata", NON_VALIDE_9)
 def test_promemoria_ultimi_minuti_dice_che_la_formazione_salvata_non_vale(tmp_path, monkeypatch, salvata):
     r, mandati = _promemoria(tmp_path, monkeypatch, salvata, datetime(2026, 10, 28, 18, 20))
-    assert len(r) == 1 and mandati[0][0] == "SchieraXI · ultimi minuti per la formazione"
-    assert mandati[0][1] == ("Giornata 9 · 9ª di Serie A: la formazione si chiude alle 18:30 e quella che hai salvato non è più valida. "
-                             "Salvane un'altra.")
+    assert len(r) == 1 and mandati[0][0] == "SchieraXI · formazione non più valida"
+    assert mandati[0][1] == ("La formazione che hai salvato non è più valida: salvane un'altra. "
+                             "Giornata 9 · 9ª di Serie A: si chiude alle 18:30.")
 
 
 def test_promemoria_senza_scelta_resta_come_prima(tmp_path, monkeypatch):
@@ -65,7 +65,7 @@ def test_le_frasi_nuove_hanno_italiano_e_inglese():
         it, en = NOTIFICHE[chiave]
         assert "non è più valida" in it and "no longer valid" in en
         f = F(chiave, giornata=nome_giornata(9, 6, avviso=True), ora="18:30")                  # la giornata con i due numeri (#299)
-        assert str(f).startswith("Giornata 6 · 9ª di Serie A: ") and f.in_lingua("en").startswith("Matchday 6 · Serie A matchday 9: ")
+        assert "Giornata 6 · 9ª di Serie A: " in str(f) and "Matchday 6 · Serie A matchday 9: " in f.in_lingua("en")
         assert "{" not in str(f) and "{" not in f.in_lingua("en") and "18:30" in f.in_lingua("en")
     assert "dafare.formazione_non_valida" in CATALOGO
 
