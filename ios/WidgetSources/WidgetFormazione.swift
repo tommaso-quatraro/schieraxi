@@ -42,6 +42,8 @@ struct CampoMini: View {
                             }
                             .frame(maxWidth: .infinity)
                         }
+                        // il volto non ha nome (`AvatarMini` è nascosto a VoiceOver): senza, il medio aveva 11 collegamenti muti (#882)
+                        .accessibilityLabel(g.nome)
                     }
                 }
             }
@@ -98,7 +100,7 @@ struct VistaFormazione: View {
         case .systemMedium: medio(w, f, tit)
         case .systemLarge: grande(w, f, tit)
         case .systemExtraLarge: grandissimo(w, f, tit)
-        case .accessoryCircular: circolare(f)
+        case .accessoryCircular: circolare(w, f)
         case .accessoryRectangular: rettangolare(w, f)
         // «3-4-3 · 72,7 punti»: si perdono parole intere, mai il modulo (#819)
         case .accessoryInline: RigaInLinea(f.formeInLinea, icona: "sportscourt")
@@ -218,12 +220,6 @@ struct VistaFormazione: View {
         }
     }
 
-    /// La frase intera della testata per VoiceOver (sullo schermo la testata si accorcia: «Giornata 8», «73,7 attesi»).
-    private func testataParlata(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> String {
-        [f.modulo ?? "—", ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true)[0], f.intervallo?.testo, w.nomeGiornata?.voce]
-            .compactMap { $0 }.joined(separator: ", ")
-    }
-
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
         VStack(spacing: 8) {
             testataGrande(w, f, extraLarge: false)
@@ -254,7 +250,7 @@ struct VistaFormazione: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(testataParlata(w, f))
+        .accessibilityLabel(f.testataParlata(giornata: w.nomeGiornata))
     }
 
     /// Sotto il campo del grande e dell'extra large: «2 da controllare» a sinistra e «7 in panchina» a destra (#871: l'extra
@@ -347,11 +343,15 @@ struct VistaFormazione: View {
 
     // MARK: Schermata di blocco
 
-    private func circolare(_ f: FormazioneWidget) -> some View {
+    /// Modulo e punti attesi; VoiceOver legge la frase intera della testata, con «punti attesi» e la giornata (#882: leggeva
+    /// «3-4-3, 72,7»).
+    private func circolare(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
         CerchioWidget {
             Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
             Text(punti(f)).font(.caption2).monospacedDigit()
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(f.testataParlata(giornata: w.nomeGiornata))
     }
 
     /// La giornata sulla prima riga, come il rettangolo di Prossima giornata, poi «Formazione 3-4-3», i punti attesi e «2 da

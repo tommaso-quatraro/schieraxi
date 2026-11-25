@@ -40,7 +40,8 @@ STATI = "\n".join([_pezzo("const STATO_PARTITA =", "// Le regole riconosciute"),
                    _pezzo("// Lo stato di un giocatore, dal codice", "// Il nome del club"), _riga("nomeClub"),
                    _pezzo("const SOGLIA_GIOCA", "// Il numero della giornata, uguale")])
 RIGHE = _pezzo("const nomeFvAtteso", "// ---------------------------------------------------------------- navigazione")
-COGNOME = _riga("cognome")
+# con la pedina: il cognome sotto il disco e il ruolo per intero, che i lettori di schermo sentono dopo il nome (#882)
+COGNOME = "\n".join([_riga("cognome"), _riga("NOME_RUOLO_1")])
 
 
 def _esegui(chiamata: str, *pezzi: str, lingua: str = "it"):
@@ -73,8 +74,8 @@ def test_sulla_pedina_gioca_solo_sotto_l_80():
     assert "gioca" not in _visibile(arrotondato)                           # 79,6% si legge «80%»: non è sotto l'80%
     assert '<span class="gioca medio" aria-hidden="true">gioca 65%</span>' in medio
     assert '<span class="gioca basso" aria-hidden="true">gioca 30%</span>' in basso
-    # i lettori di schermo sentono le stesse cose che si vedono
-    assert _testo(sicuro).endswith("Rossi L., fantavoto atteso 6,8") and "gioca al 65 per cento" in _testo(medio)
+    # i lettori di schermo sentono le stesse cose che si vedono, e il ruolo dopo il nome (#882): sul campo lo dice solo la fila
+    assert _testo(sicuro).endswith("Rossi L., Centrocampista, fantavoto atteso 6,8") and "gioca al 65 per cento" in _testo(medio)
 
 
 @pytest.mark.parametrize("codice, testo", [("titolare", "Probabile titolare"), ("ballottaggio", "In ballottaggio"),
@@ -133,7 +134,7 @@ def test_a_partita_cominciata_sulla_pedina_il_voto_preso_o_lo_stato():
     assert _visibile(a) == "7,5 Rossi" and 'class="pedina"' in a
     assert _visibile(b) == "6,8 Rossi Voto in arrivo" and 'class="pedina attesa"' in b               # il disco vuoto: l'atteso, non un voto
     assert _visibile(c) == "6,8 Rossi sab 31 20:45" and 'class="pedina attesa"' in c                 # formazione chiusa: quando gioca
-    assert _testo(c).endswith("Rossi L., fantavoto atteso 6,8, sab 31 20:45")                        # e i lettori di schermo lo stesso: niente «gioca al 40»
+    assert _testo(c).endswith("Rossi L., Centrocampista, fantavoto atteso 6,8, sab 31 20:45")                        # e i lettori di schermo lo stesso: niente «gioca al 40»
 
 
 # ---------------------------------------------------------------- il perché di un titolare
