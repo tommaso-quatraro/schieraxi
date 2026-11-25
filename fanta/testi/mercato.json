@@ -71,6 +71,10 @@
     "it": "Statistiche avanzate",
     "en": "Advanced statistics"
   },
+  "mercato.dati_fino_al": {
+    "it": "Dati fino al {data}.",
+    "en": "Data up to {data}."
+  },
   "mercato.quot": {
     "it": "quotazione {n}",
     "en": "price {n}"

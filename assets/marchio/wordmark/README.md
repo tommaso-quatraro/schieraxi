@@ -36,7 +36,7 @@ python -m venv .venv-marchio
 .venv-marchio\Scripts\python.exe assets\marchio\wordmark\genera.py --sito --og
 ```
 - senza opzioni rifà solo i due SVG qui;
-- `--sito` riscrive il nome in `sito/index.html`, `sito/en/index.html`, `sito/404.html`, `sito/offline.html`;
+- `--sito` riscrive il nome in `sito/index.html`, `sito/en/index.html`, `sito/404.html`;
 - `--og` rifà `sito/img/og.png` (serve Chrome o Edge);
 - `--swift PERCORSO` scrive la View SwiftUI `WordmarkSchieraXI` (forme disegnate, niente font nell'app).
 

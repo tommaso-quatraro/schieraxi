@@ -129,7 +129,9 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   del tema e pulizia del service worker di prima), `font/` (Archivo semi-stretto in woff2, licenza `OFL.txt` accanto). Dal
   20/11/2026 non si installa come app: niente manifest. `sw.js` resta solo per togliere il service worker di prima a chi
   l'aveva (svuota le copie e si toglie da solo; va lasciato); se una vecchia copia di `installa.js` nella cache del browser lo
-  registra di nuovo, lo toglie `js/principale.js`. Niente script né stili
+  registra di nuovo, lo toglie `js/principale.js`. Pagina di servizio: solo `404.html` (dal 25/11/2026 niente `offline.html`:
+  il sito non salva nulla). `img/schermata-larga.png` è la foto del README: testata e prima schermata a 1280 px, tema chiaro,
+  fatta con Chrome senza finestra (non c'è uno script apposta). Niente script né stili
   dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`). Grafica della web app «direzione B» (#355): fili al posto
   delle carte, Archivo per titoli e numeri, niente gradienti né ombre; esempi con nomi e numeri inventati che tornano (i test li rifanno).
   Il nome «SchieraXI» è in tracciati SVG: simboli `#wm` (grande) e `#wm-c` (compatto, l'unico mostrato, nella barra in alto) in cima a

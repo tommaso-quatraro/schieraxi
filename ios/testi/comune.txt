@@ -20,5 +20,5 @@ comune.rete_no
 comune.server_non_risponde
 
 # La striscia dei dati salvati quando il server ha risposto con un errore (DatiVecchi.frase): il motivo in testa e la nota fra
-# parentesi, come la web (comune.cache_errore in app.js), #830
+# parentesi, come la web (comune.cache_errore in app.js), #830; nella nota il giorno e l'ora della copia, #845
 comune.cache_errore

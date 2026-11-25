@@ -69,7 +69,7 @@ def test_la_sostituzione_usa_le_parole_del_posto():
 
 # ---------------------------------------------------------------- #284: partita rinviata
 STUB_PEDINA = ("const cognome = x => x.nome; const perc = x => `${Math.round((x || 0) * 100)}%`; const quando = s => String(s);")
-PEDINA = "\n".join([_pezzo("const STATO_PARTITA =", "// Le regole riconosciute"),
+PEDINA = "\n".join([_riga("NOME_RUOLO_1"), _pezzo("const STATO_PARTITA =", "// Le regole riconosciute"),
                     _pezzo("// Lo stato di un giocatore, dal codice", "// Il nome del club"),
                     _pezzo("const SOGLIA_GIOCA", "// Il numero della giornata, uguale")])
 

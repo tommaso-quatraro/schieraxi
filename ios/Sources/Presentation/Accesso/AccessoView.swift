@@ -421,14 +421,20 @@ struct SchermataAccesso: View {
     private var linkSecondario: some View {
         switch modulo.passo {
         case .accedi:
-            Button(TestiAccesso.passwordDimenticata) { vai(.recupera) }.frame(minHeight: Tema.areaTocco)
+            Button { vai(.recupera) } label: { etichettaSecondaria(TestiAccesso.passwordDimenticata) }
         case .recuperoCodice, .recuperoEmail, .recuperoEmailCodice:
-            Button(TestiAccesso.tornaAllAccesso) { vai(.accedi) }.frame(minHeight: Tema.areaTocco)
+            Button { vai(.accedi) } label: { etichettaSecondaria(TestiAccesso.tornaAllAccesso) }
         case .verificaIscrizione:
-            Button("Ricomincia") { modulo.iscrizione = nil; modulo.codiceEmail = ""; errore = nil }.frame(minHeight: Tema.areaTocco)
+            Button { modulo.iscrizione = nil; modulo.codiceEmail = ""; errore = nil } label: { etichettaSecondaria("Ricomincia") }
         case .registra:
             EmptyView()
         }
+    }
+
+    /// La scritta di un collegamento sotto il pulsante, con i 44 punti dentro l'etichetta: messi fuori dal pulsante allargavano la
+    /// riga ma non la zona da toccare (#882).
+    private func etichettaSecondaria(_ testo: String) -> some View {
+        Text(testo).frame(minHeight: Tema.areaTocco).contentShape(Rectangle())
     }
 
     private func vai(_ s: Scheda) {
