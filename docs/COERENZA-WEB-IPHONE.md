@@ -94,13 +94,15 @@ Frasi esatte, schermata per schermata (italiano; l'inglese è in `fanta/web/test
 | Stato dei dati, registro delle giornate (giornate perse) | «9ª giornata di Serie A · 2026-27» (`sd.reg_giornata`) |
 | Prova del modello (Diario) | «dalla 5ª alla 10ª giornata di Serie A» |
 
-Avvisi sul telefono (testi del server, `fanta/frasi_avvisi.py`): i titoli non hanno più il numero, la forma intera sta in testa al testo.
-- Cambi nelle probabili: titolo «SchieraXI · cambi nelle probabili», prima riga del testo «Giornata 8 · 11ª di Serie A».
+Avvisi sul telefono (testi del server, `fanta/frasi_avvisi.py`; l'iPhone mostra gli stessi testi dei promemoria, campo
+`testi_promemoria` di Oggi, #906): i titoli non hanno il numero, la forma intera sta nel testo. Quando c'è un fatto che conta
+(un titolare fuori, la formazione non più valida, la spunta mancante) il fatto va in testa al testo e la giornata dopo.
 - Un'ora prima: «Giornata 8 · 11ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 14:50).»
 - Ultimi minuti: «Giornata 8 · 11ª di Serie A: la formazione si chiude alle 14:50. L'hai inserita su Leghe?»
-- Titolare a rischio: «Hai già schierato, ma Rossi non è più sicuro come titolare. Giornata 8 · 11ª di Serie A: la formazione si chiude alle 14:50, controlla.»
-- Riepilogo: titolo «SchieraXI · riepilogo della giornata»; testo «Giornata 7 · 10ª di Serie A: la formazione consigliata ha fatto circa 70,5 punti …» e «Prossima: Giornata 8 · 11ª di Serie A. La formazione si chiude 08/11 alle 14:50.»
-- Formazione pronta: «Giornata 8 · 11ª di Serie A: la formazione è pronta. Apri l'app e controlla le probabili.»
+- Titolare a rischio: «Rossi è infortunato: controlla la formazione che hai salvato. Giornata 8 · 11ª di Serie A: si chiude alle 14:50.» («che hai schierato» con la spunta «L'ho messa»).
+- Formazione non più valida: «La formazione che hai salvato non è più valida: salvane un'altra. Giornata 8 · 11ª di Serie A: si chiude alle 14:50.»
+- Spunta mancante: «Hai messo la formazione nell'app della lega? Se sì, spunta «L'ho messa». Giornata 8 · 11ª di Serie A: si chiude alle 14:50.»
+- Non partono più (#676): «cambi nelle probabili», il riepilogo della giornata, «la formazione è pronta».
 
 Scelte già prese con la forma dell'iPhone (da portare sulla web): «INT @ MIL» nelle righe, «in trasferta contro», il
 cognome senza iniziale sul campo, «Ho schierato la consigliata» nel Diario.
