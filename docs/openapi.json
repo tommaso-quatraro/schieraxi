@@ -2338,7 +2338,7 @@
   },
   "/api/admin/inviti": {
    "get": {
-    "description": "Gli inviti con posti usati e stato (attivo, finito, scaduto, revocato). I codici non si rileggono.",
+    "description": "Gli inviti con posti usati e stato (attivo, finito, scaduto, revocato). I codici non si rileggono. Per quelli aperti la frase\nda mostrare (`dettaglio`, con `dettaglio_frase` per tradurla), null per gli altri.",
     "responses": {
      "200": {
       "content": {
