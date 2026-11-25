@@ -176,6 +176,16 @@ def test_andamento_con_la_partita_rinviata(modo, fatti, stato_cambio, entra):
         assert a["punti_attesi_restanti"] == 0.0
 
 
+def test_andamento_con_tutti_i_giocatori_nella_partita_rinviata_nessuno_ha_giocato():
+    """#895, revisione: se tutti quelli che vanno a punteggio aspettano il recupero, nessuno ha giocato: niente «Hanno giocato tutti
+    tranne A, B… e K», ma la frase sua."""
+    tutti_roma = [g | {"squadra": "roma"} for g in TIT]
+    a = fasi.andamento(tutti_roma, [], PARTITE, {}, {"inter", "milan"}, {}, set(), Regole(), None, rinvii.regola(Regole(), ST, 10))
+    assert a["ancora_da_giocare"] == 0
+    assert (a["situazione"], a["situazione_frase"]) == ("I tuoi giocatori aspettano tutti il recupero.",
+                                                        {"chiave": "in_corso.tutti_recupero", "param": {}})
+
+
 # ---------------------------------------------------------------- giornata finita con un recupero da giocare
 def _db_giornata(tmp_path, recupero_giocato=False, data_recupero="2026-11-30 20:45"):
     from datetime import datetime as dt

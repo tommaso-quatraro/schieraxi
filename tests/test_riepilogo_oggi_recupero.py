@@ -79,3 +79,15 @@ def test_recupero_senza_data_con_aspetta_oggi_aspetta_il_recupero(tmp_path, mond
     _voti(db, [i for i in VOTO if i != 10], ALTRI | LUNEDI_ALTRI)
     o = mondo.oggi(db)
     assert o["punti_fatti"] == 61.0 and [p["casa"] for p in o["recuperi"]] == ["atalanta"]
+
+
+@pytest.mark.parametrize("modo", ["aspetta", "voto_ufficio"])
+def test_la_scelta_sul_rinvio_dice_la_partita_e_i_miei_giocatori(tmp_path, mondo, modo):
+    """#895: il menu della giornata finita («per questa giornata i loro giocatori…») era senza la partita né i giocatori: `rinvio` del
+    riepilogo ha ora `partite` e `miei` come quello di Oggi, con ogni regola (con «voto_ufficio» `recuperi` è vuoto)."""
+    db = _archivio(tmp_path, recupero=(None, 0))
+    _voti(db, [i for i in VOTO if i != 10], ALTRI | LUNEDI_ALTRI)
+    rv = mondo.oggi(db, replace(Regole(), partite_rinviate=modo))["rinvio"]
+    assert (rv["giornata"], rv["modo"]) == (8, modo)
+    assert rv["partite"] == [{"casa": "atalanta", "trasferta": "parma", "data": None}]
+    assert rv["miei"] == [{"id": 10, "nome": "Recupero", "ruolo": "A", "squadra": "atalanta"}]
