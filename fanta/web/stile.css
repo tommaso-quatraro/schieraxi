@@ -156,7 +156,11 @@ b, strong { font-weight: 650; }
    testo nel colore del testo, niente fondo né riquadro. La frase dice già cosa succede: il colore non è l'unico segno */
 .errore { background: none; color: var(--testo); border: 0; border-left: 3px solid var(--rosso); padding: 6px 0 6px 12px; margin-bottom: 16px; }
 .attenzione { background: none; color: var(--testo); border: 0; border-left: 3px solid var(--arancio); padding: 6px 0 6px 12px; margin-bottom: 16px; font-size: var(--t-corpo); }
-.nota { font-size: var(--t-eti); color: var(--testo-2); text-align: center; margin: -6px 0 10px; }
+/* La nota dei dati salvati (#nota-cache), sotto il titolo: come la riga di stato, allineata con la pagina (#864). «Riprova» segue la
+   frase, o va a capo sotto di lei con la scritta sul filo del testo; resta alta 44 px da toccare ma non allarga la riga */
+.nota { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; margin: -6px 0 16px;
+  font-size: var(--t-sec); color: var(--testo-2); line-height: 1.45; }
+.nota > .azione-testo { margin: -8px 0 -8px -8px; }
 .positivo { color: var(--verde); } .negativo { color: var(--rosso); }
 
 /* ---------------------------------------------------------------- testata */
@@ -190,6 +194,9 @@ main > .capo-pagina { animation: none; }                    /* il titolo resta f
 #titolo-pagina:focus { outline: none; }
 .stato-pagina { margin: 2px 0 0; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.45; overflow-wrap: anywhere; }
 .stato-pagina:empty { display: none; }
+/* Server giù: la pagina lo dice già lei, con «Riprova» (la nota della copia salvata, o l'errore al posto della schermata), e la riga
+   non ripete «Server non raggiungibile» (#864) */
+main:has(> #nota-cache [data-riprova], > .errore) .stato-pagina:has(> .stato-offline) { display: none; }
 .stato-pagina > span { display: inline-block; max-width: 100%; }   /* un pezzo («dati del 26 ott 23:55») va a capo intero */
 .stemma-stato { width: 20px; height: 20px; object-fit: contain; vertical-align: -5px; margin-right: 6px; }
 

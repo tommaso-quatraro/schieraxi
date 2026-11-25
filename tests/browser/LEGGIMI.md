@@ -241,7 +241,7 @@ scadenza:
 `test_copia_salvata.py`, la nota della copia salvata quando il server risponde con un errore (#845). Gira solo prima della
 scadenza:
 - copia salvata il 17/11 alle 10:05, riaperta tre giorni dopo con il server che risponde 502: la nota dice «Il server non
-  risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati)», con la data della copia e
+  risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati).», con la data della copia e
   non quella di adesso, e c'è «Riprova». L'iPhone prova la stessa frase per lo stesso istante (`DatiVecchiTests`).
 
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
