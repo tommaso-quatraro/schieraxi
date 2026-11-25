@@ -61,7 +61,8 @@ AVVISO_PRIMA_PREDEFINITO = 60            # da quanti minuti prima della scadenza
 SOGLIA_AVVISO_PUNTI = 1.0                # punti attesi in più perché valga la pena disturbare: sotto è il su e giù normale
 MAX_AVVISI_SCADENZA = 2                  # al massimo per giornata
 MINUTI_MINIMI = 2                        # a meno di 2 minuti dalla chiusura non serve più
-DOPPIONE_PROMEMORIA = 20                 # minuti: subito dopo questo avviso il promemoria della stessa finestra non riparte
+DOPPIONE_PROMEMORIA = 20                 # minuti: subito dopo questo avviso (o un «cambio pronto» sugli stessi titolari, #906) il
+#                                          promemoria della stessa finestra non riparte
 DOPPIONE_CAMBI = 15                      # minuti: se l'avviso sui cambi delle probabili è appena partito, questo non lo ripete
 
 
