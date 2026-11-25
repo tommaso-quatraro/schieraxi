@@ -21,6 +21,9 @@ extension Catalogo {
         /// `pav.permesso_negato_abilita`
         static let permessoNegatoAbilita = "Permesso negato: abilita gli avvisi per l'app nelle impostazioni del telefono"
 
+        /// `pav.avvisi_spiega`
+        static let avvisiSpiega = "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa»."
+
         /// `pav.scegli_file`
         static let scegliFile = "Scegli il file (Excel o CSV)"
     }

@@ -82,7 +82,7 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     }
 
     /// «Avvisi anche per l'app nativa» (Gestione, senza account): si manda il solo `app_nativa`; poi i promemoria del telefono
-    /// tornano in programma, perché con ntfy acceso arriva già quello del server (#906: un solo avviso per telefono).
+    /// tornano in programma, perché con ntfy acceso arriva già quello del server (#906).
     func cambiaAppNativa(_ acceso: Bool) async {
         await salva(SoloAppNativa(app_nativa: acceso), riprogramma: true) { $0.appNativa = acceso }
     }

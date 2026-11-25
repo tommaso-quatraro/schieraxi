@@ -5,8 +5,9 @@ import Testing
 /// I promemoria della scadenza sul telefono con i testi del server (#906, parte B): titolo e testo di `testi_promemoria` di Oggi
 /// così come sono, niente frasi composte nell'app (niente più «modulo consigliato», anche quando il modulo l'ha scelto l'utente);
 /// lista vuota, nessun promemoria; server di prima, o testo di un'ora prima letto troppo presto, il promemoria minimo del catalogo
-/// con l'ora della scadenza (`oggi.prossima_chiude`). Un solo avviso per telefono: se il server manda già i suoi avvisi (notifiche
-/// della web, ntfy per l'app nativa) l'app non programma i suoi. I promemoria del certificato rispettano le ore tranquille.
+/// con l'ora della scadenza (`oggi.prossima_chiude`). Se il server manda già i suoi avvisi proprio a questa app (ntfy per l'app
+/// nativa) l'app non programma i suoi; con le sole notifiche della web sì, perché potrebbero essere sul computer. I promemoria del
+/// certificato rispettano le ore tranquille.
 @Suite("Promemoria con i testi del server")
 struct PromemoriaTestiDelServerTests {
     private let nome = NomeGiornata(serieA: 11, lega: 8)
@@ -85,7 +86,7 @@ struct PromemoriaTestiDelServerTests {
         #expect(elenco.map(\.testo) == [minima, minima])
     }
 
-    @Test("Il server manda già i suoi avvisi a questo telefono: l'app non programma i suoi (un solo avviso per telefono)")
+    @Test("Il server manda già i suoi avvisi a questa app (ntfy per l'app nativa): l'app non programma i suoi")
     func unSoloAvviso() throws {
         let letta = try data("2026-11-28 13:20")
         #expect(try promemoria(testi: testiServer, lettaIl: letta, dalServer: true, adesso: letta).isEmpty)
@@ -107,16 +108,16 @@ struct PromemoriaTestiDelServerTests {
         #expect(Aggiornamento.promemoriaTace(conTesti, lettura: .fresca(chiestaIl: tocco.addingTimeInterval(60)), memoria: m) == false)
     }
 
-    // MARK: un solo avviso per telefono
+    // MARK: avvisi del server all'app nativa
 
-    @Test("Il server manda già gli avvisi a questo telefono con le notifiche della web accese, o con ntfy per l'app nativa",
+    @Test("Il server manda già gli avvisi a questa app solo con ntfy per l'app nativa e il canale; le notifiche della web non contano",
           arguments: zip([
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": false}, "canale": true, "dispositivi": 1}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": true}, "canale": true, "dispositivi": 0}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": true}, "canale": false, "dispositivi": 0}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": false}, "canale": true, "dispositivi": 0}"#,
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true}}"#,
-          ], [true, true, false, false, false]))
+          ], [false, true, false, false, false]))
     func dalServer(json: String, atteso: Bool) throws {
         let stato: StatoAvvisi = try Decodifica.decodifica(Data(json.utf8), snake: false)
         #expect(stato.mandaGiaIlServer == atteso)

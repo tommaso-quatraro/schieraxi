@@ -51,14 +51,14 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Codice.copia, Catalogo.Codice.copiato, Catalogo.Codice.salvato,
         Catalogo.Legale.privacy, Catalogo.Legale.termini, Catalogo.Legale.crediti,
         Catalogo.Imp.account, Catalogo.Imp.aspetto, Catalogo.Imp.informazioni, Catalogo.Imp.avanzate, Catalogo.Imp.sezAvvisi,
-        Catalogo.Imp.avvisiQui, Catalogo.Imp.avvisiQuiAiuto, Catalogo.Imp.lega, Catalogo.Imp.regole, Catalogo.Imp.regoleSub,
+        Catalogo.Imp.avvisiQui, Catalogo.Imp.avvisiQuiAiutoApp, Catalogo.Imp.lega, Catalogo.Imp.regole, Catalogo.Imp.regoleSub,
         Catalogo.Imp.miaSquadraNessuna, Catalogo.Imp.altreSquadre, Catalogo.Imp.informazioniSub, Catalogo.Imp.gestione,
         Catalogo.Imp.aggiornaSpiega,
         // avv.* (Avvisi), pav.* (Primo avvio)
         Catalogo.Avv.nativa, Catalogo.Avv.nativaAiuto, Catalogo.Avv.oreTranq, Catalogo.Avv.permessoNegatoAbilita,
         Catalogo.Avv.notificheDisattivateQuesto,
         Catalogo.Pav.primoAvvio, Catalogo.Pav.salta, Catalogo.Pav.tuttoProntoMister, Catalogo.Pav.haiFinito,
-        Catalogo.Pav.nonSonoRiuscito, Catalogo.Pav.permessoNegatoAbilita,
+        Catalogo.Pav.nonSonoRiuscito, Catalogo.Pav.permessoNegatoAbilita, Catalogo.Pav.avvisiSpiega,
         // parole comuni già nel catalogo (Oggi, #494)
         Catalogo.Shell.chiudi, Catalogo.Shell.impostazioni, Catalogo.Comune.importaRose,
     ]
@@ -179,7 +179,7 @@ struct AccessoImpostazioniDalCatalogoTests {
             "Catalogo.Shell.aggiorna", "Catalogo.Av.stato",
         ]),
         ("Sources/Presentation/Lega/AvvisiDispositivoSezione.swift", [
-            "Catalogo.Imp.sezAvvisi", "Catalogo.Imp.avvisiQui", "Catalogo.Imp.avvisiQuiAiuto", "Catalogo.Avv.oreTranq",
+            "Catalogo.Imp.sezAvvisi", "Catalogo.Imp.avvisiQui", "Catalogo.Imp.avvisiQuiAiutoApp", "Catalogo.Avv.oreTranq",
             "Catalogo.Avv.aveviSceltoOre",
         ]),
         ("Sources/Presentation/Lega/GestionePagina.swift", [

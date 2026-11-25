@@ -41,12 +41,13 @@ struct AvvisiDispositivoTests {
         try #require(UserDefaults(suiteName: "prova-avvisi-qui-\(UUID().uuidString)"))
     }
 
-    /// `dispositivi`: quanti dispositivi hanno le notifiche della web accese (con almeno uno il server manda già gli avvisi).
-    private func server(rotto: Bool = false, dispositivi: Int = 0) -> ServerDiProva {
+    /// `dispositivi`: quanti dispositivi hanno le notifiche della web accese; `appNativa`: «Avvisi anche per l'app nativa» acceso,
+    /// con il canale ntfy (solo allora il server manda già gli avvisi a questa app).
+    private func server(rotto: Bool = false, dispositivi: Int = 0, appNativa: Bool = false) -> ServerDiProva {
         ServerDiProva { metodo, percorso, _ in
             if metodo == "PUT", rotto { throw ErroreApi.rete("spento") }
             if percorso.hasPrefix("/api/avvisi") {
-                return Data(#"{"impostazioni":{"cambi":true,"promemoria_60":false,"promemoria_15":false,"riepilogo":true,"silenzio":true,"silenzio_da":22,"silenzio_a":8},"canale":\#(dispositivi > 0),"dispositivi":\#(dispositivi)}"#.utf8)
+                return Data(#"{"impostazioni":{"cambi":true,"promemoria_60":false,"promemoria_15":false,"riepilogo":true,"silenzio":true,"silenzio_da":22,"silenzio_a":8,"app_nativa":\#(appNativa)},"canale":\#(dispositivi > 0 || appNativa),"dispositivi":\#(dispositivi)}"#.utf8)
             }
             return Data("{}".utf8)
         }
@@ -182,15 +183,19 @@ struct AvvisiDispositivoTests {
         #expect(telefono.riprogrammati == 1, "con ntfy per l'app nativa i promemoria del telefono si tolgono (#906)")
     }
 
-    @Test("Notifiche della web accese: il telefono ricorda che il server manda già gli avvisi, e non programma i suoi (#906)")
+    @Test("Con ntfy per l'app nativa il telefono ricorda che il server manda già gli avvisi; con le sole notifiche della web no (#906)")
     func serverMandaGia() async throws {
-        let conWeb = Telefono()
-        let vm = AvvisiDispositivoViewModel(server: server(dispositivi: 1), telefono: conWeb.avvisi, memoria: try memoria())
+        let conNtfy = Telefono()
+        let vm = AvvisiDispositivoViewModel(server: server(appNativa: true), telefono: conNtfy.avvisi, memoria: try memoria())
         await vm.carica()
-        #expect(conWeb.serverManda.last == true)
-        let senzaWeb = Telefono()
-        let altro = AvvisiDispositivoViewModel(server: server(), telefono: senzaWeb.avvisi, memoria: try memoria())
+        #expect(conNtfy.serverManda.last == true)
+        let conWeb = Telefono()
+        let web = AvvisiDispositivoViewModel(server: server(dispositivi: 1), telefono: conWeb.avvisi, memoria: try memoria())
+        await web.carica()
+        #expect(conWeb.serverManda.last == false, "le notifiche della web possono essere sul computer: i promemoria del telefono restano")
+        let senza = Telefono()
+        let altro = AvvisiDispositivoViewModel(server: server(), telefono: senza.avvisi, memoria: try memoria())
         await altro.carica()
-        #expect(senzaWeb.serverManda.last == false)
+        #expect(senza.serverManda.last == false)
     }
 }

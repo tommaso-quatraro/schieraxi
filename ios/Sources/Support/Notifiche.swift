@@ -3,8 +3,8 @@ import UserNotifications
 /// Promemoria locali di iOS: non servono server né l'account a pagamento di Apple (le notifiche push, invece, sì).
 /// Un'ora e un quarto d'ora prima della scadenza della formazione, solo con «Avvisi su questo dispositivo» acceso (un interruttore
 /// unico come la web, #673 passo 3). Titolo e testo li scrive il server (`testi_promemoria` di Oggi, #906): l'app non compone frasi
-/// sue. Se il server manda già i suoi avvisi a questo telefono (notifiche della web, ntfy per l'app nativa) l'app non programma i
-/// suoi: un solo avviso per telefono. Gli avvisi quando cambia la formazione li manda solo il server (#676, #906).
+/// sue. Se il server manda già i suoi avvisi proprio a questa app (ntfy per l'app nativa) l'app non programma i suoi; con le sole
+/// notifiche della web sì (potrebbero essere sul computer). Gli avvisi quando cambia la formazione li manda solo il server (#676, #906).
 /// Si programmano quando l'app legge la giornata, quando l'interruttore si riaccende e quando cambiano le ore tranquille;
 /// spegnendolo si tolgono subito (vedi `TelefonoAvvisi`).
 enum Notifiche {
@@ -75,8 +75,8 @@ enum Notifiche {
     /// suoni. iOS non sveglia l'app a un'ora precisa, quindi rileggere Oggi vicino alla finestra non si può promettere.
     static let freschezzaTesti: TimeInterval = 2 * 3600
 
-    /// I promemoria della scadenza da programmare (#906). Nessuno se il server manda già i suoi avvisi a questo telefono
-    /// (`dalServer`: un solo avviso per telefono), se il promemoria non serve (`tace`) o con gli avvisi spenti (`attivi`); quelli
+    /// I promemoria della scadenza da programmare (#906). Nessuno se il server manda già i suoi avvisi a questa app
+    /// (`dalServer`: ntfy per l'app nativa, `StatoAvvisi.mandaGiaIlServer`), se il promemoria non serve (`tace`) o con gli avvisi spenti (`attivi`); quelli
     /// nelle ore tranquille o già passati si saltano (`promemoriaConsentiti`). Titolo e testo sono quelli del server (`testi`, la
     /// voce con gli stessi minuti), così come sono; quello di un'ora prima solo se letto da poco (`freschezzaTesti`; `lettaIl`:
     /// quando è stata letta la giornata, nil se non si sa). Senza il testo del server (server di prima, lettura vecchia, spunta appena

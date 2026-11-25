@@ -92,7 +92,8 @@ enum PassoGuidato: String, CaseIterable, Identifiable {
         case .widget:
             return "Tieni premuto sulla Home, tocca + e cerca SchieraXI. Il widget si collega da solo: se dice «Tocca per collegare», toccalo."
         case .avvisi:
-            return "Ti avvisiamo prima della partita se un titolare è in dubbio e quando la formazione consigliata cambia."
+            // solo ciò che fanno i promemoria dell'app (#906): l'avviso quando cambia la formazione lo manda il server alla web
+            return Catalogo.Pav.avvisiSpiega
         }
     }
 

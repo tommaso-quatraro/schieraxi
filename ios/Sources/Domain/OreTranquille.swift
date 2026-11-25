@@ -95,7 +95,7 @@ enum ArchivioMessa {
     }
 }
 
-/// Il server manda già i suoi avvisi a questo telefono? (#906: un solo avviso per telefono.) Si ricorda a ogni lettura di
+/// Il server manda già i suoi avvisi proprio a questa app (ntfy per l'app nativa, #906)? Si ricorda a ogni lettura di
 /// `GET /api/avvisi` (`StatoAvvisi.mandaGiaIlServer`): se sì, l'app non programma i suoi promemoria della scadenza, perché arriva
 /// già quello del server, con lo stesso testo. Senza una lettura (mai riuscita) vale «no»: i promemoria del telefono partono.
 enum ArchivioAvvisiDalServer {
