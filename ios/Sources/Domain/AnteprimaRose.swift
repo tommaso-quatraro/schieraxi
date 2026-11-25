@@ -382,14 +382,16 @@ enum AnteprimaLogica {
         return d.primaImportazione != true && d.nessunaDifferenza != true
     }
 
-    /// «Nuova» accanto al nome della squadra.
+    /// «Nuova» accanto al nome della squadra solo se si aggiunge a rose già salvate, come la web (#873): alla prima importazione le
+    /// squadre sono tutte nuove e l'etichetta su ognuna non dice niente. Senza differenze (server di prima) vale ciò che segna il server.
     static func mostraNuova(_ s: SquadraAnteprima, differenze: Differenze?) -> Bool {
-        s.nuova
+        s.nuova && differenze?.primaImportazione != true
     }
 
-    /// I conti della squadra nella riga da aprire con i nomi dei riconosciuti, invece che in una riga a sé.
+    /// Una squadra senza dubbi sta in due righe, come la web (#873: al telefono dieci squadre erano quattro schermi): il nome e, da
+    /// aprire, i conti con dentro i nomi dei riconosciuti. Con dei dubbi, o senza riconosciuti, i conti restano una riga a sé.
     static func contiNelRipiegato(_ s: SquadraAnteprima) -> Bool {
-        false
+        dubbi(s).isEmpty && s.sicuri > 0
     }
 
     /// La squadra di Serie A per esteso: «juventus» o «JUV» → «Juventus»; se non la conosciamo, com'è.

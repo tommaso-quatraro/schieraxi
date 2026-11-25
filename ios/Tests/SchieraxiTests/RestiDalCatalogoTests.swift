@@ -130,6 +130,10 @@ struct RestiDalCatalogoTests {
                      Catalogo.Comune.riprova],
              frasi: [Catalogo.Imp.oreTranquilleAiuto(a: "§", da: "§")],
              usa: ["Catalogo.Avv.aveviSceltoOre", "Catalogo.Avv.oreTranq", "Catalogo.Imp.avvisiQui", "Catalogo.Imp.sezAvvisi"]),
+        // la riga sotto «Ore tranquille», accese e spente (#873): la scrive il ViewModel
+        Caso(file: "Sources/Presentation/Lega/AvvisiDispositivoViewModel.swift",
+             frasi: [Catalogo.Imp.oreTranquilleAiuto(a: "§", da: "§"), Catalogo.Imp.oreTranquilleSpente(a: "§", da: "§")],
+             usa: ["Catalogo.Imp.oreTranquilleAiuto(", "Catalogo.Imp.oreTranquilleSpente("]),
         Caso(file: "Sources/Presentation/Lega/LegaPagine.swift",
              testi: [Catalogo.Asp.tema, Catalogo.Asp.temaAuto, Catalogo.Asp.temaChiaro, Catalogo.Asp.temaScuro, Catalogo.Imp.aspetto],
              frasi: [Catalogo.Asp.autoSpiega],
