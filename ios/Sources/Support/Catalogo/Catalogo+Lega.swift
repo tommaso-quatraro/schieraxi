@@ -3,12 +3,6 @@
 
 extension Catalogo {
     enum Lega {
-        /// `lega.voce_squadre`
-        static let voceSquadre = "Squadre e rose"
-
-        /// `lega.voce_miasquadra`
-        static let voceMiasquadra = "La mia squadra e rosa"
-
         /// `lega.voce_importa`
         static let voceImporta = "Aggiorna le rose"
 
@@ -39,11 +33,11 @@ extension Catalogo {
         /// `lega.tua_squadra`
         static let tuaSquadra = "La tua squadra"
 
-        /// `lega.tocca_una_squadra`
-        static let toccaUnaSquadra = "Tocca una squadra per vedere la rosa."
-
         /// `lega.importa_prima_rose`
         static let importaPrimaRose = "Importa prima le rose da «Aggiorna le rose»."
+
+        /// `lega.solo_la_tua`
+        static let soloLaTua = "Per ora nella lega c'è solo la tua squadra: le rose delle altre le aggiungi in Impostazioni › Aggiorna le rose."
 
         /// `lega.usa_come_stemma`
         static let usaComeStemma = "Usa come stemma"

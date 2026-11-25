@@ -87,6 +87,9 @@ enum Quando {
     /// «18:30».
     static func ora(_ data: Date) -> String { soloOra.string(from: data) }
 
+    /// «26 ott», ora italiana: `fData` della web con le sue opzioni di sempre (la data della riga sotto il titolo di Giornate).
+    static func giornoEMese(_ data: Date) -> String { giornoMese.string(from: data) }
+
     /// «2026-10-27 18:30» e anche con la «T» di ISO 8601 («2026-10-26T23:55:13», per esempio `ultimo_aggiornamento`):
     /// contano i primi 16 caratteri (secondi e resto si ignorano), sempre ora italiana.
     static func data(_ testo: String?) -> Date? {
