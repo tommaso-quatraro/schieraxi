@@ -276,11 +276,14 @@ const erroreVista = e => senzaRose(e) ? cartaSenzaRose() : funzioneSpenta(e) ? c
 // L'app mostra subito i dati vecchi e li sostituisce con quelli nuovi appena arrivano: si apre senza attese.
 const VERSIONE_CACHE = "3";   // da cambiare quando cambia la forma dei dati: le copie vecchie vengono ignorate
 const chiaveCache = chiave => `cache:${VERSIONE_CACHE}:${stato.account ? `u${stato.account.id}:` : ""}${chiave}`;
-function leggiCache(chiave) {
-  try { const x = JSON.parse(localStorage.getItem(chiaveCache(chiave)) || "null"); return x && x.dati ? x : null; } catch { return null; }
+// La copia ricorda la lingua in cui è stata chiesta: alcune parole le scrive il server in quella lingua (etichette, note). Di norma
+// vale solo nella lingua scelta (#854); `qualsiasi`: anche in un'altra lingua o senza lingua (salvata da una versione di prima), per
+// quando i dati nuovi non arrivano: giocatori e numeri sono gli stessi. Una copia sola per chiave: la nuova prende il posto della vecchia.
+function leggiCache(chiave, qualsiasi = false) {
+  try { const x = JSON.parse(localStorage.getItem(chiaveCache(chiave)) || "null"); return x && x.dati && (qualsiasi || x.lingua === LINGUA) ? x : null; } catch { return null; }
 }
 function salvaCache(chiave, dati) {
-  try { localStorage.setItem(chiaveCache(chiave), JSON.stringify({ quando: Date.now(), dati })); } catch { /* memoria piena o bloccata */ }
+  try { localStorage.setItem(chiaveCache(chiave), JSON.stringify({ quando: Date.now(), lingua: LINGUA, dati })); } catch { /* memoria piena o bloccata */ }
 }
 function rimuoviCache(chiave) {
   try { localStorage.removeItem(chiaveCache(chiave)); } catch { /* niente memoria */ }
@@ -356,6 +359,10 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
       return true;
     } catch (e) {
       if (!ancoraValida(mia)) return false;
+      if (!salvata) {         // niente copia nella lingua scelta: meglio quella di un'altra lingua o senza lingua che una pagina vuota (#854)
+        const altra = leggiCache(chiave, true);
+        if (altra) try { vista = mostra(altra.dati, { daCache: altra.quando }); salvata = altra; } catch { rimuoviCache(chiave); }
+      }
       if (salvata) {
         const b = $("#nota-cache");
         if (!b) return false;
