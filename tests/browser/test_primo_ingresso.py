@@ -161,7 +161,10 @@ def test_con_una_sola_squadra_niente_avviso_sopra_la_formazione_e_le_regole_si_t
     titolo_della_guida(web, "Tutto pronto, Mister")
     testo = " ".join(guida(web).inner_text().split())
     assert "punteggi più comuni" in testo, testo
-    guida(web).get_by_role("link", name="Regole e scadenza").click(timeout=10000)
+    regole = guida(web).get_by_role("link", name="Regole e scadenza")
+    assert min(r["height"] for r in regole.evaluate("a => [...a.getClientRects()].map(r => ({height: r.height}))")) >= 44, \
+        "il collegamento si tocca male: meno di 44 px"
+    regole.click(timeout=10000)
     web.aspetta()
     assert guida(web).count() == 0 or not guida(web).is_visible()
     assert "gruppo=regole" in web.pagina.url

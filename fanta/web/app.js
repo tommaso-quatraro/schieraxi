@@ -2468,6 +2468,9 @@ function vaiGiornate(giornata) {
 }
 function vistaGiornate() {
   if (giornate.chiesta == null) giornate.aperte.clear();              // si riparte con le righe chiuse (da 768 px: la più recente)
+  // Account senza rose (lo dice /api/stato, letto all'avvio): il diario risponderebbe 409 e il browser lo scriverebbe fra gli errori
+  // (#873). Come la Formazione, non lo si chiede: la carta che porta a «Importa le rose».
+  if (stato.info && stato.info.rose_importate === false) { nuovaRichiesta(); pagina(cartaSenzaRose()); return; }
   caricaConCache("giornate", "/api/diario", mostraGiornate, t("giornate.carico"));
 }
 
@@ -2768,16 +2771,22 @@ async function avvisiTelefono() {
     const a = await api("/api/avvisi");
     if (!document.body.contains(dove)) return;
     const o = a.impostazioni;
+    // la riga sotto «Ore tranquille» segue l'interruttore: spento dice che sono spente e la fascia che varrebbe, acceso la fascia (#873:
+    // con l'interruttore spento «Niente avvisi dalle 23 alle 7» le faceva sembrare accese)
+    const fascia = { da: Number(o.silenzio_da), a: Number(o.silenzio_a) };
+    const aiutoOre = acceso => t(acceso ? "imp.ore_tranquille_aiuto" : "imp.ore_tranquille_spente", fascia);
     dove.innerHTML = `${a.ore_tranquille_spente ? `<div class="piccolo" role="status" style="margin:8px 0;font-weight:600">${t("avv.avevi_scelto_ore")}</div>` : ""}
       <div id="notifiche-web" class="avvisi-attesa" aria-busy="true"><p class="debole piccolo riserva" aria-hidden="true">${t("avv.notifiche_dell_app")}</p>
         <p class="debole piccolo">${t("imp.avvisi_controllo")}</p></div>
-      ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, t("imp.ore_tranquille_aiuto", { da: Number(o.silenzio_da), a: Number(o.silenzio_a) }))}`;
+      ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, aiutoOre(o.silenzio))}`;
     notificheWeb(a.dispositivi);
     const ore = $("#av_silenzio");
+    const scriviAiuto = () => { const riga = ore.closest("label").querySelector("small"); if (riga) riga.textContent = aiutoOre(ore.checked); };
     ore.addEventListener("change", async () => {
       const acceso = ore.checked;
+      scriviAiuto();
       try { await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ silenzio: acceso }) }); }
-      catch (e) { ore.checked = !acceso; avviso(e.message, 6000); }
+      catch (e) { ore.checked = !acceso; scriviAiuto(); avviso(e.message, 6000); }
     });
   } catch (e) { if (document.body.contains(dove)) dove.innerHTML = errore(e); }
   finally { dove.removeAttribute("aria-busy"); }                           // ha finito di caricare, bene o male
@@ -3406,6 +3415,21 @@ function testoInvio(scheda, sub) {
   return t("accesso.invio_" + scheda);
 }
 
+// Dopo un accesso l'app si apre come all'avvio senza indirizzo: sull'ultima schermata fra Formazione e Giornate (#873). La pagina
+// d'accesso resta sull'indirizzo di dove si era (per esempio «Il tuo account», dopo «Esci»): una pagina di Impostazioni nell'indirizzo
+// si toglie, Formazione e Giornate restano (il link di un avviso); gli altri campi dell'indirizzo (invito, condivisa) restano.
+function entraNellApp() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (dove({ vista: q.get("vista"), gruppo: q.get("gruppo"), voce: q.get("voce"), rosa: q.get("rosa") }).vista === "impostazioni") {
+      ["vista", "gruppo", "voce", "rosa"].forEach(k => q.delete(k));
+      const resto = q.toString();
+      history.replaceState(null, "", location.pathname + (resto ? `?${resto}` : ""));
+    }
+  } catch { /* niente cronologia: si ricarica com'è */ }
+  location.reload();
+}
+
 // Dopo un errore la password si svuota solo se è stata rifiutata (accesso o codice sbagliato: 401/403). In «Registrati» mai: la
 // password è nuova e il rifiuto riguarda altro (invito non valido o già usato, registrazioni chiuse, #580). Un errore di compilazione
 // (400, 422), una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto.
@@ -3478,13 +3502,13 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     try {
       if (scheda === "accedi") {
         await manda("/api/account/accedi", { nome_utente: v("#ac-nome"), password: v("#ac-pw") });
-        location.reload();
+        entraNellApp();
         return;
       } else if (scheda === "registra" && extra.sub === "verifica") {
         const r = await manda("/api/account/registra/conferma", { email: extra.email, codice: v("#ac-codice-email").trim(), iscrizione: extra.iscrizione || "" });
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
         dimenticaInvito();
-        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
+        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), entraNellApp);
       } else if (scheda === "registra") {
         if (!$("#ac-letto").checked) { const e = new Error(t("accesso.spunta_letto", { eta: ETA_MINIMA })); e.status = 400; throw e; }       // controllo locale: la password resta
         const corpo = { nome_utente: v("#ac-nome"), password: v("#ac-pw"), invito: v("#ac-invito"), accetto_termini: true };      // la casella è spuntata (controllo qui sopra)
@@ -3494,7 +3518,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         if (r && r.verifica_email) { mostraAccesso("", "registra", { sub: "verifica", email, iscrizione: r.iscrizione || "" }); return; }   // l'account nasce col codice (legato a questa richiesta)
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
         dimenticaInvito();
-        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
+        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), entraNellApp);
       } else if (extra.sub === "email") {
         const email = v("#ac-email").trim();
         await manda("/api/account/recupero-email", { email });
@@ -3601,7 +3625,7 @@ async function gestisciRitornoGoogle(rit, dentro) {
   if (!rit.verificatore || !rit.codice) { fallito(t("social.altro_browser")); return; }
   try {
     const r = await api("/api/account/social/scambio", { method: "POST", body: JSON.stringify({ codice: rit.codice, verificatore: rit.verificatore }), timeout: 30000 });
-    if (r && r.stato === "ok") { location.reload(); return; }
+    if (r && r.stato === "ok") { entraNellApp(); return; }
     if (r && r.stato === "nuovo") { mostraAccesso(); mostraNuovoGoogle(r); return; }
     if (r && (r.stato === "collegato" || r.stato === "riconfermato")) {
       if (r.accessi) stato.accessi = r.accessi;
@@ -3641,7 +3665,7 @@ function mostraNuovoGoogle(r, messaggio = "") {
       await api("/api/account/social/completa", { method: "POST", timeout: 30000,
         body: JSON.stringify({ iscrizione: r.iscrizione, nome_utente: $("#ac-nome").value, invito: $("#ac-invito") ? $("#ac-invito").value : "", accetto_termini: true }) });
       dimenticaInvito();
-      location.reload();
+      entraNellApp();
     } catch (e) {
       mostra(erroreGoogle(e));
       invia.disabled = false; invia.removeAttribute("aria-busy");
