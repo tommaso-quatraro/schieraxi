@@ -177,7 +177,7 @@ final class Navigazione: ObservableObject {
 
     /// Si è usciti dall'account (anche per la sessione scaduta): un arrivo da fuori già aperto non conta più, così al prossimo
     /// accesso la guida può partire da sola. Un file o un'immagine ancora da aprire restano: si aprono dopo l'accesso.
-    func uscitoDallAccount() {
+    func uscitoDallAccount(memoria: UserDefaults = .standard) {
         controllaFineArrivo(importaAperta: false)
     }
 

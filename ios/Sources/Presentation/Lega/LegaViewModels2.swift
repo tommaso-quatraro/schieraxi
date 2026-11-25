@@ -22,6 +22,15 @@ final class ImportaExcelViewModel: ViewModelBase {
     @Published var sostituisciTutto = false
     @Published var testoRose = ""
 
+    /// Il titolo della pagina.
+    var titolo: String { Catalogo.Lega.voceImporta }
+    /// La frase in cima.
+    var spiegazione: String { Catalogo.Lega.esportaRoseExcel }
+    /// Il primo caricamento delle rose.
+    var primoCaricamento: Bool { false }
+    /// Legge se le rose sono già salvate.
+    func leggiRoseSalvate() async {}
+
     /// L'anteprima da controllare (nil = si sta ancora scegliendo cosa importare, o si è già salvato).
     @Published private(set) var anteprima: AnteprimaRose?
     /// Un messaggio sopra l'anteprima (le rose sono cambiate nel frattempo e l'anteprima è stata rifatta).

@@ -158,6 +158,11 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
         await salva(fatti: [], saltati: restanti, chiuso: false)
     }
 
+    /// «Importa le rose»: la guida si chiude per la pagina delle rose.
+    func versoLeRose() async {
+        await piuTardi()
+    }
+
     /// Fine del percorso: non si riapre più da solo.
     func termina() async {
         lasciata = true
