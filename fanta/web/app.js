@@ -541,8 +541,12 @@ function nomeGiornata(lega, serieA) {
   return n ? t("testata.giornata", { n }) : "";
 }
 // «la 8ª» si dice «l'8ª» («dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una vocale, fra 1 e 38
-// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server.
-const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
+// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server,
+// e in più l'articolo con la maiuscola in testa («Dalla 8ª» → «Dall'8ª», il menu della prima giornata, #842).
+const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b([Ll]a|[Aa]lla|[Dd]alla|[Dd]ella|[Nn]ella|[Ss]ulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
+// Una voce del menu «Da quale giornata di Serie A è partita la lega?» (Regole e scadenza, primo avvio): «Dalla 1ª, con il campionato»,
+// «Dalla 2ª», «Dall'8ª».
+const vocePrimaGiornata = g => (g === 1 ? t("pav.prima_uno") : elidiOrdinali(t("pav.prima_n", { n: g })));
 
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
 // «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo
@@ -3091,7 +3095,7 @@ async function vistaRegole() {
       <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
         <select class="campo-testo" id="tempi-scadenza">${opzioniScadenza(Number(r.scadenza_minuti ?? 0))}</select></label>
       <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
-        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(g === 1 ? t("pav.prima_uno") : t("pav.prima_n", { n: g }))}</option>`).join("")}</select></label>
+        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select></label>
       <div class="debole piccolo">${t("regole.prima_giornata_conta")}</div>
     </div>
 
