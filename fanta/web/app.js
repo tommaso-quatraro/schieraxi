@@ -1142,7 +1142,7 @@ function riepilogoGiornata(r) {
   const recuperi = Array.isArray(r.recuperi) ? r.recuperi : [];
   const conPartite = !!rv && Array.isArray(rv.partite) && rv.partite.length > 0;
   const titolo = rv ? t(conPartite && rv.partite.length > 1 ? "oggi.rinvio_titolo_giornata_n" : "oggi.rinvio_titolo_giornata_1",
-    { g: nomeGiornata(rv.giornata_lega ?? r.giornata_lega, rv.giornata ?? r.giornata) }) : "";
+    { g: nomeGiornata(r.giornata_lega, r.giornata) }) : "";               // la giornata del rinvio è quella del riepilogo
   return `<div class="tg-finita" id="oggi-riepilogo"><div>
       <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
       <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
