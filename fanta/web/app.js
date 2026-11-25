@@ -1490,15 +1490,16 @@ const slugQualunque = s => SIGLE[s] ? s : SIGLE[normNome(s)] ? normNome(s) : s;
 // ---------------------------------------------------------------- scheda giocatore (pannello)
 // Gli ultimi 5 voti in pallini e l'andamento: quello lo decide il server (`andamento` di /api/giocatore, fanta/scheda.py, #895),
 // qui solo la parola del catalogo e la freccia. Un valore che non conosciamo, o un server di prima senza il campo: niente andamento.
-const ANDAMENTO = { in_crescita: ["↗", "positivo"], in_calo: ["↘", "negativo"], stabile: ["→", ""], pochi_dati: ["→", ""] };
+const ANDAMENTO = { in_crescita: ["↗", "positivo", "mercato.in_crescita"], in_calo: ["↘", "negativo", "mercato.in_calo"],
+  stabile: ["→", "", "mercato.stabile"], pochi_dati: ["→", "", "mercato.pochi_dati"] };
 function formaGiocatore(voti, andamento) {
   const ultimi = voti.slice(-5);
   if (!ultimi.length) return null;
   const colore = v => v == null ? "sv" : v >= 7 ? "alto" : v >= 6 ? "medio" : "basso";
   const pallini = `<div class="pallini">${ultimi.map(v => `<i class="${colore(v.fv)}" title="${nomeGiornata(null, v.giornata)}">${v.fv == null ? t("mercato.sv") : num(v.fv, 1)}</i>`).join("")}</div>`;
   if (!Object.hasOwn(ANDAMENTO, andamento || "")) return { pallini, testo: "" };
-  const [freccia, classe] = ANDAMENTO[andamento];
-  return { pallini, freccia, testo: t("mercato." + andamento), classe };
+  const [freccia, classe, chiave] = ANDAMENTO[andamento];
+  return { pallini, freccia, testo: t(chiave), classe };
 }
 
 // Grafico a linee: fantavoto (verde) e voto (azzurro) giornata per giornata; "sv" dove non ha preso voto.
