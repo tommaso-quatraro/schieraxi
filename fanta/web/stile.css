@@ -900,8 +900,9 @@ html[data-calmo] .marchio.muove .capitano { animation: capitano-calmo 2.2s ease-
   background: var(--sfondo); border-top: 1px solid var(--filo); }
 #foglio-contenuto .pa-corpo .ar-piede > .pulsanti { margin-top: 0; }
 #foglio-contenuto .pa-corpo .ar-piede #ar-msg > * { margin: 0 0 10px; }
-/* con il Tab la riga che prende il fuoco si ferma sopra il piede, non sotto (alto circa 95 px senza messaggi) */
-.foglio-corpo:has(.pa-corpo .ar > .ar-piede) { scroll-padding-bottom: 120px; }
+/* con il Tab la riga che prende il fuoco si ferma sopra il piede, non sotto: --alto-piede è la sua altezza vera, anche con un messaggio
+   (anteprima.js); senza ResizeObserver vale quella con un messaggio di due righe */
+.foglio-corpo:has(.pa-corpo .ar > .ar-piede) { scroll-padding-bottom: var(--alto-piede, 170px); }
 
 /* ---------------------------------------------------------------- anteprima delle rose (anteprima.js): controlla, poi salva */
 .ar-nascosto { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

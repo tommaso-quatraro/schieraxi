@@ -202,14 +202,25 @@ def test_al_telefono_un_salvataggio_che_non_riesce_si_vede_sopra_conferma(web, r
     assert in_vista_e_toccabile(web, guida(web).get_by_role("button", name="Conferma e salva"))
 
 
-def test_al_telefono_con_il_tasto_tab_nessuna_squadra_finisce_sotto_la_barra(web):
-    """Con la tastiera (Tab) ogni riga delle squadre che prende il fuoco sta sopra la barra ferma di «Conferma e salva»."""
+MESSAGGIO_LUNGO = {"detail": "Hai fatto troppe importazioni oggi: puoi rifarlo domani, quando il conto delle importazioni riparte da zero."}
+
+
+@pytest.mark.parametrize("con_messaggio", [False, True])
+def test_al_telefono_con_il_tasto_tab_nessuna_squadra_finisce_sotto_la_barra(web, con_messaggio):
+    """Con la tastiera (Tab) ogni riga delle squadre che prende il fuoco sta sopra la barra ferma di «Conferma e salva», anche
+    quando la barra è più alta perché ha sopra un messaggio di due righe (un salvataggio rifiutato)."""
     solo_prima(web)
     lega = account_senza_rose(web)
-    anteprima_finta(web, lega, 10)
+    anteprima_finta(web, lega, 10, (429, MESSAGGIO_LUNGO) if con_messaggio else None)
     web.apri("/", larghezza=390)
     titolo_della_guida(web, "Le rose")
     controlla_le_rose(web)
+    if con_messaggio:
+        guida(web).get_by_role("button", name="Conferma e salva").click(timeout=10000)
+        messaggio = guida(web).locator('[role="alert"]:not(:empty)')
+        messaggio.wait_for(timeout=10000)
+        assert messaggio.bounding_box()["height"] > 40, "il messaggio di prova deve andare su due righe"
+        guida(web).locator("#ar-titolo").focus()
     coperte = []
     for _ in range(30):
         web.pagina.keyboard.press("Tab")
