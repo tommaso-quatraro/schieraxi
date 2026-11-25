@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.552",
+    "data": "2026-11-25T22:21:18",
+    "titolo": "Cambio di lingua: niente più parole della lingua di prima mentre arrivano i dati",
+    "voci": [
+      "Web, dopo il passaggio da italiano a inglese (o il contrario) in Impostazioni › Aspetto: Formazione e Giornate aspettano i dati nella lingua nuova. Prima mostravano per un attimo quelli tenuti sul dispositivo, con stati come «In dubbio» ancora in italiano nella pagina in inglese. Se i dati nuovi non arrivano (per esempio senza rete) restano quelli tenuti sul dispositivo, con la riga che lo dice e «Riprova», come sempre."
+    ],
+    "tecnico": [
+      "Web: la copia in localStorage (salvaCache) scrive anche la lingua con cui è stata chiesta. All'apertura caricaConCache mostra solo la copia della lingua di adesso (LINGUA); se la lettura non riesce e quella copia non c'è, mostra la copia di un'altra lingua o senza lingua (leggiCache(chiave, true)) con la nota e «Riprova», e i dati nuovi la sostituiscono appena arrivano. Le copie già salvate, senza lingua: con la rete si aspettano i dati nuovi una volta, senza rete si mostrano. Chiavi, VERSIONE_CACHE e rotte non cambiano. L'app per iPhone non ha il difetto: chiede sempre i testi in italiano (LinguaServer)."
+    ]
+  },
+  {
     "versione": "1.551",
     "data": "2026-11-25T22:11:05",
     "titolo": "Dati salvati: la riga in alto dice di quando sono",
