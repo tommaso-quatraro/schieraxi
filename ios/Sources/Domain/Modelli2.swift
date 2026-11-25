@@ -112,13 +112,14 @@ struct StatoAvvisi: Decodable {
         oreTranquilleSpente = (try? c.decodeIfPresent(Bool.self, forKey: .oreTranquilleSpente)) ?? false
     }
 
-    /// Il server manda già i suoi avvisi proprio a questa app (#906)? Sì solo con «Avvisi anche per l'app nativa» acceso e un canale
-    /// (`app_nativa` e `canale`: ntfy, il cui tocco apre questa app): allora l'app non programma i suoi promemoria della scadenza,
-    /// che arriverebbero due volte. Le notifiche della web accese (`dispositivi`) non contano: l'app non sa su quale dispositivo
-    /// sono (con le sole notifiche del computer il telefono perderebbe i promemoria), e il doppione web e app sullo stesso telefono
-    /// resta possibile, come dice l'aiuto di quell'interruttore. Senza i campi (server di prima): no.
+    /// Il server manda già i suoi avvisi proprio a questa app (#906)? Sì solo con «Avvisi anche per l'app nativa» acceso, un canale
+    /// e nessun dispositivo con le notifiche della web (`app_nativa`, `canale`, `dispositivi` 0): sul server `canale` è vero anche
+    /// con le sole notifiche della web, quindi vuol dire ntfy (il cui tocco apre questa app) solo senza dispositivi. Allora l'app non
+    /// programma i suoi promemoria della scadenza, che arriverebbero due volte. Con le notifiche della web accese li programma: l'app
+    /// non sa su quale dispositivo sono (con quelle del solo computer il telefono perderebbe i promemoria), e il doppione web e app
+    /// sullo stesso telefono resta possibile, come dice l'aiuto di quell'interruttore. Senza i campi (server di prima): no.
     var mandaGiaIlServer: Bool {
-        impostazioni.app_nativa == true && canale == true
+        impostazioni.app_nativa == true && canale == true && (dispositivi ?? 0) == 0
     }
 }
 

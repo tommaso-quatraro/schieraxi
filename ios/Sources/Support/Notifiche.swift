@@ -70,24 +70,25 @@ enum Notifiche {
         return elenco
     }
 
-    /// Il testo del server del promemoria di un'ora prima può avere numeri calcolati alla lettura di Oggi («Consigliato: 4-3-3, 71,2
-    /// punti attesi», chi è da controllare): si usa solo se la giornata è stata letta al massimo due ore prima che il promemoria
-    /// suoni. iOS non sveglia l'app a un'ora precisa, quindi rileggere Oggi vicino alla finestra non si può promettere.
+    /// I testi del server dicono numeri e fatti del momento della lettura di Oggi («Consigliato: 4-3-3, 71,2 punti attesi», «Rossi
+    /// parte dalla panchina», «La formazione che hai salvato non è più valida»): un promemoria li usa solo se la giornata è stata
+    /// letta al massimo due ore prima che suoni. iOS non sveglia l'app a un'ora precisa, quindi rileggere Oggi vicino alla finestra
+    /// non si può promettere.
     static let freschezzaTesti: TimeInterval = 2 * 3600
 
     /// I promemoria della scadenza da programmare (#906). Nessuno se il server manda già i suoi avvisi a questa app
-    /// (`dalServer`: ntfy per l'app nativa, `StatoAvvisi.mandaGiaIlServer`), se il promemoria non serve (`tace`) o con gli avvisi spenti (`attivi`); quelli
-    /// nelle ore tranquille o già passati si saltano (`promemoriaConsentiti`). Titolo e testo sono quelli del server (`testi`, la
-    /// voce con gli stessi minuti), così come sono; quello di un'ora prima solo se letto da poco (`freschezzaTesti`; `lettaIl`:
-    /// quando è stata letta la giornata, nil se non si sa). Senza il testo del server (server di prima, lettura vecchia, spunta appena
-    /// tolta con la lista vuota) il promemoria minimo del catalogo, senza titolo: la giornata e l'ora della scadenza
-    /// (`oggi.prossima_chiude`, la frase della web), mai una frase composta qui.
+    /// (`dalServer`: ntfy per l'app nativa, `StatoAvvisi.mandaGiaIlServer`), se il promemoria non serve (`tace`) o con gli avvisi
+    /// spenti (`attivi`); quelli nelle ore tranquille o già passati si saltano (`promemoriaConsentiti`). Titolo e testo sono quelli
+    /// del server (`testi`, la voce con gli stessi minuti), così come sono, se letti da poco (`freschezzaTesti`; `lettaIl`: quando è
+    /// stata letta la giornata, nil se non si sa). Senza il testo del server (server di prima, lettura vecchia, spunta appena tolta
+    /// con la lista vuota) il promemoria minimo del catalogo, senza titolo: la giornata e l'ora della scadenza (`oggi.prossima_chiude`,
+    /// la frase della web), mai una frase composta qui.
     static func promemoriaDaProgrammare(giornata: NomeGiornata, inizio: Date, testi: [TestoPromemoria]?, lettaIl: Date?,
                                         ore: OreTranquille, attivi: Set<Int>, tace: Bool, dalServer: Bool,
                                         adesso: Date = Date()) -> [Promemoria] {
         if dalServer { return [] }
         return promemoriaConsentiti(inizio: inizio, ore: ore, attivi: attivi, tace: tace, adesso: adesso).map { voce -> Promemoria in
-            let fresco = voce.minuti != 60 || lettaIl.map { voce.quando.timeIntervalSince($0) <= freschezzaTesti } == true
+            let fresco = lettaIl.map { voce.quando.timeIntervalSince($0) <= freschezzaTesti } == true
             if fresco, let delServer = testi?.first(where: { $0.minuti == voce.minuti }) {
                 return Promemoria(id: voce.id, quando: voce.quando, titolo: delServer.titolo, testo: delServer.testo)
             }
@@ -106,7 +107,7 @@ enum Notifiche {
             let previsto = scadenza.addingTimeInterval(-orePrima * 3600)
             guard let quando = momentoCertificato(previsto, scadenza: scadenza, ore: ore, adesso: adesso),
                   !elenco.contains(where: { $0.quando == quando }) else { continue }
-            elenco.append(Promemoria(id: id, quando: quando, titolo: "SchieraXI · Da rinnovare",
+            elenco.append(Promemoria(id: id, quando: quando, titolo: Catalogo.Avv.certificatoTitolo,
                                      testo: testoCertificato(ore: scadenza.timeIntervalSince(quando) / 3600)))
         }
         return elenco
@@ -122,11 +123,10 @@ enum Notifiche {
         return fine
     }
 
-    /// «Tra circa 6 ore l'app smette di aprirsi. …», con le ore che mancano arrotondate («circa un'ora» per una).
+    /// «Tra circa 6 ore l'app smette di aprirsi. …» (`avv.certificato_ore` del catalogo), con le ore che mancano arrotondate
+    /// («circa un'ora» per una).
     static func testoCertificato(ore: Double) -> String {
-        let n = max(1, Int(ore.rounded()))
-        let fra = n == 1 ? "Tra circa un'ora" : "Tra circa \(n) ore"
-        return "\(fra) l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata."
+        Catalogo.Avv.certificatoOre(max(1, Int(ore.rounded())))
     }
 
     /// I due promemoria del certificato (`promemoriaCertificato`), con le ore tranquille ricordate sul telefono. Si richiamano a ogni

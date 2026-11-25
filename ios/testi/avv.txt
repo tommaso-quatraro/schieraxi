@@ -8,6 +8,9 @@ avv.permesso_negato_abilita
 avv.notifiche_disattivate_questo
 avv.nativa
 avv.nativa_aiuto
+# I promemoria prima che scada il certificato dell'app (Notifiche.promemoriaCertificato, #906): solo iPhone
+avv.certificato_titolo
+avv.certificato_ore
 
 # La ricerca di un giocatore (la voce Cerca della barra: RicercaGiocatoreView e DatiRigaRicerca), come la web
 avv.nome_del_giocatore

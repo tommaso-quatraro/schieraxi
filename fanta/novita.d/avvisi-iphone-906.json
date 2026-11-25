@@ -6,7 +6,7 @@
     "Nelle regole della lega, la spiegazione di «Aggiornamenti più fitti vicino alla scadenza» non promette più un avviso per ogni cambiamento."
   ],
   "tecnico": [
-    "fanta/testi: nuove chiavi imp.avvisi_qui_aiuto_app e pav.avvisi_spiega (solo iPhone); regole.agg_vicini_aiuto senza «con avviso se cambia qualcosa». fanta/web/testi.js e ios/Sources/Support/Catalogo rigenerati con script/testi.py --scrivi; docs/COERENZA-WEB-IPHONE.md con script/coerenza.py --scrivi.",
-    "App iPhone (#906, parte B): promemoria locali con titolo e testo di `testi_promemoria` di GET /api/oggi; tolti gli avvisi locali «Cambio di modulo» ed «Escono le probabili»; nessun promemoria locale con «Avvisi anche per l'app nativa» e il canale ntfy accesi; promemoria del certificato fuori dalle ore tranquille."
+    "fanta/testi: nuove chiavi imp.avvisi_qui_aiuto_app, pav.avvisi_spiega, avv.certificato_titolo e avv.certificato_ore (solo iPhone); regole.agg_vicini_aiuto senza «con avviso se cambia qualcosa». fanta/web/testi.js e ios/Sources/Support/Catalogo rigenerati con script/testi.py --scrivi; docs/COERENZA-WEB-IPHONE.md con script/coerenza.py --scrivi.",
+    "App iPhone (#906, parte B): promemoria locali con titolo e testo di `testi_promemoria` di GET /api/oggi; tolti gli avvisi locali «Cambio di modulo» ed «Escono le probabili»; nessun promemoria locale con «Avvisi anche per l'app nativa» e il canale ntfy accesi e nessun dispositivo con le notifiche web; testi del server usati solo se letti al massimo due ore prima del promemoria; promemoria del certificato fuori dalle ore tranquille."
   ]
 }

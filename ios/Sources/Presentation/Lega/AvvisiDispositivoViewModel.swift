@@ -39,11 +39,14 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         Catalogo.Imp.oreTranquilleAiuto(a: String(ore.a), da: String(ore.da))
     }
 
+    /// Legge gli avvisi dal server. Se per i promemoria è cambiato qualcosa (ore tranquille, avvisi del server a questa app), li
+    /// rimette subito in programma: niente doppioni o promemoria mancanti fino alla prossima lettura di Oggi (#906).
     func carica() async {
         await caricatore.ricarica()
         if let stato = caricatore.dato {
-            applica(stato)
+            let cambiato = applica(stato)
             oreTranquilleSpente = stato.oreTranquilleSpente
+            if cambiato { await telefono.riprogramma() }
         }
         qui = await statoQui()
     }
@@ -97,10 +100,10 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         subito(self)
         do {
             let stato: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", corpo, snake: false)
-            applica(stato)
+            let cambiato = applica(stato)
             oreTranquilleSpente = false
             erroreSalvataggio = nil
-            if riprogramma, !Demo.attivo { await telefono.riprogramma() }
+            if riprogramma || cambiato, !Demo.attivo { await telefono.riprogramma() }
         } catch {
             oreTranquille = ore
             appNativa = nativa
@@ -112,15 +115,16 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     /// Rilegge dal server dopo un conflitto, lasciando l'errore in vista.
     private func rileggi() async {
         await caricatore.ricarica()
-        if let stato = caricatore.dato { applica(stato) }
+        if let stato = caricatore.dato, applica(stato) { await telefono.riprogramma() }
     }
 
     /// Gli avvisi come li ha il server: ore tranquille e app nativa, ricordate anche sul telefono con il fatto che il server manda già
-    /// i suoi avvisi a questo telefono (per i promemoria locali, `TelefonoAvvisi.ricorda`).
-    private func applica(_ stato: StatoAvvisi) {
+    /// i suoi avvisi a questa app (per i promemoria locali, `TelefonoAvvisi.ricorda`). Dice se per i promemoria è cambiato qualcosa
+    /// (nella demo mai: niente promemoria).
+    private func applica(_ stato: StatoAvvisi) -> Bool {
         oreTranquille = stato.impostazioni.oreTranquille
         appNativa = stato.impostazioni.app_nativa
-        if !Demo.attivo { _ = telefono.ricorda(stato) }   // SCHELETRO PER I TEST: il valore non si usa ancora
+        return Demo.attivo ? false : telefono.ricorda(stato)
     }
 }
 
