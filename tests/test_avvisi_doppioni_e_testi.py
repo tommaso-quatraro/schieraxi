@@ -6,12 +6,13 @@ from datetime import datetime
 
 import pytest
 
-from fanta import avvisi, consigli, frasi, notifiche, scelte
+from fanta import avvisi, consigli, frasi, notifiche, scelte, server
 from fanta.regole import Regole
 
 import test_cambio_pronto as cp
 from test_promemoria_messa import QUARTO, ROSA_12, SCHIERATI, ST, UN_ORA, _mondo, _salvata
 from test_promemoria_schierato import _db
+from test_server import client  # noqa: F401 (fixture: un solo utente, senza account)
 
 GIORNATA = "Giornata 9 · 9ª di Serie A"           # la formazione si chiude il 28/10 alle 18:30
 
@@ -163,3 +164,20 @@ def test_senza_la_data_della_prima_partita_niente_testi(tmp_path, monkeypatch):
     monkeypatch.setattr(avvisi, "prima_partita", lambda db, stagione, giornata: None)
     assert notifiche.testi_promemoria(_db(), Regole(), ROSA_12, ST, 9, tmp_path / "scelte.json", adesso=UN_ORA) == []
 
+
+def test_oggi_ha_i_testi_dei_promemoria_nella_lingua_degli_avvisi(client, tmp_path, monkeypatch):  # noqa: F811
+    _mondo(tmp_path, monkeypatch)
+    monkeypatch.setattr(server, "_rose", lambda ctx: ROSA_12)
+    monkeypatch.setattr(server.gestione, "oggi", lambda *a, **k: {"giornata": 9})
+    monkeypatch.setattr(server.da_fare, "costruisci", lambda *a, **k: [])
+    monkeypatch.setattr(avvisi, "prima_partita", lambda db, stagione, giornata: _alle("18:30"))
+    corpo = client.get("/api/oggi").json()
+    assert corpo["serve_promemoria"] is True
+    assert corpo["testi_promemoria"][1] == {"minuti": 15, "titolo": "SchieraXI · ultimi minuti per la formazione",
+                                            "testo": f"{GIORNATA}: la formazione si chiude alle 18:30. L'hai inserita su Leghe?"}
+    assert corpo["testi_promemoria"][0]["minuti"] == 60
+    assert client.put("/api/avvisi", json={"lingua": "en"}).status_code == 200
+    assert client.get("/api/oggi").json()["testi_promemoria"][1]["titolo"] == "SchieraXI · last minutes for the lineup"
+    scelte.salva(ST, 9, SCHIERATI, "4-4-2", scelte.FILE_SCELTE, da="app", messa=True)
+    corpo = client.get("/api/oggi").json()
+    assert corpo["serve_promemoria"] is False and corpo["testi_promemoria"] == []

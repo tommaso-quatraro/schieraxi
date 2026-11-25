@@ -1464,8 +1464,9 @@ def tratti_avatar():
 
 @app.get("/api/oggi")
 def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650, le=3650), ctx: Contesto = Depends(lega_corrente)):
-    """La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), e `serve_promemoria`: se
-    il promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi).
+    """La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), `serve_promemoria`: se
+    il promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi), e
+    `testi_promemoria`: titolo e testo dei due promemoria come li scrive il server, che l'iPhone mostra così come sono.
     `certificato_giorni` (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo)."""
     db = _db()
     try:
@@ -1487,6 +1488,9 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
                                    live_partite=_stati_live(), dal=dal))
         if isinstance(corpo.get("giornata"), int):        # la regola dei promemoria del server, per quelli locali dell'iPhone (#710)
             corpo["serve_promemoria"] = notifiche.serve_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], ctx.scelte)
+            # e i loro testi già scritti, nella lingua degli avvisi: l'iPhone non compone frasi sue (#906)
+            corpo["testi_promemoria"] = notifiche.testi_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], ctx.scelte,
+                                                                   lingua=notifiche.impostazioni(ctx.impostazioni_avvisi)["lingua"])
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
                                               dal=dal,
