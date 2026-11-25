@@ -593,10 +593,17 @@ i tetti. I client mostrano `detail` come per ogni errore: nessun cambio richiest
 
 ## Limiti dei numeri delle regole (dal 13/11/2026, #663; stretti come i pulsanti dal 25/11/2026, #881)
 
-Ogni salvataggio delle regole (`PUT /api/regole`, anche `PUT /api/regole/rinvio`) controlla i limiti dei numeri. Fuori: `400` con
-`detail` «Regole non valide:» e una riga «- …» per problema, in parole semplici e senza nomi di campo (per esempio «- il bonus
-per l'assist deve essere tra 0 e 20»); le regole salvate non cambiano. La web traduce ogni riga (chiavi `err.regole_*` del
-catalogo); gli altri client mostrano `detail` com'è.
+Ogni salvataggio delle regole controlla i limiti dei numeri. Fuori: `400` con `detail` «Regole non valide:» e una riga «- …» per
+problema, in parole semplici e senza nomi di campo (per esempio «- il bonus per l'assist deve essere tra 0 e 20», «- «Portieri
+della rosa» deve essere un numero intero»); le regole salvate non cambiano. La web traduce ogni riga (chiavi `err.regole_*` e,
+per i nomi dei campi, `err.p_regola_*` del catalogo); gli altri client mostrano `detail` com'è.
+
+**Quali limiti, dove.** `PUT /api/regole` confronta le regole ricevute con quelle salvate: **i valori che cambiano** hanno i limiti
+della tabella qui sotto (quelli della pagina Regole), quelli che restano uguali i limiti di prima (#663: bonus e malus da −100 a
+100, difensori minimi da 0 a 10, panchina da 0 a 30...). Così una lega salvata prima con un valore ora fuori dai limiti cambia la
+scadenza o la prima giornata (che mandano le regole salvate con un valore solo cambiato) senza errori, e la pagina Regole chiede
+di correggere quel valore solo quando si salvano i valori. Gli altri salvataggi (`PUT /api/regole/rinvio`, il ripristino di un
+backup, la procedura guidata, `python -m fanta regole --imposta`) controllano tutto con i limiti di prima.
 
 **Un file solo.** I limiti stanno in `fanta/web/limiti-regole.json`, servito come file statico **`GET /limiti-regole.json`**
 (pubblico, come gli altri file della web): `{chiave: {"min": numero, "max": numero}}`, con le chiavi come i campi delle regole
@@ -615,21 +622,21 @@ numeri scritti a mano, così la pagina non arriva mai a un valore che il server 
 | `panchina.max_sostituzioni` | da 0 a 10 |
 | `panchina.posti.P`, `.D`, `.C`, `.A` (se non è `null`) | da 0 a 10 |
 | `voto_senza_sostituto` (se non è `null`), `voto_ufficio_rinviate` | da 0 a 10 |
-| `modificatore_difesa.min_difensori` | da 3 a 6 |
+| `modificatore_difesa.min_difensori` | da 3 a 5 (nessun modulo ha 6 difensori) |
 | `modificatore_difesa.soglie` | media di ogni fascia da 0 a 10, bonus da 0 a 20 |
 | `fattore_campo` | da −100 a 100 |
 | `soglia_primo_gol` | da 0 a 200 |
 | `ampiezza_fascia_gol` | da 0 a 100 |
 
-Si rifiutano anche, sempre con `400`: il modificatore difesa attivo senza fasce, due fasce con la stessa media, e (con il
-modificatore attivo) difensori minimi più dei difensori di ogni modulo ammesso, perché il modificatore non si applicherebbe mai.
+Con `PUT /api/regole`, se cambiano il modificatore o i moduli, si rifiutano anche: il modificatore difesa attivo senza fasce, due
+fasce con la stessa media, e (con il modificatore attivo) difensori minimi più dei difensori di ogni modulo ammesso, perché il
+modificatore non si applicherebbe mai.
 Fino al 25/11/2026 i bonus e i malus andavano da −100 a 100, i difensori minimi da 0 a 10, i bonus delle fasce da −100 a 100 e la
 panchina da 0 a 30.
 
 `rimborso_svincolo`, `scadenza_minuti` e `prima_giornata_lega` hanno i loro controlli a parte. Come per i tetti, le regole salvate
-prima si leggono come prima (`GET /api/regole`, così la pagina Regole le mostra e le si corregge); per salvarle di nuovo vanno
-riportate nei limiti. Rosa, cambi massimi e voto d'ufficio delle partite rinviate si controllano anche quando le regole si leggono
-(con gli stessi limiti di prima).
+prima si leggono come prima (`GET /api/regole`, così la pagina Regole le mostra e le si corregge). Rosa, panchina, posti fissi,
+cambi massimi e voto d'ufficio delle partite rinviate si controllano anche quando le regole si leggono, con i limiti di prima.
 
 ## Numero della giornata: `giornata` e `giornata_lega` (dal 5/11/2026, #299)
 
