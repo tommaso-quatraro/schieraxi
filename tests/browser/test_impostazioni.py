@@ -751,6 +751,62 @@ def test_le_righe_da_controllare_a_mano_dicono_la_regola_e_seguono_il_testo(web)
     assert not web.errori_mostrati()
 
 
+RIGA_PANCHINA = "Panchina di 12 giocatori, massimo 5 sostituzioni."
+POSTI_FISSI = {"P": 2, "D": 3, "C": 3, "A": 3}
+
+
+def test_nell_anteprima_del_regolamento_i_valori_hanno_nomi_in_parole(web):
+    """L'ordine dei cambi si leggeva «per_ruolo» (il nome interno) e i posti per ruolo come un oggetto: ora con le parole della
+    pagina (#881), anche in inglese."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "panchina.tipo", "etichetta": "Ordine dei cambi", "valore": "per_ruolo", "riga": "Le riserve entrano per ruolo."},
+        {"chiave": "panchina.posti", "etichetta": "Posti in panchina per ruolo", "valore": {"P": 1, "D": 3, "C": 3, "A": 3},
+         "riga": "Panchina: 1 portiere, 3 difensori, 3 centrocampisti, 3 attaccanti"}]})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    testo = web.testo_principale()
+    assert "Ordine dei cambi: Per ruolo" in testo and "per_ruolo" not in testo, testo
+    assert "Posti in panchina per ruolo: 1 portiere, 3 difensori, 3 centrocampisti, 3 attaccanti" in testo, testo
+    assert "object" not in testo
+    web.memoria({"lingua": "en"})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Paste the rules text here").fill("Rules for testing")
+    tocca(web, principale(web).get_by_role("button", name="Recognise the rules"))
+    testo = web.testo_principale()
+    assert "Order of substitutions: By position" in testo and "1 goalkeeper, 3 defenders" in testo, testo
+    assert not web.errori_mostrati()
+
+
+def test_un_valore_che_non_si_puo_salvare_non_sta_fra_i_riconosciuti(web):
+    """«Panchina di 12 giocatori» con i posti fissi per ruolo (11): l'anteprima mostrava 12 e si salvava 11 con «Regole salvate».
+    Ora il server lo manda fra i non applicabili: la pagina lo mostra sotto «Non applicato» con il perché, e «Salva queste regole»
+    salva gli altri valori lasciando la panchina com'era (#881)."""
+    solo(web, "prima")
+    regole = web.registrata("/api/regole")
+    regole["panchina"] |= {"posti": POSTI_FISSI, "numero": 11}
+    web.risposta("/api/regole", regole)
+    motivo = "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia i posti di ogni ruolo in «Modifica i valori»."
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "panchina.max_sostituzioni", "etichetta": "Sostituzioni massime", "valore": 5, "riga": RIGA_PANCHINA}],
+        "non_applicabili": [{"chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 12, "riga": RIGA_PANCHINA,
+                             "motivo": motivo, "motivo_frase": {"chiave": "regole.panchina_posti_fissi", "param": {"n": 11}}}]})
+    salvate = _scritture(web, "/api/regole")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill(RIGA_PANCHINA)
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    assert principale(web).get_by_text("Non applicato", exact=True).is_visible()
+    assert principale(web).get_by_text(motivo, exact=True).is_visible()
+    testo = web.testo_principale()
+    assert testo.index("Sostituzioni massime: 5") < testo.index("Non applicato") < testo.index("Giocatori in panchina: 12"), testo
+    tocca(web, principale(web).get_by_role("button", name="Salva queste regole"))
+    assert salvate, "le regole riconosciute non sono state salvate"
+    assert salvate[-1]["panchina"]["max_sostituzioni"] == 5
+    assert salvate[-1]["panchina"]["numero"] == 11 and salvate[-1]["panchina"]["posti"] == POSTI_FISSI
+    assert not web.errori_mostrati()
+
+
 def test_i_singoli_valori_stanno_dietro_modifica_i_valori(web):
     solo(web, "prima")
     web.apri("/?vista=impostazioni&gruppo=regole")
