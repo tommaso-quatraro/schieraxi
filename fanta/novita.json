@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.566",
+    "data": "2026-11-25T10:34:39",
+    "titolo": "Giornate: da dove vengono i punti",
+    "voci": [
+      "In Giornate, aprendo una giornata, sotto i tuoi 11 c'è scritto perché i punti non sono la somma dei loro voti: chi è entrato dalla panchina e al posto di chi, per chi non è entrato nessuno, il modificatore difesa e, con una partita rinviata, cosa ha deciso la tua lega.",
+      "Le giornate già passate ricevono le stesse righe da sole quando SchieraXI sa con certezza chi è entrato (per esempio dalla consigliata salvata prima della scadenza), senza che cambi nessun punto. Altrimenti, se i conti non tornano con i voti degli 11, una riga dice che il dettaglio manca."
+    ],
+    "tecnico": [
+      "GET /api/diario: in ogni voce `spiegazione_punti` ({formazione, righe, righe_frasi} o null) e in ogni formazione `dettaglio` (entrati, senza_sostituto, voto_senza_sostituto, modificatore, rinvio); nessun campo tolto o rinominato.",
+      "Il dettaglio si calcola dove si calcolano i punti (voce nuova, «Correggi», punti rifatti con i voti nuovi), leggendo le sostituzioni di formazione.chi_va_a_punteggio: i punti e il fantavoto atteso non cambiano (formazione.py non toccato).",
+      "Le voci di prima si completano una volta al giro del cron (rifai_i_punti con completa=True, senza indicatori né simulazioni) e prendono il dettaglio solo dove i punti rifatti sono uguali a quelli salvati, chi entra è fra i giocatori della voce e, se la panchina ha contato, la panchina di allora è nota intera (istantanea o scelta); altrove `dettaglio` null. Un errore lì va nel registro una volta (la voce resta con `dettaglio` null) e non ferma le giornate dopo.",
+      "L'iPhone non mostra ancora le righe (riga 106 di docs/COERENZA-WEB-IPHONE.md, #900)."
+    ]
+  },
+  {
     "versione": "1.565",
     "data": "2026-11-25T10:32:01",
     "titolo": "Partita in ritardo: non è più rinviata",
