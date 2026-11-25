@@ -563,9 +563,10 @@ giornata di Oggi (`giornata`) già scritti, come li scriverebbe in quel momento 
 - `minuti` (intero, 60 o 15): quanti minuti prima della scadenza della formazione parte quel promemoria; `titolo` e `testo` sono
   da mostrare così come sono (con la spunta mancante, la formazione non più valida o un titolare a rischio i testi lo dicono, vedi
   «Solo due avvisi» nella sezione 7).
-- Lista vuota quando il promemoria non serve (sempre insieme a `serve_promemoria: false`) o quando la data della prima partita non
-  si sa. Come `serve_promemoria` non guarda l'ora né le finestre: dopo la scadenza non conta. Non toglie i doppioni con il «cambio
-  pronto» (li toglie solo il giro che manda gli avvisi).
+- L'ora scritta nei testi è la `scadenza` della stessa risposta. Lista vuota quando il promemoria non serve (sempre insieme a
+  `serve_promemoria: false`) o quando la scadenza non si sa (`scadenza: null`, per esempio con `senza_data`). Come
+  `serve_promemoria` non guarda l'ora né le finestre: dopo la scadenza non conta. Non toglie i doppioni con il «cambio pronto» (li
+  toglie solo il giro che manda gli avvisi).
 - Manca senza rose (`senza_rose: true`) e senza una giornata da giocare, come `serve_promemoria`.
 - I testi sono quelli del momento della lettura: un titolare che diventa fuori, una spunta messa o una scelta salvata dopo
   cambiano i testi alla lettura successiva.

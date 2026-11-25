@@ -22,6 +22,9 @@ def _alle(ora: str) -> datetime:
     return datetime(2026, 10, 28, int(h), int(m))
 
 
+CHIUSURA = _alle("18:30")                          # la scadenza della formazione, quella che mostra Oggi
+
+
 # ---------------------------------------------------------------- punto 4: un solo avviso per lo stesso fatto
 def _cambio_pronto_alle_17_27(tmp_path, monkeypatch):
     """Formazione con Castro salvata dalla web (senza la spunta); Castro infortunato: alle 17:27 il giro dei cambi manda «cambio
@@ -144,7 +147,7 @@ def test_i_testi_dei_promemoria_sono_quelli_che_il_server_manda(tmp_path, monkey
     if scelta is not None:
         scelta = dict(scelta)
         _salvata(tmp_path, scelta.pop("titolari", SCHIERATI), **scelta)
-    testi = notifiche.testi_promemoria(_db(), Regole(), ROSA_12, ST, 9, tmp_path / "scelte.json", adesso=UN_ORA)
+    testi = notifiche.testi_promemoria(_db(), Regole(), ROSA_12, ST, 9, CHIUSURA, tmp_path / "scelte.json", adesso=UN_ORA)
     promemoria(UN_ORA)
     promemoria(QUARTO)
     assert [(t["titolo"], t["testo"]) for t in testi] == [(str(a), str(b)) for a, b in mandati]
@@ -154,23 +157,27 @@ def test_i_testi_dei_promemoria_sono_quelli_che_il_server_manda(tmp_path, monkey
 
 def test_i_testi_dei_promemoria_nella_lingua_chiesta(tmp_path, monkeypatch):
     _mondo(tmp_path, monkeypatch)
-    testi = notifiche.testi_promemoria(_db(), Regole(), ROSA_12, ST, 9, tmp_path / "scelte.json", adesso=UN_ORA, lingua="en")
+    testi = notifiche.testi_promemoria(_db(), Regole(), ROSA_12, ST, 9, CHIUSURA, tmp_path / "scelte.json", adesso=UN_ORA, lingua="en")
     assert testi[1] == {"minuti": 15, "titolo": "SchieraXI · last minutes for the lineup",
                         "testo": "Matchday 9 · Serie A matchday 9: the lineup closes at 18:30. Have you entered it on Leghe?"}
 
 
-def test_senza_la_data_della_prima_partita_niente_testi(tmp_path, monkeypatch):
+def test_senza_la_scadenza_niente_testi(tmp_path, monkeypatch):
+    """Giornata ancora senza date (Oggi dice «Data da definire»): non c'è un'ora da scrivere, quindi nessun testo."""
     _mondo(tmp_path, monkeypatch)
-    monkeypatch.setattr(avvisi, "prima_partita", lambda db, stagione, giornata: None)
-    assert notifiche.testi_promemoria(_db(), Regole(), ROSA_12, ST, 9, tmp_path / "scelte.json", adesso=UN_ORA) == []
+    assert notifiche.testi_promemoria(_db(), Regole(), ROSA_12, ST, 9, None, tmp_path / "scelte.json", adesso=UN_ORA) == []
+
+
+def _oggi_finto(monkeypatch, corpo: dict) -> None:
+    monkeypatch.setattr(server, "_rose", lambda ctx: ROSA_12)
+    monkeypatch.setattr(server.gestione, "oggi", lambda *a, **k: dict(corpo))
+    monkeypatch.setattr(server.da_fare, "costruisci", lambda *a, **k: [])
 
 
 def test_oggi_ha_i_testi_dei_promemoria_nella_lingua_degli_avvisi(client, tmp_path, monkeypatch):  # noqa: F811
+    """L'ora nei testi è la scadenza che Oggi mostra (`scadenza`): il campo non rilegge il calendario."""
     _mondo(tmp_path, monkeypatch)
-    monkeypatch.setattr(server, "_rose", lambda ctx: ROSA_12)
-    monkeypatch.setattr(server.gestione, "oggi", lambda *a, **k: {"giornata": 9})
-    monkeypatch.setattr(server.da_fare, "costruisci", lambda *a, **k: [])
-    monkeypatch.setattr(avvisi, "prima_partita", lambda db, stagione, giornata: _alle("18:30"))
+    _oggi_finto(monkeypatch, {"giornata": 9, "scadenza": "2026-10-28 18:30"})
     corpo = client.get("/api/oggi").json()
     assert corpo["serve_promemoria"] is True
     assert corpo["testi_promemoria"][1] == {"minuti": 15, "titolo": "SchieraXI · ultimi minuti per la formazione",
@@ -181,3 +188,15 @@ def test_oggi_ha_i_testi_dei_promemoria_nella_lingua_degli_avvisi(client, tmp_pa
     scelte.salva(ST, 9, SCHIERATI, "4-4-2", scelte.FILE_SCELTE, da="app", messa=True)
     corpo = client.get("/api/oggi").json()
     assert corpo["serve_promemoria"] is False and corpo["testi_promemoria"] == []
+
+
+def test_oggi_senza_scadenza_ha_la_lista_vuota_senza_leggere_il_calendario(client, tmp_path, monkeypatch):  # noqa: F811
+    """Come nei test del widget, l'archivio può non avere il calendario: il campo non lo legge (prima della correzione: errore 500)."""
+    _mondo(tmp_path, monkeypatch)
+    _oggi_finto(monkeypatch, {"giornata": 9, "scadenza": None})
+
+    def calendario(*a, **k):
+        raise AssertionError("il calendario non si rilegge")
+    monkeypatch.setattr(avvisi, "prima_partita", calendario)
+    r = client.get("/api/oggi")
+    assert r.status_code == 200 and r.json()["testi_promemoria"] == [] and r.json()["serve_promemoria"] is True

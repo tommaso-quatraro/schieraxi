@@ -560,15 +560,17 @@ def _fatti_da_poco(file_cambi: Path, chiave: str, adesso: datetime) -> set[str]:
     return {k for k, quando in _fatti_detti(voce).items() if _da_poco(quando, adesso, DOPPIONE_PROMEMORIA)}
 
 
-def testi_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int, file_scelte: Path | None,
-                     adesso: datetime | None = None, lingua: str = LINGUA_PREDEFINITA, guasti: list[str] | None = None) -> list[dict]:
+def testi_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int, scadenza: datetime | None,
+                     file_scelte: Path | None, adesso: datetime | None = None, lingua: str = LINGUA_PREDEFINITA,
+                     guasti: list[str] | None = None) -> list[dict]:
     """I due promemoria della giornata come li scriverebbe adesso il giro del server, nella `lingua` degli avvisi:
-    [{"minuti": 60, "titolo", "testo"}, {"minuti": 15, "titolo", "testo"}]. La lista vuota se il promemoria non serve (la regola di
-    `serve_promemoria`) o la scadenza non si sa. Come `serve_promemoria` non guarda l'ora né le finestre, e nemmeno i doppioni con il
-    «cambio pronto» (li toglie il giro che manda). È il campo `testi_promemoria` di GET /api/oggi: l'iPhone mostra questi testi nei
-    suoi promemoria locali invece di comporne di suoi (#906)."""
+    [{"minuti": 60, "titolo", "testo"}, {"minuti": 15, "titolo", "testo"}]. `scadenza`: quando si chiude la formazione, quella
+    che mostra Oggi (la stessa regola del giro: prima partita meno i minuti della lega); None se non si sa. La lista vuota se il
+    promemoria non serve (la regola di `serve_promemoria`) o la scadenza non si sa. Come `serve_promemoria` non guarda l'ora né le
+    finestre, e nemmeno i doppioni con il «cambio pronto» (li toglie il giro che manda). È il campo `testi_promemoria` di
+    GET /api/oggi: l'iPhone mostra questi testi nei suoi promemoria locali invece di comporne di suoi (#906)."""
     adesso = adesso or datetime.now()
-    inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
+    inizio = scadenza
     if inizio is None:
         return []
     esito, schierata = _situazione(db, regole, rose, stagione, giornata, file_scelte)
