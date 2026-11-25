@@ -110,6 +110,9 @@ struct ProssimePartite: View {
         (p.inCasa == true ? "vs " : "@ ") + ColoriSquadra.sigla(p.avversario)
     }
 
+    /// La difficoltà a parole nella casella.
+    static func parola(_ p: PartitaCalendario) -> String { "" }
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {

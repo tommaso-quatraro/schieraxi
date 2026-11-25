@@ -1724,4 +1724,12 @@ extension FormazioneWidget {
 
     /// La riga del titolare per VoiceOver, sempre con il nome del numero: «Leonel Marténi, fantavoto atteso 7,6».
     func voceTitolare(_ g: GiocatoreWidget) -> String { "\(g.nome), \(nomeNumero.lowercased()) \(numeroTitolare(g))" }
+
+    /// La testata del widget Formazione in una frase sola per VoiceOver: «3-4-3, 72,7 punti attesi, tra 65 e 81, Giornata 8, 11ª
+    /// di Serie A». Sullo schermo la testata si accorcia («73,7 attesi», «Giornata 8») e il cerchio della schermata di blocco
+    /// mostra solo modulo e numero: VoiceOver legge sempre questa (#882: il cerchio diceva «3-4-3, 72,7» senza «punti attesi»).
+    func testataParlata(giornata: NomeGiornata?) -> String {
+        [modulo ?? "—", ParoleWidget.puntiAttesi(puntiAttesi, tuaScelta: tuaScelta == true)[0], intervallo?.testo, giornata?.voce]
+            .compactMap { $0 }.joined(separator: ", ")
+    }
 }

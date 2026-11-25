@@ -28,6 +28,8 @@ struct TestaFormazione: Equatable {
     /// accanto, piccolo, «fra 3 h 10 min». Nil dove la web non lo scrive (giornata in corso, formazione già chiusa).
     var chiude: String?
     var manca: String?
+    /// La scadenza letta da VoiceOver.
+    var voceScadenza: String? { chiude.map { c in manca.map { "\(c) \($0)" } ?? c } }
     /// A campionato finito la frase del server («Il campionato è finito: previsioni e consigli ripartono con il calendario della
     /// prossima stagione.»), sotto il riepilogo dell'ultima giornata se c'è, al posto della giornata da preparare (#727).
     var campionatoFinito: String?

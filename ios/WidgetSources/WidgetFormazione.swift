@@ -218,12 +218,6 @@ struct VistaFormazione: View {
         }
     }
 
-    /// La frase intera della testata per VoiceOver (sullo schermo la testata si accorcia: «Giornata 8», «73,7 attesi»).
-    private func testataParlata(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> String {
-        [f.modulo ?? "—", ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true)[0], f.intervallo?.testo, w.nomeGiornata?.voce]
-            .compactMap { $0 }.joined(separator: ", ")
-    }
-
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
         VStack(spacing: 8) {
             testataGrande(w, f, extraLarge: false)
@@ -254,7 +248,7 @@ struct VistaFormazione: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(testataParlata(w, f))
+        .accessibilityLabel(f.testataParlata(giornata: w.nomeGiornata))
     }
 
     /// Sotto il campo del grande e dell'extra large: «2 da controllare» a sinistra e «7 in panchina» a destra (#871: l'extra

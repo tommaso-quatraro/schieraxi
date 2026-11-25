@@ -122,7 +122,7 @@ struct RigaGiocatore: View {
 
     /// Frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono. A partita iniziata «fantavoto 3,5» come la
     /// pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette.
-    nonisolated static func voce(_ g: Giocatore) -> String {
+    nonisolated static func voce(_ g: Giocatore, posizione: Int? = nil) -> String {
         var parti = [g.nome, nomeRuolo(g.ruolo)]
         let partita = partitaAVoce(g)
         if !partita.isEmpty { parti.append(partita) }
