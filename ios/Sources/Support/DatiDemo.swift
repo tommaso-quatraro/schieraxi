@@ -869,13 +869,23 @@ private extension LegaDemo {
         ])
     }
 
+    /// Le righe di `regolamentoIncollato` (DemoRegolamento.swift) lette come le legge il server, con le regole della demo (posti fissi
+    /// in panchina, 2 + 3 + 3 + 3).
     static func riconosci() -> String {
         json(["modifiche": [
             ["chiave": "bonus.assist", "etichetta": "Assist", "valore": 1.0, "riga": "Assist: +1 punto"],
             ["chiave": "bonus.ammonizione", "etichetta": "Ammonizione", "valore": -0.5, "riga": "Ammonizione: -0.5"],
-            ["chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 7, "riga": "Panchina: 7 giocatori"],
+            ["chiave": "panchina.tipo", "etichetta": "Ordine dei cambi", "valore": "per_ruolo", "riga": "Sostituzioni per ruolo"],
+            ["chiave": "panchina.posti", "etichetta": "Posti in panchina per ruolo", "valore": ["P": 2, "D": 3, "C": 3, "A": 3] as [String: Any],
+             "riga": "Panchina: 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti"],
             ["chiave": "moduli", "etichetta": "Moduli ammessi", "valore": ["3-4-3", "4-3-3", "4-4-2"], "riga": "Moduli: 3-4-3, 4-3-3, 4-4-2"],
         ] as [[String: Any]], "non_riconosciute": ["Il bonus per il rigore parato vale 3 punti, tranne in coppa"],
+        // come il server dal 25/11/2026 (#881): la panchina diversa dalla somma dei posti letti nello stesso testo non si applica
+        "non_applicabili": [
+            ["chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 12, "riga": "In panchina vanno 12 giocatori",
+             "motivo": "I posti per ruolo letti nel regolamento sono 11 in tutto e la panchina è la loro somma: controlla i posti di ogni ruolo in «Modifica i valori».",
+             "motivo_frase": ["chiave": "regole.panchina_somma_posti", "param": ["n": 11] as [String: Any]] as [String: Any]],
+        ] as [[String: Any]],
         // come il server dal 19/11/2026 (#733): le righe con numeri non lette e quelle dubbie, con la regola da impostare a mano
         "da_controllare": [
             ["riga": "Il bonus per il rigore parato vale 3 punti, tranne in coppa", "regole": [[String: Any]]()],

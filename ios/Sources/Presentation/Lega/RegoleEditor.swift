@@ -27,8 +27,11 @@ final class RegoleEditorViewModel: ViewModelBase {
     @Published var riconoscimento: RiconoscimentoRegole?
     @Published var erroreRiconoscimento: String?
     @Published var riconoscimentoInCorso = false
-    /// SCHELETRO per vedere fallire i test (#889).
+    /// I limiti dei numeri (#889): quelli del server (`/limiti-regole.json`, lo stesso file della web) appena arrivano; prima, e con
+    /// un server di prima che non ha il file, quelli di riserva, uguali al file.
     @Published private(set) var limiti = LimitiRegole.riserva
+    /// Il file dei limiti si chiede una volta sola per pagina, dopo le regole.
+    private var limitiChiesti = false
 
     /// Dopo un 412, quanto si aspetta prima di ricaricare i campi con le regole del server: la frase si legge mentre si vedono ancora
     /// i valori scritti, come la web (che ricarica la pagina dopo 2,5 secondi). I test la mettono a zero.
@@ -58,6 +61,16 @@ final class RegoleEditorViewModel: ViewModelBase {
     func carica(forza: Bool = false) async {
         _ = await rileggi()
         if let d = caricatore.dato, forza || !modificato || !caricato { applica(d) }
+        if caricato { await leggiLimiti() }
+    }
+
+    /// Chiede i limiti dei numeri al server, una volta e dopo le regole: la pagina non li aspetta e, con gli account, l'accesso è
+    /// già provato dalle regole. Se non arrivano (un server di prima, la rete) restano quelli di riserva, uguali al file.
+    private func leggiLimiti() async {
+        guard !limitiChiesti else { return }
+        limitiChiesti = true
+        guard let dati = try? await server.grezzo("/limiti-regole.json"), let letti = LimitiRegole(dati: dati) else { return }
+        limiti = letti
     }
 
     /// Chiede le regole al server; vero se è arrivata una risposta nuova, e allora `etagLetto` è la sua versione (il trasporto l'ha
@@ -149,9 +162,12 @@ final class RegoleEditorViewModel: ViewModelBase {
         modificato = true
     }
 
+    /// Una fascia mezzo punto sopra l'ultima, con un punto di bonus in più, senza andare oltre i limiti del server (come la web).
     func aggiungiFascia() {
         let ultima = fasce.sorted { $0.media < $1.media }.last
-        fasce.append(RegoleLogica.Fascia(media: min(9, (ultima?.media ?? 6) + 0.5), bonus: (ultima?.bonus ?? 0) + 1))
+        let media = limiti.intervallo(CampiRegole.limiteMediaFascia), bonus = limiti.intervallo(CampiRegole.limiteBonusFascia)
+        fasce.append(RegoleLogica.Fascia(media: min(media.upperBound, (ultima?.media ?? 6) + 0.5),
+                                         bonus: min(bonus.upperBound, (ultima?.bonus ?? 0) + 1)))
     }
 
     func togliFascia(_ id: UUID) {
@@ -214,6 +230,8 @@ final class RegoleEditorViewModel: ViewModelBase {
         inCorso = true
         defer { inCorso = false }
         do {
+            // prima i campi, come la web (#889): senza numero, con i decimali in un campo intero, fuori dai limiti del server
+            if let problema = CampiRegole.problema(valore, fasce: fasce, limiti: limiti) { throw ErroreRegole.messaggio(problema) }
             let pronto = try RegoleLogica.preparaPerSalvataggio(valore)
             // Il «Salva» manda la versione da cui vengono i campi, non quella dell'ultima lettura: se intanto le regole sono cambiate
             // altrove (la web, il riquadro dei rinvii) e i campi sono rimasti quelli vecchi, il server risponde 412 invece di
@@ -355,17 +373,6 @@ struct RegoleEditorView: View {
         self.lega = lega
     }
 
-    private let ruoli = [("P", "portiere"), ("D", "difensore"), ("C", "centrocampista"), ("A", "attaccante")]
-        .map { ($0.0, Catalogo.Regole.golDi(ruolo: $0.1)) }
-    // bonus e malus come `bonusRighe` e `malusRighe` della web (`bonus.*` del catalogo comune)
-    private let bonus = [("assist", Catalogo.Bonus.assist), ("rigore_segnato", Catalogo.Bonus.rigoreSegnato),
-                         ("rigore_parato", Catalogo.Regole.rigoreParatoP), ("portiere_imbattuto", Catalogo.Bonus.portiereImbattuto),
-                         ("mvp", Catalogo.Bonus.mvp)]
-    private let malus = [("ammonizione", Catalogo.Bonus.ammonizione), ("espulsione", Catalogo.Bonus.espulsione),
-                         ("autogol", Catalogo.Bonus.autogol), ("rigore_sbagliato", Catalogo.Bonus.rigoreSbagliato),
-                         ("gol_subito_portiere", Catalogo.Bonus.golSubitoPortiere)]
-    private let nomiRuolo = ["P": "Portieri", "D": "Difensori", "C": "Centrocampisti", "A": "Attaccanti"]
-
     var body: some View {
         ZStack {
             Sfondo()
@@ -393,10 +400,18 @@ struct RegoleEditorView: View {
                 .scrollContentBackground(.hidden)
                 // fotografia `lega-regole-fondo`: la sezione delle partite rinviate (in fondo alla lista)
                 .demoScorriA("rinviate", proxy: proxy, schermate: ["lega-regole"], inFondo: true, pronto: vm.caricato)
+                // fotografia `lega-regole-anteprima`: l'anteprima del regolamento della demo, da «Riconosci le regole» in giù
+                .demoScorriA("riconosci", proxy: proxy, schermate: ["lega-regole-anteprima"], pronto: vm.riconoscimento != nil)
             }
         }
         .titoloPagina(Catalogo.Imp.regole)
         .task { await vm.carica() }
+        // solo per la fotografia `lega-regole-anteprima`: il regolamento della demo incollato e riconosciuto, come dopo il tocco
+        .task(id: vm.caricato) {
+            guard vm.caricato, Demo.attivo, Demo.foto == "lega-regole-anteprima", vm.riconoscimento == nil else { return }
+            vm.testoRegolamento = LegaDemo.regolamentoIncollato
+            await vm.riconosci()
+        }
         // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga) e, tornando
         // indietro o aprendo un'altra pagina da fuori, si chiede cosa fare invece di perderle in silenzio. Sull'iPhone e sull'iPad
         // (#808: sull'iPad «‹ Impostazioni» le buttava); un avviso, che si vede intero in mezzo allo schermo su tutti e due.
@@ -524,24 +539,46 @@ struct RegoleEditorView: View {
                 else { Text(Catalogo.Regole.riconosciRegole).frame(maxWidth: .infinity, minHeight: 44) }
             }
             .disabled(vm.riconoscimentoInCorso)
+            .id("riconosci")
             if let e = vm.erroreRiconoscimento { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
             if let r = vm.riconoscimento { riconosciute(r) }
         } header: { Text(Catalogo.Regole.importaLeghe).foregroundStyle(Color.testoSecondario) }
     }
 
+    /// L'anteprima dopo «Riconosci le regole», come la web (#889): «Riconosciuto», «Non applicato» con il perché del server, le righe
+    /// da controllare a mano e «Applica ai campi» solo se c'è qualcosa da applicare.
     @ViewBuilder
     private func riconosciute(_ r: RiconoscimentoRegole) -> some View {
-        if r.modifiche.isEmpty {
+        let anteprima = AnteprimaRegolamento(r)
+        if anteprima.vuota {
             Label(Catalogo.Regole.nonRiconosciutoNessuna,
                   systemImage: "questionmark.circle").font(.footnote).foregroundStyle(Color.testoSecondario)
         } else {
-            Text(Catalogo.Regole.riconosciuto).font(.headline)
-            ForEach(r.modifiche) { m in
-                VStack(alignment: .leading, spacing: 2) {
-                    Label("\(m.etichetta): \(RegoleLogica.descrivi(m.valore))", systemImage: "checkmark.circle.fill").font(.subheadline)
-                    if let riga = m.riga { Text(Catalogo.Regole.daRiga(r: riga)).font(.caption).foregroundStyle(Color.testoSecondario) }
+            if !anteprima.riconosciuti.isEmpty {
+                Text(Catalogo.Regole.riconosciuto).font(.headline).accessibilityAddTraits(.isHeader)
+                ForEach(anteprima.riconosciuti) { v in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label(v.testo, systemImage: "checkmark.circle.fill").font(.subheadline)
+                        if let riga = v.daRiga { Text(riga).font(.caption).foregroundStyle(Color.testoSecondario) }
+                    }
+                    .accessibilityElement(children: .combine)
                 }
-                .accessibilityElement(children: .combine)
+            }
+            // i valori letti che con le regole di adesso non si salvano così come sono: il perché è del server
+            if !anteprima.nonApplicati.isEmpty {
+                Text(Catalogo.Regole.nonApplicato).font(.headline).accessibilityAddTraits(.isHeader)
+                ForEach(anteprima.nonApplicati) { v in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label {
+                            Text(v.testo).font(.subheadline.weight(.semibold))
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.attenzione)
+                        }
+                        if let motivo = v.motivo { Text(motivo).font(.subheadline) }
+                        if let riga = v.daRiga { Text(riga).font(.caption).foregroundStyle(Color.testoSecondario) }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
             }
             // le righe da rileggere, come la web (#733): ognuna con la regola da impostare a mano sotto, se il server ne nomina
             if let gruppo = RegolamentoDaControllare(r) {
@@ -556,30 +593,34 @@ struct RegoleEditorView: View {
                     }
                 }
             }
-            Button { vm.applicaRiconosciute() } label: { Text(Catalogo.Regole.applicaCampi).frame(maxWidth: .infinity, minHeight: 44) }
-                .pulsanteVetro(prominente: true)
-            Text(Catalogo.Regole.controllaValoriQui).font(.caption).foregroundStyle(Color.testoSecondario)
+            if anteprima.siApplica {
+                Button { vm.applicaRiconosciute() } label: { Text(Catalogo.Regole.applicaCampi).frame(maxWidth: .infinity, minHeight: 44) }
+                    .pulsanteVetro(prominente: true)
+                Text(Catalogo.Regole.controllaValoriQui).font(.caption).foregroundStyle(Color.testoSecondario)
+            }
         }
     }
 
     // MARK: punteggi
 
+    /// Una riga con − e + per un campo delle regole, con i limiti del server (`vm.limiti`, #889).
+    private func riga(_ campo: CampiRegole.Campo, predefinito: Double = 0, passo: Double = 0.5, aiuto: String? = nil) -> RigaStepper {
+        let limite = vm.limiti.intervallo(campo.percorso)
+        return RigaStepper(titolo: campo.nome, valore: vm.numero(campo.percorso, predefinito), passo: passo,
+                           minimo: limite.lowerBound, massimo: limite.upperBound, cifre: campo.intero ? 0 : 1, aiuto: aiuto)
+    }
+
     private var punteggi: some View {
         Group {
             Section(titolo: "Gol") {
-                ForEach(ruoli, id: \.0) { r in
-                    RigaStepper(titolo: r.1, valore: vm.numero("bonus.gol.\(r.0)"), minimo: 0, massimo: 20)
-                }
+                ForEach(CampiRegole.gol, id: \.percorso) { riga($0) }
             }
             Section(titolo: Catalogo.Regole.altriBonus) {
-                ForEach(bonus, id: \.0) { b in
-                    RigaStepper(titolo: b.1, valore: vm.numero("bonus.\(b.0)"), minimo: 0, massimo: 20)
-                }
+                ForEach(CampiRegole.bonus, id: \.percorso) { riga($0) }
             }
             Section(titolo: Catalogo.Regole.malus) {
-                ForEach(malus, id: \.0) { m in
-                    RigaStepper(titolo: m.1, valore: vm.numero("bonus.\(m.0)"), minimo: -20, massimo: 0,
-                                aiuto: m.0 == "gol_subito_portiere" ? Catalogo.Regole.perOgniGol : nil)
+                ForEach(CampiRegole.malus, id: \.percorso) { m in
+                    riga(m, aiuto: m.percorso == "bonus.gol_subito_portiere" ? Catalogo.Regole.perOgniGol : nil)
                 }
             }
             Section {
@@ -601,18 +642,17 @@ struct RegoleEditorView: View {
         Section {
             Toggle(Catalogo.Regole.mdAttivo, isOn: vm.booleano("modificatore_difesa.attivo")).tint(Color.verde).frame(minHeight: 44)
             if vm.valore.valore("modificatore_difesa.attivo")?.booleano == true {
-                RigaStepper(titolo: Catalogo.Regole.mdMin, valore: vm.numero("modificatore_difesa.min_difensori", 4), passo: 1,
-                            minimo: 3, massimo: 6, cifre: 0, aiuto: Catalogo.Regole.mdMinAiuto)
+                riga(CampiRegole.minDifensori, predefinito: 4, passo: 1, aiuto: Catalogo.Regole.mdMinAiuto)
                 Text("La media è la somma di portiere + i 3 migliori difensori, divisa per 4. Per ogni fascia raggiunta si prende il bonus più alto raggiunto.")
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
                 ForEach($vm.fasce) { $f in
                     // il numero è il posto della riga: dopo «Togli» si rifanno (#460, come la web)
                     let nomi = TestiRegole.nomiFascia(posto: vm.postoFascia(f.id) ?? 1)
                     VStack(alignment: .leading, spacing: 0) {
-                        RigaStepper(titolo: Catalogo.Regole.mediaAlmeno, valore: $f.media, passo: 0.25, minimo: 4, massimo: 9, cifre: 2,
-                                    nomeAccessibile: nomi.media)
-                        RigaStepper(titolo: Catalogo.Regole.bonus, valore: $f.bonus, passo: 0.5, minimo: 0, massimo: 20,
-                                    nomeAccessibile: nomi.bonus)
+                        RigaStepper(titolo: Catalogo.Regole.mediaAlmeno, valore: $f.media, passo: 0.25, minimo: limiteMedia.lowerBound,
+                                    massimo: limiteMedia.upperBound, cifre: 2, nomeAccessibile: nomi.media)
+                        RigaStepper(titolo: Catalogo.Regole.bonus, valore: $f.bonus, passo: 0.5, minimo: limiteBonus.lowerBound,
+                                    massimo: limiteBonus.upperBound, nomeAccessibile: nomi.bonus)
                         Button(role: .destructive) { vm.togliFascia(f.id) } label: { Label("Togli la fascia", systemImage: "trash").labelStyle(.distruttiva).frame(minHeight: 44) }
                             .accessibilityLabel(nomi.togli)
                     }
@@ -622,6 +662,10 @@ struct RegoleEditorView: View {
             }
         } header: { Text(Catalogo.Regole.modificatoreDifesa).foregroundStyle(Color.testoSecondario) } footer: { Text(Catalogo.Regole.mdAttivoAiuto).foregroundStyle(Color.testoSecondario) }
     }
+
+    /// I limiti della media e del bonus di una fascia del modificatore (`vm.limiti`, #889).
+    private var limiteMedia: ClosedRange<Double> { vm.limiti.intervallo(CampiRegole.limiteMediaFascia) }
+    private var limiteBonus: ClosedRange<Double> { vm.limiti.intervallo(CampiRegole.limiteBonusFascia) }
 
     private var prova: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -660,13 +704,11 @@ struct RegoleEditorView: View {
         Section {
             RigaInterruttore(titolo: TestiRegole.postiFissi, aiuto: TestiRegole.postiFissiAiuto, acceso: vm.postiFissi)
             if case .oggetto? = vm.valore.valore("panchina.posti") {
-                ForEach(["P", "D", "C", "A"], id: \.self) { r in
-                    RigaStepper(titolo: nomiRuolo[r] ?? r, valore: vm.numero("panchina.posti.\(r)"), passo: 1, minimo: 0, massimo: 8, cifre: 0)
-                }
+                ForEach(CampiRegole.posti, id: \.percorso) { riga($0, passo: 1) }
             } else {
-                RigaStepper(titolo: Catalogo.Regole.giocatoriPanchina, valore: vm.numero("panchina.numero", 7), passo: 1, minimo: 1, massimo: 14, cifre: 0)
+                riga(CampiRegole.giocatoriPanchina, predefinito: 7, passo: 1)
             }
-            RigaStepper(titolo: Catalogo.Regole.cambiMassimi, valore: vm.numero("panchina.max_sostituzioni", 5), passo: 1, minimo: 0, massimo: 14, cifre: 0)
+            riga(CampiRegole.cambi, predefinito: 5, passo: 1)
             Picker(Catalogo.Regole.comeEntranoRiserve, selection: vm.testo("panchina.tipo")) {
                 Text(Catalogo.Regole.perRuolo).tag("per_ruolo")
                 Text(Catalogo.Regole.libera).tag("libera")
@@ -680,17 +722,15 @@ struct RegoleEditorView: View {
                              acceso: vm.booleano("panchina.cambio_modulo"))
             Toggle(Catalogo.Regole.vuSeManca, isOn: vm.votoUfficioAttivo).tint(Color.verde).frame(minHeight: 44)
             if vm.votoUfficioAttivo.wrappedValue {
-                RigaStepper(titolo: Catalogo.Regole.vu, valore: vm.numero("voto_senza_sostituto", 4), minimo: 0, massimo: 10)
+                riga(CampiRegole.votoSenzaSostituto, predefinito: 4)
             }
         } header: { Text(Catalogo.Regole.panchinaSostituzioni).foregroundStyle(Color.testoSecondario) }
     }
 
     private var rosa: some View {
         Section(titolo: Catalogo.Regole.rosaCrediti) {
-            ForEach(["P", "D", "C", "A"], id: \.self) { r in
-                RigaStepper(titolo: nomiRuolo[r] ?? r, valore: vm.numero("rosa.\(r)"), passo: 1, minimo: 0, massimo: 20, cifre: 0)
-            }
-            RigaStepper(titolo: Catalogo.Regole.creditiIniziali, valore: vm.numero("crediti_iniziali"), passo: 10, minimo: 0, massimo: 5000, cifre: 0)
+            ForEach(CampiRegole.rosa, id: \.percorso) { riga($0, passo: 1) }
+            riga(CampiRegole.crediti, passo: 10)
         }
     }
 
@@ -723,7 +763,7 @@ struct RegoleEditorView: View {
                 Text(TestiRinvio.spiega(modo)).font(.footnote).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
                 if modo == ModoRinvio.votoUfficio {
-                    RigaStepper(titolo: Catalogo.Regole.rvVoto, valore: vm.numero("voto_ufficio_rinviate", 6), minimo: 0, massimo: 10)
+                    riga(CampiRegole.votoRinviate, predefinito: 6)
                 }
             } header: { Text(TestiRinvio.sezioneRegole).foregroundStyle(Color.testoSecondario) } footer: {
                 Text(TestiRinvio.aiutoRegole).foregroundStyle(Color.testoSecondario)

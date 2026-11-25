@@ -163,7 +163,7 @@ struct RegoleLimitiComeLaWebTests {
     @Test("Un numero che la web non lascia salvare: la frase della web, con il nome della riga", arguments: campiFuoriPosto)
     func fuoriPosto(caso: CampoFuoriPosto) throws {
         var r = try regole()
-        r.imposta(caso.percorso, .numero(caso.numero))
+        r.imposta(caso.percorso, JSONValue.numero(caso.numero))
         #expect(CampiRegole.problema(r, limiti: .riserva) == caso.frase)
     }
 
@@ -180,8 +180,8 @@ struct RegoleLimitiComeLaWebTests {
     @Test("Il primo campo che non va, nell'ordine della pagina")
     func primoCampo() throws {
         var r = try regole()
-        r.imposta("crediti_iniziali", .numero(-1))
-        r.imposta("bonus.assist", .numero(30))
+        r.imposta("crediti_iniziali", JSONValue.numero(-1))
+        r.imposta("bonus.assist", JSONValue.numero(30))
         #expect(CampiRegole.problema(r, limiti: .riserva) == "«Assist» deve essere tra 0 e 20")
     }
 
@@ -198,21 +198,21 @@ struct RegoleLimitiComeLaWebTests {
     func campiNonSalvati() throws {
         var spento = try regole()
         spento.imposta("modificatore_difesa.attivo", .booleano(false))
-        spento.imposta("modificatore_difesa.min_difensori", .numero(9))
+        spento.imposta("modificatore_difesa.min_difensori", JSONValue.numero(9))
         let fasce = [RegoleLogica.Fascia(media: 12, bonus: 1)]
         #expect(CampiRegole.problema(spento, fasce: fasce, limiti: .riserva) == nil, "il modificatore spento non si controlla")
 
         var postiFissi = try regole()
-        postiFissi.imposta("panchina.numero", .numero(0))
+        postiFissi.imposta("panchina.numero", JSONValue.numero(0))
         #expect(CampiRegole.problema(postiFissi, limiti: .riserva) == nil, "con i posti fissi la panchina è la loro somma")
 
         var senzaPosti = try regole()
         senzaPosti.imposta("panchina.posti", .nullo)
-        senzaPosti.imposta("panchina.numero", .numero(40))
+        senzaPosti.imposta("panchina.numero", JSONValue.numero(40))
         #expect(CampiRegole.problema(senzaPosti, limiti: .riserva) == "«Giocatori in panchina» deve essere tra 1 e 30")
 
         var votoAcceso = try regole()
-        votoAcceso.imposta("voto_senza_sostituto", .numero(12))
+        votoAcceso.imposta("voto_senza_sostituto", JSONValue.numero(12))
         #expect(CampiRegole.problema(votoAcceso, limiti: .riserva) == "«Voto d'ufficio» deve essere tra 0 e 10")
     }
 
@@ -220,7 +220,7 @@ struct RegoleLimitiComeLaWebTests {
     func limitiDelServerNelControllo() throws {
         let limiti = try #require(LimitiRegole(dati: Data(#"{"panchina.max_sostituzioni": {"min": 0, "max": 5}}"#.utf8)))
         var r = try regole()
-        r.imposta("panchina.max_sostituzioni", .numero(6))
+        r.imposta("panchina.max_sostituzioni", JSONValue.numero(6))
         #expect(CampiRegole.problema(r, limiti: limiti) == "«Cambi massimi» deve essere tra 0 e 5")
         #expect(CampiRegole.problema(r, limiti: .riserva) == nil)
     }
