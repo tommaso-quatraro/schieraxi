@@ -17,6 +17,8 @@ const nuovaRichiesta = () => ++stato.richiesta;
 const ancoraValida = n => n === stato.richiesta;
 const NOMI_RUOLO = { P: t("ruolo.P_pl"), D: t("ruolo.D_pl"), C: t("ruolo.C_pl"), A: t("ruolo.A_pl") };
 const NOME_RUOLO_1 = { P: t("ruolo.P_1"), D: t("ruolo.D_1"), C: t("ruolo.C_1"), A: t("ruolo.A_1") };
+// «2 portieri», «1 difensore»…: le frasi del server con il plurale (frase.rose.portieri.one e .other, …)
+const POSTI_DEL_RUOLO = { P: "frase.rose.portieri", D: "frase.rose.difensori", C: "frase.rose.centrocampisti", A: "frase.rose.attaccanti" };
 // Le lettere dei ruoli (P, D, C, A) sono quelle del fantacalcio italiano; in inglese: G (portiere), D, M (centrocampista), F (attaccante).
 const ruoloSigla = r => (LINGUA === "it" ? r : ({ P: "G", D: "D", C: "M", A: "F" }[r] || r));
 const SIGLE = { atalanta: "ATA", bologna: "BOL", cagliari: "CAG", como: "COM", fiorentina: "FIO", frosinone: "FRO", genoa: "GEN", inter: "INT",
@@ -3273,19 +3275,29 @@ async function vistaRegole() {
     dove.innerHTML = `<div class="caricamento">${t("regole.leggo_testo")}</div>`;
     try {
       const esito = await api("/api/regole/riconosci", { method: "POST", body: JSON.stringify({ testo }) });
-      if (!esito.modifiche.length) {
+      // i valori letti che non si possono salvare così come sono (#881): il server li toglie dai riconosciuti e dice perché
+      const nonApplicabili = esito.non_applicabili || [];
+      if (!esito.modifiche.length && !nonApplicabili.length) {
         dove.innerHTML = `<div class="attenzione" style="margin-top:12px">${t("regole.non_riconosciuto_nessuna")}</div>`;
         return;
       }
-      const vedi = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
+      const vediValore = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
+      // con le parole della pagina (#881): l'ordine dei cambi come nei pulsanti, i posti per ruolo per esteso
+      const vedi = m => m.chiave === "panchina.tipo" && m.valore === "per_ruolo" ? t("regole.per_ruolo")
+        : m.chiave === "panchina.tipo" && m.valore === "libera" ? t("regole.libera")
+          : m.chiave === "panchina.posti" && m.valore && typeof m.valore === "object"
+            ? ["P", "D", "C", "A"].map(x => tp(POSTI_DEL_RUOLO[x], Number(m.valore[x] ?? 0))).join(", ")
+            : vediValore(m.valore);
       // da controllare a mano (#684): le righe non lette, già nell'ordine del testo, con le regole da impostare (le dà il server)
       const daControllare = esito.da_controllare;
       const rigaDaControllare = x => `<div style="margin-top:6px"><span class="debole">${esc(x.riga)}</span>${x.regole.length ? `<span style="display:block">${t("regole.da_impostare", { r: esc(x.regole.map(etichettaRegola).join(", ")) })}</span>` : ""}</div>`;
-      dove.innerHTML = `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(etichettaRegola(m))}: <b>${esc(vedi(m.valore))}</b>${m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : ""}</span></div>`).join("")}
+      const daRiga = m => m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : "";
+      dove.innerHTML = `${esito.modifiche.length ? `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(etichettaRegola(m))}: <b>${esc(vedi(m))}</b>${daRiga(m)}</span></div>`).join("")}` : ""}
+        ${nonApplicabili.length ? `<h3>${t("regole.non_applicato")}</h3>${nonApplicabili.map(m => `<div class="attenzione"><b>${esc(etichettaRegola(m))}: ${esc(vedi(m))}</b><span style="display:block">${esc(testoDi(m, "motivo"))}</span>${daRiga(m)}</div>`).join("")}` : ""}
         ${daControllare.length ? `<details><summary style="font-size:var(--t-corpo)">${t("regole.da_controllare", { n: daControllare.length })}</summary><div class="piccolo">${daControllare.map(rigaDaControllare).join("")}</div></details>` : ""}
-        <div class="pulsanti"><button class="bottone" id="salva-riconosciute" type="button">${t("regole.salva_queste")}</button></div>`;
+        ${esito.modifiche.length ? `<div class="pulsanti"><button class="bottone" id="salva-riconosciute" type="button">${t("regole.salva_queste")}</button></div>` : ""}`;
       // un tocco: i valori riconosciuti vanno nei campi (dietro «Modifica i valori») e le regole si salvano come con «Salva le regole»
-      $("#salva-riconosciute").addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
+      $("#salva-riconosciute")?.addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
     } catch (e) { dove.innerHTML = errore(e); }
   });
   const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? (Number.isInteger(valore) ? 0 : 1)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };

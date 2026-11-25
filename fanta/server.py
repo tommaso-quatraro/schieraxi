@@ -2565,10 +2565,11 @@ class TestoRegole(BaseModel):
 
 
 @app.post("/api/regole/riconosci")
-def riconosci_regole(dati: TestoRegole):
+def riconosci_regole(dati: TestoRegole, ctx: Contesto = Depends(lega_corrente)):
     """Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).
+    Confronta con le regole salvate: un valore che non si potrebbe salvare così com'è va in `non_applicabili` con il perché (#881).
     Oltre i tetti (regole_testo.MAX_TESTO caratteri, MAX_RIGA per riga): 422 con una frase chiara."""
-    return regole_testo.interpreta(dati.testo)
+    return regole_testo.interpreta(dati.testo, _regole(ctx))
 
 
 @app.get("/api/regole")
