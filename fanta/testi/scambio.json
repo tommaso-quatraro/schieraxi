@@ -68,8 +68,9 @@
     "en": "Data sources"
   },
   "scambio.accendere_una_fonte": {
-    "it": "Accendere una fonte vuol dire assumersi il rispetto delle condizioni d'uso del sito da cui arrivano i dati.",
-    "en": "Turning a source on means taking on the terms of use of the site the data comes from."
+    "it": "Con una fonte spenta l'app usa i dati già salvati e quelli che inserisci tu (per esempio il listone e le rose da file). Accendere una fonte vuol dire assumersi il rispetto delle condizioni d'uso del sito da cui arrivano i dati.",
+    "en": "With a source off the app uses the data already saved and what you enter yourself (for example the player list and the rosters from a file). Turning a source on means taking on the terms of use of the site the data comes from.",
+    "nota": "sotto «Fonti dei dati» in Stato dei dati, una volta sola per tutte le fonti (#894): sotto ogni fonte spenta il server scrive solo cosa non arriva (fonti_attive.cosa_manca)"
   },
   "scambio.quanto_usa_app": {
     "it": "Quanto si usa l'app",
