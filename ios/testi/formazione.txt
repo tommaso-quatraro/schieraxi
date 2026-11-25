@@ -66,6 +66,9 @@ formazione.voce_fv
 formazione.voce_gioca
 formazione.voce_gioca_v
 
+# A giornata in corso, sotto l'atteso di chi deve ancora giocare nelle righe della panchina e degli elenchi (#900, RigaGiocatore)
+formazione.atteso_breve
+
 # Sostituzione (SceltaSostituto)
 formazione.sostituisci
 formazione.al_posto_di

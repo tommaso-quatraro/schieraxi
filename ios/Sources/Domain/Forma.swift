@@ -15,11 +15,24 @@ struct Forma: Equatable {
             default: return "→"
             }
         }
+
+        /// La parola del catalogo (`mercato.in_crescita`, `mercato.in_calo`, `mercato.stabile`, `mercato.pochi_dati`), come la web.
+        var parola: String {
+            switch self {
+            case .pochiDati: return Catalogo.Mercato.pochiDati
+            case .crescita: return Catalogo.Mercato.inCrescita
+            case .calo: return Catalogo.Mercato.inCalo
+            case .stabile: return Catalogo.Mercato.stabile
+            }
+        }
     }
 
     /// Le ultime (al massimo cinque) giornate, anche senza voto.
     let ultime: [VotoGiornata]
-    let andamento: Andamento
+    let andamento: Andamento?
+
+    /// DA FARE (#900): l'andamento del server.
+    static func di(_ voti: [VotoGiornata], andamento: String?) -> Forma? { calcola(voti) }
 
     /// Con meno di 4 giornate con voto non si giudica; altrimenti si confronta la media delle ultime 3 con quella di tutte:
     /// più di 0,6 sopra = in crescita, più di 0,6 sotto = in calo.

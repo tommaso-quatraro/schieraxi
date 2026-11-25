@@ -109,29 +109,21 @@ struct TuttiINumeri: View {
 
     // MARK: forma, grafico, rendimento
 
+    /// L'andamento lo decide il server (`andamento` di `/api/giocatore`, #895): qui la freccia e la parola del catalogo. Senza il
+    /// campo (server di prima) o con un valore che non conosciamo la riga non c'è, come la web.
     @ViewBuilder
     private var forma: some View {
-        if let f = Forma.calcola(scheda.voti ?? []) {
+        if let a = Forma.di(scheda.voti ?? [], andamento: scheda.codiceAndamento)?.andamento {
             VStack(alignment: .leading, spacing: 6) {
                 titolo(Catalogo.Mercato.forma)
                 HStack(alignment: .firstTextBaseline) {
                     Text(Catalogo.Mercato.andamento).font(.caption).foregroundStyle(Color.testoSecondario)
                     Spacer(minLength: 8)
-                    Text(f.andamento.freccia + " " + Self.testoAndamento(f.andamento)).font(.subheadline.bold())
-                        .foregroundStyle(f.andamento == .crescita ? Color.verde : f.andamento == .calo ? Color.malus : .primary)
+                    Text(a.freccia + " " + a.parola).font(.subheadline.bold())
+                        .foregroundStyle(a == .crescita ? Color.verde : a == .calo ? Color.malus : .primary)
                 }
                 .accessibilityElement(children: .combine)
             }
-        }
-    }
-
-    /// Le parole dell'andamento dal catalogo (`mercato.in_crescita`, …), come la web.
-    static func testoAndamento(_ a: Forma.Andamento) -> String {
-        switch a {
-        case .pochiDati: return Catalogo.Mercato.pochiDati
-        case .crescita: return Catalogo.Mercato.inCrescita
-        case .calo: return Catalogo.Mercato.inCalo
-        case .stabile: return Catalogo.Mercato.stabile
         }
     }
 

@@ -31,6 +31,17 @@ struct TestaFormazione: Equatable {
     /// A campionato finito la frase del server («Il campionato è finito: previsioni e consigli ripartono con il calendario della
     /// prossima stagione.»), sotto il riepilogo dell'ultima giornata se c'è, al posto della giornata da preparare (#727).
     var campionatoFinito: String?
+    /// A giornata finita con una partita ancora da recuperare, il riquadro sotto i punti (#895, #900; vedi `Rinvio`).
+    var rinvio: Rinvio?
+
+    /// Il riquadro del rinvio della giornata finita, come `cardRinvio` con il titolo nel `riepilogoGiornata` della web: «Giornata 7 ·
+    /// 10ª di Serie A: partita rinviata», le partite con la data del recupero, la nota «Manca il recupero: i punti possono ancora
+    /// cambiare.», i miei giocatori coinvolti e il menu «per questa giornata» (`riepilogo.rinvio`).
+    struct Rinvio: Equatable {
+        let titolo: String
+        let nota: String?
+        let scelta: SceltaRinvio
+    }
 }
 
 extension TestaFormazione {

@@ -173,6 +173,19 @@ extension Catalogo {
             "Manca il recupero di \(partite): i punti possono ancora cambiare."
         }
 
+        /// `oggi.rinvio_titolo_giornata_1`
+        static func rinvioTitoloGiornata1(g: String) -> String {
+            "\(g): partita rinviata"
+        }
+
+        /// `oggi.rinvio_titolo_giornata_n`
+        static func rinvioTitoloGiornataN(g: String) -> String {
+            "\(g): partite rinviate"
+        }
+
+        /// `oggi.recupero_punti`
+        static let recuperoPunti = "Manca il recupero: i punti possono ancora cambiare."
+
         /// `oggi.infortunato`
         static let infortunato = "Infortunato"
 

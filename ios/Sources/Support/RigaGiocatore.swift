@@ -106,7 +106,7 @@ struct RigaGiocatore: View {
 
     /// La riga piccola sotto il numero: «gioca 72%» prima della partita, «fantavoto» (`mercato.fantavoto` della web) sotto il
     /// fantavoto preso; nil a partita iniziata senza voto, perché lo stato della partita lo dice già la pillola dell'etichetta.
-    nonisolated static func sottoNumero(_ g: Giocatore) -> String? {
+    nonisolated static func sottoNumero(_ g: Giocatore, dalVivo: Bool = false) -> String? {
         guard let esito = g.esitoPartita else { return "gioca \(Formato.percento(g.pVoto))%" }
         return esito.fv == nil ? nil : Catalogo.Mercato.fantavoto
     }

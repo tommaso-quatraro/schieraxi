@@ -188,6 +188,9 @@ extension Catalogo {
             "gioca all'\(p) per cento"
         }
 
+        /// `formazione.atteso_breve`
+        static let attesoBreve = "atteso"
+
         /// `formazione.sostituisci`
         static let sostituisci = "Sostituisci"
 
