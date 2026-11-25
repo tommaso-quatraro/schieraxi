@@ -178,6 +178,22 @@ jobs:
             -only-testing:SchieraxiUITests \
             -resultBundlePath build/test-interfaccia.xcresult \
             2>&1 | tee build/test-interfaccia.log | tail -n 60
+      # Issue #870: le righe «chiudiFoglio: N tocchi, chiuso dopo S s (…)» (un foglio chiuso solo al secondo o terzo tocco)
+      # stanno solo nel registro completo: si copiano nel riepilogo della corsa, anche dopo un test rosso. Mai un errore da qui.
+      # Solo quelle a inizio riga (il `print` del test): la stessa frase come attività di XCTest esce «t = …s …» e non si conta
+      # due volte. -a: il registro può avere caratteri nulli e grep lo tratterebbe come binario.
+      - name: Tocchi ripetuti per chiudere un foglio (riepilogo)
+        if: "!cancelled() && inputs.parte != 'unitari'"
+        run: |
+          righe=$(grep -a -h '^chiudiFoglio:' build/test-interfaccia.log 2> /dev/null | head -n 50) || righe=""
+          if [ -n "$righe" ]; then
+            {
+              echo "### Tocchi ripetuti per chiudere un foglio"
+              echo '```text'
+              printf '%s\n' "$righe"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY" || true
+          fi
       - name: Corsa parziale (solo unitari)
         if: inputs.parte == 'unitari'
         run: |
