@@ -86,9 +86,10 @@ enum ParoleSquadre {
     /// Il gruppo dei giocatori che il server non ha saputo collegare a un ruolo.
     static let senzaRuolo = Catalogo.Scambio.senzaRuolo
 
-    /// «Rose aggiornate il 6 novembre 2026» (mese per intero, ora italiana); se la data manca o non si capisce, «–» come la web.
+    /// «Rose aggiornate il 6 novembre 2026» (mese per intero, ora italiana), «l'8 novembre 2026» con l'apostrofo come la web
+    /// (#859); se la data manca o non si capisce, «–» come la web.
     static func roseAggiornate(_ aggiornato: String?) -> String {
-        Catalogo.Scambio.roseAggiornate(data: dataEstesa(aggiornato))
+        DatiVecchi.elidiGiorno(Catalogo.Scambio.roseAggiornate(data: dataEstesa(aggiornato)))
     }
 
     private static let giornoLettura: DateFormatter = {

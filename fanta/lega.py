@@ -15,9 +15,10 @@ from .percorsi import scrivi_sicuro, utente_della_cartella
 from .regole import RUOLI, Regole
 from .rose import SquadraLetta
 
-# Si può cominciare con la sola propria rosa (2/11/2026): lo dicono l'anteprima delle rose e i controlli del primo avvio.
-UNA_SQUADRA = ("Con una sola squadra funzionano formazione e consigli; per gli scambi servono le rose degli altri: "
-               "potrai aggiungerle quando vuoi.")
+# Si può cominciare con la sola propria rosa (2/11/2026): lo dicono l'anteprima delle rose e i controlli del primo avvio. Gli scambi
+# non ci sono più (#615): le rose degli altri servono a guardare le altre squadre (#873, come docs/GUIDA-UTENTE.md).
+UNA_SQUADRA = ("Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: "
+               "puoi aggiungerle quando vuoi.")
 # Anteprima e importazione con il file delle rose che non si legge più: si riparte dalle squadre del file (server._rose_di_prima).
 ROSE_ROVINATE = "Le rose salvate finora non si leggono più: l'importazione tiene solo le squadre di questo file."
 

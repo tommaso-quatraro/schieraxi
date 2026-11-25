@@ -134,6 +134,11 @@ extension Catalogo {
         /// `mercato.statistiche_avanzate`
         static let statisticheAvanzate = "Statistiche avanzate"
 
+        /// `mercato.dati_fino_al`
+        static func datiFinoAl(data: String) -> String {
+            "Dati fino al \(data)."
+        }
+
         /// `mercato.gol_attesi_tot`
         static let golAttesiTot = "gol attesi"
 

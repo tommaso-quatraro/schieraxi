@@ -214,8 +214,9 @@ extension View {
     }
 }
 
-/// «4 da controllare»; se non entra (testo grande, cerchio della schermata di blocco) solo «4» con il simbolo: mai «4 da contro…».
-/// Le forme vengono da `ParoleWidget.daControllare`; VoiceOver legge sempre «4 da controllare».
+/// «4 da controllare»; se non entra (testo grande) «4 da vedere», e dove non entra nemmeno quello (cerchio della schermata di blocco)
+/// solo «4» con il simbolo: mai «4 da contro…». Le forme vengono da `ParoleWidget.daControllare`; VoiceOver legge sempre
+/// «4 da controllare».
 struct EtichettaDaControllare: View {
     let n: Int
     var icona = "exclamationmark.triangle.fill"
