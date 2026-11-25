@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.547",
+    "data": "2026-11-25T10:18:56",
+    "titolo": "Piccole correzioni di parole: «Dall'8ª», «1,0 punti» sull'iPhone, la prova delle previsioni",
+    "voci": [
+      "Regole e scadenza e primo avvio: il menu della prima giornata della lega dice «Dall'8ª» e «Dall'11ª» invece di «Dalla 8ª» e «Dalla 11ª».",
+      "iPhone, Giornate: nei Dettagli «1,0 punti in più della consigliata» invece di «1,0 punto in più», come sulla web.",
+      "iPhone, Stato dei dati: sotto la prova delle previsioni la frase su «da fantamedia» è quella della web (la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare), non più «chi ha la media più alta»."
+    ],
+    "tecnico": [
+      "Web: elidiOrdinali riconosce anche l'articolo con la maiuscola in testa («Dalla 8ª» → «Dall'8ª»); vocePrimaGiornata scrive le voci del menu della prima giornata in Regole (app.js) e nel primo avvio (primoavvio.js). frasi.elidi_ordinali del server e TempiLega.elidiOrdinali dell'iPhone restano sulle minuscole: nessun loro testo comincia con l'articolo.",
+      "iPhone: TestoPrecisione sceglie il plurale di diario.qp_cf_piu e diario.qp_cf_meno sul numero scritto, come tpScritto della web; LegaExtra usa Catalogo.Avv.provaSu (avv.prova_su aggiunta a ios/testi/avv.txt)."
+    ]
+  },
+  {
     "versione": "1.546",
     "data": "2026-11-25T10:18:38",
     "titolo": "La prova del modello segue le regole e le rose della lega",
