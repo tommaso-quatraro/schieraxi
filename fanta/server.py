@@ -2591,12 +2591,16 @@ def scrivi_regole(dati: dict, request: Request, response: Response, ctx: Contest
                   "finestre_scambio")
     with versioni.blocco("regole"):
         versioni.controlla(request, versioni.etag_file(ctx.regole))
+        salvate = _regole(ctx)              # letto DENTRO il lucchetto, come sotto
         if any(k not in dati for k in campi_lega):
             # un client vecchio rimanda le regole senza i campi nuovi: non devono tornare al valore di partenza (letti DENTRO il
             # lucchetto: un'eccezione dei rinvii salvata intanto da un altro dispositivo non si perde)
-            attuali = asdict(_regole(ctx))
+            attuali = asdict(salvate)
             dati = {**{k: attuali[k] for k in campi_lega}, **dati}
-        nuove = regole.da_dict(dati)        # controlla tutto: chiavi, tipi, valori
+        # controlla tutto: chiavi, tipi, valori; i valori cambiati rispetto a quelle salvate hanno i limiti della pagina Regole
+        # (regole.LIMITI, #881), quelli che restano uguali i limiti di prima (una lega salvata prima cambia la scadenza anche con
+        # un valore ora fuori dai limiti)
+        nuove = regole.da_dict(dati, salvate=salvate)
         regole.salva(nuove, ctx.regole)
         response.headers["ETag"] = versioni.etag_file(ctx.regole)
     return asdict(nuove)

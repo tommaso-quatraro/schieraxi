@@ -53,6 +53,15 @@
       "forma": "server (`fatti_e_attesi.differenza` per la riga, con i testi `giornate.sul_previsto` e `giornate.come_previsto`; `fatti_e_attesi.testo` per la frase, così com'è); un server di prima non manda il campo: niente differenza né frase",
       "chi": "web con #702 (#672); iPhone con #705: `RigaGiornata.sulPrevisto` e `DettaglioGiornata.scarti` in `Domain/Giornate.swift`, provati da `GiornateTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 102,
+      "schermata": "Giornate, riga sotto il titolo (#863)",
+      "web": "sotto il titolo lo stemma della mia squadra, se c'è, e «Giornata 13 · 13ª di Serie A · Real Esempio · dati del 26 ott 23:55» (`prossima_giornata`, `prossima_giornata_lega`, `mia_squadra` e `ultimo_aggiornamento` di `GET /api/stato`, testi `testata.dati_del` e `testata.mai`); ogni pezzo intero, a capo dopo un «·»; senza risposta «Server non raggiungibile» (`testata.offline`) (`rigaStato` e `caricaInfo` in `app.js`)",
+      "iphone": "prima: niente riga. Ora uguale alla web, con gli stessi dati e testi; un pezzo che manca non si scrive, e VoiceOver legge la riga in una volta",
+      "forma": "web; i dati dal server (`GET /api/stato`)",
+      "chi": "**fatto** (#863): `RigaStato` (`Domain/RigaStato.swift`), `Giornate/RigaStatoView`, `GiornateViewModel.rigaStato`; prova `RigaStatoGiornateTests`, foto `giornate`",
+      "stato": "fatto"
     }
   ]
 }

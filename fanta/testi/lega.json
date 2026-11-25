@@ -1,12 +1,8 @@
 {
-  "lega.voce_squadre": {
-    "it": "Squadre e rose",
-    "en": "Teams and rosters",
-    "nota": "---- [lega] ----"
-  },
   "lega.voce_importa": {
     "it": "Aggiorna le rose",
-    "en": "Update the rosters"
+    "en": "Update the rosters",
+    "nota": "---- [lega] ----"
   },
   "lega.voce_importa_sub": {
     "it": "Il file Excel o il testo preso da Leghe",
@@ -194,10 +190,6 @@
     "it": "Stemma e maglia",
     "en": "Crest and shirt"
   },
-  "lega.tocca_una_squadra": {
-    "it": "Tocca una squadra per vedere la rosa.",
-    "en": "Tap a team to see the roster."
-  },
   "lega.togli_squadre_che": {
     "it": "Togli le squadre che non sono nel file",
     "en": "Remove the teams that are not in the file"
@@ -273,10 +265,6 @@
   "lega.importate": {
     "it": "Importate: {nomi} ({n} in tutto).",
     "en": "Imported: {nomi} ({n} in all)."
-  },
-  "lega.voce_miasquadra": {
-    "it": "La mia squadra e rosa",
-    "en": "My team and roster"
   },
   "lega.nuova_stagione_n": {
     "it": "Nuova stagione {s}",

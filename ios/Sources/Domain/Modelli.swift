@@ -5,6 +5,8 @@ import Foundation
 struct InfoServer: Decodable {
     let stagione: String?
     let prossimaGiornata: Int?
+    /// La stessa giornata contata dalla prima della lega (nil prima che la lega parta o con un server di prima).
+    let prossimaGiornataLega: Int?
     let ultimoAggiornamento: String?
     let miaSquadra: String?
     let versione: String?
