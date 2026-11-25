@@ -263,20 +263,23 @@ def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], v
                   "fantavoto": round(fv[g["id"]], 2) if g["id"] in fv else None, "data": data[g["id"]]} for g in titolari + panchina]
     # chi deve ancora scendere in campo: non chi ha già giocato e aspetta il voto (attesa_voti) né chi ha la partita rinviata
     da_giocare = sum(1 for g in va if stato[g.id] in ("da_giocare", IN_CORSO))
-    riga = situazione(da_giocare, any(stato[g.id] == "attesa_voti" for g in va), [g.nome for g in va if g.id in aspetta])
+    riga = situazione(da_giocare, any(stato[g.id] == "attesa_voti" for g in va), [g.nome for g in va if g.id in aspetta], len(va))
     return {"punti_fatti": round(fatti, 1), "punti_attesi_restanti": round(restanti, 1), "punti_previsti": round(fatti + restanti, 1),
             "modificatore": None if modificatore is None else round(modificatore, 1),
             "ancora_da_giocare": da_giocare, "situazione": riga, "situazione_frase": frasi.di(riga),
             "giocatori": giocatori, "sostituzioni": sostituzioni}
 
 
-def situazione(da_giocare: int, attesa_voti: bool, recupero: list[str]) -> frasi.Frase:
-    """La riga sotto i punti a giornata in corso (#895), dai giocatori che vanno a punteggio: quanti devono ancora giocare; se nessuno,
-    cosa manca: i voti ufficiali di chi ha già giocato (`attesa_voti`), il recupero di una partita rinviata che la lega aspetta
-    (`recupero`, i nomi), tutti e due, o niente (i voti sono usciti tutti). Prima la web diceva «mancano solo i voti ufficiali» a ogni
-    `ancora_da_giocare` zero, anche con i voti già usciti e un recupero da giocare."""
+def situazione(da_giocare: int, attesa_voti: bool, recupero: list[str], a_punteggio: int) -> frasi.Frase:
+    """La riga sotto i punti a giornata in corso (#895), dai giocatori che vanno a punteggio (`a_punteggio`, quanti sono): quanti
+    devono ancora giocare; se nessuno, cosa manca: i voti ufficiali di chi ha già giocato (`attesa_voti`), il recupero di una partita
+    rinviata che la lega aspetta (`recupero`, i nomi), tutti e due, o niente (i voti sono usciti tutti). Se il recupero lo aspettano
+    tutti, nessuno ha giocato: una frase sua. Prima la web diceva «mancano solo i voti ufficiali» a ogni `ancora_da_giocare` zero,
+    anche con i voti già usciti e un recupero da giocare."""
     if da_giocare:
         return F("in_corso.da_giocare", n=da_giocare)
+    if recupero and len(recupero) >= a_punteggio:
+        return F("in_corso.tutti_recupero")
     if recupero:
         return F("in_corso.voti_e_recupero" if attesa_voti else "in_corso.recupero", n=len(recupero), nomi=frasi.elenco(recupero, con_e=True))
     return F("in_corso.voti") if attesa_voti else F("in_corso.finiti")

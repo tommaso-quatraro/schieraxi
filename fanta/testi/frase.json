@@ -612,6 +612,10 @@
     "it": "I voti dei tuoi giocatori sono tutti usciti.",
     "en": "The grades of all your players are out."
   },
+  "frase.in_corso.tutti_recupero": {
+    "it": "I tuoi giocatori aspettano tutti il recupero.",
+    "en": "All your players are waiting for the make-up game."
+  },
   "frase.riepilogo.voti_in_arrivo": {
     "it": "I punti arrivano quando escono i voti.",
     "en": "The points arrive when the grades are out."

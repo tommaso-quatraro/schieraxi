@@ -198,6 +198,7 @@ CATALOGO: dict[str, str] = {
     "in_corso.voti_e_recupero.one": "Hanno giocato tutti tranne {nomi}, che aspetta il recupero; mancano anche i voti ufficiali.",
     "in_corso.voti_e_recupero.other": "Hanno giocato tutti tranne {nomi}, che aspettano il recupero; mancano anche i voti ufficiali.",
     "in_corso.finiti": "I voti dei tuoi giocatori sono tutti usciti.",
+    "in_corso.tutti_recupero": "I tuoi giocatori aspettano tutti il recupero.",
     # giornata finita con i voti non ancora usciti (#895, `voti_in_arrivo` di Oggi): sotto «Giornata 5 · 8ª di Serie A: finita»
     "riepilogo.voti_in_arrivo": "I punti arrivano quando escono i voti.",
     "probabili.oggi": "Probabili aggiornate alle {ora}",
