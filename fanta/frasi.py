@@ -342,6 +342,10 @@ CATALOGO: dict[str, str] = {
     "registro.persa_scrittura": "salvataggio nell'archivio non riuscito",
     "registro.persa_misura": "misura a giornata finita non riuscita più volte",
     "registro.persa_altro": "motivo non riconosciuto: i dettagli sono nel log del server",
+    # Gestione, tutti i posti presi (#894, `avviso` di GET /api/admin/utenti e di POST /api/admin/inviti): chi gestisce lo legge
+    # prima di creare un invito; {n} = gli utenti, {massimo} = il tetto del server (MAX_UTENTI)
+    "admin.posti_pieni.one": "Posti pieni: {n} utente su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "admin.posti_pieni.other": "Posti pieni: {n} utenti su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
 }
 
 

@@ -1119,5 +1119,14 @@
   "frase.registro.persa_altro": {
     "it": "motivo non riconosciuto: i dettagli sono nel log del server",
     "en": "unrecognised reason: the details are in the server log"
+  },
+  "frase.admin.posti_pieni.one": {
+    "it": "Posti pieni: {n} utente su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "en": "No places left: {n} user out of {massimo}. Whoever gets an invitation now will find sign-ups closed until you raise the server's maximum number of users.",
+    "nota": "Gestione, tutti i posti presi (#894): avviso del server sopra «Crea l'invito» e nell'esito dell'invito"
+  },
+  "frase.admin.posti_pieni.other": {
+    "it": "Posti pieni: {n} utenti su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "en": "No places left: {n} users out of {massimo}. Whoever gets an invitation now will find sign-ups closed until you raise the server's maximum number of users."
   }
 }

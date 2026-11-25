@@ -88,6 +88,14 @@ def messaggio_spenta(fonte: str) -> str:
             "(per esempio il listone e le rose da file). Se la accendi, rispetti le condizioni d'uso del sito.")
 
 
+def cosa_manca(fonte: str) -> str:
+    """Per la riga di una fonte spenta in «Stato dei dati» (#894): solo cosa non arriva. Il nome e «spenta» sono già sulla riga,
+    e la frase comune (dati già salvati, condizioni d'uso) la pagina la scrive una volta sola sotto l'elenco."""
+    if fonte == "foto":
+        return "L'app usa i volti illustrati."
+    return f"Non scarico {FONTI[fonte][1]}."
+
+
 def richiedi(fonte: str) -> None:
     """Alza FonteSpenta (con un messaggio chiaro) se la fonte non va contattata."""
     if not acceso(fonte):
@@ -100,7 +108,7 @@ def stato(percorso: Path | None = None) -> list[dict]:
     for k, (nome, serve, _) in FONTI.items():
         on, da = origine(k, percorso)
         righe.append({"id": k, "nome": nome, "serve": serve, "acceso": on, "scelta_da": da,
-                      "messaggio": None if on else messaggio_spenta(k)})
+                      "messaggio": None if on else cosa_manca(k)})
     return righe
 
 

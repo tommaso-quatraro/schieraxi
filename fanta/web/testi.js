@@ -990,6 +990,8 @@ const TESTI = {
     "frase.registro.persa_scrittura": "salvataggio nell'archivio non riuscito",
     "frase.registro.persa_misura": "misura a giornata finita non riuscita più volte",
     "frase.registro.persa_altro": "motivo non riconosciuto: i dettagli sono nel log del server",
+    "frase.admin.posti_pieni.one": "Posti pieni: {n} utente su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "frase.admin.posti_pieni.other": "Posti pieni: {n} utenti su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
 
     "giocatore.gioca": "gioca {p}",
 
@@ -2684,6 +2686,8 @@ const TESTI = {
     "frase.registro.persa_scrittura": "saving to the archive failed",
     "frase.registro.persa_misura": "the measurement after the matchday failed several times",
     "frase.registro.persa_altro": "unrecognised reason: the details are in the server log",
+    "frase.admin.posti_pieni.one": "No places left: {n} user out of {massimo}. Whoever gets an invitation now will find sign-ups closed until you raise the server's maximum number of users.",
+    "frase.admin.posti_pieni.other": "No places left: {n} users out of {massimo}. Whoever gets an invitation now will find sign-ups closed until you raise the server's maximum number of users.",
 
     "giocatore.gioca": "plays {p}",
 

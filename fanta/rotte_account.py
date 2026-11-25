@@ -18,7 +18,7 @@ from fastapi import Path as FPath
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import account, account_email, contesto, fonti_attive, funzioni, percorsi, posta, registro, social
+from . import account, account_email, contesto, fonti_attive, frasi, funzioni, percorsi, posta, registro, social
 from .account import ErroreAccount, Utente
 
 LOG = logging.getLogger(__name__)
@@ -573,11 +573,21 @@ class DaResettare(BaseModel):
     nome_utente: str = Field(max_length=100)
 
 
+def _avviso_posti(db) -> dict:
+    """Con tutti i posti presi, la frase che chi gestisce legge prima di creare un invito (#894): chi lo riceve troverebbe le
+    registrazioni chiuse finché il tetto (MAX_UTENTI) non si alza. `{avviso, avviso_frase}`, null tutti e due se c'è posto."""
+    n, massimo = db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0], account.max_utenti()
+    avviso = frasi.F("admin.posti_pieni", n=n, massimo=massimo) if n >= massimo else None
+    return {"avviso": str(avviso) if avviso else None, "avviso_frase": frasi.di(avviso)}
+
+
 @router.post("/api/admin/inviti", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
 def crea_invito(dati: NuovoInvito):
+    """Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`."""
     with closing(account.apri()) as db:
         codice = account.crea_invito(db, dati.etichetta, dati.amministratore, usi_max=dati.usi)
-    return {"codice": codice, "etichetta": dati.etichetta.strip(), "valido_giorni": account.DURATA_INVITO.days, "usi_max": dati.usi}
+        avviso = _avviso_posti(db)
+    return {"codice": codice, "etichetta": dati.etichetta.strip(), "valido_giorni": account.DURATA_INVITO.days, "usi_max": dati.usi} | avviso
 
 
 @router.get("/api/admin/inviti", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
@@ -597,7 +607,7 @@ def revoca_invito(invito_id: int = FPath(ge=1, le=MAX_ID)):
 @router.get("/api/admin/utenti", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
 def elenco_utenti():
     with closing(account.apri()) as db:
-        return {"utenti": account.elenco(db), "massimo": account.max_utenti()}
+        return {"utenti": account.elenco(db), "massimo": account.max_utenti()} | _avviso_posti(db)
 
 
 @router.get("/api/admin/registro", dependencies=[Depends(solo_amministratore)])
