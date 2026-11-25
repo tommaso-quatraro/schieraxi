@@ -19,6 +19,25 @@ struct CampoAccesso: View {
     var tastiera: UIKeyboardType = .default
     var maiuscole: TextInputAutocapitalization = .never
 
+    /// Tetto della misura dei pallini della password (issue #857). La casella sta su una riga sola e, quando non ci si scrive,
+    /// iOS taglia con «…» quello che non ci sta: con il testo massimo restavano otto pallini. Nelle foto un pallino è largo
+    /// circa 0,6 volte la misura del carattere: a XXL 20 pallini (la password forte che propone iOS) sono larghi circa 256
+    /// punti e stanno nei 295 della casella sull'iPhone più stretto. Oltre XXL i pallini non crescono più; l'etichetta sopra
+    /// la casella resta grande.
+    static let tettoPallini: DynamicTypeSize = .xxLarge
+
+    @Environment(\.dynamicTypeSize) private var misuraTesto
+
+    /// Altezza minima della riga di testo nella casella, uguale per tutti i campi: una riga di `.body` alla misura del testo
+    /// scelta da chi usa l'app (anche quando i pallini si fermano a `tettoPallini`) più 3 punti. Nelle foto una casella di
+    /// testo è alta circa una riga più un punto e mezzo (22 punti col testo normale, 65 col massimo), quella della password
+    /// un punto meno: con 3 punti in più vince sempre questa altezza, e le caselle sono alte uguali a ogni misura. Un
+    /// `@ScaledMetric` non bastava: cresce meno del carattere (col testo massimo la password restava 83 punti contro 89).
+    private var rigaCasella: CGFloat {
+        let tratti = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(misuraTesto))
+        return UIFont.preferredFont(forTextStyle: .body, compatibleWith: tratti).lineHeight + 3
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(etichetta)
@@ -33,6 +52,7 @@ struct CampoAccesso: View {
                 .textInputAutocapitalization(maiuscole)
                 .autocorrectionDisabled()
                 .focused(focus, equals: campo)
+                .frame(minHeight: rigaCasella)
                 .padding(12)
                 .frame(minHeight: Tema.areaTocco)
                 .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo))
@@ -59,6 +79,7 @@ struct CampoAccesso: View {
     private var casella: some View {
         if segreto {
             SecureField("", text: $testo)
+                .dynamicTypeSize(...Self.tettoPallini)
         } else {
             TextField("", text: $testo)
         }

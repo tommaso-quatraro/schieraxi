@@ -282,12 +282,26 @@ def test_understat_pagina_web_dice_anche_il_testo_che_mostra():
     assert "(titolo «Vuota»): " in str(e.value) and "testo" not in str(e.value)
 
 
+def test_understat_pagina_web_con_un_disegno_grande_prima_della_frase_dice_la_frase():
+    """La pagina di attesa di Understat (#862) ha un disegno lungo decine di migliaia di caratteri prima della frase: leggendo solo
+    l'inizio della pagina il disegno restava aperto, la frase fuori e il messaggio diceva solo il titolo. Pagina inventata."""
+    disegno = b"<svg viewBox=\"0 0 800 600\">" + b"<path d=\"M10 10 L20 20 L30 10 Z\" fill=\"#123456\"/>" * 2_000 + b"</svg>"
+    assert len(disegno) > 3 * us.PAGINA_LETTA
+    pagina = (b"<!DOCTYPE html>\n<html><head><title>Sito</title><style>body { color: #fff }</style></head><body><div>" + disegno
+              + b"</div><h1>Torniamo presto</h1><p>Stiamo sistemando il sito.</p></body></html>")
+    with pytest.raises(us.RispostaNonDati) as e:
+        us.dati_json(pagina)
+    assert "(titolo «Sito», testo «Torniamo presto Stiamo sistemando il sito.»): " in str(e.value)
+    assert "path" not in str(e.value) and "123456" not in str(e.value)
+
+
 @pytest.mark.parametrize("pezzo", [b"<svg>", b"<title>", b"<title", b"<title>x</titl", b"<!--", b"<?", b"<", b"<style>x"])
 def test_understat_pagina_web_enorme_o_storta_si_legge_subito(pezzo):
     """Una risposta grande fatta di aperture mai chiuse (rete.scarica non ha un tetto di dimensione) prima costava decine di
-    secondi di espressioni regolari: si guarda solo l'inizio della pagina. Limite largo: dopo la correzione bastano millesimi."""
+    secondi di espressioni regolari: il titolo si cerca solo all'inizio della pagina e il testo visibile, che si cerca più in là
+    (#862), con espressioni che crescono solo con la lunghezza, fino a un tetto. Limite largo: bastano centesimi."""
     import time
-    pagina = b"<html><body><p>Fermi</p>" + pezzo * (300_000 // len(pezzo))
+    pagina = b"<html><body><p>Fermi</p>" + pezzo * ((us.TESTO_LETTO + 300_000) // len(pezzo))
     inizio = time.perf_counter()
     with pytest.raises(us.RispostaNonDati, match="pagina web al posto dei dati") as e:
         us.dati_json(pagina)
