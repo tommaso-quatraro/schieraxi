@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.562",
+    "data": "2026-11-26T00:21:43",
+    "titolo": "Oggi e il widget rispondono più in fretta quando l'app la usano in tanti",
+    "voci": [
+      "Oggi e il widget dell'iPhone si aprono più in fretta, soprattutto quando molti amici usano l'app nello stesso momento. Numeri, consigli e testi restano gli stessi."
+    ],
+    "tecnico": [
+      "#907. Restano in memoria, senza cambiare nessun numero: il calendario della stagione già convertito per consigli.prossima_giornata (rifatto se le righe lette cambiano; tetto 8), la scheda di ogni giocatore per tabella di previsioni (consigli.scheda_di, usata da Oggi, Da fare e widget; tetto 16 tabelle), rose.json e regole.json già trasformati finché il contenuto del file è identico byte per byte (fanta/memoria_file.py: chiave il percorso, quindi ogni account le sue voci; ogni lettura riceve un oggetto suo; tetto 256), lo schema dell'archivio preparato una volta per processo finché PRAGMA schema_version non cambia. Nessun campo dell'API cambia. Misura con prove/misura_oggi.py."
+    ]
+  },
+  {
     "versione": "1.561",
     "data": "2026-11-26T00:20:56",
     "titolo": "Avvisi: niente doppione dopo il «cambio pronto», la cosa importante all'inizio",
