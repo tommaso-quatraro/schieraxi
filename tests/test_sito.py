@@ -3,9 +3,12 @@
 Dal 5/11/2026 (#355) il sito è formale e diretto, con la grafica «direzione B» della web app: nome una volta, titolo
 «La formazione consigliata», un esempio di campo con nomi inventati, «Come funziona» con un esempio di calcolo, domande.
 Niente slogan, demo, gradienti, ombre o carte dentro carte. Archivo (SIL OFL 1.1) è servito dai file del sito.
+Dal 20/11/2026 il sito non si installa più come app: niente manifest, niente suggerimento, un sw.js che si toglie da solo.
 """
 import json
 import re
+import shutil
+import subprocess
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -373,8 +376,6 @@ def test_archivo_servito_dai_file_del_sito():
     for nome in PAGINE:
         _, testo = leggi(nome)
         assert '<link rel="preload" href="/font/archivo-semistretto.woff2" as="font" type="font/woff2" crossorigin>' in testo
-    sw = (SITO / "sw.js").read_text(encoding="utf-8")
-    assert "'/font/archivo-semistretto.woff2'" in sw
 
 
 def test_nome_disegnato_con_font_libero():
@@ -482,67 +483,132 @@ def test_italiano_e_inglese_allineati():
     assert _campo(t_it)[1] == [[(n, v.replace(".", ",")) for n, v in l] for l in _campo(t_en)[1]]
 
 
-# ---- app installabile ----
-def _png_dim(path):
-    d = path.read_bytes()
-    assert d[:8] == b"\x89PNG\r\n\x1a\n"
-    return int.from_bytes(d[16:20], "big"), int.from_bytes(d[20:24], "big")
+# ---- il sito non si installa come app (decisione del proprietario del 20/11/2026) ----
+# L'app installata apriva la pagina di presentazione, dove gli avvisi non funzionano. L'app vera è la web app servita dal
+# server (fanta/web/) e quella per iPhone. Restano l'icona della scheda del browser e quella per i preferiti.
+META_APP = ("mobile-web-app-capable", "apple-mobile-web-app-capable", "apple-mobile-web-app-title")
 
 
-@pytest.mark.parametrize("nome,lang,scope", [("manifest.webmanifest", "it", "/"), ("en/manifest.webmanifest", "en", "/en/")])
-def test_manifest_completo(nome, lang, scope):
-    m = json.loads((SITO / nome).read_text(encoding="utf-8"))
-    for k in ("name", "short_name", "id", "start_url", "scope", "display", "background_color", "theme_color", "icons", "screenshots", "shortcuts", "lang"):
-        assert m.get(k), k
-    assert m["lang"] == lang and m["display"] == "standalone" and m["scope"] == scope
-    assert m["id"].startswith(scope) and m["start_url"].startswith(scope)
-    assert m["theme_color"].startswith("#") and m["background_color"].startswith("#")
-    scopi = {(i["sizes"], i.get("purpose", "any")) for i in m["icons"]}
-    assert {("192x192", "any"), ("512x512", "any"), ("192x192", "maskable"), ("512x512", "maskable")} <= scopi
-    for i in m["icons"]:
-        w, h = _png_dim(SITO / i["src"].lstrip("/"))
-        assert f"{w}x{h}" == i["sizes"], i["src"]
-    assert {s["form_factor"] for s in m["screenshots"]} == {"wide", "narrow"}
-    for s in m["screenshots"]:
-        w, h = _png_dim(SITO / s["src"].lstrip("/"))
-        assert f"{w}x{h}" == s["sizes"] and s["label"]
-    pagina = leggi("index.html" if lang == "it" else "en/index.html")[0]
-    for s in m["shortcuts"]:
-        assert s["url"].startswith(scope) and s["name"]
-        assert s["url"].split("#")[1] in pagina.ids
-    # niente slogan né demo
-    testo = json.dumps(m, ensure_ascii=False)
-    for vietato in ("Schierali", "Line them up", "demo", "Demo"):
-        assert vietato not in testo, vietato
+@pytest.mark.parametrize("nome", list(PAGINE) + ["404.html", "offline.html"])
+def test_pagine_senza_manifest_ne_modo_app(nome):
+    p, _ = leggi(nome)
+    assert [href for rel, href, _ in p.link if rel == "manifest"] == []
+    for k in META_APP:
+        assert k not in p.meta, k
 
 
-def test_pagine_puntano_al_loro_manifest():
-    assert 'rel="manifest" href="/manifest.webmanifest"' in leggi("index.html")[1]
-    assert 'rel="manifest" href="/en/manifest.webmanifest"' in leggi("en/index.html")[1]
-    for nome in PAGINE:
-        t = leggi(nome)[1]
-        assert t.count('name="theme-color"') == 2 and "prefers-color-scheme: dark" in t
-        assert "viewport-fit=cover" in t and 'id="installa"' in t and 'id="ios-hint"' in t and 'id="indietro"' in t
+@pytest.mark.parametrize("nome", PAGINE)
+def test_niente_suggerimento_ne_pulsanti_per_installare(nome):
+    """Via il pulsante «Installa», il suggerimento per Safari su iPhone, il pulsante indietro della finestra dell'app e
+    l'avviso «versione nuova del sito» (lo mandava il service worker, che non c'è più)."""
+    p, testo = leggi(nome)
+    for ident in ("installa", "ios-hint", "ios-chiudi", "indietro", "aggiorna", "ricarica"):
+        assert ident not in p.ids, ident
+    for frase in ("Per averla come app", "To get it as an app"):
+        assert frase not in testo, frase
+    icone = {rel: href for rel, href, _ in p.link if rel in ("icon", "apple-touch-icon")}
+    assert icone == {"icon": "/favicon.svg", "apple-touch-icon": "/icona-192.png"}
+    assert testo.count('name="theme-color"') == 2 and "prefers-color-scheme: dark" in testo
+    assert "viewport-fit=cover" in testo
 
 
-def test_service_worker():
-    sw = (SITO / "sw.js").read_text(encoding="utf-8")
-    assert not re.search(r"https?://", sw)
-    assert "skipWaiting" in sw and "clients.claim" in sw and "no-cache" in sw and "offline.html" in sw
-    pre = re.search(r"PRECACHE = \[(.*?)\];", sw, re.S).group(1)
-    percorsi = re.findall(r"'(/[^']*)'", pre)
-    assert "/offline.html" in percorsi and "/js/installa.js" in percorsi
-    for r in percorsi:
-        assert risolvi(r, "index.html").exists(), r
+def test_file_dell_installazione_tolti_e_nessuna_registrazione():
+    for f in ("manifest.webmanifest", "en/manifest.webmanifest", "js/installa.js", "icona-maskable-192.png",
+              "icona-maskable-512.png", "img/schermata-stretta.png"):
+        assert not (SITO / f).exists(), f
     for f in (SITO / "js").glob("*.js"):
-        assert f"'/js/{f.name}'" in pre, f.name
-    assert "serviceWorker" in (SITO / "js" / "installa.js").read_text(encoding="utf-8")
+        testo = f.read_text(encoding="utf-8")
+        for vietato in (".register(", "beforeinstallprompt"):
+            assert vietato not in testo, (f.name, vietato)
 
 
-def test_sw_chiave_senza_query_e_pagine_di_servizio_bilingui():
-    sw = (SITO / "sw.js").read_text(encoding="utf-8")
-    assert "url.origin + url.pathname" in sw and "ignoreSearch" not in sw
-    assert "cache: 'no-cache'" in sw
+@pytest.mark.skipif(shutil.which("node") is None, reason="serve node per provare la pulizia dalla pagina")
+def test_la_pagina_toglie_il_service_worker_rimasto():
+    """Una vecchia copia di installa.js rimasta nella cache del browser può registrare di nuovo sw.js: la pagina nuova toglie
+    ogni registrazione e ogni copia salvata del sito (la web app sta su un altro indirizzo, le sue copie non si toccano).
+    Dove il browser non ha service worker né copie (http, finestre private) non dà errori."""
+    prova = r"""
+const fs = require("fs");
+const testo = fs.readFileSync(process.argv[1], "utf8");
+const documento = { documentElement: { dataset: {} }, getElementById: () => null, querySelectorAll: () => [] };
+const memoria = { getItem: () => null, setItem() {}, removeItem() {} };
+const pausa = () => new Promise((ok) => setTimeout(ok, 50));
+process.on("unhandledRejection", (e) => { console.log(JSON.stringify({ rifiuto: String(e) })); process.exit(1); });
+function esegui(nav, cachesFinti) {
+  Object.defineProperty(globalThis, "navigator", { value: nav, configurable: true, writable: true });
+  if (cachesFinti === undefined) delete globalThis.caches; else globalThis.caches = cachesFinti;
+  new Function("document", "localStorage", testo)(documento, memoria);
+}
+(async () => {
+  const r = {};
+  let tolte = 0;
+  const regs = [{ unregister: () => { tolte++; return Promise.resolve(true); } }];
+  const cache = new Set(["schieraxi-14"]);
+  esegui({ serviceWorker: { getRegistrations: () => Promise.resolve(regs) } },
+         { keys: () => Promise.resolve([...cache]), delete: (n) => Promise.resolve(cache.delete(n)) });
+  await pausa();
+  r.registrazioniTolte = tolte;
+  r.cache = [...cache];
+  try { esegui({}, undefined); await pausa(); r.senzaServiceWorker = "ok"; } catch (e) { r.senzaServiceWorker = String(e); }
+  console.log(JSON.stringify(r));
+})();
+"""
+    esito = subprocess.run(["node", "-e", prova, str(SITO / "js" / "principale.js")], capture_output=True, text=True,
+                           timeout=60)
+    assert esito.returncode == 0, esito.stdout + esito.stderr
+    r = json.loads(esito.stdout.strip().splitlines()[-1])
+    assert r["registrazioniTolte"] == 1, "la registrazione rimasta va tolta"
+    assert r["cache"] == [], "le copie salvate del sito vanno svuotate"
+    assert r["senzaServiceWorker"] == "ok"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="serve node per provare il service worker")
+def test_service_worker_vecchio_si_toglie_da_solo():
+    """Chi ha aperto il sito prima del 20/11 ha ancora il service worker vecchio. Al primo controllo il browser scarica
+    questo sw.js: si attiva subito, svuota le copie salvate del sito e si toglie. Non risponde a nessuna richiesta."""
+    prova = r"""
+const fs = require("fs");
+const testo = fs.readFileSync(process.argv[1], "utf8");
+const eventi = {};
+const cache = new Set(["schieraxi-14", "schieraxi-13"]);
+const r = { saltata: false, tolto: false };
+const self = {
+  addEventListener: (t, f) => { eventi[t] = f; },
+  skipWaiting: () => { r.saltata = true; return Promise.resolve(); },
+  registration: { unregister: () => { r.tolto = true; return Promise.resolve(true); } },
+  clients: { claim: () => Promise.resolve(), matchAll: () => Promise.resolve([]) },
+  location: { origin: "http://x" },
+};
+const caches = {
+  open: () => Promise.resolve({ addAll: () => Promise.resolve(), put: () => Promise.resolve(), match: () => Promise.resolve() }),
+  keys: () => Promise.resolve([...cache]),
+  delete: (n) => Promise.resolve(cache.delete(n)),
+};
+class Request { constructor(u) { this.url = u; } }
+new Function("self", "caches", "Request", testo)(self, caches, Request);
+(async () => {
+  const attese = [];
+  const evento = { waitUntil: (p) => attese.push(p) };
+  if (eventi.install) eventi.install(evento);
+  await Promise.all(attese);
+  r.saltataAllInstallazione = r.saltata;
+  if (eventi.activate) eventi.activate(evento);
+  await Promise.all(attese);
+  r.cache = [...cache];
+  r.eventi = Object.keys(eventi).sort();
+  console.log(JSON.stringify(r));
+})();
+"""
+    esito = subprocess.run(["node", "-e", prova, str(SITO / "sw.js")], capture_output=True, text=True, timeout=60)
+    assert esito.returncode == 0, esito.stderr
+    r = json.loads(esito.stdout.strip().splitlines()[-1])
+    assert r["saltataAllInstallazione"] is True, "deve prendere subito il posto del service worker vecchio"
+    assert r["cache"] == [], "le copie salvate del sito vanno svuotate"
+    assert r["tolto"] is True, "il service worker deve togliersi da solo"
+    assert r["eventi"] == ["activate", "install"], "niente fetch: le richieste vanno in rete"
+
+
+def test_pagine_di_servizio_bilingui():
     for nome in ("404.html", "offline.html"):
         t = (SITO / nome).read_text(encoding="utf-8")
         assert 'lang="en"' in t and 'class="cont ' in t and "contenuto" not in t, nome

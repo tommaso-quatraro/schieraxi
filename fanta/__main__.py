@@ -489,8 +489,9 @@ def _diario_per_utente(db, scadenza: float | None = None) -> tuple[int, int, int
 def _prova_per_utente(db, scadenza: float | None = None, forza: bool = False,
                       memo: dict | None = None) -> tuple[int, int, list[tuple[int, str]]]:
     """Con gli account: la prova del modello di ogni utente nella sua cartella, con le sue regole e le sue rose (la leggono la carta
-    in Stato dei dati e «Sotto il cofano»). Come quella comune si rifà solo quando cambiano le giornate della prova o i loro voti
-    (`affidabilita.aggiorna_se_serve`): al primo giro dopo #832 la ricevono tutti, poi una volta per giornata. Prima chi non ce
+    in Stato dei dati e «Sotto il cofano»). Come quella comune si rifà solo quando cambia la sua impronta: le giornate della prova,
+    i loro voti, le sue regole o i giocatori delle sue rose (`affidabilita.aggiorna_se_serve`, #840). Al primo giro dopo il
+    rilascio la ricevono tutti, poi una volta per giornata o dopo un cambio di regole o rose. Prima chi non ce
     l'ha o ce l'ha più vecchia, così con il tempo finito tocca agli altri al giro dopo; un utente con un file rovinato non ferma
     gli altri. `memo`: le rose a sorte già provate nel giro, uguali per chi ha le stesse regole. Restituisce (prove rifatte,
     utenti rimandati, [(id, tipo di errore)])."""

@@ -11,7 +11,7 @@ Strumento per chi ridisegna il marchio, non serve per far girare l'app. In un am
     python -m venv .venv-marchio
     .venv-marchio\\Scripts\\python.exe -m pip install fonttools uharfbuzz
     .venv-marchio\\Scripts\\python.exe assets\\marchio\\wordmark\\genera.py            (solo i file SVG qui)
-    ... genera.py --sito             (riscrive anche il nome nelle pagine di sito/; poi alza VERSIONE in sito/sw.js)
+    ... genera.py --sito             (riscrive anche il nome nelle pagine di sito/)
     ... genera.py --og               (rifà sito/img/og.png con Chrome o Edge senza finestra)
     ... genera.py --swift PERCORSO   (scrive la View SwiftUI WordmarkSchieraXI)
 Alla fine stampa i valori da copiare nella sezione «wordmark» di sito/stile.css se cambiano le proporzioni.
