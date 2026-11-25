@@ -58,8 +58,8 @@
     "en": "Rosters first"
   },
   "comune.importa_spiega": {
-    "it": "Importa le rose della tua lega: poi qui trovi i consigli per la tua squadra. Ci vuole un minuto.",
-    "en": "Import your league's rosters: then you will find advice for your team here. It takes a minute."
+    "it": "Importa le rose della tua lega: poi ti dico ogni giornata chi schierare. Ci vuole un minuto.",
+    "en": "Import your league's rosters: then I'll tell you who to field each matchday. It takes a minute."
   },
   "comune.importa_rose": {
     "it": "Importa le rose",
@@ -78,8 +78,8 @@
     "en": "I cannot connect: these are the last saved data."
   },
   "comune.cache_errore": {
-    "it": "{errore} (dati salvati, potrebbero non essere aggiornati)",
-    "en": "{errore} (saved data, may be out of date)"
+    "it": "{errore} (dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati)",
+    "en": "{errore} (saved data from {giorno} at {ora}, may be out of date)"
   },
   "comune.vai_lega": {
     "it": "Apri La mia lega",

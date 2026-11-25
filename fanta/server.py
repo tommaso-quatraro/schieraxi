@@ -2519,14 +2519,24 @@ def chiave_push():
 def iscrivi_push(dati: IscrizionePush, request: Request, ctx: Contesto = Depends(lega_corrente)):
     """Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy). Con gli account la sessione si
     ricontrolla subito prima di scrivere: se nel frattempo si è chiusa (cambio password, «Esci da tutti») non resta niente."""
+    # Con gli account, dopo la scrittura, la stessa iscrizione si toglie agli altri account (#874): lo stesso browser era di un altro
+    # account (sessione scaduta senza «Esci»), e i suoi avvisi non devono arrivare a chi è entrato dopo. (Qui e non nella descrizione
+    # della rotta: quella entra in docs/openapi.json.)
     ancora_valida = (lambda: rotte_account.identifica(request) is not None) if ctx.utente_id is not None else None
     with limiti.iscrizione_push(ctx):                # una alla volta per utente, poche in tutto, tetto all'ora (429)
         try:
-            return {"dispositivi": len(notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push, ancora_valida=ancora_valida))}
+            lista = notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push, ancora_valida=ancora_valida)
         except notifiche_web.NonPiuValida:
             raise HTTPException(401, "Accesso richiesto") from None
         except notifiche_web.Occupato as e:          # file tenuto da un altro processo: 503 «riprova», niente scritto
             raise HTTPException(503, str(e)) from None
+        if ctx.utente_id is not None:
+            for file, errore in notifiche_web.togli_dagli_altri(dati.endpoint, percorsi.cartella_utenti(), ctx.iscrizioni_push):
+                logging.getLogger("uvicorn.error").error(
+                    "Notifiche web: iscrizione %s passata a un altro account ma non tolta dalla cartella %s (%s: file occupato, "
+                    "errore del disco o database degli account che non risponde); si toglie alla prossima iscrizione o al primo "
+                    "avviso che non arriva", notifiche_web.maschera(dati.endpoint), file.parent.name, errore)
+        return {"dispositivi": len(lista)}
 
 
 class DisiscrizionePush(BaseModel):

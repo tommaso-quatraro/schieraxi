@@ -5,7 +5,7 @@
     "nota": "risposta di POST /api/aggiorna con tutte le fonti dell'aggiornamento spente (#779): stesso testo di NESSUNA_FONTE in server.py"
   },
   "srv.una_sola_squadra": {
-    "it": "Con una sola squadra funzionano formazione e consigli; per gli scambi servono le rose degli altri: potrai aggiungerle quando vuoi.",
-    "en": "With just one team, the line-up and the advice work; trades need the other teams' rosters: you can add them whenever you like."
+    "it": "Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.",
+    "en": "With just one team, the lineup and the advice work; the other teams' rosters let you look at the other teams: you can add them whenever you like."
   }
 }
