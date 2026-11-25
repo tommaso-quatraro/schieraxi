@@ -185,7 +185,6 @@ jobs:
       - name: Tocchi ripetuti per chiudere un foglio (riepilogo)
         if: "!cancelled() && inputs.parte != 'unitari'"
         run: |
-          grep -a -n 'chiudiFoglio' build/test-interfaccia.log | cat -vet | head -n 20 || true   # TEMPORANEO, da togliere
           righe=$(grep -a -h '^chiudiFoglio:' build/test-interfaccia.log 2> /dev/null | head -n 50) || righe=""
           if [ -n "$righe" ]; then
             {
