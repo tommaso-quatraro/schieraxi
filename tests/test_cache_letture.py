@@ -4,13 +4,14 @@ import gc
 import json
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from fanta import consigli, contesto, lega, memoria_file, regole
+from fanta import archivio, consigli, contesto, lega, memoria_file, regole
 from fanta.regole import Regole
 
 from test_account_http import cliente, registra
@@ -270,3 +271,62 @@ def test_api_ogni_account_legge_le_sue_regole_e_le_sue_rose(multiutente, dati_is
     assert c_bruno.get("/api/regole").json()["nome_lega"] == "Lega nuova di bruno"
     assert clienti["anna"][0].get("/api/regole").json()["nome_lega"] == "Lega di anna"
 
+
+# ---------------------------------------------------------------- schema dell'archivio
+def _conta_schema(monkeypatch) -> list:
+    fatte = []
+    vera = archivio._aggiorna_schema
+    monkeypatch.setattr(archivio, "_aggiorna_schema", lambda db: fatte.append(1) or vera(db))
+    return fatte
+
+
+def _tabelle(db) -> set[str]:
+    return {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+
+
+def test_archivio_lo_schema_si_prepara_una_volta(tmp_path, monkeypatch):
+    p = tmp_path / "fanta.sqlite"
+    fatte = _conta_schema(monkeypatch)
+    for _ in range(4):
+        with closing(archivio.apri(p)) as db:
+            assert {"partite", "voti", "aggiornamenti", "probabili_storia"} <= _tabelle(db)
+    assert len(fatte) == 1
+
+
+def test_archivio_rifatto_da_zero_riprende_lo_schema(tmp_path, monkeypatch):
+    p = tmp_path / "fanta.sqlite"
+    archivio.apri(p).close()
+    for f in tmp_path.glob("fanta.sqlite*"):
+        f.unlink()
+    with closing(archivio.apri(p)) as db:
+        assert {"partite", "voti", "aggiornamenti", "probabili_storia"} <= _tabelle(db)
+        assert "copia" in {r[1] for r in db.execute("PRAGMA table_info(probabili_storia)")}
+
+
+def test_archivio_con_le_tabelle_cambiate_da_un_altro_processo_si_ripara(tmp_path, monkeypatch):
+    p = tmp_path / "fanta.sqlite"
+    archivio.apri(p).close()
+    with closing(sqlite3.connect(p)) as altro:
+        altro.execute("DROP TABLE controlli")
+        altro.execute("CREATE TABLE quote (x)")                    # una tabella dismessa tornata da una copia vecchia
+        altro.commit()
+    with closing(archivio.apri(p)) as db:
+        assert "controlli" in _tabelle(db) and "quote" not in _tabelle(db)
+
+
+def test_archivio_schema_non_finito_si_riprova(tmp_path, monkeypatch):
+    """Archivio occupato da un altro processo mentre si aggiungono le colonne: l'apertura dopo riprova."""
+    p = tmp_path / "fanta.sqlite"
+    esiti = [False, True]
+    fatte = []
+    monkeypatch.setattr(archivio, "_aggiorna_schema", lambda db: fatte.append(1) or esiti.pop(0))
+    archivio.apri(p).close()
+    archivio.apri(p).close()
+    archivio.apri(p).close()
+    assert len(fatte) == 2
+
+
+def test_gli_archivi_pronti_hanno_un_tetto(tmp_path):
+    for k in range(archivio.MAX_ARCHIVI_PRONTI + 5):
+        archivio.apri(tmp_path / f"a{k}.sqlite").close()
+    assert len(archivio._schema_pronto) <= archivio.MAX_ARCHIVI_PRONTI
