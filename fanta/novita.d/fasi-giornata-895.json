@@ -1,0 +1,17 @@
+{
+  "titolo": "Giornata in corso e finita: numeri e frasi che tornano",
+  "voci": [
+    "Formazione, giornata in corso: se la tua lega dà il voto d'ufficio ai giocatori di una partita rinviata, sul campo c'è quel voto, già contato nei punti fatti, con sotto «Voto d'ufficio». Prima restavano il fantavoto atteso e «Rinviata».",
+    "Formazione, giornata in corso: la riga sotto i punti dice cosa manca davvero, per esempio «Hanno giocato tutti tranne Rossi, che aspetta il recupero.» o «I voti dei tuoi giocatori sono tutti usciti.». Prima diceva «mancano solo i voti ufficiali» anche quando i voti c'erano già.",
+    "Formazione, giornata in corso: chi è rimasto senza voto non mostra più il suo fantavoto atteso, ma una lineetta. In panchina la colonna si chiama «Fantavoto» e accanto al numero di chi deve ancora giocare c'è «atteso».",
+    "Formazione, giornata finita con una partita da recuperare: la scelta su come contare i suoi giocatori sta in cima, sotto i punti di quella giornata, con il titolo «Giornata 5 · 8ª di Serie A: partita rinviata», la partita, la data del recupero e i tuoi giocatori coinvolti. Prima era in fondo, sotto la panchina della giornata dopo, senza titolo.",
+    "Formazione, giornata finita con i voti non ancora usciti: in cima c'è «Giornata 5 · 8ª di Serie A: finita» con «I punti arrivano quando escono i voti.».",
+    "Scheda del giocatore, Tutti i numeri: «in crescita», «in calo» o «stabile» lo decide il server con la stessa regola di prima, uguale per tutti."
+  ],
+  "tecnico": [
+    "Etichette: codice nuovo voto_ufficio («Voto d'ufficio» / «Default grade», positivo) in in_corso.giocatori[] per la partita rinviata con il voto d'ufficio (etichette.codice con voto_ufficio vero, da fasi.blocco_in_corso). La web lo mostra come voto preso (esitoPartita con parola).",
+    "GET /api/oggi: in_corso.situazione e situazione_frase (frasi in_corso.da_giocare, in_corso.voti, in_corso.recupero, in_corso.voti_e_recupero, in_corso.finiti, scelte da fasi.situazione); riepilogo.rinvio con partite e miei (fasi._rinvio_del_riepilogo, come rinvio di Oggi); voti_in_arrivo {giornata, giornata_lega, testo, frase} con fase finita, riepilogo null, formazione schierata e voti non ancora usciti (fasi.blocco_voti_in_arrivo, frase riepilogo.voti_in_arrivo).",
+    "GET /api/giocatore: campo andamento (in_crescita, in_calo, stabile, pochi_dati o null; scheda.andamento, la regola che prima stava in formaGiocatore della web). Nessun campo tolto.",
+    "Web: pedina e righe con il voto d'ufficio e la lineetta per chi è senza voto; intestazioneColonne e numeriRiga con dalVivo a giornata in corso; cardRinvio con il titolo della giornata dentro riepilogoGiornata (anche a campionato finito), tolto il menu in fondo; testi nuovi oggi.rinvio_titolo_giornata_1/_n, oggi.recupero_punti, formazione.col_fantavoto, formazione.atteso_breve. Test: tests/browser/test_fasi_giornata.py, tests/test_scheda.py e casi nuovi in test_fasi, test_riepilogo_oggi_recupero, test_etichette."
+  ]
+}
