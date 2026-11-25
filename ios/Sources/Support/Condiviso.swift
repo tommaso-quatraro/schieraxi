@@ -126,6 +126,9 @@ struct RiassuntoOggi: Codable, Equatable {
     var puntiFine: Double?
     /// `in_corso`: quanti di chi va a punteggio devono ancora giocare.
     var ancoraDaGiocare: Int?
+    /// `in_corso`: la riga sotto i punti scelta dal server (`in_corso.situazione`, #895), la stessa della testa della Formazione.
+    /// Nil con un server di prima e nei riassunti salvati da una versione di prima.
+    var situazione: String?
     /// `finita`: la giornata appena chiusa (Serie A e lega); `giornata` e `inizio` sono già quelli della prossima.
     var giornataChiusa: Int?
     var giornataChiusaLega: Int?
@@ -182,6 +185,7 @@ struct RiassuntoOggi: Codable, Equatable {
             puntiFatti = c.puntiFatti
             puntiFine = c.puntiPrevisti
             ancoraDaGiocare = c.ancoraDaGiocare
+            situazione = c.testoSituazione
         } else if let r = f.riepilogo {
             puntiFatti = r.puntiFatti
             puntiFine = r.puntiAttesi
@@ -300,10 +304,13 @@ extension RiassuntoOggi {
         return inCorso ? Catalogo.Formazione.circaFine(n: Formato.decimali(p, cifre: 0)) : "\(Formato.punti(p)) attesi"
     }
 
-    /// Chi deve ancora giocare, con le frasi del catalogo come l'app (`TestiFase.ancora`, #774): «3 giocatori devono ancora
-    /// giocare», «1 giocatore deve ancora giocare» e, a zero, «Hanno giocato tutti: mancano solo i voti ufficiali.». Nil se il
-    /// numero non c'è.
+    /// La riga sotto i punti a giornata in corso, la stessa della testa della Formazione (`TestiFase.situazione`): la frase del
+    /// server (`situazione`, #895: «Hanno giocato tutti tranne Bapepe, che aspetta il recupero.», «I voti dei tuoi giocatori sono
+    /// tutti usciti.»…). Con un server di prima le frasi del catalogo da `ancoraDaGiocare` (#774): «3 giocatori devono ancora
+    /// giocare», «1 giocatore deve ancora giocare» e, a zero, «Hanno giocato tutti: mancano solo i voti ufficiali.». Nil se non
+    /// c'è niente da dire.
     var ancoraDaGiocareTesto: String? {
+        if let frase = situazione?.trimmingCharacters(in: .whitespacesAndNewlines), !frase.isEmpty { return frase }
         guard let n = ancoraDaGiocare, n >= 0 else { return nil }
         return n == 0 ? Catalogo.Oggi.tuttiGiocato : Catalogo.Oggi.ancoraDaGiocare(n)
     }

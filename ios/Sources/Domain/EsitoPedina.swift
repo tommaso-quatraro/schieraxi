@@ -3,7 +3,8 @@ import Foundation
 /// Cosa scrive la pedina del campo al posto di «gioca N%», come `esitoPedina` di app.js (#283, #284):
 /// - a partita iniziata il fantavoto preso («fantavoto 6,5») o lo stato della partita («Partita in corso», «Voto in arrivo»,
 ///   «Senza voto»): la probabilità di giocare non serve più (`docs/COERENZA-WEB-IPHONE.md`, «Probabilità di giocare»);
-/// - partita rinviata, prima e dopo la scadenza: «Rinviata».
+/// - partita rinviata, prima e dopo la scadenza: «Rinviata»; con il voto d'ufficio della lega (etichetta `voto_ufficio`, #895) è
+///   un voto preso, come per `EsitoPartita`, e «Rinviata» non c'è più.
 /// Le parole sono quelle del server (`etichetta.testo`); con un server vecchio le stesse di testi.js (`tit.st_*`, in
 /// `Giocatore.nomiStatoPartita`). Il `codice` dell'etichetta serve solo per decidere, mai per scrivere (`docs/API.md`).
 enum EsitoPedina {

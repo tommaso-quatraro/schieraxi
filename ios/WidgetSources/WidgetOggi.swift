@@ -184,9 +184,10 @@ struct VistaWidget: View {
                             .foregroundStyle(.white.opacity(0.85)).lineLimit(1).minimumScaleFactor(0.7)
                     }
                     Spacer(minLength: 0)
-                    // la frase intera del catalogo («Hanno giocato tutti: mancano solo i voti ufficiali.») va a capo, non si taglia
+                    // la frase intera del server (`in_corso.situazione`, #895: «Hanno giocato tutti tranne Bapepe, che aspetta il
+                    // recupero; mancano anche i voti ufficiali.») va a capo e, se serve, si rimpicciolisce: non si taglia
                     if let a = r.ancoraDaGiocareTesto {
-                        Text(a).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(3).minimumScaleFactor(0.8)
+                        Text(a).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(4).minimumScaleFactor(0.7)
                     }
                 } else {
                     GiornataInRiga(forme: r.formeGiornata, voce: r.voceGiornata, simbolo: "calendar")

@@ -59,7 +59,12 @@ extension FinteServer {
             server.risposte["/api/oggi"] = DatiDemo.oggiRinvio(adesso: adesso)
             server.indirizzoFinto = "https://finto-partita-rinviata.invalid"
         case "oggi-finita-recupero":
+            // la giornata finita con una partita da recuperare: sotto i punti il riquadro del rinvio (#900); la Formazione è già
+            // quella della prossima, come con `formazione-finita`
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso, recupero: true)
+            if let formazione = server.risposte["/api/formazione"] {
+                server.risposte["/api/formazione"] = DatiDemo.formazioneDellaProssima(formazione)
+            }
             server.indirizzoFinto = "https://finto-recupero-da-giocare.invalid"
         case "formazione-campionato-finito":
             // a campionato finito (#727), come il server: Oggi con il riepilogo dell'ultima giornata (le prime 48 ore) e la frase
@@ -271,7 +276,9 @@ private extension LegaDemo {
         previsione["giornata"] = giornata
         previsione["giornata_lega"] = giornataLega   // come il server: la scheda dice «Giornata 8 · 11ª di Serie A»
         d["previsione"] = previsione
-        d["voti"] = voti(p)
+        let elencoVoti = voti(p)
+        d["voti"] = elencoVoti
+        d["andamento"] = andamento(elencoVoti)
         d["avanzate"] = ["minuti": 560 + p.id % 200, "xg": 3.4 + Double(p.id % 5) * 0.7, "xa": 1.2 + Double(p.id % 3) * 0.4, "tiri": 22 + p.id % 9,
                          "passaggi_chiave": 9 + p.id % 7, "rigori_calciati": p.id % 4 == 0 ? 2 : 0, "punizioni": p.id % 5 == 0 ? 3 : 0,
                          "per_90": ["xg": 0.52, "xa": 0.18, "tiri": 3.1],
@@ -279,6 +286,15 @@ private extension LegaDemo {
         d["rendimento"] = ["sovra_rendimento": p.id % 2 == 0 ? 0.42 : -0.38, "gol_meno_xg": p.id % 2 == 0 ? 0.9 : -1.1, "assist_meno_xa": 0.2] as [String: Any]
         if let o = fantasquadra(di: p.id) { d["proprietario"] = o }
         return d
+    }
+
+    /// L'andamento della scheda come lo manda il server (`scheda.andamento` di `fanta/scheda.py`, #895): la demo fa da server, così
+    /// la parola della scheda va d'accordo con i pallini. L'app non lo calcola: lo legge (`Forma`).
+    static func andamento(_ voti: [[String: Any]]) -> String {
+        let con = voti.compactMap { $0["fv"] as? Double }
+        guard con.count >= 4 else { return "pochi_dati" }
+        let differenza = con.suffix(3).reduce(0, +) / 3 - con.reduce(0, +) / Double(con.count)
+        return differenza > 0.6 ? "in_crescita" : differenza < -0.6 ? "in_calo" : "stabile"
     }
 
     /// Voti e fantavoti delle ultime giornate: qualcuna senza voto (partita saltata), per vedere anche i «sv» nel grafico.
@@ -681,8 +697,12 @@ private extension LegaDemo {
             // la giornata è finita ma una partita aspetta il recupero: i punti possono ancora cambiare e si può decidere diversamente
             let partita: [String: Any] = ["casa": ultima.casa, "trasferta": ultima.trasferta,
                                           "data": data(dataRecupero(adesso: adesso, fase: .finita))]
+            // come il server dal #895: nel menu anche la partita e i miei giocatori che la giocano (il riquadro sotto i punti)
+            let miei = miaRosa.filter { [ultima.casa, ultima.trasferta].contains($0.squadra) }
+                .map { ["id": $0.id, "nome": $0.nome, "ruolo": $0.ruolo, "squadra": $0.squadra] as [String: Any] }
             o["riepilogo"] = (o["riepilogo"] as? [String: Any] ?? [:]).merging(
-                ["nel_diario": false, "consigliata": NSNull(), "recuperi": [partita], "rinvio": sceltaRinvio(giornata: giornata)]) { _, nuovo in nuovo }
+                ["nel_diario": false, "consigliata": NSNull(), "recuperi": [partita],
+                 "rinvio": sceltaRinvio(giornata: giornata, partite: [partita], miei: miei)]) { _, nuovo in nuovo }
         }
         o["prossima"] = prossimaDopoFinita(adesso: adesso)
         return json(o)

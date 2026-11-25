@@ -58,7 +58,7 @@ enum LetturaPedina {
     /// partita cominciata il suo stato finché non c'è il voto, a formazione chiusa quando gioca chi deve ancora giocare. Niente
     /// avversario: sta nella scheda, a un tocco. `adesso`: per «oggi», «domani» della data.
     struct Contenuto: Equatable {
-        /// Il numero nel disco.
+        /// Il numero nel disco; nil = «–» (il server non lo manda, o il giocatore è rimasto senza voto).
         let valore: Double?
         /// Il numero è l'atteso mentre la partita è cominciata senza voto, è rinviata o, a formazione chiusa, deve ancora giocare: il
         /// disco è vuoto (solo il bordo), come la classe `attesa` della pedina della web; pieno con il voto preso e prima della scadenza.
@@ -73,6 +73,9 @@ enum LetturaPedina {
         let stato: ParolaStato? = partita == nil ? ParolaStato(g) : nil
         let preso: Double? = partita?.fv
         let attesa: String? = preso == nil ? partita?.testo : nil              // cominciata, senza voto (o rinviata): lo stato
+        let parola: String? = partita?.parola                                   // accanto al voto d'ufficio: «Voto d'ufficio» (#895)
+        // rimasto senza voto (#895): l'atteso non conta più, nel disco la lineetta e VoiceOver non lo dice, come la web
+        let senzaVoto = preso == nil && g.rimastoSenzaVoto
         let daGiocare = partita == nil && g.statoPartita == "da_giocare"       // formazione chiusa, la sua partita non è cominciata
         let gioca = partita == nil && !daGiocare && !(stato?.nonGiocaDiSicuro ?? false) && SogliaGioca.daMostrare(g.pVoto)
         let quando: String? = daGiocare ? Quando.leggibileSeData(g.dataPartita, adesso: adesso) : nil
@@ -83,23 +86,27 @@ enum LetturaPedina {
         }
         if let stato { pezzi.append(Pezzo(testo: stato.testo, tono: stato.nonGiocaDiSicuro ? .basso : .parola)) }
         if let attesa { pezzi.append(Pezzo(testo: attesa, tono: .parola)) }
+        if let parola { pezzi.append(Pezzo(testo: parola, tono: .parola)) }
         if let quando { pezzi.append(Pezzo(testo: quando, tono: .parola)) }
         // la frase per VoiceOver: le stesse cose che si vedono
-        var frase: [String] = [g.nome, preso != nil ? (partita?.testo ?? "") : Catalogo.Formazione.voceFv(fv: Formato.punti(g.fvAtteso))]
+        let numero = preso != nil ? (partita?.testo ?? "") : senzaVoto ? "" : Catalogo.Formazione.voceFv(fv: Formato.punti(g.fvAtteso))
+        var frase: [String] = [g.nome, numero]
         if let attesa { frase.append(attesa) }
+        if let parola { frase.append(parola) }
         if gioca { frase.append(voceGioca(Formato.percento(g.pVoto))) }
         if let stato { frase.append(stato.testo) }
         if let quando { frase.append(quando) }
-        return Contenuto(valore: preso ?? g.fvAtteso, attesa: (partita != nil && preso == nil) || daGiocare, pezzi: pezzi,
-                         voce: frase.filter { !$0.isEmpty }.joined(separator: ", "))
+        return Contenuto(valore: preso ?? (senzaVoto ? nil : g.fvAtteso), attesa: (partita != nil && preso == nil) || daGiocare,
+                         pezzi: pezzi, voce: frase.filter { !$0.isEmpty }.joined(separator: ", "))
     }
 
-    /// La partita al posto di «gioca N%» (`esitoPedina` della web): a partita cominciata il fantavoto preso (`fv`) o lo stato; prima,
-    /// la partita rinviata. nil se la partita non è cominciata e non è rinviata.
-    static func esito(_ g: Giocatore) -> (fv: Double?, testo: String?)? {
-        if let partita = g.esitoPartita { return (partita.fv, partita.testo) }
+    /// La partita al posto di «gioca N%» (`esitoPedina` della web): a partita cominciata (o con il voto d'ufficio) il fantavoto preso
+    /// (`fv`) o lo stato, e la parola accanto al voto d'ufficio (`parola`); prima, la partita rinviata. nil se la partita non è
+    /// cominciata e non è rinviata.
+    static func esito(_ g: Giocatore) -> (fv: Double?, testo: String?, parola: String?)? {
+        if let partita = g.esitoPartita { return (partita.fv, partita.testo, partita.parola) }
         guard let rinviata = g.esitoPedina else { return nil }
-        return (nil, rinviata)
+        return (nil, rinviata, nil)
     }
 
     /// «gioca al 62 per cento», «gioca all'85 per cento» (`formazione.voce_gioca`, `formazione.voce_gioca_v`).

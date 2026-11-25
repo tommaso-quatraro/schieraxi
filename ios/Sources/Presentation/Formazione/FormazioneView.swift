@@ -184,15 +184,14 @@ struct FormazioneView: View {
     }
 
     /// A campionato finito, come `mostraCampionatoFinito` della web: la testa con il riepilogo dell'ultima giornata, se il server lo
-    /// manda ancora, e la sua frase al posto della prossima giornata; con un recupero dell'ultima giornata da giocare il menu per
-    /// scegliere come contarlo. Niente campo né decisioni, e niente errore: il 409 di `/api/formazione` qui è la risposta giusta.
-    /// Sull'iPad non si allarga a tutta la pagina.
+    /// manda ancora, e la sua frase al posto della prossima giornata; con un recupero dell'ultima giornata da giocare, nel riepilogo,
+    /// il riquadro per scegliere come contarlo. Niente campo né decisioni, e niente errore: il 409 di `/api/formazione` qui è la
+    /// risposta giusta. Sull'iPad non si allarga a tutta la pagina.
     private var campionatoFinito: some View {
         VStack(alignment: .leading, spacing: Tema.spazioSchede) {
-            TestaFormazioneView(oggi: oggi.oggi, formazione: nil) { giornata in
-                nav.apriGiornate(giornata)
-            }
-            menuRinvioRiepilogo
+            TestaFormazioneView(oggi: oggi.oggi, formazione: nil, rinvioInCorso: oggi.rinvioInCorso,
+                                cambiaRinvio: { scelta, modo in await oggi.cambiaRinvio(scelta, modo: modo) },
+                                comeAndata: { giornata in nav.apriGiornate(giornata) })
         }
         .frame(maxWidth: 720, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -211,10 +210,11 @@ struct FormazioneView: View {
                         .pulsanteVetro()
                 }
             }
-            TestaFormazioneView(oggi: vm.squadraVista == nil ? oggi.oggi : nil, formazione: f) { giornata in
-                // «Com'è andata»: la pagina Giornate, aperta sulla giornata appena finita (come la web)
-                nav.apriGiornate(giornata)
-            }
+            // a giornata finita con un recupero che manca, sotto i punti il riquadro del rinvio (solo per la tua formazione: per
+            // un'altra squadra la testa non ha Oggi). «Com'è andata»: la pagina Giornate, aperta sulla giornata appena finita (come la web)
+            TestaFormazioneView(oggi: vm.squadraVista == nil ? oggi.oggi : nil, formazione: f, rinvioInCorso: oggi.rinvioInCorso,
+                                cambiaRinvio: { scelta, modo in await oggi.cambiaRinvio(scelta, modo: modo) },
+                                comeAndata: { giornata in nav.apriGiornate(giornata) })
             if let errore = vm.erroreGiornata { erroreGiornata(errore) }
         }
     }
@@ -440,6 +440,8 @@ struct FormazioneView: View {
     @ViewBuilder
     private func lato(_ f: Formazione, _ v: VistaFormazione) -> some View {
         let mia = vm.squadraVista == nil
+        // a giornata in corso nelle righe c'è chi ha il voto vero e chi l'atteso: sotto l'atteso «atteso» (#895, come la web)
+        let dalVivo = vm.dalVivo(f) != nil
         if mia, let cambi = oggi.oggi?.giornataInCorso?.sostituzioni.filter({ $0.esce != nil }), !cambi.isEmpty {
             Carta(Catalogo.Oggi.cambiPanchina, simbolo: "arrow.left.arrow.right") {
                 ForEach(Array(cambi.enumerated()), id: \.offset) { i, c in
@@ -456,41 +458,32 @@ struct FormazioneView: View {
                         Text("\(i + 1)").font(.footnote.weight(.semibold)).monospacedDigit()
                             .foregroundStyle(Color.testoSecondario)
                             .accessibilityHidden(true)
-                        RigaGiocatore(g: g, apribile: true)
+                        RigaGiocatore(g: g, apribile: true, dalVivo: dalVivo)
                     }
                 }
             }
         }
         elenco(Catalogo.Formazione.nonSchierati(n: String(vm.nonSchierati(f, v).count)), vm.nonSchierati(f, v),
-               nota: (f.senzaDati ?? []).isEmpty ? nil : Catalogo.Formazione.senzaDati(nomi: (f.senzaDati ?? []).joined(separator: ", ")))
-        elenco(Catalogo.Formazione.indisponibili(n: String(vm.indisponibili(f, v).count)), vm.indisponibili(f, v), nota: nil)
+               nota: (f.senzaDati ?? []).isEmpty ? nil : Catalogo.Formazione.senzaDati(nomi: (f.senzaDati ?? []).joined(separator: ", ")),
+               dalVivo: dalVivo)
+        elenco(Catalogo.Formazione.indisponibili(n: String(vm.indisponibili(f, v).count)), vm.indisponibili(f, v), nota: nil,
+               dalVivo: dalVivo)
         if mia, let r = oggi.oggi?.partiteRinviate {
             CartaPartitaRinviata(scelta: r, inCorso: oggi.rinvioInCorso, errore: oggi.erroreRinvio) { m in
                 await oggi.cambiaRinvio(r, modo: m)
             }
             .id("rinvio")
         }
-        if mia { menuRinvioRiepilogo }
-    }
-
-    /// Il recupero dell'ultima giornata finita ancora da giocare: come contarlo per quella giornata (`riepilogo.rinvio`).
-    @ViewBuilder
-    private var menuRinvioRiepilogo: some View {
-        if let s = oggi.oggi?.riepilogoGiornata?.rinvio {
-            Carta {
-                MenuRinvio(scelta: s, inCorso: oggi.rinvioInCorso) { scelta, m in await oggi.cambiaRinvio(scelta, modo: m) }
-            }
-        }
     }
 
     /// Un elenco chiuso («Non schierati (4)», «Infortunati e squalificati (2)»): si apre con un tocco.
     @ViewBuilder
-    private func elenco(_ titolo: String, _ giocatori: [Giocatore], nota: String?) -> some View {
+    private func elenco(_ titolo: String, _ giocatori: [Giocatore], nota: String?, dalVivo: Bool) -> some View {
         if !giocatori.isEmpty || nota != nil {
             Carta {
                 DisclosureGroup {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(giocatori) { RigaGiocatore(g: $0, apribile: true) }
+                        ForEach(giocatori) { RigaGiocatore(g: $0, apribile: true, dalVivo: dalVivo) }
                         if let nota {
                             Text(nota).font(.caption).foregroundStyle(Color.testoSecondario)
                                 .fixedSize(horizontal: false, vertical: true)

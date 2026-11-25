@@ -1,11 +1,14 @@
 import Foundation
 
-/// La forma di un giocatore: le ultime cinque giornate e se è in crescita o in calo (stessa regola della web app).
+/// La forma di un giocatore nella scheda, come `formaGiocatore` della web: le ultime cinque giornate e l'andamento, che decide il
+/// server (`andamento` di `GET /api/giocatore`, `scheda.andamento`, #895). L'app non lo ricalcola dai voti: scrive la freccia e la
+/// parola del catalogo. Un valore che non conosce, o un server di prima senza il campo: niente andamento, come la web.
 struct Forma: Equatable {
+    /// I codici del server.
     enum Andamento: String, Equatable {
-        case pochiDati = "pochi dati"
-        case crescita = "in crescita"
-        case calo = "in calo"
+        case pochiDati = "pochi_dati"
+        case crescita = "in_crescita"
+        case calo = "in_calo"
         case stabile = "stabile"
 
         var freccia: String {
@@ -27,25 +30,15 @@ struct Forma: Equatable {
         }
     }
 
-    /// Le ultime (al massimo cinque) giornate, anche senza voto.
+    /// Le ultime (al massimo cinque) giornate, anche senza voto, in ordine di giornata.
     let ultime: [VotoGiornata]
+    /// nil: il server non lo manda (server di prima) o manda un valore che l'app non conosce.
     let andamento: Andamento?
 
-    /// DA FARE (#900): l'andamento del server.
-    static func di(_ voti: [VotoGiornata], andamento: String?) -> Forma? { calcola(voti) }
-
-    /// Con meno di 4 giornate con voto non si giudica; altrimenti si confronta la media delle ultime 3 con quella di tutte:
-    /// più di 0,6 sopra = in crescita, più di 0,6 sotto = in calo.
-    static func calcola(_ voti: [VotoGiornata]) -> Forma? {
+    /// La forma dai voti della scheda e dal codice dell'andamento del server; nil senza presenze.
+    static func di(_ voti: [VotoGiornata], andamento: String?) -> Forma? {
         let ordinati = voti.sorted { $0.giornata < $1.giornata }
         guard !ordinati.isEmpty else { return nil }
-        let ultime = Array(ordinati.suffix(5))
-        let conVoto = ordinati.compactMap(\.fv)
-        guard conVoto.count >= 4 else { return Forma(ultime: ultime, andamento: .pochiDati) }
-        func media(_ valori: [Double]) -> Double { valori.reduce(0, +) / Double(valori.count) }
-        let differenza = media(Array(conVoto.suffix(3))) - media(conVoto)
-        if differenza > 0.6 { return Forma(ultime: ultime, andamento: .crescita) }
-        if differenza < -0.6 { return Forma(ultime: ultime, andamento: .calo) }
-        return Forma(ultime: ultime, andamento: .stabile)
+        return Forma(ultime: Array(ordinati.suffix(5)), andamento: andamento.flatMap(Andamento.init(rawValue:)))
     }
 }

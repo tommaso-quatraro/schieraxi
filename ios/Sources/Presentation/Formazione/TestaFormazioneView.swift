@@ -3,12 +3,17 @@ import SwiftUI
 /// La testa della Formazione (`TestaFormazione`), come `testaGiornata` della web: prima della scadenza «Giornata 8 · 11ª di Serie A»
 /// e «Si chiude sab 31 14:50 fra 3 h 10 min»; in corso i punti fatti finora; finita com'è andata con «Com'è andata» e sotto la
 /// prossima giornata; arrivato a partite cominciate la frase della prossima; a campionato finito il riepilogo dell'ultima giornata,
-/// se c'è, e la frase del server (#727). Il conto si aggiorna ogni 30 secondi.
+/// se c'è, e la frase del server (#727). A giornata finita con una partita da recuperare, sotto i punti il riquadro del rinvio con
+/// il menu (#895, come la web). Il conto si aggiorna ogni 30 secondi.
 struct TestaFormazioneView: View {
     /// Nil per la formazione di un'altra squadra: solo la giornata.
     let oggi: Oggi?
     /// Nil a campionato finito, quando la Formazione non c'è: decide `oggi`.
     let formazione: Formazione?
+    /// Mentre si salva la scelta sul rinvio della giornata finita il menu è spento.
+    var rinvioInCorso = false
+    /// La scelta sul rinvio della giornata finita (`PUT /api/regole/rinvio`); nil = il riquadro non si mostra.
+    var cambiaRinvio: (@MainActor (SceltaRinvio, String) async -> Void)? = nil
     /// «Com'è andata»: apre le giornate su quella appena finita.
     let comeAndata: (Int?) -> Void
     @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 40
@@ -36,6 +41,13 @@ struct TestaFormazioneView: View {
                     Label(recuperi, systemImage: "calendar.badge.clock")
                         .font(.subheadline).foregroundStyle(Color.attenzione)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                // la scelta su come contare la partita da recuperare sta con la sua giornata, sotto i punti
+                if let r = t.rinvio, let cambiaRinvio {
+                    CartaPartitaRinviata(scelta: r.scelta, inCorso: rinvioInCorso, titolo: r.titolo, nota: r.nota) { modo in
+                        await cambiaRinvio(r.scelta, modo)
+                    }
+                    .padding(.top, 8)
                 }
                 // a campionato finito la frase del server, al posto della giornata da preparare (sotto il riepilogo, se c'è)
                 if let finito = t.campionatoFinito {

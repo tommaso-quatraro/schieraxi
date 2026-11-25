@@ -225,12 +225,15 @@ struct BordiGiornataComeLaWebTests {
         return try Decodifica.decodifica(Data(json.utf8))
     }
 
-    @Test("L'andamento è quello del server, con la freccia e la parola del catalogo", arguments: [
-        ("in_calo", Forma.Andamento.calo, "↘", Catalogo.Mercato.inCalo),
+    /// Il codice del server, l'andamento, la freccia e la parola del catalogo.
+    static let andamenti: [(String, Forma.Andamento, String, String)] = [
+        ("in_calo", .calo, "↘", Catalogo.Mercato.inCalo),
         ("in_crescita", .crescita, "↗", Catalogo.Mercato.inCrescita),
         ("stabile", .stabile, "→", Catalogo.Mercato.stabile),
         ("pochi_dati", .pochiDati, "→", Catalogo.Mercato.pochiDati),
-    ])
+    ]
+
+    @Test("L'andamento è quello del server, con la freccia e la parola del catalogo", arguments: BordiGiornataComeLaWebTests.andamenti)
     func andamentoDelServer(codice: String, andamento: Forma.Andamento, freccia: String, parola: String) throws {
         let s = try Self.scheda(andamento: "\"\(codice)\"")
         let f = try #require(Forma.di(s.voti ?? [], andamento: s.codiceAndamento))

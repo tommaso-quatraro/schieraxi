@@ -52,6 +52,8 @@ extension Etichetta.Gravita {
 struct RigaGiocatore: View {
     let g: Giocatore
     var apribile = false
+    /// A giornata in corso (panchina ed elenchi della Formazione): sotto l'atteso «atteso» invece di «gioca N%» (`sottoNumero`).
+    var dalVivo = false
     @Environment(\.apriGiocatore) private var apri
     @Environment(\.dynamicTypeSize) private var tagliaTesto
     @Environment(\.spazioZoom) private var zoom
@@ -106,8 +108,15 @@ struct RigaGiocatore: View {
 
     /// La riga piccola sotto il numero: «gioca 72%» prima della partita, «fantavoto» (`mercato.fantavoto` della web) sotto il
     /// fantavoto preso; nil a partita iniziata senza voto, perché lo stato della partita lo dice già la pillola dell'etichetta.
+    /// A giornata in corso (`dalVivo`, #895, come `numeriRiga` della web) nella stessa lista c'è chi ha già il voto vero: sotto
+    /// l'atteso di chi deve ancora giocare «gioca N%» solo sotto l'80% (e non per chi non gioca di sicuro), altrimenti «atteso».
     nonisolated static func sottoNumero(_ g: Giocatore, dalVivo: Bool = false) -> String? {
-        guard let esito = g.esitoPartita else { return "gioca \(Formato.percento(g.pVoto))%" }
+        guard let esito = g.esitoPartita else {
+            if dalVivo, !SogliaGioca.daMostrare(g.pVoto) || ParolaStato(g)?.nonGiocaDiSicuro == true {
+                return Catalogo.Formazione.attesoBreve
+            }
+            return "gioca \(Formato.percento(g.pVoto))%"
+        }
         return esito.fv == nil ? nil : Catalogo.Mercato.fantavoto
     }
 
@@ -165,7 +174,7 @@ struct RigaGiocatore: View {
 
     @ViewBuilder
     private var previsione: some View {
-        let sotto = Self.sottoNumero(g)
+        let sotto = Self.sottoNumero(g, dalVivo: dalVivo)
         if g.assente == true {
             // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
             Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(Color.malus)
