@@ -38,13 +38,17 @@ ROSA_FRASE = r"\brosa\b|\bsquadr\w{0,5}\W{1,3}(?:\w{1,20}\W{1,3}){0,3}compost"
 # Righe che non parlano della rosa anche se elencano i ruoli con un numero (punteggi, modificatore, formazione, moduli, panchina)
 # o che danno un minimo o un massimo invece del numero esatto
 NON_ROSA = r"gol|assist|bonus|malus|voto|modificat|media|formazion|modul|titolar|schier|panchin|riserv|almeno|minim|massim"
+# Una riga fatta solo di ruoli e numeri («Portieri 3», «Portieri 3 difensori 8 …»): è una riga di rosa anche senza la parola
+SOLO_RUOLI = (rf"\W{{0,3}}(?:(?:portier|difensor|centrocamp|attaccant){SUFFISSO}\s{{0,3}}[:=]?\s{{0,3}}\d{{1,2}}\W{{0,3}}"
+              r"(?:e\W{1,3})?)+")
 # Il totale scritto accanto ai ruoli («Rosa di 25 giocatori: 3 portieri, …»): se non è la somma dei ruoli la riga è un dubbio
-TOTALE_GIOCATORI = r"(?<![\d.,])(\d{1,2})\s{0,3}giocator"
-# Un «non», un «nessun», un «senza» che negano il punteggio («nessun bonus per l'assist», «l'assist non dà bonus»): solo quelli
-# davanti a «bonus», «malus», «punti». Quelli nel nome della regola o in una condizione («rigore non realizzato», «espulsione (non
-# cumulabile)», «porta inviolata, senza subire gol») non negano niente.
-NEGA_PUNTI = (r"\b(?:nessun[oa]?|niente|senza|zero)\W{1,3}(?:\w{1,20}\W{1,3})?(?:bonus|malus|punt)"
-              r"|\bnon\W{1,3}(?:\w{1,20}\W{1,3}){0,3}(?:bonus|malus|punt)")
+TOTALE_GIOCATORI = r"(?<![\d.,])(\d{1,2})\s{0,3}(?:giocator|calciator)"
+# Un «non», un «nessun», un «senza» che negano il punteggio («nessun bonus per l'assist», «l'assist non dà bonus», «l'autogol non
+# viene penalizzato», «nessuna penalità»): solo quelli davanti a bonus, malus, punti o penalità. Quelli nel nome della regola o in
+# una condizione («rigore non realizzato», «espulsione (non cumulabile)», «porta inviolata, senza subire gol») non negano niente.
+PUNTEGGIO = r"(?:bonus|malus|punt|penalit|penalizz)"
+NEGA_PUNTI = (rf"\b(?:nessun[oa]?|niente|senza|zero)\W{{1,3}}(?:\w{{1,20}}\W{{1,3}})?{PUNTEGGIO}"
+              rf"|\bnon\W{{1,3}}(?:\w{{1,20}}\W{{1,3}}){{0,3}}{PUNTEGGIO}")
 # I numeri di un titolo non sono valori di regola: l'articolo o il capitolo («ART. 2 - PUNTEGGI», «Capitolo 1»), il numero
 # dell'elenco in testa alla riga («2) Rosa», «3. Panchina», «[2] Rosa», anche dopo un trattino d'elenco «- 2.») e la stagione
 # («2026/27», «2026-2027»). Si tolgono prima di leggere: un titolo resta senza numeri e non va fra le righe da controllare.
@@ -53,7 +57,7 @@ NUMERO_TITOLO = (r"\b(?:art|articolo|capitolo|cap|sezione|sez|paragrafo)\b\.?\s{
                  r"|^(?:[^\w(+\-]|-(?=\s)){0,5}\d{1,2}(?:\.\d{1,2}){0,3}[.)\]](?=\s)"
                  r"|\b(?:(?:stagione|campionato)\s)?(?:19|20)\d\d\s{0,3}[/-]\s{0,3}(?:(?:19|20)\d\d|\d\d)\b"
                  r"|\b(?:stagione|campionato)\s(?:19|20)\d\d\b")
-# I moduli («3-4-3», «343» in una riga di moduli) non sono numeri da leggere uno per uno (righe lette in parte, _numeri_da_leggere)
+# I moduli («3-4-3», «343» in una riga di moduli) non sono numeri da leggere uno per uno (righe lette in parte, _da_leggere)
 MODULO = r"\b[2-5]\s*-\s*[1-6]\s*-\s*[0-6]\b"
 MODULO_UNITO = r"\b[2-5][1-6][0-6]\b"
 MAX_CIFRE = 9                    # un valore di regola con più cifre non è un valore vero: si ignora
@@ -131,14 +135,31 @@ def _intero(s: str | None) -> int | None:
     return int(s) if s is not None and len(s) <= MAX_CIFRE else None
 
 
-def _primo_numero(testo: str) -> float | None:
-    m = re.search(NUM, testo)
-    return _valore(m.group()) if m else None
+def _cifra(m: re.Match, gruppo: int = 0) -> int:
+    """Dove comincia la prima cifra del numero trovato (segno e spazi davanti esclusi): il nome di quel numero nella riga, lo stesso
+    per ogni espressione che lo legge (righe lette in parte, _da_leggere)."""
+    return m.start(gruppo) + next(i for i, c in enumerate(m.group(gruppo)) if c.isdigit())
+
+
+def _primo(testo: str, da: int = 0) -> tuple[int, float | None] | None:
+    """Il primo numero da `da` in poi: dove comincia e il suo valore (None se non è un valore possibile); None se non ce n'è."""
+    m = re.compile(NUM).search(testo, da)
+    return (_cifra(m), _valore(m.group())) if m else None
 
 
 def _numeri(testo: str, da: int = 0) -> list[tuple[int, float]]:
     """I numeri che possono essere valori di regola, con la loro posizione nel testo (da `da` in poi)."""
-    return [(m.start(), v) for m in re.compile(NUM).finditer(testo, da) if (v := _valore(m.group())) is not None]
+    return [(_cifra(m), v) for m in re.compile(NUM).finditer(testo, da) if (v := _valore(m.group())) is not None]
+
+
+def _da_leggere(riga: str) -> set[int]:
+    """Dove cominciano i numeri della riga che una proposta deve aver letto: tutti tranne i moduli (coperti di spazi, così le
+    posizioni restano quelle della riga) e i numeri troppo lunghi per essere valori. Ogni numero conta per conto suo: «+1» e «-1»,
+    o due «+3», sono due numeri."""
+    testo = re.sub(MODULO, lambda m: " " * len(m.group()), riga)
+    if re.search(r"modul|formazion", testo):
+        testo = re.sub(MODULO_UNITO, lambda m: " " * len(m.group()), testo)
+    return {p for p, _ in _numeri(testo)}
 
 
 def _negata_senza_numero(riga: str, pos: int) -> bool:
@@ -149,29 +170,6 @@ def _negata_senza_numero(riga: str, pos: int) -> bool:
     fine = re.search(r";|,(?!\d)", riga[pos:])
     pezzo = riga[inizio:pos + fine.start() if fine else len(riga)]
     return re.search(NEGA_PUNTI, pezzo) is not None and not re.search(r"\d", pezzo)
-
-
-def _arrotonda(v: float) -> float:
-    return round(abs(v), 3)
-
-
-def _numeri_da_leggere(riga: str) -> set[float]:
-    """I numeri della riga (già senza i numeri del titolo) che una regola dovrebbe aver letto: senza i moduli e senza segno."""
-    testo = re.sub(MODULO, " ", riga)
-    if re.search(r"modul|formazion", testo):
-        testo = re.sub(MODULO_UNITO, " ", testo)
-    return {_arrotonda(v) for _, v in _numeri(testo)}
-
-
-def _letti(valore) -> set[float]:
-    """I numeri del testo che un valore proposto ha letto (un sì/no e i moduli nessuno; i posti per ruolo uno per ruolo)."""
-    if isinstance(valore, bool) or isinstance(valore, str):
-        return set()
-    if isinstance(valore, (int, float)):
-        return {_arrotonda(valore)}
-    if isinstance(valore, dict):
-        return {_arrotonda(v) for v in valore.values()}
-    return set()
 
 
 def _negate(testo: str, parole: str) -> tuple[int, int]:
@@ -300,13 +298,17 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
     righe = [re.sub(NUMERO_TITOLO, " ", _normalizza(r)) for r in originali]      # senza il numero dell'articolo e la stagione
     modifiche: dict[str, dict] = {}
     usate: set[int] = set()
-    letti: dict[int, set[float]] = {}    # riga -> i numeri letti dalle regole (gli altri la lasciano da controllare)
+    # Le proposte restano in sospeso finché la riga non è finita: una riga propone valori solo se ogni suo numero è letto da una
+    # proposta (#884, decisione del coordinatore). Con un numero non spiegato la riga non propone niente e si controlla a mano.
+    proposte: list[tuple[str, str, object, int]] = []
+    letti: dict[int, set[int]] = {}      # riga -> dove cominciano i numeri letti dalle proposte (_cifra)
     dubbie: dict[int, list[dict]] = {}   # riga -> regole che nomina senza dirne il valore con sicurezza
 
-    def imposta(chiave, etichetta, valore, n):
-        modifiche[chiave] = {"chiave": chiave, "etichetta": etichetta, "valore": valore, "riga": originali[n][:120]}
+    def imposta(chiave, etichetta, valore, n, *posizioni):
+        """Propone `valore` per `chiave` dalla riga `n`; `posizioni`: dove cominciano i numeri della riga che ha letto."""
+        proposte.append((chiave, etichetta, valore, n))
         usate.add(n)
-        letti.setdefault(n, set()).update(_letti(valore))
+        letti.setdefault(n, set()).update(posizioni)
 
     def dubbia(chiave, etichetta, n):           # chiave ed etichetta come in imposta (tests/test_frasi.py le legge da qui)
         dubbie.setdefault(n, []).append({"chiave": chiave, "etichetta": etichetta})
@@ -328,16 +330,17 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
             m = re.search(rf"difensor{SUFFISSO}\s*(?:minim{SUFFISSO}|almeno)\D{{0,6}}\b([3-6])\b(?![.,]\d)"
                           rf"|(?:almeno|minim{SUFFISSO})\s*\b([3-6])\b(?![.,]\d)\s*difensor", riga)
             if m:
-                imposta("modificatore_difesa.min_difensori", "Difensori minimi", int(m.group(1) or m.group(2)), n)
+                gruppo = 1 if m.group(1) else 2
+                imposta("modificatore_difesa.min_difensori", "Difensori minimi", int(m.group(gruppo)), n, m.start(gruppo))
                 continue
             # una fascia è "media <numero> : bonus <numero>"; gli intervalli ("6-6,5", "da 6 a 6,49") non sono letti per non sbagliare
             if not re.search(r"\d\s*[-a]\s*\d|\bda\b[^\n]{0,40}\ba\b", riga):
-                numeri = re.findall(NUM, riga)
+                numeri = list(re.finditer(NUM, riga))
                 if len(numeri) == 2 and re.search(r"[:=→>+]|bonus|punt", riga):
-                    media, bonus = _valore(numeri[0]), _valore(numeri[1])
+                    media, bonus = _valore(numeri[0].group()), _valore(numeri[1].group())
                     if media is not None and bonus is not None and 3.5 <= media <= 9 and 0 <= abs(bonus) <= 10 and "difensor" not in riga:
                         soglie.append([media, abs(bonus)]); usate.add(n); riga_soglie = n
-                        letti.setdefault(n, set()).update({_arrotonda(media), _arrotonda(bonus)})
+                        letti.setdefault(n, set()).update({_cifra(numeri[0]), _cifra(numeri[1])})
                         continue
             if re.search(r"(?:pareggi|moduli|panchina|bonus e malus|punteggi|capitano)", riga):
                 in_modificatore = False
@@ -348,9 +351,8 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
             ruoli_riga = [(r, riga.find(k)) for k, r in RUOLI.items() if k in riga]
             if len(ruoli_riga) >= 2:
                 for r, pos in sorted(ruoli_riga, key=lambda x: x[1]):
-                    numero = _primo_numero(riga[pos:])
-                    if numero is not None:
-                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numero), n); trovato = True
+                    if (primo := _primo(riga, pos)) and primo[1] is not None:
+                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(primo[1]), n, primo[0]); trovato = True
             elif re.search(rf"\bgol\b.{{0,40}}(?:segnat|realizzat|fatt)|\bgol\b\s*(?:[:=]|$|\d|[+-])|(?:segnat|realizzat){SUFFISSO} gol"
                            r"|\bgol\b\W+(?:\w+\W+){0,2}(?:portier|difensor|centrocamp|attaccant)", riga):
                 numeri = _numeri(riga, riga.find("gol"))
@@ -361,20 +363,21 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                     trovato = True
                 elif numeri and ruoli_riga:
                     r, pos = ruoli_riga[0]
-                    prima, dopo = [v for p, v in numeri if p < pos], [v for p, v in numeri if p > pos]
+                    prima, dopo = [x for x in numeri if x[0] < pos], [x for x in numeri if x[0] > pos]
                     if prima and dopo:
                         # «Gol: +3 (il gol del portiere vale +5)»: il primo numero vale per tutti i ruoli, quello dopo il ruolo
                         # citato solo per lui (#881)
                         for x in RUOLI.values():
-                            imposta(f"bonus.gol.{x}", f"Gol ({NOMI_SINGOLARE[x]})", abs(dopo[0] if x == r else prima[0]), n)
+                            p, v = dopo[0] if x == r else prima[0]
+                            imposta(f"bonus.gol.{x}", f"Gol ({NOMI_SINGOLARE[x]})", abs(v), n, p)
                     elif not prima:
-                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(dopo[0]), n)
+                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(dopo[0][1]), n, dopo[0][0])
                     # numeri solo prima del ruolo («3 punti, 5 per il portiere», «+3 (anche per il portiere)»): non si sa se il ruolo
                     # sia un'eccezione, un'aggiunta o un multiplo, la riga resta da controllare
                     trovato = True
                 elif numeri:
                     for r in RUOLI.values():
-                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numeri[0][1]), n)
+                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numeri[0][1]), n, numeri[0][0])
                     trovato = True
         if not trovato:
             letta = False                       # una sola regola con il suo numero per riga, la prima nominata nell'ordine di BONUS
@@ -387,9 +390,8 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                     dubbia(chiave, etichetta, n)
                 elif not letta:
                     letta = True
-                    numero = _primo_numero(riga[min(posizioni):])
-                    if numero is not None:
-                        imposta(chiave, etichetta, segno * abs(numero), n); trovato = True
+                    if (primo := _primo(riga, min(posizioni))) and primo[1] is not None:
+                        imposta(chiave, etichetta, segno * abs(primo[1]), n, primo[0]); trovato = True
         if trovato:
             continue
         # ---- moduli, panchina, rosa, crediti
@@ -401,23 +403,22 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
             trovati |= {f"{t[0]}-{t[1]}-{t[2]}" for t in re.findall(r"\b([2-5][1-6][0-6])\b", riga)}
             trovati = {m for m in trovati if sum(map(int, m.split("-"))) == 10}
             if trovati:
-                precedenti = modifiche.get("moduli", {"valore": []})["valore"]
-                imposta("moduli", "Moduli ammessi", sorted(set(precedenti) | trovati), n)
+                imposta("moduli", "Moduli ammessi", trovati, n)      # si sommano ai moduli delle altre righe quando si applicano
         if re.search(r"panchin|riserv", riga):
             # posti per ruolo: "2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti"
-            posti = {}
+            posti, dove = {}, []
             for k, r in RUOLI.items():
                 if (mp := re.search(r"\b(\d{1,2})\s*" + k, riga)):
-                    posti[r] = int(mp.group(1))
+                    posti[r] = int(mp.group(1)); dove.append(mp.start(1))
             if len(posti) == 4:
                 # «Panchina di 12 giocatori: 2 portieri, 3 difensori, …» (11): il totale scritto non torna, la riga si controlla
                 if (totale := re.search(TOTALE_GIOCATORI, riga)) is None or int(totale.group(1)) == sum(posti.values()):
-                    imposta("panchina.posti", "Posti in panchina per ruolo", posti, n)
-                    imposta("panchina.numero", "Giocatori in panchina", sum(posti.values()), n)
+                    imposta("panchina.posti", "Posti in panchina per ruolo", posti, n, *dove)
+                    imposta("panchina.numero", "Giocatori in panchina", sum(posti.values()), n, *([totale.start(1)] if totale else []))
                 continue
             if (nm := re.search(rf"(?:panchin{SUFFISSO}|riserv{SUFFISSO})\D{{0,25}}(\d+)|(?<!\d)(\d+)\s*(?:panchin|riserv)", riga)) \
                     and (numero := _intero(nm.group(1) or nm.group(2))) is not None:
-                imposta("panchina.numero", "Giocatori in panchina", numero, n)
+                imposta("panchina.numero", "Giocatori in panchina", numero, n, nm.start(1 if nm.group(1) else 2))
             tipo = _tipo_panchina(riga)
             if tipo is None:
                 dubbia("panchina.tipo", "Ordine dei cambi", n)
@@ -428,7 +429,7 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                 and (ns := re.search(rf"(?:massim{SUFFISSO}|max|consentit{SUFFISSO}|fino a|al massimo)\D{{0,15}}(\d+)"
                                      r"|(?<!\d)(\d+)\s*(?:sostituzion|cambi)", riga)) \
                 and (numero := _intero(ns.group(1) or ns.group(2))) is not None:
-            imposta("panchina.max_sostituzioni", "Sostituzioni massime", numero, n)
+            imposta("panchina.max_sostituzioni", "Sostituzioni massime", numero, n, ns.start(1 if ns.group(1) else 2))
         if re.search(CAMBIO_MODULO, riga):
             cambio = _si_no(riga, lambda p: re.search(CAMBIO_MODULO, p) is not None, STATO_CAMBIO_MODULO, NO_CAMBIO_MODULO)
             if cambio is None:
@@ -436,42 +437,48 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
             else:
                 imposta("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", cambio, n)
         if re.search(r"credit", riga) and re.search(r"inizial|a disposizione|parte con|budget", riga) and not re.search(r"residu|giornata|speso", riga) \
-                and (nc := re.search(r"(?<![\d.,])(\d+)\s{0,3}credit", riga) or re.search(r"(\d+)", riga[riga.find("credit"):])) \
+                and (nc := re.search(r"(?<![\d.,])(\d+)\s{0,3}credit", riga) or re.compile(r"(\d+)").search(riga, riga.find("credit"))) \
                 and (numero := _intero(nc.group(1))) is not None:
             # il numero subito prima di «crediti» («500 crediti per acquistare 25 giocatori»), altrimenti il primo dopo
             # («2.1 Crediti iniziali: 500»: il numero del paragrafo non conta)
-            imposta("crediti_iniziali", "Crediti iniziali", numero, n)
+            imposta("crediti_iniziali", "Crediti iniziali", numero, n, nc.start(1))
         if n not in usate and not re.search(NON_ROSA, riga):
-            # tutti i ruoli della riga («Rosa: portieri 3, difensori 9, …», #881); lo stesso ruolo con due numeri resta da controllare
-            coppie = [(m.group(1), m.group(2)) for m in re.finditer(RUOLO_ROSA, riga)]
+            # tutti i ruoli della riga («Rosa: portieri 3, difensori 9, …», #881); lo stesso ruolo con due numeri resta da controllare.
+            # Solo su righe di rosa: con «rosa» o «la squadra è composta da», o fatte solo di ruoli e numeri («Portieri 3»)
+            coppie: list[tuple[str, int, int]] = []
+            if re.search(ROSA_FRASE, riga) or re.fullmatch(SOLO_RUOLI, riga):
+                coppie = [(m.group(1), int(m.group(2)), m.start(2)) for m in re.finditer(RUOLO_ROSA, riga)]
             if not coppie and re.search(ROSA_FRASE, riga):
-                coppie = [(m.group(2), m.group(1)) for m in re.finditer(NUMERO_RUOLO_ROSA, riga)]
+                coppie = [(m.group(2), int(m.group(1)), m.start(1)) for m in re.finditer(NUMERO_RUOLO_ROSA, riga)]
             rosa: dict[str, set[int]] = {}
-            for parola, numero in coppie:
-                rosa.setdefault(next(v for k, v in RUOLI.items() if k in parola), set()).add(int(numero))
+            for parola, numero, _ in coppie:
+                rosa.setdefault(next(v for k, v in RUOLI.items() if k in parola), set()).add(numero)
             totale = re.search(TOTALE_GIOCATORI, riga)
             somma = sum(min(v) for v in rosa.values())
             # «Rosa di 25 giocatori: 3 portieri, …»: il totale si legge se è la somma dei ruoli; se non torna la riga si controlla
             if rosa and all(len(numeri_ruolo) == 1 for numeri_ruolo in rosa.values()) \
                     and (totale is None or len(rosa) == 4 and int(totale.group(1)) == somma):
+                dove = [p for _, _, p in coppie] + ([totale.start(1)] if totale else [])
                 for r in RUOLI.values():
                     if r in rosa:
-                        imposta(f"rosa.{r}", f"Rosa: {NOMI_PLURALE[r]}", rosa[r].pop(), n)
-                if totale:
-                    letti[n].add(_arrotonda(somma))
+                        imposta(f"rosa.{r}", f"Rosa: {NOMI_PLURALE[r]}", rosa[r].pop(), n, *dove)
+    # le proposte delle righe con tutti i numeri letti, nell'ordine del testo (una riga dopo vince su una prima)
+    parziali = {n for n in usate if not _da_leggere(righe[n]) <= letti.get(n, set())}
+    for chiave, etichetta, valore, n in proposte:
+        if n in parziali:
+            continue
+        if chiave == "moduli":
+            valore = sorted(set(modifiche.get("moduli", {"valore": []})["valore"]) | valore)
+        modifiche[chiave] = {"chiave": chiave, "etichetta": etichetta, "valore": valore, "riga": originali[n][:120]}
     if soglie:
         modifiche["modificatore_difesa.soglie"] = {"chiave": "modificatore_difesa.soglie", "etichetta": "Fasce del modificatore difesa",
                                                    "valore": sorted(soglie), "riga": originali[riga_soglie][:120]}
         modifiche.setdefault("modificatore_difesa.attivo", {"chiave": "modificatore_difesa.attivo", "etichetta": "Modificatore difesa attivo",
                                                            "valore": True, "riga": originali[riga_soglie][:120]})
-    def con_numeri_non_letti(n: int) -> bool:
-        """La riga ha numeri che nessuna regola ha letto: tutti (riga non usata) o solo una parte (#881: «Assist: +1 (assist da
-        fermo +0,5)» propone l'assist, ma lo 0,5 va guardato a mano)."""
-        if n not in usate:
-            return re.search(r"\d", righe[n]) is not None
-        return not _numeri_da_leggere(righe[n]) <= letti.get(n, set())
-
-    non = [n for n in range(len(righe)) if len(righe[n]) < 140 and con_numeri_non_letti(n)][:30]
+    # da controllare: le righe con numeri che nessuna proposta ha letto, tutti (riga non usata) o solo una parte («Assist: +1
+    # (assist da fermo +0,5)»: nessuna proposta, perché lo 0,5 non è spiegato)
+    non = [n for n in range(len(righe)) if len(righe[n]) < 140
+           and (n in parziali or n not in usate and re.search(r"\d", righe[n]) is not None)][:30]
     # da controllare a mano (#684): le righe con numeri non lette e quelle dubbie, anche senza numeri, nell'ordine del testo;
     # ognuna con le regole che lascia da impostare (vuoto per una riga con numeri che non nomina regole dubbie)
     altre = [n for n in sorted(dubbie) if n not in non][:MAX_DUBBIE]
