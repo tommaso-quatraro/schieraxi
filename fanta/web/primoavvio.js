@@ -9,7 +9,9 @@ const PA_PASSI = ["rose", "squadra", "tempi"];
 const PA_NOMI = { rose: t("pav.n_rose"), squadra: t("pav.n_squadra"), tempi: t("pav.n_tempi") };
 // «Quando si chiude la formazione»: le scelte più comuni (minuti prima della prima partita); un valore diverso si aggiunge da solo
 const PA_SCADENZE = [0, 5, 10, 15, 30, 60];
-const pa = { stato: { fatti: [], saltati: [], chiuso: false }, passo: null };
+// `evidenziato`: il passo acceso nell'indicatore quando non è quello attuale. Nell'anteprima delle rose la domanda in cima è «Qual è
+// la tua squadra?» (anteprima.js): si accende «La tua squadra», non «Le rose» (#873).
+const pa = { stato: { fatti: [], saltati: [], chiuso: false }, passo: null, evidenziato: null };
 
 const paFatto = p => pa.stato.fatti.includes(p);
 const paSaltato = p => pa.stato.saltati.includes(p);
@@ -52,11 +54,23 @@ async function apriPrimoAvvio() {
 }
 
 function paProgresso() {
+  const acceso = pa.evidenziato || pa.passo;
   return `<ol class="pa-passi" aria-label="${t("pav.passi_del_primo")}">${PA_PASSI.map(p => {
     const stato_ = paFatto(p) ? "fatto" : paSaltato(p) ? "saltato" : "";
     const etichetta = paFatto(p) ? t("pav.fatto_par") : paSaltato(p) ? t("pav.saltato_par") : "";
-    return `<li><button class="pa-passo ${stato_} ${p === pa.passo ? "attuale" : ""}" data-pa-passo="${p}" ${p === pa.passo ? 'aria-current="step"' : ""}>${esc(PA_NOMI[p])}${etichetta}</button></li>`;
+    return `<li><button class="pa-passo ${stato_} ${p === acceso ? "attuale" : ""}" data-pa-passo="${p}" ${p === acceso ? 'aria-current="step"' : ""}>${esc(PA_NOMI[p])}${etichetta}</button></li>`;
   }).join("")}</ol>`;
+}
+// Un tocco su un passo dell'indicatore lo apre.
+function paCollegaPassi() {
+  document.querySelectorAll("[data-pa-passo]").forEach(b => b.addEventListener("click", () => { pa.passo = b.dataset.paPasso; paDisegna(); }));
+}
+// Accende un altro passo nell'indicatore senza ridisegnare il passo (null: torna quello attuale), con il suo nome nel titolo.
+function paEvidenzia(p) {
+  pa.evidenziato = p;
+  const passi = $("#foglio-contenuto .pa-passi"), titolo = $("#foglio-contenuto .pa-titolo");
+  if (passi) { passi.outerHTML = paProgresso(); paCollegaPassi(); }
+  if (titolo) titolo.textContent = PA_NOMI[p || pa.passo];
 }
 
 // Guida chiusa senza finire (✕, Esc, tocco fuori, foglio trascinato giù, un collegamento che porta altrove): i passi rimasti
@@ -78,14 +92,15 @@ function paOsservaChiusura() {
 function paDisegna() {
   paOsservaChiusura();
   const p = pa.passo;
+  pa.evidenziato = null;
   if (!p) { paFine(); return; }
   const corpo = PA_SCHERMATE[p]();
   apriFoglio(`<h2 class="pa-capo">${t("pav.primo_avvio")}</h2>${paProgresso()}
-    <h3 class="pa-titolo">${esc(PA_NOMI[p])}</h3>${corpo.html}
+    <h3 class="pa-titolo">${esc(PA_NOMI[p])}</h3><div class="pa-corpo">${corpo.html}</div>
     <div id="pa-msg" role="alert"></div>
     <div class="pulsanti">${corpo.principale ? `<button class="bottone" id="pa-avanti">${esc(corpo.principale)}</button>` : ""}
       <button class="bottone secondario" id="pa-salta">${t(corpo.principale ? "pav.salta" : "onb.avanti")}</button></div>`);
-  document.querySelectorAll("[data-pa-passo]").forEach(b => b.addEventListener("click", () => { pa.passo = b.dataset.paPasso; paDisegna(); }));
+  paCollegaPassi();
   $("#pa-salta").addEventListener("click", async () => { if (corpo.principale && !paFatto(p)) await paSalta(p); paProssimo(); });
   const avanti = $("#pa-avanti");
   if (avanti) avanti.addEventListener("click", async () => {
@@ -118,13 +133,16 @@ function paFine() {
   const saltati = PA_PASSI.filter(p => !paFatto(p));
   // senza rose «Da fare» non elenca ancora i passi saltati: si ritrovano con «Importa le rose» di Oggi
   const dove = (stato.squadre || []).length ? "pav.hai_saltato" : "pav.hai_saltato_senza_rose";
+  // le regole il primo avvio non le chiede: si dice quali punteggi usano i fantavoti attesi e dove si cambiano (#873)
+  const regole = `<a href="/?vista=impostazioni&amp;gruppo=regole" id="pa-regole">${t("imp.regole")}</a>`;
   apriFoglio(`<h2 class="pa-capo">${t("pav.tutto_pronto_mister")}</h2>${paProgresso()}
-    <p class="debole">${saltati.length ? t(dove, { nomi: saltati.map(p => esc(PA_NOMI[p])).join(", ") }) : t("pav.hai_finito")}</p>
-    <p class="debole piccolo">${t("pav.il_resto")}</p>
+    <div class="pa-corpo"><p class="debole">${saltati.length ? t(dove, { nomi: saltati.map(p => esc(PA_NOMI[p])).join(", ") }) : t("pav.hai_finito")}</p>
+    <p class="debole">${t("pav.regole_comuni", { regole })}</p>
+    <p class="debole piccolo">${t("pav.il_resto")}</p></div>
     <div id="pa-msg" role="alert"></div>
     <div class="pulsanti"><button class="bottone" id="pa-chiudi">${t("pav.vai_formazione")}</button>
       ${paAvvisiPossibili() ? `<button class="bottone secondario" id="pa-avvisi">${t("onb.attiva_gli_avvisi_b")}</button>` : ""}</div>`);
-  document.querySelectorAll("[data-pa-passo]").forEach(b => b.addEventListener("click", () => { pa.passo = b.dataset.paPasso; paDisegna(); }));
+  paCollegaPassi();
   const avvisi = $("#pa-avvisi");
   if (avvisi) avvisi.addEventListener("click", async () => {
     try {
@@ -137,16 +155,21 @@ function paFine() {
       avvisi.remove(); $("#pa-msg").innerHTML = `<div class="onb-verde">${t("onb.avvisi_attivi_questo")}</div>`;
     } catch (e) { paErrore(e); }
   });
-  $("#pa-chiudi").addEventListener("click", async () => {
+  // «Vai alla Formazione» e il collegamento alle regole chiudono la guida allo stesso modo: finita, non si riapre da sola
+  const chiudi = async (vista, gruppo) => {
     await paSalva({ chiuso: true });
     if (stato.account) {                                       // la vecchia procedura ricorda com'è finita: resta coerente
       try { await api("/api/onboarding", { method: "PUT", body: JSON.stringify({ stato: saltati.length ? "saltato" : "completato", passo: "avvisi" }) }); } catch { /* non blocca */ }
     }
-    svuotaCache(); chiudiFoglio(); vai("formazione");
-  });
+    svuotaCache(); chiudiFoglio(); vai(vista, gruppo, { focoTitolo: !!gruppo });
+  };
+  $("#pa-chiudi").addEventListener("click", () => chiudi("formazione"));
+  $("#pa-regole").addEventListener("click", ev => { ev.preventDefault(); chiudi("impostazioni", "regole"); });
 }
 
-const paAggiornaRose = async () => { svuotaCache(); await Promise.all([caricaInfo(), caricaSquadre()]); };
+// Rose o squadra cambiate: si rileggono e la schermata sotto la guida si ridisegna, così dietro «Tutto pronto» non resta il benvenuto
+// con «Importa le rose» (#873).
+const paAggiornaRose = async () => { svuotaCache(); await Promise.all([caricaInfo(), caricaSquadre()]); vaiQui(); };
 
 // Regole standard confermate, ma solo se non ne hai già confermate di tue (con gli account).
 async function paRegoleStandard() {
@@ -175,11 +198,11 @@ function paAnteprima() {
   $("#pa-msg").innerHTML = "";
   mostra(false);
   anteprimaRose($("#pa-anteprima"), file ? { file } : { testo }, {
-    annulla: () => { paDimenticaFile(); mostra(true); $("#pa-testo").focus(); },
+    annulla: () => { paEvidenzia(null); paDimenticaFile(); mostra(true); $("#pa-testo").focus(); },
+    mostrata: r => paEvidenzia((r.squadre || []).length ? "squadra" : null),        // in cima chiede la tua squadra
+    // una squadra basta per cominciare: lo dice già l'anteprima (avviso del server), niente avviso che copra la pagina dopo (#873)
     fatto: async (esito, mia) => {
       await paAggiornaRose();
-      // una squadra basta per cominciare: solo un avviso gentile (gli scambi aspettano le rose degli altri)
-      if (esito && esito.totale_squadre === 1) avviso(t("srv.una_sola_squadra"), 8000);
       await paSegnaFatto("rose");
       if (mia) { await paRegoleStandard(); stato.squadraVista = null; await paSegnaFatto("squadra"); }
       paProssimo();
