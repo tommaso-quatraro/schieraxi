@@ -3053,7 +3053,24 @@ async function bannerNuovaStagione() {
 
 // ---------------------------------------------------------------- regole: schermata semplice con − / +
 const sistema = {};   // stato della schermata regole (regole originali)
-function stepper(id, valore, { passo = 0.5, min = -50, max = 999, dec = 1 } = {}) {
+// I limiti dei numeri delle regole (#881): gli stessi con cui il server le controlla quando si salvano, dal file che legge anche lui
+// (limiti-regole.json, vedi fanta/regole.py), così − e + e i numeri scritti a mano non arrivano a un valore che il server rifiuta.
+// {chiave: {min, max}}, con le chiavi come i campi delle regole («bonus.assist», «rosa.P»). Si leggono una volta, con le regole.
+let limitiRegole = null;
+async function leggiLimitiRegole() {
+  if (limitiRegole) return limitiRegole;
+  let r;
+  try { r = await fetch("/limiti-regole.json", { cache: "no-cache" }); }
+  catch { const e = new Error(fraseSenzaRisposta()); e.rete = true; throw e; }
+  if (!r.ok) throw new Error(t("comune.errore_n", { n: r.status }));
+  limitiRegole = await r.json();
+  return limitiRegole;
+}
+// Un limite scritto nella frase di un avviso: «−20» con il meno tipografico, come nei messaggi del server.
+const cifraLimite = v => (v < 0 ? "−" : "") + num(Math.abs(v), Number.isInteger(v) ? 0 : 2);
+// `lim`: la chiave del limite in limitiRegole (i campi delle regole); senza, `min` e `max` (i voti della prova, che non si salvano).
+function stepper(id, valore, { passo = 0.5, dec = 1, lim = "", min = -50, max = 999 } = {}) {
+  if (lim) ({ min, max } = limitiRegole[lim]);
   return `<div class="stepper" data-passo="${passo}" data-min="${min}" data-max="${max}" data-dec="${dec}">
     <button type="button" data-step="-1" aria-label="${t("regole.diminuisci")}">−</button>
     <input id="${id}" inputmode="decimal" autocomplete="off" value="${num(valore, dec)}">
@@ -3071,8 +3088,8 @@ const conNome = (controllo, nome) => controllo.replace("<input ", `<input aria-l
 const nomiFascia = n => [t("regole.fascia_media", { n }), t("regole.fascia_bonus", { n }), t("regole.togli_fascia", { n })];
 function rigaFascia(media, bonus, n) {
   const [nomeMedia, nomeBonus, nomeTogli] = nomiFascia(n);
-  return `<div class="fascia"><div class="coppia"><span class="debole piccolo">${t("regole.media_almeno")}</span>${conNome(stepper("", media, { passo: 0.25, min: 4, max: 9, dec: 2 }), nomeMedia).replace('id=""', 'class="f-media"')}</div>
-    <div class="coppia"><span class="debole piccolo">${t("regole.bonus")}</span>${conNome(stepper("", bonus, { passo: 0.5, min: 0, max: 20, dec: 1 }), nomeBonus).replace('id=""', 'class="f-bonus"')}</div>
+  return `<div class="fascia"><div class="coppia"><span class="debole piccolo">${t("regole.media_almeno")}</span>${conNome(stepper("", media, { passo: 0.25, dec: 2, lim: "modificatore_difesa.soglie.media" }), nomeMedia).replace('id=""', 'class="f-media"')}</div>
+    <div class="coppia"><span class="debole piccolo">${t("regole.bonus")}</span>${conNome(stepper("", bonus, { passo: 0.5, dec: 1, lim: "modificatore_difesa.soglie.bonus" }), nomeBonus).replace('id=""', 'class="f-bonus"')}</div>
     <button type="button" class="rimuovi-fascia" aria-label="${esc(nomeTogli)}">✕</button></div>`;
 }
 function numeraFasce() {
@@ -3110,14 +3127,14 @@ async function vistaRegole() {
   const mia = nuovaRichiesta(), opz = { titolo: t("imp.regole"), stato: false, indietro: indietroImp() };
   caricamento(t("regole.carico"), opz);
   let r;
-  try { r = await api("/api/regole"); } catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
+  try { [r] = await Promise.all([api("/api/regole"), leggiLimitiRegole()]); } catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
   if (!ancoraValida(mia)) return;
   if (regoleAC) regoleAC.abort();
   regoleAC = new AbortController();
   const sig = { signal: regoleAC.signal };
   const md = r.modificatore_difesa;
   const moduli = [...new Set([...TUTTI_MODULI, ...r.moduli])];
-  const rigaGol = x => rigaRegola(t("regole.gol_di", { ruolo: NOME_RUOLO_1[x].toLowerCase() }), stepper("gol_" + x, r.bonus.gol[x], { passo: 0.5, min: 0, max: 20 }));
+  const rigaGol = x => rigaRegola(t("regole.gol_di", { ruolo: NOME_RUOLO_1[x].toLowerCase() }), stepper("gol_" + x, r.bonus.gol[x], { passo: 0.5, lim: "bonus.gol." + x }));
   const bonusRighe = [["assist", t("bonus.assist")], ["rigore_segnato", t("bonus.rigore_segnato")], ["rigore_parato", t("regole.rigore_parato_p")], ["portiere_imbattuto", t("bonus.portiere_imbattuto")], ["mvp", t("bonus.mvp")]];
   const malusRighe = [["ammonizione", t("bonus.ammonizione")], ["espulsione", t("bonus.espulsione")], ["autogol", t("bonus.autogol")], ["rigore_sbagliato", t("bonus.rigore_sbagliato")], ["gol_subito_portiere", t("bonus.gol_subito_portiere"), t("regole.per_ogni_gol")]];
   const opzioniScadenza = valore => [...new Set([...PA_SCADENZE, valore])].sort((a, b) => a - b)
@@ -3145,8 +3162,8 @@ async function vistaRegole() {
       <div class="pulsanti"><button class="bottone secondario" id="annulla-regole" type="button">${t("regole.annulla_modifiche")}</button></div></div>
     <details class="carta regola-sez" open><summary>${t("regole.punteggi")}</summary>
       <h3>${t("oggi.ev_gol")}</h3>${["P", "D", "C", "A"].map(rigaGol).join("")}
-      <h3>${t("regole.altri_bonus")}</h3>${bonusRighe.map(([k, nome]) => rigaRegola(nome, stepper("b_" + k, r.bonus[k], { passo: 0.5, min: 0, max: 20 }))).join("")}
-      <h3>${t("regole.malus")}</h3>${malusRighe.map(([k, nome, a]) => rigaRegola(nome, stepper("b_" + k, r.bonus[k], { passo: 0.5, min: -20, max: 0 }), a || "")).join("")}
+      <h3>${t("regole.altri_bonus")}</h3>${bonusRighe.map(([k, nome]) => rigaRegola(nome, stepper("b_" + k, r.bonus[k], { passo: 0.5, lim: "bonus." + k }))).join("")}
+      <h3>${t("regole.malus")}</h3>${malusRighe.map(([k, nome, a]) => rigaRegola(nome, stepper("b_" + k, r.bonus[k], { passo: 0.5, lim: "bonus." + k }), a || "")).join("")}
       <h3>${t("regole.voto_partenza")}</h3>
       <div class="segmenti" id="fonte-voto">${[["redazione", t("regole.v_redazione")], ["statistico", t("regole.v_statistico")], ["italia", t("regole.v_italia")]].map(([k, nome]) => `<button type="button" data-valore="${k}" class="${r.fonte_voto === k ? "attivo" : ""}">${nome}</button>`).join("")}</div>
       <div class="debole piccolo">${t("regole.quale_voto_somma")}</div>
@@ -3155,7 +3172,7 @@ async function vistaRegole() {
     <details class="carta regola-sez"><summary>${t("regole.modificatore_difesa")}</summary>
       ${interruttore("md_attivo", t("regole.md_attivo"), md.attivo, t("regole.md_attivo_aiuto"))}
       <div id="md-corpo" ${md.attivo ? "" : "hidden"}>
-        ${rigaRegola(t("regole.md_min"), stepper("md_min", md.min_difensori, { passo: 1, min: 3, max: 6, dec: 0 }), t("regole.md_min_aiuto"))}
+        ${rigaRegola(t("regole.md_min"), stepper("md_min", md.min_difensori, { passo: 1, dec: 0, lim: "modificatore_difesa.min_difensori" }), t("regole.md_min_aiuto"))}
         <h3>${t("regole.fasce_bonus")}</h3>
         <div class="debole piccolo">${t("regole.media_somma")} <b>${t("regole.portiere_migliori_difensori")}</b> ${t("regole.divisa_per_per")}</div>
         <div id="fasce">${[...md.soglie].sort((a, b) => a[0] - b[0]).map((s, k) => rigaFascia(s[0], s[1], k + 1)).join("")}</div>
@@ -3175,17 +3192,17 @@ async function vistaRegole() {
     <details class="carta regola-sez"><summary>${t("regole.panchina_sostituzioni")}</summary>
       ${interruttore("posti_fissi", t("regole.posti_fissi"), !!r.panchina.posti, t("regole.posti_fissi_aiuto"))}
       <div id="posti-corpo" ${r.panchina.posti ? "" : "hidden"}>
-        ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("posti_" + x, (r.panchina.posti || { P: 2, D: 3, C: 3, A: 3 })[x], { passo: 1, min: 0, max: 8, dec: 0 }))).join("")}
+        ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("posti_" + x, (r.panchina.posti || { P: 2, D: 3, C: 3, A: 3 })[x], { passo: 1, dec: 0, lim: "panchina.posti." + x }))).join("")}
         <div class="debole piccolo" id="totale-posti" style="margin:4px 0 8px"></div>
       </div>
-      <div id="numero-corpo" ${r.panchina.posti ? "hidden" : ""}>${rigaRegola(t("regole.giocatori_panchina"), stepper("p_numero", r.panchina.numero, { passo: 1, min: 1, max: 14, dec: 0 }))}</div>
-      ${rigaRegola(t("regole.cambi_massimi"), stepper("p_max", r.panchina.max_sostituzioni, { passo: 1, min: 0, max: 14, dec: 0 }))}
+      <div id="numero-corpo" ${r.panchina.posti ? "hidden" : ""}>${rigaRegola(t("regole.giocatori_panchina"), stepper("p_numero", r.panchina.numero, { passo: 1, dec: 0, lim: "panchina.numero" }))}</div>
+      ${rigaRegola(t("regole.cambi_massimi"), stepper("p_max", r.panchina.max_sostituzioni, { passo: 1, dec: 0, lim: "panchina.max_sostituzioni" }))}
       <h3>${t("regole.come_entrano_riserve")}</h3>
       <div class="segmenti" id="tipo-panchina">${[["per_ruolo", t("regole.per_ruolo")], ["libera", t("regole.libera")]].map(([k, nome]) => `<button type="button" data-valore="${k}" class="${r.panchina.tipo === k ? "attivo" : ""}">${nome}</button>`).join("")}</div>
       <div class="debole piccolo" id="aiuto-panchina"></div>
       ${interruttore("p_cambio", t("regole.cambio_modulo"), r.panchina.cambio_modulo, t("regole.cambio_modulo_aiuto"))}
       ${interruttore("vu_attivo", t("regole.vu_se_manca"), r.voto_senza_sostituto !== null && r.voto_senza_sostituto !== undefined)}
-      <div id="vu-corpo" ${r.voto_senza_sostituto !== null && r.voto_senza_sostituto !== undefined ? "" : "hidden"}>${rigaRegola(t("regole.vu"), stepper("voto_ufficio", r.voto_senza_sostituto ?? 4, { passo: 0.5, min: 0, max: 10 }))}</div>
+      <div id="vu-corpo" ${r.voto_senza_sostituto !== null && r.voto_senza_sostituto !== undefined ? "" : "hidden"}>${rigaRegola(t("regole.vu"), stepper("voto_ufficio", r.voto_senza_sostituto ?? 4, { passo: 0.5, lim: "voto_senza_sostituto" }))}</div>
     </details>
 
     <details class="carta regola-sez"><summary>${t("regole.aggiornamenti_titolo")}</summary>
@@ -3196,12 +3213,12 @@ async function vistaRegole() {
       <div class="debole piccolo">${t("regole.rinviate_aiuto_formazione")}</div>
       <div class="segmenti" id="rinvio-modo">${[["aspetta", t("regole.rv_aspetta")], ["senza_voto", t("regole.rv_senza_voto")], ["voto_ufficio", t("regole.rv_ufficio")]].map(([k, nome]) => `<button type="button" data-valore="${k}" class="${r.partite_rinviate === k ? "attivo" : ""}">${nome}</button>`).join("")}</div>
       <div class="debole piccolo" id="aiuto-rinvio"></div>
-      <div id="rinvio-voto-corpo" ${r.partite_rinviate === "voto_ufficio" ? "" : "hidden"}>${rigaRegola(t("regole.rv_voto"), stepper("voto_rinv", r.voto_ufficio_rinviate ?? 6, { passo: 0.5, min: 0, max: 10 }))}</div>
+      <div id="rinvio-voto-corpo" ${r.partite_rinviate === "voto_ufficio" ? "" : "hidden"}>${rigaRegola(t("regole.rv_voto"), stepper("voto_rinv", r.voto_ufficio_rinviate ?? 6, { passo: 0.5, lim: "voto_ufficio_rinviate" }))}</div>
     </details>` : ""}
 
     <details class="carta regola-sez"><summary>${t("regole.rosa_crediti")}</summary>
-      ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, min: 0, max: 20, dec: 0 }))).join("")}
-      ${rigaRegola(t("regole.crediti_iniziali"), stepper("crediti", r.crediti_iniziali, { passo: 10, min: 0, max: 5000, dec: 0 }))}
+      ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, dec: 0, lim: "rosa." + x }))).join("")}
+      ${rigaRegola(t("regole.crediti_iniziali"), stepper("crediti", r.crediti_iniziali, { passo: 10, dec: 0, lim: "crediti_iniziali" }))}
     </details>
     <div class="salva-fisso" hidden><button class="bottone" id="salva-regole" type="button">${t("regole.salva_regole")}</button></div></div></details></div>`, opz);
   const mostraSalva = () => { const s = $(".salva-fisso"); if (s) s.hidden = false; };
@@ -3256,7 +3273,8 @@ async function vistaRegole() {
   $("#agg_vicini").addEventListener("change", mostraSalva);
   $("#aggiungi-fascia").addEventListener("click", () => {
     const f = leggiFasce(), ultima = f.length ? f[f.length - 1] : [6, 0];
-    $("#fasce").insertAdjacentHTML("beforeend", rigaFascia(Math.min(9, ultima[0] + 0.5), ultima[1] + 1, f.length + 1));
+    const media = limitiRegole["modificatore_difesa.soglie.media"], bonus = limitiRegole["modificatore_difesa.soglie.bonus"];
+    $("#fasce").insertAdjacentHTML("beforeend", rigaFascia(Math.min(media.max, ultima[0] + 0.5), Math.min(bonus.max, ultima[1] + 1), f.length + 1));
     aggiornaProva(); mostraSalva();
   });
   contenuto.addEventListener("click", ev => {
@@ -3327,13 +3345,30 @@ async function vistaRegole() {
   };
 
   // --- salvataggio
+  // Cosa non va in un campo che si salva (#881): vuoto (prima diventava 0), non un numero, con la virgola in un campo di numeri
+  // interi (quelli senza decimali: portieri, panchina, cambi, crediti...), fuori dai limiti del server (gli stessi di − e +). Il
+  // nome del campo è quello della riga; "" se va bene.
+  const problemaCampo = campo => {
+    const testo = String(campo.value).trim().replace(",", "."), nome = campo.getAttribute("aria-label") || "";
+    if (!testo) return t("regole.campo_vuoto", { campo: nome });
+    const v = Number(testo), s = campo.closest(".stepper");
+    if (!Number.isFinite(v)) return t("regole.sono_valori_non");
+    if (s.dataset.dec === "0" && !Number.isInteger(v)) return t("regole.intero", { campo: nome });
+    const min = Number(s.dataset.min), max = Number(s.dataset.max);
+    return v < min || v > max ? t("regole.fuori_limiti", { campo: nome, min: cifraLimite(min), max: cifraLimite(max) }) : "";
+  };
   const salva = async () => {
-    const campi = [...contenuto.querySelectorAll(".stepper input")].filter(i => !i.closest("[hidden]"));
-    const rotti = campi.filter(i => !Number.isFinite(Number(String(i.value).replace(",", "."))));
-    if (rotti.length) {                          // il campo sbagliato si vede anche se «Modifica i valori» era chiuso
-      avviso(t("regole.sono_valori_non"), 5000);
-      rotti[0].closest("details.regole-valori").open = true; const sez = rotti[0].closest("details.regola-sez"); if (sez) sez.open = true;
-      rotti[0].focus(); return;
+    const postiOn = $("#posti_fissi").checked, mdOn = $("#md_attivo").checked;
+    // i campi che si salvano: non i voti della prova, non i posti per ruolo senza i posti fissi né, con i posti fissi, il numero
+    // della panchina (è la loro somma), non il voto d'ufficio spento, non il modificatore spento (sotto). Il voto delle partite
+    // rinviate si salva anche quando è nascosto.
+    const campi = [...contenuto.querySelectorAll(".stepper input")].filter(i => !i.closest(".prova-difesa") && !(i.closest("#md-corpo") && !mdOn)
+      && !(i.closest("#posti-corpo") && !postiOn) && !(i.id === "p_numero" && postiOn) && !(i.closest("#vu-corpo") && !$("#vu_attivo").checked));
+    const sbagliato = campi.find(problemaCampo);
+    if (sbagliato) {                             // il campo sbagliato si vede anche se «Modifica i valori» era chiuso
+      avviso(problemaCampo(sbagliato), 6000);
+      sbagliato.closest("details.regole-valori").open = true; const sez = sbagliato.closest("details.regola-sez"); if (sez) sez.open = true;
+      sbagliato.focus(); return;
     }
     const nuove = structuredClone(r);
     nuove.nome_lega = $("#nome_lega").value.trim() || t("regole.mia_lega");
@@ -3342,7 +3377,6 @@ async function vistaRegole() {
     for (const [k] of [...bonusRighe, ...malusRighe]) nuove.bonus[k] = leggiN("b_" + k);
     nuove.moduli = [...document.querySelectorAll("[data-modulo-regola].attiva")].map(c => c.dataset.moduloRegola);
     if (!nuove.moduli.length) { avviso(t("regole.scegli_almeno_modulo"), 5000); return; }
-    const postiOn = $("#posti_fissi").checked;
     const posti = postiOn ? Object.fromEntries(["P", "D", "C", "A"].map(x => [x, leggiN("posti_" + x)])) : null;
     nuove.panchina = { numero: postiOn ? totalePosti() : leggiN("p_numero"), max_sostituzioni: leggiN("p_max"), tipo: $("#tipo-panchina .attivo").dataset.valore,
                        cambio_modulo: $("#p_cambio").checked, posti };
@@ -3355,9 +3389,14 @@ async function vistaRegole() {
       nuove.partite_rinviate = $("#rinvio-modo .attivo").dataset.valore;
       nuove.voto_ufficio_rinviate = leggiN("voto_rinv");
     }
-    const fasce = leggiFasce().filter(f => Number.isFinite(f[0]) && Number.isFinite(f[1])).sort((a, b) => a[0] - b[0]);
-    if (new Set(fasce.map(f => f[0])).size !== fasce.length) { avviso(t("regole.due_fasce_hanno"), 5000); return; }
-    nuove.modificatore_difesa = { attivo: $("#md_attivo").checked, min_difensori: leggiN("md_min"), soglie: fasce };
+    // Il modificatore spento ha i campi nascosti (#886): non si controllano e, se uno non va (vuoto, fuori dai limiti), restano i
+    // valori salvati; se vanno tutti, si salvano anche spenti, come prima.
+    const campiMd = [...document.querySelectorAll("#md-corpo .stepper input")].filter(i => !i.closest(".prova-difesa"));
+    if (mdOn || campiMd.every(i => !problemaCampo(i))) {
+      const fasce = leggiFasce().sort((a, b) => a[0] - b[0]);
+      if (new Set(fasce.map(f => f[0])).size !== fasce.length) { avviso(t("regole.due_fasce_hanno"), 5000); return; }
+      nuove.modificatore_difesa = { attivo: mdOn, min_difensori: leggiN("md_min"), soglie: fasce };
+    } else nuove.modificatore_difesa = { ...structuredClone(r.modificatore_difesa), attivo: false };
     try {
       await api("/api/regole", { method: "PUT", body: JSON.stringify(nuove) });
       svuotaCache();
