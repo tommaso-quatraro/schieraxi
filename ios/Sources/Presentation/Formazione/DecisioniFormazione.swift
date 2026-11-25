@@ -54,12 +54,16 @@ struct DecisioniFormazione: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
+    /// L'azione della decisione: i 44 punti sono dentro l'etichetta, così si tocca tutta l'altezza e non solo la scritta (#882).
     private func pulsante(_ v: DaFareVoce) -> some View {
-        Button(v.testoPulsante) { azione(v) }
-            .font(.subheadline.weight(.semibold))
-            .buttonStyle(.borderless)
-            .foregroundStyle(Color.verde)
-            .frame(minHeight: Tema.areaTocco)
-            .disabled(spento && v.scrive)
+        Button { azione(v) } label: {
+            Text(v.testoPulsante)
+                .frame(minHeight: Tema.areaTocco)
+                .contentShape(Rectangle())
+        }
+        .font(.subheadline.weight(.semibold))
+        .buttonStyle(.borderless)
+        .foregroundStyle(Color.verde)
+        .disabled(spento && v.scrive)
     }
 }
