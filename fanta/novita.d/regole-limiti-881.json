@@ -1,0 +1,15 @@
+{
+  "titolo": "Regole: niente più valori sbagliati salvati senza avviso",
+  "voci": [
+    "Regole e scadenza, Modifica i valori: un campo lasciato vuoto non si salva più come 0. Prima di salvare compare quale campo è vuoto e il cursore va lì.",
+    "Un numero scritto a mano fuori dai limiti (per esempio un bonus sopra 20, un malus positivo, un assist da 99) si segnala prima di salvare, con il nome del campo e i numeri ammessi. I pulsanti − e + si fermano agli stessi limiti: non arrivano più a 0 portieri o a 14 cambi, che poi non si potevano salvare.",
+    "Non si salvano più regole che non hanno senso: panchina vuota, modificatore difesa acceso senza fasce, due fasce con la stessa media, difensori minimi che nessun modulo ammesso ha.",
+    "Gli errori delle regole sono frasi semplici, senza sigle né nomi tecnici, e con l'app in inglese sono in inglese. Se i problemi sono più di uno, ognuno va su una riga.",
+    "Le leghe salvate prima con valori ora fuori dai limiti si aprono come prima: per salvarle di nuovo basta riportare quei valori nei limiti."
+  ],
+  "tecnico": [
+    "Limiti dei numeri delle regole in un file solo, fanta/web/limiti-regole.json ({chiave: {min, max}}), servito come file statico /limiti-regole.json: lo legge regole.py (regole.LIMITI, controllo al salvataggio) e la pagina Regole della web (pulsanti e controllo prima di salvare). Cambiano i limiti: bonus 0..20, malus -20..0 (prima -100..100), difensori minimi del modificatore 3..6 (prima 0..10), bonus delle fasce 0..20 (prima -100..100), panchina 1..30 (prima 0..30), posti fissi per ruolo 0..10; restano rosa 1..30, cambi 0..10, crediti 0..100000, voti d'ufficio 0..10, medie delle fasce 0..10.",
+    "PUT /api/regole e ogni salvataggio delle regole: 400 anche per modificatore attivo senza soglie, soglie con la stessa media e min_difensori maggiore dei difensori di tutti i moduli ammessi (solo con il modificatore attivo). Questi controlli e i limiti nuovi valgono solo al salvataggio: regole.carica legge ancora le regole salvate prima.",
+    "Messaggi riscritti senza nomi di campo (rosa, panchina, posti, bonus.gol, limiti), ognuno con la sua chiave err.regole_* in fanta/testi/err.json; traduciErrore della web traduce riga per riga i messaggi di più righe e l'avviso va a capo (white-space: pre-line). Nessun campo dell'API tolto o rinominato; detail resta «Regole non valide:» più una riga «- …» per problema."
+  ]
+}
