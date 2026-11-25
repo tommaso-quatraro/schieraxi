@@ -903,13 +903,12 @@ function mostraSenzaRose(opz) {
 
 // Campionato finito (#656, campo `campionato_finito` di /api/oggi): nessuna giornata da preparare fino al calendario nuovo. La testa
 // della giornata finita con il riepilogo dell'ultima (nelle 48 ore, se il server lo manda) e la frase del server al posto della prossima;
-// con un recupero dell'ultima giornata ancora da giocare, lo stesso menu della fase «finita» per scegliere come contarlo.
+// con un recupero dell'ultima giornata ancora da giocare, lo stesso riquadro della fase «finita» per scegliere come contarlo (nel riepilogo).
 function mostraCampionatoFinito(o, opz) {
   clearInterval(timerConto);
   const r = o.riepilogo;
   const frase = `<p class="tg-nota" role="status" id="campionato-finito">${esc(testoDi(o.campionato_finito))}</p>`;
-  pagina(`<div class="fz-testa">${r ? `${riepilogoGiornata(r)}<div class="tg-prossima">${frase}</div>` : frase}</div>
-    ${r && r.rinvio ? `<div class="carta rinvio">${menuRinvio(r.rinvio)}</div>` : ""}`, opz);
+  pagina(`<div class="fz-testa">${r ? `${riepilogoGiornata(r)}<div class="tg-prossima">${frase}</div>` : frase}</div>`, opz);
   collegaRinvio();
   const comeAndata = $("[data-apri-giornata]");
   if (comeAndata) comeAndata.addEventListener("click", () => vaiGiornate(Number(comeAndata.dataset.apriGiornata) || undefined));
@@ -936,13 +935,17 @@ function menuRinvio(rv) {
 }
 // «UDI vs MIL»: le sigle, prima la squadra di casa. La usano il riquadro del rinvio e la riga dei recuperi che mancano (#310).
 const partitaVs = p => `${sigla(p.casa)} vs ${sigla(p.trasferta)}`;
-function cardRinvio(rv) {
-  if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
-  const partite = rv.partite.map(p => `<li><b>${partitaVs(p)}</b>
+// `titolo` (la giornata finita, #895): il titolo con la giornata a cui si riferisce, già pronto, al posto di «Partita rinviata»;
+// allora il riquadro c'è anche senza `partite` (un server di prima non le mandava nel riepilogo), e `nota` va sotto le partite.
+function cardRinvio(rv, titolo = "", nota = "") {
+  const conPartite = !!rv && Array.isArray(rv.partite) && rv.partite.length > 0;
+  if (!rv || (!conPartite && !titolo)) return "";
+  const partite = (conPartite ? rv.partite : []).map(p => `<li><b>${partitaVs(p)}</b>
     <span class="debole piccolo">${parseData(p.data) ? t("oggi.rinvio_recupero", { quando: esc(quando(p.data)) }) : t("oggi.rinvio_da_definire")}</span></li>`).join("");
   const miei = (rv.miei || []).map(g => esc(g.nome)).join(", ");
-  return `<div class="carta rinvio" id="oggi-rinvio"><h2>${t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
-    <ul class="elenco-rinvii">${partite}</ul>
+  return `<div class="carta rinvio"${titolo ? "" : ' id="oggi-rinvio"'}><h2>${titolo || t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
+    ${partite ? `<ul class="elenco-rinvii">${partite}</ul>` : ""}
+    ${nota ? `<p class="piccolo">${nota}</p>` : ""}
     ${miei ? `<p class="piccolo">${t("oggi.rinvio_miei", { nomi: miei })}</p>` : ""}
     ${menuRinvio(rv)}
   </div>`;
@@ -1119,15 +1122,24 @@ function testaGiornata(o, f) {
   return giornata + (f.iniziata ? "" : chiusura);
 }
 
-// La giornata appena finita (campo `riepilogo` di /api/oggi): punti fatti e attesi, «Com'è andata», la consigliata, i recuperi.
+// La giornata appena finita (campo `riepilogo` di /api/oggi): punti fatti e attesi, «Com'è andata», la consigliata, i recuperi e,
+// con una partita della giornata da recuperare, la scelta su come contarla (#895: prima stava in fondo, sotto la panchina della
+// giornata dopo, senza titolo né partita). Il riquadro ha il titolo con la giornata, la partita e i miei giocatori (`rinvio.partite`,
+// `rinvio.miei`); la partita si dice lì una volta sola, e la riga dei recuperi diventa la sua nota. Senza `partite` (server di prima)
+// resta la riga dei recuperi con i nomi delle partite.
 function riepilogoGiornata(r) {
-  const tua = r.formazione_di === "tua";
+  const tua = r.formazione_di === "tua", rv = r.rinvio;
+  const recuperi = Array.isArray(r.recuperi) ? r.recuperi : [];
+  const conPartite = !!rv && Array.isArray(rv.partite) && rv.partite.length > 0;
+  const titolo = rv ? t(conPartite && rv.partite.length > 1 ? "oggi.rinvio_titolo_giornata_n" : "oggi.rinvio_titolo_giornata_1",
+    { g: nomeGiornata(rv.giornata_lega ?? r.giornata_lega, rv.giornata ?? r.giornata) }) : "";
   return `<div class="tg-finita" id="oggi-riepilogo"><div>
       <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
       <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
       <button class="bottone secondario" type="button" data-apri-giornata="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
     ${tua && r.consigliata && r.consigliata.punti_fatti !== r.punti_fatti ? `<p class="tg-sotto">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
-    ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}`;
+    ${recuperi.length && !conPartite ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: recuperi.map(partitaVs).join(", ") })}</p>` : ""}
+    ${rv ? cardRinvio(rv, titolo, recuperi.length && conPartite ? t("oggi.recupero_punti") : "") : ""}`;
 }
 
 // A giornata in corso: i cambi dalla panchina già fatti o probabili (campo `sostituzioni` di `in_corso`).
@@ -1356,7 +1368,6 @@ function mostraFormazione(b, squadra, opz = {}) {
           ${f.senza_dati.length ? `<div class="debole piccolo">${t("formazione.senza_dati", { nomi: f.senza_dati.map(esc).join(", ") })}</div>` : ""}</details></div>` : ""}
         ${indisponibili.length ? `<div class="carta"><details><summary>${t("formazione.indisponibili", { n: indisponibili.length })}</summary>${elenco(indisponibili)}</details></div>` : ""}
         ${mia && o ? cardRinvio(o.rinvio) : ""}
-        ${mia && o && o.fase === "finita" && o.riepilogo && o.riepilogo.rinvio ? `<div class="carta rinvio">${menuRinvio(o.riepilogo.rinvio)}</div>` : ""}
       </div></div>`,
       { ...opz, stato: false, daCache: mantieniScroll ? null : opz.daCache, sostituisce: opz.sostituisce || mantieniScroll });
     const bottone = (id, fn) => { const e = $(id); if (e) e.addEventListener("click", fn); };

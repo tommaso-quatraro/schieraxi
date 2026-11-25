@@ -66,3 +66,32 @@ def test_la_frase_sotto_i_punti_e_quella_del_server(web):
     testo = web.testo_principale()
     assert frase in testo and "mancano solo i voti ufficiali" not in testo
     assert not web.errori_console
+
+
+# ---------------------------------------------------------------- 2. la scelta sul rinvio della giornata finita, con il suo titolo
+RINVIO_FINITA = {"stagione": "2026-27", "modo": "aspetta", "modi": ["aspetta", "senza_voto", "voto_ufficio"], "voto_ufficio": 6.0,
+                 "predefinito": "aspetta", "eccezione": False, "partite": [{"casa": "udinese", "trasferta": "milan", "data": "2026-11-18 20:45"}],
+                 "miei": [{"id": 4312, "nome": "Bapepe", "ruolo": "P", "squadra": "milan"}]}
+
+
+def test_a_giornata_finita_la_scelta_sul_rinvio_sta_con_la_sua_giornata_e_ha_un_titolo(web):
+    """Il menu «per questa giornata i loro giocatori…» finiva in fondo, sotto la panchina della giornata dopo, senza titolo né la
+    partita e i giocatori. Ora sta in testa, con la giornata finita: un titolo con la giornata, la partita, i miei giocatori."""
+    solo(web, "finita")
+    o = copy.deepcopy(web.registrata("/api/oggi"))
+    r = o["riepilogo"]
+    r.update(recuperi=[RINVIO_FINITA["partite"][0]], rinvio=RINVIO_FINITA | {"giornata": r["giornata"], "giornata_lega": r["giornata_lega"]})
+    web.risposta("/api/oggi", o)
+    web.apri("/")
+    titolo = principale(web).get_by_role("heading", name=re.compile("partita rinviata"))
+    assert titolo.count() == 1
+    assert titolo.inner_text().strip() == f"Giornata {r['giornata_lega']} · {r['giornata']}ª di Serie A: partita rinviata"
+    riquadro = principale(web).locator(".fz-testa .rinvio")
+    testo = " ".join(riquadro.inner_text().split())
+    assert "UDI vs MIL" in testo and "I tuoi giocatori coinvolti: Bapepe" in testo
+    menu = riquadro.get_by_label("Per questa giornata i loro giocatori")
+    assert menu.count() == 1 and principale(web).locator("select.rinvio-modo").count() == 1      # uno solo, non anche in fondo
+    # sta sopra il campo e la panchina della giornata dopo
+    y = lambda sel: principale(web).locator(sel).first.bounding_box()["y"]
+    assert y(".fz-testa .rinvio") < y("#campo-formazione") and y(".fz-testa .rinvio") < y("#panchina")
+    assert not web.errori_console

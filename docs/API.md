@@ -773,7 +773,12 @@ punti possono ancora cambiare (la web app e l'iPhone scrivono «Manca il recuper
 `senza_voto` o `voto_ufficio` è vuota: i punti sono già quelli finali (riserva o voto d'ufficio). `rinvio` (oggetto o `null`):
 c'è finché una partita rinviata della giornata è da recuperare, con gli stessi campi del menu di Oggi (`stagione, giornata,
 giornata_lega, modo, valore, predefinito, eccezione, modi, voto_ufficio`): il client mostra lo stesso menu «per questa giornata»
-(che chiama `PUT /api/regole/rinvio`) anche nel riepilogo.
+(che chiama `PUT /api/regole/rinvio`) anche nel riepilogo. Dal 25/11/2026 (#895) ha anche, come `rinvio` di Oggi, `partite`
+(`[{casa, trasferta, data}]`, le partite della giornata ancora da recuperare, con ogni regola) e `miei` (`[{id, nome, ruolo, squadra}]`,
+i giocatori della mia rosa che le giocano): la web mostra il menu in testa, sotto i punti della giornata finita, con il titolo
+«Giornata 5 · 8ª di Serie A: partita rinviata», la partita con la data del recupero e i giocatori coinvolti (prima era in fondo,
+sotto la panchina della giornata dopo, senza titolo); la riga dei recuperi diventa la nota del riquadro («Manca il recupero: i punti
+possono ancora cambiare.»).
 Con `nel_diario: true` i numeri sono quelli del Diario (`GET /api/diario`) e `consigliata` = `{punti_fatti, punti_attesi}` della consigliata; con `nel_diario: false` il Diario non ha ancora calcolato la giornata: `punti_fatti` viene dai voti, `punti_attesi` può essere `null`, `consigliata` è `null` (il confronto arriva nel Diario).
 
 `senza_formazione` (facoltativo, dal 2/11/2026; c'è solo se vale `true`, con `fase: "in_corso"`): l'utente è entrato in SchieraXI (account nato) DOPO la scadenza della giornata in corso e non ha nessuna formazione per lei (né salvata da lui né la copia della consigliata vista prima della scadenza). Allora `in_corso` è `null` (niente punti di una formazione che non ha schierato), `miei_titolari` è vuoto e c'è `prossima` = la giornata dopo, da preparare. Il client scrive «Questa giornata è già iniziata: prepara la prossima» con la scadenza della prossima e un pulsante che apre la Formazione (che in questo caso è già quella della prossima: vedi `giornata_saltata` di `GET /api/formazione`). Senza account (interruttore spento) non c'è mai. Dal 12/11/2026 (#651) c'è anche in `GET /api/widget`, con lo stesso significato.

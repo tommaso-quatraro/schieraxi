@@ -404,6 +404,17 @@ def _panchina_della_giornata(info: dict[int, dict], numeri, ist: dict | None, ti
     return _panchina_di(info, numeri, titolari, regole)
 
 
+def _rinvio_del_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, mancano: list[dict]) -> dict:
+    """Il campo `rinvio` del riepilogo: il menu «per questa giornata» (rinvii.scelta) con le partite da recuperare e i giocatori della
+    mia rosa che le giocano (`partite`, `miei`: come `rinvio` di Oggi, #895: prima il menu era senza la partita né i giocatori). La
+    squadra di ognuno viene dall'archivio (squadre_dei_giocatori): le rose hanno la sigla scritta dall'utente."""
+    info = _info_rosa(rose, None) if rose is not None else {}
+    squadre = squadre_dei_giocatori(db, stagione, giornata, list(info))
+    rinviate = {s for p in mancano for s in (p.get("casa"), p.get("trasferta")) if s}
+    miei = [{"id": i, "nome": x["nome"], "ruolo": x["ruolo"], "squadra": squadre[i]} for i, x in info.items() if squadre.get(i) in rinviate]
+    return rinvii.scelta(regole, stagione, giornata) | {"partite": [dict(p) for p in mancano], "miei": miei}
+
+
 def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, file_scelte, file_diario) -> dict | None:
     """Il campo `riepilogo` di Oggi (fase finita): dal Diario se la giornata è già calcolata, altrimenti i punti fatti dai voti.
     Con una partita rinviata ancora da recuperare la giornata è finita lo stesso (fine_giornata): la regola della lega dice cosa
@@ -416,7 +427,7 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
     # con un recupero da giocare il riepilogo ha anche il menu per decidere quella giornata (`rinvio`, come in Oggi)
     base = {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole),
             "recuperi": mancano if r_rinvio["modo"] == "aspetta" else [],
-            "rinvio": rinvii.scelta(regole, stagione, giornata) if mancano else None}
+            "rinvio": _rinvio_del_riepilogo(db, regole, rose, stagione, giornata, mancano) if mancano else None}
     voce = (diario.carica(file_diario).get("giornate") or {}).get(f"{stagione}/{giornata}") if file_diario else None
     if isinstance(voce, dict) and isinstance(voce.get("consigliata"), dict):
         mia = voce.get("schierata") or voce.get("automatica") or voce["consigliata"]
