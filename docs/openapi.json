@@ -2352,6 +2352,7 @@
     "summary": "Elenco Inviti"
    },
    "post": {
+    "description": "Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`.",
     "requestBody": {
      "content": {
       "application/json": {
