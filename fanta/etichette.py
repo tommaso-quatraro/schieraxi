@@ -35,6 +35,8 @@ CODICI: dict[str, tuple[str, str, str]] = {
     "voto_in_arrivo": ("Voto in arrivo", "Grade coming", NEUTRO),
     "voto": ("Ha giocato", "Played", POSITIVO),
     "senza_voto": ("Senza voto", "No grade", ATTENZIONE),
+    # partita rinviata con il voto d'ufficio della lega (#895): il voto è già contato tra i punti fatti
+    "voto_ufficio": ("Voto d'ufficio", "Default grade", POSITIVO),
     # solo negli avvisi di Oggi (non è uno stato: si aggiunge alle altre etichette)
     "diffidato": ("Diffidato", "One yellow from a ban", ATTENZIONE),
 }
@@ -65,13 +67,16 @@ def codice(x: dict) -> str | None:
     """LA regola dello stato di un giocatore (una sola, per tutte le risposte). `x` è una scheda: `titolarita`, `stato` (delle
     probabili), `dubbio`, `rinvio`, `p_voto` e, a giornata iniziata, `stato_partita`. None se non c'è niente da dire.
 
-    Dopo la scadenza conta la partita: voto, senza voto, rinviata; chi è infortunato o squalificato resta tale finché non escono
-    i voti (`titolarita` «fuori», come fasi.schede_a_giornata_iniziata); poi voto in arrivo, partita in corso, da giocare.
+    Dopo la scadenza conta la partita: voto, senza voto, rinviata (voto d'ufficio se la lega glielo dà, `voto_ufficio` vero: fasi.py);
+    chi è infortunato o squalificato resta tale finché non escono i voti (`titolarita` «fuori», come fasi.schede_a_giornata_iniziata);
+    poi voto in arrivo, partita in corso, da giocare.
     Prima della scadenza: partita rinviata, infortunato o squalificato, fuori, in dubbio (lo dicono le probabili), poi la
     titolarità a parole (consigli.titolarita)."""
     stato, partita = x.get("stato"), x.get("stato_partita")
     if partita in _DA_PARTITA:
         c = _DA_PARTITA[partita]
+        if c == "rinviata" and x.get("voto_ufficio"):
+            return "voto_ufficio"
         if c in ("voto", "senza_voto", "rinviata"):
             return c
         if x.get("titolarita") == "fuori":

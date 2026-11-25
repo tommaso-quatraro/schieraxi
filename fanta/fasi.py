@@ -19,8 +19,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from . import avvisi, diario, rinvii, scelte, turno as turni
-from . import etichette
+from . import etichette, frasi
 from . import formazione as fz
+from .frasi import F
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import Regole, serie_a_a_lega
 
@@ -260,11 +261,28 @@ def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], v
     giocatori = [{"id": g["id"], "nome": g.get("nome", ""), "ruolo": g["ruolo"], "squadra": g.get("squadra"),
                   "titolare": g["id"] in ids_tit, "a_punteggio": g["id"] in a_punteggio, "stato": stato[g["id"]],
                   "fantavoto": round(fv[g["id"]], 2) if g["id"] in fv else None, "data": data[g["id"]]} for g in titolari + panchina]
+    # chi deve ancora scendere in campo: non chi ha già giocato e aspetta il voto (attesa_voti) né chi ha la partita rinviata
+    da_giocare = sum(1 for g in va if stato[g.id] in ("da_giocare", IN_CORSO))
+    riga = situazione(da_giocare, any(stato[g.id] == "attesa_voti" for g in va), [g.nome for g in va if g.id in aspetta], len(va))
     return {"punti_fatti": round(fatti, 1), "punti_attesi_restanti": round(restanti, 1), "punti_previsti": round(fatti + restanti, 1),
             "modificatore": None if modificatore is None else round(modificatore, 1),
-            # chi deve ancora scendere in campo: non chi ha già giocato e aspetta il voto (attesa_voti) né chi ha la partita rinviata
-            "ancora_da_giocare": sum(1 for g in va if stato[g.id] in ("da_giocare", IN_CORSO)),
+            "ancora_da_giocare": da_giocare, "situazione": riga, "situazione_frase": frasi.di(riga),
             "giocatori": giocatori, "sostituzioni": sostituzioni}
+
+
+def situazione(da_giocare: int, attesa_voti: bool, recupero: list[str], a_punteggio: int) -> frasi.Frase:
+    """La riga sotto i punti a giornata in corso (#895), dai giocatori che vanno a punteggio (`a_punteggio`, quanti sono): quanti
+    devono ancora giocare; se nessuno, cosa manca: i voti ufficiali di chi ha già giocato (`attesa_voti`), il recupero di una partita
+    rinviata che la lega aspetta (`recupero`, i nomi), tutti e due, o niente (i voti sono usciti tutti). Se il recupero lo aspettano
+    tutti, nessuno ha giocato: una frase sua. Prima la web diceva «mancano solo i voti ufficiali» a ogni `ancora_da_giocare` zero,
+    anche con i voti già usciti e un recupero da giocare."""
+    if da_giocare:
+        return F("in_corso.da_giocare", n=da_giocare)
+    if recupero and len(recupero) >= a_punteggio:
+        return F("in_corso.tutti_recupero")
+    if recupero:
+        return F("in_corso.voti_e_recupero" if attesa_voti else "in_corso.recupero", n=len(recupero), nomi=frasi.elenco(recupero, con_e=True))
+    return F("in_corso.voti") if attesa_voti else F("in_corso.finiti")
 
 
 def _previsti_condizionati(tit: list[fz.Giocatore], panc: list[fz.Giocatore], stato: dict[int, str], fv: dict[int, float],
@@ -357,7 +375,9 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
                   previsione, rinvii.regola(regole, stagione, giornata))
     for g in a["giocatori"]:                         # la stessa etichetta di Formazione e scheda (fanta/etichette.py)
         i = g["id"]
-        g["etichetta"] = etichette.di_giocatore({"stato_partita": g["stato"], "titolarita": "fuori" if i in fuori and g["stato"] not in DECISI else None,
+        # una partita rinviata con il voto d'ufficio: il voto è già tra i punti fatti e l'etichetta lo dice (#895)
+        g["etichetta"] = etichette.di_giocatore({"stato_partita": g["stato"], "voto_ufficio": g["stato"] == "rinviata" and g["fantavoto"] is not None,
+                                                 "titolarita": "fuori" if i in fuori and g["stato"] not in DECISI else None,
                                                  "stato": prev.at[i, "stato"] if prev is not None and i in prev.index else None})
     return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "formazione_di": di} | a | {
         "partite": conta_partite(partite)}
@@ -387,6 +407,17 @@ def _panchina_della_giornata(info: dict[int, dict], numeri, ist: dict | None, ti
     return _panchina_di(info, numeri, titolari, regole)
 
 
+def _rinvio_del_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, mancano: list[dict]) -> dict:
+    """Il campo `rinvio` del riepilogo: il menu «per questa giornata» (rinvii.scelta) con le partite da recuperare e i giocatori della
+    mia rosa che le giocano (`partite`, `miei`: come `rinvio` di Oggi, #895: prima il menu era senza la partita né i giocatori). La
+    squadra di ognuno viene dall'archivio (squadre_dei_giocatori): le rose hanno la sigla scritta dall'utente."""
+    info = _info_rosa(rose, None) if rose is not None else {}
+    squadre = squadre_dei_giocatori(db, stagione, giornata, list(info))
+    rinviate = {s for p in mancano for s in (p.get("casa"), p.get("trasferta")) if s}
+    miei = [{"id": i, "nome": x["nome"], "ruolo": x["ruolo"], "squadra": squadre[i]} for i, x in info.items() if squadre.get(i) in rinviate]
+    return rinvii.scelta(regole, stagione, giornata) | {"partite": [dict(p) for p in mancano], "miei": miei}
+
+
 def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, file_scelte, file_diario) -> dict | None:
     """Il campo `riepilogo` di Oggi (fase finita): dal Diario se la giornata è già calcolata, altrimenti i punti fatti dai voti.
     Con una partita rinviata ancora da recuperare la giornata è finita lo stesso (fine_giornata): la regola della lega dice cosa
@@ -399,7 +430,7 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
     # con un recupero da giocare il riepilogo ha anche il menu per decidere quella giornata (`rinvio`, come in Oggi)
     base = {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole),
             "recuperi": mancano if r_rinvio["modo"] == "aspetta" else [],
-            "rinvio": rinvii.scelta(regole, stagione, giornata) if mancano else None}
+            "rinvio": _rinvio_del_riepilogo(db, regole, rose, stagione, giornata, mancano) if mancano else None}
     voce = (diario.carica(file_diario).get("giornate") or {}).get(f"{stagione}/{giornata}") if file_diario else None
     if isinstance(voce, dict) and isinstance(voce.get("consigliata"), dict):
         mia = voce.get("schierata") or voce.get("automatica") or voce["consigliata"]
@@ -430,6 +461,16 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
     atteso = ist.get("atteso") if isinstance(ist, dict) and di == "consigliata" else None
     return base | {"formazione_di": di, "nel_diario": False, "punti_fatti": a["punti_fatti"], "punti_attesi": atteso,
                    "intervallo": None, "consigliata": None}
+
+
+def blocco_voti_in_arrivo(db, regole: Regole, stagione: str, giornata: int, file_scelte, file_diario) -> dict | None:
+    """Il campo `voti_in_arrivo` di Oggi (fase finita, senza `riepilogo`, #895): la giornata è finita, c'è una formazione schierata
+    ma i voti non sono ancora tutti usciti (voti_arrivati), quindi niente totale. Prima la testa non diceva niente della giornata
+    appena finita. None se non c'è una formazione (nessun punto da aspettare) o se i voti ci sono."""
+    if schierata(stagione, giornata, file_scelte, file_diario) is None or voti_arrivati(db, stagione, giornata, regole):
+        return None
+    testo = F("riepilogo.voti_in_arrivo")
+    return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "testo": testo, "frase": frasi.di(testo)}
 
 
 def entrato_dopo_la_scadenza(stagione: str, giornata: int, scadenza: datetime | None, dal: datetime | None, file_scelte,
@@ -495,6 +536,10 @@ def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str
         elif corpo["fase"] == FINITA:
             corpo["riepilogo"] = blocco_riepilogo(db, regole, rose, stagione, precedente, file_scelte, file_diario)
             corpo["prossima"] = blocco_prossima(corpo, adesso)
+            if corpo["riepilogo"] is None:
+                attesa = blocco_voti_in_arrivo(db, regole, stagione, precedente, file_scelte, file_diario)
+                if attesa:
+                    corpo["voti_in_arrivo"] = attesa
     except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
         pass
     return corpo
