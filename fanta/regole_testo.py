@@ -81,6 +81,11 @@ CASO_NEGATO = r"\bnon\W{1,3}(?:\w{1,20}\W{1,3}){0,2}$"     # un «non» poco pri
 # 5 cambi» non è la fascia «media 7: +5» (#888). La formazione no: «si applica con almeno 4 difensori in formazione» è del modificatore.
 FINE_MODIFICATORE = (r"pareggi|moduli|panchin|riserv|sostituz|\bcambi\b|bonus e malus|punteggi|capitano|credit|\brosa\b|\bgol\b"
                      r"|assist|ammoniz|espuls|autogol|autorete|rigor|imbattut")
+# Una riga che sembra una fascia del modificatore anche se non si legge: una media seguita da due numeri o da un intervallo
+# («Media 6,5: +3 (vale come mezzo gol)», «Media 6-6,5: +1»), o una riga che comincia con una media e «:» o un intervallo
+# («6,5: +3», «Da 6,5 a 6,99: +2»). Le fasce si leggono tutte o nessuna (revisione della #891, _sembra_fascia).
+INIZIO_FASCIA = r"^\W{0,5}(?:da\s{1,3})?\d(?:[.,]\d{1,2})?\s{0,3}(?:[:=→>]|-\s{0,3}\d|a\s{1,3}\d)"
+INTERVALLO_MEDIA = r"\d\s{0,3}-\s{0,3}\d|\bda\s{1,3}\d(?:[.,]\d{1,2})?\s{1,3}a\s{1,3}\d"
 RUOLI = {"portier": "P", "difensor": "D", "centrocamp": "C", "attaccant": "A"}
 NOMI_PLURALE = {"P": "portieri", "D": "difensori", "C": "centrocampisti", "A": "attaccanti"}
 NOMI_SINGOLARE = {"P": "portiere", "D": "difensore", "C": "centrocampista", "A": "attaccante"}
@@ -200,6 +205,16 @@ def _negata_senza_numero(riga: str, pos: int) -> bool:
 def _caso_particolare(testo: str) -> bool:
     """Il testo nomina un caso particolare della regola (CASO_PARTICOLARE) senza un «non» poco prima (CASO_NEGATO)."""
     return any(not re.search(CASO_NEGATO, testo[max(0, m.start() - 60):m.start()]) for m in re.finditer(CASO_PARTICOLARE, testo))
+
+
+def _sembra_fascia(riga: str) -> bool:
+    """La riga sembra una fascia del modificatore difesa (INIZIO_FASCIA, o «media» seguita da due numeri o da un intervallo),
+    anche se non si legge come fascia. I moduli («3-4-3») non contano."""
+    testo = re.sub(MODULO, lambda m: " " * len(m.group()), riga)
+    if re.search(INIZIO_FASCIA, testo):
+        return True
+    m = re.search(r"\bmedi[ae]\b", testo)
+    return m is not None and (len(_numeri(testo, m.end())) >= 2 or re.search(INTERVALLO_MEDIA, testo[m.end():]) is not None)
 
 
 def _negate(testo: str, parole: str) -> tuple[int, int]:
@@ -349,6 +364,8 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
     in_modificatore = False
     soglie: list[list[float]] = []
     riga_soglie = 0
+    righe_soglie: list[int] = []         # le righe lette come fasce del modificatore
+    simili: list[int] = []               # le righe della sezione del modificatore che sembrano fasce (_sembra_fascia)
     for n, riga in enumerate(righe):
         # ---- modificatore difesa: titolo, "attivo", difensori minimi, fasce
         if "modificator" in riga and "difes" in riga:
@@ -359,8 +376,10 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
             else:
                 imposta("modificatore_difesa.attivo", "Modificatore difesa attivo", attivo, n)
             continue
-        if in_modificatore and re.search(FINE_MODIFICATORE, riga):
+        if in_modificatore and re.search(FINE_MODIFICATORE, riga) and not _sembra_fascia(riga):
             in_modificatore = False             # «Panchina: 7, massimo 5 cambi» non è una fascia: si legge come le altre righe
+        if in_modificatore and _sembra_fascia(riga):
+            simili.append(n)                    # «Media 6,5: +3 (vale come mezzo gol)»: si legge come fascia o nessuna fascia
         if in_modificatore:
             m = re.search(rf"difensor{SUFFISSO}\s*(?:minim{SUFFISSO}|almeno)\D{{0,6}}\b([3-6])\b(?![.,]\d)"
                           rf"|(?:almeno|minim{SUFFISSO})\s*\b([3-6])\b(?![.,]\d)\s*difensor", riga)
@@ -368,13 +387,14 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                 gruppo = 1 if m.group(1) else 2
                 imposta("modificatore_difesa.min_difensori", "Difensori minimi", int(m.group(gruppo)), n, m.start(gruppo))
                 continue
-            # una fascia è "media <numero> : bonus <numero>"; gli intervalli ("6-6,5", "da 6 a 6,49") non sono letti per non sbagliare
-            if not re.search(r"\d\s*[-a]\s*\d|\bda\b[^\n]{0,40}\ba\b", riga):
+            # una fascia è "media <numero> : bonus <numero>"; gli intervalli ("6-6,5", "da 6 a 6,49") e le righe che nominano
+            # un'altra regola («Media 6,5: +3 (vale come mezzo gol)») non sono letti per non sbagliare
+            if not re.search(r"\d\s*[-a]\s*\d|\bda\b[^\n]{0,40}\ba\b", riga) and not re.search(FINE_MODIFICATORE, riga):
                 numeri = list(re.finditer(NUM, riga))
                 if len(numeri) == 2 and re.search(r"[:=→>+]|bonus|punt", riga):
                     media, bonus = _valore(numeri[0].group()), _valore(numeri[1].group())
                     if media is not None and bonus is not None and 3.5 <= media <= 9 and 0 <= abs(bonus) <= 10 and "difensor" not in riga:
-                        soglie.append([media, abs(bonus)]); usate.add(n); riga_soglie = n
+                        soglie.append([media, abs(bonus)]); usate.add(n); riga_soglie = n; righe_soglie.append(n)
                         letti.setdefault(n, set()).update({_cifra(numeri[0]), _cifra(numeri[1])})
                         continue
         # ---- gol: un numero per ruolo se la riga elenca più ruoli, altrimenti uguale per tutti
@@ -499,6 +519,13 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                 for r in RUOLI.values():
                     if r in rosa:
                         imposta(f"rosa.{r}", f"Rosa: {NOMI_PLURALE[r]}", rosa[r].pop(), n, *dove)
+    # le fasce del modificatore si leggono tutte o nessuna: con una riga che sembra una fascia e non si legge, nessuna fascia e tutte
+    # le righe delle fasce vanno controllate, con le fasce da impostare a mano (revisione della #891)
+    if any(n not in righe_soglie for n in simili):
+        for n in sorted({*simili, *righe_soglie}):
+            letti.pop(n, None)
+            dubbia("modificatore_difesa.soglie", "Fasce del modificatore difesa", n)
+        soglie = []
     # le proposte delle righe con tutti i numeri letti, nell'ordine del testo: una riga dopo vince su una prima, ma una riga più
     # generale non cancella un'eccezione già letta («Gol del portiere: +5», poi «Gol segnato: +3»: il portiere resta 5, #888)
     parziali = {n for n in usate if not _da_leggere(righe[n]) <= letti.get(n, set())}

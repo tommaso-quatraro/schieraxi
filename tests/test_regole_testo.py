@@ -861,6 +861,19 @@ CORPUS = {
     # prudenti apposta: «anche» non toglie il dubbio (può essere un'aggiunta), la riga si controlla
     "Gol: +3 (anche in trasferta)": ({}, True),
     "Espulsione (anche per doppia ammonizione): -1": ({}, True),
+    # revisione della #891: le fasce del modificatore si leggono tutte o nessuna. Una riga della sezione che sembra una fascia
+    # («media N: +M», un intervallo) e non si legge: nessuna fascia, e tutte le righe delle fasce si controllano
+    "Modificatore difesa\nMedia 6: +1\nMedia 6,5: +3 (vale come mezzo gol)\nMedia 7: +5":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1", "Media 6,5: +3 (vale come mezzo gol)", "Media 7: +5"]),
+    "Modificatore difesa\nMedia 6: +1\nDa 6,5 a 6,99: +2\nMedia 7: +3":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1", "Da 6,5 a 6,99: +2", "Media 7: +3"]),
+    "Modificatore difesa\nMedia 6: +1 (con almeno 4 difensori)\nMedia 6,5: +3":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1 (con almeno 4 difensori)", "Media 6,5: +3"]),
+    "Modificatore difesa\n6: +1\n6,5: +3 (mezzo gol)\n7: +5":
+        ({"modificatore_difesa.attivo": True}, ["6: +1", "6,5: +3 (mezzo gol)", "7: +5"]),
+    "Modificatore difesa\nIl modificatore si calcola sulla media del portiere e dei 3 difensori migliori\nMedia 6: +1\nMedia 7: +3":
+        ({"modificatore_difesa.attivo": True, "modificatore_difesa.soglie": [[6, 1], [7, 3]]},
+         ["Il modificatore si calcola sulla media del portiere e dei 3 difensori migliori"]),
 }
 
 
@@ -883,6 +896,12 @@ def test_una_regola_negata_senza_valore_si_imposta_a_mano(riga, regola):
     """«Nessun bonus per l'assist» dice un valore che la riga non scrive: va controllata con la regola da impostare."""
     r = regole_testo.interpreta(riga)
     assert regola in [g["chiave"] for x in r["da_controllare"] for g in x["regole"]]
+
+
+def test_le_fasce_non_lette_tutte_si_impostano_a_mano():
+    """Una fascia che non si legge lascia le fasce da impostare a mano, sotto ogni riga delle fasce (revisione della #891)."""
+    r = regole_testo.interpreta("Modificatore difesa\nMedia 6: +1\nDa 6,5 a 6,99: +2\nMedia 7: +3")
+    assert all([g["chiave"] for g in x["regole"]] == ["modificatore_difesa.soglie"] for x in r["da_controllare"])
 
 
 @pytest.mark.parametrize("posti_salvati", [None, {"P": 2, "D": 3, "C": 3, "A": 3}])
