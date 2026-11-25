@@ -251,8 +251,9 @@ def test_una_voce_senza_impronta_con_ho_schierato_ma_senza_piu_la_scelta_tiene_l
     scelte.cancella(ST, 1, mondo.scelte)
     assert _aggiorna(mondo) == 1
     v = _voce(mondo)["schierata"]
-    assert {k: x for k, x in v.items() if k != "reale"} == {k: x for k, x in prima["schierata"].items() if k != "reale"}
-    assert v["reale"] == CON_TUTTI_I_VOTI
+    punti = ("reale", "dettaglio")                      # i punti e da dove vengono (#900): con tutti i voti non entra nessuno
+    assert {k: x for k, x in v.items() if k not in punti} == {k: x for k, x in prima["schierata"].items() if k not in punti}
+    assert v["reale"] == CON_TUTTI_I_VOTI and v["dettaglio"]["entrati"] == [] and prima["schierata"]["dettaglio"]["entrati"]
     monkeypatch.setattr(diario.fz, "migliore", lambda *a, **k: pytest.fail("non deve rifare le simulazioni"))
     assert _aggiorna(mondo) == 0
 
