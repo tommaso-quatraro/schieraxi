@@ -48,11 +48,12 @@ def _con(dati: dict, chiave: str, valore) -> dict:
     return nuove
 
 
+# PUT /api/regole (la pagina Regole): un valore cambiato ha i limiti della pagina (#881), più stretti degli intervalli qui sotto
 @pytest.mark.parametrize("chiave, valore, parole", [
     ("bonus.gol.P", 1e308, ["gol del portiere", "tra 0 e 20"]),
     ("crediti_iniziali", -1, ["crediti iniziali", "tra 0 e 100.000"]),
     ("crediti_iniziali", 10 ** 30, ["crediti iniziali", "tra 0 e 100.000"]),
-    ("modificatore_difesa.min_difensori", 10 ** 30, ["difensori", "tra 3 e 6"]),
+    ("modificatore_difesa.min_difensori", 10 ** 30, ["difensori", "tra 3 e 5"]),
 ])
 def test_regole_fuori_misura_400_chiaro_e_regole_invariate(client, chiave, valore, parole):
     prima = client.get("/api/regole").json()
@@ -65,26 +66,27 @@ def test_regole_fuori_misura_400_chiaro_e_regole_invariate(client, chiave, valor
     assert client.get("/api/regole").json() == prima
 
 
-# I limiti di ogni numero (chiave, minimo, massimo, parole del messaggio). Dal 25/11/2026 (#881) gli stessi dei pulsanti della web:
-# i bonus da 0 a 20, i malus da −20 a 0, da 3 a 6 difensori minimi (tests/test_regole_limiti.py ha tutti gli altri).
+# I limiti di ogni numero (chiave, minimo, massimo, parole del messaggio). Larghi: la web e l'iPhone stanno molto più stretti.
+# Dal 25/11/2026 (#881) valgono per i salvataggi che non vengono dalla pagina Regole (eccezione delle partite rinviate, backup,
+# procedura guidata) e per i valori che non cambiano; i limiti della pagina sono in tests/test_regole_limiti.py.
 LIMITI = [
-    ("bonus.gol.P", 0, 20, "gol del portiere"),
-    ("bonus.gol.D", 0, 20, "gol del difensore"),
-    ("bonus.gol.C", 0, 20, "gol del centrocampista"),
-    ("bonus.gol.A", 0, 20, "gol dell'attaccante"),
-    ("bonus.rigore_segnato", 0, 20, "rigore segnato"),
-    ("bonus.assist", 0, 20, "assist"),
-    ("bonus.rigore_parato", 0, 20, "rigore parato"),
-    ("bonus.rigore_sbagliato", -20, 0, "rigore sbagliato"),
-    ("bonus.autogol", -20, 0, "autogol"),
-    ("bonus.gol_subito_portiere", -20, 0, "gol subito dal portiere"),
-    ("bonus.portiere_imbattuto", 0, 20, "portiere imbattuto"),
-    ("bonus.ammonizione", -20, 0, "ammonizione"),
-    ("bonus.espulsione", -20, 0, "espulsione"),
-    ("bonus.mvp", 0, 20, "migliore in campo"),
+    ("bonus.gol.P", -100, 100, "gol del portiere"),
+    ("bonus.gol.D", -100, 100, "gol del difensore"),
+    ("bonus.gol.C", -100, 100, "gol del centrocampista"),
+    ("bonus.gol.A", -100, 100, "gol dell'attaccante"),
+    ("bonus.rigore_segnato", -100, 100, "rigore segnato"),
+    ("bonus.assist", -100, 100, "assist"),
+    ("bonus.rigore_parato", -100, 100, "rigore parato"),
+    ("bonus.rigore_sbagliato", -100, 100, "rigore sbagliato"),
+    ("bonus.autogol", -100, 100, "autogol"),
+    ("bonus.gol_subito_portiere", -100, 100, "gol subito dal portiere"),
+    ("bonus.portiere_imbattuto", -100, 100, "portiere imbattuto"),
+    ("bonus.ammonizione", -100, 100, "ammonizione"),
+    ("bonus.espulsione", -100, 100, "espulsione"),
+    ("bonus.mvp", -100, 100, "migliore in campo"),
     ("voto_senza_sostituto", 0, 10, "senza sostituto"),
     ("crediti_iniziali", 0, 100_000, "crediti iniziali"),
-    ("modificatore_difesa.min_difensori", 3, 6, "difensori"),
+    ("modificatore_difesa.min_difensori", 0, 10, "difensori"),
     ("fattore_campo", -100, 100, "fattore campo"),
     ("soglia_primo_gol", 0, 200, "primo gol"),
     ("ampiezza_fascia_gol", 0, 100, "fasce dei gol"),
@@ -106,10 +108,9 @@ def test_ogni_numero_ha_i_suoi_limiti(chiave, minimo, massimo, parole):
 
 def test_fasce_del_modificatore_limitate():
     base = json.loads(json.dumps(asdict(Regole())))
-    assert regole.da_dict(_con(base, "modificatore_difesa.soglie", [[0, 0], [10, 20]])).problemi() == []
+    assert regole.da_dict(_con(base, "modificatore_difesa.soglie", [[0, -100], [10, 100]])).problemi() == []
     for soglie, parole in (([[10.5, 1]], "la media di ogni fascia"), ([[-1, 1]], "la media di ogni fascia"),
-                           ([[6, 21]], "il bonus di ogni fascia"), ([[6, -1]], "il bonus di ogni fascia"),
-                           ([[6, -1e308]], "il bonus di ogni fascia")):
+                           ([[6, 101]], "il bonus di ogni fascia"), ([[6, -1e308]], "il bonus di ogni fascia")):
         with pytest.raises(ValueError, match=parole):
             regole.da_dict(_con(base, "modificatore_difesa.soglie", soglie))
 

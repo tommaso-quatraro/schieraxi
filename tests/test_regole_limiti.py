@@ -7,6 +7,8 @@
 6. Gli errori avevano sigle e nomi interni («rosa deve indicare quanti P, D, C, A», «panchina.max_sostituzioni: al massimo 10»)
    ed erano in italiano anche con la web in inglese. Ora sono frasi semplici, ognuna con la sua traduzione nel catalogo.
 Il punto 4 (un campo svuotato si salvava come 0) è della pagina: tests/browser/test_limiti_pagina_regole.py.
+I limiti nuovi valgono solo per ciò che cambia con il salvataggio delle regole (PUT /api/regole, con le regole salvate): una lega
+salvata prima con valori ora fuori dai limiti continua a funzionare (eccezione delle partite rinviate, scadenza, backup).
 """
 import json
 import re
@@ -40,7 +42,7 @@ SCELTI = {
     **{f"panchina.posti.{r}": (0, 10) for r in "PDCA"},
     "voto_senza_sostituto": (0, 10),
     "voto_ufficio_rinviate": (0, 10),
-    "modificatore_difesa.min_difensori": (3, 6),
+    "modificatore_difesa.min_difensori": (3, 5),             # nessun modulo ha 6 difensori
     "modificatore_difesa.soglie.media": (0, 10),
     "modificatore_difesa.soglie.bonus": (0, 20),
     "fattore_campo": (-100, 100),
@@ -72,15 +74,17 @@ def _con(dati: dict, **cambi) -> dict:
 
 
 def _problemi(dati: dict) -> list[str]:
-    """Tutti i problemi di queste regole (anche quelli che si guardano solo al salvataggio), senza alzare errori."""
-    return regole._da_dict(Regole, dati).problemi()
+    """Tutti i problemi di queste regole salvate dalla pagina Regole sopra quelle di partenza (i valori cambiati hanno i limiti
+    nuovi), senza alzare errori."""
+    return regole._da_dict(Regole, dati).problemi(salvate=Regole())
 
 
 # ---------------------------------------------------------------- i valori assurdi del collaudo
 ASSURDI = [
     ({"bonus__gol__A": -4}, "il bonus per il gol dell'attaccante deve essere tra 0 e 20"),
     ({"bonus__autogol": 3}, "il malus per l'autogol deve essere tra −20 e 0"),
-    ({"modificatore_difesa__min_difensori": 9}, "i difensori minimi del modificatore difesa devono essere tra 3 e 6"),
+    ({"modificatore_difesa__min_difensori": 9}, "i difensori minimi del modificatore difesa devono essere tra 3 e 5"),
+    ({"modificatore_difesa__min_difensori": 6}, "i difensori minimi del modificatore difesa devono essere tra 3 e 5"),
     ({"bonus__assist": 99}, "il bonus per l'assist deve essere tra 0 e 20"),
     ({"panchina__numero": 0}, "i giocatori in panchina devono essere tra 1 e 30"),
     ({"modificatore_difesa__attivo": True, "modificatore_difesa__soglie": []},
@@ -107,10 +111,35 @@ def test_difensori_minimi_che_nessun_modulo_ammesso_ha():
     tre_e_quattro = _con(base, moduli=["3-4-3", "4-4-2", "4-3-3"], modificatore_difesa__attivo=True,
                          modificatore_difesa__min_difensori=5)
     with pytest.raises(regole.RegoleFuoriIntervallo) as e:
-        regole.da_dict(tre_e_quattro)
+        regole.da_dict(tre_e_quattro, salvate=Regole())
     assert "nessun modulo ammesso ha almeno 5 difensori: il modificatore difesa non si applicherebbe mai" in str(e.value)
-    assert regole.da_dict(_con(tre_e_quattro, modificatore_difesa__min_difensori=4)).problemi() == []
-    assert regole.da_dict(_con(tre_e_quattro, modificatore_difesa__attivo=False)).problemi() == []    # spento non conta
+    assert _problemi(_con(tre_e_quattro, modificatore_difesa__min_difensori=4)) == []
+    assert _problemi(_con(tre_e_quattro, modificatore_difesa__attivo=False)) == []    # spento non conta
+
+
+# Tipi sbagliati (revisione di #886): «3,5» portieri o «500,5» crediti passavano la pagina e il server rispondeva «rosa.P deve
+# essere un numero intero», con il nome interno e in italiano anche con la web in inglese.
+TIPI = [
+    ({"rosa__P": 3.5}, "«Portieri della rosa» deve essere un numero intero"),
+    ({"crediti_iniziali": 500.5}, "«Crediti iniziali» deve essere un numero intero"),
+    ({"panchina__max_sostituzioni": 2.5}, "«Cambi massimi» deve essere un numero intero"),
+    ({"modificatore_difesa__min_difensori": 3.5}, "«Difensori minimi del modificatore difesa» deve essere un numero intero"),
+    ({"bonus__assist": "tre"}, "«Assist» deve essere un numero"),
+    ({"bonus__gol__P": None}, "«Gol di un portiere» deve essere un numero"),
+    ({"modificatore_difesa__attivo": "sì"}, "«Modificatore difesa attivo» deve essere sì o no"),
+    ({"nome_lega": 3}, "«Nome della lega» deve essere un testo"),
+    ({"rosa": [3, 8, 8, 6]}, "la rosa deve indicare quanti portieri, difensori, centrocampisti e attaccanti"),
+    ({"moduli": "3-4-3"}, "i moduli devono essere scritti come 3-4-3"),
+    ({"modificatore_difesa__soglie": [[6]]}, "ogni fascia del modificatore difesa deve avere una media e un bonus"),
+]
+
+
+@pytest.mark.parametrize("cambi, frase", TIPI)
+def test_i_tipi_sbagliati_si_dicono_con_il_nome_del_campo(client, cambi, frase):
+    prima = client.get("/api/regole").json()
+    r = client.put("/api/regole", json=_con(prima, **cambi))
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"] == f"Regole non valide:\n- {frase}", r.json()
 
 
 def test_i_messaggi_non_hanno_sigle_ne_nomi_interni():
@@ -118,11 +147,12 @@ def test_i_messaggi_non_hanno_sigle_ne_nomi_interni():
     sigle («P, D, C, A»)."""
     base = asdict(Regole())
     messaggi = []
-    for cambi, _ in ASSURDI:
+    for cambi, _ in ASSURDI + TIPI:
         messaggi += _problemi(_con(base, **cambi))
     for chiave, (minimo, _massimo) in SCELTI.items():
         messaggi += _problemi_con(chiave, minimo - 1)
     messaggi += _problemi(_con(base, rosa={"P": 3}))           # rosa senza tutti i ruoli
+    messaggi += _problemi(_con(base, fonte_voto="giornale", panchina__tipo="mista", partite_rinviate="boh"))
     assert messaggi
     for m in messaggi:
         assert not re.search(r"[a-z]\.[a-z]|_|\bP, D, C, A\b|\[|\{", m), m
@@ -134,6 +164,10 @@ def test_i_limiti_sono_quelli_scelti_e_stanno_in_un_file_solo():
     dal_file = json.loads(FILE_LIMITI.read_text(encoding="utf-8"))
     assert {k: (v["min"], v["max"]) for k, v in dal_file.items()} == SCELTI
     assert regole.LIMITI == dal_file
+    # i limiti di prima (fuori dalla pagina Regole e per i valori che non cambiano) ci sono per ogni campo e non sono più stretti
+    assert set(regole.LIMITI_LARGHI) == set(regole.LIMITI)
+    for k, v in regole.LIMITI.items():
+        assert regole.LIMITI_LARGHI[k]["min"] <= v["min"] and v["max"] <= regole.LIMITI_LARGHI[k]["max"], k
 
 
 def test_la_pagina_legge_i_limiti_dal_server(client):
@@ -158,6 +192,13 @@ def _problemi_con(chiave: str, valore) -> list[str]:
     else:
         dati = _con(base, **{chiave.replace(".", "__"): valore})
     return _problemi(dati)
+
+
+def _tipo_sbagliato(base: dict, chiave: str) -> dict:
+    """Le regole `base` con un valore di tipo sbagliato (una lista) al campo `chiave` (un nome di regole.NOMI_CAMPI)."""
+    if chiave.startswith("panchina.posti."):
+        base = _con(base, panchina__posti={"P": 2, "D": 3, "C": 3, "A": 3}, panchina__numero=11)
+    return _con(base, **{chiave.replace(".", "__"): [1]})
 
 
 def _cifra(n) -> str:
@@ -203,20 +244,54 @@ def test_le_regole_valide_di_prima_restano_valide():
                    voto_senza_sostituto=10, panchina__numero=14, panchina__max_sostituzioni=10,
                    modificatore_difesa__attivo=True, modificatore_difesa__min_difensori=5,
                    modificatore_difesa__soglie=[[4, 0], [9, 20]], rosa={"P": 1, "D": 20, "C": 20, "A": 20})
-    assert regole.da_dict(estremi).problemi() == []
+    assert _problemi(estremi) == []
+
+
+VECCHIE = {"bonus__gol__A": -4, "bonus__autogol": 3, "panchina__numero": 0, "modificatore_difesa__attivo": True,
+           "modificatore_difesa__min_difensori": 2, "modificatore_difesa__soglie": []}
 
 
 def test_le_regole_salvate_fuori_dai_limiti_nuovi_si_leggono_ancora(tmp_path):
-    """Una lega salvata prima, con valori che ora non si salvano più, si apre ancora (la pagina Regole la mostra e la si corregge);
-    per salvarla di nuovo va riportata nei limiti."""
+    """Una lega salvata prima, con valori ora fuori dai limiti, si apre ancora (la pagina Regole la mostra e la si corregge)."""
     f = tmp_path / "regole.json"
-    vecchie = _con(asdict(Regole()), bonus__gol__A=-4, bonus__autogol=3, panchina__numero=0, modificatore_difesa__attivo=True,
-                   modificatore_difesa__min_difensori=2, modificatore_difesa__soglie=[])
-    f.write_text(json.dumps(vecchie), encoding="utf-8")
+    f.write_text(json.dumps(_con(asdict(Regole()), **VECCHIE)), encoding="utf-8")
     lette = regole.carica(f)
     assert lette.bonus.gol["A"] == -4 and lette.panchina.numero == 0
-    with pytest.raises(regole.RegoleFuoriIntervallo):
-        regole.salva(lette, tmp_path / "nuove.json")
+
+
+@pytest.fixture
+def lega_vecchia(client, tmp_path):
+    """Il client con una lega salvata prima dei limiti nuovi (valori dentro i limiti di prima, fuori da quelli nuovi)."""
+    (tmp_path / "regole.json").write_text(json.dumps(_con(asdict(Regole()), **VECCHIE)), encoding="utf-8")
+    return client
+
+
+def test_con_una_lega_salvata_prima_l_eccezione_delle_partite_rinviate_si_salva(lega_vecchia):
+    """Revisione di #886: «Voto d'ufficio» per una giornata, dalla Formazione, non deve fallire per un bonus fuori dai limiti
+    nuovi che non c'entra."""
+    r = lega_vecchia.put("/api/regole/rinvio", json={"giornata": 12, "modo": "voto_ufficio"})
+    assert r.status_code == 200, r.text
+    assert lega_vecchia.get("/api/regole").json()["bonus"]["autogol"] == 3          # il resto resta com'era
+
+
+def test_con_una_lega_salvata_prima_la_scadenza_si_salva(lega_vecchia):
+    """La scadenza (in cima a Regole e nel primo avvio) manda le regole salvate con un valore solo cambiato: va."""
+    salvate = lega_vecchia.get("/api/regole").json()
+    r = lega_vecchia.put("/api/regole", json=salvate | {"scadenza_minuti": 30})
+    assert r.status_code == 200, r.text
+
+
+def test_con_una_lega_salvata_prima_un_valore_cambiato_ha_i_limiti_nuovi(lega_vecchia):
+    salvate = lega_vecchia.get("/api/regole").json()
+    r = lega_vecchia.put("/api/regole", json=_con(salvate, bonus__autogol=2))
+    assert r.status_code == 400 and r.json()["detail"] == "Regole non valide:\n- il malus per l'autogol deve essere tra −20 e 0"
+    r = lega_vecchia.put("/api/regole", json=_con(salvate, panchina__numero=12))         # sistemato: va
+    assert r.status_code == 200, r.text
+
+
+def test_il_backup_di_una_lega_salvata_prima_si_ripristina():
+    """Il ripristino controlla le regole come prima (tetti e intervalli di #663), non con i limiti della pagina."""
+    assert regole.da_dict(_con(asdict(Regole()), **VECCHIE)).bonus.autogol == 3
 
 
 # ---------------------------------------------------------------- tradotti
@@ -237,7 +312,10 @@ ITALIANO = re.compile(r"\b(deve|devono|essere|della|delle|del|dei|il|la|le|tra|n
 def test_con_la_web_in_inglese_gli_errori_delle_regole_sono_in_inglese(client):
     """Ogni messaggio dei limiti e dei valori assurdi, anche più di uno nella stessa risposta, arriva in inglese."""
     base = asdict(Regole())
-    righe = [f for _, f in ASSURDI] + [p for k, (m, _) in SCELTI.items() for p in _problemi_con(k, m - 1)]
+    righe = [f for _, f in ASSURDI + TIPI] + [p for k, (m, _) in SCELTI.items() for p in _problemi_con(k, m - 1)]
+    righe += _problemi(_con(base, fonte_voto="giornale", panchina__tipo="mista", partite_rinviate="boh"))
+    righe += _problemi(_con(base, rimborso_svincolo=2)) + _problemi(_con(base, rimborso_svincolo="metà"))
+    righe += [p for k in regole.NOMI_CAMPI for p in _problemi(_tipo_sbagliato(base, k))]
     righe += _problemi(_con(base, rosa={"P": 3}))
     righe += _problemi(_con(base, moduli=[]))
     righe += _problemi(_con(base, moduli=["3-4-3", "3-4-3"]))

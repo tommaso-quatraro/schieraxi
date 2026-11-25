@@ -26,7 +26,7 @@
   "panchina.posti.A": {"min": 0, "max": 10},
   "voto_senza_sostituto": {"min": 0, "max": 10},
   "voto_ufficio_rinviate": {"min": 0, "max": 10},
-  "modificatore_difesa.min_difensori": {"min": 3, "max": 6},
+  "modificatore_difesa.min_difensori": {"min": 3, "max": 5},
   "modificatore_difesa.soglie.media": {"min": 0, "max": 10},
   "modificatore_difesa.soglie.bonus": {"min": 0, "max": 20},
   "fattore_campo": {"min": -100, "max": 100},
