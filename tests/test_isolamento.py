@@ -559,6 +559,33 @@ def test_con_il_file_dell_altro_account_occupato_l_iscrizione_riesce_e_il_guasto
     assert not any(stessa["endpoint"] in r for r in righe), "l'indirizzo dell'iscrizione è un segreto: nel registro solo la sigla"
 
 
+def test_un_errore_di_disco_sul_file_dell_altro_account_non_fa_fallire_l_iscrizione(due, monkeypatch, caplog):
+    """#874: un errore di disco nel togliere l'iscrizione ad A (qui: disco pieno) non trasforma in un errore del server l'iscrizione
+    di B, già salvata: si risponde come per il file occupato e una riga d'errore lo dice, con il tipo dell'errore."""
+    import errno
+
+    from fanta import push
+    (ca, _), (cb, _) = due["A"], due["B"]
+    stessa = dati_di("A")["push"]
+    assert ca.post("/api/push/iscrivi", json=stessa).json() == {"dispositivi": 1}
+    file_a = cartella_di(due, "A") / "push.json"
+    vera = push.scrivi_sicuro
+
+    def disco_pieno_per_a(percorso, testo):
+        if Path(percorso).resolve() == file_a.resolve():
+            raise OSError(errno.ENOSPC, "No space left on device")
+        vera(percorso, testo)
+
+    monkeypatch.setattr(push, "scrivi_sicuro", disco_pieno_per_a)
+    with caplog.at_level("ERROR"):
+        r = cb.post("/api/push/iscrivi", json=stessa)
+    assert (r.status_code, r.json()) == (200, {"dispositivi": 1})
+    assert ca.get("/api/avvisi").json()["dispositivi"] == 1
+    righe = [x.getMessage() for x in caplog.records if x.levelname == "ERROR"]
+    assert any("non tolta" in x and str(due["A"][1]) in x and "OSError" in x for x in righe), righe
+    assert not any(stessa["endpoint"] in x for x in righe)
+
+
 def test_un_iscrizione_nuova_non_riscrive_i_file_degli_altri_account(due):
     """#874: la pulizia dei doppioni scrive solo dove l'indirizzo c'è: il file di A non cambia (nemmeno riscritto uguale) e nella
     cartella di un account senza iscrizioni non nasce niente."""

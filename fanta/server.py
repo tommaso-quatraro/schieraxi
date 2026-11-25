@@ -2531,11 +2531,11 @@ def iscrivi_push(dati: IscrizionePush, request: Request, ctx: Contesto = Depends
         except notifiche_web.Occupato as e:          # file tenuto da un altro processo: 503 «riprova», niente scritto
             raise HTTPException(503, str(e)) from None
         if ctx.utente_id is not None:
-            for file in notifiche_web.togli_dagli_altri(dati.endpoint, percorsi.cartella_utenti(), ctx.iscrizioni_push):
+            for file, errore in notifiche_web.togli_dagli_altri(dati.endpoint, percorsi.cartella_utenti(), ctx.iscrizioni_push):
                 logging.getLogger("uvicorn.error").error(
-                    "Notifiche web: iscrizione %s passata a un altro account ma non tolta dalla cartella %s (file occupato o "
-                    "database degli account che non risponde); si toglie alla prossima iscrizione o al primo avviso che non arriva",
-                    notifiche_web.maschera(dati.endpoint), file.parent.name)
+                    "Notifiche web: iscrizione %s passata a un altro account ma non tolta dalla cartella %s (%s: file occupato, "
+                    "errore del disco o database degli account che non risponde); si toglie alla prossima iscrizione o al primo "
+                    "avviso che non arriva", notifiche_web.maschera(dati.endpoint), file.parent.name, errore)
         return {"dispositivi": len(lista)}
 
 
