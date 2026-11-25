@@ -42,6 +42,11 @@ struct PedinaCampo: View {
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(c.voce)
+        // con il testo grandissimo le scritte della pedina restano piccole (hanno un tetto, per stare sul campo): tenendo il dito
+        // sopra, iOS le mostra in grande, le stesse che si vedono (#882)
+        .accessibilityShowsLargeContentViewer {
+            Text(([Formato.punti(c.valore), g.nomeCorto] + c.pezzi.map(\.testo)).joined(separator: " · "))
+        }
     }
 }
 

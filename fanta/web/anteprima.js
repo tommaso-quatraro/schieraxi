@@ -57,10 +57,11 @@ const arDescrivi = c => `${esc(c.nome)} · ${esc((NOME_RUOLO_1[c.ruolo] || c.ruo
 
 /**
  * Mostra l'anteprima delle rose in `dove` e, alla conferma, le salva.
- * sorgente: { testo } oppure { file }. opz: { sostituisci, fatto(esito, mia), annulla() }.
+ * sorgente: { testo } oppure { file }. opz: { sostituisci, fatto(esito, mia), annulla(), mostrata(risposta) } (`mostrata`: l'anteprima
+ * è in pagina, con la risposta del server).
  */
 async function anteprimaRose(dove, sorgente, opz = {}) {
-  const st = { ris: null, etag: null, scelte: new Map(), trovati: new Map(), mia: null, righe: [] };
+  const st = { ris: null, etag: null, scelte: new Map(), trovati: new Map(), mia: null, righe: [], piede: null };
 
   const anteprima = async () => {
     const leggiEtag = e => { st.etag = e; };
@@ -117,20 +118,25 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
   const disegna = messaggio => {
     const r = st.ris;
     st.righe = [];
+    // alla prima importazione le squadre sono tutte nuove: «Nuova» su ognuna non dice niente (#873)
+    const prima = !!(r.differenze && r.differenze.prima_importazione);
+    // Una squadra senza dubbi sta in due righe (#873: al telefono dieci squadre erano quattro schermi): il nome e, da aprire, quanti
+    // giocatori ha e se la rosa è completa, con dentro i nomi. Con dei dubbi la riga dei conti resta sopra i dubbi e i riconosciuti
+    // si aprono sotto.
     const squadreHtml = r.squadre.map((s, si) => {
       const dubbi = s.giocatori.filter(g => g.stato !== "sicuro")
         .sort((a, b) => (a.stato === "non_trovato") - (b.stato === "non_trovato"));
       const sicuri = s.giocatori.filter(g => g.stato === "sicuro");
       const indici = dubbi.map(g => st.righe.push({ s, g }) - 1);
       const problemi = arProblemi(s);
-      const conteggio = arConteggio(s);
+      const conti = `<span class="ar-conti">${arConteggio(s)}${s.crediti_residui != null ? ` · ${tp("lega.n_crediti", s.crediti_residui)}` : ""} · ${
+        problemi.length ? `<span class="ar-problemi">${problemi.map(esc).join(" · ")}</span>` : `<span class="ar-ok">${t("ar.rosa_completa")}</span>`}</span>`;
+      const nomi = `<p class="debole piccolo">${sicuri.map(g => esc(g.nome || g.testo)).join(", ")}</p>`;
       return `<section class="ar-squadra" aria-labelledby="ar-sq-${si}">
-        <h4 id="ar-sq-${si}">${esc(s.nome)}${s.nuova ? ` <span class="etichetta neutra">${t("ar.nuova")}</span>` : ""}</h4>
-        <div class="debole piccolo">${conteggio}${s.crediti_residui != null ? ` · ${tp("lega.n_crediti", s.crediti_residui)}` : ""}</div>
-        ${problemi.length ? `<div class="ar-problemi">${problemi.map(esc).join(" · ")}</div>` : `<div class="ar-ok">${t("ar.rosa_completa")}</div>`}
+        <h4 id="ar-sq-${si}">${esc(s.nome)}${s.nuova && !prima ? ` <span class="etichetta neutra">${t("ar.nuova")}</span>` : ""}</h4>
+        ${dubbi.length || !sicuri.length ? `<div class="ar-riga-conti">${conti}</div>` : ""}
         ${dubbi.length ? `<ul class="ar-dubbi">${indici.map(rigaDubbio).join("")}</ul>` : ""}
-        ${sicuri.length ? `<details class="ar-sicuri"><summary>${tp("ar.riconosciuti", sicuri.length)}</summary>
-          <p class="debole piccolo">${sicuri.map(g => esc(g.nome || g.testo)).join(", ")}</p></details>` : ""}
+        ${sicuri.length ? `<details class="ar-sicuri"><summary>${dubbi.length ? tp("ar.riconosciuti", sicuri.length) : conti}</summary>${nomi}</details>` : ""}
       </section>`;
     }).join("");
     // gli avvisi delle singole squadre si vedono già nella loro carta: in cima solo quelli di tutto il file
@@ -148,19 +154,32 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
       ${mia}
       <div class="ar-squadre">${squadreHtml}</div>
       ${differenze}
-      <div id="ar-msg" role="status"></div>
-      <div class="pulsanti"><button class="bottone" type="button" id="ar-salva">${t("ar.conferma")}</button>
-        <button class="bottone secondario" type="button" id="ar-annulla">${t("ar.annulla")}</button></div>
+      <div class="ar-piede"><div id="ar-msg" role="status"></div>
+        <div class="pulsanti"><button class="bottone" type="button" id="ar-salva">${t("ar.conferma")}</button>
+          <button class="bottone secondario" type="button" id="ar-annulla">${t("ar.annulla")}</button></div></div>
     </div>`;
     collega();
+    seguiPiede();
     $("#ar-titolo", dove).focus({ preventScroll: false });
     if (messaggio) setTimeout(() => dici(`<div class="attenzione">${esc(messaggio)}</div>`), 100);
+    if (opz.mostrata) opz.mostrata(r);
   };
 
   // Il riquadro dei messaggi (#ar-msg) è una regione role="status" che resta in pagina: un lettore di schermo legge ciò che ci
   // viene scritto DOPO, non una regione che nasce già con il suo testo. Per questo nasce vuoto e il messaggio di apertura arriva
   // un attimo dopo. Qui vanno gli avvisi; un errore vero ci entra con il suo role="alert" (errore()).
   const dici = html => { const m = $("#ar-msg", dove); if (m) m.innerHTML = html; };
+
+  // Nel foglio (primo avvio) il piede con i messaggi e «Conferma e salva» resta fermo in fondo (stile.css): il Tab porta la riga a
+  // fuoco sopra di lui. --alto-piede è la sua altezza vera, che cresce con un messaggio (#878); stile.css la usa come
+  // scroll-padding-bottom del foglio. Nella pagina di Aggiorna le rose il piede scorre con il resto: niente da seguire.
+  const seguiPiede = () => {
+    if (st.piede) st.piede.disconnect();
+    const corpo = dove.closest(".foglio-corpo"), piede = $(".ar-piede", dove);
+    if (!corpo || !piede || typeof ResizeObserver !== "function") return;
+    st.piede = new ResizeObserver(() => { if (piede.isConnected) corpo.style.setProperty("--alto-piede", `${piede.offsetHeight}px`); });
+    st.piede.observe(piede);
+  };
 
   const collegaRiga = li => {
     const i = Number(li.dataset.i), { s, g } = st.righe[i], k = arChiave(s.nome, g.riga);

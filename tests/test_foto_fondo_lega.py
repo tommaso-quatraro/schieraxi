@@ -23,6 +23,8 @@ FOTO = {
     "lega-stato-nostri": ("lega-stato", LEGA / "LegaExtra.swift"),   # #430: i gol attesi nostri non stanno nella foto del fondo
     # #527: la riga della taratura di «gioca N%» sta fra la cima (lega-stato) e le nostri, in nessuna delle due foto
     "lega-stato-taratura": ("lega-stato", LEGA / "LegaExtra.swift"),
+    # #842: la frase della prova delle previsioni (quella su «da fantamedia», #840) sta sotto la taratura, in nessuna foto
+    "lega-stato-prova": ("lega-stato", LEGA / "LegaExtra.swift"),
     "lega-rosa-fondo": ("lega-rosa", LEGA / "LegaExtra.swift"),
 }
 
@@ -99,6 +101,23 @@ def test_il_punto_della_taratura_sta_sull_ultimo_gruppo_della_calibrazione():
     assert vista.count(".id(FondoDemo.idGruppo(g.id, ultimo: gruppi.last?.id))") == 1
     regola = (LEGA / "FondoDemo.swift").read_text(encoding="utf-8")
     assert 'Demo.argomento("DEMO_FONDO", in: argomenti) == "taratura"' in regola
+
+
+def test_la_foto_della_prova_apre_stato_dei_dati_e_chiede_il_punto_della_prova():
+    # #842: come la taratura, la demo apre «lega-stato» e -DEMO_FONDO prova la ferma sulla frase della prova delle previsioni,
+    # una sola riga con l'identità
+    testo = SCRIPT.read_text(encoding="utf-8")
+    assert 'lega-stato-prova) schermata="lega-stato"; fondo=(-DEMO_FONDO prova) ;;' in testo
+    assert (LEGA / "LegaExtra.swift").read_text(encoding="utf-8").count(".id(FondoDemo.idProva)") == 1
+    regola = (LEGA / "FondoDemo.swift").read_text(encoding="utf-8")
+    assert 'Demo.argomento("DEMO_FONDO", in: argomenti) == "prova"' in regola
+
+
+def test_la_foto_del_confronto_e_nell_elenco_e_la_demo_la_conosce():
+    # #842: «giornate-confronto» apre Giornate con «Dettagli» aperti (come giornate-dettagli) e un diario della demo con il confronto
+    # a 1,0 punti; un nome che la demo non conosce darebbe la foto della Formazione
+    assert "giornate-confronto" in _elenco("TUTTE")
+    assert '"giornate-confronto"' in DEMO.read_text(encoding="utf-8")
 
 
 def test_le_righe_delle_misure_non_si_stringono_in_altezza():

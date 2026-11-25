@@ -310,8 +310,9 @@ def _verita(d: Dati, stagione: str, giornata: int, col: str) -> tuple[set, set, 
 
 def squalificati(d: Dati, stagione: str, giornata: int) -> set:
     """Squalificati noti prima della giornata, dai cartellini: rosso nella giornata prima, o ammonizione che fa scattare la
-    squalifica (5ª, 10ª, 14ª, 17ª, poi ogni ammonizione)."""
-    v = d.voti[(d.voti["stagione"] == stagione) & (d.voti["giornata"] < giornata)]
+    squalifica (5ª, 10ª, 14ª, 17ª, poi ogni ammonizione). Solo le partite giocate prima dell'inizio della giornata, per data come
+    il modello (`modello.prima_di`): un recupero giocato dopo non si poteva sapere (#840, come `verifica.avversari` dopo #832)."""
+    v = d.voti[(d.voti["stagione"] == stagione) & prima_di(d.voti, Dati.inizio(d, stagione, giornata))]
     out = set(v.loc[(v["giornata"] == giornata - 1) & (v["espulsioni"] > 0), "calciatore_id"])
     amm = v[v["ammonizioni"] > 0].sort_values("giornata")
     amm = amm.assign(n=amm.groupby("calciatore_id").cumcount() + 1)

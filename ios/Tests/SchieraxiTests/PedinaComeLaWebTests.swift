@@ -5,7 +5,8 @@ import Testing
 /// La pedina sul campo come `pedina` della web (#616, #673; decisione 2 del proprietario: resta il volto): nel disco il fantavoto
 /// atteso (a partita finita quello preso), sotto il cognome «gioca N%» solo sotto l'80% (arancio fra 50 e 79, rosso sotto 50, sul
 /// numero che si legge), lo stato a parole, a partita cominciata il suo stato, a formazione chiusa quando gioca chi deve ancora
-/// giocare. Niente avversario («vs NAP»): sta nella scheda. VoiceOver dice le stesse cose, come `vocePedina`. Dati inventati.
+/// giocare. Niente avversario («vs NAP»): sta nella scheda. VoiceOver dice le stesse cose e il ruolo dopo il nome, come `vocePedina`
+/// (#882). Dati inventati.
 @Suite("Pedina del campo come la web")
 struct PedinaComeLaWebTests {
     /// Un giocatore inventato con questo pezzo di JSON in più (l'avversario c'è, ma la pedina non lo dice).
@@ -21,7 +22,7 @@ struct PedinaComeLaWebTests {
         let c = LetturaPedina.contenuto(try giocatore(#""p_voto": \#(p)"#))
         #expect(c.pezzi.isEmpty)
         #expect(c.valore == 6.5)
-        #expect(c.voce == "Mario Prova, fantavoto atteso 6,5")
+        #expect(c.voce == "Mario Prova, Difensore, fantavoto atteso 6,5")
     }
 
     @Test("Fra 50 e 79 «gioca N%» arancio, sotto 50 rosso", arguments: [(0.79, "gioca 79%", true), (0.5, "gioca 50%", true),
@@ -39,12 +40,12 @@ struct PedinaComeLaWebTests {
 
     // MARK: stato a parole
 
-    @Test("In dubbio: «gioca N%» e la parola; VoiceOver le dice tutte e due, senza ruolo né avversario")
+    @Test("In dubbio: «gioca N%» e la parola; VoiceOver le dice tutte e due, con il ruolo e senza avversario (#882)")
     func inDubbio() throws {
         let c = LetturaPedina.contenuto(try giocatore(#""p_voto": 0.45, "dubbio": true"#))
         #expect(c.pezzi == [LetturaPedina.Pezzo(testo: "gioca 45%", tono: .basso), LetturaPedina.Pezzo(testo: Catalogo.Tit.inDubbio, tono: .parola)])
-        #expect(c.voce == "Mario Prova, fantavoto atteso 6,5, gioca al 45 per cento, In dubbio")
-        #expect(!c.voce.contains("Napoli") && !c.voce.contains("difensore"))
+        #expect(c.voce == "Mario Prova, \(Catalogo.Ruolo.d1), fantavoto atteso 6,5, gioca al 45 per cento, In dubbio")
+        #expect(!c.voce.contains("Napoli"))
     }
 
     @Test("Infortunato o squalificato: la parola in rosso basta, niente «gioca 0%»", arguments: ["infortunato", "squalificato"])
@@ -64,7 +65,7 @@ struct PedinaComeLaWebTests {
         let c = LetturaPedina.contenuto(g)
         #expect(c.pezzi == [LetturaPedina.Pezzo(testo: "Partita in corso", tono: .parola)])
         #expect(c.valore == 6.5, "senza voto nel disco resta il fantavoto atteso")
-        #expect(c.voce == "Mario Prova, fantavoto atteso 6,5, Partita in corso")
+        #expect(c.voce == "Mario Prova, Difensore, fantavoto atteso 6,5, Partita in corso")
     }
 
     @Test("A partita finita nel disco il fantavoto preso, e VoiceOver dice quello")
@@ -72,14 +73,14 @@ struct PedinaComeLaWebTests {
         let c = LetturaPedina.contenuto(try giocatore(#""p_voto": 0.72, "stato_partita": "fatto", "fv_preso": 7"#))
         #expect(c.valore == 7)
         #expect(c.pezzi.isEmpty)
-        #expect(c.voce == "Mario Prova, fantavoto 7,0")
+        #expect(c.voce == "Mario Prova, Difensore, fantavoto 7,0")
     }
 
     @Test("Partita rinviata: «Rinviata» al posto di «gioca N%»")
     func rinviata() throws {
         let c = LetturaPedina.contenuto(try giocatore(#""p_voto": 0.5, "rinvio": "aspetta""#))
         #expect(c.pezzi == [LetturaPedina.Pezzo(testo: Catalogo.Tit.stRinviata, tono: .parola)])
-        #expect(c.voce == "Mario Prova, fantavoto atteso 6,5, Rinviata")
+        #expect(c.voce == "Mario Prova, Difensore, fantavoto atteso 6,5, Rinviata")
     }
 
     @Test("A formazione chiusa, per chi deve ancora giocare, quando gioca (con l'ora dell'app)")
@@ -89,7 +90,7 @@ struct PedinaComeLaWebTests {
         let c = LetturaPedina.contenuto(g, adesso: adesso)
         let quando = Quando.relativa(try #require(Quando.data("2026-10-31T18:00:00")), adesso: adesso)
         #expect(c.pezzi == [LetturaPedina.Pezzo(testo: quando, tono: .parola)])
-        #expect(c.voce == "Mario Prova, fantavoto atteso 6,5, \(quando)")
+        #expect(c.voce == "Mario Prova, Difensore, fantavoto atteso 6,5, \(quando)")
     }
 
     // MARK: disco pieno o vuoto
@@ -112,11 +113,24 @@ struct PedinaComeLaWebTests {
     func voceDistingue() throws {
         let preso = LetturaPedina.contenuto(try giocatore(#""stato_partita": "fatto", "fv_preso": 7"#))
         let atteso = LetturaPedina.contenuto(try giocatore(#""stato_partita": "da_giocare""#))
-        #expect(preso.voce == "Mario Prova, fantavoto 7,0" && !preso.attesa)
-        #expect(atteso.voce == "Mario Prova, \(Catalogo.Formazione.voceFv(fv: "6,5"))" && atteso.attesa)
+        #expect(preso.voce == "Mario Prova, Difensore, fantavoto 7,0" && !preso.attesa)
+        #expect(atteso.voce == "Mario Prova, Difensore, \(Catalogo.Formazione.voceFv(fv: "6,5"))" && atteso.attesa)
     }
 
     // MARK: parole per VoiceOver
+
+    /// Le lettere dei ruoli e la parola che VoiceOver dice dopo il nome; nil per un ruolo che non si conosce.
+    private static let ruoli: [(String, String?)] = [("P", Catalogo.Ruolo.p1), ("D", Catalogo.Ruolo.d1), ("C", Catalogo.Ruolo.c1),
+                                                     ("A", Catalogo.Ruolo.a1), ("X", nil)]
+
+    @Test("VoiceOver dice il ruolo dopo il nome, la parola della scheda e della web (`ruolo.P_1`…); un ruolo sconosciuto si salta",
+          arguments: ruoli)
+    func ruoloNellaVoce(ruolo: String, parola: String?) throws {
+        let json = #"{"id": 7, "nome": "Mario Prova", "ruolo": "\#(ruolo)", "fv_atteso": 6.5, "p_voto": 0.9}"#
+        let g: Giocatore = try Decodifica.decodifica(Data(json.utf8))
+        let voce = LetturaPedina.contenuto(g).voce
+        #expect(voce == ["Mario Prova", parola, "fantavoto atteso 6,5"].compactMap { $0 }.joined(separator: ", "))
+    }
 
     @Test("«gioca al 45 per cento», con l'apostrofo davanti a 8, 11 e agli ottanta")
     func voceGioca() {
