@@ -238,6 +238,12 @@ scadenza:
 - una partita con solo il giorno (`data_partita` «2026-11-01», ora non ancora fissata) si scrive «dom 1», mai con un'ora finta
   come «00:00».
 
+`test_copia_salvata.py`, la nota della copia salvata quando il server risponde con un errore (#845). Gira solo prima della
+scadenza:
+- copia salvata il 17/11 alle 10:05, riaperta tre giorni dopo con il server che risponde 502: la nota dice «Il server non
+  risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati)», con la data della copia e
+  non quella di adesso, e c'è «Riprova». L'iPhone prova la stessa frase per lo stesso istante (`DatiVecchiTests`).
+
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
 - dopo un rilascio finto (ogni file della scocca dice la sua versione, `VERSIONE` di `sw.js` alzata) con `app.js` e `testi.js`
   lenti oltre i 2,5 secondi, la pagina riaperta è tutta di una versione e un testo nuovo non compare come chiave; la versione
