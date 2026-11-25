@@ -77,6 +77,10 @@ CASO_PARTICOLARE = (r"da fermo|palla ferma|piazzat|punizion|calci\w{0,3} d'angol
                     r"|decisiv|vittori|pareggi|di testa|fuori area|da fuori|rovesciat|recupero|ultimo minuto"
                     r"|\bdoppi[ao]\b|doppiett|triplett|hat.trick")
 CASO_NEGATO = r"\bnon\W{1,3}(?:\w{1,20}\W{1,3}){0,2}$"     # un «non» poco prima del caso particolare: «non da calcio piazzato»
+# Una riga che nomina un'altra regola chiude la sezione del modificatore difesa prima di leggerne le fasce: «Panchina: 7, massimo
+# 5 cambi» non è la fascia «media 7: +5» (#888). La formazione no: «si applica con almeno 4 difensori in formazione» è del modificatore.
+FINE_MODIFICATORE = (r"pareggi|moduli|panchin|riserv|sostituz|\bcambi\b|bonus e malus|punteggi|capitano|credit|\brosa\b|\bgol\b"
+                     r"|assist|ammoniz|espuls|autogol|autorete|rigor|imbattut")
 RUOLI = {"portier": "P", "difensor": "D", "centrocamp": "C", "attaccant": "A"}
 NOMI_PLURALE = {"P": "portieri", "D": "difensori", "C": "centrocampisti", "A": "attaccanti"}
 NOMI_SINGOLARE = {"P": "portiere", "D": "difensore", "C": "centrocampista", "A": "attaccante"}
@@ -355,6 +359,8 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
             else:
                 imposta("modificatore_difesa.attivo", "Modificatore difesa attivo", attivo, n)
             continue
+        if in_modificatore and re.search(FINE_MODIFICATORE, riga):
+            in_modificatore = False             # «Panchina: 7, massimo 5 cambi» non è una fascia: si legge come le altre righe
         if in_modificatore:
             m = re.search(rf"difensor{SUFFISSO}\s*(?:minim{SUFFISSO}|almeno)\D{{0,6}}\b([3-6])\b(?![.,]\d)"
                           rf"|(?:almeno|minim{SUFFISSO})\s*\b([3-6])\b(?![.,]\d)\s*difensor", riga)
@@ -371,8 +377,6 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                         soglie.append([media, abs(bonus)]); usate.add(n); riga_soglie = n
                         letti.setdefault(n, set()).update({_cifra(numeri[0]), _cifra(numeri[1])})
                         continue
-            if re.search(r"(?:pareggi|moduli|panchina|bonus e malus|punteggi|capitano)", riga):
-                in_modificatore = False
         # ---- gol: un numero per ruolo se la riga elenca più ruoli, altrimenti uguale per tutti
         trovato = False
         if re.search(r"\bgol\b", riga) and not re.search(r"gol subit|reti subit|gol (?:su|da) rigore|nessun gol|assist|rigor"

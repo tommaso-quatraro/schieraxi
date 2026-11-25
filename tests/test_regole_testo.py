@@ -857,6 +857,10 @@ CORPUS = {
     "Gol segnato in trasferta: +0,5": ({}, True),
     "Gol segnato: +0,5 in trasferta": ({}, True),
     "Gol in trasferta: +0,5": ({}, True),
+    "Assist, non da calcio piazzato: +1\nAssist da fermo: +0,5": ({"bonus.assist": 1}, ["Assist da fermo: +0,5"]),
+    # prudenti apposta: «anche» non toglie il dubbio (può essere un'aggiunta), la riga si controlla
+    "Gol: +3 (anche in trasferta)": ({}, True),
+    "Espulsione (anche per doppia ammonizione): -1": ({}, True),
 }
 
 
