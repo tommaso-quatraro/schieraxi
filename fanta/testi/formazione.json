@@ -3,6 +3,14 @@
     "it": "Calcolo la formazione migliore…",
     "en": "Working out the best lineup…"
   },
+  "formazione.col_fantavoto": {
+    "it": "Fantavoto",
+    "en": "Fantasy score"
+  },
+  "formazione.atteso_breve": {
+    "it": "atteso",
+    "en": "expected"
+  },
   "formazione.stai_guardando_formazione": {
     "it": "Stai guardando la formazione di",
     "en": "You are looking at the lineup of"
