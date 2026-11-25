@@ -65,6 +65,8 @@ struct ImpostazioniView: View {
                         }
                     }
                 }
+                // sull'iPad una colonna larga come quella della web: interruttori e valori vicini al loro nome (#896)
+                .colonnaPagina()
                 .scrollContentBackground(.hidden)
                 .contentMargins(.bottom, 24, for: .scrollContent)
                 .background(Sfondo())
@@ -89,7 +91,8 @@ struct ImpostazioniView: View {
                 .onChange(of: nav.parteImpostazioni) { _, _ in portaInVista(proxy) }
             }
             .titoloPagina(Catalogo.Shell.impostazioni)
-            .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0) }
+            // anche le pagine interne in una colonna larga come quella della web (#896)
+            .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0).colonnaPagina() }
             .task { await vm.carica() }
             .task { await avvisi.carica() }
         }

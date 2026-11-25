@@ -15,6 +15,7 @@ struct FormazioneView: View {
     @Environment(\.vaiASezione) private var vaiASezione
     @Environment(\.apriRosaDi) private var apriRosaDi
     @Environment(\.horizontalSizeClass) private var classe
+    @Environment(\.verticalSizeClass) private var classeVerticale
     @Environment(\.dynamicTypeSize) private var taglia
     @Environment(\.scenePhase) private var fase
 
@@ -141,6 +142,10 @@ struct FormazioneView: View {
 
     /// Sull'iPad (e con il telefono grande in orizzontale) due colonne, sempre in ordine di lettura; con il testo molto grande una.
     private var dueColonne: Bool { classe == .regular && !taglia.isAccessibilitySize }
+
+    /// Solo sull'iPad (largo e alto, #896): il campo con la metà campo libera e alto almeno tre quarti della larghezza, e gli
+    /// elenchi chiusi bassi quanto la loro zona di tocco. Sui telefoni, anche grandi e in orizzontale, tutto come prima.
+    private var spazioso: Bool { classe == .regular && classeVerticale == .regular }
 
     @ViewBuilder
     private func pagina(_ f: Formazione) -> some View {
@@ -303,7 +308,7 @@ struct FormazioneView: View {
                     }
                 }
             }
-            CampoFormazione(titolari: v.titolari, apribile: true)
+            CampoFormazione(titolari: v.titolari, apribile: true, spazioso: spazioso)
             RigaStatoScelta(stato: vm.statoScelta, spento: vm.comandiSpenti, occupato: vm.occupato,
                             tornaAllaConsigliata: { Task { await vm.tornaAllaConsigliata() } },
                             riprova: { Task { await ricarica() } })
@@ -481,11 +486,12 @@ struct FormazioneView: View {
         }
     }
 
-    /// Un elenco chiuso («Non schierati (4)», «Infortunati e squalificati (2)»): si apre con un tocco.
+    /// Un elenco chiuso («Non schierati (4)», «Infortunati e squalificati (2)»): si apre con un tocco. Il riquadro è quello di
+    /// `Carta`; sull'iPad chiuso è basso quanto la sua zona di tocco (#896: due riquadri alti quasi il doppio della riga).
     @ViewBuilder
     private func elenco(_ titolo: String, _ giocatori: [Giocatore], nota: String?, dalVivo: Bool) -> some View {
         if !giocatori.isEmpty || nota != nil {
-            Carta {
+            VStack(alignment: .leading, spacing: 8) {
                 DisclosureGroup {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(giocatori) { RigaGiocatore(g: $0, apribile: true, dalVivo: dalVivo) }
@@ -495,6 +501,7 @@ struct FormazioneView: View {
                         }
                     }
                     .padding(.top, 6)
+                    .padding(.bottom, spazioso ? 8 : 0)
                 } label: {
                     // a capo allineato a sinistra: l'etichetta di un DisclosureGroup centra le righe («Infortunati e / squalificati», #787)
                     Text(titolo).font(.subheadline.weight(.semibold)).multilineTextAlignment(.leading)
@@ -502,6 +509,10 @@ struct FormazioneView: View {
                 }
                 .tint(Color.testoSecondario)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, spazioso ? 4 : 12)
+            .background(Color.sfondoScheda, in: RoundedRectangle(cornerRadius: Tema.raggioScheda, style: .continuous))
         }
     }
 }

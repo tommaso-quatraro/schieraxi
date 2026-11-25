@@ -379,6 +379,9 @@ struct RosaView: View {
             slot("stemma", $sceltaStemma)
             slot("maglia", $sceltaMaglia)
         }
+        // sull'iPad stemma e maglia restano vicini, al centro: a tutta larghezza erano a 370 punti l'uno dall'altra (#896).
+        // Sull'iPhone la riga è più stretta di così: non cambia niente
+        .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)
         Menu {
             Button(ParoleSquadre.daUnFile(tipo: "stemma")) { tipoFile = "stemma"; sceglieFile = true }

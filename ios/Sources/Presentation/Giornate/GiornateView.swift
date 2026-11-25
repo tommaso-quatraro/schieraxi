@@ -3,8 +3,9 @@ import SwiftUI
 /// La pagina Giornate (#673, passo 2), seconda nella barra come sulla web (#671): sotto il titolo la riga della web con giornata,
 /// mia squadra e data dei dati (#863), una riga sola sulla precisione con «Dettagli», poi una riga per giornata finita, dalla più
 /// recente, con i punti fatti e attesi della formazione che conta. Sul telefono gli 11 si aprono sotto la riga (anche più giornate
-/// insieme); sull'iPad l'elenco sta a sinistra e la giornata scelta a destra, con la più recente già aperta. Testi dal catalogo
-/// comune, numeri e frasi da `GET /api/diario` (`PaginaGiornate`) e `GET /api/stato` (`RigaStato`).
+/// insieme); sull'iPad l'elenco sta a sinistra e la giornata scelta (o «Dettagli») a destra, con la più recente già aperta, come la
+/// web larga (#896). Testi dal catalogo comune, numeri e frasi da `GET /api/diario` (`PaginaGiornate`) e `GET /api/stato`
+/// (`RigaStato`).
 struct GiornateView: View {
     @ObservedObject var vm: GiornateViewModel
     @EnvironmentObject private var nav: Navigazione
@@ -78,66 +79,110 @@ struct GiornateView: View {
 
     // MARK: iPad
 
-    /// Elenco a sinistra, la giornata scelta a destra (una alla volta, la più recente già aperta).
+    /// Come la web larga (#896): una pagina sola con l'elenco a sinistra, largo come quello della web, e a destra la giornata
+    /// scelta (la più recente già aperta) o i numeri di «Dettagli», che prima si aprivano nella colonna stretta dell'elenco
+    /// lasciando vuota la metà destra. Niente `NavigationSplitView` dentro la barra laterale: in orizzontale faceva tre colonne con
+    /// due pulsanti uguali per la barra.
     private var colonne: some View {
-        NavigationSplitView {
-            ScrollViewReader { proxy in
-                List(selection: sceltaIPad) {
-                    capo
-                    if let p = vm.pagina {
-                        testa(p)
-                        if p.righe.isEmpty {
-                            vuoto(p)
-                        } else {
-                            Section {
-                                ForEach(p.righe) { r in
-                                    RigaGiornataView(riga: r)
-                                        .accessibilityFocused($fuoco, equals: r.id)
-                                }
-                            }
+        NavigationStack {
+            ElencoEDettaglio {
+                elencoIPad
+                ScrollViewReader { proxy in
+                    dettaglioIPad
+                        .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
+                }
+            }
+            .background(Sfondo())
+            .avvisoDatiSalvati(vm.caricatore)
+            .titoloPagina(Catalogo.Nav.giornate)
+        }
+    }
+
+    /// A sinistra la riga di stato, la frase sulla precisione con «Dettagli» e le giornate; la riga scelta è quella a destra.
+    private var elencoIPad: some View {
+        List(selection: sceltaIPad) {
+            capo
+            if let p = vm.pagina {
+                testaIPad(p)
+                if p.righe.isEmpty {
+                    vuoto(p)
+                } else {
+                    Section {
+                        ForEach(p.righe) { r in
+                            RigaGiornataView(riga: r)
+                                .accessibilityFocused($fuoco, equals: r.id)
                         }
-                    } else if let e = vm.caricatore.errore {
-                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                    } else {
-                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
                 }
-                .scrollContentBackground(.hidden)
-                .background(Sfondo())
-                .avvisoDatiSalvati(vm.caricatore)
-                .titoloPagina(Catalogo.Nav.giornate)
-                .refreshable { await vm.carica() }
-                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
+            } else if let e = vm.caricatore.errore {
+                ErroreVista(messaggio: e) { Task { await vm.carica() } }
+            } else {
+                ScheletroRighe(righe: 5).listRowBackground(Color.clear)
             }
-        } detail: {
-            NavigationStack {
-                dettaglioIPad
+        }
+        .scrollContentBackground(.hidden)
+        .refreshable { await vm.carica() }
+    }
+
+    /// La riga scelta nell'elenco dell'iPad: quella toccata (una giornata o «Dettagli»), se no la più recente
+    /// (`PaginaGiornate.aDestra`).
+    private var sceltaIPad: Binding<String?> {
+        Binding(get: { vm.pagina?.aDestra(scelta: vm.scelta).id }, set: { vm.scelta = $0 })
+    }
+
+    /// Sull'iPad la frase sulla precisione e la riga «Dettagli», che si sceglie come una giornata e apre i numeri a destra.
+    @ViewBuilder
+    private func testaIPad(_ p: PaginaGiornate) -> some View {
+        if p.precisione != nil || p.dettagli != nil {
+            Section {
+                if let frase = p.precisione {
+                    Text(frase)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let titolo = p.titoloDettagli, p.dettagli != nil {
+                    Text(titolo)
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .tag(PaginaGiornate.idDettagli)
+                }
             }
         }
     }
 
-    /// La giornata scelta nell'elenco dell'iPad: quella toccata, se no la più recente.
-    private var sceltaIPad: Binding<String?> {
-        Binding(get: { vm.scelta ?? vm.pagina?.righe.first?.id }, set: { vm.scelta = $0 })
-    }
-
-    @ViewBuilder
+    /// A destra, larga al massimo come la colonna della web: il nome e gli 11 della giornata scelta (i punti e la frase li dice
+    /// già la sua riga a sinistra), oppure i numeri di «Dettagli».
     private var dettaglioIPad: some View {
-        if let p = vm.pagina, let id = sceltaIPad.wrappedValue, let r = p.righe.first(where: { $0.id == id }), let d = p.dettaglio(id) {
-            ScrollView {
-                // i punti e la frase della giornata li dice già la riga scelta a sinistra: qui gli 11
-                Carta {
-                    DettaglioGiornataView(dettaglio: d, esito: vm.esito(per: id)) { daCorreggere = p.voce(id) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if let p = vm.pagina {
+                    switch p.aDestra(scelta: vm.scelta) {
+                    case .dettagli:
+                        if let t = p.dettagli {
+                            Carta(p.titoloDettagli) {
+                                PrecisioneView(testo: t)
+                                    .id(ConfrontoDemo.idDettagli)   // dove arriva la foto `giornate-confronto` (solo demo, #842)
+                            }
+                        }
+                    case .giornata(let id):
+                        if let r = p.righe.first(where: { $0.id == id }), let d = p.dettaglio(id) {
+                            Text(r.nome)
+                                .font(.title3.weight(.semibold))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityAddTraits(.isHeader)
+                            Carta {
+                                DettaglioGiornataView(dettaglio: d, esito: vm.esito(per: id)) { daCorreggere = p.voce(id) }
+                            }
+                        }
+                    case .niente:
+                        EmptyView()
+                    }
                 }
-                .padding(Tema.margine)
-                .frame(maxWidth: 720, alignment: .leading)
-                .frame(maxWidth: .infinity)
             }
-            .background(Sfondo())
-            .navigationTitle(r.nome)
-            .navigationBarTitleDisplayMode(.inline)
-        } else {
-            Sfondo()
+            .padding(Tema.margine)
+            .frame(maxWidth: ElencoEDettaglio.dettaglioMassimo, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

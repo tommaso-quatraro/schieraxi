@@ -109,10 +109,28 @@ extension View {
     /// Solo in demo con `-DEMO_FONDO`: la schermata parte scorsa in fondo, per vedere anche la parte sotto la piega.
     @ViewBuilder
     func demoInFondo() -> some View {
-        if Demo.attivo, Demo.argomento("DEMO_FONDO") != nil, #available(iOS 17, *) {
-            self.defaultScrollAnchor(.bottom)
+        if Demo.attivo, Demo.argomento("DEMO_FONDO") != nil {
+            modifier(InFondoDemo())
         } else {
             self
+        }
+    }
+}
+
+/// Le foto «-fondo» (`demoInFondo`). Sull'iPad una pagina può essere più corta dello schermo: con l'ancora in fondo anche per
+/// l'allineamento la pagina corta finiva in basso, con una fascia vuota sotto il titolo (circa 320 pixel nelle foto, #896).
+/// Lì l'ancora in fondo vale solo per la partenza e per i dati che arrivano dopo; la pagina corta resta in alto. Sull'iPhone
+/// come prima.
+private struct InFondoDemo: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var classe
+
+    func body(content: Content) -> some View {
+        if classe == .regular {
+            content
+                .defaultScrollAnchor(.bottom, for: .initialOffset)
+                .defaultScrollAnchor(.bottom, for: .sizeChanges)
+        } else {
+            content.defaultScrollAnchor(.bottom)
         }
     }
 }

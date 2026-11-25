@@ -248,8 +248,19 @@ struct RadiceView: View {
     @EnvironmentObject private var modello: AppModel
     /// Impostazioni > Aspetto: le animazioni (il tema lo applica `PortaDiAccesso`, per tutte le schermate).
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
+    @Environment(\.horizontalSizeClass) private var classeOrizzontale
+    @Environment(\.verticalSizeClass) private var classeVerticale
+    @Environment(\.dynamicTypeSize) private var dimensioneTesto
     /// Punto di partenza e arrivo della transizione a zoom tra una riga di giocatore e la sua scheda.
     @Namespace private var zoom
+
+    /// Si parte dalla barra laterale invece che dalla barra in alto? Solo sull'iPad (largo e alto) con il testo molto grande
+    /// (misure Accessibilità): la barra in alto non ha posto per tutte le voci, «Impostazioni» spariva oltre il bordo e dentro
+    /// Impostazioni nessuna voce risultava scelta (#896). Nella barra laterale le voci sono intere, una sotto l'altra.
+    nonisolated static func barraLateraleSubito(orizzontale: UserInterfaceSizeClass?, verticale: UserInterfaceSizeClass?,
+                                                testo: DynamicTypeSize) -> Bool {
+        orizzontale == .regular && verticale == .regular && testo.isAccessibilitySize
+    }
 
     var body: some View {
         TabView(selection: $nav.sezione) {
@@ -273,6 +284,9 @@ struct RadiceView: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        .defaultAdaptableTabBarPlacement(
+            Self.barraLateraleSubito(orizzontale: classeOrizzontale, verticale: classeVerticale, testo: dimensioneTesto)
+                ? .sidebar : .automatic)
         .onAppear { apriPaginaRichiesta() }
         .onChange(of: nav.paginaDaAprire) { _, _ in apriPaginaRichiesta() }
         // la Formazione sa se è la scheda aperta: decide dove si dice un suo salvataggio che non riesce (#726)
@@ -324,6 +338,9 @@ struct RadiceView: View {
                                nav.scheda = nil
                            })
             .navigationTransition(.zoom(sourceID: g.id, in: zoom))
+            // sull'iPad un foglio grande come una pagina, alto quasi quanto lo schermo: quello predefinito era piccolo al centro
+            // e tagliava «Sostituisci» (#896). Sull'iPhone il foglio è già a tutta larghezza: non cambia niente
+            .presentationSizing(.page)
             .presentationDragIndicator(.visible)
             .tint(Color.verde)
         }
