@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.553",
+    "data": "2026-11-25T10:21:06",
+    "titolo": "Più facile da usare con VoiceOver e senza distinguere i colori",
+    "voci": [
+      "Scheda del giocatore, «Tutti i numeri»: nelle prossime partite ogni casella scrive anche la difficoltà («Facile», «Dura»…), non solo il colore, sulla web e sull'iPhone.",
+      "Formazione, per chi usa un lettore di schermo: ogni giocatore sul campo dice anche il ruolo, dopo il nome.",
+      "iPhone con VoiceOver: in cima alla Formazione si sente «fra 3 ore e 10 minuti» invece delle sigle; in panchina il posto di ogni riserva; nella rosa di una squadra «gioca al 72 per cento» e i nomi delle squadre per intero; nel widget Formazione i volti dicono il nome del giocatore e il cerchio sulla schermata di blocco dice «punti attesi».",
+      "iPhone: «Riprova», «Password dimenticata», «Torna all'accesso», «Ricomincia» e i pulsanti delle decisioni si toccano su tutta la loro altezza, non solo sulla scritta.",
+      "iPhone con il testo grandissimo: tenendo il dito su un giocatore del campo, le sue scritte si leggono in grande."
+    ],
+    "tecnico": [
+      "Web (#882): nelle celle di `.prossime` la difficoltà sotto «vs MIL» (`NOMI_DIFF`, chiavi diff.1…diff.5); `vocePedina` con `NOME_RUOLO_1` dopo il nome. Prova: tests/browser/test_scheda_prossime.py e i test node della pedina.",
+      "iPhone (#882): `TestaFormazione.voceScadenza` (conto a parole di `Quando.contoAllaRovesciaParlato`), `FormazioneWidget.testataParlata` anche per il cerchio, etichetta col nome sui volti di `CampoMini`, `ProssimePartite.parola`, `RigaRosa.voce` come `RigaGiocatore.voce` (chiavi formazione.voce_casa e formazione.voce_fuori ora anche nel catalogo dell'iPhone), `RigaGiocatore.voce(_:posizione:)` per la panchina, ruolo in `LetturaPedina.contenuto`, frame e contentShape dentro l'etichetta dei pulsanti piccoli, `accessibilityShowsLargeContentViewer` sulla pedina. Nessun cambio sul server."
+    ]
+  },
+  {
     "versione": "1.552",
     "data": "2026-11-25T10:20:28",
     "titolo": "iPhone: widget e Impostazioni con il testo grande",
