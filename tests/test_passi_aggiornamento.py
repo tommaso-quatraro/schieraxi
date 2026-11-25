@@ -218,6 +218,27 @@ def test_stato_dei_dati_mostra_il_passo_fermo_con_l_ora_vera(db, monkeypatch):
     assert voce["errori"] == ["Non riuscito alle 08:03 del 02/11: ValueError: pagina strana"]
 
 
+def test_le_righe_d_errore_con_l_apostrofo_davanti_all_08_e_all_11(db, monkeypatch):
+    """«dall'08/11», «dell'11/11», «l'08/11» (si legge «dall'otto», «dell'undici»), mai «dal 08/11» o «del 11/11» (#859): nella
+    riga generale dell'aggiornamento e nelle righe d'errore di Stato dei dati. «il 01/11» e «del 02/11» restano."""
+    _agg(db, monkeypatch, "2026-11-01T21:03:00")._passo("Understat", lambda: None)
+    _agg(db, monkeypatch, "2026-11-08T08:03:00")._passo("Understat", _rotto)
+    a = _agg(db, monkeypatch, "2026-11-11T13:03:00")
+    a._passo("Understat", _rotto)
+    assert "(non riesce dall'08/11 alle 08:03; ultimo riuscito il 01/11 alle 21:03)" in a.errori[0], a.errori[0]
+    r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 11, 14, 0))
+    voce = next(x for x in r["aggiornamenti"] if x["cosa"] == "understat")
+    assert voce["errori"] == ["Fermo da 3 giorni (non riesce dall'08/11 alle 08:03): ValueError: pagina strana"]
+    _agg(db, monkeypatch, "2026-11-08T21:03:00")._passo("Understat", lambda: None)
+    _agg(db, monkeypatch, "2026-11-11T08:03:00")._passo("Understat", _rotto)
+    a = _agg(db, monkeypatch, "2026-11-11T13:03:00")
+    a._passo("Understat", _rotto)
+    assert "(non riesce dall'11/11 alle 08:03; ultimo riuscito l'08/11 alle 21:03)" in a.errori[0], a.errori[0]
+    r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 11, 14, 0))       # non è fermo da più di un giorno
+    voce = next(x for x in r["aggiornamenti"] if x["cosa"] == "understat")
+    assert voce["errori"] == ["Non riuscito alle 13:03 dell'11/11: ValueError: pagina strana"]
+
+
 def test_stato_dei_dati_ha_un_nome_leggibile_per_ogni_riga_e_ogni_controllo(db, monkeypatch):
     """Le etichette nascono sul server (campo `etichetta`): i client non mostrano più chiavi grezze come «dati-extra» o
     «gol_dei_voti»."""

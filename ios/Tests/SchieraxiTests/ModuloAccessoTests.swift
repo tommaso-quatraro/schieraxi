@@ -170,6 +170,14 @@ final class ModuloAccessoTests: XCTestCase {
         XCTAssertEqual(TestiAccount.ruoloEData(ruolo: "utente", creato: "ieri"), "Utente")
     }
 
+    /// «dall'8 ottobre 2026», «dall'11 ottobre 2026» (si legge «dall'otto», «dall'undici»), mai «dal 8» o «dal 11» (#859), come la
+    /// web (`elidiGiorno`, `tests/browser/test_apostrofo_altre_date.py`). «dal 18» e «dal 1» restano.
+    func testRuoloEDataConLApostrofoDavantiAll8EAll11() {
+        XCTAssertEqual(TestiAccount.ruoloEData(ruolo: "utente", creato: "2026-10-08T10:00:00"), "Utente · dall'8 ottobre 2026")
+        XCTAssertEqual(TestiAccount.ruoloEData(ruolo: "amministratore", creato: "2026-10-11"), "Amministratore · dall'11 ottobre 2026")
+        XCTAssertEqual(TestiAccount.ruoloEData(ruolo: "utente", creato: "2026-10-18"), "Utente · dal 18 ottobre 2026")
+    }
+
     func testRigaDellEmailConLeFrasiDellaWeb() {
         XCTAssertEqual(TestiAccount.rigaEmail(account: "a@example.invalid", google: "g@example.invalid", inAttesa: nil), "Email confermata: a@example.invalid")
         XCTAssertEqual(TestiAccount.rigaEmail(account: nil, google: "g@example.invalid", inAttesa: nil), "Email da Google: g@example.invalid")
