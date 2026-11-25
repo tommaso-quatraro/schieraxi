@@ -31,10 +31,12 @@ struct RigaStatoScelta: View {
                                                            : "Toglie la tua formazione e rimette la consigliata")
                 }
                 if stato == .nonLetta {
-                    Button(Catalogo.Comune.riprova, action: riprova)
-                        .font(.subheadline.weight(.semibold))
-                        .buttonStyle(.bordered)
-                        .frame(minHeight: Tema.areaTocco)
+                    // i 44 punti dentro l'etichetta: fuori dal pulsante non allargavano la zona da toccare (#882)
+                    Button(action: riprova) {
+                        Text(Catalogo.Comune.riprova).frame(minHeight: Tema.areaTocco).contentShape(Rectangle())
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.bordered)
                 }
                 if occupato {
                     Label {
