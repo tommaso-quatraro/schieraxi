@@ -156,8 +156,8 @@ def test_scelta_della_web_non_segnata_riceve_il_promemoria_che_chiede_della_spun
     promemoria, mandati = _mondo(tmp_path, monkeypatch)
     _salvata(tmp_path, da="web")
     assert len(promemoria(UN_ORA)) == 1 and len(promemoria(QUARTO)) == 1
-    assert [t for t, _ in mandati] == ["SchieraXI · formazione tra un'ora", "SchieraXI · ultimi minuti per la formazione"]
-    assert all(DOMANDA in testo and "18:30" in testo for _, testo in mandati)
+    assert [t for t, _ in mandati] == ["SchieraXI · hai messo la formazione?"] * 2          # la domanda anche nel titolo (#906)
+    assert all(testo.startswith(DOMANDA) and "18:30" in testo for _, testo in mandati)
     assert promemoria(QUARTO) == []                                                  # una volta sola per finestra
 
 

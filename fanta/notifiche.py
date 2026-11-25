@@ -61,7 +61,8 @@ AVVISO_PRIMA_PREDEFINITO = 60            # da quanti minuti prima della scadenza
 SOGLIA_AVVISO_PUNTI = 1.0                # punti attesi in più perché valga la pena disturbare: sotto è il su e giù normale
 MAX_AVVISI_SCADENZA = 2                  # al massimo per giornata
 MINUTI_MINIMI = 2                        # a meno di 2 minuti dalla chiusura non serve più
-DOPPIONE_PROMEMORIA = 20                 # minuti: subito dopo questo avviso il promemoria della stessa finestra non riparte
+DOPPIONE_PROMEMORIA = 20                 # minuti: subito dopo questo avviso (o un «cambio pronto» sugli stessi titolari, #906) il
+#                                          promemoria della stessa finestra non riparte
 DOPPIONE_CAMBI = 15                      # minuti: se l'avviso sui cambi delle probabili è appena partito, questo non lo ripete
 
 
@@ -333,7 +334,7 @@ def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.D
         except (KeyError, TypeError, ValueError):
             pass
         risultato.append({"nome": nome, "chiave": f"{chiave}/{i}/{nuovi[i]}", "frase": F("n.tuo_" + nuovi[i], nome=nome),
-                          "consiglio": consiglio})
+                          "consiglio": consiglio, "fatto": f"{i}/{nuovi[i]}"})
     return risultato
 
 
@@ -431,6 +432,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
             singoli, cambiata = [], None           # l'ha già detto lui (niente doppioni); lo stato si salva lo stesso, così
             #                                        questa notizia non riparte più tardi
     detti = []
+    fatti = _fatti_detti(vecchio)                  # «giocatore/motivo» -> quando l'ha detto il «cambio pronto» (per il promemoria)
     if cambiata is not None:                       # il tocco apre la Formazione; la notifica web non arriva dopo la scadenza
         if not manda(F("n.t_cambia_titolare"), cambiata, 4, "rotating_light", vale_per=inizio - adesso):
             return gia_detti                       # ore tranquille o invio fallito: lo stato resta, al prossimo giro si riprova
@@ -439,6 +441,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         testi = [F("n.frase_consiglio", frase=p["frase"], consiglio=p["consiglio"]) for p in singoli[:MAX_RIGHE]]
         if manda(F("n.t_cambio_pronto"), frasi.elenco(testi, sep="\n"), 4, "rotating_light", vale_per=inizio - adesso):
             detti += testi
+            fatti |= {p["fatto"]: adesso.isoformat(timespec="seconds") for p in singoli[:MAX_RIGHE]}
         elif not detti:
             return gia_detti                       # ore tranquille o invio fallito: si riprova al giro dopo
         else:
@@ -449,7 +452,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     # quando è partito l'ultimo avviso sui TUOI giocatori: l'avviso «cambia la formazione» non lo ripete (DOPPIONE_CAMBI)
     inviato = adesso.isoformat(timespec="seconds") if detti else (vecchio or {}).get("inviato")
     cambi_stato[chiave] = ({"giocatori": ora, "titolari": titolari} | ({"modulo": modulo} if modulo else {})
-                           | ({"inviato": inviato} if inviato else {}))
+                           | ({"inviato": inviato} if inviato else {}) | ({"detti": fatti} if fatti else {}))
     for vecchia in chiavi_vecchie(cambi_stato, 6):
         cambi_stato.pop(vecchia, None)
     scrivi_sicuro(file_stato, json.dumps(stato))
@@ -459,6 +462,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
 # ---------------------------------------------------------------- promemoria prima della scadenza
 NON_VALIDA = "non_valida"          # `_gia_schierato`: c'è una scelta salvata, ma non si può più schierare
 NON_MESSA = "non_messa"            # `_gia_schierato`: scelta salvata (web o app) e a posto, ma non segnata come messa nell'app della lega
+SOLO_SCADENZA = "solo_scadenza"    # promemoria: i titolari a rischio li ha appena detti il «cambio pronto», resta solo l'ora (#906)
 
 
 def _giornata(giornata: int, regole: Regole) -> frasi.Frase:
@@ -466,32 +470,41 @@ def _giornata(giornata: int, regole: Regole) -> frasi.Frase:
     return frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole), avviso=True)
 
 
-def _gia_schierato(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int,
-                   file_scelte: Path | None) -> list[str] | str | None:
-    """None se non hai ancora schierato (nessuna scelta salvata, né «ho schierato la consigliata»). `NON_VALIDA` se la scelta salvata
-    non si può più schierare (regola unica della scelta, come la Formazione: vale la consigliata, come senza scelta, ma il promemoria
-    lo dice con una frase sua). Altrimenti la lista dei titolari che hai schierato e che ora risultano fuori, in panchina o non
-    citati nelle probabili; se non ce n'è nessuno, la lista vuota (a posto) oppure `NON_MESSA` (#639): web e iPhone salvano da soli
-    a ogni tocco, quindi una loro scelta è a posto solo con la spunta «L'ho messa» (l'iPhone ce l'ha dal riallineamento, #673). Le
-    scelte che non dicono da dove arrivano (salvate prima del 13/11) restano a posto come prima. La regola è una sola: la usano il
-    promemoria e `serve_promemoria` (campo di GET /api/oggi)."""
+def _situazione(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int,
+                file_scelte: Path | None) -> tuple[list[tuple[int, str, str]] | str | None, bool]:
+    """La scelta salvata vista dal promemoria: (esito, schierata). `esito` è la regola di `_gia_schierato`, con i titolari a rischio
+    come (codice, nome, stato nelle probabili); `schierata` è vero se la scelta è segnata «L'ho messa» o è di quelle salvate prima
+    del 13/11, che non dicono da dove arrivano (il testo dice «hai schierato» invece di «hai salvato», #906)."""
     from . import consigli, scelte
     scelta = scelte.leggi(stagione, giornata, file_scelte)
     if not scelta:
-        return None
+        return None, False
     try:
         prev, _, _ = consigli.previsioni(db, regole, giornata)
     except Exception:                              # noqa: BLE001  (senza previsioni la regola si controlla con la rosa)
         prev = None
     if not scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole):
-        return NON_VALIDA                          # giocatore ceduto, modulo non ammesso...: vale la consigliata
+        return NON_VALIDA, False                   # giocatore ceduto, modulo non ammesso...: vale la consigliata
+    schierata = scelta.get("da") not in scelte.DA or scelta.get("messa") is True
     problemi = []
     for i in (scelta["titolari"] if prev is not None else []):     # senza previsioni non so dire se è cambiato qualcosa
-        if i in prev.index and prev.at[i, "stato"] in FUORI + ("panchina", "non_citato"):
-            problemi.append(str(prev.at[i, "nome"]))
-    if not problemi and scelta.get("da") in scelte.DA and scelta.get("messa") is not True:
-        return NON_MESSA
-    return problemi
+        if i in prev.index and prev.at[i, "stato"] in MOTIVI_FUORI:
+            problemi.append((int(i), str(prev.at[i, "nome"]), str(prev.at[i, "stato"])))
+    if not problemi and not schierata:
+        return NON_MESSA, False
+    return problemi, schierata
+
+
+def _gia_schierato(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int,
+                   file_scelte: Path | None) -> list[tuple[int, str, str]] | str | None:
+    """None se non hai ancora schierato (nessuna scelta salvata, né «ho schierato la consigliata»). `NON_VALIDA` se la scelta salvata
+    non si può più schierare (regola unica della scelta, come la Formazione: vale la consigliata, come senza scelta, ma il promemoria
+    lo dice con una frase sua). Altrimenti la lista dei titolari che hai schierato e che ora risultano fuori, in panchina o non
+    citati nelle probabili, come (codice, nome, stato); se non ce n'è nessuno, la lista vuota (a posto) oppure `NON_MESSA` (#639):
+    web e iPhone salvano da soli a ogni tocco, quindi una loro scelta è a posto solo con la spunta «L'ho messa» (l'iPhone ce l'ha
+    dal riallineamento, #673). Le scelte che non dicono da dove arrivano (salvate prima del 13/11) restano a posto come prima. La
+    regola è una sola: la usano il promemoria, `serve_promemoria` e `testi_promemoria` (campi di GET /api/oggi)."""
+    return _situazione(db, regole, rose, stagione, giornata, file_scelte)[0]
 
 
 def serve_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int, file_scelte: Path | None) -> bool:
@@ -502,15 +515,91 @@ def serve_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagion
     return _gia_schierato(db, regole, rose, stagione, giornata, file_scelte) != []
 
 
+def _testo_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, giornata: int, nome: str, inizio: datetime, adesso: datetime,
+                      esito, schierata: bool, guasti: list[str] | None = None) -> tuple[frasi.Frase, frasi.Frase]:
+    """Titolo e testo del promemoria della finestra `nome` («60» o «15») per l'`esito` di `_situazione` (mai la lista vuota: allora
+    il promemoria non parte). Il fatto che conta in testa al testo e nel titolo, la giornata e l'ora dopo: con due o tre righe il
+    resto si taglia (#906). Lo usano il giro dei promemoria e `testi_promemoria`.
+    Se i dettagli della formazione (un'ora prima) non si calcolano il testo resta senza, e il guasto va in `guasti` o nel registro."""
+    from . import consigli
+    g, ora = _giornata(giornata, regole), inizio.strftime("%H:%M")
+    un_ora = nome == "60"
+    if esito == NON_MESSA:                         # salvata ma non segnata come messa: la domanda è proprio questa (#639)
+        return F("n.t_non_messa"), F("n.non_messa_tra_un_ora" if un_ora else "n.non_messa_ultimi_minuti", giornata=g, ora=ora)
+    if isinstance(esito, list) and esito:          # titolari a rischio: il loro stato vero, «A è infortunato e B è squalificato»
+        motivi = [F("n.m_" + stato, nome=chi) for _, chi, stato in esito]
+        return (F("n.t_titolare_rischio" if len(esito) == 1 else "n.t_titolari_rischio"),
+                F("n.rischio_schierata" if schierata else "n.rischio_salvata", motivi=_elenco(motivi, 2), giornata=g, ora=ora))
+    if esito == SOLO_SCADENZA:                     # formazione schierata, titolari già detti dal «cambio pronto»: solo l'ora
+        return (F("n.t_un_ora" if un_ora else "n.t_ultimi_minuti"),
+                F("n.tra_un_ora" if un_ora else "n.solo_scadenza", giornata=g, ora=ora))
+    non_valida = esito == NON_VALIDA
+    titolo = F("n.t_non_valida") if non_valida else F("n.t_un_ora" if un_ora else "n.t_ultimi_minuti")
+    if not un_ora:
+        return titolo, F("n.non_valida_ultimi_minuti" if non_valida else "n.ultimi_minuti", giornata=g, ora=ora)
+    parti = [F("n.non_valida_tra_un_ora" if non_valida else "n.tra_un_ora", giornata=g, ora=ora)]
+    try:
+        f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)
+        dubbi = [x["nome"] for x in f["titolari"] if x["titolarita"] != "titolare" or x["dubbio"]][:4]
+        parti.append(F("n.consigliato", modulo=f["modulo"], punti=float(f["punteggio_atteso"])))
+        if dubbi:
+            parti.append(F("n.da_controllare", nomi=", ".join(dubbi)))
+    except ValueError:                             # nessuna formazione possibile con la rosa: non è un guasto, parte senza dettagli
+        pass
+    except Exception as e:                         # noqa: BLE001  (il promemoria parte comunque, anche senza i dettagli)
+        segna_guasto(guasti, "promemoria senza i dettagli della formazione", e)
+    return titolo, frasi.elenco(parti, sep=" ")
+
+
+def _fatti_detti(voce) -> dict[str, str]:
+    """I fatti già detti dal «cambio pronto» per una giornata, «codice/motivo» -> quando (campo `detti` dello stato dei cambi)."""
+    detti = voce.get("detti") if isinstance(voce, dict) else None
+    return {str(k): str(v) for k, v in detti.items()} if isinstance(detti, dict) else {}
+
+
+def _fatti_da_poco(file_cambi: Path, chiave: str, adesso: datetime) -> set[str]:
+    """I fatti («codice/motivo») che il «cambio pronto» ha detto negli ultimi DOPPIONE_PROMEMORIA minuti per la giornata `chiave`."""
+    tutti = _json(file_cambi).get("cambi")
+    voce = tutti.get(chiave) if isinstance(tutti, dict) else None
+    return {k for k, quando in _fatti_detti(voce).items() if _da_poco(quando, adesso, DOPPIONE_PROMEMORIA)}
+
+
+def testi_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int, scadenza: datetime | None,
+                     file_scelte: Path | None, adesso: datetime | None = None, lingua: str = LINGUA_PREDEFINITA,
+                     guasti: list[str] | None = None) -> list[dict]:
+    """I due promemoria della giornata come li scriverebbe adesso il giro del server, nella `lingua` degli avvisi:
+    [{"minuti": 60, "titolo", "testo"}, {"minuti": 15, "titolo", "testo"}]. `scadenza`: quando si chiude la formazione, quella
+    che mostra Oggi (la stessa regola del giro: prima partita meno i minuti della lega); None se non si sa. La lista vuota se il
+    promemoria non serve (la regola di `serve_promemoria`) o la scadenza non si sa. Come `serve_promemoria` non guarda l'ora né le
+    finestre, e nemmeno i doppioni con il «cambio pronto» (li toglie il giro che manda). È il campo `testi_promemoria` di
+    GET /api/oggi: l'iPhone mostra questi testi nei suoi promemoria locali invece di comporne di suoi (#906)."""
+    adesso = adesso or datetime.now()
+    inizio = scadenza
+    if inizio is None:
+        return []
+    esito, schierata = _situazione(db, regole, rose, stagione, giornata, file_scelte)
+    if esito == []:
+        return []
+    testi = []
+    for nome, *_ in FINESTRE:
+        titolo, testo = _testo_promemoria(db, regole, rose, giornata, nome, inizio, adesso, esito, schierata, guasti)
+        testi.append({"minuti": int(nome), "titolo": frasi.testo(titolo, lingua), "testo": frasi.testo(testo, lingua)})
+    return testi
+
+
 def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_PROMEMORIA,
                manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_scelte: Path | None = None,
-               guasti: list[str] | None = None) -> list[str]:
+               guasti: list[str] | None = None, file_cambi: Path | None = None) -> list[str]:
     """Un avviso un'ora prima e uno un quarto d'ora prima della scadenza della formazione (la prima partita della giornata meno i
     minuti della regola della lega; una volta sola ciascuno), per tutti: le vecchie scelte `promemoria_60` e `promemoria_15` non
     contano più (#676); `opzioni` resta per chi chiama (le ore tranquille le guarda `manda`).
     Se hai già schierato (scelta salvata che si può ancora schierare, e messa: `_gia_schierato`) e nessuno dei tuoi titolari è
     diventato indisponibile, non ti disturba; se qualcuno lo è diventato, l'avviso parte e lo dice. Quando tace non segna niente
     come mandato: se più tardi cambia qualcosa, parte ancora.
+    Un solo avviso per lo stesso fatto (#906): un titolare che il «cambio pronto» ha detto negli ultimi DOPPIONE_PROMEMORIA minuti
+    con lo stesso stato non si ripete. Il richiamo della scadenza parte sempre: se non resta nessun titolare da dire, il promemoria
+    dice solo l'ora (e chiede della spunta «L'ho messa» se manca). `file_cambi`: lo stato del giro dei cambi (di base
+    `notifiche.json` accanto a `file_stato`).
     Se i dettagli della formazione non si calcolano il promemoria parte senza, e il guasto va in `guasti` o nel registro."""
     from . import consigli
     adesso = adesso or datetime.now()
@@ -522,6 +611,7 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
     if inizio is None or inizio <= adesso:
         return []
     minuti = (inizio - adesso).total_seconds() / 60
+    file_cambi = file_cambi or file_stato.with_name(FILE_STATO.name)
     stato = _json(file_stato)
     mandati = stato.setdefault("promemoria", [])
     inviati = []
@@ -534,35 +624,13 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
             mandati.append(chiave)                 # l'avviso «cambia la formazione» è appena partito e dice già l'ora: niente doppione
             saltati = True
             continue
-        ora_chiusura = inizio.strftime("%H:%M")
-        problemi = _gia_schierato(db, regole, rose, stagione, giornata, file_scelte)
-        non_valida = problemi == NON_VALIDA
-        if problemi == []:
+        esito, schierata = _situazione(db, regole, rose, stagione, giornata, file_scelte)
+        if esito == []:
             continue                               # hai già schierato (e messo) e va ancora bene: niente disturbo
-        if problemi == NON_MESSA:                  # salvata ma non segnata come messa: la domanda è proprio questa (#639)
-            testo = F("n.non_messa_tra_un_ora" if nome == "60" else "n.non_messa_ultimi_minuti", giornata=_giornata(giornata, regole),
-                      ora=ora_chiusura)
-            titolo = F("n.t_un_ora" if nome == "60" else "n.t_ultimi_minuti")
-        elif problemi and not non_valida:
-            testo = F("n.rischio", n=len(problemi[:4]), nomi=", ".join(problemi[:4]), giornata=_giornata(giornata, regole), ora=ora_chiusura)
-            titolo = F("n.t_titolare_rischio")
-        elif nome == "60":
-            parti = [F("n.non_valida_tra_un_ora" if non_valida else "n.tra_un_ora", giornata=_giornata(giornata, regole), ora=ora_chiusura)]
-            try:
-                f = consigli.formazione(db, regole, rose, giornata=giornata, adesso=adesso)
-                dubbi = [x["nome"] for x in f["titolari"] if x["titolarita"] != "titolare" or x["dubbio"]][:4]
-                parti.append(F("n.consigliato", modulo=f["modulo"], punti=float(f["punteggio_atteso"])))
-                if dubbi:
-                    parti.append(F("n.da_controllare", nomi=", ".join(dubbi)))
-            except ValueError:                     # nessuna formazione possibile con la rosa: non è un guasto, parte senza dettagli
-                pass
-            except Exception as e:                 # noqa: BLE001  (il promemoria parte comunque, anche senza i dettagli)
-                segna_guasto(guasti, "promemoria senza i dettagli della formazione", e)
-            testo = frasi.elenco(parti, sep=" ")
-            titolo = F("n.t_un_ora")
-        else:
-            testo = F("n.non_valida_ultimi_minuti" if non_valida else "n.ultimi_minuti", giornata=_giornata(giornata, regole), ora=ora_chiusura)
-            titolo = F("n.t_ultimi_minuti")
+        if isinstance(esito, list):                # chi il «cambio pronto» ha appena detto non si ripete; la scadenza sì
+            detti = _fatti_da_poco(file_cambi, f"{stagione}/{giornata}", adesso)
+            esito = [p for p in esito if f"{p[0]}/{p[2]}" not in detti] or (SOLO_SCADENZA if schierata else NON_MESSA)
+        titolo, testo = _testo_promemoria(db, regole, rose, giornata, nome, inizio, adesso, esito, schierata, guasti)
         # se l'invio fallisce si riprova al giro dopo, finché dura la finestra; la notifica web non arriva dopo la scadenza
         if manda(titolo, testo, priorita, "alarm_clock", vale_per=inizio - adesso):
             mandati.append(chiave)
