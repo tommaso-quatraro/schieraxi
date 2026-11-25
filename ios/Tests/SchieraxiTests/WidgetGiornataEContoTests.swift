@@ -61,6 +61,26 @@ struct WidgetGiornataEContoTests {
         #expect(aParte.isEmpty, "«Prossima:» in un testo a parte in: \(aParte)")
     }
 
+    private typealias ProvaColonna = DisposizioneWidget.ProvaColonnaSenzaFormazione
+
+    // Foto della corsa 45518745600: con «Prossima: 4 giorni 1 h» in un testo solo, nel piccolo dell'iPhone con il testo grande il
+    // conto andava a capo e la colonna perdeva «Questa giornata è già iniziata», che su main c'era e spiega perché non c'è una
+    // formazione. Prima cede la parola «Prossima:» (il conto resta, sotto «Prepara la prossima», su una riga), poi quella riga.
+    @Test("Piccolo di chi è entrato a giornata iniziata: prima via «Prossima:», per ultima «Questa giornata è già iniziata»")
+    func colonnaSenzaFormazione() {
+        #expect(DisposizioneWidget.proveColonnaSenzaFormazione(conConto: true) == [
+            ProvaColonna(giaIniziata: true, conto: .conProssima),
+            ProvaColonna(giaIniziata: true, conto: .solo),
+            ProvaColonna(giaIniziata: false, conto: .conProssima),
+            ProvaColonna(giaIniziata: false, conto: .solo),
+        ])
+        // il medio (il conto sta a destra) e chi non ha la prossima: come prima, cede solo quella riga
+        #expect(DisposizioneWidget.proveColonnaSenzaFormazione(conConto: false) == [
+            ProvaColonna(giaIniziata: true, conto: nil),
+            ProvaColonna(giaIniziata: false, conto: nil),
+        ])
+    }
+
     // MARK: Prossima giornata sulla schermata di blocco: il conto alla rovescia
 
     @Test("Rettangolo a giornata finita: «Giornata 8: finita», come il widget Da controllare e il documento")

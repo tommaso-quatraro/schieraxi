@@ -1064,6 +1064,19 @@ enum DisposizioneWidget {
                 ProvaRettangoloFormazione(giornata: .accanto, daControllare: dubbi)]
     }
 
+    // PROVVISORIO (#871): come oggi, per vedere il test fallire prima del codice
+    enum ContoColonna: Equatable { case conProssima, solo }
+
+    struct ProvaColonnaSenzaFormazione: Equatable {
+        var giaIniziata: Bool
+        var conto: ContoColonna?
+    }
+
+    static func proveColonnaSenzaFormazione(conConto: Bool) -> [ProvaColonnaSenzaFormazione] {
+        let conto: ContoColonna? = conConto ? .conProssima : nil
+        return [ProvaColonnaSenzaFormazione(giaIniziata: true, conto: conto), ProvaColonnaSenzaFormazione(giaIniziata: false, conto: conto)]
+    }
+
     /// Una prova della colonna di sinistra del widget Formazione extra large: quanto è grande il volto sul campo e se sotto c'è
     /// il cognome.
     struct ProvaCampoExtraLarge: Equatable {
