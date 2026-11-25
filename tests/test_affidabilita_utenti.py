@@ -63,6 +63,27 @@ def test_la_prova_si_rifa_per_ogni_utente_con_le_sue_regole_e_rose(mondo):
     assert comandi._prova_per_utente(db, scadenza=time.monotonic() + 60) == (0, 0, []) and len(chiamate) == 2
 
 
+def test_la_prova_si_rifa_quando_l_utente_cambia_le_sue_regole_o_le_sue_rose(mondo):
+    """#840: la prova di un utente si rifaceva solo quando cambiavano le giornate o i loro voti; con regole o rose nuove la carta
+    restava con i numeri di prima fino alla giornata dopo. Ora regole e rose sono nell'impronta: si rifà quella di chi le ha
+    cambiate, una volta. Il nome di una squadra non conta."""
+    from fanta import __main__ as comandi
+    db, (primo, secondo), chiamate = mondo
+    giro = lambda: comandi._prova_per_utente(db, scadenza=time.monotonic() + 60)     # noqa: E731
+    assert giro() == (2, 0, []) and giro() == (0, 0, [])
+    regole.salva(imposta(Regole(), "bonus.gol.A", "5.0"), secondo.regole)             # il secondo cambia un bonus
+    assert giro() == (1, 0, []) and chiamate[-1] == (5.0, [[20, 21, 22]])
+    assert giro() == (0, 0, [])
+    rose = lega.carica(primo.rose)                                                    # il primo prende un giocatore
+    rose.squadre[0].giocatori.append(lega.GiocatoreRosa(19, "G9", "A", "INT"))
+    lega.salva(rose, primo.rose)
+    assert giro() == (1, 0, []) and chiamate[-1] == (3.0, [[10, 11, 12, 19]])
+    assert giro() == (0, 0, [])
+    rose.squadre[0].nome = "Un altro nome"                                            # rinominare la squadra non la rifà
+    lega.salva(rose, primo.rose)
+    assert giro() == (0, 0, []) and len(chiamate) == 4
+
+
 def test_un_utente_rotto_non_ferma_gli_altri_e_il_tempo_finito_rimanda(mondo, monkeypatch):
     from fanta import __main__ as comandi
     db, (primo, secondo), chiamate = mondo
