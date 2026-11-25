@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// Dove porta un passo della configurazione guidata (la schermata si chiude, poi l'app va lì).
+/// Dove porta un passo della configurazione guidata (la schermata si chiude, poi l'app va lì). Lasciata la pagina (o chiuso il
+/// foglio del widget) a cui porta un passo, la guida si riapre da quel passo (`RitornoAllaGuida`, #880).
 enum AzioneGuida: Equatable {
-    /// «Importa le rose»: lasciata la pagina delle rose la guida si riapre (`RitornoAllaGuida`, #880).
+    /// «Importa le rose».
     case importaRose
-    case squadre(nome: String?)
+    /// «Scegli la squadra»: l'elenco delle squadre, dove si sceglie la propria.
+    case scegliSquadra
+    /// «Scegli stemma e maglia»: la rosa della propria squadra (senza squadra scelta, l'elenco delle squadre).
+    case stemma(nome: String?)
     case impostazioni
     /// «Tutto pronto»: «Vai alla Formazione» e il collegamento a Regole e scadenza della frase sui punteggi (#880).
     case formazione
@@ -56,9 +60,12 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     /// Il server da cui è stata letta la guida: se nel frattempo è cambiato (Impostazioni > Server, spostamento automatico),
     /// alla chiusura non si scrive niente.
     private var indirizzoLetto: String?
+    /// Riaperta dopo una pagina in cui l'aveva portata un passo: riparte da quel passo, o dal primo dopo se è fatto (#880).
+    private let riprendiDa: PassoGuidato?
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, riprendiDa: PassoGuidato? = nil) {
         self.server = server
+        self.riprendiDa = riprendiDa
         super.init()
     }
 
@@ -89,7 +96,7 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
         stato = await Self.leggiStato(server)
         let fattiOraDaiDati = stato.fattiDaiDati
         passi = PrimoAvvioLogica.daFare(avanzamento, stato: stato)
-        indice = 0
+        indice = PrimoAvvioLogica.inizio(passi, riprendiDa: riprendiDa)
         fase = .pronta
         // Chi ha già cominciato e nel frattempo ha fatto dei passi (le rose, la squadra): il server lo viene a sapere.
         if let a = avanzamento, !fattiOraDaiDati.isSubset(of: Set(a.fatti.compactMap(PassoGuidato.init(rawValue:)))) {

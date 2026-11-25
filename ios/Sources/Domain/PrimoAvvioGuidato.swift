@@ -171,6 +171,9 @@ enum PrimoAvvioLogica {
         return PassoGuidato.allCases.filter { !gia.contains($0) }
     }
 
+    /// Il passo da cui parte la guida.
+    static func inizio(_ passi: [PassoGuidato], riprendiDa: PassoGuidato?) -> Int { 0 }
+
     /// Il corpo del PUT: si parte da quello che il server ricorda (anche i passi di altri dispositivi) e si aggiunge il nuovo.
     /// Un passo non sta mai in «fatti» e «saltati» insieme; i nomi che il server non conosce non si mandano (darebbero errore).
     static func corpo(precedente: AvanzamentoPrimoAvvio?, passiAmmessi: [String], fatti nuoviFatti: Set<PassoGuidato>,

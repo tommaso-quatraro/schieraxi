@@ -16,10 +16,13 @@ struct ImportaExcelView: View {
     @State private var scegli = false
     @State private var cerca: DubbioDaCercare?
 
-    init(server: any ServerClient, dallaGuida: Bool = false) {
+    /// `squadre`: le squadre già lette dalle Impostazioni, se ci sono. Con loro, o arrivando dalla guida, si sa subito se le rose ci
+    /// sono e la pagina non cambia testi dopo la risposta del server (revisione della #887).
+    init(server: any ServerClient, dallaGuida: Bool = false, squadre: [SquadraLega]? = nil) {
         self.server = server
         self.dallaGuida = dallaGuida
-        _vm = StateObject(wrappedValue: ImportaExcelViewModel(server: server))
+        let note = ImportaExcelViewModel.roseNote(dallaGuida: dallaGuida, squadre: squadre)
+        _vm = StateObject(wrappedValue: ImportaExcelViewModel(server: server, roseSalvate: note))
         _dubbi = StateObject(wrappedValue: DubbiRoseViewModel(server: server))
     }
 
@@ -71,8 +74,11 @@ struct ImportaExcelView: View {
             // l'esito dell'ultimo salvataggio, in cima (differenza ammessa con la web: docs/COERENZA-WEB-IPHONE.md)
             if let e = vm.esito { EsitoRoseSalvate(esito: e) }
             Section {
-                Text(vm.spiegazione)
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+                // finché non si sa se le rose ci sono, niente frase: potrebbe essere quella sbagliata
+                if let spiegazione = vm.spiegazione {
+                    Text(spiegazione)
+                        .font(.footnote).foregroundStyle(Color.testoSecondario)
+                }
                 Button { scegli = true } label: {
                     Label(Catalogo.Pav.scegliFile, systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
                 }
@@ -82,7 +88,7 @@ struct ImportaExcelView: View {
             }
             Section {
                 // «… Le squadre che non sono nel file restano com'erano» e l'interruttore servono solo a chi ha già le rose
-                if !vm.primoCaricamento {
+                if vm.mostraPerChiHaLeRose {
                     Text(Catalogo.Lega.nonHaiFile)
                         .font(.footnote).foregroundStyle(Color.testoSecondario)
                 }
@@ -99,7 +105,7 @@ struct ImportaExcelView: View {
                     }
                     .accessibilityLabel(Catalogo.Lega.incollaQuiTesto)
                     .disabled(vm.inCorso)
-                if !vm.primoCaricamento {
+                if vm.mostraPerChiHaLeRose {
                     Toggle(Catalogo.Lega.togliSquadreChe, isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: Tema.areaTocco)
                 }
                 Button { Task { await vm.importaTesto() } } label: {

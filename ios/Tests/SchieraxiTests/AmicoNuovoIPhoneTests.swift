@@ -4,8 +4,10 @@ import Testing
 
 // Un amico nuovo sull'iPhone come sulla web dopo la #878 (#880):
 // 1. «Importa le rose» della guida non segna saltati i passi rimasti: lasciata la pagina delle rose (salvate o «indietro»), la
-//    guida si riapre e continua con i passi che restano, fino a «Tutto pronto»;
-// 4. la pagina delle rose al primo caricamento parla a chi le carica la prima volta (la frase del passo «Le rose» della web);
+//    guida si riapre e continua con i passi che restano, fino a «Tutto pronto»; lo stesso dopo le pagine di squadra e stemma e
+//    il foglio del widget, ripartendo dal passo da cui era uscita (revisione della #887);
+// 4. la pagina delle rose al primo caricamento parla a chi le carica la prima volta (la frase del passo «Le rose» della web),
+//    subito se arriva dalla guida, e non mostra frasi forse sbagliate finché non sa se le rose ci sono;
 // 5. dopo «Esci» si rientra dove si apre l'app (Formazione o Giornate), non sulle Impostazioni;
 // 6. nel campo «Codice d'invito» va bene anche il link d'invito incollato: il codice si legge come `invitoDaIndirizzo` della web.
 // Server finti; nomi, indirizzi e codici INVENTATI.
@@ -112,47 +114,151 @@ struct GuidaDopoLeRoseTests {
         #expect(riaperta.passi == [.stemma, .widget, .avvisi])
         #expect(riaperta.esito(.squadra) == .fatto)
     }
+
+    @Test("Tornata dalla pagina dello stemma, la guida riparte dallo stemma: la squadra saltata prima non si ripropone")
+    func riapertaDalloStemma() async {
+        // squadra saltata con «Salta», poi «Scegli stemma e maglia»: uscendo i passi rimasti sono stati segnati saltati (si
+        // ritrovano in «Da fare» se l'app si chiude prima di tornare)
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose"], "saltati": ["squadra", "stemma", "widget", "avvisi"], "chiuso": false}"#)
+        memoria.importaRose(mia: nil)
+        let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .stemma)
+        await riaperta.carica()
+        #expect(riaperta.passi == [.squadra, .stemma, .widget, .avvisi])
+        #expect(riaperta.passoCorrente == .stemma)
+    }
+
+    @Test("Tornata dalla pagina della squadra con la squadra scelta, la guida riparte dallo stemma")
+    func riapertaDopoLaSquadra() async {
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose"], "saltati": ["squadra", "stemma", "widget", "avvisi"], "chiuso": false}"#)
+        memoria.importaRose(mia: "Squadra di prova")
+        let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .squadra)
+        await riaperta.carica()
+        #expect(riaperta.passoCorrente == .stemma)
+        #expect(riaperta.esito(.squadra) == .fatto)
+    }
+
+    @Test("Tornata dall'ultimo passo che resta, la guida mostra «Tutto pronto»")
+    func riapertaSulRiepilogo() async {
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "widget", "avvisi"], "saltati": ["stemma"], "chiuso": false}"#)
+        memoria.importaRose(mia: "Squadra di prova")
+        let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .widget)
+        await riaperta.carica()
+        #expect(riaperta.passi == [.stemma])
+        #expect(riaperta.eRiepilogo)
+    }
 }
 
-@Suite("La pagina delle rose aperta dalla guida: lasciata, la guida si riapre (#880)")
+@Suite("Da dove riparte la guida tornando da una pagina in cui l'aveva portata un passo (#880)")
+struct InizioGuidaTests {
+    /// I passi da fare, il passo da cui era uscita (nil = aperta da sola o da «Da fare») e il passo da cui riparte.
+    static let casi: [([PassoGuidato], PassoGuidato?, Int)] = [
+        ([.squadra, .stemma, .widget, .avvisi], .rose, 0),
+        ([.stemma, .widget, .avvisi], .squadra, 0),
+        ([.squadra, .stemma, .widget, .avvisi], .stemma, 1),
+        ([.squadra, .widget, .avvisi], .stemma, 1),
+        ([.widget, .avvisi], .widget, 0),
+        ([.squadra], .widget, 1),
+        ([.squadra, .stemma], nil, 0),
+    ]
+
+    @Test("Dal passo da cui era uscita, se è ancora da fare; altrimenti dal primo dopo; nessuno dopo: «Tutto pronto»",
+          arguments: InizioGuidaTests.casi)
+    func inizio(passi: [PassoGuidato], riprendiDa: PassoGuidato?, atteso: Int) {
+        #expect(PrimoAvvioLogica.inizio(passi, riprendiDa: riprendiDa) == atteso)
+    }
+}
+
+@Suite("Le pagine aperte dalla guida: lasciate, la guida si riapre dal loro passo (#880)")
 struct RitornoAllaGuidaTests {
-    /// Le pile delle Impostazioni una dopo l'altra: per ognuna, se la guida va riaperta (`#expect` non chiama metodi `mutating`).
-    private func segui(_ r: inout RitornoAllaGuida, _ pile: [[PaginaImpostazioni]]) -> [Bool] {
+    /// Le pile delle Impostazioni una dopo l'altra: per ognuna, il passo da cui riaprire la guida (nil = non si riapre).
+    /// `#expect` non chiama metodi `mutating`: i risultati si raccolgono prima.
+    private func segui(_ r: inout RitornoAllaGuida, _ pile: [[PaginaImpostazioni]]) -> [PassoGuidato?] {
         pile.map { r.pilaCambiata($0) }
     }
 
-    @Test("Lasciata la pagina delle rose (salvate o «indietro») la guida si riapre, una volta sola")
+    private func foglio(_ r: inout RitornoAllaGuida, _ stati: [Bool]) -> [PassoGuidato?] {
+        stati.map { r.foglioWidget(aperto: $0) }
+    }
+
+    @Test("Lasciata la pagina delle rose (salvate o «indietro») la guida si riapre dalle rose, una volta sola")
     func siRiapreUnaVolta() {
         var r = RitornoAllaGuida()
-        r.importaChiesta()
-        #expect(r.attivo)
+        r.chiesta(.pagina(.importa), dalPasso: .rose)
+        #expect(r.attivo(per: .importa))
         let aperta = segui(&r, [[.importa]])
-        #expect(aperta == [false], "la pagina delle rose è aperta: la guida aspetta")
-        #expect(r.attivo)
+        #expect(aperta == [nil], "la pagina delle rose è aperta: la guida aspetta")
+        #expect(r.attivo(per: .importa))
         let lasciata = segui(&r, [[]])
-        #expect(lasciata == [true], "pagina lasciata: la guida si riapre")
-        #expect(!r.attivo)
+        #expect(lasciata == [.rose], "pagina lasciata: la guida si riapre")
+        #expect(!r.attivo(per: .importa))
         let dopo = segui(&r, [[.importa], []])
-        #expect(dopo == [false, false], "la volta dopo la pagina è aperta dalle Impostazioni: niente guida")
+        #expect(dopo == [nil, nil], "la volta dopo la pagina è aperta dalle Impostazioni: niente guida")
     }
 
     @Test("Aperta dalle Impostazioni o dalla Formazione, senza la guida, lasciarla non apre niente")
     func senzaGuida() {
         var r = RitornoAllaGuida()
-        #expect(!r.attivo)
+        #expect(!r.attivo(per: .importa))
         let risposte = segui(&r, [[.importa], []])
-        #expect(risposte == [false, false])
+        #expect(risposte == [nil, nil])
+        let widget = foglio(&r, [true, false])
+        #expect(widget == [nil, nil])
     }
 
     @Test("La pagina non si è aperta (Regole con modifiche da salvare) e si torna indietro: niente guida a sorpresa dopo")
     func paginaMaiAperta() {
         var r = RitornoAllaGuida()
-        r.importaChiesta()
+        r.chiesta(.pagina(.importa), dalPasso: .rose)
         let indietro = segui(&r, [[]])
-        #expect(indietro == [false])
-        #expect(!r.attivo)
+        #expect(indietro == [nil])
+        #expect(!r.attivo(per: .importa))
         let dopo = segui(&r, [[.importa], []])
-        #expect(dopo == [false, false])
+        #expect(dopo == [nil, nil])
+    }
+
+    @Test("La scelta della squadra: anche aprendo una rosa dall'elenco, la guida torna quando si lascia l'elenco")
+    func squadra() {
+        var r = RitornoAllaGuida()
+        r.chiesta(.pagina(.squadre), dalPasso: .squadra)
+        #expect(!r.attivo(per: .importa), "solo la pagina delle rose si chiude da sola dopo il salvataggio")
+        let pile = segui(&r, [[.squadre], [.squadre, .rosa("Squadra di prova")], [.squadre], []])
+        #expect(pile == [nil, nil, nil, .squadra])
+    }
+
+    @Test("Stemma e maglia nella rosa della tua squadra: lasciata la rosa, la guida torna dallo stemma")
+    func stemma() {
+        var r = RitornoAllaGuida()
+        r.chiesta(.pagina(.rosa("Squadra di prova")), dalPasso: .stemma)
+        let pile = segui(&r, [[.rosa("Squadra di prova")], []])
+        #expect(pile == [nil, .stemma])
+    }
+
+    @Test("«Collega il widget»: chiuso il foglio la guida torna dal widget; la pila delle Impostazioni non c'entra")
+    func widget() {
+        var r = RitornoAllaGuida()
+        r.chiesta(.widget, dalPasso: .widget)
+        let pile = segui(&r, [[.importa], []])
+        #expect(pile == [nil, nil])
+        let stati = foglio(&r, [true, false, false])
+        #expect(stati == [nil, .widget, nil])
+    }
+}
+
+@MainActor
+@Suite("La guida riaperta dopo una pagina sa da quale passo ripartire (#880)", .serialized)
+struct RiapriGuidaTests {
+    @Test("Riaperta sulla Formazione con il passo da cui ripartire; chiusa, il passo si dimentica")
+    func riapri() {
+        let prima = UserDefaults.standard.string(forKey: "ultimaSezione")
+        defer { UserDefaults.standard.set(prima, forKey: "ultimaSezione") }
+        let nav = Navigazione()
+        nav.sezione = .impostazioni
+        nav.riapriGuida(da: .stemma)
+        #expect(nav.guidaAperta)
+        #expect(nav.sezione == .formazione)
+        #expect(nav.guidaRiprendeDa == .stemma)
+        nav.guidaAperta = false
+        #expect(nav.guidaRiprendeDa == nil, "aperta dopo da «Da fare» o da sola, la guida riparte dall'inizio")
     }
 }
 
@@ -203,6 +309,42 @@ struct RoseAlPrimoCaricamentoTests {
         #expect(vm.esito != nil)
         #expect(!vm.primoCaricamento)
         #expect(vm.titolo == Catalogo.Lega.voceImporta)
+    }
+
+    @Test("Arrivando dalla guida si sa già che le rose mancano: i testi del primo caricamento subito, senza aspettare il server")
+    func dallaGuidaSubito() {
+        let vm = ImportaExcelViewModel(server: server(stato: nil), roseSalvate: false)
+        #expect(vm.primoCaricamento)
+        #expect(vm.titolo == Catalogo.Comune.importaRose)
+        #expect(vm.spiegazione == Catalogo.Pav.incollaTestoDelle)
+        #expect(!vm.mostraPerChiHaLeRose)
+    }
+
+    @Test("Finché non si sa se le rose ci sono, niente titolo né frasi che potrebbero essere sbagliate; poi la pagina giusta")
+    func finoAQuandoNonSiSa() async {
+        let vm = ImportaExcelViewModel(server: server(stato: nil))
+        #expect(vm.titolo.isEmpty)
+        #expect(vm.spiegazione == nil)
+        #expect(!vm.mostraPerChiHaLeRose)
+        await vm.leggiRoseSalvate()                 // il server non risponde: la pagina di sempre
+        #expect(vm.titolo == Catalogo.Lega.voceImporta)
+        #expect(vm.spiegazione == Catalogo.Lega.esportaRoseExcel)
+        #expect(vm.mostraPerChiHaLeRose)
+    }
+
+    /// Le squadre già lette dalle Impostazioni (`/api/squadre`), scritte come le manda il server.
+    private func squadre(_ json: String) throws -> [SquadraLega] {
+        try Decodifica.decodifica(Data(json.utf8))
+    }
+
+    @Test("Cosa si sa delle rose aprendo la pagina: dalle squadre già lette, altrimenti dalla guida, altrimenti niente")
+    func roseNote() throws {
+        let una = try squadre(#"[{"nome": "Squadra di prova", "mia": true, "giocatori": 25}]"#)
+        #expect(ImportaExcelViewModel.roseNote(dallaGuida: false, squadre: una) == true)
+        #expect(ImportaExcelViewModel.roseNote(dallaGuida: false, squadre: []) == false)
+        #expect(ImportaExcelViewModel.roseNote(dallaGuida: true, squadre: nil) == false)
+        #expect(ImportaExcelViewModel.roseNote(dallaGuida: false, squadre: nil) == nil)
+        #expect(ImportaExcelViewModel.roseNote(dallaGuida: true, squadre: una) == true, "le squadre lette vincono")
     }
 }
 

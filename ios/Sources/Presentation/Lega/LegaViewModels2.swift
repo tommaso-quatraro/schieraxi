@@ -32,7 +32,12 @@ final class ImportaExcelViewModel: ViewModelBase {
     var titolo: String { primoCaricamento ? Catalogo.Comune.importaRose : Catalogo.Lega.voceImporta }
     /// La frase in cima: al primo caricamento quella del passo «Le rose» della web («Per cominciare basta anche solo la tua
     /// squadra»), poi quella per chi aggiorna le rose («come fai di solito», «cosa è cambiato»).
-    var spiegazione: String { primoCaricamento ? Catalogo.Pav.incollaTestoDelle : Catalogo.Lega.esportaRoseExcel }
+    var spiegazione: String? { primoCaricamento ? Catalogo.Pav.incollaTestoDelle : Catalogo.Lega.esportaRoseExcel }
+    /// «Se non hai il file Excel: …» e l'interruttore «Togli le squadre che non sono nel file».
+    var mostraPerChiHaLeRose: Bool { !primoCaricamento }
+
+    /// Cosa si sa delle rose aprendo la pagina.
+    static func roseNote(dallaGuida: Bool, squadre: [SquadraLega]?) -> Bool? { nil }
 
     /// Chiede al server se le rose ci sono già. Se non risponde, o non lo dice, resta la pagina di sempre.
     func leggiRoseSalvate() async {
@@ -60,7 +65,7 @@ final class ImportaExcelViewModel: ViewModelBase {
 
     static let roseCambiate = Catalogo.Ar.cambiate
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, roseSalvate: Bool? = nil) {
         self.server = server
         super.init()
     }

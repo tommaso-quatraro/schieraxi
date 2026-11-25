@@ -81,6 +81,14 @@ final class Navigazione: ObservableObject {
         // riaperta: la prossima chiusura torna a essere dell'utente
         didSet { if guidaAperta { guidaChiusaDallApp = false } }
     }
+    /// Il passo da cui riparte la guida riaperta dopo una pagina in cui l'aveva portata.
+    private(set) var guidaRiprendeDa: PassoGuidato?
+
+    /// Riapre la guida dopo una pagina in cui l'aveva portata un passo.
+    func riapriGuida(da passo: PassoGuidato) {
+        sezione = .formazione
+        guidaAperta = true
+    }
     /// Una pagina delle Impostazioni da aprire (da un indirizzo `schieraxi://` o dalle decisioni della Formazione): la radice la apre.
     @Published var paginaDaAprire: PaginaImpostazioni?
     /// La giornata (numero di Serie A) da aprire nella pagina Giornate («Com'è andata» della Formazione): la pagina la prende e la

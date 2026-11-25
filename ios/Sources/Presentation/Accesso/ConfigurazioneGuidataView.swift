@@ -4,8 +4,9 @@ import SwiftUI
 /// alla fine. I passi sono quelli dell'iPhone (la web ne ha altri): titolo, «Salta» e il riepilogo hanno le parole della web.
 /// Parte da sola se la lega non ha ancora le rose e non è mai stata iniziata (con gli account, se nemmeno la vecchia procedura è
 /// finita: #600), o si riprende se era stata lasciata prima delle rose (anche sulla web), come la web (#595); si apre anche dalla
-/// lista «Da fare» di Oggi. Salta i passi già fatti. «Importa le rose» la chiude per la pagina delle rose e, lasciata quella, la
-/// guida si riapre con i passi che restano fino a «Tutto pronto» (#880, come la web che carica le rose dentro la guida).
+/// lista «Da fare» di Oggi. Salta i passi già fatti. Un passo che porta in un'altra schermata (rose, squadra, stemma, widget) la
+/// chiude e, lasciata quella, la guida si riapre da quel passo fino a «Tutto pronto» (#880, come la web, dove tutto succede
+/// dentro la guida).
 struct ConfigurazioneGuidataView: View {
     @StateObject private var vm: ConfigurazioneGuidataViewModel
     /// Cosa fare quando un passo porta in un'altra schermata (la guida si chiude prima).
@@ -16,8 +17,10 @@ struct ConfigurazioneGuidataView: View {
     @Environment(\.dismiss) private var chiudi
     @Environment(\.accessibilityReduceMotion) private var ridotto
 
-    init(server: any ServerClient, vai: @escaping (AzioneGuida) -> Void, chiusaDallApp: @escaping @MainActor () -> Bool = { false }) {
-        _vm = StateObject(wrappedValue: ConfigurazioneGuidataViewModel(server: server))
+    /// `riprendiDa`: riaperta dopo una pagina in cui l'aveva portata un passo, riparte da quel passo (#880).
+    init(server: any ServerClient, riprendiDa: PassoGuidato? = nil, vai: @escaping (AzioneGuida) -> Void,
+         chiusaDallApp: @escaping @MainActor () -> Bool = { false }) {
+        _vm = StateObject(wrappedValue: ConfigurazioneGuidataViewModel(server: server, riprendiDa: riprendiDa))
         self.vai = vai
         self.chiusaDallApp = chiusaDallApp
     }
@@ -141,15 +144,17 @@ struct ConfigurazioneGuidataView: View {
             chiudi()
             vai(.importaRose)
         case .squadra:
-            await uscendo(.squadre(nome: nil))
+            await uscendo(.scegliSquadra)
         case .stemma:
-            await uscendo(.squadre(nome: vm.stato.miaSquadra))
+            await uscendo(.stemma(nome: vm.stato.miaSquadra))
         case .widget:
             await uscendo(.collegaWidget)
         }
     }
 
-    /// Il passo porta in un'altra schermata: si ricorda cosa resta da fare, si chiude la guida e si va lì.
+    /// Il passo porta in un'altra schermata: si ricorda cosa resta da fare (se l'app si chiude prima di tornare, la guida si
+    /// ritrova in «Da fare» della Formazione), si chiude la guida e si va lì. Lasciata quella pagina, o chiuso il foglio del widget,
+    /// la guida si riapre da questo passo e continua fino a «Tutto pronto» (`RitornoAllaGuida`, revisione della #887).
     private func uscendo(_ azione: AzioneGuida) async {
         await vm.piuTardi()
         chiudi()
