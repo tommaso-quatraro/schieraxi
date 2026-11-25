@@ -14,9 +14,12 @@ struct TestaFormazione: Equatable {
     /// Il numero grande («40,0») e le parole accanto («punti finora · circa 75 a fine giornata», «punti (attesi 71,7)»).
     var punti: String?
     var testoPunti: String?
-    /// Sotto i punti: «2 giocatori devono ancora giocare», «Con la consigliata: 72,0 punti (66,1 attesi).».
+    /// Sotto i punti: la frase del server («2 giocatori devono ancora giocare», «Hanno giocato tutti tranne Bapepe, che aspetta il
+    /// recupero.»), «Con la consigliata: 72,0 punti (66,1 attesi).»; a giornata finita senza voti «I punti arrivano quando escono i
+    /// voti.» (`voti_in_arrivo`).
     var sotto: String?
-    /// «Manca il recupero di UDI vs MIL: i punti possono ancora cambiare.»
+    /// «Manca il recupero di UDI vs MIL: i punti possono ancora cambiare.», solo con un server di prima (senza le partite nel
+    /// rinvio): altrimenti la partita la dice il riquadro `rinvio`.
     var recuperi: String?
     /// Per chi è arrivato a partite cominciate: «Giornata 8 · 11ª di Serie A: è già iniziata. Questa è la formazione per la …».
     var nota: String?
@@ -36,6 +39,17 @@ struct TestaFormazione: Equatable {
     /// A campionato finito la frase del server («Il campionato è finito: previsioni e consigli ripartono con il calendario della
     /// prossima stagione.»), sotto il riepilogo dell'ultima giornata se c'è, al posto della giornata da preparare (#727).
     var campionatoFinito: String?
+    /// A giornata finita con una partita ancora da recuperare, il riquadro sotto i punti (#895, #900; vedi `Rinvio`).
+    var rinvio: Rinvio?
+
+    /// Il riquadro del rinvio della giornata finita, come `cardRinvio` con il titolo nel `riepilogoGiornata` della web: «Giornata 7 ·
+    /// 10ª di Serie A: partita rinviata», le partite con la data del recupero, la nota «Manca il recupero: i punti possono ancora
+    /// cambiare.», i miei giocatori coinvolti e il menu «per questa giornata» (`riepilogo.rinvio`).
+    struct Rinvio: Equatable {
+        let titolo: String
+        let nota: String?
+        let scelta: SceltaRinvio
+    }
 }
 
 extension TestaFormazione {
@@ -70,9 +84,9 @@ extension TestaFormazione {
                 if let previsti = c.puntiPrevisti, previsti.isFinite {
                     parole += " · " + Catalogo.Formazione.circaFine(n: Formato.decimali(previsti, cifre: 0))
                 }
-                let ancora = c.ancoraDaGiocare ?? 0
+                // la riga sotto i punti la sceglie il server (`situazione`, #895); un server di prima ha le parole di sempre
                 return TestaFormazione(giornata: giornata, inCorso: true, punti: Formato.punti(c.puntiFatti), testoPunti: parole,
-                                       sotto: ancora > 0 ? Catalogo.Oggi.ancoraDaGiocare(ancora) : Catalogo.Oggi.tuttiGiocato)
+                                       sotto: TestiFase.situazione(c))
             }
         case .finita:
             if let r = o.riepilogoGiornata {
@@ -83,6 +97,12 @@ extension TestaFormazione {
                 testa.mancaParlato = conto.mancaParlato
                 return testa
             }
+            // finita, voti non ancora usciti (`voti_in_arrivo`, #895): niente totale, ma la giornata di prima è finita e la frase
+            // del server lo dice; sotto la giornata della formazione, come con il riepilogo
+            if let v = o.votiInArrivoGiornata {
+                return TestaFormazione(giornata: Catalogo.Oggi.giornataFinita(g: nome(serieA: v.giornata, lega: v.giornataLega)),
+                                       sotto: v.testoPronto, prossima: giornata, chiude: conto.chiude, manca: conto.manca)
+            }
         case .prima:
             break
         }
@@ -92,7 +112,10 @@ extension TestaFormazione {
     }
 
     /// La giornata appena finita (`riepilogo` di Oggi), come `riepilogoGiornata` della web: «Giornata 7 · 10ª di Serie A: finita»,
-    /// «83,0 punti (attesi 71,7)», «Com'è andata», la consigliata se hai schierato un'altra formazione e il recupero che manca.
+    /// «83,0 punti (attesi 71,7)», «Com'è andata», la consigliata se hai schierato un'altra formazione e, con una partita ancora da
+    /// recuperare, il riquadro del rinvio (#895: prima il menu stava in fondo, sotto la panchina della giornata dopo, senza titolo).
+    /// La partita si dice una volta sola, nel riquadro: la riga «Manca il recupero di …» diventa la sua nota. Senza le partite nel
+    /// rinvio (server di prima) resta la riga dei recuperi.
     private static func riepilogo(_ r: RiepilogoGiornata) -> TestaFormazione {
         var testa = TestaFormazione(giornata: Catalogo.Oggi.giornataFinita(g: nome(serieA: r.giornata, lega: r.giornataLega)),
                                     punti: Formato.punti(r.puntiFatti),
@@ -102,7 +125,14 @@ extension TestaFormazione {
         if r.formazioneDi == "tua", let c = r.consigliata, c.puntiFatti != r.puntiFatti {
             testa.sotto = Catalogo.Oggi.conConsigliata(attesi: Formato.punti(c.puntiAttesi), fatti: Formato.punti(c.puntiFatti))
         }
-        testa.recuperi = TestiRinvio.recuperoManca(r.recuperi)
+        let conPartite = !(r.rinvio?.partite.isEmpty ?? true)
+        testa.recuperi = conPartite ? nil : TestiRinvio.recuperoManca(r.recuperi)
+        if let scelta = r.rinvio {
+            let g = nome(serieA: r.giornata, lega: r.giornataLega)       // la giornata del rinvio è quella del riepilogo
+            testa.rinvio = Rinvio(titolo: conPartite && scelta.partite.count > 1 ? Catalogo.Oggi.rinvioTitoloGiornataN(g: g)
+                                                                               : Catalogo.Oggi.rinvioTitoloGiornata1(g: g),
+                                  nota: conPartite && !r.recuperi.isEmpty ? Catalogo.Oggi.recuperoPunti : nil, scelta: scelta)
+        }
         return testa
     }
 

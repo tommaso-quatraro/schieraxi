@@ -53,7 +53,7 @@ enum LetturaScheda {
     enum Accanto: Equatable {
         /// Prima della partita: «gioca N%» (colorato sotto l'80%) e lo stato a parole, se c'è.
         case gioca(percento: Int, livello: SogliaGioca.Livello, parola: ParolaStato?)
-        /// A partita in corso: lo stato della partita al posto di «gioca N%».
+        /// A partita in corso: lo stato della partita al posto di «gioca N%»; accanto al voto d'ufficio «Voto d'ufficio».
         case stato(String)
     }
 
@@ -78,8 +78,9 @@ enum LetturaScheda {
             prima = .atteso(g.fvAtteso)
         }
         let accanto: Accanto?
-        if esito != nil {
-            accanto = finita ? nil : .stato(testoEsito)
+        if let esito {
+            // accanto al voto d'ufficio la sua parola («Voto d'ufficio», #895), come `esito.parola || esito.testo` della web
+            accanto = finita ? nil : .stato(esito.parola ?? testoEsito)
         } else {
             accanto = .gioca(percento: Formato.percento(SogliaGioca.letta(g.pVoto)), livello: SogliaGioca.livello(g.pVoto),
                              parola: ParolaStato(g))
