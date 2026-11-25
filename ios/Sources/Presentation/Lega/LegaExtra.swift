@@ -164,9 +164,14 @@ final class RosaViewModel: ViewModelBase {
         }
     }
 
-    /// «Non è la tua squadra?» (#863): salva la squadra scelta con `scegli` (`LegaViewModel.scegliMiaSquadra`). Da scrivere.
+    /// «Non è la tua squadra?» (#863): salva la squadra scelta con `scegli` (`LegaViewModel.scegliMiaSquadra`). Se non riesce la
+    /// rosa si rilegge dal server e i campi ripartono dai suoi valori, come dopo il 412 di «Cambia il nome» e dei crediti: dopo un 412
+    /// l'ETag è già quello nuovo, e un «Salva» con i dati vecchi in pagina riscriverebbe quelli salvati altrove (revisione della
+    /// #868). Riuscita, al posto di questa pagina si apre la rosa della squadra scelta. Nil se è andata bene, se no il motivo.
     func scegliMia(_ nome: String, con scegli: @MainActor (String) async -> String?) async -> String? {
-        await scegli(nome)
+        let errore = await scegli(nome)
+        if errore != nil { await carica(forza: true) }
+        return errore
     }
 
     /// Lo stemma o la maglia da un indirizzo web: lo scarica il server.
@@ -326,7 +331,8 @@ struct RosaView: View {
             if r.mia == true, let elenco = squadre.dato, elenco.count > 1 {
                 // dove la web cambia la propria squadra (#863): prima stava in «Squadre e rose», con «È la mia» sulle righe
                 DisclosureGroup(ParoleSquadre.nonLaTua) {
-                    SelettoreMiaSquadra(squadre: elenco, scegli: scegliMia)
+                    // se la scelta non riesce si rilegge anche questa rosa (`RosaViewModel.scegliMia`)
+                    SelettoreMiaSquadra(squadre: elenco) { nome in await vm.scegliMia(nome, con: scegliMia) }
                 }
             }
             cambiaIlNome
