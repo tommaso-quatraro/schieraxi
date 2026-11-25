@@ -12,13 +12,14 @@ import logging
 import os
 import re
 from contextlib import closing
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi import Path as FPath
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import account, account_email, contesto, fonti_attive, frasi, funzioni, percorsi, posta, registro, social
+from . import account, account_email, contesto, fonti_attive, frasi, funzioni, fuso, percorsi, posta, registro, social
 from .account import ErroreAccount, Utente
 
 LOG = logging.getLogger(__name__)
@@ -600,18 +601,39 @@ def _avviso_posti(db) -> dict:
 
 @router.post("/api/admin/inviti", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
 def crea_invito(dati: NuovoInvito):
-    """Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`."""
+    """Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`. `id` è il numero
+    dell'invito in GET /api/admin/inviti (#894: se proprio quell'invito si annulla, la web toglie il link che sta mostrando)."""
     with closing(account.apri()) as db:
         codice = account.crea_invito(db, dati.etichetta, dati.amministratore, usi_max=dati.usi)
         avviso = _avviso_posti(db)
-    return {"codice": codice, "etichetta": dati.etichetta.strip(), "valido_giorni": account.DURATA_INVITO.days, "usi_max": dati.usi} | avviso
+        numero = account.id_dell_invito(db, codice)
+    return {"codice": codice, "etichetta": dati.etichetta.strip(), "valido_giorni": account.DURATA_INVITO.days, "usi_max": dati.usi,
+            "id": numero} | avviso
+
+
+def dettaglio_invito(invito: dict) -> frasi.Frase | None:
+    """La riga di un invito aperto in Gestione › Inviti aperti (#894): quando è nato e quando scade, i giorni nell'ora italiana
+    («Creato mer 25 nov, scade mer 2 dic.»), e per un invito per più amici i posti ancora liberi. None per un invito chiuso
+    (finito, scaduto, annullato): la web mostra solo quelli aperti."""
+    if invito["stato"] != "attivo":
+        return None
+    giorno = lambda testo: frasi.giorno_mese(datetime.fromisoformat(testo).astimezone(fuso.FUSO))  # noqa: E731
+    creato, scade = giorno(invito["creato"]), giorno(invito["scade"])
+    if invito["usi_max"] > 1:
+        return frasi.F("admin.invito_aperto_posti", creato=creato, scade=scade, n=invito["usi_max"] - invito["usi"], posti=invito["usi_max"])
+    return frasi.F("admin.invito_aperto", creato=creato, scade=scade)
 
 
 @router.get("/api/admin/inviti", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
 def elenco_inviti():
-    """Gli inviti con posti usati e stato (attivo, finito, scaduto, revocato). I codici non si rileggono."""
+    """Gli inviti con posti usati e stato (attivo, finito, scaduto, revocato). I codici non si rileggono. Per quelli aperti la frase
+    da mostrare (`dettaglio`, con `dettaglio_frase` per tradurla), null per gli altri."""
     with closing(account.apri()) as db:
-        return {"inviti": account.elenco_inviti(db)}
+        inviti = account.elenco_inviti(db)
+    for invito in inviti:
+        dettaglio = dettaglio_invito(invito)
+        invito |= {"dettaglio": str(dettaglio) if dettaglio else None, "dettaglio_frase": frasi.di(dettaglio)}
+    return {"inviti": inviti}
 
 
 @router.delete("/api/admin/inviti/{invito_id}", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
