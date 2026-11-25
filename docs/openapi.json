@@ -3988,7 +3988,7 @@
   },
   "/api/regole/riconosci": {
    "post": {
-    "description": "Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).\nOltre i tetti (regole_testo.MAX_TESTO caratteri, MAX_RIGA per riga): 422 con una frase chiara.",
+    "description": "Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).\nConfronta con le regole salvate: un valore che non si potrebbe salvare così com'è va in `non_applicabili` con il perché (#881).\nOltre i tetti (regole_testo.MAX_TESTO caratteri, MAX_RIGA per riga): 422 con una frase chiara.",
     "requestBody": {
      "content": {
       "application/json": {

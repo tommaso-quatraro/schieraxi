@@ -1,0 +1,14 @@
+{
+  "titolo": "Regole: il regolamento incollato si legge meglio e non salva valori diversi da quelli mostrati",
+  "voci": [
+    "Impostazioni, Regole e scadenza, «Incolla il regolamento»: un valore che con le tue regole non si può salvare così com'è non sta più fra quelli riconosciuti. Compare sotto «Non applicato» con il perché: per esempio «Panchina di 12 giocatori» quando la panchina ha posti fissi per ruolo (prima si vedeva 12 e si salvava 11).",
+    "«Gol segnato: +3 (il gol del portiere vale +5)» dà +3 a tutti i ruoli e +5 al portiere, e una riga della rosa con tutti i ruoli li legge tutti.",
+    "Fra le «Righe da controllare a mano» ci sono anche le righe lette solo in parte (per esempio l'assist da fermo), e non più i titoli come «Art. 2 - Punteggi».",
+    "L'ordine dei cambi si legge «Per ruolo» o «Libera», e i posti in panchina per ruolo per esteso."
+  ],
+  "tecnico": [
+    "POST /api/regole/riconosci legge le regole di chi chiede (lega_corrente) e manda il campo nuovo non_applicabili [{chiave, etichetta, valore, riga, motivo, motivo_frase}]: per ora panchina.numero con i posti fissi per ruolo e senza posti nuovi nel testo (frase regole.panchina_posti_fissi). docs/API.md e docs/openapi.json aggiornati.",
+    "regole_testo: numeri dell'articolo, dell'elenco e della stagione tolti prima di leggere (NUMERO_TITOLO); una riga con numeri non letti da nessuna regola, anche solo in parte, va in non_riconosciute e da_controllare; gol con un ruolo citato fra due numeri; rosa con tutti i ruoli della riga (anche «3 portieri, 8 difensori…» in una riga che parla della rosa).",
+    "Web: vistaRegole scrive panchina.tipo con regole.per_ruolo/regole.libera e panchina.posti con le frasi rose.<ruolo>; blocco «Non applicato» (regole.non_applicato). iPhone da allineare (riga 98 di docs/COERENZA-WEB-IPHONE.md)."
+  ]
+}
