@@ -1488,18 +1488,17 @@ function filtraListone(n, limite, lista = listoneCerca) {
 const slugQualunque = s => SIGLE[s] ? s : SIGLE[normNome(s)] ? normNome(s) : s;
 
 // ---------------------------------------------------------------- scheda giocatore (pannello)
-function formaGiocatore(voti) {
+// Gli ultimi 5 voti in pallini e l'andamento: quello lo decide il server (`andamento` di /api/giocatore, fanta/scheda.py, #895),
+// qui solo la parola del catalogo e la freccia. Un valore che non conosciamo, o un server di prima senza il campo: niente andamento.
+const ANDAMENTO = { in_crescita: ["↗", "positivo"], in_calo: ["↘", "negativo"], stabile: ["→", ""], pochi_dati: ["→", ""] };
+function formaGiocatore(voti, andamento) {
   const ultimi = voti.slice(-5);
   if (!ultimi.length) return null;
   const colore = v => v == null ? "sv" : v >= 7 ? "alto" : v >= 6 ? "medio" : "basso";
   const pallini = `<div class="pallini">${ultimi.map(v => `<i class="${colore(v.fv)}" title="${nomeGiornata(null, v.giornata)}">${v.fv == null ? t("mercato.sv") : num(v.fv, 1)}</i>`).join("")}</div>`;
-  const con = voti.filter(v => v.fv != null);
-  if (con.length < 4) return { pallini, freccia: "→", testo: t("mercato.pochi_dati"), classe: "" };
-  const media = a => a.reduce((x, v) => x + v.fv, 0) / a.length;
-  const differenza = media(con.slice(-3)) - media(con);
-  if (differenza > 0.6) return { pallini, freccia: "↗", testo: t("mercato.in_crescita"), classe: "positivo" };
-  if (differenza < -0.6) return { pallini, freccia: "↘", testo: t("mercato.in_calo"), classe: "negativo" };
-  return { pallini, freccia: "→", testo: t("mercato.stabile"), classe: "" };
+  if (!Object.hasOwn(ANDAMENTO, andamento || "")) return { pallini, testo: "" };
+  const [freccia, classe] = ANDAMENTO[andamento];
+  return { pallini, freccia, testo: t("mercato." + andamento), classe };
 }
 
 // Grafico a linee: fantavoto (verde) e voto (azzurro) giornata per giornata; "sv" dove non ha preso voto.
@@ -1587,7 +1586,7 @@ function riempiScheda(s, cal) {
   const voti = $("#scheda-voti"), numeri = $("#scheda-numeri-corpo");
   if (!voti || !numeri) return;
   const c = s.calciatore, st = s.stagione, av = s.avanzate, pr = s.previsione;
-  const forma = formaGiocatore(s.voti || []);
+  const forma = formaGiocatore(s.voti || [], s.andamento);
   voti.innerHTML = `<h3>${t("formazione.ultimi_voti")}</h3>${forma ? forma.pallini : `<div class="debole">${t("mercato.nessuna_presenza_questa")}</div>`}`;
   voti.removeAttribute("aria-busy");
   const grafico = graficoVoti(s.voti || [], st.giornate_giocate_serie_a);
@@ -1607,7 +1606,7 @@ function riempiScheda(s, cal) {
       <div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>` : ""}
     ${prossime.length ? `<h3>${t("mercato.prossime_partite")}</h3><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}</span>`).join("")}</div>
       <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div>` : ""}
-    ${forma ? `<h3>${t("mercato.forma")}</h3><div class="riga"><span class="debole piccolo">${t("mercato.andamento")}</span><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div>` : ""}
+    ${forma && forma.testo ? `<h3>${t("mercato.forma")}</h3><div class="riga"><span class="debole piccolo">${t("mercato.andamento")}</span><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div>` : ""}
     ${grafico}
     ${s.rendimento ? `<h3>${t("mercato.rende_sopra_sotto")}</h3>
       <div class="grande ${s.rendimento.sovra_rendimento > 0.3 ? "positivo" : s.rendimento.sovra_rendimento < -0.3 ? "negativo" : ""}">${segno(s.rendimento.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>

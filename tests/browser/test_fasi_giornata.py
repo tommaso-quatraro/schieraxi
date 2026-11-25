@@ -150,3 +150,23 @@ def test_a_giornata_in_corso_la_colonna_della_panchina_vale_per_il_voto_e_per_l_
     assert riga("Llando Faseto").locator(".pv-g").inner_text().strip() == "atteso"         # deve ancora giocare
     assert riga("Zè Rosso").locator(".pv-g").inner_text().strip() == "fantavoto"           # ha già il voto
     assert not web.errori_console
+
+
+def test_l_andamento_nella_scheda_e_quello_del_server(web):
+    """«in crescita / in calo» nella scheda lo decide il server (`andamento` di /api/giocatore): con voti che salgono e il server
+    che dice «in_calo», la scheda dice «in calo». Prima la web lo ricalcolava dai voti."""
+    solo(web, "prima")
+    web.apri("/")
+    p = principale(web).locator("#campo-formazione [data-giocatore]").first
+    gid = p.get_attribute("data-giocatore")
+    s = copy.deepcopy(web.registrata(f"/api/giocatore/{gid}"))
+    s["voti"] = [{"giornata": g, "voto": 6.0, "fv": v} for g, v in enumerate((5.0, 5.0, 5.0, 8.0, 8.0, 8.0), start=1)]
+    s["andamento"] = "in_calo"
+    web.risposta(f"/api/giocatore/{gid}", s)
+    p.click()
+    web.aspetta()
+    dialogo = web.pagina.get_by_role("dialog")
+    dialogo.locator("#scheda-numeri summary").click()
+    testo = " ".join(dialogo.locator("#scheda-numeri-corpo").inner_text().split())
+    assert "Andamento ↘ in calo" in testo and "in crescita" not in testo
+    assert not web.errori_console
