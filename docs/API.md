@@ -345,7 +345,7 @@ Gli scambi usano gli id dei giocatori, separati da virgola (per esempio `do=101,
 | `POST /api/rose/correggi` | `{squadra, nome, id}` (X-Fanta, If-Match) | abbina a mano un giocatore non riconosciuto |
 | `GET /api/movimenti` | `limite?` (massimo 300) | storico di scambi, svincoli e tagli, dal più recente |
 | `GET /api/regole` | — | regole della lega (ETag) |
-| `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict`. Valori non validi: `400`, anche i numeri fuori dagli intervalli (vedi «Intervalli dei numeri delle regole» qui sotto). Oltre i tetti di misura (vedi «Tetti delle regole» qui sotto): `422` con `detail` «Regole non valide:» e una riga per ogni tetto superato, senza ripetere i valori mandati |
+| `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict`. Valori non validi: `400`, anche i numeri fuori dai limiti (vedi «Limiti dei numeri delle regole» qui sotto, con il file `/limiti-regole.json` che li elenca). Oltre i tetti di misura (vedi «Tetti delle regole» qui sotto): `422` con `detail` «Regole non valide:» e una riga per ogni tetto superato, senza ripetere i valori mandati |
 | `POST /api/regole/riconosci` | `{testo}` (massimo 30000 caratteri, ogni riga al massimo 2000) | propone i valori letti dal regolamento incollato. Non salva niente. Risposta `{modifiche: [{chiave, etichetta, valore, riga}], non_applicabili: [{chiave, etichetta, valore, riga, motivo, motivo_frase}], non_riconosciute: [riga], da_controllare: [{riga, regole: [{chiave, etichetta}]}]}`. Dal 25/11/2026 (#881) la rotta legge le regole salvate di chi chiede (con gli account serve la sessione, come per `GET /api/regole`) e `modifiche` ha solo i valori che, messi nei campi, si salvano così come sono. Un valore letto che con quelle regole non si può salvare va in `non_applicabili` (campo nuovo, sempre presente, spesso vuoto) con il perché in `motivo` (italiano) e `motivo_frase` (`{chiave, param}`, il web lo traduce con `frase.<chiave>`): per ora solo `panchina.numero` diverso dalla somma dei posti per ruolo: quelli letti nello stesso testo (motivo `regole.panchina_somma_posti`, `n` = la loro somma) o, se il testo non li dice, quelli salvati (motivo `regole.panchina_posti_fissi`, `n` = i posti di adesso). La web lo mostra sotto «Non applicato» e non lo salva; un client che non lo conosce semplicemente non lo vede (prima lo mostrava e poi salvava un altro numero). Anche dal 25/11/2026: il gol con l'eccezione di un ruolo («Gol: +3 (il gol del portiere vale +5)») dà il primo numero a tutti i ruoli e il secondo al ruolo citato; una riga di rosa con più ruoli dà tutti i ruoli; il numero dell'articolo o dell'elenco in testa alla riga e la stagione («Art. 2 - Punteggi», «2026/27») non sono valori, quindi un titolo non va fra le righe da controllare. Restano da controllare, senza proposta, le righe dove il valore non è sicuro: il gol con numeri solo prima del ruolo citato («Gol: +3 (anche per il portiere)»), una regola negata seguita dal numero di un'altra («L'assist non dà bonus, il gol vale 3»), i ruoli di una formazione o di un modulo («La formazione titolare è composta da 1 portiere, 4 difensori…»). `non_riconosciute`: le righe con numeri che non ha letto, tutti o anche solo una parte («Assist: +1 (assist da fermo +0,5)» resta qui per lo 0,5), al massimo 30. Dal 25/11/2026 (#884) una riga propone valori solo se ogni suo numero è letto da una proposta (ogni numero conta da solo, anche ripetuto o con il segno diverso: «Migliore in campo: +1; peggiore in campo: -1»); con un numero non spiegato la riga non propone niente e sta qui. `da_controllare` (campo nuovo e facoltativo, dal 19/11/2026, #684): le righe da controllare a mano, nell'ordine del testo incollato, ognuna una volta: quelle di `non_riconosciute` e, al massimo altre 30, le righe dubbie anche senza numeri, che nominano il cambio modulo, il modificatore della difesa o il tipo di panchina senza dirne il valore con sicurezza (per esempio «Non è vietato il cambio modulo», «Riserve libere: no»). Su queste il server non propone niente: `regole` dice quali regole impostare a mano, con `chiave` ed `etichetta` come in `modifiche` (`panchina.cambio_modulo`, `modificatore_difesa.attivo`, `panchina.tipo` e, dal 25/11/2026, una regola dei punteggi negata senza valore come «Nessun bonus per l'assist» o «Non è previsto il bonus per il gol del portiere», `bonus.<regola>` e `bonus.gol.<ruolo>`; il web traduce l'etichetta con `regola.et.<chiave>`), ed è vuoto per una riga con numeri che non ne nomina. Una riga che ha dato un altro valore può stare anche qui («Panchina: 7 giocatori, non libera»: il numero si propone, il tipo di panchina va impostato a mano). La web mostra `da_controllare` così com'è sotto «Righe da controllare a mano», con «da impostare: …» sotto le righe dubbie; un client che non lo conosce continua a mostrare `non_riconosciute`. Testo o riga oltre il tetto: `422` con una frase in italiano in `detail` (dal 6/11/2026; prima il testo oltre 30000 caratteri si tagliava senza dirlo) |
 | `PUT /api/regole/rinvio` | `{giornata, modo, stagione?}` (X-Fanta, If-Match facoltativo, stesso ETag delle regole) | partite rinviate: decisione per UNA giornata, che vince sulla regola della lega (vedi «Partite rinviate» qui sotto) |
 
@@ -591,29 +591,52 @@ I tetti su moduli, eccezioni e finestre c'erano già (prima rispondevano `400`).
 Le regole salvate prima dei tetti si leggono come prima (`GET /api/regole`, calcoli); per salvarle di nuovo vanno riportate dentro
 i tetti. I client mostrano `detail` come per ogni errore: nessun cambio richiesto.
 
-## Intervalli dei numeri delle regole (dal 13/11/2026, #663)
+## Limiti dei numeri delle regole (dal 13/11/2026, #663; stretti come i pulsanti dal 25/11/2026, #881)
 
-Prima `PUT /api/regole` accettava numeri finiti ma enormi (un bonus di 1e308, crediti negativi o di 10^30): la risposta era `200` e
-poi Formazione, Oggi, Rosa e widget rispondevano `400` finché le regole non si correggevano. Ora ogni salvataggio delle regole
-(anche `PUT /api/regole/rinvio`) controlla questi intervalli, larghi rispetto ai regolamenti veri (la web e l'iPhone stanno molto più
-stretti). Fuori: `400` con `detail` «Regole non valide:» e una riga che dice il campo e l'intervallo (per esempio «i crediti
-iniziali devono essere tra 0 e 100.000»); le regole salvate non cambiano.
+Ogni salvataggio delle regole controlla i limiti dei numeri. Fuori: `400` con `detail` «Regole non valide:» e una riga «- …» per
+problema, in parole semplici e senza nomi di campo (per esempio «- il bonus per l'assist deve essere tra 0 e 20», «- «Portieri
+della rosa» deve essere un numero intero»); le regole salvate non cambiano. La web traduce ogni riga (chiavi `err.regole_*` e,
+per i nomi dei campi, `err.p_regola_*` del catalogo); gli altri client mostrano `detail` com'è.
 
-| Campo | Intervallo |
+**Quali limiti, dove.** `PUT /api/regole` confronta le regole ricevute con quelle salvate: **i valori che cambiano** hanno i limiti
+della tabella qui sotto (quelli della pagina Regole), quelli che restano uguali i limiti di prima (#663: bonus e malus da −100 a
+100, difensori minimi da 0 a 10, panchina da 0 a 30...). Così una lega salvata prima con un valore ora fuori dai limiti cambia la
+scadenza o la prima giornata (che mandano le regole salvate con un valore solo cambiato) senza errori, e la pagina Regole chiede
+di correggere quel valore solo quando si salvano i valori. Gli altri salvataggi (`PUT /api/regole/rinvio`, il ripristino di un
+backup, la procedura guidata, `python -m fanta regole --imposta`) controllano tutto con i limiti di prima.
+
+**Un file solo.** I limiti stanno in `fanta/web/limiti-regole.json`, servito come file statico **`GET /limiti-regole.json`**
+(pubblico, come gli altri file della web): `{chiave: {"min": numero, "max": numero}}`, con le chiavi come i campi delle regole
+(`"bonus.assist"`, `"rosa.P"`, `"panchina.posti.D"`); `"modificatore_difesa.soglie.media"` e `"modificatore_difesa.soglie.bonus"`
+valgono per ogni fascia. Lo legge il server (`regole.LIMITI`) e lo legge la pagina Regole della web per i pulsanti − e + e per i
+numeri scritti a mano, così la pagina non arriva mai a un valore che il server rifiuta. Un client con un editor delle regole
+(l'iPhone, `RegoleEditor.swift`) dovrebbe leggere lo stesso file invece di tenere i suoi limiti.
+
+| Campo | Limiti |
 |---|---|
-| `bonus.gol.P`, `.D`, `.C`, `.A` e gli altri `bonus.*` (anche i malus, che sono negativi) | da -100 a 100 |
-| `voto_senza_sostituto` (se non è `null`) | da 0 a 10 |
+| `bonus.gol.P`, `.D`, `.C`, `.A`, `bonus.rigore_segnato`, `.assist`, `.rigore_parato`, `.portiere_imbattuto`, `.mvp` | da 0 a 20 |
+| `bonus.rigore_sbagliato`, `.autogol`, `.gol_subito_portiere`, `.ammonizione`, `.espulsione` (i malus) | da −20 a 0 |
+| `rosa.P`, `.D`, `.C`, `.A` | da 1 a 30 |
 | `crediti_iniziali` | da 0 a 100.000 (come i crediti delle squadre) |
-| `modificatore_difesa.min_difensori` | da 0 a 10 |
-| `modificatore_difesa.soglie` | media di ogni fascia da 0 a 10, bonus da -100 a 100 |
-| `fattore_campo` | da -100 a 100 |
+| `panchina.numero` | da 1 a 30 |
+| `panchina.max_sostituzioni` | da 0 a 10 |
+| `panchina.posti.P`, `.D`, `.C`, `.A` (se non è `null`) | da 0 a 10 |
+| `voto_senza_sostituto` (se non è `null`), `voto_ufficio_rinviate` | da 0 a 10 |
+| `modificatore_difesa.min_difensori` | da 3 a 5 (nessun modulo ha 6 difensori) |
+| `modificatore_difesa.soglie` | media di ogni fascia da 0 a 10, bonus da 0 a 20 |
+| `fattore_campo` | da −100 a 100 |
 | `soglia_primo_gol` | da 0 a 200 |
 | `ampiezza_fascia_gol` | da 0 a 100 |
 
-Gli altri numeri avevano già i loro limiti (`rosa`, `panchina`, `rimborso_svincolo`, `scadenza_minuti`, `prima_giornata_lega`,
-`voto_ufficio_rinviate`). Come per i tetti, le regole salvate prima si leggono come prima (`GET /api/regole`, così la schermata
-Regole le mostra e le si corregge); per salvarle di nuovo vanno riportate negli intervalli. I client mostrano `detail` come per
-ogni errore: nessun cambio richiesto.
+Con `PUT /api/regole`, se cambiano il modificatore o i moduli, si rifiutano anche: il modificatore difesa attivo senza fasce, due
+fasce con la stessa media, e (con il modificatore attivo) difensori minimi più dei difensori di ogni modulo ammesso, perché il
+modificatore non si applicherebbe mai.
+Fino al 25/11/2026 i bonus e i malus andavano da −100 a 100, i difensori minimi da 0 a 10, i bonus delle fasce da −100 a 100 e la
+panchina da 0 a 30.
+
+`rimborso_svincolo`, `scadenza_minuti` e `prima_giornata_lega` hanno i loro controlli a parte. Come per i tetti, le regole salvate
+prima si leggono come prima (`GET /api/regole`, così la pagina Regole le mostra e le si corregge). Rosa, panchina, posti fissi,
+cambi massimi e voto d'ufficio delle partite rinviate si controllano anche quando le regole si leggono, con i limiti di prima.
 
 ## Numero della giornata: `giornata` e `giornata_lega` (dal 5/11/2026, #299)
 
