@@ -137,7 +137,7 @@ def test_aggiorna_risultati_con_la_rete_giu_lascia_la_riga_con_l_errore(monkeypa
     assert "ConnectionError" in passo["errore"] and "risultati 12" in passo["errore"]
     voce = next(a for a in stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 8, 20, 0))["aggiornamenti"]
                 if a["cosa"] == pianificatore.CHIAVE_RISULTATI)
-    assert voce["quando"] == "2026-11-07T17:30:00" and voce["errori"][0].startswith("Non riuscito alle 19:00 del 08/11:")
+    assert voce["quando"] == "2026-11-07T17:30:00" and voce["errori"][0].startswith("Non riuscito alle 19:00 dell'08/11:")
     assert archivio.passi_fermi(db, datetime(2026, 11, 9, 18, 0)) == []     # fuori dalla salute (revisione #700)
     db.close()
     righe = [rec.getMessage() for rec in caplog.records if rec.name == "fanta.pianificatore"]
