@@ -136,6 +136,17 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
   giornata iniziata; anche per infortunati e squalificati, con il loro stato in cima all'elenco. Non c'è per i titolari (che
   hanno «Sostituisci»), per chi gioca un anticipo già cominciato (la scheda dice perché), né a giornata in corso.
 
+`test_fasi_giornata.py`, la giornata in corso e quella finita ai bordi (#895), con la risposta registrata di /api/oggi (o di
+/api/giocatore) cambiata solo nel pezzo che serve:
+- in corso: il voto d'ufficio di una partita rinviata sta nel disco con «Voto d'ufficio» (anche per il lettore di schermo);
+  sotto i punti la frase del server (`in_corso.situazione`); chi è rimasto senza voto ed è già sostituito ha la lineetta e non
+  il suo atteso; in panchina la colonna si chiama «Fantavoto» e chi deve ancora giocare dice «atteso» (prima della scadenza
+  resta «Fantavoto atteso»);
+- finita: la scelta sul rinvio sta in testa, sopra il campo e la panchina della giornata dopo, con il titolo «Giornata N · Nª di
+  Serie A: partita rinviata», la partita e i miei giocatori, e un menu solo; senza voti la testa dice che la giornata è finita
+  e la frase del server (`voti_in_arrivo`);
+- prima: nella scheda l'andamento è quello del server (`andamento`), anche se i voti direbbero altro.
+
 `test_giornate.py`, la pagina «Giornate» che ha preso il posto del Diario (#617):
 - si apre con un tocco dalla barra; gli indirizzi vecchi del Diario la aprono; «Com'è andata» della Formazione la apre
   sulla giornata appena finita;
@@ -238,6 +249,12 @@ scadenza:
 - una partita con solo il giorno (`data_partita` «2026-11-01», ora non ancora fissata) si scrive «dom 1», mai con un'ora finta
   come «00:00».
 
+`test_copia_salvata.py`, la nota della copia salvata quando il server risponde con un errore (#845). Gira solo prima della
+scadenza:
+- copia salvata il 17/11 alle 10:05, riaperta tre giorni dopo con il server che risponde 502: la nota dice «Il server non
+  risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati).», con la data della copia e
+  non quella di adesso, e c'è «Riprova». L'iPhone prova la stessa frase per lo stesso istante (`DatiVecchiTests`).
+
 `test_web_installata.py`, la web come app installata, con il service worker acceso (#654). Gira una volta sola, senza fasi:
 - dopo un rilascio finto (ogni file della scocca dice la sua versione, `VERSIONE` di `sw.js` alzata) con `app.js` e `testi.js`
   lenti oltre i 2,5 secondi, la pagina riaperta è tutta di una versione e un testo nuovo non compare come chiave; la versione
@@ -246,6 +263,16 @@ scadenza:
   account (come in produzione) anche «chi sono» riceve 502: la Formazione mostra la copia salvata dell'account e, tornato il
   server, Impostazioni ha «Il tuo account» e non «Gestione»;
 - senza rete Privacy, mai aperta prima, dice «Nessuna connessione» e non apre un'altra copia dell'app; l'app si apre dalla copia.
+
+`test_copia_e_lingua.py`, la copia dei dati tenuta nel browser e la lingua (#854). Gira solo prima della scadenza. Le `/api/`
+rispondono come il server vero, con le etichette nella lingua di `Accept-Language` (`traduci_dati` di `fanta/etichette.py`: il
+server finto le ha solo in italiano):
+- Formazione in italiano, poi «English» in Impostazioni con la rete lenta (le `/api/` trattenute dal test): mentre arrivano i
+  dati in inglese la Formazione sta caricando e non mostra la copia presa in italiano («In dubbio» con la pagina in inglese);
+  arrivati, l'etichetta è in inglese («Doubtful»);
+- lo stesso con il server che non risponde: resta la copia presa in italiano (gli 11 sul campo, i comandi che scrivono spenti),
+  con la nota e «Try again»; tornata la rete, «Try again» porta i dati in inglese e la nota sparisce;
+- una copia senza lingua, come la lascia una versione di prima: senza rete la Formazione la mostra con la nota e «Riprova».
 
 La fixture `installata` (al posto di `web`) apre un contesto di Chrome con il service worker permesso, davanti al server finto
 mette `Proxy` (fa la parte di nginx, su 127.0.0.1: senza https la web registra il service worker solo lì e su localhost) e

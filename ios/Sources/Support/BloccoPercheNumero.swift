@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// I motivi del fantavoto atteso, uno per riga: «+1,1 · Segna più della media del ruolo». Sotto, il riferimento
+/// I motivi del fantavoto atteso, uno per riga, con la frase del server come arriva: «+1,1 · segna più della media del ruolo». Sotto, il riferimento
 /// (il giocatore medio del ruolo). Sta nella scheda del giocatore, in «Perché questo numero» (come `bloccoPerche` della web).
 struct BloccoPercheNumero: View {
     let perche: PercheNumero

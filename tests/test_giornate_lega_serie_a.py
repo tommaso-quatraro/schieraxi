@@ -126,12 +126,12 @@ def test_promemoria_con_i_due_numeri(tmp_path, finto):
 
 
 def test_titolare_a_rischio_con_i_due_numeri(tmp_path, finto, monkeypatch):
-    monkeypatch.setattr(notifiche, "_gia_schierato", lambda *a, **k: ["Castro"])
+    monkeypatch.setattr(notifiche, "_situazione", lambda *a, **k: ([(1, "Castro", "infortunato")], True))
     mandati = []
     manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True    # noqa: E731
     notifiche.promemoria(_db("2026-10-28 18:30"), LEGA_DA_4, ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "p.json", manda, {})
-    assert mandati[0][1] == ("Hai già schierato, ma Castro non è più sicuro come titolare. "
-                             "Giornata 6 · 9ª di Serie A: la formazione si chiude alle 18:30, controlla.")
+    assert mandati[0][1] == ("Castro è infortunato: controlla la formazione che hai schierato. "
+                             "Giornata 6 · 9ª di Serie A: si chiude alle 18:30.")
 
 
 def test_titoli_degli_avvisi_senza_numero():
@@ -241,12 +241,15 @@ def _riga_js(nome: str) -> str:
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 @pytest.mark.parametrize("lingua", ["it", "en"])
 def test_articolo_davanti_all_ordinale_sul_web(lingua):
+    # anche con la maiuscola in testa (il menu della prima giornata: «Dalla 8ª» → «Dall'8ª», #842)
     casi = ["la 8ª giornata di Serie A", "per la 11ª giornata di Serie A", "dalla 8ª alla 11ª giornata di Serie A",
-            "la 1ª giornata di Serie A", "dalla 18ª alla 38ª", "per la Giornata 8 · 11ª di Serie A"]
+            "la 1ª giornata di Serie A", "dalla 18ª alla 38ª", "per la Giornata 8 · 11ª di Serie A",
+            "Dalla 8ª", "Dalla 11ª", "La 8ª giornata", "Dalla 18ª", "Dalla 1ª, con il campionato"]
     codice = (f'globalThis.localStorage = {{ getItem: () => "{lingua}", setItem() {{}} }};' + TESTI + _riga_js("elidiOrdinali")
               + f"console.log(JSON.stringify({json.dumps(casi)}.map(elidiOrdinali)))")
     attesi = (["l'8ª giornata di Serie A", "per l'11ª giornata di Serie A", "dall'8ª all'11ª giornata di Serie A",
-               "la 1ª giornata di Serie A", "dalla 18ª alla 38ª", "per la Giornata 8 · 11ª di Serie A"] if lingua == "it" else casi)
+               "la 1ª giornata di Serie A", "dalla 18ª alla 38ª", "per la Giornata 8 · 11ª di Serie A",
+               "Dall'8ª", "Dall'11ª", "L'8ª giornata", "Dalla 18ª", "Dalla 1ª, con il campionato"] if lingua == "it" else casi)
     assert _node(codice) == attesi
 
 

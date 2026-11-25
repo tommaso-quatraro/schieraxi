@@ -64,11 +64,12 @@ enum TestiAccount {
     static let esciSoloQui = Catalogo.Account.esciSoloQui
     static let esciSoloQuiSpiega = Catalogo.Account.esciSoloQuiSpiega
 
-    /// La riga sotto il nome: «Utente · dal 1 settembre 2026» (o «Amministratore · …»). Senza una data leggibile resta il ruolo.
+    /// La riga sotto il nome: «Utente · dal 1 settembre 2026» (o «Amministratore · …»), «dall'8 ottobre 2026» con l'apostrofo
+    /// come la web (#859). Senza una data leggibile resta il ruolo.
     static func ruoloEData(ruolo: String, creato: String?) -> String {
         let chi = ruolo == "amministratore" ? Catalogo.Account.ruoloAdmin : Catalogo.Account.ruoloUtente
         guard let giorno = dataIscrizione(creato) else { return chi }
-        return Catalogo.Account.dal(data: giorno, ruolo: chi)
+        return DatiVecchi.elidiGiorno(Catalogo.Account.dal(data: giorno, ruolo: chi))
     }
 
     /// «1 settembre 2026» (ora italiana) dalla data del server: ISO 8601 con il fuso («2026-09-01T08:30:00+00:00»), senza fuso
