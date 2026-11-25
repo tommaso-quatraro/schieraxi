@@ -46,6 +46,9 @@ final class LegaViewModel: ViewModelBase {
     @Published var regoleNonSalvate = false
     /// Le pagine chieste mentre le Regole avevano modifiche non salvate: si aprono dopo la risposta alla domanda.
     @Published private(set) var pagineInAttesa: [PaginaImpostazioni]?
+    /// «Importa le rose» chiesta dalla configurazione guidata: lasciata la pagina, la guida si riapre (#880). La segue
+    /// `ContenitoreApp` a ogni cambio di `percorso`.
+    var ritornoAllaGuida = RitornoAllaGuida()
     private var ascoltoStato: AnyCancellable?
     /// L'ultima risposta di `/api/stato` già passata al pulsante «Aggiorna i dati» (`Caricatore.risposte`).
     private var rispostaUsata = 0

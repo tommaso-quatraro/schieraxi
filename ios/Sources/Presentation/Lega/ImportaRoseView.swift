@@ -3,17 +3,22 @@ import SwiftUI
 /// Lega > Aggiorna le rose (ci porta anche il passo «rose» del primo avvio). Due passi:
 /// 1) si incolla la pagina delle rose o si sceglie il file (Excel, CSV, testo);
 /// 2) l'anteprima del server, che non salva niente: squadra per squadra i dubbi da sistemare, la propria squadra, poi «Conferma e salva».
-/// Logica in `ImportaExcelViewModel` e `AnteprimaLogica`.
+/// Al primo caricamento (nessuna rosa sul server) titolo e frase sono quelli del primo avvio della web e non c'è «Togli le squadre
+/// che non sono nel file» (#880). Logica in `ImportaExcelViewModel` e `AnteprimaLogica`.
 struct ImportaExcelView: View {
     private let server: any ServerClient
+    /// Aperta da «Importa le rose» della configurazione guidata: salvate le rose la pagina si chiude e la guida continua (#880).
+    private let dallaGuida: Bool
     @StateObject private var vm: ImportaExcelViewModel
     @StateObject private var dubbi: DubbiRoseViewModel
     @EnvironmentObject private var nav: Navigazione
+    @Environment(\.dismiss) private var chiudi
     @State private var scegli = false
     @State private var cerca: DubbioDaCercare?
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, dallaGuida: Bool = false) {
         self.server = server
+        self.dallaGuida = dallaGuida
         _vm = StateObject(wrappedValue: ImportaExcelViewModel(server: server))
         _dubbi = StateObject(wrappedValue: DubbiRoseViewModel(server: server))
     }
@@ -29,8 +34,11 @@ struct ImportaExcelView: View {
             }
         }
         .animation(Tema.morbida, value: vm.anteprima == nil)
-        .titoloPagina(Catalogo.Lega.voceImporta)
+        .titoloPagina(vm.titolo)
         .task { await dubbi.carica() }
+        .task { await vm.leggiRoseSalvate() }
+        // dalla guida, salvate le rose si torna alla guida (la riapre `RitornoAllaGuida` quando la pagina sparisce), come la web
+        .onChange(of: vm.esito != nil) { _, salvate in if salvate, dallaGuida { chiudi() } }
         // Solo per le fotografie del simulatore (-DEMO_SCHERMATA lega-importa-salvate / lega-importa-salvate-ok): l'esito di un salvataggio, con dati inventati.
         .task { if vm.esito == nil, let esito = DemoEsitoRose.esito(Demo.schermata) { vm.esito = esito } }
         // dopo un salvataggio i «giocatori da sistemare» (rimasti senza codice) si rileggono
@@ -63,7 +71,7 @@ struct ImportaExcelView: View {
             // l'esito dell'ultimo salvataggio, in cima (differenza ammessa con la web: docs/COERENZA-WEB-IPHONE.md)
             if let e = vm.esito { EsitoRoseSalvate(esito: e) }
             Section {
-                Text(Catalogo.Lega.esportaRoseExcel)
+                Text(vm.spiegazione)
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
                 Button { scegli = true } label: {
                     Label(Catalogo.Pav.scegliFile, systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
@@ -73,8 +81,11 @@ struct ImportaExcelView: View {
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             Section {
-                Text(Catalogo.Lega.nonHaiFile)
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+                // «… Le squadre che non sono nel file restano com'erano» e l'interruttore servono solo a chi ha già le rose
+                if !vm.primoCaricamento {
+                    Text(Catalogo.Lega.nonHaiFile)
+                        .font(.footnote).foregroundStyle(Color.testoSecondario)
+                }
                 TextEditor(text: $vm.testoRose)
                     .frame(minHeight: 110)
                     .overlay(alignment: .topLeading) {
@@ -88,7 +99,9 @@ struct ImportaExcelView: View {
                     }
                     .accessibilityLabel(Catalogo.Lega.incollaQuiTesto)
                     .disabled(vm.inCorso)
-                Toggle(Catalogo.Lega.togliSquadreChe, isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: Tema.areaTocco)
+                if !vm.primoCaricamento {
+                    Toggle(Catalogo.Lega.togliSquadreChe, isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: Tema.areaTocco)
+                }
                 Button { Task { await vm.importaTesto() } } label: {
                     Label(Catalogo.Lega.importaTesto, systemImage: "text.magnifyingglass").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
@@ -203,16 +216,16 @@ struct AnteprimaRoseVista: View {
         }
     }
 
+    /// «Qual è la tua squadra?» come la web (`ar-mia` di `anteprima.js`): le squadre una accanto all'altra, a capo quando la riga è
+    /// piena; scelta solo quella suggerita dal server, altrimenti nessuna, finché non la tocchi (#880: prima «Scegli dopo» era
+    /// già scelto). Anche la squadra suggerita che non è nel file, per prima (#808).
     private var miaSquadra: some View {
         Carta(Catalogo.Ar.qualETua, simbolo: "star") {
-            Picker(Catalogo.Ar.qualETua, selection: $vm.mia) {
-                Text("Scegli dopo").tag("")
-                // anche la squadra suggerita dal server che non è nel file, per prima e già scelta (come la web, #808)
-                ForEach(AnteprimaLogica.nomiMia(anteprima), id: \.self) { Text($0).tag($0) }
+            FilaPillole(spazio: 8) {
+                ForEach(AnteprimaLogica.nomiMia(anteprima), id: \.self) { nome in
+                    PillolaSquadraMia(nome: nome, scelta: vm.mia == nome) { vm.mia = nome }
+                }
             }
-            .pickerStyle(.menu)
-            .tint(Color.verde)
-            .frame(minHeight: Tema.areaTocco)
             Text("La formazione consigliata è per lei.").font(.caption).foregroundStyle(Color.testoSecondario)
         }
     }

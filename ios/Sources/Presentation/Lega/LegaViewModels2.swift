@@ -22,14 +22,23 @@ final class ImportaExcelViewModel: ViewModelBase {
     @Published var sostituisciTutto = false
     @Published var testoRose = ""
 
-    /// Il titolo della pagina.
-    var titolo: String { Catalogo.Lega.voceImporta }
-    /// La frase in cima.
-    var spiegazione: String { Catalogo.Lega.esportaRoseExcel }
-    /// Il primo caricamento delle rose.
-    var primoCaricamento: Bool { false }
-    /// Legge se le rose sono già salvate.
-    func leggiRoseSalvate() async {}
+    /// Le rose sono già salvate sul server? (`rose_importate` di `GET /api/stato`; nil finché non si sa o con un server di prima).
+    @Published private(set) var roseSalvate: Bool?
+
+    /// Il primo caricamento: il server dice che le rose non ci sono ancora. La pagina parla a chi le carica la prima volta, come
+    /// il passo «Le rose» del primo avvio della web, e non mostra «Togli le squadre che non sono nel file» (#880).
+    var primoCaricamento: Bool { roseSalvate == false }
+    /// Il titolo della pagina: «Importa le rose» al primo caricamento (le parole del pulsante che porta qui), poi «Aggiorna le rose».
+    var titolo: String { primoCaricamento ? Catalogo.Comune.importaRose : Catalogo.Lega.voceImporta }
+    /// La frase in cima: al primo caricamento quella del passo «Le rose» della web («Per cominciare basta anche solo la tua
+    /// squadra»), poi quella per chi aggiorna le rose («come fai di solito», «cosa è cambiato»).
+    var spiegazione: String { primoCaricamento ? Catalogo.Pav.incollaTestoDelle : Catalogo.Lega.esportaRoseExcel }
+
+    /// Chiede al server se le rose ci sono già. Se non risponde, o non lo dice, resta la pagina di sempre.
+    func leggiRoseSalvate() async {
+        guard let stato: RoseDelloStato = try? await server.get("/api/stato"), let rose = stato.roseImportate else { return }
+        roseSalvate = rose
+    }
 
     /// L'anteprima da controllare (nil = si sta ancora scegliendo cosa importare, o si è già salvato).
     @Published private(set) var anteprima: AnteprimaRose?
@@ -204,6 +213,7 @@ final class ImportaExcelViewModel: ViewModelBase {
             }
             inCorso = false
             esito = e
+            roseSalvate = true      // da qui la pagina è quella di chi aggiorna le rose
             anteprima = nil
             sorgente = nil
             messaggioAnteprima = nil
@@ -243,6 +253,19 @@ final class ImportaExcelViewModel: ViewModelBase {
     static func testo(_ error: Error) -> String {
         if case .server(let messaggio)? = error as? ErroreApi { return messaggio }
         return error.localizedDescription
+    }
+}
+
+/// Quello che serve di `GET /api/stato` alla pagina delle rose: se le rose ci sono già. Letto con tolleranza (campo mancante o
+/// di un altro tipo = non si sa).
+private struct RoseDelloStato: Decodable {
+    var roseImportate: Bool?
+
+    private enum Chiavi: String, CodingKey { case roseImportate }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        roseImportate = (try? k.decodeIfPresent(Bool.self, forKey: .roseImportate)) ?? nil
     }
 }
 

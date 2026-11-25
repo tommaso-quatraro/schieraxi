@@ -4,7 +4,8 @@ import SwiftUI
 /// alla fine. I passi sono quelli dell'iPhone (la web ne ha altri): titolo, «Salta» e il riepilogo hanno le parole della web.
 /// Parte da sola se la lega non ha ancora le rose e non è mai stata iniziata (con gli account, se nemmeno la vecchia procedura è
 /// finita: #600), o si riprende se era stata lasciata prima delle rose (anche sulla web), come la web (#595); si apre anche dalla
-/// lista «Da fare» di Oggi. Salta i passi già fatti.
+/// lista «Da fare» di Oggi. Salta i passi già fatti. «Importa le rose» la chiude per la pagina delle rose e, lasciata quella, la
+/// guida si riapre con i passi che restano fino a «Tutto pronto» (#880, come la web che carica le rose dentro la guida).
 struct ConfigurazioneGuidataView: View {
     @StateObject private var vm: ConfigurazioneGuidataViewModel
     /// Cosa fare quando un passo porta in un'altra schermata (la guida si chiude prima).
@@ -135,7 +136,10 @@ struct ConfigurazioneGuidataView: View {
         case .avvisi:
             await vm.attivaNotifiche()
         case .rose:
-            await uscendo(.importaRose)
+            // niente diventa saltato: lasciata la pagina delle rose la guida si riapre (#880)
+            await vm.versoLeRose()
+            chiudi()
+            vai(.importaRose)
         case .squadra:
             await uscendo(.squadre(nome: nil))
         case .stemma:
@@ -166,6 +170,7 @@ struct ConfigurazioneGuidataView: View {
             Text(Catalogo.Pav.tuttoProntoMister).font(.title2.bold()).multilineTextAlignment(.center)
             Text(tuttoFatto ? Catalogo.Pav.haiFinito : "Quello che hai saltato lo trovi nella Formazione, nella lista «Da fare».")
                 .font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
+            regoleComuni
             Carta {
                 ForEach(PassoGuidato.allCases) { passo in
                     let esito = vm.esito(passo)
@@ -180,16 +185,50 @@ struct ConfigurazioneGuidataView: View {
                     .accessibilityLabel("\(passo.titolo): \(esito.testo)")
                 }
             }
+            // come la web: «Vai alla Formazione» chiude la guida, finita, e apre la Formazione
             Button {
-                Task {
-                    await vm.termina()
-                    chiudi()
-                }
+                Task { await finisci(andando: .formazione) }
             } label: {
-                Text("Fine").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                Text(Catalogo.Pav.vaiFormazione).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
             }
             .pulsanteVetro(prominente: true)
         }
+    }
+
+    /// Le regole la guida non le chiede: si dice quali punteggi usano i fantavoti attesi e dove si cambiano, come «Tutto pronto»
+    /// della web (#880). «Regole e scadenza» chiude la guida come «Vai alla Formazione» e apre quella pagina; tutta la frase è il
+    /// pulsante, perché un collegamento dentro il testo sarebbe troppo piccolo da toccare.
+    private var regoleComuni: some View {
+        Button {
+            Task { await finisci(andando: .regole) }
+        } label: {
+            Text(Self.fraseRegole)
+                .font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// `pav.regole_comuni` con «Regole e scadenza» (`imp.regole`) nel colore dell'app e sottolineato, come un collegamento.
+    private static var fraseRegole: AttributedString {
+        let nome = Catalogo.Imp.regole
+        var frase = AttributedString(Catalogo.Pav.regoleComuni(regole: nome))
+        if let dove = frase.range(of: nome) {
+            var collegamento = AttributeContainer()
+            collegamento.foregroundColor = Color.verde
+            collegamento.underlineStyle = Text.LineStyle.single
+            frase[dove].mergeAttributes(collegamento)
+        }
+        return frase
+    }
+
+    /// La guida è finita: non si riapre più da sola; si chiude e l'app va dove porta il pulsante.
+    private func finisci(andando dove: AzioneGuida) async {
+        await vm.termina()
+        chiudi()
+        vai(dove)
     }
 
     private var tuttoFatto: Bool { PassoGuidato.allCases.allSatisfy { vm.esito($0) == .fatto } }

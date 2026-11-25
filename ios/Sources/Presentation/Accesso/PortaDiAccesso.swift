@@ -110,6 +110,10 @@ struct ContenitoreApp: View {
                     .onDisappear { nav.guidaSparita() }
             }
             .task { await avviaGuidaSeServe() }
+            // la pagina delle rose aperta dalla guida è stata lasciata (rose salvate o «indietro»): la guida si riapre (#880)
+            .onReceive(modello.lega.$percorso) { pagine in
+                if modello.lega.ritornoAllaGuida.pilaCambiata(pagine) { riapriGuida() }
+            }
     }
 
     /// Una sola volta all'apertura, come `primoAvvioSeServe` della web: se la lega non ha le rose la guida parte da sola (mai
@@ -126,15 +130,31 @@ struct ContenitoreApp: View {
         }
     }
 
+    /// Lasciata la pagina delle rose aperta dalla guida, la guida torna sulla Formazione (come la web, dove dietro «Tutto pronto»
+    /// c'è già la Formazione) e continua con i passi che restano: rose salvate, dalla squadra o dallo stemma; tornati indietro senza
+    /// salvare, dalle rose (#880). Fuori dal cambio della pila che l'ha annunciato.
+    private func riapriGuida() {
+        Task {
+            nav.sezione = .formazione
+            nav.guidaAperta = true
+        }
+    }
+
     /// Un passo della guida porta in un'altra schermata (la guida si è già chiusa).
     private func apriDaGuida(_ azione: AzioneGuida) {
         switch azione {
         case .importaRose:
+            // la guida si riapre quando la pagina si lascia (`RitornoAllaGuida`, #880)
+            modello.lega.ritornoAllaGuida.importaChiesta()
             nav.sezione = modello.lega.apri([.importa])
         case .squadre(let nome):
             nav.sezione = modello.lega.apri(nome.map { [PaginaImpostazioni.rosa($0)] } ?? [.squadre])
         case .impostazioni:
             nav.sezione = .impostazioni
+        case .formazione:
+            nav.sezione = .formazione
+        case .regole:
+            nav.sezione = modello.lega.apri([.regole])
         case .collegaWidget:
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)

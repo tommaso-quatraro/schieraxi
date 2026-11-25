@@ -2,9 +2,13 @@ import SwiftUI
 
 /// Dove porta un passo della configurazione guidata (la schermata si chiude, poi l'app va lì).
 enum AzioneGuida: Equatable {
+    /// «Importa le rose»: lasciata la pagina delle rose la guida si riapre (`RitornoAllaGuida`, #880).
     case importaRose
     case squadre(nome: String?)
     case impostazioni
+    /// «Tutto pronto»: «Vai alla Formazione» e il collegamento a Regole e scadenza della frase sui punteggi (#880).
+    case formazione
+    case regole
     /// «Collega il widget»: apre la schermata; al tocco su «Collega» lo collega (App Group o Keychain condiviso) e solo se non va
     /// copia il codice.
     case collegaWidget
@@ -158,9 +162,11 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
         await salva(fatti: [], saltati: restanti, chiuso: false)
     }
 
-    /// «Importa le rose»: la guida si chiude per la pagina delle rose.
+    /// «Importa le rose»: la guida si chiude per la pagina delle rose e si riapre quando la pagina si lascia (`RitornoAllaGuida`),
+    /// come la web che dopo le rose continua con i passi che restano (#880). Niente diventa saltato e la chiusura del foglio non
+    /// salva: se l'app si chiude prima, all'apertura la guida si riprende dalle rose (`PrimoAvvioLogica.daRiprendere`).
     func versoLeRose() async {
-        await piuTardi()
+        lasciata = true
     }
 
     /// Fine del percorso: non si riapre più da solo.

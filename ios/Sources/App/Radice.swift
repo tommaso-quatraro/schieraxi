@@ -177,8 +177,11 @@ final class Navigazione: ObservableObject {
 
     /// Si è usciti dall'account (anche per la sessione scaduta): un arrivo da fuori già aperto non conta più, così al prossimo
     /// accesso la guida può partire da sola. Un file o un'immagine ancora da aprire restano: si aprono dopo l'accesso.
+    /// Al nuovo accesso l'app si apre come all'avvio, sull'ultima sezione fra Formazione e Giornate, non sulle Impostazioni dove
+    /// c'era «Esci» (#880, come `entraNellApp` della web dopo la #878).
     func uscitoDallAccount(memoria: UserDefaults = .standard) {
         controllaFineArrivo(importaAperta: false)
+        sezione = Self.sezioneDiAvvio(memoria)
     }
 
     /// Le immagini che si accettano per stemma e divisa (il controllo vero sul contenuto è al caricamento).

@@ -130,7 +130,7 @@ struct ImpostazioniView: View {
     @ViewBuilder
     private func destinazione(_ pagina: PaginaImpostazioni) -> some View {
         switch pagina {
-        case .importa: ImportaExcelView(server: vm.server)
+        case .importa: ImportaExcelView(server: vm.server, dallaGuida: vm.ritornoAllaGuida.attivo)
         case .squadre: SquadreView(server: vm.server)
         case .rosa(let nome): RosaView(nome: nome, server: vm.server)
         case .regole: RegoleEditorView(server: vm.server, lega: vm)
