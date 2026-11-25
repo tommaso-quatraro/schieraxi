@@ -1,0 +1,11 @@
+{
+  "titolo": "Gli inviti aperti, con «Annulla»",
+  "voci": [
+    "Impostazioni › Gestione, per chi gestisce il server: sotto «Crea l'invito» l'elenco degli inviti non ancora usati né scaduti, ognuno con quando è stato creato, quando scade e, se è per più amici, i posti ancora liberi.",
+    "Con «Annulla» il link di quell'invito non vale più: prima l'app chiede conferma, poi l'elenco e l'avviso dei posti si aggiornano. Chi è già entrato tiene il suo account."
+  ],
+  "tecnico": [
+    "#894 (punto 1). GET /api/admin/inviti: campi nuovi per invito dettaglio e dettaglio_frase (chiavi admin.invito_aperto e admin.invito_aperto_posti, giorni con frasi.giorno_mese nell'ora italiana), null per gli inviti non attivi (rotte_account.dettaglio_invito). POST /api/admin/inviti: campo nuovo id (account.id_dell_invito), lo stesso dell'elenco. Nessun campo tolto o rinominato; l'iPhone non usa questa rotta.",
+    "Web: collegaAmministratore legge GET /api/admin/inviti, mostra solo stato attivo e annulla con DELETE /api/admin/inviti/{id} dopo confirm(); poi rilegge inviti e utenti, e svuota #adm-esito-invito se mostrava il link di quell'invito (data-invito = id della risposta di POST). rinvii._quando usa frasi.giorno_mese."
+  ]
+}

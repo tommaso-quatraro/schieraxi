@@ -1148,6 +1148,20 @@
     "it": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posti sono già in inviti aperti. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
     "en": "Almost no places left: {utenti} of {massimo} taken, and {n} places are already in open invitations. Whoever gets one more invitation may find sign-ups closed until you raise the server's maximum number of users."
   },
+  "frase.admin.invito_aperto": {
+    "it": "Creato {creato}, scade {scade}.",
+    "en": "Created {creato}, expires {scade}.",
+    "nota": "Gestione › Inviti aperti (#894): sotto l'etichetta di un invito aperto; {creato} e {scade} = frase.data.giorno_mese (campo dettaglio_frase)"
+  },
+  "frase.admin.invito_aperto_posti.one": {
+    "it": "Creato {creato}, scade {scade}. {n} posto libero su {posti}.",
+    "en": "Created {creato}, expires {scade}. {n} place left out of {posti}.",
+    "nota": "come frase.admin.invito_aperto, per un invito per più amici: {n} = posti liberi, {posti} = tutti"
+  },
+  "frase.admin.invito_aperto_posti.other": {
+    "it": "Creato {creato}, scade {scade}. {n} posti liberi su {posti}.",
+    "en": "Created {creato}, expires {scade}. {n} places left out of {posti}."
+  },
   "frase.fonte.spenta_fantacalcio": {
     "it": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni.",
     "en": "I don't download the player list, prices, fixtures, ratings and probable lineups.",
