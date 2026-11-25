@@ -43,6 +43,15 @@ def test_le_letture_restano_nel_checkout():
         assert fuori in negati, fuori
 
 
+def test_gli_strumenti_non_permessi_restano_negati():
+    # Dalla v1.0.273 l'azione parte in «modalità auto»: uno strumento fuori da --allowedTools non è più negato ma deciso da
+    # una revisione automatica. Con --permission-mode default (indicato dalle note di rilascio per i workflow con prompt)
+    # --allowedTools torna un elenco chiuso e i limiti qui sopra valgono davvero.
+    argomenti = _testo()[_testo().index("claude_args:"):]
+    assert re.search(r"^\s*--permission-mode default\s*$", argomenti, re.MULTILINE), "manca --permission-mode default"
+    assert len(re.findall(r"--permission-mode", argomenti)) == 1
+
+
 def test_il_diff_lo_prepara_il_job_prima_di_claude():
     passi = _passi()
     indice = next(i for i, p in enumerate(passi) if "name: Diff della PR" in p)

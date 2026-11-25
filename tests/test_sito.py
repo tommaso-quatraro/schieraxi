@@ -4,13 +4,19 @@ Dal 5/11/2026 (#355) il sito è formale e diretto, con la grafica «direzione B�
 «La formazione consigliata», un esempio di campo con nomi inventati, «Come funziona» con un esempio di calcolo, domande.
 Niente slogan, demo, gradienti, ombre o carte dentro carte. Archivo (SIL OFL 1.1) è servito dai file del sito.
 Dal 20/11/2026 il sito non si installa più come app: niente manifest, niente suggerimento, un sw.js che si toglie da solo.
+Dal 25/11/2026 niente pagina «offline» (il sito non salva nulla), niente sigle nei testi, privacy e termini nella lingua
+della pagina.
 """
+import importlib.util
 import json
 import re
 import shutil
 import subprocess
+import sys
 from html.parser import HTMLParser
 from pathlib import Path
+from unittest import mock
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -235,6 +241,72 @@ def test_note_legali_e_contatti():
         assert "AGPL-3.0" in testo
 
 
+LINK_LEGALI = r'href="(https://app\.schieraxi\.it/(?:privacy|termini)[^"]*)"'
+
+
+@pytest.mark.parametrize("nome,coda", [("index.html", ""), ("en/index.html", "?lingua=en")])
+def test_privacy_e_termini_nella_lingua_della_pagina(nome, coda):
+    """Dalla pagina inglese l'informativa e i termini si aprono in inglese (il server legge `?lingua=en`), dall'italiana in
+    italiano: la domanda sui dati e il piè di pagina."""
+    _, testo = leggi(nome)
+    link = sorted(re.findall(LINK_LEGALI, testo))
+    attesi = [f"https://app.schieraxi.it/privacy{coda}"] * 2 + [f"https://app.schieraxi.it/termini{coda}"]
+    assert link == attesi
+
+
+def test_il_server_apre_in_inglese_i_link_della_pagina_inglese(multiutente, dati_isolati):
+    """Il parametro dei link della pagina inglese è proprio quello che il server legge: le pagine arrivano in inglese."""
+    from fastapi.testclient import TestClient
+
+    from fanta import server
+    _, testo = leggi("en/index.html")
+    cliente = TestClient(server.app, headers={"X-Fanta": "1"})
+    for link in sorted(set(re.findall(LINK_LEGALI, testo))):
+        parti = urlsplit(link)
+        r = cliente.get(parti.path + (f"?{parti.query}" if parti.query else ""))
+        assert r.status_code == 200 and 'lang="en"' in r.text, link
+
+
+# Per lingua: le parole di «rose», «regole» e «dopo» nel titolo del secondo passo di «Per iniziare».
+PASSO_ROSE = {"index.html": ("rose", "regole", "dopo"), "en/index.html": ("squads", "rules", "later")}
+
+
+@pytest.mark.parametrize("nome", PAGINE)
+def test_secondo_passo_parte_dalle_rose(nome):
+    """L'app parte dalle rose e le regole sono già impostate (si cambiano dopo, in Impostazioni › Regole e scadenza): il
+    secondo passo dice di caricare le rose, non di inserire regole e rose."""
+    rose, regole, dopo = PASSO_ROSE[nome]
+    _, testo = leggi(nome)
+    passi = re.findall(r"<li><h3>(.*?)</h3><p>(.*?)</p></li>", sezione(testo, "iniziare"), re.S)
+    titolo, passo = senza_tag(passi[1][0]).lower(), senza_tag(" ".join(passi[1])).lower()
+    assert rose in titolo and (regole not in titolo or titolo.index(rose) < titolo.index(regole)), titolo
+    assert dopo in passo, passo
+
+
+def _testi_per_l_utente(nome):
+    """Quello che l'utente legge: il testo della pagina, le etichette lette ad alta voce, le descrizioni per i motori di
+    ricerca e per le anteprime dei link (anche quella dei dati strutturati)."""
+    p, testo = leggi(nome)
+    corpo = re.sub(r"<svg.*?</svg>", " ", testo.split("<body>", 1)[1], flags=re.S)
+    etichette = re.findall(r'\s(?:aria-label|title|alt|data-t-[a-z]+)="([^"]*)"', corpo)
+    descrizioni = [p.title] + [v for k, v in p.meta.items() if "description" in k or "title" in k or k.endswith(":alt")]
+    if p.jsonld:
+        descrizioni.append(json.loads(p.jsonld).get("description", ""))
+    return senza_tag(corpo), " ".join(etichette + descrizioni)
+
+
+@pytest.mark.parametrize("nome", list(PAGINE) + ["404.html"])
+def test_testi_senza_sigle_tecniche(nome):
+    """Testi in parole semplici: niente «CSV» (si dice «file Excel o testo copiato») né «web app» (si dice «l'app nel
+    browser»). «AGPL-3.0» (nel piè di pagina) può restare, ma solo accanto a «licenza libera»."""
+    visibile, altri = _testi_per_l_utente(nome)
+    for sigla in ("csv", "web app", "webapp", "pwa"):
+        assert sigla not in visibile.lower() and sigla not in altri.lower(), sigla
+    for m in re.finditer(r"AGPL-3\.0", visibile):
+        accanto = visibile[max(0, m.start() - 30):m.end() + 30]
+        assert "licenza libera" in accanto or "free licence" in accanto, accanto
+
+
 @pytest.mark.parametrize("nome,stati", [
     ("index.html", ("Disponibile su invito", "In arrivo", "In programma")),
     ("en/index.html", ("Available by invitation", "Coming", "Planned")),
@@ -319,7 +391,7 @@ def test_niente_decorazioni_da_pagina_generata():
                     "transition: all", "body::before"):
         assert vietato not in c, vietato
     assert not re.search(r"letter-spacing: *\.(0[6-9]|[1-9])", c), "lettere spaziate"
-    for nome in list(PAGINE) + ["404.html", "offline.html"]:
+    for nome in list(PAGINE) + ["404.html"]:
         testo = (SITO / nome).read_text(encoding="utf-8")
         for segno in ("→", "←", "✨", "class=\"xi\""):
             assert segno not in testo, (nome, segno)
@@ -383,7 +455,7 @@ def test_nome_disegnato_con_font_libero():
     cartella = SITO.parent / "assets" / "marchio" / "wordmark"
     assert "SIL Open Font License" in (cartella / "OFL.txt").read_text(encoding="utf-8")
     assert (cartella / "Archivo-sottoinsieme.ttf").is_file() and (cartella / "genera.py").is_file()
-    for nome in ("index.html", "en/index.html", "404.html", "offline.html"):
+    for nome in ("index.html", "en/index.html", "404.html"):
         testo = (SITO / nome).read_text(encoding="utf-8")
         sprite = re.search(r'<svg class="sprite".*?</svg>', testo, re.S).group(0)
         # due versioni (le riscrive genera.py --sito): #wm grande e #wm-c compatta, stesso riquadro
@@ -392,6 +464,30 @@ def test_nome_disegnato_con_font_libero():
         assert "<text" not in testo and "stroke" not in sprite
         # le misure piccole (barra in alto) usano la versione compatta
         assert not re.search(r'class="wm-svg wm-bar"[^>]*>\s*<use href="#wm"', testo)
+
+
+def test_genera_sito_riscrive_il_nome_in_ogni_pagina_che_c_e(tmp_path, monkeypatch):
+    """`genera.py --sito` riscrive il nome disegnato in ogni pagina del sito che lo contiene e non si ferma su pagine tolte
+    (offline.html, dal 25/11/2026). Le librerie dei caratteri non servono qui: si finge di averle e si passano tracciati finti,
+    su una copia delle pagine."""
+    for modulo in ("uharfbuzz", "fontTools", "fontTools.pens", "fontTools.pens.boundsPen", "fontTools.pens.recordingPen",
+                   "fontTools.pens.svgPathPen", "fontTools.pens.transformPen", "fontTools.ttLib"):
+        monkeypatch.setitem(sys.modules, modulo, mock.MagicMock())
+    spec = importlib.util.spec_from_file_location("genera_prova", SITO.parent / "assets" / "marchio" / "wordmark" / "genera.py")
+    genera = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(genera)
+    copia = tmp_path / "sito"
+    for f in SITO.rglob("*.html"):
+        (copia / f.relative_to(SITO)).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(f, copia / f.relative_to(SITO))
+    monkeypatch.setattr(genera, "RADICE", tmp_path)
+    finti = {"lettere": ["M0 0Z"], "x1": "M1 1Z", "x2": "M2 2Z", "i_testa": "M3 3Z", "i_palo": "M4 4Z", "i_piena": "M5 5Z",
+             "viewBox": "0 0 9 2"}
+    genera.aggiorna_sito(finti)
+    con_nome = [f for f in copia.rglob("*.html") if '<svg class="sprite"' in f.read_text(encoding="utf-8")]
+    assert len(con_nome) >= 3
+    for f in con_nome:
+        assert '<symbol id="wm-c" viewBox="0 0 9 2">' in f.read_text(encoding="utf-8"), f.relative_to(copia)
 
 
 # ---- esempi: campo e calcolo con nomi e numeri inventati, che tornano ----
@@ -464,7 +560,7 @@ def test_domanda_sui_dati_non_promette_meno_dell_informativa(nome):
     m = re.search(r"<summary>" + re.escape(domanda) + r"</summary><p>(.*?)</p>", sezione(testo, "domande"), re.S)
     assert m, domanda
     risposta = senza_tag(m.group(1))
-    assert '<a href="https://app.schieraxi.it/privacy">' in m.group(1)
+    assert re.search(r'<a href="https://app\.schieraxi\.it/privacy(\?lingua=en)?">', m.group(1))
     assert not risposta.startswith(inizio_vietato), risposta
     for v in voci:
         assert v in risposta, v
@@ -489,7 +585,7 @@ def test_italiano_e_inglese_allineati():
 META_APP = ("mobile-web-app-capable", "apple-mobile-web-app-capable", "apple-mobile-web-app-title")
 
 
-@pytest.mark.parametrize("nome", list(PAGINE) + ["404.html", "offline.html"])
+@pytest.mark.parametrize("nome", list(PAGINE) + ["404.html"])
 def test_pagine_senza_manifest_ne_modo_app(nome):
     p, _ = leggi(nome)
     assert [href for rel, href, _ in p.link if rel == "manifest"] == []
@@ -513,8 +609,10 @@ def test_niente_suggerimento_ne_pulsanti_per_installare(nome):
 
 
 def test_file_dell_installazione_tolti_e_nessuna_registrazione():
+    """Dal 25/11/2026 anche offline.html: la mostrava il service worker di prima quando mancava la rete, ora il sito non salva
+    nulla."""
     for f in ("manifest.webmanifest", "en/manifest.webmanifest", "js/installa.js", "icona-maskable-192.png",
-              "icona-maskable-512.png", "img/schermata-stretta.png"):
+              "icona-maskable-512.png", "img/schermata-stretta.png", "offline.html"):
         assert not (SITO / f).exists(), f
     for f in (SITO / "js").glob("*.js"):
         testo = f.read_text(encoding="utf-8")
@@ -609,12 +707,12 @@ new Function("self", "caches", "Request", testo)(self, caches, Request);
 
 
 def test_pagine_di_servizio_bilingui():
-    for nome in ("404.html", "offline.html"):
+    for nome in ("404.html",):
         t = (SITO / nome).read_text(encoding="utf-8")
         assert 'lang="en"' in t and 'class="cont ' in t and "contenuto" not in t, nome
 
 
-@pytest.mark.parametrize("nome", ["index.html", "en/index.html", "404.html", "offline.html"])
+@pytest.mark.parametrize("nome", ["index.html", "en/index.html", "404.html"])
 def test_pronto_per_csp_stretta(nome):
     """Niente style=, niente script o stili dentro la pagina: la CSP può restare senza unsafe-inline."""
     html = (SITO / nome).read_text(encoding="utf-8")
