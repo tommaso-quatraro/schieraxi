@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -165,8 +166,9 @@ AGGIORNAMENTI_DISMESSI = ("quote%", "crediti-giocatore%", "probabili-fonte2")   
 CONTROLLI_DISMESSI = ("somma_quote",)                                                # righe di `controlli`
 
 
-def _toglie_tabella_dismessa(db: sqlite3.Connection) -> None:
-    """Tabelle e righe di cose dismesse: negli archivi vecchi si tolgono (una volta sola, senza scrivere se non c'è niente)."""
+def _toglie_tabella_dismessa(db: sqlite3.Connection) -> bool:
+    """Tabelle e righe di cose dismesse: negli archivi vecchi si tolgono (una volta sola, senza scrivere se non c'è niente).
+    Falso se l'archivio era occupato e non si è potuto: si riprova alla prossima apertura."""
     tabelle = [r[0] for r in db.execute(f"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN "
                                         f"({', '.join('?' * len(TABELLE_DISMESSE))})", TABELLE_DISMESSE)]
     righe = " OR ".join("cosa LIKE ?" for _ in AGGIORNAMENTI_DISMESSI)
@@ -175,21 +177,24 @@ def _toglie_tabella_dismessa(db: sqlite3.Connection) -> None:
                        f"(SELECT COUNT(*) FROM controlli WHERE nome IN ({controlli}))",
                        (*AGGIORNAMENTI_DISMESSI, *CONTROLLI_DISMESSI)).fetchone()[0]
     if not tabelle and not resti:
-        return
+        return True
     try:
         for tabella in tabelle:                          # nomi dalla lista qui sopra, mai dai dati
             db.execute(f"DROP TABLE {tabella}")
         db.execute(f"DELETE FROM aggiornamenti WHERE {righe}", AGGIORNAMENTI_DISMESSI)
         db.execute(f"DELETE FROM controlli WHERE nome IN ({controlli})", CONTROLLI_DISMESSI)
         db.commit()
+        return True
     except sqlite3.OperationalError:     # archivio occupato da un altro processo: si riprova alla prossima apertura
         db.rollback()
+        return False
 
 
-def _aggiorna_schema(db: sqlite3.Connection) -> None:
+def _aggiorna_schema(db: sqlite3.Connection) -> bool:
     """Colonne nuove in tabelle che negli archivi ci sono già (`CREATE TABLE IF NOT EXISTS` non le aggiunge): una volta sola,
     senza toccare i dati. Poi l'indice che serve a trovare l'ultima lettura delle probabili prima di un'ora (`stato_dati`).
-    `registro_giornate.avversario` (#614): le righe che c'erano restano senza segno e si rimisurano una volta."""
+    `registro_giornate.avversario` (#614): le righe che c'erano restano senza segno e si rimisurano una volta. Falso se non è
+    riuscito (si riprova alla prossima apertura)."""
     try:
         colonne = {r[1] for r in db.execute("PRAGMA table_info(probabili_storia)")}
         if "copia" not in colonne:
@@ -198,8 +203,10 @@ def _aggiorna_schema(db: sqlite3.Connection) -> None:
             db.execute("ALTER TABLE registro_giornate ADD COLUMN avversario TEXT")
         db.execute("CREATE INDEX IF NOT EXISTS probabili_storia_letture ON probabili_storia (stagione, giornata, fonte, copia, rilevato)")
         db.commit()
+        return True
     except sqlite3.OperationalError:     # archivio occupato, o un altro processo ha appena aggiunto la colonna: si riprova alla prossima
         db.rollback()
+        return False
 
 
 def apri(percorso: Path = FILE) -> sqlite3.Connection:
@@ -209,10 +216,37 @@ def apri(percorso: Path = FILE) -> sqlite3.Connection:
     db.execute("PRAGMA journal_mode=WAL")        # chi legge non blocca chi scrive
     db.execute("PRAGMA synchronous = NORMAL")    # in WAL è sicuro; l'archivio si ricostruisce comunque, e ogni conferma non aspetta il disco
     db.row_factory = sqlite3.Row
-    db.executescript(SCHEMA)
-    _aggiorna_schema(db)
-    _toglie_tabella_dismessa(db)
+    _prepara_schema(db, percorso)
     return db
+
+
+# Lo schema si prepara una volta per archivio in ogni processo (#907): prima ogni apertura (più d'una per richiesta) rieseguiva
+# tutto SCHEMA. `PRAGMA schema_version` (SQLite lo cambia a ogni modifica delle tabelle, chiunque la faccia) dice se da allora
+# è cambiato qualcosa: un altro processo che tocca le tabelle, o un file rifatto da zero (versione 0), fanno ripreparare tutto.
+MAX_ARCHIVI_PRONTI = 32               # archivi diversi ricordati (il servizio ne apre uno; le prove tanti)
+_schema_pronto: dict[str, int] = {}  # percorso -> schema_version subito dopo la preparazione
+_blocco_schema = threading.Lock()
+
+
+def _prepara_schema(db: sqlite3.Connection, percorso: Path) -> None:
+    """Tabelle, colonne nuove e cose dismesse (SCHEMA, `_aggiorna_schema`, `_toglie_tabella_dismessa`), se dall'ultima volta che
+    sono riuscite in questo processo le tabelle di `percorso` sono cambiate."""
+    chiave = str(percorso)
+    with _blocco_schema:
+        pronto = _schema_pronto.get(chiave)
+    if pronto is not None and pronto == db.execute("PRAGMA schema_version").fetchone()[0]:
+        return
+    db.executescript(SCHEMA)
+    riuscito = _aggiorna_schema(db)
+    riuscito = _toglie_tabella_dismessa(db) and riuscito
+    if not riuscito:
+        return
+    versione = db.execute("PRAGMA schema_version").fetchone()[0]
+    with _blocco_schema:
+        _schema_pronto.pop(chiave, None)
+        while len(_schema_pronto) >= MAX_ARCHIVI_PRONTI:
+            _schema_pronto.pop(next(iter(_schema_pronto)))
+        _schema_pronto[chiave] = versione
 
 
 def inserisci(db: sqlite3.Connection, tabella: str, righe: list[dict]) -> int:
