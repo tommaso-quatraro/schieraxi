@@ -38,7 +38,7 @@ diagnostica sta nell'app (Impostazioni > Avanzate > Diagnostica widget).
 Un widget ha misure fisse: con il testo grande, su iPad o sulla schermata di blocco un testo può non entrare. Mai tagliarlo a metà
 parola («4 da contr…»): ogni testo ha più forme, dalla più lunga alla più corta, scritte in `ParoleWidget` (`Sources/Support/WidgetRiassunto.swift`,
 provate in `TestiCortiWidgetTests`), e la vista mostra la prima che entra (`TestoCheEntra`, `PrimaCheEntra`, cioè `ViewThatFits`).
-Esempi: «4 da controllare» → «4»; «In dubbio · gioca 70%» → prima senza volti, poi «gioca 70%»; «Giornata 7 · 10ª di Serie A» →
+Esempi: «4 da controllare» → «4 da vedere» (`oggi.da_vedere` del catalogo, #848) → «4»; «In dubbio · gioca 70%» → prima senza volti, poi «gioca 70%»; «Giornata 7 · 10ª di Serie A» →
 «Giornata 7»; tabella dei punti: prima via «10ª di Serie A», poi via la fascia; elenchi di nomi: «Sorvani e altri 2». VoiceOver
 legge sempre la forma intera.
 Lo stesso vale per i blocchi interi (#249). Il Cruscotto grande è alto da circa 270 punti (iPad mini, iPhone SE) a 350 (iPhone
