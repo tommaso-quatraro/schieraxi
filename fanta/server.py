@@ -1513,9 +1513,10 @@ def _ora_locale(quando: str | None) -> datetime | None:
 
 
 def _stati_live() -> dict:
-    """Lo stato in diretta delle partite ({(casa, trasferta): partita}) per le fasi di Oggi: solo la cache, nessuna richiesta esterna."""
+    """Lo stato in diretta delle partite ({(casa, trasferta): partita, con `visto`}) per le fasi di Oggi: solo la cache, nessuna
+    richiesta esterna."""
     try:
-        return live.unico.istantanea()["partite"] if live.unico else {}
+        return live.unico.stati() if live.unico else {}
     except Exception:                                        # noqa: BLE001 - senza diretta Oggi usa il calendario
         return {}
 

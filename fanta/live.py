@@ -61,8 +61,12 @@ _STATO_ESPN = {
     "STATUS_SECOND_HALF": "secondo_tempo", "STATUS_END_PERIOD": "intervallo",
     "STATUS_FULL_TIME": "finita", "STATUS_FINAL": "finita", "STATUS_FINAL_PEN": "finita", "STATUS_FINAL_AET": "finita",
     "STATUS_POSTPONED": "rinviata", "STATUS_CANCELED": "rinviata", "STATUS_CANCELLED": "rinviata",
-    "STATUS_DELAYED": "sospesa", "STATUS_SUSPENDED": "sospesa", "STATUS_ABANDONED": "sospesa", "STATUS_RAIN_DELAY": "sospesa",
+    "STATUS_SUSPENDED": "sospesa", "STATUS_ABANDONED": "sospesa",
 }
+# «ritardata» (calcio d'inizio rimandato di poco, o gioco fermo per poco, nella stessa giornata) non è un rinvio (#901): da giocare
+# finché la fonte non la mette in gioco (gruppo «in»), poi in corso. Mai «sospesa»/«rinviata»: Oggi aspetterebbe il recupero o
+# darebbe il voto d'ufficio. Se la fonte la rinvia davvero lo dice con STATUS_POSTPONED.
+_RITARDO_ESPN = ("STATUS_DELAYED", "STATUS_RAIN_DELAY")
 
 
 # ---------------------------------------------------------------- tempo
@@ -171,7 +175,9 @@ def leggi_espn(corpo: dict, slug_noti: set[str]) -> list[dict]:
                 continue
             tipo = c["status"]["type"]
             stato = _STATO_ESPN.get(tipo.get("name"))
-            if stato is None:                                    # stato mai visto: si fida del gruppo generale
+            if tipo.get("name") in _RITARDO_ESPN:
+                stato = "in_corso" if tipo.get("state") == "in" else "da_giocare"
+            elif stato is None:                                  # stato mai visto: si fida del gruppo generale
                 stato = {"pre": "da_giocare", "in": "in_corso", "post": "finita"}.get(tipo.get("state"), "da_giocare")
             gc, gt = int(lati["home"].get("score") or 0), int(lati["away"].get("score") or 0)
             lato_di = {lati["home"]["team"]["id"]: "casa", lati["away"]["team"]["id"]: "trasferta"}
@@ -318,6 +324,12 @@ class Raccoglitore:
         with self._blocco:
             return {"partite": {k: dict(v) for k, v in self._partite.items()}, "aggiornato_il": self.aggiornato_il, "fonte": self.fonte}
 
+    def stati(self) -> dict:
+        """Per le fasi di Oggi: le partite della cache ({(casa, trasferta): partita}) con `visto` = quando la fonte ha dato quello
+        stato (None se non si sa, o se è un «da giocare» del ripiego). Serve a riconoscere un ritardo confermato (#901)."""
+        with self._blocco:
+            return {k: dict(v) | {"visto": self._visto.get(k, v.get("visto"))} for k, v in self._partite.items()}
+
     def in_gioco(self) -> bool:
         with self._blocco:
             return any(p["stato"] in IN_GIOCO for p in self._partite.values())
@@ -397,7 +409,11 @@ class Raccoglitore:
                 if fonte == FONTE_RIPIEGO and vecchia and vecchia["eventi"] and p["stato"] != "finita":
                     p = p | {"eventi": vecchia["eventi"], "minuto": vecchia["minuto"]}      # il ripiego non cancella i marcatori già noti
                 self._partite[(p["casa"], p["trasferta"])] = p
-                self._visto[(p["casa"], p["trasferta"])] = visto
+                if fonte == FONTE_RIPIEGO and p["stato"] == "da_giocare":
+                    # il ripiego scrive «da giocare» anche a partita cominciata senza punteggio: non conferma un ritardo (#901)
+                    self._visto.pop((p["casa"], p["trasferta"]), None)
+                else:
+                    self._visto[(p["casa"], p["trasferta"])] = visto
             limite = (adesso - TIENI).strftime("%Y-%m-%d")
             for k in [k for k, p in self._partite.items() if (p.get("data") or "9") < limite]:
                 del self._partite[k]
