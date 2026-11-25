@@ -268,6 +268,9 @@ CATALOGO: dict[str, str] = {
                             "Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
     # una lega già mista (squadre di esempio rimaste insieme a quelle vere, #683): server._rose_di_prima
     "rose.esempi_tolti": "Le squadre di esempio ({squadre}) erano rimaste nella lega insieme alle tue: l'importazione le toglie.",
+    # regolamento incollato (#881): un valore letto che con le regole di adesso non si può salvare (regole_testo._non_applicabili)
+    "regole.panchina_posti_fissi": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia i posti di ogni ruolo in «Modifica i valori».",
+    "regole.panchina_somma_posti": "I posti per ruolo letti nel regolamento sono {n} in tutto e la panchina è la loro somma: controlla i posti di ogni ruolo in «Modifica i valori».",
     "rose.codice_assente": "codice {codice} non presente nel listone",
     "rose.diversa": "{squadra}: rosa diversa dalle regole ({dettaglio})",
     "rose.doppione": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",
@@ -342,6 +345,20 @@ CATALOGO: dict[str, str] = {
     "registro.persa_scrittura": "salvataggio nell'archivio non riuscito",
     "registro.persa_misura": "misura a giornata finita non riuscita più volte",
     "registro.persa_altro": "motivo non riconosciuto: i dettagli sono nel log del server",
+    # Gestione, tutti i posti presi (#894, `avviso` di GET /api/admin/utenti e di POST /api/admin/inviti): chi gestisce lo legge
+    # prima di creare un invito; {n} = gli utenti, {massimo} = il tetto del server (MAX_UTENTI)
+    "admin.posti_pieni.one": "Posti pieni: {n} utente su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "admin.posti_pieni.other": "Posti pieni: {n} utenti su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    # i posti liberi sono già tutti negli inviti aperti (#894): {n} = posti degli inviti aperti, {utenti} = gli utenti, {massimo} = il tetto
+    "admin.posti_promessi.one": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posto è già in un invito aperto. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "admin.posti_promessi.other": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posti sono già in inviti aperti. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    # Stato dei dati › Fonti dei dati, sotto una fonte spenta (#894, `fonti_attive.cosa_manca`): solo cosa non arriva, una chiave
+    # per fonte (`fonte.spenta_<id>`); il nome e la frase comune sulle condizioni d'uso li scrive la pagina
+    "fonte.spenta_fantacalcio": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni.",
+    "fonte.spenta_understat": "Non scarico statistiche avanzate (gol e assist attesi, rigori).",
+    "fonte.spenta_footballdata": "Non scarico risultati e statistiche di squadra delle partite giocate.",
+    "fonte.spenta_espn": "Non scarico risultati in diretta.",
+    "fonte.spenta_foto": "L'app usa i volti illustrati.",
 }
 
 

@@ -43,7 +43,7 @@ def tutte_le_rotte_api() -> set[tuple[str, str]]:
 NON_PERSONALI = {
     ("GET", "/api/novita"), ("GET", "/api/salute"), ("GET", "/api/live"), ("GET", "/api/stato-dati"), ("GET", "/api/aggiorna"), ("POST", "/api/aggiorna"),
     ("GET", "/api/giocatori"), ("GET", "/api/avatar"),
-    ("GET", "/api/push/chiave"), ("POST", "/api/regole/riconosci"),
+    ("GET", "/api/push/chiave"),
     ("GET", "/api/account/me"), ("POST", "/api/account/registra"), ("POST", "/api/account/accedi"), ("POST", "/api/account/esci"),
     ("POST", "/api/account/esci-da-tutti"), ("POST", "/api/account/cambia-password"), ("POST", "/api/account/codice-recupero"),
     ("POST", "/api/account/elimina"), ("POST", "/api/account/recupero"), ("PUT", "/api/account/nome"),
@@ -144,6 +144,8 @@ def letture(m: str):
         ("GET", "/api/backup", {}), ("GET", "/api/icona", {}),
         ("GET", "/api/onboarding", {}), ("GET", "/api/onboarding/controlli", {}), ("GET", "/api/primo-avvio", {}), ("GET", "/api/funzioni", {}),
         ("POST", "/api/onboarding/regole", dict(json={"testo": f"Assist {2 if m == 'A' else 3}"})),
+        # il regolamento incollato si confronta con le regole di chi chiede (#881: un valore che non si può salvare non si propone)
+        ("POST", "/api/regole/riconosci", dict(json={"testo": "Panchina di 12 giocatori"})),
         # l'anteprima delle rose non salva niente: confronta solo con le rose di chi chiede (mai con quelle dell'altro)
         ("POST", "/api/rose/anteprima", dict(json={"testo": f"Real Esempio {m}\nP\tSommer\t10\nNuova {m}\nA\tKean\t30\n"})),
         ("POST", "/api/rose/anteprima/file", dict(files={"file": ("rose.txt", f"Real Esempio {m}\nD\tBastoni\t5\n".encode(), "text/plain")})),
