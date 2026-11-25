@@ -393,12 +393,15 @@ _SCHEDA_PREVISIONE = scheda_previsione
 
 def scheda_di(prev: pd.DataFrame, i: int) -> dict:
     """`scheda_previsione(i, prev.loc[i])` fatta una volta sola per tabella. Solo per una tabella che non si modifica più (quella di
-    `previsioni`). Torna una copia: chi la riceve può cambiarne i campi senza toccare quella delle altre richieste."""
+    `previsioni`). Torna una copia completa (anche liste e dizionari dentro la scheda): chi la riceve può cambiarla tutta senza
+    toccare quella delle altre richieste."""
     if scheda_previsione is not _SCHEDA_PREVISIONE:
         return scheda_previsione(i, prev.loc[i])
     with _blocco_schede:
         voce = _schede_fatte.get(id(prev))
         if voce is None or voce[0]() is not prev:
+            for chiave in [k for k, (rif, _) in _schede_fatte.items() if rif() is None]:     # tabelle già buttate
+                del _schede_fatte[chiave]
             voce = (weakref.ref(prev), {})
             _schede_fatte[id(prev)] = voce
             while len(_schede_fatte) > MAX_TABELLE_SCHEDE:
@@ -407,10 +410,20 @@ def scheda_di(prev: pd.DataFrame, i: int) -> dict:
             _schede_fatte.move_to_end(id(prev))
         fatta = voce[1].get(i)
     if fatta is None:
-        fatta = scheda_previsione(i, prev.loc[i])
+        fatta = _copia(scheda_previsione(i, prev.loc[i]))      # nemmeno le liste della tabella restano condivise
         with _blocco_schede:
             voce[1][i] = fatta
-    return dict(fatta)
+    return _copia(fatta)
+
+
+def _copia(valore):
+    """Copia completa di dizionari e liste (una scheda: numeri, testi, `Frase`, liste e dizionari di questi). Il resto non si
+    modifica e resta com'è. Molto più veloce di copy.deepcopy, che qui si chiederebbe decine di volte per richiesta."""
+    if isinstance(valore, dict):
+        return {k: _copia(v) for k, v in valore.items()}
+    if isinstance(valore, list):
+        return [_copia(v) for v in valore]
+    return valore
 
 
 # Titolare poco sicuro con una riserva quasi sicura dello stesso ruolo: la scelta è giusta (se lui non gioca c'è la riserva, e

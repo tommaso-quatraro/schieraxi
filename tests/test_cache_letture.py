@@ -1,5 +1,6 @@
 """Letture ripetute a ogni richiesta tenute in memoria (#907): stesso risultato di prima, rifatte da sole quando i dati cambiano,
 con un tetto. Dati inventati."""
+import copy
 import gc
 import json
 import os
@@ -135,6 +136,33 @@ def test_scheda_di_cambiata_da_chi_la_riceve_non_cambia_per_gli_altri():
     s["nome"] = "Cambiato"
     s["stato"] = "squalificato"
     assert consigli.scheda_di(prev, 11)["nome"] == "Rossi" and consigli.scheda_di(prev, 11)["stato"] == "titolare"
+
+
+def test_scheda_di_anche_liste_e_dizionari_dentro_la_scheda_sono_di_chi_la_riceve():
+    """La copia è completa: motivi, frasi dei motivi, «perché questo numero» ed etichetta cambiati da chi ha ricevuto la scheda
+    restano intatti per la lettura dopo."""
+    prev = _previsioni()
+    prev["perche_numero"] = [[{"chiave": "perche.forma", "valore": 0.4}]] * len(prev)
+    prima = copy.deepcopy(consigli.scheda_previsione(11, prev.loc[11]))
+    s = consigli.scheda_di(prev, 11)
+    assert s == prima and s["motivi"] and s["motivi_frasi"] and s["perche_numero"] and s["etichetta"]
+    s["motivi"].append("cambiato")
+    s["motivi_frasi"][0]["chiave"] = "cambiata"
+    s["perche_numero"][0]["valore"] = 99
+    s["perche_numero"].clear()
+    s["etichetta"]["testo"] = "Cambiata"
+    assert consigli.scheda_di(prev, 11) == prima
+    assert consigli.scheda_previsione(11, prev.loc[11]) == prima          # e nemmeno la tabella di previsioni
+
+
+def test_scheda_di_toglie_le_schede_delle_tabelle_buttate():
+    vecchia = _previsioni(mu=5.0)
+    consigli.scheda_di(vecchia, 11)
+    del vecchia
+    gc.collect()
+    nuova = _previsioni(mu=6.0)
+    consigli.scheda_di(nuova, 11)                              # una tabella nuova fa pulizia delle buttate
+    assert all(rif() is not None for rif, _ in consigli._schede_fatte.values())
 
 
 def test_scheda_di_segue_la_funzione_delle_schede(monkeypatch):
