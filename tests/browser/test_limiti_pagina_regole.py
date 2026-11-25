@@ -121,3 +121,47 @@ def test_valori_validi_si_salvano_come_prima(web):
     tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
     assert salvate, "le regole valide non sono partite"
     assert not web.errori_mostrati()
+
+
+# ---------------------------------------------------------------- revisione di #886
+def corpi_scritti(web) -> list[dict]:
+    """I corpi delle richieste che scrivono le regole (PUT /api/regole), man mano che partono."""
+    import json
+    corpi = []
+    web.pagina.on("request", lambda r: r.method == "PUT" and r.url.split("?")[0].endswith("/api/regole")
+                  and corpi.append(json.loads(r.post_data or "null")))
+    return corpi
+
+
+@pytest.mark.parametrize("sezione, nome, valore", [
+    ("Rosa e crediti", "Portieri", "3,5"),
+    ("Rosa e crediti", "Crediti iniziali", "500,5"),
+    ("Panchina e sostituzioni", "Cambi massimi", "2,5"),
+])
+def test_un_numero_con_la_virgola_in_un_campo_intero_si_dice_prima_di_salvare(web, sezione, nome, valore):
+    """«3,5» portieri passava la pagina e il server rispondeva «rosa.P deve essere un numero intero», con il nome interno."""
+    solo_prima(web)
+    salvate = scritture(web)
+    apri_valori(web, sezione)
+    campo(web, nome).fill(valore)
+    tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
+    assert avviso(web) == f"«{nome}» deve essere un numero intero"
+    assert salvate == []
+
+
+def test_con_il_modificatore_spento_le_fasce_nascoste_non_si_controllano(web):
+    """Una fascia svuotata e poi il modificatore spento: le fasce sono nascoste, non si controllano e restano quelle salvate."""
+    solo_prima(web)
+    corpi = corpi_scritti(web)
+    salvate = web.registrata("/api/regole")["modificatore_difesa"]
+    apri_valori(web, "Modificatore difesa")
+    campo(web, "Fascia 1, media almeno").fill("")
+    spento = principale(web).get_by_role("checkbox", name=re.compile(r"^Attivo nella mia lega"))
+    spento.set_checked(False)
+    web.aspetta()
+    assert not spento.is_checked()
+    tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
+    assert corpi, "con il modificatore spento le regole non sono partite"
+    md = corpi[-1]["modificatore_difesa"]
+    assert md["attivo"] is False and md["soglie"] == salvate["soglie"] and md["min_difensori"] == salvate["min_difensori"]
+    assert not web.errori_mostrati()

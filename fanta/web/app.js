@@ -3293,22 +3293,24 @@ async function vistaRegole() {
   };
 
   // --- salvataggio
-  // Cosa non va in un campo che si salva (#881): vuoto (prima diventava 0), non un numero, fuori dai limiti del server (gli stessi
-  // di − e +). Il nome del campo è quello della riga; "" se va bene.
+  // Cosa non va in un campo che si salva (#881): vuoto (prima diventava 0), non un numero, con la virgola in un campo di numeri
+  // interi (quelli senza decimali: portieri, panchina, cambi, crediti...), fuori dai limiti del server (gli stessi di − e +). Il
+  // nome del campo è quello della riga; "" se va bene.
   const problemaCampo = campo => {
     const testo = String(campo.value).trim().replace(",", "."), nome = campo.getAttribute("aria-label") || "";
     if (!testo) return t("regole.campo_vuoto", { campo: nome });
     const v = Number(testo), s = campo.closest(".stepper");
     if (!Number.isFinite(v)) return t("regole.sono_valori_non");
+    if (s.dataset.dec === "0" && !Number.isInteger(v)) return t("regole.intero", { campo: nome });
     const min = Number(s.dataset.min), max = Number(s.dataset.max);
     return v < min || v > max ? t("regole.fuori_limiti", { campo: nome, min: cifraLimite(min), max: cifraLimite(max) }) : "";
   };
   const salva = async () => {
-    const postiOn = $("#posti_fissi").checked;
+    const postiOn = $("#posti_fissi").checked, mdOn = $("#md_attivo").checked;
     // i campi che si salvano: non i voti della prova, non i posti per ruolo senza i posti fissi né, con i posti fissi, il numero
-    // della panchina (è la loro somma), non il voto d'ufficio spento. Il modificatore spento e il voto delle partite rinviate si
-    // salvano anche quando sono nascosti.
-    const campi = [...contenuto.querySelectorAll(".stepper input")].filter(i => !i.closest(".prova-difesa")
+    // della panchina (è la loro somma), non il voto d'ufficio spento, non il modificatore spento (sotto). Il voto delle partite
+    // rinviate si salva anche quando è nascosto.
+    const campi = [...contenuto.querySelectorAll(".stepper input")].filter(i => !i.closest(".prova-difesa") && !(i.closest("#md-corpo") && !mdOn)
       && !(i.closest("#posti-corpo") && !postiOn) && !(i.id === "p_numero" && postiOn) && !(i.closest("#vu-corpo") && !$("#vu_attivo").checked));
     const sbagliato = campi.find(problemaCampo);
     if (sbagliato) {                             // il campo sbagliato si vede anche se «Modifica i valori» era chiuso
@@ -3335,9 +3337,14 @@ async function vistaRegole() {
       nuove.partite_rinviate = $("#rinvio-modo .attivo").dataset.valore;
       nuove.voto_ufficio_rinviate = leggiN("voto_rinv");
     }
-    const fasce = leggiFasce().filter(f => Number.isFinite(f[0]) && Number.isFinite(f[1])).sort((a, b) => a[0] - b[0]);
-    if (new Set(fasce.map(f => f[0])).size !== fasce.length) { avviso(t("regole.due_fasce_hanno"), 5000); return; }
-    nuove.modificatore_difesa = { attivo: $("#md_attivo").checked, min_difensori: leggiN("md_min"), soglie: fasce };
+    // Il modificatore spento ha i campi nascosti (#886): non si controllano e, se uno non va (vuoto, fuori dai limiti), restano i
+    // valori salvati; se vanno tutti, si salvano anche spenti, come prima.
+    const campiMd = [...document.querySelectorAll("#md-corpo .stepper input")].filter(i => !i.closest(".prova-difesa"));
+    if (mdOn || campiMd.every(i => !problemaCampo(i))) {
+      const fasce = leggiFasce().sort((a, b) => a[0] - b[0]);
+      if (new Set(fasce.map(f => f[0])).size !== fasce.length) { avviso(t("regole.due_fasce_hanno"), 5000); return; }
+      nuove.modificatore_difesa = { attivo: mdOn, min_difensori: leggiN("md_min"), soglie: fasce };
+    } else nuove.modificatore_difesa = { ...structuredClone(r.modificatore_difesa), attivo: false };
     try {
       await api("/api/regole", { method: "PUT", body: JSON.stringify(nuove) });
       svuotaCache();

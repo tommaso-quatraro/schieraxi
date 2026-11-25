@@ -1565,6 +1565,7 @@ const TESTI = {
     "regole.aggiornamenti_titolo": "Aggiornamenti dei dati",
     "regole.campo_vuoto": "«{campo}» è vuoto: scrivi un numero",
     "regole.fuori_limiti": "«{campo}» deve essere tra {min} e {max}",
+    "regole.intero": "«{campo}» deve essere un numero intero",
 
     "ruolo.P_pl": "Portieri",
     "ruolo.D_pl": "Difensori",
@@ -3357,6 +3358,7 @@ const TESTI = {
     "regole.aggiornamenti_titolo": "Data updates",
     "regole.campo_vuoto": "“{campo}” is empty: enter a number",
     "regole.fuori_limiti": "“{campo}” must be between {min} and {max}",
+    "regole.intero": "“{campo}” must be a whole number",
 
     "ruolo.P_pl": "Goalkeepers",
     "ruolo.D_pl": "Defenders",

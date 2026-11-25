@@ -423,5 +423,9 @@
   "regole.fuori_limiti": {
     "it": "«{campo}» deve essere tra {min} e {max}",
     "en": "“{campo}” must be between {min} and {max}"
+  },
+  "regole.intero": {
+    "it": "«{campo}» deve essere un numero intero",
+    "en": "“{campo}” must be a whole number"
   }
 }
