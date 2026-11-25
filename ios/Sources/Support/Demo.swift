@@ -165,9 +165,10 @@ extension Demo {
             apriLega(nav, modello, [.informazioni, .novita])
 
         // la Formazione unica (#673): prima della scadenza, in corso, finita, con una partita rinviata, a giornata chiusa (scorsa alla
-        // riga dello stato), con una tua scelta diversa dalla consigliata, a campionato finito (#727)
+        // riga dello stato), con una tua scelta diversa dalla consigliata, a campionato finito (#727), finita con una partita da
+        // recuperare (il riquadro del rinvio sotto i punti, #900)
         case "formazione", "formazione-in-corso", "formazione-finita", "formazione-rinvio", "formazione-chiusa", "formazione-cambiata",
-             "formazione-campionato-finito":
+             "formazione-campionato-finito", "oggi-finita-recupero":
             nav.sezione = .formazione
         case "formazione-sostituisci":
             apriSostituzione(modello)
