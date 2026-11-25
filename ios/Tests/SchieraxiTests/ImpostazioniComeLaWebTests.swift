@@ -56,12 +56,13 @@ struct ImpostazioniComeLaWebTests {
         #expect(due.sotto == Catalogo.Lega.nSquadre(1))
     }
 
-    @Test("La mia squadra non ancora scelta: lo dice, e la voce apre l'elenco per sceglierla")
+    /// Come la web (`vistaRosa("")` senza la mia squadra, #863): «La mia squadra» apre la sua scelta, non «Le altre squadre».
+    @Test("La mia squadra non ancora scelta: lo dice, e la voce apre la pagina per sceglierla")
     func senzaMiaSquadra() throws {
         let voci = VociImpostazioni.lega(squadre: squadre(4), squadreAltrui: true)
         let mia = try #require(voci.first { $0.id == "squadra" })
         #expect(mia.sotto == Catalogo.Imp.miaSquadraNessuna)
-        #expect(mia.pagina == .squadre)
+        #expect(mia.pagina == .sceltaSquadra)
     }
 
     @Test("Le altre squadre solo con più di una squadra e con la funzione accesa")

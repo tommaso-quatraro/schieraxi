@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.564",
+    "data": "2026-11-26T00:41:10",
+    "titolo": "iPhone come la web: voti neutri, «Le altre squadre» e la riga sotto il titolo di Giornate",
+    "voci": [
+      "iPhone, scheda del giocatore: gli ultimi voti sono tutti dello stesso grigio, come sulla web (prima verdi, arancio o rossi secondo il voto), e in «Perché questo numero» le frasi sono scritte come sulla web («gioca il 78%: dubbio»).",
+      "iPhone, Impostazioni › Le altre squadre: la pagina si chiama «Le altre squadre» e ha solo l'elenco delle altre squadre, come sulla web. La tua squadra si cambia da «La mia squadra», con «Non è la tua squadra?» in cima alla rosa; se non l'hai ancora scelta, «La mia squadra» ti fa scegliere quale delle squadre è la tua.",
+      "iPhone, Giornate: sotto il titolo c'è la riga della web con la giornata («Giornata 13 · 13ª di Serie A»), il nome della tua squadra e l'ora dei dati («dati del 26 ott 23:55»)."
+    ],
+    "tecnico": [
+      "Catalogo dei testi: tolte lega.voce_squadre, lega.voce_miasquadra e lega.tocca_una_squadra, che dopo questa modifica non usa più nessuno (la web le aveva già lasciate); aggiunte all'iPhone testata.dati_del, testata.mai, testata.offline e lega.solo_la_tua.",
+      "iPhone: RigaStato (Domain) con i campi di GET /api/stato già mandati alla web (prossima_giornata_lega aggiunto a InfoServer); SquadreView solo elenco; SceltaSquadraView e SelettoreMiaSquadra; LegaViewModel.scegliMiaSquadra (PUT /api/mia-squadra, poi la rosa della squadra scelta al posto della pagina); PercheNumero senza maiuscola; pallini degli ultimi voti neutri. Nessun cambio al server."
+    ]
+  },
+  {
     "versione": "1.563",
     "data": "2026-11-26T00:34:57",
     "titolo": "Regole: niente più valori sbagliati salvati senza avviso",

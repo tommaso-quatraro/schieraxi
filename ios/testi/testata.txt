@@ -1,0 +1,6 @@
+# Testi della web (fanta/testi/testata.json) della riga sotto il titolo di Giornate, come la riga di stato della web (#863):
+# RigaStato in Domain/RigaStato.swift. Una chiave per riga. Dopo una modifica: python script/testi.py --scrivi
+
+testata.dati_del
+testata.mai
+testata.offline

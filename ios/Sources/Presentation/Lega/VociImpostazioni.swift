@@ -19,9 +19,9 @@ enum VociImpostazioni {
         var voci = [VoceImpostazioni(id: "rose", nome: Catalogo.Lega.voceImporta, sotto: Catalogo.Lega.voceImportaSub, pagina: .importa)]
         if !squadre.isEmpty {
             let mia = squadre.first { $0.mia == true }?.nome
-            // senza una squadra scelta si apre l'elenco, dove si sceglie la propria
+            // senza una squadra scelta si apre la sua scelta, come la web (`vistaRosa("")`, #863)
             voci.append(VoceImpostazioni(id: "squadra", nome: Catalogo.Lega.miaSquadra, sotto: mia ?? Catalogo.Imp.miaSquadraNessuna,
-                                         pagina: mia.map { .rosa($0) } ?? .squadre))
+                                         pagina: mia.map { .rosa($0) } ?? .sceltaSquadra))
         }
         voci.append(VoceImpostazioni(id: "regole", nome: Catalogo.Imp.regole, sotto: Catalogo.Imp.regoleSub, pagina: .regole))
         if squadre.count > 1, squadreAltrui {
@@ -32,7 +32,7 @@ enum VociImpostazioni {
     }
 
     /// Le squadre di «Le altre squadre», come `vistaAltreSquadre` della web (#779, #788): tutte tranne la mia. Finché la mia non è
-    /// scelta sono tutte: «La mia squadra» apre lo stesso elenco per sceglierla.
+    /// scelta sono tutte (la propria si sceglie in «La mia squadra», #863).
     static func altreSquadre(_ squadre: [SquadraLega]) -> [SquadraLega] {
         squadre.filter { $0.mia != true }
     }
