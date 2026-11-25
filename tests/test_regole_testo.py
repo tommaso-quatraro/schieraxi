@@ -2,6 +2,7 @@
 import random
 import re
 import time
+from pathlib import Path
 
 import pytest
 
@@ -575,3 +576,80 @@ def test_stessi_numeri_di_prima_su_testi_brevi_a_caso():
             continue
         m_nuovo, m_vecchio = re.search(regole_testo.RUOLO_ROSA, s), re.search(VECCHIO_RUOLO, s)
         assert (m_nuovo and m_nuovo.groups()) == (m_vecchio and m_vecchio.groups()), repr(s)
+
+
+# ---------------------------------------------------------------- regolamento incollato: gol, rosa, titoli, righe lette in parte (#881)
+# Il testo di un regolamento inventato (tests/dati), scritto come quelli veri: titoli con il numero dell'articolo, una riga di rosa
+# con tutti i ruoli, il gol con l'eccezione del portiere fra parentesi.
+REGOLAMENTO_INVENTATO = (Path(__file__).parent / "dati" / "regolamento_inventato.txt").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("riga", [
+    "Gol segnato: +3 punti (il gol del portiere vale +5)",
+    "Gol: +3 (portiere +5)",
+    "Gol: 3 punti; portiere: 5 punti",
+])
+def test_gol_con_l_eccezione_di_un_ruolo_vale_per_tutti_gli_altri(riga):
+    """Il primo numero è il gol di tutti i ruoli, quello dopo il ruolo citato vale solo per quel ruolo."""
+    v = _per_chiave(regole_testo.interpreta(riga))
+    assert (v["bonus.gol.P"], v["bonus.gol.D"], v["bonus.gol.C"], v["bonus.gol.A"]) == (5, 3, 3, 3)
+
+
+def test_gol_con_due_numeri_prima_del_ruolo_non_si_indovina():
+    """«3 punti, 5 per il portiere»: non si sa quale numero vada al portiere, la riga resta da controllare senza proposte."""
+    riga = "Gol: 3 punti, 5 per il portiere"
+    r = regole_testo.interpreta(riga)
+    assert not any(k.startswith("bonus.gol.") for k in _per_chiave(r))
+    assert [x["riga"] for x in r["da_controllare"]] == [riga]
+
+
+@pytest.mark.parametrize("riga, attesa", [
+    ("Rosa: portieri 3, difensori 9, centrocampisti 9, attaccanti 5", (3, 9, 9, 5)),
+    ("Portieri 3 difensori 8 centrocampisti 8 attaccanti 6", (3, 8, 8, 6)),
+    ("Ogni squadra è composta da 3 portieri, 8 difensori, 8 centrocampisti e 6 attaccanti.", (3, 8, 8, 6)),
+])
+def test_la_rosa_su_una_riga_si_legge_tutta(riga, attesa):
+    r = regole_testo.interpreta(riga)
+    v = _per_chiave(r)
+    assert (v["rosa.P"], v["rosa.D"], v["rosa.C"], v["rosa.A"]) == attesa
+    assert r["da_controllare"] == [] and r["non_riconosciute"] == []
+
+
+@pytest.mark.parametrize("riga, letto", [
+    ("Assist: +1 (assist da fermo +0,5)", {"bonus.assist": 1}),
+    ("Rosa: portieri 3, difensori 9 (10 nelle leghe a 12 squadre)", {"rosa.P": 3, "rosa.D": 9}),
+    ("Modificatore difesa attivo con almeno 4 difensori", {"modificatore_difesa.attivo": True}),
+])
+def test_riga_letta_solo_in_parte_va_fra_quelle_da_controllare(riga, letto):
+    """I numeri letti si propongono; quelli rimasti fuori si guardano a mano: la riga va fra quelle da controllare."""
+    r = regole_testo.interpreta(riga)
+    assert _per_chiave(r) == letto
+    assert r["da_controllare"] == [{"riga": riga, "regole": []}] and r["non_riconosciute"] == [riga]
+
+
+@pytest.mark.parametrize("riga", [
+    "ART. 2 - PUNTEGGI", "Art. 4 – Formazione e panchina", "Articolo 3: modificatore", "Capitolo 1", "2) Rosa", "3. Panchina",
+    "REGOLAMENTO LEGA DEGLI ESEMPI INVENTATI 2026/27", "Stagione 2026-2027",
+])
+def test_i_titoli_non_sono_righe_da_controllare(riga):
+    """Il numero dell'articolo o la stagione non sono valori di regola: un titolo senza altri numeri non si controlla a mano."""
+    r = regole_testo.interpreta(riga)
+    assert r["da_controllare"] == [] and r["non_riconosciute"] == []
+
+
+@pytest.mark.parametrize("riga, letto", [
+    ("1. Assist: +1", {"bonus.assist": 1}),
+    ("2. Crediti iniziali: 500", {"crediti_iniziali": 500}),
+    ("Art. 5 - Sostituzioni massime: 3", {"panchina.max_sostituzioni": 3}),
+])
+def test_il_numero_del_titolo_non_si_legge_come_valore(riga, letto):
+    r = regole_testo.interpreta(riga)
+    assert _per_chiave(r) == letto and r["da_controllare"] == []
+
+
+def test_regolamento_inventato_con_titoli_rosa_e_gol():
+    r = regole_testo.interpreta(REGOLAMENTO_INVENTATO)
+    v = _per_chiave(r)
+    assert (v["rosa.P"], v["rosa.D"], v["rosa.C"], v["rosa.A"]) == (3, 9, 9, 5)
+    assert (v["bonus.gol.P"], v["bonus.gol.D"], v["bonus.gol.C"], v["bonus.gol.A"]) == (5, 3, 3, 3)
+    assert [x["riga"] for x in r["da_controllare"]] == ["Assist: +1 (assist da fermo +0,5)"]

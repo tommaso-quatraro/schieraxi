@@ -24,6 +24,20 @@ NUM = r"(?:[+\-−–]\s*)?\d+(?:[.,]\d+)?"
 SUFFISSO = r"\w{0,20}"           # il resto di una parola dopo la radice: «portier» + «i»
 RUOLO_ROSA = (rf"(portier{SUFFISSO}|difensor{SUFFISSO}|centrocamp{SUFFISSO}|attaccant{SUFFISSO})"
               r"\s*(?:[:=]\s*)?(\d{1,2})\b")
+# La rosa scritta al contrario, il numero prima del ruolo («composta da 3 portieri, 8 difensori…»): si legge solo in una riga che
+# parla della rosa (ROSA_FRASE), perché altrove «4 difensori» è altro (il modificatore, la panchina, un modulo).
+NUMERO_RUOLO_ROSA = rf"\b(\d{{1,2}})\s(portier{SUFFISSO}|difensor{SUFFISSO}|centrocamp{SUFFISSO}|attaccant{SUFFISSO})"
+ROSA_FRASE = r"\brosa\b|compost"
+# I numeri di un titolo non sono valori di regola: l'articolo o il capitolo («ART. 2 - PUNTEGGI», «Capitolo 1»), il numero
+# dell'elenco in testa alla riga («2) Rosa», «3. Panchina») e la stagione («2026/27», «2026-2027»). Si tolgono prima di leggere:
+# un titolo resta senza numeri e non va fra le righe da controllare.
+NUMERO_TITOLO = (r"\b(?:art|articolo|capitolo|cap|sezione|sez|paragrafo)\b\.?\s{0,3}\d{1,3}(?:\.\d{1,3}){0,3}\b"
+                 r"|^\W{0,5}\d{1,2}(?:\.\d{1,2}){0,3}[.)](?=\s)"
+                 r"|\b(?:(?:stagione|campionato)\s)?(?:19|20)\d\d\s{0,3}[/-]\s{0,3}(?:(?:19|20)\d\d|\d\d)\b"
+                 r"|\b(?:stagione|campionato)\s(?:19|20)\d\d\b")
+# I moduli («3-4-3», «343» in una riga di moduli) non sono numeri da leggere uno per uno (righe lette in parte, _numeri_da_leggere)
+MODULO = r"\b[2-5]\s*-\s*[1-6]\s*-\s*[0-6]\b"
+MODULO_UNITO = r"\b[2-5][1-6][0-6]\b"
 MAX_CIFRE = 9                    # un valore di regola con più cifre non è un valore vero: si ignora
 RUOLI = {"portier": "P", "difensor": "D", "centrocamp": "C", "attaccant": "A"}
 NOMI_PLURALE = {"P": "portieri", "D": "difensori", "C": "centrocampisti", "A": "attaccanti"}
@@ -102,6 +116,34 @@ def _intero(s: str | None) -> int | None:
 def _primo_numero(testo: str) -> float | None:
     m = re.search(NUM, testo)
     return _valore(m.group()) if m else None
+
+
+def _numeri(testo: str, da: int = 0) -> list[tuple[int, float]]:
+    """I numeri che possono essere valori di regola, con la loro posizione nel testo (da `da` in poi)."""
+    return [(m.start(), v) for m in re.compile(NUM).finditer(testo, da) if (v := _valore(m.group())) is not None]
+
+
+def _arrotonda(v: float) -> float:
+    return round(abs(v), 3)
+
+
+def _numeri_da_leggere(riga: str) -> set[float]:
+    """I numeri della riga (già senza i numeri del titolo) che una regola dovrebbe aver letto: senza i moduli e senza segno."""
+    testo = re.sub(MODULO, " ", riga)
+    if re.search(r"modul|formazion", testo):
+        testo = re.sub(MODULO_UNITO, " ", testo)
+    return {_arrotonda(v) for _, v in _numeri(testo)}
+
+
+def _letti(valore) -> set[float]:
+    """I numeri del testo che un valore proposto ha letto (un sì/no e i moduli nessuno; i posti per ruolo uno per ruolo)."""
+    if isinstance(valore, bool) or isinstance(valore, str):
+        return set()
+    if isinstance(valore, (int, float)):
+        return {_arrotonda(valore)}
+    if isinstance(valore, dict):
+        return {_arrotonda(v) for v in valore.values()}
+    return set()
 
 
 def _negate(testo: str, parole: str) -> tuple[int, int]:
@@ -212,14 +254,16 @@ def controlla_lunghezza(testo: str) -> None:
 def interpreta(testo: str) -> dict:
     controlla_lunghezza(testo)
     originali = [r.strip() for r in re.split(r"[\r\n]+", testo) if r.strip()]
-    righe = [_normalizza(r) for r in originali]
+    righe = [re.sub(NUMERO_TITOLO, " ", _normalizza(r)) for r in originali]      # senza il numero dell'articolo e la stagione
     modifiche: dict[str, dict] = {}
     usate: set[int] = set()
+    letti: dict[int, set[float]] = {}    # riga -> i numeri letti dalle regole (gli altri la lasciano da controllare)
     dubbie: dict[int, list[dict]] = {}   # riga -> regole che nomina senza dirne il valore con sicurezza
 
     def imposta(chiave, etichetta, valore, n):
         modifiche[chiave] = {"chiave": chiave, "etichetta": etichetta, "valore": valore, "riga": originali[n][:120]}
         usate.add(n)
+        letti.setdefault(n, set()).update(_letti(valore))
 
     def dubbia(chiave, etichetta, n):           # chiave ed etichetta come in imposta (tests/test_frasi.py le legge da qui)
         dubbie.setdefault(n, []).append({"chiave": chiave, "etichetta": etichetta})
@@ -249,7 +293,9 @@ def interpreta(testo: str) -> dict:
                 if len(numeri) == 2 and re.search(r"[:=→>+]|bonus|punt", riga):
                     media, bonus = _valore(numeri[0]), _valore(numeri[1])
                     if media is not None and bonus is not None and 3.5 <= media <= 9 and 0 <= abs(bonus) <= 10 and "difensor" not in riga:
-                        soglie.append([media, abs(bonus)]); usate.add(n); riga_soglie = n; continue
+                        soglie.append([media, abs(bonus)]); usate.add(n); riga_soglie = n
+                        letti.setdefault(n, set()).update({_arrotonda(media), _arrotonda(bonus)})
+                        continue
             if re.search(r"(?:pareggi|moduli|panchina|bonus e malus|punteggi|capitano)", riga):
                 in_modificatore = False
         # ---- gol: un numero per ruolo se la riga elenca più ruoli, altrimenti uguale per tutti
@@ -263,10 +309,22 @@ def interpreta(testo: str) -> dict:
                         imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numero), n); trovato = True
             elif re.search(rf"\bgol\b.{{0,40}}(?:segnat|realizzat|fatt)|\bgol\b\s*(?:[:=]|$|\d|[+-])|(?:segnat|realizzat){SUFFISSO} gol"
                            r"|\bgol\b\W+(?:\w+\W+){0,2}(?:portier|difensor|centrocamp|attaccant)", riga):
-                numero = _primo_numero(riga[riga.find("gol"):])
-                if numero is not None:
-                    for r in ([r for k, r in RUOLI.items() if k in riga] or ["P", "D", "C", "A"]):
-                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numero), n)
+                numeri = _numeri(riga, riga.find("gol"))
+                if numeri and ruoli_riga:
+                    r, pos = ruoli_riga[0]
+                    prima, dopo = [v for p, v in numeri if p < pos], [v for p, v in numeri if p > pos]
+                    if prima and dopo:
+                        # «Gol: +3 (il gol del portiere vale +5)»: il primo numero vale per tutti i ruoli, quello dopo il ruolo
+                        # citato solo per lui (#881)
+                        for x in RUOLI.values():
+                            imposta(f"bonus.gol.{x}", f"Gol ({NOMI_SINGOLARE[x]})", abs(dopo[0] if x == r else prima[0]), n)
+                    elif len(prima) < 2:
+                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numeri[0][1]), n)
+                    # due numeri prima del ruolo («3 punti, 5 per il portiere»): non si sa quale sia il suo, la riga resta da controllare
+                    trovato = True
+                elif numeri:
+                    for r in RUOLI.values():
+                        imposta(f"bonus.gol.{r}", f"Gol ({NOMI_SINGOLARE[r]})", abs(numeri[0][1]), n)
                     trovato = True
         if not trovato:
             for chiave, etichetta, schemi, segno in BONUS:
@@ -321,16 +379,31 @@ def interpreta(testo: str) -> dict:
         if re.search(r"credit", riga) and re.search(r"inizial|a disposizione|parte con|budget", riga) and not re.search(r"residu|giornata|speso", riga) \
                 and (nc := re.search(r"\d+", riga)) and (numero := _intero(nc.group())) is not None:
             imposta("crediti_iniziali", "Crediti iniziali", numero, n)
-        if (rr := re.search(RUOLO_ROSA, riga)) and n not in usate \
-                and not re.search(r"gol|assist|bonus|malus|voto|modificat|media", riga):
-            r = next(v for k, v in RUOLI.items() if k in rr.group(1))
-            imposta(f"rosa.{r}", f"Rosa: {NOMI_PLURALE[r]}", int(rr.group(2)), n)
+        if n not in usate and not re.search(r"gol|assist|bonus|malus|voto|modificat|media", riga):
+            # tutti i ruoli della riga («Rosa: portieri 3, difensori 9, …», #881); lo stesso ruolo con due numeri resta da controllare
+            coppie = [(m.group(1), m.group(2)) for m in re.finditer(RUOLO_ROSA, riga)]
+            if not coppie and re.search(ROSA_FRASE, riga):
+                coppie = [(m.group(2), m.group(1)) for m in re.finditer(NUMERO_RUOLO_ROSA, riga)]
+            rosa: dict[str, set[int]] = {}
+            for parola, numero in coppie:
+                rosa.setdefault(next(v for k, v in RUOLI.items() if k in parola), set()).add(int(numero))
+            if all(len(numeri_ruolo) == 1 for numeri_ruolo in rosa.values()):
+                for r in RUOLI.values():
+                    if r in rosa:
+                        imposta(f"rosa.{r}", f"Rosa: {NOMI_PLURALE[r]}", rosa[r].pop(), n)
     if soglie:
         modifiche["modificatore_difesa.soglie"] = {"chiave": "modificatore_difesa.soglie", "etichetta": "Fasce del modificatore difesa",
                                                    "valore": sorted(soglie), "riga": originali[riga_soglie][:120]}
         modifiche.setdefault("modificatore_difesa.attivo", {"chiave": "modificatore_difesa.attivo", "etichetta": "Modificatore difesa attivo",
                                                            "valore": True, "riga": originali[riga_soglie][:120]})
-    non = [n for n in range(len(righe)) if n not in usate and re.search(r"\d", righe[n]) and len(righe[n]) < 140][:30]
+    def con_numeri_non_letti(n: int) -> bool:
+        """La riga ha numeri che nessuna regola ha letto: tutti (riga non usata) o solo una parte (#881: «Assist: +1 (assist da
+        fermo +0,5)» propone l'assist, ma lo 0,5 va guardato a mano)."""
+        if n not in usate:
+            return re.search(r"\d", righe[n]) is not None
+        return not _numeri_da_leggere(righe[n]) <= letti.get(n, set())
+
+    non = [n for n in range(len(righe)) if len(righe[n]) < 140 and con_numeri_non_letti(n)][:30]
     # da controllare a mano (#684): le righe con numeri non lette e quelle dubbie, anche senza numeri, nell'ordine del testo;
     # ognuna con le regole che lascia da impostare (vuoto per una riga con numeri che non nomina regole dubbie)
     altre = [n for n in sorted(dubbie) if n not in non][:MAX_DUBBIE]
