@@ -180,7 +180,7 @@ Nella web app e nell'app per iPhone gli avvisi si accendono e si spengono con un
 
 Gli avvisi sono due:
 
-- il **promemoria**, un'ora e un quarto d'ora prima della scadenza della formazione. Non arriva se hai una formazione salvata e hai spuntato **L'ho messa**, a meno che un tuo titolare sia diventato indisponibile. La web salva la formazione da sola a ogni tocco: senza la spunta il promemoria arriva e ti chiede se l'hai messa nell'app della lega. Lo stesso vale per l'app per iPhone, che ha anche lei la spunta **L'ho messa**;
+- il **promemoria**, un'ora e un quarto d'ora prima della scadenza della formazione. Non arriva se hai una formazione salvata e hai spuntato **L'ho messa**, a meno che un tuo titolare sia diventato indisponibile. La web salva la formazione da sola a ogni tocco: senza la spunta il promemoria arriva e ti chiede se l'hai messa nell'app della lega. Lo stesso vale per l'app per iPhone, che ha anche lei la spunta **L'ho messa**. La cosa importante sta all'inizio, per esempio «Castro è infortunato: controlla la formazione che hai salvato.», e un titolare di cui ti ha appena parlato il **cambio pronto** non ti viene ripetuto;
 - il **cambio della formazione da schierare**:
   - con una formazione salvata, **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni (solo se anche la formazione consigliata lo toglie, come nelle decisioni in cima alla Formazione);
   - senza, **cambia un titolare**: la consigliata toglie un titolare che è diventato infortunato, squalificato o in panchina; l'avviso dice il motivo, chi entra e quando si chiude la formazione. Arriva una volta per ogni titolare che diventa fuori, anche giorni prima della scadenza;
