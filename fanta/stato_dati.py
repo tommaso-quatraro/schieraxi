@@ -12,7 +12,7 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta
 
-from . import archivio, controlli, coppe, fonti_attive, modello, uso
+from . import archivio, controlli, coppe, fonti_attive, frasi, modello, uso
 
 try:                                              # senza foto.py (versione pubblica) le foto sono sempre zero
     from . import foto
@@ -212,8 +212,10 @@ def _errori_passo(passo: dict, adesso: datetime) -> list[str]:
         return []
     fermo = archivio.fermo_da(passo, adesso)
     if fermo is not None and fermo > archivio.PASSO_FERMO:
-        return [f"Fermo da {archivio.durata_testo(fermo)} (non riesce dal {_quando_breve(passo['dal'], '%d/%m alle %H:%M')}): {passo['errore']}"]
-    return [f"Non riuscito alle {_quando_breve(passo['ultimo'], '%H:%M del %d/%m')}: {passo['errore']}"]
+        testa = f"Fermo da {archivio.durata_testo(fermo)} (non riesce dal {_quando_breve(passo['dal'], '%d/%m alle %H:%M')})"
+    else:
+        testa = f"Non riuscito alle {_quando_breve(passo['ultimo'], '%H:%M del %d/%m')}"
+    return [f"{frasi.elidi_date(testa)}: {passo['errore']}"]               # «dall'08/11», «dell'11/11» (#859)
 
 
 GIRI_SENTINELLA = timedelta(days=7)      # in «Stato dei dati» i giri della sentinella dell'ultima settimana

@@ -1997,7 +1997,7 @@ async function vistaRosa(nome) {
           ${r.mia ? "" : `<button class="bottone" type="button" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
-        <div class="debole piccolo" style="margin-top:12px">${t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" })}</div>
+        <div class="debole piccolo" style="margin-top:12px">${elidiGiorno(t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" }))}</div>
       </div></div>`, { titolo: r.nome, stato: false, indietro });          // il titolo è il nome della squadra (pagina() lo scrive con esc)
     collegaSceltaMia();
     const vf = $("#vedi-formazione");
@@ -2153,7 +2153,7 @@ function rigaTaratura(tar) {
     const n = Number(tar.giornate) || 0, minimo = Number(tar.minimo) || 0;
     parti = [n < minimo ? tp("sd.tar_in_attesa_su", n, { m: minimo }) : tp("sd.tar_in_attesa", n)];
   } else if (tar.stato === "attiva") {
-    parti = [dal ? t("sd.tar_attiva_dal", { d: dal }) : t("sd.tar_attiva")];
+    parti = [dal ? elidiGiorno(t("sd.tar_attiva_dal", { d: dal })) : t("sd.tar_attiva")];             // «dall'8/1» (#859)
     if (p) parti.push(tp("sd.tar_prova", Number(p.giornate) || 0, { e: regErrore(p.errore_medio), p: regErrore(p.errore_medio_prima) }));
     if (tar.motivo === "scadenza_vicina") parti.push(motivo);
   } else if (tar.stato === "non_attiva") {
@@ -2188,12 +2188,12 @@ async function apriStatoDati() {
           ${f.acceso ? "" : `<div class="debole piccolo">${esc(f.messaggio || "")}</div>`}`).join("")}
         <div class="debole piccolo">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
-        <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${t("sd.dal", { d: esc(fData(usoDal, {})) })})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
+        <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${elidiGiorno(t("sd.dal", { d: esc(fData(usoDal, {})) }))})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
         ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
         <details><summary class="debole piccolo">${t("scambio.schermate_piu_usate")}</summary>
           ${(s.uso.per_rotta || []).slice(0, 15).map(r => `<div class="riga"><span class="piccolo">${esc(r.rotta)}</span><span class="debole piccolo">${tp("sd.n_volte", r.richieste)}</span></div>`).join("")}</details></div>` : ""}
       <div class="carta"><h2>${t("scambio.date_delle_coppe")}</h2>
-        <div class="debole piccolo">${t("sd.coppe_spiega", { d: coppeFino ? esc(fData(coppeFino, {})) : "–" })}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
+        <div class="debole piccolo">${elidiGiorno(t("sd.coppe_spiega", { d: coppeFino ? esc(fData(coppeFino, {})) : "–" }))}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
         ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${nomeGiornata(null, p.giornata)}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
       <div class="carta"><h2>${t("scambio.controlli_sui_dati")}</h2>
@@ -3856,7 +3856,7 @@ function schedaAccount() {
   const campo = (id, etichetta, extra = "") => `<label class="accesso-campo"><span class="debole piccolo">${etichetta}</span><input class="campo-testo" id="${id}" type="password" ${extra}></label>`;
   const creato = parseData(a.creato), data = creato ? fData(creato, { day: "numeric", month: "long", year: "numeric" }) : "–";
   return `<div class="carta" id="scheda-account">
-    <div><b class="nome-account">${esc(a.nome_visualizzato || a.nome_utente)}</b><span class="debole piccolo" style="display:block">${t("account.dal", { ruolo: a.ruolo === "amministratore" ? t("account.ruolo_admin") : t("account.ruolo_utente"), data })}</span></div>
+    <div><b class="nome-account">${esc(a.nome_visualizzato || a.nome_utente)}</b><span class="debole piccolo" style="display:block">${elidiGiorno(t("account.dal", { ruolo: a.ruolo === "amministratore" ? t("account.ruolo_admin") : t("account.ruolo_utente"), data }))}</span></div>
     ${socialPronto() || (stato.accessi && stato.accessi.social && stato.accessi.social.length) ? `<details style="margin-top:14px"${soloGoogle() ? " open" : ""}><summary>${t("social.accessi")}</summary>
       <div id="acc-accessi">${htmlAccessi()}</div></details>` : ""}
     <details style="margin-top:14px"><summary>${soloGoogle() ? t("social.aggiungi_password") : t("account.cambia_password")}</summary>

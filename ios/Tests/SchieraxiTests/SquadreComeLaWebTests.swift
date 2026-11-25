@@ -112,6 +112,14 @@ struct SquadreComeLaWebTests {
         #expect(ParoleSquadre.roseAggiornate("ieri") == web("–"))
     }
 
+    @Test("«Rose aggiornate l'8 novembre 2026», «l'11 novembre 2026»: l'apostrofo come la web (#859); «il 1» e «il 18» restano")
+    func roseAggiornateConLApostrofo() {
+        #expect(ParoleSquadre.roseAggiornate("2026-11-08T19:19:33") == "Rose aggiornate l'8 novembre 2026")
+        #expect(ParoleSquadre.roseAggiornate("2026-11-11 09:00") == "Rose aggiornate l'11 novembre 2026")
+        #expect(ParoleSquadre.roseAggiornate("2026-11-18") == "Rose aggiornate il 18 novembre 2026")
+        #expect(ParoleSquadre.roseAggiornate("2026-11-01") == "Rose aggiornate il 1 novembre 2026")
+    }
+
     // MARK: Cambia il nome
 
     /// Un server che risponde come quello vero: la rosa (fixture), e `PUT /api/squadre/nome` con il nome nuovo.
