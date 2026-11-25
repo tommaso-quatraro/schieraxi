@@ -1128,5 +1128,35 @@
   "frase.admin.posti_pieni.other": {
     "it": "Posti pieni: {n} utenti su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
     "en": "No places left: {n} users out of {massimo}. Whoever gets an invitation now will find sign-ups closed until you raise the server's maximum number of users."
+  },
+  "frase.admin.posti_promessi.one": {
+    "it": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posto è già in un invito aperto. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "en": "Almost no places left: {utenti} of {massimo} taken, and {n} place is already in an open invitation. Whoever gets one more invitation may find sign-ups closed until you raise the server's maximum number of users.",
+    "nota": "Gestione (#894): i posti liberi sono già negli inviti aperti; avviso del server sopra «Crea l'invito», come frase.admin.posti_pieni"
+  },
+  "frase.admin.posti_promessi.other": {
+    "it": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posti sono già in inviti aperti. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "en": "Almost no places left: {utenti} of {massimo} taken, and {n} places are already in open invitations. Whoever gets one more invitation may find sign-ups closed until you raise the server's maximum number of users."
+  },
+  "frase.fonte.spenta_fantacalcio": {
+    "it": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni.",
+    "en": "I don't download the player list, prices, fixtures, ratings and probable lineups.",
+    "nota": "Stato dei dati › Fonti dei dati, sotto una fonte spenta (#894): campo messaggio_frase"
+  },
+  "frase.fonte.spenta_understat": {
+    "it": "Non scarico statistiche avanzate (gol e assist attesi, rigori).",
+    "en": "I don't download advanced statistics (expected goals and assists, penalties)."
+  },
+  "frase.fonte.spenta_footballdata": {
+    "it": "Non scarico risultati e statistiche di squadra delle partite giocate.",
+    "en": "I don't download results and team statistics of the matches played."
+  },
+  "frase.fonte.spenta_espn": {
+    "it": "Non scarico risultati in diretta.",
+    "en": "I don't download live results."
+  },
+  "frase.fonte.spenta_foto": {
+    "it": "L'app usa i volti illustrati.",
+    "en": "The app uses the illustrated faces."
   }
 }

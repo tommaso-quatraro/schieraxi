@@ -2172,7 +2172,7 @@ async function apriStatoDati() {
       <div class="carta" id="fonti-dati"><h2>${t("scambio.fonti_dei_dati")}</h2>
         ${(s.fonti || []).map(f => `<div class="riga"><span>${esc(f.nome)}</span>
           <button class="bottone secondario piccolo" data-fonte="${esc(f.id)}" data-acceso="${f.acceso ? "1" : "0"}">${t(f.acceso ? "sd.accesa_spegni" : "sd.spenta_accendi")}</button></div>
-          ${f.acceso ? "" : `<div class="debole piccolo">${esc(f.messaggio || "")}</div>`}`).join("")}
+          ${f.acceso ? "" : `<div class="debole piccolo">${esc(testoDi(f, "messaggio") || "")}</div>`}`).join("")}
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
         <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${t("sd.dal", { d: esc(fData(usoDal, {})) })})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>

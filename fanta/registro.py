@@ -4,8 +4,8 @@
   ricevuti né tracce: la rotta è quella «di modello» (`/api/giocatore/{id}`), non l'indirizzo scritto da chi chiede.
 - `sicurezza.log`: gli eventi di sicurezza (vedi `account.evento`); qui c'è solo la scrittura con rotazione, in comune.
 - Contatori semplici in memoria (richieste, errori, tempi) dall'ultimo riavvio: li vede solo l'amministratore. Le richieste
-  fermate perché non c'è ancora una sessione (la web chiede chi sei prima di mostrare l'accesso) si contano a parte, in
-  `senza_accesso`, non fra le `rifiutate` (#894).
+  fermate senza nessun cookie né token verso una rotta dell'app non riservata (di solito la pagina prima dell'ingresso) si
+  contano a parte, in `senza_accesso`; ogni altro 401 resta fra le `rifiutate` (#894, `rotte_account._senza_nessun_accesso`).
 Tutti i file hanno la rotazione (`.1`, `.2`, `.3`): il registro non cresce senza fine. In più le righe più vecchie di
 GIORNI_REGISTRI (30 giorni) si tolgono (al massimo un controllo all'ora per file), e gli indirizzi di rete si scrivono
 accorciati (`accorcia_ip`).
@@ -220,7 +220,8 @@ class Contatori:
             self.per_rotta: dict[str, list[float]] = {}
 
     def conta(self, rotta: str, stato: int, ms: float, senza_accesso: bool = False) -> None:
-        """Una risposta. `senza_accesso`: il 401 di chi non ha (ancora) una sessione, normale prima di entrare: non è un rifiuto."""
+        """Una risposta. `senza_accesso`: il 401 di una richiesta senza nessun cookie né token verso una rotta dell'app non
+        riservata (lo decide il controllo d'accesso): si conta a parte, non fra le rifiutate."""
         with self.blocco:
             self.totale += 1
             if stato >= 500:

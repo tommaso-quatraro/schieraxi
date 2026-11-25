@@ -175,6 +175,16 @@ def richiesta_locale(request: Request) -> bool:
     return not any(n.startswith("x-forwarded-") or n in _INTESTAZIONI_PROXY for n in nomi)
 
 
+def _senza_nessun_accesso(request: Request, percorso: str) -> bool:
+    """Il 401 che i contatori di «Errori recenti» tengono a parte (`senza_accesso`, registro.Contatori, #894): una richiesta senza
+    nessun cookie né token verso una rotta dell'app non riservata, come quelle della pagina prima dell'ingresso. Restano fra le
+    rifiutate i token o i cookie che non valgono, le rotte di chi gestisce e i percorsi fuori da /api/ (sono l'unica traccia di
+    chi prova); password sbagliate e troppi tentativi passano dalle rotte pubbliche e restano rifiutate comunque."""
+    con_credenziali = "authorization" in request.headers or COOKIE in request.cookies
+    riservata = percorso in SOLO_AMMINISTRATORE or percorso.startswith("/api/admin/")
+    return percorso.startswith("/api/") and not riservata and not con_credenziali
+
+
 def controllo_accesso(request: Request) -> JSONResponse | None:
     """Chiamato dal middleware: None = si può proseguire (e `request.state.utente` è chi chiede), altrimenti la risposta da dare."""
     request.state.utente = None
@@ -198,9 +208,7 @@ def controllo_accesso(request: Request) -> JSONResponse | None:
     except ErroreAccount as e:                      # database degli account illeggibile: risposta chiara, niente traccia
         return errore_account(None, e)
     if utente is None:
-        # nessuna sessione (o una finita): è la risposta normale prima di entrare, non un rifiuto; i contatori di «Errori recenti»
-        # la tengono a parte (registro.Contatori, #894). Password sbagliate e troppi tentativi passano dalle rotte pubbliche.
-        request.state.senza_accesso = True
+        request.state.senza_accesso = _senza_nessun_accesso(request, percorso)
         return JSONResponse(status_code=401, content={"detail": "Accesso richiesto", "multiutente": True,
                                                                          "registrazione": account_email.modo_registrazione(),
                                                                          "social": social.provider_attivi(),
@@ -574,10 +582,18 @@ class DaResettare(BaseModel):
 
 
 def _avviso_posti(db) -> dict:
-    """Con tutti i posti presi, la frase che chi gestisce legge prima di creare un invito (#894): chi lo riceve troverebbe le
-    registrazioni chiuse finché il tetto (MAX_UTENTI) non si alza. `{avviso, avviso_frase}`, null tutti e due se c'è posto."""
-    n, massimo = db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0], account.max_utenti()
-    avviso = frasi.F("admin.posti_pieni", n=n, massimo=massimo) if n >= massimo else None
+    """La frase che chi gestisce legge prima di creare un invito (#894), quando chi lo riceve può trovare le registrazioni chiuse
+    finché il tetto (MAX_UTENTI) non si alza: tutti i posti presi (`admin.posti_pieni`), oppure i posti liberi già tutti promessi
+    agli inviti aperti (`admin.posti_promessi`, con 3 utenti su 4 e un invito aperto un secondo invito non troverebbe posto).
+    `{avviso, avviso_frase}`, null tutti e due se un invito in più trova posto."""
+    utenti, massimo = db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0], account.max_utenti()
+    promessi = account.posti_negli_inviti(db)
+    if utenti >= massimo:
+        avviso = frasi.F("admin.posti_pieni", n=utenti, massimo=massimo)
+    elif promessi and utenti + promessi >= massimo:
+        avviso = frasi.F("admin.posti_promessi", n=promessi, utenti=utenti, massimo=massimo)
+    else:
+        avviso = None
     return {"avviso": str(avviso) if avviso else None, "avviso_frase": frasi.di(avviso)}
 
 

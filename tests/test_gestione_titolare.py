@@ -1,12 +1,13 @@
-"""Gestione per chi gestisce il server (#894): l'avviso con i posti pieni prima di creare un invito, le richieste normali prima
-dell'accesso che non contano come rifiutate (i rifiuti veri sì), le richieste più lente solo delle parti dell'app, la frase sulle
-fonti spente detta una volta sola."""
+"""Gestione per chi gestisce il server (#894): l'avviso con i posti pieni (o già promessi agli inviti aperti) prima di creare un
+invito; le richieste senza nessun accesso verso le rotte dell'app contate a parte, tutti gli altri 401 fra le rifiutate; le richieste
+più lente solo delle parti dell'app; la frase sulle fonti spente detta una volta sola, con la sua chiave."""
 import contextlib
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
-from fanta import account, fonti_attive, registro, server
+from fanta import account, fonti_attive, frasi, registro, server
 
 PASSWORD = "una-password-lunga-9"
 
@@ -33,12 +34,44 @@ def titolare(multiutente, dati_isolati, monkeypatch):
 
 
 # ---------------------------------------------------------------- posti pieni
-def test_con_un_posto_libero_nessun_avviso(titolare):
+def test_con_un_posto_libero_e_nessun_invito_aperto_nessun_avviso(titolare):
     r = titolare.get("/api/admin/utenti").json()
     assert r["massimo"] == 2 and len(r["utenti"]) == 1
     assert r["avviso"] is None and r["avviso_frase"] is None
-    invito = titolare.post("/api/admin/inviti", json={"etichetta": "Luca"}).json()
-    assert invito["codice"] and invito["avviso"] is None and invito["avviso_frase"] is None
+
+
+def test_gli_inviti_aperti_tengono_i_posti(titolare, monkeypatch):
+    """3 utenti su 4 e un invito aperto: l'ultimo posto è già promesso, chi riceve un invito in più può trovare le registrazioni
+    chiuse. Lo dice prima di creare il secondo invito e dopo averlo creato."""
+    monkeypatch.setenv("MAX_UTENTI", "4")
+    registra(cliente(), "luca")
+    registra(cliente(), "sara")
+    assert titolare.get("/api/admin/utenti").json()["avviso"] is None              # 3 su 4, nessun invito aperto
+    primo = titolare.post("/api/admin/inviti", json={"etichetta": "Anna"}).json()
+    atteso = {"chiave": "admin.posti_promessi", "param": {"n": 1, "utenti": 3, "massimo": 4}}
+    assert primo["avviso_frase"] == atteso, primo
+    assert primo["avviso"].startswith("Posti quasi pieni: 3 su 4 presi, e 1 posto è già in un invito aperto."), primo["avviso"]
+    assert "registrazioni chiuse" in primo["avviso"]
+    r = titolare.get("/api/admin/utenti").json()
+    assert r["avviso_frase"] == atteso                                               # prima del secondo invito
+    secondo = titolare.post("/api/admin/inviti", json={"etichetta": "Piero"}).json()
+    assert secondo["avviso_frase"] == {"chiave": "admin.posti_promessi", "param": {"n": 2, "utenti": 3, "massimo": 4}}
+    assert "2 posti sono già in inviti aperti" in secondo["avviso"], secondo["avviso"]
+
+
+def test_contano_solo_i_posti_degli_inviti_ancora_buoni(titolare, monkeypatch):
+    """Un invito annullato, uno scaduto e uno già usato non tengono posti; uno per tre amici ne tiene tre."""
+    monkeypatch.setenv("MAX_UTENTI", "5")
+    with contextlib.closing(account.apri()) as db:
+        account.crea_invito(db, "annullato")
+        annullato = db.execute("SELECT id FROM inviti WHERE etichetta = 'annullato'").fetchone()[0]
+        account.revoca_invito(db, annullato)
+        account.crea_invito(db, "scaduto", adesso=datetime.now(timezone.utc) - timedelta(days=8))
+    registra(cliente(), "luca")                                                      # usa il suo invito
+    assert titolare.get("/api/admin/utenti").json()["avviso"] is None              # 2 su 5, nessun posto promesso
+    titolare.post("/api/admin/inviti", json={"etichetta": "amici", "usi": 3})
+    r = titolare.get("/api/admin/utenti").json()
+    assert r["avviso_frase"] == {"chiave": "admin.posti_promessi", "param": {"n": 3, "utenti": 2, "massimo": 5}}, r
 
 
 def test_con_i_posti_pieni_l_avviso_arriva_prima_e_dopo_l_invito(titolare):
@@ -57,13 +90,30 @@ def test_posti_pieni_al_singolare(titolare, monkeypatch):
 
 
 # ---------------------------------------------------------------- contatori di «Errori recenti»
-def test_le_richieste_prima_dell_accesso_non_sono_rifiutate(titolare):
+def test_le_richieste_senza_nessun_accesso_si_contano_a_parte(titolare):
+    """Senza cookie né token, verso una rotta dell'app non riservata: è quello che fa la pagina prima dell'ingresso."""
     sconosciuto = cliente()
     assert sconosciuto.get("/api/account/me").status_code == 401        # la web chiede chi sei prima di mostrare l'accesso
     assert sconosciuto.get("/api/oggi").status_code == 401
-    assert sconosciuto.get("/api/oggi", headers={"Authorization": "Bearer scaduto"}).status_code == 401     # sessione finita
     c = registro.contatori.riepilogo()
-    assert (c["richieste"], c["rifiutate"], c["senza_accesso"]) == (3, 0, 3), c
+    assert (c["richieste"], c["rifiutate"], c["senza_accesso"]) == (2, 0, 2), c
+
+
+@pytest.mark.parametrize("richiesta", [
+    {"percorso": "/api/oggi", "intestazioni": {"Authorization": "Bearer inventato"}},          # token che non vale
+    {"percorso": "/api/oggi", "intestazioni": {"Authorization": "Bearer fw_inventato"}},       # token del widget che non vale
+    {"percorso": "/api/oggi", "cookie": "inventato"},                                          # cookie di una sessione che non c'è
+    {"percorso": "/api/admin/registro"},                                                       # rotta riservata senza sessione
+    {"percorso": "/api/stato-dati"},
+    {"percorso": "/wp-login.php"},                                                             # fuori dall'app, da un programma
+])
+def test_gli_altri_401_restano_fra_le_rifiutate(titolare, richiesta):
+    c = cliente(**richiesta.get("intestazioni", {}))
+    if "cookie" in richiesta:
+        c.cookies.set("fanta_sessione", richiesta["cookie"])
+    assert c.get(richiesta["percorso"]).status_code == 401
+    conti = registro.contatori.riepilogo()
+    assert (conti["rifiutate"], conti["senza_accesso"]) == (1, 0), conti
 
 
 def test_i_rifiuti_veri_restano_fra_le_rifiutate(titolare):
@@ -110,7 +160,14 @@ def test_la_frase_delle_fonti_spente_non_si_ripete_a_ogni_fonte(spente):
         m = r["messaggio"]
         assert m and "condizioni d'uso" not in m and "dati già salvati" not in m, m      # detta una volta sola, sotto l'elenco
         assert r["nome"] not in m, m                                                     # il nome è già sulla riga, col pulsante
+        # dal catalogo, con la chiave per tradurla (`messaggio_frase`, come le altre frasi del server)
+        assert r["messaggio_frase"] == {"chiave": f"fonte.spenta_{r['id']}", "param": {}}, r
+        assert m == frasi.CATALOGO[f"fonte.spenta_{r['id']}"]
     assert len({r["messaggio"] for r in righe}) == len(righe)
+
+
+def test_ogni_fonte_ha_la_sua_frase_nel_catalogo():
+    assert {f"fonte.spenta_{k}" for k in fonti_attive.FONTI} <= set(frasi.CATALOGO)
 
 
 def test_l_errore_di_una_fonte_spenta_resta_intero(spente):

@@ -1365,9 +1365,10 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     # tempi in parole (#827): «7,3 millisecondi», sopra il secondo «1,2 secondi»; mai «ms» né la sigla «5xx»
     assert "Tempo medio 7,3 millisecondi" in testo and "massimo 1,2 secondi" in testo and "7.3" not in testo, testo
     assert not re.search(r"\bms\b|5xx", testo), testo
-    # #894: niente percentili, e le richieste prima dell'accesso dette a parte, non fra le rifiutate
+    # #894: niente percentili; le richieste senza nessun accesso dette a parte, con parole neutre
     assert "5%" not in testo and "più lento" not in testo, testo
-    assert "29 sono arrivate prima dell'accesso: è normale e non contano fra le rifiutate" in testo, testo
+    assert "29 richieste senza accesso, di solito dalla pagina prima dell'ingresso." in testo, testo
+    assert "normale" not in testo, testo
     # il percorso resta per chi gestisce, accanto al nome della parte dell'app; una rotta che l'app non conosce solo con il percorso
     assert "Apertura dell'app (/api/stato) · 1 richiesta, in media 7,3 millisecondi" in testo, testo
     assert "/api/rotta-mai-vista · 2 richieste, in media 1,2 secondi" in testo, testo

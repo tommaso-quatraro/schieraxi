@@ -17,13 +17,13 @@
     "nota": "{richieste}, {rifiutate}, {errori}: i plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori (#779). Dopo, se ci sono, errori.senza_accesso e sempre errori.tempi (#894)"
   },
   "errori.senza_accesso.one": {
-    "it": "{n} è arrivata prima dell'accesso: è normale e non conta fra le rifiutate.",
-    "en": "{n} came in before signing in: that is normal and it is not counted as refused.",
-    "nota": "le richieste fermate perché chi le fa non è ancora entrato (la pagina d'accesso chiede chi sei), campo contatori.senza_accesso di GET /api/admin/registro (#894): solo se sono più di zero"
+    "it": "{n} richiesta senza accesso, di solito dalla pagina prima dell'ingresso.",
+    "en": "{n} request without sign-in, usually from the page before signing in.",
+    "nota": "contatori.senza_accesso di GET /api/admin/registro (#894): richieste senza nessun cookie né token verso una rotta dell'app non riservata; ogni altro 401 resta fra le rifiutate. Solo se sono più di zero. Parole neutre: non dice che è normale"
   },
   "errori.senza_accesso.other": {
-    "it": "{n} sono arrivate prima dell'accesso: è normale e non contano fra le rifiutate.",
-    "en": "{n} came in before signing in: that is normal and they are not counted as refused."
+    "it": "{n} richieste senza accesso, di solito dalla pagina prima dell'ingresso.",
+    "en": "{n} requests without sign-in, usually from the page before signing in."
   },
   "errori.tempi": {
     "it": "Tempo medio {medio}, massimo {max}.",
