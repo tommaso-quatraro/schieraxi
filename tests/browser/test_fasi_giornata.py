@@ -50,3 +50,19 @@ def test_il_voto_d_ufficio_della_partita_rinviata_si_vede_sul_campo(web):
     assert "Voto d'ufficio" in visibile and "Rinviata" not in visibile
     assert p.locator(".solo-lettori").inner_text().strip() == "Bapepe, fantavoto 6,0, Voto d'ufficio"
     assert not web.errori_console
+
+
+# ---------------------------------------------------------------- 3. la frase sotto i punti la sceglie il server
+def test_la_frase_sotto_i_punti_e_quella_del_server(web):
+    """I titolari hanno già il voto e resta Bapepe con la partita rinviata: sotto i punti la frase del server (il recupero), non
+    «Hanno giocato tutti: mancano solo i voti ufficiali.» che la web sceglieva da sola a ogni `ancora_da_giocare` zero."""
+    solo(web, "in-corso")
+    o = oggi_in_corso(web)
+    frase = "Hanno giocato tutti tranne Bapepe, che aspetta il recupero."
+    o["in_corso"].update(ancora_da_giocare=0, situazione=frase,
+                         situazione_frase={"chiave": "in_corso.recupero", "param": {"n": 1, "nomi": "Bapepe"}})
+    web.risposta("/api/oggi", o)
+    web.apri("/")
+    testo = web.testo_principale()
+    assert frase in testo and "mancano solo i voti ufficiali" not in testo
+    assert not web.errori_console

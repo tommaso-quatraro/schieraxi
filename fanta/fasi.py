@@ -19,8 +19,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from . import avvisi, diario, rinvii, scelte, turno as turni
-from . import etichette
+from . import etichette, frasi
 from . import formazione as fz
+from .frasi import F
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import Regole, serie_a_a_lega
 
@@ -260,11 +261,25 @@ def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], v
     giocatori = [{"id": g["id"], "nome": g.get("nome", ""), "ruolo": g["ruolo"], "squadra": g.get("squadra"),
                   "titolare": g["id"] in ids_tit, "a_punteggio": g["id"] in a_punteggio, "stato": stato[g["id"]],
                   "fantavoto": round(fv[g["id"]], 2) if g["id"] in fv else None, "data": data[g["id"]]} for g in titolari + panchina]
+    # chi deve ancora scendere in campo: non chi ha già giocato e aspetta il voto (attesa_voti) né chi ha la partita rinviata
+    da_giocare = sum(1 for g in va if stato[g.id] in ("da_giocare", IN_CORSO))
+    riga = situazione(da_giocare, any(stato[g.id] == "attesa_voti" for g in va), [g.nome for g in va if g.id in aspetta])
     return {"punti_fatti": round(fatti, 1), "punti_attesi_restanti": round(restanti, 1), "punti_previsti": round(fatti + restanti, 1),
             "modificatore": None if modificatore is None else round(modificatore, 1),
-            # chi deve ancora scendere in campo: non chi ha già giocato e aspetta il voto (attesa_voti) né chi ha la partita rinviata
-            "ancora_da_giocare": sum(1 for g in va if stato[g.id] in ("da_giocare", IN_CORSO)),
+            "ancora_da_giocare": da_giocare, "situazione": riga, "situazione_frase": frasi.di(riga),
             "giocatori": giocatori, "sostituzioni": sostituzioni}
+
+
+def situazione(da_giocare: int, attesa_voti: bool, recupero: list[str]) -> frasi.Frase:
+    """La riga sotto i punti a giornata in corso (#895), dai giocatori che vanno a punteggio: quanti devono ancora giocare; se nessuno,
+    cosa manca: i voti ufficiali di chi ha già giocato (`attesa_voti`), il recupero di una partita rinviata che la lega aspetta
+    (`recupero`, i nomi), tutti e due, o niente (i voti sono usciti tutti). Prima la web diceva «mancano solo i voti ufficiali» a ogni
+    `ancora_da_giocare` zero, anche con i voti già usciti e un recupero da giocare."""
+    if da_giocare:
+        return F("in_corso.da_giocare", n=da_giocare)
+    if recupero:
+        return F("in_corso.voti_e_recupero" if attesa_voti else "in_corso.recupero", n=len(recupero), nomi=frasi.elenco(recupero, con_e=True))
+    return F("in_corso.voti") if attesa_voti else F("in_corso.finiti")
 
 
 def _previsti_condizionati(tit: list[fz.Giocatore], panc: list[fz.Giocatore], stato: dict[int, str], fv: dict[int, float],

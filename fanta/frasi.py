@@ -188,6 +188,16 @@ CATALOGO: dict[str, str] = {
     "rinvio.aspetta_senza_data": "partita rinviata: conta il voto del recupero (data da definire)",
     "rinvio.senza_voto": "partita rinviata: in questa giornata non prende voto",
     "rinvio.voto_ufficio": "partita rinviata: voto d'ufficio {voto}",
+    # la riga sotto i punti a giornata in corso (#895, `in_corso.situazione` di Oggi): chi va a punteggio deve ancora giocare, o cosa
+    # manca ancora (voti ufficiali, recupero di una partita rinviata che la lega aspetta); {nomi} = un elenco «A, B e C»
+    "in_corso.da_giocare.one": "{n} giocatore deve ancora giocare",
+    "in_corso.da_giocare.other": "{n} giocatori devono ancora giocare",
+    "in_corso.voti": "Hanno giocato tutti: mancano solo i voti ufficiali.",
+    "in_corso.recupero.one": "Hanno giocato tutti tranne {nomi}, che aspetta il recupero.",
+    "in_corso.recupero.other": "Hanno giocato tutti tranne {nomi}, che aspettano il recupero.",
+    "in_corso.voti_e_recupero.one": "Hanno giocato tutti tranne {nomi}, che aspetta il recupero; mancano anche i voti ufficiali.",
+    "in_corso.voti_e_recupero.other": "Hanno giocato tutti tranne {nomi}, che aspettano il recupero; mancano anche i voti ufficiali.",
+    "in_corso.finiti": "I voti dei tuoi giocatori sono tutti usciti.",
     "probabili.oggi": "Probabili aggiornate alle {ora}",
     "probabili.ieri": "Probabili aggiornate ieri alle {ora}",
     "probabili.data": "Probabili aggiornate il {giorno}/{mese} alle {ora}",

@@ -1107,9 +1107,13 @@ function testaGiornata(o, f) {
   }
   if (fase === "in_corso" && o.in_corso) {
     const c2 = o.in_corso;
+    // la riga sotto i punti la sceglie il server (`situazione`, #895: chi deve ancora giocare, i voti o il recupero che mancano);
+    // la copia di un server di prima, senza il campo, ha le parole di sempre
+    const sotto = typeof c2.situazione === "string" && c2.situazione.trim() ? esc(testoDi(c2, "situazione"))
+      : c2.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c2.ancora_da_giocare) : t("oggi.tutti_giocato");
     return `<p class="tg-giornata">${nomeGiornata(f.giornata_lega, f.giornata)} · <b>${t("formazione.in_corso")}</b></p>
       <p class="tg-punti"><b class="tg-numero" id="oggi-fatti">${num(c2.punti_fatti)}</b> ${t("formazione.punti_finora")}${c2.punti_previsti != null ? ` · ${t("formazione.circa_fine", { n: num(c2.punti_previsti, 0) })}` : ""}</p>
-      <p class="tg-sotto">${c2.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c2.ancora_da_giocare) : t("oggi.tutti_giocato")}</p>`;
+      <p class="tg-sotto">${sotto}</p>`;
   }
   if (fase === "finita" && o.riepilogo) return `${riepilogoGiornata(o.riepilogo)}<div class="tg-prossima">${giornata}${chiusura}</div>`;
   return giornata + (f.iniziata ? "" : chiusura);
