@@ -18,7 +18,7 @@ from typing import Callable
 
 import requests
 
-from . import archivio, controlli, fonti_attive, funzioni, listone, rete, squadre
+from . import archivio, controlli, fonti_attive, frasi, funzioni, listone, rete, squadre
 from .fonti import fantacalcio as fc
 from .fonti import footballdata as fd
 from .fonti import understat as us
@@ -88,7 +88,7 @@ def _da_quando(prima: dict | None) -> str:
         return ""
     parti = [f"non riesce dal {_ora_breve(prima['dal'])}"] if prima.get("dal") else []
     parti.append(f"ultimo riuscito il {_ora_breve(prima['ultimo_successo'])}" if prima.get("ultimo_successo") else "mai riuscito")
-    return f" ({'; '.join(parti)})"
+    return frasi.elidi_date(f" ({'; '.join(parti)})")                      # «dall'08/11», «l'11/11» (#859)
 
 
 class Aggiornamento:

@@ -17,3 +17,7 @@ avv.quot
 
 # La correzione di una giornata finita, nella pagina Giornate (#673, passo 2): «N di 11»
 avv.n_di_11
+
+# Stato dei dati, «Prova delle previsioni» (LegaExtra): la frase che spiega «da fantamedia», come la web dopo #839 (#840)
+avv.prova_su.one
+avv.prova_su.other

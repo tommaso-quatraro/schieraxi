@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// Le foto `lega-stato-fondo`, `lega-rosa-fondo`, `lega-stato-nostri` e `lega-stato-taratura` (#425, #430, #527): la lista parte
-/// scorsa in fondo, dove sono le parti nuove di Stato dei dati (indicatori del consiglio) e l'ultima riga della Rosa; per Stato dei
-/// dati ci sono anche due punti di arrivo in mezzo, che col consiglio non entrano in una foto sola: i gol attesi nostri e la riga
-/// della taratura di «gioca N%» (sotto i gruppi di «Quanto sono giuste le previsioni»). Vale solo in demo, con `-DEMO_FONDO`:
+/// Le foto `lega-stato-fondo`, `lega-rosa-fondo`, `lega-stato-nostri`, `lega-stato-taratura` e `lega-stato-prova` (#425, #430, #527,
+/// #842): la lista parte scorsa in fondo, dove sono le parti nuove di Stato dei dati (indicatori del consiglio) e l'ultima riga della
+/// Rosa; per Stato dei dati ci sono anche tre punti di arrivo in mezzo, che col consiglio non entrano in una foto sola: i gol attesi
+/// nostri, la riga della taratura di «gioca N%» (sotto i gruppi di «Quanto sono giuste le previsioni») e la frase della prova delle
+/// previsioni (sotto la taratura). Vale solo in demo, con `-DEMO_FONDO`:
 /// nell'app vera la lista non ha niente in più.
 enum FondoDemo {
     /// L'identità dell'ultima riga della lista (`RigaFondoDemo`): è lì che scorre la foto, appena i dati sono arrivati.
@@ -23,6 +24,13 @@ enum FondoDemo {
     /// grande la riga resta a video (una riga sotto il piè, lunga, la spingerebbe fuori dall'alto).
     static let ancoraTaratura = UnitPoint.top
 
+    /// L'identità della frase della prova delle previsioni (la prima riga di «Quanto sono affidabili le previsioni», quella su
+    /// «da fantamedia»): dove si ferma `lega-stato-prova` (#842).
+    static let idProva = "fondo-demo-prova"
+
+    /// Dove si ferma la foto «prova»: la frase un po' sotto il bordo alto, così sopra si vede anche il titolo della sezione.
+    static let ancoraProva = UnitPoint(x: 0.5, y: 0.06)
+
     /// Vero in demo con `-DEMO_FONDO <valore>` fra gli argomenti di lancio, come per `demoInFondo`.
     static func attivo(demo: Bool, argomenti: [String]) -> Bool {
         demo && Demo.argomento("DEMO_FONDO", in: argomenti) != nil
@@ -38,6 +46,11 @@ enum FondoDemo {
         demo && Demo.argomento("DEMO_FONDO", in: argomenti) == "taratura"
     }
 
+    /// Vero in demo con `-DEMO_FONDO prova`: Stato dei dati si ferma sulla frase della prova delle previsioni invece di andare in fondo.
+    static func vaAllaProva(demo: Bool, argomenti: [String]) -> Bool {
+        demo && Demo.argomento("DEMO_FONDO", in: argomenti) == "prova"
+    }
+
     /// L'identità di un gruppo della calibrazione: l'ultimo (subito sopra la riga della taratura) prende `idTaratura`, gli altri
     /// tengono la loro.
     static func idGruppo(_ id: String, ultimo: String?) -> String {
@@ -49,10 +62,12 @@ enum FondoDemo {
         attivo(demo: Demo.attivo, argomenti: ProcessInfo.processInfo.arguments)
     }
 
-    /// Dove deve arrivare la foto di Stato dei dati: la riga delle nostri, l'ultimo gruppo sopra la taratura, o l'ultima riga.
+    /// Dove deve arrivare la foto di Stato dei dati: la riga delle nostri, l'ultimo gruppo sopra la taratura, la frase della prova
+    /// delle previsioni, o l'ultima riga.
     static func arrivo(demo: Bool, argomenti: [String]) -> (id: String, ancora: UnitPoint) {
         if vaAlleNostri(demo: demo, argomenti: argomenti) { return (idNostri, ancoraNostri) }
         if vaAllaTaratura(demo: demo, argomenti: argomenti) { return (idTaratura, ancoraTaratura) }
+        if vaAllaProva(demo: demo, argomenti: argomenti) { return (idProva, ancoraProva) }
         return (idRiga, .bottom)
     }
 

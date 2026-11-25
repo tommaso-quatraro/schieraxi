@@ -12,9 +12,23 @@
     "en": "Refresh"
   },
   "errori.riepilogo": {
-    "it": "{richieste} dall'ultimo riavvio ({rifiutate}, {errori}). Tempo medio {medio}, il 5% più lento oltre {p95}, massimo {max}.",
-    "en": "{richieste} since the last restart ({rifiutate}, {errori}). Average time {medio}, the slowest 5% over {p95}, maximum {max}.",
-    "nota": "{richieste}, {rifiutate}, {errori}: i plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori (#779); {medio}, {p95}, {max}: un tempo già in parole, errori.millisecondi o errori.secondi (#827)"
+    "it": "{richieste} dall'ultimo riavvio ({rifiutate}, {errori}).",
+    "en": "{richieste} since the last restart ({rifiutate}, {errori}).",
+    "nota": "{richieste}, {rifiutate}, {errori}: i plurali errori.n_richieste, errori.n_rifiutate, errori.n_errori (#779). Dopo, se ci sono, errori.senza_accesso e sempre errori.tempi (#894)"
+  },
+  "errori.senza_accesso.one": {
+    "it": "{n} richiesta senza accesso, di solito dalla pagina prima dell'ingresso.",
+    "en": "{n} request without sign-in, usually from the page before signing in.",
+    "nota": "contatori.senza_accesso di GET /api/admin/registro (#894): richieste senza nessun cookie né token verso una rotta dell'app non riservata; ogni altro 401 resta fra le rifiutate. Solo se sono più di zero. Parole neutre: non dice che è normale"
+  },
+  "errori.senza_accesso.other": {
+    "it": "{n} richieste senza accesso, di solito dalla pagina prima dell'ingresso.",
+    "en": "{n} requests without sign-in, usually from the page before signing in."
+  },
+  "errori.tempi": {
+    "it": "Tempo medio {medio}, massimo {max}.",
+    "en": "Average time {medio}, maximum {max}.",
+    "nota": "{medio}, {max}: un tempo già in parole, errori.millisecondi o errori.secondi (#827). Il 5% più lento non si scrive più: un percentile non si capisce senza spiegazione (#894)"
   },
   "errori.millisecondi": {
     "it": "{n} millisecondi",

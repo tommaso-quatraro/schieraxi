@@ -48,6 +48,7 @@ mercato.gialli_rossi
 mercato.gol_subiti
 mercato.rigori_parati
 mercato.statistiche_avanzate
+mercato.dati_fino_al
 mercato.gol_attesi_tot
 mercato.assist_attesi_tot
 mercato.minuti

@@ -16,7 +16,8 @@ extension ParoleRegistro {
             let minimo = t.minimo ?? 0
             parti = [giornate < minimo ? Catalogo.Sd.tarInAttesaSu(giornate, m: String(minimo)) : Catalogo.Sd.tarInAttesa(giornate)]
         case .attiva?:
-            let accesa = giornoMese(t.dal).map { Catalogo.Sd.tarAttivaDal(d: $0) } ?? Catalogo.Sd.tarAttiva
+            // «attiva dall'8/1» con l'apostrofo, come la web (#859)
+            let accesa = giornoMese(t.dal).map { DatiVecchi.elidiGiorno(Catalogo.Sd.tarAttivaDal(d: $0)) } ?? Catalogo.Sd.tarAttiva
             let rimandato = t.motivo == "scadenza_vicina" ? motivoTaratura(t.motivo, giornate: giornate) : nil
             parti = [accesa, t.prova.map(provaTaratura), rimandato]
         case .nonAttiva?:
