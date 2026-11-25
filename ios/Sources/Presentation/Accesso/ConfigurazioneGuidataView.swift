@@ -17,10 +17,11 @@ struct ConfigurazioneGuidataView: View {
     @Environment(\.dismiss) private var chiudi
     @Environment(\.accessibilityReduceMotion) private var ridotto
 
-    /// `riprendiDa`: riaperta dopo una pagina in cui l'aveva portata un passo, riparte da quel passo (#880).
-    init(server: any ServerClient, riprendiDa: PassoGuidato? = nil, vai: @escaping (AzioneGuida) -> Void,
-         chiusaDallApp: @escaping @MainActor () -> Bool = { false }) {
-        _vm = StateObject(wrappedValue: ConfigurazioneGuidataViewModel(server: server, riprendiDa: riprendiDa))
+    /// `riprendiDa`: riaperta dopo una pagina in cui l'aveva portata un passo, riparte da quel passo (#880); `passoFatto`: quel passo
+    /// è stato fatto nella pagina (il widget collegato) e si segna da solo.
+    init(server: any ServerClient, riprendiDa: PassoGuidato? = nil, passoFatto: PassoGuidato? = nil,
+         vai: @escaping (AzioneGuida) -> Void, chiusaDallApp: @escaping @MainActor () -> Bool = { false }) {
+        _vm = StateObject(wrappedValue: ConfigurazioneGuidataViewModel(server: server, riprendiDa: riprendiDa, passoFatto: passoFatto))
         self.vai = vai
         self.chiusaDallApp = chiusaDallApp
     }

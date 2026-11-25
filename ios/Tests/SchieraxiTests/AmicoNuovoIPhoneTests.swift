@@ -146,6 +146,32 @@ struct GuidaDopoLeRoseTests {
         #expect(riaperta.passi == [.stemma])
         #expect(riaperta.eRiepilogo)
     }
+
+    @Test("Tornata dal widget collegato, la guida lo segna fatto da sola e riparte dagli avvisi")
+    func riapertaDopoIlWidgetCollegato() async throws {
+        // «Collega il widget» uscendo ha segnato saltati widget e avvisi (si ritrovano in «Da fare» se l'app si chiude prima)
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "squadra", "stemma"], "saltati": ["widget", "avvisi"], "chiuso": false}"#)
+        memoria.importaRose(mia: "Squadra di prova")
+        let s = serverGuida(memoria)
+        let riaperta = ConfigurazioneGuidataViewModel(server: s, riprendiDa: .widget, passoFatto: .widget)
+        await riaperta.carica()
+        #expect(riaperta.passi == [.avvisi])
+        #expect(riaperta.passoCorrente == .avvisi)
+        #expect(riaperta.esito(.widget) == .fatto)
+        let dati = try #require(s.corpiInviati(a: "PUT /api/primo-avvio").last)
+        let corpo = try JSONDecoder().decode(CorpoPrimoAvvio.self, from: dati)
+        #expect(corpo.fatti.contains("widget"), "il server lo ricorda, anche per la web e gli altri dispositivi")
+        #expect(!corpo.saltati.contains("widget"))
+    }
+
+    @Test("Tornata dal widget senza collegarlo, la guida torna sul widget, ancora da fare o da segnare con «L'ho già fatto»")
+    func riapertaDopoIlWidgetNonCollegato() async {
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "squadra", "stemma"], "saltati": ["widget", "avvisi"], "chiuso": false}"#)
+        memoria.importaRose(mia: "Squadra di prova")
+        let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .widget)
+        await riaperta.carica()
+        #expect(riaperta.passoCorrente == .widget)
+    }
 }
 
 @Suite("Da dove riparte la guida tornando da una pagina in cui l'aveva portata un passo (#880)")
@@ -176,7 +202,7 @@ struct RitornoAllaGuidaTests {
         pile.map { r.pilaCambiata($0) }
     }
 
-    private func foglio(_ r: inout RitornoAllaGuida, _ stati: [Bool]) -> [PassoGuidato?] {
+    private func foglio(_ r: inout RitornoAllaGuida, _ stati: [Bool]) -> [RitornoAllaGuida.Ritorno?] {
         stati.map { r.foglioWidget(aperto: $0) }
     }
 
@@ -240,7 +266,30 @@ struct RitornoAllaGuidaTests {
         let pile = segui(&r, [[.importa], []])
         #expect(pile == [nil, nil])
         let stati = foglio(&r, [true, false, false])
-        #expect(stati == [nil, .widget, nil])
+        #expect(stati == [nil, RitornoAllaGuida.Ritorno(passo: .widget, fatto: false), nil],
+                "chiuso senza collegarlo (annullato, o solo il codice copiato): si torna sul widget da fare")
+    }
+
+    @Test("«Collega» riuscito: chiuso il foglio, la guida torna con il passo del widget già fatto")
+    func widgetCollegato() {
+        var r = RitornoAllaGuida()
+        r.chiesta(.widget, dalPasso: .widget)
+        let aperto = foglio(&r, [true])
+        r.widgetCollegato()
+        let chiuso = foglio(&r, [false])
+        #expect(aperto == [nil])
+        #expect(chiuso == [RitornoAllaGuida.Ritorno(passo: .widget, fatto: true)])
+    }
+
+    @Test("Il widget collegato dalle Impostazioni, senza la guida, non segna niente e non riapre la guida")
+    func widgetCollegatoSenzaGuida() {
+        var r = RitornoAllaGuida()
+        r.widgetCollegato()
+        let stati = foglio(&r, [true, false])
+        #expect(stati == [nil, nil])
+        r.chiesta(.widget, dalPasso: .widget)
+        let dopo = foglio(&r, [true, false])
+        #expect(dopo == [nil, RitornoAllaGuida.Ritorno(passo: .widget, fatto: false)], "un collegamento di prima non conta")
     }
 }
 
@@ -259,6 +308,20 @@ struct RiapriGuidaTests {
         #expect(nav.guidaRiprendeDa == .stemma)
         nav.guidaAperta = false
         #expect(nav.guidaRiprendeDa == nil, "aperta dopo da «Da fare» o da sola, la guida riparte dall'inizio")
+    }
+
+    @Test("Riaperta dopo il widget collegato, la guida sa che il passo è fatto; chiusa, lo dimentica")
+    func riapriConIlWidgetFatto() {
+        let prima = UserDefaults.standard.string(forKey: "ultimaSezione")
+        defer { UserDefaults.standard.set(prima, forKey: "ultimaSezione") }
+        let nav = Navigazione()
+        nav.riapriGuida(da: .widget, fatto: true)
+        #expect(nav.guidaRiprendeDa == .widget)
+        #expect(nav.guidaPassoFatto == .widget)
+        nav.guidaAperta = false
+        #expect(nav.guidaPassoFatto == nil)
+        nav.riapriGuida(da: .stemma)
+        #expect(nav.guidaPassoFatto == nil)
     }
 }
 

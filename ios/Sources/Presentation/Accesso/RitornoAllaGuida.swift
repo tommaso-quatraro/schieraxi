@@ -9,6 +9,12 @@ struct RitornoAllaGuida {
     /// Dove ha portato la guida: una pagina delle Impostazioni (con quelle che le si aprono sopra) o il foglio del widget.
     enum Meta: Equatable { case pagina(PaginaImpostazioni), widget }
 
+    /// Il ritorno dal foglio del widget: il passo da cui riaprire la guida e se è già fatto.
+    struct Ritorno: Equatable {
+        let passo: PassoGuidato
+        let fatto: Bool
+    }
+
     private enum Fase { case nessuna, chiesta, aperta }
     private var fase = Fase.nessuna
     private var meta: Meta?
@@ -31,10 +37,13 @@ struct RitornoAllaGuida {
     }
 
     /// Il foglio «Collega il widget» si è aperto o chiuso: il passo da cui riaprire la guida, una volta, quando si chiude.
-    mutating func foglioWidget(aperto: Bool) -> PassoGuidato? {
+    mutating func foglioWidget(aperto: Bool) -> Ritorno? {
         guard meta == .widget else { return nil }
-        return segui(aperta: aperto)
+        return segui(aperta: aperto).map { Ritorno(passo: $0, fatto: false) }
     }
+
+    /// Il foglio «Collega il widget» ha collegato il widget.
+    mutating func widgetCollegato() {}
 
     /// La pagina è stata chiesta dalla guida e non è ancora stata lasciata: la pagina delle rose, salvate le rose, si chiude da sola.
     func attivo(per pagina: PaginaImpostazioni) -> Bool { fase != .nessuna && meta == .pagina(pagina) }

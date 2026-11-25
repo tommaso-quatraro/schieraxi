@@ -63,7 +63,7 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     /// Riaperta dopo una pagina in cui l'aveva portata un passo: riparte da quel passo, o dal primo dopo se è fatto (#880).
     private let riprendiDa: PassoGuidato?
 
-    init(server: any ServerClient, riprendiDa: PassoGuidato? = nil) {
+    init(server: any ServerClient, riprendiDa: PassoGuidato? = nil, passoFatto: PassoGuidato? = nil) {
         self.server = server
         self.riprendiDa = riprendiDa
         super.init()

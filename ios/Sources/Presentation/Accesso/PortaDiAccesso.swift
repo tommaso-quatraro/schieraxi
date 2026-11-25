@@ -100,7 +100,8 @@ struct ContenitoreApp: View {
                 Demo.applica(nav: nav, modello: modello)
             }
             .sheet(isPresented: $nav.guidaAperta) {
-                ConfigurazioneGuidataView(server: modello.server, riprendiDa: nav.guidaRiprendeDa, vai: apriDaGuida,
+                ConfigurazioneGuidataView(server: modello.server, riprendiDa: nav.guidaRiprendeDa, passoFatto: nav.guidaPassoFatto,
+                                          vai: apriDaGuida,
                                           chiusaDallApp: { [navigazione = nav, cambiata = sessioneCambiata] in
                                               navigazione.guidaChiusaDallApp || cambiata()
                                           })
@@ -114,9 +115,11 @@ struct ContenitoreApp: View {
             .onReceive(modello.lega.$percorso) { pagine in
                 if let passo = modello.lega.ritornoAllaGuida.pilaCambiata(pagine) { riapriGuida(da: passo) }
             }
-            // lo stesso per il foglio «Collega il widget», aspettando che sia sparito (un foglio alla volta)
+            // lo stesso per il foglio «Collega il widget», aspettando che sia sparito (un foglio alla volta); collegato, il passo è fatto
             .onChange(of: nav.collegaWidgetAperto) { _, aperto in
-                if let passo = modello.lega.ritornoAllaGuida.foglioWidget(aperto: aperto) { riapriGuida(da: passo, dopo: .milliseconds(700)) }
+                if let ritorno = modello.lega.ritornoAllaGuida.foglioWidget(aperto: aperto) {
+                    riapriGuida(da: ritorno.passo, fatto: ritorno.fatto, dopo: .milliseconds(700))
+                }
             }
     }
 
@@ -137,10 +140,10 @@ struct ContenitoreApp: View {
     /// Lasciata una pagina aperta da un passo della guida, la guida torna sulla Formazione (come la web, dove dietro «Tutto pronto»
     /// c'è già la Formazione) e riparte da quel passo, o dal primo dopo se è fatto: dopo le rose salvate dalla squadra, dopo la
     /// squadra scelta dallo stemma (#880). Fuori dal cambio che l'ha annunciato.
-    private func riapriGuida(da passo: PassoGuidato, dopo attesa: Duration = .zero) {
+    private func riapriGuida(da passo: PassoGuidato, fatto: Bool = false, dopo attesa: Duration = .zero) {
         Task {
             if attesa > .zero { try? await Task.sleep(for: attesa) }
-            nav.riapriGuida(da: passo)
+            nav.riapriGuida(da: passo, fatto: fatto)
         }
     }
 
