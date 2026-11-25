@@ -100,7 +100,7 @@ struct VistaFormazione: View {
         case .systemExtraLarge: grandissimo(w, f, tit)
         case .accessoryCircular: circolare(f)
         case .accessoryRectangular: rettangolare(w, f)
-        // la stessa riga di Prossima giornata: si perdono parole intere, mai il modulo (#819)
+        // «3-4-3 · 72,7 punti»: si perdono parole intere, mai il modulo (#819)
         case .accessoryInline: RigaInLinea(f.formeInLinea, icona: "sportscourt")
         default: piccolo(w, f)
         }
@@ -225,23 +225,43 @@ struct VistaFormazione: View {
     }
 
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        // Accanto al modulo (#391): sopra i punti, sotto la fascia e la giornata. Ogni riga mostra la prima forma che entra:
-        // «73,7 punti attesi · la tua scelta» → «73,7 attesi», «Giornata 8 · 11ª di Serie A» → «Giornata 8». La giornata non sta
-        // sulla riga dei punti e non diventa mai «G8» (#299): se non entra accanto alla fascia scende sotto.
+        VStack(spacing: 8) {
+            testataGrande(w, f, extraLarge: false)
+            CampoMini(titolari: tit, lato: 40, conNomi: true)
+            rigaDubbiEPanchina(w, f)
+            PiedeDati(voce: voce)
+        }
+    }
+
+    /// La testata del grande e dell'extra large (#391, #871): il modulo e accanto, sopra, i punti attesi, sotto la fascia e la
+    /// giornata. Ogni riga mostra la prima forma che entra: «73,7 punti attesi · la tua scelta» → «73,7 attesi», «Giornata 8 ·
+    /// 11ª di Serie A» → «Giornata 8». La giornata non sta sulla riga dei punti e non diventa mai «G8» (#299): se non entra
+    /// accanto alla fascia scende sotto. Nell'extra large i caratteri sono più grandi. VoiceOver legge la frase intera.
+    private func testataGrande(_ w: RiassuntoWidget, _ f: FormazioneWidget, extraLarge: Bool) -> some View {
         let testata = TestataFormazioneGrande(puntiAttesi: f.puntiAttesi, tuaScelta: f.tuaScelta == true,
                                               fascia: f.intervallo?.testo, giornata: w.nomeGiornata)
-        return VStack(spacing: 8) {
-            HStack(alignment: .center, spacing: 8) {
+        return HStack(alignment: .center, spacing: 8) {
+            if extraLarge {
+                Text(f.modulo ?? "—").fontWidget(40, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
+            } else {
                 Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
-                VStack(alignment: .leading, spacing: 0) {
-                    TestoCheEntra(testata.formePunti).font(.subheadline).monospacedDigit()
-                    fasciaEGiornata(testata)
-                }
-                .foregroundStyle(TintaWidget.testo2)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(testataParlata(w, f))
-            CampoMini(titolari: tit, lato: 40, conNomi: true)
+            VStack(alignment: .leading, spacing: 0) {
+                TestoCheEntra(testata.formePunti).font(extraLarge ? .headline : .subheadline).monospacedDigit()
+                fasciaEGiornata(testata, fascia: extraLarge ? .subheadline : .caption, giornata: extraLarge ? .caption : .caption2)
+            }
+            .foregroundStyle(TintaWidget.testo2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(testataParlata(w, f))
+    }
+
+    /// Sotto il campo del grande e dell'extra large: «2 da controllare» a sinistra e «7 in panchina» a destra (#871: l'extra
+    /// large non li aveva). Niente riga se non c'è nessuno dei due.
+    @ViewBuilder
+    private func rigaDubbiEPanchina(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
+        if !w.daControllare.isEmpty || f.panchina != nil {
             HStack {
                 if !w.daControllare.isEmpty {
                     EtichettaDaControllare(n: w.daControllare.count).foregroundStyle(TintaWidget.attenzione)
@@ -250,30 +270,29 @@ struct VistaFormazione: View {
                 if let n = f.panchina?.count { Text("\(n) in panchina").foregroundStyle(TintaWidget.testo2) }
             }
             .font(.caption)
-            PiedeDati(voce: voce)
         }
     }
 
-    /// La fascia e la giornata sotto i punti del grande: la prima disposizione di `postiGiornata` che entra intera, con la giornata
-    /// accanto alla fascia (a destra) o sulla riga sotto. Ogni disposizione ha testi interi, così `PrimaCheEntra` misura il vero:
-    /// niente «Giorn…» né una riga che esce dal widget. Senza giornata la sola fascia.
+    /// La fascia e la giornata sotto i punti del grande e dell'extra large: la prima disposizione di `postiGiornata` che entra
+    /// intera, con la giornata accanto alla fascia (a destra) o sulla riga sotto. Ogni disposizione ha testi interi, così
+    /// `PrimaCheEntra` misura il vero: niente «Giorn…» né una riga che esce dal widget. Senza giornata la sola fascia.
     @ViewBuilder
-    private func fasciaEGiornata(_ t: TestataFormazioneGrande) -> some View {
+    private func fasciaEGiornata(_ t: TestataFormazioneGrande, fascia caratteriFascia: Font, giornata caratteriGiornata: Font) -> some View {
         let posti = t.postiGiornata
         if posti.isEmpty {
-            if let fascia = t.fascia { Text(fascia).font(.caption).lineLimit(1) }
+            if let fascia = t.fascia { Text(fascia).font(caratteriFascia).lineLimit(1) }
         } else {
             PrimaCheEntra(posti.count) { i in
                 if posti[i].sotto {
                     VStack(alignment: .leading, spacing: 0) {
-                        if let fascia = t.fascia { Text(fascia).font(.caption).lineLimit(1) }
-                        Text(posti[i].forma).font(.caption2).lineLimit(1)
+                        if let fascia = t.fascia { Text(fascia).font(caratteriFascia).lineLimit(1) }
+                        Text(posti[i].forma).font(caratteriGiornata).lineLimit(1)
                     }
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
-                        if let fascia = t.fascia { Text(fascia).font(.caption).lineLimit(1) }
+                        if let fascia = t.fascia { Text(fascia).font(caratteriFascia).lineLimit(1) }
                         Spacer(minLength: 8)
-                        Text(posti[i].forma).font(.caption2).lineLimit(1)
+                        Text(posti[i].forma).font(caratteriGiornata).lineLimit(1)
                     }
                 }
             }
@@ -281,23 +300,17 @@ struct VistaFormazione: View {
     }
 
     private func grandissimo(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        HStack(alignment: .top, spacing: 20) {
-            VStack(spacing: 8) {
-                // «73,7 punti attesi» → «73,7 attesi», poi via la fascia: mai «73,7 punti…»
-                let pezzi = ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true)
-                PrimaCheEntra(pezzi.count + 1) { i in
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(f.modulo ?? "—").fontWidget(40, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
-                        Text(pezzi[min(i, pezzi.count - 1)]).font(.headline).monospacedDigit().foregroundStyle(TintaWidget.testo2).lineLimit(1)
-                        if i < pezzi.count, let t = f.intervallo?.testo {
-                            Text(t).font(.subheadline).foregroundStyle(TintaWidget.testo2).lineLimit(1)
-                        }
-                        Spacer(minLength: 0)
-                    }
+        let prove = DisposizioneWidget.proveCampoExtraLarge
+        return HStack(alignment: .top, spacing: 20) {
+            // A sinistra come il grande (#871): la testata con la giornata, il campo e sotto «2 da controllare» e «7 in panchina».
+            // La prima prova che entra in altezza: per far posto rimpicciolisce il campo, per ultimi via i cognomi sotto i volti
+            // (li dice l'elenco accanto).
+            PrimaCheEntra(prove.count, in: .vertical) { i in
+                VStack(spacing: 8) {
+                    testataGrande(w, f, extraLarge: true)
+                    CampoMini(titolari: tit, lato: prove[i].lato, conNomi: prove[i].conNomi)
+                    rigaDubbiEPanchina(w, f)
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(testataParlata(w, f))
-                CampoMini(titolari: tit, lato: 48, conNomi: true)
             }
             VStack(alignment: .leading, spacing: 4) {
                 // sopra i numeri il loro nome («Fantavoto atteso», come l'app); se non entra restano i numeri, VoiceOver lo legge sempre
@@ -341,20 +354,43 @@ struct VistaFormazione: View {
         }
     }
 
+    /// La giornata sulla prima riga, come il rettangolo di Prossima giornata, poi «Formazione 3-4-3», i punti attesi e «2 da
+    /// controllare» (#871: con giocatori da controllare la giornata spariva). Dove quattro righe non entrano la giornata sale
+    /// accanto al modulo, che perde «Formazione» (`DisposizioneWidget.proveRettangoloFormazione`): né la giornata né «da
+    /// controllare» cedono.
     private func rettangolare(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            // con il testo grande resta il modulo: mai «Formazione 3-4…»
-            TestoCheEntra(ParoleWidget.titoloFormazione(f.modulo, tuaScelta: f.tuaScelta == true)).font(.headline)
-            TestoCheEntra(ParoleWidget.puntiConFascia(f.puntiAttesi, fascia: f.intervallo?.testo))
-                .font(.caption).monospacedDigit()
-            if !w.daControllare.isEmpty {
-                EtichettaDaControllare(n: w.daControllare.count).font(.caption2)
-            } else if let g = w.nomeGiornata {
-                // la stessa giornata del grande e del piccolo: «Giornata 8», mai «G8» (#299); se proprio non entra si rimpicciolisce
-                GiornataInRiga(forme: ParoleWidget.formeGiornata(g), voce: g.voce)
-                    .minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
+        let dubbi = w.daControllare.count
+        let giornata = w.nomeGiornata
+        let prove = DisposizioneWidget.proveRettangoloFormazione(conGiornata: giornata != nil, daControllare: dubbi)
+        return PrimaCheEntra(prove.count, in: .vertical) { i in
+            VStack(alignment: .leading, spacing: 2) {
+                if let giornata, prove[i].giornata == .sopra {
+                    giornataRettangolo(giornata)
+                }
+                if let giornata, prove[i].giornata == .accanto {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(f.modulo ?? "—").font(.headline).lineLimit(1).fixedSize()
+                        Spacer(minLength: 4)
+                        giornataRettangolo(giornata)
+                    }
+                } else {
+                    // con il testo grande resta il modulo: mai «Formazione 3-4…»
+                    TestoCheEntra(ParoleWidget.titoloFormazione(f.modulo, tuaScelta: f.tuaScelta == true)).font(.headline)
+                }
+                TestoCheEntra(ParoleWidget.puntiConFascia(f.puntiAttesi, fascia: f.intervallo?.testo))
+                    .font(.caption).monospacedDigit()
+                if prove[i].daControllare {
+                    EtichettaDaControllare(n: dubbi).font(.caption2)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// La giornata nel rettangolo, la stessa del grande e del piccolo: «Giornata 8 · 11ª di Serie A» dove entra, poi «Giornata 8»,
+    /// mai «G8» (#299); se proprio non entra si rimpicciolisce. VoiceOver legge i due numeri.
+    private func giornataRettangolo(_ g: NomeGiornata) -> some View {
+        GiornataInRiga(forme: ParoleWidget.formeGiornata(g), voce: g.voce)
+            .minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
     }
 }
