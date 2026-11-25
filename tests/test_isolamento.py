@@ -526,6 +526,53 @@ def test_le_iscrizioni_push_sono_per_utente(due):
     assert ca.get("/api/avvisi").json()["dispositivi"] == 1
 
 
+def test_la_stessa_iscrizione_resta_solo_all_ultimo_account_che_la_manda(due):
+    """#874: lo stesso browser (stessa iscrizione) è passato da A a B. Quando B la manda, il server la toglie ad A: gli avvisi di A
+    non arrivano più a quel browser. Prima restava sotto tutti e due. Le altre iscrizioni di A restano."""
+    (ca, _), (cb, _) = due["A"], due["B"]
+    stessa = dati_di("A")["push"]
+    telefono_di_a = {**stessa, "endpoint": "https://web.push.example/A-telefono"}
+    assert ca.post("/api/push/iscrivi", json=telefono_di_a).json() == {"dispositivi": 1}
+    assert ca.post("/api/push/iscrivi", json=stessa).json() == {"dispositivi": 2}
+    assert cb.post("/api/push/iscrivi", json=stessa).json() == {"dispositivi": 1}
+    assert ca.get("/api/avvisi").json()["dispositivi"] == 1
+    file_a = cartella_di(due, "A") / "push.json"
+    assert [s["endpoint"] for s in json.loads(file_a.read_text(encoding="utf-8"))] == [telefono_di_a["endpoint"]]
+    assert cb.get("/api/avvisi").json()["dispositivi"] == 1
+
+
+def test_con_il_file_dell_altro_account_occupato_l_iscrizione_riesce_e_il_guasto_si_vede(due, monkeypatch, caplog):
+    """#874: se il file delle iscrizioni di A è tenuto da un altro processo, l'iscrizione di B si salva lo stesso; quella di A
+    resta (si toglierà alla prossima iscrizione o al primo avviso che non arriva) e una riga d'errore nel registro lo dice."""
+    from fanta import push
+    from fanta.blocco import BloccoFile
+    (ca, _), (cb, _) = due["A"], due["B"]
+    stessa = dati_di("A")["push"]
+    assert ca.post("/api/push/iscrivi", json=stessa).json() == {"dispositivi": 1}
+    monkeypatch.setattr(push, "ATTESA_BLOCCO", 0)
+    file_a = cartella_di(due, "A") / "push.json"
+    with caplog.at_level("ERROR"), BloccoFile(file_a.with_name("push.json.lock"), 0):
+        assert cb.post("/api/push/iscrivi", json=stessa).json() == {"dispositivi": 1}
+    assert ca.get("/api/avvisi").json()["dispositivi"] == 1
+    righe = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    assert any("non tolta" in r and str(due["A"][1]) in r for r in righe), righe
+    assert not any(stessa["endpoint"] in r for r in righe), "l'indirizzo dell'iscrizione è un segreto: nel registro solo la sigla"
+
+
+def test_un_iscrizione_nuova_non_riscrive_i_file_degli_altri_account(due):
+    """#874: la pulizia dei doppioni scrive solo dove l'indirizzo c'è: il file di A non cambia (nemmeno riscritto uguale) e nella
+    cartella di un account senza iscrizioni non nasce niente."""
+    (ca, _), (cb, _) = due["A"], due["B"]
+    assert ca.post("/api/push/iscrivi", json=dati_di("A")["push"]).json() == {"dispositivi": 1}
+    file_a = cartella_di(due, "A") / "push.json"
+    prima = (file_a.read_bytes(), file_a.stat().st_mtime_ns, sorted(p.name for p in file_a.parent.iterdir()))
+    vuota = percorsi.cartella_utenti() / "999"
+    vuota.mkdir(parents=True)
+    assert cb.post("/api/push/iscrivi", json=dati_di("B")["push"]).json() == {"dispositivi": 1}
+    assert (file_a.read_bytes(), file_a.stat().st_mtime_ns, sorted(p.name for p in file_a.parent.iterdir())) == prima
+    assert list(vuota.iterdir()) == []
+
+
 def test_quanto_ci_abbiamo_preso_e_per_utente(due):
     """Il riassunto del Diario (campo `precisione`) si calcola SOLO dal diario di chi chiede."""
     for m, reale, fv in (("A", 61.0, 9.0), ("B", 77.0, 6.5)):
