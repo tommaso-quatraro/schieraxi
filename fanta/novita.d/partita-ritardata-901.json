@@ -1,0 +1,9 @@
+{
+  "titolo": "Partita in ritardo: non è più rinviata",
+  "voci": [
+    "Oggi e risultati in diretta: una partita che comincia con un po' di ritardo resta «da giocare» finché non parte, poi «in corso». Prima poteva comparire come rinviata, con «conta il voto del recupero» o, nelle leghe che lo prevedono, con il voto d'ufficio contato tra i punti fatti."
+  ],
+  "tecnico": [
+    "live.leggi_espn: STATUS_DELAYED e STATUS_RAIN_DELAY non diventano più «sospesa» (che fasi e sentinella trattano come «rinviata»): da_giocare, oppure in_corso se la fonte la dà nel gruppo «in». STATUS_SUSPENDED e STATUS_ABANDONED restano «sospesa». Nessun campo né stato dell'API tolto o rinominato; calcolo del fantavoto atteso non toccato."
+  ]
+}
