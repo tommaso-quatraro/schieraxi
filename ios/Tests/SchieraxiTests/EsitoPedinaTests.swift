@@ -122,20 +122,20 @@ struct EsitoPedinaTests {
     @Test("VoiceOver: a partita iniziata l'esito al posto di «gioca al N per cento», come `vocePedina` della web")
     func voceConEsito() throws {
         let g = try giocatore(#""p_voto": 0.72, "stato_partita": "in_corso", \#(Self.etichetta("in_corso", "Partita in corso", "positivo"))"#)
-        #expect(g.vocePedina == "Mario Prova, fantavoto atteso 6,5, Partita in corso", "senza ruolo né avversario, come la web (#616)")
+        #expect(g.vocePedina == "Mario Prova, Difensore, fantavoto atteso 6,5, Partita in corso", "con il ruolo e senza avversario, come la web (#616, #882)")
     }
 
     @Test("VoiceOver: partita rinviata e fantavoto preso")
     func voceRinviataEVoto() throws {
         let rinviata = try giocatore(#""p_voto": 0.5, "rinvio": "aspetta""#)
-        #expect(rinviata.vocePedina == "Mario Prova, fantavoto atteso 6,5, Rinviata")
+        #expect(rinviata.vocePedina == "Mario Prova, Difensore, fantavoto atteso 6,5, Rinviata")
         let votato = try giocatore(#""p_voto": 0.72, "stato_partita": "fatto", "fv_preso": 7"#)
-        #expect(votato.vocePedina == "Mario Prova, fantavoto 7,0")
+        #expect(votato.vocePedina == "Mario Prova, Difensore, fantavoto 7,0")
     }
 
     @Test("VoiceOver prima della partita: sotto l'80% «gioca al N per cento»")
     func voceSenzaEsito() throws {
         let g = try giocatore(#""p_voto": 0.45"#)
-        #expect(g.vocePedina == "Mario Prova, fantavoto atteso 6,5, gioca al 45 per cento")
+        #expect(g.vocePedina == "Mario Prova, Difensore, fantavoto atteso 6,5, gioca al 45 per cento")
     }
 }
