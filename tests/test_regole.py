@@ -89,7 +89,7 @@ def test_posti_della_panchina_devono_tornare_con_il_numero():
     r.panchina.numero = 7
     assert any("somma dei posti" in p for p in r.problemi())
     r.panchina.numero, r.panchina.posti = 11, {"P": 2, "D": 3}
-    assert any("panchina.posti" in p for p in r.problemi())
+    assert any("i posti fissi in panchina devono indicare quanti portieri" in p for p in r.problemi())
 
 
 @pytest.mark.parametrize("valore", ["metà", -3, 1.5, float("nan"), None])
