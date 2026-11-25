@@ -828,15 +828,63 @@ CORPUS = {
     "La squadra e' composta da 25 calciatori: 3 portieri, 8 difensori, 8 centrocampisti e 6 attaccanti": (_rosa(3, 8, 8, 6), False),
     "Porta inviolata: +1 (gol subito: -1)": ({}, True),
     "Migliore in campo: +1; peggiore in campo: -1": ({}, True),
+    # quinto giro (#888): la soglia del primo gol non è un bonus, il punto delle migliaia, una riga più generale non cancella
+    # un'eccezione già letta, un caso particolare della regola («in trasferta», «da fermo») non è la regola. Con più righe il
+    # secondo valore è l'elenco delle righe da controllare.
+    "Soglia gol: 66 punti": ({}, True),
+    "Gol: 66 punti": ({}, True),
+    "Punti per il primo gol: 66": ({}, True),
+    "Ampiezza fascia gol: 6 punti": ({}, True),
+    "Assist: 66": ({}, True),
+    "Crediti iniziali: 1.000": ({"crediti_iniziali": 1000}, False),
+    "Crediti iniziali: 2.500": ({"crediti_iniziali": 2500}, False),
+    "Si parte con 1.000 crediti": ({"crediti_iniziali": 1000}, False),
+    "Crediti iniziali: 1,000": ({}, True),
+    "Crediti iniziali: 500,5": ({}, True),
+    "Gol del portiere: +5\nGol segnato: +3": (_gol(5, 3, 3, 3), []),
+    "Gol segnato: +3\nGol del portiere: +5": (_gol(5, 3, 3, 3), []),
+    "Gol: 3 punti (difensore 4,5)\nGol segnato: +3": (_gol(3, 4.5, 3, 3), []),
+    "Assist: +1\nAssist da fermo: +0,5": ({"bonus.assist": 1}, ["Assist da fermo: +0,5"]),
+    "Assist da fermo: +0,5\nAssist: +1": ({"bonus.assist": 1}, ["Assist da fermo: +0,5"]),
+    "Assist da fermo: +0,5": ({}, True),
+    "Assist su calcio piazzato: +0,5": ({}, True),
+    "Doppia ammonizione: -1": ({}, True),
+    "Modificatore difesa\nMedia 6: +1\nMedia 6,5: +2\nPanchina: 7, massimo 5 cambi":
+        ({"modificatore_difesa.attivo": True, "modificatore_difesa.soglie": [[6, 1], [6.5, 2]], "panchina.numero": 7,
+          "panchina.max_sostituzioni": 5}, []),
+    "Modificatore difesa\nMedia 6: +1\nSostituzioni: 5 su 7 riserve":
+        ({"modificatore_difesa.attivo": True, "modificatore_difesa.soglie": [[6, 1]]}, ["Sostituzioni: 5 su 7 riserve"]),
+    "Gol segnato in trasferta: +0,5": ({}, True),
+    "Gol segnato: +0,5 in trasferta": ({}, True),
+    "Gol in trasferta: +0,5": ({}, True),
+    "Assist, non da calcio piazzato: +1\nAssist da fermo: +0,5": ({"bonus.assist": 1}, ["Assist da fermo: +0,5"]),
+    # prudenti apposta: «anche» non toglie il dubbio (può essere un'aggiunta), la riga si controlla
+    "Gol: +3 (anche in trasferta)": ({}, True),
+    "Espulsione (anche per doppia ammonizione): -1": ({}, True),
+    # revisione della #891: le fasce del modificatore si leggono tutte o nessuna. Una riga della sezione che sembra una fascia
+    # («media N: +M», un intervallo) e non si legge: nessuna fascia, e tutte le righe delle fasce si controllano
+    "Modificatore difesa\nMedia 6: +1\nMedia 6,5: +3 (vale come mezzo gol)\nMedia 7: +5":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1", "Media 6,5: +3 (vale come mezzo gol)", "Media 7: +5"]),
+    "Modificatore difesa\nMedia 6: +1\nDa 6,5 a 6,99: +2\nMedia 7: +3":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1", "Da 6,5 a 6,99: +2", "Media 7: +3"]),
+    "Modificatore difesa\nMedia 6: +1 (con almeno 4 difensori)\nMedia 6,5: +3":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1 (con almeno 4 difensori)", "Media 6,5: +3"]),
+    "Modificatore difesa\n6: +1\n6,5: +3 (mezzo gol)\n7: +5":
+        ({"modificatore_difesa.attivo": True}, ["6: +1", "6,5: +3 (mezzo gol)", "7: +5"]),
+    "Modificatore difesa\nIl modificatore si calcola sulla media del portiere e dei 3 difensori migliori\nMedia 6: +1\nMedia 7: +3":
+        ({"modificatore_difesa.attivo": True, "modificatore_difesa.soglie": [[6, 1], [7, 3]]},
+         ["Il modificatore si calcola sulla media del portiere e dei 3 difensori migliori"]),
 }
 
 
-@pytest.mark.parametrize("riga", list(CORPUS))
-def test_corpus_delle_revisioni(riga):
-    proposte, da_controllare = CORPUS[riga]
-    r = regole_testo.interpreta(riga)
+@pytest.mark.parametrize("testo", list(CORPUS))
+def test_corpus_delle_revisioni(testo):
+    proposte, da_controllare = CORPUS[testo]
+    r = regole_testo.interpreta(testo)
     assert _per_chiave(r) == proposte
-    assert (riga in [x["riga"] for x in r["da_controllare"]]) is da_controllare
+    # una riga: True se va controllata; più righe: l'elenco di quelle da controllare, nell'ordine del testo
+    attese = ([testo] if da_controllare else []) if isinstance(da_controllare, bool) else da_controllare
+    assert [x["riga"] for x in r["da_controllare"]] == attese
 
 
 @pytest.mark.parametrize("riga, regola", [
@@ -848,6 +896,12 @@ def test_una_regola_negata_senza_valore_si_imposta_a_mano(riga, regola):
     """«Nessun bonus per l'assist» dice un valore che la riga non scrive: va controllata con la regola da impostare."""
     r = regole_testo.interpreta(riga)
     assert regola in [g["chiave"] for x in r["da_controllare"] for g in x["regole"]]
+
+
+def test_le_fasce_non_lette_tutte_si_impostano_a_mano():
+    """Una fascia che non si legge lascia le fasce da impostare a mano, sotto ogni riga delle fasce (revisione della #891)."""
+    r = regole_testo.interpreta("Modificatore difesa\nMedia 6: +1\nDa 6,5 a 6,99: +2\nMedia 7: +3")
+    assert all([g["chiave"] for g in x["regole"]] == ["modificatore_difesa.soglie"] for x in r["da_controllare"])
 
 
 @pytest.mark.parametrize("posti_salvati", [None, {"P": 2, "D": 3, "C": 3, "A": 3}])
