@@ -14,6 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, get_type_hints
 
+from . import memoria_file
 from .percorsi import scrivi_sicuro
 
 RUOLI = ("P", "D", "C", "A")
@@ -544,10 +545,11 @@ def da_dict(dati: dict[str, Any], misure: bool = True, salvate: Regole | None = 
 
 def carica(percorso: Path) -> Regole:
     """Le regole salvate (o quelle di partenza se il file non c'è). Senza i tetti di misura e gli intervalli dei numeri: un file
-    salvato prima si legge ancora."""
+    salvato prima si legge ancora. Trasformate una volta finché il contenuto non cambia (`memoria_file`, #907): ogni chiamata
+    riceve un oggetto suo."""
     if not percorso.exists():
         return Regole()
-    return da_dict(json.loads(percorso.read_text(encoding="utf-8")), misure=False)
+    return memoria_file.leggi(percorso, "regole", lambda contenuto: da_dict(json.loads(contenuto.decode("utf-8")), misure=False))
 
 
 def salva(regole: Regole, percorso: Path) -> None:
