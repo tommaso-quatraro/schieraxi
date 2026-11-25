@@ -80,8 +80,9 @@ def test_promemoria_parte_anche_con_la_scelta_non_valida(tmp_path, monkeypatch, 
     assert notifiche.promemoria(_db(CHIUSURA), Regole(), ROSE, ore(17, 35), tmp_path / "a.json", manda, OPZ, fs) == []   # a posto
     scelte.salva(ST, 9, salvata, "4-4-2", fs)
     assert len(notifiche.promemoria(_db(CHIUSURA), Regole(), ROSE, ore(17, 35), tmp_path / "b.json", manda, OPZ, fs)) == 1
-    assert mandati[0][0] == "SchieraXI · formazione tra un'ora"
-    assert mandati[0][1].startswith("Giornata 9 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30), ma quella che hai salvato non è più valida")
+    assert mandati[0][0] == "SchieraXI · formazione non più valida"                 # il fatto in testa e nel titolo (#906)
+    assert mandati[0][1].startswith("La formazione che hai salvato non è più valida: salvane un'altra. "
+                                    "Giornata 9 · 9ª di Serie A: si chiude tra circa un'ora, alle 18:30.")
 
 
 # ---------------------------------------------------------------- avviso «cambia la formazione»
@@ -101,7 +102,7 @@ def test_avviso_scadenza_confronta_con_la_consigliata(m, tmp_path, salvata, rego
     assert giro(ore(16, 0)) == []                                          # lontano dalla scadenza: si ricorda la consigliata
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
     assert len(giro(ore(17, 35))) == 1
-    assert mandati == [("SchieraXI · cambia la formazione consigliata",
+    assert mandati == [("SchieraXI · la formazione consigliata è cambiata",
                         "Castoldi è infortunato: metti Bonvicini (+2,5 punti attesi). La formazione si chiude alle 18:30.")]
 
 
