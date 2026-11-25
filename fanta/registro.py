@@ -3,7 +3,9 @@
 - `errori.log`: una riga per ogni risposta 5xx (quando, metodo, rotta, stato, tipo di errore). Mai indirizzi, nomi, password, valori
   ricevuti né tracce: la rotta è quella «di modello» (`/api/giocatore/{id}`), non l'indirizzo scritto da chi chiede.
 - `sicurezza.log`: gli eventi di sicurezza (vedi `account.evento`); qui c'è solo la scrittura con rotazione, in comune.
-- Contatori semplici in memoria (richieste, errori, tempi) dall'ultimo riavvio: li vede solo l'amministratore.
+- Contatori semplici in memoria (richieste, errori, tempi) dall'ultimo riavvio: li vede solo l'amministratore. Le richieste
+  fermate perché non c'è ancora una sessione (la web chiede chi sei prima di mostrare l'accesso) si contano a parte, in
+  `senza_accesso`, non fra le `rifiutate` (#894).
 Tutti i file hanno la rotazione (`.1`, `.2`, `.3`): il registro non cresce senza fine. In più le righe più vecchie di
 GIORNI_REGISTRI (30 giorni) si tolgono (al massimo un controllo all'ora per file), e gli indirizzi di rete si scrivono
 accorciati (`accorcia_ip`).
@@ -209,17 +211,22 @@ class Contatori:
     def azzera(self) -> None:
         with self.blocco:
             self.da = adesso()
-            self.totale = self.ok = self.client = self.server = 0
+            self.totale = self.ok = self.client = self.server = self.senza_accesso = 0
             self.somma_ms = 0.0
             self.max_ms = 0.0
             self.recenti: deque[float] = deque(maxlen=500)
-            self.per_rotta: dict[str, list[float]] = {}          # rotta di modello -> [richieste, somma ms, massimo ms]
+            # rotta di modello -> [richieste, somma ms, massimo ms]; solo le rotte dell'app (/api/...): pagina e file dell'app
+            # non dicono quale parte è lenta (#894)
+            self.per_rotta: dict[str, list[float]] = {}
 
-    def conta(self, rotta: str, stato: int, ms: float) -> None:
+    def conta(self, rotta: str, stato: int, ms: float, senza_accesso: bool = False) -> None:
+        """Una risposta. `senza_accesso`: il 401 di chi non ha (ancora) una sessione, normale prima di entrare: non è un rifiuto."""
         with self.blocco:
             self.totale += 1
             if stato >= 500:
                 self.server += 1
+            elif senza_accesso:
+                self.senza_accesso += 1
             elif stato >= 400:
                 self.client += 1
             else:
@@ -227,6 +234,8 @@ class Contatori:
             self.somma_ms += ms
             self.max_ms = max(self.max_ms, ms)
             self.recenti.append(ms)
+            if not rotta.startswith("/api/"):
+                return
             r = self.per_rotta.setdefault(rotta, [0, 0.0, 0.0])
             r[0] += 1
             r[1] += ms
@@ -238,6 +247,7 @@ class Contatori:
             p95 = ordinati[min(len(ordinati) - 1, int(len(ordinati) * 0.95))] if ordinati else 0.0
             lente = sorted(self.per_rotta.items(), key=lambda kv: kv[1][1] / kv[1][0], reverse=True)[:5]
             return {"da": self.da, "richieste": self.totale, "riuscite": self.ok, "rifiutate": self.client, "errori": self.server,
+                    "senza_accesso": self.senza_accesso,
                     "tempo_medio_ms": round(self.somma_ms / self.totale, 1) if self.totale else 0.0,
                     "tempo_p95_ms": round(p95, 1), "tempo_max_ms": round(self.max_ms, 1),
                     "piu_lente": [{"rotta": k, "richieste": int(v[0]), "medio_ms": round(v[1] / v[0], 1), "max_ms": round(v[2], 1)} for k, v in lente]}

@@ -198,6 +198,9 @@ def controllo_accesso(request: Request) -> JSONResponse | None:
     except ErroreAccount as e:                      # database degli account illeggibile: risposta chiara, niente traccia
         return errore_account(None, e)
     if utente is None:
+        # nessuna sessione (o una finita): è la risposta normale prima di entrare, non un rifiuto; i contatori di «Errori recenti»
+        # la tengono a parte (registro.Contatori, #894). Password sbagliate e troppi tentativi passano dalle rotte pubbliche.
+        request.state.senza_accesso = True
         return JSONResponse(status_code=401, content={"detail": "Accesso richiesto", "multiutente": True,
                                                                          "registrazione": account_email.modo_registrazione(),
                                                                          "social": social.provider_attivi(),

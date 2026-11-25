@@ -196,7 +196,7 @@ def _annota(request: Request, stato: int, ms: float) -> None:
     """Contatori (richieste, errori, tempi) e, per ogni risposta 5xx, una riga nel registro degli errori. Mai un problema per la richiesta."""
     try:
         rotta = registro.rotta_di_modello(request)
-        registro.contatori.conta(rotta, stato, ms)
+        registro.contatori.conta(rotta, stato, ms, senza_accesso=stato == 401 and getattr(request.state, "senza_accesso", False))
         uso.conta(request.method, rotta, stato)          # conteggio anonimo per rotta e per funzione (fanta/uso.py)
         if stato >= 500:
             registro.errore(request.method, rotta, stato, getattr(request.state, "tipo_errore", None))
