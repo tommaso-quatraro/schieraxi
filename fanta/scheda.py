@@ -36,6 +36,22 @@ def con_voto_fino_al(db: sqlite3.Connection, calciatore_id: int, stagione: str, 
         (stagione, calciatore_id, giorno)).fetchone()[0]
 
 
+SOGLIA_ANDAMENTO = 0.6        # di quanto la media delle ultime 3 si stacca da quella della stagione
+
+
+def andamento(voti: list[dict]) -> str | None:
+    """L'andamento dei fantavoti nella scheda (#895: prima lo calcolava la web): `in_crescita` o `in_calo` se la media delle ultime 3
+    partite con il voto si stacca di più di 0,6 da quella di tutte, `stabile` altrimenti, `pochi_dati` con meno di 4 voti. None
+    senza presenze. `voti` in ordine di giornata, `fv` None = senza voto."""
+    if not voti:
+        return None
+    con = [float(v["fv"]) for v in voti if v.get("fv") is not None]
+    if len(con) < 4:
+        return "pochi_dati"
+    differenza = sum(con[-3:]) / 3 - sum(con) / len(con)
+    return "in_crescita" if differenza > SOGLIA_ANDAMENTO else "in_calo" if differenza < -SOGLIA_ANDAMENTO else "stabile"
+
+
 def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, fonte_voto: str = "redazione") -> dict:
     c = db.execute("SELECT * FROM calciatori WHERE id = ?", (calciatore_id,)).fetchone()
     if not c:
@@ -100,6 +116,7 @@ def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, fonte_voto
         "calciatore": dict(c),
         "stagione": stagione_fc,
         "voti": voti,
+        "andamento": andamento(voti),
         "avanzate": avanzate,
         "probabile": dict(prob) if prob else None,
         "prossima_partita": dict(prossima) if prossima else None,
