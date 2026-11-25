@@ -14,7 +14,7 @@ private func risposta(_ json: String) throws -> RiconoscimentoRegole {
 }
 
 /// Il perché che il server dà per la panchina di una lega con i posti fissi (frase `regole.panchina_posti_fissi`, 2 + 3 + 3 + 3).
-private let perchePostiFissi = "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia i posti di ogni ruolo in «Modifica i valori»."
+private let perchePostiFissi = "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole."
 
 /// Come la manda il server dal 25/11/2026 (#884) a una lega con i posti fissi in panchina.
 private let conNonApplicabili = """

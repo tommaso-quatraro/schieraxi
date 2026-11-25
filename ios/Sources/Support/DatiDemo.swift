@@ -883,7 +883,7 @@ private extension LegaDemo {
         // come il server dal 25/11/2026 (#881): la panchina diversa dalla somma dei posti letti nello stesso testo non si applica
         "non_applicabili": [
             ["chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 12, "riga": "In panchina vanno 12 giocatori",
-             "motivo": "I posti per ruolo letti nel regolamento sono 11 in tutto e la panchina è la loro somma: controlla i posti di ogni ruolo in «Modifica i valori».",
+             "motivo": "I posti per ruolo letti nel regolamento sono 11 in tutto e la panchina è la loro somma: controlla a mano i posti di ogni ruolo nei valori delle regole.",
              "motivo_frase": ["chiave": "regole.panchina_somma_posti", "param": ["n": 11] as [String: Any]] as [String: Any]],
         ] as [[String: Any]],
         // come il server dal 19/11/2026 (#733): le righe con numeri non lette e quelle dubbie, con la regola da impostare a mano

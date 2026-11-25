@@ -787,7 +787,7 @@ def test_un_valore_che_non_si_puo_salvare_non_sta_fra_i_riconosciuti(web):
     regole = web.registrata("/api/regole")
     regole["panchina"] |= {"posti": POSTI_FISSI, "numero": 11}
     web.risposta("/api/regole", regole)
-    motivo = "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia i posti di ogni ruolo in «Modifica i valori»."
+    motivo = "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole."
     web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
         {"chiave": "panchina.max_sostituzioni", "etichetta": "Sostituzioni massime", "valore": 5, "riga": RIGA_PANCHINA}],
         "non_applicabili": [{"chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 12, "riga": RIGA_PANCHINA,
