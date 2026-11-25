@@ -70,6 +70,13 @@ SOGLIA_GOL = r"sogli|\bfasc|ampiezz|classific|\bprim[oa]\s(?:gol|rete)"
 # Un bonus o un malus oltre questo valore non è un bonus vero (la web e l'iPhone lasciano scegliere da 0 a 20): «Gol: 66 punti» è
 # la soglia del primo gol. Non si propone e il numero resta non letto, così la riga va controllata (#888).
 MAX_BONUS_LETTO = 20
+# I casi particolari di una regola, che l'app non ha («Gol segnato in trasferta: +0,5», «Assist da fermo: +0,5», «Doppia
+# ammonizione: -1»): il numero non è quello della regola, non si legge e la riga resta da controllare (#888). Un caso negato
+# («Assist, non da calcio piazzato: +1») lascia la regola com'è.
+CASO_PARTICOLARE = (r"da fermo|palla ferma|piazzat|punizion|calci\w{0,3} d'angolo|\bcorner|su azione|trasfert|\bin casa\b"
+                    r"|decisiv|vittori|pareggi|di testa|fuori area|da fuori|rovesciat|recupero|ultimo minuto"
+                    r"|\bdoppi[ao]\b|doppiett|triplett|hat.trick")
+CASO_NEGATO = r"\bnon\W{1,3}(?:\w{1,20}\W{1,3}){0,2}$"     # un «non» poco prima del caso particolare: «non da calcio piazzato»
 RUOLI = {"portier": "P", "difensor": "D", "centrocamp": "C", "attaccant": "A"}
 NOMI_PLURALE = {"P": "portieri", "D": "difensori", "C": "centrocampisti", "A": "attaccanti"}
 NOMI_SINGOLARE = {"P": "portiere", "D": "difensore", "C": "centrocampista", "A": "attaccante"}
@@ -171,14 +178,24 @@ def _da_leggere(riga: str) -> set[int]:
     return {p for p, _ in _numeri(testo)}
 
 
+def _tratto(riga: str, inizio: int, fine: int) -> str:
+    """La riga dal pezzo (fra «;» e le virgole che non stanno in un numero) dove sta `inizio` alla fine del pezzo dove sta `fine`."""
+    a = max((m.end() for m in re.finditer(r";|,(?!\d)", riga[:inizio])), default=0)
+    b = re.search(r";|,(?!\d)", riga[fine:])
+    return riga[a:fine + b.start() if b else len(riga)]
+
+
 def _negata_senza_numero(riga: str, pos: int) -> bool:
     """Il pezzo della riga (fra «;» e le virgole che non stanno in un numero) dove una regola è nominata, in `pos`, ne nega il
     punteggio (NEGA_PUNTI) e non ha numeri: «L'assist non dà bonus, il gol vale 3». Il numero che viene dopo è di un'altra regola:
     non si legge, e la regola resta da impostare a mano."""
-    inizio = max((m.end() for m in re.finditer(r";|,(?!\d)", riga[:pos])), default=0)
-    fine = re.search(r";|,(?!\d)", riga[pos:])
-    pezzo = riga[inizio:pos + fine.start() if fine else len(riga)]
+    pezzo = _tratto(riga, pos, pos)
     return re.search(NEGA_PUNTI, pezzo) is not None and not re.search(r"\d", pezzo)
+
+
+def _caso_particolare(testo: str) -> bool:
+    """Il testo nomina un caso particolare della regola (CASO_PARTICOLARE) senza un «non» poco prima (CASO_NEGATO)."""
+    return any(not re.search(CASO_NEGATO, testo[max(0, m.start() - 60):m.start()]) for m in re.finditer(CASO_PARTICOLARE, testo))
 
 
 def _negate(testo: str, parole: str) -> tuple[int, int]:
@@ -361,8 +378,8 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
         if re.search(r"\bgol\b", riga) and not re.search(r"gol subit|reti subit|gol (?:su|da) rigore|nessun gol|assist|rigor"
                                                          r"|imbattut|inviolat|clean sheet|senza subire", riga):
             ruoli_riga = [(r, riga.find(k)) for k, r in RUOLI.items() if k in riga]
-            if re.search(SOGLIA_GOL, riga):
-                trovato = True                  # la soglia del primo gol, non il bonus: nessuna proposta, la riga si controlla
+            if re.search(SOGLIA_GOL, riga) or _caso_particolare(riga):
+                trovato = True                  # la soglia del primo gol o un caso particolare: nessuna proposta, la riga si controlla
             elif len(ruoli_riga) >= 2:
                 for r, pos in sorted(ruoli_riga, key=lambda x: x[1]):
                     if (primo := _primo(riga, pos)) and primo[1] is not None:
@@ -404,7 +421,9 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
                     dubbia(chiave, etichetta, n)
                 elif not letta:
                     letta = True
-                    if (primo := _primo(riga, min(posizioni))) and primo[1] is not None:
+                    # un caso particolare fra il nome e il suo numero («Assist da fermo: +0,5»): il numero non è della regola
+                    if (primo := _primo(riga, min(posizioni))) and primo[1] is not None \
+                            and not _caso_particolare(_tratto(riga, min(posizioni), primo[0])):
                         imposta(chiave, etichetta, segno * abs(primo[1]), n, primo[0]); trovato = True
         if trovato:
             continue
