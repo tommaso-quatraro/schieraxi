@@ -580,6 +580,46 @@
     "it": "partita rinviata: voto d'ufficio {voto}",
     "en": "postponed match: default grade {voto}"
   },
+  "frase.in_corso.da_giocare.one": {
+    "it": "{n} giocatore deve ancora giocare",
+    "en": "{n} player still to play"
+  },
+  "frase.in_corso.da_giocare.other": {
+    "it": "{n} giocatori devono ancora giocare",
+    "en": "{n} players still to play"
+  },
+  "frase.in_corso.voti": {
+    "it": "Hanno giocato tutti: mancano solo i voti ufficiali.",
+    "en": "Everyone has played: only the official grades are missing."
+  },
+  "frase.in_corso.recupero.one": {
+    "it": "Hanno giocato tutti tranne {nomi}, che aspetta il recupero.",
+    "en": "Everyone has played except {nomi}, who is waiting for the make-up game."
+  },
+  "frase.in_corso.recupero.other": {
+    "it": "Hanno giocato tutti tranne {nomi}, che aspettano il recupero.",
+    "en": "Everyone has played except {nomi}, who are waiting for the make-up game."
+  },
+  "frase.in_corso.voti_e_recupero.one": {
+    "it": "Hanno giocato tutti tranne {nomi}, che aspetta il recupero; mancano anche i voti ufficiali.",
+    "en": "Everyone has played except {nomi}, who is waiting for the make-up game; the official grades are missing too."
+  },
+  "frase.in_corso.voti_e_recupero.other": {
+    "it": "Hanno giocato tutti tranne {nomi}, che aspettano il recupero; mancano anche i voti ufficiali.",
+    "en": "Everyone has played except {nomi}, who are waiting for the make-up game; the official grades are missing too."
+  },
+  "frase.in_corso.finiti": {
+    "it": "I voti dei tuoi giocatori sono tutti usciti.",
+    "en": "The grades of all your players are out."
+  },
+  "frase.in_corso.tutti_recupero": {
+    "it": "I tuoi giocatori aspettano tutti il recupero.",
+    "en": "All your players are waiting for the make-up game."
+  },
+  "frase.riepilogo.voti_in_arrivo": {
+    "it": "I punti arrivano quando escono i voti.",
+    "en": "The points arrive when the grades are out."
+  },
   "frase.probabili.oggi": {
     "it": "Probabili aggiornate alle {ora}",
     "en": "Probable lineups updated at {ora}"

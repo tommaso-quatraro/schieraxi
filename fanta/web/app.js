@@ -469,11 +469,12 @@ const nonGiocaDiSicuro = stato => !!stato && stato.classe === "rossa";
 // La nota delle probabili su chi rischia di non esserci («contusione al ginocchio, in forte dubbio dal 1'»): il motivo dello stato
 // a parole. È testo della fonte, scritto com'è. Vuota per chi non ha uno stato da spiegare e a partita cominciata.
 const notaStato = (x, stato) => (stato && typeof x.nota === "string" && x.nota.trim() ? x.nota.trim() : "");
-// Le parole sotto il nome in una riga: lo stato prima della partita, com'è andata dopo («Voto in arrivo», «Senza voto»), «Diffidato»
-// e, in una riga sua, la nota che spiega lo stato. `inPiu`: altre etichette, prima della nota (già pronte per l'HTML).
+// Le parole sotto il nome in una riga: lo stato prima della partita, com'è andata dopo («Voto in arrivo», «Senza voto», «Voto
+// d'ufficio»), «Diffidato» e, in una riga sua, la nota che spiega lo stato. `inPiu`: altre etichette, prima della nota (già pronte per l'HTML).
 function etichetteGiocatore(x, inPiu = "") {
   const esito = esitoPartita(x), stato = esito ? null : parolaStato(x);
-  const parola = esito && esito.fv == null ? `<span class="etichetta ${etichettaPronta(x) ? classeTono(x.etichetta) : STATO_PARTITA[x.stato_partita][1]}">${esc(esito.testo)}</span>`
+  const parola = esito && esito.parola ? `<span class="etichetta ${classeTono(x.etichetta)}">${esc(esito.parola)}</span>`
+    : esito && esito.fv == null ? `<span class="etichetta ${etichettaPronta(x) ? classeTono(x.etichetta) : STATO_PARTITA[x.stato_partita][1]}">${esc(esito.testo)}</span>`
     : stato ? `<span class="etichetta ${stato.classe}">${esc(stato.testo)}</span>` : "";
   const nota = notaStato(x, stato);
   return parola + inPiu + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "")
@@ -496,19 +497,24 @@ const classeGioca = p => (p < SOGLIA_BASSA ? "basso" : "medio");
 // gioca al 45 per cento, In dubbio». Il ruolo dopo il nome (#882): sul campo lo dice solo la fila in cui sta la pedina, che chi non
 // vede non ha. `esito`: esitoPedina(x), a partita iniziata o rinviata; `stato`: parolaStato(x). A formazione chiusa, per chi
 // deve ancora giocare (`da_giocare`), sulla pedina c'è quando gioca e non «gioca N%»: nemmeno qui.
+// Rimasto senza voto (#895): il suo fantavoto atteso non conta più (al suo posto entra una riserva, o niente), e non si mostra.
+const senzaVoto = x => (etichettaPronta(x) ? x.etichetta.codice : x.stato_partita) === "senza_voto";
 function vocePedina(x, esito = null, stato = null) {
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
   const preso = esito && esito.fv != null;
-  return [x.nome, NOME_RUOLO_1[x.ruolo], preso ? esito.testo : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "",
+  return [x.nome, NOME_RUOLO_1[x.ruolo], preso ? esito.testo : senzaVoto(x) ? "" : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "", esito && esito.parola,
     !esito && x.stato_partita !== "da_giocare" && !nonGiocaDiSicuro(stato) && giocaLetto(x) < SOGLIA_GIOCA ? t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }) : "",
     !esito && stato ? stato.testo : ""].filter(Boolean).join(", ");
 }
 // A partita iniziata «gioca N%» non serve più (come la scheda, PARTITA_INIZIATA): a partita finita il fantavoto preso (`fv_preso`
 // del server) o lo stato («Voto in arrivo», «Senza voto»); in corso lo stato. Null = la partita non è cominciata: «gioca N%».
+// La partita rinviata con il voto d'ufficio (#895): il server lo conta già tra i punti fatti (`fantavoto`, qui `fv_preso`) e
+// l'etichetta lo dice; si mostra come un voto preso, con la sua parola (`parola`) sotto la pedina e nella riga.
 const CODICI_PARTITA_INIZIATA = ["voto", "senza_voto", "voto_in_arrivo", "in_corso"];
 function esitoPartita(x) {
   const codice = etichettaPronta(x) ? x.etichetta.codice : null;
+  if (codice === "voto_ufficio" && Number.isFinite(x.fv_preso)) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }), parola: x.etichetta.testo };
   if (!PARTITA_INIZIATA.includes(x.stato_partita || "") && !CODICI_PARTITA_INIZIATA.includes(codice)) return null;
   if (Number.isFinite(x.fv_preso) && (codice === "voto" || x.stato_partita === "fatto")) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
   return { fv: null, testo: etichettaPronta(x) ? x.etichetta.testo : t(STATO_PARTITA[x.stato_partita][0]) };
@@ -535,11 +541,12 @@ function pedina(x, k = 0) {
   const daGiocare = !esito && x.stato_partita === "da_giocare";                 // formazione chiusa, la sua partita non è cominciata
   const gioca = !esito && !daGiocare && !nonGiocaDiSicuro(stato) && p < SOGLIA_GIOCA;
   return `<button class="pedina${(esito && !preso) || daGiocare ? " attesa" : ""}" data-giocatore="${x.id}" style="--k:${k}">
-    <span class="disco" aria-hidden="true">${num(preso ? esito.fv : x.fv_atteso)}</span>
+    <span class="disco" aria-hidden="true">${preso ? num(esito.fv) : senzaVoto(x) ? "–" : num(x.fv_atteso)}</span>
     <span class="nome" aria-hidden="true">${esc(cognome(x))}</span>
     ${gioca ? `<span class="gioca ${classeGioca(p)}" aria-hidden="true">${t("giocatore.gioca", { p: perc(p) })}</span>` : ""}
     ${stato ? `<span class="gioca ${stato.classe === "rossa" ? "basso" : "parola"}" aria-hidden="true">${esc(stato.testo)}</span>` : ""}
     ${esito && !preso ? `<span class="gioca parola" aria-hidden="true">${esc(esito.testo)}</span>` : ""}
+    ${esito && esito.parola ? `<span class="gioca parola" aria-hidden="true">${esc(esito.parola)}</span>` : ""}
     ${daGiocare && x.data_partita ? `<span class="gioca parola" aria-hidden="true">${esc(quando(x.data_partita))}</span>` : ""}
     <span class="solo-lettori">${esc(vocePedina(x, esito, stato))}${daGiocare && x.data_partita ? `, ${esc(quando(x.data_partita))}` : ""}</span>
   </button>`;
@@ -585,11 +592,12 @@ function lineetta(slug) {
 }
 // I nomi delle colonne sopra un elenco di giocatori, allineati alle colonne delle righe; nascosti ai lettori di schermo, perché il
 // nome di ogni riga dice già tutto. `partita: false` senza la colonna della partita; `ferma` resta sotto la testata mentre si
-// scorre (elenchi lunghi).
+// scorre (elenchi lunghi). `dalVivo` (giornata in corso, #895): nelle righe c'è chi ha già il voto vero e chi ha ancora l'atteso,
+// e la colonna si chiama «Fantavoto» (le righe dicono «fantavoto» o «atteso», vedi numeriRiga).
 function intestazioneColonne(opz = { partita: true }) {
   return `<div class="intestazione-colonne${opz.ferma ? " ferma" : ""}" aria-hidden="true"><div class="voce-g">`
     + (opz.partita === false ? "" : `<span class="ic-partita">${t("mercato.partita")}</span>`)
-    + `<span class="ic-fv">${t("mercato.fantavoto_atteso")}</span></div></div>`;
+    + `<span class="ic-fv">${t(opz.dalVivo ? "formazione.col_fantavoto" : "mercato.fantavoto_atteso")}</span></div></div>`;
 }
 
 // La riga sotto il nome in pezzi interi («NAP vs LAZ · sab 31 20:45 ·», «Real Esempio»): va a capo tra un pezzo e l'altro, mai
@@ -597,13 +605,14 @@ function intestazioneColonne(opz = { partita: true }) {
 const pezziRiga = pezzi => pezzi.filter(Boolean).map((p, i, tutti) => `<span class="nb">${p}${i < tutti.length - 1 ? " ·" : ""}</span>`).join(" ");
 
 // `posizione`: il numero d'ordine davanti al nome (la panchina, nell'ordine in cui entra). Un tocco apre la scheda del giocatore.
-function voceGiocatore(x, posizione) {
+// `dalVivo`: a giornata in corso (vedi intestazioneColonne).
+function voceGiocatore(x, posizione, dalVivo = false) {
   return `<li class="riga-gioc"><button class="voce voce-g" data-giocatore="${x.id}">
     ${volto(x)}
     <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${posizione ? `<span class="debole">${posizione}. </span>` : ""}${esc(x.nome)}</span></span>
       <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra)])}</span>
       <span class="etichette">${etichetteGiocatore(x)}</span></span>
-    ${numeriRiga(x)}
+    ${numeriRiga(x, dalVivo)}
   </button></li>`;
 }
 
@@ -617,15 +626,17 @@ function valoreRosa(p, x) {
 // Le due colonne dei numeri di ogni riga: il fantavoto atteso e, solo sotto l'80%, «gioca N%» (arancio fra 50 e 79, rosso sotto 50;
 // niente per chi non gioca di sicuro: lo dice la parola). A partita iniziata il fantavoto preso con accanto «fantavoto», oppure «–»
 // (lo stato è già scritto sotto il nome): mai «gioca N%». I nomi delle colonne sono nascosti ai lettori di schermo: il numero ha il
-// suo nome accanto, solo per loro («gioca 45%, Fantavoto atteso 6,8»).
+// suo nome accanto, solo per loro («gioca 45%, Fantavoto atteso 6,8»). `dalVivo` (giornata in corso, #895): la colonna si chiama
+// «Fantavoto» e il numero di chi deve ancora giocare dice «atteso» dove non c'è «gioca N%» (accanto al voto vero c'è «fantavoto»).
 const nomeFvAtteso = () => `<span class="solo-lettori">${t("mercato.fantavoto_atteso")} </span>`;
-function numeriRiga(p) {
+function numeriRiga(p, dalVivo = false) {
   const esito = esitoPartita(p);
   if (esito) return esito.fv != null
     ? `<span class="pv-g">${t("mercato.fantavoto")}</span><span class="valore esito"><b>${num(esito.fv)}</b></span>`
     : `<span class="pv-g"></span><span class="valore esito"><b class="debole" aria-hidden="true">–</b></span>`;
   const q = giocaLetto(p), mostra = q < SOGLIA_GIOCA && !nonGiocaDiSicuro(parolaStato(p));
-  return `<span class="pv-g${mostra ? " " + classeGioca(q) : ""}">${mostra ? t("giocatore.gioca", { p: perc(q) }) : ""}</span><span class="valore">${nomeFvAtteso()}<b>${num(p.fv_atteso)}</b></span>`;
+  const sotto = mostra ? t("giocatore.gioca", { p: perc(q) }) : dalVivo ? `<span aria-hidden="true">${t("formazione.atteso_breve")}</span>` : "";
+  return `<span class="pv-g${mostra ? " " + classeGioca(q) : ""}">${sotto}</span><span class="valore">${nomeFvAtteso()}<b>${num(p.fv_atteso)}</b></span>`;
 }
 
 // ---------------------------------------------------------------- navigazione
@@ -921,13 +932,12 @@ function mostraSenzaRose(opz) {
 
 // Campionato finito (#656, campo `campionato_finito` di /api/oggi): nessuna giornata da preparare fino al calendario nuovo. La testa
 // della giornata finita con il riepilogo dell'ultima (nelle 48 ore, se il server lo manda) e la frase del server al posto della prossima;
-// con un recupero dell'ultima giornata ancora da giocare, lo stesso menu della fase «finita» per scegliere come contarlo.
+// con un recupero dell'ultima giornata ancora da giocare, lo stesso riquadro della fase «finita» per scegliere come contarlo (nel riepilogo).
 function mostraCampionatoFinito(o, opz) {
   clearInterval(timerConto);
   const r = o.riepilogo;
   const frase = `<p class="tg-nota" role="status" id="campionato-finito">${esc(testoDi(o.campionato_finito))}</p>`;
-  pagina(`<div class="fz-testa">${r ? `${riepilogoGiornata(r)}<div class="tg-prossima">${frase}</div>` : frase}</div>
-    ${r && r.rinvio ? `<div class="carta rinvio">${menuRinvio(r.rinvio)}</div>` : ""}`, opz);
+  pagina(`<div class="fz-testa">${r ? `${riepilogoGiornata(r)}<div class="tg-prossima">${frase}</div>` : frase}</div>`, opz);
   collegaRinvio();
   const comeAndata = $("[data-apri-giornata]");
   if (comeAndata) comeAndata.addEventListener("click", () => vaiGiornate(Number(comeAndata.dataset.apriGiornata) || undefined));
@@ -954,13 +964,17 @@ function menuRinvio(rv) {
 }
 // «UDI vs MIL»: le sigle, prima la squadra di casa. La usano il riquadro del rinvio e la riga dei recuperi che mancano (#310).
 const partitaVs = p => `${sigla(p.casa)} vs ${sigla(p.trasferta)}`;
-function cardRinvio(rv) {
-  if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
-  const partite = rv.partite.map(p => `<li><b>${partitaVs(p)}</b>
+// `titolo` (la giornata finita, #895): il titolo con la giornata a cui si riferisce, già pronto, al posto di «Partita rinviata»;
+// allora il riquadro c'è anche senza `partite` (un server di prima non le mandava nel riepilogo), e `nota` va sotto le partite.
+function cardRinvio(rv, titolo = "", nota = "") {
+  const conPartite = !!rv && Array.isArray(rv.partite) && rv.partite.length > 0;
+  if (!rv || (!conPartite && !titolo)) return "";
+  const partite = (conPartite ? rv.partite : []).map(p => `<li><b>${partitaVs(p)}</b>
     <span class="debole piccolo">${parseData(p.data) ? t("oggi.rinvio_recupero", { quando: esc(quando(p.data)) }) : t("oggi.rinvio_da_definire")}</span></li>`).join("");
   const miei = (rv.miei || []).map(g => esc(g.nome)).join(", ");
-  return `<div class="carta rinvio" id="oggi-rinvio"><h2>${t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
-    <ul class="elenco-rinvii">${partite}</ul>
+  return `<div class="carta rinvio"${titolo ? "" : ' id="oggi-rinvio"'}><h2>${titolo || t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
+    ${partite ? `<ul class="elenco-rinvii">${partite}</ul>` : ""}
+    ${nota ? `<p class="piccolo">${nota}</p>` : ""}
     ${miei ? `<p class="piccolo">${t("oggi.rinvio_miei", { nomi: miei })}</p>` : ""}
     ${menuRinvio(rv)}
   </div>`;
@@ -1125,23 +1139,40 @@ function testaGiornata(o, f) {
   }
   if (fase === "in_corso" && o.in_corso) {
     const c2 = o.in_corso;
+    // la riga sotto i punti la sceglie il server (`situazione`, #895: chi deve ancora giocare, i voti o il recupero che mancano);
+    // la copia di un server di prima, senza il campo, ha le parole di sempre
+    const sotto = typeof c2.situazione === "string" && c2.situazione.trim() ? esc(testoDi(c2, "situazione"))
+      : c2.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c2.ancora_da_giocare) : t("oggi.tutti_giocato");
     return `<p class="tg-giornata">${nomeGiornata(f.giornata_lega, f.giornata)} · <b>${t("formazione.in_corso")}</b></p>
       <p class="tg-punti"><b class="tg-numero" id="oggi-fatti">${num(c2.punti_fatti)}</b> ${t("formazione.punti_finora")}${c2.punti_previsti != null ? ` · ${t("formazione.circa_fine", { n: num(c2.punti_previsti, 0) })}` : ""}</p>
-      <p class="tg-sotto">${c2.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c2.ancora_da_giocare) : t("oggi.tutti_giocato")}</p>`;
+      <p class="tg-sotto">${sotto}</p>`;
   }
   if (fase === "finita" && o.riepilogo) return `${riepilogoGiornata(o.riepilogo)}<div class="tg-prossima">${giornata}${chiusura}</div>`;
+  // finita, voti non ancora usciti (#895): niente totale, ma la giornata di prima è finita e la frase del server lo dice
+  const attesa = fase === "finita" && o.voti_in_arrivo && typeof o.voti_in_arrivo.testo === "string" ? o.voti_in_arrivo : null;
+  if (attesa) return `<div id="oggi-voti-in-arrivo"><p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(attesa.giornata_lega, attesa.giornata) })}</p>
+      <p class="tg-punti">${esc(testoDi(attesa))}</p></div><div class="tg-prossima">${giornata}${chiusura}</div>`;
   return giornata + (f.iniziata ? "" : chiusura);
 }
 
-// La giornata appena finita (campo `riepilogo` di /api/oggi): punti fatti e attesi, «Com'è andata», la consigliata, i recuperi.
+// La giornata appena finita (campo `riepilogo` di /api/oggi): punti fatti e attesi, «Com'è andata», la consigliata, i recuperi e,
+// con una partita della giornata da recuperare, la scelta su come contarla (#895: prima stava in fondo, sotto la panchina della
+// giornata dopo, senza titolo né partita). Il riquadro ha il titolo con la giornata, la partita e i miei giocatori (`rinvio.partite`,
+// `rinvio.miei`); la partita si dice lì una volta sola, e la riga dei recuperi diventa la sua nota. Senza `partite` (server di prima)
+// resta la riga dei recuperi con i nomi delle partite.
 function riepilogoGiornata(r) {
-  const tua = r.formazione_di === "tua";
+  const tua = r.formazione_di === "tua", rv = r.rinvio;
+  const recuperi = Array.isArray(r.recuperi) ? r.recuperi : [];
+  const conPartite = !!rv && Array.isArray(rv.partite) && rv.partite.length > 0;
+  const titolo = rv ? t(conPartite && rv.partite.length > 1 ? "oggi.rinvio_titolo_giornata_n" : "oggi.rinvio_titolo_giornata_1",
+    { g: nomeGiornata(r.giornata_lega, r.giornata) }) : "";               // la giornata del rinvio è quella del riepilogo
   return `<div class="tg-finita" id="oggi-riepilogo"><div>
       <p class="tg-giornata">${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</p>
       <p class="tg-punti"><b class="tg-numero">${num(r.punti_fatti)}</b> ${r.punti_attesi != null ? t("formazione.punti_e_attesi", { n: num(r.punti_attesi) }) : t("formazione.punti")}</p></div>
       <button class="bottone secondario" type="button" data-apri-giornata="${Number(r.giornata)}">${t("formazione.come_andata")}</button></div>
     ${tua && r.consigliata && r.consigliata.punti_fatti !== r.punti_fatti ? `<p class="tg-sotto">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
-    ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}`;
+    ${recuperi.length && !conPartite ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: recuperi.map(partitaVs).join(", ") })}</p>` : ""}
+    ${rv ? cardRinvio(rv, titolo, recuperi.length && conPartite ? t("oggi.recupero_punti") : "") : ""}`;
 }
 
 // A giornata in corso: i cambi dalla panchina già fatti o probabili (campo `sostituzioni` di `in_corso`).
@@ -1337,7 +1368,7 @@ function mostraFormazione(b, squadra, opz = {}) {
     const opzione = x => `<option value="${esc(x.modulo)}" ${x.modulo === m.modulo ? "selected" : ""}>${t(x === consigliato ? "formazione.opzione_consigliato" : "formazione.opzione_modulo", { modulo: esc(x.modulo), punti: num(x.punteggio_atteso) })}</option>`;
     const diSolito = fraseDiSolito(m);
     const probabili = o && o.probabili && !chiusa ? `<p class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</p>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : "";
-    const elenco = (righe, numerati) => `${intestazioneColonne({ partita: true })}<ul class="elenco">${righe.map((x, k) => voceGiocatore(x, numerati ? k + 1 : null)).join("")}</ul>`;
+    const elenco = (righe, numerati) => `${intestazioneColonne({ partita: true, dalVivo: !!live })}<ul class="elenco">${righe.map((x, k) => voceGiocatore(x, numerati ? k + 1 : null, !!live)).join("")}</ul>`;
     pagina(`<div class="fz${chiusa ? " chiusa" : ""}">
       <div class="fz-testa">
         ${squadra ? `<div class="attenzione" role="status">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
@@ -1370,7 +1401,6 @@ function mostraFormazione(b, squadra, opz = {}) {
           ${f.senza_dati.length ? `<div class="debole piccolo">${t("formazione.senza_dati", { nomi: f.senza_dati.map(esc).join(", ") })}</div>` : ""}</details></div>` : ""}
         ${indisponibili.length ? `<div class="carta"><details><summary>${t("formazione.indisponibili", { n: indisponibili.length })}</summary>${elenco(indisponibili)}</details></div>` : ""}
         ${mia && o ? cardRinvio(o.rinvio) : ""}
-        ${mia && o && o.fase === "finita" && o.riepilogo && o.riepilogo.rinvio ? `<div class="carta rinvio">${menuRinvio(o.riepilogo.rinvio)}</div>` : ""}
       </div></div>`,
       { ...opz, stato: false, daCache: mantieniScroll ? null : opz.daCache, sostituisce: opz.sostituisce || mantieniScroll });
     const bottone = (id, fn) => { const e = $(id); if (e) e.addEventListener("click", fn); };
@@ -1481,18 +1511,18 @@ function filtraListone(n, limite, lista = listoneCerca) {
 const slugQualunque = s => SIGLE[s] ? s : SIGLE[normNome(s)] ? normNome(s) : s;
 
 // ---------------------------------------------------------------- scheda giocatore (pannello)
-function formaGiocatore(voti) {
+// Gli ultimi 5 voti in pallini e l'andamento: quello lo decide il server (`andamento` di /api/giocatore, fanta/scheda.py, #895),
+// qui solo la parola del catalogo e la freccia. Un valore che non conosciamo, o un server di prima senza il campo: niente andamento.
+const ANDAMENTO = { in_crescita: ["↗", "positivo", "mercato.in_crescita"], in_calo: ["↘", "negativo", "mercato.in_calo"],
+  stabile: ["→", "", "mercato.stabile"], pochi_dati: ["→", "", "mercato.pochi_dati"] };
+function formaGiocatore(voti, andamento) {
   const ultimi = voti.slice(-5);
   if (!ultimi.length) return null;
   const colore = v => v == null ? "sv" : v >= 7 ? "alto" : v >= 6 ? "medio" : "basso";
   const pallini = `<div class="pallini">${ultimi.map(v => `<i class="${colore(v.fv)}" title="${nomeGiornata(null, v.giornata)}">${v.fv == null ? t("mercato.sv") : num(v.fv, 1)}</i>`).join("")}</div>`;
-  const con = voti.filter(v => v.fv != null);
-  if (con.length < 4) return { pallini, freccia: "→", testo: t("mercato.pochi_dati"), classe: "" };
-  const media = a => a.reduce((x, v) => x + v.fv, 0) / a.length;
-  const differenza = media(con.slice(-3)) - media(con);
-  if (differenza > 0.6) return { pallini, freccia: "↗", testo: t("mercato.in_crescita"), classe: "positivo" };
-  if (differenza < -0.6) return { pallini, freccia: "↘", testo: t("mercato.in_calo"), classe: "negativo" };
-  return { pallini, freccia: "→", testo: t("mercato.stabile"), classe: "" };
+  if (!Object.hasOwn(ANDAMENTO, andamento || "")) return { pallini, testo: "" };
+  const [freccia, classe, chiave] = ANDAMENTO[andamento];
+  return { pallini, freccia, testo: t(chiave), classe };
 }
 
 // Grafico a linee: fantavoto (verde) e voto (azzurro) giornata per giornata; "sv" dove non ha preso voto.
@@ -1552,7 +1582,7 @@ function htmlScheda(c, pr, fz) {
         ${preso ? `<div class="cifra"><div class="debole">${t("mercato.fantavoto")}</div><div class="enorme">${num(esito.fv)}</div></div>`
           : finitaP ? `<div class="cifra"><div class="grande stato-partita">${esc(esito.testo)}</div></div>`
           : `<div class="cifra"><div class="debole">${t("mercato.fantavoto_atteso")}, ${t("formazione.se_gioca")}</div><div class="enorme">${num(pr.fv_atteso)}</div></div>`}
-        ${esito ? (finitaP ? "" : `<div class="cifra"><div class="grande stato-partita">${esc(esito.testo)}</div></div>`)
+        ${esito ? (finitaP ? "" : `<div class="cifra"><div class="grande stato-partita">${esc(esito.parola || esito.testo)}</div></div>`)
           : `<div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande${q < SOGLIA_GIOCA ? " gioca-" + classeGioca(q) : ""}">${perc(q)}</div>
               ${stato ? `<div class="etichetta ${stato.classe}">${esc(stato.testo)}</div>` : ""}</div>`}
       </div>`;
@@ -1580,7 +1610,7 @@ function riempiScheda(s, cal) {
   const voti = $("#scheda-voti"), numeri = $("#scheda-numeri-corpo");
   if (!voti || !numeri) return;
   const c = s.calciatore, st = s.stagione, av = s.avanzate, pr = s.previsione;
-  const forma = formaGiocatore(s.voti || []);
+  const forma = formaGiocatore(s.voti || [], s.andamento);
   voti.innerHTML = `<h3>${t("formazione.ultimi_voti")}</h3>${forma ? forma.pallini : `<div class="debole">${t("mercato.nessuna_presenza_questa")}</div>`}`;
   voti.removeAttribute("aria-busy");
   const grafico = graficoVoti(s.voti || [], st.giornate_giocate_serie_a);
@@ -1602,7 +1632,7 @@ function riempiScheda(s, cal) {
       <div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>` : ""}
     ${prossime.length ? `<h3>${t("mercato.prossime_partite")}</h3><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}${NOMI_DIFF[p.difficolta] ? `<small>${NOMI_DIFF[p.difficolta]}</small>` : ""}</span>`).join("")}</div>
       <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div>` : ""}
-    ${forma ? `<h3>${t("mercato.forma")}</h3><div class="riga"><span class="debole piccolo">${t("mercato.andamento")}</span><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div>` : ""}
+    ${forma && forma.testo ? `<h3>${t("mercato.forma")}</h3><div class="riga"><span class="debole piccolo">${t("mercato.andamento")}</span><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div>` : ""}
     ${grafico}
     ${s.rendimento ? `<h3>${t("mercato.rende_sopra_sotto")}</h3>
       <div class="grande ${s.rendimento.sovra_rendimento > 0.3 ? "positivo" : s.rendimento.sovra_rendimento < -0.3 ? "negativo" : ""}">${segno(s.rendimento.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>

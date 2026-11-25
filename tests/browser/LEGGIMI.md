@@ -136,6 +136,17 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
   giornata iniziata; anche per infortunati e squalificati, con il loro stato in cima all'elenco. Non c'è per i titolari (che
   hanno «Sostituisci»), per chi gioca un anticipo già cominciato (la scheda dice perché), né a giornata in corso.
 
+`test_fasi_giornata.py`, la giornata in corso e quella finita ai bordi (#895), con la risposta registrata di /api/oggi (o di
+/api/giocatore) cambiata solo nel pezzo che serve:
+- in corso: il voto d'ufficio di una partita rinviata sta nel disco con «Voto d'ufficio» (anche per il lettore di schermo);
+  sotto i punti la frase del server (`in_corso.situazione`); chi è rimasto senza voto ed è già sostituito ha la lineetta e non
+  il suo atteso; in panchina la colonna si chiama «Fantavoto» e chi deve ancora giocare dice «atteso» (prima della scadenza
+  resta «Fantavoto atteso»);
+- finita: la scelta sul rinvio sta in testa, sopra il campo e la panchina della giornata dopo, con il titolo «Giornata N · Nª di
+  Serie A: partita rinviata», la partita e i miei giocatori, e un menu solo; senza voti la testa dice che la giornata è finita
+  e la frase del server (`voti_in_arrivo`);
+- prima: nella scheda l'andamento è quello del server (`andamento`), anche se i voti direbbero altro.
+
 `test_giornate.py`, la pagina «Giornate» che ha preso il posto del Diario (#617):
 - si apre con un tocco dalla barra; gli indirizzi vecchi del Diario la aprono; «Com'è andata» della Formazione la apre
   sulla giornata appena finita;
