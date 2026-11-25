@@ -134,6 +134,19 @@ struct BordiGiornataComeLaWebTests {
         #expect(w.comeRiassuntoOggi()?.ancoraDaGiocareTesto == Self.recupero)
     }
 
+    @Test("Demo: la frase del server va d'accordo con chi deve ancora giocare; più avanti (galleria dei widget) la frase lunga con tre nomi")
+    func fraseDellaDemo() throws {
+        let blocco = LegaDemo.bloccoInCorso(adesso: Date(timeIntervalSinceReferenceDate: 815_000_000))
+        let daGiocare = LegaDemo.righeInCorso.filter { $0.aPunteggio && ["in_corso", "da_giocare"].contains($0.stato) }.count
+        #expect(blocco["ancora_da_giocare"] as? Int == daGiocare)
+        #expect(blocco["situazione"] as? String == Catalogo.Oggi.ancoraDaGiocare(daGiocare), "la stessa frase del server per quel numero")
+        let w = try #require(RiassuntoWidget.leggi(LegaDemo.widget(adesso: Date(timeIntervalSinceReferenceDate: 815_000_000), fase: .inCorso)))
+        #expect(w.comeRiassuntoOggi()?.ancoraDaGiocareTesto == LegaDemo.situazioneInCorso, "app e widget della demo dicono la stessa frase")
+        let lunga = LegaDemo.situazioneRecupero
+        for id in [106, 114, 115] { #expect(lunga.contains(LegaDemo.calciatore(id).nome)) }
+        #expect(lunga.count > 120, "la frase più lunga, per vedere che nel widget medio non si taglia")
+    }
+
     @Test("Widget con un server di prima: le parole di sempre")
     func situazioneNelWidgetServerDiPrima() throws {
         #expect(RiassuntoOggi(oggi: try Self.oggiInCorso(situazione: nil)).ancoraDaGiocareTesto == Catalogo.Oggi.tuttiGiocato)

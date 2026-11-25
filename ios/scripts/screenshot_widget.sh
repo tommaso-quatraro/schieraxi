@@ -1,7 +1,7 @@
 #!/bin/bash
 # Fotografa i widget nel simulatore (lanciato da .github/workflows/screenshot.yml).
 # L'app di anteprima (target AnteprimaWidget) mostra i tre widget (oggi, formazione, dubbi) con dati finti:
-# -GALLERIA <widget>[-blocco], -DATI pieni|vuoto|in_corso|finita|campionato_finito|senza_formazione|salvati.
+# -GALLERIA <widget>[-blocco], -DATI pieni|vuoto|in_corso|in_corso_recupero|finita|campionato_finito|senza_formazione|salvati.
 # Uso: scripts/screenshot_widget.sh <AnteprimaWidget.app per il simulatore> <cartella dei PNG>
 APP="${1:?manca il percorso di AnteprimaWidget.app}"
 USCITA="${2:-screenshot-widget}"
@@ -75,6 +75,10 @@ giro "$UDID_IPHONE" iphone_chiaro light 600 oggi formazione dubbi
 # Fasi della giornata (in corso e appena finita): Prossima giornata mostra i punti, Da controllare non conta i dubbi.
 giro "$UDID_IPHONE" iphone_fasi dark 600 oggi:in_corso oggi-blocco:in_corso dubbi:in_corso oggi:finita oggi-blocco:finita dubbi:finita formazione:in_corso
 giro "$UDID_IPHONE" iphone_fasi_chiaro light 600 oggi:in_corso oggi:finita
+# Più avanti nella giornata (#900): la frase lunga del server su chi aspetta il recupero, con tre nomi interi, nel medio non si
+# taglia mai con «…» (nella colonna di destra, a tutta larghezza o rimpicciolita), anche con il testo molto grande.
+giro "$UDID_IPHONE" iphone_recupero dark 600 oggi:in_corso_recupero oggi-blocco:in_corso_recupero
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_recupero_testo_grande dark 600 oggi:in_corso_recupero oggi:in_corso
 # Stato vuoto (nessun dato dal server) e testo molto grande (impostazione di accessibilita'): niente deve tagliarsi o sovrapporsi.
 giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto formazione-blocco:vuoto oggi:vuoto dubbi:vuoto
 # Campionato finito (#727): la frase del server al posto della giornata, anche con il testo molto grande.
@@ -100,6 +104,9 @@ avvia "$UDID_IPAD"
 giro "$UDID_IPAD" ipad_scuro_verticale dark 800 oggi formazione dubbi
 giro "$UDID_IPAD" ipad_chiaro_verticale light 800 oggi formazione
 giro "$UDID_IPAD" ipad_fasi dark 800 oggi:in_corso oggi:finita dubbi:in_corso oggi:senza_formazione formazione:senza_formazione dubbi:senza_formazione
+# La frase lunga del server su chi aspetta il recupero (#900), anche con il testo molto grande.
+giro "$UDID_IPAD" ipad_recupero dark 800 oggi:in_corso_recupero
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_recupero_testo_grande dark 800 oggi:in_corso_recupero
 # Entrato a giornata iniziata (#752): l'extra large di Formazione consigliata c'è solo su iPad, anche chiaro e con il testo molto grande.
 giro "$UDID_IPAD" ipad_senza_formazione_chiaro light 800 formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_senza_formazione_testo_grande dark 800 formazione:senza_formazione dubbi:senza_formazione

@@ -58,9 +58,9 @@ extension FinteServer {
         case "oggi-rinvio", "formazione-rinvio":
             server.risposte["/api/oggi"] = DatiDemo.oggiRinvio(adesso: adesso)
             server.indirizzoFinto = "https://finto-partita-rinviata.invalid"
-        case "oggi-finita-recupero":
-            // la giornata finita con una partita da recuperare: sotto i punti il riquadro del rinvio (#900); la Formazione è già
-            // quella della prossima, come con `formazione-finita`
+        case "oggi-finita-recupero", "formazione-finita-recupero":
+            // la giornata finita con una partita da recuperare: sotto i punti il riquadro del rinvio (#900, fotografia
+            // `formazione-finita-recupero`); la Formazione è già quella della prossima, come con `formazione-finita`
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso, recupero: true)
             if let formazione = server.risposte["/api/formazione"] {
                 server.risposte["/api/formazione"] = DatiDemo.formazioneDellaProssima(formazione)
@@ -84,7 +84,8 @@ extension FinteServer {
     static func faseDemo(_ schermata: String?) -> LegaDemo.Fase {
         switch schermata ?? "" {
         case "oggi-in-corso", "formazione-in-corso", "formazione-chiusa": return .inCorso
-        case "oggi-finita", "oggi-finita-recupero", "formazione-finita", "formazione-campionato-finito": return .finita
+        case "oggi-finita", "oggi-finita-recupero", "formazione-finita", "formazione-finita-recupero", "formazione-campionato-finito":
+            return .finita
         default: return .prima
         }
     }

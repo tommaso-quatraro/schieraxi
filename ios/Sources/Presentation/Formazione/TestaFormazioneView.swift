@@ -12,6 +12,8 @@ struct TestaFormazioneView: View {
     let formazione: Formazione?
     /// Mentre si salva la scelta sul rinvio della giornata finita il menu è spento.
     var rinvioInCorso = false
+    /// Il motivo per cui la scelta sul rinvio non si è salvata, sotto il menu.
+    var erroreRinvio: String? = nil
     /// La scelta sul rinvio della giornata finita (`PUT /api/regole/rinvio`); nil = il riquadro non si mostra.
     var cambiaRinvio: (@MainActor (SceltaRinvio, String) async -> Void)? = nil
     /// «Com'è andata»: apre le giornate su quella appena finita.
@@ -44,7 +46,8 @@ struct TestaFormazioneView: View {
                 }
                 // la scelta su come contare la partita da recuperare sta con la sua giornata, sotto i punti
                 if let r = t.rinvio, let cambiaRinvio {
-                    CartaPartitaRinviata(scelta: r.scelta, inCorso: rinvioInCorso, titolo: r.titolo, nota: r.nota) { modo in
+                    CartaPartitaRinviata(scelta: r.scelta, inCorso: rinvioInCorso, errore: erroreRinvio, titolo: r.titolo,
+                                         nota: r.nota) { modo in
                         await cambiaRinvio(r.scelta, modo)
                     }
                     .padding(.top, 8)

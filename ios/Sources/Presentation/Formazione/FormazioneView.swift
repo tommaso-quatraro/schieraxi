@@ -189,7 +189,7 @@ struct FormazioneView: View {
     /// risposta giusta. Sull'iPad non si allarga a tutta la pagina.
     private var campionatoFinito: some View {
         VStack(alignment: .leading, spacing: Tema.spazioSchede) {
-            TestaFormazioneView(oggi: oggi.oggi, formazione: nil, rinvioInCorso: oggi.rinvioInCorso,
+            TestaFormazioneView(oggi: oggi.oggi, formazione: nil, rinvioInCorso: oggi.rinvioInCorso, erroreRinvio: oggi.erroreRinvio,
                                 cambiaRinvio: { scelta, modo in await oggi.cambiaRinvio(scelta, modo: modo) },
                                 comeAndata: { giornata in nav.apriGiornate(giornata) })
         }
@@ -213,6 +213,7 @@ struct FormazioneView: View {
             // a giornata finita con un recupero che manca, sotto i punti il riquadro del rinvio (solo per la tua formazione: per
             // un'altra squadra la testa non ha Oggi). «Com'è andata»: la pagina Giornate, aperta sulla giornata appena finita (come la web)
             TestaFormazioneView(oggi: vm.squadraVista == nil ? oggi.oggi : nil, formazione: f, rinvioInCorso: oggi.rinvioInCorso,
+                                erroreRinvio: oggi.erroreRinvio,
                                 cambiaRinvio: { scelta, modo in await oggi.cambiaRinvio(scelta, modo: modo) },
                                 comeAndata: { giornata in nav.apriGiornate(giornata) })
             if let errore = vm.erroreGiornata { erroreGiornata(errore) }
