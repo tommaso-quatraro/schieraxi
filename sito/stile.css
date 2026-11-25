@@ -182,7 +182,7 @@ details p { max-width: 60ch; margin: 0 0 1rem; color: var(--sec); }
 .pie ul a { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--testo); }
 .pie p { max-width: 80ch; margin: 0 0 .5rem; }
 
-/* pagine di servizio (404, offline) */
+/* pagina di servizio (404) */
 .servizio { padding-block: 2rem 4rem; }
 .servizio .nome { margin-bottom: 3rem; }
 .servizio h1 { margin-bottom: 1rem; }

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 SITO = Path(__file__).resolve().parent.parent / "sito"
-PAGINE = ["index.html", "en/index.html", "404.html", "offline.html"]
+PAGINE = ["index.html", "en/index.html", "404.html"]
 VUOTI = {"meta", "link", "img", "br", "input", "hr", "source", "area", "base", "col", "embed", "wbr", "path", "circle", "rect"}
 
 

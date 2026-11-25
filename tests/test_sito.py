@@ -391,7 +391,7 @@ def test_niente_decorazioni_da_pagina_generata():
                     "transition: all", "body::before"):
         assert vietato not in c, vietato
     assert not re.search(r"letter-spacing: *\.(0[6-9]|[1-9])", c), "lettere spaziate"
-    for nome in list(PAGINE) + ["404.html", "offline.html"]:
+    for nome in list(PAGINE) + ["404.html"]:
         testo = (SITO / nome).read_text(encoding="utf-8")
         for segno in ("→", "←", "✨", "class=\"xi\""):
             assert segno not in testo, (nome, segno)
@@ -455,7 +455,7 @@ def test_nome_disegnato_con_font_libero():
     cartella = SITO.parent / "assets" / "marchio" / "wordmark"
     assert "SIL Open Font License" in (cartella / "OFL.txt").read_text(encoding="utf-8")
     assert (cartella / "Archivo-sottoinsieme.ttf").is_file() and (cartella / "genera.py").is_file()
-    for nome in ("index.html", "en/index.html", "404.html", "offline.html"):
+    for nome in ("index.html", "en/index.html", "404.html"):
         testo = (SITO / nome).read_text(encoding="utf-8")
         sprite = re.search(r'<svg class="sprite".*?</svg>', testo, re.S).group(0)
         # due versioni (le riscrive genera.py --sito): #wm grande e #wm-c compatta, stesso riquadro
@@ -585,7 +585,7 @@ def test_italiano_e_inglese_allineati():
 META_APP = ("mobile-web-app-capable", "apple-mobile-web-app-capable", "apple-mobile-web-app-title")
 
 
-@pytest.mark.parametrize("nome", list(PAGINE) + ["404.html", "offline.html"])
+@pytest.mark.parametrize("nome", list(PAGINE) + ["404.html"])
 def test_pagine_senza_manifest_ne_modo_app(nome):
     p, _ = leggi(nome)
     assert [href for rel, href, _ in p.link if rel == "manifest"] == []
@@ -707,12 +707,12 @@ new Function("self", "caches", "Request", testo)(self, caches, Request);
 
 
 def test_pagine_di_servizio_bilingui():
-    for nome in ("404.html", "offline.html"):
+    for nome in ("404.html",):
         t = (SITO / nome).read_text(encoding="utf-8")
         assert 'lang="en"' in t and 'class="cont ' in t and "contenuto" not in t, nome
 
 
-@pytest.mark.parametrize("nome", ["index.html", "en/index.html", "404.html", "offline.html"])
+@pytest.mark.parametrize("nome", ["index.html", "en/index.html", "404.html"])
 def test_pronto_per_csp_stretta(nome):
     """Niente style=, niente script o stili dentro la pagina: la CSP può restare senza unsafe-inline."""
     html = (SITO / nome).read_text(encoding="utf-8")
