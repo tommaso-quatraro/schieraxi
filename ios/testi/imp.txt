@@ -6,6 +6,7 @@ imp.avvisi_qui
 # web (imp.avvisi_qui_aiuto), che dice anche dell'avviso quando cambia la formazione
 imp.avvisi_qui_aiuto_app
 imp.ore_tranquille_aiuto
+imp.ore_tranquille_spente
 imp.lega
 imp.regole
 imp.regole_sub

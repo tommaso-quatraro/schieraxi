@@ -163,7 +163,7 @@ struct AnteprimaRoseVista: View {
                 if !anteprima.squadre.isEmpty { miaSquadra }
                 Colonne(spazio: Tema.spazioSchede, larghezzaMinima: 320) {
                     ForEach(anteprima.squadre) { s in
-                        CartaSquadraAnteprima(vm: vm, squadra: s, cerca: cerca)
+                        CartaSquadraAnteprima(vm: vm, squadra: s, differenze: anteprima.differenze, cerca: cerca)
                     }
                 }
                 if AnteprimaLogica.mostraDifferenze(anteprima.differenze), let d = anteprima.differenze {
@@ -248,27 +248,28 @@ struct AnteprimaRoseVista: View {
     }
 }
 
-/// Una squadra dell'anteprima: conteggi, problemi della rosa, i dubbi da sistemare, i riconosciuti ripiegati.
+/// Una squadra dell'anteprima, come `anteprima.js` della web dopo il #873: il nome («Nuova» solo se si aggiunge a rose già salvate);
+/// senza dubbi una riga sola da aprire con i conti e dentro i nomi; con dei dubbi la riga dei conti, i dubbi, poi i riconosciuti
+/// ripiegati.
 struct CartaSquadraAnteprima: View {
     @ObservedObject var vm: ImportaExcelViewModel
     let squadra: SquadraAnteprima
+    /// Le differenze dell'anteprima: alla prima importazione niente «Nuova» (#873).
+    let differenze: Differenze?
     let cerca: (DubbioDaCercare) -> Void
     @State private var sicuriAperti = false
 
     var body: some View {
-        let problemi = AnteprimaLogica.problemi(squadra)
+        let nelRipiegato = AnteprimaLogica.contiNelRipiegato(squadra)
         Carta {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(squadra.nome).font(.headline).accessibilityAddTraits(.isHeader)
-                if squadra.nuova { Capsula(testo: Catalogo.Ar.nuova, colore: Color.informazione, simbolo: "sparkles") }
+                if AnteprimaLogica.mostraNuova(squadra, differenze: differenze) {
+                    Capsula(testo: Catalogo.Ar.nuova, colore: Color.informazione, simbolo: "sparkles")
+                }
                 Spacer(minLength: 0)
             }
-            Text(AnteprimaLogica.conteggio(squadra)).font(.caption).foregroundStyle(Color.testoSecondario)
-            if problemi.isEmpty {
-                Label(Catalogo.Ar.rosaCompleta, systemImage: "checkmark.circle").font(.caption).foregroundStyle(Color.verde)
-            } else {
-                Label(problemi.joined(separator: " · "), systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(Color.attenzione)
-            }
+            if !nelRipiegato { conti }
             ForEach(AnteprimaLogica.dubbi(squadra), id: \.chiaveInSquadra) { g in
                 RigaDubbioAnteprima(
                     squadra: squadra.nome, giocatore: g,
@@ -281,12 +282,33 @@ struct CartaSquadraAnteprima: View {
                 DisclosureGroup(isExpanded: $sicuriAperti) {
                     Text(nomiSicuri).font(.caption).foregroundStyle(Color.testoSecondario).frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
-                    Text(Catalogo.Ar.riconosciuti(squadra.sicuri))
-                        .font(.subheadline).frame(minHeight: Tema.areaTocco)
+                    if nelRipiegato {
+                        conti.frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                    } else {
+                        Text(Catalogo.Ar.riconosciuti(squadra.sicuri))
+                            .font(.subheadline).frame(minHeight: Tema.areaTocco)
+                    }
                 }
                 .tint(Color.verde)
             }
         }
+    }
+
+    /// I conti in una riga, come `ar-conti` della web: «25 giocatori · 12 crediti · Rosa completa», oppure i problemi della rosa
+    /// («Manca 1 portiere») nel colore d'attenzione. Le parole dicono già tutto: simbolo e colore aiutano solo a vederlo.
+    private var conti: some View {
+        let problemi = AnteprimaLogica.problemi(squadra)
+        let completa = problemi.isEmpty
+        let testoStato = completa ? Catalogo.Ar.rosaCompleta : problemi.joined(separator: " · ")
+        let simbolo = completa ? "checkmark.circle" : "exclamationmark.triangle"
+        // fra il simbolo e le parole uno spazio che non va a capo: col testo più grande il simbolo non resta solo in fondo alla riga
+        let stato: Text = Text("\(Image(systemName: simbolo))\u{00A0}\(testoStato)")
+            .foregroundStyle(completa ? Color.verde : Color.attenzione)
+        let conteggio = AnteprimaLogica.conteggio(squadra)
+        return Text("\(Text(conteggio + " · ").foregroundStyle(Color.testoSecondario))\(stato)")
+            .font(.footnote)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityLabel("\(conteggio), \(testoStato)")
     }
 
     private var nomiSicuri: String {

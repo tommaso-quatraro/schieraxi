@@ -128,6 +128,11 @@
     "it": "Riconosciuto",
     "en": "Recognised"
   },
+  "regole.non_applicato": {
+    "it": "Non applicato",
+    "en": "Not applied",
+    "nota": "anteprima del regolamento incollato: i valori letti che non si possono salvare, ognuno con il perché (#881)"
+  },
   "regole.rosa_crediti": {
     "it": "Rosa e crediti",
     "en": "Roster and credits"

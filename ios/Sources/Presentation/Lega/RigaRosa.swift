@@ -34,18 +34,27 @@ struct RigaRosa: View {
         return esito.fv == nil ? nil : Catalogo.Mercato.fantavoto
     }
 
-    /// La frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono. A partita iniziata «fantavoto 3,5» come la
-    /// pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette, che la web legge in
-    /// ogni caso (qui `children: .ignore` le nasconderebbe).
+    /// La frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono, a parole intere come `RigaGiocatore.voce`
+    /// (#882: leggeva le sigle e i «·» della riga piccola e non diceva «gioca 72%»): «Paolo Esempio, centrocampista, Genoa, costo
+    /// 12, quotazione 14, in casa contro Como, fantavoto atteso 6,4, gioca al 72 per cento». A partita iniziata «fantavoto 3,5»
+    /// come la pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette, che la web legge
+    /// in ogni caso (qui `children: .ignore` le nasconderebbe).
     nonisolated static func voce(_ g: GiocatoreRosa) -> String {
         var parti = [g.nome, nomeRuolo(g.ruolo ?? "")]
-        let sotto = sottotitolo(g)
-        if !sotto.isEmpty { parti.append(sotto) }
+        let squadra = (g.squadraSlug ?? g.previsione?.squadra ?? g.squadra ?? "").capitalized
+        if !squadra.isEmpty { parti.append(squadra) }
+        if let c = g.costo { parti.append("costo \(Formato.intero(c))") }
+        if let q = g.quotazione { parti.append("quotazione \(Formato.intero(q))") }
+        if let a = g.previsione?.avversario, !a.isEmpty {
+            parti.append(g.previsione?.inCasa == true ? Catalogo.Formazione.voceCasa(avv: a.capitalized)
+                                                       : Catalogo.Formazione.voceFuori(avv: a.capitalized))
+        }
         if let p = g.previsione {
             if let esito = p.esitoPartita {
                 if esito.fv != nil, let preso = esito.testo { parti.append(preso) }
             } else {
                 parti.append("fantavoto atteso " + Formato.punti(p.fvAtteso))
+                parti.append(LetturaPedina.voceGioca(Formato.percento(p.pVoto)))
             }
             parti.append(contentsOf: p.etichette.map { $0.testo.lowercased() })
         } else {

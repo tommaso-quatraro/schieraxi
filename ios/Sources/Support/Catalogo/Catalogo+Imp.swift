@@ -17,6 +17,11 @@ extension Catalogo {
             "Niente avvisi dalle \(da) alle \(a)"
         }
 
+        /// `imp.ore_tranquille_spente`
+        static func oreTranquilleSpente(a: String, da: String) -> String {
+            "Spente. Se le accendi: niente avvisi dalle \(da) alle \(a)"
+        }
+
         /// `imp.lega`
         static let lega = "La mia lega"
 

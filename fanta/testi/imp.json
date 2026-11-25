@@ -44,6 +44,11 @@
     "it": "Niente avvisi dalle {da} alle {a}",
     "en": "No alerts from {da} to {a}"
   },
+  "imp.ore_tranquille_spente": {
+    "it": "Spente. Se le accendi: niente avvisi dalle {da} alle {a}",
+    "en": "Off. If you turn them on: no alerts from {da} to {a}",
+    "nota": "riga sotto «Ore tranquille» con l'interruttore spento (#873); accese vale imp.ore_tranquille_aiuto"
+  },
   "imp.lega": {
     "it": "La mia lega",
     "en": "My league"
