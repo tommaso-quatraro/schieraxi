@@ -113,7 +113,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     for g in s.giocatori:
         if g.id is None or g.id not in prev.index:
             continue
-        x = consigli.scheda_previsione(g.id, prev.loc[g.id])
+        x = consigli.scheda_di(prev, g.id)
         mia.append(_g(x, tratti, "avversario", "in_casa", "data_partita", "stato", "percentuale", "dubbio", "diffidato", "punti_attesi",
                       "p_voto")                      # «gioca N%» come in Oggi; facoltativo: senza p_voto il campo manca
                    | {"titolare": g.id in titolari, "rigorista": consigli.rigorista(prev.loc[g.id])})      # la regola della scheda
@@ -147,7 +147,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     ossv = []
     for i in osservati.leggi(file_osservati)[:MAX_OSSERVATI]:
         if i in prev.index:
-            x = consigli.scheda_previsione(i, prev.loc[i])
+            x = consigli.scheda_di(prev, i)
             ossv.append(_g(x, tratti, "voto_atteso", "fv_atteso", "punti_attesi", "avversario", "in_casa", "data_partita", "stato",
                            "percentuale", "dubbio", "p_voto"))       # «In dubbio · gioca N%» come la rosa e Oggi (stessa scheda); facoltativi: se mancano, mancano
     corpo["osservati"] = ossv

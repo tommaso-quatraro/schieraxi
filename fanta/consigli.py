@@ -7,6 +7,7 @@ import logging
 import sqlite3
 import threading
 import time
+import weakref
 from collections import OrderedDict
 from collections.abc import Collection
 from dataclasses import asdict, dataclass, replace
@@ -376,6 +377,40 @@ def scheda_previsione(i: int, x: pd.Series) -> dict:
     }
     s["etichetta"] = etichette.di_giocatore(s)       # stato a parole, pronto per i client (fanta/etichette.py)
     return s
+
+
+# Le schede già fatte, per tabella di previsioni (#907): Oggi, Da fare e widget rifacevano a ogni richiesta la scheda di ogni
+# giocatore della rosa, due volte. La tabella di `previsioni` è la stessa per tutte le richieste finché dati, giornata e regole
+# sono quelli (cache di calcolo.py), e la scheda dipende solo dalla sua riga: si fa una volta. Le schede sono dei dati di Serie A,
+# non dell'utente. Si riconosce la tabella dall'oggetto, con un riferimento debole: una tabella buttata non si confonde con una
+# nuova allo stesso indirizzo. Una `scheda_previsione` sostituita (le prove lo fanno, anche con risposte che cambiano) non passa
+# dalla memoria.
+MAX_TABELLE_SCHEDE = 16
+_schede_fatte: OrderedDict = OrderedDict()           # id(tabella) -> (riferimento debole, {id giocatore: scheda})
+_blocco_schede = threading.Lock()
+_SCHEDA_PREVISIONE = scheda_previsione
+
+
+def scheda_di(prev: pd.DataFrame, i: int) -> dict:
+    """`scheda_previsione(i, prev.loc[i])` fatta una volta sola per tabella. Solo per una tabella che non si modifica più (quella di
+    `previsioni`). Torna una copia: chi la riceve può cambiarne i campi senza toccare quella delle altre richieste."""
+    if scheda_previsione is not _SCHEDA_PREVISIONE:
+        return scheda_previsione(i, prev.loc[i])
+    with _blocco_schede:
+        voce = _schede_fatte.get(id(prev))
+        if voce is None or voce[0]() is not prev:
+            voce = (weakref.ref(prev), {})
+            _schede_fatte[id(prev)] = voce
+            while len(_schede_fatte) > MAX_TABELLE_SCHEDE:
+                _schede_fatte.popitem(last=False)
+        else:
+            _schede_fatte.move_to_end(id(prev))
+        fatta = voce[1].get(i)
+    if fatta is None:
+        fatta = scheda_previsione(i, prev.loc[i])
+        with _blocco_schede:
+            voce[1][i] = fatta
+    return dict(fatta)
 
 
 # Titolare poco sicuro con una riserva quasi sicura dello stesso ruolo: la scelta è giusta (se lui non gioca c'è la riserva, e

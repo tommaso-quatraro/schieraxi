@@ -1,7 +1,10 @@
 """Letture ripetute a ogni richiesta tenute in memoria (#907): stesso risultato di prima, rifatte da sole quando i dati cambiano,
 con un tetto. Dati inventati."""
+import gc
 import sqlite3
 from datetime import datetime, timedelta
+
+import pandas as pd
 
 from fanta import consigli
 
@@ -75,3 +78,71 @@ def test_le_giornate_lette_hanno_un_tetto():
         consigli.prossima_giornata(_calendario(giornate=2, inizio=datetime(2031, 9, 5, 15, 0) + timedelta(minutes=k)), ST,
                                    datetime(2031, 9, 1))
     assert len(consigli._giornate_lette) <= consigli.MAX_GIORNATE_LETTE
+
+
+# ---------------------------------------------------------------- schede dei giocatori
+def _previsioni(**diversi) -> pd.DataFrame:
+    """Una tabella di previsioni inventata con tre giocatori (id 11, 12, 13), come quella di `consigli.previsioni`."""
+    base = {"nome": "Rossi", "ruolo": "A", "squadra": "a", "avversario": "b", "in_casa": True, "p_voto": 0.9, "mu": 7.0,
+            "mu_voto": 6.5, "atteso": 6.3, "dubbio": False, "diffidato": False, "data_partita": None, "stato": "titolare",
+            "percentuale": None, "nota": None, "quota_titolare": 0.9, "e_gol": 0.3, "e_assist": 0.1, "e_rigori": 0.0,
+            "p_imbattuto": 0.0, "p_gol": 0.26, "p_assist": 0.1, "p_giallo": 0.1, "p_rosso": 0.0, "indice": 50, "difficolta": 3,
+            "gol_squadra": 1.2, "gol_avversario": 1.2}
+    righe = [base | {"nome": "Rossi"}, base | {"nome": "Verdi", "stato": "infortunato", "p_voto": 0.0},
+             base | {"nome": "Bianchi", "dubbio": True, "p_voto": 0.55}]
+    return pd.DataFrame([r | diversi for r in righe], index=[11, 12, 13])
+
+
+def test_scheda_di_e_la_scheda_di_sempre():
+    prev = _previsioni()
+    for i in prev.index:
+        assert consigli.scheda_di(prev, i) == consigli.scheda_previsione(i, prev.loc[i])
+
+
+def test_scheda_di_si_fa_una_volta_per_tabella(monkeypatch):
+    prev = _previsioni()
+    fatte = []
+    veri = consigli.motivi                                     # ogni scheda vera chiede i suoi motivi una volta
+    monkeypatch.setattr(consigli, "motivi", lambda x: fatte.append(x["nome"]) or veri(x))
+    for _ in range(3):                                         # Oggi, Da fare e widget chiedono le stesse schede
+        assert [consigli.scheda_di(prev, i)["nome"] for i in (11, 12, 13)] == ["Rossi", "Verdi", "Bianchi"]
+    assert sorted(fatte) == ["Bianchi", "Rossi", "Verdi"]
+
+
+def test_scheda_di_ogni_tabella_ha_le_sue_schede():
+    """Due tabelle (altri dati, altra giornata o altre regole) con gli stessi giocatori: ognuna ha i suoi numeri."""
+    prima, dopo = _previsioni(mu=7.0), _previsioni(mu=5.0)
+    assert consigli.scheda_di(prima, 11)["fv_atteso"] == 7.0
+    assert consigli.scheda_di(dopo, 11)["fv_atteso"] == 5.0
+    assert consigli.scheda_di(prima, 11)["fv_atteso"] == 7.0
+    del prima
+    gc.collect()
+    nuova = _previsioni(mu=6.0)                                # anche se riprende l'indirizzo in memoria di quella buttata
+    assert consigli.scheda_di(nuova, 11)["fv_atteso"] == 6.0
+
+
+def test_scheda_di_cambiata_da_chi_la_riceve_non_cambia_per_gli_altri():
+    prev = _previsioni()
+    s = consigli.scheda_di(prev, 11)
+    s["nome"] = "Cambiato"
+    s["stato"] = "squalificato"
+    assert consigli.scheda_di(prev, 11)["nome"] == "Rossi" and consigli.scheda_di(prev, 11)["stato"] == "titolare"
+
+
+def test_scheda_di_segue_la_funzione_delle_schede(monkeypatch):
+    """Una prova che sostituisce `scheda_previsione` riceve sempre la sua risposta di adesso, anche per una tabella già vista."""
+    prev = _previsioni()
+    consigli.scheda_di(prev, 11)
+    nomi = {11: "finta"}
+    monkeypatch.setattr(consigli, "scheda_previsione", lambda i, x: {"id": int(i), "nome": nomi[i]})
+    assert consigli.scheda_di(prev, 11)["nome"] == "finta"
+    nomi[11] = "cambiata"
+    assert consigli.scheda_di(prev, 11)["nome"] == "cambiata"
+
+
+def test_le_schede_hanno_un_tetto():
+    tabelle = [_previsioni(mu=5.0 + k / 10) for k in range(consigli.MAX_TABELLE_SCHEDE + 5)]
+    for t in tabelle:
+        consigli.scheda_di(t, 11)
+    assert len(consigli._schede_fatte) <= consigli.MAX_TABELLE_SCHEDE
+    assert consigli.scheda_di(tabelle[0], 11)["fv_atteso"] == 5.0          # uscita dalla memoria: si rifà, giusta
