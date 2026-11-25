@@ -294,6 +294,50 @@ def test_il_backup_di_una_lega_salvata_prima_si_ripristina():
     assert regole.da_dict(_con(asdict(Regole()), **VECCHIE)).bonus.autogol == 3
 
 
+# «Cambiato» non dipende dall'ordine (ricontrollo di #886): la pagina manda le fasce ordinate per media e i moduli nell'ordine dei
+# suoi pulsanti, che possono essere diversi da quelli del file salvato.
+def _salva_vecchie(client, tmp_path, **cambi) -> dict:
+    (tmp_path / "regole.json").write_text(json.dumps(_con(asdict(Regole()), **cambi)), encoding="utf-8")
+    return client.get("/api/regole").json()
+
+
+def test_moduli_riordinati_non_sono_cambiati(client, tmp_path):
+    """Lega di prima: modificatore acceso con almeno 4 difensori e solo moduli a 3 difensori (non si applica mai)."""
+    salvate = _salva_vecchie(client, tmp_path, moduli=["3-4-3", "3-5-2"], modificatore_difesa__attivo=True,
+                             modificatore_difesa__min_difensori=4)
+    assert client.put("/api/regole", json=salvate).status_code == 200                                          # uguali
+    r = client.put("/api/regole", json=_con(salvate, moduli=["3-5-2", "3-4-3"]))                                 # riordinati
+    assert r.status_code == 200, r.text
+    r = client.put("/api/regole", json=_con(salvate, moduli=["3-4-3", "3-6-1"]))                                 # cambiati
+    assert r.status_code == 400 and "nessun modulo ammesso ha almeno 4 difensori" in r.json()["detail"], r.text
+
+
+@pytest.mark.parametrize("fasce, riordinate, cambiate, frase", [
+    # un bonus negativo, ammesso prima, fuori dai limiti della pagina
+    ([[6.5, 3], [6, -1]], [[6, -1], [6.5, 3]], [[6, -1], [6.5, 4]],
+     "il bonus di ogni fascia del modificatore difesa deve essere tra 0 e 20"),
+    # due fasce con la stessa media, salvate via API prima di #881
+    ([[6, 2], [6, 1]], [[6, 1], [6, 2]], [[6, 1], [6, 3]], "due fasce del modificatore difesa hanno la stessa media: togline una"),
+])
+def test_fasce_riordinate_non_sono_cambiate(client, tmp_path, fasce, riordinate, cambiate, frase):
+    salvate = _salva_vecchie(client, tmp_path, modificatore_difesa__attivo=True, modificatore_difesa__soglie=fasce)
+    assert client.put("/api/regole", json=salvate).status_code == 200
+    r = client.put("/api/regole", json=_con(salvate, modificatore_difesa__soglie=riordinate))
+    assert r.status_code == 200, r.text
+    r = client.put("/api/regole", json=_con(salvate, modificatore_difesa__soglie=cambiate))
+    assert r.status_code == 400 and frase in r.json()["detail"], r.text
+
+
+def test_posti_fissi_riordinati_non_sono_cambiati(client, tmp_path):
+    """12 portieri in panchina, ammessi prima (fino a 30), fuori dai limiti della pagina (fino a 10)."""
+    salvate = _salva_vecchie(client, tmp_path, panchina__posti={"P": 12, "D": 3, "C": 3, "A": 3}, panchina__numero=21)
+    assert client.put("/api/regole", json=salvate).status_code == 200
+    r = client.put("/api/regole", json=_con(salvate, panchina__posti={"A": 3, "C": 3, "D": 3, "P": 12}))
+    assert r.status_code == 200, r.text
+    r = client.put("/api/regole", json=_con(salvate, panchina__posti={"P": 11, "D": 3, "C": 3, "A": 3}, panchina__numero=20))
+    assert r.status_code == 400 and "i posti in panchina per i portieri devono essere tra 0 e 10" in r.json()["detail"], r.text
+
+
 # ---------------------------------------------------------------- tradotti
 def _in_inglese(messaggi: list[str]) -> list[str]:
     prova = TESTI_JS + """

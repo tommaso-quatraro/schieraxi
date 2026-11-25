@@ -263,8 +263,9 @@ class Regole:
                    "panchina.max_sostituzioni": [pan.max_sostituzioni],
                    "voto_senza_sostituto": [v for v in [self.voto_senza_sostituto] if v is not None],
                    "voto_ufficio_rinviate": [self.voto_ufficio_rinviate], "modificatore_difesa.min_difensori": [md.min_difensori],
-                   "modificatore_difesa.soglie.media": [media for media, _ in md.soglie],
-                   "modificatore_difesa.soglie.bonus": [bonus for _, bonus in md.soglie],
+                   # le fasce ordinate per media: riordinarle non le cambia (la pagina le manda ordinate)
+                   "modificatore_difesa.soglie.media": [media for media, _ in sorted(md.soglie)],
+                   "modificatore_difesa.soglie.bonus": [bonus for _, bonus in sorted(md.soglie)],
                    "fattore_campo": [self.fattore_campo], "soglia_primo_gol": [self.soglia_primo_gol],
                    "ampiezza_fascia_gol": [self.ampiezza_fascia_gol]}
         return {k: numeri[k] for k in LIMITI if k in numeri}
@@ -285,15 +286,18 @@ class Regole:
                 p.append(_frase_limite(k, tabella))
         if salvate is None or solo_sempre:
             return p
+        # «cambiato» non dipende dall'ordine: le fasce si confrontano ordinate per media e i moduli come insieme (la pagina manda le
+        # fasce ordinate e i moduli nell'ordine dei suoi pulsanti, che possono essere diversi da quelli del file)
         md, md_prima = self.modificatore_difesa, salvate.modificatore_difesa
-        cambia_md = (md.attivo, md.min_difensori, md.soglie) != (md_prima.attivo, md_prima.min_difensori, md_prima.soglie)
+        cambiano_fasce = sorted(md.soglie) != sorted(md_prima.soglie)
+        cambia_md = cambiano_fasce or (md.attivo, md.min_difensori) != (md_prima.attivo, md_prima.min_difensori)
         if cambia_md and md.attivo and not md.soglie:
             p.append("con il modificatore difesa acceso serve almeno una fascia")
         medie = [media for media, _ in md.soglie]
-        if md.soglie != md_prima.soglie and len(set(medie)) != len(medie):
+        if cambiano_fasce and len(set(medie)) != len(medie):
             p.append("due fasce del modificatore difesa hanno la stessa media: togline una")
         difensori = [d for d in map(_difensori_del_modulo, self.moduli) if d is not None]
-        if (cambia_md or self.moduli != salvate.moduli) and md.attivo and difensori \
+        if (cambia_md or set(self.moduli) != set(salvate.moduli)) and md.attivo and difensori \
                 and _dentro("modificatore_difesa.min_difensori", md.min_difensori) and md.min_difensori > max(difensori):
             p.append(f"nessun modulo ammesso ha almeno {int(md.min_difensori)} difensori: "
                      "il modificatore difesa non si applicherebbe mai")
