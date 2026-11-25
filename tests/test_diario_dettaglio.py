@@ -232,7 +232,7 @@ def _di_prima(voce: dict) -> dict:
     """La voce come quelle scritte prima di #900: le formazioni senza `dettaglio`."""
     for k in ("consigliata", "ricostruita", "schierata", "automatica"):
         if isinstance(voce.get(k), dict):
-            voce[k].pop("dettaglio")
+            voce[k].pop("dettaglio", None)
     return voce
 
 
@@ -254,3 +254,70 @@ def test_una_voce_di_prima_che_non_torna_dice_che_il_dettaglio_manca(finto, dett
         "righe": ["Per questa giornata manca il dettaglio dei punti (riserve entrate, modificatore difesa): è stata calcolata "
                   "prima che SchieraXI lo salvasse."],
         "righe_frasi": [{"chiave": "diario.punti_senza_dettaglio", "param": {}}]}
+
+
+# ---------------------------------------------------------------- le giornate già calcolate: una volta sola, senza toccare i punti
+def _aggiorna(finto) -> int:
+    return diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50)
+
+
+def _come_prima_di_900(finto, cambia=lambda voci: None) -> dict:
+    """Il file come sul server prima di #900: le formazioni delle voci senza `dettaglio`. Torna le voci scritte."""
+    d = diario.carica(finto.file)
+    for v in d["giornate"].values():
+        _di_prima(v)
+    cambia(d["giornate"])
+    finto.file.write_text(json.dumps(d), encoding="utf-8")
+    return json.loads(json.dumps(d["giornate"]))
+
+
+def _senza_dettagli(voci: dict) -> dict:
+    return {k: _di_prima(json.loads(json.dumps(v))) for k, v in voci.items()}
+
+
+def test_le_giornate_gia_calcolate_prendono_il_dettaglio_senza_cambiare_niente_altro(finto, monkeypatch):
+    _senza_voto(finto, 25)                                       # nella consigliata della giornata 1 entra una riserva
+    assert _aggiorna(finto) == 2
+    nuove = diario.carica(finto.file)["giornate"]
+    prima = _come_prima_di_900(finto)
+    monkeypatch.setattr(diario.fz, "migliore", lambda *a, **k: pytest.fail("non deve rifare le simulazioni"))
+    assert _aggiorna(finto) == 2
+    dopo = diario.carica(finto.file)["giornate"]
+    assert _senza_dettagli(dopo) == prima                        # punti, formazioni, indicatori, impronte: tutto com'era
+    assert dopo == nuove                                         # e il dettaglio è quello che avrebbe una voce nuova
+    assert dopo[f"{ST}/1"]["consigliata"]["dettaglio"]["entrati"][0]["esce"] == g(25)
+    assert _aggiorna(finto) == 0                                 # una volta sola
+
+
+def test_dove_i_punti_rifatti_non_sono_quelli_salvati_il_dettaglio_resta_vuoto(finto):
+    """Per esempio la panchina del sistema è cambiata da quando la voce è stata calcolata: i punti salvati restano quelli, la
+    formazione non prende un dettaglio che non torna con loro e non ci si riprova a ogni giro."""
+    assert _aggiorna(finto) == 2
+
+    def tocca(voci):
+        voci[f"{ST}/1"]["consigliata"]["reale"] = 75.0
+    prima = _come_prima_di_900(finto, tocca)
+    assert _aggiorna(finto) == 2
+    dopo = diario.carica(finto.file)["giornate"]
+    c = dopo[f"{ST}/1"]["consigliata"]
+    assert c["reale"] == 75.0 and c["dettaglio"] is None
+    assert isinstance(dopo[f"{ST}/1"]["ricostruita"]["dettaglio"], dict)
+    assert _senza_dettagli(dopo) == prima                        # i punti salvati restano quelli, anche il 75,0
+    assert diario.spiegazione_punti(dopo[f"{ST}/1"])["righe_frasi"] == [{"chiave": "diario.punti_senza_dettaglio", "param": {}}]
+    assert _aggiorna(finto) == 0
+
+
+def test_se_il_dettaglio_non_si_calcola_le_giornate_nuove_si_scrivono_lo_stesso(finto, monkeypatch, caplog):
+    """Un guasto nel completare una voce di prima non deve fermare il Diario (le giornate si scorrono dalla più vecchia): la voce
+    resta com'era, il registro del server lo dice e la giornata nuova si scrive."""
+    assert _aggiorna(finto) == 2
+    prima = _come_prima_di_900(finto, lambda voci: voci.pop(f"{ST}/2"))
+
+    def rotto(*a, **k):
+        raise RuntimeError("guasto")
+    monkeypatch.setattr(diario, "rifai_i_punti", rotto)
+    with caplog.at_level("WARNING", logger="fanta.diario"):
+        assert _aggiorna(finto) == 1
+    voci = diario.carica(finto.file)["giornate"]
+    assert voci[f"{ST}/1"] == prima[f"{ST}/1"] and f"{ST}/2" in voci
+    assert "dettaglio dei punti" in caplog.text and "RuntimeError" in caplog.text

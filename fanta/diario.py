@@ -721,6 +721,32 @@ def per_il_consiglio(db: sqlite3.Connection, regole: Regole, stagione: str, gior
         return {"indicatori": False}
 
 
+FORMAZIONI = ("consigliata", "ricostruita", "schierata", "automatica")          # le formazioni di una voce, ognuna con i suoi punti
+
+
+def _senza_dettaglio(voce: dict) -> bool:
+    """Vero se una formazione della voce non ha il campo `dettaglio` (voce scritta prima di #900). `dettaglio` null vuol dire che
+    non si è potuto calcolare (`_con_il_dettaglio`): non ci si riprova."""
+    return any(isinstance(voce.get(k), dict) and "dettaglio" not in voce[k] for k in FORMAZIONI)
+
+
+def _con_il_dettaglio(vecchia: dict, rifatta: dict | None) -> dict:
+    """Le voci già calcolate prima di #900 (decisione della pull request: completarle una volta, senza perdere né cambiare niente):
+    una copia di `vecchia` in cui ogni formazione senza `dettaglio` prende quello di `rifatta` (la stessa voce con i punti rifatti,
+    `rifai_i_punti`), solo se i punti rifatti sono uguali a quelli salvati. Tutto il resto resta com'era, punti compresi. Dove i
+    punti rifatti sono diversi (per esempio la panchina del sistema è cambiata perché una riserva è stata ceduta) o la formazione
+    non si rifà (`rifatta` None, o un titolare non più in rosa), `dettaglio` null: la pagina Giornate dice che il dettaglio manca."""
+    nuova = json.loads(json.dumps(vecchia))
+    for k in FORMAZIONI:
+        riga = nuova.get(k)
+        if not isinstance(riga, dict) or "dettaglio" in riga:
+            continue
+        r = (rifatta or {}).get(k)
+        uguale = isinstance(r, dict) and isinstance(r.get("dettaglio"), dict) and r.get("reale") == riga.get("reale")
+        riga["dettaglio"] = r["dettaglio"] if uguale else None
+    return nuova
+
+
 def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso: Path | None = None,
              simulazioni: int = SIMULAZIONI, file_scelte: Path | None = None, scadenza: float | None = None) -> int:
     """Aggiunge al diario le giornate finite che mancano (e quelle fatte senza la tua scelta, se nel frattempo l'hai salvata).
@@ -786,6 +812,17 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
                     numeri = numeri_giocatori(consigli.dati(db), stagione, g, regole, Parametri(), ids + altri)
                     if numeri is not None:
                         nuove_voci[chiave] = {**vecchia, "giocatori": numeri}
+                elif _senza_dettaglio(vecchia):         # voce scritta prima di #900: prende il dettaglio dei punti, una volta
+                    try:
+                        # le stesse formazioni con i punti rifatti come per i voti cambiati; senza gli indicatori, che non servono
+                        # e vorrebbero le simulazioni
+                        rifatta = rifai_i_punti(dati, stagione, g, regole, Parametri(), {k: x for k, x in vecchia.items() if k != "consiglio"},
+                                                ids, scelta, auto, ist or None, _giocatori_rosa(squadra), simulazioni, altri)
+                    except Exception as e:  # noqa: BLE001 - un di più: non deve fermare le giornate dopo; la voce resta com'era
+                        LOG.warning("diario: dettaglio dei punti della giornata %s non calcolato (%s), la voce resta com'era",
+                                    g, type(e).__name__)
+                    else:
+                        nuove_voci[chiave] = _con_il_dettaglio(vecchia, rifatta)
                 continue
         voce = calcola_giornata(consigli.dati(db), stagione, g, regole, Parametri(), ids, scelta, simulazioni, auto, altri,
                                 giocatori_rosa=_giocatori_rosa(squadra), **per_il_consiglio(db, regole, stagione, g, dati_diario))
