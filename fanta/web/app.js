@@ -751,10 +751,15 @@ function tornaImp(gruppo) {
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
+// `stato.squadreLette`: l'elenco è arrivato davvero almeno una volta (o il server ha detto che le rose non ci sono). Se la lettura non
+// riesce l'elenco resta vuoto, ma non vuol dire «senza rose»: il primo avvio non parte da solo su quello (#874, primoavvio.js).
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
-  if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
-  else { try { stato.squadre = await api("/api/squadre"); } catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); } }
+  if (seServono && stato.info && stato.info.rose_importate === false) { stato.squadre = []; stato.squadreLette = true; }
+  else {
+    try { stato.squadre = await api("/api/squadre"); stato.squadreLette = true; }
+    catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); }
+  }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 // Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
@@ -2743,7 +2748,7 @@ async function notificheWeb(dispositivi) {
   const accendi = async () => {
     if (await Notification.requestPermission() !== "granted") throw new Error(t("avv.permesso_negato_abilita"));
     const { chiave } = await api("/api/push/chiave");
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
+    sub = await iscrizioneMia(reg, chiave);              // mai quella di un altro account (#874)
     dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
     segnaAvvisiDi();                                       // l'iscrizione è di chi l'ha accesa (#804)
   };
@@ -2976,7 +2981,7 @@ async function vistaAltreSquadre() {
   try { squadre = await api("/api/squadre"); }
   catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
   if (!ancoraValida(mia)) return;
-  stato.squadre = squadre;
+  stato.squadre = squadre; stato.squadreLette = true;
   const altre = squadre.filter(x => !x.mia);
   pagina(altre.length ? `<div class="carta imp-colonna"><ul class="elenco">${altre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
       ${x.immagini && x.immagini.stemma ? `<img class="stemma-lista" src="${urlImg(x.nome, "stemma")}" alt="" loading="lazy">` : `<span class="iniziale-squadra" aria-hidden="true">${esc(x.nome.trim().slice(0, 1).toUpperCase())}</span>`}
@@ -3742,8 +3747,9 @@ function segnaAvvisiDaRimandare() {
   try { localStorage.setItem(AVVISI_DA_RIMANDARE, "1"); } catch { /* niente memoria */ }
 }
 // Di chi è l'iscrizione (#804): il numero dell'account che l'ha fatta, accanto a lei. Si rimanda solo se rientra lo stesso account;
-// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui. Il segno resta anche dopo un'uscita (non è
-// fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza account sul server l'iscrizione è sempre «mia».
+// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui, e il browser la toglie (lasciaAvvisiDiAltri,
+// #874). Il segno resta anche dopo un'uscita (non è fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza
+// account sul server l'iscrizione è sempre «mia».
 const AVVISI_DI = "avvisi-di";
 const numeroAccount = () => (stato.account && stato.account.id != null ? String(stato.account.id) : "");
 function segnaAvvisiDi() {
@@ -3762,6 +3768,27 @@ async function rimandaAvvisi() {
   if (!sub || !avvisiDiQuestoAccount()) { fatto(); return; }            // fatta da un altro account: non si rimanda (#804)
   try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
   catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
+}
+// Un'iscrizione fatta da un altro account non resta in questo browser (#874). Finché c'è, il server manda qui gli avvisi di
+// quell'account: la sua sessione può essere scaduta senza «Esci», e lì l'iscrizione resta. All'avvio, con dentro un account diverso
+// da quello che l'ha fatta (anche «-», un'iscrizione di prima che non è di nessuno), il browser la toglie: da lì il servizio delle
+// notifiche non la consegna più, e il server la cancella da sé al primo avviso che non arriva. Chi è dentro la riaccende con
+// un'iscrizione nuova, solo sua. Se non si sa di chi è (segno mancante, memoria che non risponde) resta com'è.
+async function lasciaAvvisiDiAltri() {
+  const n = numeroAccount();
+  let di = null;
+  try { di = localStorage.getItem(AVVISI_DI); } catch { /* niente memoria */ }
+  if (!n || di === null || di === n) return;
+  const sub = await iscrizionePushQui();
+  if (sub) try { await sub.unsubscribe(); } catch { /* resta: si riprova alla prossima apertura */ }
+}
+// L'iscrizione di chi accende gli avvisi (interruttore, primo avvio). Se il browser ne ha ancora una che non è di questo account
+// (non si è tolta all'avvio, o non si sa di chi è) prima la toglie e ne chiede una nuova, solo sua (#874). Se non si toglie, va al
+// server quella che c'è: il server la toglie agli altri account (la tiene l'ultimo che la manda), così arrivano solo i suoi avvisi.
+async function iscrizioneMia(reg, chiave) {
+  const vecchia = await reg.pushManager.getSubscription();
+  if (vecchia && !avvisiDiQuestoAccount() && !(await vecchia.unsubscribe().catch(() => false))) return vecchia;
+  return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
 }
 
 // Impostazioni > Il tuo account > «Esci». Il cookie della sessione lo toglie solo il server: se la richiesta non riesce (rete giù,
@@ -4168,7 +4195,9 @@ try {                                                                           
 } catch { /* indirizzo strano */ }
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
-  rimandaAvvisi();                                       // dopo un nuovo accesso, o se l'ultima volta non era arrivata (#800)
+  // via l'iscrizione di un altro account (#874); poi quella di chi è dentro torna al server dopo un nuovo accesso, o se l'ultima
+  // volta non era arrivata (#800)
+  lasciaAvvisiDiAltri().then(rimandaAvvisi);
   Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
     let condivisa = null;
     try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }

@@ -1,0 +1,12 @@
+{
+  "titolo": "Web: gli avvisi di un altro account non arrivano più su questo browser, e la guida iniziale aspetta le squadre",
+  "voci": [
+    "Impostazioni › Avvisi: quando su un browser entra un account diverso da quello che aveva acceso gli avvisi, gli avvisi dell'account di prima smettono di arrivare lì, anche se la sua sessione era finita da sola senza «Esci». «Avvisi su questo dispositivo» resta spento finché chi è entrato non lo accende; acceso, arrivano solo i suoi avvisi.",
+    "Se all'apertura dell'app l'elenco delle squadre non arriva (per esempio mentre il server riparte), la guida del primo avvio non si apre più su «Importa le rose» a chi le rose le ha già."
+  ],
+  "tecnico": [
+    "fanta/web/app.js: all'avvio lasciaAvvisiDiAltri() toglie dal browser (pushManager unsubscribe) l'iscrizione agli avvisi se il segno avvisi-di (#804) è di un altro account o «-»; con il segno mancante non la tocca. iscrizioneMia(), usata dall'interruttore e da «Attiva gli avvisi» del primo avvio, toglie prima un'iscrizione che non è dell'account dentro (subscribe darebbe la stessa) e ne chiede una nuova; se non si toglie, manda quella che c'è, e il server la toglie agli altri account.",
+    "Server, POST /api/push/iscrivi con gli account: dopo la scrittura push.togli_dagli_altri() toglie lo stesso endpoint dai push.json delle cartelle degli altri utenti, scrivendo solo dove c'è (lettura senza blocco, poi blocco e nuova lettura), senza creare cartelle né file. Un file occupato, un errore del disco o il database degli account che non risponde non fanno fallire l'iscrizione: una riga d'errore nel registro del servizio, con il tipo dell'errore e l'indirizzo mascherato. Un'iscrizione morta resta comunque tolta al primo invio che riceve 404 o 410. Nessun campo dell'API cambia; docs/API.md aggiornato.",
+    "fanta/web/app.js e primoavvio.js: stato.squadreLette diventa vero quando /api/squadre risponde (o /api/stato dice rose_importate falso); primoAvvioSeServe non apre la guida e non salva lo stato «server, accesso» finché l'elenco non è stato letto, e riprova alla volta dopo."
+  ]
+}
