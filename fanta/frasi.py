@@ -268,6 +268,8 @@ CATALOGO: dict[str, str] = {
                             "Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
     # una lega già mista (squadre di esempio rimaste insieme a quelle vere, #683): server._rose_di_prima
     "rose.esempi_tolti": "Le squadre di esempio ({squadre}) erano rimaste nella lega insieme alle tue: l'importazione le toglie.",
+    # regolamento incollato (#881): un valore letto che con le regole di adesso non si può salvare (regole_testo._non_applicabili)
+    "regole.panchina_posti_fissi": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia i posti di ogni ruolo in «Modifica i valori».",
     "rose.codice_assente": "codice {codice} non presente nel listone",
     "rose.diversa": "{squadra}: rosa diversa dalle regole ({dettaglio})",
     "rose.doppione": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",

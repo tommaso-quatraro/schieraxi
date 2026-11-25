@@ -13,6 +13,12 @@ import math
 import re
 import unicodedata
 from collections.abc import Callable
+from typing import TYPE_CHECKING
+
+from .frasi import F, Frase
+
+if TYPE_CHECKING:
+    from .regole import Regole
 
 # Tetti del testo incollato: un regolamento vero ha poche migliaia di caratteri e righe corte (una regola per riga).
 MAX_TESTO = 30_000
@@ -251,7 +257,18 @@ def controlla_lunghezza(testo: str) -> None:
                                "vai a capo tra una regola e l'altra.")
 
 
-def interpreta(testo: str) -> dict:
+def _non_applicabili(modifiche: dict[str, dict], attuali: Regole) -> list[tuple[str, Frase]]:
+    """Le proposte che con le regole di adesso non si salverebbero così come sono, con il perché (#881). Con i posti fissi per
+    ruolo il numero della panchina è la somma dei posti: un numero diverso, senza i posti nuovi, non si sa come dividerlo."""
+    posti, numero = attuali.panchina.posti, modifiche.get("panchina.numero")
+    if posti and numero and "panchina.posti" not in modifiche and numero["valore"] != sum(posti.values()):
+        return [("panchina.numero", F("regole.panchina_posti_fissi", n=sum(posti.values())))]
+    return []
+
+
+def interpreta(testo: str, attuali: Regole | None = None) -> dict:
+    """La proposta di regole letta dal testo. Con `attuali` (le regole salvate) le proposte che non si potrebbero salvare così come
+    sono escono da `modifiche` e vanno in `non_applicabili`, con il perché: l'anteprima mostra solo ciò che verrà salvato."""
     controlla_lunghezza(testo)
     originali = [r.strip() for r in re.split(r"[\r\n]+", testo) if r.strip()]
     righe = [re.sub(NUMERO_TITOLO, " ", _normalizza(r)) for r in originali]      # senza il numero dell'articolo e la stagione
@@ -407,5 +424,10 @@ def interpreta(testo: str) -> dict:
     # da controllare a mano (#684): le righe con numeri non lette e quelle dubbie, anche senza numeri, nell'ordine del testo;
     # ognuna con le regole che lascia da impostare (vuoto per una riga con numeri che non nomina regole dubbie)
     altre = [n for n in sorted(dubbie) if n not in non][:MAX_DUBBIE]
-    return {"modifiche": list(modifiche.values()), "non_riconosciute": [originali[n] for n in non],
-            "da_controllare": [{"riga": originali[n], "regole": dubbie.get(n, [])} for n in sorted({*non, *altre})]}
+    esito = {"modifiche": list(modifiche.values()), "non_riconosciute": [originali[n] for n in non],
+             "da_controllare": [{"riga": originali[n], "regole": dubbie.get(n, [])} for n in sorted({*non, *altre})]}
+    if attuali is not None:
+        fuori = dict(_non_applicabili(modifiche, attuali))
+        esito["modifiche"] = [m for m in esito["modifiche"] if m["chiave"] not in fuori]
+        esito["non_applicabili"] = [{**modifiche[k], "motivo": str(motivo), "motivo_frase": motivo.json()} for k, motivo in fuori.items()]
+    return esito
