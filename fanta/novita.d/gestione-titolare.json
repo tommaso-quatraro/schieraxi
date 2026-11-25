@@ -1,0 +1,15 @@
+{
+  "titolo": "Gestione più chiara per chi gestisce il server",
+  "voci": [
+    "Impostazioni › Gestione: quando tutti i posti sono presi, sopra «Crea l'invito» un avviso dice che chi riceve l'invito troverà le registrazioni chiuse finché non alzi il numero massimo di utenti.",
+    "Errori recenti: le richieste fatte prima di entrare nell'account non contano più fra le rifiutate e sono dette a parte; via il tempo del «5% più lento»; fra le richieste più lente solo le parti dell'app.",
+    "Stato dei dati › Fonti dei dati: sotto ogni fonte spenta solo cosa non arriva; cosa fa l'app senza e le condizioni d'uso sono scritte una volta sola, sotto l'elenco.",
+    "Sul computer la pagina Gestione usa tutta la larghezza: gli strumenti a sinistra, gli errori recenti a destra."
+  ],
+  "tecnico": [
+    "#894 (punti 2-5). GET /api/admin/utenti e POST /api/admin/inviti: campi nuovi avviso e avviso_frase (chiave admin.posti_pieni, con n e massimo), null con un posto libero; l'invito si crea lo stesso.",
+    "GET /api/admin/registro: contatori.senza_accesso nuovo; il 401 «Accesso richiesto» del controllo d'accesso (nessuna sessione o sessione finita) non conta più in rifiutate. Password sbagliate (401 di /api/account/accedi), 429, 403, 404 restano in rifiutate. piu_lente solo con le rotte /api/.",
+    "fonti_attive.stato(): messaggio = fonti_attive.cosa_manca (solo cosa non arriva); messaggio_spenta, usato dall'errore FonteSpenta, resta intero. Testo comune scambio.accendere_una_fonte.",
+    "Web: errori.riepilogo diviso in errori.riepilogo, errori.senza_accesso e errori.tempi (niente tempo_p95_ms, che resta nella risposta); paginaGestione con due colonne (.gestione-colonne) da 1100 px. Nessun campo tolto o rinominato; l'iPhone non usa queste rotte."
+  ]
+}
