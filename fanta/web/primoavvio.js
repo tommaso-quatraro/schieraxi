@@ -342,16 +342,16 @@ function paDaRiprendere(s) {
 //   riprende dalle rose, con lo stato che il server ricorda (#580);
 // - mai cominciato (né il primo avvio né la vecchia procedura) e senza rose: parte da solo; da quel momento il server ricorda che
 //   hai cominciato.
+// Se l'elenco delle squadre non è arrivato (server che riparte, rete giù) vuoto non vuol dire senza rose: la guida non parte su
+// quello e non conta come fatto, si riprova alla prossima occasione (Formazione senza rose, prossima apertura) (#874).
 let paControllo = null;
 function primoAvvioSeServe() {
+  if (!stato.squadreLette) return Promise.resolve();
   if (!paControllo) paControllo = paControllaAvvio();
   return paControllo;
 }
 async function paControllaAvvio() {
   try {
-    // l'elenco delle squadre non è arrivato (server che riparte, rete giù): vuoto non vuol dire senza rose, e la guida non parte
-    // su quello (#874); si riprova alla prossima occasione (Formazione senza rose, prossima apertura)
-    if (!stato.squadreLette) { paControllo = null; return; }
     if ((stato.squadre || []).length) return;             // con le rose la guida non parte né riprende da sola
     const r = await api("/api/primo-avvio");
     if (r.primo_avvio) {

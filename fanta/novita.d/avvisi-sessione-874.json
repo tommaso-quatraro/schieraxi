@@ -6,6 +6,6 @@
   ],
   "tecnico": [
     "fanta/web/app.js: all'avvio lasciaAvvisiDiAltri() toglie dal browser (pushManager unsubscribe) l'iscrizione agli avvisi se il segno avvisi-di (#804) è di un altro account o «-»; con il segno mancante non la tocca. Il server la cancella dal file dell'altro account al primo invio che riceve 404 o 410, come già fa per le iscrizioni scadute. iscrizioneMia(), usata dall'interruttore e da «Attiva gli avvisi» del primo avvio, toglie prima un'iscrizione che non è dell'account dentro (subscribe darebbe la stessa); se non si toglie, «Non riesco ad attivare le notifiche» e niente va al server. Nessun cambio al server né all'API.",
-    "fanta/web/app.js e primoavvio.js: stato.squadreLette diventa vero quando /api/squadre risponde (o /api/stato dice rose_importate falso); paControllaAvvio non apre la guida e non salva lo stato «server, accesso» finché l'elenco non è stato letto, e riprova alla volta dopo."
+    "fanta/web/app.js e primoavvio.js: stato.squadreLette diventa vero quando /api/squadre risponde (o /api/stato dice rose_importate falso); primoAvvioSeServe non apre la guida e non salva lo stato «server, accesso» finché l'elenco non è stato letto, e riprova alla volta dopo."
   ]
 }
