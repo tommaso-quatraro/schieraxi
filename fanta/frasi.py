@@ -270,6 +270,7 @@ CATALOGO: dict[str, str] = {
     "rose.esempi_tolti": "Le squadre di esempio ({squadre}) erano rimaste nella lega insieme alle tue: l'importazione le toglie.",
     # regolamento incollato (#881): un valore letto che con le regole di adesso non si può salvare (regole_testo._non_applicabili)
     "regole.panchina_posti_fissi": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia i posti di ogni ruolo in «Modifica i valori».",
+    "regole.panchina_somma_posti": "I posti per ruolo letti nel regolamento sono {n} in tutto e la panchina è la loro somma: controlla i posti di ogni ruolo in «Modifica i valori».",
     "rose.codice_assente": "codice {codice} non presente nel listone",
     "rose.diversa": "{squadra}: rosa diversa dalle regole ({dettaglio})",
     "rose.doppione": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",

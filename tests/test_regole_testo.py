@@ -653,3 +653,70 @@ def test_regolamento_inventato_con_titoli_rosa_e_gol():
     assert (v["rosa.P"], v["rosa.D"], v["rosa.C"], v["rosa.A"]) == (3, 9, 9, 5)
     assert (v["bonus.gol.P"], v["bonus.gol.D"], v["bonus.gol.C"], v["bonus.gol.A"]) == (5, 3, 3, 3)
     assert [x["riga"] for x in r["da_controllare"]] == ["Assist: +1 (assist da fermo +0,5)"]
+
+
+# Revisione della #884: righe che si leggevano male. Meglio una riga da controllare a mano che un valore sbagliato.
+def _solo_da_controllare(riga, chiavi=None):
+    r = regole_testo.interpreta(riga)
+    proposte = _per_chiave(r)
+    assert (not proposte) if chiavi is None else not any(k.startswith(chiavi) for k in proposte), proposte
+    assert [x["riga"] for x in r["da_controllare"]] == [riga]
+
+
+@pytest.mark.parametrize("riga", ["(+3) Gol segnato", "(-1) Espulsione", "(+1) Assist"])
+def test_il_valore_fra_parentesi_in_testa_non_e_il_numero_di_un_elenco(riga):
+    """«(+3)» in testa alla riga è il valore, non il numero dell'elenco come «3)»: la riga non si svuota e resta da controllare."""
+    _solo_da_controllare(riga)
+
+
+@pytest.mark.parametrize("riga", [
+    "La formazione titolare è composta da 1 portiere, 4 difensori, 4 centrocampisti e 2 attaccanti",
+    "Il modulo base è composto da 4 difensori, 4 centrocampisti e 2 attaccanti",
+    "Moduli: difensori 3-5, centrocampisti 3-5, attaccanti 1-3",
+])
+def test_formazione_e_moduli_non_sono_la_rosa(riga):
+    _solo_da_controllare(riga, "rosa.")
+
+
+def test_la_squadra_composta_da_e_la_rosa():
+    v = _per_chiave(regole_testo.interpreta("La squadra è composta da 3 portieri, 8 difensori, 8 centrocampisti e 6 attaccanti"))
+    assert (v["rosa.P"], v["rosa.D"], v["rosa.C"], v["rosa.A"]) == (3, 8, 8, 6)
+
+
+@pytest.mark.parametrize("riga", [
+    "Gol: +3 (anche per il portiere)",
+    "Gol segnato: +3 (doppio per il portiere)",
+    "Gol segnato: +3 punti, compreso il portiere",
+])
+def test_gol_con_un_numero_prima_del_ruolo_e_nessuno_dopo_non_si_indovina(riga):
+    """Il portiere citato dopo l'unico numero può essere un'eccezione, un'aggiunta o un multiplo: la riga si controlla a mano."""
+    _solo_da_controllare(riga, "bonus.gol.")
+
+
+@pytest.mark.parametrize("riga, chiave", [
+    ("L'assist non dà bonus, il gol vale 3", "bonus.assist"),
+    ("Nessun malus per l'autogol, ammonizione -0,5", "bonus.autogol"),
+    ("Nessun bonus per il gol del portiere, gli altri +3", "bonus.gol."),
+])
+def test_una_regola_negata_non_prende_il_numero_di_un_altra(riga, chiave):
+    _solo_da_controllare(riga, chiave)
+
+
+def test_i_crediti_sono_il_numero_dopo_la_parola():
+    """«2.1 Crediti iniziali: 500» dava 2 crediti (il numero del paragrafo, il primo della riga)."""
+    assert _per_chiave(regole_testo.interpreta("2.1 Crediti iniziali: 500"))["crediti_iniziali"] == 500
+    assert _per_chiave(regole_testo.interpreta("Si parte con 500 crediti"))["crediti_iniziali"] == 500
+
+
+@pytest.mark.parametrize("posti_salvati", [None, {"P": 2, "D": 3, "C": 3, "A": 3}])
+def test_la_panchina_diversa_dalla_somma_dei_posti_letti_non_si_applica(posti_salvati):
+    """I posti per ruolo letti nel testo fissano la panchina alla loro somma (11): «La panchina è di 12» non si salverebbe."""
+    from fanta.regole import Regole
+    attuali = Regole()
+    attuali.panchina.posti, attuali.panchina.numero = posti_salvati, 11 if posti_salvati else 7
+    r = regole_testo.interpreta("Riserve: 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti\nLa panchina è di 12 giocatori",
+                                attuali)
+    assert _per_chiave(r) == {"panchina.posti": {"P": 2, "D": 3, "C": 3, "A": 3}}
+    [na] = r["non_applicabili"]
+    assert (na["chiave"], na["valore"], na["motivo_frase"]["chiave"]) == ("panchina.numero", 12, "regole.panchina_somma_posti")
+    assert "11" in na["motivo"]
