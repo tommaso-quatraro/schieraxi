@@ -298,7 +298,7 @@ def _testi_per_l_utente(nome):
 @pytest.mark.parametrize("nome", list(PAGINE) + ["404.html"])
 def test_testi_senza_sigle_tecniche(nome):
     """Testi in parole semplici: niente «CSV» (si dice «file Excel o testo copiato») né «web app» (si dice «l'app nel
-    browser»). «AGPL-3.0» resta solo nel piè di pagina, accanto a «licenza libera»."""
+    browser»). «AGPL-3.0» (nel piè di pagina) può restare, ma solo accanto a «licenza libera»."""
     visibile, altri = _testi_per_l_utente(nome)
     for sigla in ("csv", "web app", "webapp", "pwa"):
         assert sigla not in visibile.lower() and sigla not in altri.lower(), sigla
