@@ -1,5 +1,24 @@
 [
   {
+    "versione": "1.550",
+    "data": "2026-11-25T21:47:43",
+    "titolo": "Primo avvio più chiaro per chi arriva adesso",
+    "voci": [
+      "Primo avvio, «Le rose»: dice di esportare le rose da Leghe (Excel, CSV o testo copiato) e che per cominciare basta anche solo la tua squadra.",
+      "Primo avvio, controllo delle rose: una squadra senza dubbi sta in due righe e «Nuova» non si ripete su ogni squadra la prima volta. «Conferma e salva» resta in fondo mentre scorri, con sopra l'eventuale messaggio di errore, e in alto è acceso il passo «La tua squadra», la domanda in cima.",
+      "Con una sola squadra l'app non parla più di scambi: le rose degli altri servono a guardare le altre squadre. Dopo la conferma nessun avviso copre la Formazione.",
+      "Primo avvio, «Tutto pronto»: una frase dice che i fantavoti attesi usano i punteggi più comuni delle leghe classic finché non metti quelli della tua lega, con il collegamento a Regole e scadenza. Dietro la guida la Formazione è già quella della tua squadra.",
+      "Su computer la guida del primo avvio resta larga uguale in ogni passo, con il testo della stessa grandezza.",
+      "Giornate senza rose: dice di importarle senza promettere consigli in quella pagina.",
+      "Impostazioni, Avvisi: con l'interruttore spento le ore tranquille dicono che sono spente e quale fascia varrebbe accendendole.",
+      "Dopo un nuovo accesso l'app si apre sulla Formazione o su Giornate, come all'apertura, e non più su «Il tuo account»."
+    ],
+    "tecnico": [
+      "Web: Giornate, se lo stato letto dice rose_importate false, rilegge /api/stato e chiede /api/diario solo se ora le rose ci sono (niente 409 in console; le rose importate altrove si vedono senza ricaricare); entraNellApp() toglie una pagina di Impostazioni dall'indirizzo prima di ricaricare dopo accesso, registrazione e Google; avvisi: imp.ore_tranquille_spente con silenzio falso; anteprimaRose ha opz.mostrata(risposta); il primo avvio accende «La tua squadra» durante l'anteprima, ridisegna la vista sotto la guida dopo rose o squadra salvate, toglie l'avviso di 8 secondi dopo la conferma; tolta la larghezza di 1180 px del foglio con l'anteprima; nel primo avvio .ar-piede (messaggi #ar-msg e pulsanti) fermo in fondo al foglio, scroll-padding-bottom per il Tab; .pa-corpo a 15 e 13 px.",
+      "Testi cambiati: lega.UNA_SQUADRA e srv.una_sola_squadra (niente scambi), comune.importa_spiega (anche iPhone, Catalogo.Comune.importaSpiega), pav.incolla_testo_delle, pav.il_resto; nuovi pav.regole_comuni e imp.ore_tranquille_spente (solo web)."
+    ]
+  },
+  {
     "versione": "1.549",
     "data": "2026-11-25T21:33:21",
     "titolo": "iPhone: widget e Impostazioni con il testo grande",
