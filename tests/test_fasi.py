@@ -511,3 +511,33 @@ def test_formazione_sulla_prossima_per_chi_entra_dopo(ambiente, monkeypatch):
     assert server._giornata_saltata(ambiente.db, REGOLE, ctx, None) is None
     nato(None)                                                   # data non nota (o senza account)
     assert server._giornata_saltata(ambiente.db, REGOLE, ctx, None) is None
+
+
+# ---------------------------------------------------------------- #895: partita rinviata a giornata in corso
+def _napoli_juve_rinviata(a) -> None:
+    """La partita del lunedì (napoli-juve: Dif5, Cen8, Cen9, Cen13) spostata a dicembre, fuori dal turno: rinviata."""
+    a.db.execute("UPDATE partite SET data = '2026-12-09 20:45' WHERE giornata = 10 AND casa = 'napoli'")
+    a.db.commit()
+
+
+def _oggi_in_corso(a, monkeypatch, regole=REGOLE, titolari=TITOLARI, adesso=datetime(2026, 11, 8, 22, 40)):
+    """Oggi a giornata in corso con la formazione salvata (gli 11 di `titolari`, la panchina di sempre) e roma-lazio finita."""
+    from fanta import scelte
+    monkeypatch.setattr(consigli, "valuta", lambda *a, **k: {"modulo": "4-4-2", "punteggio_atteso": 70.0})
+    scelte.salva(ST, 10, titolari, "4-4-2", a.tmp / "scelte.json", panchina=[i for i in PANCHINA if i not in titolari])
+    return gestione.oggi(a.db, regole, a.rose, adesso=adesso, file_scelte=a.tmp / "scelte.json", file_diario=a.tmp / "diario.json",
+                         live_partite={("roma", "lazio"): {"stato": "finita"}})
+
+
+def test_in_corso_il_voto_d_ufficio_della_partita_rinviata_ha_la_sua_etichetta(ambiente, monkeypatch):
+    """#895: con il voto d'ufficio il server conta il 6 tra i punti fatti; l'etichetta del giocatore lo dice («Voto d'ufficio»),
+    così web e iPhone mostrano il voto contato e non «Rinviata» con il fantavoto atteso."""
+    from dataclasses import replace
+    _napoli_juve_rinviata(ambiente)
+    o = _oggi_in_corso(ambiente, monkeypatch, replace(REGOLE, partite_rinviate="voto_ufficio"))
+    g = {x["id"]: x for x in o["in_corso"]["giocatori"]}
+    assert (g[5]["stato"], g[5]["fantavoto"], g[5]["a_punteggio"]) == ("rinviata", 6.0, True)
+    assert g[5]["etichetta"] == {"codice": "voto_ufficio", "testo": "Voto d'ufficio", "tono": "positivo"}
+    # con «aspetta» resta «Rinviata», senza voto
+    g = {x["id"]: x for x in _oggi_in_corso(ambiente, monkeypatch)["in_corso"]["giocatori"]}
+    assert (g[5]["fantavoto"], g[5]["etichetta"]["codice"]) == (None, "rinviata")

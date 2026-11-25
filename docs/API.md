@@ -992,7 +992,9 @@ Valgono per i giocatori di `/api/oggi`, `/api/formazione`, `/api/giocatore/{id}`
     «Out» / negativo; `rinviata` «Rinviata» / «Postponed» / attenzione (anche prima della scadenza, se c'è `rinvio`). Dopo la scadenza: `voto`
     «Ha giocato» / «Played» / positivo (il numero sta in `fv_preso` o `fantavoto`); `senza_voto` «Senza voto» / «No grade» / attenzione;
     `voto_in_arrivo` «Voto in arrivo» / «Grade coming» / neutro; `in_corso` «Partita in corso» / «Match on» / positivo; `da_giocare`
-    «Da giocare» / «Still to play» / neutro; `rinviata`; un infortunato o squalificato resta `infortunato` / `squalificato` finché non escono
+    «Da giocare» / «Still to play» / neutro; `rinviata`; `voto_ufficio` «Voto d'ufficio» / «Default grade» / positivo (#895: in
+    `in_corso.giocatori[]`, partita rinviata con il voto d'ufficio della lega, già contato tra i punti fatti; il numero sta in `fantavoto`
+    e il client lo mostra come un voto preso, con questa parola); un infortunato o squalificato resta `infortunato` / `squalificato` finché non escono
     i voti. Solo in `avvisi[]` di Oggi: `diffidato` «Diffidato» / «One yellow from a ban» / attenzione. Gli avvisi `dubbio` (titolari che
     giocano meno del 75% o in dubbio per le probabili) hanno dal 5/11/2026 l'etichetta della loro scheda, la stessa della Formazione: un
     titolare al 2% è `improbabile` «Improbabile», uno al 30% `panchina` «Probabile panchina»; `in_dubbio` solo se lo dicono le probabili

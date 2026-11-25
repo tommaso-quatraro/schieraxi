@@ -357,7 +357,9 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
                   previsione, rinvii.regola(regole, stagione, giornata))
     for g in a["giocatori"]:                         # la stessa etichetta di Formazione e scheda (fanta/etichette.py)
         i = g["id"]
-        g["etichetta"] = etichette.di_giocatore({"stato_partita": g["stato"], "titolarita": "fuori" if i in fuori and g["stato"] not in DECISI else None,
+        # una partita rinviata con il voto d'ufficio: il voto è già tra i punti fatti e l'etichetta lo dice (#895)
+        g["etichetta"] = etichette.di_giocatore({"stato_partita": g["stato"], "voto_ufficio": g["stato"] == "rinviata" and g["fantavoto"] is not None,
+                                                 "titolarita": "fuori" if i in fuori and g["stato"] not in DECISI else None,
                                                  "stato": prev.at[i, "stato"] if prev is not None and i in prev.index else None})
     return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "formazione_di": di} | a | {
         "partite": conta_partite(partite)}

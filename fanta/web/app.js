@@ -456,11 +456,12 @@ const nonGiocaDiSicuro = stato => !!stato && stato.classe === "rossa";
 // La nota delle probabili su chi rischia di non esserci («contusione al ginocchio, in forte dubbio dal 1'»): il motivo dello stato
 // a parole. È testo della fonte, scritto com'è. Vuota per chi non ha uno stato da spiegare e a partita cominciata.
 const notaStato = (x, stato) => (stato && typeof x.nota === "string" && x.nota.trim() ? x.nota.trim() : "");
-// Le parole sotto il nome in una riga: lo stato prima della partita, com'è andata dopo («Voto in arrivo», «Senza voto»), «Diffidato»
-// e, in una riga sua, la nota che spiega lo stato. `inPiu`: altre etichette, prima della nota (già pronte per l'HTML).
+// Le parole sotto il nome in una riga: lo stato prima della partita, com'è andata dopo («Voto in arrivo», «Senza voto», «Voto
+// d'ufficio»), «Diffidato» e, in una riga sua, la nota che spiega lo stato. `inPiu`: altre etichette, prima della nota (già pronte per l'HTML).
 function etichetteGiocatore(x, inPiu = "") {
   const esito = esitoPartita(x), stato = esito ? null : parolaStato(x);
-  const parola = esito && esito.fv == null ? `<span class="etichetta ${etichettaPronta(x) ? classeTono(x.etichetta) : STATO_PARTITA[x.stato_partita][1]}">${esc(esito.testo)}</span>`
+  const parola = esito && esito.parola ? `<span class="etichetta ${classeTono(x.etichetta)}">${esc(esito.parola)}</span>`
+    : esito && esito.fv == null ? `<span class="etichetta ${etichettaPronta(x) ? classeTono(x.etichetta) : STATO_PARTITA[x.stato_partita][1]}">${esc(esito.testo)}</span>`
     : stato ? `<span class="etichetta ${stato.classe}">${esc(stato.testo)}</span>` : "";
   const nota = notaStato(x, stato);
   return parola + inPiu + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "")
@@ -486,15 +487,18 @@ function vocePedina(x, esito = null, stato = null) {
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
   const preso = esito && esito.fv != null;
-  return [x.nome, preso ? esito.testo : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "",
+  return [x.nome, preso ? esito.testo : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "", esito && esito.parola,
     !esito && x.stato_partita !== "da_giocare" && !nonGiocaDiSicuro(stato) && giocaLetto(x) < SOGLIA_GIOCA ? t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }) : "",
     !esito && stato ? stato.testo : ""].filter(Boolean).join(", ");
 }
 // A partita iniziata «gioca N%» non serve più (come la scheda, PARTITA_INIZIATA): a partita finita il fantavoto preso (`fv_preso`
 // del server) o lo stato («Voto in arrivo», «Senza voto»); in corso lo stato. Null = la partita non è cominciata: «gioca N%».
+// La partita rinviata con il voto d'ufficio (#895): il server lo conta già tra i punti fatti (`fantavoto`, qui `fv_preso`) e
+// l'etichetta lo dice; si mostra come un voto preso, con la sua parola (`parola`) sotto la pedina e nella riga.
 const CODICI_PARTITA_INIZIATA = ["voto", "senza_voto", "voto_in_arrivo", "in_corso"];
 function esitoPartita(x) {
   const codice = etichettaPronta(x) ? x.etichetta.codice : null;
+  if (codice === "voto_ufficio" && Number.isFinite(x.fv_preso)) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }), parola: x.etichetta.testo };
   if (!PARTITA_INIZIATA.includes(x.stato_partita || "") && !CODICI_PARTITA_INIZIATA.includes(codice)) return null;
   if (Number.isFinite(x.fv_preso) && (codice === "voto" || x.stato_partita === "fatto")) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
   return { fv: null, testo: etichettaPronta(x) ? x.etichetta.testo : t(STATO_PARTITA[x.stato_partita][0]) };
@@ -526,6 +530,7 @@ function pedina(x, k = 0) {
     ${gioca ? `<span class="gioca ${classeGioca(p)}" aria-hidden="true">${t("giocatore.gioca", { p: perc(p) })}</span>` : ""}
     ${stato ? `<span class="gioca ${stato.classe === "rossa" ? "basso" : "parola"}" aria-hidden="true">${esc(stato.testo)}</span>` : ""}
     ${esito && !preso ? `<span class="gioca parola" aria-hidden="true">${esc(esito.testo)}</span>` : ""}
+    ${esito && esito.parola ? `<span class="gioca parola" aria-hidden="true">${esc(esito.parola)}</span>` : ""}
     ${daGiocare && x.data_partita ? `<span class="gioca parola" aria-hidden="true">${esc(quando(x.data_partita))}</span>` : ""}
     <span class="solo-lettori">${esc(vocePedina(x, esito, stato))}${daGiocare && x.data_partita ? `, ${esc(quando(x.data_partita))}` : ""}</span>
   </button>`;
@@ -1529,7 +1534,7 @@ function htmlScheda(c, pr, fz) {
         ${preso ? `<div class="cifra"><div class="debole">${t("mercato.fantavoto")}</div><div class="enorme">${num(esito.fv)}</div></div>`
           : finitaP ? `<div class="cifra"><div class="grande stato-partita">${esc(esito.testo)}</div></div>`
           : `<div class="cifra"><div class="debole">${t("mercato.fantavoto_atteso")}, ${t("formazione.se_gioca")}</div><div class="enorme">${num(pr.fv_atteso)}</div></div>`}
-        ${esito ? (finitaP ? "" : `<div class="cifra"><div class="grande stato-partita">${esc(esito.testo)}</div></div>`)
+        ${esito ? (finitaP ? "" : `<div class="cifra"><div class="grande stato-partita">${esc(esito.parola || esito.testo)}</div></div>`)
           : `<div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande${q < SOGLIA_GIOCA ? " gioca-" + classeGioca(q) : ""}">${perc(q)}</div>
               ${stato ? `<div class="etichetta ${stato.classe}">${esc(stato.testo)}</div>` : ""}</div>`}
       </div>`;
