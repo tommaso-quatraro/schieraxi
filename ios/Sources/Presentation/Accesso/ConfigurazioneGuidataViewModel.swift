@@ -62,10 +62,14 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     private var indirizzoLetto: String?
     /// Riaperta dopo una pagina in cui l'aveva portata un passo: riparte da quel passo, o dal primo dopo se è fatto (#880).
     private let riprendiDa: PassoGuidato?
+    /// Il passo fatto in quella pagina e che l'app non vede dai dati della lega (il widget collegato da «Collega il widget»): si
+    /// segna fatto da solo, senza «L'ho già fatto» (#880).
+    private let passoFatto: PassoGuidato?
 
     init(server: any ServerClient, riprendiDa: PassoGuidato? = nil, passoFatto: PassoGuidato? = nil) {
         self.server = server
         self.riprendiDa = riprendiDa
+        self.passoFatto = passoFatto
         super.init()
     }
 
@@ -94,13 +98,19 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
             return
         }
         stato = await Self.leggiStato(server)
-        let fattiOraDaiDati = stato.fattiDaiDati
-        passi = PrimoAvvioLogica.daFare(avanzamento, stato: stato)
+        if let passoFatto {
+            fattiOra.insert(passoFatto)
+            saltatiOra.remove(passoFatto)
+        }
+        let fattiDaDire = stato.fattiDaiDati.union(fattiOra)
+        passi = PrimoAvvioLogica.daFare(avanzamento, stato: stato).filter { !fattiOra.contains($0) }
         indice = PrimoAvvioLogica.inizio(passi, riprendiDa: riprendiDa)
         fase = .pronta
-        // Chi ha già cominciato e nel frattempo ha fatto dei passi (le rose, la squadra): il server lo viene a sapere.
-        if let a = avanzamento, !fattiOraDaiDati.isSubset(of: Set(a.fatti.compactMap(PassoGuidato.init(rawValue:)))) {
-            await salva(fatti: fattiOraDaiDati, saltati: [], chiuso: a.chiuso)
+        // Chi ha già cominciato e nel frattempo ha fatto dei passi (le rose, la squadra, il widget collegato): il server lo viene a
+        // sapere.
+        let ricordati = Set((avanzamento?.fatti ?? []).compactMap(PassoGuidato.init(rawValue:)))
+        if avanzamento != nil || passoFatto != nil, !fattiDaDire.isSubset(of: ricordati) {
+            await salva(fatti: fattiDaDire, saltati: [], chiuso: avanzamento?.chiuso ?? false)
         }
     }
 

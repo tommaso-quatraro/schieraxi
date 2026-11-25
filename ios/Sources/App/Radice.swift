@@ -81,18 +81,24 @@ final class Navigazione: ObservableObject {
         // riaperta: la prossima chiusura torna a essere dell'utente; chiusa: la prossima apertura (da sola, da «Da fare») parte
         // dall'inizio
         didSet {
-            if guidaAperta { guidaChiusaDallApp = false } else { guidaRiprendeDa = nil }
+            if guidaAperta {
+                guidaChiusaDallApp = false
+            } else {
+                guidaRiprendeDa = nil
+                guidaPassoFatto = nil
+            }
         }
     }
     /// Il passo da cui riparte la guida riaperta dopo una pagina in cui l'aveva portata (#880): la legge il foglio della guida.
     private(set) var guidaRiprendeDa: PassoGuidato?
-    /// Il passo fatto nella pagina da cui torna la guida.
+    /// Il passo fatto nella pagina da cui torna la guida (il widget collegato): la guida lo segna da sola (#880).
     private(set) var guidaPassoFatto: PassoGuidato?
 
     /// Riapre la guida dopo una pagina (o il foglio del widget) in cui l'aveva portata `passo`: sulla Formazione, come la web dove
     /// dietro «Tutto pronto» c'è già la Formazione, e da quel passo (`PrimoAvvioLogica.inizio`, #880).
     func riapriGuida(da passo: PassoGuidato, fatto: Bool = false) {
         guidaRiprendeDa = passo
+        guidaPassoFatto = fatto ? passo : nil
         sezione = .formazione
         guidaAperta = true
     }
