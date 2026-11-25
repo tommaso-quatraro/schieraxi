@@ -994,7 +994,7 @@ body.senza-accesso .salta { display: none; }
 /* ---- Impostazioni (#618): una scheda della barra. La pagina ha le sezioni (Avvisi, La mia lega, Aspetto) e le righe che aprono una
    pagina loro (Il tuo account, Informazioni, Gestione); al telefono una colonna, da 768 px due colonne di sezioni (la seconda comincia
    dove finisce la prima). Le pagine interne (Aggiorna le rose, La mia squadra, Il tuo account...) sono una colonna larga al massimo
-   720 px; Regole e scadenza ha le sue due colonne da 1100 px. Le righe come le voci degli altri elenchi: il nome, sotto una riga
+   720 px; Regole e scadenza e Gestione hanno le loro due colonne da 1100 px. Le righe come le voci degli altri elenchi: il nome, sotto una riga
    piccola, la freccia a destra. ---- */
 .imp-griglia { min-width: 0; }
 .imp-voce { grid-template-columns: minmax(0, 1fr) auto; }
@@ -1009,6 +1009,14 @@ body.senza-accesso .salta { display: none; }
 .imp-colonna .elenco + .riga { min-height: 44px; border-top: 1px solid var(--filo); }
 .imp-colonna .carta > details { border-top: 1px solid var(--filo); }
 .imp-colonna p, .imp-colonna div.debole { max-width: 70ch; }      /* righe di testo al massimo 70 caratteri (spec C12) */
+/* Gestione con gli account (#894): da 1100 px due colonne larghe come la pagina, come Regole e scadenza: a sinistra gli strumenti
+   (aggiornamento, stato dei dati, inviti, utenti), a destra «Errori recenti». Due colonne vere, non `columns`: una carta che
+   cresce (l'esito di un invito) non fa saltare le altre da una colonna all'altra */
+.gestione-strumenti, .gestione-errori { min-width: 0; }
+@media (min-width: 1100px) {
+  .imp-colonna.gestione-colonne { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; align-items: start;
+    max-width: none; }
+}
 @media (min-width: 768px) {
   .imp-griglia { columns: 2; column-gap: 32px; }
   .imp-griglia > .carta { display: inline-block; width: 100%; vertical-align: top; }   /* una sezione non si spezza fra le due colonne */
