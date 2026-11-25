@@ -360,7 +360,9 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
         const b = $("#nota-cache");
         if (!b) return false;
         const ferma = !!vista && typeof vista.sola === "function" && vista.sola();
-        b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : t("comune.cache_errore", { errore: esc(e.message) })}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
+        const copia = new Date(salvata.quando);                             // la nota dice di quando è la copia (#845)
+        const motivo = elidiGiorno(t("comune.cache_errore", { errore: esc(e.message), giorno: fData(copia), ora: fOra(copia) }));
+        b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : motivo}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
           <button class="azione-testo" type="button" data-riprova>${t("comune.riprova")}</button>`;
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
         return false;
@@ -542,8 +544,12 @@ function nomeGiornata(lega, serieA) {
   return n ? t("testata.giornata", { n }) : "";
 }
 // «la 8ª» si dice «l'8ª» («dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una vocale, fra 1 e 38
-// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server.
-const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
+// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server,
+// e in più l'articolo con la maiuscola in testa («Dalla 8ª» → «Dall'8ª», il menu della prima giornata, #842).
+const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b([Ll]a|[Aa]lla|[Dd]alla|[Dd]ella|[Nn]ella|[Ss]ulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
+// Una voce del menu «Da quale giornata di Serie A è partita la lega?» (Regole e scadenza, primo avvio): «Dalla 1ª, con il campionato»,
+// «Dalla 2ª», «Dall'8ª».
+const vocePrimaGiornata = g => (g === 1 ? t("pav.prima_uno") : elidiOrdinali(t("pav.prima_n", { n: g })));
 
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
 // «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo
@@ -736,10 +742,15 @@ function tornaImp(gruppo) {
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
+// `stato.squadreLette`: l'elenco è arrivato davvero almeno una volta (o il server ha detto che le rose non ci sono). Se la lettura non
+// riesce l'elenco resta vuoto, ma non vuol dire «senza rose»: il primo avvio non parte da solo su quello (#874, primoavvio.js).
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
-  if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
-  else { try { stato.squadre = await api("/api/squadre"); } catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); } }
+  if (seServono && stato.info && stato.info.rose_importate === false) { stato.squadre = []; stato.squadreLette = true; }
+  else {
+    try { stato.squadre = await api("/api/squadre"); stato.squadreLette = true; }
+    catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); }
+  }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 // Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
@@ -791,7 +802,7 @@ async function caricaInfo() {
     stato.rigaStato = {
       giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
       squadra: i.mia_squadra || null,
-      dati: (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, ""),
+      dati: (quandoAgg ? elidiGiorno(t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) })) : t("testata.mai")).replace(/^\s*·\s*/, ""),
     };
     segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
@@ -2467,8 +2478,19 @@ function vaiGiornate(giornata) {
   giornate.chiesta = giornata == null || !Number(giornata) ? null : Number(giornata);
   vai("giornate", undefined, { focoTitolo: true });
 }
-function vistaGiornate() {
+async function vistaGiornate() {
   if (giornate.chiesta == null) giornate.aperte.clear();              // si riparte con le righe chiuse (da 768 px: la più recente)
+  // Account senza rose: il diario risponderebbe 409 e il browser lo scriverebbe fra gli errori (#873). Lo stato letto all'avvio può
+  // essere vecchio (le rose importate dall'iPhone o da un'altra scheda): si rilegge /api/stato. Se dice ancora che le rose non ci sono,
+  // la carta che porta a «Importa le rose», senza chiedere il diario; se la lettura non riesce, si chiede il diario come sempre.
+  if (stato.info && stato.info.rose_importate === false) {
+    const mia = nuovaRichiesta();
+    caricamento(t("giornate.carico"));
+    await caricaInfo();
+    if (!ancoraValida(mia)) return;
+    const letto = !(stato.rigaStato && stato.rigaStato.offline);
+    if (letto && stato.info && stato.info.rose_importate === false) { pagina(cartaSenzaRose()); return; }
+  }
   caricaConCache("giornate", "/api/diario", mostraGiornate, t("giornate.carico"));
 }
 
@@ -2726,7 +2748,7 @@ async function notificheWeb(dispositivi) {
   const accendi = async () => {
     if (await Notification.requestPermission() !== "granted") throw new Error(t("avv.permesso_negato_abilita"));
     const { chiave } = await api("/api/push/chiave");
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
+    sub = await iscrizioneMia(reg, chiave);              // mai quella di un altro account (#874)
     dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
     segnaAvvisiDi();                                       // l'iscrizione è di chi l'ha accesa (#804)
   };
@@ -2769,16 +2791,22 @@ async function avvisiTelefono() {
     const a = await api("/api/avvisi");
     if (!document.body.contains(dove)) return;
     const o = a.impostazioni;
+    // la riga sotto «Ore tranquille» segue l'interruttore: spento dice che sono spente e la fascia che varrebbe, acceso la fascia (#873:
+    // con l'interruttore spento «Niente avvisi dalle 23 alle 7» le faceva sembrare accese)
+    const fascia = { da: Number(o.silenzio_da), a: Number(o.silenzio_a) };
+    const aiutoOre = acceso => t(acceso ? "imp.ore_tranquille_aiuto" : "imp.ore_tranquille_spente", fascia);
     dove.innerHTML = `${a.ore_tranquille_spente ? `<div class="piccolo" role="status" style="margin:8px 0;font-weight:600">${t("avv.avevi_scelto_ore")}</div>` : ""}
       <div id="notifiche-web" class="avvisi-attesa" aria-busy="true"><p class="debole piccolo riserva" aria-hidden="true">${t("avv.notifiche_dell_app")}</p>
         <p class="debole piccolo">${t("imp.avvisi_controllo")}</p></div>
-      ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, t("imp.ore_tranquille_aiuto", { da: Number(o.silenzio_da), a: Number(o.silenzio_a) }))}`;
+      ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, aiutoOre(o.silenzio))}`;
     notificheWeb(a.dispositivi);
     const ore = $("#av_silenzio");
+    const scriviAiuto = () => { const riga = ore.closest("label").querySelector("small"); if (riga) riga.textContent = aiutoOre(ore.checked); };
     ore.addEventListener("change", async () => {
       const acceso = ore.checked;
+      scriviAiuto();
       try { await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ silenzio: acceso }) }); }
-      catch (e) { ore.checked = !acceso; avviso(e.message, 6000); }
+      catch (e) { ore.checked = !acceso; scriviAiuto(); avviso(e.message, 6000); }
     });
   } catch (e) { if (document.body.contains(dove)) dove.innerHTML = errore(e); }
   finally { dove.removeAttribute("aria-busy"); }                           // ha finito di caricare, bene o male
@@ -2959,7 +2987,7 @@ async function vistaAltreSquadre() {
   try { squadre = await api("/api/squadre"); }
   catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
   if (!ancoraValida(mia)) return;
-  stato.squadre = squadre;
+  stato.squadre = squadre; stato.squadreLette = true;
   const altre = squadre.filter(x => !x.mia);
   pagina(altre.length ? `<div class="carta imp-colonna"><ul class="elenco">${altre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
       ${x.immagini && x.immagini.stemma ? `<img class="stemma-lista" src="${urlImg(x.nome, "stemma")}" alt="" loading="lazy">` : `<span class="iniziale-squadra" aria-hidden="true">${esc(x.nome.trim().slice(0, 1).toUpperCase())}</span>`}
@@ -3087,7 +3115,7 @@ async function vistaRegole() {
       <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
         <select class="campo-testo" id="tempi-scadenza">${opzioniScadenza(Number(r.scadenza_minuti ?? 0))}</select></label>
       <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
-        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(g === 1 ? t("pav.prima_uno") : t("pav.prima_n", { n: g }))}</option>`).join("")}</select></label>
+        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select></label>
       <div class="debole piccolo">${t("regole.prima_giornata_conta")}</div>
     </div>
 
@@ -3407,6 +3435,21 @@ function testoInvio(scheda, sub) {
   return t("accesso.invio_" + scheda);
 }
 
+// Dopo un accesso l'app si apre come all'avvio senza indirizzo: sull'ultima schermata fra Formazione e Giornate (#873). La pagina
+// d'accesso resta sull'indirizzo di dove si era (per esempio «Il tuo account», dopo «Esci»): una pagina di Impostazioni nell'indirizzo
+// si toglie, Formazione e Giornate restano (il link di un avviso); gli altri campi dell'indirizzo (invito, condivisa) restano.
+function entraNellApp() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (dove({ vista: q.get("vista"), gruppo: q.get("gruppo"), voce: q.get("voce"), rosa: q.get("rosa") }).vista === "impostazioni") {
+      ["vista", "gruppo", "voce", "rosa"].forEach(k => q.delete(k));
+      const resto = q.toString();
+      history.replaceState(null, "", location.pathname + (resto ? `?${resto}` : ""));
+    }
+  } catch { /* niente cronologia: si ricarica com'è */ }
+  location.reload();
+}
+
 // Dopo un errore la password si svuota solo se è stata rifiutata (accesso o codice sbagliato: 401/403). In «Registrati» mai: la
 // password è nuova e il rifiuto riguarda altro (invito non valido o già usato, registrazioni chiuse, #580). Un errore di compilazione
 // (400, 422), una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto.
@@ -3479,13 +3522,13 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     try {
       if (scheda === "accedi") {
         await manda("/api/account/accedi", { nome_utente: v("#ac-nome"), password: v("#ac-pw") });
-        location.reload();
+        entraNellApp();
         return;
       } else if (scheda === "registra" && extra.sub === "verifica") {
         const r = await manda("/api/account/registra/conferma", { email: extra.email, codice: v("#ac-codice-email").trim(), iscrizione: extra.iscrizione || "" });
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
         dimenticaInvito();
-        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
+        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), entraNellApp);
       } else if (scheda === "registra") {
         if (!$("#ac-letto").checked) { const e = new Error(t("accesso.spunta_letto", { eta: ETA_MINIMA })); e.status = 400; throw e; }       // controllo locale: la password resta
         const corpo = { nome_utente: v("#ac-nome"), password: v("#ac-pw"), invito: v("#ac-invito"), accetto_termini: true };      // la casella è spuntata (controllo qui sopra)
@@ -3495,7 +3538,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         if (r && r.verifica_email) { mostraAccesso("", "registra", { sub: "verifica", email, iscrizione: r.iscrizione || "" }); return; }   // l'account nasce col codice (legato a questa richiesta)
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
         dimenticaInvito();
-        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
+        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), entraNellApp);
       } else if (extra.sub === "email") {
         const email = v("#ac-email").trim();
         await manda("/api/account/recupero-email", { email });
@@ -3602,7 +3645,7 @@ async function gestisciRitornoGoogle(rit, dentro) {
   if (!rit.verificatore || !rit.codice) { fallito(t("social.altro_browser")); return; }
   try {
     const r = await api("/api/account/social/scambio", { method: "POST", body: JSON.stringify({ codice: rit.codice, verificatore: rit.verificatore }), timeout: 30000 });
-    if (r && r.stato === "ok") { location.reload(); return; }
+    if (r && r.stato === "ok") { entraNellApp(); return; }
     if (r && r.stato === "nuovo") { mostraAccesso(); mostraNuovoGoogle(r); return; }
     if (r && (r.stato === "collegato" || r.stato === "riconfermato")) {
       if (r.accessi) stato.accessi = r.accessi;
@@ -3642,7 +3685,7 @@ function mostraNuovoGoogle(r, messaggio = "") {
       await api("/api/account/social/completa", { method: "POST", timeout: 30000,
         body: JSON.stringify({ iscrizione: r.iscrizione, nome_utente: $("#ac-nome").value, invito: $("#ac-invito") ? $("#ac-invito").value : "", accetto_termini: true }) });
       dimenticaInvito();
-      location.reload();
+      entraNellApp();
     } catch (e) {
       mostra(erroreGoogle(e));
       invia.disabled = false; invia.removeAttribute("aria-busy");
@@ -3725,8 +3768,9 @@ function segnaAvvisiDaRimandare() {
   try { localStorage.setItem(AVVISI_DA_RIMANDARE, "1"); } catch { /* niente memoria */ }
 }
 // Di chi è l'iscrizione (#804): il numero dell'account che l'ha fatta, accanto a lei. Si rimanda solo se rientra lo stesso account;
-// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui. Il segno resta anche dopo un'uscita (non è
-// fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza account sul server l'iscrizione è sempre «mia».
+// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui, e il browser la toglie (lasciaAvvisiDiAltri,
+// #874). Il segno resta anche dopo un'uscita (non è fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza
+// account sul server l'iscrizione è sempre «mia».
 const AVVISI_DI = "avvisi-di";
 const numeroAccount = () => (stato.account && stato.account.id != null ? String(stato.account.id) : "");
 function segnaAvvisiDi() {
@@ -3745,6 +3789,27 @@ async function rimandaAvvisi() {
   if (!sub || !avvisiDiQuestoAccount()) { fatto(); return; }            // fatta da un altro account: non si rimanda (#804)
   try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
   catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
+}
+// Un'iscrizione fatta da un altro account non resta in questo browser (#874). Finché c'è, il server manda qui gli avvisi di
+// quell'account: la sua sessione può essere scaduta senza «Esci», e lì l'iscrizione resta. All'avvio, con dentro un account diverso
+// da quello che l'ha fatta (anche «-», un'iscrizione di prima che non è di nessuno), il browser la toglie: da lì il servizio delle
+// notifiche non la consegna più, e il server la cancella da sé al primo avviso che non arriva. Chi è dentro la riaccende con
+// un'iscrizione nuova, solo sua. Se non si sa di chi è (segno mancante, memoria che non risponde) resta com'è.
+async function lasciaAvvisiDiAltri() {
+  const n = numeroAccount();
+  let di = null;
+  try { di = localStorage.getItem(AVVISI_DI); } catch { /* niente memoria */ }
+  if (!n || di === null || di === n) return;
+  const sub = await iscrizionePushQui();
+  if (sub) try { await sub.unsubscribe(); } catch { /* resta: si riprova alla prossima apertura */ }
+}
+// L'iscrizione di chi accende gli avvisi (interruttore, primo avvio). Se il browser ne ha ancora una che non è di questo account
+// (non si è tolta all'avvio, o non si sa di chi è) prima la toglie e ne chiede una nuova, solo sua (#874). Se non si toglie, va al
+// server quella che c'è: il server la toglie agli altri account (la tiene l'ultimo che la manda), così arrivano solo i suoi avvisi.
+async function iscrizioneMia(reg, chiave) {
+  const vecchia = await reg.pushManager.getSubscription();
+  if (vecchia && !avvisiDiQuestoAccount() && !(await vecchia.unsubscribe().catch(() => false))) return vecchia;
+  return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
 }
 
 // Impostazioni > Il tuo account > «Esci». Il cookie della sessione lo toglie solo il server: se la richiesta non riesce (rete giù,
@@ -4151,7 +4216,9 @@ try {                                                                           
 } catch { /* indirizzo strano */ }
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
-  rimandaAvvisi();                                       // dopo un nuovo accesso, o se l'ultima volta non era arrivata (#800)
+  // via l'iscrizione di un altro account (#874); poi quella di chi è dentro torna al server dopo un nuovo accesso, o se l'ultima
+  // volta non era arrivata (#800)
+  lasciaAvvisiDiAltri().then(rimandaAvvisi);
   Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
     let condivisa = null;
     try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }

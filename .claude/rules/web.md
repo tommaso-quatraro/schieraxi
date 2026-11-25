@@ -8,7 +8,7 @@ paths:
 # Web app e sito (`fanta/web/`, `sito/`)
 
 - **Niente librerie né compilazione**: HTML, CSS e JavaScript così come sono. Il job `rilascia` alza `VERSIONE` in
-  `fanta/web/sw.js`; in `sito/sw.js` la alzi tu a ogni modifica del sito.
+  `fanta/web/sw.js`.
 - **Testi.** Ogni testo dell'interfaccia sta nel catalogo `fanta/testi/<prefisso>.json` (italiano e inglese); dopo una
   modifica `python script/testi.py --scrivi`, che rigenera il blocco dei dati di `fanta/web/testi.js` e i file Swift del
   catalogo. Nel codice solo `t("chiave")`. Le frasi che cambiano con i dati arrivano dal server già scritte.

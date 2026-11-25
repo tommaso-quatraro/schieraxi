@@ -34,13 +34,15 @@ struct SenzaFormazioneWidget: View {
     }
 
     /// La giornata già iniziata, «Questa giornata è già iniziata» e «Prepara la prossima» (`conConto`: sotto, «Prossima: 4 giorni
-    /// 2 h»). Dove con il testo grande non entra tutto va via la riga «Questa giornata è già iniziata» (VoiceOver la legge
-    /// comunque): mai una riga tagliata.
+    /// 2 h»). La prima prova che entra in altezza (`DisposizioneWidget.proveColonnaSenzaFormazione`): con il testo grande prima
+    /// va via la parola «Prossima:» (resta il conto su una riga), per ultima la riga «Questa giornata è già iniziata», che dice
+    /// perché non c'è una formazione (VoiceOver la legge comunque): mai una riga tagliata.
     private func colonna(corta: Bool, invito: Font, conConto: Bool) -> some View {
-        PrimaCheEntra(2, in: .vertical) { i in
+        let prove = DisposizioneWidget.proveColonnaSenzaFormazione(conConto: conConto && riassunto.scadenzaDelConto != nil)
+        return PrimaCheEntra(prove.count, in: .vertical) { i in
             VStack(alignment: .leading, spacing: 2) {
                 titolo(corta: corta)
-                if i == 0 {
+                if prove[i].giaIniziata {
                     Text(ParoleWidget.giaIniziata).font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -48,10 +50,16 @@ struct SenzaFormazioneWidget: View {
                 Text(ParoleWidget.preparaProssima).font(invito)
                     .fixedSize(horizontal: false, vertical: true)
                     .widgetAccentable()
-                if conConto, riassunto.scadenzaDelConto != nil {
+                switch prove[i].conto {
+                case .conProssima:
                     // con il testo grande il conto va a capo intero sotto «Prossima:», della stessa grandezza (#871)
                     prossimaBreve.font(.caption2).foregroundStyle(.white.opacity(0.8))
                         .fixedSize(horizontal: false, vertical: true)
+                case .solo:
+                    // senza «Prossima:» il conto sta su una riga, sotto «Prepara la prossima»
+                    conto.font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.8)
+                case nil:
+                    EmptyView()
                 }
                 statoDati
             }

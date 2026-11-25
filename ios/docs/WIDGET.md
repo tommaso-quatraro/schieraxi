@@ -46,7 +46,10 @@ giorno, numero e ora restano uniti con lo spazio che non va a capo (`ParoleWidge
 («alla scadenza,» e sotto «lun 23 20:35», `ParoleWidget.allaScadenza`, l'unica che i widget usano: lo prova un test sui sorgenti).
 «Prossima: 4 giorni 1 h» è un testo solo (`ParoleWidget.prossima`, vista `ProssimaConto`): prima erano due testi che si
 rimpicciolivano ciascuno per conto suo e con il testo molto grande il conto usciva più piccolo di «Prossima:». Nei piccoli va a capo
-con il conto intero sulla riga sotto; nei rettangoli resta su una riga e, se serve, si rimpicciolisce tutto insieme.
+con il conto intero sulla riga sotto; nei rettangoli resta su una riga e, se serve, si rimpicciolisce tutto insieme. Nel piccolo di
+chi è entrato a giornata iniziata, dove con il testo grande non entra tutto, prima cede la parola «Prossima:» (resta il conto su una
+riga, sotto «Prepara la prossima») e per ultima la riga «Questa giornata è già iniziata», che dice perché non c'è una formazione
+(`DisposizioneWidget.proveColonnaSenzaFormazione`).
 Lo stesso vale per i blocchi interi (#249). Il Cruscotto grande è alto da circa 270 punti (iPad mini, iPhone SE) a 350 (iPhone
 grandi) e tiene la prima prova che entra (`DisposizioneWidget.proveCruscotto`, provate in `DisposizioneWidgetTests`): prima della
 scadenza va via la prossima partita, poi la forma compatta (senza fascia e senza la squadra dello scambio, «Scambio +2,4»), poi il
