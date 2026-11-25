@@ -56,11 +56,13 @@ Se ti fermi prima di caricare le rose (per esempio per mettere l'app sulla scher
      se accanto al nome ci sono anche il ruolo e la squadra di Serie A giusti, un nome scritto in breve viene riconosciuto da solo. Se ruolo o squadra non tornano, resta da controllare.
      Nella ricerca dei giocatori puoi scrivere anche il nome proprio («Lautaro»).
    - **riconosciuti**: raccolti in una riga che puoi aprire.
-   Il conto in alto («N da controllare») scende man mano che scegli o togli i giocatori in dubbio. Su un computer le squadre stanno affiancate.
+   Il conto in alto («N da controllare») scende man mano che scegli o togli i giocatori in dubbio. Una squadra senza dubbi sta in due righe: il nome e quanti giocatori ha («25 giocatori · Rosa completa»), che apri per vedere i nomi; «Nuova» compare solo se aggiungi squadre a rose già salvate. Nel primo avvio il passo acceso in alto è **La tua squadra** (la domanda in cima) e **Conferma e salva** resta in fondo mentre scorri le squadre, con sopra l'eventuale messaggio (per esempio se il salvataggio non riesce). In **Impostazioni › Aggiorna le rose**, su un computer, le squadre stanno affiancate.
    In alto scegli **Qual è la tua squadra?** (se aggiungi solo le rose degli altri, c'è anche la tua, già scelta). Sotto, **Cosa cambia rispetto a ora** elenca squadre aggiunte o tolte, scambi, svincolati presi, tagli e crediti.
    Un giocatore scritto due volte nella stessa rosa resta una volta sola, e te lo dice. Poi **Conferma e salva** (oppure **Annulla**: non si salva niente).
 3. **I tempi della lega.** Due domande: quando si chiude la formazione (all'inizio della prima partita o qualche minuto prima) e da quale giornata di Serie A è partita la lega. Servono perché promemoria e numeri delle giornate siano giusti; le trovi nelle impostazioni della tua lega su Leghe e le cambi quando vuoi in **Impostazioni › Regole e scadenza**, in cima.
-4. **Tutto pronto.** Puoi attivare gli avvisi e andare alla Formazione.
+4. **Tutto pronto.** Puoi attivare gli avvisi e andare alla Formazione. Il primo avvio non chiede il regolamento: una frase dice che i fantavoti attesi usano i punteggi più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5) finché non metti quelli della tua lega in **Regole e scadenza**; il collegamento apre quella pagina.
+
+Su un computer la guida sta in un pannello a destra, largo uguale in ogni passo.
 
 Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le rilegge e ti chiede di ricontrollare; le scelte già fatte restano.
 
@@ -89,7 +91,7 @@ Su uno schermo largo (computer, iPad in orizzontale) le schede stanno in alto, a
 
 Su uno schermo molto largo (computer con la finestra ampia) la scheda di un giocatore si apre in un pannello a destra, accanto alla pagina, senza coprirla: la pagina si stringe e si usa come sempre. Un clic su un altro giocatore cambia il pannello, così scorri i titolari uno dopo l'altro; **✕** o **Esc** lo chiudono. Nello stesso pannello si apre la scelta di chi mettere al posto di un titolare. La ricerca in alto mostra i risultati nel pannello mentre scrivi; **Invio** apre il primo, la freccia **↓** porta ai risultati (**↑** sul primo torna al campo). Con la finestra più stretta la scheda resta il pannello di sempre, sopra la pagina.
 
-Da tastiera: **1**-**3** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima. Un indirizzo salvato della vecchia schermata Oggi apre la Formazione. L'app si riapre sull'ultima schermata fra Formazione e Giornate.
+Da tastiera: **1**-**3** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima. Un indirizzo salvato della vecchia schermata Oggi apre la Formazione. L'app si riapre sull'ultima schermata fra Formazione e Giornate, anche dopo un nuovo accesso (per esempio dopo **Esci** da **Il tuo account**).
 
 Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate si dispongono in una colonna: la testata scorre via con la pagina, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due giocatori per fila.
 
@@ -192,7 +194,7 @@ Una formazione salvata non più valida (per esempio con un giocatore ceduto) per
 
 Gli avvisi dicono le cose a parole e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
 
-Attivazione: nella web app, **Impostazioni › Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo.
+Attivazione: nella web app, **Impostazioni › Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo. Con l'interruttore spento la riga dice «Spente. Se le accendi: niente avvisi dalle 23 alle 7».
 
 Nell'app per iPhone e iPad (Impostazioni › Avvisi) l'interruttore **Avvisi su questo dispositivo** accende insieme i promemoria di **un'ora e un quarto d'ora prima** della scadenza e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
