@@ -29,11 +29,13 @@ enum DatiVecchi {
     }
 
     /// «il 8 nov» → «l'8 nov», «del 11 nov» → «dell'11 nov»: davanti a 8 e 11 (otto, undici) l'articolo perde la vocale, come
-    /// `elidiGiorno` della web (`testi.js`). Le altre date restano («il 18 nov», «il 1 nov»); gli ordinali («l'8ª») li fa
-    /// `TempiLega.elidiOrdinali`.
-    private static func elidiGiorno(_ testo: String) -> String {
-        testo.replacingOccurrences(of: #"\bil (8|11)(?= )"#, with: "l'$1", options: .regularExpression)
-            .replacingOccurrences(of: #"\b(del|al|dal|nel|sul) (8|11)(?= )"#, with: "$1l'$2", options: .regularExpression)
+    /// `elidiGiorno` della web (`testi.js`). Anche le date con la barra: «dal 8/1» → «dall'8/1» (#859). Le altre date restano
+    /// («il 18 nov», «il 1 nov»); gli ordinali («l'8ª») li fa `TempiLega.elidiOrdinali`. La usano anche le altre frasi con una
+    /// data dopo l'articolo: «Utente · dall'8 ottobre 2026» (`TestiAccount`), «Rose aggiornate l'8 novembre 2026»
+    /// (`ParoleSquadre`), «attiva dall'8/1» (`ParoleRegistro.taratura`).
+    static func elidiGiorno(_ testo: String) -> String {
+        testo.replacingOccurrences(of: #"\bil (0?8|11)(?=[ /])"#, with: "l'$1", options: .regularExpression)
+            .replacingOccurrences(of: #"\b(del|al|dal|nel|sul) (0?8|11)(?=[ /])"#, with: "$1l'$2", options: .regularExpression)
     }
 
     /// «17 nov», ora italiana: come `fData` della web.
