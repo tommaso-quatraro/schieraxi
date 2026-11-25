@@ -256,8 +256,9 @@ def test_sesta_prova_avvisi_in_un_ora_429(ambiente, monkeypatch):  # noqa: F811 
     (a, _), (b, _) = nuovo_utente("utentea"), nuovo_utente("utenteb")
     for _ in range(6):                                                     # senza dispositivi non parte niente: non conta
         assert a.post("/api/avvisi/prova").status_code == 409
-    for c in (a, b):
-        assert c.post("/api/push/iscrivi", json=iscrizione("push")).status_code == 200
+    for c, dispositivo in ((a, "abc"), (b, "def")):                       # due dispositivi: la stessa iscrizione resta solo
+        iscritto = {**iscrizione("push"), "endpoint": f"https://push.example.org/push/{dispositivo}"}     # all'ultimo (#874)
+        assert c.post("/api/push/iscrivi", json=iscritto).status_code == 200
     for _ in range(PROVE_ORA):
         assert a.post("/api/avvisi/prova").status_code == 200
     r = a.post("/api/avvisi/prova")

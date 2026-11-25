@@ -34,9 +34,13 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         osserva(caricatore)
     }
 
-    /// La riga sotto «Ore tranquille»: la fascia scelta, con le ore del server (`imp.ore_tranquille_aiuto`).
+    /// La riga sotto «Ore tranquille», con le ore del server, come `avvisiTelefono` della web: accese la fascia
+    /// (`imp.ore_tranquille_aiuto`); spente lo dice, con la fascia che varrebbe accendendole (`imp.ore_tranquille_spente`, #873:
+    /// «Niente avvisi dalle 23 alle 7» sotto l'interruttore spento le faceva sembrare accese). Segue l'interruttore: cambia al tocco
+    /// e torna com'era se il salvataggio non riesce (`salva`).
     nonisolated static func aiutoOreTranquille(_ ore: OreTranquille) -> String {
-        Catalogo.Imp.oreTranquilleAiuto(a: String(ore.a), da: String(ore.da))
+        let a = String(ore.a), da = String(ore.da)
+        return ore.attive ? Catalogo.Imp.oreTranquilleAiuto(a: a, da: da) : Catalogo.Imp.oreTranquilleSpente(a: a, da: da)
     }
 
     func carica() async {

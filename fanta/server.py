@@ -196,7 +196,7 @@ def _annota(request: Request, stato: int, ms: float) -> None:
     """Contatori (richieste, errori, tempi) e, per ogni risposta 5xx, una riga nel registro degli errori. Mai un problema per la richiesta."""
     try:
         rotta = registro.rotta_di_modello(request)
-        registro.contatori.conta(rotta, stato, ms)
+        registro.contatori.conta(rotta, stato, ms, senza_accesso=stato == 401 and getattr(request.state, "senza_accesso", False))
         uso.conta(request.method, rotta, stato)          # conteggio anonimo per rotta e per funzione (fanta/uso.py)
         if stato >= 500:
             registro.errore(request.method, rotta, stato, getattr(request.state, "tipo_errore", None))
@@ -1464,8 +1464,9 @@ def tratti_avatar():
 
 @app.get("/api/oggi")
 def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650, le=3650), ctx: Contesto = Depends(lega_corrente)):
-    """La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), e `serve_promemoria`: se
-    il promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi).
+    """La schermata Oggi. In più `da_fare`: le cose da sbrigare, in ordine (vedi da_fare.py e docs/API.md), `serve_promemoria`: se
+    il promemoria della scadenza serve per la giornata, con la regola dei promemoria del server (l'iPhone programma così i suoi), e
+    `testi_promemoria`: titolo e testo dei due promemoria come li scrive il server, che l'iPhone mostra così come sono.
     `certificato_giorni` (facoltativo) lo manda l'app iPhone: giorni che restano al certificato dell'app (il server non può saperlo)."""
     db = _db()
     try:
@@ -1487,6 +1488,11 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
                                    live_partite=_stati_live(), dal=dal))
         if isinstance(corpo.get("giornata"), int):        # la regola dei promemoria del server, per quelli locali dell'iPhone (#710)
             corpo["serve_promemoria"] = notifiche.serve_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], ctx.scelte)
+            # e i loro testi già scritti, con l'ora della scadenza che Oggi mostra e nella lingua degli avvisi: l'iPhone non compone
+            # frasi sue (#906)
+            scadenza = datetime.fromisoformat(corpo["scadenza"]) if isinstance(corpo.get("scadenza"), str) else None
+            corpo["testi_promemoria"] = notifiche.testi_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], scadenza,
+                                                                   ctx.scelte, lingua=notifiche.impostazioni(ctx.impostazioni_avvisi)["lingua"])
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
                                               dal=dal,
@@ -1668,7 +1674,10 @@ def giocatore(calciatore_id: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Conte
                                                                       _stati_live())[calciatore_id]
         except ValueError:
             pass
-        s["rendimento"] = scheda.rendimento(s["avanzate"], s["calciatore"]["ruolo"], s["stagione"]["con_voto"], r)
+        # le partite con voto della stessa finestra della fonte (#862): a fonte ferma il numero resta quello di quel giorno
+        con_voto = scheda.con_voto_fino_al(db, calciatore_id, consigli.stagione_corrente(), (s["avanzate"] or {}).get("dati_fino_al"),
+                                           r.fonte_voto)
+        s["rendimento"] = scheda.rendimento(s["avanzate"], s["calciatore"]["ruolo"], con_voto, r)
         # di chi è nella lega
         rs = lega.carica(ctx.rose)
         s["proprietario"] = next((sq.nome for sq in (rs.squadre if rs else []) for g in sq.giocatori
@@ -2519,14 +2528,24 @@ def chiave_push():
 def iscrivi_push(dati: IscrizionePush, request: Request, ctx: Contesto = Depends(lega_corrente)):
     """Questo dispositivo vuole le notifiche web (le avvisi arriveranno qui e non più su ntfy). Con gli account la sessione si
     ricontrolla subito prima di scrivere: se nel frattempo si è chiusa (cambio password, «Esci da tutti») non resta niente."""
+    # Con gli account, dopo la scrittura, la stessa iscrizione si toglie agli altri account (#874): lo stesso browser era di un altro
+    # account (sessione scaduta senza «Esci»), e i suoi avvisi non devono arrivare a chi è entrato dopo. (Qui e non nella descrizione
+    # della rotta: quella entra in docs/openapi.json.)
     ancora_valida = (lambda: rotte_account.identifica(request) is not None) if ctx.utente_id is not None else None
     with limiti.iscrizione_push(ctx):                # una alla volta per utente, poche in tutto, tetto all'ora (429)
         try:
-            return {"dispositivi": len(notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push, ancora_valida=ancora_valida))}
+            lista = notifiche_web.iscrivi(dati.model_dump(), ctx.iscrizioni_push, ancora_valida=ancora_valida)
         except notifiche_web.NonPiuValida:
             raise HTTPException(401, "Accesso richiesto") from None
         except notifiche_web.Occupato as e:          # file tenuto da un altro processo: 503 «riprova», niente scritto
             raise HTTPException(503, str(e)) from None
+        if ctx.utente_id is not None:
+            for file, errore in notifiche_web.togli_dagli_altri(dati.endpoint, percorsi.cartella_utenti(), ctx.iscrizioni_push):
+                logging.getLogger("uvicorn.error").error(
+                    "Notifiche web: iscrizione %s passata a un altro account ma non tolta dalla cartella %s (%s: file occupato, "
+                    "errore del disco o database degli account che non risponde); si toglie alla prossima iscrizione o al primo "
+                    "avviso che non arriva", notifiche_web.maschera(dati.endpoint), file.parent.name, errore)
+        return {"dispositivi": len(lista)}
 
 
 class DisiscrizionePush(BaseModel):

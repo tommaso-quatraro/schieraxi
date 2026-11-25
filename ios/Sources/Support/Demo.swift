@@ -9,6 +9,7 @@ import SwiftUI
 /// - `-DEMO_FONDO 1`: le schermate lunghe partono scorse in fondo (iOS 17 o più).
 /// - `-DEMO_ORIENTAMENTO orizzontale`: chiede l'orientamento orizzontale (a tutte le schermate, anche l'accesso: `chiediOrientamento`).
 /// - `-DEMO_SCENARIO <nome>`: le «fotografie dal vero» (`ScenarioVero`): risposte vere con nomi inventati in un momento preciso.
+/// - `-DEMO_ASPETTO scuro|chiaro`: l'aspetto del giro di foto, anche dove il tema resta «Automatico» (`TemaScelto.foto`, #845).
 enum Demo {
     static let daLancio: Bool = ProcessInfo.processInfo.arguments.contains("-DEMO")
 
@@ -194,8 +195,9 @@ extension Demo {
             apriLega(nav, modello, [.regole])
         case "lega-stato":
             apriLega(nav, modello, [.gestione, .stato])
-        // la pagina Giornate (#673 passo 2): le righe chiuse (sull'iPad la più recente a destra), la più recente aperta, «Dettagli»
-        case "giornate", "giornate-aperta", "giornate-dettagli":
+        // la pagina Giornate (#673 passo 2): le righe chiuse (sull'iPad la più recente a destra), la più recente aperta, «Dettagli»,
+        // «Dettagli» scorsi alla voce del confronto con 1,0 punti (#842, il diario di `FinteServer.demoFase`)
+        case "giornate", "giornate-aperta", "giornate-dettagli", "giornate-confronto":
             nav.sezione = .giornate
             modello.giornate.preparaFoto(nome)
         case "lega-importa", "lega-importa-salvate", "lega-importa-salvate-ok":

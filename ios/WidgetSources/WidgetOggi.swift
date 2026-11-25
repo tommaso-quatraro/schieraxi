@@ -129,13 +129,9 @@ struct VistaWidget: View {
         }
     }
 
-    /// «Prossima: 3 giorni 3 h» (conto alla rovescia alla scadenza della prossima giornata).
-    private func prossimaBreve(_ r: RiassuntoOggi) -> some View {
-        HStack(spacing: 3) {
-            Text("Prossima:")
-            conto(r).monospacedDigit()
-        }
-        .lineLimit(1).minimumScaleFactor(0.6)
+    /// «Prossima: 3 giorni 3 h» (conto alla rovescia alla scadenza della prossima giornata), in un testo solo (#871).
+    private func prossimaBreve(_ r: RiassuntoOggi) -> ProssimaConto {
+        ProssimaConto(scadenza: r.scadenzaDelConto, adesso: voce.date)
     }
 
     private func fasePiccolo(_ r: RiassuntoOggi) -> some View {
@@ -149,7 +145,8 @@ struct VistaWidget: View {
                 Text(fine).font(.caption2.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
             }
             if r.finita, r.inizio != nil {
-                prossimaBreve(r).font(.caption2).foregroundStyle(.white.opacity(0.8))
+                // con il testo grande il conto va a capo intero sotto «Prossima:»; se nemmeno così c'è posto, tutto più piccolo
+                prossimaBreve(r).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2).minimumScaleFactor(0.8)
             }
             statoDati(r)
         }
@@ -219,7 +216,8 @@ struct VistaWidget: View {
             Text(r.testaRettangoloFase).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
             Text("\(r.puntiFattiTesto) \(paroleSottoPunti(r))").font(.headline).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
             if r.finita, r.inizio != nil {
-                prossimaBreve(r).font(.caption2)
+                // una riga sola nel rettangolo: un testo solo, che si rimpicciolisce tutto insieme
+                prossimaBreve(r).font(.caption2).lineLimit(1).minimumScaleFactor(0.6)
             } else if let fine = r.puntiFineTesto {
                 Text(fine).font(.caption2).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -255,9 +253,10 @@ struct VistaWidget: View {
         ContoWidget(inizio: r.scadenzaDelConto, adesso: voce.date)
     }
 
-    /// «alla scadenza, oggi 05:30» / «… ven 6 03:32»: la data come `quando` della web, contata dall'istante della voce.
+    /// «alla scadenza, oggi 05:30» / «… ven 6 03:32»: la data come `quando` della web, contata dall'istante della voce, con
+    /// giorno e ora uniti (si va a capo dopo la virgola, #871).
     private func allaScadenza(_ inizio: Date) -> String {
-        "alla scadenza, \(Quando.relativa(inizio, adesso: voce.date))"
+        ParoleWidget.allaScadenza(inizio, adesso: voce.date)
     }
 
     /// Non collegato: «Tocca per collegare»; collegato ma senza dati: «Nessun dato».
@@ -360,12 +359,14 @@ struct VistaWidget: View {
 
     // MARK: Schermata di blocco
 
+    /// La giornata e il conto alla rovescia, il motivo del widget (#871: c'erano modulo e punti, come nella Formazione). Lo
+    /// stesso cerchio di chi è entrato a giornata iniziata (`SenzaFormazioneWidget`).
     private func circolare(_ r: RiassuntoOggi) -> some View {
         CerchioWidget {
+            Image(systemName: "calendar").font(.caption2).accessibilityHidden(true)
             Text(ParoleWidget.giornataNelCerchio(r.nomeGiornata)).font(.caption2).lineLimit(1).minimumScaleFactor(0.5)
                 .accessibilityLabel(r.voceGiornata)
-            Text(r.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
-            Text(puntiTesto(r)).font(.caption2).monospacedDigit()
+            conto(r).font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.5).widgetAccentable()
         }
     }
 
@@ -378,10 +379,10 @@ struct VistaWidget: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// «3-4-3 · 72,7 punti», e dove non entra «3-4-3 · 72,7»: si perdono parole intere, mai il modulo. Prima con il testo grande
-    /// diventava «SchieraXI 3-4-3, 72,7…» (#787).
+    /// «Giornata 8: 17 h 50 min», e dove non entra il solo conto alla rovescia (`RiassuntoOggi.formeRigaInLineaConto`): prima
+    /// era «3-4-3 · 72,7 punti», la stessa riga della Formazione consigliata (#871). VoiceOver legge il conto a parole intere.
     private func riga(_ r: RiassuntoOggi) -> some View {
-        RigaInLinea(ParoleWidget.moduloEPunti(r.modulo, punti: r.punti, fascia: nil), icona: "sportscourt")
+        RigaInLinea(r.formeRigaInLineaConto(adesso: voce.date), icona: "calendar", voce: r.voceRigaInLineaConto(adesso: voce.date))
     }
 }
 

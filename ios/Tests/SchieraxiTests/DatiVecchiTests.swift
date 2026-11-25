@@ -15,26 +15,63 @@ final class DatiVecchiTests: XCTestCase {
         XCTAssertFalse(DatiVecchi.eDiRete(ErroreApi.dati("illeggibile")))
     }
 
-    func testFraseConESenzaMotivo() {
-        let rete = DatiVecchi.frase(salvatiIl: "2 nov 2026, 10:00", motivo: nil)
-        XCTAssertTrue(rete.hasPrefix("Non riesco a raggiungere SchieraXI."))
-        XCTAssertTrue(rete.contains("2 nov 2026, 10:00"))
-        let limite = DatiVecchi.frase(salvatiIl: "2 nov 2026, 10:00", motivo: "Hai finito le ricerche di oggi")
+    /// Un istante preciso dell'ora italiana: i simulatori di GitHub non sono sul fuso italiano.
+    private func oraItaliana(giorno: Int, ora: Int, minuto: Int) throws -> Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Rome"))
+        return try XCTUnwrap(cal.date(from: DateComponents(year: 2026, month: 11, day: giorno, hour: ora, minute: minuto)))
+    }
+
+    func testFraseConESenzaMotivo() throws {
+        let salvata = try oraItaliana(giorno: 2, ora: 10, minuto: 0)
+        let rete = DatiVecchi.frase(salvatiIl: salvata, motivo: nil)
+        XCTAssertEqual(rete, "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il 2 nov alle 10:00 e può essere vecchio.",
+                       "senza motivo la frase di sempre, con giorno e ora scritti come nella nota con il motivo")
+        let limite = DatiVecchi.frase(salvatiIl: salvata, motivo: "Hai finito le ricerche di oggi")
         XCTAssertFalse(limite.contains("raggiungere"), "il server ha risposto: non si dice che non è raggiungibile")
-        let conPunto = DatiVecchi.frase(salvatiIl: "x", motivo: "Errore del server.")
+        let conPunto = DatiVecchi.frase(salvatiIl: salvata, motivo: "Errore del server.")
         XCTAssertFalse(conPunto.contains(".."))
-        XCTAssertEqual(DatiVecchi.frase(salvatiIl: "x", motivo: "  "), DatiVecchi.frase(salvatiIl: "x", motivo: nil))
+        XCTAssertEqual(DatiVecchi.frase(salvatiIl: salvata, motivo: "  "), DatiVecchi.frase(salvatiIl: salvata, motivo: nil))
     }
 
     /// Con il motivo (il server ha risposto con un errore, per esempio la pagina 502 del proxy) la frase della web nello stesso caso
-    /// (`comune.cache_errore` in `app.js`): il motivo in testa e la nota fra parentesi. Prima «Non ho potuto aggiornare: Il server
-    /// non risponde: riprova fra poco. …», con due «:» di fila e una maiuscola a metà frase (#830).
-    func testIlMotivoVaInTestaComeSullaWeb() {
-        let proxy = DatiVecchi.frase(salvatiIl: "2 nov 2026, 10:00", motivo: Catalogo.Comune.serverNonRisponde)
-        XCTAssertEqual(proxy, "Il server non risponde: riprova fra poco (dati salvati, potrebbero non essere aggiornati)")
-        XCTAssertEqual(proxy.filter { $0 == ":" }.count, 1, "un solo «:», quello del motivo")
-        XCTAssertEqual(DatiVecchi.frase(salvatiIl: "x", motivo: "  Hai finito le ricerche di oggi "),
-                       Catalogo.Comune.cacheErrore(errore: "Hai finito le ricerche di oggi"))
+    /// (`comune.cache_errore` in `app.js`): il motivo in testa e la nota fra parentesi, con il giorno e l'ora della copia. Lo stesso
+    /// istante e la stessa frase del test della web (`tests/browser/test_copia_salvata.py`). Prima «Non ho potuto aggiornare: Il
+    /// server non risponde: riprova fra poco. …», con due «:» di fila (#830); poi la nota senza la data della copia (#845).
+    func testIlMotivoVaInTestaComeSullaWeb() throws {
+        let salvata = try oraItaliana(giorno: 17, ora: 10, minuto: 5)
+        let proxy = DatiVecchi.frase(salvatiIl: salvata, motivo: Catalogo.Comune.serverNonRisponde)
+        XCTAssertEqual(proxy, "Il server non risponde: riprova fra poco (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati).")
+        let primaDellaNota = proxy.components(separatedBy: " (").first ?? proxy
+        XCTAssertEqual(primaDellaNota.filter { $0 == ":" }.count, 1, "prima della nota un solo «:», quello del motivo")
+        XCTAssertEqual(DatiVecchi.frase(salvatiIl: salvata, motivo: "  Hai finito le ricerche di oggi "),
+                       "Hai finito le ricerche di oggi (dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati).")
+    }
+
+    /// Giorno e ora della copia sono quelli italiani, come sulla web: le 00:30 del 17 sono ancora il 16 per un telefono in UTC.
+    /// Lo stesso orologio con e senza motivo: prima, con il telefono a Londra, la stessa copia era «alle 10:05» con il 502 e
+    /// «09:05» senza rete (revisione della #852).
+    func testGiornoEOraDellaCopiaSonoQuelliItaliani() throws {
+        let notte = try oraItaliana(giorno: 17, ora: 0, minuto: 30)
+        XCTAssertEqual(DatiVecchi.frase(salvatiIl: notte, motivo: "Guasto"),
+                       "Guasto (dati salvati il 17 nov alle 00:30, potrebbero non essere aggiornati).")
+        XCTAssertEqual(DatiVecchi.frase(salvatiIl: notte, motivo: nil),
+                       "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il 17 nov alle 00:30 e può essere vecchio.")
+    }
+
+    /// «l'8 nov», «l'11 nov», mai «il 8» o «il 11» (si legge «l'otto», «l'undici»), come la web (`elidiGiorno` in `testi.js`).
+    /// Le altre date restano: «il 18 nov», «il 1 nov».
+    func testApostrofoDavantiAll8EAll11() throws {
+        let otto = try oraItaliana(giorno: 8, ora: 10, minuto: 5)
+        XCTAssertEqual(DatiVecchi.frase(salvatiIl: otto, motivo: Catalogo.Comune.serverNonRisponde),
+                       "Il server non risponde: riprova fra poco (dati salvati l'8 nov alle 10:05, potrebbero non essere aggiornati).")
+        let undici = try oraItaliana(giorno: 11, ora: 10, minuto: 5)
+        XCTAssertEqual(DatiVecchi.frase(salvatiIl: undici, motivo: nil),
+                       "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato l'11 nov alle 10:05 e può essere vecchio.")
+        let diciotto = try oraItaliana(giorno: 18, ora: 10, minuto: 5)
+        XCTAssertTrue(DatiVecchi.frase(salvatiIl: diciotto, motivo: "Guasto").contains("(dati salvati il 18 nov alle 10:05,"))
+        let primo = try oraItaliana(giorno: 1, ora: 10, minuto: 5)
+        XCTAssertTrue(DatiVecchi.frase(salvatiIl: primo, motivo: "Guasto").contains("(dati salvati il 1 nov alle 10:05,"))
     }
 
     func testIlCaricatoreRicordaIlMotivoSoloSeIlServerHaRisposto() async throws {

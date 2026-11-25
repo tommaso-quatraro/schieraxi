@@ -42,7 +42,8 @@ struct GestionePagina: View {
                 ProgressView()
             } else if let s = vm.info.dato {
                 if let salvati = vm.info.datiSalvati {
-                    Label("Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(salvati.formatted(date: .abbreviated, time: .shortened)) e può essere vecchio.", systemImage: "icloud.slash")
+                    // la frase della striscia dei dati salvati, con giorno e ora italiani come lei (revisione della #852)
+                    Label(DatiVecchi.frase(salvatiIl: salvati, motivo: nil), systemImage: "icloud.slash")
                         .font(.footnote).foregroundStyle(Color.attenzione)
                 }
                 RigaValore(titolo: "Squadra", valore: s.miaSquadra ?? "—")
