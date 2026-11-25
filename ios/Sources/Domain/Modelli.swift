@@ -369,6 +369,10 @@ struct Oggi: Decodable {
     /// «L'ho messa» e nessun titolare diventato indisponibile; la usa `Aggiornamento.promemoriaTace`). Facoltativo e tollerante: senza
     /// (server di prima) o con un valore strano i promemoria partono.
     let servePromemoria: Tollerante<Bool>?
+    /// I due promemoria della scadenza già scritti dal server (`testi_promemoria`, #906): l'iPhone li mostra così come sono nei suoi
+    /// promemoria locali. Lista vuota: il promemoria non serve. Facoltativo e tollerante: un server di prima non lo manda, una forma
+    /// strana vale «non mandato».
+    let testiPromemoria: Tollerante<TestiPromemoria>?
     /// Il campionato è finito (#656): `{testo, frase}`, solo in quel caso (fase `finita` senza `prossima`; nelle 48 ore dopo
     /// l'ultima giornata c'è anche il suo `riepilogo`). Facoltativo e tollerante: un server di prima non lo manda, una forma strana
     /// vale «no».
@@ -1229,6 +1233,29 @@ struct FraseServer: Decodable, Equatable {
     var testoPronto: String? {
         let t = testo?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return t.isEmpty ? nil : t
+    }
+}
+
+/// Un promemoria della scadenza già scritto dal server (una voce di `testi_promemoria` di Oggi, #906): quanti minuti prima della
+/// scadenza suona (60 o 15), titolo e testo da mostrare così come sono.
+struct TestoPromemoria: Decodable, Equatable, Sendable {
+    let minuti: Int
+    let titolo: String
+    let testo: String
+}
+
+/// Il campo `testi_promemoria` di Oggi. Una voce con una forma strana o con il testo vuoto si salta; se le voci ci sono ma nessuna
+/// si legge, il campo vale «non mandato» (mai una lista vuota per errore: vorrebbe dire «il promemoria non serve»).
+struct TestiPromemoria: Decodable, Equatable, Sendable {
+    let voci: [TestoPromemoria]
+
+    init(from decoder: Decoder) throws {
+        let contenitore = try decoder.singleValueContainer()
+        let lette = try contenitore.decode([Tollerante<TestoPromemoria>].self)
+        voci = lette.compactMap(\.valore).filter { !$0.testo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if voci.isEmpty, !lette.isEmpty {
+            throw DecodingError.dataCorruptedError(in: contenitore, debugDescription: "nessuna voce di testi_promemoria si legge")
+        }
     }
 }
 

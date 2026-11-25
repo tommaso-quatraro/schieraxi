@@ -111,6 +111,9 @@ struct StatoAvvisi: Decodable {
         dispositivi = try? c.decodeIfPresent(Int.self, forKey: .dispositivi)
         oreTranquilleSpente = (try? c.decodeIfPresent(Bool.self, forKey: .oreTranquilleSpente)) ?? false
     }
+
+    // SCHELETRO PER I TEST (da sostituire).
+    var mandaGiaIlServer: Bool { false }
 }
 
 struct SceltaSalvata: Decodable, Equatable {

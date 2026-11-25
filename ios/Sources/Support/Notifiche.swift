@@ -6,6 +6,14 @@ import UserNotifications
 /// più). Si programmano quando l'app legge la giornata, quando l'interruttore si riaccende e quando cambiano le ore tranquille;
 /// spegnendolo si tolgono subito (vedi `TelefonoAvvisi`).
 enum Notifiche {
+    /// Un promemoria locale pronto da programmare: identificativo, quando suona, titolo e testo.
+    struct Promemoria: Equatable, Sendable {
+        let id: String
+        let quando: Date
+        let titolo: String
+        let testo: String
+    }
+
     static func stato() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
@@ -52,6 +60,27 @@ enum Notifiche {
             elenco.append((id: id, minuti: minuti, quando: quando))
         }
         return elenco
+    }
+
+    // SCHELETRO PER I TEST (da sostituire): il comportamento di prima.
+    static func promemoriaDaProgrammare(giornata: NomeGiornata, inizio: Date, testi: [TestoPromemoria]?, lettaIl: Date?,
+                                        ore: OreTranquille, attivi: Set<Int>, tace: Bool, dalServer: Bool,
+                                        adesso: Date = Date()) -> [Promemoria] {
+        promemoriaConsentiti(inizio: inizio, ore: ore, attivi: attivi, tace: tace, adesso: adesso).map { voce in
+            Promemoria(id: voce.id, quando: voce.quando,
+                       titolo: voce.minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti",
+                       testo: corpoPromemoria(giornata: giornata, modulo: nil))
+        }
+    }
+
+    // SCHELETRO PER I TEST (da sostituire): il comportamento di prima.
+    static func promemoriaCertificato(scadenza: Date, ore: OreTranquille, adesso: Date = Date()) -> [Promemoria] {
+        [("fanta-cert-24", 24), ("fanta-cert-6", 6)].compactMap { id, h in
+            let quando = scadenza.addingTimeInterval(-Double(h) * 3600)
+            guard quando > adesso else { return nil }
+            return Promemoria(id: id, quando: quando, titolo: "SchieraXI · Da rinnovare",
+                              testo: "Tra circa \(h) ore l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata.")
+        }
     }
 
     /// Due promemoria locali prima che scada il certificato: 24 ore e 6 ore prima. Si richiamano a ogni apertura e a ogni
@@ -121,8 +150,9 @@ struct TelefonoAvvisi: Sendable {
     var permesso: @MainActor @Sendable () async -> Bool
     /// Chiede il permesso a iOS (la prima volta compare la domanda di sistema); dice se c'è.
     var chiediPermesso: @MainActor @Sendable () async -> Bool
-    /// Ricorda sul telefono le ore tranquille lette dal server: le usa ogni programmazione successiva, anche in background.
-    var ricordaOre: @MainActor @Sendable (OreTranquille) -> Void
+    /// Ricorda sul telefono gli avvisi come li ha il server (`GET` o `PUT /api/avvisi`): le ore tranquille e se il server manda già
+    /// gli avvisi a questo telefono (`ArchivioAvvisiDalServer`). Li usa ogni programmazione successiva, anche in background.
+    var ricorda: @MainActor @Sendable (StatoAvvisi) -> Void
     /// Toglie subito i promemoria e gli avvisi già programmati.
     var togliTutti: @MainActor @Sendable () -> Void
     /// Rimette in programma i promemoria con l'ultima giornata salvata (e quelli del certificato).
@@ -135,7 +165,10 @@ struct TelefonoAvvisi: Sendable {
             return stato == .authorized || stato == .provisional || stato == .ephemeral
         },
         chiediPermesso: { await Notifiche.chiediPermesso() },
-        ricordaOre: { ore in ArchivioOreTranquille.salva(ore) },
+        ricorda: { stato in
+            ArchivioOreTranquille.salva(stato.impostazioni.oreTranquille)
+            ArchivioAvvisiDalServer.salva(stato.mandaGiaIlServer)
+        },
         togliTutti: {
             if !Ambiente.ospiteDeiTest { Notifiche.togliPromemoria() }
         },

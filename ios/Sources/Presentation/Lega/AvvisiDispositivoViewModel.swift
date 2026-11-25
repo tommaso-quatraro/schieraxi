@@ -42,7 +42,7 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     func carica() async {
         await caricatore.ricarica()
         if let stato = caricatore.dato {
-            applica(stato.impostazioni)
+            applica(stato)
             oreTranquilleSpente = stato.oreTranquilleSpente
         }
         qui = await statoQui()
@@ -96,7 +96,7 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         subito(self)
         do {
             let stato: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", corpo, snake: false)
-            applica(stato.impostazioni)
+            applica(stato)
             oreTranquilleSpente = false
             erroreSalvataggio = nil
             if riprogramma, !Demo.attivo { await telefono.riprogramma() }
@@ -111,14 +111,15 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     /// Rilegge dal server dopo un conflitto, lasciando l'errore in vista.
     private func rileggi() async {
         await caricatore.ricarica()
-        if let stato = caricatore.dato { applica(stato.impostazioni) }
+        if let stato = caricatore.dato { applica(stato) }
     }
 
-    /// Le impostazioni come le ha il server: ore tranquille (ricordate anche sul telefono, per i promemoria) e app nativa.
-    private func applica(_ impostazioni: ImpostazioniAvvisi) {
-        oreTranquille = impostazioni.oreTranquille
-        appNativa = impostazioni.app_nativa
-        if !Demo.attivo { telefono.ricordaOre(oreTranquille) }
+    /// Gli avvisi come li ha il server: ore tranquille e app nativa, ricordate anche sul telefono con il fatto che il server manda già
+    /// i suoi avvisi a questo telefono (per i promemoria locali, `TelefonoAvvisi.ricorda`).
+    private func applica(_ stato: StatoAvvisi) {
+        oreTranquille = stato.impostazioni.oreTranquille
+        appNativa = stato.impostazioni.app_nativa
+        if !Demo.attivo { telefono.ricorda(stato) }
     }
 }
 

@@ -87,6 +87,21 @@ enum ArchivioMessa {
     }
 }
 
+/// Il server manda già i suoi avvisi a questo telefono? (#906: un solo avviso per telefono.) Si ricorda a ogni lettura di
+/// `GET /api/avvisi` (`StatoAvvisi.mandaGiaIlServer`): se sì, l'app non programma i suoi promemoria della scadenza, perché arriva
+/// già quello del server, con lo stesso testo. Senza una lettura (mai riuscita) vale «no»: i promemoria del telefono partono.
+enum ArchivioAvvisiDalServer {
+    static let chiave = "avvisi.dalServer"
+
+    static func mandaGia(_ memoria: UserDefaults = .standard) -> Bool {
+        memoria.bool(forKey: chiave)
+    }
+
+    static func salva(_ manda: Bool, _ memoria: UserDefaults = .standard) {
+        memoria.set(manda, forKey: chiave)
+    }
+}
+
 /// «Avvisi su questo dispositivo» (Impostazioni > Avvisi, come la web): un interruttore solo per i promemoria locali (un'ora e 15
 /// minuti prima) e l'avviso quando cambia la consigliata. Senza una scelta salvata è acceso, come prima: chi aveva il permesso
 /// continua a ricevere i promemoria. Le scelte per singolo avviso del server (`promemoria_60`, `promemoria_15`) non si usano più (#693).

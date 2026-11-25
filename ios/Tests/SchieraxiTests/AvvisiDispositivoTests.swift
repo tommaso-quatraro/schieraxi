@@ -17,6 +17,8 @@ struct AvvisiDispositivoTests {
         var tolti = 0
         var riprogrammati = 0
         var oreRicordate: [OreTranquille] = []
+        /// Per ogni stato degli avvisi ricordato: il server manda già i suoi avvisi a questo telefono?
+        var serverManda: [Bool] = []
 
         var avvisi: TelefonoAvvisi {
             TelefonoAvvisi(
@@ -26,7 +28,10 @@ struct AvvisiDispositivoTests {
                     self.permesso = self.concede
                     return self.concede
                 },
-                ricordaOre: { self.oreRicordate.append($0) },
+                ricorda: { stato in
+                    self.oreRicordate.append(stato.impostazioni.oreTranquille)
+                    self.serverManda.append(stato.mandaGiaIlServer)
+                },
                 togliTutti: { self.tolti += 1 },
                 riprogramma: { self.riprogrammati += 1 })
         }
@@ -36,11 +41,12 @@ struct AvvisiDispositivoTests {
         try #require(UserDefaults(suiteName: "prova-avvisi-qui-\(UUID().uuidString)"))
     }
 
-    private func server(rotto: Bool = false) -> ServerDiProva {
+    /// `dispositivi`: quanti dispositivi hanno le notifiche della web accese (con almeno uno il server manda già gli avvisi).
+    private func server(rotto: Bool = false, dispositivi: Int = 0) -> ServerDiProva {
         ServerDiProva { metodo, percorso, _ in
             if metodo == "PUT", rotto { throw ErroreApi.rete("spento") }
             if percorso.hasPrefix("/api/avvisi") {
-                return Data(#"{"impostazioni":{"cambi":true,"promemoria_60":false,"promemoria_15":false,"riepilogo":true,"silenzio":true,"silenzio_da":22,"silenzio_a":8},"canale":false,"dispositivi":0}"#.utf8)
+                return Data(#"{"impostazioni":{"cambi":true,"promemoria_60":false,"promemoria_15":false,"riepilogo":true,"silenzio":true,"silenzio_da":22,"silenzio_a":8},"canale":\#(dispositivi > 0),"dispositivi":\#(dispositivi)}"#.utf8)
             }
             return Data("{}".utf8)
         }
@@ -164,13 +170,27 @@ struct AvvisiDispositivoTests {
         #expect(telefono.riprogrammati == 0)
     }
 
-    @Test("Avvisi anche per l'app nativa (Gestione): si manda solo `app_nativa`")
+    @Test("Avvisi anche per l'app nativa (Gestione): si manda solo `app_nativa`, poi i promemoria del telefono tornano in programma")
     func appNativa() async throws {
         let s = server()
-        let vm = AvvisiDispositivoViewModel(server: s, telefono: Telefono().avvisi, memoria: try memoria())
+        let telefono = Telefono()
+        let vm = AvvisiDispositivoViewModel(server: s, telefono: telefono.avvisi, memoria: try memoria())
         await vm.carica()
         await vm.cambiaAppNativa(true)
         let corpo = String(decoding: try #require(s.corpiInviati(a: "PUT /api/avvisi").last), as: UTF8.self)
         #expect(corpo == #"{"app_nativa":true}"#)
+        #expect(telefono.riprogrammati == 1, "con ntfy per l'app nativa i promemoria del telefono si tolgono (#906)")
+    }
+
+    @Test("Notifiche della web accese: il telefono ricorda che il server manda già gli avvisi, e non programma i suoi (#906)")
+    func serverMandaGia() async throws {
+        let conWeb = Telefono()
+        let vm = AvvisiDispositivoViewModel(server: server(dispositivi: 1), telefono: conWeb.avvisi, memoria: try memoria())
+        await vm.carica()
+        #expect(conWeb.serverManda.last == true)
+        let senzaWeb = Telefono()
+        let altro = AvvisiDispositivoViewModel(server: server(), telefono: senzaWeb.avvisi, memoria: try memoria())
+        await altro.carica()
+        #expect(senzaWeb.serverManda.last == false)
     }
 }

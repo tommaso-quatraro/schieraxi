@@ -152,3 +152,9 @@ enum Aggiornamento {
         await OggiRepository(server: ServerCorrente.condiviso).ultimo()
     }
 }
+
+extension Oggi {
+    /// I due promemoria della scadenza già scritti dal server (`testi_promemoria`, #906); nil con un server di prima o con un
+    /// campo strano.
+    var promemoriaDelServer: [TestoPromemoria]? { testiPromemoria?.valore?.voci }
+}
