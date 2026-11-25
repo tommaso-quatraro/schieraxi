@@ -152,7 +152,8 @@ struct ImpostazioniView: View {
         switch pagina {
         case .importa: ImportaExcelView(server: vm.server)
         case .squadre: SquadreView(server: vm.server)
-        case .rosa(let nome): RosaView(nome: nome, server: vm.server)
+        case .sceltaSquadra: SceltaSquadraView(squadre: vm.squadre, scegli: vm.scegliMiaSquadra)
+        case .rosa(let nome): RosaView(nome: nome, server: vm.server, squadre: vm.squadre, scegliMia: vm.scegliMiaSquadra)
         case .regole: RegoleEditorView(server: vm.server, lega: vm)
         case .stagione: StagioneView(server: vm.server)
         case .account: AccountPagina()

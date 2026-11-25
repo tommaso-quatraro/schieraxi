@@ -212,6 +212,9 @@ extension Demo {
         case "ricerca":
             // la voce Cerca della barra, con un testo già scritto (-DEMO_CERCA)
             nav.sezione = .cerca
+        // «La mia squadra» da scegliere (#863): la pagina della scelta; nella demo la squadra è già scelta e il selettore la mostra
+        case "lega-scelta-squadra":
+            apriLega(nav, modello, [.sceltaSquadra])
         default:
             break
         }
