@@ -462,6 +462,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
 # ---------------------------------------------------------------- promemoria prima della scadenza
 NON_VALIDA = "non_valida"          # `_gia_schierato`: c'è una scelta salvata, ma non si può più schierare
 NON_MESSA = "non_messa"            # `_gia_schierato`: scelta salvata (web o app) e a posto, ma non segnata come messa nell'app della lega
+SOLO_SCADENZA = "solo_scadenza"    # promemoria: i titolari a rischio li ha appena detti il «cambio pronto», resta solo l'ora (#906)
 
 
 def _giornata(giornata: int, regole: Regole) -> frasi.Frase:
@@ -529,6 +530,9 @@ def _testo_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, giorna
         motivi = [F("n.m_" + stato, nome=chi) for _, chi, stato in esito]
         return (F("n.t_titolare_rischio" if len(esito) == 1 else "n.t_titolari_rischio"),
                 F("n.rischio_schierata" if schierata else "n.rischio_salvata", motivi=_elenco(motivi, 2), giornata=g, ora=ora))
+    if esito == SOLO_SCADENZA:                     # formazione schierata, titolari già detti dal «cambio pronto»: solo l'ora
+        return (F("n.t_un_ora" if un_ora else "n.t_ultimi_minuti"),
+                F("n.tra_un_ora" if un_ora else "n.solo_scadenza", giornata=g, ora=ora))
     non_valida = esito == NON_VALIDA
     titolo = F("n.t_non_valida") if non_valida else F("n.t_un_ora" if un_ora else "n.t_ultimi_minuti")
     if not un_ora:
@@ -593,8 +597,9 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
     diventato indisponibile, non ti disturba; se qualcuno lo è diventato, l'avviso parte e lo dice. Quando tace non segna niente
     come mandato: se più tardi cambia qualcosa, parte ancora.
     Un solo avviso per lo stesso fatto (#906): un titolare che il «cambio pronto» ha detto negli ultimi DOPPIONE_PROMEMORIA minuti
-    con lo stesso stato non si ripete; se non resta nessuno da dire, la finestra conta come detta. `file_cambi`: lo stato del giro
-    dei cambi (di base `notifiche.json` accanto a `file_stato`).
+    con lo stesso stato non si ripete. Il richiamo della scadenza parte sempre: se non resta nessun titolare da dire, il promemoria
+    dice solo l'ora (e chiede della spunta «L'ho messa» se manca). `file_cambi`: lo stato del giro dei cambi (di base
+    `notifiche.json` accanto a `file_stato`).
     Se i dettagli della formazione non si calcolano il promemoria parte senza, e il guasto va in `guasti` o nel registro."""
     from . import consigli
     adesso = adesso or datetime.now()
@@ -622,13 +627,9 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
         esito, schierata = _situazione(db, regole, rose, stagione, giornata, file_scelte)
         if esito == []:
             continue                               # hai già schierato (e messo) e va ancora bene: niente disturbo
-        if isinstance(esito, list):                # chi il «cambio pronto» ha appena detto non si ripete
+        if isinstance(esito, list):                # chi il «cambio pronto» ha appena detto non si ripete; la scadenza sì
             detti = _fatti_da_poco(file_cambi, f"{stagione}/{giornata}", adesso)
-            esito = [p for p in esito if f"{p[0]}/{p[2]}" not in detti]
-            if not esito:
-                mandati.append(chiave)
-                saltati = True
-                continue
+            esito = [p for p in esito if f"{p[0]}/{p[2]}" not in detti] or (SOLO_SCADENZA if schierata else NON_MESSA)
         titolo, testo = _testo_promemoria(db, regole, rose, giornata, nome, inizio, adesso, esito, schierata, guasti)
         # se l'invio fallisce si riprova al giro dopo, finché dura la finestra; la notifica web non arriva dopo la scadenza
         if manda(titolo, testo, priorita, "alarm_clock", vale_per=inizio - adesso):

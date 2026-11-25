@@ -48,6 +48,8 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.t_ultimi_minuti": ("SchieraXI · ultimi minuti per la formazione", "SchieraXI · last minutes for the lineup"),
     "n.ultimi_minuti": ("{giornata}: la formazione si chiude alle {ora}. L'hai inserita su Leghe?",
                         "{giornata}: the lineup closes at {ora}. Have you entered it on Leghe?"),
+    # formazione schierata con titolari a rischio che il «cambio pronto» ha appena detto: resta solo l'ora (#906)
+    "n.solo_scadenza": ("{giornata}: la formazione si chiude alle {ora}.", "{giornata}: the lineup closes at {ora}."),
     # la scelta salvata non si può più schierare (#331) e quella senza la spunta «L'ho messa» (#639): il fatto in testa al testo e
     # nel titolo, perché con due o tre righe il resto si taglia (#906)
     "n.t_non_valida": ("SchieraXI · formazione non più valida", "SchieraXI · lineup no longer valid"),

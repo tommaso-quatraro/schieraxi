@@ -26,14 +26,18 @@ CHIUSURA = _alle("18:30")                          # la scadenza della formazion
 
 
 # ---------------------------------------------------------------- punto 4: un solo avviso per lo stesso fatto
-def _cambio_pronto_alle_17_27(tmp_path, monkeypatch):
-    """Formazione con Castro salvata dalla web (senza la spunta); Castro infortunato: alle 17:27 il giro dei cambi manda «cambio
-    pronto» (Castro infortunato, meglio Bonny). Restituisce le previsioni, gli avvisi mandati e il giro dei promemoria."""
+DOMANDA = "Hai messo la formazione nell'app della lega? Se sì, spunta «L'ho messa»."
+
+
+def _cambio_pronto(tmp_path, monkeypatch, ora="17:27", messa=False):
+    """Formazione con Castro salvata dalla web (di base senza la spunta); Castro infortunato: all'`ora` il giro dei cambi manda
+    «cambio pronto» (Castro infortunato, meglio Bonny). Restituisce le previsioni, gli avvisi mandati e il giro dei promemoria."""
     prev, mandati, manda = cp._scena(monkeypatch)
+    monkeypatch.setattr(consigli, "valuta", lambda *a, **k: {"modulo": "4-4-2", "punteggio_atteso": 70.0})     # «cambia la formazione» tace
     fs = tmp_path / "scelte.json"
-    scelte.salva(ST, 9, cp.CON_CASTRO, "4-4-2", fs, da="web")
+    scelte.salva(ST, 9, cp.CON_CASTRO, "4-4-2", fs, da="web", messa=messa)
     db = cp._db()
-    notifiche.cambi(db, Regole(), cp.ROSE, _alle("17:27"), tmp_path / "notifiche.json", manda, file_scelte=fs)
+    notifiche.cambi(db, Regole(), cp.ROSE, _alle(ora), tmp_path / "notifiche.json", manda, file_scelte=fs)
     assert [t for t, _, _ in mandati] == ["SchieraXI · cambio pronto"]
 
     def promemoria(ora):
@@ -42,23 +46,40 @@ def _cambio_pronto_alle_17_27(tmp_path, monkeypatch):
 
 
 def test_dopo_il_cambio_pronto_il_promemoria_non_ripete_lo_stesso_titolare(tmp_path, monkeypatch):
-    """Il doppione del collaudo: «cambio pronto» alle 17:27 e alle 17:31 «un tuo titolare è a rischio» per lo stesso Castro."""
-    _, mandati, promemoria = _cambio_pronto_alle_17_27(tmp_path, monkeypatch)
-    assert promemoria("17:31") == []
-    assert promemoria("17:41") == []                      # la finestra di un'ora prima conta come detta: non riparte
-    assert [t for t, _, _ in mandati] == ["SchieraXI · cambio pronto"]
+    """Il doppione del collaudo: «cambio pronto» alle 17:27 e alle 17:31 «un tuo titolare è a rischio» per lo stesso Castro. Ora
+    alle 17:31 parte il richiamo della scadenza senza Castro (con la domanda della spunta, che manca), una volta sola."""
+    _, mandati, promemoria = _cambio_pronto(tmp_path, monkeypatch)
+    assert len(promemoria("17:31")) == 1
+    assert promemoria("17:41") == []                      # un promemoria per finestra
+    assert mandati[1] == ("SchieraXI · hai messo la formazione?",
+                          f"{DOMANDA} {GIORNATA}: si chiude tra circa un'ora, alle 18:30.", "alarm_clock")
 
 
 def test_nella_finestra_dopo_il_titolare_ancora_fuori_si_ricorda(tmp_path, monkeypatch):
     """Un quarto d'ora prima della scadenza, quasi un'ora dopo il «cambio pronto», Castro è ancora nella formazione salvata."""
-    _, mandati, promemoria = _cambio_pronto_alle_17_27(tmp_path, monkeypatch)
-    assert promemoria("17:31") == []
+    _, mandati, promemoria = _cambio_pronto(tmp_path, monkeypatch)
+    promemoria("17:31")
     assert len(promemoria("18:20")) == 1
     assert mandati[-1][1].startswith("Castro è infortunato")
 
 
+@pytest.mark.parametrize("messa, atteso", [
+    (False, ("SchieraXI · hai messo la formazione?", f"{DOMANDA} {GIORNATA}: si chiude alle 18:30.")),
+    (True, ("SchieraXI · ultimi minuti per la formazione", f"{GIORNATA}: la formazione si chiude alle 18:30.")),
+])
+def test_dopo_il_cambio_pronto_vicino_alla_scadenza_l_ultimo_richiamo_arriva_lo_stesso(tmp_path, monkeypatch, messa, atteso):
+    """Revisione della #908: «cambio pronto» alle 17:55, scadenza alle 18:30. Alle 18:11 il filtro toglieva Castro e chiudeva la
+    finestra del quarto d'ora senza mandare niente: alle 18:21 non partiva più nulla. Il richiamo della scadenza arriva sempre,
+    senza la parte su Castro: con la domanda «L'ho messa?» se la spunta manca, solo la scadenza se c'è."""
+    _, mandati, promemoria = _cambio_pronto(tmp_path, monkeypatch, ora="17:55", messa=messa)
+    promemoria("18:11")
+    promemoria("18:21")
+    arrivati = [(t, testo) for t, testo, tag in mandati if tag == "alarm_clock"]
+    assert arrivati == [atteso]
+
+
 def test_il_promemoria_dice_solo_i_titolari_che_il_cambio_pronto_non_ha_detto(tmp_path, monkeypatch):
-    prev, mandati, promemoria = _cambio_pronto_alle_17_27(tmp_path, monkeypatch)
+    prev, mandati, promemoria = _cambio_pronto(tmp_path, monkeypatch)
     prev.loc[12, "stato"] = "non_citato"                   # Tosi esce dai convocati dopo il «cambio pronto»
     assert len(promemoria("17:31")) == 1
     testo = mandati[-1][1]
@@ -120,6 +141,7 @@ def test_i_testi_nuovi_hanno_l_inglese():
     motivi = frasi.F("n.m_infortunato", nome="Castro")
     assert (frasi.F("n.rischio_salvata", motivi=motivi, giornata="Matchday 9", ora="18:30").in_lingua("en")
             == "Castro is injured: check the lineup you saved. Matchday 9: it closes at 18:30.")
+    assert frasi.F("n.solo_scadenza", giornata="Matchday 9", ora="18:30").in_lingua("en") == "Matchday 9: the lineup closes at 18:30."
 
 
 # ---------------------------------------------------------------- punto 7: titolo che non sembra un ordine
