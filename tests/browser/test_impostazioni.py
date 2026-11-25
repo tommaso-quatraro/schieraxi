@@ -247,6 +247,7 @@ def test_chi_non_gestisce_il_server_non_apre_gestione_neanche_con_l_indirizzo(we
     assert titolo(web) == "Impostazioni"
     assert web.pagina.url.endswith("/?vista=impostazioni")
     assert "Nuovo invito" not in web.testo_principale() and voce(web, "Gestione").count() == 0
+    assert not [r for r in web.richieste if r.startswith("/api/admin/")], web.richieste     # né inviti né utenti (#894)
     assert not web.errori_mostrati()
 
 
@@ -1355,6 +1356,7 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     da_utente(web, AMMINISTRATORE)
     web.risposta("/api/admin/utenti", {"utenti": [{"nome_utente": "amico", "nome_visualizzato": "Amico di prova", "ruolo": "amministratore"}],
                                        "massimo": 10})
+    web.risposta("/api/admin/inviti", {"inviti": []})
     web.risposta("/api/admin/registro", REGISTRO)
     web.apri("/?vista=impostazioni&gruppo=gestione")
     carta = principale(web).locator(".carta", has=web.pagina.get_by_role("heading", name="Errori recenti"))
@@ -1389,25 +1391,68 @@ POSTI_PIENI = ("Posti pieni: 4 utenti su 4. Chi riceve un invito adesso trova le
 FRASE_POSTI_PIENI = {"chiave": "admin.posti_pieni", "param": {"n": 4, "massimo": 4}}
 
 
-def gestione_del_titolare(web, utenti: dict, larghezza: int = 390) -> None:
+def server_che_cambia(web, rotta: str, letture: list, altre: dict | None = None, arrivate: list | None = None) -> list[str]:
+    """Da qui `rotta` (e i percorsi sotto, «/api/admin/inviti/12») risponde come il server mentre cambia: ogni GET la prossima delle
+    `letture` (l'ultima resta), gli altri metodi `altre[metodo]`. Restituisce (o allunga) l'elenco delle richieste arrivate, in
+    ordine: «GET /api/admin/inviti», «DELETE /api/admin/inviti/12»."""
+    arrivate = [] if arrivate is None else arrivate
+    coda = list(letture)
+
+    def rispondi(route):
+        metodo, percorso = route.request.method, urlsplit(route.request.url).path
+        arrivate.append(f"{metodo} {percorso}")
+        corpo = (coda.pop(0) if len(coda) > 1 else coda[0]) if metodo == "GET" else (altre or {})[metodo]
+        route.fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps(corpo, ensure_ascii=False))
+
+    web.pagina.route(lambda u: urlsplit(u).path == rotta or urlsplit(u).path.startswith(rotta + "/"), rispondi)
+    return arrivate
+
+
+def gestione_del_titolare(web, utenti: dict | list, larghezza: int = 390, inviti: tuple = ([],), creato: dict | None = None,
+                          tema: str = "chiaro") -> list[str]:
+    """Gestione di chi gestisce il server. `utenti`: la risposta di /api/admin/utenti, o le risposte una dopo l'altra (un elenco);
+    `inviti`: gli elenchi di GET /api/admin/inviti, uno dopo l'altro; `creato`: la risposta di POST /api/admin/inviti. Restituisce
+    le richieste arrivate a queste due rotte."""
     da_utente(web, AMMINISTRATORE)
-    web.risposta("/api/admin/utenti", utenti)
+    arrivate = server_che_cambia(web, "/api/admin/utenti", utenti if isinstance(utenti, list) else [utenti])
+    server_che_cambia(web, "/api/admin/inviti", [{"inviti": elenco} for elenco in inviti],
+                      {"POST": creato, "DELETE": {"ok": True}}, arrivate)
     web.risposta("/api/admin/registro", REGISTRO)
-    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=larghezza)
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=larghezza, tema=tema)
+    return arrivate
 
 
 def carta_con(web, titolo: str):
     return principale(web).locator(".carta", has=web.pagina.get_by_role("heading", name=titolo, exact=True))
 
 
+def giorno(sigla: str, n: int, mese: str) -> dict:
+    return {"chiave": "data.giorno_mese", "param": {"giorno": {"chiave": f"giorno.{sigla}", "param": {}}, "n": n,
+                                                    "mese": {"chiave": f"mese.{mese}", "param": {}}}}
+
+
+# gli inviti come li dà GET /api/admin/inviti (#894): `dettaglio` solo per quelli aperti
+SARA = {"id": 12, "etichetta": "Sara", "ruolo": "utente", "creato": "2026-11-25T09:00:00+00:00", "scade": "2026-12-02T09:00:00+00:00",
+        "usi": 0, "usi_max": 1, "stato": "attivo", "dettaglio": "Creato mer 25 nov, scade mer 2 dic.",
+        "dettaglio_frase": {"chiave": "admin.invito_aperto", "param": {"creato": giorno("mer", 25, "nov"), "scade": giorno("mer", 2, "dic")}}}
+CALCETTO = {"id": 11, "etichetta": "Amici del calcetto", "ruolo": "utente", "creato": "2026-11-24T18:00:00+00:00",
+            "scade": "2026-12-01T18:00:00+00:00", "usi": 1, "usi_max": 3, "stato": "attivo",
+            "dettaglio": "Creato mar 24 nov, scade mar 1 dic. 2 posti liberi su 3.",
+            "dettaglio_frase": {"chiave": "admin.invito_aperto_posti", "param": {"creato": giorno("mar", 24, "nov"),
+                                                                                 "scade": giorno("mar", 1, "dic"), "n": 2, "posti": 3}}}
+CHIUSI = [{**SARA, "id": i, "etichetta": nome, "stato": stato, "dettaglio": None, "dettaglio_frase": None}
+          for i, nome, stato in ((10, "Piero", "revocato"), (9, "Anna", "scaduto"), (8, "Luca", "finito"))]
+ANNULLATO = {"stato": "revocato", "dettaglio": None, "dettaglio_frase": None}
+
+
 def test_con_i_posti_pieni_l_avviso_si_legge_prima_di_creare_l_invito(web):
     """Con «4 utenti su 4» chi gestisce lo legge sopra «Crea l'invito», prima di crearlo: la frase è del server. L'invito si crea
-    lo stesso (il tetto si può alzare dopo) e la frase resta una sola, anche dopo."""
+    lo stesso (il tetto si può alzare dopo) e la frase resta una sola, anche dopo. L'invito nuovo compare fra gli inviti aperti."""
     solo(web, "prima")
     amici = [{"nome_utente": f"amico{i}", "nome_visualizzato": f"Amico {i}", "ruolo": "utente"} for i in range(4)]
-    web.risposta("/api/admin/inviti", {"codice": "PROVA-PROVA-PROVA-PROVA", "etichetta": "Sara", "valido_giorni": 7, "usi_max": 1,
-                                       "avviso": POSTI_PIENI, "avviso_frase": FRASE_POSTI_PIENI})
-    gestione_del_titolare(web, {"utenti": amici, "massimo": 4, "avviso": POSTI_PIENI, "avviso_frase": FRASE_POSTI_PIENI})
+    gestione_del_titolare(web, {"utenti": amici, "massimo": 4, "avviso": POSTI_PIENI, "avviso_frase": FRASE_POSTI_PIENI},
+                          inviti=([], [SARA]), creato={"codice": "PROVA-PROVA-PROVA-PROVA", "etichetta": "Sara", "valido_giorni": 7,
+                                                       "usi_max": 1, "avviso": POSTI_PIENI, "avviso_frase": FRASE_POSTI_PIENI})
     carta = carta_con(web, "Amministrazione")
     avviso = carta.get_by_role("status").filter(has_text="Posti pieni: 4 utenti su 4.")
     avviso.wait_for(timeout=10000)
@@ -1418,6 +1463,80 @@ def test_con_i_posti_pieni_l_avviso_si_legge_prima_di_creare_l_invito(web):
     tocca(web, crea)
     carta.get_by_text("PROVA-PROVA-PROVA-PROVA", exact=False).first.wait_for(timeout=10000)
     assert " ".join(carta.inner_text().split()).count("Posti pieni") == 1, carta.inner_text()
+    aperti = carta.get_by_role("list", name="Inviti aperti")
+    aperti.get_by_text("Creato mer 25 nov, scade mer 2 dic.").wait_for(timeout=10000)
+    assert aperti.get_by_role("listitem").count() == 1
+    assert not web.errori_console and not web.richieste_fallite
+
+
+def righe_di(elenco) -> list[str]:
+    return [" ".join(r.split()) for r in elenco.get_by_role("listitem").all_inner_texts()]
+
+
+@pytest.mark.parametrize("larghezza, tema", [(390, "chiaro"), (PC, "scuro")])
+def test_gli_inviti_aperti_si_annullano_dopo_una_domanda(web, larghezza, tema):
+    """Gestione › Amministrazione, sotto «Crea l'invito» (#894): solo gli inviti aperti, ognuno con il suo nome, la frase del server
+    (creato, scade, posti liberi) e «Annulla». Prima di annullare una domanda in parole semplici: con «Annulla» della domanda non
+    parte niente. Annullato, l'elenco si rilegge, e con lui l'avviso dei posti; annullato l'ultimo, lo dice."""
+    solo(web, "prima")
+    promessi = {"utenti": [{"nome_utente": "capo", "ruolo": "amministratore"}], "massimo": 4,
+                "avviso": "Posti quasi pieni: 1 su 4 presi, e 3 posti sono già in inviti aperti. Chi riceve un invito in più può trovare "
+                          "le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+                "avviso_frase": {"chiave": "admin.posti_promessi", "param": {"n": 3, "utenti": 1, "massimo": 4}}}
+    liberi = {**promessi, "avviso": None, "avviso_frase": None}
+    richieste = gestione_del_titolare(web, [promessi, liberi], larghezza=larghezza, tema=tema, inviti=(
+        [SARA, CALCETTO, *CHIUSI], [{**SARA, **ANNULLATO}, CALCETTO, *CHIUSI], [{**SARA, **ANNULLATO}, {**CALCETTO, **ANNULLATO}, *CHIUSI]))
+    carta = carta_con(web, "Amministrazione")
+    aperti = carta.get_by_role("list", name="Inviti aperti")
+    aperti.get_by_text("Sara", exact=True).wait_for(timeout=10000)
+    assert righe_di(aperti) == ["Sara Creato mer 25 nov, scade mer 2 dic. Annulla",
+                                "Amici del calcetto Creato mar 24 nov, scade mar 1 dic. 2 posti liberi su 3. Annulla"], righe_di(aperti)
+    # sotto «Crea l'invito», prima di «Password dimenticata»
+    y = aperti.bounding_box()["y"]
+    assert carta.get_by_role("button", name="Crea l'invito").bounding_box()["y"] < y
+    assert y < carta.get_by_role("heading", name="Password dimenticata").bounding_box()["y"]
+    annulla_sara = aperti.get_by_role("button", name="Annulla l'invito per Sara")
+    assert annulla_sara.inner_text().strip() == "Annulla"
+    b = annulla_sara.bounding_box()
+    assert b["height"] >= 44 and b["width"] >= 44, b
+    assert not web.scorre_di_lato()
+    assert not web.violazioni_gravi()
+
+    domande = []
+    web.pagina.once("dialog", lambda d: (domande.append(d.message), d.dismiss()))
+    tocca(web, annulla_sara)
+    assert domande == ["L'invito per «Sara» non varrà più: chi ha il link non potrà registrarsi. Confermi?"], domande
+    assert not [r for r in richieste if r.startswith("DELETE")] and aperti.get_by_role("listitem").count() == 2, richieste
+
+    web.pagina.once("dialog", lambda d: (domande.append(d.message), d.accept()))
+    tocca(web, annulla_sara)
+    web.pagina.get_by_role("status").filter(has_text="Invito annullato").first.wait_for(timeout=5000)
+    assert "DELETE /api/admin/inviti/12" in richieste, richieste
+    assert righe_di(aperti) == ["Amici del calcetto Creato mar 24 nov, scade mar 1 dic. 2 posti liberi su 3. Annulla"], righe_di(aperti)
+    assert "Posti quasi pieni" not in carta.inner_text()                       # l'avviso dei posti si rilegge anche lui
+    assert richieste.count("GET /api/admin/utenti") >= 2, richieste
+
+    # un invito già usato da qualcuno: la domanda dice che chi è entrato resta
+    web.pagina.once("dialog", lambda d: (domande.append(d.message), d.accept()))
+    tocca(web, aperti.get_by_role("button", name="Annulla l'invito per Amici del calcetto"))
+    assert domande[-1] == ("L'invito per «Amici del calcetto» non varrà più: chi ha il link non potrà registrarsi. Chi è già entrato "
+                           "tiene il suo account. Confermi?"), domande
+    carta.get_by_text("Nessun invito aperto.").wait_for(timeout=5000)
+    assert "DELETE /api/admin/inviti/11" in richieste, richieste
+    assert not web.errori_console and not web.richieste_fallite and not web.errori_mostrati()
+
+
+def test_gli_inviti_aperti_in_inglese(web):
+    """In inglese la frase del server si traduce dalla sua chiave, con i giorni e i posti."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    gestione_del_titolare(web, {"utenti": [{"nome_utente": "capo", "ruolo": "amministratore"}], "massimo": 4, "avviso": None,
+                                "avviso_frase": None}, larghezza=PC, inviti=([SARA, CALCETTO, *CHIUSI],))
+    aperti = principale(web).get_by_role("list", name="Open invitations")
+    aperti.get_by_text("Sara", exact=True).wait_for(timeout=10000)
+    assert righe_di(aperti) == ["Sara Created Wed 25 Nov, expires Wed 2 Dec. Cancel",
+                                "Amici del calcetto Created Tue 24 Nov, expires Tue 1 Dec. 2 places left out of 3. Cancel"], righe_di(aperti)
+    assert aperti.get_by_role("button", name="Cancel the invitation for Sara").is_visible()
     assert not web.errori_console and not web.richieste_fallite
 
 

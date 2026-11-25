@@ -3892,8 +3892,8 @@ async function scaricaIMieiDati() {
   finally { if (b) b.disabled = false; }
 }
 
-// Impostazioni > Gestione (solo amministratore con gli account): inviti, codici per chi ha perso la password, utenti. Con i posti
-// pieni l'avviso del server sta sopra «Crea l'invito» (#894).
+// Impostazioni > Gestione (solo amministratore con gli account): inviti, inviti aperti con «Annulla», codici per chi ha perso la
+// password, utenti. Con i posti pieni l'avviso del server sta sopra «Crea l'invito» (#894).
 const gestisceAccount = () => !!(stato.account && stato.account.ruolo === "amministratore");
 function schedaAmministratore() {
   return gestisceAccount() ? `<div class="carta" id="scheda-admin"><h3>${t("admin.titolo")}</h3>
@@ -3903,6 +3903,7 @@ function schedaAmministratore() {
     <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
     <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
     <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
+    <h3 id="adm-inviti-titolo" tabindex="-1">${t("admin.inviti_aperti")}</h3><div id="adm-inviti"><p class="debole piccolo">${t("admin.carico")}</p></div>
     <h3>${t("admin.reset_titolo")}</h3>
     <div class="debole piccolo">${t("admin.reset_spiega")}</div>
     <label class="accesso-campo"><span class="debole piccolo">${t("accesso.nome_utente")}</span><input class="campo-testo" id="adm-nome" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></label>
@@ -4019,6 +4020,7 @@ function collegaAmministratore() {
     avvisoPosti(r);
     mostraInvito(r);
     caricaUtenti();
+    caricaInviti();
   }));
   const mostraInvito = r => {
     const dove = $("#adm-esito-invito");
@@ -4052,6 +4054,30 @@ function collegaAmministratore() {
     } catch (e) { if ($("#adm-utenti")) $("#adm-utenti").textContent = e.message; }
   };
   caricaUtenti();
+  // inviti aperti (#894): il nome, la frase del server (creato, scade, posti liberi) e «Annulla»; gli inviti chiusi (usati,
+  // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), poi rilegge l'elenco e
+  // l'avviso dei posti e porta il focus sul titolo dell'elenco (il pulsante premuto non c'è più)
+  const caricaInviti = async () => {
+    const dove = $("#adm-inviti");
+    if (!dove) return;
+    try {
+      const aperti = (await api("/api/admin/inviti")).inviti.filter(i => i.stato === "attivo");
+      dove.innerHTML = aperti.length ? `<ul class="elenco adm-inviti" aria-labelledby="adm-inviti-titolo">${aperti.map(i => `<li class="riga">
+          <div><div>${esc(i.etichetta)}</div><div class="debole piccolo">${esc(testoDi(i, "dettaglio"))}</div></div>
+          <button class="azione-testo" type="button" data-annulla-invito="${Number(i.id)}" aria-label="${esc(t("admin.annulla_invito_per", { etichetta: i.etichetta }))}">${t("admin.annulla_invito")}</button></li>`).join("")}</ul>`
+        : `<p class="debole piccolo">${t("admin.nessun_invito_aperto")}</p>`;
+      for (const b of dove.querySelectorAll("[data-annulla-invito]"))
+        b.addEventListener("click", () => annullaInvito(aperti.find(i => Number(i.id) === Number(b.dataset.annullaInvito))));
+    } catch (e) { dove.textContent = e.message; }
+  };
+  const annullaInvito = invito => provaCosi(t("admin.annulla_invito_no"), async () => {
+    if (!confirm(t(invito.usi > 0 ? "admin.annulla_conferma_usato" : "admin.annulla_conferma", { etichetta: invito.etichetta }))) return;
+    await api(`/api/admin/inviti/${Number(invito.id)}`, { method: "DELETE" });
+    avviso(t("admin.invito_annullato"), 4000);
+    await Promise.all([caricaInviti(), caricaUtenti()]);
+    if ($("#adm-inviti-titolo")) $("#adm-inviti-titolo").focus();
+  });
+  caricaInviti();
   const caricaRegistro = async () => {
     const dove = $("#adm-registro");
     if (!dove) return;
