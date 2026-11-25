@@ -2,7 +2,7 @@ import Foundation
 
 /// Impostazioni > Avvisi, come la web (#673 passo 3, #693): «Avvisi su questo dispositivo» e «Ore tranquille»; in Gestione, senza
 /// account, «Avvisi anche per l'app nativa». Quali avvisi arrivano lo decide il server; qui l'interruttore unico accende o spegne il
-/// permesso di iOS e i promemoria locali (un'ora e un quarto d'ora prima, l'avviso quando cambia la consigliata). Le scelte per
+/// permesso di iOS e i promemoria locali (un'ora e un quarto d'ora prima, con i testi del server, #906). Le scelte per
 /// singolo avviso restano sul server come sono e non si mostrano. Si salva solo ciò che si cambia (`PUT /api/avvisi` con un campo).
 @MainActor
 final class AvvisiDispositivoViewModel: ViewModelBase {
@@ -81,9 +81,10 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         await salva(SoloSilenzio(silenzio: acceso), riprogramma: true) { $0.oreTranquille.attive = acceso }
     }
 
-    /// «Avvisi anche per l'app nativa» (Gestione, senza account): si manda il solo `app_nativa`.
+    /// «Avvisi anche per l'app nativa» (Gestione, senza account): si manda il solo `app_nativa`; poi i promemoria del telefono
+    /// tornano in programma, perché con ntfy acceso arriva già quello del server (#906: un solo avviso per telefono).
     func cambiaAppNativa(_ acceso: Bool) async {
-        await salva(SoloAppNativa(app_nativa: acceso), riprogramma: false) { $0.appNativa = acceso }
+        await salva(SoloAppNativa(app_nativa: acceso), riprogramma: true) { $0.appNativa = acceso }
     }
 
     /// Salva un campo: l'interruttore si sposta subito e, se il server non risponde, torna come lo ha il server e lo si dice.

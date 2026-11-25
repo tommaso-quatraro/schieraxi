@@ -112,7 +112,7 @@ final class LegaViewModel: ViewModelBase {
     /// La propria squadra, se scelta.
     var miaSquadra: String? { squadre.dato?.first { $0.mia == true }?.nome }
 
-    /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (se cambia la consigliata), in italiano semplice.
+    /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (giornata, promemoria, widget), in italiano semplice.
     static let titoloControlli = "Controllo con l'app chiusa"
 
     /// Lo stato di quel controllo; se è spento, dove si riaccende (Impostazioni > Generali > Aggiornamento app in background).

@@ -30,6 +30,14 @@ struct OreTranquille: Equatable, Sendable {
         return da < a ? (h >= da && h < a) : (h >= da || h < a)
     }
 
+    /// Quando è cominciato il silenzio che comprende `data` (le `da` in punto, anche `data` stessa); `nil` se non si è in silenzio.
+    func inizio(di data: Date) -> Date? {
+        guard inSilenzio(data) else { return nil }
+        // all'indietro da un secondo dopo: se `data` è proprio l'inizio (le 23:00 in punto) vale lei
+        return Self.calendario.nextDate(after: data.addingTimeInterval(1), matching: DateComponents(hour: da, minute: 0, second: 0),
+                                        matchingPolicy: .nextTime, direction: .backward)
+    }
+
     /// Quando finisce il silenzio che comprende `data` (le `a` in punto); `nil` se non si è in silenzio.
     func fine(da data: Date) -> Date? {
         guard inSilenzio(data) else { return nil }
@@ -103,8 +111,9 @@ enum ArchivioAvvisiDalServer {
 }
 
 /// «Avvisi su questo dispositivo» (Impostazioni > Avvisi, come la web): un interruttore solo per i promemoria locali (un'ora e 15
-/// minuti prima) e l'avviso quando cambia la consigliata. Senza una scelta salvata è acceso, come prima: chi aveva il permesso
-/// continua a ricevere i promemoria. Le scelte per singolo avviso del server (`promemoria_60`, `promemoria_15`) non si usano più (#693).
+/// minuti prima; l'avviso quando cambia la consigliata non parte più dal telefono, #906). Senza una scelta salvata è acceso, come
+/// prima: chi aveva il permesso continua a ricevere i promemoria. Le scelte per singolo avviso del server (`promemoria_60`,
+/// `promemoria_15`) non si usano più (#693).
 enum ArchivioAvvisiQui {
     static let chiave = "avvisiQui"
 
