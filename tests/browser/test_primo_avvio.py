@@ -74,6 +74,15 @@ def prima_giornata(web):
     return guida(web).get_by_label(re.compile("^Da quale giornata di Serie A"))
 
 
+def test_le_giornate_della_prima_giornata_con_l_apostrofo(web):
+    """Come in Regole e scadenza: «Dall'8ª» e «Dall'11ª», non «Dalla 8ª» (#842)."""
+    solo_prima(web)
+    guida_sui_tempi(web, "subito")
+    voci = prima_giornata(web).locator("option").all_inner_texts()
+    assert len(voci) == 38
+    assert voci[7] == "Dall'8ª" and voci[10] == "Dall'11ª" and voci[1] == "Dalla 2ª", voci[:12]
+
+
 def test_i_tempi_non_si_salvano_se_le_regole_non_si_sono_lette(web):
     """La lettura delle regole non arriva: «Salva» non scrive i valori di partenza sopra quelli veri, lo dice e rilegge; i menu
     passano ai valori salvati e «Salva» li scrive al tocco dopo."""
@@ -122,3 +131,32 @@ def test_una_scelta_fatta_prima_della_lettura_resta(web):
         tenute[0].fulfill(status=200, content_type="application/json", body=json.dumps(registrate))
     web.aspetta()
     assert [(s["scadenza_minuti"], s["prima_giornata_lega"]) for s in salvate] == [(30, registrate["prima_giornata_lega"])]
+
+
+@pytest.mark.parametrize("squadre", ["non-lette", "lette-vuote"])
+def test_la_guida_si_apre_da_sola_solo_con_le_squadre_lette_davvero(web, squadre):
+    """#874: la guida parte da sola solo a chi non ha rose. Se all'avvio l'elenco delle squadre non arriva (server che riparte: 502),
+    l'elenco vuoto non vuol dire che le rose non ci sono: la guida non si apre su «Importa le rose» e non salva i primi due passi
+    come fatti. Prima si apriva anche a chi le rose le aveva. Con l'elenco letto davvero, e vuoto, si apre come sempre."""
+    solo_prima(web)
+    salvati, primo = [], {"fatti": [], "saltati": [], "chiuso": False}
+
+    def primo_avvio(route):                                  # mai cominciato; il server salva i passi e li rimanda
+        if route.request.method == "PUT":
+            salvati.append(json.loads(route.request.post_data))
+            primo.update(salvati[-1])
+        route.fulfill(status=200, content_type="application/json", body=json.dumps({"primo_avvio": primo if salvati else None}))
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/primo-avvio", primo_avvio)
+    if squadre == "non-lette":
+        web.risposta("/api/squadre", {"detail": "Il server non risponde"}, stato=502)
+    else:
+        web.risposta("/api/squadre", [])
+    web.apri("/")
+    if squadre == "lette-vuote":
+        guida(web).wait_for(timeout=10000)
+        assert [s.get("fatti") for s in salvati] == [["server", "accesso"]], salvati
+        return
+    web.aspetta()
+    assert guida(web).count() == 0, "la guida del primo avvio si è aperta senza aver letto le squadre"
+    assert salvati == [], f"salvato lo stato del primo avvio senza aver letto le squadre: {salvati}"

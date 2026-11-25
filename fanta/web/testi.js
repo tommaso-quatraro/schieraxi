@@ -261,12 +261,12 @@ const TESTI = {
     "comune.ricarica": "Ricarica",
     "comune.carico": "Carico…",
     "comune.prima_rose": "Prima le tue rose",
-    "comune.importa_spiega": "Importa le rose della tua lega: poi qui trovi i consigli per la tua squadra. Ci vuole un minuto.",
+    "comune.importa_spiega": "Importa le rose della tua lega: poi ti dico ogni giornata chi schierare. Ci vuole un minuto.",
     "comune.importa_rose": "Importa le rose",
     "comune.riprova": "Riprova",
     "comune.dati_salvati": "Dati salvati {quando}: aggiorno…",
     "comune.cache_offline": "Non riesco a collegarmi: questi sono gli ultimi dati salvati.",
-    "comune.cache_errore": "{errore} (dati salvati, potrebbero non essere aggiornati)",
+    "comune.cache_errore": "{errore} (dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati)",
     "comune.vai_lega": "Apri La mia lega",
     "comune.giocatore": "Giocatore",
     "comune.riprova_tra": " (riprova tra {attesa})",
@@ -1045,6 +1045,7 @@ const TESTI = {
     "imp.avvisi_qui_aiuto": "Due avvisi: un promemoria prima della scadenza, se non hai spuntato «L'ho messa», e un avviso quando cambia la formazione da schierare",
     "imp.avvisi_controllo": "Controllo gli avvisi di questo dispositivo…",
     "imp.ore_tranquille_aiuto": "Niente avvisi dalle {da} alle {a}",
+    "imp.ore_tranquille_spente": "Spente. Se le accendi: niente avvisi dalle {da} alle {a}",
     "imp.lega": "La mia lega",
     "imp.regole": "Regole e scadenza",
     "imp.regole_sub": "Punteggi, moduli e quando si chiude la formazione",
@@ -1243,6 +1244,7 @@ const TESTI = {
     "oggi.infortunato": "Infortunato",
     "oggi.squalificato": "Squalificato",
     "oggi.dubbio": "In dubbio · gioca {p}",
+    "oggi.da_vedere": "{n} da vedere",
     "oggi.diffidato_tipo": "Diffidato",
     "oggi.punti_attesi": "punti attesi",
     "oggi.ev_gol": "Gol",
@@ -1306,7 +1308,7 @@ const TESTI = {
     "pav.passi_del_primo": "Passi del primo avvio",
     "pav.primo_avvio": "Primo avvio",
     "pav.tutto_pronto_mister": "Tutto pronto, Mister",
-    "pav.incolla_testo_delle": "Incolla il testo delle rose o scegli il file Excel che scarichi da Leghe.",
+    "pav.incolla_testo_delle": "Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla qui il testo o scegli il file. Per cominciare basta anche solo la tua squadra.",
     "pav.testo_delle_rose": "Testo delle rose",
     "pav.oppure_file": "Oppure un file",
     "pav.scegli_file": "Scegli il file (Excel o CSV)",
@@ -1331,7 +1333,8 @@ const TESTI = {
     "pav.tempi_salva": "Salva",
     "pav.tempi_non_letti": "Non riesco a leggere i tempi salvati della tua lega, quindi non ho salvato niente: controlla i due valori e riprova.",
     "pav.usa_esempi": "Usa le squadre di esempio",
-    "pav.il_resto": "In Impostazioni trovi gli avvisi, le regole della lega e lo stemma della tua squadra.",
+    "pav.il_resto": "In Impostazioni trovi anche gli avvisi e lo stemma della tua squadra.",
+    "pav.regole_comuni": "I fantavoti attesi usano i punteggi più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5), finché non metti quelli della tua lega in {regole}.",
     "pav.fatto_par": " (fatto)",
     "pav.saltato_par": " (saltato)",
     "pav.salta": "Salta",
@@ -1687,7 +1690,7 @@ const TESTI = {
     "social.password_collega": "La tua password (serve per collegare Google)",
 
     "srv.aggiorna_nessuna_fonte": "Nessuna fonte di dati è accesa, quindi non c'è niente da aggiornare: accendine una in Impostazioni › Gestione › Stato dei dati.",
-    "srv.una_sola_squadra": "Con una sola squadra funzionano formazione e consigli; per gli scambi servono le rose degli altri: potrai aggiungerle quando vuoi.",
+    "srv.una_sola_squadra": "Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.",
 
     "tempo.oggi": "oggi",
     "tempo.domani": "domani",
@@ -1967,12 +1970,12 @@ const TESTI = {
     "comune.ricarica": "Reload",
     "comune.carico": "Loading…",
     "comune.prima_rose": "Rosters first",
-    "comune.importa_spiega": "Import your league's rosters: then you will find advice for your team here. It takes a minute.",
+    "comune.importa_spiega": "Import your league's rosters: then I'll tell you who to field each matchday. It takes a minute.",
     "comune.importa_rose": "Import the rosters",
     "comune.riprova": "Try again",
     "comune.dati_salvati": "Saved data from {quando}: refreshing…",
     "comune.cache_offline": "I cannot connect: these are the last saved data.",
-    "comune.cache_errore": "{errore} (saved data, may be out of date)",
+    "comune.cache_errore": "{errore} (saved data from {giorno} at {ora}, may be out of date)",
     "comune.vai_lega": "Open My league",
     "comune.giocatore": "Player",
     "comune.riprova_tra": " (try again in {attesa})",
@@ -2751,6 +2754,7 @@ const TESTI = {
     "imp.avvisi_qui_aiuto": "Two alerts: a reminder before the deadline, if you haven't ticked «I've entered it», and an alert when the lineup to field changes",
     "imp.avvisi_controllo": "Checking the alerts on this device…",
     "imp.ore_tranquille_aiuto": "No alerts from {da} to {a}",
+    "imp.ore_tranquille_spente": "Off. If you turn them on: no alerts from {da} to {a}",
     "imp.lega": "My league",
     "imp.regole": "Rules and deadline",
     "imp.regole_sub": "Scoring, formations and when the lineup closes",
@@ -2949,6 +2953,7 @@ const TESTI = {
     "oggi.infortunato": "Injured",
     "oggi.squalificato": "Suspended",
     "oggi.dubbio": "Doubtful · plays {p}",
+    "oggi.da_vedere": "{n} to look at",
     "oggi.diffidato_tipo": "One yellow from a ban",
     "oggi.punti_attesi": "expected points",
     "oggi.ev_gol": "Goal",
@@ -3012,7 +3017,7 @@ const TESTI = {
     "pav.passi_del_primo": "First-run steps",
     "pav.primo_avvio": "First run",
     "pav.tutto_pronto_mister": "All set, coach",
-    "pav.incolla_testo_delle": "Paste the roster text or choose the Excel file you download from Leghe.",
+    "pav.incolla_testo_delle": "Export the rosters from Leghe (Excel, CSV or copied text), then paste the text here or choose the file. To get started, your own team alone is enough.",
     "pav.testo_delle_rose": "Roster text",
     "pav.oppure_file": "Or a file",
     "pav.scegli_file": "Choose the file (Excel or CSV)",
@@ -3037,7 +3042,8 @@ const TESTI = {
     "pav.tempi_salva": "Save",
     "pav.tempi_non_letti": "I cannot read your league's saved timings, so I have not saved anything: check the two values and try again.",
     "pav.usa_esempi": "Use the example teams",
-    "pav.il_resto": "In Settings you find alerts, your league's rules and your team's crest.",
+    "pav.il_resto": "In Settings you also find alerts and your team's crest.",
+    "pav.regole_comuni": "Expected fantasy scores use the most common scoring of classic leagues (goal 3, assist 1, yellow card −0.5) until you enter your league's in {regole}.",
     "pav.fatto_par": " (done)",
     "pav.saltato_par": " (skipped)",
     "pav.salta": "Skip",
@@ -3393,7 +3399,7 @@ const TESTI = {
     "social.password_collega": "Your password (needed to link Google)",
 
     "srv.aggiorna_nessuna_fonte": "No data source is on, so there is nothing to refresh: turn one on in Settings › Management › Data status.",
-    "srv.una_sola_squadra": "With just one team, the line-up and the advice work; trades need the other teams' rosters: you can add them whenever you like.",
+    "srv.una_sola_squadra": "With just one team, the lineup and the advice work; the other teams' rosters let you look at the other teams: you can add them whenever you like.",
 
     "tempo.oggi": "today",
     "tempo.domani": "tomorrow",
@@ -3456,6 +3462,10 @@ const FUSO_ITALIA = "Europe/Rome";
 const fData = (d, opz = { day: "numeric", month: "short" }) => d.toLocaleDateString(t("lingua.locale"), { ...opz, timeZone: FUSO_ITALIA });
 const fOra = d => d.toLocaleTimeString(t("lingua.locale"), { hour: "2-digit", minute: "2-digit", timeZone: FUSO_ITALIA });
 const fDataOra = d => d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: FUSO_ITALIA });
+// Un giorno scritto con fData dopo l'articolo («dati del {data}», «dati salvati il {giorno}»): davanti a 8 e 11 (otto, undici)
+// l'articolo perde la vocale, «del 11 nov» → «dell'11 nov», «il 8 nov» → «l'8 nov». Le altre date restano («il 18 nov», «il 1
+// nov»). Solo in italiano; come DatiVecchi sull'iPhone. Gli ordinali («l'8ª») li fa elidiOrdinali (app.js).
+const elidiGiorno = testo => (LINGUA === "it" ? String(testo).replace(/\bil (8|11)(?= )/g, "l'$1").replace(/\b(del|al|dal|nel|sul) (8|11)(?= )/g, "$1l'$2") : testo);
 const fNum = (n, opz) => Number(n).toLocaleString(t("lingua.locale"), opz);
 
 // Tempi scritti dal server («3 ore fa», «meno di un'ora», «circa 2 ore») nella lingua scelta.
