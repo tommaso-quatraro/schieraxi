@@ -28,7 +28,16 @@
       "stato": "fatto"
     },
     {
-      "id": 98,
+      "id": 99,
+      "schermata": "Scheda giocatore, «Tutti i numeri»: fin dove arrivano le statistiche avanzate (#862)",
+      "web": "«Dati fino al 9/11.» (`mercato.dati_fino_al`, il giorno come `giornoMese`) in fondo alla riga di «Gol e assist rispetto alle occasioni» e sotto il titolo «Statistiche avanzate», dal campo `avanzate.dati_fino_al` del server; niente riga senza il campo (`riempiScheda` in `app.js`)",
+      "iphone": "uguale alla web",
+      "forma": "web",
+      "chi": "**fatto** (#862): iPhone `LetturaScheda.datiFinoAl` (`Domain/LetturaScheda.swift`) usata da `TuttiINumeri`; prova `SchedaDatiFinoAlTests`, web `tests/browser/test_scheda_dati_fino_al.py`",
+      "stato": "fatto"
+    },
+    {
+      "id": 100,
       "schermata": "Scheda giocatore: «Ultimi voti» e «Perché questo numero» (#863)",
       "web": "«Ultimi voti»: cinque pallini neutri, tutti dello stesso grigio con il numero nel colore del testo (`.pallini i` in `stile.css`), mai verdi, arancio o rossi per valore; «Perché questo numero»: le frasi del server come arrivano, «gioca il 78%: dubbio» (`bloccoPerche` in `app.js`)",
       "iphone": "prima: pallini verdi da 7, arancio da 6 e rossi sotto 6 (`pallino` di `SchedaGiocatoreView`) e frasi con la maiuscola davanti, «Gioca il 62%: dubbio» (`PercheNumero`). Ora come la web: pallini neutri (che vanno a capo se non ci stanno, come sulla web) e le frasi come arrivano, anche per VoiceOver",

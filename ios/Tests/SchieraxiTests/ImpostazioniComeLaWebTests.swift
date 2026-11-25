@@ -99,4 +99,13 @@ struct ImpostazioniComeLaWebTests {
         let ore = OreTranquille(attive: true, da: 22, a: 8)
         #expect(AvvisiDispositivoViewModel.aiutoOreTranquille(ore) == Catalogo.Imp.oreTranquilleAiuto(a: "8", da: "22"))
     }
+
+    /// Collaudo del 25/11 (#873, punto 4): con l'interruttore spento «Niente avvisi dalle 23 alle 7» faceva sembrare le ore
+    /// tranquille accese. Come la web dalla #878: spente lo dice, con la fascia che varrebbe accendendole.
+    @Test("Ore tranquille spente: la riga dice che sono spente e la fascia che varrebbe (`imp.ore_tranquille_spente`)")
+    func oreTranquilleSpente() {
+        let spente = OreTranquille(attive: false, da: 23, a: 7)
+        #expect(AvvisiDispositivoViewModel.aiutoOreTranquille(spente) == Catalogo.Imp.oreTranquilleSpente(a: "7", da: "23"))
+        #expect(AvvisiDispositivoViewModel.aiutoOreTranquille(spente) != Catalogo.Imp.oreTranquilleAiuto(a: "7", da: "23"))
+    }
 }

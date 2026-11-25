@@ -31,38 +31,41 @@ struct GiornateView: View {
 
     private var pila: some View {
         NavigationStack {
-            List {
-                capo
-                if let p = vm.pagina {
-                    testa(p)
-                    if p.righe.isEmpty {
-                        vuoto(p)
-                    } else {
-                        Section {
-                            ForEach(p.righe) { r in
-                                DisclosureGroup(isExpanded: aperta(r.id)) {
-                                    if let d = p.dettaglio(r.id) {
-                                        DettaglioGiornataView(dettaglio: d, esito: vm.esito(per: r.id)) { daCorreggere = p.voce(r.id) }
+            ScrollViewReader { proxy in
+                List {
+                    capo
+                    if let p = vm.pagina {
+                        testa(p)
+                        if p.righe.isEmpty {
+                            vuoto(p)
+                        } else {
+                            Section {
+                                ForEach(p.righe) { r in
+                                    DisclosureGroup(isExpanded: aperta(r.id)) {
+                                        if let d = p.dettaglio(r.id) {
+                                            DettaglioGiornataView(dettaglio: d, esito: vm.esito(per: r.id)) { daCorreggere = p.voce(r.id) }
+                                        }
+                                    } label: {
+                                        RigaGiornataView(riga: r)
+                                            .accessibilityFocused($fuoco, equals: r.id)
                                     }
-                                } label: {
-                                    RigaGiornataView(riga: r)
-                                        .accessibilityFocused($fuoco, equals: r.id)
+                                    .tint(Color.testoSecondario)
                                 }
-                                .tint(Color.testoSecondario)
                             }
                         }
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
-                } else if let e = vm.caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                } else {
-                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Sfondo())
+                .avvisoDatiSalvati(vm.caricatore)
+                .titoloPagina(Catalogo.Nav.giornate)
+                .refreshable { await vm.carica() }
+                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
             }
-            .scrollContentBackground(.hidden)
-            .background(Sfondo())
-            .avvisoDatiSalvati(vm.caricatore)
-            .titoloPagina(Catalogo.Nav.giornate)
-            .refreshable { await vm.carica() }
         }
     }
 
@@ -78,31 +81,34 @@ struct GiornateView: View {
     /// Elenco a sinistra, la giornata scelta a destra (una alla volta, la più recente già aperta).
     private var colonne: some View {
         NavigationSplitView {
-            List(selection: sceltaIPad) {
-                capo
-                if let p = vm.pagina {
-                    testa(p)
-                    if p.righe.isEmpty {
-                        vuoto(p)
-                    } else {
-                        Section {
-                            ForEach(p.righe) { r in
-                                RigaGiornataView(riga: r)
-                                    .accessibilityFocused($fuoco, equals: r.id)
+            ScrollViewReader { proxy in
+                List(selection: sceltaIPad) {
+                    capo
+                    if let p = vm.pagina {
+                        testa(p)
+                        if p.righe.isEmpty {
+                            vuoto(p)
+                        } else {
+                            Section {
+                                ForEach(p.righe) { r in
+                                    RigaGiornataView(riga: r)
+                                        .accessibilityFocused($fuoco, equals: r.id)
+                                }
                             }
                         }
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
-                } else if let e = vm.caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                } else {
-                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Sfondo())
+                .avvisoDatiSalvati(vm.caricatore)
+                .titoloPagina(Catalogo.Nav.giornate)
+                .refreshable { await vm.carica() }
+                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
             }
-            .scrollContentBackground(.hidden)
-            .background(Sfondo())
-            .avvisoDatiSalvati(vm.caricatore)
-            .titoloPagina(Catalogo.Nav.giornate)
-            .refreshable { await vm.carica() }
         } detail: {
             NavigationStack {
                 dettaglioIPad
@@ -150,6 +156,7 @@ struct GiornateView: View {
                 if let titolo = p.titoloDettagli, let t = p.dettagli {
                     DisclosureGroup(isExpanded: $vm.dettagliAperti) {
                         PrecisioneView(testo: t)
+                            .id(ConfrontoDemo.idDettagli)   // dove arriva la foto `giornate-confronto` (solo demo, #842)
                     } label: {
                         Text(titolo)
                             .font(.subheadline.weight(.semibold))

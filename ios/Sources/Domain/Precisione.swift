@@ -304,8 +304,9 @@ struct TestoPrecisione: Equatable {
         g.nomeGiornata?.intero ?? g.numero.map { "giornata \($0)" }
     }
 
-    /// Il plurale della web (`Intl.PluralRules` italiano): «one» solo per 1 esatto.
-    private static func plurale(_ x: Double) -> Int { x == 1 ? 1 : 2 }
+    /// Il plurale scelto sul numero come è scritto, come `tpScritto` della web (#841): il singolare solo per «1». `v` scrive sempre
+    /// un decimale, quindi «1,0 punti» come «1,5 punti» (prima «1,0 punto in più», #842).
+    private static func plurale(_ scritto: String) -> Int { scritto == "1" ? 1 : 2 }
 
     /// `conConfronto`: c'è almeno una giornata con la consigliata mostrata prima della scadenza (la pagina Giornate lo chiede alle
     /// sue voci, `VoceDiario.conMostrata`). Senza, la voce del confronto non c'è: con il server di prima il confronto era con una
@@ -371,9 +372,9 @@ struct TestoPrecisione: Equatable {
                 if punti == 0 {
                     frase += " " + Catalogo.Diario.qpCfPari
                 } else if punti > 0 {
-                    frase += " " + Catalogo.Diario.qpCfPiu(Self.plurale(punti), e: v(punti))
+                    frase += " " + Catalogo.Diario.qpCfPiu(Self.plurale(v(punti)), e: v(punti))
                 } else {
-                    frase += " " + Catalogo.Diario.qpCfMeno(Self.plurale(-punti), e: v(-punti))
+                    frase += " " + Catalogo.Diario.qpCfMeno(Self.plurale(v(-punti)), e: v(-punti))
                 }
             }
             confronto = Voce(numero: Catalogo.Diario.qpKSuN(k: k, n: tot), etichetta: Catalogo.Diario.qpCfEti, frase: frase)
