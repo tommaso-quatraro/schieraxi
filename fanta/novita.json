@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.551",
+    "data": "2026-11-25T10:20:22",
+    "titolo": "Dati salvati senza rete: la riga in alto dice di quando sono, e lo dice una volta sola",
+    "voci": [
+      "Formazione e Giornate, senza rete o con il server spento: la riga in alto con i dati salvati sul dispositivo dice anche il giorno e l'ora di quei dati, per esempio «Non riesco a collegarmi: questi sono i dati salvati l'8 nov alle 10:05.». Prima diceva solo «questi sono gli ultimi dati salvati», senza la data. L'app per iPhone la diceva già.",
+      "Giornate e Formazione con il server che non risponde: sotto il titolo non compare più «Server non raggiungibile» quando subito sotto la riga dei dati salvati, o il messaggio d'errore con «Riprova», dice già la stessa cosa.",
+      "La riga dei dati salvati è allineata a sinistra come il resto della pagina, con la scritta della stessa grandezza della riga sotto il titolo. Prima era più piccola e centrata.",
+      "Formazione con il server che risponde con un errore: la riga dei dati salvati finisce con il punto prima di «Finché non arrivano quelli nuovi la formazione non si può cambiare.», invece di due frasi attaccate. Lo stesso punto alla fine della riga nell'app per iPhone."
+    ],
+    "tecnico": [
+      "Catalogo: comune.cache_offline ha i segnaposto {giorno} e {ora} (italiano e inglese); caricaConCache li scrive con fData e fOra dall'ora della copia e passa la frase da elidiGiorno, come comune.cache_errore. La chiave non è nel catalogo Swift: l'iPhone non cambia.",
+      "Web: rigaStato scrive «Server non raggiungibile» in uno span .stato-offline; stile.css nasconde la riga di stato quando main ha #nota-cache con il pulsante «Riprova» o un .errore figlio diretto (selettore :has), così vale anche dopo i ridisegni di Giornate. La nota .nota è flex a capo, con --t-sec e allineata a sinistra; «Riprova» resta alto 44 px con margini negativi. Nessuna rotta né campo dell'API cambia.",
+      "Catalogo: comune.cache_errore finisce con il punto (italiano e inglese); script/testi.py --scrivi ha riscritto anche Catalogo+Comune.swift. iPhone: DatiVecchi.frase la mostra da sola nella striscia, nessuna frase dopo; attese di DatiVecchiTests allineate."
+    ]
+  },
+  {
     "versione": "1.550",
     "data": "2026-11-25T10:19:49",
     "titolo": "Date con l'apostrofo davanti all'8 e all'11",
