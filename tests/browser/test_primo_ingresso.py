@@ -8,11 +8,16 @@ tranquille spente sembravano accese; dopo un nuovo accesso si tornava su «Il tu
 percorso, non la fase della giornata. Le rose le dà il test (account senza rose finché non si confermano).
 """
 import json
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
 
 SENZA_ROSE = {"detail": "Nessuna rosa importata: importa le rose della tua lega."}
+# L'avviso del server con una sola squadra: il testo vero, dal catalogo (srv.* è parola per parola il messaggio del server,
+# tests/test_testi.py), non uno scritto qui.
+UNA_SQUADRA = json.loads((Path(__file__).resolve().parents[2] / "fanta" / "testi" / "srv.json").read_text(encoding="utf-8"))[
+    "srv.una_sola_squadra"]["it"]
 UTENTE = {"multiutente": True, "utente": {"id": 7, "nome_utente": "amico", "nome_visualizzato": "Amico di prova", "ruolo": "utente",
                                            "creato": "2026-10-01T10:00:00"}}
 SENZA_SESSIONE = {"detail": "Accesso richiesto", "multiutente": True, "registrazione": "invito", "social": [], "email_attiva": True}
@@ -58,19 +63,22 @@ def account_senza_rose(web) -> dict:
     return lega
 
 
-def anteprima_finta(web, lega: dict, squadre: int) -> None:
-    """L'anteprima di `squadre` squadre complete, tutte riconosciute, alla prima importazione; la conferma salva le rose."""
+def anteprima_finta(web, lega: dict, squadre: int, rifiuto: tuple[int, dict] | None = None) -> None:
+    """L'anteprima di `squadre` squadre complete, tutte riconosciute, alla prima importazione; la conferma salva le rose (con
+    `rifiuto` = (stato, corpo) il salvataggio non riesce)."""
     elenco = [{"nome": f"Squadra di prova {i + 1}", "nuova": True, "totale": 25, "attesi": 25, "mancano": {}, "in_piu": {}, "senza_ruolo": 0,
                "crediti_residui": None, "avvisi": [],
                "giocatori": [{"testo": f"Giocatore {i}-{j}", "nome": f"Giocatore {i}-{j}", "stato": "sicuro", "id": 9000 + 100 * i + j, "riga": j}
                              for j in range(25)]} for i in range(squadre)]
-    avvisi = ["Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: "
-              "puoi aggiungerle quando vuoi."] if squadre == 1 else []
+    avvisi = [UNA_SQUADRA] if squadre == 1 else []
     risposta = {"squadre": elenco, "avvisi": avvisi, "avvisi_frasi": [None] * len(avvisi), "mia_squadra": None, "totale_squadre": squadre,
                 "sicuri": 25 * squadre, "da_controllare": 0, "non_trovati": 0,
                 "differenze": {"prima_importazione": True, "nessuna_differenza": False, "testo": ""}, "riepilogo": ""}
 
     def salva(route):
+        if rifiuto:
+            _rispondi(route, rifiuto[1], rifiuto[0])
+            return
         lega["salvate"] = True
         _rispondi(route, {"totale_squadre": squadre, "squadre_importate": [s["nome"] for s in elenco], "avvisi": avvisi,
                           "differenze": risposta["differenze"]})
@@ -152,7 +160,8 @@ def test_con_una_sola_squadra_niente_avviso_sopra_la_formazione_e_le_regole_si_t
     web.apri("/", larghezza=390)
     titolo_della_guida(web, "Le rose")
     controlla_le_rose(web)
-    assert "scambi" not in guida(web).inner_text()
+    testo = " ".join(guida(web).inner_text().split())
+    assert UNA_SQUADRA in testo and "scambi" not in testo, testo
     guida(web).get_by_role("radio", name="Squadra di prova 1").check()
     guida(web).get_by_role("button", name="Conferma e salva").click(timeout=10000)
     titolo_della_guida(web, "I tempi della lega")
@@ -170,6 +179,48 @@ def test_con_una_sola_squadra_niente_avviso_sopra_la_formazione_e_le_regole_si_t
     assert "gruppo=regole" in web.pagina.url
     assert web.pagina.locator("main").get_by_role("heading", level=1).inner_text().strip() == "Regole e scadenza"
     assert lega["primo"].get("chiuso") is True, lega["primo"]
+
+
+@pytest.mark.parametrize("rifiuto", [(429, {"detail": "Hai fatto troppe importazioni oggi: riprova domani."}),
+                                     (500, {"detail": "Errore interno del server"}), ("rete", None)])
+def test_al_telefono_un_salvataggio_che_non_riesce_si_vede_sopra_conferma(web, rifiuto):
+    """«Conferma e salva» resta fermo in fondo al foglio: anche il messaggio del salvataggio non riuscito (troppe importazioni, guasto
+    del server, niente rete) sta lì, sopra i pulsanti, in vista. Prima restava in fondo all'elenco, a due schermi di distanza."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    anteprima_finta(web, lega, 10, rifiuto if rifiuto[0] != "rete" else None)
+    if rifiuto[0] == "rete":
+        web.pagina.route(_rotta("/api/rose/testo"), lambda r: r.abort())
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    controlla_le_rose(web)
+    guida(web).get_by_role("button", name="Conferma e salva").click(timeout=10000)
+    errore = guida(web).locator('[role="alert"]:not(:empty)')
+    errore.wait_for(timeout=10000)
+    web.aspetta()
+    assert in_vista_e_toccabile(web, errore), f"il messaggio non si vede: {errore.bounding_box()} - {errore.inner_text()}"
+    assert in_vista_e_toccabile(web, guida(web).get_by_role("button", name="Conferma e salva"))
+
+
+def test_al_telefono_con_il_tasto_tab_nessuna_squadra_finisce_sotto_la_barra(web):
+    """Con la tastiera (Tab) ogni riga delle squadre che prende il fuoco sta sopra la barra ferma di «Conferma e salva»."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    anteprima_finta(web, lega, 10)
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    controlla_le_rose(web)
+    coperte = []
+    for _ in range(30):
+        web.pagina.keyboard.press("Tab")
+        m = web.pagina.evaluate("""() => {
+          const a = document.activeElement, barra = document.querySelector('#foglio-contenuto .ar-piede, #foglio-contenuto .ar > .pulsanti');
+          if (!a || !a.closest('.ar-squadre') || !barra) return null;
+          return {testo: a.textContent.trim().slice(0, 40), sotto: a.getBoundingClientRect().bottom, barra: barra.getBoundingClientRect().top};
+        }""")
+        if m and m["sotto"] > m["barra"] + 1:
+            coperte.append(m)
+    assert not coperte, f"righe con il fuoco sotto la barra: {coperte}"
 
 
 # ---------------------------------------------------------------- primo avvio su PC
@@ -209,6 +260,22 @@ def test_giornate_senza_rose_non_chiede_il_diario_e_non_promette_consigli(web, l
     assert "consigli" not in web.testo_principale(), web.testo_principale()
     assert not [r for r in web.richieste if r.startswith("/api/diario")], web.richieste
     assert not web.richieste_fallite and not web.errori_console and not web.errori_mostrati()
+
+
+def test_giornate_rilegge_lo_stato_se_le_rose_arrivano_da_un_altro_dispositivo(web):
+    """All'avvio non c'erano rose; poi arrivano da un altro dispositivo (l'iPhone, un'altra scheda) senza ricaricare la pagina.
+    Giornate non si fida dello stato letto all'avvio: lo rilegge e mostra il diario, non «Prima le tue rose»."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    lega["primo"].update({"saltati": ["rose", "squadra", "tempi"], "chiuso": True})
+    web.apri("/?vista=formazione")
+    assert "Importa le rose" in web.testo_principale()
+    lega["salvate"] = True                                   # importate altrove: il server ora ha le rose
+    web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Giornate").click(timeout=10000)
+    web.aspetta()
+    assert "Prima le tue rose" not in web.testo_principale(), web.testo_principale()[:300]
+    assert [r for r in web.richieste if r.startswith("/api/diario")], web.richieste
+    assert not web.errori_mostrati() and not web.errori_console
 
 
 # ---------------------------------------------------------------- ore tranquille

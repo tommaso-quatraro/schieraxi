@@ -2466,11 +2466,19 @@ function vaiGiornate(giornata) {
   giornate.chiesta = giornata == null || !Number(giornata) ? null : Number(giornata);
   vai("giornate", undefined, { focoTitolo: true });
 }
-function vistaGiornate() {
+async function vistaGiornate() {
   if (giornate.chiesta == null) giornate.aperte.clear();              // si riparte con le righe chiuse (da 768 px: la più recente)
-  // Account senza rose (lo dice /api/stato, letto all'avvio): il diario risponderebbe 409 e il browser lo scriverebbe fra gli errori
-  // (#873). Come la Formazione, non lo si chiede: la carta che porta a «Importa le rose».
-  if (stato.info && stato.info.rose_importate === false) { nuovaRichiesta(); pagina(cartaSenzaRose()); return; }
+  // Account senza rose: il diario risponderebbe 409 e il browser lo scriverebbe fra gli errori (#873). Lo stato letto all'avvio può
+  // essere vecchio (le rose importate dall'iPhone o da un'altra scheda): si rilegge /api/stato. Se dice ancora che le rose non ci sono,
+  // la carta che porta a «Importa le rose», senza chiedere il diario; se la lettura non riesce, si chiede il diario come sempre.
+  if (stato.info && stato.info.rose_importate === false) {
+    const mia = nuovaRichiesta();
+    caricamento(t("giornate.carico"));
+    await caricaInfo();
+    if (!ancoraValida(mia)) return;
+    const letto = !(stato.rigaStato && stato.rigaStato.offline);
+    if (letto && stato.info && stato.info.rose_importate === false) { pagina(cartaSenzaRose()); return; }
+  }
   caricaConCache("giornate", "/api/diario", mostraGiornate, t("giornate.carico"));
 }
 

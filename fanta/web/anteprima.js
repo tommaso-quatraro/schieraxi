@@ -154,9 +154,9 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
       ${mia}
       <div class="ar-squadre">${squadreHtml}</div>
       ${differenze}
-      <div id="ar-msg" role="status"></div>
-      <div class="pulsanti"><button class="bottone" type="button" id="ar-salva">${t("ar.conferma")}</button>
-        <button class="bottone secondario" type="button" id="ar-annulla">${t("ar.annulla")}</button></div>
+      <div class="ar-piede"><div id="ar-msg" role="status"></div>
+        <div class="pulsanti"><button class="bottone" type="button" id="ar-salva">${t("ar.conferma")}</button>
+          <button class="bottone secondario" type="button" id="ar-annulla">${t("ar.annulla")}</button></div></div>
     </div>`;
     collega();
     $("#ar-titolo", dove).focus({ preventScroll: false });
