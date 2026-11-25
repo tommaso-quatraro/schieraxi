@@ -488,14 +488,15 @@ function luminosita(hex) {
 const SOGLIA_GIOCA = 0.8, SOGLIA_BASSA = 0.5;
 const giocaLetto = x => Math.round((x.p_voto ?? 0) * 100) / 100;
 const classeGioca = p => (p < SOGLIA_BASSA ? "basso" : "medio");
-// Per i lettori di schermo la pedina in una frase, con le stesse cose che si vedono: «Rossi, fantavoto atteso 6,8, gioca al 45 per
-// cento, In dubbio». `esito`: esitoPedina(x), a partita iniziata o rinviata; `stato`: parolaStato(x). A formazione chiusa, per chi
+// Per i lettori di schermo la pedina in una frase, con le stesse cose che si vedono: «Rossi, Centrocampista, fantavoto atteso 6,8,
+// gioca al 45 per cento, In dubbio». Il ruolo dopo il nome (#882): sul campo lo dice solo la fila in cui sta la pedina, che chi non
+// vede non ha. `esito`: esitoPedina(x), a partita iniziata o rinviata; `stato`: parolaStato(x). A formazione chiusa, per chi
 // deve ancora giocare (`da_giocare`), sulla pedina c'è quando gioca e non «gioca N%»: nemmeno qui.
 function vocePedina(x, esito = null, stato = null) {
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
   const preso = esito && esito.fv != null;
-  return [x.nome, preso ? esito.testo : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "",
+  return [x.nome, NOME_RUOLO_1[x.ruolo], preso ? esito.testo : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "",
     !esito && x.stato_partita !== "da_giocare" && !nonGiocaDiSicuro(stato) && giocaLetto(x) < SOGLIA_GIOCA ? t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }) : "",
     !esito && stato ? stato.testo : ""].filter(Boolean).join(", ");
 }
@@ -1595,7 +1596,7 @@ function riempiScheda(s, cal) {
       <div class="riga"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>
       ${motivi.length ? `<div class="etichette">${motivi.map(m => `<span class="etichetta neutra">${testoEtichetta(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
       <div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>` : ""}
-    ${prossime.length ? `<h3>${t("mercato.prossime_partite")}</h3><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}</span>`).join("")}</div>
+    ${prossime.length ? `<h3>${t("mercato.prossime_partite")}</h3><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}${NOMI_DIFF[p.difficolta] ? `<small>${NOMI_DIFF[p.difficolta]}</small>` : ""}</span>`).join("")}</div>
       <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div>` : ""}
     ${forma ? `<h3>${t("mercato.forma")}</h3><div class="riga"><span class="debole piccolo">${t("mercato.andamento")}</span><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div>` : ""}
     ${grafico}
