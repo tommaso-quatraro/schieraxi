@@ -301,7 +301,8 @@ struct CartaSquadraAnteprima: View {
         let completa = problemi.isEmpty
         let testoStato = completa ? Catalogo.Ar.rosaCompleta : problemi.joined(separator: " · ")
         let simbolo = completa ? "checkmark.circle" : "exclamationmark.triangle"
-        let stato: Text = Text("\(Image(systemName: simbolo)) \(testoStato)")
+        // fra il simbolo e le parole uno spazio che non va a capo: col testo più grande il simbolo non resta solo in fondo alla riga
+        let stato: Text = Text("\(Image(systemName: simbolo))\u{00A0}\(testoStato)")
             .foregroundStyle(completa ? Color.verde : Color.attenzione)
         let conteggio = AnteprimaLogica.conteggio(squadra)
         return Text("\(Text(conteggio + " · ").foregroundStyle(Color.testoSecondario))\(stato)")
