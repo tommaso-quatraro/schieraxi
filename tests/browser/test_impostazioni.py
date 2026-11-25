@@ -1526,6 +1526,34 @@ def test_gli_inviti_aperti_si_annullano_dopo_una_domanda(web, larghezza, tema):
     assert not web.errori_console and not web.richieste_fallite and not web.errori_mostrati()
 
 
+def test_annullato_l_invito_appena_creato_il_suo_link_sparisce(web):
+    """Il titolare crea un invito e lo annulla subito: il link, «Copia il messaggio» e il codice di quell'invito non restano in
+    pagina (non vale più). Annullare un altro invito invece non li tocca: il codice non si rilegge, e il link serve ancora."""
+    solo(web, "prima")
+    liberi = {"utenti": [{"nome_utente": "capo", "ruolo": "amministratore"}], "massimo": 10, "avviso": None, "avviso_frase": None}
+    gestione_del_titolare(web, liberi, inviti=(
+        [CALCETTO], [SARA, CALCETTO], [SARA, {**CALCETTO, **ANNULLATO}], [{**SARA, **ANNULLATO}, {**CALCETTO, **ANNULLATO}]),
+        creato={"codice": "PROVA-PROVA-PROVA-PROVA", "etichetta": "Sara", "valido_giorni": 7, "usi_max": 1, "id": SARA["id"],
+                "avviso": None, "avviso_frase": None})
+    carta = carta_con(web, "Amministrazione")
+    carta.get_by_label("Etichetta").fill("Sara")
+    tocca(web, carta.get_by_role("button", name="Crea l'invito"))
+    link = carta.get_by_text("PROVA-PROVA-PROVA-PROVA", exact=False)
+    link.first.wait_for(timeout=10000)
+    aperti = carta.get_by_role("list", name="Inviti aperti")
+    web.pagina.on("dialog", lambda d: d.accept())
+    tocca(web, aperti.get_by_role("button", name="Annulla l'invito per Amici del calcetto"))
+    assert righe_di(aperti) == ["Sara Creato mer 25 nov, scade mer 2 dic. Annulla"], righe_di(aperti)
+    assert link.count() > 0 and carta.get_by_role("button", name="Copia il messaggio").is_visible()      # un altro invito: resta
+    tocca(web, aperti.get_by_role("button", name="Annulla l'invito per Sara"))
+    carta.get_by_text("Nessun invito aperto.").wait_for(timeout=5000)
+    assert link.count() == 0, carta.inner_text()
+    assert carta.get_by_role("button", name="Copia il messaggio").count() == 0
+    assert carta.get_by_role("button", name="Condividi l'invito").count() == 0
+    assert "Invito per «Sara»" not in carta.inner_text()
+    assert not web.errori_console and not web.richieste_fallite
+
+
 def test_gli_inviti_aperti_in_inglese(web):
     """In inglese la frase del server si traduce dalla sua chiave, con i giorni e i posti."""
     solo(web, "prima")

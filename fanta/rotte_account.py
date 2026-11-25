@@ -600,11 +600,14 @@ def _avviso_posti(db) -> dict:
 
 @router.post("/api/admin/inviti", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
 def crea_invito(dati: NuovoInvito):
-    """Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`."""
+    """Il codice si crea anche con i posti pieni (il tetto si può alzare dopo), ma la risposta lo dice in `avviso`. `id` è il numero
+    dell'invito in GET /api/admin/inviti (#894: se proprio quell'invito si annulla, la web toglie il link che sta mostrando)."""
     with closing(account.apri()) as db:
         codice = account.crea_invito(db, dati.etichetta, dati.amministratore, usi_max=dati.usi)
         avviso = _avviso_posti(db)
-    return {"codice": codice, "etichetta": dati.etichetta.strip(), "valido_giorni": account.DURATA_INVITO.days, "usi_max": dati.usi} | avviso
+        numero = account.id_dell_invito(db, codice)
+    return {"codice": codice, "etichetta": dati.etichetta.strip(), "valido_giorni": account.DURATA_INVITO.days, "usi_max": dati.usi,
+            "id": numero} | avviso
 
 
 def dettaglio_invito(invito: dict) -> frasi.Frase | None:

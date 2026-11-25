@@ -152,6 +152,15 @@ def test_l_elenco_degli_inviti_ha_la_frase_dei_soli_aperti(titolare, monkeypatch
     assert piero["stato"] == "revocato" and piero["dettaglio"] is None and piero["dettaglio_frase"] is None, piero
 
 
+def test_la_risposta_dell_invito_nuovo_dice_il_suo_numero(titolare):
+    """`id` dell'invito appena creato, lo stesso dell'elenco: la web sa di quale invito sta mostrando il link, e lo toglie se
+    proprio quell'invito si annulla."""
+    titolare.post("/api/admin/inviti", json={"etichetta": "Anna"})
+    nuovo = titolare.post("/api/admin/inviti", json={"etichetta": "Sara"}).json()
+    elenco = titolare.get("/api/admin/inviti").json()["inviti"]
+    assert nuovo["id"] == next(i["id"] for i in elenco if i["etichetta"] == "Sara"), (nuovo, elenco)
+
+
 def test_annullare_un_invito_libera_il_suo_posto(titolare):
     """Due posti, uno preso da chi gestisce: con un invito aperto l'ultimo posto è promesso. Annullato l'invito, l'avviso non c'è
     più e l'invito resta nell'elenco come annullato."""

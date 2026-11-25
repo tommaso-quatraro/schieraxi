@@ -4027,6 +4027,7 @@ function collegaAmministratore() {
     if (!dove) return;
     const link = linkInvito(r.codice), messaggio = t("admin.invito_messaggio", { link, giorni: r.valido_giorni });
     const condividi = typeof navigator.share === "function";
+    dove.dataset.invito = r.id == null ? "" : String(r.id);               // di quale invito è il link (annullaInvito)
     dove.innerHTML = `<div class="debole piccolo">${t("admin.invito_esito", { etichetta: esc(r.etichetta), giorni: r.valido_giorni })}</div>
       <div class="attenzione">${t("admin.invito_manda")}</div>
       <div class="codice-una-volta piccolo" id="adm-link-invito">${esc(link)}</div>
@@ -4055,8 +4056,8 @@ function collegaAmministratore() {
   };
   caricaUtenti();
   // inviti aperti (#894): il nome, la frase del server (creato, scade, posti liberi) e «Annulla»; gli inviti chiusi (usati,
-  // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), poi rilegge l'elenco e
-  // l'avviso dei posti e porta il focus sul titolo dell'elenco (il pulsante premuto non c'è più)
+  // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), toglie il link appena creato
+  // se è di quell'invito, rilegge l'elenco e l'avviso dei posti e porta il focus sul titolo dell'elenco (il pulsante non c'è più)
   const caricaInviti = async () => {
     const dove = $("#adm-inviti");
     if (!dove) return;
@@ -4073,6 +4074,9 @@ function collegaAmministratore() {
   const annullaInvito = invito => provaCosi(t("admin.annulla_invito_no"), async () => {
     if (!confirm(t(invito.usi > 0 ? "admin.annulla_conferma_usato" : "admin.annulla_conferma", { etichetta: invito.etichetta }))) return;
     await api(`/api/admin/inviti/${Number(invito.id)}`, { method: "DELETE" });
+    // il link appena creato di questo invito non vale più: via link, pulsanti e codice. Quello di un altro invito resta (non si rilegge)
+    const esito = $("#adm-esito-invito");
+    if (esito && esito.dataset.invito === String(invito.id)) { esito.innerHTML = ""; delete esito.dataset.invito; }
     avviso(t("admin.invito_annullato"), 4000);
     await Promise.all([caricaInviti(), caricaUtenti()]);
     if ($("#adm-inviti-titolo")) $("#adm-inviti-titolo").focus();
