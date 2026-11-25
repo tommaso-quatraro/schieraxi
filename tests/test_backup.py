@@ -227,7 +227,7 @@ def test_backup_regole_oltre_i_tetti_danno_un_errore_chiaro_e_niente_scritto(rad
 
 @pytest.mark.parametrize("campi, frase", [
     ({"crediti_iniziali": 10 ** 30}, "i crediti iniziali devono essere tra 0 e 100.000"),
-    ({"soglie": [[6, 1e30]]}, "il bonus di ogni fascia del modificatore difesa deve essere tra -100 e 100"),
+    ({"soglie": [[6, 1e30]]}, "il bonus di ogni fascia del modificatore difesa deve essere tra 0 e 20"),
 ])
 def test_backup_regole_fuori_intervallo_dicono_campo_e_intervallo_e_niente_scritto(radice, campi, frase):
     """Regole salvate con un numero enorme prima degli intervalli (#663), backup scaricato, ripristino dopo: l'errore dice quale

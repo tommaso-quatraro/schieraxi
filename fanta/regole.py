@@ -21,8 +21,6 @@ FONTI_VOTO = ("redazione", "statistico", "italia")
 GIORNATE_SERIE_A = 38
 MAX_SCADENZA_MINUTI = 720          # al massimo 12 ore prima
 MAX_MODULI = 30                    # tetti contro regole esagerate (rallentano i calcoli o li fanno fallire)
-MAX_ROSA_PER_RUOLO = 30
-MAX_SOSTITUZIONI = 10
 # Partite rinviate (anche a settimane dopo). `aspetta`: la lega aspetta il recupero e conta il voto preso lì (come «Attendi il
 # recupero» di Leghe Fantacalcio); `senza_voto`: i giocatori restano senza voto ed entra la riserva; `voto_ufficio`: tutti prendono
 # il voto fisso `voto_ufficio_rinviate`. Le eccezioni decise volta per volta stanno in `rinvii_giornate` (vedi rinvii.py).
@@ -45,23 +43,56 @@ MAX_NOME_LEGA = 100                # caratteri del nome della lega
 MAX_TESTO_MODULO = 20              # caratteri di un modulo («3-4-3», anche con qualche spazio)
 MAX_SOGLIE = 20                    # fasce del modificatore difesa
 MAX_CHIAVE_RINVIO = 20             # caratteri di una giornata delle eccezioni («2026-27/12»)
-# Intervalli dei numeri (#663): larghi rispetto ai regolamenti veri (la web e l'iPhone lasciano scegliere bonus da 0 a 20, malus da
-# -20 a 0, crediti fino a 5.000, da 3 a 6 difensori, medie delle fasce da 4 a 9), servono solo contro numeri enormi che nei conti
-# diventano infiniti e rompono tutte le schermate. Si controllano al salvataggio, come i tetti di misura: le regole salvate prima
-# si leggono ancora (la schermata Regole le mostra e le si corregge), ma per salvarle di nuovo vanno riportate negli intervalli.
-MAX_BONUS = 100                    # bonus e malus (anche le fasce del modificatore e il fattore campo), da -100 a 100
-MAX_VOTO = 10                      # voto di chi resta senza sostituto e media delle fasce del modificatore difesa, da 0 a 10
-MAX_CREDITI = 100_000              # crediti iniziali, come il tetto dei crediti delle squadre
-MAX_DIFENSORI = 10                 # difensori minimi del modificatore difesa (i giocatori di movimento sono 10)
-MAX_SOGLIA_PRIMO_GOL = 200         # partite testa a testa: punti del primo gol (di solito 66)
-MAX_FASCIA_GOL = 100               # partite testa a testa: ampiezza delle fasce dei gol (di solito 6)
-_RUOLO_DEL_GOL = {"P": "del portiere", "D": "del difensore", "C": "del centrocampista", "A": "dell'attaccante"}
-_INTERVALLI_BONUS = {              # campo di `Bonus` -> inizio della frase dell'errore (vedi Regole.problemi_di_intervallo)
-    "rigore_segnato": "il bonus per il rigore segnato deve", "assist": "il bonus per l'assist deve",
-    "rigore_parato": "il bonus per il rigore parato deve", "rigore_sbagliato": "il malus per il rigore sbagliato deve",
-    "autogol": "il malus per l'autogol deve", "gol_subito_portiere": "il malus per ogni gol subito dal portiere deve",
-    "portiere_imbattuto": "il bonus per il portiere imbattuto deve", "ammonizione": "il malus per l'ammonizione deve",
-    "espulsione": "il malus per l'espulsione deve", "mvp": "il bonus per il migliore in campo deve",
+# Limiti dei numeri (#663, #881): un posto solo, `fanta/web/limiti-regole.json` ({"bonus.assist": {"min": 0, "max": 20}, ...}).
+# Lo legge il server, qui, per controllare le regole quando si salvano, e la pagina Regole della web per i pulsanti − e + e per i
+# numeri scritti a mano: così la pagina non arriva mai a un numero che il server rifiuta. Larghi rispetto ai regolamenti veri; i
+# bonus non sono mai negativi e i malus mai positivi. Le chiavi sono i percorsi dei campi; «modificatore_difesa.soglie.media» e
+# «modificatore_difesa.soglie.bonus» valgono per ogni fascia. Si controllano al salvataggio, come i tetti di misura: le regole
+# salvate prima si leggono ancora (la pagina Regole le mostra e le si corregge), ma per salvarle di nuovo vanno riportate nei
+# limiti. Fanno eccezione le chiavi di _SEMPRE, controllate anche quando le regole si leggono.
+FILE_LIMITI = Path(__file__).resolve().parent / "web" / "limiti-regole.json"
+LIMITI: dict[str, dict[str, int | float]] = json.loads(FILE_LIMITI.read_text(encoding="utf-8"))
+MAX_ROSA_PER_RUOLO = LIMITI["rosa.P"]["max"]
+# Controllate anche quando le regole si leggono, con gli stessi limiti (c'erano già prima di #881: una rosa enorme o troppi cambi
+# rallentano i calcoli o li fanno fallire). Per queste chiavi un limite più stretto renderebbe illeggibili le leghe salvate prima.
+_SEMPRE = (*(f"rosa.{r}" for r in RUOLI), "panchina.max_sostituzioni", "voto_ufficio_rinviate")
+NON_VALIDE = "Regole non valide:"   # prima riga dell'errore, poi una riga «- …» per problema (la web le traduce una per una)
+# La frase di ogni limite, per chi usa l'app; {min} e {max} diventano i numeri di LIMITI. La web la traduce con la chiave err.* del
+# catalogo che ha lo stesso testo (fanta/testi/err.json).
+FRASI_LIMITI = {
+    "bonus.gol.P": "il bonus per il gol del portiere deve essere tra {min} e {max}",
+    "bonus.gol.D": "il bonus per il gol del difensore deve essere tra {min} e {max}",
+    "bonus.gol.C": "il bonus per il gol del centrocampista deve essere tra {min} e {max}",
+    "bonus.gol.A": "il bonus per il gol dell'attaccante deve essere tra {min} e {max}",
+    "bonus.rigore_segnato": "il bonus per il rigore segnato deve essere tra {min} e {max}",
+    "bonus.assist": "il bonus per l'assist deve essere tra {min} e {max}",
+    "bonus.rigore_parato": "il bonus per il rigore parato deve essere tra {min} e {max}",
+    "bonus.portiere_imbattuto": "il bonus per il portiere imbattuto deve essere tra {min} e {max}",
+    "bonus.mvp": "il bonus per il migliore in campo deve essere tra {min} e {max}",
+    "bonus.rigore_sbagliato": "il malus per il rigore sbagliato deve essere tra {min} e {max}",
+    "bonus.autogol": "il malus per l'autogol deve essere tra {min} e {max}",
+    "bonus.gol_subito_portiere": "il malus per ogni gol subito dal portiere deve essere tra {min} e {max}",
+    "bonus.ammonizione": "il malus per l'ammonizione deve essere tra {min} e {max}",
+    "bonus.espulsione": "il malus per l'espulsione deve essere tra {min} e {max}",
+    "rosa.P": "i portieri della rosa devono essere tra {min} e {max}",
+    "rosa.D": "i difensori della rosa devono essere tra {min} e {max}",
+    "rosa.C": "i centrocampisti della rosa devono essere tra {min} e {max}",
+    "rosa.A": "gli attaccanti della rosa devono essere tra {min} e {max}",
+    "crediti_iniziali": "i crediti iniziali devono essere tra {min} e {max}",
+    "panchina.numero": "i giocatori in panchina devono essere tra {min} e {max}",
+    "panchina.max_sostituzioni": "i cambi massimi devono essere tra {min} e {max}",
+    "panchina.posti.P": "i posti in panchina per i portieri devono essere tra {min} e {max}",
+    "panchina.posti.D": "i posti in panchina per i difensori devono essere tra {min} e {max}",
+    "panchina.posti.C": "i posti in panchina per i centrocampisti devono essere tra {min} e {max}",
+    "panchina.posti.A": "i posti in panchina per gli attaccanti devono essere tra {min} e {max}",
+    "voto_senza_sostituto": "il voto d'ufficio di chi resta senza sostituto deve essere tra {min} e {max}",
+    "voto_ufficio_rinviate": "il voto d'ufficio delle partite rinviate deve essere tra {min} e {max}",
+    "modificatore_difesa.min_difensori": "i difensori minimi del modificatore difesa devono essere tra {min} e {max}",
+    "modificatore_difesa.soglie.media": "la media di ogni fascia del modificatore difesa deve essere tra {min} e {max}",
+    "modificatore_difesa.soglie.bonus": "il bonus di ogni fascia del modificatore difesa deve essere tra {min} e {max}",
+    "fattore_campo": "il fattore campo deve essere tra {min} e {max}",
+    "soglia_primo_gol": "i punti del primo gol (partite testa a testa) devono essere tra {min} e {max}",
+    "ampiezza_fascia_gol": "l'ampiezza delle fasce dei gol (partite testa a testa) deve essere tra {min} e {max}",
 }
 
 
@@ -184,39 +215,56 @@ class Regole:
             return p
         return self._problemi_di_valore(intervalli=misure)
 
+    def _numeri_con_limite(self) -> dict[str, list]:
+        """I numeri delle regole per ogni chiave di LIMITI, nell'ordine di LIMITI (una fascia del modificatore = un valore per
+        chiave; nessun valore se il campo è vuoto). Da chiamare con i tipi già controllati."""
+        md, pan = self.modificatore_difesa, self.panchina
+        numeri = {f"bonus.gol.{r}": [v] for r, v in self.bonus.gol.items()}
+        numeri |= {f"bonus.{f.name}": [getattr(self.bonus, f.name)] for f in fields(Bonus) if f.name != "gol"}
+        numeri |= {f"rosa.{r}": [v] for r, v in self.rosa.items()}
+        numeri |= {f"panchina.posti.{r}": [v] for r, v in (pan.posti or {}).items()}
+        numeri |= {"crediti_iniziali": [self.crediti_iniziali], "panchina.numero": [pan.numero],
+                   "panchina.max_sostituzioni": [pan.max_sostituzioni],
+                   "voto_senza_sostituto": [v for v in [self.voto_senza_sostituto] if v is not None],
+                   "voto_ufficio_rinviate": [self.voto_ufficio_rinviate], "modificatore_difesa.min_difensori": [md.min_difensori],
+                   "modificatore_difesa.soglie.media": [media for media, _ in md.soglie],
+                   "modificatore_difesa.soglie.bonus": [bonus for _, bonus in md.soglie],
+                   "fattore_campo": [self.fattore_campo], "soglia_primo_gol": [self.soglia_primo_gol],
+                   "ampiezza_fascia_gol": [self.ampiezza_fascia_gol]}
+        return {k: numeri[k] for k in LIMITI if k in numeri}
+
     def problemi_di_intervallo(self) -> list[str]:
-        """Numeri fuori dagli intervalli (MAX_BONUS e gli altri sopra). Da chiamare con i tipi già controllati."""
+        """Numeri fuori dai limiti (LIMITI, tranne quelli di _SEMPRE) e valori che non hanno senso: modificatore acceso senza fasce,
+        due fasce con la stessa media, difensori minimi che nessun modulo ammesso ha (il modificatore non si applicherebbe mai).
+        Solo al salvataggio; da chiamare con i tipi già controllati."""
+        p = [_frase_limite(k) for k, valori in self._numeri_con_limite().items()
+             if k not in _SEMPRE and any(not _dentro(k, v) for v in valori)]
         md = self.modificatore_difesa
-        # (inizio della frase, valori, minimo, massimo): la frase continua con «essere tra minimo e massimo»
-        controlli = [(f"il bonus per il gol {_RUOLO_DEL_GOL.get(ruolo, ruolo)} deve", [v], -MAX_BONUS, MAX_BONUS)
-                     for ruolo, v in self.bonus.gol.items()]
-        controlli += [(frase, [getattr(self.bonus, nome)], -MAX_BONUS, MAX_BONUS) for nome, frase in _INTERVALLI_BONUS.items()]
-        controlli += [
-            ("il voto di chi resta senza sostituto deve", [v for v in [self.voto_senza_sostituto] if v is not None], 0, MAX_VOTO),
-            ("i crediti iniziali devono", [self.crediti_iniziali], 0, MAX_CREDITI),
-            ("i difensori minimi del modificatore difesa devono", [md.min_difensori], 0, MAX_DIFENSORI),
-            ("la media di ogni fascia del modificatore difesa deve", [media for media, _ in md.soglie], 0, MAX_VOTO),
-            ("il bonus di ogni fascia del modificatore difesa deve", [bonus for _, bonus in md.soglie], -MAX_BONUS, MAX_BONUS),
-            ("il fattore campo deve", [self.fattore_campo], -MAX_BONUS, MAX_BONUS),
-            ("i punti del primo gol (partite testa a testa) devono", [self.soglia_primo_gol], 0, MAX_SOGLIA_PRIMO_GOL),
-            ("l'ampiezza delle fasce dei gol (partite testa a testa) deve", [self.ampiezza_fascia_gol], 0, MAX_FASCIA_GOL),
-        ]
-        return [f"{frase} essere tra {_cifra(minimo)} e {_cifra(massimo)}" for frase, valori, minimo, massimo in controlli
-                if any(not minimo <= v <= massimo for v in valori)]
+        if md.attivo and not md.soglie:
+            p.append("con il modificatore difesa acceso serve almeno una fascia")
+        medie = [media for media, _ in md.soglie]
+        if len(set(medie)) != len(medie):
+            p.append("due fasce del modificatore difesa hanno la stessa media: togline una")
+        difensori = [d for d in map(_difensori_del_modulo, self.moduli) if d is not None]
+        if md.attivo and difensori and _dentro("modificatore_difesa.min_difensori", md.min_difensori) \
+                and md.min_difensori > max(difensori):
+            p.append(f"nessun modulo ammesso ha almeno {int(md.min_difensori)} difensori: "
+                     "il modificatore difesa non si applicherebbe mai")
+        return p
 
     def _problemi_di_valore(self, intervalli: bool) -> list[str]:
-        """Tipi e valori (senza i tetti di misura); `intervalli` aggiunge gli intervalli dei numeri."""
+        """Tipi e valori (senza i tetti di misura); `intervalli` aggiunge i limiti dei numeri che valgono al salvataggio."""
         p = self._problemi_di_tipo()
         if p:  # con tipi sbagliati gli altri controlli non hanno senso
             return p
         if self.fonte_voto not in FONTI_VOTO:
             p.append(f"fonte_voto deve essere una di {FONTI_VOTO}")
         if set(self.bonus.gol) != set(RUOLI):
-            p.append("bonus.gol deve avere un valore per ogni ruolo P, D, C, A")
-        if set(self.rosa) != set(RUOLI) or any(v < 1 for v in self.rosa.values()):
-            p.append("rosa deve indicare quanti P, D, C, A (almeno 1 ciascuno)")
-        if any(v > MAX_ROSA_PER_RUOLO for v in self.rosa.values()):
-            p.append(f"rosa: al massimo {MAX_ROSA_PER_RUOLO} giocatori per ruolo")
+            p.append("il bonus per il gol deve indicare un valore per portieri, difensori, centrocampisti e attaccanti")
+        if set(self.rosa) != set(RUOLI):
+            p.append("la rosa deve indicare quanti portieri, difensori, centrocampisti e attaccanti")
+        numeri = self._numeri_con_limite()
+        p += [_frase_limite(k) for k in _SEMPRE if any(not _dentro(k, v) for v in numeri.get(k, []))]
         if not self.moduli:
             p.append("serve almeno un modulo")
         if len(self.moduli) > MAX_MODULI:
@@ -239,22 +287,20 @@ class Regole:
             p.append(f"la prima giornata della lega deve essere tra 1 e {GIORNATE_SERIE_A}")
         if self.panchina.tipo not in ("libera", "per_ruolo"):
             p.append('panchina.tipo deve essere "libera" o "per_ruolo"')
-        if self.panchina.numero < 0 or self.panchina.max_sostituzioni < 0:
-            p.append("panchina.numero e panchina.max_sostituzioni non possono essere negativi")
-        if self.panchina.max_sostituzioni > MAX_SOSTITUZIONI:
-            p.append(f"panchina.max_sostituzioni: al massimo {MAX_SOSTITUZIONI}")
-        if self.panchina.numero > 2 * MAX_SOSTITUZIONI + 10:
-            p.append("panchina.numero troppo alto")
+        # panchina negativa o enorme: errore anche quando si legge (una panchina vuota si legge, ma non si salva più)
+        if not 0 <= self.panchina.numero <= LIMITI["panchina.numero"]["max"]:
+            p.append(_frase_limite("panchina.numero"))
         posti = self.panchina.posti
         if posti is not None:
-            if set(posti) != set(RUOLI) or any(v < 0 for v in posti.values()):
-                p.append("panchina.posti deve indicare quanti posti per P, D, C, A (zero o più)")
+            if set(posti) != set(RUOLI):
+                p.append("i posti fissi in panchina devono indicare quanti portieri, difensori, centrocampisti e attaccanti")
+            elif any(v < 0 for v in posti.values()):
+                p += [_frase_limite(f"panchina.posti.{r}") for r in RUOLI if posti[r] < 0]
             elif sum(posti.values()) != self.panchina.numero:
-                p.append(f"panchina.numero ({self.panchina.numero}) deve essere la somma dei posti per ruolo ({sum(posti.values())})")
+                p.append(f"i giocatori in panchina ({int(self.panchina.numero)}) devono essere la somma dei posti per ruolo "
+                         f"({int(sum(posti.values()))})")
         if self.partite_rinviate not in MODI_RINVIO:
             p.append(f"partite_rinviate deve essere una di {MODI_RINVIO}")
-        if not 0 <= self.voto_ufficio_rinviate <= 10:
-            p.append("il voto d'ufficio delle partite rinviate deve essere tra 0 e 10")
         if len(self.rinvii_giornate) > MAX_ECCEZIONI_RINVII:
             p.append(f"rinvii_giornate: al massimo {MAX_ECCEZIONI_RINVII} eccezioni")
         for k, v in self.rinvii_giornate.items():
@@ -275,7 +321,7 @@ class Regole:
                 p += _problemi_periodo(f"finestre_scambio[{i}]", x)
         if intervalli:
             p += self.problemi_di_intervallo()
-        return p
+        return list(dict.fromkeys(p))      # (la panchina negativa la dicono sia la lettura sia il salvataggio: una volta)
 
     def _problemi_di_tipo(self) -> list[str]:
         p = []
@@ -371,9 +417,27 @@ def _numero(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)      # niente inf e nan
 
 
-def _cifra(n: int) -> str:
-    """Un numero intero scritto all'italiana: 100000 -> «100.000»."""
-    return f"{n:,}".replace(",", ".")
+def _cifra(n: int | float) -> str:
+    """Un numero scritto all'italiana, con il meno tipografico: 100000 -> «100.000», -20 -> «−20», 0.5 -> «0,5»."""
+    a = abs(n)
+    testo = f"{int(a):,}".replace(",", ".") if a == int(a) else str(a).replace(".", ",")
+    return ("−" if n < 0 else "") + testo
+
+
+def _dentro(chiave: str, valore) -> bool:
+    return LIMITI[chiave]["min"] <= valore <= LIMITI[chiave]["max"]
+
+
+def _frase_limite(chiave: str) -> str:
+    """«il bonus per l'assist deve essere tra 0 e 20»: la frase del limite di `chiave`, con i suoi numeri."""
+    return FRASI_LIMITI[chiave].format(min=_cifra(LIMITI[chiave]["min"]), max=_cifra(LIMITI[chiave]["max"]))
+
+
+def _difensori_del_modulo(modulo: str) -> int | None:
+    try:
+        return modulo_in_numeri(modulo)[0]
+    except ValueError:              # (un modulo scritto male lo dice già il controllo dei moduli)
+        return None
 
 
 @lru_cache(maxsize=256)
@@ -417,13 +481,13 @@ def _controlla(regole: Regole, misure: bool = True) -> Regole:
     intervalli (tutti e due solo se `misure`), ValueError per il resto."""
     troppo = regole.problemi_di_misura() if misure else []
     if troppo:
-        raise RegoleTroppoGrandi("Regole non valide:\n- " + "\n- ".join(troppo))
+        raise RegoleTroppoGrandi(NON_VALIDE + "\n- " + "\n- ".join(troppo))
     problemi = regole._problemi_di_valore(intervalli=False)
     if problemi:
-        raise ValueError("Regole non valide:\n- " + "\n- ".join(problemi))
+        raise ValueError(NON_VALIDE + "\n- " + "\n- ".join(problemi))
     fuori = regole.problemi_di_intervallo() if misure else []      # solo con i tipi e gli altri valori a posto
     if fuori:
-        raise RegoleFuoriIntervallo("Regole non valide:\n- " + "\n- ".join(fuori))
+        raise RegoleFuoriIntervallo(NON_VALIDE + "\n- " + "\n- ".join(fuori))
     return regole
 
 
