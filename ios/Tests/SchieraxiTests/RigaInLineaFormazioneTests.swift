@@ -2,10 +2,10 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// La riga sulla schermata di blocco (`accessoryInline`) del widget «Formazione consigliata»: una forma sola con quella di
-/// «Prossima giornata» (#819). Nelle foto del 20/11 la Formazione diceva «SchieraXI 3-4-3 · 72,7» e Prossima giornata
-/// «3-4-3 · 72,7 punti». Dati inventati.
-@Suite("Widget Formazione: la riga della schermata di blocco come Prossima giornata")
+/// La riga sulla schermata di blocco (`accessoryInline`) del widget «Formazione consigliata»: «3-4-3 · 72,7 punti»
+/// (`ParoleWidget.moduloEPunti`, #819). Nelle foto del 20/11 la Formazione diceva «SchieraXI 3-4-3 · 72,7». Prossima giornata,
+/// che aveva la stessa riga, dal #871 mostra il conto alla rovescia (`WidgetGiornataEContoTests`). Dati inventati.
+@Suite("Widget Formazione: la riga della schermata di blocco, modulo e punti")
 struct RigaInLineaFormazioneTests {
 
     private func formazione(_ json: String) throws -> FormazioneWidget {
@@ -21,8 +21,8 @@ struct RigaInLineaFormazioneTests {
         #expect(f.formeInLinea.allSatisfy { !$0.contains("SchieraXI") })
     }
 
-    @Test("Le stesse forme della riga di Prossima giornata (`ParoleWidget.moduloEPunti` senza fascia)")
-    func comeProssimaGiornata() throws {
+    @Test("Le forme di `ParoleWidget.moduloEPunti` senza fascia, anche quando il server la manda")
+    func moduloEPuntiSenzaFascia() throws {
         let f = try formazione(#"{"modulo": "4-3-3", "punti_attesi": 68.25, "intervallo": {"basso": 60, "alto": 76}}"#)
         #expect(f.formeInLinea == ParoleWidget.moduloEPunti("4-3-3", punti: 68.25, fascia: nil))
     }
