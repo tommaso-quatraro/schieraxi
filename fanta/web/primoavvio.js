@@ -149,7 +149,7 @@ function paFine() {
       if (await Notification.requestPermission() !== "granted") throw new Error(t("pav.permesso_negato_abilita"));
       const { chiave } = await api("/api/push/chiave");
       const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
+      const sub = await iscrizioneMia(reg, chiave);   // mai quella di un altro account (#874, app.js)
       await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) });
       segnaAvvisiDi();                                   // l'iscrizione è di chi l'ha accesa (#804, app.js)
       avvisi.remove(); $("#pa-msg").innerHTML = `<div class="onb-verde">${t("onb.avvisi_attivi_questo")}</div>`;
@@ -365,8 +365,11 @@ function paDaRiprendere(s) {
 //   riprende dalle rose, con lo stato che il server ricorda (#580);
 // - mai cominciato (né il primo avvio né la vecchia procedura) e senza rose: parte da solo; da quel momento il server ricorda che
 //   hai cominciato.
+// Se l'elenco delle squadre non è arrivato (server che riparte, rete giù) vuoto non vuol dire senza rose: la guida non parte su
+// quello e non conta come fatto, si riprova alla prossima occasione (Formazione senza rose, prossima apertura) (#874).
 let paControllo = null;
 function primoAvvioSeServe() {
+  if (!stato.squadreLette) return Promise.resolve();
   if (!paControllo) paControllo = paControllaAvvio();
   return paControllo;
 }

@@ -45,12 +45,17 @@ def _prev(righe):
 
 @pytest.fixture
 def giornata10(tmp_path, monkeypatch):
-    """Giornata 10: due partite sabato alle 18:30 e 20:45 e un anticipo giovedì (già giocato sabato). Voti finti delle giornate 8 e 9."""
+    """Giornata 10: due partite sabato alle 18:30 e 20:45 e un anticipo giovedì (già giocato sabato). Voti finti delle giornate 8 e 9,
+    con le loro partite già giocate (la fantamedia guarda la data della partita di ogni voto, come il modello)."""
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
     db = archivio.apri(tmp_path / "a.sqlite")
     _partita(db, 1, 10, "2026-11-07 18:30", "Alfa", "Beta")
     _partita(db, 2, 10, "2026-11-07 20:45", "Gamma", "Delta")
     _partita(db, 3, 10, "2026-11-05 20:45", "Epsilon", "Zeta", giocata=1)
+    _partita(db, 81, 8, "2026-10-24 18:00", "Alfa", "Beta", giocata=1)
+    _partita(db, 91, 9, "2026-10-31 15:00", "Alfa", "Beta", giocata=1)
+    _partita(db, 92, 9, "2026-10-31 18:00", "Gamma", "Delta", giocata=1)
+    _partita(db, 93, 9, "2026-10-31 20:45", "Epsilon", "Zeta", giocata=1)
     _voto(db, 8, 101, "Alfa", "P", 6.0)                       # imbattuto: 6 + 1 = 7
     _voto(db, 9, 101, "Alfa", "P", 6.5, gol_subiti=1)          # 6,5 - 1 = 5,5  -> fantamedia 6,25
     _voto(db, 9, 102, "Gamma", "D", 6.0, assist=1)             # 7
@@ -104,6 +109,20 @@ def test_fantamedia_solo_con_le_giornate_di_prima(giornata10):
     assert rg.fantamedie_tirate(db, ST, 10, Regole()) == ({101: 6.25, 102: 7.0}, {"P": 6.25, "D": 7.0})
 
 
+def test_fantamedia_solo_con_le_partite_giocate_prima_dell_inizio_della_giornata(giornata10):
+    """#840, come `verifica.avversari` dopo #832: «prima» vuol dire prima della prima partita della giornata, per data come il
+    modello (`modello.prima_di`), non per numero di giornata. Un recupero della 9 giocato dopo l'anticipo della 10 non conta per
+    la 10 (il modello non poteva vederlo), conta per la 11. Un voto senza la sua partita non ha data e non conta."""
+    db = giornata10
+    _partita(db, 94, 9, "2026-11-11 20:45", "Eta", "Theta", giocata=1)        # recupero della 9, dopo l'inizio della 10
+    _voto(db, 9, 108, "Eta", "D", 10.0)
+    _voto(db, 7, 109, "Iota", "D", 4.0)                                        # giornata 7: la sua partita non c'è
+    assert rg.fantamedie_tirate(db, ST, 10, Regole()) == ({101: 6.25, 102: 7.0}, {"P": 6.25, "D": 7.0})
+    _partita(db, 111, 11, "2026-11-21 15:00", "Alfa", "Gamma")
+    tirate, ruoli = rg.fantamedie_tirate(db, ST, 11, Regole())
+    assert ruoli["D"] == pytest.approx(8.5) and tirate[108] == pytest.approx((10 + 10 * 8.5) / 11, abs=1e-3) and 109 not in tirate
+
+
 def test_fantamedia_tirata_verso_il_ruolo_con_tutta_la_storia(giornata10):
     """L'avversario onesto di I1 (#614): tutti i voti di prima, anche della stagione scorsa, e 10 presenze fittizie alla media
     del ruolo. Chi non ha voti vale la media del ruolo; un ruolo senza voti vale 6."""
@@ -111,6 +130,8 @@ def test_fantamedia_tirata_verso_il_ruolo_con_tutta_la_storia(giornata10):
     _voto(db, 9, 107, "Delta", "D", 5.0)                                       # difensori: 7 e 5, media 6
     campi = "stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red"
     db.execute(f"INSERT INTO voti ({campi}) VALUES ('2025-26', 38, 102, 'finto102', 'Gamma', 'D', 9.0)")   # stagione scorsa: conta
+    db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) "
+               "VALUES (538, '2025-26', 38, '2026-05-24 20:45', 'Gamma', 'Alfa', 1)")
     tirate, ruoli = rg.fantamedie_tirate(db, ST, 10, Regole())
     assert ruoli == {"P": 6.25, "D": pytest.approx(7.0)}                       # (7 + 5 + 9) / 3
     assert tirate[102] == pytest.approx((7 + 9 + 10 * 7.0) / 12, abs=1e-3) and tirate[107] == pytest.approx((5 + 10 * 7.0) / 11, abs=1e-3)
