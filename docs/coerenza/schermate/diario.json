@@ -53,6 +53,15 @@
       "forma": "server (`fatti_e_attesi.differenza` per la riga, con i testi `giornate.sul_previsto` e `giornate.come_previsto`; `fatti_e_attesi.testo` per la frase, così com'è); un server di prima non manda il campo: niente differenza né frase",
       "chi": "web con #702 (#672); iPhone con #705: `RigaGiornata.sulPrevisto` e `DettaglioGiornata.scarti` in `Domain/Giornate.swift`, provati da `GiornateTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 101,
+      "schermata": "Giornate, da dove vengono i punti (riserve entrate, modificatore difesa, partita rinviata)",
+      "web": "nella giornata aperta, sotto la tabella degli 11, una riga per frase: «Rossi (10,0) è entrato dalla panchina al posto di Bianchi.», «Modificatore difesa: +1,5.», «Al posto di Verdi non è entrato nessuno dalla panchina.», «Partita rinviata: Neri prende il voto d'ufficio (6,0).»; per una giornata calcolata prima, solo se i conti non tornano, «Per questa giornata manca il dettaglio dei punti …»; niente se non c'è niente da spiegare",
+      "iphone": "manca: la tabella degli 11 senza le righe sotto",
+      "forma": "server (`spiegazione_punti.righe` di ogni voce di `GET /api/diario`, così com'è; `null` o assente: niente)",
+      "chi": "server e web con #900; l'iPhone da fare (#900)",
+      "stato": "da-fare"
     }
   ]
 }
