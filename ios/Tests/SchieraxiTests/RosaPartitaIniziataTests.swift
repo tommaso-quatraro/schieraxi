@@ -5,7 +5,8 @@ import Testing
 /// A destra delle righe della Rosa di una squadra, come `valoreRosa` di app.js (#367) e come le righe della Formazione (#313):
 /// a partita iniziata niente più fantavoto atteso e «gioca N%». A partita finita con il voto il fantavoto preso con sotto
 /// «fantavoto» (`mercato.fantavoto`, dal catalogo comune), altrimenti «–» da solo: lo stato è già nella pillola dell'etichetta. La partita rinviata
-/// resta come prima della partita. VoiceOver dice le stesse cose. Dati inventati.
+/// resta come prima della partita. VoiceOver dice le stesse cose, con le parole intere come le righe della Formazione
+/// (`RigaGiocatore.voce`, #882): «Genoa», «in casa contro Como», «gioca al 72 per cento». Dati inventati.
 @Suite("Righe della Rosa a partita iniziata: come la web")
 struct RosaPartitaIniziataTests {
     /// Un giocatore della rosa inventato; `altro` è un pezzo di JSON in più dentro la sua previsione.
@@ -30,8 +31,9 @@ struct RosaPartitaIniziataTests {
         try TestiWeb().italiano("giocatore.gioca").replacingOccurrences(of: "{p}", with: "72%")
     }
 
-    /// Il pezzo fisso della frase di VoiceOver: nome, ruolo, squadra, costo, quotazione e avversario.
-    private static let inizioVoce = "Paolo Esempio, centrocampista, GEN · costo 12 · quotazione 14 · vs COM"
+    /// Il pezzo fisso della frase di VoiceOver: nome, ruolo, squadra, costo, quotazione e avversario, a parole intere (#882):
+    /// prima VoiceOver leggeva le sigle e i «·» della riga piccola («GEN · costo 12 · quotazione 14 · vs COM»).
+    private static let inizioVoce = "Paolo Esempio, centrocampista, Genoa, costo 12, quotazione 14, in casa contro Como"
 
     // MARK: prima della partita, e partita rinviata: fantavoto atteso e «gioca N%»
 
@@ -47,7 +49,7 @@ struct RosaPartitaIniziataTests {
         let gioca = try gioca72()
         #expect(RigaRosa.numero(g) == "6,4")
         #expect(RigaRosa.sottoNumero(g) == gioca)
-        #expect(RigaRosa.voce(g).contains("fantavoto atteso 6,4"))
+        #expect(RigaRosa.voce(g).contains("fantavoto atteso 6,4, gioca al 72 per cento"), "«gioca 72%» si vede: VoiceOver lo dice (#882)")
     }
 
     // MARK: partita finita con il voto: il fantavoto preso
@@ -100,7 +102,7 @@ struct RosaPartitaIniziataTests {
     @Test("VoiceOver prima della partita: fantavoto atteso e le etichette che si vedono, come la web")
     func voceConEtichette() throws {
         let g = try rosa(#""titolarita": "titolare", "etichetta": {"codice": "titolare", "testo": "Probabile titolare", "tono": "positivo"}"#)
-        #expect(RigaRosa.voce(g) == "\(Self.inizioVoce), fantavoto atteso 6,4, probabile titolare")
+        #expect(RigaRosa.voce(g) == "\(Self.inizioVoce), fantavoto atteso 6,4, gioca al 72 per cento, probabile titolare")
     }
 
     // MARK: senza previsione
@@ -111,7 +113,7 @@ struct RosaPartitaIniziataTests {
         let riconosciuto = try senzaPrevisione(conId: true)
         #expect(RigaRosa.numero(riconosciuto) == nil)
         #expect(RigaRosa.sottoNumero(riconosciuto) == nonGioca)
-        #expect(RigaRosa.voce(riconosciuto) == "Paolo Esempio, centrocampista, GEN · costo 12 · quotazione 14, \(nonGioca)")
+        #expect(RigaRosa.voce(riconosciuto) == "Paolo Esempio, centrocampista, Genoa, costo 12, quotazione 14, \(nonGioca)")
         let sconosciuto = try senzaPrevisione(conId: false)
         #expect(RigaRosa.numero(sconosciuto) == nil)
         #expect(RigaRosa.sottoNumero(sconosciuto) == "?")
