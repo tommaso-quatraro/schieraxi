@@ -2197,8 +2197,8 @@ async function apriStatoDati() {
       <div class="carta" id="fonti-dati"><h2>${t("scambio.fonti_dei_dati")}</h2>
         ${(s.fonti || []).map(f => `<div class="riga"><span>${esc(f.nome)}</span>
           <button class="bottone secondario piccolo" data-fonte="${esc(f.id)}" data-acceso="${f.acceso ? "1" : "0"}">${t(f.acceso ? "sd.accesa_spegni" : "sd.spenta_accendi")}</button></div>
-          ${f.acceso ? "" : `<div class="debole piccolo">${esc(f.messaggio || "")}</div>`}`).join("")}
-        <div class="debole piccolo">${t("scambio.accendere_una_fonte")}</div></div>
+          ${f.acceso ? "" : `<div class="debole piccolo">${esc(testoDi(f, "messaggio") || "")}</div>`}`).join("")}
+        <div class="debole piccolo" style="margin-top:12px">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
         <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${elidiGiorno(t("sd.dal", { d: esc(fData(usoDal, {})) }))})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
         ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
@@ -4028,12 +4028,14 @@ async function scaricaIMieiDati() {
   finally { if (b) b.disabled = false; }
 }
 
-// Impostazioni > Avanzate (solo amministratore): inviti, codici per chi ha perso la password, utenti, errori del server.
+// Impostazioni > Gestione (solo amministratore con gli account): inviti, codici per chi ha perso la password, utenti. Con i posti
+// pieni l'avviso del server sta sopra «Crea l'invito» (#894).
+const gestisceAccount = () => !!(stato.account && stato.account.ruolo === "amministratore");
 function schedaAmministratore() {
-  const a = stato.account;
-  return a && a.ruolo === "amministratore" ? `<div class="carta" id="scheda-admin"><h3>${t("admin.titolo")}</h3>
+  return gestisceAccount() ? `<div class="carta" id="scheda-admin"><h3>${t("admin.titolo")}</h3>
     <h3>${t("admin.invito_titolo")}</h3>
     <div class="debole piccolo">${t("admin.invito_spiega")}</div>
+    <div id="adm-avviso-posti" role="status"></div>
     <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
     <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
     <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
@@ -4041,8 +4043,11 @@ function schedaAmministratore() {
     <div class="debole piccolo">${t("admin.reset_spiega")}</div>
     <label class="accesso-campo"><span class="debole piccolo">${t("accesso.nome_utente")}</span><input class="campo-testo" id="adm-nome" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></label>
     <div class="pulsanti"><button class="bottone secondario" id="adm-reset">${t("admin.genera_codice")}</button></div><div id="adm-esito-reset"></div>
-    <h3>${t("admin.utenti_titolo")}</h3><div id="adm-utenti" class="debole piccolo">${t("admin.carico")}</div></div>
-  <div class="carta" id="scheda-errori"><h3>${t("errori.titolo")}</h3>
+    <h3>${t("admin.utenti_titolo")}</h3><div id="adm-utenti" class="debole piccolo">${t("admin.carico")}</div></div>` : "";
+}
+// «Errori recenti», accanto agli strumenti da 1100 px (paginaGestione).
+function schedaErrori() {
+  return gestisceAccount() ? `<div class="carta" id="scheda-errori"><h3>${t("errori.titolo")}</h3>
     <div class="debole piccolo">${t("errori.spiega")}</div>
     <div id="adm-registro" class="debole piccolo" aria-live="polite">${t("admin.carico")}</div>
     <div class="pulsanti"><button class="bottone secondario" type="button" id="adm-registro-aggiorna">${t("errori.aggiorna")}</button></div></div>` : "";
@@ -4137,9 +4142,17 @@ function collegaAmministratore() {
     collegaCopiaCodice(codice);
   };
   const provaCosi = async (cosa, fai) => { try { await fai(); } catch (e) { avviso(e.message || cosa, 6000); } };
+  // posti pieni (#894): la frase del server (`avviso` di /api/admin/utenti e di /api/admin/inviti), in un posto solo sopra
+  // «Crea l'invito»; senza `avviso` (c'è posto, o un server di prima) il posto resta vuoto
+  const avvisoPosti = r => {
+    const dove = $("#adm-avviso-posti");
+    if (!dove || !r || !("avviso" in r)) return;
+    dove.innerHTML = r.avviso ? `<div class="attenzione">${esc(testoDi(r, "avviso"))}</div>` : "";
+  };
   $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
     const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked }) });
     $("#adm-etichetta").value = "";
+    avvisoPosti(r);
     mostraInvito(r);
     caricaUtenti();
   }));
@@ -4169,6 +4182,7 @@ function collegaAmministratore() {
     try {
       const r = await api("/api/admin/utenti");
       if (!$("#adm-utenti")) return;
+      avvisoPosti(r);
       const elenco = r.utenti.map(u => esc(u.nome_visualizzato || u.nome_utente) + (u.ruolo === "amministratore" ? t("admin.admin_breve") : "")).join(", ");
       $("#adm-utenti").innerHTML = tp("admin.utenti_riepilogo", r.utenti.length, { massimo: r.massimo, elenco });
     } catch (e) { if ($("#adm-utenti")) $("#adm-utenti").textContent = e.message; }
@@ -4192,9 +4206,11 @@ function collegaAmministratore() {
       const tempo = ms => Number(ms) >= 1000 ? t("errori.secondi", { n: num(Number(ms) / 1000) }) : t("errori.millisecondi", { n: num(ms) });
       const doveRotta = (rotta, metodo = "") => { const percorso = esc(((metodo ? metodo + " " : "") + (rotta || "")).trim()), nome = nomeDiRotta(rotta);
         return nome ? t("errori.dove", { nome: esc(nome), rotta: percorso }) : percorso; };
+      // le richieste prima dell'accesso (#894) non sono fra le rifiutate: si dicono a parte, solo se ci sono; niente percentile
+      const senzaAccesso = Number(c.senza_accesso) > 0 ? " " + tp("errori.senza_accesso", c.senza_accesso, { n: fNum(c.senza_accesso) }) : "";
       dove.innerHTML = `<p>${t("errori.riepilogo", { richieste: tp("errori.n_richieste", c.richieste, { n: fNum(c.richieste) }),
-          rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }),
-          medio: tempo(c.tempo_medio_ms), p95: tempo(c.tempo_p95_ms), max: tempo(c.tempo_max_ms) })}</p>
+          rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }) })}${senzaAccesso}
+          ${t("errori.tempi", { medio: tempo(c.tempo_medio_ms), max: tempo(c.tempo_max_ms) })}</p>
         <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${t(e.errore ? "errori.riga_errore_tipo" : "errori.riga_errore",
           { quando: quando(e.quando), dove: doveRotta(e.rotta, e.metodo), stato: esc(e.stato || ""), tipo: esc(e.errore || "") })}</li>`)}
         <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
