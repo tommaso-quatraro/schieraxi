@@ -1085,6 +1085,9 @@ body.senza-accesso .salta { display: none; }
 .gn-cambi { margin: 12px 0 0; font-size: var(--t-corpo); line-height: 1.4; max-width: 60ch; }
 .gn-scarti { margin: 4px 0 10px; font-size: var(--t-corpo); line-height: 1.4; }      /* chi ha fatto meglio o peggio del previsto (#672) */
 .gn-nota { margin: 4px 0 8px; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.4; max-width: 60ch; }
+/* da dove vengono i punti, sotto la tabella (#900): riserve entrate, modificatore difesa, partita rinviata */
+.gn-perche { margin: 10px 0 0; padding: 0; list-style: none; font-size: var(--t-sec); line-height: 1.4; max-width: 60ch; }
+.gn-perche li + li { margin-top: 4px; }
 .gn-dettaglio .pulsanti { margin-top: 12px; }
 .gn-vuoto { margin: 0; }
 @media (min-width: 768px) {

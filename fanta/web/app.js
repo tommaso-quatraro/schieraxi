@@ -2512,13 +2512,17 @@ function dettaglioGiornata(d, g, stagioni) {
     ? `<p class="gn-cambi">${t("giornate.al_posto", { dentro: esc(s.hai_scelto.join(", ")), fuori: esc((s.consigliava || []).join(", ")) })}</p>`
     : tipo === "tua" && allora ? `<p class="gn-nota">${allora}</p>` : "";
   const nota = tipo !== "tua" && allora ? `<p class="gn-nota">${allora}</p>` : "";
+  // perché i punti non sono la somma dei fantavoti della tabella (partita rinviata, riserve entrate, modificatore difesa): le frasi del
+  // server (`spiegazione_punti`, #900), sotto la tabella; niente se non le manda
+  const perche = testiDi(g.spiegazione_punti, "righe").filter(x => typeof x === "string" && x.trim());
+  const spiegati = perche.length ? `<ul class="gn-perche" aria-label="${t("giornate.perche_punti")}">${perche.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
   const correggi = g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" type="button" data-correggi="${id}">${t("giornate.correggi")}</button></div>`;
   return `<section class="gn-dettaglio" id="gn-d-${id}" aria-label="${nome}">
     <h2 class="gn-titolo">${titolo}</h2>${nota}${scarti ? `<p class="gn-scarti">${scarti}</p>` : ""}
     <table class="gn-tabella"><caption class="solo-lettori">${t("giornate.tabella")}</caption>
       <thead><tr><th scope="col">${t("giornate.col_giocatore")}</th><th scope="col">${t("giornate.col_atteso")}</th><th scope="col">${t("giornate.col_preso")}</th></tr></thead>
       <tbody>${righe}</tbody></table>
-    ${cambi}${correggi}</section>`;
+    ${spiegati}${cambi}${correggi}</section>`;
 }
 
 // In cima una riga sola sulla precisione (`precisione.fantavoto.errore_medio`) con i dettagli a richiesta; poi una riga per giornata.
