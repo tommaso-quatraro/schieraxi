@@ -6,7 +6,7 @@
    in un posto solo, `fanta/web/limiti-regole.json`: li usa il server quando salva e la pagina Regole per i pulsanti e i campi.
 6. Gli errori avevano sigle e nomi interni («rosa deve indicare quanti P, D, C, A», «panchina.max_sostituzioni: al massimo 10»)
    ed erano in italiano anche con la web in inglese. Ora sono frasi semplici, ognuna con la sua traduzione nel catalogo.
-Il punto 4 (un campo svuotato si salvava come 0) è della pagina: tests/browser/test_regole_limiti.py.
+Il punto 4 (un campo svuotato si salvava come 0) è della pagina: tests/browser/test_limiti_pagina_regole.py.
 """
 import json
 import re
