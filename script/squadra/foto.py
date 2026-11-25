@@ -47,14 +47,25 @@ def scegli(file: str, dati: dict, grafo: grafo_ios.Grafo, scene: list[str]) -> d
     if _corrisponde(file, dati["widget"]):
         return {"modo": "widget", "schermate": [], "perche": "foto dei widget"}
     regola = next((r for r in dati["regole"] if _corrisponde(file, r["percorsi"])), None)
-    if regola is not None and not regola.get("ripiego"):
-        return {"modo": "regola", "schermate": _nomi(dati, regola["schermate"]), "perche": "regola a mano di foto.json"}
     radici_scena: dict[str, list[str]] = {}
     for s in scene:
         for modello, tipi in dati.get("radici", {}).items():
             if aree.corrisponde(s, modello):
                 for t in tipi:
                     radici_scena.setdefault(t, []).append(s)
+    # le viste radice dichiarate nel file stesso (LegaExtra.swift tiene StatoDatiView, Demo.swift ProvaMarchio): cambiarlo
+    # può cambiare proprio quelle schermate, che una regola a mano o larga non sempre comprende
+    proprie = grafo.radici_dichiarate(file, set(radici_scena))
+
+    def con_proprie(modo: str, perche: str) -> dict:
+        scelte = _nomi(dati, regola["schermate"])
+        if proprie:
+            scelte += [s for s in scene if s not in scelte and any(s in radici_scena[t] for t in proprie)]
+            perche += f", più le schermate delle viste radice dichiarate nel file: {', '.join(proprie)}"
+        return {"modo": modo, "schermate": scelte, "perche": perche}
+
+    if regola is not None and not regola.get("ripiego"):
+        return con_proprie("regola", "regola a mano di foto.json")
     # i contenitori (RadiceView...) mostrano le loro parti su ogni schermata: arrivarci vale «troppe radici»
     contenitori = set(dati.get("contenitori", []))
     trovate = grafo.radici(file, set(radici_scena) | contenitori, set(dati.get("barriere", [])),
@@ -63,8 +74,7 @@ def scegli(file: str, dati: dict, grafo: grafo_ios.Grafo, scene: list[str]) -> d
     dentro = [t for t in trovate if t in contenitori]
     if dentro and regola is not None:
         strade = "; ".join(" ← ".join(trovate[t]) for t in dentro)
-        return {"modo": "ripiego", "schermate": _nomi(dati, regola["schermate"]),
-                "perche": f"il codice arriva a un contenitore di tutte le schermate ({strade}): regola larga"}
+        return con_proprie("ripiego", f"il codice arriva a un contenitore di tutte le schermate ({strade}): regola larga")
     if not dentro and 0 < len(trovate) <= soglia:
         scelte = {s for t in trovate for s in radici_scena[t]}
         strade = "; ".join(" ← ".join(strada) for strada in trovate.values())
@@ -72,7 +82,7 @@ def scegli(file: str, dati: dict, grafo: grafo_ios.Grafo, scene: list[str]) -> d
     motivo = (f"il codice arriva a {len(trovate)} viste radice (più di {soglia})" if trovate
               else "il codice non arriva a nessuna vista radice")
     if regola is not None:
-        return {"modo": "ripiego", "schermate": _nomi(dati, regola["schermate"]), "perche": f"{motivo}: regola larga"}
+        return con_proprie("ripiego", f"{motivo}: regola larga")
     return {"modo": "senza", "schermate": [], "perche": motivo}
 
 

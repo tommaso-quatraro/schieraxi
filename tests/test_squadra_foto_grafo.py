@@ -87,6 +87,54 @@ def test_parte_comune_oltre_la_soglia_usa_la_regola_larga():
     assert s["modo"] == "ripiego" and s["schermate"] == ["a"]
 
 
+def test_regola_larga_piu_le_schermate_delle_viste_radice_del_file():
+    """Un file che dichiara una vista radice (come LegaExtra.swift con StatoDatiView) e arriva a troppe radici prende la
+    regola larga più le schermate delle viste radice che dichiara lui stesso: cambiarlo può cambiare proprio quelle."""
+    testi = {k: v for k, v in TESTI.items() if k != "ios/Sources/Presentation/B/VistaB.swift"}
+    testi["ios/Sources/Presentation/C/Insieme.swift"] = (
+        "struct VistaB: View {\n    var body: some View { Comune() }\n}\n"
+        "struct PezzoA: View {\n    var body: some View { Text(\"p\") }\n}\n")
+    testi["ios/Sources/Presentation/A/VistaA.swift"] = "struct VistaA: View {\n    var body: some View { PezzoA() }\n}\n"
+    s = _scegli("ios/Sources/Presentation/C/Insieme.swift", testi=testi)
+    assert s["modo"] == "ripiego" and s["schermate"] == ["a", "b"]
+    assert "VistaB" in s["perche"]
+
+
+def test_contenitore_piu_le_schermate_delle_viste_radice_del_file():
+    """Anche quando il codice arriva a un contenitore (Demo.swift dichiara ProvaMarchio): la regola larga può non comprendere
+    la schermata della vista dichiarata nel file."""
+    testi = {**TESTI, "ios/Sources/App/Contenitore.swift": "struct Contenitore: View {\n    var body: some View { PezzoB() }\n}\n"}
+    testi["ios/Sources/Presentation/B/VistaB.swift"] += "struct PezzoB: View {\n    var body: some View { Text(\"p\") }\n}\n"
+    dati = {**DATI, "contenitori": ["Contenitore"], "regole": DATI["regole"][1:]}
+    s = _scegli("ios/Sources/Presentation/B/VistaB.swift", dati, testi)
+    assert s["modo"] == "ripiego" and s["schermate"] == ["a", "b"]
+    assert "VistaB" in s["perche"]
+
+
+def test_estensione_di_una_vista_radice_conta_come_la_vista():
+    testi = {**TESTI, "ios/Sources/Presentation/B/VistaB+Altro.swift":
+             "extension VistaB {\n    var altro: some View { Text(\"x\") }\n}\n"
+             "struct PezzoA: View {\n    var body: some View { Text(\"p\") }\n}\n"}
+    testi["ios/Sources/Presentation/A/VistaA.swift"] = "struct VistaA: View {\n    var body: some View { PezzoA() }\n}\n"
+    dati = {**DATI, "regole": DATI["regole"][1:]}
+    s = _scegli("ios/Sources/Presentation/B/VistaB+Altro.swift", dati, testi)
+    assert s["modo"] == "ripiego" and s["schermate"] == ["a", "b"] and "VistaB" in s["perche"]
+
+
+def test_regola_a_mano_piu_le_schermate_delle_viste_radice_del_file():
+    """Una regola a mano stretta che dimentica una schermata della vista del suo file (AccessoView.swift senza accesso-rete):
+    la schermata si aggiunge da sola."""
+    dati = {**DATI, "regole": [{"percorsi": ["ios/Sources/Presentation/A/VistaA.swift"], "schermate": ["a"]}] + DATI["regole"]}
+    s = _scegli("ios/Sources/Presentation/A/VistaA.swift", dati)
+    assert s["modo"] == "regola" and s["schermate"] == ["a", "a-fondo"]
+    assert "VistaA" in s["perche"]
+
+
+def test_regola_larga_senza_viste_radice_nel_file_resta_com_era():
+    s = _scegli("ios/Sources/Support/Comune.swift")
+    assert s["schermate"] == ["a"] and "dichiara" not in s["perche"]
+
+
 def test_la_barriera_ferma_la_risalita():
     """ModelloA arriva a VistaB solo attraverso Tutto (come AppModel, che tutti usano): non conta."""
     s = _scegli("ios/Sources/Domain/ModelloA.swift")
@@ -136,6 +184,30 @@ def test_schermate_usa_il_grafo_e_spiega():
 
 def _dati() -> dict:
     return comune.leggi_json("foto.json")
+
+
+def test_lega_extra_porta_anche_lo_stato_dei_dati():
+    """LegaExtra.swift contiene StatoDatiView (Impostazioni › Gestione › Stato dei dati): nella PR #850 le sue schermate
+    erano state aggiunte a mano perché la regola larga della cartella Lega non le comprende."""
+    s = foto.scegli("ios/Sources/Presentation/Lega/LegaExtra.swift", _dati(), foto.grafo_del_repository(),
+                    foto.scene_di_screenshot())
+    assert {"lega-stato", "lega-stato-nostri", "lega-stato-fondo"} <= set(s["schermate"])
+    assert "StatoDatiView" in s["perche"]
+
+
+def test_ogni_file_porta_le_schermate_delle_viste_radice_che_dichiara():
+    """Regole a mano strette e regole larghe: le schermate della vista radice del file ci sono sempre (revisione di #855)."""
+    dati, grafo, scene = _dati(), foto.grafo_del_repository(), foto.scene_di_screenshot()
+    attese = {
+        "ios/Sources/Support/Demo.swift": {"marchio"},
+        "ios/Sources/Presentation/Lega/ImpostazioniView.swift": {"lega"},
+        "ios/Sources/Presentation/Formazione/FormazioneView.swift": {"accesso-rose"},
+        "ios/Sources/Presentation/Lega/AccountPagina.swift": {"accesso-account-fondo"},
+        "ios/Sources/Presentation/Accesso/AccessoView.swift": {"accesso-rete", "accesso-limite", "accesso-non-valido"},
+        "ios/Sources/Presentation/Accesso/ConfigurazioneGuidataView.swift": {"guida"},
+    }
+    for file, schermate in attese.items():
+        assert schermate <= set(foto.scegli(file, dati, grafo, scene)["schermate"]), file
 
 
 def test_ogni_schermata_di_screenshot_ha_una_radice():
