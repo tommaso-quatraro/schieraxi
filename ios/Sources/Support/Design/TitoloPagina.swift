@@ -37,7 +37,9 @@ enum TitoloPagina {
     /// Con il testo grande la barra resta senza titolo (#419)? Da `soglia` in su, per tutte le pagine: il titolo intero sta
     /// già nella pagina (`TitoloNellaPagina`), e nella barra si tagliava («Gli Amici del B…» sopra lo stesso nome intero).
     /// Niente «solo se ci sta»: un titolo nella barra nascosto a VoiceOver lasciava lo stesso un elemento con il nome (o
-    /// vuoto) nella barra, che VoiceOver poteva leggere su una zona vuota (test `TitoloUnaVoltaUITests`).
+    /// vuoto) nella barra, che VoiceOver poteva leggere su una zona vuota (test `TitoloUnaVoltaUITests`). In cima a una scheda
+    /// (niente «indietro») la barra resta vuota del tutto e su iOS 26 non sfuma più i contenuti che le passano sotto: quelle
+    /// pagine aggiungono `bordoSottoLaBarraVuota()` (#848).
     static func barraSenzaTitolo(_ dimensione: DynamicTypeSize) -> Bool {
         nellaPagina(dimensione)
     }

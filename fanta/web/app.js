@@ -276,11 +276,14 @@ const erroreVista = e => senzaRose(e) ? cartaSenzaRose() : funzioneSpenta(e) ? c
 // L'app mostra subito i dati vecchi e li sostituisce con quelli nuovi appena arrivano: si apre senza attese.
 const VERSIONE_CACHE = "3";   // da cambiare quando cambia la forma dei dati: le copie vecchie vengono ignorate
 const chiaveCache = chiave => `cache:${VERSIONE_CACHE}:${stato.account ? `u${stato.account.id}:` : ""}${chiave}`;
-function leggiCache(chiave) {
-  try { const x = JSON.parse(localStorage.getItem(chiaveCache(chiave)) || "null"); return x && x.dati ? x : null; } catch { return null; }
+// La copia ricorda la lingua in cui è stata chiesta: alcune parole le scrive il server in quella lingua (etichette, note). Di norma
+// vale solo nella lingua scelta (#854); `qualsiasi`: anche in un'altra lingua o senza lingua (salvata da una versione di prima), per
+// quando i dati nuovi non arrivano: giocatori e numeri sono gli stessi. Una copia sola per chiave: la nuova prende il posto della vecchia.
+function leggiCache(chiave, qualsiasi = false) {
+  try { const x = JSON.parse(localStorage.getItem(chiaveCache(chiave)) || "null"); return x && x.dati && (qualsiasi || x.lingua === LINGUA) ? x : null; } catch { return null; }
 }
 function salvaCache(chiave, dati) {
-  try { localStorage.setItem(chiaveCache(chiave), JSON.stringify({ quando: Date.now(), dati })); } catch { /* memoria piena o bloccata */ }
+  try { localStorage.setItem(chiaveCache(chiave), JSON.stringify({ quando: Date.now(), lingua: LINGUA, dati })); } catch { /* memoria piena o bloccata */ }
 }
 function rimuoviCache(chiave) {
   try { localStorage.removeItem(chiaveCache(chiave)); } catch { /* niente memoria */ }
@@ -356,11 +359,17 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
       return true;
     } catch (e) {
       if (!ancoraValida(mia)) return false;
+      if (!salvata) {         // niente copia nella lingua scelta: meglio quella di un'altra lingua o senza lingua che una pagina vuota (#854)
+        const altra = leggiCache(chiave, true);
+        if (altra) try { vista = mostra(altra.dati, { daCache: altra.quando }); salvata = altra; } catch { rimuoviCache(chiave); }
+      }
       if (salvata) {
         const b = $("#nota-cache");
         if (!b) return false;
         const ferma = !!vista && typeof vista.sola === "function" && vista.sola();
-        b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : t("comune.cache_errore", { errore: esc(e.message) })}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
+        const copia = new Date(salvata.quando);                             // la nota dice di quando è la copia (#845)
+        const motivo = elidiGiorno(t("comune.cache_errore", { errore: esc(e.message), giorno: fData(copia), ora: fOra(copia) }));
+        b.innerHTML = `<span>${e.rete ? t("comune.cache_offline") : motivo}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
           <button class="azione-testo" type="button" data-riprova>${t("comune.riprova")}</button>`;
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
         return false;
@@ -480,8 +489,9 @@ function luminosita(hex) {
 const SOGLIA_GIOCA = 0.8, SOGLIA_BASSA = 0.5;
 const giocaLetto = x => Math.round((x.p_voto ?? 0) * 100) / 100;
 const classeGioca = p => (p < SOGLIA_BASSA ? "basso" : "medio");
-// Per i lettori di schermo la pedina in una frase, con le stesse cose che si vedono: «Rossi, fantavoto atteso 6,8, gioca al 45 per
-// cento, In dubbio». `esito`: esitoPedina(x), a partita iniziata o rinviata; `stato`: parolaStato(x). A formazione chiusa, per chi
+// Per i lettori di schermo la pedina in una frase, con le stesse cose che si vedono: «Rossi, Centrocampista, fantavoto atteso 6,8,
+// gioca al 45 per cento, In dubbio». Il ruolo dopo il nome (#882): sul campo lo dice solo la fila in cui sta la pedina, che chi non
+// vede non ha. `esito`: esitoPedina(x), a partita iniziata o rinviata; `stato`: parolaStato(x). A formazione chiusa, per chi
 // deve ancora giocare (`da_giocare`), sulla pedina c'è quando gioca e non «gioca N%»: nemmeno qui.
 // Rimasto senza voto (#895): il suo fantavoto atteso non conta più (al suo posto entra una riserva, o niente), e non si mostra.
 const senzaVoto = x => (etichettaPronta(x) ? x.etichetta.codice : x.stato_partita) === "senza_voto";
@@ -489,7 +499,7 @@ function vocePedina(x, esito = null, stato = null) {
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
   const preso = esito && esito.fv != null;
-  return [x.nome, preso ? esito.testo : senzaVoto(x) ? "" : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "", esito && esito.parola,
+  return [x.nome, NOME_RUOLO_1[x.ruolo], preso ? esito.testo : senzaVoto(x) ? "" : t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito && !preso ? esito.testo : "", esito && esito.parola,
     !esito && x.stato_partita !== "da_giocare" && !nonGiocaDiSicuro(stato) && giocaLetto(x) < SOGLIA_GIOCA ? t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }) : "",
     !esito && stato ? stato.testo : ""].filter(Boolean).join(", ");
 }
@@ -548,8 +558,12 @@ function nomeGiornata(lega, serieA) {
   return n ? t("testata.giornata", { n }) : "";
 }
 // «la 8ª» si dice «l'8ª» («dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una vocale, fra 1 e 38
-// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server.
-const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
+// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server,
+// e in più l'articolo con la maiuscola in testa («Dalla 8ª» → «Dall'8ª», il menu della prima giornata, #842).
+const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b([Ll]a|[Aa]lla|[Dd]alla|[Dd]ella|[Nn]ella|[Ss]ulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
+// Una voce del menu «Da quale giornata di Serie A è partita la lega?» (Regole e scadenza, primo avvio): «Dalla 1ª, con il campionato»,
+// «Dalla 2ª», «Dall'8ª».
+const vocePrimaGiornata = g => (g === 1 ? t("pav.prima_uno") : elidiOrdinali(t("pav.prima_n", { n: g })));
 
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
 // «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo
@@ -746,10 +760,15 @@ function tornaImp(gruppo) {
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
+// `stato.squadreLette`: l'elenco è arrivato davvero almeno una volta (o il server ha detto che le rose non ci sono). Se la lettura non
+// riesce l'elenco resta vuoto, ma non vuol dire «senza rose»: il primo avvio non parte da solo su quello (#874, primoavvio.js).
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
-  if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
-  else { try { stato.squadre = await api("/api/squadre"); } catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); } }
+  if (seServono && stato.info && stato.info.rose_importate === false) { stato.squadre = []; stato.squadreLette = true; }
+  else {
+    try { stato.squadre = await api("/api/squadre"); stato.squadreLette = true; }
+    catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); }
+  }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 // Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
@@ -801,7 +820,7 @@ async function caricaInfo() {
     stato.rigaStato = {
       giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
       squadra: i.mia_squadra || null,
-      dati: (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, ""),
+      dati: (quandoAgg ? elidiGiorno(t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) })) : t("testata.mai")).replace(/^\s*·\s*/, ""),
     };
     segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
@@ -1599,25 +1618,27 @@ function riempiScheda(s, cal) {
     ? tile(perc(pr.porta_inviolata), t("mercato.porta_inviolata")) + tile(num(pr.gol_avversario, 1), t("mercato.gol_subiti_attesi")) + tile(perc(pr.p_giallo), t("mercato.giallo"))
     : tile(perc(pr.p_gol), t("mercato.segna")) + tile(perc(pr.p_assist), t("mercato.assist")) + tile(perc(pr.p_giallo), t("mercato.giallo")) + tile(perc(pr.p_rosso), t("mercato.rosso"));
   const motivi = pr && !iniziataP ? motiviUtili(pr).filter(senzaPercentuale) : [];
+  // fin dove arrivano i dati della fonte delle statistiche avanzate (#862): con la fonte ferma i numeri restano quelli di quel giorno
+  const finoAl = av && giornoMese(av.dati_fino_al) ? t("mercato.dati_fino_al", { data: giornoMese(av.dati_fino_al) }) : "";
   numeri.innerHTML = `
     <div class="etichette"><span class="etichetta ${s.proprietario ? "neutra" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span><span class="etichetta neutra">${t("mercato.quot", { n: c.quotazione })}</span></div>
     ${pr && !nonGioca && !iniziataP ? `<h3>${t("formazione.questa_partita")}</h3>
       <div class="riga"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>
       ${motivi.length ? `<div class="etichette">${motivi.map(m => `<span class="etichetta neutra">${testoEtichetta(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
       <div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>` : ""}
-    ${prossime.length ? `<h3>${t("mercato.prossime_partite")}</h3><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}</span>`).join("")}</div>
+    ${prossime.length ? `<h3>${t("mercato.prossime_partite")}</h3><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}${NOMI_DIFF[p.difficolta] ? `<small>${NOMI_DIFF[p.difficolta]}</small>` : ""}</span>`).join("")}</div>
       <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div>` : ""}
     ${forma && forma.testo ? `<h3>${t("mercato.forma")}</h3><div class="riga"><span class="debole piccolo">${t("mercato.andamento")}</span><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div>` : ""}
     ${grafico}
     ${s.rendimento ? `<h3>${t("mercato.rende_sopra_sotto")}</h3>
       <div class="grande ${s.rendimento.sovra_rendimento > 0.3 ? "positivo" : s.rendimento.sovra_rendimento < -0.3 ? "negativo" : ""}">${segno(s.rendimento.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>
       <div class="debole piccolo">${t("mercato.rendimento_riga", { g: segno(s.rendimento.gol_meno_xg), a: segno(s.rendimento.assist_meno_xa) })}
-        ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")}</div>` : ""}
+        ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")} ${finoAl}</div>` : ""}
     <h3>${t("mercato.stagione")}</h3><div class="statistiche">
       ${tile(`${st.presenze}/${st.giornate_giocate_serie_a}`, t("mercato.presenze"))}${tile(num(st.media_voto, 2), t("mercato.media_voto"))}${tile(num(st.fantamedia, 2), t("mercato.fantamedia"))}
       ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
       ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
-    ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
+    ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3>${finoAl ? `<div class="debole piccolo" style="margin-bottom:8px">${finoAl}</div>` : ""}<div class="statistiche">
       ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
       ${tile(num(av.per_90?.xg, 2), t("mercato.xg_90"))}${tile(num(av.per_90?.xa, 2), t("mercato.xa_90"))}${tile(num(av.per_90?.tiri, 1), t("mercato.tiri_90"))}
       ${tile(av.rigori_calciati, t("mercato.rigori_calciati"))}${tile(av.passaggi_chiave, t("mercato.passaggi_chiave"))}${tile(av.punizioni, t("mercato.punizioni"))}</div>
@@ -2014,7 +2035,7 @@ async function vistaRosa(nome) {
           ${r.mia ? "" : `<button class="bottone" type="button" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
-        <div class="debole piccolo" style="margin-top:12px">${t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" })}</div>
+        <div class="debole piccolo" style="margin-top:12px">${elidiGiorno(t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" }))}</div>
       </div></div>`, { titolo: r.nome, stato: false, indietro });          // il titolo è il nome della squadra (pagina() lo scrive con esc)
     collegaSceltaMia();
     const vf = $("#vedi-formazione");
@@ -2170,7 +2191,7 @@ function rigaTaratura(tar) {
     const n = Number(tar.giornate) || 0, minimo = Number(tar.minimo) || 0;
     parti = [n < minimo ? tp("sd.tar_in_attesa_su", n, { m: minimo }) : tp("sd.tar_in_attesa", n)];
   } else if (tar.stato === "attiva") {
-    parti = [dal ? t("sd.tar_attiva_dal", { d: dal }) : t("sd.tar_attiva")];
+    parti = [dal ? elidiGiorno(t("sd.tar_attiva_dal", { d: dal })) : t("sd.tar_attiva")];             // «dall'8/1» (#859)
     if (p) parti.push(tp("sd.tar_prova", Number(p.giornate) || 0, { e: regErrore(p.errore_medio), p: regErrore(p.errore_medio_prima) }));
     if (tar.motivo === "scadenza_vicina") parti.push(motivo);
   } else if (tar.stato === "non_attiva") {
@@ -2205,12 +2226,12 @@ async function apriStatoDati() {
           ${f.acceso ? "" : `<div class="debole piccolo">${esc(f.messaggio || "")}</div>`}`).join("")}
         <div class="debole piccolo">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
-        <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${t("sd.dal", { d: esc(fData(usoDal, {})) })})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
+        <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${elidiGiorno(t("sd.dal", { d: esc(fData(usoDal, {})) }))})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
         ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
         <details><summary class="debole piccolo">${t("scambio.schermate_piu_usate")}</summary>
           ${(s.uso.per_rotta || []).slice(0, 15).map(r => `<div class="riga"><span class="piccolo">${esc(r.rotta)}</span><span class="debole piccolo">${tp("sd.n_volte", r.richieste)}</span></div>`).join("")}</details></div>` : ""}
       <div class="carta"><h2>${t("scambio.date_delle_coppe")}</h2>
-        <div class="debole piccolo">${t("sd.coppe_spiega", { d: coppeFino ? esc(fData(coppeFino, {})) : "–" })}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
+        <div class="debole piccolo">${elidiGiorno(t("sd.coppe_spiega", { d: coppeFino ? esc(fData(coppeFino, {})) : "–" }))}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
         ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${nomeGiornata(null, p.giornata)}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
       <div class="carta"><h2>${t("scambio.controlli_sui_dati")}</h2>
@@ -2496,8 +2517,19 @@ function vaiGiornate(giornata) {
   giornate.chiesta = giornata == null || !Number(giornata) ? null : Number(giornata);
   vai("giornate", undefined, { focoTitolo: true });
 }
-function vistaGiornate() {
+async function vistaGiornate() {
   if (giornate.chiesta == null) giornate.aperte.clear();              // si riparte con le righe chiuse (da 768 px: la più recente)
+  // Account senza rose: il diario risponderebbe 409 e il browser lo scriverebbe fra gli errori (#873). Lo stato letto all'avvio può
+  // essere vecchio (le rose importate dall'iPhone o da un'altra scheda): si rilegge /api/stato. Se dice ancora che le rose non ci sono,
+  // la carta che porta a «Importa le rose», senza chiedere il diario; se la lettura non riesce, si chiede il diario come sempre.
+  if (stato.info && stato.info.rose_importate === false) {
+    const mia = nuovaRichiesta();
+    caricamento(t("giornate.carico"));
+    await caricaInfo();
+    if (!ancoraValida(mia)) return;
+    const letto = !(stato.rigaStato && stato.rigaStato.offline);
+    if (letto && stato.info && stato.info.rose_importate === false) { pagina(cartaSenzaRose()); return; }
+  }
   caricaConCache("giornate", "/api/diario", mostraGiornate, t("giornate.carico"));
 }
 
@@ -2755,7 +2787,7 @@ async function notificheWeb(dispositivi) {
   const accendi = async () => {
     if (await Notification.requestPermission() !== "granted") throw new Error(t("avv.permesso_negato_abilita"));
     const { chiave } = await api("/api/push/chiave");
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
+    sub = await iscrizioneMia(reg, chiave);              // mai quella di un altro account (#874)
     dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
     segnaAvvisiDi();                                       // l'iscrizione è di chi l'ha accesa (#804)
   };
@@ -2798,16 +2830,22 @@ async function avvisiTelefono() {
     const a = await api("/api/avvisi");
     if (!document.body.contains(dove)) return;
     const o = a.impostazioni;
+    // la riga sotto «Ore tranquille» segue l'interruttore: spento dice che sono spente e la fascia che varrebbe, acceso la fascia (#873:
+    // con l'interruttore spento «Niente avvisi dalle 23 alle 7» le faceva sembrare accese)
+    const fascia = { da: Number(o.silenzio_da), a: Number(o.silenzio_a) };
+    const aiutoOre = acceso => t(acceso ? "imp.ore_tranquille_aiuto" : "imp.ore_tranquille_spente", fascia);
     dove.innerHTML = `${a.ore_tranquille_spente ? `<div class="piccolo" role="status" style="margin:8px 0;font-weight:600">${t("avv.avevi_scelto_ore")}</div>` : ""}
       <div id="notifiche-web" class="avvisi-attesa" aria-busy="true"><p class="debole piccolo riserva" aria-hidden="true">${t("avv.notifiche_dell_app")}</p>
         <p class="debole piccolo">${t("imp.avvisi_controllo")}</p></div>
-      ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, t("imp.ore_tranquille_aiuto", { da: Number(o.silenzio_da), a: Number(o.silenzio_a) }))}`;
+      ${interruttore("av_silenzio", t("avv.ore_tranq"), o.silenzio, aiutoOre(o.silenzio))}`;
     notificheWeb(a.dispositivi);
     const ore = $("#av_silenzio");
+    const scriviAiuto = () => { const riga = ore.closest("label").querySelector("small"); if (riga) riga.textContent = aiutoOre(ore.checked); };
     ore.addEventListener("change", async () => {
       const acceso = ore.checked;
+      scriviAiuto();
       try { await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ silenzio: acceso }) }); }
-      catch (e) { ore.checked = !acceso; avviso(e.message, 6000); }
+      catch (e) { ore.checked = !acceso; scriviAiuto(); avviso(e.message, 6000); }
     });
   } catch (e) { if (document.body.contains(dove)) dove.innerHTML = errore(e); }
   finally { dove.removeAttribute("aria-busy"); }                           // ha finito di caricare, bene o male
@@ -2988,7 +3026,7 @@ async function vistaAltreSquadre() {
   try { squadre = await api("/api/squadre"); }
   catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), opz); return; }
   if (!ancoraValida(mia)) return;
-  stato.squadre = squadre;
+  stato.squadre = squadre; stato.squadreLette = true;
   const altre = squadre.filter(x => !x.mia);
   pagina(altre.length ? `<div class="carta imp-colonna"><ul class="elenco">${altre.map(x => `<li><button class="voce" type="button" style="grid-template-columns:46px 1fr auto" data-rosa="${esc(x.nome)}">
       ${x.immagini && x.immagini.stemma ? `<img class="stemma-lista" src="${urlImg(x.nome, "stemma")}" alt="" loading="lazy">` : `<span class="iniziale-squadra" aria-hidden="true">${esc(x.nome.trim().slice(0, 1).toUpperCase())}</span>`}
@@ -3116,7 +3154,7 @@ async function vistaRegole() {
       <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
         <select class="campo-testo" id="tempi-scadenza">${opzioniScadenza(Number(r.scadenza_minuti ?? 0))}</select></label>
       <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
-        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(g === 1 ? t("pav.prima_uno") : t("pav.prima_n", { n: g }))}</option>`).join("")}</select></label>
+        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select></label>
       <div class="debole piccolo">${t("regole.prima_giornata_conta")}</div>
     </div>
 
@@ -3436,6 +3474,21 @@ function testoInvio(scheda, sub) {
   return t("accesso.invio_" + scheda);
 }
 
+// Dopo un accesso l'app si apre come all'avvio senza indirizzo: sull'ultima schermata fra Formazione e Giornate (#873). La pagina
+// d'accesso resta sull'indirizzo di dove si era (per esempio «Il tuo account», dopo «Esci»): una pagina di Impostazioni nell'indirizzo
+// si toglie, Formazione e Giornate restano (il link di un avviso); gli altri campi dell'indirizzo (invito, condivisa) restano.
+function entraNellApp() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (dove({ vista: q.get("vista"), gruppo: q.get("gruppo"), voce: q.get("voce"), rosa: q.get("rosa") }).vista === "impostazioni") {
+      ["vista", "gruppo", "voce", "rosa"].forEach(k => q.delete(k));
+      const resto = q.toString();
+      history.replaceState(null, "", location.pathname + (resto ? `?${resto}` : ""));
+    }
+  } catch { /* niente cronologia: si ricarica com'è */ }
+  location.reload();
+}
+
 // Dopo un errore la password si svuota solo se è stata rifiutata (accesso o codice sbagliato: 401/403). In «Registrati» mai: la
 // password è nuova e il rifiuto riguarda altro (invito non valido o già usato, registrazioni chiuse, #580). Un errore di compilazione
 // (400, 422), una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto.
@@ -3508,13 +3561,13 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     try {
       if (scheda === "accedi") {
         await manda("/api/account/accedi", { nome_utente: v("#ac-nome"), password: v("#ac-pw") });
-        location.reload();
+        entraNellApp();
         return;
       } else if (scheda === "registra" && extra.sub === "verifica") {
         const r = await manda("/api/account/registra/conferma", { email: extra.email, codice: v("#ac-codice-email").trim(), iscrizione: extra.iscrizione || "" });
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
         dimenticaInvito();
-        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
+        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), entraNellApp);
       } else if (scheda === "registra") {
         if (!$("#ac-letto").checked) { const e = new Error(t("accesso.spunta_letto", { eta: ETA_MINIMA })); e.status = 400; throw e; }       // controllo locale: la password resta
         const corpo = { nome_utente: v("#ac-nome"), password: v("#ac-pw"), invito: v("#ac-invito"), accetto_termini: true };      // la casella è spuntata (controllo qui sopra)
@@ -3524,7 +3577,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         if (r && r.verifica_email) { mostraAccesso("", "registra", { sub: "verifica", email, iscrizione: r.iscrizione || "" }); return; }   // l'account nasce col codice (legato a questa richiesta)
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
         dimenticaInvito();
-        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
+        mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), entraNellApp);
       } else if (extra.sub === "email") {
         const email = v("#ac-email").trim();
         await manda("/api/account/recupero-email", { email });
@@ -3631,7 +3684,7 @@ async function gestisciRitornoGoogle(rit, dentro) {
   if (!rit.verificatore || !rit.codice) { fallito(t("social.altro_browser")); return; }
   try {
     const r = await api("/api/account/social/scambio", { method: "POST", body: JSON.stringify({ codice: rit.codice, verificatore: rit.verificatore }), timeout: 30000 });
-    if (r && r.stato === "ok") { location.reload(); return; }
+    if (r && r.stato === "ok") { entraNellApp(); return; }
     if (r && r.stato === "nuovo") { mostraAccesso(); mostraNuovoGoogle(r); return; }
     if (r && (r.stato === "collegato" || r.stato === "riconfermato")) {
       if (r.accessi) stato.accessi = r.accessi;
@@ -3671,7 +3724,7 @@ function mostraNuovoGoogle(r, messaggio = "") {
       await api("/api/account/social/completa", { method: "POST", timeout: 30000,
         body: JSON.stringify({ iscrizione: r.iscrizione, nome_utente: $("#ac-nome").value, invito: $("#ac-invito") ? $("#ac-invito").value : "", accetto_termini: true }) });
       dimenticaInvito();
-      location.reload();
+      entraNellApp();
     } catch (e) {
       mostra(erroreGoogle(e));
       invia.disabled = false; invia.removeAttribute("aria-busy");
@@ -3754,8 +3807,9 @@ function segnaAvvisiDaRimandare() {
   try { localStorage.setItem(AVVISI_DA_RIMANDARE, "1"); } catch { /* niente memoria */ }
 }
 // Di chi è l'iscrizione (#804): il numero dell'account che l'ha fatta, accanto a lei. Si rimanda solo se rientra lo stesso account;
-// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui. Il segno resta anche dopo un'uscita (non è
-// fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza account sul server l'iscrizione è sempre «mia».
+// con un altro account «Avvisi su questo dispositivo» è spento finché non lo accende lui, e il browser la toglie (lasciaAvvisiDiAltri,
+// #874). Il segno resta anche dopo un'uscita (non è fra le copie che svuotaDatiLocali toglie): serve solo a questo confronto. Senza
+// account sul server l'iscrizione è sempre «mia».
 const AVVISI_DI = "avvisi-di";
 const numeroAccount = () => (stato.account && stato.account.id != null ? String(stato.account.id) : "");
 function segnaAvvisiDi() {
@@ -3774,6 +3828,27 @@ async function rimandaAvvisi() {
   if (!sub || !avvisiDiQuestoAccount()) { fatto(); return; }            // fatta da un altro account: non si rimanda (#804)
   try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
   catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
+}
+// Un'iscrizione fatta da un altro account non resta in questo browser (#874). Finché c'è, il server manda qui gli avvisi di
+// quell'account: la sua sessione può essere scaduta senza «Esci», e lì l'iscrizione resta. All'avvio, con dentro un account diverso
+// da quello che l'ha fatta (anche «-», un'iscrizione di prima che non è di nessuno), il browser la toglie: da lì il servizio delle
+// notifiche non la consegna più, e il server la cancella da sé al primo avviso che non arriva. Chi è dentro la riaccende con
+// un'iscrizione nuova, solo sua. Se non si sa di chi è (segno mancante, memoria che non risponde) resta com'è.
+async function lasciaAvvisiDiAltri() {
+  const n = numeroAccount();
+  let di = null;
+  try { di = localStorage.getItem(AVVISI_DI); } catch { /* niente memoria */ }
+  if (!n || di === null || di === n) return;
+  const sub = await iscrizionePushQui();
+  if (sub) try { await sub.unsubscribe(); } catch { /* resta: si riprova alla prossima apertura */ }
+}
+// L'iscrizione di chi accende gli avvisi (interruttore, primo avvio). Se il browser ne ha ancora una che non è di questo account
+// (non si è tolta all'avvio, o non si sa di chi è) prima la toglie e ne chiede una nuova, solo sua (#874). Se non si toglie, va al
+// server quella che c'è: il server la toglie agli altri account (la tiene l'ultimo che la manda), così arrivano solo i suoi avvisi.
+async function iscrizioneMia(reg, chiave) {
+  const vecchia = await reg.pushManager.getSubscription();
+  if (vecchia && !avvisiDiQuestoAccount() && !(await vecchia.unsubscribe().catch(() => false))) return vecchia;
+  return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chiaveInUint8(chiave) });
 }
 
 // Impostazioni > Il tuo account > «Esci». Il cookie della sessione lo toglie solo il server: se la richiesta non riesce (rete giù,
@@ -3873,7 +3948,7 @@ function schedaAccount() {
   const campo = (id, etichetta, extra = "") => `<label class="accesso-campo"><span class="debole piccolo">${etichetta}</span><input class="campo-testo" id="${id}" type="password" ${extra}></label>`;
   const creato = parseData(a.creato), data = creato ? fData(creato, { day: "numeric", month: "long", year: "numeric" }) : "–";
   return `<div class="carta" id="scheda-account">
-    <div><b class="nome-account">${esc(a.nome_visualizzato || a.nome_utente)}</b><span class="debole piccolo" style="display:block">${t("account.dal", { ruolo: a.ruolo === "amministratore" ? t("account.ruolo_admin") : t("account.ruolo_utente"), data })}</span></div>
+    <div><b class="nome-account">${esc(a.nome_visualizzato || a.nome_utente)}</b><span class="debole piccolo" style="display:block">${elidiGiorno(t("account.dal", { ruolo: a.ruolo === "amministratore" ? t("account.ruolo_admin") : t("account.ruolo_utente"), data }))}</span></div>
     ${socialPronto() || (stato.accessi && stato.accessi.social && stato.accessi.social.length) ? `<details style="margin-top:14px"${soloGoogle() ? " open" : ""}><summary>${t("social.accessi")}</summary>
       <div id="acc-accessi">${htmlAccessi()}</div></details>` : ""}
     <details style="margin-top:14px"><summary>${soloGoogle() ? t("social.aggiungi_password") : t("account.cambia_password")}</summary>
@@ -4180,7 +4255,9 @@ try {                                                                           
 } catch { /* indirizzo strano */ }
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
-  rimandaAvvisi();                                       // dopo un nuovo accesso, o se l'ultima volta non era arrivata (#800)
+  // via l'iscrizione di un altro account (#874); poi quella di chi è dentro torna al server dopo un nuovo accesso, o se l'ultima
+  // volta non era arrivata (#800)
+  lasciaAvvisiDiAltri().then(rimandaAvvisi);
   Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
     let condivisa = null;
     try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }

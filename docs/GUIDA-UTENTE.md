@@ -56,11 +56,13 @@ Se ti fermi prima di caricare le rose (per esempio per mettere l'app sulla scher
      se accanto al nome ci sono anche il ruolo e la squadra di Serie A giusti, un nome scritto in breve viene riconosciuto da solo. Se ruolo o squadra non tornano, resta da controllare.
      Nella ricerca dei giocatori puoi scrivere anche il nome proprio («Lautaro»).
    - **riconosciuti**: raccolti in una riga che puoi aprire.
-   Il conto in alto («N da controllare») scende man mano che scegli o togli i giocatori in dubbio. Su un computer le squadre stanno affiancate.
+   Il conto in alto («N da controllare») scende man mano che scegli o togli i giocatori in dubbio. Una squadra senza dubbi sta in due righe: il nome e quanti giocatori ha («25 giocatori · Rosa completa»), che apri per vedere i nomi; «Nuova» compare solo se aggiungi squadre a rose già salvate. Nel primo avvio il passo acceso in alto è **La tua squadra** (la domanda in cima) e **Conferma e salva** resta in fondo mentre scorri le squadre, con sopra l'eventuale messaggio (per esempio se il salvataggio non riesce). In **Impostazioni › Aggiorna le rose**, su un computer, le squadre stanno affiancate.
    In alto scegli **Qual è la tua squadra?** (se aggiungi solo le rose degli altri, c'è anche la tua, già scelta). Sotto, **Cosa cambia rispetto a ora** elenca squadre aggiunte o tolte, scambi, svincolati presi, tagli e crediti.
    Un giocatore scritto due volte nella stessa rosa resta una volta sola, e te lo dice. Poi **Conferma e salva** (oppure **Annulla**: non si salva niente).
 3. **I tempi della lega.** Due domande: quando si chiude la formazione (all'inizio della prima partita o qualche minuto prima) e da quale giornata di Serie A è partita la lega. Servono perché promemoria e numeri delle giornate siano giusti; le trovi nelle impostazioni della tua lega su Leghe e le cambi quando vuoi in **Impostazioni › Regole e scadenza**, in cima.
-4. **Tutto pronto.** Puoi attivare gli avvisi e andare alla Formazione.
+4. **Tutto pronto.** Puoi attivare gli avvisi e andare alla Formazione. Il primo avvio non chiede il regolamento: una frase dice che i fantavoti attesi usano i punteggi più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5) finché non metti quelli della tua lega in **Regole e scadenza**; il collegamento apre quella pagina.
+
+Su un computer la guida sta in un pannello a destra, largo uguale in ogni passo.
 
 Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le rilegge e ti chiede di ricontrollare; le scelte già fatte restano.
 
@@ -89,7 +91,7 @@ Su uno schermo largo (computer, iPad in orizzontale) le schede stanno in alto, a
 
 Su uno schermo molto largo (computer con la finestra ampia) la scheda di un giocatore si apre in un pannello a destra, accanto alla pagina, senza coprirla: la pagina si stringe e si usa come sempre. Un clic su un altro giocatore cambia il pannello, così scorri i titolari uno dopo l'altro; **✕** o **Esc** lo chiudono. Nello stesso pannello si apre la scelta di chi mettere al posto di un titolare. La ricerca in alto mostra i risultati nel pannello mentre scrivi; **Invio** apre il primo, la freccia **↓** porta ai risultati (**↑** sul primo torna al campo). Con la finestra più stretta la scheda resta il pannello di sempre, sopra la pagina.
 
-Da tastiera: **1**-**3** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima. Un indirizzo salvato della vecchia schermata Oggi apre la Formazione. L'app si riapre sull'ultima schermata fra Formazione e Giornate.
+Da tastiera: **1**-**3** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima. Un indirizzo salvato della vecchia schermata Oggi apre la Formazione. L'app si riapre sull'ultima schermata fra Formazione e Giornate, anche dopo un nuovo accesso (per esempio dopo **Esci** da **Il tuo account**).
 
 Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate si dispongono in una colonna: la testata scorre via con la pagina, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due giocatori per fila.
 
@@ -116,7 +118,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
 Sotto ci sono quanto sono fresche le **probabili formazioni** (se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare), la **Panchina** nell'ordine in cui entra, i **Non schierati** e gli **Infortunati e squalificati** (chiusi: si aprono con un tocco). Negli elenchi, sotto il nome di ogni giocatore c'è la sua partita, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Chi è in dubbio, infortunato o squalificato ha sotto anche la nota che dice perché (per esempio «lombalgia, out a Roma»), che va a capo dentro la riga.
 
-Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono: finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde. Se i dati aggiornati non arrivano (per esempio senza rete) una riga in alto lo dice, con **Riprova**; quando la rete torna l'app riprova da sola.
+Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono: finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde. Se i dati aggiornati non arrivano (per esempio senza rete) una riga in alto lo dice, con **Riprova**; se il server ha risposto con un errore, la riga dice anche il giorno e l'ora dei dati che vedi. Quando la rete torna l'app riprova da sola.
 
 Sul tablet e sul PC le colonne sono due: a sinistra il campo con modulo, stato e pulsanti (resta fermo mentre scorri, se ci sta nello schermo), a destra la panchina e gli altri elenchi.
 
@@ -133,7 +135,7 @@ Altri due stati della riga sotto il campo:
 - gli **ultimi voti**;
 - **Sostituisci**, se è un tuo titolare e la formazione è ancora aperta. Mostra i compagni dello stesso ruolo che non sono titolari, il migliore in cima: il numero grande di ognuno sono i punti attesi in più o in meno rispetto a lui («+0,9», «−0,4»), e sotto il nome di chi gioca meno dell'80% c'è «gioca N%». Un tocco fa il cambio e lo salva;
 - **Metti in campo**, se è in panchina o fra i non schierati: c'è quando c'è **Sostituisci** per i titolari della stessa formazione (anche per la prossima giornata, a giornata finita o se sei entrato a giornata iniziata), e non a giornata in corso. È il contrario di **Sostituisci**: mostra i titolari che possono lasciargli il posto, cioè quelli dello stesso ruolo e quelli di un altro ruolo se il modulo che ne esce è ammesso dalla tua lega (la riga lo dice: «Si passa al 5-3-2»). Il numero grande di ognuno sono i punti attesi della formazione in più o in meno con quel cambio, panchina compresa: dopo il cambio i punti attesi accanto al modulo cambiano di quel numero (se partivi dalla consigliata, lo stesso numero lo dice anche la riga dello stato). In cima il cambio che rende di più; sotto il nome di chi gioca meno dell'80% c'è «gioca N%». Se chi entra è infortunato, squalificato o in dubbio, lo stato si legge sotto il titolo dell'elenco. Un tocco fa il cambio e lo salva, come **Sostituisci**. Per chi gioca una partita già cominciata la scheda dice perché non si sposta (se la partita è cominciata con la pagina aperta, lo dice l'elenco al tocco su **Metti in campo**);
-- **Tutti i numeri**, chiuso finché non lo apri: la partita (difficoltà, gol attesi, probabilità di gol, assist e cartellini), le prossime partite, la forma, la stagione.
+- **Tutti i numeri**, chiuso finché non lo apri: la partita (difficoltà, gol attesi, probabilità di gol, assist e cartellini), le prossime partite, la forma, la stagione. Quando ci sono, anche gol e assist rispetto alle occasioni e le statistiche avanzate, con il giorno fino a cui arrivano i loro dati («Dati fino al 9/11.»): se la fonte di quei numeri si ferma, restano quelli di quel giorno.
 
 Altre cose da sapere:
 
@@ -192,13 +194,13 @@ Una formazione salvata non più valida (per esempio con un giocatore ceduto) per
 
 Gli avvisi dicono le cose a parole e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
 
-Attivazione: nella web app, **Impostazioni › Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo.
+Attivazione: nella web app, **Impostazioni › Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare. **Ore tranquille**: nella fascia scritta sotto l'interruttore non arriva niente; ciò che cade lì arriva dopo. Con l'interruttore spento la riga dice «Spente. Se le accendi: niente avvisi dalle 23 alle 7».
 
 Nell'app per iPhone e iPad (Impostazioni › Avvisi) l'interruttore **Avvisi su questo dispositivo** accende insieme i promemoria di **un'ora e un quarto d'ora prima** della scadenza e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
 Se le notifiche smettono di arrivare dopo un cambio di chiave del server: spegni e riaccendi **Avvisi su questo dispositivo**.
 
-Dopo **Esci da tutti i dispositivi**, o un cambio o un recupero della password fatti da un altro dispositivo, questo browser deve accedere di nuovo: appena sei dentro, se qui gli avvisi li avevi accesi tu tornano a funzionare da soli, senza un'altra domanda del browser. Se entra un altro account, **Avvisi su questo dispositivo** è spento finché non lo accende lui.
+Dopo **Esci da tutti i dispositivi**, o un cambio o un recupero della password fatti da un altro dispositivo, questo browser deve accedere di nuovo: appena sei dentro, se qui gli avvisi li avevi accesi tu tornano a funzionare da soli, senza un'altra domanda del browser. Se entra un altro account, **Avvisi su questo dispositivo** è spento finché non lo accende lui. Appena entra, il browser smette di ricevere gli avvisi dell'account di prima, anche se la sua sessione era finita da sola senza **Esci**; acceso, arrivano solo i suoi.
 
 ### Widget sull'iPhone
 
@@ -238,7 +240,7 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Su uno schermo più l
 | Avvisi | **Avvisi su questo dispositivo** (acceso o spento) e **Ore tranquille** (sezione 4) |
 | La mia lega | **Aggiorna le rose**, **La mia squadra**, **Regole e scadenza**, **Le altre squadre** (sezione 3, «La mia lega») |
 | Il tuo account | solo con gli account: nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci**, **Esci da tutti i dispositivi** |
-| Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). La dimensione del testo è quella del telefono o dello zoom del browser |
+| Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). Cambiata la lingua, l'app aspetta i dati del server nella lingua nuova; se non arrivano (per esempio senza rete) mostra quelli tenuti sul dispositivo, con stati e note ancora nella lingua di prima, finché non arrivano. La dimensione del testo è quella del telefono o dello zoom del browser |
 | Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente (licenza AGPL-3.0, se il server lo indica), versione e **Novità**: le ultime dieci versioni, le altre con **Mostra le versioni precedenti** |
 | Gestione | solo per chi gestisce il server: **Aggiorna i dati** (scarica subito dalle fonti; di solito il server lo fa da solo. Se all'apertura dell'app il server è già occupato con un aggiornamento, dei dati o di una versione nuova, il pulsante è spento con una frase che lo dice e si riaccende da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in corso»; con tutte le fonti spente lo dice e non parte), **Stato dei dati** (con le fonti da accendere o spegnere), inviti, codici per chi ha perso la password, utenti (chi gestisce ha accanto «amministratore»), **Errori recenti** (ore nell'ora italiana, eventi di sicurezza con il loro nome in parole, tempi in millisecondi o secondi, e accanto al percorso tecnico il nome della parte dell'app, per esempio «Formazione (/api/oggi)»). Sul server senza account anche **Avvisi anche per l'app nativa** |
 

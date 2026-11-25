@@ -80,7 +80,7 @@ struct GiornoSenzaOraTests {
         let ora = try adesso()
         let c = LetturaPedina.contenuto(g, adesso: ora)
         #expect(c.pezzi == [LetturaPedina.Pezzo(testo: "domani", tono: .parola)])
-        #expect(c.voce == "Mario Prova, fantavoto atteso 6,5, domani")
+        #expect(c.voce == "Mario Prova, Centrocampista, fantavoto atteso 6,5, domani")
     }
 
     @Test("Scheda: «In casa contro Inter · dom 1» (`formazione.partita_casa`), non «–»")

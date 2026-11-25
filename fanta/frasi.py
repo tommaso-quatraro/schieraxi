@@ -421,10 +421,19 @@ def _componi(chiave: str, param: dict, lingua: str = "it") -> str:
 # «il 1%» si dice «l'1%» (e «all'8%», «dell'11%», «nell'85%»): davanti a 1, 8, 11 e 80-89 l'articolo perde la vocale.
 _ELISIONE = {"il": "l'", "al": "all'", "dal": "dall'", "del": "dell'", "nel": "nell'", "sul": "sull'"}
 _DAVANTI_A_VOCALE = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:11|1|8\d?)(?:,\d+)?\s?%)")
+# Le date giorno/mese: «il 8/11» si dice «l'8/11» («l'08/11», «dall'11/11»), si legge «l'otto», «l'undici» (#859). «Il 1/11» (il
+# primo) e «il 18/11» restano. Come `elidiGiorno` della web (testi.js) e di DatiVecchi sull'iPhone, per le date che scrivono loro.
+_DAVANTI_A_DATA = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:0?8|11)/\d)")
+
+
+def elidi_date(testo: str) -> str:
+    """Il testo italiano con l'apostrofo davanti alle date giorno/mese dell'8 e dell'11 («non riesce dal 08/11» → «non riesce
+    dall'08/11»). La usano le frasi composte qui e le righe d'errore scritte nel codice (`stato_dati`, `aggiorna`)."""
+    return _DAVANTI_A_DATA.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo)
 
 
 def _apostrofo(testo: str) -> str:
-    return elidi_ordinali(_DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo))
+    return elidi_ordinali(_DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), elidi_date(testo)))
 
 
 # «la 8ª» si dice «l'8ª» (e «dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una

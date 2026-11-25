@@ -26,6 +26,15 @@
       "forma": "web",
       "chi": "**fatto** (#778): dal 20/11/2026 la scheda di chi non è fra gli 11 ha «Metti in campo» alle stesse condizioni di «Sostituisci» (una condizione sola, `siSposta` in `FormazioneViewModel`, da cui `sostituibile` ed `entrabile`; per un `bloccato`, anche in panchina, la frase di `formazione.bloccati`); il tocco chiude la scheda, chiede a `POST /api/formazione/metti-in-campo` con gli 11 in campo e apre `SceltaChiEsce` con le righe del server nel suo ordine, gli stessi testi del catalogo e gli stessi errori (`giocatore_bloccato` come informazione, `formazione_chiusa` chiude e rilegge, 412 al salvataggio rilegge e lo dice); etichette di chi entra e dei titolari come `etichetteGiocatore` della web, nel suo ordine (`EtichetteRiga`: stato, «gioca N%», «Si passa al …», «Diffidato», nota), anche nelle righe di «Sostituisci»; prova `EtichetteRigaTests`, `MettiInCampoTests`, test d'interfaccia `FumoUITests.testMettiInCampoDallaSchedaDiUnPanchinaro` e `FotoUITests.testLaFotoDiMettiInCampoMostraLElenco`",
       "stato": "fatto"
+    },
+    {
+      "id": 99,
+      "schermata": "Scheda giocatore, «Tutti i numeri»: fin dove arrivano le statistiche avanzate (#862)",
+      "web": "«Dati fino al 9/11.» (`mercato.dati_fino_al`, il giorno come `giornoMese`) in fondo alla riga di «Gol e assist rispetto alle occasioni» e sotto il titolo «Statistiche avanzate», dal campo `avanzate.dati_fino_al` del server; niente riga senza il campo (`riempiScheda` in `app.js`)",
+      "iphone": "uguale alla web",
+      "forma": "web",
+      "chi": "**fatto** (#862): iPhone `LetturaScheda.datiFinoAl` (`Domain/LetturaScheda.swift`) usata da `TuttiINumeri`; prova `SchedaDatiFinoAlTests`, web `tests/browser/test_scheda_dati_fino_al.py`",
+      "stato": "fatto"
     }
   ]
 }

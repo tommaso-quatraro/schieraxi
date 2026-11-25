@@ -34,13 +34,15 @@ struct SenzaFormazioneWidget: View {
     }
 
     /// La giornata già iniziata, «Questa giornata è già iniziata» e «Prepara la prossima» (`conConto`: sotto, «Prossima: 4 giorni
-    /// 2 h»). Dove con il testo grande non entra tutto va via la riga «Questa giornata è già iniziata» (VoiceOver la legge
-    /// comunque): mai una riga tagliata.
+    /// 2 h»). La prima prova che entra in altezza (`DisposizioneWidget.proveColonnaSenzaFormazione`): con il testo grande prima
+    /// va via la parola «Prossima:» (resta il conto su una riga), per ultima la riga «Questa giornata è già iniziata», che dice
+    /// perché non c'è una formazione (VoiceOver la legge comunque): mai una riga tagliata.
     private func colonna(corta: Bool, invito: Font, conConto: Bool) -> some View {
-        PrimaCheEntra(2, in: .vertical) { i in
+        let prove = DisposizioneWidget.proveColonnaSenzaFormazione(conConto: conConto && riassunto.scadenzaDelConto != nil)
+        return PrimaCheEntra(prove.count, in: .vertical) { i in
             VStack(alignment: .leading, spacing: 2) {
                 titolo(corta: corta)
-                if i == 0 {
+                if prove[i].giaIniziata {
                     Text(ParoleWidget.giaIniziata).font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -48,8 +50,16 @@ struct SenzaFormazioneWidget: View {
                 Text(ParoleWidget.preparaProssima).font(invito)
                     .fixedSize(horizontal: false, vertical: true)
                     .widgetAccentable()
-                if conConto, riassunto.scadenzaDelConto != nil {
+                switch prove[i].conto {
+                case .conProssima:
+                    // con il testo grande il conto va a capo intero sotto «Prossima:», della stessa grandezza (#871)
                     prossimaBreve.font(.caption2).foregroundStyle(.white.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                case .solo:
+                    // senza «Prossima:» il conto sta su una riga, sotto «Prepara la prossima»
+                    conto.font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.8)
+                case nil:
+                    EmptyView()
                 }
                 statoDati
             }
@@ -128,7 +138,8 @@ struct SenzaFormazioneWidget: View {
             Text(ParoleWidget.giaIniziata).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
             Text(ParoleWidget.preparaProssima).font(.headline).lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
             if riassunto.scadenzaDelConto != nil {
-                prossimaBreve.font(.caption2)
+                // una riga sola nel rettangolo: un testo solo, che si rimpicciolisce tutto insieme
+                prossimaBreve.font(.caption2).lineLimit(1).minimumScaleFactor(0.6)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -151,18 +162,15 @@ struct SenzaFormazioneWidget: View {
         ContoWidget(inizio: riassunto.scadenzaDelConto, adesso: voce.date)
     }
 
-    /// «Prossima: 4 giorni 2 h».
-    private var prossimaBreve: some View {
-        HStack(spacing: 3) {
-            Text("Prossima:")
-            conto.monospacedDigit()
-        }
-        .lineLimit(1).minimumScaleFactor(0.6)
+    /// «Prossima: 4 giorni 2 h», in un testo solo (#871).
+    private var prossimaBreve: ProssimaConto {
+        ProssimaConto(scadenza: riassunto.scadenzaDelConto, adesso: voce.date)
     }
 
-    /// «alla scadenza, lun 23 20:35»: la data come `quando` della web, contata dall'istante della voce.
+    /// «alla scadenza, lun 23 20:35»: la data come `quando` della web, contata dall'istante della voce, con giorno e ora uniti
+    /// (si va a capo dopo la virgola, #871).
     private func allaScadenza(_ scadenza: Date) -> String {
-        "alla scadenza, \(Quando.relativa(scadenza, adesso: voce.date))"
+        ParoleWidget.allaScadenza(scadenza, adesso: voce.date)
     }
 
     /// Sotto l'invito: l'ora della copia salvata, con il giorno se non è di oggi (`RigaCopia`, #834).
