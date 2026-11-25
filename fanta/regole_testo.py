@@ -61,6 +61,9 @@ NUMERO_TITOLO = (r"\b(?:art|articolo|capitolo|cap|sezione|sez|paragrafo)\b\.?\s{
 MODULO = r"\b[2-5]\s*-\s*[1-6]\s*-\s*[0-6]\b"
 MODULO_UNITO = r"\b[2-5][1-6][0-6]\b"
 MAX_CIFRE = 9                    # un valore di regola con più cifre non è un valore vero: si ignora
+# I crediti sono un numero intero, anche con il punto delle migliaia («1.000» è mille, #888). Con una parte decimale («1,000»,
+# «500,5») o un gruppo di cifre che non torna («1.0000») non si leggono: la riga resta da controllare.
+CREDITI_NUM = r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?![.,]?\d)"
 RUOLI = {"portier": "P", "difensor": "D", "centrocamp": "C", "attaccant": "A"}
 NOMI_PLURALE = {"P": "portieri", "D": "difensori", "C": "centrocampisti", "A": "attaccanti"}
 NOMI_SINGOLARE = {"P": "portiere", "D": "difensore", "C": "centrocampista", "A": "attaccante"}
@@ -437,8 +440,8 @@ def interpreta(testo: str, attuali: Regole | None = None) -> dict:
             else:
                 imposta("panchina.cambio_modulo", "Cambio modulo nelle sostituzioni", cambio, n)
         if re.search(r"credit", riga) and re.search(r"inizial|a disposizione|parte con|budget", riga) and not re.search(r"residu|giornata|speso", riga) \
-                and (nc := re.search(r"(?<![\d.,])(\d+)\s{0,3}credit", riga) or re.compile(r"(\d+)").search(riga, riga.find("credit"))) \
-                and (numero := _intero(nc.group(1))) is not None:
+                and (nc := re.search(rf"{CREDITI_NUM}\s{{0,3}}credit", riga) or re.compile(CREDITI_NUM).search(riga, riga.find("credit"))) \
+                and (numero := _intero(nc.group(1).replace(".", ""))) is not None:
             # il numero subito prima di «crediti» («500 crediti per acquistare 25 giocatori»), altrimenti il primo dopo
             # («2.1 Crediti iniziali: 500»: il numero del paragrafo non conta)
             imposta("crediti_iniziali", "Crediti iniziali", numero, n, nc.start(1))
