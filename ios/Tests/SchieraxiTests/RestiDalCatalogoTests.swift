@@ -153,6 +153,11 @@ struct RestiDalCatalogoTests {
         Caso(file: "Sources/Support/RigaGiocatore.swift", testi: [Catalogo.Mercato.fantavoto, Catalogo.Perche.apriScheda],
              usa: ["Catalogo.Mercato.fantavoto", "Catalogo.Perche.apriScheda"]),
         Caso(file: "Sources/Presentation/Lega/RigaRosa.swift", testi: [Catalogo.Mercato.fantavoto], usa: ["Catalogo.Mercato.fantavoto"]),
+        // Stato dei dati, la prova delle previsioni: la frase su «da fantamedia» è quella della web dopo #839, non più
+        // «chi ha la media più alta» (#840)
+        Caso(file: "Sources/Presentation/Lega/LegaExtra.swift",
+             frasi: [Catalogo.Avv.provaSu(1), Catalogo.Avv.provaSu(7)],
+             usa: ["Catalogo.Avv.provaSu("]),
         // il widget «Prossima giornata» a giornata in corso con le frasi della testa della Formazione (#774)
         Caso(file: "Sources/Support/Condiviso.swift",
              testi: [Catalogo.Oggi.tuttiGiocato, Catalogo.Formazione.puntiFinora, Catalogo.Oggi.puntiFatti],
