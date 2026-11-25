@@ -136,6 +136,12 @@ def test_i_limiti_sono_quelli_scelti_e_stanno_in_un_file_solo():
     assert regole.LIMITI == dal_file
 
 
+def test_la_pagina_legge_i_limiti_dal_server(client):
+    """La web li chiede a /limiti-regole.json, lo stesso server che controlla le regole."""
+    r = client.get("/limiti-regole.json")
+    assert r.status_code == 200 and r.json() == regole.LIMITI
+
+
 def _problemi_con(chiave: str, valore) -> list[str]:
     """I problemi delle regole di partenza con un valore cambiato (chiave del file dei limiti), dopo i controlli di tipo."""
     base = asdict(Regole())
