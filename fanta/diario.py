@@ -1035,6 +1035,63 @@ def fatti_e_attesi(voce: dict) -> dict | None:
             "testo": str(frase) if frase else None, "frase": frase.json() if frase else None}
 
 
+def _nomi(giocatori: list) -> str:
+    """«Rossi», «Rossi e Bianchi», «Rossi, Bianchi e Verdi»."""
+    return elenco_frasi([str(x.get("nome", "")) for x in giocatori if isinstance(x, dict)], con_e=True)
+
+
+def _righe_dettaglio(d: dict) -> list:
+    """Le frasi del `dettaglio` di una formazione (`_dettaglio`), nell'ordine in cui si leggono: la partita rinviata, chi è entrato
+    dalla panchina e al posto di chi, chi è rimasto senza sostituto, il modificatore difesa (solo se non è zero)."""
+    righe = []
+    r = d.get("rinvio") if isinstance(d.get("rinvio"), dict) else {}
+    chi = [x for x in r.get("giocatori") or [] if isinstance(x, dict)]
+    if chi and r.get("modo") == "voto_ufficio" and _numero(r.get("valore")) is not None:
+        righe.append(F("diario.punti_ufficio", n=len(chi), nomi=_nomi(chi), voto=_letto(r["valore"])))
+    elif chi and r.get("modo") == "senza_voto":
+        righe.append(F("diario.punti_rinvio_senza_voto", n=len(chi), nomi=_nomi(chi)))
+    for e in d.get("entrati") or []:
+        if isinstance(e, dict) and isinstance(e.get("entra"), dict) and isinstance(e.get("esce"), dict) and _numero(e.get("fv")) is not None:
+            righe.append(F("diario.punti_entrato", entra=str(e["entra"].get("nome", "")), fv=_letto(e["fv"]),
+                           esce=str(e["esce"].get("nome", ""))))
+    senza = [x for x in d.get("senza_sostituto") or [] if isinstance(x, dict)]
+    if senza:
+        v = _numero(d.get("voto_senza_sostituto"))
+        righe.append(F("diario.punti_nessuno", nomi=_nomi(senza)) if v is None
+                     else F("diario.punti_nessuno_voto", n=len(senza), nomi=_nomi(senza), v=_letto(v)))
+    m = _numero(d.get("modificatore"))
+    if m:
+        righe.append(F("diario.punti_modificatore", d=ConSegno(_letto(m))))
+    return righe
+
+
+def _tornano(voce: dict, f: dict) -> bool:
+    """Vero se i punti della formazione `f` sono la somma dei fantavoti presi dai suoi 11 (`giocatori[].fv`, quelli della tabella
+    della pagina Giornate): allora non c'è niente da spiegare. Falso se a qualcuno manca il voto."""
+    fv = {g.get("id"): g.get("fv") for g in voce.get("giocatori") or [] if isinstance(g, dict)}
+    presi = [fv.get(t.get("id")) for t in f.get("titolari") or [] if isinstance(t, dict)]
+    if not presi or any(_numero(x) is None for x in presi):
+        return False
+    return abs(sum(presi) - f["reale"]) < 0.1
+
+
+def spiegazione_punti(voce: dict) -> dict | None:
+    """Per la pagina Giornate (#900): perché i punti della formazione che conta (`formazione`, come in `fatti_e_attesi`) non sono la
+    somma dei fantavoti presi dai suoi 11. `righe` = le frasi, dal `dettaglio` salvato con la formazione (`_righe_dettaglio`: partita
+    rinviata, chi è entrato al posto di chi, chi è rimasto senza sostituto, modificatore difesa), con `righe_frasi` per tradurle.
+    Una voce scritta prima del dettaglio (o che non si è potuta completare, `dettaglio` null) ha una frase sola che lo dice, ma solo
+    se i conti non tornano con i voti degli 11. None se non c'è niente da spiegare."""
+    chi = _formazione_che_conta(voce)
+    if chi is None or _numero(chi[1].get("reale")) is None:
+        return None
+    nome, f = chi
+    d = f.get("dettaglio")
+    righe = _righe_dettaglio(d) if isinstance(d, dict) else [] if _tornano(voce, f) else [F("diario.punti_senza_dettaglio")]
+    if not righe:
+        return None
+    return {"formazione": nome, "righe": [str(r) for r in righe], "righe_frasi": [r.json() for r in righe]}
+
+
 COPERTURA_MINIMA = 0.6          # sotto questa quota di giornate dentro la fascia (dichiarata: 8 su 10) il periodo è «andato peggio del previsto»
 
 
@@ -1118,6 +1175,7 @@ def elenco(percorso: Path | None = None, regole: Regole | None = None) -> dict:
     for v in voci:
         v["atteso_vs_fatto"] = atteso_vs_fatto(v)
         v["fatti_e_attesi"] = fatti_e_attesi(v)                      # #672: fatti meno attesi, e chi ha fatto meglio o peggio
+        v["spiegazione_punti"] = spiegazione_punti(v)                # #900: perché i punti non sono la somma dei voti degli 11
         v["consigliata_di_allora"] = consigliata_di_allora(v)        # #674: perché c'è, o non c'è, il confronto
         v.update(nota_consigliata(v))
     return {"giornate": voci, "sintesi": sintesi(voci), "scelte_tue": scelte_tue(voci), "affidabilita": affidabilita(voci)}

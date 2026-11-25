@@ -165,3 +165,92 @@ def test_con_i_voti_cambiati_si_rifa_anche_il_dettaglio(finto):
     assert _somma(nuova, s) == s["reale"]
     for k in ("consigliata", "ricostruita"):
         assert _somma(nuova, nuova[k]) == nuova[k]["reale"], k
+
+
+# ---------------------------------------------------------------- le frasi della pagina Giornate (il server le scrive, i client le mostrano)
+def _in_pagina(finto, voce) -> dict:
+    """La voce come la riceve la pagina Giornate (`GET /api/diario`)."""
+    diario._scrivi(finto.file, voci={f"{voce['stagione']}/{voce['giornata']}": voce})
+    return diario.elenco(finto.file)["giornate"][0]
+
+
+def test_le_frasi_dicono_chi_e_entrato_e_il_modificatore(finto):
+    _senza_voto(finto, 21)
+    _voto(finto, 22, 10.0)
+    regole = replace(Regole(), modificatore_difesa=ModificatoreDifesa(attivo=True))
+    v = _in_pagina(finto, _voce(finto, QUATTRO_QUATTRO_DUE, panchina=[22], regole=regole))
+    assert v["spiegazione_punti"] == {
+        "formazione": "schierata",
+        "righe": ["G22 (10,0) è entrato dalla panchina al posto di G21.", "Modificatore difesa: +1,0."],
+        "righe_frasi": [{"chiave": "diario.punti_entrato", "param": {"entra": "G22", "fv": "10.0", "esce": "G21"}},
+                        {"chiave": "diario.punti_modificatore", "param": {"d": "+1.0"}}]}
+
+
+def test_tutti_in_campo_e_modificatore_zero_nessuna_frase(finto):
+    regole = replace(Regole(), modificatore_difesa=ModificatoreDifesa(attivo=True, soglie=[[7.0, 2.0]]))      # media 6: niente
+    v = _in_pagina(finto, _voce(finto, QUATTRO_QUATTRO_DUE, regole=regole))
+    assert v["schierata"]["dettaglio"]["modificatore"] == 0.0 and v["spiegazione_punti"] is None
+
+
+@pytest.mark.parametrize("voto, mancanti, frase", [
+    (None, (20,), "Al posto di G20 non è entrato nessuno dalla panchina."),
+    (4.0, (20,), "Al posto di G20 non è entrato nessuno dalla panchina: per la tua lega vale 4,0."),
+    (4.0, (20, 21), "Al posto di G20 e G21 non è entrato nessuno dalla panchina: per la tua lega valgono 4,0 ciascuno."),
+])
+def test_la_frase_di_chi_resta_senza_sostituto(finto, voto, mancanti, frase):
+    _senza_voto(finto, *mancanti)
+    v = _in_pagina(finto, _voce(finto, TRE_QUATTRO_TRE, panchina=[2], regole=replace(Regole(), voto_senza_sostituto=voto)))
+    assert v["spiegazione_punti"]["righe"] == [frase]
+
+
+@pytest.mark.parametrize("modo, righe", [
+    ("voto_ufficio", ["Partita rinviata: G21 e G25 prendono il voto d'ufficio (6,0)."]),
+    ("senza_voto", ["Partita rinviata: G21 e G25 non prendono voto in questa giornata.",
+                    "Al posto di G21 e G25 non è entrato nessuno dalla panchina."]),
+])
+def test_la_frase_della_partita_rinviata(monkeypatch, finto, modo, righe):
+    finto.dati.partite = pd.DataFrame([{"id": 1, "stagione": ST, "giornata": 1, "data": "2026-09-01 18:00", "giocata": 1},
+                                       {"id": 3, "stagione": ST, "giornata": 1, "data": "2026-09-01 20:45", "giocata": 1},
+                                       {"id": 4, "stagione": ST, "giornata": 1, "data": "2026-09-02 18:00", "giocata": 1},
+                                       {"id": 2, "stagione": ST, "giornata": 1, "data": "2026-10-20 20:45", "giocata": 1}])
+    prima = diario.previsioni
+    monkeypatch.setattr(diario, "previsioni", lambda *a: prima(*a).assign(partita=lambda p: [2 if i > 20 else 1 for i in p["id"]]))
+    v = _in_pagina(finto, _voce(finto, TRE_QUATTRO_TRE, panchina=[2, 22], regole=replace(Regole(), partite_rinviate=modo)))
+    assert v["spiegazione_punti"]["righe"] == righe
+
+
+def test_senza_la_tua_formazione_le_frasi_sono_della_consigliata(finto):
+    _senza_voto(finto, 25)
+    voce = diario.calcola_giornata(finto.dati, ST, 1, Regole(), None, list(range(1, 26)), None, simulazioni=50)
+    assert 25 in [t["id"] for t in voce["consigliata"]["titolari"]]           # il 25 vale di più: è titolare, e non prende voto
+    v = _in_pagina(finto, voce)
+    assert v["spiegazione_punti"]["formazione"] == "consigliata"
+    assert v["spiegazione_punti"]["righe_frasi"][0]["param"]["esce"] == "G25"
+
+
+def _di_prima(voce: dict) -> dict:
+    """La voce come quelle scritte prima di #900: le formazioni senza `dettaglio`."""
+    for k in ("consigliata", "ricostruita", "schierata", "automatica"):
+        if isinstance(voce.get(k), dict):
+            voce[k].pop("dettaglio")
+    return voce
+
+
+def test_una_voce_di_prima_che_torna_con_i_voti_degli_11_non_ha_frasi(finto):
+    v = _in_pagina(finto, _di_prima(_voce(finto, TRE_QUATTRO_TRE)))
+    assert v["spiegazione_punti"] is None
+
+
+@pytest.mark.parametrize("dettaglio", ["assente", None])
+def test_una_voce_di_prima_che_non_torna_dice_che_il_dettaglio_manca(finto, dettaglio):
+    _senza_voto(finto, 20)
+    _voto(finto, 22, 10.0)
+    voce = _di_prima(_voce(finto, TRE_QUATTRO_TRE, panchina=[22]))
+    if dettaglio is None:
+        voce["schierata"]["dettaglio"] = None                 # la voce non si è potuta completare (vedi aggiorna)
+    v = _in_pagina(finto, voce)
+    assert v["spiegazione_punti"] == {
+        "formazione": "schierata",
+        "righe": ["Per questa giornata manca il dettaglio dei punti (riserve entrate, modificatore difesa): è stata calcolata "
+                  "prima che SchieraXI lo salvasse."],
+        "righe_frasi": [{"chiave": "diario.punti_senza_dettaglio", "param": {}}]}

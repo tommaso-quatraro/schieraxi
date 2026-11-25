@@ -1084,6 +1084,46 @@
     "it": "Peggio del previsto: {peggio}.",
     "en": "Worse than expected: {peggio}."
   },
+  "frase.diario.punti_entrato": {
+    "it": "{entra} ({fv}) è entrato dalla panchina al posto di {esce}.",
+    "en": "{entra} ({fv}) came on from the bench for {esce}."
+  },
+  "frase.diario.punti_nessuno": {
+    "it": "Al posto di {nomi} non è entrato nessuno dalla panchina.",
+    "en": "Nobody came on from the bench for {nomi}."
+  },
+  "frase.diario.punti_nessuno_voto.one": {
+    "it": "Al posto di {nomi} non è entrato nessuno dalla panchina: per la tua lega vale {v}.",
+    "en": "Nobody came on from the bench for {nomi}: your league gives {v}."
+  },
+  "frase.diario.punti_nessuno_voto.other": {
+    "it": "Al posto di {nomi} non è entrato nessuno dalla panchina: per la tua lega valgono {v} ciascuno.",
+    "en": "Nobody came on from the bench for {nomi}: your league gives {v} each."
+  },
+  "frase.diario.punti_modificatore": {
+    "it": "Modificatore difesa: {d}.",
+    "en": "Defence modifier: {d}."
+  },
+  "frase.diario.punti_ufficio.one": {
+    "it": "Partita rinviata: {nomi} prende il voto d'ufficio ({voto}).",
+    "en": "Postponed match: {nomi} gets the default grade ({voto})."
+  },
+  "frase.diario.punti_ufficio.other": {
+    "it": "Partita rinviata: {nomi} prendono il voto d'ufficio ({voto}).",
+    "en": "Postponed match: {nomi} get the default grade ({voto})."
+  },
+  "frase.diario.punti_rinvio_senza_voto.one": {
+    "it": "Partita rinviata: {nomi} non prende voto in questa giornata.",
+    "en": "Postponed match: {nomi} gets no grade in this round."
+  },
+  "frase.diario.punti_rinvio_senza_voto.other": {
+    "it": "Partita rinviata: {nomi} non prendono voto in questa giornata.",
+    "en": "Postponed match: {nomi} get no grade in this round."
+  },
+  "frase.diario.punti_senza_dettaglio": {
+    "it": "Per questa giornata manca il dettaglio dei punti (riserve entrate, modificatore difesa): è stata calcolata prima che SchieraXI lo salvasse.",
+    "en": "The points breakdown for this matchday (substitutes, defence modifier) is missing: it was calculated before SchieraXI saved it."
+  },
   "frase.registro.persa_senza_tentativi": {
     "it": "nessun tentativo negli ultimi 10 minuti prima della prima partita (servizio fermo o registro spento)",
     "en": "no attempt in the last 10 minutes before the first match (service stopped or log switched off)"
