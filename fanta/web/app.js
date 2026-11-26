@@ -2329,9 +2329,9 @@ async function apriStatoDati() {
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
         <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${elidiGiorno(t("sd.dal", { d: esc(fData(usoDal, {})) }))})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
-        ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
+        ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.etichetta || f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
         <details><summary class="debole piccolo">${t("scambio.schermate_piu_usate")}</summary>
-          ${(s.uso.per_rotta || []).slice(0, 15).map(r => `<div class="riga"><span class="piccolo">${esc(r.rotta)}</span><span class="debole piccolo">${tp("sd.n_volte", r.richieste)}</span></div>`).join("")}</details></div>` : ""}
+          ${(s.uso.per_parte || []).map(p => `<div class="riga"><span class="piccolo">${esc(testoDi(p, "etichetta"))}</span><span class="debole piccolo">${tp("sd.n_volte", p.richieste)}</span></div>`).join("")}</details></div>` : ""}
       <div class="carta"><h2>${t("scambio.date_delle_coppe")}</h2>
         <div class="debole piccolo">${elidiGiorno(t("sd.coppe_spiega", { d: coppeFino ? esc(fData(coppeFino, {})) : "–" }))}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
