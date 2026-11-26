@@ -2570,7 +2570,7 @@ function dettaglioGiornata(d, g, stagioni) {
   const righe = (f.titolari || []).map(x => {
     const n = numeri.get(x.id), atteso = mostrati.has(x.id) ? mostrati.get(x.id) : n ? n.fv_atteso : null;
     const senza = !!n && n.fv == null;
-    return `<tr><th scope="row">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</th><td>${num(atteso)}</td><td${senza ? ' class="gn-senza"' : ""}>${senza ? t("giornate.senza_voto") : num(n ? n.fv : null)}</td></tr>`;
+    return `<tr role="row"><th scope="row" role="rowheader">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</th><td role="cell">${num(atteso)}</td><td role="cell"${senza ? ' class="gn-senza"' : ""}>${senza ? t("giornate.senza_voto") : num(n ? n.fv : null)}</td></tr>`;
   }).join("");
   const s = tipo === "tua" && mostrata ? sceltaDi(d, g) : null;
   const allora = fraseGiornata(g, "nota_consigliata"), scarti = fraseGiornata(g.fatti_e_attesi);
@@ -2583,11 +2583,13 @@ function dettaglioGiornata(d, g, stagioni) {
   const perche = testiDi(g.spiegazione_punti, "righe").filter(x => typeof x === "string" && x.trim());
   const spiegati = perche.length ? `<ul class="gn-perche" aria-label="${t("giornate.perche_punti")}">${perche.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
   const correggi = g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" type="button" data-correggi="${id}">${t("giornate.correggi")}</button></div>`;
+  // I ruoli della tabella scritti anche a mano: nella pagina strettissima (zoom al 200%) righe e celle si dispongono con display: grid
+  // (stile.css), e qualche browser con quello smette di leggerle come tabella
   return `<section class="gn-dettaglio" id="gn-d-${id}" aria-label="${nome}">
     <h2 class="gn-titolo">${titolo}</h2>${nota}${scarti ? `<p class="gn-scarti">${scarti}</p>` : ""}
-    <table class="gn-tabella"><caption class="solo-lettori">${t("giornate.tabella")}</caption>
-      <thead><tr><th scope="col">${t("giornate.col_giocatore")}</th><th scope="col">${t("giornate.col_atteso")}</th><th scope="col">${t("giornate.col_preso")}</th></tr></thead>
-      <tbody>${righe}</tbody></table>
+    <table class="gn-tabella" role="table"><caption class="solo-lettori">${t("giornate.tabella")}</caption>
+      <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">${t("giornate.col_giocatore")}</th><th scope="col" role="columnheader">${t("giornate.col_atteso")}</th><th scope="col" role="columnheader">${t("giornate.col_preso")}</th></tr></thead>
+      <tbody role="rowgroup">${righe}</tbody></table>
     ${spiegati}${cambi}${correggi}</section>`;
 }
 
