@@ -197,7 +197,6 @@ def test_testi_con_la_giornata_intera():
         "frase.giornata.lega": "Giornata {n} · {a}ª di Serie A",
         "frase.giornata.serie_a": "{a}ª giornata di Serie A",
         "frase.dafare.diario": "{giornata}: è finita, dimmi se hai schierato la consigliata.",
-        "frase.dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della {giornata}.",
         "oggi.prossima_chiude": "{g}: la formazione si chiude {quando}.",
         "oggi.giornata_finita": "{g}: finita",
         "oggi.chiusa_dettaglio": "La formazione si è chiusa {quando}",

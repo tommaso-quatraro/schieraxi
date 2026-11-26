@@ -82,16 +82,18 @@ struct VistaDubbi: View {
                     .font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
             } else if let dubbi = r.dubbi, !dubbi.isEmpty {
-                // tante righe quante ne entrano in altezza (testo grande, iPad): le altre in «e altri N», mai una riga tagliata in fondo
+                // tante righe quante ne entrano in altezza (testo grande, iPad): le altre in «e altri N», mai una riga tagliata in fondo.
+                // «e altri N» con il numero del server (`daControllare`), che conta anche quelli oltre i 6 nomi arrivati
                 let prove = DisposizioneWidget.righeDaProvare(massimo: massimo, totale: dubbi.count)
+                let totale = max(r.daControllare, dubbi.count)
                 PrimaCheEntra(prove.count, in: .vertical) { i in
                     // nel medio righe più strette: così entrano tre giocatori e «e un altro», come prima
                     VStack(alignment: .leading, spacing: famiglia == .systemMedium ? 2 : 6) {
                         ForEach(dubbi.prefix(prove[i])) { d in
                             Link(destination: Vai.giocatore(d.id)) { riga(d) }
                         }
-                        if dubbi.count > prove[i] {
-                            Text(RiassuntoWidget.altri(dubbi.count - prove[i])).font(.caption2).foregroundStyle(.white.opacity(0.7))
+                        if totale > prove[i] {
+                            Text(RiassuntoWidget.altri(totale - prove[i])).font(.caption2).foregroundStyle(.white.opacity(0.7))
                         }
                     }
                 }

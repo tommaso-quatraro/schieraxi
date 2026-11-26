@@ -24,7 +24,10 @@ AUTUNNO = [(9, D(2026, 10, 24, 15)), (10, D(2026, 10, 31, 15)), (11, D(2026, 11,
 INVERNO = [(g, D(2027, 1, 9, 15) + timedelta(weeks=g - 19)) for g in range(19, 27)]          # dalla 19 (9/1) alla 26 (27/2)
 # inizio della stagione inventato, una giornata a settimana dal 22/8 al 26/9 e nessuna sosta
 ESTATE = [(g, D(2026, 8, 22, 18) + timedelta(weeks=g - 1)) for g in range(1, 7)]               # la 4 è sabato 12/9
-FRASE = "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della Giornata {n} · {a}ª di Serie A."
+# la frase senza la giornata (#923): la giornata sta già nella testata della Formazione, e con lei la frase andava a capo su cinque
+# righe sull'iPhone. Il parametro `giornata` resta nella frase con chiave per le pagine web in inglese rimaste in memoria (il loro
+# testi.js traduce ancora con «{giornata}»); l'iPhone mostra il testo già scritto dal server
+FRASE = "È il momento di aste e scambi: se le rose sono cambiate, aggiornale."
 
 
 def giornata(n: int, a: int) -> dict:
@@ -74,7 +77,7 @@ def test_in_mezzo_al_campionato_niente_anche_con_rose_vecchie(tmp_path):
 def test_dopo_la_sosta_il_promemoria_dice_perche_e_fino_a_quando(tmp_path):
     v = promemoria(tmp_path, AUTUNNO, D(2026, 11, 12, 12), rose_aggiornate=D(2026, 11, 1, 10))
     assert v is not None
-    assert v["testo"] == FRASE.format(n=12, a=12)
+    assert v["testo"] == FRASE
     assert v["frase"] == {"chiave": "dafare.rose_mercato", "param": giornata(12, 12)}
     assert (v["id"], v["priorita"], v["azione"]) == ("rose-vecchie", 2, "Aggiorna le rose")
     assert v["destinazione"]["link"] == "schieraxi://lega/rose" and v["giorni"] == 11
@@ -99,7 +102,7 @@ def test_sparisce_alla_scadenza_della_giornata_dopo_la_sosta(tmp_path):
 
 def test_il_numero_e_quello_della_giornata_della_lega(tmp_path):
     v = promemoria(tmp_path, AUTUNNO, D(2026, 11, 12, 12), D(2026, 11, 1), Regole(prima_giornata_lega=4))
-    assert v["frase"]["param"] == giornata(9, 12) and v["testo"] == FRASE.format(n=9, a=12)
+    assert v["frase"]["param"] == giornata(9, 12) and v["testo"] == FRASE
 
 
 def test_una_partita_rinviata_non_nasconde_la_sosta(tmp_path):
@@ -120,7 +123,7 @@ def test_asta_estiva_di_partenza_dopo_la_chiusura_del_mercato(tmp_path):
     agosto = D(2026, 8, 1)
     assert promemoria(tmp_path, ESTATE, D(2026, 8, 15, 12), D(2026, 5, 20), lega) is None    # metà agosto: niente
     v = promemoria(tmp_path, ESTATE, D(2026, 9, 10, 12), agosto, lega)
-    assert v is not None and v["testo"] == FRASE.format(n=1, a=4)        # la lega non gioca senza rose: prima della sua giornata 1
+    assert v is not None and v["frase"]["param"] == giornata(1, 4) and v["testo"] == FRASE     # la lega non gioca senza rose: prima della sua giornata 1
     assert promemoria(tmp_path, ESTATE, D(2026, 9, 1, 0, 1), agosto, lega) is not None
     assert promemoria(tmp_path, ESTATE, D(2026, 9, 10, 12), D(2026, 9, 6), lega) is None     # rose aggiornate dopo l'asta
     assert promemoria(tmp_path, ESTATE, D(2026, 9, 12, 18), agosto, lega) is None            # scaduta la giornata 1 della lega

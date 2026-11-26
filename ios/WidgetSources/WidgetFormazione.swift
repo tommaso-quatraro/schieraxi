@@ -189,7 +189,7 @@ struct VistaFormazione: View {
     // MARK: Home
 
     private func piccolo(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
-        let dubbi = w.daControllare.count
+        let dubbi = w.contoDaControllare
         return conTestataPiccola(titolo: f.tuaScelta == true ? "La tua scelta" : "Formazione", giornata: w.nomeGiornata, spazio: 2,
                                  conFascia: f.intervallo?.testo != nil, conCopia: voce.copiaDel != nil, dubbi: dubbi) { prova in
             Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
@@ -199,7 +199,7 @@ struct VistaFormazione: View {
     }
 
     private func medio(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        let dubbi = w.daControllare.count
+        let dubbi = w.contoDaControllare
         // la prima prova che entra in altezza: la copia salvata c'è sempre, prima cedono le righe dei punti attesi, per ultimo
         // «da controllare» (#834)
         let prove = DisposizioneWidget.proveFormazione(medio: true, conGiornata: false, conFascia: f.intervallo?.testo != nil,
@@ -257,10 +257,10 @@ struct VistaFormazione: View {
     /// large non li aveva). Niente riga se non c'è nessuno dei due.
     @ViewBuilder
     private func rigaDubbiEPanchina(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
-        if !w.daControllare.isEmpty || f.panchina != nil {
+        if w.contoDaControllare > 0 || f.panchina != nil {
             HStack {
-                if !w.daControllare.isEmpty {
-                    EtichettaDaControllare(n: w.daControllare.count).foregroundStyle(TintaWidget.attenzione)
+                if w.contoDaControllare > 0 {
+                    EtichettaDaControllare(n: w.contoDaControllare).foregroundStyle(TintaWidget.attenzione)
                 }
                 Spacer()
                 if let n = f.panchina?.count { Text("\(n) in panchina").foregroundStyle(TintaWidget.testo2) }
@@ -359,7 +359,7 @@ struct VistaFormazione: View {
     /// accanto al modulo, che perde «Formazione» (`DisposizioneWidget.proveRettangoloFormazione`): né la giornata né «da
     /// controllare» cedono.
     private func rettangolare(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
-        let dubbi = w.daControllare.count
+        let dubbi = w.contoDaControllare
         let giornata = w.nomeGiornata
         let prove = DisposizioneWidget.proveRettangoloFormazione(conGiornata: giornata != nil, daControllare: dubbi)
         return PrimaCheEntra(prove.count, in: .vertical) { i in
