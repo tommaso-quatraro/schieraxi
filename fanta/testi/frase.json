@@ -1052,6 +1052,10 @@
     "it": "potrebbe essere {elenco}",
     "en": "it could be {elenco}"
   },
+  "frase.rose.scelta_precedente": {
+    "it": "scelto da te l'ultima volta",
+    "en": "you chose him last time"
+  },
   "frase.rose.potrebbe_essere_uno_fra": {
     "it": "potrebbe essere uno fra {elenco}",
     "en": "it could be one of {elenco}"

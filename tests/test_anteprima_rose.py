@@ -102,7 +102,8 @@ def test_nel_testo_uno_per_riga_le_squadre_gia_salvate_sono_titoli(ambiente):
 def test_ricaricando_lo_stesso_testo_le_scelte_di_prima_restano(ambiente):
     """Collaudo del 26/11: ricaricando lo stesso file le scelte fatte sui dubbi si perdevano («Cosa cambia» mostrava movimenti
     finti e si salvavano come non riconosciuti). La scelta salvata per lo stesso nome scritto, nella stessa squadra, torna
-    già risolta; quelli lasciati non trovati restano così."""
+    proposta e già scelta, ma resta da controllare (revisione della #939: una scelta sbagliata si deve poter cambiare); quelli
+    lasciati non trovati restano così."""
     a, _ = nuovo_utente("utentea")
     testo = TESTO.replace("Altra\n", "D\tPellegrini\t3\nAltra\n")      # «Pellegrini» è «Pellegrini Lu.» nel listone
     righe = {g["testo"]: g["riga"] for g in per_testo(a.post("/api/rose/anteprima", json={"testo": testo}).json()).values()}
@@ -114,8 +115,11 @@ def test_ricaricando_lo_stesso_testo_le_scelte_di_prima_restano(ambiente):
 
     r = a.post("/api/rose/anteprima", json={"testo": testo}).json()
     g = per_testo(r)
-    assert (g["Rossi"]["stato"], g["Rossi"]["id"]) == ("sicuro", 15)
-    assert (g["Pellegrini"]["stato"], g["Pellegrini"]["id"]) == ("sicuro", 17)
+    for testo, gid in (("Rossi", 15), ("Pellegrini", 17)):
+        assert (g[testo]["stato"], g[testo]["id"], g[testo]["metodo"]) == ("da_controllare", gid, "precedente"), g[testo]
+        assert g[testo]["alternative"][0]["id"] == gid                       # il menu si apre sulla scelta di prima
+        assert g[testo]["avviso"] == "scelto da te l'ultima volta"
+    assert [x["id"] for x in g["Rossi"]["alternative"]] == [15, 16]           # e si può scegliere l'altro
     assert g["Pinco Pallino"]["stato"] == "non_trovato"
     assert r["differenze"]["nessuna_differenza"] is True, r["differenze"]
     assert a.post("/api/rose/testo", json={"testo": testo}).status_code == 200            # salvato di nuovo senza scelte
@@ -129,7 +133,25 @@ def test_anche_le_scelte_fatte_dopo_in_giocatori_da_sistemare_restano(ambiente):
     corr = a.post("/api/rose/correggi", json={"squadra": "Mia", "nome": "Pinco Pallino", "id": 12})
     assert corr.status_code == 200, corr.text
     g = per_testo(a.post("/api/rose/anteprima", json={"testo": TESTO}).json())
-    assert (g["Pinco Pallino"]["stato"], g["Pinco Pallino"]["id"]) == ("sicuro", 12)          # Barella, centrocampista come nel file
+    assert (g["Pinco Pallino"]["stato"], g["Pinco Pallino"]["id"]) == ("da_controllare", 12)  # Barella, centrocampista come nel file
+
+
+def test_una_scelta_di_prima_sbagliata_si_cambia(ambiente):
+    """Revisione della #939: la scelta di prima torna proposta, non decisa. Nell'anteprima si sceglie un altro e si salva quello;
+    salvata senza toccarla resta la scelta di prima e «Giocatori da sistemare» (/api/rose/correggi) la può ancora cambiare."""
+    a, _ = nuovo_utente("utentea")
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 15}]
+    assert importa(a, TESTO).status_code == 200
+    assert a.post("/api/rose/testo", json={"testo": TESTO, "correzioni": corr}).status_code == 200
+    rossi = per_testo(a.post("/api/rose/anteprima", json={"testo": TESTO}).json())["Rossi"]
+    altra = [{"squadra": "Mia", "testo": "Rossi", "id": 16, "riga": rossi["riga"]}]
+    assert a.post("/api/rose/testo", json={"testo": TESTO, "correzioni": altra}).status_code == 200
+    ids = {g["id"] for g in a.get("/api/rosa", params={"squadra": "Mia"}).json()["giocatori"]}
+    assert 16 in ids and 15 not in ids
+    assert a.post("/api/rose/testo", json={"testo": TESTO}).status_code == 200           # senza scelte: resta la scelta di prima
+    r = a.post("/api/rose/correggi", json={"squadra": "Mia", "nome": "Rossi", "id": 15})
+    assert r.status_code == 200, r.text
+    assert (r.json()["giocatore"]["id"], r.json()["giocatore"]["riconosciuto"]) == (15, "manuale")
 
 
 def test_le_scelte_di_prima_valgono_solo_nella_stessa_squadra(ambiente):

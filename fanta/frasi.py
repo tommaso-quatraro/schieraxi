@@ -321,6 +321,7 @@ CATALOGO: dict[str, str] = {
     "rose.attaccanti.other": "{n} attaccanti",
     # un dubbio tra omonimi: {elenco} = `rose.candidato` («Rossi (difensore, Genoa)»), con «e» fra gli ultimi due
     "rose.potrebbe_essere": "potrebbe essere {elenco}",
+    "rose.scelta_precedente": "scelto da te l'ultima volta",
     "rose.potrebbe_essere_uno_fra": "potrebbe essere uno fra {elenco}",
     "rose.candidato": "{nome} ({ruolo}, {squadra})",
     # {indicato} e {listone} = `nomi.ruolo_*`; {indicata} = la squadra come scritta nel file, {listone} = quella del listone per esteso

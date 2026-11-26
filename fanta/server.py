@@ -2708,7 +2708,9 @@ class CorrezioneGiocatore(BaseModel):
 
 @app.post("/api/rose/correggi")
 def correggi_giocatore(dati: CorrezioneGiocatore, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
-    """Un giocatore che l'importazione non ha riconosciuto (o ha riconosciuto per somiglianza): lo si abbina a mano a quello del listone."""
+    """Un giocatore che l'importazione non ha riconosciuto (o ha riconosciuto per somiglianza, o che l'utente aveva scelto a mano):
+    lo si abbina a mano a quello del listone. Si può cambiare anche una scelta fatta prima (revisione della #939); non un
+    giocatore riconosciuto con certezza."""
     calciatori, _ = listone.carica()
     c = next((x for x in calciatori if x.id == dati.id), None)
     if c is None:
@@ -2717,7 +2719,7 @@ def correggi_giocatore(dati: CorrezioneGiocatore, request: Request, response: Re
         versioni.controlla(request, versioni.etag_file(ctx.rose))
         r = _rose(ctx)
         s = r.squadra(dati.squadra)
-        g = next((x for x in s.giocatori if x.nome == dati.nome and x.riconosciuto not in ("esatto", "manuale")), None) if s else None
+        g = next((x for x in s.giocatori if x.nome == dati.nome and x.riconosciuto != "esatto"), None) if s else None
         if g is None:
             raise HTTPException(404, "Quel giocatore non c'è più nella rosa: ricarica la pagina")
         g.testo = g.testo or (g.nome if g.nome != c.nome else None)        # il nome scritto nel file: alla prossima importazione
