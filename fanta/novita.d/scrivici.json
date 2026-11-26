@@ -2,7 +2,7 @@
   "titolo": "Scrivici: un commento per chi gestisce SchieraXI",
   "voci": [
     "Impostazioni, Scrivici: con un account puoi mandare un'idea, un problema o un dubbio a chi gestisce SchieraXI. Scrivi, tocca «Invia» e compare «Grazie, l'abbiamo ricevuto.». Sul web e sull'iPhone.",
-    "Al massimo 5 commenti al giorno. Li legge solo chi gestisce l'app; se elimini l'account se ne vanno anche loro, e li trovi in «Scarica i tuoi dati».",
+    "Al massimo 5 commenti al giorno. Li legge solo chi gestisce l'app; se elimini l'account se ne vanno anche loro, e li trovi in «Scarica i tuoi dati». La pagina Privacy lo dice.",
     "Per chi gestisce l'app: in Impostazioni › Gestione l'elenco «Commenti degli utenti», il più recente in alto, con «Segna come letto», e un avviso sul telefono a ogni commento nuovo."
   ],
   "tecnico": [
@@ -11,6 +11,7 @@
     "Avviso al titolare dopo la risposta (BackgroundTasks): sentinella.manda_ntfy sul canale ~/.config/schieraxi/canale con priorità 3 e tag speech_balloon (nuovi parametri facoltativi; la sentinella resta a 4 e mag), senza testo né nome. Senza canale non parte; invio fallito: una riga di avviso nel registro, il commento resta. Il testo non va mai nei registri.",
     "Comando python -m fanta feedback --ultimi N (sola lettura, il più recente in alto, ora italiana).",
     "Web: riga Scrivici in Impostazioni (solo con stato.account) e pagina ?vista=impostazioni&gruppo=scrivici; in Gestione la scheda «Commenti degli utenti» nella colonna di destra, con il testo dell'utente inserito solo come textContent. Testi nel catalogo fanta/testi/scrivici.json e quattro chiavi err.* per tradurre i messaggi nuovi. iPhone: ScriviciPagina e ScriviciViewModel, VociImpostazioni.informazioni(gestisce:scrivici:); l'elenco dei commenti resta solo della web.",
+    "Privacy (fanta/testi_legali.py, italiano e inglese): una voce in «Quali dati tiene» (cosa si salva, chi lo legge, fino all'eliminazione dell'account, niente a terzi: all'avviso esterno solo «un commento nuovo») e i commenti nell'elenco di «Scarica i tuoi dati»; data della pagina e VERSIONE_TERMINI restano 2026-11-26.",
     "Calcolo non toccato."
   ]
 }
