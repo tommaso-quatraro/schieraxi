@@ -2097,10 +2097,19 @@ const sceltaMiaSquadra = (squadre = stato.squadre || [], vuoto = false) => `<sel
   `<option value="${esc(x.nome)}" ${x.mia ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>`;
 function collegaSceltaMia() {
   const ms = $("#mia-squadra");
-  if (ms) ms.addEventListener("change", async () => {
+  if (!ms) return;
+  let salvata = ms.value;                  // ciò che vale sul server: "" («Scegli una squadra») finché la mia non è scelta
+  ms.addEventListener("change", async () => {
     if (!ms.value) return;
     try {
       await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: ms.value }) });
+    } catch (e) {                          // il menu torna a ciò che vale, così la stessa squadra si riprova (revisione della #945)
+      ms.value = salvata;
+      avviso(e.message);
+      return;
+    }
+    salvata = ms.value;
+    try {
       svuotaCache(); stato.squadraVista = null;
       avviso(t("lega.squadra_salvata"));
       await Promise.all([caricaInfo(), caricaSquadre()]);

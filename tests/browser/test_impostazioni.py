@@ -608,6 +608,30 @@ def test_la_mia_squadra_non_scelta_si_sceglie_anche_la_prima_dell_elenco(web, qu
     assert not web.errori_console, web.errori_console
 
 
+def test_la_mia_squadra_non_salvata_si_riprova_con_la_stessa_squadra(web):
+    """Revisione della #945: se il salvataggio della squadra non riesce, il menu restava sulla squadra scelta, e sceglierla di nuovo
+    non era un cambio: non si poteva riprovare. Ora torna a «Scegli una squadra», l'avviso dice cosa non va e la stessa squadra si
+    sceglie e si salva di nuovo."""
+    solo(web, "prima")
+    squadre = web.registrata("/api/squadre")
+    for s in squadre:
+        s["mia"] = False
+    web.risposta("/api/squadre", squadre)
+    web.risposta("/api/stato", {**web.registrata("/api/stato"), "mia_squadra": None})
+    web.risposta("/api/mia-squadra", {"detail": "Squadra non trovata"}, stato=400)
+    salvate = _scritture(web, "/api/mia-squadra")
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    menu = principale(web).get_by_role("combobox", name="La tua squadra")
+    nome = squadre[0]["nome"]
+    menu.select_option(nome)
+    web.pagina.get_by_role("status").filter(has_text="Squadra non trovata").first.wait_for(timeout=10000)
+    web.aspetta()
+    assert menu.input_value() == "", "dopo l'errore il menu resta sulla squadra non salvata"
+    menu.select_option(nome)
+    web.aspetta()
+    assert salvate == [{"nome": nome}, {"nome": nome}], salvate
+
+
 def test_le_altre_squadre_con_la_sola_mia_squadra_lo_dicono(web):
     """Con le rose della sola mia squadra la riga non c'è, ma la pagina si apre dal suo indirizzo: diceva «Importa prima le rose…»,
     falso perché le rose ci sono (#779). Ora dice che nella lega c'è solo la mia squadra e niente elenco."""
