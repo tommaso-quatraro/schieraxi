@@ -19,7 +19,7 @@ from fastapi import Path as FPath
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import account, account_email, contesto, fonti_attive, frasi, funzioni, fuso, percorsi, posta, registro, social
+from . import account, account_email, contesto, fonti_attive, frasi, funzioni, fuso, percorsi, posta, registro, social, uso
 from .account import ErroreAccount, Utente
 
 LOG = logging.getLogger(__name__)
@@ -738,10 +738,19 @@ def elimina_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depend
     return {"ok": True}
 
 
+def _con_parte(voci: list[dict]) -> list[dict]:
+    """Accanto a ogni rotta il nome della parte dell'app (`uso.nome_parte`): `parte` e `parte_frase`, null se la rotta non è di
+    nessuna parte."""
+    return [v | {"parte": str(n) if n else None, "parte_frase": frasi.di(n)} for v in voci for n in [uso.nome_parte(v.get("rotta"))]]
+
+
 @router.get("/api/admin/registro", dependencies=[Depends(solo_amministratore)])
 def registro_server():
-    """Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà)."""
-    return {"contatori": registro.contatori.riepilogo(), "errori": registro.ultimi(registro.FILE_ERRORI, 30),
+    """Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà).
+    Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`)."""
+    contatori = registro.contatori.riepilogo()
+    return {"contatori": contatori | {"piu_lente": _con_parte(contatori["piu_lente"])},
+            "errori": _con_parte(registro.ultimi(registro.FILE_ERRORI, 30)),
             "sicurezza": registro.ultimi(registro.FILE_SICUREZZA, 30, nascondi_indirizzi=True)}
 
 
@@ -759,7 +768,7 @@ def fonti_dati():
 @router.put("/api/admin/fonti", dependencies=[Depends(solo_amministratore)])
 def scegli_fonte(dati: SceltaFonte, utente: Utente = Depends(solo_amministratore)):
     """Accende o spegne una fonte. Accendere una fonte significa assumersi il rispetto delle condizioni d'uso del sito.
-    Le richieste già in corso finiscono; i risultati in diretta (ESPN) si riavviano al prossimo avvio del servizio."""
+    Le richieste già in corso finiscono; i risultati in diretta (ESPN) seguono la scelta dal giro dopo (entro 15 secondi), senza riavvio."""
     if dati.fonte not in fonti_attive.FONTI:
         raise HTTPException(400, "Fonte sconosciuta")
     fonti_attive.imposta(dati.fonte, dati.acceso)

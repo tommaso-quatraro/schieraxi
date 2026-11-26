@@ -1307,5 +1307,10 @@
   "err.p_regola_fonte_voto": {
     "it": "Voto di partenza",
     "en": "Starting grade"
+  },
+  "err.interruttori_file_rovinato": {
+    "it": "Non cambio l'interruttore: il file {1} sul server è scritto male e lo perderei. Correggilo o toglilo, poi riprova.",
+    "en": "I am not changing the switch: the file {1} on the server is malformed and I would lose it. Fix it or remove it, then try again.",
+    "nota": "409 di PUT /api/admin/fonti e /api/admin/funzioni con dati/fonti.json o dati/funzioni.json scritto male (fanta/interruttori.py): riscriverlo cancellerebbe le altre scelte"
   }
 }

@@ -424,6 +424,20 @@ CATALOGO: dict[str, str] = {
     "fonte.spenta_footballdata": "Non scarico risultati e statistiche di squadra delle partite giocate.",
     "fonte.spenta_espn": "Non scarico risultati in diretta.",
     "fonte.spenta_foto": "L'app usa i volti illustrati.",
+    # il nome della parte dell'app in «Stato dei dati › Quanto si usa l'app» (uso.PARTI): gli stessi di «Errori recenti»
+    "uso.parte_formazione": "Formazione",
+    "uso.parte_giornate": "Giornate",
+    "uso.parte_lega": "La mia lega",
+    "uso.parte_account": "Il tuo account",
+    "uso.parte_avvisi": "Avvisi",
+    "uso.parte_aspetto": "Aspetto",
+    "uso.parte_gestione": "Gestione",
+    "uso.parte_informazioni": "Informazioni",
+    "uso.parte_scrivici": "Scrivici",
+    "uso.parte_avvio": "Apertura dell'app",
+    "uso.parte_widget": "Widget dell'iPhone",
+    "uso.parte_controllo": "Controllo del server",
+    "uso.parte_altro": "Altre richieste",
 }
 
 
