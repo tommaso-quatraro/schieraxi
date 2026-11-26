@@ -180,7 +180,8 @@ def test_la_scheda_prima_della_partita():
     assert "Fantavoto atteso, se gioca 6,8" in testo                       # il numero grande, con il suo nome
     assert '<div class="grande gioca-medio">65%</div>' in html             # «gioca N%» nel colore che ha sul campo
     assert "Perché è titolare Preferito a Gallo: rigorista." in testo
-    assert "È in forma: 3 bonus nelle ultime 5." in testo and "Gioca al 65%." in testo
+    # fra i motivi del numero niente «gioca» (#923): «gioca 65%» sta già accanto al numero, e lo si legge una volta sola
+    assert "È in forma: 3 bonus nelle ultime 5." in testo and "Gioca al 65%." not in testo and testo.count("65%") == 1
     assert '<button class="bottone" type="button" data-sostituisci="7">Sostituisci</button>' in html
     assert "Probabile titolare" not in html                                # la titolarità non si scrive nemmeno qui
     # in ordine: numeri, perché è titolare, perché questo numero, ultimi voti, Sostituisci, e in fondo «Tutti i numeri» chiuso
