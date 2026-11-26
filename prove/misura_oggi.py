@@ -2,6 +2,10 @@ r"""Tempi di Oggi, del widget e di altre rotte con più utenti insieme, su un se
 
 Uso (dalla radice, col .venv della cartella principale):
     .venv\Scripts\python.exe prove\misura_oggi.py --codice <cartella> [--porta 18907] [--uscita risultati.json] [--cartella <nuova>]
+        [--utenti 15] [--cpu 4]
+
+`--cpu 4` (o `4,6`): come un server con un solo processore (o due). Server e Diario girano solo su quei processori logici, con le
+librerie di calcolo numerico a un filo per processore; lo script di misura gira sugli altri, così non ruba tempo al server.
 
 `<cartella>` è una COPIA del codice con il suo archivio in `dati\fanta.sqlite`: la prova del Diario (`fanta affidabilita`, come il
 cron del server) e l'aggiornamento simulato scrivono in quell'archivio. Per prepararla: `git archive HEAD` estratto nella cartella,
@@ -10,7 +14,8 @@ più una copia di `dati\fanta.sqlite`. Per confrontare due versioni si prepara u
 Cosa fa: in una cartella temporanea crea N account inventati (`amicoNN`, password nuova a ogni lancio) con regole e rose della lega
 d'esempio (i primi 10 nella stessa lega, gli altri con regole proprie, quindi senza calcoli in comune), avvia il server (multiutente,
 niente diretta, pianificatore né invii) e misura, in ordine: Oggi a freddo per un account con regole proprie; Oggi di tutti insieme
-(riscaldamento); un utente in fila su 6 rotte; tutti insieme sulle 6 rotte, due giri; ETag; Oggi, widget e Diario di tutti mentre
+(riscaldamento); un utente in fila su 6 rotte; tutti insieme sulle 6 rotte, due giri; Oggi di tutti nello stesso istante, tre volte,
+e poi il widget allo stesso modo; ETag; Oggi, widget e Diario di tutti mentre
 il Diario si calcola in un altro processo; Oggi e widget di tutti subito dopo un aggiornamento dei dati simulato (una riga in
 `aggiornamenti`, come il giro delle probabili). La latenza è quella percepita dall'app: su 202 («sto calcolando») si riprova dopo
 al massimo 3 secondi. CPU e memoria del processo del server solo su Windows (senza librerie in più). Il server si ferma per numero
@@ -92,6 +97,36 @@ class Fase:
         print(f"[{self.nome}] {self.risultato}", flush=True)
 
 
+def legame(cpu: list[int] | None) -> str:
+    """Righe di Python che legano ai processori `cpu` il processo che le esegue (vanno prima di caricare numpy); '' senza limite."""
+    if not cpu:
+        return ""
+    if os.name == "nt":
+        maschera = sum(1 << c for c in cpu)
+        return ("import ctypes; _k = ctypes.windll.kernel32; _k.GetCurrentProcess.restype = ctypes.c_void_p; "
+                "_k.SetProcessAffinityMask.argtypes = [ctypes.c_void_p, ctypes.c_size_t]; "
+                f"_k.SetProcessAffinityMask(_k.GetCurrentProcess(), {maschera}) or exit('processori non impostati'); ")
+    return f"import os; os.sched_setaffinity(0, {set(cpu)!r}); "
+
+
+def lascia_processori(cpu: list[int] | None) -> None:
+    """Lo script di misura (e chi lancia) gira sugli altri processori fra quelli che ha già: non ruba tempo al server legato a `cpu`."""
+    if not cpu:
+        return
+    if os.name == "nt":
+        import ctypes
+        k = ctypes.windll.kernel32
+        k.GetCurrentProcess.restype = ctypes.c_void_p
+        k.GetProcessAffinityMask.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
+        k.SetProcessAffinityMask.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+        mio, sistema = ctypes.c_size_t(), ctypes.c_size_t()
+        k.GetProcessAffinityMask(k.GetCurrentProcess(), ctypes.byref(mio), ctypes.byref(sistema))
+        if not k.SetProcessAffinityMask(k.GetCurrentProcess(), mio.value & ~sum(1 << c for c in cpu)):
+            raise SystemExit("processori dello script di misura non impostati")
+    else:
+        os.sched_setaffinity(0, os.sched_getaffinity(0) - set(cpu))
+
+
 def riassunto(v: list[float]) -> dict:
     v = sorted(v)
     pos = lambda p: v[min(len(v) - 1, int(round(p / 100 * (len(v) - 1))))]          # noqa: E731
@@ -130,10 +165,12 @@ db.close()
     subprocess.run([sys.executable, "-c", programma], env=os.environ | ambiente(codice, cartella), check=True, cwd=codice)
 
 
-def ambiente(codice: Path, cartella: Path) -> dict:
+def ambiente(codice: Path, cartella: Path, cpu: list[int] | None = None) -> dict:
+    fili = {k: str(len(cpu)) for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")} if cpu else {}
     return {"FANTA_MULTIUTENTE": "1", "FANTA_DATI_UTENTI": str(cartella), "FANTA_LEGA": str(codice / "lega" / "esempio"),
             "FANTA_PROXY": "1", "FANTA_LIVE": "0", "FANTA_PIANIFICATORE": "0", "FANTA_MAIL": "spento",
-            "SCHIERAXI_CANALE": str(cartella / "nessun-canale"), "SENTINELLA_NTFY_URL": "http://127.0.0.1:9/", "PYTHONIOENCODING": "utf-8"}
+            "SCHIERAXI_CANALE": str(cartella / "nessun-canale"), "SENTINELLA_NTFY_URL": "http://127.0.0.1:9/",
+            "PYTHONIOENCODING": "utf-8"} | fili
 
 
 # ---------- richieste ----------
@@ -155,7 +192,7 @@ async def chiedi(cl, token: str, ip: str, percorso: str, registro: dict, nome: s
     return r
 
 
-async def misura(base: str, processo: Processo, codice: Path, n: int, password: str, env: dict) -> dict:
+async def misura(base: str, processo: Processo, codice: Path, n: int, password: str, env: dict, cpu: list[int] | None = None) -> dict:
     import httpx
     uscita: dict = {}
     ids = [g["id"] for s in json.loads((codice / "lega" / "esempio" / "rose.json").read_text(encoding="utf-8"))["squadre"] for g in s["giocatori"]]
@@ -169,6 +206,7 @@ async def misura(base: str, processo: Processo, codice: Path, n: int, password: 
             r.raise_for_status()
             tk[i] = r.json()["token"]
         altra = min(n - 1, 12)                               # un account con regole proprie: nessun calcolo in comune
+        uno, tre = min(n - 1, 1), min(n - 1, 3)              # gli account delle fasi «1 utente» ed ETag (con --utenti 1 c'è solo il primo)
 
         reg = {}
         with Fase(processo, "freddo") as f:
@@ -184,7 +222,7 @@ async def misura(base: str, processo: Processo, codice: Path, n: int, password: 
         with Fase(processo, "1 utente") as f:
             for rotta in ROTTE:
                 for k in range(15):
-                    await chiedi(cl, tk[1], ip(1), url(rotta, k), reg, rotta)
+                    await chiedi(cl, tk[uno], ip(uno), url(rotta, k), reg, rotta)
         uscita["un_utente"] = {"rotte": {k: riassunto(v) for k, v in reg.items()}} | f.risultato
 
         reg, codici = {}, {}
@@ -197,18 +235,26 @@ async def misura(base: str, processo: Processo, codice: Path, n: int, password: 
             await asyncio.gather(*[amico(i) for i in range(n)])
         uscita["insieme"] = {"rotte": {k: riassunto(v) for k, v in reg.items()}, "codici": codici} | f.risultato
 
+        for rotta in ("oggi", "widget"):                     # tutti aprono la stessa schermata nello stesso istante, tre volte
+            reg, codici = {}, {}
+            with Fase(processo, f"{rotta}: {n} nello stesso istante") as f:
+                for _ in range(3):
+                    await asyncio.gather(*[chiedi(cl, tk[i], ip(i), url(rotta, i), reg, rotta, codici) for i in range(n)])
+            uscita[f"{rotta}_stesso_istante"] = {"ms": riassunto(reg[rotta]), "codici": codici} | f.risultato
+
         etag = {}
         for rotta in ROTTE:
-            h = {"X-Fanta": "1", "X-Forwarded-For": ip(3), "Authorization": f"Bearer {tk[3]}"}
-            r = await cl.get(url(rotta, 3), headers=h)
+            h = {"X-Fanta": "1", "X-Forwarded-For": ip(tre), "Authorization": f"Bearer {tk[tre]}"}
+            r = await cl.get(url(rotta, tre), headers=h)
             e = r.headers.get("etag")
             etag[rotta] = {"codice": r.status_code, "byte": len(r.content),
-                           "con_if_none_match": (await cl.get(url(rotta, 3), headers=h | {"If-None-Match": e})).status_code if e else None}
+                           "con_if_none_match": (await cl.get(url(rotta, tre), headers=h | {"If-None-Match": e})).status_code if e else None}
         uscita["etag"] = etag
 
         reg, codici = {}, {}
         t0 = time.perf_counter()
-        diario = subprocess.Popen([sys.executable, "-m", "fanta", "affidabilita", "--minuti", "5"], cwd=codice, env=env,
+        diario = subprocess.Popen([sys.executable, "-c", f"{legame(cpu)}import runpy, sys; sys.argv = ['fanta', 'affidabilita', '--minuti', '5']; "
+                                   "runpy.run_module('fanta', run_name='__main__', alter_sys=True)"], cwd=codice, env=env,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
         with Fase(processo, f"{n} utenti durante il Diario") as f:
             await asyncio.sleep(1.0)
@@ -241,6 +287,9 @@ def main() -> None:
     a.add_argument("--uscita", type=Path)
     a.add_argument("--cartella", type=Path, help="dove creare gli account inventati (una cartella che non c'è ancora); senza, una "
                                                  "cartella temporanea nuova")
+    a.add_argument("--cpu", type=lambda s: sorted({int(x) for x in s.split(",")}),
+                   help="processori logici (numeri separati da virgole) per server e Diario, come un server con meno processori: "
+                        "per esempio 4")
     arg = a.parse_args()
     codice = arg.codice.resolve()
     if not (codice / "dati" / "fanta.sqlite").is_file() or not (codice / "fanta").is_dir():
@@ -252,12 +301,14 @@ def main() -> None:
     else:
         cartella = Path(tempfile.mkdtemp(prefix="misura-oggi-"))
     password = secrets.token_urlsafe(18)
-    env = os.environ | ambiente(codice, cartella)
+    env = os.environ | ambiente(codice, cartella, arg.cpu)
+    lascia_processori(arg.cpu)
     prepara(codice, cartella, arg.utenti, password)
     file_pid = cartella / "pid.txt"
     with open(cartella / "server.log", "w", encoding="utf-8") as log:
-        srv = subprocess.Popen([sys.executable, "-c", f"import os; open(r'{file_pid}', 'w').write(str(os.getpid())); import uvicorn; "
-                                f"from fanta import server; uvicorn.run(server.app, host='127.0.0.1', port={arg.porta}, log_level='warning')"],
+        srv = subprocess.Popen([sys.executable, "-c", f"{legame(arg.cpu)}import os; open(r'{file_pid}', 'w').write(str(os.getpid())); "
+                                f"import uvicorn; from fanta import server; "
+                                f"uvicorn.run(server.app, host='127.0.0.1', port={arg.porta}, log_level='warning')"],
                                cwd=codice, env=env, stdout=log, stderr=subprocess.STDOUT)
         pid = None
         try:
@@ -268,7 +319,8 @@ def main() -> None:
                 except httpx.HTTPError:
                     time.sleep(0.3)
             pid = int(file_pid.read_text())      # il vero processo del server (su Windows il .venv ne lancia un altro)
-            risultato = asyncio.run(misura(f"http://127.0.0.1:{arg.porta}", Processo(pid), codice, arg.utenti, password, env))
+            risultato = {"utenti": arg.utenti, "cpu": arg.cpu} | asyncio.run(
+                misura(f"http://127.0.0.1:{arg.porta}", Processo(pid), codice, arg.utenti, password, env, arg.cpu))
         finally:
             if pid:
                 if os.name == "nt":

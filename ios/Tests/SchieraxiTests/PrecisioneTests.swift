@@ -55,7 +55,7 @@ final class PrecisioneTests: XCTestCase {
         XCTAssertEqual(t.gioca.fasce, ["Gioca 40-69%: dicevamo 56%, hanno giocato nel 50% dei casi (12 casi, pochi per dirlo)",
                                        "Gioca 90-100%: dicevamo 98%, hanno giocato nel 81% dei casi (58 casi)"])
         XCTAssertEqual(t.confronto?.numero, "4 su 6")
-        XCTAssertEqual(t.confronto?.frase, "Giornate in cui la consigliata ha fatto meglio della tua: 4 su 6. Meglio la tua: 1. Pari: 1. Seguendo sempre la consigliata avresti fatto 9,5 punti in più.")
+        XCTAssertEqual(t.confronto?.frase, "Meglio la tua: 1. Pari: 1. Seguendo sempre la consigliata avresti fatto 9,5 punti in più.")
         XCTAssertEqual(t.squadra.numero, "4,1")
         XCTAssertEqual(t.squadra.frase, "Punti della consigliata: 72,0 previsti e 73,4 fatti, in media. Giornate dentro la fascia prevista: 5 su 6 (puntiamo a 8 su 10).")
         XCTAssertEqual(t.notaRicostruiti, "In 2 giornate su 6 i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati.")
@@ -87,7 +87,7 @@ final class PrecisioneTests: XCTestCase {
         XCTAssertEqual(t.gioca.giudizio, "Qui siamo stati troppo prudenti.")
         XCTAssertEqual(t.gioca.fasce, ["Gioca 70-89%: dicevamo 75%, hanno giocato nel 100% dei casi (1 caso, pochi per dirlo)"])
         // il plurale si sceglie sul numero come è scritto, come la web dopo #841: «1,0 punti», il singolare solo per «1» (#842)
-        XCTAssertEqual(t.confronto?.frase, "Giornate in cui la consigliata ha fatto meglio della tua: 0 su 1. Meglio la tua: 1. Pari: 0. Con le tue scelte hai fatto 1,0 punti in più della consigliata.")
+        XCTAssertEqual(t.confronto?.frase, "Meglio la tua: 1. Pari: 0. Con le tue scelte hai fatto 1,0 punti in più della consigliata.")
         XCTAssertTrue(t.barre.count < 2, "con una sola giornata niente grafico")
     }
 
@@ -95,7 +95,7 @@ final class PrecisioneTests: XCTestCase {
     func testUnPuntoScrittoConIlDecimaleEPlurale() throws {
         let t = try XCTUnwrap(TestoPrecisione(PrecisioneDiario(
             giornate: 2, confronto: .init(giornate: 2, meglioConsigliata: 1, meglioTua: 0, pari: 1, punti: 1))))
-        XCTAssertEqual(t.confronto?.frase, "Giornate in cui la consigliata ha fatto meglio della tua: 1 su 2. Meglio la tua: 0. Pari: 1. Seguendo sempre la consigliata avresti fatto 1,0 punti in più.")
+        XCTAssertEqual(t.confronto?.frase, "Meglio la tua: 0. Pari: 1. Seguendo sempre la consigliata avresti fatto 1,0 punti in più.")
     }
 
     func testCampiMancantiONulli() throws {

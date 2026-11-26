@@ -155,21 +155,31 @@ struct VistaWidget: View {
 
     /// Il medio a giornata in corso o finita. A giornata in corso la frase del server su cosa manca (`in_corso.situazione`, #900:
     /// «Hanno giocato tutti tranne Glauco Brevisi, Teo Kloosmeijer e Cesare Pulinski, che aspettano il recupero; mancano anche i voti
-    /// ufficiali.») può essere lunga: va nella colonna di destra se ci sta alla sua misura, se no a tutta larghezza sotto le due
-    /// colonne, se no nella colonna di destra rimpicciolita. Si misura (`ViewThatFits`): la frase non si taglia mai con «…».
+    /// ufficiali.») può essere lunga. Si misura (`ViewThatFits`) e vale la prima che entra; la frase non si taglia mai con «…»:
+    /// 1. intera nella colonna di destra; 2. intera a tutta larghezza sotto le due colonne;
+    /// 3-4. con il testo grande, le stesse due con tutto il widget alla misura del testo normale (#911: prima con il testo grande si
+    ///    rimpiccioliva subito la sola frase, che usciva più piccola che con il testo normale);
+    /// 5. ultima scelta: tutto alla misura del testo normale e la frase rimpicciolita nella colonna di destra, fino a 5 righe.
     @ViewBuilder
     private func faseMedio(_ r: RiassuntoOggi) -> some View {
         if r.inCorso, let frase = r.ancoraDaGiocareTesto {
             ViewThatFits(in: .vertical) {
                 colonneMedio(r, frase: frase, stretta: false)
-                VStack(alignment: .leading, spacing: 6) {
-                    colonneMedio(r, frase: nil, stretta: false)
-                    fraseIntera(frase)
-                }
-                colonneMedio(r, frase: frase, stretta: true)
+                colonneConFraseSotto(r, frase: frase)
+                colonneMedio(r, frase: frase, stretta: false).dynamicTypeSize(...DynamicTypeSize.large)
+                colonneConFraseSotto(r, frase: frase).dynamicTypeSize(...DynamicTypeSize.large)
+                colonneMedio(r, frase: frase, stretta: true).dynamicTypeSize(...DynamicTypeSize.large)
             }
         } else {
             colonneMedio(r, frase: nil, stretta: false)
+        }
+    }
+
+    /// Le due colonne senza la frase e, sotto, la frase intera a tutta larghezza.
+    private func colonneConFraseSotto(_ r: RiassuntoOggi, frase: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            colonneMedio(r, frase: nil, stretta: false)
+            fraseIntera(frase)
         }
     }
 
@@ -179,8 +189,8 @@ struct VistaWidget: View {
     }
 
     /// Le due colonne del medio; `frase` (solo a giornata in corso) va in fondo a quella di destra: intera o, con `stretta` (l'ultima
-    /// scelta di `faseMedio`), rimpicciolita fino a entrare in 4 righe, partendo dalla misura normale del testo anche con il testo
-    /// grande: così ci sta sempre.
+    /// scelta di `faseMedio`, che mette tutto il widget alla misura del testo normale), rimpicciolita fino a entrare in 5 righe:
+    /// così ci sta sempre.
     private func colonneMedio(_ r: RiassuntoOggi, frase: String?, stretta: Bool) -> some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
@@ -212,7 +222,7 @@ struct VistaWidget: View {
                     if let frase {
                         if stretta {
                             Text(frase).font(.caption2).foregroundStyle(.white.opacity(0.8))
-                                .dynamicTypeSize(...DynamicTypeSize.large).lineLimit(4).minimumScaleFactor(0.6)
+                                .lineLimit(5).minimumScaleFactor(0.6)
                         } else {
                             fraseIntera(frase)
                         }

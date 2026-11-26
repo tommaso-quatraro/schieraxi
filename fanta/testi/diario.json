@@ -112,8 +112,8 @@
     "en": "{k} of {n}"
   },
   "diario.qp_cf": {
-    "it": "Giornate in cui la consigliata ha fatto meglio della tua: {k} su {n}. Meglio la tua: {tua}. Pari: {pari}.",
-    "en": "Matchdays in which the recommended lineup beat yours: {k} of {n}. Yours was better: {tua}. Tied: {pari}."
+    "it": "Meglio la tua: {tua}. Pari: {pari}.",
+    "en": "Yours was better: {tua}. Tied: {pari}."
   },
   "diario.qp_cf_piu.one": {
     "it": "Seguendo sempre la consigliata avresti fatto {e} punto in più.",

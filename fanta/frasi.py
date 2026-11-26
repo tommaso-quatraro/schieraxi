@@ -93,8 +93,6 @@ CATALOGO: dict[str, str] = {
     "dafare.copertura_altri": "{nomi} e altri {n}",
     # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
     "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
-    # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa
-    "dafare.rose_vecchie": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
     "dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della {giornata}.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",

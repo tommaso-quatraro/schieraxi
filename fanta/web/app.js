@@ -1622,7 +1622,9 @@ function riempiScheda(s, cal) {
     ? tile(perc(pr.porta_inviolata), t("mercato.porta_inviolata")) + tile(num(pr.gol_avversario, 1), t("mercato.gol_subiti_attesi")) + tile(perc(pr.p_giallo), t("mercato.giallo"))
     : tile(perc(pr.p_gol), t("mercato.segna")) + tile(perc(pr.p_assist), t("mercato.assist")) + tile(perc(pr.p_giallo), t("mercato.giallo")) + tile(perc(pr.p_rosso), t("mercato.rosso"));
   const motivi = pr && !iniziataP ? motiviUtili(pr).filter(senzaPercentuale) : [];
-  // fin dove arrivano i dati della fonte delle statistiche avanzate (#862): con la fonte ferma i numeri restano quelli di quel giorno
+  // fin dove arrivano i dati della fonte delle statistiche avanzate (#862): con la fonte ferma i numeri restano quelli di quel giorno.
+  // Una volta sola, in fondo (#911): vale per «Gol e assist rispetto alle occasioni» e per «Statistiche avanzate», stessa fonte; non
+  // in cima, perché «Stagione» e i voti vengono da un'altra fonte, che va avanti. Il rendimento c'è solo con `av.minuti`, come le avanzate.
   const finoAl = av && giornoMese(av.dati_fino_al) ? t("mercato.dati_fino_al", { data: giornoMese(av.dati_fino_al) }) : "";
   numeri.innerHTML = `
     <div class="etichette"><span class="etichetta ${s.proprietario ? "neutra" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span><span class="etichetta neutra">${t("mercato.quot", { n: c.quotazione })}</span></div>
@@ -1637,16 +1639,17 @@ function riempiScheda(s, cal) {
     ${s.rendimento ? `<h3>${t("mercato.rende_sopra_sotto")}</h3>
       <div class="grande ${s.rendimento.sovra_rendimento > 0.3 ? "positivo" : s.rendimento.sovra_rendimento < -0.3 ? "negativo" : ""}">${segno(s.rendimento.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>
       <div class="debole piccolo">${t("mercato.rendimento_riga", { g: segno(s.rendimento.gol_meno_xg), a: segno(s.rendimento.assist_meno_xa) })}
-        ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")} ${finoAl}</div>` : ""}
+        ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")}</div>` : ""}
     <h3>${t("mercato.stagione")}</h3><div class="statistiche">
       ${tile(`${st.presenze}/${st.giornate_giocate_serie_a}`, t("mercato.presenze"))}${tile(num(st.media_voto, 2), t("mercato.media_voto"))}${tile(num(st.fantamedia, 2), t("mercato.fantamedia"))}
       ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
       ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
-    ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3>${finoAl ? `<div class="debole piccolo" style="margin-bottom:8px">${finoAl}</div>` : ""}<div class="statistiche">
+    ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
       ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
       ${tile(num(av.per_90?.xg, 2), t("mercato.xg_90"))}${tile(num(av.per_90?.xa, 2), t("mercato.xa_90"))}${tile(num(av.per_90?.tiri, 1), t("mercato.tiri_90"))}
       ${tile(av.rigori_calciati, t("mercato.rigori_calciati"))}${tile(av.passaggi_chiave, t("mercato.passaggi_chiave"))}${tile(av.punizioni, t("mercato.punizioni"))}</div>
-      ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}` : ""}`;
+      ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}
+      ${finoAl ? `<div class="debole piccolo" style="margin-top:12px">${finoAl}</div>` : ""}` : ""}`;
   numeri.removeAttribute("aria-busy");
 }
 
@@ -3102,6 +3105,9 @@ async function leggiLimitiRegole() {
 }
 // Un limite scritto nella frase di un avviso: «−20» con il meno tipografico, come nei messaggi del server.
 const cifraLimite = v => (v < 0 ? "−" : "") + num(Math.abs(v), Number.isInteger(v) ? 0 : 2);
+// I decimali per scrivere un valore delle regole senza arrotondarlo, fino a due: 0 se è intero, 1 se basta, altrimenti 2 («−0,25»
+// e non «−0,3», #911). La stessa regola dell'iPhone (RegoleLogica.descrivi); la usano l'anteprima del regolamento e i campi.
+const decimaliRegola = v => (Number.isInteger(v) ? 0 : Number.isInteger(v * 10) ? 1 : 2);
 // I nomi dei campi negli avvisi prima di salvare, dove due righe della pagina hanno lo stesso titolo (#889): «Difensori» nella rosa
 // e nei posti fissi in panchina, «Voto d'ufficio» due volte. Sono i nomi dei campi del server (err.p_regola_*), gli stessi
 // dell'iPhone; la riga e il suo nome per i lettori di schermo restano quelli della pagina.
@@ -3114,7 +3120,7 @@ function stepper(id, valore, { passo = 0.5, dec = 1, lim = "", min = -50, max = 
   if (lim) ({ min, max } = limitiRegole[lim]);
   return `<div class="stepper" data-passo="${passo}" data-min="${min}" data-max="${max}" data-dec="${dec}"${nome ? ` data-nome="${esc(nome)}"` : ""}>
     <button type="button" data-step="-1" aria-label="${t("regole.diminuisci")}">−</button>
-    <input id="${id}" inputmode="decimal" autocomplete="off" value="${num(valore, dec)}">
+    <input id="${id}" inputmode="decimal" autocomplete="off" value="${num(valore, Math.max(dec, decimaliRegola(valore)))}">
     <button type="button" data-step="1" aria-label="${t("regole.aumenta")}">+</button></div>`;
 }
 const leggiN = id => { const el = $("#" + id); return el ? Number(String(el.value).replace(",", ".")) : NaN; };
@@ -3151,8 +3157,12 @@ document.addEventListener("click", ev => {
   const passo = Number(s.dataset.passo), dec = Number(s.dataset.dec);
   let v = Number(String(campo.value).replace(",", "."));
   if (!Number.isFinite(v)) v = 0;
-  v = Math.min(Number(s.dataset.max), Math.max(Number(s.dataset.min), v + Number(b.dataset.step) * passo));
-  campo.value = num(Math.round(v / passo) * passo, dec);
+  // «+» va al primo multiplo del passo sopra il valore, «−» al primo sotto, come su un righello (#911): da −0,25 con i passi
+  // da 0,5 «+» dà 0 e «−» −0,5, senza saltare valori; da un valore già sui passi ci si sposta di un passo, come prima.
+  // Il margine assorbe gli errori della divisione con la virgola mobile.
+  const q = v / passo, k = Number(b.dataset.step) > 0 ? Math.floor(q + 1e-9) + 1 : Math.ceil(q - 1e-9) - 1;
+  v = Math.min(Number(s.dataset.max), Math.max(Number(s.dataset.min), k * passo));
+  campo.value = num(v, Math.max(dec, decimaliRegola(v)));
   campo.dispatchEvent(new Event("input", { bubbles: true }));
 });
 
@@ -3342,7 +3352,7 @@ async function vistaRegole() {
         dove.innerHTML = `<div class="attenzione" style="margin-top:12px">${t("regole.non_riconosciuto_nessuna")}</div>`;
         return;
       }
-      const vediValore = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
+      const vediValore = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? (v < 0 ? "−" : "") + num(Math.abs(v), decimaliRegola(v)) : v;
       // con le parole della pagina (#881): l'ordine dei cambi come nei pulsanti, i posti per ruolo per esteso
       const vedi = m => m.chiave === "panchina.tipo" && m.valore === "per_ruolo" ? t("regole.per_ruolo")
         : m.chiave === "panchina.tipo" && m.valore === "libera" ? t("regole.libera")
@@ -3361,7 +3371,7 @@ async function vistaRegole() {
       $("#salva-riconosciute")?.addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
     } catch (e) { dove.innerHTML = errore(e); }
   });
-  const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? (Number.isInteger(valore) ? 0 : 1)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
+  const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? decimaliRegola(valore)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
   const applicaModifiche = mods => {
     for (const m of mods) {
       const k = m.chiave, v = m.valore;

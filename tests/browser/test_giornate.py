@@ -351,6 +351,22 @@ def test_nei_dettagli_il_singolare_solo_per_1_scritto_senza_decimali(web, punti,
     assert "1,0 punto " not in tutto
 
 
+def test_nei_dettagli_la_voce_del_confronto_non_ripete_la_sua_etichetta(web):
+    """Sotto «1 su 2» e «giornate in cui la consigliata ha fatto meglio della tua» la frase ripeteva la stessa etichetta (#911):
+    la dice una volta sola, e la frase aggiunge solo quante giornate sono andate meglio con la tua e quante pari."""
+    solo(web, "prima")
+    d, _ = forma_di_domani(web)
+    d["precisione"]["confronto"].update({"giornate": 2, "meglio_consigliata": 1, "meglio_tua": 1, "pari": 0, "punti": 3.5})
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE)
+    tocca(web, principale(web).get_by_text("Dettagli", exact=True))
+    tutto = " ".join(web.testo_principale().split())
+    assert tutto.lower().count("giornate in cui la consigliata ha fatto meglio della tua") == 1, tutto
+    assert ("1 su 2 giornate in cui la consigliata ha fatto meglio della tua Meglio la tua: 1. Pari: 0. "
+            "Seguendo sempre la consigliata avresti fatto 3,5 punti in più.") in tutto, tutto
+    assert not web.errori_mostrati() and not web.errori_console
+
+
 def test_la_frase_sulla_consigliata_di_allora_e_quella_del_server(web):
     """#674: la consigliata di allora era salvata ma dentro c'è chi poi è stato ceduto. La pagina non scrive più di suo «non era
     stata salvata»: mostra la frase del server (`nota_consigliata`), sotto la tua formazione e sopra la consigliata rifatta."""

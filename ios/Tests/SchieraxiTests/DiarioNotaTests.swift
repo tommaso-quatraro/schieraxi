@@ -58,7 +58,7 @@ struct DiarioNotaTests {
         let p = try #require(TestoPrecisione(d.precisione))
         let cf = try #require(p.confronto)
         #expect(cf.numero == "1 su 1")
-        #expect(cf.frase.hasPrefix("Giornate in cui la consigliata ha fatto meglio della tua: 1 su 1."))
+        #expect(cf.frase.hasPrefix("Meglio la tua: 0. Pari: 0."))
         #expect(!cf.frase.contains(nota))
         #expect(p.nota == nota)
         #expect(p.righe.allSatisfy { !$0.contains("tua") })

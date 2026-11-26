@@ -56,7 +56,8 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
   `fotografie_dal_vero.py` (scenari per le foto dell'iPhone), misure e tarature del modello.
 
 ## `docs/`
-- Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`.
+- Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi gestisce il server: `GUIDA-GESTIONE.md`,
+  `RIPRISTINO-SERVER.md`.
 - Per chi sviluppa: `RIFERIMENTO.md` (dettagli e contratti), `API.md`, `openapi.json`, `METODO.md`, `DESIGN.md`,
   `STILE-SENZA-AI.md`, `ARCHITETTURA-INFORMAZIONI.md`, `COERENZA-WEB-IPHONE.md` (generato da `coerenza/`),
   `SOTTO-IL-COFANO.md` (come si calcola), `INCERTEZZA.md`, `AVATAR.md`, `RIPRISTINO-SERVER.md`, `CI-IOS-COSTI.md`.

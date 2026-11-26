@@ -1,5 +1,75 @@
 [
   {
+    "versione": "1.574",
+    "data": "2026-11-26T09:01:05",
+    "titolo": "Scheda del giocatore: la data delle statistiche avanzate una volta sola",
+    "voci": [
+      "Scheda del giocatore, «Tutti i numeri»: «Dati fino al …» compare una volta sola, in fondo, dopo le statistiche avanzate, e vale anche per «Gol e assist rispetto alle occasioni»; prima si leggeva due volte. Uguale sull'iPhone."
+    ],
+    "tecnico": [
+      "Web, riempiScheda in app.js: la frase mercato.dati_fino_al (dal campo avanzate.dati_fino_al, #862) esce dalla riga del rendimento e da sotto il titolo «Statistiche avanzate» e sta una volta, ultima riga del blocco delle statistiche avanzate, dopo le stagioni precedenti. Il blocco del rendimento c'è solo con avanzate.minuti, come quello delle statistiche avanzate: la riga c'è ogni volta che c'è uno dei due. Non in cima a «Tutti i numeri»: stagione e voti vengono da un'altra fonte, che va avanti.",
+      "iPhone, TuttiINumeri: stessa posizione e stesso testo. Demo, foto giocatore-fondo: la scheda parte scorsa in fondo (demoInFondo), dove sta la riga; tolti lo scorrimento al blocco «Statistiche avanzate» del #862 (demoScorriA) e TuttiINumeri.idAvanzate. Test del browser tests/browser/test_scheda_dati_fino_al.py: una volta sola, ultima riga di «Tutti i numeri».",
+      "Nessuna rotta né campo dell'API cambiato; catalogo dei testi e calcolo non toccati."
+    ]
+  },
+  {
+    "versione": "1.573",
+    "data": "2026-11-26T08:55:41",
+    "titolo": "Privacy e Termini d'uso parlano dell'app di oggi",
+    "voci": [
+      "Privacy e Termini d'uso non parlano più degli scambi, che l'app non ha più, e chiamano le schermate con i nomi che vedi: Formazione e Giornate. La data di «Ultimo aggiornamento» è il 26 novembre 2026."
+    ],
+    "tecnico": [
+      "fanta/testi_legali.py, italiano e inglese: Termini senza «analizza scambi»; Privacy senza «formazione e scambi» (diventa «la formazione consigliata delle altre squadre») e senza «gli scambi che salvi» sul dispositivo (diventa «una copia degli ultimi dati ricevuti, per aprirsi subito», la copia delle risposte in localStorage della web); token del widget: «lo stato della giornata, il widget e i risultati in diretta» al posto dei «riquadri di Oggi»; controlli automatici: «Formazione, Giornate, widget, risultati in diretta» al posto di «Oggi, Formazione, Diario».",
+      "Data delle pagine 26/11/2026 e account.VERSIONE_TERMINI = \"2026-11-26\" (le tiene uguali test_versione_termini_come_la_data_delle_pagine_legali): chi si iscrive da ora registra la versione nuova; nessuno deve riaccettare.",
+      "Sito (sito/, italiano e inglese): panchina d'esempio nell'ordine in cui entra (Pernoli 7,9, Rinvelli 7,6, Sarvelli 6,4), «App per iPhone e iPad in arrivo», «con il link o il codice d'invito», email facoltativa e collegamento a Google nella domanda sui dati, dati strutturati senza sameAs."
+    ]
+  },
+  {
+    "versione": "1.572",
+    "data": "2026-11-26T06:52:44",
+    "titolo": "Giornate e regolamento: due ritocchi ai testi",
+    "voci": [
+      "Giornate, Dettagli: «giornate in cui la consigliata ha fatto meglio della tua» non compare più due volte di seguito.",
+      "Regole, regolamento incollato: i valori si leggono con il segno meno giusto e i decimali veri («−0,25», non «-0,3»), come sull'iPhone.",
+      "Regole: un valore con due decimali, come −0,25, si salva e resta nel suo campo così com'è; prima diventava −0,3."
+    ],
+    "tecnico": [
+      "Catalogo dei testi: diario.qp_cf passa da «Giornate in cui la consigliata ha fatto meglio della tua: {k} su {n}. Meglio la tua: {tua}. Pari: {pari}.» a «Meglio la tua: {tua}. Pari: {pari}.» (inglese allo stesso modo); rigenerati fanta/web/testi.js e ios/Sources/Support/Catalogo/Catalogo+Diario.swift, dove la funzione diventa Catalogo.Diario.qpCf(pari:tua:).",
+      "Web, anteprima di /api/regole/riconosci: vediValore scrive i numeri negativi con U+2212 («−0,5») invece del trattino, come cifraLimite e l'iPhone, e con i decimali di RegoleLogica.descrivi dell'iPhone (0 se intero, 1 se basta, altrimenti 2) invece di uno fisso.",
+      "Web, schermata Regole: decimaliRegola (stessa regola) anche in imposta() di applicaModifiche («Salva queste regole» mandava −0,3 per −0,25) e nel valore iniziale di stepper(), che prende il massimo fra i decimali del campo e quelli del valore (una regola salvata a −0,25 compariva «-0,3» e il salvataggio dopo la scriveva così).",
+      "Web, pulsanti − e + dei campi delle regole: «+» va al primo multiplo del passo sopra il valore e «−» al primo sotto (da −0,25 con passo 0,5: 0 e −0,5); prima Math.round dopo lo spostamento saltava un passo da un valore a metà (1,25 → 2,0). Sui passi nessun cambiamento.",
+      "Nessuna rotta né campo dell'API cambiato; calcolo non toccato. La web passa ancora k e n a t(), che li ignora."
+    ]
+  },
+  {
+    "versione": "1.571",
+    "data": "2026-11-26T06:16:25",
+    "titolo": "Rose: un messaggio più semplice se il file è sbagliato",
+    "voci": [
+      "Aggiorna le rose: se nel file non ci sono rose, il messaggio dice in parole semplici quale file serve (le rose esportate da Leghe in Excel o CSV, oppure un testo con ogni squadra e sotto i suoi giocatori)."
+    ],
+    "tecnico": [
+      "rose.NESSUNA_ROSA e la chiave err.rose_non_trovate del catalogo (italiano e inglese) con il testo nuovo, senza «$,$,$», «rosters» e righe d'esempio con i codici; testi.js rigenerato con script/testi.py --scrivi. Stessa rotta e stesso codice di risposta (400): nessun campo cambiato.",
+      "Guida per l'utente (docs/GUIDA-UTENTE.md) riletta sull'app; le parti per chi gestisce il server spostate in docs/GUIDA-GESTIONE.md. Demo dell'iPhone: la voce delle rose usa la frase che il server manda oggi (#883); tolta la chiave dafare.rose_vecchie (fanta/frasi.py e catalogo), che il server non scriveva più e la demo non usa più."
+    ],
+    "titolo_en": "Rosters: a simpler message for the wrong file",
+    "voci_en": [
+      "Update rosters: if the file has no rosters, the message says in plain words which file is needed (the rosters exported from Leghe as Excel or CSV, or a text with each team and its players below it)."
+    ]
+  },
+  {
+    "versione": "1.570",
+    "data": "2026-11-26T05:58:36",
+    "titolo": "Oggi più veloce dopo un aggiornamento dei dati",
+    "voci": [
+      "Dopo un aggiornamento dei dati o un riavvio del server, Oggi e il widget dell'iPhone si aprono prima: più spesso la formazione arriva subito, senza i secondi di attesa con il marchio animato. Numeri, consigli e testi restano gli stessi."
+    ],
+    "tecnico": [
+      "#907. Con gli account, prima del 202 «sto calcolando» la richiesta aspetta il calcolo in coda al massimo calcolo.ATTESA_MAX (2 s) in tutto: se finisce in tempo risponde subito con il risultato o con il suo errore (a tutte le richieste che lo aspettavano, poi l'errore non resta); se no il 202 ha riprova_tra meno i secondi aspettati (almeno 1), così l'app riprova ogni 3 secondi circa come prima invece che dopo 2 + 3. Al massimo calcolo.MAX_IN_ATTESA (8) richieste aspettano insieme, in tutto il server (ognuna tiene uno dei 40 fili delle rotte); oltre, il 202 subito come prima. Nessun calcolo in più: chi aspetta aspetta quello già in coda. Con il token del widget (sola cache) nessun calcolo parte: si aspetta solo quello già in corso per lo stesso risultato, in coda o nel riscaldamento. Non aspettano (calcolo.senza_attesa) le analisi di scambi, che hanno 3 posti in tutto il server e non li tengono occupati ad aspettare, e le parti facoltative di Oggi e del widget (widget._opzionale). Forma e campi del 202 invariati. Misura con prove/misura_oggi.py --cpu."
+    ]
+  },
+  {
     "versione": "1.569",
     "data": "2026-11-26T04:34:42",
     "titolo": "iPhone: promemoria con gli stessi testi della web",
