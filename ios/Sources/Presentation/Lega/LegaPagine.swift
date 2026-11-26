@@ -221,6 +221,7 @@ struct AspettoSezione: View {
                     Text(Catalogo.Asp.temaScuro).tag("scuro")
                 }
                 .pickerStyle(.segmented)
+                .segmentiDellaPagina()   // sull'iPad largo al massimo come quello della web (#896)
                 .sensoryFeedback(.selection, trigger: tema)
                 Text(Self.spiegaTema)
                     .font(.caption)
