@@ -36,6 +36,10 @@
     "it": "Scrivi quante persone, da 1 a {n}.",
     "en": "Enter how many people, from 1 to {n}."
   },
+  "admin.posti_non_validi_senza_tetto": {
+    "it": "Scrivi quante persone, con un numero da 1 in su.",
+    "en": "Enter how many people, with a number from 1 up."
+  },
   "admin.nuovo_admin": {
     "it": "Il nuovo account sarà amministratore",
     "en": "The new account will be an administrator"

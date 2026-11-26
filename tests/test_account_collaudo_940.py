@@ -7,13 +7,15 @@
 - «Chi sono» chiesto dalla pagina d'accesso (`?anche_senza_accesso=1`) risponde 200 senza utente invece di 401: niente errore
   rosso nella console del browser. Senza il parametro resta il 401 di sempre (iPhone, versioni di prima della web).
 - Nel registro di sicurezza «Uscita da tutti i dispositivi» dice di chi è.
+- L'elenco degli inviti dice il tetto delle persone di un invito (`max_usi`): la web non ne tiene una sua copia.
 Dati inventati, cartelle temporanee.
 """
 import pytest
 
-from fanta import registro
+from fanta import account, registro
 
 from test_account_http import PASSWORD, cliente, registra
+from test_social import _solo_google, giro, scena  # noqa: F401  (scena è una fixture)
 
 SBAGLIATA = "non-e-la-password-giusta"
 
@@ -99,3 +101,29 @@ def test_uscita_da_tutti_i_dispositivi_dice_di_chi(marco):
     assert marco.post("/api/account/esci-da-tutti").status_code == 200
     righe = eventi("esci_da_tutti")
     assert len(righe) == 1 and righe[0].get("nome") == "marco", righe
+
+
+# ---------------------------------------------------------------- chi entra solo con Google
+def test_controlla_per_chi_entra_solo_con_google_vuole_la_riconferma(scena):
+    """Senza password vale la conferma recente con Google: prima 403 con `serve_riconferma` (la web e l'iPhone mostrano «Conferma
+    con Google»), dopo la riconferma 200, e il controllo non elimina niente."""
+    s = _solo_google(scena)
+    r = s.post("/api/account/elimina/controlla", json={"password": ""})
+    assert r.status_code == 403 and r.json()["codice"] == "serve_riconferma", r.text
+    assert giro(s, scena, scopo="riconferma").status_code == 200
+    r = s.post("/api/account/elimina/controlla", json={"password": ""})
+    assert r.status_code == 200 and r.json() == {"ok": True}, r.text
+    assert s.get("/api/account/me").json()["utente"]["nome_utente"] == "solo"
+    assert eventi("account_eliminato") == []
+
+
+# ---------------------------------------------------------------- il tetto delle persone di un invito
+def test_l_elenco_degli_inviti_dice_il_tetto_delle_persone(multiutente, dati_isolati):
+    """La web legge da qui quante persone può avere un invito (Gestione › Nuovo invito), senza una sua copia del numero."""
+    capo = cliente()
+    assert registra(capo, "capo", amministratore=True).status_code == 200
+    r = capo.get("/api/admin/inviti")
+    assert r.status_code == 200, r.text
+    assert r.json()["max_usi"] == account.MAX_USI_INVITO
+    assert capo.post("/api/admin/inviti", json={"etichetta": "Lega", "usi": account.MAX_USI_INVITO}).status_code == 200
+    assert capo.post("/api/admin/inviti", json={"etichetta": "Troppi", "usi": account.MAX_USI_INVITO + 1}).status_code == 422

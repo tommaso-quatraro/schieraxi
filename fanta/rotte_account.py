@@ -666,7 +666,8 @@ def elenco_inviti():
     for invito in inviti:
         dettaglio = dettaglio_invito(invito)
         invito |= {"dettaglio": str(dettaglio) if dettaglio else None, "dettaglio_frase": frasi.di(dettaglio)}
-    return {"inviti": inviti}
+    # `max_usi` (#940): quante persone al massimo con lo stesso invito; la web lo legge da qui per «Quante persone»
+    return {"inviti": inviti, "max_usi": account.MAX_USI_INVITO}
 
 
 @router.delete("/api/admin/inviti/{invito_id}", dependencies=[Depends(_attivo), Depends(solo_amministratore)])

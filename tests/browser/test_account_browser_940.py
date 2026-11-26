@@ -13,7 +13,8 @@ import json
 import re
 from urllib.parse import urlsplit
 
-from test_impostazioni import UTENTE, carta_con, da_utente, gestione_del_titolare, principale, solo, titolo, tocca
+from test_impostazioni import (AMMINISTRATORE, REGISTRO, UTENTE, carta_con, da_utente, principale, server_che_cambia, solo, titolo,
+                               tocca)
 
 SENZA_SESSIONE = {"detail": "Accesso richiesto", "multiutente": True, "registrazione": "invito", "social": [], "email_attiva": True}
 NESSUNO = {k: v for k, v in SENZA_SESSIONE.items() if k != "detail"} | {"utente": None}
@@ -176,16 +177,29 @@ def test_la_pagina_d_accesso_non_scrive_errori_nella_console(web):
 
 
 # ---------------------------------------------------------------- invito per un gruppo
+CREATO = {"codice": "PROVA-PROVA-PROVA-PROVA", "etichetta": "Lega", "valido_giorni": 7, "usi_max": 12, "id": 3,
+          "avviso": None, "avviso_frase": None}
+
+
+def gestione_con_inviti(web, max_usi: int = 30, creato: dict | None = None) -> list[dict]:
+    """Gestione di chi gestisce il server; GET /api/admin/inviti dice il tetto delle persone (`max_usi`, come il server dal #940).
+    Restituisce i corpi dei POST /api/admin/inviti mandati."""
+    da_utente(web, AMMINISTRATORE)
+    mandati: list[dict] = []
+    server_che_cambia(web, "/api/admin/utenti", [{"utenti": [], "massimo": 30, "avviso": None, "avviso_frase": None}])
+    server_che_cambia(web, "/api/admin/inviti", [{"inviti": [], "max_usi": max_usi}], {"POST": creato or CREATO, "DELETE": {"ok": True}})
+    web.risposta("/api/admin/registro", REGISTRO)
+    web.pagina.on("request", lambda r: r.method == "POST" and urlsplit(r.url).path == "/api/admin/inviti"
+                  and mandati.append(json.loads(r.post_data or "{}")))
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    return mandati
+
+
 def test_nuovo_invito_per_un_gruppo_di_amici(web):
     """Il link di gruppo per la chat degli amici (#940): in Nuovo invito si scrive quante persone (fino a 30) e il server crea un
     invito solo con tanti posti. L'esito dice per quante persone vale e che il link va nella chat."""
     solo(web, "prima")
-    mandati = []
-    web.pagina.on("request", lambda r: r.method == "POST" and urlsplit(r.url).path == "/api/admin/inviti"
-                  and mandati.append(json.loads(r.post_data or "{}")))
-    gestione_del_titolare(web, {"utenti": [], "massimo": 30, "avviso": None, "avviso_frase": None},
-                          creato={"codice": "PROVA-PROVA-PROVA-PROVA", "etichetta": "Lega", "valido_giorni": 7, "usi_max": 12, "id": 3,
-                                  "avviso": None, "avviso_frase": None})
+    mandati = gestione_con_inviti(web)
     carta = carta_con(web, "Amministrazione")
     carta.get_by_label("Etichetta").fill("Lega")
     persone = carta.get_by_label("Quante persone", exact=False)
@@ -202,12 +216,57 @@ def test_nuovo_invito_per_un_gruppo_di_amici(web):
 
 def test_nuovo_invito_con_un_numero_che_non_va_non_parte(web):
     solo(web, "prima")
-    mandati = []
-    web.pagina.on("request", lambda r: r.method == "POST" and urlsplit(r.url).path == "/api/admin/inviti" and mandati.append(1))
-    gestione_del_titolare(web, {"utenti": [], "massimo": 30, "avviso": None, "avviso_frase": None})
+    mandati = gestione_con_inviti(web)
     carta = carta_con(web, "Amministrazione")
     carta.get_by_label("Etichetta").fill("Lega")
     carta.get_by_label("Quante persone", exact=False).fill("40")
     tocca(web, carta.get_by_role("button", name="Crea l'invito"))
     web.pagina.locator("#avviso").filter(has_text="da 1 a 30").wait_for(timeout=5000)
     assert mandati == []
+
+
+def test_il_tetto_delle_persone_arriva_dal_server(web):
+    """La web non ha una sua copia del tetto: con un server che ne ammette 12 la spiegazione dice «Da 1 a 12», il «+» si ferma a
+    12 e 13 non parte."""
+    solo(web, "prima")
+    mandati = gestione_con_inviti(web, max_usi=12)
+    carta = carta_con(web, "Amministrazione")
+    carta.get_by_text("Da 1 a 12:", exact=False).wait_for(timeout=5000)
+    persone = carta.get_by_label("Quante persone", exact=False)
+    persone.fill("11")
+    piu = carta.get_by_role("button", name="Aumenta")
+    piu.click()
+    piu.click()
+    assert persone.input_value() == "12"
+    carta.get_by_label("Etichetta").fill("Lega")
+    persone.fill("13")
+    tocca(web, carta.get_by_role("button", name="Crea l'invito"))
+    web.pagina.locator("#avviso").filter(has_text="da 1 a 12").wait_for(timeout=5000)
+    assert mandati == []
+
+
+# ---------------------------------------------------------------- doppio tocco su «Elimina il mio account»
+def test_elimina_un_tocco_solo_fino_alla_fine(web):
+    """Il pulsante resta spento per tutto il percorso (controllo, domanda, eliminazione): un secondo tocco mentre il server
+    risponde non manda un secondo controllo né una seconda domanda. Annullata la domanda, torna acceso."""
+    solo(web, "prima")
+    da_utente(web)
+    in_attesa, controlli, domande = [], [], []
+
+    def controlla(route):
+        controlli.append(1)
+        in_attesa.append(route)                                   # risponde il test, quando vuole
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/elimina/controlla", controlla)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    tocca(web, principale(web).get_by_text("Elimina l'account", exact=True))
+    principale(web).get_by_label("La tua password").last.fill("Password-Finta-1")
+    web.pagina.on("dialog", lambda d: (domande.append(d.message), d.dismiss()))
+    pulsante = principale(web).get_by_role("button", name="Elimina il mio account")
+    pulsante.click(timeout=10000)
+    web.pagina.wait_for_function("() => document.querySelector('#acc-elimina').disabled", timeout=5000)
+    web.pagina.evaluate("() => document.querySelector('#acc-elimina').click()")          # il secondo tocco
+    assert len(controlli) == 1 and len(in_attesa) == 1, controlli
+    json_risposta(in_attesa[0], {"ok": True})
+    web.pagina.wait_for_function("() => !document.querySelector('#acc-elimina').disabled", timeout=5000)
+    assert len(domande) == 1 and len(controlli) == 1, (domande, controlli)

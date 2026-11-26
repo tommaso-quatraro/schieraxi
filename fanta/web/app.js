@@ -4374,13 +4374,14 @@ function schedaAmministratore() {
     <h3 id="adm-utenti-titolo" tabindex="-1">${t("admin.utenti_titolo")}</h3><div id="adm-utenti"><p class="debole piccolo">${t("admin.carico")}</p></div></div>` : "";
 }
 // «Nuovo invito» e «Inviti aperti»: solo se si entra con un invito (FANTA_REGISTRAZIONE=invito o email). «Quante persone» (#940): con
-// più di una lo stesso link vale per un gruppo (la chat degli amici), fino al tetto del server (MAX_USI_INVITO).
-const MAX_PERSONE_INVITO = 30;
+// più di una lo stesso link vale per un gruppo (la chat degli amici), fino al tetto del server, che arriva con l'elenco degli inviti
+// (`max_usi` di GET /api/admin/inviti, poi in stato.maxUsiInvito): finché non c'è il «+» non sale e la spiegazione aspetta.
 const schedaInviti = () => `<h3>${t("admin.invito_titolo")}</h3>
     <div class="debole piccolo">${t("admin.invito_spiega")}</div>
     <div id="adm-avviso-posti" role="status"></div>
     <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
-    ${rigaRegola(t("admin.posti"), stepper("adm-posti", 1, { passo: 1, dec: 0, min: 1, max: MAX_PERSONE_INVITO }), t("admin.posti_aiuto", { n: MAX_PERSONE_INVITO }))}
+    ${rigaRegola(t("admin.posti"), stepper("adm-posti", 1, { passo: 1, dec: 0, min: 1, max: stato.maxUsiInvito || 1 }),
+      `<span id="adm-posti-aiuto">${stato.maxUsiInvito ? t("admin.posti_aiuto", { n: stato.maxUsiInvito }) : ""}</span>`)}
     <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
     <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
     <h3 id="adm-inviti-titolo" tabindex="-1">${t("admin.inviti_aperti")}</h3><div id="adm-inviti"><p class="debole piccolo">${t("admin.carico")}</p></div>`;
@@ -4448,21 +4449,31 @@ function collegaAccount() {
     mostraCodice("#acc-esito-codice", r.codice_recupero);
   }));
   // «Elimina il mio account»: prima il server controlla la password (o, per chi entra solo con Google, la conferma recente), poi la
-  // domanda «Sei sicuro?» (#940: prima arrivava anche con la password sbagliata), poi l'eliminazione e la frase sulla pagina d'accesso
-  $("#acc-elimina").addEventListener("click", () => provaCosi(t("account.elimina_no"), async () => {
-    const pw = soloGoogle() ? "" : valore("#acc-pw-elimina");
-    if (!soloGoogle() && !pw) { avviso(t("account.elimina_serve_password")); return; }
-    const corpo = JSON.stringify({ password: pw });
-    try { await api("/api/account/elimina/controlla", { method: "POST", body: corpo }); }
-    catch (e) { throw new Error(erroreGoogle(e)); }
-    if (!confirm(t("account.elimina_conferma"))) return;
-    try { await api("/api/account/elimina", { method: "POST", body: corpo }); }
-    catch (e) { throw new Error(erroreGoogle(e)); }               // password sbagliata, rete giù: gli avvisi restano accesi (#801)
-    await lasciaNotifiche(false);                                 // il server ha cancellato anche le iscrizioni: qui solo quella del browser
-    await svuotaDatiLocali();
-    ricordaAvvisoAccesso("eliminato");
-    location.reload();
-  }));
+  // domanda «Sei sicuro?» (#940: prima arrivava anche con la password sbagliata), poi l'eliminazione e la frase sulla pagina d'accesso.
+  // Il pulsante resta spento per tutto il percorso (un secondo tocco non rifà il controllo né la domanda); si riaccende se ci si
+  // ferma prima (password vuota o sbagliata, domanda annullata, errore), mai dopo l'eliminazione.
+  $("#acc-elimina").addEventListener("click", async () => {
+    const pulsante = $("#acc-elimina");
+    if (pulsante.disabled) return;
+    pulsante.disabled = true;
+    let eliminato = false;
+    await provaCosi(t("account.elimina_no"), async () => {
+      const pw = soloGoogle() ? "" : valore("#acc-pw-elimina");
+      if (!soloGoogle() && !pw) { avviso(t("account.elimina_serve_password")); return; }
+      const corpo = JSON.stringify({ password: pw });
+      try { await api("/api/account/elimina/controlla", { method: "POST", body: corpo }); }
+      catch (e) { throw new Error(erroreGoogle(e)); }
+      if (!confirm(t("account.elimina_conferma"))) return;
+      try { await api("/api/account/elimina", { method: "POST", body: corpo }); }
+      catch (e) { throw new Error(erroreGoogle(e)); }             // password sbagliata, rete giù: gli avvisi restano accesi (#801)
+      eliminato = true;
+      await lasciaNotifiche(false);                               // il server ha cancellato anche le iscrizioni: qui solo quella del browser
+      await svuotaDatiLocali();
+      ricordaAvvisoAccesso("eliminato");
+      location.reload();
+    });
+    if (!eliminato) pulsante.disabled = false;
+  });
 }
 
 function collegaAmministratore() {
@@ -4482,8 +4493,12 @@ function collegaAmministratore() {
     dove.innerHTML = r.avviso ? `<div class="attenzione">${esc(testoDi(r, "avviso"))}</div>` : "";
   };
   if ($("#adm-invito")) $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
-    const persone = numeroScritto(valore("#adm-posti"));
-    if (!Number.isInteger(persone) || persone < 1 || persone > MAX_PERSONE_INVITO) { avviso(t("admin.posti_non_validi", { n: MAX_PERSONE_INVITO }), 5000); return; }
+    // il tetto è del server (stato.maxUsiInvito); se l'elenco degli inviti non è arrivato, il numero lo controlla lui
+    const persone = numeroScritto(valore("#adm-posti")), massimo = stato.maxUsiInvito;
+    if (!Number.isInteger(persone) || persone < 1 || (massimo && persone > massimo)) {
+      avviso(massimo ? t("admin.posti_non_validi", { n: massimo }) : t("admin.posti_non_validi_senza_tetto"), 5000);
+      return;
+    }
     const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked, usi: persone }) });
     $("#adm-etichetta").value = "";
     $("#adm-posti").value = "1";
@@ -4556,6 +4571,13 @@ function collegaAmministratore() {
     if ($("#adm-utenti-titolo")) $("#adm-utenti-titolo").focus();
   });
   caricaUtenti();
+  // il tetto delle persone di un invito, dal server (#940): il «+» di «Quante persone» si ferma lì e la spiegazione lo dice
+  const tettoPersone = n => {
+    stato.maxUsiInvito = n;
+    const campo = $("#adm-posti"), aiuto = $("#adm-posti-aiuto");
+    if (campo) campo.closest(".stepper").dataset.max = String(n);
+    if (aiuto) aiuto.textContent = t("admin.posti_aiuto", { n });
+  };
   // inviti aperti (#894): il nome, la frase del server (creato, scade, posti liberi) e «Annulla»; gli inviti chiusi (usati,
   // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), toglie il link appena creato
   // se è di quell'invito, rilegge l'elenco e l'avviso dei posti e porta il focus sul titolo dell'elenco (il pulsante non c'è più)
@@ -4563,7 +4585,9 @@ function collegaAmministratore() {
     const dove = $("#adm-inviti");
     if (!dove) return;
     try {
-      const aperti = (await api("/api/admin/inviti")).inviti.filter(i => i.stato === "attivo");
+      const r = await api("/api/admin/inviti");
+      if (Number.isInteger(r.max_usi) && r.max_usi > 0) tettoPersone(r.max_usi);
+      const aperti = r.inviti.filter(i => i.stato === "attivo");
       dove.innerHTML = aperti.length ? `<ul class="elenco adm-inviti" aria-labelledby="adm-inviti-titolo">${aperti.map(i => `<li class="riga">
           <div><div>${esc(i.etichetta)}</div><div class="debole piccolo">${esc(testoDi(i, "dettaglio"))}</div></div>
           <button class="azione-testo" type="button" data-annulla-invito="${Number(i.id)}" aria-label="${esc(t("admin.annulla_invito_per", { etichetta: i.etichetta }))}">${t("admin.annulla_invito")}</button></li>`).join("")}</ul>`
