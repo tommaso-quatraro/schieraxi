@@ -844,6 +844,26 @@ def cmd_migra(a) -> None:
     print("I file originali sono rimasti dove erano.")
 
 
+def cmd_feedback(a) -> None:
+    """I commenti di «Scrivici» (fanta/feedback.py), il più recente in alto, con il testo intero: per chi gestisce il server, che li
+    legge via ssh. Sola lettura: «Segna come letto» sta in Impostazioni › Gestione."""
+    import contextlib
+    from . import account, feedback, percorsi
+    if not (percorsi.cartella_account() / "account.sqlite").exists():
+        sys.exit("Qui non c'è il database degli account: i commenti arrivano solo con gli account accesi.")
+    try:
+        with contextlib.closing(account.apri()) as db:
+            commenti = feedback.elenco(db, max(1, a.ultimi))
+            da_leggere = feedback.da_leggere(db)
+    except account.ErroreAccount as e:
+        sys.exit(f"Errore: {e.messaggio}")
+    if not commenti:
+        print("Nessun commento.")
+        return
+    print(f"Ultimi {len(commenti)} commenti, il più recente in alto. Da leggere in tutto: {da_leggere}.\n")
+    print("\n".join(feedback.righe_comando(commenti)))
+
+
 def cmd_cartelle_senza_account(a) -> None:
     """Le cartelle di dati rimaste senza account (una cancellazione non finita) e i numeri di account eliminati rimasti nelle
     consigliate già mostrate (file comune a tutti: account eliminati prima di #653 o pulizia non riuscita). Senza --esegui li
@@ -996,6 +1016,9 @@ def main(argv: list[str] | None = None) -> None:
     x = sub.add_parser("cartelle-senza-account", help="elenca le cartelle di dati rimaste senza account e i loro numeri nelle consigliate; con --esegui li cancella (multiutente)")
     x.add_argument("--esegui", action="store_true", help="cancella le cartelle elencate (senza: elenca e basta)")
     x.set_defaults(f=cmd_cartelle_senza_account)
+    x = sub.add_parser("feedback", help="i commenti mandati con «Scrivici», il più recente in alto (multiutente, sola lettura)")
+    x.add_argument("--ultimi", type=int, default=20, help="quanti commenti mostrare (predefinito 20)")
+    x.set_defaults(f=cmd_feedback)
     x = sub.add_parser("formazione", help="formazione consigliata per la prossima giornata")
     x.add_argument("--squadra", help="un'altra squadra della lega (di norma la tua)")
     x.add_argument("--giornata", type=int)
