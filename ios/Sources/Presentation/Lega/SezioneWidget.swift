@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// Impostazioni > App: com'è collegato il widget, in una riga. «Widget collegato automaticamente» quando l'app riesce a passargli
-/// da sola indirizzo e token (App Group o Keychain condiviso, `Accesso.sincronizzaConIlWidget`); altrimenti «Tocca per collegare»,
-/// che apre «Collega il widget» (riprova l'automatico e, solo se non va, copia il codice).
+/// da sola indirizzo e un token che il server non gli ha rifiutato (App Group o Keychain condiviso, `Accesso.sincronizzaConIlWidget`,
+/// `TokenWidget.accettato`); altrimenti «Tocca per collegare», che apre «Collega il widget» (un token nuovo, riprova l'automatico e,
+/// solo se non va, copia il codice).
 struct RigaCollegamentoWidget: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @State private var collegato = true
@@ -38,8 +39,9 @@ struct RigaCollegamentoWidget: View {
         // fotografie del simulatore: nessun Keychain, si mostra il caso normale
         if Demo.attivo { collegato = true; return }
         let indirizzo = IndirizzoServer.attuale
+        // un token che il widget ha segnalato come rifiutato dal server (401) non conta: il widget dice «Tocca per collegare»
         collegato = CollegamentoWidget.automatico(canale: Accesso.sincronizzaConIlWidget(), conAccount: sessione.utente != nil,
-                                                  haToken: TokenWidget.leggi(server: indirizzo) != nil)
+                                                  haToken: TokenWidget.accettato(server: indirizzo) != nil)
     }
 }
 

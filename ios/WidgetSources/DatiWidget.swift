@@ -124,8 +124,9 @@ enum ScaricaOggi {
         let chi = MemoriaWidget.impronta(indirizzo: base, token: token)
         let copia = MemoriaWidget.leggi(per: chi)
         let esito = await ScaricoWidget.scarica(base: base, token: token, etag: copia?.etag)
-        // salva, rinfresca o cancella le copie (con un 401 tutte, anche quelle che l'app non raggiunge): logica provata nei test
-        let r = MemoriaWidget.applica(esito, copia: copia, chi: chi)
+        // salva, rinfresca o cancella le copie (con un 401 tutte, anche quelle che l'app non raggiunge; con un token rifiutato anche il
+        // segnale all'app, che ne chiede uno nuovo): logica provata nei test
+        let r = MemoriaWidget.applica(esito, copia: copia, chi: chi, conToken: token != nil)
         if r.nonDisponibile {
             let vecchio = await leggi(indirizzo: base + "/api/oggi", token: token, chi: chi)
             return Risultato(widget: nil, riassunto: vecchio.riassunto, scaricatoIl: vecchio.riassunto?.scaricatoIl, salvato: vecchio.salvato,
@@ -157,7 +158,7 @@ enum ScaricaOggi {
             }
             return (nuovo, false, false)
         case .accessoRichiesto:
-            MemoriaWidget.accessoNegato()
+            MemoriaWidget.accessoNegato(segnala: token == nil ? nil : chi)
             return (nil, false, true)
         case .errore:
             return (ultimoSalvato(chi: chi), true, false)

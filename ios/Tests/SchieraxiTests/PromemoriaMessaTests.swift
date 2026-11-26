@@ -111,7 +111,7 @@ struct PromemoriaMessaTests {
     /// La giornata come nell'app, ma quello che andrebbe a promemoria e widget finisce in `letture`.
     private func giornata(_ srv: ServerDiProva, _ letture: Letture) -> OggiViewModel {
         let oggi = OggiViewModel(server: srv, conPromemoria: false)
-        oggi.dopoLetturaFresca = { _, chiestaIl in letture.fresche.append(chiestaIl) }
+        oggi.dopoLetturaFresca = { _, chiestaIl, _ in letture.fresche.append(chiestaIl) }
         oggi.dopoLetturaNonRiuscita = { letture.nonRiuscite += 1 }
         return oggi
     }
@@ -183,7 +183,7 @@ struct PromemoriaMessaTests {
     /// decisione finisce in `esiti`.
     private func giornata(_ srv: ServerDiProva, _ esiti: Esiti, _ m: UserDefaults) -> OggiViewModel {
         let oggi = OggiViewModel(server: srv, conPromemoria: false)
-        oggi.dopoLetturaFresca = { giornata, chiestaIl in
+        oggi.dopoLetturaFresca = { giornata, chiestaIl, _ in
             esiti.tace.append(Aggiornamento.promemoriaTace(giornata, lettura: .fresca(chiestaIl: chiestaIl), memoria: m))
         }
         oggi.dopoLetturaNonRiuscita = { esiti.nonRiuscite += 1 }

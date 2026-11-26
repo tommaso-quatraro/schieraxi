@@ -381,12 +381,14 @@ struct VistaWidget: View {
                 }
                 Spacer(minLength: 0)
                 if let w = voce.completo, !w.daControllare.isEmpty {
-                    // i miei titolari con un dubbio, un infortunio o una squalifica (dati di /api/widget)
+                    // i miei titolari con un dubbio, un infortunio o una squalifica (dati di /api/widget); «e altri N» con il numero del
+                    // server, che conta anche quelli oltre i 6 arrivati
+                    let mostrati = min(w.daControllare.count, righeDubbi)
                     VStack(alignment: .leading, spacing: 2) {
                         // stato intero anche su iPad: se non entra via i volti, poi «gioca 70%» (mai «In dubbio · gioc…»)
                         RigheDaControllare(giocatori: Array(w.daControllare.prefix(righeDubbi)), lato: 28, conLink: false, spazio: 2)
-                        if w.daControllare.count > righeDubbi {
-                            Text(RiassuntoWidget.altri(w.daControllare.count - righeDubbi)).font(.caption2).foregroundStyle(TintaWidget.testo2)
+                        if w.contoDaControllare > mostrati {
+                            Text(RiassuntoWidget.altri(w.contoDaControllare - mostrati)).font(.caption2).foregroundStyle(TintaWidget.testo2)
                         }
                     }
                 } else if r.daControllare > 0 {

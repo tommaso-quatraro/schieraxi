@@ -51,6 +51,13 @@ def _g(scheda: dict, tratti: dict, *campi: str) -> dict:
     return out
 
 
+def _titolari_prima(avvisi: list[dict]) -> list[dict]:
+    """Gli avvisi di Oggi con quelli dei titolari in testa, per il taglio a MAX_AVVISI (26/11/2026): Oggi mette prima infortunati e
+    squalificati anche fuori formazione, e con tanti di loro i dubbi dei titolari restavano fuori dai primi sei. `sorted` è stabile:
+    dentro i due gruppi resta l'ordine di Oggi."""
+    return sorted(avvisi, key=lambda a: not a.get("in_formazione"))
+
+
 def _opzionale(mancano: list[str], nome: str, funzione):
     """Esegue una parte facoltativa senza mai far partire calcoli: se il risultato non è in cache, `nome` finisce in `mancano`.
     Senza aspettare nemmeno un calcolo già in corso (#907): una parte facoltativa non rallenta Oggi né il widget."""
@@ -133,7 +140,9 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
                        "panchina": [t["id"] for t in f["panchina"]]}
                       | ({"tua_scelta": True, "consigliata": consigliata} if tua else {}),
         # `etichetta` (facoltativa): la stessa di Oggi e della Formazione, da mostrare al posto delle parole composte dal `tipo` (#282)
-        "avvisi": [_g(a, tratti, "tipo", "in_formazione", "p_voto", "etichetta") for a in o["avvisi"][:MAX_AVVISI]],
+        "avvisi": [_g(a, tratti, "tipo", "in_formazione", "p_voto", "etichetta") for a in _titolari_prima(o["avvisi"])[:MAX_AVVISI]],
+        # quanti avvisi dei titolari ci sono, contati su tutti e non sui primi MAX_AVVISI: il numero di «Da controllare» (26/11/2026)
+        "da_controllare": sum(1 for a in o["avvisi"] if a.get("in_formazione")),
         "rosa": mia,
         "squalificati": [m["id"] for m in fuori if m["stato"] == "squalificato"],
         "diffidati": [m["id"] for m in mia if m["diffidato"]],

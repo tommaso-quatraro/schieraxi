@@ -454,8 +454,9 @@ def esci(request: Request, risposta: Response):
 
 @router.post("/api/account/token-widget", dependencies=[Depends(_attivo)])
 def crea_token_widget(request: Request, utente: Utente = Depends(utente_corrente)):
-    """Il token per il widget iOS: uno solo per utente (uno nuovo revoca il precedente), vale 90 giorni e serve solo a leggere (GET)
-    /api/oggi, /api/widget e /api/live. Si vede una volta sola: sul server resta l'hash. (Con il token del widget questa rotta è già chiusa dal controllo d'accesso.)"""
+    """Il token per il widget iOS: uno per dispositivo (legato alla sessione che lo chiede: uno nuovo revoca solo il precedente della
+    stessa sessione, 26/11/2026), vale 90 giorni e serve solo a leggere (GET) /api/oggi, /api/widget e /api/live. Si vede una volta
+    sola: sul server resta l'hash. (Con il token del widget questa rotta è già chiusa dal controllo d'accesso.)"""
     with closing(account.apri()) as db:
         account.limite.consuma(db, account._chiave("crea-token-widget", utente.id), 10, account.ORA)
         token, scade = account.crea_token_widget(db, utente.id, sessione=token_della_richiesta(request))     # legato a questa sessione (#814)
@@ -463,16 +464,19 @@ def crea_token_widget(request: Request, utente: Utente = Depends(utente_corrente
 
 
 @router.get("/api/account/token-widget", dependencies=[Depends(_attivo)])
-def stato_token_widget(utente: Utente = Depends(utente_corrente)):
+def stato_token_widget(request: Request, utente: Utente = Depends(utente_corrente)):
+    """Il token del widget di questo dispositivo (della sessione che chiede): quelli degli altri dispositivi non contano."""
     with closing(account.apri()) as db:
-        return account.stato_token_widget(db, utente.id)
+        return account.stato_token_widget(db, utente.id, sessione=token_della_richiesta(request))
 
 
 @router.delete("/api/account/token-widget", dependencies=[Depends(_attivo)])
-def revoca_token_widget(utente: Utente = Depends(utente_corrente)):
+def revoca_token_widget(request: Request, utente: Utente = Depends(utente_corrente)):
+    """Toglie solo il token del widget di questo dispositivo: lo mandano a «Esci» le app di prima del 26/11/2026, che così non
+    spengono più il widget dell'altro dispositivo dello stesso account. Le app nuove non lo mandano (lo fa già /api/account/esci)."""
     with closing(account.apri()) as db:
         account.limite.consuma(db, account._chiave("crea-token-widget", utente.id), 10, account.ORA)
-        return {"revocato": account.revoca_token_widget(db, utente.id)}
+        return {"revocato": account.revoca_token_widget(db, utente.id, sessione=token_della_richiesta(request))}
 
 
 @router.post("/api/account/esci-da-tutti", dependencies=[Depends(_attivo)])
