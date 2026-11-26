@@ -1,6 +1,6 @@
 # SchieraXI: guida per chi gestisce l'app
 
-Questa guida è per chi gestisce il server e invita gli amici. Quello che vede chi usa l'app sta in
+Questa guida è per chi gestisce il server e fa entrare gli amici. Quello che vede chi usa l'app sta in
 [GUIDA-UTENTE.md](GUIDA-UTENTE.md); qui ci sono solo le cose che vede o fa chi gestisce. Per il server stesso: gli script e
 l'aggiornamento automatico in `script/server/LEGGIMI.md`, il ripristino in [RIPRISTINO-SERVER.md](RIPRISTINO-SERVER.md).
 Nei comandi qui sotto l'indirizzo del server si scrive `<indirizzo-del-server>`.
@@ -8,7 +8,47 @@ Nei comandi qui sotto l'indirizzo del server si scrive `<indirizzo-del-server>`.
 Tutto quello che segue sta in **Impostazioni › Gestione**, che compare solo a chi gestisce l'app (nell'elenco degli utenti ha
 accanto «amministratore»).
 
-## 1. Inviti
+## 1. Iscrizioni e inviti
+
+### Iscrizioni aperte (di norma)
+
+Chi vuole apre l'app, tocca **Registrati**, sceglie nome utente e password (l'email è facoltativa) ed entra subito, senza invito:
+dopo il codice di recupero parte il primo avvio (rose, squadra, tempi). In **Impostazioni › Gestione** c'è **Iscrizioni** con la
+frase «Le iscrizioni sono aperte: chi vuole si registra da solo dalla schermata d'accesso, finché ci sono posti.»; **Nuovo invito** e
+**Inviti aperti** non ci sono, perché non servono. Quando gli utenti arrivano al numero massimo, sotto la frase c'è l'avviso **Posti
+pieni** e chi prova a registrarsi legge «Iscrizioni chiuse: siamo al completo».
+
+Due tetti tengono lontano chi trova il sito e prova a riempirlo, tutti e due nelle variabili del servizio:
+
+- `MAX_UTENTI`: quanti account al massimo (15 se manca);
+- `FANTA_ISCRIZIONI_GIORNO`: quanti account nuovi senza invito in 24 ore (5 se manca). Oltre, chi si registra legge «Per oggi le
+  iscrizioni sono chiuse: riprova domani». Il giorno in cui mandi il link dell'app a tutti gli amici alzalo (per esempio a 12) e poi
+  rimettilo com'era.
+
+In più la web ha un campo nascosto che una persona non vede: se un programma lo compila, l'account non nasce (nel registro di
+**Errori recenti** compare «Registrazione fermata: modulo compilato da un programma»). E da uno stesso indirizzo internet si fanno
+pochi tentativi non riusciti all'ora.
+
+Per cambiare una variabile, sul server: `sudoedit /etc/schieraxi/fantacalcio.env`, scrivi la riga (per esempio `MAX_UTENTI=12`),
+poi `sudo systemctl restart fantacalcio`.
+
+### Aperte o solo con invito
+
+Si sceglie con la riga `FANTA_REGISTRAZIONE` dello stesso file, poi `sudo systemctl restart fantacalcio`:
+
+- nessuna riga, oppure `FANTA_REGISTRAZIONE=aperta`: iscrizioni aperte, come sopra;
+- `FANTA_REGISTRAZIONE=invito`: si entra solo con un invito, come prima del 26/11/2026; in **Registrati** torna il campo **Codice
+  d'invito** e in **Gestione** tornano **Nuovo invito** e **Inviti aperti** (qui sotto). Chi ha già un account non perde niente.
+
+Un valore scritto male (per esempio `chiusa`) vale come `invito`: le iscrizioni non si aprono mai per sbaglio. Per far entrare una
+chat di amici con un solo link anche con `invito`, crea un **invito di gruppo** sul server:
+`.venv/bin/python -m fanta invito --etichetta "Lega" --usi 12` (fino a 30 persone, vale 7 giorni; il codice si vede una volta sola) e
+manda nella chat `https://<indirizzo-del-server>/?invito=<codice>`.
+
+Con le iscrizioni aperte il modulo non chiede codici: un amico che deve gestire l'app con te si registra come tutti e poi, sul server,
+`.venv/bin/python -m fanta utente-ruolo --utente <nome> --ruolo admin`.
+
+### Con gli inviti
 
 **Impostazioni › Gestione › Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**): apre la
 registrazione con il codice già scritto e vale 7 giorni. Sotto c'è anche il codice, per chi usa l'app per iPhone. L'etichetta
@@ -19,9 +59,8 @@ può creare lo stesso, ma chi lo riceve trova le registrazioni chiuse finché il
 liberi sono già tutti negli inviti ancora aperti (per esempio 3 utenti su 4 e un invito non ancora usato), l'avviso è
 **Posti quasi pieni**: chi riceve un invito in più può trovare le registrazioni chiuse.
 
-Il numero massimo è la variabile `MAX_UTENTI` del servizio (30 se manca). Sul server si cambia con
-`sudoedit /etc/schieraxi/fantacalcio.env`, scrivendo per esempio la riga `MAX_UTENTI=6`, poi `sudo systemctl restart fantacalcio`.
-Dopo il riavvio, ricaricata la pagina, l'avviso non c'è più e lo stesso link funziona (vale 7 giorni dalla creazione).
+Il numero massimo è la variabile `MAX_UTENTI` del servizio (15 se manca), da cambiare come sopra. Dopo il riavvio, ricaricata la
+pagina, l'avviso non c'è più e lo stesso link funziona (vale 7 giorni dalla creazione).
 
 Sotto **Crea l'invito** c'è **Inviti aperti**: gli inviti non ancora usati e non scaduti, ognuno con l'etichetta, quando è stato
 creato e quando scade (per esempio «Creato mer 25 nov, scade mer 2 dic.») e, per un invito per più amici, i posti ancora liberi.
@@ -110,4 +149,5 @@ Le misure dello **Stato dei dati**:
   Formazione, la decisione «L'app sul telefono scade tra N giorni: rinnovala.» con **Rinnova**. Tutti gli utenti dell'app per
   iPhone ricevono invece, se gli avvisi sono permessi, il promemoria «SchieraXI · Da rinnovare» 24 ore e 6 ore prima della
   scadenza.
-- **Codice d'invito.** Chi usa l'app per iPhone si registra con il codice scritto sotto il link dell'invito (sezione 1).
+- **Registrazione.** Con le iscrizioni aperte l'app per iPhone ha lo stesso modulo della web (nome utente, password, email
+  facoltativa). Con gli inviti chi usa l'app per iPhone si registra con il codice scritto sotto il link dell'invito (sezione 1).

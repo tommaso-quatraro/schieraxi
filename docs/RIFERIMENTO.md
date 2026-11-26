@@ -287,9 +287,12 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   stesso tetto di celle per ogni formato (`MAX_CELLE_IMPORTAZIONE`) e un tempo massimo per riconoscere i giocatori
   (`MAX_SECONDI_RICONOSCIMENTO`); avvisi con un tempo massimo per ogni invio (`MAX_SECONDI_INVIO`, vale sempre) e un tetto di prove
   all'ora (`MAX_PROVE_AVVISI_ORA`). Ogni tetto nuovo si cambia sul server con `FANTA_<nome della costante>`.
-- Registrazione: `FANTA_REGISTRAZIONE=invito|email|aperta` (predefinito `invito`).
+- Registrazione: `FANTA_REGISTRAZIONE=aperta|invito|email` (predefinito `aperta` dal 26/11/2026: nome utente e password, email
+  facoltativa, account subito; `invito` richiude; un valore sconosciuto vale `invito`). Tetti: `MAX_UTENTI` (predefinito 15) e
+  `FANTA_ISCRIZIONI_GIORNO` (account nuovi senza invito in 24 ore, predefinito 5). Il modulo della web ha un campo trappola (`sito`).
 - Posta: `FANTA_MAIL=spento|log|smtp|resend` (predefinito `spento`: nessun invio; `log` scrive in `dati/posta.log` solo che un
-  messaggio sarebbe partito, mai il codice). Con registrazione `aperta` o `email` servono `smtp` o `resend`.
+  messaggio sarebbe partito, mai il codice). Con registrazione `email` servono `smtp` o `resend`; con `aperta` e `invito` l'email è
+  facoltativa e senza posta l'account nasce lo stesso.
   SMTP (`fanta/posta.py`): `FANTA_SMTP_HOST`, `FANTA_SMTP_PORT` (465 = TLS subito, 587 = STARTTLS; mai in chiaro), `FANTA_SMTP_UTENTE`,
   `FANTA_MAIL_DA` (stessa casella dell'utente, così SPF e DKIM tornano), password in un file a parte indicato da
   `FANTA_SMTP_PASSWORD_FILE` (una riga, permessi 600: altrimenti non si usa; mai in `ambiente.env`). Tetto `FANTA_MAIL_MAX_ORA`

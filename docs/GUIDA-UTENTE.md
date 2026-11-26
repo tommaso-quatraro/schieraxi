@@ -31,9 +31,10 @@ Parole che vedrai spesso:
 
 ### Entrare
 
-1. Apri il **link d'invito** che ti ha mandato chi gestisce l'app: si apre la scheda **Registrati** con il codice già scritto (lo dice la riga **Codice d'invito già inserito**). Senza link: apri **https://app.schieraxi.it**, scheda **Registrati**, e scrivi il **codice d'invito**.
-   Se l'invito è scaduto o qualcuno l'ha già usato, l'app lo dice: chiedine uno nuovo a chi te l'ha mandato. Quello che hai scritto, password compresa, resta.
-2. Scegli un **nome utente** (3-32 caratteri: lettere senza accenti, numeri, punto, trattino) e una **password** di almeno 10 caratteri.
+1. Apri **https://app.schieraxi.it** (o l'app per iPhone) e tocca la scheda **Registrati**. In cima c'è scritto **Scegli un nome utente e una password.**: non serve nessun invito.
+   Se il server è al completo l'app dice **Iscrizioni chiuse: siamo al completo**; se in un giorno si sono già registrate molte persone, **Per oggi le iscrizioni sono chiuse: riprova domani**. Quello che hai scritto, password compresa, resta.
+   Se chi gestisce il server ha chiuso le iscrizioni libere, al posto della frase c'è il campo **Codice d'invito**: apri il **link d'invito** che ti ha mandato (si apre **Registrati** con il codice già scritto, lo dice la riga **Codice d'invito già inserito**) oppure scrivi il codice. Se l'invito è scaduto o qualcuno l'ha già usato, l'app lo dice: chiedine uno nuovo a chi te l'ha mandato.
+2. Scegli un **nome utente** (3-32 caratteri: lettere senza accenti, numeri, punto, trattino) e una **password** di almeno 10 caratteri. L'**email** è facoltativa: serve a recuperare la password (se sul server le email sono spente il campo non c'è).
 3. Spunta la casella (hai letto Privacy e Termini e hai almeno 14 anni) e tocca **Crea l'account**.
 4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password.
 
@@ -70,10 +71,10 @@ Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni
 
 ### Per chi entra in una lega già avviata
 
-Se ti invitano in una lega che gioca già da un po':
+Se entri in una lega che gioca già da un po':
 
-1. **Invito.** Apri il link che ti ha mandato chi gestisce l'app: si apre la registrazione con il codice già scritto. Scade dopo 7 giorni.
-2. **Registrazione.** Scegli nome utente e password, spunta la casella, tocca **Crea l'account** e salva il codice di recupero.
+1. **Registrazione.** In **Registrati** scegli nome utente e password, spunta la casella, tocca **Crea l'account** e salva il codice di recupero. Se il server chiede un invito, apri il link che ti hanno mandato: si apre la registrazione con il codice già scritto (scade dopo 7 giorni).
+2. **Primo avvio.** Dopo il codice di recupero si apre da solo il primo avvio: rose, squadra e tempi della lega.
 3. **Rose.** Esporta le rose da Leghe e caricale come nel passo 1 del primo avvio. Per cominciare basta anche solo la tua squadra.
 4. **La tua squadra.** Scegli **Qual è la tua squadra?**, sistema i nomi da controllare e tocca **Conferma e salva**. Poi rispondi alle due domande sui tempi della lega: scadenza e giornata di partenza.
 5. **Prossima giornata.** Se le partite sono già cominciate, la Formazione dice che quella giornata è già iniziata: non ci sono punti finti. La formazione che vedi è già quella della prossima, con la sua scadenza. Le giornate chiuse prima del tuo arrivo non ti fanno domande.
