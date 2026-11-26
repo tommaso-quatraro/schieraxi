@@ -347,6 +347,19 @@ CATALOGO: dict[str, str] = {
     "diario.meglio_peggio": "Meglio del previsto: {meglio}. Peggio: {peggio}.",
     "diario.meglio": "Meglio del previsto: {meglio}.",
     "diario.peggio": "Peggio del previsto: {peggio}.",
+    # Giornate, perché i punti della giornata non sono la somma dei fantavoti degli 11 (#900, diario.spiegazione_punti): {nomi} =
+    # un nome o un `elenco_e`; {fv}, {voto} e {v} = numeri con una cifra; {d} = il modificatore difesa, con il segno
+    "diario.punti_entrato": "{entra} ({fv}) è entrato dalla panchina al posto di {esce}.",
+    "diario.punti_nessuno": "Al posto di {nomi} non è entrato nessuno dalla panchina.",
+    "diario.punti_nessuno_voto.one": "Al posto di {nomi} non è entrato nessuno dalla panchina: per la tua lega vale {v}.",
+    "diario.punti_nessuno_voto.other": "Al posto di {nomi} non è entrato nessuno dalla panchina: per la tua lega valgono {v} ciascuno.",
+    "diario.punti_modificatore": "Modificatore difesa: {d}.",
+    "diario.punti_ufficio.one": "Partita rinviata: {nomi} prende il voto d'ufficio ({voto}).",
+    "diario.punti_ufficio.other": "Partita rinviata: {nomi} prendono il voto d'ufficio ({voto}).",
+    "diario.punti_rinvio_senza_voto.one": "Partita rinviata: {nomi} non prende voto in questa giornata.",
+    "diario.punti_rinvio_senza_voto.other": "Partita rinviata: {nomi} non prendono voto in questa giornata.",
+    "diario.punti_senza_dettaglio": "Per questa giornata manca il dettaglio dei punti (riserve entrate, modificatore difesa): è stata "
+                                    "calcolata prima che SchieraXI lo salvasse.",
     # il motivo di una giornata persa in Stato dei dati (#833, `registro_giornate.motivo_persa`): il registro dei mostrati e quello
     # dei nostri. Il motivo tecnico (tipo d'errore, colonne, numeri) resta nell'archivio, nel log e in `persa_dettaglio`. Le due
     # «senza_tentativi» sono anche il motivo salvato (`SENZA_TENTATIVI` dei due registri): l'iPhone e le sue prove le leggono così
