@@ -439,6 +439,48 @@ def test_oggi_non_si_rompe_se_le_fasi_falliscono(ambiente, monkeypatch):
     assert o["fase"] == "in_corso" and o["in_corso"] is None and o["formazione"]["modulo"] == "4-4-2"
 
 
+# Guasti visibili (26/11/2026): Oggi e la Formazione si aprono lo stesso, ma il guasto lascia una riga nel registro del server con il
+# tipo d'errore e il punto del codice, mai il messaggio dell'errore (può contenere dati: qui un nome inventato che non deve uscire).
+def _rotto(*a, **k):
+    raise ValueError("Portiere della Mia")
+
+
+def _righe_del_registro(caplog, logger: str) -> list[str]:
+    return [r.getMessage() for r in caplog.records if r.name == logger and r.levelname == "WARNING"]
+
+
+def test_oggi_scrive_nel_registro_se_la_giornata_in_corso_non_si_calcola(ambiente, monkeypatch, caplog):
+    monkeypatch.setattr(fasi, "blocco_in_corso", _rotto)
+    with caplog.at_level("WARNING", logger="fanta.fasi"):
+        o = _oggi(ambiente, datetime(2026, 11, 8, 21, 30))
+    assert o["in_corso"] is None
+    righe = _righe_del_registro(caplog, "fanta.fasi")
+    assert len(righe) == 1 and "ValueError" in righe[0] and "fasi.py:" in righe[0] and "aggiungi" in righe[0]
+    assert "Portiere" not in caplog.text and "Mia" not in caplog.text
+
+
+def test_formazione_a_giornata_iniziata_tiene_iniziata_e_scrive_nel_registro(ambiente, monkeypatch, caplog):
+    """Prima un errore dopo la scadenza faceva tornare la formazione senza `iniziata`: i client la credevano ancora aperta."""
+    monkeypatch.setattr(fasi, "schede_a_giornata_iniziata", _rotto)
+    f = _formazione_con_etichette()
+    with caplog.at_level("WARNING", logger="fanta.fasi"):
+        r = fasi.formazione_a_giornata_iniziata(f, ambiente.db, REGOLE, ST, datetime(2026, 11, 8, 21, 30))
+    assert r["iniziata"] is True and r["titolari"] == f["titolari"]
+    righe = _righe_del_registro(caplog, "fanta.fasi")
+    assert len(righe) == 1 and "ValueError" in righe[0] and "formazione_a_giornata_iniziata" in righe[0]
+    assert "Portiere" not in caplog.text
+
+
+def test_oggi_scrive_nel_registro_se_il_blocco_della_partita_rinviata_non_si_calcola(ambiente, monkeypatch, caplog):
+    monkeypatch.setattr(gestione.rinvii, "blocco_oggi", _rotto)
+    with caplog.at_level("WARNING", logger="fanta.gestione"):
+        o = _oggi(ambiente, datetime(2026, 11, 6, 12, 0))
+    assert o["rinvio"] is None
+    righe = _righe_del_registro(caplog, "fanta.gestione")
+    assert len(righe) == 1 and "ValueError" in righe[0] and "gestione.py:" in righe[0] and "oggi" in righe[0]
+    assert "Portiere" not in caplog.text
+
+
 def test_partita_rinviata_con_la_data_vecchia_non_chiude_la_formazione(ambiente):
     """Una partita della giornata 10 rinviata e rimasta in calendario con la data vecchia (prima del turno): Oggi resta nella fase
     «prima» con la scadenza della prima partita del turno (regola unica in turno.py, come promemoria e copia automatica)."""

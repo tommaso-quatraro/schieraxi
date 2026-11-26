@@ -13,6 +13,7 @@ nuovo. Chi chiama (gestione.oggi) non deve mai fallire per colpa di questo modul
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import datetime, timedelta
 
@@ -39,6 +40,14 @@ _DA_LIVE = {"primo_tempo": IN_CORSO, "intervallo": IN_CORSO, "secondo_tempo": IN
 # stato di un giocatore: fatto (ha il voto), senza_voto (la sua partita ha i voti, lui no), attesa_voti (partita finita, voti non
 # ancora usciti), in_corso, da_giocare, rinviata (partita rinviata o squadra che non gioca)
 DECISI = ("fatto", "senza_voto")
+LOG = logging.getLogger(__name__)
+
+
+def _guasto(cosa: str, e: BaseException) -> None:
+    """Un guasto che non ferma la schermata va comunque nel registro del server: cosa non si è calcolato, il tipo d'errore e i
+    punti del codice (`registro_giornate._dove`), mai il messaggio dell'errore, che può contenere dati."""
+    from . import registro_giornate        # qui e non in cima: registro_giornate importa questo modulo
+    LOG.warning("%s (%s) in %s", cosa, type(e).__name__, registro_giornate._dove(e))
 
 
 def _data(testo) -> datetime | None:
@@ -547,8 +556,8 @@ def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str
                 attesa = blocco_voti_in_arrivo(db, regole, stagione, precedente, file_scelte, file_diario)
                 if attesa:
                     corpo["voti_in_arrivo"] = attesa
-    except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
-        pass
+    except Exception as e:                              # noqa: BLE001  (Oggi si apre comunque; il guasto va nel registro)
+        _guasto("Oggi: fasi della giornata non calcolate", e)
     return corpo
 
 
@@ -653,7 +662,9 @@ def formazione_a_giornata_iniziata(f: dict, db: sqlite3.Connection, regole: Rego
     """La risposta della Formazione dopo la scadenza (`iniziata: true`, schede come `schede_a_giornata_iniziata`); prima della
     scadenza `iniziata: false` e tutto com'era, tranne i giocatori di un anticipo già cominciato (stato vero della partita).
     Una copia: `f` viene dalla cache e non si modifica. Mai un errore: se qualcosa
-    non va, la formazione torna com'era."""
+    non va, la formazione torna com'era ma con `iniziata`, se si è fatto in tempo a saperlo (i client non devono crederla aperta
+    dopo la scadenza), e il guasto va nel registro del server."""
+    aperta = None
     try:
         tutte = [*(f.get("titolari") or []), *(f.get("panchina") or []), *(f.get("fuori") or []), *(f.get("schede") or {}).values()]
         aperta = not iniziata(db, regole, stagione, f.get("giornata"), adesso)
@@ -668,5 +679,6 @@ def formazione_a_giornata_iniziata(f: dict, db: sqlite3.Connection, regole: Rego
         lista = lambda chiave: [nuove.get(int(x["id"]), x) for x in f.get(chiave) or []]
         return f | {"iniziata": not aperta, "titolari": lista("titolari"), "panchina": lista("panchina"), "fuori": lista("fuori"),
                     "schede": {k: nuove.get(int(x["id"]), x) for k, x in (f.get("schede") or {}).items()}}
-    except Exception:                                   # noqa: BLE001  (la Formazione si apre comunque)
-        return f
+    except Exception as e:                              # noqa: BLE001  (la Formazione si apre comunque; il guasto va nel registro)
+        _guasto("Formazione: stato vero dei giocatori non calcolato", e)
+        return f if aperta is None else f | {"iniziata": not aperta}
