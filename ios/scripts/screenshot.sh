@@ -37,7 +37,7 @@ TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazi
        lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-regole-anteprima lega-regole-non-applicato lega-stato lega-stato-fondo lega-stato-nostri lega-stato-taratura lega-stato-prova impostazioni-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-squadra impostazioni-gestione impostazioni-crediti primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido
-       guida-pronta lega-importa-prima lega-scelta-squadra)
+       guida-pronta lega-importa-prima lega-scelta-squadra formazione-senza-squadra giornate-senza-server)
 # I nomi che l'app conosce: le foto a mano (SCHERMATE) possono chiedere solo questi.
 CONOSCIUTE=("${TUTTE[@]}")
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)

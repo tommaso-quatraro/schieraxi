@@ -35,5 +35,8 @@ extension Catalogo {
 
         /// `err.p_regola_voto_ufficio_rinviate`
         static let pRegolaVotoUfficioRinviate = "Voto d'ufficio delle partite rinviate"
+
+        /// `err.indica_squadra`
+        static let indicaSquadra = "Indica la tua squadra in «La mia squadra»"
     }
 }

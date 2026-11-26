@@ -670,6 +670,60 @@ def test_giornate_senza_violazioni_gravi_e_senza_scorrere_di_lato(web, larghezza
     assert not web.errori_console
 
 
+ZOOM_200 = 195           # un telefono da 390 px con lo zoom del browser al 200%: la pagina vede 195 px
+# Le parole di un elemento come le dispone il browser: per ognuna le sue righe (i rettangoli dove sta). Una parola su due righe è
+# andata a capo a metà («Pi/ss/eri»); due parole con rettangoli che si toccano stanno una sopra l'altra. Il testo solo per i
+# lettori di schermo (un riquadro da 1 px) non si guarda: non si vede.
+PAROLE = """el => { const parole = [], w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const nascosto = e => { for (; e && el.contains(e); e = e.parentElement) { const r = e.getBoundingClientRect();
+    if (r.width <= 1 && r.height <= 1) return true; } return false; };
+  for (let n = w.nextNode(); n; n = w.nextNode()) if (!nascosto(n.parentElement)) for (const m of n.data.matchAll(/\\S+/g)) {
+    const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+    const rett = [...r.getClientRects()].filter(x => x.width > 0 && x.height > 0);
+    if (rett.length) parole.push({ parola: m[0], righe: new Set(rett.map(x => Math.round(x.top))).size,
+      rett: rett.map(x => [x.left, x.top, x.right, x.bottom]) });
+  }
+  return parole; }"""
+
+
+def parole_spezzate(elemento) -> list[str]:
+    return [p["parola"] for p in elemento.evaluate(PAROLE) if p["righe"] > 1]
+
+
+def parole_sovrapposte(elemento) -> list[tuple[str, str]]:
+    parole = elemento.evaluate(PAROLE)
+    tocca_ = lambda a, b: a[0] < b[2] - 1 and b[0] < a[2] - 1 and a[1] < b[3] - 1 and b[1] < a[3] - 1  # noqa: E731
+    return [(p["parola"], q["parola"]) for i, p in enumerate(parole) for q in parole[i + 1:]
+            if any(tocca_(a, b) for a in p["rett"] for b in q["rett"])]
+
+
+@pytest.mark.parametrize("tema", ["chiaro", "scuro"])
+def test_con_lo_zoom_al_200_righe_e_tabella_si_leggono(web, tema):
+    """Collaudo del 26/11, zoom al 200%: aprendo una giornata i nomi nella tabella andavano a capo lettera per lettera
+    («Pi/ss/eri»), perché le colonne di atteso e preso restavano larghe come a 390 px; nelle righe chiuse «Formazione non
+    salvata…» finiva sopra «punti (attesi …)». Ora a quella larghezza i punti vanno sotto il nome e i numeri sotto il giocatore:
+    nessuna parola spezzata, nessuna scritta sopra un'altra, niente da scorrere di lato."""
+    solo(web, "finita")
+    d = web.registrata("/api/diario")
+    for g in d["giornate"][1:3]:                                                # due giornate senza formazione salvata: la frase lunga
+        g.pop("schierata", None)
+        g.pop("automatica", None)
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE, larghezza=ZOOM_200, tema=tema)
+    for b in righe(web).all():
+        assert not parole_spezzate(b), (b.inner_text(), parole_spezzate(b))
+        assert not parole_sovrapposte(b), (b.inner_text(), parole_sovrapposte(b))
+    g = d["giornate"][0]
+    tocca(web, riga(web, nome_di(g)))
+    tabella = dettaglio(web, nome_di(g)).get_by_role("table")
+    assert not parole_spezzate(tabella), parole_spezzate(tabella)
+    assert not parole_sovrapposte(tabella), parole_sovrapposte(tabella)
+    assert tabella.get_by_role("row").count() == 12                             # resta una tabella per i lettori di schermo
+    assert not web.scorre_di_lato()
+    gravi = web.violazioni_gravi()
+    assert not gravi, [(v["id"], v["nodi"][:2]) for v in gravi]
+
+
 @pytest.mark.parametrize("larghezza", [768, PC])
 def test_su_tablet_e_pc_l_elenco_sta_a_sinistra_e_gli_11_a_destra(web, larghezza):
     solo(web, "finita")
