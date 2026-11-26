@@ -316,15 +316,17 @@ function pagina(html, opz = {}) {
 }
 // La riga di stato: [stemma] Giornata N · nome della mia squadra · dati del … (i pezzi li prepara caricaInfo, lo stemma caricaSquadre).
 // Ogni pezzo sta intero: se la riga non ci sta si va a capo dopo un « · » (a 390 px la data si tagliava).
-// Senza server «Server non raggiungibile» (`stato-offline`): non si vede se la pagina lo dice già lei con «Riprova» (stile.css, #864).
+// Senza server «Server non raggiungibile» (`stato-offline`), su una riga sua sopra i pezzi della copia salvata se ci sono (caricaInfo):
+// non si vede se la pagina lo dice già lei con «Riprova» (stile.css, #864), e allora restano i pezzi.
 function rigaStato() {
   const r = stato.rigaStato;
   if (!r) return "";
-  if (r.offline) return `<span class="stato-offline">${esc(t("testata.offline"))}</span>`;
+  const offline = r.offline ? `<span class="stato-offline">${esc(t("testata.offline"))}</span>` : "";
+  const pezzi = [r.giornata, r.squadra, r.dati].filter(Boolean);
+  if (!pezzi.length) return offline;
   const mia = miaSquadra();
   const stemma = mia && mia.immagini && mia.immagini.stemma ? `<img class="stemma-stato" src="${esc(urlImg(mia.nome, "stemma"))}" alt="" width="20" height="20">` : "";
-  const pezzi = [r.giornata, r.squadra, r.dati].filter(Boolean);
-  return stemma + pezzi.map(p => `<span>${esc(p)}</span>`).join(" · ");
+  return offline + stemma + pezzi.map(p => `<span>${esc(p)}</span>`).join(" · ");
 }
 // Dati nuovi (avvio, «Aggiorna i dati», rose o squadra cambiate): la riga di stato già in pagina si riscrive.
 function aggiornaRigaStato() {
@@ -815,20 +817,30 @@ async function caricaFunzioni() {
   } catch { stato.funzioni = null; }
 }
 
+// Giornata, nome della mia squadra e data dei dati: i pezzi della riga di stato sotto il titolo (pagina()), da /api/stato o dalla sua copia.
+function pezziRigaStato(i) {
+  const quandoAgg = parseData(i.ultimo_aggiornamento);
+  return {
+    giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
+    squadra: i.mia_squadra || null,
+    dati: (quandoAgg ? elidiGiorno(t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) })) : t("testata.mai")).replace(/^\s*·\s*/, ""),
+  };
+}
 async function caricaInfo() {
   try {
     stato.info = await api("/api/stato");
     const i = stato.info;
-    const quandoAgg = parseData(i.ultimo_aggiornamento);
-    // giornata, nome della mia squadra e data dei dati: la riga di stato sotto il titolo di ogni schermata (pagina())
-    stato.rigaStato = {
-      giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
-      squadra: i.mia_squadra || null,
-      dati: (quandoAgg ? elidiGiorno(t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) })) : t("testata.mai")).replace(/^\s*·\s*/, ""),
-    };
+    stato.rigaStato = pezziRigaStato(i);
+    // la copia dei soli campi della riga, per quando la pagina si ricarica senza server (collaudo del 26/11)
+    salvaCache("stato", { prossima_giornata: i.prossima_giornata, prossima_giornata_lega: i.prossima_giornata_lega,
+                          mia_squadra: i.mia_squadra, ultimo_aggiornamento: i.ultimo_aggiornamento });
     segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
-    stato.rigaStato = { offline: true };
+    // Senza server la riga dice «Server non raggiungibile» e, se c'è la copia dell'ultima lettura buona, sotto i suoi pezzi: dopo una
+    // ricarica la riga è quella che si vede quando la rete cade senza ricaricare (prima restava vuota, collaudo del 26/11). I pezzi
+    // dicono già di quando sono i dati («dati del …»). stato.info non si tocca: le scelte che ne dipendono aspettano dati veri.
+    const copia = leggiCache("stato", true);
+    stato.rigaStato = { ...(copia ? pezziRigaStato(copia.dati) : {}), offline: true };
     segnaAvvioDaRileggere(e);
   }
   aggiornaRigaStato();
