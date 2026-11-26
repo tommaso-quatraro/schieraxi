@@ -6,7 +6,8 @@ l'aggiornamento automatico in `script/server/LEGGIMI.md`, il ripristino in [RIPR
 Nei comandi qui sotto l'indirizzo del server si scrive `<indirizzo-del-server>`.
 
 Tutto quello che segue sta in **Impostazioni › Gestione**, che compare solo a chi gestisce l'app (nell'elenco degli utenti ha
-accanto «amministratore»).
+accanto «amministratore»). Sull'iPhone la Gestione ha solo i dati, **Collegamento** e **Certificato**: inviti, password, utenti,
+errori e commenti si gestiscono solo dalla web.
 
 ## 1. Inviti
 
@@ -45,7 +46,7 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   mostrati). A ogni commento nuovo arriva un avviso sul canale ntfy del server (lo stesso della sentinella e degli script,
   `~/.config/schieraxi/canale`): «SchieraXI · un commento nuovo», senza il testo e senza il nome, che restano sul server. Al
   massimo 6 avvisi all'ora per tutto il server: oltre, i commenti si salvano senza avviso. Senza quel file l'avviso non parte,
-  il commento si salva lo stesso. Ognuno ne manda al massimo 5 al giorno (sul server si cambia con `FANTA_MAX_COMMENTI_AL_GIORNO`); con l'account
+  il commento si salva lo stesso. Ognuno ne manda al massimo 5 al giorno (sul server si cambia con `FANTA_MAX_COMMENTI_AL_GIORNO`), tranne chi gestisce l'app, che non ha limite; con l'account
   eliminato se ne vanno anche i suoi commenti. Sul server, via ssh, gli ultimi 20 con il testo intero:
   `.venv/bin/python -m fanta feedback --ultimi 20` (dalla cartella dell'app, sola lettura).
 
@@ -102,7 +103,8 @@ Le misure dello **Stato dei dati**:
   `{"dal": "AAAA-MM-GG", "al": "AAAA-MM-GG"}`) e `finestre_scambio` (un elenco di periodi).
 - **Funzioni dietro un interruttore.** Alcune parti sono spente di norma, per esempio **Squadre della lega** (le rose delle
   altre squadre: senza, in **La mia lega** la voce **Le altre squadre** non c'è) e **Immagini da indirizzo web** (stemma e maglia
-  da un indirizzo `https://` e, sulla web, dal menu Condividi del telefono; sull'iPhone il menu Condividi funziona anche senza). Si accendono con il file `dati/funzioni.json` o con la variabile
+  da un indirizzo `https://` e, sulla web, dal menu Condividi del telefono; sull'iPhone il menu Condividi funziona anche senza) e **Widget aggiuntivi** (`widget_extra`: il widget **Da controllare**;
+  spento, dice «Widget spento»). Si accendono con il file `dati/funzioni.json` o con la variabile
   `FANTA_FUNZIONE_<NOME>` (`1` acceso, `0` spento); l'elenco con i nomi è in `fanta/funzioni.py`.
 - **Server senza account.** In **Gestione** c'è anche **Avvisi anche per l'app nativa**: gli avvisi arrivano anche con ntfy,
   e il tocco sulla notifica apre l'app per iPhone.
@@ -119,5 +121,5 @@ Le misure dello **Stato dei dati**:
   (gli stessi di [INSTALLAZIONE-IPHONE.md](INSTALLAZIONE-IPHONE.md), sezione 5). Chi gestisce vede anche, in cima alla
   Formazione, la decisione «L'app sul telefono scade tra N giorni: rinnovala.» con **Rinnova**. Tutti gli utenti dell'app per
   iPhone ricevono invece, se gli avvisi sono permessi, il promemoria «SchieraXI · Da rinnovare» 24 ore e 6 ore prima della
-  scadenza.
+  scadenza, mai nelle ore tranquille: se ci cadono, arrivano un minuto prima che comincino.
 - **Codice d'invito.** Chi usa l'app per iPhone si registra con il codice scritto sotto il link dell'invito (sezione 1).
