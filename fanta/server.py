@@ -1669,7 +1669,7 @@ def giocatore(calciatore_id: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Conte
     db = _db()
     try:
         r = _regole(ctx)
-        s = scheda.scheda(db, calciatore_id, consigli.stagione_corrente(), r.fonte_voto)
+        s = scheda.scheda(db, calciatore_id, consigli.stagione_corrente(), r)      # fantavoti con i bonus della lega
         try:
             prev, giornata, _ = consigli.previsioni(db, r)
             if calciatore_id in prev.index:
