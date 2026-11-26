@@ -6,6 +6,7 @@ Si scarica al massimo una volta al giorno e si tiene in dati/cache/listone.json.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
@@ -14,6 +15,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 from . import fonti_attive, rete
+from .fonti import fantacalcio as fc
 from .percorsi import CACHE, scrivi_sicuro
 from .rete import UA as _AGENTE
 
@@ -27,6 +29,8 @@ def url_stagione(stagione: str) -> str:
 
 UA = {"User-Agent": _AGENTE}
 FILE_CACHE = CACHE / "listone.json"
+RUOLI = ("P", "D", "C", "A")    # i ruoli del gioco classico: ogni giocatore del listone ne ha uno
+LOG = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -50,18 +54,26 @@ def _intero(testo: str | None) -> int:
 
 
 def analizza_html(html: str) -> list[Calciatore]:
+    """I giocatori della pagina. Chi non ha un ruolo P, D, C o A si salta e si conta nel registro, con la tolleranza dei voti
+    (`fantacalcio.SCARTI_TOLLERATI`, `QUOTA_SCARTI`); oltre, la pagina è cambiata (attributo del ruolo rinominato o valori scritti
+    in un altro modo: prima tutti i giocatori con ruolo vuoto, senza errore) e la lettura si ferma."""
     s = BeautifulSoup(html, "lxml")
     calciatori = []
+    strani: list[str] = []
     for r in s.select("tr.player-row"):
         a = r.select_one("a.player-link")
         m = re.search(r"/squadre/([^/]+)/[^/]+/(\d+)", a["href"]) if a else None
         if not m:
             continue
+        ruolo = r.get("data-filter-role-classic", "").upper()
+        if ruolo not in RUOLI:
+            strani.append(ruolo)
+            continue
         celle = {td["data-col-key"]: td.get_text(strip=True) for td in r.select("td[data-col-key]")}
         calciatori.append(Calciatore(
             id=int(m.group(2)),
             nome=a.get_text(strip=True),
-            ruolo=r.get("data-filter-role-classic", "").upper(),
+            ruolo=ruolo,
             ruolo_mantra=r.get("data-filter-role-mantra", ""),
             squadra=celle.get("sq", ""),
             squadra_slug=m.group(1),
@@ -69,6 +81,12 @@ def analizza_html(html: str) -> list[Calciatore]:
             quotazione_iniziale=_intero(celle.get("c_qi")),
             fvm=_intero(celle.get("c_fvm")),
         ))
+    totale = len(calciatori) + len(strani)
+    if len(strani) > fc.SCARTI_TOLLERATI and len(strani) > fc.QUOTA_SCARTI * totale:
+        raise ValueError(f"Listone: {len(strani)} giocatori su {totale} senza ruolo P, D, C o A (per esempio {strani[0]!r}), "
+                         "la pagina forse è cambiata")
+    if strani:
+        LOG.warning("listone: %d giocatori su %d senza ruolo P, D, C o A saltati", len(strani), totale)
     if len(calciatori) < 300:
         raise ValueError(f"Listone: trovati solo {len(calciatori)} giocatori, la pagina forse è cambiata")
     return calciatori

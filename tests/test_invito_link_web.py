@@ -45,4 +45,4 @@ def test_il_codice_si_toglie_dall_indirizzo_e_si_scrive_nel_campo():
 
 def test_l_amministratore_riceve_il_link():
     assert "linkInvito(r.codice)" in APP_JS and 'id="adm-copia-messaggio"' in APP_JS
-    assert 'tp("admin.utenti_riepilogo", r.utenti.length' in APP_JS
+    assert 'tp("admin.utenti_conteggio", r.utenti.length' in APP_JS

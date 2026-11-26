@@ -986,6 +986,13 @@ body.pagina-testo { padding: 0 0 40px; }
 .adm-inviti li { min-height: 56px; padding: 6px 0; }
 .adm-inviti li > div { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .adm-inviti .azione-testo { flex: none; }
+/* Gestione › Utenti: il nome, sotto il blocco (se c'è) e la frase del server; a destra «Blocca» o «Sblocca» ed «Elimina», in rosso
+   perché non si annulla. Un nome lungo va a capo; su telefono i due pulsanti restano affiancati */
+.adm-utenti li { min-height: 56px; padding: 6px 0; }
+.adm-utenti li > div:first-child { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.adm-utenti li > span { flex: none; }
+.adm-azioni { display: flex; flex: none; margin-right: -8px; }
+.azione-testo.distruttiva { color: var(--rosso); }
 /* Gestione › Commenti degli utenti (Scrivici): chi, quando e da dove piccolo; sotto il testo intero, a capo dove è andato a capo chi
    l'ha scritto (anche una parola lunghissima va a capo); in fondo «Segna come letto» o «Letto» */
 .commenti-elenco li { padding: 10px 0; }

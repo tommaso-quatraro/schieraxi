@@ -1,5 +1,90 @@
 [
   {
+    "versione": "1.585",
+    "data": "2026-11-26T15:12:31",
+    "titolo": "Server: copie di sicurezza più affidabili e avvisi in più",
+    "voci": [
+      "Nessun cambiamento visibile nell'app: le copie di sicurezza del server non restano più a metà e chi gestisce il server viene avvisato se la copia notturna non riesce."
+    ],
+    "tecnico": [
+      "account._copia_prima_di_migrare: la copia va in un temporaneo (tempfile.mkstemp, 600) nella stessa cartella e si rinomina con os.replace solo se db.backup riesce; se fallisce il temporaneo si toglie. La copia esce dal modo WAL (journal_mode=DELETE) e prima di os.replace si tolgono -journal, -wal e -shm rimasti accanto al nome. Una copia già presente vuota o che non passa PRAGMA quick_check si rifà. Il giro serale (backup.copia_account) toglie i temporanei rimasti con più di un giorno.",
+      "backup-serale.sh: se `fanta backup` fallisce manda un avviso ntfy; controllo-salute.sh avvisa se ultimo-backup-dati (scritto da backup-dati.sh) è più vecchio di 36 ore (senza il file non avvisa).",
+      "aggiorna.sh e backup-dati.sh: il corpo dell'avviso ntfy (con il canale) passa a curl dallo standard input (--data-binary @-), non più negli argomenti visibili con ps.",
+      "verifica-firme.sh: portachiavi temporaneo diverso per ogni processo (mktemp -d .git/verifica-firme.XXXXXX) tolto alla fine anche con un trap: un --prova lanciato insieme all'aggiornamento non cancella più il portachiavi dell'altro."
+    ]
+  },
+  {
+    "versione": "1.584",
+    "data": "2026-11-26T14:55:33",
+    "titolo": "Web: più affidabile con la rete lenta o assente",
+    "voci": [
+      "Formazione: se una volta la formazione che hai salvato non si legge, aprendo l'app senza rete vedi ancora i tuoi 11, non quelli consigliati come se fossero i tuoi.",
+      "Con la rete lenta la prima schermata non resta più vuota: dopo pochi secondi compare la Formazione salvata, e quando arrivano i dati nuovi si aggiorna senza saltare. I volti dei giocatori non si fanno più aspettare.",
+      "Scheda del giocatore: le prossime partite sono quelle del calendario aggiornato; quelle salvate in precedenza si vedono solo se il calendario non arriva.",
+      "Se in un'altra scheda del browser esci o entri con un altro account, la scheda rimasta aperta si ricarica con l'account giusto.",
+      "La web installata sul telefono, quando torna in primo piano, controlla se c'è una versione nuova (al massimo ogni tre ore): la prepara senza interromperti e la usa alla prossima apertura, oppure subito con «Ricarica»."
+    ],
+    "tecnico": [
+      "Web, caricaConCache: daSalvare ora dà true (salva), false (toglie la copia) o null (non salva e tiene la copia di prima). vistaFormazione dà null alle risposte con scelta_non_letta (lettura di GET /api/scelta o della valutazione non riuscita), false a senza_squadra come prima.",
+      "Web, controllaAccesso: GET /api/account/me con un tempo massimo di 4 secondi (ATTESA_CHI_SONO_MS) solo se nel browser restano l'account o copie (restanoCopie) e non si torna da Google né da un link d'invito; scaduto, stato.account dall'account salvato (riprendiAccountSalvato) e la risposta tardiva va a chiSonoInRitardo: 401 con multiutente → sessioneScaduta, altro account → ricordaAccount e ricarica, stesso account → dati dell'account e lingua. Estratti ricordaDatiAccesso e ricordaAccount, senza cambiare cosa salvano.",
+      "Web, avvio: la Formazione e Giornate si disegnano subito dopo «chi sono», senza aspettare /api/stato, /api/squadre, /api/avatar e /api/funzioni; caricaGiornata e la lettura del diario aspettano avvioLetto (stato e squadre) prima di chiedere, così senza rose o senza squadra non partono richieste che rispondono 409 o 400. Le pagine di Impostazioni aprono dopo stato, squadre e funzioni, come prima; aperte dalla barra prima che arrivassero si ridisegnano quando arrivano (ridisegnaImpostazioniAvvio, la stessa regola di rileggiAvvio, mai sotto la schermata di accesso). La riga di stato parte dalla copia «stato».",
+      "Web, volti: copia «tratti» di /api/avatar, usata subito; all'arrivo, se i tratti cambiano, ridisegnaVolti riscrive al loro posto gli SVG degli .avatar[data-volto] (avatar() mette data-volto, data-squadra e data-ruolo a chi non ha i tratti nella risposta).",
+      "Web, datiCalendario: senza calendario della sessione aspetta GET /api/calendario fino a 1,5 secondi (ATTESA_CALENDARIO_MS); poi mostra la copia e ridisegna «Tutti i numeri» quando arriva; la copia da sola solo se la lettura non riesce.",
+      "Web, evento storage: se cambia l'id dell'account salvato in localStorage (uscita, altro accesso, localStorage svuotato) rispetto a stato.account, location.reload().",
+      "Web, service worker: a ogni visibilitychange verso visibile, se sono passate almeno tre ore dall'ultimo controllo (CONTROLLO_VERSIONE_MS), registration.update(); la versione nuova si installa e prende il posto della vecchia come già faceva (skipWaiting, clients.claim, barra «Ricarica»).",
+      "Test del browser: tests/browser/test_copie_e_rete.py (rete governata dal test) e un test in test_web_installata.py. Nessuna rotta né campo dell'API cambiato; calcolo non toccato."
+    ]
+  },
+  {
+    "versione": "1.583",
+    "data": "2026-11-26T14:23:49",
+    "titolo": "Gestione: chi gestisce il server può bloccare o eliminare un account",
+    "voci": [
+      "Impostazioni › Gestione › Utenti: chi gestisce il server vede iscrizione e ultimo accesso di ogni account e può bloccarlo (non entra più, i dati restano) o eliminarlo con tutti i suoi dati, dopo una conferma. Gli altri amministratori si gestiscono solo sul server.",
+      "Chi è bloccato e prova a entrare, o a cambiare la password con il codice di recupero o l'email, legge «Questo account è bloccato: chiedi a chi gestisce SchieraXI.»."
+    ],
+    "tecnico": [
+      "Rotte nuove, solo amministratore (docs/API.md): POST /api/admin/utenti/{id}/blocca → {ok, sessioni_chiuse}, POST /api/admin/utenti/{id}/sblocca → {ok}, DELETE /api/admin/utenti/{id} → {ok}. 400 sul proprio account, 403 sull'account di un altro amministratore (solo dai comandi), 404 se non esiste. GET /api/admin/utenti: campi nuovi per utente ultimo_accesso, bloccato, bloccato_il, dettaglio/dettaglio_frase (admin.utente_dettaglio, admin.utente_dettaglio_senza_accesso) e blocco/blocco_frase (admin.utente_bloccato).",
+      "account.sqlite: migrazione nuova in fondo a MIGRAZIONI, una funzione (_aggiungi_bloccato) che aggiunge utenti.bloccato (TEXT, quando; NULL = no) solo se manca. account.blocca chiude sessioni, token del widget, dispositivi fidati e notifiche web (esci_da_tutti); _apri_sessione rifiuta un bloccato (403, codice account_bloccato, solo dopo la password giusta o Google), come il recupero della password (codice di recupero, codice di chi gestisce, email) dopo il codice giusto e prima di cambiare qualsiasi cosa; utente_da_token / utente_da_token_widget non lo fanno passare; avvisi_utenti.utenti_attivi lo salta. «Ultimo amministratore» (elimina, imposta_ruolo, blocca) conta solo gli amministratori non bloccati.",
+      "Eliminazione: rotte_account.elimina_account_e_dati, la stessa di POST /api/account/elimina (account.elimina con le cascate, contesto.elimina_cartella, consigliate già mostrate).",
+      "Registro di sicurezza: account_bloccato, account_sbloccato e account_eliminato con nome e da (chi gestisce) o via=comando; accesso_negato_bloccato.",
+      "Comandi: python -m fanta utente-blocca <nome>, utente-sblocca <nome>, utente-elimina <nome>, con la conferma del nome.",
+      "iPhone: nessun cambio (la Gestione dell'iPhone non ha gli strumenti degli account); all'accesso mostra il detail del server."
+    ]
+  },
+  {
+    "versione": "1.582",
+    "data": "2026-11-26T13:11:14",
+    "titolo": "Risultati in diretta più onesti quando la fonte principale non risponde",
+    "voci": [
+      "Widget: quando i risultati in diretta arrivano dalla fonte di riserva, le partite non ancora cominciate non mostrano più «0–0» e il minuto di gioco non resta fermo su quello dell'ultima lettura."
+    ],
+    "tecnico": [
+      "Diretta (live.py): leggi_ripiego dà gol_casa/gol_trasferta null alle partite da giocare, come leggi_espn e come dice il contratto di GET /api/live; _unisci con il ripiego tiene i marcatori già noti ma non ricopia il minuto vecchio.",
+      "Diretta: il ripiego su Fantacalcio.it rispetta il suo interruttore (fonti_attive.richiedi(\"fantacalcio\") in _scarica_http; con la fonte spenta nessun ripiego e si riprova solo ESPN, con le pause che crescono) e passa da rete.scarica con la pausa fra le richieste e un tentativo solo (nuovo argomento tentativi).",
+      "Diretta: un errore del giro del raccoglitore (sorveglia) e una cache su file non salvata (_salva) lasciano una riga nel registro con il tipo d'errore; prima si ignoravano in silenzio.",
+      "Aggiornamento, calendario: una pagina senza squadre ferma il passo con un errore che nomina il calendario e non scrive nulla (_controlla_partite in _salva_partite, anche per le partite delle stagioni passate lette dalle pagine dei voti). Una giornata in cui nessuna partita ha più il giorno o l'ora già salvati (pagina cambiata, o giornata intera rinviata senza data nuova) tiene le sue date e alza DateSparite: il calendario prosegue con le altre giornate e poi il passo non riesce. Una sola partita senza data resta un rinvio.",
+      "Listone: i giocatori senza ruolo P, D, C o A si saltano e si contano nel registro, con la tolleranza dei voti (SCARTI_TOLLERATI, QUOTA_SCARTI); oltre la soglia la lettura si ferma."
+    ]
+  },
+  {
+    "versione": "1.581",
+    "data": "2026-11-26T12:55:58",
+    "titolo": "Avvisi: promemoria all'ora giusta anche all'estero, e un aiuto contro il doppione",
+    "voci": [
+      "App per iPhone: i promemoria suonano un'ora e un quarto d'ora prima della scadenza anche se il telefono è in un altro fuso orario.",
+      "App per iPhone: se anche la web app sulla schermata Home dell'iPhone ha gli avvisi accesi, il promemoria può arrivare due volte. La riga sotto «Avvisi su questo dispositivo» ora lo dice: per riceverlo una volta sola, spegni gli avvisi nell'app o nella web app. L'app manda sempre i suoi promemoria, così non ne perdi uno.",
+      "Guida: la parte sugli avvisi dell'app per iPhone dice che l'app manda solo i promemoria; l'avviso quando cambia la formazione arriva dalla web app."
+    ],
+    "tecnico": [
+      "GET e PUT /api/avvisi: campo nuovo promemoria_da, solo informativo («web» con un'iscrizione alle notifiche della web nata su un iPhone, del servizio di Apple, confermata negli ultimi 3 giorni e senza un invio rifiutato da allora, push.su_iphone_viva; «ntfy» con app_nativa e il canale, solo senza account; altrimenti «app»). L'app per iPhone non lo usa per tacere i promemoria: mandaGiaIlServer resta la regola di prima (ntfy per l'app nativa). Nessun campo tolto; docs/API.md e docs/openapi.json aggiornati.",
+      "POST /api/push/iscrivi: campo facoltativo iphone (la web lo manda vero con «iPhone» nello user agent); l'iscrizione salvata ha iphone (solo se vero) e confermata (data e ora di arrivo). La web rimanda la sua iscrizione alla prima apertura di ogni giorno, se ha il permesso delle notifiche (avvisi-confermati in localStorage). push.invia segna fallita sulle iscrizioni rifiutate con un codice diverso da 404/410 (push.segna_fallite).",
+      "iPhone: AvvisiDispositivoViewModel.aiutoQui sceglie la riga sotto l'interruttore; Notifiche.attivazione programma promemoria e avvisi con UNTimeIntervalNotificationTrigger (secondi da adesso, almeno 1) invece di UNCalendarNotificationTrigger con giorno, ora e minuto senza fuso.",
+      "notifiche._invia_ntfy: se ntfy non prende l'avviso (errore di rete o risposta non ok) una riga «Avvisi: avviso non partito su ntfy (tag, motivo)» nel registro, senza canale, titolo né testo; il giro dei promemoria la scrive in dati/promemoria.log. Nelle ore tranquille invia non arriva a ntfy e non scrive niente.",
+      "Catalogo: chiave nuova imp.avvisi_qui_aiuto_web (italiano e inglese); rigenerati fanta/web/testi.js e ios/Sources/Support/Catalogo/Catalogo+Imp.swift; docs/COERENZA-WEB-IPHONE.md rigenerato."
+    ]
+  },
+  {
     "versione": "1.580",
     "data": "2026-11-26T12:25:24",
     "titolo": "Regole, Giornate e primo avvio: quattro ritocchi dal collaudo",

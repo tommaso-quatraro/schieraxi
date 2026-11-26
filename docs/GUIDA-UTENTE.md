@@ -113,7 +113,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
 Sotto ci sono quanto sono fresche le **probabili formazioni** (se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare), la **Panchina** nell'ordine in cui entra, i **Non schierati** e gli **Infortunati e squalificati** (chiusi: si aprono con un tocco). Negli elenchi, sotto il nome di ogni giocatore c'è la sua partita, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Chi è in dubbio, infortunato o squalificato ha sotto anche la nota che dice perché.
 
-Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono: finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde. Se i dati aggiornati non arrivano (per esempio senza rete) una riga in alto lo dice, con il giorno e l'ora dei dati che vedi e **Riprova**.
+Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono (con la rete lenta al massimo dopo pochi secondi): finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde. Se i dati aggiornati non arrivano (per esempio senza rete) una riga in alto lo dice, con il giorno e l'ora dei dati che vedi e **Riprova**.
 
 Sul tablet e sul PC le colonne sono due: a sinistra il campo con modulo, stato e pulsanti, a destra la panchina e gli altri elenchi.
 
@@ -189,7 +189,7 @@ Gli avvisi dicono le cose a parole e sono nella lingua scelta nell'app: se la me
 
 Attivazione: nella web app, **Impostazioni › Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare.
 
-Nell'app per iPhone e iPad (**Impostazioni › Avvisi**) l'interruttore **Avvisi su questo dispositivo** accende insieme i promemoria di un'ora e un quarto d'ora prima della scadenza e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
+Nell'app per iPhone e iPad (**Impostazioni › Avvisi**) l'interruttore **Avvisi su questo dispositivo** accende i promemoria di un'ora e di un quarto d'ora prima della scadenza. L'avviso quando cambia la formazione da schierare l'app non lo manda: arriva dalla web app installata sulla schermata Home, con i suoi avvisi accesi. L'app manda i suoi promemoria anche se la web app ha gli avvisi accesi: se sulla Home dell'iPhone ci sono tutte e due, il promemoria può arrivare due volte. In quel caso la riga sotto l'interruttore lo dice: per riceverlo una volta sola, spegni gli avvisi nell'app o nella web app.
 
 Se gli avvisi smettono di arrivare: spegni e riaccendi **Avvisi su questo dispositivo**. Dopo **Esci da tutti i dispositivi**, o un cambio della password fatto da un altro dispositivo, rientra: se qui gli avvisi li avevi accesi tu, tornano a funzionare da soli. Se su questo browser entra un altro account, gli avvisi dell'account di prima smettono di arrivare e **Avvisi su questo dispositivo** resta spento finché il nuovo account non lo accende.
 
@@ -268,7 +268,7 @@ Sulla schermata Home, a schermo intero, senza store:
 
 **Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Impostazioni › Regole e scadenza › Modifica i valori e, per una sola giornata, da **Partita rinviata** nella Formazione.
 
-**Più telefoni?** Sì, con lo stesso account. Se un altro telefono ha cambiato i dati, l'app te lo dice e ricarica.
+**Più telefoni?** Sì, con lo stesso account. Se un altro telefono ha cambiato i dati, l'app te lo dice e ricarica. Nel browser, se in un'altra scheda esci o entri con un altro account, la scheda rimasta aperta si ricarica con l'account giusto.
 
 **Dove sono i miei dati?** Sul server di SchieraXI. Privacy e Termini dicono quali vengono tenuti.
 
@@ -281,7 +281,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Server non raggiungibile» | Controlla la connessione, poi tocca **Riprova** (o ricarica la pagina). |
 | «Non riesco a collegarmi: controlla internet e riprova» | Il dispositivo è senza rete: controlla Wi-Fi o dati mobili, poi riprova. |
 | «Il server non risponde: riprova fra poco» | La rete c'è, ma il server è spento o sta ripartendo: riprova dopo qualche minuto. Se dura, avvisa chi gestisce l'app. |
-| «Aggiornamento pronto» in basso, con **Ricarica** | È uscita una versione nuova dell'app: tocca **Ricarica** per usarla. |
+| «Aggiornamento pronto» in basso, con **Ricarica** | È uscita una versione nuova dell'app: tocca **Ricarica** per usarla, oppure finisci quello che stai facendo e la trovi la prossima volta che apri l'app. |
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
 | «Troppi tentativi» | Aspetta il tempo indicato e riprova. |

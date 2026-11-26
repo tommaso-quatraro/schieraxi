@@ -150,7 +150,7 @@ function paFine() {
       const { chiave } = await api("/api/push/chiave");
       const reg = await navigator.serviceWorker.ready;
       const sub = await iscrizioneMia(reg, chiave);   // mai quella di un altro account (#874, app.js)
-      await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) });
+      await api("/api/push/iscrivi", { method: "POST", body: corpoIscrizione(sub) });   // con `iphone` (app.js)
       segnaAvvisiDi();                                   // l'iscrizione è di chi l'ha accesa (#804, app.js)
       avvisi.remove(); $("#pa-msg").innerHTML = `<div class="onb-verde">${t("onb.avvisi_attivi_questo")}</div>`;
     } catch (e) { paErrore(e); }
