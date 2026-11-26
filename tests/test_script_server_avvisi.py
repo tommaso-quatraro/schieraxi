@@ -24,6 +24,10 @@ from test_script_server import BASH, _casa_aggiorna, _lancia, _lancia_backup_dat
 ADESSO = 1_800_000_000          # secondi: l'orologio finto di `date +%s`
 ORA = 3600
 PASSI_FINTI = ("listone", "calendario", "voti", "probabili", "understat")
+# corpo del curl finto: il canale non deve mai stare negli argomenti (si vedono con ps); il JSON arriva dallo standard input
+# (--data-binary @-) e si annota, una riga per avviso
+CURL_ANNOTA = ('case "$*" in *canale-di-prova*) echo "canale negli argomenti di curl" >&2; exit 9;; esac\n'
+               'while [ $# -gt 0 ]; do [ "$1" = "--data-binary" ] && [ "$2" = "@-" ] && { cat; echo; } >> ')
 INTERROTTO = ("Traceback (most recent call last):\nsqlite3.OperationalError: database is locked\n", 1)
 
 
@@ -56,7 +60,7 @@ def casa(tmp_path):
     avvisi, curl_giu = tmp_path / "avvisi.txt", tmp_path / "curl-giu"
     # curl finto: annota il JSON mandato; se c'è il file curl-giu fa come il servizio degli avvisi che non risponde (niente annotato)
     _stub(bin_, "curl", f'[ -e "{_msys(curl_giu)}" ] && exit 7\n'
-                        f'while [ $# -gt 0 ]; do [ "$1" = "-d" ] && printf "%s\\n" "$2" >> "{_msys(avvisi)}"; shift; done\nexit 0')
+                        f'{CURL_ANNOTA}"{_msys(avvisi)}"; shift; done\nexit 0')
     _stub(bin_, "date", f'if [ "${{1:-}}" = "+%s" ]; then cat "{_msys(orologio)}"; exit 0; fi\nexec /usr/bin/date "$@"')
     _scrivi(tmp_path, "canale", "canale-di-prova")
     env = {**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "HOME": _msys(tmp_path / "casa"),
@@ -281,7 +285,7 @@ def test_backup_dati_senza_pacchetto_avvisa_con_il_motivo_breve(tmp_path):
     bin_ = tmp_path / "bin"
     bin_.mkdir()
     avvisi = tmp_path / "avvisi.txt"
-    _stub(bin_, "curl", f'while [ $# -gt 0 ]; do [ "$1" = "-d" ] && printf "%s\\n" "$2" >> "{_msys(avvisi)}"; shift; done\nexit 0')
+    _stub(bin_, "curl", f'{CURL_ANNOTA}"{_msys(avvisi)}"; shift; done\nexit 0')
     _scrivi(tmp_path, "canale", "canale-di-prova")
     r, dest, _ = _lancia_backup_dati(tmp_path, app, canale=tmp_path / "canale")
     assert r.returncode == 1 and not list(dest.glob("dati-*.tar.gz"))
@@ -289,6 +293,37 @@ def test_backup_dati_senza_pacchetto_avvisa_con_il_motivo_breve(tmp_path):
     assert mandato["topic"] == "canale-di-prova"
     assert mandato["message"] == "Copia notturna non riuscita: niente pacchetto stanotte (registro delle giornate). " \
                                  "Dettagli in backup-dati.log."
+
+
+@con_bash
+def test_backup_serale_che_non_riesce_avvisa(tmp_path):
+    """La copia serale (backup-serale.sh, `fanta backup`) che non riesce: oltre alla riga in dati/backup.log, un avviso. Prima
+    falliva in silenzio."""
+    from test_script_server_registri import _casa
+    app, env, _ = _casa(tmp_path, uscita_python=1)
+    avvisi = tmp_path / "avvisi.txt"
+    _stub(tmp_path / "bin", "curl", f'{CURL_ANNOTA}"{_msys(avvisi)}"; shift; done\nexit 0')
+    _scrivi(tmp_path, "canale", "canale-di-prova")
+    env["SCHIERAXI_CANALE"] = _msys(tmp_path / "canale")
+    r = _lancia([BASH, (app / "script" / "server" / "backup-serale.sh").as_posix()], env=env)
+    assert r.returncode == 0, r.stderr
+    assert "uscita del finto python" in (app / "dati" / "backup.log").read_text(encoding="utf-8")
+    [mandato] = [json.loads(riga) for riga in avvisi.read_text(encoding="utf-8").splitlines()]
+    assert mandato["topic"] == "canale-di-prova" and mandato["title"] == "SchieraXI: copia serale"
+    assert "Copia serale non riuscita" in mandato["message"]
+
+
+@con_bash
+def test_backup_serale_riuscito_non_avvisa(tmp_path):
+    from test_script_server_registri import _casa
+    app, env, _ = _casa(tmp_path, uscita_python=0)
+    avvisi = tmp_path / "avvisi.txt"
+    _stub(tmp_path / "bin", "curl", f'{CURL_ANNOTA}"{_msys(avvisi)}"; shift; done\nexit 0')
+    _scrivi(tmp_path, "canale", "canale-di-prova")
+    env["SCHIERAXI_CANALE"] = _msys(tmp_path / "canale")
+    r = _lancia([BASH, (app / "script" / "server" / "backup-serale.sh").as_posix()], env=env)
+    assert r.returncode == 0, r.stderr
+    assert not avvisi.exists()
 
 
 def _nomi_nel_pacchetto(pacchetto):
@@ -311,7 +346,7 @@ def test_backup_dati_se_la_copia_dell_archivio_non_riesce_salva_il_resto_tiene_l
     _stub(bin_, "python-finto", 'case "$*" in "-c "*dati/fanta.sqlite*) echo "disco pieno" >&2; exit 1;; esac\n'
                                 f'exec "{_msys(sys.executable)}" "$@"')
     avvisi = tmp_path / "avvisi.txt"
-    _stub(bin_, "curl", f'while [ $# -gt 0 ]; do [ "$1" = "-d" ] && printf "%s\\n" "$2" >> "{_msys(avvisi)}"; shift; done\nexit 0')
+    _stub(bin_, "curl", f'{CURL_ANNOTA}"{_msys(avvisi)}"; shift; done\nexit 0')
     _scrivi(tmp_path, "canale", "canale-di-prova")
     dest = tmp_path / "copie"
     vecchie = [dest / f"dati-2000-01-{g:02d}.tar.gz" for g in range(1, 16)]       # 15 copie di prima: più delle 14 che si tengono

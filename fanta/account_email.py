@@ -304,6 +304,8 @@ def _recupera_con_email(db, email, codice, nuova, ip, adesso, tieni_push=None) -
     if not _prova_codice(db, riga, codice, adesso, _chi_prova(ip)):
         account._fallimento("recupero", email or "-", ip)
         raise ErroreAccount("Email o codice non validi", 403)
+    if riga_utente["bloccato"]:                      # codice giusto (ora usato) ma account bloccato: password, sessioni e Google restano
+        account.negato_bloccato(riga_utente["nome_utente"], via="recupero_email")
     limite.annulla(db, righe)
     account.valida_password(nuova, riga_utente["nome_utente"])             # (password uguale al nome: caso raro, serve una nuova email)
     nuovo = account.nuovo_codice(20)

@@ -47,9 +47,9 @@ avvisa() {   # testo; esce con 0 solo se l'avviso è partito
   local canale
   canale=$(tr -d ' \r\n' < "${SCHIERAXI_CANALE:-$HOME/.config/schieraxi/canale}" 2>/dev/null)
   [ -n "$canale" ] || return 1
-  curl -fsS -m 20 -H 'Content-Type: application/json' \
-    -d "{\"topic\":\"$canale\",\"title\":\"SchieraXI: copia notturna\",\"message\":\"$1\",\"priority\":4,\"tags\":[\"floppy_disk\"]}" \
-    https://ntfy.sh >/dev/null 2>&1
+  # il corpo (con il nome del canale) passa dallo standard input: non compare tra gli argomenti del comando, visibili a tutti con ps
+  printf '%s' "{\"topic\":\"$canale\",\"title\":\"SchieraXI: copia notturna\",\"message\":\"$1\",\"priority\":4,\"tags\":[\"floppy_disk\"]}" \
+    | curl -fsS -m 20 -H 'Content-Type: application/json' --data-binary @- https://ntfy.sh >/dev/null 2>&1
 }
 
 oggi=$(date +%F)
