@@ -5,9 +5,9 @@ import Testing
 /// I promemoria della scadenza sul telefono con i testi del server (#906, parte B): titolo e testo di `testi_promemoria` di Oggi
 /// così come sono, niente frasi composte nell'app (niente più «modulo consigliato», anche quando il modulo l'ha scelto l'utente);
 /// lista vuota, nessun promemoria; server di prima, o testo di un'ora prima letto troppo presto, il promemoria minimo del catalogo
-/// con l'ora della scadenza (`oggi.prossima_chiude`). Se il server manda già i suoi avvisi proprio a questa app (ntfy per l'app
-/// nativa) l'app non programma i suoi; con le sole notifiche della web sì, perché potrebbero essere sul computer. I promemoria del
-/// certificato rispettano le ore tranquille.
+/// con l'ora della scadenza (`oggi.prossima_chiude`). Se il server manda già i promemoria a questo telefono (`promemoria_da`: ntfy
+/// per l'app nativa o la web app di un iPhone) l'app non programma i suoi; nel dubbio sì. I promemoria del certificato rispettano
+/// le ore tranquille.
 @Suite("Promemoria con i testi del server")
 struct PromemoriaTestiDelServerTests {
     private let nome = NomeGiornata(serieA: 11, lega: 8)
@@ -128,6 +128,28 @@ struct PromemoriaTestiDelServerTests {
     func dalServer(json: String, atteso: Bool) throws {
         let stato: StatoAvvisi = try Decodifica.decodifica(Data(json.utf8), snake: false)
         #expect(stato.mandaGiaIlServer == atteso)
+    }
+
+    /// Promemoria anche dalla web app (26/11/2026): `promemoria_da` serve solo a informare (la riga sotto «Avvisi su questo
+    /// dispositivo»). L'app programma sempre i suoi promemoria, anche con «web»: nessuna regola del server sa con certezza cosa
+    /// mostra questo telefono (web app tolta dalla Home, notifiche spente da iOS, un secondo iPhone sullo stesso account), e un
+    /// promemoria doppio è meglio di uno che non arriva. Un valore sconosciuto, di tipo strano o nullo si legge come nil.
+    @Test("`promemoria_da` si legge ma non spegne i promemoria del telefono",
+          arguments: zip([#""web""#, #""ntfy""#, #""app""#, #""piccione""#, "7", "null"],
+                         [.web, .ntfy, .app, nil, nil, nil] as [StatoAvvisi.PromemoriaDa?]))
+    func promemoriaDa(valore: String, letto: StatoAvvisi.PromemoriaDa?) throws {
+        let testa = #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true}"#
+        let json: String = testa + #", "canale": true, "dispositivi": 1, "promemoria_da": "# + valore + "}"
+        let stato: StatoAvvisi = try Decodifica.decodifica(Data(json.utf8), snake: false)
+        #expect(stato.promemoriaDa == letto)
+        #expect(!stato.mandaGiaIlServer)
+        let m = try memoria()
+        Aggiornamento.ricordaAvvisi(stato, memoria: m)
+        let dalServer: Bool = ArchivioAvvisiDalServer.mandaGia(m)
+        let elenco = try promemoria(testi: testiServer, lettaIl: try data("2026-11-28 13:20"), dalServer: dalServer,
+                                    adesso: try data("2026-11-28 12:00"))
+        let id: [String] = elenco.map(\.id)
+        #expect(id == ["fanta-60", "fanta-15"])
     }
 
     @Test("Ricordare gli avvisi del server dice se per i promemoria è cambiato qualcosa (ore tranquille, avvisi del server all'app)")

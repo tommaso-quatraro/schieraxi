@@ -209,7 +209,9 @@ def _aggiorna_schema(db: sqlite3.Connection) -> bool:
         return False
 
 
-def apri(percorso: Path = FILE) -> sqlite3.Connection:
+def apri(percorso: Path | None = None) -> sqlite3.Connection:
+    """L'archivio in `percorso`, di norma `FILE` (letto a ogni chiamata: le prove lo spostano in una cartella temporanea, #934)."""
+    percorso = FILE if percorso is None else Path(percorso)
     percorso.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(percorso, timeout=30)   # attende se un altro processo (es. l'aggiornamento automatico) sta scrivendo
     db.execute("PRAGMA busy_timeout = 30000")    # esplicito, oltre a timeout=30 sopra

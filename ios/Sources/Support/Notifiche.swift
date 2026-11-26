@@ -3,8 +3,9 @@ import UserNotifications
 /// Promemoria locali di iOS: non servono server né l'account a pagamento di Apple (le notifiche push, invece, sì).
 /// Un'ora e un quarto d'ora prima della scadenza della formazione, solo con «Avvisi su questo dispositivo» acceso (un interruttore
 /// unico come la web, #673 passo 3). Titolo e testo li scrive il server (`testi_promemoria` di Oggi, #906): l'app non compone frasi
-/// sue. Se il server manda già i suoi avvisi proprio a questa app (ntfy per l'app nativa) l'app non programma i suoi; con le sole
-/// notifiche della web sì (potrebbero essere sul computer). Gli avvisi quando cambia la formazione li manda solo il server (#676, #906).
+/// sue. Se il server manda già i suoi avvisi proprio a questa app (ntfy per l'app nativa) l'app non programma i suoi; con le
+/// notifiche della web sì, sempre (potrebbero essere sul computer, o su una web app che non le mostra più: la riga d'aiuto dice
+/// come evitare il doppione). Gli avvisi quando cambia la formazione li manda solo il server (#676, #906).
 /// Si programmano quando l'app legge la giornata, quando l'interruttore si riaccende e quando cambiano le ore tranquille;
 /// spegnendolo si tolgono subito (vedi `TelefonoAvvisi`).
 enum Notifiche {
@@ -42,11 +43,7 @@ enum Notifiche {
         contenuto.title = titolo
         contenuto.body = corpo
         contenuto.sound = .default
-        var trigger: UNNotificationTrigger?
-        if let fine = ore.fine(da: adesso) {
-            let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fine)
-            trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
-        }
+        let trigger: UNNotificationTrigger? = ore.fine(da: adesso).map { attivazione(per: $0, adesso: adesso) }
         do {
             try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
             return true
@@ -159,7 +156,7 @@ enum Notifiche {
         await sostituisci(identificativiPromemoria, con: elenco)
     }
 
-    /// Toglie i promemoria in attesa con gli identificativi `vecchi` e programma quelli dell'elenco, al minuto del loro `quando`.
+    /// Toglie i promemoria in attesa con gli identificativi `vecchi` e programma quelli dell'elenco, al loro `quando`.
     private static func sostituisci(_ vecchi: [String], con elenco: [Promemoria]) async {
         let centro = UNUserNotificationCenter.current()
         centro.removePendingNotificationRequests(withIdentifiers: vecchi)
@@ -168,10 +165,17 @@ enum Notifiche {
             contenuto.title = promemoria.titolo
             contenuto.body = promemoria.testo
             contenuto.sound = .default
-            let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: promemoria.quando)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
+            let trigger = attivazione(per: promemoria.quando)
             try? await centro.add(UNNotificationRequest(identifier: promemoria.id, content: contenuto, trigger: trigger))
         }
+    }
+
+    /// Quando suona una notifica che deve suonare a `quando`: fra tanti secondi da `adesso`, lo stesso istante in ogni fuso. Con
+    /// giorno, ora e minuto senza fuso iOS userebbe l'ora del telefono: con un cambio di fuso fra la programmazione e lo squillo
+    /// (un viaggio all'estero) il promemoria suonerebbe ore prima o dopo la scadenza italiana. Almeno un secondo: un momento appena
+    /// passato suona subito (iOS non accetta un'attesa nulla).
+    static func attivazione(per quando: Date, adesso: Date = Date()) -> UNTimeIntervalNotificationTrigger {
+        UNTimeIntervalNotificationTrigger(timeInterval: max(1, quando.timeIntervalSince(adesso)), repeats: false)
     }
 }
 

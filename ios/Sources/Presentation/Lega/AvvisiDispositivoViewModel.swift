@@ -16,6 +16,9 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     @Published private(set) var appNativa: Bool?
     /// Il server ha spento le ore tranquille (inizio e fine alla stessa ora): si dice finché non si salva di nuovo.
     @Published private(set) var oreTranquilleSpente = false
+    /// Il promemoria arriva anche dalla web app, con gli avvisi accesi su un iPhone (`promemoria_da` «web»): qui si programma lo
+    /// stesso, e la riga sotto «Avvisi su questo dispositivo» dice come evitare il doppione (`aiutoQui`).
+    @Published private(set) var promemoriaDaWeb = false
     /// Cosa è successo all'ultimo tocco sull'interruttore del dispositivo (permesso negato, avvisi spenti).
     @Published private(set) var messaggio: String?
     /// Un salvataggio non riuscito, detto in parole semplici.
@@ -41,6 +44,13 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     nonisolated static func aiutoOreTranquille(_ ore: OreTranquille) -> String {
         let a = String(ore.a), da = String(ore.da)
         return ore.attive ? Catalogo.Imp.oreTranquilleAiuto(a: a, da: da) : Catalogo.Imp.oreTranquilleSpente(a: a, da: da)
+    }
+
+    /// La riga sotto «Avvisi su questo dispositivo»: di solito il promemoria che l'interruttore accende (`imp.avvisi_qui_aiuto_app`);
+    /// se il promemoria arriva anche dalla web app (`promemoriaDaWeb`), che può arrivare due volte e come evitarlo
+    /// (`imp.avvisi_qui_aiuto_web`). Con ntfy per l'app nativa resta quella di sempre.
+    var aiutoQui: String {
+        promemoriaDaWeb ? Catalogo.Imp.avvisiQuiAiutoWeb : Catalogo.Imp.avvisiQuiAiutoApp
     }
 
     /// Legge gli avvisi dal server. Se per i promemoria è cambiato qualcosa (ore tranquille, avvisi del server a questa app), li
@@ -122,12 +132,13 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         if let stato = caricatore.dato, applica(stato) { await telefono.riprogramma() }
     }
 
-    /// Gli avvisi come li ha il server: ore tranquille e app nativa, ricordate anche sul telefono con il fatto che il server manda già
-    /// i suoi avvisi a questa app (per i promemoria locali, `TelefonoAvvisi.ricorda`). Dice se per i promemoria è cambiato qualcosa
-    /// (nella demo mai: niente promemoria).
+    /// Gli avvisi come li ha il server: ore tranquille, app nativa e da dove arrivano già i promemoria, ricordati anche sul telefono
+    /// con il fatto che il server manda già i promemoria a questo telefono (per i promemoria locali, `TelefonoAvvisi.ricorda`). Dice
+    /// se per i promemoria è cambiato qualcosa (nella demo mai: niente promemoria).
     private func applica(_ stato: StatoAvvisi) -> Bool {
         oreTranquille = stato.impostazioni.oreTranquille
         appNativa = stato.impostazioni.app_nativa
+        promemoriaDaWeb = stato.promemoriaDa == .web
         return Demo.attivo ? false : telefono.ricorda(stato)
     }
 }

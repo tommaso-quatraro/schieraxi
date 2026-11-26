@@ -24,7 +24,7 @@ import re
 import threading
 import time
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from .blocco import BloccoFile
@@ -33,6 +33,7 @@ from .percorsi import RADICE, DatabaseAccountNonRisponde, ricontrolla_dopo_la_sc
 FILE_VAPID = RADICE / "dati" / "vapid.json"
 FILE_ISCRIZIONI = RADICE / "dati" / "push.json"
 MASSIMO_DISPOSITIVI = 8
+GIORNI_CONFERMA = 3     # un'iscrizione dell'iPhone tace i promemoria dell'app per iPhone solo se confermata da al massimo tanti giorni
 CONTATTO = "mailto:schieraxi@users.noreply.github.com"      # richiesto dal protocollo (deve essere un mailto:): un recapito di chi manda le notifiche; qui uno neutro
 # Tempo di vita: per quanto il servizio delle notifiche tiene un avviso per un telefono spento o senza rete (#652). Gli avvisi che
 # non parlano della formazione (oggi solo quello di prova) aspettano il telefono qualche ora; quelli sulla formazione (promemoria,
@@ -318,7 +319,10 @@ def _valida(sub: dict) -> dict:
         raise ValueError("Iscrizione non valida") from None
     if not isinstance(k.get("p256dh"), str) or not isinstance(k.get("auth"), str) or len(k["p256dh"]) > 200 or len(k["auth"]) > 100:
         raise ValueError("Iscrizione non valida")
-    return {"endpoint": ep, "keys": {"p256dh": k["p256dh"], "auth": k["auth"]}}
+    valida = {"endpoint": ep, "keys": {"p256dh": k["p256dh"], "auth": k["auth"]}}
+    if sub.get("iphone") is True:          # la web gira su un iPhone (iPad e Mac si presentano come «Macintosh»): su_iphone_viva
+        valida["iphone"] = True
+    return valida
 
 
 _blocco_iscrizioni = threading.Lock()          # leggere-modificare-scrivere una alla volta: due iscrizioni insieme non si perdono
@@ -356,14 +360,17 @@ class NonPiuValida(Exception):
     niente scritto."""
 
 
-def iscrivi(sub: dict, percorso: Path | None = None, ancora_valida=None) -> list[dict]:
-    """Aggiunge l'iscrizione (gli ultimi MASSIMO_DISPOSITIVI restano). `ancora_valida`: se c'è, si richiama dentro il blocco, subito
+def iscrivi(sub: dict, percorso: Path | None = None, ancora_valida=None, adesso: datetime | None = None) -> list[dict]:
+    """Aggiunge l'iscrizione (gli ultimi MASSIMO_DISPOSITIVI restano), con `confermata`: quando è arrivata (`adesso`, di base
+    l'ora vera). La web la rimanda una volta al giorno finché ha il permesso: la data dice che è ancora viva (`su_iphone_viva`).
+    `iphone` resta solo se la web l'ha mandato vero. `ancora_valida`: se c'è, si richiama dentro il blocco, subito
     prima di scrivere; se dice no (per esempio la sessione si è chiusa mentre si controllava il nome) non si scrive niente e
     alza NonPiuValida. Chi toglie le iscrizioni (`tieni_solo`) prende lo stesso blocco: o arriva prima e il controllo dice no,
     o arriva dopo e toglie anche questa. Lo stesso blocco vale tra processi (`_scrittura_iscrizioni`).
     Account eliminato: NonPiuValida prima di prendere il blocco, così il suo file non fa rinascere la cartella; se il database
     degli account non risponde, `percorsi.DatabaseAccountNonRisponde` (riprova). File occupato: Occupato."""
     nuova = _valida(sub)                       # (rete) fuori dal blocco
+    nuova["confermata"] = (adesso or datetime.now()).isoformat(timespec="seconds")
     p = percorso or FILE_ISCRIZIONI
     if not scrittura_permessa(p):
         raise NonPiuValida()
@@ -448,6 +455,36 @@ def maschera(ep: str) -> str:
     return f"{host}#{hashlib.sha256(ep.encode()).hexdigest()[:6]}"
 
 
+def su_apple(ep: str) -> bool:
+    """L'iscrizione è di un dispositivo Apple? Lo dice il servizio di notifica, quello di Apple (`web.push.apple.com`): la web app
+    sulla Home di un iPhone o di un iPad, oppure Safari sul Mac. Chrome, Firefox ed Edge usano i servizi di Google, Mozilla e
+    Microsoft. Serve a `su_iphone_viva`."""
+    from urllib.parse import urlsplit
+    try:
+        host = (urlsplit(ep).hostname or "") if ep.startswith("https://") else ""
+    except ValueError:
+        return False
+    return host.endswith(".push.apple.com")
+
+
+def su_iphone_viva(s: dict, adesso: datetime, giorni: int = GIORNI_CONFERMA) -> bool:
+    """L'iscrizione arriva di sicuro a un iPhone ed è viva? Nata su un iPhone (`iphone`, lo dice la web), del servizio di Apple,
+    confermata negli ultimi `giorni` giorni (`confermata`) e senza un invio rifiutato da allora (`fallita`, `segna_fallite`).
+    Serve a `promemoria_da` di GET /api/avvisi, che è solo un'informazione: con «web» la riga d'aiuto dell'app per iPhone dice che
+    il promemoria arriva anche dalla web app (l'app lo programma lo stesso). Nel dubbio no: un'iscrizione di prima senza i dati,
+    di un iPad o di un Mac, mai confermata, con una data illeggibile o nel futuro. Una web app tolta dalla Home o con le notifiche
+    spente smette di confermare: dopo `giorni` giorni non conta più."""
+    if s.get("iphone") is not True or not su_apple(str(s.get("endpoint") or "")):
+        return False
+    try:
+        confermata = datetime.fromisoformat(str(s.get("confermata")))
+        if "fallita" in s and datetime.fromisoformat(str(s["fallita"])) >= confermata:
+            return False
+        return timedelta(0) <= adesso - confermata <= timedelta(days=giorni)
+    except (ValueError, TypeError):        # TypeError: una data con il fuso, che non si confronta con l'ora del server
+        return False
+
+
 def _annota(testo: str) -> None:
     """Gli errori dell'invio restano in dati/push.log: senza, una notifica che non parte sembrerebbe solo "arrivata da ntfy"."""
     try:
@@ -505,7 +542,7 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
     finally:
         sessione.chiudi()                              # a tempo finito chi e' ancora collegato si ferma: non lo aspetta nessuno
         esecutore.shutdown(wait=False, cancel_futures=True)
-    consegnate, scadute = 0, []
+    consegnate, scadute, rifiutate = 0, [], []
     for s, futuro in zip(lista, futuri):              # registro e iscrizioni si scrivono da qui, uno alla volta
         esito, dettaglio = futuro.result() if futuro.done() and not futuro.cancelled() else ("errore", "TimeoutError")
         if esito == "consegnata":
@@ -516,6 +553,7 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
             _annota(f"Iscrizione ignorata (indirizzo non pubblico o non valido): {maschera(s['endpoint'])}")
         elif esito == "rifiutata":                     # per esempio 403 a tutti dopo un cambio delle chiavi: deve restare traccia
             _annota(f"Rifiutata {dettaglio} ({maschera(s['endpoint'])})")
+            rifiutate.append(s["endpoint"])
         else:
             _annota(f"{dettaglio} ({maschera(s['endpoint'])})")
     for ep in scadute:
@@ -523,4 +561,26 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
             togli(ep, percorso)
         except Occupato:                               # push.json tenuto da un altro processo: si toglie al prossimo invio
             _annota(f"Iscrizione scaduta non tolta (file occupato): {maschera(ep)}")
+    if rifiutate:
+        try:
+            segna_fallite(rifiutate, percorso)
+        except Occupato:                               # resta senza il segno: `promemoria_da` serve solo a informare
+            _annota(f"Rifiuto non segnato (file occupato): {', '.join(maschera(ep) for ep in rifiutate)}")
     return consegnate
+
+
+def segna_fallite(endpoints: list[str], percorso: Path | None = None, adesso: datetime | None = None) -> None:
+    """Segna sulle iscrizioni con questi indirizzi l'ultimo invio rifiutato dal servizio (`fallita`, data e ora): un codice
+    diverso da 404/410, che invece la tolgono. L'iscrizione resta (il rifiuto può passare), ma per `su_iphone_viva` non è più viva
+    finché la web non la conferma di nuovo (l'iscrizione rimandata non ha il segno). Senza la cartella del file non la crea.
+    File occupato oltre ATTESA_BLOCCO secondi: Occupato."""
+    p = percorso or FILE_ISCRIZIONI
+    quando = (adesso or datetime.now()).isoformat(timespec="seconds")
+    with _scrittura_iscrizioni(p, crea_cartella=False) as aperto:
+        if not aperto:
+            return
+        lista = iscrizioni(p)
+        for s in lista:
+            if s["endpoint"] in endpoints:
+                s["fallita"] = quando
+        scrivi_sicuro(p, json.dumps(lista))
