@@ -160,3 +160,22 @@ def test_la_guida_si_apre_da_sola_solo_con_le_squadre_lette_davvero(web, squadre
     web.aspetta()
     assert guida(web).count() == 0, "la guida del primo avvio si è aperta senza aver letto le squadre"
     assert salvati == [], f"salvato lo stato del primo avvio senza aver letto le squadre: {salvati}"
+
+
+def test_con_lo_zoom_al_200_i_menu_dei_tempi_si_leggono_interi(web):
+    """Come in Regole e scadenza (#923): con lo zoom al 200% un <select> tagliava la scelta («10 minuti prima dell…»). Letti i
+    valori della lega, ogni menu li scrive interi nel suo riquadro, su più righe se serve; una scelta a mano li segue."""
+    solo_prima(web)
+    from test_impostazioni import SCELTA_VISTA, ZOOM_200
+    registrate = web.registrata("/api/regole")
+    guida_sui_tempi(web, "subito")
+    web.pagina.set_viewport_size({"width": ZOOM_200, "height": 844})
+    menu_vale(web, scadenza(web), registrate["scadenza_minuti"])
+    menu_vale(web, prima_giornata(web), registrate["prima_giornata_lega"])
+    web.aspetta()
+    for menu in (scadenza(web), prima_giornata(web)):
+        visto = menu.evaluate(SCELTA_VISTA)
+        assert visto["scelta"] and {"testo": visto["scelta"], "intero": True} in visto["visti"], visto
+    scadenza(web).select_option("60")
+    visto = scadenza(web).evaluate(SCELTA_VISTA)
+    assert {"testo": "60 minuti prima della prima partita", "intero": True} in visto["visti"], visto
