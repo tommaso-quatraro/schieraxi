@@ -34,6 +34,8 @@ struct FormazioneDalCatalogoTests {
             Catalogo.Scambi.panchina,
             // il posto di chi entra nelle righe di «Sostituisci» (collaudo del 26/11)
             Catalogo.Mercato.postoTitolare, Catalogo.Mercato.panchinaN(n: segno), Catalogo.Mercato.postoFuori,
+            // la formazione chiusa sopra le righe spente, la frase della web e del 409 (revisione della #946)
+            Catalogo.Err.formazioneChiusa,
             // la scheda del giocatore unica (#616)
             Catalogo.Formazione.partitaCasa(avv: segno, quando: segno), Catalogo.Formazione.partitaFuori(avv: segno, quando: segno),
             Catalogo.Formazione.seGioca, Catalogo.Formazione.percheTitolare, Catalogo.Formazione.incerto(p: segno, riserva: segno),
