@@ -87,3 +87,13 @@ def test_il_cambio_resta_nel_registro_di_sicurezza(monkeypatch, tmp_path):
     assert cliente().put("/api/admin/fonti", json={"fonte": "footballdata", "acceso": False}).status_code == 200
     righe = (tmp_path / registro.FILE_SICUREZZA).read_text(encoding="utf-8")
     assert "fonte-cambiata" in righe and "fonte=footballdata" in righe and "valore=spento" in righe
+
+
+def test_la_riga_delle_foto_c_e_solo_dove_c_e_il_modulo_delle_foto(dati_isolati):
+    """Le foto dei giocatori esistono solo nelle copie private (`fanta/foto.py`): nel repository pubblico la riga «Foto dei
+    giocatori» di «Stato dei dati» aveva un interruttore che non faceva niente. Ora c'è solo se c'è il modulo."""
+    import importlib.util
+    con_le_foto = importlib.util.find_spec("fanta.foto") is not None
+    assert ("foto" in {r["id"] for r in fa.stato()}) == con_le_foto
+    assert ("foto" in {r["id"] for r in cliente().get("/api/stato-dati").json()["fonti"]}) == con_le_foto
+    assert {"fantacalcio", "understat", "footballdata", "espn"} <= {r["id"] for r in fa.stato()}

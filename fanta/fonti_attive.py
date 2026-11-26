@@ -9,6 +9,7 @@ Le fonti spente non vengono mai contattate: l'app lavora coi dati già in archiv
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 from pathlib import Path
 
@@ -34,6 +35,12 @@ FONTI: dict[str, tuple[str, str, bool]] = {
 
 
 _SCELTE = interruttori.FileScelte(FONTI)
+
+
+def disponibile(fonte: str) -> bool:
+    """Le foto dei giocatori esistono solo nelle copie private (modulo `fanta/foto.py`, docs/AVATAR-DIRITTI.md): senza il modulo
+    la loro riga non si mostra in «Stato dei dati», perché il suo interruttore non farebbe niente."""
+    return fonte != "foto" or importlib.util.find_spec(f"{__package__}.foto") is not None
 
 
 def _scelte_admin(percorso: Path | None = None) -> dict[str, bool]:
@@ -91,9 +98,11 @@ def richiedi(fonte: str) -> None:
 
 
 def stato(percorso: Path | None = None) -> list[dict]:
-    """Per «Stato dei dati»: una riga per fonte."""
+    """Per «Stato dei dati»: una riga per fonte (non quella delle foto dove non c'è il loro modulo, vedi `disponibile`)."""
     righe = []
     for k, (nome, serve, _) in FONTI.items():
+        if not disponibile(k):
+            continue
         on, da = origine(k, percorso)
         manca = None if on else cosa_manca(k)
         righe.append({"id": k, "nome": nome, "serve": serve, "acceso": on, "scelta_da": da,
