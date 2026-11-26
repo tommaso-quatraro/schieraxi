@@ -116,5 +116,89 @@ struct RigaStatoGiornateTests {
         await vm.carica()
         #expect(vm.rigaStato?.pezzi == [Catalogo.Testata.offline])
         #expect(vm.pagina != nil, "le giornate si vedono lo stesso")
+        #expect(vm.paginaDaMostrare != nil, "le giornate non aspettano una riga che non arriverà")
+    }
+
+    // MARK: la lista non torna in cima (#913)
+
+    /// Un server con le giornate e `/api/stato`; ognuno dei due, se nella sua scatola c'è un cancello, risponde solo quando il test
+    /// lo apre (il cancello si può mettere anche dopo, per la lettura seguente).
+    private static func serverLento(diario: Scatola<Cancello> = Scatola(), stato: Scatola<Cancello> = Scatola()) -> ServerDiProva {
+        let info = #"{"prossima_giornata": 11, "prossima_giornata_lega": 8, "mia_squadra": "Nuvola Ovest"}"#
+        return ServerDiProva { _, percorso, _ in
+            if percorso == "/api/stato" {
+                await stato.valore?.passa()
+                return Data(info.utf8)
+            }
+            if percorso.hasPrefix("/api/diario") {
+                await diario.valore?.passa()
+                return Data(#"{"giornate": []}"#.utf8)
+            }
+            throw ErroreApi.server("nessuna risposta per \(percorso)")
+        }
+    }
+
+    /// Una scatola con dentro il cancello `c`.
+    private static func con(_ c: Cancello) -> Scatola<Cancello> {
+        let s = Scatola<Cancello>()
+        s.valore = c
+        return s
+    }
+
+    /// Aspetta (al massimo 5 secondi) che una condizione diventi vera.
+    private func aspetta(_ condizione: () -> Bool) async {
+        var tentativi = 0
+        while !condizione() && tentativi < 250 {
+            try? await Task.sleep(for: .milliseconds(20))
+            tentativi += 1
+        }
+    }
+
+    @Test("Le giornate e la riga sotto il titolo si chiedono insieme: /api/stato non aspetta la risposta delle giornate (#913)")
+    func letteInsieme() async {
+        let diario = Cancello()
+        let server = Self.serverLento(diario: Self.con(diario))
+        let vm = GiornateViewModel(server: server)
+        let lettura = Task { await vm.carica() }
+        await diario.richiestaArrivata()
+        await aspetta { server.quante("/api/stato") == 1 }
+        #expect(server.quante("/api/stato") == 1, "/api/stato si chiede mentre le giornate sono ancora in arrivo")
+        #expect(vm.pagina == nil, "le giornate non sono ancora arrivate")
+        await diario.apri()
+        await lettura.value
+        #expect(vm.rigaStato != nil && vm.paginaDaMostrare != nil)
+    }
+
+    @Test("Arrivate le giornate prima della riga, la pagina le mostra solo insieme alla riga: la riga non compare sopra una lista già in vista e non la riporta in cima (#913)")
+    func giornateInsiemeAllaRiga() async {
+        let stato = Cancello()
+        let vm = GiornateViewModel(server: Self.serverLento(stato: Self.con(stato)))
+        let lettura = Task { await vm.carica() }
+        await aspetta { vm.pagina != nil }
+        #expect(vm.pagina != nil, "le giornate sono arrivate")
+        #expect(vm.rigaStato == nil, "la riga no: /api/stato non ha ancora risposto")
+        #expect(vm.paginaDaMostrare == nil, "le giornate aspettano la riga sotto il titolo")
+        await stato.apri()
+        await lettura.value
+        #expect(vm.rigaStato?.testo == "Giornata 8 · 11ª di Serie A · Nuvola Ovest · dati mai aggiornati")
+        #expect(vm.paginaDaMostrare != nil, "arrivata la riga, si vedono anche le giornate")
+    }
+
+    @Test("Riaprendo la pagina con le giornate e la riga già in memoria, le giornate restano a video mentre si rileggono")
+    func riaperturaSenzaAttesa() async {
+        let porta = Scatola<Cancello>()
+        let vm = GiornateViewModel(server: Self.serverLento(stato: porta))
+        await vm.carica()
+        let stato = Cancello()
+        porta.valore = stato                         // la seconda lettura di /api/stato resta ferma
+        let lettura = Task { await vm.carica() }
+        await stato.richiestaArrivata()
+        await aspetta { vm.caricatore.risposte == 2 }
+        #expect(vm.caricatore.risposte == 2, "le giornate sono state rilette")
+        #expect(vm.info.inCorso, "/api/stato è ancora in arrivo")
+        #expect(vm.paginaDaMostrare != nil, "niente scheletro al posto delle giornate già lette")
+        await stato.apri()
+        await lettura.value
+        #expect(vm.paginaDaMostrare != nil)
     }
 }

@@ -112,6 +112,18 @@ struct DemoDiarioTests {
         #expect(voci.contains { $0.fattiEAttesi?.testo != nil }, "la foto deve mostrare la frase in almeno una giornata")
     }
 
+    @Test("«Da dove vengono i punti» della demo dice chi è rimasto senza voto e il fantavoto di chi è entrato, come la tabella (#900)")
+    func spiegazionePuntiComeLaTabella() async throws {
+        let voci = try await diario().giornate ?? []
+        let spiegate = voci.filter { !($0.spiegazionePunti?.righe ?? []).isEmpty }
+        // la foto `giornate-aperta` apre la giornata più recente (sull'iPad la mette a destra): lì ci devono essere le frasi
+        #expect(spiegate.first?.id == voci.first?.id, "la giornata più recente della demo deve avere da dove vengono i punti")
+        for v in spiegate {
+            #expect(v.spiegazionePunti?.righe == Self.frasiEntrati(v),
+                    "giornata \(v.giornata ?? 0): le frasi devono dire i numeri della tabella")
+        }
+    }
+
     @Test("Il Diario della demo scrive i giocatori della rosa per cognome, mai con il nome di battesimo (#819: «Leonel» per Marténi)")
     func giocatoriPerCognome() async throws {
         // i nomi di battesimo dei giocatori della demo con nome e cognome («Leonel» di «Leonel Marténi»)
@@ -145,6 +157,25 @@ struct DemoDiarioTests {
     }
 
     private static func unaCifra(_ x: Double) -> Double { (x * 10).rounded() / 10 }
+
+    /// Le frasi delle riserve entrate come le scrive `spiegazione_punti` di fanta/diario.py (`diario.punti_entrato`), con la panchina
+    /// per ruolo delle regole della demo: per ogni titolare della formazione che conta rimasto senza voto, nell'ordine della
+    /// formazione, la prima riserva del suo ruolo con il voto, dalla panchina mostrata prima della scadenza (`istantanea`). Le
+    /// giornate della demo con le frasi hanno un sostituto per ognuno: chi resta senza non c'è.
+    private static func frasiEntrati(_ v: VoceDiario) -> [String] {
+        var voti: [Int: Double] = [:]
+        for n in v.giocatori ?? [] { if let id = n.id, let fv = n.fv { voti[id] = fv } }
+        let senzaVoto = Set((v.giocatori ?? []).filter { $0.fv == nil }.compactMap(\.id))
+        var usati = Set<Int>()
+        return (v.cheConta.formazione?.titolari ?? []).compactMap { t -> String? in
+            guard let id = t.id, senzaVoto.contains(id) else { return nil }
+            guard let r = (v.istantanea?.panchina ?? []).first(where: { p in
+                p.ruolo == t.ruolo && !usati.contains(p.id ?? -1) && p.id.flatMap { voti[$0] } != nil
+            }), let rid = r.id, let fv = voti[rid] else { return nil }
+            usati.insert(rid)
+            return "\(r.nome ?? "") (\(Formato.punti(fv))) è entrato dalla panchina al posto di \(t.nome ?? "")."
+        }
+    }
 
     /// La frase come la scrive `fatti_e_attesi` di fanta/diario.py: i titolari con almeno un punto in più (o in meno) del loro
     /// fantavoto atteso, al massimo due per parte e dal più lontano; l'atteso è quello mostrato prima della scadenza, se c'è, se no
