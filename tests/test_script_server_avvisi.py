@@ -295,6 +295,37 @@ def test_backup_dati_senza_pacchetto_avvisa_con_il_motivo_breve(tmp_path):
                                  "Dettagli in backup-dati.log."
 
 
+@con_bash
+def test_backup_serale_che_non_riesce_avvisa(tmp_path):
+    """La copia serale (backup-serale.sh, `fanta backup`) che non riesce: oltre alla riga in dati/backup.log, un avviso. Prima
+    falliva in silenzio."""
+    from test_script_server_registri import _casa
+    app, env, _ = _casa(tmp_path, uscita_python=1)
+    avvisi = tmp_path / "avvisi.txt"
+    _stub(tmp_path / "bin", "curl", f'{CURL_ANNOTA}"{_msys(avvisi)}"; shift; done\nexit 0')
+    _scrivi(tmp_path, "canale", "canale-di-prova")
+    env["SCHIERAXI_CANALE"] = _msys(tmp_path / "canale")
+    r = _lancia([BASH, (app / "script" / "server" / "backup-serale.sh").as_posix()], env=env)
+    assert r.returncode == 0, r.stderr
+    assert "uscita del finto python" in (app / "dati" / "backup.log").read_text(encoding="utf-8")
+    [mandato] = [json.loads(riga) for riga in avvisi.read_text(encoding="utf-8").splitlines()]
+    assert mandato["topic"] == "canale-di-prova" and mandato["title"] == "SchieraXI: copia serale"
+    assert "Copia serale non riuscita" in mandato["message"]
+
+
+@con_bash
+def test_backup_serale_riuscito_non_avvisa(tmp_path):
+    from test_script_server_registri import _casa
+    app, env, _ = _casa(tmp_path, uscita_python=0)
+    avvisi = tmp_path / "avvisi.txt"
+    _stub(tmp_path / "bin", "curl", f'{CURL_ANNOTA}"{_msys(avvisi)}"; shift; done\nexit 0')
+    _scrivi(tmp_path, "canale", "canale-di-prova")
+    env["SCHIERAXI_CANALE"] = _msys(tmp_path / "canale")
+    r = _lancia([BASH, (app / "script" / "server" / "backup-serale.sh").as_posix()], env=env)
+    assert r.returncode == 0, r.stderr
+    assert not avvisi.exists()
+
+
 def _nomi_nel_pacchetto(pacchetto):
     with tarfile.open(pacchetto) as t:
         return t.getnames()
