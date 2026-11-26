@@ -126,7 +126,7 @@ Altri due stati della riga sotto il campo:
 
 - il **fantavoto atteso, se gioca**, e accanto **gioca N%** (con lo stato a parole, se c'è, e sotto la nota che lo spiega);
 - **Perché è titolare**, quando la scelta può sembrare strana (vedi sotto);
-- **Perché questo numero**;
+- **Perché questo numero**: i motivi del fantavoto atteso; quanto è probabile che giochi non è fra questi, perché sta già accanto al numero;
 - gli **ultimi voti**: i fantavoti con i bonus e i malus della tua lega;
 - **Sostituisci**, se è un tuo titolare e la formazione è ancora aperta: mostra i compagni dello stesso ruolo con quanti punti attesi guadagna o perde la formazione se entra lui («+0,9», «−0,4»), dal cambio che rende di più. È lo stesso numero di cui cambiano i punti attesi accanto al modulo dopo il cambio: se il titolare rischia di non giocare, entra già uno dalla panchina, e il cambio vale meno della differenza fra i due giocatori. Un tocco fa il cambio e lo salva;
 - **Metti in campo**, se è in panchina o fra i non schierati e la formazione è ancora aperta: è il contrario di **Sostituisci**. Mostra i titolari che possono lasciargli il posto, anche di un altro ruolo se il modulo che ne esce è ammesso dalla tua lega (la riga lo dice: «Si passa al 5-3-2»), con quanti punti attesi guadagna o perde la formazione. Un tocco fa il cambio e lo salva;

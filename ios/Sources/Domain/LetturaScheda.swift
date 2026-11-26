@@ -96,13 +96,12 @@ enum LetturaScheda {
         return testo.isEmpty ? nil : testo
     }
 
-    /// «Perché questo numero» dentro la scheda: niente a partita finita; a partita cominciata senza il motivo «gioca» (non serve
-    /// più). nil con un server che non manda i motivi.
+    /// «Perché questo numero» dentro la scheda: niente a partita finita, e mai il motivo «gioca» (#923, come `htmlScheda` della
+    /// web): prima della partita «gioca N%» sta accanto al numero con la parola dello stato, e la riga «gioca il 62%: dubbio» lo
+    /// diceva una seconda volta; a partita cominciata non serve più. nil con un server che non manda i motivi.
     static func perche(_ g: Giocatore) -> PercheNumero? {
         guard !statiFinita.contains(g.statoPartita ?? ""), g.assente != true else { return nil }
-        var motivi = g.motiviNumero
-        if g.esitoPartita != nil { motivi = motivi?.filter { $0.chiave != "gioca" } }
-        return PercheNumero(motivi: motivi, mediaRuolo: g.mediaRuolo)
+        return PercheNumero(motivi: g.motiviNumero?.filter { $0.chiave != "gioca" }, mediaRuolo: g.mediaRuolo)
     }
 
     // MARK: «Tutti i numeri»

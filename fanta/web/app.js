@@ -1620,7 +1620,8 @@ function graficoVoti(voti, giornate) {
 }
 
 // «Perché questo numero»: i motivi principali del fantavoto atteso, come li manda il server (fanta/perche.py). L'effetto è in fantavoti
-// rispetto a un giocatore medio del suo ruolo; «gioca N%» non ha effetto (il numero è «se gioca») e si vede con un punto esclamativo.
+// rispetto a un giocatore medio del suo ruolo; un motivo senza effetto si vede con un punto esclamativo. Il motivo «gioca N%» la
+// scheda lo toglie (htmlScheda): non cambia il numero, che è «se gioca», e accanto al numero c'è già.
 function bloccoPerche(x) {
   if (!Array.isArray(x.perche_numero)) return "";                  // server più vecchio: niente riquadro
   const medio = x.fv_atteso_medio_ruolo;
@@ -1644,8 +1645,9 @@ function htmlScheda(c, pr, fz) {
   const preso = !!esito && esito.fv != null;
   const q = pr ? giocaLetto(pr) : 0;
   const perche = fz && pr ? fz.perche(Number(c.id)) : "";
-  // a partita cominciata «gioca N%» non serve più: fuori anche dai motivi
-  const prSenzaGioca = pr && esito && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
+  // il motivo «gioca N%» mai fra i motivi del numero (#923): prima della partita «gioca N%» sta accanto al numero, con la parola
+  // dello stato sotto, e la riga lo diceva una seconda volta («gioca il 62%: dubbio»); a partita cominciata non serve più
+  const prSenzaGioca = pr && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
   const nota = pr ? notaStato(pr, stato) : "";
   const partita = pr && pr.avversario ? t(pr.in_casa ? "formazione.partita_casa" : "formazione.partita_fuori", { avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) }) : "";
   const cifre = !pr ? `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`

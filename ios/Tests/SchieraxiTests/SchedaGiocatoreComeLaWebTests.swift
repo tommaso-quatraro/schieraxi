@@ -144,12 +144,17 @@ struct SchedaGiocatoreComeLaWebTests {
         #expect(LetturaScheda.nota(inCorso) == nil)
     }
 
-    @Test("«Perché questo numero» dentro la scheda: a partita cominciata senza «gioca», a partita finita niente")
+    /// #923: il 62% compariva tre volte (accanto al numero, la pillola «In dubbio», la riga «gioca il 62%: dubbio»). Come la web,
+    /// «gioca N%» sta solo accanto al numero: fra i motivi del numero la riga «gioca» non c'è mai (non cambia il fantavoto «se gioca»).
+    @Test("«Perché questo numero» dentro la scheda: mai il motivo «gioca», a partita finita niente")
     func percheNumero() throws {
         let motivi = #", "fv_atteso_medio_ruolo": 6.9, "perche_numero": [{"chiave": "gioca", "testo": "gioca il 62%: dubbio", "effetto": null}, {"chiave": "gol", "testo": "segna più della media del ruolo", "effetto": 0.9}]"#
         let primaDellaPartita = try giocatore(motivi)
         let prima = try #require(LetturaScheda.perche(primaDellaPartita))
-        #expect(prima.righe.map(\.chiave) == ["gioca", "gol"])
+        #expect(prima.righe.map(\.chiave) == ["gol"], "«gioca N%» sta già accanto al numero")
+        let soloGioca = try giocatore(#", "fv_atteso_medio_ruolo": 6.9, "perche_numero": [{"chiave": "gioca", "testo": "gioca il 62%: dubbio", "effetto": null}]"#)
+        let senzaAltri = try #require(LetturaScheda.perche(soloGioca), "con la media del ruolo resta la frase di riferimento")
+        #expect(senzaAltri.righe.isEmpty)
         let durante = try giocatore(motivi + #", "stato_partita": "in_corso""#)
         let inCorso = try #require(LetturaScheda.perche(durante))
         #expect(inCorso.righe.map(\.chiave) == ["gol"])
