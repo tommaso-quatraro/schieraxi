@@ -3157,6 +3157,7 @@ function vistaImportaRose() {
   pagina(`<div class="carta imp-colonna">
       <div class="debole piccolo">${t("lega.esporta_rose_excel")}</div>
       <div class="pulsanti"><button class="bottone" id="scegli-file-rose" type="button">${t("pav.scegli_file")}</button></div>
+      <label class="interruttore"><span>${t("lega.togli_squadre_che")}</span><input type="checkbox" id="sostituisci-tutto"></label>
       <details style="margin-top:14px"><summary style="font-size:var(--t-corpo)">${t("lega.con_tocco_dal")}</summary>
         <div class="debole piccolo">${t("lega.una_volta_sola")}</div>
         <ol class="guida">
@@ -3172,16 +3173,18 @@ function vistaImportaRose() {
       <details style="margin-top:14px"><summary style="font-size:var(--t-corpo)">${t("lega.incolla_testo_delle")}</summary>
         <div class="debole piccolo">${t("lega.non_hai_file")}</div>
         <textarea id="testo-rose" class="campo-testo" style="margin-top:12px" placeholder="${t("lega.incolla_qui_testo")}"></textarea>
-        <label class="interruttore"><span>${t("lega.togli_squadre_che")}</span><input type="checkbox" id="sostituisci-tutto"></label>
         <div class="pulsanti"><button class="bottone" id="importa-testo" type="button">${t("lega.importa_testo")}</button></div>
       </details>
       <input id="file-rose" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" hidden>
       <div id="esito-import"></div></div>`, { titolo: t("lega.voce_importa"), stato: false, indietro: indietroImp() });
+  // dopo «Conferma e salva» l'anteprima (con il pulsante a fuoco) lascia il posto all'esito: il fuoco va sul suo titolo, non si
+  // perde in fondo alla pagina (collaudo del 26/11)
   const mostraEsito = esito => {
     svuotaCache();
-    $("#esito-import").innerHTML = `<h3>${t("lega.cosa_cambiato")}</h3>${htmlDifferenze(esito.differenze)}
+    $("#esito-import").innerHTML = `<h3 id="esito-titolo" class="ar-titolo" tabindex="-1">${t("lega.cosa_cambiato")}</h3>${htmlDifferenze(esito.differenze)}
       <div class="debole piccolo" style="margin-top:10px">${t("lega.importate", { nomi: esito.squadre_importate.map(esc).join(", "), n: tp("lega.n_squadre", esito.totale_squadre) })}</div>
       ${esito.avvisi.length ? `<div class="attenzione" style="margin-top:12px"><b>${t("lega.da_controllare")}</b><br>${testiDi(esito, "avvisi").map(esc).join("<br>")}</div>` : `<div class="debole piccolo">${t("lega.rose_controllate_tutto")}</div>`}`;
+    $("#esito-titolo").focus();
     caricaInfo(); caricaSquadre();
   };
   // in due passi (anteprima.js): prima si controlla cosa ha capito l'app, poi «Conferma e salva»

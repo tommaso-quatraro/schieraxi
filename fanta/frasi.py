@@ -282,6 +282,11 @@ CATALOGO: dict[str, str] = {
     "rose.piu_giocatori_riga": "Riga {riga}: più giocatori sulla stessa riga ({nomi}). Se sono squadre affiancate, lascia una colonna vuota tra una squadra e l'altra.",
     "rose.riga_non_chiara": "Riga {riga}: ignorata ({celle}): non è chiaro se sia un'intestazione o il nome di più squadre.",
     "rose.nome_doppio": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
+    # testo con un nome per riga e squadre forse una sotto l'altra (rose._forse_manca_una_riga_vuota): {nomi} = «Nome», con «e»
+    "rose.forse_manca_riga_vuota.one": "{squadra}: manca una riga vuota fra le squadre? {nomi} non è nel listone: se è il nome di una "
+                                       "squadra, lascia una riga vuota prima e controlla di nuovo.",
+    "rose.forse_manca_riga_vuota.other": "{squadra}: manca una riga vuota fra le squadre? {nomi} non sono nel listone: se uno è il nome "
+                                         "di una squadra, lascia una riga vuota prima e controlla di nuovo.",
     "rose.fogli_non_letti": "Ho letto solo i primi {letti} fogli su {totale}: se negli altri ci sono delle rose, non le ho lette. "
                             "Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
     # una lega già mista (squadre di esempio rimaste insieme a quelle vere, #683): server._rose_di_prima
@@ -290,15 +295,21 @@ CATALOGO: dict[str, str] = {
     # senza il nome di un pulsante: la frase vale per la web e per l'iPhone, che mostrano i valori in modo diverso (#889)
     "regole.panchina_posti_fissi": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole.",
     "regole.panchina_somma_posti": "I posti per ruolo letti nel regolamento sono {n} in tutto e la panchina è la loro somma: controlla a mano i posti di ogni ruolo nei valori delle regole.",
-    "rose.codice_assente": "codice {codice} non presente nel listone",
-    "rose.diversa": "{squadra}: rosa diversa dalle regole ({dettaglio})",
+    "rose.codice_assente": "il codice {codice} non è nel listone",
+    # rosa che non torna con le regole, per l'esito dell'importazione e la rosa di una squadra (come l'anteprima: «Manca 1 portiere»):
+    # {elenco} = un elenco di `rose.<ruolo>` («1 portiere e 4 difensori»), {n} = quanti mancano in tutto
+    "rose.mancano_in_squadra.one": "{squadra}: manca {elenco}.",
+    "rose.mancano_in_squadra.other": "{squadra}: mancano {elenco}.",
+    "rose.in_piu_in_squadra": "{squadra}: {elenco} in più.",
+    "rose.senza_ruolo_in_squadra.one": "{squadra}: {n} giocatore senza ruolo.",
+    "rose.senza_ruolo_in_squadra.other": "{squadra}: {n} giocatori senza ruolo.",
     "rose.doppione": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",
-    "rose.non_riconosciuto": "{squadra}: '{nome}' non riconosciuto con certezza ({motivo})",
-    "rose.motivo_ceduto": "ceduto o nome diverso?",
-    "rose.somiglianza": "{squadra}: '{nome}' riconosciuto per somiglianza ({come}), controlla che sia lui",
-    "rose.come_abbreviato": "abbreviato",
-    "rose.come_simile": "simile",
-    "rose.avviso_giocatore": "{squadra}: {nome}: {avviso}",
+    "rose.non_riconosciuto": "{squadra}: non so chi è «{nome}»: {motivo}.",
+    "rose.motivo_ceduto": "forse è stato ceduto o nel listone ha un altro nome",
+    "rose.somiglianza": "{squadra}: ho riconosciuto {nome} dal nome {come}: controlla che sia lui.",
+    "rose.come_abbreviato": "scritto abbreviato",
+    "rose.come_simile": "scritto in modo simile",
+    "rose.avviso_giocatore": "{squadra}: {nome}: {avviso}.",
     "rose.in_piu_squadre": "{nome} è in più squadre: {squadre}",
     "rose.squadra_avviso": "{squadra}: {avviso}",
     "rose.n_giocatori_su.one": "{n} giocatore su {attesi}",
@@ -315,9 +326,18 @@ CATALOGO: dict[str, str] = {
     "rose.centrocampisti.other": "{n} centrocampisti",
     "rose.attaccanti.one": "{n} attaccante",
     "rose.attaccanti.other": "{n} attaccanti",
-    "rose.potrebbe_essere": "potrebbe essere: {elenco}",
-    "nomi.ruolo_diverso": "ruolo diverso: indicato {indicato}, nel listone {listone}",
-    "nomi.squadra_diversa": "squadra diversa: indicata {indicata}, nel listone {listone}",
+    # un dubbio tra omonimi: {elenco} = `rose.candidato` («Rossi (difensore, Genoa)»), con «e» fra gli ultimi due
+    "rose.potrebbe_essere": "potrebbe essere {elenco}",
+    "rose.scelta_precedente": "scelto da te l'ultima volta",
+    "rose.potrebbe_essere_uno_fra": "potrebbe essere uno fra {elenco}",
+    "rose.candidato": "{nome} ({ruolo}, {squadra})",
+    # {indicato} e {listone} = `nomi.ruolo_*`; {indicata} = la squadra come scritta nel file, {listone} = quella del listone per esteso
+    "nomi.ruolo_diverso": "ruolo diverso: nel file {indicato}, nel listone {listone}",
+    "nomi.squadra_diversa": "squadra diversa: nel file {indicata}, nel listone {listone}",
+    "nomi.ruolo_p": "portiere",
+    "nomi.ruolo_d": "difensore",
+    "nomi.ruolo_c": "centrocampista",
+    "nomi.ruolo_a": "attaccante",
     # Diario, «Quanto ci abbiamo preso»: la riga su tutta la Serie A dal registro delle giornate (precisione.serie_a, #374)
     "diario.serie_a": "Su tutta la Serie A, nelle ultime {n} giornate: {fv}; {gioca}.",
     "diario.serie_a_solo": "Su tutta la Serie A, nelle ultime {n} giornate: {parte}.",
@@ -571,6 +591,21 @@ def giorno_mese(d) -> Frase:
     (docs/COERENZA-WEB-IPHONE.md, «Date e ore»; mai «18/11»). Sempre con il mese e senza «oggi» o «domani»: la frase può restare in
     memoria e non deve invecchiare."""
     return F("data.giorno_mese", giorno=F("giorno." + _GIORNI[d.weekday()]), n=d.day, mese=F("mese." + _MESI[d.month - 1]))
+
+
+_RUOLO_PER_ESTESO = {"P": "nomi.ruolo_p", "D": "nomi.ruolo_d", "C": "nomi.ruolo_c", "A": "nomi.ruolo_a"}
+
+
+def nome_ruolo(ruolo: str | None):
+    """Il ruolo per esteso («portiere», «difensore»…), mai la lettera; un ruolo che non è P, D, C o A resta com'è."""
+    return F(_RUOLO_PER_ESTESO[ruolo]) if ruolo in _RUOLO_PER_ESTESO else (ruolo or "")
+
+
+def nome_club(sigla: str | None, slug: str | None = None) -> str:
+    """La squadra di Serie A per esteso, dal suo nome nell'indirizzo del listone («inter» → «Inter», «hellas-verona» →
+    «Hellas Verona»); senza, la sigla com'è."""
+    parole = str(slug or "").replace("-", " ").split()
+    return " ".join(p.capitalize() for p in parole) if parole else (sigla or "")
 
 
 def elenco(parti: list, sep: str = ", ", con_e: bool = False):

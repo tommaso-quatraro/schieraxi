@@ -7,6 +7,8 @@ dice esattamente cosa verrà salvato. Per ogni giocatore uno `stato`:
 - `da_controllare`: trovato solo per somiglianza o abbreviazione, ambiguo tra più giocatori, o con ruolo/squadra diversi;
 - `non_trovato`: nessun giocatore del listone (ceduto, nome scritto male, codice sconosciuto); se qualcuno gli somiglia,
   fino a 3 suggerimenti in `alternative` (nessuno scelto in partenza).
+Un dubbio che l'utente aveva già sciolto per lo stesso nome scritto, nella stessa squadra, torna con la sua scelta di prima
+proposta per prima (`metodo` «precedente», `riusa_scelte`): resta `da_controllare`, così si può ancora cambiare.
 
 Le `correzioni` (scelte dell'utente sui dubbi) valgono sia qui sia nell'importazione: `applica_correzioni`.
 Funzioni pure: nessun file scritto, niente log del testo (contiene nomi di persone della lega).
@@ -18,12 +20,13 @@ from collections import Counter
 from . import frasi, lega, movimenti
 from .frasi import F
 from .listone import Calciatore
-from .nomi import Esito
+from .nomi import Esito, normalizza
 from .regole import RUOLI, Regole
 from .rose import SquadraLetta
 
 SICURO, DA_CONTROLLARE, NON_TROVATO = "sicuro", "da_controllare", "non_trovato"
 MANUALE = "manuale"                     # come in /api/rose/correggi: scelto dall'utente
+PRECEDENTE = "precedente"               # scelto dall'utente l'ultima volta per lo stesso nome: proposto, da confermare
 
 NOMI_RUOLO = {"P": ("portiere", "portieri"), "D": ("difensore", "difensori"),
               "C": ("centrocampista", "centrocampisti"), "A": ("attaccante", "attaccanti")}
@@ -137,6 +140,37 @@ def applica_correzioni(lette: list[SquadraLetta], correzioni: list[dict] | None,
             r.esito, r.ruolo, r.squadra = Esito(c, MANUALE), c.ruolo, c.squadra
             tenute.append(r)
         s.righe = tenute
+
+
+def riusa_scelte(lette: list[SquadraLetta], prima: lega.Rose | None, calciatori: list[Calciatore]) -> None:
+    """Le scelte già salvate tornano proposte (collaudo del 26/11): ricaricando lo stesso file, un dubbio che nella rosa salvata
+    della stessa squadra era stato scelto a mano (nell'anteprima o in «Giocatori da sistemare») per lo stesso nome scritto
+    torna con quel giocatore proposto per primo e già scelto, senza movimenti finti in «Cosa cambia». Resta da controllare
+    (metodo PRECEDENTE, revisione della #939): una scelta sbagliata si cambia nel menu, con gli altri candidati sotto. Con lo
+    stesso nome scritto più volte, le scelte si usano nell'ordine. Non vale se il giocatore non è più nel listone o se il file
+    gli dà un altro ruolo (la squadra di Serie A diversa no: l'utente l'aveva scelto lo stesso). Da chiamare dopo
+    `lega.nomi_rinominati`, prima delle scelte di questa volta (`applica_correzioni`), che vincono."""
+    if not prima:
+        return
+    per_id = {c.id: c for c in calciatori}
+    salvate = {s.nome: s for s in prima.squadre}
+    for s in lette:
+        vecchia = salvate.get(s.nome)
+        if vecchia is None:
+            continue
+        scelte: dict[str, list[Calciatore]] = {}
+        for g in vecchia.giocatori:
+            if g.riconosciuto in (MANUALE, PRECEDENTE) and g.id in per_id:
+                scelte.setdefault(normalizza(g.testo or g.nome), []).append(per_id[g.id])
+        for r in s.righe:
+            coda = scelte.get(normalizza(r.testo))
+            if not coda or stato(r.esito) == SICURO:
+                continue
+            c = coda.pop(0)
+            if r.ruolo and r.ruolo != c.ruolo:                  # nel file è un altro ruolo: forse un altro giocatore
+                continue
+            altri = [a for a in r.esito.alternative if a.id != c.id]
+            r.esito = Esito(c, PRECEDENTE, altri, avviso=F("rose.scelta_precedente"))
 
 
 def scegli_mia(rose: lega.Rose, nome: str | None) -> None:
