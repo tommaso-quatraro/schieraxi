@@ -1,0 +1,12 @@
+{
+  "titolo": "Server: copie di sicurezza più affidabili e avvisi in più",
+  "voci": [
+    "Nessun cambiamento visibile nell'app: le copie di sicurezza del server non restano più a metà e chi gestisce il server viene avvisato se la copia notturna non riesce."
+  ],
+  "tecnico": [
+    "account._copia_prima_di_migrare: la copia va in un temporaneo (tempfile.mkstemp, 600) nella stessa cartella e si rinomina con os.replace solo se db.backup riesce; se fallisce il temporaneo si toglie. Una copia già presente vuota o che non passa PRAGMA integrity_check si rifà.",
+    "backup-serale.sh: se `fanta backup` fallisce manda un avviso ntfy; controllo-salute.sh avvisa se ultimo-backup-dati (scritto da backup-dati.sh) è più vecchio di 36 ore o manca.",
+    "aggiorna.sh e backup-dati.sh: il corpo dell'avviso ntfy (con il canale) passa a curl dallo standard input (--data-binary @-), non più negli argomenti visibili con ps.",
+    "verifica-firme.sh: portachiavi temporaneo diverso per ogni processo (mktemp -d .git/verifica-firme.XXXXXX) tolto alla fine anche con un trap: un --prova lanciato insieme all'aggiornamento non cancella più il portachiavi dell'altro."
+  ]
+}

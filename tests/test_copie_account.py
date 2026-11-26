@@ -214,3 +214,65 @@ def test_permessi_non_ristretti_il_giro_serale_esce_con_errore_e_dice_quale_copi
     messaggio = str(uscita.value.code)
     assert messaggio.startswith("Errore:") and "account-prima-della-migrazione-5.sqlite" in messaggio
     assert "account-2026-11-10.sqlite" not in messaggio                          # le altre si sono strette
+
+
+# ---------------------------------------------------------------- copia interrotta (26/11)
+class _CopiaCheSiFerma:
+    """Un database che a metà della copia di sicurezza si ferma come con il disco pieno: scrive qualcosa, poi errore."""
+    def backup(self, copia):
+        copia.execute("CREATE TABLE a_meta (x)")
+        copia.commit()
+        raise sqlite3.OperationalError("database or disk is full")
+
+
+def test_copia_di_migrazione_interrotta_non_resta_e_al_giro_dopo_si_rifa(tmp_path):
+    """Se la copia prima della migrazione si interrompe non resta un file vuoto o a metà con il nome giusto (che il giro dopo
+    prenderebbe per buono, saltando la copia): l'errore esce, la cartella resta vuota e la volta dopo la copia si fa intera."""
+    origine = tmp_path / "account.sqlite"
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('anna')")
+        db.commit()
+    with pytest.raises(sqlite3.OperationalError):
+        account._copia_prima_di_migrare(_CopiaCheSiFerma(), origine, 5)
+    cartella = tmp_path / "backup"
+    assert list(cartella.iterdir()) == []                            # né la copia a metà né file temporanei
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        account._copia_prima_di_migrare(db, origine, 5)
+    assert _nomi(cartella / "account-prima-della-migrazione-5.sqlite") == ["anna"]
+    assert [p.name for p in cartella.iterdir()] == ["account-prima-della-migrazione-5.sqlite"]
+
+
+@pytest.mark.parametrize("contenuto", [b"", b"non sono un database, solo un pezzo di file"])
+def test_copia_di_migrazione_vuota_o_rovinata_gia_presente_si_rifa(tmp_path, contenuto):
+    """Una copia lasciata vuota o a metà da una versione di prima non conta come fatta: la si rifà intera."""
+    origine = tmp_path / "account.sqlite"
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('anna')")
+        db.commit()
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    (cartella / "account-prima-della-migrazione-5.sqlite").write_bytes(contenuto)
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        account._copia_prima_di_migrare(db, origine, 5)
+    assert _nomi(cartella / "account-prima-della-migrazione-5.sqlite") == ["anna"]
+    assert [p.name for p in cartella.iterdir()] == ["account-prima-della-migrazione-5.sqlite"]
+
+
+def test_copia_di_migrazione_buona_gia_presente_non_si_tocca(tmp_path):
+    origine = tmp_path / "account.sqlite"
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('nuovo')")
+        db.commit()
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    gia = cartella / "account-prima-della-migrazione-5.sqlite"
+    with contextlib.closing(sqlite3.connect(gia)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('vecchio')")
+        db.commit()
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        account._copia_prima_di_migrare(db, origine, 5)
+    assert _nomi(gia) == ["vecchio"]
