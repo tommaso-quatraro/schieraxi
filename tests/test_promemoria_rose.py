@@ -25,7 +25,8 @@ INVERNO = [(g, D(2027, 1, 9, 15) + timedelta(weeks=g - 19)) for g in range(19, 2
 # inizio della stagione inventato, una giornata a settimana dal 22/8 al 26/9 e nessuna sosta
 ESTATE = [(g, D(2026, 8, 22, 18) + timedelta(weeks=g - 1)) for g in range(1, 7)]               # la 4 è sabato 12/9
 # la frase senza la giornata (#923): la giornata sta già nella testata della Formazione, e con lei la frase andava a capo su cinque
-# righe sull'iPhone. Il parametro `giornata` resta nella frase con chiave, per le app già installate (il loro testo lo usa)
+# righe sull'iPhone. Il parametro `giornata` resta nella frase con chiave per le pagine web in inglese rimaste in memoria (il loro
+# testi.js traduce ancora con «{giornata}»); l'iPhone mostra il testo già scritto dal server
 FRASE = "È il momento di aste e scambi: se le rose sono cambiate, aggiornale."
 
 

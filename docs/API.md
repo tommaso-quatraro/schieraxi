@@ -969,7 +969,8 @@ Quando compaiono (al massimo 8 voci in tutto; la card di Oggi ne mostra 4):
   copre anche un'asta che cade alla fine del periodo. Testo: «È il momento di aste e scambi: se le rose sono
   cambiate, aggiornale.» (chiave `dafare.rose_mercato`). Dalla #923 il testo non dice la giornata, che sta già nella testata della
   Formazione; il parametro `giornata` (la frase della giornata con i due numeri, `giornata.lega`, come `dafare.diario`; fino alla
-  #306 era `n` = giornata della lega) resta, per le app già installate che lo usano ancora nel loro testo. Campi,
+  #306 era `n` = giornata della lega) resta per le pagine web in inglese rimaste in memoria, il cui `testi.js` traduce ancora
+  con «{giornata}»; l'iPhone mostra `testo`, già scritto dal server. Campi,
   `id` (`rose-vecchie`), azione e destinazione non cambiano; `giorni` = giorni dall'ultimo aggiornamento delle rose. Prima compariva
   dopo ogni giornata giocata con le rose ferme da 4 giorni (chiave `dafare.rose_vecchie`, che il server non scrive più).
 - `svincolato` e `scambio` (3): solo se già in cache e solo se superano il buon senso (`fanta/buon_senso.py`): guadagno di almeno 2-3 punti (secondo il ruolo) sulle prossime 5 giornate e positivo nella maggior parte di esse, chi entra gioca davvero (titolare fisso, non in dubbio), chi esce non è un titolare utile né costoso, crediti sufficienti, nessun giocatore preso o lasciato libero negli ultimi 21 giorni. Campo in più facoltativo `motivo` (una frase: perché conviene), anche dentro il `testo`. Mai calcolati qui. `svincolato` c'è solo se «Cambi consigliati» (`mercato`) è accesa per l'utente (dal 20/11/2026, #797), `scambio` solo se «Scambi: trova per me» (`scambi_trova`) è accesa per l'utente (dal 20/11/2026, #803). Dubbi, coperture, svincolati e scambi insieme sono al massimo 3 consigli, e nessun giocatore compare in due consigli. Se non c'è niente di utile `da_fare` può essere vuota (i client scrivono «Nessuna azione utile oggi»).

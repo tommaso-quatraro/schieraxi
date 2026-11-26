@@ -93,7 +93,8 @@ CATALOGO: dict[str, str] = {
     "dafare.copertura_altri": "{nomi} e altri {n}",
     # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
     "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
-    # senza la giornata (#923), che sta già nella testata della Formazione; il parametro `giornata` resta per le app già installate
+    # senza la giornata (#923), che sta già nella testata della Formazione. Il parametro `giornata` resta per le pagine web in
+    # inglese rimaste in memoria: il loro testi.js traduce ancora con «{giornata}». L'iPhone mostra il testo già scritto qui
     "dafare.rose_mercato": "È il momento di aste e scambi: se le rose sono cambiate, aggiornale.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
