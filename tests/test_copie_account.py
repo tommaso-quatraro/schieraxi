@@ -214,3 +214,133 @@ def test_permessi_non_ristretti_il_giro_serale_esce_con_errore_e_dice_quale_copi
     messaggio = str(uscita.value.code)
     assert messaggio.startswith("Errore:") and "account-prima-della-migrazione-5.sqlite" in messaggio
     assert "account-2026-11-10.sqlite" not in messaggio                          # le altre si sono strette
+
+
+# ---------------------------------------------------------------- copia interrotta (26/11)
+class _CopiaCheSiFerma:
+    """Un database che a metà della copia di sicurezza si ferma come con il disco pieno: scrive qualcosa, poi errore."""
+    def backup(self, copia):
+        copia.execute("CREATE TABLE a_meta (x)")
+        copia.commit()
+        raise sqlite3.OperationalError("database or disk is full")
+
+
+def test_copia_di_migrazione_interrotta_non_resta_e_al_giro_dopo_si_rifa(tmp_path):
+    """Se la copia prima della migrazione si interrompe non resta un file vuoto o a metà con il nome giusto (che il giro dopo
+    prenderebbe per buono, saltando la copia): l'errore esce, la cartella resta vuota e la volta dopo la copia si fa intera."""
+    origine = tmp_path / "account.sqlite"
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('anna')")
+        db.commit()
+    with pytest.raises(sqlite3.OperationalError):
+        account._copia_prima_di_migrare(_CopiaCheSiFerma(), origine, 5)
+    cartella = tmp_path / "backup"
+    assert list(cartella.iterdir()) == []                            # né la copia a metà né file temporanei
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        account._copia_prima_di_migrare(db, origine, 5)
+    assert _nomi(cartella / "account-prima-della-migrazione-5.sqlite") == ["anna"]
+    assert [p.name for p in cartella.iterdir()] == ["account-prima-della-migrazione-5.sqlite"]
+
+
+@pytest.mark.parametrize("contenuto", [b"", b"non sono un database, solo un pezzo di file"])
+def test_copia_di_migrazione_vuota_o_rovinata_gia_presente_si_rifa(tmp_path, contenuto):
+    """Una copia lasciata vuota o a metà da una versione di prima non conta come fatta: la si rifà intera."""
+    origine = tmp_path / "account.sqlite"
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('anna')")
+        db.commit()
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    (cartella / "account-prima-della-migrazione-5.sqlite").write_bytes(contenuto)
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        account._copia_prima_di_migrare(db, origine, 5)
+    assert _nomi(cartella / "account-prima-della-migrazione-5.sqlite") == ["anna"]
+    assert [p.name for p in cartella.iterdir()] == ["account-prima-della-migrazione-5.sqlite"]
+
+
+def test_copia_di_migrazione_buona_gia_presente_non_si_tocca(tmp_path):
+    origine = tmp_path / "account.sqlite"
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('nuovo')")
+        db.commit()
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    gia = cartella / "account-prima-della-migrazione-5.sqlite"
+    with contextlib.closing(sqlite3.connect(gia)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('vecchio')")
+        db.commit()
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        account._copia_prima_di_migrare(db, origine, 5)
+    assert _nomi(gia) == ["vecchio"]
+
+
+def _giornale_caldo(tmp_path) -> bytes:
+    """Il giornale (-journal) di una copia di prima rimasta a metà: nato su un file vuoto, chi lo trova accanto alla copia lo
+    «riapplica» e la riporta a 0 byte."""
+    vuoto = tmp_path / "giornale" / "vuoto.sqlite"
+    vuoto.parent.mkdir()
+    db = sqlite3.connect(vuoto, isolation_level=None)
+    try:
+        db.execute("PRAGMA journal_mode = DELETE")
+        db.execute("BEGIN IMMEDIATE")
+        db.execute("CREATE TABLE x (a)")
+        db.execute("INSERT INTO x VALUES (randomblob(100000))")
+        return Path(f"{vuoto}-journal").read_bytes()
+    finally:
+        db.close()
+
+
+def test_giornale_rimasto_accanto_alla_copia_non_la_svuota(tmp_path):
+    """Revisione della #951: un -journal (o -wal, -shm) rimasto accanto a una copia rovinata di prima, dopo la nuova copia la
+    svuotava (da 765952 byte a 0) alla prima apertura. Ora si tolgono prima di dare il nome alla copia."""
+    origine = tmp_path / "account.sqlite"
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('anna')")
+        db.commit()
+    giornale = _giornale_caldo(tmp_path)
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    copia = cartella / "account-prima-della-migrazione-5.sqlite"
+    copia.write_bytes(b"")
+    Path(f"{copia}-journal").write_bytes(giornale)
+    Path(f"{copia}-wal").write_bytes(b"wal di prima")
+    Path(f"{copia}-shm").write_bytes(b"shm di prima")
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        account._copia_prima_di_migrare(db, origine, 5)
+    assert _nomi(copia) == ["anna"] and copia.stat().st_size > 0
+    assert [p.name for p in cartella.iterdir()] == [copia.name]
+
+
+def test_copia_di_migrazione_di_un_database_wal_esce_dal_modo_wal(tmp_path):
+    """Il database degli account è in WAL: la copia ne esce (un file solo, come backup-dati.sh), così accanto alle copie non
+    restano -wal e -shm quando qualcuno le apre."""
+    origine = tmp_path / "account.sqlite"
+    with contextlib.closing(sqlite3.connect(origine)) as db:
+        db.execute("PRAGMA journal_mode = WAL")
+        db.execute("CREATE TABLE utenti (nome_utente)")
+        db.execute("INSERT INTO utenti VALUES ('anna')")
+        db.commit()
+        account._copia_prima_di_migrare(db, origine, 5)
+    copia = tmp_path / "backup" / "account-prima-della-migrazione-5.sqlite"
+    assert copia.read_bytes()[18:20] == b"\x01\x01"                  # intestazione: modo giornale classico, non WAL (2, 2)
+    assert _nomi(copia) == ["anna"]
+    assert [p.name for p in copia.parent.iterdir()] == [copia.name]
+
+
+def test_il_giro_serale_toglie_i_temporanei_rimasti_delle_copie_di_migrazione(tmp_path):
+    """Un temporaneo di una copia di migrazione interrotta di colpo (processo ucciso, corrente) resta nella cartella: il giro
+    serale lo toglie quando ha più di un giorno; uno recente può essere di una copia in corso e resta."""
+    cartella = tmp_path / "backup"
+    cartella.mkdir()
+    vecchio = cartella / ".account-prima-della-migrazione-5.sqlite.ab12cd.tmp"
+    recente = cartella / ".account-prima-della-migrazione-6.sqlite.ef34gh.tmp"
+    for p, quando in ((vecchio, ADESSO - timedelta(days=2)), (recente, ADESSO - timedelta(minutes=5))):
+        p.write_bytes(b"a meta")
+        _data(p, quando)
+    backup.copia_account(cartella, _origine(tmp_path), adesso=ADESSO)
+    assert not vecchio.exists() and recente.exists()

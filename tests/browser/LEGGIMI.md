@@ -264,7 +264,27 @@ scadenza:
 - con il proxy che risponde 502 (il servizio dietro riparte) si apre l'app salvata, non la pagina d'errore del proxy; con gli
   account (come in produzione) anche «chi sono» riceve 502: la Formazione mostra la copia salvata dell'account e, tornato il
   server, Impostazioni ha «Il tuo account» e non «Gestione»;
-- senza rete Privacy, mai aperta prima, dice «Nessuna connessione» e non apre un'altra copia dell'app; l'app si apre dalla copia.
+- senza rete Privacy, mai aperta prima, dice «Nessuna connessione» e non apre un'altra copia dell'app; l'app si apre dalla copia;
+- tornata in primo piano dopo ore (l'orologio avanti di quattro, la pagina nascosta e poi visibile), l'app chiede al browser di
+  cercare la versione nuova, una volta sola anche se torna in primo piano di nuovo subito: la pagina aperta resta quella, con
+  «Ricarica», e la scheda aperta dopo è della versione nuova (collaudo del 26/11).
+
+`test_copie_e_rete.py`, le copie dei dati nel browser con la rete lenta o assente e con più schede aperte (collaudo del 26/11).
+Gira solo prima della scadenza. Le `/api/` le governa il test (`Rete`: trattenute, senza rete, o con un errore):
+- una lettura della formazione salvata non riuscita (503) non prende il posto della copia buona: riaperta senza rete, la
+  Formazione mostra gli 11 salvati, non i consigliati;
+- con tutte le `/api/` ferme (anche «chi sono») la Formazione salvata compare entro 7 secondi con il modulo spento; arrivati i
+  dati (uguali alla copia) il modulo si accende e il campo non si ridisegna;
+- prima apertura con volti e funzioni che non arrivano: la Formazione si disegna lo stesso; arrivati i tratti, il volto cambia al
+  suo posto senza ridisegnare il campo;
+- con gli account, «chi sono» lento: dopo circa 4 secondi la Formazione salvata dell'account; la risposta arrivata dopo che dice
+  «sessione finita» apre la schermata di accesso con «Continua con Google» e la registrazione che il server ha detto; quella con
+  un altro account fa ricaricare la pagina, che riparte con lui;
+- con stato e squadre lenti, Impostazioni aperta dalla barra prima che arrivino mostra «La mia squadra» e «Le altre squadre»
+  quando arrivano;
+- la prima scheda di un giocatore, con una copia vecchia del calendario e il calendario che arriva tardi, mostra prima le partite
+  della copia e poi, arrivato il calendario, quelle nuove; se il calendario non arriva, quelle della copia;
+- un'altra scheda dello stesso sito che esce, o entra con un altro account, fa ricaricare questa; lo stesso account riscritto no.
 
 `test_copia_e_lingua.py`, la copia dei dati tenuta nel browser e la lingua (#854). Gira solo prima della scadenza. Le `/api/`
 rispondono come il server vero, con le etichette nella lingua di `Accept-Language` (`traduci_dati` di `fanta/etichette.py`: il

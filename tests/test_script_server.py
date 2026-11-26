@@ -15,6 +15,7 @@ import sys
 import tarfile
 import tempfile
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -766,6 +767,25 @@ def test_prova_dice_se_le_firme_sono_a_posto_e_non_scrive(server):
     assert _istantanea(s.stato) == prima and s.riavvii() == 0
 
 
+@con_bash
+def test_prova_non_tocca_il_portachiavi_di_un_altro_giro(server):
+    """--prova lanciato mentre gira l'aggiornamento (26/11): prima il portachiavi aveva un nome fisso e chi partiva per secondo
+    cancellava quello dell'altro, che poteva rifiutare una versione buona. Ora ognuno ha il suo e toglie solo quello."""
+    s = server
+    _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    assert s.esegui("aggiorna-app.sh").returncode == 0                       # il clone c'e'
+    _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V3"})
+    git = s.casa / "schieraxi-src" / ".git"
+    altri = [git / "verifica-firme", git / "verifica-firme.ALTRO1"]           # nome di prima e nome nuovo, di un altro processo
+    for d in altri:
+        d.mkdir()
+        (d / "pubring.kbx").write_text("dell'altro giro", encoding="utf-8")
+    r = s.esegui("aggiorna-app.sh", "--prova")
+    assert r.returncode == 0 and "firme a posto" in r.stdout, r.stdout + r.stderr
+    assert all((d / "pubring.kbx").exists() for d in altri)
+    assert sorted(git.glob("verifica-firme*")) == sorted(altri)              # il suo portachiavi l'ha tolto
+
+
 def _venv(s, nome=".venv"):
     p = s.app / nome / "QUALE"
     return p.read_text(encoding="utf-8") if p.exists() else ("nuova" if (s.app / nome / "bin" / "python").exists() else None)
@@ -1444,14 +1464,14 @@ class _Finto:
         self.server.server_close()
 
 
-def _controllo(tmp_path, rotte, invio=False):
+def _controllo(tmp_path, rotte, invio=False, ambiente=None):
     f = _Finto(rotte)
     try:
         casa = tmp_path / "casa-c"
         (casa / ".config" / "schieraxi").mkdir(parents=True, exist_ok=True)
         (casa / ".config" / "schieraxi" / "canale").write_text("canale-segreto-xyz", encoding="utf-8")
         env = {**os.environ, "HOME": _msys(casa), "CONTROLLO_URL": f.url, "CONTROLLO_DIR": _msys(tmp_path / "stato-c"),
-               "CONTROLLO_SENZA_CERTIFICATO": "1", "CONTROLLO_PAUSA": "0"}
+               "CONTROLLO_SENZA_CERTIFICATO": "1", "CONTROLLO_PAUSA": "0", **(ambiente or {})}
         if sys.platform == "win32":          # su Windows `python3` non c'e': si usa il Python delle prove
             (tmp_path / "bin3").mkdir(exist_ok=True)
             _stub(tmp_path / "bin3", "python3", f'exec "{_msys(sys.executable)}" "$@"')
@@ -1526,6 +1546,32 @@ def test_il_canale_ntfy_viaggia_nel_corpo_e_non_negli_argomenti(tmp_path):
     assert f.posts and "canale-segreto-xyz" in f.posts[0][1] and f.posts[0][0] == "/ntfy"
     t = (SCRIPT / "controllo-salute.sh").read_text(encoding="utf-8")
     assert "--data-binary @-" in t and '-d "$json"' not in t
+
+
+def _controllo_con_copia(tmp_path, ore_fa):
+    """Il controllo di salute con ultimo-backup-dati scritto `ore_fa` ore fa (None: il file non c'e')."""
+    segno = tmp_path / "ultimo-backup-dati"
+    if ore_fa is not None:
+        segno.write_text("2026-11-26 03:45:00\n", encoding="utf-8")
+        quando = time.time() - ore_fa * 3600
+        os.utime(segno, (quando, quando))
+    r, _ = _controllo(tmp_path, {"/api/account/me": ME_OK, "/api/formazione": (401, "x"), "/api/salute": (429, "")},
+                      ambiente={"CONTROLLO_ULTIMO_BACKUP": _msys(segno)})
+    assert r.returncode == 0, r.stderr
+    return r.stdout
+
+
+@con_bash
+def test_copia_notturna_ferma_da_piu_di_36_ore_avvisa(tmp_path):
+    """backup-dati.sh scrive ultimo-backup-dati solo quando riesce: se e' fermo da piu' di 36 ore il controllo di salute avvisa."""
+    uscita = _controllo_con_copia(tmp_path, 40)
+    assert "SchieraXI: copia notturna" in uscita and "circa 40 ore" in uscita
+
+
+@con_bash
+@pytest.mark.parametrize("ore_fa", [2, 30, None])
+def test_copia_notturna_recente_o_mai_fatta_non_avvisa(tmp_path, ore_fa):
+    assert "copia notturna" not in _controllo_con_copia(tmp_path, ore_fa)
 
 
 # ---------------------------------------------------------------- comandi di rete bloccati
