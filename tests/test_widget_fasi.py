@@ -59,21 +59,28 @@ def test_tre_fasi_come_in_oggi(widget_vero):
     assert c["riepilogo"] == o["riepilogo"] and c["riepilogo"]["punti_fatti"] == 70.5 and c["prossima"] == o["prossima"]
 
 
-def test_con_il_recupero_la_frase_breve_accanto_a_quella_di_oggi(widget_vero):
+@pytest.mark.parametrize("voti_usciti,chiave,coda", [
+    (True, "in_corso.recupero", "."),                                    # voti di domenica usciti: manca solo il recupero
+    (False, "in_corso.voti_e_recupero", "; mancano i voti ufficiali."),  # roma-lazio finita senza voti: mancano anche quelli
+], ids=["recupero", "voti_e_recupero"])
+def test_con_il_recupero_la_frase_breve_accanto_a_quella_di_oggi(widget_vero, voti_usciti, chiave, coda):
     """#911: con una partita rinviata che la lega aspetta, `in_corso` del widget ha la riga di Oggi così com'è (con i nomi) e in
-    più la sua forma breve per il widget medio (`situazione_breve`, il numero al posto dei nomi). In /api/oggi la breve non c'è."""
+    più la sua forma breve per il widget medio (`situazione_breve`, il numero al posto dei nomi), anche quando mancano i voti
+    ufficiali. In /api/oggi la breve non c'è."""
     from test_fasi import VOTI_DOMENICA, _napoli_juve_rinviata, _voti
     a, costruisci = widget_vero
     _napoli_juve_rinviata(a)
-    _voti(a, VOTI_DOMENICA)
+    if voti_usciti:
+        _voti(a, VOTI_DOMENICA)
     adesso, live = datetime(2026, 11, 8, 22, 40), {("roma", "lazio"): {"stato": "finita"}}
     c, o = costruisci(adesso, live_partite=live), _oggi(a, adesso, live_partite=live)
     lunga = o["in_corso"]["situazione_frase"]
-    assert lunga["chiave"] == "in_corso.recupero" and lunga["param"]["n"] >= 1
+    assert lunga["chiave"] == chiave and lunga["param"]["n"] >= 1
     n = lunga["param"]["n"]
     assert (c["in_corso"]["situazione"], c["in_corso"]["situazione_frase"]) == (o["in_corso"]["situazione"], lunga)
-    assert c["in_corso"]["situazione_breve"] == (f"{n} giocatori aspettano il recupero." if n > 1 else "1 giocatore aspetta il recupero.")
-    assert c["in_corso"]["situazione_breve_frase"] == {"chiave": "in_corso.recupero_breve", "param": {"n": n}}
+    soggetto = f"{n} giocatori aspettano il recupero" if n > 1 else "1 giocatore aspetta il recupero"
+    assert c["in_corso"]["situazione_breve"] == soggetto + coda
+    assert c["in_corso"]["situazione_breve_frase"] == {"chiave": chiave + "_breve", "param": {"n": n}}
     assert "situazione_breve" not in o["in_corso"]
     assert {k: v for k, v in c["in_corso"].items() if not k.startswith("situazione_breve")} == \
         {k: v for k, v in o["in_corso"].items() if k not in ("giocatori", "sostituzioni")}

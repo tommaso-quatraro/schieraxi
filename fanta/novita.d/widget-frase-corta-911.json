@@ -1,7 +1,7 @@
 {
-  "titolo": "Widget dell'iPhone: la frase sul recupero sta intera",
+  "titolo": "Widget dell'iPhone: una frase più corta sul recupero",
   "voci": [
-    "Widget «Prossima giornata» medio, a giornata in corso, con l'app aggiornata: quando qualcuno dei tuoi aspetta il recupero di una partita rinviata, sotto i punti c'è una frase più corta, «3 giocatori aspettano il recupero; mancano i voti ufficiali.», che sta intera senza rimpicciolirsi anche sull'iPad. I nomi restano nella Formazione dell'app e sulla web."
+    "Widget «Prossima giornata» medio, a giornata in corso, con l'app aggiornata: quando qualcuno dei tuoi aspetta il recupero di una partita rinviata, sotto i punti c'è una frase più corta, «3 giocatori aspettano il recupero; mancano i voti ufficiali.», che con il testo normale sta intera senza rimpicciolirsi, anche sull'iPad. Con il testo grande la frase resta intera, ma il widget medio resta alla misura del testo normale. I nomi restano nella Formazione dell'app e sulla web."
   ],
   "tecnico": [
     "GET /api/widget: in `in_corso`, facoltativi, `situazione_breve` e `situazione_breve_frase` ({chiave, param}) solo quando `situazione` è `in_corso.recupero` o `in_corso.voti_e_recupero` (le righe con i nomi); chiavi nuove `in_corso.recupero_breve` e `in_corso.voti_e_recupero_breve` (.one/.other, parametro `n`), italiano e inglese nel catalogo, testi.js rigenerato. Regola in `fasi.situazione_breve`, che legge `situazione_frase`.",

@@ -71,11 +71,4 @@ struct WidgetFraseBreveTests {
         #expect(r.situazioneBreve == nil)
         #expect(r.fraseDelMedio == Self.lunga)
     }
-
-    @Test("La demo dei widget ha la frase breve del server per i tre nomi della frase lunga")
-    func demo() {
-        #expect(LegaDemo.situazioneRecuperoBreve == "3 giocatori aspettano il recupero; mancano i voti ufficiali.")
-        #expect(LegaDemo.situazioneRecuperoBreve.count <= 60)
-        #expect(LegaDemo.situazioneRecupero.count > 120)
-    }
 }

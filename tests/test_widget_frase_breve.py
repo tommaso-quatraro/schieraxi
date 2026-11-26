@@ -3,12 +3,16 @@ tranne Glauco Brevisi, Teo Kloosmeijer e Cesare Pulinski, che aspettano il recup
 senza rimpicciolirsi. /api/widget manda anche `in_corso.situazione_breve` (con `situazione_breve_frase`): la stessa cosa con il
 numero al posto dei nomi, solo per le due frasi con i nomi. `situazione` resta com'è: la leggono i widget già installati.
 Nomi inventati."""
+import re
+from pathlib import Path
+
 import pytest
 
 from fanta import fasi, widget as w
 from test_token_widget import OGGI, due_utenti, token_di, widget  # noqa: F401  (fixture)
 
 NOMI = ["Glauco Brevisi", "Teo Kloosmeijer", "Cesare Pulinski"]
+LEGA_DEMO = Path(__file__).resolve().parent.parent / "ios" / "Sources" / "Support" / "LegaDemo.swift"
 
 
 def _in_corso_del_widget(due_utenti, monkeypatch, riga) -> dict:  # noqa: F811
@@ -58,3 +62,17 @@ def test_le_frasi_gia_corte_non_hanno_la_breve(due_utenti, monkeypatch, riga):  
 def test_senza_una_frase_valida_niente_breve(frase):
     """Una riga senza chiave (un testo semplice) o senza un numero valido non ha la breve: resta la riga di sempre."""
     assert fasi.situazione_breve(frase) is None
+
+
+def test_la_galleria_dei_widget_ha_la_frase_breve_del_server():
+    """Le foto `*_recupero` dei widget mostrano `LegaDemo.situazioneRecuperoBreve` (ios/Sources/Support/LegaDemo.swift): deve essere
+    la frase che il server manda per i giocatori della frase lunga della demo (`situazioneRecupero`, voti e recupero che mancano).
+    Se il catalogo cambia, la demo va riscritta con la stessa frase."""
+    swift = LEGA_DEMO.read_text(encoding="utf-8")
+    ids = re.search(r"static var situazioneRecupero: String \{\s*let nomi = \[([\d,\s]+)\]", swift)
+    breve = re.search(r'static let situazioneRecuperoBreve = "([^"\\]*)"', swift)
+    assert ids and breve, "in LegaDemo.swift non trovo situazioneRecupero o situazioneRecuperoBreve"
+    nomi = [f"Nome{i.strip()}" for i in ids.group(1).split(",")]
+    lunga = fasi.situazione(0, True, nomi, 11)
+    assert lunga.chiave == "in_corso.voti_e_recupero"
+    assert breve.group(1) == fasi.situazione_breve(lunga.json())
