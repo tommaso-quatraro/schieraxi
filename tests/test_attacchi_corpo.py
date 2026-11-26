@@ -53,13 +53,15 @@ def test_chunked_piccolo_passa_ancora(dati_isolati, piccolo, monkeypatch):
     assert r.status_code == 200
 
 
-def test_i_file_rifiutati_contano_nelle_importazioni(ambiente):
-    """Un Excel finto o un CSV che non passa i controlli costa lavoro al server: conta come un'importazione."""
+def test_i_file_rifiutati_hanno_un_tetto_all_ora(ambiente, monkeypatch):
+    """Un Excel finto o un CSV che non passa i controlli costa lavoro al server. Dal collaudo del 26/11 non conta tra le
+    importazioni del giorno (conta solo ciò che riesce), ma prende un posto delle letture all'ora: oltre il tetto, 429."""
+    monkeypatch.setattr(limiti, "MAX_ANTEPRIME_ALL_ORA", 5)
     a, id_a = nuovo_utente("utentea")
     assert a.post("/api/rose/file", files={"file": ("rose.xlsx", b"PK\x03\x04" + b"\x00" * 100, "application/zip")}).status_code == 400
     assert a.post("/api/rose/file", files={"file": ("rose.csv", b"a\n" * 2000, "text/csv")}).status_code == 400
-    assert limiti.usati_oggi(id_a, "importazioni") == 2
-    for _ in range(limiti.MAX_IMPORTAZIONI_AL_GIORNO - 2):
+    assert limiti.usati_oggi(id_a, "importazioni") == 0
+    for _ in range(limiti.MAX_ANTEPRIME_ALL_ORA - 2):
         a.post("/api/rose/file", files={"file": ("rose.xlsx", b"PK\x03\x04" + b"\x00" * 100, "application/zip")})
     r = a.post("/api/rose/file", files={"file": ("rose.xlsx", b"PK\x03\x04" + b"\x00" * 100, "application/zip")})
-    assert r.status_code == 429
+    assert r.status_code == 429 and "in quest'ora" in r.json()["detail"]

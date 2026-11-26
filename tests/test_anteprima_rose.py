@@ -306,8 +306,11 @@ def test_il_buono_non_torna_all_infinito(ambiente, tmp_path):
         codici.append(a.post("/api/rose/file", files=file, data={"mia_squadra": "Inesistente"}).status_code)
         contati.append(limiti.usati_oggi(uid, "importazioni"))
     assert codici[:2] == [400, 400] and contati[:2] == [1, 1]          # il buono torna una volta, poi si consuma
-    assert contati[2] == 2                                              # dal terzo invio conta come sempre
-    assert contati[-1] == limiti.MAX_IMPORTAZIONI_AL_GIORNO and codici[-1] == 429
+    # dal collaudo del 26/11 un'importazione che fallisce non conta tra quelle del giorno, ma dal terzo invio ognuno prende un
+    # posto delle letture all'ora (con l'anteprima): oltre il tetto, 429
+    assert set(contati) == {1}
+    n = limiti.MAX_ANTEPRIME_ALL_ORA + 1                                # l'anteprima ha preso un posto, i due invii col buono no
+    assert codici[:n] == [400] * n and set(codici[n:]) == {429}
 
 
 def test_un_excel_alla_volta(ambiente, tmp_path, monkeypatch):
@@ -361,7 +364,7 @@ def test_excel_occupato_ha_un_tetto_e_non_lavora_a_vuoto(ambiente, tmp_path, mon
     n = limiti.MAX_EXCEL_OCCUPATO_ALL_ORA
     assert codici[:n] == [503] * n and codici[n:] == [429] * (100 - n)
     assert zip_controllati == [] and temporanei == []                  # nessun lavoro a vuoto
-    assert limiti.usati_oggi(uid, "importazioni") == limiti.MAX_IMPORTAZIONI_AL_GIORNO   # i tentativi oltre il tetto contano
+    assert limiti.usati_oggi(uid, "importazioni") == 0          # rifiutati: non contano tra le importazioni (collaudo del 26/11)
 
 
 def test_il_turno_si_libera_anche_se_la_lettura_fallisce(ambiente, tmp_path, monkeypatch):

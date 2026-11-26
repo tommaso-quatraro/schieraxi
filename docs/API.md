@@ -451,7 +451,10 @@ Si può cominciare con la sola propria rosa: una squadra sola non è un errore (
 Limiti (solo con gli account): l'anteprima conta tra le 10 importazioni al giorno, ma anteprima e importazione dello **stesso** contenuto
 (stesso testo o stesso file) contano una volta sola, e rifare l'anteprima dello stesso contenuto (per esempio con le `correzioni`) non conta di
 nuovo; se l'importazione pagata dall'anteprima fallisce (`400` sulle scelte, `412`), riprovare con lo stesso contenuto resta gratis;
-un'anteprima rifiutata per il tetto (`429`) non paga niente; in più al massimo 30 anteprime all'ora (`429` con `Retry-After`). Stessi tetti di dimensione dell'importazione (200 mila caratteri,
+un'anteprima rifiutata per il tetto (`429`) non paga niente. Dal 26/11/2026 contano solo anteprime e importazioni **riuscite**, per il testo e
+per il file allo stesso modo: un contenuto rifiutato (`400` file che non è di rose, per esempio un calendario; `413` oltre i tetti di squadre e
+giocatori; Excel rovinato) non conta tra le 10. In più al massimo 30 letture all'ora (`429` con `Retry-After`), contate anche se rifiutate:
+le anteprime e le importazioni non pagate da un'anteprima dello stesso contenuto. Stessi tetti di dimensione dell'importazione (200 mila caratteri,
 1500 righe, 60 colonne, file fino a 5 MB, `.xlsm` rifiutato) e stessi tetti di squadre e giocatori. Il testo incollato ha il tetto anche senza account.
 
 ## 6. Stemma e maglia, condivisione

@@ -1,6 +1,7 @@
 """Limiti per utente (solo con FANTA_MULTIUTENTE=1): un utente non deve poter riempire il disco o il processore del server.
 
-- importazioni di rose e proposte di scambi: un tetto al giorno (contatori in account.sqlite, azzerati a mezzanotte);
+- importazioni di rose e proposte di scambi: un tetto al giorno (contatori in account.sqlite, azzerati a mezzanotte); per le rose
+  contano solo i controlli e i salvataggi riusciti, e le letture (anche rifiutate) hanno un tetto all'ora;
 - spazio: i dati personali di ciascuno (regole, rose, immagini, archivio...) stanno in 5 MB;
 - dimensione della lega: al massimo 20 squadre da 40 giocatori;
 - calcoli e memorie condivise: calcoli in coda insieme, parte della memoria dei risultati (li applica calcolo.py), consigliate
@@ -255,7 +256,9 @@ def conta(ctx, cosa: str, chiave=None) -> None:
         raise
 
 
-MAX_ANTEPRIME_ALL_ORA = 30           # controlli delle rose senza salvare (/api/rose/anteprima): ogni richiesta rilegge tutto il testo
+# letture delle rose all'ora: i controlli senza salvare (/api/rose/anteprima) e i salvataggi senza un controllo prima. Ogni
+# richiesta rilegge tutto; resta contata anche se il file è rifiutato, che invece non conta tra le importazioni del giorno
+MAX_ANTEPRIME_ALL_ORA = 30
 
 
 def chiave_anteprima(impronta: str) -> tuple:
@@ -265,8 +268,9 @@ def chiave_anteprima(impronta: str) -> tuple:
 def conta_anteprima(ctx, impronta: str) -> list[Prenotazione]:
     """L'anteprima delle rose costa come un'importazione, ma una sola volta per lo stesso contenuto: rifarla (per esempio
     dopo aver scelto i dubbi) e poi importare QUEL contenuto non conta di nuovo (vedi `conta_importazione`). In più al massimo
-    `MAX_ANTEPRIME_ALL_ORA` anteprime all'ora, anche dello stesso testo (ognuna rilegge tutto).
-    Restituisce i posti presi (ognuno col suo giorno o la sua ora): da annullare se il lavoro non comincia (server occupato)."""
+    `MAX_ANTEPRIME_ALL_ORA` letture all'ora, anche dello stesso testo (ognuna rilegge tutto).
+    Restituisce i posti presi (ognuno col suo giorno o la sua ora, `Prenotazione.cosa` dice quale): se l'anteprima non riesce
+    (file rifiutato) torna quello del giorno; se il lavoro non comincia (server occupato) tutti e due (server._conta_se_riesce)."""
     if ctx.utente_id is None:
         return []
     presi = [prenota_ora(ctx, "anteprime_rose", massimo=MAX_ANTEPRIME_ALL_ORA)]

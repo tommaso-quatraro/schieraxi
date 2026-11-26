@@ -2257,7 +2257,7 @@ def importa_testo(dati: TestoRose, request: Request, response: Response, ctx: Co
     griglie = [("testo", rose.griglia_da_testo(dati.testo))]
     if ctx.utente_id is not None:
         importa_sicuro.controlla_griglie(griglie)
-    # i testi rifiutati per dimensione o righe non consumano un'importazione; dopo l'anteprima dello stesso testo non conta
+    # i testi rifiutati non consumano un'importazione (vedi _buono_dell_anteprima); dopo l'anteprima dello stesso testo non conta
     with _buono_dell_anteprima(ctx, _impronta(dati.testo)):
         riconosciute = _riconosci(griglie, ctx)           # fuori dal blocco: le scritture degli altri non aspettano
         with _scrittura_rose:                            # due importazioni insieme (o con l'importazione per conto di) una alla volta
@@ -2269,25 +2269,45 @@ def importa_testo(dati: TestoRose, request: Request, response: Response, ctx: Co
 
 @contextlib.contextmanager
 def _buono_dell_anteprima(ctx: Contesto, impronta: str):
-    """Conta l'importazione (o usa il buono dell'anteprima dello stesso contenuto). Se l'importazione pagata dal buono fallisce
-    (scelte non valide, rose cambiate nel frattempo, tetti), il buono torna: riprovare non costa un'altra importazione.
-    Un'importazione contata normalmente resta contata anche se fallisce, come sempre.
-    Il buono torna al massimo una volta al giorno per lo stesso contenuto (vedi `limiti.restituisci_buono`). Se il server era
-    occupato a leggere un altro Excel (503, il lavoro non è cominciato) non conta niente: né il buono né l'importazione.
-    Si restituisce sempre nel giorno del conteggio (a cavallo della mezzanotte non diventa gratis un tentativo di domani)."""
+    """Conta l'importazione (o usa il buono dell'anteprima dello stesso contenuto). Conta solo un'importazione riuscita (collaudo
+    del 26/11, come l'anteprima: `_conta_se_riesce`): se fallisce (file rifiutato, scelte non valide, rose cambiate nel
+    frattempo, tetti) torna il posto, oppure il buono se l'aveva pagata lui. Il buono torna al massimo una volta al giorno per
+    lo stesso contenuto (vedi `limiti.restituisci_buono`). Un'importazione senza buono prende anche un posto delle letture
+    all'ora (`limiti.MAX_ANTEPRIME_ALL_ORA`, le stesse dell'anteprima), che resta anche se fallisce: così un file sbagliato non
+    si può mandare all'infinito. Se il server era occupato a leggere un altro Excel (503, il lavoro non è cominciato) non conta
+    niente. Si restituisce sempre nel giorno del conteggio (a cavallo della mezzanotte non diventa gratis un tentativo di domani)."""
     giorno = limiti.oggi()
     buono = limiti.conta_importazione(ctx, impronta, giorno)
+    lettura = None
+    if not buono:
+        try:
+            lettura = limiti.prenota_ora(ctx, "anteprime_rose", massimo=limiti.MAX_ANTEPRIME_ALL_ORA)
+        except BaseException:
+            limiti.rimetti_importazione(ctx, giorno)
+            raise
     try:
         yield
-    except ExcelOccupato:
+    except BaseException as errore:
         if buono:
-            limiti.restituisci_buono(ctx, impronta, una_volta=False, giorno=giorno)
+            limiti.restituisci_buono(ctx, impronta, una_volta=not isinstance(errore, ExcelOccupato), giorno=giorno)
         else:
             limiti.rimetti_importazione(ctx, giorno)
+            if isinstance(errore, ExcelOccupato) and lettura is not None:
+                lettura.annulla()
         raise
-    except BaseException:
-        if buono:
-            limiti.restituisci_buono(ctx, impronta, giorno=giorno)
+
+
+@contextlib.contextmanager
+def _conta_se_riesce(presi: list):
+    """L'anteprima conta tra le importazioni del giorno solo se riesce (collaudo del 26/11): un file rifiutato (un calendario, una
+    lega oltre i tetti, un Excel rovinato) restituisce il posto del giorno, non quello dell'ora (`limiti.conta_anteprima`).
+    Se il server era occupato a leggere un altro Excel (503) tornano tutti e due: il lavoro non è cominciato."""
+    try:
+        yield
+    except BaseException as errore:
+        for p in presi:
+            if isinstance(errore, ExcelOccupato) or p.cosa == "importazioni":
+                p.annulla()
         raise
 
 
@@ -2324,8 +2344,8 @@ def anteprima_testo(dati: AnteprimaRose, response: Response, ctx: Contesto = Dep
     importa_sicuro.controlla_testo(dati.testo)                   # sempre, anche senza account: non scrive niente ma legge tutto
     griglie = [("testo", rose.griglia_da_testo(dati.testo))]
     importa_sicuro.controlla_griglie(griglie)
-    limiti.conta_anteprima(ctx, _impronta(dati.testo))
-    return _anteprima(griglie, dati.sostituisci_tutto, _scelte(dati.correzioni), response, ctx)
+    with _conta_se_riesce(limiti.conta_anteprima(ctx, _impronta(dati.testo))):
+        return _anteprima(griglie, dati.sostituisci_tutto, _scelte(dati.correzioni), response, ctx)
 
 
 class RoseDiUnAmico(BaseModel):
@@ -2449,9 +2469,9 @@ def importa_file(file: UploadFile, request: Request, response: Response, sostitu
     versioni.controlla(request, versioni.etag_file(ctx.rose))
     scelte = _correzioni_da_modulo(correzioni)
     contenuto, estensione = _leggi_file(file, ctx)
-    # da qui il file costa lavoro (zip, processo separato, lettura): conta come un'importazione anche se poi viene rifiutato,
-    # così non si possono mandare file sbagliati all'infinito. I rifiuti immediati (vuoto, troppo grande, .xlsm) non contano.
-    # Dopo l'anteprima dello stesso file non conta di nuovo.
+    # da qui il file costa lavoro (zip, processo separato, lettura): conta come un'importazione solo se riesce, ma prende un posto
+    # delle letture all'ora anche se viene rifiutato (niente file sbagliati all'infinito, vedi _buono_dell_anteprima). I rifiuti
+    # immediati (vuoto, troppo grande, .xlsm) non contano. Dopo l'anteprima dello stesso file non conta di nuovo.
     # Il file si legge e i giocatori si riconoscono PRIMA di prendere il lucchetto delle rose (un Excel può richiedere fino a
     # 30 s, il riconoscimento fino a 20: gli altri non aspettano).
     with _buono_dell_anteprima(ctx, _impronta(contenuto)):
@@ -2470,14 +2490,9 @@ def anteprima_file(file: UploadFile, response: Response, sostituisci_tutto: bool
     """Come /api/rose/anteprima, per un file (gli stessi formati di /api/rose/file). Non salva niente."""
     scelte = _correzioni_da_modulo(correzioni)
     contenuto, estensione = _leggi_file(file, ctx)
-    presi = limiti.conta_anteprima(ctx, _impronta(contenuto))
-    try:
+    with _conta_se_riesce(limiti.conta_anteprima(ctx, _impronta(contenuto))):
         griglie = _griglie_del_file(contenuto, estensione, ctx)
-    except ExcelOccupato:                        # il lavoro non è cominciato: l'anteprima non conta (posti restituiti)
-        for p in presi:
-            p.annulla()
-        raise
-    return _anteprima(griglie, sostituisci_tutto, scelte, response, ctx, _e_excel(contenuto))
+        return _anteprima(griglie, sostituisci_tutto, scelte, response, ctx, _e_excel(contenuto))
 
 
 def _e_excel(contenuto: bytes) -> bool:
@@ -2508,7 +2523,7 @@ def _griglie_dell_excel(contenuto: bytes, estensione: str, ctx: Contesto):
             f.write(contenuto)
             temporaneo = Path(f.name)
         try:
-            # (l'importazione è già contata prima dei controlli: anche un Excel rifiutato conta)
+            # (la lettura è già contata prima dei controlli: un Excel rifiutato prende un posto delle letture all'ora)
             if ctx.utente_id is not None:
                 importa_sicuro.controlla_zip(temporaneo)
             return _griglie_excel(temporaneo, ctx)
